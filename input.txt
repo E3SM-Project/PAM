@@ -1,0 +1,41 @@
+
+// Input parameters for the model
+// Legal syntax is key : value
+// You can end input key:value lines with comments
+
+nx         : 100        // Number of cells in the x-direction
+ny         : 100        // Number of cells in the y-direction
+nz         : 50         // Number of cells in the z-direction
+
+xlen       : 20000.     // Domain length in the x-direction (m)
+ylen       : 20000.     // Domain length in the y-direction (m)
+zlen       : 10000.     // Domain length in the z-direction (m)
+
+cfl        : 0.9        // CFL value to use
+simLength  : 1000.      // How long to simulation (s)
+
+parNx      : 1          // Number of parallel tasks in the x-direction
+parNy      : 1          // Number of parallel tasks in the y-direction
+
+outFreq    : 10.        // Frequency for output in seconds
+
+doWeno     : 0          // Whether to do WENO
+
+strakaVisc : 0          // Whether to apply Straka 2nd-order viscosity
+
+// Initial data to use
+//   thermal  : Rising thermal (neutral atmosphere)
+//   collision: Colliding cold and warm bubbles (neutral atmosphere)
+//   straka   : Falling cold bubble
+dataInit : thermal
+
+// Temporal discretization to use:
+//   ADER: ADER with Differential Transforms  (max cfl = 1)
+//   SSPRK3: optimal 3-stage, 3rd order SSPRK (max cfl = 1)
+timeMethod : ADER
+
+// Equation set to use:
+//   theta_cons: q={rho,rho*u,rho*v,rho*w,rho*theta}, conservative
+//   theta_prim: q={rho,u,v,w,theta}, non-conservative
+eqnSet : theta_cons
+
