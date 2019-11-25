@@ -1,4 +1,6 @@
-# PAM: Portable Atmospheric Model
+# SPAM: Scalable and Portable Atmospheric Model
+
+PAM is a portable atmospheric model written in C++ with performance portability in mind using a kernel launching approach. It works on CPUs, Nvidia GPUs, and AMD GPUs. The goal for PAM is to allow easily exchangeable dynamical core and physics options through a simple and clear interface layer that's common to each.
 
 ## Directory Structure
 
