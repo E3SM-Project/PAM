@@ -7,7 +7,9 @@ PAM is a portable atmospheric model written in C++ with performance portability 
 * `build`: Machine files for compiling
 * `common`: Source & header files with functions and variables used in multiple places
 * `driver`: Code to drive the standalone model
-* `dynamics`: Dynamical core code, each version in its own sub-directory. Each dycore option has its own `math_desc` files to document the numerical discretizations used.
+* `dynamics`: Dynamical core code, each version in its own sub-directory. Each dycore must provide:
+  * `math_desc.pdf`: documenting the numerical discretizations used
+  * `README.md`: giving a brief synopsis of the key numerical features
 * `externals`: Submodules of external code (`cub`, `hipcub`, `rocPRIM`, `kokkos`, `YAKL`)
 * `physics`: Physics parameterizations (microphysics, radiation, etc.)
 * `sage`: SageMath code for generating C++ code
