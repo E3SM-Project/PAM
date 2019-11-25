@@ -1,7 +1,7 @@
 # Synopsis
-* State: rho, rho\*u, rho\*v, rho\*w, rho\*theta
-* Conserves: rho, rho\*u, rho\*v, rho\*w, rho\*theta
-* Acoustics: explicit, no sub-cycling
+* State: rho, u, v, w, rho\*theta
+* Conserves: rho, u, v, w, rho\*theta
+* Acoustics: HEVI, infinite and implicit options
 * Staggering: A-grid
 
 # Method Description
