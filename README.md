@@ -16,4 +16,4 @@ PAM is a portable atmospheric model written in C++ with performance portability 
 ## Software Dependencies
 * MPI library
 * parallel-netcdf (https://trac.mcs.anl.gov/projects/parallel-netcdf)
-  * See `utils/build_parallel_netcdf.sh` for details.
+  * See `utils/build_parallel_netcdf.sh` for a sample build script.
