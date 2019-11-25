@@ -1,0 +1,790 @@
+#LyX 2.2 created this file. For more info see http://www.lyx.org/
+\lyxformat 508
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass article
+\use_default_options true
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize 10
+\spacing single
+\use_hyperref false
+\papersize letterpaper
+\use_geometry true
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 1
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\leftmargin 1in
+\topmargin 1in
+\rightmargin 1in
+\bottommargin 1in
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+SPAM Numerical Discretizations
+\end_layout
+
+\begin_layout Section
+Model Equations
+\end_layout
+
+\begin_layout Standard
+The equations of motion used in this model are:
+\begin_inset Formula 
+\[
+\frac{\partial\rho}{\partial t}+\frac{\partial\rho u}{\partial x}+\frac{\partial\rho v}{\partial y}+\frac{\partial\rho w}{\partial z}=0
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\frac{\partial u}{\partial t}+u\frac{\partial u}{\partial x}+v\frac{\partial u}{\partial y}+w\frac{\partial u}{\partial z}+\frac{1}{\rho}\frac{\partial p}{\partial x}=0
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\frac{\partial v}{\partial t}+u\frac{\partial v}{\partial x}+v\frac{\partial v}{\partial y}+w\frac{\partial v}{\partial z}+\frac{1}{\rho}\frac{\partial p}{\partial y}=0
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\frac{\partial w}{\partial t}+u\frac{\partial w}{\partial x}+v\frac{\partial w}{\partial y}+w\frac{\partial w}{\partial z}+\frac{1}{\rho}\frac{\partial p}{\partial z}=-g
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\frac{\partial\rho\theta}{\partial t}+\frac{\partial\rho u\theta}{\partial x}+\frac{\partial\rho v\theta}{\partial y}+\frac{\partial\rho w\theta}{\partial z}=0
+\]
+
+\end_inset
+
+where 
+\begin_inset Formula $\rho$
+\end_inset
+
+ is density, 
+\begin_inset Formula $u$
+\end_inset
+
+, 
+\begin_inset Formula $v$
+\end_inset
+
+, and 
+\begin_inset Formula $w$
+\end_inset
+
+ are winds in the 
+\begin_inset Formula $x$
+\end_inset
+
+-, 
+\begin_inset Formula $y$
+\end_inset
+
+-, and 
+\begin_inset Formula $z$
+\end_inset
+
+-directions, respectively, 
+\begin_inset Formula $\theta$
+\end_inset
+
+ is potential temperature related to temperature, 
+\begin_inset Formula $T$
+\end_inset
+
+, by 
+\begin_inset Formula $\theta=T\left(P_{0}/P\right)^{R_{d}/c_{p}}$
+\end_inset
+
+, 
+\begin_inset Formula $P_{0}=10^{5}\,\text{Pa}$
+\end_inset
+
+, 
+\begin_inset Formula $g=9.8\text{\,\ m}\,\mbox{s}^{-2}$
+\end_inset
+
+ is acceleration due to gravity, 
+\begin_inset Formula $p=C_{0}\left(\rho\theta\right)^{\gamma}$
+\end_inset
+
+ is pressure, 
+\begin_inset Formula $C_{0}=R_{d}^{\gamma}p_{0}^{-R_{d}/c_{v}}$
+\end_inset
+
+, 
+\begin_inset Formula $R_{d}=287\,\mbox{J}\,\mbox{kg}^{-1}\,\mbox{K}^{-1}$
+\end_inset
+
+, 
+\begin_inset Formula $\gamma=c_{p}/c_{v}$
+\end_inset
+
+, 
+\begin_inset Formula $c_{p}=1004\,\mbox{J}\,\mbox{kg}^{-1}\,\mbox{K}^{-1}$
+\end_inset
+
+, 
+\begin_inset Formula $c_{v}=717\,\mbox{J}\,\mbox{kg}^{-1}\,\mbox{K}^{-1}$
+\end_inset
+
+, and 
+\begin_inset Formula $p_{0}=10^{5}\,\mbox{Pa}$
+\end_inset
+
+.
+ Transforming these into a more convenient Jabocian form, we have:
+\begin_inset Formula 
+\[
+\frac{\partial\mathbf{q}}{\partial t}+\frac{\partial\mathbf{f}}{\partial\mathbf{q}}\frac{\partial\mathbf{q}}{\partial x}+\frac{\partial\mathbf{g}}{\partial\mathbf{q}}\frac{\partial\mathbf{q}}{\partial x}+\frac{\partial\mathbf{h}}{\partial\mathbf{q}}\frac{\partial\mathbf{q}}{\partial x}=\mathbf{s}
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\mathbf{q}=\left[\begin{array}{c}
+\rho\\
+u\\
+v\\
+w\\
+\rho\theta
+\end{array}\right]
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\frac{\partial\mathbf{f}}{\partial\mathbf{q}}=A_{x}=\left[\begin{array}{ccccc}
+u & \rho & 0 & 0 & 0\\
+0 & u & 0 & 0 & \frac{c_{s}^{2}}{\rho\theta}\\
+0 & 0 & u & 0 & 0\\
+0 & 0 & 0 & u & 0\\
+0 & \rho\theta & 0 & 0 & u
+\end{array}\right]
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\frac{\partial\mathbf{g}}{\partial\mathbf{q}}=A_{y}=\left[\begin{array}{ccccc}
+v & 0 & \rho & 0 & 0\\
+0 & v & 0 & 0 & 0\\
+0 & 0 & v & 0 & \frac{c_{s}^{2}}{\rho\theta}\\
+0 & 0 & 0 & v & 0\\
+0 & 0 & \rho\theta & 0 & v
+\end{array}\right]
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\frac{\partial\mathbf{h}}{\partial\mathbf{q}}=A_{z}=\left[\begin{array}{ccccc}
+w & 0 & 0 & \rho & 0\\
+0 & w & 0 & 0 & 0\\
+0 & 0 & w & 0 & 0\\
+0 & 0 & 0 & w & \frac{c_{s}^{2}}{\rho\theta}\\
+0 & 0 & 0 & \rho\theta & w
+\end{array}\right]
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\mathbf{s}=\left[\begin{array}{c}
+0\\
+0\\
+0\\
+-g\\
+0
+\end{array}\right]
+\]
+
+\end_inset
+
+Note that the mass continuity equation and the thermodynamic equation are
+ in conservative (flux) form while the motion equations are in non-conservative
+ form.
+ There are ways to treat the entire equation set in non-conservative form
+ that will still conserve 
+\begin_inset Formula $\rho$
+\end_inset
+
+ and 
+\begin_inset Formula $\rho\theta$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Subsection
+Characteristics
+\end_layout
+
+\begin_layout Standard
+Diagonalizing each of the flux Jacobians, 
+\begin_inset Formula $A=R\Lambda R^{-1}$
+\end_inset
+
+, in the 
+\begin_inset Formula $x$
+\end_inset
+
+, 
+\begin_inset Formula $y$
+\end_inset
+
+, and 
+\begin_inset Formula $z$
+\end_inset
+
+ directions, respectively:
+\end_layout
+
+\begin_layout Standard
+
+\size footnotesize
+\begin_inset Formula 
+\[
+\left[\begin{array}{ccccc}
+u & \rho & 0 & 0 & 0\\
+0 & u & 0 & 0 & \frac{c_{s}^{2}}{\rho\theta}\\
+0 & 0 & u & 0 & 0\\
+0 & 0 & 0 & u & 0\\
+0 & \rho\theta & 0 & 0 & u
+\end{array}\right]=\left[\begin{array}{ccccc}
+1 & 1 & 1 & 0 & 0\\
+-\frac{c_{s}}{\rho} & \frac{c_{s}}{\rho} & 0 & 0 & 0\\
+0 & 0 & 0 & 1 & 0\\
+0 & 0 & 0 & 0 & 1\\
+\theta & \theta & 0 & 0 & 0
+\end{array}\right]\left[\begin{array}{ccccc}
+-c_{s}+u & 0 & 0 & 0 & 0\\
+0 & c_{s}+u & 0 & 0 & 0\\
+0 & 0 & u & 0 & 0\\
+0 & 0 & 0 & u & 0\\
+0 & 0 & 0 & 0 & u
+\end{array}\right]\left[\begin{array}{ccccc}
+0 & -\frac{\rho}{2\,c_{s}} & 0 & 0 & \frac{1}{2\,\theta}\\
+0 & \frac{\rho}{2\,c_{s}} & 0 & 0 & \frac{1}{2\,\theta}\\
+1 & 0 & 0 & 0 & -\frac{1}{\theta}\\
+0 & 0 & 1 & 0 & 0\\
+0 & 0 & 0 & 1 & 0
+\end{array}\right]
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\left[\begin{array}{ccccc}
+v & 0 & \rho & 0 & 0\\
+0 & v & 0 & 0 & 0\\
+0 & 0 & v & 0 & \frac{c_{s}^{2}}{\rho\theta}\\
+0 & 0 & 0 & v & 0\\
+0 & 0 & \rho\theta & 0 & v
+\end{array}\right]=\left[\begin{array}{ccccc}
+1 & 1 & 1 & 0 & 0\\
+0 & 0 & 0 & 1 & 0\\
+-\frac{c_{s}}{\rho} & \frac{c_{s}}{\rho} & 0 & 0 & 0\\
+0 & 0 & 0 & 0 & 1\\
+\theta & \theta & 0 & 0 & 0
+\end{array}\right]\left[\begin{array}{ccccc}
+-c_{s}+v & 0 & 0 & 0 & 0\\
+0 & c_{s}+v & 0 & 0 & 0\\
+0 & 0 & v & 0 & 0\\
+0 & 0 & 0 & v & 0\\
+0 & 0 & 0 & 0 & v
+\end{array}\right]\left[\begin{array}{ccccc}
+0 & 0 & -\frac{\rho}{2\,c_{s}} & 0 & \frac{1}{2\,\theta}\\
+0 & 0 & \frac{\rho}{2\,c_{s}} & 0 & \frac{1}{2\,\theta}\\
+1 & 0 & 0 & 0 & -\frac{1}{\theta}\\
+0 & 1 & 0 & 0 & 0\\
+0 & 0 & 0 & 1 & 0
+\end{array}\right]
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\left[\begin{array}{ccccc}
+w & 0 & 0 & \rho & 0\\
+0 & w & 0 & 0 & 0\\
+0 & 0 & w & 0 & 0\\
+0 & 0 & 0 & w & \frac{c_{s}^{2}}{\rho\theta}\\
+0 & 0 & 0 & \rho\theta & w
+\end{array}\right]=\left[\begin{array}{ccccc}
+1 & 1 & 1 & 0 & 0\\
+0 & 0 & 0 & 1 & 0\\
+0 & 0 & 0 & 0 & 1\\
+-\frac{c_{s}}{\rho} & \frac{c_{s}}{\rho} & 0 & 0 & 0\\
+\theta & \theta & 0 & 0 & 0
+\end{array}\right]\left[\begin{array}{ccccc}
+-c_{s}+w & 0 & 0 & 0 & 0\\
+0 & c_{s}+w & 0 & 0 & 0\\
+0 & 0 & w & 0 & 0\\
+0 & 0 & 0 & w & 0\\
+0 & 0 & 0 & 0 & w
+\end{array}\right]\left[\begin{array}{ccccc}
+0 & 0 & 0 & -\frac{\rho}{2\,c_{s}} & \frac{1}{2\,\theta}\\
+0 & 0 & 0 & \frac{\rho}{2\,c_{s}} & \frac{1}{2\,\theta}\\
+1 & 0 & 0 & 0 & -\frac{1}{\theta}\\
+0 & 1 & 0 & 0 & 0\\
+0 & 0 & 1 & 0 & 0
+\end{array}\right]
+\]
+
+\end_inset
+
+
+\size default
+where 
+\begin_inset Formula $R$
+\end_inset
+
+ is the matrix whose columns are right eigenvectors, 
+\begin_inset Formula $\Lambda$
+\end_inset
+
+ is the matrix whose diagonal components are eigenvalues, 
+\begin_inset Formula $R^{-1}\equiv L$
+\end_inset
+
+ is the matrix whose rows are left eigenvectors, and 
+\begin_inset Formula $c_{s}=\sqrt{\gamma p/\rho}$
+\end_inset
+
+ is the speed of sound.
+ The eigenvectors create 
+\begin_inset Quotes eld
+\end_inset
+
+characteristic
+\begin_inset Quotes erd
+\end_inset
+
+ variables that travel at velocities denoted by the eigenvalues:
+\begin_inset Formula 
+\[
+\frac{\partial\mathbf{q}}{\partial t}+\frac{\partial\mathbf{f}}{\partial\mathbf{q}}\frac{\partial\mathbf{q}}{\partial x}=\mathbf{0}\implies\frac{\partial\mathbf{q}}{\partial t}+R\Lambda L\frac{\partial\mathbf{q}}{\partial x}=\mathbf{0}\implies L\frac{\partial\mathbf{q}}{\partial t}+\Lambda L\frac{\partial\mathbf{q}}{\partial x}=\mathbf{0}
+\]
+
+\end_inset
+
+If you assume the flux Jacobian is locally constant with respect to space
+ and time (the so-called 
+\begin_inset Quotes eld
+\end_inset
+
+locally frozen
+\begin_inset Quotes erd
+\end_inset
+
+ approximation), you get:
+\begin_inset Formula 
+\[
+\frac{\partial L\mathbf{q}}{\partial t}+\Lambda\frac{\partial L\mathbf{q}}{\partial x}=\mathbf{0}\implies\frac{\partial}{\partial t}\left[\begin{array}{c}
+w_{1}\\
+w_{2}\\
+w_{3}\\
+w_{4}\\
+w_{5}
+\end{array}\right]+\left[\begin{array}{ccccc}
+\lambda_{1} & 0 & 0 & 0 & 0\\
+0 & \lambda_{2} & 0 & 0 & 0\\
+0 & 0 & \lambda_{3} & 0 & 0\\
+0 & 0 & 0 & \lambda_{4} & 0\\
+0 & 0 & 0 & 0 & \lambda_{5}
+\end{array}\right]\frac{\partial}{\partial x}\left[\begin{array}{c}
+w_{1}\\
+w_{2}\\
+w_{3}\\
+w_{4}\\
+w_{5}
+\end{array}\right]=\mathbf{0}
+\]
+
+\end_inset
+
+This is a decoupled set of simple transport equations, showing characteristic
+ variables, 
+\begin_inset Formula $w_{p}=\ell_{p}\cdot\mathbf{q}$
+\end_inset
+
+, travelling at finite and non-zero speed, 
+\begin_inset Formula $\lambda_{p}$
+\end_inset
+
+, where 
+\begin_inset Formula $\ell_{p}$
+\end_inset
+
+ is the 
+\begin_inset Formula $p$
+\end_inset
+
+-th row of 
+\begin_inset Formula $L$
+\end_inset
+
+, and 
+\begin_inset Formula $\lambda_{p}$
+\end_inset
+
+ is the 
+\begin_inset Formula $p$
+\end_inset
+
+th diagonal component of 
+\begin_inset Formula $\Lambda$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Subsection
+Acoustic Stiffness
+\end_layout
+
+\begin_layout Standard
+The two wave speeds in play in this hyperbolic equation set are wind velocity
+ 
+\begin_inset Formula $u$
+\end_inset
+
+, 
+\begin_inset Formula $v$
+\end_inset
+
+, and 
+\begin_inset Formula $w$
+\end_inset
+
+, and the acoustic speed, 
+\begin_inset Formula $c_{s}=\sqrt{\gamma p/\rho}$
+\end_inset
+
+.
+ Acoustics travel the fastest at the Earth's surface with a speed of roughly
+ 
+\begin_inset Formula $c_{s}\approx\sqrt{1.4\cdot10^{5}\cdot1.1^{-1}}\approx360$
+\end_inset
+
+ m/s.
+ In the global atmosphere, winds in jet streak maxima and in the stratosphere
+ can reach up to 80 m/s, which is only 4.5
+\begin_inset Formula $\times$
+\end_inset
+
+ smaller than the speed of sound.
+ Therefore, the global atmosphere cannot really be described as 
+\begin_inset Quotes eld
+\end_inset
+
+stiff
+\begin_inset Quotes erd
+\end_inset
+
+ – certainly not enough to warrant a numerical method with global data dependenc
+e (e.g., time implicit, anelastic, or spectral).
+ At the throughputs climate must reach, the per-node workloads on compute
+ nodes in a parallel computer are quite small, and the cost of data transfers
+ across a large machine are prohibitively large.
+ Four cycles of nearest neighbor communication is faster than multiple iteration
+s of MPI_AllReduce() calls for implicit methods, or a single set of MPI_AllToAll
+() for spectral at scale on the largest computers available today.
+\end_layout
+
+\begin_layout Standard
+However, there is significant acoustic stiffness in two different contexts:
+ (1) the vertical direction, and (2) limited area models.
+ 
+\end_layout
+
+\begin_layout Standard
+In the vertical direction, the grid spacing is significantly smaller than
+ in the horizontal directions.
+ Making this situation more extreme is the fact that the vertical grid is
+ stretched to give more levels near the Earth's surface, and the level nearest
+ the Earth's surface often has a grid spacing in several meters to tens
+ of meters.
+ If we also consider that vertical velocity in that cell is often very close
+ to zero, we suddenly have an acoustic speed that is usually more than 100
+\begin_inset Formula $\times$
+\end_inset
+
+ larger than wind speed.
+ This is something we would consider very stiff, and this is the reason
+ for Horizontally Explicit, Vertically Implicit (HEVI) methods.
+ Regardless, handling vertical stiffness separately is often necessary in
+ non-hydrostatic models, which admit acoustics in the vertical direction.
+\end_layout
+
+\begin_layout Standard
+The other context in which acoustics can be stiff in the atmosphere is in
+ limited area models.
+ Jet streaks and large stratospheric winds comprise a relatively small surface
+ area of the sphere, so most limited area models, especially over a small
+ snapshot of time will have wind speeds significantly smaller, and in these
+ cases, acoustics can be 
+\begin_inset Formula $>10\times$
+\end_inset
+
+ more than the speed of wind.
+ While less stiff than the vertical direction, it is still advantageous
+ to be able to use a time step larger than that determined by acoustics.
+\end_layout
+
+\begin_layout Section
+Spatial Discretization
+\end_layout
+
+\begin_layout Standard
+SPAM uses the Finite-Volume approach to integarting the Euler equations.
+ This allows upwind fluxes between cells to add dissipation to the model,
+ enough that the model is stable without any additional limiting.
+ Also, this allows treating each Degree of Freedom (DOF) individually, which
+ is advantageous when sharp discontinuities need to be resolved.
+ Finally, Finite-Volume allows a large maximum stable CFL value of one when
+ paried with a fully discrete time discretization, and this large CFL value
+ remains fixed no matter how high-order-accurate the numerics are.
+ This is in contrast with Galerkin element-based methods, which have time
+ steps that decrease superlinearly with increasing order of accuracy and
+ must limit DOFs together in blocks rather than individually.
+\end_layout
+
+\begin_layout Standard
+For simplicity, consider the 1-D generic Jacobian-form equation:
+\begin_inset Formula 
+\[
+\frac{\partial\mathbf{q}}{\partial t}+\frac{\partial\mathbf{f}}{\partial\mathbf{q}}\frac{\partial\mathbf{q}}{\partial x}=\mathbf{0}
+\]
+
+\end_inset
+
+If we partition assume the domain is fully and uniquely spanned by non-overlappi
+ng cells, we can integrate over a single cell domain, 
+\begin_inset Formula $\Omega_{i}\in\left[x_{i-1/2},x_{i+1/2}\right]$
+\end_inset
+
+, where 
+\begin_inset Formula $x_{i\pm1/2}=x_{i}\pm\Delta x_{i}$
+\end_inset
+
+:
+\begin_inset Formula 
+\[
+\int_{\Omega_{i}}\frac{\partial\mathbf{q}}{\partial t}dx+\int_{\Omega_{i}}\frac{\partial\mathbf{f}}{\partial\mathbf{q}}\frac{\partial\mathbf{q}}{\partial x}dx=\mathbf{0}
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\frac{\partial\overline{\mathbf{q}}_{i}}{\partial t}\Delta x_{i}+\int_{\Omega_{i}}A\frac{\partial\mathbf{q}}{\partial x}dx=\mathbf{0}
+\]
+
+\end_inset
+
+where the overbar decorator denotes a cell average over the domain 
+\begin_inset Formula $\Omega_{i}$
+\end_inset
+
+.
+ If we split the Jacobian into characteristics, then the update for each
+ cell is split into three components: (1) rightward fluctuations propagating
+ in from the left cell interface (
+\begin_inset Formula $A_{i-1/2}^{+}\delta\mathbf{q}_{i-1/2}$
+\end_inset
+
+), (2) leftward fluctuations propagating in from the right cell interface
+ (
+\begin_inset Formula $A_{i+1/2}^{-}\delta\mathbf{q}_{i+1/2}$
+\end_inset
+
+), and (3) The integral computed over the cell domain (
+\begin_inset Formula $\int_{\Omega_{i}}A\frac{\partial\mathbf{q}}{\partial x}dx$
+\end_inset
+
+):
+\begin_inset Formula 
+\[
+\frac{\partial\overline{\mathbf{q}}_{i}}{\partial t}\Delta x_{i}+A_{i-1/2}^{+}\delta\mathbf{q}_{i-1/2}+A_{i+1/2}^{-}\delta\mathbf{q}_{i+1/2}+\int_{\Omega_{i}}A\frac{\partial\mathbf{q}}{\partial x}dx=\mathbf{0}
+\]
+
+\end_inset
+
+The last term can be computed via quadrature for terms cast in non-conservation
+ form.
+ However, for terms for which the flux vector actually exists, it can be
+ exactly computed via:
+\begin_inset Formula 
+\[
+\int_{\Omega_{i}}A\frac{\partial\mathbf{q}}{\partial x}dx=\mathbf{f}_{i+1/2}^{-}-\mathbf{f}_{i-1/2}^{+}
+\]
+
+\end_inset
+
+Further, when the flux vector exists, this formulation renders the overall
+ scheme conservative for those terms.
+ However, for terms for which the flux vector does not exist (thus the need
+ for quadrature to evaluate this integral), in general, those quantities
+ are not conserved.
+\end_layout
+
+\begin_layout Standard
+The fluctuation matrices 
+\begin_inset Formula $A^{+}$
+\end_inset
+
+ and 
+\begin_inset Formula $A^{-}$
+\end_inset
+
+, are created by reconstituting the flux Jacobian using only the rightward
+ and leftward propagating eigenvalues, respectively:
+\begin_inset Formula 
+\[
+A_{i-1/2}^{-}=\sum_{p:\lambda_{p}<0}\left(\ell_{p}\cdot\delta\mathbf{q}_{i-1/2}\right)\mathbf{r}_{p}
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+A_{i-1/2}^{+}=\sum_{p:\lambda_{p}>0}\left(\ell_{p}\cdot\delta\mathbf{q}_{i-1/2}\right)\mathbf{r}_{p}
+\]
+
+\end_inset
+
+In our case, however, we do not compute the fluctuations as 
+\begin_inset Formula $A^{\pm}\delta\mathbf{q}$
+\end_inset
+
+.
+ Rather, we create characteristics based on 
+\begin_inset Formula $A\delta\mathbf{q}$
+\end_inset
+
+ as opposed to 
+\begin_inset Formula $\mathbf{q}$
+\end_inset
+
+ itself.
+ Mathematically, this is equivalent to left-multiplying the equation by
+ the flux Jacobian before we split the flux difference into propagating
+ characteristics, which further implies:
+\begin_inset Formula 
+\[
+\mathcal{Z}_{i-1/2}^{-}=A_{i-1/2}^{-}\delta\mathbf{q}_{i-1/2}=\sum_{p:\lambda_{p}<0}\left(\ell_{p}\cdot\left(A_{i-1/2}\delta\mathbf{q}_{i-1/2}\right)\right)\mathbf{r}_{p}
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\mathcal{Z}_{i-1/2}^{+}=A_{i-1/2}^{+}\delta\mathbf{q}_{i-1/2}=\sum_{p:\lambda_{p}>0}\left(\ell_{p}\cdot\left(A_{i-1/2}\delta\mathbf{q}_{i-1/2}\right)\right)\mathbf{r}_{p}
+\]
+
+\end_inset
+
+The advantage of this form is that for variables for which the flux vector
+ exists, this scheme is conservative with any linearization of the locally
+ frozen flux Jacobian.
+ Without this treatment, we would have to create an analog of the Roe averaging
+ to achieve conservation of 
+\begin_inset Formula $\rho$
+\end_inset
+
+ and 
+\begin_inset Formula $\rho\theta$
+\end_inset
+
+, which may or may not exist for this particular equation set.
+\end_layout
+
+\end_body
+\end_document
