@@ -15,10 +15,6 @@
 
 void readParamsFile(std::string fNameIn, Domain &dom, Parallel &par, FileIO &io);
 
-void handleTimeMethod(std::string &str, std::string &fNameIn);
-
-void handleEqnSet(std::string &str, std::string &fNameIn, Domain &dom);
-
 void handleDataInit(std::string &str, std::string &fNameIn, Domain &dom);
 
 

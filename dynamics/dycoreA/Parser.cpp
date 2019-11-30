@@ -4,8 +4,6 @@
 
 void readParamsFile(std::string fNameIn, Domain &dom, Parallel &par, FileIO &io) {
 
-  std::string strTimeMethod;
-  std::string strEqnSet;
   std::string strDataInit;
 
   // Initialize all REQUIRED read-in values to -999
@@ -23,10 +21,6 @@ void readParamsFile(std::string fNameIn, Domain &dom, Parallel &par, FileIO &io)
   dom.zlen      = 10000;      // 10km default
   dom.doWeno    = 0;          // WENO off by default
   dom.cfl       = 0.7;        // Allow for any reasonable range of winds
-  timeMethod    = TIME_ADER;
-  strTimeMethod = "ADER";
-  dom.eqnSet    = EQN_THETA_CONS;
-  strEqnSet     = "theta_cons";
   dom.dataInit  = DATA_INIT_THERMAL;
   strDataInit   = "thermal";
   strakaVisc    = 0;          // Turn off Straka viscosity by default
@@ -64,8 +58,6 @@ void readParamsFile(std::string fNameIn, Domain &dom, Parallel &par, FileIO &io)
       else if ( !strcmp( "outFreq"   , key.c_str() ) ) { ssVal >> outFreq      ; }
       else if ( !strcmp( "doWeno"    , key.c_str() ) ) { ssVal >> dom.doWeno   ; }
       else if ( !strcmp( "strakaVisc", key.c_str() ) ) { ssVal >> strakaVisc   ; }
-      else if ( !strcmp( "timeMethod", key.c_str() ) ) { ssVal >> strTimeMethod; handleTimeMethod(strTimeMethod,fNameIn); }
-      else if ( !strcmp( "eqnSet"    , key.c_str() ) ) { ssVal >> strEqnSet    ; handleEqnSet    (strEqnSet    ,fNameIn, dom); }
       else if ( !strcmp( "dataInit"  , key.c_str() ) ) { ssVal >> strDataInit  ; handleDataInit  (strDataInit  ,fNameIn, dom); }
       else {
         std::cout << "Error: key " << key << " not understood in file " << fNameIn << "\n";
@@ -96,44 +88,10 @@ void readParamsFile(std::string fNameIn, Domain &dom, Parallel &par, FileIO &io)
     std::cout << "parNy:      " << par.nproc_y   << "\n";
     std::cout << "outFreq:    " << outFreq       << "\n";
     std::cout << "doWeno:     " << dom.doWeno    << "\n";
-    std::cout << "timeMethod: " << strTimeMethod << "\n";
-    std::cout << "eqnSet:     " << strEqnSet     << "\n";
     std::cout << "dataInit:   " << strDataInit   << "\n";
     std::cout << "strakaVisc: " << strakaVisc    << "\n";
   }
 
-}
-
-void handleTimeMethod(std::string &str, std::string &fNameIn) {
-  size_t splitloc = str.find("//",0);
-  std::string strloc;
-  if (splitloc != std::string::npos){
-    strloc = str.substr(0,splitloc);
-  } else {
-    strloc = str;
-  }
-  if      ( !strcmp(strloc.c_str(),"SSPRK3") ) { timeMethod = TIME_SSPRK3; }
-  else if ( !strcmp(strloc.c_str(),"ADER"  ) ) { timeMethod = TIME_ADER  ; }
-  else  {
-    std::cout << "Error: unrecognized timeMethod " << str << " in file " << fNameIn << "\n";
-    exit(-1);
-  }
-}
-
-void handleEqnSet(std::string &str, std::string &fNameIn, Domain &dom) {
-  size_t splitloc = str.find("//",0);
-  std::string strloc;
-  if (splitloc != std::string::npos){
-    strloc = str.substr(0,splitloc);
-  } else {
-    strloc = str;
-  }
-  if      ( !strcmp(strloc.c_str(),"theta_cons") ) { dom.eqnSet = EQN_THETA_CONS; }
-  else if ( !strcmp(strloc.c_str(),"theta_prim") ) { dom.eqnSet = EQN_THETA_PRIM; }
-  else  {
-    std::cout << "Error: unrecognized eqnSet " << str << " in file " << fNameIn << "\n";
-    exit(-1);
-  }
 }
 
 void handleDataInit(std::string &str, std::string &fNameIn, Domain &dom) {

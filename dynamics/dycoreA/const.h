@@ -36,15 +36,11 @@ int constexpr hs       = (ord-1)/2;
 int constexpr numState = 5;
 
 int constexpr idR      = 0;
-int constexpr idRU     = 1;
-int constexpr idRV     = 2;
-int constexpr idRW     = 3;
-int constexpr idRT     = 4;
-
 int constexpr idU      = 1;
 int constexpr idV      = 2;
 int constexpr idW      = 3;
-int constexpr idT      = 4;
+int constexpr idRT     = 4;
+int constexpr idP      = 5;
 
 // Some physical constants
 real constexpr PI    = 3.1415926535897932384626433832795028842;

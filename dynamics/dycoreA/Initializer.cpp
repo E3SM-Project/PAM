@@ -206,13 +206,8 @@ void initialize(realArr &state, Domain &dom, Parallel &par, Exchange &exch, Time
 
           real wt = gllOrdWeights(ii)*gllOrdWeights(jj)*gllOrdWeights(kk);
 
-          if        (dom.eqnSet == EQN_THETA_CONS) {
-            state(idR ,hs+k,hs+j,hs+i) += wt * r  ;
-            state(idRT,hs+k,hs+j,hs+i) += wt * ( (r0+r)*(t0+t) - r0*t0 );
-          } else if (dom.eqnSet == EQN_THETA_PRIM) {
-            state(idR,hs+k,hs+j,hs+i) += wt * r;
-            state(idT,hs+k,hs+j,hs+i) += wt * t;
-          }
+          state(idR ,hs+k,hs+j,hs+i) += wt * r  ;
+          state(idRT,hs+k,hs+j,hs+i) += wt * ( (r0+r)*(t0+t) - r0*t0 );
         }
       }
     }
@@ -226,21 +221,12 @@ void initialize(realArr &state, Domain &dom, Parallel &par, Exchange &exch, Time
   yakl::parallel_for( "Compute_dt3d" , dom.nz,dom.ny,dom.nx , YAKL_LAMBDA (int k, int j, int i) {
     // Grab state variables
     real r, u, v, w, t, p, cs;
-    if (dom.eqnSet == EQN_THETA_CONS) {
-      r = state(idR ,hs+k,hs+j,hs+i) + dom.hyDensCells(hs+k);
-      u = state(idRU,hs+k,hs+j,hs+i) / r;
-      v = state(idRV,hs+k,hs+j,hs+i) / r;
-      w = state(idRW,hs+k,hs+j,hs+i) / r;
-      t = ( state(idRT,hs+k,hs+j,hs+i) + dom.hyDensThetaCells(hs+k) ) / r;
-      p = C0 * pow( r*t , GAMMA );
-    } else if (dom.eqnSet == EQN_THETA_PRIM) {
-      r = state(idR,hs+k,hs+j,hs+i) + dom.hyDensCells(hs+k);
-      u = state(idU,hs+k,hs+j,hs+i);
-      v = state(idV,hs+k,hs+j,hs+i);
-      w = state(idW,hs+k,hs+j,hs+i);
-      t = state(idT,hs+k,hs+j,hs+i) + dom.hyThetaCells(hs+k);
-      p = C0 * pow( r*t , GAMMA );
-    }
+    r = state(idR ,hs+k,hs+j,hs+i) + dom.hyDensCells(hs+k);
+    u = state(idRU,hs+k,hs+j,hs+i);
+    v = state(idRV,hs+k,hs+j,hs+i);
+    w = state(idRW,hs+k,hs+j,hs+i);
+    t = ( state(idRT,hs+k,hs+j,hs+i) + dom.hyDensThetaCells(hs+k) ) / r;
+    p = C0 * pow( r*t , GAMMA );
     cs = sqrt( GAMMA * p / r );
 
     // Compute the max wave

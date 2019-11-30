@@ -33,7 +33,6 @@ public:
 
   real etime;
 
-  int eqnSet;
   int dataInit;
 
   real dt;
