@@ -206,8 +206,8 @@ void initialize(realArr &state, Domain &dom, Parallel &par, Exchange &exch, Time
 
           real wt = gllOrdWeights(ii)*gllOrdWeights(jj)*gllOrdWeights(kk);
 
-          state(idR ,hs+k,hs+j,hs+i) += wt * r  ;
-          state(idRT,hs+k,hs+j,hs+i) += wt * ( (r0+r)*(t0+t) - r0*t0 );
+          state(idR,hs+k,hs+j,hs+i) += wt * r  ;
+          state(idP,hs+k,hs+j,hs+i) += wt * pow( (r0+r)*(t0+t) , GAMMA ) - dom.hyPressureCells(hs+k);
         }
       }
     }
@@ -220,13 +220,12 @@ void initialize(realArr &state, Domain &dom, Parallel &par, Exchange &exch, Time
   //     for (int i=0; i<dom.nx; i++) {
   yakl::parallel_for( "Compute_dt3d" , dom.nz,dom.ny,dom.nx , YAKL_LAMBDA (int k, int j, int i) {
     // Grab state variables
-    real r, u, v, w, t, p, cs;
-    r = state(idR ,hs+k,hs+j,hs+i) + dom.hyDensCells(hs+k);
-    u = state(idRU,hs+k,hs+j,hs+i);
-    v = state(idRV,hs+k,hs+j,hs+i);
-    w = state(idRW,hs+k,hs+j,hs+i);
-    t = ( state(idRT,hs+k,hs+j,hs+i) + dom.hyDensThetaCells(hs+k) ) / r;
-    p = C0 * pow( r*t , GAMMA );
+    real r, u, v, w, p, cs;
+    r = state(idR,hs+k,hs+j,hs+i) + dom.hyDensCells(hs+k);
+    u = state(idU,hs+k,hs+j,hs+i);
+    v = state(idV,hs+k,hs+j,hs+i);
+    w = state(idW,hs+k,hs+j,hs+i);
+    p = state(idP,hs+k,hs+j,hs+i);
     cs = sqrt( GAMMA * p / r );
 
     // Compute the max wave

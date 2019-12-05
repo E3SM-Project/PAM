@@ -21,21 +21,10 @@ outFreq    : 10.        // Frequency for output in seconds
 
 doWeno     : 0          // Whether to do WENO
 
-strakaVisc : 0          // Whether to apply Straka 2nd-order viscosity
-
 // Initial data to use
 //   thermal  : Rising thermal (neutral atmosphere)
 //   collision: Colliding cold and warm bubbles (neutral atmosphere)
 //   straka   : Falling cold bubble
 dataInit : thermal
 
-// Temporal discretization to use:
-//   ADER: ADER with Differential Transforms  (max cfl = 1)
-//   SSPRK3: optimal 3-stage, 3rd order SSPRK (max cfl = 1)
-timeMethod : ADER
-
-// Equation set to use:
-//   theta_cons: q={rho,rho*u,rho*v,rho*w,rho*theta}, conservative
-//   theta_prim: q={rho,u,v,w,theta}, non-conservative
-eqnSet : theta_cons
 

@@ -11,9 +11,10 @@
 
 class Tendencies {
 
-  realArr fwaves;
+  realArr stateLimits;
+  realArr fluxLimits;
+  realArr flux;
   realArr src;
-  realArr pressure;
   SArray<real,tord> gllWts;
   SArray<real,ord,tord> to_gll;
   SArray<real,ord,tord> to_derivX_gll;

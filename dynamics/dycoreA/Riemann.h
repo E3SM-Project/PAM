@@ -13,12 +13,11 @@ YAKL_INLINE void godunovLinearX(SArray<real,numState> &s1, SArray<real,numState>
   real const windTol = 0; // 1.0e-6;
 
   // Compute interface values
-  real r = 0.5_fp * ( s1(idR ) + s2(idR ) );
-  real u = 0.5_fp * ( s1(idRU) + s2(idRU) ) / r;
-  real v = 0.5_fp * ( s1(idRV) + s2(idRV) ) / r;
-  real w = 0.5_fp * ( s1(idRW) + s2(idRW) ) / r;
-  real t = 0.5_fp * ( s1(idRT) + s2(idRT) ) / r;
-  real p = C0 * pow( r*t , GAMMA );
+  real r = 0.5_fp * ( s1(idR) + s2(idR) );
+  real u = 0.5_fp * ( s1(idU) + s2(idU) ) / r;
+  real v = 0.5_fp * ( s1(idV) + s2(idV) ) / r;
+  real w = 0.5_fp * ( s1(idW) + s2(idW) ) / r;
+  real p = 0.5_fp * ( s1(idP) + s2(idP) );
   real cs = sqrt( GAMMA * p / r );
 
   // Compute left and right characteristic variables

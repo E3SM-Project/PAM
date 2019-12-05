@@ -158,7 +158,7 @@ void FileIO::writeState(realArr &state, Domain const &dom, Parallel const &par) 
   //   for (int j=0; j<dom.ny; j++) {
   //     for (int i=0; i<dom.nx; i++) {
   yakl::parallel_for( dom.nz,dom.ny,dom.nx , YAKL_LAMBDA (int k, int j, int i) {
-    data(k,j,i) = state(idU,hs+k,hs+j,hs+i);
+    data(k,j,i) = state(idU,hs+k,hs+j,hs+i) / ( state(idR,hs+k,hs+j,hs+i) + dom.hyDensCells(hs+k) );
   });
   ncwrap( ncmpi_put_vara_float_all( ncid , uVar , st , ct , data.createHostCopy().data() ) , __LINE__ );
 
@@ -167,7 +167,7 @@ void FileIO::writeState(realArr &state, Domain const &dom, Parallel const &par) 
   //   for (int j=0; j<dom.ny; j++) {
   //     for (int i=0; i<dom.nx; i++) {
   yakl::parallel_for( dom.nz,dom.ny,dom.nx , YAKL_LAMBDA (int k, int j, int i) {
-    data(k,j,i) = state(idV,hs+k,hs+j,hs+i);
+    data(k,j,i) = state(idV,hs+k,hs+j,hs+i) / ( state(idR,hs+k,hs+j,hs+i) + dom.hyDensCells(hs+k) );
   });
   ncwrap( ncmpi_put_vara_float_all( ncid , vVar , st , ct , data.createHostCopy().data() ) , __LINE__ );
 
@@ -176,28 +176,16 @@ void FileIO::writeState(realArr &state, Domain const &dom, Parallel const &par) 
   //   for (int j=0; j<dom.ny; j++) {
   //     for (int i=0; i<dom.nx; i++) {
   yakl::parallel_for( dom.nz,dom.ny,dom.nx , YAKL_LAMBDA (int k, int j, int i) {
-    data(k,j,i) = state(idW,hs+k,hs+j,hs+i);
+    data(k,j,i) = state(idW,hs+k,hs+j,hs+i) / ( state(idR,hs+k,hs+j,hs+i) + dom.hyDensCells(hs+k) );
   });
   ncwrap( ncmpi_put_vara_float_all( ncid , wVar , st , ct , data.createHostCopy().data() ) , __LINE__ );
-
-  // Write out potential temperature perturbations
-  // for (int k=0; k<dom.nz; k++) {
-  //   for (int j=0; j<dom.ny; j++) {
-  //     for (int i=0; i<dom.nx; i++) {
-  yakl::parallel_for( dom.nz,dom.ny,dom.nx , YAKL_LAMBDA (int k, int j, int i) {
-    data(k,j,i) = ( state(idRT,hs+k,hs+j,hs+i) + dom.hyDensThetaCells(hs+k) ) /
-                  ( state(idR ,hs+k,hs+j,hs+i) + dom.hyDensCells     (hs+k) ) -
-                  dom.hyDensThetaCells(hs+k) / dom.hyDensCells(hs+k);
-  });
-  ncwrap( ncmpi_put_vara_float_all( ncid , thVar , st , ct , data.createHostCopy().data() ) , __LINE__ );
 
   // Write out perturbation pressure
   // for (int k=0; k<dom.nz; k++) {
   //   for (int j=0; j<dom.ny; j++) {
   //     for (int i=0; i<dom.nx; i++) {
   yakl::parallel_for( dom.nz,dom.ny,dom.nx , YAKL_LAMBDA (int k, int j, int i) {
-    data(k,j,i) = C0*pow(state(idRT,hs+k,hs+j,hs+i)+dom.hyDensThetaCells(hs+k),GAMMA) -
-                  C0*pow(dom.hyDensThetaCells(hs+k),GAMMA);
+    data(k,j,i) = state(idP,hs+k,hs+j,hs+i);
   });
   ncwrap( ncmpi_put_vara_float_all( ncid , pVar , st , ct , data.createHostCopy().data() ) , __LINE__ );
 
@@ -205,6 +193,18 @@ void FileIO::writeState(realArr &state, Domain const &dom, Parallel const &par) 
   st[0] = numOut;
   ncwrap( ncmpi_put_var1_float( ncid , tVar , st , &(dom.etime) ) , __LINE__ );
   ncwrap( ncmpi_end_indep_data(ncid) , __LINE__ );
+
+  // Write out potential temperature perturbations
+  // for (int k=0; k<dom.nz; k++) {
+  //   for (int j=0; j<dom.ny; j++) {
+  //     for (int i=0; i<dom.nx; i++) {
+  yakl::parallel_for( dom.nz,dom.ny,dom.nx , YAKL_LAMBDA (int k, int j, int i) {
+    real p = state(idP,hs+k,hs+j,hs+i) + dom.hyPressureCells(hs+k);
+    real rt = pow( p/C0 , 1/GAMMA );
+    real t = rt / ( state(idR,hs+k,hs+j,hs+i) + dom.hyDensCells(hs+k) );
+    data(k,j,i) = t - dom.hyThetaCells(hs+k);
+  });
+  ncwrap( ncmpi_put_vara_float_all( ncid , thVar , st , ct , data.createHostCopy().data() ) , __LINE__ );
 }
 
 

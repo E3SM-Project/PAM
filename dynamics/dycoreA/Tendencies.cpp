@@ -6,9 +6,10 @@
 void Tendencies::initialize(Domain const &dom) {
   TransformMatrices<real> trans;
 
-  fwaves      = realArr("fwaves"    ,numState+1,2,dom.nz+1,dom.ny+1,dom.nx+1);
+  fluxLimits  = realArr("fluxLimits",numState,2,dom.nz+1,dom.ny+1,dom.nx+1);
+  stateLimits = realArr("srcLimits" ,numState,2,dom.nz+1,dom.ny+1,dom.nx+1);
+  flux        = realArr("flux"      ,numState  ,dom.nz+1,dom.ny+1,dom.nx+1);
   src         = realArr("src"       ,dom.nz,dom.ny,dom.nx);
-  pressure    = realArr("pressure"  ,dom.nz+2*hs,dom.ny,com.nz);
 
   // Setup the matrix to transform a stenicl (or coefs) into tord derivative GLL points
   SArray<real,ord,ord> s2c_ho;
@@ -73,7 +74,7 @@ void Tendencies::compEulerTend_X(realArr &state, Domain const &dom, Exchange &ex
     int k, j, i;
     yakl::unpackIndices(iGlob,dom.nz,dom.ny,dom.nx,k,j,i);
     SArray<real,numState,tord,tord> stateDTs;  // GLL state DTs (var,time,space)
-    SArray<real,numState,tord,tord> derivDTs;  // GLL state spatial derivative DTs (var,time,space)
+    SArray<real,numState,tord,tord> fluxDTs;   // GLL flux DTs (var,time,space)
 
     // Compute tord GLL points of the fluid state and spatial derivative
     for (int l=0; l<numState; l++) {
@@ -81,129 +82,58 @@ void Tendencies::compEulerTend_X(realArr &state, Domain const &dom, Exchange &ex
       SArray<real,tord> gllPts;
       // Store the stencil values
       for (int ii=0; ii<ord; ii++) { stencil(ii) = state(l,hs+k,hs+j,i+ii); }
-
       //Reconstruct and store GLL points of the state values
       reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_gll, wenoIdl, wenoSigma);
       for (int ii=0; ii<tord; ii++) { stateDTs(l,0,ii) = gllPts(ii); }
-
-      //Reconstruct and store GLL points of the state spatial derivative values
-      reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_derivX_gll, wenoIdl, wenoSigma);
-      for (int ii=0; ii<tord; ii++) { derivDTs(l,0,ii) = gllPts(ii); }
     }
     for (int ii=0; ii<tord; ii++) {
-      stateDTs(idR ,0,ii) += dom.hyDensCells     (hs+k);
-      stateDTs(idRT,0,ii) += dom.hyDensThetaCells(hs+k);
+      stateDTs(idR,0,ii) += dom.hyDensCells    (hs+k);
+      stateDTs(idP,0,ii) += dom.hyPressureCells(hs+k);
     }
 
     // Compute tord-1 time derivatives of the state and spatial derivs
     // using temporal Differential Transforms
-    diffTransformEulerPrimX( stateDTs , derivDTs , aderDerivX );
+    diffTransformEulerPrimX( stateDTs , fluxDTs , aderDerivX );
 
     // Compute the temporal time-average and store into the zeroth time index
-    timeAvg( stateDTs );
-    timeAvg( derivDTs );
-
-    // Compute tend = -int( (df/dq)*(dq/dx) , x , -dx/2 , dx/2 ) / dx 
-    for (int l=0; l<numState; l++) { tend(l,k,j,i) = 0; }
-    for (int ii=0; ii<tord; ii++) {
-      real qw  = gllWts(ii);
-      real drdx  = derivDTs(idR ,0,ii);
-      real dudx  = derivDTs(idU ,0,ii);
-      real dvdx  = derivDTs(idV ,0,ii);
-      real dwdx  = derivDTs(idW ,0,ii);
-      real drtdx = derivDTs(idRT,0,ii);
-      real r   = stateDTs(idR ,0,ii);
-      real u   = stateDTs(idU ,0,ii);
-      real t   = stateDTs(idRT,0,ii) / r;
-      real p   = C0*pow(r*t,GAMMA);
-      real cs2 = GAMMA*p/r;
-      tend(idR ,k,j,i) += -qw*( u*drdx + r  *dudx                                   ) / dom.dx;
-      tend(idU ,k,j,i) += -qw*(          u  *dudx                   + cs2/r/t*drtdx ) / dom.dx;
-      tend(idV ,k,j,i) += -qw*(                   + u*dvdx                          ) / dom.dx;
-      tend(idW ,k,j,i) += -qw*(                            + u*dwdx                 ) / dom.dx;
-      tend(idRT,k,j,i) += -qw*(          r*t*dudx                   + u      *drtdx ) / dom.dx;
-    }
+    timeAvg( stateDTs , dom );
+    timeAvg( fluxDTs  , dom );
 
     // Store the state vector in fwaves to compute fwaves from cell-interface state jumps
     for (int l=0; l<numState; l++) {
-      fwaves(l,1,k,j,i  ) = stateDTs(l,0,0     );
-      fwaves(l,0,k,j,i+1) = stateDTs(l,0,tord-1);
+      // Store the left cell edge state and flux estimates
+      stateLimits(l,1,k,j,i  ) = stateDTs(l,0,0);
+      fluxLimits (l,1,k,j,i  ) = fluxDTs (l,0,0);
+
+      // Store the Right cell edge state and flux estimates
+      stateLimits(l,0,k,j,i+1) = stateDTs(l,0,tord-1);
+      fluxLimits (l,0,k,j,i+1) = fluxDTs (l,0,tord-1);
     }
   });
 
-  // Reconcile the edge state via MPI exchange.
+  //Reconcile the edge fluxes via MPI exchange.
   exch.haloInit      ();
-  exch.edgePackN_x   (dom, fwaves, numState);
+  exch.edgePackN_x   (dom, stateLimits, numState);
+  exch.edgePackN_x   (dom, fluxLimits , numState);
   exch.edgeExchange_x(dom, par);
-  exch.edgeUnpackN_x (dom, fwaves, numState);
+  exch.edgeUnpackN_x (dom, stateLimits, numState);
+  exch.edgeUnpackN_x (dom, fluxLimits , numState);
 
   // Compute the fwaves from the cell interface jumps
   // for (int k=0; k<dom.nz; k++) {
   //   for (int j=0; j<dom.ny; j++) {
   //     for (int i=0; i<dom.nx+1; i++) {
   yakl::parallel_for( dom.nz*dom.ny*(dom.nx+1) , YAKL_LAMBDA (int const iGlob) {
-    int k, j, i;
-    yakl::unpackIndices(iGlob,dom.nz,dom.ny,dom.nx+1,k,j,i);
-    // Compute averaged values for the flux Jacobian diagonalization
-    real r   = 0.5_fp * ( fwaves(idR,0,k,j,i) + fwaves(idR,1,k,j,i) );
-    real u   = 0.5_fp * ( fwaves(idU,0,k,j,i) + fwaves(idU,1,k,j,i) );
-    real t   = 0.5_fp * ( fwaves(idT,0,k,j,i) + fwaves(idT,1,k,j,i) );
-    real p   = C0*pow(r*t,GAMMA);
-    real cs2 = GAMMA*p/r;
-    real cs  = sqrt(cs2);
-
-    // Compute the state jump over the interface
-    SArray<real,numState> dq;
+    SArray<real,numState> s1, s2, f1, f2, upw;
     for (int l=0; l<numState; l++) {
-      dq(l) = fwaves(l,1,k,j,i) - fwaves(l,0,k,j,i);
+      s1(l) = stateLimits(l,0,k,j,i);
+      s2(l) = stateLimits(l,1,k,j,i);
+      f1(l) = fluxLimits (l,0,k,j,i);
+      f2(l) = fluxLimits (l,1,k,j,i);
     }
-
-    // Compute df = A*dq
-    SArray<real,numState> df;
-    df(idR ) = u*dq(idR) + r  *dq(idU)                                           ;
-    df(idU ) =           + u  *dq(idU)                         + cs2/r/t*dq(idRT);
-    df(idV ) =                         + u*dq(idV)                               ;
-    df(idW ) =                                     + u*dq(idW)                   ;
-    df(idRT) =           + r*t*dq(idU)                         + u      *dq(idRT);
-
-    // Compute characteristic variables (L*df)
-    SArray<real,numState> ch;
-    ch(0) = -r/(2*cs)*df(idU) + df(idRT)/(2*t);
-    ch(1) =  r/(2*cs)*df(idU) + df(idRT)/(2*t);
-    ch(2) = df(idR)           - df(idRT)/t;
-    ch(3) = df(idV);
-    ch(4) = df(idW);
-
-    // Compute fwaves
+    riemannX(s1, s2, f1, f2, upw);
     for (int l=0; l<numState; l++) {
-      fwaves(l,0,k,j,i) = 0;
-      fwaves(l,1,k,j,i) = 0;
-    }
-
-    // First wave (u-cs); always negative wave speed
-    fwaves(idR ,0,k,j,i) +=       ch(0);
-    fwaves(idU ,0,k,j,i) += -cs/r*ch(0);
-    fwaves(idRT,0,k,j,i) += t    *ch(0);
-
-    // Second wave (u+cs); always positive wave speed
-    fwaves(idR ,1,k,j,i) +=       ch(1);
-    fwaves(idU ,1,k,j,i) +=  cs/r*ch(1);
-    fwaves(idRT,1,k,j,i) += t    *ch(1);
-
-    if (u > 0) {
-      // Third wave
-      fwaves(idR,1,k,j,i) += ch(2);
-      // Fourth wave
-      fwaves(idV,1,k,j,i) += ch(3);
-      // Fifth Wave
-      fwaves(idW,1,k,j,i) += ch(4);
-    } else {
-      // Third wave
-      fwaves(idR,0,k,j,i) += ch(2);
-      // Fourth wave
-      fwaves(idV,0,k,j,i) += ch(3);
-      // Fifth Wave
-      fwaves(idW,0,k,j,i) += ch(4);
+      flux(l,k,j,i) = upw(l);
     }
   });
 

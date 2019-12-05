@@ -39,8 +39,7 @@ int constexpr idR      = 0;
 int constexpr idU      = 1;
 int constexpr idV      = 2;
 int constexpr idW      = 3;
-int constexpr idRT     = 4;
-int constexpr idP      = 5;
+int constexpr idP      = 4;
 
 // Some physical constants
 real constexpr PI    = 3.1415926535897932384626433832795028842;
