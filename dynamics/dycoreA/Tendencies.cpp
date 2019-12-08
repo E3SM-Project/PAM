@@ -96,6 +96,7 @@ void Tendencies::compEulerTend_X(realArr &state, Domain const &dom, Exchange &ex
           real re = state(idT,hs+k,hs+j,hs+i);
           real ke = 0.5_fp*r*(u*u+v*v+w*w);
           real p = RD/CV*(re-ke);
+          stencil(ii) = p;
         }
       }
 
@@ -117,7 +118,6 @@ void Tendencies::compEulerTend_X(realArr &state, Domain const &dom, Exchange &ex
 
     // Compute the time-average and store into the zeroth time index
     timeAvg( stateDTs , dom );
-    timeAvg( derivDTs , dom );
     timeAvg( utend    , dom );
     timeAvg( vtend    , dom );
     timeAvg( wtend    , dom );
@@ -158,12 +158,13 @@ void Tendencies::compEulerTend_X(realArr &state, Domain const &dom, Exchange &ex
     // Flux difference splitting for the wind updates
     ////////////////////////////////////////////////////////////////////////////
     // Compute the average state at the interface
-    real r = 0.5_fp * ( stateLimits(idR,1,k,j,i) + stateLimits(idR,0,k,j,i));
-    real u = 0.5_fp * ( stateLimits(idU,1,k,j,i) + stateLimits(idU,0,k,j,i));
-    real p = 0.5_fp * ( stateLimits(idT,1,k,j,i) + stateLimits(idT,0,k,j,i));
-    real cs2 = GAMMA*p/r;
-    real cs = sqrt(cs2);
+    real r = 0.5_fp * ( stateLimits(idR,1,k,j,i) + stateLimits(idR,0,k,j,i)); // rho
+    real u = 0.5_fp * ( stateLimits(idU,1,k,j,i) + stateLimits(idU,0,k,j,i)); // u
+    real p = 0.5_fp * ( stateLimits(idT,1,k,j,i) + stateLimits(idT,0,k,j,i)); // p
+    real cs2 = GAMMA*p/r;    // speed of sound squared
+    real cs = sqrt(cs2);     // speed of sound
     // Compute the state jump across the interface
+    real dr = 0.5_fp * ( stateLimits(idR,1,k,j,i) - stateLimits(idR,0,k,j,i));
     real du = 0.5_fp * ( stateLimits(idU,1,k,j,i) - stateLimits(idU,0,k,j,i));
     real dv = 0.5_fp * ( stateLimits(idV,1,k,j,i) - stateLimits(idV,0,k,j,i));
     real dw = 0.5_fp * ( stateLimits(idW,1,k,j,i) - stateLimits(idW,0,k,j,i));
@@ -180,23 +181,26 @@ void Tendencies::compEulerTend_X(realArr &state, Domain const &dom, Exchange &ex
     real v2 = stateLimits(idV,1,k,j,i);
     real w2 = stateLimits(idW,1,k,j,i);
     real p2 = stateLimits(idP,1,k,j,i);
-    // Compute the product of the flux Jacobian and the state jump across the interface (A*dq)
-    {  // Block to force compiler to deallocate df after the block
+    // Block to force compiler to release df from the stack after the block
+    {
+      // Compute the product of the flux Jacobian and the state jump across the interface (A*dq)
       SArray<real,numState> df;
-      df(0) = fluxLimits_r (1,k,j,i) - fluxLimits_r (0,k,j,i);
+      df(0) = u*dr + r*du;
       df(1) = u*du + dp/r;
       df(2) = u*dv;
       df(3) = u*dw;
-      df(4) = fluxLimits_re(1,k,j,i) - fluxLimits_re(0,k,j,i);
-      // Zero out the stateLimits space for this spatia index for idU, idV, and idW
-      for (int l=0; l<numState; l++) {
-        stateLimits(idR,0,k,j,i) = 0;
-        stateLimits(idW,1,k,j,i) = 0;
-      }
+      df(4) = u*dp + GAMMA*p*du;
+      // Zero out the stateLimits space for this spatial index for idU, idV, and idW
+      stateLimits(idU,0,k,j,i) = 0;
+      stateLimits(idV,0,k,j,i) = 0;
+      stateLimits(idW,0,k,j,i) = 0;
+      stateLimits(idU,1,k,j,i) = 0;
+      stateLimits(idV,1,k,j,i) = 0;
+      stateLimits(idW,1,k,j,i) = 0;
       // Wave 1 (u-cs): presumed always leftward propagating (no shocks)
-      stateLimits(idU,0,k,j,i) += (-cs/r) * ( -r/(2*cs)*df(1) + df(4)/(1*cs2) );
+      stateLimits(idU,0,k,j,i) += (-cs/r) * ( -r/(2*cs)*df(1) + df(4)/(2*cs2) );
       // Wave 2 (u+cs): presumed always rightward propagating (no shocks)
-      stateLimits(idU,1,k,j,i) += ( cs/r) * (  r/(2*cs)*df(1) + df(4)/(1*cs2) );
+      stateLimits(idU,1,k,j,i) += ( cs/r) * (  r/(2*cs)*df(1) + df(4)/(2*cs2) );
       // Wave 3 does only affects density, so it's ignored
       // Waves 4 and 5 (u): 
       real w4 = df(2);
@@ -219,20 +223,14 @@ void Tendencies::compEulerTend_X(realArr &state, Domain const &dom, Exchange &ex
     // Store upwind state based on wind velocity
     real ru, uu, vu, wu, pu;
     if (u > 0) {
-      ru = r1;
-      vu = v1;
-      wu = w1;
-      pu = p1;
+      ru = r1;  vu = v1;  wu = w1;  pu = p1;
     } else {
-      ru = r2;
-      vu = v2;
-      wu = w2;
-      pu = p2;
+      ru = r2;  vu = v2;  wu = w2;  pu = p2;
     }
     // Now compute upwind characteristic variabes
     SArray<real,numState> chu;  // upwind characteristic variables
-    chu(0) = -r/(2*cs)*u1 + p1/(2*cs2); // u-cs wave: assuming no shocks
-    chu(1) =  r/(2*cs)*u2 + p2/(2*cs2); // u+cs wave: assuming no shocks
+    chu(0) = -r/(2*cs)*u2 + p2/(2*cs2); // u-cs wave: assuming no shocks
+    chu(1) =  r/(2*cs)*u1 + p1/(2*cs2); // u+cs wave: assuming no shocks
     chu(2) = ru - pu/cs2;
     chu(3) = vu;
     chu(4) = wu;
@@ -243,10 +241,10 @@ void Tendencies::compEulerTend_X(realArr &state, Domain const &dom, Exchange &ex
     wu =                                               chu(4);
     pu = cs2*chu(0)   + cs2*chu(1)
     // Now compute the upwind flux based on the upwind state
-    real keu = 0.5_fp*ru*(uu*uu+vu*vu+wu*wu);
-    real reu = pu*CV/RD + ke;
-    flux_r (k,j,i) = ru*uu;
-    flux_re(k,j,i) = uu*reu + uu*pu;
+    real keu = 0.5_fp*ru*(uu*uu+vu*vu+wu*wu); // upwind kinetic energy
+    real reu = pu*CV/RD + keu;                // upwind rho*e
+    flux_r (k,j,i) = ru*uu;                   // upwind mass flux
+    flux_re(k,j,i) = uu*reu + uu*pu;          // upwind energy flux
   });
 
   // Apply the fwaves to the tendencies
@@ -257,12 +255,12 @@ void Tendencies::compEulerTend_X(realArr &state, Domain const &dom, Exchange &ex
     int l, k, j, i;
     yakl::unpackIndices(iGlob,dom.nz,dom.ny,dom.nx,k,j,i);
     // Flux vector form update for mass and energy
-    tend(idR,k,j,i)  = - ( flux_r (k,j,i+1) - flux_r (k,j,i) ) / dom.dx;
-    tend(idT,k,j,i)  = - ( flux_re(k,j,i+1) - flux_re(k,j,i) ) / dom.dx;
+    tend(idR,k,j,i)  = - ( flux_r (k,j,i+1) - flux_r (k,j,i) ) / dom.dx;  // mass tendency
+    tend(idT,k,j,i)  = - ( flux_re(k,j,i+1) - flux_re(k,j,i) ) / dom.dx;  // energy tendency
     // Flux difference splitting form update for velocities
-    tend(idU,k,j,i) += - ( fwaves(idU,1,k,j,i) + fwaves(idU,0,k,j,i+1) ) / dom.dx;
-    tend(idV,k,j,i) += - ( fwaves(idV,1,k,j,i) + fwaves(idV,0,k,j,i+1) ) / dom.dx;
-    tend(idW,k,j,i) += - ( fwaves(idW,1,k,j,i) + fwaves(idW,0,k,j,i+1) ) / dom.dx;
+    tend(idU,k,j,i) += - ( fwaves(idU,1,k,j,i) + fwaves(idU,0,k,j,i+1) ) / dom.dx;  // u tendency
+    tend(idV,k,j,i) += - ( fwaves(idV,1,k,j,i) + fwaves(idV,0,k,j,i+1) ) / dom.dx;  // v tendency
+    tend(idW,k,j,i) += - ( fwaves(idW,1,k,j,i) + fwaves(idW,0,k,j,i+1) ) / dom.dx;  // w tendency
   });
 }
 
