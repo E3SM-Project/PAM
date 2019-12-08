@@ -35,11 +35,11 @@ int constexpr tord     = 3;
 int constexpr hs       = (ord-1)/2;
 int constexpr numState = 5;
 
-int constexpr idR      = 0;
-int constexpr idU      = 1;
-int constexpr idV      = 2;
-int constexpr idW      = 3;
-int constexpr idP      = 4;
+int constexpr idR      = 0;  // "rho" (density)
+int constexpr idU      = 1;  // "u" (u-wind)
+int constexpr idV      = 2;  // "v" (v-wind)
+int constexpr idW      = 3;  // "w" (w-wind)
+int constexpr idT      = 4;  // thermodynamic variable
 
 // Some physical constants
 real constexpr PI    = 3.1415926535897932384626433832795028842;

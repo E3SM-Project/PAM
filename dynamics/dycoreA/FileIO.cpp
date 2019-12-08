@@ -185,7 +185,14 @@ void FileIO::writeState(realArr &state, Domain const &dom, Parallel const &par) 
   //   for (int j=0; j<dom.ny; j++) {
   //     for (int i=0; i<dom.nx; i++) {
   yakl::parallel_for( dom.nz,dom.ny,dom.nx , YAKL_LAMBDA (int k, int j, int i) {
-    data(k,j,i) = state(idP,hs+k,hs+j,hs+i);
+    real r  = state(idR,hs+k,hs+j,hs+i) + dom.hyDensCells(hs+k);
+    real u  = state(idU,hs+k,hs+j,hs+i);
+    real v  = state(idV,hs+k,hs+j,hs+i);
+    real w  = state(idW,hs+k,hs+j,hs+i);
+    real re = state(idT,hs+k,hs+j,hs+i);
+    real ke = r*(u*u+v*v+w*w)/2;
+    real p = (R/CV)*(re-ke);
+    data(k,j,i) = p - dom.hyPressureCells(hs+k);
   });
   ncwrap( ncmpi_put_vara_float_all( ncid , pVar , st , ct , data.createHostCopy().data() ) , __LINE__ );
 
@@ -199,10 +206,16 @@ void FileIO::writeState(realArr &state, Domain const &dom, Parallel const &par) 
   //   for (int j=0; j<dom.ny; j++) {
   //     for (int i=0; i<dom.nx; i++) {
   yakl::parallel_for( dom.nz,dom.ny,dom.nx , YAKL_LAMBDA (int k, int j, int i) {
-    real p = state(idP,hs+k,hs+j,hs+i) + dom.hyPressureCells(hs+k);
-    real rt = pow( p/C0 , 1/GAMMA );
-    real t = rt / ( state(idR,hs+k,hs+j,hs+i) + dom.hyDensCells(hs+k) );
-    data(k,j,i) = t - dom.hyThetaCells(hs+k);
+    real r  = state(idR,hs+k,hs+j,hs+i) + dom.hyDensCells(hs+k);
+    real u  = state(idU,hs+k,hs+j,hs+i);
+    real v  = state(idV,hs+k,hs+j,hs+i);
+    real w  = state(idW,hs+k,hs+j,hs+i);
+    real re = state(idT,hs+k,hs+j,hs+i);
+    real ke = r*(u*u+v*v+w*w)/2;
+    real p = (R/CV)*(re-ke);
+    real temp = (re - ke)/(r*CV);
+    real theta = temp*pow(P0/p,RD/CP);
+    data(k,j,i) = theta - dom.hyThetaCells(hs+k);
   });
   ncwrap( ncmpi_put_vara_float_all( ncid , thVar , st , ct , data.createHostCopy().data() ) , __LINE__ );
 }

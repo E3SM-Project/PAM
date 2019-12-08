@@ -182,7 +182,8 @@ void initialize(realArr &state, Domain &dom, Parallel &par, Exchange &exch, Time
           real xloc = (par.i_beg + i + 0.5_fp)*dom.dx + gllOrdPoints(ii)*dom.dx;
           real yloc = (par.j_beg + j + 0.5_fp)*dom.dy + gllOrdPoints(jj)*dom.dy;
           real zloc = (k + 0.5_fp)*dom.dz + gllOrdPoints(kk)*dom.dz;
-          real r0, t0, r, t;
+          real r0, t0; // background density and potential temperature
+          rela r, t;   // perturbation density and potential temperature
 
           if (dom.run2d) yloc = dom.ylen/2;
 
@@ -206,8 +207,12 @@ void initialize(realArr &state, Domain &dom, Parallel &par, Exchange &exch, Time
 
           real wt = gllOrdWeights(ii)*gllOrdWeights(jj)*gllOrdWeights(kk);
 
-          state(idR,hs+k,hs+j,hs+i) += wt * r  ;
-          state(idP,hs+k,hs+j,hs+i) += wt * pow( (r0+r)*(t0+t) , GAMMA ) - dom.hyPressureCells(hs+k);
+          real p = C0 * pow( (r0+r)*(t0+t) , GAMMA );
+          real temp = t/pow(P0/p,RD/CP);
+          real re = r*CV*temp;  // KE is initially zero
+
+          state(idR,hs+k,hs+j,hs+i) += wt * r ;
+          state(idT,hs+k,hs+j,hs+i) += wt * re;
         }
       }
     }
@@ -220,13 +225,14 @@ void initialize(realArr &state, Domain &dom, Parallel &par, Exchange &exch, Time
   //     for (int i=0; i<dom.nx; i++) {
   yakl::parallel_for( "Compute_dt3d" , dom.nz,dom.ny,dom.nx , YAKL_LAMBDA (int k, int j, int i) {
     // Grab state variables
-    real r, u, v, w, p, cs;
-    r = state(idR,hs+k,hs+j,hs+i) + dom.hyDensCells(hs+k);
-    u = state(idU,hs+k,hs+j,hs+i);
-    v = state(idV,hs+k,hs+j,hs+i);
-    w = state(idW,hs+k,hs+j,hs+i);
-    p = state(idP,hs+k,hs+j,hs+i);
-    cs = sqrt( GAMMA * p / r );
+    real r  = state(idR,hs+k,hs+j,hs+i) + dom.hyDensCells(hs+k);
+    real u  = state(idU,hs+k,hs+j,hs+i);
+    real v  = state(idV,hs+k,hs+j,hs+i);
+    real w  = state(idW,hs+k,hs+j,hs+i);
+    real re = state(idT,hs+k,hs+j,hs+i);
+    real ke = r*(u*u+v*v+w*w)/2
+    real p  = (RD/CV)*(re-ke);
+    real cs = sqrt( GAMMA * p / r );
 
     // Compute the max wave
     real maxWave = mymax( mymax( fabs(u) , fabs(v)) , fabs(w)) + cs;

@@ -12,9 +12,8 @@
 class Tendencies {
 
   realArr stateLimits;
-  realArr fluxLimits;
-  realArr flux;
-  realArr src;
+  realArr flux_r;
+  realArr flux_re;
   SArray<real,tord> gllWts;
   SArray<real,ord,tord> to_gll;
   SArray<real,ord,tord> to_derivX_gll;
