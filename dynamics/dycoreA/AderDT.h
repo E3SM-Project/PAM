@@ -239,13 +239,12 @@ YAKL_INLINE void diffTransformEulerY( SArray<real,numState,tord,tord> &state,
 
 
 
-// p is assumed to be full pressure
-// dp is assumed to be the derivative of perturbation pressure
 YAKL_INLINE void diffTransformEulerZ( SArray<real,numState,tord,tord> &state, 
                                       SArray<real,numState,tord,tord> &deriv,
                                       SArray<real         ,tord,tord> &utend,
                                       SArray<real         ,tord,tord> &vtend,
                                       SArray<real         ,tord,tord> &wtend,
+                                      SArray<real              ,tord> &dpp,
                                       SArray<real,tord,tord> const &deriv_mat,
                                       Domain const &dom ) {
   SArray<real,tord,tord> tmp_r_w;     // r*w

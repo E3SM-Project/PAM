@@ -103,12 +103,14 @@ void initialize(realArr &state, Domain &dom, Parallel &par, Exchange &exch, Time
   dom.hyDensCells      = realArr( "hyCellsR"  , dom.nz+2*hs );
   dom.hyDensThetaCells = realArr( "hyCellsRT" , dom.nz+2*hs );
   dom.hyThetaCells     = realArr( "hyCellsT"  , dom.nz+2*hs );
-  dom.hyPressureCells  = realArr( "hyCellsp"  , dom.nz+2*hs );
+  dom.hyPressureCells  = realArr( "hyCellsP"  , dom.nz+2*hs );
+  dom.hyEnergyCells    = realArr( "hyCellsIE" , dom.nz+2*hs );
 
   dom.hyDensGLL      = realArr( "hyGLLR"  , dom.nz , tord );
   dom.hyDensThetaGLL = realArr( "hyGLLRT" , dom.nz , tord );
   dom.hyThetaGLL     = realArr( "hyGLLT"  , dom.nz , tord );
-  dom.hyPressureGLL  = realArr( "hyGLLp"  , dom.nz , tord );
+  dom.hyPressureGLL  = realArr( "hyGLLP"  , dom.nz , tord );
+  dom.hyEnergyGLL    = realArr( "hyGLLIE" , dom.nz , tord );
 
   // Initialize the hydrostatic background state for cell averages
   // for (int k=0; k<dom.nz; k++) {
@@ -126,11 +128,16 @@ void initialize(realArr &state, Domain &dom, Parallel &par, Exchange &exch, Time
         t0 = 300._fp;
         hydro::hydroConstTheta( t0 , zloc , r0 );
       }
+      real ph = C0 * pow( r0*t0 , GAMMA );
+      real temph = t0/pow(P0/ph,RD/CP);
+      real reh = r0*CV*tmph;
 
       dom.hyDensCells     (hs+k) += gllOrdWeights(kk) * r0;
       dom.hyDensThetaCells(hs+k) += gllOrdWeights(kk) * r0*t0;
       dom.hyThetaCells    (hs+k) += gllOrdWeights(kk) * t0;
       dom.hyPressureCells (hs+k) += gllOrdWeights(kk) * C0*pow( r0*t0 , GAMMA );
+      dom.hyEnergyCells   (hs+k) += gllOrdWeights(kk) * reh;
+
     }
   });
 
@@ -141,10 +148,12 @@ void initialize(realArr &state, Domain &dom, Parallel &par, Exchange &exch, Time
     dom.hyDensThetaCells(ii) = dom.hyDensThetaCells(hs);
     dom.hyThetaCells    (ii) = dom.hyThetaCells    (hs);
     dom.hyPressureCells (ii) = dom.hyPressureCells (hs);
+    dom.hyEnergyCells   (ii) = dom.hyEnergyCells   (hs);
     dom.hyDensCells     (dom.nz+hs+ii) = dom.hyDensCells     (dom.nz+hs-1);
     dom.hyDensThetaCells(dom.nz+hs+ii) = dom.hyDensThetaCells(dom.nz+hs-1);
     dom.hyThetaCells    (dom.nz+hs+ii) = dom.hyThetaCells    (dom.nz+hs-1);
     dom.hyPressureCells (dom.nz+hs+ii) = dom.hyPressureCells (dom.nz+hs-1);
+    dom.hyEnergyCells   (dom.nz+hs+ii) = dom.hyEnergyCells   (dom.nz+hs-1);
   });
 
   // Initialize the hydrostatic background state for GLL points
@@ -159,11 +168,15 @@ void initialize(realArr &state, Domain &dom, Parallel &par, Exchange &exch, Time
       t0 = 300._fp;
       hydro::hydroConstTheta( t0 , zloc , r0 );
     }
+    real ph = C0 * pow( r0*t0 , GAMMA );
+    real temph = t0/pow(P0/ph,RD/CP);
+    real reh = r0*CV*tmph;
 
     dom.hyDensGLL     (k,kk) = r0;
     dom.hyDensThetaGLL(k,kk) = r0*t0;
     dom.hyThetaGLL    (k,kk) = t0;
     dom.hyPressureGLL (k,kk) = C0*pow( r0*t0 , GAMMA );
+    dom.hyEnergyGLL   (k,kk) = reh;
   });
 
   // Initialize the state
@@ -211,8 +224,12 @@ void initialize(realArr &state, Domain &dom, Parallel &par, Exchange &exch, Time
           real temp = t/pow(P0/p,RD/CP);
           real re = r*CV*temp;  // KE is initially zero
 
-          state(idR,hs+k,hs+j,hs+i) += wt * r ;
-          state(idT,hs+k,hs+j,hs+i) += wt * re;
+          real ph = C0 * pow( r0*t0 , GAMMA );
+          real temph = t0/pow(P0/ph,RD/CP);
+          real reh = r0*CV*tmph;
+
+          state(idR,hs+k,hs+j,hs+i) += wt * r;
+          state(idT,hs+k,hs+j,hs+i) += wt * (re - reh);
         }
       }
     }

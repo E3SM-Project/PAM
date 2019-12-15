@@ -189,7 +189,7 @@ void FileIO::writeState(realArr &state, Domain const &dom, Parallel const &par) 
     real u  = state(idU,hs+k,hs+j,hs+i);
     real v  = state(idV,hs+k,hs+j,hs+i);
     real w  = state(idW,hs+k,hs+j,hs+i);
-    real re = state(idT,hs+k,hs+j,hs+i);
+    real re = state(idT,hs+k,hs+j,hs+i) + dom.hyEnergyCells(hs+k);
     real ke = r*(u*u+v*v+w*w)/2;
     real p = (R/CV)*(re-ke);
     data(k,j,i) = p - dom.hyPressureCells(hs+k);

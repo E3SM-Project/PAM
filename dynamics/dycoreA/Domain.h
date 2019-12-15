@@ -42,12 +42,14 @@ public:
   realArr hyDensThetaCells;
   realArr hyThetaCells;
   realArr hyPressureCells;
+  realArr hyEnergyCells;
 
   // Hydrostatic background state at tord GLL points within cells (no halos)
   realArr hyDensGLL;
   realArr hyDensThetaGLL;
   realArr hyThetaGLL;
   realArr hyPressureGLL;
+  realArr hyEnergyGLL;
 };
 
 #endif
