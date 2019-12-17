@@ -9,6 +9,7 @@ void Tendencies::initialize(Domain const &dom) {
   stateLimits = realArr("stateLimits",numState,2,dom.nz+1,dom.ny+1,dom.nx+1);
   flux_r      = realArr("flux_r"                ,dom.nz+1,dom.ny+1,dom.nx+1);
   flux_re     = realArr("flux_re"               ,dom.nz+1,dom.ny+1,dom.nx+1);
+  dph_glob    = realArr("dph_glob"              ,dom.nz,tord);
 
   // Setup the matrix to transform a stenicl (or coefs) into tord derivative GLL points
   SArray<real,ord,ord> s2c_ho;
@@ -46,6 +47,18 @@ void Tendencies::initialize(Domain const &dom) {
   trans.get_gll_weights(gllWts);
 
   wenoSetIdealSigma(wenoIdl,wenoSigma);
+
+  // Compute vertical derivative of hydrostatic pressure
+  for (int k=0; k<dom.nz; k++) {
+    SArray<real,ord> stencil;
+    SArray<real,tord> gllPts;
+    for (int ii=0; ii<ord; ii++) {
+      stencil(ii) = dom.hyPressureCells(k+ii);
+    }
+    // Reconstruct and store GLL points of the pressure perturbation spatial derivatives
+    reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_derivX_gll, wenoIdl, wenoSigma);
+    for (int ii=0; ii<tord; ii++) { dph_glob(k,ii) = gllPts(ii); }
+  }
 }
 
 
@@ -79,21 +92,22 @@ void Tendencies::compEulerTend_X(realArr &state, Domain const &dom, Exchange &ex
     SArray<real         ,tord,tord> wtend   ;  // DTs of w RHS      (time,space)
 
     // Compute tord GLL points of the fluid state and spatial derivative
-    for (int l=0; l<numState-1; l++) {
+    for (int l=0; l<numState; l++) {
       SArray<real,ord> stencil;
       SArray<real,tord> gllPts;
       // Store the stencil values
-      if (l < numstate-1) {  // rho, u, v, and w
+      // We're reconstructing perturbation rho, but it doesn't affect the horizontal derivative
+      if (l != idT) {  // rho, u, v, and w
         for (int ii=0; ii<ord; ii++) {
           stencil(ii) = state(l,hs+k,hs+j,i+ii);
         }
-      } else {               // pressure
+      } else {         // pressure
         for (int ii=0; ii<ord; ii++) {
-          real r  = state(idR,hs+k,hs+j,hs+i) + dom.hyDensCells  (hs+k);
-          real u  = state(idU,hs+k,hs+j,hs+i);
-          real v  = state(idV,hs+k,hs+j,hs+i);
-          real w  = state(idW,hs+k,hs+j,hs+i);
-          real re = state(idT,hs+k,hs+j,hs+i) + dom.hyEnergyCells(hs+k);
+          real r  = state(idR,hs+k,hs+j,i+ii) + dom.hyDensCells  (hs+k);
+          real u  = state(idU,hs+k,hs+j,i+ii);
+          real v  = state(idV,hs+k,hs+j,i+ii);
+          real w  = state(idW,hs+k,hs+j,i+ii);
+          real re = state(idT,hs+k,hs+j,i+ii) + dom.hyEnergyCells(hs+k);
           real ke = 0.5_fp*r*(u*u+v*v+w*w);
           real p = RD/CV*(re-ke);
           stencil(ii) = p;
@@ -110,7 +124,6 @@ void Tendencies::compEulerTend_X(realArr &state, Domain const &dom, Exchange &ex
     }
     for (int ii=0; ii<tord; ii++) {
       stateDTs(idR,0,ii) += dom.hyDensCells  (hs+k);
-      stateDTs(idT,0,ii) += dom.hyEnergyCells(hs+k);
     }
 
     // Compute tord-1 time derivatives of the state, state spatial derivatives, mass flux,
@@ -295,21 +308,22 @@ void Tendencies::compEulerTend_Y(realArr &state, Domain const &dom, Exchange &ex
     SArray<real         ,tord,tord> wtend   ;  // DTs of w RHS      (time,space)
 
     // Compute tord GLL points of the fluid state and spatial derivative
-    for (int l=0; l<numState-1; l++) {
+    for (int l=0; l<numState; l++) {
       SArray<real,ord> stencil;
       SArray<real,tord> gllPts;
       // Store the stencil values
-      if (l < numstate-1) {  // rho, u, v, and w
+      // We're reconstructing perturbation rho, but it doesn't affect the horizontal derivative
+      if (l != idT) {  // rho, u, v, and w
         for (int ii=0; ii<ord; ii++) {
-          stencil(ii) = state(l,hs+k,hs+j,i+ii);
+          stencil(ii) = state(l,hs+k,j+ii,hs+i);
         }
       } else {               // pressure
         for (int ii=0; ii<ord; ii++) {
-          real r  = state(idR,hs+k,hs+j,hs+i) + dom.hyDensCells  (hs+k);
-          real u  = state(idU,hs+k,hs+j,hs+i);
-          real v  = state(idV,hs+k,hs+j,hs+i);
-          real w  = state(idW,hs+k,hs+j,hs+i);
-          real re = state(idT,hs+k,hs+j,hs+i) + dom.hyEnergyCells(hs+k);
+          real r  = state(idR,hs+k,j+ii,hs+i) + dom.hyDensCells  (hs+k);
+          real u  = state(idU,hs+k,j+ii,hs+i);
+          real v  = state(idV,hs+k,j+ii,hs+i);
+          real w  = state(idW,hs+k,j+ii,hs+i);
+          real re = state(idT,hs+k,j+ii,hs+i) + dom.hyEnergyCells(hs+k);
           real ke = 0.5_fp*r*(u*u+v*v+w*w);
           real p = RD/CV*(re-ke);
           stencil(ii) = p;
@@ -326,7 +340,6 @@ void Tendencies::compEulerTend_Y(realArr &state, Domain const &dom, Exchange &ex
     }
     for (int ii=0; ii<tord; ii++) {
       stateDTs(idR,0,ii) += dom.hyDensCells  (hs+k);
-      stateDTs(idT,0,ii) += dom.hyEnergyCells(hs+k);
     }
 
     // Compute tord-1 time derivatives of the state, state spatial derivatives, mass flux,
@@ -509,21 +522,25 @@ void Tendencies::compEulerTend_Z(realArr &state, Domain const &dom, Exchange &ex
     SArray<real         ,tord,tord> wtend   ;  // DTs of w RHS      (time,space)
 
     // Compute tord GLL points of the fluid state and spatial derivative
-    for (int l=0; l<numState-1; l++) {
+    for (int l=0; l<numState; l++) {
       SArray<real,ord> stencil;
       SArray<real,tord> gllPts;
       // Store the stencil values
-      if (l < numstate-1) {  // rho, u, v, and w
+      if (l == idR) {         // rho
         for (int ii=0; ii<ord; ii++) {
-          stencil(ii) = state(l,hs+k,hs+j,i+ii);
+          stencil(ii) = state(idR,k+ii,hs+j,hs+i) + dom.hyDensCells(k+ii);
         }
-      } else {               // pressure
+      } else if (l != idT) {  // u, v, and w
         for (int ii=0; ii<ord; ii++) {
-          real r  = state(idR,hs+k,hs+j,hs+i) + dom.hyDensCells  (hs+k);
-          real u  = state(idU,hs+k,hs+j,hs+i);
-          real v  = state(idV,hs+k,hs+j,hs+i);
-          real w  = state(idW,hs+k,hs+j,hs+i);
-          real re = state(idT,hs+k,hs+j,hs+i) + dom.hyEnergyCells(hs+k);
+          stencil(ii) = state(l,k+ii,hs+j,hs+i);
+        }
+      } else {                // pressure
+        for (int ii=0; ii<ord; ii++) {
+          real r  = state(idR,k+ii,hs+j,hs+i) + dom.hyDensCells  (k+ii);
+          real u  = state(idU,k+ii,hs+j,hs+i);
+          real v  = state(idV,k+ii,hs+j,hs+i);
+          real w  = state(idW,k+ii,hs+j,hs+i);
+          real re = state(idT,k+ii,hs+j,hs+i) + dom.hyEnergyCells(k+ii);
           real ke = 0.5_fp*r*(u*u+v*v+w*w);
           real p = RD/CV*(re-ke);
           stencil(ii) = p;
@@ -538,14 +555,10 @@ void Tendencies::compEulerTend_Z(realArr &state, Domain const &dom, Exchange &ex
       reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_derivX_gll, wenoIdl, wenoSigma);
       for (int ii=0; ii<tord; ii++) { derivDTs(l,0,ii) = gllPts(ii); }
     }
-    for (int ii=0; ii<tord; ii++) {
-      stateDTs(idR,0,ii) += dom.hyDensCells  (hs+k);
-      stateDTs(idT,0,ii) += dom.hyEnergyCells(hs+k);
-    }
 
     // Compute tord-1 time derivatives of the state, state spatial derivatives, mass flux,
     // energy flux, u RHS, v RHS, and w RHS using temporal Differential Transforms
-    diffTransformEulerPrimY( stateDTs, derivDTs, utend, vtend, wtend, aderDerivY );
+    diffTransformEulerPrimY( stateDTs, derivDTs, utend, vtend, wtend, dph, aderDerivZ );
 
     // Compute the time-average and store into the zeroth time index
     timeAvg( stateDTs , dom );
@@ -587,7 +600,7 @@ void Tendencies::compEulerTend_Z(realArr &state, Domain const &dom, Exchange &ex
     ////////////////////////////////////////////////////////////////////////////
     // Compute the average state at the interface
     real r = 0.5_fp * ( stateLimits(idR,1,k,j,i) + stateLimits(idR,0,k,j,i)); // rho
-    real u = 0.5_fp * ( stateLimits(idV,1,k,j,i) + stateLimits(idV,0,k,j,i)); // v
+    real w = 0.5_fp * ( stateLimits(idW,1,k,j,i) + stateLimits(idW,0,k,j,i)); // w
     real p = 0.5_fp * ( stateLimits(idT,1,k,j,i) + stateLimits(idT,0,k,j,i)); // p
     real cs2 = GAMMA*p/r;    // speed of sound squared
     real cs = sqrt(cs2);     // speed of sound
