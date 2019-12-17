@@ -49,6 +49,7 @@ public:
   realArr hyDensThetaGLL;
   realArr hyThetaGLL;
   realArr hyPressureGLL;
+  realArr hyPressureDerivGLL;
   realArr hyEnergyGLL;
 };
 

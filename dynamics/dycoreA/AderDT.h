@@ -244,11 +244,11 @@ YAKL_INLINE void diffTransformEulerZ( SArray<real,numState,tord,tord> &state,
                                       SArray<real         ,tord,tord> &utend,
                                       SArray<real         ,tord,tord> &vtend,
                                       SArray<real         ,tord,tord> &wtend,
-                                      SArray<real              ,tord> &dpp,
+                                      SArray<real              ,tord> &dph,
                                       SArray<real,tord,tord> const &deriv_mat,
                                       Domain const &dom ) {
   SArray<real,tord,tord> tmp_r_w;     // r*w
-  SArray<real,tord,tord> tmp_w_dp;    // w*dp'/dz
+  SArray<real,tord,tord> tmp_w_dp;    // w*dp/dz
   SArray<real,tord,tord> tmp_rr_dp;   // (1/rho)*dp'/dz
   SArray<real,tord,tord> tmp_p_dw;    // p*dw/dz
 
@@ -273,14 +273,15 @@ YAKL_INLINE void diffTransformEulerZ( SArray<real,numState,tord,tord> &state,
     real dv = deriv(idV,0,ii);
     real dw = deriv(idW,0,ii);
     real dp = deriv(idT,0,ii);
+    real dph = dph(ii);
     
     // Initialize the 0th-order time DTs (i.e., the values)
     tmp_r_w  (0,ii) = r*w;
     utend    (0,ii) = w*du;
     vtend    (0,ii) = w*dv;
     wtend    (0,ii) = w*dw;
-    tmp_w_dp (0,ii) = w*dp;
-    tmp_rr_dp(0,ii) = dpp(ii)/r;
+    tmp_w_dp (0,ii) = w*(dp+dph);
+    tmp_rr_dp(0,ii) = dp/r;
     tmp_p_dw (0,ii) = p*dw;
   } // ii-loop
 
@@ -332,7 +333,7 @@ YAKL_INLINE void diffTransformEulerZ( SArray<real,numState,tord,tord> &state,
         tot_tmp_w_dv  += state(idW,rt,ii) * deriv(idV,kt+1-rt,ii);
         tot_tmp_w_dw  += state(idW,rt,ii) * deriv(idW,kt+1-rt,ii);
         tot_tmp_w_dp  += state(idW,rt,ii) * deriv(idP,kt+1-rt,ii);
-        tot_tmp_p_dw  += state(idP,rt,ii) * deriv(idV,kt+1-rt,ii);
+        tot_tmp_p_dw  += state(idP,rt,ii) * deriv(idW,kt+1-rt,ii);
         tot_tmp_rr_dp += deriv(idP,rt,ii) - state(idR,rt,ii) * tmp_rr_dp(kt+1-rt,ii);
       }
       tmp_r_w  (kt+1,ii) = tot_tmp_r_w ;

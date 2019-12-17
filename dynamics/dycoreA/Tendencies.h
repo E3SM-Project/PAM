@@ -14,7 +14,6 @@ class Tendencies {
   realArr stateLimits;
   realArr flux_r;
   realArr flux_re;
-  realArr dph;
   SArray<real,tord> gllWts;
   SArray<real,ord,tord> to_gll;
   SArray<real,ord,tord> to_derivX_gll;
@@ -28,9 +27,6 @@ class Tendencies {
   real wenoSigma;
 
 public :
-
-
-  void initialize(Domain const &dom);
 
   // Transform ord stencil cell averages into tord GLL point values
   YAKL_INLINE void reconStencil(SArray<real,ord> const &stencil, SArray<real,tord> &gll, int const doWeno,
@@ -52,6 +48,8 @@ public :
       }
     }
   }
+
+  void initialize(Domain const &dom);
 
   void compEulerTend_X(realArr &state, Domain const &dom, Exchange &exch, Parallel const &par, realArr &tend);
 
