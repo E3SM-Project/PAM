@@ -191,7 +191,7 @@ void FileIO::writeState(realArr &state, Domain const &dom, Parallel const &par) 
     real w  = state(idW,hs+k,hs+j,hs+i);
     real re = state(idT,hs+k,hs+j,hs+i) + dom.hyEnergyCells(hs+k);
     real ke = r*(u*u+v*v+w*w)/2;
-    real p = (R/CV)*(re-ke);
+    real p = (RD/CV)*(re-ke);
     data(k,j,i) = p - dom.hyPressureCells(hs+k);
   });
   ncwrap( ncmpi_put_vara_float_all( ncid , pVar , st , ct , data.createHostCopy().data() ) , __LINE__ );
@@ -212,7 +212,7 @@ void FileIO::writeState(realArr &state, Domain const &dom, Parallel const &par) 
     real w  = state(idW,hs+k,hs+j,hs+i);
     real re = state(idT,hs+k,hs+j,hs+i);
     real ke = r*(u*u+v*v+w*w)/2;
-    real p = (R/CV)*(re-ke);
+    real p = (RD/CV)*(re-ke);
     real temp = (re - ke)/(r*CV);
     real theta = temp*pow(P0/p,RD/CP);
     data(k,j,i) = theta - dom.hyThetaCells(hs+k);

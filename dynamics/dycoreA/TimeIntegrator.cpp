@@ -10,11 +10,7 @@ void TimeIntegrator::initialize(Domain &dom) {
 
 
 void TimeIntegrator::stepForward(realArr &state, Domain &dom, Exchange &exch, Parallel const &par) {
-  stepForwardADER  (state, dom, exch, par);
-  if (strakaVisc) {
-    tendencies.compStrakaTend(state, dom, exch, par, tend);
-    applyTendencies( state , 1._fp , state , 0._fp , state , 1._fp , tend, dom);
-  }
+  stepForwardADER(state, dom, exch, par);
 }
 
 

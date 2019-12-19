@@ -51,8 +51,6 @@ void Tendencies::initialize(Domain const &dom) {
 
 
 void Tendencies::compEulerTend_X(realArr &state, Domain const &dom, Exchange &exch, Parallel const &par, realArr &tend) {
-  auto &fwaves      = this->fwaves     ;
-  auto &src         = this->src        ;
   auto &gllWts      = this->gllWts     ;
   auto &to_gll      = this->to_gll     ;
   auto &wenoRecon   = this->wenoRecon  ;
@@ -116,7 +114,7 @@ void Tendencies::compEulerTend_X(realArr &state, Domain const &dom, Exchange &ex
 
     // Compute tord-1 time derivatives of the state, state spatial derivatives, mass flux,
     // energy flux, u RHS, v RHS, and w RHS using temporal Differential Transforms
-    diffTransformEulerPrimX( stateDTs, derivDTs, utend, vtend, wtend, aderDerivX );
+    diffTransformEulerX( stateDTs, derivDTs, utend, vtend, wtend, aderDerivX );
 
     // Compute the time-average and store into the zeroth time index
     timeAvg( stateDTs , dom );
@@ -176,13 +174,13 @@ void Tendencies::compEulerTend_X(realArr &state, Domain const &dom, Exchange &ex
     real u1 = stateLimits(idU,0,k,j,i);
     real v1 = stateLimits(idV,0,k,j,i);
     real w1 = stateLimits(idW,0,k,j,i);
-    real p1 = stateLimits(idP,0,k,j,i);
+    real p1 = stateLimits(idT,0,k,j,i);
     // state at the right side of the interface
     real r2 = stateLimits(idR,1,k,j,i);
     real u2 = stateLimits(idU,1,k,j,i);
     real v2 = stateLimits(idV,1,k,j,i);
     real w2 = stateLimits(idW,1,k,j,i);
-    real p2 = stateLimits(idP,1,k,j,i);
+    real p2 = stateLimits(idT,1,k,j,i);
     // Block to force compiler to release df from the stack after the block
     {
       // Compute the product of the flux Jacobian and the state jump across the interface (A*dq)
@@ -241,7 +239,7 @@ void Tendencies::compEulerTend_X(realArr &state, Domain const &dom, Exchange &ex
     uu = -cs*chu(0)/r +  cs*chu(1)/r;
     vu =                                       chu(3);
     wu =                                               chu(4);
-    pu = cs2*chu(0)   + cs2*chu(1)
+    pu = cs2*chu(0)   + cs2*chu(1);
     // Now compute the upwind flux based on the upwind state
     real keu = 0.5_fp*ru*(uu*uu+vu*vu+wu*wu); // upwind kinetic energy
     real reu = pu*CV/RD + keu;                // upwind rho*e
@@ -260,16 +258,14 @@ void Tendencies::compEulerTend_X(realArr &state, Domain const &dom, Exchange &ex
     tend(idR,k,j,i)  = - ( flux_r (k,j,i+1) - flux_r (k,j,i) ) / dom.dx;  // mass tendency
     tend(idT,k,j,i)  = - ( flux_re(k,j,i+1) - flux_re(k,j,i) ) / dom.dx;  // energy tendency
     // Flux difference splitting form update for velocities
-    tend(idU,k,j,i) += - ( fwaves(idU,1,k,j,i) + fwaves(idU,0,k,j,i+1) ) / dom.dx;  // u tendency
-    tend(idV,k,j,i) += - ( fwaves(idV,1,k,j,i) + fwaves(idV,0,k,j,i+1) ) / dom.dx;  // v tendency
-    tend(idW,k,j,i) += - ( fwaves(idW,1,k,j,i) + fwaves(idW,0,k,j,i+1) ) / dom.dx;  // w tendency
+    tend(idU,k,j,i) += - ( stateLimits(idU,1,k,j,i) + stateLimits(idU,0,k,j,i+1) ) / dom.dx;  // u tendency
+    tend(idV,k,j,i) += - ( stateLimits(idV,1,k,j,i) + stateLimits(idV,0,k,j,i+1) ) / dom.dx;  // v tendency
+    tend(idW,k,j,i) += - ( stateLimits(idW,1,k,j,i) + stateLimits(idW,0,k,j,i+1) ) / dom.dx;  // w tendency
   });
 }
 
 
 void Tendencies::compEulerTend_Y(realArr &state, Domain const &dom, Exchange &exch, Parallel const &par, realArr &tend) {
-  auto &fwaves      = this->fwaves     ;
-  auto &src         = this->src        ;
   auto &gllWts      = this->gllWts     ;
   auto &to_gll      = this->to_gll     ;
   auto &wenoRecon   = this->wenoRecon  ;
@@ -333,7 +329,7 @@ void Tendencies::compEulerTend_Y(realArr &state, Domain const &dom, Exchange &ex
 
     // Compute tord-1 time derivatives of the state, state spatial derivatives, mass flux,
     // energy flux, u RHS, v RHS, and w RHS using temporal Differential Transforms
-    diffTransformEulerPrimY( stateDTs, derivDTs, utend, vtend, wtend, aderDerivY );
+    diffTransformEulerY( stateDTs, derivDTs, utend, vtend, wtend, aderDerivY );
 
     // Compute the time-average and store into the zeroth time index
     timeAvg( stateDTs , dom );
@@ -393,13 +389,13 @@ void Tendencies::compEulerTend_Y(realArr &state, Domain const &dom, Exchange &ex
     real u1 = stateLimits(idU,0,k,j,i);
     real v1 = stateLimits(idV,0,k,j,i);
     real w1 = stateLimits(idW,0,k,j,i);
-    real p1 = stateLimits(idP,0,k,j,i);
+    real p1 = stateLimits(idT,0,k,j,i);
     // state at the right side of the interface
     real r2 = stateLimits(idR,1,k,j,i);
     real u2 = stateLimits(idU,1,k,j,i);
     real v2 = stateLimits(idV,1,k,j,i);
     real w2 = stateLimits(idW,1,k,j,i);
-    real p2 = stateLimits(idP,1,k,j,i);
+    real p2 = stateLimits(idT,1,k,j,i);
     // Block to force compiler to release df from the stack after the block
     {
       // Compute the product of the flux Jacobian and the state jump across the interface (A*dq)
@@ -426,7 +422,7 @@ void Tendencies::compEulerTend_Y(realArr &state, Domain const &dom, Exchange &ex
       real w5 = df(3);
       // If u > zero, it's rightward propagating, otherwise leftward
       // No need to worry about zero wind speed becaue then the wave is zero anyway
-      if (u > 0) {
+      if (v > 0) {
         stateLimits(idU,1,k,j,i) += w4;
         stateLimits(idW,1,k,j,i) += w5;
       } else {
@@ -441,7 +437,7 @@ void Tendencies::compEulerTend_Y(realArr &state, Domain const &dom, Exchange &ex
     // We can re-use the r, u, p, cs2, and cs calculated earlier
     // Store upwind state based on wind velocity
     real ru, uu, vu, wu, pu;
-    if (u > 0) {
+    if (v > 0) {
       ru = r1;  uu = u1;  vu = v1;  wu = w1;  pu = p1;
     } else {
       ru = r2;  uu = u2;  vu = v2;  wu = w2;  pu = p2;
@@ -458,7 +454,7 @@ void Tendencies::compEulerTend_Y(realArr &state, Domain const &dom, Exchange &ex
     uu =                                       chu(3);
     vu = -cs*chu(0)/r +  cs*chu(1)/r;
     wu =                                               chu(4);
-    pu = cs2*chu(0)   + cs2*chu(1)
+    pu = cs2*chu(0)   + cs2*chu(1);
     // Now compute the upwind flux based on the upwind state
     real keu = 0.5_fp*ru*(uu*uu+vu*vu+wu*wu); // upwind kinetic energy
     real reu = pu*CV/RD + keu;                // upwind rho*e
@@ -477,17 +473,15 @@ void Tendencies::compEulerTend_Y(realArr &state, Domain const &dom, Exchange &ex
     tend(idR,k,j,i)  = - ( flux_r (k,j+1,i) - flux_r (k,j,i) ) / dom.dy;  // mass tendency
     tend(idT,k,j,i)  = - ( flux_re(k,j+1,i) - flux_re(k,j,i) ) / dom.dy;  // energy tendency
     // Flux difference splitting form update for velocities
-    tend(idU,k,j,i) += - ( fwaves(idU,1,k,j,i) + fwaves(idU,0,k,j+1,i) ) / dom.dy;  // u tendency
-    tend(idV,k,j,i) += - ( fwaves(idV,1,k,j,i) + fwaves(idV,0,k,j+1,i) ) / dom.dy;  // v tendency
-    tend(idW,k,j,i) += - ( fwaves(idW,1,k,j,i) + fwaves(idW,0,k,j+1,i) ) / dom.dy;  // w tendency
+    tend(idU,k,j,i) += - ( stateLimits(idU,1,k,j,i) + stateLimits(idU,0,k,j+1,i) ) / dom.dy;  // u tendency
+    tend(idV,k,j,i) += - ( stateLimits(idV,1,k,j,i) + stateLimits(idV,0,k,j+1,i) ) / dom.dy;  // v tendency
+    tend(idW,k,j,i) += - ( stateLimits(idW,1,k,j,i) + stateLimits(idW,0,k,j+1,i) ) / dom.dy;  // w tendency
   });
 }
 
 
 
 void Tendencies::compEulerTend_Z(realArr &state, Domain const &dom, Exchange &exch, Parallel const &par, realArr &tend) {
-  auto &fwaves      = this->fwaves     ;
-  auto &src         = this->src        ;
   auto &gllWts      = this->gllWts     ;
   auto &to_gll      = this->to_gll     ;
   auto &wenoRecon   = this->wenoRecon  ;
@@ -549,7 +543,7 @@ void Tendencies::compEulerTend_Z(realArr &state, Domain const &dom, Exchange &ex
     // energy flux, u RHS, v RHS, and w RHS using temporal Differential Transforms
     SArray<real,tord> dph;
     for (int ii=0; ii<tord; ii++) { dph(ii) = dom.hyPressureDerivGLL(k,ii); }
-    diffTransformEulerPrimZ( stateDTs, derivDTs, utend, vtend, wtend, dph, aderDerivZ );
+    diffTransformEulerZ( stateDTs, derivDTs, utend, vtend, wtend, dph, aderDerivZ );
 
     // Compute the time-average and store into the zeroth time index
     timeAvg( stateDTs , dom );
@@ -606,13 +600,13 @@ void Tendencies::compEulerTend_Z(realArr &state, Domain const &dom, Exchange &ex
     real u1 = stateLimits(idU,0,k,j,i);
     real v1 = stateLimits(idV,0,k,j,i);
     real w1 = stateLimits(idW,0,k,j,i);
-    real p1 = stateLimits(idP,0,k,j,i);
+    real p1 = stateLimits(idT,0,k,j,i);
     // state at the right side of the interface
     real r2 = stateLimits(idR,1,k,j,i);
     real u2 = stateLimits(idU,1,k,j,i);
     real v2 = stateLimits(idV,1,k,j,i);
     real w2 = stateLimits(idW,1,k,j,i);
-    real p2 = stateLimits(idP,1,k,j,i);
+    real p2 = stateLimits(idT,1,k,j,i);
     // Block to force compiler to release df from the stack after the block
     {
       // Compute the product of the flux Jacobian and the state jump across the interface (A*dq)
@@ -639,7 +633,7 @@ void Tendencies::compEulerTend_Z(realArr &state, Domain const &dom, Exchange &ex
       real w5 = df(2);
       // If u > zero, it's rightward propagating, otherwise leftward
       // No need to worry about zero wind speed becaue then the wave is zero anyway
-      if (u > 0) {
+      if (w > 0) {
         stateLimits(idU,1,k,j,i) += w4;
         stateLimits(idV,1,k,j,i) += w5;
       } else {
@@ -654,7 +648,7 @@ void Tendencies::compEulerTend_Z(realArr &state, Domain const &dom, Exchange &ex
     // We can re-use the r, u, p, cs2, and cs calculated earlier
     // Store upwind state based on wind velocity
     real ru, uu, vu, wu, pu;
-    if (u > 0) {
+    if (w > 0) {
       ru = r1;  uu = u1;  vu = v1;  wu = w1;  pu = p1;
     } else {
       ru = r2;  uu = u2;  vu = v2;  wu = w2;  pu = p2;
@@ -671,7 +665,7 @@ void Tendencies::compEulerTend_Z(realArr &state, Domain const &dom, Exchange &ex
     uu =                                       chu(3);
     vu =                                               chu(4);
     wu = -cs*chu(0)/r +  cs*chu(1)/r;
-    pu = cs2*chu(0)   + cs2*chu(1)
+    pu = cs2*chu(0)   + cs2*chu(1);
     // Now compute the upwind flux based on the upwind state
     real keu = 0.5_fp*ru*(uu*uu+vu*vu+wu*wu); // upwind kinetic energy
     real reu = pu*CV/RD + keu;                // upwind rho*e
@@ -690,9 +684,9 @@ void Tendencies::compEulerTend_Z(realArr &state, Domain const &dom, Exchange &ex
     tend(idR,k,j,i)  = - ( flux_r (k+1,j,i) - flux_r (k,j,i) ) / dom.dz;  // mass tendency
     tend(idT,k,j,i)  = - ( flux_re(k+1,j,i) - flux_re(k,j,i) ) / dom.dz;  // energy tendency
     // Flux difference splitting form update for velocities
-    tend(idU,k,j,i) += - ( fwaves(idU,1,k,j,i) + fwaves(idU,0,k+1,j,i) ) / dom.dz;  // u tendency
-    tend(idV,k,j,i) += - ( fwaves(idV,1,k,j,i) + fwaves(idV,0,k+1,j,i) ) / dom.dz;  // v tendency
-    tend(idW,k,j,i) += - ( fwaves(idW,1,k,j,i) + fwaves(idW,0,k+1,j,i) ) / dom.dz;  // w tendency
+    tend(idU,k,j,i) += - ( stateLimits(idU,1,k,j,i) + stateLimits(idU,0,k+1,j,i) ) / dom.dz;  // u tendency
+    tend(idV,k,j,i) += - ( stateLimits(idV,1,k,j,i) + stateLimits(idV,0,k+1,j,i) ) / dom.dz;  // v tendency
+    tend(idW,k,j,i) += - ( stateLimits(idW,1,k,j,i) + stateLimits(idW,0,k+1,j,i) ) / dom.dz;  // w tendency
   });
 }
 
@@ -706,11 +700,11 @@ void Tendencies::compEulerTend_S(realArr &state, Domain const &dom, Exchange &ex
   yakl::parallel_for( dom.nz*dom.ny*dom.nx , YAKL_LAMBDA (int const iGlob) {
     int k, j, i;
     yakl::unpackIndices(iGlob,dom.nz,dom.ny,dom.nx,k,j,i);
-    tend(idR ,k,j,i) = 0;
-    tend(idU ,k,j,i) = 0;
-    tend(idV ,k,j,i) = 0;
-    tend(idW ,k,j,i) = -state(idR,hs+k,hs+j,hs+i) / (state(idR,hs+k,hs+j,hs+i) + dom.hyDensCells(hs+k)) * GRAV;
-    tend(idRT,k,j,i) = 0;
+    tend(idR,k,j,i) = 0;
+    tend(idU,k,j,i) = 0;
+    tend(idV,k,j,i) = 0;
+    tend(idW,k,j,i) = -state(idR,hs+k,hs+j,hs+i) / (state(idR,hs+k,hs+j,hs+i) + dom.hyDensCells(hs+k)) * GRAV;
+    tend(idT,k,j,i) = 0;
   });
 }
 
@@ -734,7 +728,7 @@ void Tendencies::compStrakaTend(realArr &state, Domain const &dom, Exchange &exc
 }
 
 
-void TendenciesThetaPrimADER::stateBoundariesZ(realArr &state, Domain const &dom) {
+void Tendencies::stateBoundariesZ(realArr &state, Domain const &dom) {
   // for (int j=0; j<dom.ny; j++) {
   //   for (int i=0; i<dom.nx; i++) {
   //     for (int ii=0; ii<hs; ii++) {
@@ -756,7 +750,7 @@ void TendenciesThetaPrimADER::stateBoundariesZ(realArr &state, Domain const &dom
 }
 
 
-void TendenciesThetaPrimADER::edgeBoundariesZ(realArr &stateLimits, Domain const &dom) {
+void Tendencies::edgeBoundariesZ(realArr &stateLimits, Domain const &dom) {
   // for (int j=0; j<dom.ny; j++) {
   //   for (int i=0; i<dom.nx; i++) {
   yakl::parallel_for( dom.ny*dom.nx , YAKL_LAMBDA (int const iGlob) {

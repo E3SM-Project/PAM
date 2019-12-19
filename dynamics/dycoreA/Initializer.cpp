@@ -131,7 +131,7 @@ void initialize(realArr &state, Domain &dom, Parallel &par, Exchange &exch, Time
       }
       real ph = C0 * pow( r0*t0 , GAMMA );
       real temph = t0/pow(P0/ph,RD/CP);
-      real reh = r0*CV*tmph;
+      real reh = r0*CV*temph;
 
       dom.hyDensCells     (hs+k) += gllOrdWeights(kk) * r0;
       dom.hyDensThetaCells(hs+k) += gllOrdWeights(kk) * r0*t0;
@@ -171,7 +171,7 @@ void initialize(realArr &state, Domain &dom, Parallel &par, Exchange &exch, Time
     }
     real ph = C0 * pow( r0*t0 , GAMMA );
     real temph = t0/pow(P0/ph,RD/CP);
-    real reh = r0*CV*tmph;
+    real reh = r0*CV*temph;
 
     dom.hyDensGLL         (k,kk) = r0;
     dom.hyDensThetaGLL    (k,kk) = r0*t0;
@@ -179,8 +179,8 @@ void initialize(realArr &state, Domain &dom, Parallel &par, Exchange &exch, Time
     dom.hyPressureGLL     (k,kk) = C0*pow( r0*t0 , GAMMA );
     dom.hyEnergyGLL       (k,kk) = reh;
 
-    real p = hyPressureGLL(k,kk);
-    real exner = pow( p/p0 , RD/CP );
+    real p = dom.hyPressureGLL(k,kk);
+    real exner = pow( p/P0 , RD/CP );
     dom.hyPressureDerivGLL(k,kk) = -GRAV*p/(RD*exner*t0);
   });
 
@@ -201,7 +201,7 @@ void initialize(realArr &state, Domain &dom, Parallel &par, Exchange &exch, Time
           real yloc = (par.j_beg + j + 0.5_fp)*dom.dy + gllOrdPoints(jj)*dom.dy;
           real zloc = (k + 0.5_fp)*dom.dz + gllOrdPoints(kk)*dom.dz;
           real r0, t0; // background density and potential temperature
-          rela r, t;   // perturbation density and potential temperature
+          real r, t;   // perturbation density and potential temperature
 
           if (dom.run2d) yloc = dom.ylen/2;
 
@@ -231,7 +231,7 @@ void initialize(realArr &state, Domain &dom, Parallel &par, Exchange &exch, Time
 
           real ph = C0 * pow( r0*t0 , GAMMA );
           real temph = t0/pow(P0/ph,RD/CP);
-          real reh = r0*CV*tmph;
+          real reh = r0*CV*temph;
 
           state(idR,hs+k,hs+j,hs+i) += wt * r;
           state(idT,hs+k,hs+j,hs+i) += wt * (re - reh);
@@ -252,7 +252,7 @@ void initialize(realArr &state, Domain &dom, Parallel &par, Exchange &exch, Time
     real v  = state(idV,hs+k,hs+j,hs+i);
     real w  = state(idW,hs+k,hs+j,hs+i);
     real re = state(idT,hs+k,hs+j,hs+i);
-    real ke = r*(u*u+v*v+w*w)/2
+    real ke = r*(u*u+v*v+w*w)/2;
     real p  = (RD/CV)*(re-ke);
     real cs = sqrt( GAMMA * p / r );
 

@@ -5,9 +5,10 @@
 #include "const.h"
 #include "Parallel.h"
 #include "SArray.h"
-#include "Riemann.h"
 #include "Domain.h"
 #include "Exchange.h"
+#include "WenoLimiter.h"
+#include "AderDT.h"
 
 class Tendencies {
 
@@ -61,7 +62,7 @@ public :
 
   void stateBoundariesZ(realArr &state, Domain const &dom);
 
-  void edgeBoundariesZ(realArr &stateLimits, realArr &fluxLimits, Domain const &dom);
+  void edgeBoundariesZ(realArr &stateLimits, Domain const &dom);
 
   void compStrakaTend(realArr &state, Domain const &dom, Exchange &exch, Parallel const &par, realArr &tend);
 
