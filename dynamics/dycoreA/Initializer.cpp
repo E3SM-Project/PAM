@@ -125,7 +125,8 @@ void initialize(realArr &state, Domain &dom, Parallel &par, Exchange &exch, Time
       real zloc = (k + 0.5_fp)*dom.dz + gllOrdPoints(kk)*dom.dz;
       real r0, t0;
 
-      if (dom.dataInit == DATA_INIT_THERMAL || dom.dataInit == DATA_INIT_COLLISION || dom.dataInit == DATA_INIT_STRAKA) {
+      if (dom.dataInit == DATA_INIT_THERMAL || dom.dataInit == DATA_INIT_COLLISION || 
+          dom.dataInit == DATA_INIT_STRAKA) {
         t0 = 300._fp;
         hydro::hydroConstTheta( t0 , zloc , r0 );
       }

@@ -103,7 +103,7 @@ YAKL_INLINE void diffTransformEulerX( SArray<real,numState,tord,tord> &state,
         real d_dx = 0;
         // Matrix-vector multiply against the spatial differentiation matrix
         for (int s=0; s<tord; s++) {
-          d_dx += deriv_mat(s,ii) * state(l,kt,s);
+          d_dx += deriv_mat(s,ii) * state(l,kt+1,s);
         }
         deriv(l,kt+1,ii) = d_dx;
       }
@@ -248,7 +248,7 @@ YAKL_INLINE void diffTransformEulerY( SArray<real,numState,tord,tord> &state,
         real d_dy = 0;
         // Matrix-vector multiply against the spatial differentiation matrix
         for (int s=0; s<tord; s++) {
-          d_dy += deriv_mat(s,ii) * state(l,kt,s);
+          d_dy += deriv_mat(s,ii) * state(l,kt+1,s);
         }
         deriv(l,kt+1,ii) = d_dy;
       }
@@ -396,7 +396,7 @@ YAKL_INLINE void diffTransformEulerZ( SArray<real,numState,tord,tord> &state,
         real d_dz = 0;
         // Matrix-vector multiply against the spatial differentiation matrix
         for (int s=0; s<tord; s++) {
-          d_dz += deriv_mat(s,ii) * state(l,kt,s);
+          d_dz += deriv_mat(s,ii) * state(l,kt+1,s);
         }
         deriv(l,kt+1,ii) = d_dz;
       }
