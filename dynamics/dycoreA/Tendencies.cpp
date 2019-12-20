@@ -158,13 +158,13 @@ void Tendencies::compEulerTend_X(realArr &state, Domain const &dom, Exchange &ex
     // Compute the local tendency contribution for high-order flux difference
     // splitting for wind via quadrature
     // tend_local = int( RHS , x , x_(i-1/2) , x_(i+1/2) )
-    tend(idU,hs+k,hs+j,hs+i) = 0;
-    tend(idV,hs+k,hs+j,hs+i) = 0;
-    tend(idW,hs+k,hs+j,hs+i) = 0;
+    tend(idU,k,j,i) = 0;
+    tend(idV,k,j,i) = 0;
+    tend(idW,k,j,i) = 0;
     for (int ii=0; ii<tord; ii++) {
-      tend(idU,hs+k,hs+j,hs+i) += gllWts(ii) * utend(0,ii);
-      tend(idV,hs+k,hs+j,hs+i) += gllWts(ii) * vtend(0,ii);
-      tend(idW,hs+k,hs+j,hs+i) += gllWts(ii) * wtend(0,ii);
+      tend(idU,k,j,i) += gllWts(ii) * utend(0,ii);
+      tend(idV,k,j,i) += gllWts(ii) * vtend(0,ii);
+      tend(idW,k,j,i) += gllWts(ii) * wtend(0,ii);
     }
 
     // Store the state vector in stateLimits to compute upwind forcing
@@ -417,13 +417,13 @@ void Tendencies::compEulerTend_Y(realArr &state, Domain const &dom, Exchange &ex
     // Compute the local tendency contribution for high-order flux difference
     // splitting for wind via quadrature
     // int( RHS , y , y_(j-1/2) , y_(j+1/2) )
-    tend(idU,hs+k,hs+j,hs+i) = 0;
-    tend(idV,hs+k,hs+j,hs+i) = 0;
-    tend(idW,hs+k,hs+j,hs+i) = 0;
+    tend(idU,k,j,i) = 0;
+    tend(idV,k,j,i) = 0;
+    tend(idW,k,j,i) = 0;
     for (int ii=0; ii<tord; ii++) {
-      tend(idU,hs+k,hs+j,hs+i) += gllWts(ii) * utend(0,ii);
-      tend(idV,hs+k,hs+j,hs+i) += gllWts(ii) * vtend(0,ii);
-      tend(idW,hs+k,hs+j,hs+i) += gllWts(ii) * wtend(0,ii);
+      tend(idU,k,j,i) += gllWts(ii) * utend(0,ii);
+      tend(idV,k,j,i) += gllWts(ii) * vtend(0,ii);
+      tend(idW,k,j,i) += gllWts(ii) * wtend(0,ii);
     }
 
     // Store the state vector in stateLimits to compute upwind forcing
@@ -671,13 +671,13 @@ void Tendencies::compEulerTend_Z(realArr &state, Domain const &dom, realArr &ten
     // Compute the local tendency contribution for high-order flux difference
     // splitting for wind via quadrature
     // int( RHS , z , z_(k-1/2) , z_(k+1/2) )
-    tend(idU,hs+k,hs+j,hs+i) = 0;
-    tend(idV,hs+k,hs+j,hs+i) = 0;
-    tend(idW,hs+k,hs+j,hs+i) = 0;
+    tend(idU,k,j,i) = 0;
+    tend(idV,k,j,i) = 0;
+    tend(idW,k,j,i) = 0;
     for (int ii=0; ii<tord; ii++) {
-      tend(idU,hs+k,hs+j,hs+i) += gllWts(ii) * utend(0,ii);
-      tend(idV,hs+k,hs+j,hs+i) += gllWts(ii) * vtend(0,ii);
-      tend(idW,hs+k,hs+j,hs+i) += gllWts(ii) * wtend(0,ii);
+      tend(idU,k,j,i) += gllWts(ii) * utend(0,ii);
+      tend(idV,k,j,i) += gllWts(ii) * vtend(0,ii);
+      tend(idW,k,j,i) += gllWts(ii) * wtend(0,ii);
     }
 
     // Store the state vector in fwaves to compute fwaves from cell-interface state jumps

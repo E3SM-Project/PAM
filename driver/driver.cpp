@@ -40,20 +40,20 @@ int main(int argc, char** argv) {
     // Output the initial model state
     io.outputInit(state, dom, par);
 
-    // while (dom.etime < dom.simLength) {
-    //   if (dom.etime + dom.dt > dom.simLength) { dom.dt = dom.simLength - dom.etime; }
+    while (dom.etime < dom.simLength) {
+      if (dom.etime + dom.dt > dom.simLength) { dom.dt = dom.simLength - dom.etime; }
 
-    //   yakl::fence();
-    //   tint.stepForward(state, dom, exch, par);
-    //   yakl::fence();
+      yakl::fence();
+      tint.stepForward(state, dom, exch, par);
+      yakl::fence();
 
-    //   dom.etime += dom.dt;
-    //   if (par.masterproc && nstep%100 == 0) {std::cout << dom.etime << "\n";}
+      dom.etime += dom.dt;
+      if (par.masterproc && nstep%100 == 0) {std::cout << dom.etime << "\n";}
 
-    //   io.output(state, dom, par);
+      io.output(state, dom, par);
 
-    //   nstep += 1;
-    // }
+      nstep += 1;
+    }
   }
 
   int ierr = MPI_Finalize();
