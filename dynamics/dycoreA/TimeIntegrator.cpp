@@ -32,7 +32,7 @@ void TimeIntegrator::stepForwardADER(realArr &state, Domain &dom, Exchange &exch
     // tendencies.compEulerTend_S(state, dom, tend);
     // applyTendencies( state , tend, dom);
   } else {
-    // dsSwitch = 1;
+    dsSwitch = 1;
     // tendencies.compEulerTend_S(state, dom, tend);
     // applyTendencies( state , tend, dom);
     // dom.dt /= 2;
@@ -40,7 +40,7 @@ void TimeIntegrator::stepForwardADER(realArr &state, Domain &dom, Exchange &exch
     // applyTendencies( state , tend, dom);
     // tendencies.compEulerTend_Z(state, dom, tend);
     // applyTendencies( state , tend, dom);
-    dom.dt *= 2;
+    // dom.dt *= 2;
     if (!dom.run2d) {
       tendencies.compEulerTend_Y(state, dom, exch, par, tend);
       applyTendencies( state , tend, dom);
@@ -52,13 +52,13 @@ void TimeIntegrator::stepForwardADER(realArr &state, Domain &dom, Exchange &exch
 
 
 
-void TimeIntegrator::applyTendencies(realArr &state2, realArr const &tend, Domain const &dom) {
+void TimeIntegrator::applyTendencies(realArr &state, realArr const &tend, Domain const &dom) {
   // for (int l=0; l<numState; l++) {
   //   for (int k=0; k<dom.nz; k++) {
   //     for (int j=0; j<dom.ny; j++) {
   //       for (int i=0; i<dom.nx; i++) {
   yakl::parallel_for( numState,dom.nz,dom.ny,dom.nx , YAKL_LAMBDA (int l, int k, int j, int i) {
-    state2(l,hs+k,hs+j,hs+i) += dom.dt * tend(l,k,j,i);
+    state(l,hs+k,hs+j,hs+i) += dom.dt * tend(l,k,j,i);
   });
 }
 
