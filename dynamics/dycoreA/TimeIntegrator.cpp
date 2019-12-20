@@ -24,17 +24,21 @@ void TimeIntegrator::stepForwardADER(realArr &state, Domain &dom, Exchange &exch
       applyTendencies( state , tend, dom);
     }
     dom.dt /= 2;
-    tendencies.compEulerTend_Z(state, dom, exch, par, tend);
+    tendencies.compEulerTend_Z(state, dom, tend);
     applyTendencies( state , tend, dom);
-    tendencies.compEulerTend_Z(state, dom, exch, par, tend);
+    tendencies.compEulerTend_Z(state, dom, tend);
     applyTendencies( state , tend, dom);
     dom.dt *= 2;
+    tendencies.compEulerTend_S(state, dom, tend);
+    applyTendencies( state , tend, dom);
   } else {
     dsSwitch = 1;
-    dom.dt /= 2;
-    tendencies.compEulerTend_Z(state, dom, exch, par, tend);
+    tendencies.compEulerTend_S(state, dom, tend);
     applyTendencies( state , tend, dom);
-    tendencies.compEulerTend_Z(state, dom, exch, par, tend);
+    dom.dt /= 2;
+    tendencies.compEulerTend_Z(state, dom, tend);
+    applyTendencies( state , tend, dom);
+    tendencies.compEulerTend_Z(state, dom, tend);
     applyTendencies( state , tend, dom);
     dom.dt *= 2;
     if (!dom.run2d) {

@@ -6,6 +6,30 @@
 #include "SArray.h"
 
 
+///////////////////////////////////////////////////////////////////////////////////////////
+// Computes tord-1 time derivatives of rho, u, v, w, p, utend, vtend, and wtend using
+// Differential Transforms in the time dimension using the x-direction flux Jacobian.
+// This uses vector form for density to save calculations and Jacobian form for everything
+// else. 
+// 
+// INPUTS
+//   state: state values at tord GLL points stored in state(:,0,:). This routine expects
+//          full density and pressure, not perturbations. dims are (var,time,space)
+//   deriv: spatial derivative values at tord GLL points stored in deriv(:,0,:). drho and
+//          dp can be perturbation or full differentials. dims are (var,time,space)
+//   deriv_mat: Matrix that transforms tord GLL points into the spatial derivative stored
+//              at the same tord GLL points.
+// 
+// OUTPUTS
+//   state: 0th- to (tord-1)th-order time derivatives of the state values
+//   deriv: 0th- to (tord-1)th-order time derivatives of the state spatial derivatives
+//   utend: 0th- to (tord-1)th-order time derivatives of the u-tendency (RHS)
+//          dims are (time,space)
+//   vtend: 0th- to (tord-1)th-order time derivatives of the v-tendency (RHS)
+//          dims are (time,space)
+//   wtend: 0th- to (tord-1)th-order time derivatives of the w-tendency (RHS)
+//          dims are (time,space)
+///////////////////////////////////////////////////////////////////////////////////////////
 YAKL_INLINE void diffTransformEulerX( SArray<real,numState,tord,tord> &state, 
                                       SArray<real,numState,tord,tord> &deriv,
                                       SArray<real         ,tord,tord> &utend,
@@ -16,9 +40,12 @@ YAKL_INLINE void diffTransformEulerX( SArray<real,numState,tord,tord> &state,
   SArray<real,tord,tord> tmp_u_dp;    // u*dp/dx
   SArray<real,tord,tord> tmp_rr_dp;   // (1/rho)*dp/dx
   SArray<real,tord,tord> tmp_p_du;    // p*du/dx
+  // utend will be used to store u*du
+  // vtend will be used to store u*dv
+  // wtend will be used to store u*dw
 
   // The term (dp/dx)/rho involves division. Because of this, the time DTs
-  // must be zeroed out to kill the term that would otherwise look like recursion
+  // must be zeroed out to kill the term that would cause a term to depends on itself
   for (int kt=1; kt<tord; kt++) {
     for (int ii=0; ii<tord; ii++) {
       tmp_rr_dp(kt,ii) = 0;
@@ -34,7 +61,6 @@ YAKL_INLINE void diffTransformEulerX( SArray<real,numState,tord,tord> &state,
     real w  = state(idW,0,ii);
     real p  = state(idT,0,ii);
     // state derivatives
-    real dr = deriv(idR,0,ii);
     real du = deriv(idU,0,ii);
     real dv = deriv(idV,0,ii);
     real dw = deriv(idW,0,ii);
@@ -53,7 +79,7 @@ YAKL_INLINE void diffTransformEulerX( SArray<real,numState,tord,tord> &state,
   // Loop over the time derivatives, computing the (kt+1)th time DTs in each iteration
   for (int kt=0; kt<tord-1; kt++) {
 
-    // Compute (kt+1)th DT of u, v, w, and p
+    // Compute (kt+1)th DT of u, v, w, and p (Jacobian form)
     for (int ii=0; ii<tord; ii++) {
       state(idU,kt+1,ii) = -(utend   (kt,ii) +      tmp_rr_dp(kt,ii))/(kt+1);  // u
       state(idV,kt+1,ii) = -(vtend   (kt,ii)                        )/(kt+1);  // v
@@ -61,9 +87,9 @@ YAKL_INLINE void diffTransformEulerX( SArray<real,numState,tord,tord> &state,
       state(idT,kt+1,ii) = -(tmp_u_dp(kt,ii) + GAMMA*tmp_p_du(kt,ii))/(kt+1);  // p
     }
 
-    // Compute (kt+1)th DT of rho
+    // Compute (kt+1)th DT of rho (vector form)
     for (int ii=0; ii<tord; ii++) {
-      real drflux_dx  = 0;
+      real drflux_dx = 0;
       // Matrix-vector multiply against the spatial differentiation matrix
       for (int s=0; s<tord; s++) {
         drflux_dx += deriv_mat(s,ii) * tmp_r_u(kt,s);
@@ -84,8 +110,8 @@ YAKL_INLINE void diffTransformEulerX( SArray<real,numState,tord,tord> &state,
     }
 
     // Compute the (kt+1)th DT of all temporary variables
-    // Nearly all of these are of the form f*g
-    // Except for (dp/dx)/rho, which is of the form f/g
+    // Nearly all of these use the non-linear transform form: f*g
+    // Except for (dp/dx)/rho, which is of the form: f/g
     for (int ii=0; ii<tord; ii++) {
       real tot_tmp_r_u   = 0;
       real tot_tmp_u_du  = 0;
@@ -125,6 +151,30 @@ YAKL_INLINE void diffTransformEulerX( SArray<real,numState,tord,tord> &state,
 
 
 
+///////////////////////////////////////////////////////////////////////////////////////////
+// Computes tord-1 time derivatives of rho, u, v, w, p, utend, vtend, and wtend using
+// Differential Transforms in the time dimension using the y-direction flux Jacobian
+// This uses vector form for density to save calculations and Jacobian form for everything
+// else. 
+// 
+// INPUTS
+//   state: state values at tord GLL points stored in state(:,0,:). This routine expects
+//          full density and pressure, not perturbations. dims are (var,time,space)
+//   deriv: spatial derivative values at tord GLL points stored in deriv(:,0,:). drho and
+//          dp can be perturbation or full differentials. dims are (var,time,space)
+//   deriv_mat: Matrix that transforms tord GLL points into the spatial derivative stored
+//              at the same tord GLL points.
+// 
+// OUTPUTS
+//   state: 0th- to (tord-1)th-order time derivatives of the state values
+//   deriv: 0th- to (tord-1)th-order time derivatives of the state spatial derivatives
+//   utend: 0th- to (tord-1)th-order time derivatives of the u-tendency (RHS)
+//          dims are (time,space)
+//   vtend: 0th- to (tord-1)th-order time derivatives of the v-tendency (RHS)
+//          dims are (time,space)
+//   wtend: 0th- to (tord-1)th-order time derivatives of the w-tendency (RHS)
+//          dims are (time,space)
+///////////////////////////////////////////////////////////////////////////////////////////
 YAKL_INLINE void diffTransformEulerY( SArray<real,numState,tord,tord> &state, 
                                       SArray<real,numState,tord,tord> &deriv,
                                       SArray<real         ,tord,tord> &utend,
@@ -135,6 +185,9 @@ YAKL_INLINE void diffTransformEulerY( SArray<real,numState,tord,tord> &state,
   SArray<real,tord,tord> tmp_v_dp;    // v*dp/dy
   SArray<real,tord,tord> tmp_rr_dp;   // (1/rho)*dp/dy
   SArray<real,tord,tord> tmp_p_dv;    // p*dv/dy
+  // utend will be used to store v*du
+  // vtend will be used to store v*dv
+  // wtend will be used to store v*dw
 
   // The term (dp/dy)/rho involves division. Because of this, the time DTs
   // must be zeroed out to kill the term that would otherwise look like recursion
@@ -243,6 +296,32 @@ YAKL_INLINE void diffTransformEulerY( SArray<real,numState,tord,tord> &state,
 
 
 
+///////////////////////////////////////////////////////////////////////////////////////////
+// Computes tord-1 time derivatives of rho, u, v, w, p, utend, vtend, and wtend using
+// Differential Transforms in the time dimension using the z-direction flux Jacobian
+// This uses vector form for density to save calculations and Jacobian form for everything
+// else. 
+// 
+// INPUTS
+//   state: state values at tord GLL points stored in state(:,0,:). This routine expects
+//          full density and pressure, not perturbations. dims are (var,time,space)
+//   deriv: spatial derivative values at tord GLL points stored in deriv(:,0,:). dp must
+//          be the spatial derivative of perturbation pressure, not full pressure.
+//   deriv_mat: Matrix that transforms tord GLL points into the spatial derivative stored
+//              at the same tord GLL points.
+//   dph: hydrostatic pressure spatial derivative in the vertical direction at tord GLL
+//        points. Used to add hydrostatic balance in pressure advection term
+// 
+// OUTPUTS
+//   state: 0th- to (tord-1)th-order time derivatives of the state values
+//   deriv: 0th- to (tord-1)th-order time derivatives of the state spatial derivatives
+//   utend: 0th- to (tord-1)th-order time derivatives of the u-tendency (RHS)
+//          dims are (time,space)
+//   vtend: 0th- to (tord-1)th-order time derivatives of the v-tendency (RHS)
+//          dims are (time,space)
+//   wtend: 0th- to (tord-1)th-order time derivatives of the w-tendency (RHS)
+//          dims are (time,space)
+///////////////////////////////////////////////////////////////////////////////////////////
 YAKL_INLINE void diffTransformEulerZ( SArray<real,numState,tord,tord> &state, 
                                       SArray<real,numState,tord,tord> &deriv,
                                       SArray<real         ,tord,tord> &utend,
@@ -254,6 +333,9 @@ YAKL_INLINE void diffTransformEulerZ( SArray<real,numState,tord,tord> &state,
   SArray<real,tord,tord> tmp_w_dp;    // w*dp/dz
   SArray<real,tord,tord> tmp_rr_dp;   // (1/rho)*dp'/dz
   SArray<real,tord,tord> tmp_p_dw;    // p*dw/dz
+  // utend will be used to store w*du
+  // vtend will be used to store w*dv
+  // wtend will be used to store w*dw
 
   // The term (dp/dz)/rho involves division. Because of this, the time DTs
   // must be zeroed out to kill the term that would otherwise look like recursion
@@ -362,7 +444,17 @@ YAKL_INLINE void diffTransformEulerZ( SArray<real,numState,tord,tord> &state,
 
 
 
-
+////////////////////////////////////////////////////////////////////////////////////
+// Compute the time average from tord-1 time derivatives at tord GLL points in
+// space, and store into the 0th index in time for an array of numState variables
+// 
+// INPUTS
+//   dts: tord-1 time derivatives of numState varaibles at tord GLL points in space
+//   dom: Domain class object (needed for time step size)
+// OUTPUTS
+//   dts: time-average of numState variables at tord GLL points in space stored in
+//        the 0th time index
+////////////////////////////////////////////////////////////////////////////////////
 YAKL_INLINE void timeAvg( SArray<real,numState,tord,tord> &dts , Domain const &dom ) {
   real dtmult = dom.dt;
   for (int kt=1; kt<tord; kt++) {
@@ -377,6 +469,17 @@ YAKL_INLINE void timeAvg( SArray<real,numState,tord,tord> &dts , Domain const &d
 
 
 
+////////////////////////////////////////////////////////////////////////////////////
+// Compute the time average from tord-1 time derivatives at tord GLL points in
+// space, and store into the 0th index in time for a single varaible
+// 
+// INPUTS
+//   dts: tord-1 time derivatives of one varaible at tord GLL points in space
+//   dom: Domain class object (needed for time step size)
+// OUTPUTS
+//   dts: time-average of one varaible at tord GLL points in space stored in
+//        the 0th time index
+////////////////////////////////////////////////////////////////////////////////////
 YAKL_INLINE void timeAvg( SArray<real,tord,tord> &dts , Domain const &dom ) {
   real dtmult = dom.dt;
   for (int kt=1; kt<tord; kt++) {

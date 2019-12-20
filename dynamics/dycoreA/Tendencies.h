@@ -56,9 +56,9 @@ public :
 
   void compEulerTend_Y(realArr &state, Domain const &dom, Exchange &exch, Parallel const &par, realArr &tend);
 
-  void compEulerTend_Z(realArr &state, Domain const &dom, Exchange &exch, Parallel const &par, realArr &tend);
+  void compEulerTend_Z(realArr &state, Domain const &dom                                     , realArr &tend);
 
-  void compEulerTend_S(realArr &state, Domain const &dom, Exchange &exch, Parallel const &par, realArr &tend);
+  void compEulerTend_S(realArr const &state, Domain const &dom                               , realArr &tend);
 
   void stateBoundariesZ(realArr &state, Domain const &dom);
 
