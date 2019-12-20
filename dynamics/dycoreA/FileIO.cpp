@@ -213,8 +213,7 @@ void FileIO::writeState(realArr &state, Domain const &dom, Parallel const &par) 
     real re = state(idT,hs+k,hs+j,hs+i) + dom.hyEnergyCells(hs+k);
     real ke = r*(u*u+v*v+w*w)/2;
     real p = (RD/CV)*(re-ke);
-    real temp = p/(r*RD);
-    real theta = temp*pow(P0/p,RD/CP);
+    real theta = pow( p/C0 , 1._fp/GAMMA ) / r;   //  p = C0*pow(rho*theta,GAMMA)
     data(k,j,i) = theta - dom.hyThetaCells(hs+k);
   });
   ncwrap( ncmpi_put_vara_float_all( ncid , thVar , st , ct , data.createHostCopy().data() ) , __LINE__ );

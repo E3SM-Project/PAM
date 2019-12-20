@@ -655,6 +655,8 @@ void Tendencies::compEulerTend_Z(realArr &state, Domain const &dom, realArr &ten
       stateDTs(idR,0,ii) += dom.hyDensGLL    (k,ii);
       stateDTs(idT,0,ii) += dom.hyPressureGLL(k,ii);
     }
+    if (k == dom.nz-1) { stateDTs(idW,0,tord-1) = 0; }
+    if (k == 0       ) { stateDTs(idW,0,0     ) = 0; }
 
     // Compute tord-1 time derivatives of the state, state spatial derivatives, 
     // u RHS, v RHS, and w RHS using temporal Differential Transforms
@@ -667,6 +669,8 @@ void Tendencies::compEulerTend_Z(realArr &state, Domain const &dom, realArr &ten
     timeAvg( utend    , dom );
     timeAvg( vtend    , dom );
     timeAvg( wtend    , dom );
+    if (k == dom.nz-1) { stateDTs(idW,0,tord-1) = 0; }
+    if (k == 0       ) { stateDTs(idW,0,0     ) = 0; }
 
     // Compute the local tendency contribution for high-order flux difference
     // splitting for wind via quadrature
