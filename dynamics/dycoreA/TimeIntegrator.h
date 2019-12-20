@@ -9,6 +9,7 @@
 
 class TimeIntegrator {
 
+  realArr stateTmp;
   realArr tend;
   Tendencies tendencies;
   int dsSwitch;
@@ -26,6 +27,9 @@ public :
 
 
   void applyTendencies(realArr &state2, realArr const &tend, Domain const &dom);
+
+
+  void applyTendencies(realArr &stateFinal, realArr const &state0, real dt, realArr const &tend, Domain const &dom);
 
 
 };

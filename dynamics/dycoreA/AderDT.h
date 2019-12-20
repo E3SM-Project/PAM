@@ -364,7 +364,7 @@ YAKL_INLINE void diffTransformEulerZ( SArray<real,numState,tord,tord> &state,
     utend    (0,ii) = w*du;
     vtend    (0,ii) = w*dv;
     wtend    (0,ii) = w*dw;
-    tmp_w_dp (0,ii) = w*(dp+dph(ii));
+    tmp_w_dp (0,ii) = w*dp;
     tmp_rr_dp(0,ii) = dp/r;
     tmp_p_dw (0,ii) = p*dw;
   } // ii-loop
@@ -456,15 +456,15 @@ YAKL_INLINE void diffTransformEulerZ( SArray<real,numState,tord,tord> &state,
 //        the 0th time index
 ////////////////////////////////////////////////////////////////////////////////////
 YAKL_INLINE void timeAvg( SArray<real,numState,tord,tord> &dts , Domain const &dom ) {
-  real dtmult = dom.dt;
-  for (int kt=1; kt<tord; kt++) {
-    for (int l=0; l<numState; l++) {
-      for (int ii=0; ii<tord; ii++) {
-        dts(l,0,ii) += dts(l,kt,ii) * dtmult / (kt+1);
-      }
-    }
-    dtmult *= dom.dt;
-  }
+  // real dtmult = dom.dt;
+  // for (int kt=1; kt<tord; kt++) {
+  //   for (int l=0; l<numState; l++) {
+  //     for (int ii=0; ii<tord; ii++) {
+  //       dts(l,0,ii) += dts(l,kt,ii) * dtmult / (kt+1);
+  //     }
+  //   }
+  //   dtmult *= dom.dt;
+  // }
 }
 
 
@@ -481,13 +481,13 @@ YAKL_INLINE void timeAvg( SArray<real,numState,tord,tord> &dts , Domain const &d
 //        the 0th time index
 ////////////////////////////////////////////////////////////////////////////////////
 YAKL_INLINE void timeAvg( SArray<real,tord,tord> &dts , Domain const &dom ) {
-  real dtmult = dom.dt;
-  for (int kt=1; kt<tord; kt++) {
-    for (int ii=0; ii<tord; ii++) {
-      dts(0,ii) += dts(kt,ii) * dtmult / (kt+1);
-    }
-    dtmult *= dom.dt;
-  }
+  // real dtmult = dom.dt;
+  // for (int kt=1; kt<tord; kt++) {
+  //   for (int ii=0; ii<tord; ii++) {
+  //     dts(0,ii) += dts(kt,ii) * dtmult / (kt+1);
+  //   }
+  //   dtmult *= dom.dt;
+  // }
 }
 
 
