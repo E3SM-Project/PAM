@@ -102,33 +102,16 @@ void Tendencies::compEulerTend_X(realArr &state, Domain const &dom, Exchange &ex
   yakl::parallel_for( dom.nz*dom.ny*dom.nx , YAKL_LAMBDA ( int const iGlob ) {
     int k, j, i;
     yakl::unpackIndices(iGlob,dom.nz,dom.ny,dom.nx,k,j,i);
-    SArray<real,numState,tord,tord> stateDTs;  // GLL state DTs (var,time,space)
-    SArray<real,numState,tord,tord> derivDTs;  // GLL deriv DTs (var,time,space)
-    SArray<real         ,tord,tord> utend   ;  // DTs of u RHS      (time,space)
-    SArray<real         ,tord,tord> vtend   ;  // DTs of v RHS      (time,space)
-    SArray<real         ,tord,tord> wtend   ;  // DTs of w RHS      (time,space)
-
+    SArray<real,numState,tord,tord> stateDTs;  // GLL state DTs    (var,time,space)
+    SArray<real,numState,tord,tord> derivDTs;  // GLL deriv DTs    (var,time,space)
+    SArray<real,numState,tord,tord> tendDTs ;  // GLL tendency DTs (var,time,space)
     // Compute tord GLL points of the fluid state and spatial derivative
-    for (int l=0; l<numState; l++) {
+    for (int l=0; l<numState+1; l++) {
       SArray<real,ord> stencil;
       SArray<real,tord> gllPts;
       // Store the stencil values
-      // REMINDER: idT stands for idThermodynamic. It's meant to be general
-      if (l != idT) {  // rho perturbation, u, v, and w
-        for (int ii=0; ii<ord; ii++) {
-          stencil(ii) = state(l,hs+k,hs+j,i+ii);
-        }
-      } else {         // pressure perturbation
-        for (int ii=0; ii<ord; ii++) {
-          real r  = state(idR,hs+k,hs+j,i+ii) + dom.hyDensCells  (hs+k);
-          real u  = state(idU,hs+k,hs+j,i+ii);
-          real v  = state(idV,hs+k,hs+j,i+ii);
-          real w  = state(idW,hs+k,hs+j,i+ii);
-          real re = state(idT,hs+k,hs+j,i+ii) + dom.hyEnergyCells(hs+k);
-          real ke = 0.5_fp*r*(u*u+v*v+w*w);
-          real p = RD/CV*(re-ke);
-          stencil(ii) = p - dom.hyPressureCells(hs+k);
-        }
+      for (int ii=0; ii<ord; ii++) {
+        stencil(ii) = state(l,hs+k,hs+j,i+ii);
       }
 
       // Reconstruct and store GLL points of the state values
