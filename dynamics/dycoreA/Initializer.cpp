@@ -225,8 +225,11 @@ void initialize(realArr &state, Domain &dom, Parallel &par, Exchange &exch, Time
 
           real wt = gllOrdWeights(ii)*gllOrdWeights(jj)*gllOrdWeights(kk);
 
+          real p  = C0*pow((r0+r)*(t0+t),GAMMA);
+          real ph = C0*pow(r0*t0,GAMMA);
+
           state(idR,hs+k,hs+j,hs+i) += wt * r;
-          state(idT,hs+k,hs+j,hs+i) += wt * t;
+          state(idT,hs+k,hs+j,hs+i) += wt * (p-ph);
         }
       }
     }
@@ -243,8 +246,7 @@ void initialize(realArr &state, Domain &dom, Parallel &par, Exchange &exch, Time
     real u  = state(idU,hs+k,hs+j,hs+i);
     real v  = state(idV,hs+k,hs+j,hs+i);
     real w  = state(idW,hs+k,hs+j,hs+i);
-    real t  = state(idT,hs+k,hs+j,hs+i) + dom.hyThetaCells(hs+k);
-    real p  = C0*pow(r*t,GAMMA);
+    real p  = state(idT,hs+k,hs+j,hs+i) + dom.hyPressureCells(hs+k);
     real cs = sqrt( GAMMA * p / r );
 
     // Compute the max wave

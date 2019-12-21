@@ -104,9 +104,9 @@ void Tendencies::compEulerTend_X(realArr &state, Domain const &dom, Exchange &ex
     yakl::unpackIndices(iGlob,dom.nz,dom.ny,dom.nx,k,j,i);
     SArray<real,numState,tord,tord> stateDTs;  // GLL state DTs    (var,time,space)
     SArray<real,numState,tord,tord> derivDTs;  // GLL deriv DTs    (var,time,space)
-    SArray<real,numState,tord,tord> tendDTs ;  // GLL tendency DTs (var,time,space)
+    SArray<real,         tord,tord> utend, vtend, wtend ;  // GLL tendency DTs (var,time,space)
     // Compute tord GLL points of the fluid state and spatial derivative
-    for (int l=0; l<numState+1; l++) {
+    for (int l=0; l<numState; l++) {
       SArray<real,ord> stencil;
       SArray<real,tord> gllPts;
       // Store the stencil values

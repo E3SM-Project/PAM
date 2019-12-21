@@ -16,135 +16,38 @@ void TimeIntegrator::stepForward(realArr &state, Domain &dom, Exchange &exch, Pa
 
 
 void TimeIntegrator::stepForwardADER(realArr &state, Domain &dom, Exchange &exch, Parallel const &par) {
-  // if (dsSwitch) {
-  //   dsSwitch = 0;
-  //   tendencies.compEulerTend_X(state, dom, exch, par, tend);
-  //   applyTendencies( state , tend, dom);
-  //   if (!dom.run2d) {
-  //     tendencies.compEulerTend_Y(state, dom, exch, par, tend);
-  //     applyTendencies( state , tend, dom);
-  //   }
-  //   dom.dt /= 2;
-  //   tendencies.compEulerTend_Z(state, dom, tend);
-  //   applyTendencies( state , tend, dom);
-  //   tendencies.compEulerTend_Z(state, dom, tend);
-  //   applyTendencies( state , tend, dom);
-  //   dom.dt *= 2;
-  //   tendencies.compEulerTend_S(state, dom, tend);
-  //   applyTendencies( state , tend, dom);
-  // } else {
-  //   dsSwitch = 1;
-  //   tendencies.compEulerTend_S(state, dom, tend);
-  //   applyTendencies( state , tend, dom);
-  //   dom.dt /= 2;
-  //   tendencies.compEulerTend_Z(state, dom, tend);
-  //   applyTendencies( state , tend, dom);
-  //   tendencies.compEulerTend_Z(state, dom, tend);
-  //   applyTendencies( state , tend, dom);
-  //   dom.dt *= 2;
-  //   if (!dom.run2d) {
-  //     tendencies.compEulerTend_Y(state, dom, exch, par, tend);
-  //     applyTendencies( state , tend, dom);
-  //   }
-  //   tendencies.compEulerTend_X(state, dom, exch, par, tend);
-  //   applyTendencies( state , tend, dom);
-  // }
-
-
-
-
   if (dsSwitch) {
-
     dsSwitch = 0;
-
-    // Stage 1
-    tendencies.compEulerTend_X(state   , dom, exch, par, tend);
-    applyTendencies( stateTmp , state , dom.dt/3 , tend , dom);
-    // Stage 2
-    tendencies.compEulerTend_X(stateTmp, dom, exch, par, tend);
-    applyTendencies( stateTmp , state , dom.dt/2 , tend , dom);
-    // Stage 3
-    tendencies.compEulerTend_X(stateTmp, dom, exch, par, tend);
-    applyTendencies( state    , state , dom.dt/1 , tend , dom);
-
+    tendencies.compEulerTend_X(state, dom, exch, par, tend);
+    applyTendencies( state , tend, dom);
     if (!dom.run2d) {
-      // Stage 1
-      tendencies.compEulerTend_Y(state   , dom, exch, par, tend);
-      applyTendencies( stateTmp , state , dom.dt/3 , tend , dom);
-      // Stage 2
-      tendencies.compEulerTend_Y(stateTmp, dom, exch, par, tend);
-      applyTendencies( stateTmp , state , dom.dt/2 , tend , dom);
-      // Stage 3
-      tendencies.compEulerTend_Y(stateTmp, dom, exch, par, tend);
-      applyTendencies( state    , state , dom.dt/1 , tend , dom);
+      tendencies.compEulerTend_Y(state, dom, exch, par, tend);
+      applyTendencies( state , tend, dom);
     }
-
-    // Stage 1
-    tendencies.compEulerTend_Z(state   , dom, tend);
-    applyTendencies( stateTmp , state , dom.dt/3 , tend , dom);
-    // Stage 2
-    tendencies.compEulerTend_Z(stateTmp, dom, tend);
-    applyTendencies( stateTmp , state , dom.dt/2 , tend , dom);
-    // Stage 3
-    tendencies.compEulerTend_Z(stateTmp, dom, tend);
-    applyTendencies( state    , state , dom.dt/1 , tend , dom);
-
-    // Stage 1
-    tendencies.compEulerTend_S(state   , dom, tend);
-    applyTendencies( stateTmp , state , dom.dt/3 , tend , dom);
-    // Stage 2
-    tendencies.compEulerTend_S(stateTmp, dom, tend);
-    applyTendencies( stateTmp , state , dom.dt/2 , tend , dom);
-    // Stage 3
-    tendencies.compEulerTend_S(stateTmp, dom, tend);
-    applyTendencies( state    , state , dom.dt/1 , tend , dom);
-
+    dom.dt /= 2;
+    tendencies.compEulerTend_Z(state, dom, tend);
+    applyTendencies( state , tend, dom);
+    tendencies.compEulerTend_Z(state, dom, tend);
+    applyTendencies( state , tend, dom);
+    dom.dt *= 2;
+    tendencies.compEulerTend_S(state, dom, tend);
+    applyTendencies( state , tend, dom);
   } else {
-
     dsSwitch = 1;
-
-    // Stage 1
-    tendencies.compEulerTend_S(state   , dom, tend);
-    applyTendencies( stateTmp , state , dom.dt/3 , tend , dom);
-    // Stage 2
-    tendencies.compEulerTend_S(stateTmp, dom, tend);
-    applyTendencies( stateTmp , state , dom.dt/2 , tend , dom);
-    // Stage 3
-    tendencies.compEulerTend_S(stateTmp, dom, tend);
-    applyTendencies( state    , state , dom.dt/1 , tend , dom);
-
-    // Stage 1
-    tendencies.compEulerTend_Z(state   , dom, tend);
-    applyTendencies( stateTmp , state , dom.dt/3 , tend , dom);
-    // Stage 2
-    tendencies.compEulerTend_Z(stateTmp, dom, tend);
-    applyTendencies( stateTmp , state , dom.dt/2 , tend , dom);
-    // Stage 3
-    tendencies.compEulerTend_Z(stateTmp, dom, tend);
-    applyTendencies( state    , state , dom.dt/1 , tend , dom);
-
+    tendencies.compEulerTend_S(state, dom, tend);
+    applyTendencies( state , tend, dom);
+    dom.dt /= 2;
+    tendencies.compEulerTend_Z(state, dom, tend);
+    applyTendencies( state , tend, dom);
+    tendencies.compEulerTend_Z(state, dom, tend);
+    applyTendencies( state , tend, dom);
+    dom.dt *= 2;
     if (!dom.run2d) {
-      // Stage 1
-      tendencies.compEulerTend_Y(state   , dom, exch, par, tend);
-      applyTendencies( stateTmp , state , dom.dt/3 , tend , dom);
-      // Stage 2
-      tendencies.compEulerTend_Y(stateTmp, dom, exch, par, tend);
-      applyTendencies( stateTmp , state , dom.dt/2 , tend , dom);
-      // Stage 3
-      tendencies.compEulerTend_Y(stateTmp, dom, exch, par, tend);
-      applyTendencies( state    , state , dom.dt/1 , tend , dom);
+      tendencies.compEulerTend_Y(state, dom, exch, par, tend);
+      applyTendencies( state , tend, dom);
     }
-
-    // Stage 1
-    tendencies.compEulerTend_X(state   , dom, exch, par, tend);
-    applyTendencies( stateTmp , state , dom.dt/3 , tend , dom);
-    // Stage 2
-    tendencies.compEulerTend_X(stateTmp, dom, exch, par, tend);
-    applyTendencies( stateTmp , state , dom.dt/2 , tend , dom);
-    // Stage 3
-    tendencies.compEulerTend_X(stateTmp, dom, exch, par, tend);
-    applyTendencies( state    , state , dom.dt/1 , tend , dom);
-
+    tendencies.compEulerTend_X(state, dom, exch, par, tend);
+    applyTendencies( state , tend, dom);
   }
 }
 
