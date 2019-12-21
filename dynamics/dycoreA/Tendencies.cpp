@@ -104,7 +104,7 @@ void Tendencies::compEulerTend_X(realArr &state, Domain const &dom, Exchange &ex
     yakl::unpackIndices(iGlob,dom.nz,dom.ny,dom.nx,k,j,i);
     SArray<real,numState,tord,tord> stateDTs;  // GLL state DTs    (var,time,space)
     SArray<real,numState,tord,tord> derivDTs;  // GLL deriv DTs    (var,time,space)
-    SArray<real,         tord,tord> utend, vtend, wtend ;  // GLL tendency DTs (var,time,space)
+    SArray<real,numState,tord,tord> tendDTs;   // GLL tendency DTs (var,time,space)
     // Compute tord GLL points of the fluid state and spatial derivative
     for (int l=0; l<numState; l++) {
       SArray<real,ord> stencil;
@@ -130,24 +130,20 @@ void Tendencies::compEulerTend_X(realArr &state, Domain const &dom, Exchange &ex
 
     // Compute tord-1 time derivatives of the state, state spatial derivatives, 
     // u RHS, v RHS, and w RHS using temporal Differential Transforms
-    diffTransformEulerX( stateDTs, derivDTs, utend, vtend, wtend, aderDerivX );
+    diffTransformEulerX( stateDTs, derivDTs, tendDTs, aderDerivX );
 
     // Compute the time-average and store into the zeroth time index
     timeAvg( stateDTs , dom );
-    timeAvg( utend    , dom );
-    timeAvg( vtend    , dom );
-    timeAvg( wtend    , dom );
+    timeAvg( tendDTs  , dom );
 
     // Compute the local tendency contribution for high-order flux difference
     // splitting for wind via quadrature
     // tend_local = int( RHS , x , x_(i-1/2) , x_(i+1/2) )
-    tend(idU,k,j,i) = 0;
-    tend(idV,k,j,i) = 0;
-    tend(idW,k,j,i) = 0;
-    for (int ii=0; ii<tord; ii++) {
-      tend(idU,k,j,i) += gllWts(ii) * utend(0,ii);
-      tend(idV,k,j,i) += gllWts(ii) * vtend(0,ii);
-      tend(idW,k,j,i) += gllWts(ii) * wtend(0,ii);
+    for (int l=0; l<numState; l++) {
+      tend(l,k,j,i) = 0;
+      for (int ii=0; ii<tord; ii++) {
+        tend(l,k,j,i) += gllWts(ii) * tendDTs(l,0,ii);
+      }
     }
 
     // Store the state vector in stateLimits to compute upwind forcing
@@ -191,102 +187,49 @@ void Tendencies::compEulerTend_X(realArr &state, Domain const &dom, Exchange &ex
     real dv = stateLimits(idV,1,k,j,i) - stateLimits(idV,0,k,j,i);
     real dw = stateLimits(idW,1,k,j,i) - stateLimits(idW,0,k,j,i);
     real dp = stateLimits(idT,1,k,j,i) - stateLimits(idT,0,k,j,i);
-    // state at the left side of the interface
-    real r1 = stateLimits(idR,0,k,j,i);
-    real u1 = stateLimits(idU,0,k,j,i);
-    real v1 = stateLimits(idV,0,k,j,i);
-    real w1 = stateLimits(idW,0,k,j,i);
-    real p1 = stateLimits(idT,0,k,j,i);
-    // state at the right side of the interface
-    real r2 = stateLimits(idR,1,k,j,i);
-    real u2 = stateLimits(idU,1,k,j,i);
-    real v2 = stateLimits(idV,1,k,j,i);
-    real w2 = stateLimits(idW,1,k,j,i);
-    real p2 = stateLimits(idT,1,k,j,i);
-    // Block to force compiler to release df from the stack after the block
-    {
-      // Compute the product of the flux Jacobian and the state jump across the interface (A*dq)
-      SArray<real,numState> df;
-      df(0) = u*dr + r*du;
-      df(1) = u*du + dp/r;
-      df(2) = u*dv;
-      df(3) = u*dw;
-      df(4) = u*dp + GAMMA*p*du;
-      // Zero out the stateLimits space for this spatial index for idU, idV, and idW
-      stateLimits(idU,0,k,j,i) = 0;
-      stateLimits(idV,0,k,j,i) = 0;
-      stateLimits(idW,0,k,j,i) = 0;
-      stateLimits(idU,1,k,j,i) = 0;
-      stateLimits(idV,1,k,j,i) = 0;
-      stateLimits(idW,1,k,j,i) = 0;
-      // Wave 1 (u-cs): presumed always leftward  propagating (no shocks)
-      stateLimits(idU,0,k,j,i) += (-cs/r) * ( -r/(2*cs)*df(1) + df(4)/(2*cs2) );
-      // Wave 2 (u+cs): presumed always rightward propagating (no shocks)
-      stateLimits(idU,1,k,j,i) += ( cs/r) * (  r/(2*cs)*df(1) + df(4)/(2*cs2) );
-      // Wave 3 does only affects density, so it's ignored
-      // Waves 4 and 5 (u): 
-      // If u > zero, it's rightward propagating, otherwise leftward
-      // No need to worry about zero wind speed becaue then the wave is zero anyway
-      if (u > 0) {
-        stateLimits(idV,1,k,j,i) += df(2); // wave 4 (u)
-        stateLimits(idW,1,k,j,i) += df(3); // wave 5 (u)
-      } else {
-        stateLimits(idV,0,k,j,i) += df(2); // wave 4 (u)
-        stateLimits(idW,0,k,j,i) += df(3); // wave 5 (u)
-      }
+    // Compute the product of the flux Jacobian and the state jump across the interface (A*dq)
+    SArray<real,numState> df;
+    df(0) = u*dr + r*du;
+    df(1) = u*du + dp/r;
+    df(2) = u*dv;
+    df(3) = u*dw;
+    df(4) = u*dp + GAMMA*p*du;
+    // Zero out the stateLimits space for this spatial index for idU, idV, and idW
+    for (int l=0; l<numState; l++) {
+      stateLimits(l,0,k,j,i) = 0;
+      stateLimits(l,1,k,j,i) = 0;
     }
-
-    ////////////////////////////////////////////////////////////////////////////
-    // Compute the upwind Flux vector for mass and energy
-    ////////////////////////////////////////////////////////////////////////////
-    // We can re-use the r, u, p, cs2, and cs calculated earlier
-    // Store upwind state based on wind velocity
-    real ru, uu, vu, wu, pu;
+    real ch;
+    // Wave 1 (u-cs): presumed always leftward  propagating (no shocks)
+    ch = -r/(2*cs)*df(1) + df(4)/(2*cs2);
+    stateLimits(idR,0,k,j,i) += ch;
+    stateLimits(idU,0,k,j,i) += -cs/r * ch;
+    stateLimits(idT,0,k,j,i) += cs2 * ch;
+    // Wave 2 (u+cs): presumed always rightward propagating (no shocks)
+    ch =  r/(2*cs)*df(1) + df(4)/(2*cs2);
+    stateLimits(idR,1,k,j,i) += ch;
+    stateLimits(idU,1,k,j,i) += cs/r * ch;
+    stateLimits(idT,1,k,j,i) += cs2 * ch;
     if (u > 0) {
-      ru = r1;  uu = u1;  vu = v1;  wu = w1;  pu = p1;
+      stateLimits(idR,1,k,j,i) += df(0) - df(4)/cs2;  // Wave 3 (u)
+      stateLimits(idV,1,k,j,i) += df(2);              // Wave 4 (u)
+      stateLimits(idW,1,k,j,i) += df(3);              // Wave 5 (u)
     } else {
-      ru = r2;  uu = u2;  vu = v2;  wu = w2;  pu = p2;
+      stateLimits(idR,0,k,j,i) += df(0) - df(4)/cs2;  // Wave 3 (u)
+      stateLimits(idV,0,k,j,i) += df(2);              // Wave 4 (u)
+      stateLimits(idW,0,k,j,i) += df(3);              // Wave 5 (u)
     }
-    // The next two sections compute the upwind state vector defined by rho, u, v, w, p
-    // First, compute upwind characteristic variables
-    SArray<real,numState> chu;  // upwind characteristic variables
-    chu(0) = -r/(2*cs)*u2 + p2/(2*cs2); // u-cs wave: assuming no shocks
-    chu(1) =  r/(2*cs)*u1 + p1/(2*cs2); // u+cs wave: assuming no shocks
-    chu(2) = ru - pu/cs2;
-    chu(3) = vu;
-    chu(4) = wu;
-    // Next, compute the upwind state based on upwind characteristic variables
-    ru =     chu(0)   +     chu(1)   + chu(2);
-    uu = -cs*chu(0)/r +  cs*chu(1)/r;
-    vu =                                       chu(3);
-    wu =                                               chu(4);
-    pu = cs2*chu(0)   + cs2*chu(1);
-    // Finally, compute the upwind flux based on the upwind state
-    real keu = 0.5_fp*ru*(uu*uu+vu*vu+wu*wu); // upwind kinetic energy
-    real reu = pu*CV/RD + keu;                // upwind rho*e
-    flux_r (k,j,i) = ru*uu;                   // upwind mass flux
-    flux_re(k,j,i) = uu*reu + uu*pu;          // upwind energy flux
   });
 
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////
-  // For each cell:
-  // (1) Append the u, v, and w tendencies with the flux difference splitting waves entering the cell
-  //     domain
-  // (2) Compute the rho and rho*e tendencies using the upwind flux vectors
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////
+  // for (int l=0; l<numState; l++) {
   //   for (int k=0; k<dom.nz; k++) {
   //     for (int j=0; j<dom.ny; j++) {
   //       for (int i=0; i<dom.nx; i++) {
-  yakl::parallel_for( dom.nz*dom.ny*dom.nx , YAKL_LAMBDA (int const iGlob) {
+  yakl::parallel_for( numState*dom.nz*dom.ny*dom.nx , YAKL_LAMBDA (int const iGlob) {
     int l, k, j, i;
-    yakl::unpackIndices(iGlob,dom.nz,dom.ny,dom.nx,k,j,i);
-    // Flux vector form update for mass and energy
-    tend(idR,k,j,i)  = - ( flux_r (k,j,i+1) - flux_r (k,j,i) ) / dom.dx;  // mass tendency
-    tend(idT,k,j,i)  = - ( flux_re(k,j,i+1) - flux_re(k,j,i) ) / dom.dx;  // energy tendency
+    yakl::unpackIndices(iGlob,numState,dom.nz,dom.ny,dom.nx,l,k,j,i);
     // Flux difference splitting form update for velocities
-    tend(idU,k,j,i) += - ( stateLimits(idU,1,k,j,i) + stateLimits(idU,0,k,j,i+1) ) / dom.dx;  // u tendency
-    tend(idV,k,j,i) += - ( stateLimits(idV,1,k,j,i) + stateLimits(idV,0,k,j,i+1) ) / dom.dx;  // v tendency
-    tend(idW,k,j,i) += - ( stateLimits(idW,1,k,j,i) + stateLimits(idW,0,k,j,i+1) ) / dom.dx;  // w tendency
+    tend(l,k,j,i) += - ( stateLimits(l,1,k,j,i) + stateLimits(l,0,k,j,i+1) ) / dom.dx;
   });
 }
 

@@ -32,17 +32,12 @@
 ///////////////////////////////////////////////////////////////////////////////////////////
 YAKL_INLINE void diffTransformEulerX( SArray<real,numState,tord,tord> &state, 
                                       SArray<real,numState,tord,tord> &deriv,
-                                      SArray<real         ,tord,tord> &utend,
-                                      SArray<real         ,tord,tord> &vtend,
-                                      SArray<real         ,tord,tord> &wtend,
+                                      SArray<real,numState,tord,tord> &tend ,
                                       SArray<real,tord,tord> const &deriv_mat ) {
-  SArray<real,tord,tord> tmp_r_u;     // r*u
-  SArray<real,tord,tord> tmp_u_dp;    // u*dp/dx
+  SArray<real,tord,tord> tmp_r_du;    // r*du/dx
   SArray<real,tord,tord> tmp_rr_dp;   // (1/rho)*dp/dx
   SArray<real,tord,tord> tmp_p_du;    // p*du/dx
-  // utend will be used to store u*du
-  // vtend will be used to store u*dv
-  // wtend will be used to store u*dw
+  // tend will be used to store u*dr, u*du, u*dv, u*dw, u*dp
 
   // The term (dp/dx)/rho involves division. Because of this, the time DTs
   // must be zeroed out to kill the term that would cause a term to depends on itself
@@ -57,23 +52,23 @@ YAKL_INLINE void diffTransformEulerX( SArray<real,numState,tord,tord> &state,
     // state values
     real r  = state(idR,0,ii);
     real u  = state(idU,0,ii);
-    real v  = state(idV,0,ii);
-    real w  = state(idW,0,ii);
     real p  = state(idT,0,ii);
     // state derivatives
+    real dr = deriv(idR,0,ii);
     real du = deriv(idU,0,ii);
     real dv = deriv(idV,0,ii);
     real dw = deriv(idW,0,ii);
     real dp = deriv(idT,0,ii);
     
     // Initialize the 0th-order time DTs (i.e., the values)
-    tmp_r_u  (0,ii) = r*u;
-    utend    (0,ii) = u*du;
-    vtend    (0,ii) = u*dv;
-    wtend    (0,ii) = u*dw;
-    tmp_u_dp (0,ii) = u*dp;
-    tmp_rr_dp(0,ii) = dp/r;
-    tmp_p_du (0,ii) = p*du;
+    tend     (idR,0,ii) = u*dr;
+    tend     (idU,0,ii) = u*du;
+    tend     (idV,0,ii) = u*dv;
+    tend     (idW,0,ii) = u*dw;
+    tend     (idT,0,ii) = u*dp;
+    tmp_r_du (    0,ii) = r*du;
+    tmp_rr_dp(    0,ii) = dp/r;
+    tmp_p_du (    0,ii) = p*du;
   } // ii-loop
 
   // Loop over the time derivatives, computing the (kt+1)th time DTs in each iteration
@@ -81,20 +76,11 @@ YAKL_INLINE void diffTransformEulerX( SArray<real,numState,tord,tord> &state,
 
     // Compute (kt+1)th DT of u, v, w, and p (Jacobian form)
     for (int ii=0; ii<tord; ii++) {
-      state(idU,kt+1,ii) = -(utend   (kt,ii) +      tmp_rr_dp(kt,ii))/(kt+1);  // u
-      state(idV,kt+1,ii) = -(vtend   (kt,ii)                        )/(kt+1);  // v
-      state(idW,kt+1,ii) = -(wtend   (kt,ii)                        )/(kt+1);  // w
-      state(idT,kt+1,ii) = -(tmp_u_dp(kt,ii) + GAMMA*tmp_p_du(kt,ii))/(kt+1);  // p
-    }
-
-    // Compute (kt+1)th DT of rho (vector form)
-    for (int ii=0; ii<tord; ii++) {
-      real drflux_dx = 0;
-      // Matrix-vector multiply against the spatial differentiation matrix
-      for (int s=0; s<tord; s++) {
-        drflux_dx += deriv_mat(s,ii) * tmp_r_u(kt,s);
-      }
-      state(idR,kt+1,ii) = -drflux_dx/(kt+1);
+      state(idR,kt+1,ii) = -(tend(idR,kt,ii) +      tmp_r_du (kt,ii))/(kt+1);  // r
+      state(idU,kt+1,ii) = -(tend(idU,kt,ii) +      tmp_rr_dp(kt,ii))/(kt+1);  // u
+      state(idV,kt+1,ii) = -(tend(idV,kt,ii)                        )/(kt+1);  // v
+      state(idW,kt+1,ii) = -(tend(idW,kt,ii)                        )/(kt+1);  // w
+      state(idT,kt+1,ii) = -(tend(idT,kt,ii) + GAMMA*tmp_p_du(kt,ii))/(kt+1);  // p
     }
 
     // Compute spatial derivative of the (kt+1)th DTs of the state
@@ -110,30 +96,33 @@ YAKL_INLINE void diffTransformEulerX( SArray<real,numState,tord,tord> &state,
     }
 
     // Compute the (kt+1)th DT of all temporary variables
-    // Nearly all of these use the non-linear transform form: f*g
-    // Except for (dp/dx)/rho, which is of the form: f/g
+    // Nearly all of these use the non-linear transform of: f*g
+    // Except for (dp/dx)/rho, which has the form: f/g
     for (int ii=0; ii<tord; ii++) {
-      real tot_tmp_r_u   = 0;
+      real tot_tmp_u_dr  = 0;
       real tot_tmp_u_du  = 0;
       real tot_tmp_u_dv  = 0;
       real tot_tmp_u_dw  = 0;
       real tot_tmp_u_dp  = 0;
+      real tot_tmp_r_du  = 0;
       real tot_tmp_p_du  = 0;
       real tot_tmp_rr_dp = 0;
       for (int rt=0; rt<=kt+1; rt++) {
-        tot_tmp_r_u   += state(idR,rt,ii) * state(idU,kt+1-rt,ii);
+        tot_tmp_u_dr  += state(idU,rt,ii) * deriv(idR,kt+1-rt,ii);
         tot_tmp_u_du  += state(idU,rt,ii) * deriv(idU,kt+1-rt,ii);
         tot_tmp_u_dv  += state(idU,rt,ii) * deriv(idV,kt+1-rt,ii);
         tot_tmp_u_dw  += state(idU,rt,ii) * deriv(idW,kt+1-rt,ii);
         tot_tmp_u_dp  += state(idU,rt,ii) * deriv(idT,kt+1-rt,ii);
+        tot_tmp_r_du  += state(idR,rt,ii) * deriv(idU,kt+1-rt,ii);
         tot_tmp_p_du  += state(idT,rt,ii) * deriv(idU,kt+1-rt,ii);
         tot_tmp_rr_dp += deriv(idT,rt,ii) - state(idR,rt,ii) * tmp_rr_dp(kt+1-rt,ii);
       }
-      tmp_r_u  (kt+1,ii) = tot_tmp_r_u ;
-      utend    (kt+1,ii) = tot_tmp_u_du;
-      vtend    (kt+1,ii) = tot_tmp_u_dv;
-      wtend    (kt+1,ii) = tot_tmp_u_dw;
-      tmp_u_dp (kt+1,ii) = tot_tmp_u_dp;
+      tend (idR,kt+1,ii) = tot_tmp_u_dr;
+      tend (idU,kt+1,ii) = tot_tmp_u_du;
+      tend (idV,kt+1,ii) = tot_tmp_u_dv;
+      tend (idW,kt+1,ii) = tot_tmp_u_dw;
+      tend (idT,kt+1,ii) = tot_tmp_u_dp;
+      tmp_r_du (kt+1,ii) = tot_tmp_r_du;
       tmp_p_du (kt+1,ii) = tot_tmp_p_du;
       tmp_rr_dp(kt+1,ii) = tot_tmp_rr_dp / state(idR,0,ii);
     } // ii-loop
@@ -142,9 +131,11 @@ YAKL_INLINE void diffTransformEulerX( SArray<real,numState,tord,tord> &state,
   // Transform utend, vtend, and wtend into the RHS of the wind equations
   for (int kt=0; kt<tord; kt++) {
     for (int ii=0; ii<tord; ii++) {
-      utend(kt,ii) = -utend(kt,ii) - tmp_rr_dp(kt,ii);
-      vtend(kt,ii) = -vtend(kt,ii);
-      wtend(kt,ii) = -wtend(kt,ii);
+      tend(idR,kt,ii) = -tend(idR,kt,ii) -      tmp_r_du (kt,ii);
+      tend(idU,kt,ii) = -tend(idU,kt,ii) -      tmp_rr_dp(kt,ii);
+      tend(idV,kt,ii) = -tend(idV,kt,ii)                        ;
+      tend(idW,kt,ii) = -tend(idW,kt,ii)                        ;
+      tend(idT,kt,ii) = -tend(idT,kt,ii) - GAMMA*tmp_p_du(kt,ii);
     }
   }
 }
@@ -456,15 +447,15 @@ YAKL_INLINE void diffTransformEulerZ( SArray<real,numState,tord,tord> &state,
 //        the 0th time index
 ////////////////////////////////////////////////////////////////////////////////////
 YAKL_INLINE void timeAvg( SArray<real,numState,tord,tord> &dts , Domain const &dom ) {
-  // real dtmult = dom.dt;
-  // for (int kt=1; kt<tord; kt++) {
-  //   for (int l=0; l<numState; l++) {
-  //     for (int ii=0; ii<tord; ii++) {
-  //       dts(l,0,ii) += dts(l,kt,ii) * dtmult / (kt+1);
-  //     }
-  //   }
-  //   dtmult *= dom.dt;
-  // }
+  real dtmult = dom.dt;
+  for (int kt=1; kt<tord; kt++) {
+    for (int l=0; l<numState; l++) {
+      for (int ii=0; ii<tord; ii++) {
+        dts(l,0,ii) += dts(l,kt,ii) * dtmult / (kt+1);
+      }
+    }
+    dtmult *= dom.dt;
+  }
 }
 
 
@@ -481,13 +472,13 @@ YAKL_INLINE void timeAvg( SArray<real,numState,tord,tord> &dts , Domain const &d
 //        the 0th time index
 ////////////////////////////////////////////////////////////////////////////////////
 YAKL_INLINE void timeAvg( SArray<real,tord,tord> &dts , Domain const &dom ) {
-  // real dtmult = dom.dt;
-  // for (int kt=1; kt<tord; kt++) {
-  //   for (int ii=0; ii<tord; ii++) {
-  //     dts(0,ii) += dts(kt,ii) * dtmult / (kt+1);
-  //   }
-  //   dtmult *= dom.dt;
-  // }
+  real dtmult = dom.dt;
+  for (int kt=1; kt<tord; kt++) {
+    for (int ii=0; ii<tord; ii++) {
+      dts(0,ii) += dts(kt,ii) * dtmult / (kt+1);
+    }
+    dtmult *= dom.dt;
+  }
 }
 
 
