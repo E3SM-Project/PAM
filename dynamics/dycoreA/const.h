@@ -40,6 +40,7 @@ int constexpr idU      = 1;  // "u" (u-wind)
 int constexpr idV      = 2;  // "v" (v-wind)
 int constexpr idW      = 3;  // "w" (w-wind)
 int constexpr idT      = 4;  // thermodynamic variable
+int constexpr idP      = 5;  // pressure
 
 // Some physical constants
 real constexpr PI    = 3.1415926535897932384626433832795028842;

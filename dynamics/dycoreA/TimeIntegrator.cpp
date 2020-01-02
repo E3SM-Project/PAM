@@ -24,24 +24,24 @@ void TimeIntegrator::stepForwardADER(realArr &state, Domain &dom, Exchange &exch
       tendencies.compEulerTend_Y(state, dom, exch, par, tend);
       applyTendencies( state , tend, dom);
     }
-    // dom.dt /= 2;
-    // tendencies.compEulerTend_Z(state, dom, tend);
-    // applyTendencies( state , tend, dom);
-    // tendencies.compEulerTend_Z(state, dom, tend);
-    // applyTendencies( state , tend, dom);
-    // dom.dt *= 2;
-    // tendencies.compEulerTend_S(state, dom, tend);
-    // applyTendencies( state , tend, dom);
+    dom.dt /= 2;
+    tendencies.compEulerTend_Z(state, dom, tend);
+    applyTendencies( state , tend, dom);
+    tendencies.compEulerTend_Z(state, dom, tend);
+    applyTendencies( state , tend, dom);
+    dom.dt *= 2;
+    tendencies.compEulerTend_S(state, dom, tend);
+    applyTendencies( state , tend, dom);
   } else {
     dsSwitch = 1;
-    // tendencies.compEulerTend_S(state, dom, tend);
-    // applyTendencies( state , tend, dom);
-    // dom.dt /= 2;
-    // tendencies.compEulerTend_Z(state, dom, tend);
-    // applyTendencies( state , tend, dom);
-    // tendencies.compEulerTend_Z(state, dom, tend);
-    // applyTendencies( state , tend, dom);
-    // dom.dt *= 2;
+    tendencies.compEulerTend_S(state, dom, tend);
+    applyTendencies( state , tend, dom);
+    dom.dt /= 2;
+    tendencies.compEulerTend_Z(state, dom, tend);
+    applyTendencies( state , tend, dom);
+    tendencies.compEulerTend_Z(state, dom, tend);
+    applyTendencies( state , tend, dom);
+    dom.dt *= 2;
     if (!dom.run2d) {
       tendencies.compEulerTend_Y(state, dom, exch, par, tend);
       applyTendencies( state , tend, dom);

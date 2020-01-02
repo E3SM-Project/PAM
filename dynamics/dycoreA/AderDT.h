@@ -252,76 +252,45 @@ YAKL_INLINE void diffTransformEulerY( SArray<real,numState,tord,tord> &state,
 //   wtend: 0th- to (tord-1)th-order time derivatives of the w-tendency (RHS)
 //          dims are (time,space)
 ///////////////////////////////////////////////////////////////////////////////////////////
-YAKL_INLINE void diffTransformEulerZ( SArray<real,numState,tord,tord> &state, 
-                                      SArray<real,numState,tord,tord> &deriv,
-                                      SArray<real         ,tord,tord> &utend,
-                                      SArray<real         ,tord,tord> &vtend,
-                                      SArray<real         ,tord,tord> &wtend,
-                                      SArray<real              ,tord> &dph,
+YAKL_INLINE void diffTransformEulerZ( SArray<real,numState+1,tord,tord> &state, 
+                                      SArray<real,numState+1,tord,tord> &deriv,
+                                      SArray<real,numState  ,tord,tord> &tend ,
                                       SArray<real,tord,tord> const &deriv_mat ) {
-  SArray<real,tord,tord> tmp_r_w;     // r*w
-  SArray<real,tord,tord> tmp_w_dp;    // w*dp/dz
-  SArray<real,tord,tord> tmp_rr_dp;   // (1/rho)*dp'/dz
-  SArray<real,tord,tord> tmp_p_dw;    // p*dw/dz
-  // utend will be used to store w*du
-  // vtend will be used to store w*dv
-  // wtend will be used to store w*dw
-
-  // The term (dp/dz)/rho involves division. Because of this, the time DTs
-  // must be zeroed out to kill the term that would otherwise look like recursion
-  for (int kt=1; kt<tord; kt++) {
-    for (int ii=0; ii<tord; ii++) {
-      tmp_rr_dp(kt,ii) = 0;
-    }
+  SArray<real,tord> r, cs2, rcs2ot;
+  for (int ii=0; ii<tord; ii++) {
+    r(ii) = state(idR,0,ii);
+    real t = state(idT,0,ii);
+    real p = state(idP,0,ii);
+    cs2(ii) = GAMMA*p/r(ii);
+    rcs2ot(ii) = GAMMA*p/t;
   }
+  // tend will be used to store w*dr, w*du, w*dv, w*dw, w*dt
 
   // Compute the zeroth-order DTs of the intermediate functions and fluxes
   for (int ii=0; ii<tord; ii++) {
-    // state values
-    real r  = state(idR,0,ii);
-    real u  = state(idU,0,ii);
-    real v  = state(idV,0,ii);
-    real w  = state(idW,0,ii);
-    real p  = state(idT,0,ii);
-    // state derivatives
-    real du = deriv(idU,0,ii);
-    real dv = deriv(idV,0,ii);
-    real dw = deriv(idW,0,ii);
-    real dp = deriv(idT,0,ii);
-    
-    // Initialize the 0th-order time DTs (i.e., the values)
-    tmp_r_w  (0,ii) = r*w;
-    utend    (0,ii) = w*du;
-    vtend    (0,ii) = w*dv;
-    wtend    (0,ii) = w*dw;
-    tmp_w_dp (0,ii) = w*dp;
-    tmp_rr_dp(0,ii) = dp/r;
-    tmp_p_dw (0,ii) = p*dw;
+    real w = state(idW,0,ii);
+    tend(idR,0,ii) = w*deriv(idR,0,ii);
+    tend(idU,0,ii) = w*deriv(idU,0,ii);
+    tend(idV,0,ii) = w*deriv(idV,0,ii);
+    tend(idW,0,ii) = w*deriv(idW,0,ii);
+    tend(idT,0,ii) = w*deriv(idT,0,ii);
   } // ii-loop
 
   // Loop over the time derivatives, computing the (kt+1)th time DTs in each iteration
   for (int kt=0; kt<tord-1; kt++) {
 
-    // Compute (kt+1)th DT of u, v, w, and p
+    // Compute (kt+1)th DT of u, v, w, and t (Jacobian form)
     for (int ii=0; ii<tord; ii++) {
-      state(idU,kt+1,ii) = -(utend   (kt,ii)                        )/(kt+1);  // u
-      state(idV,kt+1,ii) = -(vtend   (kt,ii)                        )/(kt+1);  // v
-      state(idW,kt+1,ii) = -(wtend   (kt,ii) +      tmp_rr_dp(kt,ii))/(kt+1);  // w
-      state(idT,kt+1,ii) = -(tmp_w_dp(kt,ii) + GAMMA*tmp_p_dw(kt,ii))/(kt+1);  // p
-    }
-
-    // Compute (kt+1)th DT of rho
-    for (int ii=0; ii<tord; ii++) {
-      real drflux_dz  = 0;
-      // Matrix-vector multiply against the spatial differentiation matrix
-      for (int s=0; s<tord; s++) {
-        drflux_dz += deriv_mat(s,ii) * tmp_r_w(kt,s);
-      }
-      state(idR,kt+1,ii) = -drflux_dz/(kt+1);
+      state(idR,kt+1,ii) = -( tend(idR,kt,ii) + r(ii)*deriv(idW,kt,ii) )/(kt+1);  // r
+      state(idU,kt+1,ii) = -( tend(idU,kt,ii)                          )/(kt+1);  // u
+      state(idV,kt+1,ii) = -( tend(idV,kt,ii)                          )/(kt+1);  // v
+      state(idW,kt+1,ii) = -( tend(idW,kt,ii) + deriv(idP,kt,ii)/r(ii) )/(kt+1);  // w
+      state(idT,kt+1,ii) = -( tend(idT,kt,ii)                          )/(kt+1);  // t
+      state(idP,kt+1,ii) = rcs2ot(ii)*state(idT,kt+1,ii) + cs2(ii)*state(idR,kt+1,ii);    // p
     }
 
     // Compute spatial derivative of the (kt+1)th DTs of the state
-    for (int l=0; l<numState; l++) {
+    for (int l=0; l<numState+1; l++) {
       for (int ii=0; ii<tord; ii++) {
         real d_dz = 0;
         // Matrix-vector multiply against the spatial differentiation matrix
@@ -333,41 +302,35 @@ YAKL_INLINE void diffTransformEulerZ( SArray<real,numState,tord,tord> &state,
     }
 
     // Compute the (kt+1)th DT of all temporary variables
-    // Nearly all of these are of the form f*g
-    // Except for (dp/dz)/rho, which is of the form f/g
     for (int ii=0; ii<tord; ii++) {
-      real tot_tmp_r_w   = 0;
-      real tot_tmp_w_du  = 0;
-      real tot_tmp_w_dv  = 0;
-      real tot_tmp_w_dw  = 0;
-      real tot_tmp_w_dp  = 0;
-      real tot_tmp_p_dw  = 0;
-      real tot_tmp_rr_dp = 0;
+      real tot_tmp_w_dr = 0;
+      real tot_tmp_w_du = 0;
+      real tot_tmp_w_dv = 0;
+      real tot_tmp_w_dw = 0;
+      real tot_tmp_w_dt = 0;
       for (int rt=0; rt<=kt+1; rt++) {
-        tot_tmp_r_w   += state(idR,rt,ii) * state(idW,kt+1-rt,ii);
-        tot_tmp_w_du  += state(idW,rt,ii) * deriv(idU,kt+1-rt,ii);
-        tot_tmp_w_dv  += state(idW,rt,ii) * deriv(idV,kt+1-rt,ii);
-        tot_tmp_w_dw  += state(idW,rt,ii) * deriv(idW,kt+1-rt,ii);
-        tot_tmp_w_dp  += state(idW,rt,ii) * deriv(idT,kt+1-rt,ii);
-        tot_tmp_p_dw  += state(idT,rt,ii) * deriv(idW,kt+1-rt,ii);
-        tot_tmp_rr_dp += deriv(idT,rt,ii) - state(idR,rt,ii) * tmp_rr_dp(kt+1-rt,ii);
+        tot_tmp_w_dr += state(idW,rt,ii) * deriv(idR,kt+1-rt,ii);
+        tot_tmp_w_du += state(idW,rt,ii) * deriv(idU,kt+1-rt,ii);
+        tot_tmp_w_dv += state(idW,rt,ii) * deriv(idV,kt+1-rt,ii);
+        tot_tmp_w_dw += state(idW,rt,ii) * deriv(idW,kt+1-rt,ii);
+        tot_tmp_w_dt += state(idW,rt,ii) * deriv(idT,kt+1-rt,ii);
       }
-      tmp_r_w  (kt+1,ii) = tot_tmp_r_w ;
-      utend    (kt+1,ii) = tot_tmp_w_du;
-      vtend    (kt+1,ii) = tot_tmp_w_dv;
-      wtend    (kt+1,ii) = tot_tmp_w_dw;
-      tmp_w_dp (kt+1,ii) = tot_tmp_w_dp;
-      tmp_p_dw (kt+1,ii) = tot_tmp_p_dw;
-      tmp_rr_dp(kt+1,ii) = tot_tmp_rr_dp / state(idR,0,ii);
+      tend(idR,kt+1,ii) = tot_tmp_w_dr;
+      tend(idU,kt+1,ii) = tot_tmp_w_du;
+      tend(idV,kt+1,ii) = tot_tmp_w_dv;
+      tend(idW,kt+1,ii) = tot_tmp_w_dw;
+      tend(idT,kt+1,ii) = tot_tmp_w_dt;
     } // ii-loop
   } // kt-loop
 
   // Transform utend, vtend, and wtend into the RHS of the wind equations
   for (int kt=0; kt<tord; kt++) {
     for (int ii=0; ii<tord; ii++) {
-      utend(kt,ii) = -utend(kt,ii);
-      vtend(kt,ii) = -vtend(kt,ii);
-      wtend(kt,ii) = -wtend(kt,ii) - tmp_rr_dp(kt,ii);
+      tend(idR,kt,ii) = -( tend(idR,kt,ii) + r(ii)*deriv(idW,kt,ii) );
+      tend(idU,kt,ii) = -( tend(idU,kt,ii)                          );
+      tend(idV,kt,ii) = -( tend(idV,kt,ii)                          );
+      tend(idW,kt,ii) = -( tend(idW,kt,ii) + deriv(idP,kt,ii)/r(ii) );
+      tend(idT,kt,ii) = -( tend(idT,kt,ii)                          );
     }
   }
 }
@@ -389,6 +352,31 @@ YAKL_INLINE void timeAvg( SArray<real,numState,tord,tord> &dts , Domain const &d
   real dtmult = dom.dt;
   for (int kt=1; kt<tord; kt++) {
     for (int l=0; l<numState; l++) {
+      for (int ii=0; ii<tord; ii++) {
+        dts(l,0,ii) += dts(l,kt,ii) * dtmult / (kt+1);
+      }
+    }
+    dtmult *= dom.dt;
+  }
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////////
+// Compute the time average from tord-1 time derivatives at tord GLL points in
+// space, and store into the 0th index in time for an array of numState variables
+// 
+// INPUTS
+//   dts: tord-1 time derivatives of numState varaibles at tord GLL points in space
+//   dom: Domain class object (needed for time step size)
+// OUTPUTS
+//   dts: time-average of numState variables at tord GLL points in space stored in
+//        the 0th time index
+////////////////////////////////////////////////////////////////////////////////////
+YAKL_INLINE void timeAvg( SArray<real,numState+1,tord,tord> &dts , Domain const &dom ) {
+  real dtmult = dom.dt;
+  for (int kt=1; kt<tord; kt++) {
+    for (int l=0; l<numState+1; l++) {
       for (int ii=0; ii<tord; ii++) {
         dts(l,0,ii) += dts(l,kt,ii) * dtmult / (kt+1);
       }

@@ -6,9 +6,7 @@
 void Tendencies::initialize(Domain const &dom) {
   TransformMatrices<real> trans;
 
-  stateLimits = realArr("stateLimits",numState,2,dom.nz+1,dom.ny+1,dom.nx+1);
-  flux_r      = realArr("flux_r"                ,dom.nz+1,dom.ny+1,dom.nx+1);
-  flux_re     = realArr("flux_re"               ,dom.nz+1,dom.ny+1,dom.nx+1);
+  stateLimits = realArr("stateLimits",numState+1,2,dom.nz+1,dom.ny+1,dom.nx+1);
 
   // Setup the matrix to transform a stenicl (or coefs) into tord derivative GLL points
   SArray<real,ord,ord> s2c_ho;
@@ -68,8 +66,6 @@ void Tendencies::compEulerTend_X(realArr &state, Domain const &dom, Exchange &ex
                                  realArr &tend) {
   // Create local references of class arrays so that C++ Lambdas will properly capture them
   auto &stateLimits   = this->stateLimits  ;
-  auto &flux_r        = this->flux_r       ;
-  auto &flux_re       = this->flux_re      ;
   auto &gllWts        = this->gllWts       ;
   auto &to_gll        = this->to_gll       ;
   auto &to_derivX_gll = this->to_derivX_gll;
@@ -254,8 +250,6 @@ void Tendencies::compEulerTend_Y(realArr &state, Domain const &dom, Exchange &ex
                                  realArr &tend) {
   // Create local references of class arrays so that C++ Lambdas will properly capture them
   auto &stateLimits   = this->stateLimits  ;
-  auto &flux_r        = this->flux_r       ;
-  auto &flux_re       = this->flux_re      ;
   auto &gllWts        = this->gllWts       ;
   auto &to_gll        = this->to_gll       ;
   auto &to_derivY_gll = this->to_derivY_gll;
@@ -291,6 +285,7 @@ void Tendencies::compEulerTend_Y(realArr &state, Domain const &dom, Exchange &ex
     SArray<real,numState,tord,tord> stateDTs;  // GLL state DTs    (var,time,space)
     SArray<real,numState,tord,tord> derivDTs;  // GLL deriv DTs    (var,time,space)
     SArray<real,numState,tord,tord> tendDTs;   // GLL tendency DTs (var,time,space)
+
     // Compute tord GLL points of the fluid state and spatial derivative
     for (int l=0; l<numState; l++) {
       SArray<real,ord> stencil;
@@ -437,8 +432,6 @@ void Tendencies::compEulerTend_Y(realArr &state, Domain const &dom, Exchange &ex
 void Tendencies::compEulerTend_Z(realArr &state, Domain const &dom, realArr &tend) {
   // Create local references of class arrays so that C++ Lambdas will properly capture them
   auto &stateLimits   = this->stateLimits  ;
-  auto &flux_r        = this->flux_r       ;
-  auto &flux_re       = this->flux_re      ;
   auto &gllWts        = this->gllWts       ;
   auto &to_gll        = this->to_gll       ;
   auto &to_derivZ_gll = this->to_derivZ_gll;
@@ -468,31 +461,22 @@ void Tendencies::compEulerTend_Z(realArr &state, Domain const &dom, realArr &ten
   yakl::parallel_for( dom.nz*dom.ny*dom.nx , YAKL_LAMBDA ( int const iGlob ) {
     int k, j, i;
     yakl::unpackIndices(iGlob,dom.nz,dom.ny,dom.nx,k,j,i);
-    SArray<real,numState,tord,tord> stateDTs;  // GLL state DTs (var,time,space)
-    SArray<real,numState,tord,tord> derivDTs;  // GLL deriv DTs (var,time,space)
-    SArray<real         ,tord,tord> utend   ;  // DTs of u RHS      (time,space)
-    SArray<real         ,tord,tord> vtend   ;  // DTs of v RHS      (time,space)
-    SArray<real         ,tord,tord> wtend   ;  // DTs of w RHS      (time,space)
+    SArray<real,numState+1,tord,tord> stateDTs;  // GLL state DTs    (var,time,space)
+    SArray<real,numState+1,tord,tord> derivDTs;  // GLL deriv DTs    (var,time,space)
+    SArray<real,numState  ,tord,tord> tendDTs;   // GLL tendency DTs (var,time,space)
 
     // Compute tord GLL points of the fluid state and spatial derivative
-    for (int l=0; l<numState; l++) {
+    for (int l=0; l<numState+1; l++) {
       SArray<real,ord> stencil;
       SArray<real,tord> gllPts;
       // Store the stencil values
-      if (l != idT) {  // rho perturbation, u, v, and w
-        for (int ii=0; ii<ord; ii++) {
+      for (int ii=0; ii<ord; ii++) {
+        if (l < numState) {
           stencil(ii) = state(l,k+ii,hs+j,hs+i);
-        }
-      } else {         // pressure perturbation
-        for (int ii=0; ii<ord; ii++) {
-          real r  = state(idR,k+ii,hs+j,hs+i) + dom.hyDensCells  (k+ii);
-          real u  = state(idU,k+ii,hs+j,hs+i);
-          real v  = state(idV,k+ii,hs+j,hs+i);
-          real w  = state(idW,k+ii,hs+j,hs+i);
-          real re = state(idT,k+ii,hs+j,hs+i) + dom.hyEnergyCells(k+ii);
-          real ke = 0.5_fp*r*(u*u+v*v+w*w);
-          real p = RD/CV*(re-ke);
-          stencil(ii) = p - dom.hyPressureCells(k+ii);
+        } else {
+          real r = state(idR,k+ii,hs+j,hs+i) + dom.hyDensCells (k+ii);
+          real t = state(idT,k+ii,hs+j,hs+i) + dom.hyThetaCells(k+ii);
+          stencil(ii) = C0*pow(r*t,GAMMA) - dom.hyPressureCells(k+ii);
         }
       }
 
@@ -501,45 +485,40 @@ void Tendencies::compEulerTend_Z(realArr &state, Domain const &dom, realArr &ten
       for (int ii=0; ii<tord; ii++) { stateDTs(l,0,ii) = gllPts(ii); }
 
       // Reconstruct and store GLL points of the state derivatives
-      reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_derivX_gll, wenoIdl, wenoSigma);
+      reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_derivZ_gll, wenoIdl, wenoSigma);
       for (int ii=0; ii<tord; ii++) { derivDTs(l,0,ii) = gllPts(ii); }
     }
     // Add hydrostasis to density and pressure to make them the full quantities
     for (int ii=0; ii<tord; ii++) {
       stateDTs(idR,0,ii) += dom.hyDensGLL    (k,ii);
-      stateDTs(idT,0,ii) += dom.hyPressureGLL(k,ii);
+      stateDTs(idT,0,ii) += dom.hyThetaGLL   (k,ii);
+      stateDTs(idP,0,ii) += dom.hyPressureGLL(k,ii);
     }
     if (k == dom.nz-1) { stateDTs(idW,0,tord-1) = 0; }
     if (k == 0       ) { stateDTs(idW,0,0     ) = 0; }
 
     // Compute tord-1 time derivatives of the state, state spatial derivatives, 
     // u RHS, v RHS, and w RHS using temporal Differential Transforms
-    SArray<real,tord> dph;
-    for (int ii=0; ii<tord; ii++) { dph(ii) = dom.hyPressureDerivGLL(k,ii); }
-    diffTransformEulerZ( stateDTs, derivDTs, utend, vtend, wtend, dph, aderDerivZ );
+    diffTransformEulerZ( stateDTs, derivDTs, tendDTs, aderDerivZ );
 
     // Compute the time-average and store into the zeroth time index
     timeAvg( stateDTs , dom );
-    timeAvg( utend    , dom );
-    timeAvg( vtend    , dom );
-    timeAvg( wtend    , dom );
+    timeAvg( tendDTs  , dom );
     if (k == dom.nz-1) { stateDTs(idW,0,tord-1) = 0; }
     if (k == 0       ) { stateDTs(idW,0,0     ) = 0; }
 
     // Compute the local tendency contribution for high-order flux difference
     // splitting for wind via quadrature
-    // int( RHS , z , z_(k-1/2) , z_(k+1/2) )
-    tend(idU,k,j,i) = 0;
-    tend(idV,k,j,i) = 0;
-    tend(idW,k,j,i) = 0;
-    for (int ii=0; ii<tord; ii++) {
-      tend(idU,k,j,i) += gllWts(ii) * utend(0,ii);
-      tend(idV,k,j,i) += gllWts(ii) * vtend(0,ii);
-      tend(idW,k,j,i) += gllWts(ii) * wtend(0,ii);
+    // tend_local = int( RHS , z , z_(k-1/2) , z_(k+1/2) )
+    for (int l=0; l<numState; l++) {
+      tend(l,k,j,i) = 0;
+      for (int ii=0; ii<tord; ii++) {
+        tend(l,k,j,i) += gllWts(ii) * tendDTs(l,0,ii);
+      }
     }
 
     // Store the state vector in fwaves to compute fwaves from cell-interface state jumps
-    for (int l=0; l<numState; l++) {
+    for (int l=0; l<numState+1; l++) {
       stateLimits(l,1,k  ,j,i) = stateDTs(l,0,0     ); // Store the left  cell edge state estimates
       stateLimits(l,0,k+1,j,i) = stateDTs(l,0,tord-1); // Store the Right cell edge state estimates
     }
@@ -565,9 +544,10 @@ void Tendencies::compEulerTend_Z(realArr &state, Domain const &dom, realArr &ten
     // Split the flux difference for the wind updates
     ////////////////////////////////////////////////////////////////////////////
     // Compute the average state at the interface
-    real r = 0.5_fp * ( stateLimits(idR,1,k,j,i) + stateLimits(idR,0,k,j,i)); // rho
-    real w = 0.5_fp * ( stateLimits(idW,1,k,j,i) + stateLimits(idW,0,k,j,i)); // w
-    real p = 0.5_fp * ( stateLimits(idT,1,k,j,i) + stateLimits(idT,0,k,j,i)); // p
+    real r = 0.5_fp * ( stateLimits(idR,1,k,j,i) + stateLimits(idR,0,k,j,i) ); // rho
+    real w = 0.5_fp * ( stateLimits(idW,1,k,j,i) + stateLimits(idW,0,k,j,i) ); // w
+    real t = 0.5_fp * ( stateLimits(idT,1,k,j,i) + stateLimits(idT,0,k,j,i) ); // theta
+    real p = 0.5_fp * ( stateLimits(idP,1,k,j,i) + stateLimits(idP,0,k,j,i) ); // pressure
     real cs2 = GAMMA*p/r;    // speed of sound squared
     real cs = sqrt(cs2);     // speed of sound
     // Compute the state jump across the interface
@@ -575,103 +555,51 @@ void Tendencies::compEulerTend_Z(realArr &state, Domain const &dom, realArr &ten
     real du = stateLimits(idU,1,k,j,i) - stateLimits(idU,0,k,j,i);
     real dv = stateLimits(idV,1,k,j,i) - stateLimits(idV,0,k,j,i);
     real dw = stateLimits(idW,1,k,j,i) - stateLimits(idW,0,k,j,i);
-    real dp = stateLimits(idT,1,k,j,i) - stateLimits(idT,0,k,j,i);
-    // state at the left side of the interface
-    real r1 = stateLimits(idR,0,k,j,i);
-    real u1 = stateLimits(idU,0,k,j,i);
-    real v1 = stateLimits(idV,0,k,j,i);
-    real w1 = stateLimits(idW,0,k,j,i);
-    real p1 = stateLimits(idT,0,k,j,i);
-    // state at the right side of the interface
-    real r2 = stateLimits(idR,1,k,j,i);
-    real u2 = stateLimits(idU,1,k,j,i);
-    real v2 = stateLimits(idV,1,k,j,i);
-    real w2 = stateLimits(idW,1,k,j,i);
-    real p2 = stateLimits(idT,1,k,j,i);
-    // Block to force compiler to release df from the stack after the block
-    {
-      // Compute the product of the flux Jacobian and the state jump across the interface (A*dq)
-      SArray<real,numState> df;
-      df(0) = w*dr + r*dw;
-      df(1) = w*du;
-      df(2) = w*dv;
-      df(3) = w*dw + dp/r;
-      df(4) = w*dp + GAMMA*p*dw;
-      // Zero out the stateLimits space for this spatial index for idU, idV, and idW
-      stateLimits(idU,0,k,j,i) = 0;
-      stateLimits(idV,0,k,j,i) = 0;
-      stateLimits(idW,0,k,j,i) = 0;
-      stateLimits(idU,1,k,j,i) = 0;
-      stateLimits(idV,1,k,j,i) = 0;
-      stateLimits(idW,1,k,j,i) = 0;
-      // Wave 1 (w-cs): presumed always leftward  propagating (no shocks)
-      stateLimits(idW,0,k,j,i) += (-cs/r) * ( -r/(2*cs)*df(3) + df(4)/(2*cs2) );
-      // Wave 2 (w+cs): presumed always rightward propagating (no shocks)
-      stateLimits(idW,1,k,j,i) += ( cs/r) * (  r/(2*cs)*df(3) + df(4)/(2*cs2) );
-      // Wave 3 does only affects density, so it's ignored
-      // Waves 4 and 5 (w): 
-      // If w > zero, it's rightward propagating, otherwise leftward
-      // No need to worry about zero wind speed becaue then the wave is zero anyway
-      if (w > 0) {
-        stateLimits(idU,1,k,j,i) += df(1);  // wave 4 (w)
-        stateLimits(idV,1,k,j,i) += df(2);  // wave 5 (w)
-      } else {
-        stateLimits(idU,0,k,j,i) += df(1);  // wave 4 (w)
-        stateLimits(idV,0,k,j,i) += df(2);  // wave 5 (w)
-      }
+    real dt = stateLimits(idT,1,k,j,i) - stateLimits(idT,0,k,j,i);
+    real dp = stateLimits(idP,1,k,j,i) - stateLimits(idP,0,k,j,i);
+    // Compute the product of the flux Jacobian and the state jump across the interface (A*dq)
+    SArray<real,numState> df;
+    df(0) = w*dr + r*dw;
+    df(1) = w*du;
+    df(2) = w*dv;
+    df(3) = w*dw + dp/r;
+    df(4) = w*dt;
+    // Zero out the stateLimits space for this spatial index
+    for (int l=0; l<numState; l++) {
+      stateLimits(l,0,k,j,i) = 0;
+      stateLimits(l,1,k,j,i) = 0;
     }
-
-    ////////////////////////////////////////////////////////////////////////////
-    // Compute the upwind Flux vector for mass and energy
-    ////////////////////////////////////////////////////////////////////////////
-    // We can re-use the r, u, p, cs2, and cs calculated earlier
-    // Store upwind state based on wind velocity
-    real ru, uu, vu, wu, pu;
+    real ch;
+    // Wave 1 (w-cs): presumed always leftward  propagating (no shocks)
+    ch = 0.5_fp*df(0) - r/(2*cs)*df(3) + r/(2*t)*df(4);
+    stateLimits(idR,0,k,j,i) += ch;
+    stateLimits(idW,0,k,j,i) += -cs/r * ch;
+    // Wave 2 (w+cs): presumed always rightward propagating (no shocks)
+    ch = 0.5_fp*df(0) + r/(2*cs)*df(3) + r/(2*t)*df(4);
+    stateLimits(idR,1,k,j,i) += ch;
+    stateLimits(idW,1,k,j,i) +=  cs/r * ch;
     if (w > 0) {
-      ru = r1;  uu = u1;  vu = v1;  wu = w1;  pu = p1;
+      stateLimits(idR,1,k,j,i) += -r/t*df(4); // Wave 3 (w)
+      stateLimits(idT,1,k,j,i) += df(4);      // Wave 3 (w)
+      stateLimits(idU,1,k,j,i) += df(1);      // Wave 4 (w)
+      stateLimits(idV,1,k,j,i) += df(2);      // Wave 5 (w)
     } else {
-      ru = r2;  uu = u2;  vu = v2;  wu = w2;  pu = p2;
+      stateLimits(idR,0,k,j,i) += -r/t*df(4); // Wave 3 (w)
+      stateLimits(idT,0,k,j,i) += df(4);      // Wave 3 (w)
+      stateLimits(idU,0,k,j,i) += df(1);      // Wave 4 (w)
+      stateLimits(idV,0,k,j,i) += df(2);      // Wave 5 (w)
     }
-    // The next two sections compute the upwind state vector defined by rho, u, v, w, p
-    // First, compute upwind characteristic variables
-    SArray<real,numState> chu;  // upwind characteristic variables
-    chu(0) = -r/(2*cs)*w2 + p2/(2*cs2); // w-cs wave: assuming no shocks
-    chu(1) =  r/(2*cs)*w1 + p1/(2*cs2); // w+cs wave: assuming no shocks
-    chu(2) = ru - pu/cs2;
-    chu(3) = uu;
-    chu(4) = vu;
-    // Next, compute the upwind state based on upwind characteristic variables
-    ru =     chu(0)   +     chu(1)   + chu(2);
-    uu =                                       chu(3);
-    vu =                                               chu(4);
-    wu = -cs*chu(0)/r +  cs*chu(1)/r;
-    pu = cs2*chu(0)   + cs2*chu(1);
-    // Finally, compute the upwind flux based on the upwind state
-    real keu = 0.5_fp*ru*(uu*uu+vu*vu+wu*wu); // upwind kinetic energy
-    real reu = pu*CV/RD + keu;                // upwind rho*e
-    flux_r (k,j,i) = ru*wu;                   // upwind mass flux
-    flux_re(k,j,i) = wu*reu + wu*pu;          // upwind energy flux
   });
 
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////
-  // For each cell:
-  // (1) Append the u, v, and w tendencies with the flux difference splitting waves entering the cell
-  //     domain
-  // (2) Compute the rho and rho*e tendencies using the upwind flux vectors
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////
+  // for (int l=0; l<numState; l++) {
   //   for (int k=0; k<dom.nz; k++) {
   //     for (int j=0; j<dom.ny; j++) {
   //       for (int i=0; i<dom.nx; i++) {
-  yakl::parallel_for( dom.nz*dom.ny*dom.nx , YAKL_LAMBDA (int const iGlob) {
+  yakl::parallel_for( numState*dom.nz*dom.ny*dom.nx , YAKL_LAMBDA (int const iGlob) {
     int l, k, j, i;
-    yakl::unpackIndices(iGlob,dom.nz,dom.ny,dom.nx,k,j,i);
-    // Flux vector form update for mass and energy
-    tend(idR,k,j,i)  = - ( flux_r (k+1,j,i) - flux_r (k,j,i) ) / dom.dz;  // mass tendency
-    tend(idT,k,j,i)  = - ( flux_re(k+1,j,i) - flux_re(k,j,i) ) / dom.dz;  // energy tendency
+    yakl::unpackIndices(iGlob,numState,dom.nz,dom.ny,dom.nx,l,k,j,i);
     // Flux difference splitting form update for velocities
-    tend(idU,k,j,i) += - ( stateLimits(idU,1,k,j,i) + stateLimits(idU,0,k+1,j,i) ) / dom.dz;  // u tendency
-    tend(idV,k,j,i) += - ( stateLimits(idV,1,k,j,i) + stateLimits(idV,0,k+1,j,i) ) / dom.dz;  // v tendency
-    tend(idW,k,j,i) += - ( stateLimits(idW,1,k,j,i) + stateLimits(idW,0,k+1,j,i) ) / dom.dz;  // w tendency
+    tend(l,k,j,i) += - ( stateLimits(l,1,k,j,i) + stateLimits(l,0,k+1,j,i) ) / dom.dz;
   });
 }
 
@@ -768,6 +696,7 @@ void Tendencies::edgeBoundariesZ(realArr &stateLimits, Domain const &dom) {
     stateLimits(idW,0,0     ,j,i) = 0;
     stateLimits(idW,1,0     ,j,i) = 0;
     stateLimits(idT,0,0     ,j,i) = stateLimits(idT,1,0     ,j,i);
+    stateLimits(idP,0,0     ,j,i) = stateLimits(idP,1,0     ,j,i);
 
     stateLimits(idR,1,dom.nz,j,i) = stateLimits(idR,0,dom.nz,j,i);
     stateLimits(idU,1,dom.nz,j,i) = stateLimits(idU,0,dom.nz,j,i);
@@ -775,6 +704,7 @@ void Tendencies::edgeBoundariesZ(realArr &stateLimits, Domain const &dom) {
     stateLimits(idW,0,dom.nz,j,i) = 0;
     stateLimits(idW,1,dom.nz,j,i) = 0;
     stateLimits(idT,1,dom.nz,j,i) = stateLimits(idT,0,dom.nz,j,i);
+    stateLimits(idP,1,dom.nz,j,i) = stateLimits(idP,0,dom.nz,j,i);
   });
 }
 
