@@ -20,10 +20,10 @@ void TimeIntegrator::stepForwardADER(realArr &state, Domain &dom, Exchange &exch
     dsSwitch = 0;
     tendencies.compEulerTend_X(state, dom, exch, par, tend);
     applyTendencies( state , tend, dom);
-    // if (!dom.run2d) {
-    //   tendencies.compEulerTend_Y(state, dom, exch, par, tend);
-    //   applyTendencies( state , tend, dom);
-    // }
+    if (!dom.run2d) {
+      tendencies.compEulerTend_Y(state, dom, exch, par, tend);
+      applyTendencies( state , tend, dom);
+    }
     // dom.dt /= 2;
     // tendencies.compEulerTend_Z(state, dom, tend);
     // applyTendencies( state , tend, dom);
@@ -42,10 +42,10 @@ void TimeIntegrator::stepForwardADER(realArr &state, Domain &dom, Exchange &exch
     // tendencies.compEulerTend_Z(state, dom, tend);
     // applyTendencies( state , tend, dom);
     // dom.dt *= 2;
-    // if (!dom.run2d) {
-    //   tendencies.compEulerTend_Y(state, dom, exch, par, tend);
-    //   applyTendencies( state , tend, dom);
-    // }
+    if (!dom.run2d) {
+      tendencies.compEulerTend_Y(state, dom, exch, par, tend);
+      applyTendencies( state , tend, dom);
+    }
     tendencies.compEulerTend_X(state, dom, exch, par, tend);
     applyTendencies( state , tend, dom);
   }
