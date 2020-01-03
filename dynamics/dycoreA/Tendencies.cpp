@@ -29,6 +29,8 @@ void Tendencies::initialize(Domain const &dom) {
     to_derivY_gll = (to_gll * c2d_ho * s2c_ho) / dom.dy;
     to_derivZ_gll = (to_gll * c2d_ho * s2c_ho) / dom.dz;
   }
+  s2d2gX = ( to_gll * c2d_ho * s2c_ho ) / dom.dx;
+  s2d2gY = ( to_gll * c2d_ho * s2c_ho ) / dom.dy;
   s2d2gZ = ( to_gll * c2d_ho * s2c_ho ) / dom.dz;
 
   SArray<real,tord,tord> g2c, c2d, c2g;
@@ -45,6 +47,8 @@ void Tendencies::initialize(Domain const &dom) {
   } else {
     trans.sten_to_gll_lower( to_gll );
   }
+
+  trans.sten_to_gll_lower(s2g);
 
   trans.weno_sten_to_coefs(wenoRecon);
 
@@ -119,13 +123,23 @@ void Tendencies::compEulerTend_X(realArr &state, Domain const &dom, Exchange &ex
         stencil(ii) = state(l,hs+k,hs+j,i+ii);
       }
 
-      // Reconstruct and store GLL points of the state values
-      reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_gll       , wenoIdl, wenoSigma);
-      for (int ii=0; ii<tord; ii++) { stateDTs(l,0,ii) = gllPts(ii); }
+      if (l == idT) {
+        // Reconstruct and store GLL points of the state values
+        reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_gll       , wenoIdl, wenoSigma);
+        for (int ii=0; ii<tord; ii++) { stateDTs(l,0,ii) = gllPts(ii); }
 
-      // Reconstruct and store GLL points of the state derivatives
-      reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_derivX_gll, wenoIdl, wenoSigma);
-      for (int ii=0; ii<tord; ii++) { derivDTs(l,0,ii) = gllPts(ii); }
+        // Reconstruct and store GLL points of the state derivatives
+        reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_derivX_gll, wenoIdl, wenoSigma);
+        for (int ii=0; ii<tord; ii++) { derivDTs(l,0,ii) = gllPts(ii); }
+      } else {
+        // Reconstruct and store GLL points of the state values
+        reconStencil(stencil, gllPts, 0         , wenoRecon, s2g          , wenoIdl, wenoSigma);
+        for (int ii=0; ii<tord; ii++) { stateDTs(l,0,ii) = gllPts(ii); }
+
+        // Reconstruct and store GLL points of the state derivatives
+        reconStencil(stencil, gllPts, 0         , wenoRecon, s2d2gX       , wenoIdl, wenoSigma);
+        for (int ii=0; ii<tord; ii++) { derivDTs(l,0,ii) = gllPts(ii); }
+      }
     }
     // Add hydrostasis to density and potential temperature to make them the full quantities
     for (int ii=0; ii<tord; ii++) {
@@ -308,13 +322,23 @@ void Tendencies::compEulerTend_Y(realArr &state, Domain const &dom, Exchange &ex
         stencil(ii) = state(l,hs+k,j+ii,hs+i);
       }
 
-      // Reconstruct and store GLL points of the state values
-      reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_gll       , wenoIdl, wenoSigma);
-      for (int ii=0; ii<tord; ii++) { stateDTs(l,0,ii) = gllPts(ii); }
+      if (l == idT) {
+        // Reconstruct and store GLL points of the state values
+        reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_gll       , wenoIdl, wenoSigma);
+        for (int ii=0; ii<tord; ii++) { stateDTs(l,0,ii) = gllPts(ii); }
 
-      // Reconstruct and store GLL points of the state derivatives
-      reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_derivY_gll, wenoIdl, wenoSigma);
-      for (int ii=0; ii<tord; ii++) { derivDTs(l,0,ii) = gllPts(ii); }
+        // Reconstruct and store GLL points of the state derivatives
+        reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_derivY_gll, wenoIdl, wenoSigma);
+        for (int ii=0; ii<tord; ii++) { derivDTs(l,0,ii) = gllPts(ii); }
+      } else {
+        // Reconstruct and store GLL points of the state values
+        reconStencil(stencil, gllPts, 0         , wenoRecon, s2g          , wenoIdl, wenoSigma);
+        for (int ii=0; ii<tord; ii++) { stateDTs(l,0,ii) = gllPts(ii); }
+
+        // Reconstruct and store GLL points of the state derivatives
+        reconStencil(stencil, gllPts, 0         , wenoRecon, s2d2gY       , wenoIdl, wenoSigma);
+        for (int ii=0; ii<tord; ii++) { derivDTs(l,0,ii) = gllPts(ii); }
+      }
     }
     // Add hydrostasis to density and potential temperature to make them the full quantities
     for (int ii=0; ii<tord; ii++) {
@@ -497,17 +521,21 @@ void Tendencies::compEulerTend_Z(realArr &state, Domain const &dom, realArr &ten
         }
       }
 
-      // Reconstruct and store GLL points of the state values
-      reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_gll       , wenoIdl, wenoSigma);
-      for (int ii=0; ii<tord; ii++) { stateDTs(l,0,ii) = gllPts(ii); }
+      if (l == idT) {
+        // Reconstruct and store GLL points of the state values
+        reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_gll       , wenoIdl, wenoSigma);
+        for (int ii=0; ii<tord; ii++) { stateDTs(l,0,ii) = gllPts(ii); }
 
-      if ( ( k <= hs || k >= dom.nz-1) ) {
-        // Reconstruct and store GLL points of the state derivatives
-        reconStencil(stencil, gllPts, 0, wenoRecon, s2d2gZ, wenoIdl, wenoSigma);
-        for (int ii=0; ii<tord; ii++) { derivDTs(l,0,ii) = gllPts(ii); }
-      } else {
         // Reconstruct and store GLL points of the state derivatives
         reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_derivZ_gll, wenoIdl, wenoSigma);
+        for (int ii=0; ii<tord; ii++) { derivDTs(l,0,ii) = gllPts(ii); }
+      } else {
+        // Reconstruct and store GLL points of the state values
+        reconStencil(stencil, gllPts, 0         , wenoRecon, s2g          , wenoIdl, wenoSigma);
+        for (int ii=0; ii<tord; ii++) { stateDTs(l,0,ii) = gllPts(ii); }
+
+        // Reconstruct and store GLL points of the state derivatives
+        reconStencil(stencil, gllPts, 0         , wenoRecon, s2d2gZ       , wenoIdl, wenoSigma);
         for (int ii=0; ii<tord; ii++) { derivDTs(l,0,ii) = gllPts(ii); }
       }
     }
