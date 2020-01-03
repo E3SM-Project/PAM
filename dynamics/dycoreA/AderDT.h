@@ -7,34 +7,37 @@
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////
-// Computes tord-1 time derivatives of rho, u, v, w, p, utend, vtend, and wtend using
+// Computes tord-1 time derivatives at tord spatial GLL points located thoughout the cell
+// of the state values, state spatial derivatives, and time tendencies of the state using
 // Differential Transforms in the time dimension using the x-direction flux Jacobian.
-// This uses vector form for density to save calculations and Jacobian form for everything
-// else. 
+// 
+// Each vector contains rho, u, v, w, and theta
+// 
+// Acoustic dynamics are linearized in the time dimension (but not in space) because they
+// can be handled less accurately without much impact overall. This reduces local storage
+// requirements and computations.
 // 
 // INPUTS
 //   state: state values at tord GLL points stored in state(:,0,:). This routine expects
-//          full density and pressure, not perturbations. dims are (var,time,space)
+//          full density and theta, not perturbations. dims are (var,time,space)
 //   deriv: spatial derivative values at tord GLL points stored in deriv(:,0,:). drho and
-//          dp can be perturbation or full differentials. dims are (var,time,space)
+//          dp can be perturbation or full derivatives. dims are (var,time,space)
 //   deriv_mat: Matrix that transforms tord GLL points into the spatial derivative stored
 //              at the same tord GLL points.
 // 
 // OUTPUTS
 //   state: 0th- to (tord-1)th-order time derivatives of the state values
 //   deriv: 0th- to (tord-1)th-order time derivatives of the state spatial derivatives
-//   utend: 0th- to (tord-1)th-order time derivatives of the u-tendency (RHS)
-//          dims are (time,space)
-//   vtend: 0th- to (tord-1)th-order time derivatives of the v-tendency (RHS)
-//          dims are (time,space)
-//   wtend: 0th- to (tord-1)th-order time derivatives of the w-tendency (RHS)
-//          dims are (time,space)
+//   tend:  0th- to (tord-1)th-order time derivatives of the state time tendencies
+//          dims are (var,time,space)
 ///////////////////////////////////////////////////////////////////////////////////////////
 YAKL_INLINE void diffTransformEulerX( SArray<real,numState,tord,tord> &state, 
                                       SArray<real,numState,tord,tord> &deriv,
                                       SArray<real,numState,tord,tord> &tend ,
                                       SArray<real,tord,tord> const &deriv_mat ) {
-  SArray<real,tord> r, cs2or, cs2ot;
+  // tend will be used to store u*dr, u*du, u*dv, u*dw, u*dt
+  SArray<real,tord> r, cs2or, cs2ot; // density, cs^2/rho, cs^2/theta
+  // Precompute density, cs^2/rho, and cs^2/theta
   for (int ii=0; ii<tord; ii++) {
     r(ii) = state(idR,0,ii);
     real t = state(idT,0,ii);
@@ -42,13 +45,10 @@ YAKL_INLINE void diffTransformEulerX( SArray<real,numState,tord,tord> &state,
     cs2or(ii) = GAMMA*p/(r(ii)*r(ii));
     cs2ot(ii) = GAMMA*p/(r(ii)*t    );
   }
-  // tend will be used to store u*dr, u*du, u*dv, u*dw, u*dt
 
   // Compute the zeroth-order DTs of the intermediate functions and fluxes
   for (int ii=0; ii<tord; ii++) {
-    real u  = state(idU,0,ii);
-    
-    // Initialize the 0th-order time DTs (i.e., the values)
+    real u = state(idU,0,ii);
     tend(idR,0,ii) = u*deriv(idR,0,ii);
     tend(idU,0,ii) = u*deriv(idU,0,ii);
     tend(idV,0,ii) = u*deriv(idV,0,ii);
@@ -65,7 +65,7 @@ YAKL_INLINE void diffTransformEulerX( SArray<real,numState,tord,tord> &state,
       state(idU,kt+1,ii) = -( tend(idU,kt,ii) + cs2or(ii)*deriv(idR,kt,ii) + cs2ot(ii)*deriv(idT,kt,ii) )/(kt+1);  // u
       state(idV,kt+1,ii) = -( tend(idV,kt,ii)                                                           )/(kt+1);  // v
       state(idW,kt+1,ii) = -( tend(idW,kt,ii)                                                           )/(kt+1);  // w
-      state(idT,kt+1,ii) = -( tend(idT,kt,ii)                                                           )/(kt+1);  // p
+      state(idT,kt+1,ii) = -( tend(idT,kt,ii)                                                           )/(kt+1);  // t
     }
 
     // Compute spatial derivative of the (kt+1)th DTs of the state
@@ -88,11 +88,11 @@ YAKL_INLINE void diffTransformEulerX( SArray<real,numState,tord,tord> &state,
       real tot_tmp_u_dw  = 0;
       real tot_tmp_u_dt  = 0;
       for (int rt=0; rt<=kt+1; rt++) {
-        tot_tmp_u_dr  += state(idU,rt,ii) * deriv(idR,kt+1-rt,ii);
-        tot_tmp_u_du  += state(idU,rt,ii) * deriv(idU,kt+1-rt,ii);
-        tot_tmp_u_dv  += state(idU,rt,ii) * deriv(idV,kt+1-rt,ii);
-        tot_tmp_u_dw  += state(idU,rt,ii) * deriv(idW,kt+1-rt,ii);
-        tot_tmp_u_dt  += state(idU,rt,ii) * deriv(idT,kt+1-rt,ii);
+        tot_tmp_u_dr += state(idU,rt,ii) * deriv(idR,kt+1-rt,ii);
+        tot_tmp_u_du += state(idU,rt,ii) * deriv(idU,kt+1-rt,ii);
+        tot_tmp_u_dv += state(idU,rt,ii) * deriv(idV,kt+1-rt,ii);
+        tot_tmp_u_dw += state(idU,rt,ii) * deriv(idW,kt+1-rt,ii);
+        tot_tmp_u_dt += state(idU,rt,ii) * deriv(idT,kt+1-rt,ii);
       }
       tend(idR,kt+1,ii) = tot_tmp_u_dr;
       tend(idU,kt+1,ii) = tot_tmp_u_du;
@@ -103,6 +103,7 @@ YAKL_INLINE void diffTransformEulerX( SArray<real,numState,tord,tord> &state,
   } // kt-loop
 
   // Transform utend, vtend, and wtend into the RHS of the wind equations
+  // These are needed for the local tencencies in high-order flux-difference splitting
   for (int kt=0; kt<tord; kt++) {
     for (int ii=0; ii<tord; ii++) {
       tend(idR,kt,ii) = -( tend(idR,kt,ii) + r(ii)*deriv(idU,kt,ii)                                  );
@@ -117,34 +118,37 @@ YAKL_INLINE void diffTransformEulerX( SArray<real,numState,tord,tord> &state,
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////
-// Computes tord-1 time derivatives of rho, u, v, w, p, utend, vtend, and wtend using
-// Differential Transforms in the time dimension using the y-direction flux Jacobian
-// This uses vector form for density to save calculations and Jacobian form for everything
-// else. 
+// Computes tord-1 time derivatives at tord spatial GLL points located thoughout the cell
+// of the state values, state spatial derivatives, and time tendencies of the state using
+// Differential Transforms in the time dimension using the y-direction flux Jacobian.
+// 
+// Each vector contains rho, u, v, w, and theta
+// 
+// Acoustic dynamics are linearized in the time dimension (but not in space) because they
+// can be handled less accurately without much impact overall. This reduces local storage
+// requirements and computations.
 // 
 // INPUTS
 //   state: state values at tord GLL points stored in state(:,0,:). This routine expects
-//          full density and pressure, not perturbations. dims are (var,time,space)
+//          full density and theta, not perturbations. dims are (var,time,space)
 //   deriv: spatial derivative values at tord GLL points stored in deriv(:,0,:). drho and
-//          dp can be perturbation or full differentials. dims are (var,time,space)
+//          dp can be perturbation or full derivatives. dims are (var,time,space)
 //   deriv_mat: Matrix that transforms tord GLL points into the spatial derivative stored
 //              at the same tord GLL points.
 // 
 // OUTPUTS
 //   state: 0th- to (tord-1)th-order time derivatives of the state values
 //   deriv: 0th- to (tord-1)th-order time derivatives of the state spatial derivatives
-//   utend: 0th- to (tord-1)th-order time derivatives of the u-tendency (RHS)
-//          dims are (time,space)
-//   vtend: 0th- to (tord-1)th-order time derivatives of the v-tendency (RHS)
-//          dims are (time,space)
-//   wtend: 0th- to (tord-1)th-order time derivatives of the w-tendency (RHS)
-//          dims are (time,space)
+//   tend:  0th- to (tord-1)th-order time derivatives of the state time tendencies
+//          dims are (var,time,space)
 ///////////////////////////////////////////////////////////////////////////////////////////
 YAKL_INLINE void diffTransformEulerY( SArray<real,numState,tord,tord> &state, 
                                       SArray<real,numState,tord,tord> &deriv,
                                       SArray<real,numState,tord,tord> &tend ,
                                       SArray<real,tord,tord> const &deriv_mat ) {
-  SArray<real,tord> r, cs2or, cs2ot;
+  // tend will be used to store v*dr, v*du, v*dv, v*dw, v*dt
+  SArray<real,tord> r, cs2or, cs2ot; // density, cs^2/rho, cs^2/theta
+  // Precompute density, cs^2/rho, and cs^2/theta
   for (int ii=0; ii<tord; ii++) {
     r(ii) = state(idR,0,ii);
     real t = state(idT,0,ii);
@@ -152,12 +156,10 @@ YAKL_INLINE void diffTransformEulerY( SArray<real,numState,tord,tord> &state,
     cs2or(ii) = GAMMA*p/(r(ii)*r(ii));
     cs2ot(ii) = GAMMA*p/(r(ii)*t    );
   }
-  // tend will be used to store v*dr, v*du, v*dv, v*dw, v*dt
 
   // Compute the zeroth-order DTs of the intermediate functions and fluxes
   for (int ii=0; ii<tord; ii++) {
     real v  = state(idV,0,ii);
-    
     // Initialize the 0th-order time DTs (i.e., the values)
     tend(idR,0,ii) = v*deriv(idR,0,ii);
     tend(idU,0,ii) = v*deriv(idU,0,ii);
@@ -175,7 +177,7 @@ YAKL_INLINE void diffTransformEulerY( SArray<real,numState,tord,tord> &state,
       state(idU,kt+1,ii) = -( tend(idU,kt,ii)                                                           )/(kt+1);  // u
       state(idV,kt+1,ii) = -( tend(idV,kt,ii) + cs2or(ii)*deriv(idR,kt,ii) + cs2ot(ii)*deriv(idT,kt,ii) )/(kt+1);  // v
       state(idW,kt+1,ii) = -( tend(idW,kt,ii)                                                           )/(kt+1);  // w
-      state(idT,kt+1,ii) = -( tend(idT,kt,ii)                                                           )/(kt+1);  // p
+      state(idT,kt+1,ii) = -( tend(idT,kt,ii)                                                           )/(kt+1);  // t
     }
 
     // Compute spatial derivative of the (kt+1)th DTs of the state
@@ -213,6 +215,7 @@ YAKL_INLINE void diffTransformEulerY( SArray<real,numState,tord,tord> &state,
   } // kt-loop
 
   // Transform utend, vtend, and wtend into the RHS of the wind equations
+  // These are needed for the local tencencies in high-order flux-difference splitting
   for (int kt=0; kt<tord; kt++) {
     for (int ii=0; ii<tord; ii++) {
       tend(idR,kt,ii) = -( tend(idR,kt,ii) + r(ii)*deriv(idV,kt,ii)                                  );
@@ -227,36 +230,39 @@ YAKL_INLINE void diffTransformEulerY( SArray<real,numState,tord,tord> &state,
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////
-// Computes tord-1 time derivatives of rho, u, v, w, p, utend, vtend, and wtend using
-// Differential Transforms in the time dimension using the z-direction flux Jacobian
-// This uses vector form for density to save calculations and Jacobian form for everything
-// else. 
+// Computes tord-1 time derivatives at tord spatial GLL points located thoughout the cell
+// of the state values, state spatial derivatives, and time tendencies of the state using
+// Differential Transforms in the time dimension using the z-direction flux Jacobian.
+// 
+// state vector contains rho, u, v, w, theta, and pressure
+// deriv vector contains rho, u, v, w, theta, and perturbation pressure
+// tend  vector is for   rho, u, v, w, and theta
+// 
+// Acoustic dynamics are linearized in the time dimension (but not in space) because they
+// can be handled less accurately without much impact overall. This reduces local storage
+// requirements and computations.
 // 
 // INPUTS
 //   state: state values at tord GLL points stored in state(:,0,:). This routine expects
-//          full density and pressure, not perturbations. dims are (var,time,space)
-//   deriv: spatial derivative values at tord GLL points stored in deriv(:,0,:). dp must
-//          be the spatial derivative of perturbation pressure, not full pressure.
+//          full density and theta, not perturbations. dims are (var,time,space)
+//   deriv: spatial derivative values at tord GLL points stored in deriv(:,0,:).
+//          dims are (var,time,space)
 //   deriv_mat: Matrix that transforms tord GLL points into the spatial derivative stored
 //              at the same tord GLL points.
-//   dph: hydrostatic pressure spatial derivative in the vertical direction at tord GLL
-//        points. Used to add hydrostatic balance in pressure advection term
 // 
 // OUTPUTS
 //   state: 0th- to (tord-1)th-order time derivatives of the state values
 //   deriv: 0th- to (tord-1)th-order time derivatives of the state spatial derivatives
-//   utend: 0th- to (tord-1)th-order time derivatives of the u-tendency (RHS)
-//          dims are (time,space)
-//   vtend: 0th- to (tord-1)th-order time derivatives of the v-tendency (RHS)
-//          dims are (time,space)
-//   wtend: 0th- to (tord-1)th-order time derivatives of the w-tendency (RHS)
-//          dims are (time,space)
+//   tend:  0th- to (tord-1)th-order time derivatives of the state time tendencies
+//          dims are (var,time,space)
 ///////////////////////////////////////////////////////////////////////////////////////////
 YAKL_INLINE void diffTransformEulerZ( SArray<real,numState+1,tord,tord> &state, 
                                       SArray<real,numState+1,tord,tord> &deriv,
                                       SArray<real,numState  ,tord,tord> &tend ,
                                       SArray<real,tord,tord> const &deriv_mat ) {
-  SArray<real,tord> r, cs2, rcs2ot;
+  // tend will be used to store w*dr, w*du, w*dv, w*dw, w*dt
+  SArray<real,tord> r, cs2, rcs2ot; // density, cs^2, and rho*cs^2/theta
+  // Precompute density, cs^2, and rho*cs^2/theta
   for (int ii=0; ii<tord; ii++) {
     r(ii) = state(idR,0,ii);
     real t = state(idT,0,ii);
@@ -264,7 +270,6 @@ YAKL_INLINE void diffTransformEulerZ( SArray<real,numState+1,tord,tord> &state,
     cs2(ii) = GAMMA*p/r(ii);
     rcs2ot(ii) = GAMMA*p/t;
   }
-  // tend will be used to store w*dr, w*du, w*dv, w*dw, w*dt
 
   // Compute the zeroth-order DTs of the intermediate functions and fluxes
   for (int ii=0; ii<tord; ii++) {
@@ -324,6 +329,7 @@ YAKL_INLINE void diffTransformEulerZ( SArray<real,numState+1,tord,tord> &state,
   } // kt-loop
 
   // Transform utend, vtend, and wtend into the RHS of the wind equations
+  // These are needed for the local tencencies in high-order flux-difference splitting
   for (int kt=0; kt<tord; kt++) {
     for (int ii=0; ii<tord; ii++) {
       tend(idR,kt,ii) = -( tend(idR,kt,ii) + r(ii)*deriv(idW,kt,ii) );

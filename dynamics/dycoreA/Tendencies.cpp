@@ -3,6 +3,12 @@
 
 
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Allocate arrays, pre-compute transformation arrays, WENO stuff, and GLL weights
+// 
+// INPUTS
+//   dom: The Domain object
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void Tendencies::initialize(Domain const &dom) {
   TransformMatrices<real> trans;
 
@@ -49,11 +55,11 @@ void Tendencies::initialize(Domain const &dom) {
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
-// Compute time tendencies for rho, u, v, w, and p using ADER Differential Transform time
+// Compute time tendencies for rho, u, v, w, and theta using ADER Differential Transform time
 // stepping in the x-direction
 // 
 // INPUTS
-//   state: The state vector: rho,u,v,w,rho*e. dims  (numState,nz+2*hs,ny+2*hs,nx+2*hs)
+//   state: The state vector: rho,u,v,w,theta. dims  (numState,nz+2*hs,ny+2*hs,nx+2*hs)
 //   dom: The Domain class object   
 //   par: The Parallel class object
 // 
@@ -82,13 +88,12 @@ void Tendencies::compEulerTend_X(realArr &state, Domain const &dom, Exchange &ex
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////
   // For each cell:
-  // (1) Reconstruct state values & spatial derivatives for rho, u, v, w, and p at tord GLL points
+  // (1) Reconstruct state values & spatial derivatives for rho, u, v, w, and theta at tord GLL points
   //     across the cell
-  // (2) Compute time derivatives for rho, u, v, w, and p at each GLL point using Differential
-  //     Transforms in time. Save tendencies for u, v, and w as a by product of this operation
-  // (3) Compute time averages of rho, u, v, w, and p, and utend, vtend, and wtend
-  // (4) Compute local flux difference splitting tendencies for u, v, and w using spatial
-  //     quadrature over tord GLL points
+  // (2) Compute time derivatives for rho, u, v, w, and theta at each GLL point using Differential
+  //     Transforms in time. Save tendencies as a by product of this operation
+  // (3) Compute time averages of the state and the state time tendencies
+  // (4) Compute local flux difference splitting tendencies using spatial quadrature over tord GLL points
   // (5) Save the time-averaged state value estimates at the left and right of the cell for use in the
   //     upwind Riemann solver in the next step
   ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -98,13 +103,16 @@ void Tendencies::compEulerTend_X(realArr &state, Domain const &dom, Exchange &ex
   yakl::parallel_for( dom.nz*dom.ny*dom.nx , YAKL_LAMBDA ( int const iGlob ) {
     int k, j, i;
     yakl::unpackIndices(iGlob,dom.nz,dom.ny,dom.nx,k,j,i);
+
     SArray<real,numState,tord,tord> stateDTs;  // GLL state DTs    (var,time,space)
     SArray<real,numState,tord,tord> derivDTs;  // GLL deriv DTs    (var,time,space)
     SArray<real,numState,tord,tord> tendDTs;   // GLL tendency DTs (var,time,space)
+
     // Compute tord GLL points of the fluid state and spatial derivative
     for (int l=0; l<numState; l++) {
       SArray<real,ord> stencil;
       SArray<real,tord> gllPts;
+
       // Store the stencil values
       for (int ii=0; ii<ord; ii++) {
         stencil(ii) = state(l,hs+k,hs+j,i+ii);
@@ -118,14 +126,14 @@ void Tendencies::compEulerTend_X(realArr &state, Domain const &dom, Exchange &ex
       reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_derivX_gll, wenoIdl, wenoSigma);
       for (int ii=0; ii<tord; ii++) { derivDTs(l,0,ii) = gllPts(ii); }
     }
-    // Add hydrostasis to density and pressure to make them the full quantities
+    // Add hydrostasis to density and potential temperature to make them the full quantities
     for (int ii=0; ii<tord; ii++) {
       stateDTs(idR,0,ii) += dom.hyDensCells (hs+k);
       stateDTs(idT,0,ii) += dom.hyThetaCells(hs+k);
     }
 
     // Compute tord-1 time derivatives of the state, state spatial derivatives, 
-    // u RHS, v RHS, and w RHS using temporal Differential Transforms
+    // and state tendencies using temporal Differential Transforms
     diffTransformEulerX( stateDTs, derivDTs, tendDTs, aderDerivX );
 
     // Compute the time-average and store into the zeroth time index
@@ -197,11 +205,11 @@ void Tendencies::compEulerTend_X(realArr &state, Domain const &dom, Exchange &ex
       stateLimits(l,1,k,j,i) = 0;
     }
     real ch;
-    // Wave 1 (u-cs): presumed always leftward  propagating (no shocks)
+    // Wave 1 (u-cs): presumed negatively propagating (no shocks)
     ch = 0.5_fp*df(0) - r/(2*cs)*df(1) + r/(2*t)*df(4);
     stateLimits(idR,0,k,j,i) += ch;
     stateLimits(idU,0,k,j,i) += -cs/r * ch;
-    // Wave 2 (u+cs): presumed always rightward propagating (no shocks)
+    // Wave 2 (u+cs): presumed positively propagating (no shocks)
     ch = 0.5_fp*df(0) + r/(2*cs)*df(1) + r/(2*t)*df(4);
     stateLimits(idR,1,k,j,i) += ch;
     stateLimits(idU,1,k,j,i) +=  cs/r * ch;
@@ -218,6 +226,10 @@ void Tendencies::compEulerTend_X(realArr &state, Domain const &dom, Exchange &ex
     }
   });
 
+  ////////////////////////////////////////////////////////////////////////////////////////////
+  // Add interface fluctuation contributions to each cell, combining the postiive-propatating
+  // waves from the left interfact and the necative-propagating waves from the right interface
+  ////////////////////////////////////////////////////////////////////////////////////////////
   // for (int l=0; l<numState; l++) {
   //   for (int k=0; k<dom.nz; k++) {
   //     for (int j=0; j<dom.ny; j++) {
@@ -225,7 +237,7 @@ void Tendencies::compEulerTend_X(realArr &state, Domain const &dom, Exchange &ex
   yakl::parallel_for( numState*dom.nz*dom.ny*dom.nx , YAKL_LAMBDA (int const iGlob) {
     int l, k, j, i;
     yakl::unpackIndices(iGlob,numState,dom.nz,dom.ny,dom.nx,l,k,j,i);
-    // Flux difference splitting form update for velocities
+
     tend(l,k,j,i) += - ( stateLimits(l,1,k,j,i) + stateLimits(l,0,k,j,i+1) ) / dom.dx;
   });
 }
@@ -233,11 +245,11 @@ void Tendencies::compEulerTend_X(realArr &state, Domain const &dom, Exchange &ex
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
-// Compute time tendencies for rho, u, v, w, and p using ADER Differential Transform time
-// stepping in the y-direction
+// Compute time tendencies for rho, u, v, w, and theta using ADER Differential Transform time
+// stepping in the x-direction
 // 
 // INPUTS
-//   state: The state vector: rho,u,v,w,rho*e. dims  (numState,nz+2*hs,ny+2*hs,nx+2*hs)
+//   state: The state vector: rho,u,v,w,theta. dims  (numState,nz+2*hs,ny+2*hs,nx+2*hs)
 //   dom: The Domain class object   
 //   par: The Parallel class object
 // 
@@ -266,13 +278,12 @@ void Tendencies::compEulerTend_Y(realArr &state, Domain const &dom, Exchange &ex
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////
   // For each cell:
-  // (1) Reconstruct state values & spatial derivatives for rho, u, v, w, and p at tord GLL points
+  // (1) Reconstruct state values & spatial derivatives for rho, u, v, w, and theta at tord GLL points
   //     across the cell
-  // (2) Compute time derivatives for rho, u, v, w, and p at each GLL point using Differential
-  //     Transforms in time. Save tendencies for u, v, and w as a by product of this operation
-  // (3) Compute time averages of rho, u, v, w, and p, and utend, vtend, and wtend
-  // (4) Compute local flux difference splitting tendencies for u, v, and w using spatial
-  //     quadrature over tord GLL points
+  // (2) Compute time derivatives for rho, u, v, w, and theta at each GLL point using Differential
+  //     Transforms in time. Save tendencies as a by product of this operation
+  // (3) Compute time averages of the state and the state time tendencies
+  // (4) Compute local flux difference splitting tendencies using spatial quadrature over tord GLL points
   // (5) Save the time-averaged state value estimates at the left and right of the cell for use in the
   //     upwind Riemann solver in the next step
   ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -282,6 +293,7 @@ void Tendencies::compEulerTend_Y(realArr &state, Domain const &dom, Exchange &ex
   yakl::parallel_for( dom.nz*dom.ny*dom.nx , YAKL_LAMBDA ( int const iGlob ) {
     int k, j, i;
     yakl::unpackIndices(iGlob,dom.nz,dom.ny,dom.nx,k,j,i);
+
     SArray<real,numState,tord,tord> stateDTs;  // GLL state DTs    (var,time,space)
     SArray<real,numState,tord,tord> derivDTs;  // GLL deriv DTs    (var,time,space)
     SArray<real,numState,tord,tord> tendDTs;   // GLL tendency DTs (var,time,space)
@@ -290,6 +302,7 @@ void Tendencies::compEulerTend_Y(realArr &state, Domain const &dom, Exchange &ex
     for (int l=0; l<numState; l++) {
       SArray<real,ord> stencil;
       SArray<real,tord> gllPts;
+
       // Store the stencil values
       for (int ii=0; ii<ord; ii++) {
         stencil(ii) = state(l,hs+k,j+ii,hs+i);
@@ -303,14 +316,14 @@ void Tendencies::compEulerTend_Y(realArr &state, Domain const &dom, Exchange &ex
       reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_derivY_gll, wenoIdl, wenoSigma);
       for (int ii=0; ii<tord; ii++) { derivDTs(l,0,ii) = gllPts(ii); }
     }
-    // Add hydrostasis to density and pressure to make them the full quantities
+    // Add hydrostasis to density and potential temperature to make them the full quantities
     for (int ii=0; ii<tord; ii++) {
       stateDTs(idR,0,ii) += dom.hyDensCells (hs+k);
       stateDTs(idT,0,ii) += dom.hyThetaCells(hs+k);
     }
 
     // Compute tord-1 time derivatives of the state, state spatial derivatives, 
-    // u RHS, v RHS, and w RHS using temporal Differential Transforms
+    // and state tendencies using temporal Differential Transforms
     diffTransformEulerY( stateDTs, derivDTs, tendDTs, aderDerivY );
 
     // Compute the time-average and store into the zeroth time index
@@ -382,11 +395,11 @@ void Tendencies::compEulerTend_Y(realArr &state, Domain const &dom, Exchange &ex
       stateLimits(l,1,k,j,i) = 0;
     }
     real ch;
-    // Wave 1 (v-cs): presumed always leftward  propagating (no shocks)
+    // Wave 1 (v-cs): presumed negatively propagating (no shocks)
     ch = 0.5_fp*df(0) - r/(2*cs)*df(2) + r/(2*t)*df(4);
     stateLimits(idR,0,k,j,i) += ch;
     stateLimits(idV,0,k,j,i) += -cs/r * ch;
-    // Wave 2 (v+cs): presumed always rightward propagating (no shocks)
+    // Wave 2 (v+cs): presumed positively propagating (no shocks)
     ch = 0.5_fp*df(0) + r/(2*cs)*df(2) + r/(2*t)*df(4);
     stateLimits(idR,1,k,j,i) += ch;
     stateLimits(idV,1,k,j,i) +=  cs/r * ch;
@@ -403,6 +416,10 @@ void Tendencies::compEulerTend_Y(realArr &state, Domain const &dom, Exchange &ex
     }
   });
 
+  ////////////////////////////////////////////////////////////////////////////////////////////
+  // Add interface fluctuation contributions to each cell, combining the postiive-propatating
+  // waves from the left interfact and the necative-propagating waves from the right interface
+  ////////////////////////////////////////////////////////////////////////////////////////////
   // for (int l=0; l<numState; l++) {
   //   for (int k=0; k<dom.nz; k++) {
   //     for (int j=0; j<dom.ny; j++) {
@@ -410,7 +427,7 @@ void Tendencies::compEulerTend_Y(realArr &state, Domain const &dom, Exchange &ex
   yakl::parallel_for( numState*dom.nz*dom.ny*dom.nx , YAKL_LAMBDA (int const iGlob) {
     int l, k, j, i;
     yakl::unpackIndices(iGlob,numState,dom.nz,dom.ny,dom.nx,l,k,j,i);
-    // Flux difference splitting form update for velocities
+
     tend(l,k,j,i) += - ( stateLimits(l,1,k,j,i) + stateLimits(l,0,k,j+1,i) ) / dom.dy;
   });
 }
@@ -418,11 +435,11 @@ void Tendencies::compEulerTend_Y(realArr &state, Domain const &dom, Exchange &ex
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
-// Compute time tendencies for rho, u, v, w, and rho*e using ADER Differential Transform time
-// stepping in the z-direction
+// Compute time tendencies for rho, u, v, w, and theta using ADER Differential Transform time
+// stepping in the x-direction
 // 
 // INPUTS
-//   state: The state vector: rho,u,v,w,rho*e. dims  (numState,nz+2*hs,ny+2*hs,nx+2*hs)
+//   state: The state vector: rho,u,v,w,theta. dims  (numState,nz+2*hs,ny+2*hs,nx+2*hs)
 //   dom: The Domain class object   
 // 
 // OUTPUTS
@@ -445,13 +462,13 @@ void Tendencies::compEulerTend_Z(realArr &state, Domain const &dom, realArr &ten
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////
   // For each cell:
-  // (1) Reconstruct state values & spatial derivatives for rho, u, v, w, and p at tord GLL points
-  //     across the cell
-  // (2) Compute time derivatives for rho, u, v, w, and p at each GLL point using Differential
-  //     Transforms in time. Save tendencies for u, v, and w as a by product of this operation
-  // (3) Compute time averages of rho, u, v, w, and p, and utend, vtend, and wtend
-  // (4) Compute local flux difference splitting tendencies for u, v, and w using spatial
-  //     quadrature over tord GLL points
+  // (1) Reconstruct state values & spatial derivatives for rho, u, v, w, theta, and pressure at tord GLL
+  //     points across the cell
+  // (2) Compute time derivatives for rho, u, v, w, theta, and pressure at each GLL point using
+  //     Differential Transforms in time. Save tendencies for rho, u, v, w, and theta as a by product of
+  //     this operation
+  // (3) Compute time averages of the state and the state time tendencies
+  // (4) Compute local flux difference splitting tendencies using spatial quadrature over tord GLL points
   // (5) Save the time-averaged state value estimates at the left and right of the cell for use in the
   //     upwind Riemann solver in the next step
   ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -461,6 +478,7 @@ void Tendencies::compEulerTend_Z(realArr &state, Domain const &dom, realArr &ten
   yakl::parallel_for( dom.nz*dom.ny*dom.nx , YAKL_LAMBDA ( int const iGlob ) {
     int k, j, i;
     yakl::unpackIndices(iGlob,dom.nz,dom.ny,dom.nx,k,j,i);
+
     SArray<real,numState+1,tord,tord> stateDTs;  // GLL state DTs    (var,time,space)
     SArray<real,numState+1,tord,tord> derivDTs;  // GLL deriv DTs    (var,time,space)
     SArray<real,numState  ,tord,tord> tendDTs;   // GLL tendency DTs (var,time,space)
@@ -488,22 +506,25 @@ void Tendencies::compEulerTend_Z(realArr &state, Domain const &dom, realArr &ten
       reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_derivZ_gll, wenoIdl, wenoSigma);
       for (int ii=0; ii<tord; ii++) { derivDTs(l,0,ii) = gllPts(ii); }
     }
-    // Add hydrostasis to density and pressure to make them the full quantities
+    // Add hydrostasis to density, theta, and pressure to make them the full quantities
     for (int ii=0; ii<tord; ii++) {
       stateDTs(idR,0,ii) += dom.hyDensGLL    (k,ii);
       stateDTs(idT,0,ii) += dom.hyThetaGLL   (k,ii);
       stateDTs(idP,0,ii) += dom.hyPressureGLL(k,ii);
     }
+    // Enforce boundary conditions on the reconstructed vertical wind
     if (k == dom.nz-1) { stateDTs(idW,0,tord-1) = 0; }
     if (k == 0       ) { stateDTs(idW,0,0     ) = 0; }
 
     // Compute tord-1 time derivatives of the state, state spatial derivatives, 
-    // u RHS, v RHS, and w RHS using temporal Differential Transforms
+    // and state tendencies using temporal Differential Transforms
     diffTransformEulerZ( stateDTs, derivDTs, tendDTs, aderDerivZ );
 
     // Compute the time-average and store into the zeroth time index
     timeAvg( stateDTs , dom );
     timeAvg( tendDTs  , dom );
+
+    // Enforce boundary conditions on the time-averaged vertical wind
     if (k == dom.nz-1) { stateDTs(idW,0,tord-1) = 0; }
     if (k == 0       ) { stateDTs(idW,0,0     ) = 0; }
 
@@ -570,11 +591,11 @@ void Tendencies::compEulerTend_Z(realArr &state, Domain const &dom, realArr &ten
       stateLimits(l,1,k,j,i) = 0;
     }
     real ch;
-    // Wave 1 (w-cs): presumed always leftward  propagating (no shocks)
+    // Wave 1 (w-cs): presumed negatively propagating (no shocks)
     ch = 0.5_fp*df(0) - r/(2*cs)*df(3) + r/(2*t)*df(4);
     stateLimits(idR,0,k,j,i) += ch;
     stateLimits(idW,0,k,j,i) += -cs/r * ch;
-    // Wave 2 (w+cs): presumed always rightward propagating (no shocks)
+    // Wave 2 (w+cs): presumed positively propagating (no shocks)
     ch = 0.5_fp*df(0) + r/(2*cs)*df(3) + r/(2*t)*df(4);
     stateLimits(idR,1,k,j,i) += ch;
     stateLimits(idW,1,k,j,i) +=  cs/r * ch;
@@ -591,6 +612,10 @@ void Tendencies::compEulerTend_Z(realArr &state, Domain const &dom, realArr &ten
     }
   });
 
+  ////////////////////////////////////////////////////////////////////////////////////////////
+  // Add interface fluctuation contributions to each cell, combining the postiive-propatating
+  // waves from the left interfact and the necative-propagating waves from the right interface
+  ////////////////////////////////////////////////////////////////////////////////////////////
   // for (int l=0; l<numState; l++) {
   //   for (int k=0; k<dom.nz; k++) {
   //     for (int j=0; j<dom.ny; j++) {
@@ -598,7 +623,7 @@ void Tendencies::compEulerTend_Z(realArr &state, Domain const &dom, realArr &ten
   yakl::parallel_for( numState*dom.nz*dom.ny*dom.nx , YAKL_LAMBDA (int const iGlob) {
     int l, k, j, i;
     yakl::unpackIndices(iGlob,numState,dom.nz,dom.ny,dom.nx,l,k,j,i);
-    // Flux difference splitting form update for velocities
+
     tend(l,k,j,i) += - ( stateLimits(l,1,k,j,i) + stateLimits(l,0,k+1,j,i) ) / dom.dz;
   });
 }
@@ -609,11 +634,11 @@ void Tendencies::compEulerTend_Z(realArr &state, Domain const &dom, realArr &ten
 // Compute the source term tendencies
 // 
 // INPUTS
-//   state: The fluid state vector, rho,u,v,w,rho*e; dims(numState,nz+2*hs,ny+2*hs,nx+2*hs)
+//   state: The fluid state vector, rho,u,v,w,theta; dims(numState,nz+2*hs,ny+2*hs,nx+2*hs)
 //   dom: The Domain class object
 // 
 // OUTPUTS
-//   tend: State tendency; dims(numStat,nz,ny,nx)
+//   tend: State tendency; dims(numState,nz,ny,nx)
 ////////////////////////////////////////////////////////////////////////////////////////////
 void Tendencies::compEulerTend_S(realArr const &state, Domain const &dom, realArr &tend) {
   // for (int k=0; k<dom.nz; k++) {
@@ -634,9 +659,10 @@ void Tendencies::compEulerTend_S(realArr const &state, Domain const &dom, realAr
 
 
 
-void Tendencies::compStrakaTend(realArr &state, Domain const &dom, Exchange &exch, Parallel const &par, 
-                                realArr &tend) {
-}
+// void Tendencies::compStrakaTend(realArr &state, Domain const &dom, Exchange &exch, Parallel const &par, 
+//                                 realArr &tend) {
+// }
+
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -644,7 +670,7 @@ void Tendencies::compStrakaTend(realArr &state, Domain const &dom, Exchange &exc
 // all other variables replicate the last domain value to mimick zero gradient free-slip
 // 
 // INPUTS
-//   state: The fluid state vector, rho,u,v,w,rho*e; dims(numState,nz+2*hs,ny+2*hs,nx+2*hs)
+//   state: The fluid state vector, rho,u,v,w,theta; dims(numState,nz+2*hs,ny+2*hs,nx+2*hs)
 //   dom: The Domain class object
 // 
 // OUTPUTS
@@ -678,7 +704,7 @@ void Tendencies::stateBoundariesZ(realArr &state, Domain const &dom) {
 // mimick zero gradient free-slip
 // 
 // INPUTS
-//   state: stateLimits for rho,u,v,w,p ;  dims(numState,2,nz+1,ny+1,nx+1)
+//   state: stateLimits for rho,u,v,w,theta,pressure ;  dims(numState+1,2,nz+1,ny+1,nx+1)
 //   dom: The Domain class object
 // 
 // OUTPUTS
