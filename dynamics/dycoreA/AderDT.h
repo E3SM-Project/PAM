@@ -259,10 +259,10 @@ YAKL_INLINE void diffTransformEulerY( SArray<real,numState,tord,tord> &state,
 YAKL_INLINE void diffTransformEulerZ( SArray<real,numState+1,tord,tord> &state, 
                                       SArray<real,numState+1,tord,tord> &deriv,
                                       SArray<real,numState  ,tord,tord> &tend ,
-                                      SArray<real                ,tord> &rh   ,
                                       SArray<real,tord,tord> const &deriv_mat ) {
   // tend will be used to store w*dr, w*du, w*dv, w*dw, w*dt
   SArray<real,tord> r, cs2, rcs2ot; // density, cs^2, and rho*cs^2/theta
+
   // Precompute density, cs^2, and rho*cs^2/theta
   for (int ii=0; ii<tord; ii++) {
     r(ii) = state(idR,0,ii);
@@ -293,9 +293,6 @@ YAKL_INLINE void diffTransformEulerZ( SArray<real,numState+1,tord,tord> &state,
       state(idW,kt+1,ii) = -( tend(idW,kt,ii) + deriv(idP,kt,ii)/r(ii) )/(kt+1);  // w
       state(idT,kt+1,ii) = -( tend(idT,kt,ii)                          )/(kt+1);  // t
       state(idP,kt+1,ii) = rcs2ot(ii)*state(idT,kt+1,ii) + cs2(ii)*state(idR,kt+1,ii);    // p
-      // if (kt == 0) {
-      //   state(idW,kt+1,ii) -= GRAV * ( state(idR,0,ii) - rh(ii) ) / state(idR,0,ii);
-      // }
     }
 
     // Compute spatial derivative of the (kt+1)th DTs of the state
@@ -341,9 +338,6 @@ YAKL_INLINE void diffTransformEulerZ( SArray<real,numState+1,tord,tord> &state,
       tend(idV,kt,ii) = -( tend(idV,kt,ii)                          );
       tend(idW,kt,ii) = -( tend(idW,kt,ii) + deriv(idP,kt,ii)/r(ii) );
       tend(idT,kt,ii) = -( tend(idT,kt,ii)                          );
-      // if (kt == 0) {
-      //   tend(idW,0,ii) -= GRAV * ( state(idR,0,ii) - rh(ii) ) / state(idR,0,ii);
-      // }
     }
   }
 }

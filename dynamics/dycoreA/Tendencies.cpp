@@ -551,9 +551,7 @@ void Tendencies::compEulerTend_Z(realArr &state, Domain const &dom, realArr &ten
 
     // Compute tord-1 time derivatives of the state, state spatial derivatives, 
     // and state tendencies using temporal Differential Transforms
-    SArray<real,tord> rh;
-    for (int ii=0; ii<tord; ii++) { rh(ii) = dom.hyDensGLL(k,ii); }
-    diffTransformEulerZ( stateDTs, derivDTs, tendDTs, rh, aderDerivZ );
+    diffTransformEulerZ( stateDTs, derivDTs, tendDTs, aderDerivZ );
 
     // Compute the time-average and store into the zeroth time index
     timeAvg( stateDTs , dom );
