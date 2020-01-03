@@ -26,6 +26,7 @@ class Tendencies {
   // ord coefficients to tord GLL points (with WENO limiting)
   SArray<real,ord,tord> to_gll;
 
+  // Transforms ord stencil averages into tord GLL points
   SArray<real,ord,tord> s2g;
 
   // Transforms (in the x-direction) either:
@@ -43,8 +44,13 @@ class Tendencies {
   // ord coefficients to tord GLL points of the spatial derivative (with WENO limiting)
   SArray<real,ord,tord> to_derivZ_gll;
 
+  // Transform ord stencil averages into tord GLL points of the spatial derivative (x-direction)
   SArray<real,ord,tord> s2d2gX;
+
+  // Transform ord stencil averages into tord GLL points of the spatial derivative (y-direction)
   SArray<real,ord,tord> s2d2gY;
+
+  // Transform ord stencil averages into tord GLL points of the spatial derivative (z-direction)
   SArray<real,ord,tord> s2d2gZ;
 
   // In the x-direction, transforms tord GLL points into tord GLL points of the spatial derivative
