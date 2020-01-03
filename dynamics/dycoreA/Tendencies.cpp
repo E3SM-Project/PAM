@@ -29,6 +29,7 @@ void Tendencies::initialize(Domain const &dom) {
     to_derivY_gll = (to_gll * c2d_ho * s2c_ho) / dom.dy;
     to_derivZ_gll = (to_gll * c2d_ho * s2c_ho) / dom.dz;
   }
+  s2d2gZ = ( to_gll * c2d_ho * s2c_ho ) / dom.dz;
 
   SArray<real,tord,tord> g2c, c2d, c2g;
   trans.gll_to_coefs  (g2c);
@@ -167,7 +168,6 @@ void Tendencies::compEulerTend_X(realArr &state, Domain const &dom, Exchange &ex
   // For each x-direction cell interface:
   // (1) Split the interface flux difference into leftward and rightward propagating waves (f-waves)
   //     (A+)*(q_R - q_L)   and   (A-)*(q_R - q_L)
-  // (2) Compute the upwind flux vector for rho and rho*e using the upwind characteristic state
   ///////////////////////////////////////////////////////////////////////////////////////////////////////
   // for (int k=0; k<dom.nz; k++) {
   //   for (int j=0; j<dom.ny; j++) {
@@ -357,7 +357,6 @@ void Tendencies::compEulerTend_Y(realArr &state, Domain const &dom, Exchange &ex
   // For each y-direction cell interface:
   // (1) Split the interface flux difference into leftward and rightward propagating waves (f-waves)
   //     (A+)*(q_R - q_L)   and   (A-)*(q_R - q_L)
-  // (2) Compute the upwind flux vector for rho and rho*e using the upwind characteristic state
   ///////////////////////////////////////////////////////////////////////////////////////////////////////
   // for (int k=0; k<dom.nz; k++) {
   //   for (int j=0; j<dom.ny+1; j++) {
@@ -502,9 +501,15 @@ void Tendencies::compEulerTend_Z(realArr &state, Domain const &dom, realArr &ten
       reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_gll       , wenoIdl, wenoSigma);
       for (int ii=0; ii<tord; ii++) { stateDTs(l,0,ii) = gllPts(ii); }
 
-      // Reconstruct and store GLL points of the state derivatives
-      reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_derivZ_gll, wenoIdl, wenoSigma);
-      for (int ii=0; ii<tord; ii++) { derivDTs(l,0,ii) = gllPts(ii); }
+      if ( ( k <= hs || k >= dom.nz-1) ) {
+        // Reconstruct and store GLL points of the state derivatives
+        reconStencil(stencil, gllPts, 0, wenoRecon, s2d2gZ, wenoIdl, wenoSigma);
+        for (int ii=0; ii<tord; ii++) { derivDTs(l,0,ii) = gllPts(ii); }
+      } else {
+        // Reconstruct and store GLL points of the state derivatives
+        reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_derivZ_gll, wenoIdl, wenoSigma);
+        for (int ii=0; ii<tord; ii++) { derivDTs(l,0,ii) = gllPts(ii); }
+      }
     }
     // Add hydrostasis to density, theta, and pressure to make them the full quantities
     for (int ii=0; ii<tord; ii++) {
@@ -552,7 +557,6 @@ void Tendencies::compEulerTend_Z(realArr &state, Domain const &dom, realArr &ten
   // For each z-direction cell interface:
   // (1) Split the interface flux difference into leftward and rightward propagating waves (f-waves)
   //     (A+)*(q_R - q_L)   and   (A-)*(q_R - q_L)
-  // (2) Compute the upwind flux vector for rho and rho*e using the upwind characteristic state
   ///////////////////////////////////////////////////////////////////////////////////////////////////////
   // for (int k=0; k<dom.nz+1; k++) {
   //   for (int j=0; j<dom.ny; j++) {

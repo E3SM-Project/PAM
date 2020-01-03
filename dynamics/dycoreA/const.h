@@ -2,6 +2,20 @@
 #ifndef _CONST_H_
 #define _CONST_H_
 
+///////////////////////////////////////////////////////////////////
+// These are the most important parameters specified in this file
+///////////////////////////////////////////////////////////////////
+
+// Spatial order of accuracy for the model
+int constexpr ord  = 9;
+
+// Time order of accuracy for the model
+int constexpr tord = 4;
+
+// Declaring the precision for the model
+typedef float real;
+
+
 #include <cmath>
 #include "Array.h"
 #include "SArray.h"
@@ -10,9 +24,6 @@
 #endif
 
 using yakl::SArray;
-
-// Declaring the precision for the model
-typedef float         real;
 
 // The parameters depend on the real type
 #include "params.h"
@@ -35,12 +46,6 @@ typedef yakl::Array<real,yakl::memHost> realArrHost;
 YAKL_INLINE real constexpr operator"" _fp( long double x ) {
   return static_cast<real>(x);
 }
-
-// Spatial order of accuracy for the model
-int constexpr ord      = 5;
-
-// Time order of accuracy for the model
-int constexpr tord     = 3;
 
 // The number of halo cells needed for stencils
 int constexpr hs       = (ord-1)/2;

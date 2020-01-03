@@ -41,6 +41,8 @@ class Tendencies {
   // ord coefficients to tord GLL points of the spatial derivative (with WENO limiting)
   SArray<real,ord,tord> to_derivZ_gll;
 
+  SArray<real,ord,tord> s2d2gZ;
+
   // In the x-direction, transforms tord GLL points into tord GLL points of the spatial derivative
   SArray<real,tord,tord> aderDerivX;
 
