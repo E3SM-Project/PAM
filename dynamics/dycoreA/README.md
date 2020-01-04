@@ -11,5 +11,7 @@ Cell-centered Finite-Volume method, dimensionally split, high-order upwind flux 
 
 # Definitions
 rho:total density
+
 u,v,w: air velocity
+
 theta: potential temperature
