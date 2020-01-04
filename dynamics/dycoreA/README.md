@@ -1,14 +1,15 @@
 # Synopsis
-* State: rho, rho\*u, rho\*v, rho\*w, rho\*theta
-* Conserves: rho, rho\*u, rho\*v, rho\*w, rho\*theta
+* State: rho, u, v, w, theta
+* Conserves: non-conservative form, so basically it conserves nothing :)
 * Acoustics: explicit, no sub-cycling
+* Order of accuracy: any odd order greater than one in time or space (time can be different than space)
 * Staggering: A-grid
+* Other: None
 
 # Method Description
-Cell-centered Finite-Volume method, dimensionally split, upwind fluxes, ADER-DT and Runge-Kutta time discretizations, WENO limiting, positive-definite transport.
+Cell-centered Finite-Volume method, dimensionally split, high-order upwind flux difference splitting, ADER-DT time stepping with temporally linearized acoustic dynamics within a time step, WENO limiting, and positive-definite transport. Hydrostasis is removed from the vertical momentum equation by an additive term.
 
 # Definitions
 rho:total density
-rho_d: dry density
 u,v,w: air velocity
 theta: potential temperature
