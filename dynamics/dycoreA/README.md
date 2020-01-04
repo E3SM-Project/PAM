@@ -4,6 +4,7 @@
 * Acoustics: explicit, no sub-cycling
 * Order of accuracy: any odd order greater than one in time or space (time can be different than space)
 * Staggering: A-grid
+* Transports: Total mass, not mixing ratios
 * Other: None
 
 # Method Description
