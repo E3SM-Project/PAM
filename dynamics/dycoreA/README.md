@@ -11,8 +11,6 @@
 Cell-centered Finite-Volume method, dimensionally split, high-order upwind flux difference splitting, ADER-DT time stepping with temporally linearized acoustic dynamics within a time step, WENO limiting, and positive-definite transport. Hydrostasis is removed from the vertical momentum equation by an additive term.
 
 # Definitions
-rho:total density
-
-u,v,w: air velocity
-
-theta: potential temperature
+* rho: total density
+* u,v,w: air velocity
+* theta: potential temperature
