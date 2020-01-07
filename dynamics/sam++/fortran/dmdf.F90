@@ -14,10 +14,10 @@
 !!     be sampling a small proportion of a random uniform distribution to
 !!     determine when to write data. Thus, there shouldn't be a massive
 !!     number of writes at the same time at least.
-!! - There is "logical" data type functionality, which is not natively
+!! - There is "logical(crm_lknd)" data type functionality, which is not natively
 !!   supported by NetCDF. I hack it by storing to and from an integer type.
 !!   Obviously, once written, there's no way to know whether it was supposed
-!!   to be integer or logical, so the user keeps up with that.
+!!   to be integer or logical(crm_lknd), so the user keeps up with that.
 !! - There is the ability to keep a file open for multiple writes at a time
 !!   since in most cases, the inputs and outputs for a routine involve more
 !!   than a single piece of data.
@@ -71,7 +71,7 @@ module dmdf
   integer :: ncid
 
   character(len=1024), public :: error_string
-  logical            , public :: success
+  logical(crm_lknd)            , public :: success
   
   interface dmdf_write_attr
     module procedure dmdf_write_attr_real4
@@ -204,8 +204,8 @@ contains
     character(len=*), intent(in   ) :: vname
     integer         , intent(in   ) :: ind1
     integer         , intent(in   ) :: ind2
-    logical         , intent(in   ) :: first
-    logical         , intent(in   ) :: last
+    logical(crm_lknd)         , intent(in   ) :: first
+    logical(crm_lknd)         , intent(in   ) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -225,8 +225,8 @@ contains
     character(len=*), intent(in   ) :: vname
     integer         , intent(in   ) :: ind1
     integer         , intent(in   ) :: ind2
-    logical         , intent(in   ) :: first
-    logical         , intent(in   ) :: last
+    logical(crm_lknd)         , intent(in   ) :: first
+    logical(crm_lknd)         , intent(in   ) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -246,8 +246,8 @@ contains
     character(len=*), intent(in   ) :: vname
     integer         , intent(in   ) :: ind1
     integer         , intent(in   ) :: ind2
-    logical         , intent(in   ) :: first
-    logical         , intent(in   ) :: last
+    logical(crm_lknd)         , intent(in   ) :: first
+    logical(crm_lknd)         , intent(in   ) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -267,8 +267,8 @@ contains
     character(len=*), intent(in   ) :: vname
     integer         , intent(in   ) :: ind1
     integer         , intent(in   ) :: ind2
-    logical         , intent(in   ) :: first
-    logical         , intent(in   ) :: last
+    logical(crm_lknd)         , intent(in   ) :: first
+    logical(crm_lknd)         , intent(in   ) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -283,13 +283,13 @@ contains
   subroutine dmdf_read_log_scalar(dat,fprefix,vname,ind1,ind2,first,last)
     implicit none
     integer, parameter :: ndims = 1
-    logical         , intent(  out) :: dat(:)
+    logical(crm_lknd)         , intent(  out) :: dat(:)
     character(len=*), intent(in   ) :: fprefix
     character(len=*), intent(in   ) :: vname
     integer         , intent(in   ) :: ind1
     integer         , intent(in   ) :: ind2
-    logical         , intent(in   ) :: first
-    logical         , intent(in   ) :: last
+    logical(crm_lknd)         , intent(in   ) :: first
+    logical(crm_lknd)         , intent(in   ) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr, dat_int(ind2-ind1+1)
     success = .true.
@@ -310,8 +310,8 @@ contains
     character(len=*), intent(in   ) :: vname
     integer         , intent(in   ) :: ind1
     integer         , intent(in   ) :: ind2
-    logical         , intent(in   ) :: first
-    logical         , intent(in   ) :: last
+    logical(crm_lknd)         , intent(in   ) :: first
+    logical(crm_lknd)         , intent(in   ) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -331,8 +331,8 @@ contains
     character(len=*), intent(in   ) :: vname
     integer         , intent(in   ) :: ind1
     integer         , intent(in   ) :: ind2
-    logical         , intent(in   ) :: first
-    logical         , intent(in   ) :: last
+    logical(crm_lknd)         , intent(in   ) :: first
+    logical(crm_lknd)         , intent(in   ) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -352,8 +352,8 @@ contains
     character(len=*), intent(in   ) :: vname
     integer         , intent(in   ) :: ind1
     integer         , intent(in   ) :: ind2
-    logical         , intent(in   ) :: first
-    logical         , intent(in   ) :: last
+    logical(crm_lknd)         , intent(in   ) :: first
+    logical(crm_lknd)         , intent(in   ) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -373,8 +373,8 @@ contains
     character(len=*), intent(in   ) :: vname
     integer         , intent(in   ) :: ind1
     integer         , intent(in   ) :: ind2
-    logical         , intent(in   ) :: first
-    logical         , intent(in   ) :: last
+    logical(crm_lknd)         , intent(in   ) :: first
+    logical(crm_lknd)         , intent(in   ) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -389,13 +389,13 @@ contains
   subroutine dmdf_read_log_1d(dat,fprefix,vname,ind1,ind2,first,last)
     implicit none
     integer, parameter :: ndims = 2
-    logical         , intent(  out) :: dat(:,:)
+    logical(crm_lknd)         , intent(  out) :: dat(:,:)
     character(len=*), intent(in   ) :: fprefix
     character(len=*), intent(in   ) :: vname
     integer         , intent(in   ) :: ind1
     integer         , intent(in   ) :: ind2
-    logical         , intent(in   ) :: first
-    logical         , intent(in   ) :: last
+    logical(crm_lknd)         , intent(in   ) :: first
+    logical(crm_lknd)         , intent(in   ) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr, shp(ndims)
     integer, allocatable :: dat_int(:,:)
@@ -420,8 +420,8 @@ contains
     character(len=*), intent(in   ) :: vname
     integer         , intent(in   ) :: ind1
     integer         , intent(in   ) :: ind2
-    logical         , intent(in   ) :: first
-    logical         , intent(in   ) :: last
+    logical(crm_lknd)         , intent(in   ) :: first
+    logical(crm_lknd)         , intent(in   ) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -441,8 +441,8 @@ contains
     character(len=*), intent(in   ) :: vname
     integer         , intent(in   ) :: ind1
     integer         , intent(in   ) :: ind2
-    logical         , intent(in   ) :: first
-    logical         , intent(in   ) :: last
+    logical(crm_lknd)         , intent(in   ) :: first
+    logical(crm_lknd)         , intent(in   ) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -462,8 +462,8 @@ contains
     character(len=*), intent(in   ) :: vname
     integer         , intent(in   ) :: ind1
     integer         , intent(in   ) :: ind2
-    logical         , intent(in   ) :: first
-    logical         , intent(in   ) :: last
+    logical(crm_lknd)         , intent(in   ) :: first
+    logical(crm_lknd)         , intent(in   ) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -483,8 +483,8 @@ contains
     character(len=*), intent(in   ) :: vname
     integer         , intent(in   ) :: ind1
     integer         , intent(in   ) :: ind2
-    logical         , intent(in   ) :: first
-    logical         , intent(in   ) :: last
+    logical(crm_lknd)         , intent(in   ) :: first
+    logical(crm_lknd)         , intent(in   ) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -499,13 +499,13 @@ contains
   subroutine dmdf_read_log_2d(dat,fprefix,vname,ind1,ind2,first,last)
     implicit none
     integer, parameter :: ndims = 3
-    logical         , intent(  out) :: dat(:,:,:)
+    logical(crm_lknd)         , intent(  out) :: dat(:,:,:)
     character(len=*), intent(in   ) :: fprefix
     character(len=*), intent(in   ) :: vname
     integer         , intent(in   ) :: ind1
     integer         , intent(in   ) :: ind2
-    logical         , intent(in   ) :: first
-    logical         , intent(in   ) :: last
+    logical(crm_lknd)         , intent(in   ) :: first
+    logical(crm_lknd)         , intent(in   ) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr, shp(ndims)
     integer, allocatable :: dat_int(:,:,:)
@@ -530,8 +530,8 @@ contains
     character(len=*), intent(in   ) :: vname
     integer         , intent(in   ) :: ind1
     integer         , intent(in   ) :: ind2
-    logical         , intent(in   ) :: first
-    logical         , intent(in   ) :: last
+    logical(crm_lknd)         , intent(in   ) :: first
+    logical(crm_lknd)         , intent(in   ) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -551,8 +551,8 @@ contains
     character(len=*), intent(in   ) :: vname
     integer         , intent(in   ) :: ind1
     integer         , intent(in   ) :: ind2
-    logical         , intent(in   ) :: first
-    logical         , intent(in   ) :: last
+    logical(crm_lknd)         , intent(in   ) :: first
+    logical(crm_lknd)         , intent(in   ) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -572,8 +572,8 @@ contains
     character(len=*), intent(in   ) :: vname
     integer         , intent(in   ) :: ind1
     integer         , intent(in   ) :: ind2
-    logical         , intent(in   ) :: first
-    logical         , intent(in   ) :: last
+    logical(crm_lknd)         , intent(in   ) :: first
+    logical(crm_lknd)         , intent(in   ) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -593,8 +593,8 @@ contains
     character(len=*), intent(in   ) :: vname
     integer         , intent(in   ) :: ind1
     integer         , intent(in   ) :: ind2
-    logical         , intent(in   ) :: first
-    logical         , intent(in   ) :: last
+    logical(crm_lknd)         , intent(in   ) :: first
+    logical(crm_lknd)         , intent(in   ) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -609,13 +609,13 @@ contains
   subroutine dmdf_read_log_3d(dat,fprefix,vname,ind1,ind2,first,last)
     implicit none
     integer, parameter :: ndims = 4
-    logical         , intent(  out) :: dat(:,:,:,:)
+    logical(crm_lknd)         , intent(  out) :: dat(:,:,:,:)
     character(len=*), intent(in   ) :: fprefix
     character(len=*), intent(in   ) :: vname
     integer         , intent(in   ) :: ind1
     integer         , intent(in   ) :: ind2
-    logical         , intent(in   ) :: first
-    logical         , intent(in   ) :: last
+    logical(crm_lknd)         , intent(in   ) :: first
+    logical(crm_lknd)         , intent(in   ) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr, shp(ndims)
     integer, allocatable :: dat_int(:,:,:,:)
@@ -640,8 +640,8 @@ contains
     character(len=*), intent(in   ) :: vname
     integer         , intent(in   ) :: ind1
     integer         , intent(in   ) :: ind2
-    logical         , intent(in   ) :: first
-    logical         , intent(in   ) :: last
+    logical(crm_lknd)         , intent(in   ) :: first
+    logical(crm_lknd)         , intent(in   ) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -661,8 +661,8 @@ contains
     character(len=*), intent(in   ) :: vname
     integer         , intent(in   ) :: ind1
     integer         , intent(in   ) :: ind2
-    logical         , intent(in   ) :: first
-    logical         , intent(in   ) :: last
+    logical(crm_lknd)         , intent(in   ) :: first
+    logical(crm_lknd)         , intent(in   ) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -682,8 +682,8 @@ contains
     character(len=*), intent(in   ) :: vname
     integer         , intent(in   ) :: ind1
     integer         , intent(in   ) :: ind2
-    logical         , intent(in   ) :: first
-    logical         , intent(in   ) :: last
+    logical(crm_lknd)         , intent(in   ) :: first
+    logical(crm_lknd)         , intent(in   ) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -703,8 +703,8 @@ contains
     character(len=*), intent(in   ) :: vname
     integer         , intent(in   ) :: ind1
     integer         , intent(in   ) :: ind2
-    logical         , intent(in   ) :: first
-    logical         , intent(in   ) :: last
+    logical(crm_lknd)         , intent(in   ) :: first
+    logical(crm_lknd)         , intent(in   ) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -719,13 +719,13 @@ contains
   subroutine dmdf_read_log_4d(dat,fprefix,vname,ind1,ind2,first,last)
     implicit none
     integer, parameter :: ndims = 5
-    logical         , intent(  out) :: dat(:,:,:,:,:)
+    logical(crm_lknd)         , intent(  out) :: dat(:,:,:,:,:)
     character(len=*), intent(in   ) :: fprefix
     character(len=*), intent(in   ) :: vname
     integer         , intent(in   ) :: ind1
     integer         , intent(in   ) :: ind2
-    logical         , intent(in   ) :: first
-    logical         , intent(in   ) :: last
+    logical(crm_lknd)         , intent(in   ) :: first
+    logical(crm_lknd)         , intent(in   ) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr, shp(ndims)
     integer, allocatable :: dat_int(:,:,:,:,:)
@@ -816,7 +816,7 @@ contains
 
   subroutine dmdf_read_attr_log(val,fprefix,aname)
     implicit none
-    logical         , intent(  out) :: val
+    logical(crm_lknd)         , intent(  out) :: val
     character(len=*), intent(in   ) :: fprefix
     character(len=*), intent(in   ) :: aname
     integer :: ierr, ival
@@ -913,7 +913,7 @@ contains
 
   subroutine dmdf_write_attr_log(val,rank,fprefix,aname)
     implicit none
-    logical         , intent(in) :: val
+    logical(crm_lknd)         , intent(in) :: val
     integer         , intent(in) :: rank
     character(len=*), intent(in) :: fprefix
     character(len=*), intent(in) :: aname
@@ -940,8 +940,8 @@ contains
     integer         , intent(in) :: rank
     character(len=*), intent(in) :: fprefix
     character(len=*), intent(in) :: vname
-    logical         , intent(in) :: first
-    logical         , intent(in) :: last
+    logical(crm_lknd)         , intent(in) :: first
+    logical(crm_lknd)         , intent(in) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -964,8 +964,8 @@ contains
     integer         , intent(in) :: rank
     character(len=*), intent(in) :: fprefix
     character(len=*), intent(in) :: vname
-    logical         , intent(in) :: first
-    logical         , intent(in) :: last
+    logical(crm_lknd)         , intent(in) :: first
+    logical(crm_lknd)         , intent(in) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -988,8 +988,8 @@ contains
     integer         , intent(in) :: rank
     character(len=*), intent(in) :: fprefix
     character(len=*), intent(in) :: vname
-    logical         , intent(in) :: first
-    logical         , intent(in) :: last
+    logical(crm_lknd)         , intent(in) :: first
+    logical(crm_lknd)         , intent(in) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -1012,8 +1012,8 @@ contains
     integer         , intent(in) :: rank
     character(len=*), intent(in) :: fprefix
     character(len=*), intent(in) :: vname
-    logical         , intent(in) :: first
-    logical         , intent(in) :: last
+    logical(crm_lknd)         , intent(in) :: first
+    logical(crm_lknd)         , intent(in) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -1032,12 +1032,12 @@ contains
   subroutine dmdf_write_log_scalar(dat,rank,fprefix,vname,first,last)
     implicit none
     integer, parameter :: ndims = 1
-    logical         , intent(in) :: dat
+    logical(crm_lknd)         , intent(in) :: dat
     integer         , intent(in) :: rank
     character(len=*), intent(in) :: fprefix
     character(len=*), intent(in) :: vname
-    logical         , intent(in) :: first
-    logical         , intent(in) :: last
+    logical(crm_lknd)         , intent(in) :: first
+    logical(crm_lknd)         , intent(in) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -1068,8 +1068,8 @@ contains
     character(len=*), intent(in) :: fprefix
     character(len=*), intent(in) :: vname
     character(len=*), intent(in) :: dnames(ndims-1)
-    logical         , intent(in) :: first
-    logical         , intent(in) :: last
+    logical(crm_lknd)         , intent(in) :: first
+    logical(crm_lknd)         , intent(in) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -1094,8 +1094,8 @@ contains
     character(len=*), intent(in) :: fprefix
     character(len=*), intent(in) :: vname
     character(len=*), intent(in) :: dnames(ndims-1)
-    logical         , intent(in) :: first
-    logical         , intent(in) :: last
+    logical(crm_lknd)         , intent(in) :: first
+    logical(crm_lknd)         , intent(in) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -1120,8 +1120,8 @@ contains
     character(len=*), intent(in) :: fprefix
     character(len=*), intent(in) :: vname
     character(len=*), intent(in) :: dnames(ndims-1)
-    logical         , intent(in) :: first
-    logical         , intent(in) :: last
+    logical(crm_lknd)         , intent(in) :: first
+    logical(crm_lknd)         , intent(in) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -1146,8 +1146,8 @@ contains
     character(len=*), intent(in) :: fprefix
     character(len=*), intent(in) :: vname
     character(len=*), intent(in) :: dnames(ndims-1)
-    logical         , intent(in) :: first
-    logical         , intent(in) :: last
+    logical(crm_lknd)         , intent(in) :: first
+    logical(crm_lknd)         , intent(in) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -1167,13 +1167,13 @@ contains
   subroutine dmdf_write_log_1d(dat,rank,fprefix,vname,dnames,first,last)
     implicit none
     integer, parameter :: ndims = 2
-    logical         , intent(in) :: dat(:)
+    logical(crm_lknd)         , intent(in) :: dat(:)
     integer         , intent(in) :: rank
     character(len=*), intent(in) :: fprefix
     character(len=*), intent(in) :: vname
     character(len=*), intent(in) :: dnames(ndims-1)
-    logical         , intent(in) :: first
-    logical         , intent(in) :: last
+    logical(crm_lknd)         , intent(in) :: first
+    logical(crm_lknd)         , intent(in) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -1198,8 +1198,8 @@ contains
     character(len=*), intent(in) :: fprefix
     character(len=*), intent(in) :: vname
     character(len=*), intent(in) :: dnames(ndims-1)
-    logical         , intent(in) :: first
-    logical         , intent(in) :: last
+    logical(crm_lknd)         , intent(in) :: first
+    logical(crm_lknd)         , intent(in) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -1224,8 +1224,8 @@ contains
     character(len=*), intent(in) :: fprefix
     character(len=*), intent(in) :: vname
     character(len=*), intent(in) :: dnames(ndims-1)
-    logical         , intent(in) :: first
-    logical         , intent(in) :: last
+    logical(crm_lknd)         , intent(in) :: first
+    logical(crm_lknd)         , intent(in) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -1250,8 +1250,8 @@ contains
     character(len=*), intent(in) :: fprefix
     character(len=*), intent(in) :: vname
     character(len=*), intent(in) :: dnames(ndims-1)
-    logical         , intent(in) :: first
-    logical         , intent(in) :: last
+    logical(crm_lknd)         , intent(in) :: first
+    logical(crm_lknd)         , intent(in) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -1276,8 +1276,8 @@ contains
     character(len=*), intent(in) :: fprefix
     character(len=*), intent(in) :: vname
     character(len=*), intent(in) :: dnames(ndims-1)
-    logical         , intent(in) :: first
-    logical         , intent(in) :: last
+    logical(crm_lknd)         , intent(in) :: first
+    logical(crm_lknd)         , intent(in) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -1297,13 +1297,13 @@ contains
   subroutine dmdf_write_log_2d(dat,rank,fprefix,vname,dnames,first,last)
     implicit none
     integer, parameter :: ndims = 3
-    logical         , intent(in) :: dat(:,:)
+    logical(crm_lknd)         , intent(in) :: dat(:,:)
     integer         , intent(in) :: rank
     character(len=*), intent(in) :: fprefix
     character(len=*), intent(in) :: vname
     character(len=*), intent(in) :: dnames(ndims-1)
-    logical         , intent(in) :: first
-    logical         , intent(in) :: last
+    logical(crm_lknd)         , intent(in) :: first
+    logical(crm_lknd)         , intent(in) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -1328,8 +1328,8 @@ contains
     character(len=*), intent(in) :: fprefix
     character(len=*), intent(in) :: vname
     character(len=*), intent(in) :: dnames(ndims-1)
-    logical         , intent(in) :: first
-    logical         , intent(in) :: last
+    logical(crm_lknd)         , intent(in) :: first
+    logical(crm_lknd)         , intent(in) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -1354,8 +1354,8 @@ contains
     character(len=*), intent(in) :: fprefix
     character(len=*), intent(in) :: vname
     character(len=*), intent(in) :: dnames(ndims-1)
-    logical         , intent(in) :: first
-    logical         , intent(in) :: last
+    logical(crm_lknd)         , intent(in) :: first
+    logical(crm_lknd)         , intent(in) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -1380,8 +1380,8 @@ contains
     character(len=*), intent(in) :: fprefix
     character(len=*), intent(in) :: vname
     character(len=*), intent(in) :: dnames(ndims-1)
-    logical         , intent(in) :: first
-    logical         , intent(in) :: last
+    logical(crm_lknd)         , intent(in) :: first
+    logical(crm_lknd)         , intent(in) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -1406,8 +1406,8 @@ contains
     character(len=*), intent(in) :: fprefix
     character(len=*), intent(in) :: vname
     character(len=*), intent(in) :: dnames(ndims-1)
-    logical         , intent(in) :: first
-    logical         , intent(in) :: last
+    logical(crm_lknd)         , intent(in) :: first
+    logical(crm_lknd)         , intent(in) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -1427,13 +1427,13 @@ contains
   subroutine dmdf_write_log_3d(dat,rank,fprefix,vname,dnames,first,last)
     implicit none
     integer, parameter :: ndims = 4
-    logical         , intent(in) :: dat(:,:,:)
+    logical(crm_lknd)         , intent(in) :: dat(:,:,:)
     integer         , intent(in) :: rank
     character(len=*), intent(in) :: fprefix
     character(len=*), intent(in) :: vname
     character(len=*), intent(in) :: dnames(ndims-1)
-    logical         , intent(in) :: first
-    logical         , intent(in) :: last
+    logical(crm_lknd)         , intent(in) :: first
+    logical(crm_lknd)         , intent(in) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -1458,8 +1458,8 @@ contains
     character(len=*), intent(in) :: fprefix
     character(len=*), intent(in) :: vname
     character(len=*), intent(in) :: dnames(ndims-1)
-    logical         , intent(in) :: first
-    logical         , intent(in) :: last
+    logical(crm_lknd)         , intent(in) :: first
+    logical(crm_lknd)         , intent(in) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -1484,8 +1484,8 @@ contains
     character(len=*), intent(in) :: fprefix
     character(len=*), intent(in) :: vname
     character(len=*), intent(in) :: dnames(ndims-1)
-    logical         , intent(in) :: first
-    logical         , intent(in) :: last
+    logical(crm_lknd)         , intent(in) :: first
+    logical(crm_lknd)         , intent(in) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -1510,8 +1510,8 @@ contains
     character(len=*), intent(in) :: fprefix
     character(len=*), intent(in) :: vname
     character(len=*), intent(in) :: dnames(ndims-1)
-    logical         , intent(in) :: first
-    logical         , intent(in) :: last
+    logical(crm_lknd)         , intent(in) :: first
+    logical(crm_lknd)         , intent(in) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -1536,8 +1536,8 @@ contains
     character(len=*), intent(in) :: fprefix
     character(len=*), intent(in) :: vname
     character(len=*), intent(in) :: dnames(ndims-1)
-    logical         , intent(in) :: first
-    logical         , intent(in) :: last
+    logical(crm_lknd)         , intent(in) :: first
+    logical(crm_lknd)         , intent(in) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -1557,13 +1557,13 @@ contains
   subroutine dmdf_write_log_4d(dat,rank,fprefix,vname,dnames,first,last)
     implicit none
     integer, parameter :: ndims = 5
-    logical         , intent(in) :: dat(:,:,:,:)
+    logical(crm_lknd)         , intent(in) :: dat(:,:,:,:)
     integer         , intent(in) :: rank
     character(len=*), intent(in) :: fprefix
     character(len=*), intent(in) :: vname
     character(len=*), intent(in) :: dnames(ndims-1)
-    logical         , intent(in) :: first
-    logical         , intent(in) :: last
+    logical(crm_lknd)         , intent(in) :: first
+    logical(crm_lknd)         , intent(in) :: last
     integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
     integer :: varid, unlim_len, ierr
     success = .true.
@@ -1612,7 +1612,7 @@ contains
 
   subroutine close_file(last,ncid)
     implicit none
-    logical, intent(in) :: last
+    logical(crm_lknd), intent(in) :: last
     integer, intent(in) :: ncid
     if (last) then
       _NCERR( nf90_close(ncid) )
@@ -1621,7 +1621,7 @@ contains
 
 
   subroutine compute_start_count(first,ndims,dsizes,unlim_len,start,count)
-    logical, intent(in   ) :: first
+    logical(crm_lknd), intent(in   ) :: first
     integer, intent(in   ) :: ndims
     integer, intent(in   ) :: dsizes(ndims)
     integer, intent(in   ) :: unlim_len
@@ -1739,11 +1739,11 @@ contains
 
   subroutine procure_fileid(first,rank,fprefix,ncid)
     implicit none
-    logical         , intent(in   ) :: first
+    logical(crm_lknd)         , intent(in   ) :: first
     integer         , intent(in   ) :: rank
     character(len=*), intent(in   ) :: fprefix
     integer         , intent(  out) :: ncid
-    logical :: file_exists
+    logical(crm_lknd) :: file_exists
     integer :: groupnum
     character(len=256) :: fname
     if (first) then

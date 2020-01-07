@@ -38,7 +38,7 @@ contains
    ! Type-bound procedures for crm_input_type
    subroutine crm_input_initialize(this, ncrms, nlev)
       class(crm_input_type), intent(inout) :: this
-      integer, intent(in) :: ncrms, nlev
+      integer(crm_iknd), intent(in) :: ncrms, nlev
       
       if (.not. allocated(this%zmid))     allocate(this%zmid(ncrms,nlev))
       if (.not. allocated(this%zint))     allocate(this%zint(ncrms,nlev+1))

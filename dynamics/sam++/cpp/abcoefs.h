@@ -16,7 +16,7 @@
 // On the first time step, do forward Euler (no other data to use)
 // On the second time step, do 2nd-order A-B
 // On the third and continuing time steps, do 3rd-order A-B
-void abcoefs(real1d const &dt3, int na, int nb, int nc, real &at, real &bt, real &ct);
+void abcoefs(real1d const &dt3, int nstep, int na, int nb, int nc, real &at, real &bt, real &ct);
 
 #endif
 

@@ -1,0 +1,6 @@
+ gcc -DYES3DVAL=0 -Dcrm_nx=128 -Dcrm_ny=1 -Dcrm_nz=58 -c -I../cpp ../cpp/abcoefs.cpp 
+ gcc -DYES3DVAL=0 -Dcrm_nx=128 -Dcrm_ny=1 -Dcrm_nz=58 -I../cpp -c ./unit_abcoefs.cpp
+ gfortran -c ../fortran/params.F90 -o params_f90.o
+ gfortran -c ../fortran/abcoefs.F90 -o abcoefs_f90.o
+ gfortran *.o -lstdc++
+ ./a.out 

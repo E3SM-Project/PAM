@@ -4,13 +4,13 @@ module utils
 
 contains
 
-  integer function lenstr (string)
+  integer(crm_iknd) function lenstr (string)
 
     ! returns string's length ignoring the rightmost blank and null characters
 
     implicit none
     character *(*) string
-    integer k
+    integer(crm_iknd) k
     lenstr = 0
     do k = 1,len(string)
       if (string(k:k).ne.' '.and.string(k:k).ne.char(0)) then
@@ -27,10 +27,10 @@ contains
     use grid
     use params, only: crm_rknd
     implicit none
-    integer dimx1, dimx2, dimy1, dimy2, dimz
+    integer(crm_iknd) dimx1, dimx2, dimy1, dimy2, dimz
     real(crm_rknd) f(dimx1:dimx2, dimy1:dimy2, dimz),fm(nzm)
     real(8) ff,factor
-    integer i,j,k
+    integer(crm_iknd) i,j,k
     factor = 1./dble(nx*ny)
     do k =1,nzm
       ff = 0.
@@ -50,10 +50,10 @@ contains
     use grid
     use params, only: crm_rknd
     implicit none
-    integer dimx1, dimx2, dimy1, dimy2, dimz
+    integer(crm_iknd) dimx1, dimx2, dimy1, dimy2, dimz
     real(crm_rknd) f(dimx1:dimx2, dimy1:dimy2, dimz),fm(nzm)
     real(8) fm1(nzm),fm2(nzm),factor
-    integer i,j,k
+    integer(crm_iknd) i,j,k
     factor = 1./dble(nx*ny)
     do k =1,nzm
       fm1(k) = 0.
@@ -86,11 +86,11 @@ contains
     use grid
     use params, only: crm_rknd
     implicit none
-    integer dimx1, dimx2, dimy1, dimy2, dimz
+    integer(crm_iknd) dimx1, dimx2, dimy1, dimy2, dimz
     real(crm_rknd) f(dimx1:dimx2, dimy1:dimy2, dimz),fmn(nz),fmx(nz)
     character *(*) name
     real(crm_rknd) fmin(1),fmax(1),fff(1)
-    integer i,j,k
+    integer(crm_iknd) i,j,k
 
     do k=1,dimz
       if(dimx2.eq.1.and.dimy2.eq.1) then
@@ -129,9 +129,9 @@ contains
   subroutine setvalue(f,n,f0)
     use params, only: crm_rknd
     implicit none
-    integer n
+    integer(crm_iknd) n
     real(crm_rknd) f(n), f0
-    integer k
+    integer(crm_iknd) k
     do k=1,n
       f(k)=f0
     end do
@@ -139,10 +139,10 @@ contains
 
   ! determine number of byte in a record in direct access files (can be anything, from 1 to 8):
   ! can't assume 1 as it is compiler and computer dependent
-  integer function bytes_in_rec()
+  integer(crm_iknd) function bytes_in_rec()
     implicit none
     character*8 str
-    integer n, err
+    integer(crm_iknd) n, err
     open(1,status ='scratch',access ='direct',recl=1)
     do n = 1,8
       write(1,rec=1,iostat=err) str(1:n)

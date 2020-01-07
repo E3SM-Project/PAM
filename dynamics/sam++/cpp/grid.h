@@ -9,8 +9,8 @@ int constexpr ny = ny_gl/nsubdomains_y;
 int constexpr nz = nz_gl+1;        // note that nz_gl = crm_nz
 int constexpr nzm = nz-1;          // note that nzm   = crm_nz
 int constexpr nsubdomains = nsubdomains_x * nsubdomains_y;
-int constexpr RUN3D = ny_gl.gt.1;
-int constexpr RUN2D = .not. RUN3D;
+int constexpr RUN3D = ny_gl > 1;
+int constexpr RUN2D = !RUN3D;
 
 int constexpr nxp1 = nx + 1;
 int constexpr nyp1 = ny + 1 * YES3D;

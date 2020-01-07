@@ -10,7 +10,7 @@
 !   accelerate_crm: calculates and applies MSA tendency to CRM
 !
 ! PUBLIC MODULE VARIABLES:
-!   logical  :: use_crm_accel - apply MSA if true (cam namelist variable)
+!   logical(crm_lknd)  :: use_crm_accel - apply MSA if true (cam namelist variable)
 !   real(r8) :: crm_accel_factor - MSA factor to use (cam namelist variable)
 !
 ! REVISION HISTORY:
@@ -28,11 +28,11 @@ module accelerate_crm_mod
 
     ! private module variables
     real(r8), parameter :: coef = 1._r8 / dble(nx * ny)  ! coefficient for horizontal averaging
-    logical :: crm_accel_uv  ! (false) apply MSA only to scalar fields (T and QT)
+    logical(crm_lknd) :: crm_accel_uv  ! (false) apply MSA only to scalar fields (T and QT)
                              ! (true) apply MSA to winds (U/V) and scalar fields
 
     ! public module variables
-    logical :: use_crm_accel  ! use MSA if true
+    logical(crm_lknd) :: use_crm_accel  ! use MSA if true
     real(r8) :: crm_accel_factor  ! 1 + crm_accel_factor = 'a' in Jones etal (2015)
 
     private :: coef, crm_accel_uv
@@ -88,7 +88,7 @@ module accelerate_crm_mod
   
       implicit none
   
-      integer, intent(inout) :: nstop
+      integer(crm_iknd), intent(inout) :: nstop
   
       if (mod(nstop, int(1 + crm_accel_factor)) .ne. 0) then
         write(iulog,*) "CRM acceleration unexpected exception:"
@@ -129,10 +129,10 @@ module accelerate_crm_mod
       use microphysics, only: micro_field, idx_qt=>index_water_vapor
       use cam_logfile,  only: iulog
       implicit none
-      integer, intent(in   ) :: ncrms
-      integer, intent(in   ) :: nstep
-      integer, intent(inout) :: nstop
-      logical, intent(inout) :: ceaseflag
+      integer(crm_iknd), intent(in   ) :: ncrms
+      integer(crm_iknd), intent(in   ) :: nstep
+      integer(crm_iknd), intent(inout) :: nstop
+      logical(crm_lknd), intent(inout) :: ceaseflag
       real(rc), allocatable :: ubaccel  (:,:)   ! u before applying MSA tendency
       real(rc), allocatable :: vbaccel  (:,:)   ! v before applying MSA tendency
       real(rc), allocatable :: tbaccel  (:,:)   ! t before applying MSA tendency
@@ -144,7 +144,7 @@ module accelerate_crm_mod
       real(r8), allocatable :: qpoz     (:,:) ! total positive micro_field(:,:,k,idx_qt,:) in level k
       real(r8), allocatable :: qneg     (:,:) ! total negative micro_field(:,:,k,idx_qt,:) in level k
       real(rc) :: tmp  ! temporary variable for atomic updates
-      integer i, j, k, icrm  ! iteration variables
+      integer(crm_iknd) i, j, k, icrm  ! iteration variables
       real(r8) :: factor, qt_res ! local variables for redistributing moisture
       real(rc) :: ttend_threshold ! threshold for ttend_acc at which MSA aborts
       real(rc) :: tmin  ! mininum value of t allowed (sanity factor)

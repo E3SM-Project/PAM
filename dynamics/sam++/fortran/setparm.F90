@@ -16,7 +16,7 @@ contains
 
     implicit none
 
-    integer icondavg, ierr
+    integer(crm_iknd) icondavg, ierr
 
     doprecip    = .true.
     dosgs   = .true.

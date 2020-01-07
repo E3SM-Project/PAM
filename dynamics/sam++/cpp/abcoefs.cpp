@@ -13,13 +13,13 @@
 // On the first time step, do forward Euler (no other data to use)
 // On the second time step, do 2nd-order A-B
 // On the third and continuing time steps, do 3rd-order A-B
-void abcoefs(real1d const &dt3, int na, int nb, int nc, real &at, real &bt, real &ct) {
+void abcoefs(real1d const &dt3, int nstep, int na, int nb, int nc, real &at, real &bt, real &ct) {
   // coefficients for the Adams-Bashforth scheme
   real alpha, beta;
 
   if (nstep >= 3) {          // Third time step and onward
-    alpha = dt3(nb) / dt3(na);
-    beta = dt3(nc) / dt3(na);
+    alpha = dt3(nb-1) / dt3(na-1);
+    beta = dt3(nc-1) / dt3(na-1);
     ct = (2.+3.* alpha) / (6.* (alpha + beta) * beta);
     bt = -(1.+2.*(alpha + beta) * ct)/(2. * alpha);
     at = 1. - bt - ct;

@@ -14,8 +14,8 @@ contains
     use crmtracers
     use scalar_momentum_mod
     implicit none
-    integer, intent(in) :: ncrms,flag
-    integer :: i,icrm, j, ii, k
+    integer(crm_iknd), intent(in) :: ncrms,flag
+    integer(crm_iknd) :: i,icrm, j, ii, k
 
     !-------------------------------------------------
     ! Update velocity fields

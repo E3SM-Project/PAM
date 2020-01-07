@@ -9,9 +9,9 @@ contains
     use params
     use task_util_mod, only: task_rank_to_index
     implicit none
-    integer, intent(in) :: ncrms
+    integer(crm_iknd), intent(in) :: ncrms
     ! input
-    integer :: dimx1_d,dimx2_d,dimy1_d,dimy2_d
+    integer(crm_iknd) :: dimx1_d,dimx2_d,dimy1_d,dimy2_d
     real(crm_rknd) grdf_x(ncrms,nzm)! grid factor for eddy diffusion in x
     real(crm_rknd) grdf_y(ncrms,nzm)! grid factor for eddy diffusion in y
     real(crm_rknd) grdf_z(ncrms,nzm)! grid factor for eddy diffusion in z
@@ -29,7 +29,7 @@ contains
     real(crm_rknd), allocatable :: dfdt (:,:,:,:)
     real(crm_rknd) rdx2,rdy2,rdz2,rdz,rdx5,rdy5,rdz5,tmp
     real(crm_rknd) dxy,dyx,tkx,tky,tkz,rhoi
-    integer i,j,k,ib,ic,jb,jc,kc,kb,icrm
+    integer(crm_iknd) i,j,k,ib,ic,jb,jc,kc,kb,icrm
 
     if(.not.dosgs) return
 

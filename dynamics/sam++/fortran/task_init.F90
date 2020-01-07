@@ -10,7 +10,7 @@ contains
     use grid
     implicit none
 
-    integer itasks,ntasks
+    integer(crm_iknd) itasks,ntasks
 
     if(YES3D .ne. 1 .and. YES3D .ne. 0) then
       print*,'YES3D is not 1 or 0. STOP'

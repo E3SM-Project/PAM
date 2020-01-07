@@ -12,14 +12,14 @@ contains
     use sat_mod
 
     implicit none
-    integer, intent(in) :: ncrms
+    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd) :: q(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
     real(crm_rknd) :: qp(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
     real(crm_rknd) qn(ncrms,nx,ny,nzm)  ! cloud condensate (liquid + ice)
     real(crm_rknd) qpsrc(ncrms,nz)  ! source of precipitation microphysical processes
     real(crm_rknd) qpevp(ncrms,nz)  ! sink of precipitating water due to evaporation
 
-    integer i,j,k,icrm
+    integer(crm_iknd) i,j,k,icrm
     real(crm_rknd) autor, autos, accrr, accris, accrcs, accrig, accrcg
     real(crm_rknd) dq, omn, omp, omg, qsatt
     real(crm_rknd) pows1, pows2, powg1, powg2, powr1, powr2, tmp

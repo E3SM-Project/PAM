@@ -8,9 +8,9 @@ contains
     use vars
     use params, only: crm_rknd
     implicit none
-    integer, intent(in) :: ncrms
+    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd) u_av, v_av, w_av
-    integer i,j,k,ib,ic,jb,jc,kc,icrm
+    integer(crm_iknd) i,j,k,ib,ic,jb,jc,kc,icrm
 
     if(RUN3D) then
       !$acc parallel loop collapse(4) async(asyncid)

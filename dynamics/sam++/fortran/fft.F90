@@ -158,7 +158,7 @@ contains
       use params, only: crm_rknd
       dimension ifax(13)
       real(crm_rknd), dimension(1) :: trigs
-      integer :: mode
+      integer(crm_iknd) :: mode
 !
 ! mode 3 is used for real/half-complex transforms.  it is possible
 ! to do complex/complex transforms with other values of mode, but

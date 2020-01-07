@@ -8,8 +8,8 @@ contains
     use vars
     use params
     implicit none
-    integer, intent(in) :: ncrms
-    integer :: i, j, k, icrm
+    integer(crm_iknd), intent(in) :: ncrms
+    integer(crm_iknd) :: i, j, k, icrm
 
     !$acc parallel loop collapse(4) async(asyncid)
     do k = 1 , nzm

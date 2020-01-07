@@ -9,11 +9,11 @@ contains
     use vars
     use params, only: crm_rknd
     implicit none
-    integer, intent(in) :: ncrms
+    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd), allocatable :: fuz(:,:,:,:)
     real(crm_rknd), allocatable :: fvz(:,:,:,:)
     real(crm_rknd), allocatable :: fwz(:,:,:,:)
-    integer i, j, k, kc, kb,icrm
+    integer(crm_iknd) i, j, k, kc, kb,icrm
     real(crm_rknd) dz25, www, rhoi
 
     allocate( fuz(ncrms,nx,ny,nz ) )

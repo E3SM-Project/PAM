@@ -9,7 +9,7 @@ contains
     use grid
     use params, only: dowallx, dowally, crm_rknd
     implicit none
-    integer, intent(in) :: ncrms
+    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd) f(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
     real(crm_rknd) u(ncrms,dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm)
     real(crm_rknd) v(ncrms,dimx1_v:dimx2_v, dimy1_v:dimy2_v, nzm)
@@ -26,8 +26,8 @@ contains
     real(crm_rknd), allocatable :: irho (:,:)
     real(crm_rknd), allocatable :: irhow(:,:)
     real(crm_rknd) eps, dd
-    integer i,j,k,ic,ib,jc,jb,kc,kb, icrm
-    logical nonos
+    integer(crm_iknd) i,j,k,ic,ib,jc,jb,kc,kb, icrm
+    logical(crm_lknd) nonos
     real(crm_rknd) x1, x2, a, b, a1, a2, y
     real(crm_rknd) andiff,across,pp,pn
 

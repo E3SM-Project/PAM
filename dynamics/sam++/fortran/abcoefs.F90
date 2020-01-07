@@ -4,13 +4,13 @@ module abcoefs_mod
 
 contains
 
-  subroutine abcoefs(dt3, na, nb, nc, at, bt, ct)
+  subroutine abcoefs(dt3, nstep, na, nb, nc, at, bt, ct) bind(C, name="abcoefs_f90")
     ! Coefficients for the Adams-Bashforth scheme
-    use params, only: crm_rknd
+    use params, only: crm_rknd, crm_iknd
     implicit none
-    real(crm_rknd), intent(in   ) :: dt3(3)
-    integer       , intent(in   ) :: na, nb, nc
-    real(crm_rknd), intent(  out) :: at, bt, ct
+    real(crm_rknd)          , intent(in   ) :: dt3(3)
+    integer(crm_iknd), value, intent(in   ) :: na, nb, nc, nstep
+    real(crm_rknd)          , intent(  out) :: at, bt, ct
     real(crm_rknd) :: alpha, beta
 
     if(nstep.ge.3) then

@@ -12,9 +12,9 @@ contains
     use params, only: crm_rknd
 
     implicit none
-    integer, intent(in) :: ncrms
+    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd) dx25, dy25, irho, fu1, fu2, fv1, fv2, fw1, fw2
-    integer i, j, k, kc, kcu, ic, jb, ib, jc,icrm
+    integer(crm_iknd) i, j, k, kc, kcu, ic, jb, ib, jc,icrm
 
     dx25 = 0.25 / dx
     dy25 = 0.25 / dy

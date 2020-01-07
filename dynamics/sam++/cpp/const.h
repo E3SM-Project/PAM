@@ -5,35 +5,52 @@
 #include <cstdlib>
 #include <cmath>
 #include <iostream>
-#include <Kokkos_Core.hpp>
+#include <YAKL.h>
+#include <Array.h>
 
 typedef double real;
 
-#ifdef __USE_CUDA__
-  typedef KokkosView<real*      , KokkosLayoutRight, KokkosCudaUVMSpace> real1d;
-  typedef KokkosView<real**     , KokkosLayoutRight, KokkosCudaUVMSpace> real2d;
-  typedef KokkosView<real***    , KokkosLayoutRight, KokkosCudaUVMSpace> real3d;
-  typedef KokkosView<real****   , KokkosLayoutRight, KokkosCudaUVMSpace> real4d;
-  typedef KokkosView<real*****  , KokkosLayoutRight, KokkosCudaUVMSpace> real5d;
-  typedef KokkosView<real****** , KokkosLayoutRight, KokkosCudaUVMSpace> real6d;
-  typedef KokkosView<real*******, KokkosLayoutRight, KokkosCudaUVMSpace> real7d;
-#else
-  typedef KokkosView<real*      , KokkosLayoutRight, KokkosHostSpace> real1d;
-  typedef KokkosView<real**     , KokkosLayoutRight, KokkosHostSpace> real2d;
-  typedef KokkosView<real***    , KokkosLayoutRight, KokkosHostSpace> real3d;
-  typedef KokkosView<real****   , KokkosLayoutRight, KokkosHostSpace> real4d;
-  typedef KokkosView<real*****  , KokkosLayoutRight, KokkosHostSpace> real5d;
-  typedef KokkosView<real****** , KokkosLayoutRight, KokkosHostSpace> real6d;
-  typedef KokkosView<real*******, KokkosLayoutRight, KokkosHostSpace> real7d;
-#endif
+// #ifdef __USE_CUDA__
+//   typedef KokkosView<real*      , KokkosLayoutRight, KokkosCudaUVMSpace> real1d;
+//   typedef KokkosView<real**     , KokkosLayoutRight, KokkosCudaUVMSpace> real2d;
+//   typedef KokkosView<real***    , KokkosLayoutRight, KokkosCudaUVMSpace> real3d;
+//   typedef KokkosView<real****   , KokkosLayoutRight, KokkosCudaUVMSpace> real4d;
+//   typedef KokkosView<real*****  , KokkosLayoutRight, KokkosCudaUVMSpace> real5d;
+//   typedef KokkosView<real****** , KokkosLayoutRight, KokkosCudaUVMSpace> real6d;
+//   typedef KokkosView<real*******, KokkosLayoutRight, KokkosCudaUVMSpace> real7d;
+// #else
+//   typedef KokkosView<real*      , KokkosLayoutRight, KokkosHostSpace> real1d;
+//   typedef KokkosView<real**     , KokkosLayoutRight, KokkosHostSpace> real2d;
+//   typedef KokkosView<real***    , KokkosLayoutRight, KokkosHostSpace> real3d;
+//   typedef KokkosView<real****   , KokkosLayoutRight, KokkosHostSpace> real4d;
+//   typedef KokkosView<real*****  , KokkosLayoutRight, KokkosHostSpace> real5d;
+//   typedef KokkosView<real****** , KokkosLayoutRight, KokkosHostSpace> real6d;
+//   typedef KokkosView<real*******, KokkosLayoutRight, KokkosHostSpace> real7d;
+// #endif
+// 
+// typedef KokkosView<real*      , KokkosLayoutRight, KokkosHostSpace> hostReal1d;
+// typedef KokkosView<real**     , KokkosLayoutRight, KokkosHostSpace> hostReal2d;
+// typedef KokkosView<real***    , KokkosLayoutRight, KokkosHostSpace> hostReal3d;
+// typedef KokkosView<real****   , KokkosLayoutRight, KokkosHostSpace> hostReal4d;
+// typedef KokkosView<real*****  , KokkosLayoutRight, KokkosHostSpace> hostReal5d;
+// typedef KokkosView<real****** , KokkosLayoutRight, KokkosHostSpace> hostReal6d;
+// typedef KokkosView<real*******, KokkosLayoutRight, KokkosHostSpace> hostReal7d;
 
-typedef KokkosView<real*      , KokkosLayoutRight, KokkosHostSpace> hostReal1d;
-typedef KokkosView<real**     , KokkosLayoutRight, KokkosHostSpace> hostReal2d;
-typedef KokkosView<real***    , KokkosLayoutRight, KokkosHostSpace> hostReal3d;
-typedef KokkosView<real****   , KokkosLayoutRight, KokkosHostSpace> hostReal4d;
-typedef KokkosView<real*****  , KokkosLayoutRight, KokkosHostSpace> hostReal5d;
-typedef KokkosView<real****** , KokkosLayoutRight, KokkosHostSpace> hostReal6d;
-typedef KokkosView<real*******, KokkosLayoutRight, KokkosHostSpace> hostReal7d;
+typedef yakl::Array<real,yakl::memHost> real1d;
+typedef yakl::Array<real,yakl::memHost> real2d;
+typedef yakl::Array<real,yakl::memHost> real3d;
+typedef yakl::Array<real,yakl::memHost> real4d;
+typedef yakl::Array<real,yakl::memHost> real5d;
+typedef yakl::Array<real,yakl::memHost> real6d;
+typedef yakl::Array<real,yakl::memHost> real7d;
+
+typedef yakl::Array<real,yakl::memHost> hostReal1d;
+typedef yakl::Array<real,yakl::memHost> hostReal2d;
+typedef yakl::Array<real,yakl::memHost> hostReal3d;
+typedef yakl::Array<real,yakl::memHost> hostReal4d;
+typedef yakl::Array<real,yakl::memHost> hostReal5d;
+typedef yakl::Array<real,yakl::memHost> hostReal6d;
+typedef yakl::Array<real,yakl::memHost> hostReal7d;
 
 int constexpr YES3D = YES3DVAL;   // Domain dimensionality: 1 - 3D, 0 - 2D
 int constexpr nx_gl = crm_nx;     // Number of grid points in X
@@ -92,4 +109,6 @@ int constexpr dowally          = 0;
 int constexpr docolumn         = 0;
 int constexpr dotracers        = 0;
 int constexpr dosmoke          = 0;
+
+#endif
 

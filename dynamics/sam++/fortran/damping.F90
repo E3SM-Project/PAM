@@ -12,15 +12,15 @@ contains
     use microphysics, only: micro_field, index_water_vapor
     use params, only: crm_rknd
     implicit none
-    integer, intent(in) :: ncrms
+    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd) tau_min    ! minimum damping time-scale (at the top)
     real(crm_rknd) tau_max    ! maxim damping time-scale (base of damping layer)
     real(crm_rknd) damp_depth ! damping depth as a fraction of the domain height
     parameter(tau_min=60., tau_max=450., damp_depth=0.4)
     real(crm_rknd) tau(ncrms,nzm), tmp
-    integer, allocatable :: n_damp(:)
-    integer :: i, j, k, icrm
-    integer :: numgangs  !For working around PGI OpenACC bug where it didn't create enough gangs
+    integer(crm_iknd), allocatable :: n_damp(:)
+    integer(crm_iknd) :: i, j, k, icrm
+    integer(crm_iknd) :: numgangs  !For working around PGI OpenACC bug where it didn't create enough gangs
     ! crjones tests: make changes to u0, v0, t0 local instead of shared with vars
     real(crm_rknd), allocatable :: t0loc(:,:)
     real(crm_rknd), allocatable :: u0loc(:,:)

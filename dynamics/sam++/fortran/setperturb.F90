@@ -22,16 +22,16 @@ contains
       use RNG_MT
 
       implicit none
-      integer, intent(in) :: ncrms,icrm
-      integer, intent(in) :: iseed
+      integer(crm_iknd), intent(in) :: ncrms,icrm
+      integer(crm_iknd), intent(in) :: iseed
       
-      integer i,j,k
+      integer(crm_iknd) i,j,k
       real(crm_rknd)     :: rand_perturb              ! variable to hold random number generator output
       real(crm_rknd)     :: t02                       ! new average liquid static energy (LSE) for energy conservation scaling
       real(crm_rknd)     :: factor_xy                 ! 1/(nx*ny)
       real(crm_rknd)     :: perturb_k_scaling         ! scaling factor so perturbation magnitudes decrease with altitude
-      integer, parameter :: perturb_num_layers  = 5   ! Number of levels to perturb
-      integer, parameter :: perturb_t_magnitude = 1.0 ! perturbation LSE amplitube [K]
+      integer(crm_iknd), parameter :: perturb_num_layers  = 5   ! Number of levels to perturb
+      integer(crm_iknd), parameter :: perturb_t_magnitude = 1.0 ! perturbation LSE amplitube [K]
 
       factor_xy = 1./real((nx*ny),crm_rknd)
 

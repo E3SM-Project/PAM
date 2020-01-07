@@ -13,8 +13,8 @@ contains
     use params, only: dotracers
     use scalar_momentum_mod
     implicit none
-    integer, intent(in) :: ncrms
-    integer k,icrm, i, j, kk
+    integer(crm_iknd), intent(in) :: ncrms
+    integer(crm_iknd) k,icrm, i, j, kk
     real(crm_rknd), allocatable :: dummy(:,:)
 
     allocate( dummy(ncrms,nz) )

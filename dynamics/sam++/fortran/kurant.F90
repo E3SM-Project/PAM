@@ -11,12 +11,12 @@ module kurant_mod
       use sgs, only: kurant_sgs
       use params, only: crm_rknd
       implicit none
-      integer, intent(in) :: ncrms
-      integer i, j, k, ncycle1(1),ncycle2(1),icrm
+      integer(crm_iknd), intent(in) :: ncrms
+      integer(crm_iknd) i, j, k, ncycle1(1),ncycle2(1),icrm
       real(crm_rknd), allocatable :: wm (:,:)  ! maximum vertical wind velocity
       real(crm_rknd), allocatable :: uhm(:,:) ! maximum horizontal wind velocity
       real(crm_rknd) cfl, cfl_sgs, tmp
-      integer, parameter :: max_ncycle = 16
+      integer(crm_iknd), parameter :: max_ncycle = 16
 
       allocate(wm (ncrms,nz))
       allocate(uhm(ncrms,nz))

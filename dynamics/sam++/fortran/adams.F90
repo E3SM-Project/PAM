@@ -9,9 +9,9 @@ contains
     use vars
     use params, only: crm_rknd
     implicit none
-    integer, intent(in) :: ncrms
+    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd) dtdx, dtdy, dtdz, rhox, rhoy, rhoz
-    integer i,j,k,icrm
+    integer(crm_iknd) i,j,k,icrm
 
     dtdx = dtn/dx
     dtdy = dtn/dy

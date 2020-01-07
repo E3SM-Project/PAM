@@ -4,74 +4,74 @@ module atmosphere_mod
 
 contains
 
-  SUBROUTINE Atmosphere(alt, sigma, delta, theta)
+  subroutine atmosphere(alt, sigma, delta, theta)
     !   -------------------------------------------------------------------------
-    ! PURPOSE - Compute the properties of the 1976 standard atmosphere to 86 km.
-    ! AUTHOR - Ralph Carmichael, Public Domain Aeronautical Software
-    ! NOTE - If alt > 86, the values returned will not be correct, but they will
+    ! purpose - compute the properties of the 1976 standard atmosphere to 86 km.
+    ! author - ralph carmichael, public domain aeronautical software
+    ! note - if alt > 86, the values returned will not be correct, but they will
     !   not be too far removed from the correct values for density.
-    !   The reference document does not use the terms pressure and temperature
+    !   the reference document does not use the terms pressure and temperature
     !   above 86 km.
     use params, only: crm_rknd
-    IMPLICIT NONE
+    implicit none
     !============================================================================
-    !     A R G U M E N T S                                                     |
+    !     a r g u m e n t s                                                     |
     !============================================================================
-    REAL(crm_rknd),INTENT(IN)::  alt  ! geometric altitude, km.
-    REAL(crm_rknd),INTENT(OUT):: sigma! density/sea-level standard density
-    REAL(crm_rknd),INTENT(OUT):: delta! pressure/sea-level standard pressure
-    REAL(crm_rknd),INTENT(OUT):: theta! temperature/sea-level standard temperature
+    real(crm_rknd),intent(in)::  alt  ! geometric altitude, km.
+    real(crm_rknd),intent(out):: sigma! density/sea-level standard density
+    real(crm_rknd),intent(out):: delta! pressure/sea-level standard pressure
+    real(crm_rknd),intent(out):: theta! temperature/sea-level standard temperature
     !============================================================================
-    !     L O C A L   C O N S T A N T S                                         |
+    !     l o c a l   c o n s t a n t s                                         |
     !============================================================================
-    REAL(crm_rknd),PARAMETER:: REARTH = 6369.0 ! radius of the Earth (km)
-    REAL(crm_rknd),PARAMETER:: GMR = 34.163195 ! gas constant
-    INTEGER,PARAMETER:: NTAB=8! number of entries in the defining tables
+    real(crm_rknd),parameter:: rearth = 6369.0 ! radius of the earth (km)
+    real(crm_rknd),parameter:: gmr = 34.163195 ! gas constant
+    integer(crm_iknd),parameter:: ntab=8! number of entries in the defining tables
     !============================================================================
-    !     L O C A L   V A R I A B L E S                                         |
+    !     l o c a l   v a r i a b l e s                                         |
     !============================================================================
-    INTEGER:: i,j,k    ! counters
-    REAL(crm_rknd):: h           ! geopotential altitude (km)
-    REAL(crm_rknd):: tgrad, tbase! temperature gradient and base temp of this layer
-    REAL(crm_rknd):: tlocal      ! local temperature
-    REAL(crm_rknd):: deltah      ! height above base of this layer
+    integer(crm_iknd):: i,j,k    ! counters
+    real(crm_rknd):: h           ! geopotential altitude (km)
+    real(crm_rknd):: tgrad, tbase! temperature gradient and base temp of this layer
+    real(crm_rknd):: tlocal      ! local temperature
+    real(crm_rknd):: deltah      ! height above base of this layer
     !============================================================================
-    !     L O C A L   A R R A Y S   ( 1 9 7 6   S T D.  A T M O S P H E R E )   |
+    !     l o c a l   a r r a y s   ( 1 9 7 6   s t d.  a t m o s p h e r e )   |
     !============================================================================
-    REAL(crm_rknd),DIMENSION(NTAB),PARAMETER:: htab= (/0.0, 11.0, 20.0, 32.0, 47.0, 51.0, 71.0,84.852/)
-    REAL(crm_rknd),DIMENSION(NTAB),PARAMETER:: ttab=  (/288.15, 216.65, 216.65, 228.65, 270.65, 270.65, 214.65, 186.946/)
-    REAL(crm_rknd),DIMENSION(NTAB),PARAMETER:: ptab=  (/1.0, 2.233611e-1, &
+    real(crm_rknd),dimension(ntab),parameter:: htab= (/0.0, 11.0, 20.0, 32.0, 47.0, 51.0, 71.0,84.852/)
+    real(crm_rknd),dimension(ntab),parameter:: ttab=  (/288.15, 216.65, 216.65, 228.65, 270.65, 270.65, 214.65, 186.946/)
+    real(crm_rknd),dimension(ntab),parameter:: ptab=  (/1.0, 2.233611e-1, &
     5.403295e-2, 8.5666784e-3, 1.0945601e-3, 6.6063531e-4, 3.9046834e-5, 3.68501e-6/)
-    REAL(crm_rknd),DIMENSION(NTAB),PARAMETER:: gtab=  (/-6.5, 0.0, 1.0, 2.8, 0.0, -2.8, -2.0, 0.0/)
+    real(crm_rknd),dimension(ntab),parameter:: gtab=  (/-6.5, 0.0, 1.0, 2.8, 0.0, -2.8, -2.0, 0.0/)
     !----------------------------------------------------------------------------
-    h=alt*REARTH/(alt+REARTH)! convert geometric to geopotential altitude
+    h=alt*rearth/(alt+rearth)! convert geometric to geopotential altitude
 
     i=1
-    j=NTAB                     ! setting up for=binary search
-    DO
+    j=ntab                     ! setting up for=binary search
+    do
       k=(i+j)/2
-      IF (h < htab(k)) THEN
+      if (h < htab(k)) then
         j=k
-      ELSE
+      else
         i=k
-      END IF
-      IF (j <= i+1) EXIT
-    END DO
+      end if
+      if (j <= i+1) exit
+    end do
 
-    tgrad=gtab(i)              ! i will be in 1...NTAB-1
+    tgrad=gtab(i)              ! i will be in 1...ntab-1
     tbase=ttab(i)
     deltah=h-htab(i)
     tlocal=tbase+tgrad*deltah
     theta=tlocal/ttab(1)            ! temperature ratio
 
-    IF (tgrad == 0.0) THEN        ! pressure ratio
-      delta=ptab(i)*EXP(-GMR*deltah/tbase)
-    ELSE
-      delta=ptab(i)*(tbase/tlocal)**(GMR/tgrad)
-    END IF
+    if (tgrad == 0.0) then        ! pressure ratio
+      delta=ptab(i)*exp(-gmr*deltah/tbase)
+    else
+      delta=ptab(i)*(tbase/tlocal)**(gmr/tgrad)
+    end if
 
     sigma=delta/theta            ! density ratio
-    RETURN
-  END Subroutine Atmosphere
+    return
+  end subroutine atmosphere
 
 end module atmosphere_mod
