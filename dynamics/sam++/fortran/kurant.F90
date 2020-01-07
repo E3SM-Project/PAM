@@ -10,7 +10,6 @@ module kurant_mod
       use vars
       use sgs, only: kurant_sgs
       use params, only: crm_rknd
-      use openacc_utils
       implicit none
       integer, intent(in) :: ncrms
       integer i, j, k, ncycle1(1),ncycle2(1),icrm
@@ -21,8 +20,6 @@ module kurant_mod
 
       allocate(wm (ncrms,nz))
       allocate(uhm(ncrms,nz))
-      call prefetch(wm  )
-      call prefetch(uhm )
 
       ncycle = 1
       !$acc parallel loop collapse(2) async(asyncid)

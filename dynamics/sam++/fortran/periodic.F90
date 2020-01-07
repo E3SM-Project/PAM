@@ -13,9 +13,6 @@ contains
     use params, only: dotracers, dosgs
     use crmtracers
     use scalar_momentum_mod
-#ifdef CLUBB_CRM
-    use params, only: doclubb, doclubbnoninter
-#endif
     implicit none
     integer, intent(in) :: ncrms,flag
     integer :: i,icrm, j, ii, k
@@ -68,13 +65,7 @@ contains
       end do
       do i = 1,nmicro_fields
         if(   i.eq.index_water_vapor             &
-#ifdef CLUBB_CRM
-        ! Vince Larson (UWM) changed so that bound_exchange is called even if
-        !     docloud = .false. and doclubb = .true.    11 Nov 2007
-        .or. (docloud.or.doclubb.or.doclubbnoninter) .and.flag_precip(i).ne.1    &
-#else
         .or. docloud.and.flag_precip(i).ne.1    &
-#endif
         .or. doprecip.and.flag_precip(i).eq.1 ) then
           call bound_exchange(ncrms,micro_field(:,:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+nsgs_fields+nsgs_fields_diag+i)
         endif
@@ -84,10 +75,6 @@ contains
       !    call bound_exchange(tracer(:,:,:,i,icrm),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+i)
       !  end do
       !end if
-#if defined(SP_ESMT)
-      call bound_exchange(ncrms,u_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+1)
-      call bound_exchange(ncrms,v_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+2)
-#endif
     endif
 
     !-------------------------------------------------
@@ -101,13 +88,7 @@ contains
       end do
       do i = 1,nmicro_fields
         if(   i.eq.index_water_vapor             &
-#ifdef CLUBB_CRM
-        ! Vince Larson (UWM) changed so that bound_exchange is called even if
-        !     docloud = .false. and doclubb = .true.    11 Nov 2007
-        .or. (docloud.or.doclubb.or.doclubbnoninter) .and.flag_precip(i).ne.1    &
-#else
         .or. docloud.and.flag_precip(i).ne.1    &
-#endif
         .or. doprecip.and.flag_precip(i).eq.1 ) then
           call bound_exchange(ncrms,micro_field(:,:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4+nsgs_fields+nsgs_fields_diag+i)
         endif
@@ -117,10 +98,6 @@ contains
       !    call bound_exchange(tracer(:,:,:,i,icrm),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+i)
       !  end do
       !end if
-#if defined(SP_ESMT)
-      call bound_exchange(ncrms,u_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+1)
-      call bound_exchange(ncrms,v_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+2)
-#endif
     endif
 
     !-------------------------------------------------

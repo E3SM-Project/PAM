@@ -31,7 +31,6 @@ module crm_state_module
       real(crm_rknd), pointer :: qt(:,:,:,:) 
 
       ! NOTE: These are terrible variable names...replace with more descriptive names.
-      ! for m2005...
       real(crm_rknd), pointer :: nc(:,:,:,:)
       real(crm_rknd), pointer :: qr(:,:,:,:)
       real(crm_rknd), pointer :: nr(:,:,:,:)
@@ -93,24 +92,9 @@ contains
       this%v_wind => null()
       this%w_wind => null()
       this%temperature => null()
-
-#ifdef m2005
-      this%qt => null()
-      this%qc => null()
-      this%qi => null()
-      this%qr => null()
-      this%qs => null()
-      this%qg => null()
-      this%nc => null()
-      this%ni => null()
-      this%nr => null()
-      this%ns => null()
-      this%ng => null()
-#else
       this%qt => null()
       this%qp => null()
       this%qn => null()
-#endif
 
    end subroutine crm_state_finalize
 end module crm_state_module

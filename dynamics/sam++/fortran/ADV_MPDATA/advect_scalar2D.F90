@@ -1,6 +1,5 @@
 module advect_scalar2D_mod
   use params, only: asyncid
-  use openacc_utils
   implicit none
 
 contains
@@ -50,13 +49,6 @@ contains
     allocate( irho(ncrms,nzm) )
     allocate( irhow(ncrms,nzm) )
 
-    call prefetch( mx )
-    call prefetch( mn )
-    call prefetch( uuu )
-    call prefetch( www )
-    call prefetch( iadz )
-    call prefetch( irho )
-    call prefetch( irhow )
 
     !$acc parallel loop collapse(2) async(asyncid)
     do i = -1 , nxp2

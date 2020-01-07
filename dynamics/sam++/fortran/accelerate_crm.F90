@@ -62,10 +62,6 @@ module accelerate_crm_mod
   
       if (masterproc) then
         if (use_crm_accel) then
-#if !defined(sam1mom)
-          write(0,*) "CRM time step relaxation is only compatible with sam1mom microphysics"
-          call endrun('crm main')
-#endif
           write(iulog, *) 'USING CRM MEAN STATE ACCELERATION'
           write(iulog, *) 'crm_accel: use_crm_accel = ', use_crm_accel
           write(iulog, *) 'crm_accel: crm_accel_factor = ', crm_accel_factor
@@ -132,7 +128,6 @@ module accelerate_crm_mod
       use vars, only: u, v, u0, v0, t0,q0, t,qcl,qci,qv
       use microphysics, only: micro_field, idx_qt=>index_water_vapor
       use cam_logfile,  only: iulog
-      use openacc_utils
       implicit none
       integer, intent(in   ) :: ncrms
       integer, intent(in   ) :: nstep
@@ -167,16 +162,6 @@ module accelerate_crm_mod
       allocate( vtend_acc(ncrms,nzm) )
       allocate( qpoz     (ncrms,nzm) )
       allocate( qneg     (ncrms,nzm) )
-      call prefetch( ubaccel   )
-      call prefetch( vbaccel   )
-      call prefetch( tbaccel   )
-      call prefetch( qtbaccel  )
-      call prefetch( ttend_acc )
-      call prefetch( qtend_acc )
-      call prefetch( utend_acc )
-      call prefetch( vtend_acc )
-      call prefetch( qpoz      )
-      call prefetch( qneg      )
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !! Compute the average among horizontal columns for each variable

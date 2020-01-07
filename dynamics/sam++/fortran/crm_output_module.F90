@@ -1,7 +1,6 @@
 module crm_output_module
    use params,       only: crm_rknd
    use crmdims,      only: crm_nx, crm_ny, crm_nz
-   use openacc_utils
    implicit none
    public crm_output_type
    type crm_output_type
@@ -55,34 +54,6 @@ module crm_output_module
       real(crm_rknd), allocatable :: qs_mean(:,:)  ! mean snow
       real(crm_rknd), allocatable :: qg_mean(:,:)  ! mean graupel
       real(crm_rknd), allocatable :: qr_mean(:,:)  ! mean rain
-#ifdef m2005
-      real(crm_rknd), allocatable :: nc_mean(:,:)  ! mean cloud water  (#/kg)
-      real(crm_rknd), allocatable :: ni_mean(:,:)  ! mean cloud ice    (#/kg)
-      real(crm_rknd), allocatable :: ns_mean(:,:)  ! mean snow         (#/kg)
-      real(crm_rknd), allocatable :: ng_mean(:,:)  ! mean graupel      (#/kg)
-      real(crm_rknd), allocatable :: nr_mean(:,:)  ! mean rain         (#/kg)
-
-      ! Time and domain averaged process rates
-      real(crm_rknd), allocatable :: aut_a (:,:)  ! cloud water autoconversion (1/s)
-      real(crm_rknd), allocatable :: acc_a (:,:)  ! cloud water accretion (1/s)
-      real(crm_rknd), allocatable :: evpc_a(:,:)  ! cloud water evaporation (1/s)
-      real(crm_rknd), allocatable :: evpr_a(:,:)  ! rain evaporation (1/s)
-      real(crm_rknd), allocatable :: mlt_a (:,:)  ! ice, snow, graupel melting (1/s)
-      real(crm_rknd), allocatable :: sub_a (:,:)  ! ice, snow, graupel sublimation (1/s)
-      real(crm_rknd), allocatable :: dep_a (:,:)  ! ice, snow, graupel deposition (1/s)
-      real(crm_rknd), allocatable :: con_a (:,:)  ! cloud water condensation(1/s)
-#endif /* m2005 */
-
-#if defined( SPMOMTRANS )
-      real(crm_rknd), allocatable :: ultend(:,:)            ! tendency of ul
-      real(crm_rknd), allocatable :: vltend(:,:)            ! tendency of vl
-#endif
-
-#if defined( SP_ESMT )
-      real(crm_rknd), allocatable :: u_tend_esmt(:,:)       ! CRM scalar u-momentum tendency
-      real(crm_rknd), allocatable :: v_tend_esmt(:,:)       ! CRM scalar v-momentum tendency
-#endif
-
       real(crm_rknd), allocatable :: sltend  (:,:)          ! CRM output tendency of static energy
       real(crm_rknd), allocatable :: qltend  (:,:)          ! CRM output tendency of water vapor
       real(crm_rknd), allocatable :: qcltend (:,:)          ! CRM output tendency of cloud liquid water
@@ -183,64 +154,7 @@ contains
          if (.not. allocated(output%qg_mean)) allocate(output%qg_mean(ncol,nlev))
          if (.not. allocated(output%qr_mean)) allocate(output%qr_mean(ncol,nlev))
 
-         call prefetch(output%qcl)
-         call prefetch(output%qci)
-         call prefetch(output%qpl)
-         call prefetch(output%qpi)
-         call prefetch(output%tk )
-         call prefetch(output%tkh)
-         call prefetch(output%prec_crm)
-         call prefetch(output%wvar)
-         call prefetch(output%aut )
-         call prefetch(output%acc )
-         call prefetch(output%evpc)
-         call prefetch(output%evpr)
-         call prefetch(output%mlt )
-         call prefetch(output%sub )
-         call prefetch(output%dep )
-         call prefetch(output%con )
-         call prefetch(output%cltot)
-         call prefetch(output%cllow)
-         call prefetch(output%clmed)
-         call prefetch(output%clhgh)
-         call prefetch(output%precc)
-         call prefetch(output%precl)
-         call prefetch(output%precsc)
-         call prefetch(output%precsl)
-         call prefetch(output%cldtop)
-         call prefetch(output%qc_mean)
-         call prefetch(output%qi_mean)
-         call prefetch(output%qs_mean)
-         call prefetch(output%qg_mean)
-         call prefetch(output%qr_mean)
 
-#ifdef m2005
-         if (.not. allocated(output%nc_mean)) allocate(output%nc_mean(ncol,nlev))
-         if (.not. allocated(output%ni_mean)) allocate(output%ni_mean(ncol,nlev))
-         if (.not. allocated(output%ns_mean)) allocate(output%ns_mean(ncol,nlev))
-         if (.not. allocated(output%ng_mean)) allocate(output%ng_mean(ncol,nlev))
-         if (.not. allocated(output%nr_mean)) allocate(output%nr_mean(ncol,nlev))
-
-         if (.not. allocated(output%aut_a )) allocate(output%aut_a (ncol,nlev))
-         if (.not. allocated(output%acc_a )) allocate(output%acc_a (ncol,nlev))
-         if (.not. allocated(output%evpc_a)) allocate(output%evpc_a(ncol,nlev))
-         if (.not. allocated(output%evpr_a)) allocate(output%evpr_a(ncol,nlev))
-         if (.not. allocated(output%mlt_a )) allocate(output%mlt_a (ncol,nlev))
-         if (.not. allocated(output%sub_a )) allocate(output%sub_a (ncol,nlev))
-         if (.not. allocated(output%dep_a )) allocate(output%dep_a (ncol,nlev))
-         if (.not. allocated(output%con_a )) allocate(output%con_a (ncol,nlev))
-#endif /* m2005 */
-
-#if defined( SPMOMTRANS )
-         if (.not. allocated(output%ultend )) allocate(output%ultend (ncol,nlev))
-         if (.not. allocated(output%vltend )) allocate(output%vltend (ncol,nlev))
-#endif
-
-#if defined( SP_ESMT )
-         if (.not. allocated(output%u_tend_esmt )) allocate(output%u_tend_esmt (ncol,nlev))
-         if (.not. allocated(output%v_tend_esmt )) allocate(output%v_tend_esmt (ncol,nlev))
-#endif
-         
          if (.not. allocated(output%sltend ))  allocate(output%sltend (ncol,nlev))
          if (.not. allocated(output%qltend ))  allocate(output%qltend (ncol,nlev))
          if (.not. allocated(output%qcltend))  allocate(output%qcltend(ncol,nlev))
@@ -286,47 +200,6 @@ contains
          if (.not. allocated(output%z0m          )) allocate(output%z0m          (ncol))
          if (.not. allocated(output%timing_factor)) allocate(output%timing_factor(ncol))
 
-         call prefetch(output%sltend  )
-         call prefetch(output%qltend  )
-         call prefetch(output%qcltend )
-         call prefetch(output%qiltend )
-         call prefetch(output%cld    )
-         call prefetch(output%gicewp )
-         call prefetch(output%gliqwp )
-         call prefetch(output%mctot  )
-         call prefetch(output%mcup   )
-         call prefetch(output%mcdn   )
-         call prefetch(output%mcuup  )
-         call prefetch(output%mcudn  )
-         call prefetch(output%mu_crm )
-         call prefetch(output%md_crm )
-         call prefetch(output%du_crm )
-         call prefetch(output%eu_crm )
-         call prefetch(output%ed_crm )
-         call prefetch(output%jt_crm )
-         call prefetch(output%mx_crm )
-         call prefetch(output%flux_qt       )
-         call prefetch(output%fluxsgs_qt    )
-         call prefetch(output%tkez          )
-         call prefetch(output%tkesgsz       )
-         call prefetch(output%tkz           )
-         call prefetch(output%flux_u        )
-         call prefetch(output%flux_v        )
-         call prefetch(output%flux_qp       )
-         call prefetch(output%precflux      )
-         call prefetch(output%qt_ls         )
-         call prefetch(output%qt_trans      )
-         call prefetch(output%qp_trans      )
-         call prefetch(output%qp_fall       )
-         call prefetch(output%qp_src        )
-         call prefetch(output%qp_evp        )
-         call prefetch(output%t_ls          )
-         call prefetch(output%prectend      )
-         call prefetch(output%precstend     )
-         call prefetch(output%taux          )
-         call prefetch(output%tauy          )
-         call prefetch(output%z0m           )
-         call prefetch(output%timing_factor )
 
       end if ! present(ncol)
 
@@ -367,33 +240,6 @@ contains
       output%qs_mean = 0
       output%qg_mean = 0
       output%qr_mean = 0
-#ifdef m2005
-      output%nc_mean = 0
-      output%ni_mean = 0
-      output%ns_mean = 0
-      output%ng_mean = 0
-      output%nr_mean = 0
-
-      output%aut_a = 0
-      output%acc_a = 0
-      output%evpc_a = 0
-      output%evpr_a = 0
-      output%mlt_a = 0
-      output%sub_a = 0
-      output%dep_a = 0
-      output%con_a = 0
-#endif
-
-#if defined( SPMOMTRANS )
-      output%ultend = 0
-      output%vltend = 0
-#endif
-
-#if defined( SP_ESMT )
-      output%u_tend_esmt = 0
-      output%v_tend_esmt = 0
-#endif
-
       output%sltend  = 0
       output%qltend  = 0
       output%qcltend = 0
@@ -478,33 +324,6 @@ contains
       if (allocated(output%qs_mean)) deallocate(output%qs_mean)
       if (allocated(output%qg_mean)) deallocate(output%qg_mean)
       if (allocated(output%qr_mean)) deallocate(output%qr_mean)
-#ifdef m2005
-      if (allocated(output%nc_mean)) deallocate(output%nc_mean)
-      if (allocated(output%ni_mean)) deallocate(output%ni_mean)
-      if (allocated(output%ns_mean)) deallocate(output%ns_mean)
-      if (allocated(output%ng_mean)) deallocate(output%ng_mean)
-      if (allocated(output%nr_mean)) deallocate(output%nr_mean)
-
-      ! Time and domain-averaged process rates
-      if (allocated(output%aut_a)) deallocate(output%aut_a)
-      if (allocated(output%acc_a)) deallocate(output%acc_a)
-      if (allocated(output%evpc_a)) deallocate(output%evpc_a)
-      if (allocated(output%evpr_a)) deallocate(output%evpr_a)
-      if (allocated(output%mlt_a)) deallocate(output%mlt_a)
-      if (allocated(output%sub_a)) deallocate(output%sub_a)
-      if (allocated(output%dep_a)) deallocate(output%dep_a)
-      if (allocated(output%con_a)) deallocate(output%con_a)
-#endif
-
-#if defined( SPMOMTRANS )
-      if (allocated(output%ultend)) deallocate(output%ultend)
-      if (allocated(output%vltend)) deallocate(output%vltend)
-#endif
-
-#if defined( SP_ESMT )
-      if (allocated(output%u_tend_esmt)) deallocate(output%u_tend_esmt)
-      if (allocated(output%v_tend_esmt)) deallocate(output%v_tend_esmt)
-#endif
 
       if (allocated(output%sltend)) deallocate(output%sltend)
       if (allocated(output%qltend)) deallocate(output%qltend)

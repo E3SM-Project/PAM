@@ -11,7 +11,6 @@ contains
     use vars
     use microphysics, only: micro_field, index_water_vapor
     use params, only: crm_rknd
-    use openacc_utils
     implicit none
     integer, intent(in) :: ncrms
     real(crm_rknd) tau_min    ! minimum damping time-scale (at the top)
@@ -31,10 +30,6 @@ contains
     allocate( t0loc(ncrms,nzm) )
     allocate( u0loc(ncrms,nzm) )
     allocate( v0loc(ncrms,nzm) )
-    call prefetch( n_damp)
-    call prefetch( t0loc )
-    call prefetch( u0loc )
-    call prefetch( v0loc )
    
     if(tau_min.lt.2*dt) then
       print*,'Error: in damping() tau_min is too small!'

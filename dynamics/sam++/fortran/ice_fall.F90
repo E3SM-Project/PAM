@@ -9,7 +9,6 @@ contains
     use microphysics, only: micro_field, index_cloud_ice
     !use micro_params
     use params
-    use openacc_utils
     implicit none
     integer, intent(in) :: ncrms
     integer, allocatable :: kmax(:)
@@ -22,9 +21,6 @@ contains
     allocate( kmax(ncrms) )
     allocate( kmin(ncrms) )
     allocate( fz(ncrms,nx,ny,nz) )
-    call prefetch( kmax )
-    call prefetch( kmin )
-    call prefetch( fz )
 
     !$acc parallel loop async(asyncid)
     do icrm = 1 , ncrms
