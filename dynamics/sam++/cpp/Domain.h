@@ -8,6 +8,7 @@ class Domain {
 
 public:
 
+  int    ncrms;       // Number of CRM instances
   real   dx;          // x-grid spacing
   real   dy;          // y-grid spacing
   real   dtn;         // Kurant-Sub-cycled time step
@@ -40,6 +41,7 @@ public:
   real1d tauy0;       // Surface stress in y, m2/s2
 
   Domain(int ncrms) {
+    this->ncrms = ncrms;
     z          = real2d("z"         ,ncrms,nz );
     pres       = real2d("pres"      ,ncrms,nzm);
     zi         = real2d("zi "       ,ncrms,nz );
