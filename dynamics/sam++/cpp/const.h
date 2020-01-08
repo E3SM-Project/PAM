@@ -8,6 +8,18 @@
 #include <YAKL.h>
 #include <Array.h>
 
+#ifndef crm_nx
+#define crm_nx 16
+#endif
+
+#ifndef crm_ny
+#define crm_ny 1
+#endif
+
+#ifndef crm_nz
+#define crm_nz 58
+#endif
+
 typedef double real;
 
 // #ifdef __USE_CUDA__
@@ -52,7 +64,7 @@ typedef yakl::Array<real,yakl::memHost> hostReal5d;
 typedef yakl::Array<real,yakl::memHost> hostReal6d;
 typedef yakl::Array<real,yakl::memHost> hostReal7d;
 
-int constexpr YES3D = YES3DVAL;   // Domain dimensionality: 1 - 3D, 0 - 2D
+int constexpr YES3D = crm_ny>1;   // Domain dimensionality: 1 - 3D, 0 - 2D
 int constexpr nx_gl = crm_nx;     // Number of grid points in X
 int constexpr ny_gl = crm_ny;     // Number of grid points in Y
 int constexpr nz_gl = crm_nz;     // Number of pressure (scalar) levels
