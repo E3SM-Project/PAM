@@ -11,7 +11,6 @@ contains
     use sgs
     use crmtracers
     use params, only: dotracers
-    use scalar_momentum_mod
     implicit none
     integer(crm_iknd), intent(in) :: ncrms
     integer(crm_iknd) k,icrm, i, j, kk

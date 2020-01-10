@@ -1,7 +1,7 @@
 module micro_params
 
   use grid, only: nzm
-  use params, only: crm_rknd
+  use params
 
   implicit none
 

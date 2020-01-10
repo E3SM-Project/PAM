@@ -14,7 +14,7 @@ contains
   subroutine bound_exchange(ncrms,f,dimx1,dimx2,dimy1,dimy2,dimz,i_1, i_2, j_1, j_2, id)
     ! periodic boundary exchange
     use grid
-    use params, only: crm_rknd
+    use params
     implicit none
     integer(crm_iknd) dimx1, dimx2, dimy1, dimy2, dimz, ncrms
     integer(crm_iknd) i_1, i_2, j_1, j_2

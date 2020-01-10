@@ -7,7 +7,7 @@ contains
   subroutine advect_scalar3D (ncrms, f, u, v, w, rho, rhow, flux)
     !     positively definite monotonic advection with non-oscillatory option
     use grid
-    use params, only: dowallx, dowally, crm_rknd
+    use params
     implicit none
     integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd) f(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)

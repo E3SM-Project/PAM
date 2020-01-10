@@ -25,11 +25,11 @@ contains
   subroutine averageXY(f,dimx1,dimx2,dimy1,dimy2,dimz,fm)
 
     use grid
-    use params, only: crm_rknd
+    use params
     implicit none
     integer(crm_iknd) dimx1, dimx2, dimy1, dimy2, dimz
     real(crm_rknd) f(dimx1:dimx2, dimy1:dimy2, dimz),fm(nzm)
-    real(8) ff,factor
+    real(r8) ff,factor
     integer(crm_iknd) i,j,k
     factor = 1./dble(nx*ny)
     do k =1,nzm
@@ -48,11 +48,11 @@ contains
   subroutine averageXY_MPI(f,dimx1,dimx2,dimy1,dimy2,dimz,fm)
 
     use grid
-    use params, only: crm_rknd
+    use params
     implicit none
     integer(crm_iknd) dimx1, dimx2, dimy1, dimy2, dimz
     real(crm_rknd) f(dimx1:dimx2, dimy1:dimy2, dimz),fm(nzm)
-    real(8) fm1(nzm),fm2(nzm),factor
+    real(r8) fm1(nzm),fm2(nzm),factor
     integer(crm_iknd) i,j,k
     factor = 1./dble(nx*ny)
     do k =1,nzm
@@ -84,7 +84,7 @@ contains
 
   subroutine fminmax_print(name,f,dimx1,dimx2,dimy1,dimy2,dimz)
     use grid
-    use params, only: crm_rknd
+    use params
     implicit none
     integer(crm_iknd) dimx1, dimx2, dimy1, dimy2, dimz
     real(crm_rknd) f(dimx1:dimx2, dimy1:dimy2, dimz),fmn(nz),fmx(nz)
@@ -127,7 +127,7 @@ contains
 
 
   subroutine setvalue(f,n,f0)
-    use params, only: crm_rknd
+    use params
     implicit none
     integer(crm_iknd) n
     real(crm_rknd) f(n), f0

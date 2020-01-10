@@ -12,7 +12,7 @@ module crmtracers
 
 
   use grid
-  use params, only: crm_rknd
+  use params
   use utils,  only: lenstr
   implicit none
 

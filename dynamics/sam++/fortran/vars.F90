@@ -1,8 +1,6 @@
 module vars
   use grid
-  use params, only: crm_rknd
-#ifdef CRM
-#endif
+  use params
 
   implicit none
   !--------------------------------------------------------------------
@@ -127,8 +125,8 @@ module vars
   real(crm_rknd), allocatable :: qpfall(:,:)
 
   ! energy conservation diagnostics:
-  real(8), allocatable :: total_water_evap(:)
-  real(8), allocatable :: total_water_prec(:)
+  real(r8), allocatable :: total_water_evap(:)
+  real(r8), allocatable :: total_water_prec(:)
 
   real(crm_rknd), allocatable :: CF3D(:,:,:,:)  ! Cloud fraction
   ! =1.0 when there is no fractional cloudiness scheme

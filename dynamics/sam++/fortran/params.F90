@@ -1,23 +1,24 @@
 module params
   ! use grid, only: nzm
-#ifdef CRM
-  use shr_const_mod, only: shr_const_rdair, shr_const_cpdair, shr_const_latvap, &
-  shr_const_latice, shr_const_latsub, shr_const_rgas, &
-  shr_const_mwwv, shr_const_stebol, shr_const_tkfrz, &
-  shr_const_mwdair, shr_const_g, shr_const_karman, &
-  shr_const_rhofw
-#endif /*CRM*/
+!#ifdef CRM
+!  use shr_const_mod, only: shr_const_rdair, shr_const_cpdair, shr_const_latvap, &
+!  shr_const_latice, shr_const_latsub, shr_const_rgas, &
+!  shr_const_mwwv, shr_const_stebol, shr_const_tkfrz, &
+!  shr_const_mwdair, shr_const_g, shr_const_karman, &
+!  shr_const_rhofw
+!#endif /*CRM*/
   use iso_c_binding
 
   implicit none
 
-integer, parameter :: crm_rknd = c_double ! 8 byte real
+integer, parameter :: r8   = c_double ! 8-byte real
+integer, parameter :: crm_rknd = c_double ! 8-byte real
 integer, parameter :: crm_iknd = c_int    ! 4-byte int
 integer, parameter :: crm_lknd = c_bool   ! ???
 
   !   Constants:
 
-#ifndef CRM
+!#ifndef CRM
   real(crm_rknd), parameter :: cp    = 1004.          ! Specific heat of air, J/kg/K
   real(crm_rknd), parameter :: ggr   = 9.81           ! Gravity acceleration, m/s2
   real(crm_rknd), parameter :: lcond = 2.5104e+06     ! Latent heat of condensation, J/kg
@@ -25,15 +26,15 @@ integer, parameter :: crm_lknd = c_bool   ! ???
   real(crm_rknd), parameter :: lsub  = 2.8440e+06     ! Latent heat of sublimation, J/kg
   real(crm_rknd), parameter :: rv    = 461.           ! Gas constant for water vapor, J/kg/K
   real(crm_rknd), parameter :: rgas  = 287.           ! Gas constant for dry air, J/kg/K
-#else
-  real(crm_rknd), parameter :: cp    = real( shr_const_cpdair ,crm_rknd)
-  real(crm_rknd), parameter :: ggr   = real( shr_const_g      ,crm_rknd)
-  real(crm_rknd), parameter :: lcond = real( shr_const_latvap ,crm_rknd)
-  real(crm_rknd), parameter :: lfus  = real( shr_const_latice ,crm_rknd)
-  real(crm_rknd), parameter :: lsub  = real( lcond + lfus     ,crm_rknd)
-  real(crm_rknd), parameter :: rgas  = real( shr_const_rdair  ,crm_rknd)
-  real(crm_rknd), parameter :: rv    = real( shr_const_rgas/shr_const_mwwv ,crm_rknd)
-#endif
+!#else
+!  real(crm_rknd), parameter :: cp    = real( shr_const_cpdair ,crm_rknd)
+!  real(crm_rknd), parameter :: ggr   = real( shr_const_g      ,crm_rknd)
+!  real(crm_rknd), parameter :: lcond = real( shr_const_latvap ,crm_rknd)
+!  real(crm_rknd), parameter :: lfus  = real( shr_const_latice ,crm_rknd)
+!  real(crm_rknd), parameter :: lsub  = real( lcond + lfus     ,crm_rknd)
+!  real(crm_rknd), parameter :: rgas  = real( shr_const_rdair  ,crm_rknd)
+!  real(crm_rknd), parameter :: rv    = real( shr_const_rgas/shr_const_mwwv ,crm_rknd)
+!#endif
   real(crm_rknd), parameter :: diffelq = 2.21e-05     ! Diffusivity of water vapor, m2/s
   real(crm_rknd), parameter :: therco = 2.40e-02      ! Thermal conductivity of air, J/m/s/K
   real(crm_rknd), parameter :: muelq = 1.717e-05      ! Dynamic viscosity of air

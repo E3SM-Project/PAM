@@ -7,7 +7,7 @@ module microphysics
   ! Marat Khairoutdinov, 2006
 
   use grid, only: nx,ny,nzm,nz, dimx1_s,dimx2_s,dimy1_s,dimy2_s ! subdomain grid information
-  use params, only: doprecip, docloud, crm_rknd, asyncid
+  use params
   use micro_params
   implicit none
 
@@ -153,13 +153,6 @@ CONTAINS
     a_gr = 1./(tgrmax-tgrmin)
 
     if(nrestart.eq.0) then
-#ifndef CRM
-      micro_field(:,:,:,:,:) = 0.
-      do k=1,nzm
-        micro_field(:,:,:,k,1) = q0(:,k)
-      end do
-      qn(:,:,:,:) = 0.
-#endif
     !$acc parallel loop collapse(4) async(asyncid)
     do l=1,nmicro_fields
       do j=1,ny
@@ -173,9 +166,6 @@ CONTAINS
     enddo
 
       if(docloud) then
-#ifndef CRM
-        call cloud(ncrms,micro_field(:,:,:,:,1),micro_field(:,:,:,:,2),qn)
-#endif
         call micro_diagnose(ncrms)
       end if
       if(dosmoke) then

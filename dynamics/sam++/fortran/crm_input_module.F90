@@ -1,5 +1,5 @@
 module crm_input_module
-   use params, only: crm_rknd
+   use params
    implicit none
    private
    public crm_input_type

@@ -18,7 +18,7 @@ contains
 
       use vars
       use sgs,    only: setperturb_sgs
-      use params, only: crm_rknd
+      use params
       use RNG_MT
 
       implicit none

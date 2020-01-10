@@ -9,7 +9,7 @@ contains
     !        momentum tendency due to SGS diffusion
 
     use vars
-    use params, only: docolumn, crm_rknd
+    use params
     implicit none
     integer(crm_iknd), intent(in) :: ncrms
     integer(crm_iknd) :: dimx1_d, dimx2_d, dimy1_d, dimy2_d

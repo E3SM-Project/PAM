@@ -5,7 +5,7 @@ contains
 
   subroutine crmsurface(ncrms,bflx)
     use vars
-    use params
+    use params, only: crm_rknd, crm_iknd
     implicit none
     integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd), intent (in) :: bflx(ncrms)
@@ -65,7 +65,7 @@ contains
   ! Code corrected 8th June 1999 (obukhov length was wrong way up,
   ! so now used as reciprocal of obukhov length)
   real(crm_rknd) function diag_ustar(z,bflx,wnd,z0)
-    use params, only: crm_rknd
+    use params, only: crm_rknd, crm_iknd
     !$acc routine seq
     implicit none
     real(crm_rknd), parameter      :: vonk =  0.4   ! von Karmans constant
@@ -102,7 +102,7 @@ contains
   ! ----------------------------------------------------------------------
 
   real(crm_rknd) function z0_est(z,bflx,wnd,ustar)
-    use params, only: crm_rknd
+    use params, only: crm_rknd, crm_iknd
     ! Compute z0 from buoyancy flux, wind, and friction velocity
     ! 2004, Marat Khairoutdinov
     implicit none

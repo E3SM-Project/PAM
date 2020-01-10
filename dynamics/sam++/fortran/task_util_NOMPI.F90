@@ -1,5 +1,5 @@
 module task_util_mod
-  use params, only: crm_rknd
+  use params
   implicit none
 
 contains
@@ -158,8 +158,8 @@ contains
   !----------------------------------------------------------------------
 
   subroutine task_sum_real8(buffer1,buffer2,length)
-    real(8) buffer1(*) ! buffer of data
-    real(8) buffer2(*) ! buffer of data
+    real(r8) buffer1(*) ! buffer of data
+    real(r8) buffer2(*) ! buffer of data
     integer(crm_iknd) length      ! buffers' length
     print*, 'MPI call from a single task program! Exiting...'
     stop

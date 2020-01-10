@@ -155,7 +155,7 @@ contains
 
       subroutine fftfax_crm(n,ifax,trigs)
       !$acc routine seq
-      use params, only: crm_rknd
+      use params, only: crm_rknd, crm_iknd
       dimension ifax(13)
       real(crm_rknd), dimension(1) :: trigs
       integer(crm_iknd) :: mode

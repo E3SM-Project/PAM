@@ -1,6 +1,6 @@
 module crm_state_module
 
-   use params,       only: crm_rknd
+   use params
    use crmdims,      only: crm_nx, crm_ny, crm_nz
 
    implicit none

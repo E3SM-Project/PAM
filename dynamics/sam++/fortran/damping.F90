@@ -10,7 +10,7 @@ contains
     !  "Spange"-layer damping at the domain top region
     use vars
     use microphysics, only: micro_field, index_water_vapor
-    use params, only: crm_rknd
+    use params
     implicit none
     integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd) tau_min    ! minimum damping time-scale (at the top)

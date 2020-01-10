@@ -13,7 +13,7 @@ contains
     !       Also, used for a 2D version
     !       For more processors for the given number of levels and 3D, use pressure_big
     use vars
-    use params, only: dowallx, dowally, docolumn, crm_rknd
+    use params
     use press_rhs_mod
     use press_grad_mod
     use fft_mod
@@ -27,9 +27,9 @@ contains
     real(crm_rknd) ftmp(nx2,ny2)
     real(crm_rknd) ftmp_x(nx2)
     real(crm_rknd) ftmp_y(ny2)
-    real(8) b,e
-    real(8) xi,xj,xnx,xny,ddx2,ddy2,pii,factx,facty
-    real(8) alfa(nzm-1),beta(nzm-1)
+    real(r8) b,e
+    real(r8) xi,xj,xnx,xny,ddx2,ddy2,pii,factx,facty
+    real(r8) alfa(nzm-1),beta(nzm-1)
     integer(crm_iknd) i, j, k, id, jd, m, n, it, jt, ii, jj, icrm
     integer(crm_iknd) nyp22
     real(crm_rknd), allocatable :: f (:,:,:,:)       ! global rhs and array for FTP coefficeients
@@ -40,11 +40,11 @@ contains
     integer(crm_iknd)       , allocatable :: ifaxj(:)
     real(crm_rknd), allocatable :: trigxi(:)
     real(crm_rknd), allocatable :: trigxj(:)
-    real(8)       , allocatable :: a(:,:)
-    real(8)       , allocatable :: c(:,:)
+    real(r8)       , allocatable :: a(:,:)
+    real(r8)       , allocatable :: c(:,:)
     integer(crm_iknd) iwall,jwall
     integer(crm_iknd) :: numgangs  !For working aroung PGI OpenACC bug where it didn't create enough gangs
-    real(8), allocatable :: eign(:,:)
+    real(r8), allocatable :: eign(:,:)
 
     allocate( f (ncrms,nx2,ny2,nzslab)      )
     allocate( ff(ncrms,nx+1,ny+2*YES3D,nzm) )

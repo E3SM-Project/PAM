@@ -1,7 +1,11 @@
 ! Set the domain dimensionality, size and number of subdomains.
 
-module domain
+#ifndef YES3DVAL
+#define YES3DVAL 0
+#endif
 
+module domain
+  use params, only: crm_iknd
   use crmdims
   implicit none
 

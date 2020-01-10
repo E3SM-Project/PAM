@@ -9,7 +9,7 @@ contains
     !        momentum tendency due to 2nd-order-central horizontal advection
 
     use vars
-    use params, only: crm_rknd
+    use params
 
     implicit none
     integer(crm_iknd), intent(in) :: ncrms

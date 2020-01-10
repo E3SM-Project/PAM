@@ -11,7 +11,7 @@ contains
 
     use grid
     use vars, only: u, v, w, rho, rhow
-    use params, only: docolumn, crm_rknd
+    use params
 
     implicit none
     integer(crm_iknd), intent(in) :: ncrms

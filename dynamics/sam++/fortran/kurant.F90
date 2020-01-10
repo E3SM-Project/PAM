@@ -9,7 +9,7 @@ module kurant_mod
    subroutine kurant(ncrms)
       use vars
       use sgs, only: kurant_sgs
-      use params, only: crm_rknd
+      use params
       implicit none
       integer(crm_iknd), intent(in) :: ncrms
       integer(crm_iknd) i, j, k, ncycle1(1),ncycle2(1),icrm

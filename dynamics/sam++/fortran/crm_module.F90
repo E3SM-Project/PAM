@@ -1,6 +1,5 @@
 
 module crm_module
-  use perf_mod
   use task_init_mod, only: task_init
   use abcoefs_mod, only: abcoefs
   use kurant_mod, only: kurant
@@ -26,33 +25,26 @@ module crm_module
   use crm_rad_module,         only: crm_rad_type
   use crm_input_module,       only: crm_input_type
   use crm_output_module,      only: crm_output_type
-  use phys_grid             , only: get_rlon_p, get_rlat_p, get_gcol_p  
-!---------------------------------------------------------------
-!  Super-parameterization's main driver
-!  Marat Khairoutdinov, 2001-2009
-!---------------------------------------------------------------
-use setparm_mod, only : setparm
+  !---------------------------------------------------------------
+  !  Super-parameterization's main driver
+  !  Marat Khairoutdinov, 2001-2009
+  !---------------------------------------------------------------
+  use setparm_mod, only : setparm
 
 contains
 
 subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
                 crm_input, crm_state, crm_rad,  &
-                crm_output )
+                crm_output, latitude0_in, longitude0_in, igstep_in, gcolp_in )
     !-----------------------------------------------------------------------------------------------
     !-----------------------------------------------------------------------------------------------
-    use shr_kind_mod          , only: r8 => shr_kind_r8
-    use ppgrid                , only: pcols
     use vars
     use params
     use microphysics
     use sgs
     use crmtracers
-    use scalar_momentum_mod
     use crmdims               , only: crm_nx_rad, crm_ny_rad
     use accelerate_crm_mod    , only: use_crm_accel, crm_accel_factor, crm_accel_nstop, accelerate_crm
-    use cam_abortutils        , only: endrun
-    use time_manager          , only: get_nstep
-
     implicit none
 
     !-----------------------------------------------------------------------------------------------
@@ -68,6 +60,10 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     type(crm_state_type),      intent(inout) :: crm_state
     type(crm_rad_type), target,intent(inout) :: crm_rad
     type(crm_output_type), target,     intent(inout) :: crm_output
+    real(crm_rknd), intent(in) :: latitude0_in(ncrms)
+    real(crm_rknd), intent(in) :: longitude0_in(ncrms)
+    real(crm_rknd), intent(in) :: igstep_in(ncrms)
+    real(crm_rknd), intent(in) :: gcolp_in(ncrms)
 
     !-----------------------------------------------------------------------------------------------
     ! Local variable declarations
@@ -164,6 +160,31 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   allocate( colprec (ncrms) )
   allocate( colprecs(ncrms) )
 
+  call prefetch( t00      )
+  call prefetch( tln      )
+  call prefetch( qln      )
+  call prefetch( qccln    )
+  call prefetch( qiiln    )
+  call prefetch( uln      )
+  call prefetch( vln      )
+  call prefetch( cwp      ) 
+  call prefetch( cwph     ) 
+  call prefetch( cwpm     ) 
+  call prefetch( cwpl     ) 
+  call prefetch( flag_top ) 
+  call prefetch( cltemp   ) 
+  call prefetch( cmtemp   ) 
+  call prefetch( chtemp   ) 
+  call prefetch( cttemp   ) 
+  call prefetch( dd_crm   ) 
+  call prefetch( mui_crm  ) 
+  call prefetch( mdi_crm  ) 
+  call prefetch( ustar    ) 
+  call prefetch( bflx     ) 
+  call prefetch( wnd      ) 
+  call prefetch( qtot     ) 
+  call prefetch( colprec  ) 
+  call prefetch( colprecs ) 
 
   call allocate_params(ncrms)
   call allocate_vars(ncrms)
@@ -192,11 +213,10 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
   !Loop over "vector columns"
   do icrm = 1 , ncrms
-    latitude0 (icrm) = get_rlat_p(lchnk, icol(icrm)) * 57.296_r8
-    longitude0(icrm) = get_rlon_p(lchnk, icol(icrm)) * 57.296_r8
+    latitude0 (icrm) = latitude0_in (icrm)
+    longitude0(icrm) = longitude0_in(icrm)
+    igstep           = igstep_in(icrm) 
   enddo
-
-  igstep = get_nstep()
 
 !-----------------------------------------------
 
@@ -275,8 +295,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     rhow(icrm,1) = 2.*rhow(icrm,2) - rhow(icrm,3)
     rhow(icrm,nz)= 2.*rhow(icrm,nzm) - rhow(icrm,nzm-1)
   enddo
-
-  call t_startf('crm_gpu_region')
 
   !  Initialize CRM fields:
   !$acc parallel loop collapse(4) async(asyncid)
@@ -494,7 +512,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
   do icrm = 1 , ncrms
     if ( igstep <= 1 ) then
-        iseed = get_gcol_p(lchnk,icol(icrm)) * perturb_seed_scale
+        iseed = gcolp_in(icrm) * perturb_seed_scale
         call setperturb(ncrms,icrm,iseed)
     end if
 
@@ -505,8 +523,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       crm_nx_rad_fac = real(crm_nx_rad,crm_rknd)/real(nx,crm_rknd)
       crm_ny_rad_fac = real(crm_ny_rad,crm_rknd)/real(ny,crm_rknd)
     else
-      write(0,*) "crm_nx_rad and crm_ny_rad need to be divisible by nx and ny"
-      call endrun('crm main')
+      write(*,*) "crm_nx_rad and crm_ny_rad need to be divisible by nx and ny"
+      stop
     end if
   enddo
 
@@ -549,7 +567,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
       !---------------------------------------------
       !  	the Adams-Bashforth scheme in time
-      call abcoefs(dt3, nstep, na, nb, nc, at, bt, ct)
+      call abcoefs(ncrms)
 
       !---------------------------------------------
       !  	initialize stuff:
@@ -647,6 +665,9 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       !---------------------------------------------------------
       !      SGS effects on scalars :
       if (dosgs) call sgs_scalars(ncrms)
+
+      !-----------------------------------------------------------
+      !       Calculate PGF for scalar momentum tendency
 
       !-----------------------------------------------------------
       !       Cloud condensation/evaporation and precipitation processes:
@@ -1209,8 +1230,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   enddo
 
   !$acc wait(asyncid)
-
-  call t_stopf('crm_gpu_region')
 
   crm_output%timing_factor(:) = crm_output%timing_factor(:) / nstop
 

@@ -8,7 +8,7 @@ contains
   ! ranf_() returns next random numer
 
   real(crm_rknd) function ranf_()
-    use params, only: crm_rknd
+    use params
     implicit none
     ! ranf_ = rand_(0)
     call random_number(ranf_)
@@ -16,7 +16,7 @@ contains
   end
 
   subroutine ranset_(iseed)
-    use params, only: crm_rknd
+    use params
     implicit none
     integer(crm_iknd) iseed, i, m, nsteps
     ! i = rand_(1) ! reinitialize (reset)
@@ -29,7 +29,7 @@ contains
   end
 
   real(crm_rknd) function rand_(iseed)
-    use params, only: crm_rknd
+    use params
     implicit none
     integer(crm_iknd) iseed
     integer(crm_iknd) ia1, ia0, ia1ma0, ic, ix1, ix0, iy0, iy1

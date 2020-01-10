@@ -11,7 +11,7 @@ contains
     use params, only: dowallx, dowally
     implicit none
     integer(crm_iknd), intent(in) :: ncrms
-    real *8 rdx,rdy,rdz
+    real(r8) rdx,rdy,rdz
     integer(crm_iknd) i,j,k,kb,jb,ib, icrm
 
     rdx=1./dx

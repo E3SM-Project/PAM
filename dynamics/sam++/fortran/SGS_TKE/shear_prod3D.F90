@@ -6,7 +6,7 @@ contains
 
   subroutine shear_prod3D(ncrms,def2)
     use vars
-    use params, only: crm_rknd
+    use params
     implicit none
     integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd) def2(ncrms,nx,ny,nzm)

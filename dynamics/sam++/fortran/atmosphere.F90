@@ -12,7 +12,7 @@ contains
     !   not be too far removed from the correct values for density.
     !   the reference document does not use the terms pressure and temperature
     !   above 86 km.
-    use params, only: crm_rknd
+    use params
     implicit none
     !============================================================================
     !     a r g u m e n t s                                                     |
