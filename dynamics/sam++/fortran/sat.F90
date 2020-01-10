@@ -10,7 +10,7 @@ contains
   ! des/dT below -80C computed as a finite difference of es
 
   real(crm_rknd) function esatw_crm(t)
-    use params
+    use params, only: crm_rknd
     !$acc routine seq
     implicit none
     real(crm_rknd) t  ! temperature (K)
@@ -34,7 +34,7 @@ contains
 
 
   real(crm_rknd) function qsatw_crm(t,p)
-    use params
+    use params, only: crm_rknd
     !$acc routine seq
     implicit none
     real(crm_rknd) t  ! temperature (K)
@@ -46,7 +46,7 @@ contains
 
 
   real(crm_rknd) function dtesatw_crm(t)
-    use params
+    use params, only: crm_rknd
     !$acc routine seq
     implicit none
     real(crm_rknd) t  ! temperature (K)
@@ -67,7 +67,7 @@ contains
 
 
   real(crm_rknd) function dtqsatw_crm(t,p)
-    use params
+    use params, only: crm_rknd
     !$acc routine seq
     implicit none
     real(crm_rknd) t  ! temperature (K)
@@ -77,7 +77,7 @@ contains
 
 
   real(crm_rknd) function esati_crm(t)
-    use params
+    use params, only: crm_rknd
     !$acc routine seq
     implicit none
     real(crm_rknd) t  ! temperature (K)
@@ -98,7 +98,7 @@ contains
 
 
   real(crm_rknd) function qsati_crm(t,p)
-    use params
+    use params, only: crm_rknd
     !$acc routine seq
     implicit none
     real(crm_rknd) t  ! temperature (K)
@@ -110,7 +110,7 @@ contains
 
 
   real(crm_rknd) function dtesati_crm(t)
-    use params
+    use params, only: crm_rknd
     !$acc routine seq
     implicit none
     real(crm_rknd) t  ! temperature (K)
@@ -130,7 +130,7 @@ contains
 
 
   real(crm_rknd) function dtqsati_crm(t,p)
-    use params
+    use params, only: crm_rknd
     !$acc routine seq
     implicit none
     real(crm_rknd) t  ! temperature (K)

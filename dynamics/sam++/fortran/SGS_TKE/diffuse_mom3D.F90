@@ -9,10 +9,11 @@ contains
     !        momentum tendency due to SGS diffusion
 
     use vars
-    use params
+    use params, only: docolumn, crm_rknd
+    use openacc_utils
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
-    integer(crm_iknd) :: dimx1_d, dimx2_d, dimy1_d, dimy2_d
+    integer, intent(in) :: ncrms
+    integer :: dimx1_d, dimx2_d, dimy1_d, dimy2_d
     real(crm_rknd) tk(ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm) ! SGS eddy viscosity
     real(crm_rknd) grdf_x(ncrms,nzm)! grid factor for eddy diffusion in x
     real(crm_rknd) grdf_y(ncrms,nzm)! grid factor for eddy diffusion in y
@@ -20,7 +21,7 @@ contains
     real(crm_rknd) rdx2,rdy2,rdz2,rdz,rdx25,rdy25
     real(crm_rknd) rdx21,rdy21,rdx251,rdy251,rdz25
     real(crm_rknd) dxy,dxz,dyx,dyz,dzx,dzy
-    integer(crm_iknd) i,j,k,ic,ib,jb,jc,kc,kcu,icrm
+    integer i,j,k,ic,ib,jb,jc,kc,kcu,icrm
     real(crm_rknd) tkx, tky, tkz, rhoi, iadzw, iadz
     real(crm_rknd), allocatable :: fu(:,:,:,:)
     real(crm_rknd), allocatable :: fv(:,:,:,:)
@@ -29,6 +30,9 @@ contains
     allocate( fu(ncrms,0:nx,0:ny,nz) )
     allocate( fv(ncrms,0:nx,0:ny,nz) )
     allocate( fw(ncrms,0:nx,0:ny,nz) )
+    call prefetch( fu )
+    call prefetch( fv )
+    call prefetch( fw )
 
     rdx2=1./(dx*dx)
     rdy2=1./(dy*dy)

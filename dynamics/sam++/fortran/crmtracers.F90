@@ -3,7 +3,7 @@ module crmtracers
   ! This module serves as a template for adding tracer transport in the model. The tracers can be
   ! chemical tracers, or bin microphysics drop/ice categories, etc.
   ! The number of tracers is set by the parameter ntracers which is set in domain.f90.
-  ! Also, the logical(crm_lknd) flag dotracers should be set to .true. in namelist (default is .false.).
+  ! Also, the logical flag dotracers should be set to .true. in namelist (default is .false.).
   ! The model will transport the tracers around automatically (advection and SGS diffusion).
   ! The user must supply the initialization in the subroutine tracers_init() in this module.
   ! By default, the surface flux of all tracers is zero. Nonzero values can be set in tracers_flux().
@@ -12,7 +12,7 @@ module crmtracers
 
 
   use grid
-  use params
+  use params, only: crm_rknd
   use utils,  only: lenstr
   implicit none
 
@@ -31,8 +31,9 @@ CONTAINS
 
 
   subroutine allocate_tracers(ncrms)
+    use openacc_utils
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
+    integer, intent(in) :: ncrms
     real(crm_rknd) :: zero
     allocate( tracer  (dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, 0:ntracers,ncrms))
     allocate( fluxbtr (nx, ny, 0:ntracers,ncrms) )
@@ -45,6 +46,14 @@ CONTAINS
     allocate( tracername   (0:ntracers))
     allocate( tracerunits (0:ntracers))
 
+    call prefetch( tracer    )
+    call prefetch( fluxbtr   )
+    call prefetch( fluxttr   )
+    call prefetch( trwle     )
+    call prefetch( trwsb     )
+    call prefetch( tradv     )
+    call prefetch( trdiff    )
+    call prefetch( trphys    )
 
     zero = 0
 
@@ -78,9 +87,9 @@ CONTAINS
 
   subroutine tracers_init()
 
-    integer(crm_iknd) k,ntr
+    integer k,ntr
     character *2 ntrchar
-    ! integer(crm_iknd), external :: lenstr
+    ! integer, external :: lenstr
 
     tracer = 0.
     fluxbtr = 0.
@@ -135,8 +144,8 @@ CONTAINS
     ! Initialize the list of tracers statistics variables written in statistics.f90
 
     character(*) namelist(*), deflist(*), unitlist(*)
-    integer(crm_iknd) status(*),average_type(*),count,trcount
-    integer(crm_iknd) ntr
+    integer status(*),average_type(*),count,trcount
+    integer ntr
 
 
     do ntr=1,ntracers

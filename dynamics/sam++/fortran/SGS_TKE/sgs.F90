@@ -5,8 +5,9 @@ module sgs
   ! Marat Khairoutdinov, 2012
 
   use grid, only: nx,nxp1,ny,nyp1,YES3D,nzm,nz,dimx1_s,dimx2_s,dimy1_s,dimy2_s
-  use params
+  use params, only: dosgs, crm_rknd, asyncid
   use vars, only: tke2, tk2
+  use openacc_utils
   implicit none
 
   !----------------------------------------------------------------------
@@ -14,22 +15,22 @@ module sgs
 
   !!! prognostic scalar (need to be advected arround the grid):
 
-  integer(crm_iknd), parameter :: nsgs_fields = 1   ! total number of prognostic sgs vars
+  integer, parameter :: nsgs_fields = 1   ! total number of prognostic sgs vars
 
 
   !!! sgs diagnostic variables that need to exchange boundary information (via MPI):
 
-  integer(crm_iknd), parameter :: nsgs_fields_diag = 2   ! total number of diagnostic sgs vars
+  integer, parameter :: nsgs_fields_diag = 2   ! total number of diagnostic sgs vars
 
   ! diagnostic fields' boundaries:
-  integer(crm_iknd), parameter :: dimx1_d=0, dimx2_d=nxp1, dimy1_d=1-YES3D, dimy2_d=nyp1
+  integer, parameter :: dimx1_d=0, dimx2_d=nxp1, dimy1_d=1-YES3D, dimy2_d=nyp1
 
-  integer(crm_iknd), parameter :: flag_sgs3Dout(nsgs_fields) = (/0/)
-  integer(crm_iknd), parameter :: flag_sgsdiag3Dout(nsgs_fields_diag) = (/0,0/)
+  integer, parameter :: flag_sgs3Dout(nsgs_fields) = (/0/)
+  integer, parameter :: flag_sgsdiag3Dout(nsgs_fields_diag) = (/0,0/)
 
 
-  logical(crm_lknd):: advect_sgs = .false. ! advect prognostics or not, default - not (Smagorinsky)
-  logical(crm_lknd), parameter:: do_sgsdiag_bound = .true.  ! exchange boundaries for diagnostics fields
+  logical:: advect_sgs = .false. ! advect prognostics or not, default - not (Smagorinsky)
+  logical, parameter:: do_sgsdiag_bound = .true.  ! exchange boundaries for diagnostics fields
 
   ! SGS fields that output by default (if =1).
 
@@ -45,10 +46,10 @@ module sgs
   ! make aliases for diagnostic variables:
 
 
-  logical(crm_lknd):: dosmagor   ! if true, then use Smagorinsky closure
+  logical:: dosmagor   ! if true, then use Smagorinsky closure
 
   ! whannah
-  ! logical(crm_lknd):: doscalar   ! if true, transport a passive scalar in the place of prognostic SGS TKE only if dosmagor=.true.
+  ! logical:: doscalar   ! if true, transport a passive scalar in the place of prognostic SGS TKE only if dosmagor=.true.
 
   ! Local diagnostics:
 
@@ -68,8 +69,9 @@ CONTAINS
 
 
   subroutine allocate_sgs(ncrms)
+    use openacc_utils
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
+    integer, intent(in) :: ncrms
     real(crm_rknd) :: zero
     allocate( sgs_field(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nsgs_fields) )
     allocate( sgs_field_diag(ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm, nsgs_fields_diag) )
@@ -83,6 +85,15 @@ CONTAINS
     tke(dimx1_s:,dimy1_s:,1:,1:) => sgs_field     (:,:,:,:,1)
     tk (dimx1_d:,dimy1_d:,1:,1:) => sgs_field_diag(:,:,:,:,1)
     tkh(dimx1_d:,dimy1_d:,1:,1:) => sgs_field_diag(:,:,:,:,2)
+
+    call prefetch( sgs_field  )
+    call prefetch( sgs_field_diag  )
+    call prefetch( grdf_x  )
+    call prefetch( grdf_y  )
+    call prefetch( grdf_z  )
+    call prefetch( tkesbbuoy  )
+    call prefetch( tkesbshear  )
+    call prefetch( tkesbdiss  )
 
     zero = 0
 
@@ -119,7 +130,7 @@ CONTAINS
     use grid, only: case
     implicit none
 
-    integer(crm_iknd) ierr, ios, ios_missing_namelist, place_holder
+    integer ierr, ios, ios_missing_namelist, place_holder
 
     !======================================================================
     NAMELIST /SGS_TKE/ &
@@ -164,8 +175,8 @@ CONTAINS
     use grid, only: nrestart, dx, dy, dz, adz, masterproc
     use params, only: LES
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
-    integer(crm_iknd) k,icrm, i, j, l
+    integer, intent(in) :: ncrms
+    integer k,icrm, i, j, l
 
     if(nrestart.eq.0) then
       !$acc parallel loop collapse(5) async(asyncid)
@@ -221,9 +232,9 @@ CONTAINS
   subroutine setperturb_sgs(ncrms,icrm,ptype)
 
     use vars, only: q0, z
-    integer(crm_iknd), intent(in) :: ncrms,icrm
-    integer(crm_iknd), intent(in) :: ptype
-    integer(crm_iknd) i,j,k
+    integer, intent(in) :: ncrms,icrm
+    integer, intent(in) :: ptype
+    integer i,j,k
 
     select case (ptype)
 
@@ -318,13 +329,14 @@ CONTAINS
   subroutine kurant_sgs(ncrms,cfl)
     use grid, only: dt, dx, dy, dz, adz, adzw
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
+    integer, intent(in) :: ncrms
     real(crm_rknd), intent(inout) :: cfl
-    integer(crm_iknd) k,icrm, j, i
+    integer k,icrm, j, i
     real(crm_rknd), allocatable :: tkhmax(:,:)
     real(crm_rknd) tmp
 
     allocate(tkhmax(ncrms,nz))
+    call prefetch(tkhmax)
 
     !$acc parallel loop collapse(2) async(asyncid)
     do k = 1,nzm
@@ -366,7 +378,7 @@ CONTAINS
   subroutine sgs_mom(ncrms)
     use diffuse_mom_mod, only: diffuse_mom
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
+    integer, intent(in) :: ncrms
 
     call diffuse_mom(ncrms,grdf_x, grdf_y, grdf_z, dimx1_d, dimx2_d, dimy1_d, dimy2_d, sgs_field_diag(:,:,:,:,1))
   end subroutine sgs_mom
@@ -379,13 +391,15 @@ CONTAINS
     use vars
     use microphysics
     use crmtracers
+    use scalar_momentum_mod
     use params, only: dotracers
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
+    integer, intent(in) :: ncrms
     real(crm_rknd), allocatable :: dummy(:,:)
-    integer(crm_iknd) i,j,kk,k,icrm
+    integer i,j,kk,k,icrm
 
     allocate( dummy(ncrms,nz) )
+    call prefetch(dummy)
 
     call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),t,fluxbt,fluxtt,tdiff,twsb)
 
@@ -425,6 +439,14 @@ CONTAINS
     !  total_water_evap(icrm) = total_water_evap(icrm) + total_water(ncrms,icrm)
     !enddo
 
+#if defined(SP_ESMT)
+    ! diffusion of scalar momentum tracers
+    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),&
+                        u_esmt,fluxb_u_esmt,fluxt_u_esmt,u_esmt_diff,u_esmt_sgs)
+    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),&
+                        v_esmt,fluxb_v_esmt,fluxt_v_esmt,v_esmt_diff,v_esmt_sgs)
+#endif
+
     deallocate( dummy )
   end subroutine sgs_scalars
 
@@ -436,8 +458,8 @@ subroutine sgs_proc(ncrms)
   use grid, only: dt,icycle
   use params, only: dosmoke
   implicit none
-  integer(crm_iknd), intent(in) :: ncrms
-  integer(crm_iknd) :: icrm, k, j, i
+  integer, intent(in) :: ncrms
+  integer :: icrm, k, j, i
   !    SGS TKE equation:
 
   if(dosgs) call tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d, &
@@ -480,7 +502,7 @@ end subroutine sgs_diagnose
 !
 subroutine sgs_hbuf_init(namelist,deflist,unitlist,status,average_type,count,sgscount)
   character(*) namelist(*), deflist(*), unitlist(*)
-  integer(crm_iknd) status(*),average_type(*),count,sgscount
+  integer status(*),average_type(*),count,sgscount
 
 end subroutine sgs_hbuf_init
 

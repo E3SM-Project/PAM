@@ -10,7 +10,7 @@
 !   accelerate_crm: calculates and applies MSA tendency to CRM
 !
 ! PUBLIC MODULE VARIABLES:
-!   logical(crm_lknd)  :: use_crm_accel - apply MSA if true (cam namelist variable)
+!   logical  :: use_crm_accel - apply MSA if true (cam namelist variable)
 !   real(r8) :: crm_accel_factor - MSA factor to use (cam namelist variable)
 !
 ! REVISION HISTORY:
@@ -21,17 +21,17 @@
 ! -----------------------------------------------------------------------------
 module accelerate_crm_mod
     use grid, only: nx, ny
-    use params
+    use params, only: asyncid, rc=>crm_rknd, r8
 
     implicit none
-    integer, parameter :: rc = crm_rknd
+
     ! private module variables
     real(r8), parameter :: coef = 1._r8 / dble(nx * ny)  ! coefficient for horizontal averaging
-    logical(crm_lknd) :: crm_accel_uv  ! (false) apply MSA only to scalar fields (T and QT)
+    logical :: crm_accel_uv  ! (false) apply MSA only to scalar fields (T and QT)
                              ! (true) apply MSA to winds (U/V) and scalar fields
 
     ! public module variables
-    logical(crm_lknd) :: use_crm_accel  ! use MSA if true
+    logical :: use_crm_accel  ! use MSA if true
     real(r8) :: crm_accel_factor  ! 1 + crm_accel_factor = 'a' in Jones etal (2015)
 
     private :: coef, crm_accel_uv
@@ -46,18 +46,9 @@ module accelerate_crm_mod
       implicit none
   
       ! initialize defaults
-      use_crm_accel = .true.
+      use_crm_accel    = .true.
       crm_accel_factor = 2.
-      crm_accel_uv = .true.
-  
-      ! if (masterproc) then
-      !   if (use_crm_accel) then
-      !     write(iulog, *) 'USING CRM MEAN STATE ACCELERATION'
-      !     write(iulog, *) 'crm_accel: use_crm_accel = ', use_crm_accel
-      !     write(iulog, *) 'crm_accel: crm_accel_factor = ', crm_accel_factor
-      !     write(iulog, *) 'crm_accel: crm_accel_uv = ', crm_accel_uv
-      !   endif
-      ! endif
+      crm_accel_uv     = .true.
     end subroutine crm_accel_init
 
 
@@ -73,10 +64,8 @@ module accelerate_crm_mod
       ! Argument(s):
       !  nstop (inout) - number of crm iterations to apply MSA
       ! -----------------------------------------------------------------------
-  
       implicit none
-  
-      integer(crm_iknd), intent(inout) :: nstop
+      integer, intent(inout) :: nstop
   
       if (mod(nstop, int(1 + crm_accel_factor)) .ne. 0) then
         write(*,*) "CRM acceleration unexpected exception:"
@@ -115,11 +104,12 @@ module accelerate_crm_mod
       use grid, only: nzm
       use vars, only: u, v, u0, v0, t0,q0, t,qcl,qci,qv
       use microphysics, only: micro_field, idx_qt=>index_water_vapor
+      use openacc_utils
       implicit none
-      integer(crm_iknd), intent(in   ) :: ncrms
-      integer(crm_iknd), intent(in   ) :: nstep
-      integer(crm_iknd), intent(inout) :: nstop
-      logical(crm_lknd), intent(inout) :: ceaseflag
+      integer, intent(in   ) :: ncrms
+      integer, intent(in   ) :: nstep
+      integer, intent(inout) :: nstop
+      logical, intent(inout) :: ceaseflag
       real(rc), allocatable :: ubaccel  (:,:)   ! u before applying MSA tendency
       real(rc), allocatable :: vbaccel  (:,:)   ! v before applying MSA tendency
       real(rc), allocatable :: tbaccel  (:,:)   ! t before applying MSA tendency
@@ -131,7 +121,7 @@ module accelerate_crm_mod
       real(r8), allocatable :: qpoz     (:,:) ! total positive micro_field(:,:,k,idx_qt,:) in level k
       real(r8), allocatable :: qneg     (:,:) ! total negative micro_field(:,:,k,idx_qt,:) in level k
       real(rc) :: tmp  ! temporary variable for atomic updates
-      integer(crm_iknd) i, j, k, icrm  ! iteration variables
+      integer i, j, k, icrm  ! iteration variables
       real(r8) :: factor, qt_res ! local variables for redistributing moisture
       real(rc) :: ttend_threshold ! threshold for ttend_acc at which MSA aborts
       real(rc) :: tmin  ! mininum value of t allowed (sanity factor)
@@ -149,6 +139,16 @@ module accelerate_crm_mod
       allocate( vtend_acc(ncrms,nzm) )
       allocate( qpoz     (ncrms,nzm) )
       allocate( qneg     (ncrms,nzm) )
+      call prefetch( ubaccel   )
+      call prefetch( vbaccel   )
+      call prefetch( tbaccel   )
+      call prefetch( qtbaccel  )
+      call prefetch( ttend_acc )
+      call prefetch( qtend_acc )
+      call prefetch( utend_acc )
+      call prefetch( vtend_acc )
+      call prefetch( qpoz      )
+      call prefetch( qneg      )
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !! Compute the average among horizontal columns for each variable

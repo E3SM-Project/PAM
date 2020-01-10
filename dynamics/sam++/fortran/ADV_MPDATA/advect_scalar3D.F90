@@ -1,5 +1,6 @@
 module advect_scalar3D_mod
   use params, only: asyncid
+  use openacc_utils
   implicit none
 
 contains
@@ -7,9 +8,9 @@ contains
   subroutine advect_scalar3D (ncrms, f, u, v, w, rho, rhow, flux)
     !     positively definite monotonic advection with non-oscillatory option
     use grid
-    use params
+    use params, only: dowallx, dowally, crm_rknd
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
+    integer, intent(in) :: ncrms
     real(crm_rknd) f(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
     real(crm_rknd) u(ncrms,dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm)
     real(crm_rknd) v(ncrms,dimx1_v:dimx2_v, dimy1_v:dimy2_v, nzm)
@@ -26,8 +27,8 @@ contains
     real(crm_rknd), allocatable :: irho (:,:)
     real(crm_rknd), allocatable :: irhow(:,:)
     real(crm_rknd) eps, dd
-    integer(crm_iknd) i,j,k,ic,ib,jc,jb,kc,kb, icrm
-    logical(crm_lknd) nonos
+    integer i,j,k,ic,ib,jc,jb,kc,kb, icrm
+    logical nonos
     real(crm_rknd) x1, x2, a, b, a1, a2, y
     real(crm_rknd) andiff,across,pp,pn
 
@@ -49,6 +50,14 @@ contains
     allocate( irho (ncrms,nzm) )
     allocate( irhow(ncrms,nzm) )
 
+    call prefetch( mx  )
+    call prefetch( mn  )
+    call prefetch( uuu )
+    call prefetch( vvv )
+    call prefetch( www )
+    call prefetch( iadz  )
+    call prefetch( irho  )
+    call prefetch( irhow )
 
     !$acc parallel loop collapse(3) async(asyncid)
     do j = -1 , nyp2

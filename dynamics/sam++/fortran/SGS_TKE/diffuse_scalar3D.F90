@@ -8,10 +8,11 @@ contains
     use grid
     use params
     use task_util_mod, only: task_rank_to_index
+    use openacc_utils
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
+    integer, intent(in) :: ncrms
     ! input
-    integer(crm_iknd) :: dimx1_d,dimx2_d,dimy1_d,dimy2_d
+    integer :: dimx1_d,dimx2_d,dimy1_d,dimy2_d
     real(crm_rknd) grdf_x(ncrms,nzm)! grid factor for eddy diffusion in x
     real(crm_rknd) grdf_y(ncrms,nzm)! grid factor for eddy diffusion in y
     real(crm_rknd) grdf_z(ncrms,nzm)! grid factor for eddy diffusion in z
@@ -29,7 +30,7 @@ contains
     real(crm_rknd), allocatable :: dfdt (:,:,:,:)
     real(crm_rknd) rdx2,rdy2,rdz2,rdz,rdx5,rdy5,rdz5,tmp
     real(crm_rknd) dxy,dyx,tkx,tky,tkz,rhoi
-    integer(crm_iknd) i,j,k,ib,ic,jb,jc,kc,kb,icrm
+    integer i,j,k,ib,ic,jb,jc,kc,kb,icrm
 
     if(.not.dosgs) return
 
@@ -37,6 +38,10 @@ contains
     allocate( flx_y(ncrms,0:nx,0:ny,0:nzm) )
     allocate( flx_z(ncrms,0:nx,0:ny,0:nzm) )
     allocate( dfdt (ncrms,nx,ny,nz) )
+    call prefetch( flx_x )
+    call prefetch( flx_y )
+    call prefetch( flx_z )
+    call prefetch( dfdt  )
 
     rdx2=1./(dx*dx)
     rdy2=1./(dy*dy)

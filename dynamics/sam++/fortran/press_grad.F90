@@ -10,9 +10,9 @@ contains
     use vars
     use params, only: dowallx, dowally
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
-    real(r8) rdx,rdy,rdz
-    integer(crm_iknd) i,j,k,kb,jb,ib, icrm
+    integer, intent(in) :: ncrms
+    real *8 rdx,rdy,rdz
+    integer i,j,k,kb,jb,ib, icrm
 
     rdx=1./dx
     rdy=1./dy

@@ -9,8 +9,8 @@ contains
     use vars
     use params, only: docolumn
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
-    integer(crm_iknd) i,j,k
+    integer, intent(in) :: ncrms
+    integer i,j,k
 
     if(docolumn) return
 

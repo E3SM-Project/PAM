@@ -6,11 +6,11 @@ contains
 
   subroutine coriolis(ncrms)
     use vars
-    use params
+    use params, only: crm_rknd
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
+    integer, intent(in) :: ncrms
     real(crm_rknd) u_av, v_av, w_av
-    integer(crm_iknd) i,j,k,ib,ic,jb,jc,kc,icrm
+    integer i,j,k,ib,ic,jb,jc,kc,icrm
 
     if(RUN3D) then
       !$acc parallel loop collapse(4) async(asyncid)

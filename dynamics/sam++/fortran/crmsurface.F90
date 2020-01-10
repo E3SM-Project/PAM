@@ -5,12 +5,12 @@ contains
 
   subroutine crmsurface(ncrms,bflx)
     use vars
-    use params, only: crm_rknd, crm_iknd
+    use params
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
+    integer, intent(in) :: ncrms
     real(crm_rknd), intent (in) :: bflx(ncrms)
     real(crm_rknd) u_h0, tau00, tmp
-    integer(crm_iknd) i,j,icrm
+    integer i,j,icrm
 
     !--------------------------------------------------------
     if(SFC_FLX_FXD.and..not.SFC_TAU_FXD) then
@@ -65,7 +65,7 @@ contains
   ! Code corrected 8th June 1999 (obukhov length was wrong way up,
   ! so now used as reciprocal of obukhov length)
   real(crm_rknd) function diag_ustar(z,bflx,wnd,z0)
-    use params, only: crm_rknd, crm_iknd
+    use params, only: crm_rknd
     !$acc routine seq
     implicit none
     real(crm_rknd), parameter      :: vonk =  0.4   ! von Karmans constant
@@ -77,7 +77,7 @@ contains
     real(crm_rknd), intent (in)    :: bflx          ! surface buoyancy flux (m^2/s^3)
     real(crm_rknd), intent (in)    :: wnd           ! wind speed at z
     real(crm_rknd), intent (in)    :: z0            ! momentum roughness height
-    integer(crm_iknd) :: iterate
+    integer :: iterate
     real(crm_rknd)    :: lnz, klnz, c1, x, psi1, zeta, rlmo, ustar
     lnz   = log(z/z0)
     klnz  = vonk/lnz
@@ -102,7 +102,7 @@ contains
   ! ----------------------------------------------------------------------
 
   real(crm_rknd) function z0_est(z,bflx,wnd,ustar)
-    use params, only: crm_rknd, crm_iknd
+    use params, only: crm_rknd
     ! Compute z0 from buoyancy flux, wind, and friction velocity
     ! 2004, Marat Khairoutdinov
     implicit none

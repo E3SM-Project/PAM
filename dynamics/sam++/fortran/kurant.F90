@@ -9,17 +9,20 @@ module kurant_mod
    subroutine kurant(ncrms)
       use vars
       use sgs, only: kurant_sgs
-      use params
+      use params, only: crm_rknd
+      use openacc_utils
       implicit none
-      integer(crm_iknd), intent(in) :: ncrms
-      integer(crm_iknd) i, j, k, ncycle1(1),ncycle2(1),icrm
+      integer, intent(in) :: ncrms
+      integer i, j, k, ncycle1(1),ncycle2(1),icrm
       real(crm_rknd), allocatable :: wm (:,:)  ! maximum vertical wind velocity
       real(crm_rknd), allocatable :: uhm(:,:) ! maximum horizontal wind velocity
       real(crm_rknd) cfl, cfl_sgs, tmp
-      integer(crm_iknd), parameter :: max_ncycle = 16
+      integer, parameter :: max_ncycle = 16
 
       allocate(wm (ncrms,nz))
       allocate(uhm(ncrms,nz))
+      call prefetch(wm  )
+      call prefetch(uhm )
 
       ncycle = 1
       !$acc parallel loop collapse(2) async(asyncid)

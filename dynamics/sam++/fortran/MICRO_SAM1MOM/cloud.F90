@@ -14,17 +14,17 @@ contains
     use sat_mod
 
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
+    integer, intent(in) :: ncrms
     real(crm_rknd) :: q(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
     real(crm_rknd) :: qp(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
     real(crm_rknd) qn(ncrms,nx,ny,nzm)  ! cloud condensate (liquid + ice)
 
-    integer(crm_iknd) i,j,k, kb, kc,icrm
+    integer i,j,k, kb, kc,icrm
     real(crm_rknd) dtabs, tabs1, an, bn, ap, bp, om, ag, omp
     real(crm_rknd) fac1,fac2
     real(crm_rknd) fff,dfff,qsatt,dqsat
     real(crm_rknd) lstarn,dlstarn,lstarp,dlstarp
-    integer(crm_iknd) niter
+    integer niter
 
     an = 1./(tbgmax-tbgmin)
     bn = tbgmin * an

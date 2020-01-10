@@ -1,20 +1,16 @@
 ! Set the domain dimensionality, size and number of subdomains.
 
-#ifndef YES3DVAL
-#define YES3DVAL 0
-#endif
-
 module domain
-  use params, only: crm_iknd
+
   use crmdims
   implicit none
 
-  integer(crm_iknd), parameter :: YES3D = YES3DVAL  ! Domain dimensionality: 1 - 3D, 0 - 2D
-  integer(crm_iknd), parameter :: nx_gl = crm_nx ! Number of grid points in X
-  integer(crm_iknd), parameter :: ny_gl = crm_ny ! Number of grid points in Y
-  integer(crm_iknd), parameter :: nz_gl = crm_nz ! Number of pressure (scalar) levels
-  integer(crm_iknd), parameter :: nsubdomains_x  = 1 ! No of subdomains in x
-  integer(crm_iknd), parameter :: nsubdomains_y  = 1 ! No of subdomains in y
+  integer, parameter :: YES3D = YES3DVAL  ! Domain dimensionality: 1 - 3D, 0 - 2D
+  integer, parameter :: nx_gl = crm_nx ! Number of grid points in X
+  integer, parameter :: ny_gl = crm_ny ! Number of grid points in Y
+  integer, parameter :: nz_gl = crm_nz ! Number of pressure (scalar) levels
+  integer, parameter :: nsubdomains_x  = 1 ! No of subdomains in x
+  integer, parameter :: nsubdomains_y  = 1 ! No of subdomains in y
 
 
   ! define # of points in x and y direction to average for
@@ -22,10 +18,10 @@ module domain
   ! For example, navgmom_x = 8 means the output will be an 8 times coarser grid than the original.
   ! If don't wanna such output, just set them to -1 in both directions.
   ! See Changes_log/README.UUmods for more details.
-  integer(crm_iknd), parameter :: navgmom_x = -1
-  integer(crm_iknd), parameter :: navgmom_y = -1
+  integer, parameter :: navgmom_x = -1
+  integer, parameter :: navgmom_y = -1
 
-  integer(crm_iknd), parameter :: ntracers = 0 ! number of transported tracers (dotracers=.true.)
+  integer, parameter :: ntracers = 0 ! number of transported tracers (dotracers=.true.)
 
   ! Note:
   !  * nx_gl and ny_gl should be a factor of 2,3, or 5 (see User's Guide)

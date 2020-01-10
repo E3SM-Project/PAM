@@ -10,9 +10,9 @@ contains
     use vars
     use params, only: dowallx, dowally
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
-    real(r8) dta,rdx,rdy,rdz,btat,ctat,rup,rdn
-    integer(crm_iknd) i,j,k,ic,jc,kc, icrm
+    integer, intent(in) :: ncrms
+    real *8 dta,rdx,rdy,rdz,btat,ctat,rup,rdn
+    integer i,j,k,ic,jc,kc, icrm
 
     if(dowallx.and.mod(rank,nsubdomains_x).eq.0) then
       !$acc parallel loop collapse(3) async(asyncid)

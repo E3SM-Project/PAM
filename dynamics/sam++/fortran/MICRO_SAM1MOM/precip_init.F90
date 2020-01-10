@@ -12,11 +12,11 @@ contains
     use params
     use sat_mod
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
+    integer, intent(in) :: ncrms
     real(crm_rknd) pratio, coef1, coef2,estw,esti,rrr1,rrr2
     real*4 :: gammafff
     external :: gammafff
-    integer(crm_iknd) :: k,icrm
+    integer :: k,icrm
 
     gam3 = 3.
     gamr1 = 3.+b_rain

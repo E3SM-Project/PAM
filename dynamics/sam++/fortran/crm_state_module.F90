@@ -1,6 +1,6 @@
 module crm_state_module
 
-   use params
+   use params,       only: crm_rknd
    use crmdims,      only: crm_nx, crm_ny, crm_nz
 
    implicit none
@@ -22,29 +22,30 @@ module crm_state_module
       ! NOTE: these were intent(inout) before, so these need to persist across calls; pointers so
       ! they can be used without making a bunch of temporary arrays. Dimensions should be
       ! (ncol,crm_nx,crm_ny,crm_nz)
-      real(crm_rknd), pointer :: u_wind(:,:,:,:)       ! CRM u-wind component
-      real(crm_rknd), pointer :: v_wind(:,:,:,:)       ! CRM v-wind component
-      real(crm_rknd), pointer :: w_wind(:,:,:,:)       ! CRM w-wind component
-      real(crm_rknd), pointer :: temperature(:,:,:,:)  ! CRM temperuture
+      real(crm_rknd), allocatable :: u_wind(:,:,:,:)       ! CRM u-wind component
+      real(crm_rknd), allocatable :: v_wind(:,:,:,:)       ! CRM v-wind component
+      real(crm_rknd), allocatable :: w_wind(:,:,:,:)       ! CRM w-wind component
+      real(crm_rknd), allocatable :: temperature(:,:,:,:)  ! CRM temperuture
 
       ! Microphysics
-      real(crm_rknd), pointer :: qt(:,:,:,:) 
+      real(crm_rknd), allocatable :: qt(:,:,:,:) 
 
       ! NOTE: These are terrible variable names...replace with more descriptive names.
-      real(crm_rknd), pointer :: nc(:,:,:,:)
-      real(crm_rknd), pointer :: qr(:,:,:,:)
-      real(crm_rknd), pointer :: nr(:,:,:,:)
-      real(crm_rknd), pointer :: qi(:,:,:,:)
-      real(crm_rknd), pointer :: ni(:,:,:,:)
-      real(crm_rknd), pointer :: qs(:,:,:,:)
-      real(crm_rknd), pointer :: ns(:,:,:,:)
-      real(crm_rknd), pointer :: qg(:,:,:,:)
-      real(crm_rknd), pointer :: ng(:,:,:,:)
-      real(crm_rknd), pointer :: qc(:,:,:,:)
+      ! for m2005...
+      real(crm_rknd), allocatable :: nc(:,:,:,:)
+      real(crm_rknd), allocatable :: qr(:,:,:,:)
+      real(crm_rknd), allocatable :: nr(:,:,:,:)
+      real(crm_rknd), allocatable :: qi(:,:,:,:)
+      real(crm_rknd), allocatable :: ni(:,:,:,:)
+      real(crm_rknd), allocatable :: qs(:,:,:,:)
+      real(crm_rknd), allocatable :: ns(:,:,:,:)
+      real(crm_rknd), allocatable :: qg(:,:,:,:)
+      real(crm_rknd), allocatable :: ng(:,:,:,:)
+      real(crm_rknd), allocatable :: qc(:,:,:,:)
 
       ! for sam1mom...
-      real(crm_rknd), pointer :: qp(:,:,:,:)
-      real(crm_rknd), pointer :: qn(:,:,:,:)
+      real(crm_rknd), allocatable :: qp(:,:,:,:)
+      real(crm_rknd), allocatable :: qn(:,:,:,:)
 
    contains
       ! Type-bound procedures. Initialization should nullify fields
@@ -61,12 +62,39 @@ contains
    subroutine crm_state_initialize(this)
       class(crm_state_type), intent(inout) :: this
 
-      ! Nullify pointers
-      this%u_wind => null()
-      this%v_wind => null()
-      this%w_wind => null()
-      this%temperature => null()
+      ! ! Nullify pointers
+      ! this%u_wind => null()
+      ! this%v_wind => null()
+      ! this%w_wind => null()
+      ! this%temperature => null()
 
+      ! this%qt => null()
+      ! this%qc => null()
+      ! this%qi => null()
+      ! this%qr => null()
+      ! this%qs => null()
+      ! this%qg => null()
+      ! this%nc => null()
+      ! this%ni => null()
+      ! this%nr => null()
+      ! this%ns => null()
+      ! this%ng => null()
+
+      ! this%qp => null()
+      ! this%qn => null()
+
+   end subroutine crm_state_initialize
+   !------------------------------------------------------------------------------------------------
+   subroutine crm_state_finalize(this)
+      class(crm_state_type), intent(inout) :: this
+
+      ! Nullify pointers
+      ! this%u_wind => null()
+      ! this%v_wind => null()
+      ! this%w_wind => null()
+      ! this%temperature => null()
+
+#ifdef m2005
       this%qt => null()
       this%qc => null()
       this%qi => null()
@@ -78,23 +106,11 @@ contains
       this%nr => null()
       this%ns => null()
       this%ng => null()
-
-      this%qp => null()
-      this%qn => null()
-
-   end subroutine crm_state_initialize
-   !------------------------------------------------------------------------------------------------
-   subroutine crm_state_finalize(this)
-      class(crm_state_type), intent(inout) :: this
-
-      ! Nullify pointers
-      this%u_wind => null()
-      this%v_wind => null()
-      this%w_wind => null()
-      this%temperature => null()
-      this%qt => null()
-      this%qp => null()
-      this%qn => null()
+#else
+      ! this%qt => null()
+      ! this%qp => null()
+      ! this%qn => null()
+#endif
 
    end subroutine crm_state_finalize
 end module crm_state_module

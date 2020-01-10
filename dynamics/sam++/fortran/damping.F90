@@ -10,17 +10,18 @@ contains
     !  "Spange"-layer damping at the domain top region
     use vars
     use microphysics, only: micro_field, index_water_vapor
-    use params
+    use params, only: crm_rknd
+    use openacc_utils
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
+    integer, intent(in) :: ncrms
     real(crm_rknd) tau_min    ! minimum damping time-scale (at the top)
     real(crm_rknd) tau_max    ! maxim damping time-scale (base of damping layer)
     real(crm_rknd) damp_depth ! damping depth as a fraction of the domain height
     parameter(tau_min=60., tau_max=450., damp_depth=0.4)
     real(crm_rknd) tau(ncrms,nzm), tmp
-    integer(crm_iknd), allocatable :: n_damp(:)
-    integer(crm_iknd) :: i, j, k, icrm
-    integer(crm_iknd) :: numgangs  !For working around PGI OpenACC bug where it didn't create enough gangs
+    integer, allocatable :: n_damp(:)
+    integer :: i, j, k, icrm
+    integer :: numgangs  !For working around PGI OpenACC bug where it didn't create enough gangs
     ! crjones tests: make changes to u0, v0, t0 local instead of shared with vars
     real(crm_rknd), allocatable :: t0loc(:,:)
     real(crm_rknd), allocatable :: u0loc(:,:)
@@ -30,6 +31,10 @@ contains
     allocate( t0loc(ncrms,nzm) )
     allocate( u0loc(ncrms,nzm) )
     allocate( v0loc(ncrms,nzm) )
+    call prefetch( n_damp)
+    call prefetch( t0loc )
+    call prefetch( u0loc )
+    call prefetch( v0loc )
    
     if(tau_min.lt.2*dt) then
       print*,'Error: in damping() tau_min is too small!'

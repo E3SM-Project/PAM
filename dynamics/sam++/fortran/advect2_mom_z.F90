@@ -7,18 +7,22 @@ contains
   subroutine advect2_mom_z(ncrms)
     !       momentum tendency due to the 2nd-order-central vertical advection
     use vars
-    use params
+    use params, only: crm_rknd
+    use openacc_utils
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
+    integer, intent(in) :: ncrms
     real(crm_rknd), allocatable :: fuz(:,:,:,:)
     real(crm_rknd), allocatable :: fvz(:,:,:,:)
     real(crm_rknd), allocatable :: fwz(:,:,:,:)
-    integer(crm_iknd) i, j, k, kc, kb,icrm
+    integer i, j, k, kc, kb,icrm
     real(crm_rknd) dz25, www, rhoi
 
     allocate( fuz(ncrms,nx,ny,nz ) )
     allocate( fvz(ncrms,nx,ny,nz ) )
     allocate( fwz(ncrms,nx,ny,nzm) )
+    call prefetch( fuz )
+    call prefetch( fvz )
+    call prefetch( fwz )
 
     !$acc parallel loop collapse(2) async(asyncid)
     do k = 1 , nz

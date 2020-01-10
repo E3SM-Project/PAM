@@ -1,5 +1,9 @@
 module crm_input_module
-   use params
+   use params, only: crm_rknd
+#ifdef MODAL_AERO
+   use modal_aero_data, only: ntot_amode
+#endif
+   use openacc_utils
    implicit none
    private
    public crm_input_type
@@ -27,6 +31,17 @@ module crm_input_module
       real(crm_rknd), allocatable :: fluxt00(:)          ! surface sensible heat fluxes [K Kg/ (m2 s)]
       real(crm_rknd), allocatable :: fluxq00(:)          ! surface latent heat fluxes [ kg/(m2 s)]
 
+#if defined( m2005 ) && defined( MODAL_AERO )
+      real(crm_rknd), allocatable :: naermod (:,:,:)     ! Aerosol number concentration [/m3]
+      real(crm_rknd), allocatable :: vaerosol(:,:,:)     ! aerosol volume concentration [m3/m3]
+      real(crm_rknd), allocatable :: hygro   (:,:,:)     ! hygroscopicity of aerosol mode 
+#endif
+
+#if defined( SP_ESMT )
+      real(crm_rknd), allocatable :: ul_esmt(:,:)        ! input u for ESMT
+      real(crm_rknd), allocatable :: vl_esmt(:,:)        ! input v for ESMT
+#endif
+
    contains
       procedure, public :: initialize=>crm_input_initialize
       procedure, public :: finalize=>crm_input_finalize
@@ -38,7 +53,7 @@ contains
    ! Type-bound procedures for crm_input_type
    subroutine crm_input_initialize(this, ncrms, nlev)
       class(crm_input_type), intent(inout) :: this
-      integer(crm_iknd), intent(in) :: ncrms, nlev
+      integer, intent(in) :: ncrms, nlev
       
       if (.not. allocated(this%zmid))     allocate(this%zmid(ncrms,nlev))
       if (.not. allocated(this%zint))     allocate(this%zint(ncrms,nlev+1))
@@ -62,6 +77,41 @@ contains
       if (.not. allocated(this%fluxt00))  allocate(this%fluxt00(ncrms))
       if (.not. allocated(this%fluxq00))  allocate(this%fluxq00(ncrms))
 
+      call prefetch(this%zmid)
+      call prefetch(this%zint)
+      call prefetch(this%tl)
+      call prefetch(this%ql)
+      call prefetch(this%qccl)
+      call prefetch(this%qiil)
+      call prefetch(this%ps)
+      call prefetch(this%pmid)
+      call prefetch(this%pint)
+      call prefetch(this%pdel)
+      call prefetch(this%phis)
+      call prefetch(this%ul)
+      call prefetch(this%vl)
+      call prefetch(this%ocnfrac)
+      call prefetch(this%tau00)
+      call prefetch(this%wndls)
+      call prefetch(this%bflxls)
+      call prefetch(this%fluxu00)
+      call prefetch(this%fluxv00)
+      call prefetch(this%fluxt00)
+      call prefetch(this%fluxq00)
+
+#if defined( m2005 ) && defined( MODAL_AERO )
+      if (.not. allocated(this%naermod))  allocate(this%naermod(ncrms,nlev,ntot_amode))
+      if (.not. allocated(this%vaerosol)) allocate(this%vaerosol(ncrms,nlev,ntot_amode))
+      if (.not. allocated(this%hygro))    allocate(this%hygro(ncrms,nlev,ntot_amode))
+      call prefetch(this%naermod)
+      call prefetch(this%vaerosol)
+      call prefetch(this%hygro)
+#endif
+
+#if defined(SP_ESMT)
+      if (.not. allocated(this%ul_esmt))  allocate(this%ul_esmt(ncrms,nlev))
+      if (.not. allocated(this%vl_esmt))  allocate(this%vl_esmt(ncrms,nlev))
+#endif
 
       ! Initialize
       this%zmid = 0
@@ -85,6 +135,16 @@ contains
       this%fluxv00 = 0
       this%fluxt00 = 0
       this%fluxq00 = 0
+#if defined( m2005 ) && defined( MODAL_AERO )
+      this%naermod  = 0
+      this%vaerosol = 0
+      this%hygro    = 0
+#endif
+#if defined( SP_ESMT )
+      this%ul_esmt = 0
+      this%vl_esmt = 0
+#endif
+
    end subroutine crm_input_initialize
    !------------------------------------------------------------------------------------------------
    subroutine crm_input_finalize(this)
@@ -112,6 +172,17 @@ contains
       deallocate(this%fluxv00)
       deallocate(this%fluxt00)
       deallocate(this%fluxq00)
+
+#if defined( m2005 ) && defined( MODAL_AERO )
+      deallocate(this%naermod)
+      deallocate(this%vaerosol)
+      deallocate(this%hygro)
+#endif
+
+#if defined(SP_ESMT)
+      deallocate(this%ul_esmt)
+      deallocate(this%vl_esmt)
+#endif
 
    end subroutine crm_input_finalize 
 

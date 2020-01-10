@@ -12,9 +12,13 @@ contains
     use sgs
     use params, only: dotracers, dosgs
     use crmtracers
+    use scalar_momentum_mod
+#ifdef CLUBB_CRM
+    use params, only: doclubb, doclubbnoninter
+#endif
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms,flag
-    integer(crm_iknd) :: i,icrm, j, ii, k
+    integer, intent(in) :: ncrms,flag
+    integer :: i,icrm, j, ii, k
 
     !-------------------------------------------------
     ! Update velocity fields
@@ -55,25 +59,35 @@ contains
     ! update prognostic scalar fields for advection
     !-------------------------------------------------
     if(flag.eq.2) then
-      call bound_exchange(ncrms,u,dimx1_u,dimx2_u,dimy1_u,dimy2_u,nzm,2,3,2,2,1)
-      call bound_exchange(ncrms,v,dimx1_v,dimx2_v,dimy1_v,dimy2_v,nzm,2,2,2,3,2)
-      call bound_exchange(ncrms,w,dimx1_w,dimx2_w,dimy1_w,dimy2_w,nz,2,2,2,2,3)
-      call bound_exchange(ncrms,t,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3,3,3,3,4)
+      call bound_exchange(ncrms,u,dimx1_u,dimx2_u,dimy1_u,dimy2_u,nzm,2,3,2+NADV,2+NADV,1)
+      call bound_exchange(ncrms,v,dimx1_v,dimx2_v,dimy1_v,dimy2_v,nzm,2+NADV,2+NADV,2,3,2)
+      call bound_exchange(ncrms,w,dimx1_w,dimx2_w,dimy1_w,dimy2_w,nz,2+NADV,2+NADV,2+NADV,2+NADV,3)
+      call bound_exchange(ncrms,t,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4)
       do i = 1,nsgs_fields
-        if(dosgs.and.advect_sgs) call bound_exchange(ncrms,sgs_field(:,:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3,3,3,3,4+i)
+        if(dosgs.and.advect_sgs) call bound_exchange(ncrms,sgs_field(:,:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+i)
       end do
       do i = 1,nmicro_fields
         if(   i.eq.index_water_vapor             &
+#ifdef CLUBB_CRM
+        ! Vince Larson (UWM) changed so that bound_exchange is called even if
+        !     docloud = .false. and doclubb = .true.    11 Nov 2007
+        .or. (docloud.or.doclubb.or.doclubbnoninter) .and.flag_precip(i).ne.1    &
+#else
         .or. docloud.and.flag_precip(i).ne.1    &
+#endif
         .or. doprecip.and.flag_precip(i).eq.1 ) then
-          call bound_exchange(ncrms,micro_field(:,:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3,3,3,3,4+nsgs_fields+nsgs_fields_diag+i)
+          call bound_exchange(ncrms,micro_field(:,:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+nsgs_fields+nsgs_fields_diag+i)
         endif
       end do
       !if(dotracers) then
       !  do i=1,ntracers
-      !    call bound_exchange(tracer(:,:,:,i,icrm),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3,3,3,3,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+i)
+      !    call bound_exchange(tracer(:,:,:,i,icrm),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+i)
       !  end do
       !end if
+#if defined(SP_ESMT)
+      call bound_exchange(ncrms,u_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+1)
+      call bound_exchange(ncrms,v_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+2)
+#endif
     endif
 
     !-------------------------------------------------
@@ -87,7 +101,13 @@ contains
       end do
       do i = 1,nmicro_fields
         if(   i.eq.index_water_vapor             &
+#ifdef CLUBB_CRM
+        ! Vince Larson (UWM) changed so that bound_exchange is called even if
+        !     docloud = .false. and doclubb = .true.    11 Nov 2007
+        .or. (docloud.or.doclubb.or.doclubbnoninter) .and.flag_precip(i).ne.1    &
+#else
         .or. docloud.and.flag_precip(i).ne.1    &
+#endif
         .or. doprecip.and.flag_precip(i).eq.1 ) then
           call bound_exchange(ncrms,micro_field(:,:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4+nsgs_fields+nsgs_fields_diag+i)
         endif
@@ -97,6 +117,10 @@ contains
       !    call bound_exchange(tracer(:,:,:,i,icrm),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+i)
       !  end do
       !end if
+#if defined(SP_ESMT)
+      call bound_exchange(ncrms,u_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+1)
+      call bound_exchange(ncrms,v_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+2)
+#endif
     endif
 
     !-------------------------------------------------

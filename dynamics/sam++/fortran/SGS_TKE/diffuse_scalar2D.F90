@@ -6,10 +6,11 @@ contains
 
     use grid
     use params
+    use openacc_utils
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
+    integer, intent(in) :: ncrms
     ! input
-    integer(crm_iknd) :: dimx1_d,dimx2_d,dimy1_d,dimy2_d
+    integer :: dimx1_d,dimx2_d,dimy1_d,dimy2_d
     real(crm_rknd) grdf_x(ncrms,nzm)! grid factor for eddy diffusion in x
     real(crm_rknd) grdf_z(ncrms,nzm)! grid factor for eddy diffusion in z
     real(crm_rknd) field(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) ! scalar
@@ -24,8 +25,8 @@ contains
     real(crm_rknd), allocatable :: dfdt(:,:,:,:)
     real(crm_rknd) rdx2,rdz2,rdz,rdx5,rdz5,tmp
     real(crm_rknd) tkx,tkz,rhoi
-    integer(crm_iknd) i,j,k,ib,ic,kc,kb,icrm
-    integer(crm_iknd) :: numgangs  !For working around PGI bug where it didn't create enough OpenACC gangs
+    integer i,j,k,ib,ic,kc,kb,icrm
+    integer :: numgangs  !For working around PGI bug where it didn't create enough OpenACC gangs
 
     if(.not.dosgs.and..not.docolumn) return
 
@@ -34,6 +35,8 @@ contains
 
     allocate( flx(ncrms,0:nx,1,0:nzm) )
     allocate( dfdt(ncrms,nx,ny,nzm) )
+    call prefetch( flx  )
+    call prefetch( dfdt )
 
     !For working around PGI bug where it didn't create enough OpenACC gangs
     numgangs = ceiling(ncrms*nzm*ny*nx/128.)

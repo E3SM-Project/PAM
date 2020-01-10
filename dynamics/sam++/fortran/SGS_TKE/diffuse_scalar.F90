@@ -9,10 +9,11 @@ contains
     use grid
     use vars, only: rho, rhow
     use params
+    use openacc_utils
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
+    integer, intent(in) :: ncrms
     ! input:
-    integer(crm_iknd) :: dimx1_d,dimx2_d,dimy1_d,dimy2_d
+    integer :: dimx1_d,dimx2_d,dimy1_d,dimy2_d
     real(crm_rknd) grdf_x(ncrms,nzm)! grid factor for eddy diffusion in x
     real(crm_rknd) grdf_y(ncrms,nzm)! grid factor for eddy diffusion in y
     real(crm_rknd) grdf_z(ncrms,nzm)! grid factor for eddy diffusion in z
@@ -25,9 +26,10 @@ contains
     ! Local
     real(crm_rknd), allocatable :: df(:,:,:,:)  ! scalar
     real(crm_rknd) :: tmp
-    integer(crm_iknd) i,j,k,icrm
+    integer i,j,k,icrm
 
     allocate( df(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
+    call prefetch(df)
 
     !$acc parallel loop collapse(4) async(asyncid)
     do k = 1 , nzm

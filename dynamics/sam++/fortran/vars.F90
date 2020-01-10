@@ -1,6 +1,11 @@
 module vars
   use grid
-  use params
+  use params, only: crm_rknd
+#ifdef CRM
+#ifdef MODAL_AERO
+  use modal_aero_data,   only: ntot_amode
+#endif
+#endif
 
   implicit none
   !--------------------------------------------------------------------
@@ -125,8 +130,8 @@ module vars
   real(crm_rknd), allocatable :: qpfall(:,:)
 
   ! energy conservation diagnostics:
-  real(r8), allocatable :: total_water_evap(:)
-  real(r8), allocatable :: total_water_prec(:)
+  real(8), allocatable :: total_water_evap(:)
+  real(8), allocatable :: total_water_prec(:)
 
   real(crm_rknd), allocatable :: CF3D(:,:,:,:)  ! Cloud fraction
   ! =1.0 when there is no fractional cloudiness scheme
@@ -149,14 +154,20 @@ module vars
 
   ! END UW ADDITIONS
   !===========================================================================
+#if (defined CRM && defined MODAL_AERO)
+  real(crm_rknd), allocatable :: naer (:,:,:)     ! Aerosol number concentration [/m3]
+  real(crm_rknd), allocatable :: vaer (:,:,:)     ! aerosol volume concentration [m3/m3]
+  real(crm_rknd), allocatable :: hgaer(:,:,:)    ! hygroscopicity of aerosol mode
+#endif
 
 
 contains
 
 
   subroutine allocate_vars(ncrms)
+    use openacc_utils
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
+    integer, intent(in) :: ncrms
     real(crm_rknd) :: zero
     allocate( u(ncrms,dimx1_u:dimx2_u,dimy1_u:dimy2_u,nzm)  )
     allocate( v(ncrms,dimx1_v:dimx2_v,dimy1_v:dimy2_v,nzm)  )
@@ -252,6 +263,111 @@ contains
     allocate( w_max(ncrms) )
     allocate( total_water_evap(ncrms) )
     allocate( total_water_prec(ncrms) )
+#if (defined CRM && defined MODAL_AERO)
+    allocate( naer(ncrms,nzm, ntot_amode) )
+    allocate( vaer(ncrms,nzm, ntot_amode) )
+    allocate( hgaer(ncrms,nzm, ntot_amode) )
+#endif
+
+    call prefetch( u )
+    call prefetch( v )
+    call prefetch( w )
+    call prefetch( t )
+    call prefetch( p )
+    call prefetch( tabs )
+    call prefetch( qv )
+    call prefetch( qcl )
+    call prefetch( qpl )
+    call prefetch( qci )
+    call prefetch( qpi )
+    call prefetch( tke2 )
+    call prefetch( tk2 )
+    call prefetch( dudt )
+    call prefetch( dvdt )
+    call prefetch( dwdt )
+    call prefetch( misc )
+    call prefetch( fluxbu )
+    call prefetch( fluxbv )
+    call prefetch( fluxbt )
+    call prefetch( fluxbq )
+    call prefetch( fluxtu )
+    call prefetch( fluxtv )
+    call prefetch( fluxtt )
+    call prefetch( fluxtq )
+    call prefetch( fzero )
+    call prefetch( precsfc )
+    call prefetch( precssfc )
+    call prefetch( t0 )
+    call prefetch( q0 )
+    call prefetch( qv0 )
+    call prefetch( tabs0 )
+    call prefetch( tv0 )
+    call prefetch( u0 )
+    call prefetch( v0 )
+    call prefetch( tg0 )
+    call prefetch( qg0 )
+    call prefetch( ug0 )
+    call prefetch( vg0 )
+    call prefetch( p0 )
+    call prefetch( tke0 )
+    call prefetch( t01 )
+    call prefetch( q01 )
+    call prefetch( qp0 )
+    call prefetch( qn0 )
+    call prefetch( prespot )
+    call prefetch( rho )
+    call prefetch( rhow )
+    call prefetch( bet )
+    call prefetch( gamaz )
+    call prefetch( wsub )
+    call prefetch( qtend )
+    call prefetch( ttend )
+    call prefetch( utend )
+    call prefetch( vtend )
+    call prefetch( sstxy )
+    call prefetch( fcory )
+    call prefetch( fcorzy )
+    call prefetch( latitude )
+    call prefetch( longitude )
+    call prefetch( prec_xy )
+    call prefetch( pw_xy )
+    call prefetch( cw_xy )
+    call prefetch( iw_xy )
+    call prefetch( cld_xy )
+    call prefetch( u200_xy )
+    call prefetch( usfc_xy )
+    call prefetch( v200_xy )
+    call prefetch( vsfc_xy )
+    call prefetch( w500_xy )
+    call prefetch( twsb )
+    call prefetch( precflux )
+    call prefetch( uwle )
+    call prefetch( uwsb )
+    call prefetch( vwle )
+    call prefetch( vwsb )
+    call prefetch( tkelediss )
+    call prefetch( tdiff )
+    call prefetch( tlat )
+    call prefetch( tlatqi )
+    call prefetch( qifall )
+    call prefetch( qpfall )
+    call prefetch( CF3D )
+    call prefetch( u850_xy )
+    call prefetch( v850_xy )
+    call prefetch( psfc_xy )
+    call prefetch( swvp_xy )
+    call prefetch( cloudtopheight )
+    call prefetch( echotopheight )
+    call prefetch( cloudtoptemp )
+    call prefetch( u_max )
+    call prefetch( w_max )
+    call prefetch( total_water_evap )
+    call prefetch( total_water_prec )
+#if (defined CRM && defined MODAL_AERO)
+    call prefetch( naer )
+    call prefetch( vaer )
+    call prefetch( hgaer  )
+#endif
 
     zero = 0
 
@@ -349,6 +465,11 @@ contains
     w_max = zero
     total_water_evap = zero
     total_water_prec = zero
+#if (defined CRM && defined MODAL_AERO)
+    naer = zero
+    vaer = zero
+    hgaer = zero
+#endif
   end subroutine allocate_vars
 
 
@@ -448,6 +569,11 @@ contains
     deallocate( w_max )
     deallocate( total_water_evap )
     deallocate( total_water_prec )
+#if (defined CRM && defined MODAL_AERO)
+    deallocate( naer )
+    deallocate( vaer )
+    deallocate( hgaer  )
+#endif
 end subroutine deallocate_vars
 
 

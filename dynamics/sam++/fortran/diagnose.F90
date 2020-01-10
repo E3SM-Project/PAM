@@ -11,9 +11,9 @@ contains
     use params
     use sgs, only: sgs_diagnose
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
-    integer(crm_iknd) i,j,k,kb,kc,icrm
-    real(r8) coef, coef1
+    integer, intent(in) :: ncrms
+    integer i,j,k,kb,kc,icrm
+    real(8) coef, coef1
     real(crm_rknd) tmp_lwp, tmp
 
     coef = 1./real(nx*ny,crm_rknd)

@@ -18,18 +18,19 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
 
   use vars
   use params
+  use openacc_utils
   implicit none
-  integer(crm_iknd), intent(in) :: ncrms
+  integer, intent(in) :: ncrms
   !-----------------------------------------------------------------------
   !!! Interface Arguments
-  integer(crm_iknd)       , intent(in)                 :: dimx1_d     ! scalar dimension parameter
-  integer(crm_iknd)       , intent(in)                 :: dimx2_d     ! scalar dimension parameter
-  integer(crm_iknd)       , intent(in)                 :: dimy1_d     ! scalar dimension parameter
-  integer(crm_iknd)       , intent(in)                 :: dimy2_d     ! scalar dimension parameter
+  integer       , intent(in)                 :: dimx1_d     ! scalar dimension parameter
+  integer       , intent(in)                 :: dimx2_d     ! scalar dimension parameter
+  integer       , intent(in)                 :: dimy1_d     ! scalar dimension parameter
+  integer       , intent(in)                 :: dimy2_d     ! scalar dimension parameter
   real(crm_rknd), intent(in), dimension(ncrms,nzm) :: grdf_x      ! grid length in x direction
   real(crm_rknd), intent(in), dimension(ncrms,nzm) :: grdf_y      ! grid length in y direction
   real(crm_rknd), intent(in), dimension(ncrms,nzm) :: grdf_z      ! grid length in z direction
-  logical(crm_lknd)       , intent(in)                 :: dosmagor    ! flag for diagnostic smagorinsky scheme
+  logical       , intent(in)                 :: dosmagor    ! flag for diagnostic smagorinsky scheme
 
   real(crm_rknd), intent(out), dimension(ncrms,nz) :: tkesbdiss   ! TKE dissipation
   real(crm_rknd), intent(out), dimension(ncrms,nz) :: tkesbshear  ! TKE production by shear
@@ -72,9 +73,9 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   real(crm_rknd) :: cz            ! correction factor for eddy visc CFL criteria
   real(crm_rknd) :: tkmax         ! Maximum TKE (CFL limiter)
 
-  integer(crm_iknd) :: i,j,k,icrm
-  integer(crm_iknd) :: kc      ! = k+1
-  integer(crm_iknd) :: kb      ! = k-1
+  integer :: i,j,k,icrm
+  integer :: kc      ! = k+1
+  integer :: kb      ! = k-1
 
   real(crm_rknd) :: tabs_interface    ! tabs interpolated to interfaces
   real(crm_rknd) :: qp_interface      ! qp   interpolated to interfaces
@@ -89,6 +90,9 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   allocate( def2          (ncrms,nx,ny,nzm  ) )
   allocate( buoy_sgs_vert (ncrms,nx,ny,0:nzm) )
   allocate( a_prod_bu_vert(ncrms,nx,ny,0:nzm) )
+  call prefetch( def2           )
+  call prefetch( buoy_sgs_vert  )
+  call prefetch( a_prod_bu_vert )
 
   !-----------------------------------------------------------------------
   !-----------------------------------------------------------------------

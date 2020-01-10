@@ -8,7 +8,7 @@ contains
   subroutine boundaries(ncrms,flag)
     use grid, only: dompi
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms,flag
+    integer, intent(in) :: ncrms,flag
 
     call periodic(ncrms,flag)
 

@@ -1,6 +1,7 @@
 module advect_scalar_mod
   use advect_scalar2D_mod
   use advect_scalar3D_mod
+  use openacc_utils
   implicit none
 
 contains
@@ -11,17 +12,18 @@ contains
 
     use grid
     use vars, only: u, v, w, rho, rhow
-    use params
+    use params, only: docolumn, crm_rknd
 
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
+    integer, intent(in) :: ncrms
     real(crm_rknd) f(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
     real(crm_rknd) flux(ncrms,nz), fadv(ncrms,nz)
     real(crm_rknd), allocatable :: f0(:,:,:,:)
     real(crm_rknd) tmp
-    integer(crm_iknd) i,j,k,icrm
+    integer i,j,k,icrm
 
     allocate( f0(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
+    call prefetch(f0)
 
     if(docolumn) then
       !$acc parallel loop collapse(2) async(asyncid)

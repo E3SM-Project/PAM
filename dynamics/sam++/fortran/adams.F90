@@ -7,11 +7,11 @@ contains
   subroutine adams(ncrms)
     !       Adams-Bashforth scheme
     use vars
-    use params
+    use params, only: crm_rknd
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
+    integer, intent(in) :: ncrms
     real(crm_rknd) dtdx, dtdy, dtdz, rhox, rhoy, rhoz
-    integer(crm_iknd) i,j,k,icrm
+    integer i,j,k,icrm
 
     dtdx = dtn/dx
     dtdy = dtn/dy

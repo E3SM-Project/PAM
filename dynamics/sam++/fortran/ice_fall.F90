@@ -9,18 +9,22 @@ contains
     use microphysics, only: micro_field, index_cloud_ice
     !use micro_params
     use params
+    use openacc_utils
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
-    integer(crm_iknd), allocatable :: kmax(:)
-    integer(crm_iknd), allocatable :: kmin(:)
+    integer, intent(in) :: ncrms
+    integer, allocatable :: kmax(:)
+    integer, allocatable :: kmin(:)
     real(crm_rknd), allocatable :: fz(:,:,:,:)
-    integer(crm_iknd) :: i,j,k, kb, kc, ici,icrm
+    integer :: i,j,k, kb, kc, ici,icrm
     real(crm_rknd) coef,dqi,lat_heat,vt_ice
     real(crm_rknd) omnu, omnc, omnd, qiu, qic, qid, tmp_theta, tmp_phi
 
     allocate( kmax(ncrms) )
     allocate( kmin(ncrms) )
     allocate( fz(ncrms,nx,ny,nz) )
+    call prefetch( kmax )
+    call prefetch( kmin )
+    call prefetch( fz )
 
     !$acc parallel loop async(asyncid)
     do icrm = 1 , ncrms
