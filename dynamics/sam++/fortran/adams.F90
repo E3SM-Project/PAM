@@ -4,12 +4,23 @@ module adams_mod
 
 contains
 
-  subroutine adams(ncrms)
-    !       Adams-Bashforth scheme
+  subroutine adams(ncrms, dtn, dx, dy, rho, rhow, dudt, dvdt, dwdt, misc, u, v, w, dt3)
+    ! Adams-Bashforth scheme
     use vars
     use params, only: crm_rknd
     implicit none
     integer(crm_iknd), intent(in) :: ncrms
+    real(crm_rknd) :: dtn, dx, dy
+    real(crm_rknd) :: u(ncrms,dimx1_u:dimx2_u,dimy1_u:dimy2_u,nzm)
+    real(crm_rknd) :: v(ncrms,dimx1_v:dimx2_v,dimy1_v:dimy2_v,nzm)
+    real(crm_rknd) :: w(ncrms,dimx1_w:dimx2_w,dimy1_w:dimy2_w,nz )
+    real(crm_rknd) :: dudt(ncrms,nxp1, ny, nzm, 3)
+    real(crm_rknd) :: dvdt(ncrms,nx, nyp1, nzm, 3)
+    real(crm_rknd) :: dwdt(ncrms,nx, ny  , nz,  3)
+    real(crm_rknd) :: misc(ncrms,nx, ny, nz)
+    real(crm_rknd) :: dt3(3)
+    real(crm_rknd) :: rho (ncrms,nzm)
+    real(crm_rknd) :: rhow(ncrms,nz )
     real(crm_rknd) dtdx, dtdy, dtdz, rhox, rhoy, rhoz
     integer(crm_iknd) i,j,k,icrm
 

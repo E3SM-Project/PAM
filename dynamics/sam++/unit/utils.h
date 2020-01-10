@@ -30,28 +30,40 @@ inline template <class T> int compareScalar( std::string const &label , T v1 , T
 
 
 
-inline void initDomainStep3NoCycle( Domain &dom ) {
-  dom.dx      = 500.;
-  dom.dy      = 500.;
-  dom.ncycle  = 1;
-  dom.icycle  = 1;
-  dom.dt      = 1.;
-  dom.dtn     = 5.;
-  dom.dtfactor = 1.;
-  dom.na      = 1;
-  dom.nb      = 2;
-  dom.nc      = 3;
-  dom.dt3(0)  = 1.;
-  dom.dt3(1)  = 1.;
-  dom.dt3(2)  = 1.;
-  dom.nstep   = 3;
-  dom.nstop   = 100;
-  abcoefs( dom );  // Initializes at, bt, and ct
+inline void compareArray( std::string const &label , real1d &v1 , real1d &v2 ) {}
 
-  for (int icrm = 0; icrm < ncrms; icrm++) {
-    
-  }
-}
+inline void compareArray( std::string const &label , real2d &v1 , real2d &v2 ) {}
+
+inline void compareArray( std::string const &label , real3d &v1 , real3d &v2 ) {}
+
+inline void compareArray( std::string const &label , real4d &v1 , real4d &v2 ) {}
+
+inline void compareArray( std::string const &label , real5d &v1 , real5d &v2 ) {}
+
+inline void compareArray( std::string const &label , real6d &v1 , real6d &v2 ) {}
+
+
+
+inline void initDomain( Domain &dom ) {}
+
+
+
+template <class T> inline void loadScalar( std::string const &label , T &data ) {}
+
+
+
+inline void loadArray( std::string const &label , real1d &data ) {}
+
+inline void loadArray( std::string const &label , real2d &data ) {}
+
+inline void loadArray( std::string const &label , real3d &data ) {}
+
+inline void loadArray( std::string const &label , real4d &data ) {}
+
+inline void loadArray( std::string const &label , real5d &data ) {}
+
+inline void loadArray( std::string const &label , real6d &data ) {}
+
 
 
 

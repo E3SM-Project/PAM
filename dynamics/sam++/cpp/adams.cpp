@@ -1,36 +1,35 @@
 
 #include "adams.h"
 
-// Uses Adams-Bashforth time stepping to advance u, v, misc and w
-subroutine adams(int ncrms, real dtn, real dx, real dy)
+// Uses Adams-Bashforth time stepping to advance u, v, and w
+void adams(Domain const &dom, real1d const &dz, real2d const &rho, real2d const &rhow,
+           real5d &dudt, real5d &dvdt, real5d dwdt, real4d &u, real4d &v, real4d &w, real4d &misc) {
   // Adams-Bashforth scheme
-  integer(crm_iknd), intent(in) :: ncrms
-  real(crm_rknd) dtdx, dtdy, dtdz, rhox, rhoy, rhoz
-  integer(crm_iknd) i,j,k,icrm
+  real dtdx = dtn/dx;
+  real dtdy = dtn/dy;
 
-  dtdx = dtn/dx
-  dtdy = dtn/dy
+  for (int k=0; k<dom.nzm; k++) {
+    for (int j=0; j<dom.ny; j++) {
+      for (int i=0; i<dom.nx; i++) {
+        for (int icrm=0; icrm<dom.ncrms; icrm++) {
+          real dtdz = dtn / dom.dz(icrm);
+          real rhox = rho (icrm,k) * dtdx;
+          real rhoy = rho (icrm,k) * dtdy;
+          real rhoz = rhow(icrm,k) * dtdz;
+          real utend = ( dom.at*dudt(icrm,i,j,k,na) + dom.bt*dudt(icrm,i,j,k,nb) + dom.ct*dudt(icrm,i,j,k,nc) );
+          real vtend = ( dom.at*dvdt(icrm,i,j,k,na) + dom.bt*dvdt(icrm,i,j,k,nb) + dom.ct*dvdt(icrm,i,j,k,nc) );
+          real wtend = ( dom.at*dwdt(icrm,i,j,k,na) + dom.bt*dwdt(icrm,i,j,k,nb) + dom.ct*dwdt(icrm,i,j,k,nc) );
+          dudt(icrm,i,j,k,nc) = u(icrm,i,j,k) + dom.dt3(na) * utend;
+          dvdt(icrm,i,j,k,nc) = v(icrm,i,j,k) + dom.dt3(na) * vtend;
+          dwdt(icrm,i,j,k,nc) = w(icrm,i,j,k) + dom.dt3(na) * wtend;
+          u   (icrm,i,j,k) = 0.5 * ( u(icrm,i,j,k) + dudt(icrm,i,j,k,nc) ) * rhox;
+          v   (icrm,i,j,k) = 0.5 * ( v(icrm,i,j,k) + dvdt(icrm,i,j,k,nc) ) * rhoy;
+          w   (icrm,i,j,k) = 0.5 * ( w(icrm,i,j,k) + dwdt(icrm,i,j,k,nc) ) * rhoz;
+          misc(icrm,i,j,k) = w(icrm,i,j,k) / rhoz;
+        }
+      }
+    }
+  }
 
-  !$acc parallel loop collapse(4) async(asyncid)
-  do k=1,nzm
-    do j=1,ny
-      do i=1,nx
-        do icrm = 1 , ncrms
-          dtdz = dtn/dz(icrm)
-          rhox = rho(icrm,k)*dtdx
-          rhoy = rho(icrm,k)*dtdy
-          rhoz = rhow(icrm,k)*dtdz
-          dudt(icrm,i,j,k,nc) = u(icrm,i,j,k) + dt3(na) *(at*dudt(icrm,i,j,k,na)+bt*dudt(icrm,i,j,k,nb)+ct*dudt(icrm,i,j,k,nc))
-          dvdt(icrm,i,j,k,nc) = v(icrm,i,j,k) + dt3(na) *(at*dvdt(icrm,i,j,k,na)+bt*dvdt(icrm,i,j,k,nb)+ct*dvdt(icrm,i,j,k,nc))
-          dwdt(icrm,i,j,k,nc) = w(icrm,i,j,k) + dt3(na) *(at*dwdt(icrm,i,j,k,na)+bt*dwdt(icrm,i,j,k,nb)+ct*dwdt(icrm,i,j,k,nc))
-          u(icrm,i,j,k) = 0.5*(u(icrm,i,j,k)+dudt(icrm,i,j,k,nc)) * rhox
-          v(icrm,i,j,k) = 0.5*(v(icrm,i,j,k)+dvdt(icrm,i,j,k,nc)) * rhoy
-          misc(icrm,i,j,k) = 0.5*(w(icrm,i,j,k)+dwdt(icrm,i,j,k,nc))
-          w(icrm,i,j,k) = 0.5*(w(icrm,i,j,k)+dwdt(icrm,i,j,k,nc)) * rhoz
-        end do
-      end do
-    end do
-  end do
-
-end subroutine adams
+}
 
