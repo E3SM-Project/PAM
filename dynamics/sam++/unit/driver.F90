@@ -45,6 +45,10 @@ program driver
   real(crm_rknd), allocatable :: read_crm_rad_cld          (:,:,:,:)
 
   call dmdf_num_records(prefix,ncrms)
+#ifdef NCRMS
+  ncrms = NCRMS
+#endif
+
   write(*,*) "File   : ", trim(prefix)
   write(*,*) "Samples: ", ncrms
   write(*,*) "crm_nx : ", crm_nx
@@ -205,6 +209,7 @@ program driver
   write(*,*) 'crm_rad%qc              : ', sum(crm_rad%qc              )/product(shape(crm_rad%qc              ))
   write(*,*) 'crm_rad%qi              : ', sum(crm_rad%qi              )/product(shape(crm_rad%qi              ))
   write(*,*) 'crm_rad%cld             : ', sum(crm_rad%cld             )/product(shape(crm_rad%cld             ))
+  write(*,*) 
   write(*,*) 'Running the CRM'
 
   ! Run the code
