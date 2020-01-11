@@ -45,7 +45,6 @@ program driver
   real(crm_rknd), allocatable :: read_crm_rad_cld          (:,:,:,:)
 
   call dmdf_num_records(prefix,ncrms)
-  ncrms = 10
   write(*,*) "File   : ", trim(prefix)
   write(*,*) "Samples: ", ncrms
   write(*,*) "crm_nx : ", crm_nx
