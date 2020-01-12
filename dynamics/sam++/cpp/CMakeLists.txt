@@ -1,9 +1,5 @@
 
-set(CPP_SRC 
-  YAKL.cpp
-  abcoefs.cpp
-)
+file(GLOB SRC *.F90 SGS_TKE/*.F90 MICRO_SAM1MOM/*.F90 ADV_MPDATA/*.F90 *.c *.cpp)
 
-add_library(cpp_code STATIC ${CPP_SRC})
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+add_library(cpp_code STATIC ${SRC})
 

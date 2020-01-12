@@ -59,7 +59,7 @@ printf "Running with crm_nx=$NX, crm_ny=$NY, crm_nz=$NZ, crm_nx_rad=$NX_RAD, crm
 ############################################################################
 ## CLEAN UP THE PREVIOUS BUILD
 ############################################################################
-rm -rf CMakeCache.txt CMakeFiles cmake_install.cmake cpp CTestTestfile.cmake fortran Makefile
+rm -rf CMakeCache.txt CMakeFiles cmake_install.cmake cpp CTestTestfile.cmake fortran Makefile fortran.exe cpp.exe
 
 
 ############################################################################
