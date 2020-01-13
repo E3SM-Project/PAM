@@ -7,7 +7,7 @@ contains
   subroutine advect_scalar2D (ncrms, f, u, w, rho, rhow, flux)
     !     positively definite monotonic advection with non-oscillatory option
     use grid
-    use params, only: dowallx, crm_rknd, crm_iknd
+    use params, only: dowallx, crm_rknd, crm_iknd, crm_lknd
     implicit none
     integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd) f(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
@@ -26,7 +26,7 @@ contains
     real(crm_rknd), allocatable :: irhow(:,:)
     real(crm_rknd) eps, dd
     integer(crm_iknd) i,j,k,ic,ib,kc,kb,icrm
-    logical nonos
+    logical(crm_lknd) nonos
     real(crm_rknd) x1, x2, a, b, a1, a2, y
     real(crm_rknd) andiff,across,pp,pn
 

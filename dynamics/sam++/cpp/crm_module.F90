@@ -92,7 +92,7 @@ subroutine crm(ncrms, dt_gl, plev, &
     real(crm_rknd) :: crm_ny_rad_fac
     integer(crm_iknd)        :: i_rad
     integer(crm_iknd)        :: j_rad
-    logical :: crm_accel_ceaseflag   ! indicates if accelerate_crm needs to be aborted for remainder of crm call
+    logical(crm_lknd) :: crm_accel_ceaseflag   ! indicates if accelerate_crm needs to be aborted for remainder of crm call
 
     !!! Arrays
     real(crm_rknd), allocatable :: t00(:,:)
@@ -106,7 +106,7 @@ subroutine crm(ncrms, dt_gl, plev, &
     real(crm_rknd), allocatable  :: cwph    (:,:,:)
     real(crm_rknd), allocatable  :: cwpm    (:,:,:)
     real(crm_rknd), allocatable  :: cwpl    (:,:,:)
-    logical       , allocatable  :: flag_top(:,:,:)
+    logical(crm_lknd)       , allocatable  :: flag_top(:,:,:)
     real(crm_rknd), allocatable  :: cltemp  (:,:,:)
     real(crm_rknd), allocatable  :: cmtemp  (:,:,:)
     real(crm_rknd), allocatable  :: chtemp  (:,:,:)

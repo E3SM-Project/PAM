@@ -29,7 +29,7 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   real(crm_rknd), intent(in), dimension(ncrms,nzm) :: grdf_x      ! grid length in x direction
   real(crm_rknd), intent(in), dimension(ncrms,nzm) :: grdf_y      ! grid length in y direction
   real(crm_rknd), intent(in), dimension(ncrms,nzm) :: grdf_z      ! grid length in z direction
-  logical       , intent(in)                 :: dosmagor    ! flag for diagnostic smagorinsky scheme
+  logical(crm_lknd)       , intent(in)                 :: dosmagor    ! flag for diagnostic smagorinsky scheme
 
   real(crm_rknd), intent(out), dimension(ncrms,nz) :: tkesbdiss   ! TKE dissipation
   real(crm_rknd), intent(out), dimension(ncrms,nz) :: tkesbshear  ! TKE production by shear

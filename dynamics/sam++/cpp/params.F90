@@ -51,7 +51,7 @@ module params
   ! internally set parameters:
 
   real(crm_rknd)   epsv     ! = (1-eps)/eps, where eps= Rv/Ra, or =0. if dosmoke=.true.
-  logical:: dosubsidence = .false.
+  logical(crm_lknd):: dosubsidence = .false.
   real(crm_rknd), allocatable :: fcorz(:)      ! Vertical Coriolis parameter
 
   !----------------------------------------------
@@ -66,23 +66,23 @@ module params
   real(crm_rknd), allocatable :: latitude0 (:)    ! longitude of the domain's center
 
   real(crm_rknd), allocatable :: z0(:)            ! roughness length
-  logical :: les =.false.    ! flag for Large-Eddy Simulation
-  logical, allocatable :: ocean(:)           ! flag indicating that surface is water
-  logical, allocatable :: land(:)            ! flag indicating that surface is land
-  logical :: sfc_flx_fxd =.false. ! surface sensible flux is fixed
-  logical :: sfc_tau_fxd =.false.! surface drag is fixed
+  logical(crm_lknd) :: les =.false.    ! flag for Large-Eddy Simulation
+  logical(crm_lknd), allocatable :: ocean(:)           ! flag indicating that surface is water
+  logical(crm_lknd), allocatable :: land(:)            ! flag indicating that surface is land
+  logical(crm_lknd) :: sfc_flx_fxd =.false. ! surface sensible flux is fixed
+  logical(crm_lknd) :: sfc_tau_fxd =.false.! surface drag is fixed
 
-  logical:: dodamping = .false.
-  logical:: docloud = .false.
-  logical:: docam_sfc_fluxes = .false.   ! Apply the surface fluxes within CAM
-  logical:: doprecip = .false.
-  logical:: dosgs = .false.
-  logical:: docoriolis = .false.
-  logical:: dosurface = .false.
-  logical:: dowallx = .false.
-  logical:: dowally = .false.
-  logical:: docolumn = .false.
-  logical:: dosmoke = .false.
+  logical(crm_lknd):: dodamping = .false.
+  logical(crm_lknd):: docloud = .false.
+  logical(crm_lknd):: docam_sfc_fluxes = .false.   ! Apply the surface fluxes within CAM
+  logical(crm_lknd):: doprecip = .false.
+  logical(crm_lknd):: dosgs = .false.
+  logical(crm_lknd):: docoriolis = .false.
+  logical(crm_lknd):: dosurface = .false.
+  logical(crm_lknd):: dowallx = .false.
+  logical(crm_lknd):: dowally = .false.
+  logical(crm_lknd):: docolumn = .false.
+  logical(crm_lknd):: dosmoke = .false.
 
   integer(crm_iknd), parameter :: asyncid = 1
 

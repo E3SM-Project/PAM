@@ -5,7 +5,7 @@ module sgs
   ! Marat Khairoutdinov, 2012
 
   use grid, only: nx,nxp1,ny,nyp1,YES3D,nzm,nz,dimx1_s,dimx2_s,dimy1_s,dimy2_s
-  use params, only: dosgs, crm_rknd, asyncid, crm_iknd
+  use params, only: dosgs, crm_rknd, asyncid, crm_iknd, crm_lknd
   use vars, only: tke2, tk2
   implicit none
 
@@ -28,8 +28,8 @@ module sgs
   integer(crm_iknd), parameter :: flag_sgsdiag3Dout(nsgs_fields_diag) = (/0,0/)
 
 
-  logical:: advect_sgs = .false. ! advect prognostics or not, default - not (Smagorinsky)
-  logical, parameter:: do_sgsdiag_bound = .true.  ! exchange boundaries for diagnostics fields
+  logical(crm_lknd):: advect_sgs = .false. ! advect prognostics or not, default - not (Smagorinsky)
+  logical(crm_lknd), parameter:: do_sgsdiag_bound = .true.  ! exchange boundaries for diagnostics fields
 
   ! SGS fields that output by default (if =1).
 
@@ -45,10 +45,10 @@ module sgs
   ! make aliases for diagnostic variables:
 
 
-  logical:: dosmagor   ! if true, then use Smagorinsky closure
+  logical(crm_lknd):: dosmagor   ! if true, then use Smagorinsky closure
 
   ! whannah
-  ! logical:: doscalar   ! if true, transport a passive scalar in the place of prognostic SGS TKE only if dosmagor=.true.
+  ! logical(crm_lknd):: doscalar   ! if true, transport a passive scalar in the place of prognostic SGS TKE only if dosmagor=.true.
 
   ! Local diagnostics:
 

@@ -7,7 +7,7 @@ module microphysics
   ! Marat Khairoutdinov, 2006
 
   use grid, only: nx,ny,nzm,nz, dimx1_s,dimx2_s,dimy1_s,dimy2_s ! subdomain grid information
-  use params, only: doprecip, docloud, crm_rknd, asyncid, crm_iknd
+  use params, only: doprecip, docloud, crm_rknd, asyncid, crm_iknd, crm_lknd
   use micro_params
   implicit none
 
@@ -386,7 +386,7 @@ CONTAINS
     real(crm_rknd) :: prec_cfl
     real(crm_rknd) :: eps
     integer(crm_iknd) :: i,j,k,kc,kb,icrm
-    logical :: nonos
+    logical(crm_lknd) :: nonos
     real(crm_rknd) :: y,pp,pn
     real(crm_rknd) :: lat_heat, wmax
     integer(crm_iknd) nprec, iprec
