@@ -74,7 +74,7 @@ printf "NetCDF Flags: $NCFLAGS\n\n"
 ############################################################################
 FFLAGS="$FFLAGS -ffree-line-length-none -DCRM -DCRM_NX=$NX -DCRM_NY=$NY -DCRM_NZ=$NZ -DCRM_NX_RAD=$NX_RAD -DCRM_NY_RAD=$NY_RAD"
 FFLAGS="$FFLAGS -DCRM_DT=$DT -DCRM_DX=$DX -DYES3DVAL=$YES3D -DPLEV=$PLEV -Dsam1mom -DINPUT_FILE=$INFILE"
-FFLAGS="$FFLAGS -I$NCHOME/include -I$NFHOME/include  -O3"
+FFLAGS="$FFLAGS -I$NCHOME/include -I$NFHOME/include"
 if [[ "$NCRMS" != "" ]]; then
   FFLAGS="$FFLAGS -DNCRMS=$NCRMS"
 fi
