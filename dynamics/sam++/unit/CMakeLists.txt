@@ -6,16 +6,13 @@ enable_language(CXX)
 enable_language(C)
 enable_testing()
 
-add_subdirectory(../fortran ./fortran)
-add_subdirectory(../cpp     ./cpp    )
+file(GLOB FORTRAN_SRC ../fortran/*.F90 ../fortran/SGS_TKE/*.F90 ../fortran/MICRO_SAM1MOM/*.F90 ../fortran/ADV_MPDATA/*.F90 ../fortran/*.c)
+file(GLOB CPP_SRC     ../cpp/*.F90     ../cpp/SGS_TKE/*.F90     ../cpp/MICRO_SAM1MOM/*.F90     ../cpp/ADV_MPDATA/*.F90     ../cpp/*.c    )
 
-add_executable(fortran.exe dmdf.F90 fortran_driver.F90)
-target_link_libraries(fortran.exe fortran_code ${NCFLAGS})
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/fortran)
-
-add_executable(cpp.exe dmdf.F90 cpp_driver.F90)
-target_link_libraries(cpp.exe cpp_code ${NCFLAGS})
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/cpp)
+add_subdirectory(fortran2d)
+add_subdirectory(fortran3d)
+add_subdirectory(cpp2d)
+add_subdirectory(cpp3d)
 
 #add_test(NAME unit_abcoefs COMMAND unit_abcoefs)
 

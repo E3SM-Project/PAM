@@ -51,7 +51,6 @@ subroutine crm(ncrms, dt_gl, plev, &
     use microphysics
     use sgs
     use crmtracers
-    use scalar_momentum_mod
     use crmdims               , only: nclubbvars, crm_nx_rad, crm_ny_rad
     use accelerate_crm_mod    , only: use_crm_accel, crm_accel_factor, crm_accel_nstop, accelerate_crm
     !use cam_abortutils        , only: endrun
@@ -110,10 +109,6 @@ subroutine crm(ncrms, dt_gl, plev, &
     real(crm_rknd), allocatable :: qiiln(:,:)
     real(crm_rknd), allocatable :: uln  (:,:)
     real(crm_rknd), allocatable :: vln  (:,:)
-#if defined(SP_ESMT)
-    real(crm_rknd), allocatable  :: uln_esmt(:,:)
-    real(crm_rknd), allocatable  :: vln_esmt(:,:)     ! tempoerary variables for expliciit scalar momentum transport
-#endif
     real(crm_rknd), allocatable  :: cwp     (:,:,:)
     real(crm_rknd), allocatable  :: cwph    (:,:,:)
     real(crm_rknd), allocatable  :: cwpm    (:,:,:)
@@ -138,10 +133,6 @@ subroutine crm(ncrms, dt_gl, plev, &
   allocate( qiiln(ncrms,plev) )
   allocate( uln(ncrms,plev) )
   allocate( vln(ncrms,plev) )
-#if defined(SP_ESMT)
-  allocate( uln_esmt(plev,ncrms) )
-  allocate( vln_esmt(plev,ncrms) )
-#endif
   allocate( cwp(ncrms,nx,ny) )
   allocate( cwph(ncrms,nx,ny) )
   allocate( cwpm(ncrms,nx,ny) )
@@ -195,9 +186,6 @@ subroutine crm(ncrms, dt_gl, plev, &
   call allocate_micro(ncrms)
 #ifdef sam1mom
   call allocate_micro_params(ncrms)
-#endif
-#if defined(SP_ESMT)
-  call allocate_scalar_momentum(ncrms)
 #endif
   
   crm_accel_ceaseflag = .false.
@@ -337,12 +325,6 @@ subroutine crm(ncrms, dt_gl, plev, &
     enddo
   endif
 
-#if defined(SP_ESMT)
-  do k=1,nzm
-    u_esmt(:,:,:,k) = crm_input%ul_esmt(icrm,plev-k+1)
-    v_esmt(:,:,:,k) = crm_input%vl_esmt(icrm,plev-k+1)
-  end do
-#endif
 
   ! Populate microphysics array from crm_state
   !$acc parallel loop collapse(4) async(asyncid)
@@ -776,9 +758,6 @@ subroutine crm(ncrms, dt_gl, plev, &
 
       !-----------------------------------------------------------
       !       Calculate PGF for scalar momentum tendency
-#if defined( SP_ESMT ) 
-      call scalar_momentum_tend(ncrms)
-#endif
 
       !-----------------------------------------------------------
       !       Cloud condensation/evaporation and precipitation processes:
@@ -1058,13 +1037,6 @@ subroutine crm(ncrms, dt_gl, plev, &
     colprecs(icrm)=0
   enddo
 
-#if defined( SP_ESMT )
-  uln_esmt(1:ptop-1,:)  = crm_input%ul_esmt(:,1:ptop-1)
-  vln_esmt(1:ptop-1,:)  = crm_input%vl_esmt(:,1:ptop-1)
-  uln_esmt(ptop:plev,:) = 0.
-  vln_esmt(ptop:plev,:) = 0.
-#endif /* SP_ESMT */
-
   !$acc parallel loop collapse(4) async(asyncid)
   do k = 1,nzm
     do i=1,nx
@@ -1091,46 +1063,10 @@ subroutine crm(ncrms, dt_gl, plev, &
           uln(icrm,l)  = uln(icrm,l)  +u(icrm,i,j,k)
           !$acc atomic update
           vln(icrm,l)  = vln(icrm,l)  +v(icrm,i,j,k)
-
-#if defined(SP_ESMT)
-          !$acc atomic update
-          uln_esmt(l,icrm) = uln_esmt(l,icrm)+u_esmt(icrm,i,j,k)
-          !$acc atomic update
-          vln_esmt(l,icrm) = vln_esmt(l,icrm)+v_esmt(icrm,i,j,k)
-#endif
         enddo ! j
       enddo ! i
     enddo ! k
   enddo ! icrm
-
-#if defined(SP_ESMT)
-  !$acc wait(asyncid)
-  do icrm=1,ncrms
-    uln_esmt(ptop:plev,icrm) = uln_esmt(ptop:plev,icrm) * factor_xy
-    vln_esmt(ptop:plev,icrm) = vln_esmt(ptop:plev,icrm) * factor_xy
-
-    crm_output%u_tend_esmt(icrm,:) = (uln_esmt(:,icrm) - crm_input%ul_esmt(icrm,:))*icrm_run_time
-    crm_output%v_tend_esmt(icrm,:) = (vln_esmt(:,icrm) - crm_input%vl_esmt(icrm,:))*icrm_run_time
-
-    ! don't use tendencies from two top levels,
-    crm_output%u_tend_esmt(icrm,ptop:ptop+1) = 0.
-    crm_output%v_tend_esmt(icrm,ptop:ptop+1) = 0.
-  enddo
-#endif
-
-#if defined(SPMOMTRANS)
-  !$acc wait(asyncid)
-  do icrm=1,ncrms
-    !!! resolved convective momentum transport (CMT) tendencies
-    crm_output%ultend(icrm,:) = (uln(icrm,:) - crm_input%ul(icrm,:))*icrm_run_time
-    crm_output%vltend(icrm,:) = (vln(icrm,:) - crm_input%vl(icrm,:))*icrm_run_time
-
-    !!! don't use tendencies from two top levels
-    crm_output%ultend(icrm,ptop:ptop+1) = 0.
-    crm_output%vltend(icrm,ptop:ptop+1) = 0.
-  enddo
-#endif /* SPMOMTRANS */
-
 
   !$acc parallel loop collapse(2) async(asyncid)
   do k = ptop , plev
@@ -1589,10 +1525,6 @@ subroutine crm(ncrms, dt_gl, plev, &
   deallocate( qiiln)
   deallocate( uln)
   deallocate( vln)
-#if defined(SP_ESMT)
-  deallocate( uln_esmt)
-  deallocate( vln_esmt)
-#endif
   deallocate( cwp)
   deallocate( cwph)
   deallocate( cwpm)
@@ -1629,9 +1561,6 @@ subroutine crm(ncrms, dt_gl, plev, &
   call deallocate_micro()
 #ifdef sam1mom
   call deallocate_micro_params()
-#endif
-#if defined( SP_ESMT )
-  call deallocate_scalar_momentum()
 #endif
 
 end subroutine crm

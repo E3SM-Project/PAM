@@ -5,15 +5,16 @@
 ## MAKE SURE WE HAVE WHAT WE NEED
 ############################################################################
 function usage {
-  printf "Usage: ./cmakescript.sh file.nc\n\n"
+  printf "Usage: ./cmakescript.sh 2dfile.nc 3dfile.nc\n\n"
   printf "You must specify NCHOME and NFHOME environment variables to specify\n"
   printf "where the NetCDF libraries are located\n\n"
   printf "NetCDF binaries must include ncdump, nf-config, and nc-config\n\n"
   printf "You can also define FFLAGS to control optimizations and NCRMS \n"
   printf "to reduce the number of CRM samples and the runtime of the tests.\n\n"
+  printf "./cmakescript.sh [-h|--help] for this message\n\n"
 }
-if [[ "$1" == "" ]]; then
-  printf "Error: missing NetCDF File parameter\n"
+if [[ "$1" == "" || "$2" == "" ]]; then
+  printf "Error: missing 2d and / or 3d NetCDF File parameters\n"
   usage
   exit -1
 fi
@@ -36,7 +37,7 @@ fi
 
 
 ############################################################################
-## GRAB DATA FROM THE NETCDF FILE
+## GRAB 2D DATA FROM THE NETCDF FILE
 ############################################################################
 NX=`$NCHOME/bin/ncdump -h $1  | grep "crm_nx =" | awk '{print $3}'`
 NY=`$NCHOME/bin/ncdump -h $1  | grep "crm_ny =" | awk '{print $3}'`
@@ -48,18 +49,57 @@ DT=1
 if [[ $NY -eq 1 ]]; then
   YES3D=0
 else
-  YES3D=1
+  echo "Error: 3D file specified as the 2D file\n\n"
+  usage
 fi
 PLEV=`$NCHOME/bin/ncdump -h $1  | grep "nlev =" | awk '{print $3}'`
 INFILE="\'$1\'"
 
-printf "Running with crm_nx=$NX, crm_ny=$NY, crm_nz=$NZ, crm_nx_rad=$NX_RAD, crm_ny_rad=$NY_RAD, crm_dx=$DX, crm_dt=$DT, yes3d=$YES3D, plev(nlev)=$PLEV, and infile=$INFILE\n\n"
+DEFS2D=" -DCRM -DCRM_NX=$NX -DCRM_NY=$NY -DCRM_NZ=$NZ -DCRM_NX_RAD=$NX_RAD -DCRM_NY_RAD=$NY_RAD -DCRM_DT=$DT -DCRM_DX=$DX -DYES3DVAL=$YES3D -DPLEV=$PLEV -Dsam1mom -DINPUT_FILE=$INFILE"
+printf "2D Defs: $DEFS2D\n\n"
+
+
+############################################################################
+## GRAB 3D DATA FROM THE NETCDF FILE
+############################################################################
+NX=`$NCHOME/bin/ncdump -h $2  | grep "crm_nx =" | awk '{print $3}'`
+NY=`$NCHOME/bin/ncdump -h $2  | grep "crm_ny =" | awk '{print $3}'`
+NZ=`$NCHOME/bin/ncdump -h $2  | grep "crm_nz =" | awk '{print $3}'`
+NX_RAD=`$NCHOME/bin/ncdump -h $2  | grep "crm_nx_rad =" | awk '{print $3}'`
+NY_RAD=`$NCHOME/bin/ncdump -h $2  | grep "crm_ny_rad =" | awk '{print $3}'`
+DX=1000
+DT=1
+if [[ $NY -eq 1 ]]; then
+  echo "Error: 2D file specified as the 3D file\n\n"
+  usage
+else
+  YES3D=1
+fi
+PLEV=`$NCHOME/bin/ncdump -h $2  | grep "nlev =" | awk '{print $3}'`
+INFILE="\'$2\'"
+
+DEFS3D=" -DCRM -DCRM_NX=$NX -DCRM_NY=$NY -DCRM_NZ=$NZ -DCRM_NX_RAD=$NX_RAD -DCRM_NY_RAD=$NY_RAD -DCRM_DT=$DT -DCRM_DX=$DX -DYES3DVAL=$YES3D -DPLEV=$PLEV -Dsam1mom -DINPUT_FILE=$INFILE"
+printf "3D Defs: $DEFS3D\n\n"
 
 
 ############################################################################
 ## CLEAN UP THE PREVIOUS BUILD
 ############################################################################
-rm -rf CMakeCache.txt CMakeFiles cmake_install.cmake cpp CTestTestfile.cmake fortran Makefile fortran.exe cpp.exe
+rm -rf CMakeCache.txt CMakeFiles cmake_install.cmake CTestTestfile.cmake Makefile fortran.exe cpp.exe cpp2d cpp3d fortran2d fortran3d
+
+
+############################################################################
+## SYMLINK INPUT FILES INTO EXECUTABLE DIRECTORIES
+############################################################################
+mkdir fortran2d
+mkdir fortran3d
+mkdir cpp2d    
+mkdir cpp3d    
+cd fortran2d   ; ln -s ../$1
+cd ../fortran3d; ln -s ../$2
+cd ../cpp2d    ; ln -s ../$1
+cd ../cpp3d    ; ln -s ../$2
+cd ..
 
 
 ############################################################################
@@ -72,16 +112,19 @@ printf "NetCDF Flags: $NCFLAGS\n\n"
 ############################################################################
 ## RUN THE CONFIGURE
 ############################################################################
-FFLAGS="$FFLAGS -ffree-line-length-none -DCRM -DCRM_NX=$NX -DCRM_NY=$NY -DCRM_NZ=$NZ -DCRM_NX_RAD=$NX_RAD -DCRM_NY_RAD=$NY_RAD"
-FFLAGS="$FFLAGS -DCRM_DT=$DT -DCRM_DX=$DX -DYES3DVAL=$YES3D -DPLEV=$PLEV -Dsam1mom -DINPUT_FILE=$INFILE"
-FFLAGS="$FFLAGS -I$NCHOME/include -I$NFHOME/include"
+FFLAGS="$FFLAGS -ffree-line-length-none -I$NCHOME/include -I$NFHOME/include"
+CXXFLAGS="$CXXFLAGS -I$NCHOME/include -I$NFHOME/include"
 if [[ "$NCRMS" != "" ]]; then
   FFLAGS="$FFLAGS -DNCRMS=$NCRMS"
+  CXXFLAGS="$CXXFLAGS -DNCRMS=$NCRMS"
 fi
 printf "FFLAGS: $FFLAGS\n\n"
 cmake      \
-    -DCMAKE_Fortran_FLAGS:STRING="$FFLAGS" \
-    -DNCFLAGS:STRING="$NCFLAGS" \
-    ..
+  -DCMAKE_Fortran_FLAGS:STRING="$FFLAGS" \
+  -DCMAKE_CXX_FLAGS:STRING="$CXXFLAGS"   \
+  -DNCFLAGS:STRING="$NCFLAGS"            \
+  -DDEFS2D:STRING="$DEFS2D"              \
+  -DDEFS3D:STRING="$DEFS3D"              \
+  ..
 
 

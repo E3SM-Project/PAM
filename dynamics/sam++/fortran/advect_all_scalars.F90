@@ -15,7 +15,6 @@ contains
 #else
     use params, only: dotracers
 #endif
-    use scalar_momentum_mod
     use openacc_utils
     implicit none
     integer, intent(in) :: ncrms
@@ -70,23 +69,6 @@ contains
     !    call advect_scalar(ncrms,icrm,tracer(:,:,:,k,icrm),tradv(:,k,icrm),trwle(:,k,icrm))
     !  end do
     !end if
-
-#if defined(SP_ESMT)
-    ! whannah - the esmt_offset simply ensures that the scalar momentum
-    ! tracers are positive definite during the advection calculation
-    do icrm = 1 , ncrms
-      esmt_offset(icrm) = abs( minval( (/ minval(u_esmt(icrm,:,:,:)), minval(v_esmt(icrm,:,:,:)) /) ) ) + 50.
-      u_esmt(icrm,:,:,:) = u_esmt(icrm,:,:,:) + esmt_offset(icrm)
-      v_esmt(icrm,:,:,:) = v_esmt(icrm,:,:,:) + esmt_offset(icrm)
-    enddo
-    ! advection of scalar momentum tracers
-    call advect_scalar(ncrms,u_esmt,dummy,dummy)
-    call advect_scalar(ncrms,v_esmt,dummy,dummy)
-    do icrm = 1 , ncrms
-      u_esmt(icrm,:,:,:) = u_esmt(icrm,:,:,:) - esmt_offset(icrm)
-      v_esmt(icrm,:,:,:) = v_esmt(icrm,:,:,:) - esmt_offset(icrm)
-    enddo
-#endif
 
     deallocate( esmt_offset )
     deallocate( dummy )

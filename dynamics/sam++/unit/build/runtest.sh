@@ -1,33 +1,41 @@
 #!/bin/bash
 
+printf "Rebuilding\n\n"
+
+make -j8
+
 printf "Running 2-D tests\n\n"
 
-./cmakescript.sh crmdata_nx32_ny1_nz28_nxrad2_nyrad1.nc  || exit -1
-make -j8                                                 || exit -1
+printf "Running Fortran code\n\n"
+cd fortran2d
+rm -f fortran_output_000001.nc
+./fortran2d
 
-rm -f cpp2d.nc
-if [[ ! -f "fortran2d.nc" ]]; then
-  ./fortran.exe                                          || exit -1
-  mv fortran_output_000001.nc fortran2d.nc
-fi
-./cpp.exe                                                || exit -1
-mv cpp_output_000001.nc cpp2d.nc
+printf "Running C++ code\n\n"
+cd ../cpp2d
+rm -f cpp_output_000001.nc
+./cpp2d
 
-python nccmp.py cpp2d.nc fortran2d.nc                    || exit -1
+printf "Comparing results\n\n"
+cd ..
+python nccmp.py fortran2d/fortran_output_000001.nc cpp2d/cpp_output_000001.nc
 
 
-echo "\n\n\nRunning 3-D tests\n\n"
 
-./cmakescript.sh crmdata_nx8_ny8_nz28_nxrad2_nyrad2.nc   || exit -1
-make -j8                                                 || exit -1
+printf "Running 3-D tests\n\n"
 
-rm -f cpp3d.nc
-if [[ ! -f "fortran3d.nc" ]]; then
-  ./fortran.exe                                          || exit -1
-  mv fortran_output_000001.nc fortran3d.nc
-fi
-./cpp.exe                                                || exit -1
-mv cpp_output_000001.nc cpp3d.nc
+printf "Running Fortran code\n\n"
+cd fortran3d
+rm -f fortran_output_000001.nc
+./fortran3d
 
-python nccmp.py cpp2d.nc fortran2d.nc                    || exit -1
+printf "Running C++ code\n\n"
+cd ../cpp3d
+rm -f cpp_output_000001.nc
+./cpp3d
+
+printf "Comparing results\n\n"
+cd ..
+python nccmp.py fortran3d/fortran_output_000001.nc cpp3d/cpp_output_000001.nc
+
 

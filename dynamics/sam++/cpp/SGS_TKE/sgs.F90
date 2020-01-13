@@ -391,7 +391,6 @@ CONTAINS
     use vars
     use microphysics
     use crmtracers
-    use scalar_momentum_mod
     use params, only: dotracers
     implicit none
     integer, intent(in) :: ncrms
@@ -438,14 +437,6 @@ CONTAINS
     !do icrm = 1 , ncrms
     !  total_water_evap(icrm) = total_water_evap(icrm) + total_water(ncrms,icrm)
     !enddo
-
-#if defined(SP_ESMT)
-    ! diffusion of scalar momentum tracers
-    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),&
-                        u_esmt,fluxb_u_esmt,fluxt_u_esmt,u_esmt_diff,u_esmt_sgs)
-    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),&
-                        v_esmt,fluxb_v_esmt,fluxt_v_esmt,v_esmt_diff,v_esmt_sgs)
-#endif
 
     deallocate( dummy )
   end subroutine sgs_scalars
