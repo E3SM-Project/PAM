@@ -9,15 +9,11 @@ contains
     use vars
     use microphysics
     use sgs
-    use crmtracers
-    use params, only: dotracers
     implicit none
     integer, intent(in) :: ncrms
     integer k,icrm, i, j, kk
-    real(crm_rknd), allocatable :: esmt_offset(:)    ! whannah - offset for advecting scalar momentum tracers
     real(crm_rknd), allocatable :: dummy(:,:)
 
-    allocate( esmt_offset(ncrms) )
     allocate( dummy(ncrms,nz) )
 
     !      advection of scalars :
@@ -49,16 +45,6 @@ contains
       !  total_water_prec(icrm) = total_water_prec(icrm) - total_water(ncrms,icrm)
       !enddo
     end if
-
-    ! advection of tracers:
-    !There aren't any of these. We need to delete crmtracers.F90 too at some point
-    !if(dotracers) then
-    !  do k = 1,ntracers
-    !    call advect_scalar(ncrms,icrm,tracer(:,:,:,k,icrm),tradv(:,k,icrm),trwle(:,k,icrm))
-    !  end do
-    !end if
-
-    deallocate( esmt_offset )
     deallocate( dummy )
 
   end subroutine advect_all_scalars

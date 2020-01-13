@@ -82,7 +82,6 @@ module params
   logical:: dowallx = .false.
   logical:: dowally = .false.
   logical:: docolumn = .false.
-  logical:: dotracers = .false.
   logical:: dosmoke = .false.
 
   integer, parameter :: asyncid = 1

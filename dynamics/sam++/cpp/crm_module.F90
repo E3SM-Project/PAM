@@ -44,7 +44,6 @@ subroutine crm(ncrms, dt_gl, plev, &
     use params
     use microphysics
     use sgs
-    use crmtracers
     use crmdims               , only: crm_nx_rad, crm_ny_rad
     use accelerate_crm_mod    , only: use_crm_accel, crm_accel_factor, crm_accel_nstop, accelerate_crm
     !use cam_abortutils        , only: endrun
@@ -149,7 +148,6 @@ subroutine crm(ncrms, dt_gl, plev, &
   call allocate_params(ncrms)
   call allocate_vars(ncrms)
   call allocate_grid(ncrms)
-  call allocate_tracers(ncrms)
   call allocate_sgs(ncrms)
   call allocate_micro(ncrms)
   call allocate_micro_params(ncrms)
@@ -1210,7 +1208,6 @@ subroutine crm(ncrms, dt_gl, plev, &
 
   call deallocate_params()
   call deallocate_grid()
-  call deallocate_tracers()
   call deallocate_sgs()
   call deallocate_vars()
   call deallocate_micro()

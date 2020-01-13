@@ -10,8 +10,7 @@ contains
     use vars
     use microphysics
     use sgs
-    use params, only: dotracers, dosgs
-    use crmtracers
+    use params, only: dosgs
     implicit none
     integer, intent(in) :: ncrms,flag
     integer :: i,icrm, j, ii, k
@@ -55,25 +54,20 @@ contains
     ! update prognostic scalar fields for advection
     !-------------------------------------------------
     if(flag.eq.2) then
-      call bound_exchange(ncrms,u,dimx1_u,dimx2_u,dimy1_u,dimy2_u,nzm,2,3,2+NADV,2+NADV,1)
-      call bound_exchange(ncrms,v,dimx1_v,dimx2_v,dimy1_v,dimy2_v,nzm,2+NADV,2+NADV,2,3,2)
-      call bound_exchange(ncrms,w,dimx1_w,dimx2_w,dimy1_w,dimy2_w,nz,2+NADV,2+NADV,2+NADV,2+NADV,3)
-      call bound_exchange(ncrms,t,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4)
+      call bound_exchange(ncrms,u,dimx1_u,dimx2_u,dimy1_u,dimy2_u,nzm,2,3,2,2,1)
+      call bound_exchange(ncrms,v,dimx1_v,dimx2_v,dimy1_v,dimy2_v,nzm,2,2,2,3,2)
+      call bound_exchange(ncrms,w,dimx1_w,dimx2_w,dimy1_w,dimy2_w,nz ,2,2,2,2,3)
+      call bound_exchange(ncrms,t,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3,3,3,3,4)
       do i = 1,nsgs_fields
-        if(dosgs.and.advect_sgs) call bound_exchange(ncrms,sgs_field(:,:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+i)
+        if(dosgs.and.advect_sgs) call bound_exchange(ncrms,sgs_field(:,:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3,3,3,3,4+i)
       end do
       do i = 1,nmicro_fields
         if(   i.eq.index_water_vapor             &
         .or. docloud.and.flag_precip(i).ne.1    &
         .or. doprecip.and.flag_precip(i).eq.1 ) then
-          call bound_exchange(ncrms,micro_field(:,:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+nsgs_fields+nsgs_fields_diag+i)
+          call bound_exchange(ncrms,micro_field(:,:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3,3,3,3,4+nsgs_fields+nsgs_fields_diag+i)
         endif
       end do
-      !if(dotracers) then
-      !  do i=1,ntracers
-      !    call bound_exchange(tracer(:,:,:,i,icrm),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+i)
-      !  end do
-      !end if
     endif
 
     !-------------------------------------------------
@@ -92,11 +86,6 @@ contains
           call bound_exchange(ncrms,micro_field(:,:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4+nsgs_fields+nsgs_fields_diag+i)
         endif
       end do
-      !if(dotracers) then
-      !  do i=1,ntracers
-      !    call bound_exchange(tracer(:,:,:,i,icrm),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+i)
-      !  end do
-      !end if
     endif
 
     !-------------------------------------------------
