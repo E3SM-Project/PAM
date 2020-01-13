@@ -8,8 +8,8 @@ contains
     use vars
     use params
     implicit none
-    integer, intent(in) :: ncrms
-    integer i,j,k,kb,icrm
+    integer(crm_iknd), intent(in) :: ncrms
+    integer(crm_iknd) i,j,k,kb,icrm
     real(crm_rknd) betu, betd
 
     if(docolumn) return

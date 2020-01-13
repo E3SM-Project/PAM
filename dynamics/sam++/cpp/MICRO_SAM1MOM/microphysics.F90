@@ -7,24 +7,24 @@ module microphysics
   ! Marat Khairoutdinov, 2006
 
   use grid, only: nx,ny,nzm,nz, dimx1_s,dimx2_s,dimy1_s,dimy2_s ! subdomain grid information
-  use params, only: doprecip, docloud, crm_rknd, asyncid
+  use params, only: doprecip, docloud, crm_rknd, asyncid, crm_iknd
   use micro_params
   implicit none
 
   !----------------------------------------------------------------------
   !!! required definitions:
 
-  integer, parameter :: nmicro_fields = 2   ! total number of prognostic water vars
+  integer(crm_iknd), parameter :: nmicro_fields = 2   ! total number of prognostic water vars
 
   !!! microphysics prognostic variables are storred in this array:
 
 
-  integer, parameter :: index_water_vapor = 1 ! index for variable that has water vapor
-  integer, parameter :: index_cloud_ice = 1   ! index for cloud ice (sedimentation)
+  integer(crm_iknd), parameter :: index_water_vapor = 1 ! index for variable that has water vapor
+  integer(crm_iknd), parameter :: index_cloud_ice = 1   ! index for cloud ice (sedimentation)
 
   ! both variables correspond to mass, not number
   ! SAM1MOM 3D microphysical fields are output by default.
-  integer, allocatable :: flag_precip    (:)
+  integer(crm_iknd), allocatable :: flag_precip    (:)
 
 
   !!! these arrays are needed for output statistics:
@@ -67,8 +67,8 @@ CONTAINS
 
   subroutine allocate_micro(ncrms)
     implicit none
-    integer, intent(in) :: ncrms
-    integer :: icrm
+    integer(crm_iknd), intent(in) :: ncrms
+    integer(crm_iknd) :: icrm
     real(crm_rknd) :: zero
     allocate( micro_field(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nmicro_fields))
     allocate( fluxbmk(ncrms,nx, ny, 1:nmicro_fields) )
@@ -144,8 +144,8 @@ CONTAINS
     use vars
     use params, only: dosmoke
     implicit none
-    integer, intent(in) :: ncrms
-    integer k, n,icrm, i, j, l
+    integer(crm_iknd), intent(in) :: ncrms
+    integer(crm_iknd) k, n,icrm, i, j, l
 
     a_bg = 1./(tbgmax-tbgmin)
     a_pr = 1./(tprmax-tprmin)
@@ -208,8 +208,8 @@ CONTAINS
   subroutine micro_flux(ncrms)
     use vars, only: fluxbq, fluxtq
     implicit none
-    integer, intent(in) :: ncrms
-    integer :: icrm, i, j
+    integer(crm_iknd), intent(in) :: ncrms
+    integer(crm_iknd) :: icrm, i, j
 
     !$acc parallel loop collapse(3) async(asyncid)
     do j = 1 , ny
@@ -239,8 +239,8 @@ CONTAINS
     use precip_init_mod
     use precip_proc_mod
     implicit none
-    integer, intent(in) :: ncrms
-    integer :: icrm
+    integer(crm_iknd), intent(in) :: ncrms
+    integer(crm_iknd) :: icrm
 
     ! Update bulk coefficient
     if(doprecip.and.icycle.eq.1) call precip_init(ncrms)
@@ -261,9 +261,9 @@ CONTAINS
   subroutine micro_diagnose(ncrms)
     use vars
     implicit none
-    integer, intent(in) :: ncrms
+    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd) omn, omp
-    integer i,j,k,icrm
+    integer(crm_iknd) i,j,k,icrm
 
     !$acc parallel loop collapse(4) async(asyncid)
     do k=1,nzm
@@ -291,8 +291,8 @@ CONTAINS
                                       a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow,term_vel)
     !$acc routine seq
     implicit none
-    integer, intent(in) :: ncrms,icrm
-    integer, intent(in) :: i,j,k,ind
+    integer(crm_iknd), intent(in) :: ncrms,icrm
+    integer(crm_iknd), intent(in) :: i,j,k,ind
     real(crm_rknd), intent(in) :: qploc
     real(crm_rknd), intent(in) :: rho(ncrms,nzm), tabs(ncrms,nx, ny, nzm)
     real(crm_rknd), intent(in) :: qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow
@@ -329,10 +329,10 @@ CONTAINS
     use vars
     use params, only : pi
     implicit none
-    integer, intent(in) :: ncrms
+    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd), allocatable :: omega(:,:,:,:)
-    integer ind
-    integer i,j,k,icrm
+    integer(crm_iknd) ind
+    integer(crm_iknd) i,j,k,icrm
 
     allocate(omega(ncrms,nx,ny,nzm))
 
@@ -367,10 +367,10 @@ CONTAINS
     use vars
     use params
     implicit none
-    integer, intent(in) :: ncrms
-    integer :: hydro_type   ! 0 - all liquid, 1 - all ice, 2 - mixed
+    integer(crm_iknd), intent(in) :: ncrms
+    integer(crm_iknd) :: hydro_type   ! 0 - all liquid, 1 - all ice, 2 - mixed
     real(crm_rknd) :: omega(ncrms,nx,ny,nzm)   !  = 1: liquid, = 0: ice;  = 0-1: mixed : used only when hydro_type=2
-    integer :: ind
+    integer(crm_iknd) :: ind
     ! Terminal velocity fnction
     ! Local:
     real(crm_rknd), allocatable :: mx     (:,:,:,:)
@@ -385,11 +385,11 @@ CONTAINS
     real(crm_rknd), allocatable :: rhofac (:,:)
     real(crm_rknd) :: prec_cfl
     real(crm_rknd) :: eps
-    integer :: i,j,k,kc,kb,icrm
+    integer(crm_iknd) :: i,j,k,kc,kb,icrm
     logical :: nonos
     real(crm_rknd) :: y,pp,pn
     real(crm_rknd) :: lat_heat, wmax
-    integer nprec, iprec
+    integer(crm_iknd) nprec, iprec
     real(crm_rknd) :: flagstat, tmp
 
     !Statement functions

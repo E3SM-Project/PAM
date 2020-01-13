@@ -8,11 +8,11 @@ contains
   subroutine press_rhs(ncrms)
     !       right-hand-side of the Poisson equation for pressure
     use vars
-    use params, only: dowallx, dowally
+    use params, only: dowallx, dowally, crm_iknd
     implicit none
-    integer, intent(in) :: ncrms
+    integer(crm_iknd), intent(in) :: ncrms
     real *8 dta,rdx,rdy,rdz,btat,ctat,rup,rdn
-    integer i,j,k,ic,jc,kc, icrm
+    integer(crm_iknd) i,j,k,ic,jc,kc, icrm
 
     if(dowallx.and.mod(rank,nsubdomains_x).eq.0) then
       !$acc parallel loop collapse(3) async(asyncid)

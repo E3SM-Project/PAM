@@ -9,12 +9,12 @@ contains
     use params
     use microphysics, only: micro_field, index_water_vapor
     implicit none
-    integer, intent(in) :: ncrms
+    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd), allocatable :: qneg(:,:)
     real(crm_rknd), allocatable :: qpoz(:,:)
-    integer       , allocatable :: nneg(:,:)
+    integer(crm_iknd)       , allocatable :: nneg(:,:)
     real(crm_rknd) :: coef, factor
-    integer        :: i,j,k,icrm
+    integer(crm_iknd)        :: i,j,k,icrm
 
     allocate( qneg(ncrms,nzm) )
     allocate( qpoz(ncrms,nzm) )

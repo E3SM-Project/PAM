@@ -1,6 +1,6 @@
 
 module zero_mod
-  use params, only: asyncid
+  use params, only: asyncid, crm_iknd
   implicit none
 
 contains
@@ -8,8 +8,8 @@ contains
   subroutine zero(ncrms)
     use vars
     implicit none
-    integer, intent(in) :: ncrms
-    integer k,icrm, j, i
+    integer(crm_iknd), intent(in) :: ncrms
+    integer(crm_iknd) k,icrm, j, i
     !dudt(ncrms,nxp1, ny  , nzm, 3)
     !dvdt(ncrms,nx  , nyp1, nzm, 3)
     !dwdt(ncrms,nx  , ny  , nz , 3)

@@ -1,7 +1,7 @@
 module micro_params
 
   use grid, only: nzm
-  use params, only: crm_rknd
+  use params, only: crm_rknd, crm_iknd
 
   implicit none
 
@@ -92,7 +92,7 @@ contains
 
   subroutine allocate_micro_params(ncrms)
     implicit none
-    integer, intent(in) :: ncrms
+    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd) :: zero
 
     allocate( accrsc(ncrms,nzm) )

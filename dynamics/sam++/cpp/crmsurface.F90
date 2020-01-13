@@ -1,4 +1,5 @@
 module crmsurface_mod
+  use params, only: crm_iknd
   implicit none
 
 contains
@@ -7,10 +8,10 @@ contains
     use vars
     use params
     implicit none
-    integer, intent(in) :: ncrms
+    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd), intent (in) :: bflx(ncrms)
     real(crm_rknd) u_h0, tau00, tmp
-    integer i,j,icrm
+    integer(crm_iknd) i,j,icrm
 
     !--------------------------------------------------------
     if(SFC_FLX_FXD.and..not.SFC_TAU_FXD) then
@@ -77,7 +78,7 @@ contains
     real(crm_rknd), intent (in)    :: bflx          ! surface buoyancy flux (m^2/s^3)
     real(crm_rknd), intent (in)    :: wnd           ! wind speed at z
     real(crm_rknd), intent (in)    :: z0            ! momentum roughness height
-    integer :: iterate
+    integer(crm_iknd) :: iterate
     real(crm_rknd)    :: lnz, klnz, c1, x, psi1, zeta, rlmo, ustar
     lnz   = log(z/z0)
     klnz  = vonk/lnz

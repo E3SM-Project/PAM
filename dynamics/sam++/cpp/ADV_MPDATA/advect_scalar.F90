@@ -11,15 +11,15 @@ contains
 
     use grid
     use vars, only: u, v, w, rho, rhow
-    use params, only: docolumn, crm_rknd
+    use params, only: docolumn, crm_rknd, crm_iknd
 
     implicit none
-    integer, intent(in) :: ncrms
+    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd) f(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
     real(crm_rknd) flux(ncrms,nz), fadv(ncrms,nz)
     real(crm_rknd), allocatable :: f0(:,:,:,:)
     real(crm_rknd) tmp
-    integer i,j,k,icrm
+    integer(crm_iknd) i,j,k,icrm
 
     allocate( f0(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
 

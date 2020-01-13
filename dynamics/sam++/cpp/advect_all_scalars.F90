@@ -1,5 +1,6 @@
 module advect_all_scalars_mod
   use advect_scalar_mod
+  use params, only: crm_iknd
   implicit none
 
 contains
@@ -10,8 +11,8 @@ contains
     use microphysics
     use sgs
     implicit none
-    integer, intent(in) :: ncrms
-    integer k,icrm, i, j, kk
+    integer(crm_iknd), intent(in) :: ncrms
+    integer(crm_iknd) k,icrm, i, j, kk
     real(crm_rknd), allocatable :: dummy(:,:)
 
     allocate( dummy(ncrms,nz) )

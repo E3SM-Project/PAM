@@ -5,7 +5,7 @@ module sgs
   ! Marat Khairoutdinov, 2012
 
   use grid, only: nx,nxp1,ny,nyp1,YES3D,nzm,nz,dimx1_s,dimx2_s,dimy1_s,dimy2_s
-  use params, only: dosgs, crm_rknd, asyncid
+  use params, only: dosgs, crm_rknd, asyncid, crm_iknd
   use vars, only: tke2, tk2
   implicit none
 
@@ -14,18 +14,18 @@ module sgs
 
   !!! prognostic scalar (need to be advected arround the grid):
 
-  integer, parameter :: nsgs_fields = 1   ! total number of prognostic sgs vars
+  integer(crm_iknd), parameter :: nsgs_fields = 1   ! total number of prognostic sgs vars
 
 
   !!! sgs diagnostic variables that need to exchange boundary information (via MPI):
 
-  integer, parameter :: nsgs_fields_diag = 2   ! total number of diagnostic sgs vars
+  integer(crm_iknd), parameter :: nsgs_fields_diag = 2   ! total number of diagnostic sgs vars
 
   ! diagnostic fields' boundaries:
-  integer, parameter :: dimx1_d=0, dimx2_d=nxp1, dimy1_d=1-YES3D, dimy2_d=nyp1
+  integer(crm_iknd), parameter :: dimx1_d=0, dimx2_d=nxp1, dimy1_d=1-YES3D, dimy2_d=nyp1
 
-  integer, parameter :: flag_sgs3Dout(nsgs_fields) = (/0/)
-  integer, parameter :: flag_sgsdiag3Dout(nsgs_fields_diag) = (/0,0/)
+  integer(crm_iknd), parameter :: flag_sgs3Dout(nsgs_fields) = (/0/)
+  integer(crm_iknd), parameter :: flag_sgsdiag3Dout(nsgs_fields_diag) = (/0,0/)
 
 
   logical:: advect_sgs = .false. ! advect prognostics or not, default - not (Smagorinsky)
@@ -69,7 +69,7 @@ CONTAINS
 
   subroutine allocate_sgs(ncrms)
     implicit none
-    integer, intent(in) :: ncrms
+    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd) :: zero
     allocate( sgs_field(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nsgs_fields) )
     allocate( sgs_field_diag(ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm, nsgs_fields_diag) )
@@ -119,7 +119,7 @@ CONTAINS
     use grid, only: case
     implicit none
 
-    integer ierr, ios, ios_missing_namelist, place_holder
+    integer(crm_iknd) ierr, ios, ios_missing_namelist, place_holder
 
     !======================================================================
     NAMELIST /SGS_TKE/ &
@@ -164,8 +164,8 @@ CONTAINS
     use grid, only: nrestart, dx, dy, dz, adz, masterproc
     use params, only: LES
     implicit none
-    integer, intent(in) :: ncrms
-    integer k,icrm, i, j, l
+    integer(crm_iknd), intent(in) :: ncrms
+    integer(crm_iknd) k,icrm, i, j, l
 
     if(nrestart.eq.0) then
       !$acc parallel loop collapse(5) async(asyncid)
@@ -221,9 +221,9 @@ CONTAINS
   subroutine setperturb_sgs(ncrms,icrm,ptype)
 
     use vars, only: q0, z
-    integer, intent(in) :: ncrms,icrm
-    integer, intent(in) :: ptype
-    integer i,j,k
+    integer(crm_iknd), intent(in) :: ncrms,icrm
+    integer(crm_iknd), intent(in) :: ptype
+    integer(crm_iknd) i,j,k
 
     select case (ptype)
 
@@ -318,9 +318,9 @@ CONTAINS
   subroutine kurant_sgs(ncrms,cfl)
     use grid, only: dt, dx, dy, dz, adz, adzw
     implicit none
-    integer, intent(in) :: ncrms
+    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd), intent(inout) :: cfl
-    integer k,icrm, j, i
+    integer(crm_iknd) k,icrm, j, i
     real(crm_rknd), allocatable :: tkhmax(:,:)
     real(crm_rknd) tmp
 
@@ -366,7 +366,7 @@ CONTAINS
   subroutine sgs_mom(ncrms)
     use diffuse_mom_mod, only: diffuse_mom
     implicit none
-    integer, intent(in) :: ncrms
+    integer(crm_iknd), intent(in) :: ncrms
 
     call diffuse_mom(ncrms,grdf_x, grdf_y, grdf_z, dimx1_d, dimx2_d, dimy1_d, dimy2_d, sgs_field_diag(:,:,:,:,1))
   end subroutine sgs_mom
@@ -379,9 +379,9 @@ CONTAINS
     use vars
     use microphysics
     implicit none
-    integer, intent(in) :: ncrms
+    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd), allocatable :: dummy(:,:)
-    integer i,j,kk,k,icrm
+    integer(crm_iknd) i,j,kk,k,icrm
 
     allocate( dummy(ncrms,nz) )
 
@@ -421,8 +421,8 @@ subroutine sgs_proc(ncrms)
   use grid, only: dt,icycle
   use params, only: dosmoke
   implicit none
-  integer, intent(in) :: ncrms
-  integer :: icrm, k, j, i
+  integer(crm_iknd), intent(in) :: ncrms
+  integer(crm_iknd) :: icrm, k, j, i
   !    SGS TKE equation:
 
   if(dosgs) call tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d, &
@@ -465,7 +465,7 @@ end subroutine sgs_diagnose
 !
 subroutine sgs_hbuf_init(namelist,deflist,unitlist,status,average_type,count,sgscount)
   character(*) namelist(*), deflist(*), unitlist(*)
-  integer status(*),average_type(*),count,sgscount
+  integer(crm_iknd) status(*),average_type(*),count,sgscount
 
 end subroutine sgs_hbuf_init
 

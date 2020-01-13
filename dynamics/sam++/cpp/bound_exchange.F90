@@ -16,13 +16,13 @@ contains
     use grid
     use params, only: crm_rknd
     implicit none
-    integer dimx1, dimx2, dimy1, dimy2, dimz, ncrms
-    integer i_1, i_2, j_1, j_2
+    integer(crm_iknd) dimx1, dimx2, dimy1, dimy2, dimz, ncrms
+    integer(crm_iknd) i_1, i_2, j_1, j_2
     real(crm_rknd) f(ncrms,dimx1:dimx2, dimy1:dimy2, dimz)
-    integer id   ! id of the sent field (dummy variable)
+    integer(crm_iknd) id   ! id of the sent field (dummy variable)
     real(crm_rknd), allocatable :: buffer(:)  ! buffer for sending data
-    integer i, j, k, n, icrm
-    integer i1, i2, j1, j2
+    integer(crm_iknd) i, j, k, n, icrm
+    integer(crm_iknd) i1, i2, j1, j2
 
     allocate(buffer((nx+ny)*3*nz*ncrms))
 

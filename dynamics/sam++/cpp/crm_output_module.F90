@@ -1,5 +1,5 @@
 module crm_output_module
-   use params,       only: crm_rknd
+   use params,       only: crm_rknd, crm_iknd
    use crmdims,      only: crm_nx, crm_ny, crm_nz
    implicit none
    public crm_output_type
@@ -108,7 +108,7 @@ contains
    !------------------------------------------------------------------------------------------------
    subroutine crm_output_initialize(output, ncol, nlev)
       type(crm_output_type), intent(inout) :: output
-      integer, intent(in), optional :: ncol, nlev
+      integer(crm_iknd), intent(in), optional :: ncol, nlev
 
       ! Allocate arrays if dimensions are passed as input
       if (present(ncol)) then

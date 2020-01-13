@@ -21,7 +21,7 @@
 ! -----------------------------------------------------------------------------
 module accelerate_crm_mod
     use grid, only: nx, ny
-    use params, only: asyncid, rc=>crm_rknd, r8
+    use params, only: asyncid, rc=>crm_rknd, r8, crm_iknd
 
     implicit none
 
@@ -65,7 +65,7 @@ module accelerate_crm_mod
       !  nstop (inout) - number of crm iterations to apply MSA
       ! -----------------------------------------------------------------------
       implicit none
-      integer, intent(inout) :: nstop
+      integer(crm_iknd), intent(inout) :: nstop
   
       if (mod(nstop, int(1 + crm_accel_factor)) .ne. 0) then
         write(*,*) "CRM acceleration unexpected exception:"
@@ -105,9 +105,9 @@ module accelerate_crm_mod
       use vars, only: u, v, u0, v0, t0,q0, t,qcl,qci,qv
       use microphysics, only: micro_field, idx_qt=>index_water_vapor
       implicit none
-      integer, intent(in   ) :: ncrms
-      integer, intent(in   ) :: nstep
-      integer, intent(inout) :: nstop
+      integer(crm_iknd), intent(in   ) :: ncrms
+      integer(crm_iknd), intent(in   ) :: nstep
+      integer(crm_iknd), intent(inout) :: nstop
       logical, intent(inout) :: ceaseflag
       real(rc), allocatable :: ubaccel  (:,:)   ! u before applying MSA tendency
       real(rc), allocatable :: vbaccel  (:,:)   ! v before applying MSA tendency
@@ -120,7 +120,7 @@ module accelerate_crm_mod
       real(r8), allocatable :: qpoz     (:,:) ! total positive micro_field(:,:,k,idx_qt,:) in level k
       real(r8), allocatable :: qneg     (:,:) ! total negative micro_field(:,:,k,idx_qt,:) in level k
       real(rc) :: tmp  ! temporary variable for atomic updates
-      integer i, j, k, icrm  ! iteration variables
+      integer(crm_iknd) i, j, k, icrm  ! iteration variables
       real(r8) :: factor, qt_res ! local variables for redistributing moisture
       real(rc) :: ttend_threshold ! threshold for ttend_acc at which MSA aborts
       real(rc) :: tmin  ! mininum value of t allowed (sanity factor)

@@ -84,7 +84,7 @@ module params
   logical:: docolumn = .false.
   logical:: dosmoke = .false.
 
-  integer, parameter :: asyncid = 1
+  integer(crm_iknd), parameter :: asyncid = 1
 
   real(crm_rknd), allocatable :: uhl(:)      ! current large-scale velocity in x near sfc
   real(crm_rknd), allocatable :: vhl(:)      ! current large-scale velocity in y near sfc
@@ -97,7 +97,7 @@ contains
   
   subroutine allocate_params(ncrms)
     implicit none
-    integer, intent(in) :: ncrms
+    integer(crm_iknd), intent(in) :: ncrms
     allocate(fcor (ncrms))
     allocate(fcorz(ncrms))
     allocate(longitude0(ncrms))

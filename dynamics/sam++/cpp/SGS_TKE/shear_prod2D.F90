@@ -6,13 +6,13 @@ contains
 
   subroutine shear_prod2D(ncrms,def2)
     use vars
-    use params, only: crm_rknd
+    use params, only: crm_rknd, crm_iknd
     implicit none
-    integer, intent(in) :: ncrms
+    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd) def2(ncrms,nx,ny,nzm)
     real(crm_rknd) rdx0,rdx,rdx_up,rdx_dn
     real(crm_rknd) rdz,rdzw_up,rdzw_dn
-    integer i,j,k,ib,ic,kb,kc,icrm
+    integer(crm_iknd) i,j,k,ib,ic,kb,kc,icrm
 
     rdx0=1./dx
     j=1

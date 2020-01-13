@@ -1,73 +1,73 @@
 module grid
 
   use domain
-  use params, only: crm_rknd
+  use params, only: crm_rknd, crm_iknd
 
   implicit none
 
   character(6), parameter :: version = '6.10.4'
   character(8), parameter :: version_date = 'Feb 2013'
 
-  integer, parameter :: nx = nx_gl/nsubdomains_x
-  integer, parameter :: ny = ny_gl/nsubdomains_y
-  integer, parameter :: nz = nz_gl+1        ! note that nz_gl = crm_nz
-  integer, parameter :: nzm = nz-1          ! note that nzm   = crm_nz
+  integer(crm_iknd), parameter :: nx = nx_gl/nsubdomains_x
+  integer(crm_iknd), parameter :: ny = ny_gl/nsubdomains_y
+  integer(crm_iknd), parameter :: nz = nz_gl+1        ! note that nz_gl = crm_nz
+  integer(crm_iknd), parameter :: nzm = nz-1          ! note that nzm   = crm_nz
 
-  integer, parameter :: nsubdomains = nsubdomains_x * nsubdomains_y
+  integer(crm_iknd), parameter :: nsubdomains = nsubdomains_x * nsubdomains_y
 
   logical, parameter :: RUN3D = ny_gl.gt.1
   logical, parameter :: RUN2D = .not.RUN3D
 
-  integer, parameter :: nxp1 = nx + 1
-  integer, parameter :: nyp1 = ny + 1 * YES3D
-  integer, parameter :: nxp2 = nx + 2
-  integer, parameter :: nyp2 = ny + 2 * YES3D
-  integer, parameter :: nxp3 = nx + 3
-  integer, parameter :: nyp3 = ny + 3 * YES3D
-  integer, parameter :: nxp4 = nx + 4
-  integer, parameter :: nyp4 = ny + 4 * YES3D
+  integer(crm_iknd), parameter :: nxp1 = nx + 1
+  integer(crm_iknd), parameter :: nyp1 = ny + 1 * YES3D
+  integer(crm_iknd), parameter :: nxp2 = nx + 2
+  integer(crm_iknd), parameter :: nyp2 = ny + 2 * YES3D
+  integer(crm_iknd), parameter :: nxp3 = nx + 3
+  integer(crm_iknd), parameter :: nyp3 = ny + 3 * YES3D
+  integer(crm_iknd), parameter :: nxp4 = nx + 4
+  integer(crm_iknd), parameter :: nyp4 = ny + 4 * YES3D
 
-  integer, parameter :: dimx1_u = -1                !!-1        -1        -1        -1
-  integer, parameter :: dimx2_u = nxp3              !!nxp3      nxp3      nxp3      nxp3
-  integer, parameter :: dimy1_u = 1-(2)*YES3D  !!1-5*YES3D 1-4*YES3D 1-3*YES3D 1-2*YES3D
-  integer, parameter :: dimy2_u = nyp2         !!nyp5      nyp4      nyp3      nyp2
-  integer, parameter :: dimx1_v = -1           !!-4        -3        -2        -1
-  integer, parameter :: dimx2_v = nxp2         !!nxp5      nxp4      nxp3      nxp2
-  integer, parameter :: dimy1_v = 1-2*YES3D         !!1-2*YES3D 1-2*YES3D 1-2*YES3D 1-2*YES3D
-  integer, parameter :: dimy2_v = nyp3              !!nyp3       nyp3      nyp3      nyp3
-  integer, parameter :: dimx1_w = -1           !!-4        -3        -2        -1
-  integer, parameter :: dimx2_w = nxp2         !!nxp5      nxp4      nxp3      nxp2
-  integer, parameter :: dimy1_w = 1-(2)*YES3D  !!1-5*YES3D 1-4*YES3D 1-3*YES3D 1-2*YES3D
-  integer, parameter :: dimy2_w = nyp2         !!nyp5      nyp4      nyp3      nyp2
-  integer, parameter :: dimx1_s = -2          !!-4        -3        -2        -2
-  integer, parameter :: dimx2_s = nxp3        !!nxp5      nxp4      nxp3      nxp3
-  integer, parameter :: dimy1_s = 1-(3)*YES3D !!1-5*YES3D 1-4*YES3D 1-3*YES3D 1-3*YES3D
-  integer, parameter :: dimy2_s = nyp3        !!nyp5      nyp4      nyp3      nyp3
+  integer(crm_iknd), parameter :: dimx1_u = -1                !!-1        -1        -1        -1
+  integer(crm_iknd), parameter :: dimx2_u = nxp3              !!nxp3      nxp3      nxp3      nxp3
+  integer(crm_iknd), parameter :: dimy1_u = 1-(2)*YES3D  !!1-5*YES3D 1-4*YES3D 1-3*YES3D 1-2*YES3D
+  integer(crm_iknd), parameter :: dimy2_u = nyp2         !!nyp5      nyp4      nyp3      nyp2
+  integer(crm_iknd), parameter :: dimx1_v = -1           !!-4        -3        -2        -1
+  integer(crm_iknd), parameter :: dimx2_v = nxp2         !!nxp5      nxp4      nxp3      nxp2
+  integer(crm_iknd), parameter :: dimy1_v = 1-2*YES3D         !!1-2*YES3D 1-2*YES3D 1-2*YES3D 1-2*YES3D
+  integer(crm_iknd), parameter :: dimy2_v = nyp3              !!nyp3       nyp3      nyp3      nyp3
+  integer(crm_iknd), parameter :: dimx1_w = -1           !!-4        -3        -2        -1
+  integer(crm_iknd), parameter :: dimx2_w = nxp2         !!nxp5      nxp4      nxp3      nxp2
+  integer(crm_iknd), parameter :: dimy1_w = 1-(2)*YES3D  !!1-5*YES3D 1-4*YES3D 1-3*YES3D 1-2*YES3D
+  integer(crm_iknd), parameter :: dimy2_w = nyp2         !!nyp5      nyp4      nyp3      nyp2
+  integer(crm_iknd), parameter :: dimx1_s = -2          !!-4        -3        -2        -2
+  integer(crm_iknd), parameter :: dimx2_s = nxp3        !!nxp5      nxp4      nxp3      nxp3
+  integer(crm_iknd), parameter :: dimy1_s = 1-(3)*YES3D !!1-5*YES3D 1-4*YES3D 1-3*YES3D 1-3*YES3D
+  integer(crm_iknd), parameter :: dimy2_s = nyp3        !!nyp5      nyp4      nyp3      nyp3
 
-  integer, parameter :: ncols = nx*ny
-  integer, parameter :: nadams = 3
+  integer(crm_iknd), parameter :: ncols = nx*ny
+  integer(crm_iknd), parameter :: nadams = 3
 
   ! Vertical grid parameters:
   ! real(crm_rknd) pres0      ! Reference surface pressure, Pa
 
-  integer :: nstep = 0! current number of performed time steps
-  integer  ncycle  ! number of subcycles over the dynamical timestep
-  integer icycle  ! current subcycle
-  integer :: na, nb, nc ! indices for swapping the rhs arrays for AB scheme
+  integer(crm_iknd) :: nstep = 0! current number of performed time steps
+  integer(crm_iknd)  ncycle  ! number of subcycles over the dynamical timestep
+  integer(crm_iknd) icycle  ! current subcycle
+  integer(crm_iknd) :: na, nb, nc ! indices for swapping the rhs arrays for AB scheme
   real(crm_rknd) at, bt, ct ! coefficients for the Adams-Bashforth scheme
   real(crm_rknd) dtn  ! current dynamical timestep (can be smaller than dt)
   real(crm_rknd) dtfactor   ! dtn/dt
 
   !  MPI staff:
-  integer rank   ! rank of the current subdomain task (default 0)
-  integer ranknn ! rank of the "northern" subdomain task
-  integer rankss ! rank of the "southern" subdomain task
-  integer rankee ! rank of the "eastern"  subdomain task
-  integer rankww ! rank of the "western"  subdomain task
-  integer rankne ! rank of the "north-eastern" subdomain task
-  integer ranknw ! rank of the "north-western" subdomain task
-  integer rankse ! rank of the "south-eastern" subdomain task
-  integer ranksw ! rank of the "south-western" subdomain task
+  integer(crm_iknd) rank   ! rank of the current subdomain task (default 0)
+  integer(crm_iknd) ranknn ! rank of the "northern" subdomain task
+  integer(crm_iknd) rankss ! rank of the "southern" subdomain task
+  integer(crm_iknd) rankee ! rank of the "eastern"  subdomain task
+  integer(crm_iknd) rankww ! rank of the "western"  subdomain task
+  integer(crm_iknd) rankne ! rank of the "north-eastern" subdomain task
+  integer(crm_iknd) ranknw ! rank of the "north-western" subdomain task
+  integer(crm_iknd) rankse ! rank of the "south-eastern" subdomain task
+  integer(crm_iknd) ranksw ! rank of the "south-western" subdomain task
   logical dompi  ! logical switch to do multitasking
   logical masterproc ! .true. if rank.eq.0
 
@@ -75,7 +75,7 @@ module grid
 
   logical dostatis     ! flag to permit the gathering of statistics
   logical dostatisrad  ! flag to permit the gathering of radiation statistics
-  integer nstatis ! the interval between substeps to compute statistics
+  integer(crm_iknd) nstatis ! the interval between substeps to compute statistics
 
   logical :: compute_reffc = .false.
   logical :: compute_reffi = .false.
@@ -92,19 +92,19 @@ module grid
   real(crm_rknd), allocatable :: dz(:)    ! constant grid spacing in z direction (when dz_constant=.true.)
   logical:: doconstdz = .false.  ! do constant vertical grid spacing set by dz
 
-  integer:: nstop =0   ! time step number to stop the integration
-  integer:: nelapse =999999999! time step number to elapse before stoping
+  integer(crm_iknd):: nstop =0   ! time step number to stop the integration
+  integer(crm_iknd):: nelapse =999999999! time step number to elapse before stoping
 
   real(crm_rknd):: dt=0.  ! dynamical timestep
   real(crm_rknd):: day0=0.  ! starting day (including fraction)
 
-  integer:: nrad =1  ! frequency of calling the radiation routines
-  integer:: nrestart =0 ! switch to control starting/restarting of the model
-  integer:: nstat =1000 ! the interval in time steps to compute statistics
-  integer:: nstatfrq =50 ! frequency of computing statistics
+  integer(crm_iknd):: nrad =1  ! frequency of calling the radiation routines
+  integer(crm_iknd):: nrestart =0 ! switch to control starting/restarting of the model
+  integer(crm_iknd):: nstat =1000 ! the interval in time steps to compute statistics
+  integer(crm_iknd):: nstatfrq =50 ! frequency of computing statistics
 
   logical:: restart_sep =.false.  ! write separate restart files for sub-domains
-  integer:: nrestart_skip =0 ! number of skips of writing restart (default 0)
+  integer(crm_iknd):: nrestart_skip =0 ! number of skips of writing restart (default 0)
   logical:: output_sep =.false.   ! write separate 3D and 2D files for sub-domains
 
   character(80):: caseid =''! id-string to identify a run
@@ -123,31 +123,31 @@ module grid
   character(len=120):: iopfile=''
   character(256):: rundatadir ='./RUNDATA' ! path to data directory
 
-  integer:: nsave3Dstart =99999999! timestep to start writting 3D fields
-  integer:: nsave3Dend  =99999999 ! timestep to end writting 3D fields
+  integer(crm_iknd):: nsave3Dstart =99999999! timestep to start writting 3D fields
+  integer(crm_iknd):: nsave3Dend  =99999999 ! timestep to end writting 3D fields
   logical:: save3Dbin =.false.   ! save 3D data in binary format(no 2-byte compression)
   logical:: save3Dsep =.false.   ! use separate file for each time point for2-model
   real(crm_rknd)   :: qnsave3D =0.    !threshold manimum cloud water(kg/kg) to save 3D fields
   logical:: dogzip3D =.false.    ! gzip compress a 3D output file
   logical:: rad3Dout = .false. ! output additional 3D radiation foelds (like reff)
 
-  integer:: nsave2D =1000     ! frequency of writting 2D fields (steps)
-  integer:: nsave2Dstart =99999999! timestep to start writting 2D fields
-  integer:: nsave2Dend =99999999  ! timestep to end writting 2D fields
+  integer(crm_iknd):: nsave2D =1000     ! frequency of writting 2D fields (steps)
+  integer(crm_iknd):: nsave2Dstart =99999999! timestep to start writting 2D fields
+  integer(crm_iknd):: nsave2Dend =99999999  ! timestep to end writting 2D fields
   logical:: save2Dbin =.false.   ! save 2D data in binary format, rather than compressed
   logical:: save2Dsep =.false.   ! write separate file for each time point for 2D output
   logical:: save2Davg =.false.   ! flag to time-average 2D output fields (default .false.)
   logical:: dogzip2D =.false.    ! gzip compress a 2D output file if save2Dsep=.true.
 
-  integer:: nstatmom =1000! frequency of writting statistical moment fields (steps)
-  integer:: nstatmomstart =99999999! timestep to start writting statistical moment fields
-  integer:: nstatmomend =99999999  ! timestep to end writting statistical moment fields
+  integer(crm_iknd):: nstatmom =1000! frequency of writting statistical moment fields (steps)
+  integer(crm_iknd):: nstatmomstart =99999999! timestep to start writting statistical moment fields
+  integer(crm_iknd):: nstatmomend =99999999  ! timestep to end writting statistical moment fields
   logical:: savemomsep =.false.! use one file with stat moments for each time point
   logical:: savemombin =.false.! save statistical moment data in binary format
 
-  integer:: nmovie =1000! frequency of writting movie fields (steps)
-  integer:: nmoviestart =99999999! timestep to start writting statistical moment fields
-  integer:: nmovieend =99999999  ! timestep to end writting statistical moment fields
+  integer(crm_iknd):: nmovie =1000! frequency of writting movie fields (steps)
+  integer(crm_iknd):: nmoviestart =99999999! timestep to start writting statistical moment fields
+  integer(crm_iknd):: nmovieend =99999999  ! timestep to end writting statistical moment fields
 
   logical :: isInitialized_scamiopdata = .false.
   logical :: wgls_holds_omega = .false.
@@ -168,7 +168,7 @@ contains
 
   subroutine allocate_grid(ncrms)
     implicit none
-    integer, intent(in) :: ncrms
+    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd) :: zero
 
     allocate( z(ncrms,nz)       )

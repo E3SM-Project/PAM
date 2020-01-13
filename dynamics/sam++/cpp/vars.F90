@@ -1,6 +1,6 @@
 module vars
   use grid
-  use params, only: crm_rknd
+  use params, only: crm_rknd, crm_iknd
   implicit none
   !--------------------------------------------------------------------
   ! prognostic variables:
@@ -155,7 +155,7 @@ contains
 
   subroutine allocate_vars(ncrms)
     implicit none
-    integer, intent(in) :: ncrms
+    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd) :: zero
     allocate( u(ncrms,dimx1_u:dimx2_u,dimy1_u:dimy2_u,nzm)  )
     allocate( v(ncrms,dimx1_v:dimx2_v,dimy1_v:dimy2_v,nzm)  )

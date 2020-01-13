@@ -9,10 +9,10 @@ contains
     !        momentum tendency due to SGS diffusion
 
     use vars
-    use params, only: docolumn, crm_rknd
+    use params, only: docolumn, crm_rknd, crm_iknd
     implicit none
-    integer, intent(in) :: ncrms
-    integer :: dimx1_d, dimx2_d, dimy1_d, dimy2_d
+    integer(crm_iknd), intent(in) :: ncrms
+    integer(crm_iknd) :: dimx1_d, dimx2_d, dimy1_d, dimy2_d
     real(crm_rknd) tk(ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm) ! SGS eddy viscosity
     real(crm_rknd) grdf_x(ncrms,nzm)! grid factor for eddy diffusion in x
     real(crm_rknd) grdf_z(ncrms,nzm)! grid factor for eddy diffusion in z
@@ -20,12 +20,12 @@ contains
     real(crm_rknd) rdx2,rdz2,rdz,rdx25,rdz25,rdx21,rdx251
     real(crm_rknd) dxz,dzx
 
-    integer i,j,k,ic,ib,kc,kcu,icrm
+    integer(crm_iknd) i,j,k,ic,ib,kc,kcu,icrm
     real(crm_rknd) tkx, tkz, rhoi, iadzw, iadz
     real(crm_rknd), allocatable :: fu(:,:,:,:)
     real(crm_rknd), allocatable :: fv(:,:,:,:)
     real(crm_rknd), allocatable :: fw(:,:,:,:)
-    integer :: numgangs  !For working around PGI bugs where PGI did not allocate enough gangs
+    integer(crm_iknd) :: numgangs  !For working around PGI bugs where PGI did not allocate enough gangs
 
     allocate( fu(ncrms,0:nx,1,nz) )
     allocate( fv(ncrms,0:nx,1,nz) )

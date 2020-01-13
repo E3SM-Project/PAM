@@ -19,13 +19,13 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   use vars
   use params
   implicit none
-  integer, intent(in) :: ncrms
+  integer(crm_iknd), intent(in) :: ncrms
   !-----------------------------------------------------------------------
   !!! Interface Arguments
-  integer       , intent(in)                 :: dimx1_d     ! scalar dimension parameter
-  integer       , intent(in)                 :: dimx2_d     ! scalar dimension parameter
-  integer       , intent(in)                 :: dimy1_d     ! scalar dimension parameter
-  integer       , intent(in)                 :: dimy2_d     ! scalar dimension parameter
+  integer(crm_iknd)       , intent(in)                 :: dimx1_d     ! scalar dimension parameter
+  integer(crm_iknd)       , intent(in)                 :: dimx2_d     ! scalar dimension parameter
+  integer(crm_iknd)       , intent(in)                 :: dimy1_d     ! scalar dimension parameter
+  integer(crm_iknd)       , intent(in)                 :: dimy2_d     ! scalar dimension parameter
   real(crm_rknd), intent(in), dimension(ncrms,nzm) :: grdf_x      ! grid length in x direction
   real(crm_rknd), intent(in), dimension(ncrms,nzm) :: grdf_y      ! grid length in y direction
   real(crm_rknd), intent(in), dimension(ncrms,nzm) :: grdf_z      ! grid length in z direction
@@ -72,9 +72,9 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   real(crm_rknd) :: cz            ! correction factor for eddy visc CFL criteria
   real(crm_rknd) :: tkmax         ! Maximum TKE (CFL limiter)
 
-  integer :: i,j,k,icrm
-  integer :: kc      ! = k+1
-  integer :: kb      ! = k-1
+  integer(crm_iknd) :: i,j,k,icrm
+  integer(crm_iknd) :: kc      ! = k+1
+  integer(crm_iknd) :: kb      ! = k-1
 
   real(crm_rknd) :: tabs_interface    ! tabs interpolated to interfaces
   real(crm_rknd) :: qp_interface      ! qp   interpolated to interfaces

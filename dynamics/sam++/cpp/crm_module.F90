@@ -55,8 +55,8 @@ subroutine crm(ncrms, dt_gl, plev, &
     ! Interface variable declarations
     !-----------------------------------------------------------------------------------------------
 
-    integer , intent(in   ) :: ncrms                            ! Number of "vector" GCM columns to push down into CRM for SIMD vectorization / more threading
-    integer , intent(in   ) :: plev                             ! number of levels in parent model
+    integer(crm_iknd) , intent(in   ) :: ncrms                            ! Number of "vector" GCM columns to push down into CRM for SIMD vectorization / more threading
+    integer(crm_iknd) , intent(in   ) :: plev                             ! number of levels in parent model
     real(r8), intent(in   ) :: dt_gl                            ! global model's time step
     type(crm_input_type),      intent(in   ) :: crm_input
     type(crm_state_type),      intent(inout) :: crm_state
@@ -71,27 +71,27 @@ subroutine crm(ncrms, dt_gl, plev, &
     real(r8),       parameter :: umax = 0.5*crm_dx/crm_dt       ! maxumum ampitude of the l.s. wind
     real(r8),       parameter :: wmin = 2.                      ! minimum up/downdraft velocity for stat
     real(crm_rknd), parameter :: cwp_threshold = 0.001          ! threshold for cloud condensate for shaded fraction calculation
-    integer,        parameter :: perturb_seed_scale = 1000      ! scaling value for setperturb() seed value (seed = gcol * perturb_seed_scale)
+    integer(crm_iknd),        parameter :: perturb_seed_scale = 1000      ! scaling value for setperturb() seed value (seed = gcol * perturb_seed_scale)
     real(r8)        :: crm_run_time                             ! length of CRM integration
     real(r8)        :: icrm_run_time                            ! = 1 / crm_run_time
     real(r8)        :: factor_xy, factor_xyt, idt_gl
     real(crm_rknd)  :: tmp1, tmp2, tmp
     real(crm_rknd)  :: u2z,v2z,w2z
-    integer         :: i,j,k,l,ptop,nn,icyc,icrm
-    integer         :: kx
+    integer(crm_iknd)         :: i,j,k,l,ptop,nn,icyc,icrm
+    integer(crm_iknd)         :: kx
     real(crm_rknd)  :: qsat, omg
     real(crm_rknd), allocatable  :: colprec(:), colprecs(:)
     real(crm_rknd), allocatable  :: ustar(:), bflx(:), wnd(:)
     real(r8)      , allocatable  :: qtot (:,:)    ! Total water for water conservation check
 
     !!! These should all be inputs
-    integer         :: igstep            ! GCM time steps
-    integer         :: iseed             ! seed for random perturbation
+    integer(crm_iknd)         :: igstep            ! GCM time steps
+    integer(crm_iknd)         :: iseed             ! seed for random perturbation
     !!! variables for radiation grouping method
     real(crm_rknd) :: crm_nx_rad_fac
     real(crm_rknd) :: crm_ny_rad_fac
-    integer        :: i_rad
-    integer        :: j_rad
+    integer(crm_iknd)        :: i_rad
+    integer(crm_iknd)        :: j_rad
     logical :: crm_accel_ceaseflag   ! indicates if accelerate_crm needs to be aborted for remainder of crm call
 
     !!! Arrays

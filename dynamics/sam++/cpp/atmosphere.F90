@@ -12,7 +12,7 @@ contains
     !   not be too far removed from the correct values for density.
     !   The reference document does not use the terms pressure and temperature
     !   above 86 km.
-    use params, only: crm_rknd
+    use params, only: crm_rknd, crm_iknd
     IMPLICIT NONE
     !============================================================================
     !     A R G U M E N T S                                                     |
@@ -26,11 +26,11 @@ contains
     !============================================================================
     REAL(crm_rknd),PARAMETER:: REARTH = 6369.0 ! radius of the Earth (km)
     REAL(crm_rknd),PARAMETER:: GMR = 34.163195 ! gas constant
-    INTEGER,PARAMETER:: NTAB=8! number of entries in the defining tables
+    integer(crm_iknd),PARAMETER:: NTAB=8! number of entries in the defining tables
     !============================================================================
     !     L O C A L   V A R I A B L E S                                         |
     !============================================================================
-    INTEGER:: i,j,k    ! counters
+    integer(crm_iknd):: i,j,k    ! counters
     REAL(crm_rknd):: h           ! geopotential altitude (km)
     REAL(crm_rknd):: tgrad, tbase! temperature gradient and base temp of this layer
     REAL(crm_rknd):: tlocal      ! local temperature

@@ -1,6 +1,6 @@
 ! Mersenne Twister Uniform Random Number Generator ((0,1) Real Number)
 !
-! call RNG_MT_set_seed(seed) to set the seed (integer)
+! call RNG_MT_set_seed(seed) to set the seed (integer(crm_iknd))
 ! If you do not call this, the seed is 4357.
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -27,7 +27,7 @@
 ! Fortran translation by Hiroshi Takano.  Jan. 13, 1999.
 !
 !   genrand()      -> double precision function grnd()
-!   sgenrand(seed) -> subroutine sgrnd(integer seed)
+!   sgenrand(seed) -> subroutine sgrnd(integer(crm_iknd) seed)
 !
 ! This program uses the following non-standard intrinsics.
 !   ishft(i,n): If n>0, shifts bits in i by n positions to left.
@@ -50,22 +50,22 @@
 !-----------------------------------------------------------------------
 !-----------------------------------------------------------------------
 module RNG_MT
-   use params,  only: r8
+   use params,  only: r8, crm_iknd
 
    implicit none
 
-   integer, private, parameter :: N      = 624      ! why are these parameters so big?
-   integer, private, parameter :: N1     = 625
-   integer, private, parameter :: M      = 397
-   integer, private, parameter :: MATA   = -1727483681
-   integer, private, parameter :: UMASK  = -1147483648 ! originally = -2147483648, but this is too big
-   integer, private, parameter :: LMASK  = 2147483647
-   integer, private, parameter :: TMASKB = -1658038656
-   integer, private, parameter :: TMASKC = -272236544
+   integer(crm_iknd), private, parameter :: N      = 624      ! why are these parameters so big?
+   integer(crm_iknd), private, parameter :: N1     = 625
+   integer(crm_iknd), private, parameter :: M      = 397
+   integer(crm_iknd), private, parameter :: MATA   = -1727483681
+   integer(crm_iknd), private, parameter :: UMASK  = -1147483648 ! originally = -2147483648, but this is too big
+   integer(crm_iknd), private, parameter :: LMASK  = 2147483647
+   integer(crm_iknd), private, parameter :: TMASKB = -1658038656
+   integer(crm_iknd), private, parameter :: TMASKC = -272236544
    
-   integer, private :: mti
-   integer, private, dimension(2)     :: mag01(0:1) = (/0, MATA/)
-   integer, private, dimension(0:N-1) :: mt 
+   integer(crm_iknd), private :: mti
+   integer(crm_iknd), private, dimension(2)     :: mag01(0:1) = (/0, MATA/)
+   integer(crm_iknd), private, dimension(0:N-1) :: mt 
 
    public RNG_MT_set_seed
    public RNG_MT_gen_rand
@@ -80,7 +80,7 @@ module RNG_MT
 !
 subroutine RNG_MT_set_seed(seed)
 
-   integer,intent(in) :: seed
+   integer(crm_iknd),intent(in) :: seed
 
    !!! initialize mt
    mt = N1
@@ -96,7 +96,7 @@ end subroutine RNG_MT_set_seed
 !-----------------------------------------------------------------------
 subroutine RNG_MT_gen_rand(grnd)
    real(r8), intent(out) :: grnd
-   integer :: y, kk
+   integer(crm_iknd) :: y, kk
    
    if(mti >= N) then
       !!! generate N words at one time

@@ -1,4 +1,5 @@
 module random_mod
+  use params, only: crm_iknd
   implicit none
 
 contains
@@ -18,7 +19,7 @@ contains
   subroutine ranset_(iseed)
     use params, only: crm_rknd
     implicit none
-    integer iseed, i, m, nsteps
+    integer(crm_iknd) iseed, i, m, nsteps
     ! i = rand_(1) ! reinitialize (reset)
     nsteps = iseed*10000
     do i = 1,nsteps
@@ -31,8 +32,8 @@ contains
   real(crm_rknd) function rand_(iseed)
     use params, only: crm_rknd
     implicit none
-    integer iseed
-    integer ia1, ia0, ia1ma0, ic, ix1, ix0, iy0, iy1
+    integer(crm_iknd) iseed
+    integer(crm_iknd) ia1, ia0, ia1ma0, ic, ix1, ix0, iy0, iy1
     save ia1, ia0, ia1ma0, ic, ix1, ix0
     data ix1, ix0, ia1, ia0, ia1ma0, ic/0,0,1536,1029,507,1731/
     if (iseed.ne.0) then

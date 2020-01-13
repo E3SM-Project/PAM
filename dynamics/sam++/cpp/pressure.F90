@@ -13,16 +13,16 @@ contains
     !       Also, used for a 2D version
     !       For more processors for the given number of levels and 3D, use pressure_big
     use vars
-    use params, only: dowallx, dowally, docolumn, crm_rknd
+    use params, only: dowallx, dowally, docolumn, crm_rknd, crm_iknd
     use press_rhs_mod
     use press_grad_mod
     use fft_mod
     implicit none
-    integer, intent(in) :: ncrms
-    integer, parameter :: npressureslabs = nsubdomains
-    integer, parameter :: nzslab = max(1,nzm / npressureslabs)
-    integer, parameter :: nx2=nx_gl+2, ny2=ny_gl+2*YES3D
-    integer, parameter :: n3i=3*nx_gl/2+1,n3j=3*ny_gl/2+1
+    integer(crm_iknd), intent(in) :: ncrms
+    integer(crm_iknd), parameter :: npressureslabs = nsubdomains
+    integer(crm_iknd), parameter :: nzslab = max(1,nzm / npressureslabs)
+    integer(crm_iknd), parameter :: nx2=nx_gl+2, ny2=ny_gl+2*YES3D
+    integer(crm_iknd), parameter :: n3i=3*nx_gl/2+1,n3j=3*ny_gl/2+1
     real(crm_rknd) work(nx2,ny2)
     real(crm_rknd) ftmp(nx2,ny2)
     real(crm_rknd) ftmp_x(nx2)
@@ -30,20 +30,20 @@ contains
     real(8) b,e
     real(8) xi,xj,xnx,xny,ddx2,ddy2,pii,factx,facty
     real(8) alfa(nzm-1),beta(nzm-1)
-    integer i, j, k, id, jd, m, n, it, jt, ii, jj, icrm
-    integer nyp22
+    integer(crm_iknd) i, j, k, id, jd, m, n, it, jt, ii, jj, icrm
+    integer(crm_iknd) nyp22
     real(crm_rknd), allocatable :: f (:,:,:,:)       ! global rhs and array for FTP coefficeients
     real(crm_rknd), allocatable :: ff(:,:,:,:)  ! local (subdomain's) version of f
-    integer       , allocatable :: iii(:)
-    integer       , allocatable :: jjj(:)
-    integer       , allocatable :: ifaxi(:)
-    integer       , allocatable :: ifaxj(:)
+    integer(crm_iknd)       , allocatable :: iii(:)
+    integer(crm_iknd)       , allocatable :: jjj(:)
+    integer(crm_iknd)       , allocatable :: ifaxi(:)
+    integer(crm_iknd)       , allocatable :: ifaxj(:)
     real(crm_rknd), allocatable :: trigxi(:)
     real(crm_rknd), allocatable :: trigxj(:)
     real(8)       , allocatable :: a(:,:)
     real(8)       , allocatable :: c(:,:)
-    integer iwall,jwall
-    integer :: numgangs  !For working aroung PGI OpenACC bug where it didn't create enough gangs
+    integer(crm_iknd) iwall,jwall
+    integer(crm_iknd) :: numgangs  !For working aroung PGI OpenACC bug where it didn't create enough gangs
     real(8), allocatable :: eign(:,:)
 
     allocate( f (ncrms,nx2,ny2,nzslab)      )

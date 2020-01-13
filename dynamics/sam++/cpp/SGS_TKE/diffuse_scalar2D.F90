@@ -7,9 +7,9 @@ contains
     use grid
     use params
     implicit none
-    integer, intent(in) :: ncrms
+    integer(crm_iknd), intent(in) :: ncrms
     ! input
-    integer :: dimx1_d,dimx2_d,dimy1_d,dimy2_d
+    integer(crm_iknd) :: dimx1_d,dimx2_d,dimy1_d,dimy2_d
     real(crm_rknd) grdf_x(ncrms,nzm)! grid factor for eddy diffusion in x
     real(crm_rknd) grdf_z(ncrms,nzm)! grid factor for eddy diffusion in z
     real(crm_rknd) field(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) ! scalar
@@ -24,8 +24,8 @@ contains
     real(crm_rknd), allocatable :: dfdt(:,:,:,:)
     real(crm_rknd) rdx2,rdz2,rdz,rdx5,rdz5,tmp
     real(crm_rknd) tkx,tkz,rhoi
-    integer i,j,k,ib,ic,kc,kb,icrm
-    integer :: numgangs  !For working around PGI bug where it didn't create enough OpenACC gangs
+    integer(crm_iknd) i,j,k,ib,ic,kc,kb,icrm
+    integer(crm_iknd) :: numgangs  !For working around PGI bug where it didn't create enough OpenACC gangs
 
     if(.not.dosgs.and..not.docolumn) return
 

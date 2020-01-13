@@ -1,10 +1,11 @@
 module fft_mod
+      use params, only: crm_rknd, crm_iknd
 
 contains
 
       subroutine fft991_crm(a,work,trigs,ifax,inc,jump,n,lot,isign)
       !$acc routine seq
-      use params, only: crm_rknd
+      use params, only: crm_rknd, crm_iknd
       ! dimension a(*),work(*),trigs(*),ifax(*)
       dimension ifax(*)
       real(crm_rknd), dimension(*) :: a, work, trigs
@@ -158,7 +159,7 @@ contains
       use params, only: crm_rknd
       dimension ifax(13)
       real(crm_rknd), dimension(1) :: trigs
-      integer :: mode
+      integer(crm_iknd) :: mode
 !
 ! mode 3 is used for real/half-complex transforms.  it is possible
 ! to do complex/complex transforms with other values of mode, but

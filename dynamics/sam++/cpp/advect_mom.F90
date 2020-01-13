@@ -7,10 +7,10 @@ contains
 
   subroutine advect_mom(ncrms)
     use vars
-    use params, only: docolumn
+    use params, only: docolumn, crm_iknd
     implicit none
-    integer, intent(in) :: ncrms
-    integer i,j,k
+    integer(crm_iknd), intent(in) :: ncrms
+    integer(crm_iknd) i,j,k
 
     if(docolumn) return
 

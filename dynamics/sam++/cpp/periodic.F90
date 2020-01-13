@@ -10,10 +10,10 @@ contains
     use vars
     use microphysics
     use sgs
-    use params, only: dosgs
+    use params, only: dosgs, crm_iknd
     implicit none
-    integer, intent(in) :: ncrms,flag
-    integer :: i,icrm, j, ii, k
+    integer(crm_iknd), intent(in) :: ncrms,flag
+    integer(crm_iknd) :: i,icrm, j, ii, k
 
     !-------------------------------------------------
     ! Update velocity fields

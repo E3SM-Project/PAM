@@ -10,11 +10,11 @@ contains
     !use micro_params
     use params
     implicit none
-    integer, intent(in) :: ncrms
-    integer, allocatable :: kmax(:)
-    integer, allocatable :: kmin(:)
+    integer(crm_iknd), intent(in) :: ncrms
+    integer(crm_iknd), allocatable :: kmax(:)
+    integer(crm_iknd), allocatable :: kmin(:)
     real(crm_rknd), allocatable :: fz(:,:,:,:)
-    integer :: i,j,k, kb, kc, ici,icrm
+    integer(crm_iknd) :: i,j,k, kb, kc, ici,icrm
     real(crm_rknd) coef,dqi,lat_heat,vt_ice
     real(crm_rknd) omnu, omnc, omnd, qiu, qic, qid, tmp_theta, tmp_phi
 

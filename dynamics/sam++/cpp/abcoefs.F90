@@ -7,9 +7,9 @@ contains
   subroutine abcoefs(ncrms)
     !      coefficients for the Adams-Bashforth scheme
     use grid
-    use params, only: crm_rknd
+    use params, only: crm_rknd, crm_iknd
     implicit none
-    integer, intent(in) :: ncrms
+    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd) alpha, beta
 
     if(nstep.ge.3.and.nadams.eq.3.or.nrestart.eq.2) then
