@@ -1,6 +1,5 @@
 module crm_input_module
    use params, only: crm_rknd
-   use openacc_utils
    implicit none
    private
    public crm_input_type
@@ -62,28 +61,6 @@ contains
       if (.not. allocated(this%fluxv00))  allocate(this%fluxv00(ncrms))
       if (.not. allocated(this%fluxt00))  allocate(this%fluxt00(ncrms))
       if (.not. allocated(this%fluxq00))  allocate(this%fluxq00(ncrms))
-
-      call prefetch(this%zmid)
-      call prefetch(this%zint)
-      call prefetch(this%tl)
-      call prefetch(this%ql)
-      call prefetch(this%qccl)
-      call prefetch(this%qiil)
-      call prefetch(this%ps)
-      call prefetch(this%pmid)
-      call prefetch(this%pint)
-      call prefetch(this%pdel)
-      call prefetch(this%phis)
-      call prefetch(this%ul)
-      call prefetch(this%vl)
-      call prefetch(this%ocnfrac)
-      call prefetch(this%tau00)
-      call prefetch(this%wndls)
-      call prefetch(this%bflxls)
-      call prefetch(this%fluxu00)
-      call prefetch(this%fluxv00)
-      call prefetch(this%fluxt00)
-      call prefetch(this%fluxq00)
 
       ! Initialize
       this%zmid = 0

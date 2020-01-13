@@ -1,6 +1,5 @@
 
 module crm_module
-  use openacc_utils, only: prefetch
   use task_init_mod, only: task_init
   use abcoefs_mod, only: abcoefs
   use kurant_mod, only: kurant
@@ -146,32 +145,6 @@ subroutine crm(ncrms, dt_gl, plev, &
   allocate( qtot (ncrms,20) )
   allocate( colprec (ncrms) )
   allocate( colprecs(ncrms) )
-
-  call prefetch( t00      )
-  call prefetch( tln      )
-  call prefetch( qln      )
-  call prefetch( qccln    )
-  call prefetch( qiiln    )
-  call prefetch( uln      )
-  call prefetch( vln      )
-  call prefetch( cwp      ) 
-  call prefetch( cwph     ) 
-  call prefetch( cwpm     ) 
-  call prefetch( cwpl     ) 
-  call prefetch( flag_top ) 
-  call prefetch( cltemp   ) 
-  call prefetch( cmtemp   ) 
-  call prefetch( chtemp   ) 
-  call prefetch( cttemp   ) 
-  call prefetch( dd_crm   ) 
-  call prefetch( mui_crm  ) 
-  call prefetch( mdi_crm  ) 
-  call prefetch( ustar    ) 
-  call prefetch( bflx     ) 
-  call prefetch( wnd      ) 
-  call prefetch( qtot     ) 
-  call prefetch( colprec  ) 
-  call prefetch( colprecs ) 
 
   call allocate_params(ncrms)
   call allocate_vars(ncrms)

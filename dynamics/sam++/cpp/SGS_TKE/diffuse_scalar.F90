@@ -9,7 +9,6 @@ contains
     use grid
     use vars, only: rho, rhow
     use params
-    use openacc_utils
     implicit none
     integer, intent(in) :: ncrms
     ! input:
@@ -29,7 +28,6 @@ contains
     integer i,j,k,icrm
 
     allocate( df(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
-    call prefetch(df)
 
     !$acc parallel loop collapse(4) async(asyncid)
     do k = 1 , nzm

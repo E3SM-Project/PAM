@@ -97,7 +97,6 @@ contains
 
   
   subroutine allocate_params(ncrms)
-    use openacc_utils
     implicit none
     integer, intent(in) :: ncrms
     allocate(fcor (ncrms))
@@ -111,18 +110,6 @@ contains
     allocate(vhl       (ncrms))
     allocate(taux0     (ncrms))
     allocate(tauy0     (ncrms))
-
-    call prefetch(fcor )
-    call prefetch(fcorz)
-    call prefetch(longitude0)
-    call prefetch(latitude0 )
-    call prefetch(z0)
-    call prefetch(ocean)
-    call prefetch(land)
-    call prefetch(uhl)
-    call prefetch(vhl)
-    call prefetch(taux0)
-    call prefetch(tauy0)
 
     fcor  = 0
     fcorz = 0
