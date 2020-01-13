@@ -5,9 +5,6 @@ module grid
 
   implicit none
 
-  character(6), parameter :: version = '6.10.4'
-  character(8), parameter :: version_date = 'Feb 2013'
-
   integer(crm_iknd), parameter :: nx = nx_gl/nsubdomains_x
   integer(crm_iknd), parameter :: ny = ny_gl/nsubdomains_y
   integer(crm_iknd), parameter :: nz = nz_gl+1        ! note that nz_gl = crm_nz
