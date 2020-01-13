@@ -51,7 +51,7 @@ subroutine crm(ncrms, dt_gl, plev, &
     use microphysics
     use sgs
     use crmtracers
-    use crmdims               , only: nclubbvars, crm_nx_rad, crm_ny_rad
+    use crmdims               , only: crm_nx_rad, crm_ny_rad
     use accelerate_crm_mod    , only: use_crm_accel, crm_accel_factor, crm_accel_nstop, accelerate_crm
     !use cam_abortutils        , only: endrun
     !use time_manager          , only: get_nstep
@@ -685,15 +685,9 @@ subroutine crm(ncrms, dt_gl, plev, &
 
       !---------------------------------------------------------
       !   Ice fall-out
-#ifdef CLUBB_CRM
-      if ( docloud .or. doclubb ) then
-        call ice_fall(ncrms)
-      endif
-#else
       if(docloud) then
         call ice_fall(ncrms)
       endif
-#endif
 
       !----------------------------------------------------------
       !     Update scalar boundaries after large-scale processes:
@@ -761,11 +755,7 @@ subroutine crm(ncrms, dt_gl, plev, &
 
       !-----------------------------------------------------------
       !       Cloud condensation/evaporation and precipitation processes:
-#ifdef CLUBB_CRM
-      if(docloud.or.dosmoke.or.doclubb) call micro_proc(ncrms)
-#else
       if(docloud.or.dosmoke) call micro_proc(ncrms)
-#endif /*CLUBB_CRM*/
 
       !-----------------------------------------------------------
       !       Apply mean-state acceleration
@@ -1534,15 +1524,6 @@ subroutine crm(ncrms, dt_gl, plev, &
   deallocate( cmtemp)
   deallocate( chtemp)
   deallocate( cttemp)
-#ifdef CLUBB_CRM
-  deallocate( rtm_integral_before )
-  deallocate( rtm_integral_after )
-  deallocate( thlm_integral_before)
-  deallocate( thlm_integral_after)
-  deallocate( thlm_before)
-  deallocate( thlm_after)
-  deallocate( rtm_column)
-#endif /* CLUBB_CRM */
   deallocate( dd_crm  )
   deallocate( mui_crm )
   deallocate( mdi_crm )
