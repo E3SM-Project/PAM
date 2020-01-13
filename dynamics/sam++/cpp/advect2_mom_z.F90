@@ -4,12 +4,11 @@ module advect2_mom_z_mod
 
 contains
 
-  subroutine advect2_mom_z(ncrms)
+  subroutine advect2_mom_z()
     !       momentum tendency due to the 2nd-order-central vertical advection
     use vars
     use params, only: crm_rknd
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd), allocatable :: fuz(:,:,:,:)
     real(crm_rknd), allocatable :: fvz(:,:,:,:)
     real(crm_rknd), allocatable :: fwz(:,:,:,:)

@@ -86,8 +86,8 @@ module params
 
   integer(crm_iknd), parameter :: asyncid = 1
 
-  real(crm_rknd), allocatable :: uhl(:)      ! current large-scale velocity in x near sfc
-  real(crm_rknd), allocatable :: vhl(:)      ! current large-scale velocity in y near sfc
+  real(crm_rknd), allocatable :: uhl  (:)    ! current large-scale velocity in x near sfc
+  real(crm_rknd), allocatable :: vhl  (:)    ! current large-scale velocity in y near sfc
   real(crm_rknd), allocatable :: taux0(:)    ! surface stress in x, m2/s2
   real(crm_rknd), allocatable :: tauy0(:)    ! surface stress in y, m2/s2
 
@@ -95,11 +95,11 @@ module params
 contains
 
   
-  subroutine allocate_params(ncrms)
+  subroutine allocate_params()
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
-    allocate(fcor (ncrms))
-    allocate(fcorz(ncrms))
+    integer, parameter :: ncrms = NCRMS
+    allocate(fcor      (ncrms))
+    allocate(fcorz     (ncrms))
     allocate(longitude0(ncrms))
     allocate(latitude0 (ncrms))
     allocate(z0        (ncrms))

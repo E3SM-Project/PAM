@@ -4,12 +4,11 @@ module advect_scalar2D_mod
 
 contains
 
-  subroutine advect_scalar2D (ncrms, f, u, w, rho, rhow, flux)
+  subroutine advect_scalar2D (f, u, w, rho, rhow, flux)
     !     positively definite monotonic advection with non-oscillatory option
     use grid
     use params, only: dowallx, crm_rknd, crm_iknd, crm_lknd
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd) f(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
     real(crm_rknd) u(ncrms,dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm)
     real(crm_rknd) w(ncrms,dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz )

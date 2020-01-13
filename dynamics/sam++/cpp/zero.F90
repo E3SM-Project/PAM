@@ -5,10 +5,9 @@ module zero_mod
 
 contains
 
-  subroutine zero(ncrms)
+  subroutine zero()
     use vars
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     integer(crm_iknd) k,icrm, j, i
     !dudt(ncrms,nxp1, ny  , nzm, 3)
     !dvdt(ncrms,nx  , nyp1, nzm, 3)

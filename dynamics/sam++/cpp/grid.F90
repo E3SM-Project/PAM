@@ -166,9 +166,8 @@ contains
 
 
 
-  subroutine allocate_grid(ncrms)
+  subroutine allocate_grid()
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd) :: zero
 
     allocate( z(ncrms,nz)       )

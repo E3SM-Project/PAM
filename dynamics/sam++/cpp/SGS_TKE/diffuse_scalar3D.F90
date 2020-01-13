@@ -3,13 +3,12 @@ module diffuse_scalar3D_mod
 
 contains
 
-  subroutine diffuse_scalar3D (ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,field,fluxb,fluxt,tkh,rho,rhow,flux)
+  subroutine diffuse_scalar3D (dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,field,fluxb,fluxt,tkh,rho,rhow,flux)
 
     use grid
     use params
     use task_util_mod, only: task_rank_to_index
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     ! input
     integer(crm_iknd) :: dimx1_d,dimx2_d,dimy1_d,dimy2_d
     real(crm_rknd) grdf_x(ncrms,nzm)! grid factor for eddy diffusion in x

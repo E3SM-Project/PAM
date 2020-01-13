@@ -4,7 +4,7 @@ module precip_proc_mod
 
 contains
 
-  subroutine precip_proc(ncrms,qpsrc,qpevp,q,qp,qn)
+  subroutine precip_proc(qpsrc,qpevp,q,qp,qn)
 
     use vars
     use micro_params
@@ -12,7 +12,6 @@ contains
     use sat_mod
 
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd) :: q(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
     real(crm_rknd) :: qp(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
     real(crm_rknd) qn(ncrms,nx,ny,nzm)  ! cloud condensate (liquid + ice)

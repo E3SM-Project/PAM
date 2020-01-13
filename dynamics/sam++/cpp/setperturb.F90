@@ -4,7 +4,7 @@ module setperturb_mod
 
 contains
 
-   subroutine setperturb(ncrms,icrm,iseed)
+   subroutine setperturb(icrm,iseed)
 
       ! Add random noise near the surface to help turbulence develop
 
@@ -22,7 +22,7 @@ contains
       use RNG_MT
 
       implicit none
-      integer(crm_iknd), intent(in) :: ncrms,icrm
+      integer(crm_iknd), intent(in) :: icrm
       integer(crm_iknd), intent(in) :: iseed
       
       integer(crm_iknd) i,j,k
@@ -36,7 +36,7 @@ contains
       factor_xy = 1./real((nx*ny),crm_rknd)
 
       ! set the sub-grid scale (SGS) turbulence fields
-      call setperturb_sgs(ncrms,icrm,0)  
+      call setperturb_sgs(icrm,0)  
 
       ! set the seed
       call RNG_MT_set_seed(iseed)

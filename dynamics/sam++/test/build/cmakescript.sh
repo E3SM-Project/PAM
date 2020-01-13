@@ -46,6 +46,7 @@ NX_RAD=`$NCHOME/bin/ncdump -h $1  | grep "crm_nx_rad =" | awk '{print $3}'`
 NY_RAD=`$NCHOME/bin/ncdump -h $1  | grep "crm_ny_rad =" | awk '{print $3}'`
 DX=1000
 DT=1
+NCRMS_FILE=`ncdump -h $1 | grep UNLIMITED | awk '{print $6}' | cut -d '(' -f 2`
 if [[ $NY -eq 1 ]]; then
   YES3D=0
 else
@@ -54,8 +55,21 @@ else
 fi
 PLEV=`$NCHOME/bin/ncdump -h $1  | grep "nlev =" | awk '{print $3}'`
 INFILE="\'$1\'"
+if [[ "$NCRMS" != "" ]]; then
+  if [[ $NCRMS > $NCRMS_FILE ]]; then
+    printf "ERROR: NCRMS environment variable is larger than the available samples in the 2D input NetCDF file\n\n"
+    exit -1
+  fi
+  NCRMS2D=$NCRMS
+  FFLAGS="$FFLAGS -DNCRMS=$NCRMS"
+  CXXFLAGS="$CXXFLAGS -DNCRMS=$NCRMS"
+else
+  NCRMS2D=$NCRMS_FILE
+  FFLAGS="$FFLAGS -DNCRMS=$NCRMS_FILE"
+  CXXFLAGS="$CXXFLAGS -DNCRMS=$NCRMS_FILE"
+fi
 
-DEFS2D=" -DCRM -DCRM_NX=$NX -DCRM_NY=$NY -DCRM_NZ=$NZ -DCRM_NX_RAD=$NX_RAD -DCRM_NY_RAD=$NY_RAD -DCRM_DT=$DT -DCRM_DX=$DX -DYES3DVAL=$YES3D -DPLEV=$PLEV -Dsam1mom -DINPUT_FILE=$INFILE"
+DEFS2D=" -DNCRMS=$NCRMS2D -DCRM -DCRM_NX=$NX -DCRM_NY=$NY -DCRM_NZ=$NZ -DCRM_NX_RAD=$NX_RAD -DCRM_NY_RAD=$NY_RAD -DCRM_DT=$DT -DCRM_DX=$DX -DYES3DVAL=$YES3D -DPLEV=$PLEV -Dsam1mom -DINPUT_FILE=$INFILE "
 printf "2D Defs: $DEFS2D\n\n"
 
 
@@ -69,6 +83,7 @@ NX_RAD=`$NCHOME/bin/ncdump -h $2  | grep "crm_nx_rad =" | awk '{print $3}'`
 NY_RAD=`$NCHOME/bin/ncdump -h $2  | grep "crm_ny_rad =" | awk '{print $3}'`
 DX=1000
 DT=1
+NCRMS_FILE=`ncdump -h $2 | grep UNLIMITED | awk '{print $6}' | cut -d '(' -f 2`
 if [[ $NY -eq 1 ]]; then
   echo "Error: 2D file specified as the 3D file\n\n"
   usage
@@ -77,8 +92,21 @@ else
 fi
 PLEV=`$NCHOME/bin/ncdump -h $2  | grep "nlev =" | awk '{print $3}'`
 INFILE="\'$2\'"
+if [[ "$NCRMS" != "" ]]; then
+  if [[ $NCRMS > $NCRMS_FILE ]]; then
+    printf "ERROR: NCRMS environment variable is larger than the available samples in the 3D input NetCDF file\n\n"
+    exit -1
+  fi
+  NCRMS3D=$NCRMS
+  FFLAGS="$FFLAGS -DNCRMS=$NCRMS"
+  CXXFLAGS="$CXXFLAGS -DNCRMS=$NCRMS"
+else
+  NCRMS3D=$NCRMS_FILE
+  FFLAGS="$FFLAGS -DNCRMS=$NCRMS_FILE"
+  CXXFLAGS="$CXXFLAGS -DNCRMS=$NCRMS_FILE"
+fi
 
-DEFS3D=" -DCRM -DCRM_NX=$NX -DCRM_NY=$NY -DCRM_NZ=$NZ -DCRM_NX_RAD=$NX_RAD -DCRM_NY_RAD=$NY_RAD -DCRM_DT=$DT -DCRM_DX=$DX -DYES3DVAL=$YES3D -DPLEV=$PLEV -Dsam1mom -DINPUT_FILE=$INFILE"
+DEFS3D=" -DNCRMS=$NCRMS3D -DCRM -DCRM_NX=$NX -DCRM_NY=$NY -DCRM_NZ=$NZ -DCRM_NX_RAD=$NX_RAD -DCRM_NY_RAD=$NY_RAD -DCRM_DT=$DT -DCRM_DX=$DX -DYES3DVAL=$YES3D -DPLEV=$PLEV -Dsam1mom -DINPUT_FILE=$INFILE "
 printf "3D Defs: $DEFS3D\n\n"
 
 
@@ -114,10 +142,6 @@ printf "NetCDF Flags: $NCFLAGS\n\n"
 ############################################################################
 FFLAGS="$FFLAGS -ffree-line-length-none -I$NCHOME/include -I$NFHOME/include"
 CXXFLAGS="$CXXFLAGS -I$NCHOME/include -I$NFHOME/include"
-if [[ "$NCRMS" != "" ]]; then
-  FFLAGS="$FFLAGS -DNCRMS=$NCRMS"
-  CXXFLAGS="$CXXFLAGS -DNCRMS=$NCRMS"
-fi
 printf "FFLAGS: $FFLAGS\n\n"
 cmake      \
   -DCMAKE_Fortran_FLAGS:STRING="$FFLAGS" \

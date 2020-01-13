@@ -3,12 +3,11 @@ module uvw_mod
 
 contains
 
-  subroutine uvw(ncrms)
+  subroutine uvw()
     ! update the velocity field
     use vars
     use params
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     integer(crm_iknd) :: i, j, k, icrm
 
     !$acc parallel loop collapse(4) async(asyncid)

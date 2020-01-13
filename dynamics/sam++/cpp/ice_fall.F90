@@ -3,14 +3,13 @@ module ice_fall_mod
 
 contains
 
-  subroutine ice_fall(ncrms)
+  subroutine ice_fall()
     ! Sedimentation of ice:
     use vars
     use microphysics, only: micro_field, index_cloud_ice
     !use micro_params
     use params
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     integer(crm_iknd), allocatable :: kmax(:)
     integer(crm_iknd), allocatable :: kmin(:)
     real(crm_rknd), allocatable :: fz(:,:,:,:)

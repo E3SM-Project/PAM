@@ -5,11 +5,10 @@ module bound_duvdt_mod
 
 contains
 
-  subroutine bound_duvdt(ncrms)
+  subroutine bound_duvdt()
     ! Periodic boundary exchange
     use vars
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     integer(crm_iknd) i,j,k,icrm
 
     !$acc parallel loop collapse(3) async(asyncid)

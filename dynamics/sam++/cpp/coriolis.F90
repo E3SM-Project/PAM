@@ -4,11 +4,10 @@ module coriolis_mod
 
 contains
 
-  subroutine coriolis(ncrms)
+  subroutine coriolis()
     use vars
     use params, only: crm_rknd
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd) u_av, v_av, w_av
     integer(crm_iknd) i,j,k,ib,ic,jb,jc,kc,icrm
 

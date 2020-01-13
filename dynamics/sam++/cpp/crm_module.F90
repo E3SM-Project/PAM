@@ -34,7 +34,7 @@ use setparm_mod, only : setparm
 
 contains
 
-subroutine crm(ncrms, dt_gl, plev, &
+subroutine crm(dt_gl, plev, &
                 crm_input, crm_state, crm_rad,  &
                 crm_output , lat0, long0)
     !-----------------------------------------------------------------------------------------------
@@ -55,7 +55,6 @@ subroutine crm(ncrms, dt_gl, plev, &
     ! Interface variable declarations
     !-----------------------------------------------------------------------------------------------
 
-    integer(crm_iknd) , intent(in   ) :: ncrms                            ! Number of "vector" GCM columns to push down into CRM for SIMD vectorization / more threading
     integer(crm_iknd) , intent(in   ) :: plev                             ! number of levels in parent model
     real(r8), intent(in   ) :: dt_gl                            ! global model's time step
     type(crm_input_type),      intent(in   ) :: crm_input
@@ -145,12 +144,12 @@ subroutine crm(ncrms, dt_gl, plev, &
   allocate( colprec (ncrms) )
   allocate( colprecs(ncrms) )
 
-  call allocate_params(ncrms)
-  call allocate_vars(ncrms)
-  call allocate_grid(ncrms)
-  call allocate_sgs(ncrms)
-  call allocate_micro(ncrms)
-  call allocate_micro_params(ncrms)
+  call allocate_params()
+  call allocate_vars()
+  call allocate_grid()
+  call allocate_sgs()
+  call allocate_micro()
+  call allocate_micro_params()
   
   crm_accel_ceaseflag = .false.
 
@@ -288,10 +287,10 @@ subroutine crm(ncrms, dt_gl, plev, &
     enddo
   enddo
 
-  call micro_init(ncrms)
+  call micro_init()
 
   ! initialize sgs fields
-  call sgs_init(ncrms)
+  call sgs_init()
 
   !$acc parallel loop async(asyncid)
   do icrm = 1 , ncrms
@@ -455,13 +454,13 @@ subroutine crm(ncrms, dt_gl, plev, &
   enddo
 
 !--------------------------------------------------
-  if(doprecip) call precip_init(ncrms)
+  if(doprecip) call precip_init()
   !$acc wait(asyncid)
 
   do icrm = 1 , ncrms
     ! if ( igstep <= 1 ) then
     !     iseed = get_gcol_p(lchnk,icol(icrm)) * perturb_seed_scale
-    !     call setperturb(ncrms,icrm,iseed)
+    !     call setperturb(icrm,iseed)
     ! end if
 
     !--------------------------
@@ -504,7 +503,7 @@ subroutine crm(ncrms, dt_gl, plev, &
     !  Check if the dynamical time step should be decreased
     !  to handle the cases when the flow being locally linearly unstable
     !------------------------------------------------------------------
-    call kurant(ncrms)
+    call kurant()
     !$acc wait(asyncid)
 
     do icyc=1,ncycle
@@ -515,19 +514,19 @@ subroutine crm(ncrms, dt_gl, plev, &
 
       !---------------------------------------------
       !  	the Adams-Bashforth scheme in time
-      call abcoefs(ncrms)
+      call abcoefs()
 
       !---------------------------------------------
       !  	initialize stuff:
-      call zero(ncrms)
+      call zero()
 
       !-----------------------------------------------------------
       !       Buoyancy term:
-      call buoyancy(ncrms)
+      call buoyancy()
 
       !------------------------------------------------------------
       !       Large-scale and surface forcing:
-      call forcing(ncrms)
+      call forcing()
 
       !!! Apply radiative tendency
       !$acc parallel loop collapse(4) async(asyncid)
@@ -545,93 +544,93 @@ subroutine crm(ncrms, dt_gl, plev, &
 
       !----------------------------------------------------------
       !   	suppress turbulence near the upper boundary (spange):
-      if (dodamping) call damping(ncrms)
+      if (dodamping) call damping()
 
       !---------------------------------------------------------
       !   Ice fall-out
       if(docloud) then
-        call ice_fall(ncrms)
+        call ice_fall()
       endif
 
       !----------------------------------------------------------
       !     Update scalar boundaries after large-scale processes:
-      call boundaries(ncrms,3)
+      call boundaries(3)
 
       !---------------------------------------------------------
       !     Update boundaries for velocities:
-      call boundaries(ncrms,0)
+      call boundaries(0)
 
       !-----------------------------------------------
       !     surface fluxes:
-      if (dosurface) call crmsurface(ncrms,bflx)
+      if (dosurface) call crmsurface(bflx)
 
       !-----------------------------------------------------------
       !  SGS physics:
-      if (dosgs) call sgs_proc(ncrms)
+      if (dosgs) call sgs_proc()
 
       !----------------------------------------------------------
       !     Fill boundaries for SGS diagnostic fields:
-      call boundaries(ncrms,4)
+      call boundaries(4)
 
       !-----------------------------------------------
       !       advection of momentum:
-      call advect_mom(ncrms)
+      call advect_mom()
 
       !----------------------------------------------------------
       !	SGS effects on momentum:
-      if(dosgs) call sgs_mom(ncrms)
+      if(dosgs) call sgs_mom()
 
       !-----------------------------------------------------------
       !       Coriolis force:
-      if (docoriolis) call coriolis(ncrms)
+      if (docoriolis) call coriolis()
 
       !---------------------------------------------------------
       !       compute rhs of the Poisson equation and solve it for pressure.
-      call pressure(ncrms)
+      call pressure()
 
       !---------------------------------------------------------
       !       find velocity field at n+1/2 timestep needed for advection of scalars:
       !  Note that at the end of the call, the velocities are in nondimensional form.
-      call adams(ncrms)
+      call adams()
 
       !----------------------------------------------------------
       !     Update boundaries for all prognostic scalar fields for advection:
-      call boundaries(ncrms,2)
+      call boundaries(2)
 
       !---------------------------------------------------------
       !      advection of scalars :
-      call advect_all_scalars(ncrms)
+      call advect_all_scalars()
 
       !-----------------------------------------------------------
       !    Convert velocity back from nondimensional form:
-      call uvw(ncrms)
+      call uvw()
 
       !----------------------------------------------------------
       !     Update boundaries for scalars to prepare for SGS effects:
-      call boundaries(ncrms,3)
+      call boundaries(3)
 
       !---------------------------------------------------------
       !      SGS effects on scalars :
-      if (dosgs) call sgs_scalars(ncrms)
+      if (dosgs) call sgs_scalars()
 
       !-----------------------------------------------------------
       !       Calculate PGF for scalar momentum tendency
 
       !-----------------------------------------------------------
       !       Cloud condensation/evaporation and precipitation processes:
-      if(docloud.or.dosmoke) call micro_proc(ncrms)
+      if(docloud.or.dosmoke) call micro_proc()
 
       !-----------------------------------------------------------
       !       Apply mean-state acceleration
       if (use_crm_accel .and. .not. crm_accel_ceaseflag) then
         ! Use Jones-Bretherton-Pritchard methodology to accelerate
         ! CRM horizontal mean evolution artificially.
-        call accelerate_crm(ncrms, nstep, nstop, crm_accel_ceaseflag)
+        call accelerate_crm(nstep, nstop, crm_accel_ceaseflag)
       endif
 
       !-----------------------------------------------------------
       !    Compute diagnostics fields:
-      call diagnose(ncrms)
+      call diagnose()
 
       !----------------------------------------------------------
       ! Rotate the dynamic tendency arrays for Adams-bashforth scheme:

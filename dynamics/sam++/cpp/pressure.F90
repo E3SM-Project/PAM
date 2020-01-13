@@ -5,7 +5,7 @@ module pressure_mod
 contains
 
   ! Non-blocking receives before blocking sends
-  subroutine pressure(ncrms)
+  subroutine pressure()
     !       Original pressure solver based on horizontal slabs
     !       (C) 1998, 2002 Marat Khairoutdinov
     !       Works only when the number of slabs is equal to the number of processors.
@@ -18,7 +18,6 @@ contains
     use press_grad_mod
     use fft_mod
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     integer(crm_iknd), parameter :: npressureslabs = nsubdomains
     integer(crm_iknd), parameter :: nzslab = max(1,nzm / npressureslabs)
     integer(crm_iknd), parameter :: nx2=nx_gl+2, ny2=ny_gl+2*YES3D
@@ -84,7 +83,7 @@ contains
     allocate(eign(nxp1-iwall,nyp22-jwall))
     !-----------------------------------------------------------------
     !  Compute the r.h.s. of the Poisson equation for pressure
-    call press_rhs(ncrms)
+    call press_rhs()
 
     !-----------------------------------------------------------------
     !   Form the horizontal slabs of right-hand-sides of Poisson equation
@@ -292,7 +291,7 @@ contains
     enddo
 
     !  Add pressure gradient term to the rhs of the momentum equation:
-    call press_grad(ncrms)
+    call press_grad()
 
     deallocate(eign)
 

@@ -18,7 +18,7 @@ program driver
   real(crm_rknd), allocatable  :: lat0  (:)
   real(crm_rknd), allocatable  :: long0 (:)
   real(crm_rknd), allocatable  :: dt_gl (:)
-  integer                      :: ncrms, icrm
+  integer                      :: icrm
   real(crm_rknd), allocatable :: read_crm_input_zmid       (:,:)
   real(crm_rknd), allocatable :: read_crm_input_zint       (:,:)
   real(crm_rknd), allocatable :: read_crm_input_tl         (:,:)
@@ -45,11 +45,6 @@ program driver
   real(crm_rknd), allocatable :: read_crm_rad_cld          (:,:,:,:)
   character(len=64) :: fprefix = 'cpp_output'
 
-  call dmdf_num_records(prefix,ncrms)
-#ifdef NCRMS
-  ncrms = NCRMS
-#endif
-
   write(*,*) "File   : ", trim(prefix)
   write(*,*) "Samples: ", ncrms
   write(*,*) "crm_nx : ", crm_nx
@@ -59,7 +54,7 @@ program driver
   write(*,*) "plev   : ", plev 
 
   ! Allocate model data
-  call crm_input%initialize (           ncrms,plev)
+  call crm_input%initialize (                 plev)
   call crm_output_initialize(crm_output,ncrms,plev)
   ! These are normally allocated by pbuf, so we have to do it explicitly
   allocate( crm_state%u_wind     (ncrms,crm_nx,crm_ny,crm_nz) )
@@ -176,7 +171,7 @@ program driver
   write(*,*) 'Running the CRM'
 
   ! Run the code
-  call crm( ncrms, dt_gl(1), plev, crm_input, crm_state, crm_rad, crm_output, lat0, long0 )
+  call crm( dt_gl(1), plev, crm_input, crm_state, crm_rad, crm_output, lat0, long0 )
 
   write(*,*) 'Writing output data'
   ! dmdf_write(dat,rank,fprefix,vname       ,first,last) !For scalar values

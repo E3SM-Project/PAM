@@ -8,6 +8,7 @@ module microphysics
 
   use grid, only: nx,ny,nzm,nz, dimx1_s,dimx2_s,dimy1_s,dimy2_s ! subdomain grid information
   use params, only: doprecip, docloud, crm_rknd, asyncid, crm_iknd, crm_lknd
+  use crmdims, only: ncrms
   use micro_params
   implicit none
 
@@ -65,9 +66,8 @@ module microphysics
 CONTAINS
 
 
-  subroutine allocate_micro(ncrms)
+  subroutine allocate_micro()
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     integer(crm_iknd) :: icrm
     real(crm_rknd) :: zero
     allocate( micro_field(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nmicro_fields))
@@ -138,13 +138,12 @@ CONTAINS
   !!! Initialize microphysics:
 
 
-  subroutine micro_init(ncrms)
+  subroutine micro_init()
 
     use grid, only: nrestart
     use vars
     use params, only: dosmoke
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     integer(crm_iknd) k, n,icrm, i, j, l
 
     a_bg = 1./(tbgmax-tbgmin)
@@ -165,10 +164,10 @@ CONTAINS
     enddo
 
       if(docloud) then
-        call micro_diagnose(ncrms)
+        call micro_diagnose()
       end if
       if(dosmoke) then
-        call micro_diagnose(ncrms)
+        call micro_diagnose()
       end if
     end if
 
@@ -205,10 +204,9 @@ CONTAINS
 
   !----------------------------------------------------------------------
   !!! fill-in surface and top boundary fluxes:
-  subroutine micro_flux(ncrms)
+  subroutine micro_flux()
     use vars, only: fluxbq, fluxtq
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     integer(crm_iknd) :: icrm, i, j
 
     !$acc parallel loop collapse(3) async(asyncid)
@@ -232,36 +230,34 @@ CONTAINS
   !----------------------------------------------------------------------
   !!! compute local microphysics processes (bayond advection and SGS diffusion):
   !
-  subroutine micro_proc(ncrms)
+  subroutine micro_proc()
     use grid, only: nstep,dt,icycle
     use params, only: dosmoke
     use cloud_mod
     use precip_init_mod
     use precip_proc_mod
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     integer(crm_iknd) :: icrm
 
     ! Update bulk coefficient
-    if(doprecip.and.icycle.eq.1) call precip_init(ncrms)
+    if(doprecip.and.icycle.eq.1) call precip_init()
 
     if(docloud) then
-      call cloud(ncrms, micro_field(:,:,:,:,1), micro_field(:,:,:,:,2), qn)
-      if(doprecip) call precip_proc(ncrms, qpsrc, qpevp, micro_field(:,:,:,:,1), micro_field(:,:,:,:,2), qn)
-      call micro_diagnose(ncrms)
+      call cloud(micro_field(:,:,:,:,1), micro_field(:,:,:,:,2), qn)
+      if(doprecip) call precip_proc(qpsrc, qpevp, micro_field(:,:,:,:,1), micro_field(:,:,:,:,2), qn)
+      call micro_diagnose()
     end if
     if(dosmoke) then
-      call micro_diagnose(ncrms)
+      call micro_diagnose()
     end if
   end subroutine micro_proc
 
   !----------------------------------------------------------------------
   !!! Diagnose arrays nessesary for dynamical core and statistics:
   !
-  subroutine micro_diagnose(ncrms)
+  subroutine micro_diagnose()
     use vars
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd) omn, omp
     integer(crm_iknd) i,j,k,icrm
 
@@ -287,11 +283,12 @@ CONTAINS
   !!! function to compute terminal velocity for precipitating variables:
   ! In this particular case there is only one precipitating variable.
 
-  subroutine term_vel_qp(ncrms,icrm,i,j,k,ind,qploc,rho,tabs,qp_threshold,tprmin,&
+  subroutine term_vel_qp(icrm,i,j,k,ind,qploc,rho,tabs,qp_threshold,tprmin,&
                                       a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow,term_vel)
     !$acc routine seq
+    use crmdims, only: ncrms
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms,icrm
+    integer(crm_iknd), intent(in) :: icrm
     integer(crm_iknd), intent(in) :: i,j,k,ind
     real(crm_rknd), intent(in) :: qploc
     real(crm_rknd), intent(in) :: rho(ncrms,nzm), tabs(ncrms,nx, ny, nzm)
@@ -325,11 +322,10 @@ CONTAINS
   !----------------------------------------------------------------------
   !!! compute sedimentation
   !
-  subroutine micro_precip_fall(ncrms)
+  subroutine micro_precip_fall()
     use vars
     use params, only : pi
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd), allocatable :: omega(:,:,:,:)
     integer(crm_iknd) ind
     integer(crm_iknd) i,j,k,icrm
@@ -354,20 +350,19 @@ CONTAINS
       end do
     end do
 
-    call precip_fall(ncrms, 2, omega, ind)
+    call precip_fall(2, omega, ind)
 
     deallocate(omega)
 
   end subroutine micro_precip_fall
 
 
-  subroutine precip_fall(ncrms,hydro_type, omega, ind)
+  subroutine precip_fall(hydro_type, omega, ind)
     !     positively definite monotonic advection with non-oscillatory option
     !     and gravitational sedimentation
     use vars
     use params
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     integer(crm_iknd) :: hydro_type   ! 0 - all liquid, 1 - all ice, 2 - mixed
     real(crm_rknd) :: omega(ncrms,nx,ny,nzm)   !  = 1: liquid, = 0: ice;  = 0-1: mixed : used only when hydro_type=2
     integer(crm_iknd) :: ind
@@ -447,9 +442,9 @@ CONTAINS
                 !call task_abort
               endif
             end select
-            call  term_vel_qp(ncrms,icrm,i,j,k,ind,micro_field(icrm,i,j,k,2),rho(1,1),&
-                                                      tabs(1,1,1,1),qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,&
-                                                      a_gr,vgrau,cgrau,vsnow,csnow,tmp)
+            call  term_vel_qp(icrm,i,j,k,ind,micro_field(icrm,i,j,k,2),rho(1,1),&
+                              tabs(1,1,1,1),qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,&
+                              a_gr,vgrau,cgrau,vsnow,csnow,tmp)
             wp(icrm,i,j,k)=rhofac(icrm,k)*tmp
             tmp = wp(icrm,i,j,k)*iwmax(icrm,k)
             prec_cfl = max(prec_cfl,tmp) ! Keep column maximum CFL
@@ -620,7 +615,7 @@ CONTAINS
             do k=1,nzm
               do icrm = 1 , ncrms
                 !Passing variables via first index because of PGI bug with pointers
-                call term_vel_qp(ncrms,icrm,i,j,k,ind,micro_field(icrm,i,j,k,2),rho(1,1),&
+                call term_vel_qp(icrm,i,j,k,ind,micro_field(icrm,i,j,k,2),rho(1,1),&
                                  tabs(1,1,1,1),qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow,tmp)
                 wp(icrm,i,j,k) = rhofac(icrm,k)*tmp
                 ! Decrease precipitation velocity by factor of nprec

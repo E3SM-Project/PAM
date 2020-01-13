@@ -4,14 +4,13 @@ module diffuse_mom2D_mod
 
 contains
 
-  subroutine diffuse_mom2D(ncrms,grdf_x, grdf_z, dimx1_d, dimx2_d, dimy1_d, dimy2_d, tk)
+  subroutine diffuse_mom2D(grdf_x, grdf_z, dimx1_d, dimx2_d, dimy1_d, dimy2_d, tk)
 
     !        momentum tendency due to SGS diffusion
 
     use vars
     use params, only: docolumn, crm_rknd, crm_iknd
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     integer(crm_iknd) :: dimx1_d, dimx2_d, dimy1_d, dimy2_d
     real(crm_rknd) tk(ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm) ! SGS eddy viscosity
     real(crm_rknd) grdf_x(ncrms,nzm)! grid factor for eddy diffusion in x

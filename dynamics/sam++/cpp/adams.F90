@@ -4,12 +4,11 @@ module adams_mod
 
 contains
 
-  subroutine adams(ncrms)
+  subroutine adams()
     !       Adams-Bashforth scheme
     use vars
     use params, only: crm_rknd
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd) dtdx, dtdy, dtdz, rhox, rhoy, rhoz
     integer(crm_iknd) i,j,k,icrm
 

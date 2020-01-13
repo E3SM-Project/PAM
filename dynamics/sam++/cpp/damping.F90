@@ -6,13 +6,13 @@ module damping_mod
 
 contains
 
-  subroutine damping(ncrms)
+  subroutine damping()
     !  "Spange"-layer damping at the domain top region
     use vars
     use microphysics, only: micro_field, index_water_vapor
     use params, only: crm_rknd, crm_iknd
+    use crmdims, only: ncrms
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd) tau_min    ! minimum damping time-scale (at the top)
     real(crm_rknd) tau_max    ! maxim damping time-scale (base of damping layer)
     real(crm_rknd) damp_depth ! damping depth as a fraction of the domain height

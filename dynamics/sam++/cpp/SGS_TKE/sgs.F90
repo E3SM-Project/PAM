@@ -7,6 +7,7 @@ module sgs
   use grid, only: nx,nxp1,ny,nyp1,YES3D,nzm,nz,dimx1_s,dimx2_s,dimy1_s,dimy2_s
   use params, only: dosgs, crm_rknd, asyncid, crm_iknd, crm_lknd
   use vars, only: tke2, tk2
+  use crmdims, only: ncrms
   implicit none
 
   !----------------------------------------------------------------------
@@ -67,9 +68,8 @@ module sgs
 CONTAINS
 
 
-  subroutine allocate_sgs(ncrms)
+  subroutine allocate_sgs()
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd) :: zero
     allocate( sgs_field(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nsgs_fields) )
     allocate( sgs_field_diag(ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm, nsgs_fields_diag) )
@@ -160,11 +160,10 @@ CONTAINS
   !!! Initialize sgs:
 
 
-  subroutine sgs_init(ncrms)
+  subroutine sgs_init()
     use grid, only: nrestart, dx, dy, dz, adz, masterproc
     use params, only: LES
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     integer(crm_iknd) k,icrm, i, j, l
 
     if(nrestart.eq.0) then
@@ -218,10 +217,10 @@ CONTAINS
   !----------------------------------------------------------------------
   !!! make some initial noise in sgs:
   !
-  subroutine setperturb_sgs(ncrms,icrm,ptype)
+  subroutine setperturb_sgs(icrm,ptype)
 
     use vars, only: q0, z
-    integer(crm_iknd), intent(in) :: ncrms,icrm
+    integer(crm_iknd), intent(in) :: icrm
     integer(crm_iknd), intent(in) :: ptype
     integer(crm_iknd) i,j,k
 
@@ -315,10 +314,9 @@ CONTAINS
   !!! Estimate Courant number limit for SGS
   !
 
-  subroutine kurant_sgs(ncrms,cfl)
+  subroutine kurant_sgs(cfl)
     use grid, only: dt, dx, dy, dz, adz, adzw
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd), intent(inout) :: cfl
     integer(crm_iknd) k,icrm, j, i
     real(crm_rknd), allocatable :: tkhmax(:,:)
@@ -363,36 +361,34 @@ CONTAINS
   !----------------------------------------------------------------------
   !!! compute sgs diffusion of momentum:
   !
-  subroutine sgs_mom(ncrms)
+  subroutine sgs_mom()
     use diffuse_mom_mod, only: diffuse_mom
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
 
-    call diffuse_mom(ncrms,grdf_x, grdf_y, grdf_z, dimx1_d, dimx2_d, dimy1_d, dimy2_d, sgs_field_diag(:,:,:,:,1))
+    call diffuse_mom(grdf_x, grdf_y, grdf_z, dimx1_d, dimx2_d, dimy1_d, dimy2_d, sgs_field_diag(:,:,:,:,1))
   end subroutine sgs_mom
 
   !----------------------------------------------------------------------
   !!! compute sgs diffusion of scalars:
   !
-  subroutine sgs_scalars(ncrms)
+  subroutine sgs_scalars()
     use diffuse_scalar_mod, only: diffuse_scalar
     use vars
     use microphysics
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd), allocatable :: dummy(:,:)
     integer(crm_iknd) i,j,kk,k,icrm
 
     allocate( dummy(ncrms,nz) )
 
-    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),t,fluxbt,fluxtt,tdiff,twsb)
+    call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),t,fluxbt,fluxtt,tdiff,twsb)
 
     if(advect_sgs) then
-      call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),sgs_field(:,:,:,:,1),fzero,fzero,dummy,dummy)
+      call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),sgs_field(:,:,:,:,1),fzero,fzero,dummy,dummy)
     end if
 
     !    diffusion of microphysics prognostics:
-    call micro_flux(ncrms)
+    call micro_flux()
     !do icrm = 1, ncrms
     !  total_water_evap(icrm) = total_water_evap(icrm) - total_water(ncrms,icrm)
     !enddo
@@ -401,7 +397,7 @@ CONTAINS
       if(   k.eq.index_water_vapor             &! transport water-vapor variable no metter what
       .or. docloud.and.flag_precip(k).ne.1    & ! transport non-precipitation vars
       .or. doprecip.and.flag_precip(k).eq.1 ) then
-        call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),&
+        call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),&
                             micro_field(:,:,:,:,k),fluxbmk(:,:,:,k),fluxtmk(:,:,:,k),mkdiff(:,:,k),mkwsb(:,:,k))
       end if
     end do
@@ -416,16 +412,15 @@ CONTAINS
 !----------------------------------------------------------------------
 !!! compute sgs processes (beyond advection):
 !
-subroutine sgs_proc(ncrms)
+subroutine sgs_proc()
   use tke_full_mod, only: tke_full
   use grid, only: dt,icycle
   use params, only: dosmoke
   implicit none
-  integer(crm_iknd), intent(in) :: ncrms
   integer(crm_iknd) :: icrm, k, j, i
   !    SGS TKE equation:
 
-  if(dosgs) call tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d, &
+  if(dosgs) call tke_full(dimx1_d, dimx2_d, dimy1_d, dimy2_d, &
                           grdf_x, grdf_y, grdf_z, dosmagor,   &
                           tkesbdiss, tkesbshear, tkesbbuoy,   &
                           sgs_field(:,:,:,:,1), sgs_field_diag(:,:,:,:,1), sgs_field_diag(:,:,:,:,2))

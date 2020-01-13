@@ -5,12 +5,11 @@ module press_grad_mod
 
 contains
 
-  subroutine press_grad(ncrms)
+  subroutine press_grad()
     !       pressure term of the momentum equations
     use vars
     use params, only: dowallx, dowally, crm_iknd
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     real *8 rdx,rdy,rdz
     integer(crm_iknd) i,j,k,kb,jb,ib, icrm
 
@@ -71,7 +70,7 @@ contains
 
     end if
 
-    call bound_duvdt(ncrms)
+    call bound_duvdt()
 
   end subroutine press_grad
 

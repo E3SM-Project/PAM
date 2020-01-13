@@ -4,11 +4,10 @@ module crmsurface_mod
 
 contains
 
-  subroutine crmsurface(ncrms,bflx)
+  subroutine crmsurface(bflx)
     use vars
     use params
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd), intent (in) :: bflx(ncrms)
     real(crm_rknd) u_h0, tau00, tmp
     integer(crm_iknd) i,j,icrm

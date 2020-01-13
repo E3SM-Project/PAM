@@ -90,9 +90,9 @@ module micro_params
 contains
 
 
-  subroutine allocate_micro_params(ncrms)
+  subroutine allocate_micro_params()
+    use crmdims, only: ncrms
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd) :: zero
 
     allocate( accrsc(ncrms,nzm) )

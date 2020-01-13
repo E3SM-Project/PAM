@@ -4,11 +4,10 @@ module buoyancy_mod
 
 contains
 
-  subroutine buoyancy(ncrms)
+  subroutine buoyancy()
     use vars
     use params
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     integer(crm_iknd) i,j,k,kb,icrm
     real(crm_rknd) betu, betd
 

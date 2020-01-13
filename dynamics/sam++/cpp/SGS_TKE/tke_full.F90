@@ -8,7 +8,7 @@ module tke_full_mod
 
 contains
 
-subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
+subroutine tke_full(dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
                     grdf_x, grdf_y, grdf_z, dosmagor,     &
                     tkesbdiss, tkesbshear, tkesbbuoy,     &
                     tke, tk, tkh)
@@ -19,7 +19,6 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   use vars
   use params
   implicit none
-  integer(crm_iknd), intent(in) :: ncrms
   !-----------------------------------------------------------------------
   !!! Interface Arguments
   integer(crm_iknd)       , intent(in)                 :: dimx1_d     ! scalar dimension parameter
@@ -103,9 +102,9 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   Pr  = 1.
 
   if(RUN3D) then
-    call shear_prod3D(ncrms,def2)
+    call shear_prod3D(def2)
   else
-    call shear_prod2D(ncrms,def2)
+    call shear_prod2D(def2)
   endif
 
   !!! initialize surface and top buoyancy flux to zero

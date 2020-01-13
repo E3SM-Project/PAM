@@ -6,12 +6,11 @@ module kurant_mod
 
    contains
 
-   subroutine kurant(ncrms)
+   subroutine kurant()
       use vars
       use sgs, only: kurant_sgs
       use params, only: crm_rknd
       implicit none
-      integer(crm_iknd), intent(in) :: ncrms
       integer(crm_iknd) i, j, k, ncycle1(1),ncycle2(1),icrm
       real(crm_rknd), allocatable :: wm (:,:)  ! maximum vertical wind velocity
       real(crm_rknd), allocatable :: uhm(:,:) ! maximum horizontal wind velocity
@@ -56,7 +55,7 @@ module kurant_mod
         end do
       end do
 
-      call kurant_sgs(ncrms,cfl)
+      call kurant_sgs(cfl)
       !$acc wait(asyncid)
       ncycle = max(ncycle,max(1,ceiling(cfl/0.7)))
 

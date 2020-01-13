@@ -22,6 +22,7 @@
 module accelerate_crm_mod
     use grid, only: nx, ny
     use params, only: asyncid, rc=>crm_rknd, r8, crm_iknd, crm_lknd
+    use crmdims, only: ncrms
 
     implicit none
 
@@ -79,7 +80,7 @@ module accelerate_crm_mod
     end subroutine crm_accel_nstop
 
 
-    subroutine accelerate_crm(ncrms, nstep, nstop, ceaseflag)
+    subroutine accelerate_crm(nstep, nstop, ceaseflag)
       ! Applies mean-state acceleration (MSA) to CRM
       !
       ! Applies MSA to the following crm fields:
@@ -105,7 +106,6 @@ module accelerate_crm_mod
       use vars, only: u, v, u0, v0, t0,q0, t,qcl,qci,qv
       use microphysics, only: micro_field, idx_qt=>index_water_vapor
       implicit none
-      integer(crm_iknd), intent(in   ) :: ncrms
       integer(crm_iknd), intent(in   ) :: nstep
       integer(crm_iknd), intent(inout) :: nstop
       logical(crm_lknd), intent(inout) :: ceaseflag

@@ -4,12 +4,11 @@ module forcing_mod
 
 contains
 
-  subroutine forcing(ncrms)
+  subroutine forcing()
     use vars
     use params
     use microphysics, only: micro_field, index_water_vapor
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd), allocatable :: qneg(:,:)
     real(crm_rknd), allocatable :: qpoz(:,:)
     integer(crm_iknd)       , allocatable :: nneg(:,:)

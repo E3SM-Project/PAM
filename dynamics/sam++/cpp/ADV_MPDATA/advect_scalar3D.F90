@@ -4,12 +4,11 @@ module advect_scalar3D_mod
 
 contains
 
-  subroutine advect_scalar3D (ncrms, f, u, v, w, rho, rhow, flux)
+  subroutine advect_scalar3D (f, u, v, w, rho, rhow, flux)
     !     positively definite monotonic advection with non-oscillatory option
     use grid
     use params, only: dowallx, dowally, crm_rknd, crm_iknd, crm_lknd
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd) f(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
     real(crm_rknd) u(ncrms,dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm)
     real(crm_rknd) v(ncrms,dimx1_v:dimx2_v, dimy1_v:dimy2_v, nzm)

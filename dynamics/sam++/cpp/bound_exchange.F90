@@ -11,12 +11,12 @@ module bound_exchange_mod
 
 contains
 
-  subroutine bound_exchange(ncrms,f,dimx1,dimx2,dimy1,dimy2,dimz,i_1, i_2, j_1, j_2, id)
+  subroutine bound_exchange(f,dimx1,dimx2,dimy1,dimy2,dimz,i_1, i_2, j_1, j_2, id)
     ! periodic boundary exchange
     use grid
     use params, only: crm_rknd
     implicit none
-    integer(crm_iknd) dimx1, dimx2, dimy1, dimy2, dimz, ncrms
+    integer(crm_iknd) dimx1, dimx2, dimy1, dimy2, dimz
     integer(crm_iknd) i_1, i_2, j_1, j_2
     real(crm_rknd) f(ncrms,dimx1:dimx2, dimy1:dimy2, dimz)
     integer(crm_iknd) id   ! id of the sent field (dummy variable)

@@ -5,12 +5,12 @@ module boundaries_mod
 
 contains
 
-  subroutine boundaries(ncrms,flag)
+  subroutine boundaries(flag)
     use grid, only: dompi
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms,flag
+    integer(crm_iknd), intent(in) :: flag
 
-    call periodic(ncrms,flag)
+    call periodic(flag)
 
   end subroutine boundaries
 end module boundaries_mod

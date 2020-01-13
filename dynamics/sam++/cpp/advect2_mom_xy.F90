@@ -4,7 +4,7 @@ module advect2_mom_xy_mod
 
 contains
 
-  subroutine advect2_mom_xy(ncrms)
+  subroutine advect2_mom_xy()
 
     !        momentum tendency due to 2nd-order-central horizontal advection
 
@@ -12,7 +12,6 @@ contains
     use params, only: crm_rknd
 
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd) dx25, dy25, irho, fu1, fu2, fv1, fv2, fw1, fw2
     integer(crm_iknd) i, j, k, kc, kcu, ic, jb, ib, jc,icrm
 

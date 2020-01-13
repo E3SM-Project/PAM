@@ -4,11 +4,10 @@ module shear_prod3D_mod
 
 contains
 
-  subroutine shear_prod3D(ncrms,def2)
+  subroutine shear_prod3D(def2)
     use vars
     use params, only: crm_rknd, crm_iknd
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd) def2(ncrms,nx,ny,nzm)
     real(crm_rknd) rdx0,rdx,rdx_up,rdx_dn
     real(crm_rknd) rdy0,rdy,rdy_up,rdy_dn

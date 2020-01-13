@@ -5,12 +5,11 @@ module press_rhs_mod
 
 contains
 
-  subroutine press_rhs(ncrms)
+  subroutine press_rhs()
     !       right-hand-side of the Poisson equation for pressure
     use vars
     use params, only: dowallx, dowally, crm_iknd
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     real *8 dta,rdx,rdy,rdz,btat,ctat,rup,rdn
     integer(crm_iknd) i,j,k,ic,jc,kc, icrm
 
@@ -36,7 +35,7 @@ contains
       end do
     end if
 
-    call bound_duvdt(ncrms)
+    call bound_duvdt()
 
     rdx=1./dx
     rdy=1./dy

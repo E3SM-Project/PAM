@@ -5,14 +5,13 @@ module precip_init_mod
 
 contains
 
-  subroutine precip_init(ncrms)
+  subroutine precip_init()
     ! Initialize precipitation related stuff
     use vars
     use micro_params
     use params
     use sat_mod
     implicit none
-    integer(crm_iknd), intent(in) :: ncrms
     real(crm_rknd) pratio, coef1, coef2,estw,esti,rrr1,rrr2
     real*4 :: gammafff
     external :: gammafff
