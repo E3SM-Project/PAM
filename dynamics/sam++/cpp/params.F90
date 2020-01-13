@@ -11,8 +11,8 @@ module params
 !#endif /*CRM*/
 
   implicit none
-  integer, parameter :: r8 = selected_real_kind(13)
-  integer, parameter :: crm_rknd = selected_real_kind(13)
+  integer, parameter :: r8 = c_double
+  integer, parameter :: crm_rknd = c_double
   integer, parameter :: crm_iknd = c_int
   integer, parameter :: crm_lknd = c_bool
 
