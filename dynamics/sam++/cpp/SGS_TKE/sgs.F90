@@ -115,10 +115,7 @@ CONTAINS
   !!! Read microphysics options from prm (namelist) file
 
   subroutine sgs_setparm()
-
-    use grid, only: case
     implicit none
-
     integer(crm_iknd) ierr, ios, ios_missing_namelist, place_holder
 
     !======================================================================
