@@ -1,7 +1,6 @@
 
 module crm_module
   use task_init_mod, only: task_init
-  use abcoefs_mod, only: abcoefs
   use kurant_mod, only: kurant
   use setperturb_mod, only: setperturb
   use boundaries_mod, only: boundaries
@@ -26,17 +25,18 @@ module crm_module
   use crm_input_module,       only: crm_input_type
   use crm_output_module,      only: crm_output_type
   !use phys_grid             , only: get_rlon_p, get_rlat_p, get_gcol_p  
-!---------------------------------------------------------------
-!  Super-parameterization's main driver
-!  Marat Khairoutdinov, 2001-2009
-!---------------------------------------------------------------
-use setparm_mod, only : setparm
+  !---------------------------------------------------------------
+  !  Super-parameterization's main driver
+  !  Marat Khairoutdinov, 2001-2009
+  !---------------------------------------------------------------
+  use setparm_mod, only : setparm
+    
 
 contains
 
 subroutine crm(dt_gl, plev, &
-                crm_input, crm_state, crm_rad,  &
-                crm_output , lat0, long0)
+               crm_input, crm_state, crm_rad,  &
+               crm_output , lat0, long0)
     !-----------------------------------------------------------------------------------------------
     !-----------------------------------------------------------------------------------------------
     !use ppgrid                , only: pcols
@@ -114,6 +114,11 @@ subroutine crm(dt_gl, plev, &
     real(r8), allocatable :: dd_crm (:,:)     ! mass entraiment from downdraft
     real(r8), allocatable :: mui_crm(:,:)     ! mass flux up at the interface
     real(r8), allocatable :: mdi_crm(:,:)     ! mass flux down at the interface
+
+    interface
+      subroutine abcoefs() bind(C,name="abcoefs")
+      end subroutine abcoefs
+    end interface
 
   !-----------------------------------------------------------------------------------------------
   !-----------------------------------------------------------------------------------------------
