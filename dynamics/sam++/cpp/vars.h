@@ -21,6 +21,21 @@ extern "C" void wrap_arrays(real *u_p, real *v_p, real *w_p, real *t_p, real *p_
                             real *vhl_p, real *taux0_p, real *tauy0_p, real *z_p, real *pres_p, real *zi_p, real *presi_p, real *adz_p, real *adzw_p,
                             real *dt3_p, real *dz_p);
 
+//////////////////////////////////////////////////////////////////////////////////
+// These arrays use non-1 lower bounds in the Fortran code
+// They must be indexed differently in the C++ code
+//////////////////////////////////////////////////////////////////////////////////
+extern umgReal4d u    ;
+extern umgReal4d v    ;
+extern umgReal4d w    ;
+extern umgReal4d t    ;
+extern umgReal4d p    ;
+extern umgReal4d tke2 ;
+extern umgReal4d tk2  ;
+extern umgReal3d sstxy;
+extern umgReal2d fcory;
+
+
 extern int  nstep                    ;
 extern int  ncycle                   ;
 extern int  icycle                   ;
@@ -114,19 +129,12 @@ extern bool docolumn        ;
 extern bool dotracers       ;
 extern bool dosmoke         ;
 
-extern umgReal4d u               ;
-extern umgReal4d v               ;
-extern umgReal4d w               ;
-extern umgReal4d t               ;
-extern umgReal4d p               ;
 extern umgReal4d tabs            ;
 extern umgReal4d qv              ;
 extern umgReal4d qcl             ;
 extern umgReal4d qpl             ;
 extern umgReal4d qci             ;
 extern umgReal4d qpi             ;
-extern umgReal4d tke2            ;
-extern umgReal4d tk2             ;
 extern umgReal5d dudt            ;
 extern umgReal5d dvdt            ;
 extern umgReal5d dwdt            ;
@@ -169,8 +177,6 @@ extern umgReal2d qtend           ;
 extern umgReal2d ttend           ;
 extern umgReal2d utend           ;
 extern umgReal2d vtend           ;
-extern umgReal3d sstxy           ;
-extern umgReal2d fcory           ;
 extern umgReal2d fcorzy          ;
 extern umgReal3d latitude        ;
 extern umgReal3d longitude       ;

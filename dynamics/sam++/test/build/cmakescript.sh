@@ -145,3 +145,5 @@ cmake      \
   ..
 
 
+# -DKOKKOS_ENABLE_DEBUG="yes"            \
+

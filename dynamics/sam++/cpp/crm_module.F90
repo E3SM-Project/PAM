@@ -7,7 +7,6 @@ module crm_module
   use boundaries_mod, only: boundaries
   use forcing_mod, only: forcing
   use advect_mom_mod, only: advect_mom
-  use adams_mod, only: adams
   use advect_all_scalars_mod, only: advect_all_scalars
   use sat_mod
   use crmsurface_mod

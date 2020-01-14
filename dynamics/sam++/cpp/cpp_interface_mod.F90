@@ -6,9 +6,13 @@ module cpp_interface_mod
 
   interface
 
+
     subroutine abcoefs() bind(C,name="abcoefs")
-      implicit none
     end subroutine abcoefs
+
+
+    subroutine adams() bind(C,name="adams")
+    end subroutine adams
 
     
     subroutine wrap_arrays( u, v, w, t, p, tabs, qv, qcl, qpl,                                 &
@@ -44,6 +48,7 @@ module cpp_interface_mod
                                       vhl, taux0, tauy0, z, pres, zi, presi, adz, adzw,                  &
                                       dt3, dz
     end subroutine wrap_arrays
+
 
   end interface
 

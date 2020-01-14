@@ -59,19 +59,44 @@ int  constexpr dimy2_s = nyp3        ;
 int  constexpr ncols = nx*ny;
 int  constexpr nadams = 3;
 
-int  constexpr dimx_u = dimx2_u - dimx1_u + 1;
-int  constexpr dimx_v = dimx2_v - dimx1_v + 1;
-int  constexpr dimx_w = dimx2_w - dimx1_w + 1;
-int  constexpr dimx_s = dimx2_s - dimx1_s + 1;
+// u     ( ncrms , dimx1_u:dimx2_u ,   dimy1_u:dimy2_u , nzm )
+// v     ( ncrms , dimx1_v:dimx2_v ,   dimy1_v:dimy2_v , nzm )
+// w     ( ncrms , dimx1_w:dimx2_w ,   dimy1_w:dimy2_w , nz  )
+// t     ( ncrms , dimx1_s:dimx2_s ,   dimy1_s:dimy2_s , nzm )
+// p     ( ncrms , 0      :nx      , (1-YES3D):ny      , nzm )
+// tke2  ( ncrms , dimx1_s:dimx2_s , dimy1_s  :dimy2_s , nzm )
+// tk2   ( ncrms , 0      :nxp1    , (1-YES3D):nyp1    , nzm )
+// sstxy ( ncrms ,       0:nx      , (1-YES3D):ny            )
+// fcory ( ncrms ,       0:ny                                )
 
-int  constexpr dimy_u = dimy2_u - dimy1_u + 1;
-int  constexpr dimy_v = dimy2_v - dimy1_v + 1;
-int  constexpr dimy_w = dimy2_w - dimy1_w + 1;
-int  constexpr dimy_s = dimy2_s - dimy1_s + 1;
+int  constexpr dimx_u     = dimx2_u - dimx1_u   + 1;
+int  constexpr dimx_v     = dimx2_v - dimx1_v   + 1;
+int  constexpr dimx_w     = dimx2_w - dimx1_w   + 1;
+int  constexpr dimx_s     = dimx2_s - dimx1_s   + 1;
 
-int  constexpr dimy_p     = ny   - (1-YES3D) + 1;
-int  constexpr dimy_tk2   = nyp1 - (1-YES3D) + 1;
-int  constexpr dimy_sstxy = ny   - (1-YES3D) + 1;
+int  constexpr dimy_u     = dimy2_u - dimy1_u   + 1;
+int  constexpr dimy_v     = dimy2_v - dimy1_v   + 1;
+int  constexpr dimy_w     = dimy2_w - dimy1_w   + 1;
+int  constexpr dimy_s     = dimy2_s - dimy1_s   + 1;
+int  constexpr dimy_p     = ny      - (1-YES3D) + 1;
+int  constexpr dimy_tk2   = nyp1    - (1-YES3D) + 1;
+int  constexpr dimy_sstxy = ny      - (1-YES3D) + 1;
+int  constexpr dimy_fcory = ny      - 0         + 1;
+
+int  constexpr offx_u     = 1 - dimx1_u  ;
+int  constexpr offx_v     = 1 - dimx1_v  ;
+int  constexpr offx_w     = 1 - dimx1_w  ;
+int  constexpr offx_s     = 1 - dimx1_s  ;
+
+int  constexpr offy_u     = 1 - dimy1_u  ;
+int  constexpr offy_v     = 1 - dimy1_v  ;
+int  constexpr offy_w     = 1 - dimy1_w  ;
+int  constexpr offy_s     = 1 - dimy1_s  ;
+int  constexpr offy_p     = 1 - (1-YES3D);
+int  constexpr offy_tk2   = 1 - (1-YES3D);
+int  constexpr offy_sstxy = 1 - (1-YES3D);
+int  constexpr offy_fcory = 1 - 0        ;
+
 
 real constexpr cp    = 1004.          ;  // Specific heat of air, J/kg/K
 real constexpr ggr   = 9.81           ;  // Gravity acceleration, m/s2
