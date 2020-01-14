@@ -1,4 +1,7 @@
 
+! TODO: Add rules about ,value, reference scalars, and arrays in the interface
+
+
 module cpp_interface_mod
   use params, only: crm_rknd, crm_iknd, crm_lknd
   use iso_c_binding

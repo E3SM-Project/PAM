@@ -5,6 +5,21 @@
 #include "const.h"
 
 
+//////////////////////////////////////////////////////////////////////////////////
+// These arrays use non-1 lower bounds in the Fortran code
+// They must be indexed differently in the C++ code
+//////////////////////////////////////////////////////////////////////////////////
+extern umgReal4d u    ; // Index as u     (k , offy_u    +j , offx_u    +i , icrm )
+extern umgReal4d v    ; // Index as v     (k , offy_v    +j , offx_v    +i , icrm )
+extern umgReal4d w    ; // Index as w     (k , offy_w    +j , offx_w    +i , icrm )
+extern umgReal4d t    ; // Index as t     (k , offy_t    +j , offx_t    +i , icrm )
+extern umgReal4d p    ; // Index as p     (k , offy_p    +j , offx_p    +i , icrm )
+extern umgReal4d tke2 ; // Index as tke2  (k , offy_tke2 +j , offx_tke2 +i , icrm )
+extern umgReal4d tk2  ; // Index as tk2   (k , offy_tk2  +j , offx_tk2  +i , icrm )
+extern umgReal3d sstxy; // Index as sstxy (    offy_sstxy+j , offx_sstxy+i , icrm )
+extern umgReal2d fcory; // Index as fcory (    offy_fcory+j                , icrm )
+
+
 extern "C" void wrap_arrays(real *u_p, real *v_p, real *w_p, real *t_p, real *p_p, real *tabs_p, real *qv_p, real *qcl_p, real *qpl_p,
                             real *qci_p, real *qpi_p, real *tke2_p, real *tk2_p, real *dudt_p, real *dvdt_p, real *dwdt_p, real *misc_p, real *fluxbu_p,
                             real *fluxbv_p, real *fluxbt_p, real *fluxbq_p, real *fluxtu_p, real *fluxtv_p, real *fluxtt_p, real *fluxtq_p,
@@ -20,20 +35,6 @@ extern "C" void wrap_arrays(real *u_p, real *v_p, real *w_p, real *t_p, real *p_
                             real *cloudtoptemp_p, real *fcorz_p, real *fcor_p, real *longitude0_p, real *latitude0_p, real *z0_p, real *uhl_p,
                             real *vhl_p, real *taux0_p, real *tauy0_p, real *z_p, real *pres_p, real *zi_p, real *presi_p, real *adz_p, real *adzw_p,
                             real *dt3_p, real *dz_p);
-
-//////////////////////////////////////////////////////////////////////////////////
-// These arrays use non-1 lower bounds in the Fortran code
-// They must be indexed differently in the C++ code
-//////////////////////////////////////////////////////////////////////////////////
-extern umgReal4d u    ;
-extern umgReal4d v    ;
-extern umgReal4d w    ;
-extern umgReal4d t    ;
-extern umgReal4d p    ;
-extern umgReal4d tke2 ;
-extern umgReal4d tk2  ;
-extern umgReal3d sstxy;
-extern umgReal2d fcory;
 
 
 extern int  nstep                    ;

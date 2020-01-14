@@ -144,6 +144,9 @@ cmake      \
   -DDEFS3D:STRING="$DEFS3D"              \
   ..
 
-
+############################################################################
+## ADD THIS LINE TO THE ABOVE CMAKE CONFIGURE TO TURN ON KOKKOS DEBUGGING
+## THIS CHECKS ARRAY INDICES AND TELLS YOU WHAT LINE OF CODE FAILED
+############################################################################
 # -DKOKKOS_ENABLE_DEBUG="yes"            \
 

@@ -59,16 +59,6 @@ int  constexpr dimy2_s = nyp3        ;
 int  constexpr ncols = nx*ny;
 int  constexpr nadams = 3;
 
-// u     ( ncrms , dimx1_u:dimx2_u ,   dimy1_u:dimy2_u , nzm )
-// v     ( ncrms , dimx1_v:dimx2_v ,   dimy1_v:dimy2_v , nzm )
-// w     ( ncrms , dimx1_w:dimx2_w ,   dimy1_w:dimy2_w , nz  )
-// t     ( ncrms , dimx1_s:dimx2_s ,   dimy1_s:dimy2_s , nzm )
-// p     ( ncrms , 0      :nx      , (1-YES3D):ny      , nzm )
-// tke2  ( ncrms , dimx1_s:dimx2_s , dimy1_s  :dimy2_s , nzm )
-// tk2   ( ncrms , 0      :nxp1    , (1-YES3D):nyp1    , nzm )
-// sstxy ( ncrms ,       0:nx      , (1-YES3D):ny            )
-// fcory ( ncrms ,       0:ny                                )
-
 int  constexpr dimx_u     = dimx2_u - dimx1_u   + 1;
 int  constexpr dimx_v     = dimx2_v - dimx1_v   + 1;
 int  constexpr dimx_w     = dimx2_w - dimx1_w   + 1;
