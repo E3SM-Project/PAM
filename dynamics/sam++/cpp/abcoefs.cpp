@@ -1,18 +1,10 @@
 
-#include "Kokkos_Core.hpp"
 #include "abcoefs.h"
 
-extern real at, bt, ct;
-extern int  na, nb, nc, nstep;
-extern real dt3[3];    // This cannot be defined as real *dt3
-
-typedef Kokkos::View<double*, Kokkos::LayoutRight, Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged> > realArr;
-
 // Compute the coefficients for the Adams-Bashforth scheme
-extern "C" void abcoefs() {
+extern "C" void abcoefs(int na, int nb, int nc, int nstep, real &dt3_p, real &at, real &bt, real &ct) {
   // Wrap pointers in unmanaged Kokkos Views
-  real *dt3_r = dt3;
-  realArr dt3(dt3_r,3);
+  umgReal1d dt3(&dt3_p,3);
 
   if (nstep >= 3) {
     real alpha = dt3(nb-1) / dt3(na-1);

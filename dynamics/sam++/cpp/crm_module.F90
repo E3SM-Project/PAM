@@ -1,5 +1,6 @@
 
 module crm_module
+  use cpp_interface_mod
   use task_init_mod, only: task_init
   use kurant_mod, only: kurant
   use setperturb_mod, only: setperturb
@@ -114,11 +115,6 @@ subroutine crm(dt_gl, plev, &
     real(r8), allocatable :: dd_crm (:,:)     ! mass entraiment from downdraft
     real(r8), allocatable :: mui_crm(:,:)     ! mass flux up at the interface
     real(r8), allocatable :: mdi_crm(:,:)     ! mass flux down at the interface
-
-    interface
-      subroutine abcoefs() bind(C,name="abcoefs")
-      end subroutine abcoefs
-    end interface
 
   !-----------------------------------------------------------------------------------------------
   !-----------------------------------------------------------------------------------------------
@@ -519,7 +515,7 @@ subroutine crm(dt_gl, plev, &
 
       !---------------------------------------------
       !  	the Adams-Bashforth scheme in time
-      call abcoefs()
+      call abcoefs(na, nb, nc, nstep, dt3, at, bt, ct)
 
       !---------------------------------------------
       !  	initialize stuff:

@@ -1,143 +1,151 @@
 module vars
   use grid
-  use params, only: crm_rknd, crm_iknd
+  use params, only: crm_rknd
+
   implicit none
   !--------------------------------------------------------------------
   ! prognostic variables:
 
-  real(crm_rknd), bind(C) :: u(ncrms,dimx1_u:dimx2_u,dimy1_u:dimy2_u,nzm) ! x-wind
-  real(crm_rknd), bind(C) :: v(ncrms,dimx1_v:dimx2_v,dimy1_v:dimy2_v,nzm) ! y-wind
-  real(crm_rknd), bind(C) :: w(ncrms,dimx1_w:dimx2_w,dimy1_w:dimy2_w,nz ) ! z-wind
-  real(crm_rknd), bind(C) :: t(ncrms,dimx1_s:dimx2_s,dimy1_s:dimy2_s,nzm) ! liquid/ice water static energy
+  real(crm_rknd), allocatable :: u   (:,:,:,:) ! x-wind
+  real(crm_rknd), allocatable :: v   (:,:,:,:) ! y-wind
+  real(crm_rknd), allocatable :: w   (:,:,:,:) ! z-wind
+  real(crm_rknd), allocatable :: t   (:,:,:,:) ! liquid/ice water static energy
 
   !--------------------------------------------------------------------
   ! diagnostic variables:
-  real(crm_rknd), bind(C) :: p   (ncrms,0:nx, (1-YES3D):ny, nzm)               ! perturbation pressure (from Poison eq)
-  real(crm_rknd), bind(C) :: tabs(ncrms,nx, ny, nzm)                           ! temperature
-  real(crm_rknd), bind(C) :: qv  (ncrms,nx, ny, nzm)                           ! water vapor
-  real(crm_rknd), bind(C) :: qcl (ncrms,nx, ny, nzm)                           ! liquid water  (condensate)
-  real(crm_rknd), bind(C) :: qpl (ncrms,nx, ny, nzm)                           ! liquid water  (precipitation)
-  real(crm_rknd), bind(C) :: qci (ncrms,nx, ny, nzm)                           ! ice water  (condensate)
-  real(crm_rknd), bind(C) :: qpi (ncrms,nx, ny, nzm)                           ! ice water  (precipitation)
-  real(crm_rknd), bind(C) :: tke2(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) ! SGS TKE
-  real(crm_rknd), bind(C) :: tk2 (ncrms,0:nxp1, (1-YES3D):nyp1, nzm)           ! SGS eddyviscosity
+
+  real(crm_rknd), allocatable :: p       (:,:,:,:)     ! perturbation pressure (from Poison eq)
+  real(crm_rknd), allocatable :: tabs    (:,:,:,:)                 ! temperature
+  real(crm_rknd), allocatable :: qv      (:,:,:,:)                ! water vapor
+  real(crm_rknd), allocatable :: qcl     (:,:,:,:)                ! liquid water  (condensate)
+  real(crm_rknd), allocatable :: qpl     (:,:,:,:)                ! liquid water  (precipitation)
+  real(crm_rknd), allocatable :: qci     (:,:,:,:)                ! ice water  (condensate)
+  real(crm_rknd), allocatable :: qpi     (:,:,:,:)                ! ice water  (precipitation)
+  real(crm_rknd), allocatable :: tke2    (:,:,:,:)   ! SGS TKE
+  real(crm_rknd), allocatable :: tk2     (:,:,:,:) ! SGS eddyviscosity
 
   !--------------------------------------------------------------------
   ! time-tendencies for prognostic variables
-  real(crm_rknd), bind(C) :: dudt(ncrms,nxp1, ny, nzm, 3)
-  real(crm_rknd), bind(C) :: dvdt(ncrms,nx, nyp1, nzm, 3)
-  real(crm_rknd), bind(C) :: dwdt(ncrms,nx, ny  , nz,  3)
+
+  real(crm_rknd), allocatable :: dudt   (:,:,:,:,:)
+  real(crm_rknd), allocatable :: dvdt   (:,:,:,:,:)
+  real(crm_rknd), allocatable :: dwdt   (:,:,:,:,:)
 
   !----------------------------------------------------------------
   ! Temporary storage array:
 
-  real(crm_rknd), bind(C) :: misc(ncrms,nx, ny, nz)
+  real(crm_rknd), allocatable :: misc(:,:,:,:)
   !------------------------------------------------------------------
   ! fluxes at the top and bottom of the domain:
-  real(crm_rknd), bind(C) :: fluxbu  (ncrms,nx,ny)
-  real(crm_rknd), bind(C) :: fluxbv  (ncrms,nx,ny)
-  real(crm_rknd), bind(C) :: fluxbt  (ncrms,nx,ny)
-  real(crm_rknd), bind(C) :: fluxbq  (ncrms,nx,ny)
-  real(crm_rknd), bind(C) :: fluxtu  (ncrms,nx,ny)
-  real(crm_rknd), bind(C) :: fluxtv  (ncrms,nx,ny)
-  real(crm_rknd), bind(C) :: fluxtt  (ncrms,nx,ny)
-  real(crm_rknd), bind(C) :: fluxtq  (ncrms,nx,ny)
-  real(crm_rknd), bind(C) :: fzero   (ncrms,nx,ny)
-  real(crm_rknd), bind(C) :: precsfc (ncrms,nx,ny) ! surface precip. rate
-  real(crm_rknd), bind(C) :: precssfc(ncrms,nx,ny) ! surface ice precip. rate
+
+  real(crm_rknd), allocatable :: fluxbu  (:,:,:)
+  real(crm_rknd), allocatable :: fluxbv  (:,:,:)
+  real(crm_rknd), allocatable :: fluxbt  (:,:,:)
+  real(crm_rknd), allocatable :: fluxbq  (:,:,:)
+  real(crm_rknd), allocatable :: fluxtu  (:,:,:)
+  real(crm_rknd), allocatable :: fluxtv  (:,:,:)
+  real(crm_rknd), allocatable :: fluxtt  (:,:,:)
+  real(crm_rknd), allocatable :: fluxtq  (:,:,:)
+  real(crm_rknd), allocatable :: fzero   (:,:,:)
+  real(crm_rknd), allocatable :: precsfc (:,:,:) ! surface precip. rate
+  real(crm_rknd), allocatable :: precssfc(:,:,:) ! surface ice precip. rate
 
   !-----------------------------------------------------------------
   ! profiles
-  real(crm_rknd), bind(C) :: t0   (ncrms,nzm)
-  real(crm_rknd), bind(C) :: q0   (ncrms,nzm)
-  real(crm_rknd), bind(C) :: qv0  (ncrms,nzm)
-  real(crm_rknd), bind(C) :: tabs0(ncrms,nzm)
-  real(crm_rknd), bind(C) :: tv0  (ncrms,nzm)
-  real(crm_rknd), bind(C) :: u0   (ncrms,nzm)
-  real(crm_rknd), bind(C) :: v0   (ncrms,nzm)
-  real(crm_rknd), bind(C) :: tg0  (ncrms,nzm)
-  real(crm_rknd), bind(C) :: qg0  (ncrms,nzm)
-  real(crm_rknd), bind(C) :: ug0  (ncrms,nzm)
-  real(crm_rknd), bind(C) :: vg0  (ncrms,nzm)
-  real(crm_rknd), bind(C) :: p0   (ncrms,nzm)
-  real(crm_rknd), bind(C) :: tke0 (ncrms,nzm)
-  real(crm_rknd), bind(C) :: t01  (ncrms,nzm)
-  real(crm_rknd), bind(C) :: q01  (ncrms,nzm)
-  real(crm_rknd), bind(C) :: qp0  (ncrms,nzm)
-  real(crm_rknd), bind(C) :: qn0  (ncrms,nzm)
+
+  real(crm_rknd), allocatable :: t0   (:,:)
+  real(crm_rknd), allocatable :: q0   (:,:)
+  real(crm_rknd), allocatable :: qv0  (:,:)
+  real(crm_rknd), allocatable :: tabs0(:,:)
+  real(crm_rknd), allocatable :: tv0  (:,:)
+  real(crm_rknd), allocatable :: u0   (:,:)
+  real(crm_rknd), allocatable :: v0   (:,:)
+  real(crm_rknd), allocatable :: tg0  (:,:)
+  real(crm_rknd), allocatable :: qg0  (:,:)
+  real(crm_rknd), allocatable :: ug0  (:,:)
+  real(crm_rknd), allocatable :: vg0  (:,:)
+  real(crm_rknd), allocatable :: p0   (:,:)
+  real(crm_rknd), allocatable :: tke0 (:,:)
+  real(crm_rknd), allocatable :: t01  (:,:)
+  real(crm_rknd), allocatable :: q01  (:,:)
+  real(crm_rknd), allocatable :: qp0  (:,:)
+  real(crm_rknd), allocatable :: qn0  (:,:)
 
   !-----------------------------------------------------------------
   ! reference vertical profiles:
-  real(crm_rknd), bind(C) :: prespot(ncrms,nzm)  ! (1000./pres)**R/cp
-  real(crm_rknd), bind(C) :: rho    (ncrms,nzm)   ! air density at pressure levels,kg/m3
-  real(crm_rknd), bind(C) :: rhow   (ncrms,nz )   ! air density at vertical velocity levels,kg/m3
-  real(crm_rknd), bind(C) :: bet    (ncrms,nzm)   ! = ggr/tv0
-  real(crm_rknd), bind(C) :: gamaz  (ncrms,nzm) ! ggr/cp*z
-  real(crm_rknd), bind(C) :: wsub   (ncrms,nz )   ! Large-scale subsidence velocity,m/s
-  real(crm_rknd), bind(C) :: qtend  (ncrms,nzm) ! Large-scale tendency for total water
-  real(crm_rknd), bind(C) :: ttend  (ncrms,nzm) ! Large-scale tendency for temp.
-  real(crm_rknd), bind(C) :: utend  (ncrms,nzm) ! Large-scale tendency for u
-  real(crm_rknd), bind(C) :: vtend  (ncrms,nzm) ! Large-scale tendency for v
+  real(crm_rknd), allocatable :: prespot(:,:)  ! (1000./pres)**R/cp
+  real(crm_rknd), allocatable :: rho    (:,:)   ! air density at pressure levels,kg/m3
+  real(crm_rknd), allocatable :: rhow   (:,:)   ! air density at vertical velocity levels,kg/m3
+  real(crm_rknd), allocatable :: bet    (:,:)   ! = ggr/tv0
+  real(crm_rknd), allocatable :: gamaz  (:,:) ! ggr/cp*z
+  real(crm_rknd), allocatable :: wsub   (:,:)   ! Large-scale subsidence velocity,m/s
+  real(crm_rknd), allocatable :: qtend  (:,:) ! Large-scale tendency for total water
+  real(crm_rknd), allocatable :: ttend  (:,:) ! Large-scale tendency for temp.
+  real(crm_rknd), allocatable :: utend  (:,:) ! Large-scale tendency for u
+  real(crm_rknd), allocatable :: vtend  (:,:) ! Large-scale tendency for v
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !---------------------------------------------------------------------
   !  Horizontally varying stuff (as a function of xy)
-  real(crm_rknd), bind(C) :: sstxy    (ncrms,0:nx,(1-YES3D):ny) !  surface temperature xy-distribution
-  real(crm_rknd), bind(C) :: fcory    (ncrms,0:ny)                 !  Coriolis parameter xy-distribution
-  real(crm_rknd), bind(C) :: fcorzy   (ncrms,ny)                   !  z-Coriolis parameter xy-distribution
-  real(crm_rknd), bind(C) :: latitude (ncrms,nx,ny)                  ! latitude (degrees,:)
-  real(crm_rknd), bind(C) :: longitude(ncrms,nx,ny)                  ! longitude(degrees,:)
-  real(crm_rknd), bind(C) :: prec_xy  (ncrms,nx,ny)             ! mean precip. rate for outout
-  real(crm_rknd), bind(C) :: pw_xy    (ncrms,nx,ny)               ! precipitable water
-  real(crm_rknd), bind(C) :: cw_xy    (ncrms,nx,ny)               ! cloud water path
-  real(crm_rknd), bind(C) :: iw_xy    (ncrms,nx,ny)               ! ice water path
-  real(crm_rknd), bind(C) :: cld_xy   (ncrms,nx,ny)               ! cloud frequency
-  real(crm_rknd), bind(C) :: u200_xy  (ncrms,nx,ny)             ! u-wind at 200 mb
-  real(crm_rknd), bind(C) :: usfc_xy  (ncrms,nx,ny)             ! u-wind at at the surface
-  real(crm_rknd), bind(C) :: v200_xy  (ncrms,nx,ny)             ! v-wind at 200 mb
-  real(crm_rknd), bind(C) :: vsfc_xy  (ncrms,nx,ny)             ! v-wind at the surface
-  real(crm_rknd), bind(C) :: w500_xy  (ncrms,nx,ny)             ! w at 500 mb
+  !
+  real(crm_rknd), allocatable :: sstxy    (:,:,:) !  surface temperature xy-distribution
+  real(crm_rknd), allocatable :: fcory    (:,:)      !  Coriolis parameter xy-distribution
+  real(crm_rknd), allocatable :: fcorzy   (:,:)      !  z-Coriolis parameter xy-distribution
+  real(crm_rknd), allocatable :: latitude (:,:,:)      ! latitude (degrees,:)
+  real(crm_rknd), allocatable :: longitude(:,:,:)      ! longitude(degrees,:)
+  real(crm_rknd), allocatable :: prec_xy  (:,:,:) ! mean precip. rate for outout
+  real(crm_rknd), allocatable :: pw_xy    (:,:,:)   ! precipitable water
+  real(crm_rknd), allocatable :: cw_xy    (:,:,:)   ! cloud water path
+  real(crm_rknd), allocatable :: iw_xy    (:,:,:)   ! ice water path
+  real(crm_rknd), allocatable :: cld_xy   (:,:,:)   ! cloud frequency
+  real(crm_rknd), allocatable :: u200_xy  (:,:,:) ! u-wind at 200 mb
+  real(crm_rknd), allocatable :: usfc_xy  (:,:,:) ! u-wind at at the surface
+  real(crm_rknd), allocatable :: v200_xy  (:,:,:) ! v-wind at 200 mb
+  real(crm_rknd), allocatable :: vsfc_xy  (:,:,:) ! v-wind at the surface
+  real(crm_rknd), allocatable :: w500_xy  (:,:,:) ! w at 500 mb
 
   !----------------------------------------------------------------------
   ! Vertical profiles of quantities sampled for statitistics purposes:
-  real(crm_rknd), bind(C) :: w_max    (ncrms)
-  real(crm_rknd), bind(C) :: u_max    (ncrms)
-  real(crm_rknd), bind(C) :: twsb     (ncrms,nz)
-  real(crm_rknd), bind(C) :: precflux (ncrms,nz)
-  real(crm_rknd), bind(C) :: uwle     (ncrms,nz)
-  real(crm_rknd), bind(C) :: uwsb     (ncrms,nz)
-  real(crm_rknd), bind(C) :: vwle     (ncrms,nz)
-  real(crm_rknd), bind(C) :: vwsb     (ncrms,nz)
-  real(crm_rknd), bind(C) :: tkelediss(ncrms,nz)
-  real(crm_rknd), bind(C) :: tdiff    (ncrms,nz)
-  real(crm_rknd), bind(C) :: tlat     (ncrms,nz)
-  real(crm_rknd), bind(C) :: tlatqi   (ncrms,nz)
-  real(crm_rknd), bind(C) :: qifall   (ncrms,nz)
-  real(crm_rknd), bind(C) :: qpfall   (ncrms,nz)
+
+  real(crm_rknd), allocatable :: w_max(:)
+  real(crm_rknd), allocatable :: u_max(:)
+
+  real(crm_rknd), allocatable :: twsb(:,:)
+  real(crm_rknd), allocatable :: precflux(:,:)
+  real(crm_rknd), allocatable :: uwle(:,:)
+  real(crm_rknd), allocatable :: uwsb(:,:)
+  real(crm_rknd), allocatable :: vwle(:,:)
+  real(crm_rknd), allocatable :: vwsb(:,:)
+  real(crm_rknd), allocatable :: tkelediss(:,:)
+  real(crm_rknd), allocatable :: tdiff(:,:)
+  real(crm_rknd), allocatable :: tlat(:,:)
+  real(crm_rknd), allocatable :: tlatqi(:,:)
+  real(crm_rknd), allocatable :: qifall(:,:)
+  real(crm_rknd), allocatable :: qpfall(:,:)
 
   ! energy conservation diagnostics:
-  real(8), bind(C) :: total_water_evap(ncrms)
-  real(8), bind(C) :: total_water_prec(ncrms)
+  real(8), allocatable :: total_water_evap(:)
+  real(8), allocatable :: total_water_prec(:)
 
-  real(crm_rknd), bind(C) :: CF3D(ncrms,1:nx, 1:ny, 1:nzm)  ! Cloud fraction
+  real(crm_rknd), allocatable :: CF3D(:,:,:,:)  ! Cloud fraction
   ! =1.0 when there is no fractional cloudiness scheme
   ! = cloud fraction produced by fractioal cloudiness scheme when avaiable
 
   ! 850 mbar horizontal winds
-  real(crm_rknd), bind(C) :: u850_xy(ncrms,nx,ny) ! zonal velocity at 850 mb
-  real(crm_rknd), bind(C) :: v850_xy(ncrms,nx,ny) ! meridional velocity at 850 mb
+  real(crm_rknd), allocatable :: u850_xy(:,:,:) ! zonal velocity at 850 mb
+  real(crm_rknd), allocatable :: v850_xy(:,:,:) ! meridional velocity at 850 mb
 
   ! Surface pressure
-  real(crm_rknd), bind(C) :: psfc_xy(ncrms,nx,ny) ! pressure (in millibar) at lowest grid point
+  real(crm_rknd), allocatable :: psfc_xy(:,:,:) ! pressure (in millibar) at lowest grid point
 
   ! Saturated water vapor path, useful for computing column relative humidity
-  real(crm_rknd), bind(C) :: swvp_xy(ncrms,nx,ny)  ! saturated water vapor path (wrt water)
+  real(crm_rknd), allocatable :: swvp_xy(:,:,:)  ! saturated water vapor path (wrt water)
 
   ! Cloud and echo top heights, and cloud top temperature (instantaneous)
-  real(crm_rknd), bind(C) :: cloudtopheight(ncrms,nx,ny)
-  real(crm_rknd), bind(C) :: echotopheight (ncrms,nx,ny)
-  real(crm_rknd), bind(C) :: cloudtoptemp  (ncrms,nx,ny)
+  real(crm_rknd), allocatable :: cloudtopheight(:,:,:)
+  real(crm_rknd), allocatable :: echotopheight (:,:,:)
+  real(crm_rknd), allocatable :: cloudtoptemp  (:,:,:)
 
   ! END UW ADDITIONS
   !===========================================================================
@@ -149,6 +157,100 @@ contains
   subroutine allocate_vars()
     implicit none
     real(crm_rknd) :: zero
+    allocate( u(ncrms,dimx1_u:dimx2_u,dimy1_u:dimy2_u,nzm)  )
+    allocate( v(ncrms,dimx1_v:dimx2_v,dimy1_v:dimy2_v,nzm)  )
+    allocate( w(ncrms,dimx1_w:dimx2_w,dimy1_w:dimy2_w,nz )  )
+    allocate( t(ncrms,dimx1_s:dimx2_s,dimy1_s:dimy2_s,nzm)  )
+    allocate( p       (ncrms,0:nx, (1-YES3D):ny, nzm)      )
+    allocate( tabs(ncrms,nx, ny, nzm)                  )
+    allocate( qv(ncrms,nx, ny, nzm)                 )
+    allocate( qcl(ncrms,nx, ny, nzm)                 )
+    allocate( qpl(ncrms,nx, ny, nzm)                 )
+    allocate( qci(ncrms,nx, ny, nzm)                 )
+    allocate( qpi(ncrms,nx, ny, nzm)                 )
+    allocate( tke2(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)    )
+    allocate( tk2  (ncrms,0:nxp1, (1-YES3D):nyp1, nzm)  )
+    allocate( dudt(ncrms,nxp1, ny, nzm, 3) )
+    allocate( dvdt(ncrms,nx, nyp1, nzm, 3) )
+    allocate( dwdt(ncrms,nx, ny  , nz,  3) )
+    allocate( misc(ncrms,nx, ny, nz) )
+    allocate( fluxbu(ncrms,nx,ny) )
+    allocate( fluxbv(ncrms,nx,ny) )
+    allocate( fluxbt(ncrms,nx,ny) )
+    allocate( fluxbq(ncrms,nx,ny) )
+    allocate( fluxtu(ncrms,nx,ny) )
+    allocate( fluxtv(ncrms,nx,ny) )
+    allocate( fluxtt(ncrms,nx,ny) )
+    allocate( fluxtq(ncrms,nx,ny) )
+    allocate( fzero(ncrms,nx,ny) )
+    allocate( precsfc(ncrms,nx,ny)  )
+    allocate( precssfc(ncrms,nx,ny)  )
+    allocate( t0(ncrms,nzm) )
+    allocate( q0(ncrms,nzm) )
+    allocate( qv0(ncrms,nzm) )
+    allocate( tabs0(ncrms,nzm) )
+    allocate( tv0(ncrms,nzm) )
+    allocate( u0(ncrms,nzm) )
+    allocate( v0(ncrms,nzm) )
+    allocate( tg0(ncrms,nzm) )
+    allocate( qg0(ncrms,nzm) )
+    allocate( ug0(ncrms,nzm) )
+    allocate( vg0(ncrms,nzm) )
+    allocate( p0(ncrms,nzm) )
+    allocate( tke0(ncrms,nzm) )
+    allocate( t01(ncrms,nzm) )
+    allocate( q01(ncrms,nzm) )
+    allocate( qp0(ncrms,nzm) )
+    allocate( qn0(ncrms,nzm) )
+    allocate( prespot(ncrms,nzm)   )
+    allocate( rho(ncrms,nzm)     )
+    allocate( rhow(ncrms,nz )    )
+    allocate( bet(ncrms,nzm)     )
+    allocate( gamaz(ncrms,nzm)  )
+    allocate( wsub(ncrms,nz )    )
+    allocate( qtend(ncrms,nzm)  )
+    allocate( ttend(ncrms,nzm)  )
+    allocate( utend(ncrms,nzm)  )
+    allocate( vtend(ncrms,nzm)  )
+    allocate( sstxy    (ncrms,0:nx,(1-YES3D):ny)   )
+    allocate( fcory(ncrms,0:ny)       )
+    allocate( fcorzy(ncrms,ny)       )
+    allocate( latitude(ncrms,nx,ny)        )
+    allocate( longitude(ncrms,nx,ny)        )
+    allocate( prec_xy(ncrms,nx,ny)  )
+    allocate( pw_xy(ncrms,nx,ny)    )
+    allocate( cw_xy(ncrms,nx,ny)    )
+    allocate( iw_xy(ncrms,nx,ny)    )
+    allocate( cld_xy(ncrms,nx,ny)    )
+    allocate( u200_xy(ncrms,nx,ny)  )
+    allocate( usfc_xy(ncrms,nx,ny)  )
+    allocate( v200_xy(ncrms,nx,ny)  )
+    allocate( vsfc_xy(ncrms,nx,ny)  )
+    allocate( w500_xy(ncrms,nx,ny)  )
+    allocate( twsb(ncrms,nz) )
+    allocate( precflux(ncrms,nz) )
+    allocate( uwle(ncrms,nz) )
+    allocate( uwsb(ncrms,nz) )
+    allocate( vwle(ncrms,nz) )
+    allocate( vwsb(ncrms,nz) )
+    allocate( tkelediss(ncrms,nz) )
+    allocate( tdiff    (ncrms,nz) )
+    allocate( tlat(ncrms,nz) )
+    allocate( tlatqi(ncrms,nz) )
+    allocate( qifall(ncrms,nz) )
+    allocate( qpfall(ncrms,nz) )
+    allocate( cf3d(ncrms,1:nx, 1:ny, 1:nzm)   )
+    allocate( u850_xy(ncrms,nx,ny)  )
+    allocate( v850_xy(ncrms,nx,ny)  )
+    allocate( psfc_xy(ncrms,nx,ny)  )
+    allocate( swvp_xy(ncrms,nx,ny)   )
+    allocate( cloudtopheight(ncrms,nx,ny) )
+    allocate( echotopheight(ncrms,nx,ny) )
+    allocate( cloudtoptemp(ncrms,nx,ny) )
+    allocate( u_max(ncrms) )
+    allocate( w_max(ncrms) )
+    allocate( total_water_evap(ncrms) )
+    allocate( total_water_prec(ncrms) )
 
     zero = 0
 
@@ -251,6 +353,100 @@ contains
 
   subroutine deallocate_vars()
     implicit none
+    deallocate( u )
+    deallocate( v )
+    deallocate( w )
+    deallocate( t )
+    deallocate( p )
+    deallocate( tabs )
+    deallocate( qv )
+    deallocate( qcl )
+    deallocate( qpl )
+    deallocate( qci )
+    deallocate( qpi )
+    deallocate( tke2 )
+    deallocate( tk2 )
+    deallocate( dudt )
+    deallocate( dvdt )
+    deallocate( dwdt )
+    deallocate( misc )
+    deallocate( fluxbu )
+    deallocate( fluxbv )
+    deallocate( fluxbt )
+    deallocate( fluxbq )
+    deallocate( fluxtu )
+    deallocate( fluxtv )
+    deallocate( fluxtt )
+    deallocate( fluxtq )
+    deallocate( fzero )
+    deallocate( precsfc )
+    deallocate( precssfc )
+    deallocate( t0 )
+    deallocate( q0 )
+    deallocate( qv0 )
+    deallocate( tabs0 )
+    deallocate( tv0 )
+    deallocate( u0 )
+    deallocate( v0 )
+    deallocate( tg0 )
+    deallocate( qg0 )
+    deallocate( ug0 )
+    deallocate( vg0 )
+    deallocate( p0 )
+    deallocate( tke0 )
+    deallocate( t01 )
+    deallocate( q01 )
+    deallocate( qp0 )
+    deallocate( qn0 )
+    deallocate( prespot )
+    deallocate( rho )
+    deallocate( rhow )
+    deallocate( bet )
+    deallocate( gamaz )
+    deallocate( wsub )
+    deallocate( qtend )
+    deallocate( ttend )
+    deallocate( utend )
+    deallocate( vtend )
+    deallocate( sstxy )
+    deallocate( fcory )
+    deallocate( fcorzy )
+    deallocate( latitude )
+    deallocate( longitude )
+    deallocate( prec_xy )
+    deallocate( pw_xy )
+    deallocate( cw_xy )
+    deallocate( iw_xy )
+    deallocate( cld_xy )
+    deallocate( u200_xy )
+    deallocate( usfc_xy )
+    deallocate( v200_xy )
+    deallocate( vsfc_xy )
+    deallocate( w500_xy )
+    deallocate( twsb )
+    deallocate( precflux )
+    deallocate( uwle )
+    deallocate( uwsb )
+    deallocate( vwle )
+    deallocate( vwsb )
+    deallocate( tkelediss )
+    deallocate( tdiff )
+    deallocate( tlat )
+    deallocate( tlatqi )
+    deallocate( qifall )
+    deallocate( qpfall )
+    deallocate( CF3D )
+    deallocate( u850_xy )
+    deallocate( v850_xy )
+    deallocate( psfc_xy )
+    deallocate( swvp_xy )
+    deallocate( cloudtopheight )
+    deallocate( echotopheight )
+    deallocate( cloudtoptemp )
+    deallocate( u_max )
+    deallocate( w_max )
+    deallocate( total_water_evap )
+    deallocate( total_water_prec )
 end subroutine deallocate_vars
 
 

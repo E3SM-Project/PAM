@@ -2,6 +2,8 @@
 #ifndef __CONST_H__
 #define __CONST_H__
 
+#include "Kokkos_Core.hpp"
+
 typedef double real;
 
 int  constexpr ncrms      = NCRMS;
@@ -57,6 +59,16 @@ int  constexpr dimy2_s = nyp3        ;
 int  constexpr ncols = nx*ny;
 int  constexpr nadams = 3;
 
+int  constexpr dimx_u = dimx2_u - dimx1_u + 1;
+int  constexpr dimx_v = dimx2_v - dimx1_v + 1;
+int  constexpr dimx_w = dimx2_w - dimx1_w + 1;
+int  constexpr dimx_s = dimx2_s - dimx1_s + 1;
+
+int  constexpr dimy_u = dimy2_u - dimy1_u + 1;
+int  constexpr dimy_v = dimy2_v - dimy1_v + 1;
+int  constexpr dimy_w = dimy2_w - dimy1_w + 1;
+int  constexpr dimy_s = dimy2_s - dimy1_s + 1;
+
 real constexpr cp    = 1004.          ;  // Specific heat of air, J/kg/K
 real constexpr ggr   = 9.81           ;  // Gravity acceleration, m/s2
 real constexpr lcond = 2.5104e+06     ;  // Latent heat of condensation, J/kg
@@ -72,6 +84,8 @@ real constexpr fac_fus  = lfus/cp     ;
 real constexpr fac_sub  = lsub/cp     ;
 real constexpr pi = 3.141592653589793 ;  // sine, cosine, cosine, sine, 3.14159 !
 
+typedef Kokkos::View<real* , Kokkos::LayoutRight, Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged> > umgReal1d;
+typedef Kokkos::View<real**, Kokkos::LayoutRight, Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged> > umgReal2d;
 
 #endif
 
