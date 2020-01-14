@@ -133,7 +133,7 @@ printf "NetCDF Flags: $NCFLAGS\n\n"
 ## RUN THE CONFIGURE
 ############################################################################
 FFLAGS="$FFLAGS -ffree-line-length-none -I$NCHOME/include -I$NFHOME/include"
-CXXFLAGS="$CXXFLAGS -I$NCHOME/include -I$NFHOME/include"
+CXXFLAGS="$CXXFLAGS -std=c++11 -I$NCHOME/include -I$NFHOME/include"
 printf "FFLAGS: $FFLAGS\n\n"
 printf "CXXFLAGS: $CXXFLAGS\n\n"
 cmake      \

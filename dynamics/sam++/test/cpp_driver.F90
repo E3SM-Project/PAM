@@ -45,6 +45,15 @@ program driver
   real(crm_rknd), allocatable :: read_crm_rad_cld          (:,:,:,:)
   character(len=64) :: fprefix = 'cpp_output'
 
+  interface
+    subroutine cpp_init() bind(C,name="cpp_init")
+    end subroutine
+    subroutine cpp_finalize() bind(C,name="cpp_finalize")
+    end subroutine
+  end interface
+
+  call cpp_init()
+
   write(*,*) "File   : ", trim(prefix)
   write(*,*) "Samples: ", ncrms
   write(*,*) "crm_nx : ", crm_nx
@@ -262,6 +271,8 @@ program driver
     call dmdf_write( crm_rad%qi               (icrm,:,:,:) , 1 , fprefix , trim('rad_qi              ') , (/'crm_nx_rad','crm_ny_rad','crm_nz    '/) , .false. , .false. )
     call dmdf_write( crm_rad%cld              (icrm,:,:,:) , 1 , fprefix , trim('rad_cld             ') , (/'crm_nx_rad','crm_ny_rad','crm_nz    '/) , .false. , .true.  )
   enddo
+
+  call cpp_finalize()
 
 end program driver
 
