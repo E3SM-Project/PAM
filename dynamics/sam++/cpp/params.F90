@@ -40,46 +40,46 @@ module params
   real(crm_rknd), parameter :: fac_sub  = lsub/cp
 
   real(crm_rknd), parameter ::  pi = 3.141592653589793
+  integer(crm_iknd), parameter :: asyncid = 1
   !
   ! internally set parameters:
 
-  real(crm_rknd)   epsv     ! = (1-eps)/eps, where eps= Rv/Ra, or =0. if dosmoke=.true.
-  logical(crm_lknd):: dosubsidence = .false.
-  real(crm_rknd), allocatable :: fcorz(:)      ! Vertical Coriolis parameter
+  real(crm_rknd)   , bind(C):: epsv     ! = (1-eps)/eps, where eps= Rv/Ra, or =0. if dosmoke=.true.
+  logical(crm_lknd), bind(C):: dosubsidence = .false.
 
   !----------------------------------------------
   ! Parameters set by PARAMETERS namelist:
   ! Initialized to default values.
   !----------------------------------------------
 
-  real(crm_rknd):: ug = 0.        ! Velocity of the Domain's drift in x direction
-  real(crm_rknd):: vg = 0.        ! Velocity of the Domain's drift in y direction
+  real(crm_rknd), bind(C):: ug = 0.        ! Velocity of the Domain's drift in x direction
+  real(crm_rknd), bind(C):: vg = 0.        ! Velocity of the Domain's drift in y direction
+
+  logical(crm_lknd), bind(C) :: les =.false.    ! flag for Large-Eddy Simulation
+  logical(crm_lknd), bind(C) :: sfc_flx_fxd =.false. ! surface sensible flux is fixed
+  logical(crm_lknd), bind(C) :: sfc_tau_fxd =.false.! surface drag is fixed
+
+  logical(crm_lknd), bind(C):: dodamping = .false.
+  logical(crm_lknd), bind(C):: docloud = .false.
+  logical(crm_lknd), bind(C):: docam_sfc_fluxes = .false.   ! Apply the surface fluxes within CAM
+  logical(crm_lknd), bind(C):: doprecip = .false.
+  logical(crm_lknd), bind(C):: dosgs = .false.
+  logical(crm_lknd), bind(C):: docoriolis = .false.
+  logical(crm_lknd), bind(C):: dosurface = .false.
+  logical(crm_lknd), bind(C):: dowallx = .false.
+  logical(crm_lknd), bind(C):: dowally = .false.
+  logical(crm_lknd), bind(C):: docolumn = .false.
+  logical(crm_lknd), bind(C):: dotracers = .false.
+  logical(crm_lknd), bind(C):: dosmoke = .false.
+
+
+  real(crm_rknd), allocatable :: fcorz(:)      ! Vertical Coriolis parameter
   real(crm_rknd), allocatable :: fcor(:)  ! Coriolis parameter
   real(crm_rknd), allocatable :: longitude0(:)    ! latitude of the domain's center
   real(crm_rknd), allocatable :: latitude0 (:)    ! longitude of the domain's center
-
   real(crm_rknd), allocatable :: z0(:)            ! roughness length
-  logical(crm_lknd) :: les =.false.    ! flag for Large-Eddy Simulation
   logical(crm_lknd), allocatable :: ocean(:)           ! flag indicating that surface is water
   logical(crm_lknd), allocatable :: land(:)            ! flag indicating that surface is land
-  logical(crm_lknd) :: sfc_flx_fxd =.false. ! surface sensible flux is fixed
-  logical(crm_lknd) :: sfc_tau_fxd =.false.! surface drag is fixed
-
-  logical(crm_lknd):: dodamping = .false.
-  logical(crm_lknd):: docloud = .false.
-  logical(crm_lknd):: docam_sfc_fluxes = .false.   ! Apply the surface fluxes within CAM
-  logical(crm_lknd):: doprecip = .false.
-  logical(crm_lknd):: dosgs = .false.
-  logical(crm_lknd):: docoriolis = .false.
-  logical(crm_lknd):: dosurface = .false.
-  logical(crm_lknd):: dowallx = .false.
-  logical(crm_lknd):: dowally = .false.
-  logical(crm_lknd):: docolumn = .false.
-  logical(crm_lknd):: dotracers = .false.
-  logical(crm_lknd):: dosmoke = .false.
-
-  integer(crm_iknd), parameter :: asyncid = 1
-
   real(crm_rknd), allocatable :: uhl(:)      ! current large-scale velocity in x near sfc
   real(crm_rknd), allocatable :: vhl(:)      ! current large-scale velocity in y near sfc
   real(crm_rknd), allocatable :: taux0(:)    ! surface stress in x, m2/s2

@@ -5,14 +5,12 @@ module cpp_interface_mod
 
   interface
 
-    ! extern "C" void abcoefs(int na, int nb, int nc, int nstep, real const &dt3, real &at, real &bt, real &ct);
-    subroutine abcoefs(na, nb, nc, nstep, dt3, at, bt, ct) bind(C,name="abcoefs")
+    ! extern "C" void abcoefs(real *dt3);
+    subroutine abcoefs(dt3) bind(C,name="abcoefs")
       use iso_c_binding
       use params, only: crm_rknd, crm_iknd, crm_lknd
       implicit none
-      integer(crm_iknd), value, intent(in   ) :: na, nb, nc, nstep
-      real   (crm_rknd)       , intent(in   ) :: dt3(3)
-      real   (crm_rknd)       , intent(  out) :: at, bt, ct
+      real(crm_rknd), intent(in   ) :: dt3(3)
     end subroutine abcoefs
 
   end interface
