@@ -69,6 +69,10 @@ int  constexpr dimy_v = dimy2_v - dimy1_v + 1;
 int  constexpr dimy_w = dimy2_w - dimy1_w + 1;
 int  constexpr dimy_s = dimy2_s - dimy1_s + 1;
 
+int  constexpr dimy_p     = ny   - (1-YES3D) + 1;
+int  constexpr dimy_tk2   = nyp1 - (1-YES3D) + 1;
+int  constexpr dimy_sstxy = ny   - (1-YES3D) + 1;
+
 real constexpr cp    = 1004.          ;  // Specific heat of air, J/kg/K
 real constexpr ggr   = 9.81           ;  // Gravity acceleration, m/s2
 real constexpr lcond = 2.5104e+06     ;  // Latent heat of condensation, J/kg
@@ -84,8 +88,13 @@ real constexpr fac_fus  = lfus/cp     ;
 real constexpr fac_sub  = lsub/cp     ;
 real constexpr pi = 3.141592653589793 ;  // sine, cosine, cosine, sine, 3.14159 !
 
-typedef Kokkos::View<real* , Kokkos::LayoutRight, Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged> > umgReal1d;
-typedef Kokkos::View<real**, Kokkos::LayoutRight, Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged> > umgReal2d;
+typedef Kokkos::View<real*      , Kokkos::LayoutRight, Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged> > umgReal1d;
+typedef Kokkos::View<real**     , Kokkos::LayoutRight, Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged> > umgReal2d;
+typedef Kokkos::View<real***    , Kokkos::LayoutRight, Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged> > umgReal3d;
+typedef Kokkos::View<real****   , Kokkos::LayoutRight, Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged> > umgReal4d;
+typedef Kokkos::View<real*****  , Kokkos::LayoutRight, Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged> > umgReal5d;
+typedef Kokkos::View<real****** , Kokkos::LayoutRight, Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged> > umgReal6d;
+typedef Kokkos::View<real*******, Kokkos::LayoutRight, Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged> > umgReal7d;
 
 #endif
 

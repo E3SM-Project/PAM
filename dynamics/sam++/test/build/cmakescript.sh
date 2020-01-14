@@ -56,7 +56,7 @@ fi
 PLEV=`$NCHOME/bin/ncdump -h $1  | grep "nlev =" | awk '{print $3}'`
 INFILE="\'$1\'"
 if [[ "$NCRMS" != "" ]]; then
-  if [[ $NCRMS > $NCRMS_FILE ]]; then
+  if [[ $NCRMS -gt $NCRMS_FILE ]]; then
     printf "ERROR: NCRMS environment variable is larger than the available samples in the 2D input NetCDF file\n\n"
     exit -1
   fi
@@ -89,7 +89,7 @@ fi
 PLEV=`$NCHOME/bin/ncdump -h $2  | grep "nlev =" | awk '{print $3}'`
 INFILE="\'$2\'"
 if [[ "$NCRMS" != "" ]]; then
-  if [[ $NCRMS > $NCRMS_FILE ]]; then
+  if [[ $NCRMS -gt $NCRMS_FILE ]]; then
     printf "ERROR: NCRMS environment variable is larger than the available samples in the 3D input NetCDF file\n\n"
     exit -1
   fi

@@ -3,8 +3,9 @@
 #define __ABCOEFS_H__
 
 #include "const.h"
+#include "vars.h"
 
-extern "C" void abcoefs(real *dt3);
+extern "C" void abcoefs();
 
 #endif
 

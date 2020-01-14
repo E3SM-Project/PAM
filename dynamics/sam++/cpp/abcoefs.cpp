@@ -1,14 +1,8 @@
 
 #include "abcoefs.h"
 
-extern int  na, nb, nc, nstep;
-extern real at, bt, ct;
-
 // Compute the coefficients for the Adams-Bashforth scheme
-extern "C" void abcoefs(real *dt3_p) {
-  // Wrap pointers in unmanaged Kokkos Views
-  umgReal1d dt3(dt3_p,3);
-
+extern "C" void abcoefs() {
   if (nstep >= 3) {
     real alpha = dt3(nb-1) / dt3(na-1);
     real beta  = dt3(nc-1) / dt3(na-1);
