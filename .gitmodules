@@ -9,7 +9,7 @@
 	url = https://github.com/NVlabs/cub.git
 [submodule "externals/YAKL"]
 	path = externals/YAKL
-	url = git@github.com:mrnorman/YAKL.git
+	url = https://github.com/mrnorman/YAKL.git
 [submodule "externals/kokkos"]
 	path = externals/kokkos
 	url = https://github.com/kokkos/kokkos.git
