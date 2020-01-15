@@ -1,3 +1,9 @@
+# Directory Structure
+
+* `fortran`: Original fortran SAM (will not change)
+* `cpp`: Progressively ported C++ version of SAM
+* `test`: Testing framework
+
 # Simplifying SAM
 
 We are only porting the 1-moment microphysics, turbulence, and dynamical core to C++. Therefore, we stripped out CLUBB, M2005 microphysics, MAML, ESMT, and ECPP. In the end, we only had roughly 8K lines of code left to port. The resulting code is in `SCAMPAM/dynamics/sam++/fortran`.
