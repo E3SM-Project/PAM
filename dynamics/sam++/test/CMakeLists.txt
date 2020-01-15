@@ -10,6 +10,7 @@ file(GLOB FORTRAN_SRC ../fortran/*.F90 ../fortran/SGS_TKE/*.F90 ../fortran/MICRO
 file(GLOB CPP_SRC     ../cpp/*.F90     ../cpp/SGS_TKE/*.F90     ../cpp/MICRO_SAM1MOM/*.F90     ../cpp/ADV_MPDATA/*.F90     ../cpp/*.c     ../cpp/*.cpp)
 
 add_subdirectory(../../../externals/kokkos ./kokkos)
+add_subdirectory(../../../externals/YAKL   ./yakl  )
 
 add_subdirectory(fortran2d)
 add_subdirectory(fortran3d)

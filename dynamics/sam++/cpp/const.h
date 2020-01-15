@@ -3,6 +3,7 @@
 #define __CONST_H__
 
 #include "Kokkos_Core.hpp"
+#include "YAKL.h"
 
 typedef double real;
 
