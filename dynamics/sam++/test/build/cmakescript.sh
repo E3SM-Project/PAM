@@ -134,19 +134,35 @@ printf "NetCDF Flags: $NCFLAGS\n\n"
 ############################################################################
 FFLAGS="$FFLAGS -ffree-line-length-none -I$NCHOME/include -I$NFHOME/include"
 CXXFLAGS="$CXXFLAGS -std=c++11 -I$NCHOME/include -I$NFHOME/include"
+
 printf "FFLAGS: $FFLAGS\n\n"
 printf "CXXFLAGS: $CXXFLAGS\n\n"
+
+if [[ "$KOKKOS_DEBUG" == "" ]]; then
+  KOKKOS_DEBUG="no"
+fi
+
+echo cmake      \
+  -DCMAKE_Fortran_FLAGS:STRING="$FFLAGS" \
+  -DCMAKE_CXX_FLAGS:STRING="$CXXFLAGS"   \
+  -DNCFLAGS:STRING="$NCFLAGS"            \
+  -DDEFS2D:STRING="$DEFS2D"              \
+  -DDEFS3D:STRING="$DEFS3D"              \
+  -DKOKKOS_ENABLE_DEBUG=$KOKKOS_DEBUG    \
+  ..
+echo
+
 cmake      \
   -DCMAKE_Fortran_FLAGS:STRING="$FFLAGS" \
   -DCMAKE_CXX_FLAGS:STRING="$CXXFLAGS"   \
   -DNCFLAGS:STRING="$NCFLAGS"            \
   -DDEFS2D:STRING="$DEFS2D"              \
   -DDEFS3D:STRING="$DEFS3D"              \
+  -DKOKKOS_ENABLE_DEBUG=$KOKKOS_DEBUG    \
   ..
 
 ############################################################################
 ## ADD THIS LINE TO THE ABOVE CMAKE CONFIGURE TO TURN ON KOKKOS DEBUGGING
 ## THIS CHECKS ARRAY INDICES AND TELLS YOU WHAT LINE OF CODE FAILED
 ############################################################################
-# -DKOKKOS_ENABLE_DEBUG="yes"            \
 
