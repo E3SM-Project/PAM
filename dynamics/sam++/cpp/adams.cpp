@@ -10,7 +10,7 @@ extern "C" void adams() {
   //   for (int j=0; j<ny; j++) {
   //     for (int i=0; i<nx; i++) {
   //       for (int icrm=0; icrm<ncrms; icrm++) {
-  Kokkos::parallel_for( "adams" , nzm*ny*nx*ncrms , KOKKOS_LAMBDA (int iGlob) {
+  yakl::parallel_for( nzm*ny*nx*ncrms , YAKL_LAMBDA (int iGlob) {
     int k, j, i, icrm;
     yakl::unpackIndices( iGlob , nzm , ny , nx , ncrms , k , j , i , icrm );
     real dtdz = dtn/dz(icrm);

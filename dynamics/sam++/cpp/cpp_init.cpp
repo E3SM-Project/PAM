@@ -1,8 +1,8 @@
 
-#include "Kokkos_Core.hpp"
+#include "YAKL.h"
 
 extern "C" void cpp_init() {
-  Kokkos::initialize();
+  yakl::init();
 }
 
 

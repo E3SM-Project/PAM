@@ -2,8 +2,8 @@
 #ifndef __CONST_H__
 #define __CONST_H__
 
-#include "Kokkos_Core.hpp"
 #include "YAKL.h"
+#include "Array.h"
 
 typedef double real;
 
@@ -104,13 +104,13 @@ real constexpr fac_fus  = lfus/cp     ;
 real constexpr fac_sub  = lsub/cp     ;
 real constexpr pi = 3.141592653589793 ;  // sine, cosine, cosine, sine, 3.14159 !
 
-typedef Kokkos::View<real*      , Kokkos::LayoutRight, Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged> > umgReal1d;
-typedef Kokkos::View<real**     , Kokkos::LayoutRight, Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged> > umgReal2d;
-typedef Kokkos::View<real***    , Kokkos::LayoutRight, Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged> > umgReal3d;
-typedef Kokkos::View<real****   , Kokkos::LayoutRight, Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged> > umgReal4d;
-typedef Kokkos::View<real*****  , Kokkos::LayoutRight, Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged> > umgReal5d;
-typedef Kokkos::View<real****** , Kokkos::LayoutRight, Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged> > umgReal6d;
-typedef Kokkos::View<real*******, Kokkos::LayoutRight, Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged> > umgReal7d;
+typedef yakl::Array<real,yakl::memHost> umgReal1d;
+typedef yakl::Array<real,yakl::memHost> umgReal2d;
+typedef yakl::Array<real,yakl::memHost> umgReal3d;
+typedef yakl::Array<real,yakl::memHost> umgReal4d;
+typedef yakl::Array<real,yakl::memHost> umgReal5d;
+typedef yakl::Array<real,yakl::memHost> umgReal6d;
+typedef yakl::Array<real,yakl::memHost> umgReal7d;
 
 #endif
 
