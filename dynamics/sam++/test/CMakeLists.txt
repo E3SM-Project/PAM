@@ -4,10 +4,12 @@ project(standalone)
 enable_language(Fortran)
 enable_language(CXX)
 enable_language(C)
+enable_language(CUDA)
 enable_testing()
 
 file(GLOB FORTRAN_SRC ../fortran/*.F90 ../fortran/SGS_TKE/*.F90 ../fortran/MICRO_SAM1MOM/*.F90 ../fortran/ADV_MPDATA/*.F90 ../fortran/*.c             )
 file(GLOB CPP_SRC     ../cpp/*.F90     ../cpp/SGS_TKE/*.F90     ../cpp/MICRO_SAM1MOM/*.F90     ../cpp/ADV_MPDATA/*.F90     ../cpp/*.c     ../cpp/*.cpp)
+file(GLOB CUDA_SRC    ../cpp/*.cpp)
 
 add_subdirectory(../../../externals/YAKL   ./yakl  )
 

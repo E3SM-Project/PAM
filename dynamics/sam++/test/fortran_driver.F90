@@ -14,7 +14,7 @@ program driver
   type(crm_state_type)         :: crm_state
   type(crm_rad_type)           :: crm_rad
   integer          , parameter :: plev   = PLEV
-  character(len=64), parameter :: prefix = INPUT_FILE
+  character(len=64), parameter :: fname_in = 'input.nc'
   real(crm_rknd), allocatable  :: lat0  (:)
   real(crm_rknd), allocatable  :: long0 (:)
   real(crm_rknd), allocatable  :: dt_gl (:)
@@ -45,12 +45,12 @@ program driver
   real(crm_rknd), allocatable :: read_crm_rad_cld          (:,:,:,:)
   character(len=64) :: fprefix = 'fortran_output'
 
-  call dmdf_num_records(prefix,ncrms)
+  call dmdf_num_records(fname_in,ncrms)
 #ifdef NCRMS
   ncrms = NCRMS
 #endif
 
-  write(*,*) "File   : ", trim(prefix)
+  write(*,*) "File   : ", trim(fname_in)
   write(*,*) "Samples: ", ncrms
   write(*,*) "crm_nx : ", crm_nx
   write(*,*) "crm_ny : ", crm_ny
@@ -107,44 +107,44 @@ program driver
 
   ! Read in the samples to drive the code
   write(*,*) 'Reading the data'
-  call dmdf_read( dt_gl                      , prefix , trim("dt_gl            ") , 1 , ncrms , .true.  , .false. )
-  call dmdf_read( lat0                       , prefix , trim("latitude0        ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( long0                      , prefix , trim("longitude0       ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( read_crm_input_zmid        , prefix , trim("in_zmid          ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( read_crm_input_zint        , prefix , trim("in_zint          ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( read_crm_input_tl          , prefix , trim("in_tl            ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( read_crm_input_ql          , prefix , trim("in_ql            ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( read_crm_input_qccl        , prefix , trim("in_qccl          ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( read_crm_input_qiil        , prefix , trim("in_qiil          ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( read_crm_input_pmid        , prefix , trim("in_pmid          ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( read_crm_input_pint        , prefix , trim("in_pint          ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( read_crm_input_pdel        , prefix , trim("in_pdel          ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( read_crm_input_ul          , prefix , trim("in_ul            ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( read_crm_input_vl          , prefix , trim("in_vl            ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( read_crm_state_u_wind      , prefix , trim("state_u_wind     ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( read_crm_state_v_wind      , prefix , trim("state_v_wind     ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( read_crm_state_w_wind      , prefix , trim("state_w_wind     ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( read_crm_state_temperature , prefix , trim("state_temperature") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( read_crm_state_qt          , prefix , trim("state_qt         ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( read_crm_state_qp          , prefix , trim("state_qp         ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( read_crm_state_qn          , prefix , trim("state_qn         ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( read_crm_rad_qrad          , prefix , trim("rad_qrad         ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( read_crm_rad_temperature   , prefix , trim("rad_temperature  ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( read_crm_rad_qv            , prefix , trim("rad_qv           ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( read_crm_rad_qc            , prefix , trim("rad_qc           ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( read_crm_rad_qi            , prefix , trim("rad_qi           ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( read_crm_rad_cld           , prefix , trim("rad_cld          ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( crm_input%ps               , prefix , trim("in_ps            ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( crm_input%phis             , prefix , trim("in_phis          ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( crm_input%ocnfrac          , prefix , trim("in_ocnfrac       ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( crm_input%tau00            , prefix , trim("in_tau00         ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( crm_input%wndls            , prefix , trim("in_wndls         ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( crm_input%bflxls           , prefix , trim("in_bflxls        ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( crm_input%fluxu00          , prefix , trim("in_fluxu00       ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( crm_input%fluxv00          , prefix , trim("in_fluxv00       ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( crm_input%fluxt00          , prefix , trim("in_fluxt00       ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( crm_input%fluxq00          , prefix , trim("in_fluxq00       ") , 1 , ncrms , .false. , .false. )
-  call dmdf_read( crm_output%timing_factor   , prefix , trim("out_timing_factor") , 1 , ncrms , .false. , .true.  )
+  call dmdf_read( dt_gl                      , fname_in , trim("dt_gl            ") , 1 , ncrms , .true.  , .false. )
+  call dmdf_read( lat0                       , fname_in , trim("latitude0        ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( long0                      , fname_in , trim("longitude0       ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( read_crm_input_zmid        , fname_in , trim("in_zmid          ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( read_crm_input_zint        , fname_in , trim("in_zint          ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( read_crm_input_tl          , fname_in , trim("in_tl            ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( read_crm_input_ql          , fname_in , trim("in_ql            ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( read_crm_input_qccl        , fname_in , trim("in_qccl          ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( read_crm_input_qiil        , fname_in , trim("in_qiil          ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( read_crm_input_pmid        , fname_in , trim("in_pmid          ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( read_crm_input_pint        , fname_in , trim("in_pint          ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( read_crm_input_pdel        , fname_in , trim("in_pdel          ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( read_crm_input_ul          , fname_in , trim("in_ul            ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( read_crm_input_vl          , fname_in , trim("in_vl            ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( read_crm_state_u_wind      , fname_in , trim("state_u_wind     ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( read_crm_state_v_wind      , fname_in , trim("state_v_wind     ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( read_crm_state_w_wind      , fname_in , trim("state_w_wind     ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( read_crm_state_temperature , fname_in , trim("state_temperature") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( read_crm_state_qt          , fname_in , trim("state_qt         ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( read_crm_state_qp          , fname_in , trim("state_qp         ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( read_crm_state_qn          , fname_in , trim("state_qn         ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( read_crm_rad_qrad          , fname_in , trim("rad_qrad         ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( read_crm_rad_temperature   , fname_in , trim("rad_temperature  ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( read_crm_rad_qv            , fname_in , trim("rad_qv           ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( read_crm_rad_qc            , fname_in , trim("rad_qc           ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( read_crm_rad_qi            , fname_in , trim("rad_qi           ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( read_crm_rad_cld           , fname_in , trim("rad_cld          ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( crm_input%ps               , fname_in , trim("in_ps            ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( crm_input%phis             , fname_in , trim("in_phis          ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( crm_input%ocnfrac          , fname_in , trim("in_ocnfrac       ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( crm_input%tau00            , fname_in , trim("in_tau00         ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( crm_input%wndls            , fname_in , trim("in_wndls         ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( crm_input%bflxls           , fname_in , trim("in_bflxls        ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( crm_input%fluxu00          , fname_in , trim("in_fluxu00       ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( crm_input%fluxv00          , fname_in , trim("in_fluxv00       ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( crm_input%fluxt00          , fname_in , trim("in_fluxt00       ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( crm_input%fluxq00          , fname_in , trim("in_fluxq00       ") , 1 , ncrms , .false. , .false. )
+  call dmdf_read( crm_output%timing_factor   , fname_in , trim("out_timing_factor") , 1 , ncrms , .false. , .true.  )
 
   do icrm = 1 , ncrms
     crm_input%zmid       (icrm,:)     = read_crm_input_zmid       (:    ,icrm)                       

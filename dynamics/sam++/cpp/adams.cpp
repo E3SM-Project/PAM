@@ -2,6 +2,27 @@
 #include "adams.h"
 
 extern "C" void adams() {
+  auto &dtn    = ::dtn   ;
+  auto &dx     = ::dx    ;
+  auto &dy     = ::dy    ;
+  auto &dz     = ::dz    ;
+  auto &rho    = ::rho   ;
+  auto &rhow   = ::rhow  ;
+  auto &dudt   = ::dudt  ;
+  auto &dvdt   = ::dvdt  ;
+  auto &dwdt   = ::dwdt  ;
+  auto &u      = ::u     ;
+  auto &v      = ::v     ;
+  auto &w      = ::w     ;
+  auto &misc   = ::misc  ;
+  auto &dt3    = ::dt3   ;
+  auto &na     = ::na    ;
+  auto &nb     = ::nb    ;
+  auto &nc     = ::nc    ;
+  auto &at     = ::at    ;
+  auto &bt     = ::bt    ;
+  auto &ct     = ::ct    ;
+
   // Adams-Bashforth scheme
   real dtdx = dtn/dx;
   real dtdy = dtn/dy;
@@ -28,5 +49,8 @@ extern "C" void adams() {
     w   (k,j+offy_w,i+offx_w,icrm) = 0.5 * ( w(k,j+offy_w,i+offx_w,icrm) + dwdt(nc-1,k,j,i,icrm) ) * rhoz;
     misc(k,j       ,i       ,icrm) = 0.5 * ( w(k,j+offy_w,i+offx_w,icrm) + dwdt(nc-1,k,j,i,icrm) );
   });
+
+  yakl::fence();
+
 }
 
