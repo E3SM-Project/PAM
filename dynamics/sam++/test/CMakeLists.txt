@@ -12,6 +12,7 @@ file(GLOB CPP_SRC     ../cpp/*.F90     ../cpp/SGS_TKE/*.F90     ../cpp/MICRO_SAM
 file(GLOB CUDA_SRC    ../cpp/*.cpp)
 
 add_subdirectory(../../../externals/YAKL   ./yakl  )
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/yakl)
 
 add_subdirectory(fortran2d)
 add_subdirectory(fortran3d)

@@ -1,4 +1,5 @@
 module params
+  use gator_mod, only: gator_allocate, gator_deallocate
   use iso_c_binding
   ! use grid, only: nzm
 !#ifdef CRM
@@ -73,17 +74,15 @@ module params
   logical(crm_lknd), bind(C):: dosmoke = .false.
 
 
-  real(crm_rknd), allocatable :: fcorz(:)      ! Vertical Coriolis parameter
-  real(crm_rknd), allocatable :: fcor(:)  ! Coriolis parameter
-  real(crm_rknd), allocatable :: longitude0(:)    ! latitude of the domain's center
-  real(crm_rknd), allocatable :: latitude0 (:)    ! longitude of the domain's center
-  real(crm_rknd), allocatable :: z0(:)            ! roughness length
-  logical(crm_lknd), allocatable :: ocean(:)           ! flag indicating that surface is water
-  logical(crm_lknd), allocatable :: land(:)            ! flag indicating that surface is land
-  real(crm_rknd), allocatable :: uhl(:)      ! current large-scale velocity in x near sfc
-  real(crm_rknd), allocatable :: vhl(:)      ! current large-scale velocity in y near sfc
-  real(crm_rknd), allocatable :: taux0(:)    ! surface stress in x, m2/s2
-  real(crm_rknd), allocatable :: tauy0(:)    ! surface stress in y, m2/s2
+  real(crm_rknd)   , pointer, contiguous :: fcorz(:)      ! Vertical Coriolis parameter
+  real(crm_rknd)   , pointer, contiguous :: fcor(:)  ! Coriolis parameter
+  real(crm_rknd)   , pointer, contiguous :: longitude0(:)    ! latitude of the domain's center
+  real(crm_rknd)   , pointer, contiguous :: latitude0 (:)    ! longitude of the domain's center
+  real(crm_rknd)   , pointer, contiguous :: z0(:)            ! roughness length
+  real(crm_rknd)   , pointer, contiguous :: uhl(:)      ! current large-scale velocity in x near sfc
+  real(crm_rknd)   , pointer, contiguous :: vhl(:)      ! current large-scale velocity in y near sfc
+  real(crm_rknd)   , pointer, contiguous :: taux0(:)    ! surface stress in x, m2/s2
+  real(crm_rknd)   , pointer, contiguous :: tauy0(:)    ! surface stress in y, m2/s2
 
 
 contains
@@ -91,25 +90,21 @@ contains
   
   subroutine allocate_params()
     implicit none
-    allocate(fcor      (NCRMS))
-    allocate(fcorz     (NCRMS))
-    allocate(longitude0(NCRMS))
-    allocate(latitude0 (NCRMS))
-    allocate(z0        (NCRMS))
-    allocate(ocean     (NCRMS))
-    allocate(land      (NCRMS))
-    allocate(uhl       (NCRMS))
-    allocate(vhl       (NCRMS))
-    allocate(taux0     (NCRMS))
-    allocate(tauy0     (NCRMS))
+    call gator_allocate( fcor       , (/NCRMS/) )
+    call gator_allocate( fcorz      , (/NCRMS/) )
+    call gator_allocate( longitude0 , (/NCRMS/) )
+    call gator_allocate( latitude0  , (/NCRMS/) )
+    call gator_allocate( z0         , (/NCRMS/) )
+    call gator_allocate( uhl        , (/NCRMS/) )
+    call gator_allocate( vhl        , (/NCRMS/) )
+    call gator_allocate( taux0      , (/NCRMS/) )
+    call gator_allocate( tauy0      , (/NCRMS/) )
 
     fcor  = 0
     fcorz = 0
     longitude0 = 0
     latitude0  = 0
     z0 = 0.035
-    ocean = .false.
-    land = .false.
     uhl = 0
     vhl = 0
     taux0 = 0
@@ -119,17 +114,15 @@ contains
   
   subroutine deallocate_params()
     implicit none
-    deallocate(fcor )
-    deallocate(fcorz)
-    deallocate(longitude0)
-    deallocate(latitude0 )
-    deallocate(z0)
-    deallocate(ocean)
-    deallocate(land)
-    deallocate(uhl)
-    deallocate(vhl)
-    deallocate(taux0)
-    deallocate(tauy0)
+    call gator_deallocate(fcor )
+    call gator_deallocate(fcorz)
+    call gator_deallocate(longitude0)
+    call gator_deallocate(latitude0 )
+    call gator_deallocate(z0)
+    call gator_deallocate(uhl)
+    call gator_deallocate(vhl)
+    call gator_deallocate(taux0)
+    call gator_deallocate(tauy0)
   end subroutine deallocate_params
 
 

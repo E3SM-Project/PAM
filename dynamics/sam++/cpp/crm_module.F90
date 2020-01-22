@@ -1,6 +1,6 @@
 
 module crm_module
-  use cpp_interface_mod
+  use cpp_interface_mod, only: abcoefs, wrap_arrays
   use task_init_mod, only: task_init
   use kurant_mod, only: kurant
   use setperturb_mod, only: setperturb
@@ -19,7 +19,7 @@ module crm_module
   use damping_mod
   use ice_fall_mod
   use coriolis_mod
-
+  use adams_mod, only: adams
   use crm_state_module,       only: crm_state_type
   use crm_rad_module,         only: crm_rad_type
   use crm_input_module,       only: crm_input_type
@@ -211,12 +211,6 @@ subroutine crm(dt_gl, plev, &
         longitude(icrm,i,j) = longitude0(icrm)
       end do
     end do
-
-    if(crm_input%ocnfrac(icrm).gt.0.5) then
-       OCEAN(icrm) = .true.
-    else
-       LAND(icrm) = .true.
-    end if
 
     ! Create CRM vertical grid and initialize some vertical reference arrays:
     do k = 1, nzm

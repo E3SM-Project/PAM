@@ -34,6 +34,7 @@ extern "C" void adams() {
   yakl::parallel_for( nzm*ny*nx*ncrms , YAKL_LAMBDA (int iGlob) {
     int k, j, i, icrm;
     yakl::unpackIndices( iGlob , nzm , ny , nx , ncrms , k , j , i , icrm );
+
     real dtdz = dtn/dz(icrm);
     real rhox = rho (k,icrm)*dtdx;
     real rhoy = rho (k,icrm)*dtdy;

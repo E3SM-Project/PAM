@@ -291,7 +291,7 @@ CONTAINS
     integer(crm_iknd), intent(in) :: icrm
     integer(crm_iknd), intent(in) :: i,j,k,ind
     real(crm_rknd), intent(in) :: qploc
-    real(crm_rknd), intent(in) :: rho(ncrms,nzm), tabs(ncrms,nx, ny, nzm)
+    real(crm_rknd), intent(in) :: rho(:,:), tabs(:,:,:,:)
     real(crm_rknd), intent(in) :: qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow
     real(crm_rknd), intent(out) :: term_vel
     real(crm_rknd) wmax, omp, omg, qrr, qss, qgg
@@ -442,8 +442,8 @@ CONTAINS
                 !call task_abort
               endif
             end select
-            call  term_vel_qp(icrm,i,j,k,ind,micro_field(icrm,i,j,k,2),rho(1,1),&
-                              tabs(1,1,1,1),qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,&
+            call  term_vel_qp(icrm,i,j,k,ind,micro_field(icrm,i,j,k,2),rho,&
+                              tabs,qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,&
                               a_gr,vgrau,cgrau,vsnow,csnow,tmp)
             wp(icrm,i,j,k)=rhofac(icrm,k)*tmp
             tmp = wp(icrm,i,j,k)*iwmax(icrm,k)
@@ -615,8 +615,8 @@ CONTAINS
             do k=1,nzm
               do icrm = 1 , ncrms
                 !Passing variables via first index because of PGI bug with pointers
-                call term_vel_qp(icrm,i,j,k,ind,micro_field(icrm,i,j,k,2),rho(1,1),&
-                                 tabs(1,1,1,1),qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow,tmp)
+                call term_vel_qp(icrm,i,j,k,ind,micro_field(icrm,i,j,k,2),rho,&
+                                 tabs,qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow,tmp)
                 wp(icrm,i,j,k) = rhofac(icrm,k)*tmp
                 ! Decrease precipitation velocity by factor of nprec
                 wp(icrm,i,j,k) = -wp(icrm,i,j,k)*rhow(icrm,k)*dtn/dz(icrm)/real(nprec,crm_rknd)
