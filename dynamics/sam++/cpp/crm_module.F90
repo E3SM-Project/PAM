@@ -1,6 +1,6 @@
 
 module crm_module
-  use cpp_interface_mod, only: abcoefs, wrap_arrays
+  use cpp_interface_mod, only: abcoefs, wrap_arrays, adams
   use task_init_mod, only: task_init
   use kurant_mod, only: kurant
   use setperturb_mod, only: setperturb
@@ -19,7 +19,6 @@ module crm_module
   use damping_mod
   use ice_fall_mod
   use coriolis_mod
-  use adams_mod, only: adams
   use crm_state_module,       only: crm_state_type
   use crm_rad_module,         only: crm_rad_type
   use crm_input_module,       only: crm_input_type
@@ -105,7 +104,7 @@ subroutine crm(dt_gl, plev, &
     real(crm_rknd), allocatable  :: cwph    (:,:,:)
     real(crm_rknd), allocatable  :: cwpm    (:,:,:)
     real(crm_rknd), allocatable  :: cwpl    (:,:,:)
-    logical(crm_lknd)       , allocatable  :: flag_top(:,:,:)
+    logical(crm_lknd), allocatable  :: flag_top(:,:,:)
     real(crm_rknd), allocatable  :: cltemp  (:,:,:)
     real(crm_rknd), allocatable  :: cmtemp  (:,:,:)
     real(crm_rknd), allocatable  :: chtemp  (:,:,:)

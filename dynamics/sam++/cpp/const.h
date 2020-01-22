@@ -104,13 +104,13 @@ real constexpr fac_fus  = lfus/cp     ;
 real constexpr fac_sub  = lsub/cp     ;
 real constexpr pi = 3.141592653589793 ;  // sine, cosine, cosine, sine, 3.14159 !
 
-typedef yakl::Array<real,yakl::memHost> umgReal1d;
-typedef yakl::Array<real,yakl::memHost> umgReal2d;
-typedef yakl::Array<real,yakl::memHost> umgReal3d;
-typedef yakl::Array<real,yakl::memHost> umgReal4d;
-typedef yakl::Array<real,yakl::memHost> umgReal5d;
-typedef yakl::Array<real,yakl::memHost> umgReal6d;
-typedef yakl::Array<real,yakl::memHost> umgReal7d;
+typedef yakl::Array<real,yakl::memDevice> umgReal1d;
+typedef yakl::Array<real,yakl::memDevice> umgReal2d;
+typedef yakl::Array<real,yakl::memDevice> umgReal3d;
+typedef yakl::Array<real,yakl::memDevice> umgReal4d;
+typedef yakl::Array<real,yakl::memDevice> umgReal5d;
+typedef yakl::Array<real,yakl::memDevice> umgReal6d;
+typedef yakl::Array<real,yakl::memDevice> umgReal7d;
 
 #endif
 

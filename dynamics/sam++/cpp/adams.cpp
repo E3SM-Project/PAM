@@ -27,6 +27,8 @@ extern "C" void adams() {
   real dtdx = dtn/dx;
   real dtdy = dtn/dy;
 
+  yakl::fence();
+
   // for (int k=0; k<nzm; k++) {
   //   for (int j=0; j<ny; j++) {
   //     for (int i=0; i<nx; i++) {
@@ -50,8 +52,6 @@ extern "C" void adams() {
     w   (k,j+offy_w,i+offx_w,icrm) = 0.5 * ( w(k,j+offy_w,i+offx_w,icrm) + dwdt(nc-1,k,j,i,icrm) ) * rhoz;
     misc(k,j       ,i       ,icrm) = 0.5 * ( w(k,j+offy_w,i+offx_w,icrm) + dwdt(nc-1,k,j,i,icrm) );
   });
-
-  yakl::fence();
 
 }
 
