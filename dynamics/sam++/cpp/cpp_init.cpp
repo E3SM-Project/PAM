@@ -1,8 +1,9 @@
 
-#include "Kokkos_Core.hpp"
+#include "YAKL.h"
 
 extern "C" void cpp_init() {
-  Kokkos::initialize();
+  yakl::init( NCRMS*CRM_NX*CRM_NY*CRM_NZ*1500 );
+  // yakl::init();
 }
 
 

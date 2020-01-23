@@ -1,8 +1,8 @@
 
-#include "Kokkos_Core.hpp"
+#include "YAKL.h"
 
 extern "C" void cpp_finalize() {
-  Kokkos::finalize();
+  yakl::finalize();
 }
 
 

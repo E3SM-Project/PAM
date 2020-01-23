@@ -1,6 +1,7 @@
 module grid
   use domain
   use params, only: crm_rknd, crm_iknd, crm_lknd
+  use gator_mod, only: gator_allocate, gator_deallocate
   implicit none
 
   integer(crm_iknd), parameter :: nx = nx_gl/nsubdomains_x
@@ -138,14 +139,14 @@ module grid
   logical(crm_lknd), bind(C) :: isInitialized_scamiopdata = .false.
   logical(crm_lknd), bind(C) :: wgls_holds_omega = .false.
 
-  real(crm_rknd), allocatable :: z    (:,:)      ! height of the pressure levels above surface,m
-  real(crm_rknd), allocatable :: pres (:,:)  ! pressure,mb at scalar levels
-  real(crm_rknd), allocatable :: zi   (:,:)     ! height of the interface levels
-  real(crm_rknd), allocatable :: presi(:,:)  ! pressure,mb at interface levels
-  real(crm_rknd), allocatable :: adz  (:,:)   ! ratio of the thickness of scalar levels to dz
-  real(crm_rknd), allocatable :: adzw (:,:)  ! ratio of the thinckness of w levels to dz
-  real(crm_rknd), allocatable :: dt3  (:)   ! dynamical timesteps for three most recent time steps
-  real(crm_rknd), allocatable :: dz   (:)    ! constant grid spacing in z direction (when dz_constant=.true.)
+  real(crm_rknd), pointer, contiguous :: z    (:,:)      ! height of the pressure levels above surface,m
+  real(crm_rknd), pointer, contiguous :: pres (:,:)  ! pressure,mb at scalar levels
+  real(crm_rknd), pointer, contiguous :: zi   (:,:)     ! height of the interface levels
+  real(crm_rknd), pointer, contiguous :: presi(:,:)  ! pressure,mb at interface levels
+  real(crm_rknd), pointer, contiguous :: adz  (:,:)   ! ratio of the thickness of scalar levels to dz
+  real(crm_rknd), pointer, contiguous :: adzw (:,:)  ! ratio of the thinckness of w levels to dz
+  real(crm_rknd), pointer, contiguous :: dt3  (:)   ! dynamical timesteps for three most recent time steps
+  real(crm_rknd), pointer, contiguous :: dz   (:)    ! constant grid spacing in z direction (when dz_constant=.true.)
 
   !-----------------------------------------
 
@@ -157,14 +158,14 @@ contains
     implicit none
     real(crm_rknd) :: zero
 
-    allocate( z(ncrms,nz)       )
-    allocate( pres(ncrms,nzm)   )
-    allocate( zi(ncrms,nz)      )
-    allocate( presi(ncrms,nz)   )
-    allocate( adz(ncrms,nzm)    )
-    allocate( adzw(ncrms,nz)    )
-    allocate( dt3(3)      )
-    allocate( dz(ncrms)         )
+    call gator_allocate( z     , (/ncrms,nz /) )
+    call gator_allocate( pres  , (/ncrms,nzm/) )
+    call gator_allocate( zi    , (/ncrms,nz /) )
+    call gator_allocate( presi , (/ncrms,nz /) )
+    call gator_allocate( adz   , (/ncrms,nzm/) )
+    call gator_allocate( adzw  , (/ncrms,nz /) )
+    call gator_allocate( dt3   , (/3        /) )
+    call gator_allocate( dz    , (/ncrms    /) )
 
     zero = 0
 
@@ -184,14 +185,14 @@ contains
 
   subroutine deallocate_grid()
     implicit none
-    deallocate( z )
-    deallocate( pres )
-    deallocate( zi )
-    deallocate( presi )
-    deallocate( adz )
-    deallocate( adzw )
-    deallocate( dt3 )
-    deallocate( dz )
+    call gator_deallocate( z )
+    call gator_deallocate( pres )
+    call gator_deallocate( zi )
+    call gator_deallocate( presi )
+    call gator_deallocate( adz )
+    call gator_deallocate( adzw )
+    call gator_deallocate( dt3 )
+    call gator_deallocate( dz )
   end subroutine deallocate_grid
 
 

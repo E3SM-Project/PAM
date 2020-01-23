@@ -54,7 +54,6 @@ else
   usage
 fi
 PLEV=`$NCHOME/bin/ncdump -h $1  | grep "nlev =" | awk '{print $3}'`
-INFILE="\'$1\'"
 if [[ "$NCRMS" != "" ]]; then
   if [[ $NCRMS -gt $NCRMS_FILE ]]; then
     printf "ERROR: NCRMS environment variable is larger than the available samples in the 2D input NetCDF file\n\n"
@@ -65,7 +64,7 @@ else
   NCRMS2D=$NCRMS_FILE
 fi
 
-DEFS2D=" -DNCRMS=$NCRMS2D -DCRM -DCRM_NX=$NX -DCRM_NY=$NY -DCRM_NZ=$NZ -DCRM_NX_RAD=$NX_RAD -DCRM_NY_RAD=$NY_RAD -DCRM_DT=$DT -DCRM_DX=$DX -DYES3DVAL=$YES3D -DPLEV=$PLEV -Dsam1mom -DINPUT_FILE=$INFILE "
+DEFS2D=" -DNCRMS=$NCRMS2D -DCRM -DCRM_NX=$NX -DCRM_NY=$NY -DCRM_NZ=$NZ -DCRM_NX_RAD=$NX_RAD -DCRM_NY_RAD=$NY_RAD -DCRM_DT=$DT -DCRM_DX=$DX -DYES3DVAL=$YES3D -DPLEV=$PLEV -Dsam1mom"
 printf "2D Defs: $DEFS2D\n\n"
 
 
@@ -87,7 +86,6 @@ else
   YES3D=1
 fi
 PLEV=`$NCHOME/bin/ncdump -h $2  | grep "nlev =" | awk '{print $3}'`
-INFILE="\'$2\'"
 if [[ "$NCRMS" != "" ]]; then
   if [[ $NCRMS -gt $NCRMS_FILE ]]; then
     printf "ERROR: NCRMS environment variable is larger than the available samples in the 3D input NetCDF file\n\n"
@@ -98,7 +96,7 @@ else
   NCRMS3D=$NCRMS_FILE
 fi
 
-DEFS3D=" -DNCRMS=$NCRMS3D -DCRM -DCRM_NX=$NX -DCRM_NY=$NY -DCRM_NZ=$NZ -DCRM_NX_RAD=$NX_RAD -DCRM_NY_RAD=$NY_RAD -DCRM_DT=$DT -DCRM_DX=$DX -DYES3DVAL=$YES3D -DPLEV=$PLEV -Dsam1mom -DINPUT_FILE=$INFILE "
+DEFS3D=" -DNCRMS=$NCRMS3D -DCRM -DCRM_NX=$NX -DCRM_NY=$NY -DCRM_NZ=$NZ -DCRM_NX_RAD=$NX_RAD -DCRM_NY_RAD=$NY_RAD -DCRM_DT=$DT -DCRM_DX=$DX -DYES3DVAL=$YES3D -DPLEV=$PLEV -Dsam1mom"
 printf "3D Defs: $DEFS3D\n\n"
 
 
@@ -115,10 +113,10 @@ mkdir fortran2d
 mkdir fortran3d
 mkdir cpp2d    
 mkdir cpp3d    
-cd fortran2d   ; ln -s ../$1
-cd ../fortran3d; ln -s ../$2
-cd ../cpp2d    ; ln -s ../$1
-cd ../cpp3d    ; ln -s ../$2
+cd fortran2d   ; ln -s ../$1 ./input.nc
+cd ../fortran3d; ln -s ../$2 ./input.nc
+cd ../cpp2d    ; ln -s ../$1 ./input.nc
+cd ../cpp3d    ; ln -s ../$2 ./input.nc
 cd ..
 
 
@@ -138,17 +136,14 @@ CXXFLAGS="$CXXFLAGS -std=c++11 -I$NCHOME/include -I$NFHOME/include"
 printf "FFLAGS: $FFLAGS\n\n"
 printf "CXXFLAGS: $CXXFLAGS\n\n"
 
-if [[ "$KOKKOS_DEBUG" == "" ]]; then
-  KOKKOS_DEBUG="no"
-fi
-
 echo cmake      \
   -DCMAKE_Fortran_FLAGS:STRING="$FFLAGS" \
   -DCMAKE_CXX_FLAGS:STRING="$CXXFLAGS"   \
   -DNCFLAGS:STRING="$NCFLAGS"            \
   -DDEFS2D:STRING="$DEFS2D"              \
   -DDEFS3D:STRING="$DEFS3D"              \
-  -DKOKKOS_ENABLE_DEBUG=$KOKKOS_DEBUG    \
+  -DCUDA_ARCH:string="sm_70"             \
+  -DARCH:STRING="CUDA"                   \
   ..
 echo
 
@@ -158,11 +153,8 @@ cmake      \
   -DNCFLAGS:STRING="$NCFLAGS"            \
   -DDEFS2D:STRING="$DEFS2D"              \
   -DDEFS3D:STRING="$DEFS3D"              \
-  -DKOKKOS_ENABLE_DEBUG=$KOKKOS_DEBUG    \
+  -DCUDA_ARCH:string="sm_70"             \
+  -DARCH:STRING="CUDA"                   \
   ..
 
-############################################################################
-## ADD THIS LINE TO THE ABOVE CMAKE CONFIGURE TO TURN ON KOKKOS DEBUGGING
-## THIS CHECKS ARRAY INDICES AND TELLS YOU WHAT LINE OF CODE FAILED
-############################################################################
 

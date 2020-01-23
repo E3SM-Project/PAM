@@ -9,15 +9,17 @@
 // These arrays use non-1 lower bounds in the Fortran code
 // They must be indexed differently in the C++ code
 //////////////////////////////////////////////////////////////////////////////////
-extern umgReal4d u    ; // Index as u     (k , offy_u    +j , offx_u    +i , icrm )
-extern umgReal4d v    ; // Index as v     (k , offy_v    +j , offx_v    +i , icrm )
-extern umgReal4d w    ; // Index as w     (k , offy_w    +j , offx_w    +i , icrm )
-extern umgReal4d t    ; // Index as t     (k , offy_t    +j , offx_t    +i , icrm )
-extern umgReal4d p    ; // Index as p     (k , offy_p    +j , offx_p    +i , icrm )
-extern umgReal4d tke2 ; // Index as tke2  (k , offy_tke2 +j , offx_tke2 +i , icrm )
-extern umgReal4d tk2  ; // Index as tk2   (k , offy_tk2  +j , offx_tk2  +i , icrm )
-extern umgReal3d sstxy; // Index as sstxy (    offy_sstxy+j , offx_sstxy+i , icrm )
-extern umgReal2d fcory; // Index as fcory (    offy_fcory+j                , icrm )
+extern umgReal4d u             ; // Index as u             (    k , offy_u    +j , offx_u    +i , icrm )
+extern umgReal4d v             ; // Index as v             (    k , offy_v    +j , offx_v    +i , icrm )
+extern umgReal4d w             ; // Index as w             (    k , offy_w    +j , offx_w    +i , icrm )
+extern umgReal4d t             ; // Index as t             (    k , offy_s    +j , offx_s    +i , icrm )
+extern umgReal4d p             ; // Index as p             (    k , offy_p    +j , offx_p    +i , icrm )
+extern umgReal4d tke2          ; // Index as tke2          (    k , offy_tke2 +j , offx_tke2 +i , icrm )
+extern umgReal4d tk2           ; // Index as tk2           (    k , offy_tk2  +j , offx_tk2  +i , icrm )
+extern umgReal3d sstxy         ; // Index as sstxy         (        offy_sstxy+j , offx_sstxy+i , icrm )
+extern umgReal2d fcory         ; // Index as fcory         (        offy_fcory+j                , icrm )
+extern umgReal5d sgs_field     ; // Index as sgs_field     (l , k , offy_s    +j , offx_s    +i , icrm )
+extern umgReal5d sgs_field_diag; // Index as sgs_field_diag(l , k , offy_d    +j , offx_d    +i , icrm )
 
 
 extern "C" void wrap_arrays(real *u_p, real *v_p, real *w_p, real *t_p, real *p_p, real *tabs_p, real *qv_p, real *qcl_p, real *qpl_p,
@@ -34,7 +36,8 @@ extern "C" void wrap_arrays(real *u_p, real *v_p, real *w_p, real *t_p, real *p_
                             real *u850_xy_p, real *v850_xy_p, real *psfc_xy_p, real *swvp_xy_p, real *cloudtopheight_p, real *echotopheight_p,
                             real *cloudtoptemp_p, real *fcorz_p, real *fcor_p, real *longitude0_p, real *latitude0_p, real *z0_p, real *uhl_p,
                             real *vhl_p, real *taux0_p, real *tauy0_p, real *z_p, real *pres_p, real *zi_p, real *presi_p, real *adz_p, real *adzw_p,
-                            real *dt3_p, real *dz_p);
+                            real *dt3_p, real *dz_p, real *sgs_field_p, real *sgs_field_diag_p, real *grdf_x_p, real *grdf_y_p, real *grdf_z_p,
+                            real *tkesbbuoy_p, real *tkesbshear_p, real *tkesbdiss_p);
 
 
 extern int  nstep                    ;
@@ -129,6 +132,9 @@ extern bool dowally         ;
 extern bool docolumn        ;
 extern bool dotracers       ;
 extern bool dosmoke         ;
+
+extern bool advect_sgs;
+extern bool dosmagor  ;
 
 extern umgReal4d tabs            ;
 extern umgReal4d qv              ;
@@ -234,6 +240,13 @@ extern umgReal2d adz             ;
 extern umgReal2d adzw            ;
 extern umgReal1d dt3             ;
 extern umgReal1d dz              ;
+
+extern umgReal2d grdf_x          ;
+extern umgReal2d grdf_y          ;
+extern umgReal2d grdf_z          ;
+extern umgReal2d tkesbbuoy       ;
+extern umgReal2d tkesbshear      ;
+extern umgReal2d tkesbdiss       ;
 
 #endif
 

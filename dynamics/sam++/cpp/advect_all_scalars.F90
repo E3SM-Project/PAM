@@ -24,14 +24,14 @@ contains
       if(   k.eq.index_water_vapor             &! transport water-vapor variable no metter what
       .or. docloud.and.flag_precip(k).ne.1    & ! transport non-precipitation vars
       .or. doprecip.and.flag_precip(k).eq.1 ) then
-        call advect_scalar(micro_field(1,dimx1_s,dimy1_s,1,k),mkadv(1,1,k),mkwle(1,1,k))
+        call advect_scalar(micro_field(:,:,:,:,k),mkadv(1,1,k),mkwle(1,1,k))
       endif
     end do
 
     !    Advection of sgs prognostics:
     if(dosgs.and.advect_sgs) then
       do k = 1,nsgs_fields
-        call advect_scalar(sgs_field(1,dimx1_s,dimy1_s,1,k),dummy,dummy)
+        call advect_scalar(sgs_field(:,:,:,:,k),dummy,dummy)
       end do
     end if
 

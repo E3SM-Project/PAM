@@ -1,6 +1,6 @@
 
 module crm_module
-  use cpp_interface_mod
+  use cpp_interface_mod, only: abcoefs, wrap_arrays, adams
   use task_init_mod, only: task_init
   use kurant_mod, only: kurant
   use setperturb_mod, only: setperturb
@@ -19,7 +19,6 @@ module crm_module
   use damping_mod
   use ice_fall_mod
   use coriolis_mod
-
   use crm_state_module,       only: crm_state_type
   use crm_rad_module,         only: crm_rad_type
   use crm_input_module,       only: crm_input_type
@@ -105,7 +104,7 @@ subroutine crm(dt_gl, plev, &
     real(crm_rknd), allocatable  :: cwph    (:,:,:)
     real(crm_rknd), allocatable  :: cwpm    (:,:,:)
     real(crm_rknd), allocatable  :: cwpl    (:,:,:)
-    logical(crm_lknd)       , allocatable  :: flag_top(:,:,:)
+    logical(crm_lknd), allocatable  :: flag_top(:,:,:)
     real(crm_rknd), allocatable  :: cltemp  (:,:,:)
     real(crm_rknd), allocatable  :: cmtemp  (:,:,:)
     real(crm_rknd), allocatable  :: chtemp  (:,:,:)
@@ -164,7 +163,9 @@ subroutine crm(dt_gl, plev, &
                     u850_xy, v850_xy, psfc_xy, swvp_xy, cloudtopheight, echotopheight, &
                     cloudtoptemp, fcorz, fcor, longitude0, latitude0, z0, uhl,         &
                     vhl, taux0, tauy0, z, pres, zi, presi, adz, adzw,                  &
-                    dt3, dz )
+                    dt3, dz, sgs_field, sgs_field_diag, grdf_x, grdf_y, grdf_z,        &
+                    tkesbbuoy, tkesbshear, tkesbdiss)
+  
   
   crm_accel_ceaseflag = .false.
 
@@ -211,12 +212,6 @@ subroutine crm(dt_gl, plev, &
         longitude(icrm,i,j) = longitude0(icrm)
       end do
     end do
-
-    if(crm_input%ocnfrac(icrm).gt.0.5) then
-       OCEAN(icrm) = .true.
-    else
-       LAND(icrm) = .true.
-    end if
 
     ! Create CRM vertical grid and initialize some vertical reference arrays:
     do k = 1, nzm

@@ -17,6 +17,13 @@ module cpp_interface_mod
     subroutine adams() bind(C,name="adams")
     end subroutine adams
 
+
+    subroutine kurant_sgs(cfl) bind(C,name="kurant_sgs")
+      use params, only: crm_rknd, crm_iknd, crm_lknd
+      implicit none
+      real(crm_rknd) :: cfl
+    end subroutine kurant_sgs
+
     
     subroutine wrap_arrays( u, v, w, t, p, tabs, qv, qcl, qpl,                                 &
                             qci, qpi, tke2, tk2, dudt, dvdt, dwdt, misc, fluxbu,               &
@@ -32,7 +39,8 @@ module cpp_interface_mod
                             u850_xy, v850_xy, psfc_xy, swvp_xy, cloudtopheight, echotopheight, &
                             cloudtoptemp, fcorz, fcor, longitude0, latitude0, z0, uhl,         &
                             vhl, taux0, tauy0, z, pres, zi, presi, adz, adzw,                  &
-                            dt3, dz ) bind(C,name="wrap_arrays")
+                            dt3, dz, sgs_field, sgs_field_diag, grdf_x, grdf_y, grdf_z,        &
+                            tkesbbuoy, tkesbshear, tkesbdiss ) bind(C,name="wrap_arrays")
       use params, only: crm_rknd, crm_iknd, crm_lknd
       implicit none
       real(crm_rknd), dimension(*) :: u, v, w, t, p, tabs, qv, qcl, qpl,                                 &
@@ -49,7 +57,8 @@ module cpp_interface_mod
                                       u850_xy, v850_xy, psfc_xy, swvp_xy, cloudtopheight, echotopheight, &
                                       cloudtoptemp, fcorz, fcor, longitude0, latitude0, z0, uhl,         &
                                       vhl, taux0, tauy0, z, pres, zi, presi, adz, adzw,                  &
-                                      dt3, dz
+                                      dt3, dz, sgs_field, sgs_field_diag, grdf_x, grdf_y, grdf_z,        &
+                                      tkesbbuoy, tkesbshear, tkesbdiss
     end subroutine wrap_arrays
 
 
