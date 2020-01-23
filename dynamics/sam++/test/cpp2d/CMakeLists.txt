@@ -5,7 +5,7 @@ set_property(TARGET cpp2d APPEND PROPERTY COMPILE_FLAGS ${DEFS2D} )
 
 if ("${ARCH}" STREQUAL "CUDA")
   set_source_files_properties(${CUDA_SRC} PROPERTIES LANGUAGE CUDA)
-  set_source_files_properties(${CUDA_SRC} PROPERTIES COMPILE_FLAGS " -D__AUTO_FENCE__ -D__USE_CUDA__ -D__MANAGED__ -std=c++11 --expt-extended-lambda")
+  set_source_files_properties(${CUDA_SRC} PROPERTIES COMPILE_FLAGS " -D__AUTO_FENCE__ -D__USE_CUDA__ -D__MANAGED__ -std=c++11 --expt-extended-lambda -arch ${CUDA_ARCH}")
 endif()
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../../externals/YAKL)

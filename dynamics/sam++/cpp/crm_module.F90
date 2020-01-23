@@ -163,7 +163,9 @@ subroutine crm(dt_gl, plev, &
                     u850_xy, v850_xy, psfc_xy, swvp_xy, cloudtopheight, echotopheight, &
                     cloudtoptemp, fcorz, fcor, longitude0, latitude0, z0, uhl,         &
                     vhl, taux0, tauy0, z, pres, zi, presi, adz, adzw,                  &
-                    dt3, dz )
+                    dt3, dz, sgs_field, sgs_field_diag, grdf_x, grdf_y, grdf_z,        &
+                    tkesbbuoy, tkesbshear, tkesbdiss)
+  
   
   crm_accel_ceaseflag = .false.
 

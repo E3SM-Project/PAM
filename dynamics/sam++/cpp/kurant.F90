@@ -8,7 +8,7 @@ module kurant_mod
 
    subroutine kurant()
       use vars
-      use sgs, only: kurant_sgs
+      use cpp_interface_mod, only: kurant_sgs
       use params, only: crm_rknd
       implicit none
       integer(crm_iknd) i, j, k, ncycle1(1),ncycle2(1),icrm

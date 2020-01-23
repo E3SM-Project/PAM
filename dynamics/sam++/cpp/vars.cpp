@@ -17,7 +17,8 @@ extern "C" void wrap_arrays(real *u_p, real *v_p, real *w_p, real *t_p, real *p_
                             real *u850_xy_p, real *v850_xy_p, real *psfc_xy_p, real *swvp_xy_p, real *cloudtopheight_p, real *echotopheight_p,
                             real *cloudtoptemp_p, real *fcorz_p, real *fcor_p, real *longitude0_p, real *latitude0_p, real *z0_p, real *uhl_p,
                             real *vhl_p, real *taux0_p, real *tauy0_p, real *z_p, real *pres_p, real *zi_p, real *presi_p, real *adz_p, real *adzw_p,
-                            real *dt3_p, real *dz_p) {
+                            real *dt3_p, real *dz_p, real *sgs_field_p, real *sgs_field_diag_p, real *grdf_x_p, real *grdf_y_p, real *grdf_z_p,
+                            real *tkesbbuoy_p, real *tkesbshear_p, real *tkesbdiss_p) {
   
   u                = umgReal4d( "u               " , u_p                     , nzm , dimy_u     , dimx_u , ncrms ); 
   v                = umgReal4d( "v               " , v_p                     , nzm , dimy_v     , dimx_v , ncrms ); 
@@ -130,6 +131,14 @@ extern "C" void wrap_arrays(real *u_p, real *v_p, real *w_p, real *t_p, real *p_
   adzw             = umgReal2d( "adzw            " , adzw_p                                     , nz     , ncrms ); 
   dz               = umgReal1d( "dz              " , dz_p                                                , ncrms ); 
   dt3              = umgReal1d( "dt3             " , dt3_p               , 3                                     ); 
+  sgs_field        = umgReal5d( "sgs_field       " , sgs_field_p      , nsgs_fields      , nzm , dimy_s , dimx_s , ncrms );
+  sgs_field_diag   = umgReal5d( "sgs_field_diag  " , sgs_field_diag_p , nsgs_fields_diag , nzm , dimy_d , dimx_d , ncrms );
+  grdf_x           = umgReal2d( "grdf_x          " , grdf_x_p                            , nzm                   , ncrms );
+  grdf_y           = umgReal2d( "grdf_y          " , grdf_y_p                            , nzm                   , ncrms );
+  grdf_z           = umgReal2d( "grdf_z          " , grdf_z_p                            , nzm                   , ncrms );
+  tkesbbuoy        = umgReal2d( "tkesbbuoy       " , tkesbbuoy_p                         , nz                    , ncrms );
+  tkesbshear       = umgReal2d( "tkesbshear      " , tkesbshear_p                        , nz                    , ncrms );
+  tkesbdiss        = umgReal2d( "tkesbdiss       " , tkesbdiss_p                         , nz                    , ncrms );
 }
 
 
@@ -247,6 +256,15 @@ umgReal2d adz             ;
 umgReal2d adzw            ;
 umgReal1d dt3             ;
 umgReal1d dz              ;
+
+umgReal5d sgs_field       ;
+umgReal5d sgs_field_diag  ;
+umgReal2d grdf_x          ;
+umgReal2d grdf_y          ;
+umgReal2d grdf_z          ;
+umgReal2d tkesbbuoy       ;
+umgReal2d tkesbshear      ;
+umgReal2d tkesbdiss       ;
 
 
 

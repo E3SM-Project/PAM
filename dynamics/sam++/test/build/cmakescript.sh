@@ -142,6 +142,7 @@ echo cmake      \
   -DNCFLAGS:STRING="$NCFLAGS"            \
   -DDEFS2D:STRING="$DEFS2D"              \
   -DDEFS3D:STRING="$DEFS3D"              \
+  -DCUDA_ARCH:string="sm_70"             \
   -DARCH:STRING="CUDA"                   \
   ..
 echo
@@ -152,6 +153,7 @@ cmake      \
   -DNCFLAGS:STRING="$NCFLAGS"            \
   -DDEFS2D:STRING="$DEFS2D"              \
   -DDEFS3D:STRING="$DEFS3D"              \
+  -DCUDA_ARCH:string="sm_70"             \
   -DARCH:STRING="CUDA"                   \
   ..
 

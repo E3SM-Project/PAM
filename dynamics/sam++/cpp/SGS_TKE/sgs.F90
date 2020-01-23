@@ -8,6 +8,7 @@ module sgs
   use params, only: dosgs, crm_rknd, asyncid, crm_iknd, crm_lknd
   use vars, only: tke2, tk2
   use crmdims, only: ncrms
+  use gator_mod, only: gator_allocate, gator_deallocate
   implicit none
 
   !----------------------------------------------------------------------
@@ -29,8 +30,8 @@ module sgs
   integer(crm_iknd), parameter :: flag_sgsdiag3Dout(nsgs_fields_diag) = (/0,0/)
 
 
-  logical(crm_lknd):: advect_sgs = .false. ! advect prognostics or not, default - not (Smagorinsky)
-  logical(crm_lknd), parameter:: do_sgsdiag_bound = .true.  ! exchange boundaries for diagnostics fields
+  logical(crm_lknd), bind(C) :: advect_sgs = .false. ! advect prognostics or not, default - not (Smagorinsky)
+  logical(crm_lknd), parameter :: do_sgsdiag_bound = .true.  ! exchange boundaries for diagnostics fields
 
   ! SGS fields that output by default (if =1).
 
@@ -46,24 +47,21 @@ module sgs
   ! make aliases for diagnostic variables:
 
 
-  logical(crm_lknd):: dosmagor   ! if true, then use Smagorinsky closure
+  logical(crm_lknd), bind(C) :: dosmagor   ! if true, then use Smagorinsky closure
 
   ! whannah
   ! logical(crm_lknd):: doscalar   ! if true, transport a passive scalar in the place of prognostic SGS TKE only if dosmagor=.true.
 
   ! Local diagnostics:
 
-  real(crm_rknd), allocatable, target :: sgs_field     (:,:,:,:,:)
-  real(crm_rknd), allocatable, target :: sgs_field_diag(:,:,:,:,:)
-  real(crm_rknd), allocatable :: grdf_x(:,:)! grid factor for eddy diffusion in x
-  real(crm_rknd), allocatable :: grdf_y(:,:)! grid factor for eddy diffusion in y
-  real(crm_rknd), allocatable :: grdf_z(:,:)! grid factor for eddy diffusion in z
-  real(crm_rknd), allocatable :: tkesbbuoy (:,:)
-  real(crm_rknd), allocatable :: tkesbshear(:,:)
-  real(crm_rknd), allocatable :: tkesbdiss (:,:)
-  real(crm_rknd), pointer :: tke(:,:,:,:) ! SGS TKE
-  real(crm_rknd), pointer :: tk (:,:,:,:) ! SGS eddy viscosity
-  real(crm_rknd), pointer :: tkh(:,:,:,:) ! SGS eddy conductivity
+  real(crm_rknd), pointer, contiguous :: sgs_field     (:,:,:,:,:)
+  real(crm_rknd), pointer, contiguous :: sgs_field_diag(:,:,:,:,:)
+  real(crm_rknd), pointer, contiguous :: grdf_x(:,:)! grid factor for eddy diffusion in x
+  real(crm_rknd), pointer, contiguous :: grdf_y(:,:)! grid factor for eddy diffusion in y
+  real(crm_rknd), pointer, contiguous :: grdf_z(:,:)! grid factor for eddy diffusion in z
+  real(crm_rknd), pointer, contiguous :: tkesbbuoy (:,:)
+  real(crm_rknd), pointer, contiguous :: tkesbshear(:,:)
+  real(crm_rknd), pointer, contiguous :: tkesbdiss (:,:)
 
 CONTAINS
 
@@ -71,18 +69,14 @@ CONTAINS
   subroutine allocate_sgs()
     implicit none
     real(crm_rknd) :: zero
-    allocate( sgs_field(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nsgs_fields) )
-    allocate( sgs_field_diag(ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm, nsgs_fields_diag) )
-    allocate( grdf_x(ncrms,nzm) )
-    allocate( grdf_y(ncrms,nzm) )
-    allocate( grdf_z(ncrms,nzm) )
-    allocate( tkesbbuoy(ncrms,nz) )
-    allocate( tkesbshear(ncrms,nz) )
-    allocate( tkesbdiss(ncrms,nz) )
-
-    tke(dimx1_s:,dimy1_s:,1:,1:) => sgs_field     (:,:,:,:,1)
-    tk (dimx1_d:,dimy1_d:,1:,1:) => sgs_field_diag(:,:,:,:,1)
-    tkh(dimx1_d:,dimy1_d:,1:,1:) => sgs_field_diag(:,:,:,:,2)
+    call gator_allocate( sgs_field      , (/ncrms,dimx2_s-dimx1_s+1,dimy2_s-dimy1_s+1,nzm,nsgs_fields     /) , (/1,dimx1_s,dimy1_s,1,1/) )
+    call gator_allocate( sgs_field_diag , (/ncrms,dimx2_d-dimx1_d+1,dimy2_d-dimy1_d+1,nzm,nsgs_fields_diag/) , (/1,dimx1_d,dimy1_d,1,1/) )
+    call gator_allocate( grdf_x         , (/ncrms,nzm/) )
+    call gator_allocate( grdf_y         , (/ncrms,nzm/) )
+    call gator_allocate( grdf_z         , (/ncrms,nzm/) )
+    call gator_allocate( tkesbbuoy      , (/ncrms,nz /) )
+    call gator_allocate( tkesbshear     , (/ncrms,nz /) )
+    call gator_allocate( tkesbdiss      , (/ncrms,nz /) )
 
     zero = 0
 
@@ -99,14 +93,14 @@ CONTAINS
 
   subroutine deallocate_sgs()
     implicit none
-    deallocate( sgs_field  )
-    deallocate( sgs_field_diag  )
-    deallocate( grdf_x  )
-    deallocate( grdf_y  )
-    deallocate( grdf_z  )
-    deallocate( tkesbbuoy  )
-    deallocate( tkesbshear  )
-    deallocate( tkesbdiss  )
+    call gator_deallocate( sgs_field  )
+    call gator_deallocate( sgs_field_diag  )
+    call gator_deallocate( grdf_x  )
+    call gator_deallocate( grdf_y  )
+    call gator_deallocate( grdf_z  )
+    call gator_deallocate( tkesbbuoy  )
+    call gator_deallocate( tkesbshear  )
+    call gator_deallocate( tkesbdiss  )
   end subroutine deallocate_sgs
 
 
