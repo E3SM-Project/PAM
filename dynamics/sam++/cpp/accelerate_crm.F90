@@ -21,8 +21,7 @@
 ! -----------------------------------------------------------------------------
 module accelerate_crm_mod
     use grid, only: nx, ny
-    use params, only: asyncid, rc=>crm_rknd, r8, crm_iknd, crm_lknd
-    use crmdims, only: ncrms
+    use params, only: asyncid, rc=>crm_rknd, r8, crm_iknd, crm_lknd, ncrms
 
     implicit none
 

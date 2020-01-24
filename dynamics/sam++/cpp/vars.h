@@ -40,6 +40,8 @@ extern "C" void wrap_arrays(real *u_p, real *v_p, real *w_p, real *t_p, real *p_
                             real *tkesbbuoy_p, real *tkesbshear_p, real *tkesbdiss_p);
 
 
+extern int ncrms;
+
 extern int  nstep                    ;
 extern int  ncycle                   ;
 extern int  icycle                   ;
@@ -247,6 +249,7 @@ extern umgReal2d grdf_z          ;
 extern umgReal2d tkesbbuoy       ;
 extern umgReal2d tkesbshear      ;
 extern umgReal2d tkesbdiss       ;
+
 
 #endif
 

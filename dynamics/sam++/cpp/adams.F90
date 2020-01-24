@@ -6,8 +6,7 @@ contains
   subroutine adams()
     !       Adams-Bashforth scheme
     use vars
-    use params, only: crm_rknd
-    use crmdims, only: ncrms
+    use params, only: crm_rknd, ncrms
     implicit none
     real(crm_rknd) dtdx, dtdy, dtdz, rhox, rhoy, rhoz
     integer i,j,k,icrm

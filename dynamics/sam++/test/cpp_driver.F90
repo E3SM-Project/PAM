@@ -1,13 +1,14 @@
 
 program driver
   use crmdims
-  use params, only: crm_rknd, crm_iknd, crm_lknd, r8
+  use params, only: crm_rknd, crm_iknd, crm_lknd, r8, ncrms
   use crm_input_module
   use crm_output_module
   use crm_state_module
   use crm_rad_module
   use dmdf
   use crm_module
+  use mpi
   implicit none
   type(crm_input_type)         :: crm_input
   type(crm_output_type)        :: crm_output
@@ -18,7 +19,7 @@ program driver
   real(crm_rknd), allocatable  :: lat0  (:)
   real(crm_rknd), allocatable  :: long0 (:)
   real(crm_rknd), allocatable  :: dt_gl (:)
-  integer                      :: icrm
+  integer                      :: icrm, ierr, nranks, rank
   real(crm_rknd), allocatable :: read_crm_input_zmid       (:,:)
   real(crm_rknd), allocatable :: read_crm_input_zint       (:,:)
   real(crm_rknd), allocatable :: read_crm_input_tl         (:,:)
@@ -51,6 +52,8 @@ program driver
     subroutine cpp_finalize() bind(C,name="cpp_finalize")
     end subroutine
   end interface
+
+  ncrms = NCRMS
 
   call cpp_init()
 
@@ -180,7 +183,7 @@ program driver
   write(*,*) 'Running the CRM'
 
   ! Run the code
-  call crm( dt_gl(1), plev, crm_input, crm_state, crm_rad, crm_output, lat0, long0 )
+  call crm( ncrms, dt_gl(1), plev, crm_input, crm_state, crm_rad, crm_output, lat0, long0 )
 
   write(*,*) 'Writing output data'
   ! dmdf_write(dat,rank,fprefix,vname       ,first,last) !For scalar values
@@ -273,6 +276,24 @@ program driver
   enddo
 
   call cpp_finalize()
+
+
+contains
+
+
+  subroutine distr_indices(nTasks,nThreads,myThreadID,myTasks_beg,myTasks_end)
+    implicit none
+    integer, intent(in   ) :: nTasks
+    integer, intent(in   ) :: nThreads
+    integer, intent(in   ) :: myThreadID
+    integer, intent(  out) :: myTasks_beg
+    integer, intent(  out) :: myTasks_end
+    real :: nper
+    nper = real(nTasks)/nThreads
+    myTasks_beg = nint( nper* myThreadID    )+1
+    myTasks_end = nint( nper*(myThreadID+1) )
+  end subroutine distr_indices
+
 
 end program driver
 

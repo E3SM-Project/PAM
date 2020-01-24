@@ -7,7 +7,6 @@
 
 typedef double real;
 
-int  constexpr ncrms      = NCRMS;
 int  constexpr crm_nx     = CRM_NX;
 int  constexpr crm_ny     = CRM_NY;
 int  constexpr crm_nz     = CRM_NZ;

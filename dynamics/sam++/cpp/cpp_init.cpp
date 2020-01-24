@@ -1,8 +1,9 @@
 
 #include "YAKL.h"
+#include "vars.h"
 
 extern "C" void cpp_init() {
-  yakl::init( NCRMS*CRM_NX*CRM_NY*CRM_NZ*1500 );
+  yakl::init( ncrms*crm_nx*crm_ny*crm_nz*1500 );
   // yakl::init();
 }
 

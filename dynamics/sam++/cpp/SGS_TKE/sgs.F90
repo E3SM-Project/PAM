@@ -5,9 +5,8 @@ module sgs
   ! Marat Khairoutdinov, 2012
 
   use grid, only: nx,nxp1,ny,nyp1,YES3D,nzm,nz,dimx1_s,dimx2_s,dimy1_s,dimy2_s
-  use params, only: dosgs, crm_rknd, asyncid, crm_iknd, crm_lknd
+  use params, only: dosgs, crm_rknd, asyncid, crm_iknd, crm_lknd, ncrms
   use vars, only: tke2, tk2
-  use crmdims, only: ncrms
   use gator_mod, only: gator_allocate, gator_deallocate
   implicit none
 

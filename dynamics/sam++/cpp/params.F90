@@ -14,6 +14,10 @@ module params
   integer, parameter :: crm_rknd = c_double
   integer, parameter :: crm_iknd = c_int
   integer, parameter :: crm_lknd = c_bool
+
+  integer(crm_iknd), bind(C) :: ncrms
+
+
   !   Constants:
 ! #ifndef CRM
   real(crm_rknd), parameter :: cp    = 1004.          ! Specific heat of air, J/kg/K
@@ -90,15 +94,15 @@ contains
   
   subroutine allocate_params()
     implicit none
-    call gator_allocate( fcor       , (/NCRMS/) )
-    call gator_allocate( fcorz      , (/NCRMS/) )
-    call gator_allocate( longitude0 , (/NCRMS/) )
-    call gator_allocate( latitude0  , (/NCRMS/) )
-    call gator_allocate( z0         , (/NCRMS/) )
-    call gator_allocate( uhl        , (/NCRMS/) )
-    call gator_allocate( vhl        , (/NCRMS/) )
-    call gator_allocate( taux0      , (/NCRMS/) )
-    call gator_allocate( tauy0      , (/NCRMS/) )
+    call gator_allocate( fcor       , (/ncrms/) )
+    call gator_allocate( fcorz      , (/ncrms/) )
+    call gator_allocate( longitude0 , (/ncrms/) )
+    call gator_allocate( latitude0  , (/ncrms/) )
+    call gator_allocate( z0         , (/ncrms/) )
+    call gator_allocate( uhl        , (/ncrms/) )
+    call gator_allocate( vhl        , (/ncrms/) )
+    call gator_allocate( taux0      , (/ncrms/) )
+    call gator_allocate( tauy0      , (/ncrms/) )
 
     fcor  = 0
     fcorz = 0

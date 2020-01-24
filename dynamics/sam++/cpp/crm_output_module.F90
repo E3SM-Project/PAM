@@ -1,5 +1,5 @@
 module crm_output_module
-   use params,       only: crm_rknd, crm_iknd
+   use params,       only: crm_rknd, crm_iknd, ncrms
    use crmdims,      only: crm_nx, crm_ny, crm_nz
    implicit none
    public crm_output_type

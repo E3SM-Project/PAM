@@ -22,6 +22,7 @@ extern "C" void adams() {
   auto &at     = ::at    ;
   auto &bt     = ::bt    ;
   auto &ct     = ::ct    ;
+  auto &ncrms  = ::ncrms ;
 
   // Adams-Bashforth scheme
   real dtdx = dtn/dx;

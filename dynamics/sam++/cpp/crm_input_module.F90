@@ -1,5 +1,5 @@
 module crm_input_module
-   use params, only: crm_rknd, crm_iknd
+   use params, only: crm_rknd, crm_iknd, ncrms
    implicit none
    private
    public crm_input_type
@@ -37,7 +37,6 @@ contains
    !------------------------------------------------------------------------------------------------
    ! Type-bound procedures for crm_input_type
    subroutine crm_input_initialize(this, nlev)
-      use crmdims, only: ncrms
       class(crm_input_type), intent(inout) :: this
       integer(crm_iknd), intent(in) :: nlev
       

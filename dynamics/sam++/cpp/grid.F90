@@ -1,6 +1,6 @@
 module grid
   use domain
-  use params, only: crm_rknd, crm_iknd, crm_lknd
+  use params, only: crm_rknd, crm_iknd, crm_lknd, ncrms
   use gator_mod, only: gator_allocate, gator_deallocate
   implicit none
 

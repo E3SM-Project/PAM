@@ -13,6 +13,7 @@ extern "C" void kurant_sgs(real &cfl) {
   auto grdf_x         = :: grdf_x;
   auto grdf_y         = :: grdf_y;
   auto grdf_z         = :: grdf_z;
+  auto ncrms          = :: ncrms;
 
   // for (int k=0; k<nzm; k++) {
   //   for (int icrm=0; icrm<ncrms; icrm++) {

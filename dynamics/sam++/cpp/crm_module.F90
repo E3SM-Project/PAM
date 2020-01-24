@@ -33,7 +33,7 @@ module crm_module
 
 contains
 
-subroutine crm(dt_gl, plev, &
+subroutine crm(ncrms_in, dt_gl, plev, &
                crm_input, crm_state, crm_rad,  &
                crm_output , lat0, long0)
     !-----------------------------------------------------------------------------------------------
@@ -53,7 +53,7 @@ subroutine crm(dt_gl, plev, &
     !-----------------------------------------------------------------------------------------------
     ! Interface variable declarations
     !-----------------------------------------------------------------------------------------------
-
+    integer(crm_iknd) , intent(in   ) :: ncrms_in
     integer(crm_iknd) , intent(in   ) :: plev                             ! number of levels in parent model
     real(r8), intent(in   ) :: dt_gl                            ! global model's time step
     type(crm_input_type),      intent(in   ) :: crm_input
@@ -116,6 +116,8 @@ subroutine crm(dt_gl, plev, &
 
   !-----------------------------------------------------------------------------------------------
   !-----------------------------------------------------------------------------------------------
+
+  ncrms = ncrms_in
 
   allocate( t00(ncrms,nz) )
   allocate( tln(ncrms,plev) )

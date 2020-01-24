@@ -7,8 +7,7 @@ module microphysics
   ! Marat Khairoutdinov, 2006
 
   use grid, only: nx,ny,nzm,nz, dimx1_s,dimx2_s,dimy1_s,dimy2_s ! subdomain grid information
-  use params, only: doprecip, docloud, crm_rknd, asyncid, crm_iknd, crm_lknd
-  use crmdims, only: ncrms
+  use params, only: doprecip, docloud, crm_rknd, asyncid, crm_iknd, crm_lknd, ncrms
   use micro_params
   implicit none
 
@@ -286,7 +285,6 @@ CONTAINS
   subroutine term_vel_qp(icrm,i,j,k,ind,qploc,rho,tabs,qp_threshold,tprmin,&
                                       a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow,term_vel)
     !$acc routine seq
-    use crmdims, only: ncrms
     implicit none
     integer(crm_iknd), intent(in) :: icrm
     integer(crm_iknd), intent(in) :: i,j,k,ind
