@@ -142,5 +142,9 @@ typedef yakl::Array<real,yakl::memHost> realHost6d;
 typedef yakl::Array<real,yakl::memHost> realHost7d;
 
 
+template <class T> YAKL_INLINE  T max(T v1, T v2) { return v1 > v2 ? v1 : v2; }
+template <class T> YAKL_INLINE  T min(T v1, T v2) { return v1 < v2 ? v1 : v2; }
+
+
 #endif
 

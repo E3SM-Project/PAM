@@ -44,13 +44,13 @@ extern "C" void kurant_sgs(real &cfl) {
     real xdir = 0.5*tkhmax(k,icrm)*grdf_x(k,icrm)*dt/(dx*dx);
     real ydir = 0.5*tkhmax(k,icrm)*grdf_y(k,icrm)*dt/(dy*dy)*YES3D;
     real zdir = 0.5*tkhmax(k,icrm)*grdf_z(k,icrm)*dt/(dztmp*dztmp);
-    tkhmax(k,icrm) = std::max( std::max( xdir , ydir ) , zdir );
+    tkhmax(k,icrm) = max( max( xdir , ydir ) , zdir );
   });
 
   // Perform a max reduction over tkhmax
   yakl::ParallelMax<real,yakl::memDevice> pmax( nzm*ncrms );
   real cfl_loc = pmax( tkhmax.data() );
-  cfl = std::max(cfl , cfl_loc);
+  cfl = max(cfl , cfl_loc);
 
 }
 
