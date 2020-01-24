@@ -1,5 +1,10 @@
 #!/bin/bash
 
+ntasks=1
+if [[ ! "$1" == "" ]]; then
+  ntasks=$1
+fi
+
 printf "Rebuilding\n\n"
 
 make -j8
@@ -9,12 +14,12 @@ printf "Running 2-D tests\n\n"
 printf "Running Fortran code\n\n"
 cd fortran2d
 rm -f fortran_output_000001.nc
-./fortran2d
+mpirun -n $ntasks ./fortran2d
 
 printf "Running C++ code\n\n"
 cd ../cpp2d
 rm -f cpp_output_000001.nc
-./cpp2d
+mpirun -n $ntasks ./cpp2d
 
 printf "Comparing results\n\n"
 cd ..
@@ -27,12 +32,12 @@ printf "Running 3-D tests\n\n"
 printf "Running Fortran code\n\n"
 cd fortran3d
 rm -f fortran_output_000001.nc
-./fortran3d
+mpirun -n $ntasks ./fortran3d
 
 printf "Running C++ code\n\n"
 cd ../cpp3d
 rm -f cpp_output_000001.nc
-./cpp3d
+mpirun -n $ntasks ./cpp3d
 
 printf "Comparing results\n\n"
 cd ..
