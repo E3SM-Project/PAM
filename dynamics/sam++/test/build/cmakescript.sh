@@ -132,9 +132,11 @@ printf "NetCDF Flags: $NCFLAGS\n\n"
 ############################################################################
 FFLAGS="$FFLAGS -ffree-line-length-none -I$NCHOME/include -I$NFHOME/include"
 CXXFLAGS="$CXXFLAGS -std=c++11 -I$NCHOME/include -I$NFHOME/include"
+CUDAFLAGS="$CUDAFLAGS -D__MANAGED__ -D__AUTO_FENCE__ -arch sm_70"
 
 printf "FFLAGS: $FFLAGS\n\n"
 printf "CXXFLAGS: $CXXFLAGS\n\n"
+printf "CUDAFLAGS: $CUDAFLAGS\n\n"
 
 echo cmake      \
   -DCMAKE_Fortran_FLAGS:STRING="$FFLAGS" \
@@ -142,7 +144,8 @@ echo cmake      \
   -DNCFLAGS:STRING="$NCFLAGS"            \
   -DDEFS2D:STRING="$DEFS2D"              \
   -DDEFS3D:STRING="$DEFS3D"              \
-  -DCUDA_ARCH:string="sm_70"             \
+  -DCUDA_FLAGS:string="$CUDAFLAGS"       \
+  -DYAKL_CUB_HOME="`pwd`/../../../../externals/cub" \
   -DARCH:STRING="CUDA"                   \
   ..
 echo
@@ -153,7 +156,8 @@ cmake      \
   -DNCFLAGS:STRING="$NCFLAGS"            \
   -DDEFS2D:STRING="$DEFS2D"              \
   -DDEFS3D:STRING="$DEFS3D"              \
-  -DCUDA_ARCH:string="sm_70"             \
+  -DCUDA_FLAGS:string="$CUDAFLAGS"       \
+  -DYAKL_CUB_HOME="`pwd`/../../../../externals/cub" \
   -DARCH:STRING="CUDA"                   \
   ..
 
