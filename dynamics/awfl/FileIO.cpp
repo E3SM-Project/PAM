@@ -148,7 +148,10 @@ void FileIO::writeState(realArr &state, Domain const &dom, Parallel const &par) 
   // for (int k=0; k<dom.nz; k++) {
   //   for (int j=0; j<dom.ny; j++) {
   //     for (int i=0; i<dom.nx; i++) {
-  yakl::parallel_for( dom.nz,dom.ny,dom.nx , YAKL_LAMBDA (int k, int j, int i) {
+  yakl::parallel_for( dom.nz*dom.ny*dom.nx , YAKL_LAMBDA (int iGlob) {
+    int k, j, i;
+    yakl::unpackIndices( iGlob , dom.nx,dom.ny,dom.nx , k,j,i );
+
     data(k,j,i) = state(idR,hs+k,hs+j,hs+i);
   });
   ncwrap( ncmpi_put_vara_float_all( ncid , rVar , st , ct , data.createHostCopy().data() ) , __LINE__ );
@@ -157,7 +160,10 @@ void FileIO::writeState(realArr &state, Domain const &dom, Parallel const &par) 
   // for (int k=0; k<dom.nz; k++) {
   //   for (int j=0; j<dom.ny; j++) {
   //     for (int i=0; i<dom.nx; i++) {
-  yakl::parallel_for( dom.nz,dom.ny,dom.nx , YAKL_LAMBDA (int k, int j, int i) {
+  yakl::parallel_for( dom.nz*dom.ny*dom.nx , YAKL_LAMBDA (int iGlob) {
+    int k, j, i;
+    yakl::unpackIndices( iGlob , dom.nx,dom.ny,dom.nx , k,j,i );
+
     data(k,j,i) = state(idU,hs+k,hs+j,hs+i) / ( state(idR,hs+k,hs+j,hs+i) + dom.hyDensCells(hs+k) );
   });
   ncwrap( ncmpi_put_vara_float_all( ncid , uVar , st , ct , data.createHostCopy().data() ) , __LINE__ );
@@ -166,7 +172,10 @@ void FileIO::writeState(realArr &state, Domain const &dom, Parallel const &par) 
   // for (int k=0; k<dom.nz; k++) {
   //   for (int j=0; j<dom.ny; j++) {
   //     for (int i=0; i<dom.nx; i++) {
-  yakl::parallel_for( dom.nz,dom.ny,dom.nx , YAKL_LAMBDA (int k, int j, int i) {
+  yakl::parallel_for( dom.nz*dom.ny*dom.nx , YAKL_LAMBDA (int iGlob) {
+    int k, j, i;
+    yakl::unpackIndices( iGlob , dom.nx,dom.ny,dom.nx , k,j,i );
+
     data(k,j,i) = state(idV,hs+k,hs+j,hs+i) / ( state(idR,hs+k,hs+j,hs+i) + dom.hyDensCells(hs+k) );
   });
   ncwrap( ncmpi_put_vara_float_all( ncid , vVar , st , ct , data.createHostCopy().data() ) , __LINE__ );
@@ -175,7 +184,10 @@ void FileIO::writeState(realArr &state, Domain const &dom, Parallel const &par) 
   // for (int k=0; k<dom.nz; k++) {
   //   for (int j=0; j<dom.ny; j++) {
   //     for (int i=0; i<dom.nx; i++) {
-  yakl::parallel_for( dom.nz,dom.ny,dom.nx , YAKL_LAMBDA (int k, int j, int i) {
+  yakl::parallel_for( dom.nz*dom.ny*dom.nx , YAKL_LAMBDA (int iGlob) {
+    int k, j, i;
+    yakl::unpackIndices( iGlob , dom.nx,dom.ny,dom.nx , k,j,i );
+
     data(k,j,i) = state(idW,hs+k,hs+j,hs+i) / ( state(idR,hs+k,hs+j,hs+i) + dom.hyDensCells(hs+k) );
   });
   ncwrap( ncmpi_put_vara_float_all( ncid , wVar , st , ct , data.createHostCopy().data() ) , __LINE__ );
@@ -184,7 +196,10 @@ void FileIO::writeState(realArr &state, Domain const &dom, Parallel const &par) 
   // for (int k=0; k<dom.nz; k++) {
   //   for (int j=0; j<dom.ny; j++) {
   //     for (int i=0; i<dom.nx; i++) {
-  yakl::parallel_for( dom.nz,dom.ny,dom.nx , YAKL_LAMBDA (int k, int j, int i) {
+  yakl::parallel_for( dom.nz*dom.ny*dom.nx , YAKL_LAMBDA (int iGlob) {
+    int k, j, i;
+    yakl::unpackIndices( iGlob , dom.nx,dom.ny,dom.nx , k,j,i );
+
     data(k,j,i) = state(idT,hs+k,hs+j,hs+i);
   });
   ncwrap( ncmpi_put_vara_float_all( ncid , thVar , st , ct , data.createHostCopy().data() ) , __LINE__ );
@@ -198,7 +213,10 @@ void FileIO::writeState(realArr &state, Domain const &dom, Parallel const &par) 
   // for (int k=0; k<dom.nz; k++) {
   //   for (int j=0; j<dom.ny; j++) {
   //     for (int i=0; i<dom.nx; i++) {
-  yakl::parallel_for( dom.nz,dom.ny,dom.nx , YAKL_LAMBDA (int k, int j, int i) {
+  yakl::parallel_for( dom.nz*dom.ny*dom.nx , YAKL_LAMBDA (int iGlob) {
+    int k, j, i;
+    yakl::unpackIndices( iGlob , dom.nx,dom.ny,dom.nx , k,j,i );
+
     real r = state(idR,hs+k,hs+j,hs+i) + dom.hyDensCells (hs+k);
     real t = state(idT,hs+k,hs+j,hs+i) + dom.hyThetaCells(hs+k);
     data(k,j,i) = C0*pow(r*t,GAMMA) - dom.hyPressureCells(hs+k);

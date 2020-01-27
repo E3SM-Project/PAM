@@ -161,7 +161,10 @@ void initialize(realArr &state, Domain &dom, Parallel &par, Exchange &exch, Time
   // Perform ord-point GLL quadrature for the cell averages
   // for (int k=0; k<dom.nz; k++) {
   //   for (int kk=0; kk<tord; kk++) {
-  yakl::parallel_for( "initHydroGLL" , dom.nz,tord , YAKL_LAMBDA (int k, int kk) {
+  yakl::parallel_for( "initHydroGLL" , dom.nz*tord , YAKL_LAMBDA (int iGlob) {
+    int k, kk;
+    yakl::unpackIndices( iGlob , dom.nx,tord , k,kk);
+
     real zloc = (k + 0.5_fp)*dom.dz + gllTordPoints(kk)*dom.dz;
     real r0, t0;
 
@@ -188,7 +191,10 @@ void initialize(realArr &state, Domain &dom, Parallel &par, Exchange &exch, Time
   // for (int k=0; k<dom.nz; k++) {
   //   for (int j=0; j<dom.ny; j++) {
   //     for (int i=0; i<dom.nx; i++) {
-  yakl::parallel_for( "InitFluidState" , dom.nz,dom.ny,dom.nx , YAKL_LAMBDA (int k, int j, int i) {
+  yakl::parallel_for( "InitFluidState" , dom.nz*dom.ny*dom.nx , YAKL_LAMBDA (int iGlob) {
+    int k, j, i;
+    yakl::unpackIndices( iGlob , dom.nx,dom.ny,dom.nx , k,j,i );
+
     // Initialize the state to zero
     for (int l=0; l<numState; l++) {
       state(l,hs+k,hs+j,hs+i) = 0;
@@ -237,7 +243,10 @@ void initialize(realArr &state, Domain &dom, Parallel &par, Exchange &exch, Time
   // for (int k=0; k<dom.nz; k++) {
   //   for (int j=0; j<dom.ny; j++) {
   //     for (int i=0; i<dom.nx; i++) {
-  yakl::parallel_for( "Compute_dt3d" , dom.nz,dom.ny,dom.nx , YAKL_LAMBDA (int k, int j, int i) {
+  yakl::parallel_for( "Compute_dt3d" , dom.nz*dom.ny*dom.nx , YAKL_LAMBDA (int iGlob) {
+    int k, j, i;
+    yakl::unpackIndices( iGlob , dom.nx,dom.ny,dom.nx , k,j,i );
+
     // Grab state variables
     real r  = state(idR,hs+k,hs+j,hs+i) + dom.hyDensCells (hs+k);
     real u  = state(idU,hs+k,hs+j,hs+i);

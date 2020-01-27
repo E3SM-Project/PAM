@@ -11,7 +11,7 @@ add_subdirectory(externals/YAKL)
 include_directories(externals/YAKL)
 target_link_libraries(scampam yakl)
 
-add_subdirectory(dynamics/dycoreA)
-include_directories(dynamics/dycoreA)
+add_subdirectory(dynamics/awfl)
+include_directories(dynamics/awfl)
 target_link_libraries(scampam dycore)
 

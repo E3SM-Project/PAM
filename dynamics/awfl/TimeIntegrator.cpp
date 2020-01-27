@@ -95,7 +95,10 @@ void TimeIntegrator::applyTendencies(realArr &state, realArr const &tend, Domain
   //   for (int k=0; k<dom.nz; k++) {
   //     for (int j=0; j<dom.ny; j++) {
   //       for (int i=0; i<dom.nx; i++) {
-  yakl::parallel_for( numState,dom.nz,dom.ny,dom.nx , YAKL_LAMBDA (int l, int k, int j, int i) {
+  yakl::parallel_for( numState*dom.nz*dom.ny*dom.nx , YAKL_LAMBDA (int iGlob) {
+    int l, k, j, i;
+    yakl::unpackIndices( iGlob , numState,dom.nz,dom.ny,dom.nx , l,k,j,i );
+
     state(l,hs+k,hs+j,hs+i) += dom.dt * tend(l,k,j,i);
   });
 }
@@ -120,7 +123,10 @@ void TimeIntegrator::applyTendencies(realArr &stateFinal, realArr const &state0,
   //   for (int k=0; k<dom.nz; k++) {
   //     for (int j=0; j<dom.ny; j++) {
   //       for (int i=0; i<dom.nx; i++) {
-  yakl::parallel_for( numState,dom.nz,dom.ny,dom.nx , YAKL_LAMBDA (int l, int k, int j, int i) {
+  yakl::parallel_for( numState*dom.nz*dom.ny*dom.nx , YAKL_LAMBDA (int iGlob) {
+    int l, k, j, i;
+    yakl::unpackIndices( iGlob , numState,dom.nz,dom.ny,dom.nx , l,k,j,i );
+
     stateFinal(l,hs+k,hs+j,hs+i) = state0(l,hs+k,hs+j,hs+i) + dt * tend(l,k,j,i);
   });
 }
