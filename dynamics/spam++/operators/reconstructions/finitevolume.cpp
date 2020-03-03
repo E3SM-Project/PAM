@@ -2,7 +2,7 @@
 
 #include "finitevolume.h"
 
-template<int ndofs> void YAKL_INLINE fv1_recon(realArr recon, realArr var, Topology &topology) {
+template<int ndims, int ndofs> void YAKL_INLINE fv1_recon(realArr recon, realArr var, Topology &topology) {
 
   int is = topology.is;
   int js = topology.js;
@@ -21,7 +21,7 @@ template<int ndofs> void YAKL_INLINE fv1_recon(realArr recon, realArr var, Topol
       recon(l+1*ndofs, k+ks, j+js, i+is) = (var(l, k+ks, j+js, i+is) + var(l, k+ks,   j+js-1, i+is))/2.0;
       }
       //z-dir
-      if (ndims >= 3) {
+      if (ndims == 3) {
       recon(l+2*ndofs, k+ks, j+js, i+is) = (var(l, k+ks, j+js, i+is) + var(l, k+ks-1, j+js,   i+is))/2.0;
       }
     }

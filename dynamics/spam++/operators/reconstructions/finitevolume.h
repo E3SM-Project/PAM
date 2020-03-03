@@ -5,6 +5,6 @@
 #include "common.h"
 #include "topology.h"
 
-template<int ndofs> void YAKL_INLINE fv1_recon(realArr recon, realArr var, Topology &topology);
+template<int ndofs, int ndims> void YAKL_INLINE fv1_recon(realArr recon, realArr var, Topology &topology);
 
 #endif

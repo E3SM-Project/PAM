@@ -78,6 +78,14 @@
 // 0 forms are sampled at vertices
 // 1 forms are integrated over volumes
 
+// x edge is the edge where x varies and y,z are constant
+// xy surface is the surface where x and y vary and z is constant
+// etc.
+
+// in 2D edges are stored y,x  = (U,V)
+// in 3D edges are stored z,y,x
+// in 3D surfaces are stored yz, xz, xy = (U,V,W)
+
 template <class F> YAKL_INLINE void UniformRectangularGeometry::set_zero_form_values(F const &initial_value_function, Field &field, int ndof) {
   int is = topology.is;
   int js = topology.js;
@@ -117,7 +125,6 @@ template <class F> YAKL_INLINE void UniformRectangularGeometry::set_three_form_v
 
 
 
-// NOT SURE EDGE INDEXING IS CORRECT HERE!
 template <class F> YAKL_INLINE void UniformRectangularGeometry::set_one_form_values(F const &initial_value_function, Field &field, int ndof) {
   int is = topology.is;
   int js = topology.js;
@@ -144,33 +151,35 @@ template <class F> YAKL_INLINE void UniformRectangularGeometry::set_one_form_val
         ll_corner_z = 0.0;
     }
 
+    if (ndim ==3) {
+    // z-edge
+    for (int nqz=0; nqy<ic_quad_pts_z; nqz++) {
+      tempval = tempval + initial_value_function(ll_corner_x, ll_corner_y, ll_corner_z + z_quad_pts(nqz)*dz) * z_quad_wts(nqz);
+    }
+    field.data(ndof+offset, k+ks, j+js, i+is) = tempval;
+  }
+
+  // y-edge
+  if (ndim >=2) {
+  for (int nqy=0; nqy<ic_quad_pts_y; nqy++) {
+    tempval = tempval + initial_value_function(ll_corner_x, ll_corner_y + y_quad_pts(nqy)*dy, ll_corner_z) * y_quad_wts(nqy);
+  }
+  field.data(ndof+field.ndofs1+offset, k+ks, j+js, i+is) = tempval;
+  }
+
         // x-edge
         for (int nqx=0; nqx<ic_quad_pts_x; nqx++) {
           tempval = tempval + initial_value_function(ll_corner_x + x_quad_pts(nqx)*dx, ll_corner_y, ll_corner_z) * x_quad_wts(nqx);
         }
-        field.data(ndof+offset, k+ks, j+js, i+is) = tempval;
-
-        // y-edge
-        if (ndim >=2) {
-        for (int nqy=0; nqy<ic_quad_pts_y; nqy++) {
-          tempval = tempval + initial_value_function(ll_corner_x, ll_corner_y + y_quad_pts(nqy)*dy, ll_corner_z) * y_quad_wts(nqy);
-        }
-        field.data(ndof+field.ndofs1+offset, k+ks, j+js, i+is) = tempval;
-        }
-
-        if (ndim ==3) {
-        // z-edge
-        for (int nqz=0; nqy<ic_quad_pts_z; nqz++) {
-          tempval = tempval + initial_value_function(ll_corner_x, ll_corner_y, ll_corner_z + z_quad_pts(nqz)*dz) * z_quad_wts(nqz);
-        }
         field.data(ndof+2*field.ndofs1+offset, k+ks, j+js, i+is) = tempval;
-      }
+
+
+
 
   });
 }
 
 
-// NOT SURE SURFACE INDEXING IS CORRECT HERE!
 template <class F> YAKL_INLINE void set_two_form_values(F const &initial_value_function, Field &field, int ndof) {
   int is = topology.is;
   int js = topology.js;
@@ -192,28 +201,29 @@ template <class F> YAKL_INLINE void set_two_form_values(F const &initial_value_f
         ll_corner_z = 0.0;
     }
 
-        // xy surface
-        for (int nqx=0; nqx<ic_quad_pts_x; nqx++) {
-          for (int nqy=0; nqy<ic_quad_pts_y; nqy++) {
-            tempval = tempval + initial_value_function(ll_corner_x + x_quad_pts(nqx)*dx, ll_corner_y + y_quad_pts(nqy)*dy, ll_corner_z) * x_quad_wts(nqx) * y_quad_wts(nqy);
-        }}
-        field.data(ndof+offset, k+ks, j+js, i+is) = tempval;
+    if (ndim ==3) {
 
-        if (ndim ==3) {
+    // yz surface
+    for (int nqy=0; nqy<ic_quad_pts_y; nqy++) {
+      for (int nqz=0; nqz<ic_quad_pts_z; nqz++) {
+      tempval = tempval + initial_value_function(ll_corner_x, ll_corner_y + y_quad_pts(nqy)*dy, ll_corner_z + z_quad_pts(nqz)*dz) * z_quad_wts(nqz) * y_quad_wts(nqy);
+    }}
+    field.data(ndof+offset, k+ks, j+js, i+is) = tempval;
+
         // xz surface
         for (int nqx=0; nqx<ic_quad_pts_x; nqx++) {
           for (int nqy=0; nqy<ic_quad_pts_y; nqy++) {
             tempval = tempval + initial_value_function(ll_corner_x + x_quad_pts(nqx)*dx, ll_corner_y, ll_corner_z + z_quad_pts(nqz)*dz) * x_quad_wts(nqx) * z_quad_wts(nqz);
         }}
         field.data(ndof+field.ndofs2+offset, k+ks, j+js, i+is) = tempval;
-
-        // yz surface
-        for (int nqy=0; nqy<ic_quad_pts_y; nqy++) {
-          for (int nqz=0; nqz<ic_quad_pts_z; nqz++) {
-          tempval = tempval + initial_value_function(ll_corner_x, ll_corner_y + y_quad_pts(nqy)*dy, ll_corner_z + z_quad_pts(nqz)*dz) * z_quad_wts(nqz) * y_quad_wts(nqy);
-        }}
-        field.data(ndof+2*field.ndofs2+offset, k+ks, j+js, i+is) = tempval;
       }
+
+      // xy surface
+      for (int nqx=0; nqx<ic_quad_pts_x; nqx++) {
+        for (int nqy=0; nqy<ic_quad_pts_y; nqy++) {
+          tempval = tempval + initial_value_function(ll_corner_x + x_quad_pts(nqx)*dx, ll_corner_y + y_quad_pts(nqy)*dy, ll_corner_z) * x_quad_wts(nqx) * y_quad_wts(nqy);
+      }}
+      field.data(ndof+2*field.ndofs2+offset, k+ks, j+js, i+is) = tempval;
 
   });
 }

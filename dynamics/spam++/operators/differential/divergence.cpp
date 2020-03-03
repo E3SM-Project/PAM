@@ -5,7 +5,7 @@
 
 //REALLY NDOFS HERE SHOULD BE A COMPILE TIME CONSTANT...
 
-template<int ndofs> void YAKL_INLINE divergence2( realArr var, realArr recon, realArr flux, Topology &topology) {
+template<int ndofs, int ndims> void YAKL_INLINE divergence2( realArr var, realArr recon, realArr flux, Topology &topology) {
 
   int is = topology.is;
   int js = topology.js;
