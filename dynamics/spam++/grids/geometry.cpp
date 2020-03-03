@@ -90,7 +90,7 @@ template <class F> YAKL_INLINE void UniformRectangularGeometry::set_zero_form_va
   int js = topology.js;
   int ks = topology.ks;
 
-  yakl::parallel_for( "SetZeroForm" , topology.n_cells , YAKL_LAMBDA (int iGlob) {
+  yakl::parallel_for("SetZeroForm", topology.n_cells, YAKL_LAMBDA (int iGlob) {
     int k, j, i;
     yakl::unpackIndices(iGlob, topology.n_cells_z, topology.n_cells_y, topology.n_cells_x ,k, j, i);
       field.data(ndof, k+ks, j+js, i+is) = initial_value_function(i*dx + xc - Lx/2., j*dy + yc - Ly/2., k*dz + zc - Lz/2.);
@@ -105,7 +105,7 @@ template <class F> YAKL_INLINE void UniformRectangularGeometry::set_three_form_v
   real tempval;
   int offset = field.get_offset(3);
 
-  yakl::parallel_for( "SetThreeForm" , topology.n_cells , YAKL_LAMBDA (int iGlob) {
+  yakl::parallel_for("SetThreeForm", topology.n_cells, YAKL_LAMBDA (int iGlob) {
     int k, j, i;
     yakl::unpackIndices(iGlob, topology.n_cells_z, topology.n_cells_y, topology.n_cells_x ,k, j, i);
     tempval = 0.0;
@@ -124,69 +124,103 @@ template <class F> YAKL_INLINE void UniformRectangularGeometry::set_three_form_v
 
 
 
-
-
-}
-
-
-
-
-// ALL BROKEN IN MULTIPLE DIMENSIONS- THERE ARE MULTIPLE EDGES TO CONSIDER HERE
+// NOT SURE EDGE INDEXING IS CORRECT HERE!
 template <class F> YAKL_INLINE void UniformRectangularGeometry::set_one_form_values(F const &initial_value_function, Field &field, int ndof) {
-  int is = topology.cell_is;
-  int js = topology.cell_js;
-  int ks = topology.cell_ks;
-  real x, y, z, wq;
+  int is = topology.is;
+  int js = topology.js;
+  int ks = topology.ks;
+  real ll_corner_x, ll_corner_y, ll_corner_z;
   real tempval;
   int offset = field.get_offset(1);
-  // FIX THIS TO REFER TO PRIMAL CELLS, ETC.
 
-  yakl::parallel_for( "SetOneForm" , topology.ncells , YAKL_LAMBDA (int iGlob) {
+  yakl::parallel_for("SetOneForm", topology.n_cells , YAKL_LAMBDA (int iGlob) {
     int k, j, i;
-    yakl::unpackIndices( iGlob , topology.ncells_z,topology.ncells_y,topology.ncells_x ,k,j,i);
+    yakl::unpackIndices(iGlob, topology.n_cells_z, topology.n_cells_y, topology.n_cells_x ,k, j, i);
     tempval = 0.0;
-    // BROKEN- SHOULD DO EACH DIRECTION INDEP I THINK...
-    for (int nq=0; nq<ic_quad_pts_x; nq++) {
-      geom.get_line_coords_weights(nq, i, j, k, &x, &y, &z, &wq);
-      // SOMEWHAT BROKEN- DOESNT TAKE INTO ACCOUNT VECTOR QUANTITY AND NORMAL/TANGENTIAL DIRECTION FOR 2D and 3D MESHES..
-      // ALSO IN 2D WE CAN INTEGRATE ALONG LINE OR TANGENTIAL TO IT! IE PRIMAL VS. DUAL...
-      if (ndim >= 2) {
-        tempval = tempval + initial_value_function(x,y,z)*wq;
-      }
-      else {
-        tempval = tempval + initial_value_function(x,y,z)*wq;
-      }
+
+    ll_corner_x = i*dx + xc - Lx/2.;
+    ll_corner_y = j*dy + yc - Ly/2.;
+    ll_corner_z = k*dz + zc - Lz/2.;
+
+    if (ndim == 1) {
+      ll_corner_y = 0.0;
+      ll_corner_z = 0.0;
     }
-    field.data(ndof+offset, k+ks, j+js, i+is) = tempval;
+
+    if (ndim == 2) {
+        ll_corner_z = 0.0;
+    }
+
+        // x-edge
+        for (int nqx=0; nqx<ic_quad_pts_x; nqx++) {
+          tempval = tempval + initial_value_function(ll_corner_x + x_quad_pts(nqx)*dx, ll_corner_y, ll_corner_z) * x_quad_wts(nqx);
+        }
+        field.data(ndof+offset, k+ks, j+js, i+is) = tempval;
+
+        // y-edge
+        if (ndim >=2) {
+        for (int nqy=0; nqy<ic_quad_pts_y; nqy++) {
+          tempval = tempval + initial_value_function(ll_corner_x, ll_corner_y + y_quad_pts(nqy)*dy, ll_corner_z) * y_quad_wts(nqy);
+        }
+        field.data(ndof+field.ndofs1+offset, k+ks, j+js, i+is) = tempval;
+        }
+
+        if (ndim ==3) {
+        // z-edge
+        for (int nqz=0; nqy<ic_quad_pts_z; nqz++) {
+          tempval = tempval + initial_value_function(ll_corner_x, ll_corner_y, ll_corner_z + z_quad_pts(nqz)*dz) * z_quad_wts(nqz);
+        }
+        field.data(ndof+2*field.ndofs1+offset, k+ks, j+js, i+is) = tempval;
+      }
+
   });
 }
 
-// ALL BROKEN IN MULTIPLE DIMENSIONS- THERE ARE MULTIPLE FACES TO CONSIDER HERE
+
+// NOT SURE SURFACE INDEXING IS CORRECT HERE!
 template <class F> YAKL_INLINE void set_two_form_values(F const &initial_value_function, Field &field, int ndof) {
-  int is = topology.cell_is;
-  int js = topology.cell_js;
-  int ks = topology.cell_ks;
-  real x, y, z, wq;
+  int is = topology.is;
+  int js = topology.js;
+  int ks = topology.ks;
+  real ll_corner_x, ll_corner_y, ll_corner_z;
   real tempval;
   int offset = field.get_offset(2);
 
-  // FIX THIS TO REFER TO PRIMAL CELLS, ETC.
-  yakl::parallel_for( "SetTwoForm" , topology.ncells , YAKL_LAMBDA (int iGlob) {
+  yakl::parallel_for("SetTwoForm", topology.n_cells , YAKL_LAMBDA (int iGlob) {
     int k, j, i;
-    yakl::unpackIndices( iGlob , topology.ncells_z,topology.ncells_y,topology.ncells_x ,k,j,i);
+    yakl::unpackIndices(iGlob, topology.n_cells_z, topology.n_cells_y, topology.n_cells_x ,k, j, i);
     tempval = 0.0;
-    // BROKEN- SHOULD DO EACH DIRECTION INDEP I THINK...
-    for (int nq=0; nq<ic_quad_pts_x*ic_quad_pts_y; nq++) {
-        geom.get_surface_coords_weights(nq, i, j, k, &x, &y, &z, &wq);
 
-        // SOMEWHAT BROKEN- DOESNT TAKE INTO ACCOUNT VECTOR QUANTITY AND NORMAL/TANGENTIAL DIRECTION FOR 3D MESHES..
-        if (ndims == 3) {
-          tempval = tempval + initial_value_function(x,y,z)*wq;
-        }
-        else {
-          tempval = tempval + initial_value_function(x,y,z)*wq;
-        }
+    ll_corner_x = i*dx + xc - Lx/2.;
+    ll_corner_y = j*dy + yc - Ly/2.;
+    ll_corner_z = k*dz + zc - Lz/2.;
+
+    if (ndim == 2) {
+        ll_corner_z = 0.0;
+    }
+
+        // xy surface
+        for (int nqx=0; nqx<ic_quad_pts_x; nqx++) {
+          for (int nqy=0; nqy<ic_quad_pts_y; nqy++) {
+            tempval = tempval + initial_value_function(ll_corner_x + x_quad_pts(nqx)*dx, ll_corner_y + y_quad_pts(nqy)*dy, ll_corner_z) * x_quad_wts(nqx) * y_quad_wts(nqy);
+        }}
+        field.data(ndof+offset, k+ks, j+js, i+is) = tempval;
+
+        if (ndim ==3) {
+        // xz surface
+        for (int nqx=0; nqx<ic_quad_pts_x; nqx++) {
+          for (int nqy=0; nqy<ic_quad_pts_y; nqy++) {
+            tempval = tempval + initial_value_function(ll_corner_x + x_quad_pts(nqx)*dx, ll_corner_y, ll_corner_z + z_quad_pts(nqz)*dz) * x_quad_wts(nqx) * z_quad_wts(nqz);
+        }}
+        field.data(ndof+field.ndofs2+offset, k+ks, j+js, i+is) = tempval;
+
+        // yz surface
+        for (int nqy=0; nqy<ic_quad_pts_y; nqy++) {
+          for (int nqz=0; nqz<ic_quad_pts_z; nqz++) {
+          tempval = tempval + initial_value_function(ll_corner_x, ll_corner_y + y_quad_pts(nqy)*dy, ll_corner_z + z_quad_pts(nqz)*dz) * z_quad_wts(nqz) * y_quad_wts(nqy);
+        }}
+        field.data(ndof+2*field.ndofs2+offset, k+ks, j+js, i+is) = tempval;
       }
-      field.data(ndof+offset, k+ks, j+js, i+is) = tempval;
+
   });
 }
