@@ -5,7 +5,7 @@
 
 //REALLY NDOFS HERE SHOULD BE A COMPILE TIME CONSTANT...
 
-void YAKL_INLINE divergence2( realArr var, realArr recon, realArr flux, int ndofs, Topology &topology) {
+template<int ndofs> void YAKL_INLINE divergence2( realArr var, realArr recon, realArr flux, Topology &topology) {
 
   int is = topology.is;
   int js = topology.js;
@@ -19,14 +19,14 @@ void YAKL_INLINE divergence2( realArr var, realArr recon, realArr flux, int ndof
       for (int l=0; l<ndofs; l++) {
 
       //x-dir
-      var(l,k+ks,j+js,i+is) = flux(0,k+ks,j+js,i+is+1) * recon(l+0*nqdofs,k+ks,j+js,i+is+1) - flux(0,k+ks,j+js,i+is) * recon(l+0*nqdofs,k+ks,j+js,i+is);
+      var(l,k+ks,j+js,i+is) = flux(0,k+ks,j+js,i+is+1) * recon(l+0*ndofs,k+ks,j+js,i+is+1) - flux(0,k+ks,j+js,i+is) * recon(l+0*ndofs,k+ks,j+js,i+is);
       //y-dir
       if (ndims >= 2) {
-      var(l,k+ks,j+js,i+is) = flux(1,k+ks,j+js+1,i+is) * recon(l+1*nqdofs,k+ks,j+js+1,i+is) - flux(1,k+ks,j+js,i+is) * recon(l+1*nqdofs,k+ks,j+js,i+is);
+      var(l,k+ks,j+js,i+is) = flux(1,k+ks,j+js+1,i+is) * recon(l+1*ndofs,k+ks,j+js+1,i+is) - flux(1,k+ks,j+js,i+is) * recon(l+1*ndofs,k+ks,j+js,i+is);
       }
       //z-dir
       if (ndims >= 3) {
-      var(l,k+ks,j+js,i+is) = flux(2,k+ks+1,j+js,i+is) * recon(l+2*nqdofs,k+ks+1,j+js,i+is) - flux(2,k+ks,j+js,i+is) * recon(l+2*nqdofs,k+ks,j+js,i+is);
+      var(l,k+ks,j+js,i+is) = flux(2,k+ks+1,j+js,i+is) * recon(l+2*ndofs,k+ks+1,j+js,i+is) - flux(2,k+ks,j+js,i+is) * recon(l+2*ndofs,k+ks,j+js,i+is);
       }
     }
   });

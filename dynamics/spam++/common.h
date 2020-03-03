@@ -42,14 +42,6 @@ template <class T> YAKL_INLINE T mymax( T const v1 , T const v2 ) {
 // Declaring the precision for the model
 typedef float real;
 
-// Time scheme types
-int constexpr TIME_TYPE_KGRK = 1;
-int constexpr TIME_TYPE_ADER = 2;
-
-// Reconstruction types
-
-int constexpr RECONSTRUCTION_TYPE_FV   = 1;
-int constexpr RECONSTRUCTION_TYPE_WENO = 2;
 
 
 
@@ -58,38 +50,6 @@ int constexpr RECONSTRUCTION_TYPE_WENO = 2;
 
 
 
-// COMPILE TIME CONSTANTS //
 
-// Spatial order of accuracy for the model
-int constexpr reconstruction_order_x = 1;
-int constexpr reconstruction_order_y = 1;
-int constexpr reconstruction_order_z = 1;
-int constexpr differential_order_x = 2;
-int constexpr differential_order_y = 2;
-int constexpr differential_order_z = 2;
-
-// Reconstruction type
-int constexpr reconstruction_type_x = RECONSTRUCTION_TYPE_FV;
-int constexpr reconstruction_type_y = RECONSTRUCTION_TYPE_FV;
-int constexpr reconstruction_type_z = RECONSTRUCTION_TYPE_FV;
-
-// Halo sizes
-int constexpr maxhalosize_x = mymax(reconstruction_order_x,differential_order_x)/2; //IS THIS ALWAYS CORRECT?
-int constexpr maxhalosize_z = mymax(reconstruction_order_y,differential_order_y)/2; //IS THIS ALWAYS CORRECT?
-int constexpr maxhalosize_y = mymax(reconstruction_order_z,differential_order_z)/2; //IS THIS ALWAYS CORRECT?
-
-// initial condition quadrature pts
-int constexpr ic_quad_pts_x = 3;
-int constexpr ic_quad_pts_y = 3;
-int constexpr ic_quad_pts_z = 3;
-
-// Time order of accuracy for the model
-int constexpr time_order = 2;
-
-// Time scheme
-int constexpr time_type = TIME_TYPE_KGRK;
-
-// Number of Dimensions
-int constexpr ndims = 1;
 
 #endif

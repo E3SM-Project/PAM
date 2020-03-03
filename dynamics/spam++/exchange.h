@@ -7,23 +7,13 @@
 #include "topology.h"
 
 
-class Exchange {
+template<int ndims, int ndof0, int ndof1, int ndof2, int ndof3> class Exchange {
 public:
-  void clone(Exchange &exch);
-  void initialize(Topology &topo, int ndof0, int ndof1, int ndof2 = 0, int ndof3 = 0);
-  void pack(Field &field);
-  void exchange();
-  void unpack(Field &field);
 
-};
-
-class PeriodicExchange : Exchange {
-
-public:
-  int ndofs0, ndofs1, ndofs2, ndofs3;
   int bufsize_x, bufsize_y, bufsize_z;
 
   Topology topology;
+  int total_dofs;
 
   realArrHost haloSendBuf_Xm_host;
   realArrHost haloRecvBuf_Xm_host;
@@ -51,6 +41,19 @@ public:
   realArrHost haloRecvBuf_Zp_host;
   realArr haloSendBuf_Zp;
   realArr haloRecvBuf_Zp;
+
+  void clone(Exchange &exch);
+  void pack(Field &field);
+  void exchange();
+  void unpack(Field &field);
+  void initialize(Topology &topo);
+
+};
+
+class PeriodicExchange : Exchange {
+
+public:
+
 
 };
 

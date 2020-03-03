@@ -4,11 +4,9 @@
 int main(int argc, char** argv) {
   yakl::init();
 
-  PeriodicTopology topology;
-
   if (ndims == 1) {
 
-    topology.initialize(10);
+    PeriodicTopology topology(10);
     for (int i=0;i<3;i++) {
       for (int j=0;j<3;j++) {
         if (i==0 && j==0) {continue;}
@@ -20,7 +18,7 @@ int main(int argc, char** argv) {
 
   if (ndims == 2) {
 
-    topology.initialize(10,10,10);
+    PeriodicTopology topology(10,10);
     for (int i=0;i<3;i++) {
       for (int j=0;j<3;j++) {
         for (int k=0;k<3;k++) {
@@ -33,7 +31,7 @@ int main(int argc, char** argv) {
 
   if (ndims == 3) {
 
-    topology.initialize(10,10,10);
+    PeriodicTopology topology(10,10,10);
     for (int i=0;i<3;i++) {
       for (int j=0;j<3;j++) {
         for (int k=0;k<3;k++) {

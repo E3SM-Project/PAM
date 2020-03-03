@@ -5,24 +5,26 @@
 #include "common.h"
 #include "topology.h"
 #include "exchange.h"
-#include "STDLIB"
+#include <string>
 
-class Field {
+// ACTUALLY TEMPLATE THIS BASED ON NDOF0,NDOF1, ETC.!
+// WITH DEFAULT SIZES...
+
+template<int ndims, int ndof0, int ndof1, int ndof2, int ndof3> class Field {
 
 public :
 
   realArr data;
-  int ndofs0, ndofs1, ndofs2, ndofs3;
   Topology topology;
-  Exchange exchange;
   std::string name;
   int total_dofs;
 
-  void initialize(Topology &topo, Exchange &exch, std::string fieldName, int ndof0, int ndof1, int ndof2 = 0, int ndof3 = 0);
+  void initialize(Topology &topo, std::string fieldName);
   void waxpy(real alpha, Field &x, Field &y);
   void copy(Field & f);
   void clone(Field &f, std::string fieldName);
   int YAKL_INLINE get_offset(int ndof);
 };
 
+void YAKL_INLINE get_total_dofs(int ndims, int ndof0, int ndof1, int ndof2, int ndof3);
 #endif

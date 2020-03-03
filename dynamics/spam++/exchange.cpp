@@ -2,31 +2,25 @@
 
 #include "exchange.h"
 
-void Exchange::clone(Exchange &exch) {
-  exch.initialize(topology, ndofs0, ndofs1, ndofs2, ndofs3);
+ void Exchange::clone(Exchange &exch) {
+  initialize(exch.topology);
 }
 
 
 // ALL BROKEN FOR PARALLEL
-  void PeriodicExchange::initialize(Topology &topo, int ndof0, int ndof1, int ndof2 = 0, int ndof3 = 0) {
+  void PeriodicExchange::initialize(Topology &topo) {
     topology = topo;
-    ndofs0 = ndof0;
-    ndofs1 = ndof1;
-    ndofs2 = ndof2;
-    ndofs3 = ndof3;
 
-    int total_dofs;
+    total_dofs = get_total_dofs(ndims, ndof0, ndof1, ndof2, ndof3);
+
     if (ndims == 1)
     {
-      total_dofs = ndofs0 + ndofs1;
       bufsize_x = topology.halosize_x*total_dofs;
-
     }
 
     // This duplicates corner elements- probably okay
     if (ndims == 2)
     {
-      total_dofs = ndofs0 + 2*ndofs1 + ndofs2;
       bufsize_x = topology.halosize_x*total_dofs*topology.n_cell_y;
       bufsize_y = topology.halosize_y*total_dofs*topology.n_cell_x;
     }
@@ -34,7 +28,6 @@ void Exchange::clone(Exchange &exch) {
     // This duplicates corner elements- probably okay
     if (ndims == 3)
     {
-      total_dofs = ndofs0 + 3*ndofs1 + 3*ndofs2 + ndofs3;
       bufsize_x = topology.halosize_x*total_dofs*topology.n_cell_y*topology.n_cell_z;
       bufsize_y = topology.halosize_y*total_dofs*topology.n_cell_x*topology.n_cell_z;
       bufsize_z = topology.halosize_z*total_dofs*topology.n_cell_x*topology.n_cell_y;

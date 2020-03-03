@@ -5,6 +5,29 @@
 
 #include "uniform_geometry.h"
 
+  void set_quad_pts_wts(int npts, SArray &pts, SArray &wts) {
+
+    if (npts == 1)
+    {
+      pts(0) = 0.5;
+      wts(0) = 1.0;
+    }
+
+    if (npts == 3)
+    {
+      pts(0) = 0.112701665379258311482073460022;
+      pts(1) = 0.500000000000000000000000000000;
+      pts(2) = 0.887298334620741688517926539980;
+
+      wts(0) = 0.277777777777777777777777777779;
+      wts(1) = 0.444444444444444444444444444444;
+      wts(2) = 0.277777777777777777777777777779;
+    }
+
+
+  }
+
+
   void UniformRectangularGeometry::initialize(Topology &topology, real xlen, real xcent, real ylen = 0.0, real ycent = 0.0, real zlen = 0.0, real ycent = 0.0) {
 
   Lx = xlen;
@@ -36,39 +59,9 @@
     dz = 0.0;
   }
 
-  if (ic_quad_pts_x == 3)
-  {
-    x_quad_pts(0) = 0.112701665379258311482073460022;
-    x_quad_pts(1) = 0.500000000000000000000000000000;
-    x_quad_pts(2) = 0.887298334620741688517926539980;
-
-    x_quad_wts(0) = 0.277777777777777777777777777779;
-    x_quad_wts(1) = 0.444444444444444444444444444444;
-    x_quad_wts(2) = 0.277777777777777777777777777779;
-  }
-
-  if (ic_quad_pts_y == 3)
-  {
-    y_quad_pts(0) = 0.112701665379258311482073460022;
-    y_quad_pts(1) = 0.500000000000000000000000000000;
-    y_quad_pts(2) = 0.887298334620741688517926539980;
-
-    y_quad_wts(0) = 0.277777777777777777777777777779;
-    y_quad_wts(1) = 0.444444444444444444444444444444;
-    y_quad_wts(2) = 0.277777777777777777777777777779;
-  }
-
-  if (ic_quad_pts_z == 3)
-  {
-    z_quad_pts(0) = 0.112701665379258311482073460022;
-    z_quad_pts(1) = 0.500000000000000000000000000000;
-    z_quad_pts(2) = 0.887298334620741688517926539980;
-
-    z_quad_wts(0) = 0.277777777777777777777777777779;
-    z_quad_wts(1) = 0.444444444444444444444444444444;
-    z_quad_wts(2) = 0.277777777777777777777777777779;
-  }
-
+  set_quad_pts_wts(ic_quad_pts_x, x_quad_pts, x_quad_wts);
+  set_quad_pts_wts(ic_quad_pts_y, y_quad_pts, y_quad_wts);
+  set_quad_pts_wts(ic_quad_pts_z, z_quad_pts, z_quad_wts);
 }
 
 

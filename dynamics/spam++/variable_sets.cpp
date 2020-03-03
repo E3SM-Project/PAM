@@ -1,16 +1,28 @@
 #include "variable_set.h"
 
-  // creates a new VariableSet vs that is a deep clone of self, without copying data over
-  // SHARES the exchanges with vs
-  void VariableSet::clone(VariableSet &vs, std::string name) {
+
+  void VariableSet::initialize(std::string name, bool exchange = true){
     baseName = name;
-    num_fields = vs.num_fields;
-    //CREATE FIELDS_ARR AND EXCHANGES_ARR
+    has_exchange = exchange;
+  }
+
+  // creates a new VariableSet that has the same fields as vs
+
+  void VariableSet::clone(VariableSet &vs, std::string name, int exchange_type = EXCHANGE_TYPE_NONE) {
+    baseName = name;
+
+    if (exchange_type == EXCHANGE_TYPE_NONE) {
+      has_exchange = false;
+    }
+    else {
+      has_exchange = true;
+    }
 
     for (int i=0; i<num_fields; i++)
     {
       fields_arr[i].clone(vs.fields_arr[i], vs.fields_arr[i].name);
-      exchanges_arr[i] = vs.exchanges_arr[i];
+      if (exchange_type == EXCHANGE_TYPE_SHARED && vs.has_exchange) { exchanges_arr[i] = vs.exchanges_arr[i];}
+      if (exchange_type == EXCHANGE_TYPE_CLONED && vs.has_exchange) { exchanges_arr[i].clone(vs.exchanges_arr[i]); }
     }
   }
 
@@ -34,8 +46,8 @@
   void exchange() {
     for (int i=0; i<num_fields; i++)
     {
-      exchanges_arr[i].exchange.pack(fields_arr[i]);
-      exchanges_arr[i].exchange.exchange();
-      exchanges_arr[i].exchange.unpack(fields_arr[i]);
+      exchanges_arr[i].pack(fields_arr[i]);
+      exchanges_arr[i].exchange();
+      exchanges_arr[i].unpack(fields_arr[i]);
     }
   }

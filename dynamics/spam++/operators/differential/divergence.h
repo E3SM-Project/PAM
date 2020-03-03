@@ -5,6 +5,6 @@
 #include "common.h"
 #include "topology.h"
 
-void YAKL_INLINE divergence2( realArr var, realArr recon, realArr flux, int ndofs, Topology &topology);
+template <int ndofs> void YAKL_INLINE divergence2( realArr var, realArr recon, realArr flux, Topology &topology);
 
 #endif

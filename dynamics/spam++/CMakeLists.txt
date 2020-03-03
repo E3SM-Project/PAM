@@ -1,5 +1,3 @@
-file(GLOB SRC *.cpp)
+file(GLOB SRC *.cpp grids/*.cpp models/*.cpp operators/differential/*.cpp operators/reconstructions/*.cpp timesteppers/*.cpp)
 
 add_library(spam++dycore STATIC ${SRC})
-
-add_executable(topology_test test/topology_test.cpp)

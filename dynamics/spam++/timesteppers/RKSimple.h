@@ -8,14 +8,12 @@
 #include "topology.h"
 #include "variableset.h"
 #include "tendencies.h"
-#include "STDLIB.h"
 
-class RKSimpleTimeIntegrator {
+template<int nstages> class RKSimpleTimeIntegrator {
 
 public:
 
-  int nstages;
-  std::vector<real> stage_coeffs;
+  SArray<real, nstages> stage_coeffs;
   VariableSet xtend;
   VariableSet xtemp;
   VariableSet x;
@@ -24,13 +22,8 @@ public:
   VariableSet const_vars;
   VariableSet diagnostic_vars;
 
-  real dt;
-
-  void stepForward();
-  void initialize(Tendencies &tend, VariableSet &xvars, Topology &topo, VariableSet &consts, VariableSet &diagnostics, real dtt);
-
+  void stepForward(real dt);
+  void initialize(Tendencies &tend, VariableSet &xvars, Topology &topo, VariableSet &consts, VariableSet &diagnostics);
 };
-
-class KG4 : RKSimpleTimeIntegrator {};
 
 #endif

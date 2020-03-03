@@ -2,9 +2,10 @@
 
 #include "RKSimple.h"
 
-  void RKSimpleTimeIntegrator::initialize(Tendencies &tend, VariableSet &xvars, Topology &topo, VariableSet &consts, VariableSet &diagnostics, real dt) {
-    xvars.clone(xtemp, "xtemp", true);
-    xvars.clone(xtend, "xtend", false);
+  void RKSimpleTimeIntegrator::initialize(Tendencies &tend, VariableSet &xvars, Topology &topo, VariableSet &consts, VariableSet &diagnostics) {
+
+    xtemp.clone(xvars, "xtemp", EXCHANGE_TYPE_SHARED);
+    xtend.clone(xvars, "xtend", EXCHANGE_TYPE_NONE);
     x = xvars;
 
     topology = topo;
@@ -12,10 +13,9 @@
     const_vars = consts;
     diagnostic_vars = diagnostics;
 
-    dt = dtt;
   }
 
-  void RKSimpleTimeIntegrator::stepForward() {
+  void RKSimpleTimeIntegrator::stepForward(real dt) {
 
     tendencies.compute_rhs(const_vars, x, diagnostic_vars, xtend, topology, params);
     xtemp.waxpy(dt * stage_coeffs(0), xtend, x);
@@ -30,11 +30,4 @@
     // Would require being careful with IO also?
     x.copy(xtemp);
     x.exchange();
-  }
-
-
-  void KG4::initialize(Tendencies &tend, VariableSet &xvars, Topology &topo, VariableSet &consts, VariableSet &diagnostics, Params &params) {
-    super.initialize(tend, xvars, topo, consts, diagnostics, params);
-    stage_coeffs = { 0.25, 1./3., 1./2., 1.};
-    nstages = 4;
   }

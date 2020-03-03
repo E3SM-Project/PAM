@@ -4,15 +4,16 @@
 
 
 #include "common.h"
-#include "STDLIB.h"
+#include <iostream>
+#include <fstream>
 
 class FileIO {
+  ofstream file;
 
 public:
 
   void initalize();
-  void output(VariableSet &vars);
-  void outputInit(VariableSet &const_vars, VariableSet &vars);
-
+  void output(VariableSet &vars, int nstep, int time);
+  void outputInit(VariableSet &vars, VariableSet &const_vars, real time);
 
 };

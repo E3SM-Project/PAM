@@ -2,6 +2,7 @@
 #include "advection.h"
 
 
+
 // *******   Parameters   ***********//
 
 // FIX THIS TO ACTUALLY READ A FILE, EVENTUALLY
@@ -27,77 +28,55 @@ void readParamsFile(std::string inFile) {
 
 
 // *******   Tendencies   ***********//
-void ModelTendencies::compute_rhs(VariableSet &const_vars, VariableSet &x, VariableSet &diagnostic_vars, VariableSet &xtend, Topology &topology) {
+void Tendencies::compute_rhs(VariableSet &const_vars, VariableSet &x, VariableSet &diagnostic_vars, VariableSet &xtend, Topology &topology) {
 
 // EVENTUALLY HERE WE SHOULD TAKE RECON TYPE, RECON ORDER AND DIFFERENTIAL ORDER INTO ACCOUNT!
 
   //compute reconstructions
-  fv1_recon( diagnostic_vars.field_arr[0].data, x.field_arr[0].data, nqdofs, topology);
+  fv1_recon<nqdofs>(diagnostic_vars.field_arr[0].data, x.field_arr[0].data, topology);
   diagnostic_vars.exchange();
 
   //compute D (qrecon U)
-  divergence2(xtend.q, diagnostic_vars.field_arr[0].data, const_vars.field_arr[0], nqdofs, topology);
+  divergence2<nqdofs>(xtend.field_arr[0], diagnostic_vars.field_arr[0].data, const_vars.field_arr[0], topology);
 };
 
 
-// *******   VariableSets   ***********//
+// *******   VariableSet Initialization   ***********//
 
-  void DiagnosticVars::create(Topology &topology, bool create_exchange = true) {
-// MOVE MOST OF THIS LOGIC INTO A VARIABLESET CONSTRUCTOR?
-    baseName = "";
-    num_fields = 1;
-    //CREATE FIELDS_ARR and EXCHANGE_ARR
-    if (create_exchange) {}
+void initialize_variables(Topology &topo, prognostic_vars, constant_vars, diagnostic_vars)
+{
+  prognostic_vars.initialize("x", true);
+  constant_vars.initialize("cons", true);
+  diagnostic_vars.initialize("diag", true);
 
-
-
-    if (ndims == 1) {
-      field_arr[0].intialize(topology, "qrecon", nqdofs, 0);
-      if (create_exchange) { exchange_arr[0].initialize(topology, nqdofs, 0); }
-    }
-    if (ndims == 2) {
-      field_arr[0].intialize(topology, "qrecon", 0, nqdofs, 0);
-      if (create_exchange) { exchange_arr[0].initialize(topology, 0, nqdofs, 0); }
-    }
-    if (ndims == 3) {
-      field_arr[0].intialize(topology, "qrecon", 0, 0, nqdofs, 0);
-      if (create_exchange) { exchange_arr[0].initialize(topology, 0, 0, nqdofs, 0); }
-    }
-    }
-
-
-  void ConstantVars::create(Topology &topology, bool create_exchange = true) {
-    if (ndims == 1) {
-      field_arr[0].intialize(topology, "u", 1, 0);
-      if (create_exchange) { exchange_arr[0].initialize(topology, 1, 0); }
-    }
-    if (ndims == 2) {
-      field_arr[0].intialize(topology, "u", 0, 1, 0);
-      if (create_exchange) { exchange_arr[0].initialize(topology, 0, 1, 0); }
-    }
-    if (ndims == 3) {
-      field_arr[0].intialize(topology, "u", 0, 0, 1, 0);
-      if (create_exchange) { exchange_arr[0].initialize(topology, 0, 0, 1, 0); }
-    }
+  if (ndims == 1) {
+    prognostic_vars.field_arr[0].intialize(topology, "q", 0, nqdofs, 0, 0);
+    prognostic_vars.exchange_arr[0].initialize(topology, 0, nqdofs, 0, 0);
+    constant_vars.field_arr[0].intialize(topology, "u", 1, 0, 0, 0);
+    constant_vars.exchange_arr[0].initialize(topology, 1, 0, 0, 0);
+    diagnostic_vars.field_arr[0].intialize(topology, "qrecon", nqdofs, 0, 0, 0);
+    diagnostic_vars.exchange_arr[0].initialize(topology, nqdofs, 0, 0, 0);
   }
 
-
-
-  void PrognosticVars::create(Topology &topology, Params &params, bool create_exchange = true) {
-    if (ndims == 1) {
-      field_arr[0].intialize(topology, "q", 0, nqdofs);
-      if (create_exchange) { exchange_arr[0].initialize(topology, 0, nqdofs); }
-    }
-    if (ndims == 2) {
-      field_arr[0].intialize(topology, "q", 0, 0, nqdofs);
-      if (create_exchange) { exchange_arr[0].initialize(topology, 0, 0, nqdofs); }
-    }
-    if (ndims == 3) {
-      field_arr[0].intialize(topology, "q", 0, 0, 0, nqdofs);
-      if (create_exchange) { exchange_arr[0].initialize(topology, 0, 0, 0, nqdofs); }
-    }
+  if (ndims == 2) {
+    prognostic_vars.field_arr[0].intialize(topology, "q", 0, 0, nqdofs, 0);
+    prognostic_vars.exchange_arr[0].initialize(topology, 0, 0, nqdofs, 0);
+    constant_vars.field_arr[0].intialize(topology, "u", 0, 1, 0, 0);
+    constant_vars.exchange_arr[0].initialize(topology, 0, 1, 0, 0);
+    diagnostic_vars.field_arr[0].intialize(topology, "qrecon", 0, nqdofs, 0, 0);
+    diagnostic_vars.exchange_arr[0].initialize(topology, 0, nqdofs, 0, 0);
   }
 
+  if (ndims == 3) {
+    prognostic_vars.field_arr[0].intialize(topology, "q", 0, 0, 0, nqdofs);
+    prognostic_vars.exchange_arr[0].initialize(topology, 0, 0, 0, nqdofs);
+    constant_vars.field_arr[0].intialize(topology, "u", 0, 0, 1, 0);
+    constant_vars.exchange_arr[0].initialize(topology, 0, 0, 1, 0);
+    diagnostic_vars.field_arr[0].intialize(topology, "qrecon", 0, 0, nqdofs, 0);
+    diagnostic_vars.exchange_arr[0].initialize(topology, 0, 0, nqdofs, 0);
+  }
+
+}
 
 
 
@@ -108,15 +87,18 @@ void set_initial_conditions(VariableSet &constant_vars, VariableSet &prognostic_
 {
 
 // set advected quantity
-if (data_init_cond == DATA_INIT_GAUSSIAN) { set_n_form(gaussian, prognostic_vars.field_arr(0)); }
-if (data_init_cond == DATA_INIT_VORTICES) { set_n_form(vortices, prognostic_vars.field_arr(0)); }
-if (data_init_cond == DATA_INIT_SQUARE) { set_n_form(square, prognostic_vars.field_arr(0)); }
+for (int i=0; i<nqdofs; i++)
+{
+if (data_init_cond == DATA_INIT_GAUSSIAN) { set_n_form(gaussian, prognostic_vars.field_arr[0], i); }
+if (data_init_cond == DATA_INIT_VORTICES) { set_n_form(vortices, prognostic_vars.field_arr[0], i); }
+if (data_init_cond == DATA_INIT_SQUARE) { set_n_form(square, prognostic_vars.field_arr[0], i); }
+}
 
 // set wind
-if (wind_init_cond == WIND_INIT_UNIFORM_X) { set_n_minus_1_form(uniform_x_wind, constant_vars.field_arr(0)); }
-if (wind_init_cond == WIND_INIT_UNIFORM_Y) { set_n_minus_1_form(uniform_y_wind, constant_vars.field_arr(0)); }
-if (wind_init_cond == WIND_INIT_UNIFORM_Z) { set_n_minus_1_form(uniform_z_wind, constant_vars.field_arr(0)); }
-if (wind_init_cond == WIND_INIT_DEFORMATIONAL) { set_n_minus_1_form(deformational_wind, constant_vars.field_arr(0); }
+if (wind_init_cond == WIND_INIT_UNIFORM_X) { set_n_minus_1_form(uniform_x_wind, constant_vars.field_arr[0], 0); }
+if (wind_init_cond == WIND_INIT_UNIFORM_Y) { set_n_minus_1_form(uniform_y_wind, constant_vars.field_arr[0], 0); }
+if (wind_init_cond == WIND_INIT_UNIFORM_Z) { set_n_minus_1_form(uniform_z_wind, constant_vars.field_arr[0], 0); }
+if (wind_init_cond == WIND_INIT_DEFORMATIONAL) { set_n_minus_1_form(deformational_wind, constant_vars.field_arr[0], 0); }
 
 // Do a boundary exchange
 prognostic_vars.exchange();
