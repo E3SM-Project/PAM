@@ -103,17 +103,6 @@ public:
     this->is_initialized = true;
   }
 
-  virtual void compute_rhs(const VariableSet<ndims, nconst> &const_vars, VariableSet<ndims, nprog> &x, VariableSet<ndims, ndiag> &diagnostic_vars, VariableSet<ndims, nprog> &xtend)
-  {
-    std::cout << "base tend\n";
-  }
-
-};
-
-template <uint ndims, uint nprog, uint nconst, uint ndiag> class AdvectionTendencies : public Tendencies<ndims, nprog, nconst, ndiag> {
-
-public:
-
   void compute_rhs(const VariableSet<ndims, nconst> &const_vars, VariableSet<ndims, nprog> &x, VariableSet<ndims, ndiag> &diagnostic_vars, VariableSet<ndims, nprog> &xtend)
   {
     std::cout << "adv tend\n";
@@ -127,6 +116,13 @@ public:
    //compute D (qrecon U)
    divergence2<ndims, nqdofs>(xtend.fields_arr[0].data, diagnostic_vars.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology);
  }
+
+};
+
+template <uint ndims, uint nprog, uint nconst, uint ndiag> class AdvectionTendencies : public Tendencies<ndims, nprog, nconst, ndiag> {
+
+public:
+
 };
 
 // *******   VariableSet Initialization   ***********//

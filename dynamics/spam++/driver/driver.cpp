@@ -27,7 +27,7 @@ std::string outputName;
 // WITH REASONABLE DEFAULTS!
 
 // Number of Dimensions
-uint constexpr number_of_dims = 2;
+uint constexpr number_of_dims = 1;
 
 // Spatial order of accuracy for the model
 uint constexpr reconstruction_order_x = 2;
@@ -64,7 +64,7 @@ uint constexpr n_time_stages = 4;
 // FIX THIS TO ACTUALLY READ A FILE, EVENTUALLY
 void readParamsFile(std::string inFile) {
   // Topology
-  nx = 100;
+  nx = 20;
   ny = 100;
   nz = 10;
 
@@ -118,18 +118,14 @@ int main(int argc, char** argv) {
     RKSimpleTimeIntegrator<number_of_dims, nprognostic, nconstant, ndiagnostic, n_time_stages> tint;
     UniformRectangularGeometry<number_of_dims,ic_quad_pts_x,ic_quad_pts_y,ic_quad_pts_z> geometry;
 
-    //Initialize MPI
-      int ierr = MPI_Init( &argc , &argv );
-      ierr = MPI_Comm_size(MPI_COMM_WORLD,&par.nranks);
-      ierr = MPI_Comm_rank(MPI_COMM_WORLD,&par.myrank);
+    // Initialize MPI
+    int ierr = MPI_Init( &argc , &argv );
+    ierr = MPI_Comm_size(MPI_COMM_WORLD,&par.nranks);
+    ierr = MPI_Comm_rank(MPI_COMM_WORLD,&par.myrank);
 
-      //Determine if I'm the master process
-      if (par.myrank == 0) { par.masterproc = 1;}
-      else { par.masterproc = 0; }
-
-
-
-
+    // Determine if I'm the master process
+    if (par.myrank == 0) { par.masterproc = 1;}
+    else { par.masterproc = 0; }
 
     // Read the parameters
     // Default input file is "input.txt" unless the user passes in another file
@@ -141,18 +137,13 @@ int main(int argc, char** argv) {
 
     // Initialize the grid
     std::cout << "start init topo/geom\n" << std::flush;
-
     topology.initialize(nx, ny, nz, maxhalosize_x, maxhalosize_y, maxhalosize_z);
     geometry.initialize(topology, xlen/nx, ylen/ny, zlen/nz, xlen, ylen, zlen, xc, yc, zc);
-    topology.printinfo();
-    geometry.printinfo();
     std::cout << "finish init topo/geom\n" << std::flush;
 
     // Allocate the wind variable and the advected quantities
-
-
     std::cout << "start init variable sets and exchange sets\n" << std::flush;
-//ARE THESE AUTOMATICALLY ZEROED?
+// PROPERLY THESE CAN BE OF SIZE NDIMS+2...
     SArray<int, nprognostic, 4> prog_ndofs_arr;
     SArray<int, nconstant, 4> const_ndofs_arr;
     SArray<int, ndiagnostic, 4> diag_ndofs_arr;
@@ -162,7 +153,6 @@ int main(int argc, char** argv) {
     std::array<const Topology<number_of_dims> *, nprognostic> prog_topo_arr;
     std::array<const Topology<number_of_dims> *, nconstant> const_topo_arr;
     std::array<const Topology<number_of_dims> *, ndiagnostic> diag_topo_arr;
-//std::unique_ptr<Topology<number_of_dims>>
     initialize_variables<number_of_dims, nprognostic, nconstant, ndiagnostic>(topology, prog_ndofs_arr, const_ndofs_arr, diag_ndofs_arr, prog_names_arr, const_names_arr, diag_names_arr, prog_topo_arr, const_topo_arr, diag_topo_arr);
 
     prognostic_vars.initialize("x", prog_names_arr, prog_topo_arr, prog_ndofs_arr);
@@ -172,17 +162,6 @@ int main(int argc, char** argv) {
     const_exchange.initialize(const_topo_arr, const_ndofs_arr);
     diag_exchange.initialize(diag_topo_arr, diag_ndofs_arr);
     std::cout << "finish init variable sets\n" << std::flush;
-
-    //std::cout << "start init fields\n" << std::flush;
-    //initialize_variables<number_of_dims, nprognostic, nconstant, ndiagnostic>(topology, prognostic_vars, constant_vars, diagnostic_vars, prog_exchange, const_exchange, diag_exchange);
-    //std::cout << "finish init fields\n" << std::flush;
-
-    //prognostic_vars.printinfo();
-    //constant_vars.printinfo();
-    //diagnostic_vars.printinfo();
-    //prog_exchange.printinfo();
-    //const_exchange.printinfo();
-    //diag_exchange.printinfo();
 
     // Create the outputter
     std::cout << "start io init\n" << std::flush;
@@ -195,18 +174,12 @@ int main(int argc, char** argv) {
     prog_exchange.exchange_variable_set(prognostic_vars);
     const_exchange.exchange_variable_set(constant_vars);
 
-    //prognostic_vars.printinfo();
-    //constant_vars.printinfo();
-    //diagnostic_vars.printinfo();
-
     // Initialize the time stepper
     std::cout << "start ts init\n" << std::flush;
     tendencies.initialize(topology, diag_exchange);
     tint.initialize(tendencies, prognostic_vars, constant_vars, diagnostic_vars, prog_exchange);
     set_stage_coefficients<n_time_stages>(time_type, tint.stage_coeffs);
-
     std::cout << "end ts init\n" << std::flush;
-
 
     // Output the initial model state
     std::cout << "start initial output\n" << std::flush;
@@ -226,19 +199,15 @@ int main(int argc, char** argv) {
 // UNSAFE IN PARALLEL
         std::cout << "step " << nstep << " time " << etime << "\n";
         io.output(nstep, etime);
-
-        //prognostic_vars.printinfo();
       }
 
     }
-    //prognostic_vars.printinfo();
 
     std::cout << "end timestepping loop\n" << std::flush;
 
     std::cout << "start io close\n" << std::flush;
     io.close();
     std::cout << "end io close\n" << std::flush;
-
 
    }
 

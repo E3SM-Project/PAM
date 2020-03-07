@@ -7,7 +7,6 @@
 
 #include "common.h"
 #include <iostream>
-#include <fstream>
 #include "variable_sets.h"
 #include "pnetcdf.h"
 #include "mpi.h"
@@ -24,7 +23,6 @@ void ncwrap( int ierr , int line ) {
 
 
 template<uint ndims, uint nprog, uint nconst, uint ndiag> class FileIO {
-  std::ofstream file;
 
 public:
   bool is_initialized;
@@ -66,7 +64,6 @@ public:
 
   template<uint ndims, uint nprog, uint nconst, uint ndiag> void FileIO<ndims,nprog,nconst,ndiag>::initialize(std::string outName, Topology<ndims> &topo, const VariableSet<ndims, nprog> &progvars, const VariableSet<ndims, nconst> &constvars)
   {
-       this->file.open ("output.txt");
        this->outputName = outName;
        this->prog_vars = &progvars;
        this->const_vars = &constvars;
@@ -109,18 +106,11 @@ public:
        this->is_initialized = true;
     }
 
-// have an internal write field routine
-// that writes a field out
-// how big should temporary arrays be? this is the question...
 
   template<uint ndims, uint nprog, uint nconst, uint ndiag> void FileIO<ndims,nprog,nconst,ndiag>::output(int nstep, real time)
   {
-    ncwrap( ncmpi_open( MPI_COMM_WORLD , this->outputName.c_str() , NC_WRITE , MPI_INFO_NULL , &ncid ) , __LINE__ );
 
-      // open netcdf file
-      // open variables for constants and vars
-      // write variables for constants and vars
-      // write elapsed time/time step
+    ncwrap( ncmpi_open( MPI_COMM_WORLD , this->outputName.c_str() , NC_WRITE , MPI_INFO_NULL , &ncid ) , __LINE__ );
 
       for (int l=0; l<this->prog_vars->fields_arr.size(); l++)
       {
@@ -130,10 +120,8 @@ public:
         int ks = this->prog_vars->fields_arr[l].topology->ks;
         yakl::parallel_for("CopyFieldToOutputBuffer", this->prog_vars->fields_arr[l].topology->n_cells, YAKL_LAMBDA (int iGlob) {
           int k, j, i;
-          //std::cout <<"copy field to output buffer " << l << " " << this->const_vars->fields_arr[l].name << "\n" << std::flush;
           yakl::unpackIndices(iGlob, this->prog_vars->fields_arr[l].topology->n_cells_z, this->prog_vars->fields_arr[l].topology->n_cells_y, this->prog_vars->fields_arr[l].topology->n_cells_x, k, j, i);
           for (int ndof=0; ndof<this->prog_vars->fields_arr[l].total_dofs; ndof++) {
-            //std::cout << i << " " << j << " " << k << " " << ndof << "\n" << std::flush;
             this->prog_temp_arr[l](ndof, k, j, i) = this->prog_vars->fields_arr[l].data(ndof, k+ks, j+js, i+is);
           }
         });
@@ -141,13 +129,6 @@ public:
         prog_start[0] = this->numOut; prog_start[1] = 0; prog_start[2] = 0; prog_start[3] = 0; prog_start[4] = 0;
         prog_count[0] = 1; prog_count[1] = this->prog_vars->fields_arr[l].total_dofs; prog_count[2] = this->prog_vars->fields_arr[l].topology->n_cells_z; prog_count[3] = this->prog_vars->fields_arr[l].topology->n_cells_y; prog_count[4] = this->prog_vars->fields_arr[l].topology->n_cells_x;
         ncwrap( ncmpi_put_vara_float_all( ncid , prog_var_ids[l] , prog_start , prog_count , this->prog_temp_arr[l].createHostCopy().data() ) , __LINE__ );
-      }
-
-
-      this->file << "Variables at step " << nstep << " and t=" << time << "\n";
-      for (int i=0; i<this->prog_vars->fields_arr.size(); i++)
-      {
-        this->file << this->prog_vars->fields_arr[i].name << "\n" << std::flush;
       }
 
       // ADD THIS
@@ -205,34 +186,16 @@ public:
 
 
 
-
-
-      this->file << "Constants at step " << 0 << " and t=" << time << "\n";
-      for (int i=0; i<this->const_vars->fields_arr.size(); i++)
-      {
-        this->file << this->const_vars->fields_arr[i].name << "\n" << std::flush;
-        //  ncwrap( ncmpi_put_vara_float_all( ncid , uVar , start , count , data.createHostCopy().data() ) , __LINE__ );
-
-      }
-
-      file << "Variables at step " << 0 << " and t=" << time << "\n";
-      for (int i=0; i<this->prog_vars->fields_arr.size(); i++)
-      {
-        this->file << this->prog_vars->fields_arr[i].name << "\n" << std::flush;
-      }
-
 // ADD THIS
       // write elapsed time/time step
+
       ncwrap( ncmpi_close(ncid) , __LINE__ );
 
       this->numOut++;
 
     }
 
-  template<uint ndims, uint nprog, uint nconst, uint ndiag> void FileIO<ndims,nprog,nconst,ndiag>::close()
-  {
-      this->file.close();
-    }
+  template<uint ndims, uint nprog, uint nconst, uint ndiag> void FileIO<ndims,nprog,nconst,ndiag>::close() { }
 
 
 

@@ -10,16 +10,40 @@
 
 // REALLY HERE WE SHOULD PROBABLY DO SPECIALIZATION BY DIMENSION FOR EVERYTHING....
 
-struct coords {
+template<int ndims> struct coords {};
+
+template<> struct coords<1>
+{
+  real x;
+  real y;
+  real z;
+};
+
+template<> struct coords<2>
+{
+  real x;
+  real y;
+  real z;
+};
+
+template<> struct coords<3>
+{
   real x;
   real y;
   real z;
 };
 
 
-
 template<uint ndims, uint nquadx, uint nquady, uint nquadz> class Geometry {
+
 public:
+
+  const Topology<ndims> *topology;
+
+  bool is_initialized;
+  Geometry();
+  Geometry( const Geometry<ndims,nquadx,nquady,nquadz> &geom) = delete;
+  Geometry& operator=( const Geometry<ndims,nquadx,nquady,nquadz> &geom) = delete;
 
   SArray<real,nquadx> x_quad_pts_ref;
   SArray<real,nquadx> x_quad_wts_ref;
@@ -28,36 +52,39 @@ public:
   SArray<real,nquadz> z_quad_pts_ref;
   SArray<real,nquadz> z_quad_wts_ref;
 
-  const Topology<ndims> *topology;
+  void YAKL_INLINE get_point_quad_pts_wts(int i, int j, int k, SArray<coords<ndims>,1> &quad_pts_phys, SArray<real,1> &quad_wts_phys) {};
 
-  bool is_initialized;
-  Geometry();
-  Geometry( const Geometry<ndims,nquadx,nquady,nquadz> &geom) = delete;
-  Geometry& operator=( const Geometry<ndims,nquadx,nquady,nquadz> &geom) = delete;
-  virtual void YAKL_INLINE get_point_quad_pts_wts(int i, int j, int k, SArray<coords,1> &quad_pts_phys, SArray<real,1> &quad_wts_phys) {};
+  void YAKL_INLINE get_volume_quad_pts_wts(int i, int j, int k, SArray<coords<ndims>,nquadx,nquady,nquadz> &quad_pts_phys, SArray<real,nquadx,nquady,nquadz> &quad_wts_phys) {};
 
-  virtual void YAKL_INLINE get_volume_quad_pts_wts(int i, int j, int k, SArray<coords,nquadx,nquady,nquadz> &quad_pts_phys, SArray<real,nquadx,nquady,nquadz> &quad_wts_phys) {};
+  void YAKL_INLINE get_edge_quad_pts_wts(int i, int j, int k,
+    SArray<coords<ndims>,nquadx> &x_quad_pts_phys, SArray<real,nquadx> &x_quad_wts_phys,
+    SArray<coords<ndims>,nquady> &y_quad_pts_phys, SArray<real,nquady> &y_quad_wts_phys,
+    SArray<coords<ndims>,nquadz> &z_quad_pts_phys, SArray<real,nquadz> &z_quad_wts_phys) {};
 
-  virtual void YAKL_INLINE get_edge_quad_pts_wts(int i, int j, int k,
-    SArray<coords,nquadx> &x_quad_pts_phys, SArray<real,nquadx> &x_quad_wts_phys,
-    SArray<coords,nquady> &y_quad_pts_phys, SArray<real,nquady> &y_quad_wts_phys,
-    SArray<coords,nquadz> &z_quad_pts_phys, SArray<real,nquadz> &z_quad_wts_phys) {};
+  void YAKL_INLINE get_edge_normals(int i, int j, int k, SArray<coords<ndims>,nquadx> &x_normals, SArray<coords<ndims>,nquady> &y_normals, SArray<coords<ndims>,nquadz> &z_normals) {};
+  void YAKL_INLINE get_edge_tangents(int i, int j, int k, SArray<coords<ndims>,nquadx> &x_tangents, SArray<coords<ndims>,nquady> &y_tangents, SArray<coords<ndims>,nquadz> &z_tangents) {};
+  void YAKL_INLINE get_surface_normals(int i, int j, int k, SArray<coords<ndims>,nquadx,nquady> &xy_normals, SArray<coords<ndims>,nquady,nquadz> &yz_normals, SArray<coords<ndims>,nquadx,nquadz> &xz_normals) {};
 
-  virtual void YAKL_INLINE get_surface_quad_pts_wts(int i, int j, int k,
-      SArray<coords,nquadx,nquady> &xy_quad_pts_phys, SArray<real,nquadx,nquady> &xy_quad_wts_phys,
-      SArray<coords,nquady,nquadz> &yz_quad_pts_phys, SArray<real,nquady,nquadz> &yz_quad_wts_phys,
-      SArray<coords,nquadx,nquadz> &xz_quad_pts_phys, SArray<real,nquadx,nquadz> &xz_quad_wts_phys) {};
+
+  void YAKL_INLINE get_surface_quad_pts_wts(int i, int j, int k,
+      SArray<coords<ndims>,nquadx,nquady> &xy_quad_pts_phys, SArray<real,nquadx,nquady> &xy_quad_wts_phys,
+      SArray<coords<ndims>,nquady,nquadz> &yz_quad_pts_phys, SArray<real,nquady,nquadz> &yz_quad_wts_phys,
+      SArray<coords<ndims>,nquadx,nquadz> &xz_quad_pts_phys, SArray<real,nquadx,nquadz> &xz_quad_wts_phys) {};
 
   void initialize(const Topology<ndims> &topo);
 
   YAKL_INLINE void set_point_values(real (*initial_value_function)(real, real, real), Field<ndims> &field, int ndof);
   YAKL_INLINE void set_volume_values(real (*initial_value_function)(real, real, real), Field<ndims> &field, int ndof);
+
+
   // THESE MUST CHANGE FOR EDGE/SURFACES...MAYBE RETURN A COORD STRUCT?
   YAKL_INLINE void set_edge_values(real (*initial_value_function)(real, real, real), Field<ndims> &field, int ndof);
   YAKL_INLINE void set_surface_values(real (*initial_value_function)(real, real, real), Field<ndims> &field, int ndof);
 
 
 };
+
+
 
 
 template<uint ndims, uint nquadx, uint nquady, uint nquadz> class UniformRectangularGeometry: public Geometry<ndims,nquadx,nquady,nquadz> {
@@ -69,16 +96,16 @@ public:
   real xc, yc, zc;
   void initialize(const Topology<ndims> &topo, real dxx, real dyy, real dzz, real xlen, real ylen, real zlen, real xcent, real ycent, real zcent);
   void printinfo();
-  void YAKL_INLINE get_point_quad_pts_wts(int i, int j, int k, SArray<coords,1> &quad_pts_phys, SArray<real,1> &quad_wts_phys);
-  void YAKL_INLINE get_volume_quad_pts_wts(int i, int j, int k, SArray<coords,nquadx,nquady,nquadz> &quad_pts_phys, SArray<real,nquadx,nquady,nquadz> &quad_wts_phys);
+  void YAKL_INLINE get_point_quad_pts_wts(int i, int j, int k, SArray<coords<ndims>,1> &quad_pts_phys, SArray<real,1> &quad_wts_phys);
+  void YAKL_INLINE get_volume_quad_pts_wts(int i, int j, int k, SArray<coords<ndims>,nquadx,nquady,nquadz> &quad_pts_phys, SArray<real,nquadx,nquady,nquadz> &quad_wts_phys);
   void  YAKL_INLINE get_edge_quad_pts_wts(int i, int j, int k,
-    SArray<coords,nquadx> &x_quad_pts_phys, SArray<real,nquadx> &x_quad_wts_phys,
-    SArray<coords,nquady> &y_quad_pts_phys, SArray<real,nquady> &y_quad_wts_phys,
-    SArray<coords,nquadz> &z_quad_pts_phys, SArray<real,nquadz> &z_quad_wts_phys);
+    SArray<coords<ndims>,nquadx> &x_quad_pts_phys, SArray<real,nquadx> &x_quad_wts_phys,
+    SArray<coords<ndims>,nquady> &y_quad_pts_phys, SArray<real,nquady> &y_quad_wts_phys,
+    SArray<coords<ndims>,nquadz> &z_quad_pts_phys, SArray<real,nquadz> &z_quad_wts_phys);
   void YAKL_INLINE get_surface_quad_pts_wts(int i, int j, int k,
-    SArray<coords,nquadx,nquady> &xy_quad_pts_phys, SArray<real,nquadx,nquady> &xy_quad_wts_phys,
-    SArray<coords,nquady,nquadz> &yz_quad_pts_phys, SArray<real,nquady,nquadz> &yz_quad_wts_phys,
-    SArray<coords,nquadx,nquadz> &xz_quad_pts_phys, SArray<real,nquadx,nquadz> &xz_quad_wts_phys);
+    SArray<coords<ndims>,nquadx,nquady> &xy_quad_pts_phys, SArray<real,nquadx,nquady> &xy_quad_wts_phys,
+    SArray<coords<ndims>,nquady,nquadz> &yz_quad_pts_phys, SArray<real,nquady,nquadz> &yz_quad_wts_phys,
+    SArray<coords<ndims>,nquadx,nquadz> &xz_quad_pts_phys, SArray<real,nquadx,nquadz> &xz_quad_wts_phys);
 };
 
 
@@ -156,7 +183,7 @@ template<uint ndims, uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geo
   int js = this->topology->js;
   int ks = this->topology->ks;
 
-  SArray<coords,1> quad_pts_phys;
+  SArray<coords<ndims>,1> quad_pts_phys;
   SArray<real,1> quad_wts_phys;
 
   yakl::parallel_for("SetPointValues", this->topology->n_cells, YAKL_LAMBDA (int iGlob) {
@@ -172,7 +199,7 @@ template<uint ndims, uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geo
 template<uint ndims, uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<ndims,nquadx,nquady,nquadz>::set_volume_values(real (*initial_value_function)(real, real, real), Field<ndims> &field, int ndof)
 {
 
-  SArray<coords,nquadx,nquady,nquadz> quad_pts_phys;
+  SArray<coords<ndims>,nquadx,nquady,nquadz> quad_pts_phys;
   SArray<real,nquadx,nquady,nquadz> quad_wts_phys;
 
   int is = this->topology->is;
@@ -204,11 +231,11 @@ template<uint ndims, uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geo
 template<uint ndims, uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<ndims,nquadx,nquady,nquadz>::set_edge_values(real (*initial_value_function)(real, real, real), Field<ndims> &field, int ndof)
 {
 
-  SArray<coords,nquadx> x_quad_pts_phys;
+  SArray<coords<ndims>,nquadx> x_quad_pts_phys;
   SArray<real,nquadx> x_quad_wts_phys;
-  SArray<coords,nquady> y_quad_pts_phys;
+  SArray<coords<ndims>,nquady> y_quad_pts_phys;
   SArray<real,nquady> y_quad_wts_phys;
-  SArray<coords,nquadz> z_quad_pts_phys;
+  SArray<coords<ndims>,nquadz> z_quad_pts_phys;
   SArray<real,nquadz> z_quad_wts_phys;
 
   int is = this->topology->is;
@@ -261,11 +288,11 @@ template<uint ndims, uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geo
 template<uint ndims, uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<ndims,nquadx,nquady,nquadz>::set_surface_values(real (*initial_value_function)(real, real, real), Field<ndims> &field, int ndof)
 {
 
-  SArray<coords,nquadx,nquady> xy_quad_pts_phys;
+  SArray<coords<ndims>,nquadx,nquady> xy_quad_pts_phys;
   SArray<real,nquadx,nquady> xy_quad_wts_phys;
-  SArray<coords,nquady,nquadz> yz_quad_pts_phys;
+  SArray<coords<ndims>,nquady,nquadz> yz_quad_pts_phys;
   SArray<real,nquady,nquadz> yz_quad_wts_phys;
-  SArray<coords,nquadx,nquadz> xz_quad_pts_phys;
+  SArray<coords<ndims>,nquadx,nquadz> xz_quad_pts_phys;
   SArray<real,nquadx,nquadz> xz_quad_wts_phys;
 
   int is = this->topology->is;
@@ -369,7 +396,7 @@ template<uint ndims, uint nquadx, uint nquady, uint nquadz> void UniformRectangu
 }
 
 
-template<uint ndims, uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangularGeometry<ndims,nquadx,nquady,nquadz>::get_point_quad_pts_wts(int i, int j, int k, SArray<coords,1> &quad_pts_phys, SArray<real,1> &quad_wts_phys)
+template<uint ndims, uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangularGeometry<ndims,nquadx,nquady,nquadz>::get_point_quad_pts_wts(int i, int j, int k, SArray<coords<ndims>,1> &quad_pts_phys, SArray<real,1> &quad_wts_phys)
 {
   quad_pts_phys(0).x = i*this->dx + this->xc - this->Lx/2.;
   quad_pts_phys(0).y = j*this->dy + this->yc - this->Ly/2.;
@@ -378,7 +405,7 @@ template<uint ndims, uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE Uni
 }
 
 
-template<uint ndims, uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangularGeometry<ndims,nquadx,nquady,nquadz>::get_volume_quad_pts_wts(int i, int j, int k, SArray<coords,nquadx,nquady,nquadz> &quad_pts_phys, SArray<real,nquadx,nquady,nquadz> &quad_wts_phys)
+template<uint ndims, uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangularGeometry<ndims,nquadx,nquady,nquadz>::get_volume_quad_pts_wts(int i, int j, int k, SArray<coords<ndims>,nquadx,nquady,nquadz> &quad_pts_phys, SArray<real,nquadx,nquady,nquadz> &quad_wts_phys)
 {
   real ll_corner_x = i*this->dx + this->xc - this->Lx/2.;
   real ll_corner_y = j*this->dy + this->yc - this->Ly/2.;
@@ -395,9 +422,9 @@ template<uint ndims, uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE Uni
 }
 
 template<uint ndims, uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangularGeometry<ndims,nquadx,nquady,nquadz>::get_edge_quad_pts_wts(int i, int j, int k,
-  SArray<coords,nquadx> &x_quad_pts_phys, SArray<real,nquadx> &x_quad_wts_phys,
-  SArray<coords,nquady> &y_quad_pts_phys, SArray<real,nquady> &y_quad_wts_phys,
-  SArray<coords,nquadz> &z_quad_pts_phys, SArray<real,nquadz> &z_quad_wts_phys)
+  SArray<coords<ndims>,nquadx> &x_quad_pts_phys, SArray<real,nquadx> &x_quad_wts_phys,
+  SArray<coords<ndims>,nquady> &y_quad_pts_phys, SArray<real,nquady> &y_quad_wts_phys,
+  SArray<coords<ndims>,nquadz> &z_quad_pts_phys, SArray<real,nquadz> &z_quad_wts_phys)
 {
   real ll_corner_x = i*this->dx + this->xc - this->Lx/2.;
   real ll_corner_y = j*this->dy + this->yc - this->Ly/2.;
@@ -427,9 +454,9 @@ template<uint ndims, uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE Uni
 }
 
 template<uint ndims, uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangularGeometry<ndims,nquadx,nquady,nquadz>::get_surface_quad_pts_wts(int i, int j, int k,
-  SArray<coords,nquadx,nquady> &xy_quad_pts_phys, SArray<real,nquadx,nquady> &xy_quad_wts_phys,
-  SArray<coords,nquady,nquadz> &yz_quad_pts_phys, SArray<real,nquady,nquadz> &yz_quad_wts_phys,
-  SArray<coords,nquadx,nquadz> &xz_quad_pts_phys, SArray<real,nquadx,nquadz> &xz_quad_wts_phys)
+  SArray<coords<ndims>,nquadx,nquady> &xy_quad_pts_phys, SArray<real,nquadx,nquady> &xy_quad_wts_phys,
+  SArray<coords<ndims>,nquady,nquadz> &yz_quad_pts_phys, SArray<real,nquady,nquadz> &yz_quad_wts_phys,
+  SArray<coords<ndims>,nquadx,nquadz> &xz_quad_pts_phys, SArray<real,nquadx,nquadz> &xz_quad_wts_phys)
 {
   real ll_corner_x = i*this->dx + this->xc - this->Lx/2.;
   real ll_corner_y = j*this->dy + this->yc - this->Ly/2.;
