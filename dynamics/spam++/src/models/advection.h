@@ -29,12 +29,8 @@ enum class WIND_INIT { UNIFORM_X, UNIFORM_Y, UNIFORM_Z, DEFORMATIONAL };
 
 // HOW WE DO PROPERLY TREAT THIS
 // gaussian sees y=0,z=0 in 1D, z=0 in 2D
-//real YAKL_INLINE gaussian(real x, real y, real z) {
-//  return A * exp(-ax * pow(x-xc,2.)); //* exp(-ay * pow(y-yc,2.)) * exp(-az * pow(z-zc,2.));
-//}
-real YAKL_INLINE gaussian(real x, real y, real z) {
-  return A * exp(-ax * pow(x-xc,2.)) * exp(-ay * pow(y-yc,2.));
-}
+//real YAKL_INLINE gaussian(real x, real y, real z) { return A * exp(-ax * pow(x-xc,2.)); }
+real YAKL_INLINE gaussian(real x, real y, real z) { return A * exp(-ax * pow(x-xc,2.)) * exp(-ay * pow(y-yc,2.)); }
 
 // FIX THIS
 real YAKL_INLINE vortices(real x, real y, real z) {

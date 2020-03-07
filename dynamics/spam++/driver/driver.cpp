@@ -27,7 +27,7 @@ std::string outputName;
 // WITH REASONABLE DEFAULTS!
 
 // Number of Dimensions
-uint constexpr number_of_dims = 1;
+uint constexpr number_of_dims = 2;
 
 // Spatial order of accuracy for the model
 uint constexpr reconstruction_order_x = 2;
@@ -64,13 +64,13 @@ uint constexpr n_time_stages = 4;
 // FIX THIS TO ACTUALLY READ A FILE, EVENTUALLY
 void readParamsFile(std::string inFile) {
   // Topology
-  nx = 20;
+  nx = 100;
   ny = 100;
   nz = 10;
 
   // Time stepping
   dt = 0.5;
-  Nsteps = 500;
+  Nsteps = 1000;
   Nout = 5;
 
   outputName = "output.nc";

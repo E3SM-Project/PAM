@@ -52,21 +52,24 @@ public:
   SArray<real,nquadz> z_quad_pts_ref;
   SArray<real,nquadz> z_quad_wts_ref;
 
-  void YAKL_INLINE get_point_quad_pts_wts(int i, int j, int k, SArray<coords<ndims>,1> &quad_pts_phys, SArray<real,1> &quad_wts_phys) {};
+// HOW DO WE AVOID VIRTUAL HERE?
+// ie RUNTIME POLYMORPHISM...
 
-  void YAKL_INLINE get_volume_quad_pts_wts(int i, int j, int k, SArray<coords<ndims>,nquadx,nquady,nquadz> &quad_pts_phys, SArray<real,nquadx,nquady,nquadz> &quad_wts_phys) {};
+  virtual void YAKL_INLINE get_point_quad_pts_wts(int i, int j, int k, SArray<coords<ndims>,1> &quad_pts_phys, SArray<real,1> &quad_wts_phys) {};
 
-  void YAKL_INLINE get_edge_quad_pts_wts(int i, int j, int k,
+  virtual void YAKL_INLINE get_volume_quad_pts_wts(int i, int j, int k, SArray<coords<ndims>,nquadx,nquady,nquadz> &quad_pts_phys, SArray<real,nquadx,nquady,nquadz> &quad_wts_phys) {};
+
+  virtual void YAKL_INLINE get_edge_quad_pts_wts(int i, int j, int k,
     SArray<coords<ndims>,nquadx> &x_quad_pts_phys, SArray<real,nquadx> &x_quad_wts_phys,
     SArray<coords<ndims>,nquady> &y_quad_pts_phys, SArray<real,nquady> &y_quad_wts_phys,
     SArray<coords<ndims>,nquadz> &z_quad_pts_phys, SArray<real,nquadz> &z_quad_wts_phys) {};
 
-  void YAKL_INLINE get_edge_normals(int i, int j, int k, SArray<coords<ndims>,nquadx> &x_normals, SArray<coords<ndims>,nquady> &y_normals, SArray<coords<ndims>,nquadz> &z_normals) {};
-  void YAKL_INLINE get_edge_tangents(int i, int j, int k, SArray<coords<ndims>,nquadx> &x_tangents, SArray<coords<ndims>,nquady> &y_tangents, SArray<coords<ndims>,nquadz> &z_tangents) {};
-  void YAKL_INLINE get_surface_normals(int i, int j, int k, SArray<coords<ndims>,nquadx,nquady> &xy_normals, SArray<coords<ndims>,nquady,nquadz> &yz_normals, SArray<coords<ndims>,nquadx,nquadz> &xz_normals) {};
+  virtual void YAKL_INLINE get_edge_normals(int i, int j, int k, SArray<coords<ndims>,nquadx> &x_normals, SArray<coords<ndims>,nquady> &y_normals, SArray<coords<ndims>,nquadz> &z_normals) {};
+  virtual void YAKL_INLINE get_edge_tangents(int i, int j, int k, SArray<coords<ndims>,nquadx> &x_tangents, SArray<coords<ndims>,nquady> &y_tangents, SArray<coords<ndims>,nquadz> &z_tangents) {};
+  virtual void YAKL_INLINE get_surface_normals(int i, int j, int k, SArray<coords<ndims>,nquadx,nquady> &xy_normals, SArray<coords<ndims>,nquady,nquadz> &yz_normals, SArray<coords<ndims>,nquadx,nquadz> &xz_normals) {};
 
 
-  void YAKL_INLINE get_surface_quad_pts_wts(int i, int j, int k,
+  virtual void YAKL_INLINE get_surface_quad_pts_wts(int i, int j, int k,
       SArray<coords<ndims>,nquadx,nquady> &xy_quad_pts_phys, SArray<real,nquadx,nquady> &xy_quad_wts_phys,
       SArray<coords<ndims>,nquady,nquadz> &yz_quad_pts_phys, SArray<real,nquady,nquadz> &yz_quad_wts_phys,
       SArray<coords<ndims>,nquadx,nquadz> &xz_quad_pts_phys, SArray<real,nquadx,nquadz> &xz_quad_wts_phys) {};
@@ -189,7 +192,6 @@ template<uint ndims, uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geo
   yakl::parallel_for("SetPointValues", this->topology->n_cells, YAKL_LAMBDA (int iGlob) {
     int k, j, i;
     yakl::unpackIndices(iGlob, this->topology->n_cells_z, this->topology->n_cells_y, this->topology->n_cells_x ,k, j, i);
-
       get_point_quad_pts_wts(i, j, k, quad_pts_phys, quad_wts_phys);
       field.data(ndof, k+ks, j+js, i+is) = initial_value_function(quad_pts_phys(0).x, quad_pts_phys(0).y, quad_pts_phys(0).z) * quad_wts_phys(0);
   });
