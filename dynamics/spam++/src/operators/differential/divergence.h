@@ -1,11 +1,12 @@
 
+#ifndef _DIVERGENCE_H_
+#define _DIVERGENCE_H_
 
-#include "divergence.h"
+#include "common.h"
+#include "topology.h"
 
-
-//REALLY NDOFS HERE SHOULD BE A COMPILE TIME CONSTANT...
-
-template<int ndofs, int ndims> void YAKL_INLINE divergence2( realArr var, realArr recon, realArr flux, Topology &topology) {
+// ADD AN ORDER PARAMETER AND TEMPLATE PARTIAL SPECIALIZATION
+template<uint ndims, uint ndofs> void YAKL_INLINE divergence2( realArr var, const realArr recon, const realArr flux, const Topology<ndims> &topology) {
 
   int is = topology.is;
   int js = topology.js;
@@ -32,4 +33,6 @@ template<int ndofs, int ndims> void YAKL_INLINE divergence2( realArr var, realAr
   });
 
 }
-}
+
+
+#endif

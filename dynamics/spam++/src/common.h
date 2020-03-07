@@ -13,6 +13,10 @@ using yakl::SArray;
 typedef unsigned long ulong;
 typedef unsigned int  uint;
 
+// Declaring the precision for the model
+typedef float real;
+
+
 // Define a real array type, presumed on the "device"
 #if defined(__USE_CUDA__) || defined(__USE_HIP__)
   typedef yakl::Array<real,yakl::memDevice> realArr;
@@ -39,8 +43,9 @@ template <class T> YAKL_INLINE T mymax( T const v1 , T const v2 ) {
   else         { return v2; }
 }
 
-// Declaring the precision for the model
-typedef float real;
+
+
+
 
 
 
