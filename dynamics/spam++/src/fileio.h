@@ -171,10 +171,8 @@ public:
       int ks = this->prog_vars->fields_arr[l].topology->ks;
       yakl::parallel_for("CopyFieldToOutputBuffer", this->prog_vars->fields_arr[l].topology->n_cells, YAKL_LAMBDA (int iGlob) {
         int k, j, i;
-        //std::cout <<"copy field to output buffer " << l << " " << this->const_vars->fields_arr[l].name << "\n" << std::flush;
         yakl::unpackIndices(iGlob, this->prog_vars->fields_arr[l].topology->n_cells_z, this->prog_vars->fields_arr[l].topology->n_cells_y, this->prog_vars->fields_arr[l].topology->n_cells_x, k, j, i);
         for (int ndof=0; ndof<this->prog_vars->fields_arr[l].total_dofs; ndof++) {
-          //std::cout << i << " " << j << " " << k << " " << ndof << "\n" << std::flush;
           this->prog_temp_arr[l](ndof, k, j, i) = this->prog_vars->fields_arr[l].data(ndof, k+ks, j+js, i+is);
         }
       });

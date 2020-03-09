@@ -226,22 +226,24 @@ template<uint ndims> void Exchange<ndims>::initialize(const Exchange<ndims> &exc
 
  template<uint ndims> void Exchange<ndims>::exchange()
  {
-   //std:: cout << "exchanging\n";
    yakl::parallel_for( this->bufsize_x , YAKL_LAMBDA (int iGlob) {
-     //std::cout << iGlob << " " << haloSendBuf_Xp(iGlob) << " " << haloSendBuf_Xm(iGlob) << "\n";
      this->haloRecvBuf_Xp(iGlob) = this->haloSendBuf_Xp(iGlob);
      this->haloRecvBuf_Xm(iGlob) = this->haloSendBuf_Xm(iGlob);
    });
 
+   if (ndims >=2) {
    yakl::parallel_for( this->bufsize_y , YAKL_LAMBDA (int iGlob) {
      this->haloRecvBuf_Yp(iGlob) = this->haloSendBuf_Yp(iGlob);
      this->haloRecvBuf_Ym(iGlob) = this->haloSendBuf_Ym(iGlob);
    });
+}
 
+if (ndims ==3) {
    yakl::parallel_for( this->bufsize_z , YAKL_LAMBDA (int iGlob) {
      this->haloRecvBuf_Zp(iGlob) = this->haloSendBuf_Zp(iGlob);
      this->haloRecvBuf_Zm(iGlob) = this->haloSendBuf_Zm(iGlob);
    });
+ }
  }
 
 #endif

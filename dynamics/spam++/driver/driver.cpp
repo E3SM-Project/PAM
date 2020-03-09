@@ -10,90 +10,8 @@
 #include <cmath>
 #include <iostream>
 #include "mpi.h"
-
-// HOW DO WE MAKE THIS UNIVERSAL? VIA PRE-PROCESSOR FLAGS, OF COURSE...
-#include "advection.h"
-
-// WHERE SHOULD THESE REALLY LIVE?
-// PROBABLY IN A PARAMETERS CLASS, WHICH SPECIFIC TO EACH MODEL...
-// parameters
-uint nx, ny, nz;
-uint Nsteps, Nout;
-real dt, etime;
-std::string outputName;
-
-// *********** COMPILE TIME CONSTANTS ************** //
-// EVENTUALLY THESE SHOULD ALL BE COMPILE TIME/PRE-PROCESSOR FLAGS...
-// WITH REASONABLE DEFAULTS!
-
-// Number of Dimensions
-uint constexpr number_of_dims = 2;
-
-// Spatial order of accuracy for the model
-uint constexpr reconstruction_order_x = 2;
-uint constexpr reconstruction_order_y = 2;
-uint constexpr reconstruction_order_z = 2;
-uint constexpr differential_order_x = 2;
-uint constexpr differential_order_y = 2;
-uint constexpr differential_order_z = 2;
-
-// Reconstruction type
-RECONSTRUCTION_TYPE reconstruction_type_x = RECONSTRUCTION_TYPE::CFV;
-RECONSTRUCTION_TYPE reconstruction_type_y = RECONSTRUCTION_TYPE::CFV;
-RECONSTRUCTION_TYPE reconstruction_type_z = RECONSTRUCTION_TYPE::CFV;
-
-// SHOULD MAYBE ALSO COLLAPSE IN 1D/2D?
-// Halo sizes
-uint maxhalosize_x = mymax(reconstruction_order_x,differential_order_x)/2; // IS THIS ALWAYS CORRECT?
-uint maxhalosize_y = mymax(reconstruction_order_y,differential_order_y)/2; // IS THIS ALWAYS CORRECT?
-uint maxhalosize_z = mymax(reconstruction_order_z,differential_order_z)/2; // IS THIS ALWAYS CORRECT?
-
-// MAKE SURE NQUADPTS COLLAPSES PROPERLY IN 1D/2D
-
-// initial condition quadrature pts
-uint constexpr ic_quad_pts_x = 3;
-uint constexpr ic_quad_pts_y = 3;
-uint constexpr ic_quad_pts_z = 3;
-
-// Time scheme
-TIME_TYPE time_type = TIME_TYPE::KGRK;
-uint constexpr n_time_stages = 4;
-
-// *********************** //
-
-// FIX THIS TO ACTUALLY READ A FILE, EVENTUALLY
-void readParamsFile(std::string inFile) {
-  // Topology
-  nx = 100;
-  ny = 100;
-  nz = 10;
-
-  // Time stepping
-  dt = 0.5;
-  Nsteps = 1000;
-  Nout = 5;
-
-  outputName = "output.nc";
-
-  // EVENTUALLY THIS SHOULD BE SET BY THE INITIAL CONDITION CHOICE!
-  xlen = 50.0;
-  ylen = 50.0;
-  zlen = 50.0;
-  xc = 25.0;
-  yc = 25.0;
-  zc = 25.0;
-  etime = 0.0;
-};
-
-
-class Parallel {
-
-public:
-
-  int nranks;
-  int myrank;
-  int masterproc;
-};
+#include "params.h"
+#include "model.h"
 
 // *********************** //
 
@@ -110,35 +28,39 @@ int main(int argc, char** argv) {
     ExchangeSet<number_of_dims, nconstant> const_exchange;
     ExchangeSet<number_of_dims, ndiagnostic> diag_exchange;
     FileIO<number_of_dims, nprognostic, nconstant, ndiagnostic> io;
-    AdvectionTendencies<number_of_dims, nprognostic, nconstant, ndiagnostic> tendencies;
+    Tendencies<number_of_dims, nprognostic, nconstant, ndiagnostic> tendencies;
     Topology<number_of_dims> topology;
-    Parallel par;
+    Parameters params;
 
 // EVENTUALLY THESE TYPES SHOULD BE SETTABLE AT COMPILE TIME...
     RKSimpleTimeIntegrator<number_of_dims, nprognostic, nconstant, ndiagnostic, n_time_stages> tint;
-    UniformRectangularGeometry<number_of_dims,ic_quad_pts_x,ic_quad_pts_y,ic_quad_pts_z> geometry;
+    UniformRectangularGeometry<number_of_dims,ic_quad_pts,ic_quad_pts,ic_quad_pts> ic_geometry;
+    UniformRectangularGeometry<number_of_dims,1,1,1> tendencies_geometry;
 
     // Initialize MPI
     int ierr = MPI_Init( &argc , &argv );
-    ierr = MPI_Comm_size(MPI_COMM_WORLD,&par.nranks);
-    ierr = MPI_Comm_rank(MPI_COMM_WORLD,&par.myrank);
+    ierr = MPI_Comm_size(MPI_COMM_WORLD,&params.nranks);
+    ierr = MPI_Comm_rank(MPI_COMM_WORLD,&params.myrank);
 
     // Determine if I'm the master process
-    if (par.myrank == 0) { par.masterproc = 1;}
-    else { par.masterproc = 0; }
+    if (params.myrank == 0) { params.masterproc = 1;}
+    else { params.masterproc = 0; }
 
     // Read the parameters
     // Default input file is "input.txt" unless the user passes in another file
     std::cout << "reading parameters\n" << std::flush;
     std::string inFile = "input.txt";
     if (argc > 1) inFile = argv[1];
-    readParamsFile(inFile);
+    set_model_specific_params(params);
+    readParamsFile(inFile, params);
     std::cout << "read parameters\n" << std::flush;
 
     // Initialize the grid
     std::cout << "start init topo/geom\n" << std::flush;
-    topology.initialize(nx, ny, nz, maxhalosize_x, maxhalosize_y, maxhalosize_z);
-    geometry.initialize(topology, xlen/nx, ylen/ny, zlen/nz, xlen, ylen, zlen, xc, yc, zc);
+    topology.initialize(params.nx, params.ny, params.nz, maxhalosize, maxhalosize, maxhalosize);
+// THIS IS SPECIFIC TO UNIFORM RECT GEOMETRY...
+    ic_geometry.initialize(topology, params.xlen/params.nx, params.ylen/params.ny, params.zlen/params.nz, params.xlen, params.ylen, params.zlen, params.xc, params.yc, params.zc);
+    tendencies_geometry.initialize(topology, params.xlen/params.nx, params.ylen/params.ny, params.zlen/params.nz, params.xlen, params.ylen, params.zlen, params.xc, params.yc, params.zc);
     std::cout << "finish init topo/geom\n" << std::flush;
 
     // Allocate the wind variable and the advected quantities
@@ -165,40 +87,42 @@ int main(int argc, char** argv) {
 
     // Create the outputter
     std::cout << "start io init\n" << std::flush;
-    io.initialize(outputName, topology, prognostic_vars, constant_vars);
+    io.initialize(params.outputName, topology, prognostic_vars, constant_vars);
     std::cout << "end io init\n" << std::flush;
 
     // set the initial conditions
-    set_initial_conditions<number_of_dims, nprognostic, nconstant, ndiagnostic, ic_quad_pts_x,ic_quad_pts_y,ic_quad_pts_z>(prognostic_vars, constant_vars, geometry);
+    std::cout << "start set initial conditions\n" << std::flush;
+    set_initial_conditions<nprognostic, nconstant, ndiagnostic, ic_quad_pts, ic_quad_pts, ic_quad_pts>(prognostic_vars, constant_vars, ic_geometry);
     // Do a boundary exchange
     prog_exchange.exchange_variable_set(prognostic_vars);
     const_exchange.exchange_variable_set(constant_vars);
+    std::cout << "end set initial conditions\n" << std::flush;
 
     // Initialize the time stepper
     std::cout << "start ts init\n" << std::flush;
-    tendencies.initialize(topology, diag_exchange);
+    tendencies.initialize(topology, tendencies_geometry, diag_exchange);
     tint.initialize(tendencies, prognostic_vars, constant_vars, diagnostic_vars, prog_exchange);
     set_stage_coefficients<n_time_stages>(time_type, tint.stage_coeffs);
     std::cout << "end ts init\n" << std::flush;
 
     // Output the initial model state
     std::cout << "start initial output\n" << std::flush;
-    io.outputInit(etime);
+    io.outputInit(params.etime);
     std::cout << "end initial output\n" << std::flush;
 
     // Time stepping loop
     std::cout << "start timestepping loop\n" << std::flush;
-    for (uint nstep = 1; nstep<Nsteps+1; nstep++) {
+    for (uint nstep = 1; nstep<params.Nsteps+1; nstep++) {
 
       yakl::fence();
-      tint.stepForward(dt);
+      tint.stepForward(params.dt);
       yakl::fence();
 
-      etime += dt;
-      if (nstep%Nout == 0) {
+      params.etime += params.dt;
+      if (nstep%params.Nout == 0) {
 // UNSAFE IN PARALLEL
-        std::cout << "step " << nstep << " time " << etime << "\n";
-        io.output(nstep, etime);
+        std::cout << "step " << nstep << " time " << params.etime << "\n";
+        io.output(nstep, params.etime);
       }
 
     }
