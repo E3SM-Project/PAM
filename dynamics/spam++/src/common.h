@@ -47,6 +47,8 @@ template <class T> YAKL_INLINE T mymax( T const v1 , T const v2 ) {
 
 enum class RECONSTRUCTION_TYPE { CFV, UFV, WENO };
 enum class TIME_TYPE { KGRK, ADER };
+enum class GEOM_TYPE { UNIFORM_RECT, DISTORTED };
+
 #include "compile-consts.h"
 #include "model-compile-consts.h"
 

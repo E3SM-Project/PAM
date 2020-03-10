@@ -9,7 +9,6 @@
 #include <array>
 #include <string>
 
-
 template<uint ndims, uint num_fields> class VariableSet {
 
 public:

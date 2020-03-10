@@ -16,8 +16,7 @@ template<uint ndims, uint ndofs> void YAKL_INLINE ufv1_recon(realArr recon, cons
   int ks = topology.ks;
 
   real upwind_param;
-  // PARALLEL LOOP BOUNDS?
-  yakl::parallel_for("ComputeFV1Recon", topology.n_cells, YAKL_LAMBDA (int iGlob) {
+  yakl::parallel_for("ComputeUFV1Recon", topology.n_cells, YAKL_LAMBDA (int iGlob) {
     int k, j, i;
     yakl::unpackIndices(iGlob, topology.n_cells_z, topology.n_cells_y, topology.n_cells_x, k, j, i);
     for (int l=0; l<ndofs; l++) {
@@ -46,8 +45,7 @@ template<uint ndims, uint ndofs> void YAKL_INLINE cfv2_recon(realArr recon, cons
   int js = topology.js;
   int ks = topology.ks;
 
-  // PARALLEL LOOP BOUNDS?
-  yakl::parallel_for("ComputeFV1Recon", topology.n_cells, YAKL_LAMBDA (int iGlob) {
+  yakl::parallel_for("ComputeCFV2Recon", topology.n_cells, YAKL_LAMBDA (int iGlob) {
     int k, j, i;
     yakl::unpackIndices(iGlob, topology.n_cells_z, topology.n_cells_y, topology.n_cells_x, k, j, i);
     for (int l=0; l<ndofs; l++) {

@@ -31,36 +31,40 @@ int main(int argc, char** argv) {
     Tendencies<number_of_dims, nprognostic, nconstant, ndiagnostic> tendencies;
     Topology<number_of_dims> topology;
     Parameters params;
+    Parallel par;
 
-// EVENTUALLY THESE TYPES SHOULD BE SETTABLE AT COMPILE TIME...
-    RKSimpleTimeIntegrator<number_of_dims, nprognostic, nconstant, ndiagnostic, n_time_stages> tint;
+// SETTING THIS STUFF AT COMPILE TIME DOESN'T WORK BECAUSE OF SCOPING. IS THERE A WAY TO PROMOTE VARIABLES OUT OF IF STATEMENTS?
+
+    //if (time_type == TIME_TYPE::KGRK)
+    //{
+      RKSimpleTimeIntegrator<number_of_dims, nprognostic, nconstant, ndiagnostic, n_time_stages> tint;
+    //}
+
+    //if (geom_type == GEOM_TYPE::UNIFORM_RECT)
+    //{
     UniformRectangularGeometry<number_of_dims,ic_quad_pts,ic_quad_pts,ic_quad_pts> ic_geometry;
     UniformRectangularGeometry<number_of_dims,1,1,1> tendencies_geometry;
+    //}
 
     // Initialize MPI
     int ierr = MPI_Init( &argc , &argv );
-    ierr = MPI_Comm_size(MPI_COMM_WORLD,&params.nranks);
-    ierr = MPI_Comm_rank(MPI_COMM_WORLD,&params.myrank);
-
-    // Determine if I'm the master process
-    if (params.myrank == 0) { params.masterproc = 1;}
-    else { params.masterproc = 0; }
+    ierr = MPI_Comm_size(MPI_COMM_WORLD,&par.nranks);
+    ierr = MPI_Comm_rank(MPI_COMM_WORLD,&par.myrank);
 
     // Read the parameters
     // Default input file is "input.txt" unless the user passes in another file
     std::cout << "reading parameters\n" << std::flush;
     std::string inFile = "input.txt";
     if (argc > 1) inFile = argv[1];
-    set_model_specific_params(params);
-    readParamsFile(inFile, params);
+    set_model_specific_params<number_of_dims>(params);
+    readParamsFile<number_of_dims>(inFile, params, par);
     std::cout << "read parameters\n" << std::flush;
 
     // Initialize the grid
     std::cout << "start init topo/geom\n" << std::flush;
-    topology.initialize(params.nx, params.ny, params.nz, maxhalosize, maxhalosize, maxhalosize);
-// THIS IS SPECIFIC TO UNIFORM RECT GEOMETRY...
-    ic_geometry.initialize(topology, params.xlen/params.nx, params.ylen/params.ny, params.zlen/params.nz, params.xlen, params.ylen, params.zlen, params.xc, params.yc, params.zc);
-    tendencies_geometry.initialize(topology, params.xlen/params.nx, params.ylen/params.ny, params.zlen/params.nz, params.xlen, params.ylen, params.zlen, params.xc, params.yc, params.zc);
+    topology.initialize(par);
+    ic_geometry.initialize(topology, params);
+    tendencies_geometry.initialize(topology, params);
     std::cout << "finish init topo/geom\n" << std::flush;
 
     // Allocate the wind variable and the advected quantities
@@ -102,6 +106,8 @@ int main(int argc, char** argv) {
     std::cout << "start ts init\n" << std::flush;
     tendencies.initialize(topology, tendencies_geometry, diag_exchange);
     tint.initialize(tendencies, prognostic_vars, constant_vars, diagnostic_vars, prog_exchange);
+// SPECIFIC TO RK SCHEMES...
+// SHOULD PROBABLY BE PART OF TINT INITIALIZE?
     set_stage_coefficients<n_time_stages>(time_type, tint.stage_coeffs);
     std::cout << "end ts init\n" << std::flush;
 
@@ -120,7 +126,6 @@ int main(int argc, char** argv) {
 
       params.etime += params.dt;
       if (nstep%params.Nout == 0) {
-// UNSAFE IN PARALLEL
         std::cout << "step " << nstep << " time " << params.etime << "\n";
         io.output(nstep, params.etime);
       }

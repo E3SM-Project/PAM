@@ -6,6 +6,7 @@
 #include "common.h"
 #include "fields.h"
 #include "topology.h"
+#include "params.h"
 
 
 template<int ndims> struct coords {};
@@ -83,7 +84,8 @@ public:
   real dx, dy, dz;
   real Lx, Ly, Lz;
   real xc, yc, zc;
-  void initialize(const Topology<1> &topo, real dxx, real dyy, real dzz, real xlen, real ylen, real zlen, real xcent, real ycent, real zcent);
+  void initialize(const Topology<1> &topo, const Parameters &params);
+
   void printinfo();
 
   void YAKL_INLINE get_0form_quad_pts_wts(int i, SArray<coords<1>,1> &quad_pts_phys, SArray<real,1> &quad_wts_phys);
@@ -163,20 +165,20 @@ template<uint nquadx, uint nquady, uint nquadz> Geometry<1,nquadx,nquady,nquadz>
 }
 
 
-template<uint nquadx, uint nquady, uint nquadz> void UniformRectangularGeometry<1,nquadx,nquady,nquadz>::initialize(const Topology<1> &topo, real dxx, real dyy, real dzz, real xlen, real ylen, real zlen, real xcent, real ycent, real zcent)
+template<uint nquadx, uint nquady, uint nquadz> void UniformRectangularGeometry<1,nquadx,nquady,nquadz>::initialize(const Topology<1> &topo, const Parameters &params)
 {
 
 Geometry<1,nquadx,nquady,nquadz>::initialize(topo);
 
-this->Lx = xlen;
+this->Lx = params.xlen;
 this->Ly = 0.;
 this->Lz = 0.;
 
-this->xc = xcent;
+this->xc = params.xc;
 this->yc = 0.;
 this->zc = 0.;
 
-this->dx = dxx;
+this->dx = params.xlen/params.nx_glob;
 this->dy = 0.;
 this->dz = 0.;
 
@@ -200,13 +202,13 @@ template<uint nquadx, uint nquady, uint nquadz> real YAKL_INLINE UniformRectangu
 
 template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangularGeometry<1,nquadx,nquady,nquadz>::get_0form_quad_pts_wts(int i, SArray<coords<1>,1> &quad_pts_phys, SArray<real,1> &quad_wts_phys)
 {
-  quad_pts_phys(0).x = i*this->dx + this->xc - this->Lx/2.;
+  quad_pts_phys(0).x = (i+this->topology->i_beg)*this->dx + this->xc - this->Lx/2.;
   quad_wts_phys(0) = 1.;
 }
 
 template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangularGeometry<1,nquadx,nquady,nquadz>::get_1form_quad_pts_wts(int i, SArray<coords<1>,nquadx> &quad_pts_phys, SArray<real,nquadx> &quad_wts_phys)
 {
-  real ll_corner_x = i*this->dx + this->xc - this->Lx/2.;
+  real ll_corner_x = (i+this->topology->i_beg)*this->dx + this->xc - this->Lx/2.;
   for (int nqx=0; nqx<nquadx; nqx++)
   {
     quad_pts_phys(nqx).x = ll_corner_x + this->x_quad_pts_ref(nqx) * this->dx;
@@ -270,7 +272,8 @@ public:
   real dx, dy, dz;
   real Lx, Ly, Lz;
   real xc, yc, zc;
-  void initialize(const Topology<2> &topo, real dxx, real dyy, real dzz, real xlen, real ylen, real zlen, real xcent, real ycent, real zcent);
+  void initialize(const Topology<2> &topo, const Parameters &params);
+
   void printinfo();
 
   void YAKL_INLINE get_0form_quad_pts_wts(int i, int j, SArray<coords<2>,1> &quad_pts_phys, SArray<real,1> &quad_wts_phys);
@@ -394,21 +397,21 @@ template<uint nquadx, uint nquady, uint nquadz> Geometry<2,nquadx,nquady,nquadz>
       });
   }
 
-template<uint nquadx, uint nquady, uint nquadz> void UniformRectangularGeometry<2,nquadx,nquady,nquadz>::initialize(const Topology<2> &topo, real dxx, real dyy, real dzz, real xlen, real ylen, real zlen, real xcent, real ycent, real zcent)
+template<uint nquadx, uint nquady, uint nquadz> void UniformRectangularGeometry<2,nquadx,nquady,nquadz>::initialize(const Topology<2> &topo, const Parameters &params)
 {
 
 Geometry<2,nquadx,nquady,nquadz>::initialize(topo);
 
-this->Lx = xlen;
-this->Ly = ylen;
+this->Lx = params.xlen;
+this->Ly = params.ylen;
 this->Lz = 0.;
 
-this->xc = xcent;
-this->yc = ycent;
+this->xc = params.xc;
+this->yc = params.yc;
 this->zc = 0.;
 
-this->dx = dxx;
-this->dy = dyy;
+this->dx = params.xlen/params.nx_glob;
+this->dy = params.ylen/params.ny_glob;
 this->dz = 0.;
 
 this->is_initialized = true;
@@ -430,15 +433,15 @@ template<uint nquadx, uint nquady, uint nquadz> real YAKL_INLINE UniformRectangu
 
 template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangularGeometry<2,nquadx,nquady,nquadz>::get_0form_quad_pts_wts(int i, int j, SArray<coords<2>,1> &quad_pts_phys, SArray<real,1> &quad_wts_phys)
 {
-  quad_pts_phys(0).x = i*this->dx + this->xc - this->Lx/2.;
-  quad_pts_phys(0).y = j*this->dy + this->yc - this->Ly/2.;
+  quad_pts_phys(0).x = (i+this->topology->i_beg)*this->dx + this->xc - this->Lx/2.;
+  quad_pts_phys(0).y = (j+this->topology->j_beg)*this->dy + this->yc - this->Ly/2.;
   quad_wts_phys(0) = 1.;
 }
 
 template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangularGeometry<2,nquadx,nquady,nquadz>::get_2form_quad_pts_wts(int i, int j, SArray<coords<2>,nquadx,nquady> &quad_pts_phys, SArray<real,nquadx,nquady> &quad_wts_phys)
 {
-  real ll_corner_x = i*this->dx + this->xc - this->Lx/2.;
-  real ll_corner_y = j*this->dy + this->yc - this->Ly/2.;
+  real ll_corner_x = (i+this->topology->i_beg)*this->dx + this->xc - this->Lx/2.;
+  real ll_corner_y = (j+this->topology->j_beg)*this->dy + this->yc - this->Ly/2.;
   for (int nqx=0; nqx<nquadx; nqx++)
   for (int nqy=0; nqy<nquady; nqy++)
   {{
@@ -450,8 +453,8 @@ template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangu
 
 template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangularGeometry<2,nquadx,nquady,nquadz>::get_1form_quad_pts_wts(int i, int j, SArray<coords<2>,nquadx> &x_quad_pts_phys, SArray<real,nquadx> &x_quad_wts_phys, SArray<coords<2>,nquady> &y_quad_pts_phys, SArray<real,nquady> &y_quad_wts_phys)
 {
-    real ll_corner_x = i*this->dx + this->xc - this->Lx/2.;
-    real ll_corner_y = j*this->dy + this->yc - this->Ly/2.;
+    real ll_corner_x = (i+this->topology->i_beg)*this->dx + this->xc - this->Lx/2.;
+    real ll_corner_y = (j+this->topology->j_beg)*this->dy + this->yc - this->Ly/2.;
     for (int nqx=0; nqx<nquadx; nqx++) {
         x_quad_pts_phys(nqx).x = ll_corner_x + this->x_quad_pts_ref(nqx) * this->dx;
         x_quad_pts_phys(nqx).y = ll_corner_y;
@@ -558,7 +561,8 @@ template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangu
     real dx, dy, dz;
     real Lx, Ly, Lz;
     real xc, yc, zc;
-    void initialize(const Topology<3> &topo, real dxx, real dyy, real dzz, real xlen, real ylen, real zlen, real xcent, real ycent, real zcent);
+    void initialize(const Topology<3> &topo, const Parameters &params);
+
     void printinfo();
 
     void YAKL_INLINE get_0form_quad_pts_wts(int i, int j, int k, SArray<coords<3>,1> &quad_pts_phys, SArray<real,1> &quad_wts_phys);
@@ -762,22 +766,22 @@ template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangu
 }
 
 
-  template<uint nquadx, uint nquady, uint nquadz> void UniformRectangularGeometry<3,nquadx,nquady,nquadz>::initialize(const Topology<3> &topo, real dxx, real dyy, real dzz, real xlen, real ylen, real zlen, real xcent, real ycent, real zcent)
+  template<uint nquadx, uint nquady, uint nquadz> void UniformRectangularGeometry<3,nquadx,nquady,nquadz>::initialize(const Topology<3> &topo, const Parameters &params)
   {
 
   Geometry<3,nquadx,nquady,nquadz>::initialize(topo);
 
-  this->Lx = xlen;
-  this->Ly = ylen;
-  this->Lz = zlen;
+  this->Lx = params.xlen;
+  this->Ly = params.ylen;
+  this->Lz = params.zlen;
 
-  this->xc = xcent;
-  this->yc = ycent;
-  this->zc = zcent;
+  this->xc = params.xc;
+  this->yc = params.yc;
+  this->zc = params.zc;
 
-  this->dx = dxx;
-  this->dy = dyy;
-  this->dz = dzz;
+  this->dx = params.xlen/params.nx_glob;
+  this->dy = params.ylen/params.ny_glob;
+  this->dz = params.zlen/params.nz_glob;
 
   this->is_initialized = true;
   }
@@ -797,17 +801,17 @@ template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangu
 
   template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangularGeometry<3,nquadx,nquady,nquadz>::get_0form_quad_pts_wts(int i, int j, int k, SArray<coords<3>,1> &quad_pts_phys, SArray<real,1> &quad_wts_phys)
   {
-    quad_pts_phys(0).x = i*this->dx + this->xc - this->Lx/2.;
-    quad_pts_phys(0).y = j*this->dy + this->yc - this->Ly/2.;
-    quad_pts_phys(0).z = k*this->dz + this->zc - this->Lz/2.;
+    quad_pts_phys(0).x = (i+this->topology->i_beg)*this->dx + this->xc - this->Lx/2.;
+    quad_pts_phys(0).y = (j+this->topology->j_beg)*this->dy + this->yc - this->Ly/2.;
+    quad_pts_phys(0).z = (k+this->topology->k_beg)*this->dz + this->zc - this->Lz/2.;
     quad_wts_phys(0) = 1.;
   }
 
   template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangularGeometry<3,nquadx,nquady,nquadz>::get_3form_quad_pts_wts(int i, int j, int k, SArray<coords<3>,nquadx,nquady,nquadz> &quad_pts_phys, SArray<real,nquadx,nquady,nquadz> &quad_wts_phys)
   {
-    real ll_corner_x = i*this->dx + this->xc - this->Lx/2.;
-    real ll_corner_y = j*this->dy + this->yc - this->Ly/2.;
-    real ll_corner_z = k*this->dz + this->zc - this->Lz/2.;
+    real ll_corner_x = (i+this->topology->i_beg)*this->dx + this->xc - this->Lx/2.;
+    real ll_corner_y = (j+this->topology->j_beg)*this->dy + this->yc - this->Ly/2.;
+    real ll_corner_z = (k+this->topology->k_beg)*this->dz + this->zc - this->Lz/2.;
     for (int nqx=0; nqx<nquadx; nqx++)
     for (int nqy=0; nqy<nquady; nqy++)
     for (int nqz=0; nqz<nquadz; nqz++)
@@ -824,9 +828,9 @@ template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangu
     SArray<coords<3>,nquady> &y_quad_pts_phys, SArray<real,nquady> &y_quad_wts_phys,
     SArray<coords<3>,nquadz> &z_quad_pts_phys, SArray<real,nquadz> &z_quad_wts_phys)
   {
-      real ll_corner_x = i*this->dx + this->xc - this->Lx/2.;
-      real ll_corner_y = j*this->dy + this->yc - this->Ly/2.;
-      real ll_corner_z = k*this->dz + this->zc - this->Lz/2.;
+      real ll_corner_x = (i+this->topology->i_beg)*this->dx + this->xc - this->Lx/2.;
+      real ll_corner_y = (j+this->topology->j_beg)*this->dy + this->yc - this->Ly/2.;
+      real ll_corner_z = (k+this->topology->k_beg)*this->dz + this->zc - this->Lz/2.;
       for (int nqx=0; nqx<nquadx; nqx++) {
           x_quad_pts_phys(nqx).x = ll_corner_x + this->x_quad_pts_ref(nqx) * this->dx;
           x_quad_pts_phys(nqx).y = ll_corner_y;
@@ -853,9 +857,9 @@ template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangu
     SArray<coords<3>,nquady,nquadz> &yz_quad_pts_phys, SArray<real,nquady,nquadz> &yz_quad_wts_phys,
     SArray<coords<3>,nquadx,nquadz> &xz_quad_pts_phys, SArray<real,nquadz,nquadz> &xz_quad_wts_phys)
     {
-        real ll_corner_x = i*this->dx + this->xc - this->Lx/2.;
-        real ll_corner_y = j*this->dy + this->yc - this->Ly/2.;
-        real ll_corner_z = k*this->dz + this->zc - this->Lz/2.;
+        real ll_corner_x = (i+this->topology->i_beg)*this->dx + this->xc - this->Lx/2.;
+        real ll_corner_y = (j+this->topology->j_beg)*this->dy + this->yc - this->Ly/2.;
+        real ll_corner_z = (k+this->topology->k_beg)*this->dz + this->zc - this->Lz/2.;
 
         for (int nqx=0; nqx<nquadx; nqx++) {
           for (int nqy=0; nqy<nquady; nqy++) {

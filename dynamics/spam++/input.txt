@@ -7,3 +7,8 @@ nz = 30
 dt = 0.5
 Nsteps = 100
 Nout = 5
+
+// Parallel decomposition
+nprocx = 4
+nprocy = 1
+nprocz = 1

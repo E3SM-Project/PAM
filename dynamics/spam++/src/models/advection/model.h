@@ -66,6 +66,13 @@ vec<3> YAKL_INLINE uniform_y_wind(real x, real y, real z) {
   return vvec;
 }
 
+vec<2> YAKL_INLINE uniform_xy_wind(real x, real y) {
+  vec<2> vvec;
+  vvec.u = sqrt(C_UNIFORM_WIND/2.);
+  vvec.v = sqrt(C_UNIFORM_WIND/2.);
+  return vvec;
+}
+
 
 vec<3> YAKL_INLINE uniform_z_wind(real x, real y, real z) {
   vec<3> vvec;
@@ -87,16 +94,22 @@ vec<3> YAKL_INLINE deformational_wind(real x, real y, real z) {
 
 // *******   Model Specific Parameters   ***********//
 
-void set_model_specific_params(Parameters &params)
+template<uint ndims> void set_model_specific_params(Parameters &params)
 {
   if (data_init_cond == DATA_INIT::GAUSSIAN)
   {
   params.xlen = 50.0;
-  params.ylen = 50.0;
-  params.zlen = 50.0;
   params.xc = 25.0;
-  params.yc = 25.0;
+  if (ndims>=2)
+  {
+    params.ylen = 50.0;
+    params.yc = 25.0;
+  }
+  if (ndims ==3)
+  {
+  params.zlen = 50.0;
   params.zc = 25.0;
+  }
   params.etime = 0.0;
   }
 }
@@ -141,6 +154,10 @@ public:
    //compute D (qrecon U)
    if (differential_order == 2)
    { divergence2<ndims, nqdofs>(xtend.fields_arr[0].data, diagnostic_vars.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology); }
+   if (differential_order == 4)
+   { divergence4<ndims, nqdofs>(xtend.fields_arr[0].data, diagnostic_vars.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology); }
+   if (differential_order == 6)
+   { divergence6<ndims, nqdofs>(xtend.fields_arr[0].data, diagnostic_vars.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology); }
  }
 
 };
@@ -204,6 +221,7 @@ template <int nprog, int nconst, int ndiag, int nquadx, int nquady, int nquadz> 
     }
     if (wind_init_cond == WIND_INIT::UNIFORM_X    ) {geom.set_1form_values(uniform_x_wind,     constvars.fields_arr[0], 0, LINE_INTEGRAL_TYPE::NORMAL);}
     if (wind_init_cond == WIND_INIT::UNIFORM_Y    ) {geom.set_1form_values(uniform_y_wind,     constvars.fields_arr[0], 0, LINE_INTEGRAL_TYPE::NORMAL);}
+    if (wind_init_cond == WIND_INIT::UNIFORM_XY   ) {geom.set_1form_values(uniform_xy_wind,    constvars.fields_arr[0], 0, LINE_INTEGRAL_TYPE::NORMAL);}
     if (wind_init_cond == WIND_INIT::DEFORMATIONAL) {geom.set_1form_values(deformational_wind, constvars.fields_arr[0], 0, LINE_INTEGRAL_TYPE::NORMAL);}
 
 }

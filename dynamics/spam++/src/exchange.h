@@ -6,6 +6,11 @@
 #include "fields.h"
 #include "topology.h"
 
+// Xm SendBuf holds the cells closest to x- ie the left side -> Go into Xp RecvBuf
+// Xp SendBuf holds the cells closest to x+ ie the right side -> Go into Xm RecvBuf
+
+// Xm RecvBuf holds the halo cells closest to x- ie the left side
+// Xp SendBuf holds the halo cells closest to x+ ie the right side
 
 template<uint ndims> class Exchange {
 public:
@@ -43,6 +48,12 @@ public:
     realArr haloSendBuf_Zp;
     realArr haloRecvBuf_Zp;
 
+    MPI_Request sReq [2];
+    MPI_Request rReq [2];
+
+    MPI_Status  sStat[2];
+    MPI_Status  rStat[2];
+
     bool is_initialized;
 
 
@@ -55,6 +66,9 @@ public:
     void pack(const Field<ndims> &field);
     void unpack(Field<ndims> &field);
     void exchange();
+    void exchange_x();
+    void exchange_y();
+    void exchange_z();
 
 };
 
@@ -75,15 +89,13 @@ public:
 
 template<uint ndims> void Exchange<ndims>::initialize(const Exchange<ndims> &exch)
 {
- initialize(*exch.topology, exch.ndof0, exch.ndof1, exch.ndof2, exch.ndof3);
+ initialize(*exch.topology, *exch.parallel, exch.ndof0, exch.ndof1, exch.ndof2, exch.ndof3);
 }
 
 
-// ALL BROKEN FOR PARALLEL
  template<uint ndims> void Exchange<ndims>::initialize(const Topology<ndims> &topo, int nd0, int nd1, int nd2, int nd3)
  {
    this->topology = &topo;
-
 
    this->ndof0 = nd0;
    this->ndof1 = nd1;
@@ -161,8 +173,8 @@ template<uint ndims> void Exchange<ndims>::initialize(const Exchange<ndims> &exc
    yakl::parallel_for("PackLeftRight", this->bufsize_x, YAKL_LAMBDA (int iGlob) {
      int ndof, ii, k, j;
      yakl::unpackIndices(iGlob, this->total_dofs, this->topology->halosize_x, this->topology->n_cells_z, this->topology->n_cells_y, ndof, ii, k, j);
-     this->haloSendBuf_Xm(iGlob) = field.data(ndof, k+ks, j+js, ii+is+this->topology->n_cells_x-this->topology->halosize_x);
-     this->haloSendBuf_Xp(iGlob) = field.data(ndof, k+ks, j+js, ii+is);
+     this->haloSendBuf_Xp(iGlob) = field.data(ndof, k+ks, j+js, ii+is+this->topology->n_cells_x-this->topology->halosize_x);
+     this->haloSendBuf_Xm(iGlob) = field.data(ndof, k+ks, j+js, ii+is);
    });
 
    //pack down (y-) and up (y+)
@@ -170,8 +182,8 @@ template<uint ndims> void Exchange<ndims>::initialize(const Exchange<ndims> &exc
      yakl::parallel_for("PackDownUp", this->bufsize_y, YAKL_LAMBDA (int iGlob) {
        int ndof, i, k, jj;
        yakl::unpackIndices(iGlob, this->total_dofs, this->topology->halosize_y, this->topology->n_cells_z, this->topology->n_cells_x, ndof, jj, k, i);
-       this->haloSendBuf_Ym(iGlob) = field.data(ndof, k+ks, jj+js+this->topology->n_cells_y-this->topology->halosize_y, i+is);
-       this->haloSendBuf_Yp(iGlob) = field.data(ndof, k+ks, jj+js, i+is);
+       this->haloSendBuf_Yp(iGlob) = field.data(ndof, k+ks, jj+js+this->topology->n_cells_y-this->topology->halosize_y, i+is);
+       this->haloSendBuf_Ym(iGlob) = field.data(ndof, k+ks, jj+js, i+is);
      });
    }
 
@@ -180,8 +192,8 @@ template<uint ndims> void Exchange<ndims>::initialize(const Exchange<ndims> &exc
      yakl::parallel_for("PackBottomTop", this->bufsize_z, YAKL_LAMBDA (int iGlob) {
        int ndof, i, kk, j;
        yakl::unpackIndices(iGlob, this->total_dofs, this->topology->halosize_z, this->topology->n_cells_y, this->topology->n_cells_x, ndof, kk, j, i);
-       this->haloSendBuf_Zm(iGlob) = field.data(ndof, kk+ks+this->topology->n_cells_z-this->topology->halosize_z, j+js, i+is);
-       this->haloSendBuf_Zp(iGlob) = field.data(ndof, kk+ks, j+js, i+is);
+       this->haloSendBuf_Zp(iGlob) = field.data(ndof, kk+ks+this->topology->n_cells_z-this->topology->halosize_z, j+js, i+is);
+       this->haloSendBuf_Zm(iGlob) = field.data(ndof, kk+ks, j+js, i+is);
      });
    }
  }
@@ -223,27 +235,131 @@ template<uint ndims> void Exchange<ndims>::initialize(const Exchange<ndims> &exc
  }
 
 
+ template<uint ndims> void Exchange<ndims>::exchange_x()
+ {
+   int ierr;
 
+   if (this->topology->nprocx > 1) {
+     yakl::fence();
+
+     //Pre-post the receives
+     ierr = MPI_Irecv( haloRecvBuf_Xm_host.data() , this->bufsize_x , MPI_FLOAT , this->topology->x_neigh(0) , 0 , MPI_COMM_WORLD , &this->rReq[0] );
+     ierr = MPI_Irecv( haloRecvBuf_Xp_host.data() , this->bufsize_x , MPI_FLOAT , this->topology->x_neigh(1) , 1 , MPI_COMM_WORLD , &this->rReq[1] );
+
+     //Copy send buffers to host
+     haloSendBuf_Xm.deep_copy_to(haloSendBuf_Xm_host);
+     haloSendBuf_Xp.deep_copy_to(haloSendBuf_Xp_host);
+     yakl::fence();
+
+     //Send the data
+     ierr = MPI_Isend( haloSendBuf_Xm_host.data() , this->bufsize_x , MPI_FLOAT , this->topology->x_neigh(0) , 1 , MPI_COMM_WORLD , &this->sReq[0] );
+     ierr = MPI_Isend( haloSendBuf_Xp_host.data() , this->bufsize_x , MPI_FLOAT , this->topology->x_neigh(1) , 0 , MPI_COMM_WORLD , &this->sReq[1] );
+
+     //Wait for the sends and receives to finish
+     ierr = MPI_Waitall(2, this->sReq, this->sStat);
+     ierr = MPI_Waitall(2, this->rReq, this->rStat);
+
+     //Copy recv buffers to device
+     haloRecvBuf_Xm_host.deep_copy_to(haloRecvBuf_Xm);
+     haloRecvBuf_Xp_host.deep_copy_to(haloRecvBuf_Xp);
+   }
+
+   else
+   {
+     yakl::parallel_for( this->bufsize_x , YAKL_LAMBDA (int iGlob) {
+       this->haloRecvBuf_Xp(iGlob) = this->haloSendBuf_Xm(iGlob);
+       this->haloRecvBuf_Xm(iGlob) = this->haloSendBuf_Xp(iGlob);
+     });
+   }
+
+
+ }
+
+
+ template<uint ndims> void Exchange<ndims>::exchange_y()
+ {
+   int ierr;
+
+   if (this->topology->nprocy > 1) {
+
+     yakl::fence();
+
+     //Pre-post the receives
+     ierr = MPI_Irecv( haloRecvBuf_Ym_host.data() , this->bufsize_y , MPI_FLOAT , this->topology->y_neigh(0) , 0 , MPI_COMM_WORLD , &this->rReq[0] );
+     ierr = MPI_Irecv( haloRecvBuf_Yp_host.data() , this->bufsize_y , MPI_FLOAT , this->topology->y_neigh(1) , 1 , MPI_COMM_WORLD , &this->rReq[1] );
+
+     //Copy send buffers to host
+     haloSendBuf_Ym.deep_copy_to(haloSendBuf_Ym_host);
+     haloSendBuf_Yp.deep_copy_to(haloSendBuf_Yp_host);
+     yakl::fence();
+
+     //Send the data
+     ierr = MPI_Isend( haloSendBuf_Ym_host.data() , this->bufsize_y , MPI_FLOAT , this->topology->y_neigh(0) , 1 , MPI_COMM_WORLD , &this->sReq[0] );
+     ierr = MPI_Isend( haloSendBuf_Yp_host.data() , this->bufsize_y , MPI_FLOAT , this->topology->y_neigh(1) , 0 , MPI_COMM_WORLD , &this->sReq[1] );
+
+     //Wait for the sends and receives to finish
+     ierr = MPI_Waitall(2, this->sReq, this->sStat);
+     ierr = MPI_Waitall(2, this->rReq, this->rStat);
+
+     //Copy recv buffers to device
+     haloRecvBuf_Ym_host.deep_copy_to(haloRecvBuf_Ym);
+     haloRecvBuf_Yp_host.deep_copy_to(haloRecvBuf_Yp);
+   }
+
+   else
+   {
+   yakl::parallel_for( this->bufsize_y , YAKL_LAMBDA (int iGlob) {
+     this->haloRecvBuf_Yp(iGlob) = this->haloSendBuf_Ym(iGlob);
+     this->haloRecvBuf_Ym(iGlob) = this->haloSendBuf_Yp(iGlob);
+   });
+  }
+
+ }
+
+ template<uint ndims> void Exchange<ndims>::exchange_z()
+ {
+   int ierr;
+
+   if (this->topology->nprocz > 1) {
+     yakl::fence();
+
+     //Pre-post the receives
+     ierr = MPI_Irecv( haloRecvBuf_Zm_host.data() , this->bufsize_z , MPI_FLOAT , this->topology->z_neigh(0) , 0 , MPI_COMM_WORLD , &this->rReq[0] );
+     ierr = MPI_Irecv( haloRecvBuf_Zp_host.data() , this->bufsize_z , MPI_FLOAT , this->topology->z_neigh(1) , 1 , MPI_COMM_WORLD , &this->rReq[1] );
+
+     //Copy send buffers to host
+     haloSendBuf_Zm.deep_copy_to(haloSendBuf_Zm_host);
+     haloSendBuf_Zp.deep_copy_to(haloSendBuf_Zp_host);
+     yakl::fence();
+
+     //Send the data
+     ierr = MPI_Isend( haloSendBuf_Zm_host.data() , this->bufsize_z , MPI_FLOAT , this->topology->z_neigh(0) , 1 , MPI_COMM_WORLD , &this->sReq[0] );
+     ierr = MPI_Isend( haloSendBuf_Zp_host.data() , this->bufsize_z , MPI_FLOAT , this->topology->z_neigh(1) , 0 , MPI_COMM_WORLD , &this->sReq[1] );
+
+     //Wait for the sends and receives to finish
+     ierr = MPI_Waitall(2, this->sReq, this->sStat);
+     ierr = MPI_Waitall(2, this->rReq, this->rStat);
+
+     //Copy recv buffers to device
+     haloRecvBuf_Zm_host.deep_copy_to(haloRecvBuf_Zm);
+     haloRecvBuf_Zp_host.deep_copy_to(haloRecvBuf_Zp);
+   }
+
+   else
+   {
+ yakl::parallel_for( this->bufsize_z , YAKL_LAMBDA (int iGlob) {
+   this->haloRecvBuf_Zp(iGlob) = this->haloSendBuf_Zm(iGlob);
+   this->haloRecvBuf_Zm(iGlob) = this->haloSendBuf_Zp(iGlob);
+ });
+}
+ }
+
+// EVENTUALLY WE SHOULD BE MORE CLEVER HERE IE GROUP ALL THE SEND/RECVS IN X/Y/Z TOGETHER, ETC./
  template<uint ndims> void Exchange<ndims>::exchange()
  {
-   yakl::parallel_for( this->bufsize_x , YAKL_LAMBDA (int iGlob) {
-     this->haloRecvBuf_Xp(iGlob) = this->haloSendBuf_Xp(iGlob);
-     this->haloRecvBuf_Xm(iGlob) = this->haloSendBuf_Xm(iGlob);
-   });
-
-   if (ndims >=2) {
-   yakl::parallel_for( this->bufsize_y , YAKL_LAMBDA (int iGlob) {
-     this->haloRecvBuf_Yp(iGlob) = this->haloSendBuf_Yp(iGlob);
-     this->haloRecvBuf_Ym(iGlob) = this->haloSendBuf_Ym(iGlob);
-   });
+   exchange_x();
+   if (ndims >=2) { exchange_y(); }
+   if (ndims ==3) { exchange_z(); }
 }
-
-if (ndims ==3) {
-   yakl::parallel_for( this->bufsize_z , YAKL_LAMBDA (int iGlob) {
-     this->haloRecvBuf_Zp(iGlob) = this->haloSendBuf_Zp(iGlob);
-     this->haloRecvBuf_Zm(iGlob) = this->haloSendBuf_Zm(iGlob);
-   });
- }
- }
 
 #endif

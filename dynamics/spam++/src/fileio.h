@@ -72,9 +72,9 @@ public:
 
        //Define time and cell dimensions
        ncwrap( ncmpi_def_dim( ncid , "t" , (MPI_Offset) NC_UNLIMITED , &tDim ) , __LINE__ );
-       ncwrap( ncmpi_def_dim( ncid , "ncells_x" , (MPI_Offset) topo.n_cells_x  , &xDim ) , __LINE__ );
-       ncwrap( ncmpi_def_dim( ncid , "ncells_y" , (MPI_Offset) topo.n_cells_y  , &yDim ) , __LINE__ );
-       ncwrap( ncmpi_def_dim( ncid , "ncells_z" , (MPI_Offset) topo.n_cells_z  , &zDim ) , __LINE__ );
+       ncwrap( ncmpi_def_dim( ncid , "ncells_x" , (MPI_Offset) topo.nx_glob  , &xDim ) , __LINE__ );
+       ncwrap( ncmpi_def_dim( ncid , "ncells_y" , (MPI_Offset) topo.ny_glob  , &yDim ) , __LINE__ );
+       ncwrap( ncmpi_def_dim( ncid , "ncells_z" , (MPI_Offset) topo.nz_glob  , &zDim ) , __LINE__ );
 
        //Create time dimension
        const_dim_ids[0] = tDim;
@@ -126,7 +126,7 @@ public:
           }
         });
 
-        prog_start[0] = this->numOut; prog_start[1] = 0; prog_start[2] = 0; prog_start[3] = 0; prog_start[4] = 0;
+        prog_start[0] = this->numOut; prog_start[1] = 0; prog_start[2] = this->prog_vars->fields_arr[l].topology->k_beg; prog_start[3] = this->prog_vars->fields_arr[l].topology->j_beg; prog_start[4] = this->prog_vars->fields_arr[l].topology->i_beg;
         prog_count[0] = 1; prog_count[1] = this->prog_vars->fields_arr[l].total_dofs; prog_count[2] = this->prog_vars->fields_arr[l].topology->n_cells_z; prog_count[3] = this->prog_vars->fields_arr[l].topology->n_cells_y; prog_count[4] = this->prog_vars->fields_arr[l].topology->n_cells_x;
         ncwrap( ncmpi_put_vara_float_all( ncid , prog_var_ids[l] , prog_start , prog_count , this->prog_temp_arr[l].createHostCopy().data() ) , __LINE__ );
       }
@@ -150,15 +150,13 @@ public:
       int ks = this->const_vars->fields_arr[l].topology->ks;
       yakl::parallel_for("CopyFieldToOutputBuffer", this->const_vars->fields_arr[l].topology->n_cells, YAKL_LAMBDA (int iGlob) {
         int k, j, i;
-        //std::cout <<"copy field to output buffer " << l << " " << this->const_vars->fields_arr[l].name << "\n" << std::flush;
         yakl::unpackIndices(iGlob, this->const_vars->fields_arr[l].topology->n_cells_z, this->const_vars->fields_arr[l].topology->n_cells_y, this->const_vars->fields_arr[l].topology->n_cells_x, k, j, i);
         for (int ndof=0; ndof<this->const_vars->fields_arr[l].total_dofs; ndof++) {
-          //std::cout << i << " " << j << " " << k << " " << ndof << "\n" << std::flush;
           this->const_temp_arr[l](ndof, k, j, i) = this->const_vars->fields_arr[l].data(ndof, k+ks, j+js, i+is);
         }
       });
 
-      const_start[0] = 0; const_start[1] = 0; const_start[2] = 0; const_start[3] = 0;
+      const_start[0] = 0; const_start[1] = this->const_vars->fields_arr[l].topology->k_beg; const_start[2] = this->const_vars->fields_arr[l].topology->j_beg; const_start[3] = this->const_vars->fields_arr[l].topology->i_beg;
       const_count[0] = this->const_vars->fields_arr[l].total_dofs; const_count[1] = this->const_vars->fields_arr[l].topology->n_cells_z; const_count[2] = this->const_vars->fields_arr[l].topology->n_cells_y; const_count[3] = this->const_vars->fields_arr[l].topology->n_cells_x;
       ncwrap( ncmpi_put_vara_float_all( ncid , const_var_ids[l] , const_start , const_count , this->const_temp_arr[l].createHostCopy().data() ) , __LINE__ );
     }
@@ -177,7 +175,7 @@ public:
         }
       });
 
-      prog_start[0] = this->numOut; prog_start[1] = 0; prog_start[2] = 0; prog_start[3] = 0; prog_start[4] = 0;
+      prog_start[0] = this->numOut; prog_start[1] = 0; prog_start[2] = this->prog_vars->fields_arr[l].topology->k_beg; prog_start[3] = this->prog_vars->fields_arr[l].topology->j_beg; prog_start[4] = this->prog_vars->fields_arr[l].topology->i_beg;
       prog_count[0] = 1; prog_count[1] = this->prog_vars->fields_arr[l].total_dofs; prog_count[2] = this->prog_vars->fields_arr[l].topology->n_cells_z; prog_count[3] = this->prog_vars->fields_arr[l].topology->n_cells_y; prog_count[4] = this->prog_vars->fields_arr[l].topology->n_cells_x;
       ncwrap( ncmpi_put_vara_float_all( ncid , prog_var_ids[l] , prog_start , prog_count , this->prog_temp_arr[l].createHostCopy().data() ) , __LINE__ );
     }

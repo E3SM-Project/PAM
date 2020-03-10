@@ -4,10 +4,10 @@
 
 
 enum class DATA_INIT { GAUSSIAN, VORTICES, SQUARE };
-enum class WIND_INIT { UNIFORM_X, UNIFORM_Y, UNIFORM_Z, DEFORMATIONAL };
+enum class WIND_INIT { UNIFORM_X, UNIFORM_Y, UNIFORM_Z, UNIFORM_XY, DEFORMATIONAL };
 
 DATA_INIT data_init_cond = DATA_INIT::GAUSSIAN;
-WIND_INIT wind_init_cond = WIND_INIT::UNIFORM_X;
+WIND_INIT wind_init_cond = WIND_INIT::UNIFORM_XY;
 
 uint constexpr nqdofs = 1;
 
