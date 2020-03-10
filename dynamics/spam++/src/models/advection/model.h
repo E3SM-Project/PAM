@@ -9,6 +9,9 @@
 #include "finitevolume.h"
 #include "geometry.h"
 #include "params.h"
+#include "string.h"
+
+
 
 // Number of variables
 uint constexpr nprognostic = 1;
@@ -16,28 +19,32 @@ uint constexpr nconstant = 1;
 uint constexpr ndiagnostic = 1;
 
 // Initial conditions related variables and functions
-#define A_GAUSSIAN 1.
-#define AX_GAUSSIAN 0.1
-#define AY_GAUSSIAN 0.1
-#define AZ_GAUSSIAN 0.1
+#define gaussian_1d(x)     (1. * exp(-100. * pow(x-0.5,2.)))
+#define gaussian_2d(x,y)   (1. * exp(-100. * pow(x-0.5,2.)) * exp(-100. * pow(y-0.5,2.)))
+#define gaussian_3d(x,y,z) (1. * exp(-100. * pow(x-0.5,2.)) * exp(-100. * pow(y-0.5,2.)) * exp(-100. * pow(z-0.5,2.)))
+real YAKL_INLINE gaussian(real x)                 { return gaussian_1d(x); }
+real YAKL_INLINE gaussian(real x, real y)         { return gaussian_2d(x,y); }
+real YAKL_INLINE gaussian(real x, real y, real z) { return gaussian_3d(x,y,z); }
+
+#define vortex1_1d(x)     (1. *  exp(-100. * pow(x-0.75,2.)))
+#define vortex1_2d(x,y)   (1. *  exp(-100. * pow(x-0.75,2.)) * exp(-100. * pow(y-0.75,2.)))
+#define vortex1_3d(x,y,z) (1. *  exp(-100. * pow(x-0.75,2.)) * exp(-100. * pow(y-0.75,2.)) * exp(-100. * pow(z-0.75,2.)))
+#define vortex2_1d(x)     (0.5 * exp(-50.  * pow(x-0.25,2.)))
+#define vortex2_2d(x,y)   (0.5 * exp(-50.  * pow(x-0.25,2.)) * exp(-75.  * pow(y-0.25,2.)))
+#define vortex2_3d(x,y,z) (0.5 * exp(-50.  * pow(x-0.25,2.)) * exp(-75.  * pow(y-0.25,2.)) * exp(-100. * pow(z-0.25,2.)))
+real YAKL_INLINE vortices(real x)                 { return vortex1_1d(x)     + vortex2_1d(x); }
+real YAKL_INLINE vortices(real x, real y)         { return vortex1_2d(x,y)   + vortex2_2d(x,y); }
+real YAKL_INLINE vortices(real x, real y, real z) { return vortex1_3d(x,y,z) + vortex2_3d(x,y,z); }
+
+real YAKL_INLINE square(real x)                 {return (x > 0.35 && x < 0.65                                                ) ? 1. : 0.;}
+real YAKL_INLINE square(real x, real y)         {return (x > 0.35 && x < 0.65 && y > 0.35 && y < 0.65                        ) ? 1. : 0.;}
+real YAKL_INLINE square(real x, real y, real z) {return (x > 0.35 && x < 0.65 && y > 0.35 && y < 0.65 && z > 0.35 && z < 0.65) ? 1. : 0.;}
+
+
+
+
+
 #define C_UNIFORM_WIND 1.
-#define XC_GAUSSIAN 25.0
-#define YC_GAUSSIAN 25.0
-#define ZC_GAUSSIAN 25.0
-
-real YAKL_INLINE gaussian(real x)                 { return A_GAUSSIAN * exp(-AX_GAUSSIAN * pow(x-XC_GAUSSIAN,2.)); }
-real YAKL_INLINE gaussian(real x, real y)         { return A_GAUSSIAN * exp(-AX_GAUSSIAN * pow(x-XC_GAUSSIAN,2.)) * exp(-AY_GAUSSIAN * pow(y-YC_GAUSSIAN,2.)); }
-real YAKL_INLINE gaussian(real x, real y, real z) { return A_GAUSSIAN * exp(-AX_GAUSSIAN * pow(x-XC_GAUSSIAN,2.)) * exp(-AY_GAUSSIAN * pow(y-YC_GAUSSIAN,2.)) * exp(-AZ_GAUSSIAN * pow(z-ZC_GAUSSIAN,2.)); }
-
-// FIX THIS
-real YAKL_INLINE vortices(real x)                 {return x;}
-real YAKL_INLINE vortices(real x, real y)         {return x;}
-real YAKL_INLINE vortices(real x, real y, real z) {return x;}
-
-// FIX THIS
-real YAKL_INLINE square(real x)                 {return x;}
-real YAKL_INLINE square(real x, real y)         {return x;}
-real YAKL_INLINE square(real x, real y, real z) {return x;}
 
 real YAKL_INLINE uniform_x_wind(real x) {
   return C_UNIFORM_WIND;
@@ -94,24 +101,94 @@ vec<3> YAKL_INLINE deformational_wind(real x, real y, real z) {
 
 // *******   Model Specific Parameters   ***********//
 
-template<uint ndims> void set_model_specific_params(Parameters &params)
+
+template<uint ndims> void set_model_specific_params(std::string inFile, ModelParameters &params)
 {
-  if (data_init_cond == DATA_INIT::GAUSSIAN)
+
+
+  std::string strDataInit = "";
+  std::string strWindInit = "";
+
+  // Read in equals-separated key = value file line by line
+  std::ifstream fInStream(inFile);
+  std::string line;
+  while (std::getline(fInStream, line)) {
+    // Remove spaces and tabs from the line
+    line.erase (std::remove(line.begin(), line.end(), ' '), line.end());
+    line.erase (std::remove(line.begin(), line.end(), '\t'), line.end());
+
+    // If the line isn't empty and doesn't begin with a comment specifier, split it based on the colon
+    if (!line.empty() && line.find("//",0) != 0) {
+      // Find the colon
+      uint splitloc = line.find('=',0);
+      // Store the key and value strings
+      std::string key   = line.substr(0,splitloc);
+      std::string value = line.substr(splitloc+1,line.length()-splitloc);
+
+      // Transform the value into a string stream for convenience
+      std::stringstream ssVal(value);
+
+      // Match the key, and store the value
+           if ( !strcmp( "dataInit"   , key.c_str() ) ) { ssVal >> strDataInit       ;}
+      else if ( !strcmp( "windInit"   , key.c_str() ) ) { ssVal >> strWindInit       ;}
+      //else {
+      //  std::cout << "Error: key " << key << " not understood in file " << inFile << "\n";
+      //}
+    }
+  }
+
+  if (!strcmp("",strDataInit.c_str())) { std::cout << "Error: key " << "dataInit" << " not set.\n"; exit(-1); }
+  if (!strcmp("",strWindInit.c_str())) { std::cout << "Error: key " << "windInit" << " not set.\n"; exit(-1); }
+
+    size_t splitloc = strDataInit.find("//",0);
+    std::string sub_str;
+    if (splitloc != std::string::npos){
+      sub_str = strDataInit.substr(0,splitloc);
+    } else {
+      sub_str = strDataInit;
+    }
+    if      ( !strcmp(sub_str.c_str(),"gaussian" ) ) { params.data_init_cond = DATA_INIT::GAUSSIAN  ; }
+    else if ( !strcmp(sub_str.c_str(),"vortices" ) ) { params.data_init_cond = DATA_INIT::VORTICES  ; }
+    else if ( !strcmp(sub_str.c_str(),"square"   ) ) { params.data_init_cond = DATA_INIT::SQUARE    ; }
+    else  {
+      std::cout << "Error: unrecognized dataInit " << strDataInit << "\n";
+      exit(-1);
+    }
+
+    splitloc = strWindInit.find("//",0);
+    if (splitloc != std::string::npos){
+      sub_str = strWindInit.substr(0,splitloc);
+    } else {
+      sub_str = strWindInit;
+    }
+    if      ( !strcmp(sub_str.c_str(),"uniform_x"     ) ) { params.wind_init_cond = WIND_INIT::UNIFORM_X     ; }
+    else if ( !strcmp(sub_str.c_str(),"uniform_y"     ) ) { params.wind_init_cond = WIND_INIT::UNIFORM_Y     ; }
+    else if ( !strcmp(sub_str.c_str(),"uniform_z"     ) ) { params.wind_init_cond = WIND_INIT::UNIFORM_Z     ; }
+    else if ( !strcmp(sub_str.c_str(),"uniform_xy"    ) ) { params.wind_init_cond = WIND_INIT::UNIFORM_XY    ; }
+    else if ( !strcmp(sub_str.c_str(),"deformational" ) ) { params.wind_init_cond = WIND_INIT::DEFORMATIONAL ; }
+    else  {
+      std::cout << "Error: unrecognized windInit " << strWindInit << "\n";
+      exit(-1);
+    }
+
+  params.etime = 0.0;
+
+  if (params.data_init_cond == DATA_INIT::GAUSSIAN || params.data_init_cond == DATA_INIT::VORTICES || params.data_init_cond == DATA_INIT::SQUARE)
   {
-  params.xlen = 50.0;
-  params.xc = 25.0;
+  params.xlen = 1.0;
+  params.xc = 0.5;
   if (ndims>=2)
   {
-    params.ylen = 50.0;
-    params.yc = 25.0;
+    params.ylen = 1.0;
+    params.yc = 0.5;
   }
   if (ndims ==3)
   {
-  params.zlen = 50.0;
-  params.zc = 25.0;
+  params.zlen = 1.0;
+  params.zc = 0.5;
   }
-  params.etime = 0.0;
   }
+
 }
 
 
@@ -199,45 +276,44 @@ std::array<const Topology<ndims> *, nprognostic> &prog_topo_arr, std::array<cons
 
   // *******   Initial Conditions   ***********//
 
-template <int nprog, int nconst, int ndiag, int nquadx, int nquady, int nquadz> void set_initial_conditions (VariableSet<1, nprog> &progvars, VariableSet<1, nconst> &constvars, Geometry<1, nquadx, nquady, nquadz> &geom)
+template <int nprog, int nconst, int ndiag, int nquadx, int nquady, int nquadz> void set_initial_conditions (ModelParameters &params, VariableSet<1, nprog> &progvars, VariableSet<1, nconst> &constvars, Geometry<1, nquadx, nquady, nquadz> &geom)
 {
 
     for (int i=0; i<nqdofs; i++)
     {
-    if (data_init_cond == DATA_INIT::GAUSSIAN) {geom.set_1form_values(gaussian, progvars.fields_arr[0], i);}
-    if (data_init_cond == DATA_INIT::VORTICES) {geom.set_1form_values(vortices, progvars.fields_arr[0], i);}
-    if (data_init_cond == DATA_INIT::SQUARE)   {geom.set_1form_values(square,   progvars.fields_arr[0], i);}
+    if (params.data_init_cond == DATA_INIT::GAUSSIAN) {geom.set_1form_values(gaussian, progvars.fields_arr[0], i);}
+    if (params.data_init_cond == DATA_INIT::SQUARE)   {geom.set_1form_values(square,   progvars.fields_arr[0], i);}
     }
-    if (wind_init_cond == WIND_INIT::UNIFORM_X    ) {geom.set_0form_values(uniform_x_wind,     constvars.fields_arr[0], 0);}
+    if (params.wind_init_cond == WIND_INIT::UNIFORM_X ) {geom.set_0form_values(uniform_x_wind,     constvars.fields_arr[0], 0);}
 }
 
-template <int nprog, int nconst, int ndiag, int nquadx, int nquady, int nquadz> void set_initial_conditions (VariableSet<2, nprog> &progvars, VariableSet<2, nconst> &constvars, Geometry<2, nquadx, nquady, nquadz> &geom)
+template <int nprog, int nconst, int ndiag, int nquadx, int nquady, int nquadz> void set_initial_conditions (ModelParameters &params, VariableSet<2, nprog> &progvars, VariableSet<2, nconst> &constvars, Geometry<2, nquadx, nquady, nquadz> &geom)
 {
     for (int i=0; i<nqdofs; i++)
     {
-    if (data_init_cond == DATA_INIT::GAUSSIAN) {geom.set_2form_values(gaussian, progvars.fields_arr[0], i);}
-    if (data_init_cond == DATA_INIT::VORTICES) {geom.set_2form_values(vortices, progvars.fields_arr[0], i);}
-    if (data_init_cond == DATA_INIT::SQUARE)   {geom.set_2form_values(square,   progvars.fields_arr[0], i);}
+    if (params.data_init_cond == DATA_INIT::GAUSSIAN) {geom.set_2form_values(gaussian, progvars.fields_arr[0], i);}
+    if (params.data_init_cond == DATA_INIT::VORTICES) {geom.set_2form_values(vortices, progvars.fields_arr[0], i);}
+    if (params.data_init_cond == DATA_INIT::SQUARE)   {geom.set_2form_values(square,   progvars.fields_arr[0], i);}
     }
-    if (wind_init_cond == WIND_INIT::UNIFORM_X    ) {geom.set_1form_values(uniform_x_wind,     constvars.fields_arr[0], 0, LINE_INTEGRAL_TYPE::NORMAL);}
-    if (wind_init_cond == WIND_INIT::UNIFORM_Y    ) {geom.set_1form_values(uniform_y_wind,     constvars.fields_arr[0], 0, LINE_INTEGRAL_TYPE::NORMAL);}
-    if (wind_init_cond == WIND_INIT::UNIFORM_XY   ) {geom.set_1form_values(uniform_xy_wind,    constvars.fields_arr[0], 0, LINE_INTEGRAL_TYPE::NORMAL);}
-    if (wind_init_cond == WIND_INIT::DEFORMATIONAL) {geom.set_1form_values(deformational_wind, constvars.fields_arr[0], 0, LINE_INTEGRAL_TYPE::NORMAL);}
+    if (params.wind_init_cond == WIND_INIT::UNIFORM_X    ) {geom.set_1form_values(uniform_x_wind,     constvars.fields_arr[0], 0, LINE_INTEGRAL_TYPE::NORMAL);}
+    if (params.wind_init_cond == WIND_INIT::UNIFORM_Y    ) {geom.set_1form_values(uniform_y_wind,     constvars.fields_arr[0], 0, LINE_INTEGRAL_TYPE::NORMAL);}
+    if (params.wind_init_cond == WIND_INIT::UNIFORM_XY   ) {geom.set_1form_values(uniform_xy_wind,    constvars.fields_arr[0], 0, LINE_INTEGRAL_TYPE::NORMAL);}
+    if (params.wind_init_cond == WIND_INIT::DEFORMATIONAL) {geom.set_1form_values(deformational_wind, constvars.fields_arr[0], 0, LINE_INTEGRAL_TYPE::NORMAL);}
 
 }
 
 
-template <int nprog, int nconst, int ndiag, int nquadx, int nquady, int nquadz> void set_initial_conditions (VariableSet<3, nprog> &progvars, VariableSet<3, nconst> &constvars, Geometry<3, nquadx, nquady, nquadz> &geom)
+template <int nprog, int nconst, int ndiag, int nquadx, int nquady, int nquadz> void set_initial_conditions (ModelParameters &params, VariableSet<3, nprog> &progvars, VariableSet<3, nconst> &constvars, Geometry<3, nquadx, nquady, nquadz> &geom)
 {
     for (int i=0; i<nqdofs; i++)
     {
-    if (data_init_cond == DATA_INIT::GAUSSIAN) {geom.set_3form_values(gaussian, progvars.fields_arr[0], i);}
-    if (data_init_cond == DATA_INIT::SQUARE)   {geom.set_3form_values(square,   progvars.fields_arr[0], i);}
+    if (params.data_init_cond == DATA_INIT::GAUSSIAN) {geom.set_3form_values(gaussian, progvars.fields_arr[0], i);}
+    if (params.data_init_cond == DATA_INIT::SQUARE)   {geom.set_3form_values(square,   progvars.fields_arr[0], i);}
     }
-    if (wind_init_cond == WIND_INIT::UNIFORM_X    ) {geom.set_2form_values(uniform_x_wind,     constvars.fields_arr[0], 0);}
-    if (wind_init_cond == WIND_INIT::UNIFORM_Y    ) {geom.set_2form_values(uniform_y_wind,     constvars.fields_arr[0], 0);}
-    if (wind_init_cond == WIND_INIT::UNIFORM_Z    ) {geom.set_2form_values(uniform_z_wind,     constvars.fields_arr[0], 0);}
-    if (wind_init_cond == WIND_INIT::DEFORMATIONAL) {geom.set_2form_values(deformational_wind, constvars.fields_arr[0], 0);}
+    if (params.wind_init_cond == WIND_INIT::UNIFORM_X    ) {geom.set_2form_values(uniform_x_wind,     constvars.fields_arr[0], 0);}
+    if (params.wind_init_cond == WIND_INIT::UNIFORM_Y    ) {geom.set_2form_values(uniform_y_wind,     constvars.fields_arr[0], 0);}
+    if (params.wind_init_cond == WIND_INIT::UNIFORM_Z    ) {geom.set_2form_values(uniform_z_wind,     constvars.fields_arr[0], 0);}
+    if (params.wind_init_cond == WIND_INIT::DEFORMATIONAL) {geom.set_2form_values(deformational_wind, constvars.fields_arr[0], 0);}
 }
 
 #endif

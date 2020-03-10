@@ -6,26 +6,12 @@
 #include "string.h"
 #include "mpi.h"
 #include "parallel.h"
+#include "common.h"
 
 
-class Parameters
-{
-public:
 
-  int nx_glob = -1;
-  int ny_glob = -1;
-  int nz_glob = -1;
 
-  int Nsteps = -1;
-  int Nout = -1;
-  real dt = -1.;
-  std::string outputName = "output.nc";
 
-  real etime;
-//THESE ARE REALLY SPECIFIC TO UNIFORM RECT GEOM...
-  real xlen, ylen, zlen;
-  real xc, yc, zc;
-};
 
 
 
@@ -71,9 +57,11 @@ template<uint ndims> void readParamsFile(std::string inFile, Parameters &params,
       else if ( !strcmp( "nprocy"     , key.c_str() ) ) { ssVal >> par.nprocy        ; }
       else if ( !strcmp( "nprocz"     , key.c_str() ) ) { ssVal >> par.nprocz        ; }
 
-      else {
-        std::cout << "Error: key " << key << " not understood in file " << inFile << "\n";
-      }
+
+
+      //else {
+      //  std::cout << "Error: key " << key << " not understood in file " << inFile << "\n";
+      //}
     }
   }
 
@@ -84,9 +72,9 @@ template<uint ndims> void readParamsFile(std::string inFile, Parameters &params,
   if (params.dt      == -1) { std::cout << "Error: key " << "dt"          << " not set.\n"; exit(-1); }
   if (params.Nsteps  == -1) { std::cout << "Error: key " << "Nsteps"      << " not set.\n"; exit(-1); }
   if (params.Nout    == -1) { std::cout << "Error: key " << "Nout"        << " not set.\n"; exit(-1); }
-  if (par.nprocx  == -1)    { std::cout << "Error: key " << "nprocx"      << " not set.\n"; exit(-1); }
-  if (par.nprocy  == -1)    { std::cout << "Error: key " << "nprocy"      << " not set.\n"; exit(-1); }
-  if (par.nprocz  == -1)    { std::cout << "Error: key " << "nprocz"      << " not set.\n"; exit(-1); }
+  if (par.nprocx     == -1) { std::cout << "Error: key " << "nprocx"      << " not set.\n"; exit(-1); }
+  if (par.nprocy     == -1) { std::cout << "Error: key " << "nprocy"      << " not set.\n"; exit(-1); }
+  if (par.nprocz     == -1) { std::cout << "Error: key " << "nprocz"      << " not set.\n"; exit(-1); }
 
   if (!(par.nprocx * par.nprocy * par.nprocz == par.nranks)) { std::cout << "Error: nranks != nprocx * nprocy * nprocz\n"; exit(-1); }
 
@@ -216,6 +204,9 @@ template<uint ndims> void readParamsFile(std::string inFile, Parameters &params,
 
 
 };
+
+
+
 
 
 #endif

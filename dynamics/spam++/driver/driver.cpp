@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
     FileIO<number_of_dims, nprognostic, nconstant, ndiagnostic> io;
     Tendencies<number_of_dims, nprognostic, nconstant, ndiagnostic> tendencies;
     Topology<number_of_dims> topology;
-    Parameters params;
+    ModelParameters params;
     Parallel par;
 
 // SETTING THIS STUFF AT COMPILE TIME DOESN'T WORK BECAUSE OF SCOPING. IS THERE A WAY TO PROMOTE VARIABLES OUT OF IF STATEMENTS?
@@ -56,8 +56,8 @@ int main(int argc, char** argv) {
     std::cout << "reading parameters\n" << std::flush;
     std::string inFile = "input.txt";
     if (argc > 1) inFile = argv[1];
-    set_model_specific_params<number_of_dims>(params);
     readParamsFile<number_of_dims>(inFile, params, par);
+    set_model_specific_params<number_of_dims>(inFile, params);
     std::cout << "read parameters\n" << std::flush;
 
     // Initialize the grid
@@ -96,7 +96,7 @@ int main(int argc, char** argv) {
 
     // set the initial conditions
     std::cout << "start set initial conditions\n" << std::flush;
-    set_initial_conditions<nprognostic, nconstant, ndiagnostic, ic_quad_pts, ic_quad_pts, ic_quad_pts>(prognostic_vars, constant_vars, ic_geometry);
+    set_initial_conditions<nprognostic, nconstant, ndiagnostic, ic_quad_pts, ic_quad_pts, ic_quad_pts>(params, prognostic_vars, constant_vars, ic_geometry);
     // Do a boundary exchange
     prog_exchange.exchange_variable_set(prognostic_vars);
     const_exchange.exchange_variable_set(constant_vars);

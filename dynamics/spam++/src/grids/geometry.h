@@ -6,7 +6,7 @@
 #include "common.h"
 #include "fields.h"
 #include "topology.h"
-#include "params.h"
+#include "model.h"
 
 
 template<int ndims> struct coords {};
@@ -84,7 +84,7 @@ public:
   real dx, dy, dz;
   real Lx, Ly, Lz;
   real xc, yc, zc;
-  void initialize(const Topology<1> &topo, const Parameters &params);
+  void initialize(const Topology<1> &topo, const ModelParameters &params);
 
   void printinfo();
 
@@ -165,7 +165,7 @@ template<uint nquadx, uint nquady, uint nquadz> Geometry<1,nquadx,nquady,nquadz>
 }
 
 
-template<uint nquadx, uint nquady, uint nquadz> void UniformRectangularGeometry<1,nquadx,nquady,nquadz>::initialize(const Topology<1> &topo, const Parameters &params)
+template<uint nquadx, uint nquady, uint nquadz> void UniformRectangularGeometry<1,nquadx,nquady,nquadz>::initialize(const Topology<1> &topo, const ModelParameters &params)
 {
 
 Geometry<1,nquadx,nquady,nquadz>::initialize(topo);
@@ -272,7 +272,7 @@ public:
   real dx, dy, dz;
   real Lx, Ly, Lz;
   real xc, yc, zc;
-  void initialize(const Topology<2> &topo, const Parameters &params);
+  void initialize(const Topology<2> &topo, const ModelParameters &params);
 
   void printinfo();
 
@@ -397,7 +397,7 @@ template<uint nquadx, uint nquady, uint nquadz> Geometry<2,nquadx,nquady,nquadz>
       });
   }
 
-template<uint nquadx, uint nquady, uint nquadz> void UniformRectangularGeometry<2,nquadx,nquady,nquadz>::initialize(const Topology<2> &topo, const Parameters &params)
+template<uint nquadx, uint nquady, uint nquadz> void UniformRectangularGeometry<2,nquadx,nquady,nquadz>::initialize(const Topology<2> &topo, const ModelParameters &params)
 {
 
 Geometry<2,nquadx,nquady,nquadz>::initialize(topo);
@@ -561,7 +561,7 @@ template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangu
     real dx, dy, dz;
     real Lx, Ly, Lz;
     real xc, yc, zc;
-    void initialize(const Topology<3> &topo, const Parameters &params);
+    void initialize(const Topology<3> &topo, const ModelParameters &params);
 
     void printinfo();
 
@@ -766,7 +766,7 @@ template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangu
 }
 
 
-  template<uint nquadx, uint nquady, uint nquadz> void UniformRectangularGeometry<3,nquadx,nquady,nquadz>::initialize(const Topology<3> &topo, const Parameters &params)
+  template<uint nquadx, uint nquady, uint nquadz> void UniformRectangularGeometry<3,nquadx,nquady,nquadz>::initialize(const Topology<3> &topo, const ModelParameters &params)
   {
 
   Geometry<3,nquadx,nquady,nquadz>::initialize(topo);
