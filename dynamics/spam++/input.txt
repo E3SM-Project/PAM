@@ -5,8 +5,9 @@ nz = 30
 
 // Time stepping
 dt = 0.005
-Nsteps = 400
+Nsteps = 200
 Nout = 5
+Nstat = 1
 
 // Parallel decomposition
 nprocx = 2
@@ -15,4 +16,4 @@ nprocz = 1
 
 // initial condition
 dataInit = square
-windInit = uniform_xy
+windInit = uniform_x

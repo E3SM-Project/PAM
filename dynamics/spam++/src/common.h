@@ -14,7 +14,11 @@ typedef unsigned long ulong;
 typedef unsigned int  uint;
 
 // Declaring the precision for the model
-typedef float real;
+typedef double real;
+#define PNETCDF_PUT_VAR ncmpi_put_vara_double
+#define PNETCDF_PUT_VAR_ALL ncmpi_put_vara_double_all
+#define REAL_NC NC_DOUBLE
+#define REAL_MPI MPI_DOUBLE
 
 
 // Define a real array type, presumed on the "device"
@@ -60,6 +64,7 @@ public:
   int Nsteps = -1;
   int Nout = -1;
   real dt = -1.;
+  int Nstat = -1;
   std::string outputName = "output.nc";
 
   real etime;
@@ -78,11 +83,11 @@ public:
 uint constexpr number_of_dims = 2;
 
 // Spatial order of accuracy for the model
-uint constexpr differential_order = 2;
+uint constexpr differential_order = 8;
 
 // Reconstruction type
-RECONSTRUCTION_TYPE constexpr reconstruction_type = RECONSTRUCTION_TYPE::CFV;
-uint constexpr reconstruction_order = 2;
+RECONSTRUCTION_TYPE constexpr reconstruction_type = RECONSTRUCTION_TYPE::UFV;
+uint constexpr reconstruction_order = 1;
 
 // Halo sizes
 uint maxhalosize = mymax(reconstruction_order,differential_order)/2; // IS THIS ALWAYS CORRECT?

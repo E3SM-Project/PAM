@@ -17,6 +17,7 @@
 uint constexpr nprognostic = 1;
 uint constexpr nconstant = 1;
 uint constexpr ndiagnostic = 1;
+uint constexpr nstats = 3;
 
 // Initial conditions related variables and functions
 #define gaussian_1d(x)     (1. * exp(-100. * pow(x-0.5,2.)))
@@ -225,6 +226,25 @@ public:
 
    if (reconstruction_type == RECONSTRUCTION_TYPE::CFV && reconstruction_order == 2)
    { cfv2_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, *this->topology, *this->geom);}
+   if (reconstruction_type == RECONSTRUCTION_TYPE::CFV && reconstruction_order == 4)
+   { cfv4_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, *this->topology, *this->geom);}
+   if (reconstruction_type == RECONSTRUCTION_TYPE::CFV && reconstruction_order == 6)
+   { cfv6_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, *this->topology, *this->geom);}
+   if (reconstruction_type == RECONSTRUCTION_TYPE::CFV && reconstruction_order == 8)
+   { cfv8_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, *this->topology, *this->geom);}
+   if (reconstruction_type == RECONSTRUCTION_TYPE::CFV && reconstruction_order == 10)
+   { cfv10_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, *this->topology, *this->geom);}
+
+   if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 3)
+   { weno3_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology, *this->geom); }
+   if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 5)
+   { weno5_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology, *this->geom); }
+   if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 7)
+   { weno7_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology, *this->geom); }
+   if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 9)
+   { weno9_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology, *this->geom); }
+   if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 11)
+   { weno11_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology, *this->geom); }
 
    this->diag_exchange->exchange_variable_set(diagnostic_vars);
 
@@ -235,9 +255,78 @@ public:
    { divergence4<ndims, nqdofs>(xtend.fields_arr[0].data, diagnostic_vars.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology); }
    if (differential_order == 6)
    { divergence6<ndims, nqdofs>(xtend.fields_arr[0].data, diagnostic_vars.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology); }
+   if (differential_order == 8)
+   { divergence8<ndims, nqdofs>(xtend.fields_arr[0].data, diagnostic_vars.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology); }
  }
 
 };
+
+// *******   Statistics Calculations   ***********//
+class Stat
+{
+public:
+  realArr data;
+  real local_dat;
+  real global_dat;
+  std::string name;
+
+void initialize(std::string statName, ModelParameters &params, Parallel &par)
+{
+  name = statName;
+  if (par.masterproc)
+  {
+    data = realArr(name.c_str(), params.Nsteps/params.Nstat + 1);
+  }
+}
+
+};
+
+
+template <uint ndims, uint nprog, uint nconst, uint nstats> class Stats
+{
+public:
+  std::array<Stat,nstats> stats_arr;
+  MPI_Request Req [3];
+  MPI_Status  Status[3];
+  int ierr;
+  int statsize;
+  int masterproc;
+
+  void initialize(ModelParameters &params, Parallel &par)
+  {
+    statsize = params.Nsteps/params.Nstat + 1;
+    stats_arr[0].initialize("mass", params, par);
+    stats_arr[1].initialize("min", params, par);
+    stats_arr[2].initialize("max", params, par);
+    masterproc = par.masterproc;
+  }
+
+
+
+
+  void compute( VariableSet<ndims, nprog> &progvars,  VariableSet<ndims, nprog> &constvars, int i)
+  {
+
+    //compute locally
+    this->stats_arr[0].local_dat = progvars.fields_arr[0].sum();
+    this->stats_arr[1].local_dat = progvars.fields_arr[0].min();
+    this->stats_arr[2].local_dat = progvars.fields_arr[0].max();
+
+    //MPI sum/min/max
+    this->ierr = MPI_Ireduce( &this->stats_arr[0].local_dat, &this->stats_arr[0].global_dat, 1, REAL_MPI, MPI_SUM, 0, MPI_COMM_WORLD, &this->Req[0]);
+    this->ierr = MPI_Ireduce( &this->stats_arr[1].local_dat, &this->stats_arr[1].global_dat, 1, REAL_MPI, MPI_MIN, 0, MPI_COMM_WORLD, &this->Req[1]);
+    this->ierr = MPI_Ireduce( &this->stats_arr[2].local_dat, &this->stats_arr[2].global_dat, 1, REAL_MPI, MPI_MAX, 0, MPI_COMM_WORLD, &this->Req[2]);
+    this->ierr = MPI_Waitall(3, this->Req, this->Status);
+
+  if (masterproc)
+  {
+  this->stats_arr[0].data(i) = this->stats_arr[0].global_dat;
+  this->stats_arr[1].data(i) = this->stats_arr[1].global_dat;
+  this->stats_arr[2].data(i) = this->stats_arr[2].global_dat;
+  }
+  }
+};
+
 
 
 // *******   VariableSet Initialization   ***********//

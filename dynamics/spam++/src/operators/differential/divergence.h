@@ -90,6 +90,42 @@ template<uint ndims, uint ndofs> void YAKL_INLINE divergence6( realArr var, cons
     }
   }
 });
+}
+
+template<uint ndims, uint ndofs> void YAKL_INLINE divergence8( realArr var, const realArr recon, const realArr flux, const Topology<ndims> &topology) {
+
+  int is = topology.is;
+  int js = topology.js;
+  int ks = topology.ks;
+
+  yakl::parallel_for("ComputeD8", topology.n_cells, YAKL_LAMBDA (int iGlob) {
+    int k, j, i;
+    yakl::unpackIndices(iGlob, topology.n_cells_z, topology.n_cells_y, topology.n_cells_x, k, j, i);
+    for (int l=0; l<ndofs; l++) {
+
+    //x-dir
+    var(l,k+ks,j+js,i+is) = 1225./1024. * (flux(0,k+ks,j+js,i+is+1) * recon(l+0*ndofs,k+ks,j+js,i+is+1) - flux(0,k+ks,j+js,i+is) * recon(l+0*ndofs,k+ks,j+js,i+is))
+                         - 245./3072. * (flux(0,k+ks,j+js,i+is+2) * recon(l+0*ndofs,k+ks,j+js,i+is+2) - flux(0,k+ks,j+js,i+is-1) * recon(l+0*ndofs,k+ks,j+js,i+is-1))
+                         + 49./5120. * (flux(0,k+ks,j+js,i+is+3) * recon(l+0*ndofs,k+ks,j+js,i+is+3) - flux(0,k+ks,j+js,i+is-2) * recon(l+0*ndofs,k+ks,j+js,i+is-2))
+                         - 5./7168. * (flux(0,k+ks,j+js,i+is+4) * recon(l+0*ndofs,k+ks,j+js,i+is+4) - flux(0,k+ks,j+js,i+is-3) * recon(l+0*ndofs,k+ks,j+js,i+is-3));
+
+    //y-dir
+    if (ndims >= 2) {
+    var(l,k+ks,j+js,i+is) += 1225./1024. * (flux(1,k+ks,j+js+1,i+is) * recon(l+1*ndofs,k+ks,j+js+1,i+is) - flux(1,k+ks,j+js,i+is) * recon(l+1*ndofs,k+ks,j+js,i+is))
+                         - 245./3072. * (flux(1,k+ks,j+js+2,i+is) * recon(l+1*ndofs,k+ks,j+js+2,i+is) - flux(1,k+ks,j+js-1,i+is) * recon(l+1*ndofs,k+ks,j+js-1,i+is))
+                         + 49./5120. * (flux(1,k+ks,j+js+3,i+is) * recon(l+1*ndofs,k+ks,j+js+3,i+is) - flux(1,k+ks,j+js-2,i+is) * recon(l+1*ndofs,k+ks,j+js-2,i+is));
+                         - 5./7168. * (flux(0,k+ks,j+js+3,i+is) * recon(l+0*ndofs,k+ks,j+js+4,i+is) - flux(0,k+ks,j+js-3,i+is) * recon(l+0*ndofs,k+ks,j+js-3,i+is));
+    }
+    //z-dir
+    if (ndims >= 3) {
+    var(l,k+ks,j+js,i+is) += 1225./1024. * (flux(2,k+ks+1,j+js,i+is) * recon(l+2*ndofs,k+ks+1,j+js,i+is) - flux(2,k+ks,j+js,i+is) * recon(l+2*ndofs,k+ks,j+js,i+is))
+                         - 245./3072. * (flux(2,k+ks+2,j+js,i+is) * recon(l+2*ndofs,k+ks+2,j+js,i+is) - flux(2,k+ks-1,j+js,i+is) * recon(l+2*ndofs,k+ks-1,j+js,i+is))
+                         + 49./5120. * (flux(2,k+ks+3,j+js,i+is) * recon(l+2*ndofs,k+ks+3,j+js,i+is) - flux(2,k+ks-2,j+js,i+is) * recon(l+2*ndofs,k+ks-2,j+js,i+is));
+                         - 5./7168. * (flux(0,k+ks+4,j+js,i+is) * recon(l+0*ndofs,k+ks+4,j+js,i+is) - flux(0,k+ks-3,j+js,i+is) * recon(l+0*ndofs,k+ks-3,j+js,i+is));
+    }
+  }
+});
+
 
 }
 

@@ -20,14 +20,14 @@ int main(int argc, char** argv) {
   yakl::init();
 
   {
-
+    Stats<number_of_dims, nprognostic, nconstant, nstats> stats;
     VariableSet<number_of_dims, nprognostic> prognostic_vars;
     VariableSet<number_of_dims, nconstant> constant_vars;
     VariableSet<number_of_dims, ndiagnostic> diagnostic_vars;
     ExchangeSet<number_of_dims, nprognostic> prog_exchange;
     ExchangeSet<number_of_dims, nconstant> const_exchange;
     ExchangeSet<number_of_dims, ndiagnostic> diag_exchange;
-    FileIO<number_of_dims, nprognostic, nconstant, ndiagnostic> io;
+    FileIO<number_of_dims, nprognostic, nconstant, ndiagnostic, nstats> io;
     Tendencies<number_of_dims, nprognostic, nconstant, ndiagnostic> tendencies;
     Topology<number_of_dims> topology;
     ModelParameters params;
@@ -89,9 +89,12 @@ int main(int argc, char** argv) {
     diag_exchange.initialize(diag_topo_arr, diag_ndofs_arr);
     std::cout << "finish init variable sets\n" << std::flush;
 
+    // Initialize the statistics
+    stats.initialize(params, par);
+
     // Create the outputter
     std::cout << "start io init\n" << std::flush;
-    io.initialize(params.outputName, topology, prognostic_vars, constant_vars);
+    io.initialize(params.outputName, topology, par, prognostic_vars, constant_vars, stats);
     std::cout << "end io init\n" << std::flush;
 
     // set the initial conditions
@@ -118,6 +121,7 @@ int main(int argc, char** argv) {
 
     // Time stepping loop
     std::cout << "start timestepping loop\n" << std::flush;
+    stats.compute(prognostic_vars, constant_vars, 0);
     for (uint nstep = 1; nstep<params.Nsteps+1; nstep++) {
 
       yakl::fence();
@@ -130,7 +134,13 @@ int main(int argc, char** argv) {
         io.output(nstep, params.etime);
       }
 
+      if (nstep%params.Nstat == 0)
+      {
+        stats.compute(prognostic_vars, constant_vars, nstep/params.Nstat);
+      }
+
     }
+    io.outputStats(stats);
 
     std::cout << "end timestepping loop\n" << std::flush;
 

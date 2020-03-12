@@ -235,6 +235,7 @@ template<uint ndims> void Exchange<ndims>::initialize(const Exchange<ndims> &exc
  }
 
 
+
  template<uint ndims> void Exchange<ndims>::exchange_x()
  {
    int ierr;
@@ -243,8 +244,8 @@ template<uint ndims> void Exchange<ndims>::initialize(const Exchange<ndims> &exc
      yakl::fence();
 
      //Pre-post the receives
-     ierr = MPI_Irecv( haloRecvBuf_Xm_host.data() , this->bufsize_x , MPI_FLOAT , this->topology->x_neigh(0) , 0 , MPI_COMM_WORLD , &this->rReq[0] );
-     ierr = MPI_Irecv( haloRecvBuf_Xp_host.data() , this->bufsize_x , MPI_FLOAT , this->topology->x_neigh(1) , 1 , MPI_COMM_WORLD , &this->rReq[1] );
+     ierr = MPI_Irecv( haloRecvBuf_Xm_host.data() , this->bufsize_x , REAL_MPI , this->topology->x_neigh(0) , 0 , MPI_COMM_WORLD , &this->rReq[0] );
+     ierr = MPI_Irecv( haloRecvBuf_Xp_host.data() , this->bufsize_x , REAL_MPI , this->topology->x_neigh(1) , 1 , MPI_COMM_WORLD , &this->rReq[1] );
 
      //Copy send buffers to host
      haloSendBuf_Xm.deep_copy_to(haloSendBuf_Xm_host);
@@ -252,8 +253,8 @@ template<uint ndims> void Exchange<ndims>::initialize(const Exchange<ndims> &exc
      yakl::fence();
 
      //Send the data
-     ierr = MPI_Isend( haloSendBuf_Xm_host.data() , this->bufsize_x , MPI_FLOAT , this->topology->x_neigh(0) , 1 , MPI_COMM_WORLD , &this->sReq[0] );
-     ierr = MPI_Isend( haloSendBuf_Xp_host.data() , this->bufsize_x , MPI_FLOAT , this->topology->x_neigh(1) , 0 , MPI_COMM_WORLD , &this->sReq[1] );
+     ierr = MPI_Isend( haloSendBuf_Xm_host.data() , this->bufsize_x , REAL_MPI , this->topology->x_neigh(0) , 1 , MPI_COMM_WORLD , &this->sReq[0] );
+     ierr = MPI_Isend( haloSendBuf_Xp_host.data() , this->bufsize_x , REAL_MPI , this->topology->x_neigh(1) , 0 , MPI_COMM_WORLD , &this->sReq[1] );
 
      //Wait for the sends and receives to finish
      ierr = MPI_Waitall(2, this->sReq, this->sStat);
@@ -285,8 +286,8 @@ template<uint ndims> void Exchange<ndims>::initialize(const Exchange<ndims> &exc
      yakl::fence();
 
      //Pre-post the receives
-     ierr = MPI_Irecv( haloRecvBuf_Ym_host.data() , this->bufsize_y , MPI_FLOAT , this->topology->y_neigh(0) , 0 , MPI_COMM_WORLD , &this->rReq[0] );
-     ierr = MPI_Irecv( haloRecvBuf_Yp_host.data() , this->bufsize_y , MPI_FLOAT , this->topology->y_neigh(1) , 1 , MPI_COMM_WORLD , &this->rReq[1] );
+     ierr = MPI_Irecv( haloRecvBuf_Ym_host.data() , this->bufsize_y , REAL_MPI , this->topology->y_neigh(0) , 0 , MPI_COMM_WORLD , &this->rReq[0] );
+     ierr = MPI_Irecv( haloRecvBuf_Yp_host.data() , this->bufsize_y , REAL_MPI , this->topology->y_neigh(1) , 1 , MPI_COMM_WORLD , &this->rReq[1] );
 
      //Copy send buffers to host
      haloSendBuf_Ym.deep_copy_to(haloSendBuf_Ym_host);
@@ -294,8 +295,8 @@ template<uint ndims> void Exchange<ndims>::initialize(const Exchange<ndims> &exc
      yakl::fence();
 
      //Send the data
-     ierr = MPI_Isend( haloSendBuf_Ym_host.data() , this->bufsize_y , MPI_FLOAT , this->topology->y_neigh(0) , 1 , MPI_COMM_WORLD , &this->sReq[0] );
-     ierr = MPI_Isend( haloSendBuf_Yp_host.data() , this->bufsize_y , MPI_FLOAT , this->topology->y_neigh(1) , 0 , MPI_COMM_WORLD , &this->sReq[1] );
+     ierr = MPI_Isend( haloSendBuf_Ym_host.data() , this->bufsize_y , REAL_MPI , this->topology->y_neigh(0) , 1 , MPI_COMM_WORLD , &this->sReq[0] );
+     ierr = MPI_Isend( haloSendBuf_Yp_host.data() , this->bufsize_y , REAL_MPI , this->topology->y_neigh(1) , 0 , MPI_COMM_WORLD , &this->sReq[1] );
 
      //Wait for the sends and receives to finish
      ierr = MPI_Waitall(2, this->sReq, this->sStat);
@@ -324,8 +325,8 @@ template<uint ndims> void Exchange<ndims>::initialize(const Exchange<ndims> &exc
      yakl::fence();
 
      //Pre-post the receives
-     ierr = MPI_Irecv( haloRecvBuf_Zm_host.data() , this->bufsize_z , MPI_FLOAT , this->topology->z_neigh(0) , 0 , MPI_COMM_WORLD , &this->rReq[0] );
-     ierr = MPI_Irecv( haloRecvBuf_Zp_host.data() , this->bufsize_z , MPI_FLOAT , this->topology->z_neigh(1) , 1 , MPI_COMM_WORLD , &this->rReq[1] );
+     ierr = MPI_Irecv( haloRecvBuf_Zm_host.data() , this->bufsize_z , REAL_MPI , this->topology->z_neigh(0) , 0 , MPI_COMM_WORLD , &this->rReq[0] );
+     ierr = MPI_Irecv( haloRecvBuf_Zp_host.data() , this->bufsize_z , REAL_MPI , this->topology->z_neigh(1) , 1 , MPI_COMM_WORLD , &this->rReq[1] );
 
      //Copy send buffers to host
      haloSendBuf_Zm.deep_copy_to(haloSendBuf_Zm_host);
@@ -333,8 +334,8 @@ template<uint ndims> void Exchange<ndims>::initialize(const Exchange<ndims> &exc
      yakl::fence();
 
      //Send the data
-     ierr = MPI_Isend( haloSendBuf_Zm_host.data() , this->bufsize_z , MPI_FLOAT , this->topology->z_neigh(0) , 1 , MPI_COMM_WORLD , &this->sReq[0] );
-     ierr = MPI_Isend( haloSendBuf_Zp_host.data() , this->bufsize_z , MPI_FLOAT , this->topology->z_neigh(1) , 0 , MPI_COMM_WORLD , &this->sReq[1] );
+     ierr = MPI_Isend( haloSendBuf_Zm_host.data() , this->bufsize_z , REAL_MPI , this->topology->z_neigh(0) , 1 , MPI_COMM_WORLD , &this->sReq[0] );
+     ierr = MPI_Isend( haloSendBuf_Zp_host.data() , this->bufsize_z , REAL_MPI , this->topology->z_neigh(1) , 0 , MPI_COMM_WORLD , &this->sReq[1] );
 
      //Wait for the sends and receives to finish
      ierr = MPI_Waitall(2, this->sReq, this->sStat);

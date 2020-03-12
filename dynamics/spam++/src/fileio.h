@@ -11,6 +11,7 @@
 #include "pnetcdf.h"
 #include "mpi.h"
 #include <cstring>
+#include "model.h"
 
 //Error reporting routine for the PNetCDF I/O
 void ncwrap( int ierr , int line ) {
@@ -22,10 +23,11 @@ void ncwrap( int ierr , int line ) {
   }
 
 
-template<uint ndims, uint nprog, uint nconst, uint ndiag> class FileIO {
+template<uint ndims, uint nprog, uint nconst, uint ndiag, uint nstats> class FileIO {
 
 public:
   bool is_initialized;
+  int masterproc;
   int ncid;
   int const_dim_ids[4], prog_dim_ids[5];
   int tDim, xDim, yDim, zDim;
@@ -37,6 +39,10 @@ public:
   std::array<realArr, nconst> const_temp_arr;
   const VariableSet<ndims, nprog> *prog_vars;
   const VariableSet<ndims, nconst> *const_vars;
+  Stats<ndims, nprog, nconst, nstats> *statistics;
+
+  int statDim;
+  int stat_ids[nstats];
 
   int numOut;
 
@@ -44,29 +50,34 @@ public:
   MPI_Offset prog_start[5], prog_count[5];
 
   FileIO();
-  FileIO( const FileIO<ndims,nprog,nconst,ndiag> &fio) = delete;
-  FileIO& operator=( const FileIO<ndims,nprog,nconst,ndiag> &fio) = delete;
-  void initialize(std::string outputName, Topology<ndims> &topo, const VariableSet<ndims, nprog> &progvars, const VariableSet<ndims, nconst> &const_vars);
+  FileIO( const FileIO<ndims,nprog,nconst,ndiag,nstats> &fio) = delete;
+  FileIO& operator=( const FileIO<ndims,nprog,nconst,ndiag,nstats> &fio) = delete;
+  void initialize(std::string outputName, Topology<ndims> &topo, Parallel &par, const VariableSet<ndims, nprog> &progvars, const VariableSet<ndims, nconst> &const_vars, Stats<ndims, nprog, nconst, nstats> &stats);
   void output(int nstep, real time);
   void outputInit(real time);
+  void outputStats(const Stats<ndims, nprog, nconst, nstats> &stats);
   void close();
 
 
 };
 
 
-    template<uint ndims, uint nprog, uint nconst, uint ndiag> FileIO<ndims,nprog,nconst,ndiag>::FileIO()
+
+
+    template<uint ndims, uint nprog, uint nconst, uint ndiag, uint nstats> FileIO<ndims,nprog,nconst,ndiag,nstats>::FileIO()
     {
       this->is_initialized = false;
       std::cout << "CREATED FILEIO\n";
     }
 
 
-  template<uint ndims, uint nprog, uint nconst, uint ndiag> void FileIO<ndims,nprog,nconst,ndiag>::initialize(std::string outName, Topology<ndims> &topo, const VariableSet<ndims, nprog> &progvars, const VariableSet<ndims, nconst> &constvars)
+  template<uint ndims, uint nprog, uint nconst, uint ndiag, uint nstats> void FileIO<ndims,nprog,nconst,ndiag,nstats>::initialize(std::string outName, Topology<ndims> &topo, Parallel &par, const VariableSet<ndims, nprog> &progvars, const VariableSet<ndims, nconst> &constvars, Stats<ndims, nprog, nconst, nstats> &stats)
   {
        this->outputName = outName;
        this->prog_vars = &progvars;
        this->const_vars = &constvars;
+       this->statistics = &stats;
+       this->masterproc = par.masterproc;
 
        ncwrap( ncmpi_create( MPI_COMM_WORLD , this->outputName.c_str() , NC_CLOBBER , MPI_INFO_NULL , &ncid ) , __LINE__ );
 
@@ -78,7 +89,7 @@ public:
 
        //Create time dimension
        const_dim_ids[0] = tDim;
-       ncwrap( ncmpi_def_var( ncid , "t"      , NC_FLOAT , 1 , const_dim_ids , &tVar ) , __LINE__ );
+       ncwrap( ncmpi_def_var( ncid , "t"      , REAL_NC , 1 , const_dim_ids , &tVar ) , __LINE__ );
        ncwrap( ncmpi_put_att_text (ncid, tVar, "units", std::strlen("seconds"), "seconds"), __LINE__ );
 
 
@@ -86,7 +97,7 @@ public:
        {
          ncwrap( ncmpi_def_dim( ncid , (this->const_vars->fields_arr[i].name + "_ndofs").c_str() , (MPI_Offset) this->const_vars->fields_arr[i].total_dofs , &const_var_dim_ids[i] ) , __LINE__ );
          const_dim_ids[0] = const_var_dim_ids[i]; const_dim_ids[1] = zDim; const_dim_ids[2] = yDim; const_dim_ids[3] = xDim;
-         ncwrap( ncmpi_def_var( ncid , this->const_vars->fields_arr[i].name.c_str() , NC_FLOAT , 4 , const_dim_ids , &const_var_ids[i]  ) , __LINE__ );
+         ncwrap( ncmpi_def_var( ncid , this->const_vars->fields_arr[i].name.c_str() , REAL_NC , 4 , const_dim_ids , &const_var_ids[i]  ) , __LINE__ );
          this->const_temp_arr[i] = realArr(this->const_vars->fields_arr[i].name.c_str(), this->const_vars->fields_arr[i].total_dofs, this->const_vars->fields_arr[i].topology->n_cells_z, this->const_vars->fields_arr[i].topology->n_cells_y, this->const_vars->fields_arr[i].topology->n_cells_x);
        }
 
@@ -94,10 +105,18 @@ public:
        {
          ncwrap( ncmpi_def_dim( ncid , (this->prog_vars->fields_arr[i].name + "_ndofs").c_str() , (MPI_Offset) this->prog_vars->fields_arr[i].total_dofs , &prog_var_dim_ids[i] ) , __LINE__ );
          prog_dim_ids[0] = tVar; prog_dim_ids[1] = prog_var_dim_ids[i]; prog_dim_ids[2] = zDim; prog_dim_ids[3] = yDim; prog_dim_ids[4] = xDim;
-         ncwrap( ncmpi_def_var( ncid , this->prog_vars->fields_arr[i].name.c_str() , NC_FLOAT , 5 , prog_dim_ids , &prog_var_ids[i]  ) , __LINE__ );
+         ncwrap( ncmpi_def_var( ncid , this->prog_vars->fields_arr[i].name.c_str() , REAL_NC , 5 , prog_dim_ids , &prog_var_ids[i]  ) , __LINE__ );
          this->prog_temp_arr[i] = realArr(this->prog_vars->fields_arr[i].name.c_str(), this->prog_vars->fields_arr[i].total_dofs, this->prog_vars->fields_arr[i].topology->n_cells_z, this->prog_vars->fields_arr[i].topology->n_cells_y, this->prog_vars->fields_arr[i].topology->n_cells_x);
        }
 
+
+       // define statistics dimension and variables
+
+       ncwrap( ncmpi_def_dim( ncid , "nstat" , (MPI_Offset) this->statistics->statsize , &statDim ) , __LINE__ );
+       for (int l=0; l<this->statistics->stats_arr.size(); l++)
+       {
+       ncwrap( ncmpi_def_var( ncid , this->statistics->stats_arr[l].name.c_str() , REAL_NC , 1 , &statDim , &stat_ids[l]  ) , __LINE__ );
+      }
 
        ncwrap( ncmpi_enddef( ncid ) , __LINE__ );
 
@@ -107,7 +126,8 @@ public:
     }
 
 
-  template<uint ndims, uint nprog, uint nconst, uint ndiag> void FileIO<ndims,nprog,nconst,ndiag>::output(int nstep, real time)
+
+  template<uint ndims, uint nprog, uint nconst, uint ndiag, uint nstats> void FileIO<ndims,nprog,nconst,ndiag,nstats>::output(int nstep, real time)
   {
 
     ncwrap( ncmpi_open( MPI_COMM_WORLD , this->outputName.c_str() , NC_WRITE , MPI_INFO_NULL , &ncid ) , __LINE__ );
@@ -128,7 +148,7 @@ public:
 
         prog_start[0] = this->numOut; prog_start[1] = 0; prog_start[2] = this->prog_vars->fields_arr[l].topology->k_beg; prog_start[3] = this->prog_vars->fields_arr[l].topology->j_beg; prog_start[4] = this->prog_vars->fields_arr[l].topology->i_beg;
         prog_count[0] = 1; prog_count[1] = this->prog_vars->fields_arr[l].total_dofs; prog_count[2] = this->prog_vars->fields_arr[l].topology->n_cells_z; prog_count[3] = this->prog_vars->fields_arr[l].topology->n_cells_y; prog_count[4] = this->prog_vars->fields_arr[l].topology->n_cells_x;
-        ncwrap( ncmpi_put_vara_float_all( ncid , prog_var_ids[l] , prog_start , prog_count , this->prog_temp_arr[l].createHostCopy().data() ) , __LINE__ );
+        ncwrap( PNETCDF_PUT_VAR_ALL( ncid , prog_var_ids[l] , prog_start , prog_count , this->prog_temp_arr[l].createHostCopy().data() ) , __LINE__ );
       }
 
       // ADD THIS
@@ -138,7 +158,7 @@ public:
       this->numOut++;
     }
 
-  template<uint ndims, uint nprog, uint nconst, uint ndiag> void FileIO<ndims,nprog,nconst,ndiag>::outputInit(real time)
+  template<uint ndims, uint nprog, uint nconst, uint ndiag, uint nstats> void FileIO<ndims,nprog,nconst,ndiag,nstats>::outputInit(real time)
   {
     ncwrap( ncmpi_open( MPI_COMM_WORLD , this->outputName.c_str() , NC_WRITE , MPI_INFO_NULL , &ncid ) , __LINE__ );
 
@@ -158,7 +178,7 @@ public:
 
       const_start[0] = 0; const_start[1] = this->const_vars->fields_arr[l].topology->k_beg; const_start[2] = this->const_vars->fields_arr[l].topology->j_beg; const_start[3] = this->const_vars->fields_arr[l].topology->i_beg;
       const_count[0] = this->const_vars->fields_arr[l].total_dofs; const_count[1] = this->const_vars->fields_arr[l].topology->n_cells_z; const_count[2] = this->const_vars->fields_arr[l].topology->n_cells_y; const_count[3] = this->const_vars->fields_arr[l].topology->n_cells_x;
-      ncwrap( ncmpi_put_vara_float_all( ncid , const_var_ids[l] , const_start , const_count , this->const_temp_arr[l].createHostCopy().data() ) , __LINE__ );
+      ncwrap( PNETCDF_PUT_VAR_ALL( ncid , const_var_ids[l] , const_start , const_count , this->const_temp_arr[l].createHostCopy().data() ) , __LINE__ );
     }
 
     for (int l=0; l<this->prog_vars->fields_arr.size(); l++)
@@ -177,7 +197,7 @@ public:
 
       prog_start[0] = this->numOut; prog_start[1] = 0; prog_start[2] = this->prog_vars->fields_arr[l].topology->k_beg; prog_start[3] = this->prog_vars->fields_arr[l].topology->j_beg; prog_start[4] = this->prog_vars->fields_arr[l].topology->i_beg;
       prog_count[0] = 1; prog_count[1] = this->prog_vars->fields_arr[l].total_dofs; prog_count[2] = this->prog_vars->fields_arr[l].topology->n_cells_z; prog_count[3] = this->prog_vars->fields_arr[l].topology->n_cells_y; prog_count[4] = this->prog_vars->fields_arr[l].topology->n_cells_x;
-      ncwrap( ncmpi_put_vara_float_all( ncid , prog_var_ids[l] , prog_start , prog_count , this->prog_temp_arr[l].createHostCopy().data() ) , __LINE__ );
+      ncwrap( PNETCDF_PUT_VAR_ALL( ncid , prog_var_ids[l] , prog_start , prog_count , this->prog_temp_arr[l].createHostCopy().data() ) , __LINE__ );
     }
 
 
@@ -191,8 +211,26 @@ public:
 
     }
 
-  template<uint ndims, uint nprog, uint nconst, uint ndiag> void FileIO<ndims,nprog,nconst,ndiag>::close() { }
+  template<uint ndims, uint nprog, uint nconst, uint ndiag, uint nstats> void FileIO<ndims,nprog,nconst,ndiag,nstats>::close() { }
 
+  template<uint ndims, uint nprog, uint nconst, uint ndiag, uint nstats>  void FileIO<ndims,nprog,nconst,ndiag,nstats>::outputStats(const Stats<ndims, nprog, nconst, nstats> &stats)
+  {
+    ncwrap( ncmpi_open( MPI_COMM_WORLD , this->outputName.c_str() , NC_WRITE , MPI_INFO_NULL , &ncid ) , __LINE__ );
+    ncwrap( ncmpi_begin_indep_data(ncid) , __LINE__ );
+
+    if (masterproc)
+    {
+    MPI_Offset statStart[1], statCount[1];
+    statStart[0] = 0; statCount[0] = this->statistics->statsize;
+    for (int l=0; l<this->statistics->stats_arr.size(); l++)
+    {
+      ncwrap( PNETCDF_PUT_VAR(ncid, stat_ids[l], statStart, statCount, this->statistics->stats_arr[l].data.createHostCopy().data()) , __LINE__ );
+    }
+    }
+    ncwrap( ncmpi_end_indep_data(ncid) , __LINE__ );
+    ncwrap( ncmpi_close(ncid) , __LINE__ );
+
+  }
 
 
 

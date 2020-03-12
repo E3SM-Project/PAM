@@ -28,6 +28,9 @@ public :
   void initialize(const Topology<ndims> &topo, const std::string fieldName, int nd0, int nd1, int nd2, int nd3);
   void copy(const Field<ndims> & f);
   void waxpy(real alpha, const Field<ndims> &x, const Field<ndims> &y);
+  real sum();
+  real min();
+  real max();
 
 };
 
@@ -123,9 +126,58 @@ public :
     });
   }
 
+  // computes sum of field
+  template<uint ndims> real Field<ndims>::sum()
+  {
 
+    int is = this->topology->is;
+    int js = this->topology->js;
+    int ks = this->topology->ks;
+    real sum = 0.0;
+    yakl::parallel_for("SumField", this->topology->n_cells, YAKL_LAMBDA (int iGlob) {
+      int k, j, i;
+      yakl::unpackIndices(iGlob, this->topology->n_cells_z, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
+      for (int ndof=0; ndof<this->total_dofs; ndof++) {
+        sum += this->data(ndof, k+ks, j+js, i+is);
+      }
+    });
+    return sum;
+  }
 
+  // computes min of field
+  template<uint ndims> real Field<ndims>::min()
+  {
 
+    int is = this->topology->is;
+    int js = this->topology->js;
+    int ks = this->topology->ks;
+    real min = this->data(0, is, js, ks);
+    yakl::parallel_for("MinField", this->topology->n_cells, YAKL_LAMBDA (int iGlob) {
+      int k, j, i;
+      yakl::unpackIndices(iGlob, this->topology->n_cells_z, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
+      for (int ndof=0; ndof<this->total_dofs; ndof++) {
+        min = (this->data(ndof, k+ks, j+js, i+is)) < min ? this->data(ndof, k+ks, j+js, i+is) : min;
+      }
+    });
+    return min;
+  }
 
+  // computes max of field
+  template<uint ndims> real Field<ndims>::max()
+  {
+
+    int is = this->topology->is;
+    int js = this->topology->js;
+    int ks = this->topology->ks;
+    real max = this->data(0, is, js, ks);
+    yakl::parallel_for("MaxField", this->topology->n_cells, YAKL_LAMBDA (int iGlob) {
+      int k, j, i;
+      yakl::unpackIndices(iGlob, this->topology->n_cells_z, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
+      for (int ndof=0; ndof<this->total_dofs; ndof++) {
+        max = (this->data(ndof, k+ks, j+js, i+is)) > max ? this->data(ndof, k+ks, j+js, i+is) : max;
+      }
+    });
+    return max;
+  }
 
 #endif

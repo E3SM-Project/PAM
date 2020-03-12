@@ -51,6 +51,7 @@ template<uint ndims> void readParamsFile(std::string inFile, Parameters &params,
       else if ( !strcmp( "dt"         , key.c_str() ) ) { ssVal >> params.dt         ; }
       else if ( !strcmp( "Nsteps"     , key.c_str() ) ) { ssVal >> params.Nsteps     ; }
       else if ( !strcmp( "Nout"       , key.c_str() ) ) { ssVal >> params.Nout       ; }
+      else if ( !strcmp( "Nstat"      , key.c_str() ) ) { ssVal >> params.Nstat      ; }
       else if ( !strcmp( "outputName" , key.c_str() ) ) { ssVal >> params.outputName ; }
 
       else if ( !strcmp( "nprocx"     , key.c_str() ) ) { ssVal >> par.nprocx        ; }
