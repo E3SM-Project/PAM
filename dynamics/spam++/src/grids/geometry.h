@@ -15,30 +15,75 @@ template<uint ndims, uint nquadx, uint nquady, uint nquadz> class Geometry {};
 template<uint ndims, uint nquadx, uint nquady, uint nquadz> class UniformRectangularGeometry: public Geometry<ndims,nquadx,nquady,nquadz> {};
 
 
-// EVENTUALLY DO TEMPLATE PARTIAL SPECIALIZATION HERE
-// WITH A NOT IMPLEMENTED ERROR FOR THE DEFAULT
+
 template <class T, uint npts> void set_ref_quad_pts_wts(SArray<T,npts> &pts, SArray<T,npts> &wts)
 {
-
-  if (npts == 1)
-  {
+if (npts == 1)
+{
     pts(0) = 0.5;
     wts(0) = 1.0;
-  }
+}
 
-  if (npts == 3)
-  {
-    pts(0) = 0.112701665379258311482073460022;
-    pts(1) = 0.500000000000000000000000000000;
-    pts(2) = 0.887298334620741688517926539980;
+if (npts == 2)
+{
+    pts(0) = -1./(2.*sqrt(3.)) + 0.5;
+    pts(1) = 1./(2.*sqrt(3.)) + 0.5;
 
-    wts(0) = 0.277777777777777777777777777779;
-    wts(1) = 0.444444444444444444444444444444;
-    wts(2) = 0.277777777777777777777777777779;
-  }
+    wts(0) = 0.5;
+    wts(1) = 0.5;
+}
 
+if (npts == 3)
+{
+    pts(0) = -1./2.*sqrt(3./5.) + 0.5;
+    pts(1) = 0.5;
+    pts(2) = 1./2.*sqrt(3./5.) + 0.5;
+
+    wts(0) = 5./18.;
+    wts(1) = 4./9.;
+    wts(2) = 5./18.;
+}
+//   {
+//     pts(0) = 0.112701665379258311482073460022;
+//     pts(1) = 0.500000000000000000000000000000;
+//     pts(2) = 0.887298334620741688517926539980;
+//
+//     wts(0) = 0.277777777777777777777777777779;
+//     wts(1) = 0.444444444444444444444444444444;
+//     wts(2) = 0.277777777777777777777777777779;
+//   }
+
+if (npts == 4)
+{
+    pts(0) = -sqrt(3./7. + 2./7. * sqrt(6./5.)) + 0.5;
+    pts(1) = -sqrt(3./7. - 2./7. * sqrt(6./5.)) + 0.5;
+    pts(2) = sqrt(3./7. - 2./7. * sqrt(6./5.)) + 0.5;
+    pts(3) = sqrt(3./7. + 2./7. * sqrt(6./5.)) + 0.5;
+
+    wts(0) = (18. - sqrt(30.))/72.;
+    wts(1) = (18. + sqrt(30.))/72.;
+    wts(2) = (18. + sqrt(30.))/72.;
+    wts(3) = (18. - sqrt(30.))/72.;
+}
+
+if (npts == 5)
+{
+    pts(0) = -1./3.*sqrt(5. + 2. * sqrt(10./7.)) + 0.5;
+    pts(1) = -1./3.*sqrt(5. - 2. * sqrt(10./7.)) + 0.5;
+    pts(2) = 0.5;
+    pts(3) = 1./3.*sqrt(5. - 2. * sqrt(10./7.)) + 0.5;
+    pts(4) = 1./3.*sqrt(5. + 2. * sqrt(10./7.)) + 0.5;
+
+    wts(0) = (322. - 13.*sqrt(70.))/1800.;
+    wts(1) = (322. + 13.*sqrt(70.))/1800.;
+    wts(2) = 64./225.;
+    wts(3) = (322. + 13.*sqrt(70.))/1800.;
+    wts(4) = (322. - 13.*sqrt(70.))/1800.;
+}
 
 }
+
+
 
 
 

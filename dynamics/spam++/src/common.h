@@ -49,7 +49,7 @@ template <class T> YAKL_INLINE T mymax( T const v1 , T const v2 ) {
 
 
 
-enum class RECONSTRUCTION_TYPE { CFV, UFV, WENO };
+enum class RECONSTRUCTION_TYPE { CFV, WENO };
 enum class TIME_TYPE { KGRK, ADER };
 enum class GEOM_TYPE { UNIFORM_RECT, DISTORTED };
 
@@ -83,14 +83,14 @@ public:
 uint constexpr number_of_dims = 2;
 
 // Spatial order of accuracy for the model
-uint constexpr differential_order = 8;
+uint constexpr differential_order = 2;
 
 // Reconstruction type
-RECONSTRUCTION_TYPE constexpr reconstruction_type = RECONSTRUCTION_TYPE::UFV;
-uint constexpr reconstruction_order = 1;
+RECONSTRUCTION_TYPE constexpr reconstruction_type = RECONSTRUCTION_TYPE::WENO;
+uint constexpr reconstruction_order = 9;
 
 // Halo sizes
-uint maxhalosize = mymax(reconstruction_order,differential_order)/2; // IS THIS ALWAYS CORRECT?
+uint maxhalosize = mymax(reconstruction_order+1,differential_order)/2; // IS THIS ALWAYS CORRECT?
 
 // initial condition quadrature pts
 uint constexpr ic_quad_pts = 3;

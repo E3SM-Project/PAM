@@ -10,12 +10,30 @@ u = DS.u
 q = DS.q
 
 
-mass = DS.mass
-min = DS.min
-max = DS.max
-print(mass)
-print(min)
-print(max)
+qmass = DS.qmass
+qmin = DS.qmin
+qmax = DS.qmax
+print(qmass)
+print(qmin)
+print(qmax)
+
+def plot_stat(statname, data):
+    plt.figure(figsize=(10,8))
+    plt.plot( (data - data[0])/data[0]*100. )
+    plt.xlabel('Nsteps')
+    plt.ylabel('Fractional Change in ' + statname)
+    plt.savefig(statname + '.png')
+
+def plot_rawstat(statname, data):
+    plt.figure(figsize=(10,8))
+    plt.plot(data)
+    plt.xlabel('Nsteps')
+    plt.ylabel(statname)
+    plt.savefig(statname + 'raw.png')
+
+plot_stat('mass', qmass)
+plot_rawstat('min', qmin)
+plot_rawstat('max', qmax)
 
 Nlist = [0,1,10,40]
 

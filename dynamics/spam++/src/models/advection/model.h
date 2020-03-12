@@ -6,7 +6,8 @@
 #include "topology.h"
 #include "variable_sets.h"
 #include "divergence.h"
-#include "finitevolume.h"
+#include "weno.h"
+#include "cfv.h"
 #include "geometry.h"
 #include "params.h"
 #include "string.h"
@@ -221,8 +222,7 @@ public:
   {
 
    //compute reconstructions
-   if (reconstruction_type == RECONSTRUCTION_TYPE::UFV && reconstruction_order == 1)
-   { ufv1_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology, *this->geom); }
+
 
    if (reconstruction_type == RECONSTRUCTION_TYPE::CFV && reconstruction_order == 2)
    { cfv2_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, *this->topology, *this->geom);}
@@ -235,6 +235,8 @@ public:
    if (reconstruction_type == RECONSTRUCTION_TYPE::CFV && reconstruction_order == 10)
    { cfv10_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, *this->topology, *this->geom);}
 
+   if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 1)
+   { weno1_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology, *this->geom); }
    if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 3)
    { weno3_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology, *this->geom); }
    if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 5)
@@ -295,9 +297,9 @@ public:
   void initialize(ModelParameters &params, Parallel &par)
   {
     statsize = params.Nsteps/params.Nstat + 1;
-    stats_arr[0].initialize("mass", params, par);
-    stats_arr[1].initialize("min", params, par);
-    stats_arr[2].initialize("max", params, par);
+    stats_arr[0].initialize("qmass", params, par);
+    stats_arr[1].initialize("qmin", params, par);
+    stats_arr[2].initialize("qmax", params, par);
     masterproc = par.masterproc;
   }
 

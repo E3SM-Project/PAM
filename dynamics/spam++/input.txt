@@ -10,10 +10,10 @@ Nout = 5
 Nstat = 1
 
 // Parallel decomposition
-nprocx = 2
-nprocy = 2
+nprocx = 1
+nprocy = 1
 nprocz = 1
 
 // initial condition
 dataInit = square
-windInit = uniform_x
+windInit = uniform_xy
