@@ -5,62 +5,7 @@
 #include "common.h"
 #include "topology.h"
 #include "geometry.h"
-
-//ALL OF THESE ASSUME A DIAGONAL HODGE STAR THAT MAPS FROM N-FORMS TO 0-FORMS
-//WE LIKELY WANT TO BE MORE CLEVER FOR HIGHER ORDER VERSIONS...
-
-
-
-#define xvar(p) var(l, k+ks, j+js, i+is+p)/geom.get_J_cell(k+ks, j+js, i+is+p)
-#define yvar(p) var(l, k+ks, j+js+p, i+is)/geom.get_J_cell(k+ks, j+js+p, i+is)
-#define zvar(p) var(l, k+ks+p, j+js, i+is)/geom.get_J_cell(k+ks+p, j+js, i+is)
-
-
-
-
-// CFV Interpolations
-real YAKL_INLINE interp_2(real phi, real phip1){
-    return 0.5*(phi + phip1);
-};
-
-real YAKL_INLINE interp_4(real phim1, real phi, real phip1, real phip2){
-    return (7.0/12.0)*(phi + phip1 ) -(1.0/12.0)*(phim1 + phip2);
-};
-
-
-real YAKL_INLINE interp_6(real phim2, real phim1, real phi, real phip1,
-                real phip2, real phip3){
-    return ((37.0/60.0) * (phi + phip1) - (2.0/15.0)*(phim1 + phip2)
-            + (1.0/60.0)*(phim2 + phip3));
-};
-
-
-real YAKL_INLINE interp_8(real phim3, real phim2, real phim1, real phi,
-                real phip1, real phip2, real phip3, real phip4){
-   return  (533./840. * (phi + phip1) - 139.0/840.0 * (phim1 + phip2 )
-            + 29.0/840.0 * (phim2 + phip3) -1.0/280.0*(phim3 + phip4));
-};
-
-
-real YAKL_INLINE interp_10(real phim4, real phim3, real phim2, real phim1,
-                real phi, real phip1, real phip2, real phip3,
-                real phip4, real phip5){
-    return (1627.0/2520.0 * (phi + phip1) - 473.0/2520.0 * (phim1 + phip2 )
-                       + 127.0/2520.0* (phim2 + phip3) -23.0/2520.0 *(phim3 + phip4)
-                        + 1.0/1260.0*(phim4 + phip5));
-};
-
-
-
-
-
-
-
-
-
-
-
-
+#include "interpolations.h"
 
 template<uint ndims, uint ndofs> void YAKL_INLINE cfv2_recon(realArr recon, const realArr var, const Topology<ndims> &topology, Geometry<ndims,1,1,1> &geom) {
 

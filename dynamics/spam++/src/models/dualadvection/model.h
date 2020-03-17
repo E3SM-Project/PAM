@@ -5,9 +5,9 @@
 #include "common.h"
 #include "topology.h"
 #include "variable_sets.h"
-#include "divergence.h"
-#include "weno.h"
-#include "cfv.h"
+#include "divergence_dual.h"
+#include "weno_dual.h"
+#include "cfv_dual.h"
 #include "geometry.h"
 #include "params.h"
 #include "string.h"
@@ -225,40 +225,43 @@ public:
 
 
    if (reconstruction_type == RECONSTRUCTION_TYPE::CFV && reconstruction_order == 2)
-   { cfv2_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, *this->topology, *this->geom);}
+   { cfv2_dual_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, *this->topology, *this->geom);}
    if (reconstruction_type == RECONSTRUCTION_TYPE::CFV && reconstruction_order == 4)
-   { cfv4_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, *this->topology, *this->geom);}
+   { cfv4_dual_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, *this->topology, *this->geom);}
    if (reconstruction_type == RECONSTRUCTION_TYPE::CFV && reconstruction_order == 6)
-   { cfv6_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, *this->topology, *this->geom);}
+   { cfv6_dual_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, *this->topology, *this->geom);}
    if (reconstruction_type == RECONSTRUCTION_TYPE::CFV && reconstruction_order == 8)
-   { cfv8_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, *this->topology, *this->geom);}
+   { cfv8_dual_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, *this->topology, *this->geom);}
    if (reconstruction_type == RECONSTRUCTION_TYPE::CFV && reconstruction_order == 10)
-   { cfv10_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, *this->topology, *this->geom);}
+   { cfv10_dual_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, *this->topology, *this->geom);}
 
    if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 1)
-   { weno1_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology, *this->geom); }
+   { weno1_dual_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology, *this->geom); }
    if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 3)
-   { weno3_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology, *this->geom); }
+   { weno3_dual_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology, *this->geom); }
    if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 5)
-   { weno5_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology, *this->geom); }
+   { weno5_dual_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology, *this->geom); }
    if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 7)
-   { weno7_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology, *this->geom); }
+   { weno7_dual_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology, *this->geom); }
    if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 9)
-   { weno9_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology, *this->geom); }
+   { weno9_dual_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology, *this->geom); }
    if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 11)
-   { weno11_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology, *this->geom); }
+   { weno11_dual_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology, *this->geom); }
 
    this->diag_exchange->exchange_variable_set(diagnostic_vars);
 
    //compute D (qrecon U)
    if (differential_order == 2)
-   { divergence2<ndims, nqdofs>(xtend.fields_arr[0].data, diagnostic_vars.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology); }
+   { dual_divergence2<ndims, nqdofs>(xtend.fields_arr[0].data, diagnostic_vars.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology); }
    if (differential_order == 4)
-   { divergence4<ndims, nqdofs>(xtend.fields_arr[0].data, diagnostic_vars.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology); }
+   { dual_divergence4<ndims, nqdofs>(xtend.fields_arr[0].data, diagnostic_vars.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology); }
    if (differential_order == 6)
-   { divergence6<ndims, nqdofs>(xtend.fields_arr[0].data, diagnostic_vars.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology); }
+   { dual_divergence6<ndims, nqdofs>(xtend.fields_arr[0].data, diagnostic_vars.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology); }
    if (differential_order == 8)
-   { divergence8<ndims, nqdofs>(xtend.fields_arr[0].data, diagnostic_vars.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology); }
+   { dual_divergence8<ndims, nqdofs>(xtend.fields_arr[0].data, diagnostic_vars.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology); }
+
+// ALSO LOOK AT ALTERNATE VERSION THAT DOES CQ instead of D (q U)- would test Q2D and C!
+
  }
 
 };
@@ -346,21 +349,21 @@ std::array<const Topology<ndims> *, nprognostic> &prog_topo_arr, std::array<cons
   diag_names_arr[0] = "qrecon";
 
   if (ndims == 1) {
-    prog_ndofs_arr(0,1) = nqdofs;
-    const_ndofs_arr(0,0) = 1;
-    diag_ndofs_arr(0,0) = nqdofs;
+    prog_ndofs_arr(0,0) = nqdofs;
+    const_ndofs_arr(0,1) = 1;
+    diag_ndofs_arr(0,1) = nqdofs;
   }
 
   if (ndims == 2) {
-    prog_ndofs_arr(0,2) = nqdofs;
+    prog_ndofs_arr(0,0) = nqdofs;
     const_ndofs_arr(0,1) = 1;
     diag_ndofs_arr(0,1) = nqdofs;
   }
 
   if (ndims == 3) {
-    prog_ndofs_arr(0,3) = nqdofs;
-    const_ndofs_arr(0,2) = 1;
-    diag_ndofs_arr(0,2) = nqdofs;
+    prog_ndofs_arr(0,0) = nqdofs;
+    const_ndofs_arr(0,1) = 1;
+    diag_ndofs_arr(0,1) = nqdofs;
   }
 
 }
@@ -372,24 +375,24 @@ template <int nprog, int nconst, int ndiag, int nquadx, int nquady, int nquadz> 
 
     for (int i=0; i<nqdofs; i++)
     {
-    if (params.data_init_cond == DATA_INIT::GAUSSIAN) {geom.set_primal_1form_values(gaussian, progvars.fields_arr[0], i);}
-    if (params.data_init_cond == DATA_INIT::SQUARE)   {geom.set_primal_1form_values(square,   progvars.fields_arr[0], i);}
+    if (params.data_init_cond == DATA_INIT::GAUSSIAN) {geom.set_dual_1form_values(gaussian, progvars.fields_arr[0], i);}
+    if (params.data_init_cond == DATA_INIT::SQUARE)   {geom.set_dual_1form_values(square,   progvars.fields_arr[0], i);}
     }
-    if (params.wind_init_cond == WIND_INIT::UNIFORM_X ) {geom.set_primal_0form_values(uniform_x_wind,     constvars.fields_arr[0], 0);}
+    if (params.wind_init_cond == WIND_INIT::UNIFORM_X ) {geom.set_dual_0form_values(uniform_x_wind,     constvars.fields_arr[0], 0);}
 }
 
 template <int nprog, int nconst, int ndiag, int nquadx, int nquady, int nquadz> void set_initial_conditions (ModelParameters &params, VariableSet<2, nprog> &progvars, VariableSet<2, nconst> &constvars, Geometry<2, nquadx, nquady, nquadz> &geom)
 {
     for (int i=0; i<nqdofs; i++)
     {
-    if (params.data_init_cond == DATA_INIT::GAUSSIAN) {geom.set_primal_2form_values(gaussian, progvars.fields_arr[0], i);}
-    if (params.data_init_cond == DATA_INIT::VORTICES) {geom.set_primal_2form_values(vortices, progvars.fields_arr[0], i);}
-    if (params.data_init_cond == DATA_INIT::SQUARE)   {geom.set_primal_2form_values(square,   progvars.fields_arr[0], i);}
+    if (params.data_init_cond == DATA_INIT::GAUSSIAN) {geom.set_dual_2form_values(gaussian, progvars.fields_arr[0], i);}
+    if (params.data_init_cond == DATA_INIT::VORTICES) {geom.set_dual_2form_values(vortices, progvars.fields_arr[0], i);}
+    if (params.data_init_cond == DATA_INIT::SQUARE)   {geom.set_dual_2form_values(square,   progvars.fields_arr[0], i);}
     }
-    if (params.wind_init_cond == WIND_INIT::UNIFORM_X    ) {geom.set_primal_1form_values(uniform_x_wind,     constvars.fields_arr[0], 0, LINE_INTEGRAL_TYPE::NORMAL);}
-    if (params.wind_init_cond == WIND_INIT::UNIFORM_Y    ) {geom.set_primal_1form_values(uniform_y_wind,     constvars.fields_arr[0], 0, LINE_INTEGRAL_TYPE::NORMAL);}
-    if (params.wind_init_cond == WIND_INIT::UNIFORM_XY   ) {geom.set_primal_1form_values(uniform_xy_wind,    constvars.fields_arr[0], 0, LINE_INTEGRAL_TYPE::NORMAL);}
-    if (params.wind_init_cond == WIND_INIT::DEFORMATIONAL) {geom.set_primal_1form_values(deformational_wind, constvars.fields_arr[0], 0, LINE_INTEGRAL_TYPE::NORMAL);}
+    if (params.wind_init_cond == WIND_INIT::UNIFORM_X    ) {geom.set_dual_1form_values(uniform_x_wind,     constvars.fields_arr[0], 0, LINE_INTEGRAL_TYPE::NORMAL);}
+    if (params.wind_init_cond == WIND_INIT::UNIFORM_Y    ) {geom.set_dual_1form_values(uniform_y_wind,     constvars.fields_arr[0], 0, LINE_INTEGRAL_TYPE::NORMAL);}
+    if (params.wind_init_cond == WIND_INIT::UNIFORM_XY   ) {geom.set_dual_1form_values(uniform_xy_wind,    constvars.fields_arr[0], 0, LINE_INTEGRAL_TYPE::NORMAL);}
+    if (params.wind_init_cond == WIND_INIT::DEFORMATIONAL) {geom.set_dual_1form_values(deformational_wind, constvars.fields_arr[0], 0, LINE_INTEGRAL_TYPE::NORMAL);}
 
 }
 
@@ -398,13 +401,13 @@ template <int nprog, int nconst, int ndiag, int nquadx, int nquady, int nquadz> 
 {
     for (int i=0; i<nqdofs; i++)
     {
-    if (params.data_init_cond == DATA_INIT::GAUSSIAN) {geom.set_primal_3form_values(gaussian, progvars.fields_arr[0], i);}
-    if (params.data_init_cond == DATA_INIT::SQUARE)   {geom.set_primal_3form_values(square,   progvars.fields_arr[0], i);}
+    if (params.data_init_cond == DATA_INIT::GAUSSIAN) {geom.set_dual_3form_values(gaussian, progvars.fields_arr[0], i);}
+    if (params.data_init_cond == DATA_INIT::SQUARE)   {geom.set_dual_3form_values(square,   progvars.fields_arr[0], i);}
     }
-    if (params.wind_init_cond == WIND_INIT::UNIFORM_X    ) {geom.set_primal_2form_values(uniform_x_wind,     constvars.fields_arr[0], 0);}
-    if (params.wind_init_cond == WIND_INIT::UNIFORM_Y    ) {geom.set_primal_2form_values(uniform_y_wind,     constvars.fields_arr[0], 0);}
-    if (params.wind_init_cond == WIND_INIT::UNIFORM_Z    ) {geom.set_primal_2form_values(uniform_z_wind,     constvars.fields_arr[0], 0);}
-    if (params.wind_init_cond == WIND_INIT::DEFORMATIONAL) {geom.set_primal_2form_values(deformational_wind, constvars.fields_arr[0], 0);}
+    if (params.wind_init_cond == WIND_INIT::UNIFORM_X    ) {geom.set_dual_2form_values(uniform_x_wind,     constvars.fields_arr[0], 0);}
+    if (params.wind_init_cond == WIND_INIT::UNIFORM_Y    ) {geom.set_dual_2form_values(uniform_y_wind,     constvars.fields_arr[0], 0);}
+    if (params.wind_init_cond == WIND_INIT::UNIFORM_Z    ) {geom.set_dual_2form_values(uniform_z_wind,     constvars.fields_arr[0], 0);}
+    if (params.wind_init_cond == WIND_INIT::DEFORMATIONAL) {geom.set_dual_2form_values(deformational_wind, constvars.fields_arr[0], 0);}
 }
 
 #endif

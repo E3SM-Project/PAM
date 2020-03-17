@@ -1,5 +1,5 @@
 
-rm *.png *.nc advection
+rm *.png *.nc swe
 make
-mpirun -n $1 ./advection input.txt
-python3 plot_advection.py
+mpirun -n $1 ./swe input.txt
+python3 plot_swe.py
