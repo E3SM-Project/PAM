@@ -5,7 +5,7 @@
 #include "common.h"
 #include "topology.h"
 
-template<uint ndims> void YAKL_INLINE curl2D_2( realArr var, const realArr flux, const Topology<ndims> &topology) {
+void YAKL_INLINE curl2D_2( realArr var, const realArr flux, const Topology<2> &topology) {
 
   int is = topology.is;
   int js = topology.js;
@@ -15,8 +15,10 @@ template<uint ndims> void YAKL_INLINE curl2D_2( realArr var, const realArr flux,
       int k, j, i;
       yakl::unpackIndices(iGlob, topology.n_cells_z, topology.n_cells_y, topology.n_cells_x, k, j, i);
 
-      var(0,k+ks,j+js,i+is) = flux(1,k+ks,j+js,i+is) - flux(0,k+ks,j+js,i+is) - flux(1,k+ks,j+js,i+is-1) + flux(0,k+ks,j+js-1,i+is);
+      var(0,k+ks,j+js,i+is) = (flux(1,k+ks,j+js,i+is) - flux(0,k+ks,j+js,i+is) - flux(1,k+ks,j+js,i+is-1) + flux(0,k+ks,j+js-1,i+is));
 
   });
 
 }
+
+#endif

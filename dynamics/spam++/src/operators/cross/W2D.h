@@ -5,7 +5,7 @@
 #include "common.h"
 #include "topology.h"
 
-template<uint ndims> void YAKL_INLINE W2D_2( realArr var, const realArr flux, const Topology<ndims> &topology) {
+void YAKL_INLINE W2D_2( realArr var, const realArr flux, const Topology<2> &topology) {
 
   int is = topology.is;
   int js = topology.js;
@@ -16,10 +16,18 @@ template<uint ndims> void YAKL_INLINE W2D_2( realArr var, const realArr flux, co
       yakl::unpackIndices(iGlob, topology.n_cells_z, topology.n_cells_y, topology.n_cells_x, k, j, i);
 
       //x-dir
-      var(0,k+ks,j+js,i+is) = -1./4. * (flux(1,k+ks,j+js,i+is) + flux(1,k+ks,j+js,i+is-1) + flux(1,k+ks,j+js+1,i+is) + flux(1,k+ks,j+js+1,i+is-1));
+      var(0,k+ks,j+js,i+is) = -1./4. * (flux(1,k+ks,j+js  ,i+is  )
+                                      + flux(1,k+ks,j+js  ,i+is-1)
+                                      + flux(1,k+ks,j+js+1,i+is  )
+                                      + flux(1,k+ks,j+js+1,i+is-1));
 
       //y-dir
-      var(1,k+ks,j+js,i+is) = 1./4. * (flux(0,k+ks,j+js,i+is) + flux(0,k+ks,j+js,i+is+1) + flux(0,k+ks,j+js-1,i+is) + flux(0,k+ks,j+js-1,i+is+1));
+      var(1,k+ks,j+js,i+is) = 1./4. * (flux(0,k+ks,j+js  ,i+is  )
+                                     + flux(0,k+ks,j+js  ,i+is+1)
+                                     + flux(0,k+ks,j+js-1,i+is  )
+                                     + flux(0,k+ks,j+js-1,i+is+1));
   });
 
 }
+
+#endif

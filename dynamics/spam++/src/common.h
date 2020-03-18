@@ -90,7 +90,7 @@ RECONSTRUCTION_TYPE constexpr reconstruction_type = RECONSTRUCTION_TYPE::WENO;
 uint constexpr reconstruction_order = 9;
 
 // Halo sizes
-uint maxhalosize = mymax(reconstruction_order+1,differential_order)/2; // IS THIS ALWAYS CORRECT?
+uint maxhalosize = 10; //mymax(reconstruction_order+1,differential_order)/2; // IS THIS ALWAYS CORRECT?
 
 // initial condition quadrature pts
 uint constexpr ic_quad_pts = 3;

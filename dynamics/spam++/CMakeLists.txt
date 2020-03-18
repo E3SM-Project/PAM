@@ -24,6 +24,7 @@ include_directories(src/models)
 include_directories(src/operators)
 include_directories(src/operators/differential)
 include_directories(src/operators/reconstructions)
+include_directories(src/operators/cross)
 include_directories(src/timesteppers)
 
 if ("${MODEL}" STREQUAL "advection")

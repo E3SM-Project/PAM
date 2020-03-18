@@ -224,9 +224,11 @@ public:
     statStart[0] = 0; statCount[0] = this->statistics->statsize;
     for (int l=0; l<this->statistics->stats_arr.size(); l++)
     {
+        ncwrap( ncmpi_inq_varid( ncid , this->statistics->stats_arr[l].name.c_str() , &stat_ids[l]  ) , __LINE__ );
       ncwrap( PNETCDF_PUT_VAR(ncid, stat_ids[l], statStart, statCount, this->statistics->stats_arr[l].data.createHostCopy().data()) , __LINE__ );
     }
     }
+
     ncwrap( ncmpi_end_indep_data(ncid) , __LINE__ );
     ncwrap( ncmpi_close(ncid) , __LINE__ );
 
