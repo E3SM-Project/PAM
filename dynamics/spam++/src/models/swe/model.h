@@ -22,46 +22,44 @@
 
 // Number of variables
 uint constexpr nprognostic = 2; // h, v
-uint constexpr nconstant = 1;   // hs
-uint constexpr ndiagnostic = 3; // B, F, q
+uint constexpr nconstant = 2;   // hs, coriolis
+uint constexpr ndiagnostic = 5; // B, F, q, hrecon, qrecon
 uint constexpr nstats = 4;      // M, TE, PE, PV
 
-// ADD SUPPORT FOR 1D rswe version!
-// WOULD INTRODUCE AN ADDITIONAL PROGNOSTIC VARIABLE THOUGH...UGGH
-// Maybe we need actual prognostic varible set classes?
-// Basically a bunch of base classes that have empty functions, and then overloaded versions for subclasses as needed?
-// We know everything at compile time anyways!
+#define HVAR 0
+#define VVAR 1
 
-// Initial conditions related variables and functions
-// FIX THIS STUFF UP
+#define HSVAR 0
+#define CORIOLISVAR 1
 
-#define gaussian_1d(x)     (1. * exp(-100. * pow(x-0.5,2.)))
-#define gaussian_2d(x,y)   (1. * exp(-100. * pow(x-0.5,2.)) * exp(-100. * pow(y-0.5,2.)))
-#define gaussian_3d(x,y,z) (1. * exp(-100. * pow(x-0.5,2.)) * exp(-100. * pow(y-0.5,2.)) * exp(-100. * pow(z-0.5,2.)))
-real YAKL_INLINE gaussian(real x)                 { return gaussian_1d(x); }
-real YAKL_INLINE gaussian(real x, real y)         { return gaussian_2d(x,y); }
-real YAKL_INLINE gaussian(real x, real y, real z) { return gaussian_3d(x,y,z); }
+#define BVAR 0
+#define FVAR 1
+#define QVAR 2
+#define HRECONVAR 3
+#define QRECONVAR 4
 
-#define C_UNIFORM_WIND 1.
-
-real YAKL_INLINE uniform_x_wind(real x) {
-  return C_UNIFORM_WIND;
-}
-vec<2> YAKL_INLINE uniform_x_wind(real x, real y) {
-  vec<2> vvec;
-  vvec.u = C_UNIFORM_WIND;
-  return vvec;
-}
-vec<3> YAKL_INLINE uniform_x_wind(real x, real y, real z) {
-  vec<3> vvec;
-  vvec.u = C_UNIFORM_WIND;
-  return vvec;
-}
-
-}
+#define MSTAT 0
+#define TESTAT 1
+#define PVSTAT 2
+#define PESTAT 3
 
 // *******   Model Specific Parameters   ***********//
 
+// THESE ARE DOUBLE VORTEX SPECIFIC...
+  real constexpr Lx = 5000. * 1000.;
+  real constexpr Ly = 5000. * 1000.;
+  real constexpr H0 = 750.0;
+  real constexpr ox = 0.1;
+  real constexpr oy = 0.1;
+  real constexpr sigmax = 3./40.*Lx;
+  real constexpr sigmay = 3./40.*Lx;
+  real constexpr dh = 75.0;
+  real constexpr g = 9.80616;
+  real constexpr coriolis = 0.00006147;
+  real constexpr xc1 = (0.5-ox) * Lx;
+  real constexpr yc1 = (0.5-oy) * Ly;
+  real constexpr xc2 = (0.5+ox) * Lx;
+  real constexpr yc2 = (0.5+oy) * Ly;
 
 template<uint ndims> void set_model_specific_params(std::string inFile, ModelParameters &params)
 {
@@ -116,14 +114,30 @@ template<uint ndims> void set_model_specific_params(std::string inFile, ModelPar
 
   params.etime = 0.0;
 
-// FIX THESE
-  if (params.data_init_cond == DATA_INIT::DOUBLEVORTEX || params.data_init_cond == DATA_INIT::GOLO || params.data_init_cond == DATA_INIT::TC2 || params.data_init_cond == DATA_INIT::TC5)
+
+  if (params.data_init_cond == DATA_INIT::DOUBLEVORTEX)
   {
-  params.xlen = 1.0;
-  params.xc = 0.5;
-  params.ylen = 1.0;
-  params.yc = 0.5;
+  params.xlen = Lx;
+  params.xc = Lx/2.;
+  params.ylen = Ly;
+  params.yc = Ly/2.;
   }
+
+  // if (params.data_init_cond == DATA_INIT::GOLO)
+  // {
+  // params.xlen = 1.0;
+  // params.xc = 0.5;
+  // params.ylen = 1.0;
+  // params.yc = 0.5;
+  // }
+  //
+  // if (params.data_init_cond == DATA_INIT::TC2 || params.data_init_cond == DATA_INIT::TC5)
+  // {
+  // params.xlen = 1.0;
+  // params.xc = 0.5;
+  // params.ylen = 1.0;
+  // params.yc = 0.5;
+  // }
 
 }
 
@@ -154,50 +168,107 @@ public:
     this->is_initialized = true;
   }
 
+void YAKL_INLINE compute_primal_reconstruction(realArr reconvar, realArr densityvar, realArr fluxvar)
+{
+    if (reconstruction_type == RECONSTRUCTION_TYPE::CFV && reconstruction_order == 2)
+    { cfv2_recon<ndims, 1>(reconvar, densityvar, *this->topology, *this->geom);}
+    if (reconstruction_type == RECONSTRUCTION_TYPE::CFV && reconstruction_order == 4)
+    { cfv4_recon<ndims, 1>(reconvar, densityvar, *this->topology, *this->geom);}
+    if (reconstruction_type == RECONSTRUCTION_TYPE::CFV && reconstruction_order == 6)
+    { cfv6_recon<ndims, 1>(reconvar, densityvar, *this->topology, *this->geom);}
+    if (reconstruction_type == RECONSTRUCTION_TYPE::CFV && reconstruction_order == 8)
+    { cfv8_recon<ndims, 1>(reconvar, densityvar, *this->topology, *this->geom);}
+    if (reconstruction_type == RECONSTRUCTION_TYPE::CFV && reconstruction_order == 10)
+    { cfv10_recon<ndims, 1>(reconvar, densityvar, *this->topology, *this->geom);}
+
+    if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 1)
+    { weno1_recon<ndims, 1>(reconvar, densityvar, fluxvar, *this->topology, *this->geom); }
+    if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 3)
+    { weno3_recon<ndims, 1>(reconvar, densityvar, fluxvar, *this->topology, *this->geom); }
+    if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 5)
+    { weno5_recon<ndims, 1>(reconvar, densityvar, fluxvar, *this->topology, *this->geom); }
+    if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 7)
+    { weno7_recon<ndims, 1>(reconvar, densityvar, fluxvar, *this->topology, *this->geom); }
+    if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 9)
+    { weno9_recon<ndims, 1>(reconvar, densityvar, fluxvar, *this->topology, *this->geom); }
+    if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 11)
+    { weno11_recon<ndims, 1>(reconvar, densityvar, fluxvar, *this->topology, *this->geom); }
+}
+
+void YAKL_INLINE compute_dual_reconstruction(realArr reconvar, realArr densityvar, realArr fluxvar)
+{
+    if (reconstruction_type == RECONSTRUCTION_TYPE::CFV && reconstruction_order == 2)
+    { cfv2_dual_recon<ndims, 1>(reconvar, densityvar, *this->topology, *this->geom);}
+    if (reconstruction_type == RECONSTRUCTION_TYPE::CFV && reconstruction_order == 4)
+    { cfv4_dual_recon<ndims, 1>(reconvar, densityvar, *this->topology, *this->geom);}
+    if (reconstruction_type == RECONSTRUCTION_TYPE::CFV && reconstruction_order == 6)
+    { cfv6_dual_recon<ndims, 1>(reconvar, densityvar, *this->topology, *this->geom);}
+    if (reconstruction_type == RECONSTRUCTION_TYPE::CFV && reconstruction_order == 8)
+    { cfv8_dual_recon<ndims, 1>(reconvar, densityvar, *this->topology, *this->geom);}
+    if (reconstruction_type == RECONSTRUCTION_TYPE::CFV && reconstruction_order == 10)
+    { cfv10_dual_recon<ndims, 1>(reconvar, densityvar, *this->topology, *this->geom);}
+
+    if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 1)
+    { weno1_dual_recon<ndims, 1>(false, reconvar, densityvar, fluxvar, *this->topology, *this->geom); }
+    if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 3)
+    { weno3_dual_recon<ndims, 1>(false, reconvar, densityvar, fluxvar, *this->topology, *this->geom); }
+    if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 5)
+    { weno5_dual_recon<ndims, 1>(false, reconvar, densityvar, fluxvar, *this->topology, *this->geom); }
+    if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 7)
+    { weno7_dual_recon<ndims, 1>(false, reconvar, densityvar, fluxvar, *this->topology, *this->geom); }
+    if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 9)
+    { weno9_dual_recon<ndims, 1>(false, reconvar, densityvar, fluxvar, *this->topology, *this->geom); }
+    if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 11)
+    { weno11_dual_recon<ndims, 1>(false, reconvar, densityvar, fluxvar, *this->topology, *this->geom); }
+}
+
+void YAKL_INLINE compute_B()
+{
+
+}
+
+void YAKL_INLINE compute_F()
+{
+
+}
+
+void YAKL_INLINE compute_q()
+{
+
+}
+
 // THIS NEEDS MAJOR FIXING
 // compute B, F, q
 // compute rhs for h and v
   void compute_rhs(const VariableSet<ndims, nconst> &const_vars, VariableSet<ndims, nprog> &x, VariableSet<ndims, ndiag> &diagnostic_vars, VariableSet<ndims, nprog> &xtend)
   {
 
-   //compute reconstructions
+   //Compute B: requires v, h, hs
 
+//Compute F: requires v, h
 
-   if (reconstruction_type == RECONSTRUCTION_TYPE::CFV && reconstruction_order == 2)
-   { cfv2_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, *this->topology, *this->geom);}
-   if (reconstruction_type == RECONSTRUCTION_TYPE::CFV && reconstruction_order == 4)
-   { cfv4_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, *this->topology, *this->geom);}
-   if (reconstruction_type == RECONSTRUCTION_TYPE::CFV && reconstruction_order == 6)
-   { cfv6_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, *this->topology, *this->geom);}
-   if (reconstruction_type == RECONSTRUCTION_TYPE::CFV && reconstruction_order == 8)
-   { cfv8_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, *this->topology, *this->geom);}
-   if (reconstruction_type == RECONSTRUCTION_TYPE::CFV && reconstruction_order == 10)
-   { cfv10_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, *this->topology, *this->geom);}
+   //Compute q: requires v, f, h
 
-   if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 1)
-   { weno1_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology, *this->geom); }
-   if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 3)
-   { weno3_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology, *this->geom); }
-   if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 5)
-   { weno5_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology, *this->geom); }
-   if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 7)
-   { weno7_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology, *this->geom); }
-   if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 9)
-   { weno9_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology, *this->geom); }
-   if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 11)
-   { weno11_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology, *this->geom); }
+   //Compute h reconstructions
+compute_primal_reconstruction(diagnostic_vars.fields_arr[HRECONVAR].data, x.fields_arr[HVAR].data, diagnostic_vars.fields_arr[FVAR].data);
+
+   //Compute q reconstructions
+compute_dual_reconstruction(diagnostic_vars.fields_arr[QRECONVAR].data, diagnostic_vars.fields_arr[QVAR].data, diagnostic_vars.fields_arr[FVAR].data);
 
    this->diag_exchange->exchange_variable_set(diagnostic_vars);
 
-   //compute D (qrecon U)
+   //compute h rhs = D (hrecon F)
    if (differential_order == 2)
-   { divergence2<ndims, nqdofs>(xtend.fields_arr[0].data, diagnostic_vars.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology); }
+   { divergence2<ndims, 1>(xtend.fields_arr[HVAR].data, diagnostic_vars.fields_arr[HRECONVAR].data, diagnostic_vars.fields_arr[FVAR].data, *this->topology); }
    if (differential_order == 4)
-   { divergence4<ndims, nqdofs>(xtend.fields_arr[0].data, diagnostic_vars.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology); }
+   { divergence4<ndims, 1>(xtend.fields_arr[HVAR].data, diagnostic_vars.fields_arr[HRECONVAR].data, diagnostic_vars.fields_arr[FVAR].data, *this->topology); }
    if (differential_order == 6)
-   { divergence6<ndims, nqdofs>(xtend.fields_arr[0].data, diagnostic_vars.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology); }
+   { divergence6<ndims, 1>(xtend.fields_arr[HVAR].data, diagnostic_vars.fields_arr[HRECONVAR].data, diagnostic_vars.fields_arr[FVAR].data, *this->topology); }
    if (differential_order == 8)
-   { divergence8<ndims, nqdofs>(xtend.fields_arr[0].data, diagnostic_vars.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology); }
+   { divergence8<ndims, 1>(xtend.fields_arr[HVAR].data, diagnostic_vars.fields_arr[HRECONVAR].data, diagnostic_vars.fields_arr[FVAR].data, *this->topology); }
+
+// FIX THIS
+   //compute u rhs = hrecon G B + Q F
  }
 
 };
@@ -226,6 +297,7 @@ void initialize(std::string statName, ModelParameters &params, Parallel &par)
 };
 
 
+
 template <uint ndims, uint nprog, uint nconst, uint nstats> class Stats
 {
 public:
@@ -239,10 +311,10 @@ public:
   void initialize(ModelParameters &params, Parallel &par)
   {
     statsize = params.Nsteps/params.Nstat + 1;
-    stats_arr[0].initialize("mass", params, par);
-    stats_arr[1].initialize("energy", params, par);
-    stats_arr[2].initialize("potential vorticity", params, par);
-    stats_arr[2].initialize("potential enstrophy", params, par);
+    stats_arr[MSTAT].initialize("mass", params, par);
+    stats_arr[TESTAT].initialize("energy", params, par);
+    stats_arr[PVSTAT].initialize("potential vorticity", params, par);
+    stats_arr[PESTAT].initialize("potential enstrophy", params, par);
     masterproc = par.masterproc;
   }
 
@@ -251,26 +323,29 @@ public:
 // FIX THESE COMPUTATIONS
   void compute( VariableSet<ndims, nprog> &progvars,  VariableSet<ndims, nprog> &constvars, int i)
   {
+     // DO A LOOP HERE!
 
-    //compute locally
-    this->stats_arr[0].local_dat = progvars.fields_arr[0].sum();
-    this->stats_arr[1].local_dat = progvars.fields_arr[0].sum();
-    this->stats_arr[2].local_dat = progvars.fields_arr[0].sum();
-    this->stats_arr[3].local_dat = progvars.fields_arr[0].sum();
+     //compute q locally
+
+    //compute stats locally
+    this->stats_arr[MSTAT].local_dat = progvars.fields_arr[HVAR].sum();
+    this->stats_arr[TESTAT].local_dat = progvars.fields_arr[0].sum();
+    this->stats_arr[PVSTAT].local_dat = progvars.fields_arr[0].sum();
+    this->stats_arr[PESTAT].local_dat = progvars.fields_arr[0].sum();
 
     //MPI sum/min/max
-    this->ierr = MPI_Ireduce( &this->stats_arr[0].local_dat, &this->stats_arr[0].global_dat, 1, REAL_MPI, MPI_SUM, 0, MPI_COMM_WORLD, &this->Req[0]);
-    this->ierr = MPI_Ireduce( &this->stats_arr[1].local_dat, &this->stats_arr[1].global_dat, 1, REAL_MPI, MPI_SUM, 0, MPI_COMM_WORLD, &this->Req[1]);
-    this->ierr = MPI_Ireduce( &this->stats_arr[2].local_dat, &this->stats_arr[2].global_dat, 1, REAL_MPI, MPI_SUM, 0, MPI_COMM_WORLD, &this->Req[2]);
-    this->ierr = MPI_Ireduce( &this->stats_arr[2].local_dat, &this->stats_arr[2].global_dat, 1, REAL_MPI, MPI_SUM, 0, MPI_COMM_WORLD, &this->Req[2]);
+    this->ierr = MPI_Ireduce( &this->stats_arr[MSTAT].local_dat, &this->stats_arr[MSTAT].global_dat, 1, REAL_MPI, MPI_SUM, 0, MPI_COMM_WORLD, &this->Req[0]);
+    this->ierr = MPI_Ireduce( &this->stats_arr[TESTAT].local_dat, &this->stats_arr[TESTAT].global_dat, 1, REAL_MPI, MPI_SUM, 0, MPI_COMM_WORLD, &this->Req[1]);
+    this->ierr = MPI_Ireduce( &this->stats_arr[PVSTAT].local_dat, &this->stats_arr[PVSTAT].global_dat, 1, REAL_MPI, MPI_SUM, 0, MPI_COMM_WORLD, &this->Req[2]);
+    this->ierr = MPI_Ireduce( &this->stats_arr[PESTAT].local_dat, &this->stats_arr[PESTAT].global_dat, 1, REAL_MPI, MPI_SUM, 0, MPI_COMM_WORLD, &this->Req[3]);
     this->ierr = MPI_Waitall(4, this->Req, this->Status);
 
   if (masterproc)
   {
-  this->stats_arr[0].data(i) = this->stats_arr[0].global_dat;
-  this->stats_arr[1].data(i) = this->stats_arr[1].global_dat;
-  this->stats_arr[2].data(i) = this->stats_arr[2].global_dat;
-  this->stats_arr[3].data(i) = this->stats_arr[3].global_dat;
+  this->stats_arr[MSTAT].data(i) = this->stats_arr[0].global_dat;
+  this->stats_arr[TESTAT].data(i) = this->stats_arr[1].global_dat;
+  this->stats_arr[PVSTAT].data(i) = this->stats_arr[2].global_dat;
+  this->stats_arr[PESTAT].data(i) = this->stats_arr[3].global_dat;
   }
   }
 };
@@ -287,55 +362,113 @@ SArray<int, nprognostic, 4> &prog_ndofs_arr, SArray<int, nconstant, 4> &const_nd
 std::array<std::string, nprognostic> &prog_names_arr, std::array<std::string, nconstant> &const_names_arr, std::array<std::string, ndiagnostic> &diag_names_arr,
 std::array<const Topology<ndims> *, nprognostic> &prog_topo_arr, std::array<const Topology<ndims> *, nconstant> &const_topo_arr, std::array<const Topology<ndims> *, ndiagnostic> &diag_topo_arr)
 {
-  prog_topo_arr[0] = &topo;
-  prog_topo_arr[1] = &topo;
-  const_topo_arr[0] = &topo;
-  diag_topo_arr[0] = &topo;
-  diag_topo_arr[1] = &topo;
-  diag_topo_arr[2] = &topo;
+  prog_topo_arr[HVAR] = &topo;
+  prog_topo_arr[VVAR] = &topo;
+  const_topo_arr[HSVAR] = &topo;
+  const_topo_arr[CORIOLISVAR] = &topo;
+  diag_topo_arr[BVAR] = &topo;
+  diag_topo_arr[FVAR] = &topo;
+  diag_topo_arr[QVAR] = &topo;
+  diag_topo_arr[HRECONVAR] = &topo;
+  diag_topo_arr[QRECONVAR] = &topo;
 
 
-  prog_names_arr[0] = "h";
-  prog_names_arr[1] = "v";
-  const_names_arr[0] = "hs";
-  diag_names_arr[0] = "B";
-  diag_names_arr[0] = "F";
-  diag_names_arr[0] = "q";
+  prog_names_arr[HVAR] = "h";
+  prog_names_arr[VVAR] = "v";
+  const_names_arr[HSVAR] = "hs";
+  const_names_arr[CORIOLISVAR] = "coriolis";
+  diag_names_arr[BVAR] = "B";
+  diag_names_arr[FVAR] = "F";
+  diag_names_arr[QVAR] = "q";
+  diag_names_arr[HRECONVAR] = "hrecon";
+  diag_names_arr[QRECONVAR] = "qrecon";
 
-    prog_ndofs_arr(0,2) = 1;
-    prog_ndofs_arr(1,1) = 1;
-    const_ndofs_arr(0,2) = 1;
-    diag_ndofs_arr(0,2) = 1;
-    diag_ndofs_arr(1,1) = 1;
-    diag_ndofs_arr(2,0) = 1;
+//primal grid represents twisted quantities, dual grid straight quantities
+    prog_ndofs_arr(HVAR,2) = 1; //h = twisted 2-form
+    prog_ndofs_arr(VVAR,1) = 1; //v = straight 1-form
+    const_ndofs_arr(HSVAR,2) = 1; //hs = twisted 2-form
+    const_ndofs_arr(CORIOLISVAR,0) = 1; //f = twisted 0-form
+    diag_ndofs_arr(BVAR,2) = 1; //B = straight 0-form
+    diag_ndofs_arr(FVAR,1) = 1; //F = twisted 1-form
+    diag_ndofs_arr(QVAR,0) = 1; //q = twisted 0-form
+    diag_ndofs_arr(HRECONVAR,1) = 1; //hrecon lives on edges
+    diag_ndofs_arr(QRECONVAR,1) = 1; //qrecon lives on edges
 }
 
   // *******   Initial Conditions   ***********//
 
-// FIX THIS
-// Set h, v, hs, maybe coriolis?
+
+real YAKL_INLINE double_vortex_coriolis(real x, real y)
+{
+    return coriolis;
+}
+
+real YAKL_INLINE double_vortex_h(real x, real y)
+{
+    real xprime1 = Lx / (M_PI * sigmax) * sin(M_PI / Lx * (x - xc1));
+    real yprime1 = Ly / (M_PI * sigmay) * sin(M_PI / Ly * (y - yc1));
+    real xprime2 = Lx / (M_PI * sigmax) * sin(M_PI / Lx * (x - xc2));
+    real yprime2 = Ly / (M_PI * sigmay) * sin(M_PI / Ly * (y - yc2));
+    real xprimeprime1 = Lx / (2.0 * M_PI * sigmax) * sin(2 * M_PI / Lx * (x - xc1));
+    real yprimeprime1 = Ly / (2.0 * M_PI * sigmay) * sin(2 * M_PI / Ly * (y - yc1));
+    real xprimeprime2 = Lx / (2.0 * M_PI * sigmax) * sin(2 * M_PI / Lx * (x - xc2));
+    real yprimeprime2 = Ly / (2.0 * M_PI * sigmay) * sin(2 * M_PI / Ly * (y - yc2));
+
+    return H0 - dh * (exp(-0.5 * (xprime1 * xprime1 + yprime1 * yprime1)) + exp(-0.5 * (xprime2 * xprime2 + yprime2 * yprime2)) - 4. * M_PI * sigmax * sigmay / Lx / Ly);
+}
+
+vec<2> YAKL_INLINE double_vortex_v(real x, real y) {
+  vec<2> vvec;
+
+  real xprime1 = Lx / (M_PI * sigmax) * sin(M_PI / Lx * (x - xc1));
+  real yprime1 = Ly / (M_PI * sigmay) * sin(M_PI / Ly * (y - yc1));
+  real xprime2 = Lx / (M_PI * sigmax) * sin(M_PI / Lx * (x - xc2));
+  real yprime2 = Ly / (M_PI * sigmay) * sin(M_PI / Ly * (y - yc2));
+  real xprimeprime1 = Lx / (2.0 * M_PI * sigmax) * sin(2 * M_PI / Lx * (x - xc1));
+  real yprimeprime1 = Ly / (2.0 * M_PI * sigmay) * sin(2 * M_PI / Ly * (y - yc1));
+  real xprimeprime2 = Lx / (2.0 * M_PI * sigmax) * sin(2 * M_PI / Lx * (x - xc2));
+  real yprimeprime2 = Ly / (2.0 * M_PI * sigmay) * sin(2 * M_PI / Ly * (y - yc2));
+
+  vvec.u = - g * dh / coriolis / sigmay * (yprimeprime1 * exp(-0.5*(xprime1 * xprime1 + yprime1 * yprime1)) + yprimeprime2 * exp(-0.5*(xprime2 * xprime2 + yprime2 * yprime2)));
+  vvec.v = g * dh / coriolis / sigmax * (xprimeprime1 * exp(-0.5*(xprime1 * xprime1 + yprime1 * yprime1)) + xprimeprime2 * exp(-0.5*(xprime2 * xprime2 + yprime2 * yprime2)));
+  return vvec;
+}
+
+
+//wavespeed = sqrt(g * H0)
+//dt = Constant(get_dt(wavespeed, cval, order, variant, Lx, Ly, nx, ny))
+
 template <int nprog, int nconst, int ndiag, int nquadx, int nquady, int nquadz> void set_initial_conditions (ModelParameters &params, VariableSet<2, nprog> &progvars, VariableSet<2, nconst> &constvars, Geometry<2, nquadx, nquady, nquadz> &geom)
 {
 
     if (params.data_init_cond == DATA_INIT::DOUBLEVORTEX)
     {
-        geom.set_primal_2form_values(gaussian, progvars.fields_arr[0], i);
+        geom.set_primal_2form_values(double_vortex_h, progvars.fields_arr[HVAR], 0);
+        geom.set_dual_1form_values(double_vortex_v, progvars.fields_arr[VVAR], 0, LINE_INTEGRAL_TYPE::TANGENT);
+        geom.set_primal_0form_values(double_vortex_coriolis, constvars.fields_arr[CORIOLISVAR], 0);
     }
 
-    if (params.data_init_cond == DATA_INIT::GOLO)
-    {
-        geom.set_primal_2form_values(gaussian, progvars.fields_arr[0], i);
-    }
-
-    if (params.data_init_cond == DATA_INIT::TC2)
-    {
-        geom.set_primal_2form_values(gaussian, progvars.fields_arr[0], i);
-    }
-
-    if (params.data_init_cond == DATA_INIT::TC5)
-    {
-        geom.set_primal_2form_values(gaussian, progvars.fields_arr[0], i);
-    }
+    // if (params.data_init_cond == DATA_INIT::GOLO)
+    // {
+    //     geom.set_primal_2form_values(gaussian, progvars.fields_arr[HVAR], 0);
+    //     geom.set_dual_1form_values(gaussian, progvars.fields_arr[VVAR], 0, LINE_INTEGRAL_TYPE::TANGENT);
+    //     geom.set_primal_0form_values(gaussian, constvars.fields_arr[CORIOLISVAR], 0);
+    // }
+    //
+    // if (params.data_init_cond == DATA_INIT::TC2)
+    // {
+    //     geom.set_primal_2form_values(gaussian, progvars.fields_arr[HVAR], 0);
+    //     geom.set_dual_1form_values(gaussian, progvars.fields_arr[VVAR], 0, LINE_INTEGRAL_TYPE::TANGENT);
+    //     geom.set_primal_0form_values(gaussian, constvars.fields_arr[CORIOLISVAR], 0);
+    // }
+    //
+    // if (params.data_init_cond == DATA_INIT::TC5)
+    // {
+    //     geom.set_primal_2form_values(gaussian, progvars.fields_arr[HVAR], 0);
+    //     geom.set_dual_1form_values(gaussian, progvars.fields_arr[VVAR], 0, LINE_INTEGRAL_TYPE::TANGENT);
+    //     geom.set_primal_2form_values(gaussian, constvars.fields_arr[HSVAR], 0);
+    //     geom.set_primal_0form_values(gaussian, constvars.fields_arr[CORIOLISVAR], 0);
+    // }
 
 }
 

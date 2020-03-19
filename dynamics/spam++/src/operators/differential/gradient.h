@@ -20,7 +20,7 @@ template<uint ndims, uint ndofs> void YAKL_INLINE gradient2( realArr var, const 
       var(l+0*ndofs,k+ks,j+js,i+is) = recon(l+0*ndofs,k+ks,j+js,i+is) * (dens(l,k+ks,j+js,i+is) - dens(l,k+ks,j+js,i+is-1));
       //y-dir
       if (ndims >= 2) {
-      var(l+1*ndofs,k+ks,j+js,i+is) = recon(l+1*ndofs,k+ks,j+js,i+is) * (dens(l,k+ks,j+js,i+is) - dens(l,k+ks,j+js-1,i+is);
+      var(l+1*ndofs,k+ks,j+js,i+is) = recon(l+1*ndofs,k+ks,j+js,i+is) * (dens(l,k+ks,j+js,i+is) - dens(l,k+ks,j+js-1,i+is));
       }
       //z-dir
       if (ndims >= 3) {

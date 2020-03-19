@@ -1,0 +1,18 @@
+// Topology
+nx = 100
+ny = 100
+nz = 30
+
+// Time stepping
+dt = 0.005
+Nsteps = 1
+Nout = 1
+Nstat = 1
+
+// Parallel decomposition
+nprocx = 1
+nprocy = 1
+nprocz = 1
+
+// initial condition
+dataInit = doublevortex
