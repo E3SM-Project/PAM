@@ -52,6 +52,8 @@ template<uint ndims> void readParamsFile(std::string inFile, Parameters &params,
       else if ( !strcmp( "Nsteps"     , key.c_str() ) ) { ssVal >> params.Nsteps     ; }
       else if ( !strcmp( "Nout"       , key.c_str() ) ) { ssVal >> params.Nout       ; }
       else if ( !strcmp( "Nstat"      , key.c_str() ) ) { ssVal >> params.Nstat      ; }
+      else if ( !strcmp( "TStype"     , key.c_str() ) ) { ssVal >> params.TStype     ; }
+      else if ( !strcmp( "cfl"        , key.c_str() ) ) { ssVal >> params.cfl        ; }
       else if ( !strcmp( "outputName" , key.c_str() ) ) { ssVal >> params.outputName ; }
 
       else if ( !strcmp( "nprocx"     , key.c_str() ) ) { ssVal >> par.nprocx        ; }
@@ -65,6 +67,8 @@ template<uint ndims> void readParamsFile(std::string inFile, Parameters &params,
       //}
     }
   }
+
+// ADD TSType fixes here
 
   // Test to make sure all required values were initialized
   if (params.nx_glob == -1) { std::cout << "Error: key " << "nx"          << " not set.\n"; exit(-1); }

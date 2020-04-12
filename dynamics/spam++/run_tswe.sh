@@ -1,5 +1,6 @@
 
-rm *.png *.nc advection
+rm *.png *.nc tswe
+./build/cmake_linuxlaptop.sh
 make
-mpirun -n $1 ./advection input.txt
-python3 plot_advection.py
+mpirun -n $1 ./tswe input-tswe.txt
+python3 plot_tswe.py

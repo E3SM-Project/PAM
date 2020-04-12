@@ -29,16 +29,18 @@ public:
   bool is_initialized;
   int masterproc;
   int ncid;
-  int const_dim_ids[4], prog_dim_ids[5];
+  int const_dim_ids[4], prog_dim_ids[5], diag_dim_ids[5];
   int tDim, xDim, yDim, zDim;
-  int const_var_dim_ids[nconst], prog_var_dim_ids[nprog];
-  int const_var_ids[nconst], prog_var_ids[nprog];
+  int const_var_dim_ids[nconst], prog_var_dim_ids[nprog], diag_var_dim_ids[ndiag];
+  int const_var_ids[nconst], prog_var_ids[nprog], diag_var_ids[ndiag];
   int tVar;
   std::string outputName;
   std::array<realArr, nprog> prog_temp_arr;
   std::array<realArr, nconst> const_temp_arr;
+  std::array<realArr, ndiag> diag_temp_arr;
   const VariableSet<ndims, nprog> *prog_vars;
   const VariableSet<ndims, nconst> *const_vars;
+  const VariableSet<ndims, ndiag> *diag_vars;
   Stats<ndims, nprog, nconst, nstats> *statistics;
 
   int statDim;
@@ -48,11 +50,12 @@ public:
 
   MPI_Offset const_start[4], const_count[4];
   MPI_Offset prog_start[5], prog_count[5];
+  MPI_Offset diag_start[5], diag_count[5];
 
   FileIO();
   FileIO( const FileIO<ndims,nprog,nconst,ndiag,nstats> &fio) = delete;
   FileIO& operator=( const FileIO<ndims,nprog,nconst,ndiag,nstats> &fio) = delete;
-  void initialize(std::string outputName, Topology<ndims> &topo, Parallel &par, const VariableSet<ndims, nprog> &progvars, const VariableSet<ndims, nconst> &const_vars, Stats<ndims, nprog, nconst, nstats> &stats);
+  void initialize(std::string outputName, Topology<ndims> &topo, Parallel &par, const VariableSet<ndims, nprog> &progvars, const VariableSet<ndims, nconst> &const_vars, const VariableSet<ndims, ndiag> &diagvars, Stats<ndims, nprog, nconst, nstats> &stats);
   void output(int nstep, real time);
   void outputInit(real time);
   void outputStats(const Stats<ndims, nprog, nconst, nstats> &stats);
@@ -71,11 +74,12 @@ public:
     }
 
 
-  template<uint ndims, uint nprog, uint nconst, uint ndiag, uint nstats> void FileIO<ndims,nprog,nconst,ndiag,nstats>::initialize(std::string outName, Topology<ndims> &topo, Parallel &par, const VariableSet<ndims, nprog> &progvars, const VariableSet<ndims, nconst> &constvars, Stats<ndims, nprog, nconst, nstats> &stats)
+  template<uint ndims, uint nprog, uint nconst, uint ndiag, uint nstats> void FileIO<ndims,nprog,nconst,ndiag,nstats>::initialize(std::string outName, Topology<ndims> &topo, Parallel &par, const VariableSet<ndims, nprog> &progvars, const VariableSet<ndims, nconst> &constvars, const VariableSet<ndims, ndiag> &diagvars, Stats<ndims, nprog, nconst, nstats> &stats)
   {
        this->outputName = outName;
        this->prog_vars = &progvars;
        this->const_vars = &constvars;
+       this->diag_vars = &diagvars;
        this->statistics = &stats;
        this->masterproc = par.masterproc;
 
@@ -109,6 +113,13 @@ public:
          this->prog_temp_arr[i] = realArr(this->prog_vars->fields_arr[i].name.c_str(), this->prog_vars->fields_arr[i].total_dofs, this->prog_vars->fields_arr[i].topology->n_cells_z, this->prog_vars->fields_arr[i].topology->n_cells_y, this->prog_vars->fields_arr[i].topology->n_cells_x);
        }
 
+       for (int i=0; i<this->diag_vars->fields_arr.size(); i++)
+       {
+         ncwrap( ncmpi_def_dim( ncid , (this->diag_vars->fields_arr[i].name + "_ndofs").c_str() , (MPI_Offset) this->diag_vars->fields_arr[i].total_dofs , &diag_var_dim_ids[i] ) , __LINE__ );
+         diag_dim_ids[0] = tVar; diag_dim_ids[1] = diag_var_dim_ids[i]; diag_dim_ids[2] = zDim; diag_dim_ids[3] = yDim; diag_dim_ids[4] = xDim;
+         ncwrap( ncmpi_def_var( ncid , this->diag_vars->fields_arr[i].name.c_str() , REAL_NC , 5 , diag_dim_ids , &diag_var_ids[i]  ) , __LINE__ );
+         this->diag_temp_arr[i] = realArr(this->diag_vars->fields_arr[i].name.c_str(), this->diag_vars->fields_arr[i].total_dofs, this->diag_vars->fields_arr[i].topology->n_cells_z, this->diag_vars->fields_arr[i].topology->n_cells_y, this->diag_vars->fields_arr[i].topology->n_cells_x);
+       }
 
        // define statistics dimension and variables
 
@@ -149,6 +160,26 @@ public:
         prog_start[0] = this->numOut; prog_start[1] = 0; prog_start[2] = this->prog_vars->fields_arr[l].topology->k_beg; prog_start[3] = this->prog_vars->fields_arr[l].topology->j_beg; prog_start[4] = this->prog_vars->fields_arr[l].topology->i_beg;
         prog_count[0] = 1; prog_count[1] = this->prog_vars->fields_arr[l].total_dofs; prog_count[2] = this->prog_vars->fields_arr[l].topology->n_cells_z; prog_count[3] = this->prog_vars->fields_arr[l].topology->n_cells_y; prog_count[4] = this->prog_vars->fields_arr[l].topology->n_cells_x;
         ncwrap( PNETCDF_PUT_VAR_ALL( ncid , prog_var_ids[l] , prog_start , prog_count , this->prog_temp_arr[l].createHostCopy().data() ) , __LINE__ );
+      }
+
+
+      for (int l=0; l<this->diag_vars->fields_arr.size(); l++)
+      {
+        ncwrap( ncmpi_inq_varid( ncid , this->diag_vars->fields_arr[l].name.c_str() , &diag_var_ids[l]  ) , __LINE__ );
+        int is = this->diag_vars->fields_arr[l].topology->is;
+        int js = this->diag_vars->fields_arr[l].topology->js;
+        int ks = this->diag_vars->fields_arr[l].topology->ks;
+        yakl::parallel_for("CopyFieldToOutputBuffer", this->diag_vars->fields_arr[l].topology->n_cells, YAKL_LAMBDA (int iGlob) {
+          int k, j, i;
+          yakl::unpackIndices(iGlob, this->diag_vars->fields_arr[l].topology->n_cells_z, this->diag_vars->fields_arr[l].topology->n_cells_y, this->diag_vars->fields_arr[l].topology->n_cells_x, k, j, i);
+          for (int ndof=0; ndof<this->diag_vars->fields_arr[l].total_dofs; ndof++) {
+            this->diag_temp_arr[l](ndof, k, j, i) = this->diag_vars->fields_arr[l].data(ndof, k+ks, j+js, i+is);
+          }
+        });
+
+        diag_start[0] = this->numOut; diag_start[1] = 0; diag_start[2] = this->diag_vars->fields_arr[l].topology->k_beg; diag_start[3] = this->diag_vars->fields_arr[l].topology->j_beg; diag_start[4] = this->diag_vars->fields_arr[l].topology->i_beg;
+        diag_count[0] = 1; diag_count[1] = this->diag_vars->fields_arr[l].total_dofs; diag_count[2] = this->diag_vars->fields_arr[l].topology->n_cells_z; diag_count[3] = this->diag_vars->fields_arr[l].topology->n_cells_y; diag_count[4] = this->diag_vars->fields_arr[l].topology->n_cells_x;
+        ncwrap( PNETCDF_PUT_VAR_ALL( ncid , diag_var_ids[l] , diag_start , diag_count , this->diag_temp_arr[l].createHostCopy().data() ) , __LINE__ );
       }
 
       // ADD THIS
@@ -200,7 +231,24 @@ public:
       ncwrap( PNETCDF_PUT_VAR_ALL( ncid , prog_var_ids[l] , prog_start , prog_count , this->prog_temp_arr[l].createHostCopy().data() ) , __LINE__ );
     }
 
+    for (int l=0; l<this->diag_vars->fields_arr.size(); l++)
+    {
+      ncwrap( ncmpi_inq_varid( ncid , this->diag_vars->fields_arr[l].name.c_str() , &diag_var_ids[l]  ) , __LINE__ );
+      int is = this->diag_vars->fields_arr[l].topology->is;
+      int js = this->diag_vars->fields_arr[l].topology->js;
+      int ks = this->diag_vars->fields_arr[l].topology->ks;
+      yakl::parallel_for("CopyFieldToOutputBuffer", this->diag_vars->fields_arr[l].topology->n_cells, YAKL_LAMBDA (int iGlob) {
+        int k, j, i;
+        yakl::unpackIndices(iGlob, this->diag_vars->fields_arr[l].topology->n_cells_z, this->diag_vars->fields_arr[l].topology->n_cells_y, this->diag_vars->fields_arr[l].topology->n_cells_x, k, j, i);
+        for (int ndof=0; ndof<this->diag_vars->fields_arr[l].total_dofs; ndof++) {
+          this->diag_temp_arr[l](ndof, k, j, i) = this->diag_vars->fields_arr[l].data(ndof, k+ks, j+js, i+is);
+        }
+      });
 
+      diag_start[0] = this->numOut; diag_start[1] = 0; diag_start[2] = this->diag_vars->fields_arr[l].topology->k_beg; diag_start[3] = this->diag_vars->fields_arr[l].topology->j_beg; diag_start[4] = this->diag_vars->fields_arr[l].topology->i_beg;
+      diag_count[0] = 1; diag_count[1] = this->diag_vars->fields_arr[l].total_dofs; diag_count[2] = this->diag_vars->fields_arr[l].topology->n_cells_z; diag_count[3] = this->diag_vars->fields_arr[l].topology->n_cells_y; diag_count[4] = this->diag_vars->fields_arr[l].topology->n_cells_x;
+      ncwrap( PNETCDF_PUT_VAR_ALL( ncid , diag_var_ids[l] , diag_start , diag_count , this->diag_temp_arr[l].createHostCopy().data() ) , __LINE__ );
+    }
 
 // ADD THIS
       // write elapsed time/time step

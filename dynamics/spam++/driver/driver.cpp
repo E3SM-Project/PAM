@@ -24,11 +24,13 @@ int main(int argc, char** argv) {
     VariableSet<number_of_dims, nprognostic> prognostic_vars;
     VariableSet<number_of_dims, nconstant> constant_vars;
     VariableSet<number_of_dims, ndiagnostic> diagnostic_vars;
+    VariableSet<number_of_dims, nauxiliary> auxiliary_vars;
     ExchangeSet<number_of_dims, nprognostic> prog_exchange;
     ExchangeSet<number_of_dims, nconstant> const_exchange;
-    ExchangeSet<number_of_dims, ndiagnostic> diag_exchange;
+    ExchangeSet<number_of_dims, nauxiliary> aux_exchange;
     FileIO<number_of_dims, nprognostic, nconstant, ndiagnostic, nstats> io;
-    Tendencies<number_of_dims, nprognostic, nconstant, ndiagnostic> tendencies;
+    Tendencies<number_of_dims, nprognostic, nconstant, nauxiliary> tendencies;
+    Diagnostics<number_of_dims, nprognostic, nconstant, ndiagnostic> diagnostics;
     Topology<number_of_dims> topology;
     ModelParameters params;
     Parallel par;
@@ -37,7 +39,7 @@ int main(int argc, char** argv) {
 
     //if (time_type == TIME_TYPE::KGRK)
     //{
-      RKSimpleTimeIntegrator<number_of_dims, nprognostic, nconstant, ndiagnostic, n_time_stages> tint;
+      RKSimpleTimeIntegrator<number_of_dims, nprognostic, nconstant, nauxiliary, n_time_stages> tint;
     //}
 
     //if (geom_type == GEOM_TYPE::UNIFORM_RECT)
@@ -73,33 +75,40 @@ int main(int argc, char** argv) {
     SArray<int, nprognostic, 4> prog_ndofs_arr;
     SArray<int, nconstant, 4> const_ndofs_arr;
     SArray<int, ndiagnostic, 4> diag_ndofs_arr;
+    SArray<int, nauxiliary, 4> aux_ndofs_arr;
     std::array<std::string, nprognostic> prog_names_arr;
     std::array<std::string, nconstant> const_names_arr;
     std::array<std::string, ndiagnostic> diag_names_arr;
+    std::array<std::string, nauxiliary> aux_names_arr;
     std::array<const Topology<number_of_dims> *, nprognostic> prog_topo_arr;
     std::array<const Topology<number_of_dims> *, nconstant> const_topo_arr;
     std::array<const Topology<number_of_dims> *, ndiagnostic> diag_topo_arr;
-    initialize_variables<number_of_dims, nprognostic, nconstant, ndiagnostic>(topology, prog_ndofs_arr, const_ndofs_arr, diag_ndofs_arr, prog_names_arr, const_names_arr, diag_names_arr, prog_topo_arr, const_topo_arr, diag_topo_arr);
+    std::array<const Topology<number_of_dims> *, nauxiliary> aux_topo_arr;
+    initialize_variables<number_of_dims, nprognostic, nconstant, nauxiliary, ndiagnostic>(topology,
+        prog_ndofs_arr, const_ndofs_arr, aux_ndofs_arr, diag_ndofs_arr,
+        prog_names_arr, const_names_arr, aux_names_arr, diag_names_arr,
+        prog_topo_arr, const_topo_arr, aux_topo_arr, diag_topo_arr);
 
     prognostic_vars.initialize("x", prog_names_arr, prog_topo_arr, prog_ndofs_arr);
     constant_vars.initialize("cons", const_names_arr, const_topo_arr, const_ndofs_arr);
     diagnostic_vars.initialize("diag", diag_names_arr, diag_topo_arr, diag_ndofs_arr);
+    auxiliary_vars.initialize("aux", aux_names_arr, aux_topo_arr, aux_ndofs_arr);
     prog_exchange.initialize(prog_topo_arr, prog_ndofs_arr);
     const_exchange.initialize(const_topo_arr, const_ndofs_arr);
-    diag_exchange.initialize(diag_topo_arr, diag_ndofs_arr);
+    aux_exchange.initialize(aux_topo_arr, aux_ndofs_arr);
     std::cout << "finish init variable sets\n" << std::flush;
 
     // Initialize the statistics
-    stats.initialize(params, par);
+    stats.initialize(params, par, topology, tendencies_geometry);
 
     // Create the outputter
     std::cout << "start io init\n" << std::flush;
-    io.initialize(params.outputName, topology, par, prognostic_vars, constant_vars, stats);
+    io.initialize(params.outputName, topology, par, prognostic_vars, constant_vars, diagnostic_vars, stats);
     std::cout << "end io init\n" << std::flush;
 
     // set the initial conditions
     std::cout << "start set initial conditions\n" << std::flush;
-    set_initial_conditions<nprognostic, nconstant, ndiagnostic, ic_quad_pts, ic_quad_pts, ic_quad_pts>(params, prognostic_vars, constant_vars, ic_geometry);
+    set_initial_conditions<nprognostic, nconstant, nauxiliary, ic_quad_pts, ic_quad_pts, ic_quad_pts>(params, prognostic_vars, constant_vars, ic_geometry);
     // Do a boundary exchange
     prog_exchange.exchange_variable_set(prognostic_vars);
     const_exchange.exchange_variable_set(constant_vars);
@@ -107,8 +116,9 @@ int main(int argc, char** argv) {
 
     // Initialize the time stepper
     std::cout << "start ts init\n" << std::flush;
-    tendencies.initialize(topology, tendencies_geometry, diag_exchange);
-    tint.initialize(tendencies, prognostic_vars, constant_vars, diagnostic_vars, prog_exchange);
+    tendencies.initialize(topology, tendencies_geometry, aux_exchange);
+    diagnostics.initialize(topology, tendencies_geometry);
+    tint.initialize(tendencies, prognostic_vars, constant_vars, auxiliary_vars, prog_exchange);
 // SPECIFIC TO RK SCHEMES...
 // SHOULD PROBABLY BE PART OF TINT INITIALIZE?
     set_stage_coefficients<n_time_stages>(time_type, tint.stage_coeffs);
@@ -116,6 +126,7 @@ int main(int argc, char** argv) {
 
     // Output the initial model state
     std::cout << "start initial output\n" << std::flush;
+    diagnostics.compute_diag(constant_vars, prognostic_vars, diagnostic_vars);
     io.outputInit(params.etime);
     std::cout << "end initial output\n" << std::flush;
 
@@ -131,6 +142,7 @@ int main(int argc, char** argv) {
       params.etime += params.dt;
       if (nstep%params.Nout == 0) {
         std::cout << "step " << nstep << " time " << params.etime << "\n";
+        diagnostics.compute_diag(constant_vars, prognostic_vars, diagnostic_vars);
         io.output(nstep, params.etime);
       }
 

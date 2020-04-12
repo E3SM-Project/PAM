@@ -116,6 +116,7 @@ public:
   virtual void YAKL_INLINE get_dual_1form_quad_pts_wts(int i, SArray<coords<1>,nquadx> &quad_pts_phys, SArray<real,nquadx> &quad_wts_phys) {};
   virtual real YAKL_INLINE get_J_cell(int k, int j, int i) {};
   virtual real YAKL_INLINE get_J_dual_cell(int k, int j, int i) {};
+  virtual real YAKL_INLINE get_H_edge(int l, int k, int j, int i) {};
 
 
   YAKL_INLINE void set_primal_0form_values(real (*initial_value_function)(real), Field<1> &field, int ndof);
@@ -143,6 +144,7 @@ public:
   void YAKL_INLINE get_dual_1form_quad_pts_wts(int i, SArray<coords<1>,nquadx> &quad_pts_phys, SArray<real,nquadx> &quad_wts_phys);
   real YAKL_INLINE get_J_cell(int k, int j, int i);
   real YAKL_INLINE get_J_dual_cell(int k, int j, int i);
+  real YAKL_INLINE get_H_edge(int l, int k, int j, int i);
 
 };
 
@@ -298,6 +300,11 @@ template<uint nquadx, uint nquady, uint nquadz> real YAKL_INLINE UniformRectangu
   return this->dx;
 }
 
+template<uint nquadx, uint nquady, uint nquadz> real YAKL_INLINE UniformRectangularGeometry<1,nquadx,nquady,nquadz>::get_H_edge(int l, int k, int j, int i)
+{
+  return 1.0/this->dx;
+}
+
 template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangularGeometry<1,nquadx,nquady,nquadz>::get_primal_0form_quad_pts_wts(int i, SArray<coords<1>,1> &quad_pts_phys, SArray<real,1> &quad_wts_phys)
 {
   quad_pts_phys(0).x = (i+this->topology->i_beg)*this->dx + this->xc - this->Lx/2.;
@@ -378,6 +385,7 @@ public:
 
   virtual real YAKL_INLINE get_J_cell(int k, int j, int i) {};
   virtual real YAKL_INLINE get_J_dual_cell(int k, int j, int i) {};
+  virtual real YAKL_INLINE get_H_edge(int l, int k, int j, int i) {};
 
   YAKL_INLINE void set_primal_0form_values(real (*initial_value_function)(real, real), Field<2> &field, int ndof);
   YAKL_INLINE void set_primal_1form_values(vec<2> (*initial_value_function)(real, real), Field<2> &field, int ndof, LINE_INTEGRAL_TYPE line_type);
@@ -415,6 +423,7 @@ public:
 
   real YAKL_INLINE get_J_cell(int k, int j, int i);
   real YAKL_INLINE get_J_dual_cell(int k, int j, int i);
+  real YAKL_INLINE get_H_edge(int l, int k, int j, int i);
 
 };
 
@@ -665,6 +674,12 @@ template<uint nquadx, uint nquady, uint nquadz> real YAKL_INLINE UniformRectangu
   return this->dx * this->dy;
 }
 
+template<uint nquadx, uint nquady, uint nquadz> real YAKL_INLINE UniformRectangularGeometry<2,nquadx,nquady,nquadz>::get_H_edge(int l, int k, int j, int i)
+{
+  if (l==0) {return this->dy/this->dx;};
+  if (l==1) {return this->dx/this->dy;};
+}
+
 template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangularGeometry<2,nquadx,nquady,nquadz>::get_primal_0form_quad_pts_wts(int i, int j, SArray<coords<2>,1> &quad_pts_phys, SArray<real,1> &quad_wts_phys)
 {
   quad_pts_phys(0).x = (i+this->topology->i_beg)*this->dx + this->xc - this->Lx/2.;
@@ -860,6 +875,7 @@ template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangu
 
     virtual real YAKL_INLINE get_J_cell(int k, int j, int i) {};
     virtual real YAKL_INLINE get_J_dual_cell(int k, int j, int i) {};
+    virtual real YAKL_INLINE get_H_edge(int l, int k, int j, int i) {};
 
     YAKL_INLINE void set_primal_0form_values(real (*initial_value_function)(real, real, real), Field<3> &field, int ndof);
     YAKL_INLINE void set_primal_1form_values(vec<3> (*initial_value_function)(real, real, real), Field<3> &field, int ndof);
@@ -913,6 +929,7 @@ template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangu
 
     real YAKL_INLINE get_J_cell(int k, int j, int i);
     real YAKL_INLINE get_J_dual_cell(int k, int j, int i);
+    real YAKL_INLINE get_H_edge(int l, int k, int j, int i);
 
   };
 
@@ -1305,6 +1322,12 @@ field.data(ndof+2*field.ndof1+offset, k+ks, j+js, i+is) = tempval;
     return this->dx * this->dy * this->dz;
   }
 
+  template<uint nquadx, uint nquady, uint nquadz> real YAKL_INLINE UniformRectangularGeometry<3,nquadx,nquady,nquadz>::get_H_edge(int l, int k, int j, int i)
+  {
+    if (l==0) {return this->dy*this->dz/this->dx;};
+    if (l==1) {return this->dx*this->dz/this->dy;};
+    if (l==2) {return this->dx*this->dy/this->dz;};
+  }
 
   template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangularGeometry<3,nquadx,nquady,nquadz>::get_primal_0form_quad_pts_wts(int i, int j, int k, SArray<coords<3>,1> &quad_pts_phys, SArray<real,1> &quad_wts_phys)
   {

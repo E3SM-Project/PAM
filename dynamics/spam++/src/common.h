@@ -64,8 +64,10 @@ public:
   int Nsteps = -1;
   int Nout = -1;
   real dt = -1.;
+  real cfl = -1.;
   int Nstat = -1;
   std::string outputName = "output.nc";
+  std::string TStype = "dt";
 
   real etime;
 //THESE ARE REALLY SPECIFIC TO UNIFORM RECT GEOM...
@@ -83,11 +85,13 @@ public:
 uint constexpr number_of_dims = 2;
 
 // Spatial order of accuracy for the model
-uint constexpr differential_order = 2;
+uint constexpr differential_order = 4;
 
 // Reconstruction type
 RECONSTRUCTION_TYPE constexpr reconstruction_type = RECONSTRUCTION_TYPE::WENO;
 uint constexpr reconstruction_order = 9;
+RECONSTRUCTION_TYPE constexpr dual_reconstruction_type = RECONSTRUCTION_TYPE::CFV;
+uint constexpr dual_reconstruction_order = 2;
 
 // Halo sizes
 uint maxhalosize = 10; //mymax(reconstruction_order+1,differential_order)/2; // IS THIS ALWAYS CORRECT?
