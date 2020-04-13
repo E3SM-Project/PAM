@@ -33,16 +33,19 @@ template<uint ndims, uint ndofs> void YAKL_INLINE weno1_dual_recon(bool is_dualn
 
       //x-dir
       upwind_param = copysign(1.0, star_star_sign*flux(ndims-1, k+ks, j+js, i+is));
+      upwind_param = 0.5*(upwind_param + fabs(upwind_param));
       recon(l+(ndims-1)*ndofs, k+ks, j+js, i+is) = xvar_dual(1) * (1. - upwind_param) + xvar_dual(0) * upwind_param;
 
       //y-dir
       if (ndims >= 2) {
-      upwind_param = copysign(1.0, -flux(ndims-2, k+ks, j+js, i+is));
+      upwind_param = copysign(1.0, flux(ndims-2, k+ks, j+js, i+is));
+      upwind_param = 0.5*(upwind_param + fabs(upwind_param));
       recon(l+(ndims-2)*ndofs, k+ks, j+js, i+is) = yvar_dual(1) * (1. - upwind_param) + yvar_dual(0) * upwind_param;
       }
       //z-dir
       if (ndims == 3) {
       upwind_param = copysign(1.0, flux(ndims-3, k+ks, j+js, i+is));
+      upwind_param = 0.5*(upwind_param + fabs(upwind_param));
       recon(l+(ndims-3)*ndofs, k+ks, j+js, i+is) = zvar_dual(1) * (1. - upwind_param) + zvar_dual(0) * upwind_param;
       }
     }
@@ -66,13 +69,15 @@ template<uint ndims, uint ndofs> void YAKL_INLINE weno3_dual_recon(bool is_dualn
 
       //x-dir
       upwind_param = copysign(1.0, star_star_sign*flux(ndims-1, k+ks, j+js, i+is));
+      upwind_param = 0.5*(upwind_param + fabs(upwind_param));
       var_up   = interp_weno3(xvar_dual(-1), xvar_dual(0), xvar_dual(1));
       var_down = interp_weno3(xvar_dual(0), xvar_dual(1), xvar_dual(2));
       recon(l+(ndims-1)*ndofs, k+ks, j+js, i+is) = var_down * (1. - upwind_param) + var_up * upwind_param;
 
       //y-dir
       if (ndims >= 2) {
-        upwind_param = copysign(1.0, -flux(ndims-2, k+ks, j+js, i+is));
+        upwind_param = copysign(1.0, flux(ndims-2, k+ks, j+js, i+is));
+        upwind_param = 0.5*(upwind_param + fabs(upwind_param));
         var_up   = interp_weno3(yvar_dual(-1), yvar_dual(0), yvar_dual(1));
         var_down = interp_weno3(yvar_dual(0), yvar_dual(1), yvar_dual(2));
         recon(l+(ndims-2)*ndofs, k+ks, j+js, i+is) = var_down * (1. - upwind_param) + var_up * upwind_param;
@@ -81,6 +86,7 @@ template<uint ndims, uint ndofs> void YAKL_INLINE weno3_dual_recon(bool is_dualn
       //z-dir
       if (ndims == 3) {
         upwind_param = copysign(1.0, flux(ndims-3, k+ks, j+js, i+is));
+        upwind_param = 0.5*(upwind_param + fabs(upwind_param));
         var_up   = interp_weno3(zvar_dual(-1), zvar_dual(0), zvar_dual(1));
         var_down = interp_weno3(zvar_dual(0), zvar_dual(1), zvar_dual(2));
         recon(l+(ndims-3)*ndofs, k+ks, j+js, i+is) = var_down * (1. - upwind_param) + var_up * upwind_param;
@@ -109,13 +115,15 @@ template<uint ndims, uint ndofs> void YAKL_INLINE weno5_dual_recon(bool is_dualn
 
       //x-dir
       upwind_param = copysign(1.0, star_star_sign*flux(ndims-1, k+ks, j+js, i+is));
+      upwind_param = 0.5*(upwind_param + fabs(upwind_param));
       var_up   = interp_weno5(xvar_dual(-2), xvar_dual(-1), xvar_dual(0), xvar_dual(1), xvar_dual(2));
       var_down = interp_weno5(xvar_dual(-1), xvar_dual(0), xvar_dual(1), xvar_dual(2), xvar_dual(3));
       recon(l+(ndims-1)*ndofs, k+ks, j+js, i+is) = var_down * (1. - upwind_param) + var_up * upwind_param;
 
       //y-dir
       if (ndims >= 2) {
-        upwind_param = copysign(1.0, -flux(ndims-2, k+ks, j+js, i+is));
+        upwind_param = copysign(1.0, flux(ndims-2, k+ks, j+js, i+is));
+        upwind_param = 0.5*(upwind_param + fabs(upwind_param));
         var_up   = interp_weno5(yvar_dual(-2), yvar_dual(-1), yvar_dual(0), yvar_dual(1), yvar_dual(2));
         var_down = interp_weno5(yvar_dual(-1), yvar_dual(0), yvar_dual(1), yvar_dual(2), yvar_dual(3));
         recon(l+(ndims-2)*ndofs, k+ks, j+js, i+is) = var_down * (1. - upwind_param) + var_up * upwind_param;
@@ -124,6 +132,7 @@ template<uint ndims, uint ndofs> void YAKL_INLINE weno5_dual_recon(bool is_dualn
       //z-dir
       if (ndims == 3) {
         upwind_param = copysign(1.0, flux(ndims-3, k+ks, j+js, i+is));
+        upwind_param = 0.5*(upwind_param + fabs(upwind_param));
         var_up   = interp_weno5(zvar_dual(-2), zvar_dual(-1), zvar_dual(0), zvar_dual(1), zvar_dual(2));
         var_down = interp_weno5(zvar_dual(-1), zvar_dual(0), zvar_dual(1), zvar_dual(2), zvar_dual(3));
         recon(l+(ndims-3)*ndofs, k+ks, j+js, i+is) = var_down * (1. - upwind_param) + var_up * upwind_param;
@@ -153,6 +162,7 @@ template<uint ndims, uint ndofs> void YAKL_INLINE weno7_dual_recon(bool is_dualn
 
       //x-dir
       upwind_param = copysign(1.0, star_star_sign*flux(ndims-1, k+ks, j+js, i+is));
+      upwind_param = 0.5*(upwind_param + fabs(upwind_param));
       var_up   = interp_weno7(xvar_dual(-3), xvar_dual(-2), xvar_dual(-1), xvar_dual(0), xvar_dual(1), xvar_dual(2), xvar_dual(3));
       var_down = interp_weno7(xvar_dual(-2), xvar_dual(-1), xvar_dual(0), xvar_dual(1), xvar_dual(2), xvar_dual(3), xvar_dual(4));
       recon(l+(ndims-1)*ndofs, k+ks, j+js, i+is) = var_down * (1. - upwind_param) + var_up * upwind_param;
@@ -160,6 +170,7 @@ template<uint ndims, uint ndofs> void YAKL_INLINE weno7_dual_recon(bool is_dualn
       //y-dir
       if (ndims >= 2) {
         upwind_param = copysign(1.0, flux(ndims-2, k+ks, j+js, i+is));
+        upwind_param = 0.5*(upwind_param + fabs(upwind_param));
         var_up   = interp_weno7(yvar_dual(-3), yvar_dual(-2), yvar_dual(-1), yvar_dual(0), yvar_dual(1), yvar_dual(2), yvar_dual(3));
         var_down = interp_weno7(yvar_dual(-2), yvar_dual(-1), yvar_dual(0), yvar_dual(1), yvar_dual(2), yvar_dual(3), yvar_dual(4));
         recon(l+(ndims-2)*ndofs, k+ks, j+js, i+is) = var_down * (1. - upwind_param) + var_up * upwind_param;
@@ -168,6 +179,7 @@ template<uint ndims, uint ndofs> void YAKL_INLINE weno7_dual_recon(bool is_dualn
       //z-dir
       if (ndims == 3) {
         upwind_param = copysign(1.0, flux(ndims-3, k+ks, j+js, i+is));
+        upwind_param = 0.5*(upwind_param + fabs(upwind_param));
         var_up   = interp_weno7(zvar_dual(-3), zvar_dual(-2), zvar_dual(-1), zvar_dual(0), zvar_dual(1), zvar_dual(2), zvar_dual(3));
         var_down = interp_weno7(zvar_dual(-2), zvar_dual(-1), zvar_dual(0), zvar_dual(1), zvar_dual(2), zvar_dual(3), zvar_dual(4));
         recon(l+(ndims-3)*ndofs, k+ks, j+js, i+is) = var_down * (1. - upwind_param) + var_up * upwind_param;
@@ -195,13 +207,15 @@ template<uint ndims, uint ndofs> void YAKL_INLINE weno9_dual_recon(bool is_dualn
 
       //x-dir
       upwind_param = copysign(1.0, star_star_sign*flux(ndims-1, k+ks, j+js, i+is));
+      upwind_param = 0.5*(upwind_param + fabs(upwind_param));
       var_up   = interp_weno9(xvar_dual(-4), xvar_dual(-3), xvar_dual(-2), xvar_dual(-1), xvar_dual(0), xvar_dual(1), xvar_dual(2), xvar_dual(3), xvar_dual(4));
       var_down = interp_weno9(xvar_dual(-3), xvar_dual(-2), xvar_dual(-1), xvar_dual(0), xvar_dual(1), xvar_dual(2), xvar_dual(3), xvar_dual(4), xvar_dual(5));
       recon(l+(ndims-1)*ndofs, k+ks, j+js, i+is) = var_down * (1. - upwind_param) + var_up * upwind_param;
 
       //y-dir
       if (ndims >= 2) {
-        upwind_param = copysign(1.0, flux(ndims-2, k+ks, j+js, i+is));
+        upwind_param = copysign(1.0, -flux(ndims-2, k+ks, j+js, i+is));
+        upwind_param = 0.5*(upwind_param + fabs(upwind_param));
         var_up   = interp_weno9(yvar_dual(-4), yvar_dual(-3), yvar_dual(-2), yvar_dual(-1), yvar_dual(0), yvar_dual(1), yvar_dual(2), yvar_dual(3), yvar_dual(4));
         var_down = interp_weno9(yvar_dual(-3), yvar_dual(-2), yvar_dual(-1), yvar_dual(0), yvar_dual(1), yvar_dual(2), yvar_dual(3), yvar_dual(4), yvar_dual(5));
         recon(l+(ndims-2)*ndofs, k+ks, j+js, i+is) = var_down * (1. - upwind_param) + var_up * upwind_param;
@@ -210,6 +224,7 @@ template<uint ndims, uint ndofs> void YAKL_INLINE weno9_dual_recon(bool is_dualn
       //z-dir
       if (ndims == 3) {
         upwind_param = copysign(1.0, flux(ndims-3, k+ks, j+js, i+is));
+        upwind_param = 0.5*(upwind_param + fabs(upwind_param));
         var_up   = interp_weno9(zvar_dual(-4), zvar_dual(-3), zvar_dual(-2), zvar_dual(-1), zvar_dual(0), zvar_dual(1), zvar_dual(2), zvar_dual(3), zvar_dual(4));
         var_down = interp_weno9(zvar_dual(-3), zvar_dual(-2), zvar_dual(-1), zvar_dual(0), zvar_dual(1), zvar_dual(2), zvar_dual(3), zvar_dual(4), zvar_dual(5));
         recon(l+(ndims-3)*ndofs, k+ks, j+js, i+is) = var_down * (1. - upwind_param) + var_up * upwind_param;
@@ -237,13 +252,15 @@ template<uint ndims, uint ndofs> void YAKL_INLINE weno11_dual_recon(bool is_dual
 
         //x-dir
         upwind_param = copysign(1.0, star_star_sign*flux(ndims-1, k+ks, j+js, i+is));
+        upwind_param = 0.5*(upwind_param + fabs(upwind_param));
         var_up   = interp_weno11(xvar_dual(-5), xvar_dual(-4), xvar_dual(-3), xvar_dual(-2), xvar_dual(-1), xvar_dual(0), xvar_dual(1), xvar_dual(2), xvar_dual(3), xvar_dual(4), xvar_dual(5));
         var_down = interp_weno11(xvar_dual(-4), xvar_dual(-3), xvar_dual(-2), xvar_dual(-1), xvar_dual(0), xvar_dual(1), xvar_dual(2), xvar_dual(3), xvar_dual(4), xvar_dual(5), xvar_dual(6));
         recon(l+(ndims-1)*ndofs, k+ks, j+js, i+is) = var_down * (1. - upwind_param) + var_up * upwind_param;
 
         //y-dir
         if (ndims >= 2) {
-          upwind_param = copysign(1.0, flux(ndims-2, k+ks, j+js, i+is));
+          upwind_param = copysign(1.0, -flux(ndims-2, k+ks, j+js, i+is));
+          upwind_param = 0.5*(upwind_param + fabs(upwind_param));
           var_up   = interp_weno11(yvar_dual(-5), yvar_dual(-4), yvar_dual(-3), yvar_dual(-2), yvar_dual(-1), yvar_dual(0), yvar_dual(1), yvar_dual(2), yvar_dual(3), yvar_dual(4), yvar_dual(5));
           var_down = interp_weno11(yvar_dual(-4), yvar_dual(-3), yvar_dual(-2), yvar_dual(-1), yvar_dual(0), yvar_dual(1), yvar_dual(2), yvar_dual(3), yvar_dual(4), yvar_dual(5), yvar_dual(6));
           recon(l+(ndims-2)*ndofs, k+ks, j+js, i+is) = var_down * (1. - upwind_param) + var_up * upwind_param;
@@ -252,6 +269,7 @@ template<uint ndims, uint ndofs> void YAKL_INLINE weno11_dual_recon(bool is_dual
         //z-dir
         if (ndims == 3) {
           upwind_param = copysign(1.0, flux(ndims-3, k+ks, j+js, i+is));
+          upwind_param = 0.5*(upwind_param + fabs(upwind_param));
           var_up   = interp_weno11(zvar_dual(-5), zvar_dual(-4), zvar_dual(-3), zvar_dual(-2), zvar_dual(-1), zvar_dual(0), zvar_dual(1), zvar_dual(2), zvar_dual(3), zvar_dual(4), zvar_dual(5));
           var_down = interp_weno11(zvar_dual(-4), zvar_dual(-3), zvar_dual(-2), zvar_dual(-1), zvar_dual(0), zvar_dual(1), zvar_dual(2), zvar_dual(3), zvar_dual(4), zvar_dual(5), zvar_dual(6));
           recon(l+(ndims-3)*ndofs, k+ks, j+js, i+is) = var_down * (1. - upwind_param) + var_up * upwind_param;

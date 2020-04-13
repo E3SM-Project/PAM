@@ -23,14 +23,15 @@
 // Number of variables
 // THIS REALLY NEEDS TO CHANGE DEPENDING ON 1D/2D!
 
-uint constexpr nprognostic = 2; // h, v
+uint constexpr nprognostic = 3; // h, v, S
 uint constexpr nconstant = 2;   // hs, coriolis
-uint constexpr nauxiliary = 6; // B, F, q, hrecon, qrecon, FT
-uint constexpr nstats = 6;      // M, PE, KE, TE, PENS, PV
-uint constexpr ndiagnostic = 1;      // q0
+uint constexpr nauxiliary = 9; // B, F, T, q, sl, hrecon, qrecon, srecon, FT
+uint constexpr nstats = 6;      // M, PE, KE, TE, B, PV
+uint constexpr ndiagnostic = 2;      // q0, sl0
 
 #define HVAR 0
 #define VVAR 1
+#define SVAR 2
 
 // THIS REALLY NEEDS TO CHANGE DEPENDING ON 1D/2D!
 #define HSVAR 0
@@ -39,21 +40,25 @@ uint constexpr ndiagnostic = 1;      // q0
 // THIS REALLY NEEDS TO CHANGE DEPENDING ON 1D/2D!
 #define BVAR 0
 #define FVAR 1
-#define HRECONVAR 2
-#define QVAR 3
-#define QRECONVAR 4
-#define FTVAR 5
+#define TVAR 2
+#define HRECONVAR 3
+#define SRECONVAR 4
+#define SLVAR 5
+#define QVAR 6
+#define QRECONVAR 7
+#define FTVAR 8
 
 // THIS REALLY NEEDS TO CHANGE DEPENDING ON 1D/2D!
 #define Q0VAR 0
+#define SL0VAR 1
 
 #define MSTAT 0
 #define PESTAT 1
 #define KESTAT 2
 #define TESTAT 3
+#define BSTAT 4
 // THIS REALLY NEEDS TO CHANGE DEPENDING ON 1D/2D!
-#define PVSTAT 4
-#define PENSSTAT 5
+#define PVSTAT 5
 
 // *******   Model Specific Parameters   ***********//
 
@@ -72,6 +77,11 @@ uint constexpr ndiagnostic = 1;      // q0
   real constexpr yc1 = (0.5-oy) * Ly;
   real constexpr xc2 = (0.5+ox) * Lx;
   real constexpr yc2 = (0.5+oy) * Ly;
+  real constexpr xc = 0.5 * Lx;
+  real constexpr yc = 0.5 * Ly;
+  real constexpr c = 0.05;
+  real constexpr a = 1.0/3.0;
+  real constexpr D = 0.5 * Lx;
 
 template<uint ndims> void set_model_specific_params(std::string inFile, ModelParameters &params)
 {
@@ -178,9 +188,8 @@ public:
      this->is_initialized = true;
    }
 
-   void YAKL_INLINE compute_diagnostic_quantities(realArr q, const realArr v, const realArr h, const realArr coriolis, const Topology<ndims> &topology, Geometry<ndims,1,1,1> &geom)
+   void YAKL_INLINE compute_diagnostic_quantities(realArr q, realArr sl, const realArr v, const realArr h, const realArr S, const realArr coriolis, const Topology<ndims> &topology, Geometry<ndims,1,1,1> &geom)
    {
-       if (ndims == 2) {
 
        int is = topology.is;
        int js = topology.js;
@@ -192,20 +201,23 @@ public:
            int k, j, i;
            yakl::unpackIndices(iGlob, topology.n_cells_z, topology.n_cells_y, topology.n_cells_x, k, j, i);
 
+        sl(0,k+ks,j+js,i+is) = S(0,k+ks,j+js,i+is) / h(0,k+ks,j+js,i+is);
+
+        if (ndims == 2) {
        zeta = (v(1,k+ks,j+js,i+is) - v(0,k+ks,j+js,i+is) - v(1,k+ks,j+js,i+is-1) + v(0,k+ks,j+js-1,i+is));
        hv = 1./4. * (h(0,k+ks,j+js,i+is) + h(0,k+ks,j+js-1,i+is) + h(0,k+ks,j+js,i+is-1) + h(0,k+ks,j+js-1,i+is-1));
        eta = zeta + coriolis(0,k+ks,j+js,i+is);
        // This q is the primal (twisted) point value (0-form)
        q(0,k+ks,j+js,i+is) = eta / hv ; //* geom.get_J_dual_cell(k+ks, j+js, i+is)
+   }
            });
-       }
 
    }
 
    void compute_diag(const VariableSet<ndims, nconst> &const_vars, VariableSet<ndims, nprog> &x, VariableSet<ndims, ndiag> &diagnostic_vars)
    {
 
-   compute_diagnostic_quantities(diagnostic_vars.fields_arr[Q0VAR].data, x.fields_arr[VVAR].data, x.fields_arr[HVAR].data, const_vars.fields_arr[CORIOLISVAR].data, *this->topology, *this->geom);
+   compute_diagnostic_quantities(diagnostic_vars.fields_arr[Q0VAR].data, diagnostic_vars.fields_arr[SL0VAR].data, x.fields_arr[VVAR].data, x.fields_arr[HVAR].data, x.fields_arr[SVAR].data, const_vars.fields_arr[CORIOLISVAR].data, *this->topology, *this->geom);
 
    }
 
@@ -291,8 +303,7 @@ void YAKL_INLINE compute_dual_reconstruction(realArr reconvar, realArr densityva
 }
 
 
-
-void YAKL_INLINE compute_auxiliary_quantities(realArr B, realArr F, realArr q, realArr hrecon, const realArr v, const realArr h, const realArr hs, const realArr coriolis, const Topology<ndims> &topology, Geometry<ndims,1,1,1> &geom)
+void YAKL_INLINE compute_auxiliary_quantities(realArr B, realArr F, realArr T, realArr q, realArr hrecon, realArr srecon, const realArr v, const realArr h, const realArr S, const realArr hs, const realArr coriolis, const Topology<ndims> &topology, Geometry<ndims,1,1,1> &geom)
 {
 
     int is = topology.is;
@@ -309,6 +320,7 @@ void YAKL_INLINE compute_auxiliary_quantities(realArr B, realArr F, realArr q, r
         U = geom.get_H_edge(0, k+ks, j+js, i+is) * v(0,k+ks,j+js,i+is);
         F(0,k+ks,j+js,i+is) = he0 * U;
         hrecon(0,k+ks,j+js,i+is) = hrecon(0,k+ks,j+js,i+is) / he0;
+        //srecon(0,k+ks,j+js,i+is) = srecon(0,k+ks,j+js,i+is) / he0;
 
         if (ndims == 1) {
         KE = 1./2. * ( v(0,k+ks,j+js,i+is) * U + v(0,k+ks,j+js,i+is+1) * geom.get_H_edge(0, k+ks, j+js, i+is+1) * v(0,k+ks,j+js,i+is+1));
@@ -320,6 +332,7 @@ void YAKL_INLINE compute_auxiliary_quantities(realArr B, realArr F, realArr q, r
         V = geom.get_H_edge(1, k+ks, j+js, i+is) * v(1,k+ks,j+js,i+is);
         F(1,k+ks,j+js,i+is) = he1 * V;
         hrecon(1,k+ks,j+js,i+is) = hrecon(1,k+ks,j+js,i+is) / he1;
+        //srecon(1,k+ks,j+js,i+is) = srecon(1,k+ks,j+js,i+is) / he1;
 
         KE = 1./4. * ( v(0,k+ks,j+js,i+is) * U + v(0,k+ks,j+js,i+is+1) * geom.get_H_edge(0, k+ks, j+js, i+is+1) * v(0,k+ks,j+js,i+is+1) +
                        v(1,k+ks,j+js,i+is) * V + v(1,k+ks,j+js+1,i+is) * geom.get_H_edge(1, k+ks, j+js+1, i+is) * v(1,k+ks,j+js+1,i+is));
@@ -330,7 +343,8 @@ void YAKL_INLINE compute_auxiliary_quantities(realArr B, realArr F, realArr q, r
         q(0,k+ks,j+js,i+is) = eta / hv * geom.get_J_dual_cell(k+ks, j+js, i+is);
         }
 
-        B(0,k+ks,j+js,i+is) = (g*(h(0,k+ks,j+js,i+is) + hs(0,k+ks,j+js,i+is)) + KE)/geom.get_J_cell(k+ks, j+js, i+is);
+        B(0,k+ks,j+js,i+is) = (S(0,k+ks,j+js,i+is)/2.0 + KE)/geom.get_J_cell(k+ks, j+js, i+is);
+        T(0,k+ks,j+js,i+is) = (h(0,k+ks,j+js,i+is)/2.0 + hs(0,k+ks,j+js,i+is))/geom.get_J_cell(k+ks, j+js, i+is);
 
     });
 
@@ -344,15 +358,33 @@ void YAKL_INLINE compute_auxiliary_quantities(realArr B, realArr F, realArr q, r
   void compute_rhs(const VariableSet<ndims, nconst> &const_vars, VariableSet<ndims, nprog> &x, VariableSet<ndims, naux> &auxiliary_vars, VariableSet<ndims, nprog> &xtend)
   {
 
-      //Compute h reconstructions
+      //Compute h and S reconstructions
    compute_primal_reconstruction(auxiliary_vars.fields_arr[HRECONVAR].data, x.fields_arr[HVAR].data, x.fields_arr[VVAR].data);
+
+   int is = topology->is;
+   int js = topology->js;
+   int ks = topology->ks;
+
+     yakl::parallel_for("ComputeAuxiliary", topology->n_cells, YAKL_LAMBDA (int iGlob) {
+       int k, j, i;
+       yakl::unpackIndices(iGlob, topology->n_cells_z, topology->n_cells_y, topology->n_cells_x, k, j, i);
+
+   auxiliary_vars.fields_arr[SLVAR].data(0,k+ks,j+js,i+is) = x.fields_arr[SVAR].data(0,k+ks,j+js,i+is) / x.fields_arr[HVAR].data(0,k+ks,j+js,i+is) * geom->get_J_cell(k+ks, j+js, i+is);
+    });
+
+    compute_primal_reconstruction(auxiliary_vars.fields_arr[SRECONVAR].data, auxiliary_vars.fields_arr[SLVAR].data, x.fields_arr[VVAR].data);
+
+   //compute_primal_reconstruction(auxiliary_vars.fields_arr[SRECONVAR].data, x.fields_arr[SVAR].data, auxiliary_vars.fields_arr[VVAR].data);
+
 
 //Compute B, F and q; also scale hrecon
 compute_auxiliary_quantities(
-auxiliary_vars.fields_arr[BVAR].data, auxiliary_vars.fields_arr[FVAR].data, auxiliary_vars.fields_arr[QVAR].data, auxiliary_vars.fields_arr[HRECONVAR].data,
-x.fields_arr[VVAR].data, x.fields_arr[HVAR].data,
+auxiliary_vars.fields_arr[BVAR].data, auxiliary_vars.fields_arr[FVAR].data, auxiliary_vars.fields_arr[TVAR].data,
+auxiliary_vars.fields_arr[QVAR].data, auxiliary_vars.fields_arr[HRECONVAR].data, auxiliary_vars.fields_arr[SRECONVAR].data,
+x.fields_arr[VVAR].data, x.fields_arr[HVAR].data, x.fields_arr[SVAR].data,
 const_vars.fields_arr[HSVAR].data, const_vars.fields_arr[CORIOLISVAR].data,
 *this->topology, *this->geom);
+
 
 //Compute FT and q reconstruction
 if (ndims == 2) {
@@ -368,7 +400,7 @@ compute_dual_reconstruction(auxiliary_vars.fields_arr[QRECONVAR].data, auxiliary
 
    this->aux_exchange->exchange_variable_set(auxiliary_vars);
 
-   //compute h rhs = D (hrecon U) = D (hrecond/he F) with F = he U
+   //compute h rhs = D (hrecon* U) = D (hrecon/he F) with F = he U
    if (differential_order == 2)
    { divergence2<ndims, 1>(xtend.fields_arr[HVAR].data, auxiliary_vars.fields_arr[HRECONVAR].data, auxiliary_vars.fields_arr[FVAR].data, *this->topology); }
    if (differential_order == 4)
@@ -378,7 +410,18 @@ compute_dual_reconstruction(auxiliary_vars.fields_arr[QRECONVAR].data, auxiliary
    if (differential_order == 8)
    { divergence8<ndims, 1>(xtend.fields_arr[HVAR].data, auxiliary_vars.fields_arr[HRECONVAR].data, auxiliary_vars.fields_arr[FVAR].data, *this->topology); }
 
-   //compute u rhs = hrecon/he G B + Q F
+   //compute S rhs = D (srecon F)
+   if (differential_order == 2)
+   { divergence2<ndims, 1>(xtend.fields_arr[SVAR].data, auxiliary_vars.fields_arr[SRECONVAR].data, auxiliary_vars.fields_arr[FVAR].data, *this->topology); }
+   if (differential_order == 4)
+   { divergence4<ndims, 1>(xtend.fields_arr[SVAR].data, auxiliary_vars.fields_arr[SRECONVAR].data, auxiliary_vars.fields_arr[FVAR].data, *this->topology); }
+   if (differential_order == 6)
+   { divergence6<ndims, 1>(xtend.fields_arr[SVAR].data, auxiliary_vars.fields_arr[SRECONVAR].data, auxiliary_vars.fields_arr[FVAR].data, *this->topology); }
+   if (differential_order == 8)
+   { divergence8<ndims, 1>(xtend.fields_arr[SVAR].data, auxiliary_vars.fields_arr[SRECONVAR].data, auxiliary_vars.fields_arr[FVAR].data, *this->topology); }
+
+
+   //compute u rhs = hrecon/he G B + srecon/he G T + Q F
 if (differential_order == 2)
 { gradient2<ndims, 1>(xtend.fields_arr[VVAR].data, auxiliary_vars.fields_arr[HRECONVAR].data, auxiliary_vars.fields_arr[BVAR].data, *this->topology); }
 if (differential_order == 4)
@@ -388,8 +431,18 @@ if (differential_order == 6)
 if (differential_order == 8)
 { gradient8<ndims, 1>(xtend.fields_arr[VVAR].data, auxiliary_vars.fields_arr[HRECONVAR].data, auxiliary_vars.fields_arr[BVAR].data, *this->topology); }
 
+if (differential_order == 2)
+{ gradient2_add<ndims, 1>(xtend.fields_arr[VVAR].data, auxiliary_vars.fields_arr[SRECONVAR].data, auxiliary_vars.fields_arr[TVAR].data, *this->topology); }
+if (differential_order == 4)
+{ gradient4_add<ndims, 1>(xtend.fields_arr[VVAR].data, auxiliary_vars.fields_arr[SRECONVAR].data, auxiliary_vars.fields_arr[TVAR].data, *this->topology); }
+if (differential_order == 6)
+{ gradient6_add<ndims, 1>(xtend.fields_arr[VVAR].data, auxiliary_vars.fields_arr[SRECONVAR].data, auxiliary_vars.fields_arr[TVAR].data, *this->topology); }
+if (differential_order == 8)
+{ gradient8_add<ndims, 1>(xtend.fields_arr[VVAR].data, auxiliary_vars.fields_arr[SRECONVAR].data, auxiliary_vars.fields_arr[TVAR].data, *this->topology); }
+
 if (ndims == 2) {
 Q2D_2_add(xtend.fields_arr[VVAR].data, auxiliary_vars.fields_arr[QRECONVAR].data, auxiliary_vars.fields_arr[FVAR].data, *this->topology);
+//Q2D_nonEC_2_add(xtend.fields_arr[VVAR].data, auxiliary_vars.fields_arr[QRECONVAR].data, auxiliary_vars.fields_arr[FVAR].data, *this->topology);
 }
  }
 
@@ -449,10 +502,10 @@ public:
     stats_arr[PESTAT].initialize("potential_energy", params, par);
     stats_arr[KESTAT].initialize("kinetic_energy", params, par);
     stats_arr[TESTAT].initialize("total_energy", params, par);
+    stats_arr[BSTAT].initialize("bouyancy", params, par);
 
     if (ndims == 2) {
     stats_arr[PVSTAT].initialize("potential_vorticity", params, par);
-    stats_arr[PENSSTAT].initialize("potential_enstrophy", params, par);
     }
     masterproc = par.masterproc;
   }
@@ -466,16 +519,16 @@ public:
       this->stats_arr[PESTAT].local_dat = 0;
       this->stats_arr[KESTAT].local_dat = 0;
       this->stats_arr[TESTAT].local_dat = 0;
+      this->stats_arr[BSTAT].local_dat = 0;
       if (ndims == 2) {
       this->stats_arr[PVSTAT].local_dat = 0;
-      this->stats_arr[PENSSTAT].local_dat = 0;
   }
 
       int is = topology->is;
       int js = topology->js;
       int ks = topology->ks;
 
-      real h, h1, h2, h3, u0, u1, v0, v1, um1, vm1, hs, coriolis;
+      real h, S, h1, h2, h3, u0, u1, v0, v1, um1, vm1, hs, coriolis;
       real zeta, eta, hv, q0, he0, he1, KE, PE;
 
         yakl::parallel_for("ComputeStats", topology->n_cells, YAKL_LAMBDA (int iGlob) {
@@ -484,6 +537,7 @@ public:
 
           //compute stats locally
           h = progvars.fields_arr[HVAR].data(0,k+ks,j+js,i+is);
+          S = progvars.fields_arr[SVAR].data(0,k+ks,j+js,i+is);
           h2 = progvars.fields_arr[HVAR].data(0,k+ks,j+js,i+is-1);
           u0 = progvars.fields_arr[VVAR].data(0,k+ks,j+js,i+is);
           u1 = progvars.fields_arr[VVAR].data(0,k+ks,j+js,i+is+1);
@@ -517,15 +571,15 @@ public:
         q0 = eta / hv;
           }
 
-          PE = 0.5*g*h*h/geom->get_J_cell(k+ks, j+js, i+is) + g*h*hs/geom->get_J_cell(k+ks, j+js, i+is);
+          PE = 0.5*S*h/geom->get_J_cell(k+ks, j+js, i+is) + S*hs/geom->get_J_cell(k+ks, j+js, i+is);
 
          this->stats_arr[MSTAT].local_dat += h;
+         this->stats_arr[BSTAT].local_dat += S;
          this->stats_arr[PESTAT].local_dat += PE;
          this->stats_arr[KESTAT].local_dat += KE;
          this->stats_arr[TESTAT].local_dat += KE + PE;
          if (ndims == 2) {
          this->stats_arr[PVSTAT].local_dat += hv * q0;
-         this->stats_arr[PENSSTAT].local_dat += 0.5 * q0 * eta;
      }
 
       });
@@ -537,7 +591,7 @@ public:
     this->ierr = MPI_Ireduce( &this->stats_arr[KESTAT].local_dat, &this->stats_arr[KESTAT].global_dat, 1, REAL_MPI, MPI_SUM, 0, MPI_COMM_WORLD, &this->Req[KESTAT]);
     this->ierr = MPI_Ireduce( &this->stats_arr[TESTAT].local_dat, &this->stats_arr[TESTAT].global_dat, 1, REAL_MPI, MPI_SUM, 0, MPI_COMM_WORLD, &this->Req[TESTAT]);
     this->ierr = MPI_Ireduce( &this->stats_arr[PVSTAT].local_dat, &this->stats_arr[PVSTAT].global_dat, 1, REAL_MPI, MPI_SUM, 0, MPI_COMM_WORLD, &this->Req[PVSTAT]);
-    this->ierr = MPI_Ireduce( &this->stats_arr[PENSSTAT].local_dat, &this->stats_arr[PENSSTAT].global_dat, 1, REAL_MPI, MPI_SUM, 0, MPI_COMM_WORLD, &this->Req[PENSSTAT]);
+    this->ierr = MPI_Ireduce( &this->stats_arr[BSTAT].local_dat, &this->stats_arr[BSTAT].global_dat, 1, REAL_MPI, MPI_SUM, 0, MPI_COMM_WORLD, &this->Req[BSTAT]);
 
     this->ierr = MPI_Waitall(nstats, this->Req, this->Status);
 
@@ -548,9 +602,9 @@ public:
   this->stats_arr[PESTAT].data(i) = this->stats_arr[PESTAT].global_dat;
   this->stats_arr[KESTAT].data(i) = this->stats_arr[KESTAT].global_dat;
   this->stats_arr[TESTAT].data(i) = this->stats_arr[TESTAT].global_dat;
+  this->stats_arr[BSTAT].data(i) = this->stats_arr[BSTAT].global_dat;
   if (ndims == 2) {
   this->stats_arr[PVSTAT].data(i) = this->stats_arr[PVSTAT].global_dat;
-  this->stats_arr[PENSSTAT].data(i) = this->stats_arr[PENSSTAT].global_dat;
     }
   }
   }
@@ -570,12 +624,17 @@ std::array<const Topology<ndims> *, nprognostic> &prog_topo_arr, std::array<cons
 {
   prog_topo_arr[HVAR] = &topo;
   prog_topo_arr[VVAR] = &topo;
+  prog_topo_arr[SVAR] = &topo;
   const_topo_arr[HSVAR] = &topo;
   aux_topo_arr[BVAR] = &topo;
   aux_topo_arr[FVAR] = &topo;
-  aux_topo_arr[HRECONVAR] = &topo;
-  if (ndims == 2) {
   aux_topo_arr[FTVAR] = &topo;
+  aux_topo_arr[TVAR] = &topo;
+  aux_topo_arr[HRECONVAR] = &topo;
+  aux_topo_arr[SRECONVAR] = &topo;
+  diag_topo_arr[SL0VAR] = &topo;
+  aux_topo_arr[SLVAR] = &topo;
+  if (ndims == 2) {
   const_topo_arr[CORIOLISVAR] = &topo;
   aux_topo_arr[QVAR] = &topo;
   diag_topo_arr[Q0VAR] = &topo;
@@ -584,43 +643,56 @@ std::array<const Topology<ndims> *, nprognostic> &prog_topo_arr, std::array<cons
 
   prog_names_arr[HVAR] = "h";
   prog_names_arr[VVAR] = "v";
+  prog_names_arr[SVAR] = "S";
   const_names_arr[HSVAR] = "hs";
   aux_names_arr[BVAR] = "B";
   aux_names_arr[FVAR] = "F";
+  aux_names_arr[FTVAR] = "FT";
+  aux_names_arr[TVAR] = "T";
   aux_names_arr[HRECONVAR] = "hrecon";
+  aux_names_arr[SRECONVAR] = "srecon";
+  diag_names_arr[SL0VAR] = "sl";
+  aux_names_arr[SLVAR] = "sl";
 
   if (ndims == 2) {
   const_names_arr[CORIOLISVAR] = "coriolis";
   aux_names_arr[QVAR] = "q";
-  diag_names_arr[Q0VAR] = "q0";
+  diag_names_arr[Q0VAR] = "q";
   aux_names_arr[QRECONVAR] = "qrecon";
-  aux_names_arr[FTVAR] = "FT";
 }
 
 //primal grid represents twisted quantities, dual grid straight quantities
     prog_ndofs_arr(HVAR,2) = 1; //h = twisted 2-form
+    prog_ndofs_arr(SVAR,2) = 1; //S = twisted 2-form
     prog_ndofs_arr(VVAR,1) = 1; //v = straight 1-form
     const_ndofs_arr(HSVAR,2) = 1; //hs = twisted 2-form
     aux_ndofs_arr(BVAR,2) = 1; //B = straight 0-form
     aux_ndofs_arr(FVAR,1) = 1; //F = twisted 1-form
+    aux_ndofs_arr(FTVAR,1) = 1; //FT = straight 1-form
+    aux_ndofs_arr(TVAR,2) = 1; //T = straight 0-form
     aux_ndofs_arr(HRECONVAR,1) = 1; //hrecon lives on edges
+    aux_ndofs_arr(SRECONVAR,1) = 1; //srecon lives on edges
+    aux_ndofs_arr(SLVAR,2) = 1; //sl = straight 0-form
+    diag_ndofs_arr(SL0VAR,2) = 1; //sl0 = straight 0-form
 
     if (ndims == 2) {
     const_ndofs_arr(CORIOLISVAR,0) = 1; //f = straight 2-form
     aux_ndofs_arr(QVAR,0) = 1; //q = straight 2-form
     diag_ndofs_arr(Q0VAR,0) = 1; //q0 = twisted 0-form
     aux_ndofs_arr(QRECONVAR,1) = 1; //qrecon lives on edges
-    aux_ndofs_arr(FTVAR,1) = 1; //FT = straight 1-form
 }
 }
 
   // *******   Initial Conditions   ***********//
+
 
 // FIX THESE FOR 1D/2D
 real YAKL_INLINE double_vortex_coriolis(real x, real y)
 {
     return coriolis;
 }
+
+
 
 real YAKL_INLINE double_vortex_h(real x, real y)
 {
@@ -653,6 +725,16 @@ vec<2> YAKL_INLINE double_vortex_v(real x, real y) {
   return vvec;
 }
 
+real YAKL_INLINE double_vortex_S(real x, real y)
+{
+    //real sval = g * (1. + c * sin(2. * M_PI / Lx * (x - xc)) * sin(2. * M_PI / Ly * (y - yc)) * exp(-((x-xc)*(x-xc) + (y-yc)*(y-yc))/(a*a*D*D)));
+    real sval = g * (1. + c * exp(-((x-xc)*(x-xc) + (y-yc)*(y-yc))/(a*a*D*D)));
+    //real sval = g * (1. + c * sin(2. * M_PI / Lx * (x- xc)));
+    //real sval = g;
+    //real sval = g * (1. + c * ((x > 0.35 * Lx && x < 0.65 * Lx && y > 0.35 * Ly && y < 0.65 * Ly ) ? 1. : 0.));
+    return sval * double_vortex_h(x,y);
+}
+
 
 //wavespeed = sqrt(g * H0)
 //dt = Constant(get_dt(wavespeed, cval, order, variant, Lx, Ly, nx, ny))
@@ -665,6 +747,7 @@ template <int nprog, int nconst, int ndiag, int nquadx, int nquady, int nquadz> 
     if (params.data_init_cond == DATA_INIT::DOUBLEVORTEX)
     {
         geom.set_primal_2form_values(double_vortex_h, progvars.fields_arr[HVAR], 0);
+        geom.set_primal_2form_values(double_vortex_S, progvars.fields_arr[SVAR], 0);
         geom.set_dual_1form_values(double_vortex_v, progvars.fields_arr[VVAR], 0, LINE_INTEGRAL_TYPE::TANGENT);
         geom.set_dual_2form_values(double_vortex_coriolis, constvars.fields_arr[CORIOLISVAR], 0);
     }

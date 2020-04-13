@@ -32,7 +32,7 @@ void YAKL_INLINE Q2D_2_add( realArr var, const realArr recon, const realArr flux
 }
 
 
-// Q = q W)
+// Q = q W
 void YAKL_INLINE Q2D_nonEC_2_add( realArr var, const realArr recon, const realArr flux, const Topology<2> &topology) {
 
   int is = topology.is;

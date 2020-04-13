@@ -5,6 +5,9 @@
 #include "common.h"
 #include "topology.h"
 
+// THIS REQUIRES SPLIT OF D into D2 K and G into L G2
+// So we can do D2 PHI K and L PHI G
+
 template<uint ndims, uint ndofs> void YAKL_INLINE divergence2( realArr var, const realArr recon, const realArr flux, const Topology<ndims> &topology) {
 
   int is = topology.is;

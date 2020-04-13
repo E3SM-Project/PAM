@@ -10,6 +10,7 @@ h = DS.h
 v = DS.v
 q = DS.q
 sl = DS.sl
+S = DS.S
 
 M = DS.mass
 B = DS.bouyancy
@@ -70,13 +71,23 @@ for i in Nlist:
     plt.close('all')
 
     plt.figure(figsize=(10,8))
-    plt.contourf(sl.isel(t=i,sl_ndofs=0,ncells_z=0) - g)
+    plt.contourf(sl.isel(t=i,sl_ndofs=0,ncells_z=0))
     plt.colorbar()
-    plt.contour(sl.isel(t=i,sl_ndofs=0,ncells_z=0) - g)
+    plt.contour(sl.isel(t=i,sl_ndofs=0,ncells_z=0))
     plt.xlabel('x')
     plt.ylabel('y')
     plt.tight_layout()
     plt.savefig('sl' + str(i) + '.png')
+    plt.close('all')
+
+    plt.figure(figsize=(10,8))
+    plt.contourf(S.isel(t=i,S_ndofs=0,ncells_z=0))
+    plt.colorbar()
+    plt.contour(S.isel(t=i,S_ndofs=0,ncells_z=0))
+    plt.xlabel('x')
+    plt.ylabel('y')
+    plt.tight_layout()
+    plt.savefig('S' + str(i) + '.png')
     plt.close('all')
 
     # plt.figure(figsize=(10,8))
