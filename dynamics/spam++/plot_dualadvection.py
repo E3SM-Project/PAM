@@ -13,9 +13,6 @@ q = DS.q
 qmass = DS.qmass
 qmin = DS.qmin
 qmax = DS.qmax
-print(qmass)
-print(qmin)
-print(qmax)
 
 def plot_stat(statname, data):
     plt.figure(figsize=(10,8))
@@ -35,7 +32,7 @@ plot_stat('mass', qmass)
 plot_rawstat('min', qmin)
 plot_rawstat('max', qmax)
 
-Nlist = [0,1,2,3,4,5,6,40]
+Nlist = [0,1,10,40]
 
 plt.figure(figsize=(10,8))
 plt.quiver(u.isel(u_ndofs=0,ncells_z=0), u.isel(u_ndofs=1,ncells_z=0))
@@ -43,7 +40,24 @@ plt.quiver(u.isel(u_ndofs=0,ncells_z=0), u.isel(u_ndofs=1,ncells_z=0))
 plt.colorbar()
 plt.xlabel('x')
 plt.ylabel('y')
+plt.savefig('vvec.png')
+
+
+plt.figure(figsize=(10,8))
+plt.contourf(u.isel(u_ndofs=0,ncells_z=0))
+plt.colorbar()
+plt.contour(u.isel(u_ndofs=0,ncells_z=0))
+plt.xlabel('x')
+plt.ylabel('y')
 plt.savefig('u.png')
+
+plt.figure(figsize=(10,8))
+plt.contourf(u.isel(u_ndofs=1,ncells_z=0))
+plt.colorbar()
+plt.contour(u.isel(u_ndofs=1,ncells_z=0))
+plt.xlabel('x')
+plt.ylabel('y')
+plt.savefig('v.png')
 
 for i in Nlist:
     plt.figure(figsize=(10,8))
@@ -56,25 +70,16 @@ for i in Nlist:
 
 
 
-fig = plt.figure(figsize=(10,8))
-ax = fig.add_axes([0.05, 0.05, 0.8, 0.8])
-ax.set_xlabel('x')
-ax.set_ylabel('y')
-ax.contourf(q.isel(t=0,q_ndofs=0,ncells_z=0))
-#fig.colorbar()
-ax.contour(q.isel(t=0,q_ndofs=0,ncells_z=0))
-plt.savefig('test.png')
 
-def update(i):
-     ax.clear()
-     ax.set_xlabel('x')
-     ax.set_ylabel('y')
-     ax.contourf(q.isel(t=i%40,q_ndofs=0,ncells_z=0))
-     ax.contour(q.isel(t=i%40,q_ndofs=0,ncells_z=0))
+# def update(i):
+#      ax.clear()
+#      ax.set_xlabel('x')
+#      ax.set_ylabel('y')
+#      ax.contourf(q.isel(t=i%40,q_ndofs=0,ncells_z=0))
+#      ax.contour(q.isel(t=i%40,q_ndofs=0,ncells_z=0))
 
 # Construct the animation, using the update function as the animation director.
-animation = FuncAnimation(fig, update, interval=80, blit=False)
+#animation = FuncAnimation(fig, update, interval=80, blit=False)
+#animation.save('test.mp4')
 
-animation.save('test.mp4')
-
-plt.show()
+#plt.show()

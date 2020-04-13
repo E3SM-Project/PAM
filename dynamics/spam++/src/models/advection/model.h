@@ -17,8 +17,20 @@
 // Number of variables
 uint constexpr nprognostic = 1;
 uint constexpr nconstant = 1;
-uint constexpr ndiagnostic = 1;
+uint constexpr nauxiliary = 1;
+uint constexpr ndiagnostic = 0;
 uint constexpr nstats = 3;
+
+#define QVAR 0
+
+#define UVAR 0
+
+#define QRECONVAR 0
+
+#define MSTAT 0
+#define MINSTAT 1
+#define MAXSTAT 2
+
 
 // Initial conditions related variables and functions
 #define gaussian_1d(x)     (1. * exp(-100. * pow(x-0.5,2.)))
@@ -194,13 +206,45 @@ template<uint ndims> void set_model_specific_params(std::string inFile, ModelPar
 }
 
 
-// *******   Tendencies   ***********//
+// ******* Diagnostics *************//
 
-template <uint ndims, uint nprog, uint nconst, uint ndiag> class Tendencies {
+// THIS SHOULD BE GENERALIZABLE...
+// ONLY COMPUTE FUNCTION NEEDS TO CHANGE
+
+template <uint ndims, uint nprog, uint nconst, uint ndiag> class Diagnostics {
 public:
 
   const Topology<ndims> *topology;
-  ExchangeSet<ndims, ndiag> *diag_exchange;
+  Geometry<ndims,1,1,1> *geom;
+
+  bool is_initialized;
+
+   Diagnostics() {
+     this->is_initialized = false;
+     std::cout << "CREATED DIAGNOSTICS\n";
+   }
+
+   void initialize(const Topology<ndims> &topo, Geometry<ndims,1,1,1> &geom)
+   {
+     this->topology = &topo;
+     this->geom = &geom;
+     this->is_initialized = true;
+   }
+
+
+      void compute_diag(const VariableSet<ndims, nconst> &const_vars, VariableSet<ndims, nprog> &x, VariableSet<ndims, ndiag> &diagnostic_vars)
+      {
+      }
+
+   };
+
+// *******   Tendencies   ***********//
+
+template <uint ndims, uint nprog, uint nconst, uint naux> class Tendencies {
+public:
+
+  const Topology<ndims> *topology;
+  ExchangeSet<ndims, naux> *aux_exchange;
   Geometry<ndims,1,1,1> *geom;
 
   bool is_initialized;
@@ -210,55 +254,55 @@ public:
      std::cout << "CREATED TENDENCIES\n";
    }
 
-  void initialize(const Topology<ndims> &topo, Geometry<ndims,1,1,1> &geom, ExchangeSet<ndims, ndiag> &diag_exchange)
+  void initialize(const Topology<ndims> &topo, Geometry<ndims,1,1,1> &geom, ExchangeSet<ndims, naux> &aux_exchange)
   {
     this->topology = &topo;
     this->geom = &geom;
-    this->diag_exchange = &diag_exchange;
+    this->aux_exchange = &aux_exchange;
     this->is_initialized = true;
   }
 
-  void compute_rhs(const VariableSet<ndims, nconst> &const_vars, VariableSet<ndims, nprog> &x, VariableSet<ndims, ndiag> &diagnostic_vars, VariableSet<ndims, nprog> &xtend)
+  void compute_rhs(const VariableSet<ndims, nconst> &const_vars, VariableSet<ndims, nprog> &x, VariableSet<ndims, naux> &auxiliary_vars, VariableSet<ndims, nprog> &xtend)
   {
 
    //compute reconstructions
 
 
    if (reconstruction_type == RECONSTRUCTION_TYPE::CFV && reconstruction_order == 2)
-   { cfv2_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, *this->topology, *this->geom);}
+   { cfv2_recon<ndims, nqdofs>(auxiliary_vars.fields_arr[QRECONVAR].data, x.fields_arr[QVAR].data, *this->topology, *this->geom);}
    if (reconstruction_type == RECONSTRUCTION_TYPE::CFV && reconstruction_order == 4)
-   { cfv4_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, *this->topology, *this->geom);}
+   { cfv4_recon<ndims, nqdofs>(auxiliary_vars.fields_arr[QRECONVAR].data, x.fields_arr[QVAR].data, *this->topology, *this->geom);}
    if (reconstruction_type == RECONSTRUCTION_TYPE::CFV && reconstruction_order == 6)
-   { cfv6_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, *this->topology, *this->geom);}
+   { cfv6_recon<ndims, nqdofs>(auxiliary_vars.fields_arr[QRECONVAR].data, x.fields_arr[QVAR].data, *this->topology, *this->geom);}
    if (reconstruction_type == RECONSTRUCTION_TYPE::CFV && reconstruction_order == 8)
-   { cfv8_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, *this->topology, *this->geom);}
+   { cfv8_recon<ndims, nqdofs>(auxiliary_vars.fields_arr[QRECONVAR].data, x.fields_arr[QVAR].data, *this->topology, *this->geom);}
    if (reconstruction_type == RECONSTRUCTION_TYPE::CFV && reconstruction_order == 10)
-   { cfv10_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, *this->topology, *this->geom);}
+   { cfv10_recon<ndims, nqdofs>(auxiliary_vars.fields_arr[QRECONVAR].data, x.fields_arr[QVAR].data, *this->topology, *this->geom);}
 
    if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 1)
-   { weno1_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology, *this->geom); }
+   { weno1_recon<ndims, nqdofs>(auxiliary_vars.fields_arr[QRECONVAR].data, x.fields_arr[QVAR].data, const_vars.fields_arr[UVAR].data, *this->topology, *this->geom); }
    if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 3)
-   { weno3_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology, *this->geom); }
+   { weno3_recon<ndims, nqdofs>(auxiliary_vars.fields_arr[QRECONVAR].data, x.fields_arr[QVAR].data, const_vars.fields_arr[UVAR].data, *this->topology, *this->geom); }
    if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 5)
-   { weno5_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology, *this->geom); }
+   { weno5_recon<ndims, nqdofs>(auxiliary_vars.fields_arr[QRECONVAR].data, x.fields_arr[QVAR].data, const_vars.fields_arr[UVAR].data, *this->topology, *this->geom); }
    if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 7)
-   { weno7_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology, *this->geom); }
+   { weno7_recon<ndims, nqdofs>(auxiliary_vars.fields_arr[QRECONVAR].data, x.fields_arr[QVAR].data, const_vars.fields_arr[UVAR].data, *this->topology, *this->geom); }
    if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 9)
-   { weno9_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology, *this->geom); }
+   { weno9_recon<ndims, nqdofs>(auxiliary_vars.fields_arr[QRECONVAR].data, x.fields_arr[QVAR].data, const_vars.fields_arr[UVAR].data, *this->topology, *this->geom); }
    if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 11)
-   { weno11_recon<ndims, nqdofs>(diagnostic_vars.fields_arr[0].data, x.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology, *this->geom); }
+   { weno11_recon<ndims, nqdofs>(auxiliary_vars.fields_arr[QRECONVAR].data, x.fields_arr[QVAR].data, const_vars.fields_arr[UVAR].data, *this->topology, *this->geom); }
 
-   this->diag_exchange->exchange_variable_set(diagnostic_vars);
+   this->aux_exchange->exchange_variable_set(auxiliary_vars);
 
    //compute D (qrecon U)
    if (differential_order == 2)
-   { divergence2<ndims, nqdofs>(xtend.fields_arr[0].data, diagnostic_vars.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology); }
+   { divergence2<ndims, nqdofs>(xtend.fields_arr[QVAR].data, auxiliary_vars.fields_arr[QRECONVAR].data, const_vars.fields_arr[UVAR].data, *this->topology); }
    if (differential_order == 4)
-   { divergence4<ndims, nqdofs>(xtend.fields_arr[0].data, diagnostic_vars.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology); }
+   { divergence4<ndims, nqdofs>(xtend.fields_arr[QVAR].data, auxiliary_vars.fields_arr[QRECONVAR].data, const_vars.fields_arr[UVAR].data, *this->topology); }
    if (differential_order == 6)
-   { divergence6<ndims, nqdofs>(xtend.fields_arr[0].data, diagnostic_vars.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology); }
+   { divergence6<ndims, nqdofs>(xtend.fields_arr[QVAR].data, auxiliary_vars.fields_arr[QRECONVAR].data, const_vars.fields_arr[UVAR].data, *this->topology); }
    if (differential_order == 8)
-   { divergence8<ndims, nqdofs>(xtend.fields_arr[0].data, diagnostic_vars.fields_arr[0].data, const_vars.fields_arr[0].data, *this->topology); }
+   { divergence8<ndims, nqdofs>(xtend.fields_arr[QVAR].data, auxiliary_vars.fields_arr[QRECONVAR].data, const_vars.fields_arr[UVAR].data, *this->topology); }
  }
 
 };
@@ -288,43 +332,43 @@ template <uint ndims, uint nprog, uint nconst, uint nstats> class Stats
 {
 public:
   std::array<Stat,nstats> stats_arr;
-  MPI_Request Req [3];
-  MPI_Status  Status[3];
+  MPI_Request Req [nstats];
+  MPI_Status  Status[nstats];
   int ierr;
   int statsize;
   int masterproc;
 
-  void initialize(ModelParameters &params, Parallel &par)
+  void initialize(ModelParameters &params, Parallel &par, const Topology<ndims> &topo, Geometry<ndims,1,1,1> &geom)
   {
     statsize = params.Nsteps/params.Nstat + 1;
-    stats_arr[0].initialize("qmass", params, par);
-    stats_arr[1].initialize("qmin", params, par);
-    stats_arr[2].initialize("qmax", params, par);
+    stats_arr[MSTAT].initialize("qmass", params, par);
+    stats_arr[MINSTAT].initialize("qmin", params, par);
+    stats_arr[MAXSTAT].initialize("qmax", params, par);
     masterproc = par.masterproc;
   }
 
 
 
 
-  void compute( VariableSet<ndims, nprog> &progvars,  VariableSet<ndims, nprog> &constvars, int i)
+  void compute( VariableSet<ndims, nprog> &progvars,  VariableSet<ndims, nconst> &constvars, int i)
   {
 
     //compute locally
-    this->stats_arr[0].local_dat = progvars.fields_arr[0].sum();
-    this->stats_arr[1].local_dat = progvars.fields_arr[0].min();
-    this->stats_arr[2].local_dat = progvars.fields_arr[0].max();
+    this->stats_arr[MSTAT].local_dat = progvars.fields_arr[QVAR].sum();
+    this->stats_arr[MINSTAT].local_dat = progvars.fields_arr[QVAR].min();
+    this->stats_arr[MAXSTAT].local_dat = progvars.fields_arr[QVAR].max();
 
     //MPI sum/min/max
-    this->ierr = MPI_Ireduce( &this->stats_arr[0].local_dat, &this->stats_arr[0].global_dat, 1, REAL_MPI, MPI_SUM, 0, MPI_COMM_WORLD, &this->Req[0]);
-    this->ierr = MPI_Ireduce( &this->stats_arr[1].local_dat, &this->stats_arr[1].global_dat, 1, REAL_MPI, MPI_MIN, 0, MPI_COMM_WORLD, &this->Req[1]);
-    this->ierr = MPI_Ireduce( &this->stats_arr[2].local_dat, &this->stats_arr[2].global_dat, 1, REAL_MPI, MPI_MAX, 0, MPI_COMM_WORLD, &this->Req[2]);
-    this->ierr = MPI_Waitall(3, this->Req, this->Status);
+    this->ierr = MPI_Ireduce( &this->stats_arr[MSTAT].local_dat, &this->stats_arr[MSTAT].global_dat, 1, REAL_MPI, MPI_SUM, 0, MPI_COMM_WORLD, &this->Req[MSTAT]);
+    this->ierr = MPI_Ireduce( &this->stats_arr[MINSTAT].local_dat, &this->stats_arr[MINSTAT].global_dat, 1, REAL_MPI, MPI_SUM, 0, MPI_COMM_WORLD, &this->Req[MINSTAT]);
+    this->ierr = MPI_Ireduce( &this->stats_arr[MAXSTAT].local_dat, &this->stats_arr[MAXSTAT].global_dat, 1, REAL_MPI, MPI_SUM, 0, MPI_COMM_WORLD, &this->Req[MAXSTAT]);
+    this->ierr = MPI_Waitall(nstats, this->Req, this->Status);
 
   if (masterproc)
   {
-  this->stats_arr[0].data(i) = this->stats_arr[0].global_dat;
-  this->stats_arr[1].data(i) = this->stats_arr[1].global_dat;
-  this->stats_arr[2].data(i) = this->stats_arr[2].global_dat;
+  this->stats_arr[MSTAT].data(i) = this->stats_arr[MSTAT].global_dat;
+  this->stats_arr[MINSTAT].data(i) = this->stats_arr[MINSTAT].global_dat;
+  this->stats_arr[MAXSTAT].data(i) = this->stats_arr[MAXSTAT].global_dat;
   }
   }
 };
@@ -333,78 +377,78 @@ public:
 
 // *******   VariableSet Initialization   ***********//
 
-template <uint ndims, uint nprog, uint nconst, uint ndiag> void initialize_variables(const Topology<ndims> &topo,
-SArray<int, nprognostic, 4> &prog_ndofs_arr, SArray<int, nconstant, 4> &const_ndofs_arr, SArray<int, ndiagnostic, 4> &diag_ndofs_arr,
-std::array<std::string, nprognostic> &prog_names_arr, std::array<std::string, nconstant> &const_names_arr, std::array<std::string, ndiagnostic> &diag_names_arr,
-std::array<const Topology<ndims> *, nprognostic> &prog_topo_arr, std::array<const Topology<ndims> *, nconstant> &const_topo_arr, std::array<const Topology<ndims> *, ndiagnostic> &diag_topo_arr)
+template <uint ndims, uint nprog, uint nconst, uint naux, uint ndiag> void initialize_variables(const Topology<ndims> &topo,
+SArray<int, nprog, 4> &prog_ndofs_arr, SArray<int, nconst, 4> &const_ndofs_arr, SArray<int, naux, 4> &aux_ndofs_arr, SArray<int, ndiag, 4> &diag_ndofs_arr,
+std::array<std::string, nprog> &prog_names_arr, std::array<std::string, nconst> &const_names_arr, std::array<std::string, naux> &aux_names_arr, std::array<std::string, ndiag> &diag_names_arr,
+std::array<const Topology<ndims> *, nprog> &prog_topo_arr, std::array<const Topology<ndims> *, nconst> &const_topo_arr, std::array<const Topology<ndims> *, naux> &aux_topo_arr, std::array<const Topology<ndims> *, ndiag> &diag_topo_arr)
 {
-  prog_topo_arr[0] = &topo;
-  const_topo_arr[0] = &topo;
-  diag_topo_arr[0] = &topo;
-  prog_names_arr[0] = "q";
-  const_names_arr[0] = "u";
-  diag_names_arr[0] = "qrecon";
+  prog_topo_arr[QVAR] = &topo;
+  const_topo_arr[UVAR] = &topo;
+  aux_topo_arr[QRECONVAR] = &topo;
+  prog_names_arr[QVAR] = "q";
+  const_names_arr[UVAR] = "u";
+  aux_names_arr[QRECONVAR] = "qrecon";
 
   if (ndims == 1) {
-    prog_ndofs_arr(0,1) = nqdofs;
-    const_ndofs_arr(0,0) = 1;
-    diag_ndofs_arr(0,0) = nqdofs;
+    prog_ndofs_arr(QVAR,1) = nqdofs;
+    const_ndofs_arr(UVAR,0) = 1;
+    aux_ndofs_arr(QRECONVAR,0) = nqdofs;
   }
 
   if (ndims == 2) {
-    prog_ndofs_arr(0,2) = nqdofs;
-    const_ndofs_arr(0,1) = 1;
-    diag_ndofs_arr(0,1) = nqdofs;
+    prog_ndofs_arr(QVAR,2) = nqdofs;
+    const_ndofs_arr(UVAR,1) = 1;
+    aux_ndofs_arr(QRECONVAR,1) = nqdofs;
   }
 
   if (ndims == 3) {
-    prog_ndofs_arr(0,3) = nqdofs;
-    const_ndofs_arr(0,2) = 1;
-    diag_ndofs_arr(0,2) = nqdofs;
+    prog_ndofs_arr(QVAR,3) = nqdofs;
+    const_ndofs_arr(UVAR,2) = 1;
+    aux_ndofs_arr(QRECONVAR,2) = nqdofs;
   }
 
 }
 
   // *******   Initial Conditions   ***********//
 
-template <int nprog, int nconst, int ndiag, int nquadx, int nquady, int nquadz> void set_initial_conditions (ModelParameters &params, VariableSet<1, nprog> &progvars, VariableSet<1, nconst> &constvars, Geometry<1, nquadx, nquady, nquadz> &geom)
+template <int nprog, int nconst, int nquadx, int nquady, int nquadz> void set_initial_conditions (ModelParameters &params, VariableSet<1, nprog> &progvars, VariableSet<1, nconst> &constvars, Geometry<1, nquadx, nquady, nquadz> &geom)
 {
 
     for (int i=0; i<nqdofs; i++)
     {
-    if (params.data_init_cond == DATA_INIT::GAUSSIAN) {geom.set_primal_1form_values(gaussian, progvars.fields_arr[0], i);}
-    if (params.data_init_cond == DATA_INIT::SQUARE)   {geom.set_primal_1form_values(square,   progvars.fields_arr[0], i);}
+    if (params.data_init_cond == DATA_INIT::GAUSSIAN) {geom.set_primal_1form_values(gaussian, progvars.fields_arr[QVAR], i);}
+    if (params.data_init_cond == DATA_INIT::SQUARE)   {geom.set_primal_1form_values(square,   progvars.fields_arr[QVAR], i);}
     }
-    if (params.wind_init_cond == WIND_INIT::UNIFORM_X ) {geom.set_primal_0form_values(uniform_x_wind,     constvars.fields_arr[0], 0);}
+    if (params.wind_init_cond == WIND_INIT::UNIFORM_X ) {geom.set_primal_0form_values(uniform_x_wind,     constvars.fields_arr[UVAR], 0);}
 }
 
-template <int nprog, int nconst, int ndiag, int nquadx, int nquady, int nquadz> void set_initial_conditions (ModelParameters &params, VariableSet<2, nprog> &progvars, VariableSet<2, nconst> &constvars, Geometry<2, nquadx, nquady, nquadz> &geom)
+template <int nprog, int nconst, int nquadx, int nquady, int nquadz> void set_initial_conditions (ModelParameters &params, VariableSet<2, nprog> &progvars, VariableSet<2, nconst> &constvars, Geometry<2, nquadx, nquady, nquadz> &geom)
 {
     for (int i=0; i<nqdofs; i++)
     {
-    if (params.data_init_cond == DATA_INIT::GAUSSIAN) {geom.set_primal_2form_values(gaussian, progvars.fields_arr[0], i);}
-    if (params.data_init_cond == DATA_INIT::VORTICES) {geom.set_primal_2form_values(vortices, progvars.fields_arr[0], i);}
-    if (params.data_init_cond == DATA_INIT::SQUARE)   {geom.set_primal_2form_values(square,   progvars.fields_arr[0], i);}
+    if (params.data_init_cond == DATA_INIT::GAUSSIAN) {geom.set_primal_2form_values(gaussian, progvars.fields_arr[QVAR], i);}
+    if (params.data_init_cond == DATA_INIT::VORTICES) {geom.set_primal_2form_values(vortices, progvars.fields_arr[QVAR], i);}
+    if (params.data_init_cond == DATA_INIT::SQUARE)   {geom.set_primal_2form_values(square,   progvars.fields_arr[QVAR], i);}
     }
-    if (params.wind_init_cond == WIND_INIT::UNIFORM_X    ) {geom.set_primal_1form_values(uniform_x_wind,     constvars.fields_arr[0], 0, LINE_INTEGRAL_TYPE::NORMAL);}
-    if (params.wind_init_cond == WIND_INIT::UNIFORM_Y    ) {geom.set_primal_1form_values(uniform_y_wind,     constvars.fields_arr[0], 0, LINE_INTEGRAL_TYPE::NORMAL);}
-    if (params.wind_init_cond == WIND_INIT::UNIFORM_XY   ) {geom.set_primal_1form_values(uniform_xy_wind,    constvars.fields_arr[0], 0, LINE_INTEGRAL_TYPE::NORMAL);}
-    if (params.wind_init_cond == WIND_INIT::DEFORMATIONAL) {geom.set_primal_1form_values(deformational_wind, constvars.fields_arr[0], 0, LINE_INTEGRAL_TYPE::NORMAL);}
+    if (params.wind_init_cond == WIND_INIT::UNIFORM_X    ) {geom.set_primal_1form_values(uniform_x_wind,     constvars.fields_arr[UVAR], 0, LINE_INTEGRAL_TYPE::NORMAL);}
+    if (params.wind_init_cond == WIND_INIT::UNIFORM_Y    ) {geom.set_primal_1form_values(uniform_y_wind,     constvars.fields_arr[UVAR], 0, LINE_INTEGRAL_TYPE::NORMAL);}
+    if (params.wind_init_cond == WIND_INIT::UNIFORM_XY   ) {geom.set_primal_1form_values(uniform_xy_wind,    constvars.fields_arr[UVAR], 0, LINE_INTEGRAL_TYPE::NORMAL);}
+    if (params.wind_init_cond == WIND_INIT::DEFORMATIONAL) {geom.set_primal_1form_values(deformational_wind, constvars.fields_arr[UVAR], 0, LINE_INTEGRAL_TYPE::NORMAL);}
 
 }
 
 
-template <int nprog, int nconst, int ndiag, int nquadx, int nquady, int nquadz> void set_initial_conditions (ModelParameters &params, VariableSet<3, nprog> &progvars, VariableSet<3, nconst> &constvars, Geometry<3, nquadx, nquady, nquadz> &geom)
+template <int nprog, int nconst, int nquadx, int nquady, int nquadz> void set_initial_conditions (ModelParameters &params, VariableSet<3, nprog> &progvars, VariableSet<3, nconst> &constvars, Geometry<3, nquadx, nquady, nquadz> &geom)
 {
     for (int i=0; i<nqdofs; i++)
     {
-    if (params.data_init_cond == DATA_INIT::GAUSSIAN) {geom.set_primal_3form_values(gaussian, progvars.fields_arr[0], i);}
-    if (params.data_init_cond == DATA_INIT::SQUARE)   {geom.set_primal_3form_values(square,   progvars.fields_arr[0], i);}
+    if (params.data_init_cond == DATA_INIT::GAUSSIAN) {geom.set_primal_3form_values(gaussian, progvars.fields_arr[QVAR], i);}
+    if (params.data_init_cond == DATA_INIT::SQUARE)   {geom.set_primal_3form_values(square,   progvars.fields_arr[QVAR], i);}
     }
-    if (params.wind_init_cond == WIND_INIT::UNIFORM_X    ) {geom.set_primal_2form_values(uniform_x_wind,     constvars.fields_arr[0], 0);}
-    if (params.wind_init_cond == WIND_INIT::UNIFORM_Y    ) {geom.set_primal_2form_values(uniform_y_wind,     constvars.fields_arr[0], 0);}
-    if (params.wind_init_cond == WIND_INIT::UNIFORM_Z    ) {geom.set_primal_2form_values(uniform_z_wind,     constvars.fields_arr[0], 0);}
-    if (params.wind_init_cond == WIND_INIT::DEFORMATIONAL) {geom.set_primal_2form_values(deformational_wind, constvars.fields_arr[0], 0);}
+    if (params.wind_init_cond == WIND_INIT::UNIFORM_X    ) {geom.set_primal_2form_values(uniform_x_wind,     constvars.fields_arr[UVAR], 0);}
+    if (params.wind_init_cond == WIND_INIT::UNIFORM_Y    ) {geom.set_primal_2form_values(uniform_y_wind,     constvars.fields_arr[UVAR], 0);}
+    if (params.wind_init_cond == WIND_INIT::UNIFORM_Z    ) {geom.set_primal_2form_values(uniform_z_wind,     constvars.fields_arr[UVAR], 0);}
+    if (params.wind_init_cond == WIND_INIT::DEFORMATIONAL) {geom.set_primal_2form_values(deformational_wind, constvars.fields_arr[UVAR], 0);}
 }
 
 #endif

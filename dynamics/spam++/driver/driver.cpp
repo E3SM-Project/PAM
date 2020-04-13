@@ -108,7 +108,7 @@ int main(int argc, char** argv) {
 
     // set the initial conditions
     std::cout << "start set initial conditions\n" << std::flush;
-    set_initial_conditions<nprognostic, nconstant, nauxiliary, ic_quad_pts, ic_quad_pts, ic_quad_pts>(params, prognostic_vars, constant_vars, ic_geometry);
+    set_initial_conditions<nprognostic, nconstant, ic_quad_pts, ic_quad_pts, ic_quad_pts>(params, prognostic_vars, constant_vars, ic_geometry);
     // Do a boundary exchange
     prog_exchange.exchange_variable_set(prognostic_vars);
     const_exchange.exchange_variable_set(constant_vars);

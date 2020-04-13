@@ -4,10 +4,8 @@
 
 enum class DATA_INIT { GAUSSIAN, VORTICES, SQUARE };
 enum class WIND_INIT { UNIFORM_X, UNIFORM_Y, UNIFORM_Z, UNIFORM_XY, DEFORMATIONAL };
-enum class DIVERGENCE_TYPE { DF, CQ };
 
 uint constexpr nqdofs = 1;
-DIVERGENCE_TYPE constexpr div_type  = DIVERGENCE_TYPE::CQ;
 
 class ModelParameters : public Parameters {
 public:

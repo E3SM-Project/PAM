@@ -38,7 +38,7 @@ template<uint ndims, uint ndofs> void YAKL_INLINE weno1_dual_recon(bool is_dualn
 
       //y-dir
       if (ndims >= 2) {
-      upwind_param = copysign(1.0, flux(ndims-2, k+ks, j+js, i+is));
+      upwind_param = copysign(1.0, -flux(ndims-2, k+ks, j+js, i+is));
       upwind_param = 0.5*(upwind_param + fabs(upwind_param));
       recon(l+(ndims-2)*ndofs, k+ks, j+js, i+is) = yvar_dual(1) * (1. - upwind_param) + yvar_dual(0) * upwind_param;
       }
@@ -76,7 +76,7 @@ template<uint ndims, uint ndofs> void YAKL_INLINE weno3_dual_recon(bool is_dualn
 
       //y-dir
       if (ndims >= 2) {
-        upwind_param = copysign(1.0, flux(ndims-2, k+ks, j+js, i+is));
+        upwind_param = copysign(1.0, -flux(ndims-2, k+ks, j+js, i+is));
         upwind_param = 0.5*(upwind_param + fabs(upwind_param));
         var_up   = interp_weno3(yvar_dual(-1), yvar_dual(0), yvar_dual(1));
         var_down = interp_weno3(yvar_dual(0), yvar_dual(1), yvar_dual(2));
@@ -122,7 +122,7 @@ template<uint ndims, uint ndofs> void YAKL_INLINE weno5_dual_recon(bool is_dualn
 
       //y-dir
       if (ndims >= 2) {
-        upwind_param = copysign(1.0, flux(ndims-2, k+ks, j+js, i+is));
+        upwind_param = copysign(1.0, -flux(ndims-2, k+ks, j+js, i+is));
         upwind_param = 0.5*(upwind_param + fabs(upwind_param));
         var_up   = interp_weno5(yvar_dual(-2), yvar_dual(-1), yvar_dual(0), yvar_dual(1), yvar_dual(2));
         var_down = interp_weno5(yvar_dual(-1), yvar_dual(0), yvar_dual(1), yvar_dual(2), yvar_dual(3));
@@ -169,7 +169,7 @@ template<uint ndims, uint ndofs> void YAKL_INLINE weno7_dual_recon(bool is_dualn
 
       //y-dir
       if (ndims >= 2) {
-        upwind_param = copysign(1.0, flux(ndims-2, k+ks, j+js, i+is));
+        upwind_param = copysign(1.0, -flux(ndims-2, k+ks, j+js, i+is));
         upwind_param = 0.5*(upwind_param + fabs(upwind_param));
         var_up   = interp_weno7(yvar_dual(-3), yvar_dual(-2), yvar_dual(-1), yvar_dual(0), yvar_dual(1), yvar_dual(2), yvar_dual(3));
         var_down = interp_weno7(yvar_dual(-2), yvar_dual(-1), yvar_dual(0), yvar_dual(1), yvar_dual(2), yvar_dual(3), yvar_dual(4));
