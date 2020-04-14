@@ -25,6 +25,7 @@ public:
   void initialize(const VariableSet<ndims, num_fields> &vs, const std::string name);
   void copy(const VariableSet<ndims, num_fields> &vs);
   void waxpy(real alpha, const VariableSet<ndims, num_fields> &x, const VariableSet<ndims, num_fields> &y);
+  void waxpbypcz(real alpha, real beta, real gamma, const VariableSet<ndims, num_fields> &x, const VariableSet<ndims, num_fields> &y, const VariableSet<ndims, num_fields> &z);
 };
 
 
@@ -75,9 +76,10 @@ template<uint ndims, uint num_fields> void ExchangeSet<ndims,num_fields>::exchan
 {
   for (int i=0; i<num_fields; i++)
   {
-    this->exchanges_arr[i].pack(vs.fields_arr[i]);
-    this->exchanges_arr[i].exchange();
-    this->exchanges_arr[i].unpack(vs.fields_arr[i]);
+    this->exchanges_arr[i].exchange_field(vs.fields_arr[i]);
+    //this->exchanges_arr[i].pack(vs.fields_arr[i]);
+    //this->exchanges_arr[i].exchange();
+    //this->exchanges_arr[i].unpack(vs.fields_arr[i]);
   }
 }
 
@@ -149,6 +151,13 @@ template<uint ndims, uint num_fields> void ExchangeSet<ndims,num_fields>::initia
   }
 
 
-
+  // Computes w (self) = alpha x + beta * y + gamma * z
+  template<uint ndims, uint num_fields> void VariableSet<ndims,num_fields>::waxpbypcz(real alpha, real beta, real gamma, const VariableSet<ndims, num_fields> &x, const VariableSet<ndims, num_fields> &y, const VariableSet<ndims, num_fields> &z)
+  {
+    for (int i=0; i<num_fields; i++)
+    {
+      this->fields_arr[i].waxpbypcz(alpha, beta, gamma, x.fields_arr[i], y.fields_arr[i], z.fields_arr[i]);
+    }
+  }
 
 #endif

@@ -11,8 +11,8 @@ Nstat = 1
 
 // Parallel decomposition
 nprocx = 1
-nprocy = 1
-nprocz = 1
+nprocy = 2
+nprocz = 2
 
 // initial condition
 dataInit = square

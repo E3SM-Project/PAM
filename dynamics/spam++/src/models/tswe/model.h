@@ -289,17 +289,17 @@ void YAKL_INLINE compute_dual_reconstruction(realArr reconvar, realArr densityva
     { cfv10_dual_recon<ndims, 1>(reconvar, densityvar, *this->topology, *this->geom);}
 
     if (dual_reconstruction_type == RECONSTRUCTION_TYPE::WENO && dual_reconstruction_order == 1)
-    { weno1_dual_recon<ndims, 1>(false, reconvar, densityvar, fluxvar, *this->topology, *this->geom); }
+    { weno1_dual_recon<ndims, 1>(reconvar, densityvar, fluxvar, *this->topology, *this->geom); }
     if (dual_reconstruction_type == RECONSTRUCTION_TYPE::WENO && dual_reconstruction_order == 3)
-    { weno3_dual_recon<ndims, 1>(false, reconvar, densityvar, fluxvar, *this->topology, *this->geom); }
+    { weno3_dual_recon<ndims, 1>(reconvar, densityvar, fluxvar, *this->topology, *this->geom); }
     if (dual_reconstruction_type == RECONSTRUCTION_TYPE::WENO && dual_reconstruction_order == 5)
-    { weno5_dual_recon<ndims, 1>(false, reconvar, densityvar, fluxvar, *this->topology, *this->geom); }
+    { weno5_dual_recon<ndims, 1>(reconvar, densityvar, fluxvar, *this->topology, *this->geom); }
     if (dual_reconstruction_type == RECONSTRUCTION_TYPE::WENO && dual_reconstruction_order == 7)
-    { weno7_dual_recon<ndims, 1>(false, reconvar, densityvar, fluxvar, *this->topology, *this->geom); }
+    { weno7_dual_recon<ndims, 1>(reconvar, densityvar, fluxvar, *this->topology, *this->geom); }
     if (dual_reconstruction_type == RECONSTRUCTION_TYPE::WENO && dual_reconstruction_order == 9)
-    { weno9_dual_recon<ndims, 1>(false, reconvar, densityvar, fluxvar, *this->topology, *this->geom); }
+    { weno9_dual_recon<ndims, 1>(reconvar, densityvar, fluxvar, *this->topology, *this->geom); }
     if (dual_reconstruction_type == RECONSTRUCTION_TYPE::WENO && dual_reconstruction_order == 11)
-    { weno11_dual_recon<ndims, 1>(false, reconvar, densityvar, fluxvar, *this->topology, *this->geom); }
+    { weno11_dual_recon<ndims, 1>(reconvar, densityvar, fluxvar, *this->topology, *this->geom); }
 }
 
 
@@ -355,7 +355,7 @@ void YAKL_INLINE compute_auxiliary_quantities(realArr B, realArr F, realArr T, r
 
 
 
-  void compute_rhs(const VariableSet<ndims, nconst> &const_vars, VariableSet<ndims, nprog> &x, VariableSet<ndims, naux> &auxiliary_vars, VariableSet<ndims, nprog> &xtend)
+  void compute_rhs(real dt, const VariableSet<ndims, nconst> &const_vars, VariableSet<ndims, nprog> &x, VariableSet<ndims, naux> &auxiliary_vars, VariableSet<ndims, nprog> &xtend)
   {
 
       //Compute h and S reconstructions
@@ -372,12 +372,14 @@ void YAKL_INLINE compute_auxiliary_quantities(realArr B, realArr F, realArr T, r
    auxiliary_vars.fields_arr[SLVAR].data(0,k+ks,j+js,i+is) = x.fields_arr[SVAR].data(0,k+ks,j+js,i+is) / x.fields_arr[HVAR].data(0,k+ks,j+js,i+is) * geom->get_J_cell(k+ks, j+js, i+is);
     });
 
+    this->aux_exchange->exchanges_arr[SLVAR].exchange_field(auxiliary_vars.fields_arr[SLVAR]);
+
     compute_primal_reconstruction(auxiliary_vars.fields_arr[SRECONVAR].data, auxiliary_vars.fields_arr[SLVAR].data, x.fields_arr[VVAR].data);
 
    //compute_primal_reconstruction(auxiliary_vars.fields_arr[SRECONVAR].data, x.fields_arr[SVAR].data, auxiliary_vars.fields_arr[VVAR].data);
 
 
-//Compute B, F and q; also scale hrecon
+//Compute B, F and q; also scale hrecon/srecon
 compute_auxiliary_quantities(
 auxiliary_vars.fields_arr[BVAR].data, auxiliary_vars.fields_arr[FVAR].data, auxiliary_vars.fields_arr[TVAR].data,
 auxiliary_vars.fields_arr[QVAR].data, auxiliary_vars.fields_arr[HRECONVAR].data, auxiliary_vars.fields_arr[SRECONVAR].data,
@@ -385,6 +387,12 @@ x.fields_arr[VVAR].data, x.fields_arr[HVAR].data, x.fields_arr[SVAR].data,
 const_vars.fields_arr[HSVAR].data, const_vars.fields_arr[CORIOLISVAR].data,
 *this->topology, *this->geom);
 
+this->aux_exchange->exchanges_arr[BVAR].exchange_field(auxiliary_vars.fields_arr[BVAR]);
+this->aux_exchange->exchanges_arr[FVAR].exchange_field(auxiliary_vars.fields_arr[FVAR]);
+this->aux_exchange->exchanges_arr[TVAR].exchange_field(auxiliary_vars.fields_arr[TVAR]);
+this->aux_exchange->exchanges_arr[QVAR].exchange_field(auxiliary_vars.fields_arr[QVAR]);
+this->aux_exchange->exchanges_arr[HRECONVAR].exchange_field(auxiliary_vars.fields_arr[HRECONVAR]);
+this->aux_exchange->exchanges_arr[SRECONVAR].exchange_field(auxiliary_vars.fields_arr[SRECONVAR]);
 
 //Compute FT and q reconstruction
 if (ndims == 2) {
@@ -393,12 +401,15 @@ if (ndims == 2) {
 //W2D_2(auxiliary_vars.fields_arr[FTVAR].data, x.fields_arr[VVAR].data, *this->topology);
 
 // This is correct- dual grid flux is W F
-W2D_2(auxiliary_vars.fields_arr[FTVAR].data, auxiliary_vars.fields_arr[FVAR].data, *this->topology);
+W2D_2<1>(auxiliary_vars.fields_arr[FTVAR].data, auxiliary_vars.fields_arr[FVAR].data, *this->topology);
+this->aux_exchange->exchanges_arr[FTVAR].exchange_field(auxiliary_vars.fields_arr[FTVAR]);
+
 compute_dual_reconstruction(auxiliary_vars.fields_arr[QRECONVAR].data, auxiliary_vars.fields_arr[QVAR].data, auxiliary_vars.fields_arr[FTVAR].data);
+this->aux_exchange->exchanges_arr[QRECONVAR].exchange_field(auxiliary_vars.fields_arr[QRECONVAR]);
+
 }
 
 
-   this->aux_exchange->exchange_variable_set(auxiliary_vars);
 
    //compute h rhs = D (hrecon* U) = D (hrecon/he F) with F = he U
    if (differential_order == 2)
@@ -441,7 +452,7 @@ if (differential_order == 8)
 { gradient8_add<ndims, 1>(xtend.fields_arr[VVAR].data, auxiliary_vars.fields_arr[SRECONVAR].data, auxiliary_vars.fields_arr[TVAR].data, *this->topology); }
 
 if (ndims == 2) {
-Q2D_2_add(xtend.fields_arr[VVAR].data, auxiliary_vars.fields_arr[QRECONVAR].data, auxiliary_vars.fields_arr[FVAR].data, *this->topology);
+Q2D_2_add<1>(xtend.fields_arr[VVAR].data, auxiliary_vars.fields_arr[QRECONVAR].data, auxiliary_vars.fields_arr[FVAR].data, *this->topology);
 //Q2D_nonEC_2_add(xtend.fields_arr[VVAR].data, auxiliary_vars.fields_arr[QRECONVAR].data, auxiliary_vars.fields_arr[FVAR].data, *this->topology);
 }
  }

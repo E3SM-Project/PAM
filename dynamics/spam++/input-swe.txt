@@ -12,8 +12,8 @@ TStype = dt
 cfl = 0.5
 
 // Parallel decomposition
-nprocx = 1
-nprocy = 1
+nprocx = 2
+nprocy = 2
 nprocz = 1
 
 // initial condition

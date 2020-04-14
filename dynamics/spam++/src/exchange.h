@@ -66,6 +66,7 @@ public:
     void pack(const Field<ndims> &field);
     void unpack(Field<ndims> &field);
     void exchange();
+    void exchange_field(Field<ndims> &field);
     void exchange_x();
     void exchange_y();
     void exchange_z();
@@ -361,6 +362,13 @@ template<uint ndims> void Exchange<ndims>::initialize(const Exchange<ndims> &exc
    exchange_x();
    if (ndims >=2) { exchange_y(); }
    if (ndims ==3) { exchange_z(); }
+}
+
+template<uint ndims> void Exchange<ndims>::exchange_field(Field<ndims> &field)
+{
+    this->pack(field);
+    this->exchange();
+    this->unpack(field);
 }
 
 #endif

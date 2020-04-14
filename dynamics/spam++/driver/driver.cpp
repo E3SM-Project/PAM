@@ -2,6 +2,7 @@
 
 #include "common.h"
 #include "RKSimple.h"
+#include "SSPRK.h"
 #include "variable_sets.h"
 //#include "util.h"
 #include "fileio.h"
@@ -39,7 +40,8 @@ int main(int argc, char** argv) {
 
     //if (time_type == TIME_TYPE::KGRK)
     //{
-      RKSimpleTimeIntegrator<number_of_dims, nprognostic, nconstant, nauxiliary, n_time_stages> tint;
+      //RKSimpleTimeIntegrator<number_of_dims, nprognostic, nconstant, nauxiliary, n_time_stages> tint;
+      SSPKKTimeIntegrator<number_of_dims, nprognostic, nconstant, nauxiliary, n_time_stages> tint;
     //}
 
     //if (geom_type == GEOM_TYPE::UNIFORM_RECT)
@@ -119,9 +121,6 @@ int main(int argc, char** argv) {
     tendencies.initialize(topology, tendencies_geometry, aux_exchange);
     diagnostics.initialize(topology, tendencies_geometry);
     tint.initialize(tendencies, prognostic_vars, constant_vars, auxiliary_vars, prog_exchange);
-// SPECIFIC TO RK SCHEMES...
-// SHOULD PROBABLY BE PART OF TINT INITIALIZE?
-    set_stage_coefficients<n_time_stages>(time_type, tint.stage_coeffs);
     std::cout << "end ts init\n" << std::flush;
 
     // Output the initial model state

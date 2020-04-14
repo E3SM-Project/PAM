@@ -6,6 +6,7 @@
 #include "topology.h"
 #include "variable_sets.h"
 #include "divergence.h"
+#include "divergence_fct.h"
 #include "weno.h"
 #include "cfv.h"
 #include "geometry.h"
@@ -17,7 +18,7 @@
 // Number of variables
 uint constexpr nprognostic = 1;
 uint constexpr nconstant = 1;
-uint constexpr nauxiliary = 1;
+uint constexpr nauxiliary = 4;
 uint constexpr ndiagnostic = 0;
 uint constexpr nstats = 3;
 
@@ -26,6 +27,9 @@ uint constexpr nstats = 3;
 #define UVAR 0
 
 #define QRECONVAR 0
+#define PHIVAR 1
+#define EDGEFLUXVAR 2
+#define MFVAR 3
 
 #define MSTAT 0
 #define MINSTAT 1
@@ -262,10 +266,12 @@ public:
     this->is_initialized = true;
   }
 
-  void compute_rhs(const VariableSet<ndims, nconst> &const_vars, VariableSet<ndims, nprog> &x, VariableSet<ndims, naux> &auxiliary_vars, VariableSet<ndims, nprog> &xtend)
+
+
+  void compute_rhs(real dt, const VariableSet<ndims, nconst> &const_vars, VariableSet<ndims, nprog> &x, VariableSet<ndims, naux> &auxiliary_vars, VariableSet<ndims, nprog> &xtend)
   {
 
-   //compute reconstructions
+   //compute qrecon
 
 
    if (reconstruction_type == RECONSTRUCTION_TYPE::CFV && reconstruction_order == 2)
@@ -292,9 +298,39 @@ public:
    if (reconstruction_type == RECONSTRUCTION_TYPE::WENO && reconstruction_order == 11)
    { weno11_recon<ndims, nqdofs>(auxiliary_vars.fields_arr[QRECONVAR].data, x.fields_arr[QVAR].data, const_vars.fields_arr[UVAR].data, *this->topology, *this->geom); }
 
-   this->aux_exchange->exchange_variable_set(auxiliary_vars);
+   this->aux_exchange->exchanges_arr[QRECONVAR].exchange_field(auxiliary_vars.fields_arr[QRECONVAR]);
+
+
+   if (fct)
+   {
+       if (differential_order == 2)
+      { calculate_edge_fluxes2<ndims, nqdofs>(auxiliary_vars.fields_arr[EDGEFLUXVAR].data, auxiliary_vars.fields_arr[QRECONVAR].data, const_vars.fields_arr[UVAR].data, *this->topology); }
+      if (differential_order == 4)
+     { calculate_edge_fluxes4<ndims, nqdofs>(auxiliary_vars.fields_arr[EDGEFLUXVAR].data, auxiliary_vars.fields_arr[QRECONVAR].data, const_vars.fields_arr[UVAR].data, *this->topology); }
+     if (differential_order == 6)
+    { calculate_edge_fluxes6<ndims, nqdofs>(auxiliary_vars.fields_arr[EDGEFLUXVAR].data, auxiliary_vars.fields_arr[QRECONVAR].data, const_vars.fields_arr[UVAR].data, *this->topology); }
+    if (differential_order == 6)
+   { calculate_edge_fluxes8<ndims, nqdofs>(auxiliary_vars.fields_arr[EDGEFLUXVAR].data, auxiliary_vars.fields_arr[QRECONVAR].data, const_vars.fields_arr[UVAR].data, *this->topology); }
+   this->aux_exchange->exchanges_arr[EDGEFLUXVAR].exchange_field(auxiliary_vars.fields_arr[EDGEFLUXVAR]);
+
+   calculate_Mf<ndims, nqdofs>(auxiliary_vars.fields_arr[MFVAR].data, auxiliary_vars.fields_arr[EDGEFLUXVAR].data, dt, *this->topology);
+   this->aux_exchange->exchanges_arr[MFVAR].exchange_field(auxiliary_vars.fields_arr[MFVAR]);
+
+      calculate_phi<ndims, nqdofs>(auxiliary_vars.fields_arr[PHIVAR].data, x.fields_arr[QVAR].data, auxiliary_vars.fields_arr[MFVAR].data, auxiliary_vars.fields_arr[EDGEFLUXVAR].data, *this->topology);
+      this->aux_exchange->exchanges_arr[PHIVAR].exchange_field(auxiliary_vars.fields_arr[PHIVAR]);
+
+   }
+
+
+   //this->aux_exchange->exchange_variable_set(auxiliary_vars);
 
    //compute D (qrecon U)
+   if (fct)
+    {
+    divergence_fct<ndims, nqdofs>(xtend.fields_arr[QVAR].data, auxiliary_vars.fields_arr[PHIVAR].data, auxiliary_vars.fields_arr[EDGEFLUXVAR].data, *this->topology);
+}
+
+  else {
    if (differential_order == 2)
    { divergence2<ndims, nqdofs>(xtend.fields_arr[QVAR].data, auxiliary_vars.fields_arr[QRECONVAR].data, const_vars.fields_arr[UVAR].data, *this->topology); }
    if (differential_order == 4)
@@ -303,6 +339,7 @@ public:
    { divergence6<ndims, nqdofs>(xtend.fields_arr[QVAR].data, auxiliary_vars.fields_arr[QRECONVAR].data, const_vars.fields_arr[UVAR].data, *this->topology); }
    if (differential_order == 8)
    { divergence8<ndims, nqdofs>(xtend.fields_arr[QVAR].data, auxiliary_vars.fields_arr[QRECONVAR].data, const_vars.fields_arr[UVAR].data, *this->topology); }
+}
  }
 
 };
@@ -360,8 +397,8 @@ public:
 
     //MPI sum/min/max
     this->ierr = MPI_Ireduce( &this->stats_arr[MSTAT].local_dat, &this->stats_arr[MSTAT].global_dat, 1, REAL_MPI, MPI_SUM, 0, MPI_COMM_WORLD, &this->Req[MSTAT]);
-    this->ierr = MPI_Ireduce( &this->stats_arr[MINSTAT].local_dat, &this->stats_arr[MINSTAT].global_dat, 1, REAL_MPI, MPI_SUM, 0, MPI_COMM_WORLD, &this->Req[MINSTAT]);
-    this->ierr = MPI_Ireduce( &this->stats_arr[MAXSTAT].local_dat, &this->stats_arr[MAXSTAT].global_dat, 1, REAL_MPI, MPI_SUM, 0, MPI_COMM_WORLD, &this->Req[MAXSTAT]);
+    this->ierr = MPI_Ireduce( &this->stats_arr[MINSTAT].local_dat, &this->stats_arr[MINSTAT].global_dat, 1, REAL_MPI, MPI_MIN, 0, MPI_COMM_WORLD, &this->Req[MINSTAT]);
+    this->ierr = MPI_Ireduce( &this->stats_arr[MAXSTAT].local_dat, &this->stats_arr[MAXSTAT].global_dat, 1, REAL_MPI, MPI_MAX, 0, MPI_COMM_WORLD, &this->Req[MAXSTAT]);
     this->ierr = MPI_Waitall(nstats, this->Req, this->Status);
 
   if (masterproc)
@@ -385,26 +422,41 @@ std::array<const Topology<ndims> *, nprog> &prog_topo_arr, std::array<const Topo
   prog_topo_arr[QVAR] = &topo;
   const_topo_arr[UVAR] = &topo;
   aux_topo_arr[QRECONVAR] = &topo;
+  aux_topo_arr[PHIVAR] = &topo;
+  aux_topo_arr[MFVAR] = &topo;
+  aux_topo_arr[EDGEFLUXVAR] = &topo;
   prog_names_arr[QVAR] = "q";
   const_names_arr[UVAR] = "u";
   aux_names_arr[QRECONVAR] = "qrecon";
+  aux_names_arr[PHIVAR] = "phi";
+  aux_names_arr[MFVAR] = "M";
+  aux_names_arr[EDGEFLUXVAR] = "edgeflux";
 
   if (ndims == 1) {
     prog_ndofs_arr(QVAR,1) = nqdofs;
     const_ndofs_arr(UVAR,0) = 1;
     aux_ndofs_arr(QRECONVAR,0) = nqdofs;
+    aux_ndofs_arr(PHIVAR,0) = nqdofs;
+    aux_ndofs_arr(MFVAR,1) = nqdofs;
+    aux_ndofs_arr(EDGEFLUXVAR,0) = nqdofs;
   }
 
   if (ndims == 2) {
     prog_ndofs_arr(QVAR,2) = nqdofs;
     const_ndofs_arr(UVAR,1) = 1;
     aux_ndofs_arr(QRECONVAR,1) = nqdofs;
+    aux_ndofs_arr(PHIVAR,1) = nqdofs;
+    aux_ndofs_arr(MFVAR,2) = nqdofs;
+    aux_ndofs_arr(EDGEFLUXVAR,1) = nqdofs;
   }
 
   if (ndims == 3) {
     prog_ndofs_arr(QVAR,3) = nqdofs;
     const_ndofs_arr(UVAR,2) = 1;
     aux_ndofs_arr(QRECONVAR,2) = nqdofs;
+    aux_ndofs_arr(PHIVAR,2) = nqdofs;
+    aux_ndofs_arr(MFVAR,3) = nqdofs;
+    aux_ndofs_arr(EDGEFLUXVAR,2) = nqdofs;
   }
 
 }

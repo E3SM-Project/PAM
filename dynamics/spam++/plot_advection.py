@@ -32,7 +32,7 @@ plot_stat('mass', qmass)
 plot_rawstat('min', qmin)
 plot_rawstat('max', qmax)
 
-Nlist = [0,1,10,40]
+Nlist = [0,1,10,40,80,120,160,200]
 
 plt.figure(figsize=(10,8))
 plt.quiver(u.isel(u_ndofs=0,ncells_z=0), u.isel(u_ndofs=1,ncells_z=0))

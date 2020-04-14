@@ -5,7 +5,7 @@
 #include "common.h"
 #include "topology.h"
 
-void YAKL_INLINE W2D_2( realArr var, const realArr flux, const Topology<2> &topology) {
+template<uint ndofs> void YAKL_INLINE W2D_2( realArr var, const realArr flux, const Topology<2> &topology) {
 
   int is = topology.is;
   int js = topology.js;
@@ -15,17 +15,19 @@ void YAKL_INLINE W2D_2( realArr var, const realArr flux, const Topology<2> &topo
       int k, j, i;
       yakl::unpackIndices(iGlob, topology.n_cells_z, topology.n_cells_y, topology.n_cells_x, k, j, i);
 
+      for (int l=0; l<ndofs; l++) {
       //x-dir
-      var(0,k+ks,j+js,i+is) = -1./4. * (flux(1,k+ks,j+js  ,i+is  )
-                                      + flux(1,k+ks,j+js  ,i+is-1)
-                                      + flux(1,k+ks,j+js+1,i+is  )
-                                      + flux(1,k+ks,j+js+1,i+is-1));
+      var(l+0*ndofs,k+ks,j+js,i+is) = -1./4. * (flux(l+1*ndofs,k+ks,j+js  ,i+is  )
+                                      + flux(l+1*ndofs,k+ks,j+js  ,i+is-1)
+                                      + flux(l+1*ndofs,k+ks,j+js+1,i+is  )
+                                      + flux(l+1*ndofs,k+ks,j+js+1,i+is-1));
 
       //y-dir
-      var(1,k+ks,j+js,i+is) = 1./4. * (flux(0,k+ks,j+js  ,i+is  )
-                                     + flux(0,k+ks,j+js  ,i+is+1)
-                                     + flux(0,k+ks,j+js-1,i+is  )
-                                     + flux(0,k+ks,j+js-1,i+is+1));
+      var(l+1*ndofs,k+ks,j+js,i+is) = 1./4. * (flux(l+0*ndofs,k+ks,j+js  ,i+is  )
+                                     + flux(l+0*ndofs,k+ks,j+js  ,i+is+1)
+                                     + flux(l+0*ndofs,k+ks,j+js-1,i+is  )
+                                     + flux(l+0*ndofs,k+ks,j+js-1,i+is+1));
+                                 }
   });
 
 }

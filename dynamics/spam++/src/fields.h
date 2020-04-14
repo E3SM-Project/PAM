@@ -28,6 +28,7 @@ public :
   void initialize(const Topology<ndims> &topo, const std::string fieldName, int nd0, int nd1, int nd2, int nd3);
   void copy(const Field<ndims> & f);
   void waxpy(real alpha, const Field<ndims> &x, const Field<ndims> &y);
+  void waxpbypcz(real alpha, real beta, real gamma, const Field<ndims> &x, const Field<ndims> &y, const Field<ndims> &z);
   real sum();
   real min();
   real max();
@@ -126,6 +127,22 @@ public :
     });
   }
 
+  // Computes w (self) = alpha x + beta * y + gamma * z
+  template<uint ndims> void Field<ndims>::waxpbypcz(real alpha, real beta, real gamma, const Field<ndims> &x, const Field<ndims> &y, const Field<ndims> &z)
+  {
+
+    int is = this->topology->is;
+    int js = this->topology->js;
+    int ks = this->topology->ks;
+    yakl::parallel_for("WAXPBYPCZField", this->topology->n_cells, YAKL_LAMBDA (int iGlob) {
+      int k, j, i;
+      yakl::unpackIndices(iGlob, this->topology->n_cells_z, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
+      for (int ndof=0; ndof<this->total_dofs; ndof++) {
+        this->data(ndof, k+ks, j+js, i+is) = alpha * x.data(ndof, k+ks, j+js, i+is) + beta * y.data(ndof, k+ks, j+js, i+is) + gamma * z.data(ndof, k+ks, j+js, i+is);
+      }
+    });
+  }
+
   // computes sum of field
   template<uint ndims> real Field<ndims>::sum()
   {
@@ -151,12 +168,12 @@ public :
     int is = this->topology->is;
     int js = this->topology->js;
     int ks = this->topology->ks;
-    real min = this->data(0, is, js, ks);
+    real min = this->data(0, ks, js, is);
     yakl::parallel_for("MinField", this->topology->n_cells, YAKL_LAMBDA (int iGlob) {
       int k, j, i;
       yakl::unpackIndices(iGlob, this->topology->n_cells_z, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
       for (int ndof=0; ndof<this->total_dofs; ndof++) {
-        min = (this->data(ndof, k+ks, j+js, i+is)) < min ? this->data(ndof, k+ks, j+js, i+is) : min;
+        min = mymin(this->data(ndof, k+ks, j+js, i+is), min);
       }
     });
     return min;
@@ -169,12 +186,12 @@ public :
     int is = this->topology->is;
     int js = this->topology->js;
     int ks = this->topology->ks;
-    real max = this->data(0, is, js, ks);
+    real max = this->data(0, ks, js, is);
     yakl::parallel_for("MaxField", this->topology->n_cells, YAKL_LAMBDA (int iGlob) {
       int k, j, i;
       yakl::unpackIndices(iGlob, this->topology->n_cells_z, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
       for (int ndof=0; ndof<this->total_dofs; ndof++) {
-        max = (this->data(ndof, k+ks, j+js, i+is)) > max ? this->data(ndof, k+ks, j+js, i+is) : max;
+        max = mymax(this->data(ndof, k+ks, j+js, i+is), max);
       }
     });
     return max;
