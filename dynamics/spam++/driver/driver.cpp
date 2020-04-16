@@ -40,8 +40,8 @@ int main(int argc, char** argv) {
 
     //if (time_type == TIME_TYPE::KGRK)
     //{
-      //RKSimpleTimeIntegrator<number_of_dims, nprognostic, nconstant, nauxiliary, n_time_stages> tint;
-      SSPKKTimeIntegrator<number_of_dims, nprognostic, nconstant, nauxiliary, n_time_stages> tint;
+      RKSimpleTimeIntegrator<number_of_dims, nprognostic, nconstant, nauxiliary, n_time_stages> tint;
+      //SSPKKTimeIntegrator<number_of_dims, nprognostic, nconstant, nauxiliary, n_time_stages> tint;
     //}
 
     //if (geom_type == GEOM_TYPE::UNIFORM_RECT)

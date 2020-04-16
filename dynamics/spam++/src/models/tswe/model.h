@@ -25,7 +25,7 @@
 
 uint constexpr nprognostic = 3; // h, v, S
 uint constexpr nconstant = 2;   // hs, coriolis
-uint constexpr nauxiliary = 9; // B, F, T, q, sl, hrecon, qrecon, srecon, FT
+uint constexpr nauxiliary = 8; // B, F, T, q, hrecon, qrecon, srecon, FT
 uint constexpr nstats = 6;      // M, PE, KE, TE, B, PV
 uint constexpr ndiagnostic = 2;      // q0, sl0
 
@@ -43,14 +43,13 @@ uint constexpr ndiagnostic = 2;      // q0, sl0
 #define TVAR 2
 #define HRECONVAR 3
 #define SRECONVAR 4
-#define SLVAR 5
-#define QVAR 6
-#define QRECONVAR 7
-#define FTVAR 8
+#define QVAR 5
+#define QRECONVAR 6
+#define FTVAR 7
 
 // THIS REALLY NEEDS TO CHANGE DEPENDING ON 1D/2D!
 #define Q0VAR 0
-#define SL0VAR 1
+#define SLVAR 1
 
 #define MSTAT 0
 #define PESTAT 1
@@ -217,7 +216,7 @@ public:
    void compute_diag(const VariableSet<ndims, nconst> &const_vars, VariableSet<ndims, nprog> &x, VariableSet<ndims, ndiag> &diagnostic_vars)
    {
 
-   compute_diagnostic_quantities(diagnostic_vars.fields_arr[Q0VAR].data, diagnostic_vars.fields_arr[SL0VAR].data, x.fields_arr[VVAR].data, x.fields_arr[HVAR].data, x.fields_arr[SVAR].data, const_vars.fields_arr[CORIOLISVAR].data, *this->topology, *this->geom);
+   compute_diagnostic_quantities(diagnostic_vars.fields_arr[Q0VAR].data, diagnostic_vars.fields_arr[SLVAR].data, x.fields_arr[VVAR].data, x.fields_arr[HVAR].data, x.fields_arr[SVAR].data, const_vars.fields_arr[CORIOLISVAR].data, *this->topology, *this->geom);
 
    }
 
@@ -320,7 +319,7 @@ void YAKL_INLINE compute_auxiliary_quantities(realArr B, realArr F, realArr T, r
         U = geom.get_H_edge(0, k+ks, j+js, i+is) * v(0,k+ks,j+js,i+is);
         F(0,k+ks,j+js,i+is) = he0 * U;
         hrecon(0,k+ks,j+js,i+is) = hrecon(0,k+ks,j+js,i+is) / he0;
-        //srecon(0,k+ks,j+js,i+is) = srecon(0,k+ks,j+js,i+is) / he0;
+        srecon(0,k+ks,j+js,i+is) = srecon(0,k+ks,j+js,i+is) / he0;
 
         if (ndims == 1) {
         KE = 1./2. * ( v(0,k+ks,j+js,i+is) * U + v(0,k+ks,j+js,i+is+1) * geom.get_H_edge(0, k+ks, j+js, i+is+1) * v(0,k+ks,j+js,i+is+1));
@@ -332,7 +331,7 @@ void YAKL_INLINE compute_auxiliary_quantities(realArr B, realArr F, realArr T, r
         V = geom.get_H_edge(1, k+ks, j+js, i+is) * v(1,k+ks,j+js,i+is);
         F(1,k+ks,j+js,i+is) = he1 * V;
         hrecon(1,k+ks,j+js,i+is) = hrecon(1,k+ks,j+js,i+is) / he1;
-        //srecon(1,k+ks,j+js,i+is) = srecon(1,k+ks,j+js,i+is) / he1;
+        srecon(1,k+ks,j+js,i+is) = srecon(1,k+ks,j+js,i+is) / he1;
 
         KE = 1./4. * ( v(0,k+ks,j+js,i+is) * U + v(0,k+ks,j+js,i+is+1) * geom.get_H_edge(0, k+ks, j+js, i+is+1) * v(0,k+ks,j+js,i+is+1) +
                        v(1,k+ks,j+js,i+is) * V + v(1,k+ks,j+js+1,i+is) * geom.get_H_edge(1, k+ks, j+js+1, i+is) * v(1,k+ks,j+js+1,i+is));
@@ -360,23 +359,7 @@ void YAKL_INLINE compute_auxiliary_quantities(realArr B, realArr F, realArr T, r
 
       //Compute h and S reconstructions
    compute_primal_reconstruction(auxiliary_vars.fields_arr[HRECONVAR].data, x.fields_arr[HVAR].data, x.fields_arr[VVAR].data);
-
-   int is = topology->is;
-   int js = topology->js;
-   int ks = topology->ks;
-
-     yakl::parallel_for("ComputeAuxiliary", topology->n_cells, YAKL_LAMBDA (int iGlob) {
-       int k, j, i;
-       yakl::unpackIndices(iGlob, topology->n_cells_z, topology->n_cells_y, topology->n_cells_x, k, j, i);
-
-   auxiliary_vars.fields_arr[SLVAR].data(0,k+ks,j+js,i+is) = x.fields_arr[SVAR].data(0,k+ks,j+js,i+is) / x.fields_arr[HVAR].data(0,k+ks,j+js,i+is) * geom->get_J_cell(k+ks, j+js, i+is);
-    });
-
-    this->aux_exchange->exchanges_arr[SLVAR].exchange_field(auxiliary_vars.fields_arr[SLVAR]);
-
-    compute_primal_reconstruction(auxiliary_vars.fields_arr[SRECONVAR].data, auxiliary_vars.fields_arr[SLVAR].data, x.fields_arr[VVAR].data);
-
-   //compute_primal_reconstruction(auxiliary_vars.fields_arr[SRECONVAR].data, x.fields_arr[SVAR].data, auxiliary_vars.fields_arr[VVAR].data);
+   compute_primal_reconstruction(auxiliary_vars.fields_arr[SRECONVAR].data, x.fields_arr[SVAR].data, auxiliary_vars.fields_arr[VVAR].data);
 
 
 //Compute B, F and q; also scale hrecon/srecon
@@ -643,8 +626,7 @@ std::array<const Topology<ndims> *, nprog> &prog_topo_arr, std::array<const Topo
   aux_topo_arr[TVAR] = &topo;
   aux_topo_arr[HRECONVAR] = &topo;
   aux_topo_arr[SRECONVAR] = &topo;
-  diag_topo_arr[SL0VAR] = &topo;
-  aux_topo_arr[SLVAR] = &topo;
+  diag_topo_arr[SLVAR] = &topo;
   if (ndims == 2) {
   const_topo_arr[CORIOLISVAR] = &topo;
   aux_topo_arr[QVAR] = &topo;
@@ -662,8 +644,7 @@ std::array<const Topology<ndims> *, nprog> &prog_topo_arr, std::array<const Topo
   aux_names_arr[TVAR] = "T";
   aux_names_arr[HRECONVAR] = "hrecon";
   aux_names_arr[SRECONVAR] = "srecon";
-  diag_names_arr[SL0VAR] = "sl";
-  aux_names_arr[SLVAR] = "sl";
+  diag_names_arr[SLVAR] = "sl";
 
   if (ndims == 2) {
   const_names_arr[CORIOLISVAR] = "coriolis";
@@ -683,8 +664,7 @@ std::array<const Topology<ndims> *, nprog> &prog_topo_arr, std::array<const Topo
     aux_ndofs_arr(TVAR,2) = 1; //T = straight 0-form
     aux_ndofs_arr(HRECONVAR,1) = 1; //hrecon lives on edges
     aux_ndofs_arr(SRECONVAR,1) = 1; //srecon lives on edges
-    aux_ndofs_arr(SLVAR,2) = 1; //sl = straight 0-form
-    diag_ndofs_arr(SL0VAR,2) = 1; //sl0 = straight 0-form
+    diag_ndofs_arr(SLVAR,2) = 1; //sl = straight 0-form
 
     if (ndims == 2) {
     const_ndofs_arr(CORIOLISVAR,0) = 1; //f = straight 2-form
