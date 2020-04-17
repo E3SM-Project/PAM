@@ -88,10 +88,16 @@ uint constexpr number_of_dims = 2;
 uint constexpr differential_order = 4;
 
 // Reconstruction type
-RECONSTRUCTION_TYPE constexpr reconstruction_type = RECONSTRUCTION_TYPE::CFV;
-uint constexpr reconstruction_order = 8;
-RECONSTRUCTION_TYPE constexpr dual_reconstruction_type = RECONSTRUCTION_TYPE::CFV;
-uint constexpr dual_reconstruction_order = 8;
+RECONSTRUCTION_TYPE constexpr reconstruction_type = RECONSTRUCTION_TYPE::WENO;
+uint constexpr reconstruction_order = 9;
+RECONSTRUCTION_TYPE constexpr dual_reconstruction_type = RECONSTRUCTION_TYPE::WENO;
+uint constexpr dual_reconstruction_order = 9;
+
+// How to handle PV flux term
+enum class Q_TYPE { Q, ZETA };
+enum class DUAL_FLUX_TYPE { UT, FT };
+DUAL_FLUX_TYPE dual_velocity_choice = DUAL_FLUX_TYPE::UT;
+Q_TYPE qchoice = Q_TYPE::ZETA;
 
 // Halo sizes
 uint maxhalosize = 12; //mymax(reconstruction_order+1,differential_order)/2; // IS THIS ALWAYS CORRECT?

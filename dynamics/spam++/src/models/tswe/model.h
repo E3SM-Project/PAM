@@ -25,7 +25,7 @@
 
 uint constexpr nprognostic = 3; // h, v, S
 uint constexpr nconstant = 2;   // hs, coriolis
-uint constexpr nauxiliary = 8; // B, F, T, q, hrecon, qrecon, srecon, FT
+uint constexpr nauxiliary = 10; // B, F, T, q, hrecon, qrecon, srecon, FT, U, coriolisrecon
 uint constexpr nstats = 6;      // M, PE, KE, TE, B, PV
 uint constexpr ndiagnostic = 2;      // q0, sl0
 
@@ -46,6 +46,8 @@ uint constexpr ndiagnostic = 2;      // q0, sl0
 #define QVAR 5
 #define QRECONVAR 6
 #define FTVAR 7
+#define UVAR 8
+#define CORIOLISRECONVAR 9
 
 // THIS REALLY NEEDS TO CHANGE DEPENDING ON 1D/2D!
 #define Q0VAR 0
@@ -302,44 +304,37 @@ void YAKL_INLINE compute_dual_reconstruction(realArr reconvar, realArr densityva
 }
 
 
-void YAKL_INLINE compute_auxiliary_quantities(realArr B, realArr F, realArr T, realArr q, realArr hrecon, realArr srecon, const realArr v, const realArr h, const realArr S, const realArr hs, const realArr coriolis, const Topology<ndims> &topology, Geometry<ndims,1,1,1> &geom)
+
+void YAKL_INLINE compute_functional_derivatives(realArr B, realArr F, realArr T, realArr U, const realArr v, const realArr h, const realArr S, const realArr hs, const Topology<ndims> &topology, Geometry<ndims,1,1,1> &geom)
 {
 
     int is = topology.is;
     int js = topology.js;
     int ks = topology.ks;
 
-    real he0, he1, KE, zeta, eta, hv, U, V;
+    real he0, he1, KE;
 
-      yakl::parallel_for("ComputeAuxiliary", topology.n_cells, YAKL_LAMBDA (int iGlob) {
+      yakl::parallel_for("ComputeFunctionalDerivs", topology.n_cells, YAKL_LAMBDA (int iGlob) {
         int k, j, i;
         yakl::unpackIndices(iGlob, topology.n_cells_z, topology.n_cells_y, topology.n_cells_x, k, j, i);
 
         he0 = 0.5 * (h(0, k+ks, j+js, i+is)/geom.get_J_cell(k+ks, j+js, i+is) + h(0, k+ks, j+js, i+is-1)/geom.get_J_cell(k+ks, j+js, i+is-1));
-        U = geom.get_H_edge(0, k+ks, j+js, i+is) * v(0,k+ks,j+js,i+is);
-        F(0,k+ks,j+js,i+is) = he0 * U;
-        hrecon(0,k+ks,j+js,i+is) = hrecon(0,k+ks,j+js,i+is) / he0;
-        srecon(0,k+ks,j+js,i+is) = srecon(0,k+ks,j+js,i+is) / he0;
+        U(0,k+ks,j+js,i+is) = geom.get_H_edge(0, k+ks, j+js, i+is) * v(0,k+ks,j+js,i+is);
+        F(0,k+ks,j+js,i+is) = he0 * U(0,k+ks,j+js,i+is);
 
         if (ndims == 1) {
-        KE = 1./2. * ( v(0,k+ks,j+js,i+is) * U + v(0,k+ks,j+js,i+is+1) * geom.get_H_edge(0, k+ks, j+js, i+is+1) * v(0,k+ks,j+js,i+is+1));
+        KE = 1./2. * ( v(0,k+ks,j+js,i+is) * U(0,k+ks,j+js,i+is) + v(0,k+ks,j+js,i+is+1) * U(0,k+ks,j+js,i+is+1));
         }
 
         if (ndims == 2) {
 
-        he1 = 0.5 * (h(0, k+ks, j+js, i+is)/geom.get_J_cell(k+ks, j+js, i+is) + h(0, k+ks, j+js-1, i+is)/geom.get_J_cell(k+ks, j+js-1, i+is));;
-        V = geom.get_H_edge(1, k+ks, j+js, i+is) * v(1,k+ks,j+js,i+is);
-        F(1,k+ks,j+js,i+is) = he1 * V;
-        hrecon(1,k+ks,j+js,i+is) = hrecon(1,k+ks,j+js,i+is) / he1;
-        srecon(1,k+ks,j+js,i+is) = srecon(1,k+ks,j+js,i+is) / he1;
+        he1 = 0.5 * (h(0, k+ks, j+js, i+is)/geom.get_J_cell(k+ks, j+js, i+is) + h(0, k+ks, j+js-1, i+is)/geom.get_J_cell(k+ks, j+js-1, i+is));
+        U(1,k+ks,j+js,i+is) = geom.get_H_edge(1, k+ks, j+js, i+is) * v(1,k+ks,j+js,i+is);
+        F(1,k+ks,j+js,i+is) = he1 * U(1,k+ks,j+js,i+is);
 
-        KE = 1./4. * ( v(0,k+ks,j+js,i+is) * U + v(0,k+ks,j+js,i+is+1) * geom.get_H_edge(0, k+ks, j+js, i+is+1) * v(0,k+ks,j+js,i+is+1) +
-                       v(1,k+ks,j+js,i+is) * V + v(1,k+ks,j+js+1,i+is) * geom.get_H_edge(1, k+ks, j+js+1, i+is) * v(1,k+ks,j+js+1,i+is));
+        KE = 1./4. * ( v(0,k+ks,j+js,i+is) * U(0,k+ks,j+js,i+is) + v(0,k+ks,j+js,i+is+1) * U(0,k+ks,j+js,i+is+1) +
+                       v(1,k+ks,j+js,i+is) * U(1,k+ks,j+js,i+is) + v(1,k+ks,j+js+1,i+is) * U(1,k+ks,j+js+1,i+is));
 
-        zeta = (v(1,k+ks,j+js,i+is) - v(0,k+ks,j+js,i+is) - v(1,k+ks,j+js,i+is-1) + v(0,k+ks,j+js-1,i+is));
-        hv = 1./4. * (h(0,k+ks,j+js,i+is) + h(0,k+ks,j+js-1,i+is) + h(0,k+ks,j+js,i+is-1) + h(0,k+ks,j+js-1,i+is-1));
-        eta = zeta + coriolis(0,k+ks,j+js,i+is);
-        q(0,k+ks,j+js,i+is) = eta / hv * geom.get_J_dual_cell(k+ks, j+js, i+is);
         }
 
         B(0,k+ks,j+js,i+is) = (S(0,k+ks,j+js,i+is)/2.0 + KE)/geom.get_J_cell(k+ks, j+js, i+is);
@@ -353,46 +348,174 @@ void YAKL_INLINE compute_auxiliary_quantities(realArr B, realArr F, realArr T, r
 }
 
 
+void YAKL_INLINE compute_q(realArr q, const realArr v, const realArr h, const Topology<ndims> &topology, Geometry<ndims,1,1,1> &geom)
+{
+    int is = topology.is;
+    int js = topology.js;
+    int ks = topology.ks;
+
+    real zeta, hv;
+
+      yakl::parallel_for("ComputeQ", topology.n_cells, YAKL_LAMBDA (int iGlob) {
+        int k, j, i;
+        yakl::unpackIndices(iGlob, topology.n_cells_z, topology.n_cells_y, topology.n_cells_x, k, j, i);
+
+    zeta = (v(1,k+ks,j+js,i+is) - v(0,k+ks,j+js,i+is) - v(1,k+ks,j+js,i+is-1) + v(0,k+ks,j+js-1,i+is));
+    hv = 1./4. * (h(0,k+ks,j+js,i+is) + h(0,k+ks,j+js-1,i+is) + h(0,k+ks,j+js,i+is-1) + h(0,k+ks,j+js-1,i+is-1));
+    q(0,k+ks,j+js,i+is) = zeta / hv * geom.get_J_dual_cell(k+ks, j+js, i+is);
+    });
+}
+
+void YAKL_INLINE compute_zeta(realArr q, const realArr v, const Topology<ndims> &topology, Geometry<ndims,1,1,1> &geom)
+{
+    int is = topology.is;
+    int js = topology.js;
+    int ks = topology.ks;
+
+    real zeta;
+
+      yakl::parallel_for("ComputeZeta", topology.n_cells, YAKL_LAMBDA (int iGlob) {
+        int k, j, i;
+        yakl::unpackIndices(iGlob, topology.n_cells_z, topology.n_cells_y, topology.n_cells_x, k, j, i);
+
+    zeta = (v(1,k+ks,j+js,i+is) - v(0,k+ks,j+js,i+is) - v(1,k+ks,j+js,i+is-1) + v(0,k+ks,j+js-1,i+is));
+    q(0,k+ks,j+js,i+is) = zeta;
+    });
+}
+
+void YAKL_INLINE compute_coriolis_reconstruction(realArr coriolisrecon, const realArr coriolis, const realArr h, const Topology<ndims> &topology, Geometry<ndims,1,1,1> &geom)
+{
+    int is = topology.is;
+    int js = topology.js;
+    int ks = topology.ks;
+
+    real cv0, cv1, cv2, hv0, hv1, hv2;
+
+      yakl::parallel_for("ComputeCoriolisRecon", topology.n_cells, YAKL_LAMBDA (int iGlob) {
+        int k, j, i;
+        yakl::unpackIndices(iGlob, topology.n_cells_z, topology.n_cells_y, topology.n_cells_x, k, j, i);
+
+    hv0 = 1./4. * (h(0,k+ks,j+js,i+is) + h(0,k+ks,j+js-1,i+is) + h(0,k+ks,j+js,i+is-1) + h(0,k+ks,j+js-1,i+is-1));
+    hv1 = 1./4. * (h(0,k+ks,j+js,i+is+1) + h(0,k+ks,j+js-1,i+is+1) + h(0,k+ks,j+js,i+is) + h(0,k+ks,j+js-1,i+is));
+    hv2 = 1./4. * (h(0,k+ks,j+js+1,i+is) + h(0,k+ks,j+js,i+is) + h(0,k+ks,j+js+1,i+is-1) + h(0,k+ks,j+js,i+is-1));
+    cv0 = coriolis(0,k+ks,j+js,i+is) / hv0;
+    cv1 = coriolis(0,k+ks,j+js,i+is+1) / hv1;
+    cv2 = coriolis(0,k+ks,j+js+1,i+is) / hv2;
+
+    //x-dir
+    coriolisrecon(1, k+ks, j+js, i+is) = 0.5*(cv0 + cv1);
+    //y-dir
+    coriolisrecon(0, k+ks, j+js, i+is) = 0.5*(cv0 + cv2);
+    });
+}
+
+void YAKL_INLINE scale_dual_reconstruction(realArr qrecon, realArr h, const Topology<ndims> &topology, Geometry<ndims,1,1,1> &geom)
+{
+    int is = topology.is;
+    int js = topology.js;
+    int ks = topology.ks;
+    real he0, he1;
+
+      yakl::parallel_for("ComputeCoriolisRecon", topology.n_cells, YAKL_LAMBDA (int iGlob) {
+        int k, j, i;
+        yakl::unpackIndices(iGlob, topology.n_cells_z, topology.n_cells_y, topology.n_cells_x, k, j, i);
+
+        he0 = 0.5 * (h(0, k+ks, j+js, i+is)/geom.get_J_cell(k+ks, j+js, i+is) + h(0, k+ks, j+js, i+is-1)/geom.get_J_cell(k+ks, j+js, i+is-1));
+        he1 = 0.5 * (h(0, k+ks, j+js, i+is)/geom.get_J_cell(k+ks, j+js, i+is) + h(0, k+ks, j+js-1, i+is)/geom.get_J_cell(k+ks, j+js-1, i+is));
+
+        //note swapping of he0/he1
+        //this is due to twist in dual grid flux definition!
+        //x-dir
+        qrecon(1, k+ks, j+js, i+is) = qrecon(1, k+ks, j+js, i+is) / he0;
+        //y-dir
+        qrecon(0, k+ks, j+js, i+is) = qrecon(0, k+ks, j+js, i+is) / he1;
+            });
+}
+
+
+void YAKL_INLINE scale_primal_reconstructions(realArr hrecon, realArr srecon, const realArr h, const Topology<ndims> &topology, Geometry<ndims,1,1,1> &geom)
+{
+
+    int is = topology.is;
+    int js = topology.js;
+    int ks = topology.ks;
+
+    real he0, he1;
+
+      yakl::parallel_for("ScalePrimalRecons", topology.n_cells, YAKL_LAMBDA (int iGlob) {
+        int k, j, i;
+        yakl::unpackIndices(iGlob, topology.n_cells_z, topology.n_cells_y, topology.n_cells_x, k, j, i);
+
+        he0 = 0.5 * (h(0, k+ks, j+js, i+is)/geom.get_J_cell(k+ks, j+js, i+is) + h(0, k+ks, j+js, i+is-1)/geom.get_J_cell(k+ks, j+js, i+is-1));
+        hrecon(0,k+ks,j+js,i+is) = hrecon(0,k+ks,j+js,i+is) / he0;
+        srecon(0,k+ks,j+js,i+is) = srecon(0,k+ks,j+js,i+is) / he0;
+
+        if (ndims == 2) {
+
+        he1 = 0.5 * (h(0, k+ks, j+js, i+is)/geom.get_J_cell(k+ks, j+js, i+is) + h(0, k+ks, j+js-1, i+is)/geom.get_J_cell(k+ks, j+js-1, i+is));;
+        hrecon(1,k+ks,j+js,i+is) = hrecon(1,k+ks,j+js,i+is) / he1;
+        srecon(1,k+ks,j+js,i+is) = srecon(1,k+ks,j+js,i+is) / he1;
+    }
+    });
+}
 
   void compute_rhs(real dt, const VariableSet<ndims, nconst> &const_vars, VariableSet<ndims, nprog> &x, VariableSet<ndims, naux> &auxiliary_vars, VariableSet<ndims, nprog> &xtend)
   {
 
-      //Compute h and S reconstructions
-   compute_primal_reconstruction(auxiliary_vars.fields_arr[HRECONVAR].data, x.fields_arr[HVAR].data, x.fields_arr[VVAR].data);
-   compute_primal_reconstruction(auxiliary_vars.fields_arr[SRECONVAR].data, x.fields_arr[SVAR].data, auxiliary_vars.fields_arr[VVAR].data);
-
-
-//Compute B, F and q; also scale hrecon/srecon
-compute_auxiliary_quantities(
-auxiliary_vars.fields_arr[BVAR].data, auxiliary_vars.fields_arr[FVAR].data, auxiliary_vars.fields_arr[TVAR].data,
-auxiliary_vars.fields_arr[QVAR].data, auxiliary_vars.fields_arr[HRECONVAR].data, auxiliary_vars.fields_arr[SRECONVAR].data,
+//Compute B, F, T, U
+compute_functional_derivatives(
+auxiliary_vars.fields_arr[BVAR].data, auxiliary_vars.fields_arr[FVAR].data, auxiliary_vars.fields_arr[TVAR].data, auxiliary_vars.fields_arr[UVAR].data,
 x.fields_arr[VVAR].data, x.fields_arr[HVAR].data, x.fields_arr[SVAR].data,
-const_vars.fields_arr[HSVAR].data, const_vars.fields_arr[CORIOLISVAR].data,
-*this->topology, *this->geom);
+const_vars.fields_arr[HSVAR].data, *this->topology, *this->geom);
 
 this->aux_exchange->exchanges_arr[BVAR].exchange_field(auxiliary_vars.fields_arr[BVAR]);
 this->aux_exchange->exchanges_arr[FVAR].exchange_field(auxiliary_vars.fields_arr[FVAR]);
 this->aux_exchange->exchanges_arr[TVAR].exchange_field(auxiliary_vars.fields_arr[TVAR]);
 this->aux_exchange->exchanges_arr[QVAR].exchange_field(auxiliary_vars.fields_arr[QVAR]);
-this->aux_exchange->exchanges_arr[HRECONVAR].exchange_field(auxiliary_vars.fields_arr[HRECONVAR]);
-this->aux_exchange->exchanges_arr[SRECONVAR].exchange_field(auxiliary_vars.fields_arr[SRECONVAR]);
+this->aux_exchange->exchanges_arr[UVAR].exchange_field(auxiliary_vars.fields_arr[UVAR]);
 
-//Compute FT and q reconstruction
+      //Compute h and S reconstructions
+   compute_primal_reconstruction(auxiliary_vars.fields_arr[HRECONVAR].data, x.fields_arr[HVAR].data, auxiliary_vars.fields_arr[UVAR].data);
+   compute_primal_reconstruction(auxiliary_vars.fields_arr[SRECONVAR].data, x.fields_arr[SVAR].data, auxiliary_vars.fields_arr[UVAR].data);
+   scale_primal_reconstructions(auxiliary_vars.fields_arr[HRECONVAR].data, auxiliary_vars.fields_arr[SRECONVAR].data, x.fields_arr[HVAR].data, *this->topology, *this->geom);
+
+   this->aux_exchange->exchanges_arr[HRECONVAR].exchange_field(auxiliary_vars.fields_arr[HRECONVAR]);
+   this->aux_exchange->exchanges_arr[SRECONVAR].exchange_field(auxiliary_vars.fields_arr[SRECONVAR]);
+
+//Compute q, q reconstruction and coriolis reconstruction
 if (ndims == 2) {
-    // STILL BROKEN- DUAL grid flux is W H v!
-    // ONLY WORKS FOR UNIFORM GRIDS...
-//W2D_2(auxiliary_vars.fields_arr[FTVAR].data, x.fields_arr[VVAR].data, *this->topology);
 
-// This is correct- dual grid flux is W F
+// Two choices of dual grid flux velocity used in upwinding
+if (dual_velocity_choice == DUAL_FLUX_TYPE::UT)
+{
+W2D_2<1>(auxiliary_vars.fields_arr[FTVAR].data, auxiliary_vars.fields_arr[UVAR].data, *this->topology);
+}
+if (dual_velocity_choice == DUAL_FLUX_TYPE::FT)
+{
 W2D_2<1>(auxiliary_vars.fields_arr[FTVAR].data, auxiliary_vars.fields_arr[FVAR].data, *this->topology);
+}
 this->aux_exchange->exchanges_arr[FTVAR].exchange_field(auxiliary_vars.fields_arr[FTVAR]);
 
+// Two choices of reconstruction
+if (qchoice == Q_TYPE::Q)
+{
+compute_q(auxiliary_vars.fields_arr[QVAR].data, x.fields_arr[VVAR].data, x.fields_arr[HVAR].data, *this->topology, *this->geom);
+this->aux_exchange->exchanges_arr[QVAR].exchange_field(auxiliary_vars.fields_arr[QVAR]);
 compute_dual_reconstruction(auxiliary_vars.fields_arr[QRECONVAR].data, auxiliary_vars.fields_arr[QVAR].data, auxiliary_vars.fields_arr[FTVAR].data);
+}
+if (qchoice == Q_TYPE::ZETA)
+{
+compute_zeta(auxiliary_vars.fields_arr[QVAR].data, x.fields_arr[VVAR].data, *this->topology, *this->geom);
+this->aux_exchange->exchanges_arr[QVAR].exchange_field(auxiliary_vars.fields_arr[QVAR]);
+compute_dual_reconstruction(auxiliary_vars.fields_arr[QRECONVAR].data, auxiliary_vars.fields_arr[QVAR].data, auxiliary_vars.fields_arr[FTVAR].data);
+scale_dual_reconstruction(auxiliary_vars.fields_arr[QRECONVAR].data, x.fields_arr[HVAR].data, *this->topology, *this->geom);
+}
 this->aux_exchange->exchanges_arr[QRECONVAR].exchange_field(auxiliary_vars.fields_arr[QRECONVAR]);
 
+//coriolis reconstruction
+compute_coriolis_reconstruction(auxiliary_vars.fields_arr[CORIOLISRECONVAR].data, const_vars.fields_arr[CORIOLISVAR].data, x.fields_arr[HVAR].data, *this->topology, *this->geom);
+this->aux_exchange->exchanges_arr[CORIOLISRECONVAR].exchange_field(auxiliary_vars.fields_arr[CORIOLISRECONVAR]);
 }
-
-
 
    //compute h rhs = D (hrecon* U) = D (hrecon/he F) with F = he U
    if (differential_order == 2)
@@ -436,7 +559,10 @@ if (differential_order == 8)
 
 if (ndims == 2) {
 Q2D_2_add<1>(xtend.fields_arr[VVAR].data, auxiliary_vars.fields_arr[QRECONVAR].data, auxiliary_vars.fields_arr[FVAR].data, *this->topology);
-//Q2D_nonEC_2_add(xtend.fields_arr[VVAR].data, auxiliary_vars.fields_arr[QRECONVAR].data, auxiliary_vars.fields_arr[FVAR].data, *this->topology);
+Q2D_2_add<1>(xtend.fields_arr[VVAR].data, auxiliary_vars.fields_arr[CORIOLISRECONVAR].data, auxiliary_vars.fields_arr[FVAR].data, *this->topology);
+
+//Q2D_nonEC_2_add<1>(xtend.fields_arr[VVAR].data, auxiliary_vars.fields_arr[QRECONVAR].data, auxiliary_vars.fields_arr[FVAR].data, *this->topology);
+//Q2D_nonEC_2_add<1>(xtend.fields_arr[VVAR].data, auxiliary_vars.fields_arr[CORIOLISRECONVAR].data, auxiliary_vars.fields_arr[FVAR].data, *this->topology);
 }
  }
 
@@ -622,6 +748,7 @@ std::array<const Topology<ndims> *, nprog> &prog_topo_arr, std::array<const Topo
   const_topo_arr[HSVAR] = &topo;
   aux_topo_arr[BVAR] = &topo;
   aux_topo_arr[FVAR] = &topo;
+  aux_topo_arr[UVAR] = &topo;
   aux_topo_arr[FTVAR] = &topo;
   aux_topo_arr[TVAR] = &topo;
   aux_topo_arr[HRECONVAR] = &topo;
@@ -629,6 +756,7 @@ std::array<const Topology<ndims> *, nprog> &prog_topo_arr, std::array<const Topo
   diag_topo_arr[SLVAR] = &topo;
   if (ndims == 2) {
   const_topo_arr[CORIOLISVAR] = &topo;
+  aux_topo_arr[CORIOLISRECONVAR] = &topo;
   aux_topo_arr[QVAR] = &topo;
   diag_topo_arr[Q0VAR] = &topo;
   aux_topo_arr[QRECONVAR] = &topo;
@@ -640,6 +768,7 @@ std::array<const Topology<ndims> *, nprog> &prog_topo_arr, std::array<const Topo
   const_names_arr[HSVAR] = "hs";
   aux_names_arr[BVAR] = "B";
   aux_names_arr[FVAR] = "F";
+  aux_names_arr[UVAR] = "U";
   aux_names_arr[FTVAR] = "FT";
   aux_names_arr[TVAR] = "T";
   aux_names_arr[HRECONVAR] = "hrecon";
@@ -648,6 +777,7 @@ std::array<const Topology<ndims> *, nprog> &prog_topo_arr, std::array<const Topo
 
   if (ndims == 2) {
   const_names_arr[CORIOLISVAR] = "coriolis";
+  aux_names_arr[CORIOLISRECONVAR] = "coriolisrecon";
   aux_names_arr[QVAR] = "q";
   diag_names_arr[Q0VAR] = "q";
   aux_names_arr[QRECONVAR] = "qrecon";
@@ -660,6 +790,7 @@ std::array<const Topology<ndims> *, nprog> &prog_topo_arr, std::array<const Topo
     const_ndofs_arr(HSVAR,2) = 1; //hs = twisted 2-form
     aux_ndofs_arr(BVAR,2) = 1; //B = straight 0-form
     aux_ndofs_arr(FVAR,1) = 1; //F = twisted 1-form
+    aux_ndofs_arr(UVAR,1) = 1; //U = twisted 1-form
     aux_ndofs_arr(FTVAR,1) = 1; //FT = straight 1-form
     aux_ndofs_arr(TVAR,2) = 1; //T = straight 0-form
     aux_ndofs_arr(HRECONVAR,1) = 1; //hrecon lives on edges
@@ -668,6 +799,7 @@ std::array<const Topology<ndims> *, nprog> &prog_topo_arr, std::array<const Topo
 
     if (ndims == 2) {
     const_ndofs_arr(CORIOLISVAR,0) = 1; //f = straight 2-form
+    aux_ndofs_arr(CORIOLISRECONVAR,1) = 1; //coriolisrecon lives on edges
     aux_ndofs_arr(QVAR,0) = 1; //q = straight 2-form
     diag_ndofs_arr(Q0VAR,0) = 1; //q0 = twisted 0-form
     aux_ndofs_arr(QRECONVAR,1) = 1; //qrecon lives on edges
