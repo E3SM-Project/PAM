@@ -8,7 +8,7 @@ DS.load()
 
 h = DS.h
 v = DS.v
-q0 = DS.q0
+q = DS.q
 
 M = DS.mass
 KE = DS.kinetic_energy
@@ -45,9 +45,9 @@ Nlist = np.arange(21)
 
 for i in Nlist:
     plt.figure(figsize=(10,8))
-    plt.contourf(q0.isel(t=i,q0_ndofs=0,ncells_z=0))
+    plt.contourf(q.isel(t=i,q_ndofs=0,ncells_z=0))
     plt.colorbar()
-    plt.contour(q0.isel(t=i,q0_ndofs=0,ncells_z=0))
+    plt.contour(q.isel(t=i,q_ndofs=0,ncells_z=0))
     plt.xlabel('x')
     plt.ylabel('y')
     plt.savefig('q' + str(i) + '.png')

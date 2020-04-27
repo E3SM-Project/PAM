@@ -85,13 +85,13 @@ public:
 uint constexpr number_of_dims = 2;
 
 // Spatial order of accuracy for the model
-uint constexpr differential_order = 4;
+uint constexpr differential_order = 2;
 
 // Reconstruction type
 RECONSTRUCTION_TYPE constexpr reconstruction_type = RECONSTRUCTION_TYPE::WENO;
 uint constexpr reconstruction_order = 9;
-RECONSTRUCTION_TYPE constexpr dual_reconstruction_type = RECONSTRUCTION_TYPE::WENO;
-uint constexpr dual_reconstruction_order = 9;
+RECONSTRUCTION_TYPE constexpr dual_reconstruction_type = RECONSTRUCTION_TYPE::CFV;
+uint constexpr dual_reconstruction_order = 2;
 
 // How to handle PV flux term
 enum class Q_TYPE { Q, ZETA };
