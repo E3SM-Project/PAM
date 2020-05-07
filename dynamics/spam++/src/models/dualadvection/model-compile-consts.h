@@ -13,6 +13,6 @@ public:
   WIND_INIT wind_init_cond;
 };
 
-bool fct = true;
+bool fct = false;
 
 #endif

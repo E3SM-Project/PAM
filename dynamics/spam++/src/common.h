@@ -47,12 +47,6 @@ template <class T> YAKL_INLINE T mymax( T const v1 , T const v2 ) {
   else         { return v2; }
 }
 
-
-
-enum class RECONSTRUCTION_TYPE { CFV, WENO };
-enum class TIME_TYPE { KGRK, ADER, SSPRK };
-enum class GEOM_TYPE { UNIFORM_RECT, DISTORTED };
-
 class Parameters
 {
 public:
@@ -79,6 +73,9 @@ public:
 
 
 
+enum class RECONSTRUCTION_TYPE { CFV, WENO, WENOFUNC };
+enum class TIME_TYPE { KGRK, ADER, SSPRK };
+enum class GEOM_TYPE { UNIFORM_RECT, DISTORTED };
 
 
 // Number of Dimensions
@@ -88,19 +85,22 @@ uint constexpr number_of_dims = 2;
 uint constexpr differential_order = 2;
 
 // Reconstruction type
-RECONSTRUCTION_TYPE constexpr reconstruction_type = RECONSTRUCTION_TYPE::WENO;
-uint constexpr reconstruction_order = 9;
-RECONSTRUCTION_TYPE constexpr dual_reconstruction_type = RECONSTRUCTION_TYPE::CFV;
-uint constexpr dual_reconstruction_order = 2;
+RECONSTRUCTION_TYPE constexpr reconstruction_type = RECONSTRUCTION_TYPE::WENOFUNC;
+uint constexpr reconstruction_order = 3;
+RECONSTRUCTION_TYPE constexpr dual_reconstruction_type = RECONSTRUCTION_TYPE::WENOFUNC;
+uint constexpr dual_reconstruction_order = 3;
 
 // How to handle PV flux term
 enum class Q_TYPE { Q, ZETA };
 enum class DUAL_FLUX_TYPE { UT, FT };
-DUAL_FLUX_TYPE dual_velocity_choice = DUAL_FLUX_TYPE::UT;
-Q_TYPE qchoice = Q_TYPE::ZETA;
+enum class QF_MODE { EC, NOEC };
+
+DUAL_FLUX_TYPE dual_velocity_choice = DUAL_FLUX_TYPE::FT;
+Q_TYPE qchoice = Q_TYPE::Q;
+QF_MODE qf_choice = QF_MODE::EC;
 
 // Halo sizes
-uint maxhalosize = 12; //mymax(reconstruction_order+1,differential_order)/2; // IS THIS ALWAYS CORRECT?
+uint maxhalosize = 15; //mymax(reconstruction_order+1,differential_order)/2; // IS THIS ALWAYS CORRECT?
 
 // initial condition quadrature pts
 uint constexpr ic_quad_pts = 3;
@@ -113,11 +113,6 @@ uint constexpr n_time_stages = 4;
 GEOM_TYPE constexpr geom_type = GEOM_TYPE::UNIFORM_RECT;
 
 #include "model-compile-consts.h"
-
-
-
-
-
 
 
 

@@ -9,6 +9,7 @@
 #include "W2D.h"
 #include "curl.h"
 #include "weno_dual.h"
+#include "weno_func_dual.h"
 #include "cfv_dual.h"
 #include "geometry.h"
 #include "params.h"
@@ -19,7 +20,7 @@
 // Number of variables
 uint constexpr nprognostic = 1;
 uint constexpr nconstant = 2;
-uint constexpr nauxiliary = 4;
+uint constexpr nauxiliary = 5;
 uint constexpr ndiagnostic = 0;
 uint constexpr nstats = 3;
 
@@ -29,9 +30,10 @@ uint constexpr nstats = 3;
 #define UTVAR 1
 
 #define QRECONVAR 0
-#define QFLUXVAR 1
-#define MFVAR 2
-#define PHIVAR 3
+#define QEDGERECONVAR 1
+#define QFLUXVAR 2
+#define MFVAR 3
+#define PHIVAR 4
 
 #define MSTAT 0
 #define MINSTAT 1
@@ -307,11 +309,24 @@ public:
    if (dual_reconstruction_type == RECONSTRUCTION_TYPE::WENO && dual_reconstruction_order == 11)
    { weno11_dual_recon<ndims, nqdofs>(auxiliary_vars.fields_arr[QRECONVAR].data, x.fields_arr[QVAR].data, const_vars.fields_arr[UTVAR].data, *this->topology, *this->geom); }
 
+   if (dual_reconstruction_type == RECONSTRUCTION_TYPE::WENOFUNC)
+   {
+    wenodualfunc_compute_edgerecons<ndims, nqdofs>(auxiliary_vars.fields_arr[QEDGERECONVAR].data,  x.fields_arr[QVAR].data, *this->topology, *this->geom);
+    this->aux_exchange->exchanges_arr[QEDGERECONVAR].exchange_field(auxiliary_vars.fields_arr[QEDGERECONVAR]);
+    wenodualfunc_recon<ndims, nqdofs>(auxiliary_vars.fields_arr[QRECONVAR].data, auxiliary_vars.fields_arr[QEDGERECONVAR].data, const_vars.fields_arr[UTVAR].data, *this->topology);
+   }
+
    this->aux_exchange->exchanges_arr[QRECONVAR].exchange_field(auxiliary_vars.fields_arr[QRECONVAR]);
 
    //compute Q(qrecon, U)
-   //Q2D_2( auxiliary_vars.fields_arr[QFLUXVAR].data, auxiliary_vars.fields_arr[QRECONVAR].data, const_vars.fields_arr[UVAR].data, *this->topology);
+   if (qf_choice == QF_MODE::EC)
+   {
+   Q2D_2<nqdofs>( auxiliary_vars.fields_arr[QFLUXVAR].data, auxiliary_vars.fields_arr[QRECONVAR].data, const_vars.fields_arr[UVAR].data, *this->topology);
+    }
+    if (qf_choice == QF_MODE::NOEC)
+{
    Q2D_nonEC_2<nqdofs>(auxiliary_vars.fields_arr[QFLUXVAR].data, auxiliary_vars.fields_arr[QRECONVAR].data, const_vars.fields_arr[UVAR].data, *this->topology);
+}
 
    this->aux_exchange->exchanges_arr[QFLUXVAR].exchange_field(auxiliary_vars.fields_arr[QFLUXVAR]);
 
@@ -415,6 +430,7 @@ std::array<const Topology<ndims> *, nprog> &prog_topo_arr, std::array<const Topo
   const_topo_arr[UVAR] = &topo;
   const_topo_arr[UTVAR] = &topo;
   aux_topo_arr[QRECONVAR] = &topo;
+  aux_topo_arr[QEDGERECONVAR] = &topo;
   aux_topo_arr[QFLUXVAR] = &topo;
   aux_topo_arr[MFVAR] = &topo;
   aux_topo_arr[PHIVAR] = &topo;
@@ -422,20 +438,20 @@ std::array<const Topology<ndims> *, nprog> &prog_topo_arr, std::array<const Topo
   const_names_arr[UVAR] = "u";
   const_names_arr[UTVAR] = "ut";
   aux_names_arr[QRECONVAR] = "qrecon";
+  aux_names_arr[QEDGERECONVAR] = "qedgerecon";
   aux_names_arr[QFLUXVAR] = "qflux";
   aux_names_arr[MFVAR] = "mf";
   aux_names_arr[PHIVAR] = "phi";
 
 
-  if (ndims == 2) {
     prog_ndofs_arr(QVAR,0) = nqdofs;
     const_ndofs_arr(UVAR,1) = 1;
     const_ndofs_arr(UTVAR,1) = 1;
     aux_ndofs_arr(QRECONVAR,1) = nqdofs;
+    aux_ndofs_arr(QEDGERECONVAR,0) = 4*nqdofs;
     aux_ndofs_arr(QFLUXVAR,1) = nqdofs;
     aux_ndofs_arr(MFVAR,0) = nqdofs;
     aux_ndofs_arr(PHIVAR,1) = nqdofs;
-  }
 
 
 
