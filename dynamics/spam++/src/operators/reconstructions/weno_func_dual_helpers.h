@@ -4,8 +4,8 @@
 #include "common.h"
 #include "TransformMatrices.h"
 
-//UGLY HACK, FIX IT!
-uint constexpr dual_ord = 3;
+// This catches the case of dual_reconstruction_order being even (ie using CFV), which otherwise breaks
+uint constexpr dual_ord = ((dual_reconstruction_order % 2) == 0) ? 3 : dual_reconstruction_order;
 uint constexpr dual_hs       = (dual_ord-1)/2;
 uint constexpr dual_tord = 2;
 

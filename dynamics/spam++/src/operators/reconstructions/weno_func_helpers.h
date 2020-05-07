@@ -4,8 +4,8 @@
 #include "common.h"
 #include "TransformMatrices.h"
 
-
-uint constexpr ord = reconstruction_order;
+// This catches the case of reconstruction_order being even (ie using CFV), which otherwise breaks
+uint constexpr ord = ((reconstruction_order % 2) == 0) ? 3 : reconstruction_order;
 uint constexpr hs       = (ord-1)/2;
 uint constexpr tord = 2;
 
