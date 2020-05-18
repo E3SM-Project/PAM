@@ -86,9 +86,9 @@ uint constexpr differential_order = 2;
 
 // Reconstruction type
 RECONSTRUCTION_TYPE constexpr reconstruction_type = RECONSTRUCTION_TYPE::WENOFUNC;
-uint constexpr reconstruction_order = 3;
+uint constexpr reconstruction_order = 9;
 RECONSTRUCTION_TYPE constexpr dual_reconstruction_type = RECONSTRUCTION_TYPE::WENOFUNC;
-uint constexpr dual_reconstruction_order = 3;
+uint constexpr dual_reconstruction_order = 9;
 
 // How to handle PV flux term
 enum class Q_TYPE { Q, ZETA };

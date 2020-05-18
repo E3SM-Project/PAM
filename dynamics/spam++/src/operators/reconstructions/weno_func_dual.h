@@ -13,20 +13,18 @@ template<uint ndims, uint ndofs> void YAKL_INLINE wenodualfunc_compute_edgerecon
   int ks = topology.ks;
 
   TransformMatrices<real> trans;
-  //SArray<real,1,tord> gllWts;
-  SArray<real,2,dual_ord,dual_tord> to_gll;
-  SArray<real,3,dual_ord,dual_ord,dual_ord> wenoRecon;
-  SArray<real,1,dual_hs+2> wenoIdl;
+  SArray<real,dual_ord,dual_tord> to_gll;
+  SArray<real,dual_ord,dual_ord,dual_ord> wenoRecon;
+  SArray<real,dual_hs+2> wenoIdl;
   real wenoSigma;
 
   // Setup the matrix to transform a stencil of ord cell averages into tord GLL points
   trans.coefs_to_gll_lower( to_gll );
   trans.weno_sten_to_coefs(wenoRecon);
-  //trans.get_gll_weights(gllWts);
   wenoSetIdealSigma_dual(wenoIdl,wenoSigma);
 
-  SArray<real,1,dual_ord> stencil;
-  SArray<real,1,dual_tord> gllPts;
+  SArray<real,dual_ord> stencil;
+  SArray<real,dual_tord> gllPts;
 
   yakl::parallel_for("ComputeWENODualFuncEdgeRecons", topology.n_cells, YAKL_LAMBDA (int iGlob) {
     int k, j, i;

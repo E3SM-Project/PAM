@@ -9,7 +9,7 @@ uint constexpr dual_ord = ((dual_reconstruction_order % 2) == 0) ? 3 : dual_reco
 uint constexpr dual_hs       = (dual_ord-1)/2;
 uint constexpr dual_tord = 2;
 
-YAKL_INLINE void map_weights_dual( SArray<real,1,dual_hs+2> const &idl , SArray<real,1,dual_hs+2> &wts ) {
+YAKL_INLINE void map_weights_dual( SArray<real,dual_hs+2> const &idl , SArray<real,dual_hs+2> &wts ) {
   // Map the weights for quicker convergence. WARNING: Ideal weights must be (0,1) before mapping
   for (int i=0; i<dual_hs+2; i++) {
     wts(i) = wts(i) * ( idl(i) + idl(i)*idl(i) - 3._fp*idl(i)*wts(i) + wts(i)*wts(i) ) / ( idl(i)*idl(i) + wts(i) * ( 1._fp - 2._fp * idl(i) ) );
@@ -18,7 +18,7 @@ YAKL_INLINE void map_weights_dual( SArray<real,1,dual_hs+2> const &idl , SArray<
 
 
 
-YAKL_INLINE void convexify_dual( SArray<real,1,dual_hs+2> &wts ) {
+YAKL_INLINE void convexify_dual( SArray<real,dual_hs+2> &wts ) {
   real sum = 0._fp;
   real const eps = 1.0e-20;
   for (int i=0; i<dual_hs+2; i++) { sum += wts(i); }
@@ -27,33 +27,33 @@ YAKL_INLINE void convexify_dual( SArray<real,1,dual_hs+2> &wts ) {
 
 
 
-YAKL_INLINE void wenoSetIdealSigma_dual(SArray<real,1,dual_hs+2> &idl, real &sigma) {
+YAKL_INLINE void wenoSetIdealSigma_dual(SArray<real,dual_hs+2> &idl, real &sigma) {
   if        (dual_ord == 3) {
-    sigma = 0.1_fp;
-    idl(0) = 1._fp;
-    idl(1) = 1._fp;
-    idl(2) = 100._fp;
-  } else if (dual_ord == 5) {
-    sigma = 0.1_fp;
-    idl(0) = 1._fp;
-    idl(1) = 100._fp;
-    idl(2) = 1._fp;
-    idl(3) = 1000._fp;
-  } else if (dual_ord == 7) {
-    sigma = 0.01_fp;
-    idl(0) = 1._fp;
-    idl(1) = 20._fp;
-    idl(2) = 20._fp;
-    idl(3) = 1._fp;
-    idl(4) = 400._fp;
-  } else if (dual_ord == 9) {
-    sigma = 0.1_fp;
-    idl(0) = 1._fp;
-    idl(1) = 18._fp;
-    idl(2) = 76._fp;
-    idl(3) = 18._fp;
-    idl(4) = 1._fp;
-    idl(5) = 5832._fp;
+        sigma = 0.0343557947899881_fp;
+        idl(0) = 1._fp;
+        idl(1) = 1._fp;
+        idl(2) = 1224.61619926508_fp;
+      } else if (dual_ord == 5) {
+        sigma = 0.73564225445964_fp;
+        idl(0) = 1._fp;
+        idl(1) = 73.564225445964_fp;
+        idl(2) = 1._fp;
+        idl(3) = 1584.89319246111_fp;
+      } else if (dual_ord == 7) {
+        sigma = 0.125594321575479_fp;
+        idl(0) = 1._fp;
+        idl(1) = 7.35642254459641_fp;
+        idl(2) = 7.35642254459641_fp;
+        idl(3) = 1._fp;
+        idl(4) = 794.328234724281_fp;
+      } else if (dual_ord == 9) {
+        sigma = 0.0288539981181442_fp;
+        idl(0) = 1._fp;
+        idl(1) = 2.15766927997459_fp;
+        idl(2) = 2.40224886796286_fp;
+        idl(3) = 2.15766927997459_fp;
+        idl(4) = 1._fp;
+        idl(5) = 1136.12697719888_fp;
   } else if (dual_ord == 11) {
     // These aren't tuned!!!
     sigma = 0.1_fp;
@@ -93,7 +93,7 @@ YAKL_INLINE void wenoSetIdealSigma_dual(SArray<real,1,dual_hs+2> &idl, real &sig
 
 
 
-YAKL_INLINE void perform_weno_recon_dual( SArray<real,3,dual_ord,dual_ord,dual_ord> const &recon , SArray<real,1,dual_ord> const &u , SArray<real,1,dual_hs+2> const &idl , SArray<real,2,dual_hs+2,dual_ord> &a ) {
+YAKL_INLINE void perform_weno_recon_dual( SArray<real,dual_ord,dual_ord,dual_ord> const &recon , SArray<real,dual_ord> const &u , SArray<real,dual_hs+2> const &idl , SArray<real,dual_hs+2,dual_ord> &a ) {
   // Init to zero
   for (int j=0; j<dual_hs+2; j++) {
     for (int i=0; i<dual_ord; i++) {
@@ -128,10 +128,10 @@ YAKL_INLINE void perform_weno_recon_dual( SArray<real,3,dual_ord,dual_ord,dual_o
 
 
 
-YAKL_INLINE void compute_weno_weights_dual( SArray<real,2,dual_hs+2,dual_ord> const &a , SArray<real,1,dual_hs+2> const &idl , real const sigma , SArray<real,1,dual_hs+2> &wts ) {
-  SArray<real,1,dual_hs+2> tv;
-  SArray<real,1,dual_hs+1> lotmp;
-  SArray<real,1,dual_ord > hitmp;
+YAKL_INLINE void compute_weno_weights_dual( SArray<real,dual_hs+2,dual_ord> const &a , SArray<real,dual_hs+2> const &idl , real const sigma , SArray<real,dual_hs+2> &wts ) {
+  SArray<real,dual_hs+2> tv;
+  SArray<real,dual_hs+1> lotmp;
+  SArray<real,dual_ord > hitmp;
   real lo_avg;
   real const eps = 1.0e-20;
 
@@ -170,7 +170,7 @@ YAKL_INLINE void compute_weno_weights_dual( SArray<real,2,dual_hs+2,dual_ord> co
 
 
 
-YAKL_INLINE void apply_weno_weights_dual( SArray<real,2,dual_hs+2,dual_ord> const &a , SArray<real,1,dual_hs+2> const &wts , SArray<real,1,dual_ord> &aw ) {
+YAKL_INLINE void apply_weno_weights_dual( SArray<real,dual_hs+2,dual_ord> const &a , SArray<real,dual_hs+2> const &wts , SArray<real,dual_ord> &aw ) {
   // WENO polynomial is the weighted sum of candidate polynomials using WENO weights instead of ideal weights
   for (int i=0; i<dual_ord; i++) {
     aw(i) = 0._fp;
@@ -184,9 +184,9 @@ YAKL_INLINE void apply_weno_weights_dual( SArray<real,2,dual_hs+2,dual_ord> cons
 
 
 
-YAKL_INLINE void compute_weno_coefs_dual( SArray<real,3,dual_ord,dual_ord,dual_ord> const &recon , SArray<real,1,dual_ord> const &u , SArray<real,1,dual_ord> &aw , SArray<real,1,dual_hs+2> const &idl , real const sigma ) {
-  SArray<real,2,dual_hs+2,dual_ord> a;
-  SArray<real,1,dual_hs+2> wts;
+YAKL_INLINE void compute_weno_coefs_dual( SArray<real,dual_ord,dual_ord,dual_ord> const &recon , SArray<real,dual_ord> const &u , SArray<real,dual_ord> &aw , SArray<real,dual_hs+2> const &idl , real const sigma ) {
+  SArray<real,dual_hs+2,dual_ord> a;
+  SArray<real,dual_hs+2> wts;
   perform_weno_recon_dual( recon , u , idl , a );
   compute_weno_weights_dual( a , idl , sigma , wts );
   apply_weno_weights_dual( a , wts , aw );
@@ -194,16 +194,16 @@ YAKL_INLINE void compute_weno_coefs_dual( SArray<real,3,dual_ord,dual_ord,dual_o
 
 
 
-YAKL_INLINE void weno_recon_and_weights_dual( SArray<real,3,dual_ord,dual_ord,dual_ord> const &recon , SArray<real,1,dual_ord> const &u , SArray<real,1,dual_hs+2> const &idl , real const sigma , SArray<real,1,dual_hs+2> &wts ) {
-  SArray<real,2,dual_hs+2,dual_ord> a;
+YAKL_INLINE void weno_recon_and_weights_dual( SArray<real,dual_ord,dual_ord,dual_ord> const &recon , SArray<real,dual_ord> const &u , SArray<real,dual_hs+2> const &idl , real const sigma , SArray<real,dual_hs+2> &wts ) {
+  SArray<real,dual_hs+2,dual_ord> a;
   perform_weno_recon_dual( recon , u , idl , a );
   compute_weno_weights_dual( a , idl , sigma , wts );
 }
 
 
 
-YAKL_INLINE void weno_recon_and_apply_dual( SArray<real,3,dual_ord,dual_ord,dual_ord> const &recon , SArray<real,1,dual_ord> const &u , SArray<real,1,dual_hs+2> const &idl , SArray<real,1,dual_hs+2> const &wts , SArray<real,1,dual_ord> &aw ) {
-  SArray<real,2,dual_hs+2,dual_ord> a;
+YAKL_INLINE void weno_recon_and_apply_dual( SArray<real,dual_ord,dual_ord,dual_ord> const &recon , SArray<real,dual_ord> const &u , SArray<real,dual_hs+2> const &idl , SArray<real,dual_hs+2> const &wts , SArray<real,dual_ord> &aw ) {
+  SArray<real,dual_hs+2,dual_ord> a;
   perform_weno_recon_dual( recon , u , idl , a );
   apply_weno_weights_dual( a , wts , aw );
 }
@@ -211,10 +211,10 @@ YAKL_INLINE void weno_recon_and_apply_dual( SArray<real,3,dual_ord,dual_ord,dual
 
 
 // Transform ord stencil cell averages into tord GLL point values
-YAKL_INLINE void reconStencil_dual(SArray<real,1,dual_ord> const &stencil, SArray<real,1,dual_tord> &gll,
-                              SArray<real,3,dual_ord,dual_ord,dual_ord> const &wenoRecon, SArray<real,2,dual_ord,dual_tord> const &to_gll,
-                              SArray<real,1,dual_hs+2> const &wenoIdl, real wenoSigma) {
-  SArray<real,1,dual_ord> coefs;
+YAKL_INLINE void reconStencil_dual(SArray<real,dual_ord> const &stencil, SArray<real,dual_tord> &gll,
+                              SArray<real,dual_ord,dual_ord,dual_ord> const &wenoRecon, SArray<real,dual_ord,dual_tord> const &to_gll,
+                              SArray<real,dual_hs+2> const &wenoIdl, real wenoSigma) {
+  SArray<real,dual_ord> coefs;
     compute_weno_coefs_dual(wenoRecon,stencil,coefs,wenoIdl,wenoSigma);
 
   for (int ii=0; ii<dual_tord; ii++) {
