@@ -1,58 +1,8 @@
+#ifndef _WENO_RECON_H_
+#define _WENO_RECON_H_
 
-#ifndef _INTERPOLATIONS_H_
-#define _INTERPOLATIONS_H_
+#include "common.h"
 
-//ALL OF THESE ASSUME A DIAGONAL HODGE STAR THAT MAPS FROM N-FORMS TO 0-FORMS
-// ie from cell integrals to point values
-//WE LIKELY WANT TO BE MORE CLEVER FOR HIGHER ORDER VERSIONS...
-// SEE Ullrich 2012 (MCORE) and Barad & Collela 2005 for higher-order ways to do this transformation
-
-
-//This accesses primal n-forms
-#define xvar(p) var(l, k+ks, j+js, i+is+p)/geom.get_J_cell(k+ks, j+js, i+is+p)
-#define yvar(p) var(l, k+ks, j+js+p, i+is)/geom.get_J_cell(k+ks, j+js+p, i+is)
-#define zvar(p) var(l, k+ks+p, j+js, i+is)/geom.get_J_cell(k+ks+p, j+js, i+is)
-
-//This accesses dual n-forms = primal 0-forms
-#define xvar_dual(p) var(l, k+ks, j+js, i+is+p)/geom.get_J_dual_cell(k+ks, j+js, i+is+p)
-#define yvar_dual(p) var(l, k+ks, j+js+p, i+is)/geom.get_J_dual_cell(k+ks, j+js+p, i+is)
-#define zvar_dual(p) var(l, k+ks+p, j+js, i+is)/geom.get_J_dual_cell(k+ks+p, j+js, i+is)
-
-// CFV Interpolations
-real YAKL_INLINE interp_2(real phi, real phip1){
-    return 0.5*(phi + phip1);
-};
-
-real YAKL_INLINE interp_4(real phim1, real phi, real phip1, real phip2){
-    return (7.0/12.0)*(phi + phip1 ) -(1.0/12.0)*(phim1 + phip2);
-};
-
-
-real YAKL_INLINE interp_6(real phim2, real phim1, real phi, real phip1,
-                real phip2, real phip3){
-    return ((37.0/60.0) * (phi + phip1) - (2.0/15.0)*(phim1 + phip2)
-            + (1.0/60.0)*(phim2 + phip3));
-};
-
-
-real YAKL_INLINE interp_8(real phim3, real phim2, real phim1, real phi,
-                real phip1, real phip2, real phip3, real phip4){
-   return  (533./840. * (phi + phip1) - 139.0/840.0 * (phim1 + phip2 )
-            + 29.0/840.0 * (phim2 + phip3) -1.0/280.0*(phim3 + phip4));
-};
-
-
-real YAKL_INLINE interp_10(real phim4, real phim3, real phim2, real phim1,
-                real phi, real phip1, real phip2, real phip3,
-                real phip4, real phip5){
-    return (1627.0/2520.0 * (phi + phip1) - 473.0/2520.0 * (phim1 + phip2 )
-                       + 127.0/2520.0* (phim2 + phip3) -23.0/2520.0 *(phim3 + phip4)
-                        + 1.0/1260.0*(phim4 + phip5));
-};
-
-
-
-// WENO Interpolations
 real YAKL_INLINE interp_weno3(real phim1, real phi, real phip1){
     const real p0 = (-1.0/2.0) * phim1 + (3.0/2.0) * phi;
     const real p1 = (1.0/2.0) * phi + (1.0/2.0) * phip1;
@@ -269,4 +219,62 @@ real YAKL_INLINE interp_weno11(real phim5, real phim4, real phim3, real phim2, r
 
     return w0 * p0 + w1 * p1 + w2 * p2 + w3 * p3 + w4 * p4 + w5 * p5;
 };
+
+
+
+
+
+template<uint ndofs> void YAKL_INLINE weno(SArray<real,ndofs,ndims,2> &edgerecon, SArray<real,ndofs,ndims,1> const &dens) {
+    for (int l=0; l<ndofs; l++) {
+      for (int d=0; d<ndims; d++) {
+          edgerecon(l,d,0) = dens(l,d,0);
+          edgerecon(l,d,1) = dens(l,d,0);
+        }
+      }
+}
+
+template<uint ndofs> void YAKL_INLINE weno(SArray<real,ndofs,ndims,2> &edgerecon, SArray<real,ndofs,ndims,3> const &dens) {
+    for (int l=0; l<ndofs; l++) {
+      for (int d=0; d<ndims; d++) {
+          edgerecon(l,d,0) = interp_weno3(dens(l,d,2), dens(l,d,1), dens(l,d,0));
+          edgerecon(l,d,1) = interp_weno3(dens(l,d,0), dens(l,d,1), dens(l,d,2));
+        }
+      }
+}
+
+template<uint ndofs> void YAKL_INLINE weno(SArray<real,ndofs,ndims,2> &edgerecon, SArray<real,ndofs,ndims,5> const &dens) {
+    for (int l=0; l<ndofs; l++) {
+      for (int d=0; d<ndims; d++) {
+          edgerecon(l,d,0) = interp_weno5(dens(l,d,4), dens(l,d,3), dens(l,d,2), dens(l,d,1), dens(l,d,0));
+          edgerecon(l,d,1) = interp_weno5(dens(l,d,0), dens(l,d,1), dens(l,d,2), dens(l,d,3), dens(l,d,4));
+        }
+      }
+}
+
+template<uint ndofs> void YAKL_INLINE weno(SArray<real,ndofs,ndims,2> &edgerecon, SArray<real,ndofs,ndims,7> const &dens) {
+    for (int l=0; l<ndofs; l++) {
+      for (int d=0; d<ndims; d++) {
+          edgerecon(l,d,0) = interp_weno7(dens(l,d,6), dens(l,d,5), dens(l,d,4), dens(l,d,3), dens(l,d,2), dens(l,d,1), dens(l,d,0));
+          edgerecon(l,d,1) = interp_weno7(dens(l,d,0), dens(l,d,1), dens(l,d,2), dens(l,d,3), dens(l,d,4), dens(l,d,5), dens(l,d,6));
+        }
+      }
+}
+
+template<uint ndofs> void YAKL_INLINE weno(SArray<real,ndofs,ndims,2> &edgerecon, SArray<real,ndofs,ndims,9> const &dens) {
+    for (int l=0; l<ndofs; l++) {
+      for (int d=0; d<ndims; d++) {
+          edgerecon(l,d,0) = interp_weno9(dens(l,d,8), dens(l,d,7), dens(l,d,6), dens(l,d,5), dens(l,d,4), dens(l,d,3), dens(l,d,2), dens(l,d,1), dens(l,d,0));
+          edgerecon(l,d,1) = interp_weno9(dens(l,d,0), dens(l,d,1), dens(l,d,2), dens(l,d,3), dens(l,d,4), dens(l,d,5), dens(l,d,6), dens(l,d,7), dens(l,d,8));
+        }
+      }
+}
+
+template<uint ndofs> void YAKL_INLINE weno(SArray<real,ndofs,ndims,2> &edgerecon, SArray<real,ndofs,ndims,11> const &dens) {
+    for (int l=0; l<ndofs; l++) {
+      for (int d=0; d<ndims; d++) {
+          edgerecon(l,d,0) = interp_weno11(dens(l,d,10), dens(l,d,9), dens(l,d,8), dens(l,d,7), dens(l,d,6), dens(l,d,5), dens(l,d,4), dens(l,d,3), dens(l,d,2), dens(l,d,1), dens(l,d,0));
+          edgerecon(l,d,1) = interp_weno11(dens(l,d,0), dens(l,d,1), dens(l,d,2), dens(l,d,3), dens(l,d,4), dens(l,d,5), dens(l,d,6), dens(l,d,7), dens(l,d,8), dens(l,d,9), dens(l,d,10));
+        }
+      }
+}
 #endif

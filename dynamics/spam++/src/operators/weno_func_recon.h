@@ -261,12 +261,12 @@ template<uint ndofs, uint ord, uint tord=2, uint hs=(ord-1)/2> void YAKL_INLINE 
   SArray<real,2> gllPts;
 
     for (int l=0; l<ndofs; l++) {
-      for (int k=0; k<ndims; k++) {
+      for (int d=0; d<ndims; d++) {
 
-      for (int ii=0; ii<ord; ii++) { stencil(ii) = dens(l,k,ii); }
+      for (int ii=0; ii<ord; ii++) { stencil(ii) = dens(l,d,ii); }
       reconStencil<ord>(stencil, gllPts, wenoRecon, to_gll, wenoIdl, wenoSigma);
-       edgerecon(l,k,0) = gllPts(0);
-       edgerecon(l,k,1) = gllPts(1);
+       edgerecon(l,d,0) = gllPts(0);
+       edgerecon(l,d,1) = gllPts(1);
      }
       }
 }

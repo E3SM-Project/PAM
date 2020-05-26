@@ -1,75 +1,32 @@
 import xarray as xr
-import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
+from plot_helpers import plotvar_scalar2D, plotvar_vector2D, plot_stat, plot_rawstat
 import numpy as np
 
 DS = xr.open_dataset('output.nc')
 DS.load()
 
-u = DS.u
-q = DS.q
 
 
 qmass = DS.qmass
 qmin = DS.qmin
 qmax = DS.qmax
 
-def plot_stat(statname, data):
-    plt.figure(figsize=(10,8))
-    plt.plot( (data - data[0])/data[0]*100. )
-    plt.xlabel('Nsteps')
-    plt.ylabel('Fractional Change in ' + statname)
-    plt.savefig(statname + '.png')
-
-def plot_rawstat(statname, data):
-    plt.figure(figsize=(10,8))
-    plt.plot(data)
-    plt.xlabel('Nsteps')
-    plt.ylabel(statname)
-    plt.savefig(statname + 'raw.png')
-
 plot_stat('mass', qmass)
 plot_rawstat('min', qmin)
 plot_rawstat('max', qmax)
 
+
+v = DS.v
+q = DS.q
+q0 = DS.q0
+
+#Nlist = [0,1,2,3,4,5,6,7,8,9,10]
 Nlist = [0,1,10,40,80,120,160,200]
 
-plt.figure(figsize=(10,8))
-plt.quiver(u.isel(u_ndofs=0,ncells_z=0), u.isel(u_ndofs=1,ncells_z=0))
-# FIX THIS TO BE BASED ON WIND MAGNITUDE
-plt.colorbar()
-plt.xlabel('x')
-plt.ylabel('y')
-plt.savefig('vvec.png')
-
-
-plt.figure(figsize=(10,8))
-plt.contourf(u.isel(u_ndofs=0,ncells_z=0))
-plt.colorbar()
-plt.contour(u.isel(u_ndofs=0,ncells_z=0))
-plt.xlabel('x')
-plt.ylabel('y')
-plt.savefig('u.png')
-
-plt.figure(figsize=(10,8))
-plt.contourf(u.isel(u_ndofs=1,ncells_z=0))
-plt.colorbar()
-plt.contour(u.isel(u_ndofs=1,ncells_z=0))
-plt.xlabel('x')
-plt.ylabel('y')
-plt.savefig('v.png')
-
+plotvar_vector2D('v', v.isel(v_ndofs=0,ncells_z=0), v.isel(v_ndofs=1,ncells_z=0),0)
 for i in Nlist:
-    plt.figure(figsize=(10,8))
-    plt.contourf(q.isel(t=i,q_ndofs=0,ncells_z=0))
-    plt.colorbar()
-    plt.contour(q.isel(t=i,q_ndofs=0,ncells_z=0))
-    plt.xlabel('x')
-    plt.ylabel('y')
-    plt.savefig('q' + str(i) + '.png')
-
-
-
+    plotvar_scalar2D('q', q.isel(t=i,q_ndofs=0,ncells_z=0),i)
+    plotvar_scalar2D('q0', q0.isel(t=i,q0_ndofs=0,ncells_z=0),i)
 
 # def update(i):
 #      ax.clear()

@@ -8,40 +8,40 @@
 #include <string>
 
 
-template<uint ndims> class Field {
+class Field {
 
 public :
 
   realArr data;
-  const Topology<ndims> *topology;
+  const Topology *topology;
   std::string name;
   int total_dofs;
   int ndof0, ndof1, ndof2, ndof3;
 
   bool is_initialized;
-  Field<ndims>();
-  Field<ndims>( const Field<ndims> &f) = delete;
-  Field<ndims>& operator=( const Field<ndims> &f) = delete;
+  Field();
+  Field( const Field &f) = delete;
+  Field& operator=( const Field &f) = delete;
   int YAKL_INLINE get_offset(int ndof);
   void printinfo();
-  void initialize(const Field<ndims> &f, const std::string fieldName);
-  void initialize(const Topology<ndims> &topo, const std::string fieldName, int nd0, int nd1, int nd2, int nd3);
-  void copy(const Field<ndims> & f);
-  void waxpy(real alpha, const Field<ndims> &x, const Field<ndims> &y);
-  void waxpbypcz(real alpha, real beta, real gamma, const Field<ndims> &x, const Field<ndims> &y, const Field<ndims> &z);
+  void initialize(const Field &f, const std::string fieldName);
+  void initialize(const Topology &topo, const std::string fieldName, int nd0, int nd1, int nd2, int nd3);
+  void copy(const Field & f);
+  void waxpy(real alpha, const Field &x, const Field &y);
+  void waxpbypcz(real alpha, real beta, real gamma, const Field &x, const Field &y, const Field &z);
   real sum();
   real min();
   real max();
 
 };
 
-    template<uint ndims> Field<ndims>::Field()
+    Field::Field()
     {
       this->is_initialized = false;
       std::cout << "CREATED FIELD\n";
     }
 
-  template<uint ndims> void Field<ndims>::printinfo()
+  void Field::printinfo()
   {
     std::cout << "field info " << this->name << "\n" << std::flush;
     std::cout <<  this->data << std::flush;
@@ -51,12 +51,12 @@ public :
 
 
   // creates a new Field f with same parameters as self, without copying data over
-  template<uint ndims> void Field<ndims>::initialize(const Field<ndims> &f, const std::string fieldName)
+  void Field::initialize(const Field &f, const std::string fieldName)
   {
     this->initialize(*f.topology, fieldName, f.ndof0, f.ndof1, f.ndof2, f.ndof3);
   }
 
-  template<uint ndims> void Field<ndims>::initialize(const Topology<ndims> &topo, const std::string fieldName, int nd0, int nd1, int nd2, int nd3)
+  void Field::initialize(const Topology &topo, const std::string fieldName, int nd0, int nd1, int nd2, int nd3)
   {
 
     this->topology = &topo;
@@ -85,7 +85,7 @@ public :
 
   }
 
-  template<uint ndims> int YAKL_INLINE Field<ndims>::get_offset(int ndof)
+  int YAKL_INLINE Field::get_offset(int ndof)
   {
       if (ndof == 0)                  { return 0; }
       if (ndof == 1)                  { return this->ndof0; }
@@ -96,7 +96,7 @@ public :
 
 
   // copies data from f into self
-  template<uint ndims> void Field<ndims>::copy(const Field<ndims> & f)
+  void Field::copy(const Field & f)
   {
 
     int is = this->topology->is;
@@ -112,7 +112,7 @@ public :
   }
 
   // Computes w (self) = alpha x + y
-  template<uint ndims> void Field<ndims>::waxpy(real alpha, const Field<ndims> &x, const Field<ndims> &y)
+  void Field::waxpy(real alpha, const Field &x, const Field &y)
   {
 
     int is = this->topology->is;
@@ -128,7 +128,7 @@ public :
   }
 
   // Computes w (self) = alpha x + beta * y + gamma * z
-  template<uint ndims> void Field<ndims>::waxpbypcz(real alpha, real beta, real gamma, const Field<ndims> &x, const Field<ndims> &y, const Field<ndims> &z)
+  void Field::waxpbypcz(real alpha, real beta, real gamma, const Field &x, const Field &y, const Field &z)
   {
 
     int is = this->topology->is;
@@ -144,7 +144,7 @@ public :
   }
 
   // computes sum of field
-  template<uint ndims> real Field<ndims>::sum()
+  real Field::sum()
   {
 
     int is = this->topology->is;
@@ -162,7 +162,7 @@ public :
   }
 
   // computes min of field
-  template<uint ndims> real Field<ndims>::min()
+ real Field::min()
   {
 
     int is = this->topology->is;
@@ -180,7 +180,7 @@ public :
   }
 
   // computes max of field
-  template<uint ndims> real Field<ndims>::max()
+  real Field::max()
   {
 
     int is = this->topology->is;

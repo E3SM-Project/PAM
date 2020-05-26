@@ -12,10 +12,10 @@
 // Xm RecvBuf holds the halo cells closest to x- ie the left side
 // Xp SendBuf holds the halo cells closest to x+ ie the right side
 
-template<uint ndims> class Exchange {
+class Exchange {
 public:
 
-    const Topology<ndims> *topology;
+    const Topology *topology;
 
     int bufsize_x, bufsize_y, bufsize_z;
     int total_dofs;
@@ -58,29 +58,29 @@ public:
 
 
     Exchange();
-    Exchange( const Exchange<ndims> &exch) = delete;
-    Exchange& operator=( const Exchange<ndims> &exch) = delete;
+    Exchange( const Exchange &exch) = delete;
+    Exchange& operator=( const Exchange &exch) = delete;
     void printinfo();
-    void initialize(const Exchange<ndims> &exch);
-    void initialize(const Topology<ndims> &topo, int nd0, int nd1, int nd2, int nd3);
-    void pack(const Field<ndims> &field);
-    void unpack(Field<ndims> &field);
+    void initialize(const Exchange &exch);
+    void initialize(const Topology &topo, int nd0, int nd1, int nd2, int nd3);
+    void pack(const Field &field);
+    void unpack(Field &field);
     void exchange();
-    void exchange_field(Field<ndims> &field);
+    void exchange_field(Field &field);
     void exchange_x();
     void exchange_y();
     void exchange_z();
 
 };
 
-      template<uint ndims> Exchange<ndims>::Exchange()
+    Exchange::Exchange()
       {
         this->is_initialized = false;
         std::cout << "CREATED EXCHANGE\n";
       }
 
 
-    template<uint ndims> void Exchange<ndims>::printinfo()
+    void Exchange::printinfo()
     {
       std::cout << "exchange info\n" << std::flush;
       std::cout << "bufsize_x " << this->bufsize_x << " bufsize_y " << this->bufsize_y << " bufsize_z " << this->bufsize_z << "\n" << std::flush;
@@ -88,13 +88,13 @@ public:
     }
 
 
-template<uint ndims> void Exchange<ndims>::initialize(const Exchange<ndims> &exch)
+void Exchange::initialize(const Exchange &exch)
 {
- initialize(*exch.topology, *exch.parallel, exch.ndof0, exch.ndof1, exch.ndof2, exch.ndof3);
+ initialize(*exch.topology,  exch.ndof0, exch.ndof1, exch.ndof2, exch.ndof3);
 }
 
 
- template<uint ndims> void Exchange<ndims>::initialize(const Topology<ndims> &topo, int nd0, int nd1, int nd2, int nd3)
+ void Exchange::initialize(const Topology &topo, int nd0, int nd1, int nd2, int nd3)
  {
    this->topology = &topo;
 
@@ -163,7 +163,7 @@ template<uint ndims> void Exchange<ndims>::initialize(const Exchange<ndims> &exc
 
  }
 
- template<uint ndims> void Exchange<ndims>::pack(const Field<ndims> &field)
+ void Exchange::pack(const Field &field)
  {
 
    int is = this->topology->is;
@@ -199,7 +199,7 @@ template<uint ndims> void Exchange<ndims>::initialize(const Exchange<ndims> &exc
    }
  }
 
- template<uint ndims> void Exchange<ndims>::unpack(Field<ndims> &field)
+ void Exchange::unpack(Field &field)
  {
 
    int is = this->topology->is;
@@ -237,7 +237,7 @@ template<uint ndims> void Exchange<ndims>::initialize(const Exchange<ndims> &exc
 
 
 
- template<uint ndims> void Exchange<ndims>::exchange_x()
+ void Exchange::exchange_x()
  {
    int ierr;
 
@@ -278,7 +278,7 @@ template<uint ndims> void Exchange<ndims>::initialize(const Exchange<ndims> &exc
  }
 
 
- template<uint ndims> void Exchange<ndims>::exchange_y()
+ void Exchange::exchange_y()
  {
    int ierr;
 
@@ -318,7 +318,7 @@ template<uint ndims> void Exchange<ndims>::initialize(const Exchange<ndims> &exc
 
  }
 
- template<uint ndims> void Exchange<ndims>::exchange_z()
+ void Exchange::exchange_z()
  {
    int ierr;
 
@@ -357,14 +357,14 @@ template<uint ndims> void Exchange<ndims>::initialize(const Exchange<ndims> &exc
  }
 
 // EVENTUALLY WE SHOULD BE MORE CLEVER HERE IE GROUP ALL THE SEND/RECVS IN X/Y/Z TOGETHER, ETC./
- template<uint ndims> void Exchange<ndims>::exchange()
+void Exchange::exchange()
  {
    exchange_x();
    if (ndims >=2) { exchange_y(); }
    if (ndims ==3) { exchange_z(); }
 }
 
-template<uint ndims> void Exchange<ndims>::exchange_field(Field<ndims> &field)
+void Exchange::exchange_field(Field &field)
 {
     this->pack(field);
     this->exchange();

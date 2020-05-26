@@ -12,41 +12,41 @@
 
 
 
-template<uint ndims, uint nprog, uint nconst, uint naux, uint nstages> class SSPKKTimeIntegrator {
+template<uint nprog, uint nconst, uint naux, uint nstages> class SSPKKTimeIntegrator {
 
 public:
 
-    VariableSet<ndims, nprog> F1;
-    VariableSet<ndims, nprog> x1;
-    VariableSet<ndims, nprog> F2;
-    VariableSet<ndims, nprog> x2;
-    VariableSet<ndims, nprog> x3;
-    VariableSet<ndims, nprog> F3;
-    VariableSet<ndims, nprog> *x;
-    Tendencies<ndims, nprog, nconst, naux> *tendencies;
-    const VariableSet<ndims, nconst> *const_vars;
-    VariableSet<ndims, naux> *auxiliary_vars;
-    ExchangeSet<ndims, nprog> *x_exchange;
+    VariableSet<nprog> F1;
+    VariableSet<nprog> x1;
+    VariableSet<nprog> F2;
+    VariableSet<nprog> x2;
+    VariableSet<nprog> x3;
+    VariableSet<nprog> F3;
+    VariableSet<nprog> *x;
+    Tendencies<nprog, nconst, naux> *tendencies;
+    VariableSet<nconst> *const_vars;
+    VariableSet<naux> *auxiliary_vars;
+    ExchangeSet<nprog> *x_exchange;
 
   bool is_initialized;
   SSPKKTimeIntegrator();
-  SSPKKTimeIntegrator( const SSPKKTimeIntegrator<ndims,nprog,nconst,naux,nstages> &ssprk) = delete;
-  SSPKKTimeIntegrator& operator=( const SSPKKTimeIntegrator<ndims,nprog,nconst,naux,nstages> &ssprk) = delete;
-  void initialize(Tendencies<ndims, nprog, nconst, naux> &tend, VariableSet<ndims, nprog> &xvars, const VariableSet<ndims, nconst> &consts, VariableSet<ndims, naux> &auxiliarys, ExchangeSet<ndims, nprog> &prog_exch);
+  SSPKKTimeIntegrator( const SSPKKTimeIntegrator<nprog,nconst,naux,nstages> &ssprk) = delete;
+  SSPKKTimeIntegrator& operator=( const SSPKKTimeIntegrator<nprog,nconst,naux,nstages> &ssprk) = delete;
+  void initialize(Tendencies<nprog, nconst, naux> &tend, VariableSet<nprog> &xvars, VariableSet<nconst> &consts, VariableSet<naux> &auxiliarys, ExchangeSet<nprog> &prog_exch);
   void stepForward(real dt);
 
 
 };
 
 
-    template<uint ndims, uint nprog, uint nconst, uint naux, uint nstages> SSPKKTimeIntegrator<ndims,nprog,nconst,naux,nstages>::SSPKKTimeIntegrator()
+    template<uint nprog, uint nconst, uint naux, uint nstages> SSPKKTimeIntegrator<nprog,nconst,naux,nstages>::SSPKKTimeIntegrator()
     {
       this->is_initialized = false;
       std::cout << "CREATED SSPKK\n";
     }
 
 
-  template<uint ndims, uint nprog, uint nconst, uint naux, uint nstages> void SSPKKTimeIntegrator<ndims,nprog,nconst,naux,nstages>::initialize(Tendencies<ndims, nprog, nconst, naux> &tend, VariableSet<ndims, nprog> &xvars, const VariableSet<ndims, nconst> &consts, VariableSet<ndims, naux> &auxiliarys, ExchangeSet<ndims, nprog> &prog_exch)
+  template<uint nprog, uint nconst, uint naux, uint nstages> void SSPKKTimeIntegrator<nprog,nconst,naux,nstages>::initialize(Tendencies<nprog, nconst, naux> &tend, VariableSet<nprog> &xvars, VariableSet<nconst> &consts, VariableSet<naux> &auxiliarys, ExchangeSet<nprog> &prog_exch)
   {
     this->x1.initialize(xvars, "x1");
     this->F1.initialize(xvars, "F1");
@@ -65,7 +65,7 @@ public:
     this->is_initialized = true;
   }
 
-  template<uint ndims, uint nprog, uint nconst, uint naux, uint nstages> void SSPKKTimeIntegrator<ndims,nprog,nconst,naux,nstages>::stepForward(real dt)
+  template<uint nprog, uint nconst, uint naux, uint nstages> void SSPKKTimeIntegrator<nprog,nconst,naux,nstages>::stepForward(real dt)
   {
 
       this->tendencies->compute_rhs(dt, *this->const_vars, *this->x, *this->auxiliary_vars, this->F1);

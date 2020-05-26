@@ -8,22 +8,22 @@
 
 void YAKL_INLINE H(SArray<real,ndims> &var, SArray<real,ndims,1> const &velocity, SArray<real,ndims,1> const &Hgeom) {
 
-  for (int k=0; k<ndims; k++) {
-        var(k) = Hgeom(k,0) * velocity(k,0);
+  for (int d=0; d<ndims; d++) {
+        var(d) = Hgeom(d,0) * velocity(d,0);
 }
 }
 
 void YAKL_INLINE H(SArray<real,ndims> &var, SArray<real,ndims,3> const &velocity, SArray<real,ndims,3> const &Hgeom) {
 
-  for (int k=0; k<ndims; k++) {
-        var(k) = -1./24.* Hgeom(k,0) * velocity(k,0) + 26./24.* Hgeom(k,1) * velocity(k,1) - 1./24.* Hgeom(k,2) * velocity(k,2);
+  for (int d=0; d<ndims; d++) {
+        var(d) = -1./24.* Hgeom(d,0) * velocity(d,0) + 26./24.* Hgeom(d,1) * velocity(d,1) - 1./24.* Hgeom(d,2) * velocity(d,2);
 }
 }
 
 void YAKL_INLINE H(SArray<real,ndims> &var, SArray<real,ndims,5> const &velocity, SArray<real,ndims,5> const &Hgeom) {
 
-  for (int k=0; k<ndims; k++) {
-  var(k) = 9./1920.*Hgeom(k,0) * velocity(k,0) - 116./1920.*Hgeom(k,1) * velocity(k,1) + 2134./1920.* Hgeom(k,2) * velocity(k,2) - 116./1920.* Hgeom(k,3) * velocity(k,3) + 9./1920.* Hgeom(k,4) * velocity(k,4);
+  for (int d=0; d<ndims; d++) {
+  var(d) = 9./1920.*Hgeom(d,0) * velocity(d,0) - 116./1920.*Hgeom(d,1) * velocity(d,1) + 2134./1920.* Hgeom(d,2) * velocity(d,2) - 116./1920.* Hgeom(d,3) * velocity(d,3) + 9./1920.* Hgeom(d,4) * velocity(d,4);
 }
 }
 
@@ -60,8 +60,6 @@ template<uint ndofs, uint ord, ADD_MODE addmode=ADD_MODE::REPLACE, uint off=ord/
 }
 
 
-// THIS I IS BROKEN FOR MULTI-DIMENSIONAL STUFF!
-// NEEDS SOME THINKING...
 
 template<uint ndofs> void YAKL_INLINE I(SArray<real,ndofs> &var, SArray<real,ndofs,ndims,1> const &dens, SArray<real,ndims,1> const &Igeom) {
 
@@ -72,19 +70,18 @@ template<uint ndofs> void YAKL_INLINE I(SArray<real,ndofs> &var, SArray<real,ndo
 
 template<uint ndofs> void YAKL_INLINE I(SArray<real,ndofs> &var, SArray<real,ndofs,ndims,3> const &dens, SArray<real,ndims,3> const &Igeom) {
   for (int l=0; l<ndofs; l++) {
-    var(l) = 0.;
-    for (int k=0; k<ndims; k++) {
-        var(l) += -1./24.* Igeom(k,0) * dens(l,k,0) + 26./24.* Igeom(k,1) * dens(l,k,1) - 1./24.* Igeom(k,2) * dens(l,k,2);
+    var(l) = Igeom(0,1) * dens(l,0,1);
+    for (int d=0; d<ndims; d++) {
+        var(l) += -1./48.* Igeom(d,0) * dens(l,d,0) + 2./48.* Igeom(d,1) * dens(l,d,1) - 1./48.* Igeom(d,2) * dens(l,d,2);
       }
     }
 }
 
-
 template<uint ndofs> void YAKL_INLINE I(SArray<real,ndofs> &var, SArray<real,ndofs,ndims,5> const &dens, SArray<real,ndims,5> const &Igeom) {
   for (int l=0; l<ndofs; l++) {
-    var(l) = 0.;
-    for (int k=0; k<ndims; k++) {
-          var(l) += 9./1920.*Igeom(k,0) * dens(l,k,0) - 116./1920.*Igeom(k,1) * dens(l,k,1) + 2134./1920.* Igeom(k,2) * dens(l,k,2) - 116./1920.* Igeom(k,3) * dens(l,k,3) + 9./1920.* Igeom(k,4) * dens(l,k,4);
+    var(l) = Igeom(0,2) * dens(l,0,2);
+    for (int d=0; d<ndims; d++) {
+          var(l) += 1./576.*Igeom(d,0) * dens(l,d,0) - 16./576.*Igeom(d,1) * dens(l,d,1) + 30./576.* Igeom(d,2) * dens(l,d,2) - 16./576.* Igeom(d,3) * dens(l,d,3) + 1./576.* Igeom(d,4) * dens(l,d,4);
 }
 }
 }
@@ -128,9 +125,6 @@ template<uint ndofs, uint ord, ADD_MODE addmode=ADD_MODE::REPLACE, uint off=ord/
 }
 
 
-// THIS J IS BROKEN FOR MULTI-DIMENSIONAL STUFF!
-// NEEDS SOME THINKING...
-
 template<uint ndofs> void YAKL_INLINE J(SArray<real,ndofs> &var, SArray<real,ndofs,ndims,1> const &dens, SArray<real,ndims,1> const &Jgeom) {
 
   for (int l=0; l<ndofs; l++) {
@@ -140,19 +134,18 @@ template<uint ndofs> void YAKL_INLINE J(SArray<real,ndofs> &var, SArray<real,ndo
 
 template<uint ndofs> void YAKL_INLINE J(SArray<real,ndofs> &var, SArray<real,ndofs,ndims,3> const &dens, SArray<real,ndims,3> const &Jgeom) {
   for (int l=0; l<ndofs; l++) {
-    var(l) = 0.;
-    for (int k=0; k<ndims; k++) {
-        var(l) += -1./24.* Jgeom(k,0) * dens(l,k,0) + 26./24.* Jgeom(k,1) * dens(l,k,1) - 1./24.* Jgeom(k,2) * dens(l,k,2);
+    var(l) = Jgeom(0,1) * dens(l,0,1);
+    for (int d=0; d<ndims; d++) {
+        var(l) += -1./48.* Jgeom(d,0) * dens(l,d,0) + 2./48.* Jgeom(d,1) * dens(l,d,1) - 1./48.* Jgeom(d,2) * dens(l,d,2);
       }
     }
 }
 
-
 template<uint ndofs> void YAKL_INLINE J(SArray<real,ndofs> &var, SArray<real,ndofs,ndims,5> const &dens, SArray<real,ndims,5> const &Jgeom) {
   for (int l=0; l<ndofs; l++) {
-    var(l) = 0.;
-    for (int k=0; k<ndims; k++) {
-          var(l) += 9./1920.*Jgeom(k,0) * dens(l,k,0) - 116./1920.*Jgeom(k,1) * dens(l,k,1) + 2134./1920.* Jgeom(k,2) * dens(l,k,2) - 116./1920.* Jgeom(k,3) * dens(l,k,3) + 9./1920.* Jgeom(k,4) * dens(l,k,4);
+    var(l) = Jgeom(0,2) * dens(l,0,2);
+    for (int d=0; d<ndims; d++) {
+          var(l) += 1./576.*Jgeom(d,0) * dens(l,d,0) - 16./576.*Jgeom(d,1) * dens(l,d,1) + 30./576.* Jgeom(d,2) * dens(l,d,2) - 16./576.* Jgeom(d,3) * dens(l,d,3) + 1./576.* Jgeom(d,4) * dens(l,d,4);
 }
 }
 }

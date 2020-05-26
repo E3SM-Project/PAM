@@ -9,10 +9,10 @@
 #include "model.h"
 
 
-template<int ndims> struct coords {};
-template<int ndims> struct vec {};
-template<uint ndims, uint nquadx, uint nquady, uint nquadz> class Geometry {};
-template<uint ndims, uint nquadx, uint nquady, uint nquadz> class UniformRectangularGeometry: public Geometry<ndims,nquadx,nquady,nquadz> {};
+template<int number_of_dims> struct coords {};
+template<int number_of_dims> struct vec {};
+template<uint number_of_dims, uint nquadx, uint nquady, uint nquadz> class Geometry {};
+template<uint number_of_dims, uint nquadx, uint nquady, uint nquadz> class UniformRectangularGeometry: public Geometry<ndims,nquadx,nquady,nquadz> {};
 
 
 
@@ -99,7 +99,7 @@ template<uint nquadx, uint nquady, uint nquadz> class Geometry<1,nquadx,nquady,n
 
 public:
 
-  const Topology<1> *topology;
+  const Topology *topology;
   bool is_initialized;
   Geometry();
   Geometry( const Geometry<1,nquadx,nquady,nquadz> &geom) = delete;
@@ -108,7 +108,7 @@ public:
   SArray<real,nquadx> x_quad_pts_ref;
   SArray<real,nquadx> x_quad_wts_ref;
 
-  void initialize(const Topology<1> &topo);
+  void initialize(const Topology &topo);
 
   virtual void YAKL_INLINE get_primal_0form_quad_pts_wts(int i, SArray<coords<1>,1> &quad_pts_phys, SArray<real,1> &quad_wts_phys) {};
   virtual void YAKL_INLINE get_primal_1form_quad_pts_wts(int i, SArray<coords<1>,nquadx> &quad_pts_phys, SArray<real,nquadx> &quad_wts_phys) {};
@@ -119,10 +119,10 @@ public:
   virtual real YAKL_INLINE get_H_edge(int l, int k, int j, int i) {};
 
 
-  YAKL_INLINE void set_primal_0form_values(real (*initial_value_function)(real), Field<1> &field, int ndof);
-  YAKL_INLINE void set_primal_1form_values(real (*initial_value_function)(real), Field<1> &field, int ndof);
-  YAKL_INLINE void set_dual_0form_values(real (*initial_value_function)(real), Field<1> &field, int ndof);
-  YAKL_INLINE void set_dual_1form_values(real (*initial_value_function)(real), Field<1> &field, int ndof);
+  YAKL_INLINE void set_primal_0form_values(real (*initial_value_function)(real), Field &field, int ndof);
+  YAKL_INLINE void set_primal_1form_values(real (*initial_value_function)(real), Field &field, int ndof);
+  YAKL_INLINE void set_dual_0form_values(real (*initial_value_function)(real), Field &field, int ndof);
+  YAKL_INLINE void set_dual_1form_values(real (*initial_value_function)(real), Field &field, int ndof);
 
 };
 
@@ -134,7 +134,7 @@ public:
   real dx, dy, dz;
   real Lx, Ly, Lz;
   real xc, yc, zc;
-  void initialize(const Topology<1> &topo, const ModelParameters &params);
+  void initialize(const Topology &topo, const ModelParameters &params);
 
   void printinfo();
 
@@ -167,7 +167,7 @@ template<uint nquadx, uint nquady, uint nquadz> Geometry<1,nquadx,nquady,nquadz>
       std::cout << "CREATED GEOMETRY\n";
     }
 
-  template<uint nquadx, uint nquady, uint nquadz> void Geometry<1,nquadx,nquady,nquadz>::initialize(const Topology<1> &topo)
+  template<uint nquadx, uint nquady, uint nquadz> void Geometry<1,nquadx,nquady,nquadz>::initialize(const Topology &topo)
   {
 
   this->topology = &topo;
@@ -175,7 +175,7 @@ template<uint nquadx, uint nquady, uint nquadz> Geometry<1,nquadx,nquady,nquadz>
 }
 
 
-  template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<1,nquadx,nquady,nquadz>::set_primal_0form_values(real (*initial_value_function)(real), Field<1> &field, int ndof)
+  template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<1,nquadx,nquady,nquadz>::set_primal_0form_values(real (*initial_value_function)(real), Field &field, int ndof)
 {
 
   int is = this->topology->is;
@@ -193,7 +193,7 @@ template<uint nquadx, uint nquady, uint nquadz> Geometry<1,nquadx,nquady,nquadz>
   });
 }
 
-  template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<1,nquadx,nquady,nquadz>::set_primal_1form_values(real (*initial_value_function)(real), Field<1> &field, int ndof)
+  template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<1,nquadx,nquady,nquadz>::set_primal_1form_values(real (*initial_value_function)(real), Field &field, int ndof)
 {
 
   SArray<coords<1>,nquadx> quad_pts_phys;
@@ -219,7 +219,7 @@ template<uint nquadx, uint nquady, uint nquadz> Geometry<1,nquadx,nquady,nquadz>
 }
 
 
-template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<1,nquadx,nquady,nquadz>::set_dual_0form_values(real (*initial_value_function)(real), Field<1> &field, int ndof)
+template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<1,nquadx,nquady,nquadz>::set_dual_0form_values(real (*initial_value_function)(real), Field &field, int ndof)
 {
 
 int is = this->topology->is;
@@ -238,7 +238,7 @@ yakl::parallel_for("Set0FormValues", this->topology->n_cells, YAKL_LAMBDA (int i
 });
 }
 
-template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<1,nquadx,nquady,nquadz>::set_dual_1form_values(real (*initial_value_function)(real), Field<1> &field, int ndof)
+template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<1,nquadx,nquady,nquadz>::set_dual_1form_values(real (*initial_value_function)(real), Field &field, int ndof)
 {
 
 SArray<coords<1>,nquadx> quad_pts_phys;
@@ -262,7 +262,7 @@ yakl::parallel_for("Set1FormValues", this->topology->n_cells, YAKL_LAMBDA (int i
 });
 }
 
-template<uint nquadx, uint nquady, uint nquadz> void UniformRectangularGeometry<1,nquadx,nquady,nquadz>::initialize(const Topology<1> &topo, const ModelParameters &params)
+template<uint nquadx, uint nquady, uint nquadz> void UniformRectangularGeometry<1,nquadx,nquady,nquadz>::initialize(const Topology &topo, const ModelParameters &params)
 {
 
 Geometry<1,nquadx,nquady,nquadz>::initialize(topo);
@@ -358,7 +358,7 @@ template<uint nquadx, uint nquady, uint nquadz> class Geometry<2,nquadx,nquady,n
 
 public:
 
-  const Topology<2> *topology;
+  const Topology *topology;
   bool is_initialized;
   Geometry();
   Geometry( const Geometry<2,nquadx,nquady,nquadz> &geom) = delete;
@@ -369,7 +369,7 @@ public:
   SArray<real,nquady> y_quad_pts_ref;
   SArray<real,nquady> y_quad_wts_ref;
 
-  void initialize(const Topology<2> &topo);
+  void initialize(const Topology &topo);
 
   virtual void YAKL_INLINE get_primal_0form_quad_pts_wts(int i, int j, SArray<coords<2>,1> &quad_pts_phys, SArray<real,1> &quad_wts_phys) {};
   virtual void YAKL_INLINE get_primal_1form_quad_pts_wts(int i, int j, SArray<coords<2>,nquadx> &x_quad_pts_phys, SArray<real,nquadx> &x_quad_wts_phys, SArray<coords<2>,nquady> &y_quad_pts_phys, SArray<real,nquady> &y_quad_wts_phys) {};
@@ -387,13 +387,13 @@ public:
   virtual real YAKL_INLINE get_J_dual_cell(int k, int j, int i) {};
   virtual real YAKL_INLINE get_H_edge(int l, int k, int j, int i) {};
 
-  YAKL_INLINE void set_primal_0form_values(real (*initial_value_function)(real, real), Field<2> &field, int ndof);
-  YAKL_INLINE void set_primal_1form_values(vec<2> (*initial_value_function)(real, real), Field<2> &field, int ndof, LINE_INTEGRAL_TYPE line_type);
-  YAKL_INLINE void set_primal_2form_values(real (*initial_value_function)(real, real), Field<2> &field, int ndof);
+  YAKL_INLINE void set_primal_0form_values(real (*initial_value_function)(real, real), Field &field, int ndof);
+  YAKL_INLINE void set_primal_1form_values(vec<2> (*initial_value_function)(real, real), Field &field, int ndof, LINE_INTEGRAL_TYPE line_type);
+  YAKL_INLINE void set_primal_2form_values(real (*initial_value_function)(real, real), Field &field, int ndof);
 
-  YAKL_INLINE void set_dual_0form_values(real (*initial_value_function)(real, real), Field<2> &field, int ndof);
-  YAKL_INLINE void set_dual_1form_values(vec<2> (*initial_value_function)(real, real), Field<2> &field, int ndof, LINE_INTEGRAL_TYPE line_type);
-  YAKL_INLINE void set_dual_2form_values(real (*initial_value_function)(real, real), Field<2> &field, int ndof);
+  YAKL_INLINE void set_dual_0form_values(real (*initial_value_function)(real, real), Field &field, int ndof);
+  YAKL_INLINE void set_dual_1form_values(vec<2> (*initial_value_function)(real, real), Field &field, int ndof, LINE_INTEGRAL_TYPE line_type);
+  YAKL_INLINE void set_dual_2form_values(real (*initial_value_function)(real, real), Field &field, int ndof);
 
 };
 
@@ -405,7 +405,7 @@ public:
   real dx, dy, dz;
   real Lx, Ly, Lz;
   real xc, yc, zc;
-  void initialize(const Topology<2> &topo, const ModelParameters &params);
+  void initialize(const Topology &topo, const ModelParameters &params);
 
   void printinfo();
 
@@ -439,7 +439,7 @@ template<uint nquadx, uint nquady, uint nquadz> Geometry<2,nquadx,nquady,nquadz>
       std::cout << "CREATED GEOMETRY\n";
     }
 
-  template<uint nquadx, uint nquady, uint nquadz> void Geometry<2,nquadx,nquady,nquadz>::initialize(const Topology<2> &topo)
+  template<uint nquadx, uint nquady, uint nquadz> void Geometry<2,nquadx,nquady,nquadz>::initialize(const Topology &topo)
   {
 
   this->topology = &topo;
@@ -448,7 +448,7 @@ template<uint nquadx, uint nquady, uint nquadz> Geometry<2,nquadx,nquady,nquadz>
 }
 
 
-  template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<2,nquadx,nquady,nquadz>::set_primal_0form_values(real (*initial_value_function)(real, real), Field<2> &field, int ndof)
+  template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<2,nquadx,nquady,nquadz>::set_primal_0form_values(real (*initial_value_function)(real, real), Field &field, int ndof)
 {
 
   int is = this->topology->is;
@@ -466,7 +466,7 @@ template<uint nquadx, uint nquady, uint nquadz> Geometry<2,nquadx,nquady,nquadz>
   });
 }
 
-  template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<2,nquadx,nquady,nquadz>::set_primal_2form_values(real (*initial_value_function)(real, real), Field<2> &field, int ndof)
+  template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<2,nquadx,nquady,nquadz>::set_primal_2form_values(real (*initial_value_function)(real, real), Field &field, int ndof)
 {
 
   SArray<coords<2>,nquadx,nquady> quad_pts_phys;
@@ -494,7 +494,7 @@ template<uint nquadx, uint nquady, uint nquadz> Geometry<2,nquadx,nquady,nquadz>
 
 
 
-  template<uint nquadx, uint nquady, uint nquadz>  YAKL_INLINE void Geometry<2,nquadx,nquady,nquadz>::set_primal_1form_values(vec<2> (*initial_value_function)(real, real), Field<2> &field, int ndof, LINE_INTEGRAL_TYPE line_type)
+  template<uint nquadx, uint nquady, uint nquadz>  YAKL_INLINE void Geometry<2,nquadx,nquady,nquadz>::set_primal_1form_values(vec<2> (*initial_value_function)(real, real), Field &field, int ndof, LINE_INTEGRAL_TYPE line_type)
   {
       SArray<coords<2>,nquadx> x_quad_pts_phys;
       SArray<real,nquadx> x_quad_wts_phys;
@@ -541,7 +541,7 @@ template<uint nquadx, uint nquady, uint nquadz> Geometry<2,nquadx,nquady,nquadz>
   }
 
 
-  template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<2,nquadx,nquady,nquadz>::set_dual_0form_values(real (*initial_value_function)(real, real), Field<2> &field, int ndof)
+  template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<2,nquadx,nquady,nquadz>::set_dual_0form_values(real (*initial_value_function)(real, real), Field &field, int ndof)
 {
 
   int is = this->topology->is;
@@ -560,7 +560,7 @@ template<uint nquadx, uint nquady, uint nquadz> Geometry<2,nquadx,nquady,nquadz>
   });
 }
 
-  template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<2,nquadx,nquady,nquadz>::set_dual_2form_values(real (*initial_value_function)(real, real), Field<2> &field, int ndof)
+  template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<2,nquadx,nquady,nquadz>::set_dual_2form_values(real (*initial_value_function)(real, real), Field &field, int ndof)
 {
 
   SArray<coords<2>,nquadx,nquady> quad_pts_phys;
@@ -587,7 +587,7 @@ template<uint nquadx, uint nquady, uint nquadz> Geometry<2,nquadx,nquady,nquadz>
 
 
 
-  template<uint nquadx, uint nquady, uint nquadz>  YAKL_INLINE void Geometry<2,nquadx,nquady,nquadz>::set_dual_1form_values(vec<2> (*initial_value_function)(real, real), Field<2> &field, int ndof, LINE_INTEGRAL_TYPE line_type)
+  template<uint nquadx, uint nquady, uint nquadz>  YAKL_INLINE void Geometry<2,nquadx,nquady,nquadz>::set_dual_1form_values(vec<2> (*initial_value_function)(real, real), Field &field, int ndof, LINE_INTEGRAL_TYPE line_type)
   {
       SArray<coords<2>,nquadx> x_quad_pts_phys;
       SArray<real,nquadx> x_quad_wts_phys;
@@ -635,7 +635,7 @@ template<uint nquadx, uint nquady, uint nquadz> Geometry<2,nquadx,nquady,nquadz>
   }
 
 
-template<uint nquadx, uint nquady, uint nquadz> void UniformRectangularGeometry<2,nquadx,nquady,nquadz>::initialize(const Topology<2> &topo, const ModelParameters &params)
+template<uint nquadx, uint nquady, uint nquadz> void UniformRectangularGeometry<2,nquadx,nquady,nquadz>::initialize(const Topology &topo, const ModelParameters &params)
 {
 
 Geometry<2,nquadx,nquady,nquadz>::initialize(topo);
@@ -831,7 +831,7 @@ template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangu
 
   public:
 
-    const Topology<3> *topology;
+    const Topology *topology;
     bool is_initialized;
     Geometry();
     Geometry( const Geometry<3,nquadx,nquady,nquadz> &geom) = delete;
@@ -844,7 +844,7 @@ template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangu
     SArray<real,nquadz> z_quad_pts_ref;
     SArray<real,nquadz> z_quad_wts_ref;
 
-    void initialize(const Topology<3> &topo);
+    void initialize(const Topology &topo);
 
     virtual void YAKL_INLINE get_primal_0form_quad_pts_wts(int i, int j, int k, SArray<coords<3>,1> &quad_pts_phys, SArray<real,1> &quad_wts_phys) {};
     virtual void YAKL_INLINE get_primal_1form_quad_pts_wts(int i, int j, int k,
@@ -877,15 +877,15 @@ template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangu
     virtual real YAKL_INLINE get_J_dual_cell(int k, int j, int i) {};
     virtual real YAKL_INLINE get_H_edge(int l, int k, int j, int i) {};
 
-    YAKL_INLINE void set_primal_0form_values(real (*initial_value_function)(real, real, real), Field<3> &field, int ndof);
-    YAKL_INLINE void set_primal_1form_values(vec<3> (*initial_value_function)(real, real, real), Field<3> &field, int ndof);
-    YAKL_INLINE void set_primal_2form_values(vec<3> (*initial_value_function)(real, real, real), Field<3> &field, int ndof);
-    YAKL_INLINE void set_primal_3form_values(real (*initial_value_function)(real, real, real), Field<3> &field, int ndof);
+    YAKL_INLINE void set_primal_0form_values(real (*initial_value_function)(real, real, real), Field &field, int ndof);
+    YAKL_INLINE void set_primal_1form_values(vec<3> (*initial_value_function)(real, real, real), Field &field, int ndof);
+    YAKL_INLINE void set_primal_2form_values(vec<3> (*initial_value_function)(real, real, real), Field &field, int ndof);
+    YAKL_INLINE void set_primal_3form_values(real (*initial_value_function)(real, real, real), Field &field, int ndof);
 
-    YAKL_INLINE void set_dual_0form_values(real (*initial_value_function)(real, real, real), Field<3> &field, int ndof);
-    YAKL_INLINE void set_dual_1form_values(vec<3> (*initial_value_function)(real, real, real), Field<3> &field, int ndof);
-    YAKL_INLINE void set_dual_2form_values(vec<3> (*initial_value_function)(real, real, real), Field<3> &field, int ndof);
-    YAKL_INLINE void set_dual_3form_values(real (*initial_value_function)(real, real, real), Field<3> &field, int ndof);
+    YAKL_INLINE void set_dual_0form_values(real (*initial_value_function)(real, real, real), Field &field, int ndof);
+    YAKL_INLINE void set_dual_1form_values(vec<3> (*initial_value_function)(real, real, real), Field &field, int ndof);
+    YAKL_INLINE void set_dual_2form_values(vec<3> (*initial_value_function)(real, real, real), Field &field, int ndof);
+    YAKL_INLINE void set_dual_3form_values(real (*initial_value_function)(real, real, real), Field &field, int ndof);
 
   };
 
@@ -897,7 +897,7 @@ template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangu
     real dx, dy, dz;
     real Lx, Ly, Lz;
     real xc, yc, zc;
-    void initialize(const Topology<3> &topo, const ModelParameters &params);
+    void initialize(const Topology &topo, const ModelParameters &params);
 
     void printinfo();
 
@@ -945,7 +945,7 @@ template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangu
         std::cout << "CREATED GEOMETRY\n";
       }
 
-    template<uint nquadx, uint nquady, uint nquadz> void Geometry<3,nquadx,nquady,nquadz>::initialize(const Topology<3> &topo)
+    template<uint nquadx, uint nquady, uint nquadz> void Geometry<3,nquadx,nquady,nquadz>::initialize(const Topology &topo)
     {
 
     this->topology = &topo;
@@ -955,7 +955,7 @@ template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangu
   }
 
 
-    template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<3,nquadx,nquady,nquadz>::set_primal_0form_values(real (*initial_value_function)(real, real, real), Field<3> &field, int ndof)
+    template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<3,nquadx,nquady,nquadz>::set_primal_0form_values(real (*initial_value_function)(real, real, real), Field &field, int ndof)
   {
 
     int is = this->topology->is;
@@ -973,7 +973,7 @@ template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangu
     });
   }
 
-    template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<3,nquadx,nquady,nquadz>::set_primal_3form_values(real (*initial_value_function)(real, real, real), Field<3> &field, int ndof)
+    template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<3,nquadx,nquady,nquadz>::set_primal_3form_values(real (*initial_value_function)(real, real, real), Field &field, int ndof)
   {
 
     SArray<coords<3>,nquadx,nquady,nquadz> quad_pts_phys;
@@ -1002,7 +1002,7 @@ template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangu
 
 
 
-    template<uint nquadx, uint nquady, uint nquadz>  YAKL_INLINE void Geometry<3,nquadx,nquady,nquadz>::set_primal_1form_values(vec<3> (*initial_value_function)(real, real, real), Field<3> &field, int ndof)
+    template<uint nquadx, uint nquady, uint nquadz>  YAKL_INLINE void Geometry<3,nquadx,nquady,nquadz>::set_primal_1form_values(vec<3> (*initial_value_function)(real, real, real), Field &field, int ndof)
     {
         SArray<coords<3>,nquadx> x_quad_pts_phys;
         SArray<real,nquadx> x_quad_wts_phys;
@@ -1058,7 +1058,7 @@ template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangu
     }
 
 
-  template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<3,nquadx,nquady,nquadz>::set_primal_2form_values(vec<3> (*initial_value_function)(real, real, real), Field<3> &field, int ndof)
+  template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<3,nquadx,nquady,nquadz>::set_primal_2form_values(vec<3> (*initial_value_function)(real, real, real), Field &field, int ndof)
   {
 
   SArray<coords<3>,nquadx,nquady> xy_quad_pts_phys;
@@ -1119,7 +1119,7 @@ template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangu
 }
 
 
-template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<3,nquadx,nquady,nquadz>::set_dual_0form_values(real (*initial_value_function)(real, real, real), Field<3> &field, int ndof)
+template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<3,nquadx,nquady,nquadz>::set_dual_0form_values(real (*initial_value_function)(real, real, real), Field &field, int ndof)
 {
 
 int is = this->topology->is;
@@ -1138,7 +1138,7 @@ yakl::parallel_for("Set0FormValues", this->topology->n_cells, YAKL_LAMBDA (int i
 });
 }
 
-template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<3,nquadx,nquady,nquadz>::set_dual_3form_values(real (*initial_value_function)(real, real, real), Field<3> &field, int ndof)
+template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<3,nquadx,nquady,nquadz>::set_dual_3form_values(real (*initial_value_function)(real, real, real), Field &field, int ndof)
 {
 
 SArray<coords<3>,nquadx,nquady,nquadz> quad_pts_phys;
@@ -1166,7 +1166,7 @@ yakl::parallel_for("Set3FormValues", this->topology->n_cells, YAKL_LAMBDA (int i
 
 
 
-template<uint nquadx, uint nquady, uint nquadz>  YAKL_INLINE void Geometry<3,nquadx,nquady,nquadz>::set_dual_1form_values(vec<3> (*initial_value_function)(real, real, real), Field<3> &field, int ndof)
+template<uint nquadx, uint nquady, uint nquadz>  YAKL_INLINE void Geometry<3,nquadx,nquady,nquadz>::set_dual_1form_values(vec<3> (*initial_value_function)(real, real, real), Field &field, int ndof)
 {
     SArray<coords<3>,nquadx> x_quad_pts_phys;
     SArray<real,nquadx> x_quad_wts_phys;
@@ -1222,7 +1222,7 @@ template<uint nquadx, uint nquady, uint nquadz>  YAKL_INLINE void Geometry<3,nqu
 }
 
 
-template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<3,nquadx,nquady,nquadz>::set_dual_2form_values(vec<3> (*initial_value_function)(real, real, real), Field<3> &field, int ndof)
+template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<3,nquadx,nquady,nquadz>::set_dual_2form_values(vec<3> (*initial_value_function)(real, real, real), Field &field, int ndof)
 {
 
 SArray<coords<3>,nquadx,nquady> xy_quad_pts_phys;
@@ -1283,7 +1283,7 @@ field.data(ndof+2*field.ndof1+offset, k+ks, j+js, i+is) = tempval;
 }
 
 
-  template<uint nquadx, uint nquady, uint nquadz> void UniformRectangularGeometry<3,nquadx,nquady,nquadz>::initialize(const Topology<3> &topo, const ModelParameters &params)
+  template<uint nquadx, uint nquady, uint nquadz> void UniformRectangularGeometry<3,nquadx,nquady,nquadz>::initialize(const Topology &topo, const ModelParameters &params)
   {
 
   Geometry<3,nquadx,nquady,nquadz>::initialize(topo);

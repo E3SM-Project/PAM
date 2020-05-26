@@ -10,8 +10,8 @@
 template<uint ndofs> void YAKL_INLINE centered_recon(SArray<real,ndofs,ndims> &recon, SArray<real,ndofs,ndims,2> const &edgerecon) {
 
     for (int l=0; l<ndofs; l++) {
-      for (int k=0; k<ndims; k++) {
-      recon(l,k) = 0.5* (edgerecon(l,k,1) + edgerecon(l,k,0));
+      for (int d=0; d<ndims; d++) {
+      recon(l,d) = 0.5* (edgerecon(l,d,1) + edgerecon(l,d,0));
     }
   }
 }
@@ -20,10 +20,10 @@ template<uint ndofs> void YAKL_INLINE upwind_recon(SArray<real,ndofs,ndims> &rec
 
     real upwind_param;
     for (int l=0; l<ndofs; l++) {
-      for (int k=0; k<ndims; k++) {
-      upwind_param = copysign(1.0, flux(k));
+      for (int d=0; d<ndims; d++) {
+      upwind_param = copysign(1.0, flux(d));
       upwind_param = 0.5*(upwind_param + fabs(upwind_param));
-      recon(l,k) = edgerecon(l,k,1) * (1. - upwind_param) + edgerecon(l,k,0) * upwind_param;
+      recon(l,d) = edgerecon(l,d,1) * (1. - upwind_param) + edgerecon(l,d,0) * upwind_param;
     }
   }
 }

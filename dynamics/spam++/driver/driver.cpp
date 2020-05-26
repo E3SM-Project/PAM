@@ -4,7 +4,6 @@
 #include "RKSimple.h"
 #include "SSPRK.h"
 #include "variable_sets.h"
-//#include "util.h"
 #include "fileio.h"
 #include "topology.h"
 #include "geometry.h"
@@ -21,18 +20,18 @@ int main(int argc, char** argv) {
   yakl::init();
 
   {
-    Stats<number_of_dims, nprognostic, nconstant, nstats> stats;
-    VariableSet<number_of_dims, nprognostic> prognostic_vars;
-    VariableSet<number_of_dims, nconstant> constant_vars;
-    VariableSet<number_of_dims, ndiagnostic> diagnostic_vars;
-    VariableSet<number_of_dims, nauxiliary> auxiliary_vars;
-    ExchangeSet<number_of_dims, nprognostic> prog_exchange;
-    ExchangeSet<number_of_dims, nconstant> const_exchange;
-    ExchangeSet<number_of_dims, nauxiliary> aux_exchange;
-    FileIO<number_of_dims, nprognostic, nconstant, ndiagnostic, nstats> io;
-    Tendencies<number_of_dims, nprognostic, nconstant, nauxiliary> tendencies;
-    Diagnostics<number_of_dims, nprognostic, nconstant, ndiagnostic> diagnostics;
-    Topology<number_of_dims> topology;
+    Stats<nprognostic, nconstant, nstats> stats;
+    VariableSet<nprognostic> prognostic_vars;
+    VariableSet<nconstant> constant_vars;
+    VariableSet<ndiagnostic> diagnostic_vars;
+    VariableSet<nauxiliary> auxiliary_vars;
+    ExchangeSet<nprognostic> prog_exchange;
+    ExchangeSet<nconstant> const_exchange;
+    ExchangeSet<nauxiliary> aux_exchange;
+    FileIO<nprognostic, nconstant, ndiagnostic, nstats> io;
+    Tendencies<nprognostic, nconstant, nauxiliary> tendencies;
+    Diagnostics<nprognostic, nconstant, ndiagnostic> diagnostics;
+    Topology topology;
     ModelParameters params;
     Parallel par;
 
@@ -40,14 +39,14 @@ int main(int argc, char** argv) {
 
     //if (time_type == TIME_TYPE::KGRK)
     //{
-      RKSimpleTimeIntegrator<number_of_dims, nprognostic, nconstant, nauxiliary, n_time_stages> tint;
-      //SSPKKTimeIntegrator<number_of_dims, nprognostic, nconstant, nauxiliary, n_time_stages> tint;
+      //RKSimpleTimeIntegrator<nprognostic, nconstant, nauxiliary, n_time_stages> tint;
+      SSPKKTimeIntegrator<nprognostic, nconstant, nauxiliary, n_time_stages> tint;
     //}
 
     //if (geom_type == GEOM_TYPE::UNIFORM_RECT)
     //{
-    UniformRectangularGeometry<number_of_dims,ic_quad_pts,ic_quad_pts,ic_quad_pts> ic_geometry;
-    UniformRectangularGeometry<number_of_dims,1,1,1> tendencies_geometry;
+    UniformRectangularGeometry<ndims,ic_quad_pts,ic_quad_pts,ic_quad_pts> ic_geometry;
+    UniformRectangularGeometry<ndims,1,1,1> tendencies_geometry;
     //}
 
     // Initialize MPI
@@ -60,8 +59,8 @@ int main(int argc, char** argv) {
     std::cout << "reading parameters\n" << std::flush;
     std::string inFile = "input.txt";
     if (argc > 1) inFile = argv[1];
-    readParamsFile<number_of_dims>(inFile, params, par);
-    set_model_specific_params<number_of_dims>(inFile, params);
+    readParamsFile(inFile, params, par);
+    set_model_specific_params(inFile, params);
     std::cout << "read parameters\n" << std::flush;
 
     // Initialize the grid
@@ -82,11 +81,11 @@ int main(int argc, char** argv) {
     std::array<std::string, nconstant> const_names_arr;
     std::array<std::string, ndiagnostic> diag_names_arr;
     std::array<std::string, nauxiliary> aux_names_arr;
-    std::array<const Topology<number_of_dims> *, nprognostic> prog_topo_arr;
-    std::array<const Topology<number_of_dims> *, nconstant> const_topo_arr;
-    std::array<const Topology<number_of_dims> *, ndiagnostic> diag_topo_arr;
-    std::array<const Topology<number_of_dims> *, nauxiliary> aux_topo_arr;
-    initialize_variables<number_of_dims, nprognostic, nconstant, nauxiliary, ndiagnostic>(topology,
+    std::array<const Topology *, nprognostic> prog_topo_arr;
+    std::array<const Topology *, nconstant> const_topo_arr;
+    std::array<const Topology *, ndiagnostic> diag_topo_arr;
+    std::array<const Topology *, nauxiliary> aux_topo_arr;
+    initialize_variables<nprognostic, nconstant, nauxiliary, ndiagnostic>(topology,
         prog_ndofs_arr, const_ndofs_arr, aux_ndofs_arr, diag_ndofs_arr,
         prog_names_arr, const_names_arr, aux_names_arr, diag_names_arr,
         prog_topo_arr, const_topo_arr, aux_topo_arr, diag_topo_arr);
@@ -118,7 +117,7 @@ int main(int argc, char** argv) {
 
     // Initialize the time stepper
     std::cout << "start ts init\n" << std::flush;
-    tendencies.initialize(topology, tendencies_geometry, aux_exchange);
+    tendencies.initialize(topology, tendencies_geometry, aux_exchange, const_exchange);
     diagnostics.initialize(topology, tendencies_geometry);
     tint.initialize(tendencies, prognostic_vars, constant_vars, auxiliary_vars, prog_exchange);
     std::cout << "end ts init\n" << std::flush;

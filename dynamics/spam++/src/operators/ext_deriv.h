@@ -93,6 +93,27 @@ template<uint ndofs, ADD_MODE addmode=ADD_MODE::REPLACE> void YAKL_INLINE comput
     }}
 }
 
+template<uint ndofs, ADD_MODE addmode=ADD_MODE::REPLACE> void YAKL_INLINE compute_wD1_fct(realArr tendvar, const realArr reconvar, const realArr Phivar, const realArr densvar, int is, int js, int ks, int i, int j, int k)
+{
+  SArray<real,ndofs,ndims> tend;
+  SArray<real,ndofs,ndims> recon;
+  SArray<real,ndofs,ndims,2> dens;
+  for (int l=0; l<ndofs; l++) {
+    for (int d=0; d<ndims; d++) {
+      recon(l,d) = reconvar(l+d*ndofs,k+ks,j+js,i+is) * Phivar(l+d*ndofs,k+ks,j+js,i+is);
+      dens(l,d,1) = densvar(l,k+ks,j+js,i+is);
+      if (d==0) {dens(l,d,0) = densvar(l,k+ks,j+js,i+is-1);}
+      if (d==1) {dens(l,d,0) = densvar(l,k+ks,j+js-1,i+is);}
+      if (d==2) {dens(l,d,0) = densvar(l,k+ks-1,j+js,i+is);}
+    }}
+  wD1<ndofs>( tend, recon, dens );
+  for (int l=0; l<ndofs; l++) {
+    for (int d=0; d<ndims; d++) {
+      if (addmode == ADD_MODE::REPLACE) {tendvar(l+d*ndofs,k+ks,j+js,i+is) = tend(l,d);}
+      if (addmode == ADD_MODE::ADD) {tendvar(l+d*ndofs,k+ks,j+js,i+is) += tend(l,d);}
+    }}
+}
+
 // CAN WE GENERALIZE THIS TO 2D/3D?...maybe...
 
 template<uint ndofs> void YAKL_INLINE D2( SArray<real,ndofs> &var, SArray<real,ndofs,4> const &flux) {

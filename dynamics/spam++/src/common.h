@@ -47,6 +47,12 @@ template <class T> YAKL_INLINE T mymax( T const v1 , T const v2 ) {
   else         { return v2; }
 }
 
+
+// Add mode for various operators
+enum class ADD_MODE { REPLACE, ADD };
+
+
+
 class Parameters
 {
 public:
@@ -79,35 +85,32 @@ enum class GEOM_TYPE { UNIFORM_RECT, DISTORTED };
 
 
 // Number of Dimensions
-uint constexpr number_of_dims = 2;
+uint constexpr ndims = 2;
 
 // Spatial order of accuracy for the model
-uint constexpr differential_order = 2;
+uint constexpr diff_ord = 6;
 
 // Reconstruction type
-RECONSTRUCTION_TYPE constexpr reconstruction_type = RECONSTRUCTION_TYPE::WENOFUNC;
+RECONSTRUCTION_TYPE constexpr reconstruction_type = RECONSTRUCTION_TYPE::WENO;
 uint constexpr reconstruction_order = 9;
-RECONSTRUCTION_TYPE constexpr dual_reconstruction_type = RECONSTRUCTION_TYPE::WENOFUNC;
+RECONSTRUCTION_TYPE constexpr dual_reconstruction_type = RECONSTRUCTION_TYPE::WENO;
 uint constexpr dual_reconstruction_order = 9;
 
-// How to handle PV flux term
-enum class Q_TYPE { Q, ZETA };
-enum class DUAL_FLUX_TYPE { UT, FT };
-enum class QF_MODE { EC, NOEC };
 
-DUAL_FLUX_TYPE dual_velocity_choice = DUAL_FLUX_TYPE::FT;
-Q_TYPE qchoice = Q_TYPE::Q;
-QF_MODE qf_choice = QF_MODE::EC;
+
+// How to handle PV flux term
+enum class QF_MODE { EC, NOEC };
+QF_MODE constexpr qf_choice = QF_MODE::EC;
 
 // Halo sizes
-uint maxhalosize = 15; //mymax(reconstruction_order+1,differential_order)/2; // IS THIS ALWAYS CORRECT?
+uint constexpr maxhalosize = 15; //mymax(reconstruction_order+1,differential_order)/2; // IS THIS ALWAYS CORRECT?
 
 // initial condition quadrature pts
 uint constexpr ic_quad_pts = 3;
 
 // Time scheme
 TIME_TYPE constexpr time_type = TIME_TYPE::KGRK;
-uint constexpr n_time_stages = 4;
+uint constexpr n_time_stages = 3;
 
 // Grid geometry
 GEOM_TYPE constexpr geom_type = GEOM_TYPE::UNIFORM_RECT;

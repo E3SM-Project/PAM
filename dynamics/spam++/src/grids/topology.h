@@ -9,7 +9,7 @@
 #include "parallel.h"
 
 
-template<uint ndims> class Topology {
+class Topology {
 
 
 public:
@@ -27,9 +27,9 @@ int nx_glob, ny_glob, nz_glob;
 
 bool is_initialized;
 
-Topology<ndims>();
-Topology<ndims>( const Topology<ndims> &topo) = delete;
-Topology<ndims>& operator=( const Topology<ndims> &topo) = delete;
+Topology();
+Topology( const Topology &topo) = delete;
+Topology& operator=( const Topology &topo) = delete;
 void initialize(Parallel &par);
 void printinfo();
 
@@ -37,14 +37,14 @@ void printinfo();
 
 
 
-  template<uint ndims> Topology<ndims>::Topology()
+  Topology::Topology()
   {
     this->is_initialized = false;
     std::cout << "CREATED TOPOLOGY\n";
   }
 
 
-  template<uint ndims> void Topology<ndims>::initialize(Parallel &par)
+  void Topology::initialize(Parallel &par)
   {
     this->n_cells_x = par.nx;
     this->n_cells_y = par.ny;
@@ -111,7 +111,7 @@ void printinfo();
     this->is_initialized = true;
   }
 
-  template<uint ndims> void Topology<ndims>::printinfo()
+  void Topology::printinfo()
   {
    std::cout << "topology info\n" << std::flush;
    std::cout << "nx " << this->n_cells_x << " ny " << this->n_cells_y << " nz " << this->n_cells_z << "\n" << std::flush;

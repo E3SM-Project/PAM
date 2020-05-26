@@ -23,7 +23,7 @@ void ncwrap( int ierr , int line ) {
   }
 
 
-template<uint ndims, uint nprog, uint nconst, uint ndiag, uint nstats> class FileIO {
+template<uint nprog, uint nconst, uint ndiag, uint nstats> class FileIO {
 
 public:
   bool is_initialized;
@@ -38,10 +38,10 @@ public:
   std::array<realArr, nprog> prog_temp_arr;
   std::array<realArr, nconst> const_temp_arr;
   std::array<realArr, ndiag> diag_temp_arr;
-  const VariableSet<ndims, nprog> *prog_vars;
-  const VariableSet<ndims, nconst> *const_vars;
-  const VariableSet<ndims, ndiag> *diag_vars;
-  Stats<ndims, nprog, nconst, nstats> *statistics;
+  const VariableSet<nprog> *prog_vars;
+  const VariableSet<nconst> *const_vars;
+  const VariableSet<ndiag> *diag_vars;
+  Stats<nprog, nconst, nstats> *statistics;
 
   int statDim;
   int stat_ids[nstats];
@@ -53,12 +53,12 @@ public:
   MPI_Offset diag_start[5], diag_count[5];
 
   FileIO();
-  FileIO( const FileIO<ndims,nprog,nconst,ndiag,nstats> &fio) = delete;
-  FileIO& operator=( const FileIO<ndims,nprog,nconst,ndiag,nstats> &fio) = delete;
-  void initialize(std::string outputName, Topology<ndims> &topo, Parallel &par, const VariableSet<ndims, nprog> &progvars, const VariableSet<ndims, nconst> &const_vars, const VariableSet<ndims, ndiag> &diagvars, Stats<ndims, nprog, nconst, nstats> &stats);
+  FileIO( const FileIO<nprog,nconst,ndiag,nstats> &fio) = delete;
+  FileIO& operator=( const FileIO<nprog,nconst,ndiag,nstats> &fio) = delete;
+  void initialize(std::string outputName, Topology &topo, Parallel &par, const VariableSet<nprog> &progvars, const VariableSet<nconst> &const_vars, const VariableSet<ndiag> &diagvars, Stats<nprog, nconst, nstats> &stats);
   void output(int nstep, real time);
   void outputInit(real time);
-  void outputStats(const Stats<ndims, nprog, nconst, nstats> &stats);
+  void outputStats(const Stats<nprog, nconst, nstats> &stats);
   void close();
 
 
@@ -67,14 +67,14 @@ public:
 
 
 
-    template<uint ndims, uint nprog, uint nconst, uint ndiag, uint nstats> FileIO<ndims,nprog,nconst,ndiag,nstats>::FileIO()
+    template<uint nprog, uint nconst, uint ndiag, uint nstats> FileIO<nprog,nconst,ndiag,nstats>::FileIO()
     {
       this->is_initialized = false;
       std::cout << "CREATED FILEIO\n";
     }
 
 
-  template<uint ndims, uint nprog, uint nconst, uint ndiag, uint nstats> void FileIO<ndims,nprog,nconst,ndiag,nstats>::initialize(std::string outName, Topology<ndims> &topo, Parallel &par, const VariableSet<ndims, nprog> &progvars, const VariableSet<ndims, nconst> &constvars, const VariableSet<ndims, ndiag> &diagvars, Stats<ndims, nprog, nconst, nstats> &stats)
+  template<uint nprog, uint nconst, uint ndiag, uint nstats> void FileIO<nprog,nconst,ndiag,nstats>::initialize(std::string outName, Topology &topo, Parallel &par, const VariableSet<nprog> &progvars, const VariableSet<nconst> &constvars, const VariableSet<ndiag> &diagvars, Stats<nprog, nconst, nstats> &stats)
   {
        this->outputName = outName;
        this->prog_vars = &progvars;
@@ -138,7 +138,7 @@ public:
 
 
 
-  template<uint ndims, uint nprog, uint nconst, uint ndiag, uint nstats> void FileIO<ndims,nprog,nconst,ndiag,nstats>::output(int nstep, real time)
+  template<uint nprog, uint nconst, uint ndiag, uint nstats> void FileIO<nprog,nconst,ndiag,nstats>::output(int nstep, real time)
   {
 
     ncwrap( ncmpi_open( MPI_COMM_WORLD , this->outputName.c_str() , NC_WRITE , MPI_INFO_NULL , &ncid ) , __LINE__ );
@@ -189,7 +189,7 @@ public:
       this->numOut++;
     }
 
-  template<uint ndims, uint nprog, uint nconst, uint ndiag, uint nstats> void FileIO<ndims,nprog,nconst,ndiag,nstats>::outputInit(real time)
+  template<uint nprog, uint nconst, uint ndiag, uint nstats> void FileIO<nprog,nconst,ndiag,nstats>::outputInit(real time)
   {
     ncwrap( ncmpi_open( MPI_COMM_WORLD , this->outputName.c_str() , NC_WRITE , MPI_INFO_NULL , &ncid ) , __LINE__ );
 
@@ -259,9 +259,9 @@ public:
 
     }
 
-  template<uint ndims, uint nprog, uint nconst, uint ndiag, uint nstats> void FileIO<ndims,nprog,nconst,ndiag,nstats>::close() { }
+  template<uint nprog, uint nconst, uint ndiag, uint nstats> void FileIO<nprog,nconst,ndiag,nstats>::close() { }
 
-  template<uint ndims, uint nprog, uint nconst, uint ndiag, uint nstats>  void FileIO<ndims,nprog,nconst,ndiag,nstats>::outputStats(const Stats<ndims, nprog, nconst, nstats> &stats)
+  template<uint nprog, uint nconst, uint ndiag, uint nstats>  void FileIO<nprog,nconst,ndiag,nstats>::outputStats(const Stats<nprog, nconst, nstats> &stats)
   {
     ncwrap( ncmpi_open( MPI_COMM_WORLD , this->outputName.c_str() , NC_WRITE , MPI_INFO_NULL , &ncid ) , __LINE__ );
     ncwrap( ncmpi_begin_indep_data(ncid) , __LINE__ );

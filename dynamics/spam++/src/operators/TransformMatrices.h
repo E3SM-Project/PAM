@@ -7,6 +7,22 @@ template <class FP> class TransformMatrices {
 
 public:
 
+
+
+// Hacks to make 1st order CFV/WENO work
+  YAKL_INLINE FP coefs_to_tv(SArray<FP,1> &a) {
+    return 0.;
+  }
+
+  YAKL_INLINE void weno_sten_to_coefs(SArray<FP,1,1,1> &rslt) {
+}
+
+
+YAKL_INLINE void coefs_to_gll_lower(SArray<FP,1,2> &rslt) {
+}
+
+
+
 YAKL_INLINE void gll_to_coefs(SArray<FP,2,2> &rslt) {
     rslt(0,0)=0.50000000000000000000000000000000000000;
     rslt(0,1)=-1.0000000000000000000000000000000000000;

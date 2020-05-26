@@ -16,7 +16,7 @@
 
 
 
-template<uint ndims> void readParamsFile(std::string inFile, Parameters &params, Parallel &par) {
+void readParamsFile(std::string inFile, Parameters &params, Parallel &par) {
 
   int ierr;
 
