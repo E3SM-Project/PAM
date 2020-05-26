@@ -1,0 +1,193 @@
+
+#ifndef _HODGE_STARS_H_
+#define _HODGE_STARS_H_
+
+#include "common.h"
+#include "geometry.h"
+
+
+void YAKL_INLINE H(SArray<real,ndims> &var, SArray<real,ndims,1> const &velocity, SArray<real,ndims,1> const &Hgeom) {
+
+  for (int k=0; k<ndims; k++) {
+        var(k) = Hgeom(k,0) * velocity(k,0);
+}
+}
+
+void YAKL_INLINE H(SArray<real,ndims> &var, SArray<real,ndims,3> const &velocity, SArray<real,ndims,3> const &Hgeom) {
+
+  for (int k=0; k<ndims; k++) {
+        var(k) = -1./24.* Hgeom(k,0) * velocity(k,0) + 26./24.* Hgeom(k,1) * velocity(k,1) - 1./24.* Hgeom(k,2) * velocity(k,2);
+}
+}
+
+void YAKL_INLINE H(SArray<real,ndims> &var, SArray<real,ndims,5> const &velocity, SArray<real,ndims,5> const &Hgeom) {
+
+  for (int k=0; k<ndims; k++) {
+  var(k) = 9./1920.*Hgeom(k,0) * velocity(k,0) - 116./1920.*Hgeom(k,1) * velocity(k,1) + 2134./1920.* Hgeom(k,2) * velocity(k,2) - 116./1920.* Hgeom(k,3) * velocity(k,3) + 9./1920.* Hgeom(k,4) * velocity(k,4);
+}
+}
+
+
+template<uint ndofs, uint ord, uint off=ord/2 -1> void YAKL_INLINE compute_H(SArray<real,ndims> &u, const realArr vvar, Geometry<ndims,1,1,1> &geom, int is, int js, int ks, int i, int j, int k)
+{
+  SArray<real,ndims,ord-1> v;
+  SArray<real,ndims,ord-1> Hgeom;
+  for (int p=0; p<ord-1; p++) {
+  for (int d=0; d<ndims; d++) {
+    if (d==0) {
+    v(d,p) = vvar(d, k+ks, j+js, i+is+p-off);
+    Hgeom(d,p) = geom.get_H_edge(d, k+ks, j+js, i+is+p-off);
+  }
+  if (d==1) {
+  v(d,p) = vvar(d, k+ks, j+js+p-off, i+is);
+  Hgeom(d,p) = geom.get_H_edge(d, k+ks, j+js+p-off, i+is);
+  }
+  if (d==2) {
+  v(d,p) = vvar(d, k+ks+p-off, j+js, i+is);
+  Hgeom(d,p) = geom.get_H_edge(d, k+ks+p-off, j+js, i+is);
+  }
+  }}
+  H(u, v, Hgeom);
+
+}
+
+template<uint ndofs, uint ord, ADD_MODE addmode=ADD_MODE::REPLACE, uint off=ord/2 -1> void YAKL_INLINE compute_H(realArr uvar, const realArr vvar, Geometry<ndims,1,1,1> &geom, int is, int js, int ks, int i, int j, int k)
+{
+  SArray<real,ndims> u;
+  compute_H<ndofs, ord, off> (u, vvar, geom, is, js, ks, i, j, k);
+  if (addmode == ADD_MODE::REPLACE) {for (int d=0; d<ndims; d++) { uvar(d, k+ks, j+js, i+is) = u(d);}}
+  if (addmode == ADD_MODE::ADD) {for (int d=0; d<ndims; d++) { uvar(d, k+ks, j+js, i+is) += u(d);}}
+}
+
+
+// THIS I IS BROKEN FOR MULTI-DIMENSIONAL STUFF!
+// NEEDS SOME THINKING...
+
+template<uint ndofs> void YAKL_INLINE I(SArray<real,ndofs> &var, SArray<real,ndofs,ndims,1> const &dens, SArray<real,ndims,1> const &Igeom) {
+
+  for (int l=0; l<ndofs; l++) {
+        var(l) = Igeom(0,0) * dens(l,0,0);
+        }
+}
+
+template<uint ndofs> void YAKL_INLINE I(SArray<real,ndofs> &var, SArray<real,ndofs,ndims,3> const &dens, SArray<real,ndims,3> const &Igeom) {
+  for (int l=0; l<ndofs; l++) {
+    var(l) = 0.;
+    for (int k=0; k<ndims; k++) {
+        var(l) += -1./24.* Igeom(k,0) * dens(l,k,0) + 26./24.* Igeom(k,1) * dens(l,k,1) - 1./24.* Igeom(k,2) * dens(l,k,2);
+      }
+    }
+}
+
+
+template<uint ndofs> void YAKL_INLINE I(SArray<real,ndofs> &var, SArray<real,ndofs,ndims,5> const &dens, SArray<real,ndims,5> const &Igeom) {
+  for (int l=0; l<ndofs; l++) {
+    var(l) = 0.;
+    for (int k=0; k<ndims; k++) {
+          var(l) += 9./1920.*Igeom(k,0) * dens(l,k,0) - 116./1920.*Igeom(k,1) * dens(l,k,1) + 2134./1920.* Igeom(k,2) * dens(l,k,2) - 116./1920.* Igeom(k,3) * dens(l,k,3) + 9./1920.* Igeom(k,4) * dens(l,k,4);
+}
+}
+}
+
+
+
+
+template<uint ndofs, uint ord, uint off=ord/2 -1> void YAKL_INLINE compute_I(SArray<real,ndofs> &x0, const realArr var, Geometry<ndims,1,1,1> &geom, int is, int js, int ks, int i, int j, int k)
+{
+SArray<real,ndofs,ndims,ord-1> x;
+SArray<real,ndims,ord-1> Igeom;
+for (int p=0; p<ord-1; p++) {
+for (int l=0; l<ndofs; l++) {
+for (int d=0; d<ndims; d++) {
+  if (d==0)
+  {
+x(l,d,p) = var(l, k+ks, j+js, i+is+p-off);
+Igeom(d,p) = 1./geom.get_J_cell(k+ks, j+js, i+is+p-off);
+}
+if (d==1)
+{
+x(l,d,p) = var(l, k+ks, j+js+p-off, i+is);
+Igeom(d,p) = 1./geom.get_J_cell(k+ks, j+js+p-off, i+is);
+}
+if (d==2)
+{
+x(l,d,p) = var(l, k+ks+p-off, j+js, i+is);
+Igeom(d,p) = 1./geom.get_J_cell(k+ks+p-off, j+js, i+is);
+}
+}}}
+I<ndofs>(x0, x, Igeom);
+}
+
+template<uint ndofs, uint ord, ADD_MODE addmode=ADD_MODE::REPLACE, uint off=ord/2 -1> void YAKL_INLINE compute_I(realArr var0, const realArr var, Geometry<ndims,1,1,1> &geom, int is, int js, int ks, int i, int j, int k)
+{
+  SArray<real,ndofs> x0;
+  compute_I<ndofs, ord, off> (x0, var, geom, is, js, ks, i, j, k);
+  if (addmode == ADD_MODE::REPLACE) {for (int l=0; l<ndofs; l++) {var0(l, k+ks, j+js, i+is) = x0(l);}}
+  if (addmode == ADD_MODE::ADD) {for (int l=0; l<ndofs; l++) {var0(l, k+ks, j+js, i+is) += x0(l);}}
+
+}
+
+
+// THIS J IS BROKEN FOR MULTI-DIMENSIONAL STUFF!
+// NEEDS SOME THINKING...
+
+template<uint ndofs> void YAKL_INLINE J(SArray<real,ndofs> &var, SArray<real,ndofs,ndims,1> const &dens, SArray<real,ndims,1> const &Jgeom) {
+
+  for (int l=0; l<ndofs; l++) {
+        var(l) = Jgeom(0,0) * dens(l,0,0);
+        }
+}
+
+template<uint ndofs> void YAKL_INLINE J(SArray<real,ndofs> &var, SArray<real,ndofs,ndims,3> const &dens, SArray<real,ndims,3> const &Jgeom) {
+  for (int l=0; l<ndofs; l++) {
+    var(l) = 0.;
+    for (int k=0; k<ndims; k++) {
+        var(l) += -1./24.* Jgeom(k,0) * dens(l,k,0) + 26./24.* Jgeom(k,1) * dens(l,k,1) - 1./24.* Jgeom(k,2) * dens(l,k,2);
+      }
+    }
+}
+
+
+template<uint ndofs> void YAKL_INLINE J(SArray<real,ndofs> &var, SArray<real,ndofs,ndims,5> const &dens, SArray<real,ndims,5> const &Jgeom) {
+  for (int l=0; l<ndofs; l++) {
+    var(l) = 0.;
+    for (int k=0; k<ndims; k++) {
+          var(l) += 9./1920.*Jgeom(k,0) * dens(l,k,0) - 116./1920.*Jgeom(k,1) * dens(l,k,1) + 2134./1920.* Jgeom(k,2) * dens(l,k,2) - 116./1920.* Jgeom(k,3) * dens(l,k,3) + 9./1920.* Jgeom(k,4) * dens(l,k,4);
+}
+}
+}
+
+template<uint ndofs, uint ord, ADD_MODE addmode=ADD_MODE::REPLACE, uint off=ord/2 -1> void YAKL_INLINE compute_J(SArray<real,ndofs> &x0, const realArr var, Geometry<ndims,1,1,1> &geom, int is, int js, int ks, int i, int j, int k)
+{
+SArray<real,ndofs,ndims,ord-1> x;
+SArray<real,ndims,ord-1> Jgeom;
+for (int p=0; p<ord-1; p++) {
+for (int l=0; l<ndofs; l++) {
+for (int d=0; d<ndims; d++) {
+  if (d==0)
+  {
+x(l,d,p) = var(l, k+ks, j+js, i+is+p-off);
+Jgeom(d,p) = 1./geom.get_J_dual_cell(k+ks, j+js, i+is+p-off);
+}
+if (d==1)
+{
+x(l,d,p) = var(l, k+ks, j+js+p-off, i+is);
+Jgeom(d,p) = 1./geom.get_J_dual_cell(k+ks, j+js+p-off, i+is);
+}
+if (d==2)
+{
+x(l,d,p) = var(l, k+ks+p-off, j+js, i+is);
+Jgeom(d,p) = 1./geom.get_J_dual_cell(k+ks+p-off, j+js, i+is);
+}
+}}}
+J<ndofs>(x0, x, Jgeom);
+}
+
+template<uint ndofs, uint ord, ADD_MODE addmode=ADD_MODE::REPLACE, uint off=ord/2 -1> void YAKL_INLINE compute_J(realArr var0, const realArr var, Geometry<ndims,1,1,1> &geom, int is, int js, int ks, int i, int j, int k)
+{
+  SArray<real,ndofs> x0;
+  compute_J<ndofs,ord,off> (x0, var, geom, is, js, ks, i, j, k);
+  if (addmode == ADD_MODE::REPLACE) {for (int l=0; l<ndofs; l++) {var0(l, k+ks, j+js, i+is) = x0(l);}}
+  if (addmode == ADD_MODE::ADD) {for (int l=0; l<ndofs; l++) {var0(l, k+ks, j+js, i+is) += x0(l);}}
+}
+#endif
