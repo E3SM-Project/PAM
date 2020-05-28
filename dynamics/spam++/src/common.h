@@ -91,12 +91,13 @@ uint constexpr ndims = 2;
 uint constexpr diff_ord = 6;
 
 // Reconstruction type
-RECONSTRUCTION_TYPE constexpr reconstruction_type = RECONSTRUCTION_TYPE::WENO;
+RECONSTRUCTION_TYPE constexpr reconstruction_type = RECONSTRUCTION_TYPE::CFV;
 uint constexpr reconstruction_order = 9;
-RECONSTRUCTION_TYPE constexpr dual_reconstruction_type = RECONSTRUCTION_TYPE::WENO;
+RECONSTRUCTION_TYPE constexpr dual_reconstruction_type = RECONSTRUCTION_TYPE::CFV;
 uint constexpr dual_reconstruction_order = 9;
 
-
+RECONSTRUCTION_TYPE constexpr coriolis_reconstruction_type = RECONSTRUCTION_TYPE::CFV;
+uint constexpr coriolis_reconstruction_order = 1;
 
 // How to handle PV flux term
 enum class QF_MODE { EC, NOEC };
@@ -110,7 +111,7 @@ uint constexpr ic_quad_pts = 3;
 
 // Time scheme
 TIME_TYPE constexpr time_type = TIME_TYPE::KGRK;
-uint constexpr n_time_stages = 3;
+uint constexpr n_time_stages = 4;
 
 // Grid geometry
 GEOM_TYPE constexpr geom_type = GEOM_TYPE::UNIFORM_RECT;

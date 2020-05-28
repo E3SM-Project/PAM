@@ -32,7 +32,8 @@ public :
   real sum();
   real min();
   real max();
-
+  real min(int ndof);
+  real max(int ndof);
 };
 
     Field::Field()
@@ -179,6 +180,22 @@ public :
     return min;
   }
 
+  // computes min of field
+ real Field::min(int ndof)
+  {
+
+    int is = this->topology->is;
+    int js = this->topology->js;
+    int ks = this->topology->ks;
+    real min = this->data(ndof, ks, js, is);
+    yakl::parallel_for("MinField", this->topology->n_cells, YAKL_LAMBDA (int iGlob) {
+      int k, j, i;
+      yakl::unpackIndices(iGlob, this->topology->n_cells_z, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
+        min = mymin(this->data(ndof, k+ks, j+js, i+is), min);
+    });
+    return min;
+  }
+
   // computes max of field
   real Field::max()
   {
@@ -193,6 +210,22 @@ public :
       for (int ndof=0; ndof<this->total_dofs; ndof++) {
         max = mymax(this->data(ndof, k+ks, j+js, i+is), max);
       }
+    });
+    return max;
+  }
+
+  // computes max of field
+  real Field::max(int ndof)
+  {
+
+    int is = this->topology->is;
+    int js = this->topology->js;
+    int ks = this->topology->ks;
+    real max = this->data(ndof, ks, js, is);
+    yakl::parallel_for("MaxField", this->topology->n_cells, YAKL_LAMBDA (int iGlob) {
+      int k, j, i;
+      yakl::unpackIndices(iGlob, this->topology->n_cells_z, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
+        max = mymax(this->data(ndof, k+ks, j+js, i+is), max);
     });
     return max;
   }
