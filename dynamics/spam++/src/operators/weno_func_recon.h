@@ -4,13 +4,6 @@
 #include "common.h"
 #include "TransformMatrices.h"
 
-// MODIFY THIS SO WE CAN CALL DIFFERENT RECONSTRUCTION ORDERS!
-// ie template on ord/tord!
-
-//uint constexpr ord = reconstruction_order;
-//uint constexpr hs  = (ord-1)/2;
-//uint constexpr tord = 2;
-
 template<uint ord, uint tord=2, uint hs=(ord-1)/2> YAKL_INLINE void map_weights( SArray<real,hs+2> const &idl , SArray<real,hs+2> &wts ) {
   // Map the weights for quicker convergence. WARNING: Ideal weights must be (0,1) before mapping
   for (int i=0; i<hs+2; i++) {

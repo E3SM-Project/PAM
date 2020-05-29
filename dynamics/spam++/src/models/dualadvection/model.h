@@ -134,7 +134,9 @@ void set_model_specific_params(std::string inFile, ModelParameters &params)
 {
 
 
-  std::string strDataInit = "";
+  std::string strDataInit1 = "";
+  std::string strDataInit2 = "";
+  std::string strDataInit3 = "";
   std::string strWindInit = "";
 
   // Read in equals-separated key = value file line by line
@@ -157,29 +159,61 @@ void set_model_specific_params(std::string inFile, ModelParameters &params)
       std::stringstream ssVal(value);
 
       // Match the key, and store the value
-           if ( !strcmp( "dataInit"   , key.c_str() ) ) { ssVal >> strDataInit       ;}
-      else if ( !strcmp( "windInit"   , key.c_str() ) ) { ssVal >> strWindInit       ;}
+           if ( !strcmp( "dataInit1"   , key.c_str() ) ) { ssVal >> strDataInit1       ;}
+      else if ( !strcmp( "dataInit2"   , key.c_str() ) ) { ssVal >> strDataInit2       ;}
+      else if ( !strcmp( "dataInit3"   , key.c_str() ) ) { ssVal >> strDataInit3       ;}
+      else if ( !strcmp( "windInit"    , key.c_str() ) ) { ssVal >> strWindInit        ;}
       //else {
       //  std::cout << "Error: key " << key << " not understood in file " << inFile << "\n";
       //}
     }
   }
 
-  if (!strcmp("",strDataInit.c_str())) { std::cout << "Error: key " << "dataInit" << " not set.\n"; exit(-1); }
-  if (!strcmp("",strWindInit.c_str())) { std::cout << "Error: key " << "windInit" << " not set.\n"; exit(-1); }
+  if (!strcmp("",strDataInit1.c_str())) { std::cout << "Error: key " << "dataInit1" << " not set.\n"; exit(-1); }
+  if (!strcmp("",strDataInit2.c_str())) { std::cout << "Error: key " << "dataInit2" << " not set.\n"; exit(-1); }
+  if (!strcmp("",strDataInit3.c_str())) { std::cout << "Error: key " << "dataInit3" << " not set.\n"; exit(-1); }
+  if (!strcmp("",strWindInit.c_str()))  { std::cout << "Error: key " << "windInit"  << " not set.\n"; exit(-1); }
 
-    size_t splitloc = strDataInit.find("//",0);
+    size_t splitloc = strDataInit1.find("//",0);
     std::string sub_str;
     if (splitloc != std::string::npos){
-      sub_str = strDataInit.substr(0,splitloc);
+      sub_str = strDataInit1.substr(0,splitloc);
     } else {
-      sub_str = strDataInit;
+      sub_str = strDataInit1;
     }
-    if      ( !strcmp(sub_str.c_str(),"gaussian" ) ) { params.data_init_cond = DATA_INIT::GAUSSIAN  ; }
-    else if ( !strcmp(sub_str.c_str(),"vortices" ) ) { params.data_init_cond = DATA_INIT::VORTICES  ; }
-    else if ( !strcmp(sub_str.c_str(),"square"   ) ) { params.data_init_cond = DATA_INIT::SQUARE    ; }
+    if      ( !strcmp(sub_str.c_str(),"gaussian" ) ) { params.data_init_cond[0] = DATA_INIT::GAUSSIAN  ; }
+    else if ( !strcmp(sub_str.c_str(),"vortices" ) ) { params.data_init_cond[0] = DATA_INIT::VORTICES  ; }
+    else if ( !strcmp(sub_str.c_str(),"square"   ) ) { params.data_init_cond[0] = DATA_INIT::SQUARE    ; }
     else  {
-      std::cout << "Error: unrecognized dataInit " << strDataInit << "\n";
+      std::cout << "Error: unrecognized dataInit " << strDataInit1 << "\n";
+      exit(-1);
+    }
+
+    splitloc = strDataInit2.find("//",0);
+    if (splitloc != std::string::npos){
+      sub_str = strDataInit2.substr(0,splitloc);
+    } else {
+      sub_str = strDataInit2;
+    }
+    if      ( !strcmp(sub_str.c_str(),"gaussian" ) ) { params.data_init_cond[1] = DATA_INIT::GAUSSIAN  ; }
+    else if ( !strcmp(sub_str.c_str(),"vortices" ) ) { params.data_init_cond[1] = DATA_INIT::VORTICES  ; }
+    else if ( !strcmp(sub_str.c_str(),"square"   ) ) { params.data_init_cond[1] = DATA_INIT::SQUARE    ; }
+    else  {
+      std::cout << "Error: unrecognized dataInit " << strDataInit2 << "\n";
+      exit(-1);
+    }
+
+    splitloc = strDataInit3.find("//",0);
+    if (splitloc != std::string::npos){
+      sub_str = strDataInit3.substr(0,splitloc);
+    } else {
+      sub_str = strDataInit3;
+    }
+    if      ( !strcmp(sub_str.c_str(),"gaussian" ) ) { params.data_init_cond[2] = DATA_INIT::GAUSSIAN  ; }
+    else if ( !strcmp(sub_str.c_str(),"vortices" ) ) { params.data_init_cond[2] = DATA_INIT::VORTICES  ; }
+    else if ( !strcmp(sub_str.c_str(),"square"   ) ) { params.data_init_cond[2] = DATA_INIT::SQUARE    ; }
+    else  {
+      std::cout << "Error: unrecognized dataInit " << strDataInit3 << "\n";
       exit(-1);
     }
 
@@ -201,8 +235,7 @@ void set_model_specific_params(std::string inFile, ModelParameters &params)
 
   params.etime = 0.0;
 
-  if (params.data_init_cond == DATA_INIT::GAUSSIAN || params.data_init_cond == DATA_INIT::VORTICES || params.data_init_cond == DATA_INIT::SQUARE)
-  {
+
   params.xlen = 1.0;
   params.xc = 0.5;
   if (ndims>=2)
@@ -214,7 +247,6 @@ void set_model_specific_params(std::string inFile, ModelParameters &params)
   {
   params.zlen = 1.0;
   params.zc = 0.5;
-  }
   }
 
 }
@@ -378,16 +410,17 @@ class Stat
 {
 public:
   realArr data;
-  real local_dat;
-  real global_dat;
+  int ndofs;
+
   std::string name;
 
-void initialize(std::string statName, ModelParameters &params, Parallel &par)
+void initialize(std::string statName, int ndof, ModelParameters &params, Parallel &par)
 {
   name = statName;
+  ndofs = ndof;
   if (par.masterproc)
   {
-    data = realArr(name.c_str(), params.Nsteps/params.Nstat + 1);
+    data = realArr(name.c_str(), ndofs, params.Nsteps/params.Nstat + 1);
   }
 }
 
@@ -407,9 +440,9 @@ public:
   void initialize(ModelParameters &params, Parallel &par, const Topology &topo, Geometry<ndims,1,1,1> &geom)
   {
     statsize = params.Nsteps/params.Nstat + 1;
-    stats_arr[MSTAT].initialize("qmass", params, par);
-    stats_arr[MINSTAT].initialize("qmin", params, par);
-    stats_arr[MAXSTAT].initialize("qmax", params, par);
+    stats_arr[MSTAT].initialize("qmass", nqdofs, params, par);
+    stats_arr[MINSTAT].initialize("qmin", nqdofs, params, par);
+    stats_arr[MAXSTAT].initialize("qmax", nqdofs, params, par);
     masterproc = par.masterproc;
   }
 
@@ -419,22 +452,31 @@ public:
   void compute( VariableSet<nprog> &progvars,  VariableSet<nconst> &constvars, int i)
   {
 
-    //compute locally
-    this->stats_arr[MSTAT].local_dat = progvars.fields_arr[QVAR].sum();
-    this->stats_arr[MINSTAT].local_dat = progvars.fields_arr[QVAR].min();
-    this->stats_arr[MAXSTAT].local_dat = progvars.fields_arr[QVAR].max();
+      SArray<real,nqdofs> masslocal, massglobal;
+      SArray<real,nqdofs> maxlocal, maxglobal;
+      SArray<real,nqdofs> minlocal, minglobal;
+
+      for (int l=0;l<nqdofs;l++)
+      {
+        masslocal(l) = progvars.fields_arr[QVAR].sum(l);
+        maxlocal(l) = progvars.fields_arr[QVAR].max(l);
+        minlocal(l) = progvars.fields_arr[QVAR].min(l);
+      }
 
     //MPI sum/min/max
-    this->ierr = MPI_Ireduce( &this->stats_arr[MSTAT].local_dat, &this->stats_arr[MSTAT].global_dat, 1, REAL_MPI, MPI_SUM, 0, MPI_COMM_WORLD, &this->Req[MSTAT]);
-    this->ierr = MPI_Ireduce( &this->stats_arr[MINSTAT].local_dat, &this->stats_arr[MINSTAT].global_dat, 1, REAL_MPI, MPI_MIN, 0, MPI_COMM_WORLD, &this->Req[MINSTAT]);
-    this->ierr = MPI_Ireduce( &this->stats_arr[MAXSTAT].local_dat, &this->stats_arr[MAXSTAT].global_dat, 1, REAL_MPI, MPI_MAX, 0, MPI_COMM_WORLD, &this->Req[MAXSTAT]);
+    this->ierr = MPI_Ireduce( &masslocal, &massglobal, nqdofs, REAL_MPI, MPI_SUM, 0, MPI_COMM_WORLD, &this->Req[MSTAT]);
+    this->ierr = MPI_Ireduce( &maxlocal, &maxglobal, nqdofs, REAL_MPI, MPI_MAX, 0, MPI_COMM_WORLD, &this->Req[MAXSTAT]);
+    this->ierr = MPI_Ireduce( &minlocal, &minglobal, nqdofs, REAL_MPI, MPI_MIN, 0, MPI_COMM_WORLD, &this->Req[MINSTAT]);
     this->ierr = MPI_Waitall(nstats, this->Req, this->Status);
 
   if (masterproc)
   {
-  this->stats_arr[MSTAT].data(i) = this->stats_arr[MSTAT].global_dat;
-  this->stats_arr[MINSTAT].data(i) = this->stats_arr[MINSTAT].global_dat;
-  this->stats_arr[MAXSTAT].data(i) = this->stats_arr[MAXSTAT].global_dat;
+    for (int l=0;l<nqdofs;l++)
+    {
+    this->stats_arr[MSTAT].data(l,i) = massglobal(l);
+    this->stats_arr[MAXSTAT].data(l,i) = maxglobal(l);
+    this->stats_arr[MINSTAT].data(l,i) = minglobal(l);
+  }
   }
   }
 };
@@ -491,9 +533,9 @@ template <int nprog, int nconst, int nquadx, int nquady, int nquadz> void set_in
 {
     for (int i=0; i<nqdofs; i++)
     {
-    if (params.data_init_cond == DATA_INIT::GAUSSIAN) {geom.set_dual_2form_values(gaussian, progvars.fields_arr[QVAR], i);}
-    if (params.data_init_cond == DATA_INIT::VORTICES) {geom.set_dual_2form_values(vortices, progvars.fields_arr[QVAR], i);}
-    if (params.data_init_cond == DATA_INIT::SQUARE)   {geom.set_dual_2form_values(square,   progvars.fields_arr[QVAR], i);}
+    if (params.data_init_cond[i] == DATA_INIT::GAUSSIAN) {geom.set_dual_2form_values(gaussian, progvars.fields_arr[QVAR], i);}
+    if (params.data_init_cond[i] == DATA_INIT::VORTICES) {geom.set_dual_2form_values(vortices, progvars.fields_arr[QVAR], i);}
+    if (params.data_init_cond[i] == DATA_INIT::SQUARE)   {geom.set_dual_2form_values(square,   progvars.fields_arr[QVAR], i);}
     }
 
     if (params.wind_init_cond == WIND_INIT::UNIFORM_X    ) {geom.set_dual_1form_values(uniform_x_wind,     constvars.fields_arr[VVAR], 0, LINE_INTEGRAL_TYPE::TANGENT);}

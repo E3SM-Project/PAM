@@ -15,5 +15,7 @@ nprocy = 2
 nprocz = 1
 
 // initial condition
-dataInit = square
+dataInit1 = square
+dataInit2 = gaussian
+dataInit3 = vortices
 windInit = uniform_xy

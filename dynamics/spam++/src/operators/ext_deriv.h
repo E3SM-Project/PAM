@@ -63,18 +63,19 @@ if (addmode == ADD_MODE::ADD) {for (int l=0; l<ndofs; l++) { tendvar(l, k+ks, j+
 
 }
 
-template<uint ndofs> void YAKL_INLINE wD1( SArray<real,ndofs,ndims> &var, SArray<real,ndofs,ndims> const &recon, SArray<real,ndofs,ndims,2> const &dens) {
+template<uint ndofs> void YAKL_INLINE wD1( SArray<real,ndims> &var, SArray<real,ndofs,ndims> const &recon, SArray<real,ndofs,ndims,2> const &dens) {
 
+  for (int d=0; d<ndims; d++) {
+    var(d) = 0.0;
   for (int l=0; l<ndofs; l++) {
-    for (int d=0; d<ndims; d++) {
-      var(l,d) = recon(l,d) * (dens(l,d,1) - dens(l,d,0));
+      var(d) += recon(l,d) * (dens(l,d,1) - dens(l,d,0));
     }
   }
 }
 
 template<uint ndofs, ADD_MODE addmode=ADD_MODE::REPLACE> void YAKL_INLINE compute_wD1(realArr tendvar, const realArr reconvar, const realArr densvar, int is, int js, int ks, int i, int j, int k)
 {
-  SArray<real,ndofs,ndims> tend;
+  SArray<real,ndims> tend;
   SArray<real,ndofs,ndims> recon;
   SArray<real,ndofs,ndims,2> dens;
   for (int l=0; l<ndofs; l++) {
@@ -86,16 +87,15 @@ template<uint ndofs, ADD_MODE addmode=ADD_MODE::REPLACE> void YAKL_INLINE comput
       if (d==2) {dens(l,d,0) = densvar(l,k+ks-1,j+js,i+is);}
     }}
   wD1<ndofs>( tend, recon, dens );
-  for (int l=0; l<ndofs; l++) {
     for (int d=0; d<ndims; d++) {
-      if (addmode == ADD_MODE::REPLACE) {tendvar(l+d*ndofs,k+ks,j+js,i+is) = tend(l,d);}
-      if (addmode == ADD_MODE::ADD) {tendvar(l+d*ndofs,k+ks,j+js,i+is) += tend(l,d);}
-    }}
+      if (addmode == ADD_MODE::REPLACE) {tendvar(d,k+ks,j+js,i+is) = tend(d);}
+      if (addmode == ADD_MODE::ADD) {tendvar(d,k+ks,j+js,i+is) += tend(d);}
+    }
 }
 
 template<uint ndofs, ADD_MODE addmode=ADD_MODE::REPLACE> void YAKL_INLINE compute_wD1_fct(realArr tendvar, const realArr reconvar, const realArr Phivar, const realArr densvar, int is, int js, int ks, int i, int j, int k)
 {
-  SArray<real,ndofs,ndims> tend;
+  SArray<real,ndims> tend;
   SArray<real,ndofs,ndims> recon;
   SArray<real,ndofs,ndims,2> dens;
   for (int l=0; l<ndofs; l++) {
@@ -107,11 +107,10 @@ template<uint ndofs, ADD_MODE addmode=ADD_MODE::REPLACE> void YAKL_INLINE comput
       if (d==2) {dens(l,d,0) = densvar(l,k+ks-1,j+js,i+is);}
     }}
   wD1<ndofs>( tend, recon, dens );
-  for (int l=0; l<ndofs; l++) {
     for (int d=0; d<ndims; d++) {
-      if (addmode == ADD_MODE::REPLACE) {tendvar(l+d*ndofs,k+ks,j+js,i+is) = tend(l,d);}
-      if (addmode == ADD_MODE::ADD) {tendvar(l+d*ndofs,k+ks,j+js,i+is) += tend(l,d);}
-    }}
+      if (addmode == ADD_MODE::REPLACE) {tendvar(d,k+ks,j+js,i+is) = tend(d);}
+      if (addmode == ADD_MODE::ADD) {tendvar(d,k+ks,j+js,i+is) += tend(d);}
+    }
 }
 
 // CAN WE GENERALIZE THIS TO 2D/3D?...maybe...

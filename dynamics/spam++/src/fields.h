@@ -32,6 +32,7 @@ public :
   real sum();
   real min();
   real max();
+  real sum(int ndof);
   real min(int ndof);
   real max(int ndof);
 };
@@ -158,6 +159,22 @@ public :
       for (int ndof=0; ndof<this->total_dofs; ndof++) {
         sum += this->data(ndof, k+ks, j+js, i+is);
       }
+    });
+    return sum;
+  }
+
+  // computes sum of field
+  real Field::sum(int ndof)
+  {
+
+    int is = this->topology->is;
+    int js = this->topology->js;
+    int ks = this->topology->ks;
+    real sum = 0.0;
+    yakl::parallel_for("SumField", this->topology->n_cells, YAKL_LAMBDA (int iGlob) {
+      int k, j, i;
+      yakl::unpackIndices(iGlob, this->topology->n_cells_z, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
+        sum += this->data(ndof, k+ks, j+js, i+is);
     });
     return sum;
   }

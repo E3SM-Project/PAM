@@ -56,9 +56,9 @@ if (recontype == RECONSTRUCTION_TYPE::WENOFUNC) { weno_func<ndofs, ord> (edgerec
 
 for (int d=0; d<ndims; d++) {
 for (int l=0; l<ndofs; l++) {
-edgereconvar(l*ndofs+2*d, k+ks, j+js, i+is) = edgerecon(l,d,0);
-edgereconvar(l*ndofs+2*d+1, k+ks, j+js, i+is) = edgerecon(l,d,1);
-}}
+for (int m=0; m<2; m++) {
+edgereconvar(l + d*ndofs + ndofs*ndims*m, k+ks, j+js, i+is) = edgerecon(l,d,m);
+}}}
 
 }
 
@@ -82,18 +82,17 @@ for (int l=0; l<ndofs; l++) {
   if (d==ndims-3) {stencil(l,d,p) = var(l, k+ks+p-hs, j+js, i+is);}
 }}}
 
-if (dual_reconstruction_type == RECONSTRUCTION_TYPE::CFV) { cfv<ndofs> (edgerecon, stencil); }
-if (dual_reconstruction_type == RECONSTRUCTION_TYPE::WENO) { weno<ndofs> (edgerecon, stencil); }
-if (dual_reconstruction_type == RECONSTRUCTION_TYPE::WENOFUNC) { weno_func<ndofs,ord> (edgerecon, stencil, wenoRecon, to_gll, wenoIdl, wenoSigma); }
+if (recontype == RECONSTRUCTION_TYPE::CFV) { cfv<ndofs> (edgerecon, stencil); }
+if (recontype == RECONSTRUCTION_TYPE::WENO) { weno<ndofs> (edgerecon, stencil); }
+if (recontype == RECONSTRUCTION_TYPE::WENOFUNC) { weno_func<ndofs,ord> (edgerecon, stencil, wenoRecon, to_gll, wenoIdl, wenoSigma); }
 
 for (int d=ndims-1; d>=0; d--) {
 for (int l=0; l<ndofs; l++) {
-edgereconvar(l*ndofs+2*d, k+ks, j+js, i+is) = edgerecon(l,d,0);
-edgereconvar(l*ndofs+2*d+1, k+ks, j+js, i+is) = edgerecon(l,d,1);
-}}
+for (int m=0; m<2; m++) {
+edgereconvar(l + d*ndofs + ndofs*ndims*m, k+ks, j+js, i+is) = edgerecon(l,d,m);
+}}}
 
 }
-
 
 
 template <uint ndofs, RECONSTRUCTION_TYPE recontype> void YAKL_INLINE compute_primal_recon(
@@ -109,18 +108,18 @@ for (int d=0; d<ndims; d++) {
 for (int l=0; l<ndofs; l++) {
   if (d==0)
   {
-  edgerecon(l,d,0) = edgereconvar(l*ndofs+2*d+1, k+ks, j+js, i+is-1);
-  edgerecon(l,d,1) = edgereconvar(l*ndofs+2*d, k+ks, j+js, i+is);
+  edgerecon(l,d,0) = edgereconvar(l + d*ndofs + ndofs*ndims*1, k+ks, j+js, i+is-1);
+  edgerecon(l,d,1) = edgereconvar(l + d*ndofs + ndofs*ndims*0, k+ks, j+js, i+is);
 }
 if (d==1)
 {
-edgerecon(l,d,0) = edgereconvar(l*ndofs+2*d+1, k+ks, j+js-1, i+is);
-edgerecon(l,d,1) = edgereconvar(l*ndofs+2*d, k+ks, j+js, i+is);
+  edgerecon(l,d,0) = edgereconvar(l + d*ndofs + ndofs*ndims*1, k+ks, j+js-1, i+is);
+  edgerecon(l,d,1) = edgereconvar(l + d*ndofs + ndofs*ndims*0, k+ks, j+js, i+is);
 }
 if (d==2)
 {
-edgerecon(l,d,0) = edgereconvar(l*ndofs+2*d+1, k+ks-1, j+js, i+is);
-edgerecon(l,d,1) = edgereconvar(l*ndofs+2*d, k+ks, j+js, i+is);
+  edgerecon(l,d,0) = edgereconvar(l + d*ndofs + ndofs*ndims*1, k+ks-1, j+js, i+is);
+  edgerecon(l,d,1) = edgereconvar(l + d*ndofs + ndofs*ndims*0, k+ks, j+js, i+is);
 }
 }}
 
@@ -149,18 +148,18 @@ template <uint ndofs, RECONSTRUCTION_TYPE recontype> void YAKL_INLINE compute_du
     for (int l=0; l<ndofs; l++) {
       if (d==ndims-1)
       {
-      edgerecon(l,d,0) = edgereconvar(l*ndofs+2*d+1, k+ks, j+js, i+is);
-      edgerecon(l,d,1) = edgereconvar(l*ndofs+2*d, k+ks, j+js, i+is+1);
+      edgerecon(l,d,0) = edgereconvar(l + d*ndofs + ndofs*ndims*1, k+ks, j+js, i+is);
+      edgerecon(l,d,1) = edgereconvar(l + d*ndofs + ndofs*ndims*0, k+ks, j+js, i+is+1);
     }
     if (d==ndims-2)
     {
-    edgerecon(l,d,0) = edgereconvar(l*ndofs+2*d+1, k+ks, j+js, i+is);
-    edgerecon(l,d,1) = edgereconvar(l*ndofs+2*d, k+ks, j+js+1, i+is);
+    edgerecon(l,d,0) = edgereconvar(l + d*ndofs + ndofs*ndims*1, k+ks, j+js, i+is);
+    edgerecon(l,d,1) = edgereconvar(l + d*ndofs + ndofs*ndims*0, k+ks, j+js+1, i+is);
   }
   if (d==ndims-3)
   {
-  edgerecon(l,d,0) = edgereconvar(l*ndofs+2*d+1, k+ks, j+js, i+is);
-  edgerecon(l,d,1) = edgereconvar(l*ndofs+2*d, k+ks+1, j+js, i+is);
+  edgerecon(l,d,0) = edgereconvar(l + d*ndofs + ndofs*ndims*1, k+ks, j+js, i+is);
+  edgerecon(l,d,1) = edgereconvar(l + d*ndofs + ndofs*ndims*0, k+ks+1, j+js, i+is);
   }
     }}
 

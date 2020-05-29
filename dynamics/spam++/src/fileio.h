@@ -43,7 +43,8 @@ public:
   const VariableSet<ndiag> *diag_vars;
   Stats<nprog, nconst, nstats> *statistics;
 
-  int statDim;
+  int stat_var_dim_ids[nstats];
+  int statDimIds[2];
   int stat_ids[nstats];
 
   int numOut;
@@ -123,10 +124,12 @@ public:
 
        // define statistics dimension and variables
 
-       ncwrap( ncmpi_def_dim( ncid , "nstat" , (MPI_Offset) this->statistics->statsize , &statDim ) , __LINE__ );
+       ncwrap( ncmpi_def_dim( ncid , "nstat" , (MPI_Offset) this->statistics->statsize , &statDimIds[1] ) , __LINE__ );
        for (int l=0; l<this->statistics->stats_arr.size(); l++)
        {
-       ncwrap( ncmpi_def_var( ncid , this->statistics->stats_arr[l].name.c_str() , REAL_NC , 1 , &statDim , &stat_ids[l]  ) , __LINE__ );
+      ncwrap( ncmpi_def_dim( ncid , (this->statistics->stats_arr[l].name + "_ndofs").c_str() , (MPI_Offset) this->statistics->stats_arr[l].ndofs, &stat_var_dim_ids[l] ) , __LINE__ );
+      statDimIds[0] = stat_var_dim_ids[l];
+       ncwrap( ncmpi_def_var( ncid , this->statistics->stats_arr[l].name.c_str() , REAL_NC , 2 , statDimIds , &stat_ids[l]  ) , __LINE__ );
       }
 
        ncwrap( ncmpi_enddef( ncid ) , __LINE__ );
@@ -268,10 +271,11 @@ public:
 
     if (masterproc)
     {
-    MPI_Offset statStart[1], statCount[1];
-    statStart[0] = 0; statCount[0] = this->statistics->statsize;
+    MPI_Offset statStart[2], statCount[2];
+    statStart[0] = 0; statStart[1] = 0; statCount[1] = this->statistics->statsize;
     for (int l=0; l<this->statistics->stats_arr.size(); l++)
     {
+      statCount[0] = this->statistics->stats_arr[l].ndofs;
         ncwrap( ncmpi_inq_varid( ncid , this->statistics->stats_arr[l].name.c_str() , &stat_ids[l]  ) , __LINE__ );
       ncwrap( PNETCDF_PUT_VAR(ncid, stat_ids[l], statStart, statCount, this->statistics->stats_arr[l].data.createHostCopy().data()) , __LINE__ );
     }

@@ -150,7 +150,7 @@ template<uint ndofs> void YAKL_INLINE J(SArray<real,ndofs> &var, SArray<real,ndo
 }
 }
 
-template<uint ndofs, uint ord, ADD_MODE addmode=ADD_MODE::REPLACE, uint off=ord/2 -1> void YAKL_INLINE compute_J(SArray<real,ndofs> &x0, const realArr var, Geometry<ndims,1,1,1> &geom, int is, int js, int ks, int i, int j, int k)
+template<uint ndofs, uint ord, uint off=ord/2 -1> void YAKL_INLINE compute_J(SArray<real,ndofs> &x0, const realArr var, Geometry<ndims,1,1,1> &geom, int is, int js, int ks, int i, int j, int k)
 {
 SArray<real,ndofs,ndims,ord-1> x;
 SArray<real,ndims,ord-1> Jgeom;
