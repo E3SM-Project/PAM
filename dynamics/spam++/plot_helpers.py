@@ -22,7 +22,7 @@ def plotvar_scalar1D(plotname,vardat,i):
     plt.figure(figsize=(10,8))
     plt.plot(vardat)
     plt.xlabel('x')
-    plt.ylabel('y')
+    plt.ylabel(plotname)
     plt.savefig(plotname + '.' + str(i) + '.png')
     plt.close('all')
 

@@ -84,8 +84,10 @@ enum class TIME_TYPE { KGRK, ADER, SSPRK };
 enum class GEOM_TYPE { UNIFORM_RECT, DISTORTED };
 
 
+// SHOULD SET ALL OF THIS AT COMPILE TIME BASED ON THE MODEL VIA COMMAND LINE ARGUMENTS/FLAGS WITH DEFAULTS!
+
 // Number of Dimensions
-uint constexpr ndims = 2;
+uint constexpr ndims = 1;
 
 // Spatial order of accuracy for the model
 uint constexpr diff_ord = 6;
@@ -93,6 +95,7 @@ uint constexpr diff_ord = 6;
 // Reconstruction type
 RECONSTRUCTION_TYPE constexpr reconstruction_type = RECONSTRUCTION_TYPE::WENOFUNC;
 uint constexpr reconstruction_order = 7;
+
 RECONSTRUCTION_TYPE constexpr dual_reconstruction_type = RECONSTRUCTION_TYPE::WENOFUNC;
 uint constexpr dual_reconstruction_order = 7;
 
@@ -103,9 +106,6 @@ uint constexpr coriolis_reconstruction_order = 1;
 enum class QF_MODE { EC, NOEC };
 QF_MODE constexpr qf_choice = QF_MODE::EC;
 
-// Halo sizes
-uint constexpr maxhalosize = 15; //mymax(reconstruction_order+1,differential_order)/2; // IS THIS ALWAYS CORRECT?
-
 // initial condition quadrature pts
 uint constexpr ic_quad_pts = 3;
 
@@ -115,6 +115,13 @@ uint constexpr n_time_stages = 3;
 
 // Grid geometry
 GEOM_TYPE constexpr geom_type = GEOM_TYPE::UNIFORM_RECT;
+
+
+// FIX THIS
+// Halo sizes
+uint constexpr maxhalosize = 15; //mymax(reconstruction_order+1,differential_order)/2; // IS THIS ALWAYS CORRECT?
+
+
 
 #include "model-compile-consts.h"
 
