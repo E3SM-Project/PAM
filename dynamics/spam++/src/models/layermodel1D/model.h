@@ -20,6 +20,16 @@ uint constexpr ndensity = 1;
 #ifdef _TSWE
 uint constexpr ndensity = 2;
 #endif
+#ifdef _SWEVT
+uint constexpr ndensity = 2;
+#endif
+#ifdef _TSWEVT
+uint constexpr ndensity = 3;
+#endif
+#ifdef _TSWEVTC
+uint constexpr ndensity = 3;
+#endif
+
 
 #if NTRACERS > 0
 uint constexpr ndensityfct = NTRACERS;
@@ -428,6 +438,14 @@ void  YAKL_INLINE compute_functional_derivatives_and_diagnostic_quantities_III(
       Bvar(0, k+ks, j+js, i+is) += g*dens0var(0, k+ks, j+js, i+is) + g*hs0(0);
 #endif
 
+//FIX THESE
+#ifdef _SWEVT
+#endif
+#ifdef _TSWEVT
+#endif
+#ifdef _TSWEVTC
+#endif
+
 #if NTRACERS > 0
 // Compute Xil = h0/2; and add \sum trl/2. to B
 for (int l=0; l<ndensityfct; l++)
@@ -535,6 +553,9 @@ const realArr Bvar, const realArr Fvar) {
     compute_wD1_fct<ndensityfct, ADD_MODE::ADD> (Vtendvar, densfctreconvar, Phivar, Bfctvar, is, js, ks, i, j, k);
 #endif
 
+//FIX THESE
+#ifdef _TSWEVTC
+#endif
 
   });
 
@@ -788,6 +809,14 @@ PE = 0.5*progvars.fields_arr[DENSVAR].data(0,k+ks,j+js,i+is)*dens0(1) + dens0(1)
 PE = PE = 0.5*g*progvars.fields_arr[DENSVAR].data(0,k+ks,j+js,i+is)*dens0(0) + g*dens0(0)*constvars.fields_arr[HSVAR].data(0,k+ks,j+js,i+is);
 #endif
 
+//FIX THESE
+#ifdef _SWEVT
+#endif
+#ifdef _TSWEVT
+#endif
+#ifdef _TSWEVTC
+#endif
+
 #if NTRACERS > 0
 for (int l=0;l<ndensityfct;l++)
 {PE += 0.5*dens0(0)*progvars.fields_arr[DENSFCTVAR].data(l,k+ks,j+js,i+is);}
@@ -1008,6 +1037,14 @@ template <int nprog, int nconst, int nquadx, int nquady, int nquadz> void set_in
 #endif
         geom.set_dual_1form_values(double_vortex_v, progvars.fields_arr[VVAR], 0);
     }
+
+//FIX THESE
+#ifdef _SWEVT
+#endif
+#ifdef _TSWEVT
+#endif
+#ifdef _TSWEVTC
+#endif
 
     // if (params.data_init_cond == DATA_INIT::GOLO)
     // {
