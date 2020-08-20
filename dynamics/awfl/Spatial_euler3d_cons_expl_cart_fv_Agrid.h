@@ -232,11 +232,11 @@ public:
       real maxwave = 0;
       real3d dt3d("dt3d",nz,ny,nx);
       parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-        real r = state(idR,hs+k,hs+j,hs+i) + hyDensCells(k);
+        real r = state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k);
         real u = state(idU,hs+k,hs+j,hs+i) / r;
         real v = state(idV,hs+k,hs+j,hs+i) / r;
         real w = state(idW,hs+k,hs+j,hs+i) / r;
-        real t = ( state(idT,hs+k,hs+j,hs+i) + hyDensThetaCells(k) ) / r;
+        real t = ( state(idT,hs+k,hs+j,hs+i) + hyDensThetaCells(hs+k) ) / r;
         real p = C0*pow(r*t,GAMMA);
         real cs = sqrt(GAMMA*p/r);
         real udt = cfl * dx / max( abs(u-cs) , abs(u+cs) );
@@ -373,10 +373,10 @@ public:
     stateFluxLimits  = real6d("stateFluxLimits" ,numState  ,2,nTimeDerivs,nz+1,ny+1,nx+1);
     tracerFluxLimits = real6d("tracerFluxLimits",numTracers,2,nTimeDerivs,nz+1,ny+1,nx+1);
 
-    hyDensCells          = real1d("hyDensCells       ",nz     );
-    hyPressureCells      = real1d("hyPressureCells   ",nz     );
-    hyThetaCells         = real1d("hyThetaCells      ",nz     );
-    hyDensThetaCells     = real1d("hyDensThetaCells  ",nz     );
+    hyDensCells          = real1d("hyDensCells       ",nz+2*hs);
+    hyPressureCells      = real1d("hyPressureCells   ",nz+2*hs);
+    hyThetaCells         = real1d("hyThetaCells      ",nz+2*hs);
+    hyDensThetaCells     = real1d("hyDensThetaCells  ",nz+2*hs);
     hyDensGLL            = real2d("hyDensGLL         ",nz,ngll);
     hyPressureGLL        = real2d("hyPressureGLL     ",nz,ngll);
     hyThetaGLL           = real2d("hyThetaGLL        ",nz,ngll);
@@ -410,14 +410,14 @@ public:
     auto &xlen              = this->xlen             ;
     auto &ylen              = this->ylen             ;
     // Setup hydrostatic background state
-    parallel_for( Bounds<1>(nz) , YAKL_LAMBDA (int k) {
+    parallel_for( Bounds<1>(nz+2*hs) , YAKL_LAMBDA (int k) {
       // Compute cell averages
       hyDensCells     (k) = 0;
       hyPressureCells (k) = 0;
       hyThetaCells    (k) = 0;
       hyDensThetaCells(k) = 0;
       for (int kk=0; kk<ord; kk++) {
-        real zloc = (k+0.5_fp)*dz + gllPts_ord(kk)*dz;
+        real zloc = (k-hs+0.5_fp)*dz + gllPts_ord(kk)*dz;
         if        (dataSpec == DATA_SPEC_THERMAL) {
           // Compute constant theta hydrostatic background state
           real th  = 300;
@@ -430,6 +430,8 @@ public:
           hyPressureCells (k) += ph    * wt;
         }
       }
+    });
+    parallel_for( Bounds<1>(nz) , YAKL_LAMBDA (int k) {
       // Compute ngll GLL points
       for (int kk=0; kk<ngll; kk++) {
         real zloc = (k+0.5_fp)*dz + gllPts_ngll(kk)*dz;
@@ -491,7 +493,6 @@ public:
     auto gllWts_ord         = this->gllWts_ord       ;
     auto gllPts_ngll        = this->gllPts_ngll      ;
     auto gllWts_ngll        = this->gllWts_ngll      ;
-    auto &hyDensCells       = this->hyDensCells      ;
     auto &sim2d             = this->sim2d            ;
     auto &xlen              = this->xlen             ;
     auto &ylen              = this->ylen             ;
@@ -634,7 +635,7 @@ public:
           // Density
           for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idR,hs+k,hs+j,i+ii); }
           reconstruct_gll_values( stencil , r_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
-          for (int ii=0; ii < ngll; ii++) { r_DTs(0,ii) += hyDensCells(k); } // Add hydrostasis back on
+          for (int ii=0; ii < ngll; ii++) { r_DTs(0,ii) += hyDensCells(hs+k); } // Add hydrostasis back on
 
           // u values and derivatives
           for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idU,hs+k,hs+j,i+ii); }
@@ -651,7 +652,7 @@ public:
           // theta
           for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idT,hs+k,hs+j,i+ii); }
           reconstruct_gll_values( stencil , rt_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
-          for (int ii=0; ii < ngll; ii++) { rt_DTs(0,ii) += hyDensThetaCells(k); } // Add hydrostasis back on
+          for (int ii=0; ii < ngll; ii++) { rt_DTs(0,ii) += hyDensThetaCells(hs+k); } // Add hydrostasis back on
         } // END: Reconstruct the state
 
         ///////////////////////////////////////////////////////////////
@@ -740,7 +741,6 @@ public:
       //       // Density
       //       for (int ii=0; ii < ord; ii++) { stencil(ii) = tracers(tr,hs+k,hs+j,i+ii); }
       //       reconstruct_gll_values( stencil , r_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
-      //       for (int ii=0; ii < ngll; ii++) { r_DTs(0,ii) += hyDensCells(k); } // Add hydrostasis back on
 
       //     
       //   }
@@ -884,7 +884,7 @@ public:
         // Density
         for (int jj=0; jj < ord; jj++) { stencil(jj) = state(idR,hs+k,j+jj,hs+i); }
         reconstruct_gll_values( stencil , r_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
-        for (int jj=0; jj < ngll; jj++) { r_DTs(0,jj) += hyDensCells(k); } // Add hydrostasis back on
+        for (int jj=0; jj < ngll; jj++) { r_DTs(0,jj) += hyDensCells(hs+k); } // Add hydrostasis back on
 
         // u values and derivatives
         for (int jj=0; jj < ord; jj++) { stencil(jj) = state(idU,hs+k,j+jj,hs+i); }
@@ -901,7 +901,7 @@ public:
         // theta
         for (int jj=0; jj < ord; jj++) { stencil(jj) = state(idT,hs+k,j+jj,hs+i); }
         reconstruct_gll_values( stencil , rt_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
-        for (int jj=0; jj < ngll; jj++) { rt_DTs(0,jj) += hyDensThetaCells(k); } // Add hydrostasis back on
+        for (int jj=0; jj < ngll; jj++) { rt_DTs(0,jj) += hyDensThetaCells(hs+k); } // Add hydrostasis back on
       }
 
       ///////////////////////////////////////////////////////////////
@@ -1350,9 +1350,12 @@ public:
       parallel_for( nz , YAKL_LAMBDA (int i) { zloc(i) = (i+0.5)*dz; });
       nc.write(zloc.createHostCopy(),"z",{"z"});
       // hydrostatic density, theta, and pressure
-      nc.write(hyDensCells    .createHostCopy(),"hyDens"    ,{"z"});
-      nc.write(hyPressureCells.createHostCopy(),"hyPressure",{"z"});
-      nc.write(hyThetaCells   .createHostCopy(),"hyTheta"   ,{"z"});
+      parallel_for( nz , YAKL_LAMBDA (int k) { zloc(k) = hyDensCells(hs+k); });
+      nc.write(zloc.createHostCopy(),"hyDens"    ,{"z"});
+      parallel_for( nz , YAKL_LAMBDA (int k) { zloc(k) = hyPressureCells(hs+k); });
+      nc.write(zloc.createHostCopy(),"hyPressure",{"z"});
+      parallel_for( nz , YAKL_LAMBDA (int k) { zloc(k) = hyThetaCells(hs+k); });
+      nc.write(zloc.createHostCopy(),"hyTheta"   ,{"z"});
       // Create time variable
       nc.write1(0._fp,"t",0,"t");
     } else {
@@ -1376,23 +1379,23 @@ public:
     nc.write1(data.createHostCopy(),"w",{"z","y","x"},ulIndex,"t");
     // theta'
     parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-      real r =   state(idR,hs+k,hs+j,hs+i) + hyDensCells     (k);
-      real t = ( state(idT,hs+k,hs+j,hs+i) + hyDensThetaCells(k) ) / r;
-      data(k,j,i) = t - hyThetaCells(k);
+      real r =   state(idR,hs+k,hs+j,hs+i) + hyDensCells     (hs+k);
+      real t = ( state(idT,hs+k,hs+j,hs+i) + hyDensThetaCells(hs+k) ) / r;
+      data(k,j,i) = t - hyThetaCells(hs+k);
     });
     nc.write1(data.createHostCopy(),"pot_temp_pert",{"z","y","x"},ulIndex,"t");
     // pressure'
     parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-      real r =   state(idR,hs+k,hs+j,hs+i) + hyDensCells     (k);
-      real t = ( state(idT,hs+k,hs+j,hs+i) + hyDensThetaCells(k) ) / r;
+      real r =   state(idR,hs+k,hs+j,hs+i) + hyDensCells     (hs+k);
+      real t = ( state(idT,hs+k,hs+j,hs+i) + hyDensThetaCells(hs+k) ) / r;
       real p = C0*pow(r*t,GAMMA);
-      data(k,j,i) = p - hyPressureCells(k);
+      data(k,j,i) = p - hyPressureCells(hs+k);
     });
     nc.write1(data.createHostCopy(),"pressure_pert",{"z","y","x"},ulIndex,"t");
 
     for (int tr=0; tr < numTracers; tr++) {
       parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-        real r = state(idR,hs+k,hs+j,hs+i) + hyDensCells(k);
+        real r = state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k);
         data(k,j,i) = tracers(tr,hs+k,hs+j,hs+i)/r;
       });
       nc.write1(data.createHostCopy(),std::string("tracer_")+tracerName[tr],{"z","y","x"},ulIndex,"t");
