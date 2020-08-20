@@ -128,6 +128,10 @@ public:
 
   bool dimSwitch;
 
+  int nTracers;
+  std::vector<std::string> tracerName;
+  std::vector<std::string> tracerDesc;
+
   // Values read from input file
   int         nx;
   int         ny;
@@ -147,13 +151,20 @@ public:
   static_assert(ord%2 == 1,"ERROR: ord must be an odd integer");
 
 
+
   StateArr createStateArr() {
     return StateArr("stateArr",numState,nz+2*hs,ny+2*hs,nx+2*hs);
   }
 
 
 
-  TendArr createTendArr() {
+  StateArr createTracerArr() {
+    return StateArr("stateArr",numState,nz+2*hs,ny+2*hs,nx+2*hs);
+  }
+
+
+
+  TendArr createStateTendArr() {
     return TendArr("tendArr",numState,nTimeDerivs,nz,ny,nx);
   }
 
