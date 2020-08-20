@@ -1,0 +1,31 @@
+---
+# Simulation time in seconds
+simTime  : 1000
+
+# Number of cells to use
+nx       : 200
+ny       : 1
+nz       : 100
+
+# Lengths of the dimensions in meters
+xlen     : 20000
+ylen     : 20000
+zlen     : 10000
+
+bc_x   : periodic
+bc_y   : periodic
+bc_z   : wall
+
+weno_scalars : false
+
+weno_winds   : false
+
+# Data to initialize: thermal
+initData : thermal
+
+# Output filename
+outFile  : test.nc
+
+# Output frequency in seconds
+outFreq  : 10
+
