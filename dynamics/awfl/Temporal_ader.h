@@ -27,42 +27,55 @@ template <class Spatial> class Temporal_ader {
 public:
   static_assert(nTimeDerivs <= ngll , "ERROR: nTimeDerivs must be <= ngll.");
 
-  typedef typename Spatial::TendArr  TendArr ;
-  typedef typename Spatial::StateArr StateArr;
-  typedef typename Spatial::Location Location;
+  typedef typename Spatial::StateTendArr  StateTendArr;
+  typedef typename Spatial::StateArr      StateArr;
+  typedef typename Spatial::TracerTendArr TracerTendArr;
+  typedef typename Spatial::TracerArr     TracerArr;
+  typedef typename Spatial::Location      Location;
 
-  TendArr tendArr;
+  StateTendArr  stateTendArr;
+  TracerTendArr tracerTendArr;
 
   Spatial spaceOp;
   
   void init(std::string inFile) {
     spaceOp.init(inFile);
-    tendArr = spaceOp.createTendArr();
+    stateTendArr  = spaceOp.createStateTendArr ();
+    tracerTendArr = spaceOp.createTracerTendArr();
   }
 
 
-  void timeStep( StateArr &stateArr , real dt ) {
-    // TODO: pass an MPI communicator to computeTendencies
-
+  void timeStep( StateArr &stateArr , TracerArr &tracerArr , real dt ) {
     // Loop over different items in the spatial splitting
     for (int spl = 0 ; spl < spaceOp.numSplit() ; spl++) {
       real dtloc = dt;
-      spaceOp.computeTendencies( stateArr , tendArr , dtloc , spl );
+      spaceOp.computeTendencies( stateArr , stateTendArr , tracerArr , tracerTendArr , dtloc , spl );
 
-      auto &tendArr = this->tendArr;
-      auto applySingleTendency = YAKL_LAMBDA (Location const &loc) {
-        real &state = spaceOp.get(stateArr,loc  ,spl);
-        real &tend  = spaceOp.get(tendArr ,loc,0,spl);
-        state += dtloc * tend;
-      };
+      {
+        auto &stateTendArr  = this->stateTendArr ;
+        auto applySingleTendency = YAKL_LAMBDA (Location const &loc) {
+          real &state      = spaceOp.getState     (stateArr     ,loc  ,spl);
+          real &stateTend  = spaceOp.getStateTend (stateTendArr ,loc,0,spl);
+          state  += dtloc * stateTend;
+        };
+        spaceOp.applyStateTendencies( applySingleTendency , spl );
+      }
 
-      spaceOp.applyTendencies( applySingleTendency , spl );
+      {
+        auto &tracerTendArr  = this->tracerTendArr ;
+        auto applySingleTendency = YAKL_LAMBDA (Location const &loc) {
+          real &tracer     = spaceOp.getTracer    (tracerArr    ,loc  ,spl);
+          real &tracerTend = spaceOp.getTracerTend(tracerTendArr,loc,0,spl);
+          tracer += dtloc * tracerTend;
+        };
+        spaceOp.applyTracerTendencies( applySingleTendency , spl );
+      }
     }
   }
 
 
-  void finalize(StateArr &state) {
-    spaceOp.finalize(state);
+  void finalize(StateArr &state, TracerArr &tracers) {
+    spaceOp.finalize( state , tracers );
   }
 
 

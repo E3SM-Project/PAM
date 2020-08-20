@@ -24,31 +24,36 @@ int main(int argc, char** argv) {
 
     Temporal model;
 
+    model.spaceOp.addTracer("theta","replica of theta");
+
     model.init(inFile);
 
-    Spatial::StateArr state = model.spaceOp.createStateArr();
+    Spatial::StateArr  state   = model.spaceOp.createStateArr ();
+    Spatial::TracerArr tracers = model.spaceOp.createTracerArr();
 
-    model.spaceOp.initState(state);
+    model.spaceOp.initState  (state  );
+
+    model.spaceOp.initTracers(tracers);
 
     real etime = 0;
 
-    model.spaceOp.output( state , etime );
+    model.spaceOp.output( state , tracers , etime );
     
     while (etime < simTime) {
       real dt = model.spaceOp.computeTimeStep(0.8,state);
       if (etime + dt > simTime) { dt = simTime - etime; }
-      model.timeStep( state , dt );
+      model.timeStep( state , tracers , dt );
       etime += dt;
       if (etime / outFreq >= numOut+1) {
         std::cout << "Etime , dt: " << etime << " , " << dt << "\n";
-        model.spaceOp.output( state , etime );
+        model.spaceOp.output( state , tracers , etime );
         numOut++;
       }
     }
 
     std::cout << "Elapsed Time: " << etime << "\n";
 
-    model.finalize(state);
+    model.finalize( state , tracers );
 
   }
   yakl::finalize();
