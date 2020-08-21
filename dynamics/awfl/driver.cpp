@@ -32,7 +32,6 @@ int main(int argc, char** argv) {
     Spatial::TracerArr tracers = model.spaceOp.createTracerArr();
 
     model.spaceOp.initState  (state  );
-
     model.spaceOp.initTracers(tracers);
 
     real etime = 0;

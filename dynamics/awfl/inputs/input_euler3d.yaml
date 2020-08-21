@@ -1,10 +1,10 @@
 ---
 # Simulation time in seconds
-simTime  : 1000
+simTime  : 2000.
 
 # Number of cells to use
 nx       : 100
-ny       : 1
+ny       : 100
 nz       : 50
 
 # Lengths of the dimensions in meters
@@ -16,7 +16,7 @@ bc_x   : periodic
 bc_y   : periodic
 bc_z   : wall
 
-weno_scalars : false
+weno_scalars : true
 
 weno_winds   : false
 
@@ -27,5 +27,5 @@ initData : thermal
 outFile  : test.nc
 
 # Output frequency in seconds
-outFreq  : 10
+outFreq  : 10.
 
