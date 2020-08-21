@@ -35,6 +35,8 @@ public:
 
   StateTendArr  stateTendArr;
   TracerTendArr tracerTendArr;
+  StateTendArr  stateTendArrTmp;
+  TracerTendArr tracerTendArrTmp;
 
   Spatial spaceOp;
 
@@ -47,116 +49,166 @@ public:
   
   void init(std::string inFile) {
     spaceOp.init(inFile);
-    stateTmp1     = spaceOp.createStateArr     ();
-    stateTmp2     = spaceOp.createStateArr     ();
-    stateTendArr  = spaceOp.createStateTendArr ();
-    tracerTmp1    = spaceOp.createTracerArr    ();
-    tracerTmp2    = spaceOp.createTracerArr    ();
-    tracerTendArr = spaceOp.createTracerTendArr();
+    stateTmp1        = spaceOp.createStateArr     ();
+    stateTmp2        = spaceOp.createStateArr     ();
+    stateTendArr     = spaceOp.createStateTendArr ();
+    stateTendArrTmp  = spaceOp.createStateTendArr ();
+    tracerTmp1       = spaceOp.createTracerArr    ();
+    tracerTmp2       = spaceOp.createTracerArr    ();
+    tracerTendArr    = spaceOp.createTracerTendArr();
+    tracerTendArrTmp = spaceOp.createTracerTendArr();
   }
 
 
   void timeStep( StateArr &stateArr , TracerArr &tracerArr , real dt ) {
     // TODO: pass an MPI communicator to computeTendencies
 
+    /////////////////////////////////////////////////////////////////
+    // STAGE 1
+    /////////////////////////////////////////////////////////////////
+    memset( stateTendArr  , 0._fp );
+    memset( tracerTendArr , 0._fp );
+    // Accumulate tenedencies
     for (int spl = 0 ; spl < spaceOp.numSplit() ; spl++) {
-      /////////////////////////////////////////////////////////////////
-      // STAGE 1
-      /////////////////////////////////////////////////////////////////
       real dtloc = dt;
-      spaceOp.computeTendencies( stateArr , stateTendArr , tracerArr , tracerTendArr , dtloc , spl );
+      spaceOp.computeTendencies( stateArr , stateTendArrTmp , tracerArr , tracerTendArrTmp , dtloc , spl );
       {
-        auto &stateTendArr   = this->stateTendArr  ;
-        auto &stateTmp1      = this->stateTmp1     ;
-        auto applySingleTendency = YAKL_LAMBDA (Location const &loc) {
-          real &state0 = spaceOp.getState    (stateArr    ,loc  ,spl);
-          real &state1 = spaceOp.getState    (stateTmp1   ,loc  ,spl);
-          real &tend   = spaceOp.getStateTend(stateTendArr,loc,0,spl);
-          state1 = state0 + dtloc * tend;
-        };
-
-        spaceOp.applyStateTendencies( applySingleTendency , spl );
+        auto &stateTendArr     = this->stateTendArr    ;
+        auto &stateTendArrTmp  = this->stateTendArrTmp ;
+        auto &tracerTendArr    = this->tracerTendArr   ;
+        auto &tracerTendArrTmp = this->tracerTendArrTmp;
+        parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+          for (int l=0; l < numState; l++) {
+            stateTendArr (l,k,j,i) += stateTendArrTmp (l,k,j,i);
+            tracerTendArr(l,k,j,i) += tracerTendArrTmp(l,k,j,i);
+          }
+        });
       }
+    }
+    // Apply accumulated tendencies
+    {
+      auto &stateTendArr    = this->stateTendArr   ;
+      auto &stateTmp1      = this->stateTmp1     ;
+      auto applySingleTendency = YAKL_LAMBDA (Location const &loc) {
+        real &state0 = spaceOp.getState    (stateArr    ,loc  ,spl);
+        real &state1 = spaceOp.getState    (stateTmp1   ,loc  ,spl);
+        real &tend   = spaceOp.getStateTend(stateTendArr,loc,0,spl);
+        state1 = state0 + dtloc * tend;
+      };
+      spaceOp.applyStateTendencies( applySingleTendency , spl );
+    }
+    {
+      auto &tracerTendArr  = this->tracerTendArr ;
+      auto &tracerTmp1     = this->tracerTmp1    ;
+      auto applySingleTendency = YAKL_LAMBDA (Location const &loc) {
+        real &tracer0 = spaceOp.getTracer    (tracerArr    ,loc  ,spl);
+        real &tracer1 = spaceOp.getTracer    (tracerTmp1   ,loc  ,spl);
+        real &tend    = spaceOp.getTracerTend(tracerTendArr,loc,0,spl);
+        tracer1 = tracer0 + dtloc * tend;
+      };
+      spaceOp.applyTracerTendencies( applySingleTendency , spl );
+    }
+
+    /////////////////////////////////////////////////////////////////
+    // STAGE 2
+    /////////////////////////////////////////////////////////////////
+    memset( stateTendArr  , 0._fp );
+    memset( tracerTendArr , 0._fp );
+    // Accumulate tenedencies
+    for (int spl = 0 ; spl < spaceOp.numSplit() ; spl++) {
+      real dtloc = dt;
+      spaceOp.computeTendencies( stateTmp1 , stateTendArrTmp , tracerTmp1 , tracerTendArrTmp , dtloc , spl );
       {
-        auto &tracerTendArr  = this->tracerTendArr ;
-        auto &tracerTmp1     = this->tracerTmp1    ;
-        auto applySingleTendency = YAKL_LAMBDA (Location const &loc) {
-          real &tracer0 = spaceOp.getTracer    (tracerArr    ,loc  ,spl);
-          real &tracer1 = spaceOp.getTracer    (tracerTmp1   ,loc  ,spl);
-          real &tend    = spaceOp.getTracerTend(tracerTendArr,loc,0,spl);
-          tracer1 = tracer0 + dtloc * tend;
-        };
-
-        spaceOp.applyTracerTendencies( applySingleTendency , spl );
+        auto &stateTendArr     = this->stateTendArr    ;
+        auto &stateTendArrTmp  = this->stateTendArrTmp ;
+        auto &tracerTendArr    = this->tracerTendArr   ;
+        auto &tracerTendArrTmp = this->tracerTendArrTmp;
+        parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+          for (int l=0; l < numState; l++) {
+            stateTendArr (l,k,j,i) += stateTendArrTmp (l,k,j,i);
+            tracerTendArr(l,k,j,i) += tracerTendArrTmp(l,k,j,i);
+          }
+        });
       }
+    }
+    // Apply accumulated tendencies
+    {
+      auto &stateTendArr = this->stateTendArr;
+      auto &stateTmp1    = this->stateTmp1   ;
+      auto &stateTmp2    = this->stateTmp2   ;
+      auto applySingleTendency = YAKL_LAMBDA (Location const &loc) {
+        real &state0 = spaceOp.getState    (stateArr    ,loc  ,spl);
+        real &state1 = spaceOp.getState    (stateTmp1   ,loc  ,spl);
+        real &state2 = spaceOp.getState    (stateTmp2   ,loc  ,spl);
+        real &tend   = spaceOp.getStateTend(stateTendArr,loc,0,spl);
+        state2 = 3.*state0/4. + state1/4. + dtloc*tend/4.;
+      };
+      spaceOp.applyStateTendencies( applySingleTendency , spl );
+    }
+    {
+      auto &tracerTendArr = this->tracerTendArr;
+      auto &tracerTmp1    = this->tracerTmp1   ;
+      auto &tracerTmp2    = this->tracerTmp2   ;
+      auto applySingleTendency = YAKL_LAMBDA (Location const &loc) {
+        real &tracer0 = spaceOp.getTracer    (tracerArr    ,loc  ,spl);
+        real &tracer1 = spaceOp.getTracer    (tracerTmp1   ,loc  ,spl);
+        real &tracer2 = spaceOp.getTracer    (tracerTmp2   ,loc  ,spl);
+        real &tend    = spaceOp.getTracerTend(tracerTendArr,loc,0,spl);
+        tracer2 = 3.*tracer0/4. + tracer1/4. + dtloc*tend/4.;
+      };
+      spaceOp.applyTracerTendencies( applySingleTendency , spl );
+    }
 
-      /////////////////////////////////////////////////////////////////
-      // STAGE 2
-      /////////////////////////////////////////////////////////////////
-      dtloc = dt;
-      spaceOp.computeTendencies( stateTmp1 , stateTendArr , tracerTmp1 , tracerTendArr , dtloc , spl );
+    /////////////////////////////////////////////////////////////////
+    // STAGE 3
+    /////////////////////////////////////////////////////////////////
+    memset( stateTendArr  , 0._fp );
+    memset( tracerTendArr , 0._fp );
+    // Accumulate tenedencies
+    for (int spl = 0 ; spl < spaceOp.numSplit() ; spl++) {
+      real dtloc = dt;
+      spaceOp.computeTendencies( stateTmp2 , stateTendArrTmp , tracerTmp2 , tracerTendArrTmp , dtloc , spl );
       {
-        auto &stateTendArr = this->stateTendArr;
-        auto &stateTmp1    = this->stateTmp1   ;
-        auto &stateTmp2    = this->stateTmp2   ;
-        auto applySingleTendency = YAKL_LAMBDA (Location const &loc) {
-          real &state0 = spaceOp.getState    (stateArr    ,loc  ,spl);
-          real &state1 = spaceOp.getState    (stateTmp1   ,loc  ,spl);
-          real &state2 = spaceOp.getState    (stateTmp2   ,loc  ,spl);
-          real &tend   = spaceOp.getStateTend(stateTendArr,loc,0,spl);
-          state2 = 3.*state0/4. + state1/4. + dtloc*tend/4.;
-        };
-
-        spaceOp.applyStateTendencies( applySingleTendency , spl );
+        auto &stateTendArr     = this->stateTendArr    ;
+        auto &stateTendArrTmp  = this->stateTendArrTmp ;
+        auto &tracerTendArr    = this->tracerTendArr   ;
+        auto &tracerTendArrTmp = this->tracerTendArrTmp;
+        parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+          for (int l=0; l < numState; l++) {
+            stateTendArr (l,k,j,i) += stateTendArrTmp (l,k,j,i);
+            tracerTendArr(l,k,j,i) += tracerTendArrTmp(l,k,j,i);
+          }
+        });
       }
-      {
-        auto &tracerTendArr = this->tracerTendArr;
-        auto &tracerTmp1    = this->tracerTmp1   ;
-        auto &tracerTmp2    = this->tracerTmp2   ;
-        auto applySingleTendency = YAKL_LAMBDA (Location const &loc) {
-          real &tracer0 = spaceOp.getTracer    (tracerArr    ,loc  ,spl);
-          real &tracer1 = spaceOp.getTracer    (tracerTmp1   ,loc  ,spl);
-          real &tracer2 = spaceOp.getTracer    (tracerTmp2   ,loc  ,spl);
-          real &tend    = spaceOp.getTracerTend(tracerTendArr,loc,0,spl);
-          tracer2 = 3.*tracer0/4. + tracer1/4. + dtloc*tend/4.;
-        };
+    }
+    // Apply acculumated tendencies
+    {
+      auto &stateTendArr = this->stateTendArr;
+      auto &stateTmp1    = this->stateTmp1   ;
+      auto &stateTmp2    = this->stateTmp2   ;
+      auto applySingleTendency = YAKL_LAMBDA (Location const &loc) {
+        real &state0 = spaceOp.getState    (stateArr    ,loc  ,spl);
+        real &state1 = spaceOp.getState    (stateTmp1   ,loc  ,spl);
+        real &state2 = spaceOp.getState    (stateTmp2   ,loc  ,spl);
+        real &tend   = spaceOp.getStateTend(stateTendArr,loc,0,spl);
+        state0 = state0/3. + 2.*state2/3. + 2.*dtloc*tend/3.;
+      };
 
-        spaceOp.applyTracerTendencies( applySingleTendency , spl );
-      }
+      spaceOp.applyStateTendencies( applySingleTendency , spl );
+    }
+    {
+      auto &tracerTendArr = this->tracerTendArr;
+      auto &tracerTmp1    = this->tracerTmp1   ;
+      auto &tracerTmp2    = this->tracerTmp2   ;
+      auto applySingleTendency = YAKL_LAMBDA (Location const &loc) {
+        real &tracer0 = spaceOp.getTracer    (tracerArr    ,loc  ,spl);
+        real &tracer1 = spaceOp.getTracer    (tracerTmp1   ,loc  ,spl);
+        real &tracer2 = spaceOp.getTracer    (tracerTmp2   ,loc  ,spl);
+        real &tend    = spaceOp.getTracerTend(tracerTendArr,loc,0,spl);
+        tracer0 = tracer0/3. + 2.*tracer2/3. + 2.*dtloc*tend/3.;
+      };
 
-      /////////////////////////////////////////////////////////////////
-      // STAGE 3
-      /////////////////////////////////////////////////////////////////
-      dtloc = dt;
-      spaceOp.computeTendencies( stateTmp2 , stateTendArr , tracerTmp2 , tracerTendArr , dtloc , spl );
-      {
-        auto &stateTendArr = this->stateTendArr;
-        auto &stateTmp1    = this->stateTmp1   ;
-        auto &stateTmp2    = this->stateTmp2   ;
-        auto applySingleTendency = YAKL_LAMBDA (Location const &loc) {
-          real &state0 = spaceOp.getState    (stateArr    ,loc  ,spl);
-          real &state1 = spaceOp.getState    (stateTmp1   ,loc  ,spl);
-          real &state2 = spaceOp.getState    (stateTmp2   ,loc  ,spl);
-          real &tend   = spaceOp.getStateTend(stateTendArr,loc,0,spl);
-          state0 = state0/3. + 2.*state2/3. + 2.*dtloc*tend/3.;
-        };
-
-        spaceOp.applyStateTendencies( applySingleTendency , spl );
-      }
-      {
-        auto &tracerTendArr = this->tracerTendArr;
-        auto &tracerTmp1    = this->tracerTmp1   ;
-        auto &tracerTmp2    = this->tracerTmp2   ;
-        auto applySingleTendency = YAKL_LAMBDA (Location const &loc) {
-          real &tracer0 = spaceOp.getTracer    (tracerArr    ,loc  ,spl);
-          real &tracer1 = spaceOp.getTracer    (tracerTmp1   ,loc  ,spl);
-          real &tracer2 = spaceOp.getTracer    (tracerTmp2   ,loc  ,spl);
-          real &tend    = spaceOp.getTracerTend(tracerTendArr,loc,0,spl);
-          tracer0 = tracer0/3. + 2.*tracer2/3. + 2.*dtloc*tend/3.;
-        };
-
-        spaceOp.applyTracerTendencies( applySingleTendency , spl );
-      }
+      spaceOp.applyTracerTendencies( applySingleTendency , spl );
     }
   }
 
