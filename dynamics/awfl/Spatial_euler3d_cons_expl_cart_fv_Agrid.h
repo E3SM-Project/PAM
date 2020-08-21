@@ -522,10 +522,10 @@ public:
               // Compute constant theta hydrostatic background state
               real th = 300;
               real rh = profiles::initConstTheta_density(th,zloc);
-              real tp = profiles::ellipsoid_linear(xloc, yloc, zloc, xlen/2, ylen/2, 2000, 2000, 2000, 2000, 2 );
+              real tp = profiles::ellipsoid_linear(xloc, yloc, zloc, xlen/2, ylen/2, 2000, 2000, 2000, 2000, 0.01 );
 
               // Initialize tracers as rho*tracer / rho_h (rho_h is multiplied back onto GLL point values)
-              tracers(l,hs+k,hs+j,hs+i) += rh * tp * wt;
+              tracers(l,hs+k,hs+j,hs+i) += rh * (1+tp) * wt;
             }
           }
         }
