@@ -525,7 +525,7 @@ public:
               real t = th + tp;
 
               // Initialize tracers as rho*tracer / rho_h (rho_h is multiplied back onto GLL point values)
-              tracers(l,hs+k,hs+j,hs+i) += rh * t * wt;
+              tracers(l,hs+k,hs+j,hs+i) += rh * (t-th) * wt;
             }
           }
         }
@@ -896,7 +896,11 @@ public:
         }
       }
       for (int l = 0; l < numTracers; l++) {
-        tracerTend(l,k,j,i) = - ( tracerFluxLimits(l,0,k,j,i+1) - tracerFluxLimits(l,0,k,j,i) ) / dx;
+        if (sim2d && l == idV) {
+          tracerTend(l,k,j,i) = 0;
+        } else {
+          tracerTend(l,k,j,i) = - ( tracerFluxLimits(l,0,k,j,i+1) - tracerFluxLimits(l,0,k,j,i) ) / dx;
+        }
       }
     });
   }
@@ -1472,7 +1476,11 @@ public:
         }
       }
       for (int l=0; l < numTracers; l++) {
-        tracerTend(l,k,j,i) = - ( tracerFluxLimits(l,0,k+1,j,i) - tracerFluxLimits(l,0,k,j,i) ) / dz;
+        if (sim2d && l == idV) {
+          tracerTend(l,k,j,i) = 0;
+        } else {
+          tracerTend(l,k,j,i) = - ( tracerFluxLimits(l,0,k+1,j,i) - tracerFluxLimits(l,0,k,j,i) ) / dz;
+        }
       }
     });
   }
