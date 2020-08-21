@@ -473,7 +473,7 @@ public:
               // Compute constant theta hydrostatic background state
               real th = 300;
               real rh = profiles::initConstTheta_density(th,zloc);
-              real tp = profiles::ellipsoid_linear(xloc, yloc, zloc, xlen/2, ylen/2, 2000, 2000, 2000, 2000, 10 );
+              real tp = profiles::ellipsoid_linear(xloc, yloc, zloc, xlen/2, ylen/2, 2000, 2000, 2000, 2000, 2 );
               real t = th + tp;
               state(idT,hs+k,hs+j,hs+i) += (rh*t - rh*th) * wt;
             }
