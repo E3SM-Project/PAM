@@ -1,12 +1,12 @@
 
 #include "const.h"
 #include "Spatial_euler3d_cons_expl_cart_fv_Agrid.h"
-#include "Temporal_ader.h"
+#include "Temporal_ssprk3.h"
 
 // Define the Spatial operator based on constants from the Temporal operator
 typedef Spatial_euler3d_cons_expl_cart_fv_Agrid<nTimeDerivs,timeAvg,nAder> Spatial;
 // Define the Temporal operator based on the Spatial operator
-typedef Temporal_ader<Spatial> Temporal;
+typedef Temporal_ssprk3<Spatial> Temporal;
 
 int main(int argc, char** argv) {
   yakl::init();

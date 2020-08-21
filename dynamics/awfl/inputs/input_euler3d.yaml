@@ -1,6 +1,6 @@
 ---
 # Simulation time in seconds
-simTime  : 2000.
+simTime  : 1000.
 
 # Number of cells to use
 nx       : 100
@@ -16,7 +16,7 @@ bc_x   : periodic
 bc_y   : periodic
 bc_z   : wall
 
-weno_scalars : true
+weno_scalars : false
 
 weno_winds   : false
 

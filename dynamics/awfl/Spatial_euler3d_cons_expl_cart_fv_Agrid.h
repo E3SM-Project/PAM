@@ -707,6 +707,11 @@ public:
           compute_timeAvg( ruw_DTs      , dt );
           compute_timeAvg( rut_DTs      , dt );
           compute_timeAvg( rt_gamma_DTs , dt );
+        } else {
+          for (int ii=0; ii < ngll; ii++) {
+            r_tavg (ii) = r_DTs (0,ii);
+            ru_tavg(ii) = ru_DTs(0,ii);
+          }
         }
 
         //////////////////////////////////////////
@@ -896,11 +901,7 @@ public:
         }
       }
       for (int l = 0; l < numTracers; l++) {
-        if (sim2d && l == idV) {
-          tracerTend(l,k,j,i) = 0;
-        } else {
-          tracerTend(l,k,j,i) = - ( tracerFluxLimits(l,0,k,j,i+1) - tracerFluxLimits(l,0,k,j,i) ) / dx;
-        }
+        tracerTend(l,k,j,i) = - ( tracerFluxLimits(l,0,k,j,i+1) - tracerFluxLimits(l,0,k,j,i) ) / dx;
       }
     });
   }
@@ -1037,6 +1038,11 @@ public:
           compute_timeAvg( rvw_DTs          , dt );
           compute_timeAvg( rvt_DTs          , dt );
           compute_timeAvg( rt_gamma_DTs     , dt );
+        } else {
+          for (int jj=0; jj < ngll; jj++) {
+            r_tavg (jj) = r_DTs (0,jj);
+            rv_tavg(jj) = rv_DTs(0,jj);
+          }
         }
 
         //////////////////////////////////////////
@@ -1366,6 +1372,11 @@ public:
           compute_timeAvg( rww_DTs          , dt );
           compute_timeAvg( rwt_DTs          , dt );
           compute_timeAvg( rt_gamma_DTs     , dt );
+        } else {
+          for (int ii=0; ii < ngll; ii++) {
+            r_tavg (ii) = r_DTs (0,ii);
+            rw_tavg(ii) = rw_DTs(0,ii);
+          }
         }
 
         //////////////////////////////////////////
@@ -1567,11 +1578,7 @@ public:
         }
       }
       for (int l=0; l < numTracers; l++) {
-        if (sim2d && l == idV) {
-          tracerTend(l,k,j,i) = 0;
-        } else {
-          tracerTend(l,k,j,i) = - ( tracerFluxLimits(l,0,k+1,j,i) - tracerFluxLimits(l,0,k,j,i) ) / dz;
-        }
+        tracerTend(l,k,j,i) = - ( tracerFluxLimits(l,0,k+1,j,i) - tracerFluxLimits(l,0,k,j,i) ) / dz;
       }
     });
   }
