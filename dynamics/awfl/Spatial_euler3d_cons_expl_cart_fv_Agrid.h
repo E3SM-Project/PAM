@@ -572,7 +572,7 @@ public:
         computeTendenciesX( state , stateTend , tracers , tracerTend , dt );
       }
     }
-    if (splitIndex == numSplit()) dimSwitch = ! dimSwitch;
+    if (splitIndex == numSplit()-1) dimSwitch = ! dimSwitch;
   } // computeTendencies
 
 
@@ -699,14 +699,14 @@ public:
         if (timeAvg) {
           compute_timeAvg( r_DTs  , r_tavg  , dt );
           compute_timeAvg( ru_DTs , ru_tavg , dt );
-          compute_timeAvg( rv_DTs       , dt );
-          compute_timeAvg( rw_DTs       , dt );
-          compute_timeAvg( rt_DTs       , dt );
-          compute_timeAvg( ruu_DTs      , dt );
-          compute_timeAvg( ruv_DTs      , dt );
-          compute_timeAvg( ruw_DTs      , dt );
-          compute_timeAvg( rut_DTs      , dt );
-          compute_timeAvg( rt_gamma_DTs , dt );
+          compute_timeAvg( rv_DTs           , dt );
+          compute_timeAvg( rw_DTs           , dt );
+          compute_timeAvg( rt_DTs           , dt );
+          compute_timeAvg( ruu_DTs          , dt );
+          compute_timeAvg( ruv_DTs          , dt );
+          compute_timeAvg( ruw_DTs          , dt );
+          compute_timeAvg( rut_DTs          , dt );
+          compute_timeAvg( rt_gamma_DTs     , dt );
         } else {
           for (int ii=0; ii < ngll; ii++) {
             r_tavg (ii) = r_DTs (0,ii);
@@ -1007,10 +1007,10 @@ public:
           real v = rv_DTs(0,jj) / r;
           real w = rw_DTs(0,jj) / r;
           real t = rt_DTs(0,jj) / r;
-          rvu_DTs    (0,jj) = r*v*u;
-          rvv_DTs    (0,jj) = r*v*v;
-          rvw_DTs    (0,jj) = r*v*w;
-          rvt_DTs    (0,jj) = r*v*t;
+          rvu_DTs     (0,jj) = r*v*u;
+          rvv_DTs     (0,jj) = r*v*v;
+          rvw_DTs     (0,jj) = r*v*w;
+          rvt_DTs     (0,jj) = r*v*t;
           rt_gamma_DTs(0,jj) = pow(r*t,GAMMA);
         }
 
@@ -1141,15 +1141,15 @@ public:
       }
       for (int l=0; l < numTracers; l++) {
         if        (bc_y == BC_PERIODIC) {
-          tracerLimits     (l,0,k,0 ,i) = tracerLimits     (l,0,k,ny,i);
-          tracerFluxLimits (l,0,k,0 ,i) = tracerFluxLimits (l,0,k,ny,i);
-          tracerLimits     (l,1,k,ny,i) = tracerLimits     (l,1,k,0 ,i);
-          tracerFluxLimits (l,1,k,ny,i) = tracerFluxLimits (l,1,k,0 ,i);
+          tracerLimits    (l,0,k,0 ,i) = tracerLimits    (l,0,k,ny,i);
+          tracerFluxLimits(l,0,k,0 ,i) = tracerFluxLimits(l,0,k,ny,i);
+          tracerLimits    (l,1,k,ny,i) = tracerLimits    (l,1,k,0 ,i);
+          tracerFluxLimits(l,1,k,ny,i) = tracerFluxLimits(l,1,k,0 ,i);
         } else if (bc_y == BC_WALL    ) {
-          tracerLimits     (l,0,k,0 ,i) = tracerLimits     (l,1,k,0 ,i);
-          tracerFluxLimits (l,0,k,0 ,i) = tracerFluxLimits (l,1,k,0 ,i);
-          tracerLimits     (l,1,k,ny,i) = tracerLimits     (l,0,k,ny,i);
-          tracerFluxLimits (l,1,k,ny,i) = tracerFluxLimits (l,0,k,ny,i);
+          tracerLimits    (l,0,k,0 ,i) = tracerLimits    (l,1,k,0 ,i);
+          tracerFluxLimits(l,0,k,0 ,i) = tracerFluxLimits(l,1,k,0 ,i);
+          tracerLimits    (l,1,k,ny,i) = tracerLimits    (l,0,k,ny,i);
+          tracerFluxLimits(l,1,k,ny,i) = tracerFluxLimits(l,0,k,ny,i);
         }
       }
     });
@@ -1173,6 +1173,8 @@ public:
       real p = C0 * pow(r*t,GAMMA);
       real cs2 = GAMMA*p/r;
       real cs  = sqrt(cs2);
+
+      // COMPUTE UPWIND STATE FLUXES
       // Get left and right fluxes
       real f1_L = stateFluxLimits(idR,0,k,j,i);   real f1_R = stateFluxLimits(idR,1,k,j,i);
       real f2_L = stateFluxLimits(idU,0,k,j,i);   real f2_R = stateFluxLimits(idU,1,k,j,i);

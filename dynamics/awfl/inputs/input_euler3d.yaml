@@ -1,6 +1,6 @@
 ---
 # Simulation time in seconds
-simTime  : 1000.
+simTime  : 1000
 
 # Number of cells to use
 nx       : 100
@@ -16,9 +16,9 @@ bc_x   : periodic
 bc_y   : periodic
 bc_z   : wall
 
-weno_scalars : false
+weno_scalars : true
 
-weno_winds   : false
+weno_winds   : true
 
 # Data to initialize: thermal
 initData : thermal

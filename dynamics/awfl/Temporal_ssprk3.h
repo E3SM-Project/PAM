@@ -60,10 +60,10 @@ public:
     // TODO: pass an MPI communicator to computeTendencies
 
     for (int spl = 0 ; spl < spaceOp.numSplit() ; spl++) {
-      real dtloc = dt;
       /////////////////////////////////////////////////////////////////
       // STAGE 1
       /////////////////////////////////////////////////////////////////
+      real dtloc = dt;
       spaceOp.computeTendencies( stateArr , stateTendArr , tracerArr , tracerTendArr , dtloc , spl );
       {
         auto &stateTendArr   = this->stateTendArr  ;
