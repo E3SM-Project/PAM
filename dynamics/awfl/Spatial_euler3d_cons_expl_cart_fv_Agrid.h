@@ -91,7 +91,7 @@ public:
   real5d stateLimits;
   real5d tracerLimits;
   real5d stateFluxLimits;
-  real5d tracerFlux;
+  real4d tracerFlux;
   // Hydrostatically balanced values for density, potential temperature, and pressure
   real1d hyDensCells;
   real1d hyPressureCells;
@@ -141,6 +141,8 @@ public:
   int numTracers;
   std::vector<std::string> tracerName;
   std::vector<std::string> tracerDesc;
+  std::vector<bool>        tracerPosVect;
+  bool1d                   tracerPos;
 
   // Values read from input file
   int         nx;
@@ -162,10 +164,10 @@ public:
 
 
 
-  void addTracer(std::string name , std::string desc = "") {
-    numTracers++;
-    tracerName.push_back(name);
-    tracerDesc.push_back(desc);
+  void addTracer(std::string name , bool posDef = true , std::string desc = "" ) {
+    tracerName   .push_back(name  );
+    tracerDesc   .push_back(desc  );
+    tracerPosVect.push_back(posDef);
   }
 
 
@@ -372,10 +374,20 @@ public:
 
     weno::wenoSetIdealSigma(this->idl,this->sigma);
 
+    // Get the number of tracers from the tracer std::vector variables
+    numTracers = tracerName.size();
+    // Setup tracerPos for use on the device
+    tracerPos = bool1d("tracerPos",numTracers);
+    boolHost1d tracerPosHost("tracerPosHost",numTracers);
+    for (int i=0; i < numTracers; i++) {
+      tracerPosHost(i) = tracerPosVect[i];
+    }
+    tracerPosHost.deep_copy_to(tracerPos);
+
     stateLimits     = real5d("stateLimits"    ,numState  ,2,nz+1,ny+1,nx+1);
     tracerLimits    = real5d("tracerLimits"   ,numTracers,2,nz+1,ny+1,nx+1);
     stateFluxLimits = real5d("stateFluxLimits",numState  ,2,nz+1,ny+1,nx+1);
-    tracerFlux      = real5d("tracerFlux"     ,numTracers  ,nz+1,ny+1,nx+1);
+    tracerFlux      = real4d("tracerFlux"     ,numTracers  ,nz+1,ny+1,nx+1);
 
     hyDensCells          = real1d("hyDensCells       ",nz+2*hs);
     hyPressureCells      = real1d("hyPressureCells   ",nz+2*hs);
@@ -522,10 +534,20 @@ public:
               // Compute constant theta hydrostatic background state
               real th = 300;
               real rh = profiles::initConstTheta_density(th,zloc);
-              real tp = profiles::ellipsoid_linear(xloc, yloc, zloc, xlen/2, ylen/2, 2000, 2000, 2000, 2000, 0.01 );
 
               // Initialize tracers as rho*tracer / rho_h (rho_h is multiplied back onto GLL point values)
-              tracers(l,hs+k,hs+j,hs+i) += rh * (1) * wt;
+              if        (l == 0) {
+                tracers(l,hs+k,hs+j,hs+i) += rh * 1 * wt;
+              } else if (l == 1) {
+                real tval = profiles::ellipsoid_linear(xloc, yloc, zloc, xlen/2, ylen/2, 2000, 2000, 2000, 2000, 2 );
+                tracers(l,hs+k,hs+j,hs+i) += rh * tval * wt;
+              } else if (l == 2) {
+                bool insideBlock = k >= 1*nz/10 && k < 3*nz/10 &&
+                                   i >= 4*nx/10 && i < 6*nx/10;
+                if (! sim2d) { insideBlock = insideBlock && j >= 4*ny/10 && j < 6*ny/10; }
+                real tval = insideBlock ? 1 : 0;
+                tracers(l,hs+k,hs+j,hs+i) += rh * tval * wt;
+              }
             }
           }
         }
@@ -597,6 +619,7 @@ public:
     auto &tracerLimits            = this->tracerLimits           ;
     auto &stateFluxLimits         = this->stateFluxLimits        ;
     auto &tracerFlux              = this->tracerFlux             ;
+    auto &tracerPos               = this->tracerPos              ;
     auto &numTracers              = this->numTracers             ;
     auto &bc_x                    = this->bc_x                   ;
 
@@ -763,6 +786,9 @@ public:
             for (int ii=0; ii < ord; ii++) { stencil(ii) = tracers(tr,hs+k,hs+j,i+ii); }
             reconstruct_gll_values( stencil , rt_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
             for (int ii=0; ii < ngll; ii++) { rt_DTs(0,ii) *= r_DTs(0,ii); }
+            if (tracerPos(tr)) {
+              for (int ii=0; ii < ngll; ii++) { rt_DTs(0,ii) = max( 0._fp , rt_DTs(0,ii) ); }
+            }
           } // END: Reconstruct the tracer
 
           // Compute the tracer flux
@@ -785,9 +811,12 @@ public:
             compute_timeAvg( rt_DTs  , dt );
             compute_timeAvg( rut_DTs , dt );
           }
+          if (tracerPos(tr)) {
+            for (int ii=0; ii < ngll; ii++) { rt_DTs(0,ii) = max( 0._fp , rt_DTs(0,ii) ); }
+          }
 
           ////////////////////////////////////////////////////////////
-          // Store cell edge estimates of the tracer and tracer flux
+          // Store cell edge estimates of the tracer
           ////////////////////////////////////////////////////////////
           tracerLimits(tr,1,k,j,i  ) = rt_DTs (0,0     ); // Left interface
           tracerLimits(tr,0,k,j,i+1) = rt_DTs (0,ngll-1); // Right interface
@@ -887,7 +916,38 @@ public:
     });
 
     //////////////////////////////////////////////////////////
-    // Add flux waves to the tendencies
+    // Limit the tracer fluxes for positivity
+    //////////////////////////////////////////////////////////
+    parallel_for( Bounds<4>(numTracers,nz,ny,nx+1) , YAKL_LAMBDA (int tr, int k, int j, int i) {
+      real constexpr eps = 1.e-10;
+      real u = 0.5_fp * ( stateLimits(idU,0,k,j,i) + stateLimits(idU,1,k,j,i) );
+      // Solid wall BCs mean u == 0 at boundaries, so we assume periodic if u != 0
+      if (tracerPos(tr)) {
+        // Compute and apply the flux reduction factor of the upwind cell
+        if      (u > 0) {
+          // upwind is to the left of this interface
+          int ind_i = i-1;
+          if (ind_i == -1) ind_i = nx-1;
+          real f1 = min( tracerFlux(tr,k,j,ind_i  ) , 0._fp );
+          real f2 = max( tracerFlux(tr,k,j,ind_i+1) , 0._fp );
+          real fluxOut = dt*(f2-f1)/dx;
+          real dens = state(idR,hs+k,hs+j,hs+ind_i) + hyDensCells(hs+k);
+          tracerFlux(tr,k,j,i) *= min( 1._fp , tracers(tr,hs+k,hs+j,hs+ind_i) * dens / (fluxOut + eps) );
+        } else if (u < 0) {
+          // upwind is to the right of this interface
+          int ind_i = i;
+          if (ind_i == nx) ind_i = 0;
+          real f1 = min( tracerFlux(tr,k,j,ind_i  ) , 0._fp );
+          real f2 = max( tracerFlux(tr,k,j,ind_i+1) , 0._fp );
+          real fluxOut = dt*(f2-f1)/dx;
+          real dens = state(idR,hs+k,hs+j,hs+ind_i) + hyDensCells(hs+k);
+          tracerFlux(tr,k,j,i) *= min( 1._fp , tracers(tr,hs+k,hs+j,hs+ind_i) * dens / (fluxOut + eps) );
+        }
+      }
+    });
+
+    //////////////////////////////////////////////////////////
+    // Compute the tendencies
     //////////////////////////////////////////////////////////
     parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA(int k, int j, int i) {
       for (int l = 0; l < numState; l++) {
@@ -898,14 +958,11 @@ public:
         }
       }
       for (int l = 0; l < numTracers; l++) {
-        tracerTend(l,k,j,i) = - ( tracerFlux(l,k,j,i+1) - tracerFlux(l,k,j,i) ) / dx;
+        // Compute tracer tendency
+        tracerTend(l,k,j,i) = - ( tracerFlux(l,k,j,i+1) - tracerFlux(l,k,j,i  ) ) / dx;
+        // Multiply density back onto tracers
+        tracers(l,hs+k,hs+j,hs+i) *= (state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k));
       }
-    });
-
-    // Post-process the tracers by multiplying by density inside the domain
-    // After this, we can reconstruct tracers only (not rho * tracer)
-    parallel_for( Bounds<4>(numTracers,nz,ny,nx) , YAKL_LAMBDA (int tr, int k, int j, int i) {
-      tracers(tr,hs+k,hs+j,hs+i) *= (state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k));
     });
   }
 
@@ -931,6 +988,7 @@ public:
     auto &stateFluxLimits         = this->stateFluxLimits        ;
     auto &tracerLimits            = this->tracerLimits           ;
     auto &tracerFlux              = this->tracerFlux             ;
+    auto &tracerPos               = this->tracerPos              ;
     auto &numTracers              = this->numTracers             ;
     auto &bc_y                    = this->bc_y                   ;
 
@@ -1097,6 +1155,9 @@ public:
             for (int jj=0; jj < ord; jj++) { stencil(jj) = tracers(tr,hs+k,j+jj,hs+i); }
             reconstruct_gll_values( stencil , rt_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
             for (int jj=0; jj < ngll; jj++) { rt_DTs(0,jj) *= r_DTs(0,jj); }
+            if (tracerPos(tr)) {
+              for (int jj=0; jj < ngll; jj++) { rt_DTs(0,jj) = max( 0._fp , rt_DTs(0,jj) ); }
+            }
           } // END: Reconstruct the tracer
 
           // Compute the tracer flux
@@ -1119,12 +1180,15 @@ public:
             compute_timeAvg( rt_DTs  , dt );
             compute_timeAvg( rvt_DTs , dt );
           }
+          if (tracerPos(tr)) {
+            for (int jj=0; jj < ngll; jj++) { rt_DTs(0,jj) = max( 0._fp , rt_DTs(0,jj) ); }
+          }
 
           ////////////////////////////////////////////////////////////
-          // Store cell edge estimates of the tracer and tracer flux
+          // Store cell edge estimates of the tracer
           ////////////////////////////////////////////////////////////
-          tracerLimits    (tr,1,k,j  ,i) = rt_DTs (0,0     ); // Left interface
-          tracerLimits    (tr,0,k,j+1,i) = rt_DTs (0,ngll-1); // Right interface
+          tracerLimits(tr,1,k,j  ,i) = rt_DTs (0,0     ); // Left interface
+          tracerLimits(tr,0,k,j+1,i) = rt_DTs (0,ngll-1); // Right interface
         }
       } // END: Reconstruct, time-average, and store tracer fluxes
 
@@ -1221,20 +1285,49 @@ public:
     });
 
     //////////////////////////////////////////////////////////
-    // Add flux waves to the tendencies
+    // Limit the tracer fluxes for positivity
+    //////////////////////////////////////////////////////////
+    parallel_for( Bounds<4>(numTracers,nz,ny+1,nx) , YAKL_LAMBDA (int tr, int k, int j, int i) {
+      real constexpr eps = 1.e-10;
+      real v = 0.5_fp * ( stateLimits(idV,0,k,j,i) + stateLimits(idV,1,k,j,i) );
+      // Solid wall BCs mean u == 0 at boundaries, so we assume periodic if u != 0
+      if (tracerPos(tr)) {
+        // Compute and apply the flux reduction factor of the upwind cell
+        if      (v > 0) {
+          // upwind is to the left of this interface
+          int ind_j = j-1;
+          if (ind_j == -1) ind_j = ny-1;
+          real f1 = min( tracerFlux(tr,k,ind_j  ,i) , 0._fp );
+          real f2 = max( tracerFlux(tr,k,ind_j+1,i) , 0._fp );
+          real fluxOut = dt*(f2-f1)/dy;
+          real dens = state(idR,hs+k,hs+ind_j,hs+i) + hyDensCells(hs+k);
+          tracerFlux(tr,k,j,i) *= min( 1._fp , tracers(tr,hs+k,hs+ind_j,hs+i) * dens / (fluxOut + eps) );
+        } else if (v < 0) {
+          // upwind is to the right of this interface
+          int ind_j = j;
+          if (ind_j == ny) ind_j = 0;
+          real f1 = min( tracerFlux(tr,k,j,ind_j  ) , 0._fp );
+          real f2 = max( tracerFlux(tr,k,j,ind_j+1) , 0._fp );
+          real fluxOut = dt*(f2-f1)/dy;
+          real dens = state(idR,hs+k,hs+ind_j,hs+i) + hyDensCells(hs+k);
+          tracerFlux(tr,k,j,i) *= min( 1._fp , tracers(tr,hs+k,hs+ind_j,hs+i) * dens / (fluxOut + eps) );
+        }
+      }
+    });
+
+    //////////////////////////////////////////////////////////
+    // Compute the tendencies
     //////////////////////////////////////////////////////////
     parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA(int k, int j, int i) {
       for (int l=0; l < numState; l++) {
         stateTend(l,k,j,i) = - ( stateFluxLimits(l,0,k,j+1,i) - stateFluxLimits(l,0,k,j,i) ) / dy;
       }
       for (int l=0; l < numTracers; l++) {
+        // Compute the tracer tendency
         tracerTend(l,k,j,i) = - ( tracerFlux(l,k,j+1,i) - tracerFlux(l,k,j,i) ) / dy;
+        // Multiply density back onto the tracers
+        tracers(l,hs+k,hs+j,hs+i) *= (state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k));
       }
-    });
-
-    // Post-process the tracers by multiplying by density inside the domain
-    parallel_for( Bounds<4>(numTracers,nz,ny,nx) , YAKL_LAMBDA (int tr, int k, int j, int i) {
-      tracers(tr,hs+k,hs+j,hs+i) *= (state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k));
     });
   }
 
@@ -1262,6 +1355,7 @@ public:
     auto &stateFluxLimits         = this->stateFluxLimits        ;
     auto &tracerLimits            = this->tracerLimits           ;
     auto &tracerFlux              = this->tracerFlux             ;
+    auto &tracerPos               = this->tracerPos              ;
     auto &numTracers              = this->numTracers             ;
     auto &bc_z                    = this->bc_z                   ;
     auto &gllWts_ngll             = this->gllWts_ngll            ;
@@ -1446,6 +1540,9 @@ public:
             for (int kk=0; kk < ord; kk++) { stencil(kk) = tracers(tr,k+kk,hs+j,hs+i); }
             reconstruct_gll_values( stencil , rt_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
             for (int kk=0; kk < ngll; kk++) { rt_DTs(0,kk) *= r_DTs(0,kk); }
+            if (tracerPos(tr)) {
+              for (int kk=0; kk < ngll; kk++) { rt_DTs(0,kk) = max( 0._fp , rt_DTs(0,kk) ); }
+            }
           } // END: Reconstruct the tracer
 
           // Compute the tracer flux
@@ -1468,16 +1565,19 @@ public:
             compute_timeAvg( rt_DTs  , dt );
             compute_timeAvg( rwt_DTs , dt );
           }
+          if (tracerPos(tr)) {
+            for (int kk=0; kk < ngll; kk++) { rt_DTs(0,kk) = max( 0._fp , rt_DTs(0,kk) ); }
+          }
           if (bc_z == BC_WALL) {
             if (k == nz-1) rwt_DTs(0,ngll-1) = 0;
             if (k == 0   ) rwt_DTs(0,0     ) = 0;
           }
 
           ////////////////////////////////////////////////////////////
-          // Store cell edge estimates of the tracer and tracer flux
+          // Store cell edge estimates of the tracer
           ////////////////////////////////////////////////////////////
-          tracerLimits    (tr,1,k  ,j,i) = rt_DTs (0,0     ); // Left interface
-          tracerLimits    (tr,0,k+1,j,i) = rt_DTs (0,ngll-1); // Right interface
+          tracerLimits(tr,1,k  ,j,i) = rt_DTs (0,0     ); // Left interface
+          tracerLimits(tr,0,k+1,j,i) = rt_DTs (0,ngll-1); // Right interface
         }
       } // END: Reconstruct, time-average, and store tracer fluxes
 
@@ -1502,11 +1602,11 @@ public:
       }
       for (int l = 0; l < numTracers; l++) {
         if        (bc_z == BC_PERIODIC) {
-          tracerLimits     (l,0,0 ,j,i) = tracerLimits     (l,0,nz,j,i);
-          tracerLimits     (l,1,nz,j,i) = tracerLimits     (l,1,0 ,j,i);
+          tracerLimits(l,0,0 ,j,i) = tracerLimits(l,0,nz,j,i);
+          tracerLimits(l,1,nz,j,i) = tracerLimits(l,1,0 ,j,i);
         } else if (bc_z == BC_WALL    ) {
-          tracerLimits     (l,0,0 ,j,i) = tracerLimits     (l,1,0 ,j,i);
-          tracerLimits     (l,1,nz,j,i) = tracerLimits     (l,0,nz,j,i);
+          tracerLimits(l,0,0 ,j,i) = tracerLimits(l,1,0 ,j,i);
+          tracerLimits(l,1,nz,j,i) = tracerLimits(l,0,nz,j,i);
         }
       }
     });
@@ -1572,7 +1672,36 @@ public:
     });
 
     //////////////////////////////////////////////////////////
-    // Add flux waves to the tendencies
+    // Limit the tracer fluxes for positivity
+    //////////////////////////////////////////////////////////
+    parallel_for( Bounds<4>(numTracers,nz+1,ny,nx) , YAKL_LAMBDA (int tr, int k, int j, int i) {
+      real constexpr eps = 1.e-10;
+      real w = 0.5_fp * ( stateLimits(idW,0,k,j,i) + stateLimits(idW,1,k,j,i) );
+      // Solid wall BCs mean w == 0 at boundaries
+      if (tracerPos(tr)) {
+        // Compute and apply the flux reduction factor of the upwind cell
+        if      (w > 0) {
+          int ind_k = k-1;
+          // upwind is to the left of this interface
+          real f1 = min( tracerFlux(tr,ind_k  ,j,i) , 0._fp );
+          real f2 = max( tracerFlux(tr,ind_k+1,j,i) , 0._fp );
+          real fluxOut = dt*(f2-f1)/dz;
+          real dens = state(idR,hs+ind_k,hs+j,hs+i) + hyDensCells(hs+ind_k);
+          tracerFlux(tr,k,j,i) *= min( 1._fp , tracers(tr,hs+ind_k,hs+j,hs+i) * dens / (fluxOut + eps) );
+        } else if (w < 0) {
+          int ind_k = k;
+          // upwind is to the right of this interface
+          real f1 = min( tracerFlux(tr,ind_k  ,j,i) , 0._fp );
+          real f2 = max( tracerFlux(tr,ind_k+1,j,i) , 0._fp );
+          real fluxOut = dt*(f2-f1)/dz;
+          real dens = state(idR,hs+ind_k,hs+j,hs+i) + hyDensCells(hs+ind_k);
+          tracerFlux(tr,k,j,i) *= min( 1._fp , tracers(tr,hs+ind_k,hs+j,hs+i) * dens / (fluxOut + eps) );
+        }
+      }
+    });
+
+    //////////////////////////////////////////////////////////
+    // Compute the tendencies
     //////////////////////////////////////////////////////////
     parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA(int k, int j, int i) {
       for (int l=0; l < numState; l++) {
@@ -1583,13 +1712,11 @@ public:
         }
       }
       for (int l=0; l < numTracers; l++) {
+        // Compute tracer tendency
         tracerTend(l,k,j,i) = - ( tracerFlux(l,k+1,j,i) - tracerFlux(l,k,j,i) ) / dz;
+        // Multiply density back onto the tracers
+        tracers(l,hs+k,hs+j,hs+i) *= (state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k));
       }
-    });
-
-    // Post-process the tracers by multiplying by density inside the domain
-    parallel_for( Bounds<4>(numTracers,nz,ny,nx) , YAKL_LAMBDA (int tr, int k, int j, int i) {
-      tracers(tr,hs+k,hs+j,hs+i) *= (state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k));
     });
   }
 

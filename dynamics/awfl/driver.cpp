@@ -24,7 +24,9 @@ int main(int argc, char** argv) {
 
     Temporal model;
 
-    model.spaceOp.addTracer("theta","replica of theta");
+    model.spaceOp.addTracer("uniform",true,"constant value of 1");
+    model.spaceOp.addTracer("theta"  ,true,"replica of theta");
+    model.spaceOp.addTracer("block"  ,true,"block in domain center");
 
     model.init(inFile);
 
