@@ -1,6 +1,6 @@
 
 #include "const.h"
-#include "Spatial_euler3d_cons_expl_cart_fv_Agrid_shared_mass_flux.h"
+#include "Spatial_euler3d_cons_expl_cart_fv_Agrid.h"
 #include "Temporal_ader.h"
 
 // Define the Spatial operator based on constants from the Temporal operator
