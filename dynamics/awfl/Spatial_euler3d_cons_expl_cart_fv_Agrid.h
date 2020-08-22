@@ -525,7 +525,7 @@ public:
               real tp = profiles::ellipsoid_linear(xloc, yloc, zloc, xlen/2, ylen/2, 2000, 2000, 2000, 2000, 0.01 );
 
               // Initialize tracers as rho*tracer / rho_h (rho_h is multiplied back onto GLL point values)
-              tracers(l,hs+k,hs+j,hs+i) += rh * (1+tp) * wt;
+              tracers(l,hs+k,hs+j,hs+i) += rh * (1) * wt;
             }
           }
         }
@@ -599,6 +599,12 @@ public:
     auto &tracerFluxLimits        = this->tracerFluxLimits       ;
     auto &numTracers              = this->numTracers             ;
     auto &bc_x                    = this->bc_x                   ;
+
+    // Pre-process the tracers by dividing by density inside the domain
+    // After this, we can reconstruct tracers only (not rho * tracer)
+    parallel_for( Bounds<4>(numTracers,nz,ny,nx) , YAKL_LAMBDA (int tr, int k, int j, int i) {
+      tracers(tr,hs+k,hs+j,hs+i) /= (state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k));
+    });
 
     // Populate the halos
     if        (bc_x == BC_PERIODIC) {
@@ -756,6 +762,7 @@ public:
             SArray<real,1,ord> stencil;
             for (int ii=0; ii < ord; ii++) { stencil(ii) = tracers(tr,hs+k,hs+j,i+ii); }
             reconstruct_gll_values( stencil , rt_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
+            for (int ii=0; ii < ngll; ii++) { rt_DTs(0,ii) *= r_DTs(0,ii); }
           } // END: Reconstruct the tracer
 
           // Compute the tracer flux
@@ -904,6 +911,12 @@ public:
         tracerTend(l,k,j,i) = - ( tracerFluxLimits(l,0,k,j,i+1) - tracerFluxLimits(l,0,k,j,i) ) / dx;
       }
     });
+
+    // Post-process the tracers by multiplying by density inside the domain
+    // After this, we can reconstruct tracers only (not rho * tracer)
+    parallel_for( Bounds<4>(numTracers,nz,ny,nx) , YAKL_LAMBDA (int tr, int k, int j, int i) {
+      tracers(tr,hs+k,hs+j,hs+i) *= (state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k));
+    });
   }
 
 
@@ -930,6 +943,12 @@ public:
     auto &tracerFluxLimits        = this->tracerFluxLimits       ;
     auto &numTracers              = this->numTracers             ;
     auto &bc_y                    = this->bc_y                   ;
+
+    // Pre-process the tracers by dividing by density inside the domain
+    // After this, we can reconstruct tracers only (not rho * tracer)
+    parallel_for( Bounds<4>(numTracers,nz,ny,nx) , YAKL_LAMBDA (int tr, int k, int j, int i) {
+      tracers(tr,hs+k,hs+j,hs+i) /= (state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k));
+    });
 
     // Populate the halos
     if        (bc_y == BC_PERIODIC) {
@@ -1087,6 +1106,7 @@ public:
             SArray<real,1,ord> stencil;
             for (int jj=0; jj < ord; jj++) { stencil(jj) = tracers(tr,hs+k,j+jj,hs+i); }
             reconstruct_gll_values( stencil , rt_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
+            for (int jj=0; jj < ngll; jj++) { rt_DTs(0,jj) *= r_DTs(0,jj); }
           } // END: Reconstruct the tracer
 
           // Compute the tracer flux
@@ -1231,6 +1251,11 @@ public:
         tracerTend(l,k,j,i) = - ( tracerFluxLimits(l,0,k,j+1,i) - tracerFluxLimits(l,0,k,j,i) ) / dy;
       }
     });
+
+    // Post-process the tracers by multiplying by density inside the domain
+    parallel_for( Bounds<4>(numTracers,nz,ny,nx) , YAKL_LAMBDA (int tr, int k, int j, int i) {
+      tracers(tr,hs+k,hs+j,hs+i) *= (state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k));
+    });
   }
 
 
@@ -1261,6 +1286,12 @@ public:
     auto &bc_z                    = this->bc_z                   ;
     auto &gllWts_ngll             = this->gllWts_ngll            ;
 
+    // Pre-process the tracers by dividing by density inside the domain
+    // After this, we can reconstruct tracers only (not rho * tracer)
+    parallel_for( Bounds<4>(numTracers,nz,ny,nx) , YAKL_LAMBDA (int tr, int k, int j, int i) {
+      tracers(tr,hs+k,hs+j,hs+i) /= (state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k));
+    });
+
     // Populate the halos
     if        (bc_z == BC_PERIODIC) {
       parallel_for( Bounds<3>(ny,nx,hs) , YAKL_LAMBDA(int j, int i, int kk) {
@@ -1285,10 +1316,8 @@ public:
           }
         }
         for (int l=0; l < numTracers; l++) {
-          tracers(l,      kk,hs+j,hs+i) = tracers(l,hs     ,hs+j,hs+i) / hyDensCells(hs      )
-                                                                       * hyDensCells(kk      );
-          tracers(l,hs+nz+kk,hs+j,hs+i) = tracers(l,hs+nz-1,hs+j,hs+i) / hyDensCells(hs+nz-1 )
-                                                                       * hyDensCells(hs+nz+kk);
+          tracers(l,      kk,hs+j,hs+i) = tracers(l,hs     ,hs+j,hs+i);
+          tracers(l,hs+nz+kk,hs+j,hs+i) = tracers(l,hs+nz-1,hs+j,hs+i);
         }
       });
     }
@@ -1434,9 +1463,9 @@ public:
           SArray<real,2,nAder,ngll> rt_DTs; // Density * tracer
           { // BEGIN: Reconstruct the tracer
             SArray<real,1,ord> stencil;
-            for (int kk=0; kk < ord; kk++) { stencil(kk) = tracers(tr,k+kk,hs+j,hs+i) / hyDensCells(k+kk); }
+            for (int kk=0; kk < ord; kk++) { stencil(kk) = tracers(tr,k+kk,hs+j,hs+i); }
             reconstruct_gll_values( stencil , rt_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
-            for (int kk=0; kk < ngll; kk++) { rt_DTs(0,kk) = rt_DTs(0,kk) * hyDensGLL(k,kk); }
+            for (int kk=0; kk < ngll; kk++) { rt_DTs(0,kk) *= r_DTs(0,kk); }
           } // END: Reconstruct the tracer
 
           // Compute the tracer flux
@@ -1458,6 +1487,10 @@ public:
           if (timeAvg) {
             compute_timeAvg( rt_DTs  , dt );
             compute_timeAvg( rwt_DTs , dt );
+          }
+          if (bc_z == BC_WALL) {
+            if (k == nz-1) rwt_DTs(0,ngll-1) = 0;
+            if (k == 0   ) rwt_DTs(0,0     ) = 0;
           }
 
           ////////////////////////////////////////////////////////////
@@ -1582,6 +1615,11 @@ public:
       for (int l=0; l < numTracers; l++) {
         tracerTend(l,k,j,i) = - ( tracerFluxLimits(l,0,k+1,j,i) - tracerFluxLimits(l,0,k,j,i) ) / dz;
       }
+    });
+
+    // Post-process the tracers by multiplying by density inside the domain
+    parallel_for( Bounds<4>(numTracers,nz,ny,nx) , YAKL_LAMBDA (int tr, int k, int j, int i) {
+      tracers(tr,hs+k,hs+j,hs+i) *= (state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k));
     });
   }
 
