@@ -901,11 +901,17 @@ public:
       stateFluxLimits(idU,0,k,j,i) = u*w1 + (u-cs)*w5 + (u+cs)*w6;
       stateFluxLimits(idV,0,k,j,i) = w2 + v*w5 + v*w6;
       stateFluxLimits(idW,0,k,j,i) = w3 + w*w5 + w*w6;
-      stateFluxLimits(idT,0,k,j,i) =      t*w5 + t*w6;
+
+      real massFlux = stateFluxLimits(idR,0,k,j,i);
+
+      if (u > 0) {
+        stateFluxLimits(idT,0,k,j,i) = massFlux * stateLimits(idT,0,k,j,i) / r_L;
+      } else {
+        stateFluxLimits(idT,0,k,j,i) = massFlux * stateLimits(idT,1,k,j,i) / r_R;
+      }
 
       // COMPUTE UPWIND TRACER FLUXES
       // Handle it one tracer at a time
-      real massFlux = stateFluxLimits(idR,0,k,j,i);
       for (int tr=0; tr < numTracers; tr++) {
         if (u > 0) {
           tracerFlux(tr,k,j,i) = massFlux * tracerLimits(tr,0,k,j,i) / r_L;
@@ -1270,11 +1276,17 @@ public:
       stateFluxLimits(idU,0,k,j,i) = w2 + u*w5 + u*w6;
       stateFluxLimits(idV,0,k,j,i) = v*w1 + (v-cs)*w5 + (v+cs)*w6;
       stateFluxLimits(idW,0,k,j,i) = w3 + w*w5 + w*w6;
-      stateFluxLimits(idT,0,k,j,i) =      t*w5 + t*w6;
+
+      real massFlux = stateFluxLimits(idR,0,k,j,i);
+
+      if (v > 0) {
+        stateFluxLimits(idT,0,k,j,i) = massFlux * stateLimits(idT,0,k,j,i) / r_L;
+      } else {
+        stateFluxLimits(idT,0,k,j,i) = massFlux * stateLimits(idT,1,k,j,i) / r_R;
+      }
 
       // COMPUTE UPWIND TRACER FLUXES
       // Handle it one tracer at a time
-      real massFlux = stateFluxLimits(idR,0,k,j,i);
       for (int tr=0; tr < numTracers; tr++) {
         if (v > 0) {
           tracerFlux(tr,k,j,i) = massFlux * tracerLimits(tr,0,k,j,i) / r_L;
@@ -1659,9 +1671,16 @@ public:
       stateFluxLimits(idW,0,k,j,i) = w*w1 + (w-cs)*w5 + (w+cs)*w6;
       stateFluxLimits(idT,0,k,j,i) =      t*w5 + t*w6;
 
+      real massFlux = stateFluxLimits(idR,0,k,j,i);
+
+      if (w > 0) {
+        stateFluxLimits(idT,0,k,j,i) = massFlux * stateLimits(idT,0,k,j,i) / r_L;
+      } else {
+        stateFluxLimits(idT,0,k,j,i) = massFlux * stateLimits(idT,1,k,j,i) / r_R;
+      }
+
       // COMPUTE UPWIND TRACER FLUXES
       // Handle it one tracer at a time
-      real massFlux = stateFluxLimits(idR,0,k,j,i);
       for (int tr=0; tr < numTracers; tr++) {
         if (w > 0) {
           tracerFlux(tr,k,j,i) = massFlux * tracerLimits(tr,0,k,j,i) / r_L;
