@@ -1669,7 +1669,6 @@ public:
       stateFluxLimits(idU,0,k,j,i) = w2 + u*w5 + u*w6;
       stateFluxLimits(idV,0,k,j,i) = w3 + v*w5 + v*w6;
       stateFluxLimits(idW,0,k,j,i) = w*w1 + (w-cs)*w5 + (w+cs)*w6;
-      stateFluxLimits(idT,0,k,j,i) =      t*w5 + t*w6;
 
       real massFlux = stateFluxLimits(idR,0,k,j,i);
 
