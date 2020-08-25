@@ -8,6 +8,9 @@
 #include "Profiles.h"
 
 
+bool constexpr TRACER_POSITIVE        = true;
+
+
 /*********************************************
  ***** Required inside the Spatial class *****
  *********************************************
@@ -66,10 +69,6 @@ template <int nTimeDerivs, bool timeAvg, int nAder> class Spatial_euler3d_cons_e
 public:
   
   static_assert(nTimeDerivs == 1 , "ERROR: This Spatial class isn't setup to use nTimeDerivs > 1");
-
-  Spatial_euler3d_cons_expl_cart_fv_Agrid() {
-    numTracers = 0;
-  }
 
   int static constexpr hs = (ord-1)/2;
   int static constexpr numState = 5;
@@ -139,10 +138,12 @@ public:
   bool dimSwitch;
 
   int numTracers;
+  int tracerCount;
   std::vector<std::string> tracerName;
   std::vector<std::string> tracerDesc;
-  std::vector<bool>        tracerPosVect;
   bool1d                   tracerPos;
+  real1d                   tracerRd;
+  real1d                   tracerCp;
 
   // Values read from input file
   int         nx;
@@ -160,14 +161,75 @@ public:
   int         dataSpec;
 
 
+  Spatial_euler3d_cons_expl_cart_fv_Agrid() {
+    numTracers = 0;
+    tracerCount = 0;
+  }
+
+
   static_assert(ord%2 == 1,"ERROR: ord must be an odd integer");
 
 
 
-  void addTracer(std::string name , bool posDef = true , std::string desc = "" ) {
+  // Initialize a tracer as just the wet mixing ratio. Full density will be
+  // multiplied during the initTracers routine to store tracer mass
+  template <class F> void addTracer(std::string name , std::string desc , F const &initialWMR ,
+                                    bool posDef , real rd=0 , real cp=0 ) {
+    auto nx                 = this->nx               ;
+    auto ny                 = this->ny               ;
+    auto nz                 = this->nz               ;
+    auto dx                 = this->dx               ;
+    auto dy                 = this->dy               ;
+    auto dz                 = this->dz               ;
+    auto gllPts_ord         = this->gllPts_ord       ;
+    auto gllWts_ord         = this->gllWts_ord       ;
+    auto gllPts_ngll        = this->gllPts_ngll      ;
+    auto gllWts_ngll        = this->gllWts_ngll      ;
+    auto &sim2d             = this->sim2d            ;
+    auto &xlen              = this->xlen             ;
+    auto &ylen              = this->ylen             ;
+    auto &numTracers        = this->numTracers       ;
+    auto &tracerPos         = this->tracerPos        ;
+    auto &tracerRd          = this->tracerRd         ;
+    auto &tracerCp          = this->tracerCp         ;
+
+    int tr = tracerCount;
     tracerName   .push_back(name  );
     tracerDesc   .push_back(desc  );
-    tracerPosVect.push_back(posDef);
+    parallel_for( 1 , YAKL_LAMBDA (int i) {
+      tracerPos(tr) = posDef;
+      tracerRd (tr) = rd;
+      tracerCp (tr) = cp;
+    });
+
+    parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+      for (int l=0; l < numTracers; l++) {
+        tracers(l,hs+k,hs+j,hs+i) = 0;
+        for (int kk=0; kk<ord; kk++) {
+          for (int jj=0; jj<ord; jj++) {
+            for (int ii=0; ii<ord; ii++) {
+              real zloc = (k+0.5_fp)*dz + gllPts_ord(kk)*dz;
+              real yloc;
+              if (sim2d) {
+                yloc = ylen/2;
+              } else {
+                yloc = (j+0.5_fp)*dy + gllPts_ord(jj)*dy;
+              }
+              real xloc = (i+0.5_fp)*dx + gllPts_ord(ii)*dx;
+
+              real wt = gllWts_ord(kk) * gllWts_ord(jj) * gllWts_ord(ii);
+              // Compute constant theta hydrostatic background state
+              real th = 300;
+              real rh = profiles::initConstTheta_density(th,zloc);
+
+              // Initialize tracers as rho*tracer / rho_h (rho_h is multiplied back onto GLL point values)
+              real tval = initialWMR(xloc,yloc,zloc);
+            }
+          }
+        }
+      }
+    });
+    tracerCount++;
   }
 
 
@@ -259,7 +321,12 @@ public:
 
 
   // Initialize crap needed by recon()
-  void init(std::string inFile) {
+  void init(std::string inFile, int numTracers) {
+    this->numTracers = numTracers;
+    tracerPos = bool1d("tracerPos",numTracers);
+    tracerRd  = real1d("tracerRd" ,numTracers);
+    tracerCp  = real1d("tracerCp" ,numTracers);
+
     dtInit = 0;
     dimSwitch = true;
 
@@ -499,20 +566,6 @@ public:
 
   // Initialize the state
   void initTracers( TracerArr &tracers ) {
-    auto nx                 = this->nx               ;
-    auto ny                 = this->ny               ;
-    auto nz                 = this->nz               ;
-    auto dx                 = this->dx               ;
-    auto dy                 = this->dy               ;
-    auto dz                 = this->dz               ;
-    auto gllPts_ord         = this->gllPts_ord       ;
-    auto gllWts_ord         = this->gllWts_ord       ;
-    auto gllPts_ngll        = this->gllPts_ngll      ;
-    auto gllWts_ngll        = this->gllWts_ngll      ;
-    auto &sim2d             = this->sim2d            ;
-    auto &xlen              = this->xlen             ;
-    auto &ylen              = this->ylen             ;
-    auto &numTracers        = this->numTracers       ;
 
     // Compute the state
     parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {

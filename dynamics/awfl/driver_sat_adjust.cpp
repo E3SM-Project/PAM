@@ -2,11 +2,15 @@
 #include "const.h"
 #include "Spatial_euler3d_cons_expl_cart_fv_Agrid.h"
 #include "Temporal_ader.h"
+#include "Profiles.h"
 
 // Define the Spatial operator based on constants from the Temporal operator
 typedef Spatial_euler3d_cons_expl_cart_fv_Agrid<nTimeDerivs,timeAvg,nAder> Spatial;
+
 // Define the Temporal operator based on the Spatial operator
 typedef Temporal_ader<Spatial> Temporal;
+
+typedef PhysicsSaturationAdjustment Physics;
 
 int main(int argc, char** argv) {
   yakl::init();
@@ -24,14 +28,27 @@ int main(int argc, char** argv) {
 
     Temporal model;
 
-    model.spaceOp.addTracer("uniform",true,"constant value of 1");
-    model.spaceOp.addTracer("theta"  ,true,"replica of theta");
-    model.spaceOp.addTracer("block"  ,true,"block in domain center");
 
-    model.init(inFile);
+    model.init(inFile , 2);
+    Spatial::TracerArr tracers = model.spaceOp.createTracerArr();
+    // Initialize water vapor
+    {
+      auto initialDMR = YAKL_LAMBDA (real x, real y, real z)->real {
+        return profiles::ellipsoid_linear(x,y,z  ,  xlen/2,ylen/2,2000  ,  2000,2000,2000  ,  0.002);
+      };
+      model.spaceOp.addTracer("water_vapor" , "Water Vapor dry mixing ratio" ,
+                              TRACER_POS , initialDMR , 461.5 , 1864. );
+    }
+    // Initialize cloud liquid
+    {
+      auto initialDMR = YAKL_LAMBDA (real x, real y, real z)->real {
+        return 0;
+      };
+      model.spaceOp.addTracer("cloud_liquid" , "Cloud liquied dry mixing ratio" ,
+                              TRACER_POS , initialDMR);
+    }
 
     Spatial::StateArr  state   = model.spaceOp.createStateArr ();
-    Spatial::TracerArr tracers = model.spaceOp.createTracerArr();
 
     model.spaceOp.initState  (state  );
     model.spaceOp.initTracers(tracers);
