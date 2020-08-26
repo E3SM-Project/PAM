@@ -142,8 +142,6 @@ public:
   std::vector<std::string> tracerName;
   std::vector<std::string> tracerDesc;
   bool1d                   tracerPos;
-  real1d                   tracerRd;
-  real1d                   tracerCp;
 
   // Values read from input file
   int         nx;
@@ -171,10 +169,9 @@ public:
 
 
 
-  // Initialize a tracer as just the wet mixing ratio. Full density will be
-  // multiplied during the initTracers routine to store tracer mass
-  template <class F> void addTracer(std::string name , std::string desc , F const &initialWMR ,
-                                    bool posDef , real rd=0 , real cp=0 ) {
+  // Initialize a tracer
+  template <class PHYS>
+  void addTracer(std::string name , std::string desc , bool posDef , PHYS physics ) {
     auto nx                 = this->nx               ;
     auto ny                 = this->ny               ;
     auto nz                 = this->nz               ;
@@ -190,41 +187,45 @@ public:
     auto &ylen              = this->ylen             ;
     auto &numTracers        = this->numTracers       ;
     auto &tracerPos         = this->tracerPos        ;
-    auto &tracerRd          = this->tracerRd         ;
-    auto &tracerCp          = this->tracerCp         ;
 
     int tr = tracerCount;
-    tracerName   .push_back(name  );
-    tracerDesc   .push_back(desc  );
+    tracerName.push_back(name  );
+    tracerDesc.push_back(desc  );
     parallel_for( 1 , YAKL_LAMBDA (int i) {
       tracerPos(tr) = posDef;
-      tracerRd (tr) = rd;
-      tracerCp (tr) = cp;
     });
 
     parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-      for (int l=0; l < numTracers; l++) {
-        tracers(l,hs+k,hs+j,hs+i) = 0;
-        for (int kk=0; kk<ord; kk++) {
-          for (int jj=0; jj<ord; jj++) {
-            for (int ii=0; ii<ord; ii++) {
-              real zloc = (k+0.5_fp)*dz + gllPts_ord(kk)*dz;
-              real yloc;
-              if (sim2d) {
-                yloc = ylen/2;
-              } else {
-                yloc = (j+0.5_fp)*dy + gllPts_ord(jj)*dy;
-              }
-              real xloc = (i+0.5_fp)*dx + gllPts_ord(ii)*dx;
-
-              real wt = gllWts_ord(kk) * gllWts_ord(jj) * gllWts_ord(ii);
-              // Compute constant theta hydrostatic background state
-              real th = 300;
-              real rh = profiles::initConstTheta_density(th,zloc);
-
-              // Initialize tracers as rho*tracer / rho_h (rho_h is multiplied back onto GLL point values)
-              real tval = initialWMR(xloc,yloc,zloc);
+      int tr = tracerCount;
+      tracers(tr,hs+k,hs+j,hs+i) = 0;
+      for (int kk=0; kk<ord; kk++) {
+        for (int jj=0; jj<ord; jj++) {
+          for (int ii=0; ii<ord; ii++) {
+            real zloc = (k+0.5_fp)*dz + gllPts_ord(kk)*dz;
+            real yloc;
+            if (sim2d) {
+              yloc = ylen/2;
+            } else {
+              yloc = (j+0.5_fp)*dy + gllPts_ord(jj)*dy;
             }
+            real xloc = (i+0.5_fp)*dx + gllPts_ord(ii)*dx;
+
+            real wt = gllWts_ord(kk) * gllWts_ord(jj) * gllWts_ord(ii);
+            // Compute constant theta hydrostatic background state
+            real th = 300;
+            real rh = profiles::initConstTheta_density(th,zloc);
+
+            real temp = physics.tempFromTheta(rh, 0, rh*th);
+            real svp = physics.saturationVaporPressure( temp );
+
+            real tracerMass = 0;
+            if (name == std::string("water_vapor") {
+              real mask = profiles::ellipsoid_linear(xloc,yloc,zloc  ,  xlen/2,ylen/2,2000  ,
+                                                     2000,2000,2000  ,  0.8);
+              real p_v = svp*mask;
+              real tracerMass = physics.vaporDensityFromVaporPressure(p_v,rh,temp);
+            }
+            tracers(tr,hs+k,hs+j,hs+i) = tracerMass;
           }
         }
       }
@@ -555,52 +556,6 @@ public:
               real tp = profiles::ellipsoid_linear(xloc, yloc, zloc, xlen/2, ylen/2, 2000, 2000, 2000, 2000, 2 );
               real t = th + tp;
               state(idT,hs+k,hs+j,hs+i) += (rh*t - rh*th) * wt;
-            }
-          }
-        }
-      }
-    });
-  }
-
-
-
-  // Initialize the state
-  void initTracers( TracerArr &tracers ) {
-
-    // Compute the state
-    parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-      for (int l=0; l < numTracers; l++) {
-        tracers(l,hs+k,hs+j,hs+i) = 0;
-        for (int kk=0; kk<ord; kk++) {
-          for (int jj=0; jj<ord; jj++) {
-            for (int ii=0; ii<ord; ii++) {
-              real zloc = (k+0.5_fp)*dz + gllPts_ord(kk)*dz;
-              real yloc;
-              if (sim2d) {
-                yloc = ylen/2;
-              } else {
-                yloc = (j+0.5_fp)*dy + gllPts_ord(jj)*dy;
-              }
-              real xloc = (i+0.5_fp)*dx + gllPts_ord(ii)*dx;
-
-              real wt = gllWts_ord(kk) * gllWts_ord(jj) * gllWts_ord(ii);
-              // Compute constant theta hydrostatic background state
-              real th = 300;
-              real rh = profiles::initConstTheta_density(th,zloc);
-
-              // Initialize tracers as rho*tracer / rho_h (rho_h is multiplied back onto GLL point values)
-              if        (l == 0) {
-                tracers(l,hs+k,hs+j,hs+i) += rh * 1 * wt;
-              } else if (l == 1) {
-                real tval = profiles::ellipsoid_linear(xloc, yloc, zloc, xlen/2, ylen/2, 2000, 2000, 2000, 2000, 2 );
-                tracers(l,hs+k,hs+j,hs+i) += rh * tval * wt;
-              } else if (l == 2) {
-                bool insideBlock = k >= 1*nz/10 && k < 3*nz/10 &&
-                                   i >= 4*nx/10 && i < 6*nx/10;
-                if (! sim2d) { insideBlock = insideBlock && j >= 4*ny/10 && j < 6*ny/10; }
-                real tval = insideBlock ? 1 : 0;
-                tracers(l,hs+k,hs+j,hs+i) += rh * tval * wt;
-              }
             }
           }
         }
