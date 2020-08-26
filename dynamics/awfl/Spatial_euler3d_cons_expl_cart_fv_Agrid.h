@@ -8,9 +8,6 @@
 #include "Profiles.h"
 
 
-bool constexpr TRACER_POSITIVE        = true;
-
-
 /*********************************************
  ***** Required inside the Spatial class *****
  *********************************************
@@ -125,7 +122,8 @@ public:
   int static constexpr BC_PERIODIC = 0;
   int static constexpr BC_WALL     = 1;
 
-  int static constexpr DATA_SPEC_THERMAL = 1;
+  int static constexpr DATA_SPEC_THERMAL       = 1;
+  int static constexpr DATA_SPEC_THERMAL_MOIST = 2;
 
   bool sim2d;
 
@@ -142,6 +140,7 @@ public:
   std::vector<std::string> tracerName;
   std::vector<std::string> tracerDesc;
   bool1d                   tracerPos;
+  bool1d                   tracerAddsMass;
 
   // Values read from input file
   int         nx;
@@ -170,31 +169,23 @@ public:
 
 
   // Initialize a tracer
-  template <class PHYS>
-  void addTracer(std::string name , std::string desc , bool posDef , PHYS physics ) {
-    auto nx                 = this->nx               ;
-    auto ny                 = this->ny               ;
-    auto nz                 = this->nz               ;
-    auto dx                 = this->dx               ;
-    auto dy                 = this->dy               ;
-    auto dz                 = this->dz               ;
-    auto gllPts_ord         = this->gllPts_ord       ;
-    auto gllWts_ord         = this->gllWts_ord       ;
-    auto gllPts_ngll        = this->gllPts_ngll      ;
-    auto gllWts_ngll        = this->gllWts_ngll      ;
-    auto &sim2d             = this->sim2d            ;
-    auto &xlen              = this->xlen             ;
-    auto &ylen              = this->ylen             ;
-    auto &numTracers        = this->numTracers       ;
-    auto &tracerPos         = this->tracerPos        ;
+  int addTracer(std::string name , std::string desc , bool posDef , bool addsMass) {
+    auto &tracerPos = this->tracerPos;
 
     int tr = tracerCount;
-    tracerName.push_back(name  );
-    tracerDesc.push_back(desc  );
+    tracerName.push_back(name);
+    tracerDesc.push_back(desc);
     parallel_for( 1 , YAKL_LAMBDA (int i) {
-      tracerPos(tr) = posDef;
+      tracerPos     (tr) = posDef;
+      tracerAddsMass(tr) = addsMass;
     });
 
+    tracerCount++;
+  }
+
+
+  template <class F, class PHYS>
+  void initTracerByLocation(std::string name , F const &initFunc, PHYS const &physics) {
     parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
       int tr = tracerCount;
       tracers(tr,hs+k,hs+j,hs+i) = 0;
@@ -210,27 +201,23 @@ public:
             }
             real xloc = (i+0.5_fp)*dx + gllPts_ord(ii)*dx;
 
-            real wt = gllWts_ord(kk) * gllWts_ord(jj) * gllWts_ord(ii);
             // Compute constant theta hydrostatic background state
             real th = 300;
             real rh = profiles::initConstTheta_density(th,zloc);
 
-            real temp = physics.tempFromTheta(rh, 0, rh*th);
-            real svp = physics.saturationVaporPressure( temp );
+            physics::DynState dynState;
+            dynState.rho_d = rh;
+            dynState.u     = 0;
+            dynState.v     = 0;
+            dynState.w     = 0;
+            dynState.temp  = physics.tempFromTheta(real rho, real rho_theta) {
 
-            real tracerMass = 0;
-            if (name == std::string("water_vapor") {
-              real mask = profiles::ellipsoid_linear(xloc,yloc,zloc  ,  xlen/2,ylen/2,2000  ,
-                                                     2000,2000,2000  ,  0.8);
-              real p_v = svp*mask;
-              real tracerMass = physics.vaporDensityFromVaporPressure(p_v,rh,temp);
-            }
-            tracers(tr,hs+k,hs+j,hs+i) = tracerMass;
+            real wt = gllWts_ord(kk) * gllWts_ord(jj) * gllWts_ord(ii);
+            tracers(tr,hs+k,hs+j,hs+i) += tracerMass*wt;
           }
         }
       }
     });
-    tracerCount++;
   }
 
 
@@ -324,9 +311,8 @@ public:
   // Initialize crap needed by recon()
   void init(std::string inFile, int numTracers) {
     this->numTracers = numTracers;
-    tracerPos = bool1d("tracerPos",numTracers);
-    tracerRd  = real1d("tracerRd" ,numTracers);
-    tracerCp  = real1d("tracerCp" ,numTracers);
+    tracerPos      = bool1d("tracerPos"     ,numTracers);
+    tracerAddsMass = bool1d("tracerAddsMass",numTracers);
 
     dtInit = 0;
     dimSwitch = true;
@@ -364,6 +350,8 @@ public:
     std::string dataStr = config["initData"].as<std::string>();
     if        (dataStr == "thermal") {
       dataSpec = DATA_SPEC_THERMAL;
+    if        (dataStr == "thermal_moist") {
+      dataSpec = DATA_SPEC_THERMAL_MOIST;
     } else {
       endrun("ERROR: Invalid dataSpec");
     }
@@ -442,16 +430,6 @@ public:
 
     weno::wenoSetIdealSigma(this->idl,this->sigma);
 
-    // Get the number of tracers from the tracer std::vector variables
-    numTracers = tracerName.size();
-    // Setup tracerPos for use on the device
-    tracerPos = bool1d("tracerPos",numTracers);
-    boolHost1d tracerPosHost("tracerPosHost",numTracers);
-    for (int i=0; i < numTracers; i++) {
-      tracerPosHost(i) = tracerPosVect[i];
-    }
-    tracerPosHost.deep_copy_to(tracerPos);
-
     stateLimits     = real5d("stateLimits"    ,numState  ,2,nz+1,ny+1,nx+1);
     tracerLimits    = real5d("tracerLimits"   ,numTracers,2,nz+1,ny+1,nx+1);
     stateFluxLimits = real5d("stateFluxLimits",numState  ,2,nz+1,ny+1,nx+1);
@@ -502,7 +480,7 @@ public:
       hyDensThetaCells(k) = 0;
       for (int kk=0; kk<ord; kk++) {
         real zloc = (k-hs+0.5_fp)*dz + gllPts_ord(kk)*dz;
-        if        (dataSpec == DATA_SPEC_THERMAL) {
+        if        (dataSpec == DATA_SPEC_THERMAL || dataSpec == DATA_SPEC_THERMAL_MOIST) {
           // Compute constant theta hydrostatic background state
           real th  = 300;
           real rh = profiles::initConstTheta_density (th,zloc);
@@ -519,7 +497,7 @@ public:
       // Compute ngll GLL points
       for (int kk=0; kk<ngll; kk++) {
         real zloc = (k+0.5_fp)*dz + gllPts_ngll(kk)*dz;
-        if        (dataSpec == DATA_SPEC_THERMAL) {
+        if        (dataSpec == DATA_SPEC_THERMAL || dataSpec == DATA_SPEC_THERMAL_MOIST) {
           // Compute constant theta hydrostatic background state
           real th = 300;
           real rh = profiles::initConstTheta_density (th,zloc);
@@ -549,7 +527,7 @@ public:
             }
             real xloc = (i+0.5_fp)*dx + gllPts_ord(ii)*dx;
             real wt = gllWts_ord(kk) * gllWts_ord(jj) * gllWts_ord(ii);
-            if        (dataSpec == DATA_SPEC_THERMAL) {
+            if        (dataSpec == DATA_SPEC_THERMAL || dataSpec == DATA_SPEC_THERMAL_MOIST) {
               // Compute constant theta hydrostatic background state
               real th = 300;
               real rh = profiles::initConstTheta_density(th,zloc);

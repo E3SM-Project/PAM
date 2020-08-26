@@ -3,19 +3,86 @@
 
 class PhysicsSaturationAdjustment {
 public:
+  int static constexpr numTracers = 2;
+
   real static constexpr R_d  = 287.;
   real static constexpr cp_d = 1004.;
   real static constexpr cv_d = cp_d-R_d;
+  real static constexpr gamma_d = cp_d / cv_d;
+  real static constexpr kappa_d = R_d / cp_d;
   real static constexpr R_v  = 461.;
   real static constexpr cp_v = 1859;
   real static constexpr cv_v = R_v-cp_v;
   real static constexpr p0   = 1.e5;
+  real C0_d;
+
+  int dataSpec;
+  int static constexpr DATA_SPEC_THERMAL_MOIST = 2;
+
+  int static constexpr ID_V = 0;
+  int static constexpr ID_C = 1;
+
+  struct DynState {
+    real rho;
+    real w;
+    real rho_theta;
+  };
+
+
+  typedef SArray<real,1,numTracers> MicroTracers;
+
+
+  PhysicsSaturationAdjustment() {
+    C0_d = pow( R_d*pow( p0 , -kappa_d ) , gamma_d );
+  }
+
+
+  void init(std::string inFile) {
+    // Read the input file
+    YAML::Node config = YAML::LoadFile(inFile);
+    if ( !config                 ) { endrun("ERROR: Invalid YAML input file"); }
+    if ( !config["initData"]     ) { endrun("ERROR: No initData in input file"); }
+
+    std::string dataStr = config["initData"].as<std::string>();
+    if        (dataStr == "thermal_moist") {
+      dataSpec = DATA_SPEC_THERMAL_MOIST;
+    } else {
+      endrun("ERROR: Invalid dataSpec");
+    }
+  }
+
+
+  template <class SP> void addTracers(SP const &spaceOp) {
+    //                name             description      positive   adds mass
+    spaceOp.addTracer("water_vapor"  , "Water Vapor"  , true     , true);
+    spaceOp.addTracer("cloud_liquid" , "Cloud liquid" , true     , true);
+  }
+
+
+  template <class SP> void initTracers(SP const &spaceOp) {
+  }
 
 
   // Returns saturation vapor pressure
   YAKL_INLINE real saturationVaporPressure(real temp) {
     real tc = temp - 273.15;
     return 610.94 * exp( 17.625*tc / (243.04+tc) );
+  }
+
+
+  YAKL_INLINE real gasConstant(real rho, real rho_v, real rho_c) {
+    real rho_d = rho - rho_v - rho_c;
+    real q_d = rho_d / rho;
+    real q_v = rho_v / rho;
+    return R_d*q_d + R_v*q_v;
+  }
+
+
+  YAKL_INLINE real specificHeatPressure(real rho, real rho_v, real rho_c) {
+    real rho_d = rho - rho_v - rho_c;
+    real q_d = rho_d / rho;
+    real q_v = rho_v / rho;
+    return cp_d*q_d + cp_v*q_v;
   }
 
 
@@ -26,56 +93,44 @@ public:
   }
 
 
-  // Computes moist ideal gas constant and moist specific heat at constant pressure
-  YAKL_INLINE void R_cp(real rho, real rho_vapor, real &R, real &cp) {
-    real q_d = (rho - rho_vapor) / rho; // Wet mixing ratio of dry air
-    real q_v = rho_vapor / rho;         // Wet mixing ratio of water vapor
-    R  = q_d*R_d  + q_v*R_v ;
-    cp = q_d*cp_d + q_v*cp_v;
+  // Returns total pressure
+  YAKL_INLINE real pressureFromRhoTheta(real rho_theta) {
+    return C0_d * pow( rho_theta , gamma_d );
   }
 
 
   // Returns total pressure
-  YAKL_INLINE real pressureFromTheta(real rho , real rho_vapor , real rho_theta) {
-    real R, cp;
-    R_cp(rho, rho_vapor, R, cp);
-    real cv = cp-R;
-    real gamma = cp / cv;
-    return pow( R*pow( p0 , -R/cp ) * rho_theta , gamma );
+  YAKL_INLINE real pressureFromTemp(real rho , real rho_v , real rho_c , real temp) {
+    real rho_d = rho - rho_v - rho_c;
+    return rho_d*R_d*temp + rho_v*R_v*temp;
   }
 
 
   // Returns total pressure
-  YAKL_INLINE real pressureFromTemp(real rho , real rho_vapor , real temp) {
-    real rho_d = rho - rho_vapor;
-    return rho_d*R_d*temp + rho_vapor*R_v*temp;
-  }
-
-
-  // Returns total pressure
-  YAKL_INLINE real thetaFromTemp(real rho , real rho_vapor , real temp) {
-    real p = pressureFromTemp(rho, rho_vapor, temp);
-    real R, cp;
-    R_cp(rho, rho_vapor, R, cp);
-    return temp * pow( p0/p , R/cp );
+  YAKL_INLINE real thetaFromTemp(real rho , real rho_v , real rho_c , real temp) {
+    real p = pressureFromTemp(rho, rho_v, rho_c, temp);
+    return temp * pow( p0/p , kappa_d );
   }
 
 
   // Computes temperature
-  YAKL_INLINE real tempFromTheta(real rho, real rho_vapor, real rho_theta) {
-    real p = pressureFromTheta(rho, rho_vapor, rho_theta);
-    real R, cp;
-    R_cp(rho, rho_vapor, R, cp);
-    return (rho_theta/rho) * pow( p/p0 , R/cp );
+  YAKL_INLINE real tempFromRhoTheta(real rho , real rho_theta) {
+    real p = pressureFromRhoTheta(rho_theta);
+    return (rho_theta/rho) * pow( p/p0 , kappa_d );
   }
 
 
   // Computes the state (vapor density, cloud liquid density, and temperature) that achieves
   // a factor of "ratio" of the saturated state
-  YAKL_INLINE void computeAdjustedState(real rho , real &rho_vapor , real &rho_cloud , real &rho_theta) {
-    real temp = tempFromTheta(rho, rho_vapor, rho_theta);
+  YAKL_INLINE void computeAdjustedState(real rho_d , real &rho_v , real &rho_c , real &rho_theta) {
+    real tol = 1.e-6;
+    if (std::is_same<real,double>::value) tol = 1.e-13;
+
+    real rho = rho_d + rho_v + rho_c;
+
+    real temp = tempFromRhoTheta(rho, rho_theta);
     real svp = saturationVaporPressure( temp );
-    real pv = rho_vapor * R_v * temp;
+    real pv = rho_v * R_v * temp;   // water vapor pressure
     
     if        (pv > svp) {  // If we are super-saturated
       // Condense enough water vapor to achieve saturation
@@ -84,19 +139,19 @@ public:
       ////////////////////////////////////////////////////////
       // Set bounds on how much mass to condense
       real cond1  = 0;
-      real cond2 = rho_vapor;
+      real cond2 = rho_v;
 
       bool keepIterating = true;
       while (keepIterating) {
-        real rho_cond = (cond1 + cond2) / 2; // How much water vapor to condense
-        real rvLoc = rho_vapor - rho_cond;
-        real rcLoc = rho_cloud + rho_cond;
-        real Lv = latentHeatCondensation(temp);    // Compute latent heat of condensation for water
-        real R, cp;
-        R_cp(rho, rvLoc, R, cp);
-        real tempLoc = temp + rho_cond*Lv/(rho*cp);
-        real svpLoc = saturationVaporPressure(tempLoc);
-        real pvLoc = rvLoc * R_v * tempLoc;
+        real rho_cond = (cond1 + cond2) / 2;                // How much water vapor to condense
+        real rvLoc = rho_v - rho_cond;                      // New vapor density
+        real rcLoc = rho_c + rho_cond;                      // New cloud liquid density
+        real Lv = latentHeatCondensation(temp);             // Compute latent heat of condensation for water
+        real R = gasConstant          (rho, rvLoc, rcLoc);  // New moist gas constant
+        real cp = specificHeatPressure(rho, rvLoc, rcLoc);  // New moist specific heat at constant pressure
+        real tempLoc = temp + rho_cond*Lv/(rho*cp);         // New temperature after condensation
+        real svpLoc = saturationVaporPressure(tempLoc);     // New saturation vapor pressure after condensation
+        real pvLoc = rvLoc * R_v * tempLoc;                 // New vapor pressure after condensation
         // If we're supersaturated still, we need to condense out more water vapor
         // otherwise, we need to condense out less water vapor
         if (pvLoc > svpLoc) {
@@ -105,14 +160,15 @@ public:
           cond2 = rho_cond;
         }
         // If we've converged, then we can stop iterating
-        if (abs(cond2-cond1) <= 1.e-6) {
-          rho_vapor = rvLoc;
-          rho_cloud = rcLoc;
-          rho_theta = rho * thetaFromTemp(rho, rho_vapor, tempLoc);
+        if (abs(cond2-cond1) <= tol) {
+          rho_v = rvLoc;
+          rho_c = rcLoc;
+          rho = rho_d + rho_v + rho_c;
+          rho_theta = rho * thetaFromTemp(rho, rho_v, rho_c, tempLoc);
           keepIterating = false;
         }
       }
-    } else if (pv < svp && rho_cloud > 0) {  // If we are unsaturated
+    } else if (pv < svp && rho_c > 0) {  // If we are unsaturated and have cloud liquid
       // If there's cloud, evaporate enough to achieve saturation
       // or all of it if there isn't enough to reach saturation
       ////////////////////////////////////////////////////////
@@ -120,19 +176,19 @@ public:
       ////////////////////////////////////////////////////////
       // Set bounds on how much mass to evaporate
       real evap1  = 0;
-      real evap2 = rho_cloud;
+      real evap2 = rho_c;
 
       bool keepIterating = true;
       while (keepIterating) {
-        real rho_evap = (evap1 + evap2) / 2; // How much water vapor to evapense
-        real rvLoc = rho_vapor + rho_evap;
-        real rcLoc = rho_cloud - rho_evap;
-        real Lv = latentHeatCondensation(temp);    // Compute latent heat of condensation for water
-        real R, cp;
-        R_cp(rho, rvLoc, R, cp);
-        real tempLoc = temp - rho_evap*Lv/(rho*cp);
-        real svpLoc = saturationVaporPressure(tempLoc);
-        real pvLoc = rvLoc * R_v * tempLoc;
+        real rho_evap = (evap1 + evap2) / 2;                 // How much water vapor to evapense
+        real rvLoc = rho_v + rho_evap;                       // New vapor density
+        real rcLoc = rho_c - rho_evap;                       // New cloud liquid density
+        real Lv = latentHeatCondensation(temp);              // Compute latent heat of condensation for water
+        real R  = gasConstant         (rho, rvLoc, rcLoc);   // New moist gas constant
+        real cp = specificHeatPressure(rho, rvLoc, rcLoc);   // New moist specific heat
+        real tempLoc = temp - rho_evap*Lv/(rho*cp);          // New temperature after evaporation
+        real svpLoc = saturationVaporPressure(tempLoc);      // New saturation vapor pressure after evaporation
+        real pvLoc = rvLoc * R_v * tempLoc;                  // New vapor pressure after evaporation
         // If we're unsaturated still, we need to evaporate out more water vapor
         // otherwise, we need to evaporate out less water vapor
         if (pvLoc < svpLoc) {
@@ -141,10 +197,11 @@ public:
           evap2 = rho_evap;
         }
         // If we've converged, then we can stop iterating
-        if (abs(evap2-evap1) <= 1.e-6) {
-          rho_vapor = rvLoc;
-          rho_cloud = rcLoc;
-          rho_theta = rho * thetaFromTemp(rho, rho_vapor, tempLoc);
+        if (abs(evap2-evap1) <= tol) {
+          rho_v = rvLoc;
+          rho_c = rcLoc;
+          rho = rho_d + rho_v + rho_c;
+          rho_theta = rho * thetaFromTemp(rho, rho_v, rho_c, tempLoc);
           keepIterating = false;
         }
       }

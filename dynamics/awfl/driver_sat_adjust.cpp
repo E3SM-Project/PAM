@@ -27,18 +27,26 @@ int main(int argc, char** argv) {
     real outFreq = config["outFreq"].as<real>();
     int numOut = 0;
 
+    // Create the model and the physics
     Temporal model;
-
     Physics physics;
 
-    model.init(inFile , 2);
+    // Initialize the model and the physics
+    model  .init( inFile , physics.numTracers );
+    physics.init( inFile );
 
-    Spatial::TracerArr tracers = model.spaceOp.createTracerArr();
-    model.spaceOp.addTracer("water_vapor"  , "Water Vapor dry mixing ratio"   , TRACER_POS , physics );
-    model.spaceOp.addTracer("cloud_liquid" , "Cloud liquied dry mixing ratio" , TRACER_POS , physics );
+    // Define the tracers
+    physics.addTracers(model.spaceOp);
 
+    // Initialize the dry state
     Spatial::StateArr  state   = model.spaceOp.createStateArr ();
     model.spaceOp.initState(state);
+
+    // Initialize the tracers
+    Spatial::TracerArr tracers = model.spaceOp.createTracerArr();
+    physics.initTracers(model.spaceOp);
+
+    // Adjust the model state to account for moisture
 
     real etime = 0;
 

@@ -19,7 +19,7 @@ int main() {
     real rho_c = 0;
     real rho = rho_d + rho_v + rho_c;
     real temp = theta_d;
-    real theta = physics.thetaFromTemp(rho, rho_v, temp);
+    real theta = physics.thetaFromTemp(rho, rho_v, rho_c, temp);
     real rho_theta = rho*theta;
 
     std::cout << "Pre-adjusted (rho, rho_v, rho_c, rho_theta): \n" << std::setprecision(20)
@@ -29,7 +29,7 @@ int main() {
                                                                    << rho_theta << "\n\n";
     real mass1 = rho_d + rho_v + rho_c;
 
-    physics.computeAdjustedState(rho, rho_v, rho_c, rho_theta);
+    physics.computeAdjustedState(rho_d, rho_v, rho_c, rho_theta);
 
     std::cout << "Post-adjusted (rho, rho_v, rho_c, rho_theta): \n" << std::setprecision(20)
                                                                     << rho       << ", \n"
@@ -47,7 +47,7 @@ int main() {
     real rho_c = 0.001;
     real rho = rho_d + rho_v + rho_c;
     real temp = theta_d;
-    real theta = physics.thetaFromTemp(rho, rho_v, temp);
+    real theta = physics.thetaFromTemp(rho, rho_v, rho_c, temp);
     real rho_theta = rho*theta;
 
     std::cout << "Pre-adjusted (rho, rho_v, rho_c, rho_theta): \n" << std::setprecision(20)
@@ -57,7 +57,7 @@ int main() {
                                                                    << rho_theta << "\n\n";
     real mass1 = rho_d + rho_v + rho_c;
 
-    physics.computeAdjustedState(rho, rho_v, rho_c, rho_theta);
+    physics.computeAdjustedState(rho_d, rho_v, rho_c, rho_theta);
 
     std::cout << "Post-adjusted (rho, rho_v, rho_c, rho_theta): \n" << std::setprecision(20)
                                                                     << rho       << ", \n"
