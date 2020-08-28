@@ -17,7 +17,7 @@ public:
   real static constexpr cp_v = 1859;
   real static constexpr cv_v = R_v-cp_v;
   real static constexpr p0   = 1.e5;
-  real C0_d;
+  real p0_nkappa;  // pow( p0 , -kappa_d )
 
   int dataSpec;
   int static constexpr DATA_SPEC_THERMAL_MOIST = 2;
@@ -36,7 +36,7 @@ public:
 
 
   PhysicsSaturationAdjustment() {
-    C0_d = pow( R_d*pow( p0 , -kappa_d ) , gamma_d );
+    p0_nkappa = pow( p0 , -kappa_d );
   }
 
 
@@ -54,7 +54,7 @@ public:
   template <class SP> void initTracers(SP &spaceOp, typename SP::TracerArr &tracers) const {
     auto initVaporMass = YAKL_LAMBDA (real x, real y, real z, real xlen, real ylen, real zlen, DynState const &state)->real {
       real pert = profiles::ellipsoid_linear(x,y,z  ,  xlen/2,ylen/2,2000  ,  2000,2000,2000  ,  0.8);
-      real temp = tempFromRhoTheta(state.rho , state.rho_theta);
+      real temp = tempFromRhoTheta(state.rho, 0 , 0 , state.rho_theta);
       real svp  = saturationVaporPressure(temp);
       real p_v  = pert*svp;
       real r_v  = p_v / (R_v*temp);
@@ -92,6 +92,12 @@ public:
   }
 
 
+  YAKL_INLINE real pressureC0(real rho, real rho_v, real rho_c) const {
+    real R = gasConstant(rho, rho_v, rho_c);
+    return pow( R*p0_nkappa , gamma_d );
+  }
+
+
   // Returns the latent heat of condensation
   YAKL_INLINE real latentHeatCondensation(real temp) const {
     real tc = temp - 273.15;
@@ -99,8 +105,15 @@ public:
   }
 
 
-  YAKL_INLINE real pressureFromRhoTheta(real rho_theta) const {
-    return C0_d * pow( rho_theta , gamma_d );
+  YAKL_INLINE real pressureFromRhoTheta(real rho, real rho_v, real rho_c, real rho_theta) const {
+    real C0 = pressureC0(rho, rho_v, rho_c);
+    return C0 * pow( rho_theta , gamma_d );
+  }
+
+
+  YAKL_INLINE real pressureFromRhoTheta(real rho, MicroTracers const &tracers, real rho_theta) const {
+    real C0 = pressureC0(rho, tracers(ID_V), tracers(ID_C));
+    return C0 * pow( rho_theta , gamma_d );
   }
 
 
@@ -122,8 +135,14 @@ public:
   }
 
 
-  YAKL_INLINE real tempFromRhoTheta(real rho , real rho_theta) const {
-    real p = pressureFromRhoTheta(rho_theta);
+  YAKL_INLINE real tempFromRhoTheta(real rho , real rho_v , real rho_c , real rho_theta) const {
+    real p = pressureFromRhoTheta(rho, rho_v, rho_c, rho_theta);
+    return (rho_theta/rho) * pow( p/p0 , kappa_d );
+  }
+
+
+  YAKL_INLINE real tempFromRhoTheta(real rho , MicroTracers tracers , real rho_theta) const {
+    real p = pressureFromRhoTheta(rho, tracers(ID_V), tracers(ID_C), rho_theta);
     return (rho_theta/rho) * pow( p/p0 , kappa_d );
   }
 
@@ -136,7 +155,7 @@ public:
 
     real rho = rho_d + rho_v + rho_c;
 
-    real temp = tempFromRhoTheta(rho, rho_theta);
+    real temp = tempFromRhoTheta(rho, rho_v, rho_c, rho_theta);
     real svp = saturationVaporPressure( temp );
     real pv = rho_v * R_v * temp;   // water vapor pressure
     

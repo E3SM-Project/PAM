@@ -32,8 +32,7 @@ int main(int argc, char** argv) {
     Physics physics;
 
     // Initialize the model and the physics
-    model        .init( inFile );
-    model.spaceOp.init( inFile , physics.numTracers );
+    model        .init( inFile , physics.numTracers );
     physics      .init( inFile );
 
     // Define the tracers
@@ -52,7 +51,9 @@ int main(int argc, char** argv) {
 
     real etime = 0;
 
-    model.spaceOp.output( state , tracers , etime );
+    model.spaceOp.output( state , tracers , physics , etime );
+
+    exit(0);
     
     while (etime < simTime) {
       real dt = model.spaceOp.computeTimeStep(0.8,state);
@@ -61,7 +62,7 @@ int main(int argc, char** argv) {
       etime += dt;
       if (etime / outFreq >= numOut+1) {
         std::cout << "Etime , dt: " << etime << " , " << dt << "\n";
-        model.spaceOp.output( state , tracers , etime );
+        model.spaceOp.output( state , tracers , physics , etime );
         numOut++;
       }
     }

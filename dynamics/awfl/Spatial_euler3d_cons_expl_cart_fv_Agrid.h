@@ -233,7 +233,7 @@ public:
     parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
       // Add tracer density to dry density
       real rho_dry = state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k);
-      for (int tr=0; tr < numState; tr++) {
+      for (int tr=0; tr < numTracers; tr++) {
         if (tracerAddsMass(tr)) {
           state(idR,hs+k,hs+j,hs+i) += tracers(tr,hs+k,hs+j,hs+i);
         }
@@ -245,10 +245,13 @@ public:
       state(idW,hs+k,hs+j,hs+i) = state(idW,hs+k,hs+j,hs+i) / rho_dry * rho_moist;
       // Compute the dry temperature (same as the moist temperature)
       real rho_theta_dry = state(idT,hs+k,hs+j,hs+i) + hyDensThetaCells(hs+k);
-      real temp = physics.tempFromRhoTheta(rho_dry,rho_theta_dry);
-      // Compute moist theta from moist density, tracer densities, and temperature
       typename PHYS::MicroTracers tracersLoc;
-      for (int tr=0; tr < numState; tr++) {
+      for (int tr=0; tr < numTracers; tr++) {
+        tracersLoc(tr) = 0;
+      }
+      real temp = physics.tempFromRhoTheta(rho_dry,tracersLoc,rho_theta_dry);
+      // Compute moist theta from moist density, tracer densities, and temperature
+      for (int tr=0; tr < numTracers; tr++) {
         tracersLoc(tr) = tracers(tr,hs+k,hs+j,hs+i);
       }
       real theta_moist = physics.thetaFromTemp(rho_moist, tracersLoc, temp);
@@ -1780,7 +1783,8 @@ public:
 
 
 
-  void output(StateArr const &state, TracerArr const &tracers, real etime) const {
+  template <class PHYS>
+  void output(StateArr const &state, TracerArr const &tracers, PHYS const &physics, real etime) const {
     auto &dx                    = this->dx                   ;
     auto &dy                    = this->dy                   ;
     auto &dz                    = this->dz                   ;
@@ -1843,9 +1847,13 @@ public:
     nc.write1(data.createHostCopy(),"pot_temp_pert",{"z","y","x"},ulIndex,"t");
     // pressure'
     parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-      real r =   state(idR,hs+k,hs+j,hs+i) + hyDensCells     (hs+k);
-      real t = ( state(idT,hs+k,hs+j,hs+i) + hyDensThetaCells(hs+k) ) / r;
-      real p = C0*pow(r*t,GAMMA);
+      real r  = state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k);
+      real rt = state(idT,hs+k,hs+j,hs+i) + hyDensThetaCells(hs+k);
+      typename PHYS::MicroTracers tracersLoc;
+      for (int tr=0; tr < numTracers; tr++) {
+        tracersLoc(tr) = tracers(tr,hs+k,hs+j,hs+i);
+      }
+      real p = physics.pressureFromRhoTheta(r,tracersLoc,rt);
       data(k,j,i) = p - hyPressureCells(hs+k);
     });
     nc.write1(data.createHostCopy(),"pressure_pert",{"z","y","x"},ulIndex,"t");

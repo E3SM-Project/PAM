@@ -38,7 +38,8 @@ public:
 
   Spatial spaceOp;
   
-  void init(std::string inFile) {
+  void init(std::string inFile, int numTracers) {
+    spaceOp.init(inFile, numTracers);
     stateTendArr  = spaceOp.createStateTendArr ();
     tracerTendArr = spaceOp.createTracerTendArr();
   }
