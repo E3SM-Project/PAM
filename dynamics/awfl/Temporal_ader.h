@@ -39,7 +39,6 @@ public:
   Spatial spaceOp;
   
   void init(std::string inFile) {
-    spaceOp.init(inFile);
     stateTendArr  = spaceOp.createStateTendArr ();
     tracerTendArr = spaceOp.createTracerTendArr();
   }
@@ -79,7 +78,7 @@ public:
   }
 
 
-  const char * getTemporalName() { return "ADER-DT"; }
+  const char * getTemporalName() const { return "ADER-DT"; }
 
 };
 

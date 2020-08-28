@@ -62,7 +62,8 @@ void output(StateArr const &state, real etime)
 */
 
 
-template <int nTimeDerivs, bool timeAvg, int nAder> class Spatial_euler3d_cons_expl_cart_fv_Agrid {
+template <int nTimeDerivs, bool timeAvg, int nAder>
+class Spatial_euler3d_cons_expl_cart_fv_Agrid {
 public:
   
   static_assert(nTimeDerivs == 1 , "ERROR: This Spatial class isn't setup to use nTimeDerivs > 1");
@@ -184,10 +185,17 @@ public:
   }
 
 
+
   template <class F, class PHYS>
-  void initTracerByLocation(std::string name , F const &initFunc, PHYS const &physics) {
+  void initTracerByLocation(std::string name , F const &initMass , TracerArr &tracers, PHYS const & physics) const {
+    int tracerID = -1;
+    for (int tr=0; tr < numTracers; tr++) {
+      if (name == tracerName[tr]) tracerID = tr;
+    }
+    if (tracerID == -1) endrun("ERROR: Trying to init a tracer that has not been added");
+
     parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-      int tr = tracerCount;
+      int tr = tracerID;
       tracers(tr,hs+k,hs+j,hs+i) = 0;
       for (int kk=0; kk<ord; kk++) {
         for (int jj=0; jj<ord; jj++) {
@@ -205,15 +213,13 @@ public:
             real th = 300;
             real rh = profiles::initConstTheta_density(th,zloc);
 
-            physics::DynState dynState;
-            dynState.rho_d = rh;
-            dynState.u     = 0;
-            dynState.v     = 0;
-            dynState.w     = 0;
-            dynState.temp  = physics.tempFromTheta(real rho, real rho_theta) {
+            typename PHYS::DynState dynState;
+            dynState.rho       = rh;
+            dynState.w         = 0;
+            dynState.rho_theta = rh*th;
 
             real wt = gllWts_ord(kk) * gllWts_ord(jj) * gllWts_ord(ii);
-            tracers(tr,hs+k,hs+j,hs+i) += tracerMass*wt;
+            tracers(tr,hs+k,hs+j,hs+i) += initMass(xloc,yloc,zloc,xlen,ylen,zlen,dynState)*wt;
           }
         }
       }
@@ -222,25 +228,55 @@ public:
 
 
 
-  StateArr createStateArr() {
+  template <class PHYS>
+  void adjustStateForMoisture(StateArr &state , TracerArr const &tracers , PHYS const &physics) const {
+    parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+      // Add tracer density to dry density
+      real rho_dry = state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k);
+      for (int tr=0; tr < numState; tr++) {
+        if (tracerAddsMass(tr)) {
+          state(idR,hs+k,hs+j,hs+i) += tracers(tr,hs+k,hs+j,hs+i);
+        }
+      }
+      real rho_moist = state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k);
+      // Adjust momenta for moist density
+      state(idU,hs+k,hs+j,hs+i) = state(idU,hs+k,hs+j,hs+i) / rho_dry * rho_moist;
+      state(idV,hs+k,hs+j,hs+i) = state(idV,hs+k,hs+j,hs+i) / rho_dry * rho_moist;
+      state(idW,hs+k,hs+j,hs+i) = state(idW,hs+k,hs+j,hs+i) / rho_dry * rho_moist;
+      // Compute the dry temperature (same as the moist temperature)
+      real rho_theta_dry = state(idT,hs+k,hs+j,hs+i) + hyDensThetaCells(hs+k);
+      real temp = physics.tempFromRhoTheta(rho_dry,rho_theta_dry);
+      // Compute moist theta from moist density, tracer densities, and temperature
+      typename PHYS::MicroTracers tracersLoc;
+      for (int tr=0; tr < numState; tr++) {
+        tracersLoc(tr) = tracers(tr,hs+k,hs+j,hs+i);
+      }
+      real theta_moist = physics.thetaFromTemp(rho_moist, tracersLoc, temp);
+      state(idT,hs+k,hs+j,hs+i) = rho_moist*theta_moist;
+    });
+  }
+
+
+
+  StateArr createStateArr() const {
     return StateArr("stateArr",numState,nz+2*hs,ny+2*hs,nx+2*hs);
   }
 
 
 
-  TracerArr createTracerArr() {
+  TracerArr createTracerArr() const {
     return StateArr("stateArr",numTracers,nz+2*hs,ny+2*hs,nx+2*hs);
   }
 
 
 
-  StateTendArr createStateTendArr() {
+  StateTendArr createStateTendArr() const {
     return StateTendArr("stateTendArr",numState,nz,ny,nx);
   }
 
 
 
-  TracerTendArr createTracerTendArr() {
+  TracerTendArr createTracerTendArr() const {
     return TracerTendArr("tracerTendArr",numTracers,nz,ny,nx);
   }
 
@@ -270,7 +306,7 @@ public:
 
 
 
-  int numSplit() {
+  int numSplit() const {
     return 4;
   }
 
@@ -350,8 +386,6 @@ public:
     std::string dataStr = config["initData"].as<std::string>();
     if        (dataStr == "thermal") {
       dataSpec = DATA_SPEC_THERMAL;
-    if        (dataStr == "thermal_moist") {
-      dataSpec = DATA_SPEC_THERMAL_MOIST;
     } else {
       endrun("ERROR: Invalid dataSpec");
     }
@@ -1746,7 +1780,7 @@ public:
 
 
 
-  void output(StateArr const &state, TracerArr const &tracers, real etime) {
+  void output(StateArr const &state, TracerArr const &tracers, real etime) const {
     auto &dx                    = this->dx                   ;
     auto &dy                    = this->dy                   ;
     auto &dz                    = this->dz                   ;
@@ -2201,7 +2235,6 @@ public:
       dtmult *= dt;
     }
   }
-
 
 };
 

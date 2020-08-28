@@ -1,5 +1,8 @@
 
+#pragma once
+
 #include "const.h"
+#include "Profiles.h"
 
 class PhysicsSaturationAdjustment {
 public:
@@ -38,39 +41,42 @@ public:
 
 
   void init(std::string inFile) {
-    // Read the input file
-    YAML::Node config = YAML::LoadFile(inFile);
-    if ( !config                 ) { endrun("ERROR: Invalid YAML input file"); }
-    if ( !config["initData"]     ) { endrun("ERROR: No initData in input file"); }
-
-    std::string dataStr = config["initData"].as<std::string>();
-    if        (dataStr == "thermal_moist") {
-      dataSpec = DATA_SPEC_THERMAL_MOIST;
-    } else {
-      endrun("ERROR: Invalid dataSpec");
-    }
   }
 
 
-  template <class SP> void addTracers(SP const &spaceOp) {
+  template <class SP> void addTracers(SP &spaceOp) const {
     //                name             description      positive   adds mass
     spaceOp.addTracer("water_vapor"  , "Water Vapor"  , true     , true);
     spaceOp.addTracer("cloud_liquid" , "Cloud liquid" , true     , true);
   }
 
 
-  template <class SP> void initTracers(SP const &spaceOp) {
+  template <class SP> void initTracers(SP &spaceOp, typename SP::TracerArr &tracers) const {
+    auto initVaporMass = YAKL_LAMBDA (real x, real y, real z, real xlen, real ylen, real zlen, DynState const &state)->real {
+      real pert = profiles::ellipsoid_linear(x,y,z  ,  xlen/2,ylen/2,2000  ,  2000,2000,2000  ,  0.8);
+      real temp = tempFromRhoTheta(state.rho , state.rho_theta);
+      real svp  = saturationVaporPressure(temp);
+      real p_v  = pert*svp;
+      real r_v  = p_v / (R_v*temp);
+      return r_v;
+    };
+    auto initCloudMass = YAKL_LAMBDA (real x, real y, real z, real xlen, real ylen, real zlen, DynState const &state)->real {
+      return 0;
+    };
+
+    spaceOp.initTracerByLocation("water_vapor"  , initVaporMass , tracers , *this);
+    spaceOp.initTracerByLocation("cloud_liquid" , initCloudMass , tracers , *this);
   }
 
 
   // Returns saturation vapor pressure
-  YAKL_INLINE real saturationVaporPressure(real temp) {
+  YAKL_INLINE real saturationVaporPressure(real temp) const {
     real tc = temp - 273.15;
     return 610.94 * exp( 17.625*tc / (243.04+tc) );
   }
 
 
-  YAKL_INLINE real gasConstant(real rho, real rho_v, real rho_c) {
+  YAKL_INLINE real gasConstant(real rho, real rho_v, real rho_c) const {
     real rho_d = rho - rho_v - rho_c;
     real q_d = rho_d / rho;
     real q_v = rho_v / rho;
@@ -78,7 +84,7 @@ public:
   }
 
 
-  YAKL_INLINE real specificHeatPressure(real rho, real rho_v, real rho_c) {
+  YAKL_INLINE real specificHeatPressure(real rho, real rho_v, real rho_c) const {
     real rho_d = rho - rho_v - rho_c;
     real q_d = rho_d / rho;
     real q_v = rho_v / rho;
@@ -87,34 +93,36 @@ public:
 
 
   // Returns the latent heat of condensation
-  YAKL_INLINE real latentHeatCondensation(real temp) {
+  YAKL_INLINE real latentHeatCondensation(real temp) const {
     real tc = temp - 273.15;
     return (2500.8 - 2.36*tc + 0.0016*tc*tc - 0.00006*tc*tc*tc)*1000;
   }
 
 
-  // Returns total pressure
-  YAKL_INLINE real pressureFromRhoTheta(real rho_theta) {
+  YAKL_INLINE real pressureFromRhoTheta(real rho_theta) const {
     return C0_d * pow( rho_theta , gamma_d );
   }
 
 
-  // Returns total pressure
-  YAKL_INLINE real pressureFromTemp(real rho , real rho_v , real rho_c , real temp) {
+  YAKL_INLINE real pressureFromTemp(real rho , real rho_v , real rho_c , real temp) const {
     real rho_d = rho - rho_v - rho_c;
     return rho_d*R_d*temp + rho_v*R_v*temp;
   }
 
 
-  // Returns total pressure
-  YAKL_INLINE real thetaFromTemp(real rho , real rho_v , real rho_c , real temp) {
+  YAKL_INLINE real thetaFromTemp(real rho , real rho_v , real rho_c , real temp) const {
     real p = pressureFromTemp(rho, rho_v, rho_c, temp);
     return temp * pow( p0/p , kappa_d );
   }
 
 
-  // Computes temperature
-  YAKL_INLINE real tempFromRhoTheta(real rho , real rho_theta) {
+  YAKL_INLINE real thetaFromTemp(real rho , MicroTracers const &tracers , real temp) const {
+    real p = pressureFromTemp(rho, tracers(ID_V), tracers(ID_C), temp);
+    return temp * pow( p0/p , kappa_d );
+  }
+
+
+  YAKL_INLINE real tempFromRhoTheta(real rho , real rho_theta) const {
     real p = pressureFromRhoTheta(rho_theta);
     return (rho_theta/rho) * pow( p/p0 , kappa_d );
   }
@@ -122,7 +130,7 @@ public:
 
   // Computes the state (vapor density, cloud liquid density, and temperature) that achieves
   // a factor of "ratio" of the saturated state
-  YAKL_INLINE void computeAdjustedState(real rho_d , real &rho_v , real &rho_c , real &rho_theta) {
+  YAKL_INLINE void computeAdjustedState(real rho_d , real &rho_v , real &rho_c , real &rho_theta) const {
     real tol = 1.e-6;
     if (std::is_same<real,double>::value) tol = 1.e-13;
 

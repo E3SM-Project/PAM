@@ -32,21 +32,23 @@ int main(int argc, char** argv) {
     Physics physics;
 
     // Initialize the model and the physics
-    model  .init( inFile , physics.numTracers );
-    physics.init( inFile );
+    model        .init( inFile );
+    model.spaceOp.init( inFile , physics.numTracers );
+    physics      .init( inFile );
 
     // Define the tracers
     physics.addTracers(model.spaceOp);
 
     // Initialize the dry state
-    Spatial::StateArr  state   = model.spaceOp.createStateArr ();
+    Spatial::StateArr state = model.spaceOp.createStateArr();
     model.spaceOp.initState(state);
 
     // Initialize the tracers
     Spatial::TracerArr tracers = model.spaceOp.createTracerArr();
-    physics.initTracers(model.spaceOp);
+    physics.initTracers(model.spaceOp,tracers);
 
     // Adjust the model state to account for moisture
+    model.spaceOp.adjustStateForMoisture(state,tracers,physics);
 
     real etime = 0;
 
