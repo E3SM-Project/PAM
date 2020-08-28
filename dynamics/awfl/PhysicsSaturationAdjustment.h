@@ -18,6 +18,7 @@ public:
   real static constexpr cv_v = R_v-cp_v;
   real static constexpr p0   = 1.e5;
   real p0_nkappa;  // pow( p0 , -kappa_d )
+  real pressureC0Dry;
 
   int dataSpec;
   int static constexpr DATA_SPEC_THERMAL_MOIST = 2;
@@ -37,6 +38,7 @@ public:
 
   PhysicsSaturationAdjustment() {
     p0_nkappa = pow( p0 , -kappa_d );
+    pressureC0Dry = pow( R_d*p0_nkappa , gamma_d );
   }
 
 
@@ -92,8 +94,49 @@ public:
   }
 
 
+  static constexpr real getGasConstantDry() {
+    return R_d;
+  }
+
+
+  static constexpr real getSpecificHeatPressureDry() {
+    return cp_d;
+  }
+
+
+  static constexpr real getSpecificHeatVolumeDry() {
+    return cv_d;
+  }
+
+
+  static constexpr real getKappaDry() {
+    return kappa_d;
+  }
+
+
+  static constexpr real getGammaDry() {
+    return gamma_d;
+  }
+
+
+  static constexpr real getReferencePressure() {
+    return p0;
+  }
+
+
+  YAKL_INLINE real getPressureC0Dry() const {
+    return pressureC0Dry;
+  }
+
+
   YAKL_INLINE real pressureC0(real rho, real rho_v, real rho_c) const {
     real R = gasConstant(rho, rho_v, rho_c);
+    return pow( R*p0_nkappa , gamma_d );
+  }
+
+
+  YAKL_INLINE real pressureC0(real rho, MicroTracers const &tracers) const {
+    real R = gasConstant(rho, tracers(ID_V), tracers(ID_C));
     return pow( R*p0_nkappa , gamma_d );
   }
 

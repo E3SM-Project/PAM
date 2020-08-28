@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
 
     // Initialize the dry state
     Spatial::StateArr state = model.spaceOp.createStateArr();
-    model.spaceOp.initState(state);
+    model.spaceOp.initState(state, physics);
 
     // Initialize the tracers
     Spatial::TracerArr tracers = model.spaceOp.createTracerArr();
@@ -52,13 +52,11 @@ int main(int argc, char** argv) {
     real etime = 0;
 
     model.spaceOp.output( state , tracers , physics , etime );
-
-    exit(0);
     
     while (etime < simTime) {
-      real dt = model.spaceOp.computeTimeStep(0.8,state);
+      real dt = model.spaceOp.computeTimeStep(0.8, state, tracers, physics);
       if (etime + dt > simTime) { dt = simTime - etime; }
-      model.timeStep( state , tracers , dt );
+      model.timeStep( state , tracers , physics , dt );
       etime += dt;
       if (etime / outFreq >= numOut+1) {
         std::cout << "Etime , dt: " << etime << " , " << dt << "\n";

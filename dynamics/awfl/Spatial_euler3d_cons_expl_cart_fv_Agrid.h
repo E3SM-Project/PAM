@@ -74,6 +74,8 @@ public:
 
   bool sim2d;
 
+  real gamma;
+
   real dx;
   real dy;
   real dz;
@@ -155,9 +157,15 @@ public:
             }
             real xloc = (i+0.5_fp)*dx + gllPts_ord(ii)*dx;
 
+            real Rd    = PHYS::getGasConstantDry();
+            real cp    = PHYS::getSpecificHeatPressureDry();
+            real gamma = PHYS::getGammaDry();
+            real p0    = PHYS::getReferencePressure();
+            real C0    = physics.getPressureC0Dry();
+
             // Compute constant theta hydrostatic background state
             real th = 300;
-            real rh = profiles::initConstTheta_density(th,zloc);
+            real rh = profiles::initConstTheta_density(th,zloc,Rd,cp,gamma,p0,C0);
 
             typename PHYS::DynState dynState;
             dynState.rho       = rh;
@@ -261,7 +269,8 @@ public:
 
 
 
-  real computeTimeStep(real cfl, StateArr const &state) {
+  template <class PHYS>
+  real computeTimeStep(real cfl, StateArr const &state, TracerArr const &tracers, PHYS const &physics) {
     auto &hyDensCells          = this->hyDensCells         ;
     auto &hyDensThetaCells     = this->hyDensThetaCells    ;
     auto &dx                   = this->dx                  ;
@@ -277,8 +286,13 @@ public:
         real v = state(idV,hs+k,hs+j,hs+i) / r;
         real w = state(idW,hs+k,hs+j,hs+i) / r;
         real t = ( state(idT,hs+k,hs+j,hs+i) + hyDensThetaCells(hs+k) ) / r;
-        real p = C0*pow(r*t,GAMMA);
-        real cs = sqrt(GAMMA*p/r);
+        typename PHYS::MicroTracers tracersLoc;
+        for (int tr=0; tr < numTracers; tr++) {
+          tracersLoc(tr) = tracers(tr,hs+k,hs+j,hs+i);
+        }
+        real p = physics.pressureFromRhoTheta(r, tracersLoc, r*t);
+        real gamma = PHYS::getGammaDry();
+        real cs = sqrt(gamma*p/r);
         real udt = cfl * dx / max( abs(u-cs) , abs(u+cs) );
         real vdt = cfl * dy / max( abs(v-cs) , abs(v+cs) );
         real wdt = cfl * dz / max( abs(w-cs) , abs(w+cs) );
@@ -431,7 +445,8 @@ public:
 
 
   // Initialize the state
-  void initState( StateArr &state ) {
+  template <class PHYS>
+  void initState( StateArr &state , PHYS const &physics ) {
     auto nx                 = this->nx               ;
     auto ny                 = this->ny               ;
     auto nz                 = this->nz               ;
@@ -464,10 +479,15 @@ public:
       for (int kk=0; kk<ord; kk++) {
         real zloc = (k-hs+0.5_fp)*dz + gllPts_ord(kk)*dz;
         if        (dataSpec == DATA_SPEC_THERMAL || dataSpec == DATA_SPEC_THERMAL_MOIST) {
+          real Rd    = PHYS::getGasConstantDry();
+          real cp    = PHYS::getSpecificHeatPressureDry();
+          real gamma = PHYS::getGammaDry();
+          real p0    = PHYS::getReferencePressure();
+          real C0    = physics.getPressureC0Dry();
           // Compute constant theta hydrostatic background state
           real th  = 300;
-          real rh = profiles::initConstTheta_density (th,zloc);
-          real ph = profiles::initConstTheta_pressure(th,zloc);
+          real rh = profiles::initConstTheta_density (th,zloc,Rd,cp,gamma,p0,C0);
+          real ph = profiles::initConstTheta_pressure(th,zloc,Rd,cp,gamma,p0,C0);
           real wt = gllWts_ord(kk);
           hyDensCells     (k) += rh    * wt;
           hyThetaCells    (k) += th    * wt;
@@ -481,10 +501,15 @@ public:
       for (int kk=0; kk<ngll; kk++) {
         real zloc = (k+0.5_fp)*dz + gllPts_ngll(kk)*dz;
         if        (dataSpec == DATA_SPEC_THERMAL || dataSpec == DATA_SPEC_THERMAL_MOIST) {
+          real Rd    = PHYS::getGasConstantDry();
+          real cp    = PHYS::getSpecificHeatPressureDry();
+          real gamma = PHYS::getGammaDry();
+          real p0    = PHYS::getReferencePressure();
+          real C0    = physics.getPressureC0Dry();
           // Compute constant theta hydrostatic background state
           real th = 300;
-          real rh = profiles::initConstTheta_density (th,zloc);
-          real ph = profiles::initConstTheta_pressure(th,zloc);
+          real rh = profiles::initConstTheta_density (th,zloc,Rd,cp,gamma,p0,C0);
+          real ph = profiles::initConstTheta_pressure(th,zloc,Rd,cp,gamma,p0,C0);
           hyDensGLL     (k,kk) = rh;
           hyThetaGLL    (k,kk) = th;
           hyDensThetaGLL(k,kk) = rh*th;
@@ -511,9 +536,14 @@ public:
             real xloc = (i+0.5_fp)*dx + gllPts_ord(ii)*dx;
             real wt = gllWts_ord(kk) * gllWts_ord(jj) * gllWts_ord(ii);
             if        (dataSpec == DATA_SPEC_THERMAL || dataSpec == DATA_SPEC_THERMAL_MOIST) {
+              real Rd    = PHYS::getGasConstantDry();
+              real cp    = PHYS::getSpecificHeatPressureDry();
+              real gamma = PHYS::getGammaDry();
+              real p0    = PHYS::getReferencePressure();
+              real C0    = physics.getPressureC0Dry();
               // Compute constant theta hydrostatic background state
               real th = 300;
-              real rh = profiles::initConstTheta_density(th,zloc);
+              real rh = profiles::initConstTheta_density(th,zloc,Rd,cp,gamma,p0,C0);
               real tp = profiles::ellipsoid_linear(xloc, yloc, zloc, xlen/2, ylen/2, 2000, 2000, 2000, 2000, 2 );
               real t = th + tp;
               state(idT,hs+k,hs+j,hs+i) += (rh*t - rh*th) * wt;
@@ -527,40 +557,41 @@ public:
 
 
   // Compute state and tendency time derivatives from the state
+  template <class PHYS>
   void computeTendencies( StateArr  &state   , StateTendArr  &stateTend  ,
                           TracerArr &tracers , TracerTendArr &tracerTend ,
-                          real &dt , int splitIndex ) {
+                          PHYS const &physics, real &dt , int splitIndex ) {
     if (dimSwitch) {
       if        (splitIndex == 0) {
-        computeTendenciesX( state , stateTend , tracers , tracerTend , dt );
+        computeTendenciesX( state , stateTend , tracers , tracerTend , physics , dt );
       } else if (splitIndex == 1) {
         if (sim2d) {
           memset(stateTend  , 0._fp);
           memset(tracerTend , 0._fp);
         }
-        else { computeTendenciesY( state , stateTend , tracers , tracerTend , dt ); }
+        else { computeTendenciesY( state , stateTend , tracers , tracerTend , physics , dt ); }
       } else if (splitIndex == 2) {
         dt /= 2;
-        computeTendenciesZ( state , stateTend , tracers , tracerTend , dt );
+        computeTendenciesZ( state , stateTend , tracers , tracerTend , physics , dt );
       } else if (splitIndex == 3) {
         dt /= 2;
-        computeTendenciesZ( state , stateTend , tracers , tracerTend , dt );
+        computeTendenciesZ( state , stateTend , tracers , tracerTend , physics , dt );
       }
     } else {
       if        (splitIndex == 0) {
         dt /= 2;
-        computeTendenciesZ( state , stateTend , tracers , tracerTend , dt );
+        computeTendenciesZ( state , stateTend , tracers , tracerTend , physics , dt );
       } else if (splitIndex == 1) {
         dt /= 2;
-        computeTendenciesZ( state , stateTend , tracers , tracerTend , dt );
+        computeTendenciesZ( state , stateTend , tracers , tracerTend , physics , dt );
       } else if (splitIndex == 2) {
         if (sim2d) {
           memset(stateTend  , 0._fp);
           memset(tracerTend , 0._fp);
         }
-        else { computeTendenciesY( state , stateTend , tracers , tracerTend , dt ); }
+        else { computeTendenciesY( state , stateTend , tracers , tracerTend , physics , dt ); }
       } else if (splitIndex == 3) {
-        computeTendenciesX( state , stateTend , tracers , tracerTend , dt );
+        computeTendenciesX( state , stateTend , tracers , tracerTend , physics , dt );
       }
     }
     if (splitIndex == numSplit()-1) dimSwitch = ! dimSwitch;
@@ -568,9 +599,12 @@ public:
 
 
 
+  template <class PHYS>
   void computeTendenciesX( StateArr  &state   , StateTendArr  &stateTend  ,
                            TracerArr &tracers , TracerTendArr &tracerTend ,
-                           real &dt ) {
+                           PHYS const &physics, real &dt ) {
+    real gamma = PHYS::getGammaDry();
+
     auto &nx                      = this->nx                     ;
     auto &weno_scalars            = this->weno_scalars           ;
     auto &weno_winds              = this->weno_winds             ;
@@ -678,15 +712,21 @@ public:
           ruv_DTs     (0,ii) = r*u*v;
           ruw_DTs     (0,ii) = r*u*w;
           rut_DTs     (0,ii) = r*u*t;
-          rt_gamma_DTs(0,ii) = pow(r*t,GAMMA);
+          rt_gamma_DTs(0,ii) = pow(r*t,gamma);
         }
 
         //////////////////////////////////////////
         // Compute time derivatives if necessary
         //////////////////////////////////////////
         if (nAder > 1) {
+          typename PHYS::MicroTracers tracersLoc;
+          for (int tr=0; tr < numTracers; tr++) {
+            tracersLoc(tr) = tracers(tr,hs+k,hs+j,hs+i);
+          }
+          real rho = state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k);
+          real C0 = physics.pressureC0(rho, tracersLoc);
           diffTransformEulerConsX( r_DTs , ru_DTs , rv_DTs , rw_DTs , rt_DTs , ruu_DTs , ruv_DTs , ruw_DTs ,
-                                   rut_DTs , rt_gamma_DTs , derivMatrix , dx );
+                                   rut_DTs , rt_gamma_DTs , derivMatrix , C0 , gamma , dx );
         }
 
         //////////////////////////////////////////
@@ -731,6 +771,12 @@ public:
         //////////////////////////////////////////
         // Store cell edge estimates of the flux
         //////////////////////////////////////////
+        typename PHYS::MicroTracers tracersLoc;
+        for (int tr=0; tr < numTracers; tr++) {
+          tracersLoc(tr) = tracers(tr,hs+k,hs+j,hs+i);
+        }
+        real rho = state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k);
+        real C0 = physics.pressureC0(rho, tracersLoc);
         // Left interface
         stateFluxLimits(idR,1,k,j,i  ) = ru_tavg  (0     );
         stateFluxLimits(idU,1,k,j,i  ) = ruu_DTs(0,0     ) + C0*rt_gamma_DTs(0,0     );
@@ -838,8 +884,15 @@ public:
       real v = 0.5_fp * (v_L + v_R);
       real w = 0.5_fp * (w_L + w_R);
       real t = 0.5_fp * (t_L + t_R);
-      real p = C0 * pow(r*t,GAMMA);
-      real cs2 = GAMMA*p/r;
+
+      typename PHYS::MicroTracers tracersLoc;
+      for (int tr=0; tr < numTracers; tr++) {
+        tracersLoc(tr) = 0.5_fp * ( tracerLimits(tr,0,k,j,i) + tracerLimits(tr,0,k,j,i) );
+      }
+      real C0 = physics.pressureC0(r, tracersLoc);
+
+      real p = C0 * pow(r*t,gamma);
+      real cs2 = gamma*p/r;
       real cs  = sqrt(cs2);
 
       // COMPUTE UPWIND STATE FLUXES
@@ -943,9 +996,12 @@ public:
 
 
 
+  template <class PHYS>
   void computeTendenciesY( StateArr  &state   , StateTendArr  &stateTend  ,
                            TracerArr &tracers , TracerTendArr &tracerTend ,
-                           real &dt ) {
+                           PHYS const &physics, real &dt ) {
+    real gamma = PHYS::getGammaDry();
+
     auto &ny                      = this->ny                     ;
     auto &weno_scalars            = this->weno_scalars           ;
     auto &weno_winds              = this->weno_winds             ;
@@ -1053,15 +1109,21 @@ public:
           rvv_DTs     (0,jj) = r*v*v;
           rvw_DTs     (0,jj) = r*v*w;
           rvt_DTs     (0,jj) = r*v*t;
-          rt_gamma_DTs(0,jj) = pow(r*t,GAMMA);
+          rt_gamma_DTs(0,jj) = pow(r*t,gamma);
         }
 
         //////////////////////////////////////////
         // Compute time derivatives if necessary
         //////////////////////////////////////////
         if (nAder > 1) {
+          typename PHYS::MicroTracers tracersLoc;
+          for (int tr=0; tr < numTracers; tr++) {
+            tracersLoc(tr) = tracers(tr,hs+k,hs+j,hs+i);
+          }
+          real rho = state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k);
+          real C0 = physics.pressureC0(rho, tracersLoc);
           diffTransformEulerConsY( r_DTs , ru_DTs , rv_DTs , rw_DTs , rt_DTs , rvu_DTs , rvv_DTs , rvw_DTs ,
-                                   rvt_DTs , rt_gamma_DTs , derivMatrix , dy );
+                                   rvt_DTs , rt_gamma_DTs , derivMatrix , C0 , gamma , dy );
         }
 
         //////////////////////////////////////////
@@ -1106,6 +1168,12 @@ public:
         //////////////////////////////////////////
         // Store cell edge estimates of the flux
         //////////////////////////////////////////
+        typename PHYS::MicroTracers tracersLoc;
+        for (int tr=0; tr < numTracers; tr++) {
+          tracersLoc(tr) = tracers(tr,hs+k,hs+j,hs+i);
+        }
+        real rho = state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k);
+        real C0 = physics.pressureC0(rho, tracersLoc);
         // Left interface
         stateFluxLimits(idR,1,k,j  ,i) = rv_tavg  (0     );
         stateFluxLimits(idU,1,k,j  ,i) = rvu_DTs(0,0     );
@@ -1213,8 +1281,15 @@ public:
       real v = 0.5_fp * (v_L + v_R);
       real w = 0.5_fp * (w_L + w_R);
       real t = 0.5_fp * (t_L + t_R);
-      real p = C0 * pow(r*t,GAMMA);
-      real cs2 = GAMMA*p/r;
+
+      typename PHYS::MicroTracers tracersLoc;
+      for (int tr=0; tr < numTracers; tr++) {
+        tracersLoc(tr) = 0.5_fp * ( tracerLimits(tr,0,k,j,i) + tracerLimits(tr,0,k,j,i) );
+      }
+      real C0 = physics.pressureC0(r, tracersLoc);
+
+      real p = C0 * pow(r*t,gamma);
+      real cs2 = gamma*p/r;
       real cs  = sqrt(cs2);
 
       // COMPUTE UPWIND STATE FLUXES
@@ -1314,9 +1389,12 @@ public:
 
 
 
+  template <class PHYS>
   void computeTendenciesZ( StateArr  &state   , StateTendArr  &stateTend  ,
                            TracerArr &tracers , TracerTendArr &tracerTend ,
-                           real &dt ) {
+                           PHYS const &physics, real &dt ) {
+    real gamma = PHYS::getGammaDry();
+
     auto &nz                      = this->nz                     ;
     auto &weno_scalars            = this->weno_scalars           ;
     auto &weno_winds              = this->weno_winds             ;
@@ -1431,15 +1509,22 @@ public:
           rwv_DTs    (0,kk) = r*w*v;
           rww_DTs    (0,kk) = r*w*w;
           rwt_DTs    (0,kk) = r*w*t;
-          rt_gamma_DTs(0,kk) = pow(r*t,GAMMA);
+          rt_gamma_DTs(0,kk) = pow(r*t,gamma);
         }
 
         //////////////////////////////////////////
         // Compute time derivatives if necessary
         //////////////////////////////////////////
         if (nAder > 1) {
+          typename PHYS::MicroTracers tracersLoc;
+          for (int tr=0; tr < numTracers; tr++) {
+            tracersLoc(tr) = tracers(tr,hs+k,hs+j,hs+i);
+          }
+          real rho = state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k);
+          real C0 = physics.pressureC0(rho, tracersLoc);
           diffTransformEulerConsZ( r_DTs , ru_DTs , rv_DTs , rw_DTs , rt_DTs , rwu_DTs , rwv_DTs , rww_DTs ,
-                                   rwt_DTs , rt_gamma_DTs , derivMatrix , hyPressureGLL , k , dz , bc_z , nz );
+                                   rwt_DTs , rt_gamma_DTs , derivMatrix , hyPressureGLL , C0 , gamma , k ,
+                                   dz , bc_z , nz );
         }
 
         //////////////////////////////////////////
@@ -1484,6 +1569,12 @@ public:
         //////////////////////////////////////////
         // Store cell edge estimates of the flux
         //////////////////////////////////////////
+        typename PHYS::MicroTracers tracersLoc;
+        for (int tr=0; tr < numTracers; tr++) {
+          tracersLoc(tr) = tracers(tr,hs+k,hs+j,hs+i);
+        }
+        real rho = state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k);
+        real C0 = physics.pressureC0(rho, tracersLoc);
         // Left interface
         stateFluxLimits(idR,1,k  ,j,i) = rw_tavg  (0     );
         stateFluxLimits(idU,1,k  ,j,i) = rwu_DTs(0,0     );
@@ -1608,8 +1699,15 @@ public:
       real v = 0.5_fp * (v_L + v_R);
       real w = 0.5_fp * (w_L + w_R);
       real t = 0.5_fp * (t_L + t_R);
-      real p = C0 * pow(r*t,GAMMA);
-      real cs2 = GAMMA*p/r;
+
+      typename PHYS::MicroTracers tracersLoc;
+      for (int tr=0; tr < numTracers; tr++) {
+        tracersLoc(tr) = 0.5_fp * ( tracerLimits(tr,0,k,j,i) + tracerLimits(tr,0,k,j,i) );
+      }
+      real C0 = physics.pressureC0(r, tracersLoc);
+
+      real p = C0 * pow(r*t,gamma);
+      real cs2 = gamma*p/r;
       real cs  = sqrt(cs2);
       // Get left and right fluxes
       real f1_L = stateFluxLimits(idR,0,k,j,i);   real f1_R = stateFluxLimits(idR,1,k,j,i);
@@ -1871,7 +1969,7 @@ public:
                                             SArray<real,2,nAder,ngll> &rut ,
                                             SArray<real,2,nAder,ngll> &rt_gamma ,
                                             SArray<real,2,ngll,ngll> const &deriv ,
-                                            real dx ) {
+                                            real C0, real gamma, real dx ) {
     // zero out the non-linear DTs
     for (int kt=1; kt < nAder; kt++) {
       for (int ii=0; ii < ngll; ii++) {
@@ -1927,9 +2025,9 @@ public:
         // Compute rt_gamma at the next time level
         real tot_rt_gamma = 0;
         for (int ir=0; ir<=kt; ir++) {
-          tot_rt_gamma += (kt+1._fp -ir) * ( GAMMA*rt_gamma(ir,ii)*rt(kt+1-ir,ii) - rt(ir,ii)*rt_gamma(kt+1-ir,ii) );
+          tot_rt_gamma += (kt+1._fp -ir) * ( gamma*rt_gamma(ir,ii)*rt(kt+1-ir,ii) - rt(ir,ii)*rt_gamma(kt+1-ir,ii) );
         }
-        rt_gamma(kt+1,ii) = ( GAMMA*rt_gamma(0,ii)*rt(kt+1,ii) + tot_rt_gamma / (kt+1._fp) ) / rt(0,ii);
+        rt_gamma(kt+1,ii) = ( gamma*rt_gamma(0,ii)*rt(kt+1,ii) + tot_rt_gamma / (kt+1._fp) ) / rt(0,ii);
       }
     }
 
@@ -1954,7 +2052,7 @@ public:
                                             SArray<real,2,nAder,ngll> &rvt ,
                                             SArray<real,2,nAder,ngll> &rt_gamma ,
                                             SArray<real,2,ngll,ngll> const &deriv , 
-                                            real dy ) {
+                                            real C0, real gamma, real dy ) {
     // zero out the non-linear DTs
     for (int kt=1; kt < nAder; kt++) {
       for (int ii=0; ii < ngll; ii++) {
@@ -2011,9 +2109,9 @@ public:
         // Compute rt_gamma at the next time level
         real tot_rt_gamma = 0;
         for (int l=0; l<=kt; l++) {
-          tot_rt_gamma += (kt+1._fp -l) * ( GAMMA*rt_gamma(l,ii)*rt(kt+1-l,ii) - rt(l,ii)*rt_gamma(kt+1-l,ii) );
+          tot_rt_gamma += (kt+1._fp -l) * ( gamma*rt_gamma(l,ii)*rt(kt+1-l,ii) - rt(l,ii)*rt_gamma(kt+1-l,ii) );
         }
-        rt_gamma(kt+1,ii) = ( GAMMA*rt_gamma(0,ii)*rt(kt+1,ii) + tot_rt_gamma / (kt+1._fp) ) / rt(0,ii);
+        rt_gamma(kt+1,ii) = ( gamma*rt_gamma(0,ii)*rt(kt+1,ii) + tot_rt_gamma / (kt+1._fp) ) / rt(0,ii);
       }
     }
 
@@ -2039,6 +2137,7 @@ public:
                                             SArray<real,2,nAder,ngll> &rt_gamma ,
                                             SArray<real,2,ngll,ngll> const &deriv , 
                                             real2d const &hyPressureGLL , 
+                                            real C0, real gamma ,
                                             int k , real dz , int bc_z , int nz ) {
     // zero out the non-linear DTs
     for (int kt=1; kt < nAder; kt++) {
@@ -2100,9 +2199,9 @@ public:
         // Compute rt_gamma at the next time level
         real tot_rt_gamma = 0;
         for (int l=0; l<=kt; l++) {
-          tot_rt_gamma += (kt+1-l) * ( GAMMA*rt_gamma(l,ii)*rt(kt+1-l,ii) - rt(l,ii)*rt_gamma(kt+1-l,ii) );
+          tot_rt_gamma += (kt+1-l) * ( gamma*rt_gamma(l,ii)*rt(kt+1-l,ii) - rt(l,ii)*rt_gamma(kt+1-l,ii) );
         }
-        rt_gamma(kt+1,ii) = ( GAMMA*rt_gamma(0,ii)*rt(kt+1,ii) + tot_rt_gamma / (kt+1) ) / rt(0,ii);
+        rt_gamma(kt+1,ii) = ( gamma*rt_gamma(0,ii)*rt(kt+1,ii) + tot_rt_gamma / (kt+1) ) / rt(0,ii);
       }
     }
 
