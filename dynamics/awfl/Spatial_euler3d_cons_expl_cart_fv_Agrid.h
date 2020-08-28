@@ -8,60 +8,6 @@
 #include "Profiles.h"
 
 
-/*********************************************
- ***** Required inside the Spatial class *****
- *********************************************
-class Location;
-    - Stores the indices of a single location on the grid
-
-class StateArr; // OR
-typedef [class] StateArr;
-    - Declare a type for the model state
-
-class TendArr; // OR
-typedef [class] TendArr;
-    - Declare a type for the model tendencies
-    - It must have room for the nTimeDerivs dimension for the time integrator
-
-StateArr createStateArr()
-    - Create and return a new StateArr object
-
-TendArr createTendArr(int nTimeDerivs)
-    - Create and return a new TendArr object
-
-YAKL_INLINE real &get(StateArr const &state , Location const &loc , int splitIndex)
-    - Return the state value at the given location
-
-YAKL_INLINE real &get(TendArr const &tend , Location const &loc , int timeDeriv , int splitIndex)
-    - Return the tendency value at the given location
-
-int numSplit()
-    - Return the number of split components for this operator
-    - The temporal operator will iterate through the splittings
-
-real computeTimeStep(real cfl)
-    - Return the time step in seconds from the cfl value
-
-void init(int nTimeDerivs, bool timeAvg, std::string inFile)
-    - Initialize internal data structures
-
-void initState( StateArr &state )
-    - Initialize the state
-
-void computeTendencies( StateArr const &state , TendArr &tend , real dt , int splitIndex)
-    - Compute tendency and time derivatives of the tendency if they are requested
-
-template <class F> void applyTendencies( F const &applySingleTendency , int splitIndex )
-    - Loop through the domain, and apply tendencies to the state
-
-const char * getSpatialName()
-    - Return the name and info for this spatial operator
-
-void output(StateArr const &state, real etime)
-    - Output to file
-*/
-
-
 template <int nTimeDerivs, bool timeAvg, int nAder>
 class Spatial_euler3d_cons_expl_cart_fv_Agrid {
 public:
@@ -255,7 +201,7 @@ public:
         tracersLoc(tr) = tracers(tr,hs+k,hs+j,hs+i);
       }
       real theta_moist = physics.thetaFromTemp(rho_moist, tracersLoc, temp);
-      state(idT,hs+k,hs+j,hs+i) = rho_moist*theta_moist;
+      state(idT,hs+k,hs+j,hs+i) = rho_moist*theta_moist - hyDensThetaCells(hs+k);
     });
   }
 
