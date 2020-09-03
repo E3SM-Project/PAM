@@ -243,23 +243,6 @@ public:
 
 
 
-  real3d compute_rho_dry( StateArr &state , TracerArr &tracers) const {
-    real3d rho_dry("rho_dry",nz+2*hs,ny+2*hs,nx+2*hs);
-
-    parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-      rho_dry(hs+k,hs+j,hs+i) = state(idR,hs+k,hs+j,hs+i);
-      for (int tr=0; tr < num_tracers; tr++) {
-        if (tracer_adds_mass(tr)) {
-          rho_dry(hs+k,hs+j,hs+i) -= tracers(tr,hs+k,hs+j,hs+i);
-        }
-      }
-    });
-
-    return rho_dry;
-  }
-
-
-
   template <class MICRO>
   void adjust_state_for_moisture(DataManager &dm , MICRO const &micro) const {
     StateArr  state   = createStateArr ();
@@ -283,12 +266,12 @@ public:
 
       // Compute the dry temperature (same as the moist temperature)
       real rho_theta_dry = state(idT,hs+k,hs+j,hs+i) + hyDensThetaCells(hs+k);
-      real temp = micro.temp_from_rho_theta(rho_dry , rho_dry , 0 , rho_theta_dry);
+      real temp = micro.temp_from_rho_theta(rho_dry , 0 , rho_theta_dry);
 
       // Compute moist theta
       real index_vapor = micro.tracer_index_vapor;
       real rho_v = tracers(index_vapor,hs+k,hs+j,hs+i);
-      real theta_moist = micro.theta_from_temp(rho_dry , rho_v , temp);
+      real theta_moist = micro.theta_from_temp(rho_moist , rho_v , temp);
       
       // Compute moist rho*theta
       state(idT,hs+k,hs+j,hs+i) = rho_moist*theta_moist - hyDensThetaCells(hs+k);
@@ -361,7 +344,6 @@ public:
     StateArr  state   = createStateArr ();
     TracerArr tracers = createTracerArr();
     read_state_and_tracers( dm , state , tracers );
-    auto rho_dry = compute_rho_dry( state , tracers );
 
     if (dtInit <= 0) {
       real maxwave = 0;
@@ -375,10 +357,9 @@ public:
         real t = ( state(idT,hs+k,hs+j,hs+i) + hyDensThetaCells(hs+k) ) / r;
 
         // Compute pressure from microphysics
-        real rho_d = rho_dry(hs+k,hs+j,hs+i) + hyDensCells(hs+k);
         int index_vapor = micro.tracer_index_vapor;
         real rho_v = tracers(index_vapor,hs+k,hs+j,hs+i);
-        real p = micro.pressure_from_rho_theta(r, rho_d, rho_v, r*t);
+        real p = micro.pressure_from_rho_theta(r, rho_v, r*t);
 
         // Compute the speed of sound (constant kappa assumption)
         real gamma = micro.gamma_d;
@@ -1992,7 +1973,6 @@ public:
     StateArr  state   = createStateArr ();
     TracerArr tracers = createTracerArr();
     read_state_and_tracers( dm , state , tracers );
-    auto rho_dry = compute_rho_dry( state , tracers );
 
     real3d data("data",nz,ny,nx);
     // rho'
@@ -2020,8 +2000,7 @@ public:
       real rt = state(idT,hs+k,hs+j,hs+i) + hyDensThetaCells(hs+k);
       int index_vapor = micro.tracer_index_vapor;
       real rho_v = tracers(index_vapor,hs+k,hs+j,hs+i);
-      real rho_d = rho_dry(hs+k,hs+j,hs+i) + hyDensCells(hs+k);;
-      real p = micro.pressure_from_rho_theta(r, rho_d, rho_v, rt);
+      real p = micro.pressure_from_rho_theta(r, rho_v, rt);
       data(k,j,i) = p - hyPressureCells(hs+k);
     });
     nc.write1(data.createHostCopy(),"pressure_pert",{"z","y","x"},ulIndex,"t");

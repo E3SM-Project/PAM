@@ -61,7 +61,7 @@ public:
     auto init_vapor_mass = YAKL_LAMBDA (real x, real y, real z, real xlen, real ylen, real zlen,
                                         real rho, real rho_theta)->real {
       real pert = profiles::ellipsoid_linear(x,y,z  ,  xlen/2,ylen/2,2000  ,  2000,2000,2000  ,  0.8);
-      real temp = temp_from_rho_theta(rho , rho , 0 , rho_theta);
+      real temp = temp_from_rho_theta(rho , 0 , rho_theta);
       real svp  = saturation_vapor_pressure(temp);
       real p_v  = pert*svp;
       real r_v  = p_v / (R_v*temp);
@@ -93,52 +93,56 @@ public:
 
 
 
-  YAKL_INLINE real R_moist(real rho, real rho_d, real rho_v) const {
-    return R_d * (rho_d / rho) + R_v * (rho_v / rho);
+  YAKL_INLINE real R_moist(real rho, real rho_v) const {
+    real rho_d = rho - rho_v;
+    real q_d = rho_d / rho;
+    real q_v = rho_v / rho;
+    return R_d * q_d + R_v * q_v;
   }
 
 
 
-  YAKL_INLINE real cp_moist(real rho, real rho_d, real rho_v) const {
-    return R_moist(rho, rho_d, rho_v) / R_d * cp_d;
+  YAKL_INLINE real cp_moist(real rho, real rho_v) const {
+    return R_moist(rho, rho_v) / R_d * cp_d;
   }
 
 
 
-  YAKL_INLINE real cv_moist(real rho, real rho_d, real rho_v) const {
-    return R_moist(rho, rho_d, rho_v) / R_d * cv_d;
+  YAKL_INLINE real cv_moist(real rho, real rho_v) const {
+    return R_moist(rho, rho_v) / R_d * cv_d;
   }
 
 
 
-  YAKL_INLINE real pressure_C0_moist(real rho, real rho_d, real rho_v) const {
-    return pow( R_moist(rho, rho_d, rho_v) * p0_nkappa_d , gamma_d );
+  YAKL_INLINE real pressure_C0_moist(real rho, real rho_v) const {
+    return pow( R_moist(rho, rho_v) * p0_nkappa_d , gamma_d );
   }
 
 
 
-  YAKL_INLINE real pressure_from_rho_theta(real rho, real rho_d, real rho_v, real rho_theta) const {
-    real C0 = pressure_C0_moist(rho, rho_d, rho_v);
+  YAKL_INLINE real pressure_from_rho_theta(real rho, real rho_v, real rho_theta) const {
+    real C0 = pressure_C0_moist(rho, rho_v);
     return C0 * pow( rho_theta , gamma_d );
   }
 
 
 
-  YAKL_INLINE real pressure_from_temp(real rho_d , real rho_v , real temp) const {
+  YAKL_INLINE real pressure_from_temp(real rho , real rho_v , real temp) const {
+    real rho_d = rho - rho_v;
     return rho_d*R_d*temp + rho_v*R_v*temp;
   }
 
 
 
-  YAKL_INLINE real theta_from_temp(real rho_d , real rho_v , real temp) const {
-    real p = pressure_from_temp(rho_d, rho_v, temp);
+  YAKL_INLINE real theta_from_temp(real rho , real rho_v , real temp) const {
+    real p = pressure_from_temp(rho, rho_v, temp);
     return temp * pow( p0/p , kappa_d );
   }
 
 
 
-  YAKL_INLINE real temp_from_rho_theta(real rho , real rho_d , real rho_v , real rho_theta) const {
-    real p = pressure_from_rho_theta(rho, rho_d, rho_v, rho_theta);
+  YAKL_INLINE real temp_from_rho_theta(real rho , real rho_v , real rho_theta) const {
+    real p = pressure_from_rho_theta(rho, rho_v, rho_theta);
     return (rho_theta/rho) * pow( p/p0 , kappa_d );
   }
 
@@ -146,13 +150,15 @@ public:
 
   // Computes the state (vapor density, cloud liquid density, and temperature) that achieves
   // a factor of "ratio" of the saturated state
-  YAKL_INLINE void compute_adjusted_state(real rho, real rho_d , real &rho_v , real &rho_c , real &rho_theta) const {
+  YAKL_INLINE void compute_adjusted_state(real rho , real &rho_v , real &rho_c , real &rho_theta) const {
     // Define a tolerance for convergence
     real tol = 1.e-6;
     if (std::is_same<real,double>::value) tol = 1.e-13;
 
+    real rho_d = rho - rho_v - rho_c;
+
     // Temperature before adjustment (before latent heating or cooling)
-    real temp = temp_from_rho_theta(rho, rho_d, rho_v, rho_theta);
+    real temp = temp_from_rho_theta(rho, rho_v, rho_theta);
 
     // Saturation vapor pressure at this temperature
     real svp = saturation_vapor_pressure( temp );
@@ -175,8 +181,8 @@ public:
         real rv_loc = rho_v - rho_cond;                      // New vapor density
         real rc_loc = rho_c + rho_cond;                      // New cloud liquid density
         real Lv = latent_heat_condensation(temp);            // Compute latent heat of condensation
-        real R  = R_moist (rho, rho_d, rv_loc);              // New moist gas constant
-        real cp = cp_moist(rho, rho_d, rv_loc);              // New moist specific heat at constant pressure
+        real R  = R_moist (rho, rv_loc);              // New moist gas constant
+        real cp = cp_moist(rho, rv_loc);              // New moist specific heat at constant pressure
         real temp_loc = temp + rho_cond*Lv/(rho*cp);         // New temperature after condensation
         real svp_loc = saturation_vapor_pressure(temp_loc);  // New saturation vapor pressure after condensation
         real pv_loc = rv_loc * R_v * temp_loc;               // New vapor pressure after condensation
@@ -191,7 +197,7 @@ public:
         if (abs(cond2-cond1) <= tol) {
           rho_v = rv_loc;
           rho_c = rc_loc;
-          rho_theta = rho * theta_from_temp(rho_d, rho_v, temp_loc);
+          rho_theta = rho * theta_from_temp(rho, rho_v, temp_loc);
           keep_iterating = false;
         }
       }
@@ -213,8 +219,8 @@ public:
         real rv_loc = rho_v + rho_evap;                      // New vapor density
         real rc_loc = rho_c - rho_evap;                      // New cloud liquid density
         real Lv = latent_heat_condensation(temp);            // Compute latent heat of condensation for water
-        real R  = R_moist (rho, rho_d, rv_loc);              // New moist gas constant
-        real cp = cp_moist(rho, rho_d, rv_loc);              // New moist specific heat
+        real R  = R_moist (rho, rv_loc);              // New moist gas constant
+        real cp = cp_moist(rho, rv_loc);              // New moist specific heat
         real temp_loc = temp - rho_evap*Lv/(rho*cp);         // New temperature after evaporation
         real svp_loc = saturation_vapor_pressure(temp_loc);  // New saturation vapor pressure after evaporation
         real pv_loc = rv_loc * R_v * temp_loc;               // New vapor pressure after evaporation

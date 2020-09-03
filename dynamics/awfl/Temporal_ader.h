@@ -34,14 +34,14 @@ public:
   }
 
 
-  template <class PHYS>
-  void timeStep( DataManager &dm , PHYS const &physics , real dt ) {
-    spaceOp.construct_state_and_tracers( dm , stateArr , tracerArr );
+  template <class MICRO>
+  void timeStep( DataManager &dm , MICRO const &micro , real dt ) {
+    spaceOp.read_state_and_tracers( dm , stateArr , tracerArr );
 
     // Loop over different items in the spatial splitting
     for (int spl = 0 ; spl < spaceOp.numSplit() ; spl++) {
       real dtloc = dt;
-      spaceOp.computeTendencies( stateArr , stateTendArr , tracerArr , tracerTendArr , physics , dtloc , spl );
+      spaceOp.computeTendencies( stateArr , stateTendArr , tracerArr , tracerTendArr , micro , dtloc , spl );
 
       {
         auto &stateTendArr  = this->stateTendArr ;
