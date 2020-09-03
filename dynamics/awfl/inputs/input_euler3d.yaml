@@ -16,9 +16,9 @@ bc_x   : periodic
 bc_y   : periodic
 bc_z   : wall
 
-weno_scalars : false
+weno_scalars : true
 
-weno_winds   : false
+weno_winds   : true
 
 # Data to initialize: thermal
 initData : thermal

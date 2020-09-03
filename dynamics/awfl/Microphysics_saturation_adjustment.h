@@ -155,8 +155,6 @@ public:
     real tol = 1.e-6;
     if (std::is_same<real,double>::value) tol = 1.e-13;
 
-    real rho_d = rho - rho_v - rho_c;
-
     // Temperature before adjustment (before latent heating or cooling)
     real temp = temp_from_rho_theta(rho, rho_v, rho_theta);
 
@@ -181,8 +179,8 @@ public:
         real rv_loc = rho_v - rho_cond;                      // New vapor density
         real rc_loc = rho_c + rho_cond;                      // New cloud liquid density
         real Lv = latent_heat_condensation(temp);            // Compute latent heat of condensation
-        real R  = R_moist (rho, rv_loc);              // New moist gas constant
-        real cp = cp_moist(rho, rv_loc);              // New moist specific heat at constant pressure
+        real R  = R_moist (rho, rv_loc);                     // New moist gas constant
+        real cp = cp_moist(rho, rv_loc);                     // New moist specific heat at constant pressure
         real temp_loc = temp + rho_cond*Lv/(rho*cp);         // New temperature after condensation
         real svp_loc = saturation_vapor_pressure(temp_loc);  // New saturation vapor pressure after condensation
         real pv_loc = rv_loc * R_v * temp_loc;               // New vapor pressure after condensation
@@ -219,8 +217,8 @@ public:
         real rv_loc = rho_v + rho_evap;                      // New vapor density
         real rc_loc = rho_c - rho_evap;                      // New cloud liquid density
         real Lv = latent_heat_condensation(temp);            // Compute latent heat of condensation for water
-        real R  = R_moist (rho, rv_loc);              // New moist gas constant
-        real cp = cp_moist(rho, rv_loc);              // New moist specific heat
+        real R  = R_moist (rho, rv_loc);                     // New moist gas constant
+        real cp = cp_moist(rho, rv_loc);                     // New moist specific heat
         real temp_loc = temp - rho_evap*Lv/(rho*cp);         // New temperature after evaporation
         real svp_loc = saturation_vapor_pressure(temp_loc);  // New saturation vapor pressure after evaporation
         real pv_loc = rv_loc * R_v * temp_loc;               // New vapor pressure after evaporation
@@ -235,11 +233,25 @@ public:
         if (abs(evap2-evap1) <= tol) {
           rho_v = rv_loc;
           rho_c = rc_loc;
-          rho_theta = rho * theta_from_temp(rho_d, rho_v, temp_loc);
+          rho_theta = rho * theta_from_temp(rho, rho_v, temp_loc);
           keep_iterating = false;
         }
       }
     }
+  }
+
+
+
+  void timeStep( DataManager &dm , real dt ) const {
+    auto rho       = dm.get_collapsed<real>("density");
+    auto rho_theta = dm.get_collapsed<real>("density_theta");
+    auto rho_v     = dm.get_collapsed<real>("water_vapor");
+    auto rho_c     = dm.get_collapsed<real>("cloud_liquid");
+
+    int num_cells = rho.totElems();
+    parallel_for( num_cells , YAKL_LAMBDA (int i) {
+      compute_adjusted_state( rho(i) , rho_v(i) , rho_c(i) , rho_theta(i) );
+    });
   }
 
 
