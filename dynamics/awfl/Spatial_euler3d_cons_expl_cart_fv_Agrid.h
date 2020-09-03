@@ -354,13 +354,14 @@ public:
 
 
   template <class MICRO>
-  real computeTimeStep(real cfl, DataManager &dm, MICRO const &micro) const {
+  real computeTimeStep(real cfl, DataManager &dm, MICRO const &micro) {
     auto &dx                   = this->dx                  ;
     auto &dy                   = this->dy                  ;
     auto &dz                   = this->dz                  ;
     StateArr  state   = createStateArr ();
     TracerArr tracers = createTracerArr();
     read_state_and_tracers( dm , state , tracers );
+    auto rho_dry = compute_rho_dry( state , tracers );
 
     if (dtInit <= 0) {
       real maxwave = 0;
@@ -374,11 +375,13 @@ public:
         real t = ( state(idT,hs+k,hs+j,hs+i) + hyDensThetaCells(hs+k) ) / r;
 
         // Compute pressure from microphysics
-        auto tracers_loc = gather_micro_tracers_cell( tracers , micro , k , j , i );
-        real p = micro.pressure_from_rho_theta(r, tracers_loc, r*t);
+        real rho_d = rho_dry(hs+k,hs+j,hs+i) + hyDensCells(hs+k);
+        int index_vapor = micro.tracer_index_vapor;
+        real rho_v = tracers(index_vapor,hs+k,hs+j,hs+i);
+        real p = micro.pressure_from_rho_theta(r, rho_d, rho_v, r*t);
 
         // Compute the speed of sound (constant kappa assumption)
-        real gamma = micro.get_gamma_dry();
+        real gamma = micro.gamma_d;
         real cs = sqrt(gamma*p/r);
 
         // Compute the maximum stable time step in each direction
