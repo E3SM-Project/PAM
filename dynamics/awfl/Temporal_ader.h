@@ -34,6 +34,35 @@ public:
   }
 
 
+  int add_tracer(DataManager &dm , std::string name , std::string desc , bool pos_def , bool adds_mass) {
+    return spaceOp.add_tracer(dm , name , desc , pos_def , adds_mass);
+  }
+
+
+  template <class MICRO>
+  void init_state( DataManager &dm , MICRO const &micro ) {
+    spaceOp.init_state( dm , micro );
+  }
+
+
+  template <class F, class MICRO>
+  void init_tracer_by_location(std::string name , F const &init_mass , DataManager &dm, MICRO const &micro) const {
+    spaceOp.init_tracer_by_location(name , init_mass , dm, micro);
+  }
+
+
+  template <class MICRO>
+  void adjust_state_for_moisture(DataManager &dm , MICRO const &micro) const {
+    spaceOp.adjust_state_for_moisture( dm , micro );
+  }
+
+
+  template <class MICRO>
+  real compute_time_step(real cfl, DataManager &dm, MICRO const &micro) {
+    return spaceOp.compute_time_step(cfl, dm, micro);
+  }
+
+
   template <class MICRO>
   void timeStep( DataManager &dm , MICRO const &micro , real dt ) {
     spaceOp.read_state_and_tracers( dm , stateArr , tracerArr );

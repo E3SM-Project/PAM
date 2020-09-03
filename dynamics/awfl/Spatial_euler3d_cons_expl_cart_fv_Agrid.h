@@ -337,7 +337,7 @@ public:
 
 
   template <class MICRO>
-  real computeTimeStep(real cfl, DataManager &dm, MICRO const &micro) {
+  real compute_time_step(real cfl, DataManager &dm, MICRO const &micro) {
     auto &dx                   = this->dx                  ;
     auto &dy                   = this->dy                  ;
     auto &dz                   = this->dz                  ;

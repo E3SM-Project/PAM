@@ -47,17 +47,17 @@ public:
 
 
 
-  template <class SP>
-  void init(std::string inFile , SP &spaceOp , DataManager &dm) {
+  template <class DC>
+  void init(std::string inFile , DC &dycore , DataManager &dm) {
     // Register tracers in the dycore
-    //                                           name             description      positive   adds mass
-    tracer_index_vapor = spaceOp.add_tracer(dm , "water_vapor"  , "Water Vapor"  , true     , true);
-    int dummy          = spaceOp.add_tracer(dm , "cloud_liquid" , "Cloud liquid" , true     , true);
+    //                                          name             description      positive   adds mass
+    tracer_index_vapor = dycore.add_tracer(dm , "water_vapor"  , "Water Vapor"  , true     , true);
+    int dummy          = dycore.add_tracer(dm , "cloud_liquid" , "Cloud liquid" , true     , true);
   }
 
 
 
-  template <class SP> void init_tracers(SP &spaceOp, DataManager &dm) const {
+  template <class DC> void init_tracers(DC &dycore, DataManager &dm) const {
     auto init_vapor_mass = YAKL_LAMBDA (real x, real y, real z, real xlen, real ylen, real zlen,
                                         real rho, real rho_theta)->real {
       real pert = profiles::ellipsoid_linear(x,y,z  ,  xlen/2,ylen/2,2000  ,  2000,2000,2000  ,  0.8);
@@ -72,8 +72,8 @@ public:
       return 0;
     };
 
-    spaceOp.init_tracer_by_location("water_vapor"  , init_vapor_mass , dm , *this);
-    spaceOp.init_tracer_by_location("cloud_liquid" , init_cloud_mass , dm , *this);
+    dycore.init_tracer_by_location("water_vapor"  , init_vapor_mass , dm , *this);
+    dycore.init_tracer_by_location("cloud_liquid" , init_cloud_mass , dm , *this);
   }
 
 

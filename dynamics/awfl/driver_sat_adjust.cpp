@@ -36,23 +36,23 @@ int main(int argc, char** argv) {
 
     // Initialize the dycore and the microphysics
     dycore.init( inFile , micro.num_tracers , dm );
-    micro .init( inFile , dycore.spaceOp    , dm );
+    micro .init( inFile , dycore            , dm );
 
     // Initialize the dry state
-    dycore.spaceOp.init_state( dm , micro );
+    dycore.init_state( dm , micro );
 
     // Initialize the tracers
-    micro.init_tracers( dycore.spaceOp , dm );
+    micro.init_tracers( dycore , dm );
 
     // Adjust the dycore state to account for moisture
-    dycore.spaceOp.adjust_state_for_moisture( dm , micro );
+    dycore.adjust_state_for_moisture( dm , micro );
 
     real etime = 0;
 
     dycore.spaceOp.output( dm , micro , etime );
     
     while (etime < simTime) {
-      real dt = dycore.spaceOp.computeTimeStep( 0.8 , dm , micro );
+      real dt = dycore.compute_time_step( 0.8 , dm , micro );
       if (etime + dt > simTime) { dt = simTime - etime; }
       dycore.timeStep( dm , micro , dt );
       micro.timeStep( dm , dt );
