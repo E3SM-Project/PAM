@@ -12,25 +12,17 @@ template <class Spatial> class Temporal_ader {
 public:
   static_assert(nTimeDerivs <= ngll , "ERROR: nTimeDerivs must be <= ngll.");
 
-  typedef typename Spatial::StateTendArr  StateTendArr;
-  typedef typename Spatial::StateArr      StateArr;
-  typedef typename Spatial::TracerTendArr TracerTendArr;
-  typedef typename Spatial::TracerArr     TracerArr;
   typedef typename Spatial::Location      Location;
 
-  StateArr      stateArr;
-  TracerArr     tracerArr;
-  StateTendArr  stateTendArr;
-  TracerTendArr tracerTendArr;
+  real4d stateTend;
+  real4d tracerTend;
 
   Spatial spaceOp;
   
   void init(std::string inFile, int num_tracers, DataManager &dm) {
     spaceOp.init(inFile, num_tracers, dm);
-    stateArr      = spaceOp.createStateArr();
-    tracerArr     = spaceOp.createTracerArr();
-    stateTendArr  = spaceOp.createStateTendArr ();
-    tracerTendArr = spaceOp.createTracerTendArr();
+    stateTend  = spaceOp.createStateTendArr ();
+    tracerTend = spaceOp.createTracerTendArr();
   }
 
 
@@ -65,35 +57,35 @@ public:
 
   template <class MICRO>
   void timeStep( DataManager &dm , MICRO const &micro , real dt ) {
-    spaceOp.read_state_and_tracers( dm , stateArr , tracerArr );
+    real4d state   = spaceOp.createStateArr();
+    real4d tracers = spaceOp.createTracerArr();
+    spaceOp.read_state_and_tracers( dm , state , tracers );
 
     // Loop over different items in the spatial splitting
     for (int spl = 0 ; spl < spaceOp.numSplit() ; spl++) {
       real dtloc = dt;
-      spaceOp.computeTendencies( stateArr , stateTendArr , tracerArr , tracerTendArr , micro , dtloc , spl );
 
-      {
-        auto &stateTendArr  = this->stateTendArr ;
-        auto applySingleTendency = YAKL_LAMBDA (Location const &loc) {
-          real &state      = spaceOp.getState     (stateArr     ,loc  ,spl);
-          real &stateTend  = spaceOp.getStateTend (stateTendArr ,loc,0,spl);
-          state  += dtloc * stateTend;
-        };
-        spaceOp.applyStateTendencies( applySingleTendency , spl );
-      }
+      // Compute the tendencies for state and tracers
+      spaceOp.computeTendencies( state , stateTend , tracers , tracerTend , micro , dtloc , spl );
 
-      {
-        auto &tracerTendArr  = this->tracerTendArr ;
-        auto applySingleTendency = YAKL_LAMBDA (Location const &loc) {
-          real &tracer     = spaceOp.getTracer    (tracerArr    ,loc  ,spl);
-          real &tracerTend = spaceOp.getTracerTend(tracerTendArr,loc,0,spl);
-          tracer += dtloc * tracerTend;
-        };
-        spaceOp.applyTracerTendencies( applySingleTendency , spl );
-      }
+      int nx          = spaceOp.nx;
+      int ny          = spaceOp.ny;
+      int nz          = spaceOp.nz;
+      int num_state   = spaceOp.num_state;
+      int num_tracers = spaceOp.num_tracers;
+      int hs          = spaceOp.hs;
+
+      parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+        for (int l=0; l < num_state; l++) {
+          state(l,hs+k,hs+j,hs+i) += dtloc * stateTend(l,k,j,i);
+        }
+        for (int l=0; l < num_tracers; l++) {
+          tracers(l,hs+k,hs+j,hs+i) += dtloc * tracerTend(l,k,j,i);
+        }
+      });
     }
 
-    spaceOp.write_state_and_tracers( dm , stateArr , tracerArr );
+    spaceOp.write_state_and_tracers( dm , state , tracers );
   }
 
 

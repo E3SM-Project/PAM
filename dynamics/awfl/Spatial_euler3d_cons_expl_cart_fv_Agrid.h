@@ -179,7 +179,7 @@ public:
 
 
 
-  void read_state_and_tracers( DataManager &dm , StateArr &state , TracerArr &tracers) const {
+  void read_state_and_tracers( DataManager &dm , real4d &state , real4d &tracers) const {
     auto rho          = dm.get<real,3>( "density" );
     auto rho_u        = dm.get<real,3>( "density_u" );
     auto rho_v        = dm.get<real,3>( "density_v" );
@@ -212,7 +212,7 @@ public:
 
 
 
-  void write_state_and_tracers( DataManager &dm , StateArr &state , TracerArr &tracers) const {
+  void write_state_and_tracers( DataManager &dm , real4d &state , real4d &tracers) const {
     auto rho          = dm.get<real,3>( "density" );
     auto rho_u        = dm.get<real,3>( "density_u" );
     auto rho_v        = dm.get<real,3>( "density_v" );
@@ -245,8 +245,8 @@ public:
 
   template <class MICRO>
   void adjust_state_for_moisture(DataManager &dm , MICRO const &micro) const {
-    StateArr  state   = createStateArr ();
-    TracerArr tracers = createTracerArr();
+    real4d  state   = createStateArr ();
+    real4d tracers = createTracerArr();
     read_state_and_tracers( dm , state , tracers );
 
     parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
@@ -282,50 +282,26 @@ public:
 
 
 
-  StateArr createStateArr() const {
-    return StateArr("stateArr",num_state,nz+2*hs,ny+2*hs,nx+2*hs);
+  real4d createStateArr() const {
+    return real4d("stateArr",num_state,nz+2*hs,ny+2*hs,nx+2*hs);
   }
 
 
 
-  TracerArr createTracerArr() const {
-    return StateArr("stateArr",num_tracers,nz+2*hs,ny+2*hs,nx+2*hs);
+  real4d createTracerArr() const {
+    return real4d("tracerArr",num_tracers,nz+2*hs,ny+2*hs,nx+2*hs);
   }
 
 
 
-  StateTendArr createStateTendArr() const {
-    return StateTendArr("stateTendArr",num_state,nz,ny,nx);
+  real4d createStateTendArr() const {
+    return real4d("stateTendArr",num_state,nz,ny,nx);
   }
 
 
 
-  TracerTendArr createTracerTendArr() const {
-    return TracerTendArr("tracerTendArr",num_tracers,nz,ny,nx);
-  }
-
-
-
-  YAKL_INLINE real &getState(StateArr const &state , Location const &loc , int splitIndex) {
-    return state(loc.l , hs+loc.k , hs+loc.j , hs+loc.i);
-  }
-
-
-
-  YAKL_INLINE real &getTracer(TracerArr const &tracers , Location const &loc , int splitIndex) {
-    return tracers(loc.l , hs+loc.k , hs+loc.j , hs+loc.i);
-  }
-
-
-
-  YAKL_INLINE real &getStateTend(StateTendArr const &tend , Location const &loc , int timeDeriv , int splitIndex) {
-    return tend(loc.l , loc.k , loc.j , loc.i);
-  }
-
-
-
-  YAKL_INLINE real &getTracerTend(TracerTendArr const &tend , Location const &loc , int timeDeriv , int splitIndex) {
-    return tend(loc.l , loc.k , loc.j , loc.i);
+  real4d createTracerTendArr() const {
+    return real4d("tracerTendArr",num_tracers,nz,ny,nx);
   }
 
 
@@ -341,8 +317,8 @@ public:
     auto &dx                   = this->dx                  ;
     auto &dy                   = this->dy                  ;
     auto &dz                   = this->dz                  ;
-    StateArr  state   = createStateArr ();
-    TracerArr tracers = createTracerArr();
+    real4d  state   = createStateArr ();
+    real4d tracers = createTracerArr();
     read_state_and_tracers( dm , state , tracers );
 
     if (dtInit <= 0) {
@@ -671,8 +647,8 @@ public:
 
   // Compute state and tendency time derivatives from the state
   template <class MICRO>
-  void computeTendencies( StateArr  &state   , StateTendArr  &stateTend  ,
-                          TracerArr &tracers , TracerTendArr &tracerTend ,
+  void computeTendencies( real4d &state   , real4d &stateTend  ,
+                          real4d &tracers , real4d &tracerTend ,
                           MICRO const &micro, real &dt , int splitIndex ) {
     if (dimSwitch) {
       if        (splitIndex == 0) {
@@ -713,8 +689,8 @@ public:
 
 
   template <class MICRO>
-  void computeTendenciesX( StateArr  &state   , StateTendArr  &stateTend  ,
-                           TracerArr &tracers , TracerTendArr &tracerTend ,
+  void computeTendenciesX( real4d &state   , real4d &stateTend  ,
+                           real4d &tracers , real4d &tracerTend ,
                            MICRO const &micro, real &dt ) {
     auto &nx                      = this->nx                     ;
     auto &weno_scalars            = this->weno_scalars           ;
@@ -1104,8 +1080,8 @@ public:
 
 
   template <class MICRO>
-  void computeTendenciesY( StateArr  &state   , StateTendArr  &stateTend  ,
-                           TracerArr &tracers , TracerTendArr &tracerTend ,
+  void computeTendenciesY( real4d &state   , real4d &stateTend  ,
+                           real4d &tracers , real4d &tracerTend ,
                            MICRO const &micro, real &dt ) {
     real gamma = micro.gamma_d;
 
@@ -1490,8 +1466,8 @@ public:
 
 
   template <class MICRO>
-  void computeTendenciesZ( StateArr  &state   , StateTendArr  &stateTend  ,
-                           TracerArr &tracers , TracerTendArr &tracerTend ,
+  void computeTendenciesZ( real4d &state   , real4d &stateTend  ,
+                           real4d &tracers , real4d &tracerTend ,
                            MICRO const &micro, real &dt ) {
     real gamma = micro.gamma_d;
 
@@ -1956,8 +1932,8 @@ public:
       nc.write1(etime,"t",ulIndex,"t");
     }
 
-    StateArr  state   = createStateArr ();
-    TracerArr tracers = createTracerArr();
+    real4d  state   = createStateArr ();
+    real4d tracers = createTracerArr();
     read_state_and_tracers( dm , state , tracers );
 
     real3d data("data",nz,ny,nx);
@@ -2005,7 +1981,7 @@ public:
 
 
 
-  void finalize(StateArr const &state , TracerArr const &tracers) {}
+  void finalize(real4d const &state , real4d const &tracers) {}
 
 
 
