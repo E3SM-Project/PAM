@@ -27,34 +27,42 @@ public:
     int i;
   };
 
-  typedef real4d StateArr;  // Spatial index
-  typedef real4d TracerArr; // Spatial index
+  typedef real4d StateArr;  // Array of state variables (rho, rho*u, rho*v, rho*w, and rho*theta)
+  typedef real4d TracerArr; // Array of tracers (total tracer mass)
 
-  typedef real4d StateTendArr;   // (time derivative & spatial index)
-  typedef real4d TracerTendArr;  // (time derivative & spatial index)
+  typedef real4d StateTendArr;   // State tendencies
+  typedef real4d TracerTendArr;  // Tracer tendencies
 
+  // Stores two estimates of the state, state flux, and tracer values at each cell interface
   real5d stateLimits;
-  real5d tracerLimits;
   real5d stateFluxLimits;
+  real5d tracerLimits;
+
+  // Stores single-valued flux of the tracer at each cell interface
   real4d tracerFlux;
-  // Hydrostatically balanced values for density, potential temperature, and pressure
+
+  // Hydrostatically balanced values for density, potential temperature, and pressure (cell-averages)
   real1d hyDensCells;
   real1d hyPressureCells;
   real1d hyThetaCells;
   real1d hyDensThetaCells;
+
+  // Hydrostatically balanced values for density, potential temperature, and pressure (GLL points)
   real2d hyDensGLL;
   real2d hyPressureGLL;
   real2d hyThetaGLL;
   real2d hyDensThetaGLL;
+
   // Matrices to transform DOFs from one form to another
   SArray<real,2,ord,ngll> coefs_to_gll;
   SArray<real,2,ord,ngll> coefs_to_deriv_gll;
   SArray<real,2,ord,ngll> sten_to_gll;
   SArray<real,2,ord,ngll> sten_to_deriv_gll;
+  // WENO reconstruction matrices
   SArray<real,3,ord,ord,ord> wenoRecon;
-  SArray<real,1,hs+2> idl;
-  real sigma;
-  // For ADER spatial derivative computation
+  SArray<real,1,hs+2> idl;   // Ideal weights for WENO
+  real sigma;                // WENO sigma parameter (handicap high-order TV estimate)
+  // For ADER spatial derivative computation (ngll points -> coefs -> deriv -> ngll points)
   SArray<real,2,ngll,ngll> derivMatrix;
   // For quadrature
   SArray<real,1,ord> gllWts_ord;
@@ -62,57 +70,75 @@ public:
   SArray<real,1,ngll> gllWts_ngll;
   SArray<real,1,ngll> gllPts_ngll;
 
+  // For indexing into the state and state tendency arrays
   int static constexpr idR = 0;  // density perturbation
   int static constexpr idU = 1;  // u
   int static constexpr idV = 2;  // v
   int static constexpr idW = 3;  // w
   int static constexpr idT = 4;  // potential temperature perturbation
 
+  // The two boundary condition options for each direction
   int static constexpr BC_PERIODIC = 0;
   int static constexpr BC_WALL     = 1;
 
+  // Options for initializing the data
   int static constexpr DATA_SPEC_THERMAL       = 1;
   int static constexpr DATA_SPEC_THERMAL_MOIST = 2;
+  
+  bool sim2d;  // Whether we're simulating in 2-D
 
-  bool sim2d;
+  real gamma;  // cp/cv
 
-  real gamma;
-
+  // Grid spacing in each dimension
   real dx;
   real dy;
   real dz;
 
+  // Initial time step (used throughout the simulation)
   real dtInit;
 
+  // Which direction we're passing through for a given time step (x,y,z)  or (z,y,x)
+  // For Strang splitting
   bool dimSwitch;
 
-  int num_tracers;
-  std::vector<std::string> tracer_name;
-  std::vector<std::string> tracer_desc;
-  bool1d                   tracer_pos;
-  bool1d                   tracer_adds_mass;
+  int num_tracers;  // Number of tracers
+  std::vector<std::string> tracer_name;      // Name of each tracer
+  std::vector<std::string> tracer_desc;      // Description of each tracer
+  bool1d                   tracer_pos;       // Whether each tracer is positive-definite
+  bool1d                   tracer_adds_mass; // Whether each tracer adds mass (otherwise it's passive)
 
+  //////////////////////////////////////
   // Values read from input file
+  //////////////////////////////////////
+  // Number of cells in each direction
   int         nx;
   int         ny;
   int         nz;
+  // Length of the domain in each direction (m)
   real        xlen;
   real        ylen;
   real        zlen;
+  // Boundary condition in each direction
   int         bc_x;
   int         bc_y;
   int         bc_z;
+  // Whether to use WENO for scalars and also for winds
   bool        weno_scalars;
   bool        weno_winds;
+  // Name of the output file
   std::string out_file;
+  // How to initialize the data
   int         data_spec;
 
 
+  // When this class is created, initialize num_tracers to zero
   Spatial_euler3d_cons_expl_cart_fv_Agrid() {
     num_tracers = 0;
   }
 
 
+
+  // Make sure it's odd-order-accurate
   static_assert(ord%2 == 1,"ERROR: ord must be an odd integer");
 
 
@@ -122,32 +148,38 @@ public:
     auto &tracer_pos       = this->tracer_pos;
     auto &tracer_adds_mass = this->tracer_adds_mass;
 
-    int tr = tracer_name.size();
+    int tr = tracer_name.size();  // Index to insert this tracer at
     if (tr == num_tracers) {
       endrun("ERROR: adding more tracers than initially requested");
     }
-    tracer_name.push_back(name);
-    tracer_desc.push_back(desc);
+    tracer_name.push_back(name);  // Store name
+    tracer_desc.push_back(desc);  // Store description
     parallel_for( 1 , YAKL_LAMBDA (int i) {
-      tracer_pos      (tr) = pos_def;
-      tracer_adds_mass(tr) = adds_mass;
+      tracer_pos      (tr) = pos_def;   // Store whether it's positive-definite
+      tracer_adds_mass(tr) = adds_mass; // Store whether it adds mass (otherwise it's passive)
     });
 
+    // Register and allocate this tracer in the DataManager
     dm.register_and_allocate<real>( name , desc , {nz,ny,nx} , {"z","y","x"} );
+
+    // Return the index of this tracer to the caller
     return tr;
   }
 
 
 
+  // Caller creates a lambda (init_mass) to initialize this tracer value using location and dry state information
   template <class F, class MICRO>
   void init_tracer_by_location(std::string name , F const &init_mass , DataManager &dm, MICRO const &micro) const {
     auto tracer = dm.get<real,3>(name);
 
     parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
       tracer(k,j,i) = 0;
+      // Loop over quadrature points
       for (int kk=0; kk<ord; kk++) {
         for (int jj=0; jj<ord; jj++) {
           for (int ii=0; ii<ord; ii++) {
+            // Get the location
             real zloc = (k+0.5_fp)*dz + gllPts_ord(kk)*dz;
             real yloc;
             if (sim2d) {
@@ -170,7 +202,7 @@ public:
 
             // Initialize tracer mass based on dry state
             real wt = gllWts_ord(kk) * gllWts_ord(jj) * gllWts_ord(ii);
-            tracer(k,j,i) += init_mass(xloc,yloc,zloc,xlen,ylen,zlen,rh,rh*th)*wt;
+            tracer(k,j,i) += init_mass(xloc,yloc,zloc,xlen,ylen,zlen,rh,rh*th) * wt;
           }
         }
       }
@@ -179,31 +211,36 @@ public:
 
 
 
+  // Transform state and tracer data in DataManager into a state and tracers array more conveniently used by the dycore
+  // This has to be copied because we need a halo, and the rest of the model doesn't need to know about the halo
   void read_state_and_tracers( DataManager &dm , real4d &state , real4d &tracers) const {
-    auto rho          = dm.get<real,3>( "density" );
-    auto rho_u        = dm.get<real,3>( "density_u" );
-    auto rho_v        = dm.get<real,3>( "density_v" );
-    auto rho_w        = dm.get<real,3>( "density_w" );
-    auto rho_theta    = dm.get<real,3>( "density_theta" );
-    auto rho_hy       = dm.get<real,1>( "hydrostatic_density" );
-    auto rho_theta_hy = dm.get<real,1>( "hydrostatic_density_theta" );
+    // Get data arrays from the DataManager (this just wraps an existing allocated pointer in an Array)
+    real3d rho          = dm.get<real,3>( "density" );
+    real3d rho_u        = dm.get<real,3>( "density_u" );
+    real3d rho_v        = dm.get<real,3>( "density_v" );
+    real3d rho_w        = dm.get<real,3>( "density_w" );
+    real3d rho_theta    = dm.get<real,3>( "density_theta" );
+    real1d rho_hy       = dm.get<real,1>( "hydrostatic_density" );
+    real1d rho_theta_hy = dm.get<real,1>( "hydrostatic_density_theta" );
 
     struct SingleTracer {
       real3d tracer;
     };
 
+    // An array of single tracers for reading in tracers from the DataManager
     SArray<SingleTracer,1,max_tracers> dm_tracers;
 
     for (int tr=0; tr < num_tracers; tr++) {
       dm_tracers(tr).tracer = dm.get<real,3>( tracer_name[tr] );
     }
 
+    // Copy from the DataManager to the state and tracers arrays
     parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-      state(idR,hs+k,hs+j,hs+i) = rho(k,j,i) - rho_hy(k);
+      state(idR,hs+k,hs+j,hs+i) = rho(k,j,i) - rho_hy(k);  // Density perturbation
       state(idU,hs+k,hs+j,hs+i) = rho_u(k,j,i);
       state(idV,hs+k,hs+j,hs+i) = rho_v(k,j,i);
       state(idW,hs+k,hs+j,hs+i) = rho_w(k,j,i);
-      state(idT,hs+k,hs+j,hs+i) = rho_theta(k,j,i) - rho_theta_hy(k);
+      state(idT,hs+k,hs+j,hs+i) = rho_theta(k,j,i) - rho_theta_hy(k);  // rho*theta perturbation
       for (int tr=0; tr < num_tracers; tr++) {
         tracers(tr,hs+k,hs+j,hs+i) = dm_tracers(tr).tracer(k,j,i);
       }
@@ -212,23 +249,28 @@ public:
 
 
 
+  // Transform state and tracer data from state and tracers arrays with halos back to the DataManager
+  // so it can be used by other parts of the model
   void write_state_and_tracers( DataManager &dm , real4d &state , real4d &tracers) const {
-    auto rho          = dm.get<real,3>( "density" );
-    auto rho_u        = dm.get<real,3>( "density_u" );
-    auto rho_v        = dm.get<real,3>( "density_v" );
-    auto rho_w        = dm.get<real,3>( "density_w" );
-    auto rho_theta    = dm.get<real,3>( "density_theta" );
+    // Get data arrays from the DataManager (this just wraps an existing allocated pointer in an Array)
+    real3d rho       = dm.get<real,3>( "density" );
+    real3d rho_u     = dm.get<real,3>( "density_u" );
+    real3d rho_v     = dm.get<real,3>( "density_v" );
+    real3d rho_w     = dm.get<real,3>( "density_w" );
+    real3d rho_theta = dm.get<real,3>( "density_theta" );
 
     struct SingleTracer {
       real3d tracer;
     };
 
+    // An array of single tracers for reading in tracers from the DataManager
     SArray<SingleTracer,1,max_tracers> dm_tracers;
 
     for (int tr=0; tr < num_tracers; tr++) {
       dm_tracers(tr).tracer = dm.get<real,3>( tracer_name[tr] );
     }
 
+    // Copy from state and tracers arrays to the DataManager arrays
     parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
       rho      (k,j,i) = state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k)     ;
       rho_u    (k,j,i) = state(idU,hs+k,hs+j,hs+i)                         ;
@@ -243,14 +285,16 @@ public:
 
 
 
+  // Take an initially dry fluid state and adjust it to account for moist tracers
   template <class MICRO>
   void adjust_state_for_moisture(DataManager &dm , MICRO const &micro) const {
-    real4d  state   = createStateArr ();
+    // Copy the DataManager data to state and tracer arrays for convenience
+    real4d state   = createStateArr ();
     real4d tracers = createTracerArr();
     read_state_and_tracers( dm , state , tracers );
 
     parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-      // Add tracer density to dry density
+      // Add tracer density to dry density if it adds mass
       real rho_dry = state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k);
       for (int tr=0; tr < num_tracers; tr++) {
         if (tracer_adds_mass(tr)) {
@@ -277,6 +321,7 @@ public:
       state(idT,hs+k,hs+j,hs+i) = rho_moist*theta_moist - hyDensThetaCells(hs+k);
     });
 
+    // Copy the state and tracers arrays back to the DataManager
     write_state_and_tracers( dm , state , tracers );
   }
 
@@ -306,24 +351,34 @@ public:
 
 
 
+  // Number of operator splittinng steps to use
+  // Normally this would be 3, but the z-directly CFL is reduced because of how the fluxes are
+  // handled in the presence of a solid wall boundary condition. I'm looking into how to fix this
   int numSplit() const {
     return 4;
   }
 
 
 
+  // Given the model data and CFL value, compute the maximum stable time step
   template <class MICRO>
   real compute_time_step(real cfl, DataManager &dm, MICRO const &micro) {
-    auto &dx                   = this->dx                  ;
-    auto &dy                   = this->dy                  ;
-    auto &dz                   = this->dz                  ;
-    real4d  state   = createStateArr ();
-    real4d tracers = createTracerArr();
-    read_state_and_tracers( dm , state , tracers );
 
+    // If we've already computed the time step, then don't compute it again
     if (dtInit <= 0) {
-      real maxwave = 0;
+      auto &dx                   = this->dx                  ;
+      auto &dy                   = this->dy                  ;
+      auto &dz                   = this->dz                  ;
+
+      // Convert data from DataManager to state and tracers array for convenience
+      real4d state   = createStateArr ();
+      real4d tracers = createTracerArr();
+      read_state_and_tracers( dm , state , tracers );
+
+      // Allocate a 3-D array for the max stable time steps (we'll use this for a reduction later)
       real3d dt3d("dt3d",nz,ny,nx);
+
+      // Loop through the cells, calculate the max stable time step for each cell
       parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
         // Get the state
         real r = state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k);
@@ -365,13 +420,16 @@ public:
   // Initialize crap needed by recon()
   void init(std::string inFile, int num_tracers, DataManager &dm) {
     this->num_tracers = num_tracers;
+    
+    // Allocate device arrays for whether tracers are positive-definite or add mass
     tracer_pos       = bool1d("tracer_pos"      ,num_tracers);
     tracer_adds_mass = bool1d("tracer_adds_mass",num_tracers);
 
+    // Inialize time step to zero, and dimensional splitting switch
     dtInit = 0;
     dimSwitch = true;
 
-    // Read the input file
+    // Read the YAML input file
     YAML::Node config = YAML::LoadFile(inFile);
     if ( !config                 ) { endrun("ERROR: Invalid YAML input file"); }
     if ( !config["nx"]           ) { endrun("ERROR: No nx in input file"); }
@@ -388,19 +446,24 @@ public:
     if ( !config["initData"]     ) { endrun("ERROR: No initData in input file"); }
     if ( !config["out_file"]     ) { endrun("ERROR: No out_file in input file"); }
 
+    // Read the # cells in each dimension
     nx = config["nx"].as<int>();
     ny = config["ny"].as<int>();
     nz = config["nz"].as<int>();
 
+    // Determine whether this is a 2-D simulation
     sim2d = ny == 1;
 
+    // Read the domain length in each dimension
     xlen = config["xlen"].as<real>();
     ylen = config["ylen"].as<real>();
     zlen = config["zlen"].as<real>();
 
+    // Read whether we're doing WENO limiting on scalars and winds
     weno_scalars = config["weno_scalars"].as<bool>();
     weno_winds   = config["weno_winds"].as<bool>();
 
+    // Read the data initialization option
     std::string dataStr = config["initData"].as<std::string>();
     if        (dataStr == "thermal") {
       data_spec = DATA_SPEC_THERMAL;
@@ -408,6 +471,7 @@ public:
       endrun("ERROR: Invalid data_spec");
     }
 
+    // Read the x-direction boundary condition option
     std::string bc_x_str = config["bc_x"].as<std::string>();
     if        (bc_x_str == "periodic" ) {
       bc_x = BC_PERIODIC;
@@ -417,6 +481,7 @@ public:
       endrun("Invalid bc_x");
     }
 
+    // Read the y-direction boundary condition option
     std::string bc_y_str = config["bc_y"].as<std::string>();
     if        (bc_y_str == "periodic" ) {
       bc_y = BC_PERIODIC;
@@ -426,6 +491,7 @@ public:
       endrun("Invalid bc_y");
     }
 
+    // Read the z-direction boundary condition option
     std::string bc_z_str = config["bc_z"].as<std::string>();
     if        (bc_z_str == "periodic" ) {
       bc_z = BC_PERIODIC;
@@ -435,21 +501,24 @@ public:
       endrun("Invalid bc_z");
     }
 
+    // Read the output filename
     out_file = config["out_file"].as<std::string>();
 
+    // Compute the grid spacing in each dimension
     dx = xlen/nx;
     dy = ylen/ny;
     dz = zlen/nz;
 
+    // Store the WENO reconstruction matrices
     TransformMatrices::weno_sten_to_coefs(this->wenoRecon);
 
-    // Store to_gll and wenoRecon
+    // Block exists to avoid name mangling stufff
     {
-      SArray<real,2,ord,ord>  g2c;
-      SArray<real,2,ord,ord>  s2c;
-      SArray<real,2,ord,ngll> c2g_lower;
-      SArray<real,2,ord,ord>  c2g;
-      SArray<real,2,ord,ord>  c2d;
+      SArray<real,2,ord,ord>  g2c;        // Converts ord GLL points to ord coefficients
+      SArray<real,2,ord,ord>  s2c;        // Converts ord stencil cell averages to ord coefficients
+      SArray<real,2,ord,ngll> c2g_lower;  // Converts ord coefficients to ngll GLL points
+      SArray<real,2,ord,ord>  c2g;        // Converts ord coefficients to ord GLL points
+      SArray<real,2,ord,ord>  c2d;        // Converts ord coefficients to order differentiated coefficients
 
       TransformMatrices::gll_to_coefs      (g2c      );
       TransformMatrices::sten_to_coefs     (s2c      );
@@ -457,36 +526,39 @@ public:
       TransformMatrices::coefs_to_gll      (c2g      );
       TransformMatrices::coefs_to_deriv    (c2d      );
 
-      this->coefs_to_gll       = c2g_lower;
-      this->coefs_to_deriv_gll = c2g_lower * c2d;
-      this->sten_to_gll        = c2g_lower       * s2c;
-      this->sten_to_deriv_gll  = c2g_lower * c2d * s2c;
+      this->coefs_to_gll       = c2g_lower;              // Converts ord coefficients to ngll GLL points
+      this->coefs_to_deriv_gll = c2g_lower * c2d;        // Converts ord coefficients to ngll differentiated GLL points
+      this->sten_to_gll        = c2g_lower       * s2c;  // Converts ord stencil cell avgs to ngll GLL points
+      this->sten_to_deriv_gll  = c2g_lower * c2d * s2c;  // Converts ord stencil cell avgs to ngll differentiated GLL points
 
     }
     // Store ader derivMatrix
     {
-      SArray<real,2,ngll,ngll> g2c;
-      SArray<real,2,ngll,ngll> c2d;
-      SArray<real,2,ngll,ngll> c2g;
+      SArray<real,2,ngll,ngll> g2c;  // Converts ngll GLL points to ngll coefficients
+      SArray<real,2,ngll,ngll> c2d;  // Converts ngll coefficients to ngll differentiated coefficients
+      SArray<real,2,ngll,ngll> c2g;  // Converts ngll coefficients to ngll GLL points
 
       TransformMatrices::gll_to_coefs  (g2c);
       TransformMatrices::coefs_to_deriv(c2d);
       TransformMatrices::coefs_to_gll  (c2g);
 
-      this->derivMatrix = c2g * c2d * g2c;
+      this->derivMatrix = c2g * c2d * g2c;  // Converts ngll GLL points to ngll differentiated GLL points
     }
+    // Store quadrature weights using ord GLL points
     TransformMatrices::get_gll_points (this->gllPts_ord);
     TransformMatrices::get_gll_weights(this->gllWts_ord);
+    // Store quadrature weights using ngll GLL points
     TransformMatrices::get_gll_points (this->gllPts_ngll);
     TransformMatrices::get_gll_weights(this->gllWts_ngll);
 
+    // Store WENO ideal weights and sigma value
     weno::wenoSetIdealSigma(this->idl,this->sigma);
 
+    // Allocate data
     stateLimits     = real5d("stateLimits"    ,num_state  ,2,nz+1,ny+1,nx+1);
     tracerLimits    = real5d("tracerLimits"   ,num_tracers,2,nz+1,ny+1,nx+1);
     stateFluxLimits = real5d("stateFluxLimits",num_state  ,2,nz+1,ny+1,nx+1);
     tracerFlux      = real4d("tracerFlux"     ,num_tracers  ,nz+1,ny+1,nx+1);
-
     hyDensCells          = real1d("hyDensCells       ",nz+2*hs);
     hyPressureCells      = real1d("hyPressureCells   ",nz+2*hs);
     hyThetaCells         = real1d("hyThetaCells      ",nz+2*hs);
@@ -496,6 +568,7 @@ public:
     hyThetaGLL           = real2d("hyThetaGLL        ",nz,ngll);
     hyDensThetaGLL       = real2d("hyDensThetaGLL    ",nz,ngll);
 
+    // Register and allocate state data with the DataManager
     dm.register_and_allocate<real>( "hydrostatic_density"       , "hydrostatic_density"       , {nz} , {"z"} );
     dm.register_and_allocate<real>( "hydrostatic_theta"         , "hydrostatic_theta"         , {nz} , {"z"} );
     dm.register_and_allocate<real>( "hydrostatic_density_theta" , "hydrostatic_density_theta" , {nz} , {"z"} );
