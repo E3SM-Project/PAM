@@ -14,6 +14,7 @@ using yakl::SArray;
 using yakl::memDevice;
 using yakl::memHost;
 using yakl::memset;
+using yakl::styleC;
 
 #ifndef ORD
   #define ORD 5

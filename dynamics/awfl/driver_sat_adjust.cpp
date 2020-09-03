@@ -3,19 +3,22 @@
 #include "Spatial_euler3d_cons_expl_cart_fv_Agrid.h"
 #include "Temporal_ader.h"
 #include "Profiles.h"
-#include "PhysicsSaturationAdjustment.h"
+#include "Microphysics_saturation_adjustment.h"
+#include "DataManager.h"
 
 // Define the Spatial operator based on constants from the Temporal operator
 typedef Spatial_euler3d_cons_expl_cart_fv_Agrid<nTimeDerivs,timeAvg,nAder> Spatial;
 
 // Define the Temporal operator based on the Spatial operator
-typedef Temporal_ader<Spatial> Temporal;
+typedef Temporal_ader<Spatial> Dycore;
 
-typedef PhysicsSaturationAdjustment Physics;
+typedef Microphysics_saturation_adjustment Microphysics;
 
 int main(int argc, char** argv) {
   yakl::init();
   {
+
+    DataManager dm;
 
     if (argc <= 1) { endrun("ERROR: Must pass the input YAML filename as a parameter"); }
     std::string inFile(argv[1]);
@@ -27,47 +30,42 @@ int main(int argc, char** argv) {
     real outFreq = config["outFreq"].as<real>();
     int numOut = 0;
 
-    // Create the model and the physics
-    Temporal model;
-    Physics physics;
+    // Create the dycore and the microphysics
+    Dycore       dycore;
+    Microphysics micro;
 
-    // Initialize the model and the physics
-    model        .init( inFile , physics.numTracers );
-    physics      .init( inFile );
-
-    // Define the tracers
-    physics.addTracers(model.spaceOp);
+    // Initialize the dycore and the microphysics
+    dycore.init( inFile , micro.num_tracers , dm );
+    micro .init( inFile , dycore.spaceOp    , dm );
 
     // Initialize the dry state
-    Spatial::StateArr state = model.spaceOp.createStateArr();
-    model.spaceOp.initState(state, physics);
+    dycore.spaceOp.init_state( dm , micro );
 
     // Initialize the tracers
-    Spatial::TracerArr tracers = model.spaceOp.createTracerArr();
-    physics.initTracers(model.spaceOp,tracers);
+    micro.init_tracers( dycore.spaceOp , dm );
 
-    // Adjust the model state to account for moisture
-    model.spaceOp.adjustStateForMoisture(state,tracers,physics);
+    // Adjust the dycore state to account for moisture
+    dycore.spaceOp.adjust_state_for_moisture( dm , micro );
 
     real etime = 0;
 
-    model.spaceOp.output( state , tracers , physics , etime );
+    dycore.spaceOp.output( dm , micro , etime );
     
-    while (etime < simTime) {
-      real dt = model.spaceOp.computeTimeStep(0.8, state, tracers, physics);
-      if (etime + dt > simTime) { dt = simTime - etime; }
-      model.timeStep( state , tracers , physics , dt );
-      etime += dt;
-      if (etime / outFreq >= numOut+1) {
-        std::cout << "Etime , dt: " << etime << " , " << dt << "\n";
-        model.spaceOp.output( state , tracers , physics , etime );
-        numOut++;
-      }
-    }
+    // while (etime < simTime) {
+    //   real dt = dycore.spaceOp.computeTimeStep( 0.8 , dm , micro );
+    //   if (etime + dt > simTime) { dt = simTime - etime; }
+    //   dycore.timeStep( dm , micro , dt );
+    //   etime += dt;
+    //   if (etime / outFreq >= numOut+1) {
+    //     std::cout << "Etime , dt: " << etime << " , " << dt << "\n";
+    //     dycore.spaceOp.output( dm , micro , etime );
+    //     numOut++;
+    //   }
+    // }
 
-    std::cout << "Elapsed Time: " << etime << "\n";
+    // std::cout << "Elapsed Time: " << etime << "\n";
 
-    model.finalize( state , tracers );
+    // dycore.finalize( dm );
 
   }
   yakl::finalize();

@@ -24,7 +24,7 @@ weno_winds   : false
 initData : thermal
 
 # Output filename
-outFile  : test.nc
+out_file  : test.nc
 
 # Output frequency in seconds
 outFreq  : 10.
