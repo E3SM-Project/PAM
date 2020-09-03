@@ -49,7 +49,7 @@ int main(int argc, char** argv) {
 
     real etime = 0;
 
-    dycore.spaceOp.output( dm , micro , etime );
+    dycore.space_op.output( dm , micro , etime );
     
     while (etime < simTime) {
       real dt = dycore.compute_time_step( 0.8 , dm , micro );
@@ -59,7 +59,7 @@ int main(int argc, char** argv) {
       etime += dt;
       if (etime / outFreq >= numOut+1) {
         std::cout << "Etime , dt: " << etime << " , " << dt << "\n";
-        dycore.spaceOp.output( dm , micro , etime );
+        dycore.space_op.output( dm , micro , etime );
         numOut++;
       }
     }
