@@ -9,18 +9,22 @@ class Microphysics_saturation_adjustment {
 public:
   int static constexpr num_tracers = 2;
 
-  real R_d        ;
-  real cp_d       ;
-  real cv_d       ;
-  real gamma_d    ;
-  real kappa_d    ;
-  real R_v        ;
-  real cp_v       ;
-  real cv_v       ;
-  real p0         ;
-  real C0_d       ;
+  real R_d               ;
+  real cp_d              ;
+  real cv_d              ;
+  real gamma_d           ;
+  real kappa_d           ;
+  real R_v               ;
+  real cp_v              ;
+  real cv_v              ;
+  real p0                ;
+  real C0_d              ;
   int  tracer_index_vapor;
-  real p0_nkappa_d;
+  real p0_nkappa_d       ;
+  SArray<real,1,num_tracers> tracer_IDs; // tracer index for microphysics tracers
+
+  int static constexpr ID_V = 0;  // Local index for water vapor
+  int static constexpr ID_C = 1;  // Local index for cloud liquid
 
 
 
@@ -51,29 +55,9 @@ public:
   void init(std::string inFile , DC &dycore , DataManager &dm) {
     // Register tracers in the dycore
     //                                          name             description      positive   adds mass
-    tracer_index_vapor = dycore.add_tracer(dm , "water_vapor"  , "Water Vapor"  , true     , true);
-    int dummy          = dycore.add_tracer(dm , "cloud_liquid" , "Cloud liquid" , true     , true);
-  }
-
-
-
-  template <class DC> void init_tracers(DC &dycore, DataManager &dm) const {
-    auto init_vapor_mass = YAKL_LAMBDA (real x, real y, real z, real xlen, real ylen, real zlen,
-                                        real rho, real rho_theta)->real {
-      real pert = profiles::ellipsoid_linear(x,y,z  ,  xlen/2,ylen/2,2000  ,  2000,2000,2000  ,  0.8);
-      real temp = temp_from_rho_theta(rho , 0 , rho_theta);
-      real svp  = saturation_vapor_pressure(temp);
-      real p_v  = pert*svp;
-      real r_v  = p_v / (R_v*temp);
-      return r_v;
-    };
-    auto init_cloud_mass = YAKL_LAMBDA (real x, real y, real z, real xlen, real ylen, real zlen,
-                                        real rho, real rho_theta)->real {
-      return 0;
-    };
-
-    dycore.init_tracer_by_location("water_vapor"  , init_vapor_mass , dm , *this);
-    dycore.init_tracer_by_location("cloud_liquid" , init_cloud_mass , dm , *this);
+    tracer_IDs(ID_V) = dycore.add_tracer(dm , "water_vapor"  , "Water Vapor"  , true     , true);
+    tracer_IDs(ID_C) = dycore.add_tracer(dm , "cloud_liquid" , "Cloud liquid" , true     , true);
+    tracer_index_vapor = tracer_IDs(ID_V);
   }
 
 

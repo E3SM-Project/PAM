@@ -54,7 +54,16 @@ public:
 
 
   template <class MICRO>
+  void init_tracers( DataManager &dm , MICRO const &micro) const {
+    space_op.init_tracers( dm , micro );
+  }
+
+
+  template <class MICRO>
   void timeStep( DataManager &dm , MICRO const &micro , real dt ) {
+    auto &stateTend  = this->stateTend ;
+    auto &tracerTend = this->tracerTend;
+
     real4d state   = space_op.createStateArr();
     real4d tracers = space_op.createTracerArr();
     space_op.read_state_and_tracers( dm , state , tracers );

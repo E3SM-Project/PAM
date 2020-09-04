@@ -1,11 +1,11 @@
 ---
 # Simulation time in seconds
-simTime  : 1000.
+simTime  : 1.
 
 # Number of cells to use
-nx       : 100
+nx       : 10
 ny       : 1
-nz       : 50
+nz       : 5
 
 # Lengths of the dimensions in meters
 xlen     : 20000
@@ -27,5 +27,5 @@ initData : thermal
 out_file  : test.nc
 
 # Output frequency in seconds
-outFreq  : 10.
+outFreq  : 0.
 

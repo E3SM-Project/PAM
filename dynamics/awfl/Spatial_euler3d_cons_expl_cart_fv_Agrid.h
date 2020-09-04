@@ -169,12 +169,24 @@ public:
 
 
   // Caller creates a lambda (init_mass) to initialize this tracer value using location and dry state information
-  template <class F, class MICRO>
-  void init_tracer_by_location(std::string name , F const &init_mass , DataManager &dm, MICRO const &micro) const {
-    auto tracer = dm.get<real,3>(name);
+  template <class MICRO>
+  void init_tracers( DataManager &dm , MICRO const &micro) const {
+    auto &dx         = this->dx        ;
+    auto &dy         = this->dy        ;
+    auto &dz         = this->dz        ;
+    auto &gllPts_ord = this->gllPts_ord;
+    auto &gllWts_ord = this->gllWts_ord;
+    auto &sim2d      = this->sim2d     ;
+    auto &xlen       = this->xlen      ;
+    auto &ylen       = this->ylen      ;
+    auto &zlen       = this->zlen      ;
+
+    real3d dm_vapor = dm.get<real,3>("water_vapor" );
+    real3d dm_cloud = dm.get<real,3>("cloud_liquid");
 
     parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-      tracer(k,j,i) = 0;
+      dm_vapor(k,j,i) = 0;
+      dm_cloud(k,j,i) = 0;
       // Loop over quadrature points
       for (int kk=0; kk<ord; kk++) {
         for (int jj=0; jj<ord; jj++) {
@@ -200,9 +212,16 @@ public:
             real th = 300;
             real rh = profiles::initConstTheta_density(th,zloc,Rd,cp,gamma,p0,C0);
 
-            // Initialize tracer mass based on dry state
+            // // Initialize tracer mass based on dry state
+
+            real pert = profiles::ellipsoid_linear(xloc,yloc,zloc  ,  xlen/2,ylen/2,2000  ,  2000,2000,2000  ,  0.8);
+            real temp = micro.temp_from_rho_theta(rh , 0 , rh*th);
+            real svp  = micro.saturation_vapor_pressure(temp);
+            real p_v  = pert*svp;
+            real r_v  = p_v / (micro.R_v*temp);
+
             real wt = gllWts_ord(kk) * gllWts_ord(jj) * gllWts_ord(ii);
-            tracer(k,j,i) += init_mass(xloc,yloc,zloc,xlen,ylen,zlen,rh,rh*th) * wt;
+            dm_vapor(k,j,i) += r_v * wt;
           }
         }
       }
@@ -211,9 +230,62 @@ public:
 
 
 
+  // This class exists to enable loading all requested tracers from the DataManager in a single kernel.
+  // We have to ensure that each individual real3d tracer gets copied to the device.
+  class MultipleTracers {
+  public:
+    SArray<real3d,1,max_tracers> tracers;
+    int num_tracers;
+
+    MultipleTracers() { num_tracers = 0; }
+
+    MultipleTracers(MultipleTracers const &rhs) {
+      this->num_tracers = rhs.num_tracers;
+      for (int i=0; i < num_tracers; i++) {
+        this->tracers(i) = rhs.tracers(i);
+      }
+    }
+
+    MultipleTracers & operator=(MultipleTracers const &rhs) {
+      this->num_tracers = rhs.num_tracers;
+      for (int i=0; i < num_tracers; i++) {
+        this->tracers(i) = rhs.tracers(i);
+      }
+      return *this;
+    }
+
+    MultipleTracers(MultipleTracers &&rhs) {
+      this->num_tracers = rhs.num_tracers;
+      for (int i=0; i < num_tracers; i++) {
+        this->tracers(i) = rhs.tracers(i);
+      }
+    }
+
+    MultipleTracers& operator=(MultipleTracers &&rhs) {
+      this->num_tracers = rhs.num_tracers;
+      for (int i=0; i < num_tracers; i++) {
+        this->tracers(i) = rhs.tracers(i);
+      }
+      return *this;
+    }
+
+    void add_tracer( real3d &tracer ) {
+      this->tracers(num_tracers) = tracer;
+      num_tracers++;
+    }
+
+    real &operator() (int tr, int k, int j, int i) const {
+      return this->tracers(tr)(k,j,i);
+    }
+  };
+
+
+
   // Transform state and tracer data in DataManager into a state and tracers array more conveniently used by the dycore
   // This has to be copied because we need a halo, and the rest of the model doesn't need to know about the halo
   void read_state_and_tracers( DataManager &dm , real4d &state , real4d &tracers) const {
+    auto &num_tracers = this->num_tracers;
+
     // Get data arrays from the DataManager (this just wraps an existing allocated pointer in an Array)
     real3d rho          = dm.get<real,3>( "density" );
     real3d rho_u        = dm.get<real,3>( "density_u" );
@@ -223,15 +295,11 @@ public:
     real1d rho_hy       = dm.get<real,1>( "hydrostatic_density" );
     real1d rho_theta_hy = dm.get<real,1>( "hydrostatic_density_theta" );
 
-    struct SingleTracer {
-      real3d tracer;
-    };
-
-    // An array of single tracers for reading in tracers from the DataManager
-    SArray<SingleTracer,1,max_tracers> dm_tracers;
-
+    // An array of tracers for reading in tracers from the DataManager
+    MultipleTracers dm_tracers;
     for (int tr=0; tr < num_tracers; tr++) {
-      dm_tracers(tr).tracer = dm.get<real,3>( tracer_name[tr] );
+      real3d tracer = dm.get<real,3>( tracer_name[tr] );
+      dm_tracers.add_tracer( tracer );
     }
 
     // Copy from the DataManager to the state and tracers arrays
@@ -242,7 +310,7 @@ public:
       state(idW,hs+k,hs+j,hs+i) = rho_w(k,j,i);
       state(idT,hs+k,hs+j,hs+i) = rho_theta(k,j,i) - rho_theta_hy(k);  // rho*theta perturbation
       for (int tr=0; tr < num_tracers; tr++) {
-        tracers(tr,hs+k,hs+j,hs+i) = dm_tracers(tr).tracer(k,j,i);
+        tracers(tr,hs+k,hs+j,hs+i) = dm_tracers(tr,k,j,i);
       }
     });
   }
@@ -252,6 +320,10 @@ public:
   // Transform state and tracer data from state and tracers arrays with halos back to the DataManager
   // so it can be used by other parts of the model
   void write_state_and_tracers( DataManager &dm , real4d &state , real4d &tracers) const {
+    auto &num_tracers      = this->num_tracers     ;
+    auto &hyDensCells      = this->hyDensCells     ;
+    auto &hyDensThetaCells = this->hyDensThetaCells;
+
     // Get data arrays from the DataManager (this just wraps an existing allocated pointer in an Array)
     real3d rho       = dm.get<real,3>( "density" );
     real3d rho_u     = dm.get<real,3>( "density_u" );
@@ -259,15 +331,11 @@ public:
     real3d rho_w     = dm.get<real,3>( "density_w" );
     real3d rho_theta = dm.get<real,3>( "density_theta" );
 
-    struct SingleTracer {
-      real3d tracer;
-    };
-
-    // An array of single tracers for reading in tracers from the DataManager
-    SArray<SingleTracer,1,max_tracers> dm_tracers;
-
+    // An array of tracers for reading in tracers from the DataManager
+    MultipleTracers dm_tracers;
     for (int tr=0; tr < num_tracers; tr++) {
-      dm_tracers(tr).tracer = dm.get<real,3>( tracer_name[tr] );
+      real3d tracer = dm.get<real,3>( tracer_name[tr] );
+      dm_tracers.add_tracer( tracer );
     }
 
     // Copy from state and tracers arrays to the DataManager arrays
@@ -278,7 +346,7 @@ public:
       rho_w    (k,j,i) = state(idW,hs+k,hs+j,hs+i)                         ;
       rho_theta(k,j,i) = state(idT,hs+k,hs+j,hs+i) + hyDensThetaCells(hs+k);
       for (int tr=0; tr < num_tracers; tr++) {
-        dm_tracers(tr).tracer(k,j,i) = tracers(tr,hs+k,hs+j,hs+i);
+        dm_tracers(tr,k,j,i) = tracers(tr,hs+k,hs+j,hs+i);
       }
     });
   }
@@ -288,6 +356,11 @@ public:
   // Take an initially dry fluid state and adjust it to account for moist tracers
   template <class MICRO>
   void adjust_state_for_moisture(DataManager &dm , MICRO const &micro) const {
+    auto &hyDensCells      = this->hyDensCells;
+    auto &hyDensThetaCells = this->hyDensThetaCells;
+    auto &num_tracers      = this->num_tracers;
+    auto &tracer_adds_mass = this->tracer_adds_mass;
+
     // Copy the DataManager data to state and tracer arrays for convenience
     real4d state   = createStateArr ();
     real4d tracers = createTracerArr();
@@ -369,6 +442,8 @@ public:
       auto &dx                   = this->dx                  ;
       auto &dy                   = this->dy                  ;
       auto &dz                   = this->dz                  ;
+      auto &hyDensCells          = this->hyDensCells         ;
+      auto &hyDensThetaCells     = this->hyDensThetaCells    ;
 
       // Convert data from DataManager to state and tracers array for convenience
       real4d state   = createStateArr ();
@@ -609,10 +684,10 @@ public:
     auto &ylen              = this->ylen             ;
 
     // Get Arrays for 1-D hydrostatic background profiles
-    auto dm_hyDens      = dm.get<real,1>( "hydrostatic_density"       );
-    auto dm_hyTheta     = dm.get<real,1>( "hydrostatic_theta"         );
-    auto dm_hyDensTheta = dm.get<real,1>( "hydrostatic_density_theta" );
-    auto dm_hyPressure  = dm.get<real,1>( "hydrostatic_pressure"      );
+    real1d dm_hyDens      = dm.get<real,1>( "hydrostatic_density"       );
+    real1d dm_hyTheta     = dm.get<real,1>( "hydrostatic_theta"         );
+    real1d dm_hyDensTheta = dm.get<real,1>( "hydrostatic_density_theta" );
+    real1d dm_hyPressure  = dm.get<real,1>( "hydrostatic_pressure"      );
 
     // Setup hydrostatic background state
     parallel_for( Bounds<1>(nz+2*hs) , YAKL_LAMBDA (int k) {
@@ -670,11 +745,11 @@ public:
       }
     });
     
-    auto dm_rho       = dm.get<real,3>( "density"       );
-    auto dm_rho_u     = dm.get<real,3>( "density_u"     );
-    auto dm_rho_v     = dm.get<real,3>( "density_v"     );
-    auto dm_rho_w     = dm.get<real,3>( "density_w"     );
-    auto dm_rho_theta = dm.get<real,3>( "density_theta" );
+    real3d dm_rho       = dm.get<real,3>( "density"       );
+    real3d dm_rho_u     = dm.get<real,3>( "density_u"     );
+    real3d dm_rho_v     = dm.get<real,3>( "density_v"     );
+    real3d dm_rho_w     = dm.get<real,3>( "density_w"     );
+    real3d dm_rho_theta = dm.get<real,3>( "density_theta" );
 
     // Compute the state
     parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
@@ -1175,8 +1250,8 @@ public:
     auto &stateFluxLimits         = this->stateFluxLimits        ;
     auto &tracerLimits            = this->tracerLimits           ;
     auto &tracerFlux              = this->tracerFlux             ;
-    auto &tracer_pos               = this->tracer_pos              ;
-    auto &num_tracers              = this->num_tracers             ;
+    auto &tracer_pos              = this->tracer_pos             ;
+    auto &num_tracers             = this->num_tracers            ;
     auto &bc_y                    = this->bc_y                   ;
 
     // Pre-process the tracers by dividing by density inside the domain
@@ -1563,8 +1638,8 @@ public:
     auto &stateFluxLimits         = this->stateFluxLimits        ;
     auto &tracerLimits            = this->tracerLimits           ;
     auto &tracerFlux              = this->tracerFlux             ;
-    auto &tracer_pos               = this->tracer_pos              ;
-    auto &num_tracers              = this->num_tracers             ;
+    auto &tracer_pos              = this->tracer_pos             ;
+    auto &num_tracers             = this->num_tracers            ;
     auto &bc_z                    = this->bc_z                   ;
     auto &gllWts_ngll             = this->gllWts_ngll            ;
 
@@ -1974,6 +2049,10 @@ public:
     auto &dx                    = this->dx                   ;
     auto &dy                    = this->dy                   ;
     auto &dz                    = this->dz                   ;
+    auto &hyDensCells           = this->hyDensCells          ;
+    auto &hyDensThetaCells      = this->hyDensThetaCells     ;
+    auto &hyThetaCells          = this->hyThetaCells         ;
+    auto &hyPressureCells       = this->hyPressureCells      ;
 
     yakl::SimpleNetCDF nc;
     int ulIndex = 0; // Unlimited dimension index to place this data at
