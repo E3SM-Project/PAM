@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
       real dt = dycore.compute_time_step( 0.8 , dm , micro );
       if (etime + dt > simTime) { dt = simTime - etime; }
       dycore.timeStep( dm , micro , dt );
-    //   micro.timeStep( dm , dt );
+      micro.timeStep( dm , dt );
       etime += dt;
       if (etime / outFreq >= numOut+1) {
         std::cout << "Etime , dt: " << etime << " , " << dt << "\n";
