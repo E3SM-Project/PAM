@@ -127,14 +127,16 @@ public:
 
   YAKL_INLINE real theta_from_temp(real rho , real rho_v , real temp, Constants const &cn) const {
     real p = pressure_from_temp(rho, rho_v, temp, cn);
-    return temp * pow( cn.p0/p , cn.kappa_d );
+    real C0 = pressure_C0_moist(rho, rho_v, cn);
+    return pow( p/C0 , 1./cn.gamma_d ) / rho;
   }
 
 
 
   YAKL_INLINE real temp_from_rho_theta(real rho , real rho_v , real rho_theta, Constants const &cn) const {
     real p = pressure_from_rho_theta(rho, rho_v, rho_theta, cn);
-    return (rho_theta/rho) * pow( p/cn.p0 , cn.kappa_d );
+    real R = R_moist(rho, rho_v, cn);
+    return p / rho / R;
   }
 
 
