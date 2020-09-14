@@ -3,9 +3,9 @@
 simTime  : 1000.
 
 # Number of cells to use
-nx       : 200
-ny       : 1
-nz       : 100
+nx       : 80
+ny       : 80
+nz       : 40
 
 # Lengths of the dimensions in meters
 xlen     : 20000
