@@ -6,6 +6,7 @@
 #include "YAKL_netcdf.h"
 
 using yakl::c::parallel_for;
+using yakl::c::SimpleBounds;
 using yakl::c::Bounds;
 using yakl::fence;
 using yakl::min;

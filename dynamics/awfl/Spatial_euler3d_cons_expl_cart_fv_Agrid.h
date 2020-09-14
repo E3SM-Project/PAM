@@ -184,7 +184,7 @@ public:
     real3d dm_vapor = dm.get<real,3>("water_vapor" );
     real3d dm_cloud = dm.get<real,3>("cloud_liquid");
 
-    parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+    parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
       dm_vapor(k,j,i) = 0;
       dm_cloud(k,j,i) = 0;
       // Loop over quadrature points
@@ -303,7 +303,7 @@ public:
     }
 
     // Copy from the DataManager to the state and tracers arrays
-    parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+    parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
       state(idR,hs+k,hs+j,hs+i) = rho(k,j,i) - rho_hy(k);  // Density perturbation
       state(idU,hs+k,hs+j,hs+i) = rho_u(k,j,i);
       state(idV,hs+k,hs+j,hs+i) = rho_v(k,j,i);
@@ -339,7 +339,7 @@ public:
     }
 
     // Copy from state and tracers arrays to the DataManager arrays
-    parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+    parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
       rho      (k,j,i) = state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k)     ;
       rho_u    (k,j,i) = state(idU,hs+k,hs+j,hs+i)                         ;
       rho_v    (k,j,i) = state(idV,hs+k,hs+j,hs+i)                         ;
@@ -366,7 +366,7 @@ public:
     real4d tracers = createTracerArr();
     read_state_and_tracers( dm , state , tracers );
 
-    parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+    parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
       // Add tracer density to dry density if it adds mass
       real rho_dry = state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k);
       for (int tr=0; tr < num_tracers; tr++) {
@@ -454,7 +454,7 @@ public:
       real3d dt3d("dt3d",nz,ny,nx);
 
       // Loop through the cells, calculate the max stable time step for each cell
-      parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+      parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
         // Get the state
         real r = state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k);
         real u = state(idU,hs+k,hs+j,hs+i) / r;
@@ -690,7 +690,7 @@ public:
     real1d dm_hyPressure  = dm.get<real,1>( "hydrostatic_pressure"      );
 
     // Setup hydrostatic background state
-    parallel_for( Bounds<1>(nz+2*hs) , YAKL_LAMBDA (int k) {
+    parallel_for( SimpleBounds<1>(nz+2*hs) , YAKL_LAMBDA (int k) {
       // Compute cell averages
       hyDensCells     (k) = 0;
       hyPressureCells (k) = 0;
@@ -723,7 +723,7 @@ public:
       }
     });
 
-    parallel_for( Bounds<1>(nz) , YAKL_LAMBDA (int k) {
+    parallel_for( SimpleBounds<1>(nz) , YAKL_LAMBDA (int k) {
       // Compute ngll GLL points
       for (int kk=0; kk<ngll; kk++) {
         real zloc = (k+0.5_fp)*dz + gllPts_ngll(kk)*dz;
@@ -752,7 +752,7 @@ public:
     real3d dm_rho_theta = dm.get<real,3>( "density_theta" );
 
     // Compute the state
-    parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+    parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
       dm_rho      (k,j,i) = 0;
       dm_rho_u    (k,j,i) = 0;
       dm_rho_v    (k,j,i) = 0;
@@ -866,13 +866,13 @@ public:
     // Pre-process the tracers by dividing by density inside the domain
     // After this, we can reconstruct tracers only (not rho * tracer)
     // Also, compute dry density
-    parallel_for( Bounds<4>(num_tracers,nz,ny,nx) , YAKL_LAMBDA (int tr, int k, int j, int i) {
+    parallel_for( SimpleBounds<4>(num_tracers,nz,ny,nx) , YAKL_LAMBDA (int tr, int k, int j, int i) {
       tracers(tr,hs+k,hs+j,hs+i) /= (state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k));
     });
 
     // Populate the halos
     if        (bc_x == BC_PERIODIC) {
-      parallel_for( Bounds<3>(nz,ny,hs) , YAKL_LAMBDA(int k, int j, int ii) {
+      parallel_for( SimpleBounds<3>(nz,ny,hs) , YAKL_LAMBDA(int k, int j, int ii) {
         for (int l=0; l < num_state; l++) {
           state  (l,hs+k,hs+j,      ii) = state  (l,hs+k,hs+j,nx+ii);
           state  (l,hs+k,hs+j,hs+nx+ii) = state  (l,hs+k,hs+j,hs+ii);
@@ -883,7 +883,7 @@ public:
         }
       });
     } else if (bc_x == BC_WALL) {
-      parallel_for( Bounds<3>(nz,ny,hs) , YAKL_LAMBDA(int k, int j, int ii) {
+      parallel_for( SimpleBounds<3>(nz,ny,hs) , YAKL_LAMBDA(int k, int j, int ii) {
         for (int l=0; l < num_state; l++) {
           if (l == idU) {
             state(l,hs+k,hs+j,      ii) = 0;
@@ -901,7 +901,7 @@ public:
     }
 
     // Loop through all cells, reconstruct in x-direction, compute centered tendencies, store cell-edge state estimates
-    parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+    parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
       // We need density and momentum to evolve the tracers with ADER
       SArray<real,2,nAder,ngll> r_DTs , ru_DTs;
 
@@ -1075,7 +1075,7 @@ public:
     ////////////////////////////////////////////////
     // BCs for the state edge estimates
     ////////////////////////////////////////////////
-    parallel_for( Bounds<2>(nz,ny) , YAKL_LAMBDA (int k, int j) {
+    parallel_for( SimpleBounds<2>(nz,ny) , YAKL_LAMBDA (int k, int j) {
       for (int l=0; l < num_state; l++) {
         if        (bc_x == BC_PERIODIC) {
           stateLimits     (l,0,k,j,0 ) = stateLimits     (l,0,k,j,nx);
@@ -1103,7 +1103,7 @@ public:
     //////////////////////////////////////////////////////////
     // Compute the upwind fluxes
     //////////////////////////////////////////////////////////
-    parallel_for( Bounds<3>(nz,ny,nx+1) , YAKL_LAMBDA (int k, int j, int i) {
+    parallel_for( SimpleBounds<3>(nz,ny,nx+1) , YAKL_LAMBDA (int k, int j, int i) {
       // Get left and right state
       real r_L = stateLimits(idR,0,k,j,i)    ;   real r_R = stateLimits(idR,1,k,j,i)    ;
       real u_L = stateLimits(idU,0,k,j,i)/r_L;   real u_R = stateLimits(idU,1,k,j,i)/r_R;
@@ -1177,7 +1177,7 @@ public:
     //////////////////////////////////////////////////////////
     // Limit the tracer fluxes for positivity
     //////////////////////////////////////////////////////////
-    parallel_for( Bounds<4>(num_tracers,nz,ny,nx+1) , YAKL_LAMBDA (int tr, int k, int j, int i) {
+    parallel_for( SimpleBounds<4>(num_tracers,nz,ny,nx+1) , YAKL_LAMBDA (int tr, int k, int j, int i) {
       real constexpr eps = 1.e-10;
       real u = 0.5_fp * ( stateLimits(idU,0,k,j,i) + stateLimits(idU,1,k,j,i) );
       // Solid wall BCs mean u == 0 at boundaries, so we assume periodic if u != 0
@@ -1208,7 +1208,7 @@ public:
     //////////////////////////////////////////////////////////
     // Compute the tendencies
     //////////////////////////////////////////////////////////
-    parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA(int k, int j, int i) {
+    parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA(int k, int j, int i) {
       for (int l = 0; l < num_state; l++) {
         if (sim2d && l == idV) {
           stateTend(l,k,j,i) = 0;
@@ -1256,13 +1256,13 @@ public:
 
     // Pre-process the tracers by dividing by density inside the domain
     // After this, we can reconstruct tracers only (not rho * tracer)
-    parallel_for( Bounds<4>(num_tracers,nz,ny,nx) , YAKL_LAMBDA (int tr, int k, int j, int i) {
+    parallel_for( SimpleBounds<4>(num_tracers,nz,ny,nx) , YAKL_LAMBDA (int tr, int k, int j, int i) {
       tracers(tr,hs+k,hs+j,hs+i) /= (state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k));
     });
 
     // Populate the halos
     if        (bc_y == BC_PERIODIC) {
-      parallel_for( Bounds<3>(nz,nx,hs) , YAKL_LAMBDA(int k, int i, int jj) {
+      parallel_for( SimpleBounds<3>(nz,nx,hs) , YAKL_LAMBDA(int k, int i, int jj) {
         for (int l=0; l < num_state; l++) {
           state(l,hs+k,      jj,hs+i) = state(l,hs+k,ny+jj,hs+i);
           state(l,hs+k,hs+ny+jj,hs+i) = state(l,hs+k,hs+jj,hs+i);
@@ -1273,7 +1273,7 @@ public:
         }
       });
     } else if (bc_y == BC_WALL) {
-      parallel_for( Bounds<3>(nz,nx,hs) , YAKL_LAMBDA(int k, int i, int jj) {
+      parallel_for( SimpleBounds<3>(nz,nx,hs) , YAKL_LAMBDA(int k, int i, int jj) {
         for (int l=0; l < num_state; l++) {
           if (l == idV) {
             state(l,hs+k,      jj,hs+i) = 0;
@@ -1291,7 +1291,7 @@ public:
     }
 
     // Loop through all cells, reconstruct in y-direction, compute centered tendencies, store cell-edge state estimates
-    parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+    parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
       // These are needed by the tracers
       SArray<real,2,nAder,ngll> r_DTs , rv_DTs;
 
@@ -1465,7 +1465,7 @@ public:
     ////////////////////////////////////////////////
     // BCs for the state edge estimates
     ////////////////////////////////////////////////
-    parallel_for( Bounds<2>(nz,nx) , YAKL_LAMBDA (int k, int i) {
+    parallel_for( SimpleBounds<2>(nz,nx) , YAKL_LAMBDA (int k, int i) {
       for (int l=0; l < num_state; l++) {
         if        (bc_y == BC_PERIODIC) {
           stateLimits     (l,0,k,0 ,i) = stateLimits     (l,0,k,ny,i);
@@ -1493,7 +1493,7 @@ public:
     //////////////////////////////////////////////////////////
     // Compute the upwind fluxes
     //////////////////////////////////////////////////////////
-    parallel_for( Bounds<3>(nz,ny+1,nx) , YAKL_LAMBDA (int k, int j, int i) {
+    parallel_for( SimpleBounds<3>(nz,ny+1,nx) , YAKL_LAMBDA (int k, int j, int i) {
       // Get left and right state
       real r_L = stateLimits(idR,0,k,j,i)    ;   real r_R = stateLimits(idR,1,k,j,i)    ;
       real u_L = stateLimits(idU,0,k,j,i)/r_L;   real u_R = stateLimits(idU,1,k,j,i)/r_R;
@@ -1567,7 +1567,7 @@ public:
     //////////////////////////////////////////////////////////
     // Limit the tracer fluxes for positivity
     //////////////////////////////////////////////////////////
-    parallel_for( Bounds<4>(num_tracers,nz,ny+1,nx) , YAKL_LAMBDA (int tr, int k, int j, int i) {
+    parallel_for( SimpleBounds<4>(num_tracers,nz,ny+1,nx) , YAKL_LAMBDA (int tr, int k, int j, int i) {
       real constexpr eps = 1.e-10;
       real v = 0.5_fp * ( stateLimits(idV,0,k,j,i) + stateLimits(idV,1,k,j,i) );
       // Solid wall BCs mean u == 0 at boundaries, so we assume periodic if u != 0
@@ -1598,7 +1598,7 @@ public:
     //////////////////////////////////////////////////////////
     // Compute the tendencies
     //////////////////////////////////////////////////////////
-    parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA(int k, int j, int i) {
+    parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA(int k, int j, int i) {
       for (int l=0; l < num_state; l++) {
         stateTend(l,k,j,i) = - ( stateFluxLimits(l,0,k,j+1,i) - stateFluxLimits(l,0,k,j,i) ) / dy;
       }
@@ -1645,13 +1645,13 @@ public:
 
     // Pre-process the tracers by dividing by density inside the domain
     // After this, we can reconstruct tracers only (not rho * tracer)
-    parallel_for( Bounds<4>(num_tracers,nz,ny,nx) , YAKL_LAMBDA (int tr, int k, int j, int i) {
+    parallel_for( SimpleBounds<4>(num_tracers,nz,ny,nx) , YAKL_LAMBDA (int tr, int k, int j, int i) {
       tracers(tr,hs+k,hs+j,hs+i) /= (state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k));
     });
 
     // Populate the halos
     if        (bc_z == BC_PERIODIC) {
-      parallel_for( Bounds<3>(ny,nx,hs) , YAKL_LAMBDA(int j, int i, int kk) {
+      parallel_for( SimpleBounds<3>(ny,nx,hs) , YAKL_LAMBDA(int j, int i, int kk) {
         for (int l=0; l < num_state; l++) {
           state(l,      kk,hs+j,hs+i) = state(l,nz+kk,hs+j,hs+i);
           state(l,hs+nz+kk,hs+j,hs+i) = state(l,hs+kk,hs+j,hs+i);
@@ -1662,7 +1662,7 @@ public:
         }
       });
     } else if (bc_z == BC_WALL) {
-      parallel_for( Bounds<3>(ny,nx,hs) , YAKL_LAMBDA(int j, int i, int kk) {
+      parallel_for( SimpleBounds<3>(ny,nx,hs) , YAKL_LAMBDA(int j, int i, int kk) {
         for (int l=0; l < num_state; l++) {
           if (l == idW) {
             state(l,      kk,hs+j,hs+i) = 0;
@@ -1680,7 +1680,7 @@ public:
     }
 
     // Loop through all cells, reconstruct in x-direction, compute centered tendencies, store cell-edge state estimates
-    parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+    parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
       // We need these to persist to evolve tracers with ADER
       SArray<real,2,nAder,ngll> r_DTs , rw_DTs;
 
@@ -1876,7 +1876,7 @@ public:
     ////////////////////////////////////////////////
     // BCs for the state edge estimates
     ////////////////////////////////////////////////
-    parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
+    parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
       for (int l = 0; l < num_state; l++) {
         if        (bc_z == BC_PERIODIC) {
           stateLimits     (l,0,0 ,j,i) = stateLimits     (l,0,nz,j,i);
@@ -1904,7 +1904,7 @@ public:
     //////////////////////////////////////////////////////////
     // Compute the upwind fluxes
     //////////////////////////////////////////////////////////
-    parallel_for( Bounds<3>(nz+1,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+    parallel_for( SimpleBounds<3>(nz+1,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
       // Get left and right state
       real r_L = stateLimits(idR,0,k,j,i)    ;   real r_R = stateLimits(idR,1,k,j,i)    ;
       real u_L = stateLimits(idU,0,k,j,i)/r_L;   real u_R = stateLimits(idU,1,k,j,i)/r_R;
@@ -1976,7 +1976,7 @@ public:
     //////////////////////////////////////////////////////////
     // Limit the tracer fluxes for positivity
     //////////////////////////////////////////////////////////
-    parallel_for( Bounds<4>(num_tracers,nz+1,ny,nx) , YAKL_LAMBDA (int tr, int k, int j, int i) {
+    parallel_for( SimpleBounds<4>(num_tracers,nz+1,ny,nx) , YAKL_LAMBDA (int tr, int k, int j, int i) {
       real constexpr eps = 1.e-10;
       real w = 0.5_fp * ( stateLimits(idW,0,k,j,i) + stateLimits(idW,1,k,j,i) );
       // Solid wall BCs mean w == 0 at boundaries
@@ -2005,7 +2005,7 @@ public:
     //////////////////////////////////////////////////////////
     // Compute the tendencies
     //////////////////////////////////////////////////////////
-    parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA(int k, int j, int i) {
+    parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA(int k, int j, int i) {
       for (int l=0; l < num_state; l++) {
         if (sim2d && l == idV) {
           stateTend(l,k,j,i) = 0;
@@ -2025,7 +2025,7 @@ public:
 
 
   template <class F> void applyStateTendencies( F const &applySingleTendency , int splitIndex ) {
-    parallel_for( Bounds<4>(num_state,nz,ny,nx) , YAKL_LAMBDA (int l, int k, int j, int i) {
+    parallel_for( SimpleBounds<4>(num_state,nz,ny,nx) , YAKL_LAMBDA (int l, int k, int j, int i) {
       applySingleTendency({l,k,j,i});
     });
   }
@@ -2033,7 +2033,7 @@ public:
 
 
   template <class F> void applyTracerTendencies( F const &applySingleTendency , int splitIndex ) {
-    parallel_for( Bounds<4>(num_tracers,nz,ny,nx) , YAKL_LAMBDA (int l, int k, int j, int i) {
+    parallel_for( SimpleBounds<4>(num_tracers,nz,ny,nx) , YAKL_LAMBDA (int l, int k, int j, int i) {
       applySingleTendency({l,k,j,i});
     });
   }
@@ -2090,26 +2090,26 @@ public:
 
     real3d data("data",nz,ny,nx);
     // rho'
-    parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = state(idR,hs+k,hs+j,hs+i); });
+    parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = state(idR,hs+k,hs+j,hs+i); });
     nc.write1(data.createHostCopy(),"dens_pert",{"z","y","x"},ulIndex,"t");
     // u
-    parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = state(idU,hs+k,hs+j,hs+i); });
+    parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = state(idU,hs+k,hs+j,hs+i); });
     nc.write1(data.createHostCopy(),"u",{"z","y","x"},ulIndex,"t");
     // v
-    parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = state(idV,hs+k,hs+j,hs+i); });
+    parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = state(idV,hs+k,hs+j,hs+i); });
     nc.write1(data.createHostCopy(),"v",{"z","y","x"},ulIndex,"t");
     // w
-    parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = state(idW,hs+k,hs+j,hs+i); });
+    parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = state(idW,hs+k,hs+j,hs+i); });
     nc.write1(data.createHostCopy(),"w",{"z","y","x"},ulIndex,"t");
     // theta'
-    parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+    parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
       real r =   state(idR,hs+k,hs+j,hs+i) + hyDensCells     (hs+k);
       real t = ( state(idT,hs+k,hs+j,hs+i) + hyDensThetaCells(hs+k) ) / r;
       data(k,j,i) = t - hyThetaCells(hs+k);
     });
     nc.write1(data.createHostCopy(),"pot_temp_pert",{"z","y","x"},ulIndex,"t");
     // pressure'
-    parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+    parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
       real r  = state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k);
       real rt = state(idT,hs+k,hs+j,hs+i) + hyDensThetaCells(hs+k);
       int index_vapor = micro.tracer_index_vapor;
@@ -2120,7 +2120,7 @@ public:
     nc.write1(data.createHostCopy(),"pressure_pert",{"z","y","x"},ulIndex,"t");
 
     for (int tr=0; tr < num_tracers; tr++) {
-      parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+      parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
         real r = state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k);
         data(k,j,i) = tracers(tr,hs+k,hs+j,hs+i)/r;
       });

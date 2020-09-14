@@ -82,7 +82,7 @@ public:
       int num_tracers = space_op.num_tracers;
       int hs          = space_op.hs;
 
-      parallel_for( Bounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+      parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
         for (int l=0; l < num_state; l++) {
           state(l,hs+k,hs+j,hs+i) += dtloc * stateTend(l,k,j,i);
         }
