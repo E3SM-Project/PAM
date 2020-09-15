@@ -1751,7 +1751,7 @@ public:
         ////////////////////////////////////////////
         real ravg = 0;
         for (int kk=0; kk < ngll; kk++) {
-          ravg += (r_tavg(kk) - hyDensGLL(k,kk)) * gllWts_ngll(kk);
+          ravg += r_tavg(kk) * gllWts_ngll(kk);
         }
         stateTend(idR,k,j,i) = 0;
         stateTend(idU,k,j,i) = 0;
@@ -1891,17 +1891,10 @@ public:
       real q4 = w*w1 + (w-cs)*w5 + (w+cs)*w6;
       real q5 =      t*w5 + t*w6;
 
-      real hyp;
-      if (k < nz) {
-        hyp = hyPressureGLL(k,0);
-      } else {
-        hyp = hyPressureGLL(k-1,ngll-1);
-      }
-
       stateFlux(idR,k,j,i) = q4;
       stateFlux(idU,k,j,i) = q4*q2/q1;
       stateFlux(idV,k,j,i) = q4*q3/q1;
-      stateFlux(idW,k,j,i) = q4*q4/q1 + C0*pow(q5,micro.constants.gamma_d) - hyp;
+      stateFlux(idW,k,j,i) = q4*q4/q1 + C0*pow(q5,micro.constants.gamma_d);
       stateFlux(idT,k,j,i) = q4*q5/q1;
 
       // COMPUTE UPWIND TRACER FLUXES
