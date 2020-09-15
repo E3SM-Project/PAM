@@ -35,8 +35,8 @@ int main(int argc, char** argv) {
     Microphysics micro;
 
     // Initialize the dycore and the microphysics
-    dycore.init( inFile , micro.num_tracers , dm );
-    micro .init( inFile , dycore            , dm );
+    dycore.init( inFile , micro.num_tracers+1 , dm );
+    micro .init( inFile , dycore              , dm );
 
     // Initialize the dry state
     dycore.init_state( dm , micro );

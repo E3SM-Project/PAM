@@ -170,7 +170,7 @@ public:
 
   // Caller creates a lambda (init_mass) to initialize this tracer value using location and dry state information
   template <class MICRO>
-  void init_tracers( DataManager &dm , MICRO const &micro) const {
+  void init_tracers( DataManager &dm , MICRO const &micro) {
     auto &dx         = this->dx        ;
     auto &dy         = this->dy        ;
     auto &dz         = this->dz        ;
@@ -181,12 +181,16 @@ public:
     auto &ylen       = this->ylen      ;
     auto &zlen       = this->zlen      ;
 
-    real3d dm_vapor = dm.get<real,3>("water_vapor" );
-    real3d dm_cloud = dm.get<real,3>("cloud_liquid");
+    add_tracer(dm , "uniform"  , "uniform"  , false     , false);
+
+    real3d dm_vapor   = dm.get<real,3>("water_vapor" );
+    real3d dm_cloud   = dm.get<real,3>("cloud_liquid");
+    real3d dm_uniform = dm.get<real,3>("uniform");
 
     parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-      dm_vapor(k,j,i) = 0;
-      dm_cloud(k,j,i) = 0;
+      dm_vapor  (k,j,i) = 0;
+      dm_cloud  (k,j,i) = 0;
+      dm_uniform(k,j,i) = 0;
       // Loop over quadrature points
       for (int kk=0; kk<ord; kk++) {
         for (int jj=0; jj<ord; jj++) {
@@ -221,7 +225,8 @@ public:
             real r_v  = p_v / (micro.constants.R_v*temp);
 
             real wt = gllWts_ord(kk) * gllWts_ord(jj) * gllWts_ord(ii);
-            dm_vapor(k,j,i) += r_v * wt;
+            dm_vapor  (k,j,i) += r_v / (rh+r_v) * rh * wt;
+            dm_uniform(k,j,i) += rh * wt;
           }
         }
       }
@@ -392,6 +397,10 @@ public:
       
       // Compute moist rho*theta
       state(idT,hs+k,hs+j,hs+i) = rho_moist*theta_moist - hyDensThetaCells(hs+k);
+
+      for (int tr = 0 ; tr < num_tracers ; tr++) {
+        tracers(tr,hs+k,hs+j,hs+i) = tracers(tr,hs+k,hs+j,hs+i) / rho_dry * rho_moist;
+      }
     });
 
     // Copy the state and tracers arrays back to the DataManager

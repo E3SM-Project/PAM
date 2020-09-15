@@ -54,7 +54,7 @@ public:
 
 
   template <class MICRO>
-  void init_tracers( DataManager &dm , MICRO const &micro) const {
+  void init_tracers( DataManager &dm , MICRO const &micro) {
     space_op.init_tracers( dm , micro );
   }
 
