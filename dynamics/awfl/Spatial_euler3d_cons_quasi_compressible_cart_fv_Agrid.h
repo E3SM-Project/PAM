@@ -428,7 +428,7 @@ public:
   // Normally this would be 3, but the z-directly CFL is reduced because of how the fluxes are
   // handled in the presence of a solid wall boundary condition. I'm looking into how to fix this
   int numSplit() const {
-    return 4;
+    return 3;
   }
 
 
@@ -805,29 +805,23 @@ public:
         if (sim2d) {
           memset(stateTend  , 0._fp);
           memset(tracerTend , 0._fp);
+        } else {
+          computeTendenciesY( state , stateTend , tracers , tracerTend , micro , dt );
         }
-        else { computeTendenciesY( state , stateTend , tracers , tracerTend , micro , dt ); }
       } else if (splitIndex == 2) {
-        dt /= 2;
-        computeTendenciesZ( state , stateTend , tracers , tracerTend , micro , dt );
-      } else if (splitIndex == 3) {
-        dt /= 2;
         computeTendenciesZ( state , stateTend , tracers , tracerTend , micro , dt );
       }
     } else {
       if        (splitIndex == 0) {
-        dt /= 2;
         computeTendenciesZ( state , stateTend , tracers , tracerTend , micro , dt );
       } else if (splitIndex == 1) {
-        dt /= 2;
-        computeTendenciesZ( state , stateTend , tracers , tracerTend , micro , dt );
-      } else if (splitIndex == 2) {
         if (sim2d) {
           memset(stateTend  , 0._fp);
           memset(tracerTend , 0._fp);
+        } else {
+          computeTendenciesY( state , stateTend , tracers , tracerTend , micro , dt );
         }
-        else { computeTendenciesY( state , stateTend , tracers , tracerTend , micro , dt ); }
-      } else if (splitIndex == 3) {
+      } else if (splitIndex == 2) {
         computeTendenciesX( state , stateTend , tracers , tracerTend , micro , dt );
       }
     }
