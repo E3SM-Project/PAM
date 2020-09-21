@@ -6,6 +6,61 @@
 
 using yakl::Array;
 
+
+
+// This class exists to enable loading all requested tracers from the DataManager in a single kernel.
+// We have to ensure that each individual real3d tracer gets copied to the device.
+template <int MAX_TRACERS>
+class MultipleTracers {
+public:
+  SArray<real3d,1,MAX_TRACERS> tracers;
+  int num_tracers;
+
+  MultipleTracers() { num_tracers = 0; }
+
+  MultipleTracers(MultipleTracers const &rhs) {
+    this->num_tracers = rhs.num_tracers;
+    for (int i=0; i < num_tracers; i++) {
+      this->tracers(i) = rhs.tracers(i);
+    }
+  }
+
+  MultipleTracers & operator=(MultipleTracers const &rhs) {
+    this->num_tracers = rhs.num_tracers;
+    for (int i=0; i < num_tracers; i++) {
+      this->tracers(i) = rhs.tracers(i);
+    }
+    return *this;
+  }
+
+  MultipleTracers(MultipleTracers &&rhs) {
+    this->num_tracers = rhs.num_tracers;
+    for (int i=0; i < num_tracers; i++) {
+      this->tracers(i) = rhs.tracers(i);
+    }
+  }
+
+  MultipleTracers& operator=(MultipleTracers &&rhs) {
+    this->num_tracers = rhs.num_tracers;
+    for (int i=0; i < num_tracers; i++) {
+      this->tracers(i) = rhs.tracers(i);
+    }
+    return *this;
+  }
+
+  void add_tracer( real3d &tracer ) {
+    this->tracers(num_tracers) = tracer;
+    num_tracers++;
+  }
+
+  real &operator() (int tr, int k, int j, int i) const {
+    return this->tracers(tr)(k,j,i);
+  }
+};
+
+
+
+
 class DataManager {
 public:
 

@@ -10,7 +10,7 @@
 
 
 template <int nTimeDerivs, bool timeAvg, int nAder>
-class Spatial_euler3d_cons_quasi_compressible_cart_fv_Agrid {
+class Spatial_euler3d_cons_expl_cart_fv_Agrid {
 public:
   
   static_assert(nTimeDerivs == 1 , "ERROR: This Spatial class isn't setup to use nTimeDerivs > 1");
@@ -132,7 +132,7 @@ public:
 
 
   // When this class is created, initialize num_tracers to zero
-  Spatial_euler3d_cons_quasi_compressible_cart_fv_Agrid() {
+  Spatial_euler3d_cons_expl_cart_fv_Agrid() {
     num_tracers = 0;
   }
 
@@ -235,57 +235,6 @@ public:
 
 
 
-  // This class exists to enable loading all requested tracers from the DataManager in a single kernel.
-  // We have to ensure that each individual real3d tracer gets copied to the device.
-  class MultipleTracers {
-  public:
-    SArray<real3d,1,max_tracers> tracers;
-    int num_tracers;
-
-    MultipleTracers() { num_tracers = 0; }
-
-    MultipleTracers(MultipleTracers const &rhs) {
-      this->num_tracers = rhs.num_tracers;
-      for (int i=0; i < num_tracers; i++) {
-        this->tracers(i) = rhs.tracers(i);
-      }
-    }
-
-    MultipleTracers & operator=(MultipleTracers const &rhs) {
-      this->num_tracers = rhs.num_tracers;
-      for (int i=0; i < num_tracers; i++) {
-        this->tracers(i) = rhs.tracers(i);
-      }
-      return *this;
-    }
-
-    MultipleTracers(MultipleTracers &&rhs) {
-      this->num_tracers = rhs.num_tracers;
-      for (int i=0; i < num_tracers; i++) {
-        this->tracers(i) = rhs.tracers(i);
-      }
-    }
-
-    MultipleTracers& operator=(MultipleTracers &&rhs) {
-      this->num_tracers = rhs.num_tracers;
-      for (int i=0; i < num_tracers; i++) {
-        this->tracers(i) = rhs.tracers(i);
-      }
-      return *this;
-    }
-
-    void add_tracer( real3d &tracer ) {
-      this->tracers(num_tracers) = tracer;
-      num_tracers++;
-    }
-
-    real &operator() (int tr, int k, int j, int i) const {
-      return this->tracers(tr)(k,j,i);
-    }
-  };
-
-
-
   // Transform state and tracer data in DataManager into a state and tracers array more conveniently used by the dycore
   // This has to be copied because we need a halo, and the rest of the model doesn't need to know about the halo
   void read_state_and_tracers( DataManager &dm , real4d &state , real4d &tracers) const {
@@ -301,7 +250,7 @@ public:
     real1d rho_theta_hy = dm.get<real,1>( "hydrostatic_density_theta" );
 
     // An array of tracers for reading in tracers from the DataManager
-    MultipleTracers dm_tracers;
+    MultipleTracers<max_tracers> dm_tracers;
     for (int tr=0; tr < num_tracers; tr++) {
       real3d tracer = dm.get<real,3>( tracer_name[tr] );
       dm_tracers.add_tracer( tracer );
@@ -337,7 +286,7 @@ public:
     real3d rho_theta = dm.get<real,3>( "density_theta" );
 
     // An array of tracers for reading in tracers from the DataManager
-    MultipleTracers dm_tracers;
+    MultipleTracers<max_tracers> dm_tracers;
     for (int tr=0; tr < num_tracers; tr++) {
       real3d tracer = dm.get<real,3>( tracer_name[tr] );
       dm_tracers.add_tracer( tracer );

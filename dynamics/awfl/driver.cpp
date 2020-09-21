@@ -1,13 +1,13 @@
 
 #include "const.h"
-#include "Spatial_euler3d_cons_quasi_compressible_cart_fv_Agrid.h"
+#include "Spatial_euler3d_cons_expl_cart_fv_Agrid.h"
 #include "Temporal_ader.h"
 #include "Profiles.h"
 #include "Microphysics_saturation_adjustment.h"
 #include "DataManager.h"
 
 // Define the Spatial operator based on constants from the Temporal operator
-typedef Spatial_euler3d_cons_quasi_compressible_cart_fv_Agrid<nTimeDerivs,timeAvg,nAder> Spatial;
+typedef Spatial_euler3d_cons_expl_cart_fv_Agrid<nTimeDerivs,timeAvg,nAder> Spatial;
 
 // Define the Temporal operator based on the Spatial operator
 typedef Temporal_ader<Spatial> Dycore;
