@@ -80,11 +80,15 @@ public:
 
   std::vector<Entry>       entries;
   std::vector<Dimension>   dimensions;
+  bool check_data;
+  bool die_on_failed_check;
 
 
   DataManager() {
-    entries              = std::vector<Entry>();
-    dimensions           = std::vector<Dimension>();
+    entries             = std::vector<Entry>();
+    dimensions          = std::vector<Dimension>();
+    check_data          = false;
+    die_on_failed_check = false;
   }
 
 
@@ -146,7 +150,9 @@ public:
     if ( N != entries[id].dims.size() ) {
       endrun("ERROR: Requested dimensions is different from the entry dimensions");
     }
-    return Array<T,N,memDevice,styleC>( name.c_str() , (T *) entries[id].ptr , entries[id].dims );
+    Array<T,N,memDevice,styleC> ret( name.c_str() , (T *) entries[id].ptr , entries[id].dims );
+    if (check_data) { validate_array( ret , name ); }
+    return ret;
   }
 
 
@@ -167,7 +173,9 @@ public:
     for (int i=1; i < entries[id].dims.size(); i++) {
       ncol *= entries[id].dims[i];
     }
-    return Array<T,2,memDevice,styleC>( name.c_str() , (T *) entries[id].ptr , nlev , ncol );
+    Array<T,2,memDevice,styleC> ret( name.c_str() , (T *) entries[id].ptr , nlev , ncol );
+    if (check_data) { validate_array( ret , name ); }
+    return ret;
   }
 
 
@@ -183,12 +191,35 @@ public:
     for (int i=1; i < entries[id].dims.size(); i++) {
       ncells *= entries[id].dims[i];
     }
-    return Array<T,1,memDevice,styleC>( name.c_str() , (T *) entries[id].ptr , ncells );
+    Array<T,1,memDevice,styleC> ret( name.c_str() , (T *) entries[id].ptr , ncells );
+    if (check_data) { validate_array( ret , name ); }
+    return ret;
+  }
+
+
+  template <class T, int N>
+  void validate_array( Array<T,N,memDevice,styleC> const &arr , std::string name ) const {
+    auto arrHost = arr.createHostCopy();
+    for (unsigned i=0; i < arr.get_elem_count(); i++) {
+      T val = arr.myData[i];
+      if ( std::isnan(val) ) {
+        std::cerr << "ERROR: NaN discovered in: " << name << " at global index: " << i << "\n";
+        if (die_on_failed_check) {
+          endrun("");
+        }
+      }
+      if ( std::isinf(val) ) {
+        std::cerr << "ERROR: inf discovered in: " << name << " at global index: " << i << "\n";
+        if (die_on_failed_check) {
+          endrun("");
+        }
+      }
+    }
   }
 
 
   int find_entry( std::string name ) const {
-    for (int i=0; i < entries.size(); i++) {
+    for (int i=0; i < num_entries(); i++) {
       if (entries[i].name == name) return i;
     }
     return -1;
@@ -196,10 +227,15 @@ public:
 
 
   int find_dimension( std::string name ) const {
-    for (int i=0; i < entries.size(); i++) {
+    for (int i=0; i < num_entries(); i++) {
       if (dimensions[i].name == name) return i;
     }
     return -1;
+  }
+
+
+  void num_entries() const {
+    return entries.size();
   }
 
 
@@ -224,7 +260,7 @@ public:
 
 
   void finalize() {
-    for (int i=0; i < entries.size(); i++) {
+    for (int i=0; i < num_entries(); i++) {
       yakl::yaklFreeDevice( entries[i].ptr , entries[i].name.c_str() );
     }
     entries              = std::vector<Entry>();
