@@ -53,7 +53,7 @@ public:
     num_tracers++;
   }
 
-  real &operator() (int tr, int k, int j, int i) const {
+  YAKL_INLINE real &operator() (int tr, int k, int j, int i) const {
     return this->tracers(tr)(k,j,i);
   }
 };

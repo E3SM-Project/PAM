@@ -105,15 +105,8 @@ public:
 
 
 
-  YAKL_INLINE real pressure_C0_moist(real rho, real rho_v, Constants const &cn) const {
-    return pow( R_moist(rho, rho_v, cn) * cn.p0_nkappa_d , cn.gamma_d );
-  }
-
-
-
-  YAKL_INLINE real pressure_from_rho_theta(real rho, real rho_v, real rho_theta, Constants const &cn) const {
-    real C0 = pressure_C0_moist(rho, rho_v, cn);
-    return C0 * pow( rho_theta , cn.gamma_d );
+  YAKL_INLINE real pressure_from_rho_theta(real rho_theta, Constants const &cn) const {
+    return cn.C0_d * pow( rho_theta , cn.gamma_d );
   }
 
 
@@ -127,14 +120,13 @@ public:
 
   YAKL_INLINE real theta_from_temp(real rho , real rho_v , real temp, Constants const &cn) const {
     real p = pressure_from_temp(rho, rho_v, temp, cn);
-    real C0 = pressure_C0_moist(rho, rho_v, cn);
-    return pow( p/C0 , 1./cn.gamma_d ) / rho;
+    return pow( p/cn.C0_d , 1./cn.gamma_d ) / rho;
   }
 
 
 
   YAKL_INLINE real temp_from_rho_theta(real rho , real rho_v , real rho_theta, Constants const &cn) const {
-    real p = pressure_from_rho_theta(rho, rho_v, rho_theta, cn);
+    real p = pressure_from_rho_theta(rho_theta, cn);
     real R = R_moist(rho, rho_v, cn);
     return p / rho / R;
   }

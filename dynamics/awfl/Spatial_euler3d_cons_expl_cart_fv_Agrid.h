@@ -27,6 +27,14 @@ public:
     int i;
   };
 
+  real Rd   ;
+  real cp   ;
+  real gamma;
+  real p0   ;
+  real C0   ;
+
+  int tracer_id_uniform;
+
   typedef real4d StateArr;  // Array of state variables (rho, rho*u, rho*v, rho*w, and rho*theta)
   typedef real4d TracerArr; // Array of tracers (total tracer mass)
 
@@ -86,8 +94,6 @@ public:
   int static constexpr DATA_SPEC_THERMAL_MOIST = 2;
   
   bool sim2d;  // Whether we're simulating in 2-D
-
-  real gamma;  // cp/cv
 
   // Grid spacing in each dimension
   real dx;
@@ -182,8 +188,13 @@ public:
     auto &xlen       = this->xlen      ;
     auto &ylen       = this->ylen      ;
     auto &zlen       = this->zlen      ;
+    auto &Rd         = this->Rd        ;
+    auto &cp         = this->cp        ;
+    auto &gamma      = this->gamma     ;
+    auto &p0         = this->p0        ;
+    auto &C0         = this->C0        ;
 
-    add_tracer(dm , "uniform"  , "uniform"  , false     , false);
+    tracer_id_uniform = add_tracer(dm , "uniform"  , "uniform"  , false     , false);
 
     real3d dm_vapor   = dm.get<real,3>("water_vapor" );
     real3d dm_cloud   = dm.get<real,3>("cloud_liquid");
@@ -193,45 +204,40 @@ public:
       dm_vapor  (k,j,i) = 0;
       dm_cloud  (k,j,i) = 0;
       dm_uniform(k,j,i) = 0;
-      // // Loop over quadrature points
-      // for (int kk=0; kk<ord; kk++) {
-      //   for (int jj=0; jj<ord; jj++) {
-      //     for (int ii=0; ii<ord; ii++) {
-      //       // Get the location
-      //       real zloc = (k+0.5_fp)*dz + gllPts_ord(kk)*dz;
-      //       real yloc;
-      //       if (sim2d) {
-      //         yloc = ylen/2;
-      //       } else {
-      //         yloc = (j+0.5_fp)*dy + gllPts_ord(jj)*dy;
-      //       }
-      //       real xloc = (i+0.5_fp)*dx + gllPts_ord(ii)*dx;
+      // Loop over quadrature points
+      for (int kk=0; kk<ord; kk++) {
+        for (int jj=0; jj<ord; jj++) {
+          for (int ii=0; ii<ord; ii++) {
+            // Get the location
+            real zloc = (k+0.5_fp)*dz + gllPts_ord(kk)*dz;
+            real yloc;
+            if (sim2d) {
+              yloc = ylen/2;
+            } else {
+              yloc = (j+0.5_fp)*dy + gllPts_ord(jj)*dy;
+            }
+            real xloc = (i+0.5_fp)*dx + gllPts_ord(ii)*dx;
 
-      //       // Get dry constants
-      //       real Rd    = micro.constants.R_d;
-      //       real cp    = micro.constants.cp_d;
-      //       real gamma = micro.constants.gamma_d;
-      //       real p0    = micro.constants.p0;
-      //       real C0    = micro.constants.C0_d;
+            // Get dry constants
 
-      //       // Compute constant theta hydrostatic background state
-      //       real th = 300;
-      //       real rh = profiles::initConstTheta_density(th,zloc,Rd,cp,gamma,p0,C0);
+            // Compute constant theta hydrostatic background state
+            real th = 300;
+            real rh = profiles::initConstTheta_density(th,zloc,Rd,cp,gamma,p0,C0);
 
-      //       // // Initialize tracer mass based on dry state
+            // Initialize tracer mass based on dry state
 
-      //       real pert = profiles::ellipsoid_linear(xloc,yloc,zloc  ,  xlen/2,ylen/2,2000  ,  2000,2000,2000  ,  0.8);
-      //       real temp = micro.temp_from_rho_theta(rh , 0 , rh*th, micro.constants);
-      //       real svp  = micro.saturation_vapor_pressure(temp);
-      //       real p_v  = pert*svp;
-      //       real r_v  = p_v / (micro.constants.R_v*temp);
+            real pert = profiles::ellipsoid_linear(xloc,yloc,zloc  ,  xlen/2,ylen/2,2000  ,  2000,2000,2000  ,  0.8);
+            real temp = micro.temp_from_rho_theta(rh , 0 , rh*th, micro.constants);
+            real svp  = micro.saturation_vapor_pressure(temp);
+            real p_v  = pert*svp;
+            real r_v  = p_v / (micro.constants.R_v*temp);
 
-      //       real wt = gllWts_ord(kk) * gllWts_ord(jj) * gllWts_ord(ii);
-      //       dm_vapor  (k,j,i) += r_v / (rh+r_v) * rh * wt;
-      //       dm_uniform(k,j,i) += rh * wt;
-      //     }
-      //   }
-      // }
+            real wt = gllWts_ord(kk) * gllWts_ord(jj) * gllWts_ord(ii);
+            dm_vapor  (k,j,i) += r_v / (rh+r_v) * rh * wt;
+            dm_uniform(k,j,i) += rh * wt;
+          }
+        }
+      }
     });
   }
 
@@ -312,10 +318,12 @@ public:
   // Take an initially dry fluid state and adjust it to account for moist tracers
   template <class MICRO>
   void adjust_state_for_moisture(DataManager &dm , MICRO const &micro) const {
-    auto &hyDensCells      = this->hyDensCells;
-    auto &hyDensThetaCells = this->hyDensThetaCells;
-    auto &num_tracers      = this->num_tracers;
-    auto &tracer_adds_mass = this->tracer_adds_mass;
+    auto &hyDensCells             = this->hyDensCells;
+    auto &hyDensThetaCells        = this->hyDensThetaCells;
+    auto &num_tracers             = this->num_tracers;
+    auto &tracer_adds_mass        = this->tracer_adds_mass;
+    auto &balance_initial_density = this->balance_initial_density;
+    auto &tracer_id_uniform       = this->tracer_id_uniform;
 
     // Copy the DataManager data to state and tracer arrays for convenience
     real4d state   = createStateArr ();
@@ -351,6 +359,29 @@ public:
 
       for (int tr = 0 ; tr < num_tracers ; tr++) {
         tracers(tr,hs+k,hs+j,hs+i) = tracers(tr,hs+k,hs+j,hs+i) / rho_dry * rho_moist;
+        if (tr == tracer_id_uniform) {
+          tracers(tr,hs+k,hs+j,hs+i) = rho_moist;
+        }
+      }
+
+      if (balance_initial_density) {
+        real rh  = hyDensCells     (hs+k);
+        real rth = hyDensThetaCells(hs+k);
+        real rt = state(idT,hs+k,hs+j,hs+i) + rth;
+        real r  = state(idR,hs+k,hs+j,hs+i) + rh;
+        real t  = rt / r;
+        r = rth/t;
+        state(idR,hs+k,hs+j,hs+i) = r - rh;
+        state(idU,hs+k,hs+j,hs+i) = state(idU,hs+k,hs+j,hs+i) / rho_moist * r;
+        state(idV,hs+k,hs+j,hs+i) = state(idV,hs+k,hs+j,hs+i) / rho_moist * r;
+        state(idW,hs+k,hs+j,hs+i) = state(idW,hs+k,hs+j,hs+i) / rho_moist * r;
+        state(idT,hs+k,hs+j,hs+i) = r*t - rth;
+        for (int tr = 0 ; tr < num_tracers ; tr++) {
+          tracers(tr,hs+k,hs+j,hs+i) = tracers(tr,hs+k,hs+j,hs+i) / rho_moist * r;
+          if (tr == tracer_id_uniform) {
+            tracers(tr,hs+k,hs+j,hs+i) = rho_moist;
+          }
+        }
       }
     });
 
@@ -404,6 +435,8 @@ public:
       auto &dz                   = this->dz                  ;
       auto &hyDensCells          = this->hyDensCells         ;
       auto &hyDensThetaCells     = this->hyDensThetaCells    ;
+      auto &gamma                = this->gamma               ;
+      auto &C0                   = this->C0                  ;
 
       // Convert data from DataManager to state and tracers array for convenience
       real4d state   = createStateArr ();
@@ -421,14 +454,9 @@ public:
         real v = state(idV,hs+k,hs+j,hs+i) / r;
         real w = state(idW,hs+k,hs+j,hs+i) / r;
         real t = ( state(idT,hs+k,hs+j,hs+i) + hyDensThetaCells(hs+k) ) / r;
-
-        // Compute pressure from microphysics
-        int index_vapor = micro.tracer_index_vapor;
-        real rho_v = tracers(index_vapor,hs+k,hs+j,hs+i);
-        real p = micro.pressure_from_rho_theta(r, rho_v, r*t, micro.constants);
+        real p = C0*pow(r*t,gamma);
 
         // Compute the speed of sound (constant kappa assumption)
-        real gamma = micro.constants.gamma_d;
         real cs = sqrt(gamma*p/r);
 
         // Compute the maximum stable time step in each direction
@@ -622,28 +650,40 @@ public:
   // Initialize the state
   template <class MICRO>
   void init_state( DataManager &dm , MICRO const &micro ) {
-    auto nx                 = this->nx               ;
-    auto ny                 = this->ny               ;
-    auto nz                 = this->nz               ;
-    auto dx                 = this->dx               ;
-    auto dy                 = this->dy               ;
-    auto dz                 = this->dz               ;
-    auto gllPts_ord         = this->gllPts_ord       ;
-    auto gllWts_ord         = this->gllWts_ord       ;
-    auto gllPts_ngll        = this->gllPts_ngll      ;
-    auto gllWts_ngll        = this->gllWts_ngll      ;
-    auto &hyDensCells       = this->hyDensCells      ;
-    auto &hyThetaCells      = this->hyThetaCells     ;
-    auto &hyPressureCells   = this->hyPressureCells  ;
-    auto &hyDensThetaCells  = this->hyDensThetaCells ;
-    auto &hyDensGLL         = this->hyDensGLL        ;
-    auto &hyThetaGLL        = this->hyThetaGLL       ;
-    auto &hyPressureGLL     = this->hyPressureGLL    ;
-    auto &hyDensThetaGLL    = this->hyDensThetaGLL   ;
-    auto &data_spec         = this->data_spec        ;
-    auto &sim2d             = this->sim2d            ;
-    auto &xlen              = this->xlen             ;
-    auto &ylen              = this->ylen             ;
+    Rd    = micro.constants.R_d;
+    cp    = micro.constants.cp_d;
+    gamma = micro.constants.gamma_d;
+    p0    = micro.constants.p0;
+    C0    = micro.constants.C0_d;
+
+    auto nx                       = this->nx                     ;
+    auto ny                       = this->ny                     ;
+    auto nz                       = this->nz                     ;
+    auto dx                       = this->dx                     ;
+    auto dy                       = this->dy                     ;
+    auto dz                       = this->dz                     ;
+    auto gllPts_ord               = this->gllPts_ord             ;
+    auto gllWts_ord               = this->gllWts_ord             ;
+    auto gllPts_ngll              = this->gllPts_ngll            ;
+    auto gllWts_ngll              = this->gllWts_ngll            ;
+    auto &hyDensCells             = this->hyDensCells            ;
+    auto &hyThetaCells            = this->hyThetaCells           ;
+    auto &hyPressureCells         = this->hyPressureCells        ;
+    auto &hyDensThetaCells        = this->hyDensThetaCells       ;
+    auto &hyDensGLL               = this->hyDensGLL              ;
+    auto &hyThetaGLL              = this->hyThetaGLL             ;
+    auto &hyPressureGLL           = this->hyPressureGLL          ;
+    auto &hyDensThetaGLL          = this->hyDensThetaGLL         ;
+    auto &data_spec               = this->data_spec              ;
+    auto &sim2d                   = this->sim2d                  ;
+    auto &xlen                    = this->xlen                   ;
+    auto &ylen                    = this->ylen                   ;
+    auto &Rd                      = this->Rd                     ;
+    auto &cp                      = this->cp                     ;
+    auto &gamma                   = this->gamma                  ;
+    auto &p0                      = this->p0                     ;
+    auto &C0                      = this->C0                     ;
+    auto &balance_initial_density = this->balance_initial_density;
 
     // Get Arrays for 1-D hydrostatic background profiles
     real1d dm_hyDens      = dm.get<real,1>( "hydrostatic_density"       );
@@ -661,11 +701,6 @@ public:
       for (int kk=0; kk<ord; kk++) {
         real zloc = (k-hs+0.5_fp)*dz + gllPts_ord(kk)*dz;
         if        (data_spec == DATA_SPEC_THERMAL || data_spec == DATA_SPEC_THERMAL_MOIST) {
-          real Rd    = micro.constants.R_d;
-          real cp    = micro.constants.cp_d;
-          real gamma = micro.constants.gamma_d;
-          real p0    = micro.constants.p0;
-          real C0    = micro.constants.C0_d;
           // Compute constant theta hydrostatic background state
           real th  = 300;
           real rh = profiles::initConstTheta_density (th,zloc,Rd,cp,gamma,p0,C0);
@@ -690,11 +725,6 @@ public:
       for (int kk=0; kk<ngll; kk++) {
         real zloc = (k+0.5_fp)*dz + gllPts_ngll(kk)*dz;
         if        (data_spec == DATA_SPEC_THERMAL || data_spec == DATA_SPEC_THERMAL_MOIST) {
-          real Rd    = micro.constants.R_d;
-          real cp    = micro.constants.cp_d;
-          real gamma = micro.constants.gamma_d;
-          real p0    = micro.constants.p0;
-          real C0    = micro.constants.C0_d;
           // Compute constant theta hydrostatic background state
           real th = 300;
           real rh = profiles::initConstTheta_density (th,zloc,Rd,cp,gamma,p0,C0);
@@ -733,11 +763,6 @@ public:
             real xloc = (i+0.5_fp)*dx + gllPts_ord(ii)*dx;
             real wt = gllWts_ord(kk) * gllWts_ord(jj) * gllWts_ord(ii);
             if        (data_spec == DATA_SPEC_THERMAL || data_spec == DATA_SPEC_THERMAL_MOIST) {
-              real Rd    = micro.constants.R_d;
-              real cp    = micro.constants.cp_d;
-              real gamma = micro.constants.gamma_d;
-              real p0    = micro.constants.p0;
-              real C0    = micro.constants.C0_d;
               // Compute constant theta hydrostatic background state
               real th = 300;
               real rh = profiles::initConstTheta_density(th,zloc,Rd,cp,gamma,p0,C0);
@@ -821,8 +846,11 @@ public:
     auto &tracer_pos              = this->tracer_pos             ;
     auto &num_tracers             = this->num_tracers            ;
     auto &bc_x                    = this->bc_x                   ;
-
-    real gamma = micro.constants.gamma_d;
+    auto &Rd                      = this->Rd                     ;
+    auto &cp                      = this->cp                     ;
+    auto &gamma                   = this->gamma                  ;
+    auto &p0                      = this->p0                     ;
+    auto &C0                      = this->C0                     ;
 
     // Pre-process the tracers by dividing by density inside the domain
     // After this, we can reconstruct tracers only (not rho * tracer)
@@ -913,12 +941,6 @@ public:
           rut_DTs     (0,ii) = r*u*t;
           rt_gamma_DTs(0,ii) = pow(r*t,gamma);
         }
-
-        // Compute moist C0
-        real rho = state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k);
-        real index_vapor = micro.tracer_index_vapor;
-        real rho_v = tracers(index_vapor,hs+k,hs+j,hs+i) * rho;
-        real C0 = micro.pressure_C0_moist(rho, rho_v, micro.constants);
 
         //////////////////////////////////////////
         // Compute time derivatives if necessary
@@ -1057,11 +1079,6 @@ public:
       real v = 0.5_fp * (v_L + v_R);
       real w = 0.5_fp * (w_L + w_R);
       real t = 0.5_fp * (t_L + t_R);
-
-      // Compute moist C0
-      real index_vapor = micro.tracer_index_vapor;
-      real rho_v = 0.5_fp * ( tracerLimits(index_vapor,0,k,j,i) + tracerLimits(index_vapor,1,k,j,i) );
-      real C0 = micro.pressure_C0_moist(r, rho_v, micro.constants);
       real p = C0 * pow(r*t,gamma);
       real cs2 = gamma*p/r;
       real cs  = sqrt(cs2);
@@ -1097,7 +1114,7 @@ public:
       real q5 =      t*w5 + t*w6;
 
       stateFlux(idR,k,j,i) = q2;
-      stateFlux(idU,k,j,i) = q2*q2/q1 + C0*pow(q5,micro.constants.gamma_d);
+      stateFlux(idU,k,j,i) = q2*q2/q1 + C0*pow(q5,gamma);
       stateFlux(idV,k,j,i) = q2*q3/q1;
       stateFlux(idW,k,j,i) = q2*q4/q1;
       stateFlux(idT,k,j,i) = q2*q5/q1;
@@ -1170,8 +1187,6 @@ public:
   void computeTendenciesY( real4d &state   , real4d &stateTend  ,
                            real4d &tracers , real4d &tracerTend ,
                            MICRO const &micro, real &dt ) {
-    real gamma = micro.constants.gamma_d;
-
     auto &ny                      = this->ny                     ;
     auto &weno_scalars            = this->weno_scalars           ;
     auto &weno_winds              = this->weno_winds             ;
@@ -1192,6 +1207,11 @@ public:
     auto &tracer_pos              = this->tracer_pos             ;
     auto &num_tracers             = this->num_tracers            ;
     auto &bc_y                    = this->bc_y                   ;
+    auto &Rd                      = this->Rd                     ;
+    auto &cp                      = this->cp                     ;
+    auto &gamma                   = this->gamma                  ;
+    auto &p0                      = this->p0                     ;
+    auto &C0                      = this->C0                     ;
 
     // Pre-process the tracers by dividing by density inside the domain
     // After this, we can reconstruct tracers only (not rho * tracer)
@@ -1281,12 +1301,6 @@ public:
           rvt_DTs     (0,jj) = r*v*t;
           rt_gamma_DTs(0,jj) = pow(r*t,gamma);
         }
-
-        // Compute moist C0
-        real rho = state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k);
-        real index_vapor = micro.tracer_index_vapor;
-        real rho_v = tracers(index_vapor,hs+k,hs+j,hs+i) * rho;
-        real C0 = micro.pressure_C0_moist(rho, rho_v, micro.constants);
 
         //////////////////////////////////////////
         // Compute time derivatives if necessary
@@ -1425,11 +1439,6 @@ public:
       real v = 0.5_fp * (v_L + v_R);
       real w = 0.5_fp * (w_L + w_R);
       real t = 0.5_fp * (t_L + t_R);
-
-      // Compute moist C0
-      real index_vapor = micro.tracer_index_vapor;
-      real rho_v = 0.5_fp * ( tracerLimits(index_vapor,0,k,j,i) + tracerLimits(index_vapor,1,k,j,i) );
-      real C0 = micro.pressure_C0_moist(r, rho_v, micro.constants);
       real p = C0 * pow(r*t,gamma);
       real cs2 = gamma*p/r;
       real cs  = sqrt(cs2);
@@ -1466,7 +1475,7 @@ public:
 
       stateFlux(idR,k,j,i) = q3;
       stateFlux(idU,k,j,i) = q3*q2/q1;
-      stateFlux(idV,k,j,i) = q3*q3/q1 + C0*pow(q5,micro.constants.gamma_d);
+      stateFlux(idV,k,j,i) = q3*q3/q1 + C0*pow(q5,gamma);
       stateFlux(idW,k,j,i) = q3*q4/q1;
       stateFlux(idT,k,j,i) = q3*q5/q1;
 
@@ -1534,8 +1543,6 @@ public:
   void computeTendenciesZ( real4d &state   , real4d &stateTend  ,
                            real4d &tracers , real4d &tracerTend ,
                            MICRO const &micro, real &dt ) {
-    real gamma = micro.constants.gamma_d;
-
     auto &nz                      = this->nz                     ;
     auto &weno_scalars            = this->weno_scalars           ;
     auto &weno_winds              = this->weno_winds             ;
@@ -1559,6 +1566,11 @@ public:
     auto &num_tracers             = this->num_tracers            ;
     auto &bc_z                    = this->bc_z                   ;
     auto &gllWts_ngll             = this->gllWts_ngll            ;
+    auto &Rd                      = this->Rd                     ;
+    auto &cp                      = this->cp                     ;
+    auto &gamma                   = this->gamma                  ;
+    auto &p0                      = this->p0                     ;
+    auto &C0                      = this->C0                     ;
 
     // Pre-process the tracers by dividing by density inside the domain
     // After this, we can reconstruct tracers only (not rho * tracer)
@@ -1652,12 +1664,6 @@ public:
           rwt_DTs    (0,kk) = r*w*t;
           rt_gamma_DTs(0,kk) = pow(r*t,gamma);
         }
-
-        // Compute moist C0
-        real rho = state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k);
-        real index_vapor = micro.tracer_index_vapor;
-        real rho_v = tracers(index_vapor,hs+k,hs+j,hs+i) * rho;
-        real C0 = micro.pressure_C0_moist(rho, rho_v, micro.constants);
 
         //////////////////////////////////////////
         // Compute time derivatives if necessary
@@ -1814,12 +1820,6 @@ public:
       real v = 0.5_fp * (v_L + v_R);
       real w = 0.5_fp * (w_L + w_R);
       real t = 0.5_fp * (t_L + t_R);
-
-      // Compute moist C0
-      real index_vapor = micro.tracer_index_vapor;
-      real rho_v = 0.5_fp * ( tracerLimits(index_vapor,0,k,j,i) + tracerLimits(index_vapor,1,k,j,i) );
-      real C0 = micro.pressure_C0_moist(r, rho_v, micro.constants);
-
       real p = C0 * pow(r*t,gamma);
       real cs2 = gamma*p/r;
       real cs  = sqrt(cs2);
@@ -1855,7 +1855,7 @@ public:
       stateFlux(idR,k,j,i) = q4;
       stateFlux(idU,k,j,i) = q4*q2/q1;
       stateFlux(idV,k,j,i) = q4*q3/q1;
-      stateFlux(idW,k,j,i) = q4*q4/q1 + C0*pow(q5,micro.constants.gamma_d);
+      stateFlux(idW,k,j,i) = q4*q4/q1 + C0*pow(q5,gamma);
       stateFlux(idT,k,j,i) = q4*q5/q1;
 
       // COMPUTE UPWIND TRACER FLUXES
@@ -1949,6 +1949,8 @@ public:
     auto &hyDensThetaCells      = this->hyDensThetaCells     ;
     auto &hyThetaCells          = this->hyThetaCells         ;
     auto &hyPressureCells       = this->hyPressureCells      ;
+    auto &gamma                 = this->gamma                ;
+    auto &C0                    = this->C0                   ;
 
     yakl::SimpleNetCDF nc;
     int ulIndex = 0; // Unlimited dimension index to place this data at
@@ -2008,9 +2010,7 @@ public:
     parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
       real r  = state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k);
       real rt = state(idT,hs+k,hs+j,hs+i) + hyDensThetaCells(hs+k);
-      int index_vapor = micro.tracer_index_vapor;
-      real rho_v = tracers(index_vapor,hs+k,hs+j,hs+i);
-      real p = micro.pressure_from_rho_theta(r, rho_v, rt, micro.constants);
+      real p  = C0*pow(rt,gamma);
       data(k,j,i) = p - hyPressureCells(hs+k);
     });
     nc.write1(data.createHostCopy(),"pressure_pert",{"z","y","x"},ulIndex,"t");
