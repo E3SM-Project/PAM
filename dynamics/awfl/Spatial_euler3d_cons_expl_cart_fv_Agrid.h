@@ -129,6 +129,8 @@ public:
   std::string out_file;
   // How to initialize the data
   int         data_spec;
+  // Whether to balance initial density to avoid acoustics at the start
+  bool balance_initial_density;
 
 
   // When this class is created, initialize num_tracers to zero
@@ -191,45 +193,45 @@ public:
       dm_vapor  (k,j,i) = 0;
       dm_cloud  (k,j,i) = 0;
       dm_uniform(k,j,i) = 0;
-      // Loop over quadrature points
-      for (int kk=0; kk<ord; kk++) {
-        for (int jj=0; jj<ord; jj++) {
-          for (int ii=0; ii<ord; ii++) {
-            // Get the location
-            real zloc = (k+0.5_fp)*dz + gllPts_ord(kk)*dz;
-            real yloc;
-            if (sim2d) {
-              yloc = ylen/2;
-            } else {
-              yloc = (j+0.5_fp)*dy + gllPts_ord(jj)*dy;
-            }
-            real xloc = (i+0.5_fp)*dx + gllPts_ord(ii)*dx;
+      // // Loop over quadrature points
+      // for (int kk=0; kk<ord; kk++) {
+      //   for (int jj=0; jj<ord; jj++) {
+      //     for (int ii=0; ii<ord; ii++) {
+      //       // Get the location
+      //       real zloc = (k+0.5_fp)*dz + gllPts_ord(kk)*dz;
+      //       real yloc;
+      //       if (sim2d) {
+      //         yloc = ylen/2;
+      //       } else {
+      //         yloc = (j+0.5_fp)*dy + gllPts_ord(jj)*dy;
+      //       }
+      //       real xloc = (i+0.5_fp)*dx + gllPts_ord(ii)*dx;
 
-            // Get dry constants
-            real Rd    = micro.constants.R_d;
-            real cp    = micro.constants.cp_d;
-            real gamma = micro.constants.gamma_d;
-            real p0    = micro.constants.p0;
-            real C0    = micro.constants.C0_d;
+      //       // Get dry constants
+      //       real Rd    = micro.constants.R_d;
+      //       real cp    = micro.constants.cp_d;
+      //       real gamma = micro.constants.gamma_d;
+      //       real p0    = micro.constants.p0;
+      //       real C0    = micro.constants.C0_d;
 
-            // Compute constant theta hydrostatic background state
-            real th = 300;
-            real rh = profiles::initConstTheta_density(th,zloc,Rd,cp,gamma,p0,C0);
+      //       // Compute constant theta hydrostatic background state
+      //       real th = 300;
+      //       real rh = profiles::initConstTheta_density(th,zloc,Rd,cp,gamma,p0,C0);
 
-            // // Initialize tracer mass based on dry state
+      //       // // Initialize tracer mass based on dry state
 
-            real pert = profiles::ellipsoid_linear(xloc,yloc,zloc  ,  xlen/2,ylen/2,2000  ,  2000,2000,2000  ,  0.8);
-            real temp = micro.temp_from_rho_theta(rh , 0 , rh*th, micro.constants);
-            real svp  = micro.saturation_vapor_pressure(temp);
-            real p_v  = pert*svp;
-            real r_v  = p_v / (micro.constants.R_v*temp);
+      //       real pert = profiles::ellipsoid_linear(xloc,yloc,zloc  ,  xlen/2,ylen/2,2000  ,  2000,2000,2000  ,  0.8);
+      //       real temp = micro.temp_from_rho_theta(rh , 0 , rh*th, micro.constants);
+      //       real svp  = micro.saturation_vapor_pressure(temp);
+      //       real p_v  = pert*svp;
+      //       real r_v  = p_v / (micro.constants.R_v*temp);
 
-            real wt = gllWts_ord(kk) * gllWts_ord(jj) * gllWts_ord(ii);
-            dm_vapor  (k,j,i) += r_v / (rh+r_v) * rh * wt;
-            dm_uniform(k,j,i) += rh * wt;
-          }
-        }
-      }
+      //       real wt = gllWts_ord(kk) * gllWts_ord(jj) * gllWts_ord(ii);
+      //       dm_vapor  (k,j,i) += r_v / (rh+r_v) * rh * wt;
+      //       dm_uniform(k,j,i) += rh * wt;
+      //     }
+      //   }
+      // }
     });
   }
 
@@ -537,6 +539,8 @@ public:
     // Read the output filename
     out_file = config["out_file"].as<std::string>();
 
+    balance_initial_density = config["balance_initial_density"].as<bool>();
+
     // Compute the grid spacing in each dimension
     dx = xlen/nx;
     dy = ylen/ny;
@@ -739,7 +743,12 @@ public:
               real rh = profiles::initConstTheta_density(th,zloc,Rd,cp,gamma,p0,C0);
               real tp = profiles::ellipsoid_linear(xloc, yloc, zloc, xlen/2, ylen/2, 2000, 2000, 2000, 2000, 2 );
               real t = th + tp;
-              dm_rho_theta(k,j,i) += (rh*t - rh*th) * wt;
+              real r = rh;
+              // Line below balances initial density to remove the acoustic wave
+              if (balance_initial_density) r = rh*th/t;
+
+              dm_rho      (k,j,i) += (r - rh)*wt;
+              dm_rho_theta(k,j,i) += (r*t - rh*th) * wt;
             }
           }
         }

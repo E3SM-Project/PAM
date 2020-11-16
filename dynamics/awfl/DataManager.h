@@ -219,7 +219,7 @@ public:
 
 
   int find_entry( std::string name ) const {
-    for (int i=0; i < num_entries(); i++) {
+    for (int i=0; i < entries.size(); i++) {
       if (entries[i].name == name) return i;
     }
     return -1;
@@ -227,15 +227,10 @@ public:
 
 
   int find_dimension( std::string name ) const {
-    for (int i=0; i < num_entries(); i++) {
+    for (int i=0; i < entries.size(); i++) {
       if (dimensions[i].name == name) return i;
     }
     return -1;
-  }
-
-
-  void num_entries() const {
-    return entries.size();
   }
 
 
@@ -260,7 +255,7 @@ public:
 
 
   void finalize() {
-    for (int i=0; i < num_entries(); i++) {
+    for (int i=0; i < entries.size(); i++) {
       yakl::yaklFreeDevice( entries[i].ptr , entries[i].name.c_str() );
     }
     entries              = std::vector<Entry>();
