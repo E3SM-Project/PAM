@@ -58,6 +58,12 @@ public:
   real2d hyDensThetaGLL;
 
   real3d pressure;
+  real3d pressure_flux_x;
+  real3d pressure_flux_y;
+  real3d pressure_flux_z;
+  real4d pressure_limits_x;
+  real4d pressure_limits_y;
+  real4d pressure_limits_z;
 
   // Matrices to transform DOFs from one form to another
   SArray<real,2,ord,ngll> coefs_to_gll;
@@ -492,6 +498,12 @@ public:
     hyThetaGLL           = real2d("hyThetaGLL        ",nz,ngll);
     hyDensThetaGLL       = real2d("hyDensThetaGLL    ",nz,ngll);
     pressure = real3d("pressure",nz+2*hs,ny+2*hs,nx+2*hs);
+    pressure_flux_x = real3d("pressure_flux_x",nz,ny,nx+1);
+    pressure_flux_y = real3d("pressure_flux_y",nz,ny+1,nx);
+    pressure_flux_z = real3d("pressure_flux_z",nz+1,ny,nx);
+    pressure_limits_x = real4d("pressure_limits_x",2,nz,ny,nx+1);
+    pressure_limits_y = real4d("pressure_limits_y",2,nz,ny+1,nx);
+    pressure_limits_z = real4d("pressure_limits_z",2,nz+1,ny,nx);
 
     // Register and allocate state data with the DataManager
     dm.register_and_allocate<real>( "hydrostatic_density"       , "hydrostatic_density"       , {nz} , {"z"} );
@@ -716,6 +728,12 @@ public:
     auto &p0                      = this->p0                     ;
     auto &C0                      = this->C0                     ;
     auto &pressure                = this->pressure               ;
+    auto &pressure_limits_x       = this->pressure_limits_x      ;
+    auto &pressure_limits_y       = this->pressure_limits_y      ;
+    auto &pressure_limits_z       = this->pressure_limits_z      ;
+    auto &pressure_flux_x         = this->pressure_flux_x        ;
+    auto &pressure_flux_y         = this->pressure_flux_y        ;
+    auto &pressure_flux_z         = this->pressure_flux_z        ;
 
     real3d rhs("rhs",nz,ny,nx);
     real3d pressure_new("pressure_new",nz,ny,nx);
@@ -835,13 +853,83 @@ public:
 
     // Apply pressure gradient and gravity source term
     parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+      SArray<real,1,ord> stencil;
+      SArray<real,1,ngll> press_gll;
+
+      for (int ii=0; ii < ord; ii++) { stencil(ii) = pressure(hs+k,hs+j,i+ii); }
+      reconstruct_gll_values( stencil , press_gll , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
+      pressure_limits_x(1,k,j,i  ) = press_gll(0     );
+      pressure_limits_x(0,k,j,i+1) = press_gll(ngll-1);
+
+      for (int jj=0; jj < ord; jj++) { stencil(jj) = pressure(hs+k,j+jj,hs+i); }
+      reconstruct_gll_values( stencil , press_gll , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
+      pressure_limits_y(1,k,j  ,i) = press_gll(0     );
+      pressure_limits_y(0,k,j+1,i) = press_gll(ngll-1);
+
+      for (int kk=0; kk < ord; kk++) { stencil(kk) = pressure(k+kk,hs+j,hs+i); }
+      reconstruct_gll_values( stencil , press_gll , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
+      pressure_limits_z(1,k  ,j,i) = press_gll(0     );
+      pressure_limits_z(0,k+1,j,i) = press_gll(ngll-1);
+    });
+
+    parallel_for( SimpleBounds<2>(nz,ny) , YAKL_LAMBDA (int k, int j) {
+      if        (bc_x == BC_PERIODIC) {
+        pressure_limits_x(0,k,j,0 ) = pressure_limits_x(0,k,j,nx);
+        pressure_limits_x(1,k,j,nx) = pressure_limits_x(1,k,j,0 );
+      } else if (bc_x == BC_WALL    ) {
+        pressure_limits_x(0,k,j,0 ) = pressure_limits_x(1,k,j,0 );
+        pressure_limits_x(1,k,j,nx) = pressure_limits_x(0,k,j,nx);
+      }
+    });
+    parallel_for( SimpleBounds<2>(nz,nx) , YAKL_LAMBDA (int k, int i) {
+      if        (bc_y == BC_PERIODIC) {
+        pressure_limits_y(0,k,0 ,i) = pressure_limits_y(0,k,ny,i);
+        pressure_limits_y(1,k,ny,i) = pressure_limits_y(1,k,0 ,i);
+      } else if (bc_y == BC_WALL    ) {
+        pressure_limits_y(0,k,0 ,i) = pressure_limits_y(1,k,0 ,i);
+        pressure_limits_y(1,k,ny,i) = pressure_limits_y(0,k,ny,i);
+      }
+    });
+    parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
+      if        (bc_z == BC_PERIODIC) {
+        pressure_limits_z(0,0 ,j,i) = pressure_limits_z(0,nz,j,i);
+        pressure_limits_z(1,nz,j,i) = pressure_limits_z(1,0 ,j,i);
+      } else if (bc_z == BC_WALL    ) {
+        pressure_limits_z(0,0 ,j,i) = pressure_limits_z(1,0 ,j,i);
+        pressure_limits_z(1,nz,j,i) = pressure_limits_z(0,nz,j,i);
+      }
+    });
+
+    parallel_for( SimpleBounds<3>(nz,ny,nx+1) , YAKL_LAMBDA (int k, int j, int i) {
+      if (state(idU,hs+k,hs+j,hs+i-1) + state(idU,hs+k,hs+j,hs+i) > 0) {
+        pressure_flux_x(k,j,i) = pressure_limits_x(0,k,j,i);
+      } else {
+        pressure_flux_x(k,j,i) = pressure_limits_x(1,k,j,i);
+      }
+    });
+    parallel_for( SimpleBounds<3>(nz,ny+1,nx) , YAKL_LAMBDA (int k, int j, int i) {
+      if (state(idV,hs+k,hs+j-1,hs+i) + state(idV,hs+k,hs+j,hs+i) > 0) {
+        pressure_flux_y(k,j,i) = pressure_limits_y(0,k,j,i);
+      } else {
+        pressure_flux_y(k,j,i) = pressure_limits_y(1,k,j,i);
+      }
+    });
+    parallel_for( SimpleBounds<3>(nz+1,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+      if (state(idW,hs+k-1,hs+j,hs+i) + state(idW,hs+k,hs+j,hs+i) > 0) {
+        pressure_flux_z(k,j,i) = pressure_limits_z(0,k,j,i);
+      } else {
+        pressure_flux_z(k,j,i) = pressure_limits_z(1,k,j,i);
+      }
+    });
+
+    parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
       stateTend(idU,k,j,i) = - hyDensCells(hs+k) * (pressure(hs+k,hs+j,hs+i+1) - pressure(hs+k,hs+j,hs+i-1)) / (2*dx);
       stateTend(idV,k,j,i) = - hyDensCells(hs+k) * (pressure(hs+k,hs+j+1,hs+i) - pressure(hs+k,hs+j-1,hs+i)) / (2*dy);
       stateTend(idW,k,j,i) = - hyDensCells(hs+k) * (pressure(hs+k+1,hs+j,hs+i) - pressure(hs+k-1,hs+j,hs+i)) / (2*dz);
 
-      real theta = (state(idT,hs+k,hs+j,hs+i) + hyDensThetaCells(hs+k)) / hyDensCells(hs+k);
-      stateTend(idW,k,j,i) += hyDensCells(hs+k) * (theta - hyThetaCells(hs+k)) / hyThetaCells(hs+k) * GRAV;
-      stateTend(idT,k,j,i) = 0;
+      // stateTend(idU,k,j,i) = - hyDensCells(hs+k) * (pressure_flux_x(k,j,i+1) - pressure_flux_x(k,j,i)) / (dx);
+      // stateTend(idV,k,j,i) = - hyDensCells(hs+k) * (pressure_flux_y(k,j+1,i) - pressure_flux_y(k,j,i)) / (dy);
+      // stateTend(idW,k,j,i) = - hyDensCells(hs+k) * (pressure_flux_z(k+1,j,i) - pressure_flux_z(k,j,i)) / (dz);
     });
   }
 
@@ -1011,11 +1099,16 @@ public:
         stateFlux(idV,k,j,i) = stateLimits(idU,0,k,j,i)*stateLimits(idV,0,k,j,i)/hyDensCells(hs+k);
         stateFlux(idW,k,j,i) = stateLimits(idU,0,k,j,i)*stateLimits(idW,0,k,j,i)/hyDensCells(hs+k);
         stateFlux(idT,k,j,i) = stateLimits(idU,0,k,j,i)*stateLimits(idT,0,k,j,i)/hyDensCells(hs+k);
-      } else {
+      } else if (uint < 0) {
         stateFlux(idU,k,j,i) = stateLimits(idU,1,k,j,i)*stateLimits(idU,1,k,j,i)/hyDensCells(hs+k);
         stateFlux(idV,k,j,i) = stateLimits(idU,1,k,j,i)*stateLimits(idV,1,k,j,i)/hyDensCells(hs+k);
         stateFlux(idW,k,j,i) = stateLimits(idU,1,k,j,i)*stateLimits(idW,1,k,j,i)/hyDensCells(hs+k);
         stateFlux(idT,k,j,i) = stateLimits(idU,1,k,j,i)*stateLimits(idT,1,k,j,i)/hyDensCells(hs+k);
+      } else {
+        stateFlux(idU,k,j,i) = 0.5_fp * ( stateLimits(idU,1,k,j,i)*stateLimits(idU,1,k,j,i)/hyDensCells(hs+k) + stateLimits(idU,0,k,j,i)*stateLimits(idU,0,k,j,i)/hyDensCells(hs+k) );
+        stateFlux(idV,k,j,i) = 0.5_fp * ( stateLimits(idU,1,k,j,i)*stateLimits(idV,1,k,j,i)/hyDensCells(hs+k) + stateLimits(idU,0,k,j,i)*stateLimits(idV,0,k,j,i)/hyDensCells(hs+k) );
+        stateFlux(idW,k,j,i) = 0.5_fp * ( stateLimits(idU,1,k,j,i)*stateLimits(idW,1,k,j,i)/hyDensCells(hs+k) + stateLimits(idU,0,k,j,i)*stateLimits(idW,0,k,j,i)/hyDensCells(hs+k) );
+        stateFlux(idT,k,j,i) = 0.5_fp * ( stateLimits(idU,1,k,j,i)*stateLimits(idT,1,k,j,i)/hyDensCells(hs+k) + stateLimits(idU,0,k,j,i)*stateLimits(idT,0,k,j,i)/hyDensCells(hs+k) );
       }
     });
 
@@ -1199,11 +1292,16 @@ public:
         stateFlux(idV,k,j,i) = stateLimits(idV,0,k,j,i)*stateLimits(idV,0,k,j,i)/hyDensCells(hs+k);
         stateFlux(idW,k,j,i) = stateLimits(idV,0,k,j,i)*stateLimits(idW,0,k,j,i)/hyDensCells(hs+k);
         stateFlux(idT,k,j,i) = stateLimits(idV,0,k,j,i)*stateLimits(idT,0,k,j,i)/hyDensCells(hs+k);
-      } else {
+      } else if (vint < 0) {
         stateFlux(idU,k,j,i) = stateLimits(idV,1,k,j,i)*stateLimits(idU,1,k,j,i)/hyDensCells(hs+k);
         stateFlux(idV,k,j,i) = stateLimits(idV,1,k,j,i)*stateLimits(idV,1,k,j,i)/hyDensCells(hs+k);
         stateFlux(idW,k,j,i) = stateLimits(idV,1,k,j,i)*stateLimits(idW,1,k,j,i)/hyDensCells(hs+k);
         stateFlux(idT,k,j,i) = stateLimits(idV,1,k,j,i)*stateLimits(idT,1,k,j,i)/hyDensCells(hs+k);
+      } else {
+        stateFlux(idU,k,j,i) = 0.5_fp * ( stateLimits(idV,1,k,j,i)*stateLimits(idU,1,k,j,i)/hyDensCells(hs+k) + stateLimits(idV,0,k,j,i)*stateLimits(idU,0,k,j,i)/hyDensCells(hs+k) );
+        stateFlux(idV,k,j,i) = 0.5_fp * ( stateLimits(idV,1,k,j,i)*stateLimits(idV,1,k,j,i)/hyDensCells(hs+k) + stateLimits(idV,0,k,j,i)*stateLimits(idV,0,k,j,i)/hyDensCells(hs+k) );
+        stateFlux(idW,k,j,i) = 0.5_fp * ( stateLimits(idV,1,k,j,i)*stateLimits(idW,1,k,j,i)/hyDensCells(hs+k) + stateLimits(idV,0,k,j,i)*stateLimits(idW,0,k,j,i)/hyDensCells(hs+k) );
+        stateFlux(idT,k,j,i) = 0.5_fp * ( stateLimits(idV,1,k,j,i)*stateLimits(idT,1,k,j,i)/hyDensCells(hs+k) + stateLimits(idV,0,k,j,i)*stateLimits(idT,0,k,j,i)/hyDensCells(hs+k) );
       }
     });
 
@@ -1232,6 +1330,8 @@ public:
     auto &idl                     = this->idl                    ;
     auto &sigma                   = this->sigma                  ;
     auto &hyDensCells             = this->hyDensCells            ;
+    auto &hyThetaCells            = this->hyThetaCells           ;
+    auto &hyDensThetaCells        = this->hyDensThetaCells       ;
     auto &hyDensGLL               = this->hyDensGLL              ;
     auto &hyDensThetaGLL          = this->hyDensThetaGLL         ;
     auto &hyPressureGLL           = this->hyPressureGLL          ;
@@ -1396,11 +1496,16 @@ public:
         stateFlux(idV,k,j,i) = stateLimits(idW,0,k,j,i)*stateLimits(idV,0,k,j,i)/rho_hy;
         stateFlux(idW,k,j,i) = stateLimits(idW,0,k,j,i)*stateLimits(idW,0,k,j,i)/rho_hy;
         stateFlux(idT,k,j,i) = stateLimits(idW,0,k,j,i)*stateLimits(idT,0,k,j,i)/rho_hy;
-      } else {
+      } else if (wint < 0) {
         stateFlux(idU,k,j,i) = stateLimits(idW,1,k,j,i)*stateLimits(idU,1,k,j,i)/rho_hy;
         stateFlux(idV,k,j,i) = stateLimits(idW,1,k,j,i)*stateLimits(idV,1,k,j,i)/rho_hy;
         stateFlux(idW,k,j,i) = stateLimits(idW,1,k,j,i)*stateLimits(idW,1,k,j,i)/rho_hy;
         stateFlux(idT,k,j,i) = stateLimits(idW,1,k,j,i)*stateLimits(idT,1,k,j,i)/rho_hy;
+      } else {
+        stateFlux(idU,k,j,i) = 0.5_fp * ( stateLimits(idW,1,k,j,i)*stateLimits(idU,1,k,j,i)/rho_hy + stateLimits(idW,0,k,j,i)*stateLimits(idU,0,k,j,i)/rho_hy );
+        stateFlux(idV,k,j,i) = 0.5_fp * ( stateLimits(idW,1,k,j,i)*stateLimits(idV,1,k,j,i)/rho_hy + stateLimits(idW,0,k,j,i)*stateLimits(idV,0,k,j,i)/rho_hy );
+        stateFlux(idW,k,j,i) = 0.5_fp * ( stateLimits(idW,1,k,j,i)*stateLimits(idW,1,k,j,i)/rho_hy + stateLimits(idW,0,k,j,i)*stateLimits(idW,0,k,j,i)/rho_hy );
+        stateFlux(idT,k,j,i) = 0.5_fp * ( stateLimits(idW,1,k,j,i)*stateLimits(idT,1,k,j,i)/rho_hy + stateLimits(idW,0,k,j,i)*stateLimits(idT,0,k,j,i)/rho_hy );
       }
     });
 
@@ -1415,6 +1520,9 @@ public:
           stateTend(l,k,j,i) = - ( stateFlux(l,k+1,j,i) - stateFlux(l,k,j,i) ) / dz;
         }
       }
+
+      real theta = (state(idT,hs+k,hs+j,hs+i) + hyDensThetaCells(hs+k)) / hyDensCells(hs+k);
+      stateTend(idW,k,j,i) += hyDensCells(hs+k) * (theta - hyThetaCells(hs+k)) / hyThetaCells(hs+k) * GRAV;
     });
   }
 
@@ -1493,7 +1601,7 @@ public:
     nc.write1(data.createHostCopy(),"pot_temp_pert",{"z","y","x"},ulIndex,"t");
     // pressure'
     parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-      data(k,j,i) = pressure(hs+k,hs+j,hs+i);
+      data(k,j,i) = pressure(hs+k,hs+j,hs+i) * hyDensCells(hs+k);
     });
     nc.write1(data.createHostCopy(),"pressure_pert",{"z","y","x"},ulIndex,"t");
 
@@ -1538,6 +1646,44 @@ public:
           tmp += sten_to_gll(s,ii) * stencil(s);
         }
         DTs(0,ii) = tmp;
+      }
+
+    } // if doweno
+  }
+
+
+
+  // ord stencil values to ngll GLL values; store in gll
+  YAKL_INLINE void reconstruct_gll_values( SArray<real,1,ord> const stencil ,
+                                           SArray<real,1,ngll> &gll ,
+                                           SArray<real,2,ord,ngll> const &coefs_to_gll ,
+                                           SArray<real,2,ord,ngll> const &sten_to_gll  ,
+                                           SArray<real,3,ord,ord,ord> const &wenoRecon ,
+                                           SArray<real,1,hs+2> const &idl              ,
+                                           real sigma, bool doweno ) {
+    if (doweno) {
+
+      // Reconstruct values
+      SArray<real,1,ord> wenoCoefs;
+      weno::compute_weno_coefs( wenoRecon , stencil , wenoCoefs , idl , sigma );
+      // Transform ord weno coefficients into ngll GLL points
+      for (int ii=0; ii<ngll; ii++) {
+        real tmp = 0;
+        for (int s=0; s < ord; s++) {
+          tmp += coefs_to_gll(s,ii) * wenoCoefs(s);
+        }
+        gll(ii) = tmp;
+      }
+
+    } else {
+
+      // Transform ord stencil cell averages into ngll GLL points
+      for (int ii=0; ii<ngll; ii++) {
+        real tmp = 0;
+        for (int s=0; s < ord; s++) {
+          tmp += sten_to_gll(s,ii) * stencil(s);
+        }
+        gll(ii) = tmp;
       }
 
     } // if doweno
