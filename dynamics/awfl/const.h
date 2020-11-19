@@ -19,14 +19,14 @@ using yakl::memset;
 using yakl::styleC;
 
 #ifndef ORD
-  #define ORD 3
+  #define ORD 5
 #endif
 
 #ifndef NGLL
   #define NGLL 3
 #endif
 
-typedef float real;
+typedef double real;
 
 YAKL_INLINE real constexpr operator"" _fp( long double x ) {
   return static_cast<real>(x);
