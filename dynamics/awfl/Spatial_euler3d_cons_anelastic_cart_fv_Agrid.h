@@ -759,9 +759,9 @@ public:
     // Compute RHS
     ///////////////////////////////////////////
     parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-                  rhs(k,j,i) =  -( state(idU,hs+k,hs+j,hs+i+1) - state(idU,hs+k,hs+j,hs+i-1) ) / (2*dx);
-      if (!sim2d) rhs(k,j,i) += -( state(idV,hs+k,hs+j+1,hs+i) - state(idV,hs+k,hs+j-1,hs+i) ) / (2*dy);
-                  rhs(k,j,i) += -( state(idW,hs+k+1,hs+j,hs+i) - state(idW,hs+k-1,hs+j,hs+i) ) / (2*dz);
+                  rhs(k,j,i) =  -( state(idU,hs+k,hs+j,hs+i+1) - state(idU,hs+k,hs+j,hs+i-1) ) / (2*dx) / dt;
+      if (!sim2d) rhs(k,j,i) += -( state(idV,hs+k,hs+j+1,hs+i) - state(idV,hs+k,hs+j-1,hs+i) ) / (2*dy) / dt;
+                  rhs(k,j,i) += -( state(idW,hs+k+1,hs+j,hs+i) - state(idW,hs+k-1,hs+j,hs+i) ) / (2*dz) / dt;
     });
 
     // Compute pressure perturbation
@@ -769,23 +769,26 @@ public:
     real dx2 = dx*dx;
     real dy2 = dy*dy;
     real dz2 = dz*dz;
-    int nIter = 5000;
+    int nIter = 10000;
     for (int iter = 0; iter < nIter; iter++) {
       // Compute new pressure
       parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
         real factor;
-        if (sim2d) { 
-          factor = 1._fp / (2*dt/dx2            + 2*dt/dz2);
-        } else {
-          factor = 1._fp / (2*dt/dx2 + 2*dt/dy2 + 2*dt/dz2);
-        }
-        real xterm = dt*(pressure(hs+k,hs+j,hs+i+1) + pressure(hs+k,hs+j,hs+i-1)) / dx2;
-        real yterm = dt*(pressure(hs+k,hs+j+1,hs+i) + pressure(hs+k,hs+j-1,hs+i)) / dy2;
-        real zterm = dt*(pressure(hs+k+1,hs+j,hs+i) + pressure(hs+k-1,hs+j,hs+i)) / dz2;
+        real hyr = hyDensCells(hs+k);
         if (sim2d) {
-          pressure_new(k,j,i) = factor * ( xterm         + zterm + rhs(k,j,i) );
+          factor = 1._fp / (2*hyr/dx2             + 2*hyr/dz2);
         } else {
-          pressure_new(k,j,i) = factor * ( xterm + yterm + zterm + rhs(k,j,i) );
+          factor = 1._fp / (2*hyr/dx2 + 2*hyr/dy2 + 2*hyr/dz2);
+        }
+        real xterm = hyr*(pressure(hs+k,hs+j,hs+i+1) + pressure(hs+k,hs+j,hs+i-1)) / dx2;
+        real yterm = hyr*(pressure(hs+k,hs+j+1,hs+i) + pressure(hs+k,hs+j-1,hs+i)) / dy2;
+        real zterm = hyr*(pressure(hs+k+1,hs+j,hs+i) + pressure(hs+k-1,hs+j,hs+i)) / dz2;
+        real dhyr_dz = ( hyDensCells(hs+k+1) - hyDensCells(hs+k-1) ) / (2*dz);
+        real zterm2 = dhyr_dz * (pressure(hs+k+1,hs+j,hs+i) - pressure(hs+k-1,hs+j,hs+i)) / (2*dz);
+        if (sim2d) {
+          pressure_new(k,j,i) = factor * ( xterm         + zterm + zterm2 + rhs(k,j,i) );
+        } else {
+          pressure_new(k,j,i) = factor * ( xterm + yterm + zterm + zterm2 + rhs(k,j,i) );
         }
       });
 
@@ -832,12 +835,12 @@ public:
 
     // Apply pressure gradient and gravity source term
     parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-      stateTend(idU,k,j,i) = - (pressure(hs+k,hs+j,hs+i+1) - pressure(hs+k,hs+j,hs+i-1)) / (2*dx);
-      stateTend(idV,k,j,i) = - (pressure(hs+k,hs+j+1,hs+i) - pressure(hs+k,hs+j-1,hs+i)) / (2*dy);
-      stateTend(idW,k,j,i) = - (pressure(hs+k+1,hs+j,hs+i) - pressure(hs+k-1,hs+j,hs+i)) / (2*dz);
+      stateTend(idU,k,j,i) = - hyDensCells(hs+k) * (pressure(hs+k,hs+j,hs+i+1) - pressure(hs+k,hs+j,hs+i-1)) / (2*dx);
+      stateTend(idV,k,j,i) = - hyDensCells(hs+k) * (pressure(hs+k,hs+j+1,hs+i) - pressure(hs+k,hs+j-1,hs+i)) / (2*dy);
+      stateTend(idW,k,j,i) = - hyDensCells(hs+k) * (pressure(hs+k+1,hs+j,hs+i) - pressure(hs+k-1,hs+j,hs+i)) / (2*dz);
+
       real theta = (state(idT,hs+k,hs+j,hs+i) + hyDensThetaCells(hs+k)) / hyDensCells(hs+k);
-      real rho_hat = hyDensCells(hs+k)*hyThetaCells(hs+k) / theta;
-      stateTend(idW,k,j,i) += - (rho_hat - hyDensCells(hs+k)) * GRAV;
+      stateTend(idW,k,j,i) += hyDensCells(hs+k) * (theta - hyThetaCells(hs+k)) / hyThetaCells(hs+k) * GRAV;
       stateTend(idT,k,j,i) = 0;
     });
   }
