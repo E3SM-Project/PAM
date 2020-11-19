@@ -4,6 +4,7 @@
 #include "YAKL.h"
 #include "yaml-cpp/yaml.h"
 #include "YAKL_netcdf.h"
+#include "YAKL_tridiagonal.h"
 
 using yakl::c::parallel_for;
 using yakl::c::SimpleBounds;
