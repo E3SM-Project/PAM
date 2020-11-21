@@ -666,12 +666,13 @@ public:
       computePressureTendencies( state , stateTend , dt );
     }
     if (splitIndex == 1) {
-      auto &dx = this->dx;
-      auto &dy = this->dy;
-      auto &dz = this->dz;
-      auto &nx = this->nx;
-      auto &ny = this->ny;
-      auto &nz = this->nz;
+      auto &dx    = this->dx   ;
+      auto &dy    = this->dy   ;
+      auto &dz    = this->dz   ;
+      auto &nx    = this->nx   ;
+      auto &ny    = this->ny   ;
+      auto &nz    = this->nz   ;
+      auto &sim2d = this->sim2d;
       if        (bc_x == BC_PERIODIC) {
         parallel_for( SimpleBounds<3>(nz,ny,hs) , YAKL_LAMBDA(int k, int j, int ii) {
           state(idU,hs+k,hs+j,      ii) = state(idU,hs+k,hs+j,nx+ii);
@@ -683,16 +684,18 @@ public:
           state(idU,hs+k,hs+j,hs+nx+ii) = 0;
         });
       }
-      if        (bc_y == BC_PERIODIC) {
-        parallel_for( SimpleBounds<3>(nz,nx,hs) , YAKL_LAMBDA(int k, int i, int jj) {
-          state(idV,hs+k,      jj,hs+i) = state(idV,hs+k,ny+jj,hs+i);
-          state(idV,hs+k,hs+ny+jj,hs+i) = state(idV,hs+k,hs+jj,hs+i);
-        });
-      } else if (bc_y == BC_WALL) {
-        parallel_for( SimpleBounds<3>(nz,nx,hs) , YAKL_LAMBDA(int k, int i, int jj) {
-          state(idV,hs+k,      jj,hs+i) = 0;
-          state(idV,hs+k,hs+ny+jj,hs+i) = 0;
-        });
+      if (!sim2d) {
+        if        (bc_y == BC_PERIODIC) {
+          parallel_for( SimpleBounds<3>(nz,nx,hs) , YAKL_LAMBDA(int k, int i, int jj) {
+            state(idV,hs+k,      jj,hs+i) = state(idV,hs+k,ny+jj,hs+i);
+            state(idV,hs+k,hs+ny+jj,hs+i) = state(idV,hs+k,hs+jj,hs+i);
+          });
+        } else if (bc_y == BC_WALL) {
+          parallel_for( SimpleBounds<3>(nz,nx,hs) , YAKL_LAMBDA(int k, int i, int jj) {
+            state(idV,hs+k,      jj,hs+i) = 0;
+            state(idV,hs+k,hs+ny+jj,hs+i) = 0;
+          });
+        }
       }
       if        (bc_z == BC_PERIODIC) {
         parallel_for( SimpleBounds<3>(ny,nx,hs) , YAKL_LAMBDA(int j, int i, int kk) {
@@ -708,7 +711,9 @@ public:
       real3d mom_div("mom_div",nz,ny,nx);
       parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
         mom_div(k,j,i)  = (state(idU,hs+k,hs+j,hs+i+1) - state(idU,hs+k,hs+j,hs+i-1)) / (2*dx);
-        mom_div(k,j,i) += (state(idV,hs+k,hs+j+1,hs+i) - state(idV,hs+k,hs+j-1,hs+i)) / (2*dy);
+        if (!sim2d) {
+          mom_div(k,j,i) += (state(idV,hs+k,hs+j+1,hs+i) - state(idV,hs+k,hs+j-1,hs+i)) / (2*dy);
+        }
         mom_div(k,j,i) += (state(idW,hs+k+1,hs+j,hs+i) - state(idW,hs+k-1,hs+j,hs+i)) / (2*dz);
       });
       yakl::SimpleNetCDF nc;
@@ -802,16 +807,18 @@ public:
         state(idU,hs+k,hs+j,hs+nx+ii) = 0;
       });
     }
-    if        (bc_y == BC_PERIODIC) {
-      parallel_for( SimpleBounds<3>(nz,nx,hs) , YAKL_LAMBDA(int k, int i, int jj) {
-        state(idV,hs+k,      jj,hs+i) = state(idV,hs+k,ny+jj,hs+i);
-        state(idV,hs+k,hs+ny+jj,hs+i) = state(idV,hs+k,hs+jj,hs+i);
-      });
-    } else if (bc_y == BC_WALL) {
-      parallel_for( SimpleBounds<3>(nz,nx,hs) , YAKL_LAMBDA(int k, int i, int jj) {
-        state(idV,hs+k,      jj,hs+i) = 0;
-        state(idV,hs+k,hs+ny+jj,hs+i) = 0;
-      });
+    if (!sim2d) {
+      if        (bc_y == BC_PERIODIC) {
+        parallel_for( SimpleBounds<3>(nz,nx,hs) , YAKL_LAMBDA(int k, int i, int jj) {
+          state(idV,hs+k,      jj,hs+i) = state(idV,hs+k,ny+jj,hs+i);
+          state(idV,hs+k,hs+ny+jj,hs+i) = state(idV,hs+k,hs+jj,hs+i);
+        });
+      } else if (bc_y == BC_WALL) {
+        parallel_for( SimpleBounds<3>(nz,nx,hs) , YAKL_LAMBDA(int k, int i, int jj) {
+          state(idV,hs+k,      jj,hs+i) = 0;
+          state(idV,hs+k,hs+ny+jj,hs+i) = 0;
+        });
+      }
     }
     if        (bc_z == BC_PERIODIC) {
       parallel_for( SimpleBounds<3>(ny,nx,hs) , YAKL_LAMBDA(int j, int i, int kk) {
@@ -844,17 +851,14 @@ public:
       // Compute new pressure
       parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
         real factor;
-        real hyr_km1 = hyDensCells(hs+k-1);
-        real hyr_k   = hyDensCells(hs+k  );
-        real hyr_kp1 = hyDensCells(hs+k+1);
         if (sim2d) {
-          factor = 1._fp / (2*hyr_k           + hyr_kp1+hyr_km1);
+          factor = 1._fp / 4._fp;
         } else {
-          factor = 1._fp / (2*hyr_k + 2*hyr_k + hyr_kp1+hyr_km1);
+          factor = 1._fp / 6._fp;
         }
-        real xterm = hyr_k  *pressure(hs+k,hs+j,hs+i+2) + hyr_k  *pressure(hs+k,hs+j,hs+i-2);
-        real yterm = hyr_k  *pressure(hs+k,hs+j+2,hs+i) + hyr_k  *pressure(hs+k,hs+j-2,hs+i);
-        real zterm = hyr_kp1*pressure(hs+k+2,hs+j,hs+i) + hyr_km1*pressure(hs+k-2,hs+j,hs+i);
+        real xterm = pressure(hs+k,hs+j,hs+i+2) + pressure(hs+k,hs+j,hs+i-2);
+        real yterm = pressure(hs+k,hs+j+2,hs+i) + pressure(hs+k,hs+j-2,hs+i);
+        real zterm = pressure(hs+k+2,hs+j,hs+i) + pressure(hs+k-2,hs+j,hs+i);
         if (sim2d) {
           pressure_new(k,j,i) = factor * ( xterm         + zterm + rhs(k,j,i) );
         } else {
@@ -879,16 +883,18 @@ public:
           pressure(hs+k,hs+j,hs+nx+ii) = pressure(hs+k,hs+j,hs+nx-1);
         });
       }
-      if        (bc_y == BC_PERIODIC) {
-        parallel_for( SimpleBounds<3>(nz,nx,hs) , YAKL_LAMBDA(int k, int i, int jj) {
-          pressure(hs+k,      jj,hs+i) = pressure(hs+k,ny+jj,hs+i);
-          pressure(hs+k,hs+ny+jj,hs+i) = pressure(hs+k,hs+jj,hs+i);
-        });
-      } else if (bc_y == BC_WALL) {
-        parallel_for( SimpleBounds<3>(nz,nx,hs) , YAKL_LAMBDA(int k, int i, int jj) {
-          pressure(hs+k,      jj,hs+i) = pressure(hs+k,hs+0   ,hs+i);
-          pressure(hs+k,hs+ny+jj,hs+i) = pressure(hs+k,hs+ny-1,hs+i);
-        });
+      if (!sim2d) {
+        if        (bc_y == BC_PERIODIC) {
+          parallel_for( SimpleBounds<3>(nz,nx,hs) , YAKL_LAMBDA(int k, int i, int jj) {
+            pressure(hs+k,      jj,hs+i) = pressure(hs+k,ny+jj,hs+i);
+            pressure(hs+k,hs+ny+jj,hs+i) = pressure(hs+k,hs+jj,hs+i);
+          });
+        } else if (bc_y == BC_WALL) {
+          parallel_for( SimpleBounds<3>(nz,nx,hs) , YAKL_LAMBDA(int k, int i, int jj) {
+            pressure(hs+k,      jj,hs+i) = pressure(hs+k,hs+0   ,hs+i);
+            pressure(hs+k,hs+ny+jj,hs+i) = pressure(hs+k,hs+ny-1,hs+i);
+          });
+        }
       }
       if        (bc_z == BC_PERIODIC) {
         parallel_for( SimpleBounds<3>(ny,nx,hs) , YAKL_LAMBDA(int j, int i, int kk) {
@@ -905,9 +911,11 @@ public:
 
     // Apply pressure gradient and gravity source term
     parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-      stateTend(idU,k,j,i) = - hyDensCells(hs+k) * (pressure(hs+k,hs+j,hs+i+1) - pressure(hs+k,hs+j,hs+i-1)) / (2*dx);
-      stateTend(idV,k,j,i) = - hyDensCells(hs+k) * (pressure(hs+k,hs+j+1,hs+i) - pressure(hs+k,hs+j-1,hs+i)) / (2*dy);
-      stateTend(idW,k,j,i) = - hyDensCells(hs+k) * (pressure(hs+k+1,hs+j,hs+i) - pressure(hs+k-1,hs+j,hs+i)) / (2*dz);
+      stateTend(idU,k,j,i) = - (pressure(hs+k,hs+j,hs+i+1) - pressure(hs+k,hs+j,hs+i-1)) / (2*dx);
+      if (!sim2d) {
+        stateTend(idV,k,j,i) = - (pressure(hs+k,hs+j+1,hs+i) - pressure(hs+k,hs+j-1,hs+i)) / (2*dy);
+      }
+      stateTend(idW,k,j,i) = - (pressure(hs+k+1,hs+j,hs+i) - pressure(hs+k-1,hs+j,hs+i)) / (2*dz);
     });
   }
 
