@@ -7,17 +7,21 @@
 
 namespace weno {
 
-  int constexpr hs = (ord-1)/2;
 
-  YAKL_INLINE void map_weights( SArray<real,1,hs+2> const &idl , SArray<real,1,hs+2> &wts ) {
+  template <int ord>
+  YAKL_INLINE void map_weights( SArray<real,1,(ord-1)/2+2> const &idl , SArray<real,1,(ord-1)/2+2> &wts ) {
+    int constexpr hs = (ord-1)/2;
     // Map the weights for quicker convergence. WARNING: Ideal weights must be (0,1) before mapping
     for (int i=0; i<hs+2; i++) {
-      wts(i) = wts(i) * ( idl(i) + idl(i)*idl(i) - 3._fp*idl(i)*wts(i) + wts(i)*wts(i) ) / ( idl(i)*idl(i) + wts(i) * ( 1._fp - 2._fp * idl(i) ) );
+      wts(i) = wts(i) * ( idl(i) + idl(i)*idl(i) - 3._fp*idl(i)*wts(i) + wts(i)*wts(i) ) /
+                        ( idl(i)*idl(i) + wts(i) * ( 1._fp - 2._fp * idl(i) ) );
     }
   }
 
 
-  YAKL_INLINE void convexify( SArray<real,1,hs+2> &wts ) {
+  template <int ord>
+  YAKL_INLINE void convexify( SArray<real,1,(ord-1)/2+2> &wts ) {
+    int constexpr hs = (ord-1)/2;
     real sum = 0._fp;
     real const eps = 1.0e-20;
     for (int i=0; i<hs+2; i++) { sum += wts(i); }
@@ -25,7 +29,8 @@ namespace weno {
   }
 
 
-  YAKL_INLINE void wenoSetIdealSigma(SArray<real,1,hs+2> &idl, real &sigma) {
+  template <int ord>
+  YAKL_INLINE void wenoSetIdealSigma(SArray<real,1,(ord-1)/2+2> &idl, real &sigma) {
     if        (ord == 3) {
       sigma = 0.0343557947899881_fp;
       idl(0) = 1._fp;
@@ -86,11 +91,14 @@ namespace weno {
       idl(7) = 1._fp;
       idl(8) = 1._fp;
     }
-    convexify( idl );
+    convexify<ord>( idl );
   }
 
 
-  YAKL_INLINE void compute_weno_coefs( SArray<real,3,ord,ord,ord> const &recon , SArray<real,1,ord> const &u , SArray<real,1,ord> &aw , SArray<real,1,hs+2> const &idl , real const sigma ) {
+  template <int ord>
+  YAKL_INLINE void compute_weno_coefs( SArray<real,3,ord,ord,ord> const &recon , SArray<real,1,ord> const &u ,
+                                       SArray<real,1,ord> &aw , SArray<real,1,(ord-1)/2+2> const &idl , real const sigma ) {
+    int constexpr hs = (ord-1)/2;
     SArray<real,1,hs+2> tv;
     SArray<real,1,hs+2> wts;
     SArray<real,2,hs+2,ord> a;
@@ -154,11 +162,11 @@ namespace weno {
     for (int i=0; i<hs+2; i++) {
       wts(i) = idl(i) / ( tv(i)*tv(i) + eps );
     }
-    convexify(wts);
+    convexify<ord>(wts);
 
     // Map WENO weights for sharper fronts and less sensitivity to "eps"
-    map_weights(idl,wts);
-    convexify(wts);
+    map_weights<ord>(idl,wts);
+    convexify<ord>(wts);
 
     // WENO polynomial is the weighted sum of candidate polynomials using WENO weights instead of ideal weights
     for (int i=0; i<ord; i++) {
