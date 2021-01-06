@@ -14,4 +14,5 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../externals/YAKL ./yakl)
 
 # Unit test directories
 add_subdirectory(recon_regular)
+add_subdirectory(recon_irregular)
 

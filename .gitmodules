@@ -13,3 +13,6 @@
 [submodule "externals/kokkos"]
 	path = externals/kokkos
 	url = https://github.com/kokkos/kokkos.git
+[submodule "externals/eigen"]
+	path = externals/eigen
+	url = git@gitlab.com:libeigen/eigen.git

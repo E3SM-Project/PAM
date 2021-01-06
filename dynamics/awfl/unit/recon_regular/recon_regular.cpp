@@ -56,6 +56,7 @@ void test_convergence() {
     real xloc = (0.5)*dx + gllPts_ord(ii)*dx;
     error1_nolim += abs(gll(ii) - func(xloc)) * gllWts_ord(ii);
   }
+  error1_nolim /= nx1;
 
   // WENO reconstruct GLL points using the stencil information
   SArray<real,1,ord> wenoCoefs;
@@ -68,6 +69,7 @@ void test_convergence() {
     real xloc = (0.5)*dx + gllPts_ord(ii)*dx;
     error1_weno += abs(gll(ii) - func(xloc)) * gllWts_ord(ii);
   }
+  error1_weno /= nx1;
 
   /******************************************************************
    nx=6
@@ -92,6 +94,7 @@ void test_convergence() {
     real xloc = (0.5)*dx + gllPts_ord(ii)*dx;
     error2_nolim += abs(gll(ii) - func(xloc)) * gllWts_ord(ii);
   }
+  error2_nolim /= nx2;
 
   // WENO reconstruct GLL points using the stencil information
   weno::compute_weno_coefs<ord>( wenoRecon , stencil , wenoCoefs , idl , sigma );
@@ -103,6 +106,7 @@ void test_convergence() {
     real xloc = (0.5)*dx + gllPts_ord(ii)*dx;
     error2_weno += abs(gll(ii) - func(xloc)) * gllWts_ord(ii);
   }
+  error2_weno /= nx2;
 
   real conv = log(error1_nolim/error2_nolim) / log((double) nx2/ (double) nx1);
   std::cout << "Regular: err1 err2 conv: " << error1_nolim << " " << error2_nolim << " " << conv << "\n";
