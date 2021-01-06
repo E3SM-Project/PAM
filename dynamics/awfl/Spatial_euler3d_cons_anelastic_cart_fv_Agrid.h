@@ -10,7 +10,7 @@
 
 
 template <int nTimeDerivs, bool timeAvg, int nAder>
-class Spatial_euler3d_cons_expl_cart_fv_Agrid {
+class Spatial_euler3d_cons_anelastic_cart_fv_Agrid {
 public:
   
   static_assert(nTimeDerivs == 1 , "ERROR: This Spatial class isn't setup to use nTimeDerivs > 1");
@@ -484,7 +484,7 @@ public:
     TransformMatrices::get_gll_weights(this->gllWts_ngll);
 
     // Store WENO ideal weights and sigma value
-    weno::wenoSetIdealSigma(this->idl,this->sigma);
+    weno::wenoSetIdealSigma<ord>(this->idl,this->sigma);
 
     // Allocate data
     stateLimits     = real5d("stateLimits"    ,num_state  ,2,nz+1,ny+1,nx+1);
@@ -1613,7 +1613,7 @@ public:
 
       // Reconstruct values
       SArray<real,1,ord> wenoCoefs;
-      weno::compute_weno_coefs( wenoRecon , stencil , wenoCoefs , idl , sigma );
+      weno::compute_weno_coefs<ord>( wenoRecon , stencil , wenoCoefs , idl , sigma );
       // Transform ord weno coefficients into ngll GLL points
       for (int ii=0; ii<ngll; ii++) {
         real tmp = 0;
@@ -1651,7 +1651,7 @@ public:
 
       // Reconstruct values
       SArray<real,1,ord> wenoCoefs;
-      weno::compute_weno_coefs( wenoRecon , stencil , wenoCoefs , idl , sigma );
+      weno::compute_weno_coefs<ord>( wenoRecon , stencil , wenoCoefs , idl , sigma );
       // Transform ord weno coefficients into ngll GLL points
       for (int ii=0; ii<ngll; ii++) {
         real tmp = 0;
