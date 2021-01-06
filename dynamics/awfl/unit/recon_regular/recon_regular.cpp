@@ -124,17 +124,30 @@ void test_convergence() {
   for (int ii=0; ii < hs; ii++) { stencil(ii) = 0; }
   stencil(hs) = 0.85;
   for (int ii=hs+1; ii < ord; ii++) { stencil(ii) = 1; }
+
   weno::compute_weno_coefs<ord>( wenoRecon , stencil , wenoCoefs , idl , sigma );
   gll = c2g * wenoCoefs;
-  if (yakl::intrinsics::maxval(gll) > 1.04) {
-    std::cerr << "ERROR: Overshoot too large\n";
-    exit(-1);
-  }
+  real over_weno = yakl::intrinsics::maxval(gll);
+
   std::cout << "GLL values (disc WENO): ";
   for (int ii=0; ii < ord; ii++) {
     std::cout << gll(ii) << "  ";
   }
+  std::cout << "\n";
+
+  gll = c2g * s2c * stencil;
+  real over_nolim = yakl::intrinsics::maxval(gll);
+
+  std::cout << "GLL values (disc nolim): ";
+  for (int ii=0; ii < ord; ii++) {
+    std::cout << gll(ii) << "  ";
+  }
   std::cout << "\n\n";
+
+  if (over_weno >= over_nolim) {
+    std::cerr << "ERROR: WENO does not reduce the overshoot magnitude\n";
+    exit(-1);
+  }
 }
 
 int main() {
