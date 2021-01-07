@@ -1,6 +1,7 @@
 
 #include "TransformMatrices_variable.h"
 #include "TransformMatrices.h"
+#include "WenoLimiter.h"
 
 
 real func(real xloc) {
@@ -19,6 +20,9 @@ void test_convergence() {
   SArray<double,2,ord,ord> s2c_tmp;
   SArray<real,2,ord,ord> s2c;
   SArray<real,2,ord,ord> c2g;
+  SArray<real,3,ord,ord,ord> wenoRecon;
+  SArray<real,1,hs+2> idl;
+  real sigma;
 
   SArray<double,1,ord> dx;
   dx(0) = 1;
@@ -56,6 +60,9 @@ void test_convergence() {
   TransformMatrices::get_gll_points (gllPts_ord);
   TransformMatrices::get_gll_weights(gllWts_ord);
 
+  TransformMatrices_variable::weno_sten_to_coefs<ord>(locs,wenoRecon);
+  weno::wenoSetIdealSigma<ord>(idl,sigma);
+
   /******************************************************************
    nx=20
    ******************************************************************/
@@ -82,6 +89,19 @@ void test_convergence() {
   }
   error1_nolim /= nx1;
 
+  // WENO reconstruct GLL points using the stencil information
+  SArray<real,1,ord> wenoCoefs;
+  weno::compute_weno_coefs<ord>( wenoRecon , stencil , wenoCoefs , idl , sigma );
+  gll = c2g * wenoCoefs;
+
+  // Integrate the error of the approximation using reconstruction
+  real error1_weno = 0;
+  for (int ii=0; ii < ord; ii++) {
+    real xloc = gllPts_ord(ii)*dxnorm;
+    error1_weno += abs(gll(ii) - func(xloc)) * gllWts_ord(ii);
+  }
+  error1_weno /= nx1;
+
   /******************************************************************
    nx=30
    ******************************************************************/
@@ -107,10 +127,59 @@ void test_convergence() {
   }
   error2_nolim /= nx2;
 
+  // WENO reconstruct GLL points using the stencil information
+  weno::compute_weno_coefs<ord>( wenoRecon , stencil , wenoCoefs , idl , sigma );
+  gll = c2g * wenoCoefs;
+
+  // Integrate the error of the approximation using reconstruction
+  real error2_weno = 0;
+  for (int ii=0; ii < ord; ii++) {
+    real xloc = gllPts_ord(ii)*dxnorm;
+    error2_weno += abs(gll(ii) - func(xloc)) * gllWts_ord(ii);
+  }
+  error2_weno /= nx2;
+
   real conv = log(error1_nolim/error2_nolim) / log((double) nx2/ (double) nx1);
   std::cout << "Regular: err1 err2 conv: " << error1_nolim << " " << error2_nolim << " " << conv << "\n";
   if (conv < ord-1) {
     std::cerr << "ERROR: Wrong convergence for regular interpolation\n";
+    exit(-1);
+  }
+
+  conv = log(error1_weno/error2_weno) / log((double) nx2/ (double) nx1);
+  std::cout << "WENO: err1 err2 conv: "  << error1_weno << " " << error2_weno << " " << conv << "\n";
+  if (conv < ord-1) {
+    std::cerr << "ERROR: Wrong convergence for WENO interpolation\n";
+    exit(-1);
+  }
+
+
+  // WENO reconstruct GLL points using discontinuous data
+  for (int ii=0; ii < hs; ii++) { stencil(ii) = 0; }
+  stencil(hs) = 0.85;
+  for (int ii=hs+1; ii < ord; ii++) { stencil(ii) = 1; }
+
+  weno::compute_weno_coefs<ord>( wenoRecon , stencil , wenoCoefs , idl , sigma );
+  gll = c2g * wenoCoefs;
+  real over_weno = yakl::intrinsics::maxval(gll);
+
+  std::cout << "GLL values (disc WENO): ";
+  for (int ii=0; ii < ord; ii++) {
+    std::cout << gll(ii) << "  ";
+  }
+  std::cout << "\n";
+
+  gll = c2g * s2c * stencil;
+  real over_nolim = yakl::intrinsics::maxval(gll);
+
+  std::cout << "GLL values (disc nolim): ";
+  for (int ii=0; ii < ord; ii++) {
+    std::cout << gll(ii) << "  ";
+  }
+  std::cout << "\n\n";
+
+  if (over_weno >= over_nolim) {
+    std::cerr << "ERROR: WENO does not reduce the overshoot magnitude\n";
     exit(-1);
   }
 
