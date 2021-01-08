@@ -96,6 +96,8 @@ if function == "tanh" :
   print("  tanh_inflect: "+str(tanh_inflect))
   print("  tanh_steep: "+str(tanh_steep))
   print("  tanh_scale: "+str(tanh_scale))
+print("output: "+output)
+print("show plots: "+str(showplots))
 
 zthick = ztop - z0
 
