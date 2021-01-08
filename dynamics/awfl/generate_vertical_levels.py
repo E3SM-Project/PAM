@@ -133,7 +133,6 @@ for it in range(niter) :
     if relnorm < 1.e-15 :
         break
 
-zint = np.array([1 for i in range(nlev+1)])
 zint[0] = z0
 for i in range(1,nlev+1) :
     zint[i] = zint[i-1] + dz[i-1]
@@ -159,6 +158,8 @@ print("\n**************** grid spacing ****************")
 print(dz)
 print("\n**************** interface locations ****************")
 print(zint)
+
+print(np.sum(dz))
 
 print("\nFigures saved in grid_spacing_vs_level_index.png and grid_spacing_visual.png")
 

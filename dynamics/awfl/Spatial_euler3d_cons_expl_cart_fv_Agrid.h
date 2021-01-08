@@ -512,6 +512,39 @@ public:
     // Get the height of the z-dimension
     zlen = zint.createHostCopy()(nz);
 
+    {
+      real1d vert_interface       = real1d("vert_interface"      ,nz+1);
+      real1d vert_interface_ghost = real1d("vert_interface_ghost",nz+2*hs+1);
+      real1d dz                   = real1d("dz"                  ,nz);
+      real1d dz_ghost             = real1d("dz_ghost"            ,nz+2*hs);
+      real3d vert_sten_to_gll     = real3d("vert_sten_to_gll"    ,nz,ngll,ord);
+      real3d vert_coefs_to_gll    = real3d("vert_coefs_to_gll"   ,nz,ngll,ord);
+      real4d vert_weno_recon      = real4d("vert_weno_recon"     ,nz,ord,ord,ord);
+
+      zint.deep_copy_to(vert_interface);
+      
+      parallel_for( nz , YAKL_LAMBDA (int k) {
+        dz(k) = vert_interface(k+1) - vert_interface(k);
+      });
+
+      parallel_for( nz+2*hs , YAKL_LAMBDA (int k) {
+        if (k >= hs && k < hs+nz) {
+          dz_ghost(k) = dz(k-hs);
+        } else if (k < hs) {
+          dz_ghost(k) = dz(0);
+        } else if (k >= hs+nz) {
+          dz_ghost(k) = dz(nz-1);
+        }
+      });
+
+      parallel_for( 1 , YAKL_LAMBDA (int dummy) {
+        vert_interface_ghost(0) = vert_interface(0) - hs*dz(0);
+        for (int k=1; k < nz+2*hs+1; k++) {
+          vert_interface_ghost(k) = vert_interface_ghost(k-1) + dz_ghost(k-1);
+        }
+      });
+    }
+
     // Read the # cells in each dimension
     nx = config["nx"].as<int>();
     ny = config["ny"].as<int>();
