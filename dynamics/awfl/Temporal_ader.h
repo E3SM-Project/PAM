@@ -42,6 +42,12 @@ public:
 
 
   template <class MICRO>
+  void output(DataManager &dm, MICRO const &micro, real etime) const {
+    space_op.output(dm , micro , etime);
+  }
+
+
+  template <class MICRO>
   real compute_time_step(real cfl, DataManager &dm, MICRO const &micro) {
     return space_op.compute_time_step(cfl, dm, micro);
   }

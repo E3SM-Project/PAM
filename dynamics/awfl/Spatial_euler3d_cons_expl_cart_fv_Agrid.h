@@ -494,25 +494,27 @@ public:
 
     // Read the YAML input file
     YAML::Node config = YAML::LoadFile(inFile);
-    if ( !config                 ) { endrun("ERROR: Invalid YAML input file"); }
-    if ( !config["nx"]           ) { endrun("ERROR: No nx in input file"); }
-    if ( !config["ny"]           ) { endrun("ERROR: No ny in input file"); }
-    if ( !config["nz"]           ) { endrun("ERROR: No nz in input file"); }
-    if ( !config["xlen"]         ) { endrun("ERROR: No xlen in input file"); }
-    if ( !config["ylen"]         ) { endrun("ERROR: No ylen in input file"); }
-    if ( !config["zlen"]         ) { endrun("ERROR: No zlen in input file"); }
-    if ( !config["bc_x"]         ) { endrun("ERROR: No bc_x in input file"); }
-    if ( !config["bc_y"]         ) { endrun("ERROR: No bc_y in input file"); }
-    if ( !config["bc_z"]         ) { endrun("ERROR: No bc_z in input file"); }
-    if ( !config["weno_scalars"] ) { endrun("ERROR: No weno_scalars in input file"); }
-    if ( !config["weno_winds"]   ) { endrun("ERROR: No weno_winds in input file"); }
-    if ( !config["initData"]     ) { endrun("ERROR: No initData in input file"); }
-    if ( !config["out_file"]     ) { endrun("ERROR: No out_file in input file"); }
+
+    // Read in the vertical height cell interface locations
+    std::string vcoords_file = config["vcoords"].as<std::string>();
+    yakl::SimpleNetCDF nc;
+    nc.open(vcoords_file);
+    nz = nc.getDimSize("num_interfaces") - 1;
+    real1d zint_in("zint_in",nz+1);
+    nc.read(zint_in,"vertical_interfaces");
+    nc.close();
+
+    // Store vertical cell interface heights in the data manager
+    dm.register_and_allocate<real>( "vertical_interface_height" , "vertical_interface_height" , {nz+1} , {"zp1"} );
+    auto zint = dm.get<real,1>("vertical_interface_height");
+    parallel_for( nz+1 , YAKL_LAMBDA (int k) { zint(k) = zint_in(k); });
+
+    // Get the height of the z-dimension
+    zlen = zint.createHostCopy()(nz);
 
     // Read the # cells in each dimension
     nx = config["nx"].as<int>();
     ny = config["ny"].as<int>();
-    nz = config["nz"].as<int>();
 
     // Determine whether this is a 2-D simulation
     sim2d = ny == 1;
@@ -520,7 +522,6 @@ public:
     // Read the domain length in each dimension
     xlen = config["xlen"].as<real>();
     ylen = config["ylen"].as<real>();
-    zlen = config["zlen"].as<real>();
 
     // Read whether we're doing WENO limiting on scalars and winds
     weno_scalars = config["weno_scalars"].as<bool>();
@@ -643,6 +644,16 @@ public:
     dm.register_and_allocate<real>( "density_v"     , "density_v"     , {nz,ny,nx} , {"z","y","x"} );
     dm.register_and_allocate<real>( "density_w"     , "density_w"     , {nz,ny,nx} , {"z","y","x"} );
     dm.register_and_allocate<real>( "density_theta" , "density_theta" , {nz,ny,nx} , {"z","y","x"} );
+
+    std::cout << "nx: " << nx << "\n";
+    std::cout << "ny: " << ny << "\n";
+    std::cout << "nz: " << nz << "\n";
+    std::cout << "xlen (m): " << xlen << "\n";
+    std::cout << "ylen (m): " << ylen << "\n";
+    std::cout << "zlen (m): " << zlen << "\n";
+    std::cout << "Vertical coordinates file: " << vcoords_file << "\n";
+    std::cout << "Simulation time (s): " << config["simTime"].as<real>() << "\n";
+    std::cout << zint.createHostCopy() << "\n";
   }
 
 
@@ -1970,9 +1981,10 @@ public:
       parallel_for( ny , YAKL_LAMBDA (int i) { yloc(i) = (i+0.5)*dy; });
       nc.write(yloc.createHostCopy(),"y",{"y"});
       // z-coordinate
-      real1d zloc("zloc",nz);
-      parallel_for( nz , YAKL_LAMBDA (int i) { zloc(i) = (i+0.5)*dz; });
-      nc.write(zloc.createHostCopy(),"z",{"z"});
+      auto zint = dm.get<real,1>("vertical_interface_height");
+      real1d zmid("zmid",nz);
+      parallel_for( nz , YAKL_LAMBDA (int i) { zmid(i) = ( zint(i) + zint(i+1) ) / 2; });
+      nc.write(zmid.createHostCopy(),"z",{"z"});
       // hydrostatic density, theta, and pressure
       nc.write(dm.get<real,1>("hydrostatic_density" ).createHostCopy(),"hyDens"    ,{"z"});
       nc.write(dm.get<real,1>("hydrostatic_pressure").createHostCopy(),"hyPressure",{"z"});
