@@ -2,8 +2,9 @@
 import numpy as np
 import sys, getopt
 import matplotlib.pyplot as plt
+from netCDF4 import Dataset
 
-avail = ["help","function=","exp-base=","tanh-inflect=","tanh-steep=","tanh-scale=","z0=","ztop=","nlev=","no-plot"]
+avail = ["help","function=","exp-base=","tanh-inflect=","tanh-steep=","tanh-scale=","z0=","ztop=","nlev=","no-plots","output="]
 
 function="tanh"
 tanh_inflect=0.4
@@ -14,42 +15,71 @@ z0=0.
 ztop=10000.
 nlev=128
 showplots=True
+output="vcoords.nc"
 
-opts , args = getopt.getopt(sys.argv[1:] , "h" , avail)
+def print_help() :
+  print("Usage: python generate_vertical_levels.py")
+  print("Options:")
+  print("--function=[exp|tanh]")
+  print("  equal: self-explanatory")
+  print("  exp:")
+  print("    * This gives you a consistent coarsening as you increase in height")
+  print("    --exp-base=10")
+  print("      * Top cell grid spacing will be 10x larger than bottom cell")
+  print("  tanh:")
+  print("    * This allows you to concentrate layers at the surface, then keep grid spacing fairly constant after that")
+  print("    --tanh-inflect=0.4")
+  print("      * tanh inflection point is 40% through the vertical indices")
+  print("    --tanh-steep=5")
+  print("      * How quickly grid spacing changes around tanh inflection point")
+  print("        (generally between 2 and 10)")
+  print("    --tanh-scale=10")
+  print("      * The maximum bound on the grid spacing ratio of top cell to bottom cell")
+  print("--help")
+  print("  * Print this message")
+  print("--z0=[Bottom of the vertical grid]")
+  print("--ztop=[Top of the vertical grid]")
+  print("--nlev=[Number of cells]")
+  print("--no-plots")
+  print("  * Don't show matplotlib plots, e.g., over a remote server w/ a laggy connection")
+  print("--output=[vcoords.nc]")
+
+
+try:
+  opts , args = getopt.getopt(sys.argv[1:] , "h" , avail)
+except:
+  print("ERROR: Invalid argument")
+  print_help()
+  sys.exit(-1)
 for opt,arg in opts:
-  if opt in ["-h","--help"] :
-    print("Usage: python generate_vertical_levels.py")
-    print("Options: --function=[exp|tanh]")
-    print("  exp: --exp-base=10")
-    print("         * This gives you a consistent coarsening as you increase in height")
-    print("         * Top cell grid spacing will be 10x larger than bottom cell")
-    print("  tanh: --tanh-inflect=0.4")
-    print("          * This allows you to concentrate layers at the surface, then keep grid spacing fairly constant after that")
-    print("          * tanh inflection point is 40% through the vertical indices")
-    print("        --tanh-steep=5")
-    print("          * How quickly grid spacing changes around tanh inflection point")
-    print("            (generally between 2 and 10.")
-    print("        --tanh-scale=10")
-    print("          * The maximum bound on the grid spacing ratio of top cell to bottom cell")
+  if (opt == "-h" or opt == "--help") :
+    print_help()
     sys.exit()
-  if opt == "--function" :
+  elif opt == "--function" :
     function = arg
-  if opt == "--exp-base" :
+  elif opt == "--exp-base" :
     exp_base = float(arg)
-  if opt == "--tanh-inflect" :
+  elif opt == "--tanh-inflect" :
     tanh_inflect = float(arg)
-  if opt == "--tanh-steep" :
+  elif opt == "--tanh-steep" :
     tanh_steep = float(arg)
-  if opt == "--tanh-scale" :
+  elif opt == "--tanh-scale" :
     tanh_scale = float(arg)
-  if opt == "--z0" :
+  elif opt == "--z0" :
     z0 = float(arg)
-  if opt == "--ztop" :
+  elif opt == "--ztop" :
     ztop = float(arg)
-  if opt == "--nlev" :
+  elif opt == "--nlev" :
     nlev = int(arg)
-  if opt == "--no-plot" :
-    showplot = False
+  elif opt == "--no-plots" :
+    showplots = False
+  elif opt == "--output" :
+    output = arg
+  else :
+    print("ERROR: Invalid argument")
+    # print_help()
+    sys.exit(-1)
+    
 
 print("nlev: "+str(nlev))
 print("z0: "+str(z0))
@@ -76,6 +106,8 @@ for i in range(nlev) :
     dz[i] = pow(exp_base,zloc)
   elif (function == "tanh") :
     dz[i] = ((np.tanh((zloc-tanh_inflect)*tanh_steep)+1)/2*(tanh_scale-1))+1
+  elif (function == "equal") :
+    dz[i] = 1
   zint[i+1] = zint[i] + dz[i]
 
 scale = zthick / zint[nlev]
@@ -99,5 +131,16 @@ if showplots :
   plt.ylabel("height")
   plt.show()
 
+print("\n**************** grid spacing ****************")
 print(dz)
+print("\n**************** interface locations ****************")
 print(zint)
+
+
+nc = Dataset(output,"w")
+nc.createDimension("num_interfaces",nlev+1)
+nc_zint = nc.createVariable("vertical_interfaces","f8",("num_interfaces",))
+nc_zint[:] = zint
+nc.close()
+
+
