@@ -537,8 +537,6 @@ public:
     auto &vert_sten_to_gll     = this->vert_sten_to_gll    ;
     auto &vert_weno_recon      = this->vert_weno_recon     ;
 
-
-
     zint.deep_copy_to(vert_interface);
     
     parallel_for( nz , YAKL_LAMBDA (int k) {
