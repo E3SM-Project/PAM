@@ -649,7 +649,7 @@ public:
 
   // Initialize the state
   template <class MICRO>
-  void init_state( DataManager &dm , MICRO const &micro ) {
+  void init_state_and_tracers( DataManager &dm , MICRO const &micro ) {
     Rd    = micro.constants.R_d;
     cp    = micro.constants.cp_d;
     gamma = micro.constants.gamma_d;
@@ -781,6 +781,10 @@ public:
       dm_rho      (k,j,i) += dm_hyDens     (k);
       dm_rho_theta(k,j,i) += dm_hyDensTheta(k);
     });
+
+    init_tracers( dm , micro );
+
+    adjust_state_for_moisture( dm , micro );
   }
 
 

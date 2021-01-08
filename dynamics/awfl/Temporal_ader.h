@@ -30,8 +30,8 @@ public:
 
 
   template <class MICRO>
-  void init_state( DataManager &dm , MICRO const &micro ) {
-    space_op.init_state( dm , micro );
+  void init_state_and_tracers( DataManager &dm , MICRO const &micro ) {
+    space_op.init_state_and_tracers( dm , micro );
   }
 
 
@@ -42,20 +42,8 @@ public:
 
 
   template <class MICRO>
-  void adjust_state_for_moisture(DataManager &dm , MICRO const &micro) const {
-    space_op.adjust_state_for_moisture( dm , micro );
-  }
-
-
-  template <class MICRO>
   real compute_time_step(real cfl, DataManager &dm, MICRO const &micro) {
     return space_op.compute_time_step(cfl, dm, micro);
-  }
-
-
-  template <class MICRO>
-  void init_tracers( DataManager &dm , MICRO const &micro) {
-    space_op.init_tracers( dm , micro );
   }
 
 

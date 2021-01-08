@@ -24,8 +24,6 @@ int main(int argc, char** argv) {
     std::string inFile(argv[1]);
     YAML::Node config = YAML::LoadFile(inFile);
     if ( !config            ) { endrun("ERROR: Invalid YAML input file"); }
-    if ( !config["simTime"] ) { endrun("ERROR: no simTime entry"); }
-    if ( !config["outFreq"] ) { endrun("ERROR: no outFreq entry"); }
     real simTime = config["simTime"].as<real>();
     real outFreq = config["outFreq"].as<real>();
     int numOut = 0;
@@ -39,13 +37,7 @@ int main(int argc, char** argv) {
     micro .init( inFile , dycore              , dm );
 
     // Initialize the dry state
-    dycore.init_state( dm , micro );
-
-    // Initialize the tracers
-    dycore.init_tracers( dm , micro );
-
-    // Adjust the dycore state to account for moisture
-    dycore.adjust_state_for_moisture( dm , micro );
+    dycore.init_state_and_tracers( dm , micro );
 
     real etime = 0;
 
@@ -55,7 +47,7 @@ int main(int argc, char** argv) {
       real dt = dycore.compute_time_step( 0.8 , dm , micro );
       if (etime + dt > simTime) { dt = simTime - etime; }
       dycore.timeStep( dm , micro , dt );
-      // micro.timeStep( dm , dt );
+      micro.timeStep( dm , dt );
       etime += dt;
       if (etime / outFreq >= numOut+1) {
         std::cout << "Etime , dt: " << etime << " , " << dt << "\n";
