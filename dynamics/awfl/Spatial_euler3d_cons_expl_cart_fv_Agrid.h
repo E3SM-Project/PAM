@@ -79,6 +79,14 @@ public:
   SArray<real,1,ngll> gllWts_ngll;
   SArray<real,1,ngll> gllPts_ngll;
 
+  real1d vert_interface;
+  real1d vert_interface_ghost;
+  real2d vert_locs_normalized;
+  real1d dz;
+  real1d dz_ghost;
+  real3d vert_sten_to_gll;
+  real4d vert_weno_recon;
+
   // For indexing into the state and state tendency arrays
   int static constexpr idR = 0;  // density perturbation
   int static constexpr idU = 1;  // u
@@ -99,7 +107,6 @@ public:
   // Grid spacing in each dimension
   real dx;
   real dy;
-  real dz;
 
   // Initial time step (used throughout the simulation)
   real dtInit;
@@ -180,20 +187,21 @@ public:
   // Caller creates a lambda (init_mass) to initialize this tracer value using location and dry state information
   template <class MICRO>
   void init_tracers( DataManager &dm , MICRO const &micro) {
-    auto &dx         = this->dx        ;
-    auto &dy         = this->dy        ;
-    auto &dz         = this->dz        ;
-    auto &gllPts_ord = this->gllPts_ord;
-    auto &gllWts_ord = this->gllWts_ord;
-    auto &sim2d      = this->sim2d     ;
-    auto &xlen       = this->xlen      ;
-    auto &ylen       = this->ylen      ;
-    auto &zlen       = this->zlen      ;
-    auto &Rd         = this->Rd        ;
-    auto &cp         = this->cp        ;
-    auto &gamma      = this->gamma     ;
-    auto &p0         = this->p0        ;
-    auto &C0         = this->C0        ;
+    auto &dx             = this->dx            ;
+    auto &dy             = this->dy            ;
+    auto &dz             = this->dz            ;
+    auto &gllPts_ord     = this->gllPts_ord    ;
+    auto &gllWts_ord     = this->gllWts_ord    ;
+    auto &sim2d          = this->sim2d         ;
+    auto &xlen           = this->xlen          ;
+    auto &ylen           = this->ylen          ;
+    auto &zlen           = this->zlen          ;
+    auto &Rd             = this->Rd            ;
+    auto &cp             = this->cp            ;
+    auto &gamma          = this->gamma         ;
+    auto &p0             = this->p0            ;
+    auto &C0             = this->C0            ;
+    auto &vert_interface = this->vert_interface;
 
     tracer_id_uniform = add_tracer(dm , "uniform"  , "uniform"  , false     , false);
 
@@ -210,7 +218,7 @@ public:
         for (int jj=0; jj<ord; jj++) {
           for (int ii=0; ii<ord; ii++) {
             // Get the location
-            real zloc = (k+0.5_fp)*dz + gllPts_ord(kk)*dz;
+            real zloc = vert_interface(k) + 0.5_fp*dz(k) + gllPts_ord(kk)*dz(k);
             real yloc;
             if (sim2d) {
               yloc = ylen/2;
@@ -461,9 +469,9 @@ public:
         real cs = sqrt(gamma*p/r);
 
         // Compute the maximum stable time step in each direction
-        real udt = cfl * dx / max( abs(u-cs) , abs(u+cs) );
-        real vdt = cfl * dy / max( abs(v-cs) , abs(v+cs) );
-        real wdt = cfl * dz / max( abs(w-cs) , abs(w+cs) );
+        real udt = cfl * dx    / max( abs(u-cs) , abs(u+cs) );
+        real vdt = cfl * dy    / max( abs(v-cs) , abs(v+cs) );
+        real wdt = cfl * dz(k) / max( abs(w-cs) , abs(w+cs) );
 
         // Compute the min of the max stable time steps
         dt3d(k,j,i) = min( min(udt,vdt) , wdt );
@@ -513,14 +521,23 @@ public:
     // Get the height of the z-dimension
     zlen = zint.createHostCopy()(nz);
 
-    {
-    real1d vert_interface       = real1d("vert_interface"      ,nz+1);
-    real1d vert_interface_ghost = real1d("vert_interface_ghost",nz+2*hs+1);
-    real2d vert_locs_normalized = real2d("vert_locs_normalized",nz,ord+1);
-    real1d dz                   = real1d("dz"                  ,nz);
-    real1d dz_ghost             = real1d("dz_ghost"            ,nz+2*hs);
-    real3d vert_sten_to_gll     = real3d("vert_sten_to_gll"    ,nz,ord,ngll);
-    real4d vert_weno_recon      = real4d("vert_weno_recon"     ,nz,ord,ord,ord);
+    vert_interface       = real1d("vert_interface"      ,nz+1);
+    vert_interface_ghost = real1d("vert_interface_ghost",nz+2*hs+1);
+    vert_locs_normalized = real2d("vert_locs_normalized",nz,ord+1);
+    dz                   = real1d("dz"                  ,nz);
+    dz_ghost             = real1d("dz_ghost"            ,nz+2*hs);
+    vert_sten_to_gll     = real3d("vert_sten_to_gll"    ,nz,ord,ngll);
+    vert_weno_recon      = real4d("vert_weno_recon"     ,nz,ord,ord,ord);
+
+    auto &vert_interface       = this->vert_interface      ;
+    auto &vert_interface_ghost = this->vert_interface_ghost;
+    auto &vert_locs_normalized = this->vert_locs_normalized;
+    auto &dz                   = this->dz                  ;
+    auto &dz_ghost             = this->dz_ghost            ;
+    auto &vert_sten_to_gll     = this->vert_sten_to_gll    ;
+    auto &vert_weno_recon      = this->vert_weno_recon     ;
+
+
 
     zint.deep_copy_to(vert_interface);
     
@@ -596,7 +613,6 @@ public:
     vert_s2g_host .deep_copy_to(vert_sten_to_gll    );
     vert_weno_host.deep_copy_to(vert_weno_recon     );
     vert_locs_host.deep_copy_to(vert_locs_normalized);
-    }
 
     // Read the # cells in each dimension
     nx = config["nx"].as<int>();
@@ -659,7 +675,6 @@ public:
     // Compute the grid spacing in each dimension
     dx = xlen/nx;
     dy = ylen/ny;
-    dz = zlen/nz;
 
     // Store the WENO reconstruction matrices
     TransformMatrices::weno_sten_to_coefs(this->wenoRecon);
@@ -759,6 +774,7 @@ public:
     auto dx                       = this->dx                     ;
     auto dy                       = this->dy                     ;
     auto dz                       = this->dz                     ;
+    auto dz_ghost                 = this->dz_ghost               ;
     auto gllPts_ord               = this->gllPts_ord             ;
     auto gllWts_ord               = this->gllWts_ord             ;
     auto gllPts_ngll              = this->gllPts_ngll            ;
@@ -781,6 +797,8 @@ public:
     auto &p0                      = this->p0                     ;
     auto &C0                      = this->C0                     ;
     auto &balance_initial_density = this->balance_initial_density;
+    auto &vert_interface          = this->vert_interface         ;
+    auto &vert_interface_ghost    = this->vert_interface_ghost   ;
 
     // Get Arrays for 1-D hydrostatic background profiles
     real1d dm_hyDens      = dm.get<real,1>( "hydrostatic_density"       );
@@ -796,7 +814,7 @@ public:
       hyThetaCells    (k) = 0;
       hyDensThetaCells(k) = 0;
       for (int kk=0; kk<ord; kk++) {
-        real zloc = (k-hs+0.5_fp)*dz + gllPts_ord(kk)*dz;
+        real zloc = vert_interface_ghost(k) + 0.5_fp*dz_ghost(k) + gllPts_ord(kk)*dz_ghost(k);
         if        (data_spec == DATA_SPEC_THERMAL || data_spec == DATA_SPEC_THERMAL_MOIST) {
           // Compute constant theta hydrostatic background state
           real th  = 300;
@@ -820,7 +838,7 @@ public:
     parallel_for( SimpleBounds<1>(nz) , YAKL_LAMBDA (int k) {
       // Compute ngll GLL points
       for (int kk=0; kk<ngll; kk++) {
-        real zloc = (k+0.5_fp)*dz + gllPts_ngll(kk)*dz;
+        real zloc = vert_interface(k) + 0.5_fp*dz(k) + gllPts_ngll(kk)*dz(k);
         if        (data_spec == DATA_SPEC_THERMAL || data_spec == DATA_SPEC_THERMAL_MOIST) {
           // Compute constant theta hydrostatic background state
           real th = 300;
@@ -850,7 +868,7 @@ public:
       for (int kk=0; kk<ord; kk++) {
         for (int jj=0; jj<ord; jj++) {
           for (int ii=0; ii<ord; ii++) {
-            real zloc = (k+0.5_fp)*dz + gllPts_ord(kk)*dz;
+            real zloc = vert_interface(k) + 0.5_fp*dz(k) + gllPts_ord(kk)*dz(k);
             real yloc;
             if (sim2d) {
               yloc = ylen/2;
@@ -1772,7 +1790,7 @@ public:
         if (nAder > 1) {
           diffTransformEulerConsZ( r_DTs , ru_DTs , rv_DTs , rw_DTs , rt_DTs , rwu_DTs , rwv_DTs , rww_DTs ,
                                    rwt_DTs , rt_gamma_DTs , derivMatrix , hyPressureGLL , C0 , gamma , k ,
-                                   dz , bc_z , nz );
+                                   dz(k) , bc_z , nz );
         }
 
         //////////////////////////////////////////
@@ -1853,7 +1871,7 @@ public:
           // Compute time derivatives if necessary
           //////////////////////////////////////////
           if (nAder > 1) {
-            diffTransformTracer( r_DTs , rw_DTs , rt_DTs , rwt_DTs , derivMatrix , dz );
+            diffTransformTracer( r_DTs , rw_DTs , rt_DTs , rwt_DTs , derivMatrix , dz(k) );
           }
 
           //////////////////////////////////////////
@@ -1984,7 +2002,7 @@ public:
           // upwind is to the left of this interface
           real f1 = min( tracerFlux(tr,ind_k  ,j,i) , 0._fp );
           real f2 = max( tracerFlux(tr,ind_k+1,j,i) , 0._fp );
-          real fluxOut = dt*(f2-f1)/dz;
+          real fluxOut = dt*(f2-f1)/dz(k);
           real dens = state(idR,hs+ind_k,hs+j,hs+i) + hyDensCells(hs+ind_k);
           tracerFlux(tr,k,j,i) *= min( 1._fp , tracers(tr,hs+ind_k,hs+j,hs+i) * dens / (fluxOut + eps) );
         } else if (w < 0) {
@@ -1992,7 +2010,7 @@ public:
           // upwind is to the right of this interface
           real f1 = min( tracerFlux(tr,ind_k  ,j,i) , 0._fp );
           real f2 = max( tracerFlux(tr,ind_k+1,j,i) , 0._fp );
-          real fluxOut = dt*(f2-f1)/dz;
+          real fluxOut = dt*(f2-f1)/dz(k);
           real dens = state(idR,hs+ind_k,hs+j,hs+i) + hyDensCells(hs+ind_k);
           tracerFlux(tr,k,j,i) *= min( 1._fp , tracers(tr,hs+ind_k,hs+j,hs+i) * dens / (fluxOut + eps) );
         }
@@ -2007,12 +2025,12 @@ public:
         if (sim2d && l == idV) {
           stateTend(l,k,j,i) = 0;
         } else {
-          stateTend(l,k,j,i) += - ( stateFlux(l,k+1,j,i) - stateFlux(l,k,j,i) ) / dz;
+          stateTend(l,k,j,i) += - ( stateFlux(l,k+1,j,i) - stateFlux(l,k,j,i) ) / dz(k);
         }
       }
       for (int l=0; l < num_tracers; l++) {
         // Compute tracer tendency
-        tracerTend(l,k,j,i) = - ( tracerFlux(l,k+1,j,i) - tracerFlux(l,k,j,i) ) / dz;
+        tracerTend(l,k,j,i) = - ( tracerFlux(l,k+1,j,i) - tracerFlux(l,k,j,i) ) / dz(k);
         // Multiply density back onto the tracers
         tracers(l,hs+k,hs+j,hs+i) *= (state(idR,hs+k,hs+j,hs+i) + hyDensCells(hs+k));
       }
