@@ -4,6 +4,7 @@
 #include "const.h"
 #include "phys_params.h"
 #include "TransformMatrices.h"
+#include "TransformMatrices_variable.h"
 #include "WenoLimiter.h"
 #include "Profiles.h"
 #include "DataManager.h"
@@ -513,36 +514,88 @@ public:
     zlen = zint.createHostCopy()(nz);
 
     {
-      real1d vert_interface       = real1d("vert_interface"      ,nz+1);
-      real1d vert_interface_ghost = real1d("vert_interface_ghost",nz+2*hs+1);
-      real1d dz                   = real1d("dz"                  ,nz);
-      real1d dz_ghost             = real1d("dz_ghost"            ,nz+2*hs);
-      real3d vert_sten_to_gll     = real3d("vert_sten_to_gll"    ,nz,ngll,ord);
-      real3d vert_coefs_to_gll    = real3d("vert_coefs_to_gll"   ,nz,ngll,ord);
-      real4d vert_weno_recon      = real4d("vert_weno_recon"     ,nz,ord,ord,ord);
+    real1d vert_interface       = real1d("vert_interface"      ,nz+1);
+    real1d vert_interface_ghost = real1d("vert_interface_ghost",nz+2*hs+1);
+    real2d vert_locs_normalized = real2d("vert_locs_normalized",nz,ord+1);
+    real1d dz                   = real1d("dz"                  ,nz);
+    real1d dz_ghost             = real1d("dz_ghost"            ,nz+2*hs);
+    real3d vert_sten_to_gll     = real3d("vert_sten_to_gll"    ,nz,ord,ngll);
+    real4d vert_weno_recon      = real4d("vert_weno_recon"     ,nz,ord,ord,ord);
 
-      zint.deep_copy_to(vert_interface);
-      
-      parallel_for( nz , YAKL_LAMBDA (int k) {
-        dz(k) = vert_interface(k+1) - vert_interface(k);
-      });
+    zint.deep_copy_to(vert_interface);
+    
+    parallel_for( nz , YAKL_LAMBDA (int k) {
+      dz(k) = vert_interface(k+1) - vert_interface(k);
+    });
 
-      parallel_for( nz+2*hs , YAKL_LAMBDA (int k) {
-        if (k >= hs && k < hs+nz) {
-          dz_ghost(k) = dz(k-hs);
-        } else if (k < hs) {
-          dz_ghost(k) = dz(0);
-        } else if (k >= hs+nz) {
-          dz_ghost(k) = dz(nz-1);
+    auto &nz = this->nz;
+    parallel_for( nz+2*hs , YAKL_LAMBDA (int k) {
+      if (k >= hs && k < hs+nz) {
+        dz_ghost(k) = dz(k-hs);
+      } else if (k < hs) {
+        dz_ghost(k) = dz(0);
+      } else if (k >= hs+nz) {
+        dz_ghost(k) = dz(nz-1);
+      }
+    });
+
+    parallel_for( 1 , YAKL_LAMBDA (int dummy) {
+      vert_interface_ghost(0) = vert_interface(0) - hs*dz(0);
+      for (int k=1; k < nz+2*hs+1; k++) {
+        vert_interface_ghost(k) = vert_interface_ghost(k-1) + dz_ghost(k-1);
+      }
+    });
+
+    auto vint_host      = vert_interface_ghost.createHostCopy();
+    auto vert_s2g_host  = vert_sten_to_gll    .createHostCopy();
+    auto vert_weno_host = vert_weno_recon     .createHostCopy();
+    auto vert_locs_host = vert_locs_normalized.createHostCopy();
+
+    SArray<real,2,ord,ngll> c2g;
+    TransformMatrices::coefs_to_gll_lower(c2g);
+
+    for (int k=0; k < nz; k++) {
+      // Store stencil locations
+      SArray<double,1,ord+1> locs;
+      for (int kk=0; kk < ord+1; kk++) {
+        locs(kk) = vint_host(k+kk);
+      }
+
+      // Normalize stencil locations
+      double zmid = ( locs(hs+1) + locs(hs) ) / 2;
+      double dzmid = locs(hs+1) - locs(hs);
+      for (int kk=0; kk < ord+1; kk++) {
+        locs(kk) = ( locs(kk) - zmid ) / dzmid;
+        vert_locs_host(k,kk) = locs(kk);
+      }
+
+      // Compute reconstruction matrices
+      SArray<double,2,ord,ord> s2c_var;
+      SArray<double,3,ord,ord,ord> weno_recon_var;
+      TransformMatrices_variable::sten_to_coefs_variable<ord>(locs,s2c_var);
+      TransformMatrices_variable::weno_sten_to_coefs<ord>(locs,weno_recon_var);
+      auto s2g_var = c2g * s2c_var;
+
+      // Store reconstruction matrices
+      for (int jj=0; jj < ord; jj++) {
+        for (int ii=0; ii < ngll; ii++) {
+          vert_s2g_host(k,jj,ii) = s2g_var(jj,ii);
         }
-      });
+      }
 
-      parallel_for( 1 , YAKL_LAMBDA (int dummy) {
-        vert_interface_ghost(0) = vert_interface(0) - hs*dz(0);
-        for (int k=1; k < nz+2*hs+1; k++) {
-          vert_interface_ghost(k) = vert_interface_ghost(k-1) + dz_ghost(k-1);
+      for (int kk=0; kk < ord; kk++) {
+        for (int jj=0; jj < ord; jj++) {
+          for (int ii=0; ii < ord; ii++) {
+            vert_weno_host(k,kk,jj,ii) = weno_recon_var(kk,jj,ii);
+          }
         }
-      });
+      }
+
+    }
+
+    vert_s2g_host .deep_copy_to(vert_sten_to_gll    );
+    vert_weno_host.deep_copy_to(vert_weno_recon     );
+    vert_locs_host.deep_copy_to(vert_locs_normalized);
     }
 
     // Read the # cells in each dimension

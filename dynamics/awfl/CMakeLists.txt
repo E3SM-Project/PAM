@@ -14,6 +14,8 @@ set(DRIVER_SRC driver.cpp)
 set(YAKL_HOME ${CMAKE_CURRENT_BINARY_DIR}/../../../externals/YAKL)
 add_subdirectory(${YAKL_HOME} ./yakl)
 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../externals/eigen)
+
 # Main driver
 add_executable(driver ${DRIVER_SRC})
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/yakl)
