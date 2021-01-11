@@ -51,6 +51,9 @@
 !           Based on a code by Joseph Klemp
 !           (National Center for Atmospheric Research)
 !
+!  Edited by Matt Norman (ORNL, normanmr@ornl.gov) to change floating point
+!    literals to all be double precision
+!
 !  Reference:
 !
 !    Klemp, J. B., W. C. Skamarock, W. C., and S.-H. Park, 2015:
@@ -110,10 +113,10 @@ SUBROUTINE KESSLER(theta, qv, qc, qr, rho, pk, dt, z, nz, precl)
   do k=1,nz
     r(k)     = 0.001d0*rho(k)
     rhalf(k) = sqrt(rho(1)/rho(k))
-    pc(k)    = 3.8d0/(pk(k)**(1./xk)*psl)
+    pc(k)    = 3.8d0/(pk(k)**(1.d0/xk)*psl)
 
     ! Liquid water terminal velocity (m/s) following KW eq. 2.15
-    velqr(k)  = 36.34d0*(qr(k)*r(k))**0.1364*rhalf(k)
+    velqr(k)  = 36.34d0*(qr(k)*r(k))**0.1364d0*rhalf(k)
 
   end do
 
@@ -146,15 +149,15 @@ SUBROUTINE KESSLER(theta, qv, qc, qr, rho, pk, dt, z, nz, precl)
     do k=1,nz-1
       sed(k) = dt0*(r(k+1)*qr(k+1)*velqr(k+1)-r(k)*qr(k)*velqr(k))/(r(k)*(z(k+1)-z(k)))
     end do
-    sed(nz)  = -dt0*qr(nz)*velqr(nz)/(.5*(z(nz)-z(nz-1)))
+    sed(nz)  = -dt0*qr(nz)*velqr(nz)/(.5d0*(z(nz)-z(nz-1)))
 
     ! Adjustment terms
     do k=1,nz
 
       ! Autoconversion and accretion rates following KW eq. 2.13a,b
-      qrprod = qc(k) - (qc(k)-dt0*amax1(.001*(qc(k)-.001d0),0.))/(1.d0+dt0*2.2d0*qr(k)**.875)
-      qc(k) = amax1(qc(k)-qrprod,0.)
-      qr(k) = amax1(qr(k)+qrprod+sed(k),0.)
+      qrprod = qc(k) - (qc(k)-dt0*amax1(.001d0*(qc(k)-.001d0),0.d0))/(1.d0+dt0*2.2d0*qr(k)**.875d0)
+      qc(k) = amax1(qc(k)-qrprod,0.d0)
+      qr(k) = amax1(qr(k)+qrprod+sed(k),0.d0)
 
       ! Saturation vapor mixing ratio (gm/gm) following KW eq. 2.11
       qvs = pc(k)*exp(f2x*(pk(k)*theta(k)-273.d0)   &
@@ -162,10 +165,10 @@ SUBROUTINE KESSLER(theta, qv, qc, qr, rho, pk, dt, z, nz, precl)
       prod = (qv(k)-qvs)/(1.d0+qvs*f5/(pk(k)*theta(k)-36.d0)**2)
 
       ! Evaporation rate following KW eq. 2.14a,b
-      ern = amin1(dt0*(((1.6d0+124.9d0*(r(k)*qr(k))**.2046)  &
-            *(r(k)*qr(k))**.525)/(2550000d0*pc(k)            &
+      ern = amin1(dt0*(((1.6d0+124.9d0*(r(k)*qr(k))**.2046d0)  &
+            *(r(k)*qr(k))**.525d0)/(2550000d0*pc(k)            &
             /(3.8d0 *qvs)+540000d0))*(dim(qvs,qv(k))         &
-            /(r(k)*qvs)),amax1(-prod-qc(k),0.),qr(k))
+            /(r(k)*qvs)),amax1(-prod-qc(k),0.d0),qr(k))
 
       ! Saturation adjustment following KW eq. 3.10
       theta(k)= theta(k) + 2500000d0/(1003.d0*pk(k))*(amax1( prod,-qc(k))-ern)
@@ -177,7 +180,7 @@ SUBROUTINE KESSLER(theta, qv, qc, qr, rho, pk, dt, z, nz, precl)
     ! Recalculate liquid water terminal velocity
     if (nt .ne. rainsplit) then
       do k=1,nz
-        velqr(k)  = 36.34d0*(qr(k)*r(k))**0.1364*rhalf(k)
+        velqr(k)  = 36.34d0*(qr(k)*r(k))**0.1364d0*rhalf(k)
       end do
     end if
   end do
