@@ -764,7 +764,7 @@ public:
     std::cout << "Simulation time (s): " << config["simTime"].as<real>() << "\n";
     std::cout << "Vertical interface heights: ";
     auto zint_host = zint.createHostCopy();
-    for (int k=0; k < nz; k++) {
+    for (int k=0; k < nz+1; k++) {
       std::cout << zint_host(k) << "  ";
     }
     std::cout << "\n\n";

@@ -7,7 +7,7 @@ nx       : 200
 ny       : 1 
 
 # Vertical height cooridnates file
-vcoords  : vcoords_equal_100.nc
+vcoords  : vcoords_tanh_100.nc
 
 # Lengths of the dimensions in meters
 xlen     : 20000
