@@ -3,7 +3,7 @@
 #include "Spatial_euler3d_cons_expl_cart_fv_Agrid.h"
 #include "Temporal_ader.h"
 #include "Profiles.h"
-#include "Microphysics_saturation_adjustment.h"
+#include "Microphysics_kessler.h"
 #include "DataManager.h"
 
 // Define the Spatial operator based on constants from the Temporal operator
@@ -12,7 +12,7 @@ typedef Spatial_euler3d_cons_expl_cart_fv_Agrid<nTimeDerivs,timeAvg,nAder> Spati
 // Define the Temporal operator based on the Spatial operator
 typedef Temporal_ader<Spatial> Dycore;
 
-typedef Microphysics_saturation_adjustment Microphysics;
+typedef Microphysics_kessler Microphysics;
 
 int main(int argc, char** argv) {
   yakl::init();

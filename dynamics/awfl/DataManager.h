@@ -249,6 +249,13 @@ public:
   }
 
 
+  int get_dimension_size( std::string name ) const {
+    int id = find_dimension( name );
+    if (id == -1) { endrun("ERROR: Could not find dimension."); }
+    return dimensions[id].len;
+  }
+
+
   template <class T> std::string get_type_string() const {
     return std::string( typeid(T).name() );
   }

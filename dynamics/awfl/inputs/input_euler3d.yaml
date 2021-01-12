@@ -1,6 +1,6 @@
 ---
 # Simulation time in seconds
-simTime  : 1000.
+simTime  : 2000.
 
 # Number of cells to use
 nx       : 200
@@ -28,7 +28,7 @@ initData : thermal
 out_file  : test.nc
 
 # Output frequency in seconds
-outFreq  : 10
+outFreq  : 5.
 
 # Balance initial density to avoid initial acoustics
 balance_initial_density: false

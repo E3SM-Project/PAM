@@ -60,8 +60,8 @@ namespace TransformMatrices_variable {
 
     memset(weno_recon , 0._fp);
 
-    SArray<real,2,hs+1,hs+1> recon_lo;
-    SArray<real,1,hs+2> locs_lo;
+    SArray<double,2,hs+1,hs+1> recon_lo;
+    SArray<double,1,hs+2> locs_lo;
 
     // Create low-order matrices
     for (int i = 0; i < hs+1; i++) {
@@ -77,7 +77,7 @@ namespace TransformMatrices_variable {
     }
 
     // Create high-order matrix
-    SArray<real,2,ord,ord> recon_hi;
+    SArray<double,2,ord,ord> recon_hi;
     sten_to_coefs_variable( locs , recon_hi );
     for (int jj=0; jj < ord; jj++) {
       for (int ii=0; ii < ord; ii++) {

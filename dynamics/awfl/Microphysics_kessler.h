@@ -2,8 +2,9 @@
 #pragma once
 #include "const.h"
 #include "DataManager.h"
+#include "YAKL_netcdf.h"
 
-class Microphysics_saturation_adjustment {
+class Microphysics_kessler {
 public:
   int static constexpr num_tracers = 3;
 
@@ -21,6 +22,7 @@ public:
     real p0_nkappa_d       ;
   };
 
+  int tracer_index_vapor;
 
   Constants constants;
 
@@ -32,12 +34,15 @@ public:
 
 
 
-  Microphysics_saturation_adjustment() {
+  Microphysics_kessler() {
     constants.R_d         = 287.;
     constants.cp_d        = 1003.;
     constants.cv_d        = constants.cp_d - constants.R_d;
     constants.gamma_d     = constants.cp_d / constants.cv_d;
     constants.kappa_d     = constants.R_d  / constants.cp_d;
+    constants.R_v         = 461.;
+    constants.cp_v        = 1859;
+    constants.cv_v        = constants.R_v - constants.cp_v;
     constants.p0          = 1.e5;
     constants.p0_nkappa_d = pow( constants.p0 , -constants.kappa_d );
     constants.C0_d        = pow( constants.R_d * constants.p0_nkappa_d , constants.gamma_d );
@@ -58,11 +63,17 @@ public:
     tracer_IDs(ID_V) = dycore.add_tracer(dm , "water_vapor"   , "Water Vapor"   , true     , true);
     tracer_IDs(ID_C) = dycore.add_tracer(dm , "cloud_liquid"  , "Cloud liquid"  , true     , true);
     tracer_IDs(ID_R) = dycore.add_tracer(dm , "precipitation" , "Precipitation" , true     , true);
+
+    tracer_index_vapor = tracer_IDs(ID_V);
+
+    int ny = dm.get_dimension_size("y");
+    int nx = dm.get_dimension_size("x");
+    dm.register_and_allocate<real>( "precl" , "precipitation rate" , {ny,nx} , {"y","x"} );
   }
 
 
 
-  void timeStep( DataManager &dm , real dt ) const {
+  void timeStep( DataManager &dm , real dt ) {
     auto rho       = dm.get_lev_col<real>("density");
     auto rho_theta = dm.get_lev_col<real>("density_theta");
     auto rho_v     = dm.get_lev_col<real>("water_vapor");
@@ -72,24 +83,55 @@ public:
     int nz = rho.dimension[0];
     int nx = rho.dimension[1];
 
-    real2d theta_d("theta_dry",nz,nx);
-    real2d qv     ("qv"       ,nz,nx);
-    real2d qc     ("qc"       ,nz,nx);
-    real2d qr     ("qr"       ,nz,nx);
-    real2d rho_d  ("rho_dry"  ,nz,nx);
-    real1d precl  ("precl"    ,   nx);
-    real1d z      ("z"        ,nz   );
-    real2d pk     ("exner_dry",nz,nx);
+    // These are inputs to kessler(...)
+    real2d rho_dry  ("rho_dry"  ,nz,nx);
+    real2d qv       ("qv"       ,nz,nx);
+    real2d qc       ("qc"       ,nz,nx);
+    real2d qr       ("qr"       ,nz,nx);
+    real2d exner_dry("exner_dry",nz,nx);
+    real2d theta_dry("theta_dry",nz,nx);
+    real1d zmid = dm.get<real,1>("vertical_midpoint_height");
 
+    // Force constants into local scope
+    real C0_d    = this->constants.C0_d;
+    real gamma_d = this->constants.gamma_d;
+    real R_d     = this->constants.R_d;
+    real R_v     = this->constants.R_v;
+    real cp_d    = this->constants.cp_d;
+    real p0      = this->constants.p0;
+
+    // Save initial state, and compute inputs for kessler(...)
     parallel_for( Bounds<2>(nz,nx) , YAKL_LAMBDA (int k, int i) {
-      rho_d(k,i) = rho(k,i) - rho_v(k,i) - rho_c(k,i) - rho_r(k,i);
-      qv   (k,i) = rho_v(k,i) / rho_d(k,i);
-      qc   (k,i) = rho_c(k,i) / rho_d(k,i);
-      qr   (k,i) = rho_r(k,i) / rho_d(k,i);
+      if (rho_v(k,i) < 0) rho_v(k,i) = 0;
+      if (rho_c(k,i) < 0) rho_c(k,i) = 0;
+      if (rho_r(k,i) < 0) rho_r(k,i) = 0;
+      rho_dry(k,i) = rho(k,i) - rho_v(k,i) - rho_c(k,i) - rho_r(k,i);
+      qv     (k,i) = rho_v(k,i) / rho_dry(k,i);
+      qc     (k,i) = rho_c(k,i) / rho_dry(k,i);
+      qr     (k,i) = rho_r(k,i) / rho_dry(k,i);
+      real press_moist = C0_d * pow( rho_theta(k,i) , gamma_d );
+      real R_moist = rho_dry(k,i)/rho(k,i) * R_d + rho_v(k,i)/rho(k,i) * R_v;
+      real temp = press_moist / R_moist / rho(k,i);
+      real press_dry = press_moist - rho_v(k,i)*R_v*temp;
+      exner_dry(k,i) = pow( press_dry / p0 , R_d / cp_d );
+      theta_dry(k,i) = temp / exner_dry(k,i);
     });
 
-    kessler(theta_d, qv, qc, qr, rho_d, precl, z, pk, dt,
-            constants.Rd, constants.cp, constants.p0);
+    auto precl = dm.get_collapsed<real>("precl");
+
+    kessler(theta_dry, qv, qc, qr, rho_dry, precl, zmid, exner_dry, dt, R_d, cp_d, p0);
+
+    parallel_for( Bounds<2>(nz,nx) , YAKL_LAMBDA (int k, int i) {
+      rho_v(k,i) = qv(k,i)*rho_dry(k,i);
+      rho_c(k,i) = qc(k,i)*rho_dry(k,i);
+      rho_r(k,i) = qr(k,i)*rho_dry(k,i);
+      rho(k,i) = rho_dry(k,i) + rho_v(k,i) + rho_c(k,i) + rho_r(k,i);
+      real temp = theta_dry(k,i) * exner_dry(k,i);
+      real R_moist = rho_dry(k,i)/rho(k,i) * R_d + rho_v(k,i)/rho(k,i) * R_v;
+      real press_moist = rho(k,i) * R_moist * temp;
+      rho_theta(k,i) = pow( press_moist / C0_d , 1._fp / gamma_d );
+    });
+
   }
 
 
@@ -169,11 +211,11 @@ public:
     int nx = theta.dimension[1];
 
     // Maximum time step size in accordance with CFL condition
-    if (dt <= 0) { stoprun("kessler.f90 called with nonpositive dt"); }
+    if (dt <= 0) { endrun("kessler.f90 called with nonpositive dt"); }
 
     real psl    = p0 / 100;  //  pressure at sea level (mb)
     real rhoqr  = 1000._fp;  //  density of liquid water (kg/m^3)
-    real lv = 2.5e-6_fp;
+    real lv     = 2.5e6_fp;  //  latent heat of vaporization (J/kg)
 
     real2d r    ("r"    ,nz  ,nx);
     real2d rhalf("rhalf",nz  ,nx);
@@ -189,7 +231,11 @@ public:
       velqr(k,i) = 36.34_fp * pow( qr(k,i)*r(k,i) , 0.1364_fp ) * rhalf(k,i);
       // Compute maximum stable time step for each cell
       if (k < nz-1) {
-        dt2d(k,i) = 0.8_fp*(z(k+1)-z(k))/velqr(k,i);
+        if (velqr(k,i) > 1.e-10_fp) {
+          dt2d(k,i) = 0.8_fp * (z(k+1)-z(k))/velqr(k,i);
+        } else {
+          dt2d(k,i) = dt;
+        }
       }
       // Initialize precip rate to zero
       if (k == 0) {
@@ -216,7 +262,7 @@ public:
           precl(i) = precl(i) + rho(0,i) * qr(0,i) * velqr(0,i) / rhoqr;
         }
         if (k == nz-1) {
-          sed(nz-1,i) = -dt0*qr(nz-1,i)*velqr(nz-1,i)/(0.5_fp*(z(nz-1)-z(nz-2)));
+          sed(nz-1,i) = -dt0*qr(nz-1,i)*velqr(nz-1,i)/(0.5_fp * (z(nz-1)-z(nz-2)));
         } else {
           sed(k,i) = dt0 * ( r(k+1,i)*qr(k+1,i)*velqr(k+1,i) - 
                              r(k  ,i)*qr(k  ,i)*velqr(k  ,i) ) / ( r(k,i)*(z(k+1)-z(k)) );
@@ -226,20 +272,20 @@ public:
       // Adjustment terms
       parallel_for( Bounds<2>(nz,nx) , YAKL_LAMBDA (int k, int i) {
         // Autoconversion and accretion rates following KW eq. 2.13a,b
-        real qrprod = qc(k,i) - ( qc(k,i)-dt0*max( 0.001_fp*(qc(k,i)-0.001_fp) , 0._fp ) ) /
+        real qrprod = qc(k,i) - ( qc(k,i)-dt0*max( 0.001_fp * (qc(k,i)-0.001_fp) , 0._fp ) ) /
                                 ( 1 + dt0 * 2.2_fp * pow( qr(k,i) , 0.875_fp ) );
         qc(k,i) = max( qc(k,i)-qrprod , 0._fp );
         qr(k,i) = max( qr(k,i)+qrprod+sed(k,i) , 0._fp );
 
         // Saturation vapor mixing ratio (gm/gm) following KW eq. 2.11
         real tmp = pk(k,i)*theta(k,i)-36._fp;
-        real qvs = pc(k,i)*exp( 17.27_fp*(pk(k,i)*theta(k,i)-273._fp) / tmp );
-        real prod = (qv(k,i)-qvs) / (1._fp+qvs*(4093._fp*lv/cp)/(tmp*tmp));
+        real qvs = pc(k,i)*exp( 17.27_fp * (pk(k,i)*theta(k,i)-273._fp) / tmp );
+        real prod = (qv(k,i)-qvs) / (1._fp + qvs*(4093._fp * lv/cp)/(tmp*tmp));
 
         // Evaporation rate following KW eq. 2.14a,b
         real tmp1 = dt0*( ( ( 1.6_fp + 124.9_fp * pow( r(k,i)*qr(k,i) , 0.2046_fp ) ) *
                             pow( r(k,i)*qr(k,i) , 0.525_fp ) ) /
-                          ( 2550000._fp*pc(k,i) / (3.8_fp *qvs)+540000._fp) ) * 
+                          ( 2550000._fp * pc(k,i) / (3.8_fp * qvs)+540000._fp) ) * 
                         ( max(qvs-qv(k,i),0._fp) / (r(k,i)*qvs) );
         real tmp2 = max( -prod-qc(k,i) , 0._fp );
         real tmp3 = qr(k,i);
@@ -262,6 +308,80 @@ public:
     }
 
   }
+
+
+
+  // Returns saturation vapor pressure
+  YAKL_INLINE real saturation_vapor_pressure(real temp) const {
+    real tc = temp - 273.15;
+    return 610.94 * exp( 17.625*tc / (243.04+tc) );
+  }
+
+
+
+  YAKL_INLINE real latent_heat_condensation(real temp) const {
+    real tc = temp - 273.15;
+    return (2500.8 - 2.36*tc + 0.0016*tc*tc - 0.00006*tc*tc*tc)*1000;
+  }
+
+
+
+  YAKL_INLINE real R_moist(real rho, real rho_v, Constants const &cn) const {
+    real rho_d = rho - rho_v;
+    real q_d = rho_d / rho;
+    real q_v = rho_v / rho;
+    return cn.R_d * q_d + cn.R_v * q_v;
+  }
+
+
+
+  YAKL_INLINE real cp_moist(real rho, real rho_v, Constants const &cn) const {
+    return R_moist(rho, rho_v, cn) / cn.R_d * cn.cp_d;
+  }
+
+
+
+  YAKL_INLINE real cv_moist(real rho, real rho_v, Constants const &cn) const {
+    return R_moist(rho, rho_v, cn) / cn.R_d * cn.cv_d;
+  }
+
+
+
+  YAKL_INLINE real pressure_from_rho_theta(real rho_theta, Constants const &cn) const {
+    return cn.C0_d * pow( rho_theta , cn.gamma_d );
+  }
+
+
+
+  YAKL_INLINE real pressure_from_temp(real rho , real rho_v , real temp, Constants const &cn) const {
+    real rho_d = rho - rho_v;
+    return rho_d*cn.R_d*temp + rho_v*cn.R_v*temp;
+  }
+
+
+
+  YAKL_INLINE real theta_from_temp(real rho , real rho_v , real temp, Constants const &cn) const {
+    real p = pressure_from_temp(rho, rho_v, temp, cn);
+    return pow( p/cn.C0_d , 1./cn.gamma_d ) / rho;
+  }
+
+
+
+  YAKL_INLINE real temp_from_rho_theta(real rho , real rho_v , real rho_theta, Constants const &cn) const {
+    real p = pressure_from_rho_theta(rho_theta, cn);
+    real R = R_moist(rho, rho_v, cn);
+    return p / rho / R;
+  }
+
+
+
+  void output(DataManager &dm, yakl::SimpleNetCDF &nc, int ulIndex) const {
+    auto precl = dm.get<real,2>("precl");
+    nc.write1(precl.createHostCopy(),"precl",{"y","x"},ulIndex,"t");
+  }
+
+
+
 
 };
 

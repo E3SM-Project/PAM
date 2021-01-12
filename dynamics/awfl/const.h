@@ -17,16 +17,17 @@ using yakl::memDevice;
 using yakl::memHost;
 using yakl::memset;
 using yakl::styleC;
+using yakl::COLON;
 
 #ifndef ORD
-  #define ORD 5
+  #define ORD 7
 #endif
 
 #ifndef NGLL
   #define NGLL 3
 #endif
 
-typedef double real;
+typedef float real;
 
 YAKL_INLINE real constexpr operator"" _fp( long double x ) {
   return static_cast<real>(x);

@@ -518,6 +518,10 @@ public:
     auto zint = dm.get<real,1>("vertical_interface_height");
     parallel_for( nz+1 , YAKL_LAMBDA (int k) { zint(k) = zint_in(k); });
 
+    dm.register_and_allocate<real>( "vertical_midpoint_height" , "vertical_midpoint_heignt" , {nz} , {"z"} );
+    auto zmid = dm.get<real,1>("vertical_midpoint_height");
+    parallel_for( nz , YAKL_LAMBDA (int k) { zmid(k) = 0.5_fp*(zint_in(k) + zint_in(k+1)); });
+
     // Get the height of the z-dimension
     zlen = zint.createHostCopy()(nz);
 
@@ -585,10 +589,16 @@ public:
       }
 
       // Compute reconstruction matrices
-      SArray<double,2,ord,ord> s2c_var;
+      SArray<double,2,ord,ord> s2c_var_in;
       SArray<double,3,ord,ord,ord> weno_recon_var;
-      TransformMatrices_variable::sten_to_coefs_variable<ord>(locs,s2c_var);
+      TransformMatrices_variable::sten_to_coefs_variable<ord>(locs,s2c_var_in);
       TransformMatrices_variable::weno_sten_to_coefs<ord>(locs,weno_recon_var);
+      SArray<real,2,ord,ord> s2c_var;
+      for (int jj=0; jj < ord; jj++) {
+        for (int ii=0; ii < ord; ii++) {
+          s2c_var(jj,ii) = s2c_var_in(jj,ii);
+        }
+      }
       auto s2g_var = c2g * s2c_var;
 
       // Store reconstruction matrices
@@ -752,7 +762,12 @@ public:
     std::cout << "zlen (m): " << zlen << "\n";
     std::cout << "Vertical coordinates file: " << vcoords_file << "\n";
     std::cout << "Simulation time (s): " << config["simTime"].as<real>() << "\n";
-    std::cout << zint.createHostCopy() << "\n";
+    std::cout << "Vertical interface heights: ";
+    auto zint_host = zint.createHostCopy();
+    for (int k=0; k < nz; k++) {
+      std::cout << zint_host(k) << "  ";
+    }
+    std::cout << "\n\n";
   }
 
 
@@ -2140,6 +2155,8 @@ public:
       });
       nc.write1(data.createHostCopy(),std::string("tracer_")+tracer_name[tr],{"z","y","x"},ulIndex,"t");
     }
+
+    micro.output(dm, nc, ulIndex);
 
     // Close the file
     nc.close();
