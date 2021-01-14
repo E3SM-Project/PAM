@@ -8,7 +8,7 @@ int  constexpr nTimeDerivs = 1;
 bool constexpr timeAvg     = true;
 int  constexpr nAder       = ngll;
 
-template <class Spatial> class Temporal_ader {
+template <class Spatial> class Temporal_operator {
 public:
   static_assert(nTimeDerivs <= ngll , "ERROR: nTimeDerivs must be <= ngll.");
 

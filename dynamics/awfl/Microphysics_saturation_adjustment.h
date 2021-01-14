@@ -4,7 +4,7 @@
 #include "const.h"
 #include "DataManager.h"
 
-class Microphysics_saturation_adjustment {
+class Microphysics {
 public:
   int static constexpr num_tracers = 2;
 
@@ -33,7 +33,7 @@ public:
 
 
 
-  Microphysics_saturation_adjustment() {
+  Microphysics() {
     constants.R_d         = 287.;
     constants.cp_d        = 1004.;
     constants.cv_d        = constants.cp_d - constants.R_d;

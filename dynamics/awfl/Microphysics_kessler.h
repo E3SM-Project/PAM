@@ -4,7 +4,7 @@
 #include "DataManager.h"
 #include "YAKL_netcdf.h"
 
-class Microphysics_kessler {
+class Microphysics {
 public:
   int static constexpr num_tracers = 3;
 
@@ -34,7 +34,7 @@ public:
 
 
 
-  Microphysics_kessler() {
+  Microphysics() {
     constants.R_d         = 287.;
     constants.cp_d        = 1003.;
     constants.cv_d        = constants.cp_d - constants.R_d;

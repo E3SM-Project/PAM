@@ -6,13 +6,13 @@
 #include "Microphysics_kessler.h"
 #include "DataManager.h"
 
-// Define the Spatial operator based on constants from the Temporal operator
-typedef Spatial_euler3d_cons_expl_cart_fv_Agrid<nTimeDerivs,timeAvg,nAder> Spatial;
+// Define the Spatial operator based on constants from the Temporal operatora header file
+typedef Spatial_operator<nTimeDerivs,timeAvg,nAder> Spatial;
 
 // Define the Temporal operator based on the Spatial operator
-typedef Temporal_ader<Spatial> Dycore;
+typedef Temporal_operator<Spatial> Dycore;
 
-typedef Microphysics_kessler Microphysics;
+typedef Microphysics Microphysics;
 
 int main(int argc, char** argv) {
   yakl::init();

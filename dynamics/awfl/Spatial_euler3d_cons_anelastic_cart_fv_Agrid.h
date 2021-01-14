@@ -10,7 +10,7 @@
 
 
 template <int nTimeDerivs, bool timeAvg, int nAder>
-class Spatial_euler3d_cons_anelastic_cart_fv_Agrid {
+class Spatial_operator {
 public:
   
   static_assert(nTimeDerivs == 1 , "ERROR: This Spatial class isn't setup to use nTimeDerivs > 1");
@@ -142,7 +142,7 @@ public:
 
 
   // When this class is created, initialize num_tracers to zero
-  Spatial_euler3d_cons_expl_cart_fv_Agrid() {
+  Spatial_operator() {
     num_tracers = 0;
   }
 
