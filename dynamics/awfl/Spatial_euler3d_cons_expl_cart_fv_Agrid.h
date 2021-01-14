@@ -33,6 +33,7 @@ public:
   real gamma;
   real p0   ;
   real C0   ;
+  real Rv   ;
 
   int tracer_id_uniform;
 
@@ -201,17 +202,20 @@ public:
     auto &gamma          = this->gamma         ;
     auto &p0             = this->p0            ;
     auto &C0             = this->C0            ;
+    auto &Rv             = this->Rv            ;
     auto &vert_interface = this->vert_interface;
 
     tracer_id_uniform = add_tracer(dm , "uniform"  , "uniform"  , false     , false);
 
     real3d dm_vapor   = dm.get<real,3>("water_vapor" );
     real3d dm_cloud   = dm.get<real,3>("cloud_liquid");
+    real3d dm_precip  = dm.get<real,3>("precip_liquid");
     real3d dm_uniform = dm.get<real,3>("uniform");
 
     parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
       dm_vapor  (k,j,i) = 0;
       dm_cloud  (k,j,i) = 0;
+      dm_precip (k,j,i) = 0;
       dm_uniform(k,j,i) = 0;
       // Loop over quadrature points
       for (int kk=0; kk<ord; kk++) {
@@ -234,12 +238,13 @@ public:
             real rh = profiles::initConstTheta_density(th,zloc,Rd,cp,gamma,p0,C0);
 
             // Initialize tracer mass based on dry state
-
-            real pert = profiles::ellipsoid_linear(xloc,yloc,zloc  ,  xlen/2,ylen/2,2000  ,  2000,2000,2000  ,  0.8);
-            real temp = micro.temp_from_rho_theta(rh , 0 , rh*th, micro.constants);
-            real svp  = micro.saturation_vapor_pressure(temp);
-            real p_v  = pert*svp;
-            real r_v  = p_v / (micro.constants.R_v*temp);
+            // Vapor perturbation profile
+            real pert  = profiles::ellipsoid_linear(xloc,yloc,zloc  ,  xlen/2,ylen/2,2000  ,  2000,2000,2000  ,  0.8);
+            real press = C0*pow(rh*th,gamma);                       // Dry pressure
+            real temp  = press / Rd / rh;                           // Temperator (same for dry and moist)
+            real svp   = micro.saturation_vapor_pressure(temp);     // Self-explanatory
+            real p_v   = pert*svp;                                  // Multiply profile by saturation vapor pressure
+            real r_v   = p_v / (Rv*temp);                           // Compute vapor density
 
             real wt = gllWts_ord(kk) * gllWts_ord(jj) * gllWts_ord(ii);
             dm_vapor  (k,j,i) += r_v / (rh+r_v) * rh * wt;
@@ -333,6 +338,10 @@ public:
     auto &tracer_adds_mass        = this->tracer_adds_mass;
     auto &balance_initial_density = this->balance_initial_density;
     auto &tracer_id_uniform       = this->tracer_id_uniform;
+    auto &Rd                      = this->Rd;
+    auto &Rv                      = this->Rv;
+    auto &C0                      = this->C0;
+    auto &gamma                   = this->gamma;
 
     // Copy the DataManager data to state and tracer arrays for convenience
     real4d state   = createStateArr ();
@@ -356,15 +365,18 @@ public:
 
       // Compute the dry temperature (same as the moist temperature)
       real rho_theta_dry = state(idT,hs+k,hs+j,hs+i) + hyDensThetaCells(hs+k);
-      real temp = micro.temp_from_rho_theta(rho_dry , 0 , rho_theta_dry, micro.constants);
+      real press = C0*pow(rho_theta_dry,gamma);  // Dry pressure
+      real temp  = press / Rd / rho_dry;         // Temp (same dry or moist)
 
       // Compute moist theta
       real index_vapor = micro.tracer_index_vapor;
       real rho_v = tracers(index_vapor,hs+k,hs+j,hs+i);
-      real theta_moist = micro.theta_from_temp(rho_moist , rho_v , temp, micro.constants);
+      real R_moist = Rd * (rho_dry / rho_moist) + Rv * (rho_v / rho_moist);
+      real press_moist = rho_moist * R_moist * temp;
+      real rho_theta_moist = pow( press_moist / C0 , 1._fp/gamma );
       
       // Compute moist rho*theta
-      state(idT,hs+k,hs+j,hs+i) = rho_moist*theta_moist - hyDensThetaCells(hs+k);
+      state(idT,hs+k,hs+j,hs+i) = rho_theta_moist - hyDensThetaCells(hs+k);
 
       for (int tr = 0 ; tr < num_tracers ; tr++) {
         tracers(tr,hs+k,hs+j,hs+i) = tracers(tr,hs+k,hs+j,hs+i) / rho_dry * rho_moist;
@@ -780,6 +792,7 @@ public:
     gamma = micro.constants.gamma_d;
     p0    = micro.constants.p0;
     C0    = micro.constants.C0_d;
+    Rv    = micro.constants.R_v;
 
     auto nx                       = this->nx                     ;
     auto ny                       = this->ny                     ;

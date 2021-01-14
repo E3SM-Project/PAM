@@ -21,7 +21,7 @@ weno_scalars : true
 
 weno_winds   : true
 
-# Data to initialize: thermal
+# Data to initialize: thermal, supercell
 initData : thermal
 
 # Output filename

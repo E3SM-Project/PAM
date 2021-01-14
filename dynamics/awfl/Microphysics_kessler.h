@@ -62,7 +62,7 @@ public:
     //                                        name              description       positive   adds mass
     tracer_IDs(ID_V) = dycore.add_tracer(dm , "water_vapor"   , "Water Vapor"   , true     , true);
     tracer_IDs(ID_C) = dycore.add_tracer(dm , "cloud_liquid"  , "Cloud liquid"  , true     , true);
-    tracer_IDs(ID_R) = dycore.add_tracer(dm , "precipitation" , "Precipitation" , true     , true);
+    tracer_IDs(ID_R) = dycore.add_tracer(dm , "precip_liquid" , "precip_liquid" , true     , true);
 
     tracer_index_vapor = tracer_IDs(ID_V);
 
@@ -78,7 +78,7 @@ public:
     auto rho_theta = dm.get_lev_col<real>("density_theta");
     auto rho_v     = dm.get_lev_col<real>("water_vapor");
     auto rho_c     = dm.get_lev_col<real>("cloud_liquid");
-    auto rho_r     = dm.get_lev_col<real>("precipitation");
+    auto rho_r     = dm.get_lev_col<real>("precip_liquid");
 
     int nz = rho.dimension[0];
     int nx = rho.dimension[1];
@@ -315,62 +315,6 @@ public:
   YAKL_INLINE real saturation_vapor_pressure(real temp) const {
     real tc = temp - 273.15;
     return 610.94 * exp( 17.625*tc / (243.04+tc) );
-  }
-
-
-
-  YAKL_INLINE real latent_heat_condensation(real temp) const {
-    real tc = temp - 273.15;
-    return (2500.8 - 2.36*tc + 0.0016*tc*tc - 0.00006*tc*tc*tc)*1000;
-  }
-
-
-
-  YAKL_INLINE real R_moist(real rho, real rho_v, Constants const &cn) const {
-    real rho_d = rho - rho_v;
-    real q_d = rho_d / rho;
-    real q_v = rho_v / rho;
-    return cn.R_d * q_d + cn.R_v * q_v;
-  }
-
-
-
-  YAKL_INLINE real cp_moist(real rho, real rho_v, Constants const &cn) const {
-    return R_moist(rho, rho_v, cn) / cn.R_d * cn.cp_d;
-  }
-
-
-
-  YAKL_INLINE real cv_moist(real rho, real rho_v, Constants const &cn) const {
-    return R_moist(rho, rho_v, cn) / cn.R_d * cn.cv_d;
-  }
-
-
-
-  YAKL_INLINE real pressure_from_rho_theta(real rho_theta, Constants const &cn) const {
-    return cn.C0_d * pow( rho_theta , cn.gamma_d );
-  }
-
-
-
-  YAKL_INLINE real pressure_from_temp(real rho , real rho_v , real temp, Constants const &cn) const {
-    real rho_d = rho - rho_v;
-    return rho_d*cn.R_d*temp + rho_v*cn.R_v*temp;
-  }
-
-
-
-  YAKL_INLINE real theta_from_temp(real rho , real rho_v , real temp, Constants const &cn) const {
-    real p = pressure_from_temp(rho, rho_v, temp, cn);
-    return pow( p/cn.C0_d , 1./cn.gamma_d ) / rho;
-  }
-
-
-
-  YAKL_INLINE real temp_from_rho_theta(real rho , real rho_v , real rho_theta, Constants const &cn) const {
-    real p = pressure_from_rho_theta(rho_theta, cn);
-    real R = R_moist(rho, rho_v, cn);
-    return p / rho / R;
   }
 
 
