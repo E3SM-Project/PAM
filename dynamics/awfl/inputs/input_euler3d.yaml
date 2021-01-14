@@ -22,7 +22,7 @@ weno_scalars : true
 weno_winds   : true
 
 # Data to initialize: thermal, supercell
-initData : thermal
+initData : supercell
 
 # Output filename
 out_file  : test.nc

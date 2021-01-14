@@ -25,6 +25,51 @@ namespace profiles {
   }
 
 
+  YAKL_INLINE real init_supercell_theta(real zloc, real trop_a, real trop_b, real trop_c,
+                                        real strat_a, real strat_b, real z_tr) {
+    if (zloc <= z_tr) {
+      return exp(trop_a*zloc*zloc + trop_b*zloc + trop_c);
+    } else {
+      return exp(strat_a*zloc + strat_b);
+    }
+  }
+
+
+  YAKL_INLINE real init_supercell_exner_trop(real zloc , real trop_a, real trop_b, real trop_c, real cp) {
+    return 1 - 1.0/2.0*sqrt(M_PI)*(-GRAV*exp((1.0/4.0)*pow(trop_b, 2)/trop_a)*erf((1.0/2.0)*trop_b/sqrt(trop_a)) + GRAV*exp((1.0/4.0)*pow(trop_b, 2)/trop_a)*erf((1.0/2.0)*(2*trop_a*zloc + trop_b)/sqrt(trop_a)))*exp(-trop_c)/(cp*sqrt(trop_a));
+  }
+
+
+  YAKL_INLINE real init_supercell_exner_strat(real zloc, real strat_a, real strat_b, real cp, real z_tr) {
+    return (GRAV*exp(strat_a*z_tr) - GRAV*exp(strat_a*zloc))*exp(-strat_a*z_tr - strat_a*zloc - strat_b)/(cp*strat_a);
+  }
+
+
+  YAKL_INLINE real init_supercell_exner(real zloc, real trop_a, real trop_b, real trop_c,
+                                        real strat_a, real strat_b, real cp, real z_tr) {
+    if (zloc <= z_tr) {
+      return init_supercell_exner_trop(zloc, trop_a, trop_b, trop_c, cp);
+    } else {
+      return init_supercell_exner_trop(z_tr, trop_a, trop_b, trop_c, cp) + 
+             init_supercell_exner_strat(zloc, strat_a, strat_b, cp, z_tr);
+    }
+  }
+
+
+  // YAKL_INLINE real init_supercell_pressure(real zloc, real trop_a, real trop_b, real trop_c,
+  //                                          real strat_a, real strat_b, real cp, real Rd, real p0) {
+  //   real p = pow( exner , cp/Rd ) * p0;
+  //   return p;
+  // }
+
+
+  // YAKL_INLINE real init_supercell_density(real zloc, real a, real b, real c, real cp, real Rd, real p0, real C0, real gamma) {
+  //   real p = init_supercell_pressure( zloc , a , b , c , cp , Rd , p0 );
+  //   real theta = init_supercell_theta( zloc , a , b , c );
+  //   return pow( p / C0 , 1/gamma ) / theta;
+  // }
+
+
   /*
     Gives a linear ellipsiod centered at (x0,y0,z0) with radius (xrad,yrad,zrad) and amplitude amp
   */

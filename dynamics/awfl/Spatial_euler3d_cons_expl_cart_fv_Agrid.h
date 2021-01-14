@@ -101,7 +101,7 @@ public:
 
   // Options for initializing the data
   int static constexpr DATA_SPEC_THERMAL       = 1;
-  int static constexpr DATA_SPEC_THERMAL_MOIST = 2;
+  int static constexpr DATA_SPEC_SUPERCELL     = 2;
   
   bool sim2d;  // Whether we're simulating in 2-D
 
@@ -653,6 +653,8 @@ public:
     std::string dataStr = config["initData"].as<std::string>();
     if        (dataStr == "thermal") {
       data_spec = DATA_SPEC_THERMAL;
+    } else if (dataStr == "supercell") {
+      data_spec = DATA_SPEC_SUPERCELL;
     } else {
       endrun("ERROR: Invalid data_spec");
     }
@@ -831,52 +833,6 @@ public:
     real1d dm_hyTheta     = dm.get<real,1>( "hydrostatic_theta"         );
     real1d dm_hyDensTheta = dm.get<real,1>( "hydrostatic_density_theta" );
     real1d dm_hyPressure  = dm.get<real,1>( "hydrostatic_pressure"      );
-
-    // Setup hydrostatic background state
-    parallel_for( SimpleBounds<1>(nz+2*hs) , YAKL_LAMBDA (int k) {
-      // Compute cell averages
-      hyDensCells     (k) = 0;
-      hyPressureCells (k) = 0;
-      hyThetaCells    (k) = 0;
-      hyDensThetaCells(k) = 0;
-      for (int kk=0; kk<ord; kk++) {
-        real zloc = vert_interface_ghost(k) + 0.5_fp*dz_ghost(k) + gllPts_ord(kk)*dz_ghost(k);
-        if        (data_spec == DATA_SPEC_THERMAL || data_spec == DATA_SPEC_THERMAL_MOIST) {
-          // Compute constant theta hydrostatic background state
-          real th  = 300;
-          real rh = profiles::initConstTheta_density (th,zloc,Rd,cp,gamma,p0,C0);
-          real ph = profiles::initConstTheta_pressure(th,zloc,Rd,cp,gamma,p0,C0);
-          real wt = gllWts_ord(kk);
-          hyDensCells     (k) += rh    * wt;
-          hyThetaCells    (k) += th    * wt;
-          hyDensThetaCells(k) += rh*th * wt;
-          hyPressureCells (k) += ph    * wt;
-        }
-      }
-      if (k >= hs && k <= hs+nz-1) {
-        dm_hyDens     (k-hs) = hyDensCells     (k);
-        dm_hyTheta    (k-hs) = hyThetaCells    (k);
-        dm_hyDensTheta(k-hs) = hyDensThetaCells(k);
-        dm_hyPressure (k-hs) = hyPressureCells (k);
-      }
-    });
-
-    parallel_for( SimpleBounds<1>(nz) , YAKL_LAMBDA (int k) {
-      // Compute ngll GLL points
-      for (int kk=0; kk<ngll; kk++) {
-        real zloc = vert_interface(k) + 0.5_fp*dz(k) + gllPts_ngll(kk)*dz(k);
-        if        (data_spec == DATA_SPEC_THERMAL || data_spec == DATA_SPEC_THERMAL_MOIST) {
-          // Compute constant theta hydrostatic background state
-          real th = 300;
-          real rh = profiles::initConstTheta_density (th,zloc,Rd,cp,gamma,p0,C0);
-          real ph = profiles::initConstTheta_pressure(th,zloc,Rd,cp,gamma,p0,C0);
-          hyDensGLL     (k,kk) = rh;
-          hyThetaGLL    (k,kk) = th;
-          hyDensThetaGLL(k,kk) = rh*th;
-          hyPressureGLL (k,kk) = ph;
-        }
-      }
-    });
     
     real3d dm_rho       = dm.get<real,3>( "density"       );
     real3d dm_rho_u     = dm.get<real,3>( "density_u"     );
@@ -884,48 +840,162 @@ public:
     real3d dm_rho_w     = dm.get<real,3>( "density_w"     );
     real3d dm_rho_theta = dm.get<real,3>( "density_theta" );
 
-    // Compute the state
-    parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-      dm_rho      (k,j,i) = 0;
-      dm_rho_u    (k,j,i) = 0;
-      dm_rho_v    (k,j,i) = 0;
-      dm_rho_w    (k,j,i) = 0;
-      dm_rho_theta(k,j,i) = 0;
-      for (int kk=0; kk<ord; kk++) {
-        for (int jj=0; jj<ord; jj++) {
-          for (int ii=0; ii<ord; ii++) {
-            real zloc = vert_interface(k) + 0.5_fp*dz(k) + gllPts_ord(kk)*dz(k);
-            real yloc;
-            if (sim2d) {
-              yloc = ylen/2;
-            } else {
-              yloc = (j+0.5_fp)*dy + gllPts_ord(jj)*dy;
-            }
-            real xloc = (i+0.5_fp)*dx + gllPts_ord(ii)*dx;
-            real wt = gllWts_ord(kk) * gllWts_ord(jj) * gllWts_ord(ii);
-            if        (data_spec == DATA_SPEC_THERMAL || data_spec == DATA_SPEC_THERMAL_MOIST) {
-              // Compute constant theta hydrostatic background state
-              real th = 300;
-              real rh = profiles::initConstTheta_density(th,zloc,Rd,cp,gamma,p0,C0);
-              real tp = profiles::ellipsoid_linear(xloc, yloc, zloc, xlen/2, ylen/2, 2000, 2000, 2000, 2000, 2 );
-              real t = th + tp;
-              real r = rh;
-              // Line below balances initial density to remove the acoustic wave
-              if (balance_initial_density) r = rh*th/t;
+    // If the data_spec is thermal or ..., then initialize the domain with Exner pressure-based hydrostasis
+    // This is mostly to make plotting potential temperature perturbation easier for publications
+    if (data_spec == DATA_SPEC_THERMAL) {
 
-              dm_rho      (k,j,i) += (r - rh)*wt;
-              dm_rho_theta(k,j,i) += (r*t - rh*th) * wt;
+      // Setup hydrostatic background state
+      parallel_for( SimpleBounds<1>(nz+2*hs) , YAKL_LAMBDA (int k) {
+        // Compute cell averages
+        hyDensCells     (k) = 0;
+        hyPressureCells (k) = 0;
+        hyThetaCells    (k) = 0;
+        hyDensThetaCells(k) = 0;
+        for (int kk=0; kk<ord; kk++) {
+          real zloc = vert_interface_ghost(k) + 0.5_fp*dz_ghost(k) + gllPts_ord(kk)*dz_ghost(k);
+          if        (data_spec == DATA_SPEC_THERMAL) {
+            // Compute constant theta hydrostatic background state
+            real th  = 300;
+            real rh = profiles::initConstTheta_density (th,zloc,Rd,cp,gamma,p0,C0);
+            real ph = profiles::initConstTheta_pressure(th,zloc,Rd,cp,gamma,p0,C0);
+            real wt = gllWts_ord(kk);
+            hyDensCells     (k) += rh    * wt;
+            hyThetaCells    (k) += th    * wt;
+            hyDensThetaCells(k) += rh*th * wt;
+            hyPressureCells (k) += ph    * wt;
+          }
+        }
+        if (k >= hs && k <= hs+nz-1) {
+          dm_hyDens     (k-hs) = hyDensCells     (k);
+          dm_hyTheta    (k-hs) = hyThetaCells    (k);
+          dm_hyDensTheta(k-hs) = hyDensThetaCells(k);
+          dm_hyPressure (k-hs) = hyPressureCells (k);
+        }
+      });
+
+      parallel_for( SimpleBounds<1>(nz) , YAKL_LAMBDA (int k) {
+        // Compute ngll GLL points
+        for (int kk=0; kk<ngll; kk++) {
+          real zloc = vert_interface(k) + 0.5_fp*dz(k) + gllPts_ngll(kk)*dz(k);
+          if        (data_spec == DATA_SPEC_THERMAL) {
+            // Compute constant theta hydrostatic background state
+            real th = 300;
+            real rh = profiles::initConstTheta_density (th,zloc,Rd,cp,gamma,p0,C0);
+            real ph = profiles::initConstTheta_pressure(th,zloc,Rd,cp,gamma,p0,C0);
+            hyDensGLL     (k,kk) = rh;
+            hyThetaGLL    (k,kk) = th;
+            hyDensThetaGLL(k,kk) = rh*th;
+            hyPressureGLL (k,kk) = ph;
+          }
+        }
+      });
+
+      // Compute the state
+      parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+        dm_rho      (k,j,i) = 0;
+        dm_rho_u    (k,j,i) = 0;
+        dm_rho_v    (k,j,i) = 0;
+        dm_rho_w    (k,j,i) = 0;
+        dm_rho_theta(k,j,i) = 0;
+        for (int kk=0; kk<ord; kk++) {
+          for (int jj=0; jj<ord; jj++) {
+            for (int ii=0; ii<ord; ii++) {
+              real zloc = vert_interface(k) + 0.5_fp*dz(k) + gllPts_ord(kk)*dz(k);
+              real yloc;
+              if (sim2d) {
+                yloc = ylen/2;
+              } else {
+                yloc = (j+0.5_fp)*dy + gllPts_ord(jj)*dy;
+              }
+              real xloc = (i+0.5_fp)*dx + gllPts_ord(ii)*dx;
+              real wt = gllWts_ord(kk) * gllWts_ord(jj) * gllWts_ord(ii);
+              if        (data_spec == DATA_SPEC_THERMAL) {
+                // Compute constant theta hydrostatic background state
+                real th = 300;
+                real rh = profiles::initConstTheta_density(th,zloc,Rd,cp,gamma,p0,C0);
+                real tp = profiles::ellipsoid_linear(xloc, yloc, zloc, xlen/2, ylen/2, 2000, 2000, 2000, 2000, 2 );
+                real t = th + tp;
+                real r = rh;
+                // Line below balances initial density to remove the acoustic wave
+                if (balance_initial_density) r = rh*th/t;
+
+                dm_rho      (k,j,i) += (r - rh)*wt;
+                dm_rho_theta(k,j,i) += (r*t - rh*th) * wt;
+              }
             }
           }
         }
+        dm_rho      (k,j,i) += dm_hyDens     (k);
+        dm_rho_theta(k,j,i) += dm_hyDensTheta(k);
+      });
+
+      init_tracers( dm , micro );
+
+      adjust_state_for_moisture( dm , micro );
+
+    } // if (data_spec == DATA_SPEC_THERMAL)
+
+
+    if (data_spec == DATA_SPEC_SUPERCELL) {
+
+      // First, create the approximation theta(z) = exp(a*z^2+b*z+c)
+      real constexpr theta0   = 300;
+      real constexpr theta_tr = 343;
+      real constexpr temp_tr  = 213;
+      real constexpr z_tr     = 12000;
+
+      real v0 = log( theta0 );
+      real v1 = log( theta0 + (theta_tr - theta0) * pow( 0.5_fp , 1.25_fp ) );
+      real v2 = log( theta_tr );
+
+      real trop_a = 2*(v0-2*v1+v2)/(z_tr*z_tr);
+      real trop_b = -(3*v0-4*v1+v2)/z_tr;
+      real trop_c = v0;
+
+      real strat_a = GRAV/(cp*temp_tr);
+      real strat_b = log(theta_tr) - GRAV*z_tr/(cp*temp_tr);
+
+      realHost1d press_host("press_host",nz+1);
+      realHost1d temp_host ("temp_host" ,nz+1);
+      realHost1d tdew_host ("tdew_host" ,nz+1);
+      for (int k=0; k < nz+1; k++) {
+        real zloc = (real) k / (real) nz * 20000.;
+        real theta = profiles::init_supercell_theta( zloc , trop_a , trop_b , trop_c , strat_a , strat_b , z_tr );
+        real exner = profiles::init_supercell_exner( zloc , trop_a , trop_b , trop_c , strat_a , strat_b , cp , z_tr );
+        real press = pow( exner , cp/Rd ) * p0;
+        real dens  = pow( press / C0 , 1./gamma ) / theta;
+        real temp  = press / dens / Rd;
+        real svp   = micro.saturation_vapor_pressure( temp );
+        real sat_dens = svp / (Rv*temp);
+        real sat_mr_dry = sat_dens / dens;
+
+        real hum;
+        if (zloc < z_tr) {
+          hum = 1._fp - 0.75_fp * pow( (zloc/z_tr) , 1.25_fp );
+        } else {
+          hum = 0.25_fp;
+        }
+
+        {
+          if (sat_mr_dry*hum > 0.014) { hum *= 0.014/(sat_mr_dry*hum); }
+          real T = temp - 273;
+          real constexpr a = 17.27;
+          real constexpr b = 237.7;
+          tdew_host(k) = b * ( a*T / (b + T) + log(hum) ) / ( a - ( a*T / (b+T) + log(hum) ) );
+          std::cout << tdew_host(k) << "  ";
+        }
+        press_host(k) = press/100;
+        temp_host (k) = temp - 273;
       }
-      dm_rho      (k,j,i) += dm_hyDens     (k);
-      dm_rho_theta(k,j,i) += dm_hyDensTheta(k);
-    });
+      yakl::SimpleNetCDF nc;
+      nc.create("skew.nc");
+      nc.write(press_host,"pressure",{"z"});
+      nc.write(temp_host ,"temperature",{"z"});
+      nc.write(tdew_host ,"dew_point",{"z"});
+      nc.close();
+      exit(0);
 
-    init_tracers( dm , micro );
-
-    adjust_state_for_moisture( dm , micro );
+    } // if (data_spec == DATA_SPEC_SUPERCELL)
   }
 
 
