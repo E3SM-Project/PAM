@@ -25,49 +25,49 @@ namespace profiles {
   }
 
 
-  YAKL_INLINE real init_supercell_theta(real zloc, real trop_a, real trop_b, real trop_c,
-                                        real strat_a, real strat_b, real z_tr) {
-    if (zloc <= z_tr) {
-      return exp(trop_a*zloc*zloc + trop_b*zloc + trop_c);
+  YAKL_INLINE real init_supercell_temperature(real z, real z_0, real z_trop, real z_top,
+                                                      real T_0, real T_trop, real T_top) {
+    if (z <= z_trop) {
+      real lapse = - (T_trop - T_0) / (z_trop - z_0);
+      return T_0 - lapse * (z - z_0);
     } else {
-      return exp(strat_a*zloc + strat_b);
+      real lapse = - (T_top - T_trop) / (z_top - z_trop);
+      return T_trop - lapse * (z - z_trop);
     }
   }
 
 
-  YAKL_INLINE real init_supercell_exner_trop(real zloc , real trop_a, real trop_b, real trop_c, real cp) {
-    return 1 - 1.0/2.0*sqrt(M_PI)*(-GRAV*exp((1.0/4.0)*pow(trop_b, 2)/trop_a)*erf((1.0/2.0)*trop_b/sqrt(trop_a)) + GRAV*exp((1.0/4.0)*pow(trop_b, 2)/trop_a)*erf((1.0/2.0)*(2*trop_a*zloc + trop_b)/sqrt(trop_a)))*exp(-trop_c)/(cp*sqrt(trop_a));
-  }
-
-
-  YAKL_INLINE real init_supercell_exner_strat(real zloc, real strat_a, real strat_b, real cp, real z_tr) {
-    return (GRAV*exp(strat_a*z_tr) - GRAV*exp(strat_a*zloc))*exp(-strat_a*z_tr - strat_a*zloc - strat_b)/(cp*strat_a);
-  }
-
-
-  YAKL_INLINE real init_supercell_exner(real zloc, real trop_a, real trop_b, real trop_c,
-                                        real strat_a, real strat_b, real cp, real z_tr) {
-    if (zloc <= z_tr) {
-      return init_supercell_exner_trop(zloc, trop_a, trop_b, trop_c, cp);
+  YAKL_INLINE real init_supercell_pressure_dry(real z, real z_0, real z_trop, real z_top,
+                                                       real T_0, real T_trop, real T_top,
+                                                       real p_0, real R_d) {
+    if (z <= z_trop) {
+      real lapse = - (T_trop - T_0) / (z_trop - z_0);
+      real T = init_supercell_temperature(z, z_0, z_trop, z_top, T_0, T_trop, T_top);
+      return p_0 * pow( T / T_0 , GRAV/(R_d*lapse) );
     } else {
-      return init_supercell_exner_trop(z_tr, trop_a, trop_b, trop_c, cp) + 
-             init_supercell_exner_strat(zloc, strat_a, strat_b, cp, z_tr);
+      // Get pressure at the tropopause
+      real lapse = - (T_trop - T_0) / (z_trop - z_0);
+      real p_trop = p_0 * pow( T_trop / T_0 , GRAV/(R_d*lapse) );
+      // Get pressure at requested height
+      lapse = - (T_top - T_trop) / (z_top - z_trop);
+      real T = init_supercell_temperature(z, z_0, z_trop, z_top, T_0, T_trop, T_top);
+      return p_trop * pow( T / T_trop , GRAV/(R_d*lapse) );
+    }
+  }
+
+  
+  YAKL_INLINE real init_supercell_relhum(real z, real z_0, real z_trop) {
+    if (z <= z_trop) {
+      return 1._fp - 0.75_fp * pow(z / z_trop , 1.25_fp );
+    } else {
+      return 0.25_fp;
     }
   }
 
 
-  // YAKL_INLINE real init_supercell_pressure(real zloc, real trop_a, real trop_b, real trop_c,
-  //                                          real strat_a, real strat_b, real cp, real Rd, real p0) {
-  //   real p = pow( exner , cp/Rd ) * p0;
-  //   return p;
-  // }
-
-
-  // YAKL_INLINE real init_supercell_density(real zloc, real a, real b, real c, real cp, real Rd, real p0, real C0, real gamma) {
-  //   real p = init_supercell_pressure( zloc , a , b , c , cp , Rd , p0 );
-  //   real theta = init_supercell_theta( zloc , a , b , c );
-  //   return pow( p / C0 , 1/gamma ) / theta;
-  // }
+  YAKL_INLINE real init_supercell_sat_mix_dry( real press_dry , real T ) {
+    return 380/(press_dry/100) * exp( 17.27_fp * (T-273)/(T-36) );
+  }
 
 
   /*

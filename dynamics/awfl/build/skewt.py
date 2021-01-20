@@ -6,18 +6,28 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 nc = Dataset("skew.nc","r")
+z        = nc.variables["z"][:]
 pressure = nc.variables["pressure"][:]
 temp     = nc.variables["temperature"][:]
 dew      = nc.variables["dew_point"][:]
+rho_v    = nc.variables["rho_v"][:]
+R_moist  = nc.variables["R_moist"][:]
+
+R_T = R_moist * temp;
+
+print(dew)
 
 fig = plt.figure(figsize=(9,11))
 skew = SkewT(fig, rotation=45)
-skew.plot(pressure,temp,'r')
-skew.plot(pressure,dew,'g')
+skew.plot(pressure/100,temp-273,'r')
+skew.plot(pressure/100,dew     ,'g')
 skew.plot_dry_adiabats(t0=np.arange(233, 533, 20) * units.K, alpha=0.25, color='orangered')
 skew.plot_moist_adiabats(t0=np.arange(230, 400, 5) * units.K,
                          alpha=0.25, color='tab:green')
 plt.show()
+
+
+plt.close()
 
 
 

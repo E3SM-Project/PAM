@@ -938,60 +938,104 @@ public:
 
     if (data_spec == DATA_SPEC_SUPERCELL) {
 
-      // First, create the approximation theta(z) = exp(a*z^2+b*z+c)
-      real constexpr theta0   = 300;
-      real constexpr theta_tr = 343;
-      real constexpr temp_tr  = 213;
-      real constexpr z_tr     = 12000;
+      // This uses a piecewise linear profile for R*T to specify hydrostatic pressure
+      real constexpr z_0    = 0;
+      real constexpr z_trop = 12000;
+      real           z_top  = 20000;
+      real constexpr T_0    = 300;
+      real constexpr T_trop = 213;
+      real constexpr T_top  = 215;
+      real constexpr p_0    = 100000;
 
-      real v0 = log( theta0 );
-      real v1 = log( theta0 + (theta_tr - theta0) * pow( 0.5_fp , 1.25_fp ) );
-      real v2 = log( theta_tr );
+      realHost1d press_hy  ("press",nz+1);
+      realHost1d temp_hy   ("temp" ,nz+1);
+      realHost1d rho_v_hy  ("rho_v",nz+1);
+      realHost1d z         ("z",nz+1);
+      realHost1d tdew_hy   ("tdew" ,nz+1);
+      realHost1d R_moist_hy("R_moist",nz+1);
 
-      real trop_a = 2*(v0-2*v1+v2)/(z_tr*z_tr);
-      real trop_b = -(3*v0-4*v1+v2)/z_tr;
-      real trop_c = v0;
-
-      real strat_a = GRAV/(cp*temp_tr);
-      real strat_b = log(theta_tr) - GRAV*z_tr/(cp*temp_tr);
-
-      realHost1d press_host("press_host",nz+1);
-      realHost1d temp_host ("temp_host" ,nz+1);
-      realHost1d tdew_host ("tdew_host" ,nz+1);
+      real1d press("press",nz+1);
+      press(0) = p_0;
       for (int k=0; k < nz+1; k++) {
-        real zloc = (real) k / (real) nz * 20000.;
-        real theta = profiles::init_supercell_theta( zloc , trop_a , trop_b , trop_c , strat_a , strat_b , z_tr );
-        real exner = profiles::init_supercell_exner( zloc , trop_a , trop_b , trop_c , strat_a , strat_b , cp , z_tr );
-        real press = pow( exner , cp/Rd ) * p0;
-        real dens  = pow( press / C0 , 1./gamma ) / theta;
-        real temp  = press / dens / Rd;
-        real svp   = micro.saturation_vapor_pressure( temp );
-        real sat_dens = svp / (Rv*temp);
-        real sat_mr_dry = sat_dens / dens;
+        if (k == 0) {
+          real dzloc = 20000. / nz;
+          real zloc = (real) k * dzloc;
+          real temp      = T_0;
+          real press_dry = p_0;
+          real dens_dry  = press_dry / (Rd*temp);
+          real qvs       = profiles::init_supercell_sat_mix_dry(press_dry, temp);
+          real relhum    = profiles::init_supercell_relhum(zloc, z_0, z_trop);
+          real qv        = min( 0.014_fp , qvs*relhum );
+          real dens_v    = qv * dens_dry;
+          real dens      = dens_dry + dens_v;
+          press_hy  (0)  = p_0 + dens_v*Rv*temp;;
+          temp_hy   (0)  = temp;
+          rho_v_hy  (0)  = dens_v;
+          z         (0)  = zloc;
+          R_moist_hy(0)  = Rd * dens_dry / dens + Rv * dens_v / dens;
 
-        real hum;
-        if (zloc < z_tr) {
-          hum = 1._fp - 0.75_fp * pow( (zloc/z_tr) , 1.25_fp );
+          {
+            real T = temp - 273;
+            real constexpr a = 17.27;
+            real constexpr b = 237.7;
+            tdew_hy(0) = b * ( a*T / (b + T) + log(relhum) ) / ( a - ( a*T / (b+T) + log(relhum) ) );
+          }
+
+          std::cout << zloc << "  " << press_hy(k) << "  " << temp_hy(k) << "  " << relhum << "\n";
         } else {
-          hum = 0.25_fp;
-        }
+          real tot = 0;
+          // Integrate with quadrature to get pressure at the next level
+          for (int kk=0; kk < ord; kk++) {
+            real dzloc = 20000. / nz;
+            real zloc = (real) (k-0.5_fp) * dzloc + gllPts_ord(kk)*dzloc;
+            real temp      = profiles::init_supercell_temperature(zloc, z_0, z_trop, z_top, T_0, T_trop, T_top);
+            real press_dry = profiles::init_supercell_pressure_dry(zloc, z_0, z_trop, z_top, T_0, T_trop, T_top, p_0, Rd);
+            real dens_dry  = press_dry / (Rd*temp);
+            real qvs       = profiles::init_supercell_sat_mix_dry(press_dry, temp);
+            real relhum    = profiles::init_supercell_relhum(zloc, z_0, z_trop);
+            real qv        = min( 0.014_fp , qvs*relhum );
+            real dens_v    = qv * dens_dry;
+            real dens      = dens_dry + dens_v;
+            real R_moist   = Rd * dens_dry / dens + Rv * dens_v / dens;
+            tot += -GRAV / (R_moist * temp) * gllWts_ord(kk) * dzloc;
+          }
+          real dzloc = 20000. / nz;
+          real zloc  = (real) k * dzloc;
+          real press     = press_hy(k-1) * exp( tot );
+          real temp      = profiles::init_supercell_temperature(zloc, z_0, z_trop, z_top, T_0, T_trop, T_top);
+          real press_dry = profiles::init_supercell_pressure_dry(zloc, z_0, z_trop, z_top, T_0, T_trop, T_top, p_0, Rd);
+          real dens_dry  = press_dry / (Rd*temp);
+          real dens_v    = (press/temp - dens_dry*Rd) / Rv;
+          real dens      = dens_dry + dens_v;
+          real R_moist   = Rd * dens_dry / dens + Rv * dens_v / dens;
+          real qv        = dens_v / dens_dry;
+          real qvs       = profiles::init_supercell_sat_mix_dry(press_dry, temp);
+          real relhum    = qv / qvs;
+          press_hy  (k)  = press;
+          temp_hy   (k)  = temp;
+          rho_v_hy  (k)  = dens_v;
+          z         (k)  = zloc;
+          R_moist_hy(k)  = R_moist;
 
-        {
-          if (sat_mr_dry*hum > 0.014) { hum *= 0.014/(sat_mr_dry*hum); }
-          real T = temp - 273;
-          real constexpr a = 17.27;
-          real constexpr b = 237.7;
-          tdew_host(k) = b * ( a*T / (b + T) + log(hum) ) / ( a - ( a*T / (b+T) + log(hum) ) );
-          std::cout << tdew_host(k) << "  ";
+          {
+            real T = temp - 273;
+            real constexpr a = 17.27;
+            real constexpr b = 237.7;
+            tdew_hy(k) = b * ( a*T / (b + T) + log(relhum) ) / ( a - ( a*T / (b+T) + log(relhum) ) );
+          }
+
+          std::cout << zloc << "  " << press_hy(k) << "  " << temp_hy(k) << "  " << relhum << "\n";
         }
-        press_host(k) = press/100;
-        temp_host (k) = temp - 273;
       }
+
       yakl::SimpleNetCDF nc;
       nc.create("skew.nc");
-      nc.write(press_host,"pressure",{"z"});
-      nc.write(temp_host ,"temperature",{"z"});
-      nc.write(tdew_host ,"dew_point",{"z"});
+      nc.write(z         ,"z"          ,{"z"});
+      nc.write(press_hy  ,"pressure"   ,{"z"});
+      nc.write(temp_hy   ,"temperature",{"z"});
+      nc.write(tdew_hy   ,"dew_point"  ,{"z"});
+      nc.write(rho_v_hy  ,"rho_v"      ,{"z"});
+      nc.write(R_moist_hy,"R_moist"    ,{"z"});
       nc.close();
       exit(0);
 
