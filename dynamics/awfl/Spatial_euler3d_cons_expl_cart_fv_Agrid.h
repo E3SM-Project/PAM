@@ -941,91 +941,106 @@ public:
       // This uses a piecewise linear profile for R*T to specify hydrostatic pressure
       real constexpr z_0    = 0;
       real constexpr z_trop = 12000;
-      real           z_top  = 20000;
+      real           z_top  = zlen;
       real constexpr T_0    = 300;
       real constexpr T_trop = 213;
-      real constexpr T_top  = 215;
+      real constexpr T_top  = 213;
       real constexpr p_0    = 100000;
 
-      realHost1d press_hy  ("press",nz+1);
-      realHost1d temp_hy   ("temp" ,nz+1);
-      realHost1d rho_v_hy  ("rho_v",nz+1);
-      realHost1d z         ("z",nz+1);
-      realHost1d tdew_hy   ("tdew" ,nz+1);
-      realHost1d R_moist_hy("R_moist",nz+1);
+      nz = 80;
 
-      real1d press("press",nz+1);
-      press(0) = p_0;
-      for (int k=0; k < nz+1; k++) {
-        if (k == 0) {
-          real dzloc = 20000. / nz;
-          real zloc = (real) k * dzloc;
-          real temp      = T_0;
-          real press_dry = p_0;
+      real dzloc = zlen / nz;
+
+      real2d dens_gll("dens_gll",nz,ord);
+      real1d press_hy("press_hy",nz+1);
+      real1d z       ("z"       ,nz+1);
+      real1d temp_hy ("temp_hy" ,nz+1);
+      real1d tdew_hy ("tdew_hy" ,nz+1);
+      real1d dens_hy ("dens_hy" ,nz+1);
+
+      // Compute full density at ord GLL points for the space between each cell
+      for (int k=0; k < nz; k++) {
+        for (int kk=0; kk < ord; kk++) {
+          real zloc = (real) (k+0.5_fp) * dzloc + gllPts_ord(kk)*dzloc;
+          real temp      = profiles::init_supercell_temperature(zloc, z_0, z_trop, z_top, T_0, T_trop, T_top);
+          real press_dry = profiles::init_supercell_pressure_dry(zloc, z_0, z_trop, z_top, T_0, T_trop, T_top, p_0, Rd);
           real dens_dry  = press_dry / (Rd*temp);
           real qvs       = profiles::init_supercell_sat_mix_dry(press_dry, temp);
           real relhum    = profiles::init_supercell_relhum(zloc, z_0, z_trop);
           real qv        = min( 0.014_fp , qvs*relhum );
           real dens_v    = qv * dens_dry;
           real dens      = dens_dry + dens_v;
-          press_hy  (0)  = p_0 + dens_v*Rv*temp;;
-          temp_hy   (0)  = temp;
-          rho_v_hy  (0)  = dens_v;
-          z         (0)  = zloc;
-          R_moist_hy(0)  = Rd * dens_dry / dens + Rv * dens_v / dens;
-
-          {
-            real T = temp - 273;
-            real constexpr a = 17.27;
-            real constexpr b = 237.7;
-            tdew_hy(0) = b * ( a*T / (b + T) + log(relhum) ) / ( a - ( a*T / (b+T) + log(relhum) ) );
-          }
-
-          std::cout << zloc << "  " << press_hy(k) << "  " << temp_hy(k) << "  " << relhum << "\n";
-        } else {
-          real tot = 0;
-          // Integrate with quadrature to get pressure at the next level
-          for (int kk=0; kk < ord; kk++) {
-            real dzloc = 20000. / nz;
-            real zloc = (real) (k-0.5_fp) * dzloc + gllPts_ord(kk)*dzloc;
-            real temp      = profiles::init_supercell_temperature(zloc, z_0, z_trop, z_top, T_0, T_trop, T_top);
-            real press_dry = profiles::init_supercell_pressure_dry(zloc, z_0, z_trop, z_top, T_0, T_trop, T_top, p_0, Rd);
-            real dens_dry  = press_dry / (Rd*temp);
-            real qvs       = profiles::init_supercell_sat_mix_dry(press_dry, temp);
-            real relhum    = profiles::init_supercell_relhum(zloc, z_0, z_trop);
-            real qv        = min( 0.014_fp , qvs*relhum );
-            real dens_v    = qv * dens_dry;
-            real dens      = dens_dry + dens_v;
-            real R_moist   = Rd * dens_dry / dens + Rv * dens_v / dens;
-            tot += -GRAV / (R_moist * temp) * gllWts_ord(kk) * dzloc;
-          }
-          real dzloc = 20000. / nz;
-          real zloc  = (real) k * dzloc;
-          real press     = press_hy(k-1) * exp( tot );
-          real temp      = profiles::init_supercell_temperature(zloc, z_0, z_trop, z_top, T_0, T_trop, T_top);
-          real press_dry = profiles::init_supercell_pressure_dry(zloc, z_0, z_trop, z_top, T_0, T_trop, T_top, p_0, Rd);
-          real dens_dry  = press_dry / (Rd*temp);
-          real dens_v    = (press/temp - dens_dry*Rd) / Rv;
-          real dens      = dens_dry + dens_v;
-          real R_moist   = Rd * dens_dry / dens + Rv * dens_v / dens;
-          real qv        = dens_v / dens_dry;
-          real qvs       = profiles::init_supercell_sat_mix_dry(press_dry, temp);
-          real relhum    = qv / qvs;
-          press_hy  (k)  = press;
-          temp_hy   (k)  = temp;
-          rho_v_hy  (k)  = dens_v;
-          z         (k)  = zloc;
-          R_moist_hy(k)  = R_moist;
-
-          {
-            real T = temp - 273;
-            real constexpr a = 17.27;
-            real constexpr b = 237.7;
-            tdew_hy(k) = b * ( a*T / (b + T) + log(relhum) ) / ( a - ( a*T / (b+T) + log(relhum) ) );
-          }
-
-          std::cout << zloc << "  " << press_hy(k) << "  " << temp_hy(k) << "  " << relhum << "\n";
+          dens_gll(k,kk) = dens;
         }
+      }
+
+      // Compute data at the bottom of the model
+      real zloc      = 0;
+      real temp      = T_0;
+      real press_dry = p_0;
+      real dens_dry  = press_dry / (Rd*temp);
+      real qvs       = profiles::init_supercell_sat_mix_dry(press_dry, temp);
+      real relhum    = profiles::init_supercell_relhum(zloc, z_0, z_trop);
+      real qv        = min( 0.014_fp , qvs*relhum );
+      real dens_v    = qv * dens_dry;
+      real dens      = dens_gll(0,0);
+      real press     = press_dry + dens_v*Rv*temp;
+      // Fix dry density to keep full density the same
+      dens_dry = press / temp - dens_v*Rv;
+      qv       = dens_v / dens_dry;
+      {
+        if (qvs*relhum > 0.014) { relhum *= 0.014/(qvs*relhum); }
+        real T = temp - 273;
+        real constexpr a = 17.27;
+        real constexpr b = 237.7;
+        tdew_hy(0) = b * ( a*T / (b + T) + log(relhum) ) / ( a - ( a*T / (b+T) + log(relhum) ) );
+      }
+      z       (0) = zloc;
+      press_hy(0) = press;
+      dens_hy (0) = dens_gll(0,0);
+      temp_hy (0) = temp;
+
+      // Now use quadrature to compute the pressure at each interface level using hydrostasis
+      for (int k=1; k < nz+1; k++) {
+        real zloc = (real) (k) * dzloc;
+        real tot = 0;
+        for (int kk=0; kk < ord; kk++) {
+          tot += dens_gll(k-1,kk) * gllWts_ord(kk);
+        }
+        tot *= -GRAV * dzloc;
+        press_hy(k) = press_hy(k-1) + tot;
+      }
+
+      // Now compute the rest of the data at each vertical level
+      for (int k=1; k < nz+1; k++) {
+        real zloc = (real) (k) * dzloc;
+        real temp      = profiles::init_supercell_temperature (zloc, z_0, z_trop, z_top, T_0, T_trop, T_top);
+        real press_dry = profiles::init_supercell_pressure_dry(zloc, z_0, z_trop, z_top, T_0, T_trop, T_top, p_0, Rd);
+        real dens_dry  = press_dry / (Rd*temp);
+        real qvs       = profiles::init_supercell_sat_mix_dry(press_dry, temp);
+        real relhum    = profiles::init_supercell_relhum(zloc, z_0, z_trop);
+        real qv        = min( 0.014_fp , qvs*relhum );
+        real dens_v    = qv * dens_dry;
+        real dens;
+        if (k < nz) {
+          dens = dens_gll(k  ,0    );
+        } else {
+          dens = dens_gll(k-1,ord-1);
+        }
+        real press = press_hy(k);
+        // Fix dry density to keep full density the same
+        dens_dry = press / temp - dens_v*Rv;
+        qv       = dens_v / dens_dry;
+        {
+          if (qvs*relhum > 0.014) { relhum *= 0.014/(qvs*relhum); }
+          real T = temp - 273;
+          real constexpr a = 17.27;
+          real constexpr b = 237.7;
+          tdew_hy(k) = b * ( a*T / (b + T) + log(relhum) ) / ( a - ( a*T / (b+T) + log(relhum) ) );
+        }
+        z      (k) = zloc;
+        dens_hy(k) = dens;
+        temp_hy(k) = temp;
       }
 
       yakl::SimpleNetCDF nc;
@@ -1034,8 +1049,7 @@ public:
       nc.write(press_hy  ,"pressure"   ,{"z"});
       nc.write(temp_hy   ,"temperature",{"z"});
       nc.write(tdew_hy   ,"dew_point"  ,{"z"});
-      nc.write(rho_v_hy  ,"rho_v"      ,{"z"});
-      nc.write(R_moist_hy,"R_moist"    ,{"z"});
+      nc.write(dens_hy   ,"density"    ,{"z"});
       nc.close();
       exit(0);
 

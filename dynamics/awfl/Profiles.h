@@ -50,8 +50,12 @@ namespace profiles {
       real p_trop = p_0 * pow( T_trop / T_0 , GRAV/(R_d*lapse) );
       // Get pressure at requested height
       lapse = - (T_top - T_trop) / (z_top - z_trop);
-      real T = init_supercell_temperature(z, z_0, z_trop, z_top, T_0, T_trop, T_top);
-      return p_trop * pow( T / T_trop , GRAV/(R_d*lapse) );
+      if (lapse != 0) {
+        real T = init_supercell_temperature(z, z_0, z_trop, z_top, T_0, T_trop, T_top);
+        return p_trop * pow( T / T_trop , GRAV/(R_d*lapse) );
+      } else {
+        return p_trop * exp(-GRAV*(z-z_trop)/(R_d*T_trop));
+      }
     }
   }
 
@@ -65,8 +69,8 @@ namespace profiles {
   }
 
 
-  YAKL_INLINE real init_supercell_sat_mix_dry( real press_dry , real T ) {
-    return 380/(press_dry/100) * exp( 17.27_fp * (T-273)/(T-36) );
+  YAKL_INLINE real init_supercell_sat_mix_dry( real press , real T ) {
+    return 380/(press) * exp( 17.27_fp * (T-273)/(T-36) );
   }
 
 
