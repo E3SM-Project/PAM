@@ -3,11 +3,11 @@
 simTime  : 2000.
 
 # Number of cells to use
-nx       : 100
+nx       : 200
 ny       : 1 
 
 # Vertical height cooridnates file
-vcoords  : vcoords_equal_200_20km.nc
+vcoords  : vcoords_equal_100_10km.nc
 
 # Lengths of the dimensions in meters
 xlen     : 20000
@@ -22,7 +22,7 @@ weno_scalars : true
 weno_winds   : true
 
 # Data to initialize: thermal, supercell
-initData : supercell
+initData : thermal
 
 # Output filename
 out_file  : test.nc
