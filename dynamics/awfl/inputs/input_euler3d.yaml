@@ -3,8 +3,8 @@
 simTime  : 2000.
 
 # Number of cells to use
-nx       : 200
-ny       : 1 
+nx       : 100
+ny       : 100
 
 # Vertical height cooridnates file
 vcoords  : vcoords_equal_200_20km.nc

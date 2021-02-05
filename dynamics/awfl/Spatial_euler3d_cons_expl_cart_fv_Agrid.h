@@ -936,6 +936,8 @@ public:
 
     if (data_spec == DATA_SPEC_SUPERCELL) {
 
+      tracer_id_uniform = add_tracer(dm , "uniform"  , "uniform"  , false     , false);
+
       // This uses a piecewise linear profile for Temperature
       real constexpr z_0    = 0;
       real constexpr z_trop = 12000;
@@ -1055,6 +1057,8 @@ public:
         real press      = press_tot;
         real dens       = dens_tot;
         real dens_vap   = dens_vap_tot;
+        real dens_theta = dens_theta_tot;
+        real theta      = theta_tot;
         real dens_dry   = dens - dens_vap;
         real R          = dens_dry / dens * Rd + dens_vap / dens * Rv;
         real temp       = press / (dens * R);
@@ -1067,8 +1071,6 @@ public:
         real a          = 17.27;
         real b          = 237.7;
         real tdew       = b * ( a*T / (b + T) + log(relhum) ) / ( a - ( a*T / (b+T) + log(relhum) ) );
-        real dens_theta = dens_theta_tot;
-        real theta      = theta_tot;
         // The next three are just to confirm the skew-T diagram looks OK
         z               (k) = zloc;
         temp_hy         (k) = temp;
@@ -1079,8 +1081,14 @@ public:
         hyDensThetaCells(k) = dens_theta;
         hyThetaCells    (k) = theta;
         hyDensVapCells  (k) = dens_vap;
+
+        dm_hyDens     (k) = hyDensCells     (k);
+        dm_hyTheta    (k) = hyThetaCells    (k);
+        dm_hyDensTheta(k) = hyDensThetaCells(k);
+        dm_hyPressure (k) = hyPressureCells (k);
       }
 
+      // Dump out data to plot a skew-T log-P diagram
       yakl::SimpleNetCDF nc;
       nc.create("skew.nc");
       nc.write(z              ,"z"          ,{"z"});
@@ -1088,7 +1096,60 @@ public:
       nc.write(temp_hy        ,"temperature",{"z"});
       nc.write(tdew_hy        ,"dew_point"  ,{"z"});
       nc.close();
-      exit(0);
+
+      real3d dm_vapor   = dm.get<real,3>("water_vapor" );
+      real3d dm_cloud   = dm.get<real,3>("cloud_liquid");
+      real3d dm_precip  = dm.get<real,3>("precip_liquid");
+
+      for (int k=0; k < nz; k++) {
+        for (int j=0; j < ny; j++) {
+          for (int i=0; i < nx; i++) {
+            dm_rho      (k,j,i) = 0;
+            dm_rho_u    (k,j,i) = 0;
+            dm_rho_v    (k,j,i) = 0;
+            dm_rho_w    (k,j,i) = 0;
+            dm_rho_theta(k,j,i) = 0;
+            dm_vapor    (k,j,i) = 0;
+            dm_cloud    (k,j,i) = 0;
+            dm_precip   (k,j,i) = 0;
+            for (int kk=0; kk < ngll; kk++) {
+              for (int jj=0; jj < ngll; jj++) {
+                for (int ii=0; ii < ngll; ii++) {
+                  real xloc = (i+0.5_fp)*dx                    + gllPts_ngll(ii)*dx;
+                  real yloc = (j+0.5_fp)*dy                    + gllPts_ngll(jj)*dy;
+                  real zloc = vert_interface(k) + 0.5_fp*dz(k) + gllPts_ngll(kk)*dz(k);
+
+                  real dens = hyDensGLL(k,kk);
+
+                  real uvel;
+                  real constexpr zs = 5000;
+                  real constexpr us = 30;
+                  real constexpr uc = 15;
+                  if (zloc < zs) {
+                    uvel = us * (zloc / zs) - uc;
+                  } else {
+                    uvel = us - uc;
+                  }
+
+                  real vvel       = 0;
+                  real wvel       = 0;
+                  real theta      = hyThetaGLL    (k,kk);
+                  real dens_vap   = hyDensVapGLL  (k,kk);
+                  real dens_theta = hyDensThetaGLL(k,kk);
+
+                  real factor = gllWts_ngll(ii) * gllWts_ngll(jj) * gllWts_ngll(kk);
+                  dm_rho      (k,j,i) += dens        * factor;
+                  dm_rho_u    (k,j,i) += dens * uvel * factor;
+                  dm_rho_v    (k,j,i) += dens * vvel * factor;
+                  dm_rho_w    (k,j,i) += dens * wvel * factor;
+                  dm_rho_theta(k,j,i) += dens_theta  * factor;
+                  dm_vapor    (k,j,i) += dens_vap    * factor;
+                }
+              }
+            }
+          }
+        }
+      }
 
     } // if (data_spec == DATA_SPEC_SUPERCELL)
   }
