@@ -945,7 +945,13 @@ public:
       real constexpr T_top  = 213;
       real constexpr p_0    = 100000;
 
-      real3d dens_gll("dens_gll",nz,ngll-1,ord);
+      real3d quad_temp     ("quad_temp"     ,nz,ngll-1,ord);
+      real2d press_dry_gll ("press_dry_gll" ,nz,ngll);
+      real2d hyDensVapGLL  ("hyDensVapGLL"  ,nz,ngll);
+      real1d hyDensVapCells("hyDensVapCells",nz);
+      real1d z             ("z"             ,nz);
+      real1d temp_hy       ("temp_hy"       ,nz);
+      real1d tdew_hy       ("tdew_hy"       ,nz);
 
       // Compute full density at ord GLL points for the space between each cell
       for (int k=0; k < nz; k++) {              // k:   Loop over cells
@@ -967,120 +973,122 @@ public:
             real dens_dry  = press_dry / (Rd*temp);
             real qvs       = profiles::init_supercell_sat_mix_dry(press_dry, temp);
             real relhum    = profiles::init_supercell_relhum(zloc, z_0, z_trop);
+            if (relhum * qvs > 0.014_fp) relhum = 0.014_fp / qvs;
             real qv        = min( 0.014_fp , qvs*relhum );
-            real dens_v    = qv * dens_dry;
-            real dens      = dens_dry + dens_v;
-            dens_gll(k,kk,kkk) = dens;
-          }
-          hyDensGLL(k,kk) = dens_gll(k,kk,0);
-          if (kk == ngll-2) {
-            hyDensGLL(k,ngll-1) = dens_gll(k,kk,ord-1);
+            real d_qv_dz   = 0;
+            if (qv > 0.014_fp) {
+              real d_qvs_dT = profiles::init_supercell_sat_mix_dry_d_dT( press_dry , temp );
+              real d_qvs_dp = profiles::init_supercell_sat_mix_dry_d_dp( press_dry , temp );
+              real d_hum_dz = profiles::init_supercell_relhum_d_dz(zloc, z_0, z_trop);
+              real dT_dz;
+              if (zloc < z_trop) {
+                dT_dz = (T_trop - T_0) / (z_trop - z_0);
+              } else if (zloc == z_trop) {
+                dT_dz  = (T_trop - T_0   ) / (z_trop - z_0   );
+                dT_dz += (T_top  - T_trop) / (z_top  - z_trop);
+                dT_dz *= 0.5_fp;
+              } else {
+                dT_dz = (T_top - T_trop) / (z_top - z_trop);
+              }
+              d_qv_dz = relhum * d_qvs_dT * dT_dz - relhum * GRAV * d_qvs_dp + qvs * d_hum_dz;
+            }
+            quad_temp(k,kk,kkk) = -( Rv/Rd*d_qv_dz + (1+qv)*GRAV/(Rd*temp) ) / (1 + Rv/Rd*qv);
           }
         }
       }
 
       // Now use quadrature to compute the pressure at each interface level using hydrostasis
       // This cannot be done in parallel due to loop-carried dependencies
-      hyPressureGLL(0,0) = p_0;
+      press_dry_gll(0,0) = p_0;
       for (int k=0; k < nz; k++) {
         for (int kk=0; kk < ngll-1; kk++) {
           real tot = 0;
           for (int kkk=0; kkk < ord; kkk++) {
-            tot += dens_gll(k,kk,kkk) * gllWts_ord(kkk);
+            tot += quad_temp(k,kk,kkk) * gllWts_ord(kkk);
           }
-          tot *= -GRAV * dz(k) * ( gllPts_ngll(kk+1) - gllPts_ngll(kk) );
-          hyPressureGLL(k,kk+1) = hyPressureGLL(k,kk) + tot;
+          tot *= dz(k) * ( gllPts_ngll(kk+1) - gllPts_ngll(kk) );
+          press_dry_gll(k,kk+1) = press_dry_gll(k,kk) * exp( tot );
           if (kk == ngll-2 && k < nz-1) {
-            hyPressureGLL(k+1,0) = hyPressureGLL(k,ngll-1);
+            press_dry_gll(k+1,0) = press_dry_gll(k,ngll-1);
           }
         }
       }
 
-      real2d hyDensVGLL("hyDensVGLL",nz,ngll);
-
-      // Now compute the rest of the hydrostatic data at each ngll GLL point
       for (int k=0; k < nz; k++) {
         for (int kk=0; kk < ngll; kk++) {
-          real zloc       = vert_interface(k) + 0.5_fp*dz(k) + gllPts_ngll(kk)*dz(k);
+          real zloc = vert_interface(k) + 0.5_fp*dz(k) + gllPts_ngll(kk)*dz(k);
           real temp       = profiles::init_supercell_temperature (zloc, z_0, z_trop, z_top, T_0, T_trop, T_top);
+          real press_dry  = press_dry_gll(k,kk);
+          real dens_dry   = press_dry / (Rd*temp);
+          real press_tmp  = profiles::init_supercell_pressure_dry(zloc, z_0, z_trop, z_top, T_0, T_trop, T_top, p_0, Rd);
+          real qvs        = profiles::init_supercell_sat_mix_dry(press_tmp, temp);
           real relhum     = profiles::init_supercell_relhum(zloc, z_0, z_trop);
-          real press      = hyPressureGLL(k,kk);
-          real qvs        = profiles::init_supercell_sat_mix_dry(press, temp);
+          if (relhum * qvs > 0.014_fp) relhum = 0.014_fp / qvs;
           real qv         = min( 0.014_fp , qvs*relhum );
-          real dens_dry   = press / ( temp * ( Rd + qv*Rv ) );
-          real dens       = hyDensGLL(k,kk);
-          real dens_v     = dens - dens_dry;
-          real dens_theta = pow( press / C0 , 1._fp / gamma) ;
+          real press_vap  = Rv / Rd * qv * press_dry;
+          real dens_vap   = press_vap / (Rv*temp);
+          real press      = press_dry + press_vap;
+          real dens       = dens_dry + dens_vap;
+          real dens_theta = pow( press / C0 , 1._fp / gamma );
           real theta      = dens_theta / dens;
+          hyPressureGLL (k,kk) = press;
+          hyDensGLL     (k,kk) = dens;
           hyDensThetaGLL(k,kk) = dens_theta;
           hyThetaGLL    (k,kk) = theta;
-          hyDensVGLL    (k,kk) = dens_v;
+          hyDensVapGLL  (k,kk) = dens_vap;
         }
       }
 
-      real1d hyDensVCells("HyDensVCells",nz);
-
-      // Next, compute cell averages from the ngll GLL points
       for (int k=0; k < nz; k++) {
         real press_tot      = 0;
         real dens_tot       = 0;
-        real dens_theta_tot = 0;
+        real dens_vap_tot   = 0;
         real theta_tot      = 0;
-        real dens_v_tot     = 0;
+        real dens_theta_tot = 0;
         for (int kk=0; kk < ngll; kk++) {
           press_tot      += hyPressureGLL (k,kk) * gllWts_ngll(kk);
           dens_tot       += hyDensGLL     (k,kk) * gllWts_ngll(kk);
+          dens_vap_tot   += hyDensVapGLL  (k,kk) * gllWts_ngll(kk);
           dens_theta_tot += hyDensThetaGLL(k,kk) * gllWts_ngll(kk);
           theta_tot      += hyThetaGLL    (k,kk) * gllWts_ngll(kk);
-          dens_v_tot     += hyDensVGLL    (k,kk) * gllWts_ngll(kk);
         }
-        hyPressureCells (k) = press_tot;
-        hyDensCells     (k) = dens_tot;
-        hyDensThetaCells(k) = dens_theta_tot;
-        hyThetaCells    (k) = theta_tot;
-        hyDensVCells    (k) = dens_v_tot;
+        real press      = press_tot;
+        real dens       = dens_tot;
+        real dens_vap   = dens_vap_tot;
+        real dens_dry   = dens - dens_vap;
+        real R          = dens_dry / dens * Rd + dens_vap / dens * Rv;
+        real temp       = press / (dens * R);
+        real qv         = dens_vap / dens_dry;
+        real zloc       = vert_interface(k) + 0.5_fp*dz(k);
+        real press_tmp  = profiles::init_supercell_pressure_dry(zloc, z_0, z_trop, z_top, T_0, T_trop, T_top, p_0, Rd);
+        real qvs        = profiles::init_supercell_sat_mix_dry(press_tmp, temp);
+        real relhum     = qv / qvs;
+        real T          = temp - 273;
+        real a          = 17.27;
+        real b          = 237.7;
+        real tdew       = b * ( a*T / (b + T) + log(relhum) ) / ( a - ( a*T / (b+T) + log(relhum) ) );
+        real dens_theta = dens_theta_tot;
+        real theta      = theta_tot;
+        // The next three are just to confirm the skew-T diagram looks OK
+        z               (k) = zloc;
+        temp_hy         (k) = temp;
+        tdew_hy         (k) = tdew;
+        // These are used in the rest of the model
+        hyPressureCells (k) = press;
+        hyDensCells     (k) = dens;
+        hyDensThetaCells(k) = dens_theta;
+        hyThetaCells    (k) = theta;
+        hyDensVapCells  (k) = dens_vap;
       }
 
-      for (int k=0; k < nz; k++) {
-        std::cout << hyDensVCells(k) << "  ";
-      }
-      std::cout << "\n\n";
+      yakl::SimpleNetCDF nc;
+      nc.create("skew.nc");
+      nc.write(z              ,"z"          ,{"z"});
+      nc.write(hyPressureCells,"pressure"   ,{"z"});
+      nc.write(temp_hy        ,"temperature",{"z"});
+      nc.write(tdew_hy        ,"dew_point"  ,{"z"});
+      nc.close();
       exit(0);
-
-          // real press_dry = profiles::init_supercell_pressure_dry(zloc, z_0, z_trop, z_top, T_0, T_trop, T_top, p_0, Rd);
-          // real dens_dry  = press_dry / (Rd*temp);
-          // real relhum    = 
-          // real dens_v    = qv * dens_dry;
-          // real dens;
-          // if (k < nz) {
-          //   dens = dens_gll(k  ,0    );
-          // } else {
-          //   dens = dens_gll(k-1,ord-1);
-          // }
-          // real press = press_hy(k);
-          // // Fix dry density to keep full density the same
-          // dens_dry = press / temp - dens_v*Rv;
-          // qv       = dens_v / dens_dry;
-          // {
-          //   if (qvs*relhum > 0.014) { relhum *= 0.014/(qvs*relhum); }
-          //   real T = temp - 273;
-          //   real constexpr a = 17.27;
-          //   real constexpr b = 237.7;
-          //   tdew_hy(k) = b * ( a*T / (b + T) + log(relhum) ) / ( a - ( a*T / (b+T) + log(relhum) ) );
-          // }
-          // z      (k) = zloc;
-          // dens_hy(k) = dens;
-          // temp_hy(k) = temp;
-
-      // yakl::SimpleNetCDF nc;
-      // nc.create("skew.nc");
-      // nc.write(z         ,"z"          ,{"z"});
-      // nc.write(press_hy  ,"pressure"   ,{"z"});
-      // nc.write(temp_hy   ,"temperature",{"z"});
-      // nc.write(tdew_hy   ,"dew_point"  ,{"z"});
-      // nc.write(dens_hy   ,"density"    ,{"z"});
-      // nc.close();
-      // exit(0);
 
     } // if (data_spec == DATA_SPEC_SUPERCELL)
   }

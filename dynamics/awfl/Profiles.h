@@ -68,9 +68,28 @@ namespace profiles {
     }
   }
 
+  
+  YAKL_INLINE real init_supercell_relhum_d_dz(real z, real z_0, real z_trop) {
+    if (z <= z_trop) {
+      return -0.9375_fp*pow(z/z_trop, 0.25_fp)/z_trop;
+    } else {
+      return 0;
+    }
+  }
+
 
   YAKL_INLINE real init_supercell_sat_mix_dry( real press , real T ) {
     return 380/(press) * exp( 17.27_fp * (T-273)/(T-36) );
+  }
+
+
+  YAKL_INLINE real init_supercell_sat_mix_dry_d_dT( real p , real T ) {
+    return 2205033.6*exp(17.27*T/(T - 36) - 6424.44/(T - 36))/(p*(T*T - 72*T + 1296));
+  }
+
+
+  YAKL_INLINE real init_supercell_sat_mix_dry_d_dp( real p , real T ) {
+    return -380*exp(17.27*T/(T - 36) - 6424.44/(T - 36))/(p*p);
   }
 
 
