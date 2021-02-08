@@ -2363,13 +2363,19 @@ public:
     parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = state(idR,hs+k,hs+j,hs+i); });
     nc.write1(data.createHostCopy(),"dens_pert",{"z","y","x"},ulIndex,"t");
     // u
-    parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = state(idU,hs+k,hs+j,hs+i); });
+    parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+      data(k,j,i) = state(idU,hs+k,hs+j,hs+i) / ( state(idR,hs+k,hs+j,hs+i) + hyDensCells(k) );
+    });
     nc.write1(data.createHostCopy(),"u",{"z","y","x"},ulIndex,"t");
     // v
-    parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = state(idV,hs+k,hs+j,hs+i); });
+    parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+      data(k,j,i) = state(idV,hs+k,hs+j,hs+i) / ( state(idR,hs+k,hs+j,hs+i) + hyDensCells(k) );
+    });
     nc.write1(data.createHostCopy(),"v",{"z","y","x"},ulIndex,"t");
     // w
-    parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = state(idW,hs+k,hs+j,hs+i); });
+    parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+      data(k,j,i) = state(idW,hs+k,hs+j,hs+i) / ( state(idR,hs+k,hs+j,hs+i) + hyDensCells(k) );
+    });
     nc.write1(data.createHostCopy(),"w",{"z","y","x"},ulIndex,"t");
     // theta'
     parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {

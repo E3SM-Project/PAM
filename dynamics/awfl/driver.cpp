@@ -42,8 +42,6 @@ int main(int argc, char** argv) {
     real etime = 0;
 
     dycore.output( dm , micro , etime );
-
-    exit(0);
     
     while (etime < simTime) {
       real dt = dycore.compute_time_step( 0.8 , dm , micro );
