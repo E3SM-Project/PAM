@@ -138,21 +138,21 @@ for i in range(1,nlev+1) :
     zint[i] = zint[i-1] + dz[i-1]
 
 
-plt.plot(zmid,dz)
-plt.xlabel("Height (m)")
-plt.ylabel("grid spacing (m)")
-plt.savefig("grid_spacing_vs_height.png")
-if showplots :
-  plt.show()
-
-plt.close()
-
-skip = max( 1 , int( nlev / 50 ) )
-plt.hlines(zint[::skip],0,1,linewidth=0.2)
-plt.ylabel("Height (m)")
-plt.savefig("grid_spacing_visual.png",dpi=600)
-if showplots :
-  plt.show()
+# plt.plot(zmid,dz)
+# plt.xlabel("Height (m)")
+# plt.ylabel("grid spacing (m)")
+# plt.savefig("grid_spacing_vs_height.png")
+# if showplots :
+#   plt.show()
+# 
+# plt.close()
+# 
+# skip = max( 1 , int( nlev / 50 ) )
+# plt.hlines(zint[::skip],0,1,linewidth=0.2)
+# plt.ylabel("Height (m)")
+# plt.savefig("grid_spacing_visual.png",dpi=600)
+# if showplots :
+#   plt.show()
 
 print("\n**************** grid spacing ****************")
 print(dz)
