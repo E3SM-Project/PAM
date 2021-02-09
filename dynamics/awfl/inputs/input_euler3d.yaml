@@ -3,8 +3,8 @@
 simTime  : 7200.
 
 # Number of cells to use
-nx       : 360
-ny       : 200
+nx       : 45
+ny       : 25
 
 # Vertical height cooridnates file
 vcoords  : vcoords_equal_40_20km.nc
@@ -28,7 +28,7 @@ initData : supercell
 out_file  : test.nc
 
 # Output frequency in seconds
-outFreq  : 10.
+outFreq  : 100.
 
 # Balance initial density to avoid initial acoustics
 balance_initial_density: false

@@ -1097,6 +1097,8 @@ public:
               real yloc = (j+0.5_fp)*dy                    + gllPts_ngll(jj)*dy;
               real zloc = vert_interface(k) + 0.5_fp*dz(k) + gllPts_ngll(kk)*dz(k);
 
+              if (sim2d) yloc = ylen/2;
+
               real dens = hyDensGLL(k,kk);
 
               real uvel;

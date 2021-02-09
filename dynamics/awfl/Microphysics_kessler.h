@@ -80,16 +80,16 @@ public:
     auto rho_c     = dm.get_lev_col<real>("cloud_liquid");
     auto rho_r     = dm.get_lev_col<real>("precip_liquid");
 
-    int nz = rho.dimension[0];
-    int nx = rho.dimension[1];
+    int nz   = rho.dimension[0];
+    int ncol = rho.dimension[1];
 
     // These are inputs to kessler(...)
-    real2d rho_dry  ("rho_dry"  ,nz,nx);
-    real2d qv       ("qv"       ,nz,nx);
-    real2d qc       ("qc"       ,nz,nx);
-    real2d qr       ("qr"       ,nz,nx);
-    real2d exner_dry("exner_dry",nz,nx);
-    real2d theta_dry("theta_dry",nz,nx);
+    real2d rho_dry  ("rho_dry"  ,nz,ncol);
+    real2d qv       ("qv"       ,nz,ncol);
+    real2d qc       ("qc"       ,nz,ncol);
+    real2d qr       ("qr"       ,nz,ncol);
+    real2d exner_dry("exner_dry",nz,ncol);
+    real2d theta_dry("theta_dry",nz,ncol);
     real1d zmid = dm.get<real,1>("vertical_midpoint_height");
 
     // Force constants into local scope
@@ -101,7 +101,7 @@ public:
     real p0      = this->constants.p0;
 
     // Save initial state, and compute inputs for kessler(...)
-    parallel_for( Bounds<2>(nz,nx) , YAKL_LAMBDA (int k, int i) {
+    parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
       if (rho_v(k,i) < 0) rho_v(k,i) = 0;
       if (rho_c(k,i) < 0) rho_c(k,i) = 0;
       if (rho_r(k,i) < 0) rho_r(k,i) = 0;
@@ -121,7 +121,7 @@ public:
 
     kessler(theta_dry, qv, qc, qr, rho_dry, precl, zmid, exner_dry, dt, R_d, cp_d, p0);
 
-    parallel_for( Bounds<2>(nz,nx) , YAKL_LAMBDA (int k, int i) {
+    parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
       rho_v(k,i) = qv(k,i)*rho_dry(k,i);
       rho_c(k,i) = qc(k,i)*rho_dry(k,i);
       rho_r(k,i) = qr(k,i)*rho_dry(k,i);
@@ -208,7 +208,7 @@ public:
                real1d &precl, real1d const &z, real2d const &pk, real dt,
                real Rd, real cp, real p0) {
     int nz = theta.dimension[0];
-    int nx = theta.dimension[1];
+    int ncol = theta.dimension[1];
 
     // Maximum time step size in accordance with CFL condition
     if (dt <= 0) { endrun("kessler.f90 called with nonpositive dt"); }
@@ -217,13 +217,13 @@ public:
     real rhoqr  = 1000._fp;  //  density of liquid water (kg/m^3)
     real lv     = 2.5e6_fp;  //  latent heat of vaporization (J/kg)
 
-    real2d r    ("r"    ,nz  ,nx);
-    real2d rhalf("rhalf",nz  ,nx);
-    real2d pc   ("pc"   ,nz  ,nx);
-    real2d velqr("velqr",nz  ,nx);
-    real2d dt2d ("dt2d" ,nz-1,nx);
+    real2d r    ("r"    ,nz  ,ncol);
+    real2d rhalf("rhalf",nz  ,ncol);
+    real2d pc   ("pc"   ,nz  ,ncol);
+    real2d velqr("velqr",nz  ,ncol);
+    real2d dt2d ("dt2d" ,nz-1,ncol);
 
-    parallel_for( Bounds<2>(nz,nx) , YAKL_LAMBDA (int k, int i) {
+    parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
       r    (k,i) = 0.001_fp * rho(k,i);
       rhalf(k,i) = sqrt( rho(0,i) / rho(k,i) );
       pc   (k,i) = 3.8_fp / ( pow( pk(k,i) , cp/Rd ) * psl );
@@ -250,13 +250,13 @@ public:
     int rainsplit = ceil(dt / dt_max);
     real dt0 = dt / static_cast<real>(rainsplit);
 
-    real2d sed("sed",nz,nx);
+    real2d sed("sed",nz,ncol);
 
     // Subcycle through rain process
     for (int nt=0; nt < rainsplit; nt++) {
 
       // Sedimentation term using upstream differencing
-      parallel_for( Bounds<2>(nz,nx) , YAKL_LAMBDA (int k, int i) {
+      parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
         if (k == 0) {
           // Precipitation rate (m/s)
           precl(i) = precl(i) + rho(0,i) * qr(0,i) * velqr(0,i) / rhoqr;
@@ -270,7 +270,7 @@ public:
       });
 
       // Adjustment terms
-      parallel_for( Bounds<2>(nz,nx) , YAKL_LAMBDA (int k, int i) {
+      parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
         // Autoconversion and accretion rates following KW eq. 2.13a,b
         real qrprod = qc(k,i) - ( qc(k,i)-dt0*max( 0.001_fp * (qc(k,i)-0.001_fp) , 0._fp ) ) /
                                 ( 1 + dt0 * 2.2_fp * pow( qr(k,i) , 0.875_fp ) );
