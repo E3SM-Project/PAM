@@ -1115,7 +1115,7 @@ public:
               real dens_vap   = hyDensVapGLL  (k,kk);
               real dens_theta = hyDensThetaGLL(k,kk);
 
-              real x0 = xlen / 5;
+              real x0 = xlen / 2;
               real y0 = ylen / 2;
               real z0 = 1500;
               real radx = 10000;
