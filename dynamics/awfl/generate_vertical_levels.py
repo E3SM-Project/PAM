@@ -147,7 +147,7 @@ if showplots :
 
 plt.close()
 
-skip = int( nlev / 50 )
+skip = max( 1 , int( nlev / 50 ) )
 plt.hlines(zint[::skip],0,1,linewidth=0.2)
 plt.ylabel("Height (m)")
 plt.savefig("grid_spacing_visual.png",dpi=600)
