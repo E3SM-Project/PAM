@@ -948,103 +948,11 @@ public:
       real constexpr p_0    = 100000;
 
       real3d quad_temp     ("quad_temp"     ,nz,ngll-1,ord);
-      real2d press_dry_gll ("press_dry_gll" ,nz,ngll);
       real2d hyDensVapGLL  ("hyDensVapGLL"  ,nz,ngll);
       real1d hyDensVapCells("hyDensVapCells",nz);
       real1d z             ("z"             ,nz);
       real1d temp_hy       ("temp_hy"       ,nz);
       real1d tdew_hy       ("tdew_hy"       ,nz);
-
-      #if 0
-
-      // Compute full density at ord GLL points for the space between each cell
-      for (int k=0; k < nz; k++) {              // k:   Loop over cells
-        for (int kk=0; kk < ngll-1; kk++) {     // kk:  Loop over spaces between ngll GLL points within cells
-          for (int kkk=0; kkk < ord; kkk++) {   // kkk: Loop over ord GLL points between ngll GLL points
-            // Middle of this cell
-            real cellmid   = vert_interface(k) + 0.5_fp*dz(k);
-            // Bottom, top, and middle of the space between these two ngll GLL points
-            real ngll_b    = cellmid + gllPts_ngll(kk  )*dz(k);
-            real ngll_t    = cellmid + gllPts_ngll(kk+1)*dz(k);
-            real ngll_m    = 0.5_fp * (ngll_b + ngll_t);
-            // Compute grid spacing between these ngll GLL points
-            real ngll_dz   = dz(k) * ( gllPts_ngll(kk+1) - gllPts_ngll(kk) );
-            // Compute the locate of this ord GLL point within the ngll GLL points
-            real zloc      = ngll_m + ngll_dz * gllPts_ord(kkk);
-            // Compute full density at this location
-            real temp      = profiles::init_supercell_temperature (zloc, z_0, z_trop, z_top, T_0, T_trop, T_top);
-            real press_dry = profiles::init_supercell_pressure_dry(zloc, z_0, z_trop, z_top, T_0, T_trop, T_top, p_0, Rd);
-            real dens_dry  = press_dry / (Rd*temp);
-            real qvs       = profiles::init_supercell_sat_mix_dry(press_dry, temp);
-            real relhum    = profiles::init_supercell_relhum(zloc, z_0, z_trop);
-            if (relhum * qvs > 0.014_fp) relhum = 0.014_fp / qvs;
-            real qv        = min( 0.014_fp , qvs*relhum );
-            real d_qv_dz   = 0;
-            if (qv > 0.014_fp) {
-              real d_qvs_dT = profiles::init_supercell_sat_mix_dry_d_dT( press_dry , temp );
-              real d_qvs_dp = profiles::init_supercell_sat_mix_dry_d_dp( press_dry , temp );
-              real d_hum_dz = profiles::init_supercell_relhum_d_dz(zloc, z_0, z_trop);
-              real dT_dz;
-              if (zloc < z_trop) {
-                dT_dz = (T_trop - T_0) / (z_trop - z_0);
-              } else if (zloc == z_trop) {
-                dT_dz  = (T_trop - T_0   ) / (z_trop - z_0   );
-                dT_dz += (T_top  - T_trop) / (z_top  - z_trop);
-                dT_dz *= 0.5_fp;
-              } else {
-                dT_dz = (T_top - T_trop) / (z_top - z_trop);
-              }
-              d_qv_dz = relhum * d_qvs_dT * dT_dz - relhum * GRAV * d_qvs_dp + qvs * d_hum_dz;
-            }
-            quad_temp(k,kk,kkk) = -( Rv/Rd*d_qv_dz + (1+qv)*GRAV/(Rd*temp) ) / (1 + Rv/Rd*qv);
-          }
-        }
-      }
-
-      // Now use quadrature to compute the pressure at each interface level using hydrostasis
-      // This cannot be done in parallel due to loop-carried dependencies
-      press_dry_gll(0,0) = p_0;
-      for (int k=0; k < nz; k++) {
-        for (int kk=0; kk < ngll-1; kk++) {
-          real tot = 0;
-          for (int kkk=0; kkk < ord; kkk++) {
-            tot += quad_temp(k,kk,kkk) * gllWts_ord(kkk);
-          }
-          tot *= dz(k) * ( gllPts_ngll(kk+1) - gllPts_ngll(kk) );
-          press_dry_gll(k,kk+1) = press_dry_gll(k,kk) * exp( tot );
-          if (kk == ngll-2 && k < nz-1) {
-            press_dry_gll(k+1,0) = press_dry_gll(k,ngll-1);
-          }
-        }
-      }
-
-      for (int k=0; k < nz; k++) {
-        for (int kk=0; kk < ngll; kk++) {
-          real zloc = vert_interface(k) + 0.5_fp*dz(k) + gllPts_ngll(kk)*dz(k);
-          real temp       = profiles::init_supercell_temperature (zloc, z_0, z_trop, z_top, T_0, T_trop, T_top);
-          real press_dry  = press_dry_gll(k,kk);
-          real dens_dry   = press_dry / (Rd*temp);
-          real press_tmp  = profiles::init_supercell_pressure_dry(zloc, z_0, z_trop, z_top, T_0, T_trop, T_top, p_0, Rd);
-          real qvs        = profiles::init_supercell_sat_mix_dry(press_tmp, temp);
-          real relhum     = profiles::init_supercell_relhum(zloc, z_0, z_trop);
-          if (relhum * qvs > 0.014_fp) relhum = 0.014_fp / qvs;
-          real qv         = min( 0.014_fp , qvs*relhum );
-          real press_vap  = Rv / Rd * qv * press_dry;
-          real dens_vap   = press_vap / (Rv*temp);
-          real press      = press_dry + press_vap;
-          real dens       = dens_dry + dens_vap;
-          real dens_theta = pow( press / C0 , 1._fp / gamma );
-          real theta      = dens_theta / dens;
-          hyPressureGLL (k,kk) = press;
-          hyDensGLL     (k,kk) = dens;
-          hyDensThetaGLL(k,kk) = dens_theta;
-          hyThetaGLL    (k,kk) = theta;
-          hyDensVapGLL  (k,kk) = dens_vap;
-        }
-      }
-
-      #else
-
 
       // Compute full density at ord GLL points for the space between each cell
       for (int k=0; k < nz; k++) {              // k:   Loop over cells
@@ -1088,7 +996,6 @@ public:
         }
       }
 
-
       for (int k=0; k < nz; k++) {
         for (int kk=0; kk < ngll; kk++) {
           real zloc = vert_interface(k) + 0.5_fp*dz(k) + gllPts_ngll(kk)*dz(k);
@@ -1112,10 +1019,6 @@ public:
           hyDensVapGLL  (k,kk) = dens_vap;
         }
       }
-
-
-      #endif
-
 
       for (int k=0; k < nz; k++) {
         real press_tot      = 0;
@@ -1212,6 +1115,27 @@ public:
                   real theta      = hyThetaGLL    (k,kk);
                   real dens_vap   = hyDensVapGLL  (k,kk);
                   real dens_theta = hyDensThetaGLL(k,kk);
+
+                  real x0 = xlen / 5;
+                  real y0 = ylen / 2;
+                  real z0 = 1500;
+                  real radx = 10000;
+                  real rady = 10000;
+                  real radz = 1500;
+                  real amp  = 3;
+
+                  real xn = (xloc - x0) / radx;
+                  real yn = (yloc - y0) / rady;
+                  real zn = (zloc - z0) / radz;
+
+                  real rad = sqrt( xn*xn + yn*yn + zn*zn );
+
+                  real theta_pert = 0;
+                  if (rad < 1) {
+                    theta_pert = amp * pow( cos(M_PI*rad/2) , 2._fp );
+                  }
+
+                  dens_theta += dens * theta_pert;
 
                   real factor = gllWts_ngll(ii) * gllWts_ngll(jj) * gllWts_ngll(kk);
                   dm_rho      (k,j,i) += dens        * factor;

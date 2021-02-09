@@ -1,17 +1,17 @@
 ---
 # Simulation time in seconds
-simTime  : 2000.
+simTime  : 7200.
 
 # Number of cells to use
-nx       : 100
+nx       : 180
 ny       : 100
 
 # Vertical height cooridnates file
 vcoords  : vcoords_equal_100_20km.nc
 
 # Lengths of the dimensions in meters
-xlen     : 20000
-ylen     : 20000
+xlen     : 180000
+ylen     : 100000
 
 bc_x   : periodic
 bc_y   : periodic
