@@ -955,6 +955,8 @@ public:
       real1d temp_hy       ("temp_hy"       ,nz);
       real1d tdew_hy       ("tdew_hy"       ,nz);
 
+      #if 0
+
       // Compute full density at ord GLL points for the space between each cell
       for (int k=0; k < nz; k++) {              // k:   Loop over cells
         for (int kk=0; kk < ngll-1; kk++) {     // kk:  Loop over spaces between ngll GLL points within cells
@@ -1040,6 +1042,80 @@ public:
           hyDensVapGLL  (k,kk) = dens_vap;
         }
       }
+
+      #else
+
+
+      // Compute full density at ord GLL points for the space between each cell
+      for (int k=0; k < nz; k++) {              // k:   Loop over cells
+        for (int kk=0; kk < ngll-1; kk++) {     // kk:  Loop over spaces between ngll GLL points within cells
+          for (int kkk=0; kkk < ord; kkk++) {   // kkk: Loop over ord GLL points between ngll GLL points
+            // Middle of this cell
+            real cellmid   = vert_interface(k) + 0.5_fp*dz(k);
+            // Bottom, top, and middle of the space between these two ngll GLL points
+            real ngll_b    = cellmid + gllPts_ngll(kk  )*dz(k);
+            real ngll_t    = cellmid + gllPts_ngll(kk+1)*dz(k);
+            real ngll_m    = 0.5_fp * (ngll_b + ngll_t);
+            // Compute grid spacing between these ngll GLL points
+            real ngll_dz   = dz(k) * ( gllPts_ngll(kk+1) - gllPts_ngll(kk) );
+            // Compute the locate of this ord GLL point within the ngll GLL points
+            real zloc      = ngll_m + ngll_dz * gllPts_ord(kkk);
+            // Compute full density at this location
+            real temp      = profiles::init_supercell_temperature (zloc, z_0, z_trop, z_top, T_0, T_trop, T_top);
+            real press_dry = profiles::init_supercell_pressure_dry(zloc, z_0, z_trop, z_top, T_0, T_trop, T_top, p_0, Rd);
+            real dens_dry  = press_dry / (Rd*temp);
+            real qvs       = profiles::init_supercell_sat_mix_dry(press_dry, temp);
+            real relhum    = profiles::init_supercell_relhum(zloc, z_0, z_trop);
+            if (relhum * qvs > 0.014_fp) relhum = 0.014_fp / qvs;
+            real qv        = min( 0.014_fp , qvs*relhum );
+            quad_temp(k,kk,kkk) = -(1+qv)*GRAV/(Rd+qv*Rv)/temp;
+          }
+        }
+      }
+
+      hyPressureGLL(0,0) = p_0;
+      for (int k=0; k < nz; k++) {
+        for (int kk=0; kk < ngll-1; kk++) {
+          real tot = 0;
+          for (int kkk=0; kkk < ord; kkk++) {
+            tot += quad_temp(k,kk,kkk) * gllWts_ord(kkk);
+          }
+          tot *= dz(k) * ( gllPts_ngll(kk+1) - gllPts_ngll(kk) );
+          hyPressureGLL(k,kk+1) = hyPressureGLL(k,kk) * exp( tot );
+          if (kk == ngll-2 && k < nz-1) {
+            hyPressureGLL(k+1,0) = hyPressureGLL(k,ngll-1);
+          }
+        }
+      }
+
+
+      for (int k=0; k < nz; k++) {
+        for (int kk=0; kk < ngll; kk++) {
+          real zloc = vert_interface(k) + 0.5_fp*dz(k) + gllPts_ngll(kk)*dz(k);
+          real temp       = profiles::init_supercell_temperature (zloc, z_0, z_trop, z_top, T_0, T_trop, T_top);
+          real press_tmp  = profiles::init_supercell_pressure_dry(zloc, z_0, z_trop, z_top, T_0, T_trop, T_top, p_0, Rd);
+          real qvs        = profiles::init_supercell_sat_mix_dry(press_tmp, temp);
+          real relhum     = profiles::init_supercell_relhum(zloc, z_0, z_trop);
+          if (relhum * qvs > 0.014_fp) relhum = 0.014_fp / qvs;
+          real qv         = min( 0.014_fp , qvs*relhum );
+          real press      = hyPressureGLL(k,kk);
+          real dens_dry   = press / (Rd+qv*Rv) / temp;
+          real dens_vap   = qv * dens_dry;
+          real press_vap  = dens_vap * Rv * temp;
+          real press_dry  = dens_dry * Rd * temp;
+          real dens       = dens_dry + dens_vap;
+          real dens_theta = pow( press / C0 , 1._fp / gamma );
+          real theta      = dens_theta / dens;
+          hyDensGLL     (k,kk) = dens;
+          hyDensThetaGLL(k,kk) = dens_theta;
+          hyThetaGLL    (k,kk) = theta;
+          hyDensVapGLL  (k,kk) = dens_vap;
+        }
+      }
+
+
+      #endif
+
 
       for (int k=0; k < nz; k++) {
         real press_tot      = 0;
