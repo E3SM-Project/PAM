@@ -9,11 +9,11 @@ using yakl::Array;
 
 
 // This class exists to enable loading all requested tracers from the DataManager in a single kernel.
-// We have to ensure that each individual real3d tracer gets copied to the device.
+// We have to ensure that each individual real4d tracer gets copied to the device.
 template <int MAX_TRACERS>
 class MultipleTracers {
 public:
-  SArray<real3d,1,MAX_TRACERS> tracers;
+  SArray<real4d,1,MAX_TRACERS> tracers;
   int num_tracers;
 
   MultipleTracers() { num_tracers = 0; }
@@ -48,13 +48,13 @@ public:
     return *this;
   }
 
-  void add_tracer( real3d &tracer ) {
+  void add_tracer( real4d &tracer ) {
     this->tracers(num_tracers) = tracer;
     num_tracers++;
   }
 
-  YAKL_INLINE real &operator() (int tr, int k, int j, int i) const {
-    return this->tracers(tr)(k,j,i);
+  YAKL_INLINE real &operator() (int tr, int k, int j, int i, int iens) const {
+    return this->tracers(tr)(k,j,i,iens);
   }
 };
 

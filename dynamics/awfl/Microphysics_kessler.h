@@ -66,9 +66,15 @@ public:
 
     tracer_index_vapor = tracer_IDs(ID_V);
 
+    // Read the YAML input file
+    YAML::Node config = YAML::LoadFile(inFile);
+
+    // Get the number of ensembles
+    int nens = config["nens"].as<int>();
+
     int ny = dm.get_dimension_size("y");
     int nx = dm.get_dimension_size("x");
-    dm.register_and_allocate<real>( "precl" , "precipitation rate" , {ny,nx} , {"y","x"} );
+    dm.register_and_allocate<real>( "precl" , "precipitation rate" , {ny,nx,nens} , {"y","x","nens"} );
   }
 
 
@@ -83,6 +89,10 @@ public:
     int nz   = rho.dimension[0];
     int ncol = rho.dimension[1];
 
+    int ny   = dm.get_dimension_size("y"   );
+    int nx   = dm.get_dimension_size("x"   );
+    int nens = dm.get_dimension_size("nens");
+
     // These are inputs to kessler(...)
     real2d rho_dry  ("rho_dry"  ,nz,ncol);
     real2d qv       ("qv"       ,nz,ncol);
@@ -90,7 +100,12 @@ public:
     real2d qr       ("qr"       ,nz,ncol);
     real2d exner_dry("exner_dry",nz,ncol);
     real2d theta_dry("theta_dry",nz,ncol);
-    real1d zmid = dm.get<real,1>("vertical_midpoint_height");
+    real2d zmid_in = dm.get<real,2>("vertical_midpoint_height");
+
+    real2d zmid("zmid",nz,ny*nx*nens);
+    parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      zmid(k,j*nx*nens + i*nens + iens) = zmid_in(k,iens);
+    });
 
     // Force constants into local scope
     real C0_d    = this->constants.C0_d;
@@ -205,7 +220,7 @@ public:
   ///////////////////////////////////////////////////////////////////////////////
 
   void kessler(real2d &theta, real2d &qv, real2d &qc, real2d &qr, real2d const &rho,
-               real1d &precl, real1d const &z, real2d const &pk, real dt,
+               real1d &precl, real2d const &z, real2d const &pk, real dt,
                real Rd, real cp, real p0) {
     int nz = theta.dimension[0];
     int ncol = theta.dimension[1];
@@ -232,7 +247,7 @@ public:
       // Compute maximum stable time step for each cell
       if (k < nz-1) {
         if (velqr(k,i) > 1.e-10_fp) {
-          dt2d(k,i) = 0.8_fp * (z(k+1)-z(k))/velqr(k,i);
+          dt2d(k,i) = 0.8_fp * (z(k+1,i)-z(k,i))/velqr(k,i);
         } else {
           dt2d(k,i) = dt;
         }
@@ -262,10 +277,10 @@ public:
           precl(i) = precl(i) + rho(0,i) * qr(0,i) * velqr(0,i) / rhoqr;
         }
         if (k == nz-1) {
-          sed(nz-1,i) = -dt0*qr(nz-1,i)*velqr(nz-1,i)/(0.5_fp * (z(nz-1)-z(nz-2)));
+          sed(nz-1,i) = -dt0*qr(nz-1,i)*velqr(nz-1,i)/(0.5_fp * (z(nz-1,i)-z(nz-2,i)));
         } else {
           sed(k,i) = dt0 * ( r(k+1,i)*qr(k+1,i)*velqr(k+1,i) - 
-                             r(k  ,i)*qr(k  ,i)*velqr(k  ,i) ) / ( r(k,i)*(z(k+1)-z(k)) );
+                             r(k  ,i)*qr(k  ,i)*velqr(k  ,i) ) / ( r(k,i)*(z(k+1,i)-z(k,i)) );
         }
       });
 
@@ -319,9 +334,15 @@ public:
 
 
 
-  void output(DataManager &dm, yakl::SimpleNetCDF &nc, int ulIndex) const {
-    auto precl = dm.get<real,2>("precl");
-    nc.write1(precl.createHostCopy(),"precl",{"y","x"},ulIndex,"t");
+  void output(DataManager &dm, yakl::SimpleNetCDF &nc, int ulIndex, int iens) const {
+    auto precl = dm.get<real,3>("precl");
+    int nx = dm.get_dimension_size("x");
+    int ny = dm.get_dimension_size("y");
+    real2d data("data",ny,nx);
+    parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
+      data(j,i) = precl(j,i,iens);
+    });
+    nc.write1(data.createHostCopy(),"precl",{"y","x"},ulIndex,"t");
   }
 
 

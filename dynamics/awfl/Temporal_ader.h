@@ -12,8 +12,10 @@ template <class Spatial> class Temporal_operator {
 public:
   static_assert(nTimeDerivs <= ngll , "ERROR: nTimeDerivs must be <= ngll.");
 
-  real4d stateTend;
-  real4d tracerTend;
+  int nens;
+
+  real5d stateTend;
+  real5d tracerTend;
 
   Spatial space_op;
   
@@ -21,6 +23,10 @@ public:
     space_op.init(inFile, num_tracers, dm);
     stateTend  = space_op.createStateTendArr ();
     tracerTend = space_op.createTracerTendArr();
+
+    YAML::Node config = YAML::LoadFile(inFile);
+
+    this->nens = config["nens"].as<int>();
   }
 
 
@@ -58,8 +64,8 @@ public:
     YAKL_SCOPE( stateTend  , this->stateTend  );
     YAKL_SCOPE( tracerTend , this->tracerTend );
 
-    real4d state   = space_op.createStateArr();
-    real4d tracers = space_op.createTracerArr();
+    real5d state   = space_op.createStateArr();
+    real5d tracers = space_op.createTracerArr();
     space_op.read_state_and_tracers( dm , state , tracers );
 
     // Loop over different items in the spatial splitting
@@ -76,12 +82,12 @@ public:
       int num_tracers = space_op.num_tracers;
       int hs          = space_op.hs;
 
-      parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+      parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
         for (int l=0; l < num_state; l++) {
-          state(l,hs+k,hs+j,hs+i) += dtloc * stateTend(l,k,j,i);
+          state  (l,hs+k,hs+j,hs+i,iens) += dtloc * stateTend (l,k,j,i,iens);
         }
         for (int l=0; l < num_tracers; l++) {
-          tracers(l,hs+k,hs+j,hs+i) += dtloc * tracerTend(l,k,j,i);
+          tracers(l,hs+k,hs+j,hs+i,iens) += dtloc * tracerTend(l,k,j,i,iens);
         }
       });
     }
