@@ -232,7 +232,7 @@ public:
     auto rho_v     = dm.get_collapsed<real>("water_vapor");
     auto rho_c     = dm.get_collapsed<real>("cloud_liquid");
 
-    auto &constants = this->constants;
+    YAKL_SCOE(constants , this->constants);
 
     int num_cells = rho.totElems();
     parallel_for( num_cells , YAKL_LAMBDA (int i) {

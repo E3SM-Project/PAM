@@ -162,8 +162,8 @@ public:
 
   // Initialize a tracer
   int add_tracer(DataManager &dm , std::string name , std::string desc , bool pos_def , bool adds_mass) {
-    auto &tracer_pos       = this->tracer_pos;
-    auto &tracer_adds_mass = this->tracer_adds_mass;
+    YAKL_SCOPE( tracer_pos       , this->tracer_pos       );
+    YAKL_SCOPE( tracer_adds_mass , this->tracer_adds_mass );
 
     int tr = tracer_name.size();  // Index to insert this tracer at
     if (tr == num_tracers) {
@@ -188,22 +188,22 @@ public:
   // Caller creates a lambda (init_mass) to initialize this tracer value using location and dry state information
   template <class MICRO>
   void init_tracers( DataManager &dm , MICRO const &micro) {
-    auto &dx             = this->dx            ;
-    auto &dy             = this->dy            ;
-    auto &dz             = this->dz            ;
-    auto &gllPts_ord     = this->gllPts_ord    ;
-    auto &gllWts_ord     = this->gllWts_ord    ;
-    auto &sim2d          = this->sim2d         ;
-    auto &xlen           = this->xlen          ;
-    auto &ylen           = this->ylen          ;
-    auto &zlen           = this->zlen          ;
-    auto &Rd             = this->Rd            ;
-    auto &cp             = this->cp            ;
-    auto &gamma          = this->gamma         ;
-    auto &p0             = this->p0            ;
-    auto &C0             = this->C0            ;
-    auto &Rv             = this->Rv            ;
-    auto &vert_interface = this->vert_interface;
+    YAKL_SCOPE( dx             , this->dx             );
+    YAKL_SCOPE( dy             , this->dy             );
+    YAKL_SCOPE( dz             , this->dz             );
+    YAKL_SCOPE( gllPts_ord     , this->gllPts_ord     );
+    YAKL_SCOPE( gllWts_ord     , this->gllWts_ord     );
+    YAKL_SCOPE( sim2d          , this->sim2d          );
+    YAKL_SCOPE( xlen           , this->xlen           );
+    YAKL_SCOPE( ylen           , this->ylen           );
+    YAKL_SCOPE( zlen           , this->zlen           );
+    YAKL_SCOPE( Rd             , this->Rd             );
+    YAKL_SCOPE( cp             , this->cp             );
+    YAKL_SCOPE( gamma          , this->gamma          );
+    YAKL_SCOPE( p0             , this->p0             );
+    YAKL_SCOPE( C0             , this->C0             );
+    YAKL_SCOPE( Rv             , this->Rv             );
+    YAKL_SCOPE( vert_interface , this->vert_interface );
 
     tracer_id_uniform = add_tracer(dm , "uniform"  , "uniform"  , false     , false);
 
@@ -260,7 +260,7 @@ public:
   // Transform state and tracer data in DataManager into a state and tracers array more conveniently used by the dycore
   // This has to be copied because we need a halo, and the rest of the model doesn't need to know about the halo
   void read_state_and_tracers( DataManager &dm , real4d &state , real4d &tracers) const {
-    auto &num_tracers = this->num_tracers;
+    YAKL_SCOPE( num_tracers , this->num_tracers );
 
     // Get data arrays from the DataManager (this just wraps an existing allocated pointer in an Array)
     real3d rho          = dm.get<real,3>( "density" );
@@ -296,9 +296,9 @@ public:
   // Transform state and tracer data from state and tracers arrays with halos back to the DataManager
   // so it can be used by other parts of the model
   void write_state_and_tracers( DataManager &dm , real4d &state , real4d &tracers) const {
-    auto &num_tracers      = this->num_tracers     ;
-    auto &hyDensCells      = this->hyDensCells     ;
-    auto &hyDensThetaCells = this->hyDensThetaCells;
+    YAKL_SCOPE( num_tracers      , this->num_tracers      );
+    YAKL_SCOPE( hyDensCells      , this->hyDensCells      );
+    YAKL_SCOPE( hyDensThetaCells , this->hyDensThetaCells );
 
     // Get data arrays from the DataManager (this just wraps an existing allocated pointer in an Array)
     real3d rho       = dm.get<real,3>( "density" );
@@ -332,16 +332,16 @@ public:
   // Take an initially dry fluid state and adjust it to account for moist tracers
   template <class MICRO>
   void adjust_state_for_moisture(DataManager &dm , MICRO const &micro) const {
-    auto &hyDensCells             = this->hyDensCells;
-    auto &hyDensThetaCells        = this->hyDensThetaCells;
-    auto &num_tracers             = this->num_tracers;
-    auto &tracer_adds_mass        = this->tracer_adds_mass;
-    auto &balance_initial_density = this->balance_initial_density;
-    auto &tracer_id_uniform       = this->tracer_id_uniform;
-    auto &Rd                      = this->Rd;
-    auto &Rv                      = this->Rv;
-    auto &C0                      = this->C0;
-    auto &gamma                   = this->gamma;
+    YAKL_SCOPE( hyDensCells             , this->hyDensCells             );
+    YAKL_SCOPE( hyDensThetaCells        , this->hyDensThetaCells        );
+    YAKL_SCOPE( num_tracers             , this->num_tracers             );
+    YAKL_SCOPE( tracer_adds_mass        , this->tracer_adds_mass        );
+    YAKL_SCOPE( balance_initial_density , this->balance_initial_density );
+    YAKL_SCOPE( tracer_id_uniform       , this->tracer_id_uniform       );
+    YAKL_SCOPE( Rd                      , this->Rd                      );
+    YAKL_SCOPE( Rv                      , this->Rv                      );
+    YAKL_SCOPE( C0                      , this->C0                      );
+    YAKL_SCOPE( gamma                   , this->gamma                   );
 
     // Copy the DataManager data to state and tracer arrays for convenience
     real4d state   = createStateArr ();
@@ -451,13 +451,13 @@ public:
 
     // If we've already computed the time step, then don't compute it again
     if (dtInit <= 0) {
-      auto &dx                   = this->dx                  ;
-      auto &dy                   = this->dy                  ;
-      auto &dz                   = this->dz                  ;
-      auto &hyDensCells          = this->hyDensCells         ;
-      auto &hyDensThetaCells     = this->hyDensThetaCells    ;
-      auto &gamma                = this->gamma               ;
-      auto &C0                   = this->C0                  ;
+      YAKL_SCOPE( dx                   , this->dx                  );
+      YAKL_SCOPE( dy                   , this->dy                  );
+      YAKL_SCOPE( dz                   , this->dz                  );
+      YAKL_SCOPE( hyDensCells          , this->hyDensCells         );
+      YAKL_SCOPE( hyDensThetaCells     , this->hyDensThetaCells    );
+      YAKL_SCOPE( gamma                , this->gamma               );
+      YAKL_SCOPE( C0                   , this->C0                  );
 
       // Convert data from DataManager to state and tracers array for convenience
       real4d state   = createStateArr ();
@@ -545,13 +545,13 @@ public:
     vert_sten_to_gll     = real3d("vert_sten_to_gll"    ,nz,ord,ngll);
     vert_weno_recon      = real4d("vert_weno_recon"     ,nz,ord,ord,ord);
 
-    auto &vert_interface       = this->vert_interface      ;
-    auto &vert_interface_ghost = this->vert_interface_ghost;
-    auto &vert_locs_normalized = this->vert_locs_normalized;
-    auto &dz                   = this->dz                  ;
-    auto &dz_ghost             = this->dz_ghost            ;
-    auto &vert_sten_to_gll     = this->vert_sten_to_gll    ;
-    auto &vert_weno_recon      = this->vert_weno_recon     ;
+    YAKL_SCOPE( vert_interface       , this->vert_interface       );
+    YAKL_SCOPE( vert_interface_ghost , this->vert_interface_ghost );
+    YAKL_SCOPE( vert_locs_normalized , this->vert_locs_normalized );
+    YAKL_SCOPE( dz                   , this->dz                   );
+    YAKL_SCOPE( dz_ghost             , this->dz_ghost             );
+    YAKL_SCOPE( vert_sten_to_gll     , this->vert_sten_to_gll     );
+    YAKL_SCOPE( vert_weno_recon      , this->vert_weno_recon      );
 
     zint.deep_copy_to(vert_interface);
     
@@ -559,7 +559,7 @@ public:
       dz(k) = vert_interface(k+1) - vert_interface(k);
     });
 
-    auto &nz = this->nz;
+    YAKL_SCOPE( nz , this->nz );
     parallel_for( nz+2*hs , YAKL_LAMBDA (int k) {
       if (k >= hs && k < hs+nz) {
         dz_ghost(k) = dz(k-hs);
@@ -796,38 +796,38 @@ public:
     C0    = micro.constants.C0_d;
     Rv    = micro.constants.R_v;
 
-    auto nx                       = this->nx                     ;
-    auto ny                       = this->ny                     ;
-    auto nz                       = this->nz                     ;
-    auto dx                       = this->dx                     ;
-    auto dy                       = this->dy                     ;
-    auto dz                       = this->dz                     ;
-    auto dz_ghost                 = this->dz_ghost               ;
-    auto gllPts_ord               = this->gllPts_ord             ;
-    auto gllWts_ord               = this->gllWts_ord             ;
-    auto gllPts_ngll              = this->gllPts_ngll            ;
-    auto gllWts_ngll              = this->gllWts_ngll            ;
-    auto &hyDensCells             = this->hyDensCells            ;
-    auto &hyThetaCells            = this->hyThetaCells           ;
-    auto &hyPressureCells         = this->hyPressureCells        ;
-    auto &hyDensThetaCells        = this->hyDensThetaCells       ;
-    auto &hyDensGLL               = this->hyDensGLL              ;
-    auto &hyThetaGLL              = this->hyThetaGLL             ;
-    auto &hyPressureGLL           = this->hyPressureGLL          ;
-    auto &hyDensThetaGLL          = this->hyDensThetaGLL         ;
-    auto &data_spec               = this->data_spec              ;
-    auto &sim2d                   = this->sim2d                  ;
-    auto &xlen                    = this->xlen                   ;
-    auto &ylen                    = this->ylen                   ;
-    auto &Rd                      = this->Rd                     ;
-    auto &Rv                      = this->Rv                     ;
-    auto &cp                      = this->cp                     ;
-    auto &gamma                   = this->gamma                  ;
-    auto &p0                      = this->p0                     ;
-    auto &C0                      = this->C0                     ;
-    auto &balance_initial_density = this->balance_initial_density;
-    auto &vert_interface          = this->vert_interface         ;
-    auto &vert_interface_ghost    = this->vert_interface_ghost   ;
+    YAKL_SCOPE( nx                       , this->nx                      );
+    YAKL_SCOPE( ny                       , this->ny                      );
+    YAKL_SCOPE( nz                       , this->nz                      );
+    YAKL_SCOPE( dx                       , this->dx                      );
+    YAKL_SCOPE( dy                       , this->dy                      );
+    YAKL_SCOPE( dz                       , this->dz                      );
+    YAKL_SCOPE( dz_ghost                 , this->dz_ghost                );
+    YAKL_SCOPE( gllPts_ord               , this->gllPts_ord              );
+    YAKL_SCOPE( gllWts_ord               , this->gllWts_ord              );
+    YAKL_SCOPE( gllPts_ngll              , this->gllPts_ngll             );
+    YAKL_SCOPE( gllWts_ngll              , this->gllWts_ngll             );
+    YAKL_SCOPE( hyDensCells              , this->hyDensCells             );
+    YAKL_SCOPE( hyThetaCells             , this->hyThetaCells            );
+    YAKL_SCOPE( hyPressureCells          , this->hyPressureCells         );
+    YAKL_SCOPE( hyDensThetaCells         , this->hyDensThetaCells        );
+    YAKL_SCOPE( hyDensGLL                , this->hyDensGLL               );
+    YAKL_SCOPE( hyThetaGLL               , this->hyThetaGLL              );
+    YAKL_SCOPE( hyPressureGLL            , this->hyPressureGLL           );
+    YAKL_SCOPE( hyDensThetaGLL           , this->hyDensThetaGLL          );
+    YAKL_SCOPE( data_spec                , this->data_spec               );
+    YAKL_SCOPE( sim2d                    , this->sim2d                   );
+    YAKL_SCOPE( xlen                     , this->xlen                    );
+    YAKL_SCOPE( ylen                     , this->ylen                    );
+    YAKL_SCOPE( Rd                       , this->Rd                      );
+    YAKL_SCOPE( Rv                       , this->Rv                      );
+    YAKL_SCOPE( cp                       , this->cp                      );
+    YAKL_SCOPE( gamma                    , this->gamma                   );
+    YAKL_SCOPE( p0                       , this->p0                      );
+    YAKL_SCOPE( C0                       , this->C0                      );
+    YAKL_SCOPE( balance_initial_density  , this->balance_initial_density );
+    YAKL_SCOPE( vert_interface           , this->vert_interface          );
+    YAKL_SCOPE( vert_interface_ghost     , this->vert_interface_ghost    );
 
     // Get Arrays for 1-D hydrostatic background profiles
     real1d dm_hyDens      = dm.get<real,1>( "hydrostatic_density"       );
@@ -1196,31 +1196,31 @@ public:
   void computeTendenciesX( real4d &state   , real4d &stateTend  ,
                            real4d &tracers , real4d &tracerTend ,
                            MICRO const &micro, real &dt ) {
-    auto &nx                      = this->nx                     ;
-    auto &weno_scalars            = this->weno_scalars           ;
-    auto &weno_winds              = this->weno_winds             ;
-    auto &c2g                     = this->coefs_to_gll           ;
-    auto &s2g                     = this->sten_to_gll            ;
-    auto &wenoRecon               = this->wenoRecon              ;
-    auto &idl                     = this->idl                    ;
-    auto &sigma                   = this->sigma                  ;
-    auto &hyDensCells             = this->hyDensCells            ;
-    auto &hyDensThetaCells        = this->hyDensThetaCells       ;
-    auto &sim2d                   = this->sim2d                  ;
-    auto &derivMatrix             = this->derivMatrix            ;
-    auto &dx                      = this->dx                     ;
-    auto &stateLimits             = this->stateLimits            ;
-    auto &tracerLimits            = this->tracerLimits           ;
-    auto &stateFlux               = this->stateFlux              ;
-    auto &tracerFlux              = this->tracerFlux             ;
-    auto &tracer_pos              = this->tracer_pos             ;
-    auto &num_tracers             = this->num_tracers            ;
-    auto &bc_x                    = this->bc_x                   ;
-    auto &Rd                      = this->Rd                     ;
-    auto &cp                      = this->cp                     ;
-    auto &gamma                   = this->gamma                  ;
-    auto &p0                      = this->p0                     ;
-    auto &C0                      = this->C0                     ;
+    YAKL_SCOPE( nx                      , this->nx                     );
+    YAKL_SCOPE( weno_scalars            , this->weno_scalars           );
+    YAKL_SCOPE( weno_winds              , this->weno_winds             );
+    YAKL_SCOPE( c2g                     , this->coefs_to_gll           );
+    YAKL_SCOPE( s2g                     , this->sten_to_gll            );
+    YAKL_SCOPE( wenoRecon               , this->wenoRecon              );
+    YAKL_SCOPE( idl                     , this->idl                    );
+    YAKL_SCOPE( sigma                   , this->sigma                  );
+    YAKL_SCOPE( hyDensCells             , this->hyDensCells            );
+    YAKL_SCOPE( hyDensThetaCells        , this->hyDensThetaCells       );
+    YAKL_SCOPE( sim2d                   , this->sim2d                  );
+    YAKL_SCOPE( derivMatrix             , this->derivMatrix            );
+    YAKL_SCOPE( dx                      , this->dx                     );
+    YAKL_SCOPE( stateLimits             , this->stateLimits            );
+    YAKL_SCOPE( tracerLimits            , this->tracerLimits           );
+    YAKL_SCOPE( stateFlux               , this->stateFlux              );
+    YAKL_SCOPE( tracerFlux              , this->tracerFlux             );
+    YAKL_SCOPE( tracer_pos              , this->tracer_pos             );
+    YAKL_SCOPE( num_tracers             , this->num_tracers            );
+    YAKL_SCOPE( bc_x                    , this->bc_x                   );
+    YAKL_SCOPE( Rd                      , this->Rd                     );
+    YAKL_SCOPE( cp                      , this->cp                     );
+    YAKL_SCOPE( gamma                   , this->gamma                  );
+    YAKL_SCOPE( p0                      , this->p0                     );
+    YAKL_SCOPE( C0                      , this->C0                     );
 
     // Pre-process the tracers by dividing by density inside the domain
     // After this, we can reconstruct tracers only (not rho * tracer)
@@ -1557,31 +1557,31 @@ public:
   void computeTendenciesY( real4d &state   , real4d &stateTend  ,
                            real4d &tracers , real4d &tracerTend ,
                            MICRO const &micro, real &dt ) {
-    auto &ny                      = this->ny                     ;
-    auto &weno_scalars            = this->weno_scalars           ;
-    auto &weno_winds              = this->weno_winds             ;
-    auto &c2g                     = this->coefs_to_gll           ;
-    auto &s2g                     = this->sten_to_gll            ;
-    auto &wenoRecon               = this->wenoRecon              ;
-    auto &idl                     = this->idl                    ;
-    auto &sigma                   = this->sigma                  ;
-    auto &hyDensCells             = this->hyDensCells            ;
-    auto &hyDensThetaCells        = this->hyDensThetaCells       ;
-    auto &sim2d                   = this->sim2d                  ;
-    auto &derivMatrix             = this->derivMatrix            ;
-    auto &dy                      = this->dy                     ;
-    auto &stateLimits             = this->stateLimits            ;
-    auto &stateFlux               = this->stateFlux              ;
-    auto &tracerLimits            = this->tracerLimits           ;
-    auto &tracerFlux              = this->tracerFlux             ;
-    auto &tracer_pos              = this->tracer_pos             ;
-    auto &num_tracers             = this->num_tracers            ;
-    auto &bc_y                    = this->bc_y                   ;
-    auto &Rd                      = this->Rd                     ;
-    auto &cp                      = this->cp                     ;
-    auto &gamma                   = this->gamma                  ;
-    auto &p0                      = this->p0                     ;
-    auto &C0                      = this->C0                     ;
+    YAKL_SCOPE( ny                      , this->ny                     );
+    YAKL_SCOPE( weno_scalars            , this->weno_scalars           );
+    YAKL_SCOPE( weno_winds              , this->weno_winds             );
+    YAKL_SCOPE( c2g                     , this->coefs_to_gll           );
+    YAKL_SCOPE( s2g                     , this->sten_to_gll            );
+    YAKL_SCOPE( wenoRecon               , this->wenoRecon              );
+    YAKL_SCOPE( idl                     , this->idl                    );
+    YAKL_SCOPE( sigma                   , this->sigma                  );
+    YAKL_SCOPE( hyDensCells             , this->hyDensCells            );
+    YAKL_SCOPE( hyDensThetaCells        , this->hyDensThetaCells       );
+    YAKL_SCOPE( sim2d                   , this->sim2d                  );
+    YAKL_SCOPE( derivMatrix             , this->derivMatrix            );
+    YAKL_SCOPE( dy                      , this->dy                     );
+    YAKL_SCOPE( stateLimits             , this->stateLimits            );
+    YAKL_SCOPE( stateFlux               , this->stateFlux              );
+    YAKL_SCOPE( tracerLimits            , this->tracerLimits           );
+    YAKL_SCOPE( tracerFlux              , this->tracerFlux             );
+    YAKL_SCOPE( tracer_pos              , this->tracer_pos             );
+    YAKL_SCOPE( num_tracers             , this->num_tracers            );
+    YAKL_SCOPE( bc_y                    , this->bc_y                   );
+    YAKL_SCOPE( Rd                      , this->Rd                     );
+    YAKL_SCOPE( cp                      , this->cp                     );
+    YAKL_SCOPE( gamma                   , this->gamma                  );
+    YAKL_SCOPE( p0                      , this->p0                     );
+    YAKL_SCOPE( C0                      , this->C0                     );
 
     // Pre-process the tracers by dividing by density inside the domain
     // After this, we can reconstruct tracers only (not rho * tracer)
@@ -1913,34 +1913,34 @@ public:
   void computeTendenciesZ( real4d &state   , real4d &stateTend  ,
                            real4d &tracers , real4d &tracerTend ,
                            MICRO const &micro, real &dt ) {
-    auto &nz                      = this->nz                     ;
-    auto &weno_scalars            = this->weno_scalars           ;
-    auto &weno_winds              = this->weno_winds             ;
-    auto &c2g                     = this->coefs_to_gll           ;
-    auto &s2g                     = this->sten_to_gll            ;
-    auto &wenoRecon               = this->wenoRecon              ;
-    auto &idl                     = this->idl                    ;
-    auto &sigma                   = this->sigma                  ;
-    auto &hyDensCells             = this->hyDensCells            ;
-    auto &hyDensGLL               = this->hyDensGLL              ;
-    auto &hyDensThetaGLL          = this->hyDensThetaGLL         ;
-    auto &hyPressureGLL           = this->hyPressureGLL          ;
-    auto &sim2d                   = this->sim2d                  ;
-    auto &derivMatrix             = this->derivMatrix            ;
-    auto &dz                      = this->dz                     ;
-    auto &stateLimits             = this->stateLimits            ;
-    auto &stateFlux               = this->stateFlux              ;
-    auto &tracerLimits            = this->tracerLimits           ;
-    auto &tracerFlux              = this->tracerFlux             ;
-    auto &tracer_pos              = this->tracer_pos             ;
-    auto &num_tracers             = this->num_tracers            ;
-    auto &bc_z                    = this->bc_z                   ;
-    auto &gllWts_ngll             = this->gllWts_ngll            ;
-    auto &Rd                      = this->Rd                     ;
-    auto &cp                      = this->cp                     ;
-    auto &gamma                   = this->gamma                  ;
-    auto &p0                      = this->p0                     ;
-    auto &C0                      = this->C0                     ;
+    YAKL_SCOPE( nz                      , this->nz                     );
+    YAKL_SCOPE( weno_scalars            , this->weno_scalars           );
+    YAKL_SCOPE( weno_winds              , this->weno_winds             );
+    YAKL_SCOPE( c2g                     , this->coefs_to_gll           );
+    YAKL_SCOPE( s2g                     , this->sten_to_gll            );
+    YAKL_SCOPE( wenoRecon               , this->wenoRecon              );
+    YAKL_SCOPE( idl                     , this->idl                    );
+    YAKL_SCOPE( sigma                   , this->sigma                  );
+    YAKL_SCOPE( hyDensCells             , this->hyDensCells            );
+    YAKL_SCOPE( hyDensGLL               , this->hyDensGLL              );
+    YAKL_SCOPE( hyDensThetaGLL          , this->hyDensThetaGLL         );
+    YAKL_SCOPE( hyPressureGLL           , this->hyPressureGLL          );
+    YAKL_SCOPE( sim2d                   , this->sim2d                  );
+    YAKL_SCOPE( derivMatrix             , this->derivMatrix            );
+    YAKL_SCOPE( dz                      , this->dz                     );
+    YAKL_SCOPE( stateLimits             , this->stateLimits            );
+    YAKL_SCOPE( stateFlux               , this->stateFlux              );
+    YAKL_SCOPE( tracerLimits            , this->tracerLimits           );
+    YAKL_SCOPE( tracerFlux              , this->tracerFlux             );
+    YAKL_SCOPE( tracer_pos              , this->tracer_pos             );
+    YAKL_SCOPE( num_tracers             , this->num_tracers            );
+    YAKL_SCOPE( bc_z                    , this->bc_z                   );
+    YAKL_SCOPE( gllWts_ngll             , this->gllWts_ngll            );
+    YAKL_SCOPE( Rd                      , this->Rd                     );
+    YAKL_SCOPE( cp                      , this->cp                     );
+    YAKL_SCOPE( gamma                   , this->gamma                  );
+    YAKL_SCOPE( p0                      , this->p0                     );
+    YAKL_SCOPE( C0                      , this->C0                     );
 
     // Pre-process the tracers by dividing by density inside the domain
     // After this, we can reconstruct tracers only (not rho * tracer)
@@ -2312,15 +2312,15 @@ public:
 
   template <class MICRO>
   void output(DataManager &dm, MICRO const &micro, real etime) const {
-    auto &dx                    = this->dx                   ;
-    auto &dy                    = this->dy                   ;
-    auto &dz                    = this->dz                   ;
-    auto &hyDensCells           = this->hyDensCells          ;
-    auto &hyDensThetaCells      = this->hyDensThetaCells     ;
-    auto &hyThetaCells          = this->hyThetaCells         ;
-    auto &hyPressureCells       = this->hyPressureCells      ;
-    auto &gamma                 = this->gamma                ;
-    auto &C0                    = this->C0                   ;
+    YAKL_SCOPE( dx                    , this->dx                   );
+    YAKL_SCOPE( dy                    , this->dy                   );
+    YAKL_SCOPE( dz                    , this->dz                   );
+    YAKL_SCOPE( hyDensCells           , this->hyDensCells          );
+    YAKL_SCOPE( hyDensThetaCells      , this->hyDensThetaCells     );
+    YAKL_SCOPE( hyThetaCells          , this->hyThetaCells         );
+    YAKL_SCOPE( hyPressureCells       , this->hyPressureCells      );
+    YAKL_SCOPE( gamma                 , this->gamma                );
+    YAKL_SCOPE( C0                    , this->C0                   );
 
     yakl::SimpleNetCDF nc;
     int ulIndex = 0; // Unlimited dimension index to place this data at

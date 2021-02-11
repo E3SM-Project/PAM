@@ -55,8 +55,8 @@ public:
 
   template <class MICRO>
   void timeStep( DataManager &dm , MICRO const &micro , real dt ) {
-    auto &stateTend  = this->stateTend ;
-    auto &tracerTend = this->tracerTend;
+    YAKL_SCOPE( stateTend  , this->stateTend  );
+    YAKL_SCOPE( tracerTend , this->tracerTend );
 
     real4d state   = space_op.createStateArr();
     real4d tracers = space_op.createTracerArr();
