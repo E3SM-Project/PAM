@@ -2022,7 +2022,7 @@ public:
         ///////////////////////////////////////////////////////////////
         // Compute other values needed for centered tendencies and DTs
         ///////////////////////////////////////////////////////////////
-        SArray<real,2,nAder,ngll> rwu_DTs , rwv_DTs , rww_DTs , rwt_DTs , rt_gamma_DTs;
+        SArray<real,2,nAder,ngll> rwu_DTs , rwv_DTs , rww_DTs , rwt_DTs;
         for (int kk=0; kk < ngll; kk++) {
           real r = r_DTs (0,kk);
           real u = ru_DTs(0,kk) / r;
@@ -2033,7 +2033,6 @@ public:
           rwv_DTs    (0,kk) = r*w*v;
           rww_DTs    (0,kk) = r*w*w;
           rwt_DTs    (0,kk) = r*w*t;
-          rt_gamma_DTs(0,kk) = pow(r*t,gamma);
         }
 
         //////////////////////////////////////////
@@ -2041,8 +2040,7 @@ public:
         //////////////////////////////////////////
         if (nAder > 1) {
           diffTransformEulerConsZ( r_DTs , ru_DTs , rv_DTs , rw_DTs , rt_DTs , rwu_DTs , rwv_DTs , rww_DTs ,
-                                   rwt_DTs , rt_gamma_DTs , derivMatrix , hyPressureGLL , C0 , gamma , k ,
-                                   dz(k,iens) , bc_z , nz , iens );
+                                   rwt_DTs , derivMatrix , dz(k,iens) , bc_z , k , nz );
         }
 
         //////////////////////////////////////////
@@ -2060,7 +2058,6 @@ public:
           compute_timeAvg( rwv_DTs          , dt );
           compute_timeAvg( rww_DTs          , dt );
           compute_timeAvg( rwt_DTs          , dt );
-          compute_timeAvg( rt_gamma_DTs     , dt );
         } else {
           for (int ii=0; ii < ngll; ii++) {
             r_tavg (ii) = r_DTs (0,ii);
@@ -2094,7 +2091,7 @@ public:
         stateTend(idR,k,j,i,iens) = 0;
         stateTend(idU,k,j,i,iens) = 0;
         stateTend(idV,k,j,i,iens) = 0;
-        stateTend(idW,k,j,i,iens) = -GRAV*ravg;
+        stateTend(idW,k,j,i,iens) = -GRAV*(ravg-hyDensCells(k,iens));
         stateTend(idT,k,j,i,iens) = 0;
       } // END: reconstruct, time-avg, and store state & state fluxes
 
@@ -2191,51 +2188,28 @@ public:
       real v = 0.5_fp * (v_L + v_R);
       real w = 0.5_fp * (w_L + w_R);
       real t = 0.5_fp * (t_L + t_R);
-      real p = C0 * pow(r*t,gamma);
-      real cs2 = gamma*p/r;
-      real cs  = sqrt(cs2);
-      // Get left and right fluxes
-      real q1_L = stateLimits(idR,0,k,j,i,iens);   real q1_R = stateLimits(idR,1,k,j,i,iens);
-      real q2_L = stateLimits(idU,0,k,j,i,iens);   real q2_R = stateLimits(idU,1,k,j,i,iens);
-      real q3_L = stateLimits(idV,0,k,j,i,iens);   real q3_R = stateLimits(idV,1,k,j,i,iens);
-      real q4_L = stateLimits(idW,0,k,j,i,iens);   real q4_R = stateLimits(idW,1,k,j,i,iens);
-      real q5_L = stateLimits(idT,0,k,j,i,iens);   real q5_R = stateLimits(idT,1,k,j,i,iens);
-      // Compute upwind characteristics
-      // Waves 1-3, velocity: w
-      real w1, w2, w3;
-      if (w > 0) {
-        w1 = q1_L - q5_L/t;
-        w2 = q2_L - u*q5_L/t;
-        w3 = q3_L - v*q5_L/t;
-      } else {
-        w1 = q1_R - q5_R/t;
-        w2 = q2_R - u*q5_R/t;
-        w3 = q3_R - v*q5_R/t;
-      }
-      // Wave 5, velocity: w-cs
-      real w5 =  w*q1_R/(2*cs) - q4_R/(2*cs) + q5_R/(2*t);
-      // Wave 6, velocity: w+cs
-      real w6 = -w*q1_L/(2*cs) + q4_L/(2*cs) + q5_L/(2*t);
-      // Use right eigenmatrix to compute upwind flux
-      real q1 = w1 + w5 + w6;
-      real q2 = w2 + u*w5 + u*w6;
-      real q3 = w3 + v*w5 + v*w6;
-      real q4 = w*w1 + (w-cs)*w5 + (w+cs)*w6;
-      real q5 =      t*w5 + t*w6;
 
-      stateFlux(idR,k,j,i,iens) = q4;
-      stateFlux(idU,k,j,i,iens) = q4*q2/q1;
-      stateFlux(idV,k,j,i,iens) = q4*q3/q1;
-      stateFlux(idW,k,j,i,iens) = q4*q4/q1 + C0*pow(q5,gamma);
-      stateFlux(idT,k,j,i,iens) = q4*q5/q1;
+      if (w > 0) {
+        stateFlux(idR,k,j,i,iens) = r_L;
+        stateFlux(idU,k,j,i,iens) = r_L*w_L*u_L;
+        stateFlux(idV,k,j,i,iens) = r_L*w_L*v_L;
+        stateFlux(idW,k,j,i,iens) = r_L*w_L*w_L;
+        stateFlux(idT,k,j,i,iens) = r_L*w_L*t_L;
+      } else {
+        stateFlux(idR,k,j,i,iens) = r_R;
+        stateFlux(idU,k,j,i,iens) = r_R*w_R*u_R;
+        stateFlux(idV,k,j,i,iens) = r_R*w_R*v_R;
+        stateFlux(idW,k,j,i,iens) = r_R*w_R*w_R;
+        stateFlux(idT,k,j,i,iens) = r_R*w_R*t_R;
+      }
 
       // COMPUTE UPWIND TRACER FLUXES
       // Handle it one tracer at a time
       for (int tr=0; tr < num_tracers; tr++) {
         if (w > 0) {
-          tracerFlux(tr,k,j,i,iens) = q4 * tracerLimits(tr,0,k,j,i,iens) / r_L;
+          tracerFlux(tr,k,j,i,iens) = r_L * w_L * tracerLimits(tr,0,k,j,i,iens);
         } else {
-          tracerFlux(tr,k,j,i,iens) = q4 * tracerLimits(tr,1,k,j,i,iens) / r_R;
+          tracerFlux(tr,k,j,i,iens) = r_R * w_R * tracerLimits(tr,1,k,j,i,iens);
         }
       }
     });
@@ -2630,19 +2604,15 @@ public:
                                             SArray<real,2,nAder,ngll> &rwv ,
                                             SArray<real,2,nAder,ngll> &rww ,
                                             SArray<real,2,nAder,ngll> &rwt ,
-                                            SArray<real,2,nAder,ngll> &rt_gamma ,
                                             SArray<real,2,ngll,ngll> const &deriv , 
-                                            real3d const &hyPressureGLL , 
-                                            real C0, real gamma ,
-                                            int k , real dz , int bc_z , int nz , int iens ) {
+                                            real dz , int bc_z , int k , int nz ) {
     // zero out the non-linear DTs
     for (int kt=1; kt < nAder; kt++) {
       for (int ii=0; ii < ngll; ii++) {
-        rwu     (kt,ii) = 0;
-        rwv     (kt,ii) = 0;
-        rww     (kt,ii) = 0;
-        rwt     (kt,ii) = 0;
-        rt_gamma(kt,ii) = 0;
+        rwu(kt,ii) = 0;
+        rwv(kt,ii) = 0;
+        rww(kt,ii) = 0;
+        rwt(kt,ii) = 0;
       }
     }
 
@@ -2650,24 +2620,23 @@ public:
     for (int kt=0; kt<nAder-1; kt++) {
       // Compute the state at the next time level
       for (int ii=0; ii<ngll; ii++) {
-        real drw_dz    = 0;
-        real drwu_dz   = 0;
-        real drwv_dz   = 0;
-        real drww_p_dz = 0;
-        real drwt_dz   = 0;
+        real drw_dz  = 0;
+        real drwu_dz = 0;
+        real drwv_dz = 0;
+        real drww_dz = 0;
+        real drwt_dz = 0;
         for (int s=0; s<ngll; s++) {
-          drw_dz    += deriv(s,ii) * rw(kt,s);
-          drwu_dz   += deriv(s,ii) * rwu(kt,s);
-          drwv_dz   += deriv(s,ii) * rwv(kt,s);
-          if (kt == 0) { drww_p_dz += deriv(s,ii) * ( rww(kt,s) + C0*rt_gamma(kt,s) - hyPressureGLL(k,s,iens) ); }
-          else         { drww_p_dz += deriv(s,ii) * ( rww(kt,s) + C0*rt_gamma(kt,s)/2                         ); }
-          drwt_dz   += deriv(s,ii) * rwt(kt,s);
+          drw_dz  += deriv(s,ii) * rw(kt,s);
+          drwu_dz += deriv(s,ii) * rwu(kt,s);
+          drwv_dz += deriv(s,ii) * rwv(kt,s);
+          drww_dz += deriv(s,ii) * rww(kt,s);
+          drwt_dz += deriv(s,ii) * rwt(kt,s);
         }
-        r (kt+1,ii) = -drw_dz   /dz/(kt+1);
-        ru(kt+1,ii) = -drwu_dz  /dz/(kt+1);
-        rv(kt+1,ii) = -drwv_dz  /dz/(kt+1);
-        rw(kt+1,ii) = -drww_p_dz/dz/(kt+1);
-        rt(kt+1,ii) = -drwt_dz  /dz/(kt+1);
+        r (kt+1,ii) = -drw_dz /dz/(kt+1);
+        ru(kt+1,ii) = -drwu_dz/dz/(kt+1);
+        rv(kt+1,ii) = -drwv_dz/dz/(kt+1);
+        rw(kt+1,ii) = -drww_dz/dz/(kt+1);
+        rt(kt+1,ii) = -drwt_dz/dz/(kt+1);
         if (bc_z == BC_WALL) {
           if (k == nz-1) rw(kt+1,ngll-1) = 0;
           if (k == 0   ) rw(kt+1,0     ) = 0;
@@ -2691,20 +2660,6 @@ public:
         rwv(kt+1,ii) = tot_rwv / r(0,ii);
         rww(kt+1,ii) = tot_rww / r(0,ii);
         rwt(kt+1,ii) = tot_rwt / r(0,ii);
-
-        // Compute rt_gamma at the next time level
-        real tot_rt_gamma = 0;
-        for (int l=0; l<=kt; l++) {
-          tot_rt_gamma += (kt+1-l) * ( gamma*rt_gamma(l,ii)*rt(kt+1-l,ii) - rt(l,ii)*rt_gamma(kt+1-l,ii) );
-        }
-        rt_gamma(kt+1,ii) = ( gamma*rt_gamma(0,ii)*rt(kt+1,ii) + tot_rt_gamma / (kt+1) ) / rt(0,ii);
-      }
-    }
-
-    // Fix the rt_gamma
-    for (int kt=1; kt < nAder; kt++) {
-      for (int ii=0; ii < ngll; ii++) {
-        rt_gamma(kt,ii) /= 2;
       }
     }
   }

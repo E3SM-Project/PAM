@@ -28,10 +28,10 @@ initData : thermal
 out_prefix  : test
 
 # Output frequency in seconds
-outFreq  : 100.
+outFreq  : 0.
 
 # Number of ensembles
-nens : 2
+nens : 1
 
 # Balance initial density to avoid initial acoustics
 balance_initial_density: false
