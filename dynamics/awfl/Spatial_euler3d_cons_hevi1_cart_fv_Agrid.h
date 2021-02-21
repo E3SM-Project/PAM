@@ -1919,6 +1919,9 @@ public:
                                      real5d &tracers , real5d &tracerTend ,
                                      MICRO const &micro, real &dt ) {
 
+    memset( stateTend  , 0._fp );
+    memset( tracerTend , 0._fp );
+
     real4d pressure ("pressure",nz+2*hs,ny,nx,nens);
     real4d rw_pert  ("rw_pert" ,nz+2*hs,ny,nx,nens);
 
@@ -1973,10 +1976,10 @@ public:
         real alpha = dt / (2*dz(k,iens));
         rhs(k) = rw - alpha * ( pressure(hs+k+1,j,i,iens) - pressure(hs+k-1,j,i,iens) );
         a  (k) = -alpha*cs;
-        b  (k) = 1 + 2*alpha;
+        b  (k) = 1 + 2*alpha*cs;
         c  (k) = -alpha*cs;
-        if (k == 0   ) { b(k) += a(k); }
-        if (k == nz-1) { b(k) += c(k); }
+        // if (k == 0   ) { b(k) += a(k); }
+        // if (k == nz-1) { b(k) += c(k); }
       }
 
       yakl::tridiagonal(a , b , c , rhs);
@@ -2015,19 +2018,19 @@ public:
 
         real val_new;
         val_new = state(idU,hs+k,hs+j,hs+i,iens) / dens_old * dens_new;
-        stateTend(idU,k,j,i,iens) = val_new - state(idU,hs+k,hs+j,hs+i,iens);
+        stateTend(idU,k,j,i,iens) = ( val_new - state(idU,hs+k,hs+j,hs+i,iens) ) / dt;
 
         if (!sim2d) {
           val_new = state(idV,hs+k,hs+j,hs+i,iens) / dens_old * dens_new;
-          stateTend(idV,k,j,i,iens) = val_new - state(idV,hs+k,hs+j,hs+i,iens);
+          stateTend(idV,k,j,i,iens) = ( val_new - state(idV,hs+k,hs+j,hs+i,iens) ) / dt;
         }
 
         val_new = ( state(idT,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens) ) / dens_old * dens_new - hyDensCells(k,iens);
-        stateTend(idT,k,j,i,iens) = val_new - state(idT,hs+k,hs+j,hs+i,iens);
+        stateTend(idT,k,j,i,iens) = ( val_new - state(idT,hs+k,hs+j,hs+i,iens) ) / dt;
 
         for (int tr=0; tr < num_tracers; tr++) {
           val_new = tracers(tr,hs+k,hs+j,hs+i,iens) / dens_old * dens_new;
-          tracerTend(tr,k,j,i,iens) = val_new - tracers(tr,hs+k,hs+j,hs+i,iens);
+          tracerTend(tr,k,j,i,iens) = ( val_new - tracers(tr,hs+k,hs+j,hs+i,iens) ) / dt;
         }
       }
 
