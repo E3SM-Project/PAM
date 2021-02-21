@@ -1953,6 +1953,8 @@ public:
         a  (k) = -zeta_p;
         b  (k) = 1 + zeta_p + zeta_m;
         c  (k) = -zeta_m;
+        if (k == 0   ) { b(k) += a(k); }
+        if (k == nz-1) { b(k) += c(k); }
       }
 
       yakl::tridiagonal(a , b , c , rhs);
@@ -1978,8 +1980,6 @@ public:
         a  (k) = -alpha*cs;
         b  (k) = 1 + 2*alpha*cs;
         c  (k) = -alpha*cs;
-        // if (k == 0   ) { b(k) += a(k); }
-        // if (k == nz-1) { b(k) += c(k); }
       }
 
       yakl::tridiagonal(a , b , c , rhs);
