@@ -1950,9 +1950,9 @@ public:
         real zeta_m = 2*dt*dt*cs*cs / ( ( z_kp1 - z_km1 ) * ( z_k   - z_km1 ) );
         real drw_dz = ( state(idW,hs+k+1,hs+j,hs+i,iens) - state(idW,hs+k-1,hs+j,hs+i,iens) ) / (z_kp1 - z_km1);
         rhs(k) = (p - hyPressureCells(k,iens)) - dt*cs*cs*drw_dz;
-        a  (k) = -zeta_p;
+        a  (k) = -zeta_m;
         b  (k) = 1 + zeta_p + zeta_m;
-        c  (k) = -zeta_m;
+        c  (k) = -zeta_p;
         if (k == 0   ) { b(k) += a(k); }
         if (k == nz-1) { b(k) += c(k); }
       }
