@@ -428,7 +428,7 @@ public:
   // Normally this would be 3, but the z-directly CFL is reduced because of how the fluxes are
   // handled in the presence of a solid wall boundary condition. I'm looking into how to fix this
   int numSplit() const {
-    return 3;
+    return 4;
   }
 
 
@@ -1172,19 +1172,23 @@ public:
           computeTendenciesY( state , stateTend , tracers , tracerTend , micro , dt );
         }
       } else if (splitIndex == 2) {
-        computeTendenciesZ( state , stateTend , tracers , tracerTend , micro , dt );
+        computeTendenciesZ_advection( state , stateTend , tracers , tracerTend , micro , dt );
+      } else if (splitIndex == 3) {
+        computeTendenciesZ_acoustics( state , stateTend , tracers , tracerTend , micro , dt );
       }
     } else {
       if        (splitIndex == 0) {
-        computeTendenciesZ( state , stateTend , tracers , tracerTend , micro , dt );
+        computeTendenciesZ_advection( state , stateTend , tracers , tracerTend , micro , dt );
       } else if (splitIndex == 1) {
+        computeTendenciesZ_acoustics( state , stateTend , tracers , tracerTend , micro , dt );
+      } else if (splitIndex == 2) {
         if (sim2d) {
           memset(stateTend  , 0._fp);
           memset(tracerTend , 0._fp);
         } else {
           computeTendenciesY( state , stateTend , tracers , tracerTend , micro , dt );
         }
-      } else if (splitIndex == 2) {
+      } else if (splitIndex == 3) {
         computeTendenciesX( state , stateTend , tracers , tracerTend , micro , dt );
       }
     }
@@ -1911,9 +1915,132 @@ public:
 
 
   template <class MICRO>
-  void computeTendenciesZ( real5d &state   , real5d &stateTend  ,
-                           real5d &tracers , real5d &tracerTend ,
-                           MICRO const &micro, real &dt ) {
+  void computeTendenciesZ_acoustics( real5d &state   , real5d &stateTend  ,
+                                     real5d &tracers , real5d &tracerTend ,
+                                     MICRO const &micro, real &dt ) {
+
+    real4d pressure ("pressure",nz+2*hs,ny,nx,nens);
+    real4d rw_pert  ("rw_pert" ,nz+2*hs,ny,nx,nens);
+
+    parallel_for( Bounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int iens) {
+      SArray<real,1,50> rhs;
+      SArray<real,1,50> a;
+      SArray<real,1,50> b;
+      SArray<real,1,50> c;
+
+      state(idW,hs-1 ,hs+j,hs+i,iens) = 0;
+      state(idW,hs+nz,hs+j,hs+i,iens) = 0;
+
+      //////////////////////////////////////////////////////////
+      // Compute pressure at the next time level implicitly
+      //////////////////////////////////////////////////////////
+      for (int k=0; k < nz; k++) {
+        real r  = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells     (k,iens);
+        real rw = state(idW,hs+k,hs+j,hs+i,iens);
+        real rt = state(idT,hs+k,hs+j,hs+i,iens) + hyDensThetaCells(k,iens);
+        real p  = C0 * pow( rt , gamma );
+        real cs = sqrt(gamma*p/r);
+        real z_km1 = 0.5_fp * ( vert_interface_ghost(hs+k-1,iens) + vert_interface_ghost(hs+k  ,iens) );
+        real z_k   = 0.5_fp * ( vert_interface_ghost(hs+k  ,iens) + vert_interface_ghost(hs+k+1,iens) );
+        real z_kp1 = 0.5_fp * ( vert_interface_ghost(hs+k+1,iens) + vert_interface_ghost(hs+k+2,iens) );
+        real zeta_p = 2*dt*dt*cs*cs / ( ( z_kp1 - z_km1 ) * ( z_kp1 - z_k   ) );
+        real zeta_m = 2*dt*dt*cs*cs / ( ( z_kp1 - z_km1 ) * ( z_k   - z_km1 ) );
+        real drw_dz = ( state(idW,hs+k+1,hs+j,hs+i,iens) - state(idW,hs+k-1,hs+j,hs+i,iens) ) / (z_kp1 - z_km1);
+        rhs(k) = (p - hyPressureCells(k,iens)) - dt*cs*cs*drw_dz;
+        a  (k) = -zeta_p;
+        b  (k) = 1 + zeta_p + zeta_m;
+        c  (k) = -zeta_m;
+      }
+
+      yakl::tridiagonal(a , b , c , rhs);
+
+      for (int k=0; k < nz; k++) {
+        pressure(hs+k,j,i,iens) = rhs(k);
+      }
+
+      pressure(hs-1 ,j,i,iens) = pressure(hs     ,j,i,iens);
+      pressure(hs+nz,j,i,iens) = pressure(hs+nz-1,j,i,iens);
+
+      //////////////////////////////////////////////////////////
+      // Compute momentum at the next time level implicitly
+      //////////////////////////////////////////////////////////
+      for (int k=0; k < nz; k++) {
+        real r  = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells     (k,iens);
+        real rw = state(idW,hs+k,hs+j,hs+i,iens);
+        real rt = state(idT,hs+k,hs+j,hs+i,iens) + hyDensThetaCells(k,iens);
+        real p  = C0 * pow( rt , gamma );
+        real cs = sqrt(gamma*p/r);
+        real alpha = dt / (2*dz(k,iens));
+        rhs(k) = rw - alpha * ( pressure(hs+k+1,j,i,iens) - pressure(hs+k-1,j,i,iens) );
+        a  (k) = -alpha*cs;
+        b  (k) = 1 + 2*alpha;
+        c  (k) = -alpha*cs;
+        if (k == 0   ) { b(k) += a(k); }
+        if (k == nz-1) { b(k) += c(k); }
+      }
+
+      yakl::tridiagonal(a , b , c , rhs);
+
+      for (int k=0; k < nz; k++) {
+        rw_pert(hs+k,j,i,iens) = rhs(k) - state(idW,hs+k,hs+j,hs+i,iens);;
+        stateTend(idW,k,j,i,iens) = rw_pert(hs+k,j,i,iens) / dt;
+      }
+
+      rw_pert(hs-1 ,j,i,iens) = 0;
+      rw_pert(hs+nz,j,i,iens) = 0;
+
+      ////////////////////////////////////////////////////////////////////
+      // Compute change in mass with divergence of perturbation momentum
+      ////////////////////////////////////////////////////////////////////
+      for (int k=0; k < nz; k++) {
+        real rw_kp1 = state(idW,hs+k+1,hs+j,hs+i,iens) + rw_pert(hs+k+1,j,i,iens);
+        real rw_k   = state(idW,hs+k  ,hs+j,hs+i,iens) + rw_pert(hs+k  ,j,i,iens);
+        real rw_km1 = state(idW,hs+k-1,hs+j,hs+i,iens) + rw_pert(hs+k-1,j,i,iens);
+        real rw_p = 0.5_fp * ( rw_k   + rw_kp1 );
+        real rw_m = 0.5_fp * ( rw_km1 + rw_k   );
+        if (k == nz-1) rw_p = 0;
+        if (k == 0   ) rw_m = 0;
+
+        real rw_p_upw;
+        if (rw_p > 0) { rw_p_upw = rw_pert(hs+k  ,j,i,iens); }
+        else          { rw_p_upw = rw_pert(hs+k+1,j,i,iens); }
+
+        real rw_m_upw;
+        if (rw_m > 0) { rw_m_upw = rw_pert(hs+k-1,j,i,iens); }
+        else          { rw_m_upw = rw_pert(hs+k  ,j,i,iens); }
+        
+        real dens_old = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens);
+        stateTend(idR,k,j,i,iens) += - (rw_p_upw - rw_m_upw) / dz(k,iens);
+        real dens_new = state(idR,hs+k,hs+j,hs+i,iens) + dt*stateTend(idR,k,j,i,iens) + hyDensCells(k,iens);
+
+        real val_new;
+        val_new = state(idU,hs+k,hs+j,hs+i,iens) / dens_old * dens_new;
+        stateTend(idU,k,j,i,iens) = val_new - state(idU,hs+k,hs+j,hs+i,iens);
+
+        if (!sim2d) {
+          val_new = state(idV,hs+k,hs+j,hs+i,iens) / dens_old * dens_new;
+          stateTend(idV,k,j,i,iens) = val_new - state(idV,hs+k,hs+j,hs+i,iens);
+        }
+
+        val_new = ( state(idT,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens) ) / dens_old * dens_new - hyDensCells(k,iens);
+        stateTend(idT,k,j,i,iens) = val_new - state(idT,hs+k,hs+j,hs+i,iens);
+
+        for (int tr=0; tr < num_tracers; tr++) {
+          val_new = tracers(tr,hs+k,hs+j,hs+i,iens) / dens_old * dens_new;
+          tracerTend(tr,k,j,i,iens) = val_new - tracers(tr,hs+k,hs+j,hs+i,iens);
+        }
+      }
+
+    });
+
+  }
+
+
+
+  template <class MICRO>
+  void computeTendenciesZ_advection( real5d &state   , real5d &stateTend  ,
+                                     real5d &tracers , real5d &tracerTend ,
+                                     MICRO const &micro, real &dt ) {
     YAKL_SCOPE( nz                      , this->nz                     );
     YAKL_SCOPE( weno_scalars            , this->weno_scalars           );
     YAKL_SCOPE( weno_winds              , this->weno_winds             );
