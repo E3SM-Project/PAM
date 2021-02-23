@@ -1980,12 +1980,14 @@ public:
         a  (k) = -alpha*cs;
         b  (k) = 1 + 2*alpha*cs;
         c  (k) = -alpha*cs;
+        if (k == 0   ) a(k) = 0;
+        if (k == nz-1) c(k) = 0;
       }
 
       yakl::tridiagonal(a , b , c , rhs);
 
       for (int k=0; k < nz; k++) {
-        rw_pert(hs+k,j,i,iens) = rhs(k) - state(idW,hs+k,hs+j,hs+i,iens);;
+        rw_pert(hs+k,j,i,iens) = rhs(k) - state(idW,hs+k,hs+j,hs+i,iens);
         stateTend(idW,k,j,i,iens) = rw_pert(hs+k,j,i,iens) / dt;
       }
 
@@ -2025,7 +2027,7 @@ public:
           stateTend(idV,k,j,i,iens) = ( val_new - state(idV,hs+k,hs+j,hs+i,iens) ) / dt;
         }
 
-        val_new = ( state(idT,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens) ) / dens_old * dens_new - hyDensCells(k,iens);
+        val_new = ( state(idT,hs+k,hs+j,hs+i,iens) + hyDensThetaCells(k,iens) ) / dens_old * dens_new - hyDensThetaCells(k,iens);
         stateTend(idT,k,j,i,iens) = ( val_new - state(idT,hs+k,hs+j,hs+i,iens) ) / dt;
 
         for (int tr=0; tr < num_tracers; tr++) {
@@ -2320,13 +2322,13 @@ public:
       real t = 0.5_fp * (t_L + t_R);
 
       if (w > 0) {
-        stateFlux(idR,k,j,i,iens) = r_L;
+        stateFlux(idR,k,j,i,iens) = r_L*w_L;
         stateFlux(idU,k,j,i,iens) = r_L*w_L*u_L;
         stateFlux(idV,k,j,i,iens) = r_L*w_L*v_L;
         stateFlux(idW,k,j,i,iens) = r_L*w_L*w_L;
         stateFlux(idT,k,j,i,iens) = r_L*w_L*t_L;
       } else {
-        stateFlux(idR,k,j,i,iens) = r_R;
+        stateFlux(idR,k,j,i,iens) = r_R*w_R;
         stateFlux(idU,k,j,i,iens) = r_R*w_R*u_R;
         stateFlux(idV,k,j,i,iens) = r_R*w_R*v_R;
         stateFlux(idW,k,j,i,iens) = r_R*w_R*w_R;

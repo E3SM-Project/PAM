@@ -668,8 +668,6 @@ public:
     // Read the output filename
     out_prefix = config["out_prefix"].as<std::string>();
 
-    balance_initial_density = config["balance_initial_density"].as<bool>();
-
     // Compute the grid spacing in each dimension
     dx = xlen/nx;
     dy = ylen/ny;
@@ -801,7 +799,6 @@ public:
     YAKL_SCOPE( gamma                    , this->gamma                   );
     YAKL_SCOPE( p0                       , this->p0                      );
     YAKL_SCOPE( C0                       , this->C0                      );
-    YAKL_SCOPE( balance_initial_density  , this->balance_initial_density );
     YAKL_SCOPE( vert_interface           , this->vert_interface          );
     YAKL_SCOPE( vert_interface_ghost     , this->vert_interface_ghost    );
 
@@ -891,8 +888,6 @@ public:
                 real tp = profiles::ellipsoid_linear(xloc, yloc, zloc, xlen/2, ylen/2, 2000, 2000, 2000, 2000, 2 );
                 real t = th + tp;
                 real r = rh;
-                // Line below balances initial density to remove the acoustic wave
-                if (balance_initial_density) r = rh*th/t;
 
                 dm_rho      (k,j,i,iens) += (r - rh)*wt;
                 dm_rho_theta(k,j,i,iens) += (r*t - rh*th) * wt;

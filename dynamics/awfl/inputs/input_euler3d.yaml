@@ -28,7 +28,7 @@ initData : thermal
 out_prefix  : test
 
 # Output frequency in seconds
-outFreq  : 0.
+outFreq  : 10
 
 # Number of ensembles
 nens : 1
