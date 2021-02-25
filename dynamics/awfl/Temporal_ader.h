@@ -64,9 +64,8 @@ public:
     YAKL_SCOPE( stateTend  , this->stateTend  );
     YAKL_SCOPE( tracerTend , this->tracerTend );
 
-    real5d state   = space_op.createStateArr();
-    real5d tracers = space_op.createTracerArr();
-    space_op.read_state_and_tracers( dm , state , tracers );
+    real5d state   = dm.get<real,5>("dyn_state");
+    real5d tracers = dm.get<real,5>("dyn_tracers");
 
     // Loop over different items in the spatial splitting
     for (int spl = 0 ; spl < space_op.numSplit() ; spl++) {
@@ -91,8 +90,6 @@ public:
         }
       });
     }
-
-    space_op.write_state_and_tracers( dm , state , tracers );
   }
 
 

@@ -14,6 +14,10 @@ typedef Temporal_operator<Spatial> Dycore;
 
 typedef Microphysics Microphysics;
 
+
+void allocate_coupler_state( std::string inFile , DataManager &dm);
+
+
 int main(int argc, char** argv) {
   yakl::init();
   {
@@ -27,6 +31,8 @@ int main(int argc, char** argv) {
     real simTime = config["simTime"].as<real>();
     real outFreq = config["outFreq"].as<real>();
     int numOut = 0;
+
+    allocate_coupler_state( inFile , dm );
 
     // Create the dycore and the microphysics
     Dycore       dycore;
@@ -64,6 +70,33 @@ int main(int argc, char** argv) {
 
   }
   yakl::finalize();
+}
+
+
+
+void allocate_coupler_state( std::string inFile , DataManager &dm) {
+  YAML::Node config = YAML::LoadFile(inFile);
+  if ( !config            ) { endrun("ERROR: Invalid YAML input file"); }
+  real nx = config["nx"].as<real>();
+  real ny = config["ny"].as<real>();
+  std::string vcoords_file = config["vcoords"].as<std::string>();
+  yakl::SimpleNetCDF nc;
+  nc.open(vcoords_file);
+  nz = nc.getDimSize("num_interfaces") - 1;
+  nc.close();
+  real nens = config["nens"].as<real>();
+  dm.register_and_allocate<real>( "density_dry"  , "dry density"               , {nz,ny,nx,nens} , {"z","y","x"} );
+  dm.register_and_allocate<real>( "uvel"         , "x-direction velocity"      , {nz,ny,nx,nens} , {"z","y","x"} );
+  dm.register_and_allocate<real>( "vvel"         , "y-direction velocity"      , {nz,ny,nx,nens} , {"z","y","x"} );
+  dm.register_and_allocate<real>( "wvel"         , "z-direction velocity"      , {nz,ny,nx,nens} , {"z","y","x"} );
+  dm.register_and_allocate<real>( "theta_dry"    , "dry potential temperature" , {nz,ny,nx,nens} , {"z","y","x"} );
+  dm.register_and_allocate<real>( "pressure_dry" , "dry pressure"              , {nz,ny,nx,nens} , {"z","y","x"} );
+  yakl::memset( dm.get_collapsed("density_dry" ) , 0._fp );
+  yakl::memset( dm.get_collapsed("uvel"        ) , 0._fp );
+  yakl::memset( dm.get_collapsed("vvel"        ) , 0._fp );
+  yakl::memset( dm.get_collapsed("wvel"        ) , 0._fp );
+  yakl::memset( dm.get_collapsed("theta_dry"   ) , 0._fp );
+  yakl::memset( dm.get_collapsed("pressure_dry") , 0._fp );
 }
 
 

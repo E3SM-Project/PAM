@@ -758,11 +758,8 @@ public:
     dm.register_and_allocate<real>( "hydrostatic_theta"         , "hydrostatic_theta"         , {nz,nens} , {"z","nens"} );
     dm.register_and_allocate<real>( "hydrostatic_density_theta" , "hydrostatic_density_theta" , {nz,nens} , {"z","nens"} );
     dm.register_and_allocate<real>( "hydrostatic_pressure"      , "hydrostatic_pressure"      , {nz,nens} , {"z","nens"} );
-    dm.register_and_allocate<real>( "density"       , "density"       , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    dm.register_and_allocate<real>( "density_u"     , "density_u"     , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    dm.register_and_allocate<real>( "density_v"     , "density_v"     , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    dm.register_and_allocate<real>( "density_w"     , "density_w"     , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    dm.register_and_allocate<real>( "density_theta" , "density_theta" , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    dm.register_and_allocate<real>( "dyn_state"                 , "dynamics state"            , {num_state  ,nz,ny,nx,nens} , {"num_state"  ,"nz","ny","nx","nens"} );
+    dm.register_and_allocate<real>( "dyn_tracers"               , "dynamics tracers"          , {num_tracers,nz,ny,nx,nens} , {"num_tracers","nz","ny","nx","nens"} );
 
     std::cout << "nx: " << nx << "\n";
     std::cout << "ny: " << ny << "\n";
