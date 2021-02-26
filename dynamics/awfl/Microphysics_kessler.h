@@ -70,10 +70,10 @@ public:
     YAML::Node config = YAML::LoadFile(inFile);
 
     // Get the number of ensembles
+    int nens = config["nx"].as<int>();
+    int nens = config["ny"].as<int>();
     int nens = config["nens"].as<int>();
 
-    int ny = dm.get_dimension_size("y");
-    int nx = dm.get_dimension_size("x");
     dm.register_and_allocate<real>( "precl" , "precipitation rate" , {ny,nx,nens} , {"y","x","nens"} );
   }
 
