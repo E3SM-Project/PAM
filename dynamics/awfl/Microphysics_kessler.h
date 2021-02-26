@@ -64,6 +64,11 @@ public:
     tracer_IDs(ID_C) = dycore.add_tracer(dm , "cloud_liquid"  , "Cloud liquid"  , true     , true);
     tracer_IDs(ID_R) = dycore.add_tracer(dm , "precip_liquid" , "precip_liquid" , true     , true);
 
+    int nz = dm.get_dimension_size("z");
+    int ny = dm.get_dimension_size("y");
+    int nx = dm.get_dimension_size("x");
+    int nx = dm.get_dimension_size("nens");
+
     tracer_index_vapor = tracer_IDs(ID_V);
 
     // Read the YAML input file
