@@ -64,8 +64,8 @@ public:
     YAKL_SCOPE( stateTend  , this->stateTend  );
     YAKL_SCOPE( tracerTend , this->tracerTend );
 
-    real5d state   = dm.get<real,5>("dyn_state");
-    real5d tracers = dm.get<real,5>("dyn_tracers");
+    real5d state   = dm.get<real,5>("dynamics_state");
+    real5d tracers = dm.get<real,5>("dynamics_tracers");
 
     // Loop over different items in the spatial splitting
     for (int spl = 0 ; spl < space_op.numSplit() ; spl++) {
