@@ -32,11 +32,11 @@ int main(int argc, char** argv) {
     real outFreq = config["outFreq"].as<real>();
     int numOut = 0;
 
-    allocate_coupler_state( inFile , dm );
-
     // Create the dycore and the microphysics
     Dycore       dycore;
     Microphysics micro;
+
+    allocate_coupler_state( inFile , dm , micro );
 
     // Initialize the dycore and the microphysics
     dycore.init( inFile , micro.num_tracers , dm );
@@ -74,7 +74,8 @@ int main(int argc, char** argv) {
 
 
 
-void allocate_coupler_state( std::string inFile , DataManager &dm) {
+template <class MICRO>
+void allocate_coupler_state( std::string inFile , DataManager &dm , MICRO &micro ) {
   YAML::Node config = YAML::LoadFile(inFile);
   if ( !config            ) { endrun("ERROR: Invalid YAML input file"); }
   int nx = config["nx"].as<real>();
@@ -98,6 +99,8 @@ void allocate_coupler_state( std::string inFile , DataManager &dm) {
   { auto tmp = dm.get_collapsed<real>("wvel"        ); memset( tmp , 0._fp ); }
   { auto tmp = dm.get_collapsed<real>("theta_dry"   ); memset( tmp , 0._fp ); }
   { auto tmp = dm.get_collapsed<real>("pressure_dry"); memset( tmp , 0._fp ); }
+
+  micro.allocate_coupler_state( dm );
 }
 
 
