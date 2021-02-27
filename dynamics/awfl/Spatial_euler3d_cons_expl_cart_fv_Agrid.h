@@ -160,7 +160,8 @@ public:
 
 
 
-  void convert_dynamics_to_coupler_state( DataManager &dm ) {
+  template <class MICRO>
+  void convert_dynamics_to_coupler_state( DataManager &dm , MICRO &micro ) {
     real5d state           = dm.get<real,5>( "dynamics_state"   );
     real5d tracers         = dm.get<real,5>( "dynamics_tracers" );
     real4d dm_dens_dry     = dm.get<real,4>( "density_dry"      );
@@ -172,30 +173,40 @@ public:
 
     int idWV = micro.tracer_index_vapor;
 
-    parallel_for( Bounds<3>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i) {
+    MultipleTracers<max_tracers> dm_tracers;
+    for (int tr = 0; tr < num_tracers; tr++) {
+      auto trac = dm.get<real,4>( tracer_name[tr] );
+      dm_tracers.add_tracer( trac );
+    }
+
+    parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       real dens  = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens);
       real uvel  = state(idU,hs+k,hs+j,hs+i,iens) / dens;
       real vvel  = state(idV,hs+k,hs+j,hs+i,iens) / dens;
       real wvel  = state(idW,hs+k,hs+j,hs+i,iens) / dens;
       real theta = ( state(idT,hs+k,hs+j,hs+i,iens) + hyDensThetaCells(k,iens) ) / dens;
-      real pressure = C0 * pow( dens*theta , GAMMA );
+      real pressure = C0 * pow( dens*theta , gamma );
       real dens_vap = tracers(idWV,hs+k,hs+j,hs+i,iens);
       real dens_dry = dens - dens_vap;
       real temp = pressure / (dens_dry * Rd + dens_vap * Rv);
       real pressure_dry = dens_dry * Rd * temp;
       real theta_dry = temp * pow( p0 / pressure_dry , Rd/cp );
-      dm_rho_dry     (k,j,i,iens) = dens_dry;
+      dm_dens_dry    (k,j,i,iens) = dens_dry;
       dm_uvel        (k,j,i,iens) = uvel;
       dm_vvel        (k,j,i,iens) = vvel;
       dm_wvel        (k,j,i,iens) = wvel;
       dm_theta_dry   (k,j,i,iens) = theta_dry;
       dm_pressure_dry(k,j,i,iens) = pressure_dry;
+      for (int tr=0; tr < num_tracers; tr++) {
+        dm_tracers  (tr,k,j,i,iens) = tracers(tr,hs+k,hs+j,hs+i,iens);
+      }
     });
   }
 
 
 
-  void convert_coupler_state_to_dynamics( DataManager &dm ) {
+  template <class MICRO>
+  void convert_coupler_state_to_dynamics( DataManager &dm , MICRO &micro ) {
     real5d state           = dm.get<real,5>( "dynamics_state"   );
     real5d tracers         = dm.get<real,5>( "dynamics_tracers" );
     real4d dm_dens_dry     = dm.get<real,4>( "density_dry"      );
@@ -207,7 +218,16 @@ public:
 
     int idWV = micro.tracer_index_vapor;
 
-    parallel_for( Bounds<3>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i) {
+    MultipleTracers<max_tracers> dm_tracers;
+    for (int tr = 0; tr < num_tracers; tr++) {
+      auto trac = dm.get<real,4>( tracer_name[tr] );
+      dm_tracers.add_tracer( trac );
+    }
+
+    parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      for (int tr=0; tr < num_tracers; tr++) {
+        tracers(tr,hs+k,hs+j,hs+i,iens) = dm_tracers(tr,k,j,i,iens);
+      }
       real dens_dry     = dm_dens_dry    (k,j,i,iens);
       real uvel         = dm_uvel        (k,j,i,iens);
       real vvel         = dm_vvel        (k,j,i,iens);
@@ -215,26 +235,15 @@ public:
       real theta_dry    = dm_theta_dry   (k,j,i,iens);
       real pressure_dry = dm_pressure_dry(k,j,i,iens);
       real temp         = pressure_dry / (dens_dry * Rd);
-      real dens_vap     = tracers(idWV,hs+k,hs+j,hs+i);
-
-
-      real dens  = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens);
-      real uvel  = state(idU,hs+k,hs+j,hs+i,iens) / dens;
-      real vvel  = state(idV,hs+k,hs+j,hs+i,iens) / dens;
-      real wvel  = state(idW,hs+k,hs+j,hs+i,iens) / dens;
-      real theta = ( state(idT,hs+k,hs+j,hs+i,iens) + hyDensThetaCells(k,iens) ) / dens;
-      real pressure = C0 * pow( dens*theta , GAMMA );
-      real dens_vap = tracers(idWV,hs+k,hs+j,hs+i,iens);
-      real dens_dry = dens - dens_vap;
-      real temp = pressure / (dens_dry * Rd + dens_vap * Rv);
-      real pressure_dry = dens_dry * Rd * temp;
-      real theta_dry = temp * pow( p0 / pressure_dry , Rd/cp );
-      dm_rho_dry     (k,j,i,iens) = dens_dry;
-      dm_uvel        (k,j,i,iens) = uvel;
-      dm_vvel        (k,j,i,iens) = vvel;
-      dm_wvel        (k,j,i,iens) = wvel;
-      dm_theta_dry   (k,j,i,iens) = theta_dry;
-      dm_pressure_dry(k,j,i,iens) = pressure_dry;
+      real dens_vap     = tracers(idWV,hs+k,hs+j,hs+i,iens);
+      real dens         = dens_dry + dens_vap;
+      real pressure     = dens_dry * Rd * temp + dens_vap * Rv * temp;
+      real theta        = pow( pressure / C0 , 1._fp / gamma ) / dens;
+      state(idR,hs+k,hs+j,hs+i,iens) = dens - hyDensCells(k,iens);
+      state(idU,hs+k,hs+j,hs+i,iens) = dens * uvel;
+      state(idV,hs+k,hs+j,hs+i,iens) = dens * vvel;
+      state(idW,hs+k,hs+j,hs+i,iens) = dens * wvel;
+      state(idT,hs+k,hs+j,hs+i,iens) = dens * theta - hyDensThetaCells(k,iens);
     });
   }
 
@@ -255,12 +264,6 @@ public:
       tracer_pos      (tr) = pos_def;   // Store whether it's positive-definite
       tracer_adds_mass(tr) = adds_mass; // Store whether it adds mass (otherwise it's passive)
     });
-
-    // Register and allocate this tracer in the DataManager
-    dm.register_and_allocate<real>( name , desc , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-
-    auto tmp = dm.get_collapsed<real>( name );
-    yakl::memset( tmp , 0._fp );
 
     // Return the index of this tracer to the caller
     return tr;
@@ -759,6 +762,17 @@ public:
     // Register and allocate state data with the DataManager
     dm.register_and_allocate<real>( "dynamics_state"   , "dynamics state"   , {num_state  ,nz+2*hs,ny+2*hs,nx+2*hs,nens} , {"num_state"  ,"nz_halo","ny_halo","nx_halo","nens"} );
     dm.register_and_allocate<real>( "dynamics_tracers" , "dynamics tracers" , {num_tracers,nz+2*hs,ny+2*hs,nx+2*hs,nens} , {"num_tracers","nz_halo","ny_halo","nx_halo","nens"} );
+
+    auto state   = dm.get<real,5>("dynamics_state");
+    auto tracers = dm.get<real,5>("dynamics_tracers");
+    parallel_for( Bounds<4>(nz+2*hs,ny+2*hs,nx+2*hs,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      for (int l=0; l < num_state; l++) {
+        state(l,k,j,i,iens) = 0;
+      }
+      for (int tr=0; tr < num_tracers; tr++) {
+        tracers(tr,k,j,i,iens) = 0;
+      }
+    });
 
     std::cout << "nx: " << nx << "\n";
     std::cout << "ny: " << ny << "\n";

@@ -15,7 +15,8 @@ typedef Temporal_operator<Spatial> Dycore;
 typedef Microphysics Microphysics;
 
 
-void allocate_coupler_state( std::string inFile , DataManager &dm);
+template <class MICRO>
+void allocate_coupler_state( std::string inFile , DataManager &dm , MICRO &micro );
 
 
 int main(int argc, char** argv) {
@@ -53,7 +54,9 @@ int main(int argc, char** argv) {
       real dt = dycore.compute_time_step( 0.8 , dm , micro );
       if (etime + dt > simTime) { dt = simTime - etime; }
       dycore.timeStep( dm , micro , dt );
-      // micro.timeStep( dm , dt );
+      dycore.convert_dynamics_to_coupler_state( dm , micro );
+      micro.timeStep( dm , dt );
+      dycore.convert_coupler_state_to_dynamics( dm , micro );
       etime += dt;
       if (etime / outFreq >= numOut+1) {
         std::cout << "Etime , dt: " << etime << " , " << dt << "\n";
@@ -86,6 +89,7 @@ void allocate_coupler_state( std::string inFile , DataManager &dm , MICRO &micro
   int nz = nc.getDimSize("num_interfaces") - 1;
   nc.close();
   int nens = config["nens"].as<real>();
+
   dm.register_and_allocate<real>( "density_dry"  , "dry density"               , {nz,ny,nx,nens} , {"z","y","x","nens"} );
   dm.register_and_allocate<real>( "uvel"         , "x-direction velocity"      , {nz,ny,nx,nens} , {"z","y","x","nens"} );
   dm.register_and_allocate<real>( "vvel"         , "y-direction velocity"      , {nz,ny,nx,nens} , {"z","y","x","nens"} );
@@ -93,14 +97,22 @@ void allocate_coupler_state( std::string inFile , DataManager &dm , MICRO &micro
   dm.register_and_allocate<real>( "theta_dry"    , "dry potential temperature" , {nz,ny,nx,nens} , {"z","y","x","nens"} );
   dm.register_and_allocate<real>( "pressure_dry" , "dry pressure"              , {nz,ny,nx,nens} , {"z","y","x","nens"} );
 
-  { auto tmp = dm.get_collapsed<real>("density_dry" ); memset( tmp , 0._fp ); }
-  { auto tmp = dm.get_collapsed<real>("uvel"        ); memset( tmp , 0._fp ); }
-  { auto tmp = dm.get_collapsed<real>("vvel"        ); memset( tmp , 0._fp ); }
-  { auto tmp = dm.get_collapsed<real>("wvel"        ); memset( tmp , 0._fp ); }
-  { auto tmp = dm.get_collapsed<real>("theta_dry"   ); memset( tmp , 0._fp ); }
-  { auto tmp = dm.get_collapsed<real>("pressure_dry"); memset( tmp , 0._fp ); }
+  auto density_dry  = dm.get_collapsed<real>("density_dry" );
+  auto uvel         = dm.get_collapsed<real>("uvel"        );
+  auto vvel         = dm.get_collapsed<real>("vvel"        );
+  auto wvel         = dm.get_collapsed<real>("wvel"        );
+  auto theta_dry    = dm.get_collapsed<real>("theta_dry"   );
+  auto pressure_dry = dm.get_collapsed<real>("pressure_dry");
 
-  micro.allocate_coupler_state( dm );
+  parallel_for( Bounds<1>(nz*ny*nx*nens) , YAKL_LAMBDA (int i) {
+    density_dry (i) = 0;
+    uvel        (i) = 0;
+    vvel        (i) = 0;
+    wvel        (i) = 0;
+    theta_dry   (i) = 0;
+    pressure_dry(i) = 0;
+  });
+
 }
 
 

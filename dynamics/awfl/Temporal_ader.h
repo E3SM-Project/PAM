@@ -30,6 +30,18 @@ public:
   }
 
 
+  template <class MICRO>
+  void convert_dynamics_to_coupler_state( DataManager &dm , MICRO &micro ) {
+    space_op.convert_dynamics_to_coupler_state( dm , micro );
+  }
+
+
+  template <class MICRO>
+  void convert_coupler_state_to_dynamics( DataManager &dm , MICRO &micro ) {
+    space_op.convert_coupler_state_to_dynamics( dm , micro );
+  }
+
+
   int add_tracer(DataManager &dm , std::string name , std::string desc , bool pos_def , bool adds_mass) {
     return space_op.add_tracer(dm , name , desc , pos_def , adds_mass);
   }

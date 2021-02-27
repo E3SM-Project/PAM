@@ -58,26 +58,30 @@ public:
 
   template <class DC>
   void init(std::string inFile , DC &dycore , DataManager &dm) {
+    // Read the YAML input file
+    YAML::Node config = YAML::LoadFile(inFile);
+    // Get dimension sizes
+    int nx   = config["nx"].as<int>();
+    int ny   = config["ny"].as<int>();
+    int nens = config["nens"].as<int>();
+    std::string vcoords_file = config["vcoords"].as<std::string>();
+    yakl::SimpleNetCDF nc;
+    nc.open(vcoords_file);
+    int nz = nc.getDimSize("num_interfaces") - 1;
+    nc.close();
+
     // Register tracers in the dycore
     //                                        name              description       positive   adds mass
     tracer_IDs(ID_V) = dycore.add_tracer(dm , "water_vapor"   , "Water Vapor"   , true     , true);
     tracer_IDs(ID_C) = dycore.add_tracer(dm , "cloud_liquid"  , "Cloud liquid"  , true     , true);
     tracer_IDs(ID_R) = dycore.add_tracer(dm , "precip_liquid" , "precip_liquid" , true     , true);
 
-    int nz = dm.get_dimension_size("z");
-    int ny = dm.get_dimension_size("y");
-    int nx = dm.get_dimension_size("x");
-    int nx = dm.get_dimension_size("nens");
+    // Register and allocate the tracers in the DataManager
+    dm.register_and_allocate<real>( "water_vapor"   , "Water Vapor"   , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    dm.register_and_allocate<real>( "cloud_liquid"  , "Cloud liquid"  , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    dm.register_and_allocate<real>( "precip_liquid" , "precip_liquid" , {nz,ny,nx,nens} , {"z","y","x","nens"} );
 
     tracer_index_vapor = tracer_IDs(ID_V);
-
-    // Read the YAML input file
-    YAML::Node config = YAML::LoadFile(inFile);
-
-    // Get the number of ensembles
-    int nens = config["nx"].as<int>();
-    int nens = config["ny"].as<int>();
-    int nens = config["nens"].as<int>();
 
     dm.register_and_allocate<real>( "precl" , "precipitation rate" , {ny,nx,nens} , {"y","x","nens"} );
   }
@@ -85,26 +89,24 @@ public:
 
 
   void timeStep( DataManager &dm , real dt ) {
-    auto rho       = dm.get_lev_col<real>("density");
-    auto rho_theta = dm.get_lev_col<real>("density_theta");
-    auto rho_v     = dm.get_lev_col<real>("water_vapor");
-    auto rho_c     = dm.get_lev_col<real>("cloud_liquid");
-    auto rho_r     = dm.get_lev_col<real>("precip_liquid");
+    auto rho_v        = dm.get_lev_col<real>("water_vapor");
+    auto rho_c        = dm.get_lev_col<real>("cloud_liquid");
+    auto rho_r        = dm.get_lev_col<real>("precip_liquid");
+    auto rho_dry      = dm.get_lev_col<real>("density_dry");
+    auto theta_dry    = dm.get_lev_col<real>("theta_dry");
+    auto pressure_dry = dm.get_lev_col<real>("pressure_dry");
 
-    int nz   = rho.dimension[0];
-    int ncol = rho.dimension[1];
-
+    int nz   = dm.get_dimension_size("z"   );
     int ny   = dm.get_dimension_size("y"   );
     int nx   = dm.get_dimension_size("x"   );
     int nens = dm.get_dimension_size("nens");
+    int ncol = ny*nx*nens;
 
     // These are inputs to kessler(...)
-    real2d rho_dry  ("rho_dry"  ,nz,ncol);
     real2d qv       ("qv"       ,nz,ncol);
     real2d qc       ("qc"       ,nz,ncol);
     real2d qr       ("qr"       ,nz,ncol);
     real2d exner_dry("exner_dry",nz,ncol);
-    real2d theta_dry("theta_dry",nz,ncol);
     real2d zmid_in = dm.get<real,2>("vertical_midpoint_height");
 
     real2d zmid("zmid",nz,ny*nx*nens);
@@ -125,16 +127,10 @@ public:
       if (rho_v(k,i) < 0) rho_v(k,i) = 0;
       if (rho_c(k,i) < 0) rho_c(k,i) = 0;
       if (rho_r(k,i) < 0) rho_r(k,i) = 0;
-      rho_dry(k,i) = rho(k,i) - rho_v(k,i) - rho_c(k,i) - rho_r(k,i);
       qv     (k,i) = rho_v(k,i) / rho_dry(k,i);
       qc     (k,i) = rho_c(k,i) / rho_dry(k,i);
       qr     (k,i) = rho_r(k,i) / rho_dry(k,i);
-      real press_moist = C0_d * pow( rho_theta(k,i) , gamma_d );
-      real R_moist = rho_dry(k,i)/rho(k,i) * R_d + rho_v(k,i)/rho(k,i) * R_v;
-      real temp = press_moist / R_moist / rho(k,i);
-      real press_dry = press_moist - rho_v(k,i)*R_v*temp;
-      exner_dry(k,i) = pow( press_dry / p0 , R_d / cp_d );
-      theta_dry(k,i) = temp / exner_dry(k,i);
+      exner_dry(k,i) = pow( pressure_dry(k,i) / p0 , R_d / cp_d );
     });
 
     auto precl = dm.get_collapsed<real>("precl");
@@ -145,11 +141,6 @@ public:
       rho_v(k,i) = qv(k,i)*rho_dry(k,i);
       rho_c(k,i) = qc(k,i)*rho_dry(k,i);
       rho_r(k,i) = qr(k,i)*rho_dry(k,i);
-      rho(k,i) = rho_dry(k,i) + rho_v(k,i) + rho_c(k,i) + rho_r(k,i);
-      real temp = theta_dry(k,i) * exner_dry(k,i);
-      real R_moist = rho_dry(k,i)/rho(k,i) * R_d + rho_v(k,i)/rho(k,i) * R_v;
-      real press_moist = rho(k,i) * R_moist * temp;
-      rho_theta(k,i) = pow( press_moist / C0_d , 1._fp / gamma_d );
     });
 
   }
