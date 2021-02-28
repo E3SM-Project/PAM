@@ -94,7 +94,6 @@ public:
     auto rho_r        = dm.get_lev_col<real>("precip_liquid");
     auto rho_dry      = dm.get_lev_col<real>("density_dry");
     auto theta_dry    = dm.get_lev_col<real>("theta_dry");
-    auto pressure_dry = dm.get_lev_col<real>("pressure_dry");
 
     int nz   = dm.get_dimension_size("z"   );
     int ny   = dm.get_dimension_size("y"   );
@@ -103,10 +102,11 @@ public:
     int ncol = ny*nx*nens;
 
     // These are inputs to kessler(...)
-    real2d qv       ("qv"       ,nz,ncol);
-    real2d qc       ("qc"       ,nz,ncol);
-    real2d qr       ("qr"       ,nz,ncol);
-    real2d exner_dry("exner_dry",nz,ncol);
+    real2d qv          ("qv"          ,nz,ncol);
+    real2d qc          ("qc"          ,nz,ncol);
+    real2d qr          ("qr"          ,nz,ncol);
+    real2d exner_dry   ("exner_dry"   ,nz,ncol);
+    real2d pressure_dry("pressure_dry",nz,ncol);
     real2d zmid_in = dm.get<real,2>("vertical_midpoint_height");
 
     real2d zmid("zmid",nz,ny*nx*nens);
@@ -127,10 +127,11 @@ public:
       if (rho_v(k,i) < 0) rho_v(k,i) = 0;
       if (rho_c(k,i) < 0) rho_c(k,i) = 0;
       if (rho_r(k,i) < 0) rho_r(k,i) = 0;
-      qv     (k,i) = rho_v(k,i) / rho_dry(k,i);
-      qc     (k,i) = rho_c(k,i) / rho_dry(k,i);
-      qr     (k,i) = rho_r(k,i) / rho_dry(k,i);
-      exner_dry(k,i) = pow( pressure_dry(k,i) / p0 , R_d / cp_d );
+      qv          (k,i) = rho_v(k,i) / rho_dry(k,i);
+      qc          (k,i) = rho_c(k,i) / rho_dry(k,i);
+      qr          (k,i) = rho_r(k,i) / rho_dry(k,i);
+      pressure_dry(k,i) = C0_d * pow( rho_dry(k,i) * theta_dry(k,i) , gamma_d );
+      exner_dry   (k,i) = pow( pressure_dry(k,i) / p0 , R_d / cp_d );
     });
 
     auto precl = dm.get_collapsed<real>("precl");

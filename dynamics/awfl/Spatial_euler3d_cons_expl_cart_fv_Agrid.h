@@ -169,7 +169,16 @@ public:
     real4d dm_vvel         = dm.get<real,4>( "vvel"             );
     real4d dm_wvel         = dm.get<real,4>( "wvel"             );
     real4d dm_theta_dry    = dm.get<real,4>( "theta_dry"        );
-    real4d dm_pressure_dry = dm.get<real,4>( "pressure_dry"     );
+
+    YAKL_SCOPE( hyDensCells      , this->hyDensCells      );
+    YAKL_SCOPE( hyDensThetaCells , this->hyDensThetaCells );
+    YAKL_SCOPE( C0               , this->C0               );
+    YAKL_SCOPE( gamma            , this->gamma            );
+    YAKL_SCOPE( num_tracers      , this->num_tracers      );
+    YAKL_SCOPE( p0               , this->p0               );
+    YAKL_SCOPE( Rd               , this->Rd               );
+    YAKL_SCOPE( Rv               , this->Rv               );
+    YAKL_SCOPE( cp               , this->cp               );
 
     int idWV = micro.tracer_index_vapor;
 
@@ -196,7 +205,6 @@ public:
       dm_vvel        (k,j,i,iens) = vvel;
       dm_wvel        (k,j,i,iens) = wvel;
       dm_theta_dry   (k,j,i,iens) = theta_dry;
-      dm_pressure_dry(k,j,i,iens) = pressure_dry;
       for (int tr=0; tr < num_tracers; tr++) {
         dm_tracers  (tr,k,j,i,iens) = tracers(tr,hs+k,hs+j,hs+i,iens);
       }
@@ -214,7 +222,16 @@ public:
     real4d dm_vvel         = dm.get<real,4>( "vvel"             );
     real4d dm_wvel         = dm.get<real,4>( "wvel"             );
     real4d dm_theta_dry    = dm.get<real,4>( "theta_dry"        );
-    real4d dm_pressure_dry = dm.get<real,4>( "pressure_dry"     );
+
+    YAKL_SCOPE( hyDensCells      , this->hyDensCells      );
+    YAKL_SCOPE( hyDensThetaCells , this->hyDensThetaCells );
+    YAKL_SCOPE( C0               , this->C0               );
+    YAKL_SCOPE( gamma            , this->gamma            );
+    YAKL_SCOPE( num_tracers      , this->num_tracers      );
+    YAKL_SCOPE( p0               , this->p0               );
+    YAKL_SCOPE( Rd               , this->Rd               );
+    YAKL_SCOPE( Rv               , this->Rv               );
+    YAKL_SCOPE( cp               , this->cp               );
 
     int idWV = micro.tracer_index_vapor;
 
@@ -233,7 +250,7 @@ public:
       real vvel         = dm_vvel        (k,j,i,iens);
       real wvel         = dm_wvel        (k,j,i,iens);
       real theta_dry    = dm_theta_dry   (k,j,i,iens);
-      real pressure_dry = dm_pressure_dry(k,j,i,iens);
+      real pressure_dry = C0 * pow( dens_dry * theta_dry , gamma );
       real temp         = pressure_dry / (dens_dry * Rd);
       real dens_vap     = tracers(idWV,hs+k,hs+j,hs+i,iens);
       real dens         = dens_dry + dens_vap;
