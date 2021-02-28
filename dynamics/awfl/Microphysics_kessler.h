@@ -93,7 +93,8 @@ public:
     auto rho_c        = dm.get_lev_col<real>("cloud_liquid");
     auto rho_r        = dm.get_lev_col<real>("precip_liquid");
     auto rho_dry      = dm.get_lev_col<real>("density_dry");
-    auto theta_dry    = dm.get_lev_col<real>("theta_dry");
+    auto temp         = dm.get_lev_col<real>("temp");
+    auto pressure_dry = dm.get_lev_col<real>("pressure_dry");
 
     int nz   = dm.get_dimension_size("z"   );
     int ny   = dm.get_dimension_size("y"   );
@@ -105,8 +106,8 @@ public:
     real2d qv          ("qv"          ,nz,ncol);
     real2d qc          ("qc"          ,nz,ncol);
     real2d qr          ("qr"          ,nz,ncol);
+    real2d theta_dry   ("theta_dry"   ,nz,ncol);
     real2d exner_dry   ("exner_dry"   ,nz,ncol);
-    real2d pressure_dry("pressure_dry",nz,ncol);
     real2d zmid_in = dm.get<real,2>("vertical_midpoint_height");
 
     real2d zmid("zmid",nz,ny*nx*nens);
@@ -130,8 +131,8 @@ public:
       qv          (k,i) = rho_v(k,i) / rho_dry(k,i);
       qc          (k,i) = rho_c(k,i) / rho_dry(k,i);
       qr          (k,i) = rho_r(k,i) / rho_dry(k,i);
-      pressure_dry(k,i) = C0_d * pow( rho_dry(k,i) * theta_dry(k,i) , gamma_d );
       exner_dry   (k,i) = pow( pressure_dry(k,i) / p0 , R_d / cp_d );
+      theta_dry   (k,i) = temp(k,i) / exner_dry(k,i);
     });
 
     auto precl = dm.get_collapsed<real>("precl");
@@ -142,6 +143,7 @@ public:
       rho_v(k,i) = qv(k,i)*rho_dry(k,i);
       rho_c(k,i) = qc(k,i)*rho_dry(k,i);
       rho_r(k,i) = qr(k,i)*rho_dry(k,i);
+      temp (k,i) = theta_dry(k,i) * exner_dry(k,i);
     });
 
   }

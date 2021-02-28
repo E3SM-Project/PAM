@@ -168,7 +168,8 @@ public:
     real4d dm_uvel         = dm.get<real,4>( "uvel"             );
     real4d dm_vvel         = dm.get<real,4>( "vvel"             );
     real4d dm_wvel         = dm.get<real,4>( "wvel"             );
-    real4d dm_theta_dry    = dm.get<real,4>( "theta_dry"        );
+    real4d dm_temp         = dm.get<real,4>( "temp"             );
+    real4d dm_pressure_dry = dm.get<real,4>( "pressure_dry"     );
 
     YAKL_SCOPE( hyDensCells      , this->hyDensCells      );
     YAKL_SCOPE( hyDensThetaCells , this->hyDensThetaCells );
@@ -179,6 +180,7 @@ public:
     YAKL_SCOPE( Rd               , this->Rd               );
     YAKL_SCOPE( Rv               , this->Rv               );
     YAKL_SCOPE( cp               , this->cp               );
+    YAKL_SCOPE( tracer_adds_mass , this->tracer_adds_mass );
 
     int idWV = micro.tracer_index_vapor;
 
@@ -196,17 +198,20 @@ public:
       real theta = ( state(idT,hs+k,hs+j,hs+i,iens) + hyDensThetaCells(k,iens) ) / dens;
       real pressure = C0 * pow( dens*theta , gamma );
       real dens_vap = tracers(idWV,hs+k,hs+j,hs+i,iens);
-      real dens_dry = dens - dens_vap;
-      real temp = pressure / (dens_dry * Rd + dens_vap * Rv);
-      real pressure_dry = dens_dry * Rd * temp;
-      real theta_dry = temp * pow( p0 / pressure_dry , Rd/cp );
+      real dens_dry = dens;
+      for (int tr=0; tr < num_tracers; tr++) {
+        if (tracer_adds_mass(tr)) dens_dry -= tracers(tr,hs+k,hs+j,hs+i,iens);
+      }
+      real temp = pressure / ( (dens-dens_vap) * Rd + dens_vap * Rv );
+      real pressure_dry = pressure - dens_vap * Rv * temp;
       dm_dens_dry    (k,j,i,iens) = dens_dry;
       dm_uvel        (k,j,i,iens) = uvel;
       dm_vvel        (k,j,i,iens) = vvel;
       dm_wvel        (k,j,i,iens) = wvel;
-      dm_theta_dry   (k,j,i,iens) = theta_dry;
+      dm_temp        (k,j,i,iens) = temp;
+      dm_pressure_dry(k,j,i,iens) = pressure_dry;
       for (int tr=0; tr < num_tracers; tr++) {
-        dm_tracers  (tr,k,j,i,iens) = tracers(tr,hs+k,hs+j,hs+i,iens);
+        dm_tracers(tr,k,j,i,iens) = tracers(tr,hs+k,hs+j,hs+i,iens);
       }
     });
   }
@@ -221,7 +226,8 @@ public:
     real4d dm_uvel         = dm.get<real,4>( "uvel"             );
     real4d dm_vvel         = dm.get<real,4>( "vvel"             );
     real4d dm_wvel         = dm.get<real,4>( "wvel"             );
-    real4d dm_theta_dry    = dm.get<real,4>( "theta_dry"        );
+    real4d dm_temp         = dm.get<real,4>( "temp"             );
+    real4d dm_pressure_dry = dm.get<real,4>( "pressure_dry"     );
 
     YAKL_SCOPE( hyDensCells      , this->hyDensCells      );
     YAKL_SCOPE( hyDensThetaCells , this->hyDensThetaCells );
@@ -232,6 +238,7 @@ public:
     YAKL_SCOPE( Rd               , this->Rd               );
     YAKL_SCOPE( Rv               , this->Rv               );
     YAKL_SCOPE( cp               , this->cp               );
+    YAKL_SCOPE( tracer_adds_mass , this->tracer_adds_mass );
 
     int idWV = micro.tracer_index_vapor;
 
@@ -249,12 +256,14 @@ public:
       real uvel         = dm_uvel        (k,j,i,iens);
       real vvel         = dm_vvel        (k,j,i,iens);
       real wvel         = dm_wvel        (k,j,i,iens);
-      real theta_dry    = dm_theta_dry   (k,j,i,iens);
-      real pressure_dry = C0 * pow( dens_dry * theta_dry , gamma );
-      real temp         = pressure_dry / (dens_dry * Rd);
+      real temp         = dm_temp        (k,j,i,iens);
+      real pressure_dry = dm_pressure_dry(k,j,i,iens);
       real dens_vap     = tracers(idWV,hs+k,hs+j,hs+i,iens);
-      real dens         = dens_dry + dens_vap;
-      real pressure     = dens_dry * Rd * temp + dens_vap * Rv * temp;
+      real dens         = dens_dry;
+      for (int tr=0; tr < num_tracers; tr++) {
+        if (tracer_adds_mass(tr)) dens += tracers(tr,hs+k,hs+j,hs+i,iens);
+      }
+      real pressure     = (dens - dens_vap) * Rd * temp + dens_vap * Rv * temp;
       real theta        = pow( pressure / C0 , 1._fp / gamma ) / dens;
       state(idR,hs+k,hs+j,hs+i,iens) = dens - hyDensCells(k,iens);
       state(idU,hs+k,hs+j,hs+i,iens) = dens * uvel;
