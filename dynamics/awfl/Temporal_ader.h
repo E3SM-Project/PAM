@@ -30,6 +30,18 @@ public:
   }
 
 
+  template <class MICRO>
+  void convert_dynamics_to_coupler_state( DataManager &dm , MICRO &micro ) {
+    space_op.convert_dynamics_to_coupler_state( dm , micro );
+  }
+
+
+  template <class MICRO>
+  void convert_coupler_state_to_dynamics( DataManager &dm , MICRO &micro ) {
+    space_op.convert_coupler_state_to_dynamics( dm , micro );
+  }
+
+
   int add_tracer(DataManager &dm , std::string name , std::string desc , bool pos_def , bool adds_mass) {
     return space_op.add_tracer(dm , name , desc , pos_def , adds_mass);
   }
@@ -64,9 +76,8 @@ public:
     YAKL_SCOPE( stateTend  , this->stateTend  );
     YAKL_SCOPE( tracerTend , this->tracerTend );
 
-    real5d state   = space_op.createStateArr();
-    real5d tracers = space_op.createTracerArr();
-    space_op.read_state_and_tracers( dm , state , tracers );
+    real5d state   = dm.get<real,5>("dynamics_state");
+    real5d tracers = dm.get<real,5>("dynamics_tracers");
 
     // Loop over different items in the spatial splitting
     for (int spl = 0 ; spl < space_op.numSplit() ; spl++) {
@@ -91,8 +102,6 @@ public:
         }
       });
     }
-
-    space_op.write_state_and_tracers( dm , state , tracers );
   }
 
 
