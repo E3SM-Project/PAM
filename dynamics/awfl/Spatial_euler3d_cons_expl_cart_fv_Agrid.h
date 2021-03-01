@@ -202,8 +202,8 @@ public:
       for (int tr=0; tr < num_tracers; tr++) {
         if (tracer_adds_mass(tr)) dens_dry -= tracers(tr,hs+k,hs+j,hs+i,iens);
       }
-      real temp = pressure / ( (dens-dens_vap) * Rd + dens_vap * Rv );
-      real pressure_dry = pressure - dens_vap * Rv * temp;
+      real temp = pressure / ( dens_dry * Rd + dens_vap * Rv );
+      real pressure_dry = dens_dry * Rd * temp;
       dm_dens_dry    (k,j,i,iens) = dens_dry;
       dm_uvel        (k,j,i,iens) = uvel;
       dm_vvel        (k,j,i,iens) = vvel;
@@ -263,7 +263,7 @@ public:
       for (int tr=0; tr < num_tracers; tr++) {
         if (tracer_adds_mass(tr)) dens += tracers(tr,hs+k,hs+j,hs+i,iens);
       }
-      real pressure     = (dens - dens_vap) * Rd * temp + dens_vap * Rv * temp;
+      real pressure     = dens_dry * Rd * temp + dens_vap * Rv * temp;
       real theta        = pow( pressure / C0 , 1._fp / gamma ) / dens;
       state(idR,hs+k,hs+j,hs+i,iens) = dens - hyDensCells(k,iens);
       state(idU,hs+k,hs+j,hs+i,iens) = dens * uvel;
