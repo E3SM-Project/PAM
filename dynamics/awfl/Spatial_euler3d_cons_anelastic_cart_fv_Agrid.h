@@ -159,111 +159,111 @@ public:
 
   template <class MICRO>
   void convert_dynamics_to_coupler_state( DataManager &dm , MICRO &micro ) {
-    real5d state           = dm.get<real,5>( "dynamics_state"   );
-    real5d tracers         = dm.get<real,5>( "dynamics_tracers" );
-    real4d dm_dens_dry     = dm.get<real,4>( "density_dry"      );
-    real4d dm_uvel         = dm.get<real,4>( "uvel"             );
-    real4d dm_vvel         = dm.get<real,4>( "vvel"             );
-    real4d dm_wvel         = dm.get<real,4>( "wvel"             );
-    real4d dm_temp         = dm.get<real,4>( "temp"             );
-    real4d dm_pressure_dry = dm.get<real,4>( "pressure_dry"     );
+    // real5d state           = dm.get<real,5>( "dynamics_state"   );
+    // real5d tracers         = dm.get<real,5>( "dynamics_tracers" );
+    // real4d dm_dens_dry     = dm.get<real,4>( "density_dry"      );
+    // real4d dm_uvel         = dm.get<real,4>( "uvel"             );
+    // real4d dm_vvel         = dm.get<real,4>( "vvel"             );
+    // real4d dm_wvel         = dm.get<real,4>( "wvel"             );
+    // real4d dm_temp         = dm.get<real,4>( "temp"             );
+    // real4d dm_pressure_dry = dm.get<real,4>( "pressure_dry"     );
 
-    YAKL_SCOPE( hyDensCells      , this->hyDensCells      );
-    YAKL_SCOPE( hyDensThetaCells , this->hyDensThetaCells );
-    YAKL_SCOPE( C0               , this->C0               );
-    YAKL_SCOPE( gamma            , this->gamma            );
-    YAKL_SCOPE( num_tracers      , this->num_tracers      );
-    YAKL_SCOPE( p0               , this->p0               );
-    YAKL_SCOPE( Rd               , this->Rd               );
-    YAKL_SCOPE( Rv               , this->Rv               );
-    YAKL_SCOPE( cp               , this->cp               );
-    YAKL_SCOPE( tracer_adds_mass , this->tracer_adds_mass );
+    // YAKL_SCOPE( hyDensCells      , this->hyDensCells      );
+    // YAKL_SCOPE( hyDensThetaCells , this->hyDensThetaCells );
+    // YAKL_SCOPE( C0               , this->C0               );
+    // YAKL_SCOPE( gamma            , this->gamma            );
+    // YAKL_SCOPE( num_tracers      , this->num_tracers      );
+    // YAKL_SCOPE( p0               , this->p0               );
+    // YAKL_SCOPE( Rd               , this->Rd               );
+    // YAKL_SCOPE( Rv               , this->Rv               );
+    // YAKL_SCOPE( cp               , this->cp               );
+    // YAKL_SCOPE( tracer_adds_mass , this->tracer_adds_mass );
 
-    int idWV = micro.tracer_index_vapor;
+    // int idWV = micro.tracer_index_vapor;
 
-    MultipleTracers<max_tracers> dm_tracers;
-    for (int tr = 0; tr < num_tracers; tr++) {
-      auto trac = dm.get<real,4>( tracer_name[tr] );
-      dm_tracers.add_tracer( trac );
-    }
+    // MultipleTracers<max_tracers> dm_tracers;
+    // for (int tr = 0; tr < num_tracers; tr++) {
+    //   auto trac = dm.get<real,4>( tracer_name[tr] );
+    //   dm_tracers.add_tracer( trac );
+    // }
 
-    parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      real dens  = hyDensCells(k,iens);
-      real uvel  = state(idU,hs+k,hs+j,hs+i,iens) / dens;
-      real vvel  = state(idV,hs+k,hs+j,hs+i,iens) / dens;
-      real wvel  = state(idW,hs+k,hs+j,hs+i,iens) / dens;
-      real theta = ( state(idT,hs+k,hs+j,hs+i,iens) + hyDensThetaCells(k,iens) ) / dens;
-      real pressure = hyPressureCells(k,iens);
-      real dens_vap = tracers(idWV,hs+k,hs+j,hs+i,iens);
-      real dens_dry = dens;
-      for (int tr=0; tr < num_tracers; tr++) {
-        if (tracer_adds_mass(tr)) dens_dry -= tracers(tr,hs+k,hs+j,hs+i,iens);
-      }
-      real temp = pressure / ( dens_dry * Rd + dens_vap * Rv );
-      real pressure_dry = dens_dry * Rd * temp;
-      dm_dens_dry    (k,j,i,iens) = dens_dry;
-      dm_uvel        (k,j,i,iens) = uvel;
-      dm_vvel        (k,j,i,iens) = vvel;
-      dm_wvel        (k,j,i,iens) = wvel;
-      dm_temp        (k,j,i,iens) = temp;
-      dm_pressure_dry(k,j,i,iens) = pressure_dry;
-      for (int tr=0; tr < num_tracers; tr++) {
-        dm_tracers(tr,k,j,i,iens) = tracers(tr,hs+k,hs+j,hs+i,iens);
-      }
-    });
+    // parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+    //   real dens  = hyDensCells(k,iens);
+    //   real uvel  = state(idU,hs+k,hs+j,hs+i,iens) / dens;
+    //   real vvel  = state(idV,hs+k,hs+j,hs+i,iens) / dens;
+    //   real wvel  = state(idW,hs+k,hs+j,hs+i,iens) / dens;
+    //   real theta = ( state(idT,hs+k,hs+j,hs+i,iens) + hyDensThetaCells(k,iens) ) / dens;
+    //   real pressure = hyPressureCells(k,iens);
+    //   real dens_vap = tracers(idWV,hs+k,hs+j,hs+i,iens);
+    //   real dens_dry = dens;
+    //   for (int tr=0; tr < num_tracers; tr++) {
+    //     if (tracer_adds_mass(tr)) dens_dry -= tracers(tr,hs+k,hs+j,hs+i,iens);
+    //   }
+    //   real temp = pressure / ( dens_dry * Rd + dens_vap * Rv );
+    //   real pressure_dry = dens_dry * Rd * temp;
+    //   dm_dens_dry    (k,j,i,iens) = dens_dry;
+    //   dm_uvel        (k,j,i,iens) = uvel;
+    //   dm_vvel        (k,j,i,iens) = vvel;
+    //   dm_wvel        (k,j,i,iens) = wvel;
+    //   dm_temp        (k,j,i,iens) = temp;
+    //   dm_pressure_dry(k,j,i,iens) = pressure_dry;
+    //   for (int tr=0; tr < num_tracers; tr++) {
+    //     dm_tracers(tr,k,j,i,iens) = tracers(tr,hs+k,hs+j,hs+i,iens);
+    //   }
+    // });
   }
 
 
 
   template <class MICRO>
   void convert_coupler_state_to_dynamics( DataManager &dm , MICRO &micro ) {
-    real5d state           = dm.get<real,5>( "dynamics_state"   );
-    real5d tracers         = dm.get<real,5>( "dynamics_tracers" );
-    real4d dm_dens_dry     = dm.get<real,4>( "density_dry"      );
-    real4d dm_uvel         = dm.get<real,4>( "uvel"             );
-    real4d dm_vvel         = dm.get<real,4>( "vvel"             );
-    real4d dm_wvel         = dm.get<real,4>( "wvel"             );
-    real4d dm_temp         = dm.get<real,4>( "temp"             );
-    real4d dm_pressure_dry = dm.get<real,4>( "pressure_dry"     );
+    // real5d state           = dm.get<real,5>( "dynamics_state"   );
+    // real5d tracers         = dm.get<real,5>( "dynamics_tracers" );
+    // real4d dm_dens_dry     = dm.get<real,4>( "density_dry"      );
+    // real4d dm_uvel         = dm.get<real,4>( "uvel"             );
+    // real4d dm_vvel         = dm.get<real,4>( "vvel"             );
+    // real4d dm_wvel         = dm.get<real,4>( "wvel"             );
+    // real4d dm_temp         = dm.get<real,4>( "temp"             );
+    // real4d dm_pressure_dry = dm.get<real,4>( "pressure_dry"     );
 
-    YAKL_SCOPE( hyDensCells      , this->hyDensCells      );
-    YAKL_SCOPE( hyDensThetaCells , this->hyDensThetaCells );
-    YAKL_SCOPE( C0               , this->C0               );
-    YAKL_SCOPE( gamma            , this->gamma            );
-    YAKL_SCOPE( num_tracers      , this->num_tracers      );
-    YAKL_SCOPE( p0               , this->p0               );
-    YAKL_SCOPE( Rd               , this->Rd               );
-    YAKL_SCOPE( Rv               , this->Rv               );
-    YAKL_SCOPE( cp               , this->cp               );
-    YAKL_SCOPE( tracer_adds_mass , this->tracer_adds_mass );
+    // YAKL_SCOPE( hyDensCells      , this->hyDensCells      );
+    // YAKL_SCOPE( hyDensThetaCells , this->hyDensThetaCells );
+    // YAKL_SCOPE( C0               , this->C0               );
+    // YAKL_SCOPE( gamma            , this->gamma            );
+    // YAKL_SCOPE( num_tracers      , this->num_tracers      );
+    // YAKL_SCOPE( p0               , this->p0               );
+    // YAKL_SCOPE( Rd               , this->Rd               );
+    // YAKL_SCOPE( Rv               , this->Rv               );
+    // YAKL_SCOPE( cp               , this->cp               );
+    // YAKL_SCOPE( tracer_adds_mass , this->tracer_adds_mass );
 
-    int idWV = micro.tracer_index_vapor;
+    // int idWV = micro.tracer_index_vapor;
 
-    MultipleTracers<max_tracers> dm_tracers;
-    for (int tr = 0; tr < num_tracers; tr++) {
-      auto trac = dm.get<real,4>( tracer_name[tr] );
-      dm_tracers.add_tracer( trac );
-    }
+    // MultipleTracers<max_tracers> dm_tracers;
+    // for (int tr = 0; tr < num_tracers; tr++) {
+    //   auto trac = dm.get<real,4>( tracer_name[tr] );
+    //   dm_tracers.add_tracer( trac );
+    // }
 
-    parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      for (int tr=0; tr < num_tracers; tr++) {
-        tracers(tr,hs+k,hs+j,hs+i,iens) = dm_tracers(tr,k,j,i,iens);
-      }
-      real dens_dry     = dm_dens_dry    (k,j,i,iens);
-      real uvel         = dm_uvel        (k,j,i,iens);
-      real vvel         = dm_vvel        (k,j,i,iens);
-      real wvel         = dm_wvel        (k,j,i,iens);
-      real temp         = dm_temp        (k,j,i,iens);
-      real pressure_dry = dm_pressure_dry(k,j,i,iens);
-      real dens_vap     = tracers(idWV,hs+k,hs+j,hs+i,iens);
-      real dens         = hyDensCells(k,iens);
-      real pressure     = hyPressureCells(k,iens);
-      real theta        = pow( pressure / C0 , 1._fp / gamma ) / dens;
-      state(idU,hs+k,hs+j,hs+i,iens) = dens * uvel;
-      state(idV,hs+k,hs+j,hs+i,iens) = dens * vvel;
-      state(idW,hs+k,hs+j,hs+i,iens) = dens * wvel;
-      state(idT,hs+k,hs+j,hs+i,iens) = dens * theta - hyDensThetaCells(k,iens);
-    });
+    // parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+    //   for (int tr=0; tr < num_tracers; tr++) {
+    //     tracers(tr,hs+k,hs+j,hs+i,iens) = dm_tracers(tr,k,j,i,iens);
+    //   }
+    //   real dens_dry     = dm_dens_dry    (k,j,i,iens);
+    //   real uvel         = dm_uvel        (k,j,i,iens);
+    //   real vvel         = dm_vvel        (k,j,i,iens);
+    //   real wvel         = dm_wvel        (k,j,i,iens);
+    //   real temp         = dm_temp        (k,j,i,iens);
+    //   real pressure_dry = dm_pressure_dry(k,j,i,iens);
+    //   real dens_vap     = tracers(idWV,hs+k,hs+j,hs+i,iens);
+    //   real dens         = hyDensCells(k,iens);
+    //   real pressure     = hyPressureCells(k,iens);
+    //   real theta        = pow( pressure / C0 , 1._fp / gamma ) / dens;
+    //   state(idU,hs+k,hs+j,hs+i,iens) = dens * uvel;
+    //   state(idV,hs+k,hs+j,hs+i,iens) = dens * vvel;
+    //   state(idW,hs+k,hs+j,hs+i,iens) = dens * wvel;
+    //   state(idT,hs+k,hs+j,hs+i,iens) = dens * theta - hyDensThetaCells(k,iens);
+    // });
   }
 
 
@@ -416,8 +416,12 @@ public:
         real v = state(idV,hs+k,hs+j,hs+i,iens) / r;
         real w = state(idW,hs+k,hs+j,hs+i,iens) / r;
 
+        real udt = cfl * dx         / ( abs(u) + 1.e-6 );
+        real vdt = cfl * dy         / ( abs(v) + 1.e-6 );
+        real wdt = cfl * dz(k,iens) / ( abs(w) + 1.e-6 );
+
         // Compute the min of the max stable time steps
-        dt3d(k,j,i,iens) = min( min( abs(u) , abs(v) ) , abs(w) );
+        dt3d(k,j,i,iens) = max( 10._fp , min( min( abs(udt) , abs(vdt) ) , abs(wdt) ) );
       });
       // Store to dtInit so we don't have to compute this again
       dtInit = yakl::intrinsics::minval( dt3d );
@@ -1281,7 +1285,7 @@ public:
           // Compute time derivatives if necessary
           //////////////////////////////////////////
           if (nAder > 1) {
-            diffTransformTracer( hy_dens , ru_DTs , rt_DTs , rut_DTs , derivMatrix , dx );
+            diffTransformTracerXY( hy_dens , ru_DTs , rt_DTs , rut_DTs , derivMatrix , dx );
           }
 
           //////////////////////////////////////////
@@ -1343,7 +1347,7 @@ public:
       real u = 0.5_fp * (u_L + u_R);
 
       if (u > 0) {
-        stateFlux(idU,k,j,i,iens) = hy_dens*u_L*u_L
+        stateFlux(idU,k,j,i,iens) = hy_dens*u_L*u_L;
         stateFlux(idV,k,j,i,iens) = hy_dens*u_L*v_L;
         stateFlux(idW,k,j,i,iens) = hy_dens*u_L*w_L;
         stateFlux(idT,k,j,i,iens) = hy_dens*u_L*t_L;
@@ -1351,7 +1355,7 @@ public:
           tracerFlux(tr,k,j,i,iens) = u_L * tracerLimits(tr,0,k,j,i,iens);
         }
       } else {
-        stateFlux(idU,k,j,i,iens) = hy_dens*u_R*u_R
+        stateFlux(idU,k,j,i,iens) = hy_dens*u_R*u_R;
         stateFlux(idV,k,j,i,iens) = hy_dens*u_R*v_R;
         stateFlux(idW,k,j,i,iens) = hy_dens*u_R*w_R;
         stateFlux(idT,k,j,i,iens) = hy_dens*u_R*t_R;
@@ -1509,7 +1513,7 @@ public:
         ///////////////////////////////////////////////////////////////
         SArray<real,2,nAder,ngll> rvu_DTs , rvv_DTs , rvw_DTs , rvt_DTs;
         for (int jj=0; jj < ngll; jj++) {
-          real r = hy_dens
+          real r = hy_dens;
           real u = ru_DTs(0,jj) / r;
           real v = rv_DTs(0,jj) / r;
           real w = rw_DTs(0,jj) / r;
@@ -1542,7 +1546,6 @@ public:
           compute_timeAvg( rvv_DTs          , dt );
           compute_timeAvg( rvw_DTs          , dt );
           compute_timeAvg( rvt_DTs          , dt );
-          compute_timeAvg( rt_gamma_DTs     , dt );
         } else {
           for (int jj=0; jj < ngll; jj++) {
             rv_tavg(jj) = rv_DTs(0,jj);
@@ -1588,7 +1591,7 @@ public:
           // Compute time derivatives if necessary
           //////////////////////////////////////////
           if (nAder > 1) {
-            diffTransformTracer( hy_dens , rv_DTs , rt_DTs , rvt_DTs , derivMatrix , dy );
+            diffTransformTracerXY( hy_dens , rv_DTs , rt_DTs , rvt_DTs , derivMatrix , dy );
           }
 
           //////////////////////////////////////////
@@ -1861,7 +1864,6 @@ public:
           compute_timeAvg( rwv_DTs          , dt );
           compute_timeAvg( rww_DTs          , dt );
           compute_timeAvg( rwt_DTs          , dt );
-          compute_timeAvg( rt_gamma_DTs     , dt );
         } else {
           for (int ii=0; ii < ngll; ii++) {
             rw_tavg(ii) = rw_DTs(0,ii);
@@ -1885,9 +1887,13 @@ public:
         ////////////////////////////////////////////
         // Assign gravity source term
         ////////////////////////////////////////////
+        real theta_avg = 0;
+        for (int kk=0; kk < ngll; kk++) {
+          theta_avg += rt_DTs(0,kk) / hy_dens(kk) * gllWts_ngll(kk);
+        }
         stateTend(idU,k,j,i,iens) = 0;
         stateTend(idV,k,j,i,iens) = 0;
-        stateTend(idW,k,j,i,iens) = -GRAV*ravg;
+        stateTend(idW,k,j,i,iens) = hyDensCells(k,iens) * GRAV * (theta_avg - hyThetaCells(k,iens)) / theta_avg;
         stateTend(idT,k,j,i,iens) = 0;
       } // END: reconstruct, time-avg, and store state & state fluxes
 
@@ -1916,7 +1922,7 @@ public:
           // Compute time derivatives if necessary
           //////////////////////////////////////////
           if (nAder > 1) {
-            diffTransformTracer( hy_dens , rw_DTs , rt_DTs , rwt_DTs , derivMatrix , dz(k,iens) );
+            diffTransformTracerZ( hy_dens , rw_DTs , rt_DTs , rwt_DTs , derivMatrix , dz(k,iens) );
           }
 
           //////////////////////////////////////////
@@ -1973,7 +1979,9 @@ public:
     //////////////////////////////////////////////////////////
     parallel_for( SimpleBounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       // Get left and right state
-      real dens = hy_dens(kk);
+      real dens;
+      if (k <  nz) dens = hyDensGLL(k   ,0     ,iens);
+      if (k == nz) dens = hyDensGLL(nz-1,ngll-1,iens);
       real u_L = stateLimits(idU,0,k,j,i,iens)/dens;   real u_R = stateLimits(idU,1,k,j,i,iens)/dens;
       real v_L = stateLimits(idV,0,k,j,i,iens)/dens;   real v_R = stateLimits(idV,1,k,j,i,iens)/dens;
       real w_L = stateLimits(idW,0,k,j,i,iens)/dens;   real w_R = stateLimits(idW,1,k,j,i,iens)/dens;
@@ -1987,7 +1995,7 @@ public:
         stateFlux(idW,k,j,i,iens) = dens*w_L*w_L;
         stateFlux(idT,k,j,i,iens) = dens*w_L*t_L;
         for (int tr=0; tr < num_tracers; tr++) {
-          tracerFlux(tr,k,j,i,iens) = w_L * tracerLimits(tr,0,k,j,i,iens) / r_L;
+          tracerFlux(tr,k,j,i,iens) = w_L * tracerLimits(tr,0,k,j,i,iens);
         }
       } else {
         stateFlux(idU,k,j,i,iens) = dens*w_R*u_R;
@@ -1995,7 +2003,7 @@ public:
         stateFlux(idW,k,j,i,iens) = dens*w_R*w_R;
         stateFlux(idT,k,j,i,iens) = dens*w_R*t_R;
         for (int tr=0; tr < num_tracers; tr++) {
-          tracerFlux(tr,k,j,i,iens) = w_R * tracerLimits(tr,1,k,j,i,iens) / r_R;
+          tracerFlux(tr,k,j,i,iens) = w_R * tracerLimits(tr,1,k,j,i,iens);
         }
       }
     });
@@ -2334,10 +2342,10 @@ public:
         real df4_dz = 0;
         real df5_dz = 0;
         for (int s=0; s<ngll; s++) {
-          drwu_dz += deriv(s,kk) * rwu(kt,s);
-          drwv_dz += deriv(s,kk) * rwv(kt,s);
-          drww_dz += deriv(s,kk) * rww(kt,s);
-          drwt_dz += deriv(s,kk) * rwt(kt,s);
+          df2_dz += deriv(s,kk) * rwu(kt,s);
+          df3_dz += deriv(s,kk) * rwv(kt,s);
+          df4_dz += deriv(s,kk) * rww(kt,s);
+          df5_dz += deriv(s,kk) * rwt(kt,s);
         }
         ru(kt+1,kk) = -df2_dz/dz/(kt+1);
         rv(kt+1,kk) = -df3_dz/dz/(kt+1);
