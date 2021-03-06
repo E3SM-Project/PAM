@@ -106,9 +106,6 @@ public:
   real dx;
   real dy;
 
-  // Initial time step (used throughout the simulation)
-  real dtInit;
-
   // Which direction we're passing through for a given time step (x,y,z)  or (z,y,x)
   // For Strang splitting
   bool dimSwitch;
@@ -392,42 +389,39 @@ public:
   real compute_time_step(real cfl, DataManager &dm, MICRO const &micro) {
 
     // If we've already computed the time step, then don't compute it again
-    if (dtInit <= 0) {
-      YAKL_SCOPE( dx                   , this->dx                  );
-      YAKL_SCOPE( dy                   , this->dy                  );
-      YAKL_SCOPE( dz                   , this->dz                  );
-      YAKL_SCOPE( hyDensCells          , this->hyDensCells         );
-      YAKL_SCOPE( hyDensThetaCells     , this->hyDensThetaCells    );
-      YAKL_SCOPE( gamma                , this->gamma               );
-      YAKL_SCOPE( C0                   , this->C0                  );
+    YAKL_SCOPE( dx                   , this->dx                  );
+    YAKL_SCOPE( dy                   , this->dy                  );
+    YAKL_SCOPE( dz                   , this->dz                  );
+    YAKL_SCOPE( hyDensCells          , this->hyDensCells         );
+    YAKL_SCOPE( hyDensThetaCells     , this->hyDensThetaCells    );
+    YAKL_SCOPE( gamma                , this->gamma               );
+    YAKL_SCOPE( C0                   , this->C0                  );
 
-      // Convert data from DataManager to state and tracers array for convenience
-      real5d state   = dm.get<real,5>("dynamics_state");
-      real5d tracers = dm.get<real,5>("dynamics_tracers");
+    // Convert data from DataManager to state and tracers array for convenience
+    real5d state   = dm.get<real,5>("dynamics_state");
+    real5d tracers = dm.get<real,5>("dynamics_tracers");
 
-      // Allocate a 3-D array for the max stable time steps (we'll use this for a reduction later)
-      real4d dt3d("dt3d",nz,ny,nx,nens);
+    // Allocate a 3-D array for the max stable time steps (we'll use this for a reduction later)
+    real4d dt3d("dt3d",nz,ny,nx,nens);
 
-      // Loop through the cells, calculate the max stable time step for each cell
-      parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-        // Get the state
-        real r = hyDensCells(k,iens);
-        real u = state(idU,hs+k,hs+j,hs+i,iens) / r;
-        real v = state(idV,hs+k,hs+j,hs+i,iens) / r;
-        real w = state(idW,hs+k,hs+j,hs+i,iens) / r;
+    // Loop through the cells, calculate the max stable time step for each cell
+    parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      // Get the state
+      real r = hyDensCells(k,iens);
+      real u = state(idU,hs+k,hs+j,hs+i,iens) / r;
+      real v = state(idV,hs+k,hs+j,hs+i,iens) / r;
+      real w = state(idW,hs+k,hs+j,hs+i,iens) / r;
 
-        real udt = cfl * dx         / ( abs(u) + 1.e-6 );
-        real vdt = cfl * dy         / ( abs(v) + 1.e-6 );
-        real wdt = cfl * dz(k,iens) / ( abs(w) + 1.e-6 );
+      real udt = cfl * dx         / ( abs(u) + 1.e-6 );
+      real vdt = cfl * dy         / ( abs(v) + 1.e-6 );
+      real wdt = cfl * dz(k,iens) / ( abs(w) + 1.e-6 );
 
-        // Compute the min of the max stable time steps
-        dt3d(k,j,i,iens) = max( 10._fp , min( min( abs(udt) , abs(vdt) ) , abs(wdt) ) );
-      });
-      // Store to dtInit so we don't have to compute this again
-      dtInit = yakl::intrinsics::minval( dt3d );
-    }
+      // Compute the min of the max stable time steps
+      dt3d(k,j,i,iens) = min( 10._fp , min( min( abs(udt) , abs(vdt) ) , abs(wdt) ) );
+    });
+    real dt = yakl::intrinsics::minval( dt3d );
     
-    return dtInit;
+    return dt;
   }
 
 
@@ -441,7 +435,6 @@ public:
     tracer_adds_mass = bool1d("tracer_adds_mass",num_tracers);
 
     // Inialize time step to zero, and dimensional splitting switch
-    dtInit = 0;
     dimSwitch = true;
 
     // Read the YAML input file
@@ -1860,10 +1853,6 @@ public:
           compute_timeAvg( rv_DTs           , dt );
           compute_timeAvg( rw_DTs , rw_tavg , dt );
           compute_timeAvg( rt_DTs           , dt );
-          compute_timeAvg( rwu_DTs          , dt );
-          compute_timeAvg( rwv_DTs          , dt );
-          compute_timeAvg( rww_DTs          , dt );
-          compute_timeAvg( rwt_DTs          , dt );
         } else {
           for (int ii=0; ii < ngll; ii++) {
             rw_tavg(ii) = rw_DTs(0,ii);
