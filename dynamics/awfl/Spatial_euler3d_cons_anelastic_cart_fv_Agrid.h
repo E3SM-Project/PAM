@@ -379,7 +379,7 @@ public:
   // Normally this would be 3, but the z-directly CFL is reduced because of how the fluxes are
   // handled in the presence of a solid wall boundary condition. I'm looking into how to fix this
   int numSplit() const {
-    return 3;
+    return 4;
   }
 
 
@@ -412,9 +412,9 @@ public:
       real v = state(idV,hs+k,hs+j,hs+i,iens) / r;
       real w = state(idW,hs+k,hs+j,hs+i,iens) / r;
 
-      real udt = cfl * dx         / ( abs(u) + 1.e-6 );
-      real vdt = cfl * dy         / ( abs(v) + 1.e-6 );
-      real wdt = cfl * dz(k,iens) / ( abs(w) + 1.e-6 );
+      real udt = cfl * dx         / ( 350 + abs(u) + 1.e-6 );
+      real vdt = cfl * dy         / ( 350 + abs(v) + 1.e-6 );
+      real wdt = cfl * dz(k,iens) / ( 350 + abs(w) + 1.e-6 );
 
       // Compute the min of the max stable time steps
       dt3d(k,j,i,iens) = min( 10._fp , min( min( abs(udt) , abs(vdt) ) , abs(wdt) ) );
@@ -1098,8 +1098,169 @@ public:
         computeTendenciesX( state , stateTend , tracers , tracerTend , micro , dt );
       }
     }
+    if (splitIndex == 3) {
+      computePressureTendencies( state , stateTend , dt );
+      memset( tracerTend , 0._fp );
+    }
     if (splitIndex == numSplit()-1) dimSwitch = ! dimSwitch;
   } // computeTendencies
+
+
+
+  void computePressureTendencies( real5d &state , real5d &stateTend , real dt ) {
+    auto &nx                      = this->nx                     ;
+    auto &ny                      = this->ny                     ;
+    auto &nz                      = this->nz                     ;
+    auto &weno_scalars            = this->weno_scalars           ;
+    auto &weno_winds              = this->weno_winds             ;
+    auto &c2g                     = this->coefs_to_gll           ;
+    auto &s2g                     = this->sten_to_gll            ;
+    auto &wenoRecon               = this->wenoRecon              ;
+    auto &idl                     = this->idl                    ;
+    auto &sigma                   = this->sigma                  ;
+    auto &hyDensCells             = this->hyDensCells            ;
+    auto &hyDensThetaCells        = this->hyDensThetaCells       ;
+    auto &hyThetaCells            = this->hyThetaCells           ;
+    auto &sim2d                   = this->sim2d                  ;
+    auto &derivMatrix             = this->derivMatrix            ;
+    auto &dx                      = this->dx                     ;
+    auto &dy                      = this->dy                     ;
+    auto &dz                      = this->dz                     ;
+    auto &stateLimits             = this->stateLimits            ;
+    auto &stateFlux               = this->stateFlux              ;
+    auto &bc_x                    = this->bc_x                   ;
+    auto &bc_y                    = this->bc_y                   ;
+    auto &bc_z                    = this->bc_z                   ;
+    auto &Rd                      = this->Rd                     ;
+    auto &cp                      = this->cp                     ;
+    auto &gamma                   = this->gamma                  ;
+    auto &p0                      = this->p0                     ;
+    auto &C0                      = this->C0                     ;
+
+    real4d rhs         ("rhs"         ,nz,ny,nx,nens);
+    real4d pressure    ("pressure"    ,nz+2*hs,ny+2*hs,nx+2*hs,nens);
+    real4d pressure_new("pressure_new",nz,ny,nx,nens);
+
+    // Populate the halos
+    if        (bc_x == BC_PERIODIC) {
+      parallel_for( SimpleBounds<4>(nz,ny,hs,nens) , YAKL_LAMBDA(int k, int j, int ii, int iens) {
+        state(idU,hs+k,hs+j,      ii,iens) = state(idU,hs+k,hs+j,nx+ii,iens);
+        state(idU,hs+k,hs+j,hs+nx+ii,iens) = state(idU,hs+k,hs+j,hs+ii,iens);
+      });
+    } else if (bc_x == BC_WALL) {
+      parallel_for( SimpleBounds<4>(nz,ny,hs,nens) , YAKL_LAMBDA(int k, int j, int ii, int iens) {
+        state(idU,hs+k,hs+j,      ii,iens) = 0;
+        state(idU,hs+k,hs+j,hs+nx+ii,iens) = 0;
+      });
+    }
+    if (!sim2d) {
+      if        (bc_y == BC_PERIODIC) {
+        parallel_for( SimpleBounds<4>(nz,nx,hs,nens) , YAKL_LAMBDA(int k, int i, int jj, int iens) {
+          state(idV,hs+k,      jj,hs+i,iens) = state(idV,hs+k,ny+jj,hs+i,iens);
+          state(idV,hs+k,hs+ny+jj,hs+i,iens) = state(idV,hs+k,hs+jj,hs+i,iens);
+        });
+      } else if (bc_y == BC_WALL) {
+        parallel_for( SimpleBounds<4>(nz,nx,hs,nens) , YAKL_LAMBDA(int k, int i, int jj, int iens) {
+          state(idV,hs+k,      jj,hs+i,iens) = 0;
+          state(idV,hs+k,hs+ny+jj,hs+i,iens) = 0;
+        });
+      }
+    }
+    if        (bc_z == BC_PERIODIC) {
+      parallel_for( SimpleBounds<4>(ny,nx,hs,nens) , YAKL_LAMBDA(int j, int i, int kk, int iens) {
+        state(idW,      kk,hs+j,hs+i,iens) = state(idW,nz+kk,hs+j,hs+i,iens);
+        state(idW,hs+nz+kk,hs+j,hs+i,iens) = state(idW,hs+kk,hs+j,hs+i,iens);
+      });
+    } else if (bc_z == BC_WALL) {
+      parallel_for( SimpleBounds<4>(ny,nx,hs,nens) , YAKL_LAMBDA(int j, int i, int kk, int iens) {
+        state(idW,      kk,hs+j,hs+i,iens) = 0;
+        state(idW,hs+nz+kk,hs+j,hs+i,iens) = 0;
+      });
+    }
+
+    ///////////////////////////////////////////
+    // Compute RHS
+    ///////////////////////////////////////////
+    parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+                  rhs(k,j,i,iens) =  -( state(idU,hs+k,hs+j,hs+i+1,iens) - state(idU,hs+k,hs+j,hs+i-1,iens) ) * (2*dx) / dt;
+      if (!sim2d) rhs(k,j,i,iens) += -( state(idV,hs+k,hs+j+1,hs+i,iens) - state(idV,hs+k,hs+j-1,hs+i,iens) ) * (2*dy) / dt;
+                  rhs(k,j,i,iens) += -( state(idW,hs+k+1,hs+j,hs+i,iens) - state(idW,hs+k-1,hs+j,hs+i,iens) ) * (2*dz(k,iens)) / dt;
+    });
+
+    // Compute pressure perturbation
+    memset(pressure,0._fp);
+    int nIter = 200;
+    for (int iter = 0; iter < nIter; iter++) {
+      // Compute new pressure
+      parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+        real factor;
+        if (sim2d) {
+          factor = 1._fp / 4._fp;
+        } else {
+          factor = 1._fp / 6._fp;
+        }
+        real xterm = pressure(hs+k,hs+j,hs+i+2,iens) + pressure(hs+k,hs+j,hs+i-2,iens);
+        real yterm = pressure(hs+k,hs+j+2,hs+i,iens) + pressure(hs+k,hs+j-2,hs+i,iens);
+        real zterm = pressure(hs+k+2,hs+j,hs+i,iens) + pressure(hs+k-2,hs+j,hs+i,iens);
+        if (sim2d) {
+          pressure_new(k,j,i,iens) = factor * ( xterm         + zterm + rhs(k,j,i,iens) );
+        } else {
+          pressure_new(k,j,i,iens) = factor * ( xterm + yterm + zterm + rhs(k,j,i,iens) );
+        }
+      });
+
+      // Assign new pressure
+      parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+        pressure(hs+k,hs+j,hs+i,iens) = pressure_new(k,j,i,iens);
+      });
+
+      // Pressure boundary conditions
+      if        (bc_x == BC_PERIODIC) {
+        parallel_for( SimpleBounds<4>(nz,ny,hs,nens) , YAKL_LAMBDA(int k, int j, int ii, int iens) {
+          pressure(hs+k,hs+j,      ii,iens) = pressure(hs+k,hs+j,nx+ii,iens);
+          pressure(hs+k,hs+j,hs+nx+ii,iens) = pressure(hs+k,hs+j,hs+ii,iens);
+        });
+      } else if (bc_x == BC_WALL) {
+        parallel_for( SimpleBounds<4>(nz,ny,hs,nens) , YAKL_LAMBDA(int k, int j, int ii, int iens) {
+          pressure(hs+k,hs+j,      ii,iens) = pressure(hs+k,hs+j,hs+0   ,iens);
+          pressure(hs+k,hs+j,hs+nx+ii,iens) = pressure(hs+k,hs+j,hs+nx-1,iens);
+        });
+      }
+      if (!sim2d) {
+        if        (bc_y == BC_PERIODIC) {
+          parallel_for( SimpleBounds<4>(nz,nx,hs,nens) , YAKL_LAMBDA(int k, int i, int jj, int iens) {
+            pressure(hs+k,      jj,hs+i,iens) = pressure(hs+k,ny+jj,hs+i,iens);
+            pressure(hs+k,hs+ny+jj,hs+i,iens) = pressure(hs+k,hs+jj,hs+i,iens);
+          });
+        } else if (bc_y == BC_WALL) {
+          parallel_for( SimpleBounds<4>(nz,nx,hs,nens) , YAKL_LAMBDA(int k, int i, int jj, int iens) {
+            pressure(hs+k,      jj,hs+i,iens) = pressure(hs+k,hs+0   ,hs+i,iens);
+            pressure(hs+k,hs+ny+jj,hs+i,iens) = pressure(hs+k,hs+ny-1,hs+i,iens);
+          });
+        }
+      }
+      if        (bc_z == BC_PERIODIC) {
+        parallel_for( SimpleBounds<4>(ny,nx,hs,nens) , YAKL_LAMBDA(int j, int i, int kk, int iens) {
+          pressure(      kk,hs+j,hs+i,iens) = pressure(nz+kk,hs+j,hs+i,iens);
+          pressure(hs+nz+kk,hs+j,hs+i,iens) = pressure(hs+kk,hs+j,hs+i,iens);
+        });
+      } else if (bc_z == BC_WALL) {
+        parallel_for( SimpleBounds<4>(ny,nx,hs,nens) , YAKL_LAMBDA(int j, int i, int kk, int iens) {
+          pressure(      kk,hs+j,hs+i,iens) = pressure(hs+0   ,hs+j,hs+i,iens);
+          pressure(hs+nz+kk,hs+j,hs+i,iens) = pressure(hs+nz-1,hs+j,hs+i,iens);
+        });
+      }
+    }
+
+    // Apply pressure gradient and gravity source term
+    parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      stateTend(idU,k,j,i,iens) = - (pressure(hs+k,hs+j,hs+i+1,iens) - pressure(hs+k,hs+j,hs+i-1,iens)) / (2*dx);
+      if (!sim2d) {
+        stateTend(idV,k,j,i,iens) = - (pressure(hs+k,hs+j+1,hs+i,iens) - pressure(hs+k,hs+j-1,hs+i,iens)) / (2*dy);
+      }
+      stateTend(idW,k,j,i,iens) = - (pressure(hs+k+1,hs+j,hs+i,iens) - pressure(hs+k-1,hs+j,hs+i,iens)) / (2*dz(k,iens));
+    });
+  }
 
 
 
@@ -1727,6 +1888,8 @@ public:
     YAKL_SCOPE( hyDensGLL               , this->hyDensGLL              );
     YAKL_SCOPE( hyDensThetaGLL          , this->hyDensThetaGLL         );
     YAKL_SCOPE( hyPressureGLL           , this->hyPressureGLL          );
+    YAKL_SCOPE( hyThetaGLL              , this->hyThetaGLL             );
+    YAKL_SCOPE( hyThetaCells            , this->hyThetaCells           );
     YAKL_SCOPE( sim2d                   , this->sim2d                  );
     YAKL_SCOPE( derivMatrix             , this->derivMatrix            );
     YAKL_SCOPE( dz                      , this->dz                     );
