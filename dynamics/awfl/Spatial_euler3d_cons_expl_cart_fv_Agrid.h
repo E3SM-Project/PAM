@@ -1345,11 +1345,6 @@ public:
           compute_timeAvg( rv_DTs           , dt );
           compute_timeAvg( rw_DTs           , dt );
           compute_timeAvg( rt_DTs           , dt );
-          compute_timeAvg( ruu_DTs          , dt );
-          compute_timeAvg( ruv_DTs          , dt );
-          compute_timeAvg( ruw_DTs          , dt );
-          compute_timeAvg( rut_DTs          , dt );
-          compute_timeAvg( rt_gamma_DTs     , dt );
         } else {
           for (int ii=0; ii < ngll; ii++) {
             r_tavg (ii) = r_DTs (0,ii);
@@ -1407,7 +1402,6 @@ public:
           //////////////////////////////////////////
           if (timeAvg) {
             compute_timeAvg( rt_DTs  , dt );
-            compute_timeAvg( rut_DTs , dt );
           }
           if (tracer_pos(tr)) {
             for (int ii=0; ii < ngll; ii++) { rt_DTs(0,ii) = max( 0._fp , rt_DTs(0,ii) ); }
@@ -1705,11 +1699,6 @@ public:
           compute_timeAvg( rv_DTs , rv_tavg , dt );
           compute_timeAvg( rw_DTs           , dt );
           compute_timeAvg( rt_DTs           , dt );
-          compute_timeAvg( rvu_DTs          , dt );
-          compute_timeAvg( rvv_DTs          , dt );
-          compute_timeAvg( rvw_DTs          , dt );
-          compute_timeAvg( rvt_DTs          , dt );
-          compute_timeAvg( rt_gamma_DTs     , dt );
         } else {
           for (int jj=0; jj < ngll; jj++) {
             r_tavg (jj) = r_DTs (0,jj);
@@ -1767,7 +1756,6 @@ public:
           //////////////////////////////////////////
           if (timeAvg) {
             compute_timeAvg( rt_DTs  , dt );
-            compute_timeAvg( rvt_DTs , dt );
           }
           if (tracer_pos(tr)) {
             for (int jj=0; jj < ngll; jj++) { rt_DTs(0,jj) = max( 0._fp , rt_DTs(0,jj) ); }
@@ -2069,11 +2057,6 @@ public:
           compute_timeAvg( rv_DTs           , dt );
           compute_timeAvg( rw_DTs , rw_tavg , dt );
           compute_timeAvg( rt_DTs           , dt );
-          compute_timeAvg( rwu_DTs          , dt );
-          compute_timeAvg( rwv_DTs          , dt );
-          compute_timeAvg( rww_DTs          , dt );
-          compute_timeAvg( rwt_DTs          , dt );
-          compute_timeAvg( rt_gamma_DTs     , dt );
         } else {
           for (int ii=0; ii < ngll; ii++) {
             r_tavg (ii) = r_DTs (0,ii);
@@ -2144,7 +2127,6 @@ public:
           //////////////////////////////////////////
           if (timeAvg) {
             compute_timeAvg( rt_DTs  , dt );
-            compute_timeAvg( rwt_DTs , dt );
           }
           if (tracer_pos(tr)) {
             for (int kk=0; kk < ngll; kk++) { rt_DTs(0,kk) = max( 0._fp , rt_DTs(0,kk) ); }
