@@ -1167,14 +1167,15 @@ public:
       rho_u_new(k,j,i,iens) = state(idU,hs+k,hs+j,hs+i,iens);
       rho_v_new(k,j,i,iens) = state(idV,hs+k,hs+j,hs+i,iens);
       rho_w_new(k,j,i,iens) = state(idW,hs+k,hs+j,hs+i,iens);
+      pressure (k,j,i,iens) = 0;
     });
 
-    for (int iter=0; iter < 100000; iter++) {
+    for (int iter=0; iter < 200000; iter++) {
       parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-        int im1 = i-1;  if (im1 < 0   ) im1 += nx;
-        int ip1 = i+1;  if (ip1 > nx-1) ip1 -= nx;
-        int jm1 = j-1;  if (jm1 < 0   ) jm1 += ny;
-        int jp1 = j+1;  if (jp1 > ny-1) jp1 -= ny;
+        int im1 = i-1;  if (im1 < 0   ) im1 = nx-1;
+        int ip1 = i+1;  if (ip1 > nx-1) ip1 = 0;
+        int jm1 = j-1;  if (jm1 < 0   ) jm1 = ny-1;
+        int jp1 = j+1;  if (jp1 > ny-1) jp1 = 0;
         int km1 = k-1;  if (km1 < 0   ) km1 = 0;
         int kp1 = k+1;  if (kp1 > nz-1) kp1 = nz-1;
         // x-direction fluxes
@@ -1212,19 +1213,19 @@ public:
         real p_z_R = (p_kp1 + p_k  ) / 2       + c_s/2  * (rw_k   - rw_kp1);
         real rw_L  = (p_km1 - p_k  ) / (2*c_s) + 0.5_fp * (rw_k   + rw_km1);
         real rw_R  = (p_k   - p_kp1) / (2*c_s) + 0.5_fp * (rw_kp1 + rw_k  );
-        if (k == 0   ) rw_L = 0;
-        if (k == nz-1) rw_R = 0;
+        if (k == 0   ) rw_L  = 0;
+        if (k == nz-1) rw_R  = 0;
         // Perform the update
         if (sim2d) {
-          // pressure_tend(k,j,i,iens) = -c_s*c_s * ( (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens) );
-          abs_div(k,j,i,iens) = abs( (ru_ip1 - ru_im1) / (2*dx) + (rw_kp1 - rw_km1) / (2*dz(k,iens)) );
-          pressure_tend(k,j,i,iens) = -c_s*c_s * ( (ru_ip1 - ru_im1) / (2*dx) + (rw_kp1 - rw_km1) / (2*dz(k,iens)) );
+          abs_div(k,j,i,iens) = abs( (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens) );
+          pressure_tend(k,j,i,iens) = -c_s*c_s * ( (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens) );
         } else {
           pressure_tend(k,j,i,iens) = -c_s*c_s * ( (ru_R-ru_L)/dx + (rv_R-rv_L)/dy + (rw_R-rw_L)/dz(k,iens) );
         }
-        rho_u_new_tend(k,j,i,iens) = -(p_ip1 - p_im1) / (2*dx);
-        rho_v_new_tend(k,j,i,iens) = -(p_jp1 - p_jm1) / (2*dy);
-        rho_w_new_tend(k,j,i,iens) = -(p_kp1 - p_km1) / (2*dz(k,iens));
+        // std::cout << p_x_L << " , " << p_x_R << " , " << p_y_L << " , " << p_y_R << " , " << p_z_L << " , " << p_z_R << "\n";
+        rho_u_new_tend(k,j,i,iens) = -(p_x_R - p_x_L) / (dx);
+        rho_v_new_tend(k,j,i,iens) = -(p_y_R - p_y_L) / (dy);
+        rho_w_new_tend(k,j,i,iens) = -(p_z_R - p_z_L) / (dz(k,iens));
       });
 
       if (iter == 0) std::cout << "Starting divergence: " << yakl::intrinsics::sum(abs_div) << "\n";
@@ -1247,6 +1248,7 @@ public:
         stateTend(idV,k,j,i,iens) = 0;
       }
       stateTend(idW,k,j,i,iens) = ( rho_w_new(k,j,i,iens) - state(idW,hs+k,hs+j,hs+i,iens) ) / dtglob;
+      
       stateTend(idT,k,j,i,iens) = 0;
     });
   }
@@ -1355,10 +1357,10 @@ public:
           real v = rv_DTs(0,ii) / r;
           real w = rw_DTs(0,ii) / r;
           real t = rt_DTs(0,ii) / r;
-          ruu_DTs     (0,ii) = r*u*u;
-          ruv_DTs     (0,ii) = r*u*v;
-          ruw_DTs     (0,ii) = r*u*w;
-          rut_DTs     (0,ii) = r*u*t;
+          ruu_DTs(0,ii) = r*u*u;
+          ruv_DTs(0,ii) = r*u*v;
+          ruw_DTs(0,ii) = r*u*w;
+          rut_DTs(0,ii) = r*u*t;
         }
 
         //////////////////////////////////////////
@@ -1379,10 +1381,6 @@ public:
           compute_timeAvg( rv_DTs           , dt );
           compute_timeAvg( rw_DTs           , dt );
           compute_timeAvg( rt_DTs           , dt );
-          compute_timeAvg( ruu_DTs          , dt );
-          compute_timeAvg( ruv_DTs          , dt );
-          compute_timeAvg( ruw_DTs          , dt );
-          compute_timeAvg( rut_DTs          , dt );
         } else {
           for (int ii=0; ii < ngll; ii++) {
             ru_tavg(ii) = ru_DTs(0,ii);
@@ -1981,10 +1979,10 @@ public:
           real v = rv_DTs(0,kk) / r;
           real w = rw_DTs(0,kk) / r;
           real t = rt_DTs(0,kk) / r;
-          rwu_DTs    (0,kk) = r*w*u;
-          rwv_DTs    (0,kk) = r*w*v;
-          rww_DTs    (0,kk) = r*w*w;
-          rwt_DTs    (0,kk) = r*w*t;
+          rwu_DTs(0,kk) = r*w*u;
+          rwv_DTs(0,kk) = r*w*v;
+          rww_DTs(0,kk) = r*w*w;
+          rwt_DTs(0,kk) = r*w*t;
         }
 
         //////////////////////////////////////////
@@ -2159,16 +2157,16 @@ public:
       if (tracer_pos(tr)) {
         // Compute and apply the flux reduction factor of the upwind cell
         if      (w > 0) {
-          int ind_k = k-1;
           // upwind is to the left of this interface
+          int ind_k = k-1;
           real f1 = min( tracerFlux(tr,ind_k  ,j,i,iens) , 0._fp );
           real f2 = max( tracerFlux(tr,ind_k+1,j,i,iens) , 0._fp );
           real fluxOut = dt*(f2-f1)/dz(k,iens);
           real dens = hyDensCells(ind_k,iens);
           tracerFlux(tr,k,j,i,iens) *= min( 1._fp , tracers(tr,hs+ind_k,hs+j,hs+i,iens) * dens / (fluxOut + eps) );
         } else if (w < 0) {
-          int ind_k = k;
           // upwind is to the right of this interface
+          int ind_k = k;
           real f1 = min( tracerFlux(tr,ind_k  ,j,i,iens) , 0._fp );
           real f2 = max( tracerFlux(tr,ind_k+1,j,i,iens) , 0._fp );
           real fluxOut = dt*(f2-f1)/dz(k,iens);
@@ -2213,6 +2211,7 @@ public:
     YAKL_SCOPE( hyDensThetaCells      , this->hyDensThetaCells     );
     YAKL_SCOPE( hyThetaCells          , this->hyThetaCells         );
     YAKL_SCOPE( hyPressureCells       , this->hyPressureCells      );
+    YAKL_SCOPE( pressure              , this->pressure             );
     YAKL_SCOPE( gamma                 , this->gamma                );
     YAKL_SCOPE( C0                    , this->C0                   );
 
@@ -2289,10 +2288,7 @@ public:
       nc.write1(data.createHostCopy(),"pot_temp_pert",{"z","y","x"},ulIndex,"t");
       // pressure'
       parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-        real r  = hyDensCells(k,iens);
-        real rt = state(idT,hs+k,hs+j,hs+i,iens) + hyDensThetaCells(k,iens);
-        real p  = C0*pow(rt,gamma);
-        data(k,j,i) = p - hyPressureCells(k,iens);
+        data(k,j,i) = pressure(k,j,i,iens);
       });
       nc.write1(data.createHostCopy(),"pressure_pert",{"z","y","x"},ulIndex,"t");
 
