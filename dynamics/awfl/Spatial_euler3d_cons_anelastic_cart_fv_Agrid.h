@@ -61,6 +61,8 @@ public:
   real3d hyThetaGLL;
   real3d hyDensThetaGLL;
 
+  real4d pressure;
+
   // Matrices to transform DOFs from one form to another
   SArray<real,2,ord,ngll> coefs_to_gll;
   SArray<real,2,ord,ngll> coefs_to_deriv_gll;
@@ -693,6 +695,9 @@ public:
     hyPressureGLL    = real3d("hyPressureGLL     ",nz,ngll,nens);
     hyThetaGLL       = real3d("hyThetaGLL        ",nz,ngll,nens);
     hyDensThetaGLL   = real3d("hyDensThetaGLL    ",nz,ngll,nens);
+    pressure         = real4d("pressure",nz,ny,nx,nens);
+
+    memset(pressure,0._fp);
 
     // Register and allocate state data with the DataManager
     dm.register_and_allocate<real>( "dynamics_state"   , "dynamics state"   , {num_state  ,nz+2*hs,ny+2*hs,nx+2*hs,nens} , {"num_state"  ,"nz_halo","ny_halo","nx_halo","nens"} );
@@ -1131,6 +1136,7 @@ public:
     auto &dz                      = this->dz                     ;
     auto &stateLimits             = this->stateLimits            ;
     auto &stateFlux               = this->stateFlux              ;
+    auto &pressure                = this->pressure               ;
     auto &bc_x                    = this->bc_x                   ;
     auto &bc_y                    = this->bc_y                   ;
     auto &bc_z                    = this->bc_z                   ;
@@ -1143,12 +1149,11 @@ public:
     real constexpr c_s = 1;
     real dt;
     if (sim2d) {
-      dt = 0.2_fp * min( dx/c_s , dzmin/c_s );
+      dt = 0.1_fp * min( dx/c_s , dzmin/c_s );
     } else {
-      dt = 0.2_fp * min( min( dx/c_s , dy/c_s ) , dzmin/c_s );
+      dt = 0.1_fp * min( min( dx/c_s , dy/c_s ) , dzmin/c_s );
     }
 
-    real4d pressure ("pressure" ,nz,ny,nx,nens);
     real4d rho_u_new("rho_u_new",nz,ny,nx,nens);
     real4d rho_v_new("rho_v_new",nz,ny,nx,nens);
     real4d rho_w_new("rho_w_new",nz,ny,nx,nens);
@@ -1156,12 +1161,12 @@ public:
     real4d rho_u_new_tend("rho_u_new_tend",nz,ny,nx,nens);
     real4d rho_v_new_tend("rho_v_new_tend",nz,ny,nx,nens);
     real4d rho_w_new_tend("rho_w_new_tend",nz,ny,nx,nens);
+    real4d abs_div("abs_div",nz,ny,nx,nens);
 
     parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       rho_u_new(k,j,i,iens) = state(idU,hs+k,hs+j,hs+i,iens);
       rho_v_new(k,j,i,iens) = state(idV,hs+k,hs+j,hs+i,iens);
       rho_w_new(k,j,i,iens) = state(idW,hs+k,hs+j,hs+i,iens);
-      pressure (k,j,i,iens) = 0;
     });
 
     for (int iter=0; iter < 100000; iter++) {
@@ -1211,14 +1216,18 @@ public:
         if (k == nz-1) rw_R = 0;
         // Perform the update
         if (sim2d) {
-          pressure_tend(k,j,i,iens) = -c_s*c_s * ( (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens) );
+          // pressure_tend(k,j,i,iens) = -c_s*c_s * ( (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens) );
+          abs_div(k,j,i,iens) = abs( (ru_ip1 - ru_im1) / (2*dx) + (rw_kp1 - rw_km1) / (2*dz(k,iens)) );
+          pressure_tend(k,j,i,iens) = -c_s*c_s * ( (ru_ip1 - ru_im1) / (2*dx) + (rw_kp1 - rw_km1) / (2*dz(k,iens)) );
         } else {
           pressure_tend(k,j,i,iens) = -c_s*c_s * ( (ru_R-ru_L)/dx + (rv_R-rv_L)/dy + (rw_R-rw_L)/dz(k,iens) );
         }
-        rho_u_new_tend(k,j,i,iens) = -(p_x_R - p_x_L) / dx;
-        rho_v_new_tend(k,j,i,iens) = -(p_y_R - p_y_L) / dy;
-        rho_w_new_tend(k,j,i,iens) = -(p_z_R - p_z_L) / dz(k,iens);
+        rho_u_new_tend(k,j,i,iens) = -(p_ip1 - p_im1) / (2*dx);
+        rho_v_new_tend(k,j,i,iens) = -(p_jp1 - p_jm1) / (2*dy);
+        rho_w_new_tend(k,j,i,iens) = -(p_kp1 - p_km1) / (2*dz(k,iens));
       });
+
+      if (iter == 0) std::cout << "Starting divergence: " << yakl::intrinsics::sum(abs_div) << "\n";
 
       parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
         pressure (k,j,i,iens) += dt * pressure_tend(k,j,i,iens);
@@ -1227,6 +1236,8 @@ public:
         rho_w_new(k,j,i,iens) = state(idW,hs+k,hs+j,hs+i,iens) + dt * rho_w_new_tend(k,j,i,iens);
       });
     }
+
+    std::cout << "Ending divergence: " << yakl::intrinsics::sum(abs_div) << "\n";
 
     parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       stateTend(idU,k,j,i,iens) = ( rho_u_new(k,j,i,iens) - state(idU,hs+k,hs+j,hs+i,iens) ) / dtglob;
