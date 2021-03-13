@@ -17,7 +17,7 @@ public:
   static_assert(nTimeDerivs == 1 , "ERROR: This Spatial class isn't setup to use nTimeDerivs > 1");
 
   int static constexpr hs = (ord-1)/2;
-  int static constexpr num_state = 5;
+  int static constexpr num_state = 6;
   int static constexpr max_tracers = 50;
 
   // Stores a single index location
@@ -92,6 +92,7 @@ public:
   int static constexpr idV = 2;  // v
   int static constexpr idW = 3;  // w
   int static constexpr idT = 4;  // potential temperature perturbation
+  int static constexpr idP = 5;  // pressure
 
   // The two boundary condition options for each direction
   int static constexpr BC_PERIODIC = 0;
@@ -196,7 +197,7 @@ public:
       real vvel  = state(idV,hs+k,hs+j,hs+i,iens) / dens;
       real wvel  = state(idW,hs+k,hs+j,hs+i,iens) / dens;
       real theta = ( state(idT,hs+k,hs+j,hs+i,iens) + hyDensThetaCells(k,iens) ) / dens;
-      real pressure = C0 * pow( dens*theta , gamma );
+      real pressure = hyPressureCells(k,iens) + state(idP,hs+k,hs+j,hs+i,iens);
       real dens_vap = tracers(idWV,hs+k,hs+j,hs+i,iens);
       real dens_dry = dens;
       for (int tr=0; tr < num_tracers; tr++) {
@@ -270,6 +271,7 @@ public:
       state(idV,hs+k,hs+j,hs+i,iens) = dens * vvel;
       state(idW,hs+k,hs+j,hs+i,iens) = dens * wvel;
       state(idT,hs+k,hs+j,hs+i,iens) = dens * theta - hyDensThetaCells(k,iens);
+      state(idP,hs+k,hs+j,hs+i,iens) = pressure - hyPressureCells(k,iens);
     });
   }
 
@@ -407,6 +409,7 @@ public:
       
       // Compute moist rho*theta
       state(idT,hs+k,hs+j,hs+i,iens) = rho_theta_moist - hyDensThetaCells(k,iens);
+      state(idP,hs+k,hs+j,hs+i,iens) = press_moist - hyPressureCells(k,iens);
 
       for (int tr = 0 ; tr < num_tracers ; tr++) {
         tracers(tr,hs+k,hs+j,hs+i,iens) = tracers(tr,hs+k,hs+j,hs+i,iens) / rho_dry * rho_moist;
@@ -495,7 +498,7 @@ public:
         real v = state(idV,hs+k,hs+j,hs+i,iens) / r;
         real w = state(idW,hs+k,hs+j,hs+i,iens) / r;
         real t = ( state(idT,hs+k,hs+j,hs+i,iens) + hyDensThetaCells(k,iens) ) / r;
-        real p = C0*pow(r*t,gamma);
+        real p = state(idP,hs+k,hs+j,hs+i,iens) + hyPressureCells(k,iens);
 
         // Compute the speed of sound (constant kappa assumption)
         real cs = sqrt(gamma*p/r);
@@ -934,11 +937,14 @@ public:
                 real tp = profiles::ellipsoid_linear(xloc, yloc, zloc, xlen/2, ylen/2, 2000, 2000, 2000, 2000, 2 );
                 real t = th + tp;
                 real r = rh;
+                real p = C0*pow(r*t,gamma);
+                real ph = C0*pow(rh*th,gamma);
                 // Line below balances initial density to remove the acoustic wave
                 if (balance_initial_density) r = rh*th/t;
 
-                state(idR,hs+k,hs+j,hs+i,iens) += (r - rh)*wt;
+                state(idR,hs+k,hs+j,hs+i,iens) += (r - rh) * wt;
                 state(idT,hs+k,hs+j,hs+i,iens) += (r*t - rh*th) * wt;
+                state(idP,hs+k,hs+j,hs+i,iens) += (p - ph) * wt;
               }
             }
           }
@@ -1151,14 +1157,16 @@ public:
               }
 
               dens_theta += dens * theta_pert;
+              real press = C0*pow(dens_theta,gamma);
 
               real factor = gllWts_ngll(ii) * gllWts_ngll(jj) * gllWts_ngll(kk);
-              state  (idR ,hs+k,hs+j,hs+i,iens) += (dens - hyDensGLL(k,kk,iens)))          * factor;
-              state  (idU ,hs+k,hs+j,hs+i,iens) += dens * uvel                             * factor;
-              state  (idV ,hs+k,hs+j,hs+i,iens) += dens * vvel                             * factor;
-              state  (idW ,hs+k,hs+j,hs+i,iens) += dens * wvel                             * factor;
-              state  (idT ,hs+k,hs+j,hs+i,iens) += (dens_theta - hyDensThetaGLL(k,kk,iens) * factor;
-              tracers(idWV,hs+k,hs+j,hs+i,iens) += dens_vap                                * factor;
+              state  (idR ,hs+k,hs+j,hs+i,iens) += (dens - hyDensGLL(k,kk,iens))            * factor;
+              state  (idU ,hs+k,hs+j,hs+i,iens) += dens * uvel                              * factor;
+              state  (idV ,hs+k,hs+j,hs+i,iens) += dens * vvel                              * factor;
+              state  (idW ,hs+k,hs+j,hs+i,iens) += dens * wvel                              * factor;
+              state  (idT ,hs+k,hs+j,hs+i,iens) += (dens_theta - hyDensThetaGLL(k,kk,iens)) * factor;
+              state  (idP ,hs+k,hs+j,hs+i,iens) += (press - hyPressureGLL(k,kk,iens))       * factor;
+              tracers(idWV,hs+k,hs+j,hs+i,iens) += dens_vap                                 * factor;
             }
           }
         }
@@ -2352,7 +2360,9 @@ public:
 
       real3d data("data",nz,ny,nx);
       // rho'
-      parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = state(idR,hs+k,hs+j,hs+i,iens); });
+      parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+        data(k,j,i) = state(idR,hs+k,hs+j,hs+i,iens);
+      });
       nc.write1(data.createHostCopy(),"dens_pert",{"z","y","x"},ulIndex,"t");
       // u
       parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
@@ -2378,10 +2388,7 @@ public:
       nc.write1(data.createHostCopy(),"pot_temp_pert",{"z","y","x"},ulIndex,"t");
       // pressure'
       parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-        real r  = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens);
-        real rt = state(idT,hs+k,hs+j,hs+i,iens) + hyDensThetaCells(k,iens);
-        real p  = C0*pow(rt,gamma);
-        data(k,j,i) = p - hyPressureCells(k,iens);
+        data(k,j,i) = state(idP,hs+k,hs+j,hs+i,iens);
       });
       nc.write1(data.createHostCopy(),"pressure_pert",{"z","y","x"},ulIndex,"t");
 
