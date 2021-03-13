@@ -1222,7 +1222,9 @@ public:
     YAKL_SCOPE( weno_scalars            , this->weno_scalars           );
     YAKL_SCOPE( weno_winds              , this->weno_winds             );
     YAKL_SCOPE( c2g                     , this->coefs_to_gll           );
+    YAKL_SCOPE( c2d2g                   , this->coefs_to_deriv_gll     );
     YAKL_SCOPE( s2g                     , this->sten_to_gll            );
+    YAKL_SCOPE( s2d2g                   , this->sten_to_deriv_gll      );
     YAKL_SCOPE( wenoRecon               , this->wenoRecon              );
     YAKL_SCOPE( idl                     , this->idl                    );
     YAKL_SCOPE( sigma                   , this->sigma                  );
@@ -1290,7 +1292,7 @@ public:
         ////////////////////////////////////////////////////////////////
         // Reconstruct rho, u, v, w, theta
         ////////////////////////////////////////////////////////////////
-        SArray<real,2,nAder,ngll> rv_DTs , rw_DTs , rt_DTs;
+        SArray<real,2,nAder,ngll> rv_DTs , rw_DTs , rt_DTs, p_DTs, dp_DTs, u_DTs, du_DTs;
         { // BEGIN: Reconstruct the state
           SArray<real,1,ord> stencil;
 
@@ -1299,22 +1301,27 @@ public:
           reconstruct_gll_values( stencil , r_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
           for (int ii=0; ii < ngll; ii++) { r_DTs(0,ii) += hyDensCells(k,iens); } // Add hydrostasis back on
 
-          // u values and derivatives
+          // rho * u
           for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idU,hs+k,hs+j,i+ii,iens); }
           reconstruct_gll_values( stencil , ru_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_winds );
 
-          // v
+          // rho * v
           for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idV,hs+k,hs+j,i+ii,iens); }
           reconstruct_gll_values( stencil , rv_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_winds );
 
-          // w
+          // rho * w
           for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idW,hs+k,hs+j,i+ii,iens); }
           reconstruct_gll_values( stencil , rw_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_winds );
 
-          // theta
+          // rho * theta
           for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idT,hs+k,hs+j,i+ii,iens); }
           reconstruct_gll_values( stencil , rt_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
           for (int ii=0; ii < ngll; ii++) { rt_DTs(0,ii) += hyDensThetaCells(k,iens); } // Add hydrostasis back on
+
+          // pressure
+          for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idP,hs+k,hs+j,i+ii,iens); }
+          reconstruct_gll_values_and_derivs( stencil , p_DTs , dp_DTs , c2g , c2d2g , s2g , s2d2g , wenoRecon , idl , sigma , weno_scalars );
+          for (int ii=0; ii < ngll; ii++) { p_DTs(0,ii) += hyPressureCells(k,iens); } // Add hydrostasis back on
         } // END: Reconstruct the state
 
         ///////////////////////////////////////////////////////////////
@@ -1327,11 +1334,11 @@ public:
           real v = rv_DTs(0,ii) / r;
           real w = rw_DTs(0,ii) / r;
           real t = rt_DTs(0,ii) / r;
-          ruu_DTs     (0,ii) = r*u*u;
-          ruv_DTs     (0,ii) = r*u*v;
-          ruw_DTs     (0,ii) = r*u*w;
-          rut_DTs     (0,ii) = r*u*t;
-          rt_gamma_DTs(0,ii) = pow(r*t,gamma);
+          real p = p_DTs (0,ii);
+          ruu_DTs (0,ii) = r*u*u;
+          ruv_DTs (0,ii) = r*u*v;
+          ruw_DTs (0,ii) = r*u*w;
+          rut_DTs (0,ii) = r*u*t;
         }
 
         //////////////////////////////////////////
@@ -2445,6 +2452,53 @@ public:
           tmp += sten_to_gll(s,ii) * stencil(s);
         }
         DTs(0,ii) = tmp;
+      }
+
+    } // if doweno
+  }
+
+
+
+  // ord stencil values to ngll GLL values; store in DTs
+  YAKL_INLINE void reconstruct_gll_values_and_derivs( SArray<real,1,ord> const stencil ,
+                                                      SArray<real,2,nAder,ngll> &value_DTs ,
+                                                      SArray<real,2,nAder,ngll> &deriv_DTs ,
+                                                      SArray<real,2,ord,ngll> const &coefs_to_gll ,
+                                                      SArray<real,2,ord,ngll> const &coefs_to_deriv_to_gll ,
+                                                      SArray<real,2,ord,ngll> const &sten_to_gll  ,
+                                                      SArray<real,2,ord,ngll> const &sten_to_deriv_to_gll  ,
+                                                      SArray<real,3,ord,ord,ord> const &wenoRecon ,
+                                                      SArray<real,1,hs+2> const &idl              ,
+                                                      real sigma, bool doweno ) {
+    if (doweno) {
+
+      // Reconstruct values
+      SArray<real,1,ord> wenoCoefs;
+      weno::compute_weno_coefs<ord>( wenoRecon , stencil , wenoCoefs , idl , sigma );
+      // Transform ord weno coefficients into ngll GLL points
+      for (int ii=0; ii<ngll; ii++) {
+        real tmp_val = 0;
+        real tmp_der = 0;
+        for (int s=0; s < ord; s++) {
+          tmp_val += coefs_to_gll         (s,ii) * wenoCoefs(s);
+          tmp_der += coefs_to_deriv_to_gll(s,ii) * wenoCoefs(s);
+        }
+        value_DTs(0,ii) = tmp_val;
+        deriv_DTs(0,ii) = tmp_der;
+      }
+
+    } else {
+
+      // Transform ord stencil cell averages into ngll GLL points
+      for (int ii=0; ii<ngll; ii++) {
+        real tmp_val = 0;
+        real tmp_der = 0;
+        for (int s=0; s < ord; s++) {
+          tmp_val += sten_to_gll         (s,ii) * stencil(s);
+          tmp_der += sten_to_deriv_to_gll(s,ii) * stencil(s);
+        }
+        value_DTs(0,ii) = tmp_val;
+        deriv_DTs(0,ii) = tmp_der;
       }
 
     } // if doweno
