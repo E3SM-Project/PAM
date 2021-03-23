@@ -1,6 +1,6 @@
 ---
 # Simulation time in seconds
-simTime  : 1000.
+simTime  : 5.
 
 # Number of cells to use
 nx       : 100
@@ -34,5 +34,5 @@ outFreq  : 0.
 nens : 1
 
 # Balance initial density to avoid initial acoustics
-balance_initial_density: false
+balance_initial_density: true
 

@@ -1149,9 +1149,9 @@ public:
     real constexpr c_s = 350;
     real dt;
     if (sim2d) {
-      dt = 0.1_fp * min( dx/c_s , dzmin/c_s );
+      dt = 0.4_fp * min( dx/c_s , dzmin/c_s );
     } else {
-      dt = 0.1_fp * min( min( dx/c_s , dy/c_s ) , dzmin/c_s );
+      dt = 0.4_fp * min( min( dx/c_s , dy/c_s ) , dzmin/c_s );
     }
 
     real4d rho_u_new("rho_u_new",nz,ny,nx,nens);
@@ -1170,7 +1170,7 @@ public:
       pressure (k,j,i,iens) = 0;
     });
 
-    for (int iter=0; iter < 200000; iter++) {
+    for (int iter=0; iter < 20000; iter++) {
       parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
         int im1 = i-1;  if (im1 < 0   ) im1 = nx-1;
         int ip1 = i+1;  if (ip1 > nx-1) ip1 = 0;
@@ -1227,16 +1227,16 @@ public:
         rho_v_new_tend(k,j,i,iens) = -(p_y_R - p_y_L) / (dy);
         rho_w_new_tend(k,j,i,iens) = -(p_z_R - p_z_L) / (dz(k,iens));
 
-        if (sim2d) {
-          abs_div(k,j,i,iens) = abs( (ru_ip1-ru_im1)/(2*dx) + (rw_kp1-rw_km1)/(2*dz(k,iens)) );
-          pressure_tend(k,j,i,iens) = -c_s*c_s * ( (ru_ip1-ru_im1)/(2*dx) + (rw_kp1-rw_km1)/(2*dz(k,iens)) );
-        } else {
-          pressure_tend(k,j,i,iens) = -c_s*c_s * ( (ru_ip1-ru_im1)/(2*dx) + (rv_jp1-rv_jm1)/(2*dy) + (rw_kp1-rw_km1)/(2*dz(k,iens)) );
-        }
+        // if (sim2d) {
+        //   abs_div(k,j,i,iens) = abs( (ru_ip1-ru_im1)/(2*dx) + (rw_kp1-rw_km1)/(2*dz(k,iens)) );
+        //   pressure_tend(k,j,i,iens) = -c_s*c_s * ( (ru_ip1-ru_im1)/(2*dx) + (rw_kp1-rw_km1)/(2*dz(k,iens)) );
+        // } else {
+        //   pressure_tend(k,j,i,iens) = -c_s*c_s * ( (ru_ip1-ru_im1)/(2*dx) + (rv_jp1-rv_jm1)/(2*dy) + (rw_kp1-rw_km1)/(2*dz(k,iens)) );
+        // }
         // std::cout << p_x_L << " , " << p_x_R << " , " << p_y_L << " , " << p_y_R << " , " << p_z_L << " , " << p_z_R << "\n";
-        rho_u_new_tend(k,j,i,iens) = -(p_ip1 - p_im1) / (2*dx);
-        rho_v_new_tend(k,j,i,iens) = -(p_jp1 - p_jm1) / (2*dy);
-        rho_w_new_tend(k,j,i,iens) = -(p_kp1 - p_km1) / (2*dz(k,iens));
+        // rho_u_new_tend(k,j,i,iens) = -(p_ip1 - p_im1) / (2*dx);
+        // rho_v_new_tend(k,j,i,iens) = -(p_jp1 - p_jm1) / (2*dy);
+        // rho_w_new_tend(k,j,i,iens) = -(p_kp1 - p_km1) / (2*dz(k,iens));
       });
 
       if (iter == 0) std::cout << "Starting divergence: " << yakl::intrinsics::sum(abs_div) << "\n";

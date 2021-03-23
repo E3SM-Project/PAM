@@ -1153,12 +1153,12 @@ public:
               dens_theta += dens * theta_pert;
 
               real factor = gllWts_ngll(ii) * gllWts_ngll(jj) * gllWts_ngll(kk);
-              state  (idR ,hs+k,hs+j,hs+i,iens) += (dens - hyDensGLL(k,kk,iens)))          * factor;
-              state  (idU ,hs+k,hs+j,hs+i,iens) += dens * uvel                             * factor;
-              state  (idV ,hs+k,hs+j,hs+i,iens) += dens * vvel                             * factor;
-              state  (idW ,hs+k,hs+j,hs+i,iens) += dens * wvel                             * factor;
-              state  (idT ,hs+k,hs+j,hs+i,iens) += (dens_theta - hyDensThetaGLL(k,kk,iens) * factor;
-              tracers(idWV,hs+k,hs+j,hs+i,iens) += dens_vap                                * factor;
+              state  (idR ,hs+k,hs+j,hs+i,iens) += (dens - hyDensGLL(k,kk,iens))            * factor;
+              state  (idU ,hs+k,hs+j,hs+i,iens) += dens * uvel                              * factor;
+              state  (idV ,hs+k,hs+j,hs+i,iens) += dens * vvel                              * factor;
+              state  (idW ,hs+k,hs+j,hs+i,iens) += dens * wvel                              * factor;
+              state  (idT ,hs+k,hs+j,hs+i,iens) += (dens_theta - hyDensThetaGLL(k,kk,iens)) * factor;
+              tracers(idWV,hs+k,hs+j,hs+i,iens) += dens_vap                                 * factor;
             }
           }
         }
