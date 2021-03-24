@@ -12,6 +12,17 @@
 
 
 
+int ijk_to_l(int i, int j, int k, int nx, int ny)
+{
+  return (j + k * ny) * nx + i;
+}
+
+int wrap(int i, int nx)
+{
+  if (i < 0) {return i + nx;}
+  else if (i > nx-1) {return i - nx;}
+  else {return i;}
+}
 
 
 
@@ -91,7 +102,7 @@ void readParamsFile(std::string inFile, Parameters &params, Parallel &par) {
 
     //Get my beginning and ending global indices; and domain sizes
     double nper;
-    nper = floor(((double) params.nx_glob)/par.nprocx);
+    nper = ((double) params.nx_glob)/par.nprocx;
     par.i_beg = (int) round( nper* par.px    );
     par.i_end = (int) round( nper*(par.px+1) )-1;
     par.nx = par.i_end - par.i_beg + 1;
@@ -117,39 +128,53 @@ void readParamsFile(std::string inFile, Parameters &params, Parallel &par) {
 
     // Determine my neighbors
     // x-dir
-    int pxloc_neg = par.px-1;
-    if (pxloc_neg < 0            ) pxloc_neg = pxloc_neg + par.nprocx;
-    if (pxloc_neg > par.nprocx-1) pxloc_neg = pxloc_neg - par.nprocx;
-    par.x_neigh(0) = (par.py + par.pz * par.nprocy) * par.nprocx + pxloc_neg;
-    int pxloc_pos = par.px+1;
-    if (pxloc_pos < 0            ) pxloc_pos = pxloc_pos + par.nprocx;
-    if (pxloc_pos > par.nprocx-1) pxloc_pos = pxloc_pos - par.nprocx;
-    par.x_neigh(1) = (par.py + par.pz * par.nprocy) * par.nprocx + pxloc_pos;
+    par.x_neigh(0) = ijk_to_l(wrap(par.px-1,par.nprocx), par.py, par.pz, par.nprocx, par.nprocy);
+    par.x_neigh(1) = ijk_to_l(wrap(par.px+1,par.nprocx), par.py, par.pz, par.nprocx, par.nprocy);
+        
+    // int pxloc_neg = par.px-1;
+    // if (pxloc_neg < 0            ) pxloc_neg = pxloc_neg + par.nprocx;
+    // if (pxloc_neg > par.nprocx-1) pxloc_neg = pxloc_neg - par.nprocx;
+    // par.x_neigh(0) = (par.py + par.pz * par.nprocy) * par.nprocx + pxloc_neg;
+    // int pxloc_pos = par.px+1;
+    // if (pxloc_pos < 0            ) pxloc_pos = pxloc_pos + par.nprocx;
+    // if (pxloc_pos > par.nprocx-1) pxloc_pos = pxloc_pos - par.nprocx;
+    // par.x_neigh(1) = (par.py + par.pz * par.nprocy) * par.nprocx + pxloc_pos;
 
     // y-dir
     if (ndims>=2)
     {
-    int pyloc_neg = par.py-1;
-    if (pyloc_neg < 0            ) pyloc_neg = pyloc_neg + par.nprocy;
-    if (pyloc_neg > par.nprocy-1) pyloc_neg = pyloc_neg - par.nprocy;
-    par.y_neigh(0) = (pyloc_neg + par.pz * par.nprocy) * par.nprocx + par.px;
-    int pyloc_pos = par.py+1;
-    if (pyloc_pos < 0            ) pyloc_pos = pyloc_pos + par.nprocy;
-    if (pyloc_pos > par.nprocy-1) pyloc_pos = pyloc_pos - par.nprocy;
-    par.y_neigh(1) = (pyloc_pos + par.pz * par.nprocy) * par.nprocx + par.px;
+      par.y_neigh(0) = ijk_to_l(par.px, wrap(par.py-1,par.nprocy), par.pz, par.nprocx, par.nprocy);
+      par.y_neigh(1) = ijk_to_l(par.px, wrap(par.py+1,par.nprocy), par.pz, par.nprocx, par.nprocy);
+      
+    // int pyloc_neg = par.py-1;
+    // if (pyloc_neg < 0            ) pyloc_neg = pyloc_neg + par.nprocy;
+    // if (pyloc_neg > par.nprocy-1) pyloc_neg = pyloc_neg - par.nprocy;
+    // par.y_neigh(0) = (pyloc_neg + par.pz * par.nprocy) * par.nprocx + par.px;
+    // int pyloc_pos = par.py+1;
+    // if (pyloc_pos < 0            ) pyloc_pos = pyloc_pos + par.nprocy;
+    // if (pyloc_pos > par.nprocy-1) pyloc_pos = pyloc_pos - par.nprocy;
+    // par.y_neigh(1) = (pyloc_pos + par.pz * par.nprocy) * par.nprocx + par.px;
+    
+    par.ll_neigh = ijk_to_l(wrap(par.px-1,par.nprocx), wrap(par.py-1,par.nprocy), par.pz, par.nprocx, par.nprocy); 
+    par.lr_neigh = ijk_to_l(wrap(par.px+1,par.nprocx), wrap(par.py-1,par.nprocy), par.pz, par.nprocx, par.nprocy); 
+    par.ur_neigh = ijk_to_l(wrap(par.px+1,par.nprocx), wrap(par.py+1,par.nprocy), par.pz, par.nprocx, par.nprocy); 
+    par.ul_neigh = ijk_to_l(wrap(par.px-1,par.nprocx), wrap(par.py+1,par.nprocy), par.pz, par.nprocx, par.nprocy);
     }
 
     // z-dir
     if (ndims == 3)
     {
-    int pzloc_neg = par.pz-1;
-    if (pzloc_neg < 0            ) pzloc_neg = pzloc_neg + par.nprocz;
-    if (pzloc_neg > par.nprocz-1) pzloc_neg = pzloc_neg - par.nprocz;
-    par.z_neigh(0) = (par.py + pzloc_neg * par.nprocy) * par.nprocx + par.px;
-    int pzloc_pos = par.pz+1;
-    if (pzloc_pos < 0            ) pzloc_pos = pzloc_pos + par.nprocz;
-    if (pzloc_pos > par.nprocz-1) pzloc_pos = pzloc_pos - par.nprocz;
-    par.z_neigh(1) = (par.py + pzloc_pos * par.nprocy) * par.nprocx + par.px;
+      par.z_neigh(0) = ijk_to_l(par.px, par.py, wrap(par.pz-1,par.nprocz), par.nprocx, par.nprocy);
+      par.z_neigh(1) = ijk_to_l(par.px, par.py, wrap(par.pz+1,par.nprocz), par.nprocx, par.nprocy);
+      
+    // int pzloc_neg = par.pz-1;
+    // if (pzloc_neg < 0            ) pzloc_neg = pzloc_neg + par.nprocz;
+    // if (pzloc_neg > par.nprocz-1) pzloc_neg = pzloc_neg - par.nprocz;
+    // par.z_neigh(0) = (par.py + pzloc_neg * par.nprocy) * par.nprocx + par.px;
+    // int pzloc_pos = par.pz+1;
+    // if (pzloc_pos < 0            ) pzloc_pos = pzloc_pos + par.nprocz;
+    // if (pzloc_pos > par.nprocz-1) pzloc_pos = pzloc_pos - par.nprocz;
+    // par.z_neigh(1) = (par.py + pzloc_pos * par.nprocy) * par.nprocx + par.px;
     }
 
     // set halos
@@ -170,6 +195,7 @@ void readParamsFile(std::string inFile, Parameters &params, Parallel &par) {
           std::cout << "My x neighbors are: " << par.x_neigh(0) << " " << par.x_neigh(1) << "\n";
           std::cout << "My y neighbors are: " << par.y_neigh(0) << " " << par.y_neigh(1) << "\n";
           std::cout << "My z neighbors are: " << par.z_neigh(0) << " " << par.z_neigh(1) << "\n";
+          std::cout << "My corner neighbors are: " << par.ll_neigh << " " << par.ul_neigh << " " << par.ur_neigh << " " << par.lr_neigh << "\n";
         }
         ierr = MPI_Barrier(MPI_COMM_WORLD);
       }

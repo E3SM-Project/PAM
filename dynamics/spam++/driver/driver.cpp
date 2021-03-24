@@ -31,7 +31,8 @@ int main(int argc, char** argv) {
     FileIO<nprognostic, nconstant, ndiagnostic, nstats> io;
     Tendencies<nprognostic, nconstant, nauxiliary> tendencies;
     Diagnostics<nprognostic, nconstant, ndiagnostic> diagnostics;
-    Topology topology;
+    Topology primal_topology;
+    Topology dual_topology;
     ModelParameters params;
     Parallel par;
 
@@ -45,8 +46,10 @@ int main(int argc, char** argv) {
 
     //if (geom_type == GEOM_TYPE::UNIFORM_RECT)
     //{
-    UniformRectangularGeometry<ndims,ic_quad_pts,ic_quad_pts,ic_quad_pts> ic_geometry;
-    UniformRectangularGeometry<ndims,1,1,1> tendencies_geometry;
+    UniformRectangularStraightGeometry<ndims,ic_quad_pts,ic_quad_pts,ic_quad_pts> ic_primal_geometry;
+    UniformRectangularTwistedGeometry<ndims,ic_quad_pts,ic_quad_pts,ic_quad_pts> ic_dual_geometry;
+    UniformRectangularStraightGeometry<ndims,1,1,1> tendencies_primal_geometry;
+    UniformRectangularTwistedGeometry<ndims,1,1,1> tendencies_dual_geometry;
     //}
 
     // Initialize MPI
@@ -65,14 +68,22 @@ int main(int argc, char** argv) {
 
     // Initialize the grid
     std::cout << "start init topo/geom\n" << std::flush;
-    topology.initialize(par);
-    ic_geometry.initialize(topology, params);
-    tendencies_geometry.initialize(topology, params);
+    primal_topology.initialize(par,true);
+    ic_primal_geometry.initialize(primal_topology, params);
+    tendencies_primal_geometry.initialize(primal_topology, params);
+//SHOULD REALLY GENERATE THIS FROM PRIMAL STUFF!
+    dual_topology.initialize(par,false);
+    ic_dual_geometry.initialize(dual_topology, params);
+    tendencies_dual_geometry.initialize(dual_topology, params);
     std::cout << "finish init topo/geom\n" << std::flush;
 
-    // Allocate the wind variable and the advected quantities
+    // Allocate the variables
     std::cout << "start init variable sets and exchange sets\n" << std::flush;
-// PROPERLY THESE CAN BE OF SIZE NDIMS+2...
+    //ndofs is 0,1,2,3 on basemesh and 0,1 (stored at 4,5) for extruded mesh
+//HOW DO WE HANDLE DOFS HERE FOR STANDARD VS. EXTRUDED MESHES?
+//SOME SORT OF COMPILE TIME CONSTANT, SET VIA model_compile_consts.h or similar?
+//ndims should maybe be made part of that as well, and other compile-time constants we are setting in common.h....
+
     SArray<int, nprognostic, 4> prog_ndofs_arr;
     SArray<int, nconstant, 4> const_ndofs_arr;
     SArray<int, ndiagnostic, 4> diag_ndofs_arr;
@@ -85,7 +96,7 @@ int main(int argc, char** argv) {
     std::array<const Topology *, nconstant> const_topo_arr;
     std::array<const Topology *, ndiagnostic> diag_topo_arr;
     std::array<const Topology *, nauxiliary> aux_topo_arr;
-    initialize_variables<nprognostic, nconstant, nauxiliary, ndiagnostic>(topology,
+    initialize_variables<nprognostic, nconstant, nauxiliary, ndiagnostic>(primal_topology, dual_topology,
         prog_ndofs_arr, const_ndofs_arr, aux_ndofs_arr, diag_ndofs_arr,
         prog_names_arr, const_names_arr, aux_names_arr, diag_names_arr,
         prog_topo_arr, const_topo_arr, aux_topo_arr, diag_topo_arr);
@@ -100,16 +111,16 @@ int main(int argc, char** argv) {
     std::cout << "finish init variable sets\n" << std::flush;
 
     // Initialize the statistics
-    stats.initialize(params, par, topology, tendencies_geometry);
+    stats.initialize(params, par, primal_topology, dual_topology, tendencies_primal_geometry, tendencies_dual_geometry);
 
     // Create the outputter
     std::cout << "start io init\n" << std::flush;
-    io.initialize(params.outputName, topology, par, prognostic_vars, constant_vars, diagnostic_vars, stats);
+    io.initialize(params.outputName, primal_topology, dual_topology, par, prognostic_vars, constant_vars, diagnostic_vars, stats);
     std::cout << "end io init\n" << std::flush;
 
     // set the initial conditions
     std::cout << "start set initial conditions\n" << std::flush;
-    set_initial_conditions<nprognostic, nconstant, ic_quad_pts, ic_quad_pts, ic_quad_pts>(params, prognostic_vars, constant_vars, ic_geometry);
+    set_initial_conditions<nprognostic, nconstant, ic_quad_pts, ic_quad_pts, ic_quad_pts>(params, prognostic_vars, constant_vars, ic_primal_geometry, ic_dual_geometry);
     // Do a boundary exchange
     prog_exchange.exchange_variable_set(prognostic_vars);
     const_exchange.exchange_variable_set(constant_vars);
@@ -117,8 +128,9 @@ int main(int argc, char** argv) {
 
     // Initialize the time stepper
     std::cout << "start ts init\n" << std::flush;
-    tendencies.initialize(topology, tendencies_geometry, aux_exchange, const_exchange);
-    diagnostics.initialize(topology, tendencies_geometry);
+    tendencies.initialize(primal_topology, dual_topology, tendencies_primal_geometry, tendencies_dual_geometry, aux_exchange, const_exchange);
+    tendencies.compute_constants(constant_vars, prognostic_vars);
+    diagnostics.initialize(primal_topology, dual_topology, tendencies_primal_geometry, tendencies_dual_geometry);
     tint.initialize(tendencies, prognostic_vars, constant_vars, auxiliary_vars, prog_exchange);
     std::cout << "end ts init\n" << std::flush;
 

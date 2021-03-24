@@ -12,12 +12,18 @@
 // Xm RecvBuf holds the halo cells closest to x- ie the left side
 // Xp SendBuf holds the halo cells closest to x+ ie the right side
 
+// THIS HALO EXCHANGE CODE IS MISSING THE CORNERS!
+// BASICALLY WORKED BECAUSE ALL MY STENCILS ARE JUST 1D...
+// EXCEPT W/Q STUFF- was slightly wrong at corner of domain...
+
+// THIS HALO EXCHANGE CODE MISSES THE CORNERS IN 3D!!!
+
 class Exchange {
 public:
 
     const Topology *topology;
 
-    int bufsize_x, bufsize_y, bufsize_z;
+    int bufsize_x, bufsize_y, bufsize_z, bufsize_xy;
     int total_dofs;
     int ndof0, ndof1, ndof2, ndof3;
 
@@ -48,11 +54,29 @@ public:
     realArr haloSendBuf_Zp;
     realArr haloRecvBuf_Zp;
 
-    MPI_Request sReq [2];
-    MPI_Request rReq [2];
+    realArrHost haloSendBuf_XYll_host;
+    realArrHost haloRecvBuf_XYll_host;
+    realArr haloSendBuf_XYll;
+    realArr haloRecvBuf_XYll;
+    realArrHost haloSendBuf_XYul_host;
+    realArrHost haloRecvBuf_XYul_host;
+    realArr haloSendBuf_XYul;
+    realArr haloRecvBuf_XYul;
+    realArrHost haloSendBuf_XYlr_host;
+    realArrHost haloRecvBuf_XYlr_host;
+    realArr haloSendBuf_XYlr;
+    realArr haloRecvBuf_XYlr;
+    realArrHost haloSendBuf_XYur_host;
+    realArrHost haloRecvBuf_XYur_host;
+    realArr haloSendBuf_XYur;
+    realArr haloRecvBuf_XYur;
+    
+    // 4 corners in 2D, 8 corners in 3D
+    MPI_Request sReq [8];
+    MPI_Request rReq [8];
 
-    MPI_Status  sStat[2];
-    MPI_Status  rStat[2];
+    MPI_Status  sStat[8];
+    MPI_Status  rStat[8];
 
     bool is_initialized;
 
@@ -70,6 +94,7 @@ public:
     void exchange_x();
     void exchange_y();
     void exchange_z();
+    void exchange_corners();
 
 };
 
@@ -117,6 +142,7 @@ void Exchange::initialize(const Exchange &exch)
    {
      this->bufsize_x = this->topology->halosize_x*this->total_dofs*this->topology->n_cells_y;
      this->bufsize_y = this->topology->halosize_y*this->total_dofs*this->topology->n_cells_x;
+     this->bufsize_xy = this->topology->halosize_y*this->total_dofs*this->topology->halosize_x;
    }
 
    // This duplicates corner elements- probably okay
@@ -146,6 +172,29 @@ void Exchange::initialize(const Exchange &exch)
      this->haloRecvBuf_Yp = realArr("haloRecvBuf_Yp", this->bufsize_y);
      this->haloSendBuf_Yp_host = this->haloSendBuf_Yp.createHostCopy();
      this->haloRecvBuf_Yp_host = this->haloRecvBuf_Yp.createHostCopy();
+   }
+   
+     if (ndims == 2) {
+
+     this->haloSendBuf_XYll = realArr("haloSendBuf_XYll", this->bufsize_xy);
+     this->haloRecvBuf_XYll = realArr("haloRecvBuf_XYll", this->bufsize_xy);
+     this->haloSendBuf_XYll_host = this->haloSendBuf_XYll.createHostCopy();
+     this->haloRecvBuf_XYll_host = this->haloRecvBuf_XYll.createHostCopy();
+     
+     this->haloSendBuf_XYul = realArr("haloSendBuf_XYul", this->bufsize_xy);
+     this->haloRecvBuf_XYul = realArr("haloRecvBuf_XYul", this->bufsize_xy);
+     this->haloSendBuf_XYul_host = this->haloSendBuf_XYul.createHostCopy();
+     this->haloRecvBuf_XYul_host = this->haloRecvBuf_XYul.createHostCopy();
+     
+     this->haloSendBuf_XYlr = realArr("haloSendBuf_XYlr", this->bufsize_xy);
+     this->haloRecvBuf_XYlr = realArr("haloRecvBuf_XYlr", this->bufsize_xy);
+     this->haloSendBuf_XYlr_host = this->haloSendBuf_XYlr.createHostCopy();
+     this->haloRecvBuf_XYlr_host = this->haloRecvBuf_XYlr.createHostCopy();
+     
+     this->haloSendBuf_XYur = realArr("haloSendBuf_XYur", this->bufsize_xy);
+     this->haloRecvBuf_XYur = realArr("haloRecvBuf_XYur", this->bufsize_xy);
+     this->haloSendBuf_XYur_host = this->haloSendBuf_XYur.createHostCopy();
+     this->haloRecvBuf_XYur_host = this->haloRecvBuf_XYur.createHostCopy();
    }
 
    if (ndims == 3) {
@@ -187,6 +236,18 @@ void Exchange::initialize(const Exchange &exch)
        this->haloSendBuf_Ym(iGlob) = field.data(ndof, k+ks, jj+js, i+is);
      });
    }
+   
+   if (ndims ==2) {
+     yakl::parallel_for("PackCorners", this->bufsize_xy, YAKL_LAMBDA (int iGlob) {
+       int ndof, ii, k, jj;
+       yakl::unpackIndices(iGlob, this->total_dofs, this->topology->halosize_y, this->topology->halosize_x, this->topology->n_cells_z, ndof, jj, ii, k);
+       this->haloSendBuf_XYll(iGlob) = field.data(ndof, k+ks, jj+js, ii+is);
+       this->haloSendBuf_XYur(iGlob) = field.data(ndof, k+ks, jj+js+this->topology->n_cells_y-this->topology->halosize_y, ii+is+this->topology->n_cells_x-this->topology->halosize_x);
+       this->haloSendBuf_XYul(iGlob) = field.data(ndof, k+ks, jj+js+this->topology->n_cells_y-this->topology->halosize_y, ii+is);
+       this->haloSendBuf_XYlr(iGlob) = field.data(ndof, k+ks, jj+js, ii+is+this->topology->n_cells_x-this->topology->halosize_x);
+     });
+   }
+     
 
    //pack bottom (z-) and top (z+)
    if (ndims ==3) {
@@ -224,6 +285,17 @@ void Exchange::initialize(const Exchange &exch)
      });
    }
 
+   if (ndims ==2) {
+     yakl::parallel_for("UnpackCorners", this->bufsize_xy, YAKL_LAMBDA (int iGlob) {
+       int ndof, ii, k, jj;
+       yakl::unpackIndices(iGlob, this->total_dofs, this->topology->halosize_y, this->topology->halosize_x, this->topology->n_cells_z, ndof, jj, ii, k);
+       field.data(ndof, k+ks, jj+js-this->topology->halosize_y, ii+is-this->topology->halosize_x) = this->haloRecvBuf_XYll(iGlob);
+       field.data(ndof, k+ks, jj+js+this->topology->n_cells_y, ii+is+this->topology->n_cells_x) = this->haloRecvBuf_XYur(iGlob);
+       field.data(ndof, k+ks, jj+js-this->topology->halosize_y, ii+is+this->topology->n_cells_x) = this->haloRecvBuf_XYlr(iGlob);
+       field.data(ndof, k+ks, jj+js+this->topology->n_cells_y, ii+is-this->topology->halosize_x) = this->haloRecvBuf_XYul(iGlob);
+     });
+   }
+   
    //unpack bottom (z-) and top (z+)
    if (ndims ==3) {
      yakl::parallel_for("UnpackBottomTop", this->bufsize_z, YAKL_LAMBDA (int iGlob) {
@@ -356,11 +428,62 @@ void Exchange::initialize(const Exchange &exch)
 }
  }
 
+//IS THIS MAYBE BROKEN?
+ void Exchange::exchange_corners()
+ {
+   int ierr;
+
+   if (this->topology->nprocx > 1 || this->topology->nprocy > 1) {
+     yakl::fence();
+     
+     //Pre-post the receives
+     ierr = MPI_Irecv( haloRecvBuf_XYll_host.data() , this->bufsize_xy , REAL_MPI , this->topology->ur_neigh , 0 , MPI_COMM_WORLD , &this->rReq[0] );
+     ierr = MPI_Irecv( haloRecvBuf_XYur_host.data() , this->bufsize_xy , REAL_MPI , this->topology->ll_neigh , 1 , MPI_COMM_WORLD , &this->rReq[1] );
+     ierr = MPI_Irecv( haloRecvBuf_XYul_host.data() , this->bufsize_xy , REAL_MPI , this->topology->lr_neigh , 2 , MPI_COMM_WORLD , &this->rReq[2] );
+     ierr = MPI_Irecv( haloRecvBuf_XYlr_host.data() , this->bufsize_xy , REAL_MPI , this->topology->ul_neigh , 3 , MPI_COMM_WORLD , &this->rReq[3] );
+
+     //Copy send buffers to host
+     haloSendBuf_XYll.deep_copy_to(haloSendBuf_XYll_host);
+     haloSendBuf_XYur.deep_copy_to(haloSendBuf_XYur_host);
+     haloSendBuf_XYul.deep_copy_to(haloSendBuf_XYul_host);
+     haloSendBuf_XYlr.deep_copy_to(haloSendBuf_XYlr_host);
+     yakl::fence();
+
+     //Send the data
+     ierr = MPI_Isend( haloSendBuf_XYll_host.data() , this->bufsize_xy , REAL_MPI , this->topology->ur_neigh , 1 , MPI_COMM_WORLD , &this->sReq[0] );
+     ierr = MPI_Isend( haloSendBuf_XYur_host.data() , this->bufsize_xy , REAL_MPI , this->topology->ll_neigh , 0 , MPI_COMM_WORLD , &this->sReq[1] );
+     ierr = MPI_Isend( haloSendBuf_XYul_host.data() , this->bufsize_xy , REAL_MPI , this->topology->lr_neigh , 3 , MPI_COMM_WORLD , &this->sReq[2] );
+     ierr = MPI_Isend( haloSendBuf_XYlr_host.data() , this->bufsize_xy , REAL_MPI , this->topology->ul_neigh , 2 , MPI_COMM_WORLD , &this->sReq[3] );
+     
+     //Wait for the sends and receives to finish
+     ierr = MPI_Waitall(4, this->sReq, this->sStat);
+     ierr = MPI_Waitall(4, this->rReq, this->rStat);
+
+     //Copy recv buffers to device
+     haloRecvBuf_XYll_host.deep_copy_to(haloRecvBuf_XYll);
+     haloRecvBuf_XYur_host.deep_copy_to(haloRecvBuf_XYur);
+     haloRecvBuf_XYul_host.deep_copy_to(haloRecvBuf_XYul);
+     haloRecvBuf_XYlr_host.deep_copy_to(haloRecvBuf_XYlr);
+   }
+   
+   else
+   {
+ yakl::parallel_for( this->bufsize_xy , YAKL_LAMBDA (int iGlob) {
+   this->haloRecvBuf_XYll(iGlob) = this->haloSendBuf_XYur(iGlob);
+   this->haloRecvBuf_XYur(iGlob) = this->haloSendBuf_XYll(iGlob);
+   this->haloRecvBuf_XYul(iGlob) = this->haloSendBuf_XYlr(iGlob);
+   this->haloRecvBuf_XYlr(iGlob) = this->haloSendBuf_XYul(iGlob);
+ });
+}
+
+}
+   
 // EVENTUALLY WE SHOULD BE MORE CLEVER HERE IE GROUP ALL THE SEND/RECVS IN X/Y/Z TOGETHER, ETC./
 void Exchange::exchange()
  {
    exchange_x();
    if (ndims >=2) { exchange_y(); }
+   if (ndims ==2) { exchange_corners(); }
    if (ndims ==3) { exchange_z(); }
 }
 

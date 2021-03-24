@@ -5,8 +5,8 @@ nz = 30
 
 // Time stepping
 dt = 250.0
-Nsteps = 20
-Nout = 1
+Nsteps = 1000
+Nout = 50
 Nstat = 1
 TStype = dt
 cfl = 0.5
@@ -18,3 +18,10 @@ nprocz = 1
 
 // initial condition
 dataInit = doublevortex
+
+tracerInit1 = square
+tracerInit2 = gaussian
+tracerInit3 = doublesquare
+tracerFCTInit1 = square
+tracerFCTInit2 = gaussian
+tracerFCTInit3 = doublesquare

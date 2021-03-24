@@ -33,9 +33,9 @@ plot_stat('mass', mass.isel(mass_ndofs=0))
 if (model == 'tswe'):
     plot_stat('bouyancy', mass.isel(mass_ndofs=1))
 
-plot_rawstat('potential_energy', energy.isel(energy_ndofs=2))
+plot_stat('total_energy', energy.isel(energy_ndofs=2))
 plot_rawstat('kinetic_energy', energy.isel(energy_ndofs=1))
-plot_stat('total_energy', energy.isel(energy_ndofs=0))
+plot_rawstat('potential_energy', energy.isel(energy_ndofs=0))
 
 plot_stat('pens', pens.isel(pens_ndofs=0))
 plot_stat('pv', pv.isel(pv_ndofs=0))
@@ -63,19 +63,19 @@ if (ntracers_fct>0):
     densfct = DS.densfct
     densfctl = DS.densfctl
 
-# WHERE EXACTLY SHOULD sl/trl/trfctl live? are they straight 0-forms? twisted n-forms?
+
 for i in Nlist:
-    plotvar_scalar2D('q', q.isel(t=i,q_ndofs=0,dual_ncells_z=0),i)
-    plotvar_scalar2D('h', dens.isel(t=i,dens_ndofs=0,dual_ncells_z=0),i)
+    plotvar_scalar2D('q', q.isel(t=i,q_ndofs=0,ncells_z=0),i)
+    plotvar_scalar2D('h', dens.isel(t=i,dens_ndofs=0,ncells_z=0),i)
     if (model == 'tswe'):    
-        plotvar_scalar2D('S', dens.isel(t=i,dens_ndofs=1,dual_ncells_z=0),i)
-        plotvar_scalar2D('sl', densl.isel(t=i,densl_ndofs=1,primal_ncells_z=0),i)
+        plotvar_scalar2D('S', dens.isel(t=i,dens_ndofs=1,ncells_z=0),i)
+        plotvar_scalar2D('sl', densl.isel(t=i,densl_ndofs=1,ncells_z=0),i)
     for l in range(ndensity-ntracers,ndensity):
-        plotvar_scalar2D('tr' + str(l-ntracers), dens.isel(t=i,dens_ndofs=l,dual_ncells_z=0),i)
-        plotvar_scalar2D('trl' + str(l-ntracers), densl.isel(t=i,densl_ndofs=l,primal_ncells_z=0),i)
+        plotvar_scalar2D('tr' + str(l-ntracers), dens.isel(t=i,dens_ndofs=l,ncells_z=0),i)
+        plotvar_scalar2D('trl' + str(l-ntracers), densl.isel(t=i,densl_ndofs=l,ncells_z=0),i)
     if ntracers_fct > 0:
         for l in range(ntracers_fct):
-            plotvar_scalar2D('trfct' + str(l), densfct.isel(t=i,densfct_ndofs=l,dual_ncells_z=0),i)
-            plotvar_scalar2D('trfctl' + str(l), densfctl.isel(t=i,densfctl_ndofs=l,primal_ncells_z=0),i)
-    plotvar_vector2D('v', v.isel(t=i,v_ndofs=0,primal_ncells_z=0), v.isel(t=i,v_ndofs=1,primal_ncells_z=0),i)
+            plotvar_scalar2D('trfct' + str(l), densfct.isel(t=i,densfct_ndofs=l,ncells_z=0),i)
+            plotvar_scalar2D('trfctl' + str(l), densfctl.isel(t=i,densfctl_ndofs=l,ncells_z=0),i)
+    plotvar_vector2D('v', v.isel(t=i,v_ndofs=0,ncells_z=0), v.isel(t=i,v_ndofs=1,ncells_z=0),i)
 

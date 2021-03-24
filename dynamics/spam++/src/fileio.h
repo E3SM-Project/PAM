@@ -30,7 +30,7 @@ public:
   int masterproc;
   int ncid;
   int const_dim_ids[4], prog_dim_ids[5], diag_dim_ids[5];
-  int tDim, xDim, yDim, zDim;
+  int tDim, pxDim, pyDim, pzDim, dxDim, dyDim, dzDim;
   int const_var_dim_ids[nconst], prog_var_dim_ids[nprog], diag_var_dim_ids[ndiag];
   int const_var_ids[nconst], prog_var_ids[nprog], diag_var_ids[ndiag];
   int tVar;
@@ -56,7 +56,7 @@ public:
   FileIO();
   FileIO( const FileIO<nprog,nconst,ndiag,nstats> &fio) = delete;
   FileIO& operator=( const FileIO<nprog,nconst,ndiag,nstats> &fio) = delete;
-  void initialize(std::string outputName, Topology &topo, Parallel &par, const VariableSet<nprog> &progvars, const VariableSet<nconst> &const_vars, const VariableSet<ndiag> &diagvars, Stats<nprog, nconst, nstats> &stats);
+  void initialize(std::string outputName, Topology &ptopo, Topology &dtopo, Parallel &par, const VariableSet<nprog> &progvars, const VariableSet<nconst> &const_vars, const VariableSet<ndiag> &diagvars, Stats<nprog, nconst, nstats> &stats);
   void output(int nstep, real time);
   void outputInit(real time);
   void outputStats(const Stats<nprog, nconst, nstats> &stats);
@@ -75,7 +75,7 @@ public:
     }
 
 
-  template<uint nprog, uint nconst, uint ndiag, uint nstats> void FileIO<nprog,nconst,ndiag,nstats>::initialize(std::string outName, Topology &topo, Parallel &par, const VariableSet<nprog> &progvars, const VariableSet<nconst> &constvars, const VariableSet<ndiag> &diagvars, Stats<nprog, nconst, nstats> &stats)
+  template<uint nprog, uint nconst, uint ndiag, uint nstats> void FileIO<nprog,nconst,ndiag,nstats>::initialize(std::string outName, Topology &ptopo, Topology &dtopo, Parallel &par, const VariableSet<nprog> &progvars, const VariableSet<nconst> &constvars, const VariableSet<ndiag> &diagvars, Stats<nprog, nconst, nstats> &stats)
   {
        this->outputName = outName;
        this->prog_vars = &progvars;
@@ -88,20 +88,23 @@ public:
 
        //Define time and cell dimensions
        ncwrap( ncmpi_def_dim( ncid , "t" , (MPI_Offset) NC_UNLIMITED , &tDim ) , __LINE__ );
-       ncwrap( ncmpi_def_dim( ncid , "ncells_x" , (MPI_Offset) topo.nx_glob  , &xDim ) , __LINE__ );
-       ncwrap( ncmpi_def_dim( ncid , "ncells_y" , (MPI_Offset) topo.ny_glob  , &yDim ) , __LINE__ );
-       ncwrap( ncmpi_def_dim( ncid , "ncells_z" , (MPI_Offset) topo.nz_glob  , &zDim ) , __LINE__ );
-
+       ncwrap( ncmpi_def_dim( ncid , "primal_ncells_x" , (MPI_Offset) ptopo.nx_glob  , &pxDim ) , __LINE__ );
+       ncwrap( ncmpi_def_dim( ncid , "primal_ncells_y" , (MPI_Offset) ptopo.ny_glob  , &pyDim ) , __LINE__ );
+       ncwrap( ncmpi_def_dim( ncid , "primal_ncells_z" , (MPI_Offset) ptopo.nz_glob  , &pzDim ) , __LINE__ );
+       ncwrap( ncmpi_def_dim( ncid , "dual_ncells_x" , (MPI_Offset) dtopo.nx_glob  , &dxDim ) , __LINE__ );
+       ncwrap( ncmpi_def_dim( ncid , "dual_ncells_y" , (MPI_Offset) dtopo.ny_glob  , &dyDim ) , __LINE__ );
+       ncwrap( ncmpi_def_dim( ncid , "dual_ncells_z" , (MPI_Offset) dtopo.nz_glob  , &dzDim ) , __LINE__ );
+       
        //Create time dimension
        const_dim_ids[0] = tDim;
        ncwrap( ncmpi_def_var( ncid , "t"      , REAL_NC , 1 , const_dim_ids , &tVar ) , __LINE__ );
        ncwrap( ncmpi_put_att_text (ncid, tVar, "units", std::strlen("seconds"), "seconds"), __LINE__ );
 
-
        for (int i=0; i<this->const_vars->fields_arr.size(); i++)
        {
          ncwrap( ncmpi_def_dim( ncid , (this->const_vars->fields_arr[i].name + "_ndofs").c_str() , (MPI_Offset) this->const_vars->fields_arr[i].total_dofs , &const_var_dim_ids[i] ) , __LINE__ );
-         const_dim_ids[0] = const_var_dim_ids[i]; const_dim_ids[1] = zDim; const_dim_ids[2] = yDim; const_dim_ids[3] = xDim;
+         if (this->const_vars->fields_arr[i].topology->primal) { const_dim_ids[0] = const_var_dim_ids[i]; const_dim_ids[1] = pzDim; const_dim_ids[2] = pyDim; const_dim_ids[3] = pxDim;}
+         else {const_dim_ids[0] = const_var_dim_ids[i]; const_dim_ids[1] = dzDim; const_dim_ids[2] = dyDim; const_dim_ids[3] = dxDim;}
          ncwrap( ncmpi_def_var( ncid , this->const_vars->fields_arr[i].name.c_str() , REAL_NC , 4 , const_dim_ids , &const_var_ids[i]  ) , __LINE__ );
          this->const_temp_arr[i] = realArr(this->const_vars->fields_arr[i].name.c_str(), this->const_vars->fields_arr[i].total_dofs, this->const_vars->fields_arr[i].topology->n_cells_z, this->const_vars->fields_arr[i].topology->n_cells_y, this->const_vars->fields_arr[i].topology->n_cells_x);
        }
@@ -109,7 +112,8 @@ public:
        for (int i=0; i<this->prog_vars->fields_arr.size(); i++)
        {
          ncwrap( ncmpi_def_dim( ncid , (this->prog_vars->fields_arr[i].name + "_ndofs").c_str() , (MPI_Offset) this->prog_vars->fields_arr[i].total_dofs , &prog_var_dim_ids[i] ) , __LINE__ );
-         prog_dim_ids[0] = tVar; prog_dim_ids[1] = prog_var_dim_ids[i]; prog_dim_ids[2] = zDim; prog_dim_ids[3] = yDim; prog_dim_ids[4] = xDim;
+         if (this->prog_vars->fields_arr[i].topology->primal) {prog_dim_ids[0] = tVar; prog_dim_ids[1] = prog_var_dim_ids[i]; prog_dim_ids[2] = pzDim; prog_dim_ids[3] = pyDim; prog_dim_ids[4] = pxDim;}
+         else {prog_dim_ids[0] = tVar; prog_dim_ids[1] = prog_var_dim_ids[i]; prog_dim_ids[2] = dzDim; prog_dim_ids[3] = dyDim; prog_dim_ids[4] = dxDim;}
          ncwrap( ncmpi_def_var( ncid , this->prog_vars->fields_arr[i].name.c_str() , REAL_NC , 5 , prog_dim_ids , &prog_var_ids[i]  ) , __LINE__ );
          this->prog_temp_arr[i] = realArr(this->prog_vars->fields_arr[i].name.c_str(), this->prog_vars->fields_arr[i].total_dofs, this->prog_vars->fields_arr[i].topology->n_cells_z, this->prog_vars->fields_arr[i].topology->n_cells_y, this->prog_vars->fields_arr[i].topology->n_cells_x);
        }
@@ -117,7 +121,8 @@ public:
        for (int i=0; i<this->diag_vars->fields_arr.size(); i++)
        {
          ncwrap( ncmpi_def_dim( ncid , (this->diag_vars->fields_arr[i].name + "_ndofs").c_str() , (MPI_Offset) this->diag_vars->fields_arr[i].total_dofs , &diag_var_dim_ids[i] ) , __LINE__ );
-         diag_dim_ids[0] = tVar; diag_dim_ids[1] = diag_var_dim_ids[i]; diag_dim_ids[2] = zDim; diag_dim_ids[3] = yDim; diag_dim_ids[4] = xDim;
+         if (this->diag_vars->fields_arr[i].topology->primal) { diag_dim_ids[0] = tVar; diag_dim_ids[1] = diag_var_dim_ids[i]; diag_dim_ids[2] = pzDim; diag_dim_ids[3] = pyDim; diag_dim_ids[4] = pxDim;}
+         else { diag_dim_ids[0] = tVar; diag_dim_ids[1] = diag_var_dim_ids[i]; diag_dim_ids[2] = dzDim; diag_dim_ids[3] = dyDim; diag_dim_ids[4] = dxDim;}
          ncwrap( ncmpi_def_var( ncid , this->diag_vars->fields_arr[i].name.c_str() , REAL_NC , 5 , diag_dim_ids , &diag_var_ids[i]  ) , __LINE__ );
          this->diag_temp_arr[i] = realArr(this->diag_vars->fields_arr[i].name.c_str(), this->diag_vars->fields_arr[i].total_dofs, this->diag_vars->fields_arr[i].topology->n_cells_z, this->diag_vars->fields_arr[i].topology->n_cells_y, this->diag_vars->fields_arr[i].topology->n_cells_x);
        }
@@ -196,8 +201,12 @@ public:
   {
     ncwrap( ncmpi_open( MPI_COMM_WORLD , this->outputName.c_str() , NC_WRITE , MPI_INFO_NULL , &ncid ) , __LINE__ );
 
+    //std::cout << "writing initial fields\n"  <<std::flush;
+
     for (int l=0; l<this->const_vars->fields_arr.size(); l++)
     {
+      //std::cout << "writing initial field "  << this->const_vars->fields_arr[l].name.c_str() << "\n" <<std::flush;
+
       ncwrap( ncmpi_inq_varid( ncid , this->const_vars->fields_arr[l].name.c_str() , &const_var_ids[l]  ) , __LINE__ );
       int is = this->const_vars->fields_arr[l].topology->is;
       int js = this->const_vars->fields_arr[l].topology->js;
@@ -217,6 +226,7 @@ public:
 
     for (int l=0; l<this->prog_vars->fields_arr.size(); l++)
     {
+      //std::cout << "writing initial field "  << this->prog_vars->fields_arr[l].name.c_str() << "\n" <<std::flush;
       ncwrap( ncmpi_inq_varid( ncid , this->prog_vars->fields_arr[l].name.c_str() , &prog_var_ids[l]  ) , __LINE__ );
       int is = this->prog_vars->fields_arr[l].topology->is;
       int js = this->prog_vars->fields_arr[l].topology->js;
@@ -236,6 +246,7 @@ public:
 
     for (int l=0; l<this->diag_vars->fields_arr.size(); l++)
     {
+      //std::cout << "writing initial field "  << this->diag_vars->fields_arr[l].name.c_str() << "\n" <<std::flush;
       ncwrap( ncmpi_inq_varid( ncid , this->diag_vars->fields_arr[l].name.c_str() , &diag_var_ids[l]  ) , __LINE__ );
       int is = this->diag_vars->fields_arr[l].topology->is;
       int js = this->diag_vars->fields_arr[l].topology->js;

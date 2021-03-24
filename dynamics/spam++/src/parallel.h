@@ -35,6 +35,8 @@ public:
   SArray<int,2> x_neigh;
   SArray<int,2> y_neigh;
   SArray<int,2> z_neigh;
+  
+  int ll_neigh, ur_neigh, ul_neigh, lr_neigh;
 
   int nx_glob = -1;
   int ny_glob = -1;

@@ -1,0 +1,19 @@
+// Topology
+nx = 100
+nz = 150
+
+// Time stepping
+dt = 0.5
+Nsteps = 1000
+Nout = 50
+Nstat = 1
+TStype = dt
+cfl = 0.5
+
+// Parallel decomposition
+nprocx = 2
+nprocy = 2
+nprocz = 1
+
+// initial condition
+dataInit = rb

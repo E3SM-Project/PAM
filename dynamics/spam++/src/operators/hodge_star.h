@@ -28,7 +28,8 @@ void YAKL_INLINE H(SArray<real,ndims> &var, SArray<real,ndims,5> const &velocity
 }
 
 
-template<uint ndofs, uint ord, uint off=ord/2 -1> void YAKL_INLINE compute_H(SArray<real,ndims> &u, const realArr vvar, Geometry<ndims,1,1,1> &geom, int is, int js, int ks, int i, int j, int k)
+// IS THE INDEXING HERE CORRECT FOR NEW TOPOLOGY/GEOMETRY FORMATS?
+template<uint ndofs, uint ord, uint off=ord/2 -1> void YAKL_INLINE compute_H(SArray<real,ndims> &u, const realArr vvar, Geometry<ndims,1,1,1> &pgeom, Geometry<ndims,1,1,1> &dgeom, int is, int js, int ks, int i, int j, int k)
 {
   SArray<real,ndims,ord-1> v;
   SArray<real,ndims,ord-1> Hgeom;
@@ -36,25 +37,25 @@ template<uint ndofs, uint ord, uint off=ord/2 -1> void YAKL_INLINE compute_H(SAr
   for (int d=0; d<ndims; d++) {
     if (d==0) {
     v(d,p) = vvar(d, k+ks, j+js, i+is+p-off);
-    Hgeom(d,p) = geom.get_H_edge(d, k+ks, j+js, i+is+p-off);
+    Hgeom(d,p) = pgeom.get_area_1form(d, k+ks, j+js, i+is+p-off) / dgeom.get_area_1form(d, k+ks, j+js, i+is+p-off);
   }
   if (d==1) {
   v(d,p) = vvar(d, k+ks, j+js+p-off, i+is);
-  Hgeom(d,p) = geom.get_H_edge(d, k+ks, j+js+p-off, i+is);
+  Hgeom(d,p) = pgeom.get_area_1form(d, k+ks, j+js+p-off, i+is) / dgeom.get_area_1form(d, k+ks, j+js, i+is+p-off);
   }
   if (d==2) {
   v(d,p) = vvar(d, k+ks+p-off, j+js, i+is);
-  Hgeom(d,p) = geom.get_H_edge(d, k+ks+p-off, j+js, i+is);
+  Hgeom(d,p) = pgeom.get_area_1form(d, k+ks+p-off, j+js, i+is) / dgeom.get_area_1form(d, k+ks+p-off, j+js, i+is);
   }
   }}
   H(u, v, Hgeom);
 
 }
 
-template<uint ndofs, uint ord, ADD_MODE addmode=ADD_MODE::REPLACE, uint off=ord/2 -1> void YAKL_INLINE compute_H(realArr uvar, const realArr vvar, Geometry<ndims,1,1,1> &geom, int is, int js, int ks, int i, int j, int k)
+template<uint ndofs, uint ord, ADD_MODE addmode=ADD_MODE::REPLACE, uint off=ord/2 -1> void YAKL_INLINE compute_H(realArr uvar, const realArr vvar, Geometry<ndims,1,1,1> &pgeom, Geometry<ndims,1,1,1> &dgeom, int is, int js, int ks, int i, int j, int k)
 {
   SArray<real,ndims> u;
-  compute_H<ndofs, ord, off> (u, vvar, geom, is, js, ks, i, j, k);
+  compute_H<ndofs, ord, off> (u, vvar, pgeom, dgeom, is, js, ks, i, j, k);
   if (addmode == ADD_MODE::REPLACE) {for (int d=0; d<ndims; d++) { uvar(d, k+ks, j+js, i+is) = u(d);}}
   if (addmode == ADD_MODE::ADD) {for (int d=0; d<ndims; d++) { uvar(d, k+ks, j+js, i+is) += u(d);}}
 }
@@ -88,8 +89,9 @@ template<uint ndofs> void YAKL_INLINE I(SArray<real,ndofs> &var, SArray<real,ndo
 
 
 
+// IS THE INDEXING HERE CORRECT FOR NEW TOPOLOGY/GEOMETRY FORMATS?
 
-template<uint ndofs, uint ord, uint off=ord/2 -1> void YAKL_INLINE compute_I(SArray<real,ndofs> &x0, const realArr var, Geometry<ndims,1,1,1> &geom, int is, int js, int ks, int i, int j, int k)
+template<uint ndofs, uint ord, uint off=ord/2 -1> void YAKL_INLINE compute_I(SArray<real,ndofs> &x0, const realArr var, Geometry<ndims,1,1,1> &pgeom, Geometry<ndims,1,1,1> &dgeom, int is, int js, int ks, int i, int j, int k)
 {
 SArray<real,ndofs,ndims,ord-1> x;
 SArray<real,ndims,ord-1> Igeom;
@@ -99,26 +101,26 @@ for (int d=0; d<ndims; d++) {
   if (d==0)
   {
 x(l,d,p) = var(l, k+ks, j+js, i+is+p-off);
-Igeom(d,p) = 1./geom.get_J_cell(k+ks, j+js, i+is+p-off);
+Igeom(d,p) = pgeom.get_area_0form(k+ks, j+js, i+is+p-off) / dgeom.get_area_2form(k+ks, j+js, i+is+p-off);
 }
 if (d==1)
 {
 x(l,d,p) = var(l, k+ks, j+js+p-off, i+is);
-Igeom(d,p) = 1./geom.get_J_cell(k+ks, j+js+p-off, i+is);
+Igeom(d,p) = pgeom.get_area_0form(k+ks, j+js+p-off, i+is) / dgeom.get_area_2form(k+ks, j+js+p-off, i+is);
 }
 if (d==2)
 {
 x(l,d,p) = var(l, k+ks+p-off, j+js, i+is);
-Igeom(d,p) = 1./geom.get_J_cell(k+ks+p-off, j+js, i+is);
+Igeom(d,p) = pgeom.get_area_0form(k+ks+p-off, j+js, i+is) / dgeom.get_area_2form(k+ks+p-off, j+js, i+is);
 }
 }}}
 I<ndofs>(x0, x, Igeom);
 }
 
-template<uint ndofs, uint ord, ADD_MODE addmode=ADD_MODE::REPLACE, uint off=ord/2 -1> void YAKL_INLINE compute_I(realArr var0, const realArr var, Geometry<ndims,1,1,1> &geom, int is, int js, int ks, int i, int j, int k)
+template<uint ndofs, uint ord, ADD_MODE addmode=ADD_MODE::REPLACE, uint off=ord/2 -1> void YAKL_INLINE compute_I(realArr var0, const realArr var, Geometry<ndims,1,1,1> &pgeom, Geometry<ndims,1,1,1> &dgeom, int is, int js, int ks, int i, int j, int k)
 {
   SArray<real,ndofs> x0;
-  compute_I<ndofs, ord, off> (x0, var, geom, is, js, ks, i, j, k);
+  compute_I<ndofs, ord, off> (x0, var, pgeom, dgeom, is, js, ks, i, j, k);
   if (addmode == ADD_MODE::REPLACE) {for (int l=0; l<ndofs; l++) {var0(l, k+ks, j+js, i+is) = x0(l);}}
   if (addmode == ADD_MODE::ADD) {for (int l=0; l<ndofs; l++) {var0(l, k+ks, j+js, i+is) += x0(l);}}
 
@@ -150,7 +152,9 @@ template<uint ndofs> void YAKL_INLINE J(SArray<real,ndofs> &var, SArray<real,ndo
 }
 }
 
-template<uint ndofs, uint ord, uint off=ord/2 -1> void YAKL_INLINE compute_J(SArray<real,ndofs> &x0, const realArr var, Geometry<ndims,1,1,1> &geom, int is, int js, int ks, int i, int j, int k)
+// IS THE INDEXING HERE CORRECT FOR NEW TOPOLOGY/GEOMETRY FORMATS?
+
+template<uint ndofs, uint ord, uint off=ord/2 -1> void YAKL_INLINE compute_J(SArray<real,ndofs> &x0, const realArr var, Geometry<ndims,1,1,1> &pgeom, Geometry<ndims,1,1,1> &dgeom, int is, int js, int ks, int i, int j, int k)
 {
 SArray<real,ndofs,ndims,ord-1> x;
 SArray<real,ndims,ord-1> Jgeom;
@@ -160,26 +164,26 @@ for (int d=0; d<ndims; d++) {
   if (d==0)
   {
 x(l,d,p) = var(l, k+ks, j+js, i+is+p-off);
-Jgeom(d,p) = 1./geom.get_J_dual_cell(k+ks, j+js, i+is+p-off);
+Jgeom(d,p) = dgeom.get_area_0form(k+ks, j+js, i+is+p-off) / pgeom.get_area_2form(k+ks, j+js, i+is+p-off);
 }
 if (d==1)
 {
 x(l,d,p) = var(l, k+ks, j+js+p-off, i+is);
-Jgeom(d,p) = 1./geom.get_J_dual_cell(k+ks, j+js+p-off, i+is);
+Jgeom(d,p) = dgeom.get_area_0form(k+ks, j+js+p-off, i+is) / pgeom.get_area_2form(k+ks, j+js+p-off, i+is);
 }
 if (d==2)
 {
 x(l,d,p) = var(l, k+ks+p-off, j+js, i+is);
-Jgeom(d,p) = 1./geom.get_J_dual_cell(k+ks+p-off, j+js, i+is);
+Jgeom(d,p) = dgeom.get_area_0form(k+ks+p-off, j+js, i+is) / pgeom.get_area_2form(k+ks+p-off, j+js, i+is);
 }
 }}}
 J<ndofs>(x0, x, Jgeom);
 }
 
-template<uint ndofs, uint ord, ADD_MODE addmode=ADD_MODE::REPLACE, uint off=ord/2 -1> void YAKL_INLINE compute_J(realArr var0, const realArr var, Geometry<ndims,1,1,1> &geom, int is, int js, int ks, int i, int j, int k)
+template<uint ndofs, uint ord, ADD_MODE addmode=ADD_MODE::REPLACE, uint off=ord/2 -1> void YAKL_INLINE compute_J(realArr var0, const realArr var, Geometry<ndims,1,1,1> &pgeom, Geometry<ndims,1,1,1> &dgeom, int is, int js, int ks, int i, int j, int k)
 {
   SArray<real,ndofs> x0;
-  compute_J<ndofs,ord,off> (x0, var, geom, is, js, ks, i, j, k);
+  compute_J<ndofs,ord,off> (x0, var, pgeom, dgeom, is, js, ks, i, j, k);
   if (addmode == ADD_MODE::REPLACE) {for (int l=0; l<ndofs; l++) {var0(l, k+ks, j+js, i+is) = x0(l);}}
   if (addmode == ADD_MODE::ADD) {for (int l=0; l<ndofs; l++) {var0(l, k+ks, j+js, i+is) += x0(l);}}
 }

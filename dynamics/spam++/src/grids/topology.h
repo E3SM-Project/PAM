@@ -22,15 +22,17 @@ int i_end, j_end, k_end;
 SArray<int,2> x_neigh;
 SArray<int,2> y_neigh;
 SArray<int,2> z_neigh;
+int ll_neigh, ur_neigh, ul_neigh, lr_neigh;
 int nprocx, nprocy, nprocz;
 int nx_glob, ny_glob, nz_glob;
 
 bool is_initialized;
+bool primal;
 
 Topology();
 Topology( const Topology &topo) = delete;
 Topology& operator=( const Topology &topo) = delete;
-void initialize(Parallel &par);
+void initialize(Parallel &par, bool isprimal);
 void printinfo();
 
 };
@@ -44,7 +46,7 @@ void printinfo();
   }
 
 
-  void Topology::initialize(Parallel &par)
+  void Topology::initialize(Parallel &par, bool isprimal)
   {
     this->n_cells_x = par.nx;
     this->n_cells_y = par.ny;
@@ -70,7 +72,9 @@ void printinfo();
     this->nx_glob = par.nx_glob;
     this->ny_glob = par.ny_glob;
     this->nz_glob = par.nz_glob;
-
+    
+    this->primal = isprimal;
+    
     if (ndims == 1) {
       this->n_cells_y = 1;
       this->n_cells_z = 1;
@@ -99,6 +103,10 @@ void printinfo();
       this->z_neigh(1) = -1;
       this->nprocz = 1;
       this->nz_glob = 1;
+      this->ll_neigh = par.ll_neigh;
+      this->lr_neigh = par.lr_neigh;
+      this->ul_neigh = par.ul_neigh;
+      this->ur_neigh = par.ur_neigh;
     }
 
     this->n_cells = this->n_cells_x * this->n_cells_y * this->n_cells_z;
@@ -113,7 +121,10 @@ void printinfo();
 
   void Topology::printinfo()
   {
-   std::cout << "topology info\n" << std::flush;
+  if (this->primal)
+   {std::cout << "topology info: type primal\n" << std::flush;}
+  else
+  {std::cout << "topology info: type dual\n" << std::flush;}
    std::cout << "nx " << this->n_cells_x << " ny " << this->n_cells_y << " nz " << this->n_cells_z << "\n" << std::flush;
    std::cout << "halosize_x " << this->halosize_x << " halosize_y " << this->halosize_y << " halosize_z " << this->halosize_z << "\n" << std::flush;
    std::cout << "is " << this->is << " js " << this->js << " ks " << this->ks << "\n" << std::flush;

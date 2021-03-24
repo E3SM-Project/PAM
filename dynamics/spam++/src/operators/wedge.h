@@ -5,6 +5,7 @@
 
 #include "common.h"
 #include <cmath>
+#include <iostream>
 
 // Q
   template<uint ndofs> void YAKL_INLINE Q2D( SArray<real,ndofs,2> &vel, SArray<real,ndofs,2,5> const &recon, SArray<real,2,4> const &flux) {
@@ -145,6 +146,10 @@ flux(1,3) = Uvar(0, k+ks, j+js-1, i+is+1);
 W2D(ut, flux);
   UTvar(0, k+ks, j+js, i+is) = ut(0) ;
   UTvar(1, k+ks, j+js, i+is) = ut(1) ;
+
+  //std::cout << flux(0,0) << " " << flux(0,1)  << " " << flux(0,2)  << " " << flux(0,3) << "\n";
+  //std::cout << flux(1,0) << " " << flux(1,1)  << " " << flux(1,2)  << " " << flux(1,3) << "\n";
+  //std::cout << i << " " << j  << " " << k  << " " << ut(0)  << " " << ut(1) << "\n";
 }
 
 

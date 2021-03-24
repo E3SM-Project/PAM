@@ -34,7 +34,7 @@ template<uint ndofs> void YAKL_INLINE upwind_recon(SArray<real,ndofs,ndims> &rec
 
 
 
-template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord=2, uint hs=(ord-1)/2> void YAKL_INLINE compute_primal_edge_recon(
+template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord=2, uint hs=(ord-1)/2> void YAKL_INLINE compute_twisted_edge_recon(
   realArr edgereconvar, const realArr var, int is, int js, int ks, int i, int j, int k,
   SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,ord,tord> const &to_gll, SArray<real,hs+2> const &wenoIdl, real wenoSigma)
   {
@@ -62,11 +62,7 @@ edgereconvar(l + d*ndofs + ndofs*ndims*m, k+ks, j+js, i+is) = edgerecon(l,d,m);
 
 }
 
-
-
-
-
-template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord=2, uint hs=(ord-1)/2> void YAKL_INLINE compute_dual_edge_recon(
+template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord=2, uint hs=(ord-1)/2> void YAKL_INLINE compute_straight_edge_recon(
   realArr edgereconvar, const realArr var, int is, int js, int ks, int i, int j, int k,
   SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,ord,tord> const &to_gll, SArray<real,hs+2> const &wenoIdl, real wenoSigma)
   {
@@ -95,7 +91,7 @@ edgereconvar(l + d*ndofs + ndofs*ndims*m, k+ks, j+js, i+is) = edgerecon(l,d,m);
 }
 
 
-template <uint ndofs, RECONSTRUCTION_TYPE recontype> void YAKL_INLINE compute_primal_recon(
+template <uint ndofs, RECONSTRUCTION_TYPE recontype> void YAKL_INLINE compute_twisted_recon(
   realArr reconvar, const realArr edgereconvar, const realArr U, int is, int js, int ks, int i, int j, int k)
   {
 
@@ -134,7 +130,7 @@ reconvar(l+d*ndofs, k+ks, j+js, i+is) = recon(l,d);
 
 }
 
-template <uint ndofs, RECONSTRUCTION_TYPE recontype> void YAKL_INLINE compute_dual_recon(
+template <uint ndofs, RECONSTRUCTION_TYPE recontype> void YAKL_INLINE compute_straight_recon(
   realArr reconvar, const realArr edgereconvar, const realArr UT, int is, int js, int ks, int i, int j, int k)
   {
     SArray<real,ndofs,ndims> recon;
