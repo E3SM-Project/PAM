@@ -55,8 +55,9 @@ void print_state( realHost1d const &state ) {
 
 
 
+// Conservative approach
 template <int ord>
-realHost1d perform_simulation( int nx , real sim_time , bool burgers ) {
+realHost1d simulate_cons( int nx , real sim_time , bool burgers ) {
   int constexpr hs = (ord-1)/2;
 
   // Setup transformation matrices and WENO
@@ -75,13 +76,10 @@ realHost1d perform_simulation( int nx , real sim_time , bool burgers ) {
   TransformMatrices::get_gll_points (gllPts_ord);
   TransformMatrices::get_gll_weights(gllWts_ord);
 
-  realHost1d state;
-  realHost1d flux;
-
   real dx = 1./nx;
   real dt = 0.4 * dx / 1.25;
-  state = realHost1d("state",nx+2*hs);
-  flux  = realHost1d("flux" ,nx+1);
+  realHost1d state("state",nx+2*hs);
+  realHost1d flux ("flux" ,nx+1);
   real etime = 0;
   for (int i=0; i < nx; i++) {
     state(hs+i) = 0;
@@ -154,16 +152,143 @@ realHost1d perform_simulation( int nx , real sim_time , bool burgers ) {
   return state_ret;
 }
 
+
+
+
+// The most accurate primitive equation approach
+// Conservative DTs, then exact central integral, then exact fwaves
+template <int ord>
+realHost1d simulate_prim1( int nx , real sim_time , bool burgers ) {
+  int constexpr hs = (ord-1)/2;
+
+  // Setup transformation matrices and WENO
+  SArray<real,1,ord> gllPts_ord;
+  SArray<real,1,ord> gllWts_ord;
+  SArray<real,2,ord,ord> s2c;
+  SArray<real,2,ord,ord> c2g;
+  SArray<real,2,ord,ord> g2c;
+  SArray<real,2,ord,ord> c2d;
+
+  TransformMatrices::coefs_to_deriv(c2d);
+  TransformMatrices::sten_to_coefs (s2c);
+  TransformMatrices::coefs_to_gll  (c2g);
+  TransformMatrices::gll_to_coefs  (g2c);
+
+  TransformMatrices::get_gll_points (gllPts_ord);
+  TransformMatrices::get_gll_weights(gllWts_ord);
+
+  real dx = 1./nx;
+  real dt = 0.4 * dx / 1.25;
+  realHost1d state ("state" ,nx+2*hs);
+  realHost2d fwaves("fwaves",2,nx+1);
+  realHost1d tend  ("tend"  ,nx);
+  real etime = 0;
+  for (int i=0; i < nx; i++) {
+    state(hs+i) = 0;
+    for (int ii=0; ii < ord; ii++) {
+      real xloc = (i+0.5)*dx + gllPts_ord(ii)*dx;
+      state(hs+i) += func(xloc) * gllWts_ord(ii);
+    }
+  }
+  while (etime < sim_time) {
+    if (sim_time - etime < dt) dt = sim_time - etime;
+
+    // periodic boundaries
+    for (int i=0; i < hs; i++) {
+      state(i) = state(nx+i);
+      state(hs+nx+i) = state(hs+i);
+    }
+
+    // Compute state at cell boundaries
+    for (int i=0; i < nx; i++) {
+      // Form stencil
+      SArray<real,1,ord> stencil;
+      for (int ii=0; ii < ord; ii++) { stencil(ii) = state(i+ii); }
+      // Reconstruct
+      SArray<real,1,ord> u  = c2g       * s2c * stencil;
+      SArray<real,1,ord> du = c2g * c2d * s2c * stencil;
+      for (int ii=0; ii < ord; ii++) { du(ii) /= dx; }
+      SArray<real,2,ord,ord> u_DTs;
+      SArray<real,2,ord,ord> du_DTs;
+      SArray<real,2,ord,ord> u_du_DTs;
+
+      for (int ii=0; ii < ord; ii++) {
+        u_DTs   (0,ii) = u (ii);
+        du_DTs  (0,ii) = du(ii);
+        u_du_DTs(0,ii) = u(ii)*du(ii);
+      }
+
+      // Ader
+      for (int kt=0; kt < ord-1; kt++) {
+        for (int ii=0; ii < ord; ii++) {
+          u_DTs(kt+1,ii) = - u_du_DTs(kt,ii) / (kt+1.);
+        }
+        for (int ii=0; ii < ord; ii++) { u(ii) = u_DTs(kt+1,ii); }
+        du = c2g * c2d * g2c * u;
+        for (int ii=0; ii < ord; ii++) { du_DTs(kt+1,ii) = du(ii)/dx; }
+        for (int ii=0; ii < ord; ii++) {
+          real tot = 0;
+          for (int rt=0; rt <= kt+1; rt++) {
+            tot += u_DTs(rt,ii) * du_DTs(kt+1-rt,ii);
+          }
+          u_du_DTs(kt+1,ii) = tot;
+        }
+      }
+      compute_timeAvg( u_DTs    , dt );
+      compute_timeAvg( u_du_DTs , dt );
+
+      tend(i) = 0;
+      for (int ii=0; ii < ord; ii++) {
+        tend(i) += -gllWts_ord(ii) * u_du_DTs(0,ii);
+      }
+
+      fwaves(1,i  ) = u_DTs(0,0    );
+      fwaves(0,i+1) = u_DTs(0,ord-1);
+    }
+
+    // periodic boundaries
+    fwaves(0,0 ) = fwaves(0,nx);
+    fwaves(1,nx) = fwaves(1,0 );
+
+    // Compute f-waves
+    for (int i=0; i < nx+1; i++) {
+      real um = fwaves(0,i);
+      real up = fwaves(1,i);
+      real u = 0.5 * (um + up);
+      real du = up - um;
+      fwaves(0,i) = 0;
+      fwaves(1,i) = u*du;
+    }
+    
+    // Apply tendencies
+    for (int i=0; i < nx; i++) {
+      tend(i) += - (fwaves(1,i) + fwaves(0,i+1)) / dx;
+      state(hs+i) = state(hs+i) + dt * tend(i);
+    }
+    etime += dt;
+  }
+
+  realHost1d state_ret("state_ret",nx);
+  for (int i=0; i < nx; i++) { state_ret(i) = state(hs+i); }
+  return state_ret;
+}
+
+
+
+
 int main() {
   real constexpr sim_time = 0.1;
   bool constexpr burgers  = true;
 
-  realHost1d state_hi = perform_simulation<5>( 10000 , sim_time , burgers );
+  realHost1d state_hi = simulate_cons<5>( 1000 , sim_time , burgers );
 
-  real l1_100 = L1( perform_simulation<5>( 100 , sim_time , burgers ) , state_hi );
-  real l1_50  = L1( perform_simulation<5>( 50  , sim_time , burgers ) , state_hi );
+  real l1_100 = L1( simulate_prim1<5>( 100 , sim_time , burgers ) , state_hi );
+  real l1_50  = L1( simulate_prim1<5>( 50  , sim_time , burgers ) , state_hi );
 
   std::cout << log(l1_100 / l1_50) / log(50./100.) << "\n";
-  // print_state( state_hi );
+  // print_state( simulate_prim1<5>( 100 , sim_time , burgers ) );
+
+  std::cout << L1( simulate_cons <5>( 50 , sim_time , burgers ) , state_hi ) << "\n";
+  std::cout << L1( simulate_prim1<5>( 50 , sim_time , burgers ) , state_hi ) << "\n";
 }
 
