@@ -1201,8 +1201,13 @@ public:
         computeTendenciesX( state , stateTend , tracers , tracerTend , micro , dt );
       }
     }
-    if (splitIndex == numSplit()-1) dimSwitch = ! dimSwitch;
   } // computeTendencies
+
+
+
+  void switch_directions() {
+    dimSwitch = ! dimSwitch;
+  }
 
 
 

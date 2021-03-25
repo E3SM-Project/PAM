@@ -102,6 +102,8 @@ public:
         }
       });
     }
+
+    space_op.switch_directions();
   }
 
 

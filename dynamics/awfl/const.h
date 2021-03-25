@@ -24,7 +24,7 @@ using yakl::COLON;
 #endif
 
 #ifndef NGLL
-  #define NGLL 3
+  #define NGLL 2
 #endif
 
 typedef double real;

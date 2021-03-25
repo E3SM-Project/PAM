@@ -1110,8 +1110,13 @@ public:
       computePressureTendencies( state , stateTend , dt );
       memset( tracerTend , 0._fp );
     }
-    if (splitIndex == numSplit()-1) dimSwitch = ! dimSwitch;
   } // computeTendencies
+
+
+
+  void switch_directions() {
+    dimSwitch = ! dimSwitch;
+  }
 
 
 

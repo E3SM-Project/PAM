@@ -1,7 +1,7 @@
 
 #include "const.h"
-#include "Spatial_prim_anelastic_fv_Agrid.h"
-#include "Temporal_ader.h"
+#include "Spatial_cons_expl_fv_Agrid.h"
+#include "Temporal_ssprk3.h"
 #include "Profiles.h"
 #include "Microphysics_kessler.h"
 #include "DataManager.h"
@@ -51,7 +51,7 @@ int main(int argc, char** argv) {
     dycore.output( dm , micro , etime );
     
     while (etime < simTime) {
-      real dt = dycore.compute_time_step( 0.8 , dm , micro );
+      real dt = dycore.compute_time_step( 0.4 , dm , micro );
       if (etime + dt > simTime) { dt = simTime - etime; }
       dycore.timeStep( dm , micro , dt );
       dycore.convert_dynamics_to_coupler_state( dm , micro );
