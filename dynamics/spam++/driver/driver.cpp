@@ -12,6 +12,7 @@
 #include "mpi.h"
 #include "params.h"
 #include "model.h"
+#include "initial_conditions.h"
 
 // *********************** //
 
@@ -64,6 +65,7 @@ int main(int argc, char** argv) {
     if (argc > 1) inFile = argv[1];
     readParamsFile(inFile, params, par);
     set_model_specific_params(inFile, params);
+    set_ic_specific_params(inFile, params);
     std::cout << "read parameters\n" << std::flush;
 
     // Initialize the grid
@@ -126,9 +128,9 @@ int main(int argc, char** argv) {
     const_exchange.exchange_variable_set(constant_vars);
     std::cout << "end set initial conditions\n" << std::flush;
 
-    // Initialize the time stepper
+    // Initialize the time stepper, tendencies, diagnostics
     std::cout << "start ts init\n" << std::flush;
-    tendencies.initialize(primal_topology, dual_topology, tendencies_primal_geometry, tendencies_dual_geometry, aux_exchange, const_exchange);
+    tendencies.initialize(params, primal_topology, dual_topology, tendencies_primal_geometry, tendencies_dual_geometry, aux_exchange, const_exchange);
     tendencies.compute_constants(constant_vars, prognostic_vars);
     diagnostics.initialize(primal_topology, dual_topology, tendencies_primal_geometry, tendencies_dual_geometry);
     tint.initialize(tendencies, prognostic_vars, constant_vars, auxiliary_vars, prog_exchange);

@@ -102,29 +102,38 @@ public:
 
        for (int i=0; i<this->const_vars->fields_arr.size(); i++)
        {
+         if (this->const_vars->fields_arr[i].total_dofs > 0)
+         {
          ncwrap( ncmpi_def_dim( ncid , (this->const_vars->fields_arr[i].name + "_ndofs").c_str() , (MPI_Offset) this->const_vars->fields_arr[i].total_dofs , &const_var_dim_ids[i] ) , __LINE__ );
          if (this->const_vars->fields_arr[i].topology->primal) { const_dim_ids[0] = const_var_dim_ids[i]; const_dim_ids[1] = pzDim; const_dim_ids[2] = pyDim; const_dim_ids[3] = pxDim;}
          else {const_dim_ids[0] = const_var_dim_ids[i]; const_dim_ids[1] = dzDim; const_dim_ids[2] = dyDim; const_dim_ids[3] = dxDim;}
          ncwrap( ncmpi_def_var( ncid , this->const_vars->fields_arr[i].name.c_str() , REAL_NC , 4 , const_dim_ids , &const_var_ids[i]  ) , __LINE__ );
          this->const_temp_arr[i] = realArr(this->const_vars->fields_arr[i].name.c_str(), this->const_vars->fields_arr[i].total_dofs, this->const_vars->fields_arr[i].topology->n_cells_z, this->const_vars->fields_arr[i].topology->n_cells_y, this->const_vars->fields_arr[i].topology->n_cells_x);
        }
+       }
 
        for (int i=0; i<this->prog_vars->fields_arr.size(); i++)
        {
+         if (this->prog_vars->fields_arr[i].total_dofs > 0)
+         {
          ncwrap( ncmpi_def_dim( ncid , (this->prog_vars->fields_arr[i].name + "_ndofs").c_str() , (MPI_Offset) this->prog_vars->fields_arr[i].total_dofs , &prog_var_dim_ids[i] ) , __LINE__ );
          if (this->prog_vars->fields_arr[i].topology->primal) {prog_dim_ids[0] = tVar; prog_dim_ids[1] = prog_var_dim_ids[i]; prog_dim_ids[2] = pzDim; prog_dim_ids[3] = pyDim; prog_dim_ids[4] = pxDim;}
          else {prog_dim_ids[0] = tVar; prog_dim_ids[1] = prog_var_dim_ids[i]; prog_dim_ids[2] = dzDim; prog_dim_ids[3] = dyDim; prog_dim_ids[4] = dxDim;}
          ncwrap( ncmpi_def_var( ncid , this->prog_vars->fields_arr[i].name.c_str() , REAL_NC , 5 , prog_dim_ids , &prog_var_ids[i]  ) , __LINE__ );
          this->prog_temp_arr[i] = realArr(this->prog_vars->fields_arr[i].name.c_str(), this->prog_vars->fields_arr[i].total_dofs, this->prog_vars->fields_arr[i].topology->n_cells_z, this->prog_vars->fields_arr[i].topology->n_cells_y, this->prog_vars->fields_arr[i].topology->n_cells_x);
+         }
        }
 
        for (int i=0; i<this->diag_vars->fields_arr.size(); i++)
        {
+         if (this->diag_vars->fields_arr[i].total_dofs > 0)
+         {
          ncwrap( ncmpi_def_dim( ncid , (this->diag_vars->fields_arr[i].name + "_ndofs").c_str() , (MPI_Offset) this->diag_vars->fields_arr[i].total_dofs , &diag_var_dim_ids[i] ) , __LINE__ );
          if (this->diag_vars->fields_arr[i].topology->primal) { diag_dim_ids[0] = tVar; diag_dim_ids[1] = diag_var_dim_ids[i]; diag_dim_ids[2] = pzDim; diag_dim_ids[3] = pyDim; diag_dim_ids[4] = pxDim;}
          else { diag_dim_ids[0] = tVar; diag_dim_ids[1] = diag_var_dim_ids[i]; diag_dim_ids[2] = dzDim; diag_dim_ids[3] = dyDim; diag_dim_ids[4] = dxDim;}
          ncwrap( ncmpi_def_var( ncid , this->diag_vars->fields_arr[i].name.c_str() , REAL_NC , 5 , diag_dim_ids , &diag_var_ids[i]  ) , __LINE__ );
          this->diag_temp_arr[i] = realArr(this->diag_vars->fields_arr[i].name.c_str(), this->diag_vars->fields_arr[i].total_dofs, this->diag_vars->fields_arr[i].topology->n_cells_z, this->diag_vars->fields_arr[i].topology->n_cells_y, this->diag_vars->fields_arr[i].topology->n_cells_x);
+       }
        }
 
        // define statistics dimension and variables
@@ -132,10 +141,11 @@ public:
        ncwrap( ncmpi_def_dim( ncid , "nstat" , (MPI_Offset) this->statistics->statsize , &statDimIds[1] ) , __LINE__ );
        for (int l=0; l<this->statistics->stats_arr.size(); l++)
        {
+         if (this->statistics->stats_arr[l].ndofs >0) {
       ncwrap( ncmpi_def_dim( ncid , (this->statistics->stats_arr[l].name + "_ndofs").c_str() , (MPI_Offset) this->statistics->stats_arr[l].ndofs, &stat_var_dim_ids[l] ) , __LINE__ );
       statDimIds[0] = stat_var_dim_ids[l];
        ncwrap( ncmpi_def_var( ncid , this->statistics->stats_arr[l].name.c_str() , REAL_NC , 2 , statDimIds , &stat_ids[l]  ) , __LINE__ );
-      }
+     }}
 
        ncwrap( ncmpi_enddef( ncid ) , __LINE__ );
 
@@ -153,6 +163,8 @@ public:
 
       for (int l=0; l<this->prog_vars->fields_arr.size(); l++)
       {
+        if (this->prog_vars->fields_arr[l].total_dofs > 0)
+        {
         ncwrap( ncmpi_inq_varid( ncid , this->prog_vars->fields_arr[l].name.c_str() , &prog_var_ids[l]  ) , __LINE__ );
         int is = this->prog_vars->fields_arr[l].topology->is;
         int js = this->prog_vars->fields_arr[l].topology->js;
@@ -169,10 +181,14 @@ public:
         prog_count[0] = 1; prog_count[1] = this->prog_vars->fields_arr[l].total_dofs; prog_count[2] = this->prog_vars->fields_arr[l].topology->n_cells_z; prog_count[3] = this->prog_vars->fields_arr[l].topology->n_cells_y; prog_count[4] = this->prog_vars->fields_arr[l].topology->n_cells_x;
         ncwrap( PNETCDF_PUT_VAR_ALL( ncid , prog_var_ids[l] , prog_start , prog_count , this->prog_temp_arr[l].createHostCopy().data() ) , __LINE__ );
       }
+      }
+      
 
 
       for (int l=0; l<this->diag_vars->fields_arr.size(); l++)
       {
+        if (this->diag_vars->fields_arr[l].total_dofs > 0)
+        {
         ncwrap( ncmpi_inq_varid( ncid , this->diag_vars->fields_arr[l].name.c_str() , &diag_var_ids[l]  ) , __LINE__ );
         int is = this->diag_vars->fields_arr[l].topology->is;
         int js = this->diag_vars->fields_arr[l].topology->js;
@@ -188,7 +204,7 @@ public:
         diag_start[0] = this->numOut; diag_start[1] = 0; diag_start[2] = this->diag_vars->fields_arr[l].topology->k_beg; diag_start[3] = this->diag_vars->fields_arr[l].topology->j_beg; diag_start[4] = this->diag_vars->fields_arr[l].topology->i_beg;
         diag_count[0] = 1; diag_count[1] = this->diag_vars->fields_arr[l].total_dofs; diag_count[2] = this->diag_vars->fields_arr[l].topology->n_cells_z; diag_count[3] = this->diag_vars->fields_arr[l].topology->n_cells_y; diag_count[4] = this->diag_vars->fields_arr[l].topology->n_cells_x;
         ncwrap( PNETCDF_PUT_VAR_ALL( ncid , diag_var_ids[l] , diag_start , diag_count , this->diag_temp_arr[l].createHostCopy().data() ) , __LINE__ );
-      }
+      }}
 
       // ADD THIS
             // write elapsed time/time step
@@ -206,7 +222,8 @@ public:
     for (int l=0; l<this->const_vars->fields_arr.size(); l++)
     {
       //std::cout << "writing initial field "  << this->const_vars->fields_arr[l].name.c_str() << "\n" <<std::flush;
-
+      if (this->const_vars->fields_arr[l].total_dofs > 0)
+      {
       ncwrap( ncmpi_inq_varid( ncid , this->const_vars->fields_arr[l].name.c_str() , &const_var_ids[l]  ) , __LINE__ );
       int is = this->const_vars->fields_arr[l].topology->is;
       int js = this->const_vars->fields_arr[l].topology->js;
@@ -222,10 +239,12 @@ public:
       const_start[0] = 0; const_start[1] = this->const_vars->fields_arr[l].topology->k_beg; const_start[2] = this->const_vars->fields_arr[l].topology->j_beg; const_start[3] = this->const_vars->fields_arr[l].topology->i_beg;
       const_count[0] = this->const_vars->fields_arr[l].total_dofs; const_count[1] = this->const_vars->fields_arr[l].topology->n_cells_z; const_count[2] = this->const_vars->fields_arr[l].topology->n_cells_y; const_count[3] = this->const_vars->fields_arr[l].topology->n_cells_x;
       ncwrap( PNETCDF_PUT_VAR_ALL( ncid , const_var_ids[l] , const_start , const_count , this->const_temp_arr[l].createHostCopy().data() ) , __LINE__ );
-    }
+    }}
 
     for (int l=0; l<this->prog_vars->fields_arr.size(); l++)
     {
+      if (this->prog_vars->fields_arr[l].total_dofs > 0)
+      {
       //std::cout << "writing initial field "  << this->prog_vars->fields_arr[l].name.c_str() << "\n" <<std::flush;
       ncwrap( ncmpi_inq_varid( ncid , this->prog_vars->fields_arr[l].name.c_str() , &prog_var_ids[l]  ) , __LINE__ );
       int is = this->prog_vars->fields_arr[l].topology->is;
@@ -242,10 +261,12 @@ public:
       prog_start[0] = this->numOut; prog_start[1] = 0; prog_start[2] = this->prog_vars->fields_arr[l].topology->k_beg; prog_start[3] = this->prog_vars->fields_arr[l].topology->j_beg; prog_start[4] = this->prog_vars->fields_arr[l].topology->i_beg;
       prog_count[0] = 1; prog_count[1] = this->prog_vars->fields_arr[l].total_dofs; prog_count[2] = this->prog_vars->fields_arr[l].topology->n_cells_z; prog_count[3] = this->prog_vars->fields_arr[l].topology->n_cells_y; prog_count[4] = this->prog_vars->fields_arr[l].topology->n_cells_x;
       ncwrap( PNETCDF_PUT_VAR_ALL( ncid , prog_var_ids[l] , prog_start , prog_count , this->prog_temp_arr[l].createHostCopy().data() ) , __LINE__ );
-    }
+    }}
 
     for (int l=0; l<this->diag_vars->fields_arr.size(); l++)
     {
+      if (this->diag_vars->fields_arr[l].total_dofs > 0)
+      {
       //std::cout << "writing initial field "  << this->diag_vars->fields_arr[l].name.c_str() << "\n" <<std::flush;
       ncwrap( ncmpi_inq_varid( ncid , this->diag_vars->fields_arr[l].name.c_str() , &diag_var_ids[l]  ) , __LINE__ );
       int is = this->diag_vars->fields_arr[l].topology->is;
@@ -262,7 +283,7 @@ public:
       diag_start[0] = this->numOut; diag_start[1] = 0; diag_start[2] = this->diag_vars->fields_arr[l].topology->k_beg; diag_start[3] = this->diag_vars->fields_arr[l].topology->j_beg; diag_start[4] = this->diag_vars->fields_arr[l].topology->i_beg;
       diag_count[0] = 1; diag_count[1] = this->diag_vars->fields_arr[l].total_dofs; diag_count[2] = this->diag_vars->fields_arr[l].topology->n_cells_z; diag_count[3] = this->diag_vars->fields_arr[l].topology->n_cells_y; diag_count[4] = this->diag_vars->fields_arr[l].topology->n_cells_x;
       ncwrap( PNETCDF_PUT_VAR_ALL( ncid , diag_var_ids[l] , diag_start , diag_count , this->diag_temp_arr[l].createHostCopy().data() ) , __LINE__ );
-    }
+    }}
 
 // ADD THIS
       // write elapsed time/time step
@@ -286,10 +307,11 @@ public:
     statStart[0] = 0; statStart[1] = 0; statCount[1] = this->statistics->statsize;
     for (int l=0; l<this->statistics->stats_arr.size(); l++)
     {
+      if (this->statistics->stats_arr[l].ndofs >0) {
       statCount[0] = this->statistics->stats_arr[l].ndofs;
         ncwrap( ncmpi_inq_varid( ncid , this->statistics->stats_arr[l].name.c_str() , &stat_ids[l]  ) , __LINE__ );
       ncwrap( PNETCDF_PUT_VAR(ncid, stat_ids[l], statStart, statCount, this->statistics->stats_arr[l].data.createHostCopy().data()) , __LINE__ );
-    }
+    }}
     }
 
     ncwrap( ncmpi_end_indep_data(ncid) , __LINE__ );

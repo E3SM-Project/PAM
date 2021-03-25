@@ -110,19 +110,19 @@ uint constexpr diff_ord = 2;
 
 // Reconstruction type
 RECONSTRUCTION_TYPE constexpr reconstruction_type = RECONSTRUCTION_TYPE::WENOFUNC;
-uint constexpr reconstruction_order = 5;
+uint constexpr reconstruction_order = 9;
 
 RECONSTRUCTION_TYPE constexpr dual_reconstruction_type = RECONSTRUCTION_TYPE::WENOFUNC;
-uint constexpr dual_reconstruction_order = 5;
+uint constexpr dual_reconstruction_order = 9;
 
 RECONSTRUCTION_TYPE constexpr coriolis_reconstruction_type = RECONSTRUCTION_TYPE::WENOFUNC;
-uint constexpr coriolis_reconstruction_order = 5;
+uint constexpr coriolis_reconstruction_order = 9;
 
 RECONSTRUCTION_TYPE constexpr vert_reconstruction_type = RECONSTRUCTION_TYPE::WENOFUNC;
-uint constexpr vert_reconstruction_order = 5;
+uint constexpr vert_reconstruction_order = 9;
 
 RECONSTRUCTION_TYPE constexpr dual_vert_reconstruction_type = RECONSTRUCTION_TYPE::WENOFUNC;
-uint constexpr dual_vert_reconstruction_order = 5;
+uint constexpr dual_vert_reconstruction_order = 9;
 
 RECONSTRUCTION_TYPE constexpr coriolis_vert_reconstruction_type = RECONSTRUCTION_TYPE::CFV;
 uint constexpr coriolis_vert_reconstruction_order = 3;

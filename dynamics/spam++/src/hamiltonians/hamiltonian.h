@@ -4,190 +4,162 @@
 #include "common.h"
 #include "thermo.h"
 
-// this defines Hamiltonian, and associated functional derivatives
-// It is H = K + I + P
-// K depends on slice vs. no-slice, and split vs. unsplit
-// I + P are function of thermodynamics + entropic variable we use, and also equation set
-
-
-// ie we have H[v,w,vt,density,densityfct,p] + drop w,vt,p as needed
-//K is function of total_density, v,w,vt
-//I,P are functions are density,densityfct,p
-
-//actually I can write something SUPER general here, with some conversion functions that do nothing for most cases...
-// really difference is in velocity choice and p/no-p
-
-// for AN/FC, go from density + densityfct vars to total density (=alpha), entropic variable (=entropic variable density/total_density), concentrations
-
-// basically we can predict rho or rho_d 
-// p vs. no p?
-// can write Hamiltonian + FD in a general way for ANY internal energy/entropic variable, for rho/rho_d and p/no-p variants
-
-// have functions like dH/d(density), dH/d(densityFCT), etc.
-// this fits the GENERAL hamiltonian formulation we are developing
-
-// also need code to get total density from density + densityfct vars...
-// this is not too difficult!
-
-// then convert predicted variables to alpha, entropic variable, concentrations 
-
-// can probably merge swe/tswe stuff into here as well...
-
-
-
-// 4 types of Hk: v, v+w, v+w+vt, v+vt
-// 2 types of Hs (=Hp + Hi, sort of like static energy): D, D+p : these are also specialized to a given eqn set and variables ie rho vs. rho_d
-//ie split/unsplit, slice/no-slice, p/no-p
-
-// Maybe specific Hamiltonians inherit from 1 of each?
-// Yes this is the way...
-
-
-//Need a class or function that handles
-// 1) getting h/D from dens + densfct
-// 2) getting alpha, theta, qn + associated partial derivatives from dens + densfct
-// 3) Setting initial conditions ie values for dens/densfct given h,s (swe/tswe) or p,T,qs (ce)
-// This should then enable use of arbitrary linear combinations of component densities for ce; and also handle the swe/tswe case
-
-// IN THE END, I THINK IT IS BEST TO ATTACH THIS INFO TO HAMILTONIANS/OTHER FUNCTIONALS THEMSELVES!
-// ie knowledge of D is in HK and PVPE
-// knowledge of alpha, theta, qd, rho, etc. is in CE
-// then create different functionals for different progsets!
-// this fits anyways with general formulation; ie a choice of "eqnset" is really a choice of Hamiltonian, which determines ndensity/ndensityfct, etc.
-// THERE WILL BE SOME DUPLICATION HERE FOR SWE, BUT THAT IS FINE, MAXIMAL PERFORMANCE HERE DOESN'T MATTER!
-// ie get rid of all NTRACERS_FCT stuff...
-
-class ProgSet {
-public:
-  bool is_initialized;
-  
-  ProgSet() {
-    this->is_initialized = false;
-  }
-
-  void initialize()
-  {
-    this->is_initialized = true;
-  }
-  
-  virtual real YAKL_INLINE compute_D(const realArr dens, const realArr densfct, int is, int js, int ks, int i, int j, int k) {};
-  //template<uint kdof> virtual real YAKL_INLINE compute_dDdDk(const realArr dens, const realArr densfct, int is, int js, int ks, int i, int j, int k) {};
-  
-  virtual real YAKL_INLINE compute_alpha(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {};
-  virtual real YAKL_INLINE compute_theta(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {};
-  virtual real YAKL_INLINE compute_qd(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {};
-  virtual real YAKL_INLINE compute_qv(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {};
-  virtual real YAKL_INLINE compute_ql(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {};
-  virtual real YAKL_INLINE compute_qi(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {};
-  // INITIAL CONDITION SETTING?
-  // VARIOUS PARTIAL DERIVATIVES?
-};  
-
-
-
-class hvS : public ProgSet {
-  real YAKL_INLINE compute_D(const realArr dens, const realArr densfct, int is, int js, int ks, int i, int j, int k)
-    {return dens(0, k+ks, j+js, i+is);}
-};
-
-
-//   alpha = 1./rho;
-//   theta = Theta/rho;
-//   qd = (rho - \sum_n \rho_s)/rho;
-//   qv = rho_v/rho;
-//   ql = rho_l/rho;
-//   qi = rho_i/rho;
-class rhovS : public ProgSet {   
-  real YAKL_INLINE compute_D(const realArr dens, const realArr densfct, int is, int js, int ks, int i, int j, int k)
-    {return dens(0, k+ks, j+js, i+is);}
-    
-    real YAKL_INLINE compute_alpha(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {
-      return 1./dens0(0, k+ks, j+js, i+is);
-    };
-    
-    real YAKL_INLINE compute_theta(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {
-      return dens0(1, k+ks, j+js, i+is)/dens0(0, k+ks, j+js, i+is);
-    };
-    real YAKL_INLINE compute_qd(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {
-      return (dens0(0, k+ks, j+js, i+is) - densfct0(0, k+ks, j+js, i+is) - densfct0(1, k+ks, j+js, i+is) - densfct0(2, k+ks, j+js, i+is))/dens0(0, k+ks, j+js, i+is);
-    };
-    real YAKL_INLINE compute_qv(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {
-      return densfct0(0, k+ks, j+js, i+is)/dens0(0, k+ks, j+js, i+is);
-    };
-    real YAKL_INLINE compute_ql(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {
-      return densfct0(1, k+ks, j+js, i+is)/dens0(0, k+ks, j+js, i+is);
-    };
-    real YAKL_INLINE compute_qi(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {
-      return densfct0(2, k+ks, j+js, i+is)/dens0(0, k+ks, j+js, i+is);
-    };    
-    
-}; 
-
-
-
-
 
 
 struct pvpe {
   real pv=0., pe=0.;
 };
 
-class Functional_PVPE {
+class Functional_PVPE_rho {
 public:
-  ProgSet *xv;
   bool is_initialized;
 
-   Functional_PVPE() {
+   Functional_PVPE_rho() {
      this->is_initialized = false;
 }
 
-void initialize(ProgSet &xvar)
+void initialize(ModelParameters &params)
 {
-  this->xv = &xvar;
   this->is_initialized = true;
 }
 
-void YAKL_INLINE compute_q0f0(realArr q0, realArr f0, const realArr v, const realArr dens, const realArr densfct, const realArr coriolis, int is, int js, int ks, int i, int j, int k)
+real YAKL_INLINE compute_hv(const realArr dens, const realArr densfct, int is, int js, int ks, int i, int j, int k)
 {
   SArray<real,1> hv;
   SArray<real,4> Dv;
 
-  // compute zeta = D2 v
-  compute_D2<1>(q0, v, is, js, ks, i, j, k);
-
   // compute hv = R h
-  Dv(0) = xv->compute_D(dens, densfct, is, js, ks, i, j, k);
-  Dv(1) = xv->compute_D(dens, densfct, is, js, ks, i-1, j, k);
-  Dv(2) = xv->compute_D(dens, densfct, is, js, ks, i, j-1, k);
-  Dv(3) = xv->compute_D(dens, densfct, is, js, ks, i-1, j-1, k);
+  Dv(0) = dens(0, k+ks, j+js, i+is);
+  Dv(1) = dens(0, k+ks, j+js, i+is-1);
+  Dv(2) = dens(0, k+ks, j+js-1, i+is);
+  Dv(3) = dens(0, k+ks, j+js-1, i+is-1);
   R(hv, Dv);
-    
-  // compute q0 = zeta / hv and f0 = f / hv
-    q0(0, k+ks, j+js, i+is) = q0(0, k+ks, j+js, i+is) / hv(0);
-    f0(0, k+ks, j+js, i+is) = coriolis(0, k+ks, j+js, i+is) / hv(0);
 
+  return hv(0);
+}
+
+real YAKL_INLINE compute_zeta(const realArr v, int is, int js, int ks, int i, int j, int k)
+{
+  SArray<real,1> zeta;
+  // compute zeta = D2 v
+  compute_D2<1>(zeta, v, is, js, ks, i, j, k);
+  return zeta(0);
+}
+
+real YAKL_INLINE compute_eta(const realArr v, const realArr coriolis, int is, int js, int ks, int i, int j, int k)
+{
+  real zeta = compute_zeta(v, is, js, ks, i, j, k);
+  return zeta + coriolis(0, k+ks, j+js, i+is);
+}
+
+
+void YAKL_INLINE compute_q0f0(realArr q0, realArr f0, const realArr v, const realArr dens, const realArr densfct, const realArr coriolis, int is, int js, int ks, int i, int j, int k)
+{
+
+  real hv = compute_hv(dens, densfct, is, js, ks, i, j, k);
+  real zeta = compute_zeta(v, is, js, ks, i, j, k);
+
+  // compute q0 = zeta / hv and f0 = f / hv
+    q0(0, k+ks, j+js, i+is) = zeta / hv;
+    f0(0, k+ks, j+js, i+is) = coriolis(0, k+ks, j+js, i+is) / hv;
+
+}
+
+void YAKL_INLINE compute_q0(realArr q0, const realArr v, const realArr dens, const realArr densfct, int is, int js, int ks, int i, int j, int k)
+{
+real hv = compute_hv(dens, densfct, is, js, ks, i, j, k);
+real zeta = compute_zeta(v, is, js, ks, i, j, k);
+// compute q0 = zeta / hv and f0 = f / hv
+  q0(0, k+ks, j+js, i+is) = zeta / hv;
 }
 
 pvpe YAKL_INLINE compute_PVPE(const realArr v, const realArr dens, const realArr densfct, const realArr coriolis, int is, int js, int ks, int i, int j, int k)
 {
   pvpe vals;
-  real eta, q0;
-  SArray<real,1> zeta, hv;
-  SArray<real,4> Dv;
+  real eta = compute_eta(v, coriolis, is, js, ks, i, j, k);
+  real hv = compute_hv(dens, densfct, is, js, ks, i, j, k);
+  real q0 = eta / hv;
+
+  vals.pv = eta;
+  vals.pe = 0.5 * eta * q0;
   
-  // compute eta = D2 v + coriolis
-  compute_D2<1>(zeta, v, is, js, ks, i, j, k);
-  eta = zeta(0) + coriolis(0,k+ks,j+js,i+is);
+  return vals;
+}
+
+};
+
+
+
+class Functional_PVPE_rhod {
+public:
+  bool is_initialized;
+
+   Functional_PVPE_rhod() {
+     this->is_initialized = false;
+}
+
+void initialize(ModelParameters &params)
+{
+  this->is_initialized = true;
+}
+
+real YAKL_INLINE compute_hv(const realArr dens, const realArr densfct, int is, int js, int ks, int i, int j, int k)
+{
+  SArray<real,1> hv;
+  SArray<real,4> Dv;
 
   // compute hv = R h
-  Dv(0) = xv->compute_D(dens, densfct, is, js, ks, i, j, k);
-  Dv(1) = xv->compute_D(dens, densfct, is, js, ks, i-1, j, k);
-  Dv(2) = xv->compute_D(dens, densfct, is, js, ks, i, j-1, k);
-  Dv(3) = xv->compute_D(dens, densfct, is, js, ks, i-1, j-1, k);
+  // Uses linearity of R
+  Dv(0) = dens(0, k+ks, j+js, i+is) + densfct(0, k+ks, j+js, i+is) + densfct(1, k+ks, j+js, i+is) + densfct(2, k+ks, j+js, i+is);
+  Dv(1) = dens(0, k+ks, j+js, i+is-1) + densfct(0, k+ks, j+js, i+is-1) + densfct(1, k+ks, j+js, i+is-1) + densfct(2, k+ks, j+js, i+is-1);
+  Dv(2) = dens(0, k+ks, j+js-1, i+is) + densfct(0, k+ks, j+js-1, i+is) + densfct(1, k+ks, j+js-1, i+is) + densfct(2, k+ks, j+js-1, i+is);
+  Dv(3) = dens(0, k+ks, j+js-1, i+is-1) + densfct(0, k+ks, j+js-1, i+is-1) + densfct(1, k+ks, j+js-1, i+is-1) + densfct(2, k+ks, j+js-1, i+is-1);
   R(hv, Dv);
 
-  // compute q0 = zeta / hv
-  q0 = eta / hv(0);
+  return hv(0);
+}
+
+real YAKL_INLINE compute_zeta(const realArr v, int is, int js, int ks, int i, int j, int k)
+{
+  SArray<real,1> zeta;
+  // compute zeta = D2 v
+  compute_D2<1>(zeta, v, is, js, ks, i, j, k);
+  return zeta(0);
+}
+
+real YAKL_INLINE compute_eta(const realArr v, const realArr coriolis, int is, int js, int ks, int i, int j, int k)
+{
+  real zeta = compute_zeta(v, is, js, ks, i, j, k);
+  return zeta + coriolis(0, k+ks, j+js, i+is);
+}
+
+
+void YAKL_INLINE compute_q0f0(realArr q0, realArr f0, const realArr v, const realArr dens, const realArr densfct, const realArr coriolis, int is, int js, int ks, int i, int j, int k)
+{
+
+  real hv = compute_hv(dens, densfct, is, js, ks, i, j, k);
+  real zeta = compute_zeta(v, is, js, ks, i, j, k);
+
+  // compute q0 = zeta / hv and f0 = f / hv
+    q0(0, k+ks, j+js, i+is) = zeta / hv;
+    f0(0, k+ks, j+js, i+is) = coriolis(0, k+ks, j+js, i+is) / hv;
+
+}
+
+void YAKL_INLINE compute_q0(realArr q0, const realArr v, const realArr dens, const realArr densfct, int is, int js, int ks, int i, int j, int k)
+{
+real hv = compute_hv(dens, densfct, is, js, ks, i, j, k);
+real zeta = compute_zeta(v, is, js, ks, i, j, k);
+// compute q0 = zeta / hv and f0 = f / hv
+  q0(0, k+ks, j+js, i+is) = zeta / hv;
+}
+
+pvpe YAKL_INLINE compute_PVPE(const realArr v, const realArr dens, const realArr densfct, const realArr coriolis, int is, int js, int ks, int i, int j, int k)
+{
+  pvpe vals;
+  real eta = compute_eta(v, coriolis, is, js, ks, i, j, k);
+  real hv = compute_hv(dens, densfct, is, js, ks, i, j, k);
+  real q0 = eta / hv;
 
   vals.pv = eta;
   vals.pe = 0.5 * eta * q0;
@@ -202,29 +174,25 @@ pvpe YAKL_INLINE compute_PVPE(const realArr v, const realArr dens, const realArr
 
 
 
-
-
-class Hamiltonian_Hk {
+// This kinetic energy functional assumes that dens(0) holds the total density
+class Hamiltonian_Hk_rho {
   
 public:
-  ProgSet *xv;
   Geometry<ndims,1,1,1> *primal_geometry;
   Geometry<ndims,1,1,1> *dual_geometry;
   bool is_initialized;
 
-   Hamiltonian_Hk() {
+   Hamiltonian_Hk_rho() {
      this->is_initialized = false;
 }
 
-void initialize(ProgSet &xvar, Geometry<ndims,1,1,1> &primal_geom, Geometry<ndims,1,1,1> &dual_geom)
+void initialize(ModelParameters &params, Geometry<ndims,1,1,1> &primal_geom, Geometry<ndims,1,1,1> &dual_geom)
 {
-  this->xv = &xvar;
   this->primal_geometry = &primal_geom;
   this->dual_geometry = &dual_geom;
   this->is_initialized = true;
 }
 
-//HERE WE ASSUME THAT DENS0 HOLDS THE TOTAL DENSITY
 real YAKL_INLINE compute_KE(const realArr v, const realArr dens, const realArr densfct, int is, int js, int ks, int i, int j, int k)
 {
   
@@ -236,11 +204,6 @@ real YAKL_INLINE compute_KE(const realArr v, const realArr dens, const realArr d
   //compute U = H v
   compute_H<1,diff_ord> (U, v, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
 
-
-  //HACK THAT RELIES ON DENSITY BEING IN 1ST SLOT OF DENSVAR...
-  //CAN WE GENERALIZE?
-  // Yes, could do these over NDENSITY AND NDENSITY_FCT (probably require templating on these, or that they are set in model complile costants?)
-  // and then use compute_D function to get it properly...
   // Compute h0 = I h needed for phi calcs
   compute_I<1,diff_ord> (h0, dens, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
   compute_I<1,diff_ord> (h0im1, dens, *this->primal_geometry, *this->dual_geometry, is, js, ks, i-1, j, k);
@@ -259,17 +222,16 @@ real YAKL_INLINE compute_KE(const realArr v, const realArr dens, const realArr d
 }
 
 
- void YAKL_INLINE compute_dKdx(realArr F, realArr K, realArr HE, const realArr v, const realArr U, const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k)
+ void YAKL_INLINE compute_dKdv(realArr F, realArr K, realArr HE, const realArr v, const realArr U, const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k)
 {
   SArray<real,2,2> D0;
   SArray<real,2> he;
 
   //compute he = phi * h0
-  //Exploits linearity of Hodge star to compute D0 = I D = I "\sum dens" = "\sum" I dens = "\sum" dens0
-  D0(0,0) = xv->compute_D(dens0, densfct0, is, js, ks, i, j, k);
-  D0(0,1) = xv->compute_D(dens0, densfct0, is, js, ks, i-1, j, k);
-  D0(1,0) = xv->compute_D(dens0, densfct0, is, js, ks, i, j, k);
-  D0(1,1) = xv->compute_D(dens0, densfct0, is, js, ks, i, j-1, k);
+  D0(0,0) = dens0(0, k+ks, j+js, i+is);
+  D0(0,1) = dens0(0, k+ks, j+js, i+is-1);
+  D0(1,0) = dens0(0, k+ks, j+js, i+is);
+  D0(1,1) = dens0(0, k+ks, j+js-1, i+is);
   phi(he, D0);
   HE(0, k+ks, j+js, i+is) = he(0);
   HE(1, k+ks, j+js, i+is) = he(1);
@@ -282,85 +244,130 @@ real YAKL_INLINE compute_KE(const realArr v, const realArr dens, const realArr d
   compute_phiT(K, U, v, is, js, ks, i, j, k);
   K(0, k+ks, j+js, i+is) *= 0.5;
   
+}
 
+// Note that this ADDS to Bvar...
+void YAKL_INLINE compute_dKddens(realArr B, realArr Bfct, const realArr K, int is, int js, int ks, int i, int j, int k)
+{
+  SArray<real,1> K0;
+  compute_I<1, diff_ord>(K0, K, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
+  B(0, k+ks, j+js, i+is) += K0(0);
 }
 
  };
  
  
- // class vw_Hk {
- // public:
- //   bool is_initialized;
- // 
- //    vw_Hk() {
- //      this->is_initialized = false;
- // }
- // 
- // void YAKL_INLINE compute_H(const realArr v, const realArr w, const realArr dens, const realArr densfct, int is, int js, int ks, int i, int j, int k)
- // {
- //   HK = 1/2 * h * v * v + 1/2 * h * w * w;
- // };
- // 
- //  void YAKL_INLINE compute_dHKdx(realArr F, realArr Fw, const realArr v, const realArr vw, const realArr dens, const realArr densfct, int is, int js, int ks, int i, int j, int k)
- // {
- //   F = h * v;
- //   Fw = h * w;
- //   //CAREFUL WITH THIS! Specialize to rho vs. rho_d?
- //   // ADD OR REPLACE MODE?
- //   B = 1/2 * v * v + 1/2 w * w;
- //   Bfct = 1/2 * v * v;
- // };
- // 
- //  };
+ 
+ // This kinetic energy functional assumes that dens(0) + densfct(0:2) make the total density
+ class Hamiltonian_Hk_rhod {
+   
+ public:
+   Geometry<ndims,1,1,1> *primal_geometry;
+   Geometry<ndims,1,1,1> *dual_geometry;
+   bool is_initialized;
 
-// template<uint nt, uint ntfct> class swe_Hs {
-//   public:
-//     bool is_initialized;
-// 
-//      swe_Hs() {
-//        this->is_initialized = false;
-//   }
-// 
-//   void YAKL_INLINE compute_P(const realArr dens, const realArr densfct, int is, int js, int ks, int i, int j, int k)
-//   {
-//     P = g * h * hs + 1/2 g * h * h + sum_nt 1/2 h * t + sum_nt 1/2 h * tfct
-//   };
-// 
-//   void YAKL_INLINE compute_I(const realArr dens, const realArr densfct, int is, int js, int ks, int i, int j, int k)
-//   {
-//     I = 0
-//   };
-// 
-//    void YAKL_INLINE compute_dHsdx(realArr B, realArr Bfct, const realArr dens, const realArr densfct, int is, int js, int ks, int i, int j, int k)
-//    {
-//      // ADD OR REPLACE MODE?
-//      dHdh = g hs + gh + sum_nt 1/2 t + sum_nt 1/2 tfct;     
-//      dHdt = 1/2 h;
-//      dHdtfct = 1/2 h;
-//    };
-// 
-//  };
+    Hamiltonian_Hk_rhod() {
+      this->is_initialized = false;
+ }
+
+ void initialize(ModelParameters &params, Geometry<ndims,1,1,1> &primal_geom, Geometry<ndims,1,1,1> &dual_geom)
+ {
+   this->primal_geometry = &primal_geom;
+   this->dual_geometry = &dual_geom;
+   this->is_initialized = true;
+ }
+
+ real YAKL_INLINE compute_KE(const realArr v, const realArr dens, const realArr densfct, int is, int js, int ks, int i, int j, int k)
+ {
+   
+   real KE, PE, IE;
+   SArray<real,1> rhod0, rhod0im1, rhod0jm1;
+   SArray<real,3> rhos0, rhos0im1, rhos0jm1;
+   SArray<real,2> U, he;
+   SArray<real,2,2> h0arr;
+
+   //compute U = H v
+   compute_H<1,diff_ord> (U, v, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
+
+   // Compute h0 = I h needed for phi calcs
+   compute_I<1,diff_ord> (rhod0, dens, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
+   compute_I<1,diff_ord> (rhod0im1, dens, *this->primal_geometry, *this->dual_geometry, is, js, ks, i-1, j, k);
+   compute_I<1,diff_ord> (rhod0jm1, dens, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j-1, k);
+   compute_I<3,diff_ord> (rhos0, densfct, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
+   compute_I<3,diff_ord> (rhos0im1, densfct, *this->primal_geometry, *this->dual_geometry, is, js, ks, i-1, j, k);
+   compute_I<3,diff_ord> (rhos0jm1, densfct, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j-1, k);
+
+   //compute he = phi h0
+   // exploits linearity of I/Phi
+   h0arr(0,0) = rhod0(0) + rhos0(0) + rhos0(1) + rhos0(2);
+   h0arr(1,0) = rhod0(0) + rhos0(0) + rhos0(1) + rhos0(2);
+   h0arr(0,1) = rhod0im1(0) + rhos0im1(0) + rhos0im1(1) + rhos0im1(2);
+   h0arr(1,1) = rhod0jm1(0) + rhos0jm1(0) + rhos0jm1(1) + rhos0jm1(2);
+   phi(he, h0arr);
+
+   return 1./2. * (he(0) * ( U(0) * v(0,k+ks,j+js,i+is)) +
+               + he(1) * ( U(1) * v(1,k+ks,j+js,i+is)));
+
+ }
+
+
+  void YAKL_INLINE compute_dKdv(realArr F, realArr K, realArr HE, const realArr v, const realArr U, const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k)
+ {
+   SArray<real,2,2> D0;
+   SArray<real,2> he;
+
+   //compute he = phi * h0
+   // exploits linearity of I/phi
+   D0(0,0) = dens0(0, k+ks, j+js, i+is) + densfct0(0, k+ks, j+js, i+is) + densfct0(1, k+ks, j+js, i+is) + densfct0(2, k+ks, j+js, i+is);
+   D0(0,1) = dens0(0, k+ks, j+js, i+is-1) + densfct0(0, k+ks, j+js, i+is-1) + densfct0(1, k+ks, j+js, i+is-1) + densfct0(2, k+ks, j+js, i+is-1);
+   D0(1,0) = dens0(0, k+ks, j+js, i+is) + densfct0(0, k+ks, j+js, i+is) + densfct0(1, k+ks, j+js, i+is) + densfct0(2, k+ks, j+js, i+is);
+   D0(1,1) = dens0(0, k+ks, j+js-1, i+is) + densfct0(0, k+ks, j+js-1, i+is) + densfct0(1, k+ks, j+js-1, i+is) + densfct0(2, k+ks, j+js-1, i+is);
+   phi(he, D0);
+   HE(0, k+ks, j+js, i+is) = he(0);
+   HE(1, k+ks, j+js, i+is) = he(1);
+
+   //compute F = he * U
+   F(0, k+ks, j+js, i+is) = U(0, k+ks, j+js, i+is) * he(0);
+   F(1, k+ks, j+js, i+is) = U(1, k+ks, j+js, i+is) * he(1);
+
+   //compute K = 1/2 * PhiT(U,V)
+   compute_phiT(K, U, v, is, js, ks, i, j, k);
+   K(0, k+ks, j+js, i+is) *= 0.5;
+   
+ }
+
+ // Note that this ADDS to Bvar/Bfctvar...
+ void YAKL_INLINE compute_dKddens(realArr B, realArr Bfct, const realArr K, int is, int js, int ks, int i, int j, int k)
+ {
+   SArray<real,1> K0;
+   compute_I<1, diff_ord>(K0, K, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
+   B(0, k+ks, j+js, i+is) += K0(0);
+   Bfct(0, k+ks, j+js, i+is) += K0(0);
+   Bfct(1, k+ks, j+js, i+is) += K0(0);
+   Bfct(2, k+ks, j+js, i+is) += K0(0);
+ }
+
+  };
+  
+  
+  
   
   
 template<uint nt, uint ntfct> class Hamiltonian_TSWE_Hs {
  public:
-   ProgSet *xv;
    Geometry<ndims,1,1,1> *primal_geometry;
    Geometry<ndims,1,1,1> *dual_geometry;
    bool is_initialized;
-   realArr hs0;
-   
+   ThermoPotential *thermo;
+
     Hamiltonian_TSWE_Hs() {
       this->is_initialized = false;
  }
  
- void initialize(ProgSet &xvar, Geometry<ndims,1,1,1> &primal_geom, Geometry<ndims,1,1,1> &dual_geom) 
-   //const realArr &hs)
+ void initialize(ModelParameters &params, ThermoPotential &thermodynamics, Geometry<ndims,1,1,1> &primal_geom, Geometry<ndims,1,1,1> &dual_geom) 
  {
-   this->xv = &xvar;
    this->primal_geometry = &primal_geom;
    this->dual_geometry = &dual_geom;
-   //compute_I<1, diff_ord>(hs0, hs, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
    this->is_initialized = true;
  }
  
@@ -426,24 +433,22 @@ template<uint nt, uint ntfct> class Hamiltonian_TSWE_Hs {
 
 template<uint nt, uint ntfct> class Hamiltonian_SWE_Hs {
  public:
-   ProgSet *xv;
    Geometry<ndims,1,1,1> *primal_geometry;
    Geometry<ndims,1,1,1> *dual_geometry;
    bool is_initialized;
-   realArr hs0;
+   real g;
+   ThermoPotential *thermo;
    
     Hamiltonian_SWE_Hs() {
       this->is_initialized = false;
  }
  
- void initialize(ProgSet &xvar, Geometry<ndims,1,1,1> &primal_geom, Geometry<ndims,1,1,1> &dual_geom) 
-   //const realArr &hs)
+ void initialize(ModelParameters &params, ThermoPotential &thermodynamics, Geometry<ndims,1,1,1> &primal_geom, Geometry<ndims,1,1,1> &dual_geom) 
  {
-   this->xv = &xvar;
    this->primal_geometry = &primal_geom;
    this->dual_geometry = &dual_geom;
-   //compute_I<1, diff_ord>(hs0, hs, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
    this->is_initialized = true;
+   g = params.g;
  }
  
  real YAKL_INLINE compute_PE(const realArr dens, const realArr densfct, const realArr hs, int is, int js, int ks, int i, int j, int k)
@@ -453,10 +458,10 @@ template<uint nt, uint ntfct> class Hamiltonian_SWE_Hs {
   SArray<real,1> h0;
   compute_I<1,diff_ord> (h0, dens, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
 
-   //real PE = g * hs(0, k+ks, j+js, i+is) * h0(0) + 0.5 * g * h0(0) * dens(0, k+ks, j+js, i+is);
-   //for (int l=1; l<1+nt; l++) { PE += 0.5 * dens0(0) * dens(l, k+ks, j+js, i+is);}
-   //for (int l=0; l<ntfct; l++) { PE += 0.5 * dens0(0) * densfct(l, k+ks, j+js, i+is);}
-   //return PE;
+   real PE = g * hs(0, k+ks, j+js, i+is) * h0(0) + 0.5 * g * h0(0) * dens(0, k+ks, j+js, i+is);
+  for (int l=1; l<1+nt; l++) { PE += 0.5 * h0(0) * dens(l, k+ks, j+js, i+is);}
+   for (int l=0; l<ntfct; l++) { PE += 0.5 * h0(0) * densfct(l, k+ks, j+js, i+is);}
+   return PE;
    
  }
 
@@ -474,18 +479,18 @@ template<uint nt, uint ntfct> class Hamiltonian_SWE_Hs {
     //compute I hs
     SArray<real,1> hs0;
     compute_I<1, diff_ord>(hs0, hs, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
-    
+
     // Compute dHdh = g h + g hs + sum_nt 1/2 t + sum_nt 1/2 tfct
-    //B(0, k+ks, j+js, i+is) = g * hs(0) + g * dens0(0, k+ks, j+js, i+is);
-    //for (int l=1; l<1+nt; l++) { B(0, k+ks, j+js, i+is) += dens0(l, k+ks, j+js, i+is)/2.;}
-    //for (int l=0; l<ntfct; l++) { B(0, k+ks, j+js, i+is) += densfct0(l, k+ks, j+js, i+is)/2.;}
+    B(0, k+ks, j+js, i+is) = g * hs(0) + g * dens0(0, k+ks, j+js, i+is);
+    for (int l=1; l<1+nt; l++) { B(0, k+ks, j+js, i+is) += dens0(l, k+ks, j+js, i+is)/2.;}
+    for (int l=0; l<ntfct; l++) { B(0, k+ks, j+js, i+is) += densfct0(l, k+ks, j+js, i+is)/2.;}
         
 
     //Compute dHdt = 1/2 h
-    //for (int l=1; l<1+nt; l++) { B(l, k+ks, j+js, i+is) = dens0(0, k+ks, j+js, i+is)/2.;}
+    for (int l=1; l<1+nt; l++) { B(l, k+ks, j+js, i+is) = dens0(0, k+ks, j+js, i+is)/2.;}
     
     //Compute dHdtfct = 1/2 h
-    //for (int l=0; l<ntfct; l++) { Bfct(0, k+ks, j+js, i+is) = dens0(0, k+ks, j+js, i+is)/2.;}
+    for (int l=0; l<ntfct; l++) { Bfct(0, k+ks, j+js, i+is) = dens0(0, k+ks, j+js, i+is)/2.;}
     
   }
 };
@@ -493,12 +498,11 @@ template<uint nt, uint ntfct> class Hamiltonian_SWE_Hs {
 
 
 
-
+// ADD p-variants
 
 
 class Hamiltonian_CE_Hs {
  public:
-   ProgSet *xv;
    Geometry<ndims,1,1,1> *primal_geometry;
    Geometry<ndims,1,1,1> *dual_geometry;
    bool is_initialized;
@@ -508,9 +512,185 @@ class Hamiltonian_CE_Hs {
       this->is_initialized = false;
  }
  
- void initialize(ProgSet &xvar, ThermoPotential &thermodynamics, Geometry<ndims,1,1,1> &primal_geom, Geometry<ndims,1,1,1> &dual_geom)
+ void initialize(ModelParameters &params, ThermoPotential &thermodynamics, Geometry<ndims,1,1,1> &primal_geom, Geometry<ndims,1,1,1> &dual_geom)
  {
-   this->xv = &xvar;
+   this->thermo = &thermodynamics;
+   this->primal_geometry = &primal_geom;
+   this->dual_geometry = &dual_geom;
+   this->is_initialized = true;
+ }
+ 
+
+ real YAKL_INLINE compute_PE(const realArr dens, const realArr densfct, const realArr geop, int is, int js, int ks, int i, int j, int k)
+ {
+   SArray<real,1> geop0;
+   compute_I<1,diff_ord> (geop0, geop, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
+
+   return dens(0, k+ks, j+js, i+is) * geop0(0);
+   
+ }
+ 
+ //   alpha = 1./rho;
+ //   entropic_var = entropic_density/rho;
+
+     real YAKL_INLINE compute_alpha(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {
+       return 1./dens0(0, k+ks, j+js, i+is);
+     }
+     
+     real YAKL_INLINE compute_entropic_var(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {
+       return dens0(1, k+ks, j+js, i+is)/dens0(0, k+ks, j+js, i+is);
+     }
+
+ real YAKL_INLINE compute_IE(const realArr dens, const realArr densfct, int is, int js, int ks, int i, int j, int k)
+ {
+   SArray<real,2> dens0;
+   compute_I<2, diff_ord>(dens0, dens, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
+   real alpha = 1./dens0(0);
+   real entropic_var = dens0(1)/dens0(0);
+   return dens(0, k+ks, j+js, i+is) * thermo->compute_U(alpha, entropic_var, 0, 0, 0, 0);
+ }
+
+  void YAKL_INLINE compute_dHsdx(realArr B, realArr Bfct, const realArr dens0, const realArr densfct0, const realArr geop, int is, int js, int ks, int i, int j, int k)
+  {
+
+    SArray<real,1> geop0;
+    compute_I<1,diff_ord> (geop0, geop, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
+
+    real alpha = compute_alpha(dens0, densfct0, is, js, ks, i, j, k);
+    real entropic_var = compute_entropic_var(dens0, densfct0, is, js, ks, i, j, k);
+    
+    real U = thermo->compute_U(alpha, entropic_var, 0, 0, 0, 0);
+    real p = -thermo->compute_dUdalpha(alpha, entropic_var, 0, 0, 0, 0);
+    real generalized_Exner = thermo->compute_dUdentropic_var_density(alpha, entropic_var, 0, 0, 0, 0);
+
+    B(0, k+ks, j+js, i+is) = geop0(0) + U + p * alpha - entropic_var * generalized_Exner;
+    B(1, k+ks, j+js, i+is) = generalized_Exner;
+
+  }
+};
+
+
+
+class Hamiltonian_MCE_rho_Hs {
+ public:
+   Geometry<ndims,1,1,1> *primal_geometry;
+   Geometry<ndims,1,1,1> *dual_geometry;
+   bool is_initialized;
+   ThermoPotential *thermo;
+   
+    Hamiltonian_MCE_rho_Hs() {
+      this->is_initialized = false;
+ }
+ 
+ void initialize(ModelParameters &params, ThermoPotential &thermodynamics, Geometry<ndims,1,1,1> &primal_geom, Geometry<ndims,1,1,1> &dual_geom)
+ {
+   this->thermo = &thermodynamics;
+   this->primal_geometry = &primal_geom;
+   this->dual_geometry = &dual_geom;
+   this->is_initialized = true;
+ }
+ 
+
+ real YAKL_INLINE compute_PE(const realArr dens, const realArr densfct, const realArr geop, int is, int js, int ks, int i, int j, int k)
+ {
+   SArray<real,1> geop0;
+   compute_I<1,diff_ord> (geop0, geop, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
+   return dens(0, k+ks, j+js, i+is) * geop0(0);
+   
+ }
+ 
+ //   alpha = 1./rho;
+ //   compute_entropic_var = entropic_density/rho;
+ //   qd = (rho - \sum_n \rho_s)/rho;
+ //   qv = rho_v/rho;
+ //   ql = rho_l/rho;
+ //   qi = rho_i/rho;
+     real YAKL_INLINE compute_alpha(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {
+       return 1./dens0(0, k+ks, j+js, i+is);
+     }
+     
+     real YAKL_INLINE compute_entropic_var(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {
+       return dens0(1, k+ks, j+js, i+is)/dens0(0, k+ks, j+js, i+is);
+     }
+     real YAKL_INLINE compute_qd(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {
+       return (dens0(0, k+ks, j+js, i+is) - densfct0(0, k+ks, j+js, i+is) - densfct0(1, k+ks, j+js, i+is) - densfct0(2, k+ks, j+js, i+is))/dens0(0, k+ks, j+js, i+is);
+     }
+     real YAKL_INLINE compute_qv(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {
+       return densfct0(0, k+ks, j+js, i+is)/dens0(0, k+ks, j+js, i+is);
+     }
+     real YAKL_INLINE compute_ql(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {
+       return densfct0(1, k+ks, j+js, i+is)/dens0(0, k+ks, j+js, i+is);
+     }
+     real YAKL_INLINE compute_qi(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {
+       return densfct0(2, k+ks, j+js, i+is)/dens0(0, k+ks, j+js, i+is);
+     }
+
+
+ real YAKL_INLINE compute_IE(const realArr dens, const realArr densfct, int is, int js, int ks, int i, int j, int k)
+ {
+
+   SArray<real,2> dens0;
+   SArray<real,3> densfct0;
+   compute_I<2, diff_ord>(dens0, dens, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
+   compute_I<3, diff_ord>(densfct0, densfct, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
+   real alpha = 1./dens0(0);
+   real entropic_var = dens0(1)/dens0(0);
+   real qd = (dens0(0) - densfct(0) - densfct(1) - densfct(2))/dens0(0);
+   real ql = densfct(0) / dens0(0);
+   real qi = densfct(1) / dens0(0);
+   real qv = densfct(2) / dens0(0);
+   return dens(0, k+ks, j+js, i+is) * thermo->compute_U(alpha, entropic_var, qd, qv, ql, qi);
+ }
+
+  void YAKL_INLINE compute_dHsdx(realArr B, realArr Bfct, const realArr dens0, const realArr densfct0, const realArr geop, int is, int js, int ks, int i, int j, int k)
+  {
+
+    SArray<real,1> geop0;
+    compute_I<1,diff_ord> (geop0, geop, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
+    
+    real alpha = compute_alpha(dens0, densfct0, is, js, ks, i, j, k);
+    real entropic_var = compute_entropic_var(dens0, densfct0, is, js, ks, i, j, k);
+    real qd = compute_qd(dens0, densfct0, is, js, ks, i, j, k);
+    real ql = compute_ql(dens0, densfct0, is, js, ks, i, j, k);
+    real qi = compute_qi(dens0, densfct0, is, js, ks, i, j, k);
+    real qv = compute_qv(dens0, densfct0, is, js, ks, i, j, k);
+    
+    real U = thermo->compute_U(alpha, entropic_var, qd, qv, ql, qi);
+    real p = -thermo->compute_dUdalpha(alpha, entropic_var, qd, qv, ql, qi);
+    real generalized_Exner = thermo->compute_dUdentropic_var_density(alpha, entropic_var, qd, qv, ql, qi);
+    real generalized_chemical_potential_d = thermo->compute_dUdqd(alpha, entropic_var, qd, qv, ql, qi);
+    real generalized_chemical_potential_v = thermo->compute_dUdqv(alpha, entropic_var, qd, qv, ql, qi);
+    real generalized_chemical_potential_l = thermo->compute_dUdql(alpha, entropic_var, qd, qv, ql, qi);
+    real generalized_chemical_potential_i = thermo->compute_dUdqi(alpha, entropic_var, qd, qv, ql, qi);
+
+    B(0, k+ks, j+js, i+is) = geop0(0) + U + p * alpha - entropic_var * generalized_Exner + 
+    qv * (generalized_chemical_potential_d - generalized_chemical_potential_v) + 
+    ql * (generalized_chemical_potential_d - generalized_chemical_potential_l) + 
+    qi * (generalized_chemical_potential_d - generalized_chemical_potential_i);
+    B(1, k+ks, j+js, i+is) = generalized_Exner;
+    Bfct(0, k+ks, j+js, i+is) = generalized_chemical_potential_v - generalized_chemical_potential_d;
+    Bfct(1, k+ks, j+js, i+is) = generalized_chemical_potential_l - generalized_chemical_potential_d;
+    Bfct(2, k+ks, j+js, i+is) = generalized_chemical_potential_i - generalized_chemical_potential_d;
+    
+  }
+};
+
+
+
+
+class Hamiltonian_MCE_rhod_Hs {
+ public:
+   Geometry<ndims,1,1,1> *primal_geometry;
+   Geometry<ndims,1,1,1> *dual_geometry;
+   bool is_initialized;
+   ThermoPotential *thermo;
+   
+    Hamiltonian_MCE_rhod_Hs() {
+      this->is_initialized = false;
+ }
+ 
+ void initialize(ModelParameters &params, ThermoPotential &thermodynamics, Geometry<ndims,1,1,1> &primal_geom, Geometry<ndims,1,1,1> &dual_geom)
+ {
    this->thermo = &thermodynamics;
    this->primal_geometry = &primal_geom;
    this->dual_geometry = &dual_geom;
@@ -521,62 +701,87 @@ class Hamiltonian_CE_Hs {
  real YAKL_INLINE compute_PE(const realArr dens, const realArr densfct, const realArr geop, int is, int js, int ks, int i, int j, int k)
  {
    
-   real rho = xv->compute_D(dens, densfct, is, js, ks, i, j, k);   
-   return rho * geop(0, is, js, ks, i, j, k);
+   SArray<real,1> geop0;
+   compute_I<1,diff_ord> (geop0, geop, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
+   
+   return (dens(0, k+ks, j+js, i+is) + densfct(0, k+ks, j+js, i+is) + densfct(1, k+ks, j+js, i+is) + densfct(2, k+ks, j+js, i+is) ) * geop0(0);
    
  }
  
+ //   alpha = 1./rho;
+ //   compute_entropic_var = entropic_density/rho;
+ //   qd = rho_d/rho;
+ //   qv = rho_v/rho;
+ //   ql = rho_l/rho;
+ //   qi = rho_i/rho;
+ // with rho = rho_d + rho_v + rho_l + rho_i
+     real YAKL_INLINE compute_alpha(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {
+       return 1./(dens0(0, k+ks, j+js, i+is) + densfct0(0, k+ks, j+js, i+is) + densfct0(1, k+ks, j+js, i+is) + densfct0(2, k+ks, j+js, i+is));
+     }
+     
+     real YAKL_INLINE compute_entropic_var(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {
+       return dens0(1, k+ks, j+js, i+is)/(dens0(0, k+ks, j+js, i+is) + densfct0(0, k+ks, j+js, i+is) + densfct0(1, k+ks, j+js, i+is) + densfct0(2, k+ks, j+js, i+is));
+     }
+     real YAKL_INLINE compute_qd(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {
+       return (dens0(0, k+ks, j+js, i+is))/(dens0(0, k+ks, j+js, i+is) + densfct0(0, k+ks, j+js, i+is) + densfct0(1, k+ks, j+js, i+is) + densfct0(2, k+ks, j+js, i+is));
+     }
+     real YAKL_INLINE compute_qv(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {
+       return densfct0(0, k+ks, j+js, i+is)/(dens0(0, k+ks, j+js, i+is) + densfct0(0, k+ks, j+js, i+is) + densfct0(1, k+ks, j+js, i+is) + densfct0(2, k+ks, j+js, i+is));
+     }
+     real YAKL_INLINE compute_ql(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {
+       return densfct0(1, k+ks, j+js, i+is)/(dens0(0, k+ks, j+js, i+is) + densfct0(0, k+ks, j+js, i+is) + densfct0(1, k+ks, j+js, i+is) + densfct0(2, k+ks, j+js, i+is));
+     }
+     real YAKL_INLINE compute_qi(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {
+       return densfct0(2, k+ks, j+js, i+is)/(dens0(0, k+ks, j+js, i+is) + densfct0(0, k+ks, j+js, i+is) + densfct0(1, k+ks, j+js, i+is) + densfct0(2, k+ks, j+js, i+is));
+     }
+
+
  real YAKL_INLINE compute_IE(const realArr dens, const realArr densfct, int is, int js, int ks, int i, int j, int k)
  {
-   real rho = xv->compute_D(dens, densfct, is, js, ks, i, j, k);
 
-   //compute_I<1, diff_ord>(hs0, hs, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
-
-
-//ISSUE- THESE SHOULD REALLY ALL BE POINT VALUES ie dens0/densfct0!
-//can get them easily at i,j,k using compute_I, but then arguments are SAarray instead of realArr
-//So probably need multiple versions of each function?
-   real alpha = xv->compute_alpha(dens, densfct, is, js, ks, i, j, k);
-   real theta = xv->compute_theta(dens, densfct, is, js, ks, i, j, k);
-   real qd = xv->compute_qd(dens, densfct, is, js, ks, i, j, k);
-   real ql = xv->compute_ql(dens, densfct, is, js, ks, i, j, k);
-   real qi = xv->compute_qi(dens, densfct, is, js, ks, i, j, k);
-   real qv = xv->compute_qv(dens, densfct, is, js, ks, i, j, k);
-   return rho * thermo->compute_U(alpha, theta, qd, qv, ql, qi);
+   SArray<real,2> dens0;
+   SArray<real,3> densfct0;
+   compute_I<2, diff_ord>(dens0, dens, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
+   compute_I<3, diff_ord>(densfct0, densfct, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
+   real rho = dens0(0) + densfct(0) + densfct(1) + densfct(2);
+   real alpha = 1./rho;
+   real entropic_var = dens0(1)/rho;
+   real qd = dens0(0) / rho;
+   real ql = densfct(0) / rho;
+   real qi = densfct(1) / rho;
+   real qv = densfct(2) / rho;
+   return rho * thermo->compute_U(alpha, entropic_var, qd, qv, ql, qi);
  }
 
   void YAKL_INLINE compute_dHsdx(realArr B, realArr Bfct, const realArr dens0, const realArr densfct0, const realArr geop, int is, int js, int ks, int i, int j, int k)
   {
 
-    real alpha = xv->compute_alpha(dens0, densfct0, is, js, ks, i, j, k);
-    real theta = xv->compute_theta(dens0, densfct0, is, js, ks, i, j, k);
-    real qd = xv->compute_qd(dens0, densfct0, is, js, ks, i, j, k);
-    real ql = xv->compute_ql(dens0, densfct0, is, js, ks, i, j, k);
-    real qi = xv->compute_qi(dens0, densfct0, is, js, ks, i, j, k);
-    real qv = xv->compute_qv(dens0, densfct0, is, js, ks, i, j, k);
+    SArray<real,1> geop0;
+    compute_I<1,diff_ord> (geop0, geop, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
     
-    real U = thermo->compute_U(alpha, theta, qd, qv, ql, qi);
-    real p = -thermo->compute_dUdalpha(alpha, theta, qd, qv, ql, qi);
-    real Pi = thermo->compute_dUdtheta(alpha, theta, qd, qv, ql, qi);
-    real mu_d = thermo->compute_dUdqd(alpha, theta, qd, qv, ql, qi);
-    real mu_v = thermo->compute_dUdqv(alpha, theta, qd, qv, ql, qi);
-    real mu_l = thermo->compute_dUdql(alpha, theta, qd, qv, ql, qi);
-    real mu_i = thermo->compute_dUdqi(alpha, theta, qd, qv, ql, qi);
-
-// HERE WE ARE ASSUMING THAT OUR PREDICTED VARS ARE RHO, RHO_S
-// WHAT IS BEST WAY TO GENERALIZE?
-// See above, each functional/progset is separate class...
-
-    B(0, k+ks, j+js, i+is) = geop(is, js, ks, i, j, k) + U + p * alpha - theta * Pi + qv * (mu_d - mu_v) + ql * (mu_d - mu_l) + qi * (mu_d - mu_i);
-    B(1, k+ks, j+js, i+is) = Pi;
-    Bfct(0, k+ks, j+js, i+is) = mu_l - mu_d;
-    Bfct(1, k+ks, j+js, i+is) = mu_v - mu_d;
-    Bfct(2, k+ks, j+js, i+is) = mu_i - mu_d;
+    real alpha = compute_alpha(dens0, densfct0, is, js, ks, i, j, k);
+    real entropic_var = compute_entropic_var(dens0, densfct0, is, js, ks, i, j, k);
+    real qd = compute_qd(dens0, densfct0, is, js, ks, i, j, k);
+    real ql = compute_ql(dens0, densfct0, is, js, ks, i, j, k);
+    real qi = compute_qi(dens0, densfct0, is, js, ks, i, j, k);
+    real qv = compute_qv(dens0, densfct0, is, js, ks, i, j, k);
     
+    real U = thermo->compute_U(alpha, entropic_var, qd, qv, ql, qi);
+    real p = -thermo->compute_dUdalpha(alpha, entropic_var, qd, qv, ql, qi);
+    real generalized_Exner = thermo->compute_dUdentropic_var_density(alpha, entropic_var, qd, qv, ql, qi);
+    real generalized_chemical_potential_d = thermo->compute_dUdqd(alpha, entropic_var, qd, qv, ql, qi);
+    real generalized_chemical_potential_v = thermo->compute_dUdqv(alpha, entropic_var, qd, qv, ql, qi);
+    real generalized_chemical_potential_l = thermo->compute_dUdql(alpha, entropic_var, qd, qv, ql, qi);
+    real generalized_chemical_potential_i = thermo->compute_dUdqi(alpha, entropic_var, qd, qv, ql, qi);
+
+    real QNterm = qd * generalized_chemical_potential_d + qv * generalized_chemical_potential_v + qi * generalized_chemical_potential_i + qi * generalized_chemical_potential_i;
+    B(0, k+ks, j+js, i+is) = geop0(0) + U + p * alpha - entropic_var * generalized_Exner - generalized_chemical_potential_d - QNterm; 
+    Bfct(0, k+ks, j+js, i+is) = geop0(0) + U + p * alpha - entropic_var * generalized_Exner - generalized_chemical_potential_v - QNterm; 
+    Bfct(1, k+ks, j+js, i+is) = geop0(0) + U + p * alpha - entropic_var * generalized_Exner - generalized_chemical_potential_l - QNterm; 
+    Bfct(2, k+ks, j+js, i+is) = geop0(0) + U + p * alpha - entropic_var * generalized_Exner - generalized_chemical_potential_i - QNterm; 
+    B(1, k+ks, j+js, i+is) = generalized_Exner;
   }
 };
 
-
-//ADD p-variants: HERE HOW TO SOLVE FOR P IS LESS CLEAR...MAYBE THIS BECOMES A FUNCTION ITSELF?
 
 #endif
