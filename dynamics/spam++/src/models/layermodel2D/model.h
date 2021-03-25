@@ -32,14 +32,8 @@ uint constexpr ndensity = 3 + NTRACERS;
 uint constexpr ndensity = 3 + NTRACERS;
 #endif
 
-
-#if NTRACERS > 0
 uint constexpr ntracers = NTRACERS;
-#endif
-
-#if NTRACERS_FCT > 0
 uint constexpr ndensityfct = NTRACERS_FCT;
-#endif
 
 // Number of variables
 // v, dens, densfct
@@ -137,25 +131,32 @@ uint constexpr nstats = 6;
 // *******   Model Specific Parameters   ***********//
 
 // THESE ARE DOUBLE VORTEX SPECIFIC...
-real constexpr Lx = 5000. * 1000.;
-real constexpr Ly = 5000. * 1000.;
-real constexpr H0 = 750.0;
-real constexpr ox = 0.1;
-real constexpr oy = 0.1;
-real constexpr sigmax = 3./40.*Lx;
-real constexpr sigmay = 3./40.*Lx;
-real constexpr dh = 75.0;
-real constexpr g = 9.80616;
-real constexpr coriolis = 0.00006147;
-real constexpr xc1 = (0.5-ox) * Lx;
-real constexpr yc1 = (0.5-oy) * Ly;
-real constexpr xc2 = (0.5+ox) * Lx;
-real constexpr yc2 = (0.5+oy) * Ly;
-real constexpr xc = 0.5 * Lx;
-real constexpr yc = 0.5 * Ly;
-real constexpr c = 0.05;
-real constexpr a = 1.0/3.0;
-real constexpr D = 0.5 * Lx;
+
+struct IC_constants {
+real const g = 9.80616;
+real const coriolis = 0.00006147;
+real const Lx = 5000. * 1000.;
+real const Ly = 5000. * 1000.;
+
+real const H0 = 750.0;
+real const ox = 0.1;
+real const oy = 0.1;
+real const sigmax = 3./40.*Lx;
+real const sigmay = 3./40.*Lx;
+real const dh = 75.0;
+real const xc1 = (0.5-ox) * Lx;
+real const yc1 = (0.5-oy) * Ly;
+real const xc2 = (0.5+ox) * Lx;
+real const yc2 = (0.5+oy) * Ly;
+real const xc = 0.5 * Lx;
+real const yc = 0.5 * Ly;
+real const c = 0.05;
+real const a = 1.0/3.0;
+real const D = 0.5 * Lx;
+};
+
+IC_constants dbl_vortex_constants;
+
 
 void set_model_specific_params(std::string inFile, ModelParameters &params)
 {
@@ -220,6 +221,8 @@ void set_model_specific_params(std::string inFile, ModelParameters &params)
       exit(-1);
     }
 
+    #if NTRACERS > 0
+
     splitloc = strTracerInit1.find("//",0);
     if (splitloc != std::string::npos){
       sub_str = strTracerInit1.substr(0,splitloc);
@@ -261,6 +264,10 @@ void set_model_specific_params(std::string inFile, ModelParameters &params)
       std::cout << "Error: unrecognized tracerInit " << strTracerInit3 << "\n";
       exit(-1);
     }
+    
+    #endif
+    
+    #if NTRACERS_FCT > 0
 
     splitloc = strTracerFCTInit1.find("//",0);
     if (splitloc != std::string::npos){
@@ -304,15 +311,17 @@ void set_model_specific_params(std::string inFile, ModelParameters &params)
       exit(-1);
     }
     
+    #endif
+    
   params.etime = 0.0;
 
 
   if (params.data_init_cond == DATA_INIT::DOUBLEVORTEX)
   {
-  params.xlen = Lx;
-  params.xc = Lx/2.;
-  params.ylen = Ly;
-  params.yc = Ly/2.;
+  params.xlen = dbl_vortex_constants.Lx;
+  params.xc = dbl_vortex_constants.Lx/2.;
+  params.ylen = dbl_vortex_constants.Ly;
+  params.yc = dbl_vortex_constants.Ly/2.;
   }
 
   // if (params.data_init_cond == DATA_INIT::GOLO)
@@ -463,15 +472,15 @@ public:
 
   bool is_initialized;
   
-  pvpe_2D PVPE;
-  v_Hk Hk;
+  Functional_PVPE PVPE;
+  Hamiltonian_Hk Hk;
   #ifdef _SWE
   hv xv;
-  swe_Hs<NTRACERS, NTRACERS_FCT> Hs;
+  Hamiltonian_SWE_Hs<NTRACERS, NTRACERS_FCT> Hs;
   #endif
   #ifdef _TSWE
   hvS xv;
-  tswe_Hs<NTRACERS, NTRACERS_FCT> Hs;
+  Hamiltonian_TSWE_Hs<NTRACERS, NTRACERS_FCT> Hs;
   #endif
   
    Tendencies() {
@@ -505,12 +514,6 @@ public:
     Hs.initialize(xv, *this->primal_geometry, *this->dual_geometry);
     
     this->is_initialized = true;
-    
-//void YAKL_INLINE compute_K(realArr v, realArr dens, realArr densfct, int is, int js, int ks, int i, int j, int k)
-//void YAKL_INLINE compute_dKdx(realArr F, realArr B, realArr Bfct, const realArr v, const realArr dens, const realArr densfct, int is, int js, int ks, int i, int j, int k)
-//void YAKL_INLINE compute_P(const realArr dens, const realArr densfct, int is, int js, int ks, int i, int j, int k)
-//void YAKL_INLINE compute_I(const realArr dens, const realArr densfct, int is, int js, int ks, int i, int j, int k)
-
   }
 
 
@@ -556,27 +559,21 @@ yakl::parallel_for("ComputeDiagId", dual_topology->n_cells, YAKL_LAMBDA (int iGl
   real hv;
   yakl::unpackIndices(iGlob, dual_topology->n_cells_z, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
 
+  compute_H<1, diff_ord>(Uvar, Vvar, *this->primal_geometry, *this->dual_geometry, dis, djs, dks, i, j, k);
 
-compute_H<1, diff_ord>(Uvar, Vvar, *this->primal_geometry, *this->dual_geometry, dis, djs, dks, i, j, k);
-
-// compute zeta = D2 v
-compute_D2<1>(Q0var, Vvar, dis, djs, dks, i, j, k);
-
-// compute q0 = zeta / R h
-//THIS RELIES ON density being in densvar(0,...)
-//CAN THIS BE GENERALIZED?
-//PART OF HAMILTONIAN OR POTENTIAL ENSTROPHY/VORTICITY PROBABLY...
-  compute_R<0> (hv, densvar, dis, djs, dks, i, j, k);
-  
-  Q0var(0, k+dks, j+djs, i+dis) = Q0var(0, k+dks, j+djs, i+dis) / hv;
-  f0var(0, k+dks, j+djs, i+dis) = coriolisvar(0, k+dks, j+djs, i+dis) / hv;
+  PVPE.compute_q0f0(Q0var, f0var, Vvar, densvar, densfctvar, coriolisvar, dis, djs, dks, i, j, k);
 
       });
 
     }
 
+    #if NTRACERS_FCT > 0
+    void  YAKL_INLINE compute_functional_derivatives_and_diagnostic_quantities_II(
+      realArr Fvar, realArr Kvar, realArr HEvar, const realArr Vvar, const realArr Uvar, const realArr dens0var, const realArr densfct0var) {
+        #else
     void  YAKL_INLINE compute_functional_derivatives_and_diagnostic_quantities_II(
       realArr Fvar, realArr Kvar, realArr HEvar, const realArr Vvar, const realArr Uvar, const realArr dens0var) {
+    #endif
 
         int dis = dual_topology->is;
         int djs = dual_topology->js;
@@ -586,21 +583,13 @@ compute_D2<1>(Q0var, Vvar, dis, djs, dks, i, j, k);
           int k, j, i;
           yakl::unpackIndices(iGlob, dual_topology->n_cells_z, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
 
-//THIS RELIES ON density being in dens0var(0,...)
-//CAN THIS BE GENERALIZED?
-//PART OF HAMILTONIAN PROBABLY...
 
-        // compute he = phi * h0
-        compute_phi<0>(HEvar, dens0var, dis, djs, dks, i, j, k);
-
-        //compute F = he * U
-        Fvar(0, k+dks, j+djs, i+dis) = Uvar(0, k+dks, j+djs, i+dis) * HEvar(0, k+dks, j+djs, i+dis);
-        Fvar(1, k+dks, j+djs, i+dis) = Uvar(1, k+dks, j+djs, i+dis) * HEvar(1, k+dks, j+djs, i+dis);
-
-        //compute KE = 0.5 * phiT(u,v)
-        compute_phiT(Kvar, Uvar, Vvar, dis, djs, dks, i, j, k);
-        Kvar(0, k+dks, j+djs, i+dis) *= 0.5;
-
+        #if NTRACERS_FCT > 0
+        Hk.compute_dKdx(Fvar, Kvar, HEvar, Vvar, Uvar, dens0var, densfct0var, dis, djs, dks, i, j, k);
+        #else
+        Hk.compute_dKdx(Fvar, Kvar, HEvar, Vvar, Uvar, dens0var, dens0var, dis, djs, dks, i, j, k);
+        #endif
+        
       });
 
       }
@@ -639,57 +628,18 @@ int pks = primal_topology->ks;
 #if NTRACERS_FCT > 0
 Hs.compute_dHsdx(Bvar, Bfctvar, dens0var, densfct0var, HSvar, pis, pjs, pks, i, j, k);
 #else
-Hs.compute_dHsdx(Bvar, Bvar, dens0var, densfct0var, HSvar, pis, pjs, pks, i, j, k);
+Hs.compute_dHsdx(Bvar, Bvar, dens0var, dens0var, HSvar, pis, pjs, pks, i, j, k);
 #endif
 
 // THIS ASSUMES THAT D = dens(0)
 // NEEDS TO BE GENERALIZED...
+// How? maybe with xv.dDdDk-type function? + then do
+// Bvar(l, k+pks, j+pjs, i+pis) += K0(l) * xv.dDdk(l);
+// Bfctvar(l, k+pks, j+pjs, i+pis) += K0(l) * xv.dDdk(l);
+// or similar?
 SArray<real,1> K0;
 compute_I<1, diff_ord>(K0, Kvar, *this->primal_geometry, *this->dual_geometry, pis, pjs, pks, i, j, k);
 Bvar(0, k+pks, j+pjs, i+pis) += K0(0);
-
-
-#ifdef _TSWE
-      // // Compute B = IK + S0/2.
-      // compute_I<1, diff_ord>(Bvar, Kvar, *this->primal_geometry, *this->dual_geometry, pis, pjs, pks, i, j, k);
-      // Bvar(0, k+pks, j+pjs, i+pis) += dens0var(1, k+pks, j+pjs, i+pis)/2.;
-      // //Compute T = Ihs + h0/2;
-      // compute_I<1, diff_ord>(hs0, HSvar, *this->primal_geometry, *this->dual_geometry, pis, pjs, pks, i, j, k);
-      // Bvar(1, k+pks, j+pjs, i+pis) = dens0var(0, k+pks, j+pjs, i+pis)/2. + hs0(0);
-#endif
-
-#ifdef _SWE
-      // // Compute B = IK + gh0 + ghs0
-      // compute_I<1, diff_ord>(Bvar, Kvar, *this->primal_geometry, *this->dual_geometry, pis, pjs, pks, i, j, k);
-      // compute_I<1, diff_ord>(hs0, HSvar, *this->primal_geometry, *this->dual_geometry, pis, pjs, pks, i, j, k);
-      // Bvar(0, k+pks, j+js, i+pis) += g*dens0var(0, k+pks, j+pjs, i+pis) + g*hs0(0);
-#endif
-
-//FIX THESE
-#ifdef _SWEVT
-#endif
-#ifdef _TSWEVT
-#endif
-#ifdef _TSWEVTC
-#endif
-
-// #if NTRACERS > 0
-// // Compute Xil = h0/2; and add \sum trl/2. to B
-// for (int l=ndensity-ntracers; l<ndensity; l++)
-// {
-//  Bvar(0, k+pks, j+pjs, i+pis) += dens0var(l, k+pks, j+pjs, i+pis)/2.;
-//   Bvar(l, k+pks, j+pjs, i+pis) = dens0var(0, k+pks, j+pjs, i+pis)/2.;
-// }
-// #endif
-// 
-// #if NTRACERS_FCT > 0
-// // Compute Xil = h0/2; and add \sum trl/2. to B
-// for (int l=0; l<ndensityfct; l++)
-// {
-//  Bvar(0, k+pks, j+pjs, i+pis) += densfct0var(l, k+pks, j+pjs, i+pis)/2.;
-//   Bfctvar(l, k+pks, j+pjs, i+pis) = dens0var(0, k+pks, j+pjs, i+pis)/2.;
-// }
-// #endif
 
     });
 
@@ -875,9 +825,15 @@ yakl::parallel_for("ComputeDualTendencies", dual_topology->n_cells, YAKL_LAMBDA 
 
 
       //Compute K, F, he
+      #if NTRACERS_FCT > 0
+      compute_functional_derivatives_and_diagnostic_quantities_II(
+      auxiliary_vars.fields_arr[FVAR].data, auxiliary_vars.fields_arr[KVAR].data, auxiliary_vars.fields_arr[HEVAR].data,
+      x.fields_arr[VVAR].data, auxiliary_vars.fields_arr[UVAR].data, auxiliary_vars.fields_arr[DENS0VAR].data, auxiliary_vars.fields_arr[DENSFCT0VAR].data);
+      #else
       compute_functional_derivatives_and_diagnostic_quantities_II(
       auxiliary_vars.fields_arr[FVAR].data, auxiliary_vars.fields_arr[KVAR].data, auxiliary_vars.fields_arr[HEVAR].data,
       x.fields_arr[VVAR].data, auxiliary_vars.fields_arr[UVAR].data, auxiliary_vars.fields_arr[DENS0VAR].data);
+      #endif
 
       this->aux_exchange->exchanges_arr[FVAR].exchange_field(auxiliary_vars.fields_arr[FVAR]);
       this->aux_exchange->exchanges_arr[KVAR].exchange_field(auxiliary_vars.fields_arr[KVAR]);
@@ -1032,6 +988,18 @@ public:
   Geometry<ndims,1,1,1> *primal_geometry;
   Geometry<ndims,1,1,1> *dual_geometry;
 
+// SHOULD MAYBE JUST BE A REFERENCE, ESPECIALLY IF HAMILTONIANS START STORING CONSTANTS LIKE HS0, ETC....
+  Functional_PVPE PVPE;
+  Hamiltonian_Hk Hk;
+  #ifdef _SWE
+  hv xv;
+  Hamiltonian_SWE_Hs<NTRACERS, NTRACERS_FCT> Hs;
+  #endif
+  #ifdef _TSWE
+  hvS xv;
+  Hamiltonian_TSWE_Hs<NTRACERS, NTRACERS_FCT> Hs;
+  #endif
+  
   void initialize(ModelParameters &params, Parallel &par, const Topology &primal_topo, const Topology &dual_topo, Geometry<ndims,1,1,1> &primal_geom, Geometry<ndims,1,1,1> &dual_geom)
   {
     this->primal_topology = &primal_topo;
@@ -1052,6 +1020,12 @@ public:
     stats_arr[PVSTAT].initialize("pv", 1, params, par);
     stats_arr[PESTAT].initialize("pens", 1, params, par);
     masterproc = par.masterproc;
+
+
+    PVPE.initialize(xv);
+    Hk.initialize(xv, *this->primal_geometry, *this->dual_geometry);
+    Hs.initialize(xv, *this->primal_geometry, *this->dual_geometry);
+    
   }
 
 
@@ -1097,67 +1071,25 @@ int dis = dual_topology->is;
 int djs = dual_topology->js;
 int dks = dual_topology->ks;
 
-//THIS SHOULD BASICALLY BE DONE BY HAMILTONIAN...
       yakl::parallel_for("ComputeDualStats", dual_topology->n_cells, YAKL_LAMBDA (int iGlob) {
         int k, j, i;
         yakl::unpackIndices(iGlob, dual_topology->n_cells_z, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
-        real KE, PE;
-        SArray<real,ndensity> dens0;
-        SArray<real,1> zeta, h0im1, h0jm1;
-        SArray<real,2> U, he;
-        SArray<real,2,2> h0arr;
-
-        //compute stats locally
-        compute_I<ndensity,diff_ord> (dens0, progvars.fields_arr[DENSVAR].data, *this->primal_geometry, *this->dual_geometry, dis, djs, dks, i, j, k);
-        compute_H<1,diff_ord> (U, progvars.fields_arr[VVAR].data, *this->primal_geometry, *this->dual_geometry, dis, djs, dks, i, j, k);
-
-//HACK THAT RELIES ON DENSITY BEING IN 1ST SLOT OF DENSVAR...
-//CAN WE GENERALIZE?
-        //Slight hack that only computes I for first dof
-        compute_I<1,diff_ord> (h0im1, progvars.fields_arr[DENSVAR].data, *this->primal_geometry, *this->dual_geometry, dis, djs, dks, i-1, j, k);
-        compute_I<1,diff_ord> (h0jm1, progvars.fields_arr[DENSVAR].data, *this->primal_geometry, *this->dual_geometry, dis, djs, dks, i, j-1, k);
-
-//HACK THAT RELIES ON DENSITY BEING IN 1ST SLOT OF DENSVAR...
-//CAN WE GENERALIZE?
-h0arr(0,0) = dens0(0);
-h0arr(1,0) = dens0(0);
-h0arr(0,1) = h0im1(0);
-h0arr(1,1) = h0jm1(0);
-phi(he, h0arr);
-
-        KE = 1./2. * (he(0) * ( U(0) * progvars.fields_arr[VVAR].data(0,k+dks,j+djs,i+dis)) +
-                    + he(1) * ( U(1) * progvars.fields_arr[VVAR].data(1,k+dks,j+djs,i+dis)));
-
-#ifdef _TSWE
-PE = 0.5*progvars.fields_arr[DENSVAR].data(0,k+dks,j+djs,i+dis)*dens0(1) + dens0(1)*constvars.fields_arr[HSVAR].data(0,k+dks,j+djs,i+dis);
-#endif
-#ifdef _SWE
-PE = PE = 0.5*g*progvars.fields_arr[DENSVAR].data(0,k+dks,j+djs,i+dis)*dens0(0) + g*dens0(0)*constvars.fields_arr[HSVAR].data(0,k+dks,j+djs,i+dis);
-#endif
-
-//FIX THESE
-#ifdef _SWEVT
-#endif
-#ifdef _TSWEVT
-#endif
-#ifdef _TSWEVTC
-#endif
-
-#if NTRACERS > 0
-for (int l=ndensity-ntracers;l<ndensity;l++)
-{PE += 0.5*dens0(0)*progvars.fields_arr[DENSVAR].data(l,k+dks,j+djs,i+dis);}
-#endif
-
+         real KE, PE, IE;
 
 #if NTRACERS_FCT > 0
-for (int l=0;l<ndensityfct;l++)
-{PE += 0.5*dens0(0)*progvars.fields_arr[DENSFCTVAR].data(l,k+dks,j+djs,i+dis);}
+KE = Hk.compute_KE(progvars.fields_arr[VVAR].data, progvars.fields_arr[DENSVAR].data, progvars.fields_arr[DENSFCTVAR].data, dis, djs, dks, i, j, k);
+PE = Hs.compute_PE(progvars.fields_arr[DENSVAR].data, progvars.fields_arr[DENSFCTVAR].data, constvars.fields_arr[HSVAR].data, dis, djs, dks, i, j, k);
+IE = Hs.compute_IE(progvars.fields_arr[DENSVAR].data, progvars.fields_arr[DENSFCTVAR].data, dis, djs, dks, i, j, k);
+#else
+KE = Hk.compute_KE(progvars.fields_arr[VVAR].data, progvars.fields_arr[DENSVAR].data, progvars.fields_arr[DENSVAR].data, dis, djs, dks, i, j, k);
+PE = Hs.compute_PE(progvars.fields_arr[DENSVAR].data, progvars.fields_arr[DENSVAR].data, constvars.fields_arr[HSVAR].data, dis, djs, dks, i, j, k);
+IE = Hs.compute_IE(progvars.fields_arr[DENSVAR].data, progvars.fields_arr[DENSVAR].data, dis, djs, dks, i, j, k);
 #endif
 
-
+elocal(3) += IE;
 elocal(2) += PE;
 elocal(1) += KE;
-elocal(0) += KE + PE;
+elocal(0) += KE + PE + IE;
 
 });
 
@@ -1168,19 +1100,16 @@ int pks = primal_topology->ks;
 yakl::parallel_for("ComputePrimalStats", primal_topology->n_cells, YAKL_LAMBDA (int iGlob) {
   int k, j, i;
   yakl::unpackIndices(iGlob, primal_topology->n_cells_z, primal_topology->n_cells_y, primal_topology->n_cells_x, k, j, i);
-  real eta, hv, q0;
-  SArray<real,1> zeta;
   
-        compute_D2<1>(zeta, progvars.fields_arr[VVAR].data, pis, pjs, pks, i, j, k);
-        eta = zeta(0) + constvars.fields_arr[CORIOLISVAR].data(0,k+pks,j+pjs,i+pis);
-//HACK THAT RELIES ON DENSITY BEING IN 1ST SLOT OF DENSVAR...
-//CAN WE GENERALIZE?
-        compute_R<0> (hv, progvars.fields_arr[DENSVAR].data, pis, pjs, pks, i, j, k);
-        q0 = eta / hv;
-
-       pvlocal(0) += eta;
-       pelocal(0) += 0.5 * eta * q0;
-
+   pvpe vals_pvpe;
+   #if NTRACERS_FCT > 0
+   vals_pvpe = PVPE.compute_PVPE(progvars.fields_arr[VVAR].data, progvars.fields_arr[DENSVAR].data, progvars.fields_arr[DENSFCTVAR].data, constvars.fields_arr[CORIOLISVAR].data, pis, pjs, pks, i, j, k);
+   #else
+   vals_pvpe = PVPE.compute_PVPE(progvars.fields_arr[VVAR].data, progvars.fields_arr[DENSVAR].data, progvars.fields_arr[DENSFCTVAR].data, constvars.fields_arr[CORIOLISVAR].data, pis, pjs, pks, i, j, k);
+   #endif
+   pvlocal(0) += vals_pvpe.pv;
+    pelocal(0) += vals_pvpe.pe;
+    
     });
 
     for (int l=0;l<ndensity;l++)
@@ -1371,63 +1300,61 @@ std::array<const Topology *, nprog> &prog_topo_arr, std::array<const Topology *,
 
 real YAKL_INLINE double_vortex_coriolis(real x, real y)
 {
-    return coriolis;
+    return dbl_vortex_constants.coriolis;
 }
 
 real YAKL_INLINE double_vortex_h(real x, real y)
 {
-    real xprime1 = Lx / (M_PI * sigmax) * sin(M_PI / Lx * (x - xc1));
-    real yprime1 = Ly / (M_PI * sigmay) * sin(M_PI / Ly * (y - yc1));
-    real xprime2 = Lx / (M_PI * sigmax) * sin(M_PI / Lx * (x - xc2));
-    real yprime2 = Ly / (M_PI * sigmay) * sin(M_PI / Ly * (y - yc2));
-    real xprimeprime1 = Lx / (2.0 * M_PI * sigmax) * sin(2 * M_PI / Lx * (x - xc1));
-    real yprimeprime1 = Ly / (2.0 * M_PI * sigmay) * sin(2 * M_PI / Ly * (y - yc1));
-    real xprimeprime2 = Lx / (2.0 * M_PI * sigmax) * sin(2 * M_PI / Lx * (x - xc2));
-    real yprimeprime2 = Ly / (2.0 * M_PI * sigmay) * sin(2 * M_PI / Ly * (y - yc2));
+    real xprime1 = dbl_vortex_constants.Lx / (M_PI * dbl_vortex_constants.sigmax) * sin(M_PI / dbl_vortex_constants.Lx * (x - dbl_vortex_constants.xc1));
+    real yprime1 = dbl_vortex_constants.Ly / (M_PI * dbl_vortex_constants.sigmay) * sin(M_PI / dbl_vortex_constants.Ly * (y - dbl_vortex_constants.yc1));
+    real xprime2 = dbl_vortex_constants.Lx / (M_PI * dbl_vortex_constants.sigmax) * sin(M_PI / dbl_vortex_constants.Lx * (x - dbl_vortex_constants.xc2));
+    real yprime2 = dbl_vortex_constants.Ly / (M_PI * dbl_vortex_constants.sigmay) * sin(M_PI / dbl_vortex_constants.Ly * (y - dbl_vortex_constants.yc2));
+    real xprimeprime1 = dbl_vortex_constants.Lx / (2.0 * M_PI * dbl_vortex_constants.sigmax) * sin(2 * M_PI / dbl_vortex_constants.Lx * (x - dbl_vortex_constants.xc1));
+    real yprimeprime1 = dbl_vortex_constants.Ly / (2.0 * M_PI * dbl_vortex_constants.sigmay) * sin(2 * M_PI / dbl_vortex_constants.Ly * (y - dbl_vortex_constants.yc1));
+    real xprimeprime2 = dbl_vortex_constants.Lx / (2.0 * M_PI * dbl_vortex_constants.sigmax) * sin(2 * M_PI / dbl_vortex_constants.Lx * (x - dbl_vortex_constants.xc2));
+    real yprimeprime2 = dbl_vortex_constants.Ly / (2.0 * M_PI * dbl_vortex_constants.sigmay) * sin(2 * M_PI / dbl_vortex_constants.Ly * (y - dbl_vortex_constants.yc2));
 
-    return H0 - dh * (exp(-0.5 * (xprime1 * xprime1 + yprime1 * yprime1)) + exp(-0.5 * (xprime2 * xprime2 + yprime2 * yprime2)) - 4. * M_PI * sigmax * sigmay / Lx / Ly);
+    return dbl_vortex_constants.H0 - dbl_vortex_constants.dh * (exp(-0.5 * (xprime1 * xprime1 + yprime1 * yprime1)) + exp(-0.5 * (xprime2 * xprime2 + yprime2 * yprime2)) - 4. * M_PI * dbl_vortex_constants.sigmax * dbl_vortex_constants.sigmay / dbl_vortex_constants.Lx / dbl_vortex_constants.Ly);
 }
 
 vec<2> YAKL_INLINE double_vortex_v(real x, real y) {
   vec<2> vvec;
 
-  real xprime1 = Lx / (M_PI * sigmax) * sin(M_PI / Lx * (x - xc1));
-  real yprime1 = Ly / (M_PI * sigmay) * sin(M_PI / Ly * (y - yc1));
-  real xprime2 = Lx / (M_PI * sigmax) * sin(M_PI / Lx * (x - xc2));
-  real yprime2 = Ly / (M_PI * sigmay) * sin(M_PI / Ly * (y - yc2));
-  real xprimeprime1 = Lx / (2.0 * M_PI * sigmax) * sin(2 * M_PI / Lx * (x - xc1));
-  real yprimeprime1 = Ly / (2.0 * M_PI * sigmay) * sin(2 * M_PI / Ly * (y - yc1));
-  real xprimeprime2 = Lx / (2.0 * M_PI * sigmax) * sin(2 * M_PI / Lx * (x - xc2));
-  real yprimeprime2 = Ly / (2.0 * M_PI * sigmay) * sin(2 * M_PI / Ly * (y - yc2));
+  real xprime1 = dbl_vortex_constants.Lx / (M_PI * dbl_vortex_constants.sigmax) * sin(M_PI / dbl_vortex_constants.Lx * (x - dbl_vortex_constants.xc1));
+  real yprime1 = dbl_vortex_constants.Ly / (M_PI * dbl_vortex_constants.sigmay) * sin(M_PI / dbl_vortex_constants.Ly * (y - dbl_vortex_constants.yc1));
+  real xprime2 = dbl_vortex_constants.Lx / (M_PI * dbl_vortex_constants.sigmax) * sin(M_PI / dbl_vortex_constants.Lx * (x - dbl_vortex_constants.xc2));
+  real yprime2 = dbl_vortex_constants.Ly / (M_PI * dbl_vortex_constants.sigmay) * sin(M_PI / dbl_vortex_constants.Ly * (y - dbl_vortex_constants.yc2));
+  real xprimeprime1 = dbl_vortex_constants.Lx / (2.0 * M_PI * dbl_vortex_constants.sigmax) * sin(2 * M_PI / dbl_vortex_constants.Lx * (x - dbl_vortex_constants.xc1));
+  real yprimeprime1 = dbl_vortex_constants.Ly / (2.0 * M_PI * dbl_vortex_constants.sigmay) * sin(2 * M_PI / dbl_vortex_constants.Ly * (y - dbl_vortex_constants.yc1));
+  real xprimeprime2 = dbl_vortex_constants.Lx / (2.0 * M_PI * dbl_vortex_constants.sigmax) * sin(2 * M_PI / dbl_vortex_constants.Lx * (x - dbl_vortex_constants.xc2));
+  real yprimeprime2 = dbl_vortex_constants.Ly / (2.0 * M_PI * dbl_vortex_constants.sigmay) * sin(2 * M_PI / dbl_vortex_constants.Ly * (y - dbl_vortex_constants.yc2));
 
-  vvec.u = - g * dh / coriolis / sigmay * (yprimeprime1 * exp(-0.5*(xprime1 * xprime1 + yprime1 * yprime1)) + yprimeprime2 * exp(-0.5*(xprime2 * xprime2 + yprime2 * yprime2)));
-  vvec.v = g * dh / coriolis / sigmax * (xprimeprime1 * exp(-0.5*(xprime1 * xprime1 + yprime1 * yprime1)) + xprimeprime2 * exp(-0.5*(xprime2 * xprime2 + yprime2 * yprime2)));
+  vvec.u = - dbl_vortex_constants.g * dbl_vortex_constants.dh / dbl_vortex_constants.coriolis / dbl_vortex_constants.sigmay * (yprimeprime1 * exp(-0.5*(xprime1 * xprime1 + yprime1 * yprime1)) + yprimeprime2 * exp(-0.5*(xprime2 * xprime2 + yprime2 * yprime2)));
+  vvec.v = dbl_vortex_constants.g * dbl_vortex_constants.dh / dbl_vortex_constants.coriolis / dbl_vortex_constants.sigmax * (xprimeprime1 * exp(-0.5*(xprime1 * xprime1 + yprime1 * yprime1)) + xprimeprime2 * exp(-0.5*(xprime2 * xprime2 + yprime2 * yprime2)));
   return vvec;
 }
 
 real YAKL_INLINE double_vortex_S(real x, real y)
 {
     //real sval = g * (1. + c * sin(2. * M_PI / Lx * (x - xc)) * sin(2. * M_PI / Ly * (y - yc)) * exp(-((x-xc)*(x-xc) + (y-yc)*(y-yc))/(a*a*D*D)));
-    real sval = g * (1. + c * exp(-((x-xc)*(x-xc) + (y-yc)*(y-yc))/(a*a*D*D)));
+    real sval = dbl_vortex_constants.g * (1. + dbl_vortex_constants.c * exp(-((x-dbl_vortex_constants.xc)*(x-dbl_vortex_constants.xc) + (y-dbl_vortex_constants.yc)*(y-dbl_vortex_constants.yc))/(dbl_vortex_constants.a*dbl_vortex_constants.a*dbl_vortex_constants.D*dbl_vortex_constants.D)));
     //real sval = g * (1. + c * sin(2. * M_PI / Lx * (x- xc)));
     //real sval = g;
     //real sval = g * (1. + c * ((x > 0.35 * Lx && x < 0.65 * Lx && y > 0.35 * Ly && y < 0.65 * Ly ) ? 1. : 0.));
     return sval * double_vortex_h(x,y);
 }
 
-real YAKL_INLINE double_vortex_tracer_square_cent(real x, real y)         {return (x > 0.35*Lx && x < 0.65*Lx && y > 0.35*Ly && y < 0.65*Ly                        ) ? 0.005*double_vortex_h(x,y) : 0.;}
-real YAKL_INLINE double_vortex_tracer_square_ur(real x, real y)         {return (x > 0.6*Lx && x < 0.9*Lx && y > 0.6*Ly && y < 0.9*Ly                        ) ? 0.005*double_vortex_h(x,y) : 0.;}
-real YAKL_INLINE double_vortex_tracer_square_ll(real x, real y)         {return (x > 0.1*Lx && x < 0.4*Lx && y > 0.1*Ly && y < 0.4*Ly                        ) ? 0.005*double_vortex_h(x,y) : 0.;}
-real YAKL_INLINE double_vortex_tracer_square_urpll(real x, real y)         {return double_vortex_tracer_square_ur(x,y) + double_vortex_tracer_square_ll(x,y);}
+// CAN WE GENERALIZE?
+real YAKL_INLINE tracer_square_cent(real x, real y)         {return (x > 0.35*dbl_vortex_constants.Lx && x < 0.65*dbl_vortex_constants.Lx && y > 0.35*dbl_vortex_constants.Ly && y < 0.65*dbl_vortex_constants.Ly                        ) ? 0.005 : 0.;}
+real YAKL_INLINE tracer_square_ur(real x, real y)         {return (x > 0.6*dbl_vortex_constants.Lx && x < 0.9*dbl_vortex_constants.Lx && y > 0.6*dbl_vortex_constants.Ly && y < 0.9*dbl_vortex_constants.Ly                        ) ? 0.005 : 0.;}
+real YAKL_INLINE tracer_square_ll(real x, real y)         {return (x > 0.1*dbl_vortex_constants.Lx && x < 0.4*dbl_vortex_constants.Lx && y > 0.1*dbl_vortex_constants.Ly && y < 0.4*dbl_vortex_constants.Ly                        ) ? 0.005 : 0.;}
+real YAKL_INLINE tracer_square_urpll(real x, real y)         {return tracer_square_ur(x,y) + tracer_square_ll(x,y);}
 
+real YAKL_INLINE double_vortex_tracer_square_cent (real x, real y) {return double_vortex_h(x,y) * tracer_square_cent(x, y);}
+real YAKL_INLINE double_vortex_tracer_square_urpll (real x, real y) {return double_vortex_h(x,y) * tracer_square_urpll(x, y);}
 
-real YAKL_INLINE double_vortex_tracer_gaussian(real x, real y)     {return  0.005 *double_vortex_h(x,y) * exp(-((x-xc)*(x-xc) + (y-yc)*(y-yc))/(a*a*D*D));}
+real YAKL_INLINE double_vortex_tracer_gaussian(real x, real y)     {return  double_vortex_h(x,y) * 0.005 * exp(-((x-dbl_vortex_constants.xc)*(x-dbl_vortex_constants.xc) + (y-dbl_vortex_constants.yc)*(y-dbl_vortex_constants.yc))/(dbl_vortex_constants.a*dbl_vortex_constants.a*dbl_vortex_constants.D*dbl_vortex_constants.D));}
 //{ return 0.005 *double_vortex_h(x,y) * exp(-100. * pow((x-xc)/Lx,2.)) * exp(-100. * pow((y-yc)/Ly,2.)); }
-
-
-#define vortex1_2d(x,y)   (0.005 * double_vortex_h(x,y) *  exp(-100. * pow((x-0.75*Lx)/Lx,2.)) * exp(-100. * pow((y-0.75*Ly)/Ly,2.)))
-#define vortex2_2d(x,y)   (0.005 * double_vortex_h(x,y) * exp(-50.  * pow((x-0.25*Lx)/Lx,2.)) * exp(-75.  * pow((y-0.25*Ly)/Ly,2.)))
-real YAKL_INLINE double_vortex_tracer_vortices(real x, real y)         { return vortex1_2d(x,y)   + vortex2_2d(x,y); }
 
 // ADD MORE ICs HERE!!!
 
@@ -1446,29 +1373,25 @@ template <int nprog, int nconst, int nquadx, int nquady, int nquadz> void set_in
         dual_geom.set_2form_values(double_vortex_S, progvars.fields_arr[DENSVAR], 1);
 #endif
 
+// HOW DO GENERALIZE THESE?
+// WANT TO SCALE TRACER FIELDS BY ACTUAL HEIGHT FIELDS...
 for (int i=0; i<NTRACERS; i++)
 {
 if (params.tracer_init_cond[i] == TRACER_INIT::GAUSSIAN) {dual_geom.set_2form_values(double_vortex_tracer_gaussian, progvars.fields_arr[DENSVAR], i+ndensity-ntracers);}
 if (params.tracer_init_cond[i] == TRACER_INIT::SQUARE) {dual_geom.set_2form_values(double_vortex_tracer_square_cent, progvars.fields_arr[DENSVAR], i+ndensity-ntracers);}
 if (params.tracer_init_cond[i] == TRACER_INIT::DOUBLESQUARE) {dual_geom.set_2form_values(double_vortex_tracer_square_urpll, progvars.fields_arr[DENSVAR], i+ndensity-ntracers);}
 }
+#if NTRACERS_FCT > 0
 for (int i=0; i<NTRACERS_FCT; i++)
 {
 if (params.tracerFCT_init_cond[i] == TRACER_INIT::GAUSSIAN) {dual_geom.set_2form_values(double_vortex_tracer_gaussian, progvars.fields_arr[DENSFCTVAR], i);}
 if (params.tracerFCT_init_cond[i] == TRACER_INIT::SQUARE) {dual_geom.set_2form_values(double_vortex_tracer_square_cent, progvars.fields_arr[DENSFCTVAR], i);}
 if (params.tracerFCT_init_cond[i] == TRACER_INIT::DOUBLESQUARE) {dual_geom.set_2form_values(double_vortex_tracer_square_urpll, progvars.fields_arr[DENSFCTVAR], i);}
 }
+#endif
         primal_geom.set_1form_values(double_vortex_v, progvars.fields_arr[VVAR], 0, LINE_INTEGRAL_TYPE::TANGENT);
         primal_geom.set_2form_values(double_vortex_coriolis, constvars.fields_arr[CORIOLISVAR], 0);
     }
-
-//FIX THESE
-#ifdef _SWEVT
-#endif
-#ifdef _TSWEVT
-#endif
-#ifdef _TSWEVTC
-#endif
 
 }
 
