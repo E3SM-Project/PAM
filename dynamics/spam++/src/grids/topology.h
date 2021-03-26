@@ -122,7 +122,11 @@ void printinfo();
   void Topology::printinfo()
   {
   if (this->primal)
-   {std::cout << "topology info: type primal\n" << std::flush;}
+   {std::cout << "topology info: type primal\n" << std::flush;
+   std::cout << "nx " << this->n_cells_x << " ny " << this->n_cells_y << " nz " << this->n_cells_z << "\n" << std::flush;
+   std::cout << "halosize_x " << this->halosize_x << " halosize_y " << this->halosize_y << " halosize_z " << this->halosize_z << "\n" << std::flush;
+   std::cout << "is " << this->is << " js " << this->js << " ks " << this->ks << "\n" << std::flush;
+ }
   else
   {std::cout << "topology info: type dual\n" << std::flush;}
    std::cout << "nx " << this->n_cells_x << " ny " << this->n_cells_y << " nz " << this->n_cells_z << "\n" << std::flush;

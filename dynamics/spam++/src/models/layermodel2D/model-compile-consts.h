@@ -2,45 +2,34 @@
 #ifndef _MODEL_COMPILE_CONSTS_H_
 #define _MODEL_COMPILE_CONSTS_H_
 
-//EVENTUALLY THIS NEEDS TO BE MORE CLEVERLY SET AT COMPILE TIME
-//ALONG WITH A HOST OF OTHER THINGS IN common.h ie Q type, recon orders, etc.
-
-#define _IDEAL_GAS_POTTEMP
-
-
 // Number of Dimensions
 uint constexpr ndims = 2;
 
+// These are all set in CMakeLists.txt by reading model_consts.build
+uint constexpr ntracers = _NTRACERS;
+uint constexpr ntracers_fct = _NTRACERS_FCT;
+
 // Set dens, densfct and ntracers/ntracersfct sizes
 #ifdef _SWE
-uint constexpr ntracers = NTRACERS;
-uint constexpr ntracers_fct = NTRACERS_FCT;
 uint constexpr ndensity = 1 + ntracers;
 uint constexpr ndensityfct = ntracers_fct;
 #endif
 #ifdef _TSWE
-uint constexpr ntracers = NTRACERS;
-uint constexpr ntracers_fct = NTRACERS_FCT;
 uint constexpr ndensity = 2 + ntracers;
 uint constexpr ndensityfct = ntracers_fct;
 #endif
 #ifdef _CE
-uint constexpr ndensity = 2;
-uint constexpr ndensityfct = 0;
-uint constexpr ntracers = 0;
-uint constexpr ntracers_fct = 0;
+uint constexpr ndensity = 2 + ntracers;
+uint constexpr ndensityfct = ntracers_fct;
 #endif
 #ifdef _MCE
-uint constexpr ndensity = 2;
-uint constexpr ndensityfct = 3;
-uint constexpr ntracers = 0;
-uint constexpr ntracers_fct = 0;
+uint constexpr ndensity = 2 + ntracers;
+uint constexpr ndensityfct = 3 + ntracers_fct;
 #endif
 
 uint constexpr MAXTRACERS = 3;
 
-// GOLO needs a better name here
-enum class DATA_INIT { DOUBLEVORTEX, RB, MRB };
+enum class DATA_INIT { DOUBLEVORTEX, RB, LRB, MLRB };
 enum class TRACER_INIT { GAUSSIAN, SQUARE, DOUBLESQUARE };
 
 class ModelParameters : public Parameters {
@@ -50,6 +39,7 @@ public:
   TRACER_INIT tracerFCT_init_cond[MAXTRACERS];
   
   real g;
+  bool acoustic_balance;
 };
 
 #endif

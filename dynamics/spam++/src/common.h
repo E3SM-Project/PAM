@@ -81,59 +81,43 @@ public:
 
 
 
-//DONT REALLY NEED THESE- SET VIA PREPROCESSOR DEFINES IN DRIVER.CPP INSTEAD
-enum class TIME_TYPE { KGRK, SSPRK };
-enum class GEOM_TYPE { UNIFORM_RECT, };
-
-
+// These are all set in CMakeLists.txt by reading compile_consts.build
 
 // Spatial order of accuracy for the model
-uint constexpr diff_ord = 2;
+uint constexpr diff_ord = _DIFF_ORDER;
 
 // Reconstruction types and order
 enum class RECONSTRUCTION_TYPE { CFV, WENO, WENOFUNC };
 
-RECONSTRUCTION_TYPE constexpr reconstruction_type = RECONSTRUCTION_TYPE::CFV;
-uint constexpr reconstruction_order = 5;
+RECONSTRUCTION_TYPE constexpr reconstruction_type = RECONSTRUCTION_TYPE::_PRIMAL_RECON_TYPE;
+uint constexpr reconstruction_order = _PRIMAL_RECON_ORDER;
 
-RECONSTRUCTION_TYPE constexpr dual_reconstruction_type = RECONSTRUCTION_TYPE::CFV;
-uint constexpr dual_reconstruction_order = 5;
+RECONSTRUCTION_TYPE constexpr dual_reconstruction_type = RECONSTRUCTION_TYPE::_DUAL_RECON_TYPE;
+uint constexpr dual_reconstruction_order = _DUAL_RECON_ORDER;
 
-RECONSTRUCTION_TYPE constexpr vert_reconstruction_type = RECONSTRUCTION_TYPE::CFV;
-uint constexpr vert_reconstruction_order = 5;
+RECONSTRUCTION_TYPE constexpr coriolis_reconstruction_type = RECONSTRUCTION_TYPE::_CORIOLIS_RECON_TYPE;
+uint constexpr coriolis_reconstruction_order = _CORIOLIS_RECON_ORDER;
 
-RECONSTRUCTION_TYPE constexpr dual_vert_reconstruction_type = RECONSTRUCTION_TYPE::CFV;
-uint constexpr dual_vert_reconstruction_order = 5;
+RECONSTRUCTION_TYPE constexpr vert_reconstruction_type = RECONSTRUCTION_TYPE::_PRIMAL_VERT_RECON_TYPE;
+uint constexpr vert_reconstruction_order = _PRIMAL_VERT_RECON_ORDER;
 
-RECONSTRUCTION_TYPE constexpr coriolis_reconstruction_type = RECONSTRUCTION_TYPE::CFV;
-uint constexpr coriolis_reconstruction_order = 5;
+RECONSTRUCTION_TYPE constexpr dual_vert_reconstruction_type = RECONSTRUCTION_TYPE::_DUAL_VERT_RECON_TYPE;
+uint constexpr dual_vert_reconstruction_order = _DUAL_VERT_RECON_ORDER;
 
-RECONSTRUCTION_TYPE constexpr coriolis_vert_reconstruction_type = RECONSTRUCTION_TYPE::CFV;
-uint constexpr coriolis_vert_reconstruction_order = 5;
+RECONSTRUCTION_TYPE constexpr coriolis_vert_reconstruction_type = RECONSTRUCTION_TYPE::_CORIOLIS_VERT_RECON_TYPE;
+uint constexpr coriolis_vert_reconstruction_order = _CORIOLIS_VERT_RECON_ORDER;
 
 // How to handle PV flux term
 // ADD AL81-TYPE SCHEME HERE EVENTUALLY AS WELL
 enum class QF_MODE { EC, NOEC };
-QF_MODE constexpr qf_choice = QF_MODE::EC;
+QF_MODE constexpr qf_choice = QF_MODE::_QF_CHOICE;
 
 // initial condition quadrature pts
-uint constexpr ic_quad_pts = 3;
-
-// Time scheme
-//DONT REALLY NEED THIS- SET VIA PREPROCESSOR DEFINES IN DRIVER.CPP INSTEAD
-TIME_TYPE constexpr time_type = TIME_TYPE::SSPRK;
-uint constexpr n_time_stages = 3;
-
-// Grid geometry
-//DONT REALLY NEED THIS- SET VIA PREPROCESSOR DEFINES IN DRIVER.CPP INSTEAD
-GEOM_TYPE constexpr geom_type = GEOM_TYPE::UNIFORM_RECT;
-
+uint constexpr ic_quad_pts = _IC_QUAD_PTS;
 
 // FIX THIS
 // Halo sizes
 uint constexpr maxhalosize = 15; //mymax(reconstruction_order+1,differential_order)/2; // IS THIS ALWAYS CORRECT?
-
-
 
 #include "model-compile-consts.h"
 

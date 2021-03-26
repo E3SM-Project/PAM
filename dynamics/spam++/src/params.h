@@ -207,8 +207,8 @@ void readParamsFile(std::string inFile, Parameters &params, Parallel &par) {
   // Print out the values
   if (par.masterproc) {
     std::cout << "nx:         " << params.nx_glob    << "\n";
-    std::cout << "ny:         " << params.nx_glob    << "\n";
-    std::cout << "nz:         " << params.nx_glob    << "\n";
+    std::cout << "ny:         " << params.ny_glob    << "\n";
+    std::cout << "nz:         " << params.nz_glob    << "\n";
 
     std::cout << "halox:      " << par.halox    << "\n";
     std::cout << "haloy:      " << par.haloy    << "\n";

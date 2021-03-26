@@ -158,12 +158,40 @@ Unapprox_Entropy thermo;
 #endif
 
 
+
 // *******   Model Specific Parameters   ***********//
 
 void set_model_specific_params(std::string inFile, ModelParameters &params)
 {
 
   params.etime = 0.0;
+
+  // Read in equals-separated key = value file line by line
+  std::ifstream fInStream(inFile);
+  std::string line;
+  while (std::getline(fInStream, line)) {
+    // Remove spaces and tabs from the line
+    line.erase (std::remove(line.begin(), line.end(), ' '), line.end());
+    line.erase (std::remove(line.begin(), line.end(), '\t'), line.end());
+
+    // If the line isn't empty and doesn't begin with a comment specifier, split it based on the colon
+    if (!line.empty() && line.find("//",0) != 0) {
+      // Find the colon
+      uint splitloc = line.find('=',0);
+      // Store the key and value strings
+      std::string key   = line.substr(0,splitloc);
+      std::string value = line.substr(splitloc+1,line.length()-splitloc);
+
+      // Transform the value into a string stream for convenience
+      std::stringstream ssVal(value);
+
+      // Match the key, and store the value
+      if      ( !strcmp( "acoustic_balance"         , key.c_str() ) ) { ssVal >> params.acoustic_balance    ; }
+      //else {
+      //  std::cout << "Error: key " << key << " not understood in file " << inFile << "\n";
+      //}
+    }
+  }
 
 }
 

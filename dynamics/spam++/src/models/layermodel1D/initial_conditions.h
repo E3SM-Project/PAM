@@ -45,21 +45,10 @@ real const rc = 250.;
 };
 drybubble_constants rb_constants;
 
-// These settings seem to work well
-// nx = 100 200
-// ny = 150 300
-// dt = 0.025 0.0125
-// Nsteps = 36000 72000
-// Nout = 4000 8000
-
-
-
-
-
 struct largebubble_constants  {
   real const g = 9.80616;
   real const Lx = 20000.;
-  real const Ly = 20000.;
+  real const Ly = 10000.;
   real const xc = 0.5 * Lx;
   real const yc = 0.5 * Ly;
   real const theta0 = 300.0;
@@ -72,12 +61,7 @@ struct largebubble_constants  {
 };
 largebubble_constants lrb_constants;
 
-// These settings seem to work well
-// nx = 200 400
-// ny = 200 400
-// dt = 0.2 0.1
-// Nsteps = 10000 20000
-// Nout = 500 1000
+
 
 
 

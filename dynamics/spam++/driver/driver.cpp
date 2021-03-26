@@ -36,22 +36,24 @@ int main(int argc, char** argv) {
     Topology dual_topology;
     ModelParameters params;
     Parallel par;
+    
+#if _TIME_TYPE==0
+      RKSimpleTimeIntegrator<nprognostic, nconstant, nauxiliary, 4> tint;
+#endif
+#if _TIME_TYPE==1
+      SSPKKTimeIntegrator<nprognostic, nconstant, nauxiliary, 3> tint;
+#endif
+#if _TIME_TYPE==2
+      SSPKKTimeIntegrator<nprognostic, nconstant, nauxiliary, 2> tint;
+#endif
 
-// SETTING THIS STUFF AT COMPILE TIME DOESN'T WORK BECAUSE OF SCOPING. IS THERE A WAY TO PROMOTE VARIABLES OUT OF IF STATEMENTS?
 
-    //if (time_type == TIME_TYPE::KGRK)
-    //{
-      //RKSimpleTimeIntegrator<nprognostic, nconstant, nauxiliary, n_time_stages> tint;
-      SSPKKTimeIntegrator<nprognostic, nconstant, nauxiliary, n_time_stages> tint;
-    //}
-
-    //if (geom_type == GEOM_TYPE::UNIFORM_RECT)
-    //{
+#if _GEOM_TYPE==0   
     UniformRectangularStraightGeometry<ndims,ic_quad_pts,ic_quad_pts,ic_quad_pts> ic_primal_geometry;
     UniformRectangularTwistedGeometry<ndims,ic_quad_pts,ic_quad_pts,ic_quad_pts> ic_dual_geometry;
     UniformRectangularStraightGeometry<ndims,1,1,1> tendencies_primal_geometry;
     UniformRectangularTwistedGeometry<ndims,1,1,1> tendencies_dual_geometry;
-    //}
+#endif
 
     // Initialize MPI
     int ierr = MPI_Init( &argc , &argv );
