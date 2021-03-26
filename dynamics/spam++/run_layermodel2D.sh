@@ -10,3 +10,5 @@ python3 plot_layermodel2D.py $2 $3 $4
 
 # ./run_layermodel2D.sh NPROCS EQNSET(ce) NTRACERS (IGNORED) NTRACERS_FCT (IGNORED) THERMO (idealgasentropy, idealgaspottemp)
 # ./run_layermodel2D.sh NPROCS EQNSET(mcerho/mcerhod) NTRACERS (IGNORED) NTRACERS_FCT (IGNORED) THERMO (constkappavirtpottemp)
+
+

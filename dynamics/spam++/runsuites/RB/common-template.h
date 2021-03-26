@@ -79,37 +79,53 @@ public:
 
 
 
-
-
-//DONT REALLY NEED THESE- SET VIA PREPROCESSOR DEFINES IN DRIVER.CPP INSTEAD
+enum class RECONSTRUCTION_TYPE { CFV, WENO, WENOFUNC };
 enum class TIME_TYPE { KGRK, SSPRK };
 enum class GEOM_TYPE { UNIFORM_RECT, };
 
 
+// SHOULD SET ALL OF THIS AT COMPILE TIME BASED ON THE MODEL VIA COMMAND LINE ARGUMENTS/FLAGS WITH DEFAULTS!
+// OR IT SHOULD REALLY MOVE INTO THE model-compile-const.h ?
+// ideally run scripts acquire basically all of these, via -D...!
 
+// what sorts of models do we have initially
+// advection 1D/2D/3D (does both primal and dual advection, including implied PV advection with various choices for Q...)
+// layeredmodel1D
+// layeredmodel2D- CAN THIS BE MERGED WITH 1D?
+// splitmodel2D
+// splitmodel3D- CAN THIS BE MERGED WITH 2D?
+
+// eventually add support for out of slice velocity/etc. in layered models and splitmodel2D
+
+
+// Number of Dimensions
+uint constexpr ndims = 2;
+
+//THIS SHOULD BE HODGE STAR ORDER!
+//MAYBE EVEN SET DIFFERENT STARS WITH DIFFERENT ACCURACIES?
 // Spatial order of accuracy for the model
-uint constexpr diff_ord = 2;
+uint constexpr diff_ord = DIFFORDER;
 
-// Reconstruction types and order
-enum class RECONSTRUCTION_TYPE { CFV, WENO, WENOFUNC };
+//EVENTUALLY DISTINGUISH BETWEEN DENSITY AND DENSITYFCT RECONS HERE...
 
-RECONSTRUCTION_TYPE constexpr reconstruction_type = RECONSTRUCTION_TYPE::CFV;
-uint constexpr reconstruction_order = 5;
+// Reconstruction type
+RECONSTRUCTION_TYPE constexpr reconstruction_type = RECONSTRUCTION_TYPE::PRIMALRECONTYPE;
+uint constexpr reconstruction_order = PRIMALRECONORDER;
 
-RECONSTRUCTION_TYPE constexpr dual_reconstruction_type = RECONSTRUCTION_TYPE::CFV;
-uint constexpr dual_reconstruction_order = 5;
+RECONSTRUCTION_TYPE constexpr dual_reconstruction_type = RECONSTRUCTION_TYPE::DUALRECONTYPE;
+uint constexpr dual_reconstruction_order = DUALRECONORDER;
 
-RECONSTRUCTION_TYPE constexpr vert_reconstruction_type = RECONSTRUCTION_TYPE::CFV;
-uint constexpr vert_reconstruction_order = 5;
+RECONSTRUCTION_TYPE constexpr vert_reconstruction_type = RECONSTRUCTION_TYPE::PRIMALVERTRECONTYPE;
+uint constexpr vert_reconstruction_order = PRIMALVERTRECONORDER;
 
-RECONSTRUCTION_TYPE constexpr dual_vert_reconstruction_type = RECONSTRUCTION_TYPE::CFV;
-uint constexpr dual_vert_reconstruction_order = 5;
+RECONSTRUCTION_TYPE constexpr dual_vert_reconstruction_type = RECONSTRUCTION_TYPE::DUALVERTRECONTYPE;
+uint constexpr dual_vert_reconstruction_order = DUALVERTRECONORDER;
 
-RECONSTRUCTION_TYPE constexpr coriolis_reconstruction_type = RECONSTRUCTION_TYPE::CFV;
-uint constexpr coriolis_reconstruction_order = 5;
+RECONSTRUCTION_TYPE constexpr coriolis_reconstruction_type = RECONSTRUCTION_TYPE::CORIOLISRECONTYPE;
+uint constexpr coriolis_reconstruction_order = CORIOLISRECONORDER;
 
-RECONSTRUCTION_TYPE constexpr coriolis_vert_reconstruction_type = RECONSTRUCTION_TYPE::CFV;
-uint constexpr coriolis_vert_reconstruction_order = 5;
+RECONSTRUCTION_TYPE constexpr coriolis_vert_reconstruction_type = RECONSTRUCTION_TYPE::CORIOLISVERTRECONTYPE;
+uint constexpr coriolis_vert_reconstruction_order = CORIOLISVERTRECONORDER;
 
 // How to handle PV flux term
 // ADD AL81-TYPE SCHEME HERE EVENTUALLY AS WELL
@@ -120,12 +136,10 @@ QF_MODE constexpr qf_choice = QF_MODE::EC;
 uint constexpr ic_quad_pts = 3;
 
 // Time scheme
-//DONT REALLY NEED THIS- SET VIA PREPROCESSOR DEFINES IN DRIVER.CPP INSTEAD
 TIME_TYPE constexpr time_type = TIME_TYPE::SSPRK;
 uint constexpr n_time_stages = 3;
 
 // Grid geometry
-//DONT REALLY NEED THIS- SET VIA PREPROCESSOR DEFINES IN DRIVER.CPP INSTEAD
 GEOM_TYPE constexpr geom_type = GEOM_TYPE::UNIFORM_RECT;
 
 

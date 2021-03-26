@@ -7,6 +7,11 @@
 
 #define _IDEAL_GAS_POTTEMP
 
+
+// Number of Dimensions
+uint constexpr ndims = 2;
+
+// Set dens, densfct and ntracers/ntracersfct sizes
 #ifdef _SWE
 uint constexpr ntracers = NTRACERS;
 uint constexpr ntracers_fct = NTRACERS_FCT;
@@ -25,14 +30,7 @@ uint constexpr ndensityfct = 0;
 uint constexpr ntracers = 0;
 uint constexpr ntracers_fct = 0;
 #endif
-// MAYBE FURTHER SPECIALIZE TO NO ICE CASE?
-#ifdef _MCERHO
-uint constexpr ndensity = 2;
-uint constexpr ndensityfct = 3;
-uint constexpr ntracers = 0;
-uint constexpr ntracers_fct = 0;
-#endif
-#ifdef _MCERHOD
+#ifdef _MCE
 uint constexpr ndensity = 2;
 uint constexpr ndensityfct = 3;
 uint constexpr ntracers = 0;

@@ -1,0 +1,89 @@
+#DIFFORDER
+#PRIMALRECONTYPE
+#PRIMALRECONORDER
+#DUALRECONTYPE
+#DUALRECONORDER
+#PRIMALVERTRECONTYPE
+#PRIMALVERTRECONORDER
+#DUALVERTRECONTYPE
+#DUALVERTRECONORDER
+#CORIOLISRECONTYPE
+#CORIOLISRECONORDER
+#CORIOLISVERTRECONTYPE
+#CORIOLISVERTRECONORDER
+
+#CFV WENO WENOFUNC
+
+
+Basically there is an automatic file with reasonable defaults...ie H2, WENOFUNC3 and CFV3; with SSPRK3 and UNIFORM GEOMETRY?
+And then some mechanism to override them in the build processes
+
+So a file called discretization_compile_opts.h that uses preprocessor #defines like _PRIMAL_RECON_TYPE
+Actually this can just be common.h itself!
+
+and then some logic in build process that sets reasonable defaults?
+
+AND ALL THE THERMO/P-VARIANT LOGIC ie
+#define _IDEAL_GAS_POTTEMP
+#ifdef _CONST_KAPPA_VIRPOTTEMP
+#ifdef _USE_P_VARIANT
+#ifdef _USE_RHOD_VARIANT
+
+
+// THIS IS ACTUALLY MODEL SPECIFIC!
+// SO THE LOGIC SHOULD MOVE...
+// Number of Dimensions
+uint constexpr ndims = 2;
+
+
+//THIS SHOULD BE HODGE STAR ORDER!
+//MAYBE EVEN SET DIFFERENT STARS WITH DIFFERENT ACCURACIES?
+// Spatial order of accuracy for the model
+uint constexpr diff_ord = 2;
+
+//EVENTUALLY DISTINGUISH BETWEEN DENSITY AND DENSITYFCT RECONS HERE...
+
+// Reconstruction type
+RECONSTRUCTION_TYPE constexpr reconstruction_type = RECONSTRUCTION_TYPE::CFV;
+uint constexpr reconstruction_order = 1;
+
+RECONSTRUCTION_TYPE constexpr dual_reconstruction_type = RECONSTRUCTION_TYPE::CFV;
+uint constexpr dual_reconstruction_order = 1;
+
+RECONSTRUCTION_TYPE constexpr vert_reconstruction_type = RECONSTRUCTION_TYPE::CFV;
+uint constexpr vert_reconstruction_order = 1;
+
+RECONSTRUCTION_TYPE constexpr dual_vert_reconstruction_type = RECONSTRUCTION_TYPE::CFV;
+uint constexpr dual_vert_reconstruction_order = 1;
+
+RECONSTRUCTION_TYPE constexpr coriolis_reconstruction_type = RECONSTRUCTION_TYPE::CFV;
+uint constexpr coriolis_reconstruction_order = 5;
+
+RECONSTRUCTION_TYPE constexpr coriolis_vert_reconstruction_type = RECONSTRUCTION_TYPE::CFV;
+uint constexpr coriolis_vert_reconstruction_order = 5;
+
+// How to handle PV flux term
+// ADD AL81-TYPE SCHEME HERE EVENTUALLY AS WELL
+enum class QF_MODE { EC, NOEC };
+QF_MODE constexpr qf_choice = QF_MODE::EC;
+
+// initial condition quadrature pts
+uint constexpr ic_quad_pts = 3;
+
+//THIS CAN GET REPLACED WITH SOMETHING IN DRIVER.CPP BASED ON A PRE-PROCESSOR SETTING...
+// Time scheme
+TIME_TYPE constexpr time_type = TIME_TYPE::SSPRK;
+
+//MOVE THIS LOGIC TO COMMON.H? ie given choice of time scheme the number of stages is set?
+//WHAT IS ACTUALLy CURRENTLY IMPLEMENTED?
+uint constexpr n_time_stages = 3;
+
+//THIS CAN GET REPLACED WITH SOMETHING IN DRIVER.CPP BASED ON A PRE-PROCESSOR SETTING...
+// Grid geometry
+GEOM_TYPE constexpr geom_type = GEOM_TYPE::UNIFORM_RECT;
+
+
+// FIX THIS
+// Halo sizes
+uint constexpr maxhalosize = 15; //mymax(reconstruction_order+1,differential_order)/2; // IS THIS ALWAYS CORRECT?
+

@@ -571,6 +571,10 @@ class Hamiltonian_CE_Hs {
 
 
 
+
+
+
+
 class Hamiltonian_MCE_rho_Hs {
  public:
    Geometry<ndims,1,1,1> *primal_geometry;
@@ -674,7 +678,6 @@ class Hamiltonian_MCE_rho_Hs {
     
   }
 };
-
 
 
 
@@ -782,6 +785,141 @@ class Hamiltonian_MCE_rhod_Hs {
     B(1, k+ks, j+js, i+is) = generalized_Exner;
   }
 };
+
+
+
+
+// p-variants
+class Hamiltonian_CE_p_Hs : public Hamiltonian_CE_Hs
+{
+  real YAKL_INLINE compute_IE(const realArr dens, const realArr densfct, int is, int js, int ks, int i, int j, int k)
+  {
+    SArray<real,2> dens0;
+    compute_I<2, diff_ord>(dens0, dens, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
+    real entropic_var = dens0(1)/dens0(0);
+    real p = thermo->solve_p(dens0(0), entropic_var, 0, 0, 0, 0);
+    return dens(0, k+ks, j+js, i+is) * thermo->compute_H(p, entropic_var, 0, 0, 0, 0) - p;
+  }
+
+   void YAKL_INLINE compute_dHsdx(realArr B, realArr Bfct, const realArr dens0, const realArr densfct0, const realArr geop, int is, int js, int ks, int i, int j, int k)
+   {
+
+     SArray<real,1> geop0;
+     compute_I<1,diff_ord> (geop0, geop, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
+
+     real entropic_var = compute_entropic_var(dens0, densfct0, is, js, ks, i, j, k);
+     real p = thermo->solve_p(dens0(0, k+ks, j+js, i+is), entropic_var, 0, 0, 0, 0);
+
+     real H = thermo->compute_H(p, entropic_var, 0, 0, 0, 0);
+     real generalized_Exner = thermo->compute_dHdentropic_var_density(p, entropic_var, 0, 0, 0, 0);
+
+     B(0, k+ks, j+js, i+is) = geop0(0) + H - entropic_var * generalized_Exner;
+     B(1, k+ks, j+js, i+is) = generalized_Exner;
+
+   }
+};
+
+class Hamiltonian_MCE_rho_p_Hs : public Hamiltonian_MCE_rho_Hs
+{
+  real YAKL_INLINE compute_IE(const realArr dens, const realArr densfct, int is, int js, int ks, int i, int j, int k)
+  {
+
+    SArray<real,2> dens0;
+    SArray<real,3> densfct0;
+    compute_I<2, diff_ord>(dens0, dens, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
+    compute_I<3, diff_ord>(densfct0, densfct, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
+
+    real entropic_var = dens0(1)/dens0(0);
+    real qd = (dens0(0) - densfct(0) - densfct(1) - densfct(2))/dens0(0);
+    real ql = densfct(0) / dens0(0);
+    real qi = densfct(1) / dens0(0);
+    real qv = densfct(2) / dens0(0);
+    real p = thermo->solve_p(dens0(0), entropic_var, qd, qv, ql, qi);
+    return dens(0, k+ks, j+js, i+is) * thermo->compute_H(p, entropic_var, qd, qv, ql, qi) - p;
+  }
+
+   void YAKL_INLINE compute_dHsdx(realArr B, realArr Bfct, const realArr dens0, const realArr densfct0, const realArr geop, int is, int js, int ks, int i, int j, int k)
+   {
+
+     SArray<real,1> geop0;
+     compute_I<1,diff_ord> (geop0, geop, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
+     
+     real entropic_var = compute_entropic_var(dens0, densfct0, is, js, ks, i, j, k);
+     real qd = compute_qd(dens0, densfct0, is, js, ks, i, j, k);
+     real ql = compute_ql(dens0, densfct0, is, js, ks, i, j, k);
+     real qi = compute_qi(dens0, densfct0, is, js, ks, i, j, k);
+     real qv = compute_qv(dens0, densfct0, is, js, ks, i, j, k);
+
+     real p = thermo->solve_p(dens0(0, k+ks, j+js, i+is), entropic_var, qd, qv, ql, qi);
+     real H = thermo->compute_H(p, entropic_var, qd, qv, ql, qi);
+     real generalized_Exner = thermo->compute_dHdentropic_var_density(p, entropic_var, qd, qv, ql, qi);
+     real generalized_chemical_potential_d = thermo->compute_dHdqd(p, entropic_var, qd, qv, ql, qi);
+     real generalized_chemical_potential_v = thermo->compute_dHdqv(p, entropic_var, qd, qv, ql, qi);
+     real generalized_chemical_potential_l = thermo->compute_dHdql(p, entropic_var, qd, qv, ql, qi);
+     real generalized_chemical_potential_i = thermo->compute_dHdqi(p, entropic_var, qd, qv, ql, qi);
+
+     B(0, k+ks, j+js, i+is) = geop0(0) + H - entropic_var * generalized_Exner + 
+     qv * (generalized_chemical_potential_d - generalized_chemical_potential_v) + 
+     ql * (generalized_chemical_potential_d - generalized_chemical_potential_l) + 
+     qi * (generalized_chemical_potential_d - generalized_chemical_potential_i);
+     B(1, k+ks, j+js, i+is) = generalized_Exner;
+     Bfct(0, k+ks, j+js, i+is) = generalized_chemical_potential_v - generalized_chemical_potential_d;
+     Bfct(1, k+ks, j+js, i+is) = generalized_chemical_potential_l - generalized_chemical_potential_d;
+     Bfct(2, k+ks, j+js, i+is) = generalized_chemical_potential_i - generalized_chemical_potential_d;
+     
+   }
+};
+
+class Hamiltonian_MCE_rhod_p_Hs : public Hamiltonian_MCE_rhod_Hs
+{
+  real YAKL_INLINE compute_IE(const realArr dens, const realArr densfct, int is, int js, int ks, int i, int j, int k)
+  {
+
+    SArray<real,2> dens0;
+    SArray<real,3> densfct0;
+    compute_I<2, diff_ord>(dens0, dens, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
+    compute_I<3, diff_ord>(densfct0, densfct, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
+    
+    real rho = dens0(0) + densfct(0) + densfct(1) + densfct(2);
+    real entropic_var = dens0(1)/rho;
+    real qd = dens0(0) / rho;
+    real ql = densfct(0) / rho;
+    real qi = densfct(1) / rho;
+    real qv = densfct(2) / rho;
+    real p = thermo->solve_p(rho, entropic_var, qd, qv, ql, qi);
+    return rho * thermo->compute_H(p, entropic_var, qd, qv, ql, qi) - p;
+  }
+
+   void YAKL_INLINE compute_dHsdx(realArr B, realArr Bfct, const realArr dens0, const realArr densfct0, const realArr geop, int is, int js, int ks, int i, int j, int k)
+   {
+
+     SArray<real,1> geop0;
+     compute_I<1,diff_ord> (geop0, geop, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
+     
+     real alpha = compute_alpha(dens0, densfct0, is, js, ks, i, j, k);
+     real entropic_var = compute_entropic_var(dens0, densfct0, is, js, ks, i, j, k);
+     real qd = compute_qd(dens0, densfct0, is, js, ks, i, j, k);
+     real ql = compute_ql(dens0, densfct0, is, js, ks, i, j, k);
+     real qi = compute_qi(dens0, densfct0, is, js, ks, i, j, k);
+     real qv = compute_qv(dens0, densfct0, is, js, ks, i, j, k);
+     real p = thermo->solve_p(1./alpha, entropic_var, qd, qv, ql, qi);
+
+     real H = thermo->compute_H(p, entropic_var, qd, qv, ql, qi);
+     real generalized_Exner = thermo->compute_dHdentropic_var_density(p, entropic_var, qd, qv, ql, qi);
+     real generalized_chemical_potential_d = thermo->compute_dHdqd(p, entropic_var, qd, qv, ql, qi);
+     real generalized_chemical_potential_v = thermo->compute_dHdqv(p, entropic_var, qd, qv, ql, qi);
+     real generalized_chemical_potential_l = thermo->compute_dHdql(p, entropic_var, qd, qv, ql, qi);
+     real generalized_chemical_potential_i = thermo->compute_dHdqi(p, entropic_var, qd, qv, ql, qi);
+
+     real QNterm = qd * generalized_chemical_potential_d + qv * generalized_chemical_potential_v + qi * generalized_chemical_potential_i + qi * generalized_chemical_potential_i;
+     B(0, k+ks, j+js, i+is) = geop0(0) + H - entropic_var * generalized_Exner - generalized_chemical_potential_d - QNterm; 
+     Bfct(0, k+ks, j+js, i+is) = geop0(0) + H - entropic_var * generalized_Exner - generalized_chemical_potential_v - QNterm; 
+     Bfct(1, k+ks, j+js, i+is) = geop0(0) + H - entropic_var * generalized_Exner - generalized_chemical_potential_l - QNterm; 
+     Bfct(2, k+ks, j+js, i+is) = geop0(0) + H - entropic_var * generalized_Exner - generalized_chemical_potential_i - QNterm; 
+     B(1, k+ks, j+js, i+is) = generalized_Exner;
+   }
+};
+
 
 
 #endif

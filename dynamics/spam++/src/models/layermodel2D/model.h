@@ -99,33 +99,62 @@ ThermoPotential thermo;
 #endif
 
 #ifdef _CE
+
 Functional_PVPE_rho PVPE;
 Hamiltonian_Hk_rho Hk;
+
+#ifdef _USE_P_VARIANT
+Hamiltonian_CE_p_Hs Hs;
+#else
 Hamiltonian_CE_Hs Hs;
+#endif
+
 #ifdef _IDEAL_GAS_POTTEMP
 IdealGas_Pottemp thermo;
 #endif
 #ifdef _IDEAL_GAS_ENTROPY
 IdealGas_Entropy thermo;
 #endif
+
 #endif
 
-#ifdef _MCERHO
-Functional_PVPE_rho PVPE;
-Hamiltonian_Hk_rho Hk;
-Hamiltonian_MCE_rho_Hs Hs;
-#ifdef _CONST_KAPPA_VIRPOTTEMP
-ConstantKappa_VirtualPottemp thermo;
-#endif
-#endif
+#ifdef _MCE
 
-#ifdef _MCERHOD
+#ifdef _USE_RHOD_VARIANT
 Functional_PVPE_rhod PVPE;
 Hamiltonian_Hk_rhod Hk;
+
+#ifdef _USE_P_VARIANT
+Hamiltonian_MCE_rhod_p_Hs Hs;
+#else
 Hamiltonian_MCE_rhod_Hs Hs;
+#endif
+
+#else
+Functional_PVPE_rho PVPE;
+Hamiltonian_Hk_rho Hk;
+
+#ifdef _USE_P_VARIANT
+Hamiltonian_MCE_rho_p_Hs Hs;
+#else
+Hamiltonian_MCE_rho_Hs Hs;
+#endif
+
+#endif
+
 #ifdef _CONST_KAPPA_VIRPOTTEMP
 ConstantKappa_VirtualPottemp thermo;
 #endif
+#ifdef _CONST_KAPPA_ENTROPY
+ConstantKappa_Entropy thermo;
+#endif
+#ifdef _UNAPPROX_POTTEMP
+Unapprox_Pottemp thermo;
+#endif
+#ifdef _UNAPPROX_ENTROPY
+Unapprox_Entropy thermo;
+#endif
+
 #endif
 
 
