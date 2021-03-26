@@ -6,12 +6,13 @@ import matplotlib.pyplot as plt
 import matplotlib
 from matplotlib.patches import Circle
 
+
 recon_types = ['WENOFUNC','CFV']
 recon_orders = [1,3,5,7,9]
 diff_orders = [2,4]
-sizes = [100, 200]
+sizes = [200, 400]
 
-Nlist = [0,6,9]
+Nlist = [0,5,10,20]
 
 
 DSdict = {}

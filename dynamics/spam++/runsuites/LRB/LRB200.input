@@ -1,12 +1,12 @@
 // Topology
-nx = 100
-ny = 150
+nx = 200
+ny = 200
 nz = 30
 
 // Time stepping
-dt = 0.025
-Nsteps = 36000
-Nout = 4000
+dt = 0.2
+Nsteps = 10000
+Nout = 500
 Nstat = 1
 TStype = dt
 cfl = 0.5
@@ -19,3 +19,10 @@ nprocz = 1
 // initial condition
 dataInit = rb
 acoustic_balance = false
+
+// These settings seem to work well
+// nx = 200 400
+// ny = 200 400
+// dt = 0.2 0.1
+// Nsteps = 10000 20000
+// Nout = 500 1000

@@ -1,12 +1,12 @@
 // Topology
-nx = 100
-ny = 150
+nx = 400
+ny = 400
 nz = 30
 
 // Time stepping
-dt = 0.025
-Nsteps = 36000
-Nout = 4000
+dt = 0.1
+Nsteps = 20000
+Nout = 1000
 Nstat = 1
 TStype = dt
 cfl = 0.5

@@ -6,23 +6,10 @@ import sys
 DS = xr.open_dataset('output.nc')
 DS.load()
 
-# SHOULD AUTO LOAD FROM input-layermodel2D.txt
-Nlist = np.arange(21)
-
-# ADJUST THIS LOGIC A LITTLE FOR SWE/TSWE VS. CE
+ndensity = DS.dims['dens_ndofs']
+ndensity_fct = DS.dims.get('densfct_ndofs',0)
+nt = DS.dims['t']
 model = sys.argv[1]
-ntracers = int(sys.argv[2])
-ntracers_fct = int(sys.argv[3])
-if (model == 'swe'): 
-    ndensity = 1 + ntracers
-if (model == 'tswe'): 
-    ndensity = 2 + ntracers
-if (model == 'ce'): 
-    ndensity = 2
-if (model == 'mcerho'): 
-    ndensity = 2
-if (model == 'mcerhod'): 
-    ndensity = 2
 
 mass = DS.mass
 energy = DS.energy
@@ -32,7 +19,7 @@ pv = DS.pv
 densmax = DS.densmax
 densmin = DS.densmin
 
-if ntracers_fct > 0:
+if ndensity_fct > 0:
     massfct = DS.massfct
     densfctmax = DS.densfctmax
     densfctmin = DS.densfctmin
@@ -40,17 +27,56 @@ if ntracers_fct > 0:
 #maybe mass/tracer stuff gets a list of names of size ndensity/ndensityfct?
 #YES DO IT LIKE THIS!
 
-mass_names = []
-massfct_names = []
-dens_names = []
-densfct_names = []
+if model == 'swe':
+    dens_names = ['h',]
+    densfct_names = []
+    dens_stat_names = ['mass',]
+    densfct_stat_names = []
+    nprogdens = 1
+    nprogdensfct = 0  
+if model == 'tswe':
+    dens_names = ['h','S',]
+    densfct_names = []
+    dens_stat_names = ['mass','bouyancy',]
+    densfct_stat_names = []
+    nprogdens = 2
+    nprogdensfct = 0  
 
-plot_stat('total_mass', mass.isel(mass_ndofs=0))
-if (model == 'tswe'):
-    plot_stat('total_bouyancy', mass.isel(mass_ndofs=1))
-if model in ['ce','mcerho','mcerhod']:    
-    plot_stat('total_entropic_density', mass.isel(mass_ndofs=1))
+if model == 'ce':
+    dens_names = ['rho','Theta',]
+    densfct_names = []
+    dens_stat_names = ['mass','entropic_var_density',]
+    densfct_stat_names = []
+    nprogdens = 2
+    nprogdensfct = 0  
+#THIS BREAKS FOR RHOD VARIANTS...
+#probably ok, this is just a quick and dirty plotting script...
+if model == 'mce':
+    dens_names = ['rho','Theta',]    
+    densfct_names = ['rho_v', 'rho_l', 'rho_i']
+    dens_stat_names = ['mass','entropic_var_density',]    
+    densfct_stat_names = ['vapor_mass', 'liquid_mass', 'ice_mass']
+    nprogdens = 2
+    nprogdensfct = 3 
+    
+for k in range(ndensity-nprogdens):
+    dens_names.append('T'+str(k))
+    dens_stat_names.append('tracer'+str(k))
+for k in range(ndensity_fct-nprogdensfct):
+    densfct_names.append('Tfct'+str(k))        
+    densfct_stat_names.append('tracerfct'+str(k))  
 
+for l,name in zip(range(ndensity), dens_stat_names):
+    plot_stat('total_'+name, mass.isel(mass_ndofs=l))
+    plot_rawstat('max_' +name, densmin.isel(densmin_ndofs=l))
+    plot_rawstat('min_' +name, densmax.isel(densmax_ndofs=l))
+    
+if ndensity_fct > 0:
+    for l,name in zip(range(ndensity_fct), densfct_stat_names):
+        plot_stat('total_'+name, massfct.isel(massfct_ndofs=l))
+        plot_rawstat('max_' +name, densfctmin.isel(densfctmin_ndofs=l))
+        plot_rawstat('min_' +name, densfctmax.isel(densfctmax_ndofs=l))
+                
 plot_rawstat('internal_energy', energy.isel(energy_ndofs=3))
 plot_rawstat('potential_energy', energy.isel(energy_ndofs=2))
 plot_rawstat('kinetic_energy', energy.isel(energy_ndofs=1))
@@ -59,22 +85,8 @@ plot_stat('total_energy', energy.isel(energy_ndofs=0))
 plot_stat('total_pens', pens.isel(pens_ndofs=0))
 plot_stat('total_pv', pv.isel(pv_ndofs=0))
 
-# ADJUST THIS LOGIC A LITTLE FOR SWE/TSWE VS. CE
-for l in range(ndensity-ntracers,ndensity):
-    plot_stat('tracer' + str(l-ntracers), mass.isel(mass_ndofs=l))
-    plot_rawstat('tracer' + str(l-ntracers) + 'min', densmin.isel(densmin_ndofs=l))
-    plot_rawstat('tracer' + str(l-ntracers) + 'max', densmax.isel(densmax_ndofs=l))
 
-if ntracers_fct > 0:
-    for l in range(ntracers):
-        plot_stat('tracerfct' + str(l), massfct.isel(massfct_ndofs=l))
-        plot_rawstat('tracerfct' + str(l) + 'min', densfctmin.isel(densfctmin_ndofs=l))
-        plot_rawstat('tracerfct' + str(l) + 'max', densfctmax.isel(densfctmax_ndofs=l))
-
-
-# Probably control what to plot based on the test case run...
-# actually, no, this is just a quick output plotting script
-# add more detailed test case specific plotting stuff for a paper later on...
+Nlist = np.arange(0,nt)
 
 v = DS.v
 dens = DS.dens
@@ -83,28 +95,23 @@ densl = DS.densl
 hs = DS.hs
 coriolis = DS.coriolis
 
-# ADJUST THIS LOGIC A LITTLE FOR SWE/TSWE VS. CE
-if (ntracers_fct>0):
+if (ndensity_fct>0):
     densfct = DS.densfct
     densfctl = DS.densfctl
 
 plotvar_scalar2D('hs', hs.isel(hs_ndofs=0,dual_ncells_z=0),0)
 plotvar_scalar2D('coriolis', coriolis.isel(coriolis_ndofs=0,primal_ncells_z=0),0)
 
-# ADJUST THIS LOGIC A LITTLE FOR SWE/TSWE VS. CE
 # WHERE EXACTLY SHOULD sl/trl/trfctl live? are they straight 0-forms? twisted n-forms?
 for i in Nlist:
     plotvar_scalar2D('q', q.isel(t=i,q_ndofs=0,dual_ncells_z=0),i)
-    plotvar_scalar2D('h', dens.isel(t=i,dens_ndofs=0,dual_ncells_z=0),i)
-    if model in ['tswe','ce','mcerho','mcerhod']:    
-        plotvar_scalar2D('S', dens.isel(t=i,dens_ndofs=1,dual_ncells_z=0),i)
-        plotvar_scalar2D('sl', densl.isel(t=i,densl_ndofs=1,primal_ncells_z=0),i)
-    for l in range(ndensity-ntracers,ndensity):
-        plotvar_scalar2D('tr' + str(l-ntracers), dens.isel(t=i,dens_ndofs=l,dual_ncells_z=0),i)
-        plotvar_scalar2D('trl' + str(l-ntracers), densl.isel(t=i,densl_ndofs=l,primal_ncells_z=0),i)
-    if ntracers_fct > 0:
-        for l in range(ntracers_fct):
-            plotvar_scalar2D('trfct' + str(l), densfct.isel(t=i,densfct_ndofs=l,dual_ncells_z=0),i)
-            plotvar_scalar2D('trfctl' + str(l), densfctl.isel(t=i,densfctl_ndofs=l,primal_ncells_z=0),i)
     plotvar_vector2D('v', v.isel(t=i,v_ndofs=0,primal_ncells_z=0), v.isel(t=i,v_ndofs=1,primal_ncells_z=0),i)
+    for l,name in zip(range(ndensity), dens_names):
+            plotvar_scalar2D(name, dens.isel(t=i,dens_ndofs=l,dual_ncells_z=0),i)
+            plotvar_scalar2D(name+'l', densl.isel(t=i,densl_ndofs=1,primal_ncells_z=0),i)
+    if ndensity_fct > 0:
+        for l,name in zip(range(ndensity_fct), densfct_names):
+            plotvar_scalar2D(name, densfct.isel(t=i,densfct_ndofs=l,dual_ncells_z=0),i)
+            plotvar_scalar2D(name+'l', densfctl.isel(t=i,densfctl_ndofs=1,primal_ncells_z=0),i)
+
 
