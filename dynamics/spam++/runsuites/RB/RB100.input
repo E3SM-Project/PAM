@@ -19,3 +19,10 @@ nprocz = 1
 // initial condition
 dataInit = rb
 acoustic_balance = false
+
+tracerInit1 = square
+tracerInit2 = gaussian
+tracerInit3 = doublesquare
+tracerFCTInit1 = square
+tracerFCTInit2 = gaussian
+tracerFCTInit3 = doublesquare

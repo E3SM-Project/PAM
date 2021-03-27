@@ -3,7 +3,7 @@
 
 # HOW DO WE ADD RHO VS. RHO_D VARIANTS HERE?
 
-#rm *.png *.nc *.build *.out layermodel2D
+rm *.png *.nc *.build *.out layermodel2D
 mkdir -p MLRB
 for SIZE in 200 400
 do
@@ -24,15 +24,15 @@ do
         cp runsuites/MLRB/model_consts.template model_consts.build
 #FIX THIS TO MODIFY RHO VS. RHO_D
         sed -i "s/HODGEORDER/${DIFFORDER}/" model_consts.build
-        #./build/cmake_linuxlaptop.sh mce2D build_consts.build model_consts.build >& build.out
-        #make
-        #mpirun.mpich -n 4 ./layermodel2D runsuites/MLRB/MLRB${SIZE}.input >& run.out
+        ./build/cmake_linuxlaptop.sh mce2D build_consts.build &> build.out
+        make &>> build.out
+        mpirun.mpich -n 4 ./layermodel2D runsuites/LRB/LRB${SIZE}.input &> run.out
         mv *.png *.nc *.build *.out MLRB/MLRB${SIZE}-${RECONTYPE}${RECONORDER}-HODGE${DIFFORDER}
       done
     done  
   done
 done
  
-#python3 plot_MLRB.py
-#mv *.png MLRB
+python3 plot_MLRB.py
+mv *.png MLRB
 

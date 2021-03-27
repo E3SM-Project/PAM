@@ -20,9 +20,9 @@ nprocz = 1
 dataInit = lrb
 acoustic_balance = false
 
-// These settings seem to work well
-// nx = 200 400
-// ny = 200 400
-// dt = 0.2 0.1
-// Nsteps = 10000 20000
-// Nout = 500 1000
+tracerInit1 = square
+tracerInit2 = gaussian
+tracerInit3 = doublesquare
+tracerFCTInit1 = square
+tracerFCTInit2 = gaussian
+tracerFCTInit3 = doublesquare
