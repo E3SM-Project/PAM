@@ -420,7 +420,7 @@ public:
       real wdt = cfl * dz(k,iens) / ( abs(w) + 1.e-6 );
 
       // Compute the min of the max stable time steps
-      dt3d(k,j,i,iens) = min( 5._fp , min( min( abs(udt) , abs(vdt) ) , abs(wdt) ) );
+      dt3d(k,j,i,iens) = min( 5.0_fp , min( min( abs(udt) , abs(vdt) ) , abs(wdt) ) );
     });
     real dt = yakl::intrinsics::minval( dt3d );
     
@@ -1264,6 +1264,27 @@ public:
         stateTend(idV,k,j,i,iens) = 0;
       }
       stateTend(idW,k,j,i,iens) = ( rho_w_new(k,j,i,iens) - state(idW,hs+k,hs+j,hs+i,iens) ) / dtglob;
+
+      int im1 = i-1;  if (im1 < 0   ) im1 = nx-1;
+      int ip1 = i+1;  if (ip1 > nx-1) ip1 = 0;
+      int jm1 = j-1;  if (jm1 < 0   ) jm1 = ny-1;
+      int jp1 = j+1;  if (jp1 > ny-1) jp1 = 0;
+      int km1 = k-1;  if (km1 < 0   ) km1 = 0;
+      int kp1 = k+1;  if (kp1 > nz-1) kp1 = nz-1;
+      // x-direction fluxes
+      real ru_im1 = rho_u_new(k,j,im1,iens);
+      real ru_i   = rho_u_new(k,j,i  ,iens);
+      real ru_ip1 = rho_u_new(k,j,ip1,iens);
+      // y-direction fluxes
+      real rv_jm1 = rho_v_new(k,jm1,i,iens);
+      real rv_j   = rho_v_new(k,j  ,i,iens);
+      real rv_jp1 = rho_v_new(k,jp1,i,iens);
+      // z-direction fluxes
+      real rw_km1 = rho_w_new(km1,j,i,iens);
+      real rw_k   = rho_w_new(k  ,j,i,iens);
+      real rw_kp1 = rho_w_new(kp1,j,i,iens);
+      if (k == 0   ) rw_km1 = 0;
+      if (k == nz-1) rw_kp1 = 0;
       
       stateTend(idT,k,j,i,iens) = 0;
     });

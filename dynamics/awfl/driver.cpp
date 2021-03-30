@@ -1,7 +1,7 @@
 
 #include "const.h"
 #include "Spatial_prim_anelastic_fv_Agrid.h"
-#include "Temporal_ssprk3.h"
+#include "Temporal_ader.h"
 #include "Profiles.h"
 #include "Microphysics_kessler.h"
 #include "DataManager.h"

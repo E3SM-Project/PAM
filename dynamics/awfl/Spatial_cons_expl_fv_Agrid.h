@@ -1530,7 +1530,7 @@ public:
           real f2 = max( tracerFlux(tr,k,j,ind_i+1,iens) , 0._fp );
           real fluxOut = dt*(f2-f1)/dx;
           real dens = state(idR,hs+k,hs+j,hs+ind_i,iens) + hyDensCells(k,iens);
-          tracerFlux(tr,k,j,i,iens) *= min( 1._fp , tracers(tr,hs+k,hs+j,hs+ind_i,iens) * dens / (fluxOut + eps) );
+          tracerFlux(tr,k,j,i,iens) *= min( 1._fp , tracers(tr,hs+k,hs+j,hs+ind_i,iens) / (fluxOut + eps) );
         } else if (u < 0) {
           // upwind is to the right of this interface
           int ind_i = i;
@@ -1539,7 +1539,7 @@ public:
           real f2 = max( tracerFlux(tr,k,j,ind_i+1,iens) , 0._fp );
           real fluxOut = dt*(f2-f1)/dx;
           real dens = state(idR,hs+k,hs+j,hs+ind_i,iens) + hyDensCells(k,iens);
-          tracerFlux(tr,k,j,i,iens) *= min( 1._fp , tracers(tr,hs+k,hs+j,hs+ind_i,iens) * dens / (fluxOut + eps) );
+          tracerFlux(tr,k,j,i,iens) *= min( 1._fp , tracers(tr,hs+k,hs+j,hs+ind_i,iens) / (fluxOut + eps) );
         }
       }
     });
@@ -1884,7 +1884,7 @@ public:
           real f2 = max( tracerFlux(tr,k,ind_j+1,i,iens) , 0._fp );
           real fluxOut = dt*(f2-f1)/dy;
           real dens = state(idR,hs+k,hs+ind_j,hs+i,iens) + hyDensCells(k,iens);
-          tracerFlux(tr,k,j,i,iens) *= min( 1._fp , tracers(tr,hs+k,hs+ind_j,hs+i,iens) * dens / (fluxOut + eps) );
+          tracerFlux(tr,k,j,i,iens) *= min( 1._fp , tracers(tr,hs+k,hs+ind_j,hs+i,iens) / (fluxOut + eps) );
         } else if (v < 0) {
           // upwind is to the right of this interface
           int ind_j = j;
@@ -1893,7 +1893,7 @@ public:
           real f2 = max( tracerFlux(tr,k,ind_j+1,i,iens) , 0._fp );
           real fluxOut = dt*(f2-f1)/dy;
           real dens = state(idR,hs+k,hs+ind_j,hs+i,iens) + hyDensCells(k,iens);
-          tracerFlux(tr,k,j,i,iens) *= min( 1._fp , tracers(tr,hs+k,hs+ind_j,hs+i,iens) * dens / (fluxOut + eps) );
+          tracerFlux(tr,k,j,i,iens) *= min( 1._fp , tracers(tr,hs+k,hs+ind_j,hs+i,iens) / (fluxOut + eps) );
         }
       }
     });
