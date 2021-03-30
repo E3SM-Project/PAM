@@ -640,9 +640,9 @@ class Hamiltonian_MCE_rho_Hs {
    real alpha = 1./dens0(0);
    real entropic_var = dens0(1)/dens0(0);
    real qd = (dens0(0) - densfct(0) - densfct(1) - densfct(2))/dens0(0);
-   real ql = densfct(0) / dens0(0);
-   real qi = densfct(1) / dens0(0);
-   real qv = densfct(2) / dens0(0);
+   real qv = densfct(0) / dens0(0);
+   real ql = densfct(1) / dens0(0);
+   real qi = densfct(2) / dens0(0);
    return dens(0, k+ks, j+js, i+is) * thermo->compute_U(alpha, entropic_var, qd, qv, ql, qi);
  }
 
@@ -655,9 +655,9 @@ class Hamiltonian_MCE_rho_Hs {
     real alpha = compute_alpha(dens0, densfct0, is, js, ks, i, j, k);
     real entropic_var = compute_entropic_var(dens0, densfct0, is, js, ks, i, j, k);
     real qd = compute_qd(dens0, densfct0, is, js, ks, i, j, k);
+    real qv = compute_qv(dens0, densfct0, is, js, ks, i, j, k);
     real ql = compute_ql(dens0, densfct0, is, js, ks, i, j, k);
     real qi = compute_qi(dens0, densfct0, is, js, ks, i, j, k);
-    real qv = compute_qv(dens0, densfct0, is, js, ks, i, j, k);
     
     real U = thermo->compute_U(alpha, entropic_var, qd, qv, ql, qi);
     real p = -thermo->compute_dUdalpha(alpha, entropic_var, qd, qv, ql, qi);
@@ -750,9 +750,9 @@ class Hamiltonian_MCE_rhod_Hs {
    real alpha = 1./rho;
    real entropic_var = dens0(1)/rho;
    real qd = dens0(0) / rho;
-   real ql = densfct(0) / rho;
-   real qi = densfct(1) / rho;
-   real qv = densfct(2) / rho;
+   real qv = densfct(0) / rho;
+   real ql = densfct(1) / rho;
+   real qi = densfct(2) / rho;
    return rho * thermo->compute_U(alpha, entropic_var, qd, qv, ql, qi);
  }
 
@@ -765,9 +765,9 @@ class Hamiltonian_MCE_rhod_Hs {
     real alpha = compute_alpha(dens0, densfct0, is, js, ks, i, j, k);
     real entropic_var = compute_entropic_var(dens0, densfct0, is, js, ks, i, j, k);
     real qd = compute_qd(dens0, densfct0, is, js, ks, i, j, k);
+    real qv = compute_qv(dens0, densfct0, is, js, ks, i, j, k);
     real ql = compute_ql(dens0, densfct0, is, js, ks, i, j, k);
     real qi = compute_qi(dens0, densfct0, is, js, ks, i, j, k);
-    real qv = compute_qv(dens0, densfct0, is, js, ks, i, j, k);
     
     real U = thermo->compute_U(alpha, entropic_var, qd, qv, ql, qi);
     real p = -thermo->compute_dUdalpha(alpha, entropic_var, qd, qv, ql, qi);
@@ -831,9 +831,9 @@ class Hamiltonian_MCE_rho_p_Hs : public Hamiltonian_MCE_rho_Hs
 
     real entropic_var = dens0(1)/dens0(0);
     real qd = (dens0(0) - densfct(0) - densfct(1) - densfct(2))/dens0(0);
-    real ql = densfct(0) / dens0(0);
-    real qi = densfct(1) / dens0(0);
-    real qv = densfct(2) / dens0(0);
+    real qv = densfct(0) / dens0(0);
+    real ql = densfct(1) / dens0(0);
+    real qi = densfct(2) / dens0(0);
     real p = thermo->solve_p(dens0(0), entropic_var, qd, qv, ql, qi);
     return dens(0, k+ks, j+js, i+is) * thermo->compute_H(p, entropic_var, qd, qv, ql, qi) - p;
   }
@@ -846,9 +846,9 @@ class Hamiltonian_MCE_rho_p_Hs : public Hamiltonian_MCE_rho_Hs
      
      real entropic_var = compute_entropic_var(dens0, densfct0, is, js, ks, i, j, k);
      real qd = compute_qd(dens0, densfct0, is, js, ks, i, j, k);
+     real qv = compute_qv(dens0, densfct0, is, js, ks, i, j, k);
      real ql = compute_ql(dens0, densfct0, is, js, ks, i, j, k);
      real qi = compute_qi(dens0, densfct0, is, js, ks, i, j, k);
-     real qv = compute_qv(dens0, densfct0, is, js, ks, i, j, k);
 
      real p = thermo->solve_p(dens0(0, k+ks, j+js, i+is), entropic_var, qd, qv, ql, qi);
      real H = thermo->compute_H(p, entropic_var, qd, qv, ql, qi);
@@ -883,9 +883,9 @@ class Hamiltonian_MCE_rhod_p_Hs : public Hamiltonian_MCE_rhod_Hs
     real rho = dens0(0) + densfct(0) + densfct(1) + densfct(2);
     real entropic_var = dens0(1)/rho;
     real qd = dens0(0) / rho;
-    real ql = densfct(0) / rho;
-    real qi = densfct(1) / rho;
-    real qv = densfct(2) / rho;
+    real qv = densfct(0) / rho;
+    real ql = densfct(1) / rho;
+    real qi = densfct(2) / rho;
     real p = thermo->solve_p(rho, entropic_var, qd, qv, ql, qi);
     return rho * thermo->compute_H(p, entropic_var, qd, qv, ql, qi) - p;
   }
@@ -899,9 +899,9 @@ class Hamiltonian_MCE_rhod_p_Hs : public Hamiltonian_MCE_rhod_Hs
      real alpha = compute_alpha(dens0, densfct0, is, js, ks, i, j, k);
      real entropic_var = compute_entropic_var(dens0, densfct0, is, js, ks, i, j, k);
      real qd = compute_qd(dens0, densfct0, is, js, ks, i, j, k);
+     real qv = compute_qv(dens0, densfct0, is, js, ks, i, j, k);
      real ql = compute_ql(dens0, densfct0, is, js, ks, i, j, k);
      real qi = compute_qi(dens0, densfct0, is, js, ks, i, j, k);
-     real qv = compute_qv(dens0, densfct0, is, js, ks, i, j, k);
      real p = thermo->solve_p(1./alpha, entropic_var, qd, qv, ql, qi);
 
      real H = thermo->compute_H(p, entropic_var, qd, qv, ql, qi);
@@ -921,5 +921,16 @@ class Hamiltonian_MCE_rhod_p_Hs : public Hamiltonian_MCE_rhod_Hs
 };
 
 
+
+// AN/MAN variants
+// HOW DO WE TREAT DHDX, ETC. HERE SINCE WE HAVE A NEW ARGUMENT: P^PRIME?
+// P^PRIME SOLVE IS NEEDED FOR DHDX in Hs and also for computing IE in Hs
+// SHOULD THESE DETERMINE LHS AND RHS OF P EQN? YES, IT IS A CONSTRAINT BASED EQN THAT DEPENDS ON THERMO AND VARIABLES....
+// MAYBE PPRIME LIVES IN DHDX LIKE HS/GEOP PROPERLY SHOULD?
+// YES ACTUALLY, THIS MAKES THE MOST SENSE... 
+class Functional_PVPE_AN {};
+class Hamiltonian_Hk_AN {};
+class Hamiltonian_AN_Hs {};
+class Hamiltonian_MAN_Hs {};
 
 #endif

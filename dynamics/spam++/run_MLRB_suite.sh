@@ -5,9 +5,9 @@
 
 rm *.png *.nc *.build *.out layermodel2D
 mkdir -p MLRB
-for SIZE in 200 400
+for SIZE in 200
 do
-  for DIFFORDER in 2 4
+  for DIFFORDER in 2
   do
     for RECONTYPE in 'WENOFUNC' 'CFV'
     do

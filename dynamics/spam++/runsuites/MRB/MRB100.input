@@ -5,8 +5,8 @@ nz = 30
 
 // Time stepping
 dt = 0.015625
-Nsteps = 57600 // 4000 57600
-Nout = 6400 // 500 6400
+Nsteps = 57600
+Nout = 6400
 Nstat = 1
 TStype = dt
 cfl = 0.5

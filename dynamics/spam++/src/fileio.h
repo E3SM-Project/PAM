@@ -6,11 +6,9 @@
 
 
 #include "common.h"
-#include <iostream>
 #include "variable_sets.h"
 #include "pnetcdf.h"
 #include "mpi.h"
-#include <cstring>
 #include "model.h"
 
 //Error reporting routine for the PNetCDF I/O

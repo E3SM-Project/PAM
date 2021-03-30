@@ -55,7 +55,7 @@ if model == 'mce':
     dens_names = ['rho','Theta',]    
     densfct_names = ['rho_v', 'rho_l', 'rho_i']
     dens_stat_names = ['mass','entropic_var_density',]    
-    densfct_stat_names = ['vapor_mass', 'liquid_mass', 'ice_mass']
+    densfct_stat_names = ['vapor', 'liquid', 'ice']
     nprogdens = 2
     nprogdensfct = 3 
     
@@ -68,14 +68,14 @@ for k in range(ndensity_fct-nprogdensfct):
 
 for l,name in zip(range(ndensity), dens_stat_names):
     plot_stat('total_'+name, mass.isel(mass_ndofs=l))
-    plot_rawstat('max_' +name, densmin.isel(densmin_ndofs=l))
-    plot_rawstat('min_' +name, densmax.isel(densmax_ndofs=l))
+    plot_rawstat('min_' +name, densmin.isel(densmin_ndofs=l))
+    plot_rawstat('max_' +name, densmax.isel(densmax_ndofs=l))
     
 if ndensity_fct > 0:
     for l,name in zip(range(ndensity_fct), densfct_stat_names):
         plot_stat('total_'+name, massfct.isel(massfct_ndofs=l))
-        plot_rawstat('max_' +name, densfctmin.isel(densfctmin_ndofs=l))
-        plot_rawstat('min_' +name, densfctmax.isel(densfctmax_ndofs=l))
+        plot_rawstat('min_' +name, densfctmin.isel(densfctmin_ndofs=l))
+        plot_rawstat('max_' +name, densfctmax.isel(densfctmax_ndofs=l))
                 
 plot_rawstat('internal_energy', energy.isel(energy_ndofs=3))
 plot_rawstat('potential_energy', energy.isel(energy_ndofs=2))
@@ -108,10 +108,9 @@ for i in Nlist:
     plotvar_vector2D('v', v.isel(t=i,v_ndofs=0,primal_ncells_z=0), v.isel(t=i,v_ndofs=1,primal_ncells_z=0),i)
     for l,name in zip(range(ndensity), dens_names):
             plotvar_scalar2D(name, dens.isel(t=i,dens_ndofs=l,dual_ncells_z=0),i)
-            plotvar_scalar2D(name+'l', densl.isel(t=i,densl_ndofs=1,primal_ncells_z=0),i)
+            plotvar_scalar2D(name+'l', densl.isel(t=i,densl_ndofs=l,primal_ncells_z=0),i)
     if ndensity_fct > 0:
         for l,name in zip(range(ndensity_fct), densfct_names):
             plotvar_scalar2D(name, densfct.isel(t=i,densfct_ndofs=l,dual_ncells_z=0),i)
-            plotvar_scalar2D(name+'l', densfctl.isel(t=i,densfctl_ndofs=1,primal_ncells_z=0),i)
-
+            plotvar_scalar2D(name+'l', densfctl.isel(t=i,densfctl_ndofs=l,primal_ncells_z=0),i)
 

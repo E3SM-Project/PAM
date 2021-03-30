@@ -246,13 +246,15 @@ public:
 
 
 
-
+// THE INTERNAL ENERGY HERE IS NOT BEING CONSERVED PROPERLY, IN THE SENSE THAT IT'S VALUE OSCILLATIONS STRONGLY...
+// POSSIBLY DUE TO LARGE VARIATIONS INDUCED BY -cst.Cvd*(qd * cst.Rd + qv * cst.Rv)/cst.Rd*cst.Tr?
 class ConstantKappa_VirtualPottemp : public ThermoPotential {
 public: 
 
   real YAKL_INLINE compute_U(real alpha, real entropic_var, real qd, real qv, real ql, real qi)
   {
-    return cst.Cvd * pow(entropic_var,cst.gamma_d) * pow(cst.Rd/(alpha*cst.pr),cst.delta_d) -cst.Cvd*(qd * cst.Rd + qv * cst.Rv)/cst.Rd*cst.Tr + qv*cst.Lvr - qv*cst.Rv*cst.Tr - qi*cst.Lfr;
+    return cst.Cvd * pow(entropic_var,cst.gamma_d) * pow(cst.Rd/(alpha*cst.pr),cst.delta_d);
+    //-cst.Cvd*(qd * cst.Rd + qv * cst.Rv)/cst.Rd*cst.Tr + qv*cst.Lvr - qv*cst.Rv*cst.Tr - qi*cst.Lfr;
   };
 
   real YAKL_INLINE compute_dUdalpha(real alpha, real entropic_var, real qd, real qv, real ql, real qi)
@@ -267,12 +269,14 @@ public:
 
   real YAKL_INLINE compute_dUdqd(real alpha, real entropic_var, real qd, real qv, real ql, real qi)
   {
-    return -cst.Cvd * cst.Tr;
+    return 0;
+    //return -cst.Cvd * cst.Tr;
   };
 
   real YAKL_INLINE compute_dUdqv(real alpha, real entropic_var, real qd, real qv, real ql, real qi)
   {
-    return -cst.Cvd*cst.Rv/cst.Rd*cst.Tr + cst.Lvr - cst.Rv*cst.Tr;
+    return 0;
+    //return -cst.Cvd*cst.Rv/cst.Rd*cst.Tr + cst.Lvr - cst.Rv*cst.Tr;
   };
 
   real YAKL_INLINE compute_dUdql(real alpha, real entropic_var, real qd, real qv, real ql, real qi)
@@ -280,7 +284,8 @@ public:
   
   real YAKL_INLINE compute_dUdqi(real alpha, real entropic_var, real qd, real qv, real ql, real qi)
   {
-    return -cst.Lfr;
+    return 0;
+    //return -cst.Lfr;
   };
 
   real YAKL_INLINE compute_H(real p, real entropic_var, real qd, real qv, real ql, real qi)

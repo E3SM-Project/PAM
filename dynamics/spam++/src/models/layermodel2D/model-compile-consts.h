@@ -26,10 +26,18 @@ uint constexpr ndensityfct = ntracers_fct;
 uint constexpr ndensity = 2 + ntracers;
 uint constexpr ndensityfct = 3 + ntracers_fct;
 #endif
+#ifdef _AN
+uint constexpr ndensity = 1 + ntracers;
+uint constexpr ndensityfct = ntracers_fct;
+#endif
+#ifdef _MAN
+uint constexpr ndensity = 1 + ntracers;
+uint constexpr ndensityfct = 3 + ntracers_fct;
+#endif
 
 uint constexpr MAXTRACERS = 3;
 
-enum class DATA_INIT { DOUBLEVORTEX, RB, LRB, MLRB };
+enum class DATA_INIT { DOUBLEVORTEX, RB, MRB, LRB, MLRB };
 enum class TRACER_INIT { GAUSSIAN, SQUARE, DOUBLESQUARE };
 
 class ModelParameters : public Parameters {

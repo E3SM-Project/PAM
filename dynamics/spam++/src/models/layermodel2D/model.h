@@ -11,8 +11,9 @@
 #include "wedge.h"
 #include "geometry.h"
 #include "params.h"
-#include "string.h"
+//#include "string.h"
 #include "hamiltonian.h"
+
 
 // Number of variables
 // v, dens, densfct
@@ -31,7 +32,11 @@ uint constexpr nconstant = 2;
 //primal grid reconstruction stuff- U, dens0, densfct0, edgerecon, recon, edgereconfct, reconfct
 //fct stuff- Phi, Mf, edgeflux
 
+#if defined _AN || defined _MAN
+uint constexpr nauxiliary = 23;
+#else
 uint constexpr nauxiliary = 22;
+#endif
 
 #define FVAR 0
 #define BVAR 1
@@ -60,6 +65,10 @@ uint constexpr nauxiliary = 22;
 #define EDGEFLUXVAR 20
 #define MFVAR 21
 
+#if defined _AN || defined _MAN
+#define PVAR 22
+#endif
+
 // q, associated concentration 0-forms for den
 
 uint constexpr ndiagnostic = 3;
@@ -85,6 +94,7 @@ uint constexpr nstats = 9;
 
 
 #ifdef _SWE
+//std::cout << "SWE Hamiltonian" << "\n";
 Functional_PVPE_rho PVPE;
 Hamiltonian_Hk_rho Hk;
 Hamiltonian_SWE_Hs<ntracers, ntracers_fct> Hs;
@@ -92,6 +102,7 @@ ThermoPotential thermo;
 #endif
 
 #ifdef _TSWE
+//std::cout << "TSWE Hamiltonian" << "\n";
 Functional_PVPE_rho PVPE;
 Hamiltonian_Hk_rho Hk;
 Hamiltonian_TSWE_Hs<ntracers, ntracers_fct> Hs;
@@ -99,64 +110,126 @@ ThermoPotential thermo;
 #endif
 
 #ifdef _CE
+//std::cout << "CE Hamiltonian" << "\n";
 
 Functional_PVPE_rho PVPE;
 Hamiltonian_Hk_rho Hk;
 
 #ifdef _USE_P_VARIANT
+//std::cout << "using p" << "\n";
 Hamiltonian_CE_p_Hs Hs;
 #else
+//std::cout << "not using p" << "\n";
 Hamiltonian_CE_Hs Hs;
 #endif
 
 #ifdef _IDEAL_GAS_POTTEMP
+//std::cout << "using ideal gas potential temperature" << "\n";
 IdealGas_Pottemp thermo;
 #endif
 #ifdef _IDEAL_GAS_ENTROPY
+//std::cout << "using ideal gas entropy" << "\n";
 IdealGas_Entropy thermo;
 #endif
 
 #endif
 
+
+#ifdef _AN
+//std::cout << "AN Hamiltonian" << "\n";
+
+Functional_PVPE_AN PVPE;
+Hamiltonian_Hk_AN Hk;
+Hamiltonian_AN_Hs Hs;
+
+#ifdef _IDEAL_GAS_POTTEMP
+//std::cout << "using ideal gas potential temperature" << "\n";
+IdealGas_Pottemp thermo;
+#endif
+#ifdef _IDEAL_GAS_ENTROPY
+//std::cout << "using ideal gas entropy" << "\n";
+IdealGas_Entropy thermo;
+#endif
+
+#endif
+
+
 #ifdef _MCE
+//std::cout << "MCE Hamiltonian" << "\n";
 
 #ifdef _USE_RHOD_VARIANT
+//std::cout << "using rho d" << "\n";
 Functional_PVPE_rhod PVPE;
 Hamiltonian_Hk_rhod Hk;
 
 #ifdef _USE_P_VARIANT
+//std::cout << "using p" << "\n";
 Hamiltonian_MCE_rhod_p_Hs Hs;
 #else
+//std::cout << "not using p" << "\n";
 Hamiltonian_MCE_rhod_Hs Hs;
 #endif
 
 #else
+//std::cout << "using rho" << "\n";
 Functional_PVPE_rho PVPE;
 Hamiltonian_Hk_rho Hk;
 
 #ifdef _USE_P_VARIANT
+//std::cout << "using p" << "\n";
 Hamiltonian_MCE_rho_p_Hs Hs;
 #else
+//std::cout << "not using p" << "\n";
 Hamiltonian_MCE_rho_Hs Hs;
 #endif
 
 #endif
 
 #ifdef _CONST_KAPPA_VIRPOTTEMP
+//std::cout << "using constant kappa potential temperature" << "\n";
 ConstantKappa_VirtualPottemp thermo;
 #endif
 #ifdef _CONST_KAPPA_ENTROPY
+//std::cout << "using constant kappa entropy" << "\n";
 ConstantKappa_Entropy thermo;
 #endif
 #ifdef _UNAPPROX_POTTEMP
+//std::cout << "using unapprox potential temperature" << "\n";
 Unapprox_Pottemp thermo;
 #endif
 #ifdef _UNAPPROX_ENTROPY
+std::cout << "using unapprox entropy" << "\n";
 Unapprox_Entropy thermo;
 #endif
 
 #endif
 
+
+#ifdef _MAN
+//std::cout << "MAN Hamiltonian" << "\n";
+
+Functional_PVPE_AN PVPE;
+Hamiltonian_Hk_AN Hk;
+Hamiltonian_MAN_Hs Hs;
+
+#ifdef _CONST_KAPPA_VIRPOTTEMP
+//std::cout << "using constant kappa potential temperature" << "\n";
+ConstantKappa_VirtualPottemp thermo;
+#endif
+#ifdef _CONST_KAPPA_ENTROPY
+//std::cout << "using constant kappa entropy" << "\n";
+ConstantKappa_Entropy thermo;
+#endif
+#ifdef _UNAPPROX_POTTEMP
+//std::cout << "using unapprox potential temperature" << "\n";
+Unapprox_Pottemp thermo;
+#endif
+#ifdef _UNAPPROX_ENTROPY
+//std::cout << "using unapprox entropy" << "\n";
+Unapprox_Entropy thermo;
+#endif
+
+#endif
 
 
 // *******   Model Specific Parameters   ***********//
@@ -941,6 +1014,12 @@ std::array<const Topology *, nprog> &prog_topo_arr, std::array<const Topology *,
   diag_names_arr[DENSFCTLDIAGVAR] = "densfctl";
   diag_ndofs_arr(DENSFCTLDIAGVAR,0) = ndensityfct; //densfctldiag = straight 0-form
 
+  #if defined _AN || defined _MAN
+  aux_topo_arr[PVAR] = &ptopo; //p = straight 0-form
+  aux_names_arr[PVAR] = "p";
+  aux_ndofs_arr(PVAR,0) = 1;
+  #endif
+  
 }
 
 #endif

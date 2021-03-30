@@ -2,6 +2,9 @@
 #define _COMMON_H_
 
 #include <cmath>
+#include <iostream>
+#include <cstring>
+
 #include "Array.h"
 #include "SArray.h"
 #if defined(__USE_HIP__)
