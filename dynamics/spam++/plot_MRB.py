@@ -150,7 +150,7 @@ for size in sizes:
         plt.xlabel('Nsteps')
         plt.ylabel('Maximum')
         plt.tight_layout()
-        plt.savefig('max_vapor.png')
+        plt.savefig('max_vapor.' + str(size) + '.' + 'HODGE' + str(diff_order) + '.png')
         plt.close('all')
         
         plt.figure(figsize=(20,16))
@@ -163,7 +163,7 @@ for size in sizes:
         plt.xlabel('Nsteps')
         plt.ylabel('Minimum')
         plt.tight_layout()
-        plt.savefig('min_vapor.png')
+        plt.savefig('min_vapor.' + str(size) + '.' + 'HODGE' + str(diff_order) + '.png')
         plt.close('all')
 
         plt.figure(figsize=(20,16))
@@ -176,7 +176,7 @@ for size in sizes:
         plt.xlabel('Nsteps')
         plt.ylabel('Maximum')
         plt.tight_layout()
-        plt.savefig('max_liquid.png')
+        plt.savefig('max_liquid.' + str(size) + '.' + 'HODGE' + str(diff_order) + '.png')
         plt.close('all')
         
         plt.figure(figsize=(20,16))
@@ -189,7 +189,7 @@ for size in sizes:
         plt.xlabel('Nsteps')
         plt.ylabel('Minimum')
         plt.tight_layout()
-        plt.savefig('min_liquid.png')
+        plt.savefig('min_liquid.' + str(size) + '.' + 'HODGE' + str(diff_order) + '.png')
         plt.close('all')
 
         plt.figure(figsize=(20,16))
@@ -202,7 +202,7 @@ for size in sizes:
         plt.xlabel('Nsteps')
         plt.ylabel('Maximum')
         plt.tight_layout()
-        plt.savefig('max_ice.png')
+        plt.savefig('max_ice.' + str(size) + '.' + 'HODGE' + str(diff_order) + '.png')
         plt.close('all')
         
         plt.figure(figsize=(20,16))
@@ -215,7 +215,7 @@ for size in sizes:
         plt.xlabel('Nsteps')
         plt.ylabel('Minimum')
         plt.tight_layout()
-        plt.savefig('min_ice.png')
+        plt.savefig('min_ice.' + str(size) + '.' + 'HODGE' + str(diff_order) + '.png')
         plt.close('all')
         
                 

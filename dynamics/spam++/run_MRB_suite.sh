@@ -18,7 +18,7 @@ do
         sed -i "s/HODGEORDER/${DIFFORDER}/" build_consts.build
         sed -i "s/RECONORDER/${RECONORDER}/" build_consts.build
         sed -i "s/RECONTYPE/${RECONTYPE}/" build_consts.build
-        ./build/cmake_linuxlaptop.sh ce2D build_consts.build &> build.out
+        ./build/cmake_linuxlaptop.sh mce2D build_consts.build &> build.out
         make &>> build.out
         mpirun.mpich -n 4 ./layermodel2D runsuites/MRB/MRB${SIZE}.input &> run.out
         mv *.png *.nc *.build *.out MRB/MRB${SIZE}-${RECONTYPE}${RECONORDER}-HODGE${DIFFORDER}
