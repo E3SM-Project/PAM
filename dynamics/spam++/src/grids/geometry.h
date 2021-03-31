@@ -91,245 +91,267 @@ if (npts == 5)
 
 // *********************   1D  ******************************/
 
-// Needs to be updated to new (primal-dual) approach
+template<> struct coords<1>
+{
+  real x=0.;
+};
 
-// template<> struct coords<1>
-// {
-//   real x=0.;
-// };
-// 
-// template<uint nquadx, uint nquady, uint nquadz> class Geometry<1,nquadx,nquady,nquadz> {
-// 
-// public:
-// 
-//   const Topology *topology;
-//   bool is_initialized;
-//   Geometry();
-//   Geometry( const Geometry<1,nquadx,nquady,nquadz> &geom) = delete;
-//   Geometry& operator=( const Geometry<1,nquadx,nquady,nquadz> &geom) = delete;
-// 
-//   SArray<real,nquadx> x_quad_pts_ref;
-//   SArray<real,nquadx> x_quad_wts_ref;
-// 
-//   void initialize(const Topology &topo);
-// 
-//   virtual void YAKL_INLINE get_0form_quad_pts_wts(int i, SArray<coords<1>,1> &quad_pts_phys, SArray<real,1> &quad_wts_phys) {};
-//   virtual void YAKL_INLINE get_1form_quad_pts_wts(int i, SArray<coords<1>,nquadx> &quad_pts_phys, SArray<real,nquadx> &quad_wts_phys) {};
-//   virtual real YAKL_INLINE get_0_form_area(int k, int j, int i) {};
-//   virtual real YAKL_INLINE get_1_form_area(int k, int j, int i) {};
-// 
-//   YAKL_INLINE void set_0form_values(real (*initial_value_function)(real), Field &field, int ndof);
-//   YAKL_INLINE void set_1form_values(real (*initial_value_function)(real), Field &field, int ndof);
-// 
-// };
-// 
-// template<uint nquadx, uint nquady, uint nquadz> class UniformRectangularGeometry<1,nquadx,nquady,nquadz>: public Geometry<1,nquadx,nquady,nquadz> {
-// 
-// 
-// public:
-// 
-//   real dx, dy, dz;
-//   real Lx, Ly, Lz;
-//   real xc, yc, zc;
-//   void initialize(const Topology &topo, const ModelParameters &params);
-// 
-//   void printinfo();
-// 
-//   void YAKL_INLINE get_primal_0form_quad_pts_wts(int i, SArray<coords<1>,1> &quad_pts_phys, SArray<real,1> &quad_wts_phys);
-//   void YAKL_INLINE get_primal_1form_quad_pts_wts(int i, SArray<coords<1>,nquadx> &quad_pts_phys, SArray<real,nquadx> &quad_wts_phys);
-//   real YAKL_INLINE get_0_form_area(int k, int j, int i);
-//   real YAKL_INLINE get_1_form_area(int k, int j, int i);
-// 
-// };
-// 
-// 
-// 
-// 
-// 
-// 
-// 
-// 
-// 
-// 
-// 
-// 
-// 
-// 
-// template<uint nquadx, uint nquady, uint nquadz> Geometry<1,nquadx,nquady,nquadz>::Geometry()
-//     {
-//       this->is_initialized = false;
-//       std::cout << "CREATED GEOMETRY\n";
-//     }
-// 
-//   template<uint nquadx, uint nquady, uint nquadz> void Geometry<1,nquadx,nquady,nquadz>::initialize(const Topology &topo)
-//   {
-// 
-//   this->topology = &topo;
-//   set_ref_quad_pts_wts<real,nquadx>(this->x_quad_pts_ref, this->x_quad_wts_ref);
-// }
-// 
-// 
-//   template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<1,nquadx,nquady,nquadz>::set_primal_0form_values(real (*initial_value_function)(real), Field &field, int ndof)
-// {
-// 
-//   int is = this->topology->is;
-//   int js = this->topology->js;
-//   int ks = this->topology->ks;
-// 
-//   SArray<coords<1>,1> quad_pts_phys;
-//   SArray<real,1> quad_wts_phys;
-// 
-//   yakl::parallel_for("Set0FormValues", this->topology->n_cells, YAKL_LAMBDA (int iGlob) {
-//     int k, j, i;
-//     yakl::unpackIndices(iGlob, this->topology->n_cells_z, this->topology->n_cells_y, this->topology->n_cells_x ,k, j, i);
-//       get_primal_0form_quad_pts_wts(i, quad_pts_phys, quad_wts_phys);
-//       field.data(ndof, k+ks, j+js, i+is) = initial_value_function(quad_pts_phys(0).x) * quad_wts_phys(0);
-//   });
-// }
-// 
-//   template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<1,nquadx,nquady,nquadz>::set_primal_1form_values(real (*initial_value_function)(real), Field &field, int ndof)
-// {
-// 
-//   SArray<coords<1>,nquadx> quad_pts_phys;
-//   SArray<real,nquadx> quad_wts_phys;
-// 
-//   int is = this->topology->is;
-//   int js = this->topology->js;
-//   int ks = this->topology->ks;
-//   real tempval;
-//   int offset = field.get_offset(1);
-// 
-//   yakl::parallel_for("Set1FormValues", this->topology->n_cells, YAKL_LAMBDA (int iGlob) {
-//     int k, j, i;
-//     yakl::unpackIndices(iGlob, this->topology->n_cells_z, this->topology->n_cells_y, this->topology->n_cells_x ,k, j, i);
-// 
-//     get_primal_1form_quad_pts_wts(i, quad_pts_phys, quad_wts_phys);
-//     tempval = 0.0;
-//     for (int nqx=0; nqx<nquadx; nqx++) {
-//           tempval = tempval + initial_value_function(quad_pts_phys(nqx).x) * quad_wts_phys(nqx);
-//           }
-//       field.data(ndof+offset, k+ks, j+js, i+is) = tempval;
-//   });
-// }
-// 
-// 
-// template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<1,nquadx,nquady,nquadz>::set_dual_0form_values(real (*initial_value_function)(real), Field &field, int ndof)
-// {
-// 
-// int is = this->topology->is;
-// int js = this->topology->js;
-// int ks = this->topology->ks;
-// 
-// SArray<coords<1>,1> quad_pts_phys;
-// SArray<real,1> quad_wts_phys;
-// int offset = field.get_offset(1);
-// 
-// yakl::parallel_for("Set0FormValues", this->topology->n_cells, YAKL_LAMBDA (int iGlob) {
-//   int k, j, i;
-//   yakl::unpackIndices(iGlob, this->topology->n_cells_z, this->topology->n_cells_y, this->topology->n_cells_x ,k, j, i);
-//     get_dual_0form_quad_pts_wts(i, quad_pts_phys, quad_wts_phys);
-//     field.data(ndof+offset, k+ks, j+js, i+is) = initial_value_function(quad_pts_phys(0).x) * quad_wts_phys(0);
-// });
-// }
-// 
-// template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<1,nquadx,nquady,nquadz>::set_dual_1form_values(real (*initial_value_function)(real), Field &field, int ndof)
-// {
-// 
-// SArray<coords<1>,nquadx> quad_pts_phys;
-// SArray<real,nquadx> quad_wts_phys;
-// 
-// int is = this->topology->is;
-// int js = this->topology->js;
-// int ks = this->topology->ks;
-// real tempval;
-// 
-// yakl::parallel_for("Set1FormValues", this->topology->n_cells, YAKL_LAMBDA (int iGlob) {
-//   int k, j, i;
-//   yakl::unpackIndices(iGlob, this->topology->n_cells_z, this->topology->n_cells_y, this->topology->n_cells_x ,k, j, i);
-// 
-//   get_dual_1form_quad_pts_wts(i, quad_pts_phys, quad_wts_phys);
-//   tempval = 0.0;
-//   for (int nqx=0; nqx<nquadx; nqx++) {
-//         tempval = tempval + initial_value_function(quad_pts_phys(nqx).x) * quad_wts_phys(nqx);
-//         }
-//     field.data(ndof, k+ks, j+js, i+is) = tempval;
-// });
-// }
-// 
-// template<uint nquadx, uint nquady, uint nquadz> void UniformRectangularGeometry<1,nquadx,nquady,nquadz>::initialize(const Topology &topo, const ModelParameters &params)
-// {
-// 
-// Geometry<1,nquadx,nquady,nquadz>::initialize(topo);
-// 
-// this->Lx = params.xlen;
-// this->Ly = 0.;
-// this->Lz = 0.;
-// 
-// this->xc = params.xc;
-// this->yc = 0.;
-// this->zc = 0.;
-// 
-// this->dx = params.xlen/params.nx_glob;
-// this->dy = 0.;
-// this->dz = 0.;
-// 
-// this->is_initialized = true;
-// }
-// 
-// template<uint nquadx, uint nquady, uint nquadz> void UniformRectangularGeometry<1,nquadx,nquady,nquadz>::printinfo()
-// {
-//   std::cout << "uniform rectangular geometry 1D info\n" << std::flush;
-//   std::cout << "Lx " << this->Lx << " Ly " << this->Ly << " Lz " << this->Lz << "\n" << std::flush;
-//   std::cout << "xc " << this->xc << " yc " << this->yc << " zc " << this->zc << "\n" << std::flush;
-//   std::cout << "dx " << this->dx << " dy " << this->dy << " dz " << this->dz << "\n" << std::flush;
-// }
-// 
-// template<uint nquadx, uint nquady, uint nquadz> real YAKL_INLINE UniformRectangularGeometry<1,nquadx,nquady,nquadz>::get_J_cell(int k, int j, int i)
+template<uint nquadx, uint nquady, uint nquadz> class Geometry<1,nquadx,nquady,nquadz> {
+
+public:
+
+  const Topology *topology;
+  bool is_initialized;
+  Geometry();
+  Geometry( const Geometry<1,nquadx,nquady,nquadz> &geom) = delete;
+  Geometry& operator=( const Geometry<1,nquadx,nquady,nquadz> &geom) = delete;
+
+  SArray<real,nquadx> x_quad_pts_ref;
+  SArray<real,nquadx> x_quad_wts_ref;
+
+  void initialize(const Topology &topo);
+
+  virtual void YAKL_INLINE get_0form_quad_pts_wts(int i, SArray<coords<1>,1> &quad_pts_phys, SArray<real,1> &quad_wts_phys) {};
+  virtual void YAKL_INLINE get_1form_quad_pts_wts(int i, SArray<coords<1>,nquadx> &quad_pts_phys, SArray<real,nquadx> &quad_wts_phys) {};
+  //virtual real YAKL_INLINE get_area_0form(int k, int j, int i) {};
+  //virtual real YAKL_INLINE get_area_1form(int k, int j, int i) {};
+  virtual real YAKL_INLINE get_area_lform(int l, int d, int k, int j, int i) {};
+
+  YAKL_INLINE void set_0form_values(real (*initial_value_function)(real), Field &field, int ndof);
+  YAKL_INLINE void set_1form_values(real (*initial_value_function)(real), Field &field, int ndof);
+
+};
+
+template<uint nquadx, uint nquady, uint nquadz> class UniformRectangularStraightGeometry<1,nquadx,nquady,nquadz>: public Geometry<1,nquadx,nquady,nquadz> {
+public:
+
+  real dx, dy, dz;
+  real Lx, Ly, Lz;
+  real xc, yc, zc;
+  void initialize(const Topology &topo, const ModelParameters &params);
+
+  void printinfo();
+
+  void YAKL_INLINE get_0form_quad_pts_wts(int i, SArray<coords<1>,1> &quad_pts_phys, SArray<real,1> &quad_wts_phys);
+  void YAKL_INLINE get_1form_quad_pts_wts(int i, SArray<coords<1>,nquadx> &quad_pts_phys, SArray<real,nquadx> &quad_wts_phys);
+  //real YAKL_INLINE get_area_0form(int k, int j, int i);
+  //real YAKL_INLINE get_area_1form(int k, int j, int i);
+  real YAKL_INLINE get_area_lform(int l, int d, int k, int j, int i);
+
+};
+
+template<uint nquadx, uint nquady, uint nquadz> class UniformRectangularTwistedGeometry<1,nquadx,nquady,nquadz>: public Geometry<1,nquadx,nquady,nquadz> {
+public:
+
+  real dx, dy, dz;
+  real Lx, Ly, Lz;
+  real xc, yc, zc;
+  void initialize(const Topology &topo, const ModelParameters &params);
+
+  void printinfo();
+
+  void YAKL_INLINE get_0form_quad_pts_wts(int i, SArray<coords<1>,1> &quad_pts_phys, SArray<real,1> &quad_wts_phys);
+  void YAKL_INLINE get_1form_quad_pts_wts(int i, SArray<coords<1>,nquadx> &quad_pts_phys, SArray<real,nquadx> &quad_wts_phys);
+  //real YAKL_INLINE get_area_0form(int k, int j, int i);
+  //real YAKL_INLINE get_area_1form(int k, int j, int i);
+  real YAKL_INLINE get_area_lform(int l, int d, int k, int j, int i);
+
+};
+
+
+
+
+
+
+
+
+
+
+
+
+template<uint nquadx, uint nquady, uint nquadz> Geometry<1,nquadx,nquady,nquadz>::Geometry()
+    {
+      this->is_initialized = false;
+      std::cout << "CREATED GEOMETRY\n";
+    }
+
+  template<uint nquadx, uint nquady, uint nquadz> void Geometry<1,nquadx,nquady,nquadz>::initialize(const Topology &topo)
+  {
+
+  this->topology = &topo;
+  set_ref_quad_pts_wts<real,nquadx>(this->x_quad_pts_ref, this->x_quad_wts_ref);
+}
+
+
+template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<1,nquadx,nquady,nquadz>::set_0form_values(real (*initial_value_function)(real), Field &field, int ndof)
+{
+
+int is = this->topology->is;
+int js = this->topology->js;
+int ks = this->topology->ks;
+
+SArray<coords<1>,1> quad_pts_phys;
+SArray<real,1> quad_wts_phys;
+int offset = field.get_offset(1);
+
+yakl::parallel_for("Set0FormValues", this->topology->n_cells, YAKL_LAMBDA (int iGlob) {
+  int k, j, i;
+  yakl::unpackIndices(iGlob, this->topology->n_cells_z, this->topology->n_cells_y, this->topology->n_cells_x ,k, j, i);
+    get_0form_quad_pts_wts(i, quad_pts_phys, quad_wts_phys);
+    field.data(ndof+offset, k+ks, j+js, i+is) = initial_value_function(quad_pts_phys(0).x) * quad_wts_phys(0);
+});
+}
+
+template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<1,nquadx,nquady,nquadz>::set_1form_values(real (*initial_value_function)(real), Field &field, int ndof)
+{
+
+SArray<coords<1>,nquadx> quad_pts_phys;
+SArray<real,nquadx> quad_wts_phys;
+
+int is = this->topology->is;
+int js = this->topology->js;
+int ks = this->topology->ks;
+real tempval;
+
+yakl::parallel_for("Set1FormValues", this->topology->n_cells, YAKL_LAMBDA (int iGlob) {
+  int k, j, i;
+  yakl::unpackIndices(iGlob, this->topology->n_cells_z, this->topology->n_cells_y, this->topology->n_cells_x ,k, j, i);
+
+  get_1form_quad_pts_wts(i, quad_pts_phys, quad_wts_phys);
+  tempval = 0.0;
+  for (int nqx=0; nqx<nquadx; nqx++) {
+        tempval = tempval + initial_value_function(quad_pts_phys(nqx).x) * quad_wts_phys(nqx);
+        }
+    field.data(ndof, k+ks, j+js, i+is) = tempval;
+});
+}
+
+
+
+template<uint nquadx, uint nquady, uint nquadz> void UniformRectangularStraightGeometry<1,nquadx,nquady,nquadz>::initialize(const Topology &topo, const ModelParameters &params)
+{
+
+Geometry<1,nquadx,nquady,nquadz>::initialize(topo);
+
+this->Lx = params.xlen;
+this->Ly = 0.;
+this->Lz = 0.;
+
+this->xc = params.xc;
+this->yc = 0.;
+this->zc = 0.;
+
+this->dx = params.xlen/params.nx_glob;
+this->dy = 0.;
+this->dz = 0.;
+
+this->is_initialized = true;
+}
+
+template<uint nquadx, uint nquady, uint nquadz> void UniformRectangularTwistedGeometry<1,nquadx,nquady,nquadz>::initialize(const Topology &topo, const ModelParameters &params)
+{
+
+Geometry<1,nquadx,nquady,nquadz>::initialize(topo);
+
+this->Lx = params.xlen;
+this->Ly = 0.;
+this->Lz = 0.;
+
+this->xc = params.xc;
+this->yc = 0.;
+this->zc = 0.;
+
+this->dx = params.xlen/params.nx_glob;
+this->dy = 0.;
+this->dz = 0.;
+
+this->is_initialized = true;
+}
+
+template<uint nquadx, uint nquady, uint nquadz> void UniformRectangularStraightGeometry<1,nquadx,nquady,nquadz>::printinfo()
+{
+  std::cout << "uniform rectangular geometry 1D info: straight\n" << std::flush;
+  std::cout << "Lx " << this->Lx << " Ly " << this->Ly << " Lz " << this->Lz << "\n" << std::flush;
+  std::cout << "xc " << this->xc << " yc " << this->yc << " zc " << this->zc << "\n" << std::flush;
+  std::cout << "dx " << this->dx << " dy " << this->dy << " dz " << this->dz << "\n" << std::flush;
+}
+
+template<uint nquadx, uint nquady, uint nquadz> void UniformRectangularTwistedGeometry<1,nquadx,nquady,nquadz>::printinfo()
+{
+  std::cout << "uniform rectangular geometry 1D info: twisted\n" << std::flush;
+  std::cout << "Lx " << this->Lx << " Ly " << this->Ly << " Lz " << this->Lz << "\n" << std::flush;
+  std::cout << "xc " << this->xc << " yc " << this->yc << " zc " << this->zc << "\n" << std::flush;
+  std::cout << "dx " << this->dx << " dy " << this->dy << " dz " << this->dz << "\n" << std::flush;
+}
+
+
+
+template<uint nquadx, uint nquady, uint nquadz> real YAKL_INLINE UniformRectangularStraightGeometry<1,nquadx,nquady,nquadz>::get_area_lform(int l, int d, int k, int j, int i)
+{
+  if (l == 0) {return 1.;}
+  if (l == 1) {return this->dx;}
+}
+
+template<uint nquadx, uint nquady, uint nquadz> real YAKL_INLINE UniformRectangularTwistedGeometry<1,nquadx,nquady,nquadz>::get_area_lform(int l, int d, int k, int j, int i)
+{
+  if (l == 0) {return 1.;}
+  if (l == 1) {return this->dx;}
+}
+
+// template<uint nquadx, uint nquady, uint nquadz> real YAKL_INLINE UniformRectangularStraightGeometry<1,nquadx,nquady,nquadz>::get_area_1form(int k, int j, int i)
 // {
 //   return this->dx;
 // }
 // 
-// template<uint nquadx, uint nquady, uint nquadz> real YAKL_INLINE UniformRectangularGeometry<1,nquadx,nquady,nquadz>::get_J_dual_cell(int k, int j, int i)
+// template<uint nquadx, uint nquady, uint nquadz> real YAKL_INLINE UniformRectangularTwistedGeometry<1,nquadx,nquady,nquadz>::get_area_1form(int k, int j, int i)
 // {
 //   return this->dx;
 // }
 // 
-// template<uint nquadx, uint nquady, uint nquadz> real YAKL_INLINE UniformRectangularGeometry<1,nquadx,nquady,nquadz>::get_H_edge(int l, int k, int j, int i)
+// template<uint nquadx, uint nquady, uint nquadz> real YAKL_INLINE UniformRectangularStraightGeometry<1,nquadx,nquady,nquadz>::get_area_0form(int k, int j, int i)
 // {
-//   return 1.0/this->dx;
+//   return 1.0;
 // }
 // 
-// template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangularGeometry<1,nquadx,nquady,nquadz>::get_primal_0form_quad_pts_wts(int i, SArray<coords<1>,1> &quad_pts_phys, SArray<real,1> &quad_wts_phys)
+// template<uint nquadx, uint nquady, uint nquadz> real YAKL_INLINE UniformRectangularTwistedGeometry<1,nquadx,nquady,nquadz>::get_area_0form(int k, int j, int i)
 // {
-//   quad_pts_phys(0).x = (i+this->topology->i_beg)*this->dx + this->xc - this->Lx/2.;
-//   quad_wts_phys(0) = 1.;
+//   return 1.0;
 // }
-// 
-// template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangularGeometry<1,nquadx,nquady,nquadz>::get_primal_1form_quad_pts_wts(int i, SArray<coords<1>,nquadx> &quad_pts_phys, SArray<real,nquadx> &quad_wts_phys)
-// {
-//   real ll_corner_x = (i+this->topology->i_beg)*this->dx + this->xc - this->Lx/2.;
-//   for (int nqx=0; nqx<nquadx; nqx++)
-//   {
-//     quad_pts_phys(nqx).x = ll_corner_x + this->x_quad_pts_ref(nqx) * this->dx;
-//     quad_wts_phys(nqx) = this->x_quad_wts_ref(nqx) * this->dx;
-//   }
-// }
-// 
-// template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangularGeometry<1,nquadx,nquady,nquadz>::get_dual_0form_quad_pts_wts(int i, SArray<coords<1>,1> &quad_pts_phys, SArray<real,1> &quad_wts_phys)
-// {
-//   quad_pts_phys(0).x = (i+this->topology->i_beg)*this->dx + this->xc - this->Lx/2. + this->dx/2.;
-//   quad_wts_phys(0) = 1.;
-// }
-// 
-// template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangularGeometry<1,nquadx,nquady,nquadz>::get_dual_1form_quad_pts_wts(int i, SArray<coords<1>,nquadx> &quad_pts_phys, SArray<real,nquadx> &quad_wts_phys)
-// {
-//   real ll_corner_x = (i+this->topology->i_beg)*this->dx + this->xc - this->Lx/2. - this->dx/2.;
-//   for (int nqx=0; nqx<nquadx; nqx++)
-//   {
-//     quad_pts_phys(nqx).x = ll_corner_x + this->x_quad_pts_ref(nqx) * this->dx;
-//     quad_wts_phys(nqx) = this->x_quad_wts_ref(nqx) * this->dx;
-//   }
-// }
+
+template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangularTwistedGeometry<1,nquadx,nquady,nquadz>::get_0form_quad_pts_wts(int i, SArray<coords<1>,1> &quad_pts_phys, SArray<real,1> &quad_wts_phys)
+{
+  quad_pts_phys(0).x = (i+this->topology->i_beg)*this->dx + this->xc - this->Lx/2.;
+  quad_wts_phys(0) = 1.;
+}
+
+template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangularTwistedGeometry<1,nquadx,nquady,nquadz>::get_1form_quad_pts_wts(int i, SArray<coords<1>,nquadx> &quad_pts_phys, SArray<real,nquadx> &quad_wts_phys)
+{
+  real ll_corner_x = (i+this->topology->i_beg)*this->dx + this->xc - this->Lx/2.;
+  for (int nqx=0; nqx<nquadx; nqx++)
+  {
+    quad_pts_phys(nqx).x = ll_corner_x + this->x_quad_pts_ref(nqx) * this->dx;
+    quad_wts_phys(nqx) = this->x_quad_wts_ref(nqx) * this->dx;
+  }
+}
+
+template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangularStraightGeometry<1,nquadx,nquady,nquadz>::get_0form_quad_pts_wts(int i, SArray<coords<1>,1> &quad_pts_phys, SArray<real,1> &quad_wts_phys)
+{
+  quad_pts_phys(0).x = (i+this->topology->i_beg)*this->dx + this->xc - this->Lx/2. + this->dx/2.;
+  quad_wts_phys(0) = 1.;
+}
+
+template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangularStraightGeometry<1,nquadx,nquady,nquadz>::get_1form_quad_pts_wts(int i, SArray<coords<1>,nquadx> &quad_pts_phys, SArray<real,nquadx> &quad_wts_phys)
+{
+  real ll_corner_x = (i+this->topology->i_beg)*this->dx + this->xc - this->Lx/2. - this->dx/2.;
+  for (int nqx=0; nqx<nquadx; nqx++)
+  {
+    quad_pts_phys(nqx).x = ll_corner_x + this->x_quad_pts_ref(nqx) * this->dx;
+    quad_wts_phys(nqx) = this->x_quad_wts_ref(nqx) * this->dx;
+  }
+}
+
+
+
 
 
 
@@ -373,9 +395,10 @@ public:
   virtual void YAKL_INLINE get_edge_tangents(int i, int j, SArray<vec<2>,nquadx> &x_tangents, SArray<vec<2>,nquady> &y_tangents) {};
   virtual void YAKL_INLINE get_edge_normals(int i, int j, SArray<vec<2>,nquadx> &x_normals, SArray<vec<2>,nquady> &y_normals) {};
 
-  virtual real YAKL_INLINE get_area_0form(int k, int j, int i) {};
-  virtual real YAKL_INLINE get_area_1form(int l, int k, int j, int i) {};
-  virtual real YAKL_INLINE get_area_2form(int k, int j, int i) {};
+  //virtual real YAKL_INLINE get_area_0form(int k, int j, int i) {};
+  //virtual real YAKL_INLINE get_area_1form(int l, int k, int j, int i) {};
+  //virtual real YAKL_INLINE get_area_2form(int k, int j, int i) {};
+  virtual real YAKL_INLINE get_area_lform(int l, int d, int k, int j, int i) {};
 
   YAKL_INLINE void set_0form_values(real (*initial_value_function)(real, real), Field &field, int ndof);
   YAKL_INLINE void set_1form_values(vec<2> (*initial_value_function)(real, real), Field &field, int ndof, LINE_INTEGRAL_TYPE line_type);
@@ -401,10 +424,11 @@ public:
   void YAKL_INLINE get_edge_tangents(int i, int j, SArray<vec<2>,nquadx> &x_tangents, SArray<vec<2>,nquady> &y_tangents);
   void YAKL_INLINE get_edge_normals(int i, int j, SArray<vec<2>,nquadx> &x_normals, SArray<vec<2>,nquady> &y_normals);
 
-  real YAKL_INLINE get_area_0form(int k, int j, int i);
-  real YAKL_INLINE get_area_1form(int l, int k, int j, int i);
-  real YAKL_INLINE get_area_2form(int k, int j, int i);
-  
+  //real YAKL_INLINE get_area_0form(int k, int j, int i);
+  //real YAKL_INLINE get_area_1form(int l, int k, int j, int i);
+  //real YAKL_INLINE get_area_2form(int k, int j, int i);
+  real YAKL_INLINE get_area_lform(int l, int d, int k, int j, int i);
+
 };
 
 template<uint nquadx, uint nquady, uint nquadz> class UniformRectangularStraightGeometry<2,nquadx,nquady,nquadz>: public Geometry<2,nquadx,nquady,nquadz> {
@@ -425,9 +449,10 @@ public:
   void YAKL_INLINE get_edge_tangents(int i, int j, SArray<vec<2>,nquadx> &x_tangents, SArray<vec<2>,nquady> &y_tangents);
   void YAKL_INLINE get_edge_normals(int i, int j, SArray<vec<2>,nquadx> &x_normals, SArray<vec<2>,nquady> &y_normals);
 
-  real YAKL_INLINE get_area_0form(int k, int j, int i);
-  real YAKL_INLINE get_area_1form(int l, int k, int j, int i);
-  real YAKL_INLINE get_area_2form(int k, int j, int i);
+  //real YAKL_INLINE get_area_0form(int k, int j, int i);
+  //real YAKL_INLINE get_area_1form(int l, int k, int j, int i);
+  //real YAKL_INLINE get_area_2form(int k, int j, int i);
+  real YAKL_INLINE get_area_lform(int l, int d, int k, int j, int i);
   
 };
 
@@ -575,28 +600,38 @@ this->is_initialized = true;
 
 template<uint nquadx, uint nquady, uint nquadz> void UniformRectangularTwistedGeometry<2,nquadx,nquady,nquadz>::printinfo()
 {
-  std::cout << "uniform rectangular geometry 2D info\n" << std::flush;
+  std::cout << "uniform rectangular geometry 2D info: twisted \n" << std::flush;
   std::cout << "Lx " << this->Lx << " Ly " << this->Ly << " Lz " << this->Lz << "\n" << std::flush;
   std::cout << "xc " << this->xc << " yc " << this->yc << " zc " << this->zc << "\n" << std::flush;
   std::cout << "dx " << this->dx << " dy " << this->dy << " dz " << this->dz << "\n" << std::flush;
 }
 
 
-template<uint nquadx, uint nquady, uint nquadz> real YAKL_INLINE UniformRectangularTwistedGeometry<2,nquadx,nquady,nquadz>::get_area_2form(int k, int j, int i)
+template<uint nquadx, uint nquady, uint nquadz> real YAKL_INLINE UniformRectangularTwistedGeometry<2,nquadx,nquady,nquadz>::get_area_lform(int l, int d, int k, int j, int i)
 {
-  return this->dx * this->dy;
+  if (l == 0) {return 1.;}
+  if (l == 1) {
+    if (d==0) {return this->dy;}
+    if (d==1) {return this->dx;}
+    }
+  if (l == 2) {return this->dx * this->dy;}
 }
 
-template<uint nquadx, uint nquady, uint nquadz> real YAKL_INLINE UniformRectangularTwistedGeometry<2,nquadx,nquady,nquadz>::get_area_0form(int k, int j, int i)
-{
-  return 1.;
-}
-
-template<uint nquadx, uint nquady, uint nquadz> real YAKL_INLINE UniformRectangularTwistedGeometry<2,nquadx,nquady,nquadz>::get_area_1form(int l, int k, int j, int i)
-{
-  if (l==0) {return this->dx;};
-  if (l==1) {return this->dy;};
-}
+// template<uint nquadx, uint nquady, uint nquadz> real YAKL_INLINE UniformRectangularTwistedGeometry<2,nquadx,nquady,nquadz>::get_area_2form(int k, int j, int i)
+// {
+//   return this->dx * this->dy;
+// }
+// 
+// template<uint nquadx, uint nquady, uint nquadz> real YAKL_INLINE UniformRectangularTwistedGeometry<2,nquadx,nquady,nquadz>::get_area_0form(int k, int j, int i)
+// {
+//   return 1.;
+// }
+// 
+// template<uint nquadx, uint nquady, uint nquadz> real YAKL_INLINE UniformRectangularTwistedGeometry<2,nquadx,nquady,nquadz>::get_area_1form(int l, int k, int j, int i)
+// {
+//   if (l==0) {return this->dy;};
+//   if (l==1) {return this->dx;};
+// }
 
 template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangularTwistedGeometry<2,nquadx,nquady,nquadz>::get_0form_quad_pts_wts(int i, int j, SArray<coords<2>,1> &quad_pts_phys, SArray<real,1> &quad_wts_phys)
 {
@@ -660,28 +695,38 @@ this->is_initialized = true;
 
 template<uint nquadx, uint nquady, uint nquadz> void UniformRectangularStraightGeometry<2,nquadx,nquady,nquadz>::printinfo()
 {
-  std::cout << "uniform rectangular geometry 2D info\n" << std::flush;
+  std::cout << "uniform rectangular geometry 2D info: straight \n" << std::flush;
   std::cout << "Lx " << this->Lx << " Ly " << this->Ly << " Lz " << this->Lz << "\n" << std::flush;
   std::cout << "xc " << this->xc << " yc " << this->yc << " zc " << this->zc << "\n" << std::flush;
   std::cout << "dx " << this->dx << " dy " << this->dy << " dz " << this->dz << "\n" << std::flush;
 }
 
-
-template<uint nquadx, uint nquady, uint nquadz> real YAKL_INLINE UniformRectangularStraightGeometry<2,nquadx,nquady,nquadz>::get_area_2form(int k, int j, int i)
+template<uint nquadx, uint nquady, uint nquadz> real YAKL_INLINE UniformRectangularStraightGeometry<2,nquadx,nquady,nquadz>::get_area_lform(int l, int d, int k, int j, int i)
 {
-  return this->dx * this->dy;
+  if (l == 0) {return 1.;}
+  if (l == 1) {
+    if (d==0) {return this->dx;}
+    if (d==1) {return this->dy;}
+    }
+  if (l == 2) {return this->dx * this->dy;}
 }
 
-template<uint nquadx, uint nquady, uint nquadz> real YAKL_INLINE UniformRectangularStraightGeometry<2,nquadx,nquady,nquadz>::get_area_0form(int k, int j, int i)
-{
-  return 1.;
-}
 
-template<uint nquadx, uint nquady, uint nquadz> real YAKL_INLINE UniformRectangularStraightGeometry<2,nquadx,nquady,nquadz>::get_area_1form(int l, int k, int j, int i)
-{
-  if (l==0) {return this->dy;};
-  if (l==1) {return this->dx;};
-}
+// template<uint nquadx, uint nquady, uint nquadz> real YAKL_INLINE UniformRectangularStraightGeometry<2,nquadx,nquady,nquadz>::get_area_2form(int k, int j, int i)
+// {
+//   return this->dx * this->dy;
+// }
+// 
+// template<uint nquadx, uint nquady, uint nquadz> real YAKL_INLINE UniformRectangularStraightGeometry<2,nquadx,nquady,nquadz>::get_area_0form(int k, int j, int i)
+// {
+//   return 1.;
+// }
+// 
+// template<uint nquadx, uint nquady, uint nquadz> real YAKL_INLINE UniformRectangularStraightGeometry<2,nquadx,nquady,nquadz>::get_area_1form(int l, int k, int j, int i)
+// {
+//   if (l==0) {return this->dx;};
+//   if (l==1) {return this->dy;};
+// }
 
 template<uint nquadx, uint nquady, uint nquadz> void YAKL_INLINE UniformRectangularStraightGeometry<2,nquadx,nquady,nquadz>::get_0form_quad_pts_wts(int i, int j, SArray<coords<2>,1> &quad_pts_phys, SArray<real,1> &quad_wts_phys)
 {

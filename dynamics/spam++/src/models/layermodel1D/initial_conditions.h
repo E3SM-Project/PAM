@@ -8,68 +8,20 @@
 #include "params.h"
 #include <math.h>
 
-struct dbv_constants {
+
+struct gaussian_constants {
 real const g = 9.80616;
 real const Lx = 5000. * 1000.;
-real const Ly = 5000. * 1000.;
-real const coriolis = 0.00006147;
 real const H0 = 750.0;
-real const ox = 0.1;
-real const oy = 0.1;
-real const sigmax = 3./40.*Lx;
-real const sigmay = 3./40.*Lx;
 real const dh = 75.0;
-real const xc1 = (0.5-ox) * Lx;
-real const yc1 = (0.5-oy) * Ly;
-real const xc2 = (0.5+ox) * Lx;
-real const yc2 = (0.5+oy) * Ly;
+real const dv = 50.0;
 real const xc = 0.5 * Lx;
-real const yc = 0.5 * Ly;
+real const sigmax = 3./40.*Lx;
 real const c = 0.05;
 real const a = 1.0/3.0;
 real const D = 0.5 * Lx;
 };
-dbv_constants dbl_vortex_constants;
-
-
-struct drybubble_constants {
-real const g = 9.80616;
-real const Lx = 1000.;
-real const Ly = 1500.;
-real const xc = 0.5 * Lx;
-real const yc = 0.5 * Ly;
-real const theta0 = 300.0;
-real const zc = 350.;
-real const dss = 0.5;
-real const rc = 250.;
-};
-drybubble_constants rb_constants;
-
-struct largebubble_constants  {
-  real const g = 9.80616;
-  real const Lx = 20000.;
-  real const Ly = 10000.;
-  real const xc = 0.5 * Lx;
-  real const yc = 0.5 * Ly;
-  real const theta0 = 300.0;
-  real const zc = 3000.;
-  real const xrad = 2000.;
-  real const zrad = 2000.;
-  real const amp = 2.0;
-  real const Cpv = 1859.;
-  real const Cpd = 1003.;
-};
-largebubble_constants lrb_constants;
-
-
-
-
-
-
-
-
-
-
+gaussian_constants gauss_constants;
 
 
 
@@ -128,10 +80,7 @@ void set_ic_specific_params(std::string inFile, ModelParameters &params)
     } else {
       sub_str = strDataInit;
     }
-    if      ( !strcmp(sub_str.c_str(),"doublevortex" ) ) { params.data_init_cond = DATA_INIT::DOUBLEVORTEX  ; }
-    else if ( !strcmp(sub_str.c_str(),"rb" ) ) { params.data_init_cond = DATA_INIT::RB  ; }
-    else if ( !strcmp(sub_str.c_str(),"lrb"   ) ) { params.data_init_cond = DATA_INIT::LRB    ; }
-    else if ( !strcmp(sub_str.c_str(),"mlrb"   ) ) { params.data_init_cond = DATA_INIT::MLRB    ; }
+    if      ( !strcmp(sub_str.c_str(),"gaussian" ) ) { params.data_init_cond = DATA_INIT::GAUSSIAN  ; }
     else  {
       std::cout << "Error: unrecognized dataInit " << strDataInit << "\n";
       exit(-1);
@@ -222,31 +171,11 @@ void set_ic_specific_params(std::string inFile, ModelParameters &params)
     }
     
     
-  if (params.data_init_cond == DATA_INIT::DOUBLEVORTEX)
+  if (params.data_init_cond == DATA_INIT::GAUSSIAN)
   {
-  params.xlen = dbl_vortex_constants.Lx;
-  params.xc = dbl_vortex_constants.Lx/2.;
-  params.ylen = dbl_vortex_constants.Ly;
-  params.yc = dbl_vortex_constants.Ly/2.;
-  params.g = dbl_vortex_constants.g;
-  }
-
-  if (params.data_init_cond == DATA_INIT::RB)
-  {
-  params.xlen = rb_constants.Lx;
-  params.xc = rb_constants.Lx/2.;
-  params.ylen = rb_constants.Ly;
-  params.yc = rb_constants.Ly/2.;
-  params.g = rb_constants.g;
-  }
-  
-  if (params.data_init_cond == DATA_INIT::LRB || params.data_init_cond == DATA_INIT::MLRB)
-  {
-  params.xlen = lrb_constants.Lx;
-  params.xc = lrb_constants.Lx/2.;
-  params.ylen = lrb_constants.Ly;
-  params.yc = lrb_constants.Ly/2.;
-  params.g = lrb_constants.g;
+  params.xlen = gauss_constants.Lx;
+  params.xc = gauss_constants.Lx/2.;
+  params.g = gauss_constants.g;
   }
 
 
@@ -257,51 +186,27 @@ void set_ic_specific_params(std::string inFile, ModelParameters &params)
 
 // *******   Initial Conditions   ***********//
 
-real YAKL_INLINE double_vortex_coriolis(real x, real y)
+real YAKL_INLINE gaussian_h(real x)
 {
-  return dbl_vortex_constants.coriolis;
+  real xprime1 = gauss_constants.Lx / (M_PI * gauss_constants.sigmax) * sin(M_PI / gauss_constants.Lx * (x - gauss_constants.xc));
+  return gauss_constants.H0 + gauss_constants.dh * exp(-0.5 * (xprime1 * xprime1));
 }
 
-real YAKL_INLINE double_vortex_h(real x, real y)
+real YAKL_INLINE gaussian_v(real x)
 {
-  real xprime1 = dbl_vortex_constants.Lx / (M_PI * dbl_vortex_constants.sigmax) * sin(M_PI / dbl_vortex_constants.Lx * (x - dbl_vortex_constants.xc1));
-  real yprime1 = dbl_vortex_constants.Ly / (M_PI * dbl_vortex_constants.sigmay) * sin(M_PI / dbl_vortex_constants.Ly * (y - dbl_vortex_constants.yc1));
-  real xprime2 = dbl_vortex_constants.Lx / (M_PI * dbl_vortex_constants.sigmax) * sin(M_PI / dbl_vortex_constants.Lx * (x - dbl_vortex_constants.xc2));
-  real yprime2 = dbl_vortex_constants.Ly / (M_PI * dbl_vortex_constants.sigmay) * sin(M_PI / dbl_vortex_constants.Ly * (y - dbl_vortex_constants.yc2));
-  real xprimeprime1 = dbl_vortex_constants.Lx / (2.0 * M_PI * dbl_vortex_constants.sigmax) * sin(2 * M_PI / dbl_vortex_constants.Lx * (x - dbl_vortex_constants.xc1));
-  real yprimeprime1 = dbl_vortex_constants.Ly / (2.0 * M_PI * dbl_vortex_constants.sigmay) * sin(2 * M_PI / dbl_vortex_constants.Ly * (y - dbl_vortex_constants.yc1));
-  real xprimeprime2 = dbl_vortex_constants.Lx / (2.0 * M_PI * dbl_vortex_constants.sigmax) * sin(2 * M_PI / dbl_vortex_constants.Lx * (x - dbl_vortex_constants.xc2));
-  real yprimeprime2 = dbl_vortex_constants.Ly / (2.0 * M_PI * dbl_vortex_constants.sigmay) * sin(2 * M_PI / dbl_vortex_constants.Ly * (y - dbl_vortex_constants.yc2));
-
-  return dbl_vortex_constants.H0 - dbl_vortex_constants.dh * (exp(-0.5 * (xprime1 * xprime1 + yprime1 * yprime1)) + exp(-0.5 * (xprime2 * xprime2 + yprime2 * yprime2)) - 4. * M_PI * dbl_vortex_constants.sigmax * dbl_vortex_constants.sigmay / dbl_vortex_constants.Lx / dbl_vortex_constants.Ly);
+  //real xprime1 = gauss_constants.Lx / (M_PI * gauss_constants.sigmax) * sin(M_PI / gauss_constants.Lx * (x - gauss_constants.xc));
+  //return gauss_constants.dv * exp(-0.5 * (xprime1 * xprime1));
+  return gauss_constants.dv;
 }
 
-vec<2> YAKL_INLINE double_vortex_v(real x, real y) {
-vec<2> vvec;
 
-real xprime1 = dbl_vortex_constants.Lx / (M_PI * dbl_vortex_constants.sigmax) * sin(M_PI / dbl_vortex_constants.Lx * (x - dbl_vortex_constants.xc1));
-real yprime1 = dbl_vortex_constants.Ly / (M_PI * dbl_vortex_constants.sigmay) * sin(M_PI / dbl_vortex_constants.Ly * (y - dbl_vortex_constants.yc1));
-real xprime2 = dbl_vortex_constants.Lx / (M_PI * dbl_vortex_constants.sigmax) * sin(M_PI / dbl_vortex_constants.Lx * (x - dbl_vortex_constants.xc2));
-real yprime2 = dbl_vortex_constants.Ly / (M_PI * dbl_vortex_constants.sigmay) * sin(M_PI / dbl_vortex_constants.Ly * (y - dbl_vortex_constants.yc2));
-real xprimeprime1 = dbl_vortex_constants.Lx / (2.0 * M_PI * dbl_vortex_constants.sigmax) * sin(2 * M_PI / dbl_vortex_constants.Lx * (x - dbl_vortex_constants.xc1));
-real yprimeprime1 = dbl_vortex_constants.Ly / (2.0 * M_PI * dbl_vortex_constants.sigmay) * sin(2 * M_PI / dbl_vortex_constants.Ly * (y - dbl_vortex_constants.yc1));
-real xprimeprime2 = dbl_vortex_constants.Lx / (2.0 * M_PI * dbl_vortex_constants.sigmax) * sin(2 * M_PI / dbl_vortex_constants.Lx * (x - dbl_vortex_constants.xc2));
-real yprimeprime2 = dbl_vortex_constants.Ly / (2.0 * M_PI * dbl_vortex_constants.sigmay) * sin(2 * M_PI / dbl_vortex_constants.Ly * (y - dbl_vortex_constants.yc2));
-
-vvec.u = - dbl_vortex_constants.g * dbl_vortex_constants.dh / dbl_vortex_constants.coriolis / dbl_vortex_constants.sigmay * (yprimeprime1 * exp(-0.5*(xprime1 * xprime1 + yprime1 * yprime1)) + yprimeprime2 * exp(-0.5*(xprime2 * xprime2 + yprime2 * yprime2)));
-vvec.v = dbl_vortex_constants.g * dbl_vortex_constants.dh / dbl_vortex_constants.coriolis / dbl_vortex_constants.sigmax * (xprimeprime1 * exp(-0.5*(xprime1 * xprime1 + yprime1 * yprime1)) + xprimeprime2 * exp(-0.5*(xprime2 * xprime2 + yprime2 * yprime2)));
-return vvec;
-}
-
-real YAKL_INLINE double_vortex_S(real x, real y)
+real YAKL_INLINE gaussian_S(real x)
 {
-  //real sval = g * (1. + c * sin(2. * M_PI / Lx * (x - xc)) * sin(2. * M_PI / Ly * (y - yc)) * exp(-((x-xc)*(x-xc) + (y-yc)*(y-yc))/(a*a*D*D)));
-  real sval = dbl_vortex_constants.g * (1. + dbl_vortex_constants.c * exp(-((x-dbl_vortex_constants.xc)*(x-dbl_vortex_constants.xc) + (y-dbl_vortex_constants.yc)*(y-dbl_vortex_constants.yc))/(dbl_vortex_constants.a*dbl_vortex_constants.a*dbl_vortex_constants.D*dbl_vortex_constants.D)));
-  //real sval = g * (1. + c * sin(2. * M_PI / Lx * (x- xc)));
-  //real sval = g;
-  //real sval = g * (1. + c * ((x > 0.35 * Lx && x < 0.65 * Lx && y > 0.35 * Ly && y < 0.65 * Ly ) ? 1. : 0.));
-  return sval * double_vortex_h(x,y);
+  real sval = gauss_constants.g * (1. + gauss_constants.c * exp(-((x-gauss_constants.xc)*(x-gauss_constants.xc))/(gauss_constants.a*gauss_constants.a*gauss_constants.D*gauss_constants.D)));
+  return sval * gaussian_h(x);
 }
+
+//FIX THESE!
 
 // CAN WE GENERALIZE THESE? HOW? NEED TO CALL OUT TO THE CORRECT HEIGHT FUNCTION...
 // ALSO NEED TO SET VARIOUS LX/LY SIZES
@@ -311,15 +216,15 @@ real YAKL_INLINE double_vortex_S(real x, real y)
 // IN FACT, I THINK ALL TEST CASES STRUCTURES SHOULD INHERIT FROM A MASTER STRUCTURE THAT HAS LX/LY/ETC ALREADY SET UP?
 // SOMETHING LIKE THIS...
 
-real YAKL_INLINE tracer_square_cent(real x, real y)         {return (x > 0.35*dbl_vortex_constants.Lx && x < 0.65*dbl_vortex_constants.Lx && y > 0.35*dbl_vortex_constants.Ly && y < 0.65*dbl_vortex_constants.Ly                        ) ? 0.005 : 0.;}
-real YAKL_INLINE tracer_square_ur(real x, real y)         {return (x > 0.6*dbl_vortex_constants.Lx && x < 0.9*dbl_vortex_constants.Lx && y > 0.6*dbl_vortex_constants.Ly && y < 0.9*dbl_vortex_constants.Ly                        ) ? 0.005 : 0.;}
-real YAKL_INLINE tracer_square_ll(real x, real y)         {return (x > 0.1*dbl_vortex_constants.Lx && x < 0.4*dbl_vortex_constants.Lx && y > 0.1*dbl_vortex_constants.Ly && y < 0.4*dbl_vortex_constants.Ly                        ) ? 0.005 : 0.;}
-real YAKL_INLINE tracer_square_urpll(real x, real y)         {return tracer_square_ur(x,y) + tracer_square_ll(x,y);}
+real YAKL_INLINE _tracer_square_cent(real x)         {return (x > 0.35*gauss_constants.Lx && x < 0.65*gauss_constants.Lx) ? 0.005 : 0.;}
+real YAKL_INLINE _tracer_square_r(real x)         {return (x > 0.6*gauss_constants.Lx && x < 0.9*gauss_constants.Lx) ? 0.005 : 0.;}
+real YAKL_INLINE _tracer_square_l(real x)         {return (x > 0.1*gauss_constants.Lx && x < 0.4*gauss_constants.Lx) ? 0.005 : 0.;}
+real YAKL_INLINE _tracer_square_lr(real x)         {return _tracer_square_l(x) + _tracer_square_r(x);}
 
-real YAKL_INLINE double_vortex_tracer_square_cent (real x, real y) {return double_vortex_h(x,y) * tracer_square_cent(x, y);}
-real YAKL_INLINE double_vortex_tracer_square_urpll (real x, real y) {return double_vortex_h(x,y) * tracer_square_urpll(x, y);}
+real YAKL_INLINE tracer_square_cent (real x) {return gaussian_h(x) * _tracer_square_cent(x);}
+real YAKL_INLINE tracer_square_lr (real x) {return gaussian_h(x) * _tracer_square_lr(x);}
 
-real YAKL_INLINE double_vortex_tracer_gaussian(real x, real y)     {return  double_vortex_h(x,y) * 0.005 * exp(-((x-dbl_vortex_constants.xc)*(x-dbl_vortex_constants.xc) + (y-dbl_vortex_constants.yc)*(y-dbl_vortex_constants.yc))/(dbl_vortex_constants.a*dbl_vortex_constants.a*dbl_vortex_constants.D*dbl_vortex_constants.D));}
+real YAKL_INLINE tracer_gaussian(real x)     {return  gaussian_h(x) * 0.005 * exp(-((x-gauss_constants.xc)*(x-gauss_constants.xc))/(gauss_constants.a*gauss_constants.a*gauss_constants.D*gauss_constants.D));}
 //{ return 0.005 *double_vortex_h(x,y) * exp(-100. * pow((x-xc)/Lx,2.)) * exp(-100. * pow((y-yc)/Ly,2.)); }
 
 // ADD MORE ICs HERE!!!
@@ -328,206 +233,36 @@ real YAKL_INLINE double_vortex_tracer_gaussian(real x, real y)     {return  doub
 //dt = Constant(get_dt(wavespeed, cval, order, variant, Lx, Ly, nx, ny))
 
 
-// Universal
-
-real YAKL_INLINE isentropic_T(real x, real z, real theta0, real g)
-{
-  return theta0 - z * g / thermo.cst.Cpd;
-}
-
-real YAKL_INLINE isentropic_p(real x, real z, real theta0, real g)
-{
-  return thermo.cst.pr * pow(isentropic_T(x, z, theta0, g) / theta0, 1./thermo.cst.kappa_d);
-}
-
-real YAKL_INLINE isentropic_rho(real x, real z, real theta0, real g) {
-  real p = isentropic_p(x, z, theta0, g);
-  real T = isentropic_T(x, z, theta0, g);
-  real alpha = thermo.compute_alpha(p, T, 0, 0, 0, 0);
-  return 1./alpha;
-}
-
-
-real YAKL_INLINE linear_ellipsoid(real x, real z, real x0, real z0, real xrad, real zrad, real amp)
-{
-  real xn = (x-x0)/xrad;
-  real zn = (z-z0)/zrad;
-  real dist = sqrt( xn*xn + zn*zn );
-  return amp * std::max( 1._fp - dist , 0._fp );  
-}
-
-real YAKL_INLINE flat_geop(real x, real z, real g)
-{
-  return g * z;
-}
-
-
-// Rising Bubble (small-scale)
-
-real YAKL_INLINE rb_entropicvar(real x, real z) {
-  real p = isentropic_p(x, z, rb_constants.theta0, rb_constants.g);
-  real T0 = isentropic_T(x, z, rb_constants.theta0, rb_constants.g);
-  real r = sqrt((x-rb_constants.xc)*(x-rb_constants.xc) + (z-rb_constants.zc)*(z-rb_constants.zc));
-  real dtheta = (r<rb_constants.rc) ? rb_constants.dss/2. * (1. + cos(M_PI * r/rb_constants.rc)) : 0.;
-  real dT = dtheta * pow(p/thermo.cst.pr, thermo.cst.kappa_d);
-  return thermo.compute_entropic_var(p, T0+dT, 0, 0, 0, 0);
-}
-
-real YAKL_INLINE rb_rho(real x, real z)
-{
-  return isentropic_rho(x, z, rb_constants.theta0, rb_constants.g);
-}
-
-real YAKL_INLINE rb_entropicdensity(real x, real z) {
-  return rb_entropicvar(x,z) * rb_rho(x,z);
-}
-
-real YAKL_INLINE rb_rho_acousticbalance(real x, real z) {
-  real rho_b = rb_rho(x,z);
-  real theta = rb_entropicvar(x,z);
-  return rho_b * rb_constants.theta0 / theta;
-
-}
-
-real YAKL_INLINE rb_entropicdensity_acousticbalance(real x, real z) {
-  return rb_entropicvar(x,z) * rb_rho_acousticbalance(x,z);
-}
-
-real YAKL_INLINE rb_geop(real x, real z)
-{
-  return flat_geop(x,z,rb_constants.g);
-}
-
-// (Moist) Rising Bubble (large-scale)
-
-real YAKL_INLINE lrb_entropicvar(real x, real z) {
-  
-  real p = isentropic_p(x, z, lrb_constants.theta0, lrb_constants.g);
-  real T0 = isentropic_T(x, z, lrb_constants.theta0, lrb_constants.g);
-  real dtheta = linear_ellipsoid(x, z, lrb_constants.xc, lrb_constants.zc, lrb_constants.xrad, lrb_constants.zrad, lrb_constants.amp);
-  real dT = dtheta * pow(p/thermo.cst.pr, thermo.cst.kappa_d);
-  return thermo.compute_entropic_var(p, T0+dT, 0, 0, 0, 0);
-
-}
-
-real YAKL_INLINE lrb_rho(real x, real z)
-{
-  return isentropic_rho(x, z, lrb_constants.theta0, lrb_constants.g);
-}
-
-real YAKL_INLINE lrb_entropicdensity(real x, real z) {
-  return lrb_entropicvar(x,z) * lrb_rho(x,z);
-}
-
-real YAKL_INLINE lrb_rho_acousticbalance(real x, real z) {
-  real rho_b = lrb_rho(x,z);
-  real theta = lrb_entropicvar(x,z);
-  return rho_b * lrb_constants.theta0 / theta;
-
-}
-
-real YAKL_INLINE lrb_entropicdensity_acousticbalance(real x, real z) {
-  return lrb_entropicvar(x,z) * lrb_rho_acousticbalance(x,z);
-}
-
-real YAKL_INLINE lrb_geop(real x, real z)
-{
-  return flat_geop(x,z,lrb_constants.g);
-}
-
-
-
-// moist rising bubble (large-scale)
-real YAKL_INLINE mlrb_rho(real x, real z) {}
-real YAKL_INLINE mlrb_entropicdensity(real x, real z) {}
-real YAKL_INLINE mlrb_rho_v(real x, real z) {}
-
 template <int nprog, int nconst, int nquadx, int nquady, int nquadz> void set_initial_conditions (ModelParameters &params, VariableSet<nprog> &progvars, VariableSet<nconst> &constvars, 
-Geometry<2, nquadx, nquady, nquadz> &primal_geom, Geometry<2, nquadx, nquady, nquadz> &dual_geom)
+Geometry<1, nquadx, nquady, nquadz> &primal_geom, Geometry<1, nquadx, nquady, nquadz> &dual_geom)
 {
 
-  if (params.data_init_cond == DATA_INIT::DOUBLEVORTEX)
+  if (params.data_init_cond == DATA_INIT::GAUSSIAN)
   {
-      dual_geom.set_2form_values(double_vortex_h, progvars.fields_arr[DENSVAR], 0);
+    std::cout << "IC: gaussian " << "\n";
+      dual_geom.set_1form_values(gaussian_h, progvars.fields_arr[DENSVAR], 0);
 #ifdef _TSWE
-      dual_geom.set_2form_values(double_vortex_S, progvars.fields_arr[DENSVAR], 1);
+      dual_geom.set_1form_values(gaussian_S, progvars.fields_arr[DENSVAR], 1);
 #endif
-  primal_geom.set_1form_values(double_vortex_v, progvars.fields_arr[VVAR], 0, LINE_INTEGRAL_TYPE::TANGENT);
-  primal_geom.set_2form_values(double_vortex_coriolis, constvars.fields_arr[CORIOLISVAR], 0);
 
 // HOW DO GENERALIZE THESE?
 // WANT TO SCALE TRACER FIELDS BY ACTUAL HEIGHT FIELDS...
 // SHOULD BE USABLE FOR ANY IC!
 for (int i=0; i<ntracers; i++)
 {
-if (params.tracer_init_cond[i] == TRACER_INIT::GAUSSIAN) {dual_geom.set_2form_values(double_vortex_tracer_gaussian, progvars.fields_arr[DENSVAR], i+ndensity-ntracers);}
-if (params.tracer_init_cond[i] == TRACER_INIT::SQUARE) {dual_geom.set_2form_values(double_vortex_tracer_square_cent, progvars.fields_arr[DENSVAR], i+ndensity-ntracers);}
-if (params.tracer_init_cond[i] == TRACER_INIT::DOUBLESQUARE) {dual_geom.set_2form_values(double_vortex_tracer_square_urpll, progvars.fields_arr[DENSVAR], i+ndensity-ntracers);}
+if (params.tracer_init_cond[i] == TRACER_INIT::GAUSSIAN) {dual_geom.set_1form_values(tracer_gaussian, progvars.fields_arr[DENSVAR], i+ndensity-ntracers);}
+if (params.tracer_init_cond[i] == TRACER_INIT::SQUARE) {dual_geom.set_1form_values(tracer_square_cent, progvars.fields_arr[DENSVAR], i+ndensity-ntracers);}
+if (params.tracer_init_cond[i] == TRACER_INIT::DOUBLESQUARE) {dual_geom.set_1form_values(tracer_square_lr, progvars.fields_arr[DENSVAR], i+ndensity-ntracers);}
 }
 for (int i=0; i<ntracers_fct; i++)
 {
-if (params.tracerFCT_init_cond[i] == TRACER_INIT::GAUSSIAN) {dual_geom.set_2form_values(double_vortex_tracer_gaussian, progvars.fields_arr[DENSFCTVAR], i+ndensityfct-ntracers_fct);}
-if (params.tracerFCT_init_cond[i] == TRACER_INIT::SQUARE) {dual_geom.set_2form_values(double_vortex_tracer_square_cent, progvars.fields_arr[DENSFCTVAR], i+ndensityfct-ntracers_fct);}
-if (params.tracerFCT_init_cond[i] == TRACER_INIT::DOUBLESQUARE) {dual_geom.set_2form_values(double_vortex_tracer_square_urpll, progvars.fields_arr[DENSFCTVAR], i+ndensityfct-ntracers_fct);}
+if (params.tracerFCT_init_cond[i] == TRACER_INIT::GAUSSIAN) {dual_geom.set_1form_values(tracer_gaussian, progvars.fields_arr[DENSFCTVAR], i+ndensityfct-ntracers_fct);}
+if (params.tracerFCT_init_cond[i] == TRACER_INIT::SQUARE) {dual_geom.set_1form_values(tracer_square_cent, progvars.fields_arr[DENSFCTVAR], i+ndensityfct-ntracers_fct);}
+if (params.tracerFCT_init_cond[i] == TRACER_INIT::DOUBLESQUARE) {dual_geom.set_1form_values(tracer_square_lr, progvars.fields_arr[DENSFCTVAR], i+ndensityfct-ntracers_fct);}
 }
 
-  }
+primal_geom.set_1form_values(gaussian_v, progvars.fields_arr[VVAR], 0);
 
-  if (params.data_init_cond == DATA_INIT::RB)
-  {
-    if (params.acoustic_balance)
-    {
-    dual_geom.set_2form_values(rb_rho_acousticbalance, progvars.fields_arr[DENSVAR], 0);
-    dual_geom.set_2form_values(rb_entropicdensity_acousticbalance, progvars.fields_arr[DENSVAR], 1);
-    }
-    else
-    {
-      dual_geom.set_2form_values(rb_rho, progvars.fields_arr[DENSVAR], 0);
-      dual_geom.set_2form_values(rb_entropicdensity, progvars.fields_arr[DENSVAR], 1);      
-    }
-    dual_geom.set_2form_values(rb_geop, constvars.fields_arr[HSVAR], 0);
-  }
-
-// MERGE WITH MLRB below?
-// ie if CE dont set vapor, but if MCE do?
-// acoustic balancing/rho change though between dry and moist so maybe not...
-  if (params.data_init_cond == DATA_INIT::LRB)
-  {
-    thermo.cst.Cpv = lrb_constants.Cpv;
-    thermo.cst.Cpd = lrb_constants.Cpd;
-    thermo.cst.Cvd = thermo.cst.Cpd - thermo.cst.Rd;
-    thermo.cst.Cvv = thermo.cst.Cpv - thermo.cst.Rv;
-    
-    if (params.acoustic_balance)
-    {
-    dual_geom.set_2form_values(lrb_rho_acousticbalance, progvars.fields_arr[DENSVAR], 0);
-    dual_geom.set_2form_values(lrb_entropicdensity_acousticbalance, progvars.fields_arr[DENSVAR], 1);
-    }
-    else
-    {
-      dual_geom.set_2form_values(lrb_rho, progvars.fields_arr[DENSVAR], 0);
-      dual_geom.set_2form_values(lrb_entropicdensity, progvars.fields_arr[DENSVAR], 1);      
-    }
-    dual_geom.set_2form_values(lrb_geop, constvars.fields_arr[HSVAR], 0);
-  }
-  
-  // ADD ACOUSTIC BALANCING HERE
-  // FIX THIS UP
-  if (params.data_init_cond == DATA_INIT::MLRB)
-  {
-    thermo.cst.Cpv = lrb_constants.Cpv;
-    thermo.cst.Cpd = lrb_constants.Cpd;
-    thermo.cst.Cvd = thermo.cst.Cpd - thermo.cst.Rd;
-    thermo.cst.Cvv = thermo.cst.Cpv - thermo.cst.Rv;
-    
-    #ifdef _USE_RHOD_VARIANT
-    dual_geom.set_2form_values(mlrb_rhod, progvars.fields_arr[DENSVAR], 0);
-    #else
-    dual_geom.set_2form_values(mlrb_rho, progvars.fields_arr[DENSVAR], 0);    
-    #endif
-    dual_geom.set_2form_values(mlrb_entropicdensity, progvars.fields_arr[DENSVAR], 1);
-    dual_geom.set_2form_values(mlrb_rho_v, progvars.fields_arr[DENSFCTVAR], 0);
-    dual_geom.set_2form_values(lrb_geop, constvars.fields_arr[HSVAR], 0);
   }
   
 }

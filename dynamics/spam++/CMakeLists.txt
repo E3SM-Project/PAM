@@ -66,13 +66,31 @@ if ("${MODEL}" STREQUAL "advection2D")
   set_source_files_properties(driver.cpp PROPERTIES COMPILE_FLAGS "${EXE_DEFS} ${YAKL_CXX_FLAGS}")
 endif()
 
-
 if ("${MODEL}" STREQUAL "tswe1D" OR "${MODEL}" STREQUAL "swe1D")
   include_directories(src/models/layermodel1D)
   add_executable(layermodel1D driver/driver.cpp)
   set_target_properties(layermodel1D PROPERTIES LINKER_LANGUAGE CXX)
   target_link_libraries(layermodel1D yakl pnetcdf)
   set_source_files_properties(driver.cpp PROPERTIES COMPILE_FLAGS "${EXE_DEFS} ${YAKL_CXX_FLAGS}")
+
+  if ("${MODEL_COMPILE_CONST}" STREQUAL "")
+  file(READ src/models/layermodel1D/model_consts.build model_defines)
+  else()
+  file(READ ${MODEL_COMPILE_CONST} model_defines)
+  endif()
+  # Convert file contents into a CMake list (where each element in the list
+  # is one line of the file)
+  #
+  STRING(REGEX REPLACE ";" "\\\\;" model_defines "${model_defines}")
+  STRING(REGEX REPLACE "\n" ";" model_defines "${model_defines}")
+
+  foreach(definecmd ${model_defines})
+  if ("${definecmd}" MATCHES "\#")
+  else ()
+  message("${definecmd}")
+  add_definitions(${definecmd})
+  endif()
+  endforeach()
 
   if ("${MODEL}" STREQUAL "swe1D")
   add_definitions(-D_SWE)
@@ -83,6 +101,7 @@ if ("${MODEL}" STREQUAL "tswe1D" OR "${MODEL}" STREQUAL "swe1D")
   endif()
 
 endif()
+
 
 
 if ("${MODEL}" STREQUAL "tswe2D" OR "${MODEL}" STREQUAL "swe2D" OR "${MODEL}" STREQUAL "ce2D" OR "${MODEL}" STREQUAL "mce2D")

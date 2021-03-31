@@ -1,12 +1,13 @@
 // Topology
 nx = 100
-ny = 100
-nz = 30
+ny = 1
+nz = 1
 
 // Time stepping
 dt = 250.0
+
 Nsteps = 400
-Nout = 20
+Nout = 40
 Nstat = 1
 TStype = dt
 cfl = 0.5
@@ -17,4 +18,11 @@ nprocy = 1
 nprocz = 1
 
 // initial condition
-dataInit = doublevortex
+dataInit = gaussian
+
+tracerInit1 = square
+tracerInit2 = gaussian
+tracerInit3 = doublesquare
+tracerFCTInit1 = square
+tracerFCTInit2 = gaussian
+tracerFCTInit3 = doublesquare

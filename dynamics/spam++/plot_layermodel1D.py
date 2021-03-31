@@ -6,49 +6,84 @@ import sys
 DS = xr.open_dataset('output.nc')
 DS.load()
 
-Nlist = np.arange(21)
-ntracers = int(sys.argv[2])
+ndensity = DS.dims['dens_ndofs']
+ndensity_fct = DS.dims.get('densfct_ndofs',0)
+nt = DS.dims['t']
 model = sys.argv[1]
 
 mass = DS.mass
 energy = DS.energy
-if ntracers > 0:
-    tracer = DS.massfct
-    tracermin = DS.fctmin
-    tracermax = DS.fctmax
+densmax = DS.densmax
+densmin = DS.densmin
+if ndensity_fct > 0:
+    massfct = DS.massfct
+    densfctmax = DS.densfctmax
+    densfctmin = DS.densfctmin
 
+#maybe mass/tracer stuff gets a list of names of size ndensity/ndensityfct?
+#YES DO IT LIKE THIS!
 
-plot_stat('mass', mass.isel(mass_ndofs=0))
-if (model == 'tswe'):
-    plot_stat('bouyancy', mass.isel(mass_ndofs=1))
+if model == 'swe':
+    dens_names = ['h',]
+    densfct_names = []
+    dens_stat_names = ['mass',]
+    densfct_stat_names = []
+    nprogdens = 1
+    nprogdensfct = 0  
+if model == 'tswe':
+    dens_names = ['h','S',]
+    densfct_names = []
+    dens_stat_names = ['mass','bouyancy',]
+    densfct_stat_names = []
+    nprogdens = 2
+    nprogdensfct = 0  
 
-plot_stat('total_energy', energy.isel(energy_ndofs=2))
+for k in range(ndensity-nprogdens):
+    dens_names.append('T'+str(k))
+    dens_stat_names.append('tracer'+str(k))
+for k in range(ndensity_fct-nprogdensfct):
+    densfct_names.append('Tfct'+str(k))        
+    densfct_stat_names.append('tracerfct'+str(k))  
+
+for l,name in zip(range(ndensity), dens_stat_names):
+    plot_stat('total_'+name, mass.isel(mass_ndofs=l))
+    plot_rawstat('min_' +name, densmin.isel(densmin_ndofs=l))
+    plot_rawstat('max_' +name, densmax.isel(densmax_ndofs=l))
+    
+if ndensity_fct > 0:
+    for l,name in zip(range(ndensity_fct), densfct_stat_names):
+        plot_stat('total_'+name, massfct.isel(massfct_ndofs=l))
+        plot_rawstat('min_' +name, densfctmin.isel(densfctmin_ndofs=l))
+        plot_rawstat('max_' +name, densfctmax.isel(densfctmax_ndofs=l))
+                
+plot_rawstat('internal_energy', energy.isel(energy_ndofs=3))
+plot_rawstat('potential_energy', energy.isel(energy_ndofs=2))
 plot_rawstat('kinetic_energy', energy.isel(energy_ndofs=1))
-plot_rawstat('potential_energy', energy.isel(energy_ndofs=0))
+plot_stat('total_energy', energy.isel(energy_ndofs=0))
 
-for l in range(ntracers):
-    plot_stat('tracer' + str(l), tracer.isel(massfct_ndofs=l))
-    plot_rawstat('tracer' + str(l) + 'min', tracermin.isel(fctmin_ndofs=l))
-    plot_rawstat('tracer' + str(l) + 'max', tracermax.isel(fctmax_ndofs=l))
-
-
-# Probably control what to plot based on the test case run...
+Nlist = np.arange(0,nt)
 
 v = DS.v
 dens = DS.dens
 densl = DS.densl
-if (ntracers>0):
+hs = DS.hs
+
+if (ndensity_fct>0):
     densfct = DS.densfct
     densfctl = DS.densfctl
 
+plotvar_scalar1D('hs', hs.isel(hs_ndofs=0,dual_ncells_z=0),0)
+
+
+# WHERE EXACTLY SHOULD sl/trl/trfctl live? are they straight 0-forms? twisted n-forms?
 for i in Nlist:
-    plotvar_scalar1D('h', dens.isel(t=i,dens_ndofs=0,ncells_z=0,ncells_y=0),i)
-    plotvar_scalar1D('v', v.isel(t=i,v_ndofs=0,ncells_z=0,ncells_y=0),i)
-    if (model == 'tswe'):    
-        plotvar_scalar1D('S', dens.isel(t=i,dens_ndofs=1,ncells_z=0,ncells_y=0),i)
-        plotvar_scalar1D('sl', densl.isel(t=i,densl_ndofs=1,ncells_z=0,ncells_y=0),i)
-    for l in range(ntracers):
-        plotvar_scalar1D('tr' + str(l), densfct.isel(t=i,densfct_ndofs=l,ncells_z=0,ncells_y=0),i)
-        plotvar_scalar1D('trl' + str(l), densfctl.isel(t=i,densfctl_ndofs=l,ncells_z=0,ncells_y=0),i)
+    plotvar_scalar1D('v', v.isel(t=i,v_ndofs=0,primal_ncells_y=0,primal_ncells_z=0),i)
+    for l,name in zip(range(ndensity), dens_names):
+            plotvar_scalar1D(name, dens.isel(t=i,dens_ndofs=l,dual_ncells_y=0,dual_ncells_z=0),i)
+            plotvar_scalar1D(name+'l', densl.isel(t=i,densl_ndofs=l,primal_ncells_y=0,primal_ncells_z=0),i)
+    if ndensity_fct > 0:
+        for l,name in zip(range(ndensity_fct), densfct_names):
+            plotvar_scalar1D(name, densfct.isel(t=i,densfct_ndofs=l,dual_ncells_y=0,dual_ncells_z=0),i)
+            plotvar_scalar1D(name+'l', densfctl.isel(t=i,densfctl_ndofs=l,primal_ncells_y=0,primal_ncells_z=0),i)
 
 

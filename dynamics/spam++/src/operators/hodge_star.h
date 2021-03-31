@@ -28,7 +28,6 @@ void YAKL_INLINE H(SArray<real,ndims> &var, SArray<real,ndims,5> const &velocity
 }
 
 
-// IS THE INDEXING HERE CORRECT FOR NEW TOPOLOGY/GEOMETRY FORMATS?
 template<uint ndofs, uint ord, uint off=ord/2 -1> void YAKL_INLINE compute_H(SArray<real,ndims> &u, const realArr vvar, Geometry<ndims,1,1,1> &pgeom, Geometry<ndims,1,1,1> &dgeom, int is, int js, int ks, int i, int j, int k)
 {
   SArray<real,ndims,ord-1> v;
@@ -37,15 +36,18 @@ template<uint ndofs, uint ord, uint off=ord/2 -1> void YAKL_INLINE compute_H(SAr
   for (int d=0; d<ndims; d++) {
     if (d==0) {
     v(d,p) = vvar(d, k+ks, j+js, i+is+p-off);
-    Hgeom(d,p) = pgeom.get_area_1form(d, k+ks, j+js, i+is+p-off) / dgeom.get_area_1form(d, k+ks, j+js, i+is+p-off);
+    //Hgeom(d,p) = dgeom.get_area_1form(d, k+ks, j+js, i+is+p-off) / pgeom.get_area_1form(d, k+ks, j+js, i+is+p-off);
+    Hgeom(d,p) = dgeom.get_area_lform(ndims-1, d, k+ks, j+js, i+is+p-off) / pgeom.get_area_lform(1, d, k+ks, j+js, i+is+p-off);
   }
   if (d==1) {
   v(d,p) = vvar(d, k+ks, j+js+p-off, i+is);
-  Hgeom(d,p) = pgeom.get_area_1form(d, k+ks, j+js+p-off, i+is) / dgeom.get_area_1form(d, k+ks, j+js, i+is+p-off);
+  //Hgeom(d,p) = dgeom.get_area_1form(d, k+ks, j+js+p-off, i+is) / pgeom.get_area_1form(d, k+ks, j+js, i+is+p-off);
+  Hgeom(d,p) = dgeom.get_area_lform(ndims-1, d, k+ks, j+js+p-off, i+is) / pgeom.get_area_lform(1, d, k+ks, j+js, i+is+p-off);
   }
   if (d==2) {
   v(d,p) = vvar(d, k+ks+p-off, j+js, i+is);
-  Hgeom(d,p) = pgeom.get_area_1form(d, k+ks+p-off, j+js, i+is) / dgeom.get_area_1form(d, k+ks+p-off, j+js, i+is);
+  //Hgeom(d,p) = dgeom.get_area_1form(d, k+ks+p-off, j+js, i+is) / pgeom.get_area_1form(d, k+ks+p-off, j+js, i+is);
+  Hgeom(d,p) = dgeom.get_area_lform(ndims-1, d, k+ks+p-off, j+js, i+is) / pgeom.get_area_lform(1, d, k+ks+p-off, j+js, i+is);
   }
   }}
   H(u, v, Hgeom);
@@ -89,8 +91,6 @@ template<uint ndofs> void YAKL_INLINE I(SArray<real,ndofs> &var, SArray<real,ndo
 
 
 
-// IS THE INDEXING HERE CORRECT FOR NEW TOPOLOGY/GEOMETRY FORMATS?
-
 template<uint ndofs, uint ord, uint off=ord/2 -1> void YAKL_INLINE compute_I(SArray<real,ndofs> &x0, const realArr var, Geometry<ndims,1,1,1> &pgeom, Geometry<ndims,1,1,1> &dgeom, int is, int js, int ks, int i, int j, int k)
 {
 SArray<real,ndofs,ndims,ord-1> x;
@@ -101,17 +101,20 @@ for (int d=0; d<ndims; d++) {
   if (d==0)
   {
 x(l,d,p) = var(l, k+ks, j+js, i+is+p-off);
-Igeom(d,p) = pgeom.get_area_0form(k+ks, j+js, i+is+p-off) / dgeom.get_area_2form(k+ks, j+js, i+is+p-off);
+//Igeom(d,p) = pgeom.get_area_0form(k+ks, j+js, i+is+p-off) / dgeom.get_area_2form(k+ks, j+js, i+is+p-off);
+Igeom(d,p) = pgeom.get_area_lform(0, 0, k+ks, j+js, i+is+p-off) / dgeom.get_area_lform(ndims, 0, k+ks, j+js, i+is+p-off);
 }
 if (d==1)
 {
 x(l,d,p) = var(l, k+ks, j+js+p-off, i+is);
-Igeom(d,p) = pgeom.get_area_0form(k+ks, j+js+p-off, i+is) / dgeom.get_area_2form(k+ks, j+js+p-off, i+is);
+//Igeom(d,p) = pgeom.get_area_0form(k+ks, j+js+p-off, i+is) / dgeom.get_area_2form(k+ks, j+js+p-off, i+is);
+Igeom(d,p) = pgeom.get_area_lform(0, 0, k+ks, j+js+p-off, i+is) / dgeom.get_area_lform(ndims, 0, k+ks, j+js+p-off, i+is);
 }
 if (d==2)
 {
 x(l,d,p) = var(l, k+ks+p-off, j+js, i+is);
-Igeom(d,p) = pgeom.get_area_0form(k+ks+p-off, j+js, i+is) / dgeom.get_area_2form(k+ks+p-off, j+js, i+is);
+//Igeom(d,p) = pgeom.get_area_0form(k+ks+p-off, j+js, i+is) / dgeom.get_area_2form(k+ks+p-off, j+js, i+is);
+Igeom(d,p) = pgeom.get_area_lform(0, 0, k+ks+p-off, j+js, i+is) / dgeom.get_area_lform(ndims, 0, k+ks+p-off, j+js, i+is);
 }
 }}}
 I<ndofs>(x0, x, Igeom);
@@ -164,17 +167,20 @@ for (int d=0; d<ndims; d++) {
   if (d==0)
   {
 x(l,d,p) = var(l, k+ks, j+js, i+is+p-off);
-Jgeom(d,p) = dgeom.get_area_0form(k+ks, j+js, i+is+p-off) / pgeom.get_area_2form(k+ks, j+js, i+is+p-off);
+//Jgeom(d,p) = dgeom.get_area_0form(k+ks, j+js, i+is+p-off) / pgeom.get_area_2form(k+ks, j+js, i+is+p-off);
+Jgeom(d,p) = dgeom.get_area_lform(0, 0, k+ks, j+js, i+is+p-off) / pgeom.get_area_lform(ndims, 0, k+ks, j+js, i+is+p-off);
 }
 if (d==1)
 {
 x(l,d,p) = var(l, k+ks, j+js+p-off, i+is);
-Jgeom(d,p) = dgeom.get_area_0form(k+ks, j+js+p-off, i+is) / pgeom.get_area_2form(k+ks, j+js+p-off, i+is);
+//Jgeom(d,p) = dgeom.get_area_0form(k+ks, j+js+p-off, i+is) / pgeom.get_area_2form(k+ks, j+js+p-off, i+is);
+Jgeom(d,p) = dgeom.get_area_lform(0, 0, k+ks, j+js+p-off, i+is) / pgeom.get_area_lform(ndims, 0, k+ks, j+js+p-off, i+is);
 }
 if (d==2)
 {
 x(l,d,p) = var(l, k+ks+p-off, j+js, i+is);
-Jgeom(d,p) = dgeom.get_area_0form(k+ks+p-off, j+js, i+is) / pgeom.get_area_2form(k+ks+p-off, j+js, i+is);
+//Jgeom(d,p) = dgeom.get_area_0form(k+ks+p-off, j+js, i+is) / pgeom.get_area_2form(k+ks+p-off, j+js, i+is);
+Jgeom(d,p) = dgeom.get_area_lform(0, 0, k+ks+p-off, j+js, i+is) / pgeom.get_area_lform(ndims, 0, k+ks+p-off, j+js, i+is);
 }
 }}}
 J<ndofs>(x0, x, Jgeom);
