@@ -12,20 +12,20 @@
 struct dbv_constants {
 real const g = 9.80616;
 real const Lx = 5000. * 1000.;
-real const Ly = 5000. * 1000.;
+real const Lz = 5000. * 1000.;
 real const coriolis = 0.00006147;
 real const H0 = 750.0;
 real const ox = 0.1;
 real const oy = 0.1;
 real const sigmax = 3./40.*Lx;
-real const sigmay = 3./40.*Ly;
+real const sigmaz = 3./40.*Lz;
 real const dh = 75.0;
 real const xc1 = (0.5-ox) * Lx;
-real const yc1 = (0.5-oy) * Ly;
+real const zc1 = (0.5-oy) * Lz;
 real const xc2 = (0.5+ox) * Lx;
-real const yc2 = (0.5+oy) * Ly;
+real const zc2 = (0.5+oy) * Lz;
 real const xc = 0.5 * Lx;
-real const yc = 0.5 * Ly;
+real const zc = 0.5 * Lz;
 real const c = 0.05;
 real const a = 1.0/3.0;
 real const D = 0.5 * Lx;
@@ -36,11 +36,11 @@ dbv_constants dbl_vortex_constants;
 struct smallbubble_constants {
 real const g = 9.80616;
 real const Lx = 1000.;
-real const Ly = 1500.;
+real const Lz = 1500.;
 real const xc = 0.5 * Lx;
-real const yc = 0.5 * Ly;
+real const zc = 0.5 * Lz;
 real const theta0 = 300.0;
-real const zc = 350.;
+real const bzc = 350.;
 real const dss = 0.5;
 real const rc = 250.;
 real const rh0 = 0.8;
@@ -61,11 +61,11 @@ smallbubble_constants rb_constants;
 struct largebubble_constants  {
   real const g = 9.80616;
   real const Lx = 20000.;
-  real const Ly = 20000.;
+  real const Lz = 20000.;
   real const xc = 0.5 * Lx;
-  real const yc = 0.5 * Ly;
+  real const zc = 0.5 * Lz;
   real const theta0 = 300.0;
-  real const zc = 3000.;
+  real const bzc = 3000.;
   real const xrad = 2000.;
   real const zrad = 2000.;
   real const amp = 2.0;
@@ -245,8 +245,8 @@ void set_ic_specific_params(std::string inFile, ModelParameters &params)
   {
   params.xlen = dbl_vortex_constants.Lx;
   params.xc = dbl_vortex_constants.Lx/2.;
-  params.ylen = dbl_vortex_constants.Ly;
-  params.yc = dbl_vortex_constants.Ly/2.;
+  params.zlen = dbl_vortex_constants.Lz;
+  params.zc = dbl_vortex_constants.Lz/2.;
   params.g = dbl_vortex_constants.g;
   }
 
@@ -254,8 +254,8 @@ void set_ic_specific_params(std::string inFile, ModelParameters &params)
   {
   params.xlen = rb_constants.Lx;
   params.xc = rb_constants.Lx/2.;
-  params.ylen = rb_constants.Ly;
-  params.yc = rb_constants.Ly/2.;
+  params.zlen = rb_constants.Lz;
+  params.zc = rb_constants.Lz/2.;
   params.g = rb_constants.g;
   }
   
@@ -263,8 +263,8 @@ void set_ic_specific_params(std::string inFile, ModelParameters &params)
   {
   params.xlen = lrb_constants.Lx;
   params.xc = lrb_constants.Lx/2.;
-  params.ylen = lrb_constants.Ly;
-  params.yc = lrb_constants.Ly/2.;
+  params.zlen = lrb_constants.Lz;
+  params.zc = lrb_constants.Lz/2.;
   params.g = lrb_constants.g;
   }
 
@@ -430,7 +430,7 @@ real YAKL_INLINE rb_geop(real x, real z)
 
 // We assume a formula here for SVP that might not be consistent with the thermodynamics
 real YAKL_INLINE mrb_rho_v(real x, real z) {
-  real r = sqrt((x-rb_constants.xc)*(x-rb_constants.xc) + (z-rb_constants.zc)*(z-rb_constants.zc));
+  real r = sqrt((x-rb_constants.xc)*(x-rb_constants.xc) + (z-rb_constants.bzc)*(z-rb_constants.bzc));
   real rh = (r<rb_constants.rc) ? rb_constants.rh0 * (1. + cos(M_PI * r/rb_constants.rc)) : 0.;
   real Th = isentropic_T(x, z, rb_constants.theta0, rb_constants.g);
   real svp = saturation_vapor_pressure(Th);
@@ -454,7 +454,7 @@ real YAKL_INLINE mrb_rho(real x, real z) {
 real YAKL_INLINE mrb_entropicdensity(real x, real z) {
   real p = isentropic_p(x, z, rb_constants.theta0, rb_constants.g);
   real T = isentropic_T(x, z, rb_constants.theta0, rb_constants.g);
-  real r = sqrt((x-rb_constants.xc)*(x-rb_constants.xc) + (z-rb_constants.zc)*(z-rb_constants.zc));
+  real r = sqrt((x-rb_constants.xc)*(x-rb_constants.xc) + (z-rb_constants.bzc)*(z-rb_constants.bzc));
   real dtheta = (r<rb_constants.rc) ? rb_constants.dss/2. * (1. + cos(M_PI * r/rb_constants.rc)) : 0.;
   real dT = dtheta * pow(p/thermo.cst.pr, thermo.cst.kappa_d);
   real theta = thermo.compute_entropic_var(p, T+dT, 1, 0, 0, 0);
@@ -468,7 +468,7 @@ real YAKL_INLINE lrb_entropicvar(real x, real z) {
   
   real p = isentropic_p(x, z, lrb_constants.theta0, lrb_constants.g);
   real T0 = isentropic_T(x, z, lrb_constants.theta0, lrb_constants.g);
-  real dtheta = linear_ellipsoid(x, z, lrb_constants.xc, lrb_constants.zc, lrb_constants.xrad, lrb_constants.zrad, lrb_constants.amp);
+  real dtheta = linear_ellipsoid(x, z, lrb_constants.xc, lrb_constants.bzc, lrb_constants.xrad, lrb_constants.zrad, lrb_constants.amp);
   real dT = dtheta * pow(p/thermo.cst.pr, thermo.cst.kappa_d);
   return thermo.compute_entropic_var(p, T0+dT, 0, 0, 0, 0);
 

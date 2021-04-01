@@ -76,6 +76,7 @@ int main(int argc, char** argv) {
     ic_primal_geometry.initialize(primal_topology, params);
     tendencies_primal_geometry.initialize(primal_topology, params);
 //SHOULD REALLY GENERATE THIS FROM PRIMAL STUFF!
+//THIS IS BROKEN FOR EXTRUDED MESHES...
     dual_topology.initialize(par,false);
     ic_dual_geometry.initialize(dual_topology, params);
     tendencies_dual_geometry.initialize(dual_topology, params);

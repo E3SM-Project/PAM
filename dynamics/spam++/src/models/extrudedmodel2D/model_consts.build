@@ -1,0 +1,4 @@
+#layermodel1D specific choices
+-D_NTRACERS=1
+-D_NTRACERS_FCT=1
+-D_NTRACERS_Q=0
