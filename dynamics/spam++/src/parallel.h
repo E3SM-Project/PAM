@@ -42,6 +42,10 @@ public:
   int ny_glob = -1;
   int nz_glob = -1;
 
+  BND_TYPE xbnd;
+  BND_TYPE ybnd;
+  BND_TYPE zbnd;
+
 };
 
 

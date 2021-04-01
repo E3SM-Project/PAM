@@ -9,6 +9,7 @@
 #include "parallel.h"
 
 
+
 class Topology {
 
 
@@ -25,6 +26,8 @@ SArray<int,2> z_neigh;
 int ll_neigh, ur_neigh, ul_neigh, lr_neigh;
 int nprocx, nprocy, nprocz;
 int nx_glob, ny_glob, nz_glob;
+
+BND_TYPE xbnd, ybnd, zbnd;
 
 bool is_initialized;
 bool primal;
@@ -73,6 +76,10 @@ void printinfo();
     this->ny_glob = par.ny_glob;
     this->nz_glob = par.nz_glob;
     
+    this->xbnd = par.xbnd;
+    this->ybnd = par.ybnd;
+    this->zbnd = par.zbnd;
+    
     this->primal = isprimal;
     
     if (ndims == 1) {
@@ -92,6 +99,8 @@ void printinfo();
       this->nprocz = 1;
       this->ny_glob = 1;
       this->nz_glob = 1;
+      this->ybnd = BND_TYPE::NONE;
+      this->zbnd = BND_TYPE::NONE;
     }
 
     if (ndims == 2) {
@@ -107,6 +116,7 @@ void printinfo();
       this->lr_neigh = par.lr_neigh;
       this->ul_neigh = par.ul_neigh;
       this->ur_neigh = par.ur_neigh;
+      this->zbnd = BND_TYPE::NONE;
     }
 
     this->n_cells = this->n_cells_x * this->n_cells_y * this->n_cells_z;
@@ -122,17 +132,19 @@ void printinfo();
   void Topology::printinfo()
   {
   if (this->primal)
-   {std::cout << "topology info: type primal\n" << std::flush;
+   {
+   std::cout << "topology info: type primal\n" << std::flush;
    std::cout << "nx " << this->n_cells_x << " ny " << this->n_cells_y << " nz " << this->n_cells_z << "\n" << std::flush;
    std::cout << "halosize_x " << this->halosize_x << " halosize_y " << this->halosize_y << " halosize_z " << this->halosize_z << "\n" << std::flush;
    std::cout << "is " << this->is << " js " << this->js << " ks " << this->ks << "\n" << std::flush;
  }
   else
-  {std::cout << "topology info: type dual\n" << std::flush;}
+  {
+   std::cout << "topology info: type dual\n" << std::flush;
    std::cout << "nx " << this->n_cells_x << " ny " << this->n_cells_y << " nz " << this->n_cells_z << "\n" << std::flush;
    std::cout << "halosize_x " << this->halosize_x << " halosize_y " << this->halosize_y << " halosize_z " << this->halosize_z << "\n" << std::flush;
    std::cout << "is " << this->is << " js " << this->js << " ks " << this->ks << "\n" << std::flush;
  }
-
+}
 
 #endif

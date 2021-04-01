@@ -71,6 +71,9 @@ void readParamsFile(std::string inFile, Parameters &params, Parallel &par) {
       else if ( !strcmp( "nprocy"     , key.c_str() ) ) { ssVal >> par.nprocy        ; }
       else if ( !strcmp( "nprocz"     , key.c_str() ) ) { ssVal >> par.nprocz        ; }
 
+      else if ( !strcmp( "xbnd"         , key.c_str() ) ) { ssVal >> params.xbnd    ; }
+      else if ( !strcmp( "ybnd"         , key.c_str() ) ) { ssVal >> params.ybnd    ; }
+      else if ( !strcmp( "zbnd"         , key.c_str() ) ) { ssVal >> params.zbnd    ; }
 
 
       //else {
@@ -177,6 +180,14 @@ void readParamsFile(std::string inFile, Parameters &params, Parallel &par) {
     // par.z_neigh(1) = (par.py + pzloc_pos * par.nprocy) * par.nprocx + par.px;
     }
 
+    // set boundaries
+    if (!strcmp(params.xbnd.c_str(),"periodic")) {par.xbnd = BND_TYPE::PERIODIC;}
+    if (!strcmp(params.xbnd.c_str(),"none")) {par.xbnd = BND_TYPE::NONE;}
+    if (!strcmp(params.ybnd.c_str(),"periodic")) {par.ybnd = BND_TYPE::PERIODIC;}
+    if (!strcmp(params.ybnd.c_str(),"none")) {par.ybnd = BND_TYPE::NONE;}
+    if (!strcmp(params.zbnd.c_str(),"periodic")) {par.zbnd = BND_TYPE::PERIODIC;}
+    if (!strcmp(params.zbnd.c_str(),"none")) {par.zbnd = BND_TYPE::NONE;}
+        
     // set halos
     par.halox = maxhalosize;
     par.haloy = maxhalosize;
@@ -214,6 +225,10 @@ void readParamsFile(std::string inFile, Parameters &params, Parallel &par) {
     std::cout << "haloy:      " << par.haloy    << "\n";
     std::cout << "haloz:      " << par.haloz    << "\n";
 
+    std::cout << "xbnd:      " << params.xbnd    << "\n";
+    std::cout << "ybnd:      " << params.ybnd    << "\n";
+    std::cout << "zbnd:      " << params.zbnd    << "\n";
+    
     std::cout << "dt:         " << params.dt         << "\n";
     std::cout << "Nsteps:     " << params.Nsteps     << "\n";
     std::cout << "Nout:       " << params.Nout       << "\n";

@@ -54,6 +54,9 @@ template <class T> YAKL_INLINE T mymax( T const v1 , T const v2 ) {
 // Add mode for various operators
 enum class ADD_MODE { REPLACE, ADD };
 
+//Boundary types
+enum class BND_TYPE { PERIODIC, NONE };
+
 
 
 class Parameters
@@ -76,6 +79,10 @@ public:
 //THESE ARE REALLY SPECIFIC TO UNIFORM RECT GEOM...
   real xlen, ylen, zlen;
   real xc, yc, zc;
+
+  std::string xbnd = "periodic";
+  std::string ybnd = "periodic";
+  std::string zbnd = "periodic";
 
 };
 
