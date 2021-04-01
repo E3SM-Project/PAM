@@ -72,18 +72,18 @@ if (ndensity_fct>0):
     densfct = DS.densfct
     densfctl = DS.densfctl
 
-plotvar_scalar1D('hs', hs.isel(hs_ndofs=0,dual_ncells_z=0),0)
+plotvar_scalar1D('hs', hs.isel(hs_ndofs=0,dual_nlayers=0),0)
 
 
 # WHERE EXACTLY SHOULD sl/trl/trfctl live? are they straight 0-forms? twisted n-forms?
 for i in Nlist:
-    plotvar_scalar1D('v', v.isel(t=i,v_ndofs=0,primal_ncells_y=0,primal_ncells_z=0),i)
+    plotvar_scalar1D('v', v.isel(t=i,v_ndofs=0,primal_ncells_y=0,primal_nlayers=0),i)
     for l,name in zip(range(ndensity), dens_names):
-            plotvar_scalar1D(name, dens.isel(t=i,dens_ndofs=l,dual_ncells_y=0,dual_ncells_z=0),i)
-            plotvar_scalar1D(name+'l', densl.isel(t=i,densl_ndofs=l,primal_ncells_y=0,primal_ncells_z=0),i)
+            plotvar_scalar1D(name, dens.isel(t=i,dens_ndofs=l,dual_ncells_y=0,dual_nlayers=0),i)
+            plotvar_scalar1D(name+'l', densl.isel(t=i,densl_ndofs=l,primal_ncells_y=0,primal_nlayers=0),i)
     if ndensity_fct > 0:
         for l,name in zip(range(ndensity_fct), densfct_names):
-            plotvar_scalar1D(name, densfct.isel(t=i,densfct_ndofs=l,dual_ncells_y=0,dual_ncells_z=0),i)
-            plotvar_scalar1D(name+'l', densfctl.isel(t=i,densfctl_ndofs=l,primal_ncells_y=0,primal_ncells_z=0),i)
+            plotvar_scalar1D(name, densfct.isel(t=i,densfct_ndofs=l,dual_ncells_y=0,dual_nlayers=0),i)
+            plotvar_scalar1D(name+'l', densfctl.isel(t=i,densfctl_ndofs=l,primal_ncells_y=0,primal_nlayers=0),i)
 
 

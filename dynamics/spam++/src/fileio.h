@@ -28,7 +28,7 @@ public:
   int masterproc;
   int ncid;
   int const_dim_ids[4], prog_dim_ids[5], diag_dim_ids[5];
-  int tDim, pxDim, pyDim, pzDim, dxDim, dyDim, dzDim;
+  int tDim, pxDim, pyDim, plDim, piDim, dxDim, dyDim, dlDim, diDim;
   int const_var_dim_ids[nconst], prog_var_dim_ids[nprog], diag_var_dim_ids[ndiag];
   int const_var_ids[nconst], prog_var_ids[nprog], diag_var_ids[ndiag];
   int tVar;
@@ -88,10 +88,12 @@ public:
        ncwrap( ncmpi_def_dim( ncid , "t" , (MPI_Offset) NC_UNLIMITED , &tDim ) , __LINE__ );
        ncwrap( ncmpi_def_dim( ncid , "primal_ncells_x" , (MPI_Offset) ptopo.nx_glob  , &pxDim ) , __LINE__ );
        ncwrap( ncmpi_def_dim( ncid , "primal_ncells_y" , (MPI_Offset) ptopo.ny_glob  , &pyDim ) , __LINE__ );
-       ncwrap( ncmpi_def_dim( ncid , "primal_ncells_z" , (MPI_Offset) ptopo.nz_glob  , &pzDim ) , __LINE__ );
+       ncwrap( ncmpi_def_dim( ncid , "primal_nlayers" , (MPI_Offset) ptopo.nl  , &plDim ) , __LINE__ );
+       ncwrap( ncmpi_def_dim( ncid , "primal_ninterfaces" , (MPI_Offset) ptopo.ni  , &piDim ) , __LINE__ );
        ncwrap( ncmpi_def_dim( ncid , "dual_ncells_x" , (MPI_Offset) dtopo.nx_glob  , &dxDim ) , __LINE__ );
        ncwrap( ncmpi_def_dim( ncid , "dual_ncells_y" , (MPI_Offset) dtopo.ny_glob  , &dyDim ) , __LINE__ );
-       ncwrap( ncmpi_def_dim( ncid , "dual_ncells_z" , (MPI_Offset) dtopo.nz_glob  , &dzDim ) , __LINE__ );
+       ncwrap( ncmpi_def_dim( ncid , "dual_nlayers" , (MPI_Offset) dtopo.nl  , &dlDim ) , __LINE__ );
+       ncwrap( ncmpi_def_dim( ncid , "dual_ninterfaces" , (MPI_Offset) dtopo.ni  , &diDim ) , __LINE__ );
        
        //Create time dimension
        const_dim_ids[0] = tDim;
@@ -103,10 +105,20 @@ public:
          if (this->const_vars->fields_arr[i].total_dofs > 0)
          {
          ncwrap( ncmpi_def_dim( ncid , (this->const_vars->fields_arr[i].name + "_ndofs").c_str() , (MPI_Offset) this->const_vars->fields_arr[i].total_dofs , &const_var_dim_ids[i] ) , __LINE__ );
-         if (this->const_vars->fields_arr[i].topology->primal) { const_dim_ids[0] = const_var_dim_ids[i]; const_dim_ids[1] = pzDim; const_dim_ids[2] = pyDim; const_dim_ids[3] = pxDim;}
-         else {const_dim_ids[0] = const_var_dim_ids[i]; const_dim_ids[1] = dzDim; const_dim_ids[2] = dyDim; const_dim_ids[3] = dxDim;}
+         if (this->const_vars->fields_arr[i].topology->primal) { 
+           if (this->const_vars->fields_arr[i].extdof == 1)
+           {const_dim_ids[0] = const_var_dim_ids[i]; const_dim_ids[1] = plDim; const_dim_ids[2] = pyDim; const_dim_ids[3] = pxDim;}
+           if (this->const_vars->fields_arr[i].extdof == 0)
+           {const_dim_ids[0] = const_var_dim_ids[i]; const_dim_ids[1] = piDim; const_dim_ids[2] = pyDim; const_dim_ids[3] = pxDim;}
+         }
+         else {
+           if (this->const_vars->fields_arr[i].extdof == 1)
+           {const_dim_ids[0] = const_var_dim_ids[i]; const_dim_ids[1] = dlDim; const_dim_ids[2] = dyDim; const_dim_ids[3] = dxDim;}
+           if (this->const_vars->fields_arr[i].extdof == 0)
+           {const_dim_ids[0] = const_var_dim_ids[i]; const_dim_ids[1] = diDim; const_dim_ids[2] = dyDim; const_dim_ids[3] = dxDim;}
+         }
          ncwrap( ncmpi_def_var( ncid , this->const_vars->fields_arr[i].name.c_str() , REAL_NC , 4 , const_dim_ids , &const_var_ids[i]  ) , __LINE__ );
-         this->const_temp_arr[i] = realArr(this->const_vars->fields_arr[i].name.c_str(), this->const_vars->fields_arr[i].total_dofs, this->const_vars->fields_arr[i].topology->n_cells_z, this->const_vars->fields_arr[i].topology->n_cells_y, this->const_vars->fields_arr[i].topology->n_cells_x);
+         this->const_temp_arr[i] = realArr(this->const_vars->fields_arr[i].name.c_str(), this->const_vars->fields_arr[i].total_dofs, this->const_vars->fields_arr[i]._nz, this->const_vars->fields_arr[i].topology->n_cells_y, this->const_vars->fields_arr[i].topology->n_cells_x);
        }
        }
 
@@ -115,10 +127,20 @@ public:
          if (this->prog_vars->fields_arr[i].total_dofs > 0)
          {
          ncwrap( ncmpi_def_dim( ncid , (this->prog_vars->fields_arr[i].name + "_ndofs").c_str() , (MPI_Offset) this->prog_vars->fields_arr[i].total_dofs , &prog_var_dim_ids[i] ) , __LINE__ );
-         if (this->prog_vars->fields_arr[i].topology->primal) {prog_dim_ids[0] = tVar; prog_dim_ids[1] = prog_var_dim_ids[i]; prog_dim_ids[2] = pzDim; prog_dim_ids[3] = pyDim; prog_dim_ids[4] = pxDim;}
-         else {prog_dim_ids[0] = tVar; prog_dim_ids[1] = prog_var_dim_ids[i]; prog_dim_ids[2] = dzDim; prog_dim_ids[3] = dyDim; prog_dim_ids[4] = dxDim;}
+         if (this->prog_vars->fields_arr[i].topology->primal) {
+           if (this->prog_vars->fields_arr[i].extdof == 1)
+           {prog_dim_ids[0] = tVar; prog_dim_ids[1] = prog_var_dim_ids[i]; prog_dim_ids[2] = plDim; prog_dim_ids[3] = pyDim; prog_dim_ids[4] = pxDim;}
+           if (this->prog_vars->fields_arr[i].extdof == 0)
+           {prog_dim_ids[0] = tVar; prog_dim_ids[1] = prog_var_dim_ids[i]; prog_dim_ids[2] = piDim; prog_dim_ids[3] = pyDim; prog_dim_ids[4] = pxDim;}
+         }
+         else {
+           if (this->prog_vars->fields_arr[i].extdof == 1)
+           {prog_dim_ids[0] = tVar; prog_dim_ids[1] = prog_var_dim_ids[i]; prog_dim_ids[2] = dlDim; prog_dim_ids[3] = dyDim; prog_dim_ids[4] = dxDim;}
+           if (this->prog_vars->fields_arr[i].extdof == 0)
+           {prog_dim_ids[0] = tVar; prog_dim_ids[1] = prog_var_dim_ids[i]; prog_dim_ids[2] = diDim; prog_dim_ids[3] = dyDim; prog_dim_ids[4] = dxDim;}
+         }
          ncwrap( ncmpi_def_var( ncid , this->prog_vars->fields_arr[i].name.c_str() , REAL_NC , 5 , prog_dim_ids , &prog_var_ids[i]  ) , __LINE__ );
-         this->prog_temp_arr[i] = realArr(this->prog_vars->fields_arr[i].name.c_str(), this->prog_vars->fields_arr[i].total_dofs, this->prog_vars->fields_arr[i].topology->n_cells_z, this->prog_vars->fields_arr[i].topology->n_cells_y, this->prog_vars->fields_arr[i].topology->n_cells_x);
+         this->prog_temp_arr[i] = realArr(this->prog_vars->fields_arr[i].name.c_str(), this->prog_vars->fields_arr[i].total_dofs, this->prog_vars->fields_arr[i]._nz, this->prog_vars->fields_arr[i].topology->n_cells_y, this->prog_vars->fields_arr[i].topology->n_cells_x);
          }
        }
 
@@ -127,10 +149,20 @@ public:
          if (this->diag_vars->fields_arr[i].total_dofs > 0)
          {
          ncwrap( ncmpi_def_dim( ncid , (this->diag_vars->fields_arr[i].name + "_ndofs").c_str() , (MPI_Offset) this->diag_vars->fields_arr[i].total_dofs , &diag_var_dim_ids[i] ) , __LINE__ );
-         if (this->diag_vars->fields_arr[i].topology->primal) { diag_dim_ids[0] = tVar; diag_dim_ids[1] = diag_var_dim_ids[i]; diag_dim_ids[2] = pzDim; diag_dim_ids[3] = pyDim; diag_dim_ids[4] = pxDim;}
-         else { diag_dim_ids[0] = tVar; diag_dim_ids[1] = diag_var_dim_ids[i]; diag_dim_ids[2] = dzDim; diag_dim_ids[3] = dyDim; diag_dim_ids[4] = dxDim;}
+         if (this->diag_vars->fields_arr[i].topology->primal) {
+           if (this->diag_vars->fields_arr[i].extdof == 1)
+           {diag_dim_ids[0] = tVar; diag_dim_ids[1] = diag_var_dim_ids[i]; diag_dim_ids[2] = plDim; diag_dim_ids[3] = pyDim; diag_dim_ids[4] = pxDim;}
+           if (this->diag_vars->fields_arr[i].extdof == 0)
+           {diag_dim_ids[0] = tVar; diag_dim_ids[1] = diag_var_dim_ids[i]; diag_dim_ids[2] = piDim; diag_dim_ids[3] = pyDim; diag_dim_ids[4] = pxDim;}
+         }
+         else { 
+           if (this->diag_vars->fields_arr[i].extdof == 1)
+           {diag_dim_ids[0] = tVar; diag_dim_ids[1] = diag_var_dim_ids[i]; diag_dim_ids[2] = dlDim; diag_dim_ids[3] = dyDim; diag_dim_ids[4] = dxDim;}
+           if (this->diag_vars->fields_arr[i].extdof == 0)
+           {diag_dim_ids[0] = tVar; diag_dim_ids[1] = diag_var_dim_ids[i]; diag_dim_ids[2] = diDim; diag_dim_ids[3] = dyDim; diag_dim_ids[4] = dxDim;}
+         }
          ncwrap( ncmpi_def_var( ncid , this->diag_vars->fields_arr[i].name.c_str() , REAL_NC , 5 , diag_dim_ids , &diag_var_ids[i]  ) , __LINE__ );
-         this->diag_temp_arr[i] = realArr(this->diag_vars->fields_arr[i].name.c_str(), this->diag_vars->fields_arr[i].total_dofs, this->diag_vars->fields_arr[i].topology->n_cells_z, this->diag_vars->fields_arr[i].topology->n_cells_y, this->diag_vars->fields_arr[i].topology->n_cells_x);
+         this->diag_temp_arr[i] = realArr(this->diag_vars->fields_arr[i].name.c_str(), this->diag_vars->fields_arr[i].total_dofs, this->diag_vars->fields_arr[i]._nz, this->diag_vars->fields_arr[i].topology->n_cells_y, this->diag_vars->fields_arr[i].topology->n_cells_x);
        }
        }
 
@@ -166,17 +198,16 @@ public:
         ncwrap( ncmpi_inq_varid( ncid , this->prog_vars->fields_arr[l].name.c_str() , &prog_var_ids[l]  ) , __LINE__ );
         int is = this->prog_vars->fields_arr[l].topology->is;
         int js = this->prog_vars->fields_arr[l].topology->js;
-        int ks = this->prog_vars->fields_arr[l].topology->ks;
-        yakl::parallel_for("CopyFieldToOutputBuffer", this->prog_vars->fields_arr[l].topology->n_cells, YAKL_LAMBDA (int iGlob) {
+        yakl::parallel_for("CopyFieldToOutputBuffer", this->prog_vars->fields_arr[l]._nloop, YAKL_LAMBDA (int iGlob) {
           int k, j, i;
-          yakl::unpackIndices(iGlob, this->prog_vars->fields_arr[l].topology->n_cells_z, this->prog_vars->fields_arr[l].topology->n_cells_y, this->prog_vars->fields_arr[l].topology->n_cells_x, k, j, i);
+          yakl::unpackIndices(iGlob, this->prog_vars->fields_arr[l]._nz, this->prog_vars->fields_arr[l].topology->n_cells_y, this->prog_vars->fields_arr[l].topology->n_cells_x, k, j, i);
           for (int ndof=0; ndof<this->prog_vars->fields_arr[l].total_dofs; ndof++) {
-            this->prog_temp_arr[l](ndof, k, j, i) = this->prog_vars->fields_arr[l].data(ndof, k+ks, j+js, i+is);
+            this->prog_temp_arr[l](ndof, k, j, i) = this->prog_vars->fields_arr[l].data(ndof, k, j+js, i+is);
           }
         });
 
-        prog_start[0] = this->numOut; prog_start[1] = 0; prog_start[2] = this->prog_vars->fields_arr[l].topology->k_beg; prog_start[3] = this->prog_vars->fields_arr[l].topology->j_beg; prog_start[4] = this->prog_vars->fields_arr[l].topology->i_beg;
-        prog_count[0] = 1; prog_count[1] = this->prog_vars->fields_arr[l].total_dofs; prog_count[2] = this->prog_vars->fields_arr[l].topology->n_cells_z; prog_count[3] = this->prog_vars->fields_arr[l].topology->n_cells_y; prog_count[4] = this->prog_vars->fields_arr[l].topology->n_cells_x;
+        prog_start[0] = this->numOut; prog_start[1] = 0; prog_start[2] = 0; prog_start[3] = this->prog_vars->fields_arr[l].topology->j_beg; prog_start[4] = this->prog_vars->fields_arr[l].topology->i_beg;
+        prog_count[0] = 1; prog_count[1] = this->prog_vars->fields_arr[l].total_dofs; prog_count[2] = this->prog_vars->fields_arr[l]._nz; prog_count[3] = this->prog_vars->fields_arr[l].topology->n_cells_y; prog_count[4] = this->prog_vars->fields_arr[l].topology->n_cells_x;
         ncwrap( PNETCDF_PUT_VAR_ALL( ncid , prog_var_ids[l] , prog_start , prog_count , this->prog_temp_arr[l].createHostCopy().data() ) , __LINE__ );
       }
       }
@@ -190,17 +221,16 @@ public:
         ncwrap( ncmpi_inq_varid( ncid , this->diag_vars->fields_arr[l].name.c_str() , &diag_var_ids[l]  ) , __LINE__ );
         int is = this->diag_vars->fields_arr[l].topology->is;
         int js = this->diag_vars->fields_arr[l].topology->js;
-        int ks = this->diag_vars->fields_arr[l].topology->ks;
-        yakl::parallel_for("CopyFieldToOutputBuffer", this->diag_vars->fields_arr[l].topology->n_cells, YAKL_LAMBDA (int iGlob) {
+        yakl::parallel_for("CopyFieldToOutputBuffer", this->diag_vars->fields_arr[l]._nloop, YAKL_LAMBDA (int iGlob) {
           int k, j, i;
-          yakl::unpackIndices(iGlob, this->diag_vars->fields_arr[l].topology->n_cells_z, this->diag_vars->fields_arr[l].topology->n_cells_y, this->diag_vars->fields_arr[l].topology->n_cells_x, k, j, i);
+          yakl::unpackIndices(iGlob, this->diag_vars->fields_arr[l]._nz, this->diag_vars->fields_arr[l].topology->n_cells_y, this->diag_vars->fields_arr[l].topology->n_cells_x, k, j, i);
           for (int ndof=0; ndof<this->diag_vars->fields_arr[l].total_dofs; ndof++) {
-            this->diag_temp_arr[l](ndof, k, j, i) = this->diag_vars->fields_arr[l].data(ndof, k+ks, j+js, i+is);
+            this->diag_temp_arr[l](ndof, k, j, i) = this->diag_vars->fields_arr[l].data(ndof, k, j+js, i+is);
           }
         });
 
-        diag_start[0] = this->numOut; diag_start[1] = 0; diag_start[2] = this->diag_vars->fields_arr[l].topology->k_beg; diag_start[3] = this->diag_vars->fields_arr[l].topology->j_beg; diag_start[4] = this->diag_vars->fields_arr[l].topology->i_beg;
-        diag_count[0] = 1; diag_count[1] = this->diag_vars->fields_arr[l].total_dofs; diag_count[2] = this->diag_vars->fields_arr[l].topology->n_cells_z; diag_count[3] = this->diag_vars->fields_arr[l].topology->n_cells_y; diag_count[4] = this->diag_vars->fields_arr[l].topology->n_cells_x;
+        diag_start[0] = this->numOut; diag_start[1] = 0; diag_start[2] = 0; diag_start[3] = this->diag_vars->fields_arr[l].topology->j_beg; diag_start[4] = this->diag_vars->fields_arr[l].topology->i_beg;
+        diag_count[0] = 1; diag_count[1] = this->diag_vars->fields_arr[l].total_dofs; diag_count[2] = this->diag_vars->fields_arr[l]._nz; diag_count[3] = this->diag_vars->fields_arr[l].topology->n_cells_y; diag_count[4] = this->diag_vars->fields_arr[l].topology->n_cells_x;
         ncwrap( PNETCDF_PUT_VAR_ALL( ncid , diag_var_ids[l] , diag_start , diag_count , this->diag_temp_arr[l].createHostCopy().data() ) , __LINE__ );
       }}
 
@@ -225,17 +255,16 @@ public:
       ncwrap( ncmpi_inq_varid( ncid , this->const_vars->fields_arr[l].name.c_str() , &const_var_ids[l]  ) , __LINE__ );
       int is = this->const_vars->fields_arr[l].topology->is;
       int js = this->const_vars->fields_arr[l].topology->js;
-      int ks = this->const_vars->fields_arr[l].topology->ks;
-      yakl::parallel_for("CopyFieldToOutputBuffer", this->const_vars->fields_arr[l].topology->n_cells, YAKL_LAMBDA (int iGlob) {
+      yakl::parallel_for("CopyFieldToOutputBuffer", this->const_vars->fields_arr[l]._nloop, YAKL_LAMBDA (int iGlob) {
         int k, j, i;
-        yakl::unpackIndices(iGlob, this->const_vars->fields_arr[l].topology->n_cells_z, this->const_vars->fields_arr[l].topology->n_cells_y, this->const_vars->fields_arr[l].topology->n_cells_x, k, j, i);
+        yakl::unpackIndices(iGlob, this->const_vars->fields_arr[l]._nz, this->const_vars->fields_arr[l].topology->n_cells_y, this->const_vars->fields_arr[l].topology->n_cells_x, k, j, i);
         for (int ndof=0; ndof<this->const_vars->fields_arr[l].total_dofs; ndof++) {
-          this->const_temp_arr[l](ndof, k, j, i) = this->const_vars->fields_arr[l].data(ndof, k+ks, j+js, i+is);
+          this->const_temp_arr[l](ndof, k, j, i) = this->const_vars->fields_arr[l].data(ndof, k, j+js, i+is);
         }
       });
 
-      const_start[0] = 0; const_start[1] = this->const_vars->fields_arr[l].topology->k_beg; const_start[2] = this->const_vars->fields_arr[l].topology->j_beg; const_start[3] = this->const_vars->fields_arr[l].topology->i_beg;
-      const_count[0] = this->const_vars->fields_arr[l].total_dofs; const_count[1] = this->const_vars->fields_arr[l].topology->n_cells_z; const_count[2] = this->const_vars->fields_arr[l].topology->n_cells_y; const_count[3] = this->const_vars->fields_arr[l].topology->n_cells_x;
+      const_start[0] = 0; const_start[1] = 0; const_start[2] = this->const_vars->fields_arr[l].topology->j_beg; const_start[3] = this->const_vars->fields_arr[l].topology->i_beg;
+      const_count[0] = this->const_vars->fields_arr[l].total_dofs; const_count[1] = this->const_vars->fields_arr[l]._nz; const_count[2] = this->const_vars->fields_arr[l].topology->n_cells_y; const_count[3] = this->const_vars->fields_arr[l].topology->n_cells_x;
       ncwrap( PNETCDF_PUT_VAR_ALL( ncid , const_var_ids[l] , const_start , const_count , this->const_temp_arr[l].createHostCopy().data() ) , __LINE__ );
     }}
 
@@ -247,17 +276,16 @@ public:
       ncwrap( ncmpi_inq_varid( ncid , this->prog_vars->fields_arr[l].name.c_str() , &prog_var_ids[l]  ) , __LINE__ );
       int is = this->prog_vars->fields_arr[l].topology->is;
       int js = this->prog_vars->fields_arr[l].topology->js;
-      int ks = this->prog_vars->fields_arr[l].topology->ks;
-      yakl::parallel_for("CopyFieldToOutputBuffer", this->prog_vars->fields_arr[l].topology->n_cells, YAKL_LAMBDA (int iGlob) {
+      yakl::parallel_for("CopyFieldToOutputBuffer", this->prog_vars->fields_arr[l]._nloop, YAKL_LAMBDA (int iGlob) {
         int k, j, i;
-        yakl::unpackIndices(iGlob, this->prog_vars->fields_arr[l].topology->n_cells_z, this->prog_vars->fields_arr[l].topology->n_cells_y, this->prog_vars->fields_arr[l].topology->n_cells_x, k, j, i);
+        yakl::unpackIndices(iGlob, this->prog_vars->fields_arr[l]._nz, this->prog_vars->fields_arr[l].topology->n_cells_y, this->prog_vars->fields_arr[l].topology->n_cells_x, k, j, i);
         for (int ndof=0; ndof<this->prog_vars->fields_arr[l].total_dofs; ndof++) {
-          this->prog_temp_arr[l](ndof, k, j, i) = this->prog_vars->fields_arr[l].data(ndof, k+ks, j+js, i+is);
+          this->prog_temp_arr[l](ndof, k, j, i) = this->prog_vars->fields_arr[l].data(ndof, k, j+js, i+is);
         }
       });
 
-      prog_start[0] = this->numOut; prog_start[1] = 0; prog_start[2] = this->prog_vars->fields_arr[l].topology->k_beg; prog_start[3] = this->prog_vars->fields_arr[l].topology->j_beg; prog_start[4] = this->prog_vars->fields_arr[l].topology->i_beg;
-      prog_count[0] = 1; prog_count[1] = this->prog_vars->fields_arr[l].total_dofs; prog_count[2] = this->prog_vars->fields_arr[l].topology->n_cells_z; prog_count[3] = this->prog_vars->fields_arr[l].topology->n_cells_y; prog_count[4] = this->prog_vars->fields_arr[l].topology->n_cells_x;
+      prog_start[0] = this->numOut; prog_start[1] = 0; prog_start[2] = 0; prog_start[3] = this->prog_vars->fields_arr[l].topology->j_beg; prog_start[4] = this->prog_vars->fields_arr[l].topology->i_beg;
+      prog_count[0] = 1; prog_count[1] = this->prog_vars->fields_arr[l].total_dofs; prog_count[2] = this->prog_vars->fields_arr[l]._nz; prog_count[3] = this->prog_vars->fields_arr[l].topology->n_cells_y; prog_count[4] = this->prog_vars->fields_arr[l].topology->n_cells_x;
       ncwrap( PNETCDF_PUT_VAR_ALL( ncid , prog_var_ids[l] , prog_start , prog_count , this->prog_temp_arr[l].createHostCopy().data() ) , __LINE__ );
     }}
 
@@ -269,17 +297,16 @@ public:
       ncwrap( ncmpi_inq_varid( ncid , this->diag_vars->fields_arr[l].name.c_str() , &diag_var_ids[l]  ) , __LINE__ );
       int is = this->diag_vars->fields_arr[l].topology->is;
       int js = this->diag_vars->fields_arr[l].topology->js;
-      int ks = this->diag_vars->fields_arr[l].topology->ks;
-      yakl::parallel_for("CopyFieldToOutputBuffer", this->diag_vars->fields_arr[l].topology->n_cells, YAKL_LAMBDA (int iGlob) {
+      yakl::parallel_for("CopyFieldToOutputBuffer", this->diag_vars->fields_arr[l]._nloop, YAKL_LAMBDA (int iGlob) {
         int k, j, i;
-        yakl::unpackIndices(iGlob, this->diag_vars->fields_arr[l].topology->n_cells_z, this->diag_vars->fields_arr[l].topology->n_cells_y, this->diag_vars->fields_arr[l].topology->n_cells_x, k, j, i);
+        yakl::unpackIndices(iGlob, this->diag_vars->fields_arr[l]._nz, this->diag_vars->fields_arr[l].topology->n_cells_y, this->diag_vars->fields_arr[l].topology->n_cells_x, k, j, i);
         for (int ndof=0; ndof<this->diag_vars->fields_arr[l].total_dofs; ndof++) {
-          this->diag_temp_arr[l](ndof, k, j, i) = this->diag_vars->fields_arr[l].data(ndof, k+ks, j+js, i+is);
+          this->diag_temp_arr[l](ndof, k, j, i) = this->diag_vars->fields_arr[l].data(ndof, k, j+js, i+is);
         }
       });
 
-      diag_start[0] = this->numOut; diag_start[1] = 0; diag_start[2] = this->diag_vars->fields_arr[l].topology->k_beg; diag_start[3] = this->diag_vars->fields_arr[l].topology->j_beg; diag_start[4] = this->diag_vars->fields_arr[l].topology->i_beg;
-      diag_count[0] = 1; diag_count[1] = this->diag_vars->fields_arr[l].total_dofs; diag_count[2] = this->diag_vars->fields_arr[l].topology->n_cells_z; diag_count[3] = this->diag_vars->fields_arr[l].topology->n_cells_y; diag_count[4] = this->diag_vars->fields_arr[l].topology->n_cells_x;
+      diag_start[0] = this->numOut; diag_start[1] = 0; diag_start[2] = 0; diag_start[3] = this->diag_vars->fields_arr[l].topology->j_beg; diag_start[4] = this->diag_vars->fields_arr[l].topology->i_beg;
+      diag_count[0] = 1; diag_count[1] = this->diag_vars->fields_arr[l].total_dofs; diag_count[2] = this->diag_vars->fields_arr[l]._nz; diag_count[3] = this->diag_vars->fields_arr[l].topology->n_cells_y; diag_count[4] = this->diag_vars->fields_arr[l].topology->n_cells_x;
       ncwrap( PNETCDF_PUT_VAR_ALL( ncid , diag_var_ids[l] , diag_start , diag_count , this->diag_temp_arr[l].createHostCopy().data() ) , __LINE__ );
     }}
 

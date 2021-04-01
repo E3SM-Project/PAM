@@ -83,15 +83,11 @@ int main(int argc, char** argv) {
 
     // Allocate the variables
     std::cout << "start init variable sets and exchange sets\n" << std::flush;
-    //ndofs is 0,1,2,3 on basemesh and 0,1 (stored at 4,5) for extruded mesh
-//HOW DO WE HANDLE DOFS HERE FOR STANDARD VS. EXTRUDED MESHES?
-//SOME SORT OF COMPILE TIME CONSTANT, SET VIA model_compile_consts.h or similar?
-//ndims should maybe be made part of that as well, and other compile-time constants we are setting in common.h....
-
-    SArray<int, nprognostic, 4> prog_ndofs_arr;
-    SArray<int, nconstant, 4> const_ndofs_arr;
-    SArray<int, ndiagnostic, 4> diag_ndofs_arr;
-    SArray<int, nauxiliary, 4> aux_ndofs_arr;
+    //this gives basedof, extdof and ndofs
+    SArray<int, nprognostic, 3> prog_dofs_arr;
+    SArray<int, nconstant, 3> const_dofs_arr;
+    SArray<int, ndiagnostic, 3> diag_dofs_arr;
+    SArray<int, nauxiliary, 3> aux_dofs_arr;
     std::array<std::string, nprognostic> prog_names_arr;
     std::array<std::string, nconstant> const_names_arr;
     std::array<std::string, ndiagnostic> diag_names_arr;
@@ -101,17 +97,17 @@ int main(int argc, char** argv) {
     std::array<const Topology *, ndiagnostic> diag_topo_arr;
     std::array<const Topology *, nauxiliary> aux_topo_arr;
     initialize_variables<nprognostic, nconstant, nauxiliary, ndiagnostic>(primal_topology, dual_topology,
-        prog_ndofs_arr, const_ndofs_arr, aux_ndofs_arr, diag_ndofs_arr,
+        prog_dofs_arr, const_dofs_arr, aux_dofs_arr, diag_dofs_arr,
         prog_names_arr, const_names_arr, aux_names_arr, diag_names_arr,
         prog_topo_arr, const_topo_arr, aux_topo_arr, diag_topo_arr);
 
-    prognostic_vars.initialize("x", prog_names_arr, prog_topo_arr, prog_ndofs_arr);
-    constant_vars.initialize("cons", const_names_arr, const_topo_arr, const_ndofs_arr);
-    diagnostic_vars.initialize("diag", diag_names_arr, diag_topo_arr, diag_ndofs_arr);
-    auxiliary_vars.initialize("aux", aux_names_arr, aux_topo_arr, aux_ndofs_arr);
-    prog_exchange.initialize(prog_topo_arr, prog_ndofs_arr);
-    const_exchange.initialize(const_topo_arr, const_ndofs_arr);
-    aux_exchange.initialize(aux_topo_arr, aux_ndofs_arr);
+    prognostic_vars.initialize("x", prog_names_arr, prog_topo_arr, prog_dofs_arr);
+    constant_vars.initialize("cons", const_names_arr, const_topo_arr, const_dofs_arr);
+    diagnostic_vars.initialize("diag", diag_names_arr, diag_topo_arr, diag_dofs_arr);
+    auxiliary_vars.initialize("aux", aux_names_arr, aux_topo_arr, aux_dofs_arr);
+    prog_exchange.initialize(prog_topo_arr, prog_dofs_arr);
+    const_exchange.initialize(const_topo_arr, const_dofs_arr);
+    aux_exchange.initialize(aux_topo_arr, aux_dofs_arr);
     std::cout << "finish init variable sets\n" << std::flush;
 
     // Initialize the statistics

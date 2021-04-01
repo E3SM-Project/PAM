@@ -140,13 +140,12 @@ public:
 
      int dis = dual_topology->is;
      int djs = dual_topology->js;
-     int dks = dual_topology->ks;
         
-    yakl::parallel_for("ComputeDiagIp", dual_topology->n_cells, YAKL_LAMBDA (int iGlob) {
+    yakl::parallel_for("ComputeDiagIp", dual_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
       int k, j, i;
       SArray<real,1> zeta;
       real hv;
-      yakl::unpackIndices(iGlob, dual_topology->n_cells_z, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+      yakl::unpackIndices(iGlob, dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
 
  // ARE THESE REALLY DUAL FORMS?
  // MAYBE THEY ARE STRAIGHT 0-FORMS?
@@ -159,11 +158,11 @@ public:
  //MAYBE DO HODGE STARS HERE?
  // compute dens0var
  for(int l=0; l<ndensity; l++)
- {diagnostic_vars.fields_arr[DENSLDIAGVAR].data(l, k+dks, j+djs, i+dis) = x.fields_arr[DENSVAR].data(l, k+dks, j+djs, i+dis) / x.fields_arr[DENSVAR].data(0, k+dks, j+djs, i+dis);}
+ {diagnostic_vars.fields_arr[DENSLDIAGVAR].data(l, k, j+djs, i+dis) = x.fields_arr[DENSVAR].data(l, k, j+djs, i+dis) / x.fields_arr[DENSVAR].data(0, k, j+djs, i+dis);}
 
  // compute densfct0var
  for(int l=0; l<ndensityfct; l++)
- {diagnostic_vars.fields_arr[DENSFCTLDIAGVAR].data(l, k+dks, j+djs, i+dis) = x.fields_arr[DENSFCTVAR].data(l, k+dks, j+djs, i+dis) / x.fields_arr[DENSVAR].data(0, k+dks, j+djs, i+dis);}
+ {diagnostic_vars.fields_arr[DENSFCTLDIAGVAR].data(l, k, j+djs, i+dis) = x.fields_arr[DENSFCTVAR].data(l, k, j+djs, i+dis) / x.fields_arr[DENSVAR].data(0, k, j+djs, i+dis);}
         });
         
 }
@@ -226,30 +225,28 @@ public:
 
 int pis = primal_topology->is;
 int pjs = primal_topology->js;
-int pks = primal_topology->ks;
 
 int dis = dual_topology->is;
 int djs = dual_topology->js;
-int dks = dual_topology->ks;
 
-      yakl::parallel_for("ComputeDiagIp", primal_topology->n_cells, YAKL_LAMBDA (int iGlob) {
+      yakl::parallel_for("ComputeDiagIp", primal_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
         int k, j, i;
         real hv;
-        yakl::unpackIndices(iGlob, primal_topology->n_cells_z, primal_topology->n_cells_y, primal_topology->n_cells_x, k, j, i);
+        yakl::unpackIndices(iGlob, primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, k, j, i);
 
         // compute dens0var = I densvar, densfct0var = I densfctvar
-        compute_I<ndensity, diff_ord>(dens0var, densvar, *this->primal_geometry, *this->dual_geometry, pis, pjs, pks, i, j, k);
-        compute_I<ndensityfct, diff_ord>(densfct0var, densfctvar, *this->primal_geometry, *this->dual_geometry, pis, pjs, pks, i, j, k);
+        compute_I<ndensity, diff_ord>(dens0var, densvar, *this->primal_geometry, *this->dual_geometry, pis, pjs, 0, i, j, k);
+        compute_I<ndensityfct, diff_ord>(densfct0var, densfctvar, *this->primal_geometry, *this->dual_geometry, pis, pjs, 0, i, j, k);
 
 });
 
-yakl::parallel_for("ComputeDiagId", dual_topology->n_cells, YAKL_LAMBDA (int iGlob) {
+yakl::parallel_for("ComputeDiagId", dual_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
   int k, j, i;
   real hv;
-  yakl::unpackIndices(iGlob, dual_topology->n_cells_z, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+  yakl::unpackIndices(iGlob, dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
 
   // compute U = H v, q0, f0
-  compute_H<1, diff_ord>(Uvar, Vvar, *this->primal_geometry, *this->dual_geometry, dis, djs, dks, i, j, k);
+  compute_H<1, diff_ord>(Uvar, Vvar, *this->primal_geometry, *this->dual_geometry, dis, djs, 0, i, j, k);
 
       });
 
@@ -261,12 +258,11 @@ yakl::parallel_for("ComputeDiagId", dual_topology->n_cells, YAKL_LAMBDA (int iGl
 
         int dis = dual_topology->is;
         int djs = dual_topology->js;
-        int dks = dual_topology->ks;
 
-        yakl::parallel_for("ComputeDiagII", dual_topology->n_cells, YAKL_LAMBDA (int iGlob) {
+        yakl::parallel_for("ComputeDiagII", dual_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
           int k, j, i;
-          yakl::unpackIndices(iGlob, dual_topology->n_cells_z, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
-        Hk.compute_dKdv(Fvar, Kvar, HEvar, Vvar, Uvar, dens0var, densfct0var, dis, djs, dks, i, j, k);
+          yakl::unpackIndices(iGlob, dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+        Hk.compute_dKdv(Fvar, Kvar, HEvar, Vvar, Uvar, dens0var, densfct0var, dis, djs, 0, i, j, k);
       });
 
       }
@@ -279,14 +275,13 @@ yakl::parallel_for("ComputeDiagId", dual_topology->n_cells, YAKL_LAMBDA (int iGl
 
 int pis = primal_topology->is;
 int pjs = primal_topology->js;
-int pks = primal_topology->ks;
 
-      yakl::parallel_for("ComputeDiagIII", primal_topology->n_cells, YAKL_LAMBDA (int iGlob) {
+      yakl::parallel_for("ComputeDiagIII", primal_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
         int k, j, i;
-        yakl::unpackIndices(iGlob, primal_topology->n_cells_z, primal_topology->n_cells_y, primal_topology->n_cells_x, k, j, i);
+        yakl::unpackIndices(iGlob, primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, k, j, i);
 
-Hs.compute_dHsdx(Bvar, Bfctvar, dens0var, densfct0var, HSvar, pis, pjs, pks, i, j, k);
-Hk.compute_dKddens(Bvar, Bfctvar, Kvar, pis, pjs, pks, i, j, k);
+Hs.compute_dHsdx(Bvar, Bfctvar, dens0var, densfct0var, HSvar, pis, pjs, 0, i, j, k);
+Hk.compute_dKddens(Bvar, Bfctvar, Kvar, pis, pjs, 0, i, j, k);
 
     });
 
@@ -301,14 +296,13 @@ Hk.compute_dKddens(Bvar, Bfctvar, Kvar, pis, pjs, pks, i, j, k);
 
 int dis = dual_topology->is;
 int djs = dual_topology->js;
-int dks = dual_topology->ks;
 
-    yakl::parallel_for("ComputeDualEdgeRecon", dual_topology->n_cells, YAKL_LAMBDA (int iGlob) {
+    yakl::parallel_for("ComputeDualEdgeRecon", dual_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
       int k, j, i;
-      yakl::unpackIndices(iGlob, dual_topology->n_cells_z, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+      yakl::unpackIndices(iGlob, dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
 
-      compute_twisted_edge_recon<ndensity, dual_reconstruction_type, dual_reconstruction_order>(densedgereconvar, dens0var, dis, djs, dks, i, j, k, dual_wenoRecon, dual_to_gll, dual_wenoIdl, dual_wenoSigma);
-      compute_twisted_edge_recon<ndensityfct, dual_reconstruction_type, dual_reconstruction_order>(densfctedgereconvar, densfct0var, dis, djs, dks, i, j, k, dual_wenoRecon, dual_to_gll, dual_wenoIdl, dual_wenoSigma);
+      compute_twisted_edge_recon<ndensity, dual_reconstruction_type, dual_reconstruction_order>(densedgereconvar, dens0var, dis, djs, 0, i, j, k, dual_wenoRecon, dual_to_gll, dual_wenoIdl, dual_wenoSigma);
+      compute_twisted_edge_recon<ndensityfct, dual_reconstruction_type, dual_reconstruction_order>(densfctedgereconvar, densfct0var, dis, djs, 0, i, j, k, dual_wenoRecon, dual_to_gll, dual_wenoIdl, dual_wenoSigma);
     });
 
 
@@ -322,23 +316,22 @@ int dks = dual_topology->ks;
 
 int dis = dual_topology->is;
 int djs = dual_topology->js;
-int dks = dual_topology->ks;
 
-    yakl::parallel_for("ComputeDualRecon", dual_topology->n_cells, YAKL_LAMBDA (int iGlob) {
+    yakl::parallel_for("ComputeDualRecon", dual_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
       int k, j, i;
-      yakl::unpackIndices(iGlob, dual_topology->n_cells_z, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+      yakl::unpackIndices(iGlob, dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
 
-      compute_twisted_recon<ndensity, dual_reconstruction_type>(densreconvar, densedgereconvar, Uvar, dis, djs, dks, i, j, k);
-      compute_twisted_recon<ndensityfct, dual_reconstruction_type>(densfctreconvar, densfctedgereconvar, Uvar, dis, djs, dks, i, j, k);
+      compute_twisted_recon<ndensity, dual_reconstruction_type>(densreconvar, densedgereconvar, Uvar, dis, djs, 0, i, j, k);
+      compute_twisted_recon<ndensityfct, dual_reconstruction_type>(densfctreconvar, densfctedgereconvar, Uvar, dis, djs, 0, i, j, k);
 
     //scale twisted recons
     for (int d=0;d<ndims;d++) {
     for (int l=0;l<ndensity;l++) {
-    densreconvar(l+d*ndensity,k+dks,j+djs,i+dis) = densreconvar(l+d*ndensity,k+dks,j+djs,i+dis) / HEvar(d,k+dks,j+djs,i+dis);
+    densreconvar(l+d*ndensity,k,j+djs,i+dis) = densreconvar(l+d*ndensity,k,j+djs,i+dis) / HEvar(d,k,j+djs,i+dis);
   }}
   for (int d=0;d<ndims;d++) {
   for (int l=0;l<ndensityfct;l++) {
-  densfctreconvar(l+d*ndensityfct,k+dks,j+djs,i+dis) = densfctreconvar(l+d*ndensityfct,k+dks,j+djs,i+dis) / HEvar(d,k+dks,j+djs,i+dis);
+  densfctreconvar(l+d*ndensityfct,k,j+djs,i+dis) = densfctreconvar(l+d*ndensityfct,k,j+djs,i+dis) / HEvar(d,k,j+djs,i+dis);
 }}
     });
 
@@ -352,28 +345,26 @@ int dks = dual_topology->ks;
 
 int pis = primal_topology->is;
 int pjs = primal_topology->js;
-int pks = primal_topology->ks;
 
 int dis = dual_topology->is;
 int djs = dual_topology->js;
-int dks = dual_topology->ks;
 
-      yakl::parallel_for("ComputePrimalTendencies", primal_topology->n_cells, YAKL_LAMBDA (int iGlob) {
+      yakl::parallel_for("ComputePrimalTendencies", primal_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
         int k, j, i;
-        yakl::unpackIndices(iGlob, primal_topology->n_cells_z, primal_topology->n_cells_y, primal_topology->n_cells_x, k, j, i);
+        yakl::unpackIndices(iGlob, primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, k, j, i);
 
-    compute_wD1<ndensity> (Vtendvar, densreconvar, Bvar, pis, pjs, pks, i, j, k);
-    compute_wD1_fct<ndensityfct, ADD_MODE::ADD> (Vtendvar, densfctreconvar, Phivar, Bfctvar, pis, pjs, pks, i, j, k);
+    compute_wD1<ndensity> (Vtendvar, densreconvar, Bvar, pis, pjs, 0, i, j, k);
+    compute_wD1_fct<ndensityfct, ADD_MODE::ADD> (Vtendvar, densfctreconvar, Phivar, Bfctvar, pis, pjs, 0, i, j, k);
 
 });
 
 
-yakl::parallel_for("ComputeDualTendencies", dual_topology->n_cells, YAKL_LAMBDA (int iGlob) {
+yakl::parallel_for("ComputeDualTendencies", dual_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
   int k, j, i;
-  yakl::unpackIndices(iGlob, dual_topology->n_cells_z, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+  yakl::unpackIndices(iGlob, dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
 
-  compute_wDbar2<ndensity> (denstendvar, densreconvar, Fvar, dis, djs, dks, i, j, k);
-  compute_wDbar2_fct<ndensityfct> (densfcttendvar, densfctreconvar, Phivar, Fvar, dis, djs, dks, i, j, k);
+  compute_wDbar2<ndensity> (denstendvar, densreconvar, Fvar, dis, djs, 0, i, j, k);
+  compute_wDbar2_fct<ndensityfct> (densfcttendvar, densfctreconvar, Phivar, Fvar, dis, djs, 0, i, j, k);
 
   });
 
@@ -436,28 +427,27 @@ yakl::parallel_for("ComputeDualTendencies", dual_topology->n_cells, YAKL_LAMBDA 
 
 int dis = dual_topology->is;
 int djs = dual_topology->js;
-int dks = dual_topology->ks;
 
-yakl::parallel_for("ComputeEdgeFlux", dual_topology->n_cells, YAKL_LAMBDA (int iGlob) {
+yakl::parallel_for("ComputeEdgeFlux", dual_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
   int k, j, i;
-  yakl::unpackIndices(iGlob, dual_topology->n_cells_z, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
-compute_edgefluxes<ndensityfct> (auxiliary_vars.fields_arr[EDGEFLUXVAR].data, auxiliary_vars.fields_arr[DENSFCTRECONVAR].data, auxiliary_vars.fields_arr[FVAR].data, dis, djs, dks, i, j, k);
+  yakl::unpackIndices(iGlob, dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+compute_edgefluxes<ndensityfct> (auxiliary_vars.fields_arr[EDGEFLUXVAR].data, auxiliary_vars.fields_arr[DENSFCTRECONVAR].data, auxiliary_vars.fields_arr[FVAR].data, dis, djs, 0, i, j, k);
 });
 this->aux_exchange->exchanges_arr[EDGEFLUXVAR].exchange_field(auxiliary_vars.fields_arr[EDGEFLUXVAR]);
 
 
-yakl::parallel_for("ComputeMf", dual_topology->n_cells, YAKL_LAMBDA (int iGlob) {
+yakl::parallel_for("ComputeMf", dual_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
 int k, j, i;
-yakl::unpackIndices(iGlob, dual_topology->n_cells_z, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
-compute_Mf<ndensityfct> (auxiliary_vars.fields_arr[MFVAR].data, auxiliary_vars.fields_arr[EDGEFLUXVAR].data, dt, dis, djs, dks, i, j, k);
+yakl::unpackIndices(iGlob, dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+compute_Mf<ndensityfct> (auxiliary_vars.fields_arr[MFVAR].data, auxiliary_vars.fields_arr[EDGEFLUXVAR].data, dt, dis, djs, 0, i, j, k);
 });
 
 this->aux_exchange->exchanges_arr[MFVAR].exchange_field(auxiliary_vars.fields_arr[MFVAR]);
 
-yakl::parallel_for("ComputePhi", dual_topology->n_cells, YAKL_LAMBDA (int iGlob) {
+yakl::parallel_for("ComputePhi", dual_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
 int k, j, i;
-yakl::unpackIndices(iGlob, dual_topology->n_cells_z, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
-compute_Phi<ndensityfct> (auxiliary_vars.fields_arr[PHIVAR].data, auxiliary_vars.fields_arr[EDGEFLUXVAR].data, auxiliary_vars.fields_arr[MFVAR].data, x.fields_arr[DENSFCTVAR].data, dis, djs, dks, i, j, k);
+yakl::unpackIndices(iGlob, dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+compute_Phi<ndensityfct> (auxiliary_vars.fields_arr[PHIVAR].data, auxiliary_vars.fields_arr[EDGEFLUXVAR].data, auxiliary_vars.fields_arr[MFVAR].data, x.fields_arr[DENSFCTVAR].data, dis, djs, 0, i, j, k);
 });
 
 this->aux_exchange->exchanges_arr[PHIVAR].exchange_field(auxiliary_vars.fields_arr[PHIVAR]);
@@ -564,16 +554,15 @@ public:
 
 int dis = dual_topology->is;
 int djs = dual_topology->js;
-int dks = dual_topology->ks;
 
-      yakl::parallel_for("ComputeDualStats", dual_topology->n_cells, YAKL_LAMBDA (int iGlob) {
+      yakl::parallel_for("ComputeDualStats", dual_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
         int k, j, i;
-        yakl::unpackIndices(iGlob, dual_topology->n_cells_z, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+        yakl::unpackIndices(iGlob, dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
          real KE, PE, IE;
 
-KE = Hk.compute_KE(progvars.fields_arr[VVAR].data, progvars.fields_arr[DENSVAR].data, progvars.fields_arr[DENSFCTVAR].data, dis, djs, dks, i, j, k);
-PE = Hs.compute_PE(progvars.fields_arr[DENSVAR].data, progvars.fields_arr[DENSFCTVAR].data, constvars.fields_arr[HSVAR].data, dis, djs, dks, i, j, k);
-IE = Hs.compute_IE(progvars.fields_arr[DENSVAR].data, progvars.fields_arr[DENSFCTVAR].data, dis, djs, dks, i, j, k);
+KE = Hk.compute_KE(progvars.fields_arr[VVAR].data, progvars.fields_arr[DENSVAR].data, progvars.fields_arr[DENSFCTVAR].data, dis, djs, 0, i, j, k);
+PE = Hs.compute_PE(progvars.fields_arr[DENSVAR].data, progvars.fields_arr[DENSFCTVAR].data, constvars.fields_arr[HSVAR].data, dis, djs, 0, i, j, k);
+IE = Hs.compute_IE(progvars.fields_arr[DENSVAR].data, progvars.fields_arr[DENSFCTVAR].data, dis, djs, 0, i, j, k);
 
 elocal(3) += IE;
 elocal(2) += PE;
@@ -633,29 +622,35 @@ elocal(0) += KE + PE + IE;
 };
 
 
-
+template <uint nvars> void set_dofs_arr(SArray<int, nvars, 3> &dofs_arr, int var, int basedof, int extdof, int ndofs)
+{
+  dofs_arr(var, 0) = basedof;
+  dofs_arr(var, 1) = extdof;
+  dofs_arr(var, 2) = ndofs;
+}
 
 // *******   VariableSet Initialization   ***********//
 template <uint nprog, uint nconst, uint naux, uint ndiag> void initialize_variables(const Topology &ptopo, const Topology &dtopo,
-SArray<int, nprog, 4> &prog_ndofs_arr, SArray<int, nconst, 4> &const_ndofs_arr, SArray<int, naux, 4> &aux_ndofs_arr, SArray<int, ndiag, 4> &diag_ndofs_arr,
+SArray<int, nprog, 3> &prog_ndofs_arr, SArray<int, nconst, 3> &const_ndofs_arr, SArray<int, naux, 3> &aux_ndofs_arr, SArray<int, ndiag, 3> &diag_ndofs_arr,
 std::array<std::string, nprog> &prog_names_arr, std::array<std::string, nconst> &const_names_arr, std::array<std::string, naux> &aux_names_arr, std::array<std::string, ndiag> &diag_names_arr,
 std::array<const Topology *, nprog> &prog_topo_arr, std::array<const Topology *, nconst> &const_topo_arr, std::array<const Topology *, naux> &aux_topo_arr, std::array<const Topology *, ndiag> &diag_topo_arr)
 {
 
   //primal grid represents straight quantities, dual grid twisted quantities
   // "edges" are 0-forms
+  
   // v, dens
   prog_topo_arr[VVAR] = &ptopo;
   prog_topo_arr[DENSVAR] = &dtopo;
   prog_names_arr[VVAR] = "v";
   prog_names_arr[DENSVAR] = "dens";
-  prog_ndofs_arr(VVAR,1) = 1; //v = straight 1-form
-  prog_ndofs_arr(DENSVAR,1) = ndensity; //dens = twisted 1-form
+  set_dofs_arr(prog_ndofs_arr, VVAR, 1, 1, 1); //v = straight 1-form
+  set_dofs_arr(prog_ndofs_arr, DENSVAR, ndims, 1, ndensity); //dens = twisted n-form
 
   // hs
   const_topo_arr[HSVAR] = &dtopo;
   const_names_arr[HSVAR] = "hs";
-  const_ndofs_arr(HSVAR,1) = 1; //hs = twisted 1-form
+  set_dofs_arr(const_ndofs_arr, HSVAR, ndims, 1, 1); //hs = twisted n-form
 
   //functional derivatives = F, B, K, he, U
   aux_topo_arr[BVAR] = &ptopo;
@@ -668,11 +663,12 @@ std::array<const Topology *, nprog> &prog_topo_arr, std::array<const Topology *,
   aux_names_arr[FVAR] = "F";
   aux_names_arr[UVAR] = "U";
   aux_names_arr[HEVAR] = "he";
-  aux_ndofs_arr(BVAR,0) = ndensity; //B = straight 0-form
-  aux_ndofs_arr(KVAR,1) = 1; //K = twisted 1-form
-  aux_ndofs_arr(FVAR,0) = 1; //F = twisted 0-form
-  aux_ndofs_arr(UVAR,0) = 1; //U = twisted 0-form
-  aux_ndofs_arr(HEVAR,0) = 1; //he lives on dual edges, associated with F
+  set_dofs_arr(aux_ndofs_arr, BVAR, 0, 1, ndensity); //B = straight 0-form
+  set_dofs_arr(aux_ndofs_arr, KVAR, ndims, 1, 1);   //K = twisted n-form
+  set_dofs_arr(aux_ndofs_arr, FVAR, ndims-1, 1, 1);  //F = twisted (n-1)-form
+  set_dofs_arr(aux_ndofs_arr, UVAR, ndims-1, 1, 1); //U = twisted (n-1)-form
+  set_dofs_arr(aux_ndofs_arr, HEVAR, ndims-1, 1, 1); //he lives on dual edges, associated with F
+  
 
   //dens primal grid reconstruction stuff- dens0, edgerecon, recon
   aux_topo_arr[DENSRECONVAR] = &dtopo;
@@ -681,19 +677,19 @@ std::array<const Topology *, nprog> &prog_topo_arr, std::array<const Topology *,
   aux_names_arr[DENS0VAR] = "dens0";
   aux_names_arr[DENSRECONVAR] = "densrecon";
   aux_names_arr[DENSEDGERECONVAR] = "densedgerecon";
-  aux_ndofs_arr(DENSRECONVAR,0) = ndensity; //densrecon lives on dual edges, associated with F
-  aux_ndofs_arr(DENSEDGERECONVAR,1) = 2*ndensity; //densedgerecon lives on dual cells, associated with F
-  aux_ndofs_arr(DENS0VAR,0) = ndensity; //dens0 = straight 0-form
+  set_dofs_arr(aux_ndofs_arr, DENSRECONVAR, ndims-1, 1, ndensity);  //densrecon lives on dual edges, associated with F
+  set_dofs_arr(aux_ndofs_arr, DENSEDGERECONVAR, ndims, 1, 2*ndims*ndensity); //densedgerecon lives on dual cells, associated with F
+  set_dofs_arr(aux_ndofs_arr, DENS0VAR, 0, 1, ndensity); //dens0 = straight 0-form
 
-  // q, concentration 0-forms for dens
+  // concentration 0-forms for dens
   diag_topo_arr[DENSLDIAGVAR] = &ptopo;
   diag_names_arr[DENSLDIAGVAR] = "densl";
-  diag_ndofs_arr(DENSLDIAGVAR,0) = ndensity; //densldiag = straight 0-form
+  set_dofs_arr(diag_ndofs_arr, DENSLDIAGVAR, 0, 1, ndensity); //densldiag = straight 0-form
 
   //densfct stuff- densfct, BFCT, densfct0, edgereconfct, reconfct, Phi, Mf, edgeflux, concentration 0-forms for densfct
   prog_topo_arr[DENSFCTVAR] = &dtopo;
   prog_names_arr[DENSFCTVAR] = "densfct";
-  prog_ndofs_arr(DENSFCTVAR,1) = ndensityfct; //densfct = twisted 1-form
+  set_dofs_arr(prog_ndofs_arr, DENSFCTVAR, ndims, 1, ndensityfct);  //densfct = twisted n-form
 
   aux_topo_arr[BFCTVAR] = &ptopo;
   aux_topo_arr[DENSFCTRECONVAR] = &dtopo;
@@ -709,19 +705,18 @@ std::array<const Topology *, nprog> &prog_topo_arr, std::array<const Topology *,
   aux_names_arr[PHIVAR] = "Phi";
   aux_names_arr[MFVAR] = "Mf";
   aux_names_arr[EDGEFLUXVAR] = "edgeflux";
-  aux_ndofs_arr(BFCTVAR,0) = ndensityfct; //Bfct = straight 0-form
-  aux_ndofs_arr(DENSFCTRECONVAR,0) = ndensityfct; //densfctrecon lives on dual edges, associated with F
-  aux_ndofs_arr(DENSFCTEDGERECONVAR,1) = 2*ndensityfct; //densfctedgerecon lives on dual cells
-  aux_ndofs_arr(DENSFCT0VAR,0) = ndensityfct; //densfct0 = straight 0-form
-  
-  // all of these live on edges OR cells
-  aux_ndofs_arr(PHIVAR,0) = ndensityfct;
-  aux_ndofs_arr(MFVAR,1) = ndensityfct;
-  aux_ndofs_arr(EDGEFLUXVAR,0) = ndensityfct;
+  set_dofs_arr(aux_ndofs_arr, BFCTVAR, 0, 1, ndensityfct);  //Bfct = straight 0-form
+  set_dofs_arr(aux_ndofs_arr, DENSFCTRECONVAR, ndims-1, 1, ndensityfct);  //densfctrecon lives on dual edges, associated with F
+  set_dofs_arr(aux_ndofs_arr, DENSFCTEDGERECONVAR, ndims, 1, 2*ndims*ndensityfct);  //densfctedgerecon lives on dual cells
+  set_dofs_arr(aux_ndofs_arr, DENSFCT0VAR, 0, 1, ndensityfct);  //densfct0 = straight 0-form
+  set_dofs_arr(aux_ndofs_arr, PHIVAR, ndims-1, 1, ndensityfct); 
+  set_dofs_arr(aux_ndofs_arr, MFVAR, ndims, 1, ndensityfct);  
+  set_dofs_arr(aux_ndofs_arr, EDGEFLUXVAR, ndims-1, 1, ndensityfct); 
+
 
   diag_topo_arr[DENSFCTLDIAGVAR] = &ptopo;
   diag_names_arr[DENSFCTLDIAGVAR] = "densfctl";
-  diag_ndofs_arr(DENSFCTLDIAGVAR,0) = ndensityfct; //densfctldiag = straight 0-form
+  set_dofs_arr(diag_ndofs_arr, DENSFCTLDIAGVAR, 0, 1, ndensityfct);  //densfctldiag = straight 0-form
   
 }
 

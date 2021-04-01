@@ -12,9 +12,9 @@
 
 
 
-int ijk_to_l(int i, int j, int k, int nx, int ny)
+int ij_to_l(int i, int j, int nx)
 {
-  return (j + k * ny) * nx + i;
+  return j * nx + i;
 }
 
 int wrap(int i, int nx)
@@ -57,7 +57,7 @@ void readParamsFile(std::string inFile, Parameters &params, Parallel &par) {
       // Match the key, and store the value
       if      ( !strcmp( "nx"         , key.c_str() ) ) { ssVal >> params.nx_glob    ; }
       else if ( !strcmp( "ny"         , key.c_str() ) ) { ssVal >> params.ny_glob    ; }
-      else if ( !strcmp( "nz"         , key.c_str() ) ) { ssVal >> params.nz_glob    ; }
+      else if ( !strcmp( "nz"         , key.c_str() ) ) { ssVal >> params.nz    ; }
 
       else if ( !strcmp( "dt"         , key.c_str() ) ) { ssVal >> params.dt         ; }
       else if ( !strcmp( "Nsteps"     , key.c_str() ) ) { ssVal >> params.Nsteps     ; }
@@ -69,11 +69,9 @@ void readParamsFile(std::string inFile, Parameters &params, Parallel &par) {
 
       else if ( !strcmp( "nprocx"     , key.c_str() ) ) { ssVal >> par.nprocx        ; }
       else if ( !strcmp( "nprocy"     , key.c_str() ) ) { ssVal >> par.nprocy        ; }
-      else if ( !strcmp( "nprocz"     , key.c_str() ) ) { ssVal >> par.nprocz        ; }
 
       else if ( !strcmp( "xbnd"         , key.c_str() ) ) { ssVal >> params.xbnd    ; }
       else if ( !strcmp( "ybnd"         , key.c_str() ) ) { ssVal >> params.ybnd    ; }
-      else if ( !strcmp( "zbnd"         , key.c_str() ) ) { ssVal >> params.zbnd    ; }
 
 
       //else {
@@ -87,20 +85,23 @@ void readParamsFile(std::string inFile, Parameters &params, Parallel &par) {
   // Test to make sure all required values were initialized
   if (params.nx_glob == -1) { std::cout << "Error: key " << "nx"          << " not set.\n"; exit(-1); }
   if (params.ny_glob == -1) { std::cout << "Error: key " << "ny"          << " not set.\n"; exit(-1); }
-  if (params.nz_glob == -1) { std::cout << "Error: key " << "nz"          << " not set.\n"; exit(-1); }
+  if (params.nz == -1) { std::cout << "Error: key " << "nz"          << " not set.\n"; exit(-1); }
   if (params.dt      == -1) { std::cout << "Error: key " << "dt"          << " not set.\n"; exit(-1); }
   if (params.Nsteps  == -1) { std::cout << "Error: key " << "Nsteps"      << " not set.\n"; exit(-1); }
   if (params.Nout    == -1) { std::cout << "Error: key " << "Nout"        << " not set.\n"; exit(-1); }
   if (par.nprocx     == -1) { std::cout << "Error: key " << "nprocx"      << " not set.\n"; exit(-1); }
   if (par.nprocy     == -1) { std::cout << "Error: key " << "nprocy"      << " not set.\n"; exit(-1); }
-  if (par.nprocz     == -1) { std::cout << "Error: key " << "nprocz"      << " not set.\n"; exit(-1); }
 
-  if (!(par.nprocx * par.nprocy * par.nprocz == par.nranks)) { std::cout << "Error: nranks != nprocx * nprocy * nprocz\n"; exit(-1); }
+  if (!(par.nprocx * par.nprocy == par.nranks)) { std::cout << "Error: nranks != nprocx * nprocy\n"; exit(-1); }
 
+//FIX THIS....
   //Get my process grid IDs
-  par.pz = floor(par.myrank / (par.nprocx * par.nprocy));
-  par.py = floor((par.myrank - par.nprocx * par.nprocy * par.pz) / par.nprocx);
-  par.px = par.myrank - par.nprocx * par.nprocy * par.pz - par.nprocx * par.py;
+//  par.pz = floor(par.myrank / (par.nprocx * par.nprocy));
+//  par.py = floor((par.myrank - par.nprocx * par.nprocy * par.pz) / par.nprocx);
+//  par.px = par.myrank - par.nprocx * par.nprocy * par.pz - par.nprocx * par.py;
+
+  par.py = floor(par.myrank / par.nprocx);
+  par.px = par.myrank - par.nprocx * par.py;
 
 
     //Get my beginning and ending global indices; and domain sizes
@@ -119,93 +120,48 @@ void readParamsFile(std::string inFile, Parameters &params, Parallel &par) {
     par.ny = par.j_end - par.j_beg + 1;
     par.ny_glob = params.ny_glob;
     }
-
-    if (ndims ==3)
-    {
-    nper = ((double) params.nz_glob)/par.nprocz;
-    par.k_beg = (int) round( nper* par.pz    );
-    par.k_end = (int) round( nper*(par.pz+1) )-1;
-    par.nz = par.k_end - par.k_beg + 1;
-    par.nz_glob = params.nz_glob;
-    }
+    
+    par.nz = params.nz;
 
     // Determine my neighbors
     // x-dir
-    par.x_neigh(0) = ijk_to_l(wrap(par.px-1,par.nprocx), par.py, par.pz, par.nprocx, par.nprocy);
-    par.x_neigh(1) = ijk_to_l(wrap(par.px+1,par.nprocx), par.py, par.pz, par.nprocx, par.nprocy);
-        
-    // int pxloc_neg = par.px-1;
-    // if (pxloc_neg < 0            ) pxloc_neg = pxloc_neg + par.nprocx;
-    // if (pxloc_neg > par.nprocx-1) pxloc_neg = pxloc_neg - par.nprocx;
-    // par.x_neigh(0) = (par.py + par.pz * par.nprocy) * par.nprocx + pxloc_neg;
-    // int pxloc_pos = par.px+1;
-    // if (pxloc_pos < 0            ) pxloc_pos = pxloc_pos + par.nprocx;
-    // if (pxloc_pos > par.nprocx-1) pxloc_pos = pxloc_pos - par.nprocx;
-    // par.x_neigh(1) = (par.py + par.pz * par.nprocy) * par.nprocx + pxloc_pos;
+    par.x_neigh(0) = ij_to_l(wrap(par.px-1,par.nprocx), par.py, par.nprocx);
+    par.x_neigh(1) = ij_to_l(wrap(par.px+1,par.nprocx), par.py, par.nprocx);
 
     // y-dir
-    if (ndims>=2)
+    if (ndims==2)
     {
-      par.y_neigh(0) = ijk_to_l(par.px, wrap(par.py-1,par.nprocy), par.pz, par.nprocx, par.nprocy);
-      par.y_neigh(1) = ijk_to_l(par.px, wrap(par.py+1,par.nprocy), par.pz, par.nprocx, par.nprocy);
+      par.y_neigh(0) = ij_to_l(par.px, wrap(par.py-1,par.nprocy), par.nprocx);
+      par.y_neigh(1) = ij_to_l(par.px, wrap(par.py+1,par.nprocy), par.nprocx);
       
-    // int pyloc_neg = par.py-1;
-    // if (pyloc_neg < 0            ) pyloc_neg = pyloc_neg + par.nprocy;
-    // if (pyloc_neg > par.nprocy-1) pyloc_neg = pyloc_neg - par.nprocy;
-    // par.y_neigh(0) = (pyloc_neg + par.pz * par.nprocy) * par.nprocx + par.px;
-    // int pyloc_pos = par.py+1;
-    // if (pyloc_pos < 0            ) pyloc_pos = pyloc_pos + par.nprocy;
-    // if (pyloc_pos > par.nprocy-1) pyloc_pos = pyloc_pos - par.nprocy;
-    // par.y_neigh(1) = (pyloc_pos + par.pz * par.nprocy) * par.nprocx + par.px;
+    par.ll_neigh = ij_to_l(wrap(par.px-1,par.nprocx), wrap(par.py-1,par.nprocy), par.nprocx); 
+    par.lr_neigh = ij_to_l(wrap(par.px+1,par.nprocx), wrap(par.py-1,par.nprocy), par.nprocx); 
+    par.ur_neigh = ij_to_l(wrap(par.px+1,par.nprocx), wrap(par.py+1,par.nprocy), par.nprocx); 
+    par.ul_neigh = ij_to_l(wrap(par.px-1,par.nprocx), wrap(par.py+1,par.nprocy), par.nprocx);
+    }
     
-    par.ll_neigh = ijk_to_l(wrap(par.px-1,par.nprocx), wrap(par.py-1,par.nprocy), par.pz, par.nprocx, par.nprocy); 
-    par.lr_neigh = ijk_to_l(wrap(par.px+1,par.nprocx), wrap(par.py-1,par.nprocy), par.pz, par.nprocx, par.nprocy); 
-    par.ur_neigh = ijk_to_l(wrap(par.px+1,par.nprocx), wrap(par.py+1,par.nprocy), par.pz, par.nprocx, par.nprocy); 
-    par.ul_neigh = ijk_to_l(wrap(par.px-1,par.nprocx), wrap(par.py+1,par.nprocy), par.pz, par.nprocx, par.nprocy);
-    }
-
-    // z-dir
-    if (ndims == 3)
-    {
-      par.z_neigh(0) = ijk_to_l(par.px, par.py, wrap(par.pz-1,par.nprocz), par.nprocx, par.nprocy);
-      par.z_neigh(1) = ijk_to_l(par.px, par.py, wrap(par.pz+1,par.nprocz), par.nprocx, par.nprocy);
-      
-    // int pzloc_neg = par.pz-1;
-    // if (pzloc_neg < 0            ) pzloc_neg = pzloc_neg + par.nprocz;
-    // if (pzloc_neg > par.nprocz-1) pzloc_neg = pzloc_neg - par.nprocz;
-    // par.z_neigh(0) = (par.py + pzloc_neg * par.nprocy) * par.nprocx + par.px;
-    // int pzloc_pos = par.pz+1;
-    // if (pzloc_pos < 0            ) pzloc_pos = pzloc_pos + par.nprocz;
-    // if (pzloc_pos > par.nprocz-1) pzloc_pos = pzloc_pos - par.nprocz;
-    // par.z_neigh(1) = (par.py + pzloc_pos * par.nprocy) * par.nprocx + par.px;
-    }
-
     // set boundaries
     if (!strcmp(params.xbnd.c_str(),"periodic")) {par.xbnd = BND_TYPE::PERIODIC;}
     if (!strcmp(params.xbnd.c_str(),"none")) {par.xbnd = BND_TYPE::NONE;}
     if (!strcmp(params.ybnd.c_str(),"periodic")) {par.ybnd = BND_TYPE::PERIODIC;}
     if (!strcmp(params.ybnd.c_str(),"none")) {par.ybnd = BND_TYPE::NONE;}
-    if (!strcmp(params.zbnd.c_str(),"periodic")) {par.zbnd = BND_TYPE::PERIODIC;}
-    if (!strcmp(params.zbnd.c_str(),"none")) {par.zbnd = BND_TYPE::NONE;}
         
     // set halos
     par.halox = maxhalosize;
     par.haloy = maxhalosize;
-    par.haloz = maxhalosize;
-
+        
     // Debug output for the parallel decomposition
     if (1) {
       ierr = MPI_Barrier(MPI_COMM_WORLD);
       for (int rr=0; rr < par.nranks; rr++) {
         if (rr == par.myrank) {
           std::cout << "Hello! My rank is: " << par.myrank << "\n";
-          std::cout << "My proc grid ID is: " << par.px << " , " << par.py << " , " << par.pz << "\n";
-          std::cout << "I have: " << par.nx << " x " << par.ny << " x " << par.nz << " grid points." << "\n";
-          std::cout << "I start at index: " << par.i_beg << " x " << par.j_beg << " x " << par.k_beg << "\n";
-          std::cout << "I end at index: " << par.i_end << " x " << par.j_end << " x " << par.k_end << "\n";
+          std::cout << "My proc grid ID is: " << par.px << " , " << par.py << "\n";
+          std::cout << "I have: " << par.nx << " x " << par.ny << " grid points." << "\n";
+          std::cout << "I start at index: " << par.i_beg << " x " << par.j_beg << "\n";
+          std::cout << "I end at index: " << par.i_end << " x " << par.j_end << "\n";
           std::cout << "My x neighbors are: " << par.x_neigh(0) << " " << par.x_neigh(1) << "\n";
           std::cout << "My y neighbors are: " << par.y_neigh(0) << " " << par.y_neigh(1) << "\n";
-          std::cout << "My z neighbors are: " << par.z_neigh(0) << " " << par.z_neigh(1) << "\n";
           std::cout << "My corner neighbors are: " << par.ll_neigh << " " << par.ul_neigh << " " << par.ur_neigh << " " << par.lr_neigh << "\n";
         }
         ierr = MPI_Barrier(MPI_COMM_WORLD);
@@ -219,15 +175,14 @@ void readParamsFile(std::string inFile, Parameters &params, Parallel &par) {
   if (par.masterproc) {
     std::cout << "nx:         " << params.nx_glob    << "\n";
     std::cout << "ny:         " << params.ny_glob    << "\n";
-    std::cout << "nz:         " << params.nz_glob    << "\n";
+    std::cout << "nl:         " << params.nz    << "\n";
+    std::cout << "ni:         " << params.nz+1    << "\n";
 
     std::cout << "halox:      " << par.halox    << "\n";
     std::cout << "haloy:      " << par.haloy    << "\n";
-    std::cout << "haloz:      " << par.haloz    << "\n";
 
     std::cout << "xbnd:      " << params.xbnd    << "\n";
     std::cout << "ybnd:      " << params.ybnd    << "\n";
-    std::cout << "zbnd:      " << params.zbnd    << "\n";
     
     std::cout << "dt:         " << params.dt         << "\n";
     std::cout << "Nsteps:     " << params.Nsteps     << "\n";
@@ -237,15 +192,17 @@ void readParamsFile(std::string inFile, Parameters &params, Parallel &par) {
     std::cout << "nranks:     " << par.nranks        << "\n";
     std::cout << "nprocx:     " << par.nprocx        << "\n";
     std::cout << "nprocy:     " << par.nprocy        << "\n";
-    std::cout << "nprocz:     " << par.nprocz        << "\n";
 
+    std::cout << "etime:      " << params.etime      << "\n";
+
+//THESE ARE UNIFORM GEOMETRY SPECIFIC....
+//SO WRAP UP INTO A PRINT ROUTINE FOR GEOMETRY?
     std::cout << "xlen:       " << params.xlen       << "\n";
     std::cout << "ylen:       " << params.ylen       << "\n";
     std::cout << "zlen:       " << params.zlen       << "\n";
     std::cout << "xc:         " << params.xc         << "\n";
     std::cout << "yc:         " << params.yc         << "\n";
     std::cout << "zc:         " << params.zc         << "\n";
-    std::cout << "etime:      " << params.etime      << "\n";
   }
 
 

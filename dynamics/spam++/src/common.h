@@ -65,7 +65,7 @@ public:
 
   int nx_glob = -1;
   int ny_glob = -1;
-  int nz_glob = -1;
+  int nz = -1;
 
   int Nsteps = -1;
   int Nout = -1;
@@ -82,7 +82,6 @@ public:
 
   std::string xbnd = "periodic";
   std::string ybnd = "periodic";
-  std::string zbnd = "periodic";
 
 };
 

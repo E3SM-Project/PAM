@@ -12,25 +12,20 @@ public:
 
   int nprocx = -1;
   int nprocy = -1;
-  int nprocz = -1;
 
   int nranks = -1;
   int myrank = -1;
   int masterproc = -1;
   int px = -1;
   int py = -1;
-  int pz = -1;
 
   int i_beg = -1;
   int i_end = -1;
   int j_beg = -1;
   int j_end = -1;
-  int k_beg = -1;
-  int k_end = -1;
 
   int halox = -1;
   int haloy = -1;
-  int haloz = -1;
 
   SArray<int,2> x_neigh;
   SArray<int,2> y_neigh;
@@ -40,11 +35,9 @@ public:
 
   int nx_glob = -1;
   int ny_glob = -1;
-  int nz_glob = -1;
 
   BND_TYPE xbnd;
   BND_TYPE ybnd;
-  BND_TYPE zbnd;
 
 };
 

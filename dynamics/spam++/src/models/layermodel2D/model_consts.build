@@ -1,6 +1,6 @@
 #layermodel2D specific choices
--D_NTRACERS=0
--D_NTRACERS_FCT=0
+-D_NTRACERS=1
+-D_NTRACERS_FCT=1
 -D_NTRACERS_Q=0
 
 #ce/mce specific choices
