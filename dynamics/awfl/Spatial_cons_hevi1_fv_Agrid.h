@@ -19,7 +19,6 @@ public:
   int static constexpr hs = (ord-1)/2;
   int static constexpr num_state = 5;
   int static constexpr max_tracers = 50;
-  int static constexpr sound_speed = 300;
 
   // Stores a single index location
   struct Location {
@@ -1531,7 +1530,7 @@ public:
           real f2 = max( tracerFlux(tr,k,j,ind_i+1,iens) , 0._fp );
           real fluxOut = dt*(f2-f1)/dx;
           real dens = state(idR,hs+k,hs+j,hs+ind_i,iens) + hyDensCells(k,iens);
-          tracerFlux(tr,k,j,i,iens) *= min( 1._fp , tracers(tr,hs+k,hs+j,hs+ind_i,iens) * dens / (fluxOut + eps) );
+          tracerFlux(tr,k,j,i,iens) *= min( 1._fp , tracers(tr,hs+k,hs+j,hs+ind_i,iens) / (fluxOut + eps) );
         } else if (u < 0) {
           // upwind is to the right of this interface
           int ind_i = i;
@@ -1540,7 +1539,7 @@ public:
           real f2 = max( tracerFlux(tr,k,j,ind_i+1,iens) , 0._fp );
           real fluxOut = dt*(f2-f1)/dx;
           real dens = state(idR,hs+k,hs+j,hs+ind_i,iens) + hyDensCells(k,iens);
-          tracerFlux(tr,k,j,i,iens) *= min( 1._fp , tracers(tr,hs+k,hs+j,hs+ind_i,iens) * dens / (fluxOut + eps) );
+          tracerFlux(tr,k,j,i,iens) *= min( 1._fp , tracers(tr,hs+k,hs+j,hs+ind_i,iens) / (fluxOut + eps) );
         }
       }
     });
@@ -1885,7 +1884,7 @@ public:
           real f2 = max( tracerFlux(tr,k,ind_j+1,i,iens) , 0._fp );
           real fluxOut = dt*(f2-f1)/dy;
           real dens = state(idR,hs+k,hs+ind_j,hs+i,iens) + hyDensCells(k,iens);
-          tracerFlux(tr,k,j,i,iens) *= min( 1._fp , tracers(tr,hs+k,hs+ind_j,hs+i,iens) * dens / (fluxOut + eps) );
+          tracerFlux(tr,k,j,i,iens) *= min( 1._fp , tracers(tr,hs+k,hs+ind_j,hs+i,iens) / (fluxOut + eps) );
         } else if (v < 0) {
           // upwind is to the right of this interface
           int ind_j = j;
@@ -1894,7 +1893,7 @@ public:
           real f2 = max( tracerFlux(tr,k,ind_j+1,i,iens) , 0._fp );
           real fluxOut = dt*(f2-f1)/dy;
           real dens = state(idR,hs+k,hs+ind_j,hs+i,iens) + hyDensCells(k,iens);
-          tracerFlux(tr,k,j,i,iens) *= min( 1._fp , tracers(tr,hs+k,hs+ind_j,hs+i,iens) * dens / (fluxOut + eps) );
+          tracerFlux(tr,k,j,i,iens) *= min( 1._fp , tracers(tr,hs+k,hs+ind_j,hs+i,iens) / (fluxOut + eps) );
         }
       }
     });
@@ -1949,69 +1948,6 @@ public:
     YAKL_SCOPE( gamma                   , this->gamma                  );
     YAKL_SCOPE( p0                      , this->p0                     );
     YAKL_SCOPE( C0                      , this->C0                     );
-
-    real4d pressure ("pressure" ,nz,ny,nx,nens);
-    real4d rhow     ("rhow"     ,nz,ny,nx,nens);
-    real4d rhow_tavg("rhow_tavg",nz,ny,nx,nens);
-    real4d dtarr    ("dtarr"    ,nz,ny,nx,nens);
-
-    // Compute pressure perturbation, init rhow, rhow_tavg, compute stable dt at each cell
-    parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      real rt = state(idT,hs+k,hs+j,hs+i,iens) + hyDensThetaCells(k,iens);
-      pressure (k,j,i,iens) = C0 * pow( rt , gamma ) - hyPressureCells(k,iens);
-      rhow     (k,j,i,iens) = 0;
-      rhow_tavg(k,j,i,iens) = 0;
-      dtarr    (k,j,i,iens) = 0.9 * dz / sound_speed;
-    });
-
-    real acoust_dt = yakl::intrinsics::minval(dtarr);
-    int ncycle = (int) ceil( dt / acoust_dt );
-    
-    dtarr = real4d();
-    real4d pressure_tend("pressure_tend",nz,ny,nx,nens);
-    real4d rhow_tend    ("rhow_tend"    ,nz,ny,nx,nens);
-
-    // Subcycle first-order upwind acoustic-only affects on vertical momentum
-    parallel_for( Bounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int iens) {
-      real constexpr c_s = sound_speed;
-      for (int icycle = 0; icycle < ncycle; icycle++) {
-        for (int k=0; k < nz; k++) {
-          int km1 = k-1;  if (km1 < 0   ) km1 = 0;
-          int kp1 = k+1;  if (kp1 > nz-1) kp1 = nz-1;
-          // z-direction fluxes
-          real p_km1  = pressure(km1,j,i,iens);
-          real p_k    = pressure(k  ,j,i,iens);
-          real p_kp1  = pressure(kp1,j,i,iens);
-          real rw_km1 = rhow    (km1,j,i,iens);
-          real rw_k   = rhow    (k  ,j,i,iens);
-          real rw_kp1 = rhow    (kp1,j,i,iens);
-          if (k == 0   ) rw_km1 = 0;
-          if (k == nz-1) rw_kp1 = 0;
-          real p_z_L = (p_k   + p_km1) / 2       + c_s/2  * (rw_km1 - rw_k  );
-          real p_z_R = (p_kp1 + p_k  ) / 2       + c_s/2  * (rw_k   - rw_kp1);
-          real rw_L  = (p_km1 - p_k  ) / (2*c_s) + 0.5_fp * (rw_k   + rw_km1);
-          real rw_R  = (p_k   - p_kp1) / (2*c_s) + 0.5_fp * (rw_kp1 + rw_k  );
-          if (k == 0   ) rw_L  = 0;
-          if (k == nz-1) rw_R  = 0;
-          pressure_tend(k,j,i,iens) = -c_s*c_s * ( (rw_R-rw_L)/dz(k,iens) );
-          rhow_tend    (k,j,i,iens) = -(p_z_R - p_z_L) / (dz(k,iens));
-        }
-        for (int k=0; k < nz; k++) {
-          pressure (k,j,i,iens) += dt/ncycle * pressure_tend(k,j,i,iens);
-          rhow     (k,j,i,iens) += dt/ncycle * rhow_tend    (k,j,i,iens);
-          rhow_tavg(k,j,i,iens) += rhow(k,j,i,iens);
-        }
-      }
-    });
-
-    pressure_tend = real4d();
-    rhow_tend     = real4d();
-    pressure      = real4d();
-    rhow          = real4d();
-
-    parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      state(idR,hs+k,hs+j,hs+i,iens)
-    });
 
     // Pre-process the tracers by dividing by density inside the domain
     // After this, we can reconstruct tracers only (not rho * tracer)
