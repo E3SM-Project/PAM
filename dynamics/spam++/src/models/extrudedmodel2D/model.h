@@ -23,48 +23,64 @@ uint constexpr nprognostic = 4;
 #define DENSVAR 2
 #define DENSFCTVAR 3
 
-// hs
-uint constexpr nconstant = 1;
+// hs, coriolis
+uint constexpr nconstant = 2;
 #define HSVAR 0
-// ADD Q STUFF BACK HERE!!!
+#define CORIOLISVAR 1
 
 //functional derivatives = F, B, BFCT, K, he
 //primal grid reconstruction stuff- U, dens0, densfct0, edgerecon, recon, edgereconfct, reconfct
 //fct stuff- Phi, Mf, edgeflux
 
-uint constexpr nauxiliary = 15;
-// ADD Q STUFF BACK HERE!!!
-// ADD W RELATED stuff
+uint constexpr nauxiliary = 24;
 
 #define FVAR 0
 #define BVAR 1
 #define KVAR 2
 #define HEVAR 3
 #define UVAR 4
+#define FWVAR 5
+#define HEWVAR 6
+#define UWVAR 7
 
-#define DENS0VAR 5
-#define DENSRECONVAR 6
-#define DENSEDGERECONVAR 7
+#define DENS0VAR 8
+#define DENSRECONVAR 9
+#define DENSEDGERECONVAR 10
+#define DENSVERTRECONVAR 11
+#define DENSVERTEDGERECONVAR 12
 
-//RE-ARRANGE THIS STUFF?
-#define BFCTVAR 8
-#define DENSFCT0VAR 9
-#define DENSFCTRECONVAR 10
-#define DENSFCTEDGERECONVAR 11
-#define PHIVAR 12
-#define EDGEFLUXVAR 13
-#define MFVAR 14
-
-// associated concentration 0-forms for den
-
-uint constexpr ndiagnostic = 2;
-#define DENSLDIAGVAR 0
-#define DENSFCTLDIAGVAR 1
-
-//track total densities, dens min/max, densfct min/max, energy (total, K, P, I)
-uint constexpr nstats = 7;
+#define BFCTVAR 13
+#define DENSFCT0VAR 14
+#define DENSFCTRECONVAR 15
+#define DENSFCTEDGERECONVAR 16
+#define DENSFCTVERTRECONVAR 17
+#define DENSFCTVERTEDGERECONVAR 18
+#define PHIVAR 19
+#define VERTPHIVAR 20
+#define EDGEFLUXVAR 21
+#define VERTEDGEFLUXVAR 22
+#define MFVAR 23
 
 // ADD Q STUFF BACK HERE!!!
+// FIGURE OUT EXACTLY WHAT WE NEED...
+// #define FTVAR 8
+// #define Q0VAR 9
+// #define F0VAR 10
+// #define QRECONVAR 11
+// #define QEDGERECONVAR 12
+// #define CORIOLISRECONVAR 13
+// #define CORIOLISEDGERECONVAR 14
+
+// q, associated concentration 0-forms for den
+
+uint constexpr ndiagnostic = 3;
+#define QDIAGVAR 0
+#define DENSLDIAGVAR 1
+#define DENSFCTLDIAGVAR 2
+
+//track total densities, dens min/max, densfct min/max, energy (total, K, P, I), PV, PE
+uint constexpr nstats = 9;
+
 #define DENSSTAT 0
 #define DENSMINSTAT 1
 #define DENSMAXSTAT 2
@@ -72,7 +88,8 @@ uint constexpr nstats = 7;
 #define DENSFCTSTAT 4
 #define DENSFCTMAXSTAT 5
 #define DENSFCTMINSTAT 6
-
+#define PVSTAT 7
+#define PESTAT 8
 
 // *******   Functionals/Hamiltonians   ***********//
 
@@ -687,6 +704,8 @@ public:
     stats_arr[DENSFCTMAXSTAT].initialize("densfctmax", ndensityfct, params, par);
     stats_arr[DENSFCTMINSTAT].initialize("densfctmin", ndensityfct, params, par);
     stats_arr[ESTAT].initialize("energy", 4, params, par);
+    stats_arr[PVSTAT].initialize("pv", 1, params, par);
+    stats_arr[PESTAT].initialize("pens", 1, params, par);
     masterproc = par.masterproc;
     
   }
@@ -713,6 +732,10 @@ public:
       eglobal(1) = 0.;
       eglobal(2) = 0.;
       eglobal(3) = 0.;
+      pvlocal(0) = 0.;
+      pvglobal(0) = 0.;
+      pelocal(0) = 0.;
+      peglobal(0) = 0.;
       for (int l=0;l<ndensity;l++) {masslocal(l) = 0.; massglobal(l) = 0.;}
       for (int l=0;l<ndensity;l++) {densmaxlocal(l) = 0.; densmaxglobal(l) = 0.;}
       for (int l=0;l<ndensity;l++) {densminlocal(l) = 0.; densminglobal(l) = 0.;}
@@ -739,6 +762,23 @@ elocal(0) += KE + PE + IE;
 
 });
 
+// FIX THIS
+
+// int pis = primal_topology->is;
+// int pjs = primal_topology->js;
+// 
+// yakl::parallel_for("ComputePrimalStats", primal_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
+//   int k, j, i;
+//   yakl::unpackIndices(iGlob, primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, k, j, i);
+// 
+//    pvpe vals_pvpe;
+//    vals_pvpe = PVPE.compute_PVPE(progvars.fields_arr[VVAR].data, progvars.fields_arr[DENSVAR].data, progvars.fields_arr[DENSFCTVAR].data, constvars.fields_arr[CORIOLISVAR].data, pis, pjs, 0, i, j, k);
+//    pvlocal(0) += vals_pvpe.pv;
+//     pelocal(0) += vals_pvpe.pe;
+// 
+//     });
+    
+    
     for (int l=0;l<ndensity;l++)
     {
     masslocal(l) = progvars.fields_arr[DENSVAR].sum(l);
@@ -761,7 +801,8 @@ elocal(0) += KE + PE + IE;
     this->ierr = MPI_Ireduce( &densfctmaxlocal, &densfctmaxglobal, ndensityfct, REAL_MPI, MPI_MAX, 0, MPI_COMM_WORLD, &this->Req[DENSFCTMAXSTAT]);
     this->ierr = MPI_Ireduce( &densfctminlocal, &densfctminglobal, ndensityfct, REAL_MPI, MPI_MIN, 0, MPI_COMM_WORLD, &this->Req[DENSFCTMINSTAT]);
     this->ierr = MPI_Ireduce( &elocal, &eglobal, 4, REAL_MPI, MPI_SUM, 0, MPI_COMM_WORLD, &this->Req[ESTAT]);
-
+    this->ierr = MPI_Ireduce( &pvlocal, &pvglobal, 1, REAL_MPI, MPI_SUM, 0, MPI_COMM_WORLD, &this->Req[PVSTAT]);
+    this->ierr = MPI_Ireduce( &pelocal, &peglobal, 1, REAL_MPI, MPI_SUM, 0, MPI_COMM_WORLD, &this->Req[PESTAT]);
     this->ierr = MPI_Waitall(nstats, this->Req, this->Status);
 
 
@@ -785,6 +826,8 @@ elocal(0) += KE + PE + IE;
   this->stats_arr[ESTAT].data(1,i) = eglobal(1);
   this->stats_arr[ESTAT].data(2,i) = eglobal(2);
   this->stats_arr[ESTAT].data(3,i) = eglobal(3);
+  this->stats_arr[PVSTAT].data(0,i) = pvglobal(0);
+  this->stats_arr[PESTAT].data(0,i) = peglobal(0);
   }
   }
 };
@@ -806,88 +849,137 @@ std::array<const Topology *, nprog> &prog_topo_arr, std::array<const Topology *,
 
   //primal grid represents straight quantities, dual grid twisted quantities
   // "edges" are 0-forms
+// ndims is the BASEDIM size!
 
-  // ADD Q/W RELATED stuff
+
+  // ADD Q RELATED stuff
 
 
   // v, dens
+// THIS IS DISTINCT FROM LAYERMODEL VVAR
+// WHY?
+// LAYERMODEL DOESN'T REALLY ASSUME ANY STAGGERING IN THE VERTICAL!
+// IT HAS COLLOCATED PRIMAL AND DUAL GRID IN THE VERTICAL!  
   prog_topo_arr[VVAR] = &ptopo;
+  prog_topo_arr[WVAR] = &ptopo;
   prog_topo_arr[DENSVAR] = &dtopo;
   prog_names_arr[VVAR] = "v";
+  prog_names_arr[WVAR] = "w";
   prog_names_arr[DENSVAR] = "dens";
-  set_dofs_arr(prog_ndofs_arr, VVAR, 1, 1, 1); //v = straight 1-form
-  set_dofs_arr(prog_ndofs_arr, DENSVAR, ndims, 1, ndensity); //dens = twisted n-form
+  set_dofs_arr(prog_ndofs_arr, VVAR, 1, 0, 1); //v = straight (1,0)-form
+  set_dofs_arr(prog_ndofs_arr, WVAR, 0, 1, 1); //w = straight (0,1)-form
+  set_dofs_arr(prog_ndofs_arr, DENSVAR, ndims, 1, ndensity); //dens = twisted (n,1)-form
 
-  // hs
+  // hs  
   const_topo_arr[HSVAR] = &dtopo;
   const_names_arr[HSVAR] = "hs";
-  set_dofs_arr(const_ndofs_arr, HSVAR, ndims, 1, 1); //hs = twisted n-form
+  set_dofs_arr(const_ndofs_arr, HSVAR, ndims, 1, 1); //hs = twisted (n,1)-form
 
+// CAREFUL HERE WITH CORIOLIS- THIS IS IN THE "VERTICAL SLICE"
+// HOW DO WE GENERALIZE TO 3D?
+// we should really have qxy, qyz, qxz + associated coriolis components...
+  const_topo_arr[HSVAR] = &dtopo;
+  const_topo_arr[CORIOLISVAR] = &ptopo;
+  const_names_arr[HSVAR] = "hs";
+  const_names_arr[CORIOLISVAR] = "coriolis";
+  set_dofs_arr(const_ndofs_arr, HSVAR, ndims, 1, 1); //hs = twisted (n,1)-form
+  set_dofs_arr(const_ndofs_arr, CORIOLISVAR, 1, 1, 1); //f = straight (1,1)-form
+  
   //functional derivatives = F, B, K, he, U
   aux_topo_arr[BVAR] = &ptopo;
   aux_topo_arr[FVAR] = &dtopo;
   aux_topo_arr[UVAR] = &dtopo;
   aux_topo_arr[HEVAR] = &dtopo;
+  aux_topo_arr[FWVAR] = &dtopo;
+  aux_topo_arr[UWVAR] = &dtopo;
+  aux_topo_arr[HEWVAR] = &dtopo;
   aux_topo_arr[KVAR] = &dtopo;
   aux_names_arr[KVAR] = "K";
   aux_names_arr[BVAR] = "B";
   aux_names_arr[FVAR] = "F";
   aux_names_arr[UVAR] = "U";
   aux_names_arr[HEVAR] = "he";
-  set_dofs_arr(aux_ndofs_arr, BVAR, 0, 1, ndensity); //B = straight 0-form
-  set_dofs_arr(aux_ndofs_arr, KVAR, ndims, 1, 1);   //K = twisted n-form
-  set_dofs_arr(aux_ndofs_arr, FVAR, ndims-1, 1, 1);  //F = twisted (n-1)-form
-  set_dofs_arr(aux_ndofs_arr, UVAR, ndims-1, 1, 1); //U = twisted (n-1)-form
-  set_dofs_arr(aux_ndofs_arr, HEVAR, ndims-1, 1, 1); //he lives on dual edges, associated with F
+  aux_names_arr[FWVAR] = "Fw";
+  aux_names_arr[UWVAR] = "Uw";
+  aux_names_arr[HEWVAR] = "hew";
+  set_dofs_arr(aux_ndofs_arr, BVAR, 0, 0, ndensity); //B = straight (0,0)-form
+  set_dofs_arr(aux_ndofs_arr, KVAR, ndims, 1, 1);   //K = twisted (n,1)-form
+  set_dofs_arr(aux_ndofs_arr, FVAR, ndims-1, 1, 1);  //F = twisted (n-1,1)-form
+  set_dofs_arr(aux_ndofs_arr, UVAR, ndims-1, 1, 1); //U = twisted (n-1,1)-form
+  set_dofs_arr(aux_ndofs_arr, HEVAR, ndims-1, 1, 1); //he lives on horiz dual edges, associated with F
+  set_dofs_arr(aux_ndofs_arr, FWVAR, ndims, 0, 1);  //Fw = twisted (n,0)-form
+  set_dofs_arr(aux_ndofs_arr, UWVAR, ndims, 0, 1); //Uw = twisted (n,0)-form
+  set_dofs_arr(aux_ndofs_arr, HEWVAR, ndims, 0, 1); //hew lives on vert dual edges, associated with Fw
   
 
   //dens primal grid reconstruction stuff- dens0, edgerecon, recon
   aux_topo_arr[DENSRECONVAR] = &dtopo;
   aux_topo_arr[DENSEDGERECONVAR] = &dtopo;
+  aux_topo_arr[DENSVERTRECONVAR] = &dtopo;
+  aux_topo_arr[DENSVERTEDGERECONVAR] = &dtopo;
   aux_topo_arr[DENS0VAR] = &ptopo;
   aux_names_arr[DENS0VAR] = "dens0";
+  aux_names_arr[DENSVERTRECONVAR] = "densvertrecon";
+  aux_names_arr[DENSVERTEDGERECONVAR] = "densvertedgerecon";
   aux_names_arr[DENSRECONVAR] = "densrecon";
   aux_names_arr[DENSEDGERECONVAR] = "densedgerecon";
-  set_dofs_arr(aux_ndofs_arr, DENSRECONVAR, ndims-1, 1, ndensity);  //densrecon lives on dual edges, associated with F
+  set_dofs_arr(aux_ndofs_arr, DENSRECONVAR, ndims-1, 1, ndensity);  //densrecon lives on horiz dual edges, associated with F
   set_dofs_arr(aux_ndofs_arr, DENSEDGERECONVAR, ndims, 1, 2*ndims*ndensity); //densedgerecon lives on dual cells, associated with F
-  set_dofs_arr(aux_ndofs_arr, DENS0VAR, 0, 1, ndensity); //dens0 = straight 0-form
+  set_dofs_arr(aux_ndofs_arr, DENSVERTRECONVAR, ndims, 0, ndensity);  //densvertrecon lives on vert dual edges, associated with Fw
+  set_dofs_arr(aux_ndofs_arr, DENSVERTEDGERECONVAR, ndims, 1, 2*ndensity); //densedgerecon lives on dual cells, associated with Fw
+  set_dofs_arr(aux_ndofs_arr, DENS0VAR, 0, 0, ndensity); //dens0 = straight (0,0)-form
 
-  // concentration 0-forms for dens
+  // q, concentration 0-forms for dens
+  diag_topo_arr[QDIAGVAR] = &dtopo;
   diag_topo_arr[DENSLDIAGVAR] = &ptopo;
+  diag_names_arr[QDIAGVAR] = "q";
   diag_names_arr[DENSLDIAGVAR] = "densl";
-  set_dofs_arr(diag_ndofs_arr, DENSLDIAGVAR, 0, 1, ndensity); //densldiag = straight 0-form
-
+  set_dofs_arr(diag_ndofs_arr, QDIAGVAR, 0, 0, 1);  //qdiag = twisted (0,0)-form
+  set_dofs_arr(diag_ndofs_arr, DENSLDIAGVAR, 0, 0, ndensity); //densldiag = straight (0,0)-form
+  
   //densfct stuff- densfct, BFCT, densfct0, edgereconfct, reconfct, Phi, Mf, edgeflux, concentration 0-forms for densfct
   prog_topo_arr[DENSFCTVAR] = &dtopo;
   prog_names_arr[DENSFCTVAR] = "densfct";
-  set_dofs_arr(prog_ndofs_arr, DENSFCTVAR, ndims, 1, ndensityfct);  //densfct = twisted n-form
-
+  set_dofs_arr(prog_ndofs_arr, DENSFCTVAR, ndims, 1, ndensityfct);  //densfct = twisted (n,1)-form
+  
   aux_topo_arr[BFCTVAR] = &ptopo;
   aux_topo_arr[DENSFCTRECONVAR] = &dtopo;
   aux_topo_arr[DENSFCTEDGERECONVAR] = &dtopo;
+  aux_topo_arr[DENSFCTVERTRECONVAR] = &dtopo;
+  aux_topo_arr[DENSFCTVERTEDGERECONVAR] = &dtopo;
   aux_topo_arr[DENSFCT0VAR] = &ptopo;
   aux_topo_arr[PHIVAR] = &dtopo;
+  aux_topo_arr[VERTPHIVAR] = &dtopo;
   aux_topo_arr[MFVAR] = &dtopo;
   aux_topo_arr[EDGEFLUXVAR] = &dtopo;
+  aux_topo_arr[VERTEDGEFLUXVAR] = &dtopo;
   aux_names_arr[BFCTVAR] = "Bfct";
   aux_names_arr[DENSFCT0VAR] = "densfct0";
   aux_names_arr[DENSFCTRECONVAR] = "densfctrecon";
   aux_names_arr[DENSFCTEDGERECONVAR] = "densfctedgerecon";
+  aux_names_arr[DENSFCTVERTRECONVAR] = "densfctvertrecon";
+  aux_names_arr[DENSFCTVERTEDGERECONVAR] = "densfctvertedgerecon";
   aux_names_arr[PHIVAR] = "Phi";
+  aux_names_arr[VERTPHIVAR] = "VertPhi";
   aux_names_arr[MFVAR] = "Mf";
   aux_names_arr[EDGEFLUXVAR] = "edgeflux";
-  set_dofs_arr(aux_ndofs_arr, BFCTVAR, 0, 1, ndensityfct);  //Bfct = straight 0-form
-  set_dofs_arr(aux_ndofs_arr, DENSFCTRECONVAR, ndims-1, 1, ndensityfct);  //densfctrecon lives on dual edges, associated with F
+  aux_names_arr[VERTEDGEFLUXVAR] = "vertedgeflux";
+  set_dofs_arr(aux_ndofs_arr, BFCTVAR, 0, 0, ndensityfct);  //Bfct = straight (0,0)-form
+  set_dofs_arr(aux_ndofs_arr, DENSFCTRECONVAR, ndims-1, 1, ndensityfct);  //densfctrecon lives on horiz dual edges, associated with F
   set_dofs_arr(aux_ndofs_arr, DENSFCTEDGERECONVAR, ndims, 1, 2*ndims*ndensityfct);  //densfctedgerecon lives on dual cells
-  set_dofs_arr(aux_ndofs_arr, DENSFCT0VAR, 0, 1, ndensityfct);  //densfct0 = straight 0-form
+  set_dofs_arr(aux_ndofs_arr, DENSFCTVERTRECONVAR, ndims, 0, ndensityfct);  //densfctvertrecon lives on vert dual edges, associated with Fw
+  set_dofs_arr(aux_ndofs_arr, DENSFCTVERTEDGERECONVAR, ndims, 1, 2*ndensityfct);  //densfctvertedgerecon lives on dual cells
+  set_dofs_arr(aux_ndofs_arr, DENSFCT0VAR, 0, 0, ndensityfct);  //densfct0 = straight (0,0)-form
   set_dofs_arr(aux_ndofs_arr, PHIVAR, ndims-1, 1, ndensityfct); 
+  set_dofs_arr(aux_ndofs_arr, VERTPHIVAR, ndims, 0, ndensityfct); 
   set_dofs_arr(aux_ndofs_arr, MFVAR, ndims, 1, ndensityfct);  
   set_dofs_arr(aux_ndofs_arr, EDGEFLUXVAR, ndims-1, 1, ndensityfct); 
+  set_dofs_arr(aux_ndofs_arr, VERTEDGEFLUXVAR, ndims, 0, ndensityfct); 
 
 
   diag_topo_arr[DENSFCTLDIAGVAR] = &ptopo;
   diag_names_arr[DENSFCTLDIAGVAR] = "densfctl";
-  set_dofs_arr(diag_ndofs_arr, DENSFCTLDIAGVAR, 0, 1, ndensityfct);  //densfctldiag = straight 0-form
+  set_dofs_arr(diag_ndofs_arr, DENSFCTLDIAGVAR, 0, 0, ndensityfct);  //densfctldiag = straight (0,0)-form
   
 }
 
