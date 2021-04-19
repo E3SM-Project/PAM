@@ -4,7 +4,6 @@
 #include "pam_const.h"
 
 #include "YAKL.h"
-#include "yaml-cpp/yaml.h"
 #include "YAKL_netcdf.h"
 #include "YAKL_tridiagonal.h"
 
