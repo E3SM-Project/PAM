@@ -269,7 +269,8 @@ public:
 
 
   // Initialize a tracer
-  int add_tracer(DataManager &dm , std::string name , std::string desc , bool pos_def , bool adds_mass) {
+  // The option mass_var is the module's way of telling the dycore whether a tracer *could* add mass
+  int add_tracer(DataManager &dm , std::string name , std::string desc , bool pos_def , bool mass_var ) {
     YAKL_SCOPE( tracer_pos       , this->tracer_pos       );
     YAKL_SCOPE( tracer_adds_mass , this->tracer_adds_mass );
 
@@ -281,7 +282,7 @@ public:
     tracer_desc.push_back(desc);  // Store description
     parallel_for( 1 , YAKL_LAMBDA (int i) {
       tracer_pos      (tr) = pos_def;   // Store whether it's positive-definite
-      tracer_adds_mass(tr) = adds_mass; // Store whether it adds mass (otherwise it's passive)
+      tracer_adds_mass(tr) = mass_var ; // Store whether it adds mass (otherwise it's passive)
     });
 
     // Return the index of this tracer to the caller
