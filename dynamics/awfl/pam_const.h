@@ -2,30 +2,6 @@
 #pragma once
 
 #include "YAKL.h"
-#include "yaml-cpp/yaml.h"
-#include "YAKL_netcdf.h"
-#include "YAKL_tridiagonal.h"
-
-using yakl::c::parallel_for;
-using yakl::c::SimpleBounds;
-using yakl::c::Bounds;
-using yakl::fence;
-using yakl::min;
-using yakl::max;
-using yakl::SArray;
-using yakl::memDevice;
-using yakl::memHost;
-using yakl::memset;
-using yakl::styleC;
-using yakl::COLON;
-
-#ifndef ORD
-  #define ORD 5
-#endif
-
-#ifndef NGLL
-  #define NGLL 3
-#endif
 
 typedef double real;
 
@@ -69,12 +45,7 @@ typedef yakl::Array<bool,6,yakl::memHost,yakl::styleC> boolHost6d;
 typedef yakl::Array<bool,7,yakl::memHost,yakl::styleC> boolHost7d;
 typedef yakl::Array<bool,8,yakl::memHost,yakl::styleC> boolHost8d;
 
-int constexpr ord  = ORD;
-int constexpr ngll = NGLL;
-
-static_assert(ngll <= ord , "ERROR: ngll must be <= ord");
-
-template <class T> void endrun(T err) {
+template <class T> inline void endrun(T err) {
   std::cerr << err << std::endl;
   throw err;
 }

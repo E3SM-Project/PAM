@@ -1,18 +1,9 @@
 
-#include "const.h"
-#include "Spatial_prim_anelastic_fv_Agrid.h"
-#include "Temporal_ader.h"
+#include "pam_const.h"
+#include "Dycore.h"
 #include "Profiles.h"
 #include "Microphysics_kessler.h"
 #include "DataManager.h"
-
-// Define the Spatial operator based on constants from the Temporal operatora header file
-typedef Spatial_operator<nTimeDerivs,timeAvg,nAder> Spatial;
-
-// Define the Temporal operator based on the Spatial operator
-typedef Temporal_operator<Spatial> Dycore;
-
-typedef Microphysics Microphysics;
 
 
 template <class MICRO>

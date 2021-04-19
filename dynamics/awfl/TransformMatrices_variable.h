@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "const.h"
+#include "awfl_const.h"
 #include <math.h>
 #include <Eigen/Dense>
 using yakl::SArray;
