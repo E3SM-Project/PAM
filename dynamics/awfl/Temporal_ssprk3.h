@@ -12,8 +12,6 @@ template <class Spatial> class Temporal_operator {
 public:
   static_assert(nTimeDerivs <= ngll , "ERROR: nTimeDerivs must be <= ngll.");
 
-  int nens;
-
   real5d stateTmp;
   real5d tracersTmp;
 
@@ -25,8 +23,8 @@ public:
 
   Spatial space_op;
   
-  void init(std::string inFile, int num_tracers, DataManager &dm) {
-    space_op.init(inFile, num_tracers, dm);
+  void init(std::string inFile, int ny, int nx, int nens, real xlen, real ylen, int num_tracers, DataManager &dm) {
+    space_op.init(inFile, ny, nx, nens, xlen, ylen, num_tracers, dm);
     stateTmp        = space_op.createStateArr     ();
     tracersTmp      = space_op.createTracerArr    ();
 
@@ -35,10 +33,6 @@ public:
 
     stateTendAccum  = space_op.createStateTendArr ();
     tracerTendAccum = space_op.createTracerTendArr();
-
-    YAML::Node config = YAML::LoadFile(inFile);
-
-    this->nens = config["nens"].as<int>();
   }
 
 
@@ -140,6 +134,7 @@ public:
     int nx          = space_op.nx;
     int ny          = space_op.ny;
     int nz          = space_op.nz;
+    int nens        = space_op.nens;
     int num_state   = space_op.num_state;
     int num_tracers = space_op.num_tracers;
     int hs          = space_op.hs;

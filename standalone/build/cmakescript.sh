@@ -7,7 +7,7 @@ cmake      \
   -DNCFLAGS="${NCFLAGS}"            \
   -DYAKL_HOME="${YAKL_HOME}"        \
   -DARCH="${ARCH}"                  \
-  -DPAM_DYCORE="AWFL"               \
+  -DPAM_DYCORE="awfl"               \
   -DPAM_MICRO="kessler"             \
   ..
 

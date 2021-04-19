@@ -103,6 +103,8 @@ public:
   
   bool sim2d;  // Whether we're simulating in 2-D
 
+  real sim_time;  // How long to simulate
+
   // Grid spacing in each dimension
   real dx;
   real dy;
@@ -518,7 +520,12 @@ public:
 
 
   // Initialize crap needed by recon()
-  void init(std::string inFile, int num_tracers, DataManager &dm) {
+  void init(std::string inFile, int ny, int nx, int nens, real xlen, real ylen, int num_tracers, DataManager &dm) {
+    this->nens = nens;
+    this->nx = nx;
+    this->ny = ny;
+    this->xlen = xlen;
+    this->ylen = ylen;
     this->num_tracers = num_tracers;
     
     // Allocate device arrays for whether tracers are positive-definite or add mass
@@ -529,32 +536,79 @@ public:
     dtInit = 0;
     dimSwitch = true;
 
-    // Read the YAML input file
-    YAML::Node config = YAML::LoadFile(inFile);
+    #if defined(PAM_STANDALONE)
+      // Read the YAML input file
+      YAML::Node config = YAML::LoadFile(inFile);
 
-    this->nens = config["nens"].as<int>();
+      // Read whether we're doing WENO limiting on scalars and winds
+      weno_scalars = config["weno_scalars"].as<bool>();
+      weno_winds   = config["weno_winds"].as<bool>();
 
-    // Read in the vertical height cell interface locations
-    std::string vcoords_file = config["vcoords"].as<std::string>();
-    yakl::SimpleNetCDF nc;
-    nc.open(vcoords_file);
-    nz = nc.getDimSize("num_interfaces") - 1;
-    real1d zint_in("zint_in",nz+1);
-    nc.read(zint_in,"vertical_interfaces");
-    nc.close();
+      // Read the data initialization option
+      std::string dataStr = config["initData"].as<std::string>();
+      if        (dataStr == "thermal") {
+        data_spec = DATA_SPEC_THERMAL;
+      } else if (dataStr == "supercell") {
+        data_spec = DATA_SPEC_SUPERCELL;
+      } else {
+        endrun("ERROR: Invalid data_spec");
+      }
+
+      // Read the x-direction boundary condition option
+      std::string bc_x_str = config["bc_x"].as<std::string>();
+      if        (bc_x_str == "periodic" ) {
+        bc_x = BC_PERIODIC;
+      } else if (bc_x_str == "wall"     ) {
+        bc_x = BC_WALL;
+      } else {
+        endrun("Invalid bc_x");
+      }
+
+      // Read the y-direction boundary condition option
+      std::string bc_y_str = config["bc_y"].as<std::string>();
+      if        (bc_y_str == "periodic" ) {
+        bc_y = BC_PERIODIC;
+      } else if (bc_y_str == "wall"     ) {
+        bc_y = BC_WALL;
+      } else {
+        endrun("Invalid bc_y");
+      }
+
+      // Read the z-direction boundary condition option
+      std::string bc_z_str = config["bc_z"].as<std::string>();
+      if        (bc_z_str == "periodic" ) {
+        bc_z = BC_PERIODIC;
+      } else if (bc_z_str == "wall"     ) {
+        bc_z = BC_WALL;
+      } else {
+        endrun("Invalid bc_z");
+      }
+
+      // Read the output filename
+      out_prefix = config["out_prefix"].as<std::string>();
+
+      balance_initial_density = config["balance_initial_density"].as<bool>();
+
+      sim_time = config["simTime"].as<real>();
+    #else
+      weno_scalars            = true;
+      weno_winds              = true;
+      data_spec               = DATA_SPEC_SUPERCELL;
+      bc_x                    = BC_PERIODIC;
+      bc_y                    = BC_PERIODIC;
+      bc_z                    = BC_WALL;
+      out_prefix              = "test";
+      balance_initial_density = false;
+      sim_time                = 900;
+    #endif
+
+    // Determine whether this is a 2-D simulation
+    sim2d = ny == 1;
 
     // Store vertical cell interface heights in the data manager
-    dm.register_and_allocate<real>( "vertical_interface_height" , "vertical_interface_height" , {nz+1,nens} , {"zp1","nens"} );
     auto zint = dm.get<real,2>("vertical_interface_height");
-    parallel_for( Bounds<2>(nz+1,nens) , YAKL_LAMBDA (int k, int iens) {
-      zint(k,iens) = zint_in(k);
-    });
 
-    dm.register_and_allocate<real>( "vertical_midpoint_height" , "vertical_midpoint_heignt" , {nz,nens} , {"z","nens"} );
-    auto zmid = dm.get<real,2>("vertical_midpoint_height");
-    parallel_for( Bounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
-      zmid(k,iens) = 0.5_fp*(zint_in(k) + zint_in(k+1));
-    });
+    nz = dm.get_dimension_size("z");
 
     // Get the height of the z-dimension
     zlen = real1d("zlen",nens);
@@ -662,66 +716,6 @@ public:
     vert_weno_host.deep_copy_to(vert_weno_recon     );
     vert_locs_host.deep_copy_to(vert_locs_normalized);
 
-    // Read the # cells in each dimension
-    nx = config["nx"].as<int>();
-    ny = config["ny"].as<int>();
-
-    // Determine whether this is a 2-D simulation
-    sim2d = ny == 1;
-
-    // Read the domain length in each dimension
-    xlen = config["xlen"].as<real>();
-    ylen = config["ylen"].as<real>();
-
-    // Read whether we're doing WENO limiting on scalars and winds
-    weno_scalars = config["weno_scalars"].as<bool>();
-    weno_winds   = config["weno_winds"].as<bool>();
-
-    // Read the data initialization option
-    std::string dataStr = config["initData"].as<std::string>();
-    if        (dataStr == "thermal") {
-      data_spec = DATA_SPEC_THERMAL;
-    } else if (dataStr == "supercell") {
-      data_spec = DATA_SPEC_SUPERCELL;
-    } else {
-      endrun("ERROR: Invalid data_spec");
-    }
-
-    // Read the x-direction boundary condition option
-    std::string bc_x_str = config["bc_x"].as<std::string>();
-    if        (bc_x_str == "periodic" ) {
-      bc_x = BC_PERIODIC;
-    } else if (bc_x_str == "wall"     ) {
-      bc_x = BC_WALL;
-    } else {
-      endrun("Invalid bc_x");
-    }
-
-    // Read the y-direction boundary condition option
-    std::string bc_y_str = config["bc_y"].as<std::string>();
-    if        (bc_y_str == "periodic" ) {
-      bc_y = BC_PERIODIC;
-    } else if (bc_y_str == "wall"     ) {
-      bc_y = BC_WALL;
-    } else {
-      endrun("Invalid bc_y");
-    }
-
-    // Read the z-direction boundary condition option
-    std::string bc_z_str = config["bc_z"].as<std::string>();
-    if        (bc_z_str == "periodic" ) {
-      bc_z = BC_PERIODIC;
-    } else if (bc_z_str == "wall"     ) {
-      bc_z = BC_WALL;
-    } else {
-      endrun("Invalid bc_z");
-    }
-
-    // Read the output filename
-    out_prefix = config["out_prefix"].as<std::string>();
-
-    balance_initial_density = config["balance_initial_density"].as<bool>();
-
     // Compute the grid spacing in each dimension
     dx = xlen/nx;
     dy = ylen/ny;
@@ -800,20 +794,21 @@ public:
       }
     });
 
-    std::cout << "nx: " << nx << "\n";
-    std::cout << "ny: " << ny << "\n";
-    std::cout << "nz: " << nz << "\n";
-    std::cout << "xlen (m): " << xlen << "\n";
-    std::cout << "ylen (m): " << ylen << "\n";
-    std::cout << "zlen (m): " << zlen.createHostCopy()(0) << "\n";
-    std::cout << "Vertical coordinates file: " << vcoords_file << "\n";
-    std::cout << "Simulation time (s): " << config["simTime"].as<real>() << "\n";
-    std::cout << "Vertical interface heights: ";
-    auto zint_host = zint.createHostCopy();
-    for (int k=0; k < nz+1; k++) {
-      std::cout << zint_host(k,0) << "  ";
-    }
-    std::cout << "\n\n";
+    #ifdef PAM_STANDALONE
+      std::cout << "nx: " << nx << "\n";
+      std::cout << "ny: " << ny << "\n";
+      std::cout << "nz: " << nz << "\n";
+      std::cout << "xlen (m): " << xlen << "\n";
+      std::cout << "ylen (m): " << ylen << "\n";
+      std::cout << "zlen (m): " << zlen.createHostCopy()(0) << "\n";
+      std::cout << "Simulation time (s): " << sim_time << "\n";
+      std::cout << "Vertical interface heights: ";
+      auto zint_host = zint.createHostCopy();
+      for (int k=0; k < nz+1; k++) {
+        std::cout << zint_host(k,0) << "  ";
+      }
+      std::cout << "\n\n";
+    #endif
   }
 
 

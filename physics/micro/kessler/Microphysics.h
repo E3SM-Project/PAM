@@ -1,8 +1,8 @@
 
 #pragma once
+
 #include "awfl_const.h"
 #include "DataManager.h"
-#include "YAKL_netcdf.h"
 
 class Microphysics {
 public:
@@ -58,18 +58,8 @@ public:
 
 
   template <class DC>
-  void init(std::string inFile , DC &dycore , DataManager &dm) {
-    // Read the YAML input file
-    YAML::Node config = YAML::LoadFile(inFile);
-    // Get dimension sizes
-    int nx   = config["nx"].as<int>();
-    int ny   = config["ny"].as<int>();
-    int nens = config["nens"].as<int>();
-    std::string vcoords_file = config["vcoords"].as<std::string>();
-    yakl::SimpleNetCDF nc;
-    nc.open(vcoords_file);
-    int nz = nc.getDimSize("num_interfaces") - 1;
-    nc.close();
+  void init(std::string infile , int ny, int nx, int nens , DC &dycore , DataManager &dm) {
+    int nz = dm.get_dimension_size("z");
 
     // Register tracers in the dycore
     //                                        name              description       positive   adds mass
@@ -84,6 +74,7 @@ public:
 
     tracer_index_vapor = tracer_IDs(ID_V);
 
+    // Register and allocation non-tracer quantities used by the microphysics
     dm.register_and_allocate<real>( "precl" , "precipitation rate" , {ny,nx,nens} , {"y","x","nens"} );
   }
 
