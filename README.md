@@ -4,20 +4,24 @@ PAM is a portable atmospheric model written in C++ with performance portability 
 
 ## Directory Structure
 
-* `build`: Machine files for compiling
-* `common`: Source & header files with functions and variables used in multiple places
-* `driver`: Code to drive the standalone model
-* `dynamics`: Dynamical core code, each version in its own sub-directory. Dycores synopsis given in `dynamics/README.md`. Each dycore must provide:
-  * `math_desc.pdf`: documenting the numerical approximations in detail
-  * `README.md`: giving a brief synopsis of the key numerical features
-* `externals`: Submodules of external code (`cub`, `hipcub`, `rocPRIM`, `kokkos`, `YAKL`)
-* `physics`: Physics parameterizations (microphysics, radiation, etc.). Each must provide:
-  * `math_desc.*`: documenting the numerical approximations in detail (PDF, tex, lyx, markdown, etc.)
-  * `README.md`: giving a brief synopsis of the key numerical features
-* `sage`: SageMath code for generating C++ code
-* `utils`: Miscillaneous utilities
+* `coupler`: DataManager class and coupled state allocator function
+* `dynamics`: Dynamical cores, currently "AWFL"
+* `externals`: git submodule dependencies
+* `include`: PAM include files for the whole project
+* `physics`: physics modules, currently micro only
+  * `micro`: The various microphysics options for PAM
+* `standalone`: standalone driver for PAM
+* `utils`: Various PAM utilities, mostly in python
 
-## Software Dependencies
-* MPI library
-* parallel-netcdf (https://trac.mcs.anl.gov/projects/parallel-netcdf)
-  * See `utils/build_parallel_netcdf.sh` for a sample build script.
+## Running standalone PAM
+
+1. Clone the repo
+2. `cd SCAMPAM && git submodule update --init --recursive`
+3. `cd standalone/build`
+4. Edit `cmakescript.sh` to choose your dycore and microphysics option
+5. `source [machine].sh`
+6. `./cmakescript`
+7. Use `SCAMPAM/utils/generate_vertical_levels.py` to generate a vertical coordinates file (see the file's documentation for help)
+8. Edit `../inputs/input_euler3d.yaml` to whatever parameters you want
+9. `./driver ../inputs/input_euler3d.yaml`
+
