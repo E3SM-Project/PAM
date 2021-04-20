@@ -18,8 +18,6 @@ public:
     real cp_v              ;
     real cv_v              ;
     real p0                ;
-    real C0_d              ;
-    real p0_nkappa_d       ;
   };
 
   int tracer_index_vapor;
@@ -45,14 +43,18 @@ public:
     constants.cp_v        = 1859;
     constants.cv_v        = constants.R_v - constants.cp_v;
     constants.p0          = 1.e5;
-    constants.p0_nkappa_d = pow( constants.p0 , -constants.kappa_d );
-    constants.C0_d        = pow( constants.R_d * constants.p0_nkappa_d , constants.gamma_d );
   }
 
 
 
-  static constexpr int get_num_tracers() {
+  int get_num_tracers() const {
     return num_tracers;
+  }
+
+
+
+  int get_water_vapor_index() const {
+    return tracer_index_vapor;
   }
 
 
@@ -108,7 +110,6 @@ public:
     });
 
     // Force constants into local scope
-    real C0_d    = this->constants.C0_d;
     real gamma_d = this->constants.gamma_d;
     real R_d     = this->constants.R_d;
     real R_v     = this->constants.R_v;
@@ -313,14 +314,6 @@ public:
 
     }
 
-  }
-
-
-
-  // Returns saturation vapor pressure
-  YAKL_INLINE real saturation_vapor_pressure(real temp) const {
-    real tc = temp - 273.15;
-    return 610.94 * exp( 17.625*tc / (243.04+tc) );
   }
 
 

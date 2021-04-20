@@ -38,8 +38,6 @@ endif()
 #Choose microphysics
 if     ("${PAM_MICRO}" STREQUAL "kessler")
   add_subdirectory(../physics/micro/kessler ./micro)
-elseif ("${PAM_MICRO}" STREQUAL "sat_adj")
-  add_subdirectory(../physics/micro/sat_adj ./micro)
 elseif ("${PAM_MICRO}" STREQUAL "none")
   add_subdirectory(../physics/micro/none    ./micro)
 elseif ("${PAM_MICRO}" STREQUAL "p3")

@@ -54,7 +54,7 @@ int main(int argc, char** argv) {
     allocate_coupler_state( nz , ny , nx , nens , dm );
 
     // Initialize the dycore and the microphysics
-    dycore.init( inFile , ny , nx , nens , xlen , ylen , micro.num_tracers , dm );
+    dycore.init( inFile , ny , nx , nens , xlen , ylen , micro.get_num_tracers() , dm );
     micro .init( inFile , ny , nx , nens , dycore , dm );
 
     // Initialize the dry state

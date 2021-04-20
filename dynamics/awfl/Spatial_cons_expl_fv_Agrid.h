@@ -184,7 +184,7 @@ public:
     YAKL_SCOPE( cp               , this->cp               );
     YAKL_SCOPE( tracer_adds_mass , this->tracer_adds_mass );
 
-    int idWV = micro.tracer_index_vapor;
+    int idWV = micro.get_water_vapor_index();
 
     MultipleTracers<max_tracers> dm_tracers;
     for (int tr = 0; tr < num_tracers; tr++) {
@@ -242,7 +242,7 @@ public:
     YAKL_SCOPE( cp               , this->cp               );
     YAKL_SCOPE( tracer_adds_mass , this->tracer_adds_mass );
 
-    int idWV = micro.tracer_index_vapor;
+    int idWV = micro.get_water_vapor_index();
 
     MultipleTracers<max_tracers> dm_tracers;
     for (int tr = 0; tr < num_tracers; tr++) {
@@ -319,7 +319,7 @@ public:
     YAKL_SCOPE( Rv             , this->Rv             );
     YAKL_SCOPE( vert_interface , this->vert_interface );
 
-    int idWV = micro.tracer_index_vapor;
+    int idWV = micro.get_water_vapor_index();
     real5d tracers = dm.get<real,5>("dynamics_tracers");
 
     parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
@@ -349,7 +349,7 @@ public:
             real pert  = profiles::ellipsoid_linear(xloc,yloc,zloc  ,  xlen/2,ylen/2,2000  ,  2000,2000,2000  ,  0.8);
             real press = C0*pow(rh*th,gamma);                       // Dry pressure
             real temp  = press / Rd / rh;                           // Temperator (same for dry and moist)
-            real svp   = micro.saturation_vapor_pressure(temp);     // Self-explanatory
+            real svp   = profiles::saturation_vapor_pressure(temp); // Self-explanatory
             real p_v   = pert*svp;                                  // Multiply profile by saturation vapor pressure
             real r_v   = p_v / (Rv*temp);                           // Compute vapor density
 
@@ -401,7 +401,7 @@ public:
       real temp  = press / Rd / rho_dry;         // Temp (same dry or moist)
 
       // Compute moist theta
-      real index_vapor = micro.tracer_index_vapor;
+      real index_vapor = micro.get_water_vapor_index();
       real rho_v = tracers(index_vapor,hs+k,hs+j,hs+i,iens);
       real R_moist = Rd * (rho_dry / rho_moist) + Rv * (rho_v / rho_moist);
       real press_moist = rho_moist * R_moist * temp;
@@ -820,8 +820,11 @@ public:
     cp    = micro.constants.cp_d;
     gamma = micro.constants.gamma_d;
     p0    = micro.constants.p0;
-    C0    = micro.constants.C0_d;
     Rv    = micro.constants.R_v;
+
+    real kappa = micro.constants.kappa_d;
+
+    C0 = pow( Rd * pow( p0 , -kappa ) , gamma );
 
     YAKL_SCOPE( nx                       , this->nx                      );
     YAKL_SCOPE( ny                       , this->ny                      );
@@ -1089,7 +1092,7 @@ public:
       }
       nc.close();
 
-      int idWV = micro.tracer_index_vapor;
+      int idWV = micro.get_water_vapor_index();
       real5d tracers = dm.get<real,5>("dynamics_tracers");
 
       parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {

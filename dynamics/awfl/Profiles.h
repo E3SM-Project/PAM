@@ -5,6 +5,13 @@
 
 namespace profiles {
 
+  // Returns an approximation of saturation vapor pressure
+  YAKL_INLINE real saturation_vapor_pressure(real temp) {
+    real tc = temp - 273.15;
+    return 610.94 * exp( 17.625*tc / (243.04+tc) );
+  }
+
+
   YAKL_INLINE real initConstTheta_density(real t0, real z, real Rd, real cp, real gamma, real p0, real C0) {
     real exner = 1._fp - GRAV*z/(cp*t0);
     real p = pow( exner , cp/Rd ) * p0;
