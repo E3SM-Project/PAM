@@ -79,8 +79,6 @@ int main(int argc, char** argv) {
       }
     }
 
-    dycore.timeStep( dm , micro , 1. );
-
     std::cout << "Elapsed Time: " << etime << "\n";
 
     dycore.finalize( dm );
