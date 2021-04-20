@@ -186,7 +186,7 @@ public:
 
     int idWV = micro.get_water_vapor_index();
 
-    MultipleTracers<max_tracers> dm_tracers;
+    MultipleFields<max_tracers,real4d> dm_tracers;
     for (int tr = 0; tr < num_tracers; tr++) {
       auto trac = dm.get<real,4>( tracer_name[tr] );
       dm_tracers.add_tracer( trac );
@@ -244,7 +244,7 @@ public:
 
     int idWV = micro.get_water_vapor_index();
 
-    MultipleTracers<max_tracers> dm_tracers;
+    MultipleFields<max_tracers,real4d> dm_tracers;
     for (int tr = 0; tr < num_tracers; tr++) {
       auto trac = dm.get<real,4>( tracer_name[tr] );
       dm_tracers.add_tracer( trac );

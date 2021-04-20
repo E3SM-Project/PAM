@@ -8,53 +8,53 @@ using yakl::Array;
 
 
 
-// This class exists to enable loading all requested tracers from the DataManager in a single kernel.
-// We have to ensure that each individual real4d tracer gets copied to the device.
-template <int MAX_TRACERS>
-class MultipleTracers {
+// Aggregate multiple fields into a single field that makes it easier to operate
+// on them together inside the same kernel. used mosetly for tracers
+template <int MAX_FIELDS, class T>
+class MultipleFields {
 public:
-  yakl::SArray<real4d,1,MAX_TRACERS> tracers;
-  int num_tracers;
+  yakl::SArray<T,1,MAX_FIELDS> fields;
+  int num_fields;
 
-  MultipleTracers() { num_tracers = 0; }
+  MultipleFields() { num_fields = 0; }
 
-  MultipleTracers(MultipleTracers const &rhs) {
-    this->num_tracers = rhs.num_tracers;
-    for (int i=0; i < num_tracers; i++) {
-      this->tracers(i) = rhs.tracers(i);
+  MultipleFields(MultipleFields const &rhs) {
+    this->num_fields = rhs.num_fields;
+    for (int i=0; i < num_fields; i++) {
+      this->fields(i) = rhs.fields(i);
     }
   }
 
-  MultipleTracers & operator=(MultipleTracers const &rhs) {
-    this->num_tracers = rhs.num_tracers;
-    for (int i=0; i < num_tracers; i++) {
-      this->tracers(i) = rhs.tracers(i);
-    }
-    return *this;
-  }
-
-  MultipleTracers(MultipleTracers &&rhs) {
-    this->num_tracers = rhs.num_tracers;
-    for (int i=0; i < num_tracers; i++) {
-      this->tracers(i) = rhs.tracers(i);
-    }
-  }
-
-  MultipleTracers& operator=(MultipleTracers &&rhs) {
-    this->num_tracers = rhs.num_tracers;
-    for (int i=0; i < num_tracers; i++) {
-      this->tracers(i) = rhs.tracers(i);
+  MultipleFields & operator=(MultipleFields const &rhs) {
+    this->num_fields = rhs.num_fields;
+    for (int i=0; i < num_fields; i++) {
+      this->fields(i) = rhs.fields(i);
     }
     return *this;
   }
 
-  void add_tracer( real4d &tracer ) {
-    this->tracers(num_tracers) = tracer;
-    num_tracers++;
+  MultipleFields(MultipleFields &&rhs) {
+    this->num_fields = rhs.num_fields;
+    for (int i=0; i < num_fields; i++) {
+      this->fields(i) = rhs.fields(i);
+    }
+  }
+
+  MultipleFields& operator=(MultipleFields &&rhs) {
+    this->num_fields = rhs.num_fields;
+    for (int i=0; i < num_fields; i++) {
+      this->fields(i) = rhs.fields(i);
+    }
+    return *this;
+  }
+
+  void add_tracer( T &tracer ) {
+    this->fields(num_fields) = tracer;
+    num_fields++;
   }
 
   YAKL_INLINE real &operator() (int tr, int k, int j, int i, int iens) const {
-    return this->tracers(tr)(k,j,i,iens);
+    return this->fields(tr)(k,j,i,iens);
   }
 };
 
