@@ -102,8 +102,10 @@ public:
     real2d qr          ("qr"          ,nz,ncol);
     real2d theta_dry   ("theta_dry"   ,nz,ncol);
     real2d exner_dry   ("exner_dry"   ,nz,ncol);
-    real2d zmid_in = dm.get<real,2>("vertical_midpoint_height");
+    auto zmid_in = dm.get<real,2>("vertical_midpoint_height");
 
+    // We have to broadcast the midpoint heights to all columns within a CRM to avoid the microphysics needing
+    // to know about the difference between nx,ny and nens
     real2d zmid("zmid",nz,ny*nx*nens);
     parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       zmid(k,j*nx*nens + i*nens + iens) = zmid_in(k,iens);
