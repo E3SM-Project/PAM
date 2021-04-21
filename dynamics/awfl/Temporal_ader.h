@@ -143,8 +143,10 @@ public:
       }
       real mass_final = compute_mass( dm );
       real mass_diff = abs(mass_final - mass_init) / (abs(mass_init) + 1.e-20);
-      std::cout << "Dycore mass change: " << mass_diff << std::endl;
-      if (mass_diff > 1.e-10) { endrun("ERROR: mass not conserved by dycore"); }
+      if (mass_diff > 1.e-10) {
+        std::cout << "Dycore mass change: " << mass_diff << std::endl;
+        endrun("ERROR: mass not conserved by dycore");
+      }
     #endif
 
     space_op.switch_directions();
