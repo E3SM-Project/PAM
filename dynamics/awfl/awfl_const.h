@@ -19,6 +19,7 @@ using yakl::memHost;
 using yakl::memset;
 using yakl::styleC;
 using yakl::COLON;
+using yakl::ScalarLiveOut;
 
 #ifndef ORD
   #define ORD 5

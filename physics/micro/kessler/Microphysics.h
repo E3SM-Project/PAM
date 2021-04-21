@@ -82,6 +82,25 @@ public:
 
 
 
+  real compute_total_mass( DataManager &dm ) {
+    auto rho_v = dm.get<real,4>("water_vapor");
+    auto rho_c = dm.get<real,4>("cloud_liquid");
+    auto rho_r = dm.get<real,4>("precip_liquid");
+    auto zint  = dm.get<real,2>("vertical_interface_height");
+    int nz   = dm.get_dimension_size("z");
+    int ny   = dm.get_dimension_size("y");
+    int nx   = dm.get_dimension_size("x");
+    int nens = dm.get_dimension_size("nens");
+    real4d tmp("tmp",nz,ny,nx,nens);
+    parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      real dz = (zint(k+1,iens) - zint(k,iens));
+      tmp(k,j,i,iens) = (rho_v(k,j,i,iens) + rho_c(k,j,i,iens) + rho_r(k,j,i,iens)) * dz;// 
+    });
+    return yakl::intrinsics::sum(tmp);
+  }
+
+
+
   void timeStep( DataManager &dm , real dt ) {
     auto rho_v        = dm.get_lev_col<real>("water_vapor");
     auto rho_c        = dm.get_lev_col<real>("cloud_liquid");
@@ -89,6 +108,13 @@ public:
     auto rho_dry      = dm.get_lev_col<real>("density_dry");
     auto temp         = dm.get_lev_col<real>("temp");
     auto pressure_dry = dm.get_lev_col<real>("pressure_dry");
+
+    #ifdef PAM_DEBUG
+      validate_array_positive(rho_v);
+      validate_array_positive(rho_c);
+      validate_array_positive(rho_r);
+      real mass_init = compute_total_mass( dm );
+    #endif
 
     int nz   = dm.get_dimension_size("z"   );
     int ny   = dm.get_dimension_size("y"   );
@@ -120,9 +146,6 @@ public:
 
     // Save initial state, and compute inputs for kessler(...)
     parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
-      if (rho_v(k,i) < 0) rho_v(k,i) = 0;
-      if (rho_c(k,i) < 0) rho_c(k,i) = 0;
-      if (rho_r(k,i) < 0) rho_r(k,i) = 0;
       qv          (k,i) = rho_v(k,i) / rho_dry(k,i);
       qc          (k,i) = rho_c(k,i) / rho_dry(k,i);
       qr          (k,i) = rho_r(k,i) / rho_dry(k,i);
@@ -140,6 +163,16 @@ public:
       rho_r(k,i) = qr(k,i)*rho_dry(k,i);
       temp (k,i) = theta_dry(k,i) * exner_dry(k,i);
     });
+
+    #ifdef PAM_DEBUG
+      validate_array_positive(rho_v);
+      validate_array_positive(rho_c);
+      validate_array_positive(rho_r);
+      real mass_final = compute_total_mass( dm );
+      real reldiff = abs(mass_final - mass_init) / ( abs(mass_init) + 1.e-20 );
+      std::cout << "Microphysics mass change: " << reldiff << std::endl;
+      if ( reldiff > 1.e-10 ) { endrun("ERROR: mass not conserved by kessler microphysics"); }
+    #endif
 
   }
 

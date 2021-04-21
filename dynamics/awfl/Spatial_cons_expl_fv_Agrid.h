@@ -2244,6 +2244,7 @@ public:
     parallel_for( SimpleBounds<5>(num_tracers,nz+1,ny,nx,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
       real constexpr eps = 1.e-10;
       real w = 0.5_fp * ( stateLimits(idW,0,k,j,i,iens) + stateLimits(idW,1,k,j,i,iens) );
+      if (k == 0 || k == nz) w = 0;
       // Solid wall BCs mean w == 0 at boundaries
       if (tracer_pos(tr)) {
         // Compute and apply the flux reduction factor of the upwind cell

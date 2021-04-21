@@ -223,7 +223,7 @@ public:
     T *arr;
     size_t nelems = get_num_elems(id);
     yakl::memcpy_device_to_host(arr,arr_dev,nelems*sizeof(T));
-    for (unsigned i=0; i < nelems; i++) {
+    for (int i=0; i < nelems; i++) {
       if ( std::isnan( arr[i] ) ) {
         std::cerr << "WARNING: NaN discovered in: " << entries[id].name << " at global index: " << i << "\n";
         if (die_on_failed_check) {
@@ -240,7 +240,7 @@ public:
     T *arr;
     size_t nelems = get_num_elems(id);
     yakl::memcpy_device_to_host(arr,arr_dev,nelems*sizeof(T));
-    for (unsigned i=0; i < nelems; i++) {
+    for (int i=0; i < nelems; i++) {
       if ( std::isinf( arr[i] ) ) {
         std::cerr << "WARNING: inf discovered in: " << entries[id].name << " at global index: " << i << "\n";
         if (die_on_failed_check) {
@@ -258,7 +258,7 @@ public:
     T *arr;
     size_t nelems = get_num_elems(id);
     yakl::memcpy_device_to_host(arr,arr_dev,nelems*sizeof(T));
-      for (unsigned i=0; i < nelems; i++) {
+      for (int i=0; i < nelems; i++) {
         if ( arr[i] < 0. ) {
           std::cerr << "WARNING: negative value discovered in positive-definite entry: " << entries[id].name
                     << " at global index: " << i << "\n";
