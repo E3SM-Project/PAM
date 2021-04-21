@@ -189,7 +189,7 @@ public:
     MultipleFields<max_tracers,real4d> dm_tracers;
     for (int tr = 0; tr < num_tracers; tr++) {
       auto trac = dm.get<real,4>( tracer_name[tr] );
-      dm_tracers.add_tracer( trac );
+      dm_tracers.add_field( trac );
     }
 
     parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
@@ -247,7 +247,7 @@ public:
     MultipleFields<max_tracers,real4d> dm_tracers;
     for (int tr = 0; tr < num_tracers; tr++) {
       auto trac = dm.get<real,4>( tracer_name[tr] );
-      dm_tracers.add_tracer( trac );
+      dm_tracers.add_field( trac );
     }
 
     parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {

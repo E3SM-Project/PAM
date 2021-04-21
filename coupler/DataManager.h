@@ -48,7 +48,7 @@ public:
     return *this;
   }
 
-  void add_tracer( T &tracer ) {
+  void add_field( T &tracer ) {
     this->fields(num_fields) = tracer;
     num_fields++;
   }
@@ -67,10 +67,11 @@ public:
   struct Entry {
     std::string              name;
     std::string              desc;
-    std::string              type;
+    size_t                   type_hash;
     void *                   ptr;
     std::vector<int>         dims;
     std::vector<std::string> dim_names;
+    bool                     positive;
   };
 
   struct Dimension {
@@ -101,7 +102,8 @@ public:
   void register_and_allocate( std::string name ,
                               std::string desc ,
                               std::vector<int> dims ,
-                              std::vector<std::string> dim_names ) {
+                              std::vector<std::string> dim_names ,
+                              bool positive = false ) {
     // Make sure we don't have a duplicate entry
     if ( find_entry(name) != -1) {
       endrun("ERROR: Duplicate entry name");
@@ -129,10 +131,11 @@ public:
     Entry loc;
     loc.name      = name;
     loc.desc      = desc;
-    loc.type      = get_type_string<T>();
+    loc.type_hash = get_type_hash<T>();
     loc.ptr       = yakl::yaklAllocDevice( get_data_size(dims)*sizeof(T) , name.c_str() );
     loc.dims      = dims;
     loc.dim_names = dim_names;
+    loc.positive  = positive;
 
     entries.push_back( loc );
   }
@@ -142,16 +145,10 @@ public:
   Array<T,N,memDevice,styleC> get( std::string name ) {
     // Make sure we have this name as an entry
     int id = find_entry_or_error( name );
-    // Make sure it's the right type
-    if ( entries[id].type != get_type_string<T>() ) {
-      endrun("ERROR: Requested Array type does not match entry type");
-    }
-    // Make sure the dimensionality is correct
-    if ( N != entries[id].dims.size() ) {
-      endrun("ERROR: Requested dimensions is different from the entry dimensions");
-    }
+    // Make sure it's the right type and dimensionality
+    validate_type<T>(id);
+    validate_dims<N>(id);
     Array<T,N,memDevice,styleC> ret( name.c_str() , (T *) entries[id].ptr , entries[id].dims );
-    if (check_data) { validate_array( ret , name ); }
     return ret;
   }
 
@@ -161,20 +158,14 @@ public:
     // Make sure we have this name as an entry
     int id = find_entry_or_error( name );
     // Make sure it's the right type
-    if ( entries[id].type != get_type_string<T>() ) {
-      endrun("ERROR: Requested Array type does not match entry type");
-    }
-    // Make sure the dimensionality is correct
-    if ( entries[id].dims.size() < 2 ) {
-      endrun("ERROR: Requested data is only one-dimensional");
-    }
+    validate_type<T>(id);
+    validate_dims_lev_col(id);
     int nlev = entries[id].dims[0];
     int ncol = 1;
     for (int i=1; i < entries[id].dims.size(); i++) {
       ncol *= entries[id].dims[i];
     }
     Array<T,2,memDevice,styleC> ret( name.c_str() , (T *) entries[id].ptr , nlev , ncol );
-    if (check_data) { validate_array( ret , name ); }
     return ret;
   }
 
@@ -184,37 +175,106 @@ public:
     // Make sure we have this name as an entry
     int id = find_entry_or_error( name );
     // Make sure it's the right type
-    if ( entries[id].type != get_type_string<T>() ) {
-      endrun("ERROR: Requested Array type does not match entry type");
-    }
+    validate_type<T>(id);
     int ncells = entries[id].dims[0];
     for (int i=1; i < entries[id].dims.size(); i++) {
       ncells *= entries[id].dims[i];
     }
     Array<T,1,memDevice,styleC> ret( name.c_str() , (T *) entries[id].ptr , ncells );
-    if (check_data) { validate_array( ret , name ); }
     return ret;
   }
 
 
-  template <class T, int N>
-  void validate_array( Array<T,N,memDevice,styleC> const &arr , std::string name ) const {
-    auto arrHost = arr.createHostCopy();
-    for (unsigned i=0; i < arr.get_elem_count(); i++) {
-      T val = arr.myData[i];
-      if ( std::isnan(val) ) {
-        std::cerr << "ERROR: NaN discovered in: " << name << " at global index: " << i << "\n";
-        if (die_on_failed_check) {
-          endrun("");
-        }
-      }
-      if ( std::isinf(val) ) {
-        std::cerr << "ERROR: inf discovered in: " << name << " at global index: " << i << "\n";
+  void validate_all() const {
+    // Check for NaNs
+    for (int id = 0; id < entries.size(); id++) {
+      if      (entry_type_is_same<short int>             (id)) { validate_single_nan<short int>             (id); }
+      else if (entry_type_is_same<int>                   (id)) { validate_single_nan<int>                   (id); }
+      else if (entry_type_is_same<long int>              (id)) { validate_single_nan<long int>              (id); }
+      else if (entry_type_is_same<long long int>         (id)) { validate_single_nan<long long int>         (id); }
+      else if (entry_type_is_same<unsigned short int>    (id)) { validate_single_nan<unsigned short int>    (id); }
+      else if (entry_type_is_same<unsigned int>          (id)) { validate_single_nan<unsigned int>          (id); }
+      else if (entry_type_is_same<unsigned long int>     (id)) { validate_single_nan<unsigned long int>     (id); }
+      else if (entry_type_is_same<unsigned long long int>(id)) { validate_single_nan<unsigned long long int>(id); }
+      else if (entry_type_is_same<float>                 (id)) { validate_single_nan<float>                 (id); }
+      else if (entry_type_is_same<double>                (id)) { validate_single_nan<double>                (id); }
+      else if (entry_type_is_same<long double>           (id)) { validate_single_nan<long double>           (id); }
+
+      // Check for inf
+      if      (entry_type_is_same<float>                 (id)) { validate_single_inf<float>                 (id); }
+      else if (entry_type_is_same<double>                (id)) { validate_single_inf<double>                (id); }
+      else if (entry_type_is_same<long double>           (id)) { validate_single_inf<long double>           (id); }
+
+      // Check for negative values in positive-definite variables
+      if      (entry_type_is_same<short int>             (id)) { validate_single_neg<short int>             (id); }
+      else if (entry_type_is_same<int>                   (id)) { validate_single_neg<int>                   (id); }
+      else if (entry_type_is_same<long int>              (id)) { validate_single_neg<long int>              (id); }
+      else if (entry_type_is_same<long long int>         (id)) { validate_single_neg<long long int>         (id); }
+      else if (entry_type_is_same<float>                 (id)) { validate_single_neg<float>                 (id); }
+      else if (entry_type_is_same<double>                (id)) { validate_single_neg<double>                (id); }
+      else if (entry_type_is_same<long double>           (id)) { validate_single_neg<long double>           (id); }
+    }
+  }
+
+
+  template <class T>
+  void validate_single_nan(int id) const {
+    T *arr_dev = (T *) entries[id].ptr;
+    T *arr;
+    size_t nelems = get_num_elems(id);
+    yakl::memcpy_device_to_host(arr,arr_dev,nelems*sizeof(T));
+    for (unsigned i=0; i < nelems; i++) {
+      if ( std::isnan( arr[i] ) ) {
+        std::cerr << "WARNING: NaN discovered in: " << entries[id].name << " at global index: " << i << "\n";
         if (die_on_failed_check) {
           endrun("");
         }
       }
     }
+  }
+
+
+  template <class T>
+  void validate_single_inf(int id) const {
+    T *arr_dev = (T *) entries[id].ptr;
+    T *arr;
+    size_t nelems = get_num_elems(id);
+    yakl::memcpy_device_to_host(arr,arr_dev,nelems*sizeof(T));
+    for (unsigned i=0; i < nelems; i++) {
+      if ( std::isinf( arr[i] ) ) {
+        std::cerr << "WARNING: inf discovered in: " << entries[id].name << " at global index: " << i << "\n";
+        if (die_on_failed_check) {
+          endrun("");
+        }
+      }
+    }
+  }
+
+
+  template <class T>
+  void validate_single_neg(int id) const {
+    if (entries[id].positive) {
+    T *arr_dev = (T *) entries[id].ptr;
+    T *arr;
+    size_t nelems = get_num_elems(id);
+    yakl::memcpy_device_to_host(arr,arr_dev,nelems*sizeof(T));
+      for (unsigned i=0; i < nelems; i++) {
+        if ( arr[i] < 0. ) {
+          std::cerr << "WARNING: negative value discovered in positive-definite entry: " << entries[id].name
+                    << " at global index: " << i << "\n";
+          if (die_on_failed_check) {
+            endrun("");
+          }
+        }
+      }
+    }
+  }
+
+
+  size_t get_num_elems(int id) const {
+    size_t nelems = entries[id].dims[0];
+    for (int i=1; i < entries[id].dims.size(); i++) { nelems *= entries[id].dims[i]; }
+    return nelems;
   }
 
 
@@ -256,8 +316,36 @@ public:
   }
 
 
-  template <class T> std::string get_type_string() const {
-    return std::string( typeid(T).name() );
+  template <class T> size_t get_type_hash() const {
+    return typeid(T).hash_code();
+  }
+
+
+  template <class T> size_t entry_type_is_same(int id) const {
+    return entries[id].type_hash == typeid(T).hash_code();
+  }
+
+
+  template <class T>
+  void validate_type(int id) const {
+    if ( entries[id].type_hash != get_type_hash<T>() ) {
+      endrun("ERROR: Requested Array type does not match entry type");
+    }
+  }
+
+
+  template <int N>
+  void validate_dims(int id) const {
+    if ( N != entries[id].dims.size() ) {
+      endrun("ERROR: Requested dimensions is different from the entry dimensions");
+    }
+  }
+
+
+  void validate_dims_lev_col(int id) const {
+    if ( entries[id].dims.size() < 2 ) {
+      endrun("ERROR: Requested data is only one-dimensional");
+    }
   }
 
 
