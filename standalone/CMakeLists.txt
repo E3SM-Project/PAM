@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.0)
 project(pam_standalone)
 
+enable_language(Fortran)
 enable_language(CXX)
 enable_language(C)
 if ("${ARCH}" STREQUAL "CUDA")

@@ -4,6 +4,9 @@
 #include "awfl_const.h"
 #include "DataManager.h"
 
+extern "C" void kessler_fortran(double *theta, double *qv, double *qc, double *qr, double *rho,
+                                double *pk, double &dt, double *z, int &nz, double &precl);
+
 class Microphysics {
 public:
   int static constexpr num_tracers = 3;
@@ -155,7 +158,72 @@ public:
 
     auto precl = dm.get_collapsed<real>("precl");
 
-    kessler(theta_dry, qv, qc, qr, rho_dry, precl, zmid, exner_dry, dt, R_d, cp_d, p0);
+    // #define KESSLER_USE_FORTRAN
+
+    
+    #ifdef KESSLER_USE_FORTRAN
+
+      ////////////////////////////////////////////
+      // Call Fortran Kessler code
+      ////////////////////////////////////////////
+      auto theta_dry_host = theta_dry.createHostCopy();
+      auto qv_host        = qv       .createHostCopy();
+      auto qc_host        = qc       .createHostCopy();
+      auto qr_host        = qr       .createHostCopy();
+      auto rho_dry_host   = rho_dry  .createHostCopy();
+      auto precl_host     = precl    .createHostCopy();
+      auto zmid_host      = zmid     .createHostCopy();
+      auto exner_dry_host = exner_dry.createHostCopy();
+      for (int i=0; i < ncol; i++) {
+        realHost1d theta_col("theta_col",nz);
+        realHost1d qv_col   ("qv_col   ",nz);
+        realHost1d qc_col   ("qc_col   ",nz);
+        realHost1d qr_col   ("qr_col   ",nz);
+        realHost1d rho_col  ("rho_col  ",nz);
+        realHost1d zmid_col ("zmid_col ",nz);
+        realHost1d exner_col("exner_col",nz);
+        real precl_col;
+        for (int k=0; k < nz; k++) {
+          theta_col(k) = theta_dry_host(k,i);
+          qv_col   (k) = qv_host       (k,i);
+          qc_col   (k) = qc_host       (k,i);
+          qr_col   (k) = qr_host       (k,i);
+          rho_col  (k) = rho_dry_host  (k,i);
+          zmid_col (k) = zmid_host     (k,i);
+          exner_col(k) = exner_dry_host(k,i);
+          precl_col    = precl_host    (  i);
+        }
+        kessler_fortran( theta_col.data() , qv_col.data() , qc_col.data() , qr_col.data() , rho_col.data() ,
+                         exner_col.data() , dt , zmid_col.data() , nz , precl_col );
+        for (int k=0; k < nz; k++) {
+          theta_dry_host(k,i) = theta_col(k);
+          qv_host       (k,i) = qv_col   (k);
+          qc_host       (k,i) = qc_col   (k);
+          qr_host       (k,i) = qr_col   (k);
+          rho_dry_host  (k,i) = rho_col  (k);
+          zmid_host     (k,i) = zmid_col (k);
+          exner_dry_host(k,i) = exner_col(k);
+          precl_host    (  i) = precl_col;
+        }
+      }
+      theta_dry_host.deep_copy_to(theta_dry);
+      qv_host       .deep_copy_to(qv       );
+      qc_host       .deep_copy_to(qc       );
+      qr_host       .deep_copy_to(qr       );
+      rho_dry_host  .deep_copy_to(rho_dry  );
+      precl_host    .deep_copy_to(precl    );
+      zmid_host     .deep_copy_to(zmid     );
+      exner_dry_host.deep_copy_to(exner_dry);
+
+    #else
+
+      ////////////////////////////////////////////
+      // Call C++ Kessler code
+      ////////////////////////////////////////////
+      kessler(theta_dry, qv, qc, qr, rho_dry, precl, zmid, exner_dry, dt, R_d, cp_d, p0);
+
+    #endif
+
 
     parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
       rho_v(k,i) = qv(k,i)*rho_dry(k,i);
@@ -170,7 +238,7 @@ public:
       validate_array_positive(rho_r);
       real mass_final = compute_total_mass( dm );
       real reldiff = abs(mass_final - mass_init) / ( abs(mass_init) + 1.e-20 );
-      if ( reldiff > 1.e-10 ) {
+      if ( reldiff > 1.e-13 ) {
         std::cout << "Microphysics mass change: " << reldiff << std::endl;
         // endrun("ERROR: mass not conserved by kessler microphysics");
       }
