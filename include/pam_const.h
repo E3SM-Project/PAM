@@ -82,48 +82,44 @@ inline void endrun(std::string err="") {
 
 template <class T, int N, int MEM, int STYLE>
 inline void validate_array_nan( yakl::Array<T,N,MEM,STYLE> const &arr) {
-  auto arrHost = arr.createHostCopy();
-  for (index_t i=0; i < arrHost.totElems(); i++) {
-    if ( std::isnan(arrHost.myData[i]) ) {
-      std::cout << "WARNING: NaN encountered at global index: " << i << std::endl;
-    }
-  }
+  yakl::ScalarLiveOut<bool> nan_found(false);
+  parallel_for( arr.totElems() , YAKL_LAMBDA (int i) {
+    if ( std::isnan(arr.myData[i]) ) { nan_found = true; }
+  });
+  if (nan_found.hostRead()) { std::cout << "WARNING: NaN encountered in array" << std::endl; }
 }
 
 
 template <class T, int N, int MEM, int STYLE>
 inline void validate_array_inf( yakl::Array<T,N,MEM,STYLE> const &arr) {
-  auto arrHost = arr.createHostCopy();
-  for (index_t i=0; i < arrHost.totElems(); i++) {
-    if ( std::isinf(arrHost.myData[i]) ) {
-      std::cout << "WARNING: inf encountered at global index: " << i << std::endl;
-    }
-  }
+  yakl::ScalarLiveOut<bool> inf_found(false);
+  parallel_for( arr.totElems() , YAKL_LAMBDA (int i) {
+    if ( std::isinf(arr.myData[i]) ) { inf_found = true; }
+  });
+  if (inf_found.hostRead()) { std::cout << "WARNING: inf encountered in array" << std::endl; }
 }
 
 
 template <class T, int N, int MEM, int STYLE>
 inline void validate_array_inf_nan( yakl::Array<T,N,MEM,STYLE> const &arr) {
-  auto arrHost = arr.createHostCopy();
-  for (index_t i=0; i < arrHost.totElems(); i++) {
-    if ( std::isinf(arrHost.myData[i]) ) {
-      std::cout << "WARNING: inf encountered at global index: " << i << std::endl;
-    }
-    if ( std::isnan(arrHost.myData[i]) ) {
-      std::cout << "WARNING: NaN encountered at global index: " << i << std::endl;
-    }
-  }
+  yakl::ScalarLiveOut<bool> nan_found(false);
+  yakl::ScalarLiveOut<bool> inf_found(false);
+  parallel_for( arr.totElems() , YAKL_LAMBDA (int i) {
+    if ( std::isnan(arr.myData[i]) ) { nan_found = true; }
+    if ( std::isinf(arr.myData[i]) ) { inf_found = true; }
+  });
+  if (nan_found.hostRead()) { std::cout << "WARNING: NaN encountered in array" << std::endl; }
+  if (inf_found.hostRead()) { std::cout << "WARNING: inf encountered in array" << std::endl; }
 }
 
 
 template <class T, int N, int MEM, int STYLE>
 inline void validate_array_positive( yakl::Array<T,N,MEM,STYLE> const &arr) {
-  auto arrHost = arr.createHostCopy();
-  for (index_t i=0; i < arrHost.totElems(); i++) {
-    if (arrHost.myData[i] < 0. ) {
-      std::cout << "WARNING: negative value encountered: " << arrHost.myData[i] << " at global index: " << i << std::endl;
-    }
-  }
+  yakl::ScalarLiveOut<bool> neg_found(false);
+  parallel_for( arr.totElems() , YAKL_LAMBDA (int i) {
+    if ( arr.myData[i] < 0. ) { neg_found = true; }
+  });
+  if (neg_found.hostRead()) { std::cout << "WARNING: negative value encountered in array" << std::endl; }
 }
 
 

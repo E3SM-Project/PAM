@@ -144,9 +144,12 @@ public:
       real mass_final = compute_mass( dm );
       real mass_diff = abs(mass_final - mass_init) / (abs(mass_init) + 1.e-20);
       if (mass_diff > 1.e-10) {
-        std::cout << "Dycore mass change: " << mass_diff << std::endl;
+        std::cout << "Dycore mass change is too large: " << mass_diff << std::endl;
         endrun("ERROR: mass not conserved by dycore");
       }
+      validate_array_positive(tracers);
+      validate_array_inf_nan(state);
+      validate_array_inf_nan(tracers);
     #endif
 
     space_op.switch_directions();

@@ -1544,9 +1544,6 @@ public:
         }
       }
     });
-    parallel_for( SimpleBounds<5>(num_tracers,nz,ny,nx+1,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
-      tracerFlux(tr,k,j,i,iens) *= fct_mult(tr,k,j,i,iens);
-    });
 
     //////////////////////////////////////////////////////////
     // Compute the tendencies
@@ -1561,7 +1558,8 @@ public:
       }
       for (int l = 0; l < num_tracers; l++) {
         // Compute tracer tendency
-        tracerTend(l,k,j,i,iens) = - ( tracerFlux(l,k,j,i+1,iens) - tracerFlux(l,k,j,i  ,iens) ) / dx;
+        tracerTend(l,k,j,i,iens) = - ( tracerFlux(l,k,j,i+1,iens)*fct_mult(l,k,j,i+1,iens) -
+                                       tracerFlux(l,k,j,i  ,iens)*fct_mult(l,k,j,i  ,iens) ) / dx;
         // Multiply density back onto tracers
         tracers(l,hs+k,hs+j,hs+i,iens) *= (state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens));
       }
@@ -1902,9 +1900,6 @@ public:
         }
       }
     });
-    parallel_for( SimpleBounds<5>(num_tracers,nz,ny+1,nx,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
-      tracerFlux(tr,k,j,i,iens) *= fct_mult(tr,k,j,i,iens);
-    });
 
     //////////////////////////////////////////////////////////
     // Compute the tendencies
@@ -1915,7 +1910,8 @@ public:
       }
       for (int l=0; l < num_tracers; l++) {
         // Compute the tracer tendency
-        tracerTend(l,k,j,i,iens) = - ( tracerFlux(l,k,j+1,i,iens) - tracerFlux(l,k,j,i,iens) ) / dy;
+        tracerTend(l,k,j,i,iens) = - ( tracerFlux(l,k,j+1,i,iens)*fct_mult(l,k,j+1,i,iens) -
+                                       tracerFlux(l,k,j  ,i,iens)*fct_mult(l,k,j  ,i,iens) ) / dy;
         // Multiply density back onto the tracers
         tracers(l,hs+k,hs+j,hs+i,iens) *= (state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens));
       }
@@ -2280,9 +2276,6 @@ public:
         }
       }
     });
-    parallel_for( SimpleBounds<5>(num_tracers,nz+1,ny,nx,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
-      tracerFlux(tr,k,j,i,iens) *= fct_mult(tr,k,j,i,iens);
-    });
 
     //////////////////////////////////////////////////////////
     // Compute the tendencies
@@ -2297,7 +2290,8 @@ public:
       }
       for (int l=0; l < num_tracers; l++) {
         // Compute tracer tendency
-        tracerTend(l,k,j,i,iens) = - ( tracerFlux(l,k+1,j,i,iens) - tracerFlux(l,k,j,i,iens) ) / dz(k,iens);
+        tracerTend(l,k,j,i,iens) = - ( tracerFlux(l,k+1,j,i,iens)*fct_mult(l,k+1,j,i,iens) -
+                                       tracerFlux(l,k  ,j,i,iens)*fct_mult(l,k  ,j,i,iens) ) / dz(k,iens);
         // Multiply density back onto the tracers
         tracers(l,hs+k,hs+j,hs+i,iens) *= (state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens));
       }
