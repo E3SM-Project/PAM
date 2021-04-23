@@ -1249,9 +1249,9 @@ contains
 
     ! direction of vertical leveling:
     !PMC got rid of 'model' option so we could just replace ktop with kts everywhere...
-    ktop = kts        !k of top level
-    kbot = kte        !k of bottom level
-    kdir = -1         !(k: 1=top, nk=bottom)
+    ktop = kte        !k of top level
+    kbot = kts        !k of bottom level
+    kdir = 1          !(k: 1=top, nk=bottom)
 
     !PMC deleted 'threshold size difference' calculation for multicategory here
 
@@ -1450,9 +1450,7 @@ contains
 
     call system_clock(clock_count2, clock_count_rate, clock_count_max)
     clock_count_diff = clock_count2 - clock_count1
-    if (present(elapsed_s)) then
-      elapsed_s = real(clock_count_diff) / real(clock_count_rate)
-    endif
+    elapsed_s = real(clock_count_diff) / real(clock_count_rate)
 
     !PMC deleted "if WRF" stuff
     !PMC deleted typeDiags optional output stuff

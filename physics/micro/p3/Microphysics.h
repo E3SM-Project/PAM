@@ -109,7 +109,7 @@ public:
     dm.register_and_allocate<real>( "precip_ice_surf"    , "precipitation rate, solid        m s-1"              , {        ny,nx,nens} , {           "y","x","nens"} );
     dm.register_and_allocate<real>( "diag_eff_radius_qc" , "effective radius, cloud          m"                  , {   nz  ,ny,nx,nens} , {     "z"  ,"y","x","nens"} );
     dm.register_and_allocate<real>( "diag_eff_radius_qi" , "effective radius, ice            m"                  , {   nz  ,ny,nx,nens} , {     "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "rho_qi"             , "bulk density of ice              kg m-3"             , {   nz  ,ny,nx,nens} , {     "z"  ,"y","x","nens"} );
+    dm.register_and_allocate<real>( "bulk_qi"            , "bulk density of ice              kg m-3"             , {   nz  ,ny,nx,nens} , {     "z"  ,"y","x","nens"} );
     dm.register_and_allocate<real>( "mu_c"               , "Size distribution shape parameter for radiation"     , {   nz  ,ny,nx,nens} , {     "z"  ,"y","x","nens"} );
     dm.register_and_allocate<real>( "lamc"               , "Size distribution slope parameter for radiation"     , {   nz  ,ny,nx,nens} , {     "z"  ,"y","x","nens"} );
     dm.register_and_allocate<real>( "qv2qi_depos_tend"   , "qitend due to deposition/sublimation"                , {   nz  ,ny,nx,nens} , {     "z"  ,"y","x","nens"} );
@@ -122,6 +122,8 @@ public:
     dm.register_and_allocate<real>( "vap_liq_exchange"   , "sum of vap-liq phase change tendenices"              , {   nz  ,ny,nx,nens} , {     "z"  ,"y","x","nens"} );
     dm.register_and_allocate<real>( "vap_ice_exchange"   , "sum of vap-ice phase change tendenices"              , {   nz  ,ny,nx,nens} , {     "z"  ,"y","x","nens"} );
     dm.register_and_allocate<real>( "p3_tend_out"        , "micro physics tendencies"                            , {49,nz  ,ny,nx,nens} , {"49","z"  ,"y","x","nens"} );
+    dm.register_and_allocate<real>( "qv_prev"            , "qv from the previous step"                           , {   nz  ,ny,nx,nens} , {     "z"  ,"y","x","nens"} );
+    dm.register_and_allocate<real>( "t_prev"             , "Temperature from the previous step"                  , {   nz  ,ny,nx,nens} , {     "z"  ,"y","x","nens"} );
   }
 
 
@@ -162,7 +164,7 @@ public:
     auto precip_ice_surf    = dm.get_collapsed<real>("precip_ice_surf"    );
     auto diag_eff_radius_qc = dm.get_lev_col  <real>("diag_eff_radius_qc" );
     auto diag_eff_radius_qi = dm.get_lev_col  <real>("diag_eff_radius_qi" );
-    auto rho_qi             = dm.get_lev_col  <real>("rho_qi"             );
+    auto bulk_qi            = dm.get_lev_col  <real>("bulk_qi"            );
     auto mu_c               = dm.get_lev_col  <real>("mu_c"               );
     auto lamc               = dm.get_lev_col  <real>("lamc"               );
     auto qv2qi_depos_tend   = dm.get_lev_col  <real>("qv2qi_depos_tend"   );
@@ -172,6 +174,8 @@ public:
     auto liq_ice_exchange   = dm.get_lev_col  <real>("liq_ice_exchange"   );
     auto vap_liq_exchange   = dm.get_lev_col  <real>("vap_liq_exchange"   );
     auto vap_ice_exchange   = dm.get_lev_col  <real>("vap_ice_exchange"   );
+    auto qv_prev            = dm.get_lev_col  <real>("qv_prev"            );
+    auto t_prev             = dm.get_lev_col  <real>("t_prev"             );
 
     auto precip_liq_flux_dm = dm.get<real,4>("precip_liq_flux");
     auto precip_ice_flux_dm = dm.get<real,4>("precip_ice_flux");
@@ -189,17 +193,19 @@ public:
     });
 
     // These are inputs to p3
-    real2d qc          ("qc"          ,nz,ncol);
-    real2d nc          ("nc"          ,nz,ncol);
-    real2d qr          ("qr"          ,nz,ncol);
-    real2d nr          ("nr"          ,nz,ncol);
-    real2d qi          ("qi"          ,nz,ncol);
-    real2d ni          ("ni"          ,nz,ncol);
-    real2d qm          ("qm"          ,nz,ncol);
-    real2d bm          ("bm"          ,nz,ncol);
-    real2d qv          ("qv"          ,nz,ncol);
-    real2d theta_dry   ("theta_dry"   ,nz,ncol);
-    real2d exner_dry   ("exner_dry"   ,nz,ncol);
+    real2d qc       ("qc"      ,nz,ncol);
+    real2d nc       ("nc"      ,nz,ncol);
+    real2d qr       ("qr"      ,nz,ncol);
+    real2d nr       ("nr"      ,nz,ncol);
+    real2d qi       ("qi"      ,nz,ncol);
+    real2d ni       ("ni"      ,nz,ncol);
+    real2d qm       ("qm"      ,nz,ncol);
+    real2d bm       ("bm"      ,nz,ncol);
+    real2d qv       ("qv"      ,nz,ncol);
+    real2d pressure ("pressure",nz,ncol);
+    real2d theta    ("theta"   ,nz,ncol);
+    real2d exner    ("exner"   ,nz,ncol);
+    real2d inv_exner("inv_exner"   ,nz,ncol);
 
     //////////////////////////////////////////////////////////////////////////////
     // Compute quantities needed for inputs to P3
@@ -221,39 +227,52 @@ public:
       qm          (k,i) = rho_qm(k,i) / rho_dry(k,i);
       bm          (k,i) = rho_bm(k,i) / rho_dry(k,i);
       qv          (k,i) = rho_qv(k,i) / rho_dry(k,i);
-      exner_dry   (k,i) = pow( pressure_dry(k,i) / p0 , R_d / cp_d );
-      theta_dry   (k,i) = temp(k,i) / exner_dry(k,i);
+      pressure    (k,i) = pressure_dry(k,i) + R_v * rho_qv(k,i) * temp(k,i);
+      exner       (k,i) = pow( pressure(k,i) / p0 , R_d / cp_d );
+      inv_exner   (k,i) = 1. / exner(k,i);
+      theta       (k,i) = temp(k,i) / exner(k,i);
+      // TODO: Somehow calculate dpres , given we don't have pressure at vertical cell interfaces
+      // TODO: Find out if P3's exner is the same as out exner (and wikipedia's)
     });
 
 
 
 
-  // TODO: Find out if we need full or dry pressure and exner and theta
-  SUBROUTINE p3_main(qc,nc,qr,nr,th_atm,qv,dt,qi,qm,ni,bm,   &
-       pres,dz,nc_nuceat_tend,nccn_prescribed,ni_activated,inv_qc_relvar,it,precip_liq_surf,precip_ice_surf,its,ite,kts,kte,diag_eff_radius_qc,     &
-       diag_eff_radius_qi,rho_qi,do_predict_nc, do_prescribed_CCN, &
-       dpres,exner,qv2qi_depos_tend,precip_total_tend,nevapr,qr_evap_tend,precip_liq_flux,precip_ice_flux,cld_frac_r,cld_frac_l,cld_frac_i,  &
-       p3_tend_out,mu_c,lamc,liq_ice_exchange,vap_liq_exchange, &
-       vap_ice_exchange,qv_prev,t_prev,col_location &
-       ,elapsed_s &
-      )
-    implicit none
-    !----- Input/ouput arguments:  ----------------------------------------------------------!
-    real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: nc_nuceat_tend      ! IN ccn activated number tendency kg-1 s-1
-    real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: nccn_prescribed
-    real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: ni_activated       ! IN actived ice nuclei concentration  1/kg
-    real(rtype), intent(in)                                     :: dt         ! model time step                  s
-    integer, intent(in)                                  :: its,ite    ! array bounds (horizontal)
-    integer, intent(in)                                  :: kts,kte    ! array bounds (vertical)
-    integer, intent(in)                                  :: it         ! time step counter NOTE: starts at 1 for first time step
-    logical(btype), intent(in)                           :: do_predict_nc ! .T. (.F.) for prediction (specification) of Nc
-    real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: dpres       ! pressure thickness               Pa
-    logical(btype), intent(in)                                  :: do_prescribed_CCN
-    real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: cld_frac_i, cld_frac_l, cld_frac_r ! Ice, Liquid and Rain cloud fraction
-    real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: qv_prev, t_prev                    ! qv and t from previous p3_main call
-    real(rtype), intent(in),    dimension(its:ite,3)            :: col_location
-    real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: inv_qc_relvar
-    real(rtype), intent(out) :: elapsed_s ! duration of main loop in seconds
+    // SUBROUTINE p3_main(qc,nc,qr,nr,th_atm,qv,dt,qi,qm,ni,bm,   &
+    //      pres,dz,nc_nuceat_tend,nccn_prescribed,ni_activated,inv_qc_relvar,it,precip_liq_surf,precip_ice_surf,its,ite,kts,kte,diag_eff_radius_qc,     &
+    //      diag_eff_radius_qi,rho_qi,do_predict_nc, do_prescribed_CCN, &
+    //      dpres,exner,qv2qi_depos_tend,precip_total_tend,nevapr,qr_evap_tend,precip_liq_flux,precip_ice_flux,cld_frac_r,cld_frac_l,cld_frac_i,  &
+    //      p3_tend_out,mu_c,lamc,liq_ice_exchange,vap_liq_exchange, &
+    //      vap_ice_exchange,qv_prev,t_prev,col_location &
+    //      ,elapsed_s &
+    //     )
+
+
+    //   pass inv_exner  for the exner argument
+
+    //   rho_qi is renamed to bulk_qi
+
+    //   // if we set do_prescribed_CCN and do_predict_nc to .false., then these three aren't used
+    //   real(rtype), intent(in), dimension(its:ite,kts:kte)      :: nc_nuceat_tend
+    //   real(rtype), intent(in), dimension(its:ite,kts:kte)      :: nccn_prescribed
+    //   real(rtype), intent(in),    dimension(its:ite,kts:kte)   :: ni_activated       ! IN actived ice nuclei concentration  1/kg
+
+    //   // This is only used for debugging
+    //   integer, intent(in)                                  :: it         ! time step counter NOTE: starts at 1 for first time step
+
+    //   do_predict_nc = .false.
+    //   do_prescribed_CCN = .false.
+
+    //   cldfrac_l = 0 or 1 depending on whether there is any condensate
+    //   cldfrac_i = 0 or 1 depending on whether there is any condensate
+    //   cldfrac_r = 1 all the time
+
+    //   qv_prev and t_prev are qv and *temperature* after the end of the previous microphysics step
+
+    //   inv_qc_relvar = 1
+
+    //   // Only used for debugging
+    //   real(rtype), intent(in),    dimension(its:ite,3)            :: col_location
 
 
 
@@ -272,7 +291,9 @@ public:
       rho_qm(k,i) = qm(k,i)*rho_dry(k,i);
       rho_bm(k,i) = bm(k,i)*rho_dry(k,i);
       rho_qv(k,i) = qv(k,i)*rho_dry(k,i);
-      temp (k,i) = theta_dry(k,i) * exner_dry(k,i);
+      temp  (k,i) = theta(k,i) * exner(k,i);
+      qv_prev(k,i) = qv(k,i);
+      t_prev (k,i) = temp(k,i);
     });
 
   }
