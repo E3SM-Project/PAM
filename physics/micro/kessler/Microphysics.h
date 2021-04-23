@@ -126,11 +126,12 @@ public:
     int ncol = ny*nx*nens;
 
     // These are inputs to kessler(...)
-    real2d qv          ("qv"          ,nz,ncol);
-    real2d qc          ("qc"          ,nz,ncol);
-    real2d qr          ("qr"          ,nz,ncol);
-    real2d theta_dry   ("theta_dry"   ,nz,ncol);
-    real2d exner_dry   ("exner_dry"   ,nz,ncol);
+    real2d qv      ("qv"      ,nz,ncol);
+    real2d qc      ("qc"      ,nz,ncol);
+    real2d qr      ("qr"      ,nz,ncol);
+    real2d pressure("pressure",nz,ncol);
+    real2d theta   ("theta"   ,nz,ncol);
+    real2d exner   ("exner"   ,nz,ncol);
     auto zmid_in = dm.get<real,2>("vertical_midpoint_height");
 
     // We have to broadcast the midpoint heights to all columns within a CRM to avoid the microphysics needing
@@ -149,11 +150,12 @@ public:
 
     // Save initial state, and compute inputs for kessler(...)
     parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
-      qv          (k,i) = rho_v(k,i) / rho_dry(k,i);
-      qc          (k,i) = rho_c(k,i) / rho_dry(k,i);
-      qr          (k,i) = rho_r(k,i) / rho_dry(k,i);
-      exner_dry   (k,i) = pow( pressure_dry(k,i) / p0 , R_d / cp_d );
-      theta_dry   (k,i) = temp(k,i) / exner_dry(k,i);
+      qv      (k,i) = rho_v(k,i) / rho_dry(k,i);
+      qc      (k,i) = rho_c(k,i) / rho_dry(k,i);
+      qr      (k,i) = rho_r(k,i) / rho_dry(k,i);
+      pressure(k,i) = pressure_dry(k,i) + R_v * rho_v(k,i) * temp(k,i);
+      exner   (k,i) = pow( pressure(k,i) / p0 , R_d / cp_d );
+      theta   (k,i) = temp(k,i) / exner(k,i);
     });
 
     auto precl = dm.get_collapsed<real>("precl");
@@ -166,14 +168,14 @@ public:
       ////////////////////////////////////////////
       // Call Fortran Kessler code
       ////////////////////////////////////////////
-      auto theta_dry_host = theta_dry.createHostCopy();
-      auto qv_host        = qv       .createHostCopy();
-      auto qc_host        = qc       .createHostCopy();
-      auto qr_host        = qr       .createHostCopy();
-      auto rho_dry_host   = rho_dry  .createHostCopy();
-      auto precl_host     = precl    .createHostCopy();
-      auto zmid_host      = zmid     .createHostCopy();
-      auto exner_dry_host = exner_dry.createHostCopy();
+      auto theta_host   = theta  .createHostCopy();
+      auto qv_host      = qv     .createHostCopy();
+      auto qc_host      = qc     .createHostCopy();
+      auto qr_host      = qr     .createHostCopy();
+      auto rho_dry_host = rho_dry.createHostCopy();
+      auto precl_host   = precl  .createHostCopy();
+      auto zmid_host    = zmid   .createHostCopy();
+      auto exner_host   = exner  .createHostCopy();
       for (int i=0; i < ncol; i++) {
         realHost1d theta_col("theta_col",nz);
         realHost1d qv_col   ("qv_col   ",nz);
@@ -184,43 +186,43 @@ public:
         realHost1d exner_col("exner_col",nz);
         real precl_col;
         for (int k=0; k < nz; k++) {
-          theta_col(k) = theta_dry_host(k,i);
-          qv_col   (k) = qv_host       (k,i);
-          qc_col   (k) = qc_host       (k,i);
-          qr_col   (k) = qr_host       (k,i);
-          rho_col  (k) = rho_dry_host  (k,i);
-          zmid_col (k) = zmid_host     (k,i);
-          exner_col(k) = exner_dry_host(k,i);
-          precl_col    = precl_host    (  i);
+          theta_col(k) = theta_host  (k,i);
+          qv_col   (k) = qv_host     (k,i);
+          qc_col   (k) = qc_host     (k,i);
+          qr_col   (k) = qr_host     (k,i);
+          rho_col  (k) = rho_dry_host(k,i);
+          zmid_col (k) = zmid_host   (k,i);
+          exner_col(k) = exner_host  (k,i);
+          precl_col    = precl_host  (  i);
         }
         kessler_fortran( theta_col.data() , qv_col.data() , qc_col.data() , qr_col.data() , rho_col.data() ,
                          exner_col.data() , dt , zmid_col.data() , nz , precl_col );
         for (int k=0; k < nz; k++) {
-          theta_dry_host(k,i) = theta_col(k);
+          theta_host    (k,i) = theta_col(k);
           qv_host       (k,i) = qv_col   (k);
           qc_host       (k,i) = qc_col   (k);
           qr_host       (k,i) = qr_col   (k);
           rho_dry_host  (k,i) = rho_col  (k);
           zmid_host     (k,i) = zmid_col (k);
-          exner_dry_host(k,i) = exner_col(k);
+          exner_host    (k,i) = exner_col(k);
           precl_host    (  i) = precl_col;
         }
       }
-      theta_dry_host.deep_copy_to(theta_dry);
-      qv_host       .deep_copy_to(qv       );
-      qc_host       .deep_copy_to(qc       );
-      qr_host       .deep_copy_to(qr       );
-      rho_dry_host  .deep_copy_to(rho_dry  );
-      precl_host    .deep_copy_to(precl    );
-      zmid_host     .deep_copy_to(zmid     );
-      exner_dry_host.deep_copy_to(exner_dry);
+      theta_host  .deep_copy_to(theta  );
+      qv_host     .deep_copy_to(qv     );
+      qc_host     .deep_copy_to(qc     );
+      qr_host     .deep_copy_to(qr     );
+      rho_dry_host.deep_copy_to(rho_dry);
+      precl_host  .deep_copy_to(precl  );
+      zmid_host   .deep_copy_to(zmid   );
+      exner_host  .deep_copy_to(exner  );
 
     #else
 
       ////////////////////////////////////////////
       // Call C++ Kessler code
       ////////////////////////////////////////////
-      kessler(theta_dry, qv, qc, qr, rho_dry, precl, zmid, exner_dry, dt, R_d, cp_d, p0);
+      kessler(theta, qv, qc, qr, rho_dry, precl, zmid, exner, dt, R_d, cp_d, p0);
 
     #endif
 
@@ -229,7 +231,7 @@ public:
       rho_v(k,i) = qv(k,i)*rho_dry(k,i);
       rho_c(k,i) = qc(k,i)*rho_dry(k,i);
       rho_r(k,i) = qr(k,i)*rho_dry(k,i);
-      temp (k,i) = theta_dry(k,i) * exner_dry(k,i);
+      temp (k,i) = theta(k,i) * exner(k,i);
     });
 
     #ifdef PAM_DEBUG
