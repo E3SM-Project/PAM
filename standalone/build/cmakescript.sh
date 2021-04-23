@@ -8,7 +8,7 @@ cmake      \
   -DYAKL_HOME="${YAKL_HOME}"        \
   -DARCH="${ARCH}"                  \
   -DPAM_DYCORE="awfl"               \
-  -DPAM_MICRO="kessler"             \
+  -DPAM_MICRO="wsm6"                \
   ..
 
 

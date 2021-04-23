@@ -57,6 +57,24 @@ MODULE module_mp_wsm6
              rsloper2max,rslopes2max,rslopeg2max,     &
              rsloper3max,rslopes3max,rslopeg3max
 CONTAINS
+
+
+  subroutine vrec(y,x,n)
+    real(8) :: x(*),y(*)
+    do j=1,n
+      y(j)=1.d0/x(j)
+    enddo
+  endsubroutine vrec
+
+  subroutine vsqrt(y,x,n)
+    real(8) :: x(*),y(*)
+    do j=1,n
+      y(j)=sqrt(x(j))
+    enddo
+  endsubroutine vsqrt
+
+
+
 !===================================================================
 !
   SUBROUTINE wsm6(th, q, qc, qr, qi, qs, qg                        &
@@ -72,14 +90,15 @@ CONTAINS
                  ,ids,ide, jds,jde, kds,kde                        &
                  ,ims,ime, jms,jme, kms,kme                        &
                  ,its,ite, jts,jte, kts,kte                        &
-                                                                   )
+                                                                   ) bind(C,name="wsm6")
 !-------------------------------------------------------------------
+  use iso_c_binding
   IMPLICIT NONE
 !-------------------------------------------------------------------
-  INTEGER,      INTENT(IN   )    ::   ids,ide, jds,jde, kds,kde , &
+  INTEGER(c_int), INTENT(IN   )  ::   ids,ide, jds,jde, kds,kde , &
                                       ims,ime, jms,jme, kms,kme , &
                                       its,ite, jts,jte, kts,kte
-  REAL, DIMENSION( ims:ime , kms:kme , jms:jme ),                 &
+  REAL(c_double), DIMENSION( ims:ime , kms:kme , jms:jme ),       &
         INTENT(INOUT) ::                                          &
                                                              th,  &
                                                               q,  &
@@ -88,13 +107,13 @@ CONTAINS
                                                               qr, &
                                                               qs, &
                                                               qg
-  REAL, DIMENSION( ims:ime , kms:kme , jms:jme ),                 &
+  REAL(c_double), DIMENSION( ims:ime , kms:kme , jms:jme ),       &
         INTENT(IN   ) ::                                          &
                                                              den, &
                                                              pii, &
                                                                p, &
                                                             delz
-  REAL, INTENT(IN   ) ::                                    delt, &
+  REAL(c_double), INTENT(IN   ) ::                          delt, &
                                                                g, &
                                                               rd, &
                                                               rv, &
@@ -112,16 +131,16 @@ CONTAINS
                                                             cice, &
                                                             psat, &
                                                             denr
-  REAL, DIMENSION( ims:ime , jms:jme ),                           &
+  REAL(c_double), DIMENSION( ims:ime , jms:jme ),                 &
         INTENT(INOUT) ::                                    rain, &
                                                          rainncv, &
                                                               sr
 !+---+-----------------------------------------------------------------+
 
-  REAL, DIMENSION( ims:ime , jms:jme ), OPTIONAL,                 &
+  REAL(c_double), DIMENSION( ims:ime , jms:jme ),       &
         INTENT(INOUT) ::                                    snow, &
                                                          snowncv
-  REAL, DIMENSION( ims:ime , jms:jme ), OPTIONAL,                 &
+  REAL(c_double), DIMENSION( ims:ime , jms:jme ),       &
         INTENT(INOUT) ::                                 graupel, &
                                                       graupelncv
 

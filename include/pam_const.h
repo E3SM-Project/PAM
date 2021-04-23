@@ -86,7 +86,7 @@ inline void validate_array_nan( yakl::Array<T,N,MEM,STYLE> const &arr) {
   parallel_for( arr.totElems() , YAKL_LAMBDA (int i) {
     if ( std::isnan(arr.myData[i]) ) { nan_found = true; }
   });
-  if (nan_found.hostRead()) { std::cout << "WARNING: NaN encountered in array" << std::endl; }
+  if (nan_found.hostRead()) { std::cout << "WARNING: NaN encountered in array" << std::endl; endrun(); }
 }
 
 
@@ -96,7 +96,7 @@ inline void validate_array_inf( yakl::Array<T,N,MEM,STYLE> const &arr) {
   parallel_for( arr.totElems() , YAKL_LAMBDA (int i) {
     if ( std::isinf(arr.myData[i]) ) { inf_found = true; }
   });
-  if (inf_found.hostRead()) { std::cout << "WARNING: inf encountered in array" << std::endl; }
+  if (inf_found.hostRead()) { std::cout << "WARNING: inf encountered in array" << std::endl; endrun(); }
 }
 
 
@@ -108,8 +108,8 @@ inline void validate_array_inf_nan( yakl::Array<T,N,MEM,STYLE> const &arr) {
     if ( std::isnan(arr.myData[i]) ) { nan_found = true; }
     if ( std::isinf(arr.myData[i]) ) { inf_found = true; }
   });
-  if (nan_found.hostRead()) { std::cout << "WARNING: NaN encountered in array" << std::endl; }
-  if (inf_found.hostRead()) { std::cout << "WARNING: inf encountered in array" << std::endl; }
+  if (nan_found.hostRead()) { std::cout << "WARNING: NaN encountered in array" << std::endl; endrun(); }
+  if (inf_found.hostRead()) { std::cout << "WARNING: inf encountered in array" << std::endl; endrun(); }
 }
 
 
