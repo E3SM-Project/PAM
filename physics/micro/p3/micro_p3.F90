@@ -1192,7 +1192,7 @@ contains
     real(rtype), intent(in),    dimension(its:ite,3)            :: col_location
     real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: inv_qc_relvar
 
-    real(rtype), optional, intent(out) :: elapsed_s ! duration of main loop in seconds
+    real(rtype), intent(out) :: elapsed_s ! duration of main loop in seconds
 
     !
     !----- Local variables and parameters:  -------------------------------------------------!
