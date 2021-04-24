@@ -27,8 +27,7 @@ public:
 
   Constants constants;
 
-  // TODO: Change this to type int instead of real
-  SArray<real,1,num_tracers> tracer_IDs; // tracer index for microphysics tracers
+  SArray<int,1,num_tracers> tracer_IDs; // tracer index for microphysics tracers
 
   // Indices for all of your tracer quantities
   int static constexpr ID_QC = 0;  // Local index for water vapor

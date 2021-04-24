@@ -1516,7 +1516,7 @@ public:
     //////////////////////////////////////////////////////////
     real5d fct_mult("fct_mult",num_tracers,nz,ny,nx+1,nens);
     parallel_for( SimpleBounds<5>(num_tracers,nz,ny,nx+1,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
-      real constexpr eps = 1.e-6;
+      real constexpr eps = 1.e-3;
       real u = 0.5_fp * ( stateLimits(idU,0,k,j,i,iens) + stateLimits(idU,1,k,j,i,iens) );
       // Solid wall BCs mean u == 0 at boundaries, so we assume periodic if u != 0
       if (tracer_pos(tr)) {
@@ -1874,7 +1874,7 @@ public:
     //////////////////////////////////////////////////////////
     real5d fct_mult("fct_mult",num_tracers,nz,ny+1,nx,nens);
     parallel_for( SimpleBounds<5>(num_tracers,nz,ny+1,nx,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
-      real constexpr eps = 1.e-6;
+      real constexpr eps = 1.e-3;
       real v = 0.5_fp * ( stateLimits(idV,0,k,j,i,iens) + stateLimits(idV,1,k,j,i,iens) );
       // Solid wall BCs mean u == 0 at boundaries, so we assume periodic if u != 0
       if (tracer_pos(tr)) {
@@ -2249,7 +2249,7 @@ public:
     //////////////////////////////////////////////////////////
     real5d fct_mult("fct_mult",num_tracers,nz+1,ny,nx,nens);
     parallel_for( SimpleBounds<5>(num_tracers,nz+1,ny,nx,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
-      real constexpr eps = 1.e-6;
+      real constexpr eps = 1.e-3;
       real w = 0.5_fp * ( stateLimits(idW,0,k,j,i,iens) + stateLimits(idW,1,k,j,i,iens) );
       if (k == 0 || k == nz) w = 0;
       // Solid wall BCs mean w == 0 at boundaries

@@ -1475,14 +1475,14 @@ CONTAINS
 ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       END FUNCTION fpvs
 !-------------------------------------------------------------------
-  SUBROUTINE wsm6init(den0,denr,dens,cl,cpv,hail_opt,allowed_to_read)
+  SUBROUTINE wsm6init(den0,denr,dens,cl,cpv,hail_opt) bind(C,name="wsm6init")
 !-------------------------------------------------------------------
+  use iso_c_binding
   IMPLICIT NONE
 !-------------------------------------------------------------------
 !.... constants which may not be tunable
-   REAL, INTENT(IN) :: den0,denr,dens,cl,cpv
-   INTEGER, INTENT(IN) :: hail_opt  ! RAS
-   LOGICAL, INTENT(IN) :: allowed_to_read
+   REAL(c_double), INTENT(IN) :: den0,denr,dens,cl,cpv
+   INTEGER(c_int), INTENT(IN) :: hail_opt  ! RAS
 
 ! RAS13.1 define graupel parameters as graupel-like or hail-like,
 !         depending on namelist option
