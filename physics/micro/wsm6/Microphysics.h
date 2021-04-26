@@ -344,7 +344,7 @@ public:
       real mass_final = compute_total_mass( dm );
       real reldiff = abs(mass_final - mass_init) / ( abs(mass_init) + 1.e-20 );
       if ( reldiff > 1.e-13 ) {
-        std::cout << "Microphysics mass change is too large: " << reldiff << std::endl;
+        // std::cout << "Microphysics mass change is too large: " << reldiff << std::endl;
         // endrun("ERROR: mass not conserved by kessler microphysics");
       }
     #endif

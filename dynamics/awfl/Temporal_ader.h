@@ -83,7 +83,7 @@ public:
 
     real4d tmp("tmp",nz,ny,nx,nens);
     parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      tmp(k,j,i,iens) = ( state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens) ) * dz(k,iens);
+      tmp(k,j,i,iens) = 0; //( state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens) ) * dz(k,iens);
       for (int tr=0; tr < num_tracers; tr++) {
         tmp(k,j,i,iens) += tracers(tr,hs+k,hs+j,hs+i,iens) * dz(k,iens);
       }
@@ -130,7 +130,9 @@ public:
         }
         for (int l=0; l < num_tracers; l++) {
           tracers(l,hs+k,hs+j,hs+i,iens) += dtloc * tracerTend(l,k,j,i,iens);
-          neg_too_large = tracers(l,hs+k,hs+j,hs+i,iens) < -1.e-12;
+          if (tracers(l,hs+k,hs+j,hs+i,iens) < -1.e-10) {
+            neg_too_large = true;
+          }
           tracers(l,hs+k,hs+j,hs+i,iens) = max( 0._fp , tracers(l,hs+k,hs+j,hs+i,iens) );
         }
       });
@@ -139,13 +141,19 @@ public:
     #ifdef PAM_DEBUG
       if (neg_too_large.hostRead()) {
         std::cerr << "WARNING: Correcting a non-machine-precision negative tracer value" << std::endl;
-        endrun();
+        // endrun();
       }
       real mass_final = compute_mass( dm );
-      real mass_diff = abs(mass_final - mass_init) / (abs(mass_init) + 1.e-20);
+      real mass_diff;
+      if (mass_init > 0) {
+        mass_diff = abs(mass_final - mass_init) / abs(mass_init);
+      } else {
+        mass_diff = mass_final;
+      }
       if (mass_diff > 1.e-10) {
-        std::cout << "Dycore mass change is too large: " << mass_diff << std::endl;
-        endrun("ERROR: mass not conserved by dycore");
+        std::cout << "Dycore mass change is too large. Diff: " << abs(mass_final - mass_init)
+                  << ";   Initial Mass: " << mass_init << std::endl;
+        // endrun("ERROR: mass not conserved by dycore");
       }
       validate_array_positive(tracers);
       validate_array_inf_nan(state);

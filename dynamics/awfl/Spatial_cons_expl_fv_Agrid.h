@@ -1516,8 +1516,8 @@ public:
     //////////////////////////////////////////////////////////
     real5d fct_mult("fct_mult",num_tracers,nz,ny,nx+1,nens);
     parallel_for( SimpleBounds<5>(num_tracers,nz,ny,nx+1,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
-      real constexpr eps = 1.e-3;
       real u = 0.5_fp * ( stateLimits(idU,0,k,j,i,iens) + stateLimits(idU,1,k,j,i,iens) );
+      fct_mult(tr,k,j,i,iens) = 1.;
       // Solid wall BCs mean u == 0 at boundaries, so we assume periodic if u != 0
       if (tracer_pos(tr)) {
         // Compute and apply the flux reduction factor of the upwind cell
@@ -1529,7 +1529,10 @@ public:
           real f1 = min( tracerFlux(tr,k,j,ind_i  ,iens) , 0._fp );
           real f2 = max( tracerFlux(tr,k,j,ind_i+1,iens) , 0._fp );
           real fluxOut = dt*(f2-f1)/dx;
-          fct_mult(tr,k,j,i,iens) = min( 1._fp , tracers(tr,hs+k,hs+j,hs+ind_i,iens) / (fluxOut + eps) );
+          real mass = tracers(tr,hs+k,hs+j,hs+ind_i,iens) * ( state(idR,hs+k,hs+j,hs+ind_i,iens) + hyDensCells(k,iens) );
+          if (fluxOut > 0) {
+            fct_mult(tr,k,j,i,iens) = min( 1._fp , mass / fluxOut );
+          }
         } else if (u < 0) {
           // upwind is to the right of this interface
           int ind_i = i;
@@ -1538,9 +1541,10 @@ public:
           real f1 = min( tracerFlux(tr,k,j,ind_i  ,iens) , 0._fp );
           real f2 = max( tracerFlux(tr,k,j,ind_i+1,iens) , 0._fp );
           real fluxOut = dt*(f2-f1)/dx;
-          fct_mult(tr,k,j,i,iens) = min( 1._fp , tracers(tr,hs+k,hs+j,hs+ind_i,iens) / (fluxOut + eps) );
-        } else {
-          fct_mult(tr,k,j,i,iens) = 1.;
+          real mass = tracers(tr,hs+k,hs+j,hs+ind_i,iens) * ( state(idR,hs+k,hs+j,hs+ind_i,iens) + hyDensCells(k,iens) );
+          if (fluxOut > 0) {
+            fct_mult(tr,k,j,i,iens) = min( 1._fp , mass / fluxOut );
+          }
         }
       }
     });
@@ -1874,8 +1878,8 @@ public:
     //////////////////////////////////////////////////////////
     real5d fct_mult("fct_mult",num_tracers,nz,ny+1,nx,nens);
     parallel_for( SimpleBounds<5>(num_tracers,nz,ny+1,nx,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
-      real constexpr eps = 1.e-3;
       real v = 0.5_fp * ( stateLimits(idV,0,k,j,i,iens) + stateLimits(idV,1,k,j,i,iens) );
+      fct_mult(tr,k,j,i,iens) = 1.;
       // Solid wall BCs mean u == 0 at boundaries, so we assume periodic if u != 0
       if (tracer_pos(tr)) {
         // Compute and apply the flux reduction factor of the upwind cell
@@ -1886,7 +1890,10 @@ public:
           real f1 = min( tracerFlux(tr,k,ind_j  ,i,iens) , 0._fp );
           real f2 = max( tracerFlux(tr,k,ind_j+1,i,iens) , 0._fp );
           real fluxOut = dt*(f2-f1)/dy;
-          fct_mult(tr,k,j,i,iens) = min( 1._fp , tracers(tr,hs+k,hs+ind_j,hs+i,iens) / (fluxOut + eps) );
+          real mass = tracers(tr,hs+k,hs+ind_j,hs+i,iens) * ( state(idR,hs+k,hs+ind_j,hs+i,iens) + hyDensCells(k,iens) );
+          if (fluxOut > 0) {
+            fct_mult(tr,k,j,i,iens) = min( 1._fp , mass / fluxOut );
+          }
         } else if (v < 0) {
           // upwind is to the right of this interface
           int ind_j = j;
@@ -1894,9 +1901,10 @@ public:
           real f1 = min( tracerFlux(tr,k,ind_j  ,i,iens) , 0._fp );
           real f2 = max( tracerFlux(tr,k,ind_j+1,i,iens) , 0._fp );
           real fluxOut = dt*(f2-f1)/dy;
-          fct_mult(tr,k,j,i,iens) = min( 1._fp , tracers(tr,hs+k,hs+ind_j,hs+i,iens) / (fluxOut + eps) );
-        } else {
-          fct_mult(tr,k,j,i,iens) = 1.;
+          real mass = tracers(tr,hs+k,hs+ind_j,hs+i,iens) * ( state(idR,hs+k,hs+ind_j,hs+i,iens) + hyDensCells(k,iens) );
+          if (fluxOut > 0) {
+            fct_mult(tr,k,j,i,iens) = min( 1._fp , mass / fluxOut );
+          }
         }
       }
     });
@@ -2249,8 +2257,8 @@ public:
     //////////////////////////////////////////////////////////
     real5d fct_mult("fct_mult",num_tracers,nz+1,ny,nx,nens);
     parallel_for( SimpleBounds<5>(num_tracers,nz+1,ny,nx,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
-      real constexpr eps = 1.e-3;
       real w = 0.5_fp * ( stateLimits(idW,0,k,j,i,iens) + stateLimits(idW,1,k,j,i,iens) );
+      fct_mult(tr,k,j,i,iens) = 1.;
       if (k == 0 || k == nz) w = 0;
       // Solid wall BCs mean w == 0 at boundaries
       if (tracer_pos(tr)) {
@@ -2262,7 +2270,9 @@ public:
           real f2 = max( tracerFlux(tr,ind_k+1,j,i,iens) , 0._fp );
           real fluxOut = dt*(f2-f1)/dz(ind_k,iens);
           real dens = state(idR,hs+ind_k,hs+j,hs+i,iens) + hyDensCells(ind_k,iens);
-          fct_mult(tr,k,j,i,iens) = min( 1._fp , tracers(tr,hs+ind_k,hs+j,hs+i,iens) * dens / (fluxOut + eps) );
+          if (fluxOut > 0) {
+            fct_mult(tr,k,j,i,iens) = min( 1._fp , tracers(tr,hs+ind_k,hs+j,hs+i,iens) * dens / fluxOut );
+          }
         } else if (w < 0) {
           int ind_k = k;
           // upwind is to the right of this interface
@@ -2270,9 +2280,9 @@ public:
           real f2 = max( tracerFlux(tr,ind_k+1,j,i,iens) , 0._fp );
           real fluxOut = dt*(f2-f1)/dz(ind_k,iens);
           real dens = state(idR,hs+ind_k,hs+j,hs+i,iens) + hyDensCells(ind_k,iens);
-          fct_mult(tr,k,j,i,iens) = min( 1._fp , tracers(tr,hs+ind_k,hs+j,hs+i,iens) * dens / (fluxOut + eps) );
-        } else {
-          fct_mult(tr,k,j,i,iens) = 1.;
+          if (fluxOut > 0) {
+            fct_mult(tr,k,j,i,iens) = min( 1._fp , tracers(tr,hs+ind_k,hs+j,hs+i,iens) * dens / fluxOut );
+          }
         }
       }
     });
