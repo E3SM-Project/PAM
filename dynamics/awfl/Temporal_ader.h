@@ -67,7 +67,7 @@ public:
   }
 
 
-  real compute_mass( DataManager &dm ) {
+  std::vector<real> compute_mass( DataManager &dm ) {
     real5d state   = dm.get<real,5>("dynamics_state");
     real5d tracers = dm.get<real,5>("dynamics_tracers");
     int nz = dm.get_dimension_size("z");
@@ -81,14 +81,21 @@ public:
     YAKL_SCOPE( dz          , space_op.dz          );
     YAKL_SCOPE( hyDensCells , space_op.hyDensCells );
 
+    std::vector<real> mass(num_tracers+1);
     real4d tmp("tmp",nz,ny,nx,nens);
+
     parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      tmp(k,j,i,iens) = 0; //( state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens) ) * dz(k,iens);
-      for (int tr=0; tr < num_tracers; tr++) {
-        tmp(k,j,i,iens) += tracers(tr,hs+k,hs+j,hs+i,iens) * dz(k,iens);
-      }
+      tmp(k,j,i,iens) = (state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(hs+k)) * dz(k,iens);
     });
-    return yakl::intrinsics::sum(tmp);
+    mass[0] = yakl::intrinsics::sum(tmp);
+
+    for (int l=0; l < num_tracers; l++) {
+      parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+        tmp(k,j,i,iens) = tracers(l,hs+k,hs+j,hs+i,iens) * dz(k,iens);
+      });
+      mass[l+1] = yakl::intrinsics::sum(tmp);
+    }
+    return mass;
   }
 
 
@@ -104,7 +111,7 @@ public:
       validate_array_positive(tracers);
       validate_array_inf_nan(state);
       validate_array_inf_nan(tracers);
-      real mass_init = compute_mass( dm );
+      std::vector<real> mass_init = compute_mass( dm );
     #endif
 
     ScalarLiveOut<bool> neg_too_large(false);
@@ -130,7 +137,7 @@ public:
         }
         for (int l=0; l < num_tracers; l++) {
           tracers(l,hs+k,hs+j,hs+i,iens) += dtloc * tracerTend(l,k,j,i,iens);
-          if (tracers(l,hs+k,hs+j,hs+i,iens) < -1.e-10) {
+          if (tracers(l,hs+k,hs+j,hs+i,iens) < -1.e-14) {
             neg_too_large = true;
           }
           tracers(l,hs+k,hs+j,hs+i,iens) = max( 0._fp , tracers(l,hs+k,hs+j,hs+i,iens) );
@@ -143,17 +150,20 @@ public:
         std::cerr << "WARNING: Correcting a non-machine-precision negative tracer value" << std::endl;
         // endrun();
       }
-      real mass_final = compute_mass( dm );
-      real mass_diff;
-      if (mass_init > 0) {
-        mass_diff = abs(mass_final - mass_init) / abs(mass_init);
-      } else {
-        mass_diff = mass_final;
-      }
-      if (mass_diff > 1.e-10) {
-        std::cout << "Dycore mass change is too large. Diff: " << abs(mass_final - mass_init)
-                  << ";   Initial Mass: " << mass_init << std::endl;
-        // endrun("ERROR: mass not conserved by dycore");
+      std::vector<real> mass_final = compute_mass( dm );
+      for (int l=0; l < mass_final.size(); l++) {
+        real mass_diff;
+        if (mass_init[l] > 0) {
+          mass_diff = abs(mass_final[l] - mass_init[l]) / abs(mass_init[l]);
+        } else {
+          mass_diff = mass_final[l];
+        }
+        if (mass_diff > 1.e-14) {
+          std::cout << "Dycore mass change is too large. Abs Diff: " << abs(mass_final[l] - mass_init[l])
+                    << ";   Rel Diff: " << mass_diff
+                    << ";   Initial Mass: " << mass_init[l] << std::endl;
+          // endrun("ERROR: mass not conserved by dycore");
+        }
       }
       validate_array_positive(tracers);
       validate_array_inf_nan(state);
