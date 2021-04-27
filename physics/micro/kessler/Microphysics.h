@@ -227,10 +227,12 @@ public:
 
 
     parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
-      rho_v(k,i) = qv(k,i)*rho_dry(k,i);
-      rho_c(k,i) = qc(k,i)*rho_dry(k,i);
-      rho_r(k,i) = qr(k,i)*rho_dry(k,i);
-      temp (k,i) = theta(k,i) * exner(k,i);
+      rho_v   (k,i) = qv(k,i)*rho_dry(k,i);
+      rho_c   (k,i) = qc(k,i)*rho_dry(k,i);
+      rho_r   (k,i) = qr(k,i)*rho_dry(k,i);
+      pressure(k,i) = pressure_dry(k,i) + R_v * rho_v(k,i) * temp(k,i);
+      exner   (k,i) = pow( pressure(k,i) / p0 , R_d / cp_d );
+      temp    (k,i) = theta(k,i) * exner(k,i);
     });
 
     #ifdef PAM_DEBUG

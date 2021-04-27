@@ -75,7 +75,7 @@ public:
     constants.kappa_d     = constants.R_d  / constants.cp_d;
     constants.R_v         = 461.6;
     constants.cp_v        = 4.*constants.R_v;
-    constants.cv_v        = constants.R_v - constants.cp_v;
+    constants.cv_v        = constants.cp_v - constants.R_v;
     constants.p0          = 1.e5;
     grav = 9.81;
     svpt0=273.15;      
@@ -236,6 +236,7 @@ public:
     real2d pressure("pressure",nz,ncol);
     real2d theta   ("theta"   ,nz,ncol);
     real2d exner   ("exner"   ,nz,ncol);
+    real2d rho     ("rho"     ,nz,ncol);
     auto zint_in = dm.get<real,2>("vertical_interface_height");
 
     // We have to broadcast the midpoint heights to all columns within a CRM to avoid the microphysics needing
@@ -263,6 +264,7 @@ public:
       pressure(k,i) = pressure_dry(k,i) + R_v * rho_v(k,i) * temp(k,i);
       exner   (k,i) = pow( pressure(k,i) / p0 , R_d / cp_d );
       theta   (k,i) = temp(k,i) / exner(k,i);
+      rho     (k,i) = rho_dry(k,i) + rho_v(k,i) + rho_c(k,i) + rho_r(k,i) + rho_i(k,i) + rho_s(k,i) + rho_g(k,i);
     });
 
     auto rainnc     = dm.get_collapsed<real>("rainnc"    );
@@ -273,31 +275,32 @@ public:
     auto graupelnc  = dm.get_collapsed<real>("graupelnc" );
     auto graupelncv = dm.get_collapsed<real>("graupelncv");
 
-    auto theta_host        = theta       .createHostCopy();   
-    auto qv_host           = qv          .createHostCopy();          
-    auto qc_host           = qc          .createHostCopy();          
-    auto qr_host           = qr          .createHostCopy();          
-    auto qi_host           = qi          .createHostCopy();          
-    auto qs_host           = qs          .createHostCopy();          
-    auto qg_host           = qg          .createHostCopy();          
-    auto rho_dry_host      = rho_dry     .createHostCopy();     
-    auto exner_host        = exner       .createHostCopy();   
+    auto theta_host        = theta       .createHostCopy();
+    auto qv_host           = qv          .createHostCopy();
+    auto qc_host           = qc          .createHostCopy();
+    auto qr_host           = qr          .createHostCopy();
+    auto qi_host           = qi          .createHostCopy();
+    auto qs_host           = qs          .createHostCopy();
+    auto qg_host           = qg          .createHostCopy();
+    auto rho_host          = rho         .createHostCopy();
+    auto rho_dry_host      = rho_dry     .createHostCopy();
+    auto exner_host        = exner       .createHostCopy();
     auto pressure_host     = pressure    .createHostCopy();
-    auto dz_host           = dz          .createHostCopy();          
-    auto rainnc_host       = rainnc      .createHostCopy();      
-    auto rainncv_host      = rainncv     .createHostCopy();     
-    auto snownc_host       = snownc      .createHostCopy();      
-    auto snowncv_host      = snowncv     .createHostCopy();     
-    auto sr_host           = sr          .createHostCopy();          
-    auto graupelnc_host    = graupelnc   .createHostCopy();   
-    auto graupelncv_host   = graupelncv  .createHostCopy();  
+    auto dz_host           = dz          .createHostCopy();
+    auto rainnc_host       = rainnc      .createHostCopy();
+    auto rainncv_host      = rainncv     .createHostCopy();
+    auto snownc_host       = snownc      .createHostCopy();
+    auto snowncv_host      = snowncv     .createHostCopy();
+    auto sr_host           = sr          .createHostCopy();
+    auto graupelnc_host    = graupelnc   .createHostCopy();
+    auto graupelncv_host   = graupelncv  .createHostCopy();
 
     int ids = 1; int ide = ncol; int jds = 1; int jde = 1; int kds = 1; int kde = nz;
     int ims = 1; int ime = ncol; int jms = 1; int jme = 1; int kms = 1; int kme = nz;
     int its = 1; int ite = ncol; int jts = 1; int jte = 1; int kts = 1; int kte = nz;
 
     wsm6( theta_host.data() , qv_host.data() , qc_host.data() , qr_host.data() , qi_host.data() , qs_host.data() ,
-          qg_host.data() , rho_dry_host.data() , exner_host.data() , pressure_host.data() , dz_host.data() ,
+          qg_host.data() , rho_host.data() , exner_host.data() , pressure_host.data() , dz_host.data() ,
           dt , grav , constants.cp_d , constants.cp_v , constants.R_d , constants.R_v , svpt0 , ep_1 , ep_2 , qmin ,
           xls , xlv , xlf , rhoair0 , rhowater , cliq , cice , psat , rainnc_host.data() , rainncv_host.data() ,
           snownc_host.data() , snowncv_host.data() , sr_host.data() , graupelnc_host.data() , graupelncv_host.data() ,
@@ -313,6 +316,7 @@ public:
     qs_host          .deep_copy_to( qs );          
     qg_host          .deep_copy_to( qg );          
     rho_dry_host     .deep_copy_to( rho_dry );     
+    rho_host         .deep_copy_to( rho );     
     exner_host       .deep_copy_to( exner );   
     pressure_host    .deep_copy_to( pressure );
     dz_host          .deep_copy_to( dz );          
@@ -325,13 +329,15 @@ public:
     graupelncv_host  .deep_copy_to( graupelncv );  
 
     parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
-      rho_v(k,i) = qv(k,i)*rho_dry(k,i);
-      rho_c(k,i) = qc(k,i)*rho_dry(k,i);
-      rho_r(k,i) = qr(k,i)*rho_dry(k,i);
-      rho_i(k,i) = qi(k,i)*rho_dry(k,i);
-      rho_s(k,i) = qs(k,i)*rho_dry(k,i);
-      rho_r(k,i) = qg(k,i)*rho_dry(k,i);
-      temp (k,i) = theta(k,i) * exner(k,i);
+      rho_v   (k,i) = qv(k,i)*rho_dry(k,i);
+      rho_c   (k,i) = qc(k,i)*rho_dry(k,i);
+      rho_r   (k,i) = qr(k,i)*rho_dry(k,i);
+      rho_i   (k,i) = qi(k,i)*rho_dry(k,i);
+      rho_s   (k,i) = qs(k,i)*rho_dry(k,i);
+      rho_r   (k,i) = qg(k,i)*rho_dry(k,i);
+      pressure(k,i) = pressure_dry(k,i) + R_v * rho_v(k,i) * temp(k,i);
+      exner   (k,i) = pow( pressure(k,i) / p0 , R_d / cp_d );
+      temp    (k,i) = theta(k,i) * exner(k,i);
     });
 
     #ifdef PAM_DEBUG

@@ -354,6 +354,7 @@ public:
     real p0      = this->constants.p0;
 
     YAKL_SCOPE( first_step , this->first_step );
+    YAKL_SCOPE( grav       , this->grav       );
 
     // Save initial state, and compute inputs for kessler(...)
     parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
@@ -453,16 +454,19 @@ public:
     auto t_prev_host             = t_prev            .createHostCopy();
     auto col_location_host       = col_location      .createHostCopy();
 
-    p3_main_fortran(qc_host.data() , nc_host.data() , qr_host.data() , nr_host.data() , theta_host.data() , qv_host.data() , dt , qi_host.data() ,
-                    qm_host.data() , ni_host.data() , bm_host.data() , pressure_host.data() , dz_host.data() , nc_nuceat_tend_host.data() ,
+    p3_main_fortran(qc_host.data() , nc_host.data() , qr_host.data() , nr_host.data() , theta_host.data() ,
+                    qv_host.data() , dt , qi_host.data() , qm_host.data() , ni_host.data() , bm_host.data() ,
+                    pressure_host.data() , dz_host.data() , nc_nuceat_tend_host.data() ,
                     nccn_prescribed_host.data() , ni_activated_host.data() , inv_qc_relvar_host.data() , it ,
                     precip_liq_surf_host.data() , precip_ice_surf_host.data() , its , ite , kts , kte ,
-                    diag_eff_radius_qc_host.data() , diag_eff_radius_qi_host.data() , bulk_qi_host.data() , do_predict_nc ,
-                    do_prescribed_CCN , dpres_host.data() , inv_exner_host.data() , qv2qi_depos_tend_host.data() ,
-                    precip_total_tend_host.data() , nevapr_host.data() , qr_evap_tend_host.data() , precip_liq_flux_host.data() ,
-                    precip_ice_flux_host.data() , cld_frac_r_host.data() , cld_frac_l_host.data() , cld_frac_i_host.data() , p3_tend_out_host.data() , mu_c_host.data() ,
-                    lamc_host.data() , liq_ice_exchange_host.data() , vap_liq_exchange_host.data() , vap_ice_exchange_host.data() , 
-                    qv_prev_host.data() , t_prev_host.data() , col_location_host.data() , &elapsed_s );
+                    diag_eff_radius_qc_host.data() , diag_eff_radius_qi_host.data() , bulk_qi_host.data() ,
+                    do_predict_nc , do_prescribed_CCN , dpres_host.data() , inv_exner_host.data() ,
+                    qv2qi_depos_tend_host.data() , precip_total_tend_host.data() , nevapr_host.data() ,
+                    qr_evap_tend_host.data() , precip_liq_flux_host.data() , precip_ice_flux_host.data() ,
+                    cld_frac_r_host.data() , cld_frac_l_host.data() , cld_frac_i_host.data() ,
+                    p3_tend_out_host.data() , mu_c_host.data() , lamc_host.data() , liq_ice_exchange_host.data() ,
+                    vap_liq_exchange_host.data() , vap_ice_exchange_host.data() , qv_prev_host.data() ,
+                    t_prev_host.data() , col_location_host.data() , &elapsed_s );
 
     qc_host                .deep_copy_to( qc                 );
     nc_host                .deep_copy_to( nc                 );
@@ -510,19 +514,21 @@ public:
     // Convert P3 outputs into dynamics coupler state and tracer masses
     ///////////////////////////////////////////////////////////////////////////////
     parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
-      rho_c  (k,i) = max( qc(k,i)*rho_dry(k,i) , 0._fp );
-      rho_nc (k,i) = max( nc(k,i)*rho_dry(k,i) , 0._fp );
-      rho_r  (k,i) = max( qr(k,i)*rho_dry(k,i) , 0._fp );
-      rho_nr (k,i) = max( nr(k,i)*rho_dry(k,i) , 0._fp );
-      rho_i  (k,i) = max( qi(k,i)*rho_dry(k,i) , 0._fp );
-      rho_ni (k,i) = max( ni(k,i)*rho_dry(k,i) , 0._fp );
-      rho_m  (k,i) = max( qm(k,i)*rho_dry(k,i) , 0._fp );
-      rho_bm (k,i) = max( bm(k,i)*rho_dry(k,i) , 0._fp );
-      rho_v  (k,i) = max( qv(k,i)*rho_dry(k,i) , 0._fp );
-      temp   (k,i) = theta(k,i) * exner(k,i);
+      rho_c    (k,i) = max( qc(k,i)*rho_dry(k,i) , 0._fp );
+      rho_nc   (k,i) = max( nc(k,i)*rho_dry(k,i) , 0._fp );
+      rho_r    (k,i) = max( qr(k,i)*rho_dry(k,i) , 0._fp );
+      rho_nr   (k,i) = max( nr(k,i)*rho_dry(k,i) , 0._fp );
+      rho_i    (k,i) = max( qi(k,i)*rho_dry(k,i) , 0._fp );
+      rho_ni   (k,i) = max( ni(k,i)*rho_dry(k,i) , 0._fp );
+      rho_m    (k,i) = max( qm(k,i)*rho_dry(k,i) , 0._fp );
+      rho_bm   (k,i) = max( bm(k,i)*rho_dry(k,i) , 0._fp );
+      rho_v    (k,i) = max( qv(k,i)*rho_dry(k,i) , 0._fp );
+      pressure (k,i) = pressure_dry(k,i) + R_v * rho_v(k,i) * temp(k,i);
+      exner    (k,i) = pow( pressure(k,i) / p0 , R_d / cp_d );
+      temp     (k,i) = theta(k,i) * exner(k,i);
       // Save qv and temperature for the next call to p3_main
-      qv_prev(k,i) = max( qv(k,i) , 0._fp );
-      t_prev (k,i) = temp(k,i);
+      qv_prev  (k,i) = max( qv(k,i) , 0._fp );
+      t_prev   (k,i) = temp(k,i);
     });
 
   }
@@ -530,6 +536,7 @@ public:
 
 
   // Returns saturation vapor pressure
+  // TODO: Make this the same as P3's
   YAKL_INLINE real saturation_vapor_pressure(real temp) const {
     real tc = temp - 273.15;
     return 610.94 * exp( 17.625*tc / (243.04+tc) );
@@ -547,7 +554,7 @@ public:
   YAKL_INLINE real cp_moist(real rho_d, real rho_v, real rho_c, real cp_d, real cp_v, real cp_l) const {
     // For the moist specific heat, ignore other species than water vapor and cloud droplets
     real rho = rho_d + rho_v + rho_c;
-    return rho_d / rho * cp_d + rho_v / rho * cp_v + rho_c / rho * cp_l;
+    return rho_d / rho * cp_d  +  rho_v / rho * cp_v  +  rho_c / rho * cp_l;
   }
 
 
