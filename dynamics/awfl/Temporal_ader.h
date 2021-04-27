@@ -85,7 +85,7 @@ public:
     real4d tmp("tmp",nz,ny,nx,nens);
 
     parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      tmp(k,j,i,iens) = (state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(hs+k)) * dz(k,iens);
+      tmp(k,j,i,iens) = (state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens)) * dz(k,iens);
     });
     mass[0] = yakl::intrinsics::sum(tmp);
 

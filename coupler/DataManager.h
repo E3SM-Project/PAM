@@ -9,7 +9,7 @@ using yakl::Array;
 
 
 // Aggregate multiple fields into a single field that makes it easier to operate
-// on them together inside the same kernel. used mosetly for tracers
+// on them together inside the same kernel. used mostly for tracers
 template <int MAX_FIELDS, class T>
 class MultipleFields {
 public:
@@ -48,8 +48,8 @@ public:
     return *this;
   }
 
-  void add_field( T &tracer ) {
-    this->fields(num_fields) = tracer;
+  void add_field( T &field ) {
+    this->fields(num_fields) = field;
     num_fields++;
   }
 
@@ -287,7 +287,7 @@ public:
 
 
   int find_dimension( std::string name ) const {
-    for (int i=0; i < entries.size(); i++) {
+    for (int i=0; i < dimensions.size(); i++) {
       if (dimensions[i].name == name) return i;
     }
     return -1;

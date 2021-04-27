@@ -82,18 +82,36 @@ module micro_p3
 
 contains
 
-  SUBROUTINE p3_init(lookup_file_dir,version_p3)
+  SUBROUTINE p3_init(lookup_file_dir_c,dir_len,version_p3_c,ver_len) bind(C,name="p3_init_fortran")
     !------------------------------------------------------------------------------------------!
     ! This subroutine initializes all physical constants and parameters needed by the P3       !
     ! scheme, including reading in two lookup table files and creating a third.                !
     ! 'P3_INIT' be called at the first model time step, prior to first call to 'P3_MAIN'.      !
     !------------------------------------------------------------------------------------------!
 
+    use iso_c_binding
     implicit none
 
     ! Passed arguments:
-    character*(*), intent(in)    :: lookup_file_dir                !directory of the lookup tables
-    character(len=16), intent(in) :: version_p3  !version number of P3 package
+    character(kind=c_char), dimension(*), intent(in) :: lookup_file_dir_c  !directory of the lookup tables
+    character(kind=c_char), dimension(*), intent(in) :: version_p3_c       !version number of P3 package
+    integer(c_int) , intent(in) :: dir_len
+    integer(c_int) , intent(in) :: ver_len
+
+    character(len=dir_len) :: lookup_file_dir
+    character(len=16) :: version_p3
+
+    integer :: i
+
+    version_p3 = " "
+
+    do i=1,dir_len
+      write(lookup_file_dir(i:i),fmt='(A1)') lookup_file_dir_c(i:i)
+    enddo
+
+    do i=1,ver_len
+      write(version_p3(i:i),fmt='(A1)') version_p3_c(i:i)
+    enddo
 
     if (masterproc) write(iulog,*) ''
     if (masterproc) write(iulog,*) ' P3 microphysics: v',version_p3
@@ -111,7 +129,7 @@ contains
     use scream_abortutils, only : endscreamrun
 
     ! Passed arguments:
-    character*(*), intent(in)     :: lookup_file_dir       !directory of the lookup tables
+    character(len=*), intent(in)  :: lookup_file_dir       !directory of the lookup tables
 
     character(len=16), intent(in) :: version_p3            !version number of P3 package
     character(len=1024)           :: lookup_file_1         !lookup table, maini
@@ -1111,7 +1129,7 @@ contains
        p3_tend_out,mu_c,lamc,liq_ice_exchange,vap_liq_exchange, &
        vap_ice_exchange,qv_prev,t_prev,col_location &
        ,elapsed_s &
-      )
+      ) bind(C,name="p3_main_fortran")
 
     !----------------------------------------------------------------------------------------!
     !                                                                                        !
@@ -1126,73 +1144,73 @@ contains
     ! including precipitation rates.                                                         !
     !                                                                                        !
     !----------------------------------------------------------------------------------------!
-
+    use iso_c_binding
     implicit none
 
     !----- Input/ouput arguments:  ----------------------------------------------------------!
 
-    real(rtype), intent(inout), dimension(its:ite,kts:kte)      :: qc         ! cloud, mass mixing ratio         kg kg-1
+    real(c_double), intent(inout), dimension(its:ite,kts:kte)      :: qc         ! cloud, mass mixing ratio         kg kg-1
     ! note: Nc may be specified or predicted (set by do_predict_nc)
-    real(rtype), intent(inout), dimension(its:ite,kts:kte)      :: nc         ! cloud, number mixing ratio       #  kg-1
-    real(rtype), intent(inout), dimension(its:ite,kts:kte)      :: qr         ! rain, mass mixing ratio          kg kg-1
-    real(rtype), intent(inout), dimension(its:ite,kts:kte)      :: nr         ! rain, number mixing ratio        #  kg-1
-    real(rtype), intent(inout), dimension(its:ite,kts:kte)      :: qi      ! ice, total mass mixing ratio     kg kg-1
-    real(rtype), intent(inout), dimension(its:ite,kts:kte)      :: qm      ! ice, rime mass mixing ratio      kg kg-1
-    real(rtype), intent(inout), dimension(its:ite,kts:kte)      :: ni      ! ice, total number mixing ratio   #  kg-1
-    real(rtype), intent(inout), dimension(its:ite,kts:kte)      :: bm      ! ice, rime volume mixing ratio    m3 kg-1
+    real(c_double), intent(inout), dimension(its:ite,kts:kte)      :: nc         ! cloud, number mixing ratio       #  kg-1
+    real(c_double), intent(inout), dimension(its:ite,kts:kte)      :: qr         ! rain, mass mixing ratio          kg kg-1
+    real(c_double), intent(inout), dimension(its:ite,kts:kte)      :: nr         ! rain, number mixing ratio        #  kg-1
+    real(c_double), intent(inout), dimension(its:ite,kts:kte)      :: qi      ! ice, total mass mixing ratio     kg kg-1
+    real(c_double), intent(inout), dimension(its:ite,kts:kte)      :: qm      ! ice, rime mass mixing ratio      kg kg-1
+    real(c_double), intent(inout), dimension(its:ite,kts:kte)      :: ni      ! ice, total number mixing ratio   #  kg-1
+    real(c_double), intent(inout), dimension(its:ite,kts:kte)      :: bm      ! ice, rime volume mixing ratio    m3 kg-1
 
-    real(rtype), intent(inout), dimension(its:ite,kts:kte)      :: qv         ! water vapor mixing ratio         kg kg-1
-    real(rtype), intent(inout), dimension(its:ite,kts:kte)      :: th_atm         ! potential temperature            K
-    real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: pres       ! pressure                         Pa
-    real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: dz        ! vertical grid spacing            m
-    real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: nc_nuceat_tend      ! IN ccn activated number tendency kg-1 s-1
-    real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: nccn_prescribed
-    real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: ni_activated       ! IN actived ice nuclei concentration  1/kg
-    real(rtype), intent(in)                                     :: dt         ! model time step                  s
+    real(c_double), intent(inout), dimension(its:ite,kts:kte)      :: qv         ! water vapor mixing ratio         kg kg-1
+    real(c_double), intent(inout), dimension(its:ite,kts:kte)      :: th_atm         ! potential temperature            K
+    real(c_double), intent(in),    dimension(its:ite,kts:kte)      :: pres       ! pressure                         Pa
+    real(c_double), intent(in),    dimension(its:ite,kts:kte)      :: dz        ! vertical grid spacing            m
+    real(c_double), intent(in),    dimension(its:ite,kts:kte)      :: nc_nuceat_tend      ! IN ccn activated number tendency kg-1 s-1
+    real(c_double), intent(in),    dimension(its:ite,kts:kte)      :: nccn_prescribed
+    real(c_double), intent(in),    dimension(its:ite,kts:kte)      :: ni_activated       ! IN actived ice nuclei concentration  1/kg
+    real(c_double), intent(in)                                     :: dt         ! model time step                  s
 
-    real(rtype), intent(out),   dimension(its:ite)              :: precip_liq_surf    ! precipitation rate, liquid       m s-1
-    real(rtype), intent(out),   dimension(its:ite)              :: precip_ice_surf    ! precipitation rate, solid        m s-1
-    real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: diag_eff_radius_qc  ! effective radius, cloud          m
-    real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: diag_eff_radius_qi  ! effective radius, ice            m
-    real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: rho_qi  ! bulk density of ice              kg m-3
-    real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: mu_c       ! Size distribution shape parameter for radiation
-    real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: lamc       ! Size distribution slope parameter for radiation
+    real(c_double), intent(out),   dimension(its:ite)              :: precip_liq_surf    ! precipitation rate, liquid       m s-1
+    real(c_double), intent(out),   dimension(its:ite)              :: precip_ice_surf    ! precipitation rate, solid        m s-1
+    real(c_double), intent(out),   dimension(its:ite,kts:kte)      :: diag_eff_radius_qc  ! effective radius, cloud          m
+    real(c_double), intent(out),   dimension(its:ite,kts:kte)      :: diag_eff_radius_qi  ! effective radius, ice            m
+    real(c_double), intent(out),   dimension(its:ite,kts:kte)      :: rho_qi  ! bulk density of ice              kg m-3
+    real(c_double), intent(out),   dimension(its:ite,kts:kte)      :: mu_c       ! Size distribution shape parameter for radiation
+    real(c_double), intent(out),   dimension(its:ite,kts:kte)      :: lamc       ! Size distribution slope parameter for radiation
 
-    integer, intent(in)                                  :: its,ite    ! array bounds (horizontal)
-    integer, intent(in)                                  :: kts,kte    ! array bounds (vertical)
-    integer, intent(in)                                  :: it         ! time step counter NOTE: starts at 1 for first time step
+    integer(c_int), intent(in)                                  :: its,ite    ! array bounds (horizontal)
+    integer(c_int), intent(in)                                  :: kts,kte    ! array bounds (vertical)
+    integer(c_int), intent(in)                                  :: it         ! time step counter NOTE: starts at 1 for first time step
 
-    logical(btype), intent(in)                           :: do_predict_nc ! .T. (.F.) for prediction (specification) of Nc
+    logical(c_bool), intent(in)                           :: do_predict_nc ! .T. (.F.) for prediction (specification) of Nc
 
-    real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: dpres       ! pressure thickness               Pa
-    real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: exner      ! Exner expression
+    real(c_double), intent(in),    dimension(its:ite,kts:kte)      :: dpres       ! pressure thickness               Pa
+    real(c_double), intent(in),    dimension(its:ite,kts:kte)      :: exner      ! Exner expression
 
     ! OUTPUT for PBUF variables used by other parameterizations
-    real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: qv2qi_depos_tend    ! qitend due to deposition/sublimation
-    real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: precip_total_tend      ! Total precipitation (rain + snow)
-    real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: nevapr     ! evaporation of total precipitation (rain + snow)
-    real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: qr_evap_tend  ! evaporation of rain
-    real(rtype), intent(out),   dimension(its:ite,kts:kte+1)    :: precip_liq_flux       ! grid-box average rain flux (kg m^-2 s^-1) pverp
-    real(rtype), intent(out),   dimension(its:ite,kts:kte+1)    :: precip_ice_flux       ! grid-box average ice/snow flux (kg m^-2 s^-1) pverp
-    real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: liq_ice_exchange ! sum of liq-ice phase change tendenices
-    real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: vap_liq_exchange ! sum of vap-liq phase change tendenices
-    real(rtype), intent(out),   dimension(its:ite,kts:kte)      :: vap_ice_exchange ! sum of vap-ice phase change tendenices
+    real(c_double), intent(out),   dimension(its:ite,kts:kte)      :: qv2qi_depos_tend    ! qitend due to deposition/sublimation
+    real(c_double), intent(out),   dimension(its:ite,kts:kte)      :: precip_total_tend      ! Total precipitation (rain + snow)
+    real(c_double), intent(out),   dimension(its:ite,kts:kte)      :: nevapr     ! evaporation of total precipitation (rain + snow)
+    real(c_double), intent(out),   dimension(its:ite,kts:kte)      :: qr_evap_tend  ! evaporation of rain
+    real(c_double), intent(out),   dimension(its:ite,kts:kte+1)    :: precip_liq_flux       ! grid-box average rain flux (kg m^-2 s^-1) pverp
+    real(c_double), intent(out),   dimension(its:ite,kts:kte+1)    :: precip_ice_flux       ! grid-box average ice/snow flux (kg m^-2 s^-1) pverp
+    real(c_double), intent(out),   dimension(its:ite,kts:kte)      :: liq_ice_exchange ! sum of liq-ice phase change tendenices
+    real(c_double), intent(out),   dimension(its:ite,kts:kte)      :: vap_liq_exchange ! sum of vap-liq phase change tendenices
+    real(c_double), intent(out),   dimension(its:ite,kts:kte)      :: vap_ice_exchange ! sum of vap-ice phase change tendenices
 
     ! INPUT for prescribed CCN option
-    logical(btype), intent(in)                                  :: do_prescribed_CCN
+    logical(c_bool), intent(in)                                  :: do_prescribed_CCN
 
     ! INPUT needed for PBUF variables used by other parameterizations
 
-    real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: cld_frac_i, cld_frac_l, cld_frac_r ! Ice, Liquid and Rain cloud fraction
-    real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: qv_prev, t_prev                    ! qv and t from previous p3_main call
+    real(c_double), intent(in),    dimension(its:ite,kts:kte)      :: cld_frac_i, cld_frac_l, cld_frac_r ! Ice, Liquid and Rain cloud fraction
+    real(c_double), intent(in),    dimension(its:ite,kts:kte)      :: qv_prev, t_prev                    ! qv and t from previous p3_main call
     ! AaronDonahue, the following variable (p3_tend_out) is a catch-all for passing P3-specific variables outside of p3_main
     ! so that they can be written as ouput.  NOTE TO C++ PORT: This variable is entirely optional and doesn't need to be
     ! included in the port to C++, or can be changed if desired.
-    real(rtype), intent(out),   dimension(its:ite,kts:kte,49)   :: p3_tend_out ! micro physics tendencies
-    real(rtype), intent(in),    dimension(its:ite,3)            :: col_location
-    real(rtype), intent(in),    dimension(its:ite,kts:kte)      :: inv_qc_relvar
+    real(c_double), intent(out),   dimension(its:ite,kts:kte,49)   :: p3_tend_out ! micro physics tendencies
+    real(c_double), intent(in),    dimension(its:ite,3)            :: col_location
+    real(c_double), intent(in),    dimension(its:ite,kts:kte)      :: inv_qc_relvar
 
-    real(rtype), intent(out) :: elapsed_s ! duration of main loop in seconds
+    real(c_double), intent(out) :: elapsed_s ! duration of main loop in seconds
 
     !
     !----- Local variables and parameters:  -------------------------------------------------!
