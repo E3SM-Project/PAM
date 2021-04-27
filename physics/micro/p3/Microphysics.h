@@ -57,6 +57,8 @@ public:
   // This must be set during init() so we can return it in the get_water_vapor_index function
   int tracer_index_vapor;
 
+  bool first_step;
+
   Constants constants;
 
   SArray<int,1,num_tracers> tracer_IDs; // tracer index for microphysics tracers
@@ -87,6 +89,7 @@ public:
     constants.cv_v    = constants.R_v - constants.cp_v;
     constants.p0      = 1.e5;
     grav              = 9.81;
+    first_step        = true;
   }
 
 
@@ -137,26 +140,95 @@ public:
     tracer_index_vapor = tracer_IDs(ID_V);
 
     // Register and allocation non-tracer quantities used by the microphysics
-    int p3_out = 49;
-    dm.register_and_allocate<real>( "precip_liq_surf"    , "precipitation rate, liquid       m s-1"              , {            ny,nx,nens} , {           "y","x","nens"} );
-    dm.register_and_allocate<real>( "precip_ice_surf"    , "precipitation rate, solid        m s-1"              , {            ny,nx,nens} , {           "y","x","nens"} );
-    dm.register_and_allocate<real>( "diag_eff_radius_qc" , "effective radius, cloud          m"                  , {       nz  ,ny,nx,nens} , {     "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "diag_eff_radius_qi" , "effective radius, ice            m"                  , {       nz  ,ny,nx,nens} , {     "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "bulk_qi"            , "bulk density of ice              kg m-3"             , {       nz  ,ny,nx,nens} , {     "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "mu_c"               , "Size distribution shape parameter for radiation"     , {       nz  ,ny,nx,nens} , {     "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "lamc"               , "Size distribution slope parameter for radiation"     , {       nz  ,ny,nx,nens} , {     "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "qv2qi_depos_tend"   , "qitend due to deposition/sublimation"                , {       nz  ,ny,nx,nens} , {     "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "precip_total_tend"  , "Total precipitation (rain + snow)"                   , {       nz  ,ny,nx,nens} , {     "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "nevapr"             , "evaporation of total precipitation (rain + snow)"    , {       nz  ,ny,nx,nens} , {     "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "qr_evap_tend"       , "evaporation of rain"                                 , {       nz  ,ny,nx,nens} , {     "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "precip_liq_flux"    , "grid-box average rain flux (kg m^-2 s^-1) pverp"     , {       nz+1,ny,nx,nens} , {     "zp1","y","x","nens"} );
-    dm.register_and_allocate<real>( "precip_ice_flux"    , "grid-box average ice/snow flux (kg m^-2 s^-1) pverp" , {       nz+1,ny,nx,nens} , {     "zp1","y","x","nens"} );
-    dm.register_and_allocate<real>( "liq_ice_exchange"   , "sum of liq-ice phase change tendenices"              , {       nz  ,ny,nx,nens} , {     "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "vap_liq_exchange"   , "sum of vap-liq phase change tendenices"              , {       nz  ,ny,nx,nens} , {     "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "vap_ice_exchange"   , "sum of vap-ice phase change tendenices"              , {       nz  ,ny,nx,nens} , {     "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "p3_tend_out"        , "micro physics tendencies"                            , {p3_out,nz  ,ny,nx,nens} , {"p3","z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "qv_prev"            , "qv from the previous step"                           , {       nz  ,ny,nx,nens} , {     "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "t_prev"             , "Temperature from the previous step"                  , {       nz  ,ny,nx,nens} , {     "z"  ,"y","x","nens"} );
+    int p3_nout = 49;
+    dm.register_and_allocate<real>( "precip_liq_surf"    , "precipitation rate, liquid       m s-1"              , {             ny,nx,nens} , {                "y","x","nens"} );
+    dm.register_and_allocate<real>( "precip_ice_surf"    , "precipitation rate, solid        m s-1"              , {             ny,nx,nens} , {                "y","x","nens"} );
+    dm.register_and_allocate<real>( "diag_eff_radius_qc" , "effective radius, cloud          m"                  , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
+    dm.register_and_allocate<real>( "diag_eff_radius_qi" , "effective radius, ice            m"                  , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
+    dm.register_and_allocate<real>( "bulk_qi"            , "bulk density of ice              kg m-3"             , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
+    dm.register_and_allocate<real>( "mu_c"               , "Size distribution shape parameter for radiation"     , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
+    dm.register_and_allocate<real>( "lamc"               , "Size distribution slope parameter for radiation"     , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
+    dm.register_and_allocate<real>( "qv2qi_depos_tend"   , "qitend due to deposition/sublimation"                , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
+    dm.register_and_allocate<real>( "precip_total_tend"  , "Total precipitation (rain + snow)"                   , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
+    dm.register_and_allocate<real>( "nevapr"             , "evaporation of total precipitation (rain + snow)"    , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
+    dm.register_and_allocate<real>( "qr_evap_tend"       , "evaporation of rain"                                 , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
+    dm.register_and_allocate<real>( "precip_liq_flux"    , "grid-box average rain flux (kg m^-2 s^-1) pverp"     , {        nz+1,ny,nx,nens} , {          "zp1","y","x","nens"} );
+    dm.register_and_allocate<real>( "precip_ice_flux"    , "grid-box average ice/snow flux (kg m^-2 s^-1) pverp" , {        nz+1,ny,nx,nens} , {          "zp1","y","x","nens"} );
+    dm.register_and_allocate<real>( "liq_ice_exchange"   , "sum of liq-ice phase change tendenices"              , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
+    dm.register_and_allocate<real>( "vap_liq_exchange"   , "sum of vap-liq phase change tendenices"              , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
+    dm.register_and_allocate<real>( "vap_ice_exchange"   , "sum of vap-ice phase change tendenices"              , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
+    dm.register_and_allocate<real>( "p3_tend_out"        , "micro physics tendencies"                            , {p3_nout,nz  ,ny,nx,nens} , {"p3_nout","z"  ,"y","x","nens"} );
+    dm.register_and_allocate<real>( "qv_prev"            , "qv from the previous step"                           , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
+    dm.register_and_allocate<real>( "t_prev"             , "Temperature from the previous step"                  , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
+
+
+    auto cloud_water         = dm.get<real,4>( "cloud_water"        );
+    auto cloud_water_num     = dm.get<real,4>( "cloud_water_num"    );
+    auto rain                = dm.get<real,4>( "rain"               );
+    auto rain_num            = dm.get<real,4>( "rain_num"           );
+    auto ice                 = dm.get<real,4>( "ice"                );
+    auto ice_num             = dm.get<real,4>( "ice_num"            );
+    auto ice_rime            = dm.get<real,4>( "ice_rime"           );
+    auto ice_rime_vol        = dm.get<real,4>( "ice_rime_vol"       );
+    auto water_vapor         = dm.get<real,4>( "water_vapor"        );
+    auto precip_liq_surf     = dm.get<real,3>( "precip_liq_surf"    );
+    auto precip_ice_surf     = dm.get<real,3>( "precip_ice_surf"    );
+    auto diag_eff_radius_qc  = dm.get<real,4>( "diag_eff_radius_qc" );
+    auto diag_eff_radius_qi  = dm.get<real,4>( "diag_eff_radius_qi" );
+    auto bulk_qi             = dm.get<real,4>( "bulk_qi"            );
+    auto mu_c                = dm.get<real,4>( "mu_c"               );
+    auto lamc                = dm.get<real,4>( "lamc"               );
+    auto qv2qi_depos_tend    = dm.get<real,4>( "qv2qi_depos_tend"   );
+    auto precip_total_tend   = dm.get<real,4>( "precip_total_tend"  );
+    auto nevapr              = dm.get<real,4>( "nevapr"             );
+    auto qr_evap_tend        = dm.get<real,4>( "qr_evap_tend"       );
+    auto precip_liq_flux     = dm.get<real,4>( "precip_liq_flux"    );
+    auto precip_ice_flux     = dm.get<real,4>( "precip_ice_flux"    );
+    auto liq_ice_exchange    = dm.get<real,4>( "liq_ice_exchange"   );
+    auto vap_liq_exchange    = dm.get<real,4>( "vap_liq_exchange"   );
+    auto vap_ice_exchange    = dm.get<real,4>( "vap_ice_exchange"   );
+    auto p3_tend_out         = dm.get<real,5>( "p3_tend_out"        );
+    auto qv_prev             = dm.get<real,4>( "qv_prev"            );
+    auto t_prev              = dm.get<real,4>( "t_prev"             );
+
+    parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      cloud_water       (k,j,i,iens) = 0;
+      cloud_water_num   (k,j,i,iens) = 0;
+      rain              (k,j,i,iens) = 0;
+      rain_num          (k,j,i,iens) = 0;
+      ice               (k,j,i,iens) = 0;
+      ice_num           (k,j,i,iens) = 0;
+      ice_rime          (k,j,i,iens) = 0;
+      ice_rime_vol      (k,j,i,iens) = 0;
+      water_vapor       (k,j,i,iens) = 0;
+      precip_liq_surf   (  j,i,iens) = 0;
+      precip_ice_surf   (  j,i,iens) = 0;
+      diag_eff_radius_qc(k,j,i,iens) = 0;
+      diag_eff_radius_qi(k,j,i,iens) = 0;
+      bulk_qi           (k,j,i,iens) = 0;
+      mu_c              (k,j,i,iens) = 0;
+      lamc              (k,j,i,iens) = 0;
+      qv2qi_depos_tend  (k,j,i,iens) = 0;
+      precip_total_tend (k,j,i,iens) = 0;
+      nevapr            (k,j,i,iens) = 0;
+      qr_evap_tend      (k,j,i,iens) = 0;
+      precip_liq_flux   (k,j,i,iens) = 0;
+      precip_ice_flux   (k,j,i,iens) = 0;
+      liq_ice_exchange  (k,j,i,iens) = 0;
+      vap_liq_exchange  (k,j,i,iens) = 0;
+      vap_ice_exchange  (k,j,i,iens) = 0;
+      qv_prev           (k,j,i,iens) = 0;
+      t_prev            (k,j,i,iens) = 0;
+
+      if (k == nz-1) {
+        precip_liq_flux(nz,j,i,iens) = 0;
+        precip_ice_flux(nz,j,i,iens) = 0;
+      }
+
+      for (int l=0; l < p3_nout; l++) {
+        p3_tend_out(l,k,j,i,iens) = 0;
+      }
+    });
 
     real rhoh2o = 1000.;
     real mwdry  = 28.966;
@@ -168,8 +240,8 @@ public:
     real pi     = M_PI;
     int  iulog  = 1;
     bool masterproc = true;
-    micro_p3_utils_init_fortran(constants.cp_d , constants.R_d , constants.R_v ,rhoh2o , mwh2o , mwdry , grav ,
-                                latvap , latice, cpliq , tmelt , pi , iulog , masterproc);
+    micro_p3_utils_init_fortran( constants.cp_d , constants.R_d , constants.R_v , rhoh2o , mwh2o , mwdry ,
+                                 grav , latvap , latice, cpliq , tmelt , pi , iulog , masterproc );
 
     std::string dir = "../../physics/micro/p3";
     std::string ver = "4";
@@ -181,6 +253,7 @@ public:
 
 
   void timeStep( DataManager &dm , real dt ) {
+
     // Get the dimensions sizes
     int nz   = dm.get_dimension_size("z"   );
     int ny   = dm.get_dimension_size("y"   );
@@ -277,43 +350,58 @@ public:
     real R_v     = this->constants.R_v;
     real cp_d    = this->constants.cp_d;
     real p0      = this->constants.p0;
+
+    YAKL_SCOPE( first_step , this->first_step );
+
     // Save initial state, and compute inputs for kessler(...)
     parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
-      qc           (k,i) = rho_c (k,i) / rho_dry(k,i);
-      nc           (k,i) = rho_nc(k,i) / rho_dry(k,i);
-      qr           (k,i) = rho_r (k,i) / rho_dry(k,i);
-      nr           (k,i) = rho_nr(k,i) / rho_dry(k,i);
-      qi           (k,i) = rho_i (k,i) / rho_dry(k,i);
-      ni           (k,i) = rho_ni(k,i) / rho_dry(k,i);
-      qm           (k,i) = rho_m (k,i) / rho_dry(k,i);
-      bm           (k,i) = rho_bm(k,i) / rho_dry(k,i);
-      qv           (k,i) = rho_v (k,i) / rho_dry(k,i);
-      pressure     (k,i) = pressure_dry(k,i) + R_v * rho_v(k,i) * temp(k,i);
-      exner        (k,i) = pow( pressure(k,i) / p0 , R_d / cp_d );
-      inv_exner    (k,i) = 1. / exner(k,i);
-      theta        (k,i) = temp(k,i) / exner(k,i);
+      qc       (k,i) = rho_c (k,i) / rho_dry(k,i);
+      nc       (k,i) = rho_nc(k,i) / rho_dry(k,i);
+      qr       (k,i) = rho_r (k,i) / rho_dry(k,i);
+      nr       (k,i) = rho_nr(k,i) / rho_dry(k,i);
+      qi       (k,i) = rho_i (k,i) / rho_dry(k,i);
+      ni       (k,i) = rho_ni(k,i) / rho_dry(k,i);
+      qm       (k,i) = rho_m (k,i) / rho_dry(k,i);
+      bm       (k,i) = rho_bm(k,i) / rho_dry(k,i);
+      qv       (k,i) = rho_v (k,i) / rho_dry(k,i);
+      pressure (k,i) = pressure_dry(k,i) + R_v * rho_v(k,i) * temp(k,i);
+      exner    (k,i) = pow( pressure(k,i) / p0 , R_d / cp_d );
+      inv_exner(k,i) = 1. / exner(k,i);
+      theta    (k,i) = temp(k,i) / exner(k,i);
       // P3 uses dpres to calculate density via the hydrostatic assumption.
       // So we just reverse this to compute dpres to give true density
       real rho = rho_dry(k,i) + rho_c(k,i) + rho_r(k,i) + rho_i(k,i) + rho_m(k,i) + rho_v(k,i);
-      dpres        (k,i) = rho * grav * dz(k,i);
+      dpres(k,i) = rho * grav * dz(k,i);
       // nc_nuceat_tend, nccn_prescribed, and ni_activated are not used
+      nc_nuceat_tend (k,i) = 0;
+      nccn_prescribed(k,i) = 0;
+      ni_activated   (k,i) = 0;
       // cld_frac_[lir] are set to one if there is mass; otherwise zero
-      cld_frac_l   (k,i) = rho_c(k,i) > 0 ? 1 : 0;
-      cld_frac_i   (k,i) = rho_i(k,i) > 0 ? 1 : 0;
-      // cld_frac_r   (k,i) = rho_r(k,i) > 0 ? 1 : 0;
-      // Peter Caldwell recommended setting cld_frac_r to 1 all the time
-      cld_frac_r   (k,i) = 1;
+      // cld_frac_l(k,i) = rho_c(k,i) > 0 ? 1 : 0;
+      // cld_frac_i(k,i) = rho_i(k,i) > 0 ? 1 : 0;
+      // cld_frac_r(k,i) = rho_r(k,i) > 0 ? 1 : 0;
+      // Looks like I just need to set it to 1 every time
+      cld_frac_l(k,i) = 1;
+      cld_frac_i(k,i) = 1;
+      cld_frac_r(k,i) = 1;
       // inv_qc_relvar is always set to one
       inv_qc_relvar(k,i) = 1;
       // col_location is for debugging only, and it will be ignored for now
       if (k < 3) { col_location(k,i) = 1; }
+
+      if (first_step) {
+        qv_prev(k,i) = qv  (k,i);
+        t_prev (k,i) = temp(k,i);
+      }
     });
+
+    first_step = false;
 
     int it = 1;
     int its = 1;
     int ite = ncol;
     int kts = 1;
-    int kte = ncol;
+    int kte = nz;
     bool do_predict_nc = false;
     bool do_prescribed_CCN = false;
     double elapsed_s;
