@@ -86,7 +86,7 @@ inline void validate_array_nan( yakl::Array<T,N,MEM,STYLE> const &arr) {
   parallel_for( arr.totElems() , YAKL_LAMBDA (int i) {
     if ( std::isnan(arr.myData[i]) ) { nan_found = true; }
   });
-  if (nan_found.hostRead()) { std::cout << "WARNING: NaN encountered in array" << std::endl; endrun(); }
+  if (nan_found.hostRead()) { std::cout << "WARNING: NaN encountered in array: " << std::endl; endrun(); }
 }
 
 
@@ -119,7 +119,7 @@ inline void validate_array_positive( yakl::Array<T,N,MEM,STYLE> const &arr) {
   parallel_for( arr.totElems() , YAKL_LAMBDA (int i) {
     if ( arr.myData[i] < 0. ) { neg_found = true; }
   });
-  if (neg_found.hostRead()) { std::cout << "WARNING: negative value encountered in array" << std::endl; }
+  if (neg_found.hostRead()) { std::cout << "WARNING: negative value encountered in array" << yakl::intrinsics::minval(arr) << std::endl; }
 }
 
 

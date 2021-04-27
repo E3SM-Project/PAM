@@ -53,6 +53,7 @@ public:
   };
 
   real grav;
+  real cp_l;
 
   // This must be set during init() so we can return it in the get_water_vapor_index function
   int tracer_index_vapor;
@@ -90,6 +91,7 @@ public:
     constants.p0      = 1.e5;
     grav              = 9.81;
     first_step        = true;
+    cp_l              = 4218.;
   }
 
 
@@ -122,7 +124,7 @@ public:
     tracer_IDs(ID_NR) = dycore.add_tracer(dm , "rain_num"        , "Rain Water Number"  , true     , false);
     tracer_IDs(ID_I ) = dycore.add_tracer(dm , "ice"             , "Ice Mass"           , true     , true );
     tracer_IDs(ID_NI) = dycore.add_tracer(dm , "ice_num"         , "Ice Number"         , true     , false);
-    tracer_IDs(ID_M ) = dycore.add_tracer(dm , "ice_rime"        , "Ice-Rime Mass"      , true     , true );
+    tracer_IDs(ID_M ) = dycore.add_tracer(dm , "ice_rime"        , "Ice-Rime Mass"      , true     , false);
     tracer_IDs(ID_BM) = dycore.add_tracer(dm , "ice_rime_vol"    , "Ice-Rime Volume"    , true     , false);
     tracer_IDs(ID_V ) = dycore.add_tracer(dm , "water_vapor"     , "Water Vapor"        , true     , true );
 
@@ -234,13 +236,12 @@ public:
     real mwh2o  = 0.622 * mwdry;
     real latvap = 2.5E6;
     real latice = 3.50E5;
-    real cpliq  = 4218.;
     real tmelt  = 273.15;
     real pi     = M_PI;
     int  iulog  = 1;
     bool masterproc = true;
     micro_p3_utils_init_fortran( constants.cp_d , constants.R_d , constants.R_v , rhoh2o , mwh2o , mwdry ,
-                                 grav , latvap , latice, cpliq , tmelt , pi , iulog , masterproc );
+                                 grav , latvap , latice, cp_l , tmelt , pi , iulog , masterproc );
 
     std::string dir = "../../physics/micro/p3";
     std::string ver = "4";
@@ -348,12 +349,22 @@ public:
     real R_d     = this->constants.R_d;
     real R_v     = this->constants.R_v;
     real cp_d    = this->constants.cp_d;
+    real cp_v    = this->constants.cp_v;
+    real cp_l    = this->cp_l;
     real p0      = this->constants.p0;
 
     YAKL_SCOPE( first_step , this->first_step );
 
     // Save initial state, and compute inputs for kessler(...)
     parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
+      // Compute total density
+      real rho = rho_dry(k,i) + rho_c(k,i) + rho_r(k,i) + rho_i(k,i) + rho_v(k,i);
+
+      // P3 doesn't do saturation adjustment, so we need to do that ahead of time
+      compute_adjusted_state(rho, rho_dry(k,i) , rho_v(k,i) , rho_c(k,i) , temp(k,i),
+                             R_v , cp_d , cp_v , cp_l);
+
+      // Compute quantities for P3
       qc       (k,i) = rho_c (k,i) / rho_dry(k,i);
       nc       (k,i) = rho_nc(k,i) / rho_dry(k,i);
       qr       (k,i) = rho_r (k,i) / rho_dry(k,i);
@@ -369,7 +380,6 @@ public:
       theta    (k,i) = temp(k,i) / exner(k,i);
       // P3 uses dpres to calculate density via the hydrostatic assumption.
       // So we just reverse this to compute dpres to give true density
-      real rho = rho_dry(k,i) + rho_c(k,i) + rho_r(k,i) + rho_i(k,i) + rho_m(k,i) + rho_v(k,i);
       dpres(k,i) = rho * grav * dz(k,i);
       // nc_nuceat_tend, nccn_prescribed, and ni_activated are not used
       nc_nuceat_tend (k,i) = 0;
@@ -401,37 +411,233 @@ public:
     bool do_prescribed_CCN = false;
     double elapsed_s;
 
-    p3_main_fortran(qc.data() , nc.data() , qr.data() , nr.data() , theta.data() , qv.data() , dt , qi.data() ,
-                    qm.data() , ni.data() , bm.data() , pressure.data() , dz.data() , nc_nuceat_tend.data() ,
-                    nccn_prescribed.data() , ni_activated.data() , inv_qc_relvar.data() , it ,
-                    precip_liq_surf.data() , precip_ice_surf.data() , its , ite , kts , kte ,
-                    diag_eff_radius_qc.data() , diag_eff_radius_qi.data() , bulk_qi.data() , do_predict_nc ,
-                    do_prescribed_CCN , dpres.data() , inv_exner.data() , qv2qi_depos_tend.data() ,
-                    precip_total_tend.data() , nevapr.data() , qr_evap_tend.data() , precip_liq_flux.data() ,
-                    precip_ice_flux.data() , cld_frac_r.data() , cld_frac_l.data() , cld_frac_i.data() , p3_tend_out.data() , mu_c.data() ,
-                    lamc.data() , liq_ice_exchange.data() , vap_liq_exchange.data() , vap_ice_exchange.data() , 
-                    qv_prev.data() , t_prev.data() , col_location.data() , &elapsed_s );
+    auto qc_host                 = qc                .createHostCopy();
+    auto nc_host                 = nc                .createHostCopy();
+    auto qr_host                 = qr                .createHostCopy();
+    auto nr_host                 = nr                .createHostCopy();
+    auto theta_host              = theta             .createHostCopy();
+    auto qv_host                 = qv                .createHostCopy();
+    auto qi_host                 = qi                .createHostCopy();
+    auto qm_host                 = qm                .createHostCopy();
+    auto ni_host                 = ni                .createHostCopy();
+    auto bm_host                 = bm                .createHostCopy();
+    auto pressure_host           = pressure          .createHostCopy();
+    auto dz_host                 = dz                .createHostCopy();
+    auto nc_nuceat_tend_host     = nc_nuceat_tend    .createHostCopy();
+    auto nccn_prescribed_host    = nccn_prescribed   .createHostCopy();
+    auto ni_activated_host       = ni_activated      .createHostCopy();
+    auto inv_qc_relvar_host      = inv_qc_relvar     .createHostCopy();
+    auto precip_liq_surf_host    = precip_liq_surf   .createHostCopy();
+    auto precip_ice_surf_host    = precip_ice_surf   .createHostCopy();
+    auto diag_eff_radius_qc_host = diag_eff_radius_qc.createHostCopy();
+    auto diag_eff_radius_qi_host = diag_eff_radius_qi.createHostCopy();
+    auto bulk_qi_host            = bulk_qi           .createHostCopy();
+    auto dpres_host              = dpres             .createHostCopy();
+    auto inv_exner_host          = inv_exner         .createHostCopy();
+    auto qv2qi_depos_tend_host   = qv2qi_depos_tend  .createHostCopy();
+    auto precip_total_tend_host  = precip_total_tend .createHostCopy();
+    auto nevapr_host             = nevapr            .createHostCopy();
+    auto qr_evap_tend_host       = qr_evap_tend      .createHostCopy();
+    auto precip_liq_flux_host    = precip_liq_flux   .createHostCopy();
+    auto precip_ice_flux_host    = precip_ice_flux   .createHostCopy();
+    auto cld_frac_r_host         = cld_frac_r        .createHostCopy();
+    auto cld_frac_l_host         = cld_frac_l        .createHostCopy();
+    auto cld_frac_i_host         = cld_frac_i        .createHostCopy();
+    auto p3_tend_out_host        = p3_tend_out       .createHostCopy();
+    auto mu_c_host               = mu_c              .createHostCopy();
+    auto lamc_host               = lamc              .createHostCopy();
+    auto liq_ice_exchange_host   = liq_ice_exchange  .createHostCopy();
+    auto vap_liq_exchange_host   = vap_liq_exchange  .createHostCopy();
+    auto vap_ice_exchange_host   = vap_ice_exchange  .createHostCopy();
+    auto qv_prev_host            = qv_prev           .createHostCopy();
+    auto t_prev_host             = t_prev            .createHostCopy();
+    auto col_location_host       = col_location      .createHostCopy();
+
+    p3_main_fortran(qc_host.data() , nc_host.data() , qr_host.data() , nr_host.data() , theta_host.data() , qv_host.data() , dt , qi_host.data() ,
+                    qm_host.data() , ni_host.data() , bm_host.data() , pressure_host.data() , dz_host.data() , nc_nuceat_tend_host.data() ,
+                    nccn_prescribed_host.data() , ni_activated_host.data() , inv_qc_relvar_host.data() , it ,
+                    precip_liq_surf_host.data() , precip_ice_surf_host.data() , its , ite , kts , kte ,
+                    diag_eff_radius_qc_host.data() , diag_eff_radius_qi_host.data() , bulk_qi_host.data() , do_predict_nc ,
+                    do_prescribed_CCN , dpres_host.data() , inv_exner_host.data() , qv2qi_depos_tend_host.data() ,
+                    precip_total_tend_host.data() , nevapr_host.data() , qr_evap_tend_host.data() , precip_liq_flux_host.data() ,
+                    precip_ice_flux_host.data() , cld_frac_r_host.data() , cld_frac_l_host.data() , cld_frac_i_host.data() , p3_tend_out_host.data() , mu_c_host.data() ,
+                    lamc_host.data() , liq_ice_exchange_host.data() , vap_liq_exchange_host.data() , vap_ice_exchange_host.data() , 
+                    qv_prev_host.data() , t_prev_host.data() , col_location_host.data() , &elapsed_s );
+
+    qc_host                .deep_copy_to( qc                 );
+    nc_host                .deep_copy_to( nc                 );
+    qr_host                .deep_copy_to( qr                 );
+    nr_host                .deep_copy_to( nr                 );
+    theta_host             .deep_copy_to( theta              );
+    qv_host                .deep_copy_to( qv                 );
+    qi_host                .deep_copy_to( qi                 );
+    qm_host                .deep_copy_to( qm                 );
+    ni_host                .deep_copy_to( ni                 );
+    bm_host                .deep_copy_to( bm                 );
+    pressure_host          .deep_copy_to( pressure           );
+    dz_host                .deep_copy_to( dz                 );
+    nc_nuceat_tend_host    .deep_copy_to( nc_nuceat_tend     );
+    nccn_prescribed_host   .deep_copy_to( nccn_prescribed    );
+    ni_activated_host      .deep_copy_to( ni_activated       );
+    inv_qc_relvar_host     .deep_copy_to( inv_qc_relvar      );
+    precip_liq_surf_host   .deep_copy_to( precip_liq_surf    );
+    precip_ice_surf_host   .deep_copy_to( precip_ice_surf    );
+    diag_eff_radius_qc_host.deep_copy_to( diag_eff_radius_qc );
+    diag_eff_radius_qi_host.deep_copy_to( diag_eff_radius_qi );
+    bulk_qi_host           .deep_copy_to( bulk_qi            );
+    dpres_host             .deep_copy_to( dpres              );
+    inv_exner_host         .deep_copy_to( inv_exner          );
+    qv2qi_depos_tend_host  .deep_copy_to( qv2qi_depos_tend   );
+    precip_total_tend_host .deep_copy_to( precip_total_tend  );
+    nevapr_host            .deep_copy_to( nevapr             );
+    qr_evap_tend_host      .deep_copy_to( qr_evap_tend       );
+    precip_liq_flux_host   .deep_copy_to( precip_liq_flux    );
+    precip_ice_flux_host   .deep_copy_to( precip_ice_flux    );
+    cld_frac_r_host        .deep_copy_to( cld_frac_r         );
+    cld_frac_l_host        .deep_copy_to( cld_frac_l         );
+    cld_frac_i_host        .deep_copy_to( cld_frac_i         );
+    p3_tend_out_host       .deep_copy_to( p3_tend_out        );
+    mu_c_host              .deep_copy_to( mu_c               );
+    lamc_host              .deep_copy_to( lamc               );
+    liq_ice_exchange_host  .deep_copy_to( liq_ice_exchange   );
+    vap_liq_exchange_host  .deep_copy_to( vap_liq_exchange   );
+    vap_ice_exchange_host  .deep_copy_to( vap_ice_exchange   );
+    qv_prev_host           .deep_copy_to( qv_prev            );
+    t_prev_host            .deep_copy_to( t_prev             );
+    col_location_host      .deep_copy_to( col_location       );
                     
     ///////////////////////////////////////////////////////////////////////////////
     // Convert P3 outputs into dynamics coupler state and tracer masses
     ///////////////////////////////////////////////////////////////////////////////
     parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
-      rho_c  (k,i) = qc(k,i)*rho_dry(k,i);
-      rho_nc (k,i) = nc(k,i)*rho_dry(k,i);
-      rho_r  (k,i) = qr(k,i)*rho_dry(k,i);
-      rho_nr (k,i) = nr(k,i)*rho_dry(k,i);
-      rho_i  (k,i) = qi(k,i)*rho_dry(k,i);
-      rho_ni (k,i) = ni(k,i)*rho_dry(k,i);
-      rho_m  (k,i) = qm(k,i)*rho_dry(k,i);
-      rho_bm (k,i) = bm(k,i)*rho_dry(k,i);
-      rho_v  (k,i) = qv(k,i)*rho_dry(k,i);
+      rho_c  (k,i) = max( qc(k,i)*rho_dry(k,i) , 0._fp );
+      rho_nc (k,i) = max( nc(k,i)*rho_dry(k,i) , 0._fp );
+      rho_r  (k,i) = max( qr(k,i)*rho_dry(k,i) , 0._fp );
+      rho_nr (k,i) = max( nr(k,i)*rho_dry(k,i) , 0._fp );
+      rho_i  (k,i) = max( qi(k,i)*rho_dry(k,i) , 0._fp );
+      rho_ni (k,i) = max( ni(k,i)*rho_dry(k,i) , 0._fp );
+      rho_m  (k,i) = max( qm(k,i)*rho_dry(k,i) , 0._fp );
+      rho_bm (k,i) = max( bm(k,i)*rho_dry(k,i) , 0._fp );
+      rho_v  (k,i) = max( qv(k,i)*rho_dry(k,i) , 0._fp );
       temp   (k,i) = theta(k,i) * exner(k,i);
       // Save qv and temperature for the next call to p3_main
-      qv_prev(k,i) = qv  (k,i);
+      qv_prev(k,i) = max( qv(k,i) , 0._fp );
       t_prev (k,i) = temp(k,i);
     });
 
   }
+
+
+
+  // Returns saturation vapor pressure
+  YAKL_INLINE real saturation_vapor_pressure(real temp) const {
+    real tc = temp - 273.15;
+    return 610.94 * exp( 17.625*tc / (243.04+tc) );
+  }
+
+
+
+  YAKL_INLINE real latent_heat_condensation(real temp) const {
+    real tc = temp - 273.15;
+    return (2500.8 - 2.36*tc + 0.0016*tc*tc - 0.00006*tc*tc*tc)*1000;
+  }
+
+
+
+  YAKL_INLINE real cp_moist(real rho_d, real rho_v, real rho_c, real cp_d, real cp_v, real cp_l) const {
+    // For the moist specific heat, ignore other species than water vapor and cloud droplets
+    real rho = rho_d + rho_v + rho_c;
+    return rho_d / rho * cp_d + rho_v / rho * cp_v + rho_c / rho * cp_l;
+  }
+
+
+
+  // Compute an instantaneous adjustment of sub or super saturation
+  YAKL_INLINE void compute_adjusted_state(real rho, real rho_d , real &rho_v , real &rho_c , real &temp,
+                                          real R_v , real cp_d , real cp_v , real cp_l) const {
+    // Define a tolerance for convergence
+    real tol = 1.e-6;
+
+    // Saturation vapor pressure at this temperature
+    real svp = saturation_vapor_pressure( temp );
+
+    // Vapor pressure at this temperature
+    real pv = rho_v * R_v * temp;
+
+    // If we're super-saturated, we need to condense until saturation is reached
+    if        (pv > svp) {
+      ////////////////////////////////////////////////////////
+      // Bisection method
+      ////////////////////////////////////////////////////////
+      // Set bounds on how much mass to condense
+      real cond1  = 0;     // Minimum amount we can condense out
+      real cond2 = rho_v;  // Maximum amount we can condense out
+
+      bool keep_iterating = true;
+      while (keep_iterating) {
+        real rho_cond = (cond1 + cond2) / 2;                    // How much water vapor to condense for this iteration
+        real rv_loc = max( 0._fp , rho_v - rho_cond );          // New vapor density
+        real rc_loc = max( 0._fp , rho_c + rho_cond );          // New cloud liquid density
+        real Lv = latent_heat_condensation(temp);               // Compute latent heat of condensation
+        real cp = cp_moist(rho_d,rv_loc,rc_loc,cp_d,cp_v,cp_l); // New moist specific heat at constant pressure
+        real temp_loc = temp + rho_cond*Lv/(rho*cp);            // New temperature after condensation
+        real svp_loc = saturation_vapor_pressure(temp_loc);     // New saturation vapor pressure after condensation
+        real pv_loc = rv_loc * R_v * temp_loc;                  // New vapor pressure after condensation
+        // If we're supersaturated still, we need to condense out more water vapor
+        // otherwise, we need to condense out less water vapor
+        if (pv_loc > svp_loc) {
+          cond1 = rho_cond;
+        } else {
+          cond2 = rho_cond;
+        }
+        // If we've converged, then we can stop iterating
+        if (abs(cond2-cond1) <= tol) {
+          rho_v = rv_loc;
+          rho_c = rc_loc;
+          temp  = temp_loc;
+          keep_iterating = false;
+        }
+      }
+
+    // If we are unsaturated and have cloud liquid
+    } else if (pv < svp && rho_c > 0) {
+      // If there's cloud, evaporate enough to achieve saturation
+      // or all of it if there isn't enough to reach saturation
+      ////////////////////////////////////////////////////////
+      // Bisection method
+      ////////////////////////////////////////////////////////
+      // Set bounds on how much mass to evaporate
+      real evap1 = 0;     // minimum amount we can evaporate
+      real evap2 = rho_c; // maximum amount we can evaporate
+
+      bool keep_iterating = true;
+      while (keep_iterating) {
+        real rho_evap = (evap1 + evap2) / 2;                    // How much water vapor to evapense
+        real rv_loc = max( 0._fp , rho_v + rho_evap );          // New vapor density
+        real rc_loc = max( 0._fp , rho_c - rho_evap );          // New cloud liquid density
+        real Lv = latent_heat_condensation(temp);               // Compute latent heat of condensation for water
+        real cp = cp_moist(rho_d,rv_loc,rc_loc,cp_d,cp_v,cp_l); // New moist specific heat
+        real temp_loc = temp - rho_evap*Lv/(rho*cp);            // New temperature after evaporation
+        real svp_loc = saturation_vapor_pressure(temp_loc);     // New saturation vapor pressure after evaporation
+        real pv_loc = rv_loc * R_v * temp_loc;                  // New vapor pressure after evaporation
+        // If we're unsaturated still, we need to evaporate out more water vapor
+        // otherwise, we need to evaporate out less water vapor
+        if (pv_loc < svp_loc) {
+          evap1 = rho_evap;
+        } else {
+          evap2 = rho_evap;
+        }
+        // If we've converged, then we can stop iterating
+        if (abs(evap2-evap1) <= tol) {
+          rho_v = rv_loc;
+          rho_c = rc_loc;
+          temp  = temp_loc;
+          keep_iterating = false;
+        }
+      }
+    }
+  }
+
 
 
 
