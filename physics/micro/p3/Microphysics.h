@@ -116,15 +116,15 @@ public:
 
     // Register tracers in the dycore
     //                                        name                 description            positive   adds mass
-    tracer_IDs(ID_C ) = dycore.add_tracer(dm , "cloud_water"     , "Cloud Water Mass"   , true     , true);
-    tracer_IDs(ID_NC) = dycore.add_tracer(dm , "cloud_water_num" , "Cloud Water Number" , true     , true);
-    tracer_IDs(ID_R ) = dycore.add_tracer(dm , "rain"            , "Rain Water Mass"    , true     , true);
-    tracer_IDs(ID_NR) = dycore.add_tracer(dm , "rain_num"        , "Rain Water Number"  , true     , true);
-    tracer_IDs(ID_I ) = dycore.add_tracer(dm , "ice"             , "Ice Mass"           , true     , true);
-    tracer_IDs(ID_NI) = dycore.add_tracer(dm , "ice_num"         , "Ice Number"         , true     , true);
-    tracer_IDs(ID_M ) = dycore.add_tracer(dm , "ice_rime"        , "Ice-Rime Mass"      , true     , true);
-    tracer_IDs(ID_BM) = dycore.add_tracer(dm , "ice_rime_vol"    , "Ice-Rime Volume"    , true     , true);
-    tracer_IDs(ID_V ) = dycore.add_tracer(dm , "water_vapor"     , "Water Vapor"        , true     , true);
+    tracer_IDs(ID_C ) = dycore.add_tracer(dm , "cloud_water"     , "Cloud Water Mass"   , true     , true );
+    tracer_IDs(ID_NC) = dycore.add_tracer(dm , "cloud_water_num" , "Cloud Water Number" , true     , false);
+    tracer_IDs(ID_R ) = dycore.add_tracer(dm , "rain"            , "Rain Water Mass"    , true     , true );
+    tracer_IDs(ID_NR) = dycore.add_tracer(dm , "rain_num"        , "Rain Water Number"  , true     , false);
+    tracer_IDs(ID_I ) = dycore.add_tracer(dm , "ice"             , "Ice Mass"           , true     , true );
+    tracer_IDs(ID_NI) = dycore.add_tracer(dm , "ice_num"         , "Ice Number"         , true     , false);
+    tracer_IDs(ID_M ) = dycore.add_tracer(dm , "ice_rime"        , "Ice-Rime Mass"      , true     , true );
+    tracer_IDs(ID_BM) = dycore.add_tracer(dm , "ice_rime_vol"    , "Ice-Rime Volume"    , true     , false);
+    tracer_IDs(ID_V ) = dycore.add_tracer(dm , "water_vapor"     , "Water Vapor"        , true     , true );
 
     // Register and allocate the tracers in the DataManager
     dm.register_and_allocate<real>( "cloud_water"     , "Cloud Water Mass"   , {nz,ny,nx,nens} , {"z","y","x","nens"} );
@@ -160,7 +160,6 @@ public:
     dm.register_and_allocate<real>( "p3_tend_out"        , "micro physics tendencies"                            , {p3_nout,nz  ,ny,nx,nens} , {"p3_nout","z"  ,"y","x","nens"} );
     dm.register_and_allocate<real>( "qv_prev"            , "qv from the previous step"                           , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
     dm.register_and_allocate<real>( "t_prev"             , "Temperature from the previous step"                  , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-
 
     auto cloud_water         = dm.get<real,4>( "cloud_water"        );
     auto cloud_water_num     = dm.get<real,4>( "cloud_water_num"    );
@@ -376,11 +375,7 @@ public:
       nc_nuceat_tend (k,i) = 0;
       nccn_prescribed(k,i) = 0;
       ni_activated   (k,i) = 0;
-      // cld_frac_[lir] are set to one if there is mass; otherwise zero
-      // cld_frac_l(k,i) = rho_c(k,i) > 0 ? 1 : 0;
-      // cld_frac_i(k,i) = rho_i(k,i) > 0 ? 1 : 0;
-      // cld_frac_r(k,i) = rho_r(k,i) > 0 ? 1 : 0;
-      // Looks like I just need to set it to 1 every time
+      // Assume cloud fracton is always 1
       cld_frac_l(k,i) = 1;
       cld_frac_i(k,i) = 1;
       cld_frac_r(k,i) = 1;
