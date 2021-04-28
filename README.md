@@ -4,6 +4,7 @@ PAM is a portable atmospheric model written in C++ with performance portability 
 
 * [Directory Structure](#directory-structure)
 * [Running standalone PAM](#running-standalone-pam)
+* [Data types](#data-types)
 * [`DataManager` class](#datamanager-class)
 * [Driver, coupler state, and dimensions](#driver-coupler-state-and-dimensions)
 * [`Dycore` class](#dycore-class)
@@ -39,6 +40,10 @@ PAM is a portable atmospheric model written in C++ with performance portability 
 8. Edit `../inputs/input_euler3d.yaml` to whatever parameters you want
 9. `./driver ../inputs/input_euler3d.yaml`
 
+## Data types
+
+In `include/pam_const.h`, some convenient `typedef`s are created to hide the ugly templated `Array` syntax. For instance, a `real3d` is a 3-D array of type `real` that can only be accessed on the device in kernels. An `int2d` is a 2-D array of integers that can only be accessed on the device in kernels. A `realHost4d` is a 4-D array of real values that can only be accessed on the host outside kernels.
+
 ## `DataManager` class
 
 The `DataManager` class exists as a convenient way store and manage persistent data that needs to exist for an entire CRM run (an entire "GCM physics time step"). To allocate data, one uses:
@@ -55,6 +60,8 @@ For convenience, you can pass an initializer list like `{nz,ny,nx,nens}` for the
 ```C++
 dm.register_and_allocate<real>( "water_vapor" , "Water Vapor Density" , {nz,ny,nx,nens} , {"z","y","x","nens"} );
 ```
+
+Only C-style array objects are used and supported in the `DataManager`.
 
 All DataManager `get*` functions are YAKL Arrays that wrap internal DataManager pointers into contiguous memory. **Important**: DataManager calls only return YAKL `Array` objects that wrap pointers -- meaning there is virtually no cost to accessing already registered entries in the DataManager. It only copies metadata and then wraps an already existing pointer. 
 
