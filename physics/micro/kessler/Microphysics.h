@@ -109,7 +109,6 @@ public:
     auto rho_r        = dm.get_lev_col<real>("precip_liquid");
     auto rho_dry      = dm.get_lev_col<real>("density_dry");
     auto temp         = dm.get_lev_col<real>("temp");
-    auto pressure_dry = dm.get_lev_col<real>("pressure_dry");
 
     #ifdef PAM_DEBUG
       validate_array_positive(rho_v);
@@ -152,7 +151,7 @@ public:
       qv      (k,i) = rho_v(k,i) / rho_dry(k,i);
       qc      (k,i) = rho_c(k,i) / rho_dry(k,i);
       qr      (k,i) = rho_r(k,i) / rho_dry(k,i);
-      pressure(k,i) = pressure_dry(k,i) + R_v * rho_v(k,i) * temp(k,i);
+      pressure(k,i) = R_d * rho_dry(k,i) * temp(k,i) + R_v * rho_v(k,i) * temp(k,i);
       exner   (k,i) = pow( pressure(k,i) / p0 , R_d / cp_d );
       theta   (k,i) = temp(k,i) / exner(k,i);
     });
@@ -230,8 +229,8 @@ public:
       rho_v   (k,i) = qv(k,i)*rho_dry(k,i);
       rho_c   (k,i) = qc(k,i)*rho_dry(k,i);
       rho_r   (k,i) = qr(k,i)*rho_dry(k,i);
-      pressure(k,i) = pressure_dry(k,i) + R_v * rho_v(k,i) * temp(k,i);
-      exner   (k,i) = pow( pressure(k,i) / p0 , R_d / cp_d );
+      // While micro changes total pressure, thus changing exner, the definition
+      // of theta depends on the old exner pressure, so we'll use old exner here
       temp    (k,i) = theta(k,i) * exner(k,i);
     });
 

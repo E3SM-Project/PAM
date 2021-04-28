@@ -208,7 +208,6 @@ public:
 
     auto rho_dry      = dm.get_lev_col<real>("density_dry");
     auto temp         = dm.get_lev_col<real>("temp");
-    auto pressure_dry = dm.get_lev_col<real>("pressure_dry");
 
     int nz   = dm.get_dimension_size("z"   );
     int ny   = dm.get_dimension_size("y"   );
@@ -261,7 +260,7 @@ public:
       qi      (k,i) = rho_i(k,i) / rho_dry(k,i);
       qs      (k,i) = rho_s(k,i) / rho_dry(k,i);
       qg      (k,i) = rho_g(k,i) / rho_dry(k,i);
-      pressure(k,i) = pressure_dry(k,i) + R_v * rho_v(k,i) * temp(k,i);
+      pressure(k,i) = R_d * rho_dry(k,i) * temp(k,i) + R_v * rho_v(k,i) * temp(k,i);
       exner   (k,i) = pow( pressure(k,i) / p0 , R_d / cp_d );
       theta   (k,i) = temp(k,i) / exner(k,i);
       rho     (k,i) = rho_dry(k,i) + rho_v(k,i) + rho_c(k,i) + rho_r(k,i) + rho_i(k,i) + rho_s(k,i) + rho_g(k,i);
@@ -335,8 +334,8 @@ public:
       rho_i   (k,i) = qi(k,i)*rho_dry(k,i);
       rho_s   (k,i) = qs(k,i)*rho_dry(k,i);
       rho_r   (k,i) = qg(k,i)*rho_dry(k,i);
-      pressure(k,i) = pressure_dry(k,i) + R_v * rho_v(k,i) * temp(k,i);
-      exner   (k,i) = pow( pressure(k,i) / p0 , R_d / cp_d );
+      // While micro changes total pressure, thus changing exner, the definition
+      // of theta depends on the old exner pressure, so we'll use old exner here
       temp    (k,i) = theta(k,i) * exner(k,i);
     });
 

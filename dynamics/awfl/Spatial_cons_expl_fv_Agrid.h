@@ -171,7 +171,6 @@ public:
     real4d dm_vvel         = dm.get<real,4>( "vvel"             );
     real4d dm_wvel         = dm.get<real,4>( "wvel"             );
     real4d dm_temp         = dm.get<real,4>( "temp"             );
-    real4d dm_pressure_dry = dm.get<real,4>( "pressure_dry"     );
 
     YAKL_SCOPE( hyDensCells      , this->hyDensCells      );
     YAKL_SCOPE( hyDensThetaCells , this->hyDensThetaCells );
@@ -205,13 +204,11 @@ public:
         if (tracer_adds_mass(tr)) dens_dry -= tracers(tr,hs+k,hs+j,hs+i,iens);
       }
       real temp = pressure / ( dens_dry * Rd + dens_vap * Rv );
-      real pressure_dry = dens_dry * Rd * temp;
       dm_dens_dry    (k,j,i,iens) = dens_dry;
       dm_uvel        (k,j,i,iens) = uvel;
       dm_vvel        (k,j,i,iens) = vvel;
       dm_wvel        (k,j,i,iens) = wvel;
       dm_temp        (k,j,i,iens) = temp;
-      dm_pressure_dry(k,j,i,iens) = pressure_dry;
       for (int tr=0; tr < num_tracers; tr++) {
         dm_tracers(tr,k,j,i,iens) = tracers(tr,hs+k,hs+j,hs+i,iens);
       }
@@ -229,7 +226,6 @@ public:
     real4d dm_vvel         = dm.get<real,4>( "vvel"             );
     real4d dm_wvel         = dm.get<real,4>( "wvel"             );
     real4d dm_temp         = dm.get<real,4>( "temp"             );
-    real4d dm_pressure_dry = dm.get<real,4>( "pressure_dry"     );
 
     YAKL_SCOPE( hyDensCells      , this->hyDensCells      );
     YAKL_SCOPE( hyDensThetaCells , this->hyDensThetaCells );
@@ -259,7 +255,6 @@ public:
       real vvel         = dm_vvel        (k,j,i,iens);
       real wvel         = dm_wvel        (k,j,i,iens);
       real temp         = dm_temp        (k,j,i,iens);
-      real pressure_dry = dm_pressure_dry(k,j,i,iens);
       real dens_vap     = tracers(idWV,hs+k,hs+j,hs+i,iens);
       real dens         = dens_dry;
       for (int tr=0; tr < num_tracers; tr++) {

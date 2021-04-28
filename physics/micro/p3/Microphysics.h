@@ -275,7 +275,6 @@ public:
     // Get coupler state
     auto rho_dry      = dm.get_lev_col<real>("density_dry");
     auto temp         = dm.get_lev_col<real>("temp");
-    auto pressure_dry = dm.get_lev_col<real>("pressure_dry");
 
     // Calculate the grid spacing
     auto zint_in = dm.get<real,2>("vertical_interface_height");
@@ -361,6 +360,7 @@ public:
       // Compute total density
       real rho = rho_dry(k,i) + rho_c(k,i) + rho_r(k,i) + rho_i(k,i) + rho_v(k,i);
 
+      // TODO: Find perhaps a more appropriate adjustment scheme that produces what P3 expects
       // P3 doesn't do saturation adjustment, so we need to do that ahead of time
       compute_adjusted_state(rho, rho_dry(k,i) , rho_v(k,i) , rho_c(k,i) , temp(k,i),
                              R_v , cp_d , cp_v , cp_l);
@@ -375,7 +375,7 @@ public:
       qm       (k,i) = rho_m (k,i) / rho_dry(k,i);
       bm       (k,i) = rho_bm(k,i) / rho_dry(k,i);
       qv       (k,i) = rho_v (k,i) / rho_dry(k,i);
-      pressure (k,i) = pressure_dry(k,i) + R_v * rho_v(k,i) * temp(k,i);
+      pressure (k,i) = R_d * rho_dry(k,i) * temp(k,i) + R_v * rho_v(k,i) * temp(k,i);
       exner    (k,i) = pow( pressure(k,i) / p0 , R_d / cp_d );
       inv_exner(k,i) = 1. / exner(k,i);
       theta    (k,i) = temp(k,i) / exner(k,i);
@@ -523,8 +523,8 @@ public:
       rho_m    (k,i) = max( qm(k,i)*rho_dry(k,i) , 0._fp );
       rho_bm   (k,i) = max( bm(k,i)*rho_dry(k,i) , 0._fp );
       rho_v    (k,i) = max( qv(k,i)*rho_dry(k,i) , 0._fp );
-      pressure (k,i) = pressure_dry(k,i) + R_v * rho_v(k,i) * temp(k,i);
-      exner    (k,i) = pow( pressure(k,i) / p0 , R_d / cp_d );
+      // While micro changes total pressure, thus changing exner, the definition
+      // of theta depends on the old exner pressure, so we'll use old exner here
       temp     (k,i) = theta(k,i) * exner(k,i);
       // Save qv and temperature for the next call to p3_main
       qv_prev  (k,i) = max( qv(k,i) , 0._fp );
