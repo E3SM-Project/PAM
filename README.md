@@ -2,6 +2,15 @@
 
 PAM is a portable atmospheric model written in C++ with performance portability in mind using a kernel launching approach. It works on CPUs, Nvidia GPUs, and AMD GPUs. The goal for PAM is to allow easily exchangeable dynamical core and physics options through a simple and clear interface layer that's common to each. An emphasis is placed on algorithms that give good hardware uitilization on accelerated architectures and MPI patterns that give good scalability.
 
+* [Directory Structure](#directory-structure)
+* [Running standalone PAM](#running-standalone-pam)
+* [`DataManager` class](#datamanager-class)
+* [Driver, coupler state, and dimensions](#driver-coupler-state-and-dimensions)
+* [`Dycore` class](#dycore-class)
+* [`Microphysics` class](#microphysics-class)
+* [Debugging utilities](#debugging-utilites)
+* [`MultipleFields` class](#multiplefields-class)
+
 ## Directory Structure
 
 * `coupler`: DataManager class and coupled state allocator function
