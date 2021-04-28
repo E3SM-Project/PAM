@@ -119,6 +119,8 @@ class Dycore {
   
   // Allocate and initialize internal data that depends on the state or micro class
   // The micro class is largely there to give the tracer index for water vapor
+  // At the end of this call, the Dycore needs to convert its internal state to the coupler state
+  // so that the coupler state is properly initialized
   template <class MICRO> void init_state_and_tracers( DataManager &dm , MICRO const &micro );
   
   // Perform a dynamics time step:
