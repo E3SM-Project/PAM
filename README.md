@@ -108,7 +108,7 @@ The `Dycore` class needs to have the following defined to fit in the PAM interfa
 * `init(...)`
 * `add_tracer(...)` called multiple times by microphysics and potentially other classes
 * `init_state_and_tracers(...)`
-* Inside the main time stepping loop, `compute_time_step()` and `timestep()` are called
+* Inside the main time stepping loop, `timestep()` is called with they physics time step, and it's the dynamic's job to sub-cycle if needed.
 * `finalize()`
 
 ```C++
@@ -121,16 +121,11 @@ class Dycore {
   // The micro class is largely there to give the tracer index for water vapor
   template <class MICRO> void init_state_and_tracers( DataManager &dm , MICRO const &micro );
   
-  // Compute the maximum stable time step given a CFL value
-  // All necessary data is obtained from the DataManager object
-  // Micro mainly exists to give the water vapor tracer index
-  template <class MICRO> real compute_time_step(real cfl, DataManager &dm, MICRO const &micro);
-  
   // Perform a dynamics time step:
   // (1) Convert coupler state to internal dynamics state
-  // (2) Integrate space-time PDEs to compute and apply tendencies
+  // (2) Subcycle internal dynamics time steps to integrate space-time PDEs to compute and apply tendencies for dtphys seconds
   // (3) Convert internal dynamics state to coupler state
-  template <class MICRO> void timeStep( DataManager &dm , MICRO const &micro , real dt );
+  template <class MICRO> void timeStep( DataManager &dm , MICRO const &micro , real dtphys );
   
   // Deallocate internal data structures and clean up
   void finalize(DataManager &dm);
