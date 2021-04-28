@@ -8,7 +8,7 @@ PAM is a portable atmospheric model written in C++ with performance portability 
 * [Driver, coupler state, and dimensions](#driver-coupler-state-and-dimensions)
 * [`Dycore` class](#dycore-class)
 * [`Microphysics` class](#microphysics-class)
-* [Debugging utilities](#debugging-utilites)
+* [Debugging utilities](#debugging-utilities)
 * [`MultipleFields` class](#multiplefields-class)
 
 ## Directory Structure
