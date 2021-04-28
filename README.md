@@ -100,6 +100,8 @@ The coupled state is assumed to be collocated on an A-grid on static height-base
 
 ## `Dycore` class
 
+For simplicity, all dynamical cores are separated by directory structure, and they all have the class named `Dycore` inside a header file `Dycore.h`. The dycore directory is chosen during the CMake configure phase.
+
 The `Dycore` class needs to have the following defined to fit in the PAM interface. The typical calling sequence is:
 * `init(...)`
 * `add_tracer(...)` called multiple times by microphysics and potentially other classes
@@ -140,6 +142,8 @@ class Dycore {
 ```
 
 ## `Microphysics` class
+
+For simplicity, all microphysics schemes are separated by directory structure, and they all have the class named `Microphysics` inside a header file `Microphysics.h`. The microphysics directory is chosen during the CMake configure phase.
 
 The `Microphysics` class needs to have the following defined in order to fit in the PAM interface:
 
