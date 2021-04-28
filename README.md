@@ -156,6 +156,8 @@ class Microphysics {
 };
 ```
 
+It is assumed that at least one tracer (water vapor) will be defined by the microphysics.
+
 ## Debugging utilities
 
 In `include/pam_const.h`, there are various validation routines to determine if an array contains inf, NaN, or negative values:
