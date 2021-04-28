@@ -104,7 +104,7 @@ The `Dycore` class needs to have the following defined to fit in the PAM interfa
 * `init(...)`
 * `add_tracer(...)` called multiple times by microphysics and potentially other classes
 * `init_state_and_tracers(...)`
-  * Inside the main time stepping loop, `compute_time_step()` and `timestep()` are called
+* Inside the main time stepping loop, `compute_time_step()` and `timestep()` are called
 * `finalize()`
 
 ```C++
