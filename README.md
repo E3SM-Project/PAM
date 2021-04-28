@@ -24,7 +24,12 @@ PAM is a portable atmospheric model written in C++ with performance portability 
   * `micro`: The various microphysics options for PAM
     * `none`: No microphysics
     * `kessler`: Kessler 3-species 1-moment microphysics
+      * Works on the GPU (C++ YAKL), gives the same answer as the Fortran code
     * `p3`: P3 5-species, 2-moment microphysics
+      * Currently in CPU+Fortran, gives reasonable answers
+      * Currently no cloud fraction, qc variance, or condensation nuclei variation (would need to couple to SHOC to turn these on)
+    * `wsm6`: WSM 6-species, 2-moment microphysics
+      * Currently CPU + Fortran only, seems to behave unrealistically with significantly more heating than P3 or Kessler in rising moist thermal test case
 * `standalone`: standalone driver for PAM
 * `utils`: Various PAM utilities, mostly in python
 
