@@ -17,6 +17,8 @@ bc_x   : periodic
 bc_y   : periodic
 bc_z   : wall
 
+trickle_phys : true
+
 weno_scalars : true
 
 weno_winds   : true
@@ -28,7 +30,7 @@ initData : thermal
 out_prefix  : test
 
 # CRM physics time step
-dtphys: 120.
+dtphys: 60.
 
 # Output frequency in seconds
 outFreq  : 10.

@@ -104,6 +104,8 @@ public:
     YAKL_SCOPE( stateTend  , this->stateTend  );
     YAKL_SCOPE( tracerTend , this->tracerTend );
 
+    space_op.convert_coupler_state_to_dynamics( dm , micro );
+
     real5d state   = dm.get<real,5>("dynamics_state");
     real5d tracers = dm.get<real,5>("dynamics_tracers");
 
@@ -180,6 +182,8 @@ public:
 
       loctime += dt;
     }
+
+    space_op.convert_dynamics_to_coupler_state( dm , micro );
   }
 
 

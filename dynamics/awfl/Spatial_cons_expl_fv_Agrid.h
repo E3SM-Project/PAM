@@ -1158,6 +1158,8 @@ public:
       });
 
     } // if (data_spec == DATA_SPEC_SUPERCELL)
+
+    convert_dynamics_to_coupler_state( dm , micro );
   }
 
 

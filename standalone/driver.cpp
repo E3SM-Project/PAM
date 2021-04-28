@@ -67,10 +67,8 @@ int main(int argc, char** argv) {
 
     while (etime < simTime) {
       if (etime + dtphys > simTime) { dtphys = simTime - etime; }
-      dycore.timeStep( dm , micro , dtphys );
-      dycore.convert_dynamics_to_coupler_state( dm , micro );
       micro.timeStep( dm , dtphys );
-      dycore.convert_coupler_state_to_dynamics( dm , micro );
+      dycore.timeStep( dm , micro , dtphys );
       etime += dtphys;
       if (etime / outFreq >= numOut+1) {
         std::cout << "Etime , dtphys: " << etime << " , " << dtphys << "\n";
