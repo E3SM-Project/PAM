@@ -96,10 +96,9 @@ dm.register_and_allocate<real>( "uvel"         , "x-direction velocity" , {nz,ny
 dm.register_and_allocate<real>( "vvel"         , "y-direction velocity" , {nz,ny,nx,nens} , {"z","y","x","nens"} );
 dm.register_and_allocate<real>( "wvel"         , "z-direction velocity" , {nz,ny,nx,nens} , {"z","y","x","nens"} );
 dm.register_and_allocate<real>( "temp"         , "temperature"          , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-dm.register_and_allocate<real>( "pressure_dry" , "dry pressure"         , {nz,ny,nx,nens} , {"z","y","x","nens"} );
 ```
 
-To complete the coupler state, the microphysics and other parameterizations will register any tracers or other persistent data with the DataManager. The coupled state is assumed to be collocated on an A-grid on static height-based coordinates. The benefit of using dry density and pressure in the coupler state is that they don't change in the microphysics.
+To complete the coupler state, the microphysics and other parameterizations will register any tracers or other persistent data with the DataManager. The coupled state is assumed to be collocated on an A-grid on static height-based coordinates. The benefit of dry density and temperature is that it has a consistent definition, no mater what choices the dycore or microphysics makes.
 
 ## `Dycore` class
 
