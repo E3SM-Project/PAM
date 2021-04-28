@@ -37,7 +37,10 @@ void register_and_allocate( std::string name ,
                             bool positive = false )
 ```
 
-For convenience, you can pass an initializer list like `{nz,ny,nx,nens}` for the `dims` and `{"z","y","x","nens"}` for the `dim_names`. The DataManager class will automatically check to make sure you have not registered another variable by the same name or changed the length of a dimension name. It will also store the number of dimensions and the type `T` of the data.
+For convenience, you can pass an initializer list like `{nz,ny,nx,nens}` for the `dims` and `{"z","y","x","nens"}` for the `dim_names`. The DataManager class will automatically check to make sure you have not registered another variable by the same name or changed the length of a dimension name. It will also store the number of dimensions and the type `T` of the data. An example of registering a field is:
+```C++
+dm.register_and_allocate<real>( "water_vapor" , "Water Vapor Density" , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+```
 
 All DataManager `get*` functions are YAKL Arrays that wrap internal DataManager pointers into contiguous memory. **Important**: DataManager calls only return YAKL `Array` objects that wrap pointers -- meaning there is virtually no cost to accessing already registered entries in the DataManager. It only copies metadata and then wraps an already existing pointer. 
 
