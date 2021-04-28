@@ -6,10 +6,15 @@ PAM is a portable atmospheric model written in C++ with performance portability 
 
 * `coupler`: DataManager class and coupled state allocator function
 * `dynamics`: Dynamical cores, currently "AWFL"
+  * `awfl`: ADER WENO Finite-Volume (Collocated)
+  * `spam`: Structure Preserving Atmospheric Model (Staggered)
 * `externals`: git submodule dependencies
 * `include`: PAM include files for the whole project
 * `physics`: physics modules, currently micro only
   * `micro`: The various microphysics options for PAM
+    * `none`: No microphysics
+    * `kessler`: Kessler 3-species 1-moment microphysics
+    * `p3`: P3 5-species, 2-moment microphysics
 * `standalone`: standalone driver for PAM
 * `utils`: Various PAM utilities, mostly in python
 
@@ -73,7 +78,9 @@ dm.register_and_allocate<real>( "temp"         , "temperature"          , {nz,ny
 dm.register_and_allocate<real>( "pressure_dry" , "dry pressure"         , {nz,ny,nx,nens} , {"z","y","x","nens"} );
 ```
 
-To complete the coupler state, the microphysics and other parameterizations will register any tracers or other persistent data with the DataManager.
+To complete the coupler state, the microphysics and other parameterizations will register any tracers or other persistent data with the DataManager. 
+
+The coupled state is assumed to be collocated on an A-grid on static height-based coordinates.
 
 ## `Dycore` class
 
