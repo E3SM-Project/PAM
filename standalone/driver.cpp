@@ -23,6 +23,7 @@ int main(int argc, char** argv) {
     int  nens    = config["nens"   ].as<int>();
     real xlen    = config["xlen"   ].as<real>();
     real ylen    = config["ylen"   ].as<real>();
+    real dtphys  = config["dtphys" ].as<real>();
 
     // Store vertical coordinates
     std::string vcoords_file = config["vcoords"].as<std::string>();
@@ -65,15 +66,14 @@ int main(int argc, char** argv) {
     dycore.output( dm , micro , etime );
 
     while (etime < simTime) {
-      real dt = dycore.compute_time_step( 0.8 , dm , micro );
-      if (etime + dt > simTime) { dt = simTime - etime; }
-      dycore.timeStep( dm , micro , dt );
+      if (etime + dtphys > simTime) { dtphys = simTime - etime; }
+      dycore.timeStep( dm , micro , dtphys );
       dycore.convert_dynamics_to_coupler_state( dm , micro );
-      micro.timeStep( dm , dt );
+      micro.timeStep( dm , dtphys );
       dycore.convert_coupler_state_to_dynamics( dm , micro );
-      etime += dt;
+      etime += dtphys;
       if (etime / outFreq >= numOut+1) {
-        std::cout << "Etime , dt: " << etime << " , " << dt << "\n";
+        std::cout << "Etime , dtphys: " << etime << " , " << dtphys << "\n";
         dycore.output( dm , micro , etime );
         numOut++;
       }
