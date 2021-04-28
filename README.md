@@ -99,9 +99,7 @@ dm.register_and_allocate<real>( "temp"         , "temperature"          , {nz,ny
 dm.register_and_allocate<real>( "pressure_dry" , "dry pressure"         , {nz,ny,nx,nens} , {"z","y","x","nens"} );
 ```
 
-To complete the coupler state, the microphysics and other parameterizations will register any tracers or other persistent data with the DataManager. 
-
-The coupled state is assumed to be collocated on an A-grid on static height-based coordinates.
+To complete the coupler state, the microphysics and other parameterizations will register any tracers or other persistent data with the DataManager. The coupled state is assumed to be collocated on an A-grid on static height-based coordinates. The benefit of using dry density and pressure in the coupler state is that they don't change in the microphysics.
 
 ## `Dycore` class
 
