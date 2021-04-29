@@ -7,3 +7,6 @@
 [submodule "externals/eigen"]
 	path = externals/eigen
 	url = https://gitlab.com/libeigen/eigen.git
+[submodule "externals/EKAT"]
+	path = externals/EKAT
+	url = git@github.com:E3SM-Project/EKAT.git
