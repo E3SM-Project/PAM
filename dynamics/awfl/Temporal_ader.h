@@ -30,15 +30,21 @@ public:
     stateTend  = space_op.createStateTendArr ();
     tracerTend = space_op.createTracerTendArr();
 
-    YAML::Node config = YAML::LoadFile(inFile);
-    if ( !config ) { endrun("ERROR: Invalid YAML input file"); }
-    trickle_phys = config["trickle_phys"].as<bool>();
+    #ifdef PAM_STANDALONE
+      YAML::Node config = YAML::LoadFile(inFile);
+      if ( !config ) { endrun("ERROR: Invalid YAML input file"); }
+      trickle_phys = config["trickle_phys"].as<bool>();
 
-    if (trickle_phys) {
-      stateTend_phys  = space_op.createStateTendArr ();
-      tracerTend_phys = space_op.createTracerTendArr();
-    }
-    std::cout << "trickle_phys: " << trickle_phys << std::endl;
+      if (trickle_phys) {
+        stateTend_phys  = space_op.createStateTendArr ();
+        tracerTend_phys = space_op.createTracerTendArr();
+      }
+      #ifdef PAM_STANDALONE
+        std::cout << "trickle_phys: " << trickle_phys << std::endl;
+      #endif
+    #else
+      trickle_phys = false;
+    #endif
   }
 
 
@@ -251,15 +257,17 @@ public:
       loctime += dt;
     }
 
-    // Store the state into *Tend_phys for tendency computations later
-    parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      for (int l=0; l < num_state; l++) {
-        stateTend_phys(l,k,j,i,iens) = state(l,hs+k,hs+j,hs+i,iens);
-      }
-      for (int l=0; l < num_tracers; l++) {
-        tracerTend_phys(l,k,j,i,iens) = tracers(l,hs+k,hs+j,hs+i,iens);
-      }
-    });
+    if (trickle_phys) {
+      // Store the state into *Tend_phys for tendency computations later
+      parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+        for (int l=0; l < num_state; l++) {
+          stateTend_phys(l,k,j,i,iens) = state(l,hs+k,hs+j,hs+i,iens);
+        }
+        for (int l=0; l < num_tracers; l++) {
+          tracerTend_phys(l,k,j,i,iens) = tracers(l,hs+k,hs+j,hs+i,iens);
+        }
+      });
+    }
 
     space_op.convert_dynamics_to_coupler_state( dm , micro );
   }
@@ -268,7 +276,7 @@ public:
   void finalize(DataManager &dm) { }
 
 
-  const char * getTemporalName() const { return "ADER-DT"; }
+  const char * dycore_name() const { return "AWFL"; }
 
 };
 

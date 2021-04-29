@@ -58,6 +58,11 @@ int main(int argc, char** argv) {
     dycore.init( inFile , ny , nx , nens , xlen , ylen , micro.get_num_tracers() , dm );
     micro .init( inFile , ny , nx , nens , dycore , dm );
 
+    #ifdef PAM_STANDALONE
+      std::cout << "Dycore: " << dycore.dycore_name() << std::endl;
+      std::cout << "Micro : " << micro .micro_name() << std::endl;
+    #endif
+
     // Initialize the dry state
     dycore.init_state_and_tracers( dm , micro );
 
