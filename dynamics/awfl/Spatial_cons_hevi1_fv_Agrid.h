@@ -1937,6 +1937,108 @@ public:
     YAKL_SCOPE( p0                      , this->p0                     );
     YAKL_SCOPE( C0                      , this->C0                     );
 
+    // Compute pressure perturbation and fill in halos
+    real4d pressure("pressure",nz  ,ny,nx,nens);  // cell-wise pressure perturbation
+    real4d rw_save ("rw_save" ,nz  ,ny,nx,nens);  // cell-wise full momentum
+    real4d p_upw   ("p_upw"   ,nz+1,ny,nx,nens);  // interface upwind pressure perturbation
+    real4d rw_upw  ("rw_upw"  ,nz+1,ny,nx,nens);  // interface upwind full momentum
+    real4d rwi_tavg("rwi_tavg",nz+1,ny,nx,nens);  // interface upwind perturbation momentum (accumulated, then time-averaged)
+
+    real constexpr cs = 300;
+    parallel_for( SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int iens) {
+      // Compute pressure perturbation, and save momentum
+      for (int k=0; k < nz; k++) {
+        real rt = state(idT,hs+k,hs+j,hs+i,iens) + hyDensThetaCells(k,iens);
+        pressure(k,j,i,iens) = C0 * pow( rt , gamma ) - hyPressureCells(k,iens);
+        rw_save (k,j,i,iens) = state(idW,hs+k,hs+j,hs+i,iens);
+      }
+      // Set interface time-averaged upwind perturbation momentum to zero
+      for (int k=0; k < nz+1; k++) {
+        rwi_tavg(k,j,i,iens) = 0;
+      }
+      // iterate over acoustic sub-steps
+      int niter = (int) ceil( cs / dt );
+      real dtloc = cs / niter;
+      for (int iter = 0; iter < niter; iter++) {
+        // Compute upwind perturbation pressure, full momentum, and perturbation momentum
+        for (int k=0; k < nz+1; k++) {
+          int k_m = max( 0    , k-1 );
+          int k_p = min( nz-1 , k   );
+
+          // Compute upwind full momentum and perturbation pressure
+          real rw_m = state(idW,hs+k_m,hs+j,hs+i,iens);
+          real rw_p = state(idW,hs+k_p,hs+j,hs+i,iens);
+          if (k == 0   ) { rw_m = 0; rw_p = 0; }
+          if (k == nz-1) { rw_m = 0; rw_p = 0; }
+          real p_m = pressure(k_m,j,i,iens);
+          real p_p = pressure(k_p,j,i,iens);
+          real w1 = 0.5_fp * p_p - 0.5_fp * cs * rw_p;
+          real w2 = 0.5_fp * p_m + 0.5_fp * cs * rw_m;
+          rw_upw(k,j,i,iens) = w1 + w2;
+          p_upw (k,j,i,iens) = (w2 - w1) / cs;
+          if (k == 0   ) { rw_upw(k,j,i,iens) = 0; }
+          if (k == nz-1) { rw_upw(k,j,i,iens) = 0; }
+
+          // Accumulate upwind perturbation momentum
+          rw_m = state(idW,hs+k_m,hs+j,hs+i,iens) - rw_save(k_m,j,i,iens);
+          rw_p = state(idW,hs+k_p,hs+j,hs+i,iens) - rw_save(k_p,j,i,iens);
+          if (k == 0   ) { rw_m = 0; rw_p = 0; }
+          if (k == nz-1) { rw_m = 0; rw_p = 0; }
+          w1 = 0.5_fp * p_p - 0.5_fp * cs * rw_p;
+          w2 = 0.5_fp * p_m + 0.5_fp * cs * rw_m;
+          if (k > 0 && k < nz) { rwi_tavg(k,j,i,iens) += w1 + w2; }
+        }
+        // Apply the fluxes
+        for (int k=0; k < nz; k++) {
+          // Update pressure and momentum
+          pressure(k,j,i,iens)           = -cs*cs*dt*( rw_upw(k+1,j,i,iens) - rw_upw(k,j,i,iens) ) / dz(k,iens);
+          state(idW,hs+k,hs+j,hs+i,iens) = -      dt*( p_upw (k+1,j,i,iens) - p_upw (k,j,i,iens) ) / dz(k,iens);
+        }
+      }
+      // Compute time-averaged perturbation momentum flux
+      for (int k=0; k < nz+1; k++) {
+        rwi_tavg(k,j,i,iens) /= (niter+1);
+      }
+      // Apply time-averaged momentum flux to other variables
+      for (int k=0; k < nz; k++) {
+        int k_upw_m;
+        if (rwi_tavg(k  ,j,i,iens) > 0) { k_upw_m = max(0,k-1); }
+        else                            { k_upw_m = k;          }
+
+        int k_upw_p;
+        if (rwi_tavg(k+1,j,i,iens) > 0) { k_upw_p = k;             }
+        else                            { k_upw_p = min(nz-1,k+1); }
+
+        // Density
+        real fp = rwi_tavg(k+1,j,i,iens) * state(idR,hs+k_upw_p,hs+j,hs+i,iens);
+        real fm = rwi_tavg(k  ,j,i,iens) * state(idR,hs+k_upw_m,hs+j,hs+i,iens);
+        state(idR,hs+k,hs+j,hs+i,iens) = -dt * (fp - fm) / dz(k,iens);
+
+        // u-momentum
+        fp = rwi_tavg(k+1,j,i,iens) * state(idU,hs+k_upw_p,hs+j,hs+i,iens);
+        fm = rwi_tavg(k  ,j,i,iens) * state(idU,hs+k_upw_m,hs+j,hs+i,iens);
+        state(idU,hs+k,hs+j,hs+i,iens) = -dt * (fp - fm) / dz(k,iens);
+
+        // v-momentum
+        fp = rwi_tavg(k+1,j,i,iens) * state(idV,hs+k_upw_p,hs+j,hs+i,iens);
+        fm = rwi_tavg(k  ,j,i,iens) * state(idV,hs+k_upw_m,hs+j,hs+i,iens);
+        state(idV,hs+k,hs+j,hs+i,iens) = -dt * (fp - fm) / dz(k,iens);
+
+        // rho*theta
+        fp = rwi_tavg(k+1,j,i,iens) * state(idT,hs+k_upw_p,hs+j,hs+i,iens);
+        fm = rwi_tavg(k  ,j,i,iens) * state(idT,hs+k_upw_m,hs+j,hs+i,iens);
+        state(idT,hs+k,hs+j,hs+i,iens) = -dt * (fp - fm) / dz(k,iens);
+
+        // tracers
+        for (int l=0; l < num_tracers; l++) {
+          fp = rwi_tavg(k+1,j,i,iens) * tracers(l,hs+k_upw_p,hs+j,hs+i,iens);
+          fm = rwi_tavg(k  ,j,i,iens) * tracers(l,hs+k_upw_m,hs+j,hs+i,iens);
+          tracers(l,hs+k,hs+j,hs+i,iens) = -dt * (fp - fm) / dz(k,iens);
+        }
+      }
+    });
+
+
     // Pre-process the tracers by dividing by density inside the domain
     // After this, we can reconstruct tracers only (not rho * tracer)
     parallel_for( SimpleBounds<5>(num_tracers,nz,ny,nx,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
