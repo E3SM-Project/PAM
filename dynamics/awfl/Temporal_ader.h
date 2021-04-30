@@ -104,8 +104,6 @@ public:
   void timeStep( DataManager &dm , MICRO const &micro , real dtphys ) {
     YAKL_SCOPE( stateTend       , this->stateTend       );
     YAKL_SCOPE( tracerTend      , this->tracerTend      );
-    YAKL_SCOPE( stateTend_phys  , this->stateTend_phys  );
-    YAKL_SCOPE( tracerTend_phys , this->tracerTend_phys );
 
     space_op.convert_coupler_state_to_dynamics( dm , micro );
 
