@@ -103,6 +103,8 @@ public:
   
   bool sim2d;  // Whether we're simulating in 2-D
 
+  real sim_time;  // How long to simulate
+
   // Grid spacing in each dimension
   real dx;
   real dy;
@@ -169,7 +171,6 @@ public:
     real4d dm_vvel         = dm.get<real,4>( "vvel"             );
     real4d dm_wvel         = dm.get<real,4>( "wvel"             );
     real4d dm_temp         = dm.get<real,4>( "temp"             );
-    real4d dm_pressure_dry = dm.get<real,4>( "pressure_dry"     );
 
     YAKL_SCOPE( hyDensCells      , this->hyDensCells      );
     YAKL_SCOPE( hyDensThetaCells , this->hyDensThetaCells );
@@ -182,12 +183,12 @@ public:
     YAKL_SCOPE( cp               , this->cp               );
     YAKL_SCOPE( tracer_adds_mass , this->tracer_adds_mass );
 
-    int idWV = micro.tracer_index_vapor;
+    int idWV = micro.get_water_vapor_index();
 
-    MultipleTracers<max_tracers> dm_tracers;
+    MultipleFields<max_tracers,real4d> dm_tracers;
     for (int tr = 0; tr < num_tracers; tr++) {
       auto trac = dm.get<real,4>( tracer_name[tr] );
-      dm_tracers.add_tracer( trac );
+      dm_tracers.add_field( trac );
     }
 
     parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
@@ -203,13 +204,11 @@ public:
         if (tracer_adds_mass(tr)) dens_dry -= tracers(tr,hs+k,hs+j,hs+i,iens);
       }
       real temp = pressure / ( dens_dry * Rd + dens_vap * Rv );
-      real pressure_dry = dens_dry * Rd * temp;
       dm_dens_dry    (k,j,i,iens) = dens_dry;
       dm_uvel        (k,j,i,iens) = uvel;
       dm_vvel        (k,j,i,iens) = vvel;
       dm_wvel        (k,j,i,iens) = wvel;
       dm_temp        (k,j,i,iens) = temp;
-      dm_pressure_dry(k,j,i,iens) = pressure_dry;
       for (int tr=0; tr < num_tracers; tr++) {
         dm_tracers(tr,k,j,i,iens) = tracers(tr,hs+k,hs+j,hs+i,iens);
       }
@@ -227,7 +226,6 @@ public:
     real4d dm_vvel         = dm.get<real,4>( "vvel"             );
     real4d dm_wvel         = dm.get<real,4>( "wvel"             );
     real4d dm_temp         = dm.get<real,4>( "temp"             );
-    real4d dm_pressure_dry = dm.get<real,4>( "pressure_dry"     );
 
     YAKL_SCOPE( hyDensCells      , this->hyDensCells      );
     YAKL_SCOPE( hyDensThetaCells , this->hyDensThetaCells );
@@ -240,12 +238,12 @@ public:
     YAKL_SCOPE( cp               , this->cp               );
     YAKL_SCOPE( tracer_adds_mass , this->tracer_adds_mass );
 
-    int idWV = micro.tracer_index_vapor;
+    int idWV = micro.get_water_vapor_index();
 
-    MultipleTracers<max_tracers> dm_tracers;
+    MultipleFields<max_tracers,real4d> dm_tracers;
     for (int tr = 0; tr < num_tracers; tr++) {
       auto trac = dm.get<real,4>( tracer_name[tr] );
-      dm_tracers.add_tracer( trac );
+      dm_tracers.add_field( trac );
     }
 
     parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
@@ -257,7 +255,6 @@ public:
       real vvel         = dm_vvel        (k,j,i,iens);
       real wvel         = dm_wvel        (k,j,i,iens);
       real temp         = dm_temp        (k,j,i,iens);
-      real pressure_dry = dm_pressure_dry(k,j,i,iens);
       real dens_vap     = tracers(idWV,hs+k,hs+j,hs+i,iens);
       real dens         = dens_dry;
       for (int tr=0; tr < num_tracers; tr++) {
@@ -317,7 +314,7 @@ public:
     YAKL_SCOPE( Rv             , this->Rv             );
     YAKL_SCOPE( vert_interface , this->vert_interface );
 
-    int idWV = micro.tracer_index_vapor;
+    int idWV = micro.get_water_vapor_index();
     real5d tracers = dm.get<real,5>("dynamics_tracers");
 
     parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
@@ -347,7 +344,7 @@ public:
             real pert  = profiles::ellipsoid_linear(xloc,yloc,zloc  ,  xlen/2,ylen/2,2000  ,  2000,2000,2000  ,  0.8);
             real press = C0*pow(rh*th,gamma);                       // Dry pressure
             real temp  = press / Rd / rh;                           // Temperator (same for dry and moist)
-            real svp   = micro.saturation_vapor_pressure(temp);     // Self-explanatory
+            real svp   = profiles::saturation_vapor_pressure(temp); // Self-explanatory
             real p_v   = pert*svp;                                  // Multiply profile by saturation vapor pressure
             real r_v   = p_v / (Rv*temp);                           // Compute vapor density
 
@@ -399,7 +396,7 @@ public:
       real temp  = press / Rd / rho_dry;         // Temp (same dry or moist)
 
       // Compute moist theta
-      real index_vapor = micro.tracer_index_vapor;
+      real index_vapor = micro.get_water_vapor_index();
       real rho_v = tracers(index_vapor,hs+k,hs+j,hs+i,iens);
       real R_moist = Rd * (rho_dry / rho_moist) + Rv * (rho_v / rho_moist);
       real press_moist = rho_moist * R_moist * temp;
@@ -518,7 +515,12 @@ public:
 
 
   // Initialize crap needed by recon()
-  void init(std::string inFile, int num_tracers, DataManager &dm) {
+  void init(std::string inFile, int ny, int nx, int nens, real xlen, real ylen, int num_tracers, DataManager &dm) {
+    this->nens = nens;
+    this->nx = nx;
+    this->ny = ny;
+    this->xlen = xlen;
+    this->ylen = ylen;
     this->num_tracers = num_tracers;
     
     // Allocate device arrays for whether tracers are positive-definite or add mass
@@ -529,32 +531,79 @@ public:
     dtInit = 0;
     dimSwitch = true;
 
-    // Read the YAML input file
-    YAML::Node config = YAML::LoadFile(inFile);
+    #if defined(PAM_STANDALONE)
+      // Read the YAML input file
+      YAML::Node config = YAML::LoadFile(inFile);
 
-    this->nens = config["nens"].as<int>();
+      // Read whether we're doing WENO limiting on scalars and winds
+      weno_scalars = config["weno_scalars"].as<bool>();
+      weno_winds   = config["weno_winds"].as<bool>();
 
-    // Read in the vertical height cell interface locations
-    std::string vcoords_file = config["vcoords"].as<std::string>();
-    yakl::SimpleNetCDF nc;
-    nc.open(vcoords_file);
-    nz = nc.getDimSize("num_interfaces") - 1;
-    real1d zint_in("zint_in",nz+1);
-    nc.read(zint_in,"vertical_interfaces");
-    nc.close();
+      // Read the data initialization option
+      std::string dataStr = config["initData"].as<std::string>();
+      if        (dataStr == "thermal") {
+        data_spec = DATA_SPEC_THERMAL;
+      } else if (dataStr == "supercell") {
+        data_spec = DATA_SPEC_SUPERCELL;
+      } else {
+        endrun("ERROR: Invalid data_spec");
+      }
+
+      // Read the x-direction boundary condition option
+      std::string bc_x_str = config["bc_x"].as<std::string>();
+      if        (bc_x_str == "periodic" ) {
+        bc_x = BC_PERIODIC;
+      } else if (bc_x_str == "wall"     ) {
+        bc_x = BC_WALL;
+      } else {
+        endrun("Invalid bc_x");
+      }
+
+      // Read the y-direction boundary condition option
+      std::string bc_y_str = config["bc_y"].as<std::string>();
+      if        (bc_y_str == "periodic" ) {
+        bc_y = BC_PERIODIC;
+      } else if (bc_y_str == "wall"     ) {
+        bc_y = BC_WALL;
+      } else {
+        endrun("Invalid bc_y");
+      }
+
+      // Read the z-direction boundary condition option
+      std::string bc_z_str = config["bc_z"].as<std::string>();
+      if        (bc_z_str == "periodic" ) {
+        bc_z = BC_PERIODIC;
+      } else if (bc_z_str == "wall"     ) {
+        bc_z = BC_WALL;
+      } else {
+        endrun("Invalid bc_z");
+      }
+
+      // Read the output filename
+      out_prefix = config["out_prefix"].as<std::string>();
+
+      balance_initial_density = config["balance_initial_density"].as<bool>();
+
+      sim_time = config["simTime"].as<real>();
+    #else
+      weno_scalars            = true;
+      weno_winds              = true;
+      data_spec               = DATA_SPEC_SUPERCELL;
+      bc_x                    = BC_PERIODIC;
+      bc_y                    = BC_PERIODIC;
+      bc_z                    = BC_WALL;
+      out_prefix              = "test";
+      balance_initial_density = false;
+      sim_time                = 900;
+    #endif
+
+    // Determine whether this is a 2-D simulation
+    sim2d = ny == 1;
 
     // Store vertical cell interface heights in the data manager
-    dm.register_and_allocate<real>( "vertical_interface_height" , "vertical_interface_height" , {nz+1,nens} , {"zp1","nens"} );
     auto zint = dm.get<real,2>("vertical_interface_height");
-    parallel_for( Bounds<2>(nz+1,nens) , YAKL_LAMBDA (int k, int iens) {
-      zint(k,iens) = zint_in(k);
-    });
 
-    dm.register_and_allocate<real>( "vertical_midpoint_height" , "vertical_midpoint_heignt" , {nz,nens} , {"z","nens"} );
-    auto zmid = dm.get<real,2>("vertical_midpoint_height");
-    parallel_for( Bounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
-      zmid(k,iens) = 0.5_fp*(zint_in(k) + zint_in(k+1));
-    });
+    nz = dm.get_dimension_size("z");
 
     // Get the height of the z-dimension
     zlen = real1d("zlen",nens);
@@ -662,66 +711,6 @@ public:
     vert_weno_host.deep_copy_to(vert_weno_recon     );
     vert_locs_host.deep_copy_to(vert_locs_normalized);
 
-    // Read the # cells in each dimension
-    nx = config["nx"].as<int>();
-    ny = config["ny"].as<int>();
-
-    // Determine whether this is a 2-D simulation
-    sim2d = ny == 1;
-
-    // Read the domain length in each dimension
-    xlen = config["xlen"].as<real>();
-    ylen = config["ylen"].as<real>();
-
-    // Read whether we're doing WENO limiting on scalars and winds
-    weno_scalars = config["weno_scalars"].as<bool>();
-    weno_winds   = config["weno_winds"].as<bool>();
-
-    // Read the data initialization option
-    std::string dataStr = config["initData"].as<std::string>();
-    if        (dataStr == "thermal") {
-      data_spec = DATA_SPEC_THERMAL;
-    } else if (dataStr == "supercell") {
-      data_spec = DATA_SPEC_SUPERCELL;
-    } else {
-      endrun("ERROR: Invalid data_spec");
-    }
-
-    // Read the x-direction boundary condition option
-    std::string bc_x_str = config["bc_x"].as<std::string>();
-    if        (bc_x_str == "periodic" ) {
-      bc_x = BC_PERIODIC;
-    } else if (bc_x_str == "wall"     ) {
-      bc_x = BC_WALL;
-    } else {
-      endrun("Invalid bc_x");
-    }
-
-    // Read the y-direction boundary condition option
-    std::string bc_y_str = config["bc_y"].as<std::string>();
-    if        (bc_y_str == "periodic" ) {
-      bc_y = BC_PERIODIC;
-    } else if (bc_y_str == "wall"     ) {
-      bc_y = BC_WALL;
-    } else {
-      endrun("Invalid bc_y");
-    }
-
-    // Read the z-direction boundary condition option
-    std::string bc_z_str = config["bc_z"].as<std::string>();
-    if        (bc_z_str == "periodic" ) {
-      bc_z = BC_PERIODIC;
-    } else if (bc_z_str == "wall"     ) {
-      bc_z = BC_WALL;
-    } else {
-      endrun("Invalid bc_z");
-    }
-
-    // Read the output filename
-    out_prefix = config["out_prefix"].as<std::string>();
-
-    balance_initial_density = config["balance_initial_density"].as<bool>();
-
     // Compute the grid spacing in each dimension
     dx = xlen/nx;
     dy = ylen/ny;
@@ -800,20 +789,21 @@ public:
       }
     });
 
-    std::cout << "nx: " << nx << "\n";
-    std::cout << "ny: " << ny << "\n";
-    std::cout << "nz: " << nz << "\n";
-    std::cout << "xlen (m): " << xlen << "\n";
-    std::cout << "ylen (m): " << ylen << "\n";
-    std::cout << "zlen (m): " << zlen.createHostCopy()(0) << "\n";
-    std::cout << "Vertical coordinates file: " << vcoords_file << "\n";
-    std::cout << "Simulation time (s): " << config["simTime"].as<real>() << "\n";
-    std::cout << "Vertical interface heights: ";
-    auto zint_host = zint.createHostCopy();
-    for (int k=0; k < nz+1; k++) {
-      std::cout << zint_host(k,0) << "  ";
-    }
-    std::cout << "\n\n";
+    #ifdef PAM_STANDALONE
+      std::cout << "nx: " << nx << "\n";
+      std::cout << "ny: " << ny << "\n";
+      std::cout << "nz: " << nz << "\n";
+      std::cout << "xlen (m): " << xlen << "\n";
+      std::cout << "ylen (m): " << ylen << "\n";
+      std::cout << "zlen (m): " << zlen.createHostCopy()(0) << "\n";
+      std::cout << "Simulation time (s): " << sim_time << "\n";
+      std::cout << "Vertical interface heights: ";
+      auto zint_host = zint.createHostCopy();
+      for (int k=0; k < nz+1; k++) {
+        std::cout << zint_host(k,0) << "  ";
+      }
+      std::cout << "\n\n";
+    #endif
   }
 
 
@@ -825,8 +815,11 @@ public:
     cp    = micro.constants.cp_d;
     gamma = micro.constants.gamma_d;
     p0    = micro.constants.p0;
-    C0    = micro.constants.C0_d;
     Rv    = micro.constants.R_v;
+
+    real kappa = micro.constants.kappa_d;
+
+    C0 = pow( Rd * pow( p0 , -kappa ) , gamma );
 
     YAKL_SCOPE( nx                       , this->nx                      );
     YAKL_SCOPE( ny                       , this->ny                      );
@@ -1094,7 +1087,7 @@ public:
       }
       nc.close();
 
-      int idWV = micro.tracer_index_vapor;
+      int idWV = micro.get_water_vapor_index();
       real5d tracers = dm.get<real,5>("dynamics_tracers");
 
       parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
@@ -1165,6 +1158,8 @@ public:
       });
 
     } // if (data_spec == DATA_SPEC_SUPERCELL)
+
+    convert_dynamics_to_coupler_state( dm , micro );
   }
 
 
@@ -1240,13 +1235,6 @@ public:
     YAKL_SCOPE( gamma                   , this->gamma                  );
     YAKL_SCOPE( p0                      , this->p0                     );
     YAKL_SCOPE( C0                      , this->C0                     );
-
-    // Pre-process the tracers by dividing by density inside the domain
-    // After this, we can reconstruct tracers only (not rho * tracer)
-    // Also, compute dry density
-    parallel_for( SimpleBounds<5>(num_tracers,nz,ny,nx,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
-      tracers(tr,hs+k,hs+j,hs+i,iens) /= (state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens));
-    });
 
     // Populate the halos
     if        (bc_x == BC_PERIODIC) {
@@ -1383,7 +1371,6 @@ public:
             SArray<real,1,ord> stencil;
             for (int ii=0; ii < ord; ii++) { stencil(ii) = tracers(tr,hs+k,hs+j,i+ii,iens); }
             reconstruct_gll_values( stencil , rt_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
-            for (int ii=0; ii < ngll; ii++) { rt_DTs(0,ii) *= r_DTs(0,ii); }
             if (tracer_pos(tr)) {
               for (int ii=0; ii < ngll; ii++) { rt_DTs(0,ii) = max( 0._fp , rt_DTs(0,ii) ); }
             }
@@ -1516,30 +1503,36 @@ public:
     //////////////////////////////////////////////////////////
     // Limit the tracer fluxes for positivity
     //////////////////////////////////////////////////////////
+    real5d fct_mult("fct_mult",num_tracers,nz,ny,nx+1,nens);
     parallel_for( SimpleBounds<5>(num_tracers,nz,ny,nx+1,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
-      real constexpr eps = 1.e-10;
-      real u = 0.5_fp * ( stateLimits(idU,0,k,j,i,iens) + stateLimits(idU,1,k,j,i,iens) );
+      fct_mult(tr,k,j,i,iens) = 1.;
       // Solid wall BCs mean u == 0 at boundaries, so we assume periodic if u != 0
       if (tracer_pos(tr)) {
         // Compute and apply the flux reduction factor of the upwind cell
-        if      (u > 0) {
-          // upwind is to the left of this interface
+        if      (tracerFlux(tr,k,j,i,iens) > 0) {
+          // if u > 0, then it pulls mass out of the left cell
           int ind_i = i-1;
+          // TODO: Relax the periodic assumption here
           if (ind_i == -1) ind_i = nx-1;
           real f1 = min( tracerFlux(tr,k,j,ind_i  ,iens) , 0._fp );
           real f2 = max( tracerFlux(tr,k,j,ind_i+1,iens) , 0._fp );
           real fluxOut = dt*(f2-f1)/dx;
-          real dens = state(idR,hs+k,hs+j,hs+ind_i,iens) + hyDensCells(k,iens);
-          tracerFlux(tr,k,j,i,iens) *= min( 1._fp , tracers(tr,hs+k,hs+j,hs+ind_i,iens) / (fluxOut + eps) );
-        } else if (u < 0) {
+          real mass = tracers(tr,hs+k,hs+j,hs+ind_i,iens);
+          if (fluxOut > 0) {
+            fct_mult(tr,k,j,i,iens) = min( 1._fp , mass / fluxOut );
+          }
+        } else if (tracerFlux(tr,k,j,i,iens) < 0) {
           // upwind is to the right of this interface
           int ind_i = i;
+          // TODO: Relax the periodic assumption here
           if (ind_i == nx) ind_i = 0;
           real f1 = min( tracerFlux(tr,k,j,ind_i  ,iens) , 0._fp );
           real f2 = max( tracerFlux(tr,k,j,ind_i+1,iens) , 0._fp );
           real fluxOut = dt*(f2-f1)/dx;
-          real dens = state(idR,hs+k,hs+j,hs+ind_i,iens) + hyDensCells(k,iens);
-          tracerFlux(tr,k,j,i,iens) *= min( 1._fp , tracers(tr,hs+k,hs+j,hs+ind_i,iens) / (fluxOut + eps) );
+          real mass = tracers(tr,hs+k,hs+j,hs+ind_i,iens);
+          if (fluxOut > 0) {
+            fct_mult(tr,k,j,i,iens) = min( 1._fp , mass / fluxOut );
+          }
         }
       }
     });
@@ -1557,9 +1550,8 @@ public:
       }
       for (int l = 0; l < num_tracers; l++) {
         // Compute tracer tendency
-        tracerTend(l,k,j,i,iens) = - ( tracerFlux(l,k,j,i+1,iens) - tracerFlux(l,k,j,i  ,iens) ) / dx;
-        // Multiply density back onto tracers
-        tracers(l,hs+k,hs+j,hs+i,iens) *= (state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens));
+        tracerTend(l,k,j,i,iens) = - ( tracerFlux(l,k,j,i+1,iens)*fct_mult(l,k,j,i+1,iens) -
+                                       tracerFlux(l,k,j,i  ,iens)*fct_mult(l,k,j,i  ,iens) ) / dx;
       }
     });
   }
@@ -1595,12 +1587,6 @@ public:
     YAKL_SCOPE( gamma                   , this->gamma                  );
     YAKL_SCOPE( p0                      , this->p0                     );
     YAKL_SCOPE( C0                      , this->C0                     );
-
-    // Pre-process the tracers by dividing by density inside the domain
-    // After this, we can reconstruct tracers only (not rho * tracer)
-    parallel_for( SimpleBounds<5>(num_tracers,nz,ny,nx,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
-      tracers(tr,hs+k,hs+j,hs+i,iens) /= (state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens));
-    });
 
     // Populate the halos
     if        (bc_y == BC_PERIODIC) {
@@ -1737,7 +1723,6 @@ public:
             SArray<real,1,ord> stencil;
             for (int jj=0; jj < ord; jj++) { stencil(jj) = tracers(tr,hs+k,j+jj,hs+i,iens); }
             reconstruct_gll_values( stencil , rt_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
-            for (int jj=0; jj < ngll; jj++) { rt_DTs(0,jj) *= r_DTs(0,jj); }
             if (tracer_pos(tr)) {
               for (int jj=0; jj < ngll; jj++) { rt_DTs(0,jj) = max( 0._fp , rt_DTs(0,jj) ); }
             }
@@ -1870,30 +1855,34 @@ public:
     //////////////////////////////////////////////////////////
     // Limit the tracer fluxes for positivity
     //////////////////////////////////////////////////////////
+    real5d fct_mult("fct_mult",num_tracers,nz,ny+1,nx,nens);
     parallel_for( SimpleBounds<5>(num_tracers,nz,ny+1,nx,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
-      real constexpr eps = 1.e-10;
-      real v = 0.5_fp * ( stateLimits(idV,0,k,j,i,iens) + stateLimits(idV,1,k,j,i,iens) );
+      fct_mult(tr,k,j,i,iens) = 1.;
       // Solid wall BCs mean u == 0 at boundaries, so we assume periodic if u != 0
       if (tracer_pos(tr)) {
         // Compute and apply the flux reduction factor of the upwind cell
-        if      (v > 0) {
+        if      (tracerFlux(tr,k,j,i,iens) > 0) {
           // upwind is to the left of this interface
           int ind_j = j-1;
           if (ind_j == -1) ind_j = ny-1;
           real f1 = min( tracerFlux(tr,k,ind_j  ,i,iens) , 0._fp );
           real f2 = max( tracerFlux(tr,k,ind_j+1,i,iens) , 0._fp );
           real fluxOut = dt*(f2-f1)/dy;
-          real dens = state(idR,hs+k,hs+ind_j,hs+i,iens) + hyDensCells(k,iens);
-          tracerFlux(tr,k,j,i,iens) *= min( 1._fp , tracers(tr,hs+k,hs+ind_j,hs+i,iens) / (fluxOut + eps) );
-        } else if (v < 0) {
+          real mass = tracers(tr,hs+k,hs+ind_j,hs+i,iens);
+          if (fluxOut > 0) {
+            fct_mult(tr,k,j,i,iens) = min( 1._fp , mass / fluxOut );
+          }
+        } else if (tracerFlux(tr,k,j,i,iens) < 0) {
           // upwind is to the right of this interface
           int ind_j = j;
           if (ind_j == ny) ind_j = 0;
           real f1 = min( tracerFlux(tr,k,ind_j  ,i,iens) , 0._fp );
           real f2 = max( tracerFlux(tr,k,ind_j+1,i,iens) , 0._fp );
           real fluxOut = dt*(f2-f1)/dy;
-          real dens = state(idR,hs+k,hs+ind_j,hs+i,iens) + hyDensCells(k,iens);
-          tracerFlux(tr,k,j,i,iens) *= min( 1._fp , tracers(tr,hs+k,hs+ind_j,hs+i,iens) / (fluxOut + eps) );
+          real mass = tracers(tr,hs+k,hs+ind_j,hs+i,iens);
+          if (fluxOut > 0) {
+            fct_mult(tr,k,j,i,iens) = min( 1._fp , mass / fluxOut );
+          }
         }
       }
     });
@@ -1907,9 +1896,8 @@ public:
       }
       for (int l=0; l < num_tracers; l++) {
         // Compute the tracer tendency
-        tracerTend(l,k,j,i,iens) = - ( tracerFlux(l,k,j+1,i,iens) - tracerFlux(l,k,j,i,iens) ) / dy;
-        // Multiply density back onto the tracers
-        tracers(l,hs+k,hs+j,hs+i,iens) *= (state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens));
+        tracerTend(l,k,j,i,iens) = - ( tracerFlux(l,k,j+1,i,iens)*fct_mult(l,k,j+1,i,iens) -
+                                       tracerFlux(l,k,j  ,i,iens)*fct_mult(l,k,j  ,i,iens) ) / dy;
       }
     });
   }
@@ -2243,28 +2231,35 @@ public:
     //////////////////////////////////////////////////////////
     // Limit the tracer fluxes for positivity
     //////////////////////////////////////////////////////////
+    real5d fct_mult("fct_mult",num_tracers,nz+1,ny,nx,nens);
     parallel_for( SimpleBounds<5>(num_tracers,nz+1,ny,nx,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
-      real constexpr eps = 1.e-10;
-      real w = 0.5_fp * ( stateLimits(idW,0,k,j,i,iens) + stateLimits(idW,1,k,j,i,iens) );
+      fct_mult(tr,k,j,i,iens) = 1.;
+      if (k == 0 || k == nz) tracerFlux(tr,k,j,i,iens) = 0;
       // Solid wall BCs mean w == 0 at boundaries
       if (tracer_pos(tr)) {
         // Compute and apply the flux reduction factor of the upwind cell
-        if      (w > 0) {
+        if      (tracerFlux(tr,k,j,i,iens) > 0) {
           int ind_k = k-1;
           // upwind is to the left of this interface
           real f1 = min( tracerFlux(tr,ind_k  ,j,i,iens) , 0._fp );
           real f2 = max( tracerFlux(tr,ind_k+1,j,i,iens) , 0._fp );
-          real fluxOut = dt*(f2-f1)/dz(k,iens);
+          real fluxOut = dt*(f2-f1)/dz(ind_k,iens);
           real dens = state(idR,hs+ind_k,hs+j,hs+i,iens) + hyDensCells(ind_k,iens);
-          tracerFlux(tr,k,j,i,iens) *= min( 1._fp , tracers(tr,hs+ind_k,hs+j,hs+i,iens) * dens / (fluxOut + eps) );
-        } else if (w < 0) {
+          real mass = tracers(tr,hs+ind_k,hs+j,hs+i,iens) * dens;
+          if (fluxOut > 0) {
+            fct_mult(tr,k,j,i,iens) = min( 1._fp , mass / fluxOut );
+          }
+        } else if (tracerFlux(tr,k,j,i,iens) < 0) {
           int ind_k = k;
           // upwind is to the right of this interface
           real f1 = min( tracerFlux(tr,ind_k  ,j,i,iens) , 0._fp );
           real f2 = max( tracerFlux(tr,ind_k+1,j,i,iens) , 0._fp );
-          real fluxOut = dt*(f2-f1)/dz(k,iens);
+          real fluxOut = dt*(f2-f1)/dz(ind_k,iens);
           real dens = state(idR,hs+ind_k,hs+j,hs+i,iens) + hyDensCells(ind_k,iens);
-          tracerFlux(tr,k,j,i,iens) *= min( 1._fp , tracers(tr,hs+ind_k,hs+j,hs+i,iens) * dens / (fluxOut + eps) );
+          real mass = tracers(tr,hs+ind_k,hs+j,hs+i,iens) * dens;
+          if (fluxOut > 0) {
+            fct_mult(tr,k,j,i,iens) = min( 1._fp , mass / fluxOut );
+          }
         }
       }
     });
@@ -2282,7 +2277,8 @@ public:
       }
       for (int l=0; l < num_tracers; l++) {
         // Compute tracer tendency
-        tracerTend(l,k,j,i,iens) = - ( tracerFlux(l,k+1,j,i,iens) - tracerFlux(l,k,j,i,iens) ) / dz(k,iens);
+        tracerTend(l,k,j,i,iens) = - ( tracerFlux(l,k+1,j,i,iens)*fct_mult(l,k+1,j,i,iens) -
+                                       tracerFlux(l,k  ,j,i,iens)*fct_mult(l,k  ,j,i,iens) ) / dz(k,iens);
         // Multiply density back onto the tracers
         tracers(l,hs+k,hs+j,hs+i,iens) *= (state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens));
       }
@@ -2780,6 +2776,7 @@ public:
       dtmult *= dt;
     }
   }
+
 
 };
 
