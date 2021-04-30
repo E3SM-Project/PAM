@@ -14,11 +14,6 @@ public:
 
   int nens;
 
-  bool trickle_phys;
-
-  real5d stateTend_phys;
-  real5d tracerTend_phys;
-
   real5d stateTend;
   real5d tracerTend;
 
@@ -29,22 +24,6 @@ public:
 
     stateTend  = space_op.createStateTendArr ();
     tracerTend = space_op.createTracerTendArr();
-
-    #ifdef PAM_STANDALONE
-      YAML::Node config = YAML::LoadFile(inFile);
-      if ( !config ) { endrun("ERROR: Invalid YAML input file"); }
-      trickle_phys = config["trickle_phys"].as<bool>();
-
-      if (trickle_phys) {
-        stateTend_phys  = space_op.createStateTendArr ();
-        tracerTend_phys = space_op.createTracerTendArr();
-      }
-      #ifdef PAM_STANDALONE
-        std::cout << "trickle_phys: " << trickle_phys << std::endl;
-      #endif
-    #else
-      trickle_phys = false;
-    #endif
   }
 
 
@@ -68,32 +47,6 @@ public:
   template <class MICRO>
   void init_state_and_tracers( DataManager &dm , MICRO const &micro ) {
     space_op.init_state_and_tracers( dm , micro );
-
-    if (trickle_phys) {
-      real5d state   = dm.get<real,5>("dynamics_state");
-      real5d tracers = dm.get<real,5>("dynamics_tracers");
-
-      YAKL_SCOPE( stateTend_phys  , this->stateTend_phys  );
-      YAKL_SCOPE( tracerTend_phys , this->tracerTend_phys );
-
-      int nx          = space_op.nx;
-      int ny          = space_op.ny;
-      int nz          = space_op.nz;
-      int nens        = space_op.nens;
-      int num_state   = space_op.num_state;
-      int num_tracers = space_op.num_tracers;
-      int hs          = space_op.hs;
-
-      // Store the initialized state in the physics tendencies
-      parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-        for (int l=0; l < num_state; l++) {
-          stateTend_phys(l,k,j,i,iens) = state(l,hs+k,hs+j,hs+i,iens);
-        }
-        for (int l=0; l < num_tracers; l++) {
-          tracerTend_phys(l,k,j,i,iens) = tracers(l,hs+k,hs+j,hs+i,iens);
-        }
-      });
-    }
   }
 
 
@@ -167,35 +120,11 @@ public:
     int num_tracers = space_op.num_tracers;
     int hs          = space_op.hs;
 
-    if (trickle_phys) {
-      // Compute the physics tendencies (previous state before physics is stored in *Tend_phys arrays)
-      parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-        for (int l=0; l < num_state; l++) {
-          stateTend_phys(l,k,j,i,iens) = (state(l,hs+k,hs+j,hs+i,iens) - stateTend_phys(l,k,j,i,iens)) / dtphys;
-        }
-        for (int l=0; l < num_tracers; l++) {
-          tracerTend_phys(l,k,j,i,iens) = (tracers(l,hs+k,hs+j,hs+i,iens) - tracerTend_phys(l,k,j,i,iens)) / dtphys;
-        }
-      });
-    }
-
     real dt = compute_time_step( 0.8 , dm , micro );
 
     real loctime = 0.;
     while (loctime < dtphys) {
       if (loctime + dt > dtphys) { dt = dtphys - loctime; }
-
-      if (trickle_phys) {
-        // Apply physics tendencies first
-        parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-          for (int l=0; l < num_state; l++) {
-            state(l,hs+k,hs+j,hs+i,iens) += stateTend_phys(l,k,j,i,iens)*dt;
-          }
-          for (int l=0; l < num_tracers; l++) {
-            tracers(l,hs+k,hs+j,hs+i,iens) = max( 0._fp , tracers(l,hs+k,hs+j,hs+i,iens) + tracerTend_phys(l,k,j,i,iens)*dt );
-          }
-        });
-      }
 
       #ifdef PAM_DEBUG
         validate_array_positive(tracers);
@@ -255,18 +184,6 @@ public:
       space_op.switch_directions();
 
       loctime += dt;
-    }
-
-    if (trickle_phys) {
-      // Store the state into *Tend_phys for tendency computations later
-      parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-        for (int l=0; l < num_state; l++) {
-          stateTend_phys(l,k,j,i,iens) = state(l,hs+k,hs+j,hs+i,iens);
-        }
-        for (int l=0; l < num_tracers; l++) {
-          tracerTend_phys(l,k,j,i,iens) = tracers(l,hs+k,hs+j,hs+i,iens);
-        }
-      });
     }
 
     space_op.convert_dynamics_to_coupler_state( dm , micro );
