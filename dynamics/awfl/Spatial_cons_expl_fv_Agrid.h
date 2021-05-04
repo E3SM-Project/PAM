@@ -13,7 +13,7 @@
 template <int nTimeDerivs, bool timeAvg, int nAder>
 class Spatial_operator {
 public:
-  
+
   static_assert(nTimeDerivs == 1 , "ERROR: This Spatial class isn't setup to use nTimeDerivs > 1");
 
   int static constexpr hs = (ord-1)/2;
@@ -100,7 +100,7 @@ public:
   // Options for initializing the data
   int static constexpr DATA_SPEC_THERMAL       = 1;
   int static constexpr DATA_SPEC_SUPERCELL     = 2;
-  
+
   bool sim2d;  // Whether we're simulating in 2-D
 
   real sim_time;  // How long to simulate
@@ -401,7 +401,7 @@ public:
       real R_moist = Rd * (rho_dry / rho_moist) + Rv * (rho_v / rho_moist);
       real press_moist = rho_moist * R_moist * temp;
       real rho_theta_moist = pow( press_moist / C0 , 1._fp/gamma );
-      
+
       // Compute moist rho*theta
       state(idT,hs+k,hs+j,hs+i,iens) = rho_theta_moist - hyDensThetaCells(k,iens);
 
@@ -465,7 +465,7 @@ public:
 
   // Given the model data and CFL value, compute the maximum stable time step
   template <class MICRO>
-  real compute_time_step(real cfl, DataManager &dm, MICRO const &micro) {
+  real compute_time_step(DataManager &dm, MICRO const &micro, real cfl = 0.8) {
 
     // If we've already computed the time step, then don't compute it again
     if (dtInit <= 0) {
@@ -508,7 +508,7 @@ public:
       // Store to dtInit so we don't have to compute this again
       dtInit = yakl::intrinsics::minval( dt3d );
     }
-    
+
     return dtInit;
   }
 
@@ -522,7 +522,7 @@ public:
     this->xlen = xlen;
     this->ylen = ylen;
     this->num_tracers = num_tracers;
-    
+
     // Allocate device arrays for whether tracers are positive-definite or add mass
     tracer_pos       = bool1d("tracer_pos"      ,num_tracers);
     tracer_adds_mass = bool1d("tracer_adds_mass",num_tracers);
@@ -630,7 +630,7 @@ public:
     YAKL_SCOPE( vert_weno_recon      , this->vert_weno_recon      );
 
     zint.deep_copy_to(vert_interface);
-    
+
     parallel_for( Bounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
       dz(k,iens) = vert_interface(k+1,iens) - vert_interface(k,iens);
     });
@@ -1706,7 +1706,7 @@ public:
         stateLimits(idV,1,k,j  ,i,iens) = rv_tavg (0     );
         stateLimits(idW,1,k,j  ,i,iens) = rw_DTs(0,0     );
         stateLimits(idT,1,k,j  ,i,iens) = rt_DTs(0,0     );
-        // Right interface       
+        // Right interface
         stateLimits(idR,0,k,j+1,i,iens) = r_tavg  (ngll-1);
         stateLimits(idU,0,k,j+1,i,iens) = ru_DTs(0,ngll-1);
         stateLimits(idV,0,k,j+1,i,iens) = rv_tavg (ngll-1);
@@ -2066,7 +2066,7 @@ public:
         stateLimits(idV,1,k  ,j,i,iens) = rv_DTs(0,0     );
         stateLimits(idW,1,k  ,j,i,iens) = rw_tavg (0     );
         stateLimits(idT,1,k  ,j,i,iens) = rt_DTs(0,0     );
-        // Right interface       
+        // Right interface
         stateLimits(idR,0,k+1,j,i,iens) = r_tavg  (ngll-1);
         stateLimits(idU,0,k+1,j,i,iens) = ru_DTs(0,ngll-1);
         stateLimits(idV,0,k+1,j,i,iens) = rv_DTs(0,ngll-1);
@@ -2539,7 +2539,7 @@ public:
                                             SArray<real,2,nAder,ngll> &rvw ,
                                             SArray<real,2,nAder,ngll> &rvt ,
                                             SArray<real,2,nAder,ngll> &rt_gamma ,
-                                            SArray<real,2,ngll,ngll> const &deriv , 
+                                            SArray<real,2,ngll,ngll> const &deriv ,
                                             real C0, real gamma, real dy ) {
     // zero out the non-linear DTs
     for (int kt=1; kt < nAder; kt++) {
@@ -2623,8 +2623,8 @@ public:
                                             SArray<real,2,nAder,ngll> &rww ,
                                             SArray<real,2,nAder,ngll> &rwt ,
                                             SArray<real,2,nAder,ngll> &rt_gamma ,
-                                            SArray<real,2,ngll,ngll> const &deriv , 
-                                            real3d const &hyPressureGLL , 
+                                            SArray<real,2,ngll,ngll> const &deriv ,
+                                            real3d const &hyPressureGLL ,
                                             real C0, real gamma ,
                                             int k , real dz , int bc_z , int nz , int iens ) {
     // zero out the non-linear DTs
@@ -2707,7 +2707,7 @@ public:
                                         SArray<real,2,nAder,ngll> const &ru ,
                                         SArray<real,2,nAder,ngll> &rt ,
                                         SArray<real,2,nAder,ngll> &rut ,
-                                        SArray<real,2,ngll,ngll> const &deriv , 
+                                        SArray<real,2,ngll,ngll> const &deriv ,
                                         real dx ) {
     // zero out the non-linear DT
     for (int kt=1; kt < nAder; kt++) {
@@ -2779,5 +2779,3 @@ public:
 
 
 };
-
-

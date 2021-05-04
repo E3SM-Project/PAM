@@ -16,14 +16,14 @@ int main(int argc, char** argv) {
     std::string inFile(argv[1]);
     YAML::Node config = YAML::LoadFile(inFile);
     if ( !config            ) { endrun("ERROR: Invalid YAML input file"); }
-    real simTime = config["simTime"].as<real>();
-    real outFreq = config["outFreq"].as<real>();
-    int  nx      = config["nx"     ].as<int>();
-    int  ny      = config["ny"     ].as<int>();
-    int  nens    = config["nens"   ].as<int>();
-    real xlen    = config["xlen"   ].as<real>();
-    real ylen    = config["ylen"   ].as<real>();
-    real dtphys  = config["dtphys" ].as<real>();
+    real simTime   = config["simTime"].as<real>();
+    real outFreq   = config["outFreq"].as<real>();
+    int  nx        = config["nx"     ].as<int>();
+    int  ny        = config["ny"     ].as<int>();
+    int  nens      = config["nens"   ].as<int>();
+    real xlen      = config["xlen"   ].as<real>();
+    real ylen      = config["ylen"   ].as<real>();
+    real dtphys_in = config["dtphys" ].as<real>();
 
     // Store vertical coordinates
     std::string vcoords_file = config["vcoords"].as<std::string>();
@@ -70,7 +70,9 @@ int main(int argc, char** argv) {
 
     dycore.output( dm , micro , etime );
 
+    real dtphys = dtphys_in;
     while (etime < simTime) {
+      if (dtphys_in == 0.) { dtphys = dycore.compute_time_step(dm, micro); }
       if (etime + dtphys > simTime) { dtphys = simTime - etime; }
       micro.timeStep( dm , dtphys );
       dycore.timeStep( dm , micro , dtphys );
@@ -89,5 +91,3 @@ int main(int argc, char** argv) {
   }
   yakl::finalize();
 }
-
-

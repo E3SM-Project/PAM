@@ -18,7 +18,7 @@ public:
   real5d tracerTend;
 
   Spatial space_op;
-  
+
   void init(std::string inFile, int ny, int nx, int nens, real xlen, real ylen, int num_tracers, DataManager &dm) {
     space_op.init(inFile, ny, nx, nens, xlen, ylen, num_tracers, dm);
 
@@ -63,8 +63,8 @@ public:
 
 
   template <class MICRO>
-  real compute_time_step(real cfl, DataManager &dm, MICRO const &micro) {
-    return space_op.compute_time_step(cfl, dm, micro);
+  real compute_time_step(DataManager &dm, MICRO const &micro, real cfl = 0.8) {
+    return space_op.compute_time_step(dm, micro, cfl);
   }
 
 
@@ -118,7 +118,7 @@ public:
     int num_tracers = space_op.num_tracers;
     int hs          = space_op.hs;
 
-    real dt = compute_time_step( 0.8 , dm , micro );
+    real dt = compute_time_step( dm , micro );
 
     real loctime = 0.;
     while (loctime < dtphys) {
@@ -194,4 +194,3 @@ public:
   const char * dycore_name() const { return "AWFL"; }
 
 };
-
