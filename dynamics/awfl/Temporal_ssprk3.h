@@ -22,7 +22,7 @@ public:
   real5d tracerTendAccum;
 
   Spatial space_op;
-  
+
   void init(std::string inFile, int ny, int nx, int nens, real xlen, real ylen, int num_tracers, DataManager &dm) {
     space_op.init(inFile, ny, nx, nens, xlen, ylen, num_tracers, dm);
     stateTmp        = space_op.createStateArr     ();
@@ -127,6 +127,8 @@ public:
     YAKL_SCOPE( tracersTmp      , this->tracersTmp      );
     YAKL_SCOPE( tracerTendAccum , this->tracerTendAccum );
 
+    space_op.convert_coupler_state_to_dynamics( dm , micro );
+
     real5d state   = dm.get<real,5>("dynamics_state");
     real5d tracers = dm.get<real,5>("dynamics_tracers");
 
@@ -173,12 +175,12 @@ public:
       }
       parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
         for (int l=0; l < num_state; l++) {
-          stateTmp(l,hs+k,hs+j,hs+i,iens) = 0.75_fp * state   (l,hs+k,hs+j,hs+i,iens) + 
+          stateTmp(l,hs+k,hs+j,hs+i,iens) = 0.75_fp * state   (l,hs+k,hs+j,hs+i,iens) +
                                             0.25_fp * stateTmp(l,hs+k,hs+j,hs+i,iens) +
                                             0.25_fp * dtloc * stateTendAccum(l,k,j,i,iens);
         }
         for (int l=0; l < num_tracers; l++) {
-          tracersTmp(l,hs+k,hs+j,hs+i,iens) = 0.75_fp * tracers   (l,hs+k,hs+j,hs+i,iens) + 
+          tracersTmp(l,hs+k,hs+j,hs+i,iens) = 0.75_fp * tracers   (l,hs+k,hs+j,hs+i,iens) +
                                               0.25_fp * tracersTmp(l,hs+k,hs+j,hs+i,iens) +
                                               0.25_fp * dtloc * tracerTendAccum(l,k,j,i,iens);
         }
@@ -194,12 +196,12 @@ public:
       }
       parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
         for (int l=0; l < num_state; l++) {
-          state(l,hs+k,hs+j,hs+i,iens) = (1._fp/3._fp) * state   (l,hs+k,hs+j,hs+i,iens) + 
+          state(l,hs+k,hs+j,hs+i,iens) = (1._fp/3._fp) * state   (l,hs+k,hs+j,hs+i,iens) +
                                          (2._fp/3._fp) * stateTmp(l,hs+k,hs+j,hs+i,iens) +
                                          (2._fp/3._fp) * dtloc * stateTendAccum(l,k,j,i,iens);
         }
         for (int l=0; l < num_tracers; l++) {
-          tracers(l,hs+k,hs+j,hs+i,iens) = (1._fp/3._fp) * tracers   (l,hs+k,hs+j,hs+i,iens) + 
+          tracers(l,hs+k,hs+j,hs+i,iens) = (1._fp/3._fp) * tracers   (l,hs+k,hs+j,hs+i,iens) +
                                            (2._fp/3._fp) * tracersTmp(l,hs+k,hs+j,hs+i,iens) +
                                            (2._fp/3._fp) * dtloc * tracerTendAccum(l,k,j,i,iens);
         }
@@ -207,6 +209,8 @@ public:
 
       loctime += dt;
     }
+
+    space_op.convert_dynamics_to_coupler_state( dm , micro );
   }
 
 
@@ -216,4 +220,3 @@ public:
   const char * dycore_name() const { return "AWFL"; }
 
 };
-

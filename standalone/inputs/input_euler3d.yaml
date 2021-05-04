@@ -3,11 +3,11 @@
 simTime  : 1000.
 
 # Number of cells to use
-nx       : 100 
+nx       : 200
 ny       : 1
 
 # Vertical height cooridnates file
-vcoords  : vcoords_equal_50_10km.nc
+vcoords  : vcoords_equal_100_10km.nc
 
 # Lengths of the dimensions in meters
 xlen     : 20000
@@ -22,7 +22,7 @@ weno_scalars : true
 weno_winds   : true
 
 # 200km x 100km x 20km  for supercell
-# 20km  x 20km  x 10km  for thermal 
+# 20km  x 20km  x 10km  for thermal
 # Data to initialize: thermal, supercell
 initData : thermal
 
@@ -30,7 +30,7 @@ initData : thermal
 out_prefix  : test
 
 # CRM physics time step
-dtphys: 60.
+dtphys: 10.
 
 # Output frequency in seconds
 outFreq  : 10.
@@ -40,4 +40,3 @@ nens : 1
 
 # Balance initial density to avoid initial acoustics
 balance_initial_density: true
-
