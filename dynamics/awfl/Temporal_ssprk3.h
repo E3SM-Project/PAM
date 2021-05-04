@@ -148,6 +148,8 @@ public:
 
       real dtloc = dt;
 
+      ScalarLiveOut<bool> neg_too_large(false);
+
       /////////////////////////////////////
       // Stage 1
       /////////////////////////////////////
@@ -162,6 +164,10 @@ public:
         }
         for (int l=0; l < num_tracers; l++) {
           tracersTmp(l,hs+k,hs+j,hs+i,iens) = tracers(l,hs+k,hs+j,hs+i,iens) + dtloc * tracerTendAccum(l,k,j,i,iens);
+          if (tracersTmp(l,hs+k,hs+j,hs+i,iens) < -1.e-10) {
+            neg_too_large = true;
+          }
+          tracersTmp(l,hs+k,hs+j,hs+i,iens) = max( 0._fp , tracersTmp(l,hs+k,hs+j,hs+i,iens) );
         }
       });
 
@@ -183,6 +189,10 @@ public:
           tracersTmp(l,hs+k,hs+j,hs+i,iens) = 0.75_fp * tracers   (l,hs+k,hs+j,hs+i,iens) +
                                               0.25_fp * tracersTmp(l,hs+k,hs+j,hs+i,iens) +
                                               0.25_fp * dtloc * tracerTendAccum(l,k,j,i,iens);
+          if (tracersTmp(l,hs+k,hs+j,hs+i,iens) < -1.e-10) {
+            neg_too_large = true;
+          }
+          tracersTmp(l,hs+k,hs+j,hs+i,iens) = max( 0._fp , tracersTmp(l,hs+k,hs+j,hs+i,iens) );
         }
       });
 
@@ -204,8 +214,19 @@ public:
           tracers(l,hs+k,hs+j,hs+i,iens) = (1._fp/3._fp) * tracers   (l,hs+k,hs+j,hs+i,iens) +
                                            (2._fp/3._fp) * tracersTmp(l,hs+k,hs+j,hs+i,iens) +
                                            (2._fp/3._fp) * dtloc * tracerTendAccum(l,k,j,i,iens);
+          if (tracers(l,hs+k,hs+j,hs+i,iens) < -1.e-10) {
+            neg_too_large = true;
+          }
+          tracers(l,hs+k,hs+j,hs+i,iens) = max( 0._fp , tracers(l,hs+k,hs+j,hs+i,iens) );
         }
       });
+
+      #ifdef PAM_DEBUG
+        if (neg_too_large.hostRead()) {
+          std::cerr << "WARNING: Correcting a non-machine-precision negative tracer value" << std::endl;
+          // endrun();
+        }
+      #endif
 
       loctime += dt;
     }
