@@ -201,7 +201,7 @@ public:
       real dens_vap = tracers(idWV,hs+k,hs+j,hs+i,iens) * dens;
       real dens_dry = dens;
       for (int tr=0; tr < num_tracers; tr++) {
-        if (tracer_adds_mass(tr)) dens_dry -= tracers(tr,hs+k,hs+j,hs+i,iens);
+        if (tracer_adds_mass(tr)) dens_dry -= tracers(tr,hs+k,hs+j,hs+i,iens) * dens;
       }
       real temp = pressure / ( dens_dry * Rd + dens_vap * Rv );
       dm_dens_dry(k,j,i,iens) = dens_dry;
@@ -262,6 +262,9 @@ public:
       }
       real pressure = dens_dry * Rd * temp + dens_vap * Rv * temp;
       real theta    = pow( pressure / C0 , 1._fp / gamma ) / dens;
+      for (int tr=0; tr < num_tracers; tr++) {
+        tracers(tr,hs+k,hs+j,hs+i,iens) /= dens;
+      }
       state(idR,hs+k,hs+j,hs+i,iens) = dens - hyDensCells(k,iens);
       state(idU,hs+k,hs+j,hs+i,iens) = uvel;
       state(idV,hs+k,hs+j,hs+i,iens) = vvel;
@@ -349,7 +352,7 @@ public:
             real r_v   = p_v / (Rv*temp);                           // Compute vapor density
 
             real wt = gllWts_ord(kk) * gllWts_ord(jj) * gllWts_ord(ii);
-            tracers(idWV,hs+k,hs+j,hs+i,iens) += r_v / (rh+r_v) * rh * wt;
+            tracers(idWV,hs+k,hs+j,hs+i,iens) += r_v / (rh+r_v) * wt;
           }
         }
       }
@@ -377,52 +380,9 @@ public:
 
     parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       // Add tracer density to dry density if it adds mass
-      real rho_dry = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens);
       for (int tr=0; tr < num_tracers; tr++) {
         if (tracer_adds_mass(tr)) {
           state(idR,hs+k,hs+j,hs+i,iens) += tracers(tr,hs+k,hs+j,hs+i,iens);
-        }
-      }
-      real rho_moist = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens);
-
-      // Adjust momenta for moist density
-      state(idU,hs+k,hs+j,hs+i,iens) = state(idU,hs+k,hs+j,hs+i,iens) / rho_dry * rho_moist;
-      state(idV,hs+k,hs+j,hs+i,iens) = state(idV,hs+k,hs+j,hs+i,iens) / rho_dry * rho_moist;
-      state(idW,hs+k,hs+j,hs+i,iens) = state(idW,hs+k,hs+j,hs+i,iens) / rho_dry * rho_moist;
-
-      // Compute the dry temperature (same as the moist temperature)
-      real rho_theta_dry = state(idT,hs+k,hs+j,hs+i,iens) + hyDensThetaCells(k,iens);
-      real press = C0*pow(rho_theta_dry,gamma);  // Dry pressure
-      real temp  = press / Rd / rho_dry;         // Temp (same dry or moist)
-
-      // Compute moist theta
-      real index_vapor = micro.get_water_vapor_index();
-      real rho_v = tracers(index_vapor,hs+k,hs+j,hs+i,iens);
-      real R_moist = Rd * (rho_dry / rho_moist) + Rv * (rho_v / rho_moist);
-      real press_moist = rho_moist * R_moist * temp;
-      real rho_theta_moist = pow( press_moist / C0 , 1._fp/gamma );
-
-      // Compute moist rho*theta
-      state(idT,hs+k,hs+j,hs+i,iens) = rho_theta_moist - hyDensThetaCells(k,iens);
-
-      for (int tr = 0 ; tr < num_tracers ; tr++) {
-        tracers(tr,hs+k,hs+j,hs+i,iens) = tracers(tr,hs+k,hs+j,hs+i,iens) / rho_dry * rho_moist;
-      }
-
-      if (balance_initial_density) {
-        real rh  = hyDensCells     (k,iens);
-        real rth = hyDensThetaCells(k,iens);
-        real rt = state(idT,hs+k,hs+j,hs+i,iens) + rth;
-        real r  = state(idR,hs+k,hs+j,hs+i,iens) + rh;
-        real t  = rt / r;
-        r = rth/t;
-        state(idR,hs+k,hs+j,hs+i,iens) = r - rh;
-        state(idU,hs+k,hs+j,hs+i,iens) = state(idU,hs+k,hs+j,hs+i,iens) / rho_moist * r;
-        state(idV,hs+k,hs+j,hs+i,iens) = state(idV,hs+k,hs+j,hs+i,iens) / rho_moist * r;
-        state(idW,hs+k,hs+j,hs+i,iens) = state(idW,hs+k,hs+j,hs+i,iens) / rho_moist * r;
-        state(idT,hs+k,hs+j,hs+i,iens) = r*t - rth;
-        for (int tr = 0 ; tr < num_tracers ; tr++) {
-          tracers(tr,hs+k,hs+j,hs+i,iens) = tracers(tr,hs+k,hs+j,hs+i,iens) / rho_moist * r;
         }
       }
     });
@@ -469,13 +429,13 @@ public:
 
     // If we've already computed the time step, then don't compute it again
     if (dtInit <= 0) {
-      YAKL_SCOPE( dx                   , this->dx                  );
-      YAKL_SCOPE( dy                   , this->dy                  );
-      YAKL_SCOPE( dz                   , this->dz                  );
-      YAKL_SCOPE( hyDensCells          , this->hyDensCells         );
-      YAKL_SCOPE( hyDensThetaCells     , this->hyDensThetaCells    );
-      YAKL_SCOPE( gamma                , this->gamma               );
-      YAKL_SCOPE( C0                   , this->C0                  );
+      YAKL_SCOPE( dx               , this->dx               );
+      YAKL_SCOPE( dy               , this->dy               );
+      YAKL_SCOPE( dz               , this->dz               );
+      YAKL_SCOPE( hyDensCells      , this->hyDensCells      );
+      YAKL_SCOPE( hyDensThetaCells , this->hyDensThetaCells );
+      YAKL_SCOPE( gamma            , this->gamma            );
+      YAKL_SCOPE( C0               , this->C0               );
 
       // Convert data from DataManager to state and tracers array for convenience
       real5d state   = dm.get<real,5>("dynamics_state");
@@ -488,10 +448,10 @@ public:
       parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
         // Get the state
         real r = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens);
-        real u = state(idU,hs+k,hs+j,hs+i,iens) / r;
-        real v = state(idV,hs+k,hs+j,hs+i,iens) / r;
-        real w = state(idW,hs+k,hs+j,hs+i,iens) / r;
-        real t = ( state(idT,hs+k,hs+j,hs+i,iens) + hyDensThetaCells(k,iens) ) / r;
+        real u = state(idU,hs+k,hs+j,hs+i,iens);
+        real v = state(idV,hs+k,hs+j,hs+i,iens);
+        real w = state(idW,hs+k,hs+j,hs+i,iens);
+        real t = state(idT,hs+k,hs+j,hs+i,iens) + hyThetaCells(k,iens);
         real p = C0*pow(r*t,gamma);
 
         // Compute the speed of sound (constant kappa assumption)
@@ -931,7 +891,7 @@ public:
                 if (balance_initial_density) r = rh*th/t;
 
                 state(idR,hs+k,hs+j,hs+i,iens) += (r - rh)*wt;
-                state(idT,hs+k,hs+j,hs+i,iens) += (r*t - rh*th) * wt;
+                state(idT,hs+k,hs+j,hs+i,iens) += (t - th)*wt;
               }
             }
           }
@@ -1146,12 +1106,12 @@ public:
               dens_theta += dens * theta_pert;
 
               real factor = gllWts_ngll(ii) * gllWts_ngll(jj) * gllWts_ngll(kk);
-              state  (idR ,hs+k,hs+j,hs+i,iens) += (dens - hyDensGLL(k,kk,iens))            * factor;
-              state  (idU ,hs+k,hs+j,hs+i,iens) += dens * uvel                              * factor;
-              state  (idV ,hs+k,hs+j,hs+i,iens) += dens * vvel                              * factor;
-              state  (idW ,hs+k,hs+j,hs+i,iens) += dens * wvel                              * factor;
-              state  (idT ,hs+k,hs+j,hs+i,iens) += (dens_theta - hyDensThetaGLL(k,kk,iens)) * factor;
-              tracers(idWV,hs+k,hs+j,hs+i,iens) += dens_vap                                 * factor;
+              state  (idR ,hs+k,hs+j,hs+i,iens) += (dens - hyDensGLL(k,kk,iens)) * factor;
+              state  (idU ,hs+k,hs+j,hs+i,iens) += uvel                          * factor;
+              state  (idV ,hs+k,hs+j,hs+i,iens) += vvel                          * factor;
+              state  (idW ,hs+k,hs+j,hs+i,iens) += wvel                          * factor;
+              state  (idT ,hs+k,hs+j,hs+i,iens) += theta_pert                    * factor;
+              tracers(idWV,hs+k,hs+j,hs+i,iens) += dens_vap / dens               * factor;
             }
           }
         }
@@ -2353,35 +2313,35 @@ public:
 
       real3d data("data",nz,ny,nx);
       // rho'
-      parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = state(idR,hs+k,hs+j,hs+i,iens); });
+      parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+        data(k,j,i) = state(idR,hs+k,hs+j,hs+i,iens);
+      });
       nc.write1(data.createHostCopy(),"dens_pert",{"z","y","x"},ulIndex,"t");
       // u
       parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-        data(k,j,i) = state(idU,hs+k,hs+j,hs+i,iens) / ( state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens) );
+        data(k,j,i) = state(idU,hs+k,hs+j,hs+i,iens);
       });
       nc.write1(data.createHostCopy(),"u",{"z","y","x"},ulIndex,"t");
       // v
       parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-        data(k,j,i) = state(idV,hs+k,hs+j,hs+i,iens) / ( state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens) );
+        data(k,j,i) = state(idV,hs+k,hs+j,hs+i,iens);
       });
       nc.write1(data.createHostCopy(),"v",{"z","y","x"},ulIndex,"t");
       // w
       parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-        data(k,j,i) = state(idW,hs+k,hs+j,hs+i,iens) / ( state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens) );
+        data(k,j,i) = state(idW,hs+k,hs+j,hs+i,iens);
       });
       nc.write1(data.createHostCopy(),"w",{"z","y","x"},ulIndex,"t");
       // theta'
       parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-        real r =   state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells     (k,iens);
-        real t = ( state(idT,hs+k,hs+j,hs+i,iens) + hyDensThetaCells(k,iens) ) / r;
-        data(k,j,i) = t - hyThetaCells(k,iens);
+        data(k,j,i) = state(idT,hs+k,hs+j,hs+i,iens);
       });
       nc.write1(data.createHostCopy(),"pot_temp_pert",{"z","y","x"},ulIndex,"t");
       // pressure'
       parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-        real r  = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens);
-        real rt = state(idT,hs+k,hs+j,hs+i,iens) + hyDensThetaCells(k,iens);
-        real p  = C0*pow(rt,gamma);
+        real r = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells (k,iens);
+        real t = state(idT,hs+k,hs+j,hs+i,iens) + hyThetaCells(k,iens);
+        real p  = C0*pow(r*t,gamma);
         data(k,j,i) = p - hyPressureCells(k,iens);
       });
       nc.write1(data.createHostCopy(),"pressure_pert",{"z","y","x"},ulIndex,"t");
@@ -2389,7 +2349,7 @@ public:
       for (int tr=0; tr < num_tracers; tr++) {
         parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
           real r = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens);
-          data(k,j,i) = tracers(tr,hs+k,hs+j,hs+i,iens)/r;
+          data(k,j,i) = tracers(tr,hs+k,hs+j,hs+i,iens)*r;
         });
         nc.write1(data.createHostCopy(),std::string("tracer_")+tracer_name[tr],{"z","y","x"},ulIndex,"t");
       }
@@ -2458,73 +2418,6 @@ public:
                                             SArray<real,2,nAder,ngll> &rt_gamma ,
                                             SArray<real,2,ngll,ngll> const &deriv ,
                                             real C0, real gamma, real dx ) {
-    // zero out the non-linear DTs
-    for (int kt=1; kt < nAder; kt++) {
-      for (int ii=0; ii < ngll; ii++) {
-        ruu     (kt,ii) = 0;
-        ruv     (kt,ii) = 0;
-        ruw     (kt,ii) = 0;
-        rut     (kt,ii) = 0;
-        rt_gamma(kt,ii) = 0;
-      }
-    }
-
-    // Loop over the time derivatives
-    for (int kt=0; kt<nAder-1; kt++) {
-      // Compute the state at the next time level
-      for (int ii=0; ii<ngll; ii++) {
-        real df1_dx = 0;
-        real df2_dx = 0;
-        real df3_dx = 0;
-        real df4_dx = 0;
-        real df5_dx = 0;
-        for (int s=0; s<ngll; s++) {
-          df1_dx += deriv(s,ii) * ( ru (kt,s) );
-          if (kt == 0) { df2_dx += deriv(s,ii) * ( ruu(kt,s) + C0*rt_gamma(kt,s)   ); }
-          else         { df2_dx += deriv(s,ii) * ( ruu(kt,s) + C0*rt_gamma(kt,s)/2 ); }
-          df3_dx += deriv(s,ii) * ( ruv(kt,s) );
-          df4_dx += deriv(s,ii) * ( ruw(kt,s) );
-          df5_dx += deriv(s,ii) * ( rut(kt,s) );
-        }
-        r (kt+1,ii) = -df1_dx/dx/(kt+1._fp);
-        ru(kt+1,ii) = -df2_dx/dx/(kt+1._fp);
-        rv(kt+1,ii) = -df3_dx/dx/(kt+1._fp);
-        rw(kt+1,ii) = -df4_dx/dx/(kt+1._fp);
-        rt(kt+1,ii) = -df5_dx/dx/(kt+1._fp);
-      }
-
-      // Compute ru* at the next time level
-      for (int ii=0; ii<ngll; ii++) {
-        real tot_ruu = 0;
-        real tot_ruv = 0;
-        real tot_ruw = 0;
-        real tot_rut = 0;
-        for (int ir=0; ir<=kt+1; ir++) {
-          tot_ruu += ru(ir,ii) * ru(kt+1-ir,ii) - r(ir,ii) * ruu(kt+1-ir,ii);
-          tot_ruv += ru(ir,ii) * rv(kt+1-ir,ii) - r(ir,ii) * ruv(kt+1-ir,ii);
-          tot_ruw += ru(ir,ii) * rw(kt+1-ir,ii) - r(ir,ii) * ruw(kt+1-ir,ii);
-          tot_rut += ru(ir,ii) * rt(kt+1-ir,ii) - r(ir,ii) * rut(kt+1-ir,ii);
-        }
-        ruu(kt+1,ii) = tot_ruu / r(0,ii);
-        ruv(kt+1,ii) = tot_ruv / r(0,ii);
-        ruw(kt+1,ii) = tot_ruw / r(0,ii);
-        rut(kt+1,ii) = tot_rut / r(0,ii);
-
-        // Compute rt_gamma at the next time level
-        real tot_rt_gamma = 0;
-        for (int ir=0; ir<=kt; ir++) {
-          tot_rt_gamma += (kt+1._fp -ir) * ( gamma*rt_gamma(ir,ii)*rt(kt+1-ir,ii) - rt(ir,ii)*rt_gamma(kt+1-ir,ii) );
-        }
-        rt_gamma(kt+1,ii) = ( gamma*rt_gamma(0,ii)*rt(kt+1,ii) + tot_rt_gamma / (kt+1._fp) ) / rt(0,ii);
-      }
-    }
-
-    // Fix the rt_gamma
-    for (int kt=1; kt < nAder; kt++) {
-      for (int ii=0; ii < ngll; ii++) {
-        rt_gamma(kt,ii) /= 2;
-      }
-    }
   }
 
 
@@ -2541,74 +2434,6 @@ public:
                                             SArray<real,2,nAder,ngll> &rt_gamma ,
                                             SArray<real,2,ngll,ngll> const &deriv ,
                                             real C0, real gamma, real dy ) {
-    // zero out the non-linear DTs
-    for (int kt=1; kt < nAder; kt++) {
-      for (int ii=0; ii < ngll; ii++) {
-        rvu     (kt,ii) = 0;
-        rvv     (kt,ii) = 0;
-        rvw     (kt,ii) = 0;
-        rvt     (kt,ii) = 0;
-        rt_gamma(kt,ii) = 0;
-      }
-    }
-
-    // Loop over the time derivatives
-    for (int kt=0; kt<nAder-1; kt++) {
-      // Compute the state at the next time level
-      for (int ii=0; ii<ngll; ii++) {
-        real drv_dy    = 0;
-        real drvu_dy   = 0;
-        real drvv_p_dy = 0;
-        real drvw_dy   = 0;
-        real drvt_dy   = 0;
-        for (int s=0; s<ngll; s++) {
-          drv_dy    += deriv(s,ii) * rv(kt,s);
-          drvu_dy   += deriv(s,ii) * rvu(kt,s);
-          if (kt == 0) { drvv_p_dy += deriv(s,ii) * ( rvv(kt,s) + C0*rt_gamma(kt,s)   ); }
-          else         { drvv_p_dy += deriv(s,ii) * ( rvv(kt,s) + C0*rt_gamma(kt,s)/2 ); }
-          drvw_dy   += deriv(s,ii) * rvw(kt,s);
-          drvt_dy   += deriv(s,ii) * rvt(kt,s);
-        }
-        r (kt+1,ii) = -drv_dy   /dy/(kt+1);
-        ru(kt+1,ii) = -drvu_dy  /dy/(kt+1);
-        rv(kt+1,ii) = -drvv_p_dy/dy/(kt+1);
-        rw(kt+1,ii) = -drvw_dy  /dy/(kt+1);
-        rt(kt+1,ii) = -drvt_dy  /dy/(kt+1);
-      }
-
-      // Compute ru* at the next time level
-      for (int ii=0; ii<ngll; ii++) {
-        // Compute the non-linear differential transforms
-        real tot_rvu = 0;
-        real tot_rvv = 0;
-        real tot_rvw = 0;
-        real tot_rvt = 0;
-        for (int l=0; l<=kt+1; l++) {
-          tot_rvu += rv(l,ii) * ru(kt+1-l,ii) - r(l,ii) * rvu(kt+1-l,ii);
-          tot_rvv += rv(l,ii) * rv(kt+1-l,ii) - r(l,ii) * rvv(kt+1-l,ii);
-          tot_rvw += rv(l,ii) * rw(kt+1-l,ii) - r(l,ii) * rvw(kt+1-l,ii);
-          tot_rvt += rv(l,ii) * rt(kt+1-l,ii) - r(l,ii) * rvt(kt+1-l,ii);
-        }
-        rvu(kt+1,ii) = tot_rvu / r(0,ii);
-        rvv(kt+1,ii) = tot_rvv / r(0,ii);
-        rvw(kt+1,ii) = tot_rvw / r(0,ii);
-        rvt(kt+1,ii) = tot_rvt / r(0,ii);
-
-        // Compute rt_gamma at the next time level
-        real tot_rt_gamma = 0;
-        for (int l=0; l<=kt; l++) {
-          tot_rt_gamma += (kt+1._fp -l) * ( gamma*rt_gamma(l,ii)*rt(kt+1-l,ii) - rt(l,ii)*rt_gamma(kt+1-l,ii) );
-        }
-        rt_gamma(kt+1,ii) = ( gamma*rt_gamma(0,ii)*rt(kt+1,ii) + tot_rt_gamma / (kt+1._fp) ) / rt(0,ii);
-      }
-    }
-
-    // Fix the rt_gamma
-    for (int kt=1; kt < nAder; kt++) {
-      for (int ii=0; ii < ngll; ii++) {
-        rt_gamma(kt,ii) /= 2;
-      }
-    }
   }
 
 
@@ -2627,78 +2452,6 @@ public:
                                             real3d const &hyPressureGLL ,
                                             real C0, real gamma ,
                                             int k , real dz , int bc_z , int nz , int iens ) {
-    // zero out the non-linear DTs
-    for (int kt=1; kt < nAder; kt++) {
-      for (int ii=0; ii < ngll; ii++) {
-        rwu     (kt,ii) = 0;
-        rwv     (kt,ii) = 0;
-        rww     (kt,ii) = 0;
-        rwt     (kt,ii) = 0;
-        rt_gamma(kt,ii) = 0;
-      }
-    }
-
-    // Loop over the time derivatives
-    for (int kt=0; kt<nAder-1; kt++) {
-      // Compute the state at the next time level
-      for (int ii=0; ii<ngll; ii++) {
-        real drw_dz    = 0;
-        real drwu_dz   = 0;
-        real drwv_dz   = 0;
-        real drww_p_dz = 0;
-        real drwt_dz   = 0;
-        for (int s=0; s<ngll; s++) {
-          drw_dz    += deriv(s,ii) * rw(kt,s);
-          drwu_dz   += deriv(s,ii) * rwu(kt,s);
-          drwv_dz   += deriv(s,ii) * rwv(kt,s);
-          if (kt == 0) { drww_p_dz += deriv(s,ii) * ( rww(kt,s) + C0*rt_gamma(kt,s) - hyPressureGLL(k,s,iens) ); }
-          else         { drww_p_dz += deriv(s,ii) * ( rww(kt,s) + C0*rt_gamma(kt,s)/2                         ); }
-          drwt_dz   += deriv(s,ii) * rwt(kt,s);
-        }
-        r (kt+1,ii) = -drw_dz   /dz/(kt+1);
-        ru(kt+1,ii) = -drwu_dz  /dz/(kt+1);
-        rv(kt+1,ii) = -drwv_dz  /dz/(kt+1);
-        rw(kt+1,ii) = -drww_p_dz/dz/(kt+1);
-        rt(kt+1,ii) = -drwt_dz  /dz/(kt+1);
-        if (bc_z == BC_WALL) {
-          if (k == nz-1) rw(kt+1,ngll-1) = 0;
-          if (k == 0   ) rw(kt+1,0     ) = 0;
-        }
-      }
-
-      // Compute ru* at the next time level
-      for (int ii=0; ii<ngll; ii++) {
-        // Compute the non-linear differential transforms
-        real tot_rwu = 0;
-        real tot_rwv = 0;
-        real tot_rww = 0;
-        real tot_rwt = 0;
-        for (int l=0; l<=kt+1; l++) {
-          tot_rwu += rw(l,ii) * ru(kt+1-l,ii) - r(l,ii) * rwu(kt+1-l,ii);
-          tot_rwv += rw(l,ii) * rv(kt+1-l,ii) - r(l,ii) * rwv(kt+1-l,ii);
-          tot_rww += rw(l,ii) * rw(kt+1-l,ii) - r(l,ii) * rww(kt+1-l,ii);
-          tot_rwt += rw(l,ii) * rt(kt+1-l,ii) - r(l,ii) * rwt(kt+1-l,ii);
-        }
-        rwu(kt+1,ii) = tot_rwu / r(0,ii);
-        rwv(kt+1,ii) = tot_rwv / r(0,ii);
-        rww(kt+1,ii) = tot_rww / r(0,ii);
-        rwt(kt+1,ii) = tot_rwt / r(0,ii);
-
-        // Compute rt_gamma at the next time level
-        real tot_rt_gamma = 0;
-        for (int l=0; l<=kt; l++) {
-          tot_rt_gamma += (kt+1-l) * ( gamma*rt_gamma(l,ii)*rt(kt+1-l,ii) - rt(l,ii)*rt_gamma(kt+1-l,ii) );
-        }
-        rt_gamma(kt+1,ii) = ( gamma*rt_gamma(0,ii)*rt(kt+1,ii) + tot_rt_gamma / (kt+1) ) / rt(0,ii);
-      }
-    }
-
-    // Fix the rt_gamma
-    for (int kt=1; kt < nAder; kt++) {
-      for (int ii=0; ii < ngll; ii++) {
-        rt_gamma(kt,ii) /= 2;
-      }
-    }
   }
 
 
@@ -2709,31 +2462,6 @@ public:
                                         SArray<real,2,nAder,ngll> &rut ,
                                         SArray<real,2,ngll,ngll> const &deriv ,
                                         real dx ) {
-    // zero out the non-linear DT
-    for (int kt=1; kt < nAder; kt++) {
-      for (int ii=0; ii < ngll; ii++) {
-        rut(kt,ii) = 0;
-      }
-    }
-    // Loop over the time derivatives
-    for (int kt=0; kt<nAder-1; kt++) {
-      // Compute the rho*tracer at the next time level
-      for (int ii=0; ii<ngll; ii++) {
-        real df_dx = 0;
-        for (int s=0; s<ngll; s++) {
-          df_dx += deriv(s,ii) * rut(kt,s);
-        }
-        rt(kt+1,ii) = -df_dx/dx/(kt+1._fp);
-      }
-      // Compute rut at the next time level
-      for (int ii=0; ii<ngll; ii++) {
-        real tot_rut = 0;
-        for (int ir=0; ir<=kt+1; ir++) {
-          tot_rut += ru(ir,ii) * rt(kt+1-ir,ii) - r(ir,ii) * rut(kt+1-ir,ii);
-        }
-        rut(kt+1,ii) = tot_rut / r(0,ii);
-      }
-    }
   }
 
 

@@ -164,13 +164,13 @@ public:
 
   template <class MICRO>
   void convert_dynamics_to_coupler_state( DataManager &dm , MICRO &micro ) {
-    real5d state           = dm.get<real,5>( "dynamics_state"   );
-    real5d tracers         = dm.get<real,5>( "dynamics_tracers" );
-    real4d dm_dens_dry     = dm.get<real,4>( "density_dry"      );
-    real4d dm_uvel         = dm.get<real,4>( "uvel"             );
-    real4d dm_vvel         = dm.get<real,4>( "vvel"             );
-    real4d dm_wvel         = dm.get<real,4>( "wvel"             );
-    real4d dm_temp         = dm.get<real,4>( "temp"             );
+    real5d state       = dm.get<real,5>( "dynamics_state"   );
+    real5d tracers     = dm.get<real,5>( "dynamics_tracers" );
+    real4d dm_dens_dry = dm.get<real,4>( "density_dry"      );
+    real4d dm_uvel     = dm.get<real,4>( "uvel"             );
+    real4d dm_vvel     = dm.get<real,4>( "vvel"             );
+    real4d dm_wvel     = dm.get<real,4>( "wvel"             );
+    real4d dm_temp     = dm.get<real,4>( "temp"             );
 
     YAKL_SCOPE( hyDensCells      , this->hyDensCells      );
     YAKL_SCOPE( hyDensThetaCells , this->hyDensThetaCells );
@@ -204,11 +204,11 @@ public:
         if (tracer_adds_mass(tr)) dens_dry -= tracers(tr,hs+k,hs+j,hs+i,iens);
       }
       real temp = pressure / ( dens_dry * Rd + dens_vap * Rv );
-      dm_dens_dry    (k,j,i,iens) = dens_dry;
-      dm_uvel        (k,j,i,iens) = uvel;
-      dm_vvel        (k,j,i,iens) = vvel;
-      dm_wvel        (k,j,i,iens) = wvel;
-      dm_temp        (k,j,i,iens) = temp;
+      dm_dens_dry(k,j,i,iens) = dens_dry;
+      dm_uvel    (k,j,i,iens) = uvel;
+      dm_vvel    (k,j,i,iens) = vvel;
+      dm_wvel    (k,j,i,iens) = wvel;
+      dm_temp    (k,j,i,iens) = temp;
       for (int tr=0; tr < num_tracers; tr++) {
         dm_tracers(tr,k,j,i,iens) = tracers(tr,hs+k,hs+j,hs+i,iens);
       }
@@ -219,13 +219,13 @@ public:
 
   template <class MICRO>
   void convert_coupler_state_to_dynamics( DataManager &dm , MICRO &micro ) {
-    real5d state           = dm.get<real,5>( "dynamics_state"   );
-    real5d tracers         = dm.get<real,5>( "dynamics_tracers" );
-    real4d dm_dens_dry     = dm.get<real,4>( "density_dry"      );
-    real4d dm_uvel         = dm.get<real,4>( "uvel"             );
-    real4d dm_vvel         = dm.get<real,4>( "vvel"             );
-    real4d dm_wvel         = dm.get<real,4>( "wvel"             );
-    real4d dm_temp         = dm.get<real,4>( "temp"             );
+    real5d state       = dm.get<real,5>( "dynamics_state"   );
+    real5d tracers     = dm.get<real,5>( "dynamics_tracers" );
+    real4d dm_dens_dry = dm.get<real,4>( "density_dry"      );
+    real4d dm_uvel     = dm.get<real,4>( "uvel"             );
+    real4d dm_vvel     = dm.get<real,4>( "vvel"             );
+    real4d dm_wvel     = dm.get<real,4>( "wvel"             );
+    real4d dm_temp     = dm.get<real,4>( "temp"             );
 
     YAKL_SCOPE( hyDensCells      , this->hyDensCells      );
     YAKL_SCOPE( hyDensThetaCells , this->hyDensThetaCells );
@@ -250,18 +250,18 @@ public:
       for (int tr=0; tr < num_tracers; tr++) {
         tracers(tr,hs+k,hs+j,hs+i,iens) = dm_tracers(tr,k,j,i,iens);
       }
-      real dens_dry     = dm_dens_dry    (k,j,i,iens);
-      real uvel         = dm_uvel        (k,j,i,iens);
-      real vvel         = dm_vvel        (k,j,i,iens);
-      real wvel         = dm_wvel        (k,j,i,iens);
-      real temp         = dm_temp        (k,j,i,iens);
-      real dens_vap     = tracers(idWV,hs+k,hs+j,hs+i,iens);
-      real dens         = dens_dry;
+      real dens_dry = dm_dens_dry    (k,j,i,iens);
+      real uvel     = dm_uvel        (k,j,i,iens);
+      real vvel     = dm_vvel        (k,j,i,iens);
+      real wvel     = dm_wvel        (k,j,i,iens);
+      real temp     = dm_temp        (k,j,i,iens);
+      real dens_vap = tracers(idWV,hs+k,hs+j,hs+i,iens);
+      real dens     = dens_dry;
       for (int tr=0; tr < num_tracers; tr++) {
         if (tracer_adds_mass(tr)) dens += tracers(tr,hs+k,hs+j,hs+i,iens);
       }
-      real pressure     = dens_dry * Rd * temp + dens_vap * Rv * temp;
-      real theta        = pow( pressure / C0 , 1._fp / gamma ) / dens;
+      real pressure = dens_dry * Rd * temp + dens_vap * Rv * temp;
+      real theta    = pow( pressure / C0 , 1._fp / gamma ) / dens;
       state(idR,hs+k,hs+j,hs+i,iens) = dens - hyDensCells(k,iens);
       state(idU,hs+k,hs+j,hs+i,iens) = dens * uvel;
       state(idV,hs+k,hs+j,hs+i,iens) = dens * vvel;
