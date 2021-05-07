@@ -68,10 +68,6 @@ public:
 
 
   void timeStep( DataManager &dm , real dt ) {
-    auto rho_v        = dm.get_lev_col<real>("water_vapor");
-    auto rho_dry      = dm.get_lev_col<real>("density_dry");
-    auto temp         = dm.get_lev_col<real>("temp");
-    auto pressure_dry = dm.get_lev_col<real>("pressure_dry");
     // Do microphysicsy stuff to the coupler variables and the tracers
   }
 
@@ -99,5 +95,3 @@ public:
 
 
 };
-
-
