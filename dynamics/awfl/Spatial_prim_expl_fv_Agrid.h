@@ -434,6 +434,7 @@ public:
       YAKL_SCOPE( dy               , this->dy               );
       YAKL_SCOPE( dz               , this->dz               );
       YAKL_SCOPE( hyDensCells      , this->hyDensCells      );
+      YAKL_SCOPE( hyThetaCells     , this->hyThetaCells     );
       YAKL_SCOPE( hyDensThetaCells , this->hyDensThetaCells );
       YAKL_SCOPE( gamma            , this->gamma            );
       YAKL_SCOPE( C0               , this->C0               );
@@ -1182,6 +1183,7 @@ public:
     YAKL_SCOPE( idl                     , this->idl                    );
     YAKL_SCOPE( sigma                   , this->sigma                  );
     YAKL_SCOPE( hyDensCells             , this->hyDensCells            );
+    YAKL_SCOPE( hyThetaCells            , this->hyThetaCells           );
     YAKL_SCOPE( hyDensThetaCells        , this->hyDensThetaCells       );
     YAKL_SCOPE( sim2d                   , this->sim2d                  );
     YAKL_SCOPE( derivMatrix             , this->derivMatrix            );
@@ -1198,6 +1200,7 @@ public:
     YAKL_SCOPE( gamma                   , this->gamma                  );
     YAKL_SCOPE( p0                      , this->p0                     );
     YAKL_SCOPE( C0                      , this->C0                     );
+    YAKL_SCOPE( gllWts_ngll             , this->gllWts_ngll            );
 
     // Populate the halos
     if        (bc_x == BC_PERIODIC) {
@@ -1235,13 +1238,13 @@ public:
       SArray<real,1,ngll> u_gll;
 
       { // State
-        SArray<real,1,ngll> r_gll, dr_gll, du_gll, v_gll, dv_gll, w_gll, dw_gll, t_gll, dt_gll, dp_gll;
+        SArray<real,1,ngll> r_gll, du_gll, v_gll, dv_gll, w_gll, dw_gll, t_gll, dt_gll, p_gll;
         { // Reconstruct
           SArray<real,1,ord> stencil;
           // Density
-          for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idR,hs+k,hs+j,i+ii,iens) + hyDensCells(hs+k,iens); }
-          reconstruct_gll_values_and_derivs( stencil , r_gll , dr_gll , dx , c2g , c2d2g , s2g , s2d2g , wenoRecon ,
-                                             idl , sigma , weno_scalars );
+          for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idR,hs+k,hs+j,i+ii,iens); }
+          reconstruct_gll_values( stencil , r_gll , c2g , s2g , wenoRecon , idl , sigma , false );
+          for (int ii=0; ii < ngll; ii++) { r_gll(ii) += hyDensCells(hs+k,iens); }
 
           // u values and derivatives
           for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idU,hs+k,hs+j,i+ii,iens); }
@@ -1259,40 +1262,42 @@ public:
                                              idl , sigma , weno_winds );
 
           // theta
+          for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idT,hs+k,hs+j,i+ii,iens); }
+          reconstruct_gll_values( stencil , t_gll , c2g , s2g , wenoRecon , idl , sigma , false );
+          for (int ii=0; ii < ngll; ii++) { t_gll(ii) += hyThetaCells(hs+k,iens); }
+
           for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idT,hs+k,hs+j,i+ii,iens) + hyThetaCells(hs+k,iens); }
-          reconstruct_gll_values_and_derivs( stencil , t_gll , dt_gll , dx , c2g , c2d2g , s2g , s2d2g , wenoRecon ,
-                                             idl , sigma , weno_scalars );
+          reconstruct_gll_derivs( stencil , dt_gll , dx , c2d2g , s2d2g , wenoRecon , idl , sigma , weno_scalars );
 
           // pressure perturbation
-          for (int ii=0; ii < ord; ii++) {
-            real r = state(idR,hs+k,hs+j,i+ii,iens) + hyDensCells (hs+k,iens);
-            real t = state(idT,hs+k,hs+j,i+ii,iens) + hyThetaCells(hs+k,iens);
-            stencil(ii) = C0 * pow( r*t , gamma ) - hyPressureCells(hs+k,iens);
+          for (int ii=0; ii < ngll; ii++) {
+            real r = r_gll(ii);
+            real t = t_gll(ii);
+            p_gll(ii) = C0 * pow( r*t , gamma );
           }
-          reconstruct_gll_derivs( stencil , dp_gll , dx , c2d2g , s2d2g , wenoRecon , idl , sigma , weno_scalars );
         } // Reconstruct
 
         // Compute central integral terms
-        stateTend(idR,k,j,i,iens) = 0;
         stateTend(idU,k,j,i,iens) = 0;
         stateTend(idV,k,j,i,iens) = 0;
         stateTend(idW,k,j,i,iens) = 0;
         stateTend(idT,k,j,i,iens) = 0;
         for (int ii=0; ii < ngll; ii++) {
           real r  = r_gll (ii);
-          real dr = dr_gll(ii);
           real u  = u_gll (ii);
           real du = du_gll(ii);
           real dv = dv_gll(ii);
           real dw = dw_gll(ii);
           real dt = dt_gll(ii);
-          real dp = dp_gll(ii);
-          stateTend(idR,k,j,i,iens) += -(u*dr + r*du) * gllWts_ngll(ii);
-          stateTend(idU,k,j,i,iens) += -(u*du + dp/r) * gllWts_ngll(ii);
-          stateTend(idV,k,j,i,iens) += -(u*dv       ) * gllWts_ngll(ii);
-          stateTend(idW,k,j,i,iens) += -(u*dw       ) * gllWts_ngll(ii);
-          stateTend(idT,k,j,i,iens) += -(u*dt       ) * gllWts_ngll(ii);
+          stateTend(idU,k,j,i,iens) += -(u*du) * gllWts_ngll(ii);
+          stateTend(idV,k,j,i,iens) += -(u*dv) * gllWts_ngll(ii);
+          stateTend(idW,k,j,i,iens) += -(u*dw) * gllWts_ngll(ii);
+          stateTend(idT,k,j,i,iens) += -(u*dt) * gllWts_ngll(ii);
         }
+
+        real dens = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(hs+k,iens);
+        stateTend(idR,k,j,i,iens) = -(r_gll(ngll-1)*u_gll(ngll-1) - r_gll(0)*u_gll(0)) / dx;
+        stateTend(idU,k,j,i,iens) += -(p_gll(ngll-1) - p_gll(0)) / dens / dx;
 
         // Left interface
         stateLimits(idR,1,k,j,i  ,iens) = r_gll(0     );
@@ -1508,7 +1513,9 @@ public:
     YAKL_SCOPE( idl                     , this->idl                    );
     YAKL_SCOPE( sigma                   , this->sigma                  );
     YAKL_SCOPE( hyDensCells             , this->hyDensCells            );
+    YAKL_SCOPE( hyThetaCells            , this->hyThetaCells           );
     YAKL_SCOPE( hyDensGLL               , this->hyDensGLL              );
+    YAKL_SCOPE( hyThetaGLL              , this->hyThetaGLL             );
     YAKL_SCOPE( hyDensThetaGLL          , this->hyDensThetaGLL         );
     YAKL_SCOPE( hyPressureGLL           , this->hyPressureGLL          );
     YAKL_SCOPE( sim2d                   , this->sim2d                  );
@@ -1564,16 +1571,13 @@ public:
       SArray<real,1,ngll> w_gll;
 
       { // State
-        SArray<real,1,ngll> r_gll, dr_gll, u_gll, du_gll, v_gll, dv_gll, dw_gll, t_gll, dt_gll, dp_gll;
+        SArray<real,1,ngll> r_gll, u_gll, du_gll, v_gll, dv_gll, dw_gll, t_gll, dt_gll, p_gll;
         { // Reconstruct
           SArray<real,1,ord> stencil;
           // Density
           for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idR,k+kk,hs+j,hs+i,iens); }
-          reconstruct_gll_values( stencil , r_gll , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
+          reconstruct_gll_values( stencil , r_gll , c2g , s2g , wenoRecon , idl , sigma , false );
           for (int kk=0; kk < ngll; kk++) { r_gll(kk) += hyDensGLL(k,kk,iens); }
-
-          for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idR,k+kk,hs+j,hs+i,iens) + hyDensCells(k+kk,iens); }
-          reconstruct_gll_derivs( stencil , dr_gll , dz(k,iens) , c2d2g , s2d2g , wenoRecon , idl , sigma , weno_scalars );
 
           // u values and derivatives
           for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idU,k+kk,hs+j,hs+i,iens); }
@@ -1591,19 +1595,19 @@ public:
                                              idl , sigma , weno_winds );
 
           // theta
+          for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idT,k+kk,hs+j,hs+i,iens); }
+          reconstruct_gll_values( stencil , t_gll , c2g , s2g , wenoRecon , idl , sigma , false );
+          for (int kk=0; kk < ngll; kk++) { t_gll(kk) += hyThetaGLL(k,kk,iens); }
+
           for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idT,k+kk,hs+j,hs+i,iens) + hyThetaCells(k+kk,iens); }
-          reconstruct_gll_values_and_derivs( stencil , t_gll , dt_gll , dz(k,iens) , c2g , c2d2g , s2g , s2d2g , wenoRecon ,
-                                             idl , sigma , weno_scalars );
+          reconstruct_gll_derivs( stencil , dt_gll , dz(k,iens) , c2d2g , s2d2g , wenoRecon , idl , sigma , weno_scalars );
 
           // pressure perturbation
-          for (int kk=0; kk < ord; kk++) {
-            real rh = hyDensCells (k+kk,iens);
-            real th = hyThetaCells(k+kk,iens);
-            real r = state(idR,k+kk,hs+j,hs+i,iens) + rh;
-            real t = state(idT,k+kk,hs+j,hs+i,iens) + th;
-            stencil(kk) = C0 * pow( r*t , gamma ) - C0 * pow( rh*th , gamma );
+          for (int kk=0; kk < ngll; kk++) {
+            real r = r_gll(kk);
+            real t = t_gll(kk);
+            p_gll(kk) = C0 * pow( r*t , gamma ) - hyPressureGLL(k,kk,iens);
           }
-          reconstruct_gll_derivs( stencil , dp_gll , dz(k,iens) , c2d2g , s2d2g , wenoRecon , idl , sigma , weno_scalars );
 
           if (k == 0) {
             w_gll (0) = 0;
@@ -1611,7 +1615,6 @@ public:
             dv_gll(0) = 0;
             dw_gll(0) = 0;
             dt_gll(0) = 0;
-            dp_gll(0) = 0;
           }
           if (k == nz-1) {
             w_gll (ngll-1) = 0;
@@ -1619,33 +1622,33 @@ public:
             dv_gll(ngll-1) = 0;
             dw_gll(ngll-1) = 0;
             dt_gll(ngll-1) = 0;
-            dp_gll(ngll-1) = 0;
           }
         } // Reconstruct
 
         // Compute central integral terms
-        stateTend(idR,k,j,i,iens) = 0;
         stateTend(idU,k,j,i,iens) = 0;
         stateTend(idV,k,j,i,iens) = 0;
         stateTend(idW,k,j,i,iens) = 0;
         stateTend(idT,k,j,i,iens) = 0;
         for (int kk=0; kk < ngll; kk++) {
           real r  = r_gll (kk);
-          real dr = dr_gll(kk);
           real w  = w_gll (kk);
           real du = du_gll(kk);
           real dv = dv_gll(kk);
           real dw = dw_gll(kk);
           real dt = dt_gll(kk);
-          real dp = dp_gll(kk);
-          stateTend(idR,k,j,i,iens) += -(w*dr + r*dw) * gllWts_ngll(kk);
-          stateTend(idU,k,j,i,iens) += -(w*du       ) * gllWts_ngll(kk);
-          stateTend(idV,k,j,i,iens) += -(w*dv       ) * gllWts_ngll(kk);
-          stateTend(idW,k,j,i,iens) += -(w*dw + dp/r) * gllWts_ngll(kk);
-          stateTend(idT,k,j,i,iens) += -(w*dt       ) * gllWts_ngll(kk);
+          stateTend(idU,k,j,i,iens) += -(w*du) * gllWts_ngll(kk);
+          stateTend(idV,k,j,i,iens) += -(w*dv) * gllWts_ngll(kk);
+          stateTend(idW,k,j,i,iens) += -(w*dw) * gllWts_ngll(kk);
+          stateTend(idT,k,j,i,iens) += -(w*dt) * gllWts_ngll(kk);
         }
         real dens_pert = state(idR,hs+k,hs+j,hs+i,iens);
         real dens      = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(hs+k,iens);
+
+        stateTend(idR,k,j,i,iens) = -(r_gll(ngll-1)*w_gll(ngll-1) - r_gll(0)*w_gll(0)) / dz(k,iens);
+
+        stateTend(idW,k,j,i,iens) += -(p_gll(ngll-1) - p_gll(0)) / dz(k,iens) / dens;
+
         stateTend(idW,k,j,i,iens) += -dens_pert/dens * GRAV;
 
         // Left interface

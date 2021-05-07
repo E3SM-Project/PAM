@@ -3,11 +3,11 @@
 simTime  : 1000.
 
 # Number of cells to use
-nx       : 100
+nx       : 200
 ny       : 1
 
 # Vertical height cooridnates file
-vcoords  : vcoords_equal_50_10km.nc
+vcoords  : vcoords_equal_100_10km.nc
 
 # Lengths of the dimensions in meters
 xlen     : 20000
@@ -33,7 +33,7 @@ out_prefix  : test
 dtphys: 0.
 
 # Output frequency in seconds
-outFreq: 0.
+outFreq: 10.
 
 # Number of ensembles
 nens : 1
