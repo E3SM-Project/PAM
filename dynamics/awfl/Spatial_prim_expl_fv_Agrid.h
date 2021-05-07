@@ -153,6 +153,7 @@ public:
   // When this class is created, initialize num_tracers to zero
   Spatial_operator() {
     num_tracers = 0;
+    if (nAder > 1){ endrun("ERROR: nAder cannot be > 1. Please only use __FILE__ with RK time stepping."); }
   }
 
 
@@ -1245,17 +1246,17 @@ public:
           // u values and derivatives
           for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idU,hs+k,hs+j,i+ii,iens); }
           reconstruct_gll_values_and_derivs( stencil , u_gll , du_gll , dx , c2g , c2d2g , s2g , s2d2g , wenoRecon ,
-                                             idl , sigma , weno_scalars );
+                                             idl , sigma , weno_winds );
 
           // v
           for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idV,hs+k,hs+j,i+ii,iens); }
           reconstruct_gll_values_and_derivs( stencil , v_gll , dv_gll , dx , c2g , c2d2g , s2g , s2d2g , wenoRecon ,
-                                             idl , sigma , weno_scalars );
+                                             idl , sigma , weno_winds );
 
           // w
           for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idW,hs+k,hs+j,i+ii,iens); }
           reconstruct_gll_values_and_derivs( stencil , w_gll , dw_gll , dx , c2g , c2d2g , s2g , s2d2g , wenoRecon ,
-                                             idl , sigma , weno_scalars );
+                                             idl , sigma , weno_winds );
 
           // theta
           for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idT,hs+k,hs+j,i+ii,iens) + hyThetaCells(k,iens); }
@@ -1286,11 +1287,11 @@ public:
           real dw = dw_gll(ii);
           real dt = dt_gll(ii);
           real dp = dp_gll(ii);
-          stateTend(idR,k,j,i,iens) += (r*du + u*dr) * gllWts_ngll(ii);
-          stateTend(idU,k,j,i,iens) += (u*du + dp/r) * gllWts_ngll(ii);
-          stateTend(idV,k,j,i,iens) += (u*dv       ) * gllWts_ngll(ii);
-          stateTend(idW,k,j,i,iens) += (u*dw       ) * gllWts_ngll(ii);
-          stateTend(idT,k,j,i,iens) += (u*dt       ) * gllWts_ngll(ii);
+          stateTend(idR,k,j,i,iens) += -(u*dr + r*du) * gllWts_ngll(ii);
+          stateTend(idU,k,j,i,iens) += -(u*du + dp/r) * gllWts_ngll(ii);
+          stateTend(idV,k,j,i,iens) += -(u*dv       ) * gllWts_ngll(ii);
+          stateTend(idW,k,j,i,iens) += -(u*dw       ) * gllWts_ngll(ii);
+          stateTend(idT,k,j,i,iens) += -(u*dt       ) * gllWts_ngll(ii);
         }
 
         // Left interface
@@ -1309,46 +1310,29 @@ public:
 
       { // Tracers
         for (int tr=0; tr < num_tracers; tr++) {
-          SArray<real,2,nAder,ngll> rt_DTs; // Density * tracer
-          { // BEGIN: Reconstruct the tracer
+          SArray<real,1,ngll> t_gll, dt_gll;
+          { // Reconstruction
             SArray<real,1,ord> stencil;
             for (int ii=0; ii < ord; ii++) { stencil(ii) = tracers(tr,hs+k,hs+j,i+ii,iens); }
-            reconstruct_gll_values( stencil , rt_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
+            reconstruct_gll_values_and_derivs( stencil , t_gll , dt_gll , dx , c2g , c2d2g , s2g , s2d2g , wenoRecon ,
+                                               idl , sigma , weno_scalars );
             if (tracer_pos(tr)) {
-              for (int ii=0; ii < ngll; ii++) { rt_DTs(0,ii) = max( 0._fp , rt_DTs(0,ii) ); }
+              for (int ii=0; ii < ngll; ii++) { t_gll(ii) = max( 0._fp , t_gll(ii) ); }
             }
-          } // END: Reconstruct the tracer
+          } // Reconstruction
 
-          // Compute the tracer flux
-          SArray<real,2,nAder,ngll> rut_DTs; // Density * uwind * tracer
+          // Compute central integral terms
+          tracerTend(tr,k,j,i,iens) = 0;
           for (int ii=0; ii < ngll; ii++) {
-            rut_DTs(0,ii) = rt_DTs(0,ii) * ru_DTs(0,ii) / r_DTs(0,ii);
+            real dt = dt_gll(ii);
+            real u  = u_gll (ii);
+            tracerTend(tr,k,j,i,iens) += -(u*dt) * gllWts_ngll(ii);
           }
 
-          //////////////////////////////////////////
-          // Compute time derivatives if necessary
-          //////////////////////////////////////////
-          if (nAder > 1) {
-            diffTransformTracer( r_DTs , ru_DTs , rt_DTs , rut_DTs , derivMatrix , dx );
-          }
-
-          //////////////////////////////////////////
-          // Time average if necessary
-          //////////////////////////////////////////
-          if (timeAvg) {
-            compute_timeAvg( rt_DTs  , dt );
-          }
-          if (tracer_pos(tr)) {
-            for (int ii=0; ii < ngll; ii++) { rt_DTs(0,ii) = max( 0._fp , rt_DTs(0,ii) ); }
-          }
-
-          ////////////////////////////////////////////////////////////
-          // Store cell edge estimates of the tracer
-          ////////////////////////////////////////////////////////////
-          tracerLimits(tr,1,k,j,i  ,iens) = rt_DTs (0,0     ); // Left interface
-          tracerLimits(tr,0,k,j,i+1,iens) = rt_DTs (0,ngll-1); // Right interface
+          tracerLimits(tr,1,k,j,i  ,iens) = t_gll(0     );
+          tracerLimits(tr,0,k,j,i+1,iens) = t_gll(ngll-1);
         }
-      } // END: Reconstruct, time-average, and store tracer fluxes
+      } // Tracers
 
     });
 
@@ -1381,65 +1365,69 @@ public:
     //////////////////////////////////////////////////////////
     parallel_for( SimpleBounds<4>(nz,ny,nx+1,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       // Get left and right state
-      real r_L = stateLimits(idR,0,k,j,i,iens)    ;   real r_R = stateLimits(idR,1,k,j,i,iens)    ;
-      real u_L = stateLimits(idU,0,k,j,i,iens)/r_L;   real u_R = stateLimits(idU,1,k,j,i,iens)/r_R;
-      real v_L = stateLimits(idV,0,k,j,i,iens)/r_L;   real v_R = stateLimits(idV,1,k,j,i,iens)/r_R;
-      real w_L = stateLimits(idW,0,k,j,i,iens)/r_L;   real w_R = stateLimits(idW,1,k,j,i,iens)/r_R;
-      real t_L = stateLimits(idT,0,k,j,i,iens)/r_L;   real t_R = stateLimits(idT,1,k,j,i,iens)/r_R;
+      real r_L = stateLimits(idR,0,k,j,i,iens);   real r_R = stateLimits(idR,1,k,j,i,iens);
+      real u_L = stateLimits(idU,0,k,j,i,iens);   real u_R = stateLimits(idU,1,k,j,i,iens);
+      real v_L = stateLimits(idV,0,k,j,i,iens);   real v_R = stateLimits(idV,1,k,j,i,iens);
+      real w_L = stateLimits(idW,0,k,j,i,iens);   real w_R = stateLimits(idW,1,k,j,i,iens);
+      real t_L = stateLimits(idT,0,k,j,i,iens);   real t_R = stateLimits(idT,1,k,j,i,iens);
+      real p_L = C0 * pow( r_L*t_L , gamma )  ;   real p_R = C0 * pow( r_R*t_R , gamma );
       // Compute average state
       real r = 0.5_fp * (r_L + r_R);
       real u = 0.5_fp * (u_L + u_R);
-      real v = 0.5_fp * (v_L + v_R);
-      real w = 0.5_fp * (w_L + w_R);
       real t = 0.5_fp * (t_L + t_R);
-      real p = C0 * pow(r*t,gamma);
+      real p = 0.5_fp * (p_L + p_R);
       real cs2 = gamma*p/r;
       real cs  = sqrt(cs2);
-
-      // COMPUTE UPWIND STATE FLUXES
-      // Get left and right fluxes
-      real q1_L = stateLimits(idR,0,k,j,i,iens);   real q1_R = stateLimits(idR,1,k,j,i,iens);
-      real q2_L = stateLimits(idU,0,k,j,i,iens);   real q2_R = stateLimits(idU,1,k,j,i,iens);
-      real q3_L = stateLimits(idV,0,k,j,i,iens);   real q3_R = stateLimits(idV,1,k,j,i,iens);
-      real q4_L = stateLimits(idW,0,k,j,i,iens);   real q4_R = stateLimits(idW,1,k,j,i,iens);
-      real q5_L = stateLimits(idT,0,k,j,i,iens);   real q5_R = stateLimits(idT,1,k,j,i,iens);
-      // Compute upwind characteristics
-      // Waves 1-3, velocity: u
-      real w1, w2, w3;
-      if (u > 0) {
-        w1 = q1_L - q5_L/t;
-        w2 = q3_L - v*q5_L/t;
-        w3 = q4_L - w*q5_L/t;
-      } else {
-        w1 = q1_R - q5_R/t;
-        w2 = q3_R - v*q5_R/t;
-        w3 = q4_R - w*q5_R/t;
+      // Compute state difference across the cell interface
+      real dr = r_R - r_L;
+      real du = u_R - u_L;
+      real dv = v_R - v_L;
+      real dw = w_R - w_L;
+      real dt = t_R - t_L;
+      real dp = p_R - p_L;
+      // Compute flux difference across the cell interface
+      real df1 = u*dr + r*du;
+      real df2 = u*du + dp/r;
+      real df3 = u*dv;
+      real df4 = u*dw;
+      real df5 = u*dt;
+      // Compute characteristic variables
+      real w1 = 0.5_fp * ( df1 - r/cs*df2 + r/t*df5 );
+      real w2 = 0.5_fp * ( df1 + r/cs*df2 + r/t*df5 );
+      real w3 = -r/t*df5;
+      real w4 = df3;
+      real w5 = df4;
+      // Compute flux waves
+      for (int l=0; l < num_state; l++) {
+        stateLimits(l,0,k,j,i,iens) = 0;
+        stateLimits(l,1,k,j,i,iens) = 0;
       }
-      // Wave 5, velocity: u-cs
-      real w5 =  u*q1_R/(2*cs) - q2_R/(2*cs) + q5_R/(2*t);
-      // Wave 6, velocity: u+cs
-      real w6 = -u*q1_L/(2*cs) + q2_L/(2*cs) + q5_L/(2*t);
-      // Use right eigenmatrix to compute upwind flux
-      real q1 = w1 + w5 + w6;
-      real q2 = u*w1 + (u-cs)*w5 + (u+cs)*w6;
-      real q3 = w2 + v*w5 + v*w6;
-      real q4 = w3 + w*w5 + w*w6;
-      real q5 =      t*w5 + t*w6;
-
-      stateFlux(idR,k,j,i,iens) = q2;
-      stateFlux(idU,k,j,i,iens) = q2*q2/q1 + C0*pow(q5,gamma);
-      stateFlux(idV,k,j,i,iens) = q2*q3/q1;
-      stateFlux(idW,k,j,i,iens) = q2*q4/q1;
-      stateFlux(idT,k,j,i,iens) = q2*q5/q1;
+      // WAVE 1: u-cs
+      stateLimits(idR,0,k,j,i,iens) += w1;
+      stateLimits(idU,0,k,j,i,iens) += -cs/r*w1;
+      // WAVE 2: u+cs
+      stateLimits(idR,1,k,j,i,iens) += w2;
+      stateLimits(idU,1,k,j,i,iens) += cs/r*w2;
+      // WAVES 3-5: u
+      int upw_ind = 0;
+      if (u > 0) {
+        upw_ind = 1;
+      }
+      // WAVE 3
+      stateLimits(idR,upw_ind,k,j,i,iens) += w3;
+      stateLimits(idT,upw_ind,k,j,i,iens) += -t/r*w3;
+      // WAVE 4
+      stateLimits(idV,upw_ind,k,j,i,iens) += w4;
+      // WAVE 5
+      stateLimits(idW,upw_ind,k,j,i,iens) += w5;
 
       // COMPUTE UPWIND TRACER FLUXES
       // Handle it one tracer at a time
       for (int tr=0; tr < num_tracers; tr++) {
-        if (u > 0) {
-          tracerFlux(tr,k,j,i,iens) = q2 * tracerLimits(tr,0,k,j,i,iens) / r_L;
-        } else {
-          tracerFlux(tr,k,j,i,iens) = q2 * tracerLimits(tr,1,k,j,i,iens) / r_R;
-        }
+        tracerLimits(tr,0,k,j,i,iens) = 0;
+        tracerLimits(tr,1,k,j,i,iens) = 0;
+        dt = tracerLimits(tr,1,k,j,i,iens) - tracerLimits(tr,0,k,j,i,iens);
+        tracerLimits(tr,upw_ind,k,j,i,iens) += u*dt;
       }
     });
 
@@ -1449,35 +1437,7 @@ public:
     real5d fct_mult("fct_mult",num_tracers,nz,ny,nx+1,nens);
     parallel_for( SimpleBounds<5>(num_tracers,nz,ny,nx+1,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
       fct_mult(tr,k,j,i,iens) = 1.;
-      // Solid wall BCs mean u == 0 at boundaries, so we assume periodic if u != 0
-      if (tracer_pos(tr)) {
-        // Compute and apply the flux reduction factor of the upwind cell
-        if      (tracerFlux(tr,k,j,i,iens) > 0) {
-          // if u > 0, then it pulls mass out of the left cell
-          int ind_i = i-1;
-          // TODO: Relax the periodic assumption here
-          if (ind_i == -1) ind_i = nx-1;
-          real f1 = min( tracerFlux(tr,k,j,ind_i  ,iens) , 0._fp );
-          real f2 = max( tracerFlux(tr,k,j,ind_i+1,iens) , 0._fp );
-          real fluxOut = dt*(f2-f1)/dx;
-          real mass = tracers(tr,hs+k,hs+j,hs+ind_i,iens);
-          if (fluxOut > 0) {
-            fct_mult(tr,k,j,i,iens) = min( 1._fp , mass / fluxOut );
-          }
-        } else if (tracerFlux(tr,k,j,i,iens) < 0) {
-          // upwind is to the right of this interface
-          int ind_i = i;
-          // TODO: Relax the periodic assumption here
-          if (ind_i == nx) ind_i = 0;
-          real f1 = min( tracerFlux(tr,k,j,ind_i  ,iens) , 0._fp );
-          real f2 = max( tracerFlux(tr,k,j,ind_i+1,iens) , 0._fp );
-          real fluxOut = dt*(f2-f1)/dx;
-          real mass = tracers(tr,hs+k,hs+j,hs+ind_i,iens);
-          if (fluxOut > 0) {
-            fct_mult(tr,k,j,i,iens) = min( 1._fp , mass / fluxOut );
-          }
-        }
-      }
+      // TODO:
     });
 
     //////////////////////////////////////////////////////////
@@ -1488,13 +1448,11 @@ public:
         if (sim2d && l == idV) {
           stateTend(l,k,j,i,iens) = 0;
         } else {
-          stateTend(l,k,j,i,iens) = - ( stateFlux(l,k,j,i+1,iens) - stateFlux(l,k,j,i,iens) ) / dx;
+          stateTend(l,k,j,i,iens) += - ( stateLimits(l,0,k,j,i+1,iens) + stateLimits(l,1,k,j,i,iens) ) / dx;
         }
       }
       for (int l = 0; l < num_tracers; l++) {
-        // Compute tracer tendency
-        tracerTend(l,k,j,i,iens) = - ( tracerFlux(l,k,j,i+1,iens)*fct_mult(l,k,j,i+1,iens) -
-                                       tracerFlux(l,k,j,i  ,iens)*fct_mult(l,k,j,i  ,iens) ) / dx;
+          tracerTend(l,k,j,i,iens) += - ( tracerLimits(l,0,k,j,i+1,iens) + tracerLimits(l,1,k,j,i,iens) ) / dx;
       }
     });
   }
@@ -1531,318 +1489,8 @@ public:
     YAKL_SCOPE( p0                      , this->p0                     );
     YAKL_SCOPE( C0                      , this->C0                     );
 
-    // Populate the halos
-    if        (bc_y == BC_PERIODIC) {
-      parallel_for( SimpleBounds<4>(nz,nx,hs,nens) , YAKL_LAMBDA(int k, int i, int jj, int iens) {
-        for (int l=0; l < num_state; l++) {
-          state(l,hs+k,      jj,hs+i,iens) = state(l,hs+k,ny+jj,hs+i,iens);
-          state(l,hs+k,hs+ny+jj,hs+i,iens) = state(l,hs+k,hs+jj,hs+i,iens);
-        }
-        for (int l=0; l < num_tracers; l++) {
-          tracers(l,hs+k,      jj,hs+i,iens) = tracers(l,hs+k,ny+jj,hs+i,iens);
-          tracers(l,hs+k,hs+ny+jj,hs+i,iens) = tracers(l,hs+k,hs+jj,hs+i,iens);
-        }
-      });
-    } else if (bc_y == BC_WALL) {
-      parallel_for( SimpleBounds<4>(nz,nx,hs,nens) , YAKL_LAMBDA(int k, int i, int jj, int iens) {
-        for (int l=0; l < num_state; l++) {
-          if (l == idV) {
-            state(l,hs+k,      jj,hs+i,iens) = 0;
-            state(l,hs+k,hs+ny+jj,hs+i,iens) = 0;
-          } else {
-            state(l,hs+k,      jj,hs+i,iens) = state(l,hs+k,hs     ,hs+i,iens);
-            state(l,hs+k,hs+ny+jj,hs+i,iens) = state(l,hs+k,hs+ny-1,hs+i,iens);
-          }
-        }
-        for (int l=0; l < num_tracers; l++) {
-          tracers(l,hs+k,      jj,hs+i,iens) = tracers(l,hs+k,hs     ,hs+i,iens);
-          tracers(l,hs+k,hs+ny+jj,hs+i,iens) = tracers(l,hs+k,hs+ny-1,hs+i,iens);
-        }
-      });
-    }
-
-    // Loop through all cells, reconstruct in y-direction, compute centered tendencies, store cell-edge state estimates
-    parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      // These are needed by the tracers
-      SArray<real,2,nAder,ngll> r_DTs , rv_DTs;
-
-      { // BEGIN: Reconstruct, time-average, and store state and sate fluxes
-        ////////////////////////////////////////////////////////////////
-        // Reconstruct rho, u, v, w, theta
-        ////////////////////////////////////////////////////////////////
-        SArray<real,2,nAder,ngll> ru_DTs , rw_DTs , rt_DTs;
-        {
-          SArray<real,1,ord> stencil;
-
-          // Density
-          for (int jj=0; jj < ord; jj++) { stencil(jj) = state(idR,hs+k,j+jj,hs+i,iens); }
-          reconstruct_gll_values( stencil , r_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
-          for (int jj=0; jj < ngll; jj++) { r_DTs(0,jj) += hyDensCells(k,iens); } // Add hydrostasis back on
-
-          // u values and derivatives
-          for (int jj=0; jj < ord; jj++) { stencil(jj) = state(idU,hs+k,j+jj,hs+i,iens); }
-          reconstruct_gll_values( stencil , ru_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_winds );
-
-          // v
-          for (int jj=0; jj < ord; jj++) { stencil(jj) = state(idV,hs+k,j+jj,hs+i,iens); }
-          reconstruct_gll_values( stencil , rv_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_winds );
-
-          // w
-          for (int jj=0; jj < ord; jj++) { stencil(jj) = state(idW,hs+k,j+jj,hs+i,iens); }
-          reconstruct_gll_values( stencil , rw_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_winds );
-
-          // theta
-          for (int jj=0; jj < ord; jj++) { stencil(jj) = state(idT,hs+k,j+jj,hs+i,iens); }
-          reconstruct_gll_values( stencil , rt_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
-          for (int jj=0; jj < ngll; jj++) { rt_DTs(0,jj) += hyDensThetaCells(k,iens); } // Add hydrostasis back on
-        }
-
-        ///////////////////////////////////////////////////////////////
-        // Compute other values needed for centered tendencies and DTs
-        ///////////////////////////////////////////////////////////////
-        SArray<real,2,nAder,ngll> rvu_DTs , rvv_DTs , rvw_DTs , rvt_DTs , rt_gamma_DTs;
-        for (int jj=0; jj < ngll; jj++) {
-          real r = r_DTs (0,jj);
-          real u = ru_DTs(0,jj) / r;
-          real v = rv_DTs(0,jj) / r;
-          real w = rw_DTs(0,jj) / r;
-          real t = rt_DTs(0,jj) / r;
-          rvu_DTs     (0,jj) = r*v*u;
-          rvv_DTs     (0,jj) = r*v*v;
-          rvw_DTs     (0,jj) = r*v*w;
-          rvt_DTs     (0,jj) = r*v*t;
-          rt_gamma_DTs(0,jj) = pow(r*t,gamma);
-        }
-
-        //////////////////////////////////////////
-        // Compute time derivatives if necessary
-        //////////////////////////////////////////
-        if (nAder > 1) {
-          diffTransformEulerConsY( r_DTs , ru_DTs , rv_DTs , rw_DTs , rt_DTs , rvu_DTs , rvv_DTs , rvw_DTs ,
-                                   rvt_DTs , rt_gamma_DTs , derivMatrix , C0 , gamma , dy );
-        }
-
-        //////////////////////////////////////////
-        // Time average if necessary
-        //////////////////////////////////////////
-        // Don't overwrite r and rv because we need them for tracers
-        SArray<real,1,ngll> r_tavg, rv_tavg;
-        if (timeAvg) {
-          compute_timeAvg( r_DTs  , r_tavg  , dt );
-          compute_timeAvg( ru_DTs           , dt );
-          compute_timeAvg( rv_DTs , rv_tavg , dt );
-          compute_timeAvg( rw_DTs           , dt );
-          compute_timeAvg( rt_DTs           , dt );
-        } else {
-          for (int jj=0; jj < ngll; jj++) {
-            r_tavg (jj) = r_DTs (0,jj);
-            rv_tavg(jj) = rv_DTs(0,jj);
-          }
-        }
-
-        //////////////////////////////////////////
-        // Store cell edge estimates of the state
-        //////////////////////////////////////////
-        // Left interface
-        stateLimits(idR,1,k,j  ,i,iens) = r_tavg  (0     );
-        stateLimits(idU,1,k,j  ,i,iens) = ru_DTs(0,0     );
-        stateLimits(idV,1,k,j  ,i,iens) = rv_tavg (0     );
-        stateLimits(idW,1,k,j  ,i,iens) = rw_DTs(0,0     );
-        stateLimits(idT,1,k,j  ,i,iens) = rt_DTs(0,0     );
-        // Right interface
-        stateLimits(idR,0,k,j+1,i,iens) = r_tavg  (ngll-1);
-        stateLimits(idU,0,k,j+1,i,iens) = ru_DTs(0,ngll-1);
-        stateLimits(idV,0,k,j+1,i,iens) = rv_tavg (ngll-1);
-        stateLimits(idW,0,k,j+1,i,iens) = rw_DTs(0,ngll-1);
-        stateLimits(idT,0,k,j+1,i,iens) = rt_DTs(0,ngll-1);
-      } // END: Reconstruct, time-average, and store state and sate fluxes
-
-      // r_DTs and rv_DTs still exist and are computed
-      { // BEGIN: Reconstruct, time-average, and store tracer fluxes
-        // Only process one tracer at a time to save on local memory / register requirements
-        for (int tr=0; tr < num_tracers; tr++) {
-          SArray<real,2,nAder,ngll> rt_DTs; // Density * tracer
-          { // BEGIN: Reconstruct the tracer
-            SArray<real,1,ord> stencil;
-            for (int jj=0; jj < ord; jj++) { stencil(jj) = tracers(tr,hs+k,j+jj,hs+i,iens); }
-            reconstruct_gll_values( stencil , rt_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
-            if (tracer_pos(tr)) {
-              for (int jj=0; jj < ngll; jj++) { rt_DTs(0,jj) = max( 0._fp , rt_DTs(0,jj) ); }
-            }
-          } // END: Reconstruct the tracer
-
-          // Compute the tracer flux
-          SArray<real,2,nAder,ngll> rvt_DTs; // Density * vwind * tracer
-          for (int jj=0; jj < ngll; jj++) {
-            rvt_DTs(0,jj) = rt_DTs(0,jj) * rv_DTs(0,jj) / r_DTs(0,jj);
-          }
-
-          //////////////////////////////////////////
-          // Compute time derivatives if necessary
-          //////////////////////////////////////////
-          if (nAder > 1) {
-            diffTransformTracer( r_DTs , rv_DTs , rt_DTs , rvt_DTs , derivMatrix , dy );
-          }
-
-          //////////////////////////////////////////
-          // Time average if necessary
-          //////////////////////////////////////////
-          if (timeAvg) {
-            compute_timeAvg( rt_DTs  , dt );
-          }
-          if (tracer_pos(tr)) {
-            for (int jj=0; jj < ngll; jj++) { rt_DTs(0,jj) = max( 0._fp , rt_DTs(0,jj) ); }
-          }
-
-          ////////////////////////////////////////////////////////////
-          // Store cell edge estimates of the tracer
-          ////////////////////////////////////////////////////////////
-          tracerLimits(tr,1,k,j  ,i,iens) = rt_DTs (0,0     ); // Left interface
-          tracerLimits(tr,0,k,j+1,i,iens) = rt_DTs (0,ngll-1); // Right interface
-        }
-      } // END: Reconstruct, time-average, and store tracer fluxes
-
-    });
-
-    ////////////////////////////////////////////////
-    // BCs for the state edge estimates
-    ////////////////////////////////////////////////
-    parallel_for( SimpleBounds<3>(nz,nx,nens) , YAKL_LAMBDA (int k, int i, int iens) {
-      for (int l=0; l < num_state; l++) {
-        if        (bc_y == BC_PERIODIC) {
-          stateLimits(l,0,k,0 ,i,iens) = stateLimits(l,0,k,ny,i,iens);
-          stateLimits(l,1,k,ny,i,iens) = stateLimits(l,1,k,0 ,i,iens);
-        } else if (bc_y == BC_WALL    ) {
-          stateLimits(l,0,k,0 ,i,iens) = stateLimits(l,1,k,0 ,i,iens);
-          stateLimits(l,1,k,ny,i,iens) = stateLimits(l,0,k,ny,i,iens);
-        }
-      }
-      for (int l=0; l < num_tracers; l++) {
-        if        (bc_y == BC_PERIODIC) {
-          tracerLimits(l,0,k,0 ,i,iens) = tracerLimits(l,0,k,ny,i,iens);
-          tracerLimits(l,1,k,ny,i,iens) = tracerLimits(l,1,k,0 ,i,iens);
-        } else if (bc_y == BC_WALL    ) {
-          tracerLimits(l,0,k,0 ,i,iens) = tracerLimits(l,1,k,0 ,i,iens);
-          tracerLimits(l,1,k,ny,i,iens) = tracerLimits(l,0,k,ny,i,iens);
-        }
-      }
-    });
-
-    //////////////////////////////////////////////////////////
-    // Compute the upwind fluxes
-    //////////////////////////////////////////////////////////
-    parallel_for( SimpleBounds<4>(nz,ny+1,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      // Get left and right state
-      real r_L = stateLimits(idR,0,k,j,i,iens)    ;   real r_R = stateLimits(idR,1,k,j,i,iens)    ;
-      real u_L = stateLimits(idU,0,k,j,i,iens)/r_L;   real u_R = stateLimits(idU,1,k,j,i,iens)/r_R;
-      real v_L = stateLimits(idV,0,k,j,i,iens)/r_L;   real v_R = stateLimits(idV,1,k,j,i,iens)/r_R;
-      real w_L = stateLimits(idW,0,k,j,i,iens)/r_L;   real w_R = stateLimits(idW,1,k,j,i,iens)/r_R;
-      real t_L = stateLimits(idT,0,k,j,i,iens)/r_L;   real t_R = stateLimits(idT,1,k,j,i,iens)/r_R;
-      // Compute average state
-      real r = 0.5_fp * (r_L + r_R);
-      real u = 0.5_fp * (u_L + u_R);
-      real v = 0.5_fp * (v_L + v_R);
-      real w = 0.5_fp * (w_L + w_R);
-      real t = 0.5_fp * (t_L + t_R);
-      real p = C0 * pow(r*t,gamma);
-      real cs2 = gamma*p/r;
-      real cs  = sqrt(cs2);
-
-      // COMPUTE UPWIND STATE FLUXES
-      // Get left and right fluxes
-      real q1_L = stateLimits(idR,0,k,j,i,iens);   real q1_R = stateLimits(idR,1,k,j,i,iens);
-      real q2_L = stateLimits(idU,0,k,j,i,iens);   real q2_R = stateLimits(idU,1,k,j,i,iens);
-      real q3_L = stateLimits(idV,0,k,j,i,iens);   real q3_R = stateLimits(idV,1,k,j,i,iens);
-      real q4_L = stateLimits(idW,0,k,j,i,iens);   real q4_R = stateLimits(idW,1,k,j,i,iens);
-      real q5_L = stateLimits(idT,0,k,j,i,iens);   real q5_R = stateLimits(idT,1,k,j,i,iens);
-      // Compute upwind characteristics
-      // Waves 1-3, velocity: v
-      real w1, w2, w3;
-      if (v > 0) {
-        w1 = q1_L - q5_L/t;
-        w2 = q2_L - u*q5_L/t;
-        w3 = q4_L - w*q5_L/t;
-      } else {
-        w1 = q1_R - q5_R/t;
-        w2 = q2_R - u*q5_R/t;
-        w3 = q4_R - w*q5_R/t;
-      }
-      // Wave 5, velocity: v-cs
-      real w5 =  v*q1_R/(2*cs) - q3_R/(2*cs) + q5_R/(2*t);
-      // Wave 6, velocity: v+cs
-      real w6 = -v*q1_L/(2*cs) + q3_L/(2*cs) + q5_L/(2*t);
-      // Use right eigenmatrix to compute upwind flux
-      real q1 = w1 + w5 + w6;
-      real q2 = w2 + u*w5 + u*w6;
-      real q3 = v*w1 + (v-cs)*w5 + (v+cs)*w6;
-      real q4 = w3 + w*w5 + w*w6;
-      real q5 =      t*w5 + t*w6;
-
-      stateFlux(idR,k,j,i,iens) = q3;
-      stateFlux(idU,k,j,i,iens) = q3*q2/q1;
-      stateFlux(idV,k,j,i,iens) = q3*q3/q1 + C0*pow(q5,gamma);
-      stateFlux(idW,k,j,i,iens) = q3*q4/q1;
-      stateFlux(idT,k,j,i,iens) = q3*q5/q1;
-
-      // COMPUTE UPWIND TRACER FLUXES
-      // Handle it one tracer at a time
-      for (int tr=0; tr < num_tracers; tr++) {
-        if (v > 0) {
-          tracerFlux(tr,k,j,i,iens) = q3 * tracerLimits(tr,0,k,j,i,iens) / r_L;
-        } else {
-          tracerFlux(tr,k,j,i,iens) = q3 * tracerLimits(tr,1,k,j,i,iens) / r_R;
-        }
-      }
-    });
-
-    //////////////////////////////////////////////////////////
-    // Limit the tracer fluxes for positivity
-    //////////////////////////////////////////////////////////
-    real5d fct_mult("fct_mult",num_tracers,nz,ny+1,nx,nens);
-    parallel_for( SimpleBounds<5>(num_tracers,nz,ny+1,nx,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
-      fct_mult(tr,k,j,i,iens) = 1.;
-      // Solid wall BCs mean u == 0 at boundaries, so we assume periodic if u != 0
-      if (tracer_pos(tr)) {
-        // Compute and apply the flux reduction factor of the upwind cell
-        if      (tracerFlux(tr,k,j,i,iens) > 0) {
-          // upwind is to the left of this interface
-          int ind_j = j-1;
-          if (ind_j == -1) ind_j = ny-1;
-          real f1 = min( tracerFlux(tr,k,ind_j  ,i,iens) , 0._fp );
-          real f2 = max( tracerFlux(tr,k,ind_j+1,i,iens) , 0._fp );
-          real fluxOut = dt*(f2-f1)/dy;
-          real mass = tracers(tr,hs+k,hs+ind_j,hs+i,iens);
-          if (fluxOut > 0) {
-            fct_mult(tr,k,j,i,iens) = min( 1._fp , mass / fluxOut );
-          }
-        } else if (tracerFlux(tr,k,j,i,iens) < 0) {
-          // upwind is to the right of this interface
-          int ind_j = j;
-          if (ind_j == ny) ind_j = 0;
-          real f1 = min( tracerFlux(tr,k,ind_j  ,i,iens) , 0._fp );
-          real f2 = max( tracerFlux(tr,k,ind_j+1,i,iens) , 0._fp );
-          real fluxOut = dt*(f2-f1)/dy;
-          real mass = tracers(tr,hs+k,hs+ind_j,hs+i,iens);
-          if (fluxOut > 0) {
-            fct_mult(tr,k,j,i,iens) = min( 1._fp , mass / fluxOut );
-          }
-        }
-      }
-    });
-
-    //////////////////////////////////////////////////////////
-    // Compute the tendencies
-    //////////////////////////////////////////////////////////
-    parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA(int k, int j, int i, int iens) {
-      for (int l=0; l < num_state; l++) {
-        stateTend(l,k,j,i,iens) = - ( stateFlux(l,k,j+1,i,iens) - stateFlux(l,k,j,i,iens) ) / dy;
-      }
-      for (int l=0; l < num_tracers; l++) {
-        // Compute the tracer tendency
-        tracerTend(l,k,j,i,iens) = - ( tracerFlux(l,k,j+1,i,iens)*fct_mult(l,k,j+1,i,iens) -
-                                       tracerFlux(l,k,j  ,i,iens)*fct_mult(l,k,j  ,i,iens) ) / dy;
-      }
-    });
+    memset( stateTend  , 0._fp );
+    memset( tracerTend , 0._fp );
   }
 
 
@@ -1880,352 +1528,8 @@ public:
     YAKL_SCOPE( p0                      , this->p0                     );
     YAKL_SCOPE( C0                      , this->C0                     );
 
-    // Pre-process the tracers by dividing by density inside the domain
-    // After this, we can reconstruct tracers only (not rho * tracer)
-    parallel_for( SimpleBounds<5>(num_tracers,nz,ny,nx,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
-      tracers(tr,hs+k,hs+j,hs+i,iens) /= (state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens));
-    });
-
-    // Populate the halos
-    if        (bc_z == BC_PERIODIC) {
-      parallel_for( SimpleBounds<4>(ny,nx,hs,nens) , YAKL_LAMBDA(int j, int i, int kk, int iens) {
-        for (int l=0; l < num_state; l++) {
-          state(l,      kk,hs+j,hs+i,iens) = state(l,nz+kk,hs+j,hs+i,iens);
-          state(l,hs+nz+kk,hs+j,hs+i,iens) = state(l,hs+kk,hs+j,hs+i,iens);
-        }
-        for (int l=0; l < num_tracers; l++) {
-          tracers(l,      kk,hs+j,hs+i,iens) = tracers(l,nz+kk,hs+j,hs+i,iens);
-          tracers(l,hs+nz+kk,hs+j,hs+i,iens) = tracers(l,hs+kk,hs+j,hs+i,iens);
-        }
-      });
-    } else if (bc_z == BC_WALL) {
-      parallel_for( SimpleBounds<4>(ny,nx,hs,nens) , YAKL_LAMBDA(int j, int i, int kk, int iens) {
-        for (int l=0; l < num_state; l++) {
-          if (l == idW) {
-            state(l,      kk,hs+j,hs+i,iens) = 0;
-            state(l,hs+nz+kk,hs+j,hs+i,iens) = 0;
-          } else {
-            state(l,      kk,hs+j,hs+i,iens) = state(l,hs     ,hs+j,hs+i,iens);
-            state(l,hs+nz+kk,hs+j,hs+i,iens) = state(l,hs+nz-1,hs+j,hs+i,iens);
-          }
-        }
-        for (int l=0; l < num_tracers; l++) {
-          tracers(l,      kk,hs+j,hs+i,iens) = tracers(l,hs     ,hs+j,hs+i,iens);
-          tracers(l,hs+nz+kk,hs+j,hs+i,iens) = tracers(l,hs+nz-1,hs+j,hs+i,iens);
-        }
-      });
-    }
-
-    // Loop through all cells, reconstruct in x-direction, compute centered tendencies, store cell-edge state estimates
-    parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      // We need these to persist to evolve tracers with ADER
-      SArray<real,2,nAder,ngll> r_DTs , rw_DTs;
-
-      { // BEGIN: reconstruct, time-avg, and store state & state fluxes
-        ////////////////////////////////////////////////////////////////
-        // Reconstruct rho, u, v, w, theta
-        ////////////////////////////////////////////////////////////////
-        SArray<real,2,nAder,ngll> ru_DTs , rv_DTs , rt_DTs;
-        {
-          SArray<real,1,ord> stencil;
-
-          // Density
-          for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idR,k+kk,hs+j,hs+i,iens); }
-          reconstruct_gll_values( stencil , r_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
-          for (int kk=0; kk < ngll; kk++) { r_DTs(0,kk) += hyDensGLL(k,kk,iens); } // Add hydrostasis back on
-
-          // u values and derivatives
-          for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idU,k+kk,hs+j,hs+i,iens); }
-          reconstruct_gll_values( stencil , ru_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_winds );
-
-          // v
-          for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idV,k+kk,hs+j,hs+i,iens); }
-          reconstruct_gll_values( stencil , rv_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_winds );
-
-          // w
-          for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idW,k+kk,hs+j,hs+i,iens); }
-          reconstruct_gll_values( stencil , rw_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_winds );
-          if (bc_z == BC_WALL) {
-            if (k == nz-1) rw_DTs(0,ngll-1) = 0;
-            if (k == 0   ) rw_DTs(0,0     ) = 0;
-          }
-
-          // theta
-          for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idT,k+kk,hs+j,hs+i,iens); }
-          reconstruct_gll_values( stencil , rt_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
-          for (int kk=0; kk < ngll; kk++) { rt_DTs(0,kk) += hyDensThetaGLL(k,kk,iens); } // Add hydrostasis back on
-        }
-
-        ///////////////////////////////////////////////////////////////
-        // Compute other values needed for centered tendencies and DTs
-        ///////////////////////////////////////////////////////////////
-        SArray<real,2,nAder,ngll> rwu_DTs , rwv_DTs , rww_DTs , rwt_DTs , rt_gamma_DTs;
-        for (int kk=0; kk < ngll; kk++) {
-          real r = r_DTs (0,kk);
-          real u = ru_DTs(0,kk) / r;
-          real v = rv_DTs(0,kk) / r;
-          real w = rw_DTs(0,kk) / r;
-          real t = rt_DTs(0,kk) / r;
-          rwu_DTs    (0,kk) = r*w*u;
-          rwv_DTs    (0,kk) = r*w*v;
-          rww_DTs    (0,kk) = r*w*w;
-          rwt_DTs    (0,kk) = r*w*t;
-          rt_gamma_DTs(0,kk) = pow(r*t,gamma);
-        }
-
-        //////////////////////////////////////////
-        // Compute time derivatives if necessary
-        //////////////////////////////////////////
-        if (nAder > 1) {
-          diffTransformEulerConsZ( r_DTs , ru_DTs , rv_DTs , rw_DTs , rt_DTs , rwu_DTs , rwv_DTs , rww_DTs ,
-                                   rwt_DTs , rt_gamma_DTs , derivMatrix , hyPressureGLL , C0 , gamma , k ,
-                                   dz(k,iens) , bc_z , nz , iens );
-        }
-
-        //////////////////////////////////////////
-        // Time average if necessary
-        //////////////////////////////////////////
-        // We can't alter density and momentum because they're needed for tracers later
-        SArray<real,1,ngll> r_tavg, rw_tavg;
-        if (timeAvg) {
-          compute_timeAvg( r_DTs  , r_tavg  , dt );
-          compute_timeAvg( ru_DTs           , dt );
-          compute_timeAvg( rv_DTs           , dt );
-          compute_timeAvg( rw_DTs , rw_tavg , dt );
-          compute_timeAvg( rt_DTs           , dt );
-        } else {
-          for (int ii=0; ii < ngll; ii++) {
-            r_tavg (ii) = r_DTs (0,ii);
-            rw_tavg(ii) = rw_DTs(0,ii);
-          }
-        }
-
-        //////////////////////////////////////////
-        // Store cell edge estimates of the state
-        //////////////////////////////////////////
-        // Left interface
-        stateLimits(idR,1,k  ,j,i,iens) = r_tavg  (0     );
-        stateLimits(idU,1,k  ,j,i,iens) = ru_DTs(0,0     );
-        stateLimits(idV,1,k  ,j,i,iens) = rv_DTs(0,0     );
-        stateLimits(idW,1,k  ,j,i,iens) = rw_tavg (0     );
-        stateLimits(idT,1,k  ,j,i,iens) = rt_DTs(0,0     );
-        // Right interface
-        stateLimits(idR,0,k+1,j,i,iens) = r_tavg  (ngll-1);
-        stateLimits(idU,0,k+1,j,i,iens) = ru_DTs(0,ngll-1);
-        stateLimits(idV,0,k+1,j,i,iens) = rv_DTs(0,ngll-1);
-        stateLimits(idW,0,k+1,j,i,iens) = rw_tavg (ngll-1);
-        stateLimits(idT,0,k+1,j,i,iens) = rt_DTs(0,ngll-1);
-
-        ////////////////////////////////////////////
-        // Assign gravity source term
-        ////////////////////////////////////////////
-        real ravg = 0;
-        for (int kk=0; kk < ngll; kk++) {
-          ravg += r_tavg(kk) * gllWts_ngll(kk);
-        }
-        stateTend(idR,k,j,i,iens) = 0;
-        stateTend(idU,k,j,i,iens) = 0;
-        stateTend(idV,k,j,i,iens) = 0;
-        stateTend(idW,k,j,i,iens) = -GRAV*ravg;
-        stateTend(idT,k,j,i,iens) = 0;
-      } // END: reconstruct, time-avg, and store state & state fluxes
-
-      // r_DTs and rw_DTs still exist and are computed
-      { // BEGIN: Reconstruct, time-average, and store tracer fluxes
-        // Only process one tracer at a time to save on local memory / register requirements
-        for (int tr=0; tr < num_tracers; tr++) {
-          SArray<real,2,nAder,ngll> rt_DTs; // Density * tracer
-          { // BEGIN: Reconstruct the tracer
-            SArray<real,1,ord> stencil;
-            for (int kk=0; kk < ord; kk++) { stencil(kk) = tracers(tr,k+kk,hs+j,hs+i,iens); }
-            reconstruct_gll_values( stencil , rt_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
-            for (int kk=0; kk < ngll; kk++) { rt_DTs(0,kk) *= r_DTs(0,kk); }
-            if (tracer_pos(tr)) {
-              for (int kk=0; kk < ngll; kk++) { rt_DTs(0,kk) = max( 0._fp , rt_DTs(0,kk) ); }
-            }
-          } // END: Reconstruct the tracer
-
-          // Compute the tracer flux
-          SArray<real,2,nAder,ngll> rwt_DTs; // Density * wwind * tracer
-          for (int kk=0; kk < ngll; kk++) {
-            rwt_DTs(0,kk) = rt_DTs(0,kk) * rw_DTs(0,kk) / r_DTs(0,kk);
-          }
-
-          //////////////////////////////////////////
-          // Compute time derivatives if necessary
-          //////////////////////////////////////////
-          if (nAder > 1) {
-            diffTransformTracer( r_DTs , rw_DTs , rt_DTs , rwt_DTs , derivMatrix , dz(k,iens) );
-          }
-
-          //////////////////////////////////////////
-          // Time average if necessary
-          //////////////////////////////////////////
-          if (timeAvg) {
-            compute_timeAvg( rt_DTs  , dt );
-          }
-          if (tracer_pos(tr)) {
-            for (int kk=0; kk < ngll; kk++) { rt_DTs(0,kk) = max( 0._fp , rt_DTs(0,kk) ); }
-          }
-          if (bc_z == BC_WALL) {
-            if (k == nz-1) rwt_DTs(0,ngll-1) = 0;
-            if (k == 0   ) rwt_DTs(0,0     ) = 0;
-          }
-
-          ////////////////////////////////////////////////////////////
-          // Store cell edge estimates of the tracer
-          ////////////////////////////////////////////////////////////
-          tracerLimits(tr,1,k  ,j,i,iens) = rt_DTs (0,0     ); // Left interface
-          tracerLimits(tr,0,k+1,j,i,iens) = rt_DTs (0,ngll-1); // Right interface
-        }
-      } // END: Reconstruct, time-average, and store tracer fluxes
-
-    });
-
-    ////////////////////////////////////////////////
-    // BCs for the state edge estimates
-    ////////////////////////////////////////////////
-    parallel_for( SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int iens) {
-      for (int l = 0; l < num_state; l++) {
-        if        (bc_z == BC_PERIODIC) {
-          stateLimits     (l,0,0 ,j,i,iens) = stateLimits     (l,0,nz,j,i,iens);
-          stateLimits     (l,1,nz,j,i,iens) = stateLimits     (l,1,0 ,j,i,iens);
-        } else if (bc_z == BC_WALL    ) {
-          stateLimits     (l,0,0 ,j,i,iens) = stateLimits     (l,1,0 ,j,i,iens);
-          stateLimits     (l,1,nz,j,i,iens) = stateLimits     (l,0,nz,j,i,iens);
-        }
-      }
-      for (int l = 0; l < num_tracers; l++) {
-        if        (bc_z == BC_PERIODIC) {
-          tracerLimits(l,0,0 ,j,i,iens) = tracerLimits(l,0,nz,j,i,iens);
-          tracerLimits(l,1,nz,j,i,iens) = tracerLimits(l,1,0 ,j,i,iens);
-        } else if (bc_z == BC_WALL    ) {
-          tracerLimits(l,0,0 ,j,i,iens) = tracerLimits(l,1,0 ,j,i,iens);
-          tracerLimits(l,1,nz,j,i,iens) = tracerLimits(l,0,nz,j,i,iens);
-        }
-      }
-    });
-
-    //////////////////////////////////////////////////////////
-    // Compute the upwind fluxes
-    //////////////////////////////////////////////////////////
-    parallel_for( SimpleBounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      // Get left and right state
-      real r_L = stateLimits(idR,0,k,j,i,iens)    ;   real r_R = stateLimits(idR,1,k,j,i,iens)    ;
-      real u_L = stateLimits(idU,0,k,j,i,iens)/r_L;   real u_R = stateLimits(idU,1,k,j,i,iens)/r_R;
-      real v_L = stateLimits(idV,0,k,j,i,iens)/r_L;   real v_R = stateLimits(idV,1,k,j,i,iens)/r_R;
-      real w_L = stateLimits(idW,0,k,j,i,iens)/r_L;   real w_R = stateLimits(idW,1,k,j,i,iens)/r_R;
-      real t_L = stateLimits(idT,0,k,j,i,iens)/r_L;   real t_R = stateLimits(idT,1,k,j,i,iens)/r_R;
-      // Compute average state
-      real r = 0.5_fp * (r_L + r_R);
-      real u = 0.5_fp * (u_L + u_R);
-      real v = 0.5_fp * (v_L + v_R);
-      real w = 0.5_fp * (w_L + w_R);
-      real t = 0.5_fp * (t_L + t_R);
-      real p = C0 * pow(r*t,gamma);
-      real cs2 = gamma*p/r;
-      real cs  = sqrt(cs2);
-      // Get left and right fluxes
-      real q1_L = stateLimits(idR,0,k,j,i,iens);   real q1_R = stateLimits(idR,1,k,j,i,iens);
-      real q2_L = stateLimits(idU,0,k,j,i,iens);   real q2_R = stateLimits(idU,1,k,j,i,iens);
-      real q3_L = stateLimits(idV,0,k,j,i,iens);   real q3_R = stateLimits(idV,1,k,j,i,iens);
-      real q4_L = stateLimits(idW,0,k,j,i,iens);   real q4_R = stateLimits(idW,1,k,j,i,iens);
-      real q5_L = stateLimits(idT,0,k,j,i,iens);   real q5_R = stateLimits(idT,1,k,j,i,iens);
-      // Compute upwind characteristics
-      // Waves 1-3, velocity: w
-      real w1, w2, w3;
-      if (w > 0) {
-        w1 = q1_L - q5_L/t;
-        w2 = q2_L - u*q5_L/t;
-        w3 = q3_L - v*q5_L/t;
-      } else {
-        w1 = q1_R - q5_R/t;
-        w2 = q2_R - u*q5_R/t;
-        w3 = q3_R - v*q5_R/t;
-      }
-      // Wave 5, velocity: w-cs
-      real w5 =  w*q1_R/(2*cs) - q4_R/(2*cs) + q5_R/(2*t);
-      // Wave 6, velocity: w+cs
-      real w6 = -w*q1_L/(2*cs) + q4_L/(2*cs) + q5_L/(2*t);
-      // Use right eigenmatrix to compute upwind flux
-      real q1 = w1 + w5 + w6;
-      real q2 = w2 + u*w5 + u*w6;
-      real q3 = w3 + v*w5 + v*w6;
-      real q4 = w*w1 + (w-cs)*w5 + (w+cs)*w6;
-      real q5 =      t*w5 + t*w6;
-
-      stateFlux(idR,k,j,i,iens) = q4;
-      stateFlux(idU,k,j,i,iens) = q4*q2/q1;
-      stateFlux(idV,k,j,i,iens) = q4*q3/q1;
-      stateFlux(idW,k,j,i,iens) = q4*q4/q1 + C0*pow(q5,gamma);
-      stateFlux(idT,k,j,i,iens) = q4*q5/q1;
-
-      // COMPUTE UPWIND TRACER FLUXES
-      // Handle it one tracer at a time
-      for (int tr=0; tr < num_tracers; tr++) {
-        if (w > 0) {
-          tracerFlux(tr,k,j,i,iens) = q4 * tracerLimits(tr,0,k,j,i,iens) / r_L;
-        } else {
-          tracerFlux(tr,k,j,i,iens) = q4 * tracerLimits(tr,1,k,j,i,iens) / r_R;
-        }
-      }
-    });
-
-    //////////////////////////////////////////////////////////
-    // Limit the tracer fluxes for positivity
-    //////////////////////////////////////////////////////////
-    real5d fct_mult("fct_mult",num_tracers,nz+1,ny,nx,nens);
-    parallel_for( SimpleBounds<5>(num_tracers,nz+1,ny,nx,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
-      fct_mult(tr,k,j,i,iens) = 1.;
-      if (k == 0 || k == nz) tracerFlux(tr,k,j,i,iens) = 0;
-      // Solid wall BCs mean w == 0 at boundaries
-      if (tracer_pos(tr)) {
-        // Compute and apply the flux reduction factor of the upwind cell
-        if      (tracerFlux(tr,k,j,i,iens) > 0) {
-          int ind_k = k-1;
-          // upwind is to the left of this interface
-          real f1 = min( tracerFlux(tr,ind_k  ,j,i,iens) , 0._fp );
-          real f2 = max( tracerFlux(tr,ind_k+1,j,i,iens) , 0._fp );
-          real fluxOut = dt*(f2-f1)/dz(ind_k,iens);
-          real dens = state(idR,hs+ind_k,hs+j,hs+i,iens) + hyDensCells(ind_k,iens);
-          real mass = tracers(tr,hs+ind_k,hs+j,hs+i,iens) * dens;
-          if (fluxOut > 0) {
-            fct_mult(tr,k,j,i,iens) = min( 1._fp , mass / fluxOut );
-          }
-        } else if (tracerFlux(tr,k,j,i,iens) < 0) {
-          int ind_k = k;
-          // upwind is to the right of this interface
-          real f1 = min( tracerFlux(tr,ind_k  ,j,i,iens) , 0._fp );
-          real f2 = max( tracerFlux(tr,ind_k+1,j,i,iens) , 0._fp );
-          real fluxOut = dt*(f2-f1)/dz(ind_k,iens);
-          real dens = state(idR,hs+ind_k,hs+j,hs+i,iens) + hyDensCells(ind_k,iens);
-          real mass = tracers(tr,hs+ind_k,hs+j,hs+i,iens) * dens;
-          if (fluxOut > 0) {
-            fct_mult(tr,k,j,i,iens) = min( 1._fp , mass / fluxOut );
-          }
-        }
-      }
-    });
-
-    //////////////////////////////////////////////////////////
-    // Compute the tendencies
-    //////////////////////////////////////////////////////////
-    parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA(int k, int j, int i, int iens) {
-      for (int l=0; l < num_state; l++) {
-        if (sim2d && l == idV) {
-          stateTend(l,k,j,i,iens) = 0;
-        } else {
-          stateTend(l,k,j,i,iens) += - ( stateFlux(l,k+1,j,i,iens) - stateFlux(l,k,j,i,iens) ) / dz(k,iens);
-        }
-      }
-      for (int l=0; l < num_tracers; l++) {
-        // Compute tracer tendency
-        tracerTend(l,k,j,i,iens) = - ( tracerFlux(l,k+1,j,i,iens)*fct_mult(l,k+1,j,i,iens) -
-                                       tracerFlux(l,k  ,j,i,iens)*fct_mult(l,k  ,j,i,iens) ) / dz(k,iens);
-        // Multiply density back onto the tracers
-        tracers(l,hs+k,hs+j,hs+i,iens) *= (state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens));
-      }
-    });
+    memset( stateTend  , 0._fp );
+    memset( tracerTend , 0._fp );
   }
 
 
@@ -2438,13 +1742,13 @@ public:
 
   // ord stencil values to ngll GLL values; store in gll
   YAKL_INLINE
-  void reconstruct_gll_and_derivs( SArray<real,1,ord> const stencil ,
-                                   SArray<real,1,ngll> &deriv_gll , real dx ,
-                                   SArray<real,2,ord,ngll> const &coefs_to_deriv_to_gll ,
-                                   SArray<real,2,ord,ngll> const &sten_to_deriv_to_gll  ,
-                                   SArray<real,3,ord,ord,ord> const &wenoRecon ,
-                                   SArray<real,1,hs+2> const &idl              ,
-                                   real sigma, bool doweno ) {
+  void reconstruct_gll_derivs( SArray<real,1,ord> const stencil ,
+                               SArray<real,1,ngll> &deriv_gll , real dx ,
+                               SArray<real,2,ord,ngll> const &coefs_to_deriv_to_gll ,
+                               SArray<real,2,ord,ngll> const &sten_to_deriv_to_gll  ,
+                               SArray<real,3,ord,ord,ord> const &wenoRecon ,
+                               SArray<real,1,hs+2> const &idl              ,
+                               real sigma, bool doweno ) {
     if (doweno) {
 
       // Reconstruct values
