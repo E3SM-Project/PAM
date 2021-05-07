@@ -34,5 +34,3 @@ int constexpr ord  = ORD;
 int constexpr ngll = NGLL;
 
 static_assert(ngll <= ord , "ERROR: ngll must be <= ord");
-
-

@@ -1421,12 +1421,10 @@ public:
       // WAVE 5
       stateLimits(idW,upw_ind,k,j,i,iens) += w5;
 
-      // COMPUTE UPWIND TRACER FLUXES
-      // Handle it one tracer at a time
       for (int tr=0; tr < num_tracers; tr++) {
+        dt = tracerLimits(tr,1,k,j,i,iens) - tracerLimits(tr,0,k,j,i,iens);
         tracerLimits(tr,0,k,j,i,iens) = 0;
         tracerLimits(tr,1,k,j,i,iens) = 0;
-        dt = tracerLimits(tr,1,k,j,i,iens) - tracerLimits(tr,0,k,j,i,iens);
         tracerLimits(tr,upw_ind,k,j,i,iens) += u*dt;
       }
     });
@@ -1599,9 +1597,11 @@ public:
 
           // pressure perturbation
           for (int kk=0; kk < ord; kk++) {
-            real r = state(idR,k+kk,hs+j,hs+i,iens) + hyDensCells (k+kk,iens);
-            real t = state(idT,k+kk,hs+j,hs+i,iens) + hyThetaCells(k+kk,iens);
-            stencil(kk) = C0 * pow( r*t , gamma ) - hyPressureCells(k+kk,iens);
+            real rh = hyDensCells (k+kk,iens);
+            real th = hyThetaCells(k+kk,iens);
+            real r = state(idR,k+kk,hs+j,hs+i,iens) + rh;
+            real t = state(idT,k+kk,hs+j,hs+i,iens) + th;
+            stencil(kk) = C0 * pow( r*t , gamma ) - C0 * pow( rh*th , gamma );
           }
           reconstruct_gll_derivs( stencil , dp_gll , dz(k,iens) , c2d2g , s2d2g , wenoRecon , idl , sigma , weno_scalars );
 
@@ -1646,7 +1646,7 @@ public:
         }
         real dens_pert = state(idR,hs+k,hs+j,hs+i,iens);
         real dens      = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(hs+k,iens);
-        // stateTend(idW,k,j,i,iens) += -dens_pert/dens * GRAV;
+        stateTend(idW,k,j,i,iens) += -dens_pert/dens * GRAV;
 
         // Left interface
         stateLimits(idR,1,k  ,j,i,iens) = r_gll(0     );
@@ -1776,9 +1776,9 @@ public:
       stateLimits(idV,upw_ind,k,j,i,iens) += w5;
 
       for (int tr=0; tr < num_tracers; tr++) {
+        dt = tracerLimits(tr,1,k,j,i,iens) - tracerLimits(tr,0,k,j,i,iens);
         tracerLimits(tr,0,k,j,i,iens) = 0;
         tracerLimits(tr,1,k,j,i,iens) = 0;
-        dt = tracerLimits(tr,1,k,j,i,iens) - tracerLimits(tr,0,k,j,i,iens);
         tracerLimits(tr,upw_ind,k,j,i,iens) += w*dt;
       }
 
