@@ -443,6 +443,7 @@ public:
       });
       // Store to dtInit so we don't have to compute this again
       dtInit = yakl::intrinsics::minval( dt3d );
+      dtInit = 20;
     }
 
     return dtInit;
@@ -940,16 +941,18 @@ public:
 
 
     real constexpr c_s = 300;
-    real dt;
+    real dtloc;
+    real dzmin = yakl::intrinsics::minval(dz);
     if (sim2d) {
-      dt = 0.3_fp * min( dx/c_s , dzmin/c_s );
+      dtloc = 0.3_fp * min( dx/c_s , dzmin/c_s );
     } else {
-      dt = 0.3_fp * min( min( dx/c_s , dy/c_s ) , dzmin/c_s );
+      dtloc = 0.3_fp * min( min( dx/c_s , dy/c_s ) , dzmin/c_s );
     }
 
     real4d rho_u_new("rho_u_new",nz,ny,nx,nens);
     real4d rho_v_new("rho_v_new",nz,ny,nx,nens);
     real4d rho_w_new("rho_w_new",nz,ny,nx,nens);
+    real4d pressure ("pressure" ,nz,ny,nx,nens);
     real4d pressure_tend ("pressure_tend" ,nz,ny,nx,nens);
     real4d rho_u_new_tend("rho_u_new_tend",nz,ny,nx,nens);
     real4d rho_v_new_tend("rho_v_new_tend",nz,ny,nx,nens);
@@ -963,7 +966,7 @@ public:
       pressure (k,j,i,iens) = 0;
     });
 
-    for (int iter=0; iter < 20000; iter++) {
+    for (int iter=0; iter < 2000; iter++) {
       parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
         int im1 = i-1;  if (im1 < 0   ) im1 = nx-1;
         int ip1 = i+1;  if (ip1 > nx-1) ip1 = 0;
@@ -1023,12 +1026,13 @@ public:
       if (iter == 0) std::cout << "Starting divergence: " << yakl::intrinsics::sum(abs_div) << "\n";
 
       parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-        pressure (k,j,i,iens) += dt * pressure_tend(k,j,i,iens);
-        rho_u_new(k,j,i,iens) = state(idU,hs+k,hs+j,hs+i,iens)*hyDensCells(hs+k,iens) + dt * rho_u_new_tend(k,j,i,iens);
-        rho_v_new(k,j,i,iens) = state(idV,hs+k,hs+j,hs+i,iens)*hyDensCells(hs+k,iens) + dt * rho_v_new_tend(k,j,i,iens);
-        rho_w_new(k,j,i,iens) = state(idW,hs+k,hs+j,hs+i,iens)*hyDensCells(hs+k,iens) + dt * rho_w_new_tend(k,j,i,iens);
+        pressure (k,j,i,iens) += dtloc * pressure_tend(k,j,i,iens);
+        rho_u_new(k,j,i,iens) = state(idU,hs+k,hs+j,hs+i,iens)*hyDensCells(hs+k,iens) + dtloc * rho_u_new_tend(k,j,i,iens);
+        rho_v_new(k,j,i,iens) = state(idV,hs+k,hs+j,hs+i,iens)*hyDensCells(hs+k,iens) + dtloc * rho_v_new_tend(k,j,i,iens);
+        rho_w_new(k,j,i,iens) = state(idW,hs+k,hs+j,hs+i,iens)*hyDensCells(hs+k,iens) + dtloc * rho_w_new_tend(k,j,i,iens);
       });
     }
+    std::cout << "Ending divergence: " << yakl::intrinsics::sum(abs_div) << "\n";
 
     parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       state(idU,hs+k,hs+j,hs+i,iens) = rho_u_new(k,j,i,iens) / hyDensCells(hs+k,iens);
@@ -1104,7 +1108,6 @@ public:
 
     // Loop through all cells, reconstruct in x-direction, compute centered tendencies, store cell-edge state estimates
     parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      stateTend(idR,k,j,i,iens) = 0;
       stateTend(idU,k,j,i,iens) = 0;
       stateTend(idV,k,j,i,iens) = 0;
       stateTend(idW,k,j,i,iens) = 0;
@@ -1120,9 +1123,7 @@ public:
           { // Reconstruct
             SArray<real,1,ord> stencil;
             // Density
-            for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idR,hs+k,hs+j,i+ii,iens); }
-            reconstruct_gll_values( stencil , r_gll , c2g , s2g , wenoRecon , idl , sigma , false );
-            for (int ii=0; ii < ngll; ii++) { r_gll(ii) += hyDensCells(hs+k,iens); }
+            for (int ii=0; ii < ngll; ii++) { r_gll(ii) = hyDensCells(hs+k,iens); }
 
             // u values and derivatives
             for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idU,hs+k,hs+j,i+ii,iens); }
@@ -1146,13 +1147,6 @@ public:
 
             for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idT,hs+k,hs+j,i+ii,iens) + hyThetaCells(hs+k,iens); }
             reconstruct_gll_derivs( stencil , dt_gll , dx , c2d2g , s2d2g , wenoRecon , idl , sigma , weno_scalars );
-
-            // pressure perturbation
-            for (int ii=0; ii < ngll; ii++) {
-              real r = r_gll(ii);
-              real t = t_gll(ii);
-              p_gll(ii) = C0 * pow( r*t , gamma );
-            }
           } // Reconstruct
 
           // Compute central integral terms
@@ -1168,10 +1162,6 @@ public:
             stateTend(idW,k,j,i,iens) += -(u*dw) * gllWts_ngll(ii);
             stateTend(idT,k,j,i,iens) += -(u*dt) * gllWts_ngll(ii);
           }
-
-          real dens = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(hs+k,iens);
-          stateTend(idR,k,j,i,iens) += -(r_gll(ngll-1)*u_gll(ngll-1) - r_gll(0)*u_gll(0)) / dx;
-          stateTend(idU,k,j,i,iens) += -(p_gll(ngll-1) - p_gll(0)) / dens / dx;
 
           // Left interface
           stateLimits_x(idR,1,k,j,i  ,iens) = r_gll(0     );
@@ -1222,9 +1212,7 @@ public:
           { // Reconstruct
             SArray<real,1,ord> stencil;
             // Density
-            for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idR,k+kk,hs+j,hs+i,iens); }
-            reconstruct_gll_values( stencil , r_gll , c2g , s2g , wenoRecon , idl , sigma , false );
-            for (int kk=0; kk < ngll; kk++) { r_gll(kk) += hyDensGLL(k,kk,iens); }
+            for (int kk=0; kk < ngll; kk++) { r_gll(kk) = hyDensGLL(k,kk,iens); }
 
             // u values and derivatives
             for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idU,k+kk,hs+j,hs+i,iens); }
@@ -1248,13 +1236,6 @@ public:
 
             for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idT,k+kk,hs+j,hs+i,iens) + hyThetaCells(k+kk,iens); }
             reconstruct_gll_derivs( stencil , dt_gll , dz(k,iens) , c2d2g , s2d2g , wenoRecon , idl , sigma , weno_scalars );
-
-            // pressure perturbation
-            for (int kk=0; kk < ngll; kk++) {
-              real r = r_gll(kk);
-              real t = t_gll(kk);
-              p_gll(kk) = C0 * pow( r*t , gamma ) - hyPressureGLL(k,kk,iens);
-            }
 
             if (k == 0) {
               w_gll (0) = 0;
@@ -1285,13 +1266,9 @@ public:
             stateTend(idW,k,j,i,iens) += -(w*dw) * gllWts_ngll(kk);
             stateTend(idT,k,j,i,iens) += -(w*dt) * gllWts_ngll(kk);
           }
-          real dens_pert = state(idR,hs+k,hs+j,hs+i,iens);
-          real dens      = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(hs+k,iens);
-
-          stateTend(idR,k,j,i,iens) += -(r_gll(ngll-1)*w_gll(ngll-1) - r_gll(0)*w_gll(0)) / dz(k,iens);
-
-          stateTend(idW,k,j,i,iens) += -(p_gll(ngll-1) - p_gll(0)) / dz(k,iens) / dens;
-
+          real theta = state(idT,hs+k,hs+j,hs+i,iens) + hyThetaCells(hs+k,iens);
+          real dens  = hyDensThetaCells(hs+k,iens) / theta;
+          real dens_pert = dens - hyDensCells(hs+k,iens);
           stateTend(idW,k,j,i,iens) += -dens_pert/dens * GRAV;
 
           // Left interface
@@ -1366,67 +1343,37 @@ public:
     //////////////////////////////////////////////////////////
     parallel_for( SimpleBounds<4>(nz,ny,nx+1,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       // Get left and right state
-      real r_L = stateLimits_x(idR,0,k,j,i,iens);   real r_R = stateLimits_x(idR,1,k,j,i,iens);
       real u_L = stateLimits_x(idU,0,k,j,i,iens);   real u_R = stateLimits_x(idU,1,k,j,i,iens);
       real v_L = stateLimits_x(idV,0,k,j,i,iens);   real v_R = stateLimits_x(idV,1,k,j,i,iens);
       real w_L = stateLimits_x(idW,0,k,j,i,iens);   real w_R = stateLimits_x(idW,1,k,j,i,iens);
       real t_L = stateLimits_x(idT,0,k,j,i,iens);   real t_R = stateLimits_x(idT,1,k,j,i,iens);
-      real p_L = C0 * pow( r_L*t_L , gamma )  ;   real p_R = C0 * pow( r_R*t_R , gamma );
       // Compute average state
-      real r = 0.5_fp * (r_L + r_R);
       real u = 0.5_fp * (u_L + u_R);
-      real t = 0.5_fp * (t_L + t_R);
-      real p = 0.5_fp * (p_L + p_R);
-      real cs2 = gamma*p/r;
-      real cs  = sqrt(cs2);
       // Compute state difference across the cell interface
-      real dr = r_R - r_L;
       real du = u_R - u_L;
       real dv = v_R - v_L;
       real dw = w_R - w_L;
       real dt = t_R - t_L;
-      real dp = p_R - p_L;
-      // Compute flux difference across the cell interface
-      real df1 = u*dr + r*du;
-      real df2 = u*du + dp/r;
-      real df3 = u*dv;
-      real df4 = u*dw;
-      real df5 = u*dt;
-      // Compute characteristic variables
-      real w1 = 0.5_fp * ( df1 - r/cs*df2 + r/t*df5 );
-      real w2 = 0.5_fp * ( df1 + r/cs*df2 + r/t*df5 );
-      real w3 = -r/t*df5;
-      real w4 = df3;
-      real w5 = df4;
       // Compute flux waves
-      for (int l=0; l < num_state; l++) {
-        stateLimits_x(l,0,k,j,i,iens) = 0;
-        stateLimits_x(l,1,k,j,i,iens) = 0;
-      }
-      // WAVE 1: u-cs
-      stateLimits_x(idR,0,k,j,i,iens) += w1;
-      stateLimits_x(idU,0,k,j,i,iens) += -cs/r*w1;
-      // WAVE 2: u+cs
-      stateLimits_x(idR,1,k,j,i,iens) += w2;
-      stateLimits_x(idU,1,k,j,i,iens) += cs/r*w2;
-      // WAVES 3-5: u
       int upw_ind = 0;
       if (u > 0) {
         upw_ind = 1;
       }
-      // WAVE 3
-      stateLimits_x(idR,upw_ind,k,j,i,iens) += w3;
-      stateLimits_x(idT,upw_ind,k,j,i,iens) += -t/r*w3;
-      // WAVE 4
-      stateLimits_x(idV,upw_ind,k,j,i,iens) += w4;
-      // WAVE 5
-      stateLimits_x(idW,upw_ind,k,j,i,iens) += w5;
-
+      for (int l=0; l < num_state; l++) {
+        stateLimits_x(l,0,k,j,i,iens) = 0;
+        stateLimits_x(l,1,k,j,i,iens) = 0;
+      }
+      // Compute flux difference across the cell interface
+      stateLimits_x(idR,upw_ind,k,j,i,iens) = 0;
+      stateLimits_x(idU,upw_ind,k,j,i,iens) = u*du;
+      stateLimits_x(idV,upw_ind,k,j,i,iens) = u*dv;
+      stateLimits_x(idW,upw_ind,k,j,i,iens) = u*dw;
+      stateLimits_x(idT,upw_ind,k,j,i,iens) = u*dt;
       for (int tr=0; tr < num_tracers; tr++) {
         dt = tracerLimits_x(tr,1,k,j,i,iens) - tracerLimits_x(tr,0,k,j,i,iens);
         tracerLimits_x(tr,0,k,j,i,iens) = 0;
         tracerLimits_x(tr,1,k,j,i,iens) = 0;
-        tracerLimits_x(tr,upw_ind,k,j,i,iens) += u*dt;
+        tracerLimits_x(tr,upw_ind,k,j,i,iens) = u*dt;
       }
     });
 
@@ -1460,67 +1407,36 @@ public:
     //////////////////////////////////////////////////////////
     parallel_for( SimpleBounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       // Get left and right state
-      real r_L = stateLimits_z(idR,0,k,j,i,iens);   real r_R = stateLimits_z(idR,1,k,j,i,iens);
       real u_L = stateLimits_z(idU,0,k,j,i,iens);   real u_R = stateLimits_z(idU,1,k,j,i,iens);
       real v_L = stateLimits_z(idV,0,k,j,i,iens);   real v_R = stateLimits_z(idV,1,k,j,i,iens);
       real w_L = stateLimits_z(idW,0,k,j,i,iens);   real w_R = stateLimits_z(idW,1,k,j,i,iens);
       real t_L = stateLimits_z(idT,0,k,j,i,iens);   real t_R = stateLimits_z(idT,1,k,j,i,iens);
-      real p_L = C0 * pow( r_L*t_L , gamma )  ;   real p_R = C0 * pow( r_R*t_R , gamma );
       // Compute average state
-      real r = 0.5_fp * (r_L + r_R);
       real w = 0.5_fp * (w_L + w_R);
-      real t = 0.5_fp * (t_L + t_R);
-      real p = 0.5_fp * (p_L + p_R);
-      real cs2 = gamma*p/r;
-      real cs  = sqrt(cs2);
       // Compute state difference across the cell interface
-      real dr = r_R - r_L;
       real du = u_R - u_L;
       real dv = v_R - v_L;
       real dw = w_R - w_L;
       real dt = t_R - t_L;
-      real dp = p_R - p_L;
-      // Compute flux difference across the cell interface
-      real df1 = w*dr + r*dw;
-      real df2 = w*du;
-      real df3 = w*dv;
-      real df4 = w*dw + dp/r;
-      real df5 = w*dt;
-      // Compute characteristic variables
-      real w1 = 0.5_fp * ( df1 - r/cs*df4 + r/t*df5 );
-      real w2 = 0.5_fp * ( df1 + r/cs*df4 + r/t*df5 );
-      real w3 = -r/t*df5;
-      real w4 = df2;
-      real w5 = df3;
-      // Compute flux waves
-      for (int l=0; l < num_state; l++) {
-        stateLimits_z(l,0,k,j,i,iens) = 0;
-        stateLimits_z(l,1,k,j,i,iens) = 0;
-      }
-      // WAVE 1: w-cs
-      stateLimits_z(idR,0,k,j,i,iens) += w1;
-      stateLimits_z(idW,0,k,j,i,iens) += -cs/r*w1;
-      // WAVE 2: w+cs
-      stateLimits_z(idR,1,k,j,i,iens) += w2;
-      stateLimits_z(idW,1,k,j,i,iens) += cs/r*w2;
-      // WAVES 3-5: w
       int upw_ind = 0;
       if (w > 0) {
         upw_ind = 1;
       }
-      // WAVE 3
-      stateLimits_z(idR,upw_ind,k,j,i,iens) += w3;
-      stateLimits_z(idT,upw_ind,k,j,i,iens) += -t/r*w3;
-      // WAVE 4
-      stateLimits_z(idU,upw_ind,k,j,i,iens) += w4;
-      // WAVE 5
-      stateLimits_z(idV,upw_ind,k,j,i,iens) += w5;
+      for (int l=0; l < num_state; l++) {
+        stateLimits_z(l,0,k,j,i,iens) = 0;
+        stateLimits_z(l,1,k,j,i,iens) = 0;
+      }
+      stateLimits_z(idR,upw_ind,k,j,i,iens) = 0;
+      stateLimits_z(idU,upw_ind,k,j,i,iens) = w*du;
+      stateLimits_z(idV,upw_ind,k,j,i,iens) = w*dv;
+      stateLimits_z(idW,upw_ind,k,j,i,iens) = w*dw;
+      stateLimits_z(idT,upw_ind,k,j,i,iens) = w*dt;
 
       for (int tr=0; tr < num_tracers; tr++) {
         dt = tracerLimits_z(tr,1,k,j,i,iens) - tracerLimits_z(tr,0,k,j,i,iens);
         tracerLimits_z(tr,0,k,j,i,iens) = 0;
         tracerLimits_z(tr,1,k,j,i,iens) = 0;
-        tracerLimits_z(tr,upw_ind,k,j,i,iens) += w*dt;
+        tracerLimits_z(tr,upw_ind,k,j,i,iens) = w*dt;
       }
 
       if (k == 0 || k == nz) {
