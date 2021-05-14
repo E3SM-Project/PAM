@@ -886,6 +886,147 @@ public:
 
 
 
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Project momentum onto divergence-free state using artificial compressibility
+  // TODO:
+  //   * Make this use time-implicit (backwards Euler) with Alternating Direciton Implicit (ADI)
+  //   * Do this at higher-order accuracy
+  //   * Consider a larger speed of sound to accelerate convergence
+  //   * Determine minimum number of iterations to achieve a satisfactory solution (don't converge to machine precision)
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  void remove_momentum_divergence(real5d &state) {
+    // We get to choose the speed of sound
+    real constexpr c_s = 300;
+    // Get a time step that's guaranteed to be stable for explicit updates in 3-D based on speed of sound
+    // dtmax = min( cfl*dx/cs , cfl*dy/cs , cfl*dz/cs )
+    real dtloc;
+    real dzmin = yakl::intrinsics::minval(dz);
+    if (sim2d) {
+      dtloc = 0.3_fp * min( dx/c_s , dzmin/c_s );
+    } else {
+      dtloc = 0.3_fp * min( min( dx/c_s , dy/c_s ) , dzmin/c_s );
+    }
+
+    real4d rho_u_new("rho_u_new",nz,ny,nx,nens);
+    real4d rho_v_new("rho_v_new",nz,ny,nx,nens);
+    real4d rho_w_new("rho_w_new",nz,ny,nx,nens);
+    real4d pressure ("pressure" ,nz,ny,nx,nens);
+    real4d pressure_tend ("pressure_tend" ,nz,ny,nx,nens);
+    real4d rho_u_new_tend("rho_u_new_tend",nz,ny,nx,nens);
+    real4d rho_v_new_tend("rho_v_new_tend",nz,ny,nx,nens);
+    real4d rho_w_new_tend("rho_w_new_tend",nz,ny,nx,nens);
+    real4d abs_div("abs_div",nz,ny,nx,nens);
+
+    // Initialize momentum to initial state and pressure perturbation to zero
+    parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      rho_u_new(k,j,i,iens) = state(idU,hs+k,hs+j,hs+i,iens) * hyDensCells(hs+k,iens);
+      rho_v_new(k,j,i,iens) = state(idV,hs+k,hs+j,hs+i,iens) * hyDensCells(hs+k,iens);
+      rho_w_new(k,j,i,iens) = state(idW,hs+k,hs+j,hs+i,iens) * hyDensCells(hs+k,iens);
+      pressure (k,j,i,iens) = 0;
+    });
+
+    for (int iter=0; iter < 2000; iter++) {
+      parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+        // Compute indices for left and right cells (periodic in x,y; solid wall in z)
+        int im1 = i-1;  if (im1 < 0   ) im1 = nx-1;
+        int ip1 = i+1;  if (ip1 > nx-1) ip1 = 0;
+        int jm1 = j-1;  if (jm1 < 0   ) jm1 = ny-1;
+        int jp1 = j+1;  if (jp1 > ny-1) jp1 = 0;
+        int km1 = k-1;  if (km1 < 0   ) km1 = 0;
+        int kp1 = k+1;  if (kp1 > nz-1) kp1 = nz-1;
+
+        ////////////////////////////
+        // x-direction fluxes
+        ////////////////////////////
+        // Get pressure and momentum in 3-cell stencil
+        real p_im1  = pressure (k,j,im1,iens);
+        real p_i    = pressure (k,j,i  ,iens);
+        real p_ip1  = pressure (k,j,ip1,iens);
+        real ru_im1 = rho_u_new(k,j,im1,iens);
+        real ru_i   = rho_u_new(k,j,i  ,iens);
+        real ru_ip1 = rho_u_new(k,j,ip1,iens);
+        // Compute upwind pressure and momentum at cell interfaces using characteristics
+        real p_x_L = (p_i   + p_im1) / 2       + c_s/2  * (ru_im1 - ru_i  );
+        real p_x_R = (p_ip1 + p_i  ) / 2       + c_s/2  * (ru_i   - ru_ip1);
+        real ru_L  = (p_im1 - p_i  ) / (2*c_s) + 0.5_fp * (ru_i   + ru_im1);
+        real ru_R  = (p_i   - p_ip1) / (2*c_s) + 0.5_fp * (ru_ip1 + ru_i  );
+
+        ////////////////////////////
+        // y-direction fluxes
+        ////////////////////////////
+        // Get pressure and momentum in 3-cell stencil
+        real p_jm1  = pressure (k,jm1,i,iens);
+        real p_j    = pressure (k,j  ,i,iens);
+        real p_jp1  = pressure (k,jp1,i,iens);
+        real rv_jm1 = rho_v_new(k,jm1,i,iens);
+        real rv_j   = rho_v_new(k,j  ,i,iens);
+        real rv_jp1 = rho_v_new(k,jp1,i,iens);
+        // Compute upwind pressure and momentum at cell interfaces using characteristics
+        real p_y_L = (p_j   + p_jm1) / 2       + c_s/2  * (rv_jm1 - rv_j  );
+        real p_y_R = (p_jp1 + p_j  ) / 2       + c_s/2  * (rv_j   - rv_jp1);
+        real rv_L  = (p_jm1 - p_j  ) / (2*c_s) + 0.5_fp * (rv_j   + rv_jm1);
+        real rv_R  = (p_j   - p_jp1) / (2*c_s) + 0.5_fp * (rv_jp1 + rv_j  );
+
+        ////////////////////////////
+        // z-direction fluxes
+        ////////////////////////////
+        // Get pressure and momentum in 3-cell stencil
+        real p_km1  = pressure (km1,j,i,iens);
+        real p_k    = pressure (k  ,j,i,iens);
+        real p_kp1  = pressure (kp1,j,i,iens);
+        real rw_km1 = rho_w_new(km1,j,i,iens);
+        real rw_k   = rho_w_new(k  ,j,i,iens);
+        real rw_kp1 = rho_w_new(kp1,j,i,iens);
+        // Enforce momentum boundary conditions at the domain top and bottom
+        if (k == 0   ) rw_km1 = 0;
+        if (k == nz-1) rw_kp1 = 0;
+        // Compute upwind pressure and momentum at cell interfaces using characteristics
+        real p_z_L = (p_k   + p_km1) / 2       + c_s/2  * (rw_km1 - rw_k  );
+        real p_z_R = (p_kp1 + p_k  ) / 2       + c_s/2  * (rw_k   - rw_kp1);
+        real rw_L  = (p_km1 - p_k  ) / (2*c_s) + 0.5_fp * (rw_k   + rw_km1);
+        real rw_R  = (p_k   - p_kp1) / (2*c_s) + 0.5_fp * (rw_kp1 + rw_k  );
+        // Enforce momentum boundary conditions at the domain top and bottom
+        if (k == 0   ) rw_L  = 0;
+        if (k == nz-1) rw_R  = 0;
+
+        ////////////////////////////////////////////////////////
+        // Perform the update using fluxes at cell interface
+        ////////////////////////////////////////////////////////
+        if (sim2d) {
+          // compute absolute divergence to track how well we're converging it to zero
+          abs_div(k,j,i,iens) = abs( (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens) );
+          pressure_tend(k,j,i,iens) = -c_s*c_s * ( (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens) );
+        } else {
+          // compute absolute divergence to track how well we're converging it to zero
+          abs_div(k,j,i,iens) = abs( (ru_R-ru_L)/dx + (rv_R-rv_L)/dy + (rw_R-rw_L)/dz(k,iens) );
+          pressure_tend(k,j,i,iens) = -c_s*c_s * ( (ru_R-ru_L)/dx + (rv_R-rv_L)/dy + (rw_R-rw_L)/dz(k,iens) );
+        }
+        rho_u_new_tend(k,j,i,iens) = -(p_x_R - p_x_L) / (dx);
+        if (!sim2d) rho_v_new_tend(k,j,i,iens) = -(p_y_R - p_y_L) / (dy);
+        rho_w_new_tend(k,j,i,iens) = -(p_z_R - p_z_L) / (dz(k,iens));
+      });
+
+      if (iter == 0) std::cout << "Starting divergence: " << yakl::intrinsics::sum(abs_div) << "\n";
+
+      parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+        pressure (k,j,i,iens) += dtloc * pressure_tend(k,j,i,iens);
+        rho_u_new(k,j,i,iens) = state(idU,hs+k,hs+j,hs+i,iens)*hyDensCells(hs+k,iens) + dtloc * rho_u_new_tend(k,j,i,iens);
+        if (!sim2d) rho_v_new(k,j,i,iens) = state(idV,hs+k,hs+j,hs+i,iens)*hyDensCells(hs+k,iens) + dtloc * rho_v_new_tend(k,j,i,iens);
+        rho_w_new(k,j,i,iens) = state(idW,hs+k,hs+j,hs+i,iens)*hyDensCells(hs+k,iens) + dtloc * rho_w_new_tend(k,j,i,iens);
+      });
+    }
+    std::cout << "Ending divergence: " << yakl::intrinsics::sum(abs_div) << "\n";
+
+    // Assign new divergence-free momentum
+    parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      state(idU,hs+k,hs+j,hs+i,iens) = rho_u_new(k,j,i,iens) / hyDensCells(hs+k,iens);
+      state(idV,hs+k,hs+j,hs+i,iens) = rho_v_new(k,j,i,iens) / hyDensCells(hs+k,iens);
+      state(idW,hs+k,hs+j,hs+i,iens) = rho_w_new(k,j,i,iens) / hyDensCells(hs+k,iens);
+    });
+  }
+
+
+
   // Compute state and tendency time derivatives from the state
   template <class MICRO>
   void computeTendencies( real5d &state   , real5d &stateTend  ,
@@ -930,6 +1071,7 @@ public:
 
 
 
+    // Save the input state so we can properly compute tendencies later
     real4d u_save("u_save",nz,ny,nx,nens);
     real4d v_save("v_save",nz,ny,nx,nens);
     real4d w_save("w_save",nz,ny,nx,nens);
@@ -940,107 +1082,9 @@ public:
     });
 
 
-    real constexpr c_s = 300;
-    real dtloc;
-    real dzmin = yakl::intrinsics::minval(dz);
-    if (sim2d) {
-      dtloc = 0.3_fp * min( dx/c_s , dzmin/c_s );
-    } else {
-      dtloc = 0.3_fp * min( min( dx/c_s , dy/c_s ) , dzmin/c_s );
-    }
 
-    real4d rho_u_new("rho_u_new",nz,ny,nx,nens);
-    real4d rho_v_new("rho_v_new",nz,ny,nx,nens);
-    real4d rho_w_new("rho_w_new",nz,ny,nx,nens);
-    real4d pressure ("pressure" ,nz,ny,nx,nens);
-    real4d pressure_tend ("pressure_tend" ,nz,ny,nx,nens);
-    real4d rho_u_new_tend("rho_u_new_tend",nz,ny,nx,nens);
-    real4d rho_v_new_tend("rho_v_new_tend",nz,ny,nx,nens);
-    real4d rho_w_new_tend("rho_w_new_tend",nz,ny,nx,nens);
-    real4d abs_div("abs_div",nz,ny,nx,nens);
-
-    parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      rho_u_new(k,j,i,iens) = state(idU,hs+k,hs+j,hs+i,iens) * hyDensCells(hs+k,iens);
-      rho_v_new(k,j,i,iens) = state(idV,hs+k,hs+j,hs+i,iens) * hyDensCells(hs+k,iens);
-      rho_w_new(k,j,i,iens) = state(idW,hs+k,hs+j,hs+i,iens) * hyDensCells(hs+k,iens);
-      pressure (k,j,i,iens) = 0;
-    });
-
-    for (int iter=0; iter < 2000; iter++) {
-      parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-        int im1 = i-1;  if (im1 < 0   ) im1 = nx-1;
-        int ip1 = i+1;  if (ip1 > nx-1) ip1 = 0;
-        int jm1 = j-1;  if (jm1 < 0   ) jm1 = ny-1;
-        int jp1 = j+1;  if (jp1 > ny-1) jp1 = 0;
-        int km1 = k-1;  if (km1 < 0   ) km1 = 0;
-        int kp1 = k+1;  if (kp1 > nz-1) kp1 = nz-1;
-        // x-direction fluxes
-        real p_im1  = pressure (k,j,im1,iens);
-        real p_i    = pressure (k,j,i  ,iens);
-        real p_ip1  = pressure (k,j,ip1,iens);
-        real ru_im1 = rho_u_new(k,j,im1,iens);
-        real ru_i   = rho_u_new(k,j,i  ,iens);
-        real ru_ip1 = rho_u_new(k,j,ip1,iens);
-        real p_x_L = (p_i   + p_im1) / 2       + c_s/2  * (ru_im1 - ru_i  );
-        real p_x_R = (p_ip1 + p_i  ) / 2       + c_s/2  * (ru_i   - ru_ip1);
-        real ru_L  = (p_im1 - p_i  ) / (2*c_s) + 0.5_fp * (ru_i   + ru_im1);
-        real ru_R  = (p_i   - p_ip1) / (2*c_s) + 0.5_fp * (ru_ip1 + ru_i  );
-        // y-direction fluxes
-        real p_jm1  = pressure (k,jm1,i,iens);
-        real p_j    = pressure (k,j  ,i,iens);
-        real p_jp1  = pressure (k,jp1,i,iens);
-        real rv_jm1 = rho_v_new(k,jm1,i,iens);
-        real rv_j   = rho_v_new(k,j  ,i,iens);
-        real rv_jp1 = rho_v_new(k,jp1,i,iens);
-        real p_y_L = (p_j   + p_jm1) / 2       + c_s/2  * (rv_jm1 - rv_j  );
-        real p_y_R = (p_jp1 + p_j  ) / 2       + c_s/2  * (rv_j   - rv_jp1);
-        real rv_L  = (p_jm1 - p_j  ) / (2*c_s) + 0.5_fp * (rv_j   + rv_jm1);
-        real rv_R  = (p_j   - p_jp1) / (2*c_s) + 0.5_fp * (rv_jp1 + rv_j  );
-        // z-direction fluxes
-        real p_km1  = pressure (km1,j,i,iens);
-        real p_k    = pressure (k  ,j,i,iens);
-        real p_kp1  = pressure (kp1,j,i,iens);
-        real rw_km1 = rho_w_new(km1,j,i,iens);
-        real rw_k   = rho_w_new(k  ,j,i,iens);
-        real rw_kp1 = rho_w_new(kp1,j,i,iens);
-        if (k == 0   ) rw_km1 = 0;
-        if (k == nz-1) rw_kp1 = 0;
-        real p_z_L = (p_k   + p_km1) / 2       + c_s/2  * (rw_km1 - rw_k  );
-        real p_z_R = (p_kp1 + p_k  ) / 2       + c_s/2  * (rw_k   - rw_kp1);
-        real rw_L  = (p_km1 - p_k  ) / (2*c_s) + 0.5_fp * (rw_k   + rw_km1);
-        real rw_R  = (p_k   - p_kp1) / (2*c_s) + 0.5_fp * (rw_kp1 + rw_k  );
-        if (k == 0   ) rw_L  = 0;
-        if (k == nz-1) rw_R  = 0;
-        // Perform the update
-        if (sim2d) {
-          abs_div(k,j,i,iens) = abs( (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens) );
-          pressure_tend(k,j,i,iens) = -c_s*c_s * ( (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens) );
-        } else {
-          pressure_tend(k,j,i,iens) = -c_s*c_s * ( (ru_R-ru_L)/dx + (rv_R-rv_L)/dy + (rw_R-rw_L)/dz(k,iens) );
-        }
-        rho_u_new_tend(k,j,i,iens) = -(p_x_R - p_x_L) / (dx);
-        rho_v_new_tend(k,j,i,iens) = -(p_y_R - p_y_L) / (dy);
-        rho_w_new_tend(k,j,i,iens) = -(p_z_R - p_z_L) / (dz(k,iens));
-      });
-
-      if (iter == 0) std::cout << "Starting divergence: " << yakl::intrinsics::sum(abs_div) << "\n";
-
-      parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-        pressure (k,j,i,iens) += dtloc * pressure_tend(k,j,i,iens);
-        rho_u_new(k,j,i,iens) = state(idU,hs+k,hs+j,hs+i,iens)*hyDensCells(hs+k,iens) + dtloc * rho_u_new_tend(k,j,i,iens);
-        rho_v_new(k,j,i,iens) = state(idV,hs+k,hs+j,hs+i,iens)*hyDensCells(hs+k,iens) + dtloc * rho_v_new_tend(k,j,i,iens);
-        rho_w_new(k,j,i,iens) = state(idW,hs+k,hs+j,hs+i,iens)*hyDensCells(hs+k,iens) + dtloc * rho_w_new_tend(k,j,i,iens);
-      });
-    }
-    std::cout << "Ending divergence: " << yakl::intrinsics::sum(abs_div) << "\n";
-
-    parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      state(idU,hs+k,hs+j,hs+i,iens) = rho_u_new(k,j,i,iens) / hyDensCells(hs+k,iens);
-      state(idV,hs+k,hs+j,hs+i,iens) = rho_v_new(k,j,i,iens) / hyDensCells(hs+k,iens);
-      state(idW,hs+k,hs+j,hs+i,iens) = rho_w_new(k,j,i,iens) / hyDensCells(hs+k,iens);
-    });
-
-
+    // Start by projecting initial state onto a divergence-free state with artificial compressibility
+    remove_momentum_divergence(state);
 
 
 
