@@ -1156,6 +1156,9 @@ public:
       stateTend(idV,k,j,i,iens) = 0;
       stateTend(idW,k,j,i,iens) = 0;
       stateTend(idT,k,j,i,iens) = 0;
+      for (int tr=0; tr < num_tracers; tr++) {
+        tracerTend(tr,k,j,i,iens) = 0;
+      }
       { // x-direction
         // We need density and momentum to evolve the tracers with ADER
         SArray<real,1,ngll> u_gll;
@@ -1184,7 +1187,7 @@ public:
 
             // theta
             for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idT,hs+k,hs+j,i+ii,iens); }
-            reconstruct_gll_values( stencil , t_gll , c2g , s2g , wenoRecon , idl , sigma , false );
+            reconstruct_gll_values( stencil , t_gll , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
             for (int ii=0; ii < ngll; ii++) { t_gll(ii) += hyThetaCells(hs+k,iens); }
 
             for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idT,hs+k,hs+j,i+ii,iens) + hyThetaCells(hs+k,iens); }
@@ -1273,7 +1276,7 @@ public:
 
             // theta
             for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idT,k+kk,hs+j,hs+i,iens); }
-            reconstruct_gll_values( stencil , t_gll , c2g , s2g , wenoRecon , idl , sigma , false );
+            reconstruct_gll_values( stencil , t_gll , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
             for (int kk=0; kk < ngll; kk++) { t_gll(kk) += hyThetaGLL(k,kk,iens); }
 
             for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idT,k+kk,hs+j,hs+i,iens) + hyThetaCells(k+kk,iens); }
