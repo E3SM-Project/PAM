@@ -165,7 +165,7 @@ public:
     // real4d dm_vvel     = dm.get<real,4>( "vvel"             );
     // real4d dm_wvel     = dm.get<real,4>( "wvel"             );
     // real4d dm_temp     = dm.get<real,4>( "temp"             );
-    //
+    // 
     // YAKL_SCOPE( hyDensCells      , this->hyDensCells      );
     // YAKL_SCOPE( hyDensThetaCells , this->hyDensThetaCells );
     // YAKL_SCOPE( C0               , this->C0               );
@@ -176,22 +176,22 @@ public:
     // YAKL_SCOPE( Rv               , this->Rv               );
     // YAKL_SCOPE( cp               , this->cp               );
     // YAKL_SCOPE( tracer_adds_mass , this->tracer_adds_mass );
-    //
+    // 
     // int idWV = micro.get_water_vapor_index();
-    //
+    // 
     // MultipleFields<max_tracers,real4d> dm_tracers;
     // for (int tr = 0; tr < num_tracers; tr++) {
     //   auto trac = dm.get<real,4>( tracer_name[tr] );
     //   dm_tracers.add_field( trac );
     // }
-    //
+    // 
     // parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-    //   real dens  = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(hs+k,iens);
+    //   real dens  = hyDensCells(hs+k,iens);
     //   real uvel  = state(idU,hs+k,hs+j,hs+i,iens);
     //   real vvel  = state(idV,hs+k,hs+j,hs+i,iens);
     //   real wvel  = state(idW,hs+k,hs+j,hs+i,iens);
     //   real theta = state(idT,hs+k,hs+j,hs+i,iens) + hyThetaCells(hs+k,iens);
-    //   real pressure = C0 * pow( dens*theta , gamma );
+    //   real pressure = hyPressureCells(hs+k);
     //   real dens_vap = tracers(idWV,hs+k,hs+j,hs+i,iens) * dens;
     //   real dens_dry = dens;
     //   for (int tr=0; tr < num_tracers; tr++) {
@@ -978,23 +978,41 @@ public:
         // y-direction fluxes
         ////////////////////////////
         // Get pressure and momentum in 3-cell stencil
-        real p_jm1  = pressure (k,jm1,i,iens);
-        real p_j    = pressure (k,j  ,i,iens);
-        real p_jp1  = pressure (k,jp1,i,iens);
-        real rv_jm5 = rho_v_new(k,jm5,i,iens);
-        real rv_jm4 = rho_v_new(k,jm4,i,iens);
-        real rv_jm3 = rho_v_new(k,jm3,i,iens);
-        real rv_jm2 = rho_v_new(k,jm2,i,iens);
-        real rv_jm1 = rho_v_new(k,jm1,i,iens);
-        real rv_j   = rho_v_new(k,j  ,i,iens);
-        real rv_jp1 = rho_v_new(k,jp1,i,iens);
-        real rv_jp2 = rho_v_new(k,jp2,i,iens);
-        real rv_jp3 = rho_v_new(k,jp3,i,iens);
-        real rv_jp4 = rho_v_new(k,jp4,i,iens);
-        real rv_jp5 = rho_v_new(k,jp5,i,iens);
-        // Compute upwind pressure and momentum at cell interfaces using characteristics
-        real p_y_L = (p_j   + p_jm1) / 2       + c_s/2  * (rv_jm1 - rv_j  );
-        real p_y_R = (p_jp1 + p_j  ) / 2       + c_s/2  * (rv_j   - rv_jp1);
+        real p_jm1 ;
+        real p_j   ;
+        real p_jp1 ;
+        real rv_jm5;
+        real rv_jm4;
+        real rv_jm3;
+        real rv_jm2;
+        real rv_jm1;
+        real rv_j  ;
+        real rv_jp1;
+        real rv_jp2;
+        real rv_jp3;
+        real rv_jp4;
+        real rv_jp5;
+        real p_y_L ;
+        real p_y_R ;
+        if (!sim2d) {
+          real p_jm1  = pressure (k,jm1,i,iens);
+          real p_j    = pressure (k,j  ,i,iens);
+          real p_jp1  = pressure (k,jp1,i,iens);
+          real rv_jm5 = rho_v_new(k,jm5,i,iens);
+          real rv_jm4 = rho_v_new(k,jm4,i,iens);
+          real rv_jm3 = rho_v_new(k,jm3,i,iens);
+          real rv_jm2 = rho_v_new(k,jm2,i,iens);
+          real rv_jm1 = rho_v_new(k,jm1,i,iens);
+          real rv_j   = rho_v_new(k,j  ,i,iens);
+          real rv_jp1 = rho_v_new(k,jp1,i,iens);
+          real rv_jp2 = rho_v_new(k,jp2,i,iens);
+          real rv_jp3 = rho_v_new(k,jp3,i,iens);
+          real rv_jp4 = rho_v_new(k,jp4,i,iens);
+          real rv_jp5 = rho_v_new(k,jp5,i,iens);
+          // Compute upwind pressure and momentum at cell interfaces using characteristics
+          real p_y_L = (p_j   + p_jm1) / 2       + c_s/2  * (rv_jm1 - rv_j  );
+          real p_y_R = (p_jp1 + p_j  ) / 2       + c_s/2  * (rv_j   - rv_jp1);
+        }
 
         ////////////////////////////
         // z-direction fluxes
@@ -1032,45 +1050,62 @@ public:
         ////////////////////////////////////////////////////////
         // Perform the update using fluxes at cell interface
         ////////////////////////////////////////////////////////
-        if (sim2d) {
-          real ru_L;
-          real ru_R;
-          real rw_L;
-          real rw_R;
-          if (ord == 3) {
-            // Fourth-order-accurate interpolation of the state
-            ru_L = -ru_im2/12 + 7*ru_im1/12 + 7*ru_i  /12 - ru_ip1/12;
-            ru_R = -ru_im1/12 + 7*ru_i  /12 + 7*ru_ip1/12 - ru_ip2/12;
-            rw_L = -rw_km2/12 + 7*rw_km1/12 + 7*rw_k  /12 - rw_kp1/12;
-            rw_R = -rw_km1/12 + 7*rw_k  /12 + 7*rw_kp1/12 - rw_kp2/12;
-          } else if (ord == 5) {
-            // Sixth-order-accurate interpolation of the state
-            ru_L = ru_im3/60 - 2*ru_im2/15 + 37*ru_im1/60 + 37*ru_i  /60 - 2*ru_ip1/15 + ru_ip2/60;
-            ru_R = ru_im2/60 - 2*ru_im1/15 + 37*ru_i  /60 + 37*ru_ip1/60 - 2*ru_ip2/15 + ru_ip3/60;
-            rw_L = rw_km3/60 - 2*rw_km2/15 + 37*rw_km1/60 + 37*rw_k  /60 - 2*rw_kp1/15 + rw_kp2/60;
-            rw_R = rw_km2/60 - 2*rw_km1/15 + 37*rw_k  /60 + 37*rw_kp1/60 - 2*rw_kp2/15 + rw_kp3/60;
-          } else if (ord == 7) {
-            // Eighth-order-accurate interpolation of the state
-            ru_L = -1*ru_im4/280 + 29*ru_im3/840 - 139*ru_im2/840 + 533*ru_im1/840 + 533*ru_i  /840 - 139*ru_ip1/840 + 29*ru_ip2/840 - 1*ru_ip3/280;
-            ru_R = -1*ru_im3/280 + 29*ru_im2/840 - 139*ru_im1/840 + 533*ru_i  /840 + 533*ru_ip1/840 - 139*ru_ip2/840 + 29*ru_ip3/840 - 1*ru_ip4/280;
-            rw_L = -1*rw_km4/280 + 29*rw_km3/840 - 139*rw_km2/840 + 533*rw_km1/840 + 533*rw_k  /840 - 139*rw_kp1/840 + 29*rw_kp2/840 - 1*rw_kp3/280;
-            rw_R = -1*rw_km3/280 + 29*rw_km2/840 - 139*rw_km1/840 + 533*rw_k  /840 + 533*rw_kp1/840 - 139*rw_kp2/840 + 29*rw_kp3/840 - 1*rw_kp4/280;
-          } else if (ord == 9) {
-            // Tenth-order-accurate interpolation of the state
-            ru_L = 1*ru_im5/1260 - 23*ru_im4/2520 + 127*ru_im3/2520 - 473*ru_im2/2520 + 1627*ru_im1/2520 + 1627*ru_i  /2520 - 473*ru_ip1/2520 + 127*ru_ip2/2520 - 23*ru_ip3/2520 + 1*ru_ip4/1260;
-            ru_R = 1*ru_im4/1260 - 23*ru_im3/2520 + 127*ru_im2/2520 - 473*ru_im1/2520 + 1627*ru_i  /2520 + 1627*ru_ip1/2520 - 473*ru_ip2/2520 + 127*ru_ip3/2520 - 23*ru_ip4/2520 + 1*ru_ip5/1260;
-            rw_L = 1*rw_km5/1260 - 23*rw_km4/2520 + 127*rw_km3/2520 - 473*rw_km2/2520 + 1627*rw_km1/2520 + 1627*rw_k  /2520 - 473*rw_kp1/2520 + 127*rw_kp2/2520 - 23*rw_kp3/2520 + 1*rw_kp4/1260;
-            rw_R = 1*rw_km4/1260 - 23*rw_km3/2520 + 127*rw_km2/2520 - 473*rw_km1/2520 + 1627*rw_k  /2520 + 1627*rw_kp1/2520 - 473*rw_kp2/2520 + 127*rw_kp3/2520 - 23*rw_kp4/2520 + 1*rw_kp5/1260;
+        real ru_L;
+        real ru_R;
+        real rv_L;
+        real rv_R;
+        real rw_L;
+        real rw_R;
+        if (ord == 3) {
+          // Fourth-order-accurate interpolation of the state
+          ru_L = -ru_im2/12 + 7*ru_im1/12 + 7*ru_i  /12 - ru_ip1/12;
+          ru_R = -ru_im1/12 + 7*ru_i  /12 + 7*ru_ip1/12 - ru_ip2/12;
+          if (!sim2d) {
+            rv_L = -rv_jm2/12 + 7*rv_jm1/12 + 7*rv_j  /12 - rv_jp1/12;
+            rv_R = -rv_jm1/12 + 7*rv_j  /12 + 7*rv_jp1/12 - rv_jp2/12;
           }
-          // Pressure tendency
-          pressure_tend(k,j,i,iens) = -c_s*c_s * ( (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens) );
-          // compute absolute divergence to track how well we're converging it to zero
-          abs_div(k,j,i,iens) = abs( (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens) );
-        } else {
-          // compute absolute divergence to track how well we're converging it to zero
-          // abs_div(k,j,i,iens) = abs( (ru_R-ru_L)/dx + (rv_R-rv_L)/dy + (rw_R-rw_L)/dz(k,iens) );
-          // pressure_tend(k,j,i,iens) = -c_s*c_s * ( (ru_R-ru_L)/dx + (rv_R-rv_L)/dy + (rw_R-rw_L)/dz(k,iens) );
+          rw_L = -rw_km2/12 + 7*rw_km1/12 + 7*rw_k  /12 - rw_kp1/12;
+          rw_R = -rw_km1/12 + 7*rw_k  /12 + 7*rw_kp1/12 - rw_kp2/12;
+        } else if (ord == 5) {
+          // Sixth-order-accurate interpolation of the state
+          ru_L = ru_im3/60 - 2*ru_im2/15 + 37*ru_im1/60 + 37*ru_i  /60 - 2*ru_ip1/15 + ru_ip2/60;
+          ru_R = ru_im2/60 - 2*ru_im1/15 + 37*ru_i  /60 + 37*ru_ip1/60 - 2*ru_ip2/15 + ru_ip3/60;
+          if (!sim2d) {
+            rv_L = rv_jm3/60 - 2*rv_jm2/15 + 37*rv_jm1/60 + 37*rv_j  /60 - 2*rv_jp1/15 + rv_jp2/60;
+            rv_R = rv_jm2/60 - 2*rv_jm1/15 + 37*rv_j  /60 + 37*rv_jp1/60 - 2*rv_jp2/15 + rv_jp3/60;
+          }
+          rw_L = rw_km3/60 - 2*rw_km2/15 + 37*rw_km1/60 + 37*rw_k  /60 - 2*rw_kp1/15 + rw_kp2/60;
+          rw_R = rw_km2/60 - 2*rw_km1/15 + 37*rw_k  /60 + 37*rw_kp1/60 - 2*rw_kp2/15 + rw_kp3/60;
+        } else if (ord == 7) {
+          // Eighth-order-accurate interpolation of the state
+          ru_L = -1*ru_im4/280 + 29*ru_im3/840 - 139*ru_im2/840 + 533*ru_im1/840 + 533*ru_i  /840 - 139*ru_ip1/840 + 29*ru_ip2/840 - 1*ru_ip3/280;
+          ru_R = -1*ru_im3/280 + 29*ru_im2/840 - 139*ru_im1/840 + 533*ru_i  /840 + 533*ru_ip1/840 - 139*ru_ip2/840 + 29*ru_ip3/840 - 1*ru_ip4/280;
+          if (!sim2d) {
+            rv_L = -1*rv_jm4/280 + 29*rv_jm3/840 - 139*rv_jm2/840 + 533*rv_jm1/840 + 533*rv_j  /840 - 139*rv_jp1/840 + 29*rv_jp2/840 - 1*rv_jp3/280;
+            rv_R = -1*rv_jm3/280 + 29*rv_jm2/840 - 139*rv_jm1/840 + 533*rv_j  /840 + 533*rv_jp1/840 - 139*rv_jp2/840 + 29*rv_jp3/840 - 1*rv_jp4/280;
+          }
+          rw_L = -1*rw_km4/280 + 29*rw_km3/840 - 139*rw_km2/840 + 533*rw_km1/840 + 533*rw_k  /840 - 139*rw_kp1/840 + 29*rw_kp2/840 - 1*rw_kp3/280;
+          rw_R = -1*rw_km3/280 + 29*rw_km2/840 - 139*rw_km1/840 + 533*rw_k  /840 + 533*rw_kp1/840 - 139*rw_kp2/840 + 29*rw_kp3/840 - 1*rw_kp4/280;
+        } else if (ord == 9) {
+          // Tenth-order-accurate interpolation of the state
+          ru_L = 1*ru_im5/1260 - 23*ru_im4/2520 + 127*ru_im3/2520 - 473*ru_im2/2520 + 1627*ru_im1/2520 + 1627*ru_i  /2520 - 473*ru_ip1/2520 + 127*ru_ip2/2520 - 23*ru_ip3/2520 + 1*ru_ip4/1260;
+          ru_R = 1*ru_im4/1260 - 23*ru_im3/2520 + 127*ru_im2/2520 - 473*ru_im1/2520 + 1627*ru_i  /2520 + 1627*ru_ip1/2520 - 473*ru_ip2/2520 + 127*ru_ip3/2520 - 23*ru_ip4/2520 + 1*ru_ip5/1260;
+          if (!sim2d) {
+            rv_L = 1*rv_jm5/1260 - 23*rv_jm4/2520 + 127*rv_jm3/2520 - 473*rv_jm2/2520 + 1627*rv_jm1/2520 + 1627*rv_j  /2520 - 473*rv_jp1/2520 + 127*rv_jp2/2520 - 23*rv_jp3/2520 + 1*rv_jp4/1260;
+            rv_R = 1*rv_jm4/1260 - 23*rv_jm3/2520 + 127*rv_jm2/2520 - 473*rv_jm1/2520 + 1627*rv_j  /2520 + 1627*rv_jp1/2520 - 473*rv_jp2/2520 + 127*rv_jp3/2520 - 23*rv_jp4/2520 + 1*rv_jp5/1260;
+          }
+          rw_L = 1*rw_km5/1260 - 23*rw_km4/2520 + 127*rw_km3/2520 - 473*rw_km2/2520 + 1627*rw_km1/2520 + 1627*rw_k  /2520 - 473*rw_kp1/2520 + 127*rw_kp2/2520 - 23*rw_kp3/2520 + 1*rw_kp4/1260;
+          rw_R = 1*rw_km4/1260 - 23*rw_km3/2520 + 127*rw_km2/2520 - 473*rw_km1/2520 + 1627*rw_k  /2520 + 1627*rw_kp1/2520 - 473*rw_kp2/2520 + 127*rw_kp3/2520 - 23*rw_kp4/2520 + 1*rw_kp5/1260;
         }
+        real div;
+        if (sim2d) {
+          div = (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens);
+        } else {
+          div = (ru_R-ru_L)/dx + (rv_R-rv_L)/dy + (rw_R-rw_L)/dz(k,iens);
+        }
+        // Pressure tendency
+        pressure_tend(k,j,i,iens) = -c_s*c_s * ( div );
+        abs_div(k,j,i,iens) = abs( div );
         rho_u_new_tend(k,j,i,iens) = -(p_x_R - p_x_L) / (dx);
         if (!sim2d) rho_v_new_tend(k,j,i,iens) = -(p_y_R - p_y_L) / (dy);
         rho_w_new_tend(k,j,i,iens) = -(p_z_R - p_z_L) / (dz(k,iens));
