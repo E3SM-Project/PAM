@@ -4,6 +4,7 @@ project(pam_standalone)
 enable_language(Fortran)
 enable_language(CXX)
 enable_language(C)
+
 if ("${ARCH}" STREQUAL "CUDA")
   enable_language(CUDA)
 endif()
@@ -11,6 +12,9 @@ endif()
 set(YAKL_HOME ${CMAKE_CURRENT_SOURCE_DIR}/../externals/YAKL)
 set(YAKL_BIN  ${CMAKE_CURRENT_BINARY_DIR}/yakl)
 add_subdirectory(${YAKL_HOME} ${YAKL_BIN})
+
+include_directories( /usr/local/bin/yaml-cpp/include/ )
+include_directories( /usr/local/bin/netcdf/include/ )
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../externals/eigen)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../include)

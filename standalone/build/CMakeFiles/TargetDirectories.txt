@@ -1,0 +1,10 @@
+/Users/raro0632/Documents/ORNL_PRACTICUM/SCAMPAM/standalone/build/CMakeFiles/rebuild_cache.dir
+/Users/raro0632/Documents/ORNL_PRACTICUM/SCAMPAM/standalone/build/CMakeFiles/edit_cache.dir
+/Users/raro0632/Documents/ORNL_PRACTICUM/SCAMPAM/standalone/build/CMakeFiles/driver.dir
+/Users/raro0632/Documents/ORNL_PRACTICUM/SCAMPAM/standalone/build/yakl/CMakeFiles/rebuild_cache.dir
+/Users/raro0632/Documents/ORNL_PRACTICUM/SCAMPAM/standalone/build/yakl/CMakeFiles/edit_cache.dir
+/Users/raro0632/Documents/ORNL_PRACTICUM/SCAMPAM/standalone/build/yakl/CMakeFiles/yakl.dir
+/Users/raro0632/Documents/ORNL_PRACTICUM/SCAMPAM/standalone/build/dynamics/CMakeFiles/rebuild_cache.dir
+/Users/raro0632/Documents/ORNL_PRACTICUM/SCAMPAM/standalone/build/dynamics/CMakeFiles/edit_cache.dir
+/Users/raro0632/Documents/ORNL_PRACTICUM/SCAMPAM/standalone/build/micro/CMakeFiles/rebuild_cache.dir
+/Users/raro0632/Documents/ORNL_PRACTICUM/SCAMPAM/standalone/build/micro/CMakeFiles/edit_cache.dir
