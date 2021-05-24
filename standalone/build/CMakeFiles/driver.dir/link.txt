@@ -1,1 +1,0 @@
-/usr/bin/c++  -O3 -march=native --std=c++11 -DPAM_DEBUG  -rdynamic CMakeFiles/driver.dir/driver.cpp.o  -o driver  yakl/libyakl.a -lnetcdf_c++4 -lyaml-cpp -lgfortran -lquadmath 
