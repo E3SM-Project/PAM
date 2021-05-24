@@ -107,9 +107,6 @@ public:
   real dx;
   real dy;
 
-  // Initial time step (used throughout the simulation)
-  real dtInit;
-
   // Which direction we're passing through for a given time step (x,y,z)  or (z,y,x)
   // For Strang splitting
   bool dimSwitch;
@@ -401,52 +398,38 @@ public:
   // Given the model data and CFL value, compute the maximum stable time step
   template <class MICRO>
   real compute_time_step(DataManager &dm, MICRO const &micro, real cfl = 0.8) {
+    YAKL_SCOPE( dx               , this->dx               );
+    YAKL_SCOPE( dy               , this->dy               );
+    YAKL_SCOPE( dz               , this->dz               );
+    YAKL_SCOPE( hyDensCells      , this->hyDensCells      );
+    YAKL_SCOPE( hyThetaCells     , this->hyThetaCells     );
+    YAKL_SCOPE( hyDensThetaCells , this->hyDensThetaCells );
+    YAKL_SCOPE( gamma            , this->gamma            );
+    YAKL_SCOPE( C0               , this->C0               );
 
-    // If we've already computed the time step, then don't compute it again
-    if (dtInit <= 0) {
-      YAKL_SCOPE( dx               , this->dx               );
-      YAKL_SCOPE( dy               , this->dy               );
-      YAKL_SCOPE( dz               , this->dz               );
-      YAKL_SCOPE( hyDensCells      , this->hyDensCells      );
-      YAKL_SCOPE( hyThetaCells     , this->hyThetaCells     );
-      YAKL_SCOPE( hyDensThetaCells , this->hyDensThetaCells );
-      YAKL_SCOPE( gamma            , this->gamma            );
-      YAKL_SCOPE( C0               , this->C0               );
+    // Convert data from DataManager to state and tracers array for convenience
+    real5d state   = dm.get<real,5>("dynamics_state");
+    real5d tracers = dm.get<real,5>("dynamics_tracers");
 
-      // Convert data from DataManager to state and tracers array for convenience
-      real5d state   = dm.get<real,5>("dynamics_state");
-      real5d tracers = dm.get<real,5>("dynamics_tracers");
+    // Allocate a 3-D array for the max stable time steps (we'll use this for a reduction later)
+    real4d dt3d("dt3d",nz,ny,nx,nens);
 
-      // Allocate a 3-D array for the max stable time steps (we'll use this for a reduction later)
-      real4d dt3d("dt3d",nz,ny,nx,nens);
+    // Loop through the cells, calculate the max stable time step for each cell
+    parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      // Get the state
+      real u = state(idU,hs+k,hs+j,hs+i,iens);
+      real v = state(idV,hs+k,hs+j,hs+i,iens);
+      real w = state(idW,hs+k,hs+j,hs+i,iens);
 
-      // Loop through the cells, calculate the max stable time step for each cell
-      parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-        // Get the state
-        real r = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(hs+k,iens);
-        real u = state(idU,hs+k,hs+j,hs+i,iens);
-        real v = state(idV,hs+k,hs+j,hs+i,iens);
-        real w = state(idW,hs+k,hs+j,hs+i,iens);
-        real t = state(idT,hs+k,hs+j,hs+i,iens) + hyThetaCells(hs+k,iens);
-        real p = C0*pow(r*t,gamma);
+      // Compute the maximum stable time step in each direction
+      real udt = cfl * dx         / max( abs(u) , 1.e-10_fp );
+      real vdt = cfl * dy         / max( abs(v) , 1.e-10_fp );
+      real wdt = cfl * dz(k,iens) / max( abs(w) , 1.e-10_fp );
 
-        // Compute the speed of sound (constant kappa assumption)
-        real cs = sqrt(gamma*p/r);
-
-        // Compute the maximum stable time step in each direction
-        real udt = cfl * dx         / max( abs(u-cs) , abs(u+cs) );
-        real vdt = cfl * dy         / max( abs(v-cs) , abs(v+cs) );
-        real wdt = cfl * dz(k,iens) / max( abs(w-cs) , abs(w+cs) );
-
-        // Compute the min of the max stable time steps
-        dt3d(k,j,i,iens) = min( min(udt,vdt) , wdt );
-      });
-      // Store to dtInit so we don't have to compute this again
-      dtInit = yakl::intrinsics::minval( dt3d );
-      dtInit = 20;
-    }
-
-    return dtInit;
+      // Compute the min of the max stable time steps
+      dt3d(k,j,i,iens) = min( 60._fp , min( min(udt,vdt) , wdt ) );
+    });
+    return yakl::intrinsics::minval( dt3d );
   }
 
 
@@ -465,7 +448,6 @@ public:
     tracer_adds_mass = bool1d("tracer_adds_mass",num_tracers);
 
     // Inialize time step to zero, and dimensional splitting switch
-    dtInit = 0;
     dimSwitch = true;
 
     #if defined(PAM_STANDALONE)
@@ -895,6 +877,15 @@ public:
   //   * Determine minimum number of iterations to achieve a satisfactory solution (don't converge to machine precision)
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   void remove_momentum_divergence(real5d &state) {
+    YAKL_SCOPE( nx          , this->nx          );
+    YAKL_SCOPE( ny          , this->ny          );
+    YAKL_SCOPE( nz          , this->nz          );
+    YAKL_SCOPE( dx          , this->dx          );
+    YAKL_SCOPE( dy          , this->dy          );
+    YAKL_SCOPE( dz          , this->dz          );
+    YAKL_SCOPE( hyDensCells , this->hyDensCells );
+    YAKL_SCOPE( sim2d       , this->sim2d       );
+
     // We get to choose the speed of sound
     real constexpr c_s = 300;
     // Get a time step that's guaranteed to be stable for explicit updates in 3-D based on speed of sound
@@ -925,7 +916,7 @@ public:
       pressure (k,j,i,iens) = 0;
     });
 
-    for (int iter=0; iter < 1000; iter++) {
+    for (int iter=0; iter < 5000; iter++) {
       parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
         // Compute indices for left and right cells (periodic in x,y; solid wall in z)
         int im3 = i-3;  if (im3 < 0   ) im3 += nx;
@@ -1030,10 +1021,19 @@ public:
           real ru_R = ru_im2/60 - 2*ru_im1/15 + 37*ru_i  /60 + 37*ru_ip1/60 - 2*ru_ip2/15 + ru_ip3/60;
           real rw_L = rw_km3/60 - 2*rw_km2/15 + 37*rw_km1/60 + 37*rw_k  /60 - 2*rw_kp1/15 + rw_kp2/60;
           real rw_R = rw_km2/60 - 2*rw_km1/15 + 37*rw_k  /60 + 37*rw_kp1/60 - 2*rw_kp2/15 + rw_kp3/60;
+          // Third-order derivative of pressure
+          real p_d3_x_L = -p_im2 + 3*p_im1 - 3*p_i   + p_ip1;
+          real p_d3_x_R = -p_im1 + 3*p_i   - 3*p_ip1 + p_ip2;
+          real p_d3_z_L = -p_km2 + 3*p_km1 - 3*p_k   + p_kp1;
+          real p_d3_z_R = -p_km1 + 3*p_k   - 3*p_kp1 + p_kp2;
+          real hv_coef_x = -0.25 * dx         / (16*dtloc);
+          real hv_coef_z = -0.25 * dz(k,iens) / (16*dtloc);
           // Pressure tendency
           pressure_tend(k,j,i,iens) = -c_s*c_s * ( (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens) );
+          // pressure_tend(k,j,i,iens) -= hv_coef_x * ( p_d3_x_R - p_d3_x_L );
+          // pressure_tend(k,j,i,iens) -= hv_coef_z * ( p_d3_z_R - p_d3_z_L );
           // compute absolute divergence to track how well we're converging it to zero
-          abs_div(k,j,i,iens) = abs(ru_R-ru_L)/dx + abs(rw_R-rw_L)/dz(k,iens);
+          abs_div(k,j,i,iens) = abs( (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens) );
         } else {
           // compute absolute divergence to track how well we're converging it to zero
           // abs_div(k,j,i,iens) = abs( (ru_R-ru_L)/dx + (rv_R-rv_L)/dy + (rw_R-rw_L)/dz(k,iens) );
