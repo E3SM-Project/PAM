@@ -1,14 +1,20 @@
-
-# Consider dependencies only in project.
-set(CMAKE_DEPENDS_IN_PROJECT_ONLY OFF)
-
 # The set of languages for which implicit dependencies are needed:
 set(CMAKE_DEPENDS_LANGUAGES
+  "CXX"
   "Fortran"
   )
 # The set of files for implicit dependencies of each language:
+set(CMAKE_DEPENDS_CHECK_CXX
+  "/home/imn/SCAMPAM/externals/YAKL/YAKL.cpp" "/home/imn/SCAMPAM/standalone/build/yakl/CMakeFiles/yakl.dir/YAKL.cpp.o"
+  )
+set(CMAKE_CXX_COMPILER_ID "GNU")
+
+# The include file search paths:
+set(CMAKE_CXX_TARGET_INCLUDE_PATH
+  "/home/imn/SCAMPAM/externals/YAKL"
+  )
 set(CMAKE_DEPENDS_CHECK_Fortran
-  "/Users/raro0632/Documents/ORNL_PRACTICUM/SCAMPAM/externals/YAKL/gator_mod.F90" "/Users/raro0632/Documents/ORNL_PRACTICUM/SCAMPAM/standalone/build/yakl/CMakeFiles/yakl.dir/gator_mod.F90.o"
+  "/home/imn/SCAMPAM/externals/YAKL/gator_mod.F90" "/home/imn/SCAMPAM/standalone/build/yakl/CMakeFiles/yakl.dir/gator_mod.F90.o"
   )
 set(CMAKE_Fortran_COMPILER_ID "GNU")
 set(CMAKE_Fortran_SUBMODULE_SEP "@")
@@ -16,12 +22,7 @@ set(CMAKE_Fortran_SUBMODULE_EXT ".smod")
 
 # The include file search paths:
 set(CMAKE_Fortran_TARGET_INCLUDE_PATH
-  "/Users/raro0632/Documents/ORNL_PRACTICUM/SCAMPAM/externals/YAKL"
-  )
-
-# The set of dependency files which are needed:
-set(CMAKE_DEPENDS_DEPENDENCY_FILES
-  "/Users/raro0632/Documents/ORNL_PRACTICUM/SCAMPAM/externals/YAKL/YAKL.cpp" "yakl/CMakeFiles/yakl.dir/YAKL.cpp.o" "gcc" "yakl/CMakeFiles/yakl.dir/YAKL.cpp.o.d"
+  "/home/imn/SCAMPAM/externals/YAKL"
   )
 
 # Targets to which this target links.

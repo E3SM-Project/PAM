@@ -1,2 +1,2 @@
-/Library/Developer/CommandLineTools/usr/bin/ar qc libyakl.a CMakeFiles/yakl.dir/YAKL.cpp.o CMakeFiles/yakl.dir/gator_mod.F90.o
-/Library/Developer/CommandLineTools/usr/bin/ranlib libyakl.a
+/usr/bin/ar qc libyakl.a  CMakeFiles/yakl.dir/YAKL.cpp.o CMakeFiles/yakl.dir/gator_mod.F90.o
+/usr/bin/ranlib libyakl.a

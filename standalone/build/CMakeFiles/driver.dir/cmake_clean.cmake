@@ -1,6 +1,5 @@
 file(REMOVE_RECURSE
   "CMakeFiles/driver.dir/driver.cpp.o"
-  "CMakeFiles/driver.dir/driver.cpp.o.d"
   "driver"
   "driver.pdb"
 )

@@ -84,6 +84,8 @@ public:
   real4d vert_sten_to_gll;
   real5d vert_weno_recon;
 
+  real4d pressure;
+
   // For indexing into the state and state tendency arrays
   int static constexpr idR = 0;  // density perturbation
   int static constexpr idU = 1;  // u
@@ -723,6 +725,8 @@ public:
       }
     });
 
+    pressure = real4d("pressure" ,nz,ny,nx,nens);
+
     #ifdef PAM_STANDALONE
       std::cout << "nx: " << nx << "\n";
       std::cout << "ny: " << ny << "\n";
@@ -899,18 +903,17 @@ public:
     real constexpr c_s = 300;
     // Get a time step that's guaranteed to be stable for explicit updates in 3-D based on speed of sound
     // dtmax = min( cfl*dx/cs , cfl*dy/cs , cfl*dz/cs )
-    real dtloc;
-    real dzmin = yakl::intrinsics::minval(dz);
-    if (sim2d) {
-      dtloc = 0.3_fp * min( dx/c_s , dzmin/c_s );
-    } else {
-      dtloc = 0.3_fp * min( min( dx/c_s , dy/c_s ) , dzmin/c_s );
-    }
+    real dtloc = 0.66666666666666;
+    // real dzmin = yakl::intrinsics::minval(dz);
+    // if (sim2d) {
+    //   dtloc = 0.3_fp * min( dx/c_s , dzmin/c_s );
+    // } else {
+    //   dtloc = 0.3_fp * min( min( dx/c_s , dy/c_s ) , dzmin/c_s );
+    // }
 
     real4d rho_u_new("rho_u_new",nz,ny,nx,nens);
     real4d rho_v_new("rho_v_new",nz,ny,nx,nens);
     real4d rho_w_new("rho_w_new",nz,ny,nx,nens);
-    real4d pressure ("pressure" ,nz,ny,nx,nens);
     real4d pressure_tend ("pressure_tend" ,nz,ny,nx,nens);
     real4d rho_u_new_tend("rho_u_new_tend",nz,ny,nx,nens);
     real4d rho_v_new_tend("rho_v_new_tend",nz,ny,nx,nens);
@@ -928,16 +931,12 @@ public:
     /////////////////////////////////////////////////////////////////////////////////////////////////
     // First go at Alternating Direction Implicit (ADI) 1st order spatial, tridiagonal solver
     /////////////////////////////////////////////////////////////////////////////////////////////////
-    std::cout << "size: " << nx << " " << ny << " " << nz << " " << nens << "\n";
-    for (int iter=0; iter < 100; iter++) {
+    for (int iter=0; iter < 10000; iter++) {
 
       ////////////////////////////
       // x-direction
       ////////////////////////////
       parallel_for( Bounds<3>(nz,ny,nens) , YAKL_LAMBDA (int k, int j, int iens) {
-      //for( int k=0; k < nz; k++ ) {
-      //for( int j=0; j < ny; j++ ) {
-      //for( int iens=0; iens < nens; iens++ ) {
         SArray<real,1,100> a,b,c,d;
 
         int jm1 = j-1;  if (jm1 < 0   ) jm1 = ny-1;
@@ -955,29 +954,15 @@ public:
            real ru_L  = ( pressure(k,j,im1,iens) - pressure(k,j,i,  iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(k,j,i,  iens) + rho_u_new(k,j,im1,iens) );
            real ru_R  = ( pressure(k,j,i,  iens) - pressure(k,j,ip1,iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(k,j,ip1,iens) + rho_u_new(k,j,i  ,iens) );
 
-           real rv_L  = ( pressure(k,jm1,i,iens) - pressure(k,j,  i,iens) ) / (2*c_s) + 0.5_fp * ( rho_v_new(k,j,  i,iens) + rho_v_new(k,jm1,i,iens) );
-           real rv_R  = ( pressure(k,j  ,i,iens) - pressure(k,jp1,i,iens) ) / (2*c_s) + 0.5_fp * ( rho_v_new(k,jp1,i,iens) + rho_v_new(k,j,  i,iens) );
-
-           real rw_L  = ( pressure(km1,j,i,iens) - pressure(k,  j,i,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(k,  j,i,iens) + rho_w_new(km1,j,i,iens) );
-           real rw_R  = ( pressure(k  ,j,i,iens) - pressure(kp1,j,i,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(kp1,j,i,iens) + rho_w_new(k,  j,i,iens) );
-           // Enforce momentum boundary conditions at the domain top and bottom -- TODO: is this sufficient?
-           if (k == 0   ) rw_L  = 0;
-           if (k == nz-1) rw_R  = 0;
-
-           real div = (ru_R-ru_L)/dx + (rv_R-rv_L)/dy + (rw_R-rw_L)/dz(k,iens); // TODO -- do we want to store this more permanently?
+           real div = (ru_R-ru_L)/dx;
 
            a(i) = -xi;
            b(i) = 1+2*xi;
            c(i) = -xi; 
            d(i) = pressure(k,j,i,iens) - dtloc*c_s*c_s*div;
-
-           if( fabs(d(i)) > 1e-10 )
-              std::cout << "press diagonals (" << k << "," << j << "," << iter << ") " << a(i) << " " << b(i) << " " << c(i) << " " << d(i) << "\n";
         }
         yakl::tridiagonal_periodic<real,100>(a,b,c,d); // solution p'_i is stored in d?
         for (int i=0; i < nx; i++) {
-           if( fabs(d(i)) > 1e-10 )
-             std::cout << "press sol (" << k << "," << j << "," << iter << ") " << pressure(k,j,i,iens) << " " << d(i) << "\n";
            pressure(k,j,i,iens) = d(i);
         }
 
@@ -991,29 +976,20 @@ public:
            a(i) = -xi;
            b(i) = 1+2*xi;
            c(i) = -xi; 
-           d(i) = rho_u_new(k,j,i,iens)-xi/c_s*(pressure(k,j,ip1,iens)+pressure(k,j,im1,iens));
-           if( fabs(d(i)) > 1e-10 )
-              std::cout << "rhou diagonals (" << k << "," << j << "," << iter << ") " << a(i) << " " << b(i) << " " << c(i) << " " << d(i) << "\n";
+           real ru_fixed = state(idU,hs+k,hs+j,hs+i,iens) * hyDensCells(hs+k,iens);
+           d(i) = ru_fixed-xi/c_s*(pressure(k,j,ip1,iens)-pressure(k,j,im1,iens));
         }
         yakl::tridiagonal_periodic<real,100>(a,b,c,d); // solution (rho u)_i is stored in d?
         for (int i=0; i < nx; i++) {
-           if( fabs(pressure(k,j,i,iens)) > 1e-10 )
-             std::cout << "rhou sol (" << k << "," << j << "," iter << ") " << rho_u_new(k,j,i,iens) << " " << d(i) << "\n";
            rho_u_new(k,j,i,iens) = d(i);
         }
-      //}
-      //}
-      //}
       });
 
       ////////////////////////////
       // z-direction
       ////////////////////////////
       parallel_for( Bounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int iens) {
-      //for( int j=0; j < ny; j++ ) {
-      //for( int i=0; i < nx; i++ ) {
-      //for( int iens=0; iens < nens; iens++ ) {
-        SArray<real,1,64> a,b,c,d;
+        SArray<real,1,50> a,b,c,d;
 
         int im1 = i-1;  if (im1 < 0   ) im1 = nx-1;
         int ip1 = i+1;  if (ip1 > nx-1) ip1 = 0;
@@ -1027,13 +1003,6 @@ public:
            int km1 = k-1;  if (km1 < 0   ) km1 = 0;
            int kp1 = k+1;  if (kp1 > nz-1) kp1 = nz-1;
 
-           // Compute upwind interface values for about the cell for the divergence
-           real ru_L  = ( pressure(k,j,im1,iens) - pressure(k,j,i,  iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(k,j,i,  iens) + rho_u_new(k,j,im1,iens) );
-           real ru_R  = ( pressure(k,j,i,  iens) - pressure(k,j,ip1,iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(k,j,ip1,iens) + rho_u_new(k,j,i  ,iens) );
-
-           real rv_L  = ( pressure(k,jm1,i,iens) - pressure(k,j,  i,iens) ) / (2*c_s) + 0.5_fp * ( rho_v_new(k,j,  i,iens) + rho_v_new(k,jm1,i,iens) );
-           real rv_R  = ( pressure(k,j  ,i,iens) - pressure(k,jp1,i,iens) ) / (2*c_s) + 0.5_fp * ( rho_v_new(k,jp1,i,iens) + rho_v_new(k,j,  i,iens) );
-
            real rw_L  = ( pressure(km1,j,i,iens) - pressure(k,  j,i,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(k,  j,i,iens) + rho_w_new(km1,j,i,iens) );
            real rw_R  = ( pressure(k  ,j,i,iens) - pressure(kp1,j,i,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(kp1,j,i,iens) + rho_w_new(k,  j,i,iens) );
 
@@ -1041,20 +1010,23 @@ public:
            if (k == 0   ) rw_L  = 0;
            if (k == nz-1) rw_R  = 0;
 
-           real div = (ru_R-ru_L)/dx + (rv_R-rv_L)/dy + (rw_R-rw_L)/dz(k,iens); // TODO -- do we want to store this more permanently?
+           real div = (rw_R-rw_L)/dz(k,iens); // TODO -- do we want to store this more permanently?
 
            a(k) = -xi;
            b(k) = 1+2*xi;
            c(k) = -xi; 
+           if (k == 0) {
+             b(k) += a(k);
+             a(k) = 0;
+           }
+           if (k == nz-1) {
+             b(k) += c(k);
+             c(k) = 0;
+           }
            d(k) = pressure(k,j,i,iens) - dtloc*c_s*c_s*div;
-
-           if( fabs(d(k)) > 1e-10 )
-              std::cout << "press diagonals (" << j << "," << i << "," << iter << ") " << a(k) << " " << b(k) << " " << c(k) << " " << d(k) << "\n";
         }
-        yakl::tridiagonal_periodic<real,64>(a,b,c,d); // solution p'_k is stored in d?
+        yakl::tridiagonal<real,50>(a,b,c,d); // solution p'_k is stored in d?
         for (int k=0; k < nz; k++) {
-           if( fabs(d(k)) > 1e-10 )
-              std::cout << "press sol (" << j << "," << i << "," << iter << ") " << " " << pressure(k,j,i,iens) << " " << d(k) << "\n";
            pressure(k,j,i,iens) = d(k);
         }
 
@@ -1069,21 +1041,43 @@ public:
            a(k) = -xi;
            b(k) = 1+2*xi;
            c(k) = -xi; 
-           d(k) = rho_w_new(k,j,i,iens)-xi/c_s*(pressure(kp1,j,i,iens)+pressure(km1,j,i,iens));
-           if( fabs(d(k)) > 1e-10 )
-              std::cout << "rhow diagonals (" << j << "," << i << ",", << iter <<  ") " << a(k) << " " << b(k) << " " << c(k) << " " << d(k) << "\n";
+           if (k == 0) {
+             b(k) += a(k);
+             a(k) = 0;
+           }
+           if (k == nz-1) {
+             b(k) += c(k);
+             c(k) = 0;
+           }
+           real rw_fixed = state(idW,hs+k,hs+j,hs+i,iens) * hyDensCells(hs+k,iens);
+           d(k) = rw_fixed-xi/c_s*(pressure(kp1,j,i,iens)-pressure(km1,j,i,iens));
         }
-        yakl::tridiagonal_periodic<real,64>(a,b,c,d); // solution (rho u)_i is stored in d?
+        yakl::tridiagonal<real,50>(a,b,c,d); // solution (rho u)_i is stored in d?
         for (int k=0; k < nz; k++) {
-           if( fabs(pressure(k,j,i,iens)) > 1e-10 )
-              std::cout << "rhow sol (" << j << "," << i << "," << iter << ") " << " " << rho_w_new(k,j,i,iens) << " " << d(k) << "\n";
            rho_w_new(k,j,i,iens) = d(k);
         }
-      //}
-      //}
-      //}
       });
+
+      parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+        int im1 = i-1;  if (im1 < 0   ) im1 = nx-1;
+        int ip1 = i+1;  if (ip1 > nx-1) ip1 = 0;
+        int jm1 = j-1;  if (jm1 < 0   ) jm1 = ny-1;
+        int jp1 = j+1;  if (jp1 > ny-1) jp1 = 0;
+        int km1 = k-1;  if (km1 < 0   ) km1 = 0;
+        int kp1 = k+1;  if (kp1 > nz-1) kp1 = nz-1;
+        real ru_L  = ( pressure(k,j,im1,iens) - pressure(k,j,i,  iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(k,j,i,  iens) + rho_u_new(k,j,im1,iens) );
+        real ru_R  = ( pressure(k,j,i,  iens) - pressure(k,j,ip1,iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(k,j,ip1,iens) + rho_u_new(k,j,i  ,iens) );
+        real rw_L  = ( pressure(km1,j,i,iens) - pressure(k,  j,i,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(k,  j,i,iens) + rho_w_new(km1,j,i,iens) );
+        real rw_R  = ( pressure(k  ,j,i,iens) - pressure(kp1,j,i,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(kp1,j,i,iens) + rho_w_new(k,  j,i,iens) );
+        real div = (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens); // TODO -- do we want to store this more permanently?
+        abs_div(k,j,i,iens) = abs(div);
+      });
+
+      std::cout << "Absolute divergence: " << yakl::intrinsics::sum(abs_div) << std::endl;
+
     }
+
+    std::cout << "\n";
 
     // TODO: Check initial/final divergence?
 
@@ -1733,6 +1727,7 @@ public:
     YAKL_SCOPE( hyDensThetaCells      , this->hyDensThetaCells     );
     YAKL_SCOPE( hyThetaCells          , this->hyThetaCells         );
     YAKL_SCOPE( hyPressureCells       , this->hyPressureCells      );
+    YAKL_SCOPE( pressure              , this->pressure             );
     YAKL_SCOPE( gamma                 , this->gamma                );
     YAKL_SCOPE( C0                    , this->C0                   );
 
@@ -1812,10 +1807,7 @@ public:
       nc.write1(data.createHostCopy(),"pot_temp_pert",{"z","y","x"},ulIndex,"t");
       // pressure'
       parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-        real r = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells (hs+k,iens);
-        real t = state(idT,hs+k,hs+j,hs+i,iens) + hyThetaCells(hs+k,iens);
-        real p  = C0*pow(r*t,gamma);
-        data(k,j,i) = p - hyPressureCells(hs+k,iens);
+        data(k,j,i) = pressure(k,j,i,iens);
       });
       nc.write1(data.createHostCopy(),"pressure_pert",{"z","y","x"},ulIndex,"t");
 
