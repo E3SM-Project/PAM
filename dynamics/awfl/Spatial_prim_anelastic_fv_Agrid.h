@@ -1261,6 +1261,9 @@ public:
       stateTend(idV,k,j,i,iens) = 0;
       stateTend(idW,k,j,i,iens) = 0;
       stateTend(idT,k,j,i,iens) = 0;
+      for (int tr=0; tr < num_tracers; tr++) {
+        tracerTend(tr,k,j,i,iens) = 0;
+      }
       { // x-direction
         // We need density and momentum to evolve the tracers with ADER
         SArray<real,1,ngll> u_gll;
