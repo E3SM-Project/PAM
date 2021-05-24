@@ -925,81 +925,119 @@ public:
       pressure (k,j,i,iens) = 0;
     });
 
-    for (int iter=0; iter < 2000; iter++) {
+    for (int iter=0; iter < 1000; iter++) {
       parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
         // Compute indices for left and right cells (periodic in x,y; solid wall in z)
-        int im1 = i-1;  if (im1 < 0   ) im1 = nx-1;
-        int ip1 = i+1;  if (ip1 > nx-1) ip1 = 0;
-        int jm1 = j-1;  if (jm1 < 0   ) jm1 = ny-1;
-        int jp1 = j+1;  if (jp1 > ny-1) jp1 = 0;
+        int im3 = i-3;  if (im3 < 0   ) im3 += nx;
+        int im2 = i-2;  if (im2 < 0   ) im2 += nx;
+        int im1 = i-1;  if (im1 < 0   ) im1 += nx;
+        int ip1 = i+1;  if (ip1 > nx-1) ip1 -= nx;
+        int ip2 = i+2;  if (ip2 > nx-1) ip2 -= nx;
+        int ip3 = i+3;  if (ip3 > nx-1) ip3 -= nx;
+
+        int jm3 = j-3;  if (jm3 < 0   ) jm3 += ny;
+        int jm2 = j-2;  if (jm2 < 0   ) jm2 += ny;
+        int jm1 = j-1;  if (jm1 < 0   ) jm1 += ny;
+        int jp1 = j+1;  if (jp1 > ny-1) jp1 -= ny;
+        int jp2 = j+2;  if (jp2 > ny-1) jp2 -= ny;
+        int jp3 = j+3;  if (jp3 > ny-1) jp3 -= ny;
+
+        int km3 = k-3;  if (km3 < 0   ) km3 = 0;
+        int km2 = k-2;  if (km2 < 0   ) km2 = 0;
         int km1 = k-1;  if (km1 < 0   ) km1 = 0;
         int kp1 = k+1;  if (kp1 > nz-1) kp1 = nz-1;
+        int kp2 = k+2;  if (kp2 > nz-1) kp2 = nz-1;
+        int kp3 = k+3;  if (kp3 > nz-1) kp3 = nz-1;
 
         ////////////////////////////
         // x-direction fluxes
         ////////////////////////////
         // Get pressure and momentum in 3-cell stencil
+        real p_im2  = pressure (k,j,im2,iens);
         real p_im1  = pressure (k,j,im1,iens);
         real p_i    = pressure (k,j,i  ,iens);
         real p_ip1  = pressure (k,j,ip1,iens);
+        real p_ip2  = pressure (k,j,ip2,iens);
+        real ru_im3 = rho_u_new(k,j,im3,iens);
+        real ru_im2 = rho_u_new(k,j,im2,iens);
         real ru_im1 = rho_u_new(k,j,im1,iens);
         real ru_i   = rho_u_new(k,j,i  ,iens);
         real ru_ip1 = rho_u_new(k,j,ip1,iens);
+        real ru_ip2 = rho_u_new(k,j,ip2,iens);
+        real ru_ip3 = rho_u_new(k,j,ip3,iens);
         // Compute upwind pressure and momentum at cell interfaces using characteristics
         real p_x_L = (p_i   + p_im1) / 2       + c_s/2  * (ru_im1 - ru_i  );
         real p_x_R = (p_ip1 + p_i  ) / 2       + c_s/2  * (ru_i   - ru_ip1);
-        real ru_L  = (p_im1 - p_i  ) / (2*c_s) + 0.5_fp * (ru_i   + ru_im1);
-        real ru_R  = (p_i   - p_ip1) / (2*c_s) + 0.5_fp * (ru_ip1 + ru_i  );
 
         ////////////////////////////
         // y-direction fluxes
         ////////////////////////////
         // Get pressure and momentum in 3-cell stencil
+        real p_jm2  = pressure (k,jm2,i,iens);
         real p_jm1  = pressure (k,jm1,i,iens);
         real p_j    = pressure (k,j  ,i,iens);
         real p_jp1  = pressure (k,jp1,i,iens);
+        real p_jp2  = pressure (k,jp2,i,iens);
+        real rv_jm3 = rho_v_new(k,jm3,i,iens);
+        real rv_jm2 = rho_v_new(k,jm2,i,iens);
         real rv_jm1 = rho_v_new(k,jm1,i,iens);
         real rv_j   = rho_v_new(k,j  ,i,iens);
         real rv_jp1 = rho_v_new(k,jp1,i,iens);
+        real rv_jp2 = rho_v_new(k,jp2,i,iens);
+        real rv_jp3 = rho_v_new(k,jp3,i,iens);
         // Compute upwind pressure and momentum at cell interfaces using characteristics
         real p_y_L = (p_j   + p_jm1) / 2       + c_s/2  * (rv_jm1 - rv_j  );
         real p_y_R = (p_jp1 + p_j  ) / 2       + c_s/2  * (rv_j   - rv_jp1);
-        real rv_L  = (p_jm1 - p_j  ) / (2*c_s) + 0.5_fp * (rv_j   + rv_jm1);
-        real rv_R  = (p_j   - p_jp1) / (2*c_s) + 0.5_fp * (rv_jp1 + rv_j  );
 
         ////////////////////////////
         // z-direction fluxes
         ////////////////////////////
         // Get pressure and momentum in 3-cell stencil
+        real p_km2  = pressure (km2,j,i,iens);
         real p_km1  = pressure (km1,j,i,iens);
         real p_k    = pressure (k  ,j,i,iens);
         real p_kp1  = pressure (kp1,j,i,iens);
+        real p_kp2  = pressure (kp2,j,i,iens);
+        real rw_km3 = rho_w_new(km3,j,i,iens);
+        real rw_km2 = rho_w_new(km2,j,i,iens);
         real rw_km1 = rho_w_new(km1,j,i,iens);
         real rw_k   = rho_w_new(k  ,j,i,iens);
         real rw_kp1 = rho_w_new(kp1,j,i,iens);
+        real rw_kp2 = rho_w_new(kp2,j,i,iens);
+        real rw_kp3 = rho_w_new(kp3,j,i,iens);
         // Enforce momentum boundary conditions at the domain top and bottom
+        if (k == 0   ) rw_km3 = 0;
+        if (k == 0   ) rw_km2 = 0;
         if (k == 0   ) rw_km1 = 0;
         if (k == nz-1) rw_kp1 = 0;
+        if (k == nz-1) rw_kp2 = 0;
+        if (k == nz-1) rw_kp3 = 0;
         // Compute upwind pressure and momentum at cell interfaces using characteristics
         real p_z_L = (p_k   + p_km1) / 2       + c_s/2  * (rw_km1 - rw_k  );
         real p_z_R = (p_kp1 + p_k  ) / 2       + c_s/2  * (rw_k   - rw_kp1);
-        real rw_L  = (p_km1 - p_k  ) / (2*c_s) + 0.5_fp * (rw_k   + rw_km1);
-        real rw_R  = (p_k   - p_kp1) / (2*c_s) + 0.5_fp * (rw_kp1 + rw_k  );
-        // Enforce momentum boundary conditions at the domain top and bottom
-        if (k == 0   ) rw_L  = 0;
-        if (k == nz-1) rw_R  = 0;
 
         ////////////////////////////////////////////////////////
         // Perform the update using fluxes at cell interface
         ////////////////////////////////////////////////////////
         if (sim2d) {
-          // compute absolute divergence to track how well we're converging it to zero
-          abs_div(k,j,i,iens) = abs( (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens) );
+          // // Fourth-order-accurate interpolation of the state
+          // real ru_L = -ru_im2/12 + 7*ru_im1/12 + 7*ru_i  /12 - ru_ip1/12;
+          // real ru_R = -ru_im1/12 + 7*ru_i  /12 + 7*ru_ip1/12 - ru_ip2/12;
+          // real rw_L = -rw_km2/12 + 7*rw_km1/12 + 7*rw_k  /12 - rw_kp1/12;
+          // real rw_R = -rw_km1/12 + 7*rw_k  /12 + 7*rw_kp1/12 - rw_kp2/12;
+          // Sixth-order-accurate interpolation of the state
+          real ru_L = ru_im3/60 - 2*ru_im2/15 + 37*ru_im1/60 + 37*ru_i  /60 - 2*ru_ip1/15 + ru_ip2/60;
+          real ru_R = ru_im2/60 - 2*ru_im1/15 + 37*ru_i  /60 + 37*ru_ip1/60 - 2*ru_ip2/15 + ru_ip3/60;
+          real rw_L = rw_km3/60 - 2*rw_km2/15 + 37*rw_km1/60 + 37*rw_k  /60 - 2*rw_kp1/15 + rw_kp2/60;
+          real rw_R = rw_km2/60 - 2*rw_km1/15 + 37*rw_k  /60 + 37*rw_kp1/60 - 2*rw_kp2/15 + rw_kp3/60;
+          // Pressure tendency
           pressure_tend(k,j,i,iens) = -c_s*c_s * ( (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens) );
+          // compute absolute divergence to track how well we're converging it to zero
+          abs_div(k,j,i,iens) = abs(ru_R-ru_L)/dx + abs(rw_R-rw_L)/dz(k,iens);
         } else {
           // compute absolute divergence to track how well we're converging it to zero
-          abs_div(k,j,i,iens) = abs( (ru_R-ru_L)/dx + (rv_R-rv_L)/dy + (rw_R-rw_L)/dz(k,iens) );
-          pressure_tend(k,j,i,iens) = -c_s*c_s * ( (ru_R-ru_L)/dx + (rv_R-rv_L)/dy + (rw_R-rw_L)/dz(k,iens) );
+          // abs_div(k,j,i,iens) = abs( (ru_R-ru_L)/dx + (rv_R-rv_L)/dy + (rw_R-rw_L)/dz(k,iens) );
+          // pressure_tend(k,j,i,iens) = -c_s*c_s * ( (ru_R-ru_L)/dx + (rv_R-rv_L)/dy + (rw_R-rw_L)/dz(k,iens) );
         }
         rho_u_new_tend(k,j,i,iens) = -(p_x_R - p_x_L) / (dx);
         if (!sim2d) rho_v_new_tend(k,j,i,iens) = -(p_y_R - p_y_L) / (dy);
@@ -1184,7 +1222,7 @@ public:
 
             // theta
             for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idT,hs+k,hs+j,i+ii,iens); }
-            reconstruct_gll_values( stencil , t_gll , c2g , s2g , wenoRecon , idl , sigma , false );
+            reconstruct_gll_values( stencil , t_gll , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
             for (int ii=0; ii < ngll; ii++) { t_gll(ii) += hyThetaCells(hs+k,iens); }
 
             for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idT,hs+k,hs+j,i+ii,iens) + hyThetaCells(hs+k,iens); }
@@ -1273,7 +1311,7 @@ public:
 
             // theta
             for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idT,k+kk,hs+j,hs+i,iens); }
-            reconstruct_gll_values( stencil , t_gll , c2g , s2g , wenoRecon , idl , sigma , false );
+            reconstruct_gll_values( stencil , t_gll , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
             for (int kk=0; kk < ngll; kk++) { t_gll(kk) += hyThetaGLL(k,kk,iens); }
 
             for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idT,k+kk,hs+j,hs+i,iens) + hyThetaCells(k+kk,iens); }
