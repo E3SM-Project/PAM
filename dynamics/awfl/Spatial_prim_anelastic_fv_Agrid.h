@@ -919,36 +919,48 @@ public:
     for (int iter=0; iter < 5000; iter++) {
       parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
         // Compute indices for left and right cells (periodic in x,y; solid wall in z)
+        int im5 = i-5;  if (im5 < 0   ) im5 += nx;
+        int im4 = i-4;  if (im4 < 0   ) im4 += nx;
         int im3 = i-3;  if (im3 < 0   ) im3 += nx;
         int im2 = i-2;  if (im2 < 0   ) im2 += nx;
         int im1 = i-1;  if (im1 < 0   ) im1 += nx;
         int ip1 = i+1;  if (ip1 > nx-1) ip1 -= nx;
         int ip2 = i+2;  if (ip2 > nx-1) ip2 -= nx;
         int ip3 = i+3;  if (ip3 > nx-1) ip3 -= nx;
+        int ip4 = i+4;  if (ip4 > nx-1) ip4 -= nx;
+        int ip5 = i+5;  if (ip5 > nx-1) ip5 -= nx;
 
+        int jm5 = j-5;  if (jm5 < 0   ) jm5 += ny;
+        int jm4 = j-4;  if (jm4 < 0   ) jm4 += ny;
         int jm3 = j-3;  if (jm3 < 0   ) jm3 += ny;
         int jm2 = j-2;  if (jm2 < 0   ) jm2 += ny;
         int jm1 = j-1;  if (jm1 < 0   ) jm1 += ny;
         int jp1 = j+1;  if (jp1 > ny-1) jp1 -= ny;
         int jp2 = j+2;  if (jp2 > ny-1) jp2 -= ny;
         int jp3 = j+3;  if (jp3 > ny-1) jp3 -= ny;
+        int jp4 = j+4;  if (jp4 > ny-1) jp4 -= ny;
+        int jp5 = j+5;  if (jp5 > ny-1) jp5 -= ny;
 
+        int km5 = k-5;  if (km5 < 0   ) km5 = 0;
+        int km4 = k-4;  if (km4 < 0   ) km4 = 0;
         int km3 = k-3;  if (km3 < 0   ) km3 = 0;
         int km2 = k-2;  if (km2 < 0   ) km2 = 0;
         int km1 = k-1;  if (km1 < 0   ) km1 = 0;
         int kp1 = k+1;  if (kp1 > nz-1) kp1 = nz-1;
         int kp2 = k+2;  if (kp2 > nz-1) kp2 = nz-1;
         int kp3 = k+3;  if (kp3 > nz-1) kp3 = nz-1;
+        int kp4 = k+4;  if (kp4 > nz-1) kp4 = nz-1;
+        int kp5 = k+5;  if (kp5 > nz-1) kp5 = nz-1;
 
         ////////////////////////////
         // x-direction fluxes
         ////////////////////////////
         // Get pressure and momentum in 3-cell stencil
-        real p_im2  = pressure (k,j,im2,iens);
         real p_im1  = pressure (k,j,im1,iens);
         real p_i    = pressure (k,j,i  ,iens);
         real p_ip1  = pressure (k,j,ip1,iens);
-        real p_ip2  = pressure (k,j,ip2,iens);
+        real ru_im5 = rho_u_new(k,j,im5,iens);
+        real ru_im4 = rho_u_new(k,j,im4,iens);
         real ru_im3 = rho_u_new(k,j,im3,iens);
         real ru_im2 = rho_u_new(k,j,im2,iens);
         real ru_im1 = rho_u_new(k,j,im1,iens);
@@ -956,6 +968,8 @@ public:
         real ru_ip1 = rho_u_new(k,j,ip1,iens);
         real ru_ip2 = rho_u_new(k,j,ip2,iens);
         real ru_ip3 = rho_u_new(k,j,ip3,iens);
+        real ru_ip4 = rho_u_new(k,j,ip4,iens);
+        real ru_ip5 = rho_u_new(k,j,ip5,iens);
         // Compute upwind pressure and momentum at cell interfaces using characteristics
         real p_x_L = (p_i   + p_im1) / 2       + c_s/2  * (ru_im1 - ru_i  );
         real p_x_R = (p_ip1 + p_i  ) / 2       + c_s/2  * (ru_i   - ru_ip1);
@@ -964,11 +978,11 @@ public:
         // y-direction fluxes
         ////////////////////////////
         // Get pressure and momentum in 3-cell stencil
-        real p_jm2  = pressure (k,jm2,i,iens);
         real p_jm1  = pressure (k,jm1,i,iens);
         real p_j    = pressure (k,j  ,i,iens);
         real p_jp1  = pressure (k,jp1,i,iens);
-        real p_jp2  = pressure (k,jp2,i,iens);
+        real rv_jm5 = rho_v_new(k,jm5,i,iens);
+        real rv_jm4 = rho_v_new(k,jm4,i,iens);
         real rv_jm3 = rho_v_new(k,jm3,i,iens);
         real rv_jm2 = rho_v_new(k,jm2,i,iens);
         real rv_jm1 = rho_v_new(k,jm1,i,iens);
@@ -976,6 +990,8 @@ public:
         real rv_jp1 = rho_v_new(k,jp1,i,iens);
         real rv_jp2 = rho_v_new(k,jp2,i,iens);
         real rv_jp3 = rho_v_new(k,jp3,i,iens);
+        real rv_jp4 = rho_v_new(k,jp4,i,iens);
+        real rv_jp5 = rho_v_new(k,jp5,i,iens);
         // Compute upwind pressure and momentum at cell interfaces using characteristics
         real p_y_L = (p_j   + p_jm1) / 2       + c_s/2  * (rv_jm1 - rv_j  );
         real p_y_R = (p_jp1 + p_j  ) / 2       + c_s/2  * (rv_j   - rv_jp1);
@@ -984,11 +1000,11 @@ public:
         // z-direction fluxes
         ////////////////////////////
         // Get pressure and momentum in 3-cell stencil
-        real p_km2  = pressure (km2,j,i,iens);
         real p_km1  = pressure (km1,j,i,iens);
         real p_k    = pressure (k  ,j,i,iens);
         real p_kp1  = pressure (kp1,j,i,iens);
-        real p_kp2  = pressure (kp2,j,i,iens);
+        real rw_km5 = rho_w_new(km5,j,i,iens);
+        real rw_km4 = rho_w_new(km4,j,i,iens);
         real rw_km3 = rho_w_new(km3,j,i,iens);
         real rw_km2 = rho_w_new(km2,j,i,iens);
         real rw_km1 = rho_w_new(km1,j,i,iens);
@@ -996,13 +1012,19 @@ public:
         real rw_kp1 = rho_w_new(kp1,j,i,iens);
         real rw_kp2 = rho_w_new(kp2,j,i,iens);
         real rw_kp3 = rho_w_new(kp3,j,i,iens);
+        real rw_kp4 = rho_w_new(kp4,j,i,iens);
+        real rw_kp5 = rho_w_new(kp5,j,i,iens);
         // Enforce momentum boundary conditions at the domain top and bottom
+        if (k == 0   ) rw_km5 = 0;
+        if (k == 0   ) rw_km4 = 0;
         if (k == 0   ) rw_km3 = 0;
         if (k == 0   ) rw_km2 = 0;
         if (k == 0   ) rw_km1 = 0;
         if (k == nz-1) rw_kp1 = 0;
         if (k == nz-1) rw_kp2 = 0;
         if (k == nz-1) rw_kp3 = 0;
+        if (k == nz-1) rw_kp4 = 0;
+        if (k == nz-1) rw_kp5 = 0;
         // Compute upwind pressure and momentum at cell interfaces using characteristics
         real p_z_L = (p_k   + p_km1) / 2       + c_s/2  * (rw_km1 - rw_k  );
         real p_z_R = (p_kp1 + p_k  ) / 2       + c_s/2  * (rw_k   - rw_kp1);
@@ -1011,27 +1033,37 @@ public:
         // Perform the update using fluxes at cell interface
         ////////////////////////////////////////////////////////
         if (sim2d) {
-          // // Fourth-order-accurate interpolation of the state
-          // real ru_L = -ru_im2/12 + 7*ru_im1/12 + 7*ru_i  /12 - ru_ip1/12;
-          // real ru_R = -ru_im1/12 + 7*ru_i  /12 + 7*ru_ip1/12 - ru_ip2/12;
-          // real rw_L = -rw_km2/12 + 7*rw_km1/12 + 7*rw_k  /12 - rw_kp1/12;
-          // real rw_R = -rw_km1/12 + 7*rw_k  /12 + 7*rw_kp1/12 - rw_kp2/12;
-          // Sixth-order-accurate interpolation of the state
-          real ru_L = ru_im3/60 - 2*ru_im2/15 + 37*ru_im1/60 + 37*ru_i  /60 - 2*ru_ip1/15 + ru_ip2/60;
-          real ru_R = ru_im2/60 - 2*ru_im1/15 + 37*ru_i  /60 + 37*ru_ip1/60 - 2*ru_ip2/15 + ru_ip3/60;
-          real rw_L = rw_km3/60 - 2*rw_km2/15 + 37*rw_km1/60 + 37*rw_k  /60 - 2*rw_kp1/15 + rw_kp2/60;
-          real rw_R = rw_km2/60 - 2*rw_km1/15 + 37*rw_k  /60 + 37*rw_kp1/60 - 2*rw_kp2/15 + rw_kp3/60;
-          // Third-order derivative of pressure
-          real p_d3_x_L = -p_im2 + 3*p_im1 - 3*p_i   + p_ip1;
-          real p_d3_x_R = -p_im1 + 3*p_i   - 3*p_ip1 + p_ip2;
-          real p_d3_z_L = -p_km2 + 3*p_km1 - 3*p_k   + p_kp1;
-          real p_d3_z_R = -p_km1 + 3*p_k   - 3*p_kp1 + p_kp2;
-          real hv_coef_x = -0.25 * dx         / (16*dtloc);
-          real hv_coef_z = -0.25 * dz(k,iens) / (16*dtloc);
+          real ru_L;
+          real ru_R;
+          real rw_L;
+          real rw_R;
+          if (ord == 3) {
+            // Fourth-order-accurate interpolation of the state
+            ru_L = -ru_im2/12 + 7*ru_im1/12 + 7*ru_i  /12 - ru_ip1/12;
+            ru_R = -ru_im1/12 + 7*ru_i  /12 + 7*ru_ip1/12 - ru_ip2/12;
+            rw_L = -rw_km2/12 + 7*rw_km1/12 + 7*rw_k  /12 - rw_kp1/12;
+            rw_R = -rw_km1/12 + 7*rw_k  /12 + 7*rw_kp1/12 - rw_kp2/12;
+          } else if (ord == 5) {
+            // Sixth-order-accurate interpolation of the state
+            ru_L = ru_im3/60 - 2*ru_im2/15 + 37*ru_im1/60 + 37*ru_i  /60 - 2*ru_ip1/15 + ru_ip2/60;
+            ru_R = ru_im2/60 - 2*ru_im1/15 + 37*ru_i  /60 + 37*ru_ip1/60 - 2*ru_ip2/15 + ru_ip3/60;
+            rw_L = rw_km3/60 - 2*rw_km2/15 + 37*rw_km1/60 + 37*rw_k  /60 - 2*rw_kp1/15 + rw_kp2/60;
+            rw_R = rw_km2/60 - 2*rw_km1/15 + 37*rw_k  /60 + 37*rw_kp1/60 - 2*rw_kp2/15 + rw_kp3/60;
+          } else if (ord == 7) {
+            // Eighth-order-accurate interpolation of the state
+            ru_L = -1*ru_im4/280 + 29*ru_im3/840 - 139*ru_im2/840 + 533*ru_im1/840 + 533*ru_i  /840 - 139*ru_ip1/840 + 29*ru_ip2/840 - 1*ru_ip3/280;
+            ru_R = -1*ru_im3/280 + 29*ru_im2/840 - 139*ru_im1/840 + 533*ru_i  /840 + 533*ru_ip1/840 - 139*ru_ip2/840 + 29*ru_ip3/840 - 1*ru_ip4/280;
+            rw_L = -1*rw_km4/280 + 29*rw_km3/840 - 139*rw_km2/840 + 533*rw_km1/840 + 533*rw_k  /840 - 139*rw_kp1/840 + 29*rw_kp2/840 - 1*rw_kp3/280;
+            rw_R = -1*rw_km3/280 + 29*rw_km2/840 - 139*rw_km1/840 + 533*rw_k  /840 + 533*rw_kp1/840 - 139*rw_kp2/840 + 29*rw_kp3/840 - 1*rw_kp4/280;
+          } else if (ord == 9) {
+            // Tenth-order-accurate interpolation of the state
+            ru_L = 1*ru_im5/1260 - 23*ru_im4/2520 + 127*ru_im3/2520 - 473*ru_im2/2520 + 1627*ru_im1/2520 + 1627*ru_i  /2520 - 473*ru_ip1/2520 + 127*ru_ip2/2520 - 23*ru_ip3/2520 + 1*ru_ip4/1260;
+            ru_R = 1*ru_im4/1260 - 23*ru_im3/2520 + 127*ru_im2/2520 - 473*ru_im1/2520 + 1627*ru_i  /2520 + 1627*ru_ip1/2520 - 473*ru_ip2/2520 + 127*ru_ip3/2520 - 23*ru_ip4/2520 + 1*ru_ip5/1260;
+            rw_L = 1*rw_km5/1260 - 23*rw_km4/2520 + 127*rw_km3/2520 - 473*rw_km2/2520 + 1627*rw_km1/2520 + 1627*rw_k  /2520 - 473*rw_kp1/2520 + 127*rw_kp2/2520 - 23*rw_kp3/2520 + 1*rw_kp4/1260;
+            rw_R = 1*rw_km4/1260 - 23*rw_km3/2520 + 127*rw_km2/2520 - 473*rw_km1/2520 + 1627*rw_k  /2520 + 1627*rw_kp1/2520 - 473*rw_kp2/2520 + 127*rw_kp3/2520 - 23*rw_kp4/2520 + 1*rw_kp5/1260;
+          }
           // Pressure tendency
           pressure_tend(k,j,i,iens) = -c_s*c_s * ( (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens) );
-          // pressure_tend(k,j,i,iens) -= hv_coef_x * ( p_d3_x_R - p_d3_x_L );
-          // pressure_tend(k,j,i,iens) -= hv_coef_z * ( p_d3_z_R - p_d3_z_L );
           // compute absolute divergence to track how well we're converging it to zero
           abs_div(k,j,i,iens) = abs( (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens) );
         } else {
