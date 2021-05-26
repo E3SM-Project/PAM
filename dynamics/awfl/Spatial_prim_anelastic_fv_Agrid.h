@@ -914,10 +914,8 @@ public:
     real4d rho_u_new("rho_u_new",nz,ny,nx,nens);
     real4d rho_v_new("rho_v_new",nz,ny,nx,nens);
     real4d rho_w_new("rho_w_new",nz,ny,nx,nens);
-    real4d pressure_tend ("pressure_tend" ,nz,ny,nx,nens);
-    real4d rho_u_new_tend("rho_u_new_tend",nz,ny,nx,nens);
-    real4d rho_v_new_tend("rho_v_new_tend",nz,ny,nx,nens);
-    real4d rho_w_new_tend("rho_w_new_tend",nz,ny,nx,nens);
+    real4d characteristic_var1("characteristic_var1",nz,ny,nx,nens);
+    real4d characteristic_var2("characteristic_var2",nz,ny,nx,nens);
     real4d abs_div("abs_div",nz,ny,nx,nens);
 
     // Initialize momentum to initial state and pressure perturbation to zero
@@ -928,10 +926,26 @@ public:
       pressure (k,j,i,iens) = 0;
     });
 
+    parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+          int im1 = i-1;  if (im1 < 0   ) im1 = nx-1;
+          int ip1 = i+1;  if (ip1 > nx-1) ip1 = 0;
+          int jm1 = j-1;  if (jm1 < 0   ) jm1 = ny-1;
+          int jp1 = j+1;  if (jp1 > ny-1) jp1 = 0;
+          int km1 = k-1;  if (km1 < 0   ) km1 = 0;
+          int kp1 = k+1;  if (kp1 > nz-1) kp1 = nz-1;
+          real ru_L  = ( pressure(k,j,im1,iens) - pressure(k,j,i,  iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(k,j,i,  iens) + rho_u_new(k,j,im1,iens) );
+          real ru_R  = ( pressure(k,j,i,  iens) - pressure(k,j,ip1,iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(k,j,ip1,iens) + rho_u_new(k,j,i  ,iens) );
+          real rw_L  = ( pressure(km1,j,i,iens) - pressure(k,  j,i,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(k,  j,i,iens) + rho_w_new(km1,j,i,iens) );
+          real rw_R  = ( pressure(k  ,j,i,iens) - pressure(kp1,j,i,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(kp1,j,i,iens) + rho_w_new(k,  j,i,iens) );
+          real div = (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens); 
+          abs_div(k,j,i,iens) = abs(div);
+          });
+    std::cout << "Starting Absolute divergence: " << yakl::intrinsics::sum(abs_div) << std::endl;
+
     /////////////////////////////////////////////////////////////////////////////////////////////////
     // First go at Alternating Direction Implicit (ADI) 1st order spatial, tridiagonal solver
     /////////////////////////////////////////////////////////////////////////////////////////////////
-    for (int iter=0; iter < 10000; iter++) {
+    for (int iter=0; iter < 400; iter++) {
 
       ////////////////////////////
       // x-direction
@@ -944,44 +958,47 @@ public:
         int km1 = k-1;  if (km1 < 0   ) km1 = 0;
         int kp1 = k+1;  if (kp1 > nz-1) kp1 = nz-1;
 
-        // Implicitly Update Pressure
-        real xi = (c_s*dtloc/dx)*(c_s*dtloc/dx);
+        real xi = c_s*dtloc/dx;
+
+        // Implicitly update 'w1'
         for (int i=0; i < nx; i++) {
            int im1 = i-1;  if (im1 < 0   ) im1 = nx-1;
            int ip1 = i+1;  if (ip1 > nx-1) ip1 = 0;
 
-           // Compute upwind interface values for about the cell for the divergence
-           real ru_L  = ( pressure(k,j,im1,iens) - pressure(k,j,i,  iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(k,j,i,  iens) + rho_u_new(k,j,im1,iens) );
-           real ru_R  = ( pressure(k,j,i,  iens) - pressure(k,j,ip1,iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(k,j,ip1,iens) + rho_u_new(k,j,i  ,iens) );
-
-           real div = (ru_R-ru_L)/dx;
-
-           a(i) = -xi;
-           b(i) = 1+2*xi;
+           // Construct tridiagonal for characteristic variable step
+           a(i) = 0.;
+           b(i) = 1.+xi;
            c(i) = -xi; 
-           d(i) = pressure(k,j,i,iens) - dtloc*c_s*c_s*div;
-        }
-        yakl::tridiagonal_periodic<real,100>(a,b,c,d); // solution p'_i is stored in d?
-        for (int i=0; i < nx; i++) {
-           pressure(k,j,i,iens) = d(i);
-        }
 
-        // Implicitly Update x-Momentum 
-        xi = c_s*dtloc/dx/2.;
-
-        for (int i=0; i < nx; i++) {
-           int im1 = i-1;  if (im1 < 0   ) im1 = nx-1;
-           int ip1 = i+1;  if (ip1 > nx-1) ip1 = 0;
-
-           a(i) = -xi;
-           b(i) = 1+2*xi;
-           c(i) = -xi; 
            real ru_fixed = state(idU,hs+k,hs+j,hs+i,iens) * hyDensCells(hs+k,iens);
-           d(i) = ru_fixed-xi/c_s*(pressure(k,j,ip1,iens)-pressure(k,j,im1,iens));
+           d(i) = pressure(k,j,i,iens)/2. - c_s/2.*ru_fixed;
         }
-        yakl::tridiagonal_periodic<real,100>(a,b,c,d); // solution (rho u)_i is stored in d?
+        yakl::tridiagonal_periodic<real,100>(a,b,c,d); // solution w1_i is stored in d
         for (int i=0; i < nx; i++) {
-           rho_u_new(k,j,i,iens) = d(i);
+           characteristic_var1(k,j,i,iens) = d(i);
+        }
+
+        // Implicitly update 'w2' 
+        for (int i=0; i < nx; i++) {
+           int im1 = i-1;  if (im1 < 0   ) im1 = nx-1;
+           int ip1 = i+1;  if (ip1 > nx-1) ip1 = 0;
+
+           // Construct tridiagonal for second characteristic variable step
+           a(i) = -xi;
+           b(i) = 1.+xi;
+           c(i) = 0.; 
+
+           real ru_fixed = state(idU,hs+k,hs+j,hs+i,iens) * hyDensCells(hs+k,iens);
+           d(i) = pressure(k,j,i,iens)/2. + c_s/2.*ru_fixed;
+        }
+        yakl::tridiagonal_periodic<real,100>(a,b,c,d); // solution w2_i is stored in d
+        for (int i=0; i < nx; i++) {
+           characteristic_var2(k,j,i,iens) = d(i);
+
+           // compute fundamental variables from characteristic ones: q=Rw=R(R^{-1}q)
+           pressure(k,j,i,iens)  =    characteristic_var1(k,j,i,iens) + characteristic_var2(k,j,i,iens); 
+           rho_u_new(k,j,i,iens) = ( -characteristic_var1(k,j,i,iens) + characteristic_var2(k,j,i,iens) )/c_s;
+           // we only need to compute rho_u explicitly each iteration if we want to check divergence
         }
       });
 
@@ -996,90 +1013,81 @@ public:
         int jm1 = j-1;  if (jm1 < 0   ) jm1 = ny-1;
         int jp1 = j+1;  if (jp1 > ny-1) jp1 = 0;
 
-        // Implicitly Update Pressure
+        // Implicitly update 'w1' 
         for (int k=0; k < nz; k++) {
-           real xi = (c_s*dtloc/dz(k,iens))*(c_s*dtloc/dz(k,iens));
+           real xi = c_s*dtloc/dz(k,iens);
 
            int km1 = k-1;  if (km1 < 0   ) km1 = 0;
            int kp1 = k+1;  if (kp1 > nz-1) kp1 = nz-1;
 
-           real rw_L  = ( pressure(km1,j,i,iens) - pressure(k,  j,i,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(k,  j,i,iens) + rho_w_new(km1,j,i,iens) );
-           real rw_R  = ( pressure(k  ,j,i,iens) - pressure(kp1,j,i,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(kp1,j,i,iens) + rho_w_new(k,  j,i,iens) );
+           // TODO: double check how to enforce proper boundary conditions
 
-           // Enforce momentum boundary conditions at the domain top and bottom -- TODO: is this sufficient?
-           if (k == 0   ) rw_L  = 0;
-           if (k == nz-1) rw_R  = 0;
-
-           real div = (rw_R-rw_L)/dz(k,iens); // TODO -- do we want to store this more permanently?
-
-           a(k) = -xi;
-           b(k) = 1+2*xi;
+           a(k) = 0.;
+           b(k) = 1.+xi;
            c(k) = -xi; 
-           if (k == 0) {
-             b(k) += a(k);
-             a(k) = 0;
-           }
+
            if (k == nz-1) {
              b(k) += c(k);
              c(k) = 0;
            }
-           d(k) = pressure(k,j,i,iens) - dtloc*c_s*c_s*div;
-        }
-        yakl::tridiagonal<real,50>(a,b,c,d); // solution p'_k is stored in d?
-        for (int k=0; k < nz; k++) {
-           pressure(k,j,i,iens) = d(k);
-        }
 
-        // Implicitly Update x-Momentum 
-
-        for (int k=0; k < nz; k++) {
-           real xi = c_s*dtloc/dz(k,iens)/2.;
-
-           int km1 = k-1;  if (km1 < 0   ) km1 = 0;
-           int kp1 = k+1;  if (kp1 > nz-1) kp1 = nz-1;
-
-           a(k) = -xi;
-           b(k) = 1+2*xi;
-           c(k) = -xi; 
-           if (k == 0) {
-             b(k) += a(k);
-             a(k) = 0;
-           }
-           if (k == nz-1) {
-             b(k) += c(k);
-             c(k) = 0;
-           }
            real rw_fixed = state(idW,hs+k,hs+j,hs+i,iens) * hyDensCells(hs+k,iens);
-           d(k) = rw_fixed-xi/c_s*(pressure(kp1,j,i,iens)-pressure(km1,j,i,iens));
+           d(k) = pressure(k,j,i,iens)/2. - c_s/2.*rw_fixed;
         }
-        yakl::tridiagonal<real,50>(a,b,c,d); // solution (rho u)_i is stored in d?
+        yakl::tridiagonal<real,50>(a,b,c,d); // solution w1_i is stored in d
         for (int k=0; k < nz; k++) {
-           rho_w_new(k,j,i,iens) = d(k);
+           characteristic_var1(k,j,i,iens) = d(k);
+        }
+
+        // Implicitly update 'w2' 
+
+        for (int k=0; k < nz; k++) {
+           real xi = c_s*dtloc/dz(k,iens);
+
+           int km1 = k-1;  if (km1 < 0   ) km1 = 0;
+           int kp1 = k+1;  if (kp1 > nz-1) kp1 = nz-1;
+
+           a(k) = -xi;
+           b(k) = 1.+xi;
+           c(k) = 0.; 
+           if (k == 0) {
+             b(k) += a(k);
+             a(k) = 0;
+           }
+
+           real rw_fixed = state(idW,hs+k,hs+j,hs+i,iens) * hyDensCells(hs+k,iens);
+           d(k) = pressure(k,j,i,iens)/2. + c_s/2.*rw_fixed;
+        }
+        yakl::tridiagonal<real,50>(a,b,c,d); // solution w2_i is stored in d
+        for (int k=0; k < nz; k++) {
+           characteristic_var2(k,j,i,iens) = d(k);
+
+           // compute fundamental variables from characteristic ones: q=Rw=R(R^{-1}q)
+           pressure(k,j,i,iens) =     characteristic_var1(k,j,i,iens) + characteristic_var2(k,j,i,iens); 
+           rho_w_new(k,j,i,iens) = ( -characteristic_var1(k,j,i,iens) + characteristic_var2(k,j,i,iens) )/c_s;
+           // we only need to compute rho_u explicitly each iteration if we want to check divergence
         }
       });
-
-      parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-        int im1 = i-1;  if (im1 < 0   ) im1 = nx-1;
-        int ip1 = i+1;  if (ip1 > nx-1) ip1 = 0;
-        int jm1 = j-1;  if (jm1 < 0   ) jm1 = ny-1;
-        int jp1 = j+1;  if (jp1 > ny-1) jp1 = 0;
-        int km1 = k-1;  if (km1 < 0   ) km1 = 0;
-        int kp1 = k+1;  if (kp1 > nz-1) kp1 = nz-1;
-        real ru_L  = ( pressure(k,j,im1,iens) - pressure(k,j,i,  iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(k,j,i,  iens) + rho_u_new(k,j,im1,iens) );
-        real ru_R  = ( pressure(k,j,i,  iens) - pressure(k,j,ip1,iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(k,j,ip1,iens) + rho_u_new(k,j,i  ,iens) );
-        real rw_L  = ( pressure(km1,j,i,iens) - pressure(k,  j,i,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(k,  j,i,iens) + rho_w_new(km1,j,i,iens) );
-        real rw_R  = ( pressure(k  ,j,i,iens) - pressure(kp1,j,i,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(kp1,j,i,iens) + rho_w_new(k,  j,i,iens) );
-        real div = (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens); // TODO -- do we want to store this more permanently?
-        abs_div(k,j,i,iens) = abs(div);
-      });
-
-      std::cout << "Absolute divergence: " << yakl::intrinsics::sum(abs_div) << std::endl;
 
     }
 
-    std::cout << "\n";
+    parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+          int im1 = i-1;  if (im1 < 0   ) im1 = nx-1;
+          int ip1 = i+1;  if (ip1 > nx-1) ip1 = 0;
+          int jm1 = j-1;  if (jm1 < 0   ) jm1 = ny-1;
+          int jp1 = j+1;  if (jp1 > ny-1) jp1 = 0;
+          int km1 = k-1;  if (km1 < 0   ) km1 = 0;
+          int kp1 = k+1;  if (kp1 > nz-1) kp1 = nz-1;
+          real ru_L  = ( pressure(k,j,im1,iens) - pressure(k,j,i,  iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(k,j,i,  iens) + rho_u_new(k,j,im1,iens) );
+          real ru_R  = ( pressure(k,j,i,  iens) - pressure(k,j,ip1,iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(k,j,ip1,iens) + rho_u_new(k,j,i  ,iens) );
+          real rw_L  = ( pressure(km1,j,i,iens) - pressure(k,  j,i,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(k,  j,i,iens) + rho_w_new(km1,j,i,iens) );
+          real rw_R  = ( pressure(k  ,j,i,iens) - pressure(kp1,j,i,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(kp1,j,i,iens) + rho_w_new(k,  j,i,iens) );
+          real div = (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens); 
+          abs_div(k,j,i,iens) = abs(div);
+          });
+    std::cout << "Ending Absolute divergence: " << yakl::intrinsics::sum(abs_div) << std::endl;
 
-    // TODO: Check initial/final divergence?
+    std::cout << "\n";
 
     // Assign new divergence-free momentum
     parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
