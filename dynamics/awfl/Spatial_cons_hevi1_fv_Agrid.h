@@ -1937,6 +1937,82 @@ public:
     YAKL_SCOPE( p0                      , this->p0                     );
     YAKL_SCOPE( C0                      , this->C0                     );
 
+    // Set speed of sound, calculate the # iterations needed, calculate acoustic time step
+    real cs = 300;
+    real dt_cs = 0.9 * yakl::intrinsics::minval(dz) / cs;
+    int num_iter = ceil( dt / dt_cs );
+    dt_cs = dt / num_iter;
+
+    real4d mom_pert("mom_pert",nz+2*hs,ny+2*hs,nx+2*hs,nens);
+    real4d pressure("pressure",nz,ny,nx,nens);
+
+    // Initialize perturbation pressure and momentum
+    memset( mom_pert , 0._fp );
+    parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      real rt = state(idT,hs+k,hs+j,hs+i,iens) + hyDensThetaCells(k,iens);
+      pressure(k,j,i,iens) = C0 * pow( rt , gamma ) - hyPressureCells(k,iens);
+    });
+
+    // Compute tendencies due to non-perturbation momentum divergence for pressure updates
+    // Start by computing boundaries for each direction's momentum
+    parallel_for( SimpleBounds<4>(nz,ny,hs,nens) , YAKL_LAMBDA(int k, int j, int ii, int iens) {
+      state(idU,hs+k,hs+j,      ii,iens) = state(idU,hs+k,hs+j,nx+ii,iens);
+      state(idU,hs+k,hs+j,hs+nx+ii,iens) = state(idU,hs+k,hs+j,hs+ii,iens);
+    });
+    parallel_for( SimpleBounds<4>(nz,nx,hs,nens) , YAKL_LAMBDA(int k, int i, int jj, int iens) {
+      state(idV,hs+k,      jj,hs+i,iens) = state(idV,hs+k,ny+jj,hs+i,iens);
+      state(idV,hs+k,hs+ny+jj,hs+i,iens) = state(idV,hs+k,hs+jj,hs+i,iens);
+    });
+    parallel_for( SimpleBounds<4>(ny,nx,hs,nens) , YAKL_LAMBDA(int j, int i, int kk, int iens) {
+      state(idW,      kk,hs+j,hs+i,iens) = 0;
+      state(idW,hs+nz+kk,hs+j,hs+i,iens) = 0;
+    });
+    // Next compute cell-edge values for momenta in each direction
+    parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      // We need these to persist to evolve tracers with ADER
+      SArray<real,2,nAder,ngll> r_DTs , rw_DTs;
+
+      { // BEGIN: reconstruct, time-avg, and store state & state fluxes
+        ////////////////////////////////////////////////////////////////
+        // Reconstruct rho, u, v, w, theta
+        ////////////////////////////////////////////////////////////////
+        SArray<real,2,nAder,ngll> ru_DTs , rv_DTs , rt_DTs;
+        {
+          SArray<real,1,ord> stencil;
+
+          // Density
+          for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idR,k+kk,hs+j,hs+i,iens); }
+          reconstruct_gll_values( stencil , r_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
+          for (int kk=0; kk < ngll; kk++) { r_DTs(0,kk) += hyDensGLL(k,kk,iens); } // Add hydrostasis back on
+
+          // u values and derivatives
+          for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idU,k+kk,hs+j,hs+i,iens); }
+          reconstruct_gll_values( stencil , ru_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_winds );
+
+          // v
+          for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idV,k+kk,hs+j,hs+i,iens); }
+          reconstruct_gll_values( stencil , rv_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_winds );
+
+          // w
+          for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idW,k+kk,hs+j,hs+i,iens); }
+          reconstruct_gll_values( stencil , rw_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_winds );
+          if (bc_z == BC_WALL) {
+            if (k == nz-1) rw_DTs(0,ngll-1) = 0;
+            if (k == 0   ) rw_DTs(0,0     ) = 0;
+          }
+
+          // theta
+          for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idT,k+kk,hs+j,hs+i,iens); }
+          reconstruct_gll_values( stencil , rt_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
+          for (int kk=0; kk < ngll; kk++) { rt_DTs(0,kk) += hyDensThetaGLL(k,kk,iens); } // Add hydrostasis back on
+        }
+
+    for (int iter = 0; iter < num_iter; iter++) {
+    }
+
+
+
+
     // Pre-process the tracers by dividing by density inside the domain
     // After this, we can reconstruct tracers only (not rho * tracer)
     parallel_for( SimpleBounds<5>(num_tracers,nz,ny,nx,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
