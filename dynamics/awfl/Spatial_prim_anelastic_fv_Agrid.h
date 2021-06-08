@@ -900,9 +900,9 @@ public:
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   void remove_momentum_divergence(real5d &state) {
      // We get to choose the speed of sound
-     real constexpr c_s = 300;
+     real constexpr c_s = 1;
      // Pick a time step that corresponds to advection of complete cells -- requires uniform grid, assumes dx=dz
-     int Ncells = 2;
+     int Ncells = 1;
      real dtloc = Ncells*dx/c_s;
 
      real4d rho_u_new("rho_u_new",nz,ny,nx,nens);
@@ -940,7 +940,7 @@ public:
      /////////////////////////////////////////////////////////////////////////////////////////////////
      // Lagrangian Characteristics
      /////////////////////////////////////////////////////////////////////////////////////////////////
-     for (int iter=0; iter < 500; iter++) {
+     for (int iter=0; iter < 10; iter++) {
 
         ////////////////////////////
         // x-direction
@@ -954,13 +954,13 @@ public:
            i_advect = i_advect%nx; // periodic boundary conditions
            //std::cout << "\t" << "i,iadvect1: " << i << ", " << i_advect << "\n";
 
-           characteristic_var1(k,j,i,iens) = ( -rho_u_fixed+rho_u_new(k,j,i,iens) )/2. + pressure(k,j,i_advect,iens)/2. - c_s/2.*rho_u_new(k,j,i_advect,iens);
+           characteristic_var1(k,j,i,iens) =  pressure(k,j,i_advect,iens)/2. - c_s/2.*(rho_u_fixed-rho_u_new(k,j,i,iens)+rho_u_new(k,j,i_advect,iens));
 
            i_advect = i-Ncells;
            if( i_advect < 0 ) i_advect = nx - ( (-i_advect)%nx ); // periodic boundary conditions
            //std::cout << "\t" << "i,iadvect2: " << i << ", " << i_advect << "\n";
 
-           characteristic_var2(k,j,i,iens) = ( rho_u_fixed-rho_u_new(k,j,i,iens) )/2. + pressure(k,j,i_advect,iens)/2. + c_s/2.*rho_u_new(k,j,i_advect,iens);;
+           characteristic_var2(k,j,i,iens) =  pressure(k,j,i_advect,iens)/2. + c_s/2.*(rho_u_fixed-rho_u_new(k,j,i,iens)+rho_u_new(k,j,i_advect,iens));
 
         });
         parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
@@ -983,13 +983,13 @@ public:
            if( k_advect >= nz ) k_advect = 2.*nz - k_advect - 1; //reflective boundary
            //std::cout << "\t" << "k,kadvect1: " << k << ", " << k_advect << "\n";
 
-           characteristic_var1(k,j,i,iens) = ( -rho_w_fixed+rho_w_new(k,j,i,iens) )/2. + pressure(k_advect,j,i,iens)/2. - c_s/2.*rho_w_new(k_advect,j,i,iens);;
+           characteristic_var1(k,j,i,iens) =  pressure(k_advect,j,i,iens)/2. - c_s/2.*(rho_w_fixed-rho_w_new(k,j,i,iens)+rho_w_new(k_advect,j,i,iens));
 
            k_advect = k-Ncells;
            if( k_advect < 0 ) k_advect = -(k_advect+1); // reflective boundary
            //std::cout << "\t" << "k,kadvect2: " << k << ", " << k_advect << "\n";
 
-           characteristic_var2(k,j,i,iens) = ( rho_w_fixed-rho_w_new(k,j,i,iens) )/2. + pressure(k_advect,j,i,iens)/2. + c_s/2.*rho_w_new(k_advect,j,i,iens);
+           characteristic_var2(k,j,i,iens) =  pressure(k_advect,j,i,iens)/2. + c_s/2.*(rho_w_fixed-rho_w_new(k,j,i,iens)+rho_w_new(k_advect,j,i,iens));
 
         });
         parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
