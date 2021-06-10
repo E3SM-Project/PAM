@@ -46,7 +46,7 @@ public:
 
 
 
-  int get_water_vapor_index() const {
+  YAKL_INLINE int get_water_vapor_index() const {
     return tracer_index_vapor;
   }
 

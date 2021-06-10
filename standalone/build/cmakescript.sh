@@ -8,5 +8,5 @@ cmake      \
   -DYAKL_HOME="${YAKL_HOME}"        \
   -DARCH="${ARCH}"                  \
   -DPAM_DYCORE="awfl"               \
-  -DPAM_MICRO="p3"                  \
+  -DPAM_MICRO="none"                \
   ..
