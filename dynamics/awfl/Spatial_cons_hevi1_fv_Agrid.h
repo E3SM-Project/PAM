@@ -1937,87 +1937,124 @@ public:
     YAKL_SCOPE( p0                      , this->p0                     );
     YAKL_SCOPE( C0                      , this->C0                     );
 
+    // Pre-process the tracers by dividing by density inside the domain
+    // After this, we can reconstruct tracers only (not rho * tracer)
+    parallel_for( SimpleBounds<5>(num_tracers,nz,ny,nx,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
+      tracers(tr,hs+k,hs+j,hs+i,iens) /= (state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens));
+    });
+
     // Set speed of sound, calculate the # iterations needed, calculate acoustic time step
     real cs = 300;
     real dt_cs = 0.9 * yakl::intrinsics::minval(dz) / cs;
     int num_iter = ceil( dt / dt_cs );
     dt_cs = dt / num_iter;
 
-    real4d mom_pert("mom_pert",nz+2*hs,ny+2*hs,nx+2*hs,nens);
-    real4d pressure("pressure",nz,ny,nx,nens);
+    real4d mom_pert("mom_pert",nz+2*hs,ny,nx,nens);
+    real4d pressure("pressure",nz+2*hs,ny,nx,nens);
+
+    real4d mom_pert_tavg("mom_pert_tavg",nz+2*hs,ny,nx,nens);
+
+    real5d mom_pert_limits("mom_pert_limits",2,nz+1,ny,nx,nens);
+    real5d pressure_limits("pressure_limits",2,nz+1,ny,nx,nens);
 
     // Initialize perturbation pressure and momentum
     memset( mom_pert , 0._fp );
+    memset( mom_pert_tavg , 0._fp );
     parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       real rt = state(idT,hs+k,hs+j,hs+i,iens) + hyDensThetaCells(k,iens);
-      pressure(k,j,i,iens) = C0 * pow( rt , gamma ) - hyPressureCells(k,iens);
+      pressure(hs+k,j,i,iens) = C0 * pow( rt , gamma ) - hyPressureCells(k,iens);
     });
-
-    // Compute tendencies due to non-perturbation momentum divergence for pressure updates
-    // Start by computing boundaries for each direction's momentum
-    parallel_for( SimpleBounds<4>(nz,ny,hs,nens) , YAKL_LAMBDA(int k, int j, int ii, int iens) {
-      state(idU,hs+k,hs+j,      ii,iens) = state(idU,hs+k,hs+j,nx+ii,iens);
-      state(idU,hs+k,hs+j,hs+nx+ii,iens) = state(idU,hs+k,hs+j,hs+ii,iens);
-    });
-    parallel_for( SimpleBounds<4>(nz,nx,hs,nens) , YAKL_LAMBDA(int k, int i, int jj, int iens) {
-      state(idV,hs+k,      jj,hs+i,iens) = state(idV,hs+k,ny+jj,hs+i,iens);
-      state(idV,hs+k,hs+ny+jj,hs+i,iens) = state(idV,hs+k,hs+jj,hs+i,iens);
-    });
-    parallel_for( SimpleBounds<4>(ny,nx,hs,nens) , YAKL_LAMBDA(int j, int i, int kk, int iens) {
-      state(idW,      kk,hs+j,hs+i,iens) = 0;
-      state(idW,hs+nz+kk,hs+j,hs+i,iens) = 0;
-    });
-    // Next compute cell-edge values for momenta in each direction
-    parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      // We need these to persist to evolve tracers with ADER
-      SArray<real,2,nAder,ngll> r_DTs , rw_DTs;
-
-      { // BEGIN: reconstruct, time-avg, and store state & state fluxes
-        ////////////////////////////////////////////////////////////////
-        // Reconstruct rho, u, v, w, theta
-        ////////////////////////////////////////////////////////////////
-        SArray<real,2,nAder,ngll> ru_DTs , rv_DTs , rt_DTs;
-        {
-          SArray<real,1,ord> stencil;
-
-          // Density
-          for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idR,k+kk,hs+j,hs+i,iens); }
-          reconstruct_gll_values( stencil , r_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
-          for (int kk=0; kk < ngll; kk++) { r_DTs(0,kk) += hyDensGLL(k,kk,iens); } // Add hydrostasis back on
-
-          // u values and derivatives
-          for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idU,k+kk,hs+j,hs+i,iens); }
-          reconstruct_gll_values( stencil , ru_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_winds );
-
-          // v
-          for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idV,k+kk,hs+j,hs+i,iens); }
-          reconstruct_gll_values( stencil , rv_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_winds );
-
-          // w
-          for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idW,k+kk,hs+j,hs+i,iens); }
-          reconstruct_gll_values( stencil , rw_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_winds );
-          if (bc_z == BC_WALL) {
-            if (k == nz-1) rw_DTs(0,ngll-1) = 0;
-            if (k == 0   ) rw_DTs(0,0     ) = 0;
-          }
-
-          // theta
-          for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idT,k+kk,hs+j,hs+i,iens); }
-          reconstruct_gll_values( stencil , rt_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
-          for (int kk=0; kk < ngll; kk++) { rt_DTs(0,kk) += hyDensThetaGLL(k,kk,iens); } // Add hydrostasis back on
-        }
 
     for (int iter = 0; iter < num_iter; iter++) {
+
+      // Boundaries for pressure (mom is always zero)
+      parallel_for( Bounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int iens) {
+        for (int k=0; k < hs; k++) {
+          pressure(k      ,j,i,iens) = pressure(hs     ,j,i,iens);
+          pressure(hs+nz+k,j,i,iens) = pressure(hs+nz-1,j,i,iens);
+        }
+      });
+
+      // Compute cell-edge values for momentum perturbation and pressure perturbation
+      parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+        SArray<real,2,nAder,ngll> p_DTs, rw_DTs;
+        SArray<real,1,ord> stencil;
+
+        // pressure perturbation
+        for (int kk=0; kk < ord; kk++) { stencil(kk) = pressure(k+kk,j,i,iens); }
+        reconstruct_gll_values( stencil , p_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
+
+        // momentum perturbation
+        for (int kk=0; kk < ord; kk++) { stencil(kk) = mom_pert(k+kk,j,i,iens); }
+        reconstruct_gll_values( stencil , rw_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_winds );
+
+        // Compute time derivatives with differential transforms (ADER)
+        for (int kt=0; kt<nAder-1; kt++) {
+          for (int ii=0; ii<ngll; ii++) {
+            real dp  = 0;
+            real drw = 0;
+            for (int s=0; s<ngll; s++) {
+              dp  += derivMatrix(s,ii) * p_DTs (kt,s);
+              drw += derivMatrix(s,ii) * rw_DTs(kt,s);
+            }
+            p_DTs (kt+1,ii) = -cs*cs*drw/dz(k,iens)/(kt+1._fp);
+            rw_DTs(kt+1,ii) = -dp       /dz(k,iens)/(kt+1._fp);
+          }
+        }
+        // Compute time average of pressure and momentum perturbations
+        compute_timeAvg( p_DTs  , dt_cs );
+        compute_timeAvg( rw_DTs , dt_cs );
+        if (k == 0   ) rw_DTs(0,0     ) = 0;
+        if (k == nz-1) rw_DTs(0,ngll-1) = 0;
+        // Store time-averaged limits of the pressure and momentum perturbations
+        // Left interface
+        pressure_limits(1,k  ,j,i,iens) = p_tavg(0,0     );
+        mom_pert_limits(1,k  ,j,i,iens) = rw_DTs(0,0     );
+        // Right interface
+        pressure_limits(0,k+1,j,i,iens) = p_tavg(0,ngll-1);
+        mom_pert_limits(0,k+1,j,i,iens) = rw_DTs(0,ngll-1);
+      });
+
+      // BCs for edge estimates
+      parallel_for( SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int iens) {
+        pressure_limits(0,0 ,j,i,iens) = pressure_limits(1,0 ,j,i,iens);
+        mom_pert_limits(0,0 ,j,i,iens) = mom_pert_limits(1,0 ,j,i,iens);
+        pressure_limits(1,nz,j,i,iens) = pressure_limits(0,nz,j,i,iens);
+        mom_pert_limits(1,nz,j,i,iens) = mom_pert_limits(0,nz,j,i,iens);
+      });
+
+      // Compute upwind fluxes
+      parallel_for( SimpleBounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+        // Get left and right state
+        real p_L  = pressure_limits(0,k,j,i,iens);   real p_R  = pressure_limits(1,k,j,i,iens);
+        real rw_L = mom_pert_limits(0,k,j,i,iens);   real rw_R = mom_pert_limits(1,k,j,i,iens);
+        real w1 = p_R/2 - rw_R*cs/2;  // -cs
+        real w2 = p_L/2 + rw_L*cs/2;  // +cs
+        pressure_limits(0,k,j,i,iens) = w1 + w2;
+        mom_pert_limits(0,k,j,i,iens) = (w2 - w1) / cs;
+      });
+
+      // Compute and apply tendencies
+      parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+        real p_tend  = - cs*cs * ( mom_pert_limits(0,k+1,j,i,iens) - mom_pert_limits(0,k,j,i,iens) ) / dz(k,iens);
+        real rw_tend = -         ( pressure_limits(0,k+1,j,i,iens) - pressure_limits(0,k,j,i,iens) ) / dz(k,iens);
+        pressure(hs+k,j,i,iens) += dt_cs * p_tend ;
+        mom_pert(hs+k,j,i,iens) += dt_cs * rw_tend;
+        mom_pert_tavg(hs+k,j,i,iens) += mom_pert(hs+k,j,i,iens);
+      });
+
     }
 
-
-
-
-    // Pre-process the tracers by dividing by density inside the domain
-    // After this, we can reconstruct tracers only (not rho * tracer)
-    parallel_for( SimpleBounds<5>(num_tracers,nz,ny,nx,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
-      tracers(tr,hs+k,hs+j,hs+i,iens) /= (state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens));
+    // Compute time-averaged momentum perturbation
+    parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      mom_pert_tavg(hs+k,j,i,iens) /= (num_iter + 1);
     });
+
+
+    // Apply time-averaged momentum perturbation to all variables except normal momentum
+
+
+
 
     // Populate the halos
     if        (bc_z == BC_PERIODIC) {
