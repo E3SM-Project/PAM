@@ -903,8 +903,8 @@ public:
     real constexpr c_s = 300;
     // Get a time step that's guaranteed to be stable for explicit updates in 3-D based on speed of sound
     // dtmax = min( cfl*dx/cs , cfl*dy/cs , cfl*dz/cs )
-    real dtloc = 0.1;
     // real dtloc = 0.6666666666666;
+     real dtloc = 0.6;
     // real dzmin = yakl::intrinsics::minval(dz);
     // if (sim2d) {
     //   dtloc = 0.3_fp * min( dx/c_s , dzmin/c_s );
@@ -940,6 +940,11 @@ public:
        real rw_R  = ( pressure(k  ,j,i,iens) - pressure(kp1,j,i,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(kp1,j,i,iens) + rho_w_new(k,  j,i,iens) );
        real div = (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens); 
        abs_div(k,j,i,iens) = abs(div);
+
+       //real xpart = pressure(k,j,im1,iens)-2.*pressure(k,j,i,iens)+pressure(k,j,ip1,iens)+c_s*(rho_u_new(k,j,im1,iens)-rho_u_new(k,j,ip1,iens));
+       //real zpart = pressure(km1,j,i,iens)-2.*pressure(k,j,i,iens)+pressure(kp1,j,i,iens)+c_s*(rho_w_new(km1,j,i,iens)-rho_w_new(kp1,j,i,iens));
+
+       //abs_div(k,j,i,iens) = abs(xpart)*dtloc/dx*c_s/2. + abs(zpart)*dtloc/dz(k,iens)*c_s/2.;
     });
     std::cout << "Starting Absolute divergence: " << yakl::intrinsics::sum(abs_div) << std::endl;
 
@@ -990,6 +995,8 @@ public:
         yakl::pentadiagonal_periodic<100,real>(a,b,c,d,e,f,sol); // solution w2_i is stored in sol 
         for (int i=0; i < nx; i++) {
            characteristic_var2(k,j,i,iens) = sol(i);
+           
+           // abs_div(k,j,i,iens) = abs(pressure(k,j,i,iens)-(characteristic_var1(k,j,i,iens) + characteristic_var2(k,j,i,iens)));
 
            // compute fundamental variables from characteristic ones: q=Rw=R(R^{-1}q)
            pressure(k,j,i,iens)  =    characteristic_var1(k,j,i,iens) + characteristic_var2(k,j,i,iens); 
@@ -998,11 +1005,15 @@ public:
         }
       });
 
+      // std::cout << "\t" << iter << ": " << yakl::intrinsics::sum(abs_div) << std::endl;
+
       ////////////////////////////
       // z-direction
       ////////////////////////////
       parallel_for( Bounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int iens) {
         SArray<real,1,50> a,b,c,d,e,f,sol;
+
+        real ptop = pressure(nz-1,j,i,iens), pbot = pressure(0,j,i,iens);
 
         // Implicitly update 'w1' 
         for (int k=0; k < nz; k++) {
@@ -1010,23 +1021,39 @@ public:
 
            a(k) = 0.;
            b(k) = xi/3.;
-           c(k) = 1. + xi/2.;; 
+           c(k) = 1. + xi/2.;
            d(k) = -xi;
            e(k) = xi/6.;
 
-           if( k == 0 ) {
-             b(k) = 0;
-           }
-           if( k == nz-2 ) {
-             e(k) = 0;
-           }
-           if( k == nz-1 ) {
-             d(k) = 0;
-             e(k) = 0.;
-           }
-
            real rw_fixed = state(idW,hs+k,hs+j,hs+i,iens) * hyDensCells(hs+k,iens);
            f(k) = pressure(k,j,i,iens)/2. - c_s/2.*rw_fixed;
+
+           if( k==0 ){
+              a(k) = 0;
+              b(k) = 0.;
+              c(k) = 1.-xi/3.;
+              d(k) = -5./6.*xi;
+              e(k) = xi/6.;
+              f(k) += -xi*pbot/2.;
+           }
+           if( k==nz-2 ){
+              a(k) = 0;
+              b(k) = xi/3.;
+              c(k) = 1.+xi/2.;
+              d(k) = -xi;
+              e(k) = 0;
+              f(k) += xi/12.*(-ptop + c_s*(rho_w_new(nz-2,j,i,iens)-5*rho_w_new(nz-1,j,i,iens)));
+           }
+           if( k==nz-1 ){
+              a(k) = 0;
+              b(k) = xi/3.;
+              c(k) = 1.+5./6.*xi;
+              d(k) = 0;
+              e(k) = 0;
+              f(k) += xi/12.*(7.*ptop - c_s*(rho_w_new(nz-2,j,i,iens)-5*rho_w_new(nz-1,j,i,iens)));
+           }
+           
+
         }
         yakl::pentadiagonal<50,real>(a,b,c,d,e,f,sol); // solution w1_i is stored in sol
         for (int k=0; k < nz; k++) {
@@ -1044,23 +1071,39 @@ public:
            d(k) = xi/3.;
            e(k) = 0.; 
 
-           if( k == 0 ) {
-              b(k) = 0.;
-              a(k) = 0.;
-           }
-           if( k == 1 ) {
-              a(k) = 0.;
-           }
-           if( k == nz-1 ) {
-              d(k) = 0.;
-           }
-
            real rw_fixed = state(idW,hs+k,hs+j,hs+i,iens) * hyDensCells(hs+k,iens);
            f(k) = pressure(k,j,i,iens)/2. + c_s/2.*rw_fixed;
+
+           if( k==0 ) {
+              a(k) = 0;
+              b(k) = 0;
+              c(k) = 1+5./6.*xi;
+              d(k) = xi/3.;
+              e(k) = 0;
+              f(k) += xi/12.*(7*pbot-c_s*(5*rho_w_new(0,j,i,iens)-rho_w_new(1,j,i,iens)));
+           }
+           if( k==1 ) {
+              a(k) = 0;
+              b(k) = -xi;
+              c(k) = 1+xi;
+              d(k) = xi/3.;
+              e(k) = 0;
+              f(k) += xi/12.*(-pbot+c_s*(5*rho_w_new(0,j,i,iens)-rho_w_new(1,j,i,iens)));
+           }
+           if( k==nz-1 ) {
+              a(k) = xi/6.;
+              b(k) = -5./6.*xi;
+              c(k) = 1-xi/3.;
+              d(k) = 0;
+              e(k) = 0;
+              f(k) += -xi*ptop/2.;
+           }
         }
         yakl::pentadiagonal<50,real>(a,b,c,d,e,f,sol); // solution w2_i is stored in sol 
         for (int k=0; k < nz; k++) {
            characteristic_var2(k,j,i,iens) = sol(k);
+
+           abs_div(k,j,i,iens) = abs(pressure(k,j,i,iens)-(characteristic_var1(k,j,i,iens) + characteristic_var2(k,j,i,iens)));
 
            // compute fundamental variables from characteristic ones: q=Rw=R(R^{-1}q)
            pressure(k,j,i,iens) =     characteristic_var1(k,j,i,iens) + characteristic_var2(k,j,i,iens); 
@@ -1068,7 +1111,31 @@ public:
            // we only need to compute rho_u explicitly each iteration if we want to check divergence
         }
       });
+
+       std::cout << "\t" << iter << ": " << yakl::intrinsics::sum(abs_div) << std::endl;
+
     }
+
+    parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+       int im1 = i-1;  if (im1 < 0   ) im1 = nx-1;
+       int ip1 = i+1;  if (ip1 > nx-1) ip1 = 0;
+       int jm1 = j-1;  if (jm1 < 0   ) jm1 = ny-1;
+       int jp1 = j+1;  if (jp1 > ny-1) jp1 = 0;
+       int km1 = k-1;  if (km1 < 0   ) km1 = 0;
+       int kp1 = k+1;  if (kp1 > nz-1) kp1 = nz-1;
+       real ru_L  = ( pressure(k,j,im1,iens) - pressure(k,j,i,  iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(k,j,i,  iens) + rho_u_new(k,j,im1,iens) );
+       real ru_R  = ( pressure(k,j,i,  iens) - pressure(k,j,ip1,iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(k,j,ip1,iens) + rho_u_new(k,j,i  ,iens) );
+       real rw_L  = ( pressure(km1,j,i,iens) - pressure(k,  j,i,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(k,  j,i,iens) + rho_w_new(km1,j,i,iens) );
+       real rw_R  = ( pressure(k  ,j,i,iens) - pressure(kp1,j,i,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(kp1,j,i,iens) + rho_w_new(k,  j,i,iens) );
+       real div = (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens); 
+       abs_div(k,j,i,iens) = abs(div);
+
+       //real xpart = pressure(k,j,im1,iens)-2.*pressure(k,j,i,iens)+pressure(k,j,ip1,iens)+c_s*(rho_u_new(k,j,im1,iens)-rho_u_new(k,j,ip1,iens));
+       //real zpart = pressure(km1,j,i,iens)-2.*pressure(k,j,i,iens)+pressure(kp1,j,i,iens)+c_s*(rho_w_new(km1,j,i,iens)-rho_w_new(kp1,j,i,iens));
+
+       //abs_div(k,j,i,iens) = abs(xpart)*dtloc/dx*c_s/2. + abs(zpart)*dtloc/dz(k,iens)*c_s/2.;
+    });
+    std::cout << "Ending Absolute divergence: " << yakl::intrinsics::sum(abs_div) << std::endl;
 
     // Assign new divergence-free momentum
     parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
@@ -1076,6 +1143,7 @@ public:
       //state(idV,hs+k,hs+j,hs+i,iens) = rho_v_new(k,j,i,iens) / hyDensCells(hs+k,iens);
       state(idW,hs+k,hs+j,hs+i,iens) = rho_w_new(k,j,i,iens) / hyDensCells(hs+k,iens);
     });
+
     //////////////////////
     // END ADI 3rd Order
     /////////////////////
@@ -1124,6 +1192,8 @@ public:
         for (int i=0; i < nx; i++) {
            characteristic_var2(k,j,i,iens) = d(i);
 
+           abs_div(k,j,i,iens) = abs(pressure(k,j,i,iens)-(characteristic_var1(k,j,i,iens) + characteristic_var2(k,j,i,iens)));
+
            // compute fundamental variables from characteristic ones: q=Rw=R(R^{-1}q)
            pressure(k,j,i,iens)  =    characteristic_var1(k,j,i,iens) + characteristic_var2(k,j,i,iens); 
            rho_u_new(k,j,i,iens) = ( -characteristic_var1(k,j,i,iens) + characteristic_var2(k,j,i,iens) )/c_s;
@@ -1131,11 +1201,19 @@ public:
         }
       });
 
+      std::cout << "\t" << iter << ": " << yakl::intrinsics::sum(abs_div) << std::endl;
+
       ////////////////////////////
       // z-direction
       ////////////////////////////
       parallel_for( Bounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int iens) {
         SArray<real,1,50> a,b,c,d;
+
+        real ptop = pressure(nz-1,j,i,iens), pbot = pressure(0,j,i,iens);
+        real dmtop = -2.*rho_w_new(nz-1,j,i,iens), dmbot = 2.*rho_w_new(0,j,i,iens);
+
+        //real ptop = (7.*pressure(nz-1,j,i,iens)-pressure(nz-2,j,i,iens))/6., pbot = (7.*pressure(0,j,i,iens)-pressure(1,j,i,iens))/6.;
+        //real dmtop = -(15.*rho_w_new(nz-1,j,i,iens)-rho_w_new(nz-2,j,i,iens))/6., dmbot = (15.*rho_w_new(0,j,i,iens)-rho_w_new(1,j,iens))/6.;
 
         // Implicitly update 'w1' 
         for (int k=0; k < nz; k++) {
@@ -1147,13 +1225,65 @@ public:
            b(k) = 1.+xi;
            c(k) = -xi; 
 
-           if (k == nz-1) {
-             //b(k) += c(k);
-             c(k) = 0;
-           }
-
            real rw_fixed = state(idW,hs+k,hs+j,hs+i,iens) * hyDensCells(hs+k,iens);
            d(k) = pressure(k,j,i,iens)/2. - c_s/2.*rw_fixed;
+
+           // this one -> zero momentum upwind boundary
+           if(k == nz-1) {
+             a(k) = 0;
+             b(k) = 1.+xi;
+             c(k) = 0;
+             d(k) += xi*ptop/2.;
+           }
+
+             // zero downwind momentum boundary
+//           if(k == 0) {
+//             a(k) = 0;
+//             b(k) = 1.;
+//             c(k) = -xi;
+//             d(k) += -xi*pbot/2.;
+//           }
+
+           // quadratic edge cell
+//           if(k == 0) {
+//             a(k) = 0.;
+//             b(k) = 1.;
+//             c(k) = -xi;
+//             d(k) += -xi*pbot/2.;
+//           }
+//           if(k == nz-2) {
+//             a(k) = 0.;
+//             b(k) = 1.+xi;
+//             c(k) = -3.*xi;
+//             d(k) += -xi*ptop - xi*c_s/4.*dmtop;
+//           }
+//           if(k == nz-1) {
+//             a(k) = 0.;
+//             b(k) = 1.+3.*xi;
+//             c(k) = 0;
+//             d(k) += 3./2.*xi*ptop + xi*c_s/4.*dmtop;
+//           }
+
+           // cubic edge cell
+//           if(k == 0) {
+//             a(k) = 0.;
+//             b(k) = 1.;
+//             c(k) = -xi;
+//             d(k) += -xi*pbot/2.;
+//           }
+//           if(k == nz-2) {
+//             a(k) = 0.;
+//             b(k) = 1.+7./8.*xi;
+//             c(k) = -17./8.*xi;
+//             d(k) += -5./8.*xi*ptop - xi*c_s/8.*dmtop;
+//           }
+//           if(k == nz-1) {
+//             a(k) = xi/8.;
+//             b(k) = 1.+17./8.*xi;
+//             c(k) = 0;
+//             d(k) += 9./8.*xi*ptop + xi*c_s/8.*dmtop;
+//           }
+
         }
         yakl::tridiagonal<real,50>(a,b,c,d); // solution w1_i is stored in d
         for (int k=0; k < nz; k++) {
@@ -1168,17 +1298,69 @@ public:
            a(k) = -xi;
            b(k) = 1.+xi;
            c(k) = 0.; 
-           if (k == 0) {
-             //b(k) += a(k);
-             a(k) = 0;
-           }
 
            real rw_fixed = state(idW,hs+k,hs+j,hs+i,iens) * hyDensCells(hs+k,iens);
            d(k) = pressure(k,j,i,iens)/2. + c_s/2.*rw_fixed;
+
+           // zero upwind momentum boundary
+           if (k == 0) {
+             a(k) = 0;
+             b(k) = 1.+xi;
+             c(k) = 0;
+             d(k) += xi*pbot/2.;
+           }
+
+
+//           if (k == nz-1) {
+//             a(k) = -xi;
+//             b(k) = 1.;
+//             c(k) = 0;
+//             d(k) += -xi*ptop/2.;
+//           }
+
+//           if (k == 0) {
+//             a(k) = 0;
+//             b(k) = 1.+3.*xi;
+//             c(k) = 0;
+//             d(k) += 3./2.*xi*pbot + xi*c_s/4.*dmbot;
+//           }
+//           if (k == 1) {
+//             a(k) = -3.*xi;
+//             b(k) = 1.+xi;
+//             c(k) = 0;
+//             d(k) += -xi*pbot - xi*c_s/4.*dmbot;
+//           }
+//           if (k == nz-1) {
+//             a(k) = -xi;
+//             b(k) = 1.;
+//             c(k) = 0;
+//             d(k) += -xi*ptop/2.;
+//           }
+
+//           if (k == 0) {
+//             a(k) = 0;
+//             b(k) = 1.+17./8.*xi;
+//             c(k) = xi/8.;
+//             d(k) += 9./8.*xi*pbot + xi*c_s/8.*dmbot;
+//           }
+//           if (k == 1) {
+//             a(k) = -17./8.*xi;
+//             b(k) = 1.+7./8.*xi;
+//             c(k) = 0;
+//             d(k) += -5./8.*xi*pbot - xi*c_s/8.*dmbot;
+//           }
+//           if (k == nz-1) {
+//             a(k) = -xi;
+//             b(k) = 1.;
+//             c(k) = 0;
+//             d(k) += -xi*ptop/2.;
+//           }
         }
         yakl::tridiagonal<real,50>(a,b,c,d); // solution w2_i is stored in d
         for (int k=0; k < nz; k++) {
            characteristic_var2(k,j,i,iens) = d(k);
+
+           abs_div(k,j,i,iens) = abs(pressure(k,j,i,iens)-(characteristic_var1(k,j,i,iens) + characteristic_var2(k,j,i,iens)));
 
            // compute fundamental variables from characteristic ones: q=Rw=R(R^{-1}q)
            pressure(k,j,i,iens) =     characteristic_var1(k,j,i,iens) + characteristic_var2(k,j,i,iens); 
@@ -1187,6 +1369,8 @@ public:
         }
       });
 
+      std::cout << "\t" << iter << ": " << yakl::intrinsics::sum(abs_div) << std::endl;
+      
     }
 
     parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
