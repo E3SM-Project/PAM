@@ -904,12 +904,11 @@ public:
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   void remove_momentum_divergence(real5d &state) {
     // We get to choose the speed of sound
-    real max, min;
     real constexpr c_s = 300;
     // Get a time step that's guaranteed to be stable for explicit updates in 3-D based on speed of sound
     // dtmax = min( cfl*dx/cs , cfl*dy/cs , cfl*dz/cs )
-    // real dtloc = 0.6666666666666;
-     real dtloc = 0.6;
+    //real dtloc = 0.15;
+    real dtloc;
     // real dzmin = yakl::intrinsics::minval(dz);
     // if (sim2d) {
     //   dtloc = 0.3_fp * min( dx/c_s , dzmin/c_s );
@@ -948,31 +947,6 @@ public:
       press_new(0,k,j,i,iens) = 0;
     });
 
-/*
-    std::cout << "********************** INITIALIZE *************************" << std::endl;
-    std::cout << "Pressure new " << std::endl;
-    for( int k=0; k < nz; k++ ) {
-       for( int i=0; i < nx; i++ ) {
-          std::cout << press_new(0,k,0,i,0) << " ";
-       }
-       std::cout << "\n";
-    }
-    std::cout << "Rho U new " << std::endl;
-    for( int k=0; k < nz; k++ ) {
-       for( int i=0; i < nx; i++ ) {
-          std::cout << rho_u_new(0,k,0,i,0) << " ";
-       }
-       std::cout << "\n";
-    }
-    std::cout << "Rho W new " << std::endl;
-    for( int k=0; k < nz; k++ ) {
-       for( int i=0; i < nx; i++ ) {
-          std::cout << rho_w_new(0,k,0,i,0) << " ";
-       }
-       std::cout << "\n";
-    }
-*/
-
     parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
        int im1 = i-1;  if (im1 < 0   ) im1 = nx-1;
        int ip1 = i+1;  if (ip1 > nx-1) ip1 = 0;
@@ -980,15 +954,11 @@ public:
        int jp1 = j+1;  if (jp1 > ny-1) jp1 = 0;
        int km1 = k-1;  if (km1 < 0   ) km1 = 0;
        int kp1 = k+1;  if (kp1 > nz-1) kp1 = nz-1;
-       //real ru_L  = ( pressure(k,j,im1,iens) - pressure(k,j,i,  iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(k,j,i,  iens) + rho_u_new(k,j,im1,iens) );
-       //real ru_R  = ( pressure(k,j,i,  iens) - pressure(k,j,ip1,iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(k,j,ip1,iens) + rho_u_new(k,j,i  ,iens) );
-       //real rw_L  = ( pressure(km1,j,i,iens) - pressure(k,  j,i,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(k,  j,i,iens) + rho_w_new(km1,j,i,iens) );
-       //real rw_R  = ( pressure(k  ,j,i,iens) - pressure(kp1,j,i,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(kp1,j,i,iens) + rho_w_new(k,  j,i,iens) );
        real ru_L  = ( press_new(0,k,j,im1,iens) - press_new(0,k,j,i,  iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(0,k,j,i,  iens) + rho_u_new(0,k,j,im1,iens) );
        real ru_R  = ( press_new(0,k,j,i,  iens) - press_new(0,k,j,ip1,iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(0,k,j,ip1,iens) + rho_u_new(0,k,j,i  ,iens) );
        real rw_L  = ( press_new(0,km1,j,i,iens) - press_new(0,k,  j,i,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(0,k,  j,i,iens) + rho_w_new(0,km1,j,i,iens) );
        real rw_R  = ( press_new(0,k  ,j,i,iens) - press_new(0,kp1,j,i,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(0,kp1,j,i,iens) + rho_w_new(0,k,  j,i,iens) );
-       real div = (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens); 
+       real div = (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens);
        abs_div(k,j,i,iens) = abs(div);
 
     });
@@ -997,265 +967,130 @@ public:
     ////////////////////////////////////
     // First pass at multigrid
     ////////////////////////////////////
-    for( int iter=0; iter < 4; iter++ ) {
-    for( int g = 0; g < ngrids; g++ ) {
-       std::cout << "***************** Compute Tendencies *******************" << std::endl;
-       scale_factor = (int)(pow(grid_factor, g) + 0.5);
-       parallel_for( Bounds<4>(nz/scale_factor,ny,nx/scale_factor,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-
-          int iscale = i*scale_factor;
-          int jscale = j;
-          int kscale = k*scale_factor;
-
-          // Compute indices for left and right cells (periodic in x,y; solid wall in z)
-          int im1 = iscale-scale_factor;  if (im1 < 0   ) im1 = nx-scale_factor;
-          int ip1 = iscale+scale_factor;  if (ip1 > nx-1) ip1 = 0;
-          int km1 = kscale-scale_factor;  if (km1 < 0   ) km1 = 0;
-          int kp1 = kscale+scale_factor;  if (kp1 > nz-1) kp1 = nz-scale_factor;
-
-          //std::cout << "Indexing: grid  " << g << " at (" << k << "," << j << "," << i << ") becomes (" << kscale << "," << jscale << "," << iscale << ") with ip/m1 " << im1 << "," << ip1 << " kp/m1 " << km1 << "," << kp1 << "\n";
-
-          ////////////////////////////
-          // x-direction fluxes
-          ////////////////////////////
-          // Get pressure and momentum in 3-cell stencil
-          real p_im1  = press_new(g,kscale,jscale,im1   ,iens);
-          real p_i    = press_new(g,kscale,jscale,iscale,iens);
-          real p_ip1  = press_new(g,kscale,jscale,ip1   ,iens);
-          real ru_im1 = rho_u_new(g,kscale,jscale,im1   ,iens);
-          real ru_i   = rho_u_new(g,kscale,jscale,iscale,iens);
-          real ru_ip1 = rho_u_new(g,kscale,jscale,ip1   ,iens);
-          // Compute upwind pressure and momentum at cell interfaces using characteristics
-          real p_x_L = (p_i   + p_im1) / 2       + c_s/2  * (ru_im1 - ru_i  );
-          real p_x_R = (p_ip1 + p_i  ) / 2       + c_s/2  * (ru_i   - ru_ip1);
-          real ru_L  = (p_im1 - p_i  ) / (2*c_s) + 0.5_fp * (ru_i   + ru_im1);
-          real ru_R  = (p_i   - p_ip1) / (2*c_s) + 0.5_fp * (ru_ip1 + ru_i  );
-
-          ////////////////////////////
-          // z-direction fluxes
-          ////////////////////////////
-          // Get pressure and momentum in 3-cell stencil
-          real p_km1  = press_new(g,km1   ,jscale,iscale,iens);
-          real p_k    = press_new(g,kscale,jscale,iscale,iens);
-          real p_kp1  = press_new(g,kp1   ,jscale,iscale,iens);
-          real rw_km1 = rho_w_new(g,km1   ,jscale,iscale,iens);
-          real rw_k   = rho_w_new(g,kscale,jscale,iscale,iens);
-          real rw_kp1 = rho_w_new(g,kp1   ,jscale,iscale,iens);
-
-          // Compute upwind pressure and momentum at cell interfaces using characteristics
-          real p_z_L = (p_k   + p_km1) / 2       + c_s/2  * (rw_km1 - rw_k  );
-          real p_z_R = (p_kp1 + p_k  ) / 2       + c_s/2  * (rw_k   - rw_kp1);
-          real rw_L  = (p_km1 - p_k  ) / (2*c_s) + 0.5_fp * (rw_k   + rw_km1);
-          real rw_R  = (p_k   - p_kp1) / (2*c_s) + 0.5_fp * (rw_kp1 + rw_k  );
-          // Enforce momentum boundary conditions at the domain top and bottom
-          if (k == 0 ) rw_L  = 0;
-          if (k == nz-scale_factor) rw_R  = 0;
-
-          ////////////////////////////////////////////////////////
-          // Perform the update using fluxes at cell interface
-          ////////////////////////////////////////////////////////
-          pressure_tend(g,kscale,jscale,iscale,iens) = -c_s*c_s * ( (ru_R-ru_L)/(scale_factor*dx) + (rw_R-rw_L)/(scale_factor*dz(k,iens)) );
-          rho_u_tend(g,kscale,jscale,iscale,iens) = -(p_x_R - p_x_L) / (scale_factor*dx);
-          rho_w_tend(g,kscale,jscale,iscale,iens) = -(p_z_R - p_z_L) / (scale_factor*dz(k,iens));
-
-       });
-
-       min=9999.; max=-9999.;
-       for( int k=0; k < nz; k+=scale_factor ) {
-          for( int i=0; i < nx; i+=scale_factor ) {
-             if( pressure_tend(g,k,0,i,0) < min ) min = pressure_tend(g,k,0,i);
-             if( pressure_tend(g,k,0,i,0) > max ) max = pressure_tend(g,k,0,i);
-          }
-       }
-       std::cout << "Pressure tend grid " << g << " min: " << min << " max: " << max << std::endl;
-
-       min=9999.; max=-9999.;
-       for( int k=0; k < nz; k+=scale_factor ) {
-          for( int i=0; i < nx; i+=scale_factor ) {
-             if( rho_u_tend(g,k,0,i,0) < min ) min = rho_u_tend(g,k,0,i);
-             if( rho_u_tend(g,k,0,i,0) > max ) max = rho_u_tend(g,k,0,i);
-          }
-       }
-       std::cout << "Rho U tend grid " << g << " min: " << min << " max: " << max << std::endl;
-
-       min=9999.; max=-9999.;
-       for( int k=0; k < nz; k+=scale_factor ) {
-          for( int i=0; i < nx; i+=scale_factor ) {
-             if( rho_w_tend(g,k,0,i,0) < min ) min = rho_w_tend(g,k,0,i);
-             if( rho_w_tend(g,k,0,i,0) > max ) max = rho_w_tend(g,k,0,i);
-          }
-       }
-       std::cout << "Rho W tend grid " << g << " min: " << min << " max: " << max << std::endl;
-/*
-       std::cout << "************************************" << std::endl;
-       std::cout << "Pressure tend " << g << std::endl;
-       for( int k=0; k < nz; k+=scale_factor ) {
-          for( int i=0; i < nx; i+=scale_factor ) {
-             std::cout << pressure_tend(g,k,0,i,0) << " ";
-          }
-          std::cout << "\n";
-       }
-       std::cout << "Rho U tend " << g << std::endl;
-       for( int k=0; k < nz; k+=scale_factor ) {
-          for( int i=0; i < nx; i+=scale_factor ) {
-             std::cout << rho_u_tend(g,k,0,i,0) << " ";
-          }
-          std::cout << "\n";
-       }
-       std::cout << "Rho W tend " << g << std::endl;
-       for( int k=0; k < nz; k+=scale_factor ) {
-          for( int i=0; i < nx; i+=scale_factor ) {
-             std::cout << rho_w_tend(g,k,0,i,0) << " ";
-          }
-          std::cout << "\n";
-       }
-       std::cout << "************************************" << std::endl;
-*/
-       
-       // if current grid is not at the coarsest level, apply tendencies and compute average at next grid level
-       if( g < ngrids-1 ) {
-         std::cout << "***************** Apply Tendencies *******************" << std::endl;
+    for( int iter=0; iter < 200; iter++ ) {
+       ////////////////////////////
+       // Coarsening Pass
+       ////////////////////////////
+       for( int g = 0; g < ngrids; g++ ) {
+          ////////////////////////////////////////
+          // Compute tendencies on current grid
+          ////////////////////////////////////////
+          scale_factor = (int)(pow(grid_factor, g) + 0.5);
           parallel_for( Bounds<4>(nz/scale_factor,ny,nx/scale_factor,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-             // Apply Tendencies
-             real rho_u_fixed=0., rho_w_fixed=0.;
+
              int iscale = i*scale_factor;
              int jscale = j;
              int kscale = k*scale_factor;
-             for(int kk=kscale; kk-kscale < scale_factor; kk++ ) {
-                for(int ii=iscale; ii-iscale < scale_factor; ii++ ) {
-                   rho_u_fixed += state(idU,hs+kk,hs+jscale,hs+ii,iens)*hyDensCells(hs+kk,iens)/(scale_factor*scale_factor);
-                   rho_w_fixed += state(idW,hs+kk,hs+jscale,hs+ii,iens)*hyDensCells(hs+kk,iens)/(scale_factor*scale_factor);
-                }
-             }
-             press_new(g,kscale,jscale,iscale,iens) += dtloc * pressure_tend(g,kscale,jscale,iscale,iens);
-             rho_u_new(g,kscale,jscale,iscale,iens) = rho_u_fixed + dtloc * rho_u_tend(g,kscale,jscale,iscale,iens);
-             rho_w_new(g,kscale,jscale,iscale,iens) = rho_w_fixed + dtloc * rho_w_tend(g,kscale,jscale,iscale,iens);
-             //std::cout << "rho w (" << iscale << "," << kscale << ") " << rho_w_fixed << " + " << dtloc << " * " << rho_w_tend(g,kscale,jscale,iscale,iens) << std::endl;
+
+             // Compute indices for left and right cells (periodic in x,y; solid wall in z)
+             int im1 = iscale-scale_factor;  if (im1 < 0   ) im1 = nx-scale_factor;
+             int ip1 = iscale+scale_factor;  if (ip1 > nx-1) ip1 = 0;
+             int km1 = kscale-scale_factor;  if (km1 < 0   ) km1 = 0;
+             int kp1 = kscale+scale_factor;  if (kp1 > nz-1) kp1 = nz-scale_factor;
+
+             ////////////////////////////
+             // x-direction fluxes
+             ////////////////////////////
+             // Get pressure and momentum in 3-cell stencil
+             real p_im1  = press_new(g,kscale,jscale,im1   ,iens);
+             real p_i    = press_new(g,kscale,jscale,iscale,iens);
+             real p_ip1  = press_new(g,kscale,jscale,ip1   ,iens);
+             real ru_im1 = rho_u_new(g,kscale,jscale,im1   ,iens);
+             real ru_i   = rho_u_new(g,kscale,jscale,iscale,iens);
+             real ru_ip1 = rho_u_new(g,kscale,jscale,ip1   ,iens);
+             // Compute upwind pressure and momentum at cell interfaces using characteristics
+             real p_x_L = (p_i   + p_im1) / 2       + c_s/2  * (ru_im1 - ru_i  );
+             real p_x_R = (p_ip1 + p_i  ) / 2       + c_s/2  * (ru_i   - ru_ip1);
+             real ru_L  = (p_im1 - p_i  ) / (2*c_s) + 0.5_fp * (ru_i   + ru_im1);
+             real ru_R  = (p_i   - p_ip1) / (2*c_s) + 0.5_fp * (ru_ip1 + ru_i  );
+
+             ////////////////////////////
+             // z-direction fluxes
+             ////////////////////////////
+             // Get pressure and momentum in 3-cell stencil
+             real p_km1  = press_new(g,km1   ,jscale,iscale,iens);
+             real p_k    = press_new(g,kscale,jscale,iscale,iens);
+             real p_kp1  = press_new(g,kp1   ,jscale,iscale,iens);
+             real rw_km1 = rho_w_new(g,km1   ,jscale,iscale,iens);
+             real rw_k   = rho_w_new(g,kscale,jscale,iscale,iens);
+             real rw_kp1 = rho_w_new(g,kp1   ,jscale,iscale,iens);
+             // Enforce momentum boundary conditions at the domain top and bottom
+             if (k == 0   ) rw_km1 = 0;
+             if (k == nz-scale_factor) rw_kp1 = 0;
+             // Compute upwind pressure and momentum at cell interfaces using characteristics
+             real p_z_L = (p_k   + p_km1) / 2       + c_s/2  * (rw_km1 - rw_k  );
+             real p_z_R = (p_kp1 + p_k  ) / 2       + c_s/2  * (rw_k   - rw_kp1);
+             real rw_L  = (p_km1 - p_k  ) / (2*c_s) + 0.5_fp * (rw_k   + rw_km1);
+             real rw_R  = (p_k   - p_kp1) / (2*c_s) + 0.5_fp * (rw_kp1 + rw_k  );
+             // Enforce momentum boundary conditions at the domain top and bottom
+             if (k == 0 ) rw_L  = 0;
+             if (k == nz-scale_factor) rw_R  = 0;
+
+             ////////////////////////////////////////////////////////
+             // Perform the update using fluxes at cell interface
+             ////////////////////////////////////////////////////////
+             real dztot = 0.;
+             for( int kk = kscale; kk - kscale < scale_factor; kk++ ) dztot += dz(kk,iens);
+             pressure_tend(g,kscale,jscale,iscale,iens) = -c_s*c_s * ( (ru_R-ru_L)/(scale_factor*dx) + (rw_R-rw_L)/(scale_factor*dz(k,iens)) );
+             rho_u_tend(g,kscale,jscale,iscale,iens) = -(p_x_R - p_x_L) / (scale_factor*dx);
+             rho_w_tend(g,kscale,jscale,iscale,iens) = -(p_z_R - p_z_L) / dztot;
+
           });
-          min=9999.; max=-9999.;
-          for( int k=0; k < nz; k+=scale_factor ) {
-             for( int i=0; i < nx; i+=scale_factor ) {
-                if( press_new(g,k,0,i,0) < min ) min = press_new(g,k,0,i);
-                if( press_new(g,k,0,i,0) > max ) max = press_new(g,k,0,i);
-             }
-          }
-          std::cout << "Pressure grid " << g << " min: " << min << " max: " << max << std::endl;
+          // if current grid is not at the coarsest level, apply tendencies and compute average at next grid level
+          if( g < ngrids-1 ) {
+             // Compute time step for current grid, assuming constant dz=dx
+             dtloc = 0.3_fp * (scale_factor*dx/c_s);
+             parallel_for( Bounds<4>(nz/scale_factor,ny,nx/scale_factor,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
 
-          min=9999.; max=-9999.;
-          for( int k=0; k < nz; k+=scale_factor ) {
-             for( int i=0; i < nx; i+=scale_factor ) {
-                if( rho_u_new(g,k,0,i,0) < min ) min = rho_u_new(g,k,0,i);
-                if( rho_u_new(g,k,0,i,0) > max ) max = rho_u_new(g,k,0,i);
-             }
-          }
-          std::cout << "Rho U grid " << g << " min: " << min << " max: " << max << std::endl;
+                // Compute current grid averaged fixed value (TODO: this can be streamlined to be done once at the start)
+                real rho_u_fixed=0., rho_w_fixed=0.;
+                int iscale = i*scale_factor;
+                int jscale = j;
+                int kscale = k*scale_factor;
+                for(int kk=kscale; kk-kscale < scale_factor; kk++ ) {
+                   for(int ii=iscale; ii-iscale < scale_factor; ii++ ) {
+                      rho_u_fixed += state(idU,hs+kk,hs+jscale,hs+ii,iens)*hyDensCells(hs+kk,iens)/(scale_factor*scale_factor);
+                      rho_w_fixed += state(idW,hs+kk,hs+jscale,hs+ii,iens)*hyDensCells(hs+kk,iens)/(scale_factor*scale_factor);
+                   }
+                }
+                press_new(g,kscale,jscale,iscale,iens) += dtloc * pressure_tend(g,kscale,jscale,iscale,iens);
+                rho_u_new(g,kscale,jscale,iscale,iens) = rho_u_fixed + dtloc * rho_u_tend(g,kscale,jscale,iscale,iens);
+                rho_w_new(g,kscale,jscale,iscale,iens) = rho_w_fixed + dtloc * rho_w_tend(g,kscale,jscale,iscale,iens);
+             });
 
-          min=9999.; max=-9999.;
-          for( int k=0; k < nz; k+=scale_factor ) {
-             for( int i=0; i < nx; i+=scale_factor ) {
-                if( rho_w_new(g,k,0,i,0) < min ) min = rho_w_new(g,k,0,i);
-                if( rho_w_new(g,k,0,i,0) > max ) max = rho_w_new(g,k,0,i);
-             }
-          }
-          std::cout << "Rho W grid " << g << " min: " << min << " max: " << max << std::endl;
+             ////////////////////////////////////////
+             // Average state to coarse grid
+             ////////////////////////////////////////
+             scale_factor = (int)(pow(grid_factor, g+1) + 0.5);
+             parallel_for( Bounds<4>(nz/scale_factor,ny,nx/scale_factor,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+                int iscale = i*scale_factor;
+                int jscale = j;
+                int kscale = k*scale_factor;
 
-       parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-          abs_div(k,j,i,iens) = 0.0;
-       });
-       parallel_for( Bounds<4>(nz/scale_factor,ny,nx/scale_factor,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-          int iscale = i*scale_factor;
-          int jscale = j;
-          int kscale = k*scale_factor;
+                press_new(g+1,kscale,jscale,iscale,iens) = 0.;
+                rho_u_new(g+1,kscale,jscale,iscale,iens) = 0.;
+                rho_w_new(g+1,kscale,jscale,iscale,iens) = 0.;
 
-          // Compute indices for left and right cells (periodic in x,y; solid wall in z)
-          int im1 = iscale-scale_factor;  if (im1 < 0   ) im1 = nx-scale_factor;
-          int ip1 = iscale+scale_factor;  if (ip1 > nx-1) ip1 = 0;
-          int km1 = kscale-scale_factor;  if (km1 < 0   ) km1 = 0;
-          int kp1 = kscale+scale_factor;  if (kp1 > nz-1) kp1 = nz-scale_factor;
-          real ru_L  = ( press_new(g,kscale,jscale,im1,iens) - press_new(g,kscale,jscale,iscale,  iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(g,kscale,jscale,iscale,  iens) + rho_u_new(g,kscale,jscale,im1,iens) );
-          real ru_R  = ( press_new(g,kscale,jscale,iscale,  iens) - press_new(g,kscale,jscale,ip1,iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(g,kscale,jscale,ip1,iens) + rho_u_new(g,kscale,jscale,iscale  ,iens) );
-          real rw_L  = ( press_new(g,km1,jscale,iscale,iens) - press_new(g,kscale,  jscale,iscale,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(g,kscale,  jscale,iscale,iens) + rho_w_new(g,km1,jscale,iscale,iens) );
-          real rw_R  = ( press_new(g,kscale  ,jscale,iscale,iens) - press_new(g,kp1,jscale,iscale,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(g,kp1,jscale,iscale,iens) + rho_w_new(g,kscale,  jscale,iscale,iens) );
-          real div = (ru_R-ru_L)/(scale_factor*dx) + (rw_R-rw_L)/(scale_factor*dz(kscale,iens));  // assume dz const
-          abs_div(kscale,jscale,iscale,iens) = abs(div);
-       });
-       std::cout << "Grid " << g << " Absolute divergence: " << yakl::intrinsics::sum(abs_div) << std::endl;
-/*
-          std::cout << "************************************" << std::endl;
-          std::cout << "Pressure new " << g << std::endl;
-          for( int k=0; k < nz; k+=scale_factor ) {
-             for( int i=0; i < nx; i+=scale_factor ) {
-                std::cout << press_new(g,k,0,i,0) << " ";
-             }
-             std::cout << "\n";
+                for(int kk=kscale; kk-kscale < scale_factor; kk+=scale_factor/grid_factor) {
+                  for(int ii=iscale; ii-iscale < scale_factor; ii+=scale_factor/grid_factor) {
+                      press_new(g+1,kscale,jscale,iscale,iens) += press_new(g,kk,jscale,ii,iens)/(grid_factor*grid_factor);
+                      rho_u_new(g+1,kscale,jscale,iscale,iens) += rho_u_new(g,kk,jscale,ii,iens)/(grid_factor*grid_factor);
+                      rho_w_new(g+1,kscale,jscale,iscale,iens) += rho_w_new(g,kk,jscale,ii,iens)/(grid_factor*grid_factor);
+                   }
+                }
+             });
           }
-          std::cout << "Rho U new " << g << std::endl;
-          for( int k=0; k < nz; k+=scale_factor ) {
-             for( int i=0; i < nx; i+=scale_factor ) {
-                std::cout << rho_u_new(g,k,0,i,0) << " ";
-             }
-             std::cout << "\n";
-          }
-          std::cout << "Rho W new " << g << std::endl;
-          for( int k=0; k < nz; k+=scale_factor ) {
-             for( int i=0; i < nx; i+=scale_factor ) {
-                std::cout << rho_w_new(g,k,0,i,0) << " ";
-             }
-             std::cout << "\n";
-          }
-          std::cout << "************************************" << std::endl;
-*/
+       }
 
-          // Average state to coarse grid
-          std::cout << "***************** Coarsen State *******************" << std::endl;
+       ////////////////////////////
+       // Refining Pass
+       ////////////////////////////
+       for( int g = ngrids-2; g >= 0; g-- ) {
+
+          ////////////////////////////////////////////////////////
+          // Interpolate tendencies from coarse grid using minmod
+          ////////////////////////////////////////////////////////
           scale_factor = (int)(pow(grid_factor, g+1) + 0.5);
-          parallel_for( Bounds<4>(nz/scale_factor,ny,nx/scale_factor,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-             int iscale = i*scale_factor;
-             int jscale = j;
-             int kscale = k*scale_factor;
-
-             press_new(g+1,kscale,jscale,iscale,iens) = 0.;
-             rho_u_new(g+1,kscale,jscale,iscale,iens) = 0.;
-             rho_w_new(g+1,kscale,jscale,iscale,iens) = 0.;
-
-             for(int kk=kscale; kk-kscale < scale_factor; kk+=scale_factor/grid_factor) {
-               for(int ii=iscale; ii-iscale < scale_factor; ii+=scale_factor/grid_factor) {
-                   press_new(g+1,kscale,jscale,iscale,iens) += press_new(g,kk,jscale,ii,iens)/(grid_factor*grid_factor);
-                   rho_u_new(g+1,kscale,jscale,iscale,iens) += rho_u_new(g,kk,jscale,ii,iens)/(grid_factor*grid_factor);
-                   rho_w_new(g+1,kscale,jscale,iscale,iens) += rho_w_new(g,kk,jscale,ii,iens)/(grid_factor*grid_factor);
-                }
-             }
-          });
-          min=9999.; max=-9999.;
-          for( int k=0; k < nz; k+=scale_factor ) {
-             for( int i=0; i < nx; i+=scale_factor ) {
-                if( press_new(g+1,k,0,i,0) < min ) min = press_new(g+1,k,0,i);
-                if( press_new(g+1,k,0,i,0) > max ) max = press_new(g+1,k,0,i);
-             }
-          }
-          std::cout << "Pressure grid " << g+1 << " min: " << min << " max: " << max << std::endl;
-
-          min=9999.; max=-9999.;
-          for( int k=0; k < nz; k+=scale_factor ) {
-             for( int i=0; i < nx; i+=scale_factor ) {
-                if( rho_u_new(g+1,k,0,i,0) < min ) min = rho_u_new(g+1,k,0,i);
-                if( rho_u_new(g+1,k,0,i,0) > max ) max = rho_u_new(g+1,k,0,i);
-             }
-          }
-          std::cout << "Rho U grid " << g+1 << " min: " << min << " max: " << max << std::endl;
-
-          min=9999.; max=-9999.;
-          for( int k=0; k < nz; k+=scale_factor ) {
-             for( int i=0; i < nx; i+=scale_factor ) {
-                if( rho_w_new(g+1,k,0,i,0) < min ) min = rho_w_new(g+1,k,0,i);
-                if( rho_w_new(g+1,k,0,i,0) > max ) max = rho_w_new(g+1,k,0,i);
-             }
-          }
-          std::cout << "Rho W grid " << g+1 << " min: " << min << " max: " << max << std::endl;
-
-          parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-             abs_div(k,j,i,iens) = 0.0;
-          });
           parallel_for( Bounds<4>(nz/scale_factor,ny,nx/scale_factor,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
              int iscale = i*scale_factor;
              int jscale = j;
@@ -1266,361 +1101,41 @@ public:
              int ip1 = iscale+scale_factor;  if (ip1 > nx-1) ip1 = 0;
              int km1 = kscale-scale_factor;  if (km1 < 0   ) km1 = 0;
              int kp1 = kscale+scale_factor;  if (kp1 > nz-1) kp1 = nz-scale_factor;
-             real ru_L  = ( press_new(g,kscale,jscale,im1,iens) - press_new(g,kscale,jscale,iscale,  iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(g,kscale,jscale,iscale,  iens) + rho_u_new(g,kscale,jscale,im1,iens) );
-             real ru_R  = ( press_new(g,kscale,jscale,iscale,  iens) - press_new(g,kscale,jscale,ip1,iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(g,kscale,jscale,ip1,iens) + rho_u_new(g,kscale,jscale,iscale  ,iens) );
-             real rw_L  = ( press_new(g,km1,jscale,iscale,iens) - press_new(g,kscale,  jscale,iscale,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(g,kscale,  jscale,iscale,iens) + rho_w_new(g,km1,jscale,iscale,iens) );
-             real rw_R  = ( press_new(g,kscale  ,jscale,iscale,iens) - press_new(g,kp1,jscale,iscale,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(g,kp1,jscale,iscale,iens) + rho_w_new(g,kscale,  jscale,iscale,iens) );
-             real div = (ru_R-ru_L)/(scale_factor*dx) + (rw_R-rw_L)/(scale_factor*dz(kscale,iens));  // assume dz const
-             abs_div(kscale,jscale,iscale,iens) = abs(div);
+
+             real dzconst = dz(0,iens); // TODO: assume dz is constant for now
+
+             real press_sx = minmod((pressure_tend(g+1,kscale,jscale,iscale,iens)-pressure_tend(g+1,kscale,jscale,im1,iens))/(scale_factor*dx), (pressure_tend(g+1,kscale,jscale,ip1,iens)-pressure_tend(g+1,kscale,jscale,iscale,iens))/(scale_factor*dx));
+             real press_sz = minmod((pressure_tend(g+1,kscale,jscale,iscale,iens)-pressure_tend(g+1,km1,jscale,iscale,iens))/(scale_factor*dzconst), (pressure_tend(g+1,kp1,jscale,iscale,iens)-pressure_tend(g+1,kscale,jscale,iscale,iens))/(scale_factor*dzconst));
+
+             real rho_u_sx = minmod((rho_u_tend(g+1,kscale,jscale,iscale,iens)-rho_u_tend(g+1,kscale,jscale,im1,iens))/(scale_factor*dx), (rho_u_tend(g+1,kscale,jscale,ip1,iens)-rho_u_tend(g+1,kscale,jscale,iscale,iens))/(scale_factor*dx));
+             real rho_u_sz = minmod((rho_u_tend(g+1,kscale,jscale,iscale,iens)-rho_u_tend(g+1,km1,jscale,iscale,iens))/(scale_factor*dzconst), (rho_u_tend(g+1,kp1,jscale,iscale,iens)-rho_u_tend(g+1,kscale,jscale,iscale,iens))/(scale_factor*dzconst));
+
+             real rho_w_sx = minmod((rho_w_tend(g+1,kscale,jscale,iscale,iens)-rho_w_tend(g+1,kscale,jscale,im1,iens))/(scale_factor*dx), (rho_w_tend(g+1,kscale,jscale,ip1,iens)-rho_w_tend(g+1,kscale,jscale,iscale,iens))/(scale_factor*dx));
+             real rho_w_sz = minmod((rho_w_tend(g+1,kscale,jscale,iscale,iens)-rho_w_tend(g+1,km1,jscale,iscale,iens))/(scale_factor*dzconst), (rho_w_tend(g+1,kp1,jscale,iscale,iens)-rho_w_tend(g+1,kscale,jscale,iscale,iens))/(scale_factor*dzconst));
+
+             real cx = iscale+scale_factor/2., cz = kscale+scale_factor/2.;
+
+             for(int kk=kscale; kk-kscale < scale_factor; kk+=scale_factor/grid_factor){
+                for(int ii=iscale; ii-iscale < scale_factor; ii+=scale_factor/grid_factor){
+
+                   real cxfine = ii+scale_factor/grid_factor/2., czfine = kk+scale_factor/grid_factor/2.;
+
+                   pressure_tend(g,kk,jscale,ii,iens) = pressure_tend(g+1,kscale,jscale,iscale,iens) + press_sx*(cxfine-cx)*dx + press_sz*(czfine-cz)*dzconst;
+                   rho_u_tend(g,kk,jscale,ii,iens) = rho_u_tend(g+1,kscale,jscale,iscale,iens) + rho_u_sx*(cxfine-cx)*dx + rho_u_sz*(czfine-cz)*dzconst;
+                   rho_w_tend(g,kk,jscale,ii,iens) = rho_w_tend(g+1,kscale,jscale,iscale,iens) + rho_w_sx*(cxfine-cx)*dx + rho_w_sz*(czfine-cz)*dzconst;
+                }
+             }
           });
-          std::cout << "Grid " << g+1 << " Absolute divergence: " << yakl::intrinsics::sum(abs_div) << std::endl;
-/*
-          std::cout << "************************************" << std::endl;
-          std::cout << "Pressure new " << g+1 << std::endl;
-          for( int k=0; k < nz; k+=scale_factor ) {
-             for( int i=0; i < nx; i+=scale_factor ) {
-                std::cout << press_new(g+1,k,0,i,0) << " ";
-             }
-             std::cout << "\n";
-          }
-          std::cout << "Rho U new " << g+1 << std::endl;
-          for( int k=0; k < nz; k+=scale_factor ) {
-             for( int i=0; i < nx; i+=scale_factor ) {
-                std::cout << rho_u_new(g+1,k,0,i,0) << " ";
-             }
-             std::cout << "\n";
-          }
-          std::cout << "Rho W new " << g+1 << std::endl;
-          for( int k=0; k < nz; k+=scale_factor ) {
-             for( int i=0; i < nx; i+=scale_factor ) {
-                std::cout << rho_w_new(g+1,k,0,i,0) << " ";
-             }
-             std::cout << "\n";
-          }
-          std::cout << "************************************" << std::endl;
-*/
-
-       }
-    }
-    for( int g = ngrids-2; g >= 0; g-- ) {
-
-       // iterpolate tendencies from coarser grid using minmod
-       std::cout << "***************** Refine Tendencies *******************" << std::endl;
-       scale_factor = (int)(pow(grid_factor, g+1) + 0.5);
-       parallel_for( Bounds<4>(nz/scale_factor,ny,nx/scale_factor,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-          int iscale = i*scale_factor;
-          int jscale = j;
-          int kscale = k*scale_factor;
-
-          // Compute indices for left and right cells (periodic in x,y; solid wall in z)
-          int im1 = iscale-scale_factor;  if (im1 < 0   ) im1 = nx-scale_factor;
-          int ip1 = iscale+scale_factor;  if (ip1 > nx-1) ip1 = 0;
-          int km1 = kscale-scale_factor;  if (km1 < 0   ) km1 = 0;
-          int kp1 = kscale+scale_factor;  if (kp1 > nz-1) kp1 = nz-scale_factor;
-
-          real dzconst = dz(0,iens); // TODO: assume dz is constant for now
-
-          real press_sx = minmod((pressure_tend(g+1,kscale,jscale,iscale,iens)-pressure_tend(g+1,kscale,jscale,im1,iens))/(scale_factor*dx), (pressure_tend(g+1,kscale,jscale,ip1,iens)-pressure_tend(g+1,kscale,jscale,iscale,iens))/(scale_factor*dx));
-          real press_sz = minmod((pressure_tend(g+1,kscale,jscale,iscale,iens)-pressure_tend(g+1,km1,jscale,iscale,iens))/(scale_factor*dzconst), (pressure_tend(g+1,kp1,jscale,iscale,iens)-pressure_tend(g+1,kscale,jscale,iscale,iens))/(scale_factor*dzconst));
-
-          real rho_u_sx = minmod((rho_u_tend(g+1,kscale,jscale,iscale,iens)-rho_u_tend(g+1,kscale,jscale,im1,iens))/(scale_factor*dx), (rho_u_tend(g+1,kscale,jscale,ip1,iens)-rho_u_tend(g+1,kscale,jscale,iscale,iens))/(scale_factor*dx));
-          real rho_u_sz = minmod((rho_u_tend(g+1,kscale,jscale,iscale,iens)-rho_u_tend(g+1,km1,jscale,iscale,iens))/(scale_factor*dzconst), (rho_u_tend(g+1,kp1,jscale,iscale,iens)-rho_u_tend(g+1,kscale,jscale,iscale,iens))/(scale_factor*dzconst));
-
-          real rho_w_sx = minmod((rho_w_tend(g+1,kscale,jscale,iscale,iens)-rho_w_tend(g+1,kscale,jscale,im1,iens))/(scale_factor*dx), (rho_w_tend(g+1,kscale,jscale,ip1,iens)-rho_w_tend(g+1,kscale,jscale,iscale,iens))/(scale_factor*dx));
-          real rho_w_sz = minmod((rho_w_tend(g+1,kscale,jscale,iscale,iens)-rho_w_tend(g+1,km1,jscale,iscale,iens))/(scale_factor*dzconst), (rho_w_tend(g+1,kp1,jscale,iscale,iens)-rho_w_tend(g+1,kscale,jscale,iscale,iens))/(scale_factor*dzconst));
-
-          real cx = iscale+scale_factor/2., cz = kscale+scale_factor/2.;
-
-          //std::cout << "grid " << g+1 << "(" << kscale << "," << iscale <<  ") press sx/sz " << press_sx << " " << press_sz << " rho_u " << rho_u_sx << " " <<  rho_u_sz << " rho_w " << rho_w_sx << " " << rho_w_sz << std::endl;
-
-          for(int kk=kscale; kk-kscale < scale_factor; kk+=scale_factor/grid_factor){
-             for(int ii=iscale; ii-iscale < scale_factor; ii+=scale_factor/grid_factor){
-
-                real cxfine = ii+scale_factor/grid_factor/2., czfine = kk+scale_factor/grid_factor/2.;
-
-                //std::cout << "\trefine location coarse position: " << iscale << " " << kscale << " fine position: " << ii << " " << kk << " coarse center: " << cx << " " << cz << " fine center: " << cxfine << " " << czfine << "     coord: " << (cxfine-cx)*dx << " " <<  (czfine-cz)*dzconst << std::endl;
-
-                pressure_tend(g,kk,jscale,ii,iens) = pressure_tend(g+1,kscale,jscale,iscale,iens) + press_sx*(cxfine-cx)*dx + press_sz*(czfine-cz)*dzconst;
-                rho_u_tend(g,kk,jscale,ii,iens) = rho_u_tend(g+1,kscale,jscale,iscale,iens) + rho_u_sx*(cxfine-cx)*dx + rho_u_sz*(czfine-cz)*dzconst;
-                rho_w_tend(g,kk,jscale,ii,iens) = rho_w_tend(g+1,kscale,jscale,iscale,iens) + rho_w_sx*(cxfine-cx)*dx + rho_w_sz*(czfine-cz)*dzconst;
-             }
-          }
-       });
-
-       scale_factor = (int)(pow(grid_factor, g) + 0.5);
-       min=9999.; max=-9999.;
-       for( int k=0; k < nz; k+=scale_factor ) {
-          for( int i=0; i < nx; i+=scale_factor ) {
-             if( pressure_tend(g,k,0,i,0) < min ) min = pressure_tend(g,k,0,i);
-             if( pressure_tend(g,k,0,i,0) > max ) max = pressure_tend(g,k,0,i);
-          }
-       }
-       std::cout << "Pressure tend grid " << g << " min: " << min << " max: " << max << std::endl;
-
-       min=9999.; max=-9999.;
-       for( int k=0; k < nz; k+=scale_factor ) {
-          for( int i=0; i < nx; i+=scale_factor ) {
-             if( rho_u_tend(g,k,0,i,0) < min ) min = rho_u_tend(g,k,0,i);
-             if( rho_u_tend(g,k,0,i,0) > max ) max = rho_u_tend(g,k,0,i);
-          }
-       }
-       std::cout << "Rho U tend grid " << g << " min: " << min << " max: " << max << std::endl;
-
-       min=9999.; max=-9999.;
-       for( int k=0; k < nz; k+=scale_factor ) {
-          for( int i=0; i < nx; i+=scale_factor ) {
-             if( rho_w_tend(g,k,0,i,0) < min ) min = rho_w_tend(g,k,0,i);
-             if( rho_w_tend(g,k,0,i,0) > max ) max = rho_w_tend(g,k,0,i);
-          }
-       }
-       std::cout << "Rho W tend grid " << g << " min: " << min << " max: " << max << std::endl;
-
-/*
-       std::cout << "************************************" << std::endl;
-       std::cout << "Pressure tend " << g << std::endl;
-       for( int k=0; k < nz; k+=scale_factor ) {
-          for( int i=0; i < nx; i+=scale_factor ) {
-             std::cout << pressure_tend(g,k,0,i,0) << " ";
-          }
-          std::cout << "\n";
-       }
-       std::cout << "Rho U tend " << g << std::endl;
-       for( int k=0; k < nz; k+=scale_factor ) {
-          for( int i=0; i < nx; i+=scale_factor ) {
-             std::cout << rho_u_tend(g,k,0,i,0) << " ";
-          }
-          std::cout << "\n";
-       }
-       std::cout << "Rho W tend " << g << std::endl;
-       for( int k=0; k < nz; k+=scale_factor ) {
-          for( int i=0; i < nx; i+=scale_factor ) {
-             std::cout << rho_w_tend(g,k,0,i,0) << " ";
-          }
-          std::cout << "\n";
-       }
-       std::cout << "************************************" << std::endl;
-*/
-
-       // Apply Tendencies
-       std::cout << "***************** Apply Refined Tendencies *******************" << std::endl;
-       int scale_factor = (int)(pow(grid_factor, g) + 0.5);
-       parallel_for( Bounds<4>(nz/scale_factor,ny,nx/scale_factor,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-          real rho_u_fixed=0., rho_w_fixed=0.;
-          int iscale = i*scale_factor;
-          int jscale = j;
-          int kscale = k*scale_factor;
-          for(int kk=kscale; kk-kscale < scale_factor; kk++ ) {
-             for(int ii=iscale; ii-iscale < scale_factor; ii++ ) {
-                rho_u_fixed += state(idU,hs+kk,hs+jscale,hs+ii,iens)*hyDensCells(hs+kk,iens)/(scale_factor*scale_factor);
-                rho_w_fixed += state(idW,hs+kk,hs+jscale,hs+ii,iens)*hyDensCells(hs+kk,iens)/(scale_factor*scale_factor);
-             }
-          }
-          press_new(g,kscale,jscale,iscale,iens) += dtloc * pressure_tend(g,kscale,jscale,iscale,iens)/(grid_factor*grid_factor);
-          rho_u_new(g,kscale,jscale,iscale,iens) = rho_u_fixed + dtloc * rho_u_tend(g,kscale,jscale,iscale,iens)/(grid_factor*grid_factor);
-          rho_w_new(g,kscale,jscale,iscale,iens) = rho_w_fixed + dtloc * rho_w_tend(g,kscale,jscale,iscale,iens)/(grid_factor*grid_factor);
-       });
-       min=9999.; max=-9999.;
-       for( int k=0; k < nz; k+=scale_factor ) {
-          for( int i=0; i < nx; i+=scale_factor ) {
-             if( press_new(g,k,0,i,0) < min ) min = press_new(g,k,0,i);
-             if( press_new(g,k,0,i,0) > max ) max = press_new(g,k,0,i);
-          }
-       }
-       std::cout << "Pressure grid " << g << " min: " << min << " max: " << max << std::endl;
-
-       min=9999.; max=-9999.;
-       for( int k=0; k < nz; k+=scale_factor ) {
-          for( int i=0; i < nx; i+=scale_factor ) {
-             if( rho_u_new(g,k,0,i,0) < min ) min = rho_u_new(g,k,0,i);
-             if( rho_u_new(g,k,0,i,0) > max ) max = rho_u_new(g,k,0,i);
-          }
-       }
-       std::cout << "Rho U grid " << g << " min: " << min << " max: " << max << std::endl;
-
-       min=9999.; max=-9999.;
-       for( int k=0; k < nz; k+=scale_factor ) {
-          for( int i=0; i < nx; i+=scale_factor ) {
-             if( rho_w_new(g,k,0,i,0) < min ) min = rho_w_new(g,k,0,i);
-             if( rho_w_new(g,k,0,i,0) > max ) max = rho_w_new(g,k,0,i);
-          }
-       }
-       std::cout << "Rho W grid " << g << " min: " << min << " max: " << max << std::endl;
-
-       parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-          abs_div(k,j,i,iens) = 0.0;
-       });
-       parallel_for( Bounds<4>(nz/scale_factor,ny,nx/scale_factor,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-          int iscale = i*scale_factor;
-          int jscale = j;
-          int kscale = k*scale_factor;
-
-          // Compute indices for left and right cells (periodic in x,y; solid wall in z)
-          int im1 = iscale-scale_factor;  if (im1 < 0   ) im1 = nx-scale_factor;
-          int ip1 = iscale+scale_factor;  if (ip1 > nx-1) ip1 = 0;
-          int km1 = kscale-scale_factor;  if (km1 < 0   ) km1 = 0;
-          int kp1 = kscale+scale_factor;  if (kp1 > nz-1) kp1 = nz-scale_factor;
-          real ru_L  = ( press_new(g,kscale,jscale,im1,iens) - press_new(g,kscale,jscale,iscale,  iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(g,kscale,jscale,iscale,  iens) + rho_u_new(g,kscale,jscale,im1,iens) );
-          real ru_R  = ( press_new(g,kscale,jscale,iscale,  iens) - press_new(g,kscale,jscale,ip1,iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(g,kscale,jscale,ip1,iens) + rho_u_new(g,kscale,jscale,iscale  ,iens) );
-          real rw_L  = ( press_new(g,km1,jscale,iscale,iens) - press_new(g,kscale,  jscale,iscale,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(g,kscale,  jscale,iscale,iens) + rho_w_new(g,km1,jscale,iscale,iens) );
-          real rw_R  = ( press_new(g,kscale  ,jscale,iscale,iens) - press_new(g,kp1,jscale,iscale,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(g,kp1,jscale,iscale,iens) + rho_w_new(g,kscale,  jscale,iscale,iens) );
-          real div = (ru_R-ru_L)/(scale_factor*dx) + (rw_R-rw_L)/(scale_factor*dz(kscale,iens));  // assume dz const
-          abs_div(kscale,jscale,iscale,iens) = abs(div);
-       });
-       std::cout << "Grid " << g << " Absolute divergence: " << yakl::intrinsics::sum(abs_div) << std::endl;
-/*
-       std::cout << "************************************" << std::endl;
-       std::cout << "Pressure new " << g << std::endl;
-       for( int k=0; k < nz; k+=scale_factor ) {
-          for( int i=0; i < nx; i+=scale_factor ) {
-             std::cout << press_new(g,k,0,i,0) << " ";
-          }
-          std::cout << "\n";
-       }
-       std::cout << "Rho U new " << g << std::endl;
-       for( int k=0; k < nz; k+=scale_factor ) {
-          for( int i=0; i < nx; i+=scale_factor ) {
-             std::cout << rho_u_new(g,k,0,i,0) << " ";
-          }
-          std::cout << "\n";
-       }
-       std::cout << "Rho W new " << g << std::endl;
-       for( int k=0; k < nz; k+=scale_factor ) {
-          for( int i=0; i < nx; i+=scale_factor ) {
-             std::cout << rho_w_new(g,k,0,i,0) << " ";
-          }
-          std::cout << "\n";
-       }
-       std::cout << "************************************" << std::endl;
-*/
-
-       // Compute new tendencies
-       std::cout << "***************** Compute Tendencies *******************" << std::endl;
-       parallel_for( Bounds<4>(nz/scale_factor,ny,nx/scale_factor,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-
-          int iscale = i*scale_factor;
-          int jscale = j;
-          int kscale = k*scale_factor;
-
-          // Compute indices for left and right cells (periodic in x,y; solid wall in z)
-          int im1 = iscale-scale_factor;  if (im1 < 0   ) im1 = nx-scale_factor;
-          int ip1 = iscale+scale_factor;  if (ip1 > nx-1) ip1 = 0;
-          int km1 = kscale-scale_factor;  if (km1 < 0   ) km1 = 0;
-          int kp1 = kscale+scale_factor;  if (kp1 > nz-1) kp1 = nz-scale_factor;
-
-          //std::cout << "Indexing: grid  " << g << " at (" << k << "," << j << "," << i << ") becomes (" << kscale << "," << jscale << "," << iscale << ") with ip/m1 " << im1 << "," << ip1 << " kp/m1 " << km1 << "," << kp1 << "\n";
 
           ////////////////////////////
-          // x-direction fluxes
+          // Apply refined tendencies
           ////////////////////////////
-          // Get pressure and momentum in 3-cell stencil
-          real p_im1  = press_new(g,kscale,jscale,im1   ,iens);
-          real p_i    = press_new(g,kscale,jscale,iscale,iens);
-          real p_ip1  = press_new(g,kscale,jscale,ip1   ,iens);
-          real ru_im1 = rho_u_new(g,kscale,jscale,im1   ,iens);
-          real ru_i   = rho_u_new(g,kscale,jscale,iscale,iens);
-          real ru_ip1 = rho_u_new(g,kscale,jscale,ip1   ,iens);
-          // Compute upwind pressure and momentum at cell interfaces using characteristics
-          real p_x_L = (p_i   + p_im1) / 2       + c_s/2  * (ru_im1 - ru_i  );
-          real p_x_R = (p_ip1 + p_i  ) / 2       + c_s/2  * (ru_i   - ru_ip1);
-          real ru_L  = (p_im1 - p_i  ) / (2*c_s) + 0.5_fp * (ru_i   + ru_im1);
-          real ru_R  = (p_i   - p_ip1) / (2*c_s) + 0.5_fp * (ru_ip1 + ru_i  );
-
-          //std::cout << "at (" << iscale << "," << kscale << ") pim1 " << p_im1 << " pi " << p_i << " pip1 " << p_ip1 << std::endl;
-          //std::cout << "at (" << iscale << "," << kscale << ") ruim1 " << ru_im1 << " rui " << ru_i << " ruip1 " << ru_ip1 << std::endl;
-
-          ////////////////////////////
-          // z-direction fluxes
-          ////////////////////////////
-          // Get pressure and momentum in 3-cell stencil
-          real p_km1  = press_new(g,km1   ,jscale,iscale,iens);
-          real p_k    = press_new(g,kscale,jscale,iscale,iens);
-          real p_kp1  = press_new(g,kp1   ,jscale,iscale,iens);
-          real rw_km1 = rho_w_new(g,km1   ,jscale,iscale,iens);
-          real rw_k   = rho_w_new(g,kscale,jscale,iscale,iens);
-          real rw_kp1 = rho_w_new(g,kp1   ,jscale,iscale,iens);
-
-          // Compute upwind pressure and momentum at cell interfaces using characteristics
-          real p_z_L = (p_k   + p_km1) / 2       + c_s/2  * (rw_km1 - rw_k  );
-          real p_z_R = (p_kp1 + p_k  ) / 2       + c_s/2  * (rw_k   - rw_kp1);
-          real rw_L  = (p_km1 - p_k  ) / (2*c_s) + 0.5_fp * (rw_k   + rw_km1);
-          real rw_R  = (p_k   - p_kp1) / (2*c_s) + 0.5_fp * (rw_kp1 + rw_k  );
-          // Enforce momentum boundary conditions at the domain top and bottom
-          if (k == 0 ) rw_L  = 0;
-          if (k == nz-scale_factor) rw_R  = 0;
-
-          //std::cout << "at (" << iscale << "," << kscale << ") pkm1 " << p_km1 << " pk " << p_k << " pkp1 " << p_kp1 << std::endl;
-          //std::cout << "at (" << iscale << "," << kscale << ") rwkm1 " << rw_km1 << " rwk " << rw_k << " rwkp1 " << rw_kp1 << std::endl;
-
-          ////////////////////////////////////////////////////////
-          // Perform the update using fluxes at cell interface
-          ////////////////////////////////////////////////////////
-          // compute absolute divergence to track how well we're converging it to zero
-          //abs_div(k,j,i,iens) = abs( (ru_R-ru_L)/dx + (rv_R-rv_L)/dy + (rw_R-rw_L)/dz(k,iens) );
-          pressure_tend(g,kscale,jscale,iscale,iens) = -c_s*c_s * ( (ru_R-ru_L)/(scale_factor*dx) + (rw_R-rw_L)/(scale_factor*dz(k,iens)) );
-          rho_u_tend(g,kscale,jscale,iscale,iens) = -(p_x_R - p_x_L) / (scale_factor*dx);
-          rho_w_tend(g,kscale,jscale,iscale,iens) = -(p_z_R - p_z_L) / (scale_factor*dz(k,iens));
-
-          //std::cout << "Pressure(" << iscale << "," << kscale << "): ruR " << ru_R << " ruL " << ru_L << " rwR " << rw_R << " rwL " << rw_L << std::endl;
-          //std::cout << "RhoU new(" << iscale << "," << kscale << "): pxR " << p_x_R << " pxL " << p_x_L << std::endl;
-          //std::cout << "RhoW new(" << iscale << "," << kscale << "): pzR " << p_z_R << " pzL " << p_z_L << std::endl;
-       });
-       min=9999.; max=-9999.;
-       for( int k=0; k < nz; k+=scale_factor ) {
-          for( int i=0; i < nx; i+=scale_factor ) {
-             if( pressure_tend(g,k,0,i,0) < min ) min = pressure_tend(g,k,0,i);
-             if( pressure_tend(g,k,0,i,0) > max ) max = pressure_tend(g,k,0,i);
-          }
-       }
-       std::cout << "Pressure tend grid " << g << " min: " << min << " max: " << max << std::endl;
-
-       min=9999.; max=-9999.;
-       for( int k=0; k < nz; k+=scale_factor ) {
-          for( int i=0; i < nx; i+=scale_factor ) {
-             if( rho_u_tend(g,k,0,i,0) < min ) min = rho_u_tend(g,k,0,i);
-             if( rho_u_tend(g,k,0,i,0) > max ) max = rho_u_tend(g,k,0,i);
-          }
-       }
-       std::cout << "Rho U tend grid " << g << " min: " << min << " max: " << max << std::endl;
-
-       min=9999.; max=-9999.;
-       for( int k=0; k < nz; k+=scale_factor ) {
-          for( int i=0; i < nx; i+=scale_factor ) {
-             if( rho_w_tend(g,k,0,i,0) < min ) min = rho_w_tend(g,k,0,i);
-             if( rho_w_tend(g,k,0,i,0) > max ) max = rho_w_tend(g,k,0,i);
-          }
-       }
-       std::cout << "Rho W tend grid " << g << " min: " << min << " max: " << max << std::endl;
-
-/*
-       std::cout << "************************************" << std::endl;
-       std::cout << "Pressure tend " << g << std::endl;
-       for( int k=0; k < nz; k+=scale_factor ) {
-          for( int i=0; i < nx; i+=scale_factor ) {
-             std::cout << pressure_tend(g,k,0,i,0) << " ";
-          }
-          std::cout << "\n";
-       }
-       std::cout << "Rho U tend " << g << std::endl;
-       for( int k=0; k < nz; k+=scale_factor ) {
-          for( int i=0; i < nx; i+=scale_factor ) {
-             std::cout << rho_u_tend(g,k,0,i,0) << " ";
-          }
-          std::cout << "\n";
-       }
-       std::cout << "Rho W tend " << g << std::endl;
-       for( int k=0; k < nz; k+=scale_factor ) {
-          for( int i=0; i < nx; i+=scale_factor ) {
-             std::cout << rho_w_tend(g,k,0,i,0) << " ";
-          }
-          std::cout << "\n";
-       }
-       std::cout << "************************************" << std::endl;
-*/
-
-       if( g == 0) {
-          std::cout << "***************** Apply Tendencies at Finest Level *******************" << std::endl;
+          int scale_factor = (int)(pow(grid_factor, g) + 0.5);
+          // Compute time step for current grid, assuming constant dz=dx
+          dtloc = 0.3_fp * (scale_factor*dx/c_s);
           parallel_for( Bounds<4>(nz/scale_factor,ny,nx/scale_factor,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
              real rho_u_fixed=0., rho_w_fixed=0.;
+
              int iscale = i*scale_factor;
              int jscale = j;
              int kscale = k*scale_factor;
@@ -1630,65 +1145,188 @@ public:
                    rho_w_fixed += state(idW,hs+kk,hs+jscale,hs+ii,iens)*hyDensCells(hs+kk,iens)/(scale_factor*scale_factor);
                 }
              }
-             press_new(g,kscale,jscale,iscale,iens) += dtloc * pressure_tend(g,kscale,jscale,iscale,iens);
-             rho_u_new(g,kscale,jscale,iscale,iens) = rho_u_fixed + dtloc * rho_u_tend(g,kscale,jscale,iscale,iens);
-             rho_w_new(g,kscale,jscale,iscale,iens) = rho_w_fixed + dtloc * rho_w_tend(g,kscale,jscale,iscale,iens);
+
+             press_new(g,kscale,jscale,iscale,iens) += dtloc * pressure_tend(g,kscale,jscale,iscale,iens)/(grid_factor*grid_factor);
+             rho_u_new(g,kscale,jscale,iscale,iens) = rho_u_fixed + dtloc * rho_u_tend(g,kscale,jscale,iscale,iens)/(grid_factor*grid_factor);
+             rho_w_new(g,kscale,jscale,iscale,iens) = rho_w_fixed + dtloc * rho_w_tend(g,kscale,jscale,iscale,iens)/(grid_factor*grid_factor);
           });
-          min=9999.; max=-9999.;
-          for( int k=0; k < nz; k+=scale_factor ) {
-             for( int i=0; i < nx; i+=scale_factor ) {
-                if( press_new(g,k,0,i,0) < min ) min = press_new(g,k,0,i);
-                if( press_new(g,k,0,i,0) > max ) max = press_new(g,k,0,i);
-             }
-          }
-          std::cout << "Pressure grid " << g << " min: " << min << " max: " << max << std::endl;
 
-          min=9999.; max=-9999.;
-          for( int k=0; k < nz; k+=scale_factor ) {
-             for( int i=0; i < nx; i+=scale_factor ) {
-                if( rho_u_new(g,k,0,i,0) < min ) min = rho_u_new(g,k,0,i);
-                if( rho_u_new(g,k,0,i,0) > max ) max = rho_u_new(g,k,0,i);
-             }
-          }
-          std::cout << "Rho U grid " << g << " min: " << min << " max: " << max << std::endl;
+          ////////////////////////////
+          // Compute new tendencies
+          ////////////////////////////
+          parallel_for( Bounds<4>(nz/scale_factor,ny,nx/scale_factor,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
 
-          min=9999.; max=-9999.;
-          for( int k=0; k < nz; k+=scale_factor ) {
-             for( int i=0; i < nx; i+=scale_factor ) {
-                if( rho_w_new(g,k,0,i,0) < min ) min = rho_w_new(g,k,0,i);
-                if( rho_w_new(g,k,0,i,0) > max ) max = rho_w_new(g,k,0,i);
-             }
-          }
-          std::cout << "Rho W grid " << g << " min: " << min << " max: " << max << std::endl;
+             int iscale = i*scale_factor;
+             int jscale = j;
+             int kscale = k*scale_factor;
 
-/*
-          std::cout << "************************************" << std::endl;
-          std::cout << "Pressure new " << g << std::endl;
-          for( int k=0; k < nz; k+=scale_factor ) {
-             for( int i=0; i < nx; i+=scale_factor ) {
-                std::cout << press_new(g,k,0,i,0) << " ";
-             }
-             std::cout << "\n";
-          }
-          std::cout << "Rho U new " << g << std::endl;
-          for( int k=0; k < nz; k+=scale_factor ) {
-             for( int i=0; i < nx; i+=scale_factor ) {
-                std::cout << rho_u_new(g,k,0,i,0) << " ";
-             }
-             std::cout << "\n";
-          }
-          std::cout << "Rho W new " << g << std::endl;
-          for( int k=0; k < nz; k+=scale_factor ) {
-             for( int i=0; i < nx; i+=scale_factor ) {
-                std::cout << rho_w_new(g,k,0,i,0) << " ";
-             }
-             std::cout << "\n";
-          }
-          std::cout << "************************************" << std::endl;
-*/
+             // Compute indices for left and right cells (periodic in x,y; solid wall in z)
+             int im1 = iscale-scale_factor;  if (im1 < 0   ) im1 = nx-scale_factor;
+             int ip1 = iscale+scale_factor;  if (ip1 > nx-1) ip1 = 0;
+             int km1 = kscale-scale_factor;  if (km1 < 0   ) km1 = 0;
+             int kp1 = kscale+scale_factor;  if (kp1 > nz-1) kp1 = nz-scale_factor;
 
+             ////////////////////////////
+             // x-direction fluxes
+             ////////////////////////////
+             // Get pressure and momentum in 3-cell stencil
+             real p_im1  = press_new(g,kscale,jscale,im1   ,iens);
+             real p_i    = press_new(g,kscale,jscale,iscale,iens);
+             real p_ip1  = press_new(g,kscale,jscale,ip1   ,iens);
+             real ru_im1 = rho_u_new(g,kscale,jscale,im1   ,iens);
+             real ru_i   = rho_u_new(g,kscale,jscale,iscale,iens);
+             real ru_ip1 = rho_u_new(g,kscale,jscale,ip1   ,iens);
+             // Compute upwind pressure and momentum at cell interfaces using characteristics
+             real p_x_L = (p_i   + p_im1) / 2       + c_s/2  * (ru_im1 - ru_i  );
+             real p_x_R = (p_ip1 + p_i  ) / 2       + c_s/2  * (ru_i   - ru_ip1);
+             real ru_L  = (p_im1 - p_i  ) / (2*c_s) + 0.5_fp * (ru_i   + ru_im1);
+             real ru_R  = (p_i   - p_ip1) / (2*c_s) + 0.5_fp * (ru_ip1 + ru_i  );
+
+             ////////////////////////////
+             // z-direction fluxes
+             ////////////////////////////
+             // Get pressure and momentum in 3-cell stencil
+             real p_km1  = press_new(g,km1   ,jscale,iscale,iens);
+             real p_k    = press_new(g,kscale,jscale,iscale,iens);
+             real p_kp1  = press_new(g,kp1   ,jscale,iscale,iens);
+             real rw_km1 = rho_w_new(g,km1   ,jscale,iscale,iens);
+             real rw_k   = rho_w_new(g,kscale,jscale,iscale,iens);
+             real rw_kp1 = rho_w_new(g,kp1   ,jscale,iscale,iens);
+             // Enforce momentum boundary conditions at the domain top and bottom
+             if (k == 0   ) rw_km1 = 0;
+             if (k == nz-scale_factor) rw_kp1 = 0;
+             // Compute upwind pressure and momentum at cell interfaces using characteristics
+             real p_z_L = (p_k   + p_km1) / 2       + c_s/2  * (rw_km1 - rw_k  );
+             real p_z_R = (p_kp1 + p_k  ) / 2       + c_s/2  * (rw_k   - rw_kp1);
+             real rw_L  = (p_km1 - p_k  ) / (2*c_s) + 0.5_fp * (rw_k   + rw_km1);
+             real rw_R  = (p_k   - p_kp1) / (2*c_s) + 0.5_fp * (rw_kp1 + rw_k  );
+             // Enforce momentum boundary conditions at the domain top and bottom
+             if (k == 0 ) rw_L  = 0;
+             if (k == nz-scale_factor) rw_R  = 0;
+
+             ////////////////////////////////////////////////////////
+             // Perform the update using fluxes at cell interface
+             ////////////////////////////////////////////////////////
+             pressure_tend(g,kscale,jscale,iscale,iens) = -c_s*c_s * ( (ru_R-ru_L)/(scale_factor*dx) + (rw_R-rw_L)/(scale_factor*dz(k,iens)) );
+             rho_u_tend(g,kscale,jscale,iscale,iens) = -(p_x_R - p_x_L) / (scale_factor*dx);
+             rho_w_tend(g,kscale,jscale,iscale,iens) = -(p_z_R - p_z_L) / (scale_factor*dz(k,iens));
+
+          });
        }
+
+       ////////////////////////////////////////////////////////
+       // Apply tendencies at finest level
+       ////////////////////////////////////////////////////////
+       // Compute time step for current grid, assuming constant dz=dx
+       dtloc = 0.3_fp * (dx/c_s);
+       parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+          press_new(0,k,j,i,iens) += dtloc * pressure_tend(0,k,j,i,iens);
+          rho_u_new(0,k,j,i,iens) = state(idU,hs+k,hs+j,hs+i,iens)*hyDensCells(hs+k,iens) + dtloc * rho_u_tend(0,k,j,i,iens);
+          rho_w_new(0,k,j,i,iens) = state(idW,hs+k,hs+j,hs+i,iens)*hyDensCells(hs+k,iens) + dtloc * rho_w_tend(0,k,j,i,iens);
+       });  
+
+       ////////////////////////////////////////////////////////
+       // Check post v-cycle divergence on finest grid 
+       ////////////////////////////////////////////////////////
+       parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+          abs_div(k,j,i,iens) = 0.0;
+       });
+       parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+          int im1 = i-1;  if (im1 < 0   ) im1 = nx-1;
+          int ip1 = i+1;  if (ip1 > nx-1) ip1 = 0;
+          int jm1 = j-1;  if (jm1 < 0   ) jm1 = ny-1;
+          int jp1 = j+1;  if (jp1 > ny-1) jp1 = 0;
+          int km1 = k-1;  if (km1 < 0   ) km1 = 0;
+          int kp1 = k+1;  if (kp1 > nz-1) kp1 = nz-1;
+          real ru_L  = ( press_new(0,k,j,im1,iens) - press_new(0,k,j,i,  iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(0,k,j,i,  iens) + rho_u_new(0,k,j,im1,iens) );
+          real ru_R  = ( press_new(0,k,j,i,  iens) - press_new(0,k,j,ip1,iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(0,k,j,ip1,iens) + rho_u_new(0,k,j,i  ,iens) );
+          real rw_L  = ( press_new(0,km1,j,i,iens) - press_new(0,k,  j,i,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(0,k,  j,i,iens) + rho_w_new(0,km1,j,i,iens) );
+          real rw_R  = ( press_new(0,k  ,j,i,iens) - press_new(0,kp1,j,i,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(0,kp1,j,i,iens) + rho_w_new(0,k,  j,i,iens) );
+          real div = (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens);
+          abs_div(k,j,i,iens) = abs(div);
+       });
+       std::cout << "Absolute divergence iter " << iter << ": " << yakl::intrinsics::sum(abs_div) << std::endl;
     }
+
+    for( int iter=200; iter < 500; iter++) {
+       parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+
+          int iscale = i;
+          int jscale = j;
+          int kscale = k;
+
+          // Compute indices for left and right cells (periodic in x,y; solid wall in z)
+          int im1 = i-1;  if (im1 < 0   ) im1 = nx-1;
+          int ip1 = i+1;  if (ip1 > nx-1) ip1 = 0;
+          int km1 = k-1;  if (km1 < 0   ) km1 = 0;
+          int kp1 = k+1;  if (kp1 > nz-1) kp1 = nz-1;
+
+          ////////////////////////////
+          // x-direction fluxes
+          ////////////////////////////
+          // Get pressure and momentum in 3-cell stencil
+          real p_im1  = press_new(0,k,j,im1,iens);
+          real p_i    = press_new(0,k,j,i  ,iens);
+          real p_ip1  = press_new(0,k,j,ip1,iens);
+          real ru_im1 = rho_u_new(0,k,j,im1,iens);
+          real ru_i   = rho_u_new(0,k,j,i  ,iens);
+          real ru_ip1 = rho_u_new(0,k,j,ip1,iens);
+          // Compute upwind pressure and momentum at cell interfaces using characteristics
+          real p_x_L = (p_i   + p_im1) / 2       + c_s/2  * (ru_im1 - ru_i  );
+          real p_x_R = (p_ip1 + p_i  ) / 2       + c_s/2  * (ru_i   - ru_ip1);
+          real ru_L  = (p_im1 - p_i  ) / (2*c_s) + 0.5_fp * (ru_i   + ru_im1);
+          real ru_R  = (p_i   - p_ip1) / (2*c_s) + 0.5_fp * (ru_ip1 + ru_i  );
+
+          ////////////////////////////
+          // z-direction fluxes
+          ////////////////////////////
+          // Get pressure and momentum in 3-cell stencil
+          real p_km1  = press_new(0,km1,j,i,iens);
+          real p_k    = press_new(0,k  ,j,i,iens);
+          real p_kp1  = press_new(0,kp1,j,i,iens);
+          real rw_km1 = rho_w_new(0,km1,j,i,iens);
+          real rw_k   = rho_w_new(0,k  ,j,i,iens);
+          real rw_kp1 = rho_w_new(0,kp1,j,i,iens);
+
+          // Compute upwind pressure and momentum at cell interfaces using characteristics
+          real p_z_L = (p_k   + p_km1) / 2       + c_s/2  * (rw_km1 - rw_k  );
+          real p_z_R = (p_kp1 + p_k  ) / 2       + c_s/2  * (rw_k   - rw_kp1);
+          real rw_L  = (p_km1 - p_k  ) / (2*c_s) + 0.5_fp * (rw_k   + rw_km1);
+          real rw_R  = (p_k   - p_kp1) / (2*c_s) + 0.5_fp * (rw_kp1 + rw_k  );
+          // Enforce momentum boundary conditions at the domain top and bottom
+          if (k == 0 ) rw_L  = 0;
+          if (k == nz-1) rw_R  = 0;
+
+          ////////////////////////////////////////////////////////
+          // Perform the update using fluxes at cell interface
+          ////////////////////////////////////////////////////////
+          pressure_tend(0,k,j,i,iens) = -c_s*c_s * ( (ru_R-ru_L)/(dx) + (rw_R-rw_L)/(dz(k,iens)) );
+          rho_u_tend(0,k,j,i,iens) = -(p_x_R - p_x_L) / (dx);
+          rho_w_tend(0,k,j,i,iens) = -(p_z_R - p_z_L) / (dz(k,iens));
+
+       });
+       parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+          press_new(0,k,j,i,iens) += dtloc * pressure_tend(0,k,j,i,iens);
+          rho_u_new(0,k,j,i,iens) = state(idU,hs+k,hs+j,hs+i,iens)*hyDensCells(hs+k,iens) + dtloc * rho_u_tend(0,k,j,i,iens);
+          rho_w_new(0,k,j,i,iens) = state(idW,hs+k,hs+j,hs+i,iens)*hyDensCells(hs+k,iens) + dtloc * rho_w_tend(0,k,j,i,iens);
+       });
+
+       parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+          // Compute indices for left and right cells (periodic in x,y; solid wall in z)
+          int im1 = i-1;  if (im1 < 0   ) im1 = nx-1;
+          int ip1 = i+1;  if (ip1 > nx-1) ip1 = 0;
+          int km1 = k-1;  if (km1 < 0   ) km1 = 0;
+          int kp1 = k+1;  if (kp1 > nz-1) kp1 = nz-1;
+          real ru_L  = ( press_new(0,k,j,im1,iens) - press_new(0,k,j,i,  iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(0,k,j,i,  iens) + rho_u_new(0,k,j,im1,iens) );
+          real ru_R  = ( press_new(0,k,j,i,  iens) - press_new(0,k,j,ip1,iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(0,k,j,ip1,iens) + rho_u_new(0,k,j,i  ,iens) );
+          real rw_L  = ( press_new(0,km1,j,i,iens) - press_new(0,k,  j,i,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(0,k,  j,i,iens) + rho_w_new(0,km1,j,i,iens) );
+          real rw_R  = ( press_new(0,k  ,j,i,iens) - press_new(0,kp1,j,i,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(0,kp1,j,i,iens) + rho_w_new(0,k,  j,i,iens) );
+          real div = (ru_R-ru_L)/(dx) + (rw_R-rw_L)/(dz(k,iens)); 
+          abs_div(k,j,i,iens) = abs(div);
+       });
+      std::cout << "Absolute divergence iter " << iter << ": " << yakl::intrinsics::sum(abs_div) << std::endl;
+    }
+
     parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
        int im1 = i-1;  if (im1 < 0   ) im1 = nx-1;
        int ip1 = i+1;  if (ip1 > nx-1) ip1 = 0;
@@ -1704,29 +1342,7 @@ public:
        abs_div(k,j,i,iens) = abs(div);
 
     });
-    std::cout << "Absolute divergence iter " << iter << ": " << yakl::intrinsics::sum(abs_div) << std::endl;
-    } 
-
-    parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-       int im1 = i-1;  if (im1 < 0   ) im1 = nx-1;
-       int ip1 = i+1;  if (ip1 > nx-1) ip1 = 0;
-       int jm1 = j-1;  if (jm1 < 0   ) jm1 = ny-1;
-       int jp1 = j+1;  if (jp1 > ny-1) jp1 = 0;
-       int km1 = k-1;  if (km1 < 0   ) km1 = 0;
-       int kp1 = k+1;  if (kp1 > nz-1) kp1 = nz-1;
-       //real ru_L  = ( pressure(k,j,im1,iens) - pressure(k,j,i,  iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(k,j,i,  iens) + rho_u_new(k,j,im1,iens) );
-       //real ru_R  = ( pressure(k,j,i,  iens) - pressure(k,j,ip1,iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(k,j,ip1,iens) + rho_u_new(k,j,i  ,iens) );
-       //real rw_L  = ( pressure(km1,j,i,iens) - pressure(k,  j,i,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(k,  j,i,iens) + rho_w_new(km1,j,i,iens) );
-       //real rw_R  = ( pressure(k  ,j,i,iens) - pressure(kp1,j,i,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(kp1,j,i,iens) + rho_w_new(k,  j,i,iens) );
-       real ru_L  = ( press_new(0,k,j,im1,iens) - press_new(0,k,j,i,  iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(0,k,j,i,  iens) + rho_u_new(0,k,j,im1,iens) );
-       real ru_R  = ( press_new(0,k,j,i,  iens) - press_new(0,k,j,ip1,iens) ) / (2*c_s) + 0.5_fp * ( rho_u_new(0,k,j,ip1,iens) + rho_u_new(0,k,j,i  ,iens) );
-       real rw_L  = ( press_new(0,km1,j,i,iens) - press_new(0,k,  j,i,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(0,k,  j,i,iens) + rho_w_new(0,km1,j,i,iens) );
-       real rw_R  = ( press_new(0,k  ,j,i,iens) - press_new(0,kp1,j,i,iens) ) / (2*c_s) + 0.5_fp * ( rho_w_new(0,kp1,j,i,iens) + rho_w_new(0,k,  j,i,iens) );
-       real div = (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens); 
-       abs_div(k,j,i,iens) = abs(div);
-
-    });
-    std::cout << "Ending Absolute divergence: " << yakl::intrinsics::sum(abs_div) << std::endl;
+    std::cout << "Ending divergence: " << yakl::intrinsics::sum(abs_div) << std::endl;
 
     // Copy divergence free values
     parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
