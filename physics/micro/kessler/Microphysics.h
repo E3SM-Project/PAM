@@ -3,6 +3,7 @@
 
 #include "awfl_const.h"
 #include "DataManager.h"
+#include "YAKL_netcdf.h"
 
 extern "C" void kessler_fortran(double *theta, double *qv, double *qc, double *qr, double *rho,
                                 double *pk, double &dt, double *z, int &nz, double &precl);
@@ -33,6 +34,8 @@ public:
   int static constexpr ID_C = 1;  // Local index for cloud liquid
   int static constexpr ID_R = 2;  // Local index for precipitated liquid (rain)
 
+  real etime;
+
 
 
   Microphysics() {
@@ -45,6 +48,7 @@ public:
     constants.cp_v        = 1859;
     constants.cv_v        = constants.R_v - constants.cp_v;
     constants.p0          = 1.e5;
+    etime = 0;
   }
 
 
@@ -80,6 +84,16 @@ public:
 
     // Register and allocation non-tracer quantities used by the microphysics
     dm.register_and_allocate<real>( "precl" , "precipitation rate" , {ny,nx,nens} , {"y","x","nens"} );
+
+    auto q1 = dm.get_collapsed<real>("water_vapor"  );
+    auto q2 = dm.get_collapsed<real>("cloud_liquid" );
+    auto q3 = dm.get_collapsed<real>("precip_liquid");
+    auto q4 = dm.get_collapsed<real>("precl");
+
+    memset( q1 , 0._fp );
+    memset( q2 , 0._fp );
+    memset( q3 , 0._fp );
+    memset( q4 , 0._fp );
   }
 
 
@@ -158,6 +172,50 @@ public:
 
     auto precl = dm.get_collapsed<real>("precl");
 
+
+
+    real3d ml_in_theta  ("ml_in_theta"  ,nz,ncol,3);
+    real3d ml_in_qv     ("ml_in_qv"     ,nz,ncol,3);
+    real3d ml_in_qc     ("ml_in_qc"     ,nz,ncol,3);
+    real3d ml_in_qr     ("ml_in_qr"     ,nz,ncol,3);
+    real3d ml_in_rho_dry("ml_in_rho_dry",nz,ncol,3);
+    real2d ml_in_z      ("ml_in_z"      ,nz,ncol  );
+    real3d ml_in_exner  ("ml_in_exner"  ,nz,ncol,3);
+
+    real2d ml_out_theta ("ml_out_theta" ,nz,ncol);
+    real2d ml_out_qv    ("ml_out_qv"    ,nz,ncol);
+    real2d ml_out_qc    ("ml_out_qc"    ,nz,ncol);
+    real2d ml_out_qr    ("ml_out_qr"    ,nz,ncol);
+
+    // Save the inputs to file using a 3-cell stencil in the vertical
+    parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      int km1 = k-1;   if (km1 < 0   ) km1 = 0;
+      int kp1 = k+1;   if (kp1 > nz-1) kp1 = nz-1;
+      int icol = j*nx*nens + i*nens + iens;
+
+      ml_in_theta  (k,icol,0) = theta  (km1,icol);
+      ml_in_theta  (k,icol,1) = theta  (k  ,icol);
+      ml_in_theta  (k,icol,2) = theta  (kp1,icol);
+      ml_in_qv     (k,icol,0) = qv     (km1,icol);
+      ml_in_qv     (k,icol,1) = qv     (k  ,icol);
+      ml_in_qv     (k,icol,2) = qv     (kp1,icol);
+      ml_in_qc     (k,icol,0) = qc     (km1,icol);
+      ml_in_qc     (k,icol,1) = qc     (k  ,icol);
+      ml_in_qc     (k,icol,2) = qc     (kp1,icol);
+      ml_in_qr     (k,icol,0) = qr     (km1,icol);
+      ml_in_qr     (k,icol,1) = qr     (k  ,icol);
+      ml_in_qr     (k,icol,2) = qr     (kp1,icol);
+      ml_in_rho_dry(k,icol,0) = rho_dry(km1,icol);
+      ml_in_rho_dry(k,icol,1) = rho_dry(k  ,icol);
+      ml_in_rho_dry(k,icol,2) = rho_dry(kp1,icol);
+      ml_in_z      (k,icol  ) = zmid   (k  ,icol);
+      ml_in_exner  (k,icol,0) = exner  (km1,icol);
+      ml_in_exner  (k,icol,1) = exner  (k  ,icol);
+      ml_in_exner  (k,icol,2) = exner  (kp1,icol);
+    });
+
+
+
     // #define KESSLER_USE_FORTRAN
 
     
@@ -225,6 +283,49 @@ public:
     #endif
 
 
+    // Save the outputs to file using just the vertical cell in question
+    parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      int icol = j*nx*nens + i*nens + iens;
+
+      ml_out_theta(k,icol) = theta(k,icol);
+      ml_out_qv   (k,icol) = qv   (k,icol);
+      ml_out_qc   (k,icol) = qc   (k,icol);
+      ml_out_qr   (k,icol) = qr   (k,icol);
+    });
+
+    // Dump the inputs and outputs to file.
+    // These will later need to be separated out into individual samples, but
+    // it's more I/O efficient to do this for now.
+    int ulIndex;
+
+    yakl::SimpleNetCDF nc;
+    if (etime == 0.) {
+      nc.create("kessler_ml_data.nc");
+      nc.write1(0._fp,"t",0,"t");
+      ulIndex = 0;
+    } else {
+      nc.open("kessler_ml_data.nc",yakl::NETCDF_MODE_WRITE);
+      ulIndex = nc.getDimSize("t");
+      nc.write1(etime,"t",ulIndex,"t");
+    }
+
+    // Write the elapsed time
+    nc.write1(ml_in_theta  .createHostCopy(),"ml_in_theta"  ,{"nz","ncol","three"},ulIndex,"t");
+    nc.write1(ml_in_qv     .createHostCopy(),"ml_in_qv"     ,{"nz","ncol","three"},ulIndex,"t");
+    nc.write1(ml_in_qc     .createHostCopy(),"ml_in_qc"     ,{"nz","ncol","three"},ulIndex,"t");
+    nc.write1(ml_in_qr     .createHostCopy(),"ml_in_qr"     ,{"nz","ncol","three"},ulIndex,"t");
+    nc.write1(ml_in_rho_dry.createHostCopy(),"ml_in_rho_dry",{"nz","ncol","three"},ulIndex,"t");
+    nc.write1(ml_in_z      .createHostCopy(),"ml_in_z"      ,{"nz","ncol"        },ulIndex,"t");
+    nc.write1(ml_in_exner  .createHostCopy(),"ml_in_exner"  ,{"nz","ncol","three"},ulIndex,"t");
+    nc.write1(ml_out_theta .createHostCopy(),"ml_out_theta" ,{"nz","ncol"        },ulIndex,"t");
+    nc.write1(ml_out_qv    .createHostCopy(),"ml_out_qv"    ,{"nz","ncol"        },ulIndex,"t");
+    nc.write1(ml_out_qc    .createHostCopy(),"ml_out_qc"    ,{"nz","ncol"        },ulIndex,"t");
+    nc.write1(ml_out_qr    .createHostCopy(),"ml_out_qr"    ,{"nz","ncol"        },ulIndex,"t");
+
+    nc.close();
+
+
+
     parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
       rho_v   (k,i) = qv(k,i)*rho_dry(k,i);
       rho_c   (k,i) = qc(k,i)*rho_dry(k,i);
@@ -245,6 +346,8 @@ public:
         // endrun("ERROR: mass not conserved by kessler microphysics");
       }
     #endif
+
+    etime += dt;
 
   }
 
