@@ -4,7 +4,7 @@ project(pam_standalone)
 enable_language(Fortran)
 enable_language(CXX)
 enable_language(C)
-if ("${ARCH}" STREQUAL "CUDA")
+if ("${YAKL_ARCH}" STREQUAL "CUDA")
   enable_language(CUDA)
 endif()
 
@@ -54,10 +54,7 @@ else ()
 endif()
 
 target_link_libraries(driver dycore micro yakl ${NCFLAGS} -lyaml-cpp)
-
-if ("${ARCH}" STREQUAL "CUDA")
-  set_source_files_properties(${DRIVER_SRC} PROPERTIES LANGUAGE CUDA)
-endif()
-set_source_files_properties(${DRIVER_SRC} PROPERTIES COMPILE_FLAGS "${YAKL_CXX_FLAGS} -DPAM_STANDALONE")
+include(${YAKL_HOME}/process_cxx_source_files.cmake)
+process_cxx_source_files(${DRIVER_SRC})
 
 
