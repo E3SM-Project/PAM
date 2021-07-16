@@ -85,13 +85,13 @@ public:
     std::vector<real> mass(num_tracers+1);
     real4d tmp("tmp",nz,ny,nx,nens);
 
-    parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+    parallel_for( "Temporal_ader.h state mass" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       tmp(k,j,i,iens) = (state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens)) * dz(k,iens);
     });
     mass[0] = yakl::intrinsics::sum(tmp);
 
     for (int l=0; l < num_tracers; l++) {
-      parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      parallel_for( "Temporal_ader.h tracer mass" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
         tmp(k,j,i,iens) = tracers(l,hs+k,hs+j,hs+i,iens) * dz(k,iens);
       });
       mass[l+1] = yakl::intrinsics::sum(tmp);
@@ -140,7 +140,7 @@ public:
         // Compute the tendencies for state and tracers
         space_op.computeTendencies( state , stateTend , tracers , tracerTend , micro , dtloc , spl );
 
-        parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+        parallel_for( "Temporal_ader.h apply tendencies" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
           for (int l=0; l < num_state; l++) {
             state(l,hs+k,hs+j,hs+i,iens) += dtloc * stateTend(l,k,j,i,iens);
           }

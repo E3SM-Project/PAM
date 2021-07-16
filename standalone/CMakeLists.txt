@@ -54,6 +54,9 @@ else ()
 endif()
 
 target_link_libraries(driver dycore micro yakl ${NCFLAGS} -lyaml-cpp)
+set_property(TARGET driver PROPERTY CXX_STANDARD 14)
+set_property(TARGET driver PROPERTY CUDA_STANDARD 14)
+set(CMAKE_CXX_STANDARD 14)
 include(${YAKL_HOME}/process_cxx_source_files.cmake)
 process_cxx_source_files(${DRIVER_SRC})
 
