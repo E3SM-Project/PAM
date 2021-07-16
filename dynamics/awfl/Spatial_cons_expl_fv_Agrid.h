@@ -1962,6 +1962,21 @@ public:
 
     // Loop through all cells, reconstruct in x-direction, compute centered tendencies, store cell-edge state estimates
     parallel_for( "Spatial.h Z recon" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      SArray<real,2,ord,ngll> s2g_loc;
+      SArray<real,3,ord,ord,ord> weno_recon_loc;
+      for (int kk = 0; kk < ord; kk++) {
+        for (int jj = 0; jj < ngll; jj++) {
+          s2g_loc(kk,jj) = vert_sten_to_gll(k,kk,jj,iens);
+        }
+      }
+      for (int kk = 0; kk < ord; kk++) {
+        for (int jj = 0; jj < ord; jj++) {
+          for (int ii = 0; ii < ord; ii++) {
+            weno_recon_loc(kk,jj,ii) = vert_weno_recon(k,kk,jj,ii,iens);
+          }
+        }
+      }
+
       // We need these to persist to evolve tracers with ADER
       SArray<real,2,nAder,ngll> r_DTs , rw_DTs;
 
@@ -1975,20 +1990,20 @@ public:
 
           // Density
           for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idR,k+kk,hs+j,hs+i,iens); }
-          reconstruct_gll_values( stencil , r_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
+          reconstruct_gll_values( stencil , r_DTs , c2g , s2g_loc , weno_recon_loc , idl , sigma , weno_scalars );
           for (int kk=0; kk < ngll; kk++) { r_DTs(0,kk) += hyDensGLL(k,kk,iens); } // Add hydrostasis back on
 
           // u values and derivatives
           for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idU,k+kk,hs+j,hs+i,iens); }
-          reconstruct_gll_values( stencil , ru_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_winds );
+          reconstruct_gll_values( stencil , ru_DTs , c2g , s2g_loc , weno_recon_loc , idl , sigma , weno_winds );
 
           // v
           for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idV,k+kk,hs+j,hs+i,iens); }
-          reconstruct_gll_values( stencil , rv_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_winds );
+          reconstruct_gll_values( stencil , rv_DTs , c2g , s2g_loc , weno_recon_loc , idl , sigma , weno_winds );
 
           // w
           for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idW,k+kk,hs+j,hs+i,iens); }
-          reconstruct_gll_values( stencil , rw_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_winds );
+          reconstruct_gll_values( stencil , rw_DTs , c2g , s2g_loc , weno_recon_loc , idl , sigma , weno_winds );
           if (bc_z == BC_WALL) {
             if (k == nz-1) rw_DTs(0,ngll-1) = 0;
             if (k == 0   ) rw_DTs(0,0     ) = 0;
@@ -1996,7 +2011,7 @@ public:
 
           // theta
           for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idT,k+kk,hs+j,hs+i,iens); }
-          reconstruct_gll_values( stencil , rt_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
+          reconstruct_gll_values( stencil , rt_DTs , c2g , s2g_loc , weno_recon_loc , idl , sigma , weno_scalars );
           for (int kk=0; kk < ngll; kk++) { rt_DTs(0,kk) += hyDensThetaGLL(k,kk,iens); } // Add hydrostasis back on
         }
 
@@ -2082,7 +2097,7 @@ public:
           { // BEGIN: Reconstruct the tracer
             SArray<real,1,ord> stencil;
             for (int kk=0; kk < ord; kk++) { stencil(kk) = tracers(tr,k+kk,hs+j,hs+i,iens); }
-            reconstruct_gll_values( stencil , rt_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
+            reconstruct_gll_values( stencil , rt_DTs , c2g , s2g_loc , weno_recon_loc , idl , sigma , weno_scalars );
             for (int kk=0; kk < ngll; kk++) { rt_DTs(0,kk) *= r_DTs(0,kk); }
             if (tracer_pos(tr)) {
               for (int kk=0; kk < ngll; kk++) { rt_DTs(0,kk) = max( 0._fp , rt_DTs(0,kk) ); }
