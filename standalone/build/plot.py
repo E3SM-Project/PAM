@@ -20,12 +20,13 @@ theta    = nc.variables["pot_temp_pert"][nt-1,:,ny/2-1,:]
 
 xx,zz = np.meshgrid(x,z)
 
-levs = np.arange(-2,14,0.5)
-plt.contourf(xx,zz,theta,cmap="jet",levels=levs)
+#levs = np.arange(-2,14,0.5)
+plt.contourf(xx,zz,theta,cmap="jet",levels=20)
 plt.colorbar(orientation="horizontal")
 ax = plt.gca()
 ax.set_aspect("equal")
-plt.savefig("theta.png",dpi=600)
+#plt.savefig("theta.png",dpi=600)
+plt.show()
 
 
 
