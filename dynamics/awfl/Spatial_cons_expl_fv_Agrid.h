@@ -41,12 +41,12 @@ public:
   typedef real5d StateTendArr;   // State tendencies
   typedef real5d TracerTendArr;  // Tracer tendencies
 
-  // Stores two estimates of the state, state flux, and tracer values at each cell interface
+  // Stores two estimates of the state and tracer values at each cell interface
   real6d stateLimits;
   real6d tracerLimits;
-  real5d stateFlux;
 
-  // Stores single-valued flux of the tracer at each cell interface
+  // Stores single-valued flux of the state tracer at each cell interface
+  real5d stateFlux;
   real5d tracerFlux;
 
   // Hydrostatically balanced values for density, potential temperature, and pressure (cell-averages)
