@@ -9,6 +9,7 @@
 int main(int argc, char** argv) {
   yakl::init();
   {
+    yakl::timer_start("main");
 
     DataManager dm;
 
@@ -36,13 +37,13 @@ int main(int argc, char** argv) {
 
     dm.register_and_allocate<real>( "vertical_interface_height" , "vertical_interface_height" , {nz+1,nens} , {"zp1","nens"} );
     auto zint = dm.get<real,2>("vertical_interface_height");
-    parallel_for( Bounds<2>(nz+1,nens) , YAKL_LAMBDA (int k, int iens) {
+    parallel_for( "driver.cpp 1" , Bounds<2>(nz+1,nens) , YAKL_LAMBDA (int k, int iens) {
       zint(k,iens) = zint_in(k);
     });
 
     dm.register_and_allocate<real>( "vertical_midpoint_height" , "vertical_midpoint_heignt" , {nz,nens} , {"z","nens"} );
     auto zmid = dm.get<real,2>("vertical_midpoint_height");
-    parallel_for( Bounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
+    parallel_for("driver.cpp 2"  , Bounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
       zmid(k,iens) = 0.5_fp*(zint_in(k) + zint_in(k+1));
     });
 
@@ -74,12 +75,21 @@ int main(int argc, char** argv) {
     while (etime < simTime) {
       if (dtphys_in == 0.) { dtphys = dycore.compute_time_step(dm, micro); }
       if (etime + dtphys > simTime) { dtphys = simTime - etime; }
+
+      yakl::timer_start("micro");
       micro.timeStep( dm , dtphys );
+      yakl::timer_stop("micro");
+
+      yakl::timer_start("dycore");
       dycore.timeStep( dm , micro , dtphys );
+      yakl::timer_stop("dycore");
+
       etime += dtphys;
       if (etime / outFreq >= numOut+1) {
         std::cout << "Etime , dtphys: " << etime << " , " << dtphys << "\n";
+        yakl::timer_start("output");
         dycore.output( dm , micro , etime );
+        yakl::timer_stop("output");
         numOut++;
       }
     }
@@ -88,6 +98,7 @@ int main(int argc, char** argv) {
 
     dycore.finalize( dm );
 
+    yakl::timer_stop("main");
   }
   yakl::finalize();
 }

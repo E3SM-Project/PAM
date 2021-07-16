@@ -20,14 +20,6 @@ public:
   int static constexpr num_state = 5;
   int static constexpr max_tracers = 50;
 
-  // Stores a single index location
-  struct Location {
-    int l;
-    int k;
-    int j;
-    int i;
-  };
-
   real Rd   ;
   real cp   ;
   real gamma;
@@ -191,7 +183,7 @@ public:
       dm_tracers.add_field( trac );
     }
 
-    parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+    parallel_for( "Spatial.h d2c" , Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       real dens  = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens);
       real uvel  = state(idU,hs+k,hs+j,hs+i,iens) / dens;
       real vvel  = state(idV,hs+k,hs+j,hs+i,iens) / dens;
@@ -246,7 +238,7 @@ public:
       dm_tracers.add_field( trac );
     }
 
-    parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+    parallel_for(  "Spatial.h c2d" , Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       for (int tr=0; tr < num_tracers; tr++) {
         tracers(tr,hs+k,hs+j,hs+i,iens) = dm_tracers(tr,k,j,i,iens);
       }
@@ -283,7 +275,7 @@ public:
     }
     tracer_name.push_back(name);  // Store name
     tracer_desc.push_back(desc);  // Store description
-    parallel_for( 1 , YAKL_LAMBDA (int i) {
+    parallel_for( "Spatial.h add_tracer" , 1 , YAKL_LAMBDA (int i) {
       tracer_pos      (tr) = pos_def;   // Store whether it's positive-definite
       tracer_adds_mass(tr) = adds_mass; // Store whether it adds mass (otherwise it's passive)
     });
@@ -317,7 +309,7 @@ public:
     int idWV = micro.get_water_vapor_index();
     real5d tracers = dm.get<real,5>("dynamics_tracers");
 
-    parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+    parallel_for( "Spatial.h init_tracers" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       tracers(idWV,hs+k,hs+j,hs+i,iens) = 0;
       // Loop over quadrature points
       for (int kk=0; kk<ord; kk++) {
@@ -375,7 +367,7 @@ public:
     real5d state   = dm.get<real,5>("dynamics_state");
     real5d tracers = dm.get<real,5>("dynamics_tracers");
 
-    parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+    parallel_for( "Spatial.h adjust_moisture" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       // Add tracer density to dry density if it adds mass
       real rho_dry = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens);
       for (int tr=0; tr < num_tracers; tr++) {
@@ -485,7 +477,7 @@ public:
       real4d dt3d("dt3d",nz,ny,nx,nens);
 
       // Loop through the cells, calculate the max stable time step for each cell
-      parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      parallel_for( "Spatial.h compute_time_step" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
         // Get the state
         real r = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens);
         real u = state(idU,hs+k,hs+j,hs+i,iens) / r;
@@ -609,7 +601,7 @@ public:
     zlen = real1d("zlen",nens);
     YAKL_SCOPE( zlen , this->zlen );
     YAKL_SCOPE( nz   , this->nz   );
-    parallel_for( nens , YAKL_LAMBDA (int iens) {
+    parallel_for( "Spatial.h init 1" , nens , YAKL_LAMBDA (int iens) {
       zlen(iens) = zint(nz,iens);
     });
 
@@ -631,11 +623,11 @@ public:
 
     zint.deep_copy_to(vert_interface);
 
-    parallel_for( Bounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
+    parallel_for( "Spatial.h init 1" , Bounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
       dz(k,iens) = vert_interface(k+1,iens) - vert_interface(k,iens);
     });
 
-    parallel_for( Bounds<2>(nz+2*hs,nens) , YAKL_LAMBDA (int k, int iens) {
+    parallel_for( "Spatial.h init 2" , Bounds<2>(nz+2*hs,nens) , YAKL_LAMBDA (int k, int iens) {
       if (k >= hs && k < hs+nz) {
         dz_ghost(k,iens) = dz(k-hs,iens);
       } else if (k < hs) {
@@ -645,7 +637,7 @@ public:
       }
     });
 
-    parallel_for( nens , YAKL_LAMBDA (int iens) {
+    parallel_for( "Spatial.h init 3" , nens , YAKL_LAMBDA (int iens) {
       vert_interface_ghost(0,iens) = vert_interface(0,iens) - hs*dz(0,iens);
       for (int k=1; k < nz+2*hs+1; k++) {
         vert_interface_ghost(k,iens) = vert_interface_ghost(k-1,iens) + dz_ghost(k-1,iens);
@@ -720,23 +712,18 @@ public:
 
     // Block exists to avoid name mangling stufff
     {
-      SArray<real,2,ord,ord>  g2c;        // Converts ord GLL points to ord coefficients
       SArray<real,2,ord,ord>  s2c;        // Converts ord stencil cell averages to ord coefficients
       SArray<real,2,ord,ngll> c2g_lower;  // Converts ord coefficients to ngll GLL points
-      SArray<real,2,ord,ord>  c2g;        // Converts ord coefficients to ord GLL points
       SArray<real,2,ord,ord>  c2d;        // Converts ord coefficients to order differentiated coefficients
 
-      TransformMatrices::gll_to_coefs      (g2c      );
       TransformMatrices::sten_to_coefs     (s2c      );
       TransformMatrices::coefs_to_gll_lower(c2g_lower);
-      TransformMatrices::coefs_to_gll      (c2g      );
       TransformMatrices::coefs_to_deriv    (c2d      );
 
       this->coefs_to_gll       = c2g_lower;              // Converts ord coefficients to ngll GLL points
       this->coefs_to_deriv_gll = c2g_lower * c2d;        // Converts ord coefficients to ngll differentiated GLL points
       this->sten_to_gll        = c2g_lower       * s2c;  // Converts ord stencil cell avgs to ngll GLL points
       this->sten_to_deriv_gll  = c2g_lower * c2d * s2c;  // Converts ord stencil cell avgs to ngll differentiated GLL points
-
     }
     // Store ader derivMatrix
     {
@@ -780,7 +767,7 @@ public:
 
     auto state   = dm.get<real,5>("dynamics_state");
     auto tracers = dm.get<real,5>("dynamics_tracers");
-    parallel_for( Bounds<4>(nz+2*hs,ny+2*hs,nx+2*hs,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+    parallel_for( "Spatial.h init 4" , Bounds<4>(nz+2*hs,ny+2*hs,nx+2*hs,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       for (int l=0; l < num_state; l++) {
         state(l,k,j,i,iens) = 0;
       }
@@ -862,7 +849,7 @@ public:
     if (data_spec == DATA_SPEC_THERMAL) {
 
       // Setup hydrostatic background state
-      parallel_for( SimpleBounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
+      parallel_for( "Spatial.h init_state 1" , SimpleBounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
         // Compute cell averages
         hyDensCells     (k,iens) = 0;
         hyPressureCells (k,iens) = 0;
@@ -884,7 +871,7 @@ public:
         }
       });
 
-      parallel_for( SimpleBounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
+      parallel_for( "Spatial.h init_state 2" , SimpleBounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
         // Compute ngll GLL points
         for (int kk=0; kk<ngll; kk++) {
           real zloc = vert_interface(k,iens) + 0.5_fp*dz(k,iens) + gllPts_ngll(kk)*dz(k,iens);
@@ -902,7 +889,7 @@ public:
       });
 
       // Compute the state
-      parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      parallel_for( "Spatial.h init_state 3" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
         state(idR,hs+k,hs+j,hs+i,iens) = 0;
         state(idU,hs+k,hs+j,hs+i,iens) = 0;
         state(idV,hs+k,hs+j,hs+i,iens) = 0;
@@ -965,7 +952,7 @@ public:
       YAKL_SCOPE( zlen , this->zlen );
 
       // Compute full density at ord GLL points for the space between each cell
-      parallel_for( Bounds<4>(nz,ngll-1,ord,nens) , YAKL_LAMBDA (int k, int kk, int kkk, int iens) {
+      parallel_for( "Spatial.h init_state 4" , Bounds<4>(nz,ngll-1,ord,nens) , YAKL_LAMBDA (int k, int kk, int kkk, int iens) {
         // Middle of this cell
         real cellmid   = vert_interface(k,iens) + 0.5_fp*dz(k,iens);
         // Bottom, top, and middle of the space between these two ngll GLL points
@@ -987,7 +974,7 @@ public:
         quad_temp(k,kk,kkk,iens) = -(1+qv)*GRAV/(Rd+qv*Rv)/temp;
       });
 
-      parallel_for( nens , YAKL_LAMBDA (int iens) {
+      parallel_for( "Spatial.h init_state 5" , nens , YAKL_LAMBDA (int iens) {
         hyPressureGLL(0,0,iens) = p_0;
         for (int k=0; k < nz; k++) {
           for (int kk=0; kk < ngll-1; kk++) {
@@ -1004,7 +991,7 @@ public:
         }
       });
 
-      parallel_for( Bounds<3>(nz,ngll,nens) , YAKL_LAMBDA (int k, int kk, int iens) {
+      parallel_for( "Spatial.h init_state 6" , Bounds<3>(nz,ngll,nens) , YAKL_LAMBDA (int k, int kk, int iens) {
         real zloc = vert_interface(k,iens) + 0.5_fp*dz(k,iens) + gllPts_ngll(kk)*dz(k,iens);
         real temp       = profiles::init_supercell_temperature (zloc, z_0, z_trop, zlen(iens), T_0, T_trop, T_top);
         real press_tmp  = profiles::init_supercell_pressure_dry(zloc, z_0, z_trop, zlen(iens), T_0, T_trop, T_top, p_0, Rd);
@@ -1026,7 +1013,7 @@ public:
         hyDensVapGLL  (k,kk,iens) = dens_vap;
       });
 
-      parallel_for( Bounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
+      parallel_for( "Spatial.h init_state 7" , Bounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
         real press_tot      = 0;
         real dens_tot       = 0;
         real dens_vap_tot   = 0;
@@ -1073,16 +1060,16 @@ public:
       nc.create("skew.nc");
       real1d data("data",nz);
       for (int iens=0; iens < nens; iens++) {
-        parallel_for( nz , YAKL_LAMBDA (int k) { data(k) = z(k,iens); });
+        parallel_for( "Spatial.h init_state 8" , nz , YAKL_LAMBDA (int k) { data(k) = z(k,iens); });
         nc.write(data.createHostCopy(),"z"          ,{"z"});
 
-        parallel_for( nz , YAKL_LAMBDA (int k) { data(k) = hyPressureCells(k,iens); });
+        parallel_for( "Spatial.h init_state 9" , nz , YAKL_LAMBDA (int k) { data(k) = hyPressureCells(k,iens); });
         nc.write(data.createHostCopy(),"pressure"   ,{"z"});
 
-        parallel_for( nz , YAKL_LAMBDA (int k) { data(k) = temp_hy(k,iens); });
+        parallel_for( "Spatial.h init_state 10" , nz , YAKL_LAMBDA (int k) { data(k) = temp_hy(k,iens); });
         nc.write(data.createHostCopy(),"temperature",{"z"});
 
-        parallel_for( nz , YAKL_LAMBDA (int k) { data(k) = tdew_hy(k,iens); });
+        parallel_for( "Spatial.h init_state 11" , nz , YAKL_LAMBDA (int k) { data(k) = tdew_hy(k,iens); });
         nc.write(data.createHostCopy(),"dew_point"  ,{"z"});
       }
       nc.close();
@@ -1090,7 +1077,7 @@ public:
       int idWV = micro.get_water_vapor_index();
       real5d tracers = dm.get<real,5>("dynamics_tracers");
 
-      parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      parallel_for( "Spatial.h init_state 12" , Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
         state  (idR ,hs+k,hs+j,hs+i,iens) = 0;
         state  (idU ,hs+k,hs+j,hs+i,iens) = 0;
         state  (idV ,hs+k,hs+j,hs+i,iens) = 0;
@@ -1238,7 +1225,7 @@ public:
 
     // Populate the halos
     if        (bc_x == BC_PERIODIC) {
-      parallel_for( SimpleBounds<4>(nz,ny,hs,nens) , YAKL_LAMBDA(int k, int j, int ii, int iens) {
+      parallel_for( "Spatial.h X BCs periodic" , SimpleBounds<4>(nz,ny,hs,nens) , YAKL_LAMBDA(int k, int j, int ii, int iens) {
         for (int l=0; l < num_state; l++) {
           state  (l,hs+k,hs+j,      ii,iens) = state  (l,hs+k,hs+j,nx+ii,iens);
           state  (l,hs+k,hs+j,hs+nx+ii,iens) = state  (l,hs+k,hs+j,hs+ii,iens);
@@ -1249,7 +1236,7 @@ public:
         }
       });
     } else if (bc_x == BC_WALL) {
-      parallel_for( SimpleBounds<4>(nz,ny,hs,nens) , YAKL_LAMBDA(int k, int j, int ii, int iens) {
+      parallel_for( "Spatial.h X BCs wall" , SimpleBounds<4>(nz,ny,hs,nens) , YAKL_LAMBDA(int k, int j, int ii, int iens) {
         for (int l=0; l < num_state; l++) {
           if (l == idU) {
             state(l,hs+k,hs+j,      ii,iens) = 0;
@@ -1267,7 +1254,7 @@ public:
     }
 
     // Loop through all cells, reconstruct in x-direction, compute centered tendencies, store cell-edge state estimates
-    parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+    parallel_for( "Spatial.h X recon" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       // We need density and momentum to evolve the tracers with ADER
       SArray<real,2,nAder,ngll> r_DTs , ru_DTs;
 
@@ -1412,7 +1399,7 @@ public:
     ////////////////////////////////////////////////
     // BCs for the state edge estimates
     ////////////////////////////////////////////////
-    parallel_for( SimpleBounds<3>(nz,ny,nens) , YAKL_LAMBDA (int k, int j, int iens) {
+    parallel_for( "Spatial.h X BCs edge" , SimpleBounds<3>(nz,ny,nens) , YAKL_LAMBDA (int k, int j, int iens) {
       for (int l=0; l < num_state; l++) {
         if        (bc_x == BC_PERIODIC) {
           stateLimits(l,0,k,j,0 ,iens) = stateLimits(l,0,k,j,nx,iens);
@@ -1436,7 +1423,7 @@ public:
     //////////////////////////////////////////////////////////
     // Compute the upwind fluxes
     //////////////////////////////////////////////////////////
-    parallel_for( SimpleBounds<4>(nz,ny,nx+1,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+    parallel_for( "Spatial.h X Riemann" , SimpleBounds<4>(nz,ny,nx+1,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       // Get left and right state
       real r_L = stateLimits(idR,0,k,j,i,iens)    ;   real r_R = stateLimits(idR,1,k,j,i,iens)    ;
       real u_L = stateLimits(idU,0,k,j,i,iens)/r_L;   real u_R = stateLimits(idU,1,k,j,i,iens)/r_R;
@@ -1504,7 +1491,7 @@ public:
     // Limit the tracer fluxes for positivity
     //////////////////////////////////////////////////////////
     real5d fct_mult("fct_mult",num_tracers,nz,ny,nx+1,nens);
-    parallel_for( SimpleBounds<5>(num_tracers,nz,ny,nx+1,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
+    parallel_for( "Spatial.h X FCT" , SimpleBounds<5>(num_tracers,nz,ny,nx+1,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
       fct_mult(tr,k,j,i,iens) = 1.;
       // Solid wall BCs mean u == 0 at boundaries, so we assume periodic if u != 0
       if (tracer_pos(tr)) {
@@ -1540,7 +1527,7 @@ public:
     //////////////////////////////////////////////////////////
     // Compute the tendencies
     //////////////////////////////////////////////////////////
-    parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA(int k, int j, int i, int iens) {
+    parallel_for( "Spatial.h X tendencies" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA(int k, int j, int i, int iens) {
       for (int l = 0; l < num_state; l++) {
         if (sim2d && l == idV) {
           stateTend(l,k,j,i,iens) = 0;
@@ -1590,7 +1577,7 @@ public:
 
     // Populate the halos
     if        (bc_y == BC_PERIODIC) {
-      parallel_for( SimpleBounds<4>(nz,nx,hs,nens) , YAKL_LAMBDA(int k, int i, int jj, int iens) {
+      parallel_for( "Spatial.h Y BCs periodic" , SimpleBounds<4>(nz,nx,hs,nens) , YAKL_LAMBDA(int k, int i, int jj, int iens) {
         for (int l=0; l < num_state; l++) {
           state(l,hs+k,      jj,hs+i,iens) = state(l,hs+k,ny+jj,hs+i,iens);
           state(l,hs+k,hs+ny+jj,hs+i,iens) = state(l,hs+k,hs+jj,hs+i,iens);
@@ -1601,7 +1588,7 @@ public:
         }
       });
     } else if (bc_y == BC_WALL) {
-      parallel_for( SimpleBounds<4>(nz,nx,hs,nens) , YAKL_LAMBDA(int k, int i, int jj, int iens) {
+      parallel_for( "Spatial.h Y BCs wall" , SimpleBounds<4>(nz,nx,hs,nens) , YAKL_LAMBDA(int k, int i, int jj, int iens) {
         for (int l=0; l < num_state; l++) {
           if (l == idV) {
             state(l,hs+k,      jj,hs+i,iens) = 0;
@@ -1619,7 +1606,7 @@ public:
     }
 
     // Loop through all cells, reconstruct in y-direction, compute centered tendencies, store cell-edge state estimates
-    parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+    parallel_for( "Spatial.h Y recon" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       // These are needed by the tracers
       SArray<real,2,nAder,ngll> r_DTs , rv_DTs;
 
@@ -1764,7 +1751,7 @@ public:
     ////////////////////////////////////////////////
     // BCs for the state edge estimates
     ////////////////////////////////////////////////
-    parallel_for( SimpleBounds<3>(nz,nx,nens) , YAKL_LAMBDA (int k, int i, int iens) {
+    parallel_for( "Spatial.h Y BCs edge" , SimpleBounds<3>(nz,nx,nens) , YAKL_LAMBDA (int k, int i, int iens) {
       for (int l=0; l < num_state; l++) {
         if        (bc_y == BC_PERIODIC) {
           stateLimits(l,0,k,0 ,i,iens) = stateLimits(l,0,k,ny,i,iens);
@@ -1788,7 +1775,7 @@ public:
     //////////////////////////////////////////////////////////
     // Compute the upwind fluxes
     //////////////////////////////////////////////////////////
-    parallel_for( SimpleBounds<4>(nz,ny+1,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+    parallel_for( "Spatial.h Y Riemann" , SimpleBounds<4>(nz,ny+1,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       // Get left and right state
       real r_L = stateLimits(idR,0,k,j,i,iens)    ;   real r_R = stateLimits(idR,1,k,j,i,iens)    ;
       real u_L = stateLimits(idU,0,k,j,i,iens)/r_L;   real u_R = stateLimits(idU,1,k,j,i,iens)/r_R;
@@ -1856,7 +1843,7 @@ public:
     // Limit the tracer fluxes for positivity
     //////////////////////////////////////////////////////////
     real5d fct_mult("fct_mult",num_tracers,nz,ny+1,nx,nens);
-    parallel_for( SimpleBounds<5>(num_tracers,nz,ny+1,nx,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
+    parallel_for( "Spatial.h Y FCT" , SimpleBounds<5>(num_tracers,nz,ny+1,nx,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
       fct_mult(tr,k,j,i,iens) = 1.;
       // Solid wall BCs mean u == 0 at boundaries, so we assume periodic if u != 0
       if (tracer_pos(tr)) {
@@ -1890,7 +1877,7 @@ public:
     //////////////////////////////////////////////////////////
     // Compute the tendencies
     //////////////////////////////////////////////////////////
-    parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA(int k, int j, int i, int iens) {
+    parallel_for( "Spatial.h Y tendendies" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA(int k, int j, int i, int iens) {
       for (int l=0; l < num_state; l++) {
         stateTend(l,k,j,i,iens) = - ( stateFlux(l,k,j+1,i,iens) - stateFlux(l,k,j,i,iens) ) / dy;
       }
@@ -1939,13 +1926,13 @@ public:
 
     // Pre-process the tracers by dividing by density inside the domain
     // After this, we can reconstruct tracers only (not rho * tracer)
-    parallel_for( SimpleBounds<5>(num_tracers,nz,ny,nx,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
+    parallel_for( "Spatial.h Z tracer div dens" , SimpleBounds<5>(num_tracers,nz,ny,nx,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
       tracers(tr,hs+k,hs+j,hs+i,iens) /= (state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens));
     });
 
     // Populate the halos
     if        (bc_z == BC_PERIODIC) {
-      parallel_for( SimpleBounds<4>(ny,nx,hs,nens) , YAKL_LAMBDA(int j, int i, int kk, int iens) {
+      parallel_for( "Spatial.h Z BCs periodic" , SimpleBounds<4>(ny,nx,hs,nens) , YAKL_LAMBDA(int j, int i, int kk, int iens) {
         for (int l=0; l < num_state; l++) {
           state(l,      kk,hs+j,hs+i,iens) = state(l,nz+kk,hs+j,hs+i,iens);
           state(l,hs+nz+kk,hs+j,hs+i,iens) = state(l,hs+kk,hs+j,hs+i,iens);
@@ -1956,7 +1943,7 @@ public:
         }
       });
     } else if (bc_z == BC_WALL) {
-      parallel_for( SimpleBounds<4>(ny,nx,hs,nens) , YAKL_LAMBDA(int j, int i, int kk, int iens) {
+      parallel_for( "Spatial.h Z BCs wall" , SimpleBounds<4>(ny,nx,hs,nens) , YAKL_LAMBDA(int j, int i, int kk, int iens) {
         for (int l=0; l < num_state; l++) {
           if (l == idW) {
             state(l,      kk,hs+j,hs+i,iens) = 0;
@@ -1974,7 +1961,7 @@ public:
     }
 
     // Loop through all cells, reconstruct in x-direction, compute centered tendencies, store cell-edge state estimates
-    parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+    parallel_for( "Spatial.h Z recon" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       // We need these to persist to evolve tracers with ADER
       SArray<real,2,nAder,ngll> r_DTs , rw_DTs;
 
@@ -2142,7 +2129,7 @@ public:
     ////////////////////////////////////////////////
     // BCs for the state edge estimates
     ////////////////////////////////////////////////
-    parallel_for( SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int iens) {
+    parallel_for( "Spatial.h Z BCs edge" , SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int iens) {
       for (int l = 0; l < num_state; l++) {
         if        (bc_z == BC_PERIODIC) {
           stateLimits     (l,0,0 ,j,i,iens) = stateLimits     (l,0,nz,j,i,iens);
@@ -2166,7 +2153,7 @@ public:
     //////////////////////////////////////////////////////////
     // Compute the upwind fluxes
     //////////////////////////////////////////////////////////
-    parallel_for( SimpleBounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+    parallel_for( "Spatial.h Z Riemann" , SimpleBounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       // Get left and right state
       real r_L = stateLimits(idR,0,k,j,i,iens)    ;   real r_R = stateLimits(idR,1,k,j,i,iens)    ;
       real u_L = stateLimits(idU,0,k,j,i,iens)/r_L;   real u_R = stateLimits(idU,1,k,j,i,iens)/r_R;
@@ -2232,7 +2219,7 @@ public:
     // Limit the tracer fluxes for positivity
     //////////////////////////////////////////////////////////
     real5d fct_mult("fct_mult",num_tracers,nz+1,ny,nx,nens);
-    parallel_for( SimpleBounds<5>(num_tracers,nz+1,ny,nx,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
+    parallel_for( "Spatial.h Z FCT" , SimpleBounds<5>(num_tracers,nz+1,ny,nx,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
       fct_mult(tr,k,j,i,iens) = 1.;
       if (k == 0 || k == nz) tracerFlux(tr,k,j,i,iens) = 0;
       // Solid wall BCs mean w == 0 at boundaries
@@ -2267,7 +2254,7 @@ public:
     //////////////////////////////////////////////////////////
     // Compute the tendencies
     //////////////////////////////////////////////////////////
-    parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA(int k, int j, int i, int iens) {
+    parallel_for( "Spatial.h Z tendencies" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA(int k, int j, int i, int iens) {
       for (int l=0; l < num_state; l++) {
         if (sim2d && l == idV) {
           stateTend(l,k,j,i,iens) = 0;
@@ -2314,28 +2301,28 @@ public:
 
         // x-coordinate
         real1d xloc("xloc",nx);
-        parallel_for( nx , YAKL_LAMBDA (int i) { xloc(i) = (i+0.5)*dx; });
+        parallel_for( "Spatial.h output 1" , nx , YAKL_LAMBDA (int i) { xloc(i) = (i+0.5)*dx; });
         nc.write(xloc.createHostCopy(),"x",{"x"});
 
         // y-coordinate
         real1d yloc("yloc",ny);
-        parallel_for( ny , YAKL_LAMBDA (int i) { yloc(i) = (i+0.5)*dy; });
+        parallel_for( "Spatial.h output 2" , ny , YAKL_LAMBDA (int i) { yloc(i) = (i+0.5)*dy; });
         nc.write(yloc.createHostCopy(),"y",{"y"});
 
         // z-coordinate
         auto zint = dm.get<real,2>("vertical_interface_height");
         real1d zmid("zmid",nz);
-        parallel_for( nz , YAKL_LAMBDA (int i) { zmid(i) = ( zint(i,iens) + zint(i+1,iens) ) / 2; });
+        parallel_for( "Spatial.h output 3" , nz , YAKL_LAMBDA (int i) { zmid(i) = ( zint(i,iens) + zint(i+1,iens) ) / 2; });
         nc.write(zmid.createHostCopy(),"z",{"z"});
 
         // hydrostatic density, theta, and pressure
-        parallel_for( nz , YAKL_LAMBDA (int k) { zmid(k) = hyDensCells(k,iens); });
+        parallel_for( "Spatial.h output 4" , nz , YAKL_LAMBDA (int k) { zmid(k) = hyDensCells(k,iens); });
         nc.write(zmid.createHostCopy(),"hyDens"    ,{"z"});
 
-        parallel_for( nz , YAKL_LAMBDA (int k) { zmid(k) = hyPressureCells(k,iens); });
+        parallel_for( "Spatial.h output 5" , nz , YAKL_LAMBDA (int k) { zmid(k) = hyPressureCells(k,iens); });
         nc.write(zmid.createHostCopy(),"hyPressure",{"z"});
 
-        parallel_for( nz , YAKL_LAMBDA (int k) { zmid(k) = hyThetaCells(k,iens); });
+        parallel_for( "Spatial.h output 6" , nz , YAKL_LAMBDA (int k) { zmid(k) = hyThetaCells(k,iens); });
         nc.write(zmid.createHostCopy(),"hyTheta"   ,{"z"});
 
         // Create time variable
@@ -2353,32 +2340,32 @@ public:
 
       real3d data("data",nz,ny,nx);
       // rho'
-      parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = state(idR,hs+k,hs+j,hs+i,iens); });
+      parallel_for( "Spatial.h output 7" , SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = state(idR,hs+k,hs+j,hs+i,iens); });
       nc.write1(data.createHostCopy(),"dens_pert",{"z","y","x"},ulIndex,"t");
       // u
-      parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+      parallel_for( "Spatial.h output 8" , SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
         data(k,j,i) = state(idU,hs+k,hs+j,hs+i,iens) / ( state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens) );
       });
       nc.write1(data.createHostCopy(),"u",{"z","y","x"},ulIndex,"t");
       // v
-      parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+      parallel_for( "Spatial.h output 9" , SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
         data(k,j,i) = state(idV,hs+k,hs+j,hs+i,iens) / ( state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens) );
       });
       nc.write1(data.createHostCopy(),"v",{"z","y","x"},ulIndex,"t");
       // w
-      parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+      parallel_for( "Spatial.h output 10" , SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
         data(k,j,i) = state(idW,hs+k,hs+j,hs+i,iens) / ( state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens) );
       });
       nc.write1(data.createHostCopy(),"w",{"z","y","x"},ulIndex,"t");
       // theta'
-      parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+      parallel_for( "Spatial.h output 11" , SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
         real r =   state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells     (k,iens);
         real t = ( state(idT,hs+k,hs+j,hs+i,iens) + hyDensThetaCells(k,iens) ) / r;
         data(k,j,i) = t - hyThetaCells(k,iens);
       });
       nc.write1(data.createHostCopy(),"pot_temp_pert",{"z","y","x"},ulIndex,"t");
       // pressure'
-      parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+      parallel_for( "Spatial.h output 12" , SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
         real r  = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens);
         real rt = state(idT,hs+k,hs+j,hs+i,iens) + hyDensThetaCells(k,iens);
         real p  = C0*pow(rt,gamma);
@@ -2387,7 +2374,7 @@ public:
       nc.write1(data.createHostCopy(),"pressure_pert",{"z","y","x"},ulIndex,"t");
 
       for (int tr=0; tr < num_tracers; tr++) {
-        parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+        parallel_for( "Spatial.h output 13" , SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
           real r = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens);
           data(k,j,i) = tracers(tr,hs+k,hs+j,hs+i,iens)/r;
         });
@@ -2409,13 +2396,13 @@ public:
 
 
   // ord stencil values to ngll GLL values; store in DTs
-  YAKL_INLINE void reconstruct_gll_values( SArray<real,1,ord> const stencil ,
-                                           SArray<real,2,nAder,ngll> &DTs ,
-                                           SArray<real,2,ord,ngll> const &coefs_to_gll ,
-                                           SArray<real,2,ord,ngll> const &sten_to_gll  ,
-                                           SArray<real,3,ord,ord,ord> const &wenoRecon ,
-                                           SArray<real,1,hs+2> const &idl              ,
-                                           real sigma, bool doweno ) {
+  YAKL_INLINE static void reconstruct_gll_values( SArray<real,1,ord> const stencil ,
+                                                  SArray<real,2,nAder,ngll> &DTs ,
+                                                  SArray<real,2,ord,ngll> const &coefs_to_gll ,
+                                                  SArray<real,2,ord,ngll> const &sten_to_gll  ,
+                                                  SArray<real,3,ord,ord,ord> const &wenoRecon ,
+                                                  SArray<real,1,hs+2> const &idl              ,
+                                                  real sigma, bool doweno ) {
     if (doweno) {
 
       // Reconstruct values
@@ -2446,18 +2433,56 @@ public:
 
 
 
-  YAKL_INLINE void diffTransformEulerConsX( SArray<real,2,nAder,ngll> &r  ,
-                                            SArray<real,2,nAder,ngll> &ru ,
-                                            SArray<real,2,nAder,ngll> &rv ,
-                                            SArray<real,2,nAder,ngll> &rw ,
-                                            SArray<real,2,nAder,ngll> &rt ,
-                                            SArray<real,2,nAder,ngll> &ruu ,
-                                            SArray<real,2,nAder,ngll> &ruv ,
-                                            SArray<real,2,nAder,ngll> &ruw ,
-                                            SArray<real,2,nAder,ngll> &rut ,
-                                            SArray<real,2,nAder,ngll> &rt_gamma ,
-                                            SArray<real,2,ngll,ngll> const &deriv ,
-                                            real C0, real gamma, real dx ) {
+  // ord stencil values to ngll GLL values; store in DTs
+  YAKL_INLINE static void reconstruct_gll_values( SArray<real,1,ord> const stencil ,
+                                                  SArray<real,1,ngll> &gll ,
+                                                  SArray<real,2,ord,ngll> const &coefs_to_gll ,
+                                                  SArray<real,2,ord,ngll> const &sten_to_gll  ,
+                                                  SArray<real,3,ord,ord,ord> const &wenoRecon ,
+                                                  SArray<real,1,hs+2> const &idl              ,
+                                                  real sigma, bool doweno ) {
+    if (doweno) {
+
+      // Reconstruct values
+      SArray<real,1,ord> wenoCoefs;
+      weno::compute_weno_coefs<ord>( wenoRecon , stencil , wenoCoefs , idl , sigma );
+      // Transform ord weno coefficients into ngll GLL points
+      for (int ii=0; ii<ngll; ii++) {
+        real tmp = 0;
+        for (int s=0; s < ord; s++) {
+          tmp += coefs_to_gll(s,ii) * wenoCoefs(s);
+        }
+        gll(ii) = tmp;
+      }
+
+    } else {
+
+      // Transform ord stencil cell averages into ngll GLL points
+      for (int ii=0; ii<ngll; ii++) {
+        real tmp = 0;
+        for (int s=0; s < ord; s++) {
+          tmp += sten_to_gll(s,ii) * stencil(s);
+        }
+        gll(ii) = tmp;
+      }
+
+    } // if doweno
+  }
+
+
+
+  YAKL_INLINE static void diffTransformEulerConsX( SArray<real,2,nAder,ngll> &r  ,
+                                                   SArray<real,2,nAder,ngll> &ru ,
+                                                   SArray<real,2,nAder,ngll> &rv ,
+                                                   SArray<real,2,nAder,ngll> &rw ,
+                                                   SArray<real,2,nAder,ngll> &rt ,
+                                                   SArray<real,2,nAder,ngll> &ruu ,
+                                                   SArray<real,2,nAder,ngll> &ruv ,
+                                                   SArray<real,2,nAder,ngll> &ruw ,
+                                                   SArray<real,2,nAder,ngll> &rut ,
+                                                   SArray<real,2,nAder,ngll> &rt_gamma ,
+                                                   SArray<real,2,ngll,ngll> const &deriv ,
+                                                   real C0, real gamma, real dx ) {
     // zero out the non-linear DTs
     for (int kt=1; kt < nAder; kt++) {
       for (int ii=0; ii < ngll; ii++) {
@@ -2529,18 +2554,18 @@ public:
 
 
 
-  YAKL_INLINE void diffTransformEulerConsY( SArray<real,2,nAder,ngll> &r  ,
-                                            SArray<real,2,nAder,ngll> &ru ,
-                                            SArray<real,2,nAder,ngll> &rv ,
-                                            SArray<real,2,nAder,ngll> &rw ,
-                                            SArray<real,2,nAder,ngll> &rt ,
-                                            SArray<real,2,nAder,ngll> &rvu ,
-                                            SArray<real,2,nAder,ngll> &rvv ,
-                                            SArray<real,2,nAder,ngll> &rvw ,
-                                            SArray<real,2,nAder,ngll> &rvt ,
-                                            SArray<real,2,nAder,ngll> &rt_gamma ,
-                                            SArray<real,2,ngll,ngll> const &deriv ,
-                                            real C0, real gamma, real dy ) {
+  YAKL_INLINE static void diffTransformEulerConsY( SArray<real,2,nAder,ngll> &r  ,
+                                                   SArray<real,2,nAder,ngll> &ru ,
+                                                   SArray<real,2,nAder,ngll> &rv ,
+                                                   SArray<real,2,nAder,ngll> &rw ,
+                                                   SArray<real,2,nAder,ngll> &rt ,
+                                                   SArray<real,2,nAder,ngll> &rvu ,
+                                                   SArray<real,2,nAder,ngll> &rvv ,
+                                                   SArray<real,2,nAder,ngll> &rvw ,
+                                                   SArray<real,2,nAder,ngll> &rvt ,
+                                                   SArray<real,2,nAder,ngll> &rt_gamma ,
+                                                   SArray<real,2,ngll,ngll> const &deriv ,
+                                                   real C0, real gamma, real dy ) {
     // zero out the non-linear DTs
     for (int kt=1; kt < nAder; kt++) {
       for (int ii=0; ii < ngll; ii++) {
@@ -2613,20 +2638,20 @@ public:
 
 
 
-  YAKL_INLINE void diffTransformEulerConsZ( SArray<real,2,nAder,ngll> &r  ,
-                                            SArray<real,2,nAder,ngll> &ru ,
-                                            SArray<real,2,nAder,ngll> &rv ,
-                                            SArray<real,2,nAder,ngll> &rw ,
-                                            SArray<real,2,nAder,ngll> &rt ,
-                                            SArray<real,2,nAder,ngll> &rwu ,
-                                            SArray<real,2,nAder,ngll> &rwv ,
-                                            SArray<real,2,nAder,ngll> &rww ,
-                                            SArray<real,2,nAder,ngll> &rwt ,
-                                            SArray<real,2,nAder,ngll> &rt_gamma ,
-                                            SArray<real,2,ngll,ngll> const &deriv ,
-                                            real3d const &hyPressureGLL ,
-                                            real C0, real gamma ,
-                                            int k , real dz , int bc_z , int nz , int iens ) {
+  YAKL_INLINE static void diffTransformEulerConsZ( SArray<real,2,nAder,ngll> &r  ,
+                                                   SArray<real,2,nAder,ngll> &ru ,
+                                                   SArray<real,2,nAder,ngll> &rv ,
+                                                   SArray<real,2,nAder,ngll> &rw ,
+                                                   SArray<real,2,nAder,ngll> &rt ,
+                                                   SArray<real,2,nAder,ngll> &rwu ,
+                                                   SArray<real,2,nAder,ngll> &rwv ,
+                                                   SArray<real,2,nAder,ngll> &rww ,
+                                                   SArray<real,2,nAder,ngll> &rwt ,
+                                                   SArray<real,2,nAder,ngll> &rt_gamma ,
+                                                   SArray<real,2,ngll,ngll> const &deriv ,
+                                                   real3d const &hyPressureGLL ,
+                                                   real C0, real gamma ,
+                                                   int k , real dz , int bc_z , int nz , int iens ) {
     // zero out the non-linear DTs
     for (int kt=1; kt < nAder; kt++) {
       for (int ii=0; ii < ngll; ii++) {
@@ -2703,12 +2728,12 @@ public:
 
 
 
-  YAKL_INLINE void diffTransformTracer( SArray<real,2,nAder,ngll> const &r  ,
-                                        SArray<real,2,nAder,ngll> const &ru ,
-                                        SArray<real,2,nAder,ngll> &rt ,
-                                        SArray<real,2,nAder,ngll> &rut ,
-                                        SArray<real,2,ngll,ngll> const &deriv ,
-                                        real dx ) {
+  YAKL_INLINE static void diffTransformTracer( SArray<real,2,nAder,ngll> const &r  ,
+                                               SArray<real,2,nAder,ngll> const &ru ,
+                                               SArray<real,2,nAder,ngll> &rt ,
+                                               SArray<real,2,nAder,ngll> &rut ,
+                                               SArray<real,2,ngll,ngll> const &deriv ,
+                                               real dx ) {
     // zero out the non-linear DT
     for (int kt=1; kt < nAder; kt++) {
       for (int ii=0; ii < ngll; ii++) {
@@ -2738,7 +2763,7 @@ public:
 
 
 
-  YAKL_INLINE void compute_timeAvg( SArray<real,3,num_state,nAder,ngll> &dts , real dt ) {
+  YAKL_INLINE static void compute_timeAvg( SArray<real,3,num_state,nAder,ngll> &dts , real dt ) {
     real dtmult = dt;
     for (int kt=1; kt<nAder; kt++) {
       for (int l=0; l<num_state; l++) {
@@ -2752,7 +2777,7 @@ public:
 
 
 
-  YAKL_INLINE void compute_timeAvg( SArray<real,2,nAder,ngll> &dts , real dt ) {
+  YAKL_INLINE static void compute_timeAvg( SArray<real,2,nAder,ngll> &dts , real dt ) {
     real dtmult = dt;
     for (int kt=1; kt<nAder; kt++) {
       for (int ii=0; ii<ngll; ii++) {
@@ -2764,7 +2789,7 @@ public:
 
 
 
-  YAKL_INLINE void compute_timeAvg( SArray<real,2,nAder,ngll> const &dts , SArray<real,1,ngll> &tavg , real dt ) {
+  YAKL_INLINE static void compute_timeAvg( SArray<real,2,nAder,ngll> const &dts , SArray<real,1,ngll> &tavg , real dt ) {
     for (int ii=0; ii<ngll; ii++) {
       tavg(ii) = dts(0,ii);
     }
