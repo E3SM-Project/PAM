@@ -49,13 +49,13 @@ public:
 
 
 
-  int get_num_tracers() const {
+  YAKL_INLINE int get_num_tracers() const {
     return num_tracers;
   }
 
 
 
-  int get_water_vapor_index() const {
+  YAKL_INLINE int get_water_vapor_index() const {
     return tracer_index_vapor;
   }
 
@@ -94,7 +94,7 @@ public:
     int nx   = dm.get_dimension_size("x");
     int nens = dm.get_dimension_size("nens");
     real4d tmp("tmp",nz,ny,nx,nens);
-    parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+    parallel_for( "kessler micro compute mass" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       real dz = (zint(k+1,iens) - zint(k,iens));
       tmp(k,j,i,iens) = (rho_v(k,j,i,iens) + rho_c(k,j,i,iens) + rho_r(k,j,i,iens)) * dz;
     });
@@ -135,7 +135,7 @@ public:
     // We have to broadcast the midpoint heights to all columns within a CRM to avoid the microphysics needing
     // to know about the difference between nx,ny and nens
     real2d zmid("zmid",nz,ny*nx*nens);
-    parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+    parallel_for( "kessler timeStep 1" , Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       zmid(k,j*nx*nens + i*nens + iens) = zmid_in(k,iens);
     });
 
@@ -147,7 +147,7 @@ public:
     real p0      = this->constants.p0;
 
     // Save initial state, and compute inputs for kessler(...)
-    parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
+    parallel_for( "kessler timeStep 2" , Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
       qv      (k,i) = rho_v(k,i) / rho_dry(k,i);
       qc      (k,i) = rho_c(k,i) / rho_dry(k,i);
       qr      (k,i) = rho_r(k,i) / rho_dry(k,i);
@@ -225,7 +225,7 @@ public:
     #endif
 
 
-    parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
+    parallel_for( "kessler timeStep 3" , Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
       rho_v   (k,i) = qv(k,i)*rho_dry(k,i);
       rho_c   (k,i) = qc(k,i)*rho_dry(k,i);
       rho_r   (k,i) = qr(k,i)*rho_dry(k,i);
@@ -337,7 +337,7 @@ public:
     real2d velqr("velqr",nz  ,ncol);
     real2d dt2d ("dt2d" ,nz-1,ncol);
 
-    parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
+    parallel_for( "kessler main 1" , Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
       r    (k,i) = 0.001_fp * rho(k,i);
       rhalf(k,i) = sqrt( rho(0,i) / rho(k,i) );
       pc   (k,i) = 3.8_fp / ( pow( pk(k,i) , cp/Rd ) * psl );
@@ -370,7 +370,7 @@ public:
     for (int nt=0; nt < rainsplit; nt++) {
 
       // Sedimentation term using upstream differencing
-      parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
+      parallel_for( "kessler main 2" , Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
         if (k == 0) {
           // Precipitation rate (m/s)
           precl(i) = precl(i) + rho(0,i) * qr(0,i) * velqr(0,i) / rhoqr;
@@ -384,7 +384,7 @@ public:
       });
 
       // Adjustment terms
-      parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
+      parallel_for( "kessler main 3" , Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
         // Autoconversion and accretion rates following KW eq. 2.13a,b
         real qrprod = qc(k,i) - ( qc(k,i)-dt0*max( 0.001_fp * (qc(k,i)-0.001_fp) , 0._fp ) ) /
                                 ( 1 + dt0 * 2.2_fp * pow( qr(k,i) , 0.875_fp ) );
@@ -430,7 +430,7 @@ public:
     int nx = dm.get_dimension_size("x");
     int ny = dm.get_dimension_size("y");
     real2d data("data",ny,nx);
-    parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
+    parallel_for( "kessler output" , Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
       data(j,i) = precl(j,i,iens);
     });
     nc.write1(data.createHostCopy(),"precl",{"y","x"},ulIndex,"t");

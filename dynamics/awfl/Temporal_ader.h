@@ -146,9 +146,11 @@ public:
           }
           for (int l=0; l < num_tracers; l++) {
             tracers(l,hs+k,hs+j,hs+i,iens) += dtloc * tracerTend(l,k,j,i,iens);
-            if (tracers(l,hs+k,hs+j,hs+i,iens) < -1.e-10) {
-              neg_too_large = true;
-            }
+            #ifdef PAM_DEBUG
+              if (tracers(l,hs+k,hs+j,hs+i,iens) < -1.e-10) {
+                neg_too_large = true;
+              }
+            #endif
             tracers(l,hs+k,hs+j,hs+i,iens) = max( 0._fp , tracers(l,hs+k,hs+j,hs+i,iens) );
           }
         });
@@ -167,7 +169,9 @@ public:
           } else {
             mass_diff = mass_final[l];
           }
-          if (mass_diff > 1.e-12) {
+          real tol = 1.e-12;
+          if (std::is_same<real,float>::value) {tol = 1.e-5;}
+          if (mass_diff > tol) {
             std::cout << "Dycore mass change is too large. Abs Diff: " << abs(mass_final[l] - mass_init[l])
                       << ";   Rel Diff: " << mass_diff
                       << ";   Initial Mass: " << mass_init[l] << std::endl;

@@ -450,7 +450,11 @@ public:
   // Normally this would be 3, but the z-directly CFL is reduced because of how the fluxes are
   // handled in the presence of a solid wall boundary condition. I'm looking into how to fix this
   int numSplit() const {
-    return 3;
+    if (sim2d) {
+      return 2;
+    } else {
+      return 3;
+    }
   }
 
 
@@ -1156,31 +1160,37 @@ public:
   void computeTendencies( real5d &state   , real5d &stateTend  ,
                           real5d &tracers , real5d &tracerTend ,
                           MICRO const &micro, real &dt , int splitIndex ) {
-    if (dimSwitch) {
-      if        (splitIndex == 0) {
-        computeTendenciesX( state , stateTend , tracers , tracerTend , micro , dt );
-      } else if (splitIndex == 1) {
-        if (sim2d) {
-          memset(stateTend  , 0._fp);
-          memset(tracerTend , 0._fp);
-        } else {
-          computeTendenciesY( state , stateTend , tracers , tracerTend , micro , dt );
+    if (sim2d) {
+      if (dimSwitch) {
+        if        (splitIndex == 0) {
+          computeTendenciesX( state , stateTend , tracers , tracerTend , micro , dt );
+        } else if (splitIndex == 1) {
+          computeTendenciesZ( state , stateTend , tracers , tracerTend , micro , dt );
         }
-      } else if (splitIndex == 2) {
-        computeTendenciesZ( state , stateTend , tracers , tracerTend , micro , dt );
+      } else {
+        if        (splitIndex == 0) {
+          computeTendenciesZ( state , stateTend , tracers , tracerTend , micro , dt );
+        } else if (splitIndex == 1) {
+          computeTendenciesX( state , stateTend , tracers , tracerTend , micro , dt );
+        }
       }
     } else {
-      if        (splitIndex == 0) {
-        computeTendenciesZ( state , stateTend , tracers , tracerTend , micro , dt );
-      } else if (splitIndex == 1) {
-        if (sim2d) {
-          memset(stateTend  , 0._fp);
-          memset(tracerTend , 0._fp);
-        } else {
+      if (dimSwitch) {
+        if        (splitIndex == 0) {
+          computeTendenciesX( state , stateTend , tracers , tracerTend , micro , dt );
+        } else if (splitIndex == 1) {
           computeTendenciesY( state , stateTend , tracers , tracerTend , micro , dt );
+        } else if (splitIndex == 2) {
+          computeTendenciesZ( state , stateTend , tracers , tracerTend , micro , dt );
         }
-      } else if (splitIndex == 2) {
-        computeTendenciesX( state , stateTend , tracers , tracerTend , micro , dt );
+      } else {
+        if        (splitIndex == 0) {
+          computeTendenciesZ( state , stateTend , tracers , tracerTend , micro , dt );
+        } else if (splitIndex == 1) {
+          computeTendenciesY( state , stateTend , tracers , tracerTend , micro , dt );
+        } else if (splitIndex == 2) {
+          computeTendenciesX( state , stateTend , tracers , tracerTend , micro , dt );
+        }
       }
     }
   } // computeTendencies
