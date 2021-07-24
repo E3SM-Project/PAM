@@ -8,7 +8,7 @@
 #include "WenoLimiter.h"
 #include "Profiles.h"
 #include "DataManager.h"
-#include <Eigen/Sparse>
+
 
 template <int nTimeDerivs, bool timeAvg, int nAder>
 class Spatial_operator {
@@ -84,13 +84,8 @@ public:
   real4d vert_sten_to_gll;
   real5d vert_weno_recon;
 
-  // Arrays for outputting final pressure field and remaining divergence
   real4d pressure;
   real4d divergence;
-
-  // Spatial order to use for momentum divergence and place to flag and save the static/constant LU solver to find momentum free divergence field
-  int remove_momentum_div_order=3, solver_built=0;
-  Eigen::SparseLU<Eigen::SparseMatrix<real>, Eigen::COLAMDOrdering<int> > momdiv_solver;
 
   // For indexing into the state and state tendency arrays
   int static constexpr idR = 0;  // density perturbation
@@ -896,539 +891,496 @@ public:
   }
 
 
-
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Project momentum onto divergence-free state using artificial compressibility
-  //   * Single sparse linear solve for steady state solution using a constant LU factorization/solver computed once on the first call
   // TODO:
-  //   * Fix third order boundary conditions
-  //   * Add higher orders (?)
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  void calculate_divergence(real4d &ru, real4d &rw, real4d &press, real4d &abs_div, real c_s) {
-     // Compute the upwind divergence using the same order of reconstruction used in the solver (this is the form of the divergence that will be forced to vanish)
-
-     //////////////////
-     // First Order
-     //////////////////
-     if( remove_momentum_div_order == 1 ) {
-        parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-           int im1 = i-1;  if (im1 < 0   ) im1 = nx-1;
-           int ip1 = i+1;  if (ip1 > nx-1) ip1 = 0;
-           int jm1 = j-1;  if (jm1 < 0   ) jm1 = ny-1;
-           int jp1 = j+1;  if (jp1 > ny-1) jp1 = 0;
-           int km1 = k-1;  if (km1 < 0   ) km1 = 0;
-           int kp1 = k+1;  if (kp1 > nz-1) kp1 = nz-1;
-
-           ////////////////////////////
-           // x-direction fluxes
-           ////////////////////////////
-           // Get pressure and momentum in 3-cell stencil
-           real p_im1  = press (k,j,im1,iens);
-           real p_i    = press (k,j,i  ,iens);
-           real p_ip1  = press (k,j,ip1,iens);
-           real ru_im1 = ru(k,j,im1,iens);
-           real ru_i   = ru(k,j,i  ,iens);
-           real ru_ip1 = ru(k,j,ip1,iens);
-           // Compute upwind pressure and momentum at cell interfaces using characteristics
-           real ru_L  = (p_im1 - p_i  ) / (2*c_s) + 0.5_fp * (ru_i   + ru_im1);
-           real ru_R  = (p_i   - p_ip1) / (2*c_s) + 0.5_fp * (ru_ip1 + ru_i  );
-
-           ////////////////////////////
-           // z-direction fluxes
-           ////////////////////////////
-           // Get pressure and momentum in 3-cell stencil
-           real p_km1  = press (km1,j,i,iens);
-           real p_k    = press (k  ,j,i,iens);
-           real p_kp1  = press (kp1,j,i,iens);
-           real rw_km1 = rw(km1,j,i,iens);
-           real rw_k   = rw(k  ,j,i,iens);
-           real rw_kp1 = rw(kp1,j,i,iens);
-           // Compute upwind pressure and momentum at cell interfaces using characteristics
-           real rw_L  = (p_km1 - p_k  ) / (2*c_s) + 0.5_fp * (rw_k   + rw_km1);
-           real rw_R  = (p_k   - p_kp1) / (2*c_s) + 0.5_fp * (rw_kp1 + rw_k  );
-           // Enforce momentum boundary conditions at the domain top and bottom
-           if ( k == 0    ) rw_L  = 0; 
-           if ( k == nz-1 ) rw_R  = 0; 
-
-           real div = (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens);
-           divergence(k,j,i,iens) = div;
-           abs_div(k,j,i,iens) = abs(div);
-        });
-     }
-     //////////////////
-     // Third Order
-     //////////////////
-     else if( remove_momentum_div_order == 3 ) {
-        parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-           int im2 = i-2;  if (im2 < 0   ) im2 = nx+im2;
-           int im1 = i-1;  if (im1 < 0   ) im1 = nx+im1;
-           int ip1 = i+1;  if (ip1 > nx-1) ip1 = ip1-nx;
-           int ip2 = i+2;  if (ip2 > nx-1) ip2 = ip2-nx;
-           int km2 = k-2;  if (km2 < 0   ) km2 = 0;
-           int km1 = k-1;  if (km1 < 0   ) km1 = 0;
-           int kp1 = k+1;  if (kp1 > nz-1) kp1 = nz-1;
-           int kp2 = k+2;  if (kp2 > nz-1) kp2 = nz-1;
-
-           ////////////////////////////
-           // x-direction fluxes
-           ////////////////////////////
-           // Get pressure and momentum in 3-cell stencil
-           real p_im2  = press (k,j,im2,iens);
-           real p_im1  = press (k,j,im1,iens);
-           real p_i    = press (k,j,i  ,iens);
-           real p_ip1  = press (k,j,ip1,iens);
-           real p_ip2  = press (k,j,ip2,iens);
-           real ru_im2 = ru(k,j,im2,iens);
-           real ru_im1 = ru(k,j,im1,iens);
-           real ru_i   = ru(k,j,i  ,iens);
-           real ru_ip1 = ru(k,j,ip1,iens);
-           real ru_ip2 = ru(k,j,ip2,iens);
-           // Compute upwind pressure and momentum at cell interfaces using characteristics
-           real ru_L  = (-p_im2 + 3.*p_im1 - 3.*p_i + p_ip1  ) / (12.*c_s) +  (-ru_im2 + 7.*ru_im1 + 7.*ru_i - ru_ip1)/12.;
-           real ru_R  = (-p_im1 + 3.*p_i - 3.*p_ip1 + p_ip2  ) / (12.*c_s) +  (-ru_im1 + 7.*ru_i + 7.*ru_ip1 - ru_ip2)/12.;
-
-           ////////////////////////////
-           // z-direction fluxes
-           ////////////////////////////
-           // Get pressure and momentum in 3-cell stencil
-           real p_km2  = press (km2,j,i,iens);
-           real p_km1  = press (km1,j,i,iens);
-           real p_k    = press (k  ,j,i,iens);
-           real p_kp1  = press (kp1,j,i,iens);
-           real p_kp2  = press (kp2,j,i,iens);
-           real rw_km2 = rw(km2,j,i,iens);
-           real rw_km1 = rw(km1,j,i,iens);
-           real rw_k   = rw(k  ,j,i,iens);
-           real rw_kp1 = rw(kp1,j,i,iens);
-           real rw_kp2 = rw(kp2,j,i,iens);
-           // Compute upwind pressure and momentum at cell interfaces using characteristics
-           real rw_L  = (-p_km2 + 3.*p_km1 - 3.*p_k + p_kp1  ) / (12.*c_s) +  (-rw_km2 + 7.*rw_km1 + 7.*rw_k - rw_kp1)/12.;
-           real rw_R  = (-p_km1 + 3.*p_k - 3.*p_kp1 + p_kp2  ) / (12.*c_s) +  (-rw_km1 + 7.*rw_k + 7.*rw_kp1 - rw_kp2)/12.;
-           // Enforce momentum boundary conditions at the domain top and bottom
-           if ( k == 0    ) {
-              rw_L  = 0; 
-              rw_R = (4.*p_k-6.*p_kp1+2.*p_kp2)/(24.*c_s) + (19.*rw_k+13.*rw_kp1-2.*rw_kp2)/24.;
-           }
-           if ( k == 1    ) rw_L = (4.*p_km1-6.*p_k+2.*p_kp1)/(24.*c_s) + (19.*rw_km1+13.*rw_k-2.*rw_kp1)/24.;
-           if ( k == nz-1 ) {
-              rw_L = (-2.*p_km2+6.*p_km1-4.*p_k)/(24.*c_s) + (-2.*rw_km2+13.*rw_km1+19.*rw_k)/24.;
-              rw_R  = 0; 
-           }
-           if ( k == nz-2 ) rw_R = (-2.*p_km1+6.*p_k-4.*p_kp1)/(24.*c_s) + (-2.*rw_km1+13.*rw_k+19.*rw_kp1)/24.;
-
-           real div = (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens);
-           divergence(k,j,i,iens) = div;
-           abs_div(k,j,i,iens) = abs(div);
-        });
-     }
-
-  }
-  void build_matrix_solver(real c_s, real dtloc) {
-     // On first call, construct the sparse coefficient matrix in "Eigen"  corresponding to the steady state, divergence free equation 
-     // Compress, compute the (sparse?) LU factorization, and save to be used in repeated calls
-
-     real xi_x = dtloc/dx*c_s;
-     real xi_z = xi_x; // TODO: assumes constant dz=dx for now
-
-     Eigen::SparseMatrix<real> A(3*nx*nz,3*nx*nz);
-
-     //////////////////
-     // First Order
-     //////////////////
-     if( remove_momentum_div_order == 1 ) {
-
-        A.reserve(Eigen::VectorXi::Constant(3*nx*nz,6));  // TODO: double check how many expected nonzero entries in any given row/col
-
-        // Build the horizontal part of the matrix (easy BCs) 
-        for( int i=0; i < nx; i++ ){
-           for( int k=0; k < nz; k++ ) {
-              int pik, uik,pim1, uim1, pip1, uip1;
-              pik  = 3*( k*nx+i); uik  = pik+1;
-              pim1 = 3*( k*nx+i-1); uim1 = pim1+1;
-              if( i == 0 ) { pim1 = 3*(k*nx+nx-1); uim1 = pim1+1; } 
-              pip1 = 3*( k*nx+i+1); uip1 = pip1+1;
-              if( i == nx-1 ) { pip1 = 3*(k*nx+0); uip1 = pip1+1; }
-
-              // Interior pressure coeffs
-              A.insert(pik,pim1) = -xi_x/2.;
-              A.insert(pik,uim1) = -xi_x/2.*c_s;
-              A.insert(pik,pik) = xi_x;
-              A.insert(pik,pip1) = -xi_x/2.;
-              A.insert(pik,uip1) = xi_x/2.*c_s;
-
-              // Interior x momentum coeffs
-              A.insert(uik,pim1) = -xi_x/2./c_s;
-              A.insert(uik,uim1) = -xi_x/2.;
-              A.insert(uik,uik) = 1.+xi_x;
-              A.insert(uik,pip1) = xi_x/2./c_s;
-              A.insert(uik,uip1) = -xi_x/2.;
-           }
-        }
-
-        // Build the interior vertical cell coefficients
-        for( int i=0; i < nx; i++ ){
-           for( int k=1; k < nz-1; k++ ) {
-              int pik, wik, pkm1, wkm1, pkp1, wkp1;
-              pik  = 3*( k*nx+i); wik = pik+2;
-
-              pkm1 = 3*((k-1)*nx+i); wkm1 = pkm1+2;
-              pkp1 = 3*((k+1)*nx+i); wkp1 = pkp1+2;
-
-              // Interior pressure coeffs
-              A.insert(pik,pkm1)  = -xi_z/2.;
-              A.insert(pik,wkm1)  = -xi_z/2.*c_s;
-              A.coeffRef(pik,pik)+=  xi_z;
-              A.insert(pik,pkp1)  = -xi_z/2.;
-              A.insert(pik,wkp1)  =  xi_z/2.*c_s;
-
-              // Interior z momentum coeffs
-              A.insert(wik,pkm1) = -xi_z/2./c_s;
-              A.insert(wik,wkm1) = -xi_z/2.;
-              A.insert(wik,wik)  = 1.+xi_z;
-              A.insert(wik,pkp1) =  xi_z/2./c_s;
-              A.insert(wik,wkp1) = -xi_z/2.;
-           }
-        }
-
-        // Build in the top/bottom boundary contributions
-        for( int i=0; i < nx; i++ ){
-           int pik, wik, pkm1, wkm1, pkp1, wkp1;
-
-           // Bottom boundary condition coefficients
-           int k = 0;
-           pik  = 3*(k*nx+i); wik = pik+2;
-           pkp1 = 3*((k+1)*nx+i); wkp1 = pkp1+2;
-
-           // bottom pressure coeffs
-           A.coeffRef(pik,pik)+=  xi_z/2.;
-           A.insert(pik,wik)   =  xi_z/2.*c_s;
-           A.insert(pik,pkp1)  = -xi_z/2.;
-           A.insert(pik,wkp1)  =  xi_z/2.*c_s;
-
-           // bottom z momentum coeffs
-           A.insert(wik,wik)  = 1.+xi_z/2.;
-           A.insert(wik,pik)  = -xi_z/2./c_s;
-           A.insert(wik,pkp1) =  xi_z/2./c_s;
-           A.insert(wik,wkp1) = -xi_z/2.;
-
-           // Top boundary condition coefficients
-           k = nz-1;
-
-           pik  = 3*(k*nx+i); wik = pik+2;
-           pkm1 = 3*((k-1)*nx+i); wkm1 = pkm1+2;
-
-           // Top pressure coeffs
-           A.insert(pik,pkm1)  = -xi_z/2.;
-           A.insert(pik,wkm1)  = -xi_z/2.*c_s;
-           A.coeffRef(pik,pik)+=  xi_z/2.;
-           A.insert(pik,wik)   = -xi_z/2.*c_s;
-
-           // Top z momentum coeffs
-           A.insert(wik,pkm1) = -xi_z/2./c_s;
-           A.insert(wik,wkm1) = -xi_z/2.;
-           A.insert(wik,wik)  = 1.+xi_z/2.;
-           A.insert(wik,pik)  = xi_z/2./c_s;
-        }
-     }
-
-     //////////////////
-     // Third Order
-     //////////////////
-     else if( remove_momentum_div_order == 3 ) {
-
-        A.reserve(Eigen::VectorXi::Constant(3*nx*nz,20));  // TODO: double check how many expected nonzero entries in any given row/col
-
-        // Build the horizontal part of the matrix (easy BCs) 
-        for( int i=0; i < nx; i++ ){
-           for( int k=0; k < nz; k++ ) {
-              int pik, uik, pim1, uim1, pim2, uim2, pip1, uip1, pip2, uip2;
-
-              pik  = 3*( k*nx+i  ); uik  = pik +1;
-              pim2 = 3*( k*nx+i-2); uim2 = pim2+1;
-              pim1 = 3*( k*nx+i-1); uim1 = pim1+1;
-              if( i == 0 ) {
-                 pim1 = 3*(k*nx+nx-1); uim1 = pim1+1;
-                 pim2 = 3*(k*nx+nx-2); uim2 = pim2+1;
-              } 
-              if( i == 1 ) { pim2 = 3*(k*nx+nx-1); uim2 = pim2+1; } 
-
-              pip1 = 3*( k*nx+i+1); uip1 = pip1+1;
-              pip2 = 3*( k*nx+i+2); uip2 = pip2+1;
-              if( i == nx-1 ) {
-                 pip1 = 3*(k*nx+0); uip1 = pip1+1;
-                 pip2 = 3*(k*nx+1); uip2 = pip2+1;
-              }
-              if( i == nx-2 ) { pip2 = 3*(k*nx+0); uip2 = pip2+1; }
-
-              // Interior pressure coeffs
-              A.insert(pik,pim2) =  xi_x/12.;
-              A.insert(pik,pim1) = -xi_x/3.;
-              A.insert(pik,pik)  =  xi_x/2.;
-              A.insert(pik,pip1) = -xi_x/3.;
-              A.insert(pik,pip2) =  xi_x/12.;
-
-              A.insert(pik,uim2) =  xi_x/12.*c_s;
-              A.insert(pik,uim1) = -2./3.*xi_x*c_s;
-              A.insert(pik,uip1) =  2./3.*xi_x*c_s;
-              A.insert(pik,uip2) = -xi_x/12.*c_s;
-
-              // Interior x momentum coeffs
-              A.insert(uik,uim2) =    xi_x/12.;
-              A.insert(uik,uim1) =   -xi_x/3.;
-              A.insert(uik,uik)  = 1.+xi_x/2.;
-              A.insert(uik,uip1) =   -xi_x/3.;
-              A.insert(uik,uip2) =    xi_x/12.;
-
-              A.insert(uik,pim2) =  xi_x/12./c_s;
-              A.insert(uik,pim1) = -2./3.*xi_x/c_s;
-              A.insert(uik,pip1) =  2./3.*xi_x/c_s;
-              A.insert(uik,pip2) = -xi_x/12./c_s;
-
-           }
-        }
-
-        // Build the interior vertical cell coefficients
-        for( int i=0; i < nx; i++ ){
-           for( int k=2; k < nz-2; k++ ) {
-              int pik, wik, pkm1, wkm1, pkm2, wkm2, pkp1, wkp1, pkp2, wkp2;
-
-              pik  = 3*( k*nx+i); wik = pik+2;
-
-              pkm2 = 3*((k-2)*nx+i); wkm2 = pkm2+2;
-              pkm1 = 3*((k-1)*nx+i); wkm1 = pkm1+2;
-              pkp1 = 3*((k+1)*nx+i); wkp1 = pkp1+2;
-              pkp2 = 3*((k+2)*nx+i); wkp2 = pkp2+2;
-
-              // Interior pressure coeffs
-              A.insert(pik,pkm2)  =  xi_z/12.;
-              A.insert(pik,pkm1)  = -xi_z/3.;
-              A.coeffRef(pik,pik)+=  xi_z/2.;
-              A.insert(pik,pkp1)  = -xi_z/3.;
-              A.insert(pik,pkp2)  =  xi_z/12.;
-
-              A.insert(pik,wkm2)  =  xi_z/12.*c_s;
-              A.insert(pik,wkm1)  = -2./3.*xi_z*c_s;
-              A.insert(pik,wkp1)  =  2./3.*xi_z*c_s;
-              A.insert(pik,wkp2)  = -xi_z/12.*c_s;
-
-              // Interior z momentum coeffs
-              A.insert(wik,wkm2) =    xi_z/12.;
-              A.insert(wik,wkm1) =   -xi_z/3.;
-              A.insert(wik,wik)  = 1.+xi_z/2.;
-              A.insert(wik,wkp1) =   -xi_z/3.;
-              A.insert(wik,wkp2) =    xi_z/12.;
-
-              A.insert(wik,pkm2) =  xi_z/12./c_s;
-              A.insert(wik,pkm1) = -2./3.*xi_z/c_s;
-              A.insert(wik,pkp1) =  2./3.*xi_z/c_s;
-              A.insert(wik,pkp2) = -xi_z/12./c_s;
-           }
-        }
-
-        // Build in the top/bottom boundary contributions
-        for( int i=0; i < nx; i++ ){
-           int pik, wik, pkp1, wkp1, pkp2, wkp2;
-
-           // Bottom k=0 boundary condition coefficients
-           int k = 0;
-           pik  = 3*(k*nx+i); wik = pik+2;
-           pkp1 = 3*((k+1)*nx+i); wkp1 = pkp1+2;
-           pkp2 = 3*((k+2)*nx+i); wkp2 = pkp2+2;
-
-           // bottom k=0 pressure coeffs
-           A.coeffRef(pik,pik)+=  xi_z/6.;
-           A.insert(pik,pkp1)  = -xi_z/4.;
-           A.insert(pik,pkp2)  =  xi_z/12.;
-
-           A.insert(pik,wik)   =  19./24.*xi_z*c_s;
-           A.insert(pik,wkp1)  =  13./24.*xi_z*c_s;
-           A.insert(pik,wkp2)  =  -xi_z/12.*c_s;
-
-           // bottom k=0 z momentum coeffs
-           A.insert(wik,wik)  = 1.+11./24.*xi_z;
-           A.insert(wik,wkp1) = -7./24.*xi_z;
-           A.insert(wik,wkp2) =  xi_z/12.;
-
-           A.insert(wik,pik)  = -xi_z/2./c_s;
-           A.insert(wik,pkp1) =  7./12.*xi_z/c_s;
-           A.insert(wik,pkp2) =  -xi_z/12./c_s;
-        }
-        for( int i=0; i < nx; i++ ){
-           int pik, wik, pkm1, wkm1, pkp1, wkp1, pkp2, wkp2;
-           // Bottom k=1 boundary condition coefficients
-           int k = 1;
-           pik  = 3*(k*nx+i); wik = pik+2;
-           pkm1 = 3*((k-1)*nx+i); wkm1 = pkm1+2;
-           pkp1 = 3*((k+1)*nx+i); wkp1 = pkp1+2;
-           pkp2 = 3*((k+2)*nx+i); wkp2 = pkp2+2;
-
-           // bottom k=1 pressure coeffs
-           A.insert(pik,pkm1)  = -xi_z/4.;
-           A.coeffRef(pik,pik)+=  xi_z/2.;
-           A.insert(pik,pkp1)  = -xi_z/3.;
-           A.insert(pik,pkp2)  =  xi_z/12.;
-
-           A.insert(pik,wkm1)  = -21./24.*xi_z*c_s;
-           A.insert(pik,wik)   =  xi_z/24.*c_s;
-           A.insert(pik,wkp1)  =  2./3.*xi_z*c_s;
-           A.insert(pik,wkp2)  = -xi_z/12.*c_s;
-
-           // bottom k=1 z momentum coeffs
-           A.insert(wik,wkm1) = -13./24.*xi_z;
-           A.insert(wik,wik)  = 1.+13./24.*xi_z;
-           A.insert(wik,wkp1) = -xi_z/3.;
-           A.insert(wik,wkp2) = -xi_z/12.;
-
-           A.insert(wik,pkm1) = -7./24.*xi_z/c_s;
-           A.insert(wik,pkp1) =  2./3.*xi_z/c_s;
-           A.insert(wik,pkp2) = -xi_z/12./c_s;
-        }
-        for( int i=0; i < nx; i++ ){
-           int pik, wik, pkm1, wkm1, pkm2, wkm2;
-           // Top k=nz-1 boundary condition coefficients
-           int k = nz-1;
-
-           pik  = 3*(k*nx+i); wik = pik+2;
-           pkm2 = 3*((k-2)*nx+i); wkm2 = pkm2+2;
-           pkm1 = 3*((k-1)*nx+i); wkm1 = pkm1+2;
-
-           // Top k=nz-1 pressure coeffs
-           A.insert(pik,pkm2)  =  xi_z/12.;
-           A.insert(pik,pkm1)  = -xi_z/4.;
-           A.coeffRef(pik,pik)+=  xi_z/6.;
-
-           A.insert(pik,wkm2)  =  xi_z/12.*c_s;
-           A.insert(pik,wkm1)  = -13./24.*xi_z*c_s;
-           A.insert(pik,wik)   = -19./24.*xi_z*c_s;
-
-           // Top k=nz-1 z momentum coeffs
-           A.insert(wik,wkm2) =  xi_z/12.;
-           A.insert(wik,wkm1) = -7./24.*xi_z;
-           A.insert(wik,wik)  = 1.+11./24.*xi_z;
-
-           A.insert(wik,pkm2) =  xi_z/12./c_s;
-           A.insert(wik,pkm1) = -xi_z/4./c_s;
-           A.insert(wik,pik)  =  xi_z/6./c_s;
-
-        }
-        for( int i=0; i < nx; i++ ){
-           int pik, wik, pkm1, wkm1, pkm2, wkm2,  pkp1, wkp1;
-           // Top k=nz-2 boundary condition coefficients
-           int k = nz-2;
-
-           pik  = 3*(k*nx+i); wik = pik+2;
-           pkm2 = 3*((k-2)*nx+i); wkm2 = pkm2+2;
-           pkm1 = 3*((k-1)*nx+i); wkm1 = pkm1+2;
-           pkp1 = 3*((k+1)*nx+i); wkp1 = pkp1+2;
-
-           // Top pressure coeffs
-           A.insert(pik,pkm2)  =  xi_z/12.;
-           A.insert(pik,pkm1)  = -xi_z/3.;
-           A.coeffRef(pik,pik)+=  xi_z/2.;
-           A.insert(pik,pkp1)  = -xi_z/4.;
-
-           A.insert(pik,wkm2)  =  xi_z/12.*c_s;
-           A.insert(pik,wkm1)  = -2./3.*xi_z*c_s;
-           A.insert(pik,wik)   = -xi_z/24.*c_s;
-           A.insert(pik,wkp1)  =  21./24.*xi_z*c_s;
-
-           // Top z momentum coeffs
-           A.insert(wik,wkm2) =  xi_z/12.;
-           A.insert(wik,wkm1) = -xi_z/3.;
-           A.insert(wik,wik)  = 1.+13./24.*xi_z;
-           A.insert(wik,wkp1) = -13./24.*xi_z;
-
-           A.insert(wik,pkm2) =  xi_z/12./c_s;
-           A.insert(wik,pkm1) = -xi_z/3./c_s;
-           A.insert(wik,pik)  =  xi_z/2./c_s;
-           A.insert(wik,pkp1) = -xi_z/4./c_s;
-        }
-    }
-
-     ///////////////////////
-     // Construct solver 
-     //////////////////////
-     A.makeCompressed();
-
-     momdiv_solver.analyzePattern(A);
-     momdiv_solver.factorize(A);
-
-     solver_built = 1;
+  //   * Make this use time-implicit (backwards Euler) with Alternating Direciton Implicit (ADI)
+  //   * Do this at higher-order accuracy
+  //   * Consider a larger speed of sound to accelerate convergence
+  //   * Determine minimum number of iterations to achieve a satisfactory solution (don't converge to machine precision)
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  real minmod(real a, real b){
+     if (a*b < 0) return 0;
+     else if(abs(a) < abs(b)) return a;
+     else return b;
   }
   void remove_momentum_divergence(real5d &state) {
-    // Speed of sound and dt are somewhat arbitrary but might help matrix conditioning
+    // We get to choose the speed of sound
     real constexpr c_s = 300;
     real dtloc = 0.15;
+    real dzconst = dz(0,0); // TODO: assumes the dz are constant/uniform
+    // real dzmin = yakl::intrinsics::minval(dz);
+    // if (sim2d) {
+    //  dtloc = 0.3_fp * min( dx/c_s , dzmin/c_s );
+    // } else {
+    //   dtloc = 0.3_fp * min( min( dx/c_s , dy/c_s ) , dzmin/c_s );
+    // }
 
-    real xi_x = dtloc/dx*c_s;
-    real xi_z = xi_x; // TODO: assumes constant dz=dx for now
+    int scale_factor;
+    int grid_factor = 2; // in one dimension, number of fine cells making up a next coarsest cell (e.g. 2 is a 2x2 fine cell = coarse cell) TODO: assumes grid evenly divisible
+    int ngrids = 2;      // number of grids/levels including the finest
+    int iter_per_grid = 1;
 
-    real4d rho_u_new("rho_u_new",nz,ny,nx,nens);
-    real4d rho_v_new("rho_v_new",nz,ny,nx,nens);
-    real4d rho_w_new("rho_w_new",nz,ny,nx,nens);
+    // Allocated for each of the grids. Coarse grid values are stored in top left constituent fine cell (e.g. (0,0)_coarse --> (0,0)_fine or (1,2)_coarse --> (2,4)_fine)
+    real5d rho_u_new("rho_u_new",ngrids,nz,ny,nx,nens);
+    real5d rho_v_new("rho_v_new",ngrids,nz,ny,nx,nens);
+    real5d rho_w_new("rho_w_new",ngrids,nz,ny,nx,nens);
+    real5d press_new("press_new",ngrids,nz,ny,nx,nens);
+    real5d rho_u_tend("rho_u_tend",ngrids,nz,ny,nx,nens);
+    real5d rho_v_tend("rho_v_tend",ngrids,nz,ny,nx,nens);
+    real5d rho_w_tend("rho_w_tend",ngrids,nz,ny,nx,nens);
+    real5d pressure_tend("press_tend",ngrids,nz,ny,nx,nens);
     real4d abs_div("abs_div",nz,ny,nx,nens);
 
     // Initialize momentum to initial state and pressure perturbation to zero
+    parallel_for( Bounds<5>(ngrids,nz,ny,nx,nens) , YAKL_LAMBDA (int g, int k, int j, int i, int iens) {
+      rho_u_new(g,k,j,i,iens) = 0.;
+      rho_v_new(g,k,j,i,iens) = 0.;
+      rho_w_new(g,k,j,i,iens) = 0.;
+      press_new(g,k,j,i,iens) = 0.;
+      rho_u_tend(g,k,j,i,iens) = 0.;
+      rho_v_tend(g,k,j,i,iens) = 0.;
+      rho_w_tend(g,k,j,i,iens) = 0.;
+      pressure_tend(g,k,j,i,iens) = 0.;
+    });
     parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      rho_u_new(k,j,i,iens) = state(idU,hs+k,hs+j,hs+i,iens) * hyDensCells(hs+k,iens);
-      rho_v_new(k,j,i,iens) = state(idV,hs+k,hs+j,hs+i,iens) * hyDensCells(hs+k,iens);
-      rho_w_new(k,j,i,iens) = state(idW,hs+k,hs+j,hs+i,iens) * hyDensCells(hs+k,iens);
-      pressure (k,j,i,iens) = 0.;
+      rho_u_new(0,k,j,i,iens) = state(idU,hs+k,hs+j,hs+i,iens) * hyDensCells(hs+k,iens);
+      rho_v_new(0,k,j,i,iens) = state(idV,hs+k,hs+j,hs+i,iens) * hyDensCells(hs+k,iens);
+      rho_w_new(0,k,j,i,iens) = state(idW,hs+k,hs+j,hs+i,iens) * hyDensCells(hs+k,iens);
+      press_new(0,k,j,i,iens) = 0;
     });
 
-    // Compute initial momentum divergence
-    calculate_divergence(rho_u_new, rho_w_new, pressure, abs_div, c_s); 
+    // compute initial momentum divergence
+    parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+       int im1 = i-1;  if (im1 < 0   ) im1 = nx-1;
+       int ip1 = i+1;  if (ip1 > nx-1) ip1 = 0;
+       int jm1 = j-1;  if (jm1 < 0   ) jm1 = ny-1;
+       int jp1 = j+1;  if (jp1 > ny-1) jp1 = 0;
+       int km1 = k-1;  if (km1 < 0   ) km1 = 0;
+       int kp1 = k+1;  if (kp1 > nz-1) kp1 = nz-1;
+
+       ////////////////////////////
+       // x-direction fluxes
+       ////////////////////////////
+       // Get pressure and momentum in 3-cell stencil
+       real p_im1  = press_new(0,k,j,im1,iens);
+       real p_i    = press_new(0,k,j,i  ,iens);
+       real p_ip1  = press_new(0,k,j,ip1,iens);
+       real ru_im1 = rho_u_new(0,k,j,im1,iens);
+       real ru_i   = rho_u_new(0,k,j,i  ,iens);
+       real ru_ip1 = rho_u_new(0,k,j,ip1,iens);
+       // Compute upwind pressure and momentum at cell interfaces using characteristics
+       real ru_L  = (p_im1 - p_i  ) / (2*c_s) + 0.5_fp * (ru_i   + ru_im1);
+       real ru_R  = (p_i   - p_ip1) / (2*c_s) + 0.5_fp * (ru_ip1 + ru_i  );
+
+       ////////////////////////////
+       // z-direction fluxes
+       ////////////////////////////
+       // Get pressure and momentum in 3-cell stencil
+       real p_km1  = press_new(0,km1,j,i,iens);
+       real p_k    = press_new(0,k  ,j,i,iens);
+       real p_kp1  = press_new(0,kp1,j,i,iens);
+       real rw_km1 = rho_w_new(0,km1,j,i,iens);
+       real rw_k   = rho_w_new(0,k  ,j,i,iens);
+       real rw_kp1 = rho_w_new(0,kp1,j,i,iens);
+       // Compute upwind pressure and momentum at cell interfaces using characteristics
+       real rw_L  = (p_km1 - p_k  ) / (2*c_s) + 0.5_fp * (rw_k   + rw_km1);
+       real rw_R  = (p_k   - p_kp1) / (2*c_s) + 0.5_fp * (rw_kp1 + rw_k  );
+       // Enforce momentum boundary conditions at the domain top and bottom
+       if ( k == 0    ) rw_L  = 0; 
+       if ( k == nz-1 ) rw_R  = 0; 
+
+       real div = (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens);
+       abs_div(k,j,i,iens) = abs(div);
+    });
     std::cout << "Starting total absolute divergence: " << yakl::intrinsics::sum(abs_div) << " maximum absolute divergence: " << yakl::intrinsics::maxval(abs_div) << std::endl;
 
-    // If not already built, create the solver for the steady state matrix described in 'single solve' 
-    if(!solver_built) { build_matrix_solver(c_s,dtloc); };
+    ////////////////////////////////////
+    // First pass at multigrid
+    ////////////////////////////////////
+    for( int iter=0; iter < 200; iter++ ) {
+       ////////////////////////////
+       // Coarsening Pass
+       ////////////////////////////
+       for( int g = 0; g < ngrids; g++ ) {
+          for( int interior_iter=0; interior_iter < iter_per_grid; interior_iter++ ) {
+             ////////////////////////////////////////
+             // Compute tendencies on current grid
+             ////////////////////////////////////////
+             scale_factor = (int)(pow(grid_factor, g) + 0.5); // factor to scale between current grid and finest grid indices
+             parallel_for( Bounds<4>(nz/scale_factor,ny,nx/scale_factor,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
 
-    // Set up RHS vector
-    Eigen::VectorXd q(3*nx*nz), b(3*nx*nz);
-    for( int k=0; k < nz; k++ ) {
-       for( int j=0; j < ny; j++ ) {
-          for( int i=0; i < nx; i++ ){
-             for( int iens=0; iens < nens; iens++ ) {
-                int pik  = 3*(k*nx+i); int uik  = pik+1; int wik = uik+1;
+                int iscale = i*scale_factor;
+                int jscale = j;
+                int kscale = k*scale_factor;
 
-                b(pik) = 0.;
-                b(uik) = state(idU,hs+k,hs+j,hs+i,iens) * hyDensCells(hs+k,iens);
-                b(wik) = state(idW,hs+k,hs+j,hs+i,iens) * hyDensCells(hs+k,iens);
+                // Compute indices for left and right cells (periodic in x,y; solid wall in z)
+                int im1 = iscale-scale_factor;  if (im1 < 0   ) im1 = nx-scale_factor;
+                int ip1 = iscale+scale_factor;  if (ip1 > nx-1) ip1 = 0;
+                int km1 = kscale-scale_factor;  if (km1 < 0   ) km1 = 0;
+                int kp1 = kscale+scale_factor;  if (kp1 > nz-1) kp1 = nz-scale_factor;
 
+                ////////////////////////////
+                // x-direction fluxes
+                ////////////////////////////
+                // Get pressure and momentum in 3-cell stencil
+                real p_im1  = press_new(g,kscale,jscale,im1   ,iens);
+                real p_i    = press_new(g,kscale,jscale,iscale,iens);
+                real p_ip1  = press_new(g,kscale,jscale,ip1   ,iens);
+                real ru_im1 = rho_u_new(g,kscale,jscale,im1   ,iens);
+                real ru_i   = rho_u_new(g,kscale,jscale,iscale,iens);
+                real ru_ip1 = rho_u_new(g,kscale,jscale,ip1   ,iens);
+                // Compute upwind pressure and momentum at cell interfaces using characteristics
+                real p_x_L = (p_i   + p_im1) / 2       + c_s/2  * (ru_im1 - ru_i  );
+                real p_x_R = (p_ip1 + p_i  ) / 2       + c_s/2  * (ru_i   - ru_ip1);
+                real ru_L  = (p_im1 - p_i  ) / (2*c_s) + 0.5_fp * (ru_i   + ru_im1);
+                real ru_R  = (p_i   - p_ip1) / (2*c_s) + 0.5_fp * (ru_ip1 + ru_i  );
+
+                ////////////////////////////
+                // z-direction fluxes
+                ////////////////////////////
+                // Get pressure and momentum in 3-cell stencil
+                real p_km1  = press_new(g,km1   ,jscale,iscale,iens);
+                real p_k    = press_new(g,kscale,jscale,iscale,iens);
+                real p_kp1  = press_new(g,kp1   ,jscale,iscale,iens);
+                real rw_km1 = rho_w_new(g,km1   ,jscale,iscale,iens);
+                real rw_k   = rho_w_new(g,kscale,jscale,iscale,iens);
+                real rw_kp1 = rho_w_new(g,kp1   ,jscale,iscale,iens);
+                // Compute upwind pressure and momentum at cell interfaces using characteristics
+                real p_z_L = (p_k   + p_km1) / 2       + c_s/2  * (rw_km1 - rw_k  );
+                real p_z_R = (p_kp1 + p_k  ) / 2       + c_s/2  * (rw_k   - rw_kp1);
+                real rw_L  = (p_km1 - p_k  ) / (2*c_s) + 0.5_fp * (rw_k   + rw_km1);
+                real rw_R  = (p_k   - p_kp1) / (2*c_s) + 0.5_fp * (rw_kp1 + rw_k  );
+                // Enforce momentum boundary conditions at the domain top and bottom
+                if ( kscale == 0    ) { rw_L  = 0; p_z_L = p_k; }
+                if ( kscale == nz-scale_factor ) { rw_R  = 0; p_z_R = p_k; }
+
+                ////////////////////////////////////////////////////////
+                // Perform the update using fluxes at cell interface
+                ////////////////////////////////////////////////////////
+                //for( int kk = kscale; kk - kscale < scale_factor; kk++ ) dztot += dz(kk,iens);
+                pressure_tend(g,kscale,jscale,iscale,iens) = -c_s*c_s * ( (ru_R-ru_L)/(scale_factor*dx) + (rw_R-rw_L)/(scale_factor*dzconst) );
+                rho_u_tend(g,kscale,jscale,iscale,iens) = -(p_x_R - p_x_L) / (scale_factor*dx);
+                rho_w_tend(g,kscale,jscale,iscale,iens) = -(p_z_R - p_z_L) / (scale_factor*dzconst); //dztot;
+
+             });
+             // if current grid is not at the coarsest level, apply tendencies and compute average at next grid level
+             if( interior_iter < iter_per_grid-1 || g < ngrids-1 ) {
+                // Compute time step for current grid, assuming constant dz=dx
+                //dtloc = 0.3_fp * (scale_factor*dx/c_s); // TODO: probably don't want to change dt since it changes the magnitude of the convergent pressure values
+                parallel_for( Bounds<4>(nz/scale_factor,ny,nx/scale_factor,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+
+                   // Compute current grid averaged fixed value (TODO: this can be streamlined to be done once at the start)
+                   real rho_u_fixed=0., rho_w_fixed=0.;
+                   int iscale = i*scale_factor;
+                   int jscale = j;
+                   int kscale = k*scale_factor;
+                   for(int kk=kscale; kk-kscale < scale_factor; kk++ ) {
+                      for(int ii=iscale; ii-iscale < scale_factor; ii++ ) {
+                         rho_u_fixed += state(idU,hs+kk,hs+jscale,hs+ii,iens)*hyDensCells(hs+kk,iens)/(scale_factor*scale_factor);
+                         rho_w_fixed += state(idW,hs+kk,hs+jscale,hs+ii,iens)*hyDensCells(hs+kk,iens)/(scale_factor*scale_factor);
+                      }
+                   }
+                   press_new(g,kscale,jscale,iscale,iens) += dtloc * pressure_tend(g,kscale,jscale,iscale,iens);
+                   rho_u_new(g,kscale,jscale,iscale,iens) = rho_u_fixed + dtloc * rho_u_tend(g,kscale,jscale,iscale,iens);
+                   rho_w_new(g,kscale,jscale,iscale,iens) = rho_w_fixed + dtloc * rho_w_tend(g,kscale,jscale,iscale,iens);
+                });
+             }
+
+             if( g < ngrids-1 ) {
+                ////////////////////////////////////////
+                // Average state to coarse grid
+                ////////////////////////////////////////
+                scale_factor = (int)(pow(grid_factor, g+1) + 0.5);
+                parallel_for( Bounds<4>(nz/scale_factor,ny,nx/scale_factor,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+                   int iscale = i*scale_factor;
+                   int jscale = j;
+                   int kscale = k*scale_factor;
+
+                   press_new(g+1,kscale,jscale,iscale,iens) = 0.;
+                   rho_u_new(g+1,kscale,jscale,iscale,iens) = 0.;
+                   rho_w_new(g+1,kscale,jscale,iscale,iens) = 0.;
+
+                   for(int kk=kscale; kk-kscale < scale_factor; kk+=scale_factor/grid_factor) {
+                     for(int ii=iscale; ii-iscale < scale_factor; ii+=scale_factor/grid_factor) {
+                         press_new(g+1,kscale,jscale,iscale,iens) += press_new(g,kk,jscale,ii,iens)/(grid_factor*grid_factor);
+                         rho_u_new(g+1,kscale,jscale,iscale,iens) += rho_u_new(g,kk,jscale,ii,iens)/(grid_factor*grid_factor);
+                         rho_w_new(g+1,kscale,jscale,iscale,iens) += rho_w_new(g,kk,jscale,ii,iens)/(grid_factor*grid_factor);
+                      }
+                   }
+                });
              }
           }
        }
-    }
 
-    // Solve 
-    q = momdiv_solver.solve(b);
+       ////////////////////////////
+       // Refining Pass
+       ////////////////////////////
+       for( int g = ngrids-2; g >= 0; g-- ) {
 
-    // Copy solution into appropriate arrays
-    for( int k=0; k < nz; k++ ) {
-       for( int j=0; j < ny; j++ ) {
-          for( int i=0; i < nx; i++ ){
-             for( int iens=0; iens < nens; iens++ ) {
-                int pik  = 3*(k*nx+i); int uik  = pik+1; int wik = uik+1;
+          ////////////////////////////////////////////////////////
+          // Interpolate tendencies from coarse grid using minmod
+          ////////////////////////////////////////////////////////
+          scale_factor = (int)(pow(grid_factor, g+1) + 0.5);
+          parallel_for( Bounds<4>(nz/scale_factor,ny,nx/scale_factor,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+             int iscale = i*scale_factor;
+             int jscale = j;
+             int kscale = k*scale_factor;
 
-                pressure(k,j,i,iens)  = q(pik);
-                rho_u_new(k,j,i,iens) = q(uik);
-                rho_w_new(k,j,i,iens) = q(wik);
+             // Compute indices for left and right cells (periodic in x,y; solid wall in z)
+             int im1 = iscale-scale_factor;  if (im1 < 0   ) im1 = nx-scale_factor;
+             int ip1 = iscale+scale_factor;  if (ip1 > nx-1) ip1 = 0;
+             int km1 = kscale-scale_factor;  if (km1 < 0   ) km1 = 0;
+             int kp1 = kscale+scale_factor;  if (kp1 > nz-1) kp1 = nz-scale_factor;
+
+             //real dzconst = dz(0,iens); // TODO: assume dz is constant for now
+
+             real press_sx = minmod((pressure_tend(g+1,kscale,jscale,iscale,iens)-pressure_tend(g+1,kscale,jscale,im1,iens))/(scale_factor*dx), (pressure_tend(g+1,kscale,jscale,ip1,iens)-pressure_tend(g+1,kscale,jscale,iscale,iens))/(scale_factor*dx));
+             real press_sz = minmod((pressure_tend(g+1,kscale,jscale,iscale,iens)-pressure_tend(g+1,km1,jscale,iscale,iens))/(scale_factor*dzconst), (pressure_tend(g+1,kp1,jscale,iscale,iens)-pressure_tend(g+1,kscale,jscale,iscale,iens))/(scale_factor*dzconst));
+
+             real rho_u_sx = minmod((rho_u_tend(g+1,kscale,jscale,iscale,iens)-rho_u_tend(g+1,kscale,jscale,im1,iens))/(scale_factor*dx), (rho_u_tend(g+1,kscale,jscale,ip1,iens)-rho_u_tend(g+1,kscale,jscale,iscale,iens))/(scale_factor*dx));
+             real rho_u_sz = minmod((rho_u_tend(g+1,kscale,jscale,iscale,iens)-rho_u_tend(g+1,km1,jscale,iscale,iens))/(scale_factor*dzconst), (rho_u_tend(g+1,kp1,jscale,iscale,iens)-rho_u_tend(g+1,kscale,jscale,iscale,iens))/(scale_factor*dzconst));
+
+             real rho_w_sx = minmod((rho_w_tend(g+1,kscale,jscale,iscale,iens)-rho_w_tend(g+1,kscale,jscale,im1,iens))/(scale_factor*dx), (rho_w_tend(g+1,kscale,jscale,ip1,iens)-rho_w_tend(g+1,kscale,jscale,iscale,iens))/(scale_factor*dx));
+             real rho_w_sz = minmod((rho_w_tend(g+1,kscale,jscale,iscale,iens)-rho_w_tend(g+1,km1,jscale,iscale,iens))/(scale_factor*dzconst), (rho_w_tend(g+1,kp1,jscale,iscale,iens)-rho_w_tend(g+1,kscale,jscale,iscale,iens))/(scale_factor*dzconst));
+
+             real cx = iscale+scale_factor/2., cz = kscale+scale_factor/2.;
+
+             for(int kk=kscale; kk-kscale < scale_factor; kk+=scale_factor/grid_factor){
+                for(int ii=iscale; ii-iscale < scale_factor; ii+=scale_factor/grid_factor){
+
+                   real cxfine = ii+scale_factor/grid_factor/2., czfine = kk+scale_factor/grid_factor/2.;
+
+                   pressure_tend(g,kk,jscale,ii,iens) = pressure_tend(g+1,kscale,jscale,iscale,iens) + press_sx*(cxfine-cx)*dx + press_sz*(czfine-cz)*dzconst;
+                   rho_u_tend(g,kk,jscale,ii,iens) = rho_u_tend(g+1,kscale,jscale,iscale,iens) + rho_u_sx*(cxfine-cx)*dx + rho_u_sz*(czfine-cz)*dzconst;
+                   rho_w_tend(g,kk,jscale,ii,iens) = rho_w_tend(g+1,kscale,jscale,iscale,iens) + rho_w_sx*(cxfine-cx)*dx + rho_w_sz*(czfine-cz)*dzconst;
+                }
              }
-          }
+          });
+
+          ////////////////////////////
+          // Apply refined tendencies
+          ////////////////////////////
+          int scale_factor = (int)(pow(grid_factor, g) + 0.5);
+          // Compute time step for current grid, assuming constant dz=dx
+          // dtloc = 0.3_fp * (scale_factor*dx/c_s); // don't change dt
+          parallel_for( Bounds<4>(nz/scale_factor,ny,nx/scale_factor,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+             real rho_u_fixed=0., rho_w_fixed=0.;
+
+             int iscale = i*scale_factor;
+             int jscale = j;
+             int kscale = k*scale_factor;
+
+             for(int kk=kscale; kk-kscale < scale_factor; kk++ ) {
+                for(int ii=iscale; ii-iscale < scale_factor; ii++ ) {
+                   rho_u_fixed += state(idU,hs+kk,hs+jscale,hs+ii,iens)*hyDensCells(hs+kk,iens)/(scale_factor*scale_factor);
+                   rho_w_fixed += state(idW,hs+kk,hs+jscale,hs+ii,iens)*hyDensCells(hs+kk,iens)/(scale_factor*scale_factor);
+                }
+             }
+
+             press_new(g,kscale,jscale,iscale,iens) += dtloc * pressure_tend(g,kscale,jscale,iscale,iens)/(grid_factor*grid_factor);
+             rho_u_new(g,kscale,jscale,iscale,iens) = rho_u_fixed + dtloc * rho_u_tend(g,kscale,jscale,iscale,iens)/(grid_factor*grid_factor);
+             rho_w_new(g,kscale,jscale,iscale,iens) = rho_w_fixed + dtloc * rho_w_tend(g,kscale,jscale,iscale,iens)/(grid_factor*grid_factor);
+          });
+
+          ////////////////////////////
+          // Compute new tendencies
+          ////////////////////////////
+          parallel_for( Bounds<4>(nz/scale_factor,ny,nx/scale_factor,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+
+             int iscale = i*scale_factor;
+             int jscale = j;
+             int kscale = k*scale_factor;
+
+             // Compute indices for left and right cells (periodic in x,y; solid wall in z)
+             int im1 = iscale-scale_factor;  if (im1 < 0   ) im1 = nx-scale_factor;
+             int ip1 = iscale+scale_factor;  if (ip1 > nx-1) ip1 = 0;
+             int km1 = kscale-scale_factor;  if (km1 < 0   ) km1 = 0;
+             int kp1 = kscale+scale_factor;  if (kp1 > nz-1) kp1 = nz-scale_factor;
+
+             ////////////////////////////
+             // x-direction fluxes
+             ////////////////////////////
+             // Get pressure and momentum in 3-cell stencil
+             real p_im1  = press_new(g,kscale,jscale,im1   ,iens);
+             real p_i    = press_new(g,kscale,jscale,iscale,iens);
+             real p_ip1  = press_new(g,kscale,jscale,ip1   ,iens);
+             real ru_im1 = rho_u_new(g,kscale,jscale,im1   ,iens);
+             real ru_i   = rho_u_new(g,kscale,jscale,iscale,iens);
+             real ru_ip1 = rho_u_new(g,kscale,jscale,ip1   ,iens);
+             // Compute upwind pressure and momentum at cell interfaces using characteristics
+             real p_x_L = (p_i   + p_im1) / 2       + c_s/2  * (ru_im1 - ru_i  );
+             real p_x_R = (p_ip1 + p_i  ) / 2       + c_s/2  * (ru_i   - ru_ip1);
+             real ru_L  = (p_im1 - p_i  ) / (2*c_s) + 0.5_fp * (ru_i   + ru_im1);
+             real ru_R  = (p_i   - p_ip1) / (2*c_s) + 0.5_fp * (ru_ip1 + ru_i  );
+
+             ////////////////////////////
+             // z-direction fluxes
+             ////////////////////////////
+             // Get pressure and momentum in 3-cell stencil
+             real p_km1  = press_new(g,km1   ,jscale,iscale,iens);
+             real p_k    = press_new(g,kscale,jscale,iscale,iens);
+             real p_kp1  = press_new(g,kp1   ,jscale,iscale,iens);
+             real rw_km1 = rho_w_new(g,km1   ,jscale,iscale,iens);
+             real rw_k   = rho_w_new(g,kscale,jscale,iscale,iens);
+             real rw_kp1 = rho_w_new(g,kp1   ,jscale,iscale,iens);
+             // Compute upwind pressure and momentum at cell interfaces using characteristics
+             real p_z_L = (p_k   + p_km1) / 2       + c_s/2  * (rw_km1 - rw_k  );
+             real p_z_R = (p_kp1 + p_k  ) / 2       + c_s/2  * (rw_k   - rw_kp1);
+             real rw_L  = (p_km1 - p_k  ) / (2*c_s) + 0.5_fp * (rw_k   + rw_km1);
+             real rw_R  = (p_k   - p_kp1) / (2*c_s) + 0.5_fp * (rw_kp1 + rw_k  );
+             // Enforce momentum boundary conditions at the domain top and bottom
+             if ( kscale == 0    ) { rw_L  = 0; p_z_L = p_k; }
+             if ( kscale == nz-scale_factor ) { rw_R  = 0; p_z_R = p_k; }
+
+             ////////////////////////////////////////////////////////
+             // Perform the update using fluxes at cell interface
+             ////////////////////////////////////////////////////////
+             pressure_tend(g,kscale,jscale,iscale,iens) = -c_s*c_s * ( (ru_R-ru_L)/(scale_factor*dx) + (rw_R-rw_L)/(scale_factor*dzconst) );
+             rho_u_tend(g,kscale,jscale,iscale,iens) = -(p_x_R - p_x_L) / (scale_factor*dx);
+             rho_w_tend(g,kscale,jscale,iscale,iens) = -(p_z_R - p_z_L) / (scale_factor*dzconst);
+
+          });
        }
+
+       ////////////////////////////////////////////////////////
+       // Apply tendencies at finest level
+       ////////////////////////////////////////////////////////
+       // Compute time step for current grid, assuming constant dz=dx
+       // dtloc = 0.3_fp * (dx/c_s); // don't change dt 
+       parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+          //pressure(k,j,i,iens) = abs(pressure_tend(0,k,j,i,iens));
+          press_new(0,k,j,i,iens) += dtloc * pressure_tend(0,k,j,i,iens);
+          rho_u_new(0,k,j,i,iens) = state(idU,hs+k,hs+j,hs+i,iens)*hyDensCells(hs+k,iens) + dtloc * rho_u_tend(0,k,j,i,iens);
+          rho_w_new(0,k,j,i,iens) = state(idW,hs+k,hs+j,hs+i,iens)*hyDensCells(hs+k,iens) + dtloc * rho_w_tend(0,k,j,i,iens);
+       });  
+
+       ////////////////////////////////////////////////////////
+       // Check post v-cycle divergence on finest grid 
+       ////////////////////////////////////////////////////////
+       parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+          int im1 = i-1;  if (im1 < 0   ) im1 = nx-1;
+          int ip1 = i+1;  if (ip1 > nx-1) ip1 = 0;
+          int jm1 = j-1;  if (jm1 < 0   ) jm1 = ny-1;
+          int jp1 = j+1;  if (jp1 > ny-1) jp1 = 0;
+          int km1 = k-1;  if (km1 < 0   ) km1 = 0;
+          int kp1 = k+1;  if (kp1 > nz-1) kp1 = nz-1;
+
+          ////////////////////////////
+          // x-direction fluxes
+          ////////////////////////////
+          // Get pressure and momentum in 3-cell stencil
+          real p_im1  = press_new(0,k,j,im1,iens);
+          real p_i    = press_new(0,k,j,i  ,iens);
+          real p_ip1  = press_new(0,k,j,ip1,iens);
+          real ru_im1 = rho_u_new(0,k,j,im1,iens);
+          real ru_i   = rho_u_new(0,k,j,i  ,iens);
+          real ru_ip1 = rho_u_new(0,k,j,ip1,iens);
+          // Compute upwind pressure and momentum at cell interfaces using characteristics
+          real ru_L  = (p_im1 - p_i  ) / (2*c_s) + 0.5_fp * (ru_i   + ru_im1);
+          real ru_R  = (p_i   - p_ip1) / (2*c_s) + 0.5_fp * (ru_ip1 + ru_i  );
+
+          ////////////////////////////
+          // z-direction fluxes
+          ////////////////////////////
+          // Get pressure and momentum in 3-cell stencil
+          real p_km1  = press_new(0,km1,j,i,iens);
+          real p_k    = press_new(0,k  ,j,i,iens);
+          real p_kp1  = press_new(0,kp1,j,i,iens);
+          real rw_km1 = rho_w_new(0,km1,j,i,iens);
+          real rw_k   = rho_w_new(0,k  ,j,i,iens);
+          real rw_kp1 = rho_w_new(0,kp1,j,i,iens);
+          // Compute upwind pressure and momentum at cell interfaces using characteristics
+          real rw_L  = (p_km1 - p_k  ) / (2*c_s) + 0.5_fp * (rw_k   + rw_km1);
+          real rw_R  = (p_k   - p_kp1) / (2*c_s) + 0.5_fp * (rw_kp1 + rw_k  );
+          // Enforce momentum boundary conditions at the domain top and bottom
+          if ( k == 0    ) rw_L  = 0; 
+          if ( k == nz-1 ) rw_R  = 0; 
+
+          real div = (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens);
+          divergence(k,j,i,iens) = div;
+          abs_div(k,j,i,iens) = abs(div);
+       });
+       std::cout << "Iter " << iter << " Total absolute divergence: " << yakl::intrinsics::sum(abs_div) << " maximum absolute divergence: " << yakl::intrinsics::maxval(abs_div) << std::endl;
     }
 
-    // Compute final momentum divergence and save in array
-    calculate_divergence(rho_u_new, rho_w_new, pressure, abs_div, c_s); 
+    ////////////////////////////////////////////////////////
+    // Finish iteration on finest grid only
+    ////////////////////////////////////////////////////////
+    for( int iter=200; iter < 500; iter++ ) {
+       parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+          // Compute indices for left and right cells (periodic in x,y; solid wall in z)
+          int im1 = i-1;  if (im1 < 0   ) im1 = nx-1;
+          int ip1 = i+1;  if (ip1 > nx-1) ip1 = 0;
+          int jm1 = j-1;  if (jm1 < 0   ) jm1 = ny-1;
+          int jp1 = j+1;  if (jp1 > ny-1) jp1 = 0;
+          int km1 = k-1;  if (km1 < 0   ) km1 = 0;
+          int kp1 = k+1;  if (kp1 > nz-1) kp1 = nz-1;
+
+          ////////////////////////////
+          // x-direction fluxes
+          ////////////////////////////
+          // Get pressure and momentum in 3-cell stencil
+          real p_im1  = press_new(0,k,j,im1,iens);
+          real p_i    = press_new(0,k,j,i  ,iens);
+          real p_ip1  = press_new(0,k,j,ip1,iens);
+          real ru_im1 = rho_u_new(0,k,j,im1,iens);
+          real ru_i   = rho_u_new(0,k,j,i  ,iens);
+          real ru_ip1 = rho_u_new(0,k,j,ip1,iens);
+          // Compute upwind press_new and momentum at cell interfaces using characteristics
+          real p_x_L = (p_i   + p_im1) / 2       + c_s/2  * (ru_im1 - ru_i  );
+          real p_x_R = (p_ip1 + p_i  ) / 2       + c_s/2  * (ru_i   - ru_ip1);
+          real ru_L  = (p_im1 - p_i  ) / (2*c_s) + 0.5_fp * (ru_i   + ru_im1);
+          real ru_R  = (p_i   - p_ip1) / (2*c_s) + 0.5_fp * (ru_ip1 + ru_i  );
+
+          ////////////////////////////
+          // z-direction fluxes
+          ////////////////////////////
+          // Get press_new and momentum in 3-cell stencil
+          real p_km1  = press_new(0,km1,j,i,iens);
+          real p_k    = press_new(0,k  ,j,i,iens);
+          real p_kp1  = press_new(0,kp1,j,i,iens);
+          real rw_km1 = rho_w_new(0,km1,j,i,iens);
+          real rw_k   = rho_w_new(0,k  ,j,i,iens);
+          real rw_kp1 = rho_w_new(0,kp1,j,i,iens);
+          // Compute upwind pressure and momentum at cell interfaces using characteristics
+          real p_z_L = (p_k   + p_km1) / 2       + c_s/2  * (rw_km1 - rw_k  );
+          real p_z_R = (p_kp1 + p_k  ) / 2       + c_s/2  * (rw_k   - rw_kp1);
+          real rw_L  = (p_km1 - p_k  ) / (2*c_s) + 0.5_fp * (rw_k   + rw_km1);
+          real rw_R  = (p_k   - p_kp1) / (2*c_s) + 0.5_fp * (rw_kp1 + rw_k  );
+          // Enforce momentum boundary conditions at the domain top and bottom
+          if ( k == 0    ) { rw_L  = 0; p_z_L = p_k; }
+          if ( k == nz-1 ) { rw_R  = 0; p_z_R = p_k; }
+
+          ////////////////////////////////////////////////////////
+          // Perform the update using fluxes at cell interface
+          ////////////////////////////////////////////////////////
+          pressure_tend(0,k,j,i,iens) = -c_s*c_s * ( (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens) );
+          rho_u_tend(0,k,j,i,iens) = -(p_x_R - p_x_L) / (dx);
+          rho_w_tend(0,k,j,i,iens) = -(p_z_R - p_z_L) / (dz(k,iens));
+
+          real div = (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens);
+          abs_div(k,j,i,iens) = abs(div);
+       });
+       std::cout << "Iter " << iter << " Total absolute divergence: " << yakl::intrinsics::sum(abs_div) << " maximum absolute divergence: " << yakl::intrinsics::maxval(abs_div) << std::endl;
+       parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+          press_new(0,k,j,i,iens) += dtloc * pressure_tend(0,k,j,i,iens);
+          rho_u_new(0,k,j,i,iens) = state(idU,hs+k,hs+j,hs+i,iens)*hyDensCells(hs+k,iens) + dtloc * rho_u_tend(0,k,j,i,iens);
+          rho_w_new(0,k,j,i,iens) = state(idW,hs+k,hs+j,hs+i,iens)*hyDensCells(hs+k,iens) + dtloc * rho_w_tend(0,k,j,i,iens);
+       });  
+    }
+
+
     std::cout << "Ending total absolute divergence: " << yakl::intrinsics::sum(abs_div) << " maximum absolte divergence: " << yakl::intrinsics::maxval(abs_div) << std::endl;
 
-    // Assign new divergence-free momentum
+    // Copy divergence free values
     parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      state(idU,hs+k,hs+j,hs+i,iens) = rho_u_new(k,j,i,iens) / hyDensCells(hs+k,iens);
-      state(idV,hs+k,hs+j,hs+i,iens) = rho_v_new(k,j,i,iens) / hyDensCells(hs+k,iens);
-      state(idW,hs+k,hs+j,hs+i,iens) = rho_w_new(k,j,i,iens) / hyDensCells(hs+k,iens);
+      pressure(hs+k,hs+j,hs+i,iens) = press_new(0,k,j,i,iens) / hyDensCells(hs+k,iens);
+      state(idU,hs+k,hs+j,hs+i,iens) = rho_u_new(0,k,j,i,iens) / hyDensCells(hs+k,iens);
+      //state(idV,hs+k,hs+j,hs+i,iens) = rho_v_new(0,k,j,i,iens) / hyDensCells(hs+k,iens);
+      state(idW,hs+k,hs+j,hs+i,iens) = rho_w_new(0,k,j,i,iens) / hyDensCells(hs+k,iens);
     });
-
+    
   }
 
 
@@ -2042,7 +1994,7 @@ public:
         data(k,j,i) = pressure(k,j,i,iens);
       });
       nc.write1(data.createHostCopy(),"pressure_pert",{"z","y","x"},ulIndex,"t");
-      // momentum divergence
+      // divergence
       parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
         data(k,j,i) = divergence(k,j,i,iens);
       });
