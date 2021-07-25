@@ -89,7 +89,7 @@ public:
   real4d divergence;
 
   // Spatial order to use for momentum divergence and place to flag and save the static/constant LU solver to find momentum free divergence field
-  int remove_momentum_div_order=3, solver_built=0;
+  int remove_momentum_div_order=1, solver_built=0;
   Eigen::SparseLU<Eigen::SparseMatrix<real>, Eigen::COLAMDOrdering<int> > momdiv_solver;
 
   // For indexing into the state and state tendency arrays
@@ -1022,6 +1022,93 @@ public:
         });
      }
 
+     //////////////////
+     // Fifth Order
+     //////////////////
+     else if( remove_momentum_div_order == 5 ) {
+        parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+           int im3 = i-3;  if (im3 < 0   ) im3 = nx+im3;
+           int im2 = i-2;  if (im2 < 0   ) im2 = nx+im2;
+           int im1 = i-1;  if (im1 < 0   ) im1 = nx+im1;
+           int ip1 = i+1;  if (ip1 > nx-1) ip1 = ip1-nx;
+           int ip2 = i+2;  if (ip2 > nx-1) ip2 = ip2-nx;
+           int ip3 = i+3;  if (ip3 > nx-1) ip3 = ip3-nx;
+           int km3 = k-3;  if (km3 < 0   ) km3 = 0;
+           int km2 = k-2;  if (km2 < 0   ) km2 = 0;
+           int km1 = k-1;  if (km1 < 0   ) km1 = 0;
+           int kp1 = k+1;  if (kp1 > nz-1) kp1 = nz-1;
+           int kp2 = k+2;  if (kp2 > nz-1) kp2 = nz-1;
+           int kp3 = k+3;  if (kp3 > nz-1) kp3 = nz-1;
+
+           ////////////////////////////
+           // x-direction fluxes
+           ////////////////////////////
+           // Get pressure and momentum in 3-cell stencil
+           real p_im3  = press (k,j,im3,iens);
+           real p_im2  = press (k,j,im2,iens);
+           real p_im1  = press (k,j,im1,iens);
+           real p_i    = press (k,j,i  ,iens);
+           real p_ip1  = press (k,j,ip1,iens);
+           real p_ip2  = press (k,j,ip2,iens);
+           real p_ip3  = press (k,j,ip3,iens);
+           real ru_im3 = ru(k,j,im3,iens);
+           real ru_im2 = ru(k,j,im2,iens);
+           real ru_im1 = ru(k,j,im1,iens);
+           real ru_i   = ru(k,j,i  ,iens);
+           real ru_ip1 = ru(k,j,ip1,iens);
+           real ru_ip2 = ru(k,j,ip2,iens);
+           real ru_ip3 = ru(k,j,ip3,iens);
+           // Compute upwind pressure and momentum at cell interfaces using characteristics
+           real ru_L  = (p_im3 - 5.*p_im2 + 10.*p_im1 - 10.*p_i +5.*p_ip1 - p_ip2) / (60.*c_s) + (ru_im3 - 8.*ru_im2 + 37.*ru_im1 + 37.*ru_i - 8.*ru_ip1 + ru_ip2)/60.; 
+           real ru_R  = (p_im2 - 5.*p_im1 + 10.*p_i - 10.*p_ip1 +5.*p_ip2 - p_ip3) / (60.*c_s) + (ru_im2 - 8.*ru_im1 + 37.*ru_i + 37.*ru_ip1 - 8.*ru_ip2 + ru_ip3)/60.; 
+
+           ////////////////////////////
+           // z-direction fluxes
+           ////////////////////////////
+           // Get pressure and momentum in 3-cell stencil
+           real p_km3  = press (km3,j,i,iens);
+           real p_km2  = press (km2,j,i,iens);
+           real p_km1  = press (km1,j,i,iens);
+           real p_k    = press (k  ,j,i,iens);
+           real p_kp1  = press (kp1,j,i,iens);
+           real p_kp2  = press (kp2,j,i,iens);
+           real p_kp3  = press (kp3,j,i,iens);
+           real rw_km3 = rw(km3,j,i,iens);
+           real rw_km2 = rw(km2,j,i,iens);
+           real rw_km1 = rw(km1,j,i,iens);
+           real rw_k   = rw(k  ,j,i,iens);
+           real rw_kp1 = rw(kp1,j,i,iens);
+           real rw_kp2 = rw(kp2,j,i,iens);
+           real rw_kp3 = rw(kp3,j,i,iens);
+           // Compute upwind pressure and momentum at cell interfaces using characteristics
+           real rw_L  = (p_km3 - 5.*p_km2 + 10.*p_km1 - 10.*p_k +5.*p_kp1 - p_kp2) / (60.*c_s) + (rw_km3 - 8.*rw_km2 + 37.*rw_km1 + 37.*rw_k - 8.*rw_kp1 + rw_kp2)/60.; 
+           real rw_R  = (p_km2 - 5.*p_km1 + 10.*p_k - 10.*p_kp1 +5.*p_kp2 - p_kp3) / (60.*c_s) + (rw_km2 - 8.*rw_km1 + 37.*rw_k + 37.*rw_kp1 - 8.*rw_kp2 + rw_kp3)/60.; 
+
+           // Enforce momentum boundary conditions at the domain top and bottom
+           if ( k == 0    ) {
+              rw_L = 0; 
+              rw_R = (5.*p_k-9.*p_kp1+5.*p_kp2-p_kp3)/60./c_s + (29.*rw_k+38.*rw_kp1-8.*rw_kp2+rw_kp3)/60.;
+           }
+           if ( k == 1    ) {
+              rw_L = (5.*p_km1-9.*p_k+5.*p_kp1-p_kp2)/60./c_s + (29.*rw_km1+38.*rw_k-8.*rw_kp1+rw_kp2)/60.;
+              rw_R = (-4.*p_km1+10.*p_k-10.*p_kp1+5.*p_kp2-p_kp3)/60./c_s + (-7.*rw_km1+37.*rw_k+37.*rw_kp1-8.*rw_kp2+rw_kp3)/60.;
+           }
+           if ( k == 2    ) rw_L = (-4.*p_km2+10.*p_km1-10.*p_k+5.*p_kp1-p_kp2)/60./c_s + (-7.*rw_km2+37.*rw_km1+37.*rw_k-8.*rw_kp1+rw_kp2)/60.;
+           if ( k == nz-1 ) {
+              rw_L = (p_km3-5.*p_km2+9.*p_km1-5.*p_k)/60./c_s + (rw_km3-8.*rw_km2+38.*rw_km1+29.*rw_k)/60.;
+              rw_R  = 0; 
+           }
+           if ( k == nz-2 ) {
+              rw_L = (p_km3-5.*p_km2+10.*p_km1-10.*p_k+4.*p_kp1)/60./c_s + (rw_km3-8.*rw_km2+37.*rw_km1+37.*rw_k-7.*rw_kp1)/60.;
+              rw_R = (p_km2-5.*p_km1+9.*p_k-5.*p_kp1)/60./c_s + (rw_km2-8.*rw_km1+38.*rw_k+29.*rw_kp1)/60.;
+           }
+           if ( k == nz-3 ) rw_R = (p_km2-5.*p_km1+10.*p_k-10.*p_kp1+4.*p_kp2)/60./c_s + (rw_km2-8.*rw_km1+37.*rw_k+37.*rw_kp1-7.*rw_kp2)/60.;
+
+           real div = (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens);
+           divergence(k,j,i,iens) = div;
+           abs_div(k,j,i,iens) = abs(div);
+        });
+     }
   }
   void build_matrix_solver(real c_s, real dtloc) {
      // On first call, construct the sparse coefficient matrix in "Eigen"  corresponding to the steady state, divergence free equation 
@@ -1340,7 +1427,351 @@ public:
            A.insert(wik,pkm1) = -2./3.*xi_z/c_s;
            A.insert(wik,pkp1) =  7./12.*xi_z/c_s;
         }
-    }
+     }
+
+     //////////////////
+     // Fifth Order
+     //////////////////
+     else if( remove_momentum_div_order == 5 ) {
+
+        A.reserve(Eigen::VectorXi::Constant(3*nx*nz,50));  // TODO: double check how many expected nonzero entries in any given row/col
+
+        // Build the horizontal part of the matrix (easy BCs) 
+        for( int i=0; i < nx; i++ ){
+           for( int k=0; k < nz; k++ ) {
+              int pik, uik, pim1, uim1, pim2, uim2, pim3, uim3, pip1, uip1, pip2, uip2, pip3, uip3;
+
+              pik  = 3*( k*nx+i  ); uik  = pik +1;
+              pim3 = 3*( k*nx+i-3); uim3 = pim3+1;
+              pim2 = 3*( k*nx+i-2); uim2 = pim2+1;
+              pim1 = 3*( k*nx+i-1); uim1 = pim1+1;
+              if( i == 0 ) {
+                 pim1 = 3*(k*nx+nx-1); uim1 = pim1+1;
+                 pim2 = 3*(k*nx+nx-2); uim2 = pim2+1;
+                 pim3 = 3*(k*nx+nx-3); uim3 = pim3+1;
+              } 
+              if( i == 1 ) { 
+                 pim2 = 3*(k*nx+nx-1); uim2 = pim2+1;
+                 pim3 = 3*(k*nx+nx-2); uim3 = pim3+1;
+              }
+              if( i == 2 ) { pim3 = 3*(k*nx+nx-1); uim3 = pim3+1; } 
+
+              pip1 = 3*( k*nx+i+1); uip1 = pip1+1;
+              pip2 = 3*( k*nx+i+2); uip2 = pip2+1;
+              pip3 = 3*( k*nx+i+3); uip3 = pip3+1;
+              if( i == nx-1 ) {
+                 pip1 = 3*(k*nx+0); uip1 = pip1+1;
+                 pip2 = 3*(k*nx+1); uip2 = pip2+1;
+                 pip3 = 3*(k*nx+2); uip3 = pip3+1;
+              }
+              if( i == nx-2 ) {
+                 pip2 = 3*(k*nx+0); uip2 = pip2+1;
+                 pip3 = 3*(k*nx+1); uip3 = pip3+1;
+              }
+              if( i == nx-3 ) { pip3 = 3*(k*nx+0); uip3 = pip3+1; }
+
+              // Interior pressure coeffs
+              A.insert(pik,pim3) = -xi_x/60.;
+              A.insert(pik,pim2) =  xi_x/10.;
+              A.insert(pik,pim1) = -xi_x/4.;
+              A.insert(pik,pik)  =  xi_x/3.;
+              A.insert(pik,pip1) = -xi_x/4.;
+              A.insert(pik,pip2) =  xi_x/10.;
+              A.insert(pik,pip3) = -xi_x/60.;
+
+              A.insert(pik,uim3) = -xi_x/60.*c_s;
+              A.insert(pik,uim2) =  3./20.*xi_x*c_s;
+              A.insert(pik,uim1) = -3./4.*xi_x*c_s;
+              A.insert(pik,uip1) =  3./4.*xi_x*c_s;
+              A.insert(pik,uip2) = -3./20.*xi_x*c_s;
+              A.insert(pik,uip3) =  xi_x/60.*c_s;
+
+              // Interior x momentum coeffs
+              A.insert(uik,uim3) =   -xi_x/60.;
+              A.insert(uik,uim2) =    xi_x/10.;
+              A.insert(uik,uim1) =   -xi_x/4.;
+              A.insert(uik,uik)  = 1.+xi_x/3.;
+              A.insert(uik,uip1) =   -xi_x/4.;
+              A.insert(uik,uip2) =    xi_x/10.;
+              A.insert(uik,uip3) =   -xi_x/60.;
+
+              A.insert(uik,pim3) = -xi_x/60./c_s;
+              A.insert(uik,pim2) =  3./20.*xi_x/c_s;
+              A.insert(uik,pim1) = -3./4.*xi_x/c_s;
+              A.insert(uik,pip1) =  3./4.*xi_x/c_s;
+              A.insert(uik,pip2) = -3./20.*xi_x/c_s;
+              A.insert(uik,pip3) =  xi_x/60./c_s;
+
+           }
+        }
+
+        // Build the interior vertical cell coefficients
+        for( int i=0; i < nx; i++ ){
+           for( int k=3; k < nz-3; k++ ) {
+              int pik, wik, pkm1, wkm1, pkm2, wkm2, pkm3, wkm3, pkp1, wkp1, pkp2, wkp2, pkp3, wkp3;
+
+              pik  = 3*( k*nx+i); wik = pik+2;
+
+              pkm3 = 3*((k-3)*nx+i); wkm3 = pkm3+2;
+              pkm2 = 3*((k-2)*nx+i); wkm2 = pkm2+2;
+              pkm1 = 3*((k-1)*nx+i); wkm1 = pkm1+2;
+              pkp1 = 3*((k+1)*nx+i); wkp1 = pkp1+2;
+              pkp2 = 3*((k+2)*nx+i); wkp2 = pkp2+2;
+              pkp3 = 3*((k+3)*nx+i); wkp3 = pkp3+2;
+
+              // Interior pressure coeffs
+              A.insert(pik,pkm3)  = -xi_z/60.;
+              A.insert(pik,pkm2)  =  xi_z/10.;
+              A.insert(pik,pkm1)  = -xi_z/4.;
+              A.coeffRef(pik,pik)+=  xi_z/3.;
+              A.insert(pik,pkp1)  = -xi_z/4.;
+              A.insert(pik,pkp2)  =  xi_z/10.;
+              A.insert(pik,pkp3)  = -xi_z/60.;
+
+              A.insert(pik,wkm3)  = -xi_z/60.*c_s;
+              A.insert(pik,wkm2)  =  3./20.*xi_z*c_s;
+              A.insert(pik,wkm1)  = -3./4.*xi_z*c_s;
+              A.insert(pik,wkp1)  =  3./4.*xi_z*c_s;
+              A.insert(pik,wkp2)  = -3./20.*xi_z*c_s;
+              A.insert(pik,wkp3)  =  xi_z/60.*c_s;
+
+              // Interior z momentum coeffs
+              A.insert(wik,wkm3) =   -xi_z/60.;
+              A.insert(wik,wkm2) =    xi_z/10.;
+              A.insert(wik,wkm1) =   -xi_z/4.;
+              A.insert(wik,wik)  = 1.+xi_z/3.;
+              A.insert(wik,wkp1) =   -xi_z/4.;
+              A.insert(wik,wkp2) =    xi_z/10.;
+              A.insert(wik,wkp3) =   -xi_z/60.;
+
+              A.insert(wik,pkm3) = -xi_z/60./c_s;
+              A.insert(wik,pkm2) =  3./20.*xi_z/c_s;
+              A.insert(wik,pkm1) = -3./4.*xi_z/c_s;
+              A.insert(wik,pkp1) =  3./4.*xi_z/c_s;
+              A.insert(wik,pkp2) = -3./20.*xi_z/c_s;
+              A.insert(wik,pkp3) =  xi_z/60./c_s;
+           }
+        }
+
+        // Build in the top/bottom boundary contributions
+        for( int i=0; i < nx; i++ ){
+           int pik, wik, pkp1, wkp1, pkp2, wkp2, pkp3, wkp3;
+
+           // Bottom k=0 boundary condition coefficients
+           int k = 0;
+           pik  = 3*(k*nx+i); wik = pik+2;
+           pkp1 = 3*((k+1)*nx+i); wkp1 = pkp1+2;
+           pkp2 = 3*((k+2)*nx+i); wkp2 = pkp2+2;
+           pkp3 = 3*((k+3)*nx+i); wkp3 = pkp3+2;
+
+           // bottom k=0 pressure coeffs
+           A.coeffRef(pik,pik)+=  xi_z/12.;
+           A.insert(pik,pkp1)  = -3./20.*xi_z;
+           A.insert(pik,pkp2)  =  xi_z/12.;
+           A.insert(pik,pkp3)  = -xi_z/60.;
+
+           A.insert(pik,wik)   =  29./60.*xi_z*c_s;
+           A.insert(pik,wkp1)  =  19./30.*xi_z*c_s;
+           A.insert(pik,wkp2)  = -2./15.*xi_z*c_s;
+           A.insert(pik,wkp3)  =  xi_z/60.*c_s;
+
+           // bottom k=0 z momentum coeffs
+           A.insert(wik,wik)  = 1.+xi_z/12.;
+           A.insert(wik,wkp1) =   -3./20.*xi_z;
+           A.insert(wik,wkp2) =    xi_z/12.;
+           A.insert(wik,wkp3) =   -xi_z/60.;
+
+           A.insert(wik,pik)  = -3./4.*xi_z/c_s;
+           A.insert(wik,pkp1) =  9./10.*xi_z/c_s;
+           A.insert(wik,pkp2) = -xi_z/6./c_s;
+           A.insert(wik,pkp3) =  xi_z/60./c_s;
+        }
+        for( int i=0; i < nx; i++ ){
+           int pik, wik, pkm1, wkm1, pkp1, wkp1, pkp2, wkp2, pkp3, wkp3;
+           // Bottom k=1 boundary condition coefficients
+           int k = 1;
+           pik  = 3*(k*nx+i); wik = pik+2;
+           pkm1 = 3*((k-1)*nx+i); wkm1 = pkm1+2;
+           pkp1 = 3*((k+1)*nx+i); wkp1 = pkp1+2;
+           pkp2 = 3*((k+2)*nx+i); wkp2 = pkp2+2;
+           pkp3 = 3*((k+3)*nx+i); wkp3 = pkp3+2;
+
+           // bottom k=1 pressure coeffs
+           A.insert(pik,pkm1)  = -3./20.*xi_z;
+           A.coeffRef(pik,pik)+=  19./60.*xi_z;
+           A.insert(pik,pkp1)  = -xi_z/4.;
+           A.insert(pik,pkp2)  =  xi_z/10.;
+           A.insert(pik,pkp3)  = -xi_z/60.;
+
+           A.insert(pik,wkm1)  = -3./5.*xi_z*c_s;
+           A.insert(pik,wik)   = -xi_z/60.*c_s;
+           A.insert(pik,wkp1)  =  3./4.*xi_z*c_s;
+           A.insert(pik,wkp2)  = -3./20.*xi_z*c_s;
+           A.insert(pik,wkp3)  =  xi_z/60.*c_s;
+
+           // bottom k=1 z momentum coeffs
+           A.insert(wik,wkm1) =   -3./2.*xi_z;
+           A.insert(wik,wik)  = 1.+19./60.*xi_z;
+           A.insert(wik,wkp1) =   -xi_z/4.;
+           A.insert(wik,wkp2) =    xi_z/10.;
+           A.insert(wik,wkp3) =   -xi_z/60.;
+
+           A.insert(wik,pkm1) = -3./5.*xi_z/c_s;
+           A.insert(wik,pik)  = -xi_z/60./c_s;
+           A.insert(wik,pkp1) =  3./4.*xi_z/c_s;
+           A.insert(wik,pkp2) = -3./20.*xi_z/c_s;
+           A.insert(wik,pkp3) =  xi_z/60./c_s;
+        }
+        for( int i=0; i < nx; i++ ){
+           int pik, wik, pkm2, wkm2, pkm1, wkm1, pkp1, wkp1, pkp2, wkp2, pkp3, wkp3;
+           // Bottom k=2 boundary condition coefficients
+           int k = 2;
+           pik  = 3*(k*nx+i); wik = pik+2;
+           pkm2 = 3*((k-2)*nx+i); wkm2 = pkm2+2;
+           pkm1 = 3*((k-1)*nx+i); wkm1 = pkm1+2;
+           pkp1 = 3*((k+1)*nx+i); wkp1 = pkp1+2;
+           pkp2 = 3*((k+2)*nx+i); wkp2 = pkp2+2;
+           pkp3 = 3*((k+3)*nx+i); wkp3 = pkp3+2;
+
+           // bottom k=2 pressure coeffs
+           A.insert(pik,pkm2)  =  xi_z/12.;
+           A.insert(pik,pkm1)  = -xi_z/4.;
+           A.coeffRef(pik,pik)+=  xi_z/3.;
+           A.insert(pik,pkp1)  = -xi_z/4.;
+           A.insert(pik,pkp2)  =  xi_z/10.;
+           A.insert(pik,pkp3)  = -xi_z/60.;
+
+           A.insert(pik,wkm2)  =  2./15.*xi_z*c_s;
+           A.insert(pik,wkm1)  = -3./4.*xi_z*c_s;
+           A.insert(pik,wkp1)  =  3./4.*xi_z*c_s;
+           A.insert(pik,wkp2)  = -3./20.*xi_z*c_s;
+           A.insert(pik,wkp3)  =  xi_z/60.*c_s;
+
+           // bottom k=2 z momentum coeffs
+           A.insert(wik,wkm2) =    xi_z/12.;
+           A.insert(wik,wkm1) =   -xi_z/4.;
+           A.insert(wik,wik)  = 1.+xi_z/3.;
+           A.insert(wik,wkp1) =   -xi_z/4.;
+           A.insert(wik,wkp2) =    xi_z/10.;
+           A.insert(wik,wkp3) =   -xi_z/60.;
+
+           A.insert(wik,pkm2) =  2./15.*xi_z/c_s;
+           A.insert(wik,pkm1) = -3./4.*xi_z/c_s;
+           A.insert(wik,pkp1) =  3./4.*xi_z/c_s;
+           A.insert(wik,pkp2) = -3./20.*xi_z/c_s;
+           A.insert(wik,pkp3) =  xi_z/60./c_s;
+        }
+        for( int i=0; i < nx; i++ ){
+           int pik, wik, pkm1, wkm1, pkm2, wkm2, pkm3, wkm3;
+           // Top k=nz-1 boundary condition coefficients
+           int k = nz-1;
+
+           pik  = 3*(k*nx+i); wik = pik+2;
+           pkm3 = 3*((k-3)*nx+i); wkm3 = pkm3+2;
+           pkm2 = 3*((k-2)*nx+i); wkm2 = pkm2+2;
+           pkm1 = 3*((k-1)*nx+i); wkm1 = pkm1+2;
+
+           // Top k=nz-1 pressure coeffs
+           A.insert(pik,pkm3)  = -xi_z/60.;
+           A.insert(pik,pkm2)  =  xi_z/12.;
+           A.insert(pik,pkm1)  = -3./20.*xi_z;
+           A.coeffRef(pik,pik)+=  xi_z/12.;
+
+           A.insert(pik,wkm3)  = -xi_z/60.*c_s;
+           A.insert(pik,wkm2)  =  2./15.*xi_z*c_s;
+           A.insert(pik,wkm1)  = -19./30.*xi_z*c_s;
+           A.insert(pik,wik)   = -29./60.*xi_z*c_s;
+
+           // Top k=nz-1 z momentum coeffs
+           A.insert(wik,wkm3) =   -xi_z/60.;
+           A.insert(wik,wkm2) =    xi_z/12.;
+           A.insert(wik,wkm1) =   -3./20.*xi_z;
+           A.insert(wik,wik)  = 1.+xi_z/12.;
+
+           A.insert(wik,pkm3) = -xi_z/60./c_s;
+           A.insert(wik,pkm2) =  xi_z/6./c_s;
+           A.insert(wik,pkm1) = -9./10.*xi_z/c_s;
+           A.insert(wik,pik)  =  3./4.*xi_z/c_s;
+
+        }
+        for( int i=0; i < nx; i++ ){
+           int pik, wik, pkm1, wkm1, pkm2, wkm2, pkm3, wkm3, pkp1, wkp1;
+           // Top k=nz-2 boundary condition coefficients
+           int k = nz-2;
+
+           pik  = 3*(k*nx+i); wik = pik+2;
+           pkm3 = 3*((k-3)*nx+i); wkm3 = pkm3+2;
+           pkm2 = 3*((k-2)*nx+i); wkm2 = pkm2+2;
+           pkm1 = 3*((k-1)*nx+i); wkm1 = pkm1+2;
+           pkp1 = 3*((k+1)*nx+i); wkp1 = pkp1+2;
+
+           // Top pressure coeffs
+           A.insert(pik,pkm3)  = -xi_z/60.;
+           A.insert(pik,pkm2)  =  xi_z/10.;
+           A.insert(pik,pkm1)  = -xi_z/4.;
+           A.coeffRef(pik,pik)+=  19./60.*xi_z;
+           A.insert(pik,pkp1)  = -3./20.*xi_z;
+
+           A.insert(pik,wkm3)  = -xi_z/60.*c_s;
+           A.insert(pik,wkm2)  =  3./20.*xi_z*c_s;
+           A.insert(pik,wkm1)  = -3./4.*xi_z*c_s;
+           A.insert(pik,wik)   =  xi_z/60.*c_s;
+           A.insert(pik,wkp1)  =  3./5.*xi_z*c_s;
+
+           // Top z momentum coeffs
+           A.insert(wik,wkm3) =   -xi_z/60.;
+           A.insert(wik,wkm2) =    xi_z/10.;
+           A.insert(wik,wkm1) =   -xi_z/4.;
+           A.insert(wik,wik)  = 1.+19./60.*xi_z;
+           A.insert(wik,wkp1) =   -3./20.*xi_z;
+
+           A.insert(wik,pkm3) = -xi_z/60./c_s;
+           A.insert(wik,pkm2) =  3./20.*xi_z/c_s;
+           A.insert(wik,pkm1) = -3./4.*xi_z/c_s;
+           A.insert(wik,pik)  =  xi_z/60./c_s;
+           A.insert(wik,pkp1) =  3./5.*xi_z/c_s;
+        }
+        for( int i=0; i < nx; i++ ){
+           int pik, wik, pkm1, wkm1, pkm2, wkm2, pkm3, wkm3, pkp1, wkp1, pkp2, wkp2;
+           // Top k=nz-3 boundary condition coefficients
+           int k = nz-3;
+
+           pik  = 3*(k*nx+i); wik = pik+2;
+           pkm3 = 3*((k-3)*nx+i); wkm3 = pkm3+2;
+           pkm2 = 3*((k-2)*nx+i); wkm2 = pkm2+2;
+           pkm1 = 3*((k-1)*nx+i); wkm1 = pkm1+2;
+           pkp1 = 3*((k+1)*nx+i); wkp1 = pkp1+2;
+           pkp2 = 3*((k+2)*nx+i); wkp2 = pkp2+2;
+
+           // Top pressure coeffs
+           A.insert(pik,pkm3)  = -xi_z/60.;
+           A.insert(pik,pkm2)  =  xi_z/10.;
+           A.insert(pik,pkm1)  = -xi_z/4.;
+           A.coeffRef(pik,pik)+=  xi_z/3.;
+           A.insert(pik,pkp1)  = -xi_z/4.;
+           A.insert(pik,pkp2)  =  xi_z/12.;
+
+           A.insert(pik,wkm3)  = -xi_z/60.*c_s;
+           A.insert(pik,wkm2)  =  3./20.*xi_z*c_s;
+           A.insert(pik,wkm1)  = -3./4.*xi_z*c_s;
+           A.insert(pik,wkp1)  =  3./4.*xi_z*c_s;
+           A.insert(pik,wkp2)  = -2./15.*xi_z*c_s;
+
+           // Top z momentum coeffs
+           A.insert(wik,wkm3) =   -xi_z/60.;
+           A.insert(wik,wkm2) =    xi_z/10.;
+           A.insert(wik,wkm1) =   -xi_z/4.;
+           A.insert(wik,wik)  = 1.+xi_z/3.;
+           A.insert(wik,wkp1) =   -xi_z/4.;
+           A.insert(wik,wkp2) =    xi_z/12.;
+
+           A.insert(wik,pkm3) = -xi_z/60./c_s;
+           A.insert(wik,pkm2) =  3./20.*xi_z/c_s;
+           A.insert(wik,pkm1) = -3./4.*xi_z/c_s;
+           A.insert(wik,pkp1) =  3./4.*xi_z/c_s;
+           A.insert(wik,pkp2) = -2./15.*xi_z/c_s;
+        }
+     }
 
      ///////////////////////
      // Construct solver 
