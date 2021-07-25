@@ -1006,15 +1006,15 @@ public:
            real rw_R  = (-p_km1 + 3.*p_k - 3.*p_kp1 + p_kp2  ) / (12.*c_s) +  (-rw_km1 + 7.*rw_k + 7.*rw_kp1 - rw_kp2)/12.;
            // Enforce momentum boundary conditions at the domain top and bottom
            if ( k == 0    ) {
-              rw_L  = 0; 
-              rw_R = (4.*p_k-6.*p_kp1+2.*p_kp2)/(24.*c_s) + (19.*rw_k+13.*rw_kp1-2.*rw_kp2)/24.;
+              rw_L = 0; 
+              rw_R = (2*p_k-3.*p_kp1+p_kp2)/12./c_s + (6.*rw_k+7.*rw_kp1-rw_kp2)/12.;
            }
-           if ( k == 1    ) rw_L = (4.*p_km1-6.*p_k+2.*p_kp1)/(24.*c_s) + (19.*rw_km1+13.*rw_k-2.*rw_kp1)/24.;
+           if ( k == 1    ) rw_L = (2*p_km1-3.*p_k+p_kp1)/12./c_s + (6.*rw_km1+7.*rw_k-rw_kp1)/12.;
            if ( k == nz-1 ) {
-              rw_L = (-2.*p_km2+6.*p_km1-4.*p_k)/(24.*c_s) + (-2.*rw_km2+13.*rw_km1+19.*rw_k)/24.;
+              rw_L = (-p_km2+3.*p_km1-2.*p_k)/12./c_s + (-rw_km2+7.*rw_km1+6.*rw_k)/12.;
               rw_R  = 0; 
            }
-           if ( k == nz-2 ) rw_R = (-2.*p_km1+6.*p_k-4.*p_kp1)/(24.*c_s) + (-2.*rw_km1+13.*rw_k+19.*rw_kp1)/24.;
+           if ( k == nz-2 ) rw_R = (-p_km1+3.*p_k-2.*p_kp1)/12./c_s + (-rw_km1+7.*rw_k+6.*rw_kp1)/12.;
 
            real div = (ru_R-ru_L)/dx + (rw_R-rw_L)/dz(k,iens);
            divergence(k,j,i,iens) = div;
@@ -1240,18 +1240,18 @@ public:
            A.insert(pik,pkp1)  = -xi_z/4.;
            A.insert(pik,pkp2)  =  xi_z/12.;
 
-           A.insert(pik,wik)   =  19./24.*xi_z*c_s;
-           A.insert(pik,wkp1)  =  13./24.*xi_z*c_s;
+           A.insert(pik,wik)   =  xi_z/2.*c_s;
+           A.insert(pik,wkp1)  =  7./12.*xi_z*c_s;
            A.insert(pik,wkp2)  =  -xi_z/12.*c_s;
 
            // bottom k=0 z momentum coeffs
-           A.insert(wik,wik)  = 1.+11./24.*xi_z;
-           A.insert(wik,wkp1) = -7./24.*xi_z;
-           A.insert(wik,wkp2) =  xi_z/12.;
+           A.insert(wik,wik)  = 1.+xi_z/6.;
+           A.insert(wik,wkp1) =   -xi_z/4.;
+           A.insert(wik,wkp2) =    xi_z/12.;
 
-           A.insert(wik,pik)  = -xi_z/2./c_s;
-           A.insert(wik,pkp1) =  7./12.*xi_z/c_s;
-           A.insert(wik,pkp2) =  -xi_z/12./c_s;
+           A.insert(wik,pik)  = -2./3.*xi_z/c_s;
+           A.insert(wik,pkp1) =  3./4.*xi_z/c_s;
+           A.insert(wik,pkp2) = -xi_z/12./c_s;
         }
         for( int i=0; i < nx; i++ ){
            int pik, wik, pkm1, wkm1, pkp1, wkp1, pkp2, wkp2;
@@ -1268,18 +1268,17 @@ public:
            A.insert(pik,pkp1)  = -xi_z/3.;
            A.insert(pik,pkp2)  =  xi_z/12.;
 
-           A.insert(pik,wkm1)  = -21./24.*xi_z*c_s;
-           A.insert(pik,wik)   =  xi_z/24.*c_s;
+           A.insert(pik,wkm1)  = -7./12.*xi_z*c_s;
            A.insert(pik,wkp1)  =  2./3.*xi_z*c_s;
            A.insert(pik,wkp2)  = -xi_z/12.*c_s;
 
            // bottom k=1 z momentum coeffs
-           A.insert(wik,wkm1) = -13./24.*xi_z;
-           A.insert(wik,wik)  = 1.+13./24.*xi_z;
-           A.insert(wik,wkp1) = -xi_z/3.;
-           A.insert(wik,wkp2) = -xi_z/12.;
+           A.insert(wik,wkm1) =   -xi_z/4.;
+           A.insert(wik,wik)  = 1.+xi_z/2.;
+           A.insert(wik,wkp1) =   -xi_z/3.;
+           A.insert(wik,wkp2) =    xi_z/12.;
 
-           A.insert(wik,pkm1) = -7./24.*xi_z/c_s;
+           A.insert(wik,pkm1) = -7./12.*xi_z/c_s;
            A.insert(wik,pkp1) =  2./3.*xi_z/c_s;
            A.insert(wik,pkp2) = -xi_z/12./c_s;
         }
@@ -1298,17 +1297,17 @@ public:
            A.coeffRef(pik,pik)+=  xi_z/6.;
 
            A.insert(pik,wkm2)  =  xi_z/12.*c_s;
-           A.insert(pik,wkm1)  = -13./24.*xi_z*c_s;
-           A.insert(pik,wik)   = -19./24.*xi_z*c_s;
+           A.insert(pik,wkm1)  = -7./12.*xi_z*c_s;
+           A.insert(pik,wik)   = -xi_z/2.*c_s;
 
            // Top k=nz-1 z momentum coeffs
-           A.insert(wik,wkm2) =  xi_z/12.;
-           A.insert(wik,wkm1) = -7./24.*xi_z;
-           A.insert(wik,wik)  = 1.+11./24.*xi_z;
+           A.insert(wik,wkm2) =    xi_z/12.;
+           A.insert(wik,wkm1) =   -xi_z/4.;
+           A.insert(wik,wik)  = 1.+xi_z/6.;
 
            A.insert(wik,pkm2) =  xi_z/12./c_s;
-           A.insert(wik,pkm1) = -xi_z/4./c_s;
-           A.insert(wik,pik)  =  xi_z/6./c_s;
+           A.insert(wik,pkm1) = -3./4.*xi_z/c_s;
+           A.insert(wik,pik)  =  2./3.*xi_z/c_s;
 
         }
         for( int i=0; i < nx; i++ ){
@@ -1329,19 +1328,17 @@ public:
 
            A.insert(pik,wkm2)  =  xi_z/12.*c_s;
            A.insert(pik,wkm1)  = -2./3.*xi_z*c_s;
-           A.insert(pik,wik)   = -xi_z/24.*c_s;
-           A.insert(pik,wkp1)  =  21./24.*xi_z*c_s;
+           A.insert(pik,wkp1)  =  7./12.*xi_z*c_s;
 
            // Top z momentum coeffs
-           A.insert(wik,wkm2) =  xi_z/12.;
-           A.insert(wik,wkm1) = -xi_z/3.;
-           A.insert(wik,wik)  = 1.+13./24.*xi_z;
-           A.insert(wik,wkp1) = -13./24.*xi_z;
+           A.insert(wik,wkm2) =    xi_z/12.;
+           A.insert(wik,wkm1) =   -xi_z/3.;
+           A.insert(wik,wik)  = 1.+xi_z/2.;
+           A.insert(wik,wkp1) =   -xi_z/4.;
 
            A.insert(wik,pkm2) =  xi_z/12./c_s;
-           A.insert(wik,pkm1) = -xi_z/3./c_s;
-           A.insert(wik,pik)  =  xi_z/2./c_s;
-           A.insert(wik,pkp1) = -xi_z/4./c_s;
+           A.insert(wik,pkm1) = -2./3.*xi_z/c_s;
+           A.insert(wik,pkp1) =  7./12.*xi_z/c_s;
         }
     }
 
