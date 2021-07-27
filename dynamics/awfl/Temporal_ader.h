@@ -105,6 +105,8 @@ public:
     YAKL_SCOPE( stateTend       , this->stateTend       );
     YAKL_SCOPE( tracerTend      , this->tracerTend      );
 
+    real dt = compute_time_step( dm , micro );
+
     space_op.convert_coupler_state_to_dynamics( dm , micro );
 
     real5d state   = dm.get<real,5>("dynamics_state");
@@ -118,11 +120,10 @@ public:
     int num_tracers = space_op.num_tracers;
     int hs          = space_op.hs;
 
-    real dt = compute_time_step( dm , micro );
+    int n_iter = ceil( dtphys / dt );
+    dt = dtphys / n_iter;
 
-    real loctime = 0.;
-    while (loctime < dtphys) {
-      if (loctime + dt > dtphys) { dt = dtphys - loctime; }
+    for (int iter = 0; iter < n_iter; iter++) {
 
       #ifdef PAM_DEBUG
         validate_array_positive(tracers);
@@ -184,8 +185,6 @@ public:
       #endif
 
       space_op.switch_directions();
-
-      loctime += dt;
     }
 
     space_op.convert_dynamics_to_coupler_state( dm , micro );

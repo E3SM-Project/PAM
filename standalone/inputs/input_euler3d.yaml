@@ -33,7 +33,7 @@ out_prefix  : test
 dtphys: 20.
 
 # Output frequency in seconds
-outFreq: 0.
+outFreq: 100.
 
 # Number of ensembles
 nens : 1
