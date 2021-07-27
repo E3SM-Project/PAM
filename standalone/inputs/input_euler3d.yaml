@@ -1,13 +1,13 @@
 ---
 # Simulation time in seconds
-simTime  : 2.
+simTime  : 1000.
 
 # Number of cells to use
-nx       : 200
-ny       : 200
+nx       : 128
+ny       : 1
 
 # Vertical height cooridnates file
-vcoords  : vcoords_exp_200_10km.nc
+vcoords  : vcoords_equal_64_10km.nc
 
 # Lengths of the dimensions in meters
 xlen     : 20000
@@ -30,7 +30,7 @@ initData : thermal
 out_prefix  : test
 
 # CRM physics time step
-dtphys: 0.
+dtphys: 20.
 
 # Output frequency in seconds
 outFreq: 0.

@@ -63,8 +63,8 @@ public:
 
 
   template <class MICRO>
-  real compute_time_step(DataManager &dm, MICRO const &micro, real cfl = 0.8) {
-    return space_op.compute_time_step(dm, micro, cfl);
+  real compute_time_step(DataManager &dm, MICRO const &micro, real cfl_in = -1) {
+    return space_op.compute_time_step(dm, micro, cfl_in);
   }
 
 

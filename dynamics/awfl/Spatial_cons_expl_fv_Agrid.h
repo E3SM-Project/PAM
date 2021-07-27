@@ -461,7 +461,9 @@ public:
 
   // Given the model data and CFL value, compute the maximum stable time step
   template <class MICRO>
-  real compute_time_step(DataManager &dm, MICRO const &micro, real cfl = 0.8) {
+  real compute_time_step(DataManager &dm, MICRO const &micro, real cfl_in = -1) {
+    real cfl = cfl_in;
+    if (cfl < 0) cfl = 0.8;
 
     // If we've already computed the time step, then don't compute it again
     if (dtInit <= 0) {
@@ -1933,6 +1935,8 @@ public:
     YAKL_SCOPE( gamma                   , this->gamma                  );
     YAKL_SCOPE( p0                      , this->p0                     );
     YAKL_SCOPE( C0                      , this->C0                     );
+    YAKL_SCOPE( vert_sten_to_gll        , this->vert_sten_to_gll       );
+    YAKL_SCOPE( vert_weno_recon         , this->vert_weno_recon        );
 
     // Pre-process the tracers by dividing by density inside the domain
     // After this, we can reconstruct tracers only (not rho * tracer)
