@@ -13,7 +13,7 @@ using yakl::memHost;
 using yakl::styleC;
 using yakl::index_t;
 
-typedef double real;
+typedef float real;
 
 YAKL_INLINE real constexpr operator"" _fp( long double x ) {
   return static_cast<real>(x);

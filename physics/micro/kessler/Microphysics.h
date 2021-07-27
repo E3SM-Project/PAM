@@ -240,7 +240,9 @@ public:
       validate_array_positive(rho_r);
       real mass_final = compute_total_mass( dm );
       real reldiff = abs(mass_final - mass_init) / ( abs(mass_init) + 1.e-20 );
-      if ( reldiff > 1.e-13 ) {
+      real tol = 1.e-13;
+      if (std::is_same<real,float>::value) tol = 1.e-6;
+      if ( reldiff > tol ) {
         std::cout << "Microphysics mass change is too large: " << reldiff << std::endl;
         // endrun("ERROR: mass not conserved by kessler microphysics");
       }
