@@ -36,7 +36,7 @@ dtphys: 20.
 outFreq: 100.
 
 # Number of ensembles
-nens : 1
+nens : 200
 
 # Balance initial density to avoid initial acoustics
 balance_initial_density: true
