@@ -20,13 +20,6 @@ public:
   int static constexpr num_state = 5;
   int static constexpr max_tracers = 50;
 
-  // For the vertical reconstructions (variable vertical grid spacing), we're going to need to store an array
-  // of SArray objects for convenience. This typedef gets the ugliness out of the way.
-  typedef yakl::Array< SArray<real,2,ord,ngll>    , 2 , yakl::memDevice , yakl::styleC > t_vert_sten_to_gll;
-  typedef yakl::Array< SArray<real,3,ord,ord,ord> , 2 , yakl::memDevice , yakl::styleC > t_vert_weno_recon;
-  typedef yakl::Array< SArray<real,2,ord,ngll>    , 2 , yakl::memHost   , yakl::styleC > t_vert_sten_to_gll_host;
-  typedef yakl::Array< SArray<real,3,ord,ord,ord> , 2 , yakl::memHost   , yakl::styleC > t_vert_weno_recon_host;
-
   real Rd   ;
   real cp   ;
   real gamma;
@@ -82,8 +75,8 @@ public:
   real3d vert_locs_normalized;
   real2d dz;
   real2d dz_ghost;
-  t_vert_sten_to_gll vert_sten_to_gll;
-  t_vert_weno_recon  vert_weno_recon;
+  real4d vert_sten_to_gll;
+  real5d vert_weno_recon;
 
   // For indexing into the state and state tendency arrays
   int static constexpr idR = 0;  // density perturbation
@@ -623,8 +616,8 @@ public:
     vert_locs_normalized = real3d("vert_locs_normalized",nz,ord+1      ,nens);
     dz                   = real2d("dz"                  ,nz            ,nens);
     dz_ghost             = real2d("dz_ghost"            ,nz+2*hs       ,nens);
-    vert_sten_to_gll     = t_vert_sten_to_gll("vert_sten_to_gll",nz,nens);
-    vert_weno_recon      = t_vert_weno_recon ("vert_weno_recon" ,nz,nens);
+    vert_sten_to_gll     = real4d("vert_sten_to_gll",nz,ord,ngll   ,nens);
+    vert_weno_recon      = real5d("vert_weno_recon" ,nz,ord,ord,ord,nens);
 
     YAKL_SCOPE( vert_interface       , this->vert_interface       );
     YAKL_SCOPE( vert_interface_ghost , this->vert_interface_ghost );
@@ -697,14 +690,14 @@ public:
         // Store reconstruction matrices
         for (int jj=0; jj < ord; jj++) {
           for (int ii=0; ii < ngll; ii++) {
-            vert_s2g_host(k,iens)(jj,ii) = s2g_var(jj,ii);
+            vert_s2g_host(k,jj,ii,iens) = s2g_var(jj,ii);
           }
         }
 
         for (int kk=0; kk < ord; kk++) {
           for (int jj=0; jj < ord; jj++) {
             for (int ii=0; ii < ord; ii++) {
-              vert_weno_host(k,iens)(kk,jj,ii) = weno_recon_var(kk,jj,ii);
+              vert_weno_host(k,kk,jj,ii,iens) = weno_recon_var(kk,jj,ii);
             }
           }
         }
@@ -1271,53 +1264,69 @@ public:
         }
       });
     }
+    real6d state_gll  ("state_gll"  ,num_state,ngll,nz,ny,nx,nens);
+    real6d tracers_gll("tracers_gll",num_state,ngll,nz,ny,nx,nens);
 
     // Loop through all cells, reconstruct in x-direction, compute centered tendencies, store cell-edge state estimates
     parallel_for( "Spatial.h X recon" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      SArray<real,1,ord> stencil;
+      SArray<real,1,ngll> gll;
+
+      // Density
+      for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idR,hs+k,hs+j,i+ii,iens); }
+      reconstruct_gll_values( stencil , gll , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
+      for (int ii=0; ii < ngll; ii++) { state_gll(idR,ii,k,j,i,iens) = gll(ii) + hyDensCells(k,iens); } // Add hydrostasis back on
+
+      // u values and derivatives
+      for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idU,hs+k,hs+j,i+ii,iens); }
+      reconstruct_gll_values( stencil , gll , c2g , s2g , wenoRecon , idl , sigma , weno_winds );
+      for (int ii=0; ii < ngll; ii++) { state_gll(idU,ii,k,j,i,iens) = gll(ii); } // Add hydrostasis back on
+
+      // v
+      for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idV,hs+k,hs+j,i+ii,iens); }
+      reconstruct_gll_values( stencil , gll , c2g , s2g , wenoRecon , idl , sigma , weno_winds );
+      for (int ii=0; ii < ngll; ii++) { state_gll(idV,ii,k,j,i,iens) = gll(ii); } // Add hydrostasis back on
+
+      // w
+      for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idW,hs+k,hs+j,i+ii,iens); }
+      reconstruct_gll_values( stencil , gll , c2g , s2g , wenoRecon , idl , sigma , weno_winds );
+      for (int ii=0; ii < ngll; ii++) { state_gll(idW,ii,k,j,i,iens) = gll(ii); } // Add hydrostasis back on
+
+      // theta
+      for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idT,hs+k,hs+j,i+ii,iens); }
+      reconstruct_gll_values( stencil , gll , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
+      for (int ii=0; ii < ngll; ii++) { state_gll(idT,ii,k,j,i,iens) = gll(ii) + hyDensThetaCells(k,iens); } // Add hydrostasis back on
+
+      // Only process one tracer at a time to save on local memory / register requirements
+      for (int tr=0; tr < num_tracers; tr++) {
+        SArray<real,1,ord> stencil;
+        for (int ii=0; ii < ord; ii++) { stencil(ii) = tracers(tr,hs+k,hs+j,i+ii,iens); }
+        reconstruct_gll_values( stencil , gll , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
+        if (tracer_pos(tr)) {
+          for (int ii=0; ii < ngll; ii++) { gll(ii) = max( 0._fp , gll(ii) ); }
+        }
+        for (int ii=0; ii < ngll; ii++) { tracers_gll(tr,ii,k,j,i,iens) = gll(ii); } // Add hydrostasis back on
+      }
+    });
+
+    // Loop through all cells, reconstruct in x-direction, compute centered tendencies, store cell-edge state estimates
+    parallel_for( "Spatial.h X ader" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       // We need density and momentum to evolve the tracers with ADER
       SArray<real,2,nAder,ngll> r_DTs , ru_DTs;
 
       { // BEGIN: Reconstruct, time-average, and store the state and fluxes
-        ////////////////////////////////////////////////////////////////
-        // Reconstruct rho, u, v, w, theta
-        ////////////////////////////////////////////////////////////////
         SArray<real,2,nAder,ngll> rv_DTs , rw_DTs , rt_DTs;
-        { // BEGIN: Reconstruct the state
-          SArray<real,1,ord> stencil;
-
-          // Density
-          for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idR,hs+k,hs+j,i+ii,iens); }
-          reconstruct_gll_values( stencil , r_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
-          for (int ii=0; ii < ngll; ii++) { r_DTs(0,ii) += hyDensCells(k,iens); } // Add hydrostasis back on
-
-          // u values and derivatives
-          for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idU,hs+k,hs+j,i+ii,iens); }
-          reconstruct_gll_values( stencil , ru_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_winds );
-
-          // v
-          for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idV,hs+k,hs+j,i+ii,iens); }
-          reconstruct_gll_values( stencil , rv_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_winds );
-
-          // w
-          for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idW,hs+k,hs+j,i+ii,iens); }
-          reconstruct_gll_values( stencil , rw_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_winds );
-
-          // theta
-          for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idT,hs+k,hs+j,i+ii,iens); }
-          reconstruct_gll_values( stencil , rt_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
-          for (int ii=0; ii < ngll; ii++) { rt_DTs(0,ii) += hyDensThetaCells(k,iens); } // Add hydrostasis back on
-        } // END: Reconstruct the state
 
         ///////////////////////////////////////////////////////////////
         // Compute other values needed for centered tendencies and DTs
         ///////////////////////////////////////////////////////////////
         SArray<real,2,nAder,ngll> ruu_DTs , ruv_DTs , ruw_DTs , rut_DTs , rt_gamma_DTs;
         for (int ii=0; ii < ngll; ii++) {
-          real r = r_DTs (0,ii);
-          real u = ru_DTs(0,ii) / r;
-          real v = rv_DTs(0,ii) / r;
-          real w = rw_DTs(0,ii) / r;
-          real t = rt_DTs(0,ii) / r;
+          real r = state_gll(idR,ii,k,j,i,iens);
+          real u = state_gll(idU,ii,k,j,i,iens) / r;
+          real v = state_gll(idV,ii,k,j,i,iens) / r;
+          real w = state_gll(idW,ii,k,j,i,iens) / r;
+          real t = state_gll(idT,ii,k,j,i,iens) / r;
           ruu_DTs     (0,ii) = r*u*u;
           ruv_DTs     (0,ii) = r*u*v;
           ruw_DTs     (0,ii) = r*u*w;
@@ -1372,19 +1381,10 @@ public:
       { // BEGIN: Reconstruct, time-average, and store tracer fluxes
         // Only process one tracer at a time to save on local memory / register requirements
         for (int tr=0; tr < num_tracers; tr++) {
-          SArray<real,2,nAder,ngll> rt_DTs; // Density * tracer
-          { // BEGIN: Reconstruct the tracer
-            SArray<real,1,ord> stencil;
-            for (int ii=0; ii < ord; ii++) { stencil(ii) = tracers(tr,hs+k,hs+j,i+ii,iens); }
-            reconstruct_gll_values( stencil , rt_DTs , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
-            if (tracer_pos(tr)) {
-              for (int ii=0; ii < ngll; ii++) { rt_DTs(0,ii) = max( 0._fp , rt_DTs(0,ii) ); }
-            }
-          } // END: Reconstruct the tracer
-
-          // Compute the tracer flux
+          SArray<real,2,nAder,ngll> rt_DTs;  // Density * tracer
           SArray<real,2,nAder,ngll> rut_DTs; // Density * uwind * tracer
           for (int ii=0; ii < ngll; ii++) {
+            rt_DTs (0,ii) = tracers_gll(tr,ii,k,j,i,iens);
             rut_DTs(0,ii) = rt_DTs(0,ii) * ru_DTs(0,ii) / r_DTs(0,ii);
           }
 
@@ -1981,8 +1981,75 @@ public:
       });
     }
 
+    real6d state_gll  ("state_gll"  ,num_state,ngll,nz,ny,nx,nens);
+    real6d tracers_gll("tracers_gll",num_state,ngll,nz,ny,nx,nens);
+
     // Loop through all cells, reconstruct in x-direction, compute centered tendencies, store cell-edge state estimates
     parallel_for( "Spatial.h Z recon" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      SArray<real,2,ord,ngll>    s2g_loc;
+      SArray<real,3,ord,ord,ord> weno_recon_loc;
+      for (int jj=0; jj < ord; jj++) {
+        for (int ii=0; ii < ngll; ii++) {
+          s2g_loc(jj,ii) = vert_sten_to_gll(k,jj,ii,iens);
+        }
+      }
+      for (int kk=0; kk < ord; kk++) {
+        for (int jj=0; jj < ord; jj++) {
+          for (int ii=0; ii < ord; ii++) {
+            weno_recon_loc(kk,jj,ii) = vert_weno_recon(k,kk,jj,ii,iens);
+          }
+        }
+      }
+
+      SArray<real,1,ngll> gll;
+      SArray<real,1,ngll> dens_gll;
+      SArray<real,1,ord>  stencil;
+
+      // Density
+      for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idR,k+kk,hs+j,hs+i,iens); }
+      reconstruct_gll_values( stencil , gll , c2g , s2g_loc , weno_recon_loc , idl , sigma , weno_scalars );
+      for (int kk=0; kk < ngll; kk++) { dens_gll(kk) = gll(kk) + hyDensGLL(k,kk,iens); } // Add hydrostasis back on
+      for (int kk=0; kk < ngll; kk++) { state_gll(idR,kk,k,j,i,iens) = dens_gll(kk); } // Add hydrostasis back on
+
+      // u values and derivatives
+      for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idU,k+kk,hs+j,hs+i,iens); }
+      reconstruct_gll_values( stencil , gll , c2g , s2g_loc , weno_recon_loc , idl , sigma , weno_winds );
+      for (int kk=0; kk < ngll; kk++) { state_gll(idU,kk,k,j,i,iens) = gll(kk); }
+
+      // v
+      for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idV,k+kk,hs+j,hs+i,iens); }
+      reconstruct_gll_values( stencil , gll , c2g , s2g_loc , weno_recon_loc , idl , sigma , weno_winds );
+      for (int kk=0; kk < ngll; kk++) { state_gll(idV,kk,k,j,i,iens) = gll(kk); }
+
+      // w
+      for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idW,k+kk,hs+j,hs+i,iens); }
+      reconstruct_gll_values( stencil , gll , c2g , s2g_loc , weno_recon_loc , idl , sigma , weno_winds );
+      if (bc_z == BC_WALL) {
+        if (k == nz-1) gll(ngll-1) = 0;
+        if (k == 0   ) gll(0     ) = 0;
+      }
+      for (int kk=0; kk < ngll; kk++) { state_gll(idW,kk,k,j,i,iens) = gll(kk); }
+
+      // theta
+      for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idT,k+kk,hs+j,hs+i,iens); }
+      reconstruct_gll_values( stencil , gll , c2g , s2g_loc , weno_recon_loc , idl , sigma , weno_scalars );
+      for (int kk=0; kk < ngll; kk++) { state_gll(idT,kk,k,j,i,iens) = gll(kk) + hyDensThetaGLL(k,kk,iens); } // Add hydrostasis back on
+
+      // Only process one tracer at a time to save on local memory / register requirements
+      for (int tr=0; tr < num_tracers; tr++) {
+        for (int kk=0; kk < ord; kk++) { stencil(kk) = tracers(tr,k+kk,hs+j,hs+i,iens); }
+        reconstruct_gll_values( stencil , gll , c2g , s2g_loc , weno_recon_loc , idl , sigma , weno_scalars );
+        for (int kk=0; kk < ngll; kk++) { gll(kk) *= dens_gll(kk); }
+        if (tracer_pos(tr)) {
+          for (int kk=0; kk < ngll; kk++) { gll(kk) = max( 0._fp , gll(kk) ); }
+        }
+        for (int kk=0; kk < ngll; kk++) { tracers_gll(tr,kk,k,j,i,iens) = gll(kk); }
+      }
+
+    });
+
+    // Loop through all cells, reconstruct in x-direction, compute centered tendencies, store cell-edge state estimates
+    parallel_for( "Spatial.h Z ader" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       // We need these to persist to evolve tracers with ADER
       SArray<real,2,nAder,ngll> r_DTs , rw_DTs;
 
@@ -1991,50 +2058,21 @@ public:
         // Reconstruct rho, u, v, w, theta
         ////////////////////////////////////////////////////////////////
         SArray<real,2,nAder,ngll> ru_DTs , rv_DTs , rt_DTs;
-        {
-          SArray<real,1,ord> stencil;
-
-          // Density
-          for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idR,k+kk,hs+j,hs+i,iens); }
-          reconstruct_gll_values( stencil , r_DTs , c2g , vert_sten_to_gll(k,iens) , vert_weno_recon(k,iens) , idl , sigma , weno_scalars );
-          for (int kk=0; kk < ngll; kk++) { r_DTs(0,kk) += hyDensGLL(k,kk,iens); } // Add hydrostasis back on
-
-          // u values and derivatives
-          for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idU,k+kk,hs+j,hs+i,iens); }
-          reconstruct_gll_values( stencil , ru_DTs , c2g , vert_sten_to_gll(k,iens) , vert_weno_recon(k,iens) , idl , sigma , weno_winds );
-
-          // v
-          for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idV,k+kk,hs+j,hs+i,iens); }
-          reconstruct_gll_values( stencil , rv_DTs , c2g , vert_sten_to_gll(k,iens) , vert_weno_recon(k,iens) , idl , sigma , weno_winds );
-
-          // w
-          for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idW,k+kk,hs+j,hs+i,iens); }
-          reconstruct_gll_values( stencil , rw_DTs , c2g , vert_sten_to_gll(k,iens) , vert_weno_recon(k,iens) , idl , sigma , weno_winds );
-          if (bc_z == BC_WALL) {
-            if (k == nz-1) rw_DTs(0,ngll-1) = 0;
-            if (k == 0   ) rw_DTs(0,0     ) = 0;
-          }
-
-          // theta
-          for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idT,k+kk,hs+j,hs+i,iens); }
-          reconstruct_gll_values( stencil , rt_DTs , c2g , vert_sten_to_gll(k,iens) , vert_weno_recon(k,iens) , idl , sigma , weno_scalars );
-          for (int kk=0; kk < ngll; kk++) { rt_DTs(0,kk) += hyDensThetaGLL(k,kk,iens); } // Add hydrostasis back on
-        }
 
         ///////////////////////////////////////////////////////////////
         // Compute other values needed for centered tendencies and DTs
         ///////////////////////////////////////////////////////////////
         SArray<real,2,nAder,ngll> rwu_DTs , rwv_DTs , rww_DTs , rwt_DTs , rt_gamma_DTs;
         for (int kk=0; kk < ngll; kk++) {
-          real r = r_DTs (0,kk);
-          real u = ru_DTs(0,kk) / r;
-          real v = rv_DTs(0,kk) / r;
-          real w = rw_DTs(0,kk) / r;
-          real t = rt_DTs(0,kk) / r;
-          rwu_DTs    (0,kk) = r*w*u;
-          rwv_DTs    (0,kk) = r*w*v;
-          rww_DTs    (0,kk) = r*w*w;
-          rwt_DTs    (0,kk) = r*w*t;
+          real r = state_gll(idR,kk,k,j,i,iens);
+          real u = state_gll(idU,kk,k,j,i,iens) / r;
+          real v = state_gll(idV,kk,k,j,i,iens) / r;
+          real w = state_gll(idW,kk,k,j,i,iens) / r;
+          real t = state_gll(idT,kk,k,j,i,iens) / r;
+          rwu_DTs     (0,kk) = r*w*u;
+          rwv_DTs     (0,kk) = r*w*v;
+          rww_DTs     (0,kk) = r*w*w;
+          rwt_DTs     (0,kk) = r*w*t;
           rt_gamma_DTs(0,kk) = pow(r*t,gamma);
         }
 
@@ -2099,20 +2137,10 @@ public:
       { // BEGIN: Reconstruct, time-average, and store tracer fluxes
         // Only process one tracer at a time to save on local memory / register requirements
         for (int tr=0; tr < num_tracers; tr++) {
-          SArray<real,2,nAder,ngll> rt_DTs; // Density * tracer
-          { // BEGIN: Reconstruct the tracer
-            SArray<real,1,ord> stencil;
-            for (int kk=0; kk < ord; kk++) { stencil(kk) = tracers(tr,k+kk,hs+j,hs+i,iens); }
-            reconstruct_gll_values( stencil , rt_DTs , c2g , vert_sten_to_gll(k,iens) , vert_weno_recon(k,iens) , idl , sigma , weno_scalars );
-            for (int kk=0; kk < ngll; kk++) { rt_DTs(0,kk) *= r_DTs(0,kk); }
-            if (tracer_pos(tr)) {
-              for (int kk=0; kk < ngll; kk++) { rt_DTs(0,kk) = max( 0._fp , rt_DTs(0,kk) ); }
-            }
-          } // END: Reconstruct the tracer
-
-          // Compute the tracer flux
+          SArray<real,2,nAder,ngll> rt_DTs;  // Density * tracer
           SArray<real,2,nAder,ngll> rwt_DTs; // Density * wwind * tracer
           for (int kk=0; kk < ngll; kk++) {
+            rt_DTs (0,kk) = tracers_gll(tr,kk,k,j,i,iens);
             rwt_DTs(0,kk) = rt_DTs(0,kk) * rw_DTs(0,kk) / r_DTs(0,kk);
           }
 
@@ -2146,6 +2174,9 @@ public:
       } // END: Reconstruct, time-average, and store tracer fluxes
 
     });
+
+    state_gll   = real6d();
+    tracers_gll = real6d();
 
     ////////////////////////////////////////////////
     // BCs for the state edge estimates
@@ -2447,6 +2478,44 @@ public:
           tmp += sten_to_gll(s,ii) * stencil(s);
         }
         DTs(0,ii) = tmp;
+      }
+
+    } // if doweno
+  }
+
+
+
+  // ord stencil values to ngll GLL values; store in DTs
+  YAKL_INLINE static void reconstruct_gll_values( SArray<real,1,ord> const stencil ,
+                                                  SArray<real,1,ngll> &gll ,
+                                                  SArray<real,2,ord,ngll> const &coefs_to_gll ,
+                                                  SArray<real,2,ord,ngll> const &sten_to_gll  ,
+                                                  SArray<real,3,ord,ord,ord> const &wenoRecon ,
+                                                  SArray<real,1,hs+2> const &idl              ,
+                                                  real sigma, bool doweno ) {
+    if (doweno) {
+
+      // Reconstruct values
+      SArray<real,1,ord> wenoCoefs;
+      weno::compute_weno_coefs<ord>( wenoRecon , stencil , wenoCoefs , idl , sigma );
+      // Transform ord weno coefficients into ngll GLL points
+      for (int ii=0; ii<ngll; ii++) {
+        real tmp = 0;
+        for (int s=0; s < ord; s++) {
+          tmp += coefs_to_gll(s,ii) * wenoCoefs(s);
+        }
+        gll(ii) = tmp;
+      }
+
+    } else {
+
+      // Transform ord stencil cell averages into ngll GLL points
+      for (int ii=0; ii<ngll; ii++) {
+        real tmp = 0;
+        for (int s=0; s < ord; s++) {
+          tmp += sten_to_gll(s,ii) * stencil(s);
+        }
+        gll(ii) = tmp;
       }
 
     } // if doweno

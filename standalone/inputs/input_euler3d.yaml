@@ -1,6 +1,6 @@
 ---
 # Simulation time in seconds
-simTime  : 2.
+simTime  : 1000.
 
 # Number of cells to use
 nx       : 128
