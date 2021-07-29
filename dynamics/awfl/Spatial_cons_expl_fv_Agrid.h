@@ -616,7 +616,7 @@ public:
     vert_locs_normalized = real3d("vert_locs_normalized",nz,ord+1      ,nens);
     dz                   = real2d("dz"                  ,nz            ,nens);
     dz_ghost             = real2d("dz_ghost"            ,nz+2*hs       ,nens);
-    vert_sten_to_gll     = real4d("vert_sten_to_gll",nz,ord,ngll   ,nens);
+    vert_sten_to_gll     = real4d("vert_sten_to_gll",nz,ord,ngll,nens);
     vert_weno_recon      = real5d("vert_weno_recon" ,nz,ord,ord,ord,nens);
 
     YAKL_SCOPE( vert_interface       , this->vert_interface       );
@@ -1264,12 +1264,13 @@ public:
         }
       });
     }
-    real6d state_gll  ("state_gll"  ,num_state,ngll,nz,ny,nx,nens);
-    real6d tracers_gll("tracers_gll",num_state,ngll,nz,ny,nx,nens);
+
+    real6d state_gll  ("state_gll"  ,num_state  ,ngll,nz,ny,nx,nens);
+    real6d tracers_gll("tracers_gll",num_tracers,ngll,nz,ny,nx,nens);
 
     // Loop through all cells, reconstruct in x-direction, compute centered tendencies, store cell-edge state estimates
     parallel_for( "Spatial.h X recon" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      SArray<real,1,ord> stencil;
+      SArray<real,1,ord>  stencil;
       SArray<real,1,ngll> gll;
 
       // Density
@@ -1277,35 +1278,33 @@ public:
       reconstruct_gll_values( stencil , gll , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
       for (int ii=0; ii < ngll; ii++) { state_gll(idR,ii,k,j,i,iens) = gll(ii) + hyDensCells(k,iens); } // Add hydrostasis back on
 
-      // u values and derivatives
+      // u
       for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idU,hs+k,hs+j,i+ii,iens); }
       reconstruct_gll_values( stencil , gll , c2g , s2g , wenoRecon , idl , sigma , weno_winds );
-      for (int ii=0; ii < ngll; ii++) { state_gll(idU,ii,k,j,i,iens) = gll(ii); } // Add hydrostasis back on
+      for (int ii=0; ii < ngll; ii++) { state_gll(idU,ii,k,j,i,iens) = gll(ii); }
 
       // v
       for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idV,hs+k,hs+j,i+ii,iens); }
       reconstruct_gll_values( stencil , gll , c2g , s2g , wenoRecon , idl , sigma , weno_winds );
-      for (int ii=0; ii < ngll; ii++) { state_gll(idV,ii,k,j,i,iens) = gll(ii); } // Add hydrostasis back on
+      for (int ii=0; ii < ngll; ii++) { state_gll(idV,ii,k,j,i,iens) = gll(ii); }
 
       // w
       for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idW,hs+k,hs+j,i+ii,iens); }
       reconstruct_gll_values( stencil , gll , c2g , s2g , wenoRecon , idl , sigma , weno_winds );
-      for (int ii=0; ii < ngll; ii++) { state_gll(idW,ii,k,j,i,iens) = gll(ii); } // Add hydrostasis back on
+      for (int ii=0; ii < ngll; ii++) { state_gll(idW,ii,k,j,i,iens) = gll(ii); }
 
       // theta
       for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idT,hs+k,hs+j,i+ii,iens); }
       reconstruct_gll_values( stencil , gll , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
       for (int ii=0; ii < ngll; ii++) { state_gll(idT,ii,k,j,i,iens) = gll(ii) + hyDensThetaCells(k,iens); } // Add hydrostasis back on
 
-      // Only process one tracer at a time to save on local memory / register requirements
       for (int tr=0; tr < num_tracers; tr++) {
-        SArray<real,1,ord> stencil;
         for (int ii=0; ii < ord; ii++) { stencil(ii) = tracers(tr,hs+k,hs+j,i+ii,iens); }
         reconstruct_gll_values( stencil , gll , c2g , s2g , wenoRecon , idl , sigma , weno_scalars );
         if (tracer_pos(tr)) {
           for (int ii=0; ii < ngll; ii++) { gll(ii) = max( 0._fp , gll(ii) ); }
         }
-        for (int ii=0; ii < ngll; ii++) { tracers_gll(tr,ii,k,j,i,iens) = gll(ii); } // Add hydrostasis back on
+        for (int ii=0; ii < ngll; ii++) { tracers_gll(tr,ii,k,j,i,iens) = gll(ii); }
       }
     });
 
@@ -1316,7 +1315,6 @@ public:
 
       { // BEGIN: Reconstruct, time-average, and store the state and fluxes
         SArray<real,2,nAder,ngll> rv_DTs , rw_DTs , rt_DTs;
-
         ///////////////////////////////////////////////////////////////
         // Compute other values needed for centered tendencies and DTs
         ///////////////////////////////////////////////////////////////
@@ -1327,6 +1325,11 @@ public:
           real v = state_gll(idV,ii,k,j,i,iens) / r;
           real w = state_gll(idW,ii,k,j,i,iens) / r;
           real t = state_gll(idT,ii,k,j,i,iens) / r;
+          r_DTs       (0,ii) = r;
+          ru_DTs      (0,ii) = r*u;
+          rv_DTs      (0,ii) = r*v;
+          rw_DTs      (0,ii) = r*w;
+          rt_DTs      (0,ii) = r*t;
           ruu_DTs     (0,ii) = r*u*u;
           ruv_DTs     (0,ii) = r*u*v;
           ruw_DTs     (0,ii) = r*u*w;
@@ -1414,6 +1417,9 @@ public:
       } // END: Reconstruct, time-average, and store tracer fluxes
 
     });
+
+    state_gll   = real6d();
+    tracers_gll = real6d();
 
     ////////////////////////////////////////////////
     // BCs for the state edge estimates
@@ -1981,8 +1987,8 @@ public:
       });
     }
 
-    real6d state_gll  ("state_gll"  ,num_state,ngll,nz,ny,nx,nens);
-    real6d tracers_gll("tracers_gll",num_state,ngll,nz,ny,nx,nens);
+    real6d state_gll  ("state_gll"  ,num_state  ,ngll,nz,ny,nx,nens);
+    real6d tracers_gll("tracers_gll",num_tracers,ngll,nz,ny,nx,nens);
 
     // Loop through all cells, reconstruct in x-direction, compute centered tendencies, store cell-edge state estimates
     parallel_for( "Spatial.h Z recon" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
@@ -2001,15 +2007,13 @@ public:
         }
       }
 
-      SArray<real,1,ngll> gll;
-      SArray<real,1,ngll> dens_gll;
       SArray<real,1,ord>  stencil;
+      SArray<real,1,ngll> gll;
 
       // Density
       for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idR,k+kk,hs+j,hs+i,iens); }
       reconstruct_gll_values( stencil , gll , c2g , s2g_loc , weno_recon_loc , idl , sigma , weno_scalars );
-      for (int kk=0; kk < ngll; kk++) { dens_gll(kk) = gll(kk) + hyDensGLL(k,kk,iens); } // Add hydrostasis back on
-      for (int kk=0; kk < ngll; kk++) { state_gll(idR,kk,k,j,i,iens) = dens_gll(kk); } // Add hydrostasis back on
+      for (int kk=0; kk < ngll; kk++) { state_gll(idR,kk,k,j,i,iens) = gll(kk) + hyDensGLL(k,kk,iens); } // Add hydrostasis back on
 
       // u values and derivatives
       for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idU,k+kk,hs+j,hs+i,iens); }
@@ -2035,11 +2039,10 @@ public:
       reconstruct_gll_values( stencil , gll , c2g , s2g_loc , weno_recon_loc , idl , sigma , weno_scalars );
       for (int kk=0; kk < ngll; kk++) { state_gll(idT,kk,k,j,i,iens) = gll(kk) + hyDensThetaGLL(k,kk,iens); } // Add hydrostasis back on
 
-      // Only process one tracer at a time to save on local memory / register requirements
       for (int tr=0; tr < num_tracers; tr++) {
         for (int kk=0; kk < ord; kk++) { stencil(kk) = tracers(tr,k+kk,hs+j,hs+i,iens); }
         reconstruct_gll_values( stencil , gll , c2g , s2g_loc , weno_recon_loc , idl , sigma , weno_scalars );
-        for (int kk=0; kk < ngll; kk++) { gll(kk) *= dens_gll(kk); }
+        for (int kk=0; kk < ngll; kk++) { gll(kk) *= state_gll(idR,kk,k,j,i,iens); }
         if (tracer_pos(tr)) {
           for (int kk=0; kk < ngll; kk++) { gll(kk) = max( 0._fp , gll(kk) ); }
         }
@@ -2052,16 +2055,8 @@ public:
     parallel_for( "Spatial.h Z ader" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       // We need these to persist to evolve tracers with ADER
       SArray<real,2,nAder,ngll> r_DTs , rw_DTs;
-
       { // BEGIN: reconstruct, time-avg, and store state & state fluxes
-        ////////////////////////////////////////////////////////////////
-        // Reconstruct rho, u, v, w, theta
-        ////////////////////////////////////////////////////////////////
         SArray<real,2,nAder,ngll> ru_DTs , rv_DTs , rt_DTs;
-
-        ///////////////////////////////////////////////////////////////
-        // Compute other values needed for centered tendencies and DTs
-        ///////////////////////////////////////////////////////////////
         SArray<real,2,nAder,ngll> rwu_DTs , rwv_DTs , rww_DTs , rwt_DTs , rt_gamma_DTs;
         for (int kk=0; kk < ngll; kk++) {
           real r = state_gll(idR,kk,k,j,i,iens);
@@ -2069,6 +2064,11 @@ public:
           real v = state_gll(idV,kk,k,j,i,iens) / r;
           real w = state_gll(idW,kk,k,j,i,iens) / r;
           real t = state_gll(idT,kk,k,j,i,iens) / r;
+          r_DTs       (0,kk) = r;
+          ru_DTs      (0,kk) = r*u;
+          rv_DTs      (0,kk) = r*v;
+          rw_DTs      (0,kk) = r*w;
+          rt_DTs      (0,kk) = r*t;
           rwu_DTs     (0,kk) = r*w*u;
           rwv_DTs     (0,kk) = r*w*v;
           rww_DTs     (0,kk) = r*w*w;
