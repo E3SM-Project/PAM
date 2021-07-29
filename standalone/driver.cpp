@@ -69,7 +69,7 @@ int main(int argc, char** argv) {
 
     real etime = 0;
 
-    dycore.output( dm , micro , etime );
+    if (outFreq >= 0) dycore.output( dm , micro , etime );
 
     real dtphys = dtphys_in;
     while (etime < simTime) {
@@ -85,7 +85,7 @@ int main(int argc, char** argv) {
       yakl::timer_stop("dycore");
 
       etime += dtphys;
-      if (etime / outFreq >= numOut+1) {
+      if (outFreq >= 0. && etime / outFreq >= numOut+1) {
         std::cout << "Etime , dtphys: " << etime << " , " << dtphys << "\n";
         yakl::timer_start("output");
         dycore.output( dm , micro , etime );

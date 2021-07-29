@@ -1,6 +1,6 @@
 ---
 # Simulation time in seconds
-simTime  : 1000.
+simTime  : 2.
 
 # Number of cells to use
 nx       : 128
@@ -33,7 +33,7 @@ out_prefix  : test
 dtphys: 20.
 
 # Output frequency in seconds
-outFreq: 100.
+outFreq: -1.
 
 # Number of ensembles
 nens : 200
