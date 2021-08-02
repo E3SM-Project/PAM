@@ -12,8 +12,8 @@ def c_scalar(retlab,val,coeflab,wraplen) :
     s = re.sub("([a-zA-Z()0-9_]*)\^([0-9]*)","pow((double)\\1,(double)\\2)",s,0,re.DOTALL)
     #Replace coeficients (e.g., c1) with parentheses (e.g., c(1))
     s = re.sub(coeflab+"([0-9]+)",coeflab+"(\\1)",s, 0, re.DOTALL)
-    #Break up code to the given wraplen for line length
-    #s = re.sub("&\n&$","",re.sub("(.{"+str(wraplen)+"})", "\\1&\n&", s, 0, re.DOTALL))
+    #Replace coeficients (e.g., c1) with parentheses (e.g., c(1))
+    s = re.sub("([0-9]*\.[0-9e-]*)","\\1_fp",s, 0, re.DOTALL)
     #Add new line to the end.
     code = code + s + ";\n"
     return code

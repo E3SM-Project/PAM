@@ -96,59 +96,58 @@ namespace weno {
 
 
   template <int ord>
-  YAKL_INLINE void compute_weno_coefs( SArray<real,3,ord,ord,ord> const &recon , SArray<real,1,ord> const &u ,
-                                       SArray<real,1,ord> &aw , SArray<real,1,(ord-1)/2+2> const &idl , real const sigma ) {
+  YAKL_INLINE void compute_weno_coefs( SArray<real,3,(ord-1)/2+1,(ord-1)/2+1,(ord-1)/2+1> const &recon_lo ,
+                                       SArray<real,2,ord,ord> const & recon_hi ,
+                                       SArray<real,1,ord> const &u ,
+                                       SArray<real,1,ord> &aw ,
+                                       SArray<real,1,(ord-1)/2+2> const &idl ,
+                                       real const sigma ) {
     int constexpr hs = (ord-1)/2;
-    SArray<real,1,hs+2> tv;
-    SArray<real,1,hs+2> wts;
-    SArray<real,2,hs+2,ord> a;
-    SArray<real,1,hs+1> lotmp;
-    SArray<real,1,ord > hitmp;
-    real lo_avg;
+    SArray<real,2,hs+1,hs+1> a_lo;
+    SArray<real,1,ord> a_hi;
     real const eps = 1.0e-20;
-
-    // Init to zero
-    for (int j=0; j<hs+2; j++) {
-      for (int i=0; i<ord; i++) {
-        a(j,i) = 0._fp;
-      }
-    }
 
     // Compute three quadratic polynomials (left, center, and right) and the high-order polynomial
     for(int i=0; i<hs+1; i++) {
       for (int ii=0; ii<hs+1; ii++) {
+        real tmp = 0;
         for (int s=0; s<hs+1; s++) {
-          a(i,ii) += recon(i,s,ii) * u(i+s);
+          tmp += recon_lo(i,s,ii) * u(i+s);
         }
+        a_lo(i,ii) = tmp;
       }
     }
     for (int ii=0; ii<ord; ii++) {
+      real tmp = 0;
       for (int s=0; s<ord; s++) {
-        a(hs+1,ii) += recon(hs+1,s,ii) * u(s);
+        tmp += recon_hi(s,ii) * u(s);
       }
+      a_hi(ii) = tmp;
     }
 
     // Compute "bridge" polynomial
     for (int i=0; i<hs+1; i++) {
       for (int ii=0; ii<hs+1; ii++) {
-        a(hs+1,ii) -= idl(i)*a(i,ii);
+        a_hi(ii) -= idl(i)*a_lo(i,ii);
       }
     }
     for (int ii=0; ii<ord; ii++) {
-      a(hs+1,ii) /= idl(hs+1);
+      a_hi(ii) /= idl(hs+1);
     }
+
+    SArray<real,1,hs+1> lotmp;
+    SArray<real,1,hs+2> tv;
 
     // Compute total variation of all candidate polynomials
     for (int i=0; i<hs+1; i++) {
       for (int ii=0; ii<hs+1; ii++) {
-        lotmp(ii) = a(i,ii);
+        lotmp(ii) = a_lo(i,ii);
       }
       tv(i) = TransformMatrices::coefs_to_tv(lotmp);
     }
-    for (int ii=0; ii<ord; ii++) {
-      hitmp(ii) = a(hs+1,ii);
-    }
-    tv(hs+1) = TransformMatrices::coefs_to_tv(hitmp);
+    tv(hs+1) = TransformMatrices::coefs_to_tv(a_hi);
+
+    real lo_avg;
 
     // Reduce the bridge polynomial TV to something closer to the other TV values
     lo_avg = 0._fp;
@@ -157,6 +156,8 @@ namespace weno {
     }
     lo_avg /= hs+1;
     tv(hs+1) = lo_avg + ( tv(hs+1) - lo_avg ) * sigma;
+
+    SArray<real,1,hs+2> wts;
 
     // WENO weights are proportional to the inverse of TV**2 and then re-confexified
     for (int i=0; i<hs+2; i++) {
@@ -169,12 +170,12 @@ namespace weno {
     convexify<ord>(wts);
 
     // WENO polynomial is the weighted sum of candidate polynomials using WENO weights instead of ideal weights
-    for (int i=0; i<ord; i++) {
-      aw(i) = 0._fp;
+    for (int i=0; i < ord; i++) {
+      aw(i) = wts(hs+1) * a_hi(i);
     }
-    for (int i=0; i<hs+2; i++) {
-      for (int ii=0; ii<ord; ii++) {
-        aw(ii) += wts(i) * a(i,ii);
+    for (int i=0; i<hs+1; i++) {
+      for (int ii=0; ii<hs+1; ii++) {
+        aw(ii) += wts(i) * a_lo(i,ii);
       }
     }
   }
