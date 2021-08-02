@@ -15,6 +15,7 @@ print('using yakl::SArray;\n')
 print('namespace TransformMatrices {\n')
 
 for N in range(N1,N2+1) :
+    hs = (N-1)/2
 
     print('  template <class FP> YAKL_INLINE void get_gll_points(SArray<FP,1,%s> &rslt) {'%(N))
     pts,wts = lobatto_weights_nodes(N,129,False,1.e-35,100)
@@ -114,9 +115,9 @@ for N in range(N1,N2+1) :
             print(add_spaces(4,c_matrix_aoa('rslt',M,N,c2g[M-1],'none',200)))
             print('  }\n');
 
-        print('  template <class FP> YAKL_INLINE void weno_sten_to_coefs(SArray<FP,3,%s,%s,%s> &rslt) {'%(N,N,N))
-        weno = weno_sten_to_coefs(N)
-        print(add_spaces(4,c_3d('rslt',N,N,(N-1)/2+2,weno,'none',200)))
+        print('  template <class FP> YAKL_INLINE void weno_lower_sten_to_coefs(SArray<FP,3,%s,%s,%s> &rslt) {'%(hs+1,hs+1,hs+1))
+        weno = weno_lower_sten_to_coefs(N)
+        print(add_spaces(4,c_3d('rslt',hs+1,hs+1,hs+1,weno,'none',200)))
         print('  }\n');
 
         print('  template <class FP> YAKL_INLINE void mcv_to_coefs(SArray<FP,2,%s,%s> &rslt) {'%(N,N))

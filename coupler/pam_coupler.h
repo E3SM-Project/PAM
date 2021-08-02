@@ -24,7 +24,31 @@ inline void allocate_coupler_state( int nz, int ny, int nx, int nens , DataManag
     wvel        (i) = 0;
     temp        (i) = 0;
   });
+}
 
+
+YAKL_INLINE real compute_pressure( real rho_d, real rho_v, real T, real R_d, real R_v ) {
+  return rho_d*R_d*T + rho_v*R_v*T;
+}
+
+
+YAKL_INLINE real4d compute_pressure( real4d const &dens_dry, real4d const &dens_wv, real4d const &temp,
+                                     real R_d, real R_v ) {
+  int nz   = dens_dry.dimension[0];
+  int ny   = dens_dry.dimension[1];
+  int nx   = dens_dry.dimension[2];
+  int nens = dens_dry.dimension[3];
+
+  real4d pressure("pressure",nz,ny,nx,nens);
+
+  parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+    real rho_d = dens_dry(k,j,i,iens);
+    real rho_v = dens_wv (k,j,i,iens);
+    real T     = temp    (k,j,i,iens);
+    pressure(k,j,i,iens) = compute_pressure( rho_d , rho_v , T , R_d , R_v );
+  });
+
+  return pressure;
 }
 
 

@@ -1,6 +1,6 @@
 
 #include "pam_const.h"
-#include "coupler_state.h"
+#include "pam_coupler.h"
 #include "Dycore.h"
 #include "Microphysics.h"
 #include "DataManager.h"

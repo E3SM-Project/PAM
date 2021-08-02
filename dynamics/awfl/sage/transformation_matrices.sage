@@ -235,10 +235,10 @@ def coefs_to_gll_lower(N) :
     return coefs_to_gll
 
 
-def weno_sten_to_coefs(N) :
+def weno_lower_sten_to_coefs(N) :
     var('x')
     hs = (N-1)/2
-    wenopolys = [[[ 0*x for i in range(N) ] for j in range(N) ] for k in range(hs+2) ]
+    wenopolys = [[[ 0*x for i in range(hs+1) ] for j in range(hs+1) ] for k in range(hs+1) ]
     locs = vector([ (2*i-1)/2 for i in range(-hs,hs+2) ])
     #Lower-ordered polynomials
     for j in range(hs+1) :
@@ -249,14 +249,6 @@ def weno_sten_to_coefs(N) :
         for i2 in range(hs+1) :
             for i1 in range(hs+1) :
                 wenopolys[j][i1][i2] = tmpl[i2][i1]
-    #Higher-order polynomial
-    coefs = coefs_1d(N,0,'a')
-    p = poly_1d(N,coefs,x)
-    constr = vector([ integrate(p,x,locs[i],locs[i+1]) / (locs[i+1]-locs[i]) for i in range(N) ])
-    tmph = force_fp( jacobian(constr,coefs)^-1 , 129 )
-    for i2 in range(N) :
-        for i1 in range(N) :
-            wenopolys[hs+1][i1][i2] = tmph[i2][i1]
     return wenopolys
 
 

@@ -54,11 +54,9 @@ namespace TransformMatrices_variable {
 
 
   template <unsigned int ord> 
-  inline void weno_sten_to_coefs( SArray<double,1,ord+1> const &locs ,
-                                  SArray<double,3,ord,ord,ord> &weno_recon ) {
+  inline void weno_lower_sten_to_coefs( SArray<double,1,ord+1> const &locs ,
+                                        SArray<double,3,(ord-1)/2+1,(ord-1)/2+1,(ord-1)/2+1> &weno_recon ) {
     int constexpr hs = (ord-1)/2;
-
-    memset(weno_recon , 0._fp);
 
     SArray<double,2,hs+1,hs+1> recon_lo;
     SArray<double,1,hs+2> locs_lo;
@@ -73,15 +71,6 @@ namespace TransformMatrices_variable {
         for (int ii=0; ii < hs+1; ii++) {
           weno_recon(i,jj,ii) = recon_lo(jj,ii);
         }
-      }
-    }
-
-    // Create high-order matrix
-    SArray<double,2,ord,ord> recon_hi;
-    sten_to_coefs_variable( locs , recon_hi );
-    for (int jj=0; jj < ord; jj++) {
-      for (int ii=0; ii < ord; ii++) {
-        weno_recon(hs+1,jj,ii) = recon_hi(jj,ii);
       }
     }
   }
