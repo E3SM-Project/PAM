@@ -110,15 +110,19 @@ namespace weno {
     // Compute three quadratic polynomials (left, center, and right) and the high-order polynomial
     for(int i=0; i<hs+1; i++) {
       for (int ii=0; ii<hs+1; ii++) {
+        real tmp = 0;
         for (int s=0; s<hs+1; s++) {
-          a_lo(i,ii) += recon_lo(i,s,ii) * u(i+s);
+          tmp += recon_lo(i,s,ii) * u(i+s);
         }
+        a_lo(i,ii) = tmp;
       }
     }
     for (int ii=0; ii<ord; ii++) {
+      real tmp = 0;
       for (int s=0; s<ord; s++) {
-        a_hi(ii) += recon_hi(s,ii) * u(s);
+        tmp += recon_hi(s,ii) * u(s);
       }
+      a_hi(ii) = tmp;
     }
 
     // Compute "bridge" polynomial
