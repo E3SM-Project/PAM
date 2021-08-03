@@ -27,6 +27,8 @@ public:
   real C0   ;
   real Rv   ;
 
+  real hydrostasis_parameters_sum;
+
   typedef real5d StateArr;  // Array of state variables (rho, rho*u, rho*v, rho*w, and rho*theta)
   typedef real5d TracerArr; // Array of tracers (total tracer mass)
 
@@ -211,15 +213,51 @@ public:
 
 
 
+  YAKL_INLINE static real hydrostatic_pressure( real2d const &hy_params , real z , int iens , real C0 , real gamma ) {
+    real a0 = hy_params(0,iens);
+    real a1 = hy_params(1,iens);
+    real a2 = hy_params(2,iens);
+    real a3 = hy_params(3,iens);
+    real a4 = hy_params(4,iens);
+    real lnp = a0 + ( a1 + ( a2 + ( a3 + a4 * z ) * z ) * z ) * z;
+    return exp(lnp);
+  }
+
+
+
+  YAKL_INLINE static real hydrostatic_dens_theta( real2d const &hy_params , real z , int iens , real C0 , real gamma ) {
+    real p = hydrostatic_pressure( hy_params , z , iens , C0 , gamma );
+    // p = C0*(rho*theta)^gamma
+    return pow(p/C0,1._fp/gamma);
+  }
+
+
+
+  YAKL_INLINE static real hydrostatic_theta( real2d const &hy_params , real z , int iens , real C0 , real gamma ) {
+    real rt = hydrostatic_dens_theta( hy_params , z , iens , C0 , gamma );
+    real r  = hydrostatic_density   ( hy_params , z , iens , C0 , gamma );
+    return rt/r;
+  }
+
+
+
+  YAKL_INLINE static real hydrostatic_density( real2d const &hy_params , real z , int iens , real C0 , real gamma ) {
+    real a0 = hy_params(0,iens);
+    real a1 = hy_params(1,iens);
+    real a2 = hy_params(2,iens);
+    real a3 = hy_params(3,iens);
+    real a4 = hy_params(4,iens);
+    real p = hydrostatic_pressure( hy_params , z , iens , C0 , gamma );
+    real mult = a1 + (2*a2 + (3*a3 + 4*a4*z) * z) * z;
+    real dpdz = mult*p;
+    return -dpdz/GRAV;
+  }
+
+
+
   template <class MICRO>
   void convert_coupler_state_to_dynamics( DataManager &dm , MICRO &micro ) {
-    real5d state       = dm.get<real,5>( "dynamics_state"   );
-    real5d tracers     = dm.get<real,5>( "dynamics_tracers" );
-    real4d dm_dens_dry = dm.get<real,4>( "density_dry"      );
-    real4d dm_uvel     = dm.get<real,4>( "uvel"             );
-    real4d dm_vvel     = dm.get<real,4>( "vvel"             );
-    real4d dm_wvel     = dm.get<real,4>( "wvel"             );
-    real4d dm_temp     = dm.get<real,4>( "temp"             );
+    auto hy_params = dm.get<real,2>("hydrostasis_parameters");
 
     YAKL_SCOPE( hyDensCells      , this->hyDensCells      );
     YAKL_SCOPE( hyDensThetaCells , this->hyDensThetaCells );
@@ -231,6 +269,47 @@ public:
     YAKL_SCOPE( Rv               , this->Rv               );
     YAKL_SCOPE( cp               , this->cp               );
     YAKL_SCOPE( tracer_adds_mass , this->tracer_adds_mass );
+
+    // If hydrostasis in the coupler has changed, then we need to re-compute
+    // hydrostatically balanced cells and GLL points for the dycore's time step
+    real tmp = yakl::intrinsics::sum(hy_params);
+    if (tmp != hydrostasis_parameters_sum) {
+      hydrostasis_parameters_sum = tmp;
+      parallel_for( SimpleBounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
+        real p  = 0;
+        real r  = 0;
+        real rt = 0;
+        real t  = 0;
+        for (int kk=0; kk < ord; kk++) {
+          real zloc = vert_interface(k,iens) + 0.5_fp*dz(k,iens) + gllPts_ord(kk)*dz(k,iens);
+          real wt = gllWts_ord(kk);
+          p  += hydrostatic_pressure  ( hy_params , zloc , iens , C0 , gamma ) * wt;
+          r  += hydrostatic_density   ( hy_params , zloc , iens , C0 , gamma ) * wt;
+          rt += hydrostatic_dens_theta( hy_params , zloc , iens , C0 , gamma ) * wt;
+          t  += hydrostatic_theta     ( hy_params , zloc , iens , C0 , gamma ) * wt;
+        }
+        hyPressureCells (k,iens) = p;
+        hyDensCells     (k,iens) = r;
+        hyDensThetaCells(k,iens) = rt;
+        hyThetaCells    (k,iens) = t;
+
+        for (int kk=0; kk < ngll; kk++) {
+          real zloc = vert_interface(k,iens) + 0.5_fp*dz(k,iens) + gllPts_ngll(kk)*dz(k,iens);
+          hyPressureGLL (k,kk,iens) = hydrostatic_pressure  ( hy_params , zloc , iens , C0 , gamma );
+          hyDensGLL     (k,kk,iens) = hydrostatic_density   ( hy_params , zloc , iens , C0 , gamma );
+          hyDensThetaGLL(k,kk,iens) = hydrostatic_dens_theta( hy_params , zloc , iens , C0 , gamma );
+          hyThetaGLL    (k,kk,iens) = hydrostatic_theta     ( hy_params , zloc , iens , C0 , gamma );
+        }
+      });
+    }
+
+    real5d state       = dm.get<real,5>( "dynamics_state"   );
+    real5d tracers     = dm.get<real,5>( "dynamics_tracers" );
+    real4d dm_dens_dry = dm.get<real,4>( "density_dry"      );
+    real4d dm_uvel     = dm.get<real,4>( "uvel"             );
+    real4d dm_vvel     = dm.get<real,4>( "vvel"             );
+    real4d dm_wvel     = dm.get<real,4>( "wvel"             );
+    real4d dm_temp     = dm.get<real,4>( "temp"             );
 
     int idWV = micro.get_water_vapor_index();
 
@@ -393,6 +472,8 @@ public:
     this->xlen = xlen;
     this->ylen = ylen;
     this->num_tracers = num_tracers;
+
+    this->hydrostasis_parameters_sum = 0;
 
     // Allocate device arrays for whether tracers are positive-definite or add mass
     tracer_pos       = bool1d("tracer_pos"      ,num_tracers);
