@@ -64,6 +64,8 @@ int main(int argc, char** argv) {
     // Initialize the dry state
     dycore.init_state_and_tracers( coupler.dm , micro );
 
+    coupler.update_hydrostasis_parameters();
+
     real etime = 0;
 
     if (outFreq >= 0) dycore.output( coupler.dm , micro , etime );

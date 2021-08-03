@@ -3,13 +3,13 @@
 
 #include "pam_const.h"
 #include "DataManager.h"
+#include <Eigen/Dense>
 
 class PamCoupler {
   public:
 
   real R_d;
   real R_v;
-  real hydrostatic_press_const[4];
 
   DataManager dm;
 
@@ -17,20 +17,12 @@ class PamCoupler {
   PamCoupler() {
     R_d = 287.;
     R_v = 461.;
-    hydrostatic_press_const[0] = -1;
-    hydrostatic_press_const[1] = -1;
-    hydrostatic_press_const[2] = -1;
-    hydrostatic_press_const[3] = -1;
   }
 
 
   PamCoupler(real R_d, real R_v) {
     this->R_d = R_d;
     this->R_v = R_v;
-    hydrostatic_press_const[0] = -1;
-    hydrostatic_press_const[1] = -1;
-    hydrostatic_press_const[2] = -1;
-    hydrostatic_press_const[3] = -1;
   }
 
 
@@ -73,6 +65,7 @@ class PamCoupler {
     dm.register_and_allocate<real>( "diag_press"                , "pressure"                  , {nz,ny,nx,nens} , {"z","y","x","nens"} );
     dm.register_and_allocate<real>( "vertical_interface_height" , "vertical interface height" , {nz+1    ,nens} , {"zp1"      ,"nens"} );
     dm.register_and_allocate<real>( "vertical_midpoint_height"  , "vertical midpoint height"  , {nz      ,nens} , {"z"        ,"nens"} );
+    dm.register_and_allocate<real>( "hydrostasis_parameters"    , "hydrostasis parameters"    , {5       ,nens} , {"five"     ,"nens"} );
 
     auto density_dry  = dm.get_collapsed<real>("density_dry"              );
     auto uvel         = dm.get_collapsed<real>("uvel"                     );
@@ -82,6 +75,7 @@ class PamCoupler {
     auto diag_press   = dm.get_collapsed<real>("diag_press"               );
     auto zint         = dm.get_collapsed<real>("vertical_interface_height");
     auto zmid         = dm.get_collapsed<real>("vertical_midpoint_height" );
+    auto hy_params    = dm.get_collapsed<real>("hydrostasis_parameters"   );
 
     parallel_for( Bounds<1>(nz*ny*nx*nens) , YAKL_LAMBDA (int i) {
       density_dry (i) = 0;
@@ -92,6 +86,7 @@ class PamCoupler {
       diag_press  (i) = 0;
       if (i < (nz+1)*nens) zint(i) = 0;
       if (i < (nz  )*nens) zmid(i) = 0;
+      if (i < 5     *nens) hy_params(i) = 0;
     });
   }
 
@@ -104,7 +99,7 @@ class PamCoupler {
   inline void update_diagnostic_pressure( ) {
     auto dens_dry = dm.get_lev_col<real>("density_dry");
     auto dens_wv  = dm.get_lev_col<real>("water_vapor");
-    auto temp     = dm.get_lev_col<real>("temperature");
+    auto temp     = dm.get_lev_col<real>("temp");
     auto pressure = dm.get_lev_col<real>("diag_press" );
 
     int nz   = dens_dry.dimension[0];
@@ -119,12 +114,66 @@ class PamCoupler {
   }
 
 
-  inline void update_hydrostatic_profile( ) {
-    auto pressure = dm.get_lev_col<real>("diag_press" );
+  inline void update_hydrostasis_parameters( ) {
+    update_diagnostic_pressure();
 
-    int nz   = pressure.dimension[0];
-    int ncol = pressure.dimension[1];
+    auto zmid_host      = dm.get<real,2>("vertical_midpoint_height").createHostCopy();
+    auto pressure_host  = dm.get<real,4>("diag_press"              ).createHostCopy();
+    auto hy_params      = dm.get<real,2>("hydrostasis_parameters"  );
+    auto hy_params_host = hy_params.createHostCopy();
+
+    int nz   = dm.get_dimension_size("z");
+    int ny   = dm.get_dimension_size("y");
+    int nx   = dm.get_dimension_size("x");
+    int nens = dm.get_dimension_size("nens");
+
+    int k0 = 0;
+    int k1 = nz/4;
+    int k2 = nz/2;
+    int k3 = (3*nz)/4;
+    int k4 = nz-1;
+
+    for (int iens=0; iens < nens; iens++) {
+      SArray<double,1,5> z;
+      z(0) = zmid_host(k0,iens);
+      z(1) = zmid_host(k1,iens);
+      z(2) = zmid_host(k2,iens);
+      z(3) = zmid_host(k3,iens);
+      z(4) = zmid_host(k4,iens);
+
+      SArray<double,2,5,5> mat;
+      for (int j=0; j < 5; j++) {
+        for (int i=0; i < 5; i++) {
+          mat(j,i) = pow( z(i) , (double) j );
+        }
+      }
+
+      std::cout << mat;
+
+      Eigen::Matrix<double,5,5,Eigen::RowMajor> vand(mat.data());
+      auto vand_inv = vand.fullPivLu().inverse();
+
+      SArray<double,1,5> press_loc;
+      press_loc(0) = log(pressure_host(k0,0,0,iens));
+      press_loc(1) = log(pressure_host(k1,0,0,iens));
+      press_loc(2) = log(pressure_host(k2,0,0,iens));
+      press_loc(3) = log(pressure_host(k3,0,0,iens));
+      press_loc(4) = log(pressure_host(k4,0,0,iens));
+
+      for (int j=0; j < 5; j++) {
+        real tmp = 0;
+        for (int s=0; s < 5; s++) {
+          tmp += vand_inv(s,j) * press_loc(s);
+        }
+        hy_params_host(j,iens) = tmp;
+      }
+    }
+    
+    std::cout << hy_params_host << "\n";
+
+    hy_params_host.deep_copy_to(hy_params);
   }
+
 
 };
 
