@@ -141,32 +141,37 @@ class PamCoupler {
       z(3) = zmid_host(k3,iens);
       z(4) = zmid_host(k4,iens);
 
-      SArray<double,2,5,5> mat;
+      SArray<double,2,5,5> vand;
       for (int j=0; j < 5; j++) {
         for (int i=0; i < 5; i++) {
-          mat(j,i) = pow( z(i) , (double) j );
+          vand(j,i) = pow( z(j) , (double) i );
         }
       }
 
-      std::cout << mat;
+      std::cout << vand;
 
-      Eigen::Matrix<double,5,5,Eigen::RowMajor> vand(mat.data());
-      auto vand_inv = vand.fullPivLu().inverse();
+      Eigen::Matrix<double,5,5,Eigen::RowMajor> vand_eigen(vand.data());
+      auto vand_inv_eigen = vand_eigen.fullPivLu().inverse();
 
-      SArray<double,1,5> press_loc;
-      press_loc(0) = log(pressure_host(k0,0,0,iens));
-      press_loc(1) = log(pressure_host(k1,0,0,iens));
-      press_loc(2) = log(pressure_host(k2,0,0,iens));
-      press_loc(3) = log(pressure_host(k3,0,0,iens));
-      press_loc(4) = log(pressure_host(k4,0,0,iens));
-
+      SArray<double,2,5,5> vand_inv;
       for (int j=0; j < 5; j++) {
-        real tmp = 0;
-        for (int s=0; s < 5; s++) {
-          tmp += vand_inv(s,j) * press_loc(s);
+        for (int i=0; i < 5; i++) {
+          vand_inv(j,i) = vand_inv_eigen(j,i);
         }
-        hy_params_host(j,iens) = tmp;
       }
+
+      SArray<double,1,5> logp;
+      logp(0) = log(pressure_host(k0,0,0,iens));
+      logp(1) = log(pressure_host(k1,0,0,iens));
+      logp(2) = log(pressure_host(k2,0,0,iens));
+      logp(3) = log(pressure_host(k3,0,0,iens));
+      logp(4) = log(pressure_host(k4,0,0,iens));
+
+      SArray<double,1,5> params;
+
+      params = vand_inv * logp;
+
+      for (int i=0; i < 5; i++) { hy_params_host(i,iens) = params(i); }
     }
     
     std::cout << hy_params_host << "\n";
