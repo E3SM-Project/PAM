@@ -141,35 +141,23 @@ class PamCoupler {
       z(3) = zmid_host(k3,iens);
       z(4) = zmid_host(k4,iens);
 
-      SArray<double,2,5,5> vand;
+      Eigen::Matrix<double,5,5,Eigen::RowMajor> vand(5,5);
       for (int j=0; j < 5; j++) {
         for (int i=0; i < 5; i++) {
           vand(j,i) = pow( z(j) , (double) i );
         }
       }
 
-      std::cout << vand;
+      auto vand_inv = vand.inverse();
 
-      Eigen::Matrix<double,5,5,Eigen::RowMajor> vand_eigen(vand.data());
-      auto vand_inv_eigen = vand_eigen.fullPivLu().inverse();
-
-      SArray<double,2,5,5> vand_inv;
-      for (int j=0; j < 5; j++) {
-        for (int i=0; i < 5; i++) {
-          vand_inv(j,i) = vand_inv_eigen(j,i);
-        }
-      }
-
-      SArray<double,1,5> logp;
+      Eigen::Vector<double,5> logp(5);
       logp(0) = log(pressure_host(k0,0,0,iens));
       logp(1) = log(pressure_host(k1,0,0,iens));
       logp(2) = log(pressure_host(k2,0,0,iens));
       logp(3) = log(pressure_host(k3,0,0,iens));
       logp(4) = log(pressure_host(k4,0,0,iens));
 
-      SArray<double,1,5> params;
-
-      params = vand_inv * logp;
+      auto params = vand_inv * logp;
 
       for (int i=0; i < 5; i++) { hy_params_host(i,iens) = params(i); }
     }

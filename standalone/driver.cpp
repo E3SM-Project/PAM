@@ -64,6 +64,7 @@ int main(int argc, char** argv) {
     // Initialize the dry state
     dycore.init_state_and_tracers( coupler.dm , micro );
 
+    // Now that we have an initial state, define hydrostasis for each ensemble member
     coupler.update_hydrostasis_parameters();
 
     real etime = 0;
