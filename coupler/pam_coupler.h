@@ -180,6 +180,10 @@ class PamCoupler {
 
       auto vand_inv = vand.inverse();
 
+      // Fit to just one column, assuming all columns are fairly similar
+      // This will only be used for idealized test cases anyway
+      // Another function that passes in an ensemble of pressure profiles will be
+      //   used for GCM coupling in an MMF setting
       Eigen::Vector<double,5> logp(5);
       logp(0) = log(pressure_host(k0,0,0,iens));
       logp(1) = log(pressure_host(k1,0,0,iens));
