@@ -8,6 +8,7 @@
 #include "WenoLimiter.h"
 #include "Profiles.h"
 #include "DataManager.h"
+#include "pam_coupler.h"
 
 
 template <int nTimeDerivs, bool timeAvg, int nAder>
@@ -213,44 +214,18 @@ public:
 
 
 
-  YAKL_INLINE static real hydrostatic_pressure( real2d const &hy_params , real z , int iens , real C0 , real gamma ) {
-    real a0 = hy_params(0,iens);
-    real a1 = hy_params(1,iens);
-    real a2 = hy_params(2,iens);
-    real a3 = hy_params(3,iens);
-    real a4 = hy_params(4,iens);
-    real lnp = a0 + ( a1 + ( a2 + ( a3 + a4 * z ) * z ) * z ) * z;
-    return exp(lnp);
-  }
-
-
-
   YAKL_INLINE static real hydrostatic_dens_theta( real2d const &hy_params , real z , int iens , real C0 , real gamma ) {
-    real p = hydrostatic_pressure( hy_params , z , iens , C0 , gamma );
+    real p = pam::hydrostatic_pressure( hy_params , z , iens );
     // p = C0*(rho*theta)^gamma
     return pow(p/C0,1._fp/gamma);
   }
 
 
 
-  YAKL_INLINE static real hydrostatic_theta( real2d const &hy_params , real z , int iens , real C0 , real gamma ) {
-    real rt = hydrostatic_dens_theta( hy_params , z , iens , C0 , gamma );
-    real r  = hydrostatic_density   ( hy_params , z , iens , C0 , gamma );
+  YAKL_INLINE static real hydrostatic_theta( real2d const &hy_params , real z , int iens , real C0 , real gamma , real grav ) {
+    real rt =      hydrostatic_dens_theta( hy_params , z , iens , C0 , gamma        );
+    real r  = pam::hydrostatic_density   ( hy_params , z , iens              , grav );
     return rt/r;
-  }
-
-
-
-  YAKL_INLINE static real hydrostatic_density( real2d const &hy_params , real z , int iens , real C0 , real gamma ) {
-    real a0 = hy_params(0,iens);
-    real a1 = hy_params(1,iens);
-    real a2 = hy_params(2,iens);
-    real a3 = hy_params(3,iens);
-    real a4 = hy_params(4,iens);
-    real p = hydrostatic_pressure( hy_params , z , iens , C0 , gamma );
-    real mult = a1 + (2*a2 + (3*a3 + 4*a4*z) * z) * z;
-    real dpdz = mult*p;
-    return -dpdz/GRAV;
   }
 
 
@@ -283,10 +258,10 @@ public:
         for (int kk=0; kk < ord; kk++) {
           real zloc = vert_interface(k,iens) + 0.5_fp*dz(k,iens) + gllPts_ord(kk)*dz(k,iens);
           real wt = gllWts_ord(kk);
-          p  += hydrostatic_pressure  ( hy_params , zloc , iens , C0 , gamma ) * wt;
-          r  += hydrostatic_density   ( hy_params , zloc , iens , C0 , gamma ) * wt;
-          rt += hydrostatic_dens_theta( hy_params , zloc , iens , C0 , gamma ) * wt;
-          t  += hydrostatic_theta     ( hy_params , zloc , iens , C0 , gamma ) * wt;
+          p  += pam::hydrostatic_pressure  ( hy_params , zloc , iens                     ) * wt;
+          r  += pam::hydrostatic_density   ( hy_params , zloc , iens              , GRAV ) * wt;
+          rt +=      hydrostatic_dens_theta( hy_params , zloc , iens , C0 , gamma        ) * wt;
+          t  +=      hydrostatic_theta     ( hy_params , zloc , iens , C0 , gamma , GRAV ) * wt;
         }
         hyPressureCells (k,iens) = p;
         hyDensCells     (k,iens) = r;
@@ -295,10 +270,10 @@ public:
 
         for (int kk=0; kk < ngll; kk++) {
           real zloc = vert_interface(k,iens) + 0.5_fp*dz(k,iens) + gllPts_ngll(kk)*dz(k,iens);
-          hyPressureGLL (k,kk,iens) = hydrostatic_pressure  ( hy_params , zloc , iens , C0 , gamma );
-          hyDensGLL     (k,kk,iens) = hydrostatic_density   ( hy_params , zloc , iens , C0 , gamma );
-          hyDensThetaGLL(k,kk,iens) = hydrostatic_dens_theta( hy_params , zloc , iens , C0 , gamma );
-          hyThetaGLL    (k,kk,iens) = hydrostatic_theta     ( hy_params , zloc , iens , C0 , gamma );
+          hyPressureGLL (k,kk,iens) = pam::hydrostatic_pressure  ( hy_params , zloc , iens                     );
+          hyDensGLL     (k,kk,iens) = pam::hydrostatic_density   ( hy_params , zloc , iens              , GRAV );
+          hyDensThetaGLL(k,kk,iens) =      hydrostatic_dens_theta( hy_params , zloc , iens , C0 , gamma        );
+          hyThetaGLL    (k,kk,iens) =      hydrostatic_theta     ( hy_params , zloc , iens , C0 , gamma , GRAV );
         }
       });
     }

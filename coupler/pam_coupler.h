@@ -5,6 +5,36 @@
 #include "DataManager.h"
 #include <Eigen/Dense>
 
+
+namespace pam {
+
+  YAKL_INLINE real hydrostatic_pressure( real2d const &hy_params , real z , int iens             ) {
+    real a0 = hy_params(0,iens);
+    real a1 = hy_params(1,iens);
+    real a2 = hy_params(2,iens);
+    real a3 = hy_params(3,iens);
+    real a4 = hy_params(4,iens);
+    real lnp = a0 + ( a1 + ( a2 + ( a3 + a4 * z ) * z ) * z ) * z;
+    return exp(lnp);
+  }
+
+
+  YAKL_INLINE real hydrostatic_density( real2d const &hy_params , real z , int iens , real grav ) {
+    real a0 = hy_params(0,iens);
+    real a1 = hy_params(1,iens);
+    real a2 = hy_params(2,iens);
+    real a3 = hy_params(3,iens);
+    real a4 = hy_params(4,iens);
+    real p = hydrostatic_pressure( hy_params , z , iens );
+    real mult = a1 + (2*a2 + (3*a3 + 4*a4*z) * z) * z;
+    real dpdz = mult*p;
+    return -dpdz/grav;
+  }
+
+}
+
+
+
 class PamCoupler {
   public:
 
