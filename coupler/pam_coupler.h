@@ -151,6 +151,7 @@ class PamCoupler {
 
   inline void update_hydrostasis_parameters( ) {
     update_diagnostic_pressure();
+    yakl::fence();
 
     auto zint_host      = dm.get<real,2>("vertical_interface_height").createHostCopy();
     auto zmid_host      = dm.get<real,2>("vertical_midpoint_height" ).createHostCopy();
@@ -206,6 +207,7 @@ class PamCoupler {
     }
 
     hy_params_host.deep_copy_to(hy_params);
+    yakl::fence();
   }
 
 

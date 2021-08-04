@@ -235,8 +235,14 @@ public:
   void convert_coupler_state_to_dynamics( DataManager &dm , MICRO &micro ) {
     auto hy_params = dm.get<real,2>("hydrostasis_parameters");
 
+    YAKL_SCOPE( hyPressureCells  , this->hyPressureCells  );
+    YAKL_SCOPE( hyThetaCells     , this->hyThetaCells     );
     YAKL_SCOPE( hyDensCells      , this->hyDensCells      );
     YAKL_SCOPE( hyDensThetaCells , this->hyDensThetaCells );
+    YAKL_SCOPE( hyPressureGLL    , this->hyPressureGLL    );
+    YAKL_SCOPE( hyThetaGLL       , this->hyThetaGLL       );
+    YAKL_SCOPE( hyDensGLL        , this->hyDensGLL        );
+    YAKL_SCOPE( hyDensThetaGLL   , this->hyDensThetaGLL   );
     YAKL_SCOPE( C0               , this->C0               );
     YAKL_SCOPE( gamma            , this->gamma            );
     YAKL_SCOPE( num_tracers      , this->num_tracers      );
@@ -247,6 +253,11 @@ public:
     YAKL_SCOPE( tracer_adds_mass , this->tracer_adds_mass );
     YAKL_SCOPE( zbot             , this->zbot             );
     YAKL_SCOPE( ztop             , this->ztop             );
+    YAKL_SCOPE( gllPts_ord       , this->gllPts_ord       );
+    YAKL_SCOPE( gllWts_ord       , this->gllWts_ord       );
+    YAKL_SCOPE( gllPts_ngll      , this->gllPts_ngll      );
+    YAKL_SCOPE( dz               , this->dz               );
+    YAKL_SCOPE( vert_interface   , this->vert_interface   );
 
     // If hydrostasis in the coupler has changed, then we need to re-compute
     // hydrostatically balanced cells and GLL points for the dycore's time step
