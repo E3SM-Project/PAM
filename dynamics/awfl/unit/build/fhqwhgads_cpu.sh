@@ -6,7 +6,7 @@ unset GATOR_DISABLE
 
 export CC=gcc
 export CXX=g++
-export CXXFLAGS="-O3"
+export CXXFLAGS="-O3 -DYAKL_AUTO_PROFILE"
 export FFLAGS="-O3"
 
 cmake ..

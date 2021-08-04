@@ -5,7 +5,7 @@ enable_testing()
 enable_language(Fortran)
 enable_language(CXX)
 enable_language(C)
-if ("${ARCH}" STREQUAL "CUDA")
+if ("${YAKL_ARCH}" STREQUAL "CUDA")
   enable_language(CUDA)
 endif()
 
@@ -13,7 +13,8 @@ endif()
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../externals/YAKL ./yakl)
 
 # Unit test directories
-add_subdirectory(recon_regular)
-add_subdirectory(recon_irregular)
-add_subdirectory(burger_prim)
+# add_subdirectory(recon_regular)
+# add_subdirectory(recon_irregular)
+# add_subdirectory(burger_prim)
+add_subdirectory(matvec)
 
