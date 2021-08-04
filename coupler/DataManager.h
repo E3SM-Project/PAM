@@ -220,8 +220,8 @@ public:
   template <class T>
   void validate_single_nan(int id) const {
     T *arr_dev = (T *) entries[id].ptr;
-    T *arr;
     size_t nelems = get_num_elems(id);
+    T *arr = (T *) yakl::yaklAllocHost( nelems*sizeof(T) , "Nan check");
     yakl::memcpy_device_to_host(arr,arr_dev,nelems*sizeof(T));
     for (int i=0; i < nelems; i++) {
       if ( std::isnan( arr[i] ) ) {
@@ -237,8 +237,8 @@ public:
   template <class T>
   void validate_single_inf(int id) const {
     T *arr_dev = (T *) entries[id].ptr;
-    T *arr;
     size_t nelems = get_num_elems(id);
+    T *arr = (T *) yakl::yaklAllocHost( nelems*sizeof(T) , "Inf check");
     yakl::memcpy_device_to_host(arr,arr_dev,nelems*sizeof(T));
     for (int i=0; i < nelems; i++) {
       if ( std::isinf( arr[i] ) ) {
@@ -255,8 +255,8 @@ public:
   void validate_single_neg(int id) const {
     if (entries[id].positive) {
     T *arr_dev = (T *) entries[id].ptr;
-    T *arr;
     size_t nelems = get_num_elems(id);
+    T *arr = (T *) yakl::yaklAllocHost( nelems*sizeof(T) , "Neg check");
     yakl::memcpy_device_to_host(arr,arr_dev,nelems*sizeof(T));
       for (int i=0; i < nelems; i++) {
         if ( arr[i] < 0. ) {
