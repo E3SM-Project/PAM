@@ -131,7 +131,8 @@ public:
   // Length of the domain in each direction (m)
   real        xlen;
   real        ylen;
-  real1d      zlen;
+  real1d      zbot;
+  real1d      ztop;
   // Boundary condition in each direction
   int         bc_x;
   int         bc_y;
@@ -214,17 +215,17 @@ public:
 
 
 
-  YAKL_INLINE static real hydrostatic_dens_theta( real2d const &hy_params , real z , int iens , real C0 , real gamma ) {
-    real p = pam::hydrostatic_pressure( hy_params , z , iens );
+  YAKL_INLINE static real hydrostatic_dens_theta( real2d const &hy_params , real z , real zbot , real ztop , int iens , real C0 , real gamma ) {
+    real p = pam::hydrostatic_pressure( hy_params , z , zbot , ztop , iens );
     // p = C0*(rho*theta)^gamma
     return pow(p/C0,1._fp/gamma);
   }
 
 
 
-  YAKL_INLINE static real hydrostatic_theta( real2d const &hy_params , real z , int iens , real C0 , real gamma , real grav ) {
-    real rt =      hydrostatic_dens_theta( hy_params , z , iens , C0 , gamma        );
-    real r  = pam::hydrostatic_density   ( hy_params , z , iens              , grav );
+  YAKL_INLINE static real hydrostatic_theta( real2d const &hy_params , real z , real zbot , real ztop , int iens , real C0 , real gamma , real grav ) {
+    real rt =      hydrostatic_dens_theta( hy_params , z , zbot , ztop , iens , C0 , gamma        );
+    real r  = pam::hydrostatic_density   ( hy_params , z , zbot , ztop , iens              , grav );
     return rt/r;
   }
 
@@ -244,6 +245,8 @@ public:
     YAKL_SCOPE( Rv               , this->Rv               );
     YAKL_SCOPE( cp               , this->cp               );
     YAKL_SCOPE( tracer_adds_mass , this->tracer_adds_mass );
+    YAKL_SCOPE( zbot             , this->zbot             );
+    YAKL_SCOPE( ztop             , this->ztop             );
 
     // If hydrostasis in the coupler has changed, then we need to re-compute
     // hydrostatically balanced cells and GLL points for the dycore's time step
@@ -258,10 +261,10 @@ public:
         for (int kk=0; kk < ord; kk++) {
           real zloc = vert_interface(k,iens) + 0.5_fp*dz(k,iens) + gllPts_ord(kk)*dz(k,iens);
           real wt = gllWts_ord(kk);
-          p  += pam::hydrostatic_pressure  ( hy_params , zloc , iens                     ) * wt;
-          r  += pam::hydrostatic_density   ( hy_params , zloc , iens              , GRAV ) * wt;
-          rt +=      hydrostatic_dens_theta( hy_params , zloc , iens , C0 , gamma        ) * wt;
-          t  +=      hydrostatic_theta     ( hy_params , zloc , iens , C0 , gamma , GRAV ) * wt;
+          p  += pam::hydrostatic_pressure  ( hy_params , zloc , zbot(iens) , ztop(iens) , iens                     ) * wt;
+          r  += pam::hydrostatic_density   ( hy_params , zloc , zbot(iens) , ztop(iens) , iens              , GRAV ) * wt;
+          rt +=      hydrostatic_dens_theta( hy_params , zloc , zbot(iens) , ztop(iens) , iens , C0 , gamma        ) * wt;
+          t  +=      hydrostatic_theta     ( hy_params , zloc , zbot(iens) , ztop(iens) , iens , C0 , gamma , GRAV ) * wt;
         }
         hyPressureCells (k,iens) = p;
         hyDensCells     (k,iens) = r;
@@ -270,10 +273,10 @@ public:
 
         for (int kk=0; kk < ngll; kk++) {
           real zloc = vert_interface(k,iens) + 0.5_fp*dz(k,iens) + gllPts_ngll(kk)*dz(k,iens);
-          hyPressureGLL (k,kk,iens) = pam::hydrostatic_pressure  ( hy_params , zloc , iens                     );
-          hyDensGLL     (k,kk,iens) = pam::hydrostatic_density   ( hy_params , zloc , iens              , GRAV );
-          hyDensThetaGLL(k,kk,iens) =      hydrostatic_dens_theta( hy_params , zloc , iens , C0 , gamma        );
-          hyThetaGLL    (k,kk,iens) =      hydrostatic_theta     ( hy_params , zloc , iens , C0 , gamma , GRAV );
+          hyPressureGLL (k,kk,iens) = pam::hydrostatic_pressure  ( hy_params , zloc , zbot(iens) , ztop(iens) , iens                     );
+          hyDensGLL     (k,kk,iens) = pam::hydrostatic_density   ( hy_params , zloc , zbot(iens) , ztop(iens) , iens              , GRAV );
+          hyDensThetaGLL(k,kk,iens) =      hydrostatic_dens_theta( hy_params , zloc , zbot(iens) , ztop(iens) , iens , C0 , gamma        );
+          hyThetaGLL    (k,kk,iens) =      hydrostatic_theta     ( hy_params , zloc , zbot(iens) , ztop(iens) , iens , C0 , gamma , GRAV );
         }
       });
     }
@@ -533,11 +536,14 @@ public:
     nz = dm.get_dimension_size("z");
 
     // Get the height of the z-dimension
-    zlen = real1d("zlen",nens);
-    YAKL_SCOPE( zlen , this->zlen );
+    zbot = real1d("zbot",nens);
+    ztop = real1d("ztop",nens);
+    YAKL_SCOPE( zbot , this->zbot );
+    YAKL_SCOPE( ztop , this->ztop );
     YAKL_SCOPE( nz   , this->nz   );
     parallel_for( "Spatial.h init 1" , nens , YAKL_LAMBDA (int iens) {
-      zlen(iens) = zint(nz,iens);
+      zbot(iens) = zint(0 ,iens);
+      ztop(iens) = zint(nz,iens);
     });
 
     vert_interface        = real2d("vert_interface"      ,nz+1          ,nens);
@@ -728,7 +734,8 @@ public:
       std::cout << "nz: " << nz << "\n";
       std::cout << "xlen (m): " << xlen << "\n";
       std::cout << "ylen (m): " << ylen << "\n";
-      std::cout << "zlen (m): " << zlen.createHostCopy()(0) << "\n";
+      std::cout << "zbot (m): " << zbot.createHostCopy()(0) << "\n";
+      std::cout << "ztop (m): " << ztop.createHostCopy()(0) << "\n";
       std::cout << "Simulation time (s): " << sim_time << "\n";
       std::cout << "Vertical interface heights: ";
       auto zint_host = zint.createHostCopy();
@@ -786,7 +793,7 @@ public:
     YAKL_SCOPE( balance_initial_density  , this->balance_initial_density );
     YAKL_SCOPE( vert_interface           , this->vert_interface          );
     YAKL_SCOPE( vert_interface_ghost     , this->vert_interface_ghost    );
-    YAKL_SCOPE( zlen                     , this->zlen                    );
+    YAKL_SCOPE( ztop                     , this->ztop                    );
     YAKL_SCOPE( num_tracers              , this->num_tracers             );
     YAKL_SCOPE( tracer_adds_mass         , this->tracer_adds_mass        );
 
@@ -986,7 +993,7 @@ public:
       real2d temp_hy       ("temp_hy"       ,nz,nens);
       real2d tdew_hy       ("tdew_hy"       ,nz,nens);
 
-      YAKL_SCOPE( zlen , this->zlen );
+      YAKL_SCOPE( ztop , this->ztop );
 
       // Compute full density at ord GLL points for the space between each cell
       parallel_for( "Spatial.h init_state 4" , Bounds<4>(nz,ngll-1,ord,nens) , YAKL_LAMBDA (int k, int kk, int kkk, int iens) {
@@ -1001,8 +1008,8 @@ public:
         // Compute the locate of this ord GLL point within the ngll GLL points
         real zloc      = ngll_m + ngll_dz * gllPts_ord(kkk);
         // Compute full density at this location
-        real temp      = profiles::init_supercell_temperature (zloc, z_0, z_trop, zlen(iens), T_0, T_trop, T_top);
-        real press_dry = profiles::init_supercell_pressure_dry(zloc, z_0, z_trop, zlen(iens), T_0, T_trop, T_top, p_0, Rd);
+        real temp      = profiles::init_supercell_temperature (zloc, z_0, z_trop, ztop(iens), T_0, T_trop, T_top);
+        real press_dry = profiles::init_supercell_pressure_dry(zloc, z_0, z_trop, ztop(iens), T_0, T_trop, T_top, p_0, Rd);
         real dens_dry  = press_dry / (Rd*temp);
         real qvs       = profiles::init_supercell_sat_mix_dry(press_dry, temp);
         real relhum    = profiles::init_supercell_relhum(zloc, z_0, z_trop);
@@ -1030,8 +1037,8 @@ public:
 
       parallel_for( "Spatial.h init_state 6" , Bounds<3>(nz,ngll,nens) , YAKL_LAMBDA (int k, int kk, int iens) {
         real zloc = vert_interface(k,iens) + 0.5_fp*dz(k,iens) + gllPts_ngll(kk)*dz(k,iens);
-        real temp       = profiles::init_supercell_temperature (zloc, z_0, z_trop, zlen(iens), T_0, T_trop, T_top);
-        real press_tmp  = profiles::init_supercell_pressure_dry(zloc, z_0, z_trop, zlen(iens), T_0, T_trop, T_top, p_0, Rd);
+        real temp       = profiles::init_supercell_temperature (zloc, z_0, z_trop, ztop(iens), T_0, T_trop, T_top);
+        real press_tmp  = profiles::init_supercell_pressure_dry(zloc, z_0, z_trop, ztop(iens), T_0, T_trop, T_top, p_0, Rd);
         real qvs        = profiles::init_supercell_sat_mix_dry(press_tmp, temp);
         real relhum     = profiles::init_supercell_relhum(zloc, z_0, z_trop);
         if (relhum * qvs > 0.014_fp) relhum = 0.014_fp / qvs;
@@ -1073,7 +1080,7 @@ public:
         real temp       = press / (dens * R);
         real qv         = dens_vap / dens_dry;
         real zloc       = vert_interface(k,iens) + 0.5_fp*dz(k,iens);
-        real press_tmp  = profiles::init_supercell_pressure_dry(zloc, z_0, z_trop, zlen(iens), T_0, T_trop, T_top, p_0, Rd);
+        real press_tmp  = profiles::init_supercell_pressure_dry(zloc, z_0, z_trop, ztop(iens), T_0, T_trop, T_top, p_0, Rd);
         real qvs        = profiles::init_supercell_sat_mix_dry(press_tmp, temp);
         real relhum     = qv / qvs;
         real T          = temp - 273;

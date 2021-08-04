@@ -8,7 +8,8 @@
 
 namespace pam {
 
-  YAKL_INLINE real hydrostatic_pressure( real2d const &hy_params , real z , int iens             ) {
+  YAKL_INLINE real hydrostatic_pressure( real2d const &hy_params , real z_in , real zbot , real ztop , int iens             ) {
+    real z = ( z_in - zbot ) / (ztop - zbot);
     real a0 = hy_params(0,iens);
     real a1 = hy_params(1,iens);
     real a2 = hy_params(2,iens);
@@ -19,15 +20,16 @@ namespace pam {
   }
 
 
-  YAKL_INLINE real hydrostatic_density( real2d const &hy_params , real z , int iens , real grav ) {
+  YAKL_INLINE real hydrostatic_density( real2d const &hy_params , real z_in , real zbot , real ztop , int iens , real grav ) {
+    real z = ( z_in - zbot ) / (ztop - zbot);
     real a0 = hy_params(0,iens);
     real a1 = hy_params(1,iens);
     real a2 = hy_params(2,iens);
     real a3 = hy_params(3,iens);
     real a4 = hy_params(4,iens);
-    real p = hydrostatic_pressure( hy_params , z , iens );
+    real p = hydrostatic_pressure( hy_params , z_in , zbot , ztop , iens );
     real mult = a1 + (2*a2 + (3*a3 + 4*a4*z) * z) * z;
-    real dpdz = mult*p;
+    real dpdz = mult*p/(ztop-zbot);
     return -dpdz/grav;
   }
 
@@ -121,12 +123,15 @@ class PamCoupler {
   }
 
 
-  YAKL_INLINE real compute_pressure( real rho_d, real rho_v, real T, real R_d, real R_v ) {
+  YAKL_INLINE static real compute_pressure( real rho_d, real rho_v, real T, real R_d, real R_v ) {
     return rho_d*R_d*T + rho_v*R_v*T;
   }
 
 
   inline void update_diagnostic_pressure( ) {
+    YAKL_SCOPE( R_d , this->R_d );
+    YAKL_SCOPE( R_v , this->R_v );
+
     auto dens_dry = dm.get_lev_col<real>("density_dry");
     auto dens_wv  = dm.get_lev_col<real>("water_vapor");
     auto temp     = dm.get_lev_col<real>("temp");
@@ -147,9 +152,10 @@ class PamCoupler {
   inline void update_hydrostasis_parameters( ) {
     update_diagnostic_pressure();
 
-    auto zmid_host      = dm.get<real,2>("vertical_midpoint_height").createHostCopy();
-    auto pressure_host  = dm.get<real,4>("diag_press"              ).createHostCopy();
-    auto hy_params      = dm.get<real,2>("hydrostasis_parameters"  );
+    auto zint_host      = dm.get<real,2>("vertical_interface_height").createHostCopy();
+    auto zmid_host      = dm.get<real,2>("vertical_midpoint_height" ).createHostCopy();
+    auto pressure_host  = dm.get<real,4>("diag_press"               ).createHostCopy();
+    auto hy_params      = dm.get<real,2>("hydrostasis_parameters"   );
     auto hy_params_host = hy_params.createHostCopy();
 
     int nz   = dm.get_dimension_size("z");
@@ -164,12 +170,15 @@ class PamCoupler {
     int k4 = nz-1;
 
     for (int iens=0; iens < nens; iens++) {
+      real zbot = zint_host(0 ,iens);
+      real ztop = zint_host(nz,iens);
+
       SArray<double,1,5> z;
-      z(0) = zmid_host(k0,iens);
-      z(1) = zmid_host(k1,iens);
-      z(2) = zmid_host(k2,iens);
-      z(3) = zmid_host(k3,iens);
-      z(4) = zmid_host(k4,iens);
+      z(0) = ( zmid_host(k0,iens) - zbot ) / (ztop - zbot);
+      z(1) = ( zmid_host(k1,iens) - zbot ) / (ztop - zbot);
+      z(2) = ( zmid_host(k2,iens) - zbot ) / (ztop - zbot);
+      z(3) = ( zmid_host(k3,iens) - zbot ) / (ztop - zbot);
+      z(4) = ( zmid_host(k4,iens) - zbot ) / (ztop - zbot);
 
       Eigen::Matrix<double,5,5,Eigen::RowMajor> vand(5,5);
       for (int j=0; j < 5; j++) {
@@ -178,7 +187,7 @@ class PamCoupler {
         }
       }
 
-      auto vand_inv = vand.inverse();
+      auto vand_inv = vand.fullPivLu().inverse();
 
       // Fit to just one column, assuming all columns are fairly similar
       // This will only be used for idealized test cases anyway
@@ -195,8 +204,6 @@ class PamCoupler {
 
       for (int i=0; i < 5; i++) { hy_params_host(i,iens) = params(i); }
     }
-    
-    std::cout << hy_params_host << "\n";
 
     hy_params_host.deep_copy_to(hy_params);
   }
