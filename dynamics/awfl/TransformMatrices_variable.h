@@ -3,7 +3,6 @@
 
 #include "awfl_const.h"
 #include <math.h>
-#include <Eigen/Dense>
 using yakl::SArray;
 
 namespace TransformMatrices_variable {
@@ -41,15 +40,7 @@ namespace TransformMatrices_variable {
     coefs_to_sten_variable(locs , c2s);
 
     // Invert to get sten_to_coefs
-    Eigen::Matrix<double,ord,ord,Eigen::RowMajor> c2s_mat(c2s.data());
-    auto c2s_inv_mat = c2s_mat.fullPivLu().inverse();
-
-    // Store the Eigen matrix into an SArray matrix
-    for (int j=0; j < ord; j++) {
-      for (int i=0; i < ord; i++) {
-        rslt(j,i) = c2s_inv_mat(j,i);
-      }
-    }
+    rslt = matinv_ge_cr( c2s );
   }
 
 

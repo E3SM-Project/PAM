@@ -3,7 +3,6 @@
 
 #include "pam_const.h"
 #include "DataManager.h"
-#include <Eigen/Dense>
 
 
 namespace pam {
