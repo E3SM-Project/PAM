@@ -151,13 +151,11 @@ class PamCoupler {
 
   inline void update_hydrostasis_parameters( ) {
     update_diagnostic_pressure();
-    yakl::fence();
 
-    auto zint_host      = dm.get<real,2>("vertical_interface_height").createHostCopy();
-    auto zmid_host      = dm.get<real,2>("vertical_midpoint_height" ).createHostCopy();
-    auto pressure_host  = dm.get<real,4>("diag_press"               ).createHostCopy();
+    auto zint           = dm.get<real,2>("vertical_interface_height");
+    auto zmid           = dm.get<real,2>("vertical_midpoint_height" );
+    auto pressure       = dm.get<real,4>("diag_press"               );
     auto hy_params      = dm.get<real,2>("hydrostasis_parameters"   );
-    auto hy_params_host = hy_params.createHostCopy();
 
     int nz   = dm.get_dimension_size("z");
     int ny   = dm.get_dimension_size("y");
@@ -170,16 +168,16 @@ class PamCoupler {
     int k3 = (3*nz)/4;
     int k4 = nz-1;
 
-    for (int iens=0; iens < nens; iens++) {
-      real zbot = zint_host(0 ,iens);
-      real ztop = zint_host(nz,iens);
+    parallel_for( "hydro fitting" , SimpleBounds<1>(nens) , YAKL_LAMBDA (int iens) {
+      real zbot = zint(0 ,iens);
+      real ztop = zint(nz,iens);
 
       SArray<double,1,5> z;
-      z(0) = ( zmid_host(k0,iens) - zbot ) / (ztop - zbot);
-      z(1) = ( zmid_host(k1,iens) - zbot ) / (ztop - zbot);
-      z(2) = ( zmid_host(k2,iens) - zbot ) / (ztop - zbot);
-      z(3) = ( zmid_host(k3,iens) - zbot ) / (ztop - zbot);
-      z(4) = ( zmid_host(k4,iens) - zbot ) / (ztop - zbot);
+      z(0) = ( zmid(k0,iens) - zbot ) / (ztop - zbot);
+      z(1) = ( zmid(k1,iens) - zbot ) / (ztop - zbot);
+      z(2) = ( zmid(k2,iens) - zbot ) / (ztop - zbot);
+      z(3) = ( zmid(k3,iens) - zbot ) / (ztop - zbot);
+      z(4) = ( zmid(k4,iens) - zbot ) / (ztop - zbot);
 
       SArray<double,2,5,5> vand;
       for (int j=0; j < 5; j++) {
@@ -195,19 +193,17 @@ class PamCoupler {
       // Another function that passes in an ensemble of pressure profiles will be
       //   used for GCM coupling in an MMF setting
       SArray<double,1,5> logp;
-      logp(0) = log(pressure_host(k0,0,0,iens));
-      logp(1) = log(pressure_host(k1,0,0,iens));
-      logp(2) = log(pressure_host(k2,0,0,iens));
-      logp(3) = log(pressure_host(k3,0,0,iens));
-      logp(4) = log(pressure_host(k4,0,0,iens));
+      logp(0) = log(pressure(k0,0,0,iens));
+      logp(1) = log(pressure(k1,0,0,iens));
+      logp(2) = log(pressure(k2,0,0,iens));
+      logp(3) = log(pressure(k3,0,0,iens));
+      logp(4) = log(pressure(k4,0,0,iens));
 
       auto params = matmul_cr( vand_inv , logp );
 
-      for (int i=0; i < 5; i++) { hy_params_host(i,iens) = params(i); }
-    }
+      for (int i=0; i < 5; i++) { hy_params(i,iens) = params(i); }
+    });
 
-    hy_params_host.deep_copy_to(hy_params);
-    yakl::fence();
   }
 
 
