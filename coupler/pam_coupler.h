@@ -181,27 +181,27 @@ class PamCoupler {
       z(3) = ( zmid_host(k3,iens) - zbot ) / (ztop - zbot);
       z(4) = ( zmid_host(k4,iens) - zbot ) / (ztop - zbot);
 
-      Eigen::Matrix<double,5,5,Eigen::RowMajor> vand(5,5);
+      SArray<double,2,5,5> vand;
       for (int j=0; j < 5; j++) {
         for (int i=0; i < 5; i++) {
-          vand(j,i) = pow( z(j) , (double) i );
+          vand(j,i) = pow( z(i) , (double) j );
         }
       }
 
-      auto vand_inv = vand.fullPivLu().inverse();
+      auto vand_inv = matinv_ge_cr( vand );
 
       // Fit to just one column, assuming all columns are fairly similar
       // This will only be used for idealized test cases anyway
       // Another function that passes in an ensemble of pressure profiles will be
       //   used for GCM coupling in an MMF setting
-      Eigen::Vector<double,5> logp(5);
+      SArray<double,1,5> logp;
       logp(0) = log(pressure_host(k0,0,0,iens));
       logp(1) = log(pressure_host(k1,0,0,iens));
       logp(2) = log(pressure_host(k2,0,0,iens));
       logp(3) = log(pressure_host(k3,0,0,iens));
       logp(4) = log(pressure_host(k4,0,0,iens));
 
-      auto params = vand_inv * logp;
+      auto params = matmul_cr( vand_inv , logp );
 
       for (int i=0; i < 5; i++) { hy_params_host(i,iens) = params(i); }
     }
