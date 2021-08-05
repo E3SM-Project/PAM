@@ -634,7 +634,7 @@ public:
             s2c_var(jj,ii) = s2c_var_in(jj,ii);
           }
         }
-        auto s2g_var = c2g * s2c_var;
+        auto s2g_var = matmul_cr( c2g , s2c_var );
 
         // Store reconstruction matrices
         for (int jj=0; jj < ord; jj++) {
@@ -682,11 +682,11 @@ public:
       TransformMatrices::coefs_to_gll_lower(c2g_lower);
       TransformMatrices::coefs_to_deriv    (c2d      );
 
-      this->coefs_to_gll       = c2g_lower;              // Converts ord coefficients to ngll GLL points
-      this->coefs_to_deriv_gll = c2g_lower * c2d;        // Converts ord coefficients to ngll differentiated GLL points
-      this->sten_to_coefs      =                   s2c;  // Converts ord stencil cell avgs to polynomial coefficients
-      this->sten_to_gll        = c2g_lower       * s2c;  // Converts ord stencil cell avgs to ngll GLL points
-      this->sten_to_deriv_gll  = c2g_lower * c2d * s2c;  // Converts ord stencil cell avgs to ngll differentiated GLL points
+      this->coefs_to_gll       = c2g_lower;
+      this->coefs_to_deriv_gll = matmul_cr( c2g_lower , c2d );
+      this->sten_to_coefs      = s2c;
+      this->sten_to_gll        = matmul_cr( c2g_lower , s2c );
+      this->sten_to_deriv_gll  = matmul_cr( c2g_lower , matmul_cr( c2d , s2c ) );
     }
     // Store ader derivMatrix
     {
@@ -698,7 +698,7 @@ public:
       TransformMatrices::coefs_to_deriv(c2d);
       TransformMatrices::coefs_to_gll  (c2g);
 
-      this->derivMatrix = c2g * c2d * g2c;  // Converts ngll GLL points to ngll differentiated GLL points
+      this->derivMatrix = matmul_cr( c2g , matmul_cr( c2d , g2c ) );
     }
     // Store quadrature weights using ord GLL points
     TransformMatrices::get_gll_points (this->gllPts_ord);
