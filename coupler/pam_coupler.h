@@ -39,7 +39,6 @@ namespace pam {
 
     real R_d;
     real R_v;
-    VerticalInterp vert_interp;
 
     DataManager dm;
 
@@ -155,9 +154,8 @@ namespace pam {
       int constexpr hs  = (ord-1)/2;
       int nz   = dm.get_dimension_size("z");
       int nens = dm.get_dimension_size("nens");
-      real5d weno_recon_lo("weno_recon_lo",nz,hs+1,hs+1,hs+1,nens);
-      real4d weno_recon_hi("weno_recon_hi",nz,ord,ord,nens);
-      vert_interp.compute_recon_matrices<ord>(zint , weno_recon_lo , weno_recon_hi);
+      VerticalInterp<ord> vert_interp;
+      vert_interp.compute_recon_matrices(zint);
       exit(0);
     }
 
