@@ -150,12 +150,11 @@ namespace pam {
 
     inline void interp_pressure_interfaces( ) {
       auto zint = dm.get<real,2>("vertical_interface_height");
-      int constexpr ord = 5;
-      int constexpr hs  = (ord-1)/2;
-      int nz   = dm.get_dimension_size("z");
-      int nens = dm.get_dimension_size("nens");
-      VerticalInterp<ord> vert_interp;
-      vert_interp.compute_recon_matrices(zint);
+      auto press = dm.get<real,4>("diag_press");
+
+      VerticalInterp<5> vert_interp;
+      vert_interp.init(zint);
+      auto coefs = vert_interp.compute_coefficients_3d(press);
       exit(0);
     }
 
