@@ -11,7 +11,7 @@ int main(int argc, char** argv) {
   {
     yakl::timer_start("main");
 
-    PamCoupler coupler;
+    pam::PamCoupler coupler;
 
     DataManager dm;
 
@@ -66,6 +66,8 @@ int main(int argc, char** argv) {
 
     // Now that we have an initial state, define hydrostasis for each ensemble member
     coupler.update_hydrostasis_parameters();
+
+    coupler.interp_pressure_interfaces();
 
     real etime = 0;
 
