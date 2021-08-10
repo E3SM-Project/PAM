@@ -4,6 +4,7 @@
 #include "pam_const.h"
 #include "DataManager.h"
 #include "vertical_interp.h"
+#include "YAKL_netcdf.h"
 
 
 namespace pam {
@@ -149,12 +150,31 @@ namespace pam {
 
 
     inline void interp_pressure_interfaces( ) {
-      auto zint = dm.get<real,2>("vertical_interface_height");
+      auto zint  = dm.get<real,2>("vertical_interface_height");
       auto press = dm.get<real,4>("diag_press");
 
       VerticalInterp<5> vert_interp;
       vert_interp.init(zint);
-      auto coefs = vert_interp.compute_coefficients_3d(press);
+      auto press_edges = vert_interp.cells_to_edges( press ,
+                                                     vert_interp.BC_ZERO_GRADIENT ,
+                                                     vert_interp.BC_ZERO_GRADIENT );
+      int nz = dm.get_dimension_size("z");
+      int ny = dm.get_dimension_size("y");
+      int nx = dm.get_dimension_size("x");
+      yakl::SimpleNetCDF nc;
+      nc.create("pressure_edges.nc");
+      real3d tmp("tmp",nz+1,ny,nx);
+      parallel_for( SimpleBounds<3>(nz+1,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+        tmp(k,j,i) = press_edges(k,j,i,0);
+      });
+      nc.write(tmp , "press_edges" , {"zp1","y","x"} );
+
+      tmp = real3d("tmp",nz,ny,nx);
+      parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+        tmp(k,j,i) = press(k,j,i,0);
+      });
+      nc.write(tmp , "press_cells" , {"z","y","x"} );
+      nc.close();
       exit(0);
     }
 
