@@ -11,7 +11,7 @@ int main(int argc, char** argv) {
   {
     yakl::timer_start("main");
 
-    PamCoupler coupler;
+    pam::PamCoupler coupler;
 
     DataManager dm;
 
@@ -65,7 +65,9 @@ int main(int argc, char** argv) {
     dycore.init_state_and_tracers( coupler.dm , micro );
 
     // Now that we have an initial state, define hydrostasis for each ensemble member
-    coupler.update_hydrostasis_parameters();
+    coupler.update_hydrostasis();
+
+    auto press_edges = coupler.interp_pressure_interfaces();
 
     real etime = 0;
 
