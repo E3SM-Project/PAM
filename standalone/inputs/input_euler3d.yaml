@@ -42,9 +42,9 @@ nens : 1
 balance_initial_density: true
 
 # Number of sponge layer cells
-sponge_cells: 0
+sponge_cells: 5
 
 # Strenght of the sponge layer [0:1]
-sponge_strength: 1.0
+sponge_strength: 0.1
 
 
