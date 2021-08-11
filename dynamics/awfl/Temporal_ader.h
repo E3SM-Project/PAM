@@ -210,18 +210,18 @@ public:
           real mult = 1 - sponge_strength * ( cos(M_PI*znorm - M_PI) + 1 ) * 0.5_fp;
           real hydens = space_op.hyDensCells(k,iens);
           real dens_old = state(idR,hs+k,hs+j,hs+i,iens) + hydens;
-          state(idR,hs+k,hs+j,hs+i,iens) *= mult;
-          state(idU,hs+k,hs+j,hs+i,iens) *= mult;
-          state(idV,hs+k,hs+j,hs+i,iens) *= mult;
+          // state(idR,hs+k,hs+j,hs+i,iens) *= mult;
+          // state(idU,hs+k,hs+j,hs+i,iens) *= mult;
+          // state(idV,hs+k,hs+j,hs+i,iens) *= mult;
           state(idW,hs+k,hs+j,hs+i,iens) *= mult;
           state(idT,hs+k,hs+j,hs+i,iens) *= mult;
-          real dens_new = state(idR,hs+k,hs+j,hs+i,iens) + hydens;
-          for (int tr=0; tr < num_tracers; tr++) {
-            real trac = tracers(tr,hs+k,hs+j,hs+i,iens);
-            trac = trac / dens_old;
-            trac *= mult;
-            tracers(tr,hs+k,hs+j,hs+i,iens) = trac * dens_new;
-          }
+          // real dens_new = state(idR,hs+k,hs+j,hs+i,iens) + hydens;
+          // for (int tr=0; tr < num_tracers; tr++) {
+          //   real trac = tracers(tr,hs+k,hs+j,hs+i,iens);
+          //   trac = trac / dens_old;
+          //   trac *= mult;
+          //   tracers(tr,hs+k,hs+j,hs+i,iens) = trac * dens_new;
+          // }
         });
       }
 
