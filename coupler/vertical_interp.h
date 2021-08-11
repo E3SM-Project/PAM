@@ -59,6 +59,8 @@ namespace pam {
       int nx   = data.dimension[2];
       int nens = data.dimension[3];
 
+      YAKL_SCOPE( internal , this->internal );
+
       real5d limits("limits",2,nz+1,ny,nx,nens);
 
       // Get cell edge estimates from cell-centered reconstructions

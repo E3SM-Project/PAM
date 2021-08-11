@@ -259,6 +259,10 @@ public:
     YAKL_SCOPE( dz               , this->dz               );
     YAKL_SCOPE( vert_interface   , this->vert_interface   );
 
+    SArray<real,1,9> gll_pts, gll_wts;
+    TransformMatrices::get_gll_points ( gll_pts );
+    TransformMatrices::get_gll_weights( gll_wts );
+
     // If hydrostasis in the coupler has changed, then we need to re-compute
     // hydrostatically balanced cells and GLL points for the dycore's time step
     real tmp = yakl::intrinsics::sum(hy_params);
@@ -269,9 +273,9 @@ public:
         real r  = 0;
         real rt = 0;
         real t  = 0;
-        for (int kk=0; kk < ord; kk++) {
-          real zloc = vert_interface(k,iens) + 0.5_fp*dz(k,iens) + gllPts_ord(kk)*dz(k,iens);
-          real wt = gllWts_ord(kk);
+        for (int kk=0; kk < 9; kk++) {
+          real zloc = vert_interface(k,iens) + 0.5_fp*dz(k,iens) + gll_pts(kk)*dz(k,iens);
+          real wt = gll_wts(kk);
           p  += pam::hydrostatic_pressure  ( hy_params , zloc , zbot(iens) , ztop(iens) , iens                     ) * wt;
           r  += pam::hydrostatic_density   ( hy_params , zloc , zbot(iens) , ztop(iens) , iens              , GRAV ) * wt;
           rt +=      hydrostatic_dens_theta( hy_params , zloc , zbot(iens) , ztop(iens) , iens , C0 , gamma        ) * wt;
