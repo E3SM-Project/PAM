@@ -40,3 +40,11 @@ nens : 1
 
 # Balance initial density to avoid initial acoustics
 balance_initial_density: true
+
+# Number of sponge layer cells
+sponge_cells: 0
+
+# Strenght of the sponge layer [0:1]
+sponge_strength: 1.
+
+

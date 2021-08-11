@@ -12,7 +12,8 @@ template <class Spatial> class Temporal_operator {
 public:
   static_assert(nTimeDerivs <= ngll , "ERROR: nTimeDerivs must be <= ngll.");
 
-  int nens;
+  int  sponge_cells;
+  real sponge_strength;
 
   real5d stateTend;
   real5d tracerTend;
@@ -21,6 +22,10 @@ public:
 
   void init(std::string inFile, int ny, int nx, int nens, real xlen, real ylen, int num_tracers, DataManager &dm) {
     space_op.init(inFile, ny, nx, nens, xlen, ylen, num_tracers, dm);
+
+    YAML::Node config = YAML::LoadFile(inFile);
+    sponge_cells    = config["sponge_cells"   ].as<int>();
+    sponge_strength = config["sponge_strength"].as<real>();
 
     stateTend  = space_op.createStateTendArr ();
     tracerTend = space_op.createTracerTendArr();
@@ -104,6 +109,9 @@ public:
   void timeStep( DataManager &dm , MICRO const &micro , real dtphys ) {
     YAKL_SCOPE( stateTend       , this->stateTend       );
     YAKL_SCOPE( tracerTend      , this->tracerTend      );
+    YAKL_SCOPE( space_op        , this->space_op        );
+    YAKL_SCOPE( sponge_cells    , this->sponge_cells    );
+    YAKL_SCOPE( sponge_strength , this->sponge_strength );
 
     real dt = compute_time_step( dm , micro );
 
@@ -112,6 +120,11 @@ public:
     real5d state   = dm.get<real,5>("dynamics_state");
     real5d tracers = dm.get<real,5>("dynamics_tracers");
 
+    int idR         = space_op.idR;
+    int idU         = space_op.idU;
+    int idV         = space_op.idV;
+    int idW         = space_op.idW;
+    int idT         = space_op.idT;
     int nx          = space_op.nx;
     int ny          = space_op.ny;
     int nz          = space_op.nz;
@@ -185,6 +198,33 @@ public:
       #endif
 
       space_op.switch_directions();
+
+      if (sponge_cells > 0) {
+        real2d zint = dm.get<real,2>("vertical_interface_height");
+        real2d zmid = dm.get<real,2>("vertical_midpoint_height");
+        parallel_for( "Sponge" , SimpleBounds<4>(sponge_cells,ny,nx,nens) , YAKL_LAMBDA (int kk, int j, int i, int iens) {
+          int k = nz-1-kk;
+          real z1 = zint(nz-sponge_cells,iens);
+          real z2 = zint(nz             ,iens);
+          real znorm = (zmid(k,iens)-z1) / (z2 - z1);
+          real mult = 1 - sponge_strength * ( cos(M_PI*znorm - M_PI) + 1 ) * 0.5_fp;
+          real hydens = space_op.hyDensCells(k,iens);
+          real dens_old = state(idR,hs+k,hs+j,hs+i,iens) + hydens;
+          state(idR,hs+k,hs+j,hs+i,iens) *= mult;
+          state(idU,hs+k,hs+j,hs+i,iens) *= mult;
+          state(idV,hs+k,hs+j,hs+i,iens) *= mult;
+          state(idW,hs+k,hs+j,hs+i,iens) *= mult;
+          state(idT,hs+k,hs+j,hs+i,iens) *= mult;
+          real dens_new = state(idR,hs+k,hs+j,hs+i,iens) + hydens;
+          for (int tr=0; tr < num_tracers; tr++) {
+            real trac = tracers(tr,hs+k,hs+j,hs+i,iens);
+            trac = trac / dens_old;
+            trac *= mult;
+            tracers(tr,hs+k,hs+j,hs+i,iens) = trac * dens_new;
+          }
+        });
+      }
+
     }
 
     space_op.convert_dynamics_to_coupler_state( dm , micro );

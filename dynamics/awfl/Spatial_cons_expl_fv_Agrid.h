@@ -530,6 +530,7 @@ public:
       balance_initial_density = config["balance_initial_density"].as<bool>();
 
       sim_time = config["simTime"].as<real>();
+
     #else
       weno_scalars            = true;
       weno_winds              = true;
