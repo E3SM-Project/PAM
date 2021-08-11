@@ -1,17 +1,17 @@
 ---
 # Simulation time in seconds
-simTime  : 7200.
+simTime  : 1000.
 
 # Number of cells to use
 nx       : 100
-ny       : 50
+ny       : 1
 
 # Vertical height cooridnates file
-vcoords  : vcoords_equal_40_20km.nc
+vcoords  : vcoords_equal_100_20km.nc
 
 # Lengths of the dimensions in meters
-xlen     : 200000
-ylen     : 100000
+xlen     : 20000
+ylen     : 20000
 
 bc_x   : periodic
 bc_y   : periodic
@@ -24,16 +24,16 @@ weno_winds   : true
 # 200km x 100km x 20km  for supercell
 # 20km  x 20km  x 10km  for thermal
 # Data to initialize: thermal, supercell
-initData : supercell
+initData : thermal
 
 # Output filename
 out_prefix  : test
 
 # CRM physics time step
-dtphys: 60.
+dtphys: 0.
 
 # Output frequency in seconds
-outFreq: 0.
+outFreq: 5.
 
 # Number of ensembles
 nens : 1
@@ -42,7 +42,7 @@ nens : 1
 balance_initial_density: true
 
 # Number of sponge layer cells
-sponge_cells: 5
+sponge_cells: 0
 
 # Strenght of the sponge layer [0:1]
 sponge_strength: 0.1

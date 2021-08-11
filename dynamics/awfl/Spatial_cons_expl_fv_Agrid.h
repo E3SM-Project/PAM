@@ -50,12 +50,6 @@ public:
   real2d hyThetaCells;
   real2d hyDensThetaCells;
 
-  // Hydrostatically balanced values for density, potential temperature, and pressure (cell-averages)
-  real2d hyDensCells_orig;
-  real2d hyPressureCells_orig;
-  real2d hyThetaCells_orig;
-  real2d hyDensThetaCells_orig;
-
   // Hydrostatically balanced values for density, potential temperature, and pressure (GLL points)
   real3d hyDensGLL;
   real3d hyPressureGLL;
@@ -265,6 +259,22 @@ public:
     YAKL_SCOPE( dz               , this->dz               );
     YAKL_SCOPE( vert_interface   , this->vert_interface   );
 
+    real5d state       = dm.get<real,5>( "dynamics_state"   );
+    real5d tracers     = dm.get<real,5>( "dynamics_tracers" );
+    real4d dm_dens_dry = dm.get<real,4>( "density_dry"      );
+    real4d dm_uvel     = dm.get<real,4>( "uvel"             );
+    real4d dm_vvel     = dm.get<real,4>( "vvel"             );
+    real4d dm_wvel     = dm.get<real,4>( "wvel"             );
+    real4d dm_temp     = dm.get<real,4>( "temp"             );
+
+    int idWV = micro.get_water_vapor_index();
+
+    MultipleFields<max_tracers,real4d> dm_tracers;
+    for (int tr = 0; tr < num_tracers; tr++) {
+      auto trac = dm.get<real,4>( tracer_name[tr] );
+      dm_tracers.add_field( trac );
+    }
+
     // // If hydrostasis in the coupler has changed, then we need to re-compute
     // // hydrostatically balanced cells and GLL points for the dycore's time step
     // real tmp = yakl::intrinsics::sum(hy_params);
@@ -273,6 +283,16 @@ public:
     //   TransformMatrices::get_gll_points ( gll_pts );
     //   TransformMatrices::get_gll_weights( gll_wts );
 
+    //   real2d hyPressureCells_prev ("hyPressureCells_prev ",nz,nens);
+    //   real2d hyDensCells_prev     ("hyDensCells_prev     ",nz,nens);
+    //   real2d hyDensThetaCells_prev("hyDensThetaCells_prev",nz,nens);
+    //   real2d hyThetaCells_prev    ("hyThetaCells_prev    ",nz,nens);
+    //   hyPressureCells .deep_copy_to(hyPressureCells_prev );
+    //   hyDensCells     .deep_copy_to(hyDensCells_prev     );
+    //   hyDensThetaCells.deep_copy_to(hyDensThetaCells_prev);
+    //   hyThetaCells    .deep_copy_to(hyThetaCells_prev    );
+
+    //   // Compute new cell averages and GLL point values for hydrostasis
     //   hydrostasis_parameters_sum = tmp;
     //   parallel_for( SimpleBounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
     //     real p  = 0;
@@ -300,23 +320,40 @@ public:
     //       hyThetaGLL    (k,kk,iens) =      hydrostatic_theta     ( hy_params , zloc , zbot(iens) , ztop(iens) , iens , C0 , gamma , GRAV );
     //     }
     //   });
+
+    //   // Adjust new state values to maintain perturbations on top of the new hydrostasis
+    //   parallel_for(  "Spatial.h c2d" , Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+    //     for (int tr=0; tr < num_tracers; tr++) {
+    //       tracers(tr,hs+k,hs+j,hs+i,iens) = dm_tracers(tr,k,j,i,iens);
+    //     }
+    //     real dens_dry = dm_dens_dry(k,j,i,iens);
+    //     real uvel     = dm_uvel    (k,j,i,iens);
+    //     real vvel     = dm_vvel    (k,j,i,iens);
+    //     real wvel     = dm_wvel    (k,j,i,iens);
+    //     real temp     = dm_temp    (k,j,i,iens);
+    //     real dens_vap = tracers(idWV,hs+k,hs+j,hs+i,iens);
+    //     real dens     = dens_dry;
+    //     for (int tr=0; tr < num_tracers; tr++) {
+    //       if (tracer_adds_mass(tr)) dens += tracers(tr,hs+k,hs+j,hs+i,iens);
+    //     }
+    //     real pressure = dens_dry * Rd * temp + dens_vap * Rv * temp;
+    //     real theta    = pow( pressure / C0 , 1._fp / gamma ) / dens;
+    //     real dens_theta = dens*theta;
+
+    //     dens = dens - hyDensCells_prev(k,iens) + hyDensCells(k,iens);
+
+    //     dens_theta = dens_theta - hyDensThetaCells_prev(k,iens) + hyDensThetaCells(k,iens);
+
+    //     state(idR,hs+k,hs+j,hs+i,iens) = dens - hyDensCells(k,iens);
+    //     state(idU,hs+k,hs+j,hs+i,iens) = dens * uvel;
+    //     state(idV,hs+k,hs+j,hs+i,iens) = dens * vvel;
+    //     state(idW,hs+k,hs+j,hs+i,iens) = dens * wvel;
+    //     state(idT,hs+k,hs+j,hs+i,iens) = dens_theta - hyDensThetaCells(k,iens);
+    //   });
+
+    //   // Place adjusted state back into the coupler but with new hydrostasis
+    //   convert_dynamics_to_coupler_state( dm , micro );
     // }
-
-    real5d state       = dm.get<real,5>( "dynamics_state"   );
-    real5d tracers     = dm.get<real,5>( "dynamics_tracers" );
-    real4d dm_dens_dry = dm.get<real,4>( "density_dry"      );
-    real4d dm_uvel     = dm.get<real,4>( "uvel"             );
-    real4d dm_vvel     = dm.get<real,4>( "vvel"             );
-    real4d dm_wvel     = dm.get<real,4>( "wvel"             );
-    real4d dm_temp     = dm.get<real,4>( "temp"             );
-
-    int idWV = micro.get_water_vapor_index();
-
-    MultipleFields<max_tracers,real4d> dm_tracers;
-    for (int tr = 0; tr < num_tracers; tr++) {
-      auto trac = dm.get<real,4>( tracer_name[tr] );
-      dm_tracers.add_field( trac );
-    }
 
     parallel_for(  "Spatial.h c2d" , Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       for (int tr=0; tr < num_tracers; tr++) {
@@ -730,10 +767,6 @@ public:
     hyPressureCells  = real2d("hyPressureCells   ",nz,nens);
     hyThetaCells     = real2d("hyThetaCells      ",nz,nens);
     hyDensThetaCells = real2d("hyDensThetaCells  ",nz,nens);
-    hyDensCells_orig      = real2d("hyDensCells_orig       ",nz,nens);
-    hyPressureCells_orig  = real2d("hyPressureCells_orig   ",nz,nens);
-    hyThetaCells_orig     = real2d("hyThetaCells_orig      ",nz,nens);
-    hyDensThetaCells_orig = real2d("hyDensThetaCells_orig  ",nz,nens);
     hyDensGLL        = real3d("hyDensGLL         ",nz,ngll,nens);
     hyPressureGLL    = real3d("hyPressureGLL     ",nz,ngll,nens);
     hyThetaGLL       = real3d("hyThetaGLL        ",nz,ngll,nens);
@@ -852,10 +885,6 @@ public:
           }
         }
       });
-      hyDensCells     .deep_copy_to(hyDensCells_orig     );
-      hyThetaCells    .deep_copy_to(hyThetaCells_orig    );
-      hyDensThetaCells.deep_copy_to(hyDensThetaCells_orig);
-      hyPressureCells .deep_copy_to(hyPressureCells_orig );
 
       parallel_for( "Spatial.h init_state 2" , SimpleBounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
         // Compute ngll GLL points
@@ -2162,7 +2191,7 @@ public:
         //////////////////////////////////////////
         if (nAder > 1) {
           diffTransformEulerConsZ( r_DTs , ru_DTs , rv_DTs , rw_DTs , rt_DTs , rwu_DTs , rwv_DTs , rww_DTs ,
-                                   rwt_DTs , rt_gamma_DTs , derivMatrix , hyDensGLL , hyPressureGLL , C0 , gamma , k ,
+                                   rwt_DTs , rt_gamma_DTs , derivMatrix , hyPressureGLL , C0 , gamma , k ,
                                    dz(k,iens) , bc_z , nz , iens );
         }
 
@@ -2210,7 +2239,7 @@ public:
         stateTend(idR,k,j,i,iens) = 0;
         stateTend(idU,k,j,i,iens) = 0;
         stateTend(idV,k,j,i,iens) = 0;
-        stateTend(idW,k,j,i,iens) = -GRAV * ( ravg - hyDensCells(k,iens) );
+        stateTend(idW,k,j,i,iens) = -GRAV * ravg;
         stateTend(idT,k,j,i,iens) = 0;
       } // END: reconstruct, time-avg, and store state & state fluxes
 
@@ -2331,14 +2360,10 @@ public:
       real q4 = w*w1 + (w-cs)*w5 + (w+cs)*w6;
       real q5 =      t*w5 + t*w6;
 
-      real hyp;
-      if (k < nz) { hyp = hyPressureGLL(k  ,0     ,iens); }
-      else        { hyp = hyPressureGLL(k-1,ngll-1,iens); }
-
       stateFlux(idR,k,j,i,iens) = q4;
       stateFlux(idU,k,j,i,iens) = q4*q2/q1;
       stateFlux(idV,k,j,i,iens) = q4*q3/q1;
-      stateFlux(idW,k,j,i,iens) = q4*q4/q1 + C0*pow(q5,gamma) - hyp;
+      stateFlux(idW,k,j,i,iens) = q4*q4/q1 + C0*pow(q5,gamma);
       stateFlux(idT,k,j,i,iens) = q4*q5/q1;
 
       // COMPUTE UPWIND TRACER FLUXES
@@ -2420,10 +2445,6 @@ public:
     YAKL_SCOPE( dx                    , this->dx                   );
     YAKL_SCOPE( dy                    , this->dy                   );
     YAKL_SCOPE( dz                    , this->dz                   );
-    YAKL_SCOPE( hyDensCells_orig      , this->hyDensCells_orig     );
-    YAKL_SCOPE( hyDensThetaCells_orig , this->hyDensThetaCells_orig);
-    YAKL_SCOPE( hyThetaCells_orig     , this->hyThetaCells_orig    );
-    YAKL_SCOPE( hyPressureCells_orig  , this->hyPressureCells_orig );
     YAKL_SCOPE( hyDensCells           , this->hyDensCells          );
     YAKL_SCOPE( hyDensThetaCells      , this->hyDensThetaCells     );
     YAKL_SCOPE( hyThetaCells          , this->hyThetaCells         );
@@ -2457,13 +2478,13 @@ public:
         nc.write(zmid.createHostCopy(),"z",{"z"});
 
         // hydrostatic density, theta, and pressure
-        parallel_for( "Spatial.h output 4" , nz , YAKL_LAMBDA (int k) { zmid(k) = hyDensCells_orig(k,iens); });
+        parallel_for( "Spatial.h output 4" , nz , YAKL_LAMBDA (int k) { zmid(k) = hyDensCells(k,iens); });
         nc.write(zmid.createHostCopy(),"hyDens"    ,{"z"});
 
-        parallel_for( "Spatial.h output 5" , nz , YAKL_LAMBDA (int k) { zmid(k) = hyPressureCells_orig(k,iens); });
+        parallel_for( "Spatial.h output 5" , nz , YAKL_LAMBDA (int k) { zmid(k) = hyPressureCells(k,iens); });
         nc.write(zmid.createHostCopy(),"hyPressure",{"z"});
 
-        parallel_for( "Spatial.h output 6" , nz , YAKL_LAMBDA (int k) { zmid(k) = hyThetaCells_orig(k,iens); });
+        parallel_for( "Spatial.h output 6" , nz , YAKL_LAMBDA (int k) { zmid(k) = hyThetaCells(k,iens); });
         nc.write(zmid.createHostCopy(),"hyTheta"   ,{"z"});
 
         // Create time variable
@@ -2482,7 +2503,7 @@ public:
       real3d data("data",nz,ny,nx);
       // rho'
       parallel_for( "Spatial.h output 7" , SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-        data(k,j,i) = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens) - hyDensCells_orig(k,iens);
+        data(k,j,i) = state(idR,hs+k,hs+j,hs+i,iens);
       });
       nc.write1(data.createHostCopy(),"dens_pert",{"z","y","x"},ulIndex,"t");
       // u
@@ -2504,7 +2525,7 @@ public:
       parallel_for( "Spatial.h output 11" , SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
         real r =   state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells     (k,iens);
         real t = ( state(idT,hs+k,hs+j,hs+i,iens) + hyDensThetaCells(k,iens) ) / r;
-        data(k,j,i) = t - hyThetaCells_orig(k,iens);
+        data(k,j,i) = t - hyThetaCells(k,iens);
       });
       nc.write1(data.createHostCopy(),"pot_temp_pert",{"z","y","x"},ulIndex,"t");
       // pressure'
@@ -2512,7 +2533,7 @@ public:
         real r  = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens);
         real rt = state(idT,hs+k,hs+j,hs+i,iens) + hyDensThetaCells(k,iens);
         real p  = C0*pow(rt,gamma);
-        data(k,j,i) = p - hyPressureCells_orig(k,iens);
+        data(k,j,i) = p - hyPressureCells(k,iens);
       });
       nc.write1(data.createHostCopy(),"pressure_pert",{"z","y","x"},ulIndex,"t");
 
@@ -2755,7 +2776,6 @@ public:
                                                    SArray<real,2,nAder,ngll> &rwt ,
                                                    SArray<real,2,nAder,ngll> &rt_gamma ,
                                                    SArray<real,2,ngll,ngll> const &deriv ,
-                                                   real3d const &hyDensGLL ,
                                                    real3d const &hyPressureGLL ,
                                                    real C0, real gamma ,
                                                    int k , real dz , int bc_z , int nz , int iens ) {
@@ -2792,12 +2812,6 @@ public:
         rv(kt+1,ii) = -drwv_dz  /dz/(kt+1);
         rw(kt+1,ii) = -drww_p_dz/dz/(kt+1);
         rt(kt+1,ii) = -drwt_dz  /dz/(kt+1);
-
-        if (kt == 0) {
-          rw(kt+1,ii) = rw(kt+1,ii) - GRAV * ( r(kt,ii) - hyDensGLL(k,ii,iens) ) / (kt+1);
-        } else {
-          rw(kt+1,ii) = rw(kt+1,ii) - GRAV * ( r(kt,ii)                        ) / (kt+1);
-        }
 
         if (bc_z == BC_WALL) {
           if (k == nz-1) rw(kt+1,ngll-1) = 0;
