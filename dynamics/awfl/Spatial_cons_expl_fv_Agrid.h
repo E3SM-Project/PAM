@@ -639,7 +639,7 @@ public:
         SArray<double,3,hs+1,hs+1,hs+1> weno_recon_lower_var;
         TransformMatrices_variable::sten_to_coefs_variable<ord>(locs,s2c_var_in);
         TransformMatrices_variable::weno_lower_sten_to_coefs<ord>(locs,weno_recon_lower_var);
-        SArray<float,2,ord,ord> s2c_var;
+        SArray<real,2,ord,ord> s2c_var;
         for (int jj=0; jj < ord; jj++) {
           for (int ii=0; ii < ord; ii++) {
             s2c_var(jj,ii) = s2c_var_in(jj,ii);
@@ -2162,7 +2162,7 @@ public:
         //////////////////////////////////////////
         if (nAder > 1) {
           diffTransformEulerConsZ( r_DTs , ru_DTs , rv_DTs , rw_DTs , rt_DTs , rwu_DTs , rwv_DTs , rww_DTs ,
-                                   rwt_DTs , rt_gamma_DTs , derivMatrix , hyPressureGLL , C0 , gamma , k ,
+                                   rwt_DTs , rt_gamma_DTs , derivMatrix , hyDensGLL , hyPressureGLL , C0 , gamma , k ,
                                    dz(k,iens) , bc_z , nz , iens );
         }
 
@@ -2210,7 +2210,7 @@ public:
         stateTend(idR,k,j,i,iens) = 0;
         stateTend(idU,k,j,i,iens) = 0;
         stateTend(idV,k,j,i,iens) = 0;
-        stateTend(idW,k,j,i,iens) = -GRAV*ravg;
+        stateTend(idW,k,j,i,iens) = -GRAV * ( ravg - hyDensCells(k,iens) );
         stateTend(idT,k,j,i,iens) = 0;
       } // END: reconstruct, time-avg, and store state & state fluxes
 
@@ -2331,10 +2331,14 @@ public:
       real q4 = w*w1 + (w-cs)*w5 + (w+cs)*w6;
       real q5 =      t*w5 + t*w6;
 
+      real hyp;
+      if (k < nz) { hyp = hyPressureGLL(k  ,0     ,iens); }
+      else        { hyp = hyPressureGLL(k-1,ngll-1,iens); }
+
       stateFlux(idR,k,j,i,iens) = q4;
       stateFlux(idU,k,j,i,iens) = q4*q2/q1;
       stateFlux(idV,k,j,i,iens) = q4*q3/q1;
-      stateFlux(idW,k,j,i,iens) = q4*q4/q1 + C0*pow(q5,gamma);
+      stateFlux(idW,k,j,i,iens) = q4*q4/q1 + C0*pow(q5,gamma) - hyp;
       stateFlux(idT,k,j,i,iens) = q4*q5/q1;
 
       // COMPUTE UPWIND TRACER FLUXES
@@ -2751,6 +2755,7 @@ public:
                                                    SArray<real,2,nAder,ngll> &rwt ,
                                                    SArray<real,2,nAder,ngll> &rt_gamma ,
                                                    SArray<real,2,ngll,ngll> const &deriv ,
+                                                   real3d const &hyDensGLL ,
                                                    real3d const &hyPressureGLL ,
                                                    real C0, real gamma ,
                                                    int k , real dz , int bc_z , int nz , int iens ) {
@@ -2787,6 +2792,13 @@ public:
         rv(kt+1,ii) = -drwv_dz  /dz/(kt+1);
         rw(kt+1,ii) = -drww_p_dz/dz/(kt+1);
         rt(kt+1,ii) = -drwt_dz  /dz/(kt+1);
+
+        if (kt == 0) {
+          rw(kt+1,ii) = rw(kt+1,ii) - GRAV * ( r(kt,ii) - hyDensGLL(k,ii,iens) ) / (kt+1);
+        } else {
+          rw(kt+1,ii) = rw(kt+1,ii) - GRAV * ( r(kt,ii)                        ) / (kt+1);
+        }
+
         if (bc_z == BC_WALL) {
           if (k == nz-1) rw(kt+1,ngll-1) = 0;
           if (k == 0   ) rw(kt+1,0     ) = 0;
