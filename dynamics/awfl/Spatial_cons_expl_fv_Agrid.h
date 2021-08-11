@@ -265,42 +265,42 @@ public:
     YAKL_SCOPE( dz               , this->dz               );
     YAKL_SCOPE( vert_interface   , this->vert_interface   );
 
-    SArray<real,1,9> gll_pts, gll_wts;
-    TransformMatrices::get_gll_points ( gll_pts );
-    TransformMatrices::get_gll_weights( gll_wts );
+    // // If hydrostasis in the coupler has changed, then we need to re-compute
+    // // hydrostatically balanced cells and GLL points for the dycore's time step
+    // real tmp = yakl::intrinsics::sum(hy_params);
+    // if (tmp != hydrostasis_parameters_sum) {
+    //   SArray<real,1,9> gll_pts, gll_wts;
+    //   TransformMatrices::get_gll_points ( gll_pts );
+    //   TransformMatrices::get_gll_weights( gll_wts );
 
-    // If hydrostasis in the coupler has changed, then we need to re-compute
-    // hydrostatically balanced cells and GLL points for the dycore's time step
-    real tmp = yakl::intrinsics::sum(hy_params);
-    if (tmp != hydrostasis_parameters_sum) {
-      hydrostasis_parameters_sum = tmp;
-      parallel_for( SimpleBounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
-        real p  = 0;
-        real r  = 0;
-        real rt = 0;
-        real t  = 0;
-        for (int kk=0; kk < 9; kk++) {
-          real zloc = vert_interface(k,iens) + 0.5_fp*dz(k,iens) + gll_pts(kk)*dz(k,iens);
-          real wt = gll_wts(kk);
-          p  += pam::hydrostatic_pressure  ( hy_params , zloc , zbot(iens) , ztop(iens) , iens                     ) * wt;
-          r  += pam::hydrostatic_density   ( hy_params , zloc , zbot(iens) , ztop(iens) , iens              , GRAV ) * wt;
-          rt +=      hydrostatic_dens_theta( hy_params , zloc , zbot(iens) , ztop(iens) , iens , C0 , gamma        ) * wt;
-          t  +=      hydrostatic_theta     ( hy_params , zloc , zbot(iens) , ztop(iens) , iens , C0 , gamma , GRAV ) * wt;
-        }
-        hyPressureCells (k,iens) = p;
-        hyDensCells     (k,iens) = r;
-        hyDensThetaCells(k,iens) = rt;
-        hyThetaCells    (k,iens) = t;
+    //   hydrostasis_parameters_sum = tmp;
+    //   parallel_for( SimpleBounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
+    //     real p  = 0;
+    //     real r  = 0;
+    //     real rt = 0;
+    //     real t  = 0;
+    //     for (int kk=0; kk < 9; kk++) {
+    //       real zloc = vert_interface(k,iens) + 0.5_fp*dz(k,iens) + gll_pts(kk)*dz(k,iens);
+    //       real wt = gll_wts(kk);
+    //       p  += pam::hydrostatic_pressure  ( hy_params , zloc , zbot(iens) , ztop(iens) , iens                     ) * wt;
+    //       r  += pam::hydrostatic_density   ( hy_params , zloc , zbot(iens) , ztop(iens) , iens              , GRAV ) * wt;
+    //       rt +=      hydrostatic_dens_theta( hy_params , zloc , zbot(iens) , ztop(iens) , iens , C0 , gamma        ) * wt;
+    //       t  +=      hydrostatic_theta     ( hy_params , zloc , zbot(iens) , ztop(iens) , iens , C0 , gamma , GRAV ) * wt;
+    //     }
+    //     hyPressureCells (k,iens) = p;
+    //     hyDensCells     (k,iens) = r;
+    //     hyDensThetaCells(k,iens) = rt;
+    //     hyThetaCells    (k,iens) = t;
 
-        for (int kk=0; kk < ngll; kk++) {
-          real zloc = vert_interface(k,iens) + 0.5_fp*dz(k,iens) + gllPts_ngll(kk)*dz(k,iens);
-          hyPressureGLL (k,kk,iens) = pam::hydrostatic_pressure  ( hy_params , zloc , zbot(iens) , ztop(iens) , iens                     );
-          hyDensGLL     (k,kk,iens) = pam::hydrostatic_density   ( hy_params , zloc , zbot(iens) , ztop(iens) , iens              , GRAV );
-          hyDensThetaGLL(k,kk,iens) =      hydrostatic_dens_theta( hy_params , zloc , zbot(iens) , ztop(iens) , iens , C0 , gamma        );
-          hyThetaGLL    (k,kk,iens) =      hydrostatic_theta     ( hy_params , zloc , zbot(iens) , ztop(iens) , iens , C0 , gamma , GRAV );
-        }
-      });
-    }
+    //     for (int kk=0; kk < ngll; kk++) {
+    //       real zloc = vert_interface(k,iens) + 0.5_fp*dz(k,iens) + gllPts_ngll(kk)*dz(k,iens);
+    //       hyPressureGLL (k,kk,iens) = pam::hydrostatic_pressure  ( hy_params , zloc , zbot(iens) , ztop(iens) , iens                     );
+    //       hyDensGLL     (k,kk,iens) = pam::hydrostatic_density   ( hy_params , zloc , zbot(iens) , ztop(iens) , iens              , GRAV );
+    //       hyDensThetaGLL(k,kk,iens) =      hydrostatic_dens_theta( hy_params , zloc , zbot(iens) , ztop(iens) , iens , C0 , gamma        );
+    //       hyThetaGLL    (k,kk,iens) =      hydrostatic_theta     ( hy_params , zloc , zbot(iens) , ztop(iens) , iens , C0 , gamma , GRAV );
+    //     }
+    //   });
+    // }
 
     real5d state       = dm.get<real,5>( "dynamics_state"   );
     real5d tracers     = dm.get<real,5>( "dynamics_tracers" );
