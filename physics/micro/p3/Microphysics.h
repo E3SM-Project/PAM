@@ -537,21 +537,21 @@ public:
 
   // Returns saturation vapor pressure
   // TODO: Make this the same as P3's
-  YAKL_INLINE real saturation_vapor_pressure(real temp) const {
+  YAKL_INLINE static real saturation_vapor_pressure(real temp) {
     real tc = temp - 273.15;
     return 610.94 * exp( 17.625*tc / (243.04+tc) );
   }
 
 
 
-  YAKL_INLINE real latent_heat_condensation(real temp) const {
+  YAKL_INLINE static real latent_heat_condensation(real temp) {
     real tc = temp - 273.15;
     return (2500.8 - 2.36*tc + 0.0016*tc*tc - 0.00006*tc*tc*tc)*1000;
   }
 
 
 
-  YAKL_INLINE real cp_moist(real rho_d, real rho_v, real rho_c, real cp_d, real cp_v, real cp_l) const {
+  YAKL_INLINE static real cp_moist(real rho_d, real rho_v, real rho_c, real cp_d, real cp_v, real cp_l) {
     // For the moist specific heat, ignore other species than water vapor and cloud droplets
     real rho = rho_d + rho_v + rho_c;
     return rho_d / rho * cp_d  +  rho_v / rho * cp_v  +  rho_c / rho * cp_l;
@@ -560,8 +560,8 @@ public:
 
 
   // Compute an instantaneous adjustment of sub or super saturation
-  YAKL_INLINE void compute_adjusted_state(real rho, real rho_d , real &rho_v , real &rho_c , real &temp,
-                                          real R_v , real cp_d , real cp_v , real cp_l) const {
+  YAKL_INLINE static void compute_adjusted_state(real rho, real rho_d , real &rho_v , real &rho_c , real &temp,
+                                                 real R_v , real cp_d , real cp_v , real cp_l) {
     // Define a tolerance for convergence
     real tol = 1.e-6;
 
