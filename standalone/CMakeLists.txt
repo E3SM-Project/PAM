@@ -38,6 +38,10 @@ endif()
 
 # Add scream common if it's needed
 if ("${PAM_MICRO}" STREQUAL "p3")
+  set(USE_SCREAM TRUE)
+endif()
+
+if (${USE_SCREAM})
   add_subdirectory(../physics/scream_common ./scream_common)
   include_directories(${CMAKE_CURRENT_BINARY_DIR}/scream_common)
 endif()
@@ -59,7 +63,10 @@ else ()
   endif()
 endif()
 
-target_link_libraries(driver dycore scream_common micro yakl ${NCFLAGS} -lyaml-cpp)
+if (${USE_SCREAM})
+  target_link_libraries(scream_common)
+endif()
+target_link_libraries(driver dycore micro yakl ${NCFLAGS} -lyaml-cpp)
 set_property(TARGET driver PROPERTY CXX_STANDARD 14)
 set_property(TARGET driver PROPERTY CUDA_STANDARD 14)
 set(CMAKE_CXX_STANDARD 14)
