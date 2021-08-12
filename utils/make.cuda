@@ -1,0 +1,3 @@
+#!/bin/bash
+
+alias make.cuda="make 2>&1 | grep --color=always -v \"warning: calling a __host__ function\""
