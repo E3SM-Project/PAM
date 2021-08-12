@@ -980,6 +980,8 @@ public:
         }
       });
 
+      int index_vapor = micro.get_water_vapor_index();
+
       parallel_for( "Spatial.h adjust_moisture" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
         // Add tracer density to dry density if it adds mass
         real rho_dry = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens);
@@ -1001,7 +1003,6 @@ public:
         real temp  = press / Rd / rho_dry;         // Temp (same dry or moist)
 
         // Compute moist theta
-        real index_vapor = micro.get_water_vapor_index();
         real rho_v = tracers(index_vapor,hs+k,hs+j,hs+i,iens);
         real R_moist = Rd * (rho_dry / rho_moist) + Rv * (rho_v / rho_moist);
         real press_moist = rho_moist * R_moist * temp;

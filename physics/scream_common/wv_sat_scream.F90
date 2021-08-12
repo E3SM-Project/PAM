@@ -11,7 +11,7 @@ module wv_sat_scream
   !------------------------------------------------------------------------------------
 
   ! get real kind from utils
-  use micro_p3_types,  only: rtype
+  use scream_types,  only: rtype
   use micro_p3_utils, only: T_zerodegc
 
   implicit none

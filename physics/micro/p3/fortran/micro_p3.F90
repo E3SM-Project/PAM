@@ -41,7 +41,7 @@
 module micro_p3
 
    ! get real kind from utils
-   use micro_p3_types, only: rtype,rtype8,btype
+   use scream_types, only: rtype,rtype8,btype
 
    ! physical and mathematical constants
    use micro_p3_utils, only: rho_1000mb,rho_600mb,ar,br,f1r,f2r,rho_h2o,kr,kc,aimm,mi0,nccnst,  &

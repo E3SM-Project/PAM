@@ -97,7 +97,7 @@ public:
 
 
   // This must return the correct # of tracers **BEFORE** init(...) is called
-  int get_num_tracers() const {
+  YAKL_INLINE static int get_num_tracers() {
     return num_tracers;
   }
 

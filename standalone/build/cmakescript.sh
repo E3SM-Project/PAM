@@ -13,5 +13,5 @@ cmake      \
   -DYAKL_HOME="${YAKL_HOME}"        \
   -DYAKL_ARCH="${YAKL_ARCH}"        \
   -DPAM_DYCORE="awfl"               \
-  -DPAM_MICRO="kessler"             \
+  -DPAM_MICRO="p3"                  \
   ..

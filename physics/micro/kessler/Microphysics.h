@@ -49,13 +49,13 @@ public:
 
 
 
-  YAKL_INLINE int get_num_tracers() const {
+  YAKL_INLINE static int get_num_tracers() {
     return num_tracers;
   }
 
 
 
-  YAKL_INLINE int get_water_vapor_index() const {
+  int get_water_vapor_index() const {
     return tracer_index_vapor;
   }
 

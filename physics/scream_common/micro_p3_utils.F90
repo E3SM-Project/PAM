@@ -1,6 +1,6 @@
 module micro_p3_utils
 
-  use micro_p3_types, only: rtype, rtype8, itype, btype
+  use scream_types, only: rtype, rtype8, itype, btype
 
   implicit none
   private
