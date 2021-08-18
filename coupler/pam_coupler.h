@@ -208,6 +208,19 @@ namespace pam {
       int nx   = dm.get_dimension_size("x");
       int nens = dm.get_dimension_size("nens");
 
+      auto phost = pressure.createHostCopy();
+
+      std::cout << "[";
+      for (int k=0; k < nz; k++) {
+        std::cout << zmid(k,0) << " , ";
+      }
+      std::cout << "]\n\n[";
+      for (int k=0; k < nz; k++) {
+        std::cout << phost(k,0,0,0) << " , ";
+      }
+      std::cout << "]\n\n";
+      exit(0);
+
       int k0 = 0;
       int k1 = nz/4;
       int k2 = nz/2;
