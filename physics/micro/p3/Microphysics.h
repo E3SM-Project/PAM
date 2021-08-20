@@ -192,7 +192,7 @@ public:
     auto qv_prev             = dm.get<real,4>( "qv_prev"            );
     auto t_prev              = dm.get<real,4>( "t_prev"             );
 
-    parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+    parallel_for( "micro zero" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       cloud_water       (k,j,i,iens) = 0;
       cloud_water_num   (k,j,i,iens) = 0;
       rain              (k,j,i,iens) = 0;
@@ -279,7 +279,7 @@ public:
     // Calculate the grid spacing
     auto zint_in = dm.get<real,2>("vertical_interface_height");
     real2d dz("dz",nz,ny*nx*nens);
-    parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+    parallel_for( "micro dz" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       dz(k,j*nx*nens + i*nens + iens) = zint_in(k+1,iens) - zint_in(k,iens);
     });
 
@@ -305,14 +305,14 @@ public:
     auto precip_ice_flux_dm = dm.get<real,4>("precip_ice_flux");
     real2d precip_liq_flux("precip_liq_flux",nz+1,ny*nx*nens);
     real2d precip_ice_flux("precip_ice_flux",nz+1,ny*nx*nens);
-    parallel_for( Bounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+    parallel_for( "micro precip_flux" , SimpleBounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       precip_liq_flux(k,nx*nens*j + nens*i + iens) = precip_liq_flux_dm(k,j,i,iens);
       precip_ice_flux(k,nx*nens*j + nens*i + iens) = precip_ice_flux_dm(k,j,i,iens);
     });
 
     auto p3_tend_out_dm = dm.get<real,5>("p3_tend_out");
     real3d p3_tend_out("p3_tend_out",49,nz,ny*nx*nens);
-    parallel_for( Bounds<5>(49,nz,ny,nx,nens) , YAKL_LAMBDA (int l, int k, int j, int i, int iens) {
+    parallel_for( "micro tend_out" , SimpleBounds<5>(49,nz,ny,nx,nens) , YAKL_LAMBDA (int l, int k, int j, int i, int iens) {
       p3_tend_out(l,k,nx*nens*j + nens*i + iens) = p3_tend_out_dm(l,k,j,i,iens);
     });
 
@@ -356,7 +356,7 @@ public:
     YAKL_SCOPE( grav       , this->grav       );
 
     // Save initial state, and compute inputs for kessler(...)
-    parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
+    parallel_for( "micro adjust preprocess" , SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
       // Compute total density
       real rho = rho_dry(k,i) + rho_c(k,i) + rho_r(k,i) + rho_i(k,i) + rho_v(k,i);
 
@@ -513,7 +513,7 @@ public:
     ///////////////////////////////////////////////////////////////////////////////
     // Convert P3 outputs into dynamics coupler state and tracer masses
     ///////////////////////////////////////////////////////////////////////////////
-    parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
+    parallel_for( "micro post process" , SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
       rho_c    (k,i) = max( qc(k,i)*rho_dry(k,i) , 0._fp );
       rho_nc   (k,i) = max( nc(k,i)*rho_dry(k,i) , 0._fp );
       rho_r    (k,i) = max( qr(k,i)*rho_dry(k,i) , 0._fp );

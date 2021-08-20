@@ -9,27 +9,38 @@
 
 namespace pam {
 
-  YAKL_INLINE real hydrostatic_pressure( real2d const &hy_params , real z_in , real zbot , real ztop , int iens             ) {
+  YAKL_INLINE real hydrostatic_pressure( real2d const &hy_params , real z_in , real zbot , real ztop ,
+                                         int iens             ) {
     real z = ( z_in - zbot ) / (ztop - zbot);
     real a0 = hy_params(0,iens);
     real a1 = hy_params(1,iens);
     real a2 = hy_params(2,iens);
     real a3 = hy_params(3,iens);
     real a4 = hy_params(4,iens);
-    real lnp = a0 + ( a1 + ( a2 + ( a3 + a4 * z ) * z ) * z ) * z;
+    real a5 = hy_params(5,iens);
+    real a6 = hy_params(6,iens);
+    real a7 = hy_params(7,iens);
+    real a8 = hy_params(8,iens);
+    real a9 = hy_params(9,iens);
+    real lnp = a0 + ( a1 + ( a2 + ( a3 + ( a4 + ( a5 + ( a6 + ( a7 + ( a8 + a9*z)*z)*z)*z)*z)*z)*z)*z)*z;
     return exp(lnp);
   }
 
 
-  YAKL_INLINE real hydrostatic_density( real2d const &hy_params , real z_in , real zbot , real ztop , int iens , real grav ) {
+  YAKL_INLINE real hydrostatic_density( real2d const &hy_params , real z_in , real zbot , real ztop ,
+                                        int iens , real grav ) {
     real z = ( z_in - zbot ) / (ztop - zbot);
-    real a0 = hy_params(0,iens);
     real a1 = hy_params(1,iens);
     real a2 = hy_params(2,iens);
     real a3 = hy_params(3,iens);
     real a4 = hy_params(4,iens);
+    real a5 = hy_params(5,iens);
+    real a6 = hy_params(6,iens);
+    real a7 = hy_params(7,iens);
+    real a8 = hy_params(8,iens);
+    real a9 = hy_params(9,iens);
     real p = hydrostatic_pressure( hy_params , z_in , zbot , ztop , iens );
-    real mult = a1 + (2*a2 + (3*a3 + 4*a4*z) * z) * z;
+    real mult = a1 + (2*a2 + (3*a3 + (4*a4 + (5*a5 + (6*a6 + (7*a7 + (8*a8 + 9*a9*z)*z)*z)*z)*z)*z)*z)*z;
     real dpdz = mult*p/(ztop-zbot);
     return -dpdz/grav;
   }
@@ -71,7 +82,7 @@ namespace pam {
       int nens = dm.get_dimension_size("nens");
       auto zint = dm.get<real,2>("vertical_interface_height");
       auto zmid = dm.get<real,2>("vertical_midpoint_height" );
-      parallel_for( SimpleBounds<2>(nz+1,nens) , YAKL_LAMBDA (int k, int iens) {
+      parallel_for( "vert grid 1" , SimpleBounds<2>(nz+1,nens) , YAKL_LAMBDA (int k, int iens) {
         zint(k,iens) = zint_in(k,iens);
         if (k < nz) zmid(k,iens) = 0.5_fp * (zint_in(k,iens) + zint_in(k+1,iens));
       });
@@ -83,7 +94,7 @@ namespace pam {
       int nens = dm.get_dimension_size("nens");
       auto zint = dm.get<real,2>("vertical_interface_height");
       auto zmid = dm.get<real,2>("vertical_midpoint_height" );
-      parallel_for( SimpleBounds<2>(nz+1,nens) , YAKL_LAMBDA (int k, int iens) {
+      parallel_for( "vert grid 2" , SimpleBounds<2>(nz+1,nens) , YAKL_LAMBDA (int k, int iens) {
         zint(k,iens) = zint_in(k);
         if (k < nz) zmid(k,iens) = 0.5_fp * (zint_in(k) + zint_in(k+1));
       });
@@ -99,7 +110,7 @@ namespace pam {
       dm.register_and_allocate<real>( "diagnostic_pressure"       , "pressure"                  , {nz,ny,nx,nens} , {"z","y","x","nens"} );
       dm.register_and_allocate<real>( "vertical_interface_height" , "vertical interface height" , {nz+1    ,nens} , {"zp1"      ,"nens"} );
       dm.register_and_allocate<real>( "vertical_midpoint_height"  , "vertical midpoint height"  , {nz      ,nens} , {"z"        ,"nens"} );
-      dm.register_and_allocate<real>( "hydrostasis_parameters"    , "hydrostasis parameters"    , {5       ,nens} , {"five"     ,"nens"} );
+      dm.register_and_allocate<real>( "hydrostasis_parameters"    , "hydrostasis parameters"    , {10      ,nens} , {"ten"      ,"nens"} );
       dm.register_and_allocate<real>( "hydrostatic_pressure"      , "hydrostasis pressure"      , {nz      ,nens} , {"z"        ,"nens"} );
       dm.register_and_allocate<real>( "hydrostatic_density"       , "hydrostasis density"       , {nz      ,nens} , {"z"        ,"nens"} );
 
@@ -115,7 +126,7 @@ namespace pam {
       auto hy_press     = dm.get_collapsed<real>("hydrostatic_pressure"     );
       auto hy_dens      = dm.get_collapsed<real>("hydrostatic_density"      );
 
-      parallel_for( Bounds<1>(nz*ny*nx*nens) , YAKL_LAMBDA (int i) {
+      parallel_for( "coupler zero" , SimpleBounds<1>(nz*ny*nx*nens) , YAKL_LAMBDA (int i) {
         density_dry (i) = 0;
         uvel        (i) = 0;
         vvel        (i) = 0;
@@ -150,7 +161,7 @@ namespace pam {
       int nz   = dens_dry.dimension[0];
       int ncol = dens_dry.dimension[1];
 
-      parallel_for( SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
+      parallel_for( "coupler pressure" , SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
         real rho_d = dens_dry(k,i);
         real rho_v = dens_wv (k,i);
         real T     = temp    (k,i);
@@ -173,7 +184,7 @@ namespace pam {
       real4d press_pert("press_pert",nz,ny,nx,nens);
 
       // Compute pressure perturbation
-      parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      parallel_for( "coup press pert" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
         press_pert(k,j,i,iens) = press(k,j,i,iens) - hy_press(k,iens);
       });
 
@@ -185,12 +196,13 @@ namespace pam {
                                                      vert_interp.BC_ZERO_GRADIENT );
 
       // Add hydrostasis at cell edges to get back full pressure
-      parallel_for( SimpleBounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      parallel_for( "coup press edges" , SimpleBounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
         press_edges(k,j,i,iens) += hydrostatic_pressure( hy_params , zint(k,iens) , zint(0,iens) , zint(nz,iens) , iens );
       });
       
       return press_edges;
     }
+
 
 
     inline void update_hydrostasis( ) {
@@ -208,59 +220,57 @@ namespace pam {
       int nx   = dm.get_dimension_size("x");
       int nens = dm.get_dimension_size("nens");
 
-      auto phost = pressure.createHostCopy();
-
-      std::cout << "[";
-      for (int k=0; k < nz; k++) {
-        std::cout << zmid(k,0) << " , ";
+      int constexpr npts = 10;
+      int constexpr npts_tanh = npts - 2;
+      SArray<real,1,npts_tanh> tanh_pts;
+      real constexpr mu = 1;  // [0,infty) : larger mu means sampling is more clustered toward the domain edges
+      for (int ii=0; ii < npts_tanh; ii++) {
+        tanh_pts(ii) = (tanh((2*mu*ii)/(npts_tanh-1)-mu)/tanh(mu)+1)*0.5_fp;
       }
-      std::cout << "]\n\n[";
-      for (int k=0; k < nz; k++) {
-        std::cout << phost(k,0,0,0) << " , ";
-      }
-      std::cout << "]\n\n";
-      exit(0);
 
-      int k0 = 0;
-      int k1 = nz/4;
-      int k2 = nz/2;
-      int k3 = (3*nz)/4;
-      int k4 = nz-1;
+      SArray<int,1,npts> z_indices;
+      z_indices(0) = 0;
+      z_indices(1) = 1;
+      for (int ii=1; ii < npts_tanh; ii++) {
+        z_indices(ii+1) = tanh_pts(ii) * (nz-1);
+      }
+      z_indices(npts-2) = nz-2;
+      z_indices(npts-1) = nz-1;
+
+      if (z_indices(2)      <= 1   ) z_indices(2     ) = 2;
+      if (z_indices(npts-3) >= nz-2) z_indices(npts-3) = nz-3;
 
       parallel_for( "hydro fitting" , SimpleBounds<1>(nens) , YAKL_LAMBDA (int iens) {
         real zbot = zint(0 ,iens);
         real ztop = zint(nz,iens);
 
-        SArray<double,1,5> z;
-        z(0) = ( zmid(k0,iens) - zbot ) / (ztop - zbot);
-        z(1) = ( zmid(k1,iens) - zbot ) / (ztop - zbot);
-        z(2) = ( zmid(k2,iens) - zbot ) / (ztop - zbot);
-        z(3) = ( zmid(k3,iens) - zbot ) / (ztop - zbot);
-        z(4) = ( zmid(k4,iens) - zbot ) / (ztop - zbot);
+        SArray<double,1,npts> z;
+        for (int ii=0; ii < npts; ii++) {
+          z(ii) = ( zmid(z_indices(ii),iens) - zbot ) / (ztop - zbot);;
+        }
 
-        SArray<double,2,5,5> vand;
-        for (int j=0; j < 5; j++) {
-          for (int i=0; i < 5; i++) {
+        SArray<double,2,npts,npts> vand;
+        for (int j=0; j < npts; j++) {
+          for (int i=0; i < npts; i++) {
             vand(j,i) = pow( z(i) , (double) j );
           }
         }
 
+        // TODO: Implement partial pivoting to improve the condition number here
         auto vand_inv = matinv_ge_cr( vand );
 
         // Fit to just one column, assuming all columns are fairly similar
         // This will only be used for idealized test cases anyway
         // Another function that passes in an ensemble of pressure profiles will be
         //   used for GCM coupling in an MMF setting
-        SArray<double,1,5> logp;
-        logp(0) = log(pressure(k0,0,0,iens));
-        logp(1) = log(pressure(k1,0,0,iens));
-        logp(2) = log(pressure(k2,0,0,iens));
-        logp(3) = log(pressure(k3,0,0,iens));
-        logp(4) = log(pressure(k4,0,0,iens));
+        SArray<double,1,npts> logp;
+        for (int ii=0; ii < npts; ii++) {
+          logp(ii) = log(pressure(z_indices(ii),0,0,iens));
+        }
 
         auto params = matmul_cr( vand_inv , logp );
 
-        for (int i=0; i < 5; i++) { hy_params(i,iens) = params(i); }
+        for (int i=0; i < npts; i++) { hy_params(i,iens) = params(i); }
       });
 
       YAKL_SCOPE( grav , this->grav );

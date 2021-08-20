@@ -81,7 +81,7 @@ public:
     // int nx = dm.get_dimension_size("x");
     // int ny = dm.get_dimension_size("y");
     // real2d data("data",ny,nx);
-    // parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
+    // parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
     //   data(j,i) = precl(j,i,iens);
     // });
     // nc.write1(data.createHostCopy(),"precl",{"y","x"},ulIndex,"t");

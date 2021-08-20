@@ -64,7 +64,7 @@ namespace pam {
       real5d limits("limits",2,nz+1,ny,nx,nens);
 
       // Get cell edge estimates from cell-centered reconstructions
-      parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      parallel_for( "recon to edges" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
         // Gather the stencil
         SArray<real,1,ord> stencil;
         for (int kk=0; kk < ord; kk++) {
@@ -111,7 +111,7 @@ namespace pam {
       real4d edges("edges",nz+1,ny,nx,nens);
 
       // Reconcile multple estimates at each cell edge (simple average for now)
-      parallel_for( SimpleBounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      parallel_for( "avg edges" , SimpleBounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
         edges(k,j,i,iens) = 0.5_fp * (limits(0,k,j,i,iens) + limits(1,k,j,i,iens));
       });
       
@@ -150,7 +150,7 @@ namespace pam {
       real2d zint_ghost("zint_ghost",nz+2*hs+1,nens);
 
       // Create ghost cells for cell interface heights
-      parallel_for( SimpleBounds<2>(nz+2*hs+1,nens) , YAKL_LAMBDA (int k, int iens) {
+      parallel_for( "ghost" , SimpleBounds<2>(nz+2*hs+1,nens) , YAKL_LAMBDA (int k, int iens) {
         if (k < hs) {
           real dz0 = zint(1,iens) - zint(0,iens);
           zint_ghost(k,iens) = zint(0,iens) - (hs-k)*dz0;
@@ -168,7 +168,7 @@ namespace pam {
       YAKL_SCOPE( weno_recon_lo , this->internal.weno_recon_lo );
       YAKL_SCOPE( weno_recon_hi , this->internal.weno_recon_hi );
 
-      parallel_for( SimpleBounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
+      parallel_for( "recon matrices" , SimpleBounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
         int constexpr hs = (ord-1)/2;
 
         // Cell interface height locations

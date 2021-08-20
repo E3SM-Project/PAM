@@ -83,7 +83,7 @@ inline void endrun(std::string err="") {
 template <class T, int N, int MEM, int STYLE>
 inline void validate_array_nan( yakl::Array<T,N,MEM,STYLE> const &arr) {
   yakl::ScalarLiveOut<bool> nan_found(false);
-  parallel_for( arr.totElems() , YAKL_LAMBDA (int i) {
+  parallel_for( "validate nan" , arr.totElems() , YAKL_LAMBDA (int i) {
     if ( std::isnan(arr.myData[i]) ) { nan_found = true; }
   });
   if (nan_found.hostRead()) { std::cout << "WARNING: NaN encountered in array: " << std::endl; endrun(); }
@@ -93,7 +93,7 @@ inline void validate_array_nan( yakl::Array<T,N,MEM,STYLE> const &arr) {
 template <class T, int N, int MEM, int STYLE>
 inline void validate_array_inf( yakl::Array<T,N,MEM,STYLE> const &arr) {
   yakl::ScalarLiveOut<bool> inf_found(false);
-  parallel_for( arr.totElems() , YAKL_LAMBDA (int i) {
+  parallel_for( "validate inf" , arr.totElems() , YAKL_LAMBDA (int i) {
     if ( std::isinf(arr.myData[i]) ) { inf_found = true; }
   });
   if (inf_found.hostRead()) { std::cout << "WARNING: inf encountered in array" << std::endl; endrun(); }
@@ -104,7 +104,7 @@ template <class T, int N, int MEM, int STYLE>
 inline void validate_array_inf_nan( yakl::Array<T,N,MEM,STYLE> const &arr) {
   yakl::ScalarLiveOut<bool> nan_found(false);
   yakl::ScalarLiveOut<bool> inf_found(false);
-  parallel_for( arr.totElems() , YAKL_LAMBDA (int i) {
+  parallel_for( "validate inf nan" , arr.totElems() , YAKL_LAMBDA (int i) {
     if ( std::isnan(arr.myData[i]) ) { nan_found = true; }
     if ( std::isinf(arr.myData[i]) ) { inf_found = true; }
   });
@@ -116,7 +116,7 @@ inline void validate_array_inf_nan( yakl::Array<T,N,MEM,STYLE> const &arr) {
 template <class T, int N, int MEM, int STYLE>
 inline void validate_array_positive( yakl::Array<T,N,MEM,STYLE> const &arr) {
   yakl::ScalarLiveOut<bool> neg_found(false);
-  parallel_for( arr.totElems() , YAKL_LAMBDA (int i) {
+  parallel_for( "validate positive" , arr.totElems() , YAKL_LAMBDA (int i) {
     if ( arr.myData[i] < 0. ) { neg_found = true; }
   });
   if (neg_found.hostRead()) { std::cout << "WARNING: negative value encountered in array" << yakl::intrinsics::minval(arr) << std::endl; }
