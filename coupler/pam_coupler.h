@@ -206,6 +206,8 @@ namespace pam {
 
 
     inline void update_hydrostasis( ) {
+      using yakl::intrinsics::matmul_cr;
+      using yakl::intrinsics::matinv_ge;
       update_diagnostic_pressure();
 
       auto zint      = dm.get<real,2>("vertical_interface_height");
@@ -257,7 +259,7 @@ namespace pam {
         }
 
         // TODO: Implement partial pivoting to improve the condition number here
-        auto vand_inv = matinv_ge_cr( vand );
+        auto vand_inv = matinv_ge( vand );
 
         // Fit to just one column, assuming all columns are fairly similar
         // This will only be used for idealized test cases anyway

@@ -469,6 +469,8 @@ public:
 
   // Initialize crap needed by recon()
   void init(std::string inFile, int ny, int nx, int nens, real xlen, real ylen, int num_tracers, DataManager &dm) {
+    using yakl::intrinsics::matmul_cr;
+
     this->nens = nens;
     this->nx = nx;
     this->ny = ny;

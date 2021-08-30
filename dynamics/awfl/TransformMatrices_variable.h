@@ -35,12 +35,14 @@ namespace TransformMatrices_variable {
   template <unsigned int ord>
   inline void sten_to_coefs_variable(SArray<double,1,ord+1> const &locs ,
                                      SArray<double,2,ord,ord> &rslt) {
+    using yakl::intrinsics::matinv_ge;
+
     // Get coefs to stencil matrix
     SArray<double,2,ord,ord> c2s;
     coefs_to_sten_variable(locs , c2s);
 
     // Invert to get sten_to_coefs
-    rslt = matinv_ge_cr( c2s );
+    rslt = yakl::intrinsics::matinv_ge( c2s );
   }
 
 

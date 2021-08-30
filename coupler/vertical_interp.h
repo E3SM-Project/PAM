@@ -234,12 +234,14 @@ namespace pam {
     template <unsigned int ordloc>
     YAKL_INLINE static void sten_to_coefs_variable(SArray<double,1,ordloc+1> const &locs ,
                                                    SArray<double,2,ordloc,ordloc> &rslt) {
+      using yakl::intrinsics::matinv_ge;
+
       // Get coefs to stencil matrix
       SArray<double,2,ordloc,ordloc> c2s;
       coefs_to_sten_variable(locs , c2s);
 
       // Invert to get sten_to_coefs
-      rslt = matinv_ge_cr( c2s );
+      rslt = matinv_ge( c2s );
     }
 
 
