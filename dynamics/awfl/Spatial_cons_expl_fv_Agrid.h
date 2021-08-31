@@ -175,10 +175,8 @@ public:
     YAKL_SCOPE( C0               , this->C0               );
     YAKL_SCOPE( gamma            , this->gamma            );
     YAKL_SCOPE( num_tracers      , this->num_tracers      );
-    YAKL_SCOPE( p0               , this->p0               );
     YAKL_SCOPE( Rd               , this->Rd               );
     YAKL_SCOPE( Rv               , this->Rv               );
-    YAKL_SCOPE( cp               , this->cp               );
     YAKL_SCOPE( tracer_adds_mass , this->tracer_adds_mass );
 
     int idWV = micro.get_water_vapor_index();
@@ -246,15 +244,11 @@ public:
     YAKL_SCOPE( C0               , this->C0               );
     YAKL_SCOPE( gamma            , this->gamma            );
     YAKL_SCOPE( num_tracers      , this->num_tracers      );
-    YAKL_SCOPE( p0               , this->p0               );
     YAKL_SCOPE( Rd               , this->Rd               );
     YAKL_SCOPE( Rv               , this->Rv               );
-    YAKL_SCOPE( cp               , this->cp               );
     YAKL_SCOPE( tracer_adds_mass , this->tracer_adds_mass );
     YAKL_SCOPE( zbot             , this->zbot             );
     YAKL_SCOPE( ztop             , this->ztop             );
-    YAKL_SCOPE( gllPts_ord       , this->gllPts_ord       );
-    YAKL_SCOPE( gllWts_ord       , this->gllWts_ord       );
     YAKL_SCOPE( gllPts_ngll      , this->gllPts_ngll      );
     YAKL_SCOPE( dz               , this->dz               );
     YAKL_SCOPE( vert_interface   , this->vert_interface   );
@@ -795,7 +789,6 @@ public:
     YAKL_SCOPE( dx                       , this->dx                      );
     YAKL_SCOPE( dy                       , this->dy                      );
     YAKL_SCOPE( dz                       , this->dz                      );
-    YAKL_SCOPE( dz_ghost                 , this->dz_ghost                );
     YAKL_SCOPE( gllPts_ord               , this->gllPts_ord              );
     YAKL_SCOPE( gllWts_ord               , this->gllWts_ord              );
     YAKL_SCOPE( gllPts_ngll              , this->gllPts_ngll             );
@@ -820,8 +813,6 @@ public:
     YAKL_SCOPE( C0                       , this->C0                      );
     YAKL_SCOPE( balance_initial_density  , this->balance_initial_density );
     YAKL_SCOPE( vert_interface           , this->vert_interface          );
-    YAKL_SCOPE( vert_interface_ghost     , this->vert_interface_ghost    );
-    YAKL_SCOPE( ztop                     , this->ztop                    );
     YAKL_SCOPE( num_tracers              , this->num_tracers             );
     YAKL_SCOPE( tracer_adds_mass         , this->tracer_adds_mass        );
 
@@ -1297,10 +1288,7 @@ public:
     YAKL_SCOPE( tracer_pos              , this->tracer_pos             );
     YAKL_SCOPE( num_tracers             , this->num_tracers            );
     YAKL_SCOPE( bc_x                    , this->bc_x                   );
-    YAKL_SCOPE( Rd                      , this->Rd                     );
-    YAKL_SCOPE( cp                      , this->cp                     );
     YAKL_SCOPE( gamma                   , this->gamma                  );
-    YAKL_SCOPE( p0                      , this->p0                     );
     YAKL_SCOPE( C0                      , this->C0                     );
 
     // Populate the halos
@@ -1653,7 +1641,6 @@ public:
     YAKL_SCOPE( sigma                   , this->sigma                  );
     YAKL_SCOPE( hyDensCells             , this->hyDensCells            );
     YAKL_SCOPE( hyDensThetaCells        , this->hyDensThetaCells       );
-    YAKL_SCOPE( sim2d                   , this->sim2d                  );
     YAKL_SCOPE( derivMatrix             , this->derivMatrix            );
     YAKL_SCOPE( dy                      , this->dy                     );
     YAKL_SCOPE( stateLimits             , this->stateLimits            );
@@ -1663,10 +1650,7 @@ public:
     YAKL_SCOPE( tracer_pos              , this->tracer_pos             );
     YAKL_SCOPE( num_tracers             , this->num_tracers            );
     YAKL_SCOPE( bc_y                    , this->bc_y                   );
-    YAKL_SCOPE( Rd                      , this->Rd                     );
-    YAKL_SCOPE( cp                      , this->cp                     );
     YAKL_SCOPE( gamma                   , this->gamma                  );
-    YAKL_SCOPE( p0                      , this->p0                     );
     YAKL_SCOPE( C0                      , this->C0                     );
 
     // Populate the halos
@@ -1998,7 +1982,6 @@ public:
     YAKL_SCOPE( weno_scalars            , this->weno_scalars           );
     YAKL_SCOPE( weno_winds              , this->weno_winds             );
     YAKL_SCOPE( c2g                     , this->coefs_to_gll           );
-    YAKL_SCOPE( s2g                     , this->sten_to_gll            );
     YAKL_SCOPE( idl                     , this->idl                    );
     YAKL_SCOPE( sigma                   , this->sigma                  );
     YAKL_SCOPE( hyDensCells             , this->hyDensCells            );
@@ -2016,10 +1999,7 @@ public:
     YAKL_SCOPE( num_tracers             , this->num_tracers            );
     YAKL_SCOPE( bc_z                    , this->bc_z                   );
     YAKL_SCOPE( gllWts_ngll             , this->gllWts_ngll            );
-    YAKL_SCOPE( Rd                      , this->Rd                     );
-    YAKL_SCOPE( cp                      , this->cp                     );
     YAKL_SCOPE( gamma                   , this->gamma                  );
-    YAKL_SCOPE( p0                      , this->p0                     );
     YAKL_SCOPE( C0                      , this->C0                     );
     YAKL_SCOPE( vert_sten_to_gll        , this->vert_sten_to_gll       );
     YAKL_SCOPE( vert_sten_to_coefs      , this->vert_sten_to_coefs     );
@@ -2414,7 +2394,6 @@ public:
   void output(DataManager &dm, MICRO const &micro, real etime) const {
     YAKL_SCOPE( dx                    , this->dx                   );
     YAKL_SCOPE( dy                    , this->dy                   );
-    YAKL_SCOPE( dz                    , this->dz                   );
     YAKL_SCOPE( hyDensCells           , this->hyDensCells          );
     YAKL_SCOPE( hyDensThetaCells      , this->hyDensThetaCells     );
     YAKL_SCOPE( hyThetaCells          , this->hyThetaCells         );

@@ -140,7 +140,6 @@ public:
     });
 
     // Force constants into local scope
-    real gamma_d = this->constants.gamma_d;
     real R_d     = this->constants.R_d;
     real R_v     = this->constants.R_v;
     real cp_d    = this->constants.cp_d;
