@@ -38,13 +38,13 @@ contains
 
 
   subroutine micro_precip_fall(rho, adz, dz, rhow, qp, t, tabs, qpfall, tlat, precflux, precsfc, precssfc,       &
-                               prec_xy, qp_threshold, tprmin, a_pr, tgrmin, a_gr, vsnow, dtn, fac_cond, fac_fus, &
+                               prec_xy, qp_threshold, tprmin, a_pr, tgrmin, a_gr, dtn, fac_cond, fac_fus, &
                                b_rain, b_snow, b_grau, a_rain, a_snow, a_grau, gamr3, gams3, gamg3, rhor, rhos,  &
                                rhog, nzeror, nzeros, nzerog, ncol, nz)
     implicit none
     real(8), intent(in   ) :: rho     (ncol,nz  ) ! air density at pressure levels,kg/m3 
     real(8), intent(in   ) :: adz     (ncol,nz  ) ! ratio of the thickness of scalar levels to dz 
-    real(8), intent(in   ) :: dz      (ncol      ) ! constant grid spacing in z direction (when dz_constant=.true.)
+    real(8), intent(in   ) :: dz      (ncol     ) ! constant grid spacing in z direction (when dz_constant=.true.)
     real(8), intent(in   ) :: rhow    (ncol,nz+1) ! air density at vertical velocity levels,kg/m3
     real(8), intent(inout) :: qp      (ncol,nz  ) ! total precipitating water
     real(8), intent(inout) :: t       (ncol,nz  ) ! liquid/ice water static energy 
@@ -52,9 +52,9 @@ contains
     real(8), intent(inout) :: qpfall  (ncol,nz  ) ! for statistics
     real(8), intent(inout) :: tlat    (ncol,nz  ) ! for statistics
     real(8), intent(inout) :: precflux(ncol,nz  ) ! for statistics
-    real(8), intent(inout) :: precsfc (ncol      ) ! surface precip. rate
-    real(8), intent(inout) :: precssfc(ncol      ) ! surface ice precip. rate
-    real(8), intent(inout) :: prec_xy (ncol      ) ! mean precip. rate for outout
+    real(8), intent(inout) :: precsfc (ncol     ) ! surface precip. rate
+    real(8), intent(inout) :: precssfc(ncol     ) ! surface ice precip. rate
+    real(8), intent(inout) :: prec_xy (ncol     ) ! mean precip. rate for outout
     real(8), intent(in   ) :: qp_threshold, tprmin, a_pr, tgrmin, a_gr, dtn, fac_cond, fac_fus, b_rain, b_snow, &
                               b_grau, a_rain, a_snow, a_grau, gamr3, gams3, gamg3, rhor, rhos, rhog, nzeror,    &
                               nzeros, nzerog
