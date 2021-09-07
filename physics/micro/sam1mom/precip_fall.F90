@@ -37,8 +37,8 @@ contains
 
 
 
-  subroutine micro_precip_fall(rho, adz, dz, rhow, qp, t, tabs, qpfall, tlat, precflux, precsfc, precssfc,       &
-                               prec_xy, qp_threshold, tprmin, a_pr, tgrmin, a_gr, dtn, fac_cond, fac_fus, &
+  subroutine micro_precip_fall(rho, adz, dz, rhow, qp, t, tabs, qpfall, precflux, precsfc, precssfc,       &
+                               qp_threshold, tprmin, a_pr, tgrmin, a_gr, dtn, fac_cond, fac_fus, &
                                b_rain, b_snow, b_grau, a_rain, a_snow, a_grau, gamr3, gams3, gamg3, rhor, rhos,  &
                                rhog, nzeror, nzeros, nzerog, ncol, nz)
     implicit none
@@ -50,11 +50,9 @@ contains
     real(8), intent(inout) :: t       (ncol,nz  ) ! liquid/ice water static energy 
     real(8), intent(in   ) :: tabs    (ncol,nz  ) ! temperature
     real(8), intent(inout) :: qpfall  (ncol,nz  ) ! for statistics
-    real(8), intent(inout) :: tlat    (ncol,nz  ) ! for statistics
     real(8), intent(inout) :: precflux(ncol,nz  ) ! for statistics
     real(8), intent(inout) :: precsfc (ncol     ) ! surface precip. rate
     real(8), intent(inout) :: precssfc(ncol     ) ! surface ice precip. rate
-    real(8), intent(inout) :: prec_xy (ncol     ) ! mean precip. rate for outout
     real(8), intent(in   ) :: qp_threshold, tprmin, a_pr, tgrmin, a_gr, dtn, fac_cond, fac_fus, b_rain, b_snow, &
                               b_grau, a_rain, a_snow, a_grau, gamr3, gams3, gamg3, rhor, rhos, rhog, nzeror,    &
                               nzeros, nzerog
@@ -81,8 +79,8 @@ contains
       enddo
     enddo
 
-    call precip_fall(rho, adz, dz, omega, rhow, qp, t, tabs, qpfall, tlat, precflux, precsfc, precssfc,    &
-                     prec_xy, qp_threshold, tprmin, a_pr, vrain, crain, tgrmin, a_gr, vgrau, cgrau, vsnow, &
+    call precip_fall(rho, adz, dz, omega, rhow, qp, t, tabs, qpfall, precflux, precsfc, precssfc,    &
+                     qp_threshold, tprmin, a_pr, vrain, crain, tgrmin, a_gr, vgrau, cgrau, vsnow, &
                      csnow, dtn, fac_cond, fac_fus, ncol, nz)
 
     deallocate(omega)
@@ -93,8 +91,8 @@ contains
 
   ! Positively definite monotonic advection with non-oscillatory option
   ! and gravitational sedimentation
-  subroutine precip_fall(rho, adz, dz, omega, rhow, qp, t, tabs, qpfall, tlat, precflux, precsfc, precssfc,    &
-                         prec_xy, qp_threshold, tprmin, a_pr, vrain, crain, tgrmin, a_gr, vgrau, cgrau, vsnow, &
+  subroutine precip_fall(rho, adz, dz, omega, rhow, qp, t, tabs, qpfall, precflux, precsfc, precssfc,    &
+                         qp_threshold, tprmin, a_pr, vrain, crain, tgrmin, a_gr, vgrau, cgrau, vsnow, &
                          csnow, dtn, fac_cond, fac_fus, ncol, nz)
     implicit none
     real(8), intent(in   ) :: rho     (ncol,nz  ) ! air density at pressure levels,kg/m3 
@@ -106,11 +104,9 @@ contains
     real(8), intent(inout) :: t       (ncol,nz  ) ! liquid/ice water static energy 
     real(8), intent(in   ) :: tabs    (ncol,nz  ) ! temperature
     real(8), intent(inout) :: qpfall  (ncol,nz  ) ! for statistics
-    real(8), intent(inout) :: tlat    (ncol,nz  ) ! for statistics
     real(8), intent(inout) :: precflux(ncol,nz  ) ! for statistics
     real(8), intent(inout) :: precsfc (ncol      ) ! surface precip. rate
     real(8), intent(inout) :: precssfc(ncol      ) ! surface ice precip. rate
-    real(8), intent(inout) :: prec_xy (ncol      ) ! mean precip. rate for outout
     real(8), intent(in   ) :: qp_threshold, tprmin, a_pr, vrain, crain, tgrmin, a_gr, vgrau, cgrau, vsnow, csnow, dtn, &
                               fac_cond, fac_fus
     integer, intent(in   ) :: ncol, nz
@@ -281,13 +277,11 @@ contains
           qpfall(icol,k)=qpfall(icol,k)+tmp
           lat_heat = -(lfac(icol,kc)*fz(icol,kc)-lfac(icol,k)*fz(icol,k))*irhoadz(icol,k)
           t(icol,k)=t(icol,k)-lat_heat
-          tlat(icol,k)=tlat(icol,k)-lat_heat            ! For energy budget
           tmp = fz(icol,k)*flagstat
           precflux(icol,k) = precflux(icol,k) - tmp   ! For statistics
           if (k == 1) then
             precsfc(icol) = precsfc(icol) - fz(icol,1)*flagstat ! For statistics
             precssfc(icol) = precssfc(icol) - fz(icol,1)*(1.-omega(icol,1))*flagstat ! For statistics
-            prec_xy(icol) = prec_xy(icol) - fz(icol,1)*flagstat ! For 2D output
           endif
         enddo
       enddo

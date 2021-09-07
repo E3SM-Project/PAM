@@ -50,8 +50,8 @@ module micro_mod
 
 contains
 
-  subroutine micro(tabs, pres, rho, q, t, gamaz, qp, qn, qpsrc, qpevp, qv, qcl, qci, qpl, qpi, adz, dz, rhow, &
-                   qpfall, tlat, precflux, precsfc, precssfc, prec_xy, dt, ncol, nz)
+  subroutine micro(dt, ncol, nz, dz, adz, rho, rhow, pres, gamaz, tabs, q, t, qp, qpfall, precflux, precsfc, &
+                   precssfc, qn, qpsrc, qpevp, qv, qcl, qci, qpl, qpi)
     use precip_init_mod
     use cloud_mod
     use precip_proc_mod
@@ -59,32 +59,30 @@ contains
     use precip_fall_mod
     use ice_fall_mod
     implicit none
-    real(8), intent(inout) :: tabs   (ncol,nz  ) ! temperature
-    real(8), intent(in   ) :: pres   (ncol,nz  ) ! pressure,mb at scalar levels
-    real(8), intent(in   ) :: rho    (ncol,nz  ) ! air density at pressure levels,kg/m3 
-    real(8), intent(inout) :: q      (ncol,nz  ) ! total nonprecipitating water
-    real(8), intent(inout) :: t      (ncol,nz  ) ! liquid/ice water static energy 
-    real(8), intent(in   ) :: gamaz  (ncol,nz  ) ! grav/cp*z
-    real(8), intent(inout) :: qp     (ncol,nz  ) ! total precipitating water
-    real(8), intent(  out) :: qn     (ncol,nz  ) ! cloud condensate (liquid + ice)
-    real(8), intent(  out) :: qpsrc  (ncol,nz  ) ! source of precipitation microphysical processes
-    real(8), intent(  out) :: qpevp  (ncol,nz  ) ! sink of precipitating water due to evaporation
-    real(8), intent(  out) :: qv     (ncol,nz  ) ! water vapor
-    real(8), intent(  out) :: qcl    (ncol,nz  ) ! liquid water  (condensate)
-    real(8), intent(  out) :: qci    (ncol,nz  ) ! ice water  (condensate)
-    real(8), intent(  out) :: qpl    (ncol,nz  ) ! liquid water  (precipitation)
-    real(8), intent(  out) :: qpi    (ncol,nz  ) ! ice water  (precipitation)
-    real(8), intent(in   ) :: adz    (ncol,nz  ) ! ratio of the thickness of scalar levels to dz 
-    real(8), intent(in   ) :: dz     (ncol     ) ! constant grid spacing in z direction (when dz_constant=.true.)
-    real(8), intent(in   ) :: rhow   (ncol,nz+1) ! air density at vertical velocity levels,kg/m3
-    real(8), intent(inout) :: qpfall  (ncol,nz ) ! for statistics
-    real(8), intent(inout) :: tlat    (ncol,nz ) ! for statistics
-    real(8), intent(inout) :: precflux(ncol,nz ) ! for statistics
-    real(8), intent(inout) :: precsfc (ncol    ) ! surface precip. rate
-    real(8), intent(inout) :: precssfc(ncol    ) ! surface ice precip. rate
-    real(8), intent(inout) :: prec_xy (ncol    ) ! mean precip. rate for outout
     real(8), intent(in   ) :: dt
     integer, intent(in   ) :: ncol, nz
+    real(8), intent(in   ) :: dz      (ncol     ) ! constant grid spacing in z direction (when dz_constant=.true.)
+    real(8), intent(in   ) :: adz     (ncol,nz  ) ! ratio of the thickness of scalar levels to dz 
+    real(8), intent(in   ) :: rho     (ncol,nz  ) ! air density at pressure levels,kg/m3 
+    real(8), intent(in   ) :: rhow    (ncol,nz+1) ! air density at vertical velocity levels,kg/m3
+    real(8), intent(in   ) :: pres    (ncol,nz  ) ! pressure,mb at scalar levels
+    real(8), intent(in   ) :: gamaz   (ncol,nz  ) ! grav/cp*z
+    real(8), intent(inout) :: tabs    (ncol,nz  ) ! temperature
+    real(8), intent(inout) :: q       (ncol,nz  ) ! total nonprecipitating water
+    real(8), intent(inout) :: t       (ncol,nz  ) ! liquid/ice water static energy 
+    real(8), intent(inout) :: qp      (ncol,nz  ) ! total precipitating water
+    real(8), intent(inout) :: qpfall  (ncol,nz  ) ! for statistics
+    real(8), intent(inout) :: precflux(ncol,nz  ) ! for statistics
+    real(8), intent(inout) :: precsfc (ncol     ) ! surface precip. rate
+    real(8), intent(inout) :: precssfc(ncol     ) ! surface ice precip. rate
+    real(8), intent(  out) :: qn      (ncol,nz  ) ! cloud condensate (liquid + ice)
+    real(8), intent(  out) :: qpsrc   (ncol,nz  ) ! source of precipitation microphysical processes
+    real(8), intent(  out) :: qpevp   (ncol,nz  ) ! sink of precipitating water due to evaporation
+    real(8), intent(  out) :: qv      (ncol,nz  ) ! water vapor
+    real(8), intent(  out) :: qcl     (ncol,nz  ) ! liquid water  (condensate)
+    real(8), intent(  out) :: qci     (ncol,nz  ) ! ice water  (condensate)
+    real(8), intent(  out) :: qpl     (ncol,nz  ) ! liquid water  (precipitation)
+    real(8), intent(  out) :: qpi     (ncol,nz  ) ! ice water  (precipitation)
 
     ! The following are computed by precip_init
     real(8) :: accrsi (ncol,nz) ! Undocumented
@@ -168,8 +166,8 @@ contains
     ! real(8), intent(  out) :: qpi (ncol,nz) ! ice water  (precipitation)
     ! real(8), intent(in   ) :: qp  (ncol,nz) ! total precipitating water
 
-    call micro_precip_fall(rho, adz, dz, rhow, qp, t, tabs, qpfall, tlat, precflux, precsfc, precssfc,       &
-                           prec_xy, qp_threshold, tprmin, a_pr, tgrmin, a_gr, dt, fac_cond, fac_fus, &
+    call micro_precip_fall(rho, adz, dz, rhow, qp, t, tabs, qpfall, precflux, precsfc, precssfc,       &
+                           qp_threshold, tprmin, a_pr, tgrmin, a_gr, dt, fac_cond, fac_fus, &
                            b_rain, b_snow, b_grau, a_rain, a_snow, a_grau, gamr3, gams3, gamg3, rhor, rhos,  &
                            rhog, nzeror, nzeros, nzerog, ncol, nz)
     ! real(8), intent(in   ) :: rho     (ncol,nz  ) ! air density at pressure levels,kg/m3 
@@ -180,11 +178,9 @@ contains
     ! real(8), intent(inout) :: t       (ncol,nz  ) ! liquid/ice water static energy 
     ! real(8), intent(in   ) :: tabs    (ncol,nz  ) ! temperature
     ! real(8), intent(inout) :: qpfall  (ncol,nz  ) ! for statistics
-    ! real(8), intent(inout) :: tlat    (ncol,nz  ) ! for statistics
     ! real(8), intent(inout) :: precflux(ncol,nz  ) ! for statistics
     ! real(8), intent(inout) :: precsfc (ncol     ) ! surface precip. rate
     ! real(8), intent(inout) :: precssfc(ncol     ) ! surface ice precip. rate
-    ! real(8), intent(inout) :: prec_xy (ncol     ) ! mean precip. rate for outout
 
     call ice_fall( qcl, qci, tabs, adz, dz, rho, q, t, precsfc, precssfc, dt, fac_cond, fac_fus, ncol, nz )
     ! real(8), intent(in   ) :: qcl     (ncol,nz) ! liquid water  (condensate)
