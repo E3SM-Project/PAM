@@ -4,37 +4,33 @@ module micro_diagnose_mod
 
 contains
 
-  subroutine micro_diagnose(qv, q, qn, tabs, qcl, qci, qpl, qpi, qp, a_bg, a_pr, tbgmin, tprmin, ncrms, nx, ny, nzm)
+  subroutine micro_diagnose(qv, q, qn, tabs, qcl, qci, qpl, qpi, qp, a_bg, a_pr, tbgmin, tprmin, ncol, nzm)
     implicit none
-    real(8), intent(  out) :: qv  (ncrms,nx,ny,nzm)
-    real(8), intent(in   ) :: q   (ncrms,nx,ny,nzm)
-    real(8), intent(in   ) :: qn  (ncrms,nx,ny,nzm)
-    real(8), intent(in   ) :: tabs(ncrms,nx,ny,nzm)
-    real(8), intent(  out) :: qcl (ncrms,nx,ny,nzm)
-    real(8), intent(  out) :: qci (ncrms,nx,ny,nzm)
-    real(8), intent(  out) :: qpl (ncrms,nx,ny,nzm)
-    real(8), intent(  out) :: qpi (ncrms,nx,ny,nzm)
-    real(8), intent(in   ) :: qp  (ncrms,nx,ny,nzm)
+    real(8), intent(  out) :: qv  (ncol,nzm) ! water vapor
+    real(8), intent(in   ) :: q   (ncol,nzm) ! total nonprecipitating water
+    real(8), intent(in   ) :: qn  (ncol,nzm) ! cloud condensate (liquid + ice)
+    real(8), intent(in   ) :: tabs(ncol,nzm) ! temperature
+    real(8), intent(  out) :: qcl (ncol,nzm) ! liquid water  (condensate)
+    real(8), intent(  out) :: qci (ncol,nzm) ! ice water  (condensate)
+    real(8), intent(  out) :: qpl (ncol,nzm) ! liquid water  (precipitation)
+    real(8), intent(  out) :: qpi (ncol,nzm) ! ice water  (precipitation)
+    real(8), intent(in   ) :: qp  (ncol,nzm) ! total precipitating water
     real(8), intent(in   ) :: a_bg, a_pr, tbgmin, tprmin
-    integer, intent(in   ) :: ncrms, nx, ny, nzm
+    integer, intent(in   ) :: ncol, nzm
 
     real(8) :: omn, omp
-    integer :: i,j,k,icrm
+    integer :: icol,k
 
-    !$acc parallel loop collapse(4) async(asyncid)
+    !$acc parallel loop collapse(2) async(asyncid)
     do k=1,nzm
-      do j=1,ny
-        do i=1,nx
-          do icrm = 1 , ncrms
-            qv(icrm,i,j,k) = q(icrm,i,j,k) - qn(icrm,i,j,k)
-            omn = max(real(0.,8),min(real(1.,8),(tabs(icrm,i,j,k)-tbgmin)*a_bg))
-            qcl(icrm,i,j,k) = qn(icrm,i,j,k)*omn
-            qci(icrm,i,j,k) = qn(icrm,i,j,k)*(1.-omn)
-            omp = max(real(0.,8),min(real(1.,8),(tabs(icrm,i,j,k)-tprmin)*a_pr))
-            qpl(icrm,i,j,k) = qp(icrm,i,j,k)*omp
-            qpi(icrm,i,j,k) = qp(icrm,i,j,k)*(1.-omp)
-          enddo
-        enddo
+      do icol = 1 , ncol
+        qv(icol,k) = q(icol,k) - qn(icol,k)
+        omn = max(real(0.,8),min(real(1.,8),(tabs(icol,k)-tbgmin)*a_bg))
+        qcl(icol,k) = qn(icol,k)*omn
+        qci(icol,k) = qn(icol,k)*(1.-omn)
+        omp = max(real(0.,8),min(real(1.,8),(tabs(icol,k)-tprmin)*a_pr))
+        qpl(icol,k) = qp(icol,k)*omp
+        qpi(icol,k) = qp(icol,k)*(1.-omp)
       enddo
     enddo
   end subroutine micro_diagnose
