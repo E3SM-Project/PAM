@@ -50,8 +50,10 @@ module micro_mod
 
 contains
 
+
+
   subroutine micro(dt, ncol, nz, dz, adz, rho, rhow, pres, gamaz, tabs, q, t, qp, qpfall, precflux, precsfc, &
-                   precssfc, qn, qpsrc, qpevp, qv, qcl, qci, qpl, qpi)
+                   precssfc, qn, qpsrc, qpevp, qv, qcl, qci, qpl, qpi) bind(C, name="sam1mom_main_fortran")
     use precip_init_mod
     use cloud_mod
     use precip_proc_mod
@@ -187,14 +189,27 @@ contains
     ! real(8), intent(in   ) :: qci     (ncol,nz) ! ice water  (condensate)
     ! real(8), intent(in   ) :: tabs    (ncol,nz) ! temperature
     ! real(8), intent(in   ) :: adz     (ncol,nz) ! ratio of the thickness of scalar levels to dz 
-    ! real(8), intent(in   ) :: dz      (ncol    ) ! constant grid spacing in z direction (when dz_constant=.true.)
+    ! real(8), intent(in   ) :: dz      (ncol   ) ! constant grid spacing in z direction (when dz_constant=.true.)
     ! real(8), intent(in   ) :: rho     (ncol,nz) ! air density at pressure levels,kg/m3 
     ! real(8), intent(inout) :: q       (ncol,nz) ! total nonprecipitating water
     ! real(8), intent(inout) :: t       (ncol,nz) ! liquid/ice water static energy 
-    ! real(8), intent(inout) :: precsfc (ncol    ) ! surface precip. rate
-    ! real(8), intent(inout) :: precssfc(ncol    ) ! surface ice precip. rate
+    ! real(8), intent(inout) :: precsfc (ncol   ) ! surface precip. rate
+    ! real(8), intent(inout) :: precssfc(ncol   ) ! surface ice precip. rate
+
+    call micro_diagnose(qv, q, qn, tabs, qcl, qci, qpl, qpi, qp, a_bg, a_pr, tbgmin, tprmin, ncol, nz)
+    ! real(8), intent(  out) :: qv  (ncol,nz) ! water vapor
+    ! real(8), intent(in   ) :: q   (ncol,nz) ! total nonprecipitating water
+    ! real(8), intent(in   ) :: qn  (ncol,nz) ! cloud condensate (liquid + ice)
+    ! real(8), intent(in   ) :: tabs(ncol,nz) ! temperature
+    ! real(8), intent(  out) :: qcl (ncol,nz) ! liquid water  (condensate)
+    ! real(8), intent(  out) :: qci (ncol,nz) ! ice water  (condensate)
+    ! real(8), intent(  out) :: qpl (ncol,nz) ! liquid water  (precipitation)
+    ! real(8), intent(  out) :: qpi (ncol,nz) ! ice water  (precipitation)
+    ! real(8), intent(in   ) :: qp  (ncol,nz) ! total precipitating water
 
   endsubroutine micro
+
+
 
 endmodule micro_mod
 
