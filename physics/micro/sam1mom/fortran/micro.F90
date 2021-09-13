@@ -52,39 +52,23 @@ contains
 
 
 
-  subroutine micro(dt, ncol, nz, dz, adz, rho, rhow, pres, gamaz, tabs, q, t, qp, qpfall, precflux, precsfc, &
-                   precssfc, qn, qpsrc, qpevp, qv, qcl, qci, qpl, qpi) bind(C, name="sam1mom_main_fortran")
+  subroutine micro(dt, ncol, nz, zint, rho, rhow, pres, tabs, qv, qn, qp) bind(C, name="sam1mom_main_fortran")
     use precip_init_mod
     use cloud_mod
     use precip_proc_mod
-    use micro_diagnose_mod
     use precip_fall_mod
     use ice_fall_mod
     implicit none
     real(8), intent(in   ) :: dt
     integer, intent(in   ) :: ncol, nz
-    real(8), intent(in   ) :: dz      (ncol     ) ! constant grid spacing in z direction (when dz_constant=.true.)
-    real(8), intent(in   ) :: adz     (ncol,nz  ) ! ratio of the thickness of scalar levels to dz 
-    real(8), intent(in   ) :: rho     (ncol,nz  ) ! air density at pressure levels,kg/m3 
-    real(8), intent(in   ) :: rhow    (ncol,nz+1) ! air density at vertical velocity levels,kg/m3
-    real(8), intent(in   ) :: pres    (ncol,nz  ) ! pressure,mb at scalar levels
-    real(8), intent(in   ) :: gamaz   (ncol,nz  ) ! grav/cp*z
-    real(8), intent(inout) :: tabs    (ncol,nz  ) ! temperature
-    real(8), intent(inout) :: q       (ncol,nz  ) ! total nonprecipitating water
-    real(8), intent(inout) :: t       (ncol,nz  ) ! liquid/ice water static energy 
-    real(8), intent(inout) :: qp      (ncol,nz  ) ! total precipitating water
-    real(8), intent(inout) :: qpfall  (ncol,nz  ) ! for statistics
-    real(8), intent(inout) :: precflux(ncol,nz  ) ! for statistics
-    real(8), intent(inout) :: precsfc (ncol     ) ! surface precip. rate
-    real(8), intent(inout) :: precssfc(ncol     ) ! surface ice precip. rate
-    real(8), intent(  out) :: qn      (ncol,nz  ) ! cloud condensate (liquid + ice)
-    real(8), intent(  out) :: qpsrc   (ncol,nz  ) ! source of precipitation microphysical processes
-    real(8), intent(  out) :: qpevp   (ncol,nz  ) ! sink of precipitating water due to evaporation
-    real(8), intent(  out) :: qv      (ncol,nz  ) ! water vapor
-    real(8), intent(  out) :: qcl     (ncol,nz  ) ! liquid water  (condensate)
-    real(8), intent(  out) :: qci     (ncol,nz  ) ! ice water  (condensate)
-    real(8), intent(  out) :: qpl     (ncol,nz  ) ! liquid water  (precipitation)
-    real(8), intent(  out) :: qpi     (ncol,nz  ) ! ice water  (precipitation)
+    real(8), intent(in   ) :: zint(ncol,nz+1) ! constant grid spacing in z direction (when dz_constant=.true.)
+    real(8), intent(in   ) :: rho (ncol,nz  ) ! air density at pressure levels,kg/m3 
+    real(8), intent(in   ) :: rhow(ncol,nz+1) ! air density at vertical velocity levels,kg/m3
+    real(8), intent(in   ) :: pres(ncol,nz  ) ! pressure,mb at scalar levels
+    real(8), intent(inout) :: tabs(ncol,nz  ) ! temperature
+    real(8), intent(inout) :: qv  (ncol,nz  ) ! water vapor
+    real(8), intent(inout) :: qn  (ncol,nz  ) ! cloud condensate (liquid + ice)
+    real(8), intent(inout) :: qp  (ncol,nz  ) ! total precipitating water
 
     ! The following are computed by precip_init
     real(8) :: accrsi (ncol,nz) ! Undocumented
@@ -100,6 +84,64 @@ contains
     real(8) :: evapr1 (ncol,nz) ! Undocumented
     real(8) :: evapr2 (ncol,nz) ! Undocumented
     real(8) :: gam3, gamr1, gamr2, gamr3, gams1, gams2, gams3, gamg1, gamg2, gamg3
+
+    !Other internal variables
+    real(8) :: dz      (ncol)    ! Grid spacing at the lowest level
+    real(8) :: adz     (ncol,nz) ! Ratio of grid spacing to dz
+    real(8) :: gamaz   (ncol,nz) ! grav/cp*z
+    real(8) :: t       (ncol,nz) ! liquid/ice water static energy 
+    real(8) :: q       (ncol,nz) ! total nonprecipitating water
+    real(8) :: qcl     (ncol,nz) ! liquid water  (condensate)
+    real(8) :: qci     (ncol,nz) ! ice water  (condensate)
+    real(8) :: qpl     (ncol,nz) ! liquid water  (precipitation)
+    real(8) :: qpi     (ncol,nz) ! ice water  (precipitation)
+    real(8) :: qpfall  (ncol,nz) ! for statistics
+    real(8) :: precflux(ncol,nz) ! for statistics
+    real(8) :: precsfc (ncol   ) ! surface precip. rate
+    real(8) :: precssfc(ncol   ) ! surface ice precip. rate
+    real(8) :: qpsrc   (ncol,nz) ! source of precipitation microphysical processes
+    real(8) :: qpevp   (ncol,nz) ! sink of precipitating water due to evaporation
+    real(8) :: zmid, omn, omp
+    integer :: icol, k
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !! Compute initial quantities
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    do icol = 1 , ncol
+      dz(icol) = zint(icol,2) - zint(icol,1)
+    enddo
+
+    do k = 1 , nz
+      do icol = 1 , ncol
+        ! Compute adz
+        adz(icol,k) = ( zint(icol,k+1) - zint(icol,k) ) / dz(icol)
+
+        ! Compute gamaz
+        zmid = 0.5D0 * ( zint(icol,k) + zint(icol,k+1) )
+        gamaz(icol,k)=ggr/cp*zmid
+
+        ! Compute qcl, qci, qpl, qpi, and t
+        omn = max(real(0.,8),min(real(1.,8),(tabs(icol,k)-tbgmin)*a_bg))
+        omp = max(real(0.,8),min(real(1.,8),(tabs(icol,k)-tprmin)*a_pr))
+        qcl(icol,k) = qn(icol,k)*omn
+        qci(icol,k) = qn(icol,k)*(1.-omn)
+        qpl(icol,k) = qp(icol,k)*omp
+        qpi(icol,k) = qp(icol,k)*(1.-omp)
+        t  (icol,k) = tabs(icol,k)+gamaz(icol,k)-fac_cond*qcl(icol,k)-fac_sub*qci(icol,k) &
+                                                -fac_cond*qpl(icol,k)-fac_sub*qpi(icol,k)
+
+        ! Compute q
+        q(icol,k) = qv(icol,k) + qn(icol,k)
+
+        ! Initialize statistics variables to zero
+        qpfall  (icol,k) = 0
+        precflux(icol,k) = 0
+        precsfc (icol  ) = 0
+        precssfc(icol  ) = 0
+        qpsrc   (icol,k) = 0
+        qpevp   (icol,k) = 0
+      enddo
+    enddo
 
     call precip_init(tabs, pres, rho, accrsi, accrsc, coefice, evaps1, evaps2, accrgi, accrgc, evapg1, evapg2,  &
                      accrrc, evapr1, evapr2, b_rain, b_snow, b_grau, a_grau, a_rain, a_snow, diffelq, egccoef,  &
@@ -157,16 +199,36 @@ contains
     ! real(8), intent(in   ) :: evapg1 (ncol,nz) ! Undocumented
     ! real(8), intent(in   ) :: evapg2 (ncol,nz) ! Undocumented
 
-    call micro_diagnose(qv, q, qn, tabs, qcl, qci, qpl, qpi, qp, a_bg, a_pr, tbgmin, tprmin, ncol, nz)
-    ! real(8), intent(  out) :: qv  (ncol,nz) ! water vapor
-    ! real(8), intent(in   ) :: q   (ncol,nz) ! total nonprecipitating water
-    ! real(8), intent(in   ) :: qn  (ncol,nz) ! cloud condensate (liquid + ice)
-    ! real(8), intent(in   ) :: tabs(ncol,nz) ! temperature
-    ! real(8), intent(  out) :: qcl (ncol,nz) ! liquid water  (condensate)
-    ! real(8), intent(  out) :: qci (ncol,nz) ! ice water  (condensate)
-    ! real(8), intent(  out) :: qpl (ncol,nz) ! liquid water  (precipitation)
-    ! real(8), intent(  out) :: qpi (ncol,nz) ! ice water  (precipitation)
-    ! real(8), intent(in   ) :: qp  (ncol,nz) ! total precipitating water
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !! Update t from tabs, which was changed in cloud()
+    !! Also updates qcl and qci, which are needed in ice_fall
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    do k = 1 , nz
+      do icol = 1 , ncol
+        ! Compute qcl, qci, qpl, qpi, and t
+        omn = max(real(0.,8),min(real(1.,8),(tabs(icol,k)-tbgmin)*a_bg))
+        omp = max(real(0.,8),min(real(1.,8),(tabs(icol,k)-tprmin)*a_pr))
+        qcl(icol,k) = qn(icol,k)*omn
+        qci(icol,k) = qn(icol,k)*(1.-omn)
+        qpl(icol,k) = qp(icol,k)*omp
+        qpi(icol,k) = qp(icol,k)*(1.-omp)
+        t  (icol,k) = tabs(icol,k)+gamaz(icol,k)-fac_cond*qcl(icol,k)-fac_sub*qci(icol,k) &
+                                                -fac_cond*qpl(icol,k)-fac_sub*qpi(icol,k)
+      enddo
+    enddo
+
+    ! NOTE: In SAM, ice_fall happens before precip_fall
+    call ice_fall( qcl, qci, tabs, adz, dz, rho, q, t, precsfc, precssfc, dt, fac_cond, fac_fus, ncol, nz )
+    ! real(8), intent(in   ) :: qcl     (ncol,nz) ! liquid water  (condensate)
+    ! real(8), intent(in   ) :: qci     (ncol,nz) ! ice water  (condensate)
+    ! real(8), intent(in   ) :: tabs    (ncol,nz) ! temperature
+    ! real(8), intent(in   ) :: adz     (ncol,nz) ! ratio of the thickness of scalar levels to dz 
+    ! real(8), intent(in   ) :: dz      (ncol   ) ! constant grid spacing in z direction (when dz_constant=.true.)
+    ! real(8), intent(in   ) :: rho     (ncol,nz) ! air density at pressure levels,kg/m3 
+    ! real(8), intent(inout) :: q       (ncol,nz) ! total nonprecipitating water
+    ! real(8), intent(inout) :: t       (ncol,nz) ! liquid/ice water static energy 
+    ! real(8), intent(inout) :: precsfc (ncol   ) ! surface precip. rate
+    ! real(8), intent(inout) :: precssfc(ncol   ) ! surface ice precip. rate
 
     call micro_precip_fall(rho, adz, dz, rhow, qp, t, tabs, qpfall, precflux, precsfc, precssfc,       &
                            qp_threshold, tprmin, a_pr, tgrmin, a_gr, dt, fac_cond, fac_fus, &
@@ -184,28 +246,24 @@ contains
     ! real(8), intent(inout) :: precsfc (ncol     ) ! surface precip. rate
     ! real(8), intent(inout) :: precssfc(ncol     ) ! surface ice precip. rate
 
-    call ice_fall( qcl, qci, tabs, adz, dz, rho, q, t, precsfc, precssfc, dt, fac_cond, fac_fus, ncol, nz )
-    ! real(8), intent(in   ) :: qcl     (ncol,nz) ! liquid water  (condensate)
-    ! real(8), intent(in   ) :: qci     (ncol,nz) ! ice water  (condensate)
-    ! real(8), intent(in   ) :: tabs    (ncol,nz) ! temperature
-    ! real(8), intent(in   ) :: adz     (ncol,nz) ! ratio of the thickness of scalar levels to dz 
-    ! real(8), intent(in   ) :: dz      (ncol   ) ! constant grid spacing in z direction (when dz_constant=.true.)
-    ! real(8), intent(in   ) :: rho     (ncol,nz) ! air density at pressure levels,kg/m3 
-    ! real(8), intent(inout) :: q       (ncol,nz) ! total nonprecipitating water
-    ! real(8), intent(inout) :: t       (ncol,nz) ! liquid/ice water static energy 
-    ! real(8), intent(inout) :: precsfc (ncol   ) ! surface precip. rate
-    ! real(8), intent(inout) :: precssfc(ncol   ) ! surface ice precip. rate
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !! Compute tabs from t. Compute qv from q and qn
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    do k = 1 , nz
+      do icol = 1 , ncol
+        ! Compute qv
+        qv(icol,k) = q(icol,k) - qn(icol,k)
 
-    call micro_diagnose(qv, q, qn, tabs, qcl, qci, qpl, qpi, qp, a_bg, a_pr, tbgmin, tprmin, ncol, nz)
-    ! real(8), intent(  out) :: qv  (ncol,nz) ! water vapor
-    ! real(8), intent(in   ) :: q   (ncol,nz) ! total nonprecipitating water
-    ! real(8), intent(in   ) :: qn  (ncol,nz) ! cloud condensate (liquid + ice)
-    ! real(8), intent(in   ) :: tabs(ncol,nz) ! temperature
-    ! real(8), intent(  out) :: qcl (ncol,nz) ! liquid water  (condensate)
-    ! real(8), intent(  out) :: qci (ncol,nz) ! ice water  (condensate)
-    ! real(8), intent(  out) :: qpl (ncol,nz) ! liquid water  (precipitation)
-    ! real(8), intent(  out) :: qpi (ncol,nz) ! ice water  (precipitation)
-    ! real(8), intent(in   ) :: qp  (ncol,nz) ! total precipitating water
+        !Compute tabs
+        omn = max(real(0.,8),min(real(1.,8),(tabs(icol,k)-tbgmin)*a_bg))
+        omp = max(real(0.,8),min(real(1.,8),(tabs(icol,k)-tprmin)*a_pr))
+        qcl(icol,k) = qn(icol,k)*omn
+        qci(icol,k) = qn(icol,k)*(1.-omn)
+        qpl(icol,k) = qp(icol,k)*omp
+        qpi(icol,k) = qp(icol,k)*(1.-omp)
+        tabs(icol,k) = t(icol,k) - gamaz(icol,k) + fac_cond*qcl(icol,k) + fac_sub*qci(icol,k) + fac_cond*qpl(icol,k) + fac_sub*qpi(icol,k)
+      enddo
+    enddo
 
   endsubroutine micro
 

@@ -5,13 +5,24 @@
 #include "DataManager.h"
 
 
-extern "C"
-void sam1mom_main_fortran(double &dt, int &ncol, int &nz, double *dz, double *adz, double *rho, double *rhow,
-                          double *pres, double *gamaz, double *tabs, double *q, double *t, double *qp,
-                          double *qpfall, double *precflux, double *precsfc, double *precssfc, double *qn,
-                          double *qpsrc, double *qpevp, double *qv, double *qcl, double *qci, double *qpl,
-                          double *qpi);
+// subroutine micro(dt, ncol, nz, zint, rho, rhow, pres, tabs, qv, qn, qp) bind(C, name="sam1mom_main_fortran")
+//   implicit none
+//   real(8), intent(in   ) :: dt
+//   integer, intent(in   ) :: ncol, nz
+//   real(8), intent(in   ) :: zint(ncol,nz+1) ! constant grid spacing in z direction (when dz_constant=.true.)
+//   real(8), intent(in   ) :: rho (ncol,nz  ) ! air density at pressure levels,kg/m3 
+//   real(8), intent(in   ) :: rhow(ncol,nz+1) ! air density at vertical velocity levels,kg/m3
+//   real(8), intent(in   ) :: pres(ncol,nz  ) ! pressure,mb at scalar levels
+//   real(8), intent(inout) :: tabs(ncol,nz  ) ! temperature
+//   real(8), intent(inout) :: qv  (ncol,nz  ) ! water vapor
+//   real(8), intent(inout) :: qn  (ncol,nz  ) ! cloud condensate (liquid + ice)
+//   real(8), intent(inout) :: qp  (ncol,nz  ) ! total precipitating water
 
+
+
+extern "C"
+void sam1mom_main_fortran(double &dt, int &ncol, int &nz, double *zint, double *rho, double *rhow, double *pres, 
+                          double *tabs, double *qv, double *qn, double *qp);
 
 class Microphysics {
 public:
@@ -44,15 +55,9 @@ public:
   SArray<int,1,num_tracers> tracer_IDs; // tracer index for microphysics tracers
 
   // Indices for all of your tracer quantities
-  int static constexpr ID_C  = 0;  // Local index for Cloud Water Mass  
-  int static constexpr ID_NC = 1;  // Local index for Cloud Water Number
-  int static constexpr ID_R  = 2;  // Local index for Rain Water Mass   
-  int static constexpr ID_NR = 3;  // Local index for Rain Water Number 
-  int static constexpr ID_I  = 4;  // Local index for Ice Mass          
-  int static constexpr ID_M  = 5;  // Local index for Ice Number        
-  int static constexpr ID_NI = 6;  // Local index for Ice-Rime Mass     
-  int static constexpr ID_BM = 7;  // Local index for Ice-Rime Volume   
-  int static constexpr ID_V  = 8;  // Local index for Water Vapor       
+  int static constexpr ID_V  = 0;  // Local index for Water Vapor       
+  int static constexpr ID_C  = 1;  // Local index for Total Cloud Condensage (liquid + ice)
+  int static constexpr ID_P  = 2;  // Local index for Total Precip
 
 
 
@@ -95,127 +100,28 @@ public:
   void init(std::string infile , int ny, int nx, int nens , DC &dycore , DataManager &dm) {
     int nz = dm.get_dimension_size("z");
 
-    real q(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)   ! total nonprecipitating water
-    real qp(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)  ! total precipitating water
-
     // Register tracers in the dycore
-    //                                        name                 description                    positive   adds mass
-    tracer_IDs(ID_C ) = dycore.add_tracer(dm , "total_water"  , "Total Non-Precipitating Water" , true     , true );
-    tracer_IDs(ID_NC) = dycore.add_tracer(dm , "total_precip" , "Total Precipitation Water"     , true     , true );
+    //                                        name            description                positive   adds mass
+    tracer_IDs(ID_V) = dycore.add_tracer(dm , "water_vapor" , "Water Vapor"            , true     , true );
+    tracer_IDs(ID_C) = dycore.add_tracer(dm , "cloud_cond"  , "Total Cloud Condensate" , true     , true );
+    tracer_IDs(ID_P) = dycore.add_tracer(dm , "precip"      , "Total Precip"           , true     , true );
 
     // Register and allocate the tracers in the DataManager
-    dm.register_and_allocate<real>( "total_water"  , "Total Non-Precipitating Water" , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    dm.register_and_allocate<real>( "total_precip" , "Total Precipitation Water"     , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    dm.register_and_allocate<real>( "water_vapor" , "Water Vapor"            , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    dm.register_and_allocate<real>( "cloud_cond"  , "Total Cloud Condensate" , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    dm.register_and_allocate<real>( "precip"      , "Total Precip"           , {nz,ny,nx,nens} , {"z","y","x","nens"} );
 
     tracer_index_vapor = tracer_IDs(ID_V);
 
-    // Register and allocation non-tracer quantities used by the microphysics
-    int p3_nout = 49;
-    dm.register_and_allocate<real>( "precip_liq_surf"    , "precipitation rate, liquid       m s-1"              , {             ny,nx,nens} , {                "y","x","nens"} );
-    dm.register_and_allocate<real>( "precip_ice_surf"    , "precipitation rate, solid        m s-1"              , {             ny,nx,nens} , {                "y","x","nens"} );
-    dm.register_and_allocate<real>( "diag_eff_radius_qc" , "effective radius, cloud          m"                  , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "diag_eff_radius_qi" , "effective radius, ice            m"                  , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "bulk_qi"            , "bulk density of ice              kg m-3"             , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "mu_c"               , "Size distribution shape parameter for radiation"     , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "lamc"               , "Size distribution slope parameter for radiation"     , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "qv2qi_depos_tend"   , "qitend due to deposition/sublimation"                , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "precip_total_tend"  , "Total precipitation (rain + snow)"                   , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "nevapr"             , "evaporation of total precipitation (rain + snow)"    , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "qr_evap_tend"       , "evaporation of rain"                                 , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "precip_liq_flux"    , "grid-box average rain flux (kg m^-2 s^-1) pverp"     , {        nz+1,ny,nx,nens} , {          "zp1","y","x","nens"} );
-    dm.register_and_allocate<real>( "precip_ice_flux"    , "grid-box average ice/snow flux (kg m^-2 s^-1) pverp" , {        nz+1,ny,nx,nens} , {          "zp1","y","x","nens"} );
-    dm.register_and_allocate<real>( "liq_ice_exchange"   , "sum of liq-ice phase change tendenices"              , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "vap_liq_exchange"   , "sum of vap-liq phase change tendenices"              , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "vap_ice_exchange"   , "sum of vap-ice phase change tendenices"              , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "p3_tend_out"        , "micro physics tendencies"                            , {p3_nout,nz  ,ny,nx,nens} , {"p3_nout","z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "qv_prev"            , "qv from the previous step"                           , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "t_prev"             , "Temperature from the previous step"                  , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-
-    auto cloud_water         = dm.get<real,4>( "cloud_water"        );
-    auto cloud_water_num     = dm.get<real,4>( "cloud_water_num"    );
-    auto rain                = dm.get<real,4>( "rain"               );
-    auto rain_num            = dm.get<real,4>( "rain_num"           );
-    auto ice                 = dm.get<real,4>( "ice"                );
-    auto ice_num             = dm.get<real,4>( "ice_num"            );
-    auto ice_rime            = dm.get<real,4>( "ice_rime"           );
-    auto ice_rime_vol        = dm.get<real,4>( "ice_rime_vol"       );
     auto water_vapor         = dm.get<real,4>( "water_vapor"        );
-    auto precip_liq_surf     = dm.get<real,3>( "precip_liq_surf"    );
-    auto precip_ice_surf     = dm.get<real,3>( "precip_ice_surf"    );
-    auto diag_eff_radius_qc  = dm.get<real,4>( "diag_eff_radius_qc" );
-    auto diag_eff_radius_qi  = dm.get<real,4>( "diag_eff_radius_qi" );
-    auto bulk_qi             = dm.get<real,4>( "bulk_qi"            );
-    auto mu_c                = dm.get<real,4>( "mu_c"               );
-    auto lamc                = dm.get<real,4>( "lamc"               );
-    auto qv2qi_depos_tend    = dm.get<real,4>( "qv2qi_depos_tend"   );
-    auto precip_total_tend   = dm.get<real,4>( "precip_total_tend"  );
-    auto nevapr              = dm.get<real,4>( "nevapr"             );
-    auto qr_evap_tend        = dm.get<real,4>( "qr_evap_tend"       );
-    auto precip_liq_flux     = dm.get<real,4>( "precip_liq_flux"    );
-    auto precip_ice_flux     = dm.get<real,4>( "precip_ice_flux"    );
-    auto liq_ice_exchange    = dm.get<real,4>( "liq_ice_exchange"   );
-    auto vap_liq_exchange    = dm.get<real,4>( "vap_liq_exchange"   );
-    auto vap_ice_exchange    = dm.get<real,4>( "vap_ice_exchange"   );
-    auto p3_tend_out         = dm.get<real,5>( "p3_tend_out"        );
-    auto qv_prev             = dm.get<real,4>( "qv_prev"            );
-    auto t_prev              = dm.get<real,4>( "t_prev"             );
+    auto cloud_cond          = dm.get<real,4>( "cloud_cond"         );
+    auto precip              = dm.get<real,4>( "precip"             );
 
     parallel_for( "micro zero" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      cloud_water       (k,j,i,iens) = 0;
-      cloud_water_num   (k,j,i,iens) = 0;
-      rain              (k,j,i,iens) = 0;
-      rain_num          (k,j,i,iens) = 0;
-      ice               (k,j,i,iens) = 0;
-      ice_num           (k,j,i,iens) = 0;
-      ice_rime          (k,j,i,iens) = 0;
-      ice_rime_vol      (k,j,i,iens) = 0;
-      water_vapor       (k,j,i,iens) = 0;
-      precip_liq_surf   (  j,i,iens) = 0;
-      precip_ice_surf   (  j,i,iens) = 0;
-      diag_eff_radius_qc(k,j,i,iens) = 0;
-      diag_eff_radius_qi(k,j,i,iens) = 0;
-      bulk_qi           (k,j,i,iens) = 0;
-      mu_c              (k,j,i,iens) = 0;
-      lamc              (k,j,i,iens) = 0;
-      qv2qi_depos_tend  (k,j,i,iens) = 0;
-      precip_total_tend (k,j,i,iens) = 0;
-      nevapr            (k,j,i,iens) = 0;
-      qr_evap_tend      (k,j,i,iens) = 0;
-      precip_liq_flux   (k,j,i,iens) = 0;
-      precip_ice_flux   (k,j,i,iens) = 0;
-      liq_ice_exchange  (k,j,i,iens) = 0;
-      vap_liq_exchange  (k,j,i,iens) = 0;
-      vap_ice_exchange  (k,j,i,iens) = 0;
-      qv_prev           (k,j,i,iens) = 0;
-      t_prev            (k,j,i,iens) = 0;
-
-      if (k == nz-1) {
-        precip_liq_flux(nz,j,i,iens) = 0;
-        precip_ice_flux(nz,j,i,iens) = 0;
-      }
-
-      for (int l=0; l < p3_nout; l++) {
-        p3_tend_out(l,k,j,i,iens) = 0;
-      }
+      water_vapor(k,j,i,iens) = 0;
+      cloud_cond (k,j,i,iens) = 0;
+      precip     (k,j,i,iens) = 0;
     });
-
-    real rhoh2o = 1000.;
-    real mwdry  = 28.966;
-    real mwh2o  = 0.622 * mwdry;
-    real latvap = 2.5E6;
-    real latice = 3.50E5;
-    real tmelt  = 273.15;
-    real pi     = M_PI;
-    int  iulog  = 1;
-    bool masterproc = true;
-    micro_p3_utils_init_fortran( constants.cp_d , constants.R_d , constants.R_v , rhoh2o , mwh2o , mwdry ,
-                                 grav , latvap , latice, cp_l , tmelt , pi , iulog , masterproc );
-
-    std::string dir = "../../physics/micro/p3";
-    std::string ver = "4";
-    int dir_len = dir.length();
-    int ver_len = ver.length();
-    p3_init_fortran( dir.c_str() , dir_len , ver.c_str() , ver_len );
   }
 
 
