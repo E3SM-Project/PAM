@@ -13,8 +13,6 @@ int main(int argc, char** argv) {
 
     pam::PamCoupler coupler;
 
-    DataManager dm;
-
     if (argc <= 1) { endrun("ERROR: Must pass the input YAML filename as a parameter"); }
     std::string inFile(argv[1]);
     YAML::Node config = YAML::LoadFile(inFile);
@@ -65,9 +63,8 @@ int main(int argc, char** argv) {
     dycore.init_state_and_tracers( coupler.dm , micro );
 
     // Now that we have an initial state, define hydrostasis for each ensemble member
-    coupler.update_hydrostasis();
-
-    auto press_edges = coupler.interp_pressure_interfaces();
+    auto press = pam::compute_pressure_array( coupler.dm , micro.constants.R_d , micro.constants.R_v );
+    coupler.update_hydrostasis( press );
 
     real etime = 0;
 

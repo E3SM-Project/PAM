@@ -142,7 +142,7 @@ public:
 
 
   template <class T, int N>
-  Array<T,N,memDevice,styleC> get( std::string name ) {
+  Array<T,N,memDevice,styleC> get( std::string name ) const {
     // Make sure we have this name as an entry
     int id = find_entry_or_error( name );
     // Make sure it's the right type and dimensionality
@@ -154,7 +154,7 @@ public:
 
 
   template <class T>
-  Array<T,2,memDevice,styleC> get_lev_col( std::string name ) {
+  Array<T,2,memDevice,styleC> get_lev_col( std::string name ) const {
     // Make sure we have this name as an entry
     int id = find_entry_or_error( name );
     // Make sure it's the right type
@@ -171,7 +171,7 @@ public:
 
 
   template <class T>
-  Array<T,1,memDevice,styleC> get_collapsed( std::string name ) {
+  Array<T,1,memDevice,styleC> get_collapsed( std::string name ) const {
     // Make sure we have this name as an entry
     int id = find_entry_or_error( name );
     // Make sure it's the right type

@@ -1,7 +1,6 @@
 
 set(MICRO_SRC fortran/cloud.F90
               fortran/ice_fall.F90
-              fortran/micro_diagnose.F90
               fortran/micro.F90
               fortran/precip_fall.F90
               fortran/precip_init.F90
