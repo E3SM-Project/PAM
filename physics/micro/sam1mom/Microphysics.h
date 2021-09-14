@@ -177,7 +177,7 @@ public:
       qv      (k,i) = rho_v(k,i) / density(k,i);
       qn      (k,i) = rho_n(k,i) / density(k,i);
       qp      (k,i) = rho_p(k,i) / density(k,i);
-      pressure(k,i) = R_d * rho_dry(k,i) * temp(k,i) + R_v * rho_v(k,i) * temp(k,i);
+      pressure(k,i) = ( R_d * rho_dry(k,i) * temp(k,i) + R_v * rho_v(k,i) * temp(k,i) ) / 100.;
     });
 
     auto density_int = pam::interp_density_interfaces( dm , density.reshape<4>({nz,ny,nx,nens}) , grav ).reshape<2>({nz+1,ncol});
