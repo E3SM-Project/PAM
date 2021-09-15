@@ -95,6 +95,24 @@ int main() {
       temp_cxx = temp;
     }
 
+    int ncol = size(qv_cxx,1);
+    int nz   = size(qv_cxx,2);
+
+    real2d_f qv_adiff  ("qv_adiff  ",ncol,nz);
+    real2d_f qn_adiff  ("qn_adiff  ",ncol,nz);
+    real2d_f qp_adiff  ("qp_adiff  ",ncol,nz);
+    real2d_f temp_adiff("temp_adiff",ncol,nz);
+    yakl::fortran::parallel_for( yakl::fortran::Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
+      qv_adiff  (icol,k) = abs( qv_cxx  (icol,k) - qv_fortran  (icol,k) );
+      qn_adiff  (icol,k) = abs( qn_cxx  (icol,k) - qn_fortran  (icol,k) );
+      qp_adiff  (icol,k) = abs( qp_cxx  (icol,k) - qp_fortran  (icol,k) );
+      temp_adiff(icol,k) = abs( temp_cxx(icol,k) - temp_fortran(icol,k) );
+    });
+    std::cout << "Relative diff qv  : " << std::scientific << std::setprecision(16) << yakl::intrinsics::sum(qv_adiff  ) / yakl::intrinsics::sum( qv_fortran   ) << "\n";
+    std::cout << "Relative diff qn  : " << std::scientific << std::setprecision(16) << yakl::intrinsics::sum(qn_adiff  ) / yakl::intrinsics::sum( qn_fortran   ) << "\n";
+    std::cout << "Relative diff qp  : " << std::scientific << std::setprecision(16) << yakl::intrinsics::sum(qp_adiff  ) / yakl::intrinsics::sum( qp_fortran   ) << "\n";
+    std::cout << "Relative diff temp: " << std::scientific << std::setprecision(16) << yakl::intrinsics::sum(temp_adiff) / yakl::intrinsics::sum( temp_fortran ) << "\n";
+
   }
   yakl::finalize();
 }
