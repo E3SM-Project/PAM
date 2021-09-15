@@ -11,7 +11,7 @@ cmake      \
   -DYAKL_HIP_FLAGS="${YAKL_HIP_FLAGS}"           \
   -DYAKL_C_FLAGS="${YAKL_C_FLAGS}"               \
   -DYAKL_F90_FLAGS="${YAKL_F90_FLAGS}"           \
-  -DNF_INCLUDE="${NF_INCLUDE}"                   \
-  -DNF_LIBS="${NF_LIBS}"                         \
+  -DNC_INCLUDE="${NC_INCLUDE}"                   \
+  -DNC_LIBS="${NC_LIBS}"                         \
   -DYAKL_ARCH="${YAKL_ARCH}"                     \
   ..
