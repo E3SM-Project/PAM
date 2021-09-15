@@ -4,6 +4,7 @@
 #include "awfl_const.h"
 #include "DataManager.h"
 #include "pam_coupler.h"
+#include "Sam1mom.h"
 
 
 // subroutine micro(dt, ncol, nz, zint, rho, rhow, pres, tabs, qv, qn, qp) bind(C, name="sam1mom_main_fortran")
@@ -210,26 +211,19 @@ public:
       nc.close();
     #endif
 
-    auto qv_host          = qv         .createHostCopy();
-    auto qn_host          = qn         .createHostCopy();
-    auto qp_host          = qp         .createHostCopy();
-    auto zint_host        = zint       .createHostCopy();
-    auto pressure_host    = pressure   .createHostCopy();
-    auto temp_host        = temp       .createHostCopy();
-    auto density_host     = density    .createHostCopy();
-    auto density_int_host = density_int.createHostCopy();
+    typedef yakl::Array<real,2,yakl::memDevice,yakl::styleFortran> real2d_f;
 
-    sam1mom_main_fortran( dt , ncol , nz , zint_host.data() , density_host.data() , density_int_host.data() ,
-                          pressure_host.data() , temp_host.data() , qv_host.data() , qn_host.data() , qp_host.data() );
+    real2d_f qv_fortran          = real2d_f("qv         ",qv         .data(),ncol,nz  );
+    real2d_f qn_fortran          = real2d_f("qn         ",qn         .data(),ncol,nz  );
+    real2d_f qp_fortran          = real2d_f("qp         ",qp         .data(),ncol,nz  );
+    real2d_f zint_fortran        = real2d_f("zint       ",zint       .data(),ncol,nz+1);
+    real2d_f pressure_fortran    = real2d_f("pressure   ",pressure   .data(),ncol,nz  );
+    real2d_f temp_fortran        = real2d_f("temp       ",temp       .data(),ncol,nz  );
+    real2d_f density_fortran     = real2d_f("density    ",density    .data(),ncol,nz  );
+    real2d_f density_int_fortran = real2d_f("density_int",density_int.data(),ncol,nz+1);
 
-    qv_host         .deep_copy_to(qv         );
-    qn_host         .deep_copy_to(qn         );
-    qp_host         .deep_copy_to(qp         );
-    zint_host       .deep_copy_to(zint       );
-    pressure_host   .deep_copy_to(pressure   );
-    temp_host       .deep_copy_to(temp       );
-    density_host    .deep_copy_to(density    );
-    density_int_host.deep_copy_to(density_int);
+    sam1mom::Sam1mom micro;
+    micro.main( dt , zint_fortran , density_fortran , density_int_fortran , pressure_fortran , temp_fortran , qv_fortran , qn_fortran , qp_fortran );
                     
     ///////////////////////////////////////////////////////////////////////////////
     // Convert sam1mom outputs into dynamics coupler state and tracer masses

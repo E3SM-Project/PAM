@@ -1,7 +1,7 @@
 
 #include "YAKL.h"
 #include "YAKL_netcdf.h"
-#include "sam1mom.h"
+#include "Sam1mom.h"
 
 using yakl::intrinsics::size;
 using yakl::intrinsics::shape;
