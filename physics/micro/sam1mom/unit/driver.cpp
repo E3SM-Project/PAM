@@ -86,7 +86,8 @@ int main() {
       int ncol = size(qv,1);
       int nz   = size(qv,2);
 
-      sam1mom::main( dt , zint , density , density_int , pressure , temp , qv , qn , qp );
+      sam1mom::Sam1mom micro;
+      micro.main( dt , zint , density , density_int , pressure , temp , qv , qn , qp );
 
       qv_cxx   = qv  ;
       qn_cxx   = qn  ;
