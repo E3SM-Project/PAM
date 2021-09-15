@@ -215,18 +215,18 @@ namespace sam1mom {
                                                 -fac_cond*qpl(icol,k)-fac_sub*qpi(icol,k);
       });
 
-      // ! NOTE: In SAM, ice_fall happens before precip_fall
-      // call ice_fall( qcl, qci, tabs, adz, dz, rho, q, t, precsfc, precssfc, dt, fac_cond, fac_fus, ncol, nz )
-      // ! real(8), intent(in   ) :: qcl     (ncol,nz) ! liquid water  (condensate)
-      // ! real(8), intent(in   ) :: qci     (ncol,nz) ! ice water  (condensate)
-      // ! real(8), intent(in   ) :: tabs    (ncol,nz) ! temperature
-      // ! real(8), intent(in   ) :: adz     (ncol,nz) ! ratio of the thickness of scalar levels to dz 
-      // ! real(8), intent(in   ) :: dz      (ncol   ) ! constant grid spacing in z direction (when dz_constant=.true.)
-      // ! real(8), intent(in   ) :: rho     (ncol,nz) ! air density at pressure levels,kg/m3 
-      // ! real(8), intent(inout) :: q       (ncol,nz) ! total nonprecipitating water
-      // ! real(8), intent(inout) :: t       (ncol,nz) ! liquid/ice water static energy 
-      // ! real(8), intent(inout) :: precsfc (ncol   ) ! surface precip. rate
-      // ! real(8), intent(inout) :: precssfc(ncol   ) ! surface ice precip. rate
+      // NOTE: In SAM, ice_fall happens before precip_fall
+      ice_fall( qcl, qci, tabs, adz, dz, rho, q, t, precsfc, precssfc, dt, fac_cond, fac_fus);
+      // real(8), intent(in   ) :: qcl     (ncol,nz) ! liquid water  (condensate)
+      // real(8), intent(in   ) :: qci     (ncol,nz) ! ice water  (condensate)
+      // real(8), intent(in   ) :: tabs    (ncol,nz) ! temperature
+      // real(8), intent(in   ) :: adz     (ncol,nz) ! ratio of the thickness of scalar levels to dz 
+      // real(8), intent(in   ) :: dz      (ncol   ) ! constant grid spacing in z direction (when dz_constant=.true.)
+      // real(8), intent(in   ) :: rho     (ncol,nz) ! air density at pressure levels,kg/m3 
+      // real(8), intent(inout) :: q       (ncol,nz) ! total nonprecipitating water
+      // real(8), intent(inout) :: t       (ncol,nz) ! liquid/ice water static energy 
+      // real(8), intent(inout) :: precsfc (ncol   ) ! surface precip. rate
+      // real(8), intent(inout) :: precssfc(ncol   ) ! surface ice precip. rate
 
       // call micro_precip_fall(rho, adz, dz, rhow, qp, t, tabs, qpfall, precflux, precsfc, precssfc,       &
       //                        qp_threshold, tprmin, a_pr, tgrmin, a_gr, dt, fac_cond, fac_fus, &
@@ -592,6 +592,114 @@ namespace sam1mom {
         real dq = qp(icol,k);
         qp(icol,k) = max(0. , qp(icol,k) );
         q (icol,k) = q(icol,k) + (dq-qp(icol,k));
+      });
+    }
+
+
+
+    // Sedimentation of ice:
+    // qcl     (ncol,nz): liquid water  (condensate)
+    // qci     (ncol,nz): ice water  (condensate)
+    // tabs    (ncol,nz): temperature
+    // adz     (ncol,nz): ratio of the thickness of scalar levels to dz 
+    // dz      (ncol   ): constant grid spacing in z direction (when dz_constant=.true.)
+    // rho     (ncol,nz): air density at pressure levels,kg/m3 
+    // q       (ncol,nz): total nonprecipitating water
+    // t       (ncol,nz): liquid/ice water static energy 
+    // precsfc (ncol   ): surface precip. rate
+    // precssfc(ncol   ): surface ice precip. rate
+    // dtn              : current dynamical timestep (can be smaller than dt)
+    void ice_fall( real2d const &qcl, real2d const &qci, real2d const &tabs, real2d const &adz, real1d const &dz,
+                   real2d const &rho, real2d &q, real2d &t, real1d &precsfc, real1d &precssfc, real dtn, real fac_cond,
+                   real fac_fus ) {
+      int ncol = size(qcl,1);
+      int nz   = size(qcl,2);
+
+      int1d  kmax("kmax",ncol);
+      int1d  kmin("kmin",ncol);
+      real2d fz  ("fz"  ,ncol,nz+1);
+
+      // do icol = 1 , ncol
+      parallel_for( ncol , YAKL_LAMBDA (int icol) {
+        kmax(icol) = 0;
+        kmin(icol) = nz+1;
+        for (int k=1; k <= nz; k++) {
+          if (qcl(icol,k)+qci(icol,k) > 0. && tabs(icol,k) < 273.15) {
+            kmin(icol) = min(kmin(icol),k);
+            kmax(icol) = max(kmax(icol),k);
+          }
+        }
+      });
+
+      // Compute cloud ice flux (using flux limited advection scheme, as in
+      // chapter 6 of Finite Volume Methods for Hyperbolic Problems by R.J.
+      // LeVeque, Cambridge University Press, 2002).
+      // do k = 1 , nz+1
+      //   do icol = 1 , ncol
+      parallel_for( Bounds<2>(nz+1,ncol) , YAKL_LAMBDA (int k, int icol) {
+        if (k >= max(1,kmin(icol)-1) && k <= kmax(icol) ) {
+          // Set up indices for x-y planes above and below current plane.
+          int kc = min(nz,k+1);
+          int kb = max(1,k-1);
+          // CFL number based on grid spacing interpolated to interface i,j,k-1/2
+          real coef = dtn/(0.5*(adz(icol,kb)+adz(icol,k))*dz(icol));
+
+          // Compute cloud ice density in this cell and the ones above/below.
+          // Since cloud ice is falling, the above cell is u (upwind),
+          // this cell is c (center) and the one below is d (downwind).
+          real qiu = rho(icol,kc)*qci(icol,kc);
+          real qic = rho(icol,k) *qci(icol,k);
+          real qid = rho(icol,kb)*qci(icol,kb);
+
+          // Ice sedimentation velocity depends on ice content. The fiting is
+          // based on the data by Heymsfield (JAS,2003). -Marat
+          real vt_ice = min( 0.4 , 8.66*pow( (max( 0. , qic )+1.e-10) , 0.24 ) );   // Heymsfield (JAS, 2003, p.2607)
+
+          // Use MC flux limiter in computation of flux correction.
+          // (MC = monotonized centered difference).
+          //         if (qic.eq.qid) then
+          real tmp_phi;
+          if (abs(qic-qid) < 1.0e-25) {  // when qic, and qid is very small, qic_qid can still be zero
+            // even if qic is not equal to qid. so add a fix here +++mhwang
+            tmp_phi = 0.;
+          } else {
+            real tmp_theta = (qiu-qic)/(qic-qid);
+            tmp_phi = max( 0. , min( min( 0.5*(1.+tmp_theta) , 2. ) , 2.*tmp_theta ) );
+          }
+
+          // Compute limited flux.
+          // Since falling cloud ice is a 1D advection problem, this
+          // flux-limited advection scheme is monotonic.
+          fz(icol,k) = -vt_ice*(qic - 0.5*(1.-coef*vt_ice)*tmp_phi*(qic-qid));
+        } else {
+          fz(icol,k) = 0;
+        }
+        if (k == nz+1) fz(icol,k) = 0;
+      });
+
+      // do k=1, nz+1
+      //   do icol = 1 , ncol
+      parallel_for( Bounds<2>(nz+1,ncol) , YAKL_LAMBDA (int k, int icol) {
+        if ( k >= max(1,kmin(icol)-2) && k <= kmax(icol) ) {
+          real coef=dtn/(dz(icol)*adz(icol,k)*rho(icol,k));
+          // The cloud ice increment is the difference of the fluxes.
+          real dqi=coef*(fz(icol,k)-fz(icol,k+1));
+          // Add this increment to both non-precipitating and total water.
+          q(icol,k) = q(icol,k) + dqi;
+
+          // The latent heat flux induced by the falling cloud ice enters
+          // the liquid-ice static energy budget in the same way as the
+          // precipitation.  Note: use latent heat of sublimation.
+          real lat_heat = (fac_cond+fac_fus)*dqi;
+          // Add divergence of latent heat flux to liquid-ice static energy.
+          t(icol,k)  = t(icol,k)  - lat_heat;
+        }
+        if (k == nz+1) {
+          real coef=dtn/dz(icol);
+          real dqi=-coef*fz(icol,1);
+          precsfc (icol) = precsfc (icol)+dqi;
+          precssfc(icol) = precssfc(icol)+dqi;
+        }
       });
     }
 
