@@ -4,6 +4,8 @@
 
 using yakl::fortran::parallel_for;
 using yakl::fortran::Bounds;
+using yakl::intrinsics::size;
+using yakl::intrinsics::shape;
 
 typedef double real;
 
@@ -16,6 +18,7 @@ void sam1mom_main_fortran(double &dt, int &ncol, int &nz, double *zint, double *
                           double *tabs, double *qv, double *qn, double *qp);
 
 
+
 int main() {
   yakl::init();
   {
@@ -23,18 +26,18 @@ int main() {
     real   dt;
     yakl::SimpleNetCDF nc;
     nc.open("sam1mom_data.nc");
-    nc.read(data,"qv"         );    real2d qv          = transpose(data);
-    nc.read(data,"qn"         );    real2d qn          = transpose(data);
-    nc.read(data,"qp"         );    real2d qp          = transpose(data);
-    nc.read(data,"zint"       );    real2d zint        = transpose(data);
-    nc.read(data,"pressure"   );    real2d pressure    = transpose(data);
-    nc.read(data,"temp"       );    real2d temp        = transpose(data);
-    nc.read(data,"density"    );    real2d density     = transpose(data);
-    nc.read(data,"density_int");    real2d density_int = transpose(data);
+    nc.read(data,"qv"         );    real2d qv          = transpose(data);   data = real2d();
+    nc.read(data,"qn"         );    real2d qn          = transpose(data);   data = real2d();
+    nc.read(data,"qp"         );    real2d qp          = transpose(data);   data = real2d();
+    nc.read(data,"zint"       );    real2d zint        = transpose(data);   data = real2d();
+    nc.read(data,"pressure"   );    real2d pressure    = transpose(data);   data = real2d();
+    nc.read(data,"temp"       );    real2d temp        = transpose(data);   data = real2d();
+    nc.read(data,"density"    );    real2d density     = transpose(data);   data = real2d();
+    nc.read(data,"density_int");    real2d density_int = transpose(data);   data = real2d();
     nc.read(dt  ,"dt"         );
 
-    int ncol = qv.dimension[0];
-    int nz   = qv.dimension[1];
+    int ncol = size(qv,1);
+    int nz   = size(qv,2);
 
     auto qv_host          = qv         .createHostCopy();
     auto qn_host          = qn         .createHostCopy();
@@ -59,12 +62,14 @@ int main() {
 
 
 real2d transpose( real2d const &data ) {
-  int nz   = data.dimension[0];
-  int ncol = data.dimension[1];
-  real2d ret("ret",ncol,nz);
-  parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
-    ret(i,k) = data(k,i);
+  int dim1 = size(data,1);
+  int dim2 = size(data,2);
+  real2d ret("ret",dim2,dim1);
+  parallel_for( Bounds<2>(dim1,dim2) , YAKL_LAMBDA (int i1, int i2) {
+    ret(i2,i1) = data(i1,i2);
   });
   return ret;
 }
+
+
 

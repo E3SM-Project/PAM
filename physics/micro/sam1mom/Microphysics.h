@@ -197,15 +197,16 @@ public:
         nc.open( "sam1mom_data.nc" , yakl::NETCDF_MODE_WRITE );
         unlim_ind = nc.getDimSize( "num_samples" );
       }
-      real1d data("data",nz);
-      parallel_for( nz , YAKL_LAMBDA (int k) { data(k) = qv         (k,nx/2); });    nc.write1( data , "qv"          , {"z"} , unlim_ind , "num_samples" );
-      parallel_for( nz , YAKL_LAMBDA (int k) { data(k) = qn         (k,nx/2); });    nc.write1( data , "qn"          , {"z"} , unlim_ind , "num_samples" );
-      parallel_for( nz , YAKL_LAMBDA (int k) { data(k) = qp         (k,nx/2); });    nc.write1( data , "qp"          , {"z"} , unlim_ind , "num_samples" );
-      parallel_for( nz , YAKL_LAMBDA (int k) { data(k) = zint       (k,nx/2); });    nc.write1( data , "zint"        , {"z"} , unlim_ind , "num_samples" );
-      parallel_for( nz , YAKL_LAMBDA (int k) { data(k) = pressure   (k,nx/2); });    nc.write1( data , "pressure"    , {"z"} , unlim_ind , "num_samples" );
-      parallel_for( nz , YAKL_LAMBDA (int k) { data(k) = temp       (k,nx/2); });    nc.write1( data , "temp"        , {"z"} , unlim_ind , "num_samples" );
-      parallel_for( nz , YAKL_LAMBDA (int k) { data(k) = density    (k,nx/2); });    nc.write1( data , "density"     , {"z"} , unlim_ind , "num_samples" );
-      parallel_for( nz , YAKL_LAMBDA (int k) { data(k) = density_int(k,nx/2); });    nc.write1( data , "density_int" , {"z"} , unlim_ind , "num_samples" );
+      real1d data1("data1",nz  );
+      real1d data2("data2",nz+1);
+      parallel_for( nz   , YAKL_LAMBDA (int k) { data1(k) = qv         (k,nx/2); });    nc.write1( data1 , "qv"          , {"z"  } , unlim_ind , "num_samples" );
+      parallel_for( nz   , YAKL_LAMBDA (int k) { data1(k) = qn         (k,nx/2); });    nc.write1( data1 , "qn"          , {"z"  } , unlim_ind , "num_samples" );
+      parallel_for( nz   , YAKL_LAMBDA (int k) { data1(k) = qp         (k,nx/2); });    nc.write1( data1 , "qp"          , {"z"  } , unlim_ind , "num_samples" );
+      parallel_for( nz+1 , YAKL_LAMBDA (int k) { data2(k) = zint       (k,nx/2); });    nc.write1( data2 , "zint"        , {"zp1"} , unlim_ind , "num_samples" );
+      parallel_for( nz   , YAKL_LAMBDA (int k) { data1(k) = pressure   (k,nx/2); });    nc.write1( data1 , "pressure"    , {"z"  } , unlim_ind , "num_samples" );
+      parallel_for( nz   , YAKL_LAMBDA (int k) { data1(k) = temp       (k,nx/2); });    nc.write1( data1 , "temp"        , {"z"  } , unlim_ind , "num_samples" );
+      parallel_for( nz   , YAKL_LAMBDA (int k) { data1(k) = density    (k,nx/2); });    nc.write1( data1 , "density"     , {"z"  } , unlim_ind , "num_samples" );
+      parallel_for( nz+1 , YAKL_LAMBDA (int k) { data2(k) = density_int(k,nx/2); });    nc.write1( data2 , "density_int" , {"zp1"} , unlim_ind , "num_samples" );
       nc.close();
     #endif
 
