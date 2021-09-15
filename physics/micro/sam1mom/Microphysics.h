@@ -46,6 +46,8 @@ public:
   real grav;
   real cp_l;
 
+  bool first_step;
+
   // This must be set during init() so we can return it in the get_water_vapor_index function
   int tracer_index_vapor;
 
@@ -74,6 +76,7 @@ public:
     constants.p0      = 1.e5;
     grav              = 9.81;
     cp_l              = 4218.;
+    first_step = true;
   }
 
 
@@ -181,6 +184,30 @@ public:
     });
 
     auto density_int = pam::interp_density_interfaces( dm , density.reshape<4>({nz,ny,nx,nens}) , grav ).reshape<2>({nz+1,ncol});
+
+    #ifdef MICRO_DUMP
+      // Valid for 2-D runs with nens=1 only
+      yakl::SimpleNetCDF nc;
+      int unlim_ind = 0;
+      if (first_step) {
+        nc.create( "sam1mom_data.nc" );
+        nc.write( dt , "dt" );
+        first_step = false;
+      } else {
+        nc.open( "sam1mom_data.nc" , yakl::NETCDF_MODE_WRITE );
+        unlim_ind = nc.getDimSize( "num_samples" );
+      }
+      real1d data("data",nz);
+      parallel_for( nz , YAKL_LAMBDA (int k) { data(k) = qv         (k,nx/2); });    nc.write1( data , "qv"          , {"z"} , unlim_ind , "num_samples" );
+      parallel_for( nz , YAKL_LAMBDA (int k) { data(k) = qn         (k,nx/2); });    nc.write1( data , "qn"          , {"z"} , unlim_ind , "num_samples" );
+      parallel_for( nz , YAKL_LAMBDA (int k) { data(k) = qp         (k,nx/2); });    nc.write1( data , "qp"          , {"z"} , unlim_ind , "num_samples" );
+      parallel_for( nz , YAKL_LAMBDA (int k) { data(k) = zint       (k,nx/2); });    nc.write1( data , "zint"        , {"z"} , unlim_ind , "num_samples" );
+      parallel_for( nz , YAKL_LAMBDA (int k) { data(k) = pressure   (k,nx/2); });    nc.write1( data , "pressure"    , {"z"} , unlim_ind , "num_samples" );
+      parallel_for( nz , YAKL_LAMBDA (int k) { data(k) = temp       (k,nx/2); });    nc.write1( data , "temp"        , {"z"} , unlim_ind , "num_samples" );
+      parallel_for( nz , YAKL_LAMBDA (int k) { data(k) = density    (k,nx/2); });    nc.write1( data , "density"     , {"z"} , unlim_ind , "num_samples" );
+      parallel_for( nz , YAKL_LAMBDA (int k) { data(k) = density_int(k,nx/2); });    nc.write1( data , "density_int" , {"z"} , unlim_ind , "num_samples" );
+      nc.close();
+    #endif
 
     auto qv_host          = qv         .createHostCopy();
     auto qn_host          = qn         .createHostCopy();
