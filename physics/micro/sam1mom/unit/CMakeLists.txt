@@ -29,6 +29,9 @@ add_executable(driver ${DRIVER_SRC})
 include_directories(${YAKL_BIN})
 include_directories(${NC_INCLUDE})
 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../../include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
+
 include(${YAKL_HOME}/yakl_utils.cmake)
 yakl_process_target(driver)
 
