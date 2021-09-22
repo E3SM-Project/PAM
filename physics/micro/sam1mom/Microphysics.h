@@ -211,16 +211,15 @@ public:
       nc.close();
     #endif
 
-    typedef yakl::Array<real,2,yakl::memDevice,yakl::styleFortran> real2d_f;
-
-    real2d_f qv_fortran          = real2d_f("qv         ",qv         .data(),ncol,nz  );
-    real2d_f qn_fortran          = real2d_f("qn         ",qn         .data(),ncol,nz  );
-    real2d_f qp_fortran          = real2d_f("qp         ",qp         .data(),ncol,nz  );
-    real2d_f zint_fortran        = real2d_f("zint       ",zint       .data(),ncol,nz+1);
-    real2d_f pressure_fortran    = real2d_f("pressure   ",pressure   .data(),ncol,nz  );
-    real2d_f temp_fortran        = real2d_f("temp       ",temp       .data(),ncol,nz  );
-    real2d_f density_fortran     = real2d_f("density    ",density    .data(),ncol,nz  );
-    real2d_f density_int_fortran = real2d_f("density_int",density_int.data(),ncol,nz+1);
+    // Convert C-style to Fortran-style
+    F_real2d qv_fortran          = F_real2d("qv         ",qv         .data(),ncol,nz  );
+    F_real2d qn_fortran          = F_real2d("qn         ",qn         .data(),ncol,nz  );
+    F_real2d qp_fortran          = F_real2d("qp         ",qp         .data(),ncol,nz  );
+    F_real2d zint_fortran        = F_real2d("zint       ",zint       .data(),ncol,nz+1);
+    F_real2d pressure_fortran    = F_real2d("pressure   ",pressure   .data(),ncol,nz  );
+    F_real2d temp_fortran        = F_real2d("temp       ",temp       .data(),ncol,nz  );
+    F_real2d density_fortran     = F_real2d("density    ",density    .data(),ncol,nz  );
+    F_real2d density_int_fortran = F_real2d("density_int",density_int.data(),ncol,nz+1);
 
     sam1mom::Sam1mom micro;
     micro.main( dt , zint_fortran , density_fortran , density_int_fortran , pressure_fortran , temp_fortran , qv_fortran , qn_fortran , qp_fortran );

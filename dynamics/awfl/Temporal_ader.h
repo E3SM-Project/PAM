@@ -107,11 +107,11 @@ public:
 
   template <class MICRO>
   void timeStep( DataManager &dm , MICRO const &micro , real dtphys ) {
-    YAKL_SCOPE( stateTend       , this->stateTend       );
-    YAKL_SCOPE( tracerTend      , this->tracerTend      );
-    YAKL_SCOPE( space_op        , this->space_op        );
-    YAKL_SCOPE( sponge_cells    , this->sponge_cells    );
-    YAKL_SCOPE( sponge_strength , this->sponge_strength );
+    YAKL_SCOPE( stateTend       , this->stateTend           );
+    YAKL_SCOPE( tracerTend      , this->tracerTend          );
+    YAKL_SCOPE( sponge_cells    , this->sponge_cells        );
+    YAKL_SCOPE( sponge_strength , this->sponge_strength     );
+    YAKL_SCOPE( hyDensCells     , this->space_op.hyDensCells);
 
     real dt = compute_time_step( dm , micro );
 
@@ -208,7 +208,7 @@ public:
           real z2 = zint(nz             ,iens);
           real znorm = (zmid(k,iens)-z1) / (z2 - z1);
           real mult = 1 - sponge_strength * ( cos(M_PI*znorm - M_PI) + 1 ) * 0.5_fp;
-          real hydens = space_op.hyDensCells(k,iens);
+          real hydens = hyDensCells(k,iens);
           real dens_old = state(idR,hs+k,hs+j,hs+i,iens) + hydens;
           // state(idR,hs+k,hs+j,hs+i,iens) *= mult;
           // state(idU,hs+k,hs+j,hs+i,iens) *= mult;

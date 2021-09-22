@@ -73,6 +73,60 @@ typedef yakl::Array<bool,6,yakl::memHost,yakl::styleC> boolHost6d;
 typedef yakl::Array<bool,7,yakl::memHost,yakl::styleC> boolHost7d;
 typedef yakl::Array<bool,8,yakl::memHost,yakl::styleC> boolHost8d;
 
+typedef yakl::Array<real,1,yakl::memDevice,yakl::styleFortran> F_real1d;
+typedef yakl::Array<real,2,yakl::memDevice,yakl::styleFortran> F_real2d;
+typedef yakl::Array<real,3,yakl::memDevice,yakl::styleFortran> F_real3d;
+typedef yakl::Array<real,4,yakl::memDevice,yakl::styleFortran> F_real4d;
+typedef yakl::Array<real,5,yakl::memDevice,yakl::styleFortran> F_real5d;
+typedef yakl::Array<real,6,yakl::memDevice,yakl::styleFortran> F_real6d;
+typedef yakl::Array<real,7,yakl::memDevice,yakl::styleFortran> F_real7d;
+typedef yakl::Array<real,8,yakl::memDevice,yakl::styleFortran> F_real8d;
+
+typedef yakl::Array<int,1,yakl::memDevice,yakl::styleFortran> F_int1d;
+typedef yakl::Array<int,2,yakl::memDevice,yakl::styleFortran> F_int2d;
+typedef yakl::Array<int,3,yakl::memDevice,yakl::styleFortran> F_int3d;
+typedef yakl::Array<int,4,yakl::memDevice,yakl::styleFortran> F_int4d;
+typedef yakl::Array<int,5,yakl::memDevice,yakl::styleFortran> F_int5d;
+typedef yakl::Array<int,6,yakl::memDevice,yakl::styleFortran> F_int6d;
+typedef yakl::Array<int,7,yakl::memDevice,yakl::styleFortran> F_int7d;
+typedef yakl::Array<int,8,yakl::memDevice,yakl::styleFortran> F_int8d;
+
+typedef yakl::Array<bool,1,yakl::memDevice,yakl::styleFortran> F_bool1d;
+typedef yakl::Array<bool,2,yakl::memDevice,yakl::styleFortran> F_bool2d;
+typedef yakl::Array<bool,3,yakl::memDevice,yakl::styleFortran> F_bool3d;
+typedef yakl::Array<bool,4,yakl::memDevice,yakl::styleFortran> F_bool4d;
+typedef yakl::Array<bool,5,yakl::memDevice,yakl::styleFortran> F_bool5d;
+typedef yakl::Array<bool,6,yakl::memDevice,yakl::styleFortran> F_bool6d;
+typedef yakl::Array<bool,7,yakl::memDevice,yakl::styleFortran> F_bool7d;
+typedef yakl::Array<bool,8,yakl::memDevice,yakl::styleFortran> F_bool8d;
+
+typedef yakl::Array<real,1,yakl::memHost,yakl::styleFortran> F_realHost1d;
+typedef yakl::Array<real,2,yakl::memHost,yakl::styleFortran> F_realHost2d;
+typedef yakl::Array<real,3,yakl::memHost,yakl::styleFortran> F_realHost3d;
+typedef yakl::Array<real,4,yakl::memHost,yakl::styleFortran> F_realHost4d;
+typedef yakl::Array<real,5,yakl::memHost,yakl::styleFortran> F_realHost5d;
+typedef yakl::Array<real,6,yakl::memHost,yakl::styleFortran> F_realHost6d;
+typedef yakl::Array<real,7,yakl::memHost,yakl::styleFortran> F_realHost7d;
+typedef yakl::Array<real,8,yakl::memHost,yakl::styleFortran> F_realHost8d;
+
+typedef yakl::Array<int,1,yakl::memHost,yakl::styleFortran> F_intHost1d;
+typedef yakl::Array<int,2,yakl::memHost,yakl::styleFortran> F_intHost2d;
+typedef yakl::Array<int,3,yakl::memHost,yakl::styleFortran> F_intHost3d;
+typedef yakl::Array<int,4,yakl::memHost,yakl::styleFortran> F_intHost4d;
+typedef yakl::Array<int,5,yakl::memHost,yakl::styleFortran> F_intHost5d;
+typedef yakl::Array<int,6,yakl::memHost,yakl::styleFortran> F_intHost6d;
+typedef yakl::Array<int,7,yakl::memHost,yakl::styleFortran> F_intHost7d;
+typedef yakl::Array<int,8,yakl::memHost,yakl::styleFortran> F_intHost8d;
+
+typedef yakl::Array<bool,1,yakl::memHost,yakl::styleFortran> F_boolHost1d;
+typedef yakl::Array<bool,2,yakl::memHost,yakl::styleFortran> F_boolHost2d;
+typedef yakl::Array<bool,3,yakl::memHost,yakl::styleFortran> F_boolHost3d;
+typedef yakl::Array<bool,4,yakl::memHost,yakl::styleFortran> F_boolHost4d;
+typedef yakl::Array<bool,5,yakl::memHost,yakl::styleFortran> F_boolHost5d;
+typedef yakl::Array<bool,6,yakl::memHost,yakl::styleFortran> F_boolHost6d;
+typedef yakl::Array<bool,7,yakl::memHost,yakl::styleFortran> F_boolHost7d;
+typedef yakl::Array<bool,8,yakl::memHost,yakl::styleFortran> F_boolHost8d;
+
 
 inline void endrun(std::string err="") {
   std::cerr << err << std::endl;

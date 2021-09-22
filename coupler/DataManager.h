@@ -16,31 +16,16 @@ public:
   yakl::SArray<T,1,MAX_FIELDS> fields;
   int num_fields;
 
-  MultipleFields() { num_fields = 0; }
+  YAKL_INLINE MultipleFields() { num_fields = 0; }
 
-  MultipleFields(MultipleFields const &rhs) {
+  YAKL_INLINE MultipleFields(MultipleFields const &rhs) {
     this->num_fields = rhs.num_fields;
     for (int i=0; i < num_fields; i++) {
       this->fields(i) = rhs.fields(i);
     }
   }
 
-  MultipleFields & operator=(MultipleFields const &rhs) {
-    this->num_fields = rhs.num_fields;
-    for (int i=0; i < num_fields; i++) {
-      this->fields(i) = rhs.fields(i);
-    }
-    return *this;
-  }
-
-  MultipleFields(MultipleFields &&rhs) {
-    this->num_fields = rhs.num_fields;
-    for (int i=0; i < num_fields; i++) {
-      this->fields(i) = rhs.fields(i);
-    }
-  }
-
-  MultipleFields& operator=(MultipleFields &&rhs) {
+  YAKL_INLINE MultipleFields & operator=(MultipleFields const &rhs) {
     this->num_fields = rhs.num_fields;
     for (int i=0; i < num_fields; i++) {
       this->fields(i) = rhs.fields(i);
@@ -48,7 +33,22 @@ public:
     return *this;
   }
 
-  void add_field( T &field ) {
+  YAKL_INLINE MultipleFields(MultipleFields &&rhs) {
+    this->num_fields = rhs.num_fields;
+    for (int i=0; i < num_fields; i++) {
+      this->fields(i) = rhs.fields(i);
+    }
+  }
+
+  YAKL_INLINE MultipleFields& operator=(MultipleFields &&rhs) {
+    this->num_fields = rhs.num_fields;
+    for (int i=0; i < num_fields; i++) {
+      this->fields(i) = rhs.fields(i);
+    }
+    return *this;
+  }
+
+  YAKL_INLINE void add_field( T &field ) {
     this->fields(num_fields) = field;
     num_fields++;
   }
