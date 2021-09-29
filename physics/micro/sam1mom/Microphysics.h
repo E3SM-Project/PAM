@@ -67,7 +67,7 @@ public:
   // Set constants and likely num_tracers as well, and anything else you can do immediately
   Microphysics() {
     constants.R_d     = 287.;
-    constants.cp_d    = 1003.;
+    constants.cp_d    = 1004.;
     constants.cv_d    = constants.cp_d - constants.R_d;
     constants.gamma_d = constants.cp_d / constants.cv_d;
     constants.kappa_d = constants.R_d  / constants.cp_d;
