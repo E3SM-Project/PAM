@@ -21,6 +21,9 @@ public:
   int static constexpr num_state = 5;
   int static constexpr max_tracers = 50;
 
+  // We're going to use a fixed speed of sound
+  real constexpr cs_const = 300;
+
   real Rd   ;
   real cp   ;
   real gamma;
@@ -82,6 +85,8 @@ public:
   real4d vert_sten_to_gll;
   real4d vert_sten_to_coefs;
   real5d vert_weno_recon_lower;
+
+  real dzmin;
 
   // For indexing into the state and state tendency arrays
   int static constexpr idR = 0;  // density perturbation
@@ -591,6 +596,11 @@ public:
     parallel_for( "Spatial.h init 1" , SimpleBounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
       dz(k,iens) = vert_interface(k+1,iens) - vert_interface(k,iens);
     });
+
+    dzmin = 1000000;
+    for (int k=0; k < nz+1; k++) {
+      dzmin = min(dzmin , zint(k+1,iens) - zint(k,iens));
+    }
 
     parallel_for( "Spatial.h init 2" , SimpleBounds<2>(nz+2*hs,nens) , YAKL_LAMBDA (int k, int iens) {
       if (k >= hs && k < hs+nz) {
@@ -1974,6 +1984,175 @@ public:
 
 
 
+  void apply_acoustic_tendencies_z( real5d &state , real5d &tracers , real dt_advec ) {
+    YAKL_SCOPE( nz                      , this->nz                     );
+    YAKL_SCOPE( weno_scalars            , this->weno_scalars           );
+    YAKL_SCOPE( weno_winds              , this->weno_winds             );
+    YAKL_SCOPE( c2g                     , this->coefs_to_gll           );
+    YAKL_SCOPE( idl                     , this->idl                    );
+    YAKL_SCOPE( sigma                   , this->sigma                  );
+    YAKL_SCOPE( hyDensThetaGLL          , this->hyDensThetaGLL         );
+    YAKL_SCOPE( hyPressureGLL           , this->hyPressureGLL          );
+    YAKL_SCOPE( derivMatrix             , this->derivMatrix            );
+    YAKL_SCOPE( dz                      , this->dz                     );
+    YAKL_SCOPE( bc_z                    , this->bc_z                   );
+    YAKL_SCOPE( gamma                   , this->gamma                  );
+    YAKL_SCOPE( C0                      , this->C0                     );
+    YAKL_SCOPE( vert_sten_to_gll        , this->vert_sten_to_gll       );
+    YAKL_SCOPE( vert_sten_to_coefs      , this->vert_sten_to_coefs     );
+    YAKL_SCOPE( vert_weno_recon_lower   , this->vert_weno_recon_lower  );
+
+    // Compute pressure perturbation and initialize momentum perturbation to zero
+    real4d pressure("pressure",nz+2*hs,ny,nx,nens);
+    real4d mom_pert("mom_pert",nz+2*hs,ny,nx,nens);
+    real4d mom_pert_tavg("mom_pert_tavg",nz+2*hs,ny,nx,nens);
+    parallel_for( Bounds<4>(nz+2*hs,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      int k_ind = min( max( k_ind , hs ) , hs+nz-1 );
+      real rt = state(idT,hs+k_ind,hs+j,hs+i,iens) + hyDensThetaCells(k_ind,iens);
+      pressure     (k,j,i,iens) = C0 * pow( rt , gamma ) - hyPressureCells(k_ind,iens);
+      mom_pert     (k,j,i,iens) = 0;
+      mom_pert_tavg(k,j,i,iens) = 0;
+    });
+
+    // Compute the acoustic time step and number of sub-iterations
+    real dt_acoust = dzmin * 0.8_rp / cs_const;
+    int niter = (int) std::ceil( dt_advec / dt_acoust );
+    real dt = dt_advec / niter;
+
+    real4d pressure_limits("pressure",2,nz+1,ny,nx,nens);
+    real4d mom_pert_limits("mom_pert",2,nz+1,ny,nx,nens);
+
+    //////////////////////////////////////////////////////////////////////////////////
+    // Loop through the sub-cycle iterations to compute time-averaged momentum
+    // perturbation due to acoustic propagation
+    //////////////////////////////////////////////////////////////////////////////////
+    for (int iter = 0; iter < niter; iter++) {
+      // Loop through all cells, reconstruct in x-direction, compute centered tendencies, store cell-edge state estimates
+      parallel_for( "Spatial.h Acoustic Z recon" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+        SArray<real,2,nAder,ngll> pressure_DTs;
+        SArray<real,2,nAder,ngll> mom_pert_DTs;
+
+        //////////////////////////////////////////////////////////
+        // Reconstruction
+        //////////////////////////////////////////////////////////
+        {
+          SArray<real,2,ord,ngll> s2g_loc;
+          SArray<real,2,ord,ord>  s2c_loc;
+          SArray<real,3,hs+1,hs+1,hs+1> weno_recon_lower_loc;
+          for (int jj=0; jj < ord; jj++) {
+            for (int ii=0; ii < ngll; ii++) {
+              s2g_loc(jj,ii) = vert_sten_to_gll(k,jj,ii,iens);
+            }
+          }
+          for (int jj=0; jj < ord; jj++) {
+            for (int ii=0; ii < ord; ii++) {
+              s2c_loc(jj,ii) = vert_sten_to_coefs(k,jj,ii,iens);
+            }
+          }
+          for (int kk=0; kk < hs+1; kk++) {
+            for (int jj=0; jj < hs+1; jj++) {
+              for (int ii=0; ii < hs+1; ii++) {
+                weno_recon_lower_loc(kk,jj,ii) = vert_weno_recon_lower(k,kk,jj,ii,iens);
+              }
+            }
+          }
+
+          SArray<real,1,ord>  stencil;
+          SArray<real,1,ngll> gll;
+
+          // Reconstruct pressure perturbation
+          for (int kk=0; kk < ord; kk++) {
+            int k_ind = min( max( k_ind , hs ) , hs+nz-1 );
+            stencil(kk) = pressure(k+kk,j,i,iens);
+          }
+          reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc , weno_recon_lower_loc , idl , sigma , weno_scalars );
+          for (int kk=0; kk < ngll; kk++) {
+            pressure_DTs(0,kk) = gll(kk);
+          }
+
+          // Reconstruct momentum perturbation
+          for (int kk=0; kk < ord; kk++) {
+            int k_ind = min( max( k_ind , hs ) , hs+nz-1 );
+            stencil(kk) = mom_pert(k+kk,j,i,iens);
+          }
+          reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc , weno_recon_lower_loc , idl , sigma , weno_winds );
+          for (int kk=0; kk < ngll; kk++) {
+            mom_pert_DTs(0,kk) = gll(kk);
+          }
+        }
+
+        //////////////////////////////////////////////////////////
+        // ADER Time averaging
+        //////////////////////////////////////////////////////////
+        {
+          // Compute time derivatives if necessary
+          if (nAder > 1) {
+            diffTransformAcousticZ( pressure_DTs , mom_pert_DTs , derivMatrix , k , bc_z , nz );
+          }
+
+          // Time average if necessary
+          if (timeAvg) {
+            compute_timeAvg( pressure_DTs , dt );
+            compute_timeAvg( mom_pert_DTs , dt );
+          }
+        }
+
+        ////////////////////////////////////////////////////////////
+        // Store cell edge estimates of the tracer
+        ////////////////////////////////////////////////////////////
+        pressure_limits(1,k  ,j,i,iens) = pressure_DTs(0,0     ); // Left interface
+        pressure_limits(0,k+1,j,i,iens) = pressure_DTs(0,ngll-1); // Right interface
+        mom_pert_limits(1,k  ,j,i,iens) = mom_pert_DTs(0,0     ); // Left interface
+        mom_pert_limits(0,k+1,j,i,iens) = mom_pert_DTs(0,ngll-1); // Right interface
+
+        if (k == 0) { 
+          pressure_limits(0,k  ,j,i,iens) = pressure_DTs(0,0     ); // Left interface
+          mom_pert_limits(0,k  ,j,i,iens) = mom_pert_DTs(0,0     ); // Left interface
+        }
+        if (k == nz-1) { 
+          pressure_limits(1,k+1,j,i,iens) = pressure_DTs(0,ngll-1); // Right interface
+          mom_pert_limits(1,k+1,j,i,iens) = mom_pert_DTs(0,ngll-1); // Right interface
+        }
+      });
+
+      //////////////////////////////////////////////////////////
+      // Compute the upwind fluxes
+      //////////////////////////////////////////////////////////
+      parallel_for( "Spatial.h Acoustic Z Riemann" , SimpleBounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+        // Get left and right fluxes
+        real q1_L = mom_pert_limits(0,k,j,i,iens);   real q1_R = mom_pert_limits(1,k,j,i,iens);
+        real q2_L = pressure_limits(0,k,j,i,iens);   real q2_R = pressure_limits(1,k,j,i,iens);
+        // Compute upwind characteristics
+        // Wave 1: w-cs    ;    Wave 2: w+cs
+        real w1 = 0.5_fp * ( q1_R - q2_R/cs_const );
+        real w2 = 0.5_fp * ( q1_L + q2_L/cs_const );
+        // Use right eigenmatrix to compute upwind flux
+        real q1 = w1 + w2;
+        real q2 = cs_const * (w2 - w1);
+
+        mom_pert_limits(0,k,j,i,iens) = q2;
+        pressure_limits(0,k,j,i,iens) = q1*cs_const*cs_const;
+      });
+
+      //////////////////////////////////////////////////////////
+      // Update momentum perturbation and pressure perturbation
+      //////////////////////////////////////////////////////////
+      parallel_for( "Spatial.h Acoustic Z update" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA(int k, int j, int i, int iens) {
+        mom_pert     (hs+k,j,i,iens) += -( mom_pert_limits(0,k+1,j,i,iens) - mom_pert_limits(0,k,j,i,iens) ) / dz(k,iens) * dt_acoust;
+        pressure     (hs+k,j,i,iens) += -( pressure_limits(0,k+1,j,i,iens) - pressure_limits(0,k,j,i,iens) ) / dz(k,iens) * dt_acoust;
+        mom_pert_tavg(hs+k,j,i,iens) += mom_pert(hs+k,j,i,iens);
+        if (iter == niter-1) mom_pert_tavg(hs+k,j,i,iens) /= (niter+1);
+      });
+    }
+
+    //////////////////////////////////////////////////////////////////////////////////
+    // Apply time-averaged momentum perturbation to state and tracers to perform
+    // advection due to acoustic momentum
+    //////////////////////////////////////////////////////////////////////////////////
+  }
+
+
+
   template <class MICRO>
   void computeTendenciesZ( real5d &state   , real5d &stateTend  ,
                            real5d &tracers , real5d &tracerTend ,
@@ -2834,6 +3013,33 @@ public:
           tot_rut += ru(ir,ii) * rt(kt+1-ir,ii) - r(ir,ii) * rut(kt+1-ir,ii);
         }
         rut(kt+1,ii) = tot_rut / r(0,ii);
+      }
+    }
+  }
+
+
+
+  YAKL_INLINE static void diffTransformAcousticZ( SArray<real,2,nAder,ngll> &p  ,
+                                                  SArray<real,2,nAder,ngll> &rw ,
+                                                  SArray<real,2,ngll,ngll> const &deriv ,
+                                                  int k, int bc_z, int nz) {
+    // Loop over the time derivatives
+    for (int kt=0; kt<nAder-1; kt++) {
+      // Compute the state at the next time level
+      for (int ii=0; ii<ngll; ii++) {
+        real drw_dz   = 0;
+        real dp_dz    = 0;
+        for (int s=0; s<ngll; s++) {
+          drw_dz   += deriv(s,ii) * rw(kt,s);
+          dp_dz    += deriv(s,ii) * p (kt,s);
+        }
+        rw(kt+1,ii) = -dp_dz                    /dz/(kt+1);
+        p (kt+1,ii) = -drw_dz*cs_const*cs_const /dz/(kt+1);
+
+        if (bc_z == BC_WALL) {
+          if (k == nz-1) rw(kt+1,ngll-1) = 0;
+          if (k == 0   ) rw(kt+1,0     ) = 0;
+        }
       }
     }
   }
