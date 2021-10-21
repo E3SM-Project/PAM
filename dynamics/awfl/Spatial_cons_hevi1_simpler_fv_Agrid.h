@@ -2072,13 +2072,6 @@ public:
       SArray<real,1,ord>  stencil;
       SArray<real,1,ngll> gll;
 
-      // Density
-      for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idR,k+kk,hs+j,hs+i,iens); }
-      reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc , weno_recon_lower_loc , idl , sigma , weno_scalars );
-      for (int kk=0; kk < ngll; kk++) { gll(kk) += hyDensGLL(k,kk,iens); }
-      stateLimits(idR,1,k  ,j,i,iens) = gll(0     );
-      stateLimits(idR,0,k+1,j,i,iens) = gll(ngll-1);
-
       // Pressure perturbation
       for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idT,k+kk,hs+j,hs+i,iens); }
       reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc , weno_recon_lower_loc , idl , sigma , weno_scalars );
@@ -2128,15 +2121,9 @@ public:
     //////////////////////////////////////////////////////////
     parallel_for( "Spatial.h Z acoustic Riemann" , SimpleBounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       // Get left and right state
-      real r_L  = stateLimits(idR,0,k,j,i,iens);   real r_R  = stateLimits(idR,1,k,j,i,iens);
       real p_L  = stateLimits(idT,0,k,j,i,iens);   real p_R  = stateLimits(idT,1,k,j,i,iens);
       real rw_L = stateLimits(idW,0,k,j,i,iens);   real rw_R = stateLimits(idW,1,k,j,i,iens);
-      real hyp;
-      if (k <  nz) hyp = hyPressureGLL(k  ,0     ,iens);
-      if (k == nz) hyp = hyPressureGLL(k-1,ngll-1,iens);
-      real r  = 0.5_fp * (r_L  + r_R );
-      real p  = 0.5_fp * (p_L  + p_R ) + hyp;
-      real cs = sqrt(gamma*p/r);
+      real cs = 300;
 
       real w1 = 0.5_fp * (rw_R - p_R/cs);
       real w2 = 0.5_fp * (rw_L + p_L/cs);
@@ -2307,9 +2294,7 @@ public:
       real v = 0.5_fp * (v_L + v_R);
       real w = 0.5_fp * (w_L + w_R);
       real t = 0.5_fp * (t_L + t_R);
-      real p = C0 * pow(r*t,gamma);
-      real cs2 = gamma*p/r;
-      real cs  = sqrt(cs2);
+      real cs  = 300;
       // Get left and right fluxes
       real q1_L = stateLimits(idR,0,k,j,i,iens);   real q1_R = stateLimits(idR,1,k,j,i,iens);
       real q2_L = stateLimits(idU,0,k,j,i,iens);   real q2_R = stateLimits(idU,1,k,j,i,iens);
