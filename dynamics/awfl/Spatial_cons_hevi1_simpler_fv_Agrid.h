@@ -2116,6 +2116,8 @@ public:
       }
     });
 
+    real4d acoustic_mass_flux("acoustic_mass_flux",nz+1,ny,nx,nens);
+
     //////////////////////////////////////////////////////////
     // Compute the upwind fluxes
     //////////////////////////////////////////////////////////
@@ -2131,6 +2133,7 @@ public:
       stateFlux(idW,k,j,i,iens) = w1 + w2;
       stateFlux(idT,k,j,i,iens) = cs * (w2 - w1);
       if (k == 0 || k == nz) stateFlux(idW,k,j,i,iens) = 0;
+      acoustic_mass_flux(k,j,i,iens) = stateFlux(idW,k,j,i,iens);
     });
 
     //////////////////////////////////////////////////////////
@@ -2330,13 +2333,27 @@ public:
       stateFlux(idW,k,j,i,iens) = q4*q4/q1;
       stateFlux(idT,k,j,i,iens) = q4*q5/q1;
 
+      if (w > 0) {
+        stateFlux(idR,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens);
+        stateFlux(idU,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens)*u_L;
+        stateFlux(idV,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens)*v_L;
+        stateFlux(idW,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens)*w_L;
+        stateFlux(idT,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens)*t_L;
+      } else {
+        stateFlux(idR,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens);
+        stateFlux(idU,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens)*u_R;
+        stateFlux(idV,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens)*v_R;
+        stateFlux(idW,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens)*w_R;
+        stateFlux(idT,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens)*t_R;
+      }
+
       // COMPUTE UPWIND TRACER FLUXES
       // Handle it one tracer at a time
       for (int tr=0; tr < num_tracers; tr++) {
         if (w > 0) {
-          tracerFlux(tr,k,j,i,iens) = q4 * tracerLimits(tr,0,k,j,i,iens) / r_L;
+          tracerFlux(tr,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens) * tracerLimits(tr,0,k,j,i,iens) / r_L;
         } else {
-          tracerFlux(tr,k,j,i,iens) = q4 * tracerLimits(tr,1,k,j,i,iens) / r_R;
+          tracerFlux(tr,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens) * tracerLimits(tr,1,k,j,i,iens) / r_R;
         }
       }
     });
