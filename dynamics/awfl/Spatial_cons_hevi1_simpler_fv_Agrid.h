@@ -2141,8 +2141,8 @@ public:
       real w1 = 0.5_fp * (rw_R - p_R/cs);
       real w2 = 0.5_fp * (rw_L + p_L/cs);
 
-      stateFlux(idT,k,j,i,iens) = w1 + w2;
-      stateFlux(idW,k,j,i,iens) = cs * (w2 - w1);
+      stateFlux(idW,k,j,i,iens) = w1 + w2;
+      stateFlux(idT,k,j,i,iens) = cs * (w2 - w1);
       if (k == 0 || k == nz) stateFlux(idW,k,j,i,iens) = 0;
     });
 

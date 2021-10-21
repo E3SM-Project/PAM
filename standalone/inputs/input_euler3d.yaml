@@ -39,7 +39,7 @@ outFreq: 0.
 nens : 1
 
 # Balance initial density to avoid initial acoustics
-balance_initial_density: true
+balance_initial_density: false
 
 # Number of sponge layer cells
 sponge_cells: 0
