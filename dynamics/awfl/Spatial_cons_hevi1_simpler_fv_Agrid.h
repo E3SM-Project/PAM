@@ -2130,8 +2130,8 @@ public:
       real w1 = 0.5_fp * (rw_R - p_R/cs);
       real w2 = 0.5_fp * (rw_L + p_L/cs);
 
-      stateFlux(idW,k,j,i,iens) = w1 + w2;
-      stateFlux(idT,k,j,i,iens) = cs * (w2 - w1);
+      stateFlux(idW,k,j,i,iens) = w1 + w2;          // This holds upwind momentum
+      stateFlux(idT,k,j,i,iens) = cs * (w2 - w1);   // This holds upwind pressure
       if (k == 0 || k == nz) stateFlux(idW,k,j,i,iens) = 0;
       acoustic_mass_flux(k,j,i,iens) = stateFlux(idW,k,j,i,iens);
     });
@@ -2254,36 +2254,6 @@ public:
     //////////////////////////////////////////////////////////
     // Compute the upwind fluxes
     //////////////////////////////////////////////////////////
-    // parallel_for( "Spatial.h Z advection Riemann" , SimpleBounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-    //   // Get left and right state
-    //   real r_L = stateLimits(idR,0,k,j,i,iens)    ;   real r_R = stateLimits(idR,1,k,j,i,iens)    ;
-    //   real u_L = stateLimits(idU,0,k,j,i,iens)/r_L;   real u_R = stateLimits(idU,1,k,j,i,iens)/r_R;
-    //   real v_L = stateLimits(idV,0,k,j,i,iens)/r_L;   real v_R = stateLimits(idV,1,k,j,i,iens)/r_R;
-    //   real w_L = stateLimits(idW,0,k,j,i,iens)/r_L;   real w_R = stateLimits(idW,1,k,j,i,iens)/r_R;
-    //   real t_L = stateLimits(idT,0,k,j,i,iens)/r_L;   real t_R = stateLimits(idT,1,k,j,i,iens)/r_R;
-    //   // Compute average state
-    //   real w = 0.5_fp * (w_L + w_R);
-
-    //   if (w > 0) {
-    //     stateFlux(idR,k,j,i,iens) = r_L*w_L;
-    //     stateFlux(idU,k,j,i,iens) = r_L*w_L*u_L;
-    //     stateFlux(idV,k,j,i,iens) = r_L*w_L*v_L;
-    //     stateFlux(idW,k,j,i,iens) = r_L*w_L*w_L;
-    //     stateFlux(idT,k,j,i,iens) = r_L*w_L*t_L;
-    //     for (int tr=0; tr < num_tracers; tr++) {
-    //       tracerFlux(tr,k,j,i,iens) = r_L*w_L*tracerLimits(tr,0,k,j,i,iens)/r_L;
-    //     }
-    //   } else {
-    //     stateFlux(idR,k,j,i,iens) = r_R*w_R;
-    //     stateFlux(idU,k,j,i,iens) = r_R*w_R*u_R;
-    //     stateFlux(idV,k,j,i,iens) = r_R*w_R*v_R;
-    //     stateFlux(idW,k,j,i,iens) = r_R*w_R*w_R;
-    //     stateFlux(idT,k,j,i,iens) = r_R*w_R*t_R;
-    //     for (int tr=0; tr < num_tracers; tr++) {
-    //       tracerFlux(tr,k,j,i,iens) = r_R*w_R*tracerLimits(tr,1,k,j,i,iens)/r_R;
-    //     }
-    //   }
-    // });
     parallel_for( "Spatial.h Z Riemann" , SimpleBounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       // Get left and right state
       real r_L = stateLimits(idR,0,k,j,i,iens)    ;   real r_R = stateLimits(idR,1,k,j,i,iens)    ;
@@ -2292,46 +2262,7 @@ public:
       real w_L = stateLimits(idW,0,k,j,i,iens)/r_L;   real w_R = stateLimits(idW,1,k,j,i,iens)/r_R;
       real t_L = stateLimits(idT,0,k,j,i,iens)/r_L;   real t_R = stateLimits(idT,1,k,j,i,iens)/r_R;
       // Compute average state
-      real r = 0.5_fp * (r_L + r_R);
-      real u = 0.5_fp * (u_L + u_R);
-      real v = 0.5_fp * (v_L + v_R);
       real w = 0.5_fp * (w_L + w_R);
-      real t = 0.5_fp * (t_L + t_R);
-      real cs  = 300;
-      // Get left and right fluxes
-      real q1_L = stateLimits(idR,0,k,j,i,iens);   real q1_R = stateLimits(idR,1,k,j,i,iens);
-      real q2_L = stateLimits(idU,0,k,j,i,iens);   real q2_R = stateLimits(idU,1,k,j,i,iens);
-      real q3_L = stateLimits(idV,0,k,j,i,iens);   real q3_R = stateLimits(idV,1,k,j,i,iens);
-      real q4_L = stateLimits(idW,0,k,j,i,iens);   real q4_R = stateLimits(idW,1,k,j,i,iens);
-      real q5_L = stateLimits(idT,0,k,j,i,iens);   real q5_R = stateLimits(idT,1,k,j,i,iens);
-      // Compute upwind characteristics
-      // Waves 1-3, velocity: w
-      real w1, w2, w3;
-      if (w > 0) {
-        w1 = q1_L - q5_L/t;
-        w2 = q2_L - u*q5_L/t;
-        w3 = q3_L - v*q5_L/t;
-      } else {
-        w1 = q1_R - q5_R/t;
-        w2 = q2_R - u*q5_R/t;
-        w3 = q3_R - v*q5_R/t;
-      }
-      // Wave 5, velocity: w-cs
-      real w5 =  w*q1_R/(2*cs) - q4_R/(2*cs) + q5_R/(2*t);
-      // Wave 6, velocity: w+cs
-      real w6 = -w*q1_L/(2*cs) + q4_L/(2*cs) + q5_L/(2*t);
-      // Use right eigenmatrix to compute upwind flux
-      real q1 = w1 + w5 + w6;
-      real q2 = w2 + u*w5 + u*w6;
-      real q3 = w3 + v*w5 + v*w6;
-      real q4 = w*w1 + (w-cs)*w5 + (w+cs)*w6;
-      real q5 =      t*w5 + t*w6;
-
-      stateFlux(idR,k,j,i,iens) = q4;
-      stateFlux(idU,k,j,i,iens) = q4*q2/q1;
-      stateFlux(idV,k,j,i,iens) = q4*q3/q1;
-      stateFlux(idW,k,j,i,iens) = q4*q4/q1;
-      stateFlux(idT,k,j,i,iens) = q4*q5/q1;
 
       if (w > 0) {
         stateFlux(idR,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens);
@@ -2347,8 +2278,6 @@ public:
         stateFlux(idT,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens)*t_R;
       }
 
-      // COMPUTE UPWIND TRACER FLUXES
-      // Handle it one tracer at a time
       for (int tr=0; tr < num_tracers; tr++) {
         if (w > 0) {
           tracerFlux(tr,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens) * tracerLimits(tr,0,k,j,i,iens) / r_L;
