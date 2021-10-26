@@ -46,6 +46,34 @@ namespace pam {
   }
 
 
+  YAKL_INLINE real hydrostatic_density_deriv( real2d const &hy_params , real z_in , real zbot , real ztop ,
+                                              int iens , real grav ) {
+    real z = ( z_in - zbot ) / (ztop - zbot);
+    real a1 = hy_params(1,iens);
+    real a2 = hy_params(2,iens);
+    real a3 = hy_params(3,iens);
+    real a4 = hy_params(4,iens);
+    real a5 = hy_params(5,iens);
+    real a6 = hy_params(6,iens);
+    real a7 = hy_params(7,iens);
+    real a8 = hy_params(8,iens);
+    real a9 = hy_params(9,iens);
+    real z2 = z *z;
+    real z3 = z2*z;
+    real z4 = z3*z;
+    real z5 = z4*z;
+    real z6 = z5*z;
+    real z7 = z6*z;
+    real z8 = z7*z;
+    real z9 = z8*z;
+    real tmp1 = 9*a9*z8 + 8*a8*z7 + 7*a7*z6 + 6*a6*z5 + 5*a5*z4 + 4*a4*z3 + 3*a3*z2 + 2*a2*z + a1;
+    real tmp2 = exp(a9*z9 + a8*z8 + a7*z7 + a6*z6 + a5*z5 + a4*z4 + a3*z3 + a2*z2 + a1*z + a0);
+    real tmp3 = 2*(36*a9*z7 + 28*a8*z6 + 21*a7*z5 + 15*a6*z4 + 10*a5*z3 + 6*a4*z2 + 3*a3*z + a2);
+    real tmp4 = tmp1*tmp1 * tmp2 + tmp3 * tmp2;
+    return -tmp4/grav/(ztop-zbot)/(ztop-zbot);
+  }
+
+
 
   YAKL_INLINE static real compute_pressure( real rho_d, real rho_v, real T, real R_d, real R_v ) {
     return rho_d*R_d*T + rho_v*R_v*T;
