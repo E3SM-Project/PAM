@@ -49,6 +49,7 @@ namespace pam {
   YAKL_INLINE real hydrostatic_density_deriv( real2d const &hy_params , real z_in , real zbot , real ztop ,
                                               int iens , real grav ) {
     real z = ( z_in - zbot ) / (ztop - zbot);
+    real a0 = hy_params(0,iens);
     real a1 = hy_params(1,iens);
     real a2 = hy_params(2,iens);
     real a3 = hy_params(3,iens);

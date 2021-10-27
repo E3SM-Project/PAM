@@ -725,15 +725,16 @@ public:
     weno::wenoSetIdealSigma<ord>(this->idl,this->sigma);
 
     // Allocate data
-    stateLimits     = real6d("stateLimits"    ,num_state  ,2,nz+1,ny+1,nx+1,nens);
-    tracerLimits    = real6d("tracerLimits"   ,num_tracers,2,nz+1,ny+1,nx+1,nens);
-    stateFlux       = real5d("stateFlux"      ,num_state    ,nz+1,ny+1,nx+1,nens);
-    tracerFlux      = real5d("tracerFlux"     ,num_tracers  ,nz+1,ny+1,nx+1,nens);
+    stateLimits      = real6d("stateLimits"    ,num_state  ,2,nz+1,ny+1,nx+1,nens);
+    tracerLimits     = real6d("tracerLimits"   ,num_tracers,2,nz+1,ny+1,nx+1,nens);
+    stateFlux        = real5d("stateFlux"      ,num_state    ,nz+1,ny+1,nx+1,nens);
+    tracerFlux       = real5d("tracerFlux"     ,num_tracers  ,nz+1,ny+1,nx+1,nens);
     hyDensCells      = real2d("hyDensCells       ",nz,nens);
     hyPressureCells  = real2d("hyPressureCells   ",nz,nens);
     hyThetaCells     = real2d("hyThetaCells      ",nz,nens);
     hyDensThetaCells = real2d("hyDensThetaCells  ",nz,nens);
     hyDensGLL        = real3d("hyDensGLL         ",nz,ngll,nens);
+    hyDensDerivGLL   = real3d("hyDensDerivGLL    ",nz,ngll,nens);
     hyPressureGLL    = real3d("hyPressureGLL     ",nz,ngll,nens);
     hyThetaGLL       = real3d("hyThetaGLL        ",nz,ngll,nens);
     hyDensThetaGLL   = real3d("hyDensThetaGLL    ",nz,ngll,nens);
@@ -2009,6 +2010,9 @@ public:
     YAKL_SCOPE( vert_sten_to_coefs      , this->vert_sten_to_coefs     );
     YAKL_SCOPE( vert_weno_recon_lower   , this->vert_weno_recon_lower  );
 
+    memset(stateTend ,0._fp);
+    memset(tracerTend,0._fp);
+
     // Pre-process the tracers by dividing by density inside the domain
     // After this, we can reconstruct tracers only (not rho * tracer)
     parallel_for( "Spatial.h Z tracer div dens" , SimpleBounds<5>(num_tracers,nz,ny,nx,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
@@ -2044,8 +2048,8 @@ public:
       });
     }
 
-    memset(stateTend,0._fp);
-
+    real5d state_advec_tavg  ("state_advec_tavg"  ,num_state  ,nz+2*hs,ny+2*hs,nx+2*hs,nens);
+    real5d tracers_advec_tavg("tracers_advec_tavg",num_tracers,nz+2*hs,ny+2*hs,nx+2*hs,nens);
 
     //////////////////////////////////////////////////
     // Advection
@@ -2084,8 +2088,8 @@ public:
         // Reconstruct w, and compute zeroth-order DTs of w*w
         for (int kk=0; kk < ord; kk++) {
           int k_ind = min(max(k+kk,hs),hs+nz-1);
-          stencil(kk) = state(idW,k+kk,hs+j,hs+i,iens) / 
-                        ( state(idR,k+kk,hs+j,hs+i,iens) + hyDensCells(k_ind,iens);
+          real r = state(idR,k_ind,hs+j,hs+i,iens) + hyDensCells(k_ind-hs,iens);
+          stencil(kk) = state(idW,k+kk,hs+j,hs+i,iens) / r;
         }
         reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc , weno_recon_lower_loc , idl , sigma , weno_winds );
         if (bc_z == BC_WALL) {
@@ -2102,7 +2106,7 @@ public:
           for (int ii=0; ii<ngll; ii++) {
             real dww_dz = 0;
             for (int s=0; s<ngll; s++) {
-              dww_dz += deriv(s,ii) * ww_DTs(kt,s);
+              dww_dz += derivMatrix(s,ii) * ww_DTs(kt,s);
             }
             w_DTs(kt+1,ii) = -dww_dz/dz(k,iens)/2._fp/(kt+1._fp);
           }
@@ -2120,251 +2124,354 @@ public:
       SArray<real,2,nAder,ngll> v_DTs;
       SArray<real,2,nAder,ngll> dv_DTs;
       SArray<real,2,nAder,ngll> w_dv_DTs;
+      SArray<real,1,ngll> gll_val;
+      SArray<real,1,ngll> gll_der;
 
-      // Density advection
-      for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idR,k+kk,hs+j,hs+i,iens); }
+      // Density
+      for (int kk=0; kk < ord; kk++) {
+        stencil(kk) = state(idR,k+kk,hs+j,hs+i,iens);
+      }
       reconstruct_gll_values_and_derivs( stencil , gll_val , gll_der , c2g , c2d2g , s2c_loc , weno_recon_lower_loc , idl , sigma , dz(k,iens) );
       for (int kk=0; kk < ngll; kk++) {
-        v_DTs (0,kk) = gll_val(kk) + hyDensGLL(k,kk,iens);
+        v_DTs (0,kk) = gll_val(kk) + hyDensGLL     (k,kk,iens);
         dv_DTs(0,kk) = gll_der(kk) + hyDensDerivGLL(k,kk,iens);
         w_dv_DTs(0,kk) = w_DTs(0,kk) * dv_DTs(0,kk);
       }
-      for (int kt=0; kt<nAder-1; kt++) {
-        // v at kt+1
-        for (int ii=0; ii<ngll; ii++) {
-          v_DTs(kt+1,ii) = -w_dv_DTs(kt,ii)/(kt+1._fp);
-        }
-        for (int ii=0; ii<ngll; ii++) {
-          // dv at kt+1
-          real tot = 0;
-          for (int s=0; s <= ngll; s++) {
-            tot += deriv(s,ii) * v_DTs(kt+1,s);
-          }
-          dv_DTs(kt+1,ii) = tot / dz(k,iens);
-          // w_dv at kt+1
-          for (int ir=0; ir<=kt+1; ir++) {
-            tot += w_DTs(ir,ii) * dv_DTs(kt+1-ir,ii);
-          }
-        }
+      diffTransformAdvecZ( w_DTs , v_DTs , dv_DTs , w_dv_DTs , derivMatrix , dz(k,iens) );
+      compute_timeAvg( v_DTs , dt );
+      real tot = 0;
+      for (int ii=0; ii < ngll; ii++) { tot += gllWts_ngll(ii) * v_DTs(0,ii); }
+      state_advec_tavg(idR,hs+k,hs+j,hs+i,iens) = tot - hyDensCells(k,iens);
+
+      // u-velocity
+      for (int kk=0; kk < ord; kk++) {
+        int k_ind = min(max(k+kk,hs),hs+nz-1);
+        real r = state(idR,k_ind,hs+j,hs+i,iens) + hyDensCells(k_ind-hs,iens);
+        stencil(kk) = state(idU,k+kk,hs+j,hs+i,iens) / r;
       }
-
-    });
-
-
-    //////////////////////////////////////////////////
-    // Acoustics
-    //////////////////////////////////////////////////
-    // Loop through all cells, reconstruct in x-direction, compute centered tendencies, store cell-edge state estimates
-    parallel_for( "Spatial.h Z acoustic recon" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      SArray<real,2,ord,ngll>       s2g_loc;
-      SArray<real,2,ord,ord>        s2c_loc;
-      SArray<real,3,hs+1,hs+1,hs+1> weno_recon_lower_loc;
-      for (int jj=0; jj < ord; jj++) {
-        for (int ii=0; ii < ngll; ii++) {
-          s2g_loc(jj,ii) = vert_sten_to_gll(k,jj,ii,iens);
-        }
-      }
-      for (int jj=0; jj < ord; jj++) {
-        for (int ii=0; ii < ord; ii++) {
-          s2c_loc(jj,ii) = vert_sten_to_coefs(k,jj,ii,iens);
-        }
-      }
-      for (int kk=0; kk < hs+1; kk++) {
-        for (int jj=0; jj < hs+1; jj++) {
-          for (int ii=0; ii < hs+1; ii++) {
-            weno_recon_lower_loc(kk,jj,ii) = vert_weno_recon_lower(k,kk,jj,ii,iens);
-          }
-        }
-      }
-
-      SArray<real,1,ord>  stencil;
-      SArray<real,1,ngll> gll;
-
-      // Pressure perturbation
-      for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idT,k+kk,hs+j,hs+i,iens); }
-      reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc , weno_recon_lower_loc , idl , sigma , weno_scalars );
+      reconstruct_gll_values_and_derivs( stencil , gll_val , gll_der , c2g , c2d2g , s2c_loc , weno_recon_lower_loc , idl , sigma , dz(k,iens) );
       for (int kk=0; kk < ngll; kk++) {
-        gll(kk) = C0 * pow( gll(kk) + hyDensThetaGLL(k,kk,iens) , gamma ) - hyPressureGLL(k,kk,iens);
+        v_DTs (0,kk) = gll_val(kk);
+        dv_DTs(0,kk) = gll_der(kk);
+        w_dv_DTs(0,kk) = w_DTs(0,kk) * dv_DTs(0,kk);
       }
-      stateLimits(idT,1,k  ,j,i,iens) = gll(0     );
-      stateLimits(idT,0,k+1,j,i,iens) = gll(ngll-1);
+      diffTransformAdvecZ( w_DTs , v_DTs , dv_DTs , w_dv_DTs , derivMatrix , dz(k,iens) );
+      compute_timeAvg( v_DTs , dt );
+      tot = 0;
+      for (int ii=0; ii < ngll; ii++) { tot += gllWts_ngll(ii) * v_DTs(0,ii); }
+      state_advec_tavg(idU,hs+k,hs+j,hs+i,iens) = tot;
 
-      // rho*w
-      for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idW,k+kk,hs+j,hs+i,iens); }
-      reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc , weno_recon_lower_loc , idl , sigma , weno_winds );
-      if (bc_z == BC_WALL) {
-        if (k == nz-1) gll(ngll-1) = 0;
-        if (k == 0   ) gll(0     ) = 0;
+      // v-velocity
+      for (int kk=0; kk < ord; kk++) {
+        int k_ind = min(max(k+kk,hs),hs+nz-1);
+        real r = state(idR,k_ind,hs+j,hs+i,iens) + hyDensCells(k_ind-hs,iens);
+        stencil(kk) = state(idV,k+kk,hs+j,hs+i,iens) / r;
       }
-      stateLimits(idW,1,k  ,j,i,iens) = gll(0     );
-      stateLimits(idW,0,k+1,j,i,iens) = gll(ngll-1);
-    });
-
-    ////////////////////////////////////////////////
-    // BCs for the state edge estimates
-    ////////////////////////////////////////////////
-    parallel_for( "Spatial.h Z BCs edge" , SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int iens) {
-      for (int l = 0; l < num_state; l++) {
-        if        (bc_z == BC_PERIODIC) {
-          stateLimits(l,0,0 ,j,i,iens) = stateLimits(l,0,nz,j,i,iens);
-          stateLimits(l,1,nz,j,i,iens) = stateLimits(l,1,0 ,j,i,iens);
-        } else if (bc_z == BC_WALL    ) {
-          stateLimits(l,0,0 ,j,i,iens) = stateLimits(l,1,0 ,j,i,iens);
-          stateLimits(l,1,nz,j,i,iens) = stateLimits(l,0,nz,j,i,iens);
-        }
+      reconstruct_gll_values_and_derivs( stencil , gll_val , gll_der , c2g , c2d2g , s2c_loc , weno_recon_lower_loc , idl , sigma , dz(k,iens) );
+      for (int kk=0; kk < ngll; kk++) {
+        v_DTs (0,kk) = gll_val(kk);
+        dv_DTs(0,kk) = gll_der(kk);
+        w_dv_DTs(0,kk) = w_DTs(0,kk) * dv_DTs(0,kk);
       }
-      for (int l = 0; l < num_tracers; l++) {
-        if        (bc_z == BC_PERIODIC) {
-          tracerLimits(l,0,0 ,j,i,iens) = tracerLimits(l,0,nz,j,i,iens);
-          tracerLimits(l,1,nz,j,i,iens) = tracerLimits(l,1,0 ,j,i,iens);
-        } else if (bc_z == BC_WALL    ) {
-          tracerLimits(l,0,0 ,j,i,iens) = tracerLimits(l,1,0 ,j,i,iens);
-          tracerLimits(l,1,nz,j,i,iens) = tracerLimits(l,0,nz,j,i,iens);
-        }
+      diffTransformAdvecZ( w_DTs , v_DTs , dv_DTs , w_dv_DTs , derivMatrix , dz(k,iens) );
+      compute_timeAvg( v_DTs , dt );
+      tot = 0;
+      for (int ii=0; ii < ngll; ii++) { tot += gllWts_ngll(ii) * v_DTs(0,ii); }
+      state_advec_tavg(idV,hs+k,hs+j,hs+i,iens) = tot;
+
+      // theta
+      for (int kk=0; kk < ord; kk++) {
+        int k_ind = min(max(k+kk,hs),hs+nz-1);
+        real r  = state(idR,k_ind,hs+j,hs+i,iens) + hyDensCells     (k_ind-hs,iens);
+        real rt = state(idT,k_ind,hs+j,hs+i,iens) + hyDensThetaCells(k_ind-hs,iens);
+        stencil(kk) = rt / r;
       }
-    });
-
-    real4d acoustic_mass_flux("acoustic_mass_flux",nz+1,ny,nx,nens);
-
-    //////////////////////////////////////////////////////////
-    // Compute the upwind fluxes
-    //////////////////////////////////////////////////////////
-    parallel_for( "Spatial.h Z acoustic Riemann" , SimpleBounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      // Get left and right state
-      real p_L  = stateLimits(idT,0,k,j,i,iens);   real p_R  = stateLimits(idT,1,k,j,i,iens);
-      real rw_L = stateLimits(idW,0,k,j,i,iens);   real rw_R = stateLimits(idW,1,k,j,i,iens);
-      real cs = 300;
-
-      real w1 = 0.5_fp * (rw_R - p_R/cs);
-      real w2 = 0.5_fp * (rw_L + p_L/cs);
-
-      stateFlux(idW,k,j,i,iens) = w1 + w2;          // This holds upwind momentum
-      stateFlux(idT,k,j,i,iens) = cs * (w2 - w1);   // This holds upwind pressure
-      if (k == 0 || k == nz) stateFlux(idW,k,j,i,iens) = 0;
-      acoustic_mass_flux(k,j,i,iens) = stateFlux(idW,k,j,i,iens);
-    });
-
-    //////////////////////////////////////////////////////////
-    // Compute the tendencies
-    //////////////////////////////////////////////////////////
-    parallel_for( "Spatial.h Z acoustic tendencies" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA(int k, int j, int i, int iens) {
-      stateTend(idW,k,j,i,iens) = - ( stateFlux(idT,k+1,j,i,iens) - stateFlux(idT,k,j,i,iens) ) / dz(k,iens);
-    });
-
-    ////////////////////////////////////////////////
-    // BCs for the state edge estimates
-    ////////////////////////////////////////////////
-    parallel_for( "Spatial.h Z BCs edge" , SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int iens) {
-      for (int l = 0; l < num_state; l++) {
-        if        (bc_z == BC_PERIODIC) {
-          stateLimits(l,0,0 ,j,i,iens) = stateLimits(l,0,nz,j,i,iens);
-          stateLimits(l,1,nz,j,i,iens) = stateLimits(l,1,0 ,j,i,iens);
-        } else if (bc_z == BC_WALL    ) {
-          stateLimits(l,0,0 ,j,i,iens) = stateLimits(l,1,0 ,j,i,iens);
-          stateLimits(l,1,nz,j,i,iens) = stateLimits(l,0,nz,j,i,iens);
-        }
+      reconstruct_gll_values_and_derivs( stencil , gll_val , gll_der , c2g , c2d2g , s2c_loc , weno_recon_lower_loc , idl , sigma , dz(k,iens) );
+      for (int kk=0; kk < ngll; kk++) {
+        v_DTs (0,kk) = gll_val(kk);
+        dv_DTs(0,kk) = gll_der(kk);
+        w_dv_DTs(0,kk) = w_DTs(0,kk) * dv_DTs(0,kk);
       }
-      for (int l = 0; l < num_tracers; l++) {
-        if        (bc_z == BC_PERIODIC) {
-          tracerLimits(l,0,0 ,j,i,iens) = tracerLimits(l,0,nz,j,i,iens);
-          tracerLimits(l,1,nz,j,i,iens) = tracerLimits(l,1,0 ,j,i,iens);
-        } else if (bc_z == BC_WALL    ) {
-          tracerLimits(l,0,0 ,j,i,iens) = tracerLimits(l,1,0 ,j,i,iens);
-          tracerLimits(l,1,nz,j,i,iens) = tracerLimits(l,0,nz,j,i,iens);
-        }
-      }
-    });
+      diffTransformAdvecZ( w_DTs , v_DTs , dv_DTs , w_dv_DTs , derivMatrix , dz(k,iens) );
+      compute_timeAvg( v_DTs , dt );
+      tot = 0;
+      for (int ii=0; ii < ngll; ii++) { tot += gllWts_ngll(ii) * v_DTs(0,ii); }
+      state_advec_tavg(idT,hs+k,hs+j,hs+i,iens) = tot - hyThetaCells(k,iens);
 
-    //////////////////////////////////////////////////////////
-    // Compute the upwind fluxes
-    //////////////////////////////////////////////////////////
-    parallel_for( "Spatial.h Z Riemann" , SimpleBounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      // Get left and right state
-      real r_L = stateLimits(idR,0,k,j,i,iens)    ;   real r_R = stateLimits(idR,1,k,j,i,iens)    ;
-      real u_L = stateLimits(idU,0,k,j,i,iens)/r_L;   real u_R = stateLimits(idU,1,k,j,i,iens)/r_R;
-      real v_L = stateLimits(idV,0,k,j,i,iens)/r_L;   real v_R = stateLimits(idV,1,k,j,i,iens)/r_R;
-      real w_L = stateLimits(idW,0,k,j,i,iens)/r_L;   real w_R = stateLimits(idW,1,k,j,i,iens)/r_R;
-      real t_L = stateLimits(idT,0,k,j,i,iens)/r_L;   real t_R = stateLimits(idT,1,k,j,i,iens)/r_R;
-      // Compute average state
-      real w = 0.5_fp * (w_L + w_R);
-
-      if (w > 0) {
-        stateFlux(idR,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens);
-        stateFlux(idU,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens)*u_L;
-        stateFlux(idV,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens)*v_L;
-        stateFlux(idW,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens)*w_L;
-        stateFlux(idT,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens)*t_L;
-      } else {
-        stateFlux(idR,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens);
-        stateFlux(idU,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens)*u_R;
-        stateFlux(idV,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens)*v_R;
-        stateFlux(idW,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens)*w_R;
-        stateFlux(idT,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens)*t_R;
-      }
-
+      // tracers
       for (int tr=0; tr < num_tracers; tr++) {
-        if (w > 0) {
-          tracerFlux(tr,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens) * tracerLimits(tr,0,k,j,i,iens) / r_L;
-        } else {
-          tracerFlux(tr,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens) * tracerLimits(tr,1,k,j,i,iens) / r_R;
+        for (int kk=0; kk < ord; kk++) {
+          int k_ind = min(max(k+kk,hs),hs+nz-1);
+          stencil(kk) = tracers(tr,k+kk,hs+j,hs+i,iens);
         }
+        reconstruct_gll_values_and_derivs( stencil , gll_val , gll_der , c2g , c2d2g , s2c_loc , weno_recon_lower_loc , idl , sigma , dz(k,iens) );
+        for (int kk=0; kk < ngll; kk++) {
+          v_DTs (0,kk) = gll_val(kk);
+          dv_DTs(0,kk) = gll_der(kk);
+          w_dv_DTs(0,kk) = w_DTs(0,kk) * dv_DTs(0,kk);
+        }
+        diffTransformAdvecZ( w_DTs , v_DTs , dv_DTs , w_dv_DTs , derivMatrix , dz(k,iens) );
+        compute_timeAvg( v_DTs , dt );
+        tot = 0;
+        for (int ii=0; ii < ngll; ii++) { tot += gllWts_ngll(ii) * v_DTs(0,ii); }
+        tracers_advec_tavg(tr,hs+k,hs+j,hs+i,iens) = tot;
       }
+
+      // w
+      compute_timeAvg( w_DTs , dt );
+      tot = 0;
+      for (int ii=0; ii < ngll; ii++) { tot += gllWts_ngll(ii) * w_DTs(0,ii); }
+      state_advec_tavg(idW,hs+k,hs+j,hs+i,iens) = tot;
     });
 
-    //////////////////////////////////////////////////////////
-    // Limit the tracer fluxes for positivity
-    //////////////////////////////////////////////////////////
-    real5d fct_mult("fct_mult",num_tracers,nz+1,ny,nx,nens);
-    parallel_for( "Spatial.h Z FCT" , SimpleBounds<5>(num_tracers,nz+1,ny,nx,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
-      fct_mult(tr,k,j,i,iens) = 1.;
-      if (k == 0 || k == nz) tracerFlux(tr,k,j,i,iens) = 0;
-      // Solid wall BCs mean w == 0 at boundaries
-      if (tracer_pos(tr)) {
-        // Compute and apply the flux reduction factor of the upwind cell
-        if      (tracerFlux(tr,k,j,i,iens) > 0) {
-          int ind_k = k-1;
-          // upwind is to the left of this interface
-          real f1 = min( tracerFlux(tr,ind_k  ,j,i,iens) , 0._fp );
-          real f2 = max( tracerFlux(tr,ind_k+1,j,i,iens) , 0._fp );
-          real fluxOut = dt*(f2-f1)/dz(ind_k,iens);
-          real dens = state(idR,hs+ind_k,hs+j,hs+i,iens) + hyDensCells(ind_k,iens);
-          real mass = tracers(tr,hs+ind_k,hs+j,hs+i,iens) * dens;
-          if (fluxOut > 0) {
-            fct_mult(tr,k,j,i,iens) = min( 1._fp , mass / fluxOut );
-          }
-        } else if (tracerFlux(tr,k,j,i,iens) < 0) {
-          int ind_k = k;
-          // upwind is to the right of this interface
-          real f1 = min( tracerFlux(tr,ind_k  ,j,i,iens) , 0._fp );
-          real f2 = max( tracerFlux(tr,ind_k+1,j,i,iens) , 0._fp );
-          real fluxOut = dt*(f2-f1)/dz(ind_k,iens);
-          real dens = state(idR,hs+ind_k,hs+j,hs+i,iens) + hyDensCells(ind_k,iens);
-          real mass = tracers(tr,hs+ind_k,hs+j,hs+i,iens) * dens;
-          if (fluxOut > 0) {
-            fct_mult(tr,k,j,i,iens) = min( 1._fp , mass / fluxOut );
+    // Populate the halos for state_advec_tavg and tracers_advec_tavg
+    if        (bc_z == BC_PERIODIC) {
+      parallel_for( "Spatial.h Z BCs periodic" , SimpleBounds<4>(ny,nx,hs,nens) , YAKL_LAMBDA(int j, int i, int kk, int iens) {
+        for (int l=0; l < num_state; l++) {
+          state_advec_tavg(l,      kk,hs+j,hs+i,iens) = state_advec_tavg(l,nz+kk,hs+j,hs+i,iens);
+          state_advec_tavg(l,hs+nz+kk,hs+j,hs+i,iens) = state_advec_tavg(l,hs+kk,hs+j,hs+i,iens);
+        }
+        for (int l=0; l < num_tracers; l++) {
+          tracers_advec_tavg(l,      kk,hs+j,hs+i,iens) = tracers_advec_tavg(l,nz+kk,hs+j,hs+i,iens);
+          tracers_advec_tavg(l,hs+nz+kk,hs+j,hs+i,iens) = tracers_advec_tavg(l,hs+kk,hs+j,hs+i,iens);
+        }
+      });
+    } else if (bc_z == BC_WALL) {
+      parallel_for( "Spatial.h Z BCs wall" , SimpleBounds<4>(ny,nx,hs,nens) , YAKL_LAMBDA(int j, int i, int kk, int iens) {
+        for (int l=0; l < num_state; l++) {
+          if (l == idW) {
+            state_advec_tavg(l,      kk,hs+j,hs+i,iens) = 0;
+            state_advec_tavg(l,hs+nz+kk,hs+j,hs+i,iens) = 0;
+          } else {
+            state_advec_tavg(l,      kk,hs+j,hs+i,iens) = state_advec_tavg(l,hs     ,hs+j,hs+i,iens);
+            state_advec_tavg(l,hs+nz+kk,hs+j,hs+i,iens) = state_advec_tavg(l,hs+nz-1,hs+j,hs+i,iens);
           }
         }
-      }
-    });
+        for (int l=0; l < num_tracers; l++) {
+          tracers_advec_tavg(l,      kk,hs+j,hs+i,iens) = tracers_advec_tavg(l,hs     ,hs+j,hs+i,iens);
+          tracers_advec_tavg(l,hs+nz+kk,hs+j,hs+i,iens) = tracers_advec_tavg(l,hs+nz-1,hs+j,hs+i,iens);
+        }
+      });
+    }
 
-    //////////////////////////////////////////////////////////
-    // Compute the tendencies
-    //////////////////////////////////////////////////////////
-    parallel_for( "Spatial.h Z tendencies" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA(int k, int j, int i, int iens) {
-      for (int l=0; l < num_state; l++) {
-        if (sim2d && l == idV) {
-          stateTend(l,k,j,i,iens) = 0;
-        } else {
-          stateTend(l,k,j,i,iens) += - ( stateFlux(l,k+1,j,i,iens) - stateFlux(l,k,j,i,iens) ) / dz(k,iens);
-        }
-      }
-      for (int l=0; l < num_tracers; l++) {
-        // Compute tracer tendency
-        tracerTend(l,k,j,i,iens) = - ( tracerFlux(l,k+1,j,i,iens)*fct_mult(l,k+1,j,i,iens) -
-                                       tracerFlux(l,k  ,j,i,iens)*fct_mult(l,k  ,j,i,iens) ) / dz(k,iens);
-        // Multiply density back onto the tracers
-        tracers(l,hs+k,hs+j,hs+i,iens) *= (state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens));
-      }
+
+    // //////////////////////////////////////////////////
+    // // Acoustics
+    // //////////////////////////////////////////////////
+    // // Loop through all cells, reconstruct in x-direction, compute centered tendencies, store cell-edge state estimates
+    // parallel_for( "Spatial.h Z acoustic recon" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+    //   SArray<real,2,ord,ngll>       s2g_loc;
+    //   SArray<real,2,ord,ord>        s2c_loc;
+    //   SArray<real,3,hs+1,hs+1,hs+1> weno_recon_lower_loc;
+    //   for (int jj=0; jj < ord; jj++) {
+    //     for (int ii=0; ii < ngll; ii++) {
+    //       s2g_loc(jj,ii) = vert_sten_to_gll(k,jj,ii,iens);
+    //     }
+    //   }
+    //   for (int jj=0; jj < ord; jj++) {
+    //     for (int ii=0; ii < ord; ii++) {
+    //       s2c_loc(jj,ii) = vert_sten_to_coefs(k,jj,ii,iens);
+    //     }
+    //   }
+    //   for (int kk=0; kk < hs+1; kk++) {
+    //     for (int jj=0; jj < hs+1; jj++) {
+    //       for (int ii=0; ii < hs+1; ii++) {
+    //         weno_recon_lower_loc(kk,jj,ii) = vert_weno_recon_lower(k,kk,jj,ii,iens);
+    //       }
+    //     }
+    //   }
+
+    //   SArray<real,1,ord>  stencil;
+    //   SArray<real,1,ngll> gll;
+
+    //   // Pressure perturbation
+    //   for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idT,k+kk,hs+j,hs+i,iens); }
+    //   reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc , weno_recon_lower_loc , idl , sigma , weno_scalars );
+    //   for (int kk=0; kk < ngll; kk++) {
+    //     gll(kk) = C0 * pow( gll(kk) + hyDensThetaGLL(k,kk,iens) , gamma ) - hyPressureGLL(k,kk,iens);
+    //   }
+    //   stateLimits(idT,1,k  ,j,i,iens) = gll(0     );
+    //   stateLimits(idT,0,k+1,j,i,iens) = gll(ngll-1);
+
+    //   // rho*w
+    //   for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idW,k+kk,hs+j,hs+i,iens); }
+    //   reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc , weno_recon_lower_loc , idl , sigma , weno_winds );
+    //   if (bc_z == BC_WALL) {
+    //     if (k == nz-1) gll(ngll-1) = 0;
+    //     if (k == 0   ) gll(0     ) = 0;
+    //   }
+    //   stateLimits(idW,1,k  ,j,i,iens) = gll(0     );
+    //   stateLimits(idW,0,k+1,j,i,iens) = gll(ngll-1);
+    // });
+
+    // ////////////////////////////////////////////////
+    // // BCs for the state edge estimates
+    // ////////////////////////////////////////////////
+    // parallel_for( "Spatial.h Z BCs edge" , SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int iens) {
+    //   for (int l = 0; l < num_state; l++) {
+    //     if        (bc_z == BC_PERIODIC) {
+    //       stateLimits(l,0,0 ,j,i,iens) = stateLimits(l,0,nz,j,i,iens);
+    //       stateLimits(l,1,nz,j,i,iens) = stateLimits(l,1,0 ,j,i,iens);
+    //     } else if (bc_z == BC_WALL    ) {
+    //       stateLimits(l,0,0 ,j,i,iens) = stateLimits(l,1,0 ,j,i,iens);
+    //       stateLimits(l,1,nz,j,i,iens) = stateLimits(l,0,nz,j,i,iens);
+    //     }
+    //   }
+    //   for (int l = 0; l < num_tracers; l++) {
+    //     if        (bc_z == BC_PERIODIC) {
+    //       tracerLimits(l,0,0 ,j,i,iens) = tracerLimits(l,0,nz,j,i,iens);
+    //       tracerLimits(l,1,nz,j,i,iens) = tracerLimits(l,1,0 ,j,i,iens);
+    //     } else if (bc_z == BC_WALL    ) {
+    //       tracerLimits(l,0,0 ,j,i,iens) = tracerLimits(l,1,0 ,j,i,iens);
+    //       tracerLimits(l,1,nz,j,i,iens) = tracerLimits(l,0,nz,j,i,iens);
+    //     }
+    //   }
+    // });
+
+    // real4d acoustic_mass_flux("acoustic_mass_flux",nz+1,ny,nx,nens);
+
+    // //////////////////////////////////////////////////////////
+    // // Compute the upwind fluxes
+    // //////////////////////////////////////////////////////////
+    // parallel_for( "Spatial.h Z acoustic Riemann" , SimpleBounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+    //   // Get left and right state
+    //   real p_L  = stateLimits(idT,0,k,j,i,iens);   real p_R  = stateLimits(idT,1,k,j,i,iens);
+    //   real rw_L = stateLimits(idW,0,k,j,i,iens);   real rw_R = stateLimits(idW,1,k,j,i,iens);
+    //   real cs = 300;
+
+    //   real w1 = 0.5_fp * (rw_R - p_R/cs);
+    //   real w2 = 0.5_fp * (rw_L + p_L/cs);
+
+    //   stateFlux(idW,k,j,i,iens) = w1 + w2;          // This holds upwind momentum
+    //   stateFlux(idT,k,j,i,iens) = cs * (w2 - w1);   // This holds upwind pressure
+    //   if (k == 0 || k == nz) stateFlux(idW,k,j,i,iens) = 0;
+    //   acoustic_mass_flux(k,j,i,iens) = stateFlux(idW,k,j,i,iens);
+    // });
+
+    // //////////////////////////////////////////////////////////
+    // // Compute the tendencies
+    // //////////////////////////////////////////////////////////
+    // parallel_for( "Spatial.h Z acoustic tendencies" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA(int k, int j, int i, int iens) {
+    //   stateTend(idW,k,j,i,iens) = - ( stateFlux(idT,k+1,j,i,iens) - stateFlux(idT,k,j,i,iens) ) / dz(k,iens);
+    // });
+
+    // ////////////////////////////////////////////////
+    // // BCs for the state edge estimates
+    // ////////////////////////////////////////////////
+    // parallel_for( "Spatial.h Z BCs edge" , SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int iens) {
+    //   for (int l = 0; l < num_state; l++) {
+    //     if        (bc_z == BC_PERIODIC) {
+    //       stateLimits(l,0,0 ,j,i,iens) = stateLimits(l,0,nz,j,i,iens);
+    //       stateLimits(l,1,nz,j,i,iens) = stateLimits(l,1,0 ,j,i,iens);
+    //     } else if (bc_z == BC_WALL    ) {
+    //       stateLimits(l,0,0 ,j,i,iens) = stateLimits(l,1,0 ,j,i,iens);
+    //       stateLimits(l,1,nz,j,i,iens) = stateLimits(l,0,nz,j,i,iens);
+    //     }
+    //   }
+    //   for (int l = 0; l < num_tracers; l++) {
+    //     if        (bc_z == BC_PERIODIC) {
+    //       tracerLimits(l,0,0 ,j,i,iens) = tracerLimits(l,0,nz,j,i,iens);
+    //       tracerLimits(l,1,nz,j,i,iens) = tracerLimits(l,1,0 ,j,i,iens);
+    //     } else if (bc_z == BC_WALL    ) {
+    //       tracerLimits(l,0,0 ,j,i,iens) = tracerLimits(l,1,0 ,j,i,iens);
+    //       tracerLimits(l,1,nz,j,i,iens) = tracerLimits(l,0,nz,j,i,iens);
+    //     }
+    //   }
+    // });
+
+    // //////////////////////////////////////////////////////////
+    // // Compute the upwind fluxes
+    // //////////////////////////////////////////////////////////
+    // parallel_for( "Spatial.h Z Riemann" , SimpleBounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+    //   // Get left and right state
+    //   real r_L = stateLimits(idR,0,k,j,i,iens)    ;   real r_R = stateLimits(idR,1,k,j,i,iens)    ;
+    //   real u_L = stateLimits(idU,0,k,j,i,iens)/r_L;   real u_R = stateLimits(idU,1,k,j,i,iens)/r_R;
+    //   real v_L = stateLimits(idV,0,k,j,i,iens)/r_L;   real v_R = stateLimits(idV,1,k,j,i,iens)/r_R;
+    //   real w_L = stateLimits(idW,0,k,j,i,iens)/r_L;   real w_R = stateLimits(idW,1,k,j,i,iens)/r_R;
+    //   real t_L = stateLimits(idT,0,k,j,i,iens)/r_L;   real t_R = stateLimits(idT,1,k,j,i,iens)/r_R;
+    //   // Compute average state
+    //   real w = 0.5_fp * (w_L + w_R);
+
+    //   if (w > 0) {
+    //     stateFlux(idR,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens);
+    //     stateFlux(idU,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens)*u_L;
+    //     stateFlux(idV,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens)*v_L;
+    //     stateFlux(idW,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens)*w_L;
+    //     stateFlux(idT,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens)*t_L;
+    //   } else {
+    //     stateFlux(idR,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens);
+    //     stateFlux(idU,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens)*u_R;
+    //     stateFlux(idV,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens)*v_R;
+    //     stateFlux(idW,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens)*w_R;
+    //     stateFlux(idT,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens)*t_R;
+    //   }
+
+    //   for (int tr=0; tr < num_tracers; tr++) {
+    //     if (w > 0) {
+    //       tracerFlux(tr,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens) * tracerLimits(tr,0,k,j,i,iens) / r_L;
+    //     } else {
+    //       tracerFlux(tr,k,j,i,iens) = acoustic_mass_flux(k,j,i,iens) * tracerLimits(tr,1,k,j,i,iens) / r_R;
+    //     }
+    //   }
+    // });
+
+    // //////////////////////////////////////////////////////////
+    // // Limit the tracer fluxes for positivity
+    // //////////////////////////////////////////////////////////
+    // real5d fct_mult("fct_mult",num_tracers,nz+1,ny,nx,nens);
+    // parallel_for( "Spatial.h Z FCT" , SimpleBounds<5>(num_tracers,nz+1,ny,nx,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
+    //   fct_mult(tr,k,j,i,iens) = 1.;
+    //   if (k == 0 || k == nz) tracerFlux(tr,k,j,i,iens) = 0;
+    //   // Solid wall BCs mean w == 0 at boundaries
+    //   if (tracer_pos(tr)) {
+    //     // Compute and apply the flux reduction factor of the upwind cell
+    //     if      (tracerFlux(tr,k,j,i,iens) > 0) {
+    //       int ind_k = k-1;
+    //       // upwind is to the left of this interface
+    //       real f1 = min( tracerFlux(tr,ind_k  ,j,i,iens) , 0._fp );
+    //       real f2 = max( tracerFlux(tr,ind_k+1,j,i,iens) , 0._fp );
+    //       real fluxOut = dt*(f2-f1)/dz(ind_k,iens);
+    //       real dens = state(idR,hs+ind_k,hs+j,hs+i,iens) + hyDensCells(ind_k,iens);
+    //       real mass = tracers(tr,hs+ind_k,hs+j,hs+i,iens) * dens;
+    //       if (fluxOut > 0) {
+    //         fct_mult(tr,k,j,i,iens) = min( 1._fp , mass / fluxOut );
+    //       }
+    //     } else if (tracerFlux(tr,k,j,i,iens) < 0) {
+    //       int ind_k = k;
+    //       // upwind is to the right of this interface
+    //       real f1 = min( tracerFlux(tr,ind_k  ,j,i,iens) , 0._fp );
+    //       real f2 = max( tracerFlux(tr,ind_k+1,j,i,iens) , 0._fp );
+    //       real fluxOut = dt*(f2-f1)/dz(ind_k,iens);
+    //       real dens = state(idR,hs+ind_k,hs+j,hs+i,iens) + hyDensCells(ind_k,iens);
+    //       real mass = tracers(tr,hs+ind_k,hs+j,hs+i,iens) * dens;
+    //       if (fluxOut > 0) {
+    //         fct_mult(tr,k,j,i,iens) = min( 1._fp , mass / fluxOut );
+    //       }
+    //     }
+    //   }
+    // });
+
+    // //////////////////////////////////////////////////////////
+    // // Compute the tendencies
+    // //////////////////////////////////////////////////////////
+    // parallel_for( "Spatial.h Z tendencies" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA(int k, int j, int i, int iens) {
+    //   for (int l=0; l < num_state; l++) {
+    //     if (sim2d && l == idV) {
+    //       stateTend(l,k,j,i,iens) = 0;
+    //     } else {
+    //       stateTend(l,k,j,i,iens) += - ( stateFlux(l,k+1,j,i,iens) - stateFlux(l,k,j,i,iens) ) / dz(k,iens);
+    //     }
+    //   }
+    //   for (int l=0; l < num_tracers; l++) {
+    //     // Compute tracer tendency
+    //     tracerTend(l,k,j,i,iens) = - ( tracerFlux(l,k+1,j,i,iens)*fct_mult(l,k+1,j,i,iens) -
+    //                                    tracerFlux(l,k  ,j,i,iens)*fct_mult(l,k  ,j,i,iens) ) / dz(k,iens);
+    //     // Multiply density back onto the tracers
+    //     tracers(l,hs+k,hs+j,hs+i,iens) *= (state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens));
+    //   }
+    // });
+    parallel_for( "Spatial.h Z tracer div dens" , SimpleBounds<5>(num_tracers,nz,ny,nx,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
+      tracers(tr,hs+k,hs+j,hs+i,iens) *= (state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens));
     });
   }
 
@@ -2848,6 +2955,35 @@ public:
         rut(kt+1,ii) = tot_rut / r(0,ii);
       }
     }
+  }
+
+
+
+  YAKL_INLINE static void diffTransformAdvecZ( SArray<real,2,nAder,ngll> const &w     ,
+                                               SArray<real,2,nAder,ngll>       &v     ,
+                                               SArray<real,2,nAder,ngll>       &dv    ,
+                                               SArray<real,2,nAder,ngll>       &w_dv  ,
+                                               SArray<real,2,ngll ,ngll> const &deriv ,
+                                               real dx ) {
+      for (int kt=0; kt<nAder-1; kt++) {
+        // v at kt+1
+        for (int ii=0; ii<ngll; ii++) {
+          v(kt+1,ii) = -w_dv(kt,ii)/(kt+1._fp);
+        }
+        for (int ii=0; ii<ngll; ii++) {
+          // dv at kt+1
+          real tot = 0;
+          for (int s=0; s < ngll; s++) {
+            tot += deriv(s,ii) * v(kt+1,s);
+          }
+          dv(kt+1,ii) = tot / dx;
+          // w_dv at kt+1
+          for (int ir=0; ir<=kt+1; ir++) {
+            tot += w(ir,ii) * dv(kt+1-ir,ii);
+          }
+          w_dv(kt+1,ii) = tot;
+        }
+      }
   }
 
 
