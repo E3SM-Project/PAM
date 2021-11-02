@@ -2015,12 +2015,14 @@ public:
 
     // Pre-process the tracers by dividing by density inside the domain
     // After this, we can reconstruct tracers only (not rho * tracer)
-    parallel_for( "Spatial.h Z tracer div dens" , SimpleBounds<5>(num_tracers,nz,ny,nx,nens) , YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
+    parallel_for( "Spatial.h Z tracer div dens" , SimpleBounds<5>(num_tracers,nz,ny,nx,nens) ,
+                                                  YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
       tracers(tr,hs+k,hs+j,hs+i,iens) /= (state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens));
     });
     // Populate the halos
     if        (bc_z == BC_PERIODIC) {
-      parallel_for( "Spatial.h Z BCs periodic" , SimpleBounds<4>(ny,nx,hs,nens) , YAKL_LAMBDA(int j, int i, int kk, int iens) {
+      parallel_for( "Spatial.h Z BCs periodic" , SimpleBounds<4>(ny,nx,hs,nens) ,
+                                                 YAKL_LAMBDA(int j, int i, int kk, int iens) {
         for (int l=0; l < num_state; l++) {
           state(l,      kk,hs+j,hs+i,iens) = state(l,nz+kk,hs+j,hs+i,iens);
           state(l,hs+nz+kk,hs+j,hs+i,iens) = state(l,hs+kk,hs+j,hs+i,iens);
@@ -2031,7 +2033,8 @@ public:
         }
       });
     } else if (bc_z == BC_WALL) {
-      parallel_for( "Spatial.h Z BCs wall" , SimpleBounds<4>(ny,nx,hs,nens) , YAKL_LAMBDA(int j, int i, int kk, int iens) {
+      parallel_for( "Spatial.h Z BCs wall" , SimpleBounds<4>(ny,nx,hs,nens) ,
+                                             YAKL_LAMBDA(int j, int i, int kk, int iens) {
         for (int l=0; l < num_state; l++) {
           if (l == idW) {
             state(l,      kk,hs+j,hs+i,iens) = 0;
@@ -2055,7 +2058,8 @@ public:
     // Advection
     //////////////////////////////////////////////////
     // Compute cell-averaged time-averaged state due to advective dynamics
-    parallel_for( "Spatial.h Z advection time-average" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+    parallel_for( "Spatial.h Z advection time-average" , SimpleBounds<4>(nz,ny,nx,nens) ,
+                                                         YAKL_LAMBDA (int k, int j, int i, int iens) {
       SArray<real,2,ord,ngll> s2g_loc;
       SArray<real,2,ord,ord>  s2c_loc;
       SArray<real,3,hs+1,hs+1,hs+1> weno_recon_lower_loc;
@@ -2078,7 +2082,7 @@ public:
       }
 
       SArray<real,1,ord>  stencil;
-      SArray<real,1,ngll> gll;
+      SArray<real,1,ngll> gll_val;
       SArray<real,2,nAder,ngll> w_DTs;
 
       // Compute DTs of w
@@ -2091,13 +2095,14 @@ public:
           real r = state(idR,k_ind,hs+j,hs+i,iens) + hyDensCells(k_ind-hs,iens);
           stencil(kk) = state(idW,k+kk,hs+j,hs+i,iens) / r;
         }
-        reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc , weno_recon_lower_loc , idl , sigma , weno_winds );
+        reconstruct_gll_values( stencil , gll_val , c2g , s2g_loc , s2c_loc ,
+                                weno_recon_lower_loc , idl , sigma , weno_winds );
         if (bc_z == BC_WALL) {
-          if (k == nz-1) gll(ngll-1) = 0;
-          if (k == 0   ) gll(0     ) = 0;
+          if (k == nz-1) gll_val(ngll-1) = 0;
+          if (k == 0   ) gll_val(0     ) = 0;
         }
         for (int kk=0; kk < ngll; kk++) {
-          w_DTs (0,kk) = gll(kk);
+          w_DTs (0,kk) = gll_val(kk);
           ww_DTs(0,kk) = w_DTs(0,kk) * w_DTs(0,kk);
         }
 
@@ -2121,27 +2126,28 @@ public:
       }
 
       // "v" stands for "variable" and is generic to density, u, v, theta, and tracer
-      SArray<real,2,nAder,ngll> v_DTs;
-      SArray<real,2,nAder,ngll> dv_DTs;
-      SArray<real,2,nAder,ngll> w_dv_DTs;
-      SArray<real,1,ngll> gll_val;
+      SArray<real,2,nAder,ngll> var_DTs;
+      SArray<real,2,nAder,ngll> dvar_DTs;
+      SArray<real,2,nAder,ngll> w_dvar_DTs;
       SArray<real,1,ngll> gll_der;
 
       // Density
       for (int kk=0; kk < ord; kk++) {
         stencil(kk) = state(idR,k+kk,hs+j,hs+i,iens);
       }
-      reconstruct_gll_values_and_derivs( stencil , gll_val , gll_der , c2g , c2d2g , s2c_loc , weno_recon_lower_loc , idl , sigma , dz(k,iens) );
+      reconstruct_gll_values_and_derivs( stencil , gll_val , gll_der , c2g , c2d2g , s2c_loc ,
+                                         weno_recon_lower_loc , idl , sigma , dz(k,iens) );
       for (int kk=0; kk < ngll; kk++) {
-        v_DTs (0,kk) = gll_val(kk) + hyDensGLL     (k,kk,iens);
-        dv_DTs(0,kk) = gll_der(kk) + hyDensDerivGLL(k,kk,iens);
-        w_dv_DTs(0,kk) = w_DTs(0,kk) * dv_DTs(0,kk);
+        var_DTs (0,kk) = gll_val(kk) + hyDensGLL     (k,kk,iens);
+        dvar_DTs(0,kk) = gll_der(kk) + hyDensDerivGLL(k,kk,iens);
+        w_dvar_DTs(0,kk) = w_DTs(0,kk) * dvar_DTs(0,kk);
       }
-      diffTransformAdvecZ( w_DTs , v_DTs , dv_DTs , w_dv_DTs , derivMatrix , dz(k,iens) );
-      compute_timeAvg( v_DTs , dt );
+      diffTransformAdvecZ( w_DTs , var_DTs , dvar_DTs , w_dvar_DTs , derivMatrix , dz(k,iens) );
+      compute_timeAvg( var_DTs , dt );
       real tot = 0;
-      for (int ii=0; ii < ngll; ii++) { tot += gllWts_ngll(ii) * v_DTs(0,ii); }
+      for (int ii=0; ii < ngll; ii++) { tot += gllWts_ngll(ii) * var_DTs(0,ii); }
       state_advec_tavg(idR,hs+k,hs+j,hs+i,iens) = tot - hyDensCells(k,iens);
+      real dens_avg = tot;
 
       // u-velocity
       for (int kk=0; kk < ord; kk++) {
@@ -2149,17 +2155,20 @@ public:
         real r = state(idR,k_ind,hs+j,hs+i,iens) + hyDensCells(k_ind-hs,iens);
         stencil(kk) = state(idU,k+kk,hs+j,hs+i,iens) / r;
       }
-      reconstruct_gll_values_and_derivs( stencil , gll_val , gll_der , c2g , c2d2g , s2c_loc , weno_recon_lower_loc , idl , sigma , dz(k,iens) );
+      reconstruct_gll_values_and_derivs( stencil , gll_val , gll_der , c2g , c2d2g , s2c_loc ,
+                                         weno_recon_lower_loc , idl , sigma , dz(k,iens) );
       for (int kk=0; kk < ngll; kk++) {
-        v_DTs (0,kk) = gll_val(kk);
-        dv_DTs(0,kk) = gll_der(kk);
-        w_dv_DTs(0,kk) = w_DTs(0,kk) * dv_DTs(0,kk);
+        var_DTs (0,kk) = gll_val(kk);
+        dvar_DTs(0,kk) = gll_der(kk);
+        w_dvar_DTs(0,kk) = w_DTs(0,kk) * dvar_DTs(0,kk);
       }
-      diffTransformAdvecZ( w_DTs , v_DTs , dv_DTs , w_dv_DTs , derivMatrix , dz(k,iens) );
-      compute_timeAvg( v_DTs , dt );
+      diffTransformAdvecZ( w_DTs , var_DTs , dvar_DTs , w_dvar_DTs , derivMatrix , dz(k,iens) );
+      compute_timeAvg( var_DTs , dt );
       tot = 0;
-      for (int ii=0; ii < ngll; ii++) { tot += gllWts_ngll(ii) * v_DTs(0,ii); }
-      state_advec_tavg(idU,hs+k,hs+j,hs+i,iens) = tot;
+      for (int ii=0; ii < ngll; ii++) {
+        tot += gllWts_ngll(ii) * var_DTs(0,ii);
+      }
+      state_advec_tavg(idU,hs+k,hs+j,hs+i,iens) = dens_avg * tot;
 
       // v-velocity
       for (int kk=0; kk < ord; kk++) {
@@ -2167,17 +2176,18 @@ public:
         real r = state(idR,k_ind,hs+j,hs+i,iens) + hyDensCells(k_ind-hs,iens);
         stencil(kk) = state(idV,k+kk,hs+j,hs+i,iens) / r;
       }
-      reconstruct_gll_values_and_derivs( stencil , gll_val , gll_der , c2g , c2d2g , s2c_loc , weno_recon_lower_loc , idl , sigma , dz(k,iens) );
+      reconstruct_gll_values_and_derivs( stencil , gll_val , gll_der , c2g , c2d2g , s2c_loc ,
+                                         weno_recon_lower_loc , idl , sigma , dz(k,iens) );
       for (int kk=0; kk < ngll; kk++) {
-        v_DTs (0,kk) = gll_val(kk);
-        dv_DTs(0,kk) = gll_der(kk);
-        w_dv_DTs(0,kk) = w_DTs(0,kk) * dv_DTs(0,kk);
+        var_DTs (0,kk) = gll_val(kk);
+        dvar_DTs(0,kk) = gll_der(kk);
+        w_dvar_DTs(0,kk) = w_DTs(0,kk) * dvar_DTs(0,kk);
       }
-      diffTransformAdvecZ( w_DTs , v_DTs , dv_DTs , w_dv_DTs , derivMatrix , dz(k,iens) );
-      compute_timeAvg( v_DTs , dt );
+      diffTransformAdvecZ( w_DTs , var_DTs , dvar_DTs , w_dvar_DTs , derivMatrix , dz(k,iens) );
+      compute_timeAvg( var_DTs , dt );
       tot = 0;
-      for (int ii=0; ii < ngll; ii++) { tot += gllWts_ngll(ii) * v_DTs(0,ii); }
-      state_advec_tavg(idV,hs+k,hs+j,hs+i,iens) = tot;
+      for (int ii=0; ii < ngll; ii++) { tot += gllWts_ngll(ii) * var_DTs(0,ii); }
+      state_advec_tavg(idV,hs+k,hs+j,hs+i,iens) = dens_avg * tot;
 
       // theta
       for (int kk=0; kk < ord; kk++) {
@@ -2186,17 +2196,18 @@ public:
         real rt = state(idT,k_ind,hs+j,hs+i,iens) + hyDensThetaCells(k_ind-hs,iens);
         stencil(kk) = rt / r;
       }
-      reconstruct_gll_values_and_derivs( stencil , gll_val , gll_der , c2g , c2d2g , s2c_loc , weno_recon_lower_loc , idl , sigma , dz(k,iens) );
+      reconstruct_gll_values_and_derivs( stencil , gll_val , gll_der , c2g , c2d2g , s2c_loc ,
+                                         weno_recon_lower_loc , idl , sigma , dz(k,iens) );
       for (int kk=0; kk < ngll; kk++) {
-        v_DTs (0,kk) = gll_val(kk);
-        dv_DTs(0,kk) = gll_der(kk);
-        w_dv_DTs(0,kk) = w_DTs(0,kk) * dv_DTs(0,kk);
+        var_DTs (0,kk) = gll_val(kk);
+        dvar_DTs(0,kk) = gll_der(kk);
+        w_dvar_DTs(0,kk) = w_DTs(0,kk) * dvar_DTs(0,kk);
       }
-      diffTransformAdvecZ( w_DTs , v_DTs , dv_DTs , w_dv_DTs , derivMatrix , dz(k,iens) );
-      compute_timeAvg( v_DTs , dt );
+      diffTransformAdvecZ( w_DTs , var_DTs , dvar_DTs , w_dvar_DTs , derivMatrix , dz(k,iens) );
+      compute_timeAvg( var_DTs , dt );
       tot = 0;
-      for (int ii=0; ii < ngll; ii++) { tot += gllWts_ngll(ii) * v_DTs(0,ii); }
-      state_advec_tavg(idT,hs+k,hs+j,hs+i,iens) = tot - hyThetaCells(k,iens);
+      for (int ii=0; ii < ngll; ii++) { tot += gllWts_ngll(ii) * var_DTs(0,ii); }
+      state_advec_tavg(idT,hs+k,hs+j,hs+i,iens) = dens_avg * tot - hyDensThetaCells(k,iens);
 
       // tracers
       for (int tr=0; tr < num_tracers; tr++) {
@@ -2204,16 +2215,17 @@ public:
           int k_ind = min(max(k+kk,hs),hs+nz-1);
           stencil(kk) = tracers(tr,k+kk,hs+j,hs+i,iens);
         }
-        reconstruct_gll_values_and_derivs( stencil , gll_val , gll_der , c2g , c2d2g , s2c_loc , weno_recon_lower_loc , idl , sigma , dz(k,iens) );
+        reconstruct_gll_values_and_derivs( stencil , gll_val , gll_der , c2g , c2d2g , s2c_loc ,
+                                           weno_recon_lower_loc , idl , sigma , dz(k,iens) );
         for (int kk=0; kk < ngll; kk++) {
-          v_DTs (0,kk) = gll_val(kk);
-          dv_DTs(0,kk) = gll_der(kk);
-          w_dv_DTs(0,kk) = w_DTs(0,kk) * dv_DTs(0,kk);
+          var_DTs (0,kk) = gll_val(kk);
+          dvar_DTs(0,kk) = gll_der(kk);
+          w_dvar_DTs(0,kk) = w_DTs(0,kk) * dvar_DTs(0,kk);
         }
-        diffTransformAdvecZ( w_DTs , v_DTs , dv_DTs , w_dv_DTs , derivMatrix , dz(k,iens) );
-        compute_timeAvg( v_DTs , dt );
+        diffTransformAdvecZ( w_DTs , var_DTs , dvar_DTs , w_dvar_DTs , derivMatrix , dz(k,iens) );
+        compute_timeAvg( var_DTs , dt );
         tot = 0;
-        for (int ii=0; ii < ngll; ii++) { tot += gllWts_ngll(ii) * v_DTs(0,ii); }
+        for (int ii=0; ii < ngll; ii++) { tot += gllWts_ngll(ii) * var_DTs(0,ii); }
         tracers_advec_tavg(tr,hs+k,hs+j,hs+i,iens) = tot;
       }
 
@@ -2221,12 +2233,13 @@ public:
       compute_timeAvg( w_DTs , dt );
       tot = 0;
       for (int ii=0; ii < ngll; ii++) { tot += gllWts_ngll(ii) * w_DTs(0,ii); }
-      state_advec_tavg(idW,hs+k,hs+j,hs+i,iens) = tot;
+      state_advec_tavg(idW,hs+k,hs+j,hs+i,iens) = dens_avg * tot;
     });
 
     // Populate the halos for state_advec_tavg and tracers_advec_tavg
     if        (bc_z == BC_PERIODIC) {
-      parallel_for( "Spatial.h Z BCs periodic" , SimpleBounds<4>(ny,nx,hs,nens) , YAKL_LAMBDA(int j, int i, int kk, int iens) {
+      parallel_for( "Spatial.h Z BCs periodic" , SimpleBounds<4>(ny,nx,hs,nens) ,
+                                                 YAKL_LAMBDA(int j, int i, int kk, int iens) {
         for (int l=0; l < num_state; l++) {
           state_advec_tavg(l,      kk,hs+j,hs+i,iens) = state_advec_tavg(l,nz+kk,hs+j,hs+i,iens);
           state_advec_tavg(l,hs+nz+kk,hs+j,hs+i,iens) = state_advec_tavg(l,hs+kk,hs+j,hs+i,iens);
@@ -2237,7 +2250,8 @@ public:
         }
       });
     } else if (bc_z == BC_WALL) {
-      parallel_for( "Spatial.h Z BCs wall" , SimpleBounds<4>(ny,nx,hs,nens) , YAKL_LAMBDA(int j, int i, int kk, int iens) {
+      parallel_for( "Spatial.h Z BCs wall" , SimpleBounds<4>(ny,nx,hs,nens) ,
+                                             YAKL_LAMBDA(int j, int i, int kk, int iens) {
         for (int l=0; l < num_state; l++) {
           if (l == idW) {
             state_advec_tavg(l,      kk,hs+j,hs+i,iens) = 0;
