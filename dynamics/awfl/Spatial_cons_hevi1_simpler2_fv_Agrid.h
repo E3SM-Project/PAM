@@ -1,3 +1,5 @@
+// hevi_simpler2 is an attempt at ADER with primitive-form advection
+// followed by acoustics. It was unstable
 
 #pragma once
 

@@ -1,3 +1,7 @@
+// hevi_simpler1 is a Runge-Kutta only split of acoustic and advection
+// Where mass flux is upwinded by acoustics, but the quantity being fluxed
+// is upwinded only by wind.
+
 
 #pragma once
 

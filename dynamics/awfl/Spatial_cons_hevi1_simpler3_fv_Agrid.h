@@ -1,3 +1,15 @@
+// hevi_simpler3 is an attempt at ADER with acoustics first followed by
+// conservative-form advection to propagate the mass flux from acoustics
+// It works by using the time-averaged acoustic mass flux as the starting
+// point for the advection phase.
+//
+// At the end, the overall time-avg is then upwinded with full upwinding.
+//
+// It is unclear if this will be stable with subcycled acoustics at large dt
+// 
+// This solution was more diffused than the time-explicit version. There may
+// be improvement if I use DTs from the acoustic phase rather than starting
+// from the time average.
 
 #pragma once
 
@@ -2183,7 +2195,7 @@ public:
       if (bc_z == BC_WALL && k == 0   ) gll(0     ) = 0;
       for (int kk=0; kk < ngll; kk++) { rw_DTs(0,kk) = gll(kk); }
 
-      // Compute DTs of w
+      // Compute DTs of rho and rho*w
       {
         SArray<real,2,nAder,ngll> rww_DTs;
 
