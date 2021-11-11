@@ -2082,6 +2082,15 @@ public:
     YAKL_SCOPE( C0                      , this->C0                     );
     YAKL_SCOPE( gllWts_ngll             , this->gllWts_ngll            );
 
+    auto state_init   = state  .createDeviceCopy();
+    auto tracers_init = tracers.createDeviceCopy();
+
+    parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      real theta = ( state(idT,hs+k,hs+j,hs+i,iens) + hyDensThetaCells(k,iens) ) / hyDensCells(k,iens);
+      real dens = hyDensThetaCells(k,iens) / theta;
+      state(idW,hs+k,hs+j,hs+i,iens) += -dt * ( dens - hyDensCells(k,iens) )*GRAV;
+    });
+
     // Populate the halos
     if        (bc_x == BC_PERIODIC) {
       parallel_for( SimpleBounds<4>(nz,ny,hs,nens) , YAKL_LAMBDA(int k, int j, int ii, int iens) {
@@ -2139,15 +2148,6 @@ public:
         }
       });
     }
-
-    auto state_init   = state  .createDeviceCopy();
-    auto tracers_init = tracers.createDeviceCopy();
-
-    parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      real theta = ( state(idT,hs+k,hs+j,hs+i,iens) + hyDensThetaCells(k,iens) ) / hyDensCells(k,iens);
-      real dens = hyDensThetaCells(k,iens) / theta;
-      state(idW,hs+k,hs+j,hs+i,iens) += -dt * ( dens - hyDensCells(k,iens) )*GRAV;
-    });
 
 
 
@@ -2404,11 +2404,13 @@ public:
           stateTend(l,k,j,i,iens) += - ( stateLimits_z(l,0,k+1,j,i,iens) - stateLimits_z(l,0,k,j,i,iens) ) / dz(k,iens);
           stateTend(l,k,j,i,iens) += ( state(l,hs+k,hs+j,hs+i,iens) - state_init(l,hs+k,hs+j,hs+i,iens) ) / dt;
         }
+        state(l,hs+k,hs+j,hs+i,iens) = state_init(l,hs+k,hs+j,hs+i,iens);
       }
       for (int l = 0; l < num_tracers; l++) {
         tracerTend(l,k,j,i,iens)  = - ( tracerLimits_x(l,0,k,j,i+1,iens) - tracerLimits_x(l,0,k,j,i,iens) ) / dx;
         tracerTend(l,k,j,i,iens) += - ( tracerLimits_z(l,0,k+1,j,i,iens) - tracerLimits_z(l,0,k,j,i,iens) ) / dz(k,iens);
         tracerTend(l,k,j,i,iens) += ( tracers(l,hs+k,hs+j,hs+i,iens) - tracers_init(l,hs+k,hs+j,hs+i,iens) ) / dt;
+        tracers(l,hs+k,hs+j,hs+i,iens) = tracers_init(l,hs+k,hs+j,hs+i,iens);
       }
     });
 
