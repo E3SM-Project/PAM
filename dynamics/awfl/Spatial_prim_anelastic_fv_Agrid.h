@@ -89,7 +89,7 @@ public:
   real4d divergence;
 
   // Spatial order to use for momentum divergence and place to flag and save the static/constant LU solver to find momentum free divergence field
-  int remove_momentum_div_order=5, solver_built=0;
+  int remove_momentum_div_order=1, solver_built=0;
   Eigen::SparseLU<Eigen::SparseMatrix<real>, Eigen::COLAMDOrdering<int> > momdiv_solver;
 
   // For indexing into the state and state tendency arrays
@@ -1777,6 +1777,8 @@ public:
      // Construct solver 
      //////////////////////
      A.makeCompressed();
+
+     std::cout << "Non-zero entries: " << A.nonZeros() << "\n";
 
      momdiv_solver.analyzePattern(A);
      momdiv_solver.factorize(A);
