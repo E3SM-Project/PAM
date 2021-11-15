@@ -36,38 +36,15 @@ print("Mass Flux L: coefs p':",jacobian(ru_x_L_upw,p ))
 print("Mass Flux L: coefs ru:",jacobian(ru_x_L_upw,ru))
 print("Mass Flux R: coefs p':",jacobian(ru_x_R_upw,p ))
 print("Mass Flux R: coefs ru:",jacobian(ru_x_R_upw,ru))
+print("Pressure  L: coefs p':",jacobian( p_x_L_upw,p ))
+print("Pressure  L: coefs ru:",jacobian( p_x_L_upw,ru))
+print("Pressure  R: coefs p':",jacobian( p_x_R_upw,p ))
+print("Pressure  R: coefs ru:",jacobian( p_x_R_upw,ru))
 print("Mom Div    : coefs p':",jacobian( p_expr   ,p ))
 print("Mom Div    : coefs ru:",jacobian( p_expr   ,ru))
 print("Press Div  : coefs p':",jacobian(ru_expr   ,p ))
 print("Press Div  : coefs ru:",jacobian(ru_expr   ,ru))
 print("")
-
-# z-direction
-# Left interface upwind values
-rw_m = rw[0]
-rw_p = rw[1]
-p_m  =  p[0]
-p_p  =  p[1]
-p_z_L_upw  = rw_m/2 + p_m/2 - rw_p/2  + p_p/2
-rw_z_L_upw = rw_m/2 + p_m/2 + rw_p/2  - p_p/2
-#Right interface upwind values
-rw_m = rw[1]
-rw_p = rw[2]
-p_m  =  p[1]
-p_p  =  p[2]
-p_z_R_upw  = rw_m/2 + p_m/2 - rw_p/2  + p_p/2
-rw_z_R_upw = rw_m/2 + p_m/2 + rw_p/2  - p_p/2
-p_expr = (rw_z_R_upw - rw_z_L_upw) / dz
-rw_expr = rw[1] + (p_z_R_upw - p_z_L_upw) / dz
-print("Z-direction")
-print("Mass Flux L: coefs p':",jacobian(rw_z_L_upw,p ))
-print("Mass Flux L: coefs rw:",jacobian(rw_z_L_upw,rw))
-print("Mass Flux R: coefs p':",jacobian(rw_z_R_upw,p ))
-print("Mass Flux R: coefs rw:",jacobian(rw_z_R_upw,rw))
-print("Mom Div    : coefs p':",jacobian( p_expr   ,p ))
-print("Mom Div    : coefs rw:",jacobian( p_expr   ,rw))
-print("Press Div  : coefs p':",jacobian(rw_expr   ,p ))
-print("Press Div  : coefs rw:",jacobian(rw_expr   ,rw))
 
 
 
