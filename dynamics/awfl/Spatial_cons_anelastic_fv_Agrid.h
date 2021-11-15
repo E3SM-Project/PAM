@@ -1097,6 +1097,8 @@ public:
           real rdx = 1._fp / dx;
           real rdz = 1._fp / dz(k,0);
 
+          real constexpr dt = 5;
+
 
           //////////////////////////////////////////////////////////////////
           // d(rho*u)/dx + d(rho*w)/dz = 0  (inserted at p' equation index)
@@ -1108,43 +1110,43 @@ public:
           // Add mass flux left x-direction (multiply by -1./dx)
           // Mass Flux L: coefs p': [ 1/2/cs -1/2/cs       0]
           // Mass Flux L: coefs ru: [1/2 1/2   0]
-          p_im1  += -rdx * ( 0.5_fp/cs);
-          p_ik   += -rdx * (-0.5_fp/cs);
-          p_ip1  += -rdx * ( 0        );
-          ru_im1 += -rdx * ( 0.5_fp   );
-          ru_i   += -rdx * ( 0.5_fp   );
-          ru_ip1 += -rdx * ( 0        );
+          p_im1  += -rdx*dt*cs*cs * ( 0.5_fp/cs);
+          p_ik   += -rdx*dt*cs*cs * (-0.5_fp/cs);
+          p_ip1  += -rdx*dt*cs*cs * ( 0        );
+          ru_im1 += -rdx*dt*cs*cs * ( 0.5_fp   );
+          ru_i   += -rdx*dt*cs*cs * ( 0.5_fp   );
+          ru_ip1 += -rdx*dt*cs*cs * ( 0        );
           // Add mass flux right x-direction (multiply by 1./dx)
           // Mass Flux R: coefs p': [      0  1/2/cs -1/2/cs]
           // Mass Flux R: coefs ru: [  0 1/2 1/2]
-          p_im1  += rdx * ( 0        );
-          p_ik   += rdx * ( 0.5_fp/cs);
-          p_ip1  += rdx * (-0.5_fp/cs);
-          ru_im1 += rdx * ( 0        );
-          ru_i   += rdx * ( 0.5_fp   );
-          ru_ip1 += rdx * ( 0.5_fp   );
+          p_im1  += rdx*dt*cs*cs * ( 0        );
+          p_ik   += rdx*dt*cs*cs * ( 0.5_fp/cs);
+          p_ip1  += rdx*dt*cs*cs * (-0.5_fp/cs);
+          ru_im1 += rdx*dt*cs*cs * ( 0        );
+          ru_i   += rdx*dt*cs*cs * ( 0.5_fp   );
+          ru_ip1 += rdx*dt*cs*cs * ( 0.5_fp   );
           // Add mass flux bottom z-direction (multiply by -1./dz)
           // Mass Flux L: coefs p': [ 1/2/cs -1/2/cs       0]
           // Mass Flux L: coefs ru: [1/2 1/2   0]
           mult = -rdz;
           if (k == 0) mult = 0;  // If k==0, bottom mass flux is zero
-          p_km1  += mult * ( 0.5_fp/cs);
-          p_ik   += mult * (-0.5_fp/cs);
-          p_kp1  += mult * ( 0       );
-          rw_km1 += mult * ( 0.5_fp  );
-          rw_k   += mult * ( 0.5_fp  );
-          rw_kp1 += mult * ( 0       );
+          p_km1  += mult*dt*cs*cs * ( 0.5_fp/cs);
+          p_ik   += mult*dt*cs*cs * (-0.5_fp/cs);
+          p_kp1  += mult*dt*cs*cs * ( 0       );
+          rw_km1 += mult*dt*cs*cs * ( 0.5_fp  );
+          rw_k   += mult*dt*cs*cs * ( 0.5_fp  );
+          rw_kp1 += mult*dt*cs*cs * ( 0       );
           // Add mass flux top z-direction (multiply by 1./dz)
           // Mass Flux R: coefs p': [      0  1/2/cs -1/2/cs]
           // Mass Flux R: coefs ru: [  0 1/2 1/2]
           mult = rdz;
           if (k == nz-1) mult = 0;  // If k==nz-1, top mass flux is zero
-          p_km1  += mult * ( 0        );
-          p_ik   += mult * ( 0.5_fp/cs);
-          p_kp1  += mult * (-0.5_fp/cs);
-          rw_km1 += mult * ( 0        );
-          rw_k   += mult * ( 0.5_fp   );
-          rw_kp1 += mult * ( 0.5_fp   );
+          p_km1  += mult*dt*cs*cs * ( 0        );
+          p_ik   += mult*dt*cs*cs * ( 0.5_fp/cs);
+          p_kp1  += mult*dt*cs*cs * (-0.5_fp/cs);
+          rw_km1 += mult*dt*cs*cs * ( 0        );
+          rw_k   += mult*dt*cs*cs * ( 0.5_fp   );
+          rw_kp1 += mult*dt*cs*cs * ( 0.5_fp   );
 
           // Boundary conditions in the z-direction (add p' boundaries to last valid cell)
           if (k == 0   ) p_ik += p_km1;
@@ -1179,21 +1181,21 @@ public:
           // Add pressure left x-direction (multiply by -1./dx)
           // Pressure  L: coefs p': [1/2 1/2   0]
           // Pressure  L: coefs ru: [ 1/2*cs -1/2*cs       0]
-          p_im1  += -rdx * ( 0.5_fp   );
-          p_ik   += -rdx * ( 0.5_fp   );
-          p_ip1  += -rdx * ( 0        );
-          ru_im1 += -rdx * ( 0.5_fp*cs);
-          ru_i   += -rdx * (-0.5_fp*cs);
-          ru_ip1 += -rdx * ( 0        );
+          p_im1  += -rdx*dt * ( 0.5_fp   );
+          p_ik   += -rdx*dt * ( 0.5_fp   );
+          p_ip1  += -rdx*dt * ( 0        );
+          ru_im1 += -rdx*dt * ( 0.5_fp*cs);
+          ru_i   += -rdx*dt * (-0.5_fp*cs);
+          ru_ip1 += -rdx*dt * ( 0        );
           // Add pressure right x-direction (multiply by 1./dx)
           // Pressure  R: coefs p': [  0 1/2 1/2]
           // Pressure  R: coefs ru: [      0  1/2*cs -1/2*cs]
-          p_im1  += rdx * ( 0        );
-          p_ik   += rdx * ( 0.5_fp   );
-          p_ip1  += rdx * ( 0.5_fp   );
-          ru_im1 += rdx * ( 0        );
-          ru_i   += rdx * ( 0.5_fp*cs);
-          ru_ip1 += rdx * (-0.5_fp*cs);
+          p_im1  += rdx*dt * ( 0        );
+          p_ik   += rdx*dt * ( 0.5_fp   );
+          p_ip1  += rdx*dt * ( 0.5_fp   );
+          ru_im1 += rdx*dt * ( 0        );
+          ru_i   += rdx*dt * ( 0.5_fp*cs);
+          ru_ip1 += rdx*dt * (-0.5_fp*cs);
           // Add mass flux at cell center
           ru_i += 1;
 
@@ -1218,21 +1220,21 @@ public:
           // Add pressure left z-direction (multiply by -1./dz)
           // Pressure  L: coefs p': [1/2 1/2   0]
           // Pressure  L: coefs ru: [ 1/2*cs -1/2*cs       0]
-          p_km1  += -rdz * ( 0.5_fp   );
-          p_ik   += -rdz * ( 0.5_fp   );
-          p_kp1  += -rdz * ( 0        );
-          rw_km1 += -rdz * ( 0.5_fp*cs);
-          rw_k   += -rdz * (-0.5_fp*cs);
-          rw_kp1 += -rdz * ( 0        );
+          p_km1  += -rdz*dt * ( 0.5_fp   );
+          p_ik   += -rdz*dt * ( 0.5_fp   );
+          p_kp1  += -rdz*dt * ( 0        );
+          rw_km1 += -rdz*dt * ( 0.5_fp*cs);
+          rw_k   += -rdz*dt * (-0.5_fp*cs);
+          rw_kp1 += -rdz*dt * ( 0        );
           // Add pressure right z-direction (multiply by 1./dz)
           // Pressure  R: coefs p': [  0 1/2 1/2]
           // Pressure  R: coefs ru: [      0  1/2*cs -1/2*cs]
-          p_km1  += rdz * ( 0        );
-          p_ik   += rdz * ( 0.5_fp   );
-          p_kp1  += rdz * ( 0.5_fp   );
-          rw_km1 += rdz * ( 0        );
-          rw_k   += rdz * ( 0.5_fp*cs);
-          rw_kp1 += rdz * (-0.5_fp*cs);
+          p_km1  += rdz*dt * ( 0        );
+          p_ik   += rdz*dt * ( 0.5_fp   );
+          p_kp1  += rdz*dt * ( 0.5_fp   );
+          rw_km1 += rdz*dt * ( 0        );
+          rw_k   += rdz*dt * ( 0.5_fp*cs);
+          rw_kp1 += rdz*dt * (-0.5_fp*cs);
           // Add mass flux at cell center
           rw_k += 1;
 
