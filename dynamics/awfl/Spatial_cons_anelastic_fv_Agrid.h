@@ -1256,8 +1256,6 @@ public:
 
     A.makeCompressed();
 
-    std::cout << "Non-zero entries: " << A.nonZeros() << "\n";
-
     momdiv_solver.analyzePattern(A);
     momdiv_solver.factorize(A);
 
