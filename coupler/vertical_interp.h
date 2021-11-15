@@ -267,7 +267,7 @@ namespace pam {
 
 
 
-    YAKL_INLINE void convexify( SArray<real,1,hs+2> &wts ) {
+    YAKL_INLINE static void convexify( SArray<real,1,hs+2> &wts ) {
       real sum = 0._fp;
       for (int i=0; i<hs+2; i++) { sum += wts(i); }
       for (int i=0; i<hs+2; i++) { wts(i) /= (sum + eps); }
@@ -275,10 +275,11 @@ namespace pam {
 
 
 
-    YAKL_INLINE void compute_weno_coefs( SArray<real,1,ord> const &u ,
-                                         SArray<real,1,ord> &aw ,
-                                         VerticalInterp<ord>::InternalData const &internal,
-                                         int k, int iens) {
+    YAKL_INLINE static void
+    compute_weno_coefs( SArray<real,1,ord> const &u ,
+                        SArray<real,1,ord> &aw ,
+                        VerticalInterp<ord>::InternalData const &internal,
+                        int k, int iens) {
       SArray<real,2,hs+1,hs+1> a_lo;
       SArray<real,1,ord> a_hi;
 

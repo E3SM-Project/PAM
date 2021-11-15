@@ -960,16 +960,16 @@ namespace sam1mom {
 
 
 
-    YAKL_INLINE real pp(real y) { return max( 0. , y ); }
+    YAKL_INLINE static real pp(real y) { return max( 0. , y ); }
 
 
 
-    YAKL_INLINE real pn(real y) { return -min( 0. , y ); }
+    YAKL_INLINE static real pn(real y) { return -min( 0. , y ); }
 
 
 
-    YAKL_INLINE real term_vel_qp(real qploc, real rho, real tabs, real qp_threshold, real tprmin, real a_pr, real vrain,
-                                 real crain, real tgrmin, real a_gr, real vgrau, real cgrau, real vsnow, real csnow) {
+    YAKL_INLINE static real term_vel_qp(real qploc, real rho, real tabs, real qp_threshold, real tprmin, real a_pr, real vrain,
+                                        real crain, real tgrmin, real a_gr, real vgrau, real cgrau, real vsnow, real csnow) {
       real ret = 0.;
       if (qploc > qp_threshold) {
         real omp = max( 0. , min( 1. , (tabs-tprmin)*a_pr ) );
@@ -995,7 +995,7 @@ namespace sam1mom {
 
 
 
-    YAKL_INLINE real esatw_crm(real t) {
+    YAKL_INLINE static real esatw_crm(real t) {
       real constexpr a0 = 6.105851e0    ;
       real constexpr a1 = 0.4440316e0   ;
       real constexpr a2 = 0.1430341e-1  ;
@@ -1013,7 +1013,7 @@ namespace sam1mom {
 
 
 
-    YAKL_INLINE real esati_crm(real t) {
+    YAKL_INLINE static real esati_crm(real t) {
       real a0 = 6.11147274e0   ;
       real a1 = 0.503160820e0  ;
       real a2 = 0.188439774e-1 ;
@@ -1030,7 +1030,7 @@ namespace sam1mom {
 
 
 
-    YAKL_INLINE real dtesatw_crm(real t) {
+    YAKL_INLINE static real dtesatw_crm(real t) {
       real a0 = 0.443956472e0;
       real a1 = 0.285976452e-1;
       real a2 = 0.794747212e-3;
@@ -1047,7 +1047,7 @@ namespace sam1mom {
 
 
 
-    YAKL_INLINE real dtesati_crm(real t) {
+    YAKL_INLINE static real dtesati_crm(real t) {
       real a0 = 0.503223089e0  ;
       real a1 = 0.377174432e-1 ;
       real a2 = 0.126710138e-2 ;
@@ -1064,26 +1064,26 @@ namespace sam1mom {
 
 
 
-    YAKL_INLINE real qsatw_crm(real t, real p) {
+    YAKL_INLINE static real qsatw_crm(real t, real p) {
       real esat_crm = esatw_crm(t);
       return 0.622 * esat_crm/max(esat_crm,p-esat_crm);
     }
 
 
 
-    YAKL_INLINE real qsati_crm(real t, real p) {
+    YAKL_INLINE static real qsati_crm(real t, real p) {
       real esat_crm=esati_crm(t);
       return 0.622 * esat_crm/max(esat_crm,p-esat_crm);
     }
 
 
-    YAKL_INLINE real dtqsatw_crm(real t, real p) {
+    YAKL_INLINE static real dtqsatw_crm(real t, real p) {
       return 0.622*dtesatw_crm(t)/p;
     }
 
 
 
-    YAKL_INLINE real dtqsati_crm(real t, real p) {
+    YAKL_INLINE static real dtqsati_crm(real t, real p) {
       return 0.622*dtesati_crm(t)/p;
     }
 
