@@ -1061,14 +1061,12 @@ public:
 
 
 
-  void build_matrix_solver_2d() {
+  void build_matrix_solver_2d(real cs) {
     // Matrix ordering for variables and equations is is p', rho*u, rho*w
     int constexpr id_p  = 0;
     int constexpr id_ru = 1;
     int constexpr id_rw = 2;
     int constexpr neq = 3;
-
-    real constexpr cs = 300;
 
     Eigen::SparseMatrix<real> A(neq*nx*nz,neq*nx*nz);
 
@@ -1097,8 +1095,6 @@ public:
           real rdx = 1._fp / dx;
           real rdz = 1._fp / dz(k,0);
 
-          real constexpr dt = 5;
-
 
           //////////////////////////////////////////////////////////////////
           // d(rho*u)/dx + d(rho*w)/dz = 0  (inserted at p' equation index)
@@ -1110,43 +1106,43 @@ public:
           // Add mass flux left x-direction (multiply by -1./dx)
           // Mass Flux L: coefs p': [ 1/2/cs -1/2/cs       0]
           // Mass Flux L: coefs ru: [1/2 1/2   0]
-          p_im1  += -rdx*dt*cs*cs * ( 0.5_fp/cs);
-          p_ik   += -rdx*dt*cs*cs * (-0.5_fp/cs);
-          p_ip1  += -rdx*dt*cs*cs * ( 0        );
-          ru_im1 += -rdx*dt*cs*cs * ( 0.5_fp   );
-          ru_i   += -rdx*dt*cs*cs * ( 0.5_fp   );
-          ru_ip1 += -rdx*dt*cs*cs * ( 0        );
+          p_im1  += -rdx * ( 0.5_fp/cs);
+          p_ik   += -rdx * (-0.5_fp/cs);
+          p_ip1  += -rdx * ( 0        );
+          ru_im1 += -rdx * ( 0.5_fp   );
+          ru_i   += -rdx * ( 0.5_fp   );
+          ru_ip1 += -rdx * ( 0        );
           // Add mass flux right x-direction (multiply by 1./dx)
           // Mass Flux R: coefs p': [      0  1/2/cs -1/2/cs]
           // Mass Flux R: coefs ru: [  0 1/2 1/2]
-          p_im1  += rdx*dt*cs*cs * ( 0        );
-          p_ik   += rdx*dt*cs*cs * ( 0.5_fp/cs);
-          p_ip1  += rdx*dt*cs*cs * (-0.5_fp/cs);
-          ru_im1 += rdx*dt*cs*cs * ( 0        );
-          ru_i   += rdx*dt*cs*cs * ( 0.5_fp   );
-          ru_ip1 += rdx*dt*cs*cs * ( 0.5_fp   );
+          p_im1  += rdx * ( 0        );
+          p_ik   += rdx * ( 0.5_fp/cs);
+          p_ip1  += rdx * (-0.5_fp/cs);
+          ru_im1 += rdx * ( 0        );
+          ru_i   += rdx * ( 0.5_fp   );
+          ru_ip1 += rdx * ( 0.5_fp   );
           // Add mass flux bottom z-direction (multiply by -1./dz)
           // Mass Flux L: coefs p': [ 1/2/cs -1/2/cs       0]
           // Mass Flux L: coefs ru: [1/2 1/2   0]
           mult = -rdz;
           if (k == 0) mult = 0;  // If k==0, bottom mass flux is zero
-          p_km1  += mult*dt*cs*cs * ( 0.5_fp/cs);
-          p_ik   += mult*dt*cs*cs * (-0.5_fp/cs);
-          p_kp1  += mult*dt*cs*cs * ( 0       );
-          rw_km1 += mult*dt*cs*cs * ( 0.5_fp  );
-          rw_k   += mult*dt*cs*cs * ( 0.5_fp  );
-          rw_kp1 += mult*dt*cs*cs * ( 0       );
+          p_km1  += mult * ( 0.5_fp/cs);
+          p_ik   += mult * (-0.5_fp/cs);
+          p_kp1  += mult * ( 0       );
+          rw_km1 += mult * ( 0.5_fp  );
+          rw_k   += mult * ( 0.5_fp  );
+          rw_kp1 += mult * ( 0       );
           // Add mass flux top z-direction (multiply by 1./dz)
           // Mass Flux R: coefs p': [      0  1/2/cs -1/2/cs]
           // Mass Flux R: coefs ru: [  0 1/2 1/2]
           mult = rdz;
           if (k == nz-1) mult = 0;  // If k==nz-1, top mass flux is zero
-          p_km1  += mult*dt*cs*cs * ( 0        );
-          p_ik   += mult*dt*cs*cs * ( 0.5_fp/cs);
-          p_kp1  += mult*dt*cs*cs * (-0.5_fp/cs);
-          rw_km1 += mult*dt*cs*cs * ( 0        );
-          rw_k   += mult*dt*cs*cs * ( 0.5_fp   );
-          rw_kp1 += mult*dt*cs*cs * ( 0.5_fp   );
+          p_km1  += mult * ( 0        );
+          p_ik   += mult * ( 0.5_fp/cs);
+          p_kp1  += mult * (-0.5_fp/cs);
+          rw_km1 += mult * ( 0        );
+          rw_k   += mult * ( 0.5_fp   );
+          rw_kp1 += mult * ( 0.5_fp   );
 
           // Boundary conditions in the z-direction (add p' boundaries to last valid cell)
           if (k == 0   ) p_ik += p_km1;
@@ -1174,71 +1170,20 @@ public:
           /////////////////////////////////////////////
           // (rho*u)_new + d(p'_new)/dx = (rho*u)_old
           /////////////////////////////////////////////
-           p_im1=0 ; p_ik=0 ;  p_ip1=0;
-           p_km1=0 ;           p_kp1=0;
-          ru_im1=0 ; ru_i=0 ; ru_ip1=0;
-          rw_km1=0 ; rw_k=0 ; rw_kp1=0;
-          // Add pressure left x-direction (multiply by -1./dx)
-          // Pressure  L: coefs p': [1/2 1/2   0]
-          // Pressure  L: coefs ru: [ 1/2*cs -1/2*cs       0]
-          p_im1  += -rdx*dt * ( 0.5_fp   );
-          p_ik   += -rdx*dt * ( 0.5_fp   );
-          p_ip1  += -rdx*dt * ( 0        );
-          ru_im1 += -rdx*dt * ( 0.5_fp*cs);
-          ru_i   += -rdx*dt * (-0.5_fp*cs);
-          ru_ip1 += -rdx*dt * ( 0        );
-          // Add pressure right x-direction (multiply by 1./dx)
-          // Pressure  R: coefs p': [  0 1/2 1/2]
-          // Pressure  R: coefs ru: [      0  1/2*cs -1/2*cs]
-          p_im1  += rdx*dt * ( 0        );
-          p_ik   += rdx*dt * ( 0.5_fp   );
-          p_ip1  += rdx*dt * ( 0.5_fp   );
-          ru_im1 += rdx*dt * ( 0        );
-          ru_i   += rdx*dt * ( 0.5_fp*cs);
-          ru_ip1 += rdx*dt * (-0.5_fp*cs);
-          // Add mass flux at cell center
-          ru_i += 1;
-
           eqn_index = k*nx*neq + i*neq + id_ru;
           // p' (x-direction)
-          A.insert( eqn_index , k*nx*neq + im1*neq + id_p  ) = p_im1;
-          A.insert( eqn_index , k*nx*neq + i  *neq + id_p  ) = p_ik;
-          A.insert( eqn_index , k*nx*neq + ip1*neq + id_p  ) = p_ip1;
+          A.insert( eqn_index , k*nx*neq + im1*neq + id_p  ) = -rdx*0.5_fp;
+          A.insert( eqn_index , k*nx*neq + ip1*neq + id_p  ) = rdx*0.5_fp;
           // ru (x-direction)
-          A.insert( eqn_index , k*nx*neq + im1*neq + id_ru ) = ru_im1;
-          A.insert( eqn_index , k*nx*neq + i  *neq + id_ru ) = ru_i;
-          A.insert( eqn_index , k*nx*neq + ip1*neq + id_ru ) = ru_ip1;
+          A.insert( eqn_index , k*nx*neq + i  *neq + id_ru ) = 1;
 
 
           /////////////////////////////////////////////
           // (rho*w)_new + d(p'_new)/dz = (rho*w)_old
           /////////////////////////////////////////////
-           p_im1=0 ; p_ik=0 ;  p_ip1=0;
-           p_km1=0 ;           p_kp1=0;
-          ru_im1=0 ; ru_i=0 ; ru_ip1=0;
-          rw_km1=0 ; rw_k=0 ; rw_kp1=0;
-          // Add pressure left z-direction (multiply by -1./dz)
-          // Pressure  L: coefs p': [1/2 1/2   0]
-          // Pressure  L: coefs ru: [ 1/2*cs -1/2*cs       0]
-          p_km1  += -rdz*dt * ( 0.5_fp   );
-          p_ik   += -rdz*dt * ( 0.5_fp   );
-          p_kp1  += -rdz*dt * ( 0        );
-          rw_km1 += -rdz*dt * ( 0.5_fp*cs);
-          rw_k   += -rdz*dt * (-0.5_fp*cs);
-          rw_kp1 += -rdz*dt * ( 0        );
-          // Add pressure right z-direction (multiply by 1./dz)
-          // Pressure  R: coefs p': [  0 1/2 1/2]
-          // Pressure  R: coefs ru: [      0  1/2*cs -1/2*cs]
-          p_km1  += rdz*dt * ( 0        );
-          p_ik   += rdz*dt * ( 0.5_fp   );
-          p_kp1  += rdz*dt * ( 0.5_fp   );
-          rw_km1 += rdz*dt * ( 0        );
-          rw_k   += rdz*dt * ( 0.5_fp*cs);
-          rw_kp1 += rdz*dt * (-0.5_fp*cs);
-          // Add mass flux at cell center
-          rw_k += 1;
-
-          // Boundary conditions in the z-direction (add p' boundaries to last valid cell)
+          p_km1 = -rdz*0.5_fp;
+          p_kp1 =  rdz*0.5_fp;
+          p_ik  = 0;
           if (k == 0   ) p_ik += p_km1;
           if (k == nz-1) p_ik += p_kp1;
 
@@ -1248,13 +1193,13 @@ public:
                         A.insert( eqn_index , k  *nx*neq + i*neq + id_p  ) = p_ik;
           if (k < nz-1) A.insert( eqn_index , kp1*nx*neq + i*neq + id_p  ) = p_kp1;
           // rw (z-direction)
-          if (k > 0   ) A.insert( eqn_index , km1*nx*neq + i*neq + id_rw ) = rw_km1;
-                        A.insert( eqn_index , k  *nx*neq + i*neq + id_rw ) = rw_k;
-          if (k < nz-1) A.insert( eqn_index , kp1*nx*neq + i*neq + id_rw ) = rw_kp1;
+          A.insert( eqn_index , k  *nx*neq + i*neq + id_rw ) = 1;
         }
       }
 
     } // First-order
+
+    std::cout << "Non-zeros: " << A.nonZeros() << "\n";
 
     A.makeCompressed();
 
@@ -1278,12 +1223,12 @@ public:
     int constexpr id_ru = 1;
     int constexpr id_rw = 2;
 
-    real cs = 300;
+    real cs = 1;
 
     real4d pressure("pressure",nz,ny,nx,nens);
 
     // If not already built, create the solver for the steady state matrix described in 'single solve' 
-    if(!solver_built) build_matrix_solver_2d();
+    if(!solver_built) build_matrix_solver_2d(cs);
 
     // Set up RHS vector
     Eigen::VectorXd q(3*nx*nz);
@@ -1356,6 +1301,32 @@ public:
                            mass_flux_z(k  ,j,i,iens) = rw_L;
             if (k == nz-1) mass_flux_z(k+1,j,i,iens) = 0;
             if (k == 0   ) mass_flux_z(k  ,j,i,iens) = 0;
+          }
+        }
+      }
+    }
+
+    // yakl::SimpleNetCDF nc;
+    // nc.create("blah.nc");
+    // real3d data("data",nz,ny,nx);
+    // parallel_for(Bounds<3>(nz,ny,nx),YAKL_LAMBDA (int k,int j,int i) { data(k,j,i) = mass_flux_x(k,j,i,0); });
+    // nc.write(data,"mass_flux_x",{"z","y","x"});
+    // parallel_for(Bounds<3>(nz,ny,nx),YAKL_LAMBDA (int k,int j,int i) { data(k,j,i) = mass_flux_z(k,j,i,0); });
+    // nc.write(data,"mass_flux_z",{"z","y","x"});
+    // parallel_for(Bounds<3>(nz,ny,nx),YAKL_LAMBDA (int k,int j,int i) { data(k,j,i) = state(idU,hs+k,hs+j,hs+i,0); });
+    // nc.write(data,"u",{"z","y","x"});
+    // parallel_for(Bounds<3>(nz,ny,nx),YAKL_LAMBDA (int k,int j,int i) { data(k,j,i) = state(idW,hs+k,hs+j,hs+i,0); });
+    // nc.write(data,"w",{"z","y","x"});
+    // nc.close();
+    // exit(0);
+
+    // COMPUTE MOMENTA
+    for( int k=0; k < nz; k++ ) {
+      for( int j=0; j < ny; j++ ) {
+        for( int i=0; i < nx; i++ ){
+          for( int iens=0; iens < nens; iens++ ) {
+            state(idU,hs+k,hs+j,hs+i,iens) = ( mass_flux_x(k,j,i,iens) + mass_flux_x(k,j,i+1,iens) ) / 2;
+            state(idW,hs+k,hs+j,hs+i,iens) = ( mass_flux_z(k,j,i,iens) + mass_flux_z(k+1,j,i,iens) ) / 2;
           }
         }
       }
@@ -1473,23 +1444,6 @@ public:
     real4d mass_flux_z("mass_flux_z",nz+1,ny,nx  ,nens);
 
     remove_momentum_divergence( state , mass_flux_x , mass_flux_z );
-
-
-
-    // yakl::SimpleNetCDF nc;
-    // nc.create("temp.nc");
-    // real3d data("data",nz,ny,nx);
-    // parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-    //   data(k,j,i) = state(idU,hs+k,hs+j,hs+i,0) / ( state(idR,hs+k,hs+j,hs+i,0) + hyDensCells(k,0) );
-    // });
-    // nc.write(data.createHostCopy(),"u",{"z","y","x"});
-    // parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-    //   data(k,j,i) = state(idW,hs+k,hs+j,hs+i,0) / ( state(idR,hs+k,hs+j,hs+i,0) + hyDensCells(k,0) );
-    // });
-    // nc.write(data.createHostCopy(),"w",{"z","y","x"});
-    // nc.close();
-    // exit(0);
-
 
 
     real6d stateLimits_x ("stateLimits_x" ,num_state  ,2,nz  ,ny,nx+1,nens);

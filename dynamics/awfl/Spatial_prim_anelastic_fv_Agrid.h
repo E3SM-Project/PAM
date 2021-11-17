@@ -1788,7 +1788,7 @@ public:
   void remove_momentum_divergence(real5d &state) {
     // Speed of sound and dt are somewhat arbitrary but might help matrix conditioning
     real constexpr c_s = 300;
-    real dtloc = 0.15;
+    real dtloc = 5;
 
     real xi_x = dtloc/dx*c_s;
     real xi_z = xi_x; // TODO: assumes constant dz=dx for now
