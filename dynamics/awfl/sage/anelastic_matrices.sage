@@ -22,7 +22,6 @@ p_p  =  p[1]
 w1 = ru_p/2 - p_p/(2*cs)
 w2 = ru_m/2 + p_m/(2*cs)
 ru_L_upw =   w2 + w1
-p_L_upw  = ( w2 - w1 ) * cs
 #Right interface upwind values
 ru_m = ru[1]
 ru_p = ru[2]
@@ -31,15 +30,10 @@ p_p  =  p[2]
 w1 = ru_p/2 - p_p/(2*cs)
 w2 = ru_m/2 + p_m/(2*cs)
 ru_R_upw =   w2 + w1
-p_R_upw  = ( w2 - w1 ) * cs
-print("Mass Flux L: coefs p':",jacobian(ru_L_upw,p ))
-print("Mass Flux L: coefs ru:",jacobian(ru_L_upw,ru))
-print("Mass Flux R: coefs p':",jacobian(ru_R_upw,p ))
-print("Mass Flux R: coefs ru:",jacobian(ru_R_upw,ru))
-print("Pressure  L: coefs p':",jacobian( p_L_upw,p ))
-print("Pressure  L: coefs ru:",jacobian( p_L_upw,ru))
-print("Pressure  R: coefs p':",jacobian( p_R_upw,p ))
-print("Pressure  R: coefs ru:",jacobian( p_R_upw,ru))
+print("Mass Flux L: coefs p':",jacobian(ru_L_upw,p ).rows())
+print("Mass Flux L: coefs ru:",jacobian(ru_L_upw,ru).rows())
+print("Mass Flux R: coefs p':",jacobian(ru_R_upw,p ).rows())
+print("Mass Flux R: coefs ru:",jacobian(ru_R_upw,ru).rows())
 print("")
 
 
@@ -66,7 +60,6 @@ p_p  = wLp[0]* p[1] + wLp[1]* p[2] + wLp[2]* p[3]
 w1 = ru_p/2 - p_p/(2*cs)
 w2 = ru_m/2 + p_m/(2*cs)
 ru_L_upw =   w2 + w1
-p_L_upw  = ( w2 - w1 ) * cs
 #Right interface upwind values
 ru_m = wRm[0]*ru[1] + wRm[1]*ru[2] + wRm[2]*ru[3]
 ru_p = wRp[0]*ru[2] + wRp[1]*ru[3] + wRp[2]*ru[4]
@@ -75,14 +68,9 @@ p_p  = wRp[0]* p[2] + wRp[1]* p[3] + wRp[2]* p[4]
 w1 = ru_p/2 - p_p/(2*cs)
 w2 = ru_m/2 + p_m/(2*cs)
 ru_R_upw =   w2 + w1
-p_R_upw  = ( w2 - w1 ) * cs
-print("Mass Flux L: coefs p':",jacobian(ru_L_upw,p ))
-print("Mass Flux L: coefs ru:",jacobian(ru_L_upw,ru))
-print("Mass Flux R: coefs p':",jacobian(ru_R_upw,p ))
-print("Mass Flux R: coefs ru:",jacobian(ru_R_upw,ru))
-print("Pressure  L: coefs p':",jacobian( p_L_upw,p ))
-print("Pressure  L: coefs ru:",jacobian( p_L_upw,ru))
-print("Pressure  R: coefs p':",jacobian( p_R_upw,p ))
-print("Pressure  R: coefs ru:",jacobian( p_R_upw,ru))
+print("Mass Flux L: coefs p':",jacobian(ru_L_upw,p ).rows())
+print("Mass Flux L: coefs ru:",jacobian(ru_L_upw,ru).rows())
+print("Mass Flux R: coefs p':",jacobian(ru_R_upw,p ).rows())
+print("Mass Flux R: coefs ru:",jacobian(ru_R_upw,ru).rows())
 print("")
 
