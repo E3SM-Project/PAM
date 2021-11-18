@@ -78,7 +78,6 @@ public:
   real4d vert_sten_to_gll;
   real5d vert_weno_recon;
 
-  int solver_built=0;
   Eigen::SparseLU<Eigen::SparseMatrix<real>, Eigen::COLAMDOrdering<int> > momdiv_solver;
 
   // For indexing into the state and state tendency arrays
@@ -690,6 +689,8 @@ public:
       }
     });
 
+    build_matrix_solver_2d();
+
     #ifdef PAM_STANDALONE
       std::cout << "nx: " << nx << "\n";
       std::cout << "ny: " << ny << "\n";
@@ -1068,65 +1069,40 @@ public:
     int constexpr neq = 3;
 
     Eigen::SparseMatrix<real> A(neq*nx*nz,neq*nx*nz);
-
     A.reserve(Eigen::VectorXi::Constant(neq*nx*nz,5));
 
-    // Build the horizontal part of the matrix (easy BCs) 
     for (int k=0; k < nz; k++) {
       for (int i=0; i < nx; i++) {
         int im1 = i-1;  if (im1 < 0   ) im1 += nx;
         int ip1 = i+1;  if (ip1 > nx-1) ip1 -= nx;
         int km1 = k-1;  if (km1 < 0   ) km1  = 0;
         int kp1 = k+1;  if (kp1 > nz-1) kp1  = nz-1;
-
         int eqn_index;
-
-        real  p_im1 , p_ik ,  p_ip1;
-        real  p_km1 ,         p_kp1;
-        real ru_im1 , ru_i , ru_ip1;
-        real rw_km1 , rw_k , rw_kp1;
-
-        real mult;
-
+        real p_im1=0, p_ik=0, p_ip1=0, p_km1=0, p_kp1=0, ru_im1=0, ru_i=0, ru_ip1=0, rw_km1=0, rw_k=0, rw_kp1=0, mult;
         real rdx = 1._fp / dx;
         real rdz = 1._fp / dz(k,0);
 
         //////////////////////////////////////////////////////////////////
         // d(rho*u)/dx + d(rho*w)/dz = 0  (inserted at p' equation index)
         //////////////////////////////////////////////////////////////////
-         p_im1=0 ; p_ik=0 ;  p_ip1=0;
-         p_km1=0 ;           p_kp1=0;
-        ru_im1=0 ; ru_i=0 ; ru_ip1=0;
-        rw_km1=0 ; rw_k=0 ; rw_kp1=0;
+         p_im1=0 ; p_ik=0 ;  p_ip1=0 ; p_km1=0 ;           p_kp1=0;
+        ru_im1=0 ; ru_i=0 ; ru_ip1=0 ; rw_km1=0 ; rw_k=0 ; rw_kp1=0 ;
         // Add mass flux left x-direction (multiply by -1./dx)
-        // Mass Flux L: coefs p': [ 1/2/cs -1/2/cs       0]
-        // Mass Flux L: coefs ru: [1/2 1/2   0]
-        ru_im1 += -rdx * ( 0.5_fp   );
-        ru_i   += -rdx * ( 0.5_fp   );
-        ru_ip1 += -rdx * ( 0        );
+        ru_im1 += -rdx * 0.5_fp;
+        ru_i   += -rdx * 0.5_fp;
         // Add mass flux right x-direction (multiply by 1./dx)
-        // Mass Flux R: coefs p': [      0  1/2/cs -1/2/cs]
-        // Mass Flux R: coefs ru: [  0 1/2 1/2]
-        ru_im1 += rdx * ( 0        );
-        ru_i   += rdx * ( 0.5_fp   );
-        ru_ip1 += rdx * ( 0.5_fp   );
+        ru_i   +=  rdx * 0.5_fp;
+        ru_ip1 +=  rdx * 0.5_fp;
         // Add mass flux bottom z-direction (multiply by -1./dz)
-        // Mass Flux L: coefs p': [ 1/2/cs -1/2/cs       0]
-        // Mass Flux L: coefs ru: [1/2 1/2   0]
         mult = -rdz;
-        if (k == 0) mult = 0;  // If k==0, bottom mass flux is zero
-        rw_km1 += mult * ( 0.5_fp  );
-        rw_k   += mult * ( 0.5_fp  );
-        rw_kp1 += mult * ( 0       );
+        if (k == 0   ) mult = 0;  // If k==0, bottom mass flux is zero
+        rw_km1 += mult * 0.5_fp;
+        rw_k   += mult * 0.5_fp;
         // Add mass flux top z-direction (multiply by 1./dz)
-        // Mass Flux R: coefs p': [      0  1/2/cs -1/2/cs]
-        // Mass Flux R: coefs ru: [  0 1/2 1/2]
         mult = rdz;
         if (k == nz-1) mult = 0;  // If k==nz-1, top mass flux is zero
-        rw_km1 += mult * ( 0        );
-        rw_k   += mult * ( 0.5_fp   );
-        rw_kp1 += mult * ( 0.5_fp   );
-
+        rw_k   += mult * 0.5_fp;
+        rw_kp1 += mult * 0.5_fp;
         // Boundary conditions in the z-direction (add p' boundaries to last valid cell)
         if (k == 0   ) p_ik += p_km1;
         if (k == nz-1) p_ik += p_kp1;
@@ -1141,17 +1117,15 @@ public:
                       A.insert( eqn_index , k  *nx*neq + i*neq + id_rw ) = rw_k;
         if (k < nz-1) A.insert( eqn_index , kp1*nx*neq + i*neq + id_rw ) = rw_kp1;
 
-
         /////////////////////////////////////////////
         // (rho*u)_new + d(p'_new)/dx = (rho*u)_old
         /////////////////////////////////////////////
         eqn_index = k*nx*neq + i*neq + id_ru;
         // p' (x-direction)
         A.insert( eqn_index , k*nx*neq + im1*neq + id_p  ) = -rdx*0.5_fp;
-        A.insert( eqn_index , k*nx*neq + ip1*neq + id_p  ) = rdx*0.5_fp;
+        A.insert( eqn_index , k*nx*neq + ip1*neq + id_p  ) =  rdx*0.5_fp;
         // ru (x-direction)
         A.insert( eqn_index , k*nx*neq + i  *neq + id_ru ) = 1;
-
 
         /////////////////////////////////////////////
         // (rho*w)_new + d(p'_new)/dz = (rho*w)_old
@@ -1161,7 +1135,6 @@ public:
         p_ik  = 0;
         if (k == 0   ) p_ik += p_km1;
         if (k == nz-1) p_ik += p_kp1;
-
         eqn_index = k*nx*neq + i*neq + id_rw;
         // p' (z-direction)
         if (k > 0   ) A.insert( eqn_index , km1*nx*neq + i*neq + id_p  ) = p_km1;
@@ -1172,19 +1145,13 @@ public:
       }
     }
 
-    std::cout << "Non-zeros: " << A.nonZeros() << "\n";
-
     A.makeCompressed();
-
     momdiv_solver.analyzePattern(A);
     momdiv_solver.factorize(A);
-
     if (momdiv_solver.info() != 0) {
       std::cout << momdiv_solver.lastErrorMessage() << std::endl;
       endrun("ERROR: LU decomp was unsuccessful");
     }
-
-    solver_built = 1;
   }
 
 
@@ -1194,13 +1161,6 @@ public:
     int constexpr id_p  = 0;
     int constexpr id_ru = 1;
     int constexpr id_rw = 2;
-
-    real cs = 1;
-
-    real4d pressure("pressure",nz,ny,nx,nens);
-
-    // If not already built, create the solver for the steady state matrix described in 'single solve' 
-    if(!solver_built) build_matrix_solver_2d();
 
     // Set up RHS vector
     Eigen::VectorXd q(neq*nx*nz);
@@ -1220,6 +1180,8 @@ public:
     // Solve 
     q = momdiv_solver.solve(b);
 
+    real4d pressure("pressure",nz,ny,nx,nens);
+
     // Copy solution into appropriate arrays
     for (int k=0; k < nz; k++) {
       for (int j=0; j < ny; j++) {
@@ -1233,7 +1195,7 @@ public:
       }
     }
 
-    // COMPUTE MASS FLUXES
+    // Compute mass fluxes
     for( int k=0; k < nz; k++ ) {
       for( int j=0; j < ny; j++ ) {
         for( int i=0; i < nx; i++ ){
@@ -1264,20 +1226,6 @@ public:
         }
       }
     }
-
-    // yakl::SimpleNetCDF nc;
-    // nc.create("blah.nc");
-    // real3d data("data",nz,ny,nx);
-    // parallel_for(Bounds<3>(nz,ny,nx),YAKL_LAMBDA (int k,int j,int i) { data(k,j,i) = mass_flux_x(k,j,i,0); });
-    // nc.write(data,"mass_flux_x",{"z","y","x"});
-    // parallel_for(Bounds<3>(nz,ny,nx),YAKL_LAMBDA (int k,int j,int i) { data(k,j,i) = mass_flux_z(k,j,i,0); });
-    // nc.write(data,"mass_flux_z",{"z","y","x"});
-    // parallel_for(Bounds<3>(nz,ny,nx),YAKL_LAMBDA (int k,int j,int i) { data(k,j,i) = state(idU,hs+k,hs+j,hs+i,0); });
-    // nc.write(data,"u",{"z","y","x"});
-    // parallel_for(Bounds<3>(nz,ny,nx),YAKL_LAMBDA (int k,int j,int i) { data(k,j,i) = state(idW,hs+k,hs+j,hs+i,0); });
-    // nc.write(data,"w",{"z","y","x"});
-    // nc.close();
-    // exit(0);
   }
 
 
