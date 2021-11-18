@@ -1077,16 +1077,13 @@ public:
         int ip1 = i+1;  if (ip1 > nx-1) ip1 -= nx;
         int km1 = k-1;  if (km1 < 0   ) km1  = 0;
         int kp1 = k+1;  if (kp1 > nz-1) kp1  = nz-1;
-        int eqn_index;
-        real p_im1=0, p_ik=0, p_ip1=0, p_km1=0, p_kp1=0, ru_im1=0, ru_i=0, ru_ip1=0, rw_km1=0, rw_k=0, rw_kp1=0, mult;
+        real p_im1=0, p_ik=0, p_ip1=0, p_km1=0, p_kp1=0, ru_im1=0, ru_i=0, ru_ip1=0, rw_km1=0, rw_k=0, rw_kp1=0;
         real rdx = 1._fp / dx;
         real rdz = 1._fp / dz(k,0);
 
         //////////////////////////////////////////////////////////////////
         // d(rho*u)/dx + d(rho*w)/dz = 0  (inserted at p' equation index)
         //////////////////////////////////////////////////////////////////
-         p_im1=0 ; p_ik=0 ;  p_ip1=0 ; p_km1=0 ;           p_kp1=0;
-        ru_im1=0 ; ru_i=0 ; ru_ip1=0 ; rw_km1=0 ; rw_k=0 ; rw_kp1=0 ;
         // Add mass flux left x-direction (multiply by -1./dx)
         ru_im1 += -rdx * 0.5_fp;
         ru_i   += -rdx * 0.5_fp;
@@ -1094,7 +1091,7 @@ public:
         ru_i   +=  rdx * 0.5_fp;
         ru_ip1 +=  rdx * 0.5_fp;
         // Add mass flux bottom z-direction (multiply by -1./dz)
-        mult = -rdz;
+        real mult = -rdz;
         if (k == 0   ) mult = 0;  // If k==0, bottom mass flux is zero
         rw_km1 += mult * 0.5_fp;
         rw_k   += mult * 0.5_fp;
@@ -1107,12 +1104,10 @@ public:
         if (k == 0   ) p_ik += p_km1;
         if (k == nz-1) p_ik += p_kp1;
 
-        eqn_index = k*nx*neq + i*neq + id_p;
-        // ru (x-direction)
+        int eqn_index = k*nx*neq + i*neq + id_p;
         A.insert( eqn_index , k*nx*neq + im1*neq + id_ru ) = ru_im1;
         A.insert( eqn_index , k*nx*neq + i  *neq + id_ru ) = ru_i;
         A.insert( eqn_index , k*nx*neq + ip1*neq + id_ru ) = ru_ip1;
-        // rw (z-direction)
         if (k > 0   ) A.insert( eqn_index , km1*nx*neq + i*neq + id_rw ) = rw_km1;
                       A.insert( eqn_index , k  *nx*neq + i*neq + id_rw ) = rw_k;
         if (k < nz-1) A.insert( eqn_index , kp1*nx*neq + i*neq + id_rw ) = rw_kp1;
@@ -1121,10 +1116,8 @@ public:
         // (rho*u)_new + d(p'_new)/dx = (rho*u)_old
         /////////////////////////////////////////////
         eqn_index = k*nx*neq + i*neq + id_ru;
-        // p' (x-direction)
         A.insert( eqn_index , k*nx*neq + im1*neq + id_p  ) = -rdx*0.5_fp;
         A.insert( eqn_index , k*nx*neq + ip1*neq + id_p  ) =  rdx*0.5_fp;
-        // ru (x-direction)
         A.insert( eqn_index , k*nx*neq + i  *neq + id_ru ) = 1;
 
         /////////////////////////////////////////////
@@ -1135,12 +1128,11 @@ public:
         p_ik  = 0;
         if (k == 0   ) p_ik += p_km1;
         if (k == nz-1) p_ik += p_kp1;
+
         eqn_index = k*nx*neq + i*neq + id_rw;
-        // p' (z-direction)
         if (k > 0   ) A.insert( eqn_index , km1*nx*neq + i*neq + id_p  ) = p_km1;
                       A.insert( eqn_index , k  *nx*neq + i*neq + id_p  ) = p_ik;
         if (k < nz-1) A.insert( eqn_index , kp1*nx*neq + i*neq + id_p  ) = p_kp1;
-        // rw (z-direction)
         A.insert( eqn_index , k  *nx*neq + i*neq + id_rw ) = 1;
       }
     }
@@ -1180,16 +1172,13 @@ public:
     // Solve 
     q = momdiv_solver.solve(b);
 
-    real4d pressure("pressure",nz,ny,nx,nens);
-
     // Copy solution into appropriate arrays
     for (int k=0; k < nz; k++) {
       for (int j=0; j < ny; j++) {
         for (int i=0; i < nx; i++) {
           for (int iens=0; iens < nens; iens++) {
-            pressure(       k,   j,   i,iens) = q(k*nx*neq + i*neq + id_p );
-            state   (idU,hs+k,hs+j,hs+i,iens) = q(k*nx*neq + i*neq + id_ru);
-            state   (idW,hs+k,hs+j,hs+i,iens) = q(k*nx*neq + i*neq + id_rw);
+            state(idU,hs+k,hs+j,hs+i,iens) = q(k*nx*neq + i*neq + id_ru);
+            state(idW,hs+k,hs+j,hs+i,iens) = q(k*nx*neq + i*neq + id_rw);
           }
         }
       }
