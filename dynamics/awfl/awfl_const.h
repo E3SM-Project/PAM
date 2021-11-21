@@ -22,7 +22,7 @@ using yakl::COLON;
 using yakl::ScalarLiveOut;
 
 #ifndef ORD
-  #define ORD 9
+  #define ORD 5
 #endif
 
 #ifndef NGLL

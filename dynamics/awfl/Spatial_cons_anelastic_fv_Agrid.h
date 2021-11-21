@@ -719,7 +719,8 @@ public:
       }
     });
 
-    build_matrix_solver_2d();
+    if (sim2d) { build_matrix_solver_2d(); }
+    else       { build_matrix_solver_3d(); }
 
     #ifdef PAM_STANDALONE
       std::cout << "nx: " << nx << "\n";
@@ -1120,7 +1121,7 @@ public:
         int ip1 = i+1;  if (ip1 > nx-1) ip1 -= nx;
         int km1 = k-1;  if (km1 < 0   ) km1  = 0;
         int kp1 = k+1;  if (kp1 > nz-1) kp1  = nz-1;
-        real p_im1=0, p_ik=0, p_ip1=0, p_km1=0, p_kp1=0, ru_im1=0, ru_i=0, ru_ip1=0, rw_km1=0, rw_k=0, rw_kp1=0;
+        real p_km1=0, p_k=0, p_kp1=0, ru_im1=0, ru_i=0, ru_ip1=0, rw_km1=0, rw_k=0, rw_kp1=0;
         real rdx = 1._fp / dx;
         real rdz = 1._fp / dz(k,0);
 
@@ -1143,9 +1144,6 @@ public:
         if (k == nz-1) mult = 0;  // If k==nz-1, top mass flux is zero
         rw_k   += mult * 0.5_fp;
         rw_kp1 += mult * 0.5_fp;
-        // Boundary conditions in the z-direction (add p' boundaries to last valid cell)
-        if (k == 0   ) p_ik += p_km1;
-        if (k == nz-1) p_ik += p_kp1;
 
         int eqn_index = k*nx*neq + i*neq + id_p;
         A.insert( eqn_index , k*nx*neq + im1*neq + id_ru ) = ru_im1;
@@ -1167,14 +1165,14 @@ public:
         // (rho*w)_new + d(p'_new)/dz = (rho*w)_old
         /////////////////////////////////////////////
         p_km1 = -rdz*0.5_fp;
+        p_k  = 0;
         p_kp1 =  rdz*0.5_fp;
-        p_ik  = 0;
-        if (k == 0   ) p_ik += p_km1;
-        if (k == nz-1) p_ik += p_kp1;
+        if (k == 0   ) p_k += p_km1;
+        if (k == nz-1) p_k += p_kp1;
 
         eqn_index = k*nx*neq + i*neq + id_rw;
         if (k > 0   ) A.insert( eqn_index , km1*nx*neq + i*neq + id_p  ) = p_km1;
-                      A.insert( eqn_index , k  *nx*neq + i*neq + id_p  ) = p_ik;
+                      A.insert( eqn_index , k  *nx*neq + i*neq + id_p  ) = p_k;
         if (k < nz-1) A.insert( eqn_index , kp1*nx*neq + i*neq + id_p  ) = p_kp1;
         A.insert( eqn_index , k  *nx*neq + i*neq + id_rw ) = 1;
       }
@@ -1191,7 +1189,123 @@ public:
 
 
 
-  void remove_momentum_divergence(real5d &state, real4d &mass_flux_x, real4d &mass_flux_z) {
+  void build_matrix_solver_3d() {
+    int constexpr id_p  = 0;
+    int constexpr id_ru = 1;
+    int constexpr id_rv = 2;
+    int constexpr id_rw = 3;
+    int constexpr neq = 4;
+
+    Eigen::SparseMatrix<real> A(neq*nx*ny*nz,neq*nx*ny*nz);
+    A.reserve(Eigen::VectorXi::Constant(neq*nx*ny*nz,10));
+
+    std::cout << "Assembling matrix\n";
+
+    for (int k=0; k < nz; k++) {
+      for (int j=0; j < ny; j++) {
+        for (int i=0; i < nx; i++) {
+          int im1 = i-1;  if (im1 < 0   ) im1 += nx;
+          int ip1 = i+1;  if (ip1 > nx-1) ip1 -= nx;
+          int jm1 = j-1;  if (jm1 < 0   ) jm1 += ny;
+          int jp1 = j+1;  if (jp1 > ny-1) jp1 -= ny;
+          int km1 = k-1;  if (km1 < 0   ) km1  = 0;
+          int kp1 = k+1;  if (kp1 > nz-1) kp1  = nz-1;
+          real p_km1=0, p_k=0, p_kp1=0, ru_im1=0, ru_i=0, ru_ip1=0, rv_jm1=0, rv_j=0, rv_jp1=0, rw_km1=0, rw_k=0, rw_kp1=0;
+          real rdx = 1._fp / dx;
+          real rdy = 1._fp / dy;
+          real rdz = 1._fp / dz(k,0);
+
+          //////////////////////////////////////////////////////////////////
+          // d(rho*u)/dx + d(rho*w)/dz = 0  (inserted at p' equation index)
+          //////////////////////////////////////////////////////////////////
+          // Add mass flux left x-direction (multiply by -1./dx)
+          ru_im1 += -rdx * 0.5_fp;
+          ru_i   += -rdx * 0.5_fp;
+          // Add mass flux right x-direction (multiply by 1./dx)
+          ru_i   +=  rdx * 0.5_fp;
+          ru_ip1 +=  rdx * 0.5_fp;
+          // Add mass flux left x-direction (multiply by -1./dx)
+          rv_jm1 += -rdy * 0.5_fp;
+          rv_j   += -rdy * 0.5_fp;
+          // Add mass flux right x-direction (multiply by 1./dx)
+          rv_j   +=  rdy * 0.5_fp;
+          rv_jp1 +=  rdy * 0.5_fp;
+          // Add mass flux bottom z-direction (multiply by -1./dz)
+          real mult = -rdz;
+          if (k == 0   ) mult = 0;  // If k==0, bottom mass flux is zero
+          rw_km1 += mult * 0.5_fp;
+          rw_k   += mult * 0.5_fp;
+          // Add mass flux top z-direction (multiply by 1./dz)
+          mult = rdz;
+          if (k == nz-1) mult = 0;  // If k==nz-1, top mass flux is zero
+          rw_k   += mult * 0.5_fp;
+          rw_kp1 += mult * 0.5_fp;
+
+          int eqn_index = k*nx*ny*neq + j*nx*neq + i*neq + id_p;
+                        A.insert( eqn_index , k  *nx*ny*neq + j  *nx*neq + im1*neq + id_ru ) = ru_im1;
+                        A.insert( eqn_index , k  *nx*ny*neq + j  *nx*neq + i  *neq + id_ru ) = ru_i;
+                        A.insert( eqn_index , k  *nx*ny*neq + j  *nx*neq + ip1*neq + id_ru ) = ru_ip1;
+                        A.insert( eqn_index , k  *nx*ny*neq + jm1*nx*neq + i  *neq + id_rv ) = rv_jm1;
+                        A.insert( eqn_index , k  *nx*ny*neq + j  *nx*neq + i  *neq + id_rv ) = rv_j;
+                        A.insert( eqn_index , k  *nx*ny*neq + jp1*nx*neq + i  *neq + id_rv ) = rv_jp1;
+          if (k > 0   ) A.insert( eqn_index , km1*nx*ny*neq + j  *nx*neq + i  *neq + id_rw ) = rw_km1;
+                        A.insert( eqn_index , k  *nx*ny*neq + j  *nx*neq + i  *neq + id_rw ) = rw_k;
+          if (k < nz-1) A.insert( eqn_index , kp1*nx*ny*neq + j  *nx*neq + i  *neq + id_rw ) = rw_kp1;
+
+          /////////////////////////////////////////////
+          // (rho*u)_new + d(p'_new)/dx = (rho*u)_old
+          /////////////////////////////////////////////
+          eqn_index = k*nx*ny*neq + j*nx*neq + i*neq + id_ru;
+          A.insert( eqn_index , k*nx*ny*neq + j*nx*neq + im1*neq + id_p  ) = -rdx*0.5_fp;
+          A.insert( eqn_index , k*nx*ny*neq + j*nx*neq + ip1*neq + id_p  ) =  rdx*0.5_fp;
+          A.insert( eqn_index , k*nx*ny*neq + j*nx*neq + i  *neq + id_ru ) = 1;
+
+          /////////////////////////////////////////////
+          // (rho*v)_new + d(p'_new)/dy = (rho*v)_old
+          /////////////////////////////////////////////
+          eqn_index = k*nx*ny*neq + j*nx*neq + i*neq + id_rv;
+          A.insert( eqn_index , k*nx*ny*neq + jm1*nx*neq + i*neq + id_p  ) = -rdy*0.5_fp;
+          A.insert( eqn_index , k*nx*ny*neq + jp1*nx*neq + i*neq + id_p  ) =  rdy*0.5_fp;
+          A.insert( eqn_index , k*nx*ny*neq + j  *nx*neq + i*neq + id_rv ) = 1;
+
+          /////////////////////////////////////////////
+          // (rho*w)_new + d(p'_new)/dz = (rho*w)_old
+          /////////////////////////////////////////////
+          p_km1 = -rdz*0.5_fp;
+          p_k  = 0;
+          p_kp1 =  rdz*0.5_fp;
+          if (k == 0   ) p_k += p_km1;
+          if (k == nz-1) p_k += p_kp1;
+
+          eqn_index = k*nx*ny*neq + j*nx*neq + i*neq + id_rw;
+          if (k > 0   ) A.insert( eqn_index , km1*ny*nx*neq + j*nx*neq + i*neq + id_p  ) = p_km1;
+                        A.insert( eqn_index , k  *ny*nx*neq + j*nx*neq + i*neq + id_p  ) = p_k;
+          if (k < nz-1) A.insert( eqn_index , kp1*ny*nx*neq + j*nx*neq + i*neq + id_p  ) = p_kp1;
+                        A.insert( eqn_index , k  *ny*nx*neq + j*nx*neq + i*neq + id_rw ) = 1;
+        }
+      }
+    }
+
+    std::cout << "Compressing matrix\n";
+    A.makeCompressed();
+
+    std::cout << "Number of non-zeros: " << A.nonZeros() << "\n";
+
+    std::cout << "Analyzing matrix\n";
+    momdiv_solver.analyzePattern(A);
+
+    std::cout << "Factorizing matrix\n";
+    momdiv_solver.factorize(A);
+
+    if (momdiv_solver.info() != 0) {
+      std::cout << momdiv_solver.lastErrorMessage() << std::endl;
+      endrun("ERROR: LU decomp was unsuccessful");
+    }
+  }
+
+
+
+  void remove_momentum_divergence_2d(real5d &state, real4d &mass_flux_x, real4d &mass_flux_z) {
     int constexpr neq = 3;
     int constexpr id_p  = 0;
     int constexpr id_ru = 1;
@@ -1262,12 +1376,96 @@ public:
 
 
 
+  void remove_momentum_divergence_3d(real5d &state, real4d &mass_flux_x, real4d &mass_flux_y, real4d &mass_flux_z) {
+    int constexpr neq = 4;
+    int constexpr id_p  = 0;
+    int constexpr id_ru = 1;
+    int constexpr id_rv = 2;
+    int constexpr id_rw = 3;
+
+    // Set up RHS vector
+    Eigen::VectorXd q(neq*nx*ny*nz);
+    Eigen::VectorXd b(neq*nx*ny*nz);
+    for (int k=0; k < nz; k++) {
+      for (int j=0; j < ny; j++) {
+        for (int i=0; i < nx; i++) {
+          for (int iens=0; iens < nens; iens++) {
+            b(k*nx*ny*neq + j*nx*neq + i*neq + id_p ) = 0.;
+            b(k*nx*ny*neq + j*nx*neq + i*neq + id_ru) = state(idU,hs+k,hs+j,hs+i,iens);
+            b(k*nx*ny*neq + j*nx*neq + i*neq + id_rv) = state(idV,hs+k,hs+j,hs+i,iens);
+            b(k*nx*ny*neq + j*nx*neq + i*neq + id_rw) = state(idW,hs+k,hs+j,hs+i,iens);
+          }
+        }
+      }
+    }
+
+    // Solve 
+    q = momdiv_solver.solve(b);
+
+    // Copy solution into appropriate arrays
+    for (int k=0; k < nz; k++) {
+      for (int j=0; j < ny; j++) {
+        for (int i=0; i < nx; i++) {
+          for (int iens=0; iens < nens; iens++) {
+            state(idU,hs+k,hs+j,hs+i,iens) = q(k*nx*ny*neq + j*nx*neq + i*neq + id_ru);
+            state(idV,hs+k,hs+j,hs+i,iens) = q(k*nx*ny*neq + j*nx*neq + i*neq + id_rv);
+            state(idW,hs+k,hs+j,hs+i,iens) = q(k*nx*ny*neq + j*nx*neq + i*neq + id_rw);
+          }
+        }
+      }
+    }
+
+    // Compute mass fluxes
+    for( int k=0; k < nz; k++ ) {
+      for( int j=0; j < ny; j++ ) {
+        for( int i=0; i < nx; i++ ){
+          for( int iens=0; iens < nens; iens++ ) {
+            int im1 = i-1;  if (im1 < 0   ) im1 += nx;
+            int ip1 = i+1;  if (ip1 > nx-1) ip1 -= nx;
+            int jm1 = j-1;  if (jm1 < 0   ) jm1 += ny;
+            int jp1 = j+1;  if (jp1 > ny-1) jp1 -= ny;
+            int km1 = k-1;  if (km1 < 0   ) km1  = 0;
+            int kp1 = k+1;  if (kp1 > nz-1) kp1  = nz-1;
+
+            real ru_im1 = state(idU,hs+k,hs+j,hs+im1,iens);
+            real ru_i   = state(idU,hs+k,hs+j,hs+i  ,iens);
+            real ru_ip1 = state(idU,hs+k,hs+j,hs+ip1,iens);
+            real rv_jm1 = state(idV,hs+k,hs+jm1,hs+i,iens);
+            real rv_j   = state(idV,hs+k,hs+j  ,hs+i,iens);
+            real rv_jp1 = state(idV,hs+k,hs+jp1,hs+i,iens);
+            real rw_km1 = state(idW,hs+km1,hs+j,hs+i,iens);  if (k <= 0   ) rw_km1 = 0;
+            real rw_k   = state(idW,hs+k  ,hs+j,hs+i,iens);
+            real rw_kp1 = state(idW,hs+kp1,hs+j,hs+i,iens);  if (k >= nz-1) rw_kp1 = 0;
+
+            real ru_L = (ru_im1 + ru_i  )/2;
+            real ru_R = (ru_i   + ru_ip1)/2;
+            real rv_L = (rv_jm1 + rv_j  )/2;
+            real rv_R = (rv_j   + rv_jp1)/2;
+            real rw_L = (rw_km1 + rw_k  )/2;
+            real rw_R = (rw_k   + rw_kp1)/2;
+
+                           mass_flux_x(k,j,i  ,iens) = ru_L;
+            if (i == nx-1) mass_flux_x(k,j,i+1,iens) = ru_R;
+                           mass_flux_y(k,j  ,i,iens) = rv_L;
+            if (j == ny-1) mass_flux_y(k,j+1,i,iens) = rv_R;
+                           mass_flux_z(k  ,j,i,iens) = rw_L;
+            if (k == nz-1) mass_flux_z(k+1,j,i,iens) = 0;
+            if (k == 0   ) mass_flux_z(k  ,j,i,iens) = 0;
+          }
+        }
+      }
+    }
+  }
+
+
+
   // Compute state and tendency time derivatives from the state
   template <class MICRO>
   void computeTendencies( real5d &state   , real5d &stateTend  ,
                           real5d &tracers , real5d &tracerTend ,
                           MICRO const &micro, real &dt , int splitIndex ) {
     YAKL_SCOPE( nx                      , this->nx                     );
+    YAKL_SCOPE( ny                      , this->ny                     );
     YAKL_SCOPE( nz                      , this->nz                     );
     YAKL_SCOPE( weno_scalars            , this->weno_scalars           );
     YAKL_SCOPE( weno_winds              , this->weno_winds             );
@@ -1285,10 +1483,12 @@ public:
     YAKL_SCOPE( sim2d                   , this->sim2d                  );
     YAKL_SCOPE( derivMatrix             , this->derivMatrix            );
     YAKL_SCOPE( dx                      , this->dx                     );
+    YAKL_SCOPE( dy                      , this->dy                     );
     YAKL_SCOPE( dz                      , this->dz                     );
     YAKL_SCOPE( tracer_pos              , this->tracer_pos             );
     YAKL_SCOPE( num_tracers             , this->num_tracers            );
     YAKL_SCOPE( bc_x                    , this->bc_x                   );
+    YAKL_SCOPE( bc_y                    , this->bc_y                   );
     YAKL_SCOPE( bc_z                    , this->bc_z                   );
     YAKL_SCOPE( Rd                      , this->Rd                     );
     YAKL_SCOPE( cp                      , this->cp                     );
@@ -1335,6 +1535,36 @@ public:
         }
       });
     }
+    if (!sim2d) {
+      if        (bc_y == BC_PERIODIC) {
+        parallel_for( "Spatial.h Y BCs periodic" , SimpleBounds<4>(nz,nx,hs,nens) , YAKL_LAMBDA(int k, int i, int jj, int iens) {
+          for (int l=0; l < num_state; l++) {
+            state(l,hs+k,      jj,hs+i,iens) = state(l,hs+k,ny+jj,hs+i,iens);
+            state(l,hs+k,hs+ny+jj,hs+i,iens) = state(l,hs+k,hs+jj,hs+i,iens);
+          }
+          for (int l=0; l < num_tracers; l++) {
+            tracers(l,hs+k,      jj,hs+i,iens) = tracers(l,hs+k,ny+jj,hs+i,iens);
+            tracers(l,hs+k,hs+ny+jj,hs+i,iens) = tracers(l,hs+k,hs+jj,hs+i,iens);
+          }
+        });
+      } else if (bc_y == BC_WALL) {
+        parallel_for( "Spatial.h Y BCs wall" , SimpleBounds<4>(nz,nx,hs,nens) , YAKL_LAMBDA(int k, int i, int jj, int iens) {
+          for (int l=0; l < num_state; l++) {
+            if (l == idV) {
+              state(l,hs+k,      jj,hs+i,iens) = 0;
+              state(l,hs+k,hs+ny+jj,hs+i,iens) = 0;
+            } else {
+              state(l,hs+k,      jj,hs+i,iens) = state(l,hs+k,hs     ,hs+i,iens);
+              state(l,hs+k,hs+ny+jj,hs+i,iens) = state(l,hs+k,hs+ny-1,hs+i,iens);
+            }
+          }
+          for (int l=0; l < num_tracers; l++) {
+            tracers(l,hs+k,      jj,hs+i,iens) = tracers(l,hs+k,hs     ,hs+i,iens);
+            tracers(l,hs+k,hs+ny+jj,hs+i,iens) = tracers(l,hs+k,hs+ny-1,hs+i,iens);
+          }
+        });
+      }
+    }
     if        (bc_z == BC_PERIODIC) {
       parallel_for( SimpleBounds<4>(ny,nx,hs,nens) , YAKL_LAMBDA(int j, int i, int kk, int iens) {
         for (int l=0; l < num_state; l++) {
@@ -1366,16 +1596,19 @@ public:
 
 
 
-    real4d mass_flux_x("mass_flux_x",nz  ,ny,nx+1,nens);
-    real4d mass_flux_z("mass_flux_z",nz+1,ny,nx  ,nens);
+    real4d mass_flux_x("mass_flux_x",nz  ,ny  ,nx+1,nens);
+    real4d mass_flux_y;  if (!sim2d) mass_flux_y = real4d("mass_flux_y",nz  ,ny+1,nx  ,nens);
+    real4d mass_flux_z("mass_flux_z",nz+1,ny  ,nx  ,nens);
 
-    remove_momentum_divergence( state , mass_flux_x , mass_flux_z );
+    if (sim2d) { remove_momentum_divergence_2d( state , mass_flux_x               , mass_flux_z ); }
+    else       { remove_momentum_divergence_3d( state , mass_flux_x , mass_flux_y , mass_flux_z ); }
 
-
-    real6d stateLimits_x ("stateLimits_x" ,num_state  ,2,nz  ,ny,nx+1,nens);
-    real6d stateLimits_z ("stateLimits_z" ,num_state  ,2,nz+1,ny,nx  ,nens);
-    real6d tracerLimits_x("tracerLimits_x",num_tracers,2,nz  ,ny,nx+1,nens);
-    real6d tracerLimits_z("tracerLimits_z",num_tracers,2,nz+1,ny,nx  ,nens);
+    real6d stateLimits_x ("stateLimits_x" ,num_state  ,2,nz  ,ny  ,nx+1,nens);
+    real6d stateLimits_y;   if (!sim2d) stateLimits_y  = real6d("stateLimits_y" ,num_state  ,2,nz  ,ny+1,nx  ,nens);
+    real6d stateLimits_z ("stateLimits_z" ,num_state  ,2,nz+1,ny  ,nx  ,nens);
+    real6d tracerLimits_x("tracerLimits_x",num_tracers,2,nz  ,ny  ,nx+1,nens);
+    real6d tracerLimits_y;  if (!sim2d) tracerLimits_y = real6d("tracerLimits_y",num_tracers,2,nz  ,ny+1,nx  ,nens);
+    real6d tracerLimits_z("tracerLimits_z",num_tracers,2,nz+1,ny  ,nx  ,nens);
 
     parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       SArray<real,1,ord> stencil;
@@ -1425,6 +1658,54 @@ public:
         }
         tracerLimits_x(tr,1,k,j,i  ,iens) = gll(0     );
         tracerLimits_x(tr,0,k,j,i+1,iens) = gll(ngll-1);
+      }
+
+      if (!sim2d) {
+        ///////////////////////////////////////////////////////
+        // Y-direction
+        ///////////////////////////////////////////////////////
+        // Density
+        for (int jj=0; jj < ord; jj++) { stencil(jj) = state(idR,hs+k,j+jj,hs+i,iens); }
+        reconstruct_gll_values( stencil , gll , c2g , s2g , s2c , weno_recon_lower , idl , sigma , weno_scalars );
+        for (int jj=0; jj < ngll; jj++) { gll(jj) += hyDensCells(k,iens); } // Add hydrostasis back on
+        stateLimits_y(idR,1,k,j  ,i,iens) = gll(0     );
+        stateLimits_y(idR,0,k,j+1,i,iens) = gll(ngll-1);
+
+        // u values and derivatives
+        for (int jj=0; jj < ord; jj++) { stencil(jj) = state(idU,hs+k,j+jj,hs+i,iens); }
+        reconstruct_gll_values( stencil , gll , c2g , s2g , s2c , weno_recon_lower , idl , sigma , weno_winds );
+        stateLimits_y(idU,1,k,j  ,i,iens) = gll(0     );
+        stateLimits_y(idU,0,k,j+1,i,iens) = gll(ngll-1);
+
+        // v
+        for (int jj=0; jj < ord; jj++) { stencil(jj) = state(idV,hs+k,j+jj,hs+i,iens); }
+        reconstruct_gll_values( stencil , gll , c2g , s2g , s2c , weno_recon_lower , idl , sigma , weno_winds );
+        stateLimits_y(idV,1,k,j  ,i,iens) = gll(0     );
+        stateLimits_y(idV,0,k,j+1,i,iens) = gll(ngll-1);
+
+        // w
+        for (int jj=0; jj < ord; jj++) { stencil(jj) = state(idW,hs+k,j+jj,hs+i,iens); }
+        reconstruct_gll_values( stencil , gll , c2g , s2g , s2c , weno_recon_lower , idl , sigma , weno_winds );
+        stateLimits_y(idW,1,k,j  ,i,iens) = gll(0     );
+        stateLimits_y(idW,0,k,j+1,i,iens) = gll(ngll-1);
+
+        // theta
+        for (int jj=0; jj < ord; jj++) { stencil(jj) = state(idT,hs+k,j+jj,hs+i,iens); }
+        reconstruct_gll_values( stencil , gll , c2g , s2g , s2c , weno_recon_lower , idl , sigma , weno_scalars );
+        for (int jj=0; jj < ngll; jj++) { gll(jj) += hyDensThetaCells(k,iens); } // Add hydrostasis back on
+        stateLimits_y(idT,1,k,j  ,i,iens) = gll(0     );
+        stateLimits_y(idT,0,k,j+1,i,iens) = gll(ngll-1);
+
+        // Only process one tracer at a time to save on local memory / register requirements
+        for (int tr=0; tr < num_tracers; tr++) {
+          for (int jj=0; jj < ord; jj++) { stencil(jj) = tracers(tr,hs+k,j+jj,hs+i,iens); }
+          reconstruct_gll_values( stencil , gll , c2g , s2g , s2c , weno_recon_lower , idl , sigma , weno_scalars );
+          if (tracer_pos(tr)) {
+            for (int jj=0; jj < ngll; jj++) { gll(jj) = max( 0._fp , gll(jj) ); }
+          }
+          tracerLimits_y(tr,1,k,j  ,i,iens) = gll(0     );
+          tracerLimits_y(tr,0,k,j+1,i,iens) = gll(ngll-1);
+        }
       }
 
       ///////////////////////////////////////////////////////
@@ -1500,6 +1781,28 @@ public:
         }
       }
     });
+    if (!sim2d) {
+      parallel_for( SimpleBounds<3>(nz,nx,nens) , YAKL_LAMBDA (int k, int i, int iens) {
+        for (int l=0; l < num_state; l++) {
+          if        (bc_y == BC_PERIODIC) {
+            stateLimits_y(l,0,k,0 ,i,iens) = stateLimits_y(l,0,k,ny,i,iens);
+            stateLimits_y(l,1,k,ny,i,iens) = stateLimits_y(l,1,k,0 ,i,iens);
+          } else if (bc_y == BC_WALL    ) {
+            stateLimits_y(l,0,k,0 ,i,iens) = stateLimits_y(l,1,k,0 ,i,iens);
+            stateLimits_y(l,1,k,ny,i,iens) = stateLimits_y(l,0,k,ny,i,iens);
+          }
+        }
+        for (int l=0; l < num_tracers; l++) {
+          if        (bc_y == BC_PERIODIC) {
+            tracerLimits_y(l,0,k,0 ,i,iens) = tracerLimits_y(l,0,k,ny,i,iens);
+            tracerLimits_y(l,1,k,ny,i,iens) = tracerLimits_y(l,1,k,0 ,i,iens);
+          } else if (bc_y == BC_WALL    ) {
+            tracerLimits_y(l,0,k,0 ,i,iens) = tracerLimits_y(l,1,k,0 ,i,iens);
+            tracerLimits_y(l,1,k,ny,i,iens) = tracerLimits_y(l,0,k,ny,i,iens);
+          }
+        }
+      });
+    }
     parallel_for( SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int iens) {
       for (int l = 0; l < num_state; l++) {
         if        (bc_z == BC_PERIODIC) {
@@ -1556,6 +1859,39 @@ public:
         }
       }
     });
+    if (!sim2d) {
+      parallel_for( SimpleBounds<4>(nz,ny+1,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+        real dens = hyDensCells(k,iens);
+        real u_L = stateLimits_y(idU,0,k,j,i,iens)/dens;   real u_R = stateLimits_y(idU,1,k,j,i,iens)/dens;
+        real v_L = stateLimits_y(idV,0,k,j,i,iens)/dens;   real v_R = stateLimits_y(idV,1,k,j,i,iens)/dens;
+        real w_L = stateLimits_y(idW,0,k,j,i,iens)/dens;   real w_R = stateLimits_y(idW,1,k,j,i,iens)/dens;
+        real t_L = stateLimits_y(idT,0,k,j,i,iens)/dens;   real t_R = stateLimits_y(idT,1,k,j,i,iens)/dens;
+
+        real v = 0.5_fp * (v_L + v_R);
+
+        real mass_flux = mass_flux_y(k,j,i,iens);
+
+        if (v > 0) {
+          stateLimits_y(idR,0,k,j,i,iens) = mass_flux;
+          stateLimits_y(idU,0,k,j,i,iens) = mass_flux * u_L;
+          stateLimits_y(idV,0,k,j,i,iens) = mass_flux * v_L;
+          stateLimits_y(idW,0,k,j,i,iens) = mass_flux * w_L;
+          stateLimits_y(idT,0,k,j,i,iens) = mass_flux * t_L;
+          for (int tr=0; tr < num_tracers; tr++) {
+            tracerLimits_y(tr,0,k,j,i,iens) = mass_flux * tracerLimits_y(tr,0,k,j,i,iens) / dens;
+          }
+        } else {
+          stateLimits_y(idR,0,k,j,i,iens) = mass_flux;
+          stateLimits_y(idU,0,k,j,i,iens) = mass_flux * u_R;
+          stateLimits_y(idV,0,k,j,i,iens) = mass_flux * v_R;
+          stateLimits_y(idW,0,k,j,i,iens) = mass_flux * w_R;
+          stateLimits_y(idT,0,k,j,i,iens) = mass_flux * t_R;
+          for (int tr=0; tr < num_tracers; tr++) {
+            tracerLimits_y(tr,0,k,j,i,iens) = mass_flux * tracerLimits_y(tr,1,k,j,i,iens) / dens;
+          }
+        }
+      });
+    }
     parallel_for( SimpleBounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       real dens;
       if (k < nz) { dens = hyDensGLL(k  ,0     ,iens); }
@@ -1598,16 +1934,18 @@ public:
         if ( sim2d && l == idV ) {
           stateTend(l,k,j,i,iens) = 0;
         } else {
-          stateTend(l,k,j,i,iens)  = - ( stateLimits_x(l,0,k,j,i+1,iens) - stateLimits_x(l,0,k,j,i,iens) ) / dx;
-          stateTend(l,k,j,i,iens) += - ( stateLimits_z(l,0,k+1,j,i,iens) - stateLimits_z(l,0,k,j,i,iens) ) / dz(k,iens);
-          stateTend(l,k,j,i,iens) += ( state(l,hs+k,hs+j,hs+i,iens) - state_init(l,hs+k,hs+j,hs+i,iens) ) / dt;
+                      stateTend(l,k,j,i,iens)  = - ( stateLimits_x(l,0,k,j,i+1,iens) - stateLimits_x(l,0,k,j,i,iens) ) / dx;
+          if (!sim2d) stateTend(l,k,j,i,iens) += - ( stateLimits_y(l,0,k,j+1,i,iens) - stateLimits_y(l,0,k,j,i,iens) ) / dy;
+                      stateTend(l,k,j,i,iens) += - ( stateLimits_z(l,0,k+1,j,i,iens) - stateLimits_z(l,0,k,j,i,iens) ) / dz(k,iens);
+                      stateTend(l,k,j,i,iens) += ( state(l,hs+k,hs+j,hs+i,iens) - state_init(l,hs+k,hs+j,hs+i,iens) ) / dt;
         }
         state(l,hs+k,hs+j,hs+i,iens) = state_init(l,hs+k,hs+j,hs+i,iens);
       }
       for (int l = 0; l < num_tracers; l++) {
-        tracerTend(l,k,j,i,iens)  = - ( tracerLimits_x(l,0,k,j,i+1,iens) - tracerLimits_x(l,0,k,j,i,iens) ) / dx;
-        tracerTend(l,k,j,i,iens) += - ( tracerLimits_z(l,0,k+1,j,i,iens) - tracerLimits_z(l,0,k,j,i,iens) ) / dz(k,iens);
-        tracerTend(l,k,j,i,iens) += ( tracers(l,hs+k,hs+j,hs+i,iens) - tracers_init(l,hs+k,hs+j,hs+i,iens) ) / dt;
+                    tracerTend(l,k,j,i,iens)  = - ( tracerLimits_x(l,0,k,j,i+1,iens) - tracerLimits_x(l,0,k,j,i,iens) ) / dx;
+        if (!sim2d) tracerTend(l,k,j,i,iens) += - ( tracerLimits_y(l,0,k,j+1,i,iens) - tracerLimits_y(l,0,k,j,i,iens) ) / dy;
+                    tracerTend(l,k,j,i,iens) += - ( tracerLimits_z(l,0,k+1,j,i,iens) - tracerLimits_z(l,0,k,j,i,iens) ) / dz(k,iens);
+                    tracerTend(l,k,j,i,iens) += ( tracers(l,hs+k,hs+j,hs+i,iens) - tracers_init(l,hs+k,hs+j,hs+i,iens) ) / dt;
         tracers(l,hs+k,hs+j,hs+i,iens) = tracers_init(l,hs+k,hs+j,hs+i,iens);
       }
     });
