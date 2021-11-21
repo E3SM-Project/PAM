@@ -92,6 +92,7 @@ public:
   // Options for initializing the data
   int static constexpr DATA_SPEC_THERMAL       = 1;
   int static constexpr DATA_SPEC_SUPERCELL     = 2;
+  int static constexpr DATA_SPEC_COLLISION     = 3;
 
   bool sim2d;  // Whether we're simulating in 2-D
 
@@ -467,6 +468,8 @@ public:
       std::string dataStr = config["initData"].as<std::string>();
       if        (dataStr == "thermal") {
         data_spec = DATA_SPEC_THERMAL;
+      } else if (dataStr == "collision") {
+        data_spec = DATA_SPEC_COLLISION;
       } else if (dataStr == "supercell") {
         data_spec = DATA_SPEC_SUPERCELL;
       } else {
@@ -788,7 +791,7 @@ public:
 
     // If the data_spec is thermal or ..., then initialize the domain with Exner pressure-based hydrostasis
     // This is mostly to make plotting potential temperature perturbation easier for publications
-    if (data_spec == DATA_SPEC_THERMAL) {
+    if (data_spec == DATA_SPEC_THERMAL || data_spec == DATA_SPEC_COLLISION) {
 
       // Setup hydrostatic background state
       parallel_for( "Spatial.h init_state 1" , SimpleBounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
@@ -799,7 +802,7 @@ public:
         hyDensThetaCells(k,iens) = 0;
         for (int kk=0; kk<ord; kk++) {
           real zloc = vert_interface(k,iens) + 0.5_fp*dz(k,iens) + gllPts_ord(kk)*dz(k,iens);
-          if        (data_spec == DATA_SPEC_THERMAL) {
+          if        (data_spec == DATA_SPEC_THERMAL || data_spec == DATA_SPEC_COLLISION) {
             // Compute constant theta hydrostatic background state
             real th  = 300;
             real rh = profiles::initConstTheta_density (th,zloc,Rd,cp,gamma,p0,C0);
@@ -817,7 +820,7 @@ public:
         // Compute ngll GLL points
         for (int kk=0; kk<ngll; kk++) {
           real zloc = vert_interface(k,iens) + 0.5_fp*dz(k,iens) + gllPts_ngll(kk)*dz(k,iens);
-          if        (data_spec == DATA_SPEC_THERMAL) {
+          if        (data_spec == DATA_SPEC_THERMAL || data_spec == DATA_SPEC_COLLISION) {
             // Compute constant theta hydrostatic background state
             real th = 300;
             real rh = profiles::initConstTheta_density (th,zloc,Rd,cp,gamma,p0,C0);
@@ -858,89 +861,29 @@ public:
                 real r = rh;
 
                 state(idT,hs+k,hs+j,hs+i,iens) += (r*t - rh*th) * wt;
+              } else if (data_spec == DATA_SPEC_COLLISION) {
+                // Compute constant theta hydrostatic background state
+                real th = 300;
+                real rh = profiles::initConstTheta_density(th,zloc,Rd,cp,gamma,p0,C0);
+                real tp = profiles::ellipsoid_linear(xloc, yloc, zloc, xlen/2, ylen/2, 2000, 2000, 2000, 2000,  20 ) +
+                          profiles::ellipsoid_linear(xloc, yloc, zloc, xlen/2, ylen/2, 8000, 2000, 2000, 2000, -20 );
+                real t = th + tp;
+                real r = rh;
+
+                state(idT,hs+k,hs+j,hs+i,iens) += (r*t - rh*th) * wt;
               }
             }
           }
         }
       });
 
-      // int idWV = micro.get_water_vapor_index();
+      int idWV = micro.get_water_vapor_index();
 
-      // parallel_for( "Spatial.h init_tracers" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      //   tracers(idWV,hs+k,hs+j,hs+i,iens) = 0;
-      //   // Loop over quadrature points
-      //   for (int kk=0; kk<ord; kk++) {
-      //     for (int jj=0; jj<ord; jj++) {
-      //       for (int ii=0; ii<ord; ii++) {
-      //         // Get the location
-      //         real zloc = vert_interface(k,iens) + 0.5_fp*dz(k,iens) + gllPts_ord(kk)*dz(k,iens);
-      //         real yloc;
-      //         if (sim2d) {
-      //           yloc = ylen/2;
-      //         } else {
-      //           yloc = (j+0.5_fp)*dy + gllPts_ord(jj)*dy;
-      //         }
-      //         real xloc = (i+0.5_fp)*dx + gllPts_ord(ii)*dx;
+      parallel_for( "Spatial.h init_tracers" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+        tracers(idWV,hs+k,hs+j,hs+i,iens) = 0;
+      });
 
-      //         // Get dry constants
-
-      //         // Compute constant theta hydrostatic background state
-      //         real th = 300;
-      //         real rh = profiles::initConstTheta_density(th,zloc,Rd,cp,gamma,p0,C0);
-
-      //         // Initialize tracer mass based on dry state
-      //         // Vapor perturbation profile
-      //         real pert  = profiles::ellipsoid_linear(xloc,yloc,zloc  ,  xlen/2,ylen/2,2000  ,  2000,2000,2000  ,  0.8);
-      //         real press = C0*pow(rh*th,gamma);                       // Dry pressure
-      //         real temp  = press / Rd / rh;                           // Temperator (same for dry and moist)
-      //         real svp   = profiles::saturation_vapor_pressure(temp); // Self-explanatory
-      //         real p_v   = pert*svp;                                  // Multiply profile by saturation vapor pressure
-      //         real r_v   = p_v / (Rv*temp);                           // Compute vapor density
-
-      //         real wt = gllWts_ord(kk) * gllWts_ord(jj) * gllWts_ord(ii);
-      //         tracers(idWV,hs+k,hs+j,hs+i,iens) += r_v / (rh+r_v) * rh * wt;
-      //       }
-      //     }
-      //   }
-      // });
-
-      int index_vapor = micro.get_water_vapor_index();
-
-      // parallel_for( "Spatial.h adjust_moisture" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      //   // Add tracer density to dry density if it adds mass
-      //   real rho_dry = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens);
-      //   for (int tr=0; tr < num_tracers; tr++) {
-      //     if (tracer_adds_mass(tr)) {
-      //       state(idR,hs+k,hs+j,hs+i,iens) += tracers(tr,hs+k,hs+j,hs+i,iens);
-      //     }
-      //   }
-      //   real rho_moist = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens);
-
-      //   // Adjust momenta for moist density
-      //   state(idU,hs+k,hs+j,hs+i,iens) = state(idU,hs+k,hs+j,hs+i,iens) / rho_dry * rho_moist;
-      //   state(idV,hs+k,hs+j,hs+i,iens) = state(idV,hs+k,hs+j,hs+i,iens) / rho_dry * rho_moist;
-      //   state(idW,hs+k,hs+j,hs+i,iens) = state(idW,hs+k,hs+j,hs+i,iens) / rho_dry * rho_moist;
-
-      //   // Compute the dry temperature (same as the moist temperature)
-      //   real rho_theta_dry = state(idT,hs+k,hs+j,hs+i,iens) + hyDensThetaCells(k,iens);
-      //   real press = C0*pow(rho_theta_dry,gamma);  // Dry pressure
-      //   real temp  = press / Rd / rho_dry;         // Temp (same dry or moist)
-
-      //   // Compute moist theta
-      //   real rho_v = tracers(index_vapor,hs+k,hs+j,hs+i,iens);
-      //   real R_moist = Rd * (rho_dry / rho_moist) + Rv * (rho_v / rho_moist);
-      //   real press_moist = rho_moist * R_moist * temp;
-      //   real rho_theta_moist = pow( press_moist / C0 , 1._fp/gamma );
-
-      //   // Compute moist rho*theta
-      //   state(idT,hs+k,hs+j,hs+i,iens) = rho_theta_moist - hyDensThetaCells(k,iens);
-
-      //   for (int tr = 0 ; tr < num_tracers ; tr++) {
-      //     tracers(tr,hs+k,hs+j,hs+i,iens) = tracers(tr,hs+k,hs+j,hs+i,iens) / rho_dry * rho_moist;
-      //   }
-      // });
-
-    } // if (data_spec == DATA_SPEC_THERMAL)
+    } // if (data_spec == DATA_SPEC_THERMAL || data_spec == DATA_SPEC_COLLISION)
 
 
     if (data_spec == DATA_SPEC_SUPERCELL) {
