@@ -1458,6 +1458,40 @@ public:
   }
 
 
+  
+  real compute_divergence(real5d const &state) {
+    real4d absdiv("absdiv",nz,ny,nx,nens);
+    parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      int im1 = i-1;  if (im1 < 0   ) im1 += nx;
+      int ip1 = i+1;  if (ip1 > nx-1) ip1 -= nx;
+      int jm1 = j-1;  if (jm1 < 0   ) jm1 += ny;
+      int jp1 = j+1;  if (jp1 > ny-1) jp1 -= ny;
+      int km1 = k-1;  if (km1 < 0   ) km1  = 0;
+      int kp1 = k+1;  if (kp1 > nz-1) kp1  = nz-1;
+      real ru_im1 = state(idU,hs+k,hs+j,hs+im1,iens);
+      real ru_i   = state(idU,hs+k,hs+j,hs+i  ,iens);
+      real ru_ip1 = state(idU,hs+k,hs+j,hs+ip1,iens);
+      real rv_jm1 = state(idV,hs+k,hs+jm1,hs+i,iens);
+      real rv_j   = state(idV,hs+k,hs+j  ,hs+i,iens);
+      real rv_jp1 = state(idV,hs+k,hs+jp1,hs+i,iens);
+      real rw_km1 = state(idW,hs+km1,hs+j,hs+i,iens);  if (k == 0   ) rw_km1 = 0;
+      real rw_k   = state(idW,hs+k  ,hs+j,hs+i,iens);
+      real rw_kp1 = state(idW,hs+kp1,hs+j,hs+i,iens);  if (k == nz-1) rw_kp1 = 0;
+      real mfx_L = 0.5_fp * (ru_im1 + ru_i  );
+      real mfx_R = 0.5_fp * (ru_i   + ru_ip1);
+      real mfy_L = 0.5_fp * (rv_jm1 + rv_j  );
+      real mfy_R = 0.5_fp * (rv_j   + rv_jp1);
+      real mfz_L = 0.5_fp * (rw_km1 + rw_k  );  if (k == 0   ) mfz_L = 0;
+      real mfz_R = 0.5_fp * (rw_k   + rw_kp1);  if (k == nz-1) mfz_R = 0;
+      real div_u = ( mfx_R - mfx_L ) / (2*dx        );
+      real div_v = ( mfy_R - mfy_L ) / (2*dy        );
+      real div_w = ( mfz_R - mfz_L ) / (2*dz(k,iens));
+      absdiv(k,j,i,iens) = abs( div_u + div_v + div_w );
+    });
+    return yakl::intrinsics::maxval(absdiv);
+  }
+
+
 
   // Compute state and tendency time derivatives from the state
   template <class MICRO>
@@ -1500,11 +1534,15 @@ public:
     auto state_init   = state  .createDeviceCopy();
     auto tracers_init = tracers.createDeviceCopy();
 
+    std::cout << "\n*****Beginning abs div: " << compute_divergence(state) << "\n";
+
     parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       real theta = ( state(idT,hs+k,hs+j,hs+i,iens) + hyDensThetaCells(k,iens) ) / hyDensCells(k,iens);
       real dens = hyDensThetaCells(k,iens) / theta;
       state(idW,hs+k,hs+j,hs+i,iens) += -dt * ( dens - hyDensCells(k,iens) )*GRAV;
     });
+
+    std::cout << "*****Post buoyancy abs div: " << compute_divergence(state) << "\n";
 
     // Populate the halos
     if        (bc_x == BC_PERIODIC) {
@@ -1602,6 +1640,8 @@ public:
 
     if (sim2d) { remove_momentum_divergence_2d( state , mass_flux_x               , mass_flux_z ); }
     else       { remove_momentum_divergence_3d( state , mass_flux_x , mass_flux_y , mass_flux_z ); }
+
+    std::cout << "*****Post div removal abs div: " << compute_divergence(state) << "\n";
 
     real6d stateLimits_x ("stateLimits_x" ,num_state  ,2,nz  ,ny  ,nx+1,nens);
     real6d stateLimits_y;   if (!sim2d) stateLimits_y  = real6d("stateLimits_y" ,num_state  ,2,nz  ,ny+1,nx  ,nens);
@@ -1949,6 +1989,22 @@ public:
         tracers(l,hs+k,hs+j,hs+i,iens) = tracers_init(l,hs+k,hs+j,hs+i,iens);
       }
     });
+
+    auto state_copy = state.createDeviceCopy();
+
+    //////////////////////////////////////////////////////////
+    // Compute the tendencies
+    //////////////////////////////////////////////////////////
+    parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA(int k, int j, int i, int iens) {
+      for (int l = 0; l < num_state; l++) {
+        if ( sim2d && l == idV ) {
+        } else {
+          state_copy(l,k,j,i,iens) += dt * stateTend(l,k,j,i,iens);
+        }
+      }
+    });
+
+    std::cout << "*****Post advection abs div: " << compute_divergence(state_copy) << "\n";
 
   } // computeTendencies
 
