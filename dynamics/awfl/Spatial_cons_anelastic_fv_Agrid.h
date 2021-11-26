@@ -345,7 +345,7 @@ public:
         if (tracer_adds_mass(tr)) dens += tracers(tr,hs+k,hs+j,hs+i,iens);
       }
       real theta = pow( hyPressureCells(k,iens) / C0 , 1._fp / gamma ) / dens;
-      state(idT,hs+k,hs+j,hs+i,iens) = theta * hyDensCells(k,iens);
+      state(idT,hs+k,hs+j,hs+i,iens) = theta * hyDensCells(k,iens) - hyDensThetaCells(k,iens);
     });
   }
 
@@ -868,26 +868,44 @@ public:
               }
               real xloc = (i+0.5_fp)*dx + gllPts_ord(ii)*dx;
               real wt = gllWts_ord(kk) * gllWts_ord(jj) * gllWts_ord(ii);
+              real temp;
+              real dens_vap;
               if        (data_spec == DATA_SPEC_THERMAL) {
                 // Compute constant theta hydrostatic background state
                 real th = 300;
                 real rh = profiles::initConstTheta_density(th,zloc,Rd,cp,gamma,p0,C0);
-                real tp = profiles::ellipsoid_linear(xloc, yloc, zloc, xlen/2, ylen/2, 2000, 2000, 2000, 2000, 2 );
-                real t = th + tp;
-                real r = rh;
-
-                state(idT,hs+k,hs+j,hs+i,iens) += (r*t - rh*th) * wt;
+                real tp = profiles::ellipsoid_linear(xloc,yloc,zloc , xlen/2,ylen/2,2000 , 2000,2000,2000 , 2 );
+                real theta_dry = th + tp;
+                real dens_dry  = rh;
+                real press_dry = C0*pow(dens_dry*theta_dry,gamma);
+                     temp      = press_dry / (Rd*dens_dry);
+                real svp       = profiles::saturation_vapor_pressure(temp);
+                real pert      = profiles::ellipsoid_linear(xloc,yloc,zloc , xlen/2,ylen/2,2000 , 2000,2000,2000 , 0.8);
+                real press_vap = pert * svp;
+                     dens_vap  = press_vap / (Rv * temp);
               } else if (data_spec == DATA_SPEC_COLLISION) {
                 // Compute constant theta hydrostatic background state
                 real th = 300;
                 real rh = profiles::initConstTheta_density(th,zloc,Rd,cp,gamma,p0,C0);
                 real tp = profiles::ellipsoid_linear(xloc, yloc, zloc, xlen/2, ylen/2, 2000, 2000, 2000, 2000,  20 ) +
                           profiles::ellipsoid_linear(xloc, yloc, zloc, xlen/2, ylen/2, 8000, 2000, 2000, 2000, -20 );
-                real t = th + tp;
-                real r = rh;
-
-                state(idT,hs+k,hs+j,hs+i,iens) += (r*t - rh*th) * wt;
+                real theta_dry = th + tp;
+                real dens_dry  = rh;
+                real press_dry = C0*pow(dens_dry*theta_dry,gamma);
+                     temp      = press_dry / (Rd*dens_dry);
+                     dens_vap  = 0;
               }
+
+              // Compute implied dry density
+              real dens_dry = ( hyPressureCells(k,iens) - dens_vap*Rv*temp ) / (Rd*temp);
+
+              // Compute full density
+              real dens = dens_dry;
+              for (int tr=0; tr < num_tracers; tr++) {
+                if (tracer_adds_mass(tr)) dens += tracers(tr,hs+k,hs+j,hs+i,iens);
+              }
+              real theta = pow( hyPressureCells(k,iens) / C0 , 1._fp / gamma ) / dens;
+              state(idT,hs+k,hs+j,hs+i,iens) = theta * hyDensCells(k,iens);
             }
           }
         }
