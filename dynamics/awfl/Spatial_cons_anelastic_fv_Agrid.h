@@ -805,9 +805,12 @@ public:
           real zloc = vert_interface(k,iens) + 0.5_fp*dz(k,iens) + gllPts_ord(kk)*dz(k,iens);
           if        (data_spec == DATA_SPEC_THERMAL || data_spec == DATA_SPEC_COLLISION) {
             // Compute constant theta hydrostatic background state
-            real th  = 300;
-            real rh = profiles::initConstTheta_density (th,zloc,Rd,cp,gamma,p0,C0);
-            real ph = profiles::initConstTheta_pressure(th,zloc,Rd,cp,gamma,p0,C0);
+            // real th = 300;
+            // real rh = profiles::initConstTheta_density (th,zloc,Rd,cp,gamma,p0,C0);
+            // real ph = profiles::initConstTheta_pressure(th,zloc,Rd,cp,gamma,p0,C0);
+            real th = profiles::initConstBVF_pot_temp(300,0.01,zloc);
+            real rh = profiles::initConstBVF_density (300,0.01,zloc,Rd,cp,gamma,C0,p0);
+            real ph = profiles::initConstBVF_pressure(300,0.01,zloc,Rd,cp,gamma,C0,p0);
             real wt = gllWts_ord(kk);
             hyDensCells     (k,iens) += rh    * wt;
             hyThetaCells    (k,iens) += th    * wt;
@@ -823,9 +826,12 @@ public:
           real zloc = vert_interface(k,iens) + 0.5_fp*dz(k,iens) + gllPts_ngll(kk)*dz(k,iens);
           if        (data_spec == DATA_SPEC_THERMAL || data_spec == DATA_SPEC_COLLISION) {
             // Compute constant theta hydrostatic background state
-            real th = 300;
-            real rh = profiles::initConstTheta_density (th,zloc,Rd,cp,gamma,p0,C0);
-            real ph = profiles::initConstTheta_pressure(th,zloc,Rd,cp,gamma,p0,C0);
+            // real th = 300;
+            // real rh = profiles::initConstTheta_density (th,zloc,Rd,cp,gamma,p0,C0);
+            // real ph = profiles::initConstTheta_pressure(th,zloc,Rd,cp,gamma,p0,C0);
+            real th = profiles::initConstBVF_pot_temp(300,0.01,zloc);
+            real rh = profiles::initConstBVF_density (300,0.01,zloc,Rd,cp,gamma,C0,p0);
+            real ph = profiles::initConstBVF_pressure(300,0.01,zloc,Rd,cp,gamma,C0,p0);
             hyDensGLL     (k,kk,iens) = rh;
             hyThetaGLL    (k,kk,iens) = th;
             hyDensThetaGLL(k,kk,iens) = rh*th;
@@ -855,8 +861,10 @@ public:
               real wt = gllWts_ord(kk) * gllWts_ord(jj) * gllWts_ord(ii);
               if        (data_spec == DATA_SPEC_THERMAL) {
                 // Compute constant theta hydrostatic background state
-                real th = 300;
-                real rh = profiles::initConstTheta_density(th,zloc,Rd,cp,gamma,p0,C0);
+                // real th = 300;
+                // real rh = profiles::initConstTheta_density(th,zloc,Rd,cp,gamma,p0,C0);
+                real th = profiles::initConstBVF_pot_temp(300,0.01,zloc);
+                real rh = profiles::initConstBVF_density (300,0.01,zloc,Rd,cp,gamma,C0,p0);
                 real tp = profiles::ellipsoid_linear(xloc, yloc, zloc, xlen/2, ylen/2, 2000, 2000, 2000, 2000, 2 );
                 real t = th + tp;
                 real r = rh;
@@ -864,8 +872,10 @@ public:
                 state(idT,hs+k,hs+j,hs+i,iens) += (r*t - rh*th) * wt;
               } else if (data_spec == DATA_SPEC_COLLISION) {
                 // Compute constant theta hydrostatic background state
-                real th = 300;
-                real rh = profiles::initConstTheta_density(th,zloc,Rd,cp,gamma,p0,C0);
+                // real th = 300;
+                // real rh = profiles::initConstTheta_density(th,zloc,Rd,cp,gamma,p0,C0);
+                real th = profiles::initConstBVF_pot_temp(300,0.01,zloc);
+                real rh = profiles::initConstBVF_density (300,0.01,zloc,Rd,cp,gamma,C0,p0);
                 real tp = profiles::ellipsoid_linear(xloc, yloc, zloc, xlen/2, ylen/2, 2000, 2000, 2000, 2000,  20 ) +
                           profiles::ellipsoid_linear(xloc, yloc, zloc, xlen/2, ylen/2, 8000, 2000, 2000, 2000, -20 );
                 real t = th + tp;

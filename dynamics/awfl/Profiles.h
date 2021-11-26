@@ -32,6 +32,27 @@ namespace profiles {
   }
 
 
+  YAKL_INLINE real initConstBVF_pot_temp(real t0, real bvf, real z) {
+    return t0 * exp(bvf*bvf*z/GRAV);
+  }
+
+
+  YAKL_INLINE real initConstBVF_density(real t0, real bvf, real z, real Rd, real cp, real gamma, real C0, real p0) {
+    real t = initConstBVF_pot_temp(t0,bvf,z);
+    real exner = 1._fp - GRAV*GRAV/(cp*bvf*bvf) * (t-t0)/(t*t0);
+    real p = pow( exner , cp/Rd ) * p0;
+    real rt = pow( p/C0 , 1._fp/gamma );
+    return rt / t;
+  }
+
+
+  YAKL_INLINE real initConstBVF_pressure(real t0, real bvf, real z, real Rd, real cp, real gamma, real C0, real p0) {
+    real t = initConstBVF_pot_temp(t0,bvf,z);
+    real r = initConstBVF_density (t0,bvf,z,Rd,cp,gamma,C0,p0);
+    return C0*pow(r*t,gamma);
+  }
+
+
   YAKL_INLINE real init_supercell_temperature(real z, real z_0, real z_trop, real z_top,
                                                       real T_0, real T_trop, real T_top) {
     if (z <= z_trop) {
