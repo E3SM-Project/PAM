@@ -3,11 +3,11 @@
 simTime  : 1000.
 
 # Number of cells to use
-nx       : 50
+nx       : 100
 ny       : 1
 
 # Vertical height cooridnates file
-vcoords  : vcoords_equal_25_10km.nc
+vcoords  : vcoords_equal_50_10km.nc
 
 # Lengths of the dimensions in meters
 xlen     : 20000
