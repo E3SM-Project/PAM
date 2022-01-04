@@ -1,3 +1,11 @@
+// This will take the approach of computing time-averaged momentum at interfaces due to
+// a simplified acoustics system.
+// 
+// Then, perturbation acoustic momentum will force density in all variables
+// 
+// Finally, a pressure-less system will be solved with full momentum
+//
+// This will require an ADER time discretization for stability
 
 #pragma once
 
@@ -2032,37 +2040,220 @@ public:
       tracers(tr,hs+k,hs+j,hs+i,iens) /= (state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens));
     });
 
-    // Populate the halos
-    if        (bc_z == BC_PERIODIC) {
-      parallel_for( "Spatial.h Z BCs periodic" , SimpleBounds<4>(ny,nx,hs,nens) ,
-                    YAKL_LAMBDA(int j, int i, int kk, int iens) {
-        for (int l=0; l < num_state; l++) {
-          state(l,      kk,hs+j,hs+i,iens) = state(l,nz+kk,hs+j,hs+i,iens);
-          state(l,hs+nz+kk,hs+j,hs+i,iens) = state(l,hs+kk,hs+j,hs+i,iens);
+
+    /////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////
+    //// Acoustic phase
+    /////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////
+    real4d rw("rw",nz+2*hs,ny+2*hs,nx+2*hs,nens);
+    real4d pp("pp",nz+2*hs,ny+2*hs,nx+2*hs,nens);
+    real4d rw_pert_tavg  ("rw_pert_tavg"    ,nz+1,ny,nx,nens);
+    real5d pp_limits     ("pp_limits"     ,2,nz+1,ny,nx,nens);
+    real5d rw_limits     ("rw_limits"     ,2,nz+1,ny,nx,nens);
+    real5d rw_orig_limits("rw_orig_limits",2,nz+1,ny,nx,nens);
+
+    memset( rw_pert_tavg , 0._fp );
+
+    int num_subcycles = 1;
+    real dt_acoust = dt;
+
+    parallel_for( "store rw and pp" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      rw(hs+k,hs+j,hs+i,iens) = state(idW,hs+k,hs+j,hs+i,iens);
+      pp(hs+k,hs+j,hs+i,iens) = C0 * pow( state(idT,hs+k,hs+j,hs+i,iens) + hyDensThetaCells(k,iens) , gamma ) - 
+                                hyPressureCells(k,iens);
+    });
+
+    parallel_for( "halos for rw and pp" , SimpleBounds<4>(ny,nx,hs,nens) ,
+                  YAKL_LAMBDA(int j, int i, int kk, int iens) {
+        rw(      kk,hs+j,hs+i,iens) = 0;
+        rw(hs+nz+kk,hs+j,hs+i,iens) = 0;
+        pp(      kk,hs+j,hs+i,iens) = pp(hs     ,hs+j,hs+i,iens);
+        pp(hs+nz+kk,hs+j,hs+i,iens) = pp(hs+nz-1,hs+j,hs+i,iens);
+      }
+    });
+
+    parallel_for( "compute rw_orig_limits" , SimpleBounds<4>(nz,ny,nx,nens) ,
+                  YAKL_LAMBDA (int k, int j, int i, int iens) {
+      SArray<real,2,ord,ngll>       s2g_loc;
+      SArray<real,2,ord,ord>        s2c_loc;
+      SArray<real,3,hs+1,hs+1,hs+1> weno_recon_lower_loc;
+      for (int jj=0; jj < ord; jj++) {
+        for (int ii=0; ii < ngll; ii++) {
+          s2g_loc(jj,ii) = vert_sten_to_gll(k,jj,ii,iens);
         }
-        for (int l=0; l < num_tracers; l++) {
-          tracers(l,      kk,hs+j,hs+i,iens) = tracers(l,nz+kk,hs+j,hs+i,iens);
-          tracers(l,hs+nz+kk,hs+j,hs+i,iens) = tracers(l,hs+kk,hs+j,hs+i,iens);
+      }
+      for (int jj=0; jj < ord; jj++) {
+        for (int ii=0; ii < ord; ii++) {
+          s2c_loc(jj,ii) = vert_sten_to_coefs(k,jj,ii,iens);
         }
-      });
-    } else if (bc_z == BC_WALL) {
-      parallel_for( "Spatial.h Z BCs wall" , SimpleBounds<4>(ny,nx,hs,nens) ,
-                    YAKL_LAMBDA(int j, int i, int kk, int iens) {
-        for (int l=0; l < num_state; l++) {
-          if (l == idW) {
-            state(l,      kk,hs+j,hs+i,iens) = 0;
-            state(l,hs+nz+kk,hs+j,hs+i,iens) = 0;
-          } else {
-            state(l,      kk,hs+j,hs+i,iens) = state(l,hs     ,hs+j,hs+i,iens);
-            state(l,hs+nz+kk,hs+j,hs+i,iens) = state(l,hs+nz-1,hs+j,hs+i,iens);
+      }
+      for (int kk=0; kk < hs+1; kk++) {
+        for (int jj=0; jj < hs+1; jj++) {
+          for (int ii=0; ii < hs+1; ii++) {
+            weno_recon_lower_loc(kk,jj,ii) = vert_weno_recon_lower(k,kk,jj,ii,iens);
           }
         }
-        for (int l=0; l < num_tracers; l++) {
-          tracers(l,      kk,hs+j,hs+i,iens) = tracers(l,hs     ,hs+j,hs+i,iens);
-          tracers(l,hs+nz+kk,hs+j,hs+i,iens) = tracers(l,hs+nz-1,hs+j,hs+i,iens);
+      }
+
+      SArray<real,1,ord>  stencil;
+      SArray<real,1,ngll> gll;
+
+      // rho*w
+      for (int kk=0; kk < ord; kk++) { stencil(kk) = rw(k+kk,hs+j,hs+i,iens); }
+      reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc ,
+                              weno_recon_lower_loc , idl , sigma , weno_winds );
+      if (bc_z == BC_WALL) {
+        if (k == nz-1) gll(ngll-1) = 0;
+        if (k == 0   ) gll(0     ) = 0;
+      }
+      rw_orig_limits(1,k  ,j,i,iens) = gll(0     ); // Left interface
+      rw_orig_limits(0,k+1,j,i,iens) = gll(ngll-1); // Right interface
+    });
+
+    parallel_for( "BCs for rw_orig_limits" , SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int iens) {
+      rw_orig_limits(0,0 ,j,i,iens) = rw_orig_limits(1,0 ,j,i,iens);
+      rw_orig_limits(1,nz,j,i,iens) = rw_orig_limits(0,nz,j,i,iens);
+    });
+
+    for (int icycle = 0; icycle < num_subcycles; icycle++) {
+
+      parallel_for( "compute tavg pp and rw limits" , SimpleBounds<4>(nz,ny,nx,nens) ,
+                    YAKL_LAMBDA (int k, int j, int i, int iens) {
+        SArray<real,2,ord,ngll>       s2g_loc;
+        SArray<real,2,ord,ord>        s2c_loc;
+        SArray<real,3,hs+1,hs+1,hs+1> weno_recon_lower_loc;
+        for (int jj=0; jj < ord; jj++) {
+          for (int ii=0; ii < ngll; ii++) {
+            s2g_loc(jj,ii) = vert_sten_to_gll(k,jj,ii,iens);
+          }
         }
+        for (int jj=0; jj < ord; jj++) {
+          for (int ii=0; ii < ord; ii++) {
+            s2c_loc(jj,ii) = vert_sten_to_coefs(k,jj,ii,iens);
+          }
+        }
+        for (int kk=0; kk < hs+1; kk++) {
+          for (int jj=0; jj < hs+1; jj++) {
+            for (int ii=0; ii < hs+1; ii++) {
+              weno_recon_lower_loc(kk,jj,ii) = vert_weno_recon_lower(k,kk,jj,ii,iens);
+            }
+          }
+        }
+
+        SArray<real,1,ord>  stencil;
+        SArray<real,1,ngll> gll;
+        SArray<real,2,nAder,ngll> pp_DTs;
+        SArray<real,2,nAder,ngll> rw_DTs;
+
+        // Pressure perturbation
+        for (int kk=0; kk < ord; kk++) { stencil(kk) = pp(k+kk,hs+j,hs+i,iens); }
+        reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc ,
+                                weno_recon_lower_loc , idl , sigma , weno_scalars );
+        for (int kk=0; kk < ngll; kk++) { pp_DTs(0,kk) = gll(kk); }
+
+        // rho*w
+        for (int kk=0; kk < ord; kk++) { stencil(kk) = rw(k+kk,hs+j,hs+i,iens); }
+        reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc ,
+                                weno_recon_lower_loc , idl , sigma , weno_winds );
+        if (bc_z == BC_WALL) {
+          if (k == nz-1) gll(ngll-1) = 0;
+          if (k == 0   ) gll(0     ) = 0;
+        }
+        for (int kk=0; kk < ngll; kk++) { rw_DTs(0,kk) = gll(kk); }
+
+        real constexpr cs = 300;
+
+        // Compute time derivatives of w using ADER-DT
+        for (int kt=0; kt<nAder-1; kt++) {
+          for (int kk=0; kk<ngll; kk++) {
+            real dp_dz  = 0;
+            real drw_dz = 0;
+            for (int s=0; s<ngll; s++) {
+              dp_dz  += derivMatrix(s,kk) * pp_DTs(kt,s);
+              drw_dz += derivMatrix(s,kk) * rw_DTs(kt,s);
+            }
+            rw_DTs(kt+1,kk) =       -dp_dz /dz(k,iens)/(kt+1._fp);
+            pp_DTs(kt+1,kk) = -cs*cs*drw_dz/dz(k,iens)/(kt+1._fp);
+          }
+        }
+
+        compute_timeAvg( pp_DTs , dt_acoust );
+        compute_timeAvg( rw_DTs , dt_acoust );
+        if (k == nz-1) rw_DTs(0,ngll-1) = 0;
+        if (k == 0   ) rw_DTs(0,0     ) = 0;
+
+        pp_limits(1,k  ,j,i,iens) = pp_DTs(0,0     ); // Left interface
+        rw_limits(1,k  ,j,i,iens) = rw_DTs(0,0     ); // Left interface
+        pp_limits(0,k+1,j,i,iens) = pp_DTs(0,ngll-1); // Right interface
+        rw_limits(0,k+1,j,i,iens) = rw_DTs(0,ngll-1); // Right interface
       });
-    }
+
+      parallel_for( "BCs for tavg pp and rw limits" , SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int iens) {
+        pp_limits(0,0 ,j,i,iens) = pp_limits(1,0 ,j,i,iens);
+        rw_limits(0,0 ,j,i,iens) = rw_limits(1,0 ,j,i,iens);
+        pp_limits(1,nz,j,i,iens) = pp_limits(0,nz,j,i,iens);
+        rw_limits(1,nz,j,i,iens) = rw_limits(0,nz,j,i,iens);
+      });
+
+      parallel_for( "Riemann for pp and rw" , SimpleBounds<4>(nz+1,ny,nx,nens) ,
+                    YAKL_LAMBDA (int k, int j, int i, int iens) {
+        real pp_L  = pp_limits(0,k,j,i,iens);
+        real pp_R  = pp_limits(1,k,j,i,iens);
+        real rw_L  = rw_limits(0,k,j,i,iens);
+        real rw_R  = rw_limits(1,k,j,i,iens);
+        real rwp_L = rw_limits(0,k,j,i,iens) - rw_orig_limits(0,k,j,i,iens);
+        real rwp_R = rw_limits(1,k,j,i,iens) - rw_orig_limits(1,k,j,i,iens);
+        real constexpr cs = 300;
+        ////////////////////
+        // Upwind pp and rw
+        ////////////////////
+        real w1 = (rw_R - pp_R/cs)/2;
+        real w2 = (rw_L + pp_L/cs)/2;
+        // Use right eigenmatrix to compute upwind flux
+        real rw_upw =  w1 + w2;
+        real pp_upw = (w2 - w1)*cs;
+        rw_limits(0,k,j,i,iens) = rw_upw;
+        pp_limits(0,k,j,i,iens) = pp_upw;
+
+        //////////////
+        // Upwind rwp
+        //////////////
+        real w1 = (rwp_R - pp_R/cs)/2;
+        real w2 = (rwp_L + pp_L/cs)/2;
+        // Use right eigenmatrix to compute upwind flux
+        real rwp_upw = w1 + w2;
+        rw_pert_tavg(k,j,i,iens) += rwp_upw;
+      });
+
+      // Compute and apply tendencies
+      parallel_for( "update rw and pp using fluxes" , SimpleBounds<4>(nz,ny,nx,nens) ,
+                    YAKL_LAMBDA (int k, int j, int i, int iens) {
+        rw(hs+k,hs+j,hs+i,iens) = -      dt_acoust*( pp_limits(0,k+1,j,i,iens) - pp_limits(0,k,j,i,iens) / dz(k,iens);
+        pp(hs+k,hs+j,hs+i,iens) = -cs*cs*dt_acoust*( rw_limits(0,k+1,j,i,iens) - rw_limits(0,k,j,i,iens) / dz(k,iens);
+      });
+
+      parallel_for( "halos for rw and pp" , SimpleBounds<4>(ny,nx,hs,nens) ,
+                    YAKL_LAMBDA(int j, int i, int kk, int iens) {
+        rw(      kk,hs+j,hs+i,iens) = 0;
+        rw(hs+nz+kk,hs+j,hs+i,iens) = 0;
+        pp(      kk,hs+j,hs+i,iens) = pp(hs     ,hs+j,hs+i,iens);
+        pp(hs+nz+kk,hs+j,hs+i,iens) = pp(hs+nz-1,hs+j,hs+i,iens);
+      });
+
+    } // for (int icycle = 0; icycle < num_subcycles; icycle++)
+
+    parallel_for( "Average out rw_pert_tavg" , SimpleBounds<4>(nz+1,ny,nx,nens) ,
+                  YAKL_LAMBDA (int k, int j, int i, int iens) {
+      rw_pert_tavg(k,j,i,iens) /= num_subcycles;
+    });
+
+
+
+
+
+
+
 
     real6d state_gll  ("state_gll"  ,num_state  ,ngll,nz,ny,nx,nens);
     real6d tracers_gll("tracers_gll",num_tracers,ngll,nz,ny,nx,nens);
