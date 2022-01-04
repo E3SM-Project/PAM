@@ -1,7 +1,15 @@
-// hevi_simpler4 exists to try using DTs of the acoustic mass flux added
-// to DTs of the advective contributions to see if the damping is reduced
+// hevi_simpler2 is an attempt at ADER with acoustics first followed by
+// conservative-form advection to propagate the mass flux from acoustics
+// It works by using the time-averaged acoustic mass flux as the starting
+// point for the advection phase.
+//
+// At the end, the overall time-avg is then upwinded with full upwinding.
+//
+// It is unclear if this will be stable with subcycled acoustics at large dt
 // 
-// This appears to be a failed idea, so I'm leaving it behind.
+// This solution was more diffused than the time-explicit version. There may
+// be improvement if I use DTs from the acoustic phase rather than starting
+// from the time average.
 
 #pragma once
 
@@ -2056,7 +2064,7 @@ public:
       });
     }
 
-    real6d p_acoustic_DTs("p_acoustic_DTs",nAder,ngll,nz,ny,nx,nens);
+    real4d rw_acoustic_tavg("rw_acoustic_tavg",nz+2*hs,ny+2*hs,nx+2*hs,nens);
 
     //////////////////////////////////////////////////
     // Acoustics
@@ -2127,11 +2135,18 @@ public:
         }
       }
 
-      for (int kt=0; kt < nAder; kt++) {
-        for (int kk=0; kk < ngll; kk++) {
-          p_acoustic_DTs(kt,kk,k,j,i,iens) = p_DTs(kt,kk);
-        }
-      }
+      compute_timeAvg( rw_DTs , dt );
+      if (k == nz-1) rw_DTs(0,ngll-1) = 0;
+      if (k == 0   ) rw_DTs(0,0     ) = 0;
+      real tot = 0;
+      for (int kk=0; kk < ngll; kk++) { tot += gllWts_ngll(kk) * rw_DTs(0,kk); }
+      rw_acoustic_tavg(hs+k,hs+j,hs+i,iens) = tot;
+    });
+
+    parallel_for( "Spatial.h Z BCs wall" , SimpleBounds<4>(ny,nx,hs,nens) ,
+                                           YAKL_LAMBDA(int j, int i, int kk, int iens) {
+      rw_acoustic_tavg(      kk,hs+j,hs+i,iens) = 0;
+      rw_acoustic_tavg(hs+nz+kk,hs+j,hs+i,iens) = 0;
     });
 
     //////////////////////////////////////////////////
@@ -2173,7 +2188,7 @@ public:
       for (int kk=0; kk < ngll; kk++) { r_DTs(0,kk) = gll(kk) + hyDensGLL(k,kk,iens); }
 
       // Reconstruct rho*w
-      for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idW,k+kk,hs+j,hs+i,iens); }
+      for (int kk=0; kk < ord; kk++) { stencil(kk) = rw_acoustic_tavg(k+kk,hs+j,hs+i,iens); }
       reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc ,
                               weno_recon_lower_loc , idl , sigma , weno_winds );
       if (bc_z == BC_WALL && k == nz-1) gll(ngll-1) = 0;
@@ -2196,7 +2211,7 @@ public:
             real drww_dz = 0;
             for (int s=0; s<ngll; s++) {
               drw_dz  += derivMatrix(s,kk) * rw_DTs (kt,s);
-              drww_dz += derivMatrix(s,kk) * ( rww_DTs(kt,s) + p_acoustic_DTs(kt,s,k,j,i,iens) );
+              drww_dz += derivMatrix(s,kk) * rww_DTs(kt,s);
             }
             r_DTs (kt+1,kk) = -drw_dz /dz(k,iens)/(kt+1._fp);
             rw_DTs(kt+1,kk) = -drww_dz/dz(k,iens)/(kt+1._fp);
