@@ -21,16 +21,16 @@ using yakl::styleC;
 using yakl::COLON;
 using yakl::ScalarLiveOut;
 
-#ifndef ORD
-  #define ORD 5
+#ifndef PAM_A_ORD
+  #define PAM_A_ORD 5
 #endif
 
-#ifndef NGLL
-  #define NGLL 3
+#ifndef PAM_A_TORD
+  #define PAM_A_TORD 3
 #endif
 
 
-int constexpr ord  = ORD;
-int constexpr ngll = NGLL;
+int constexpr ord  = PAM_A_ORD;
+int constexpr ngll = PAM_A_TORD;
 
 static_assert(ngll <= ord , "ERROR: ngll must be <= ord");
