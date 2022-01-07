@@ -1,5 +1,5 @@
 
-#include "Spatial_awfl.h"
+#include "Spatial_expl.h"
 #include "Temporal_ader.h"
 
 // Define the Spatial operator based on constants from the Temporal operatora header file

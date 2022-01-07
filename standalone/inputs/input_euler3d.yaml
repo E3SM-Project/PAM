@@ -3,7 +3,7 @@
 simTime  : 1000.
 
 # Number of cells to use
-nx       : 100
+nx       : 64
 ny       : 1
 
 # Vertical height cooridnates file
