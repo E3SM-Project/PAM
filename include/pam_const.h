@@ -13,6 +13,12 @@ using yakl::memHost;
 using yakl::styleC;
 using yakl::index_t;
 
+#ifndef PAM_ORD
+  #define PAM_ORD 5
+#endif
+
+int constexpr pam_ord = PAM_ORD;
+
 typedef double real;
 
 YAKL_INLINE real constexpr operator"" _fp( long double x ) {

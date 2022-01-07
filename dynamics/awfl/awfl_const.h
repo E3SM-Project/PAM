@@ -21,12 +21,12 @@ using yakl::styleC;
 using yakl::COLON;
 using yakl::ScalarLiveOut;
 
-#ifndef PAM_A_ORD
-  #define PAM_A_ORD 5
+#ifndef PAM_ORD
+  #define PAM_ORD 5
 #endif
 
-#ifndef PAM_A_TORD
-  #define PAM_A_TORD 3
+#ifndef PAM_TORD
+  #define PAM_TORD 3
 #endif
 
 

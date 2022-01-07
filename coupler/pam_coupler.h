@@ -124,7 +124,7 @@ namespace pam {
     });
 
     // Interpolate pressure perturbation from cells to edges
-    VerticalInterp<5> vert_interp;
+    VerticalInterp<pam_ord> vert_interp;
     vert_interp.init(zint);
     auto press_edges = vert_interp.cells_to_edges( press_pert ,
                                                    vert_interp.BC_ZERO_GRADIENT ,
@@ -158,7 +158,7 @@ namespace pam {
     });
 
     // Interpolate density perturbation from cells to edges
-    VerticalInterp<5> vert_interp;
+    VerticalInterp<pam_ord> vert_interp;
     vert_interp.init(zint);
     auto dens_edges = vert_interp.cells_to_edges( dens_pert ,
                                                   vert_interp.BC_ZERO_GRADIENT ,
