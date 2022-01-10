@@ -63,7 +63,7 @@ public:
 
 
   template <class DC>
-  void init(std::string infile , int ny, int nx, int nens , DC &dycore , PamCoupler &coupler) {
+  void init(int ny, int nx, int nens , DC &dycore , PamCoupler &coupler) {
     int nz = coupler.dm.get_dimension_size("z");
 
     // Register tracers in the dycore

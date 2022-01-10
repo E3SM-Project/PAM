@@ -448,8 +448,10 @@ public:
 
 
   // Initialize crap needed by recon()
-  void init(std::string inFile, int ny, int nx, int nens, real xlen, real ylen, int num_tracers, PamCoupler &coupler) {
+  void init(int ny, int nx, int nens, real xlen, real ylen, int num_tracers, PamCoupler &coupler) {
     using yakl::intrinsics::matmul_cr;
+
+    std::string inFile = coupler.get_note( "standalone_input_file" );
 
     this->nens = nens;
     this->nx = nx;

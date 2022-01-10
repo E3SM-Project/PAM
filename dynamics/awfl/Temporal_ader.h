@@ -22,8 +22,10 @@ public:
 
   Spatial space_op;
 
-  void init(std::string inFile, int ny, int nx, int nens, real xlen, real ylen, int num_tracers, PamCoupler &coupler) {
-    space_op.init(inFile, ny, nx, nens, xlen, ylen, num_tracers, coupler);
+  void init(int ny, int nx, int nens, real xlen, real ylen, int num_tracers, PamCoupler &coupler) {
+    space_op.init(ny, nx, nens, xlen, ylen, num_tracers, coupler);
+
+    std::string inFile = coupler.get_note( "standalone_input_file" );
 
     YAML::Node config = YAML::LoadFile(inFile);
     sponge_cells    = config["sponge_cells"   ].as<int>();

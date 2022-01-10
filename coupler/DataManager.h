@@ -317,12 +317,12 @@ public:
 
 
   template <class T> size_t get_type_hash() const {
-    return typeid(T).hash_code();
+    return typeid(typename std::remove_cv<T>::type).hash_code();
   }
 
 
   template <class T> size_t entry_type_is_same(int id) const {
-    return entries[id].type_hash == typeid(T).hash_code();
+    return entries[id].type_hash == get_type_hash<T>();
   }
 
 

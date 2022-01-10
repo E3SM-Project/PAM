@@ -50,9 +50,12 @@ int main(int argc, char** argv) {
 
     int numOut = 0;
 
+    // This is for the dycore to pull out to determine how to do idealized test cases
+    coupler.add_note( "standalone_input_file" , inFile );
+
     // Initialize the dycore and the microphysics
-    dycore.init( inFile , ny , nx , nens , xlen , ylen , micro.get_num_tracers() , coupler );
-    micro .init( inFile , ny , nx , nens , dycore , coupler );
+    dycore.init( ny , nx , nens , xlen , ylen , micro.get_num_tracers() , coupler );
+    micro .init( ny , nx , nens , dycore , coupler );
 
     #ifdef PAM_STANDALONE
       std::cout << "Dycore: " << dycore.dycore_name() << std::endl;

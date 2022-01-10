@@ -89,6 +89,12 @@ namespace pam {
   class PamCoupler {
     public:
 
+    struct Note {
+      std::string key;
+      std::string value;
+    };
+    std::vector<Note> notes;
+
     real R_d;   // Dry air gas constant
     real R_v;   // Water vapor gas constant
     real cp_d;  // Dry air specific heat at constant pressure
@@ -107,6 +113,21 @@ namespace pam {
       this->cp_v = 1859;
       this->grav = 9.81;
       this->p0   = 1.e5;
+    }
+
+
+
+    void add_note( std::string key , std::string value ) {
+      notes.push_back({key,value});
+    }
+
+
+
+    std::string get_note( std::string key ) {
+      for (int i=0; i < notes.size(); i++) {
+        if (key == notes[i].key) return notes[i].value;
+      }
+      return "";
     }
 
 
