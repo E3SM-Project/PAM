@@ -10,6 +10,8 @@
 #include "DataManager.h"
 #include "pam_coupler.h"
 
+using pam::PamCoupler;
+
 
 template <int nTimeDerivs, bool timeAvg, int nAder>
 class Spatial_operator {
@@ -461,7 +463,7 @@ public:
 
 
   // Initialize crap needed by recon()
-  void init(std::string inFile, int ny, int nx, int nens, real xlen, real ylen, int num_tracers, DataManager &dm) {
+  void init(std::string inFile, int ny, int nx, int nens, real xlen, real ylen, int num_tracers, PamCoupler &coupler) {
     using yakl::intrinsics::matmul_cr;
 
     this->nens = nens;
@@ -552,9 +554,9 @@ public:
     sim2d = ny == 1;
 
     // Store vertical cell interface heights in the data manager
-    auto zint = dm.get<real,2>("vertical_interface_height");
+    auto zint = coupler.dm.get<real,2>("vertical_interface_height");
 
-    nz = dm.get_dimension_size("z");
+    nz = coupler.dm.get_dimension_size("z");
 
     // Get the height of the z-dimension
     zbot = real1d("zbot",nens);
@@ -731,15 +733,15 @@ public:
     hyDensThetaGLL   = real3d("hyDensThetaGLL    ",nz,ngll,nens);
 
     // Register and allocate state data with the DataManager
-    dm.register_and_allocate<real>( "dynamics_state"   , "dynamics state"   ,
-                                    {num_state  ,nz+2*hs,ny+2*hs,nx+2*hs,nens} ,
-                                    {"num_state"  ,"nz_halo","ny_halo","nx_halo","nens"} );
-    dm.register_and_allocate<real>( "dynamics_tracers" , "dynamics tracers" ,
-                                    {num_tracers,nz+2*hs,ny+2*hs,nx+2*hs,nens} ,
-                                    {"num_tracers","nz_halo","ny_halo","nx_halo","nens"} );
+    coupler.dm.register_and_allocate<real>( "dynamics_state"   , "dynamics state"   ,
+                                            {num_state  ,nz+2*hs,ny+2*hs,nx+2*hs,nens} ,
+                                            {"num_state"  ,"nz_halo","ny_halo","nx_halo","nens"} );
+    coupler.dm.register_and_allocate<real>( "dynamics_tracers" , "dynamics tracers" ,
+                                            {num_tracers,nz+2*hs,ny+2*hs,nx+2*hs,nens} ,
+                                            {"num_tracers","nz_halo","ny_halo","nx_halo","nens"} );
 
-    auto state   = dm.get<real,5>("dynamics_state");
-    auto tracers = dm.get<real,5>("dynamics_tracers");
+    auto state   = coupler.dm.get<real,5>("dynamics_state");
+    auto tracers = coupler.dm.get<real,5>("dynamics_tracers");
     parallel_for( "Spatial.h init 4" , SimpleBounds<4>(nz+2*hs,ny+2*hs,nx+2*hs,nens) ,
                   YAKL_LAMBDA (int k, int j, int i, int iens) {
       for (int l=0; l < num_state; l++) {

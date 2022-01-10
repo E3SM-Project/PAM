@@ -2,7 +2,9 @@
 #pragma once
 
 #include "awfl_const.h"
-#include "DataManager.h"
+#include "pam_coupler.h"
+
+using pam::PamCoupler;
 
 int  constexpr nTimeDerivs = 1;
 bool constexpr timeAvg     = true;
@@ -20,8 +22,8 @@ public:
 
   Spatial space_op;
 
-  void init(std::string inFile, int ny, int nx, int nens, real xlen, real ylen, int num_tracers, DataManager &dm) {
-    space_op.init(inFile, ny, nx, nens, xlen, ylen, num_tracers, dm);
+  void init(std::string inFile, int ny, int nx, int nens, real xlen, real ylen, int num_tracers, PamCoupler &coupler) {
+    space_op.init(inFile, ny, nx, nens, xlen, ylen, num_tracers, coupler);
 
     YAML::Node config = YAML::LoadFile(inFile);
     sponge_cells    = config["sponge_cells"   ].as<int>();

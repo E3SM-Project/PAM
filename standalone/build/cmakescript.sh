@@ -14,5 +14,5 @@ cmake      \
   -DNCFLAGS="${NCFLAGS}"                                          \
   -DYAKL_ARCH="${YAKL_ARCH}"                                      \
   -DPAM_DYCORE="awfl"                                             \
-  -DPAM_MICRO="none"                                              \
+  -DPAM_MICRO="p3"                                                \
   ..

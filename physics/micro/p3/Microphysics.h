@@ -3,6 +3,9 @@
 
 #include "awfl_const.h"
 #include "DataManager.h"
+#include "pam_coupler.h"
+
+using pam::PamCoupler;
 
 
 extern "C"
@@ -109,84 +112,84 @@ public:
   // Can do whatever you want, but mainly for registering tracers and allocating data
   // and storing the water vapor tracer index
   template <class DC>
-  void init(std::string infile , int ny, int nx, int nens , DC &dycore , DataManager &dm) {
-    int nz = dm.get_dimension_size("z");
+  void init(std::string infile , int ny, int nx, int nens , DC &dycore , PamCoupler &coupler) {
+    int nz = coupler.dm.get_dimension_size("z");
 
     // Register tracers in the dycore
     //                                        name                 description            positive   adds mass
-    tracer_IDs(ID_C ) = dycore.add_tracer(dm , "cloud_water"     , "Cloud Water Mass"   , true     , true );
-    tracer_IDs(ID_NC) = dycore.add_tracer(dm , "cloud_water_num" , "Cloud Water Number" , true     , false);
-    tracer_IDs(ID_R ) = dycore.add_tracer(dm , "rain"            , "Rain Water Mass"    , true     , true );
-    tracer_IDs(ID_NR) = dycore.add_tracer(dm , "rain_num"        , "Rain Water Number"  , true     , false);
-    tracer_IDs(ID_I ) = dycore.add_tracer(dm , "ice"             , "Ice Mass"           , true     , true );
-    tracer_IDs(ID_NI) = dycore.add_tracer(dm , "ice_num"         , "Ice Number"         , true     , false);
-    tracer_IDs(ID_M ) = dycore.add_tracer(dm , "ice_rime"        , "Ice-Rime Mass"      , true     , false);
-    tracer_IDs(ID_BM) = dycore.add_tracer(dm , "ice_rime_vol"    , "Ice-Rime Volume"    , true     , false);
-    tracer_IDs(ID_V ) = dycore.add_tracer(dm , "water_vapor"     , "Water Vapor"        , true     , true );
+    tracer_IDs(ID_C ) = dycore.add_tracer(coupler.dm , "cloud_water"     , "Cloud Water Mass"   , true     , true );
+    tracer_IDs(ID_NC) = dycore.add_tracer(coupler.dm , "cloud_water_num" , "Cloud Water Number" , true     , false);
+    tracer_IDs(ID_R ) = dycore.add_tracer(coupler.dm , "rain"            , "Rain Water Mass"    , true     , true );
+    tracer_IDs(ID_NR) = dycore.add_tracer(coupler.dm , "rain_num"        , "Rain Water Number"  , true     , false);
+    tracer_IDs(ID_I ) = dycore.add_tracer(coupler.dm , "ice"             , "Ice Mass"           , true     , true );
+    tracer_IDs(ID_NI) = dycore.add_tracer(coupler.dm , "ice_num"         , "Ice Number"         , true     , false);
+    tracer_IDs(ID_M ) = dycore.add_tracer(coupler.dm , "ice_rime"        , "Ice-Rime Mass"      , true     , false);
+    tracer_IDs(ID_BM) = dycore.add_tracer(coupler.dm , "ice_rime_vol"    , "Ice-Rime Volume"    , true     , false);
+    tracer_IDs(ID_V ) = dycore.add_tracer(coupler.dm , "water_vapor"     , "Water Vapor"        , true     , true );
 
     // Register and allocate the tracers in the DataManager
-    dm.register_and_allocate<real>( "cloud_water"     , "Cloud Water Mass"   , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    dm.register_and_allocate<real>( "cloud_water_num" , "Cloud Water Number" , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    dm.register_and_allocate<real>( "rain"            , "Rain Water Mass"    , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    dm.register_and_allocate<real>( "rain_num"        , "Rain Water Number"  , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    dm.register_and_allocate<real>( "ice"             , "Ice Mass"           , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    dm.register_and_allocate<real>( "ice_num"         , "Ice Number"         , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    dm.register_and_allocate<real>( "ice_rime"        , "Ice-Rime Mass"      , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    dm.register_and_allocate<real>( "ice_rime_vol"    , "Ice-Rime Volume"    , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    dm.register_and_allocate<real>( "water_vapor"     , "Water Vapor"        , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "cloud_water"     , "Cloud Water Mass"   , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "cloud_water_num" , "Cloud Water Number" , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "rain"            , "Rain Water Mass"    , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "rain_num"        , "Rain Water Number"  , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "ice"             , "Ice Mass"           , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "ice_num"         , "Ice Number"         , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "ice_rime"        , "Ice-Rime Mass"      , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "ice_rime_vol"    , "Ice-Rime Volume"    , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "water_vapor"     , "Water Vapor"        , {nz,ny,nx,nens} , {"z","y","x","nens"} );
 
     tracer_index_vapor = tracer_IDs(ID_V);
 
     // Register and allocation non-tracer quantities used by the microphysics
     int p3_nout = 49;
-    dm.register_and_allocate<real>( "precip_liq_surf"    , "precipitation rate, liquid       m s-1"              , {             ny,nx,nens} , {                "y","x","nens"} );
-    dm.register_and_allocate<real>( "precip_ice_surf"    , "precipitation rate, solid        m s-1"              , {             ny,nx,nens} , {                "y","x","nens"} );
-    dm.register_and_allocate<real>( "diag_eff_radius_qc" , "effective radius, cloud          m"                  , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "diag_eff_radius_qi" , "effective radius, ice            m"                  , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "bulk_qi"            , "bulk density of ice              kg m-3"             , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "mu_c"               , "Size distribution shape parameter for radiation"     , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "lamc"               , "Size distribution slope parameter for radiation"     , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "qv2qi_depos_tend"   , "qitend due to deposition/sublimation"                , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "precip_total_tend"  , "Total precipitation (rain + snow)"                   , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "nevapr"             , "evaporation of total precipitation (rain + snow)"    , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "qr_evap_tend"       , "evaporation of rain"                                 , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "precip_liq_flux"    , "grid-box average rain flux (kg m^-2 s^-1) pverp"     , {        nz+1,ny,nx,nens} , {          "zp1","y","x","nens"} );
-    dm.register_and_allocate<real>( "precip_ice_flux"    , "grid-box average ice/snow flux (kg m^-2 s^-1) pverp" , {        nz+1,ny,nx,nens} , {          "zp1","y","x","nens"} );
-    dm.register_and_allocate<real>( "liq_ice_exchange"   , "sum of liq-ice phase change tendenices"              , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "vap_liq_exchange"   , "sum of vap-liq phase change tendenices"              , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "vap_ice_exchange"   , "sum of vap-ice phase change tendenices"              , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "p3_tend_out"        , "micro physics tendencies"                            , {p3_nout,nz  ,ny,nx,nens} , {"p3_nout","z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "qv_prev"            , "qv from the previous step"                           , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    dm.register_and_allocate<real>( "t_prev"             , "Temperature from the previous step"                  , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "precip_liq_surf"    , "precipitation rate, liquid       m s-1"              , {             ny,nx,nens} , {                "y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "precip_ice_surf"    , "precipitation rate, solid        m s-1"              , {             ny,nx,nens} , {                "y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "diag_eff_radius_qc" , "effective radius, cloud          m"                  , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "diag_eff_radius_qi" , "effective radius, ice            m"                  , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "bulk_qi"            , "bulk density of ice              kg m-3"             , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "mu_c"               , "Size distribution shape parameter for radiation"     , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "lamc"               , "Size distribution slope parameter for radiation"     , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "qv2qi_depos_tend"   , "qitend due to deposition/sublimation"                , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "precip_total_tend"  , "Total precipitation (rain + snow)"                   , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "nevapr"             , "evaporation of total precipitation (rain + snow)"    , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "qr_evap_tend"       , "evaporation of rain"                                 , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "precip_liq_flux"    , "grid-box average rain flux (kg m^-2 s^-1) pverp"     , {        nz+1,ny,nx,nens} , {          "zp1","y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "precip_ice_flux"    , "grid-box average ice/snow flux (kg m^-2 s^-1) pverp" , {        nz+1,ny,nx,nens} , {          "zp1","y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "liq_ice_exchange"   , "sum of liq-ice phase change tendenices"              , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "vap_liq_exchange"   , "sum of vap-liq phase change tendenices"              , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "vap_ice_exchange"   , "sum of vap-ice phase change tendenices"              , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "p3_tend_out"        , "micro physics tendencies"                            , {p3_nout,nz  ,ny,nx,nens} , {"p3_nout","z"  ,"y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "qv_prev"            , "qv from the previous step"                           , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "t_prev"             , "Temperature from the previous step"                  , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
 
-    auto cloud_water         = dm.get<real,4>( "cloud_water"        );
-    auto cloud_water_num     = dm.get<real,4>( "cloud_water_num"    );
-    auto rain                = dm.get<real,4>( "rain"               );
-    auto rain_num            = dm.get<real,4>( "rain_num"           );
-    auto ice                 = dm.get<real,4>( "ice"                );
-    auto ice_num             = dm.get<real,4>( "ice_num"            );
-    auto ice_rime            = dm.get<real,4>( "ice_rime"           );
-    auto ice_rime_vol        = dm.get<real,4>( "ice_rime_vol"       );
-    auto water_vapor         = dm.get<real,4>( "water_vapor"        );
-    auto precip_liq_surf     = dm.get<real,3>( "precip_liq_surf"    );
-    auto precip_ice_surf     = dm.get<real,3>( "precip_ice_surf"    );
-    auto diag_eff_radius_qc  = dm.get<real,4>( "diag_eff_radius_qc" );
-    auto diag_eff_radius_qi  = dm.get<real,4>( "diag_eff_radius_qi" );
-    auto bulk_qi             = dm.get<real,4>( "bulk_qi"            );
-    auto mu_c                = dm.get<real,4>( "mu_c"               );
-    auto lamc                = dm.get<real,4>( "lamc"               );
-    auto qv2qi_depos_tend    = dm.get<real,4>( "qv2qi_depos_tend"   );
-    auto precip_total_tend   = dm.get<real,4>( "precip_total_tend"  );
-    auto nevapr              = dm.get<real,4>( "nevapr"             );
-    auto qr_evap_tend        = dm.get<real,4>( "qr_evap_tend"       );
-    auto precip_liq_flux     = dm.get<real,4>( "precip_liq_flux"    );
-    auto precip_ice_flux     = dm.get<real,4>( "precip_ice_flux"    );
-    auto liq_ice_exchange    = dm.get<real,4>( "liq_ice_exchange"   );
-    auto vap_liq_exchange    = dm.get<real,4>( "vap_liq_exchange"   );
-    auto vap_ice_exchange    = dm.get<real,4>( "vap_ice_exchange"   );
-    auto p3_tend_out         = dm.get<real,5>( "p3_tend_out"        );
-    auto qv_prev             = dm.get<real,4>( "qv_prev"            );
-    auto t_prev              = dm.get<real,4>( "t_prev"             );
+    auto cloud_water         = coupler.dm.get<real,4>( "cloud_water"        );
+    auto cloud_water_num     = coupler.dm.get<real,4>( "cloud_water_num"    );
+    auto rain                = coupler.dm.get<real,4>( "rain"               );
+    auto rain_num            = coupler.dm.get<real,4>( "rain_num"           );
+    auto ice                 = coupler.dm.get<real,4>( "ice"                );
+    auto ice_num             = coupler.dm.get<real,4>( "ice_num"            );
+    auto ice_rime            = coupler.dm.get<real,4>( "ice_rime"           );
+    auto ice_rime_vol        = coupler.dm.get<real,4>( "ice_rime_vol"       );
+    auto water_vapor         = coupler.dm.get<real,4>( "water_vapor"        );
+    auto precip_liq_surf     = coupler.dm.get<real,3>( "precip_liq_surf"    );
+    auto precip_ice_surf     = coupler.dm.get<real,3>( "precip_ice_surf"    );
+    auto diag_eff_radius_qc  = coupler.dm.get<real,4>( "diag_eff_radius_qc" );
+    auto diag_eff_radius_qi  = coupler.dm.get<real,4>( "diag_eff_radius_qi" );
+    auto bulk_qi             = coupler.dm.get<real,4>( "bulk_qi"            );
+    auto mu_c                = coupler.dm.get<real,4>( "mu_c"               );
+    auto lamc                = coupler.dm.get<real,4>( "lamc"               );
+    auto qv2qi_depos_tend    = coupler.dm.get<real,4>( "qv2qi_depos_tend"   );
+    auto precip_total_tend   = coupler.dm.get<real,4>( "precip_total_tend"  );
+    auto nevapr              = coupler.dm.get<real,4>( "nevapr"             );
+    auto qr_evap_tend        = coupler.dm.get<real,4>( "qr_evap_tend"       );
+    auto precip_liq_flux     = coupler.dm.get<real,4>( "precip_liq_flux"    );
+    auto precip_ice_flux     = coupler.dm.get<real,4>( "precip_ice_flux"    );
+    auto liq_ice_exchange    = coupler.dm.get<real,4>( "liq_ice_exchange"   );
+    auto vap_liq_exchange    = coupler.dm.get<real,4>( "vap_liq_exchange"   );
+    auto vap_ice_exchange    = coupler.dm.get<real,4>( "vap_ice_exchange"   );
+    auto p3_tend_out         = coupler.dm.get<real,5>( "p3_tend_out"        );
+    auto qv_prev             = coupler.dm.get<real,4>( "qv_prev"            );
+    auto t_prev              = coupler.dm.get<real,4>( "t_prev"             );
 
     parallel_for( "micro zero" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       cloud_water       (k,j,i,iens) = 0;

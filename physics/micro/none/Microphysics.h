@@ -3,6 +3,9 @@
 
 #include "awfl_const.h"
 #include "DataManager.h"
+#include "pam_coupler.h"
+
+using pam::PamCoupler;
 
 class Microphysics {
 public:
@@ -52,15 +55,15 @@ public:
 
   // Have to declare at least water vapor
   template <class DC>
-  void init(std::string infile , int ny, int nx, int nens , DC &dycore , DataManager &dm) {
-    int nz = dm.get_dimension_size("z");
+  void init(std::string infile , int ny, int nx, int nens , DC &dycore , PamCoupler &coupler) {
+    int nz = coupler.dm.get_dimension_size("z");
 
     // Register tracers in the dycore
     //                                          name              description       positive   adds mass
-    tracer_index_vapor = dycore.add_tracer(dm , "water_vapor"   , "Water Vapor"   , true     , true);
+    tracer_index_vapor = dycore.add_tracer(coupler.dm , "water_vapor"   , "Water Vapor"   , true     , true);
 
     // Register and allocate the tracers in the DataManager
-    dm.register_and_allocate<real>( "water_vapor"   , "Water Vapor"   , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "water_vapor"   , "Water Vapor"   , {nz,ny,nx,nens} , {"z","y","x","nens"} );
   }
 
 

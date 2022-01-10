@@ -3,6 +3,9 @@
 
 #include "awfl_const.h"
 #include "DataManager.h"
+#include "pam_coupler.h"
+
+using pam::PamCoupler;
 
 extern "C" void kessler_fortran(double *theta, double *qv, double *qc, double *qr, double *rho,
                                 double *pk, double &dt, double *z, int &nz, double &precl);
@@ -60,24 +63,24 @@ public:
 
 
   template <class DC>
-  void init(std::string infile , int ny, int nx, int nens , DC &dycore , DataManager &dm) {
-    int nz = dm.get_dimension_size("z");
+  void init(std::string infile , int ny, int nx, int nens , DC &dycore , PamCoupler &coupler) {
+    int nz = coupler.dm.get_dimension_size("z");
 
     // Register tracers in the dycore
     //                                        name              description       positive   adds mass
-    tracer_IDs(ID_V) = dycore.add_tracer(dm , "water_vapor"   , "Water Vapor"   , true     , true);
-    tracer_IDs(ID_C) = dycore.add_tracer(dm , "cloud_liquid"  , "Cloud liquid"  , true     , true);
-    tracer_IDs(ID_R) = dycore.add_tracer(dm , "precip_liquid" , "precip_liquid" , true     , true);
+    tracer_IDs(ID_V) = dycore.add_tracer(coupler.dm , "water_vapor"   , "Water Vapor"   , true     , true);
+    tracer_IDs(ID_C) = dycore.add_tracer(coupler.dm , "cloud_liquid"  , "Cloud liquid"  , true     , true);
+    tracer_IDs(ID_R) = dycore.add_tracer(coupler.dm , "precip_liquid" , "precip_liquid" , true     , true);
 
     // Register and allocate the tracers in the DataManager
-    dm.register_and_allocate<real>( "water_vapor"   , "Water Vapor"   , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    dm.register_and_allocate<real>( "cloud_liquid"  , "Cloud liquid"  , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    dm.register_and_allocate<real>( "precip_liquid" , "precip_liquid" , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "water_vapor"   , "Water Vapor"   , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "cloud_liquid"  , "Cloud liquid"  , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "precip_liquid" , "precip_liquid" , {nz,ny,nx,nens} , {"z","y","x","nens"} );
 
     tracer_index_vapor = tracer_IDs(ID_V);
 
     // Register and allocation non-tracer quantities used by the microphysics
-    dm.register_and_allocate<real>( "precl" , "precipitation rate" , {ny,nx,nens} , {"y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "precl" , "precipitation rate" , {ny,nx,nens} , {"y","x","nens"} );
   }
 
 

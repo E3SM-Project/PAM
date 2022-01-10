@@ -6,20 +6,7 @@
 #include "pam_coupler.h"
 #include "Sam1mom.h"
 
-
-// subroutine micro(dt, ncol, nz, zint, rho, rhow, pres, tabs, qv, qn, qp) bind(C, name="sam1mom_main_fortran")
-//   implicit none
-//   real(8), intent(in   ) :: dt
-//   integer, intent(in   ) :: ncol, nz
-//   real(8), intent(in   ) :: zint(ncol,nz+1) ! constant grid spacing in z direction (when dz_constant=.true.)
-//   real(8), intent(in   ) :: rho (ncol,nz  ) ! air density at pressure levels,kg/m3 
-//   real(8), intent(in   ) :: rhow(ncol,nz+1) ! air density at vertical velocity levels,kg/m3
-//   real(8), intent(in   ) :: pres(ncol,nz  ) ! pressure,mb at scalar levels
-//   real(8), intent(inout) :: tabs(ncol,nz  ) ! temperature
-//   real(8), intent(inout) :: qv  (ncol,nz  ) ! water vapor
-//   real(8), intent(inout) :: qn  (ncol,nz  ) ! cloud condensate (liquid + ice)
-//   real(8), intent(inout) :: qp  (ncol,nz  ) ! total precipitating water
-
+using pam::PamCoupler;
 
 
 extern "C"
@@ -95,25 +82,25 @@ public:
   // Can do whatever you want, but mainly for registering tracers and allocating data
   // and storing the water vapor tracer index
   template <class DC>
-  void init(std::string infile , int ny, int nx, int nens , DC &dycore , DataManager &dm) {
-    int nz = dm.get_dimension_size("z");
+  void init(std::string infile , int ny, int nx, int nens , DC &dycore , PamCoupler &coupler) {
+    int nz = coupler.dm.get_dimension_size("z");
 
     // Register tracers in the dycore
     //                                        name            description                positive   adds mass
-    tracer_IDs(ID_V) = dycore.add_tracer(dm , "water_vapor" , "Water Vapor"            , true     , true );
-    tracer_IDs(ID_N) = dycore.add_tracer(dm , "cloud_cond"  , "Total Cloud Condensate" , true     , true );
-    tracer_IDs(ID_P) = dycore.add_tracer(dm , "precip"      , "Total Precip"           , true     , true );
+    tracer_IDs(ID_V) = dycore.add_tracer(coupler.dm , "water_vapor" , "Water Vapor"            , true     , true );
+    tracer_IDs(ID_N) = dycore.add_tracer(coupler.dm , "cloud_cond"  , "Total Cloud Condensate" , true     , true );
+    tracer_IDs(ID_P) = dycore.add_tracer(coupler.dm , "precip"      , "Total Precip"           , true     , true );
 
     // Register and allocate the tracers in the DataManager
-    dm.register_and_allocate<real>( "water_vapor" , "Water Vapor"            , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    dm.register_and_allocate<real>( "cloud_cond"  , "Total Cloud Condensate" , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    dm.register_and_allocate<real>( "precip"      , "Total Precip"           , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "water_vapor" , "Water Vapor"            , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "cloud_cond"  , "Total Cloud Condensate" , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "precip"      , "Total Precip"           , {nz,ny,nx,nens} , {"z","y","x","nens"} );
 
     tracer_index_vapor = tracer_IDs(ID_V);
 
-    auto water_vapor = dm.get<real,4>( "water_vapor" );
-    auto cloud_cond  = dm.get<real,4>( "cloud_cond"  );
-    auto precip      = dm.get<real,4>( "precip"      );
+    auto water_vapor = coupler.dm.get<real,4>( "water_vapor" );
+    auto cloud_cond  = coupler.dm.get<real,4>( "cloud_cond"  );
+    auto precip      = coupler.dm.get<real,4>( "precip"      );
 
     parallel_for( "micro zero" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       water_vapor(k,j,i,iens) = 0;

@@ -51,8 +51,8 @@ int main(int argc, char** argv) {
     int numOut = 0;
 
     // Initialize the dycore and the microphysics
-    dycore.init( inFile , ny , nx , nens , xlen , ylen , micro.get_num_tracers() , coupler.dm );
-    micro .init( inFile , ny , nx , nens , dycore , coupler.dm );
+    dycore.init( inFile , ny , nx , nens , xlen , ylen , micro.get_num_tracers() , coupler );
+    micro .init( inFile , ny , nx , nens , dycore , coupler );
 
     #ifdef PAM_STANDALONE
       std::cout << "Dycore: " << dycore.dycore_name() << std::endl;
