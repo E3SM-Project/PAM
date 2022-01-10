@@ -273,15 +273,6 @@ public:
       TransformMatrices::get_gll_points ( gll_pts );
       TransformMatrices::get_gll_weights( gll_wts );
 
-      real2d hyPressureCells_prev ("hyPressureCells_prev ",nz,nens);
-      real2d hyDensCells_prev     ("hyDensCells_prev     ",nz,nens);
-      real2d hyDensThetaCells_prev("hyDensThetaCells_prev",nz,nens);
-      real2d hyThetaCells_prev    ("hyThetaCells_prev    ",nz,nens);
-      hyPressureCells .deep_copy_to(hyPressureCells_prev );
-      hyDensCells     .deep_copy_to(hyDensCells_prev     );
-      hyDensThetaCells.deep_copy_to(hyDensThetaCells_prev);
-      hyThetaCells    .deep_copy_to(hyThetaCells_prev    );
-
       // Compute new cell averages and GLL point values for hydrostasis
       hydrostasis_parameters_sum = tmp;
       parallel_for( "Spatial.h new hydrostasis" , SimpleBounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
@@ -468,6 +459,15 @@ public:
     this->num_tracers = num_tracers;
 
     this->hydrostasis_parameters_sum = 0;
+
+    this->Rd    = coupler.R_d;
+    this->cp    = coupler.cp_d;
+    this->p0    = coupler.p0;
+    this->Rv    = coupler.R_v;
+    this->grav  = coupler.grav;
+    this->gamma = cp / (cp-Rd);
+    real kappa = Rd/cp;
+    this->C0 = pow( Rd * pow( p0 , -kappa ) , gamma );
 
     // Allocate device arrays for whether tracers are positive-definite or add mass
     tracer_pos       = bool1d("tracer_pos"      ,num_tracers);
@@ -768,15 +768,6 @@ public:
 
   // Initialize the state
   void init_state_and_tracers( PamCoupler &coupler ) {
-    Rd    = coupler.R_d;
-    cp    = coupler.cp_d;
-    p0    = coupler.p0;
-    Rv    = coupler.R_v;
-    grav  = coupler.grav;
-    gamma = cp / (cp-Rd);
-    real kappa = Rd/cp;
-
-    C0 = pow( Rd * pow( p0 , -kappa ) , gamma );
 
     YAKL_SCOPE( nx                       , this->nx                      );
     YAKL_SCOPE( ny                       , this->ny                      );
