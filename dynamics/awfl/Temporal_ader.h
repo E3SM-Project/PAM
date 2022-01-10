@@ -51,8 +51,8 @@ public:
   }
 
 
-  void init_state_and_tracers( PamCoupler &coupler ) {
-    space_op.init_state_and_tracers( coupler );
+  void init2( PamCoupler &coupler ) {
+    space_op.init2( coupler );
   }
 
 

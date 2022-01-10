@@ -91,6 +91,7 @@ public:
   int static constexpr BC_WALL     = 1;
 
   // Options for initializing the data
+  int static constexpr DATA_SPEC_EXTERNAL      = 0;
   int static constexpr DATA_SPEC_THERMAL       = 1;
   int static constexpr DATA_SPEC_SUPERCELL     = 2;
 
@@ -769,8 +770,7 @@ public:
 
 
   // Initialize the state
-  void init_state_and_tracers( PamCoupler &coupler ) {
-
+  void init2( PamCoupler &coupler ) {
     YAKL_SCOPE( nx                       , this->nx                      );
     YAKL_SCOPE( ny                       , this->ny                      );
     YAKL_SCOPE( nz                       , this->nz                      );
