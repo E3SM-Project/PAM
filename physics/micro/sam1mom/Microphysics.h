@@ -167,7 +167,7 @@ public:
       pressure(k,i) = ( R_d * rho_dry(k,i) * temp(k,i) + R_v * rho_v(k,i) * temp(k,i) ) / 100.;
     });
 
-    auto density_int = pam::interp_density_interfaces( coupler.dm , density.reshape<4>({nz,ny,nx,nens}) , grav ).reshape<2>({nz+1,ncol});
+    auto density_int = coupler.interp_density_interfaces( density.reshape<4>({nz,ny,nx,nens}) ).reshape<2>({nz+1,ncol});
 
     #ifdef MICRO_DUMP
       // Valid for 2-D runs with nens=1 only

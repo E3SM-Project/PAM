@@ -9,6 +9,8 @@
 
 namespace pam {
 
+
+
   YAKL_INLINE real hydrostatic_pressure( real2d const &hy_params , real z_in , real zbot , real ztop ,
                                          int iens             ) {
     real z = ( z_in - zbot ) / (ztop - zbot);
@@ -25,6 +27,7 @@ namespace pam {
     real lnp = a0 + ( a1 + ( a2 + ( a3 + ( a4 + ( a5 + ( a6 + ( a7 + ( a8 + a9*z)*z)*z)*z)*z)*z)*z)*z)*z;
     return exp(lnp);
   }
+
 
 
   YAKL_INLINE real hydrostatic_density( real2d const &hy_params , real z_in , real zbot , real ztop ,
@@ -44,6 +47,7 @@ namespace pam {
     real dpdz = mult*p/(ztop-zbot);
     return -dpdz/grav;
   }
+
 
 
   YAKL_INLINE real hydrostatic_density_deriv( real2d const &hy_params , real z_in , real zbot , real ztop ,
@@ -76,101 +80,10 @@ namespace pam {
 
 
 
-  YAKL_INLINE static real compute_pressure( real rho_d, real rho_v, real T, real R_d, real R_v ) {
+  YAKL_INLINE real compute_pressure( real rho_d, real rho_v, real T, real R_d, real R_v ) {
     return rho_d*R_d*T + rho_v*R_v*T;
   }
 
-
-
-  inline real4d compute_pressure_array( DataManager const &dm , real R_d , real R_v ) {
-    auto dens_dry = dm.get<real,4>("density_dry");
-    auto dens_wv  = dm.get<real,4>("water_vapor");
-    auto temp     = dm.get<real,4>("temp");
-
-    int nz   = dens_dry.dimension[0];
-    int ny   = dens_dry.dimension[1];
-    int nx   = dens_dry.dimension[2];
-    int nens = dens_dry.dimension[3];
-
-    real4d pressure("pressure",nz,ny,nx,nens);
-
-    parallel_for( "coupler pressure" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      real rho_d = dens_dry(k,j,i,iens);
-      real rho_v = dens_wv (k,j,i,iens);
-      real T     = temp    (k,j,i,iens);
-      pressure(k,j,i,iens) = compute_pressure( rho_d , rho_v , T , R_d , R_v );
-    });
-
-    return pressure;
-  }
-
-
-
-  inline real4d interp_pressure_interfaces( DataManager const &dm , real4d const &press ) {
-    auto zint      = dm.get<real,2>("vertical_interface_height");
-    auto hy_press  = dm.get<real,2>("hydrostatic_pressure");
-    auto hy_params = dm.get<real,2>("hydrostasis_parameters");
-
-    int nz   = dm.get_dimension_size("z");
-    int ny   = dm.get_dimension_size("y");
-    int nx   = dm.get_dimension_size("x");
-    int nens = dm.get_dimension_size("nens");
-
-    real4d press_pert("press_pert",nz,ny,nx,nens);
-
-    // Compute pressure perturbation
-    parallel_for( "coup press pert" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      press_pert(k,j,i,iens) = press(k,j,i,iens) - hy_press(k,iens);
-    });
-
-    // Interpolate pressure perturbation from cells to edges
-    VerticalInterp<pam_ord> vert_interp;
-    vert_interp.init(zint);
-    auto press_edges = vert_interp.cells_to_edges( press_pert ,
-                                                   vert_interp.BC_ZERO_GRADIENT ,
-                                                   vert_interp.BC_ZERO_GRADIENT );
-
-    // Add hydrostasis at cell edges to get back full pressure
-    parallel_for( "coup press edges" , SimpleBounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      press_edges(k,j,i,iens) += hydrostatic_pressure( hy_params , zint(k,iens) , zint(0,iens) , zint(nz,iens) , iens );
-    });
-    
-    return press_edges;
-  }
-
-
-
-  inline real4d interp_density_interfaces( DataManager const &dm , real4d const &dens , real grav ) {
-    auto zint      = dm.get<real,2>("vertical_interface_height");
-    auto hy_dens   = dm.get<real,2>("hydrostatic_density");
-    auto hy_params = dm.get<real,2>("hydrostasis_parameters");
-
-    int nz   = dm.get_dimension_size("z");
-    int ny   = dm.get_dimension_size("y");
-    int nx   = dm.get_dimension_size("x");
-    int nens = dm.get_dimension_size("nens");
-
-    real4d dens_pert("dens_pert",nz,ny,nx,nens);
-
-    // Compute density perturbation
-    parallel_for( "coup dens pert" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      dens_pert(k,j,i,iens) = dens(k,j,i,iens) - hy_dens(k,iens);
-    });
-
-    // Interpolate density perturbation from cells to edges
-    VerticalInterp<pam_ord> vert_interp;
-    vert_interp.init(zint);
-    auto dens_edges = vert_interp.cells_to_edges( dens_pert ,
-                                                  vert_interp.BC_ZERO_GRADIENT ,
-                                                  vert_interp.BC_ZERO_GRADIENT );
-
-    // Add hydrostasis at cell edges to get back full density
-    parallel_for( "coup dens edges" , SimpleBounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      dens_edges(k,j,i,iens) += hydrostatic_density( hy_params , zint(k,iens) , zint(0,iens) , zint(nz,iens) , iens , grav );
-    });
-    
-    return dens_edges;
-  }
 
 
   class PamCoupler {
@@ -364,6 +277,103 @@ namespace pam {
         hy_dens (k,iens) = d;
       });
 
+    }
+
+
+
+    real4d compute_pressure_array() const {
+      auto dens_dry = dm.get<real,4>("density_dry");
+      auto dens_wv  = dm.get<real,4>("water_vapor");
+      auto temp     = dm.get<real,4>("temp");
+
+      int nz   = dens_dry.dimension[0];
+      int ny   = dens_dry.dimension[1];
+      int nx   = dens_dry.dimension[2];
+      int nens = dens_dry.dimension[3];
+
+      real4d pressure("pressure",nz,ny,nx,nens);
+
+      YAKL_SCOPE( R_d , this->R_d );
+      YAKL_SCOPE( R_v , this->R_v );
+
+      parallel_for( "coupler pressure" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+        real rho_d = dens_dry(k,j,i,iens);
+        real rho_v = dens_wv (k,j,i,iens);
+        real T     = temp    (k,j,i,iens);
+        pressure(k,j,i,iens) = compute_pressure( rho_d , rho_v , T , R_d , R_v );
+      });
+
+      return pressure;
+    }
+
+
+
+    real4d interp_pressure_interfaces( real4d const &press ) const {
+      auto zint      = dm.get<real,2>("vertical_interface_height");
+      auto hy_press  = dm.get<real,2>("hydrostatic_pressure");
+      auto hy_params = dm.get<real,2>("hydrostasis_parameters");
+
+      int nz   = dm.get_dimension_size("z");
+      int ny   = dm.get_dimension_size("y");
+      int nx   = dm.get_dimension_size("x");
+      int nens = dm.get_dimension_size("nens");
+
+      real4d press_pert("press_pert",nz,ny,nx,nens);
+
+      // Compute pressure perturbation
+      parallel_for( "coup press pert" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+        press_pert(k,j,i,iens) = press(k,j,i,iens) - hy_press(k,iens);
+      });
+
+      // Interpolate pressure perturbation from cells to edges
+      VerticalInterp<pam_ord> vert_interp;
+      vert_interp.init(zint);
+      auto press_edges = vert_interp.cells_to_edges( press_pert ,
+                                                     vert_interp.BC_ZERO_GRADIENT ,
+                                                     vert_interp.BC_ZERO_GRADIENT );
+
+      // Add hydrostasis at cell edges to get back full pressure
+      parallel_for( "coup press edges" , SimpleBounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+        press_edges(k,j,i,iens) += hydrostatic_pressure( hy_params , zint(k,iens) , zint(0,iens) , zint(nz,iens) , iens );
+      });
+      
+      return press_edges;
+    }
+
+
+
+    real4d interp_density_interfaces( real4d const &dens ) const {
+      auto zint      = dm.get<real,2>("vertical_interface_height");
+      auto hy_dens   = dm.get<real,2>("hydrostatic_density");
+      auto hy_params = dm.get<real,2>("hydrostasis_parameters");
+
+      int nz   = dm.get_dimension_size("z");
+      int ny   = dm.get_dimension_size("y");
+      int nx   = dm.get_dimension_size("x");
+      int nens = dm.get_dimension_size("nens");
+
+      real4d dens_pert("dens_pert",nz,ny,nx,nens);
+
+      YAKL_SCOPE( grav , this->grav );
+
+      // Compute density perturbation
+      parallel_for( "coup dens pert" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+        dens_pert(k,j,i,iens) = dens(k,j,i,iens) - hy_dens(k,iens);
+      });
+
+      // Interpolate density perturbation from cells to edges
+      VerticalInterp<pam_ord> vert_interp;
+      vert_interp.init(zint);
+      auto dens_edges = vert_interp.cells_to_edges( dens_pert ,
+                                                    vert_interp.BC_ZERO_GRADIENT ,
+                                                    vert_interp.BC_ZERO_GRADIENT );
+
+      // Add hydrostasis at cell edges to get back full density
+      parallel_for( "coup dens edges" , SimpleBounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+        dens_edges(k,j,i,iens) += hydrostatic_density( hy_params , zint(k,iens) , zint(0,iens) , zint(nz,iens) , iens , grav );
+      });
+      
+      return dens_edges;
     }
 
 

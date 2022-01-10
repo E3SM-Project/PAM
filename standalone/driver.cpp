@@ -63,8 +63,7 @@ int main(int argc, char** argv) {
     dycore.init_state_and_tracers( coupler );
 
     // Now that we have an initial state, define hydrostasis for each ensemble member
-    auto press = pam::compute_pressure_array( coupler.dm , micro.R_d , micro.R_v );
-    coupler.update_hydrostasis( press );
+    coupler.update_hydrostasis( coupler.compute_pressure_array() );
 
     real etime = 0;
 
