@@ -2,7 +2,6 @@
 #pragma once
 
 #include "awfl_const.h"
-#include "phys_params.h"
 #include "TransformMatrices.h"
 #include "TransformMatrices_variable.h"
 #include "WenoLimiter.h"
@@ -29,6 +28,7 @@ public:
   real p0   ;
   real C0   ;
   real Rv   ;
+  real grav ;
 
   int idWV;  // Tracer index for water vapor (set in add_tracer by testing the tracer name against "water_vapor"
 
@@ -249,6 +249,7 @@ public:
     YAKL_SCOPE( dz               , this->dz               );
     YAKL_SCOPE( vert_interface   , this->vert_interface   );
     YAKL_SCOPE( idWV             , this->idWV             );
+    YAKL_SCOPE( grav             , this->grav             );
 
     real5d state       = dm.get<real,5>( "dynamics_state"   );
     real5d tracers     = dm.get<real,5>( "dynamics_tracers" );
@@ -292,9 +293,9 @@ public:
           real zloc = vert_interface(k,iens) + 0.5_fp*dz(k,iens) + gll_pts(kk)*dz(k,iens);
           real wt = gll_wts(kk);
           p  += pam::hydrostatic_pressure  ( hy_params , zloc , zbot(iens) , ztop(iens) , iens                     ) * wt;
-          r  += pam::hydrostatic_density   ( hy_params , zloc , zbot(iens) , ztop(iens) , iens              , GRAV ) * wt;
+          r  += pam::hydrostatic_density   ( hy_params , zloc , zbot(iens) , ztop(iens) , iens              , grav ) * wt;
           rt +=      hydrostatic_dens_theta( hy_params , zloc , zbot(iens) , ztop(iens) , iens , C0 , gamma        ) * wt;
-          t  +=      hydrostatic_theta     ( hy_params , zloc , zbot(iens) , ztop(iens) , iens , C0 , gamma , GRAV ) * wt;
+          t  +=      hydrostatic_theta     ( hy_params , zloc , zbot(iens) , ztop(iens) , iens , C0 , gamma , grav ) * wt;
         }
         hyPressureCells (k,iens) = p;
         hyDensCells     (k,iens) = r;
@@ -306,11 +307,11 @@ public:
           hyPressureGLL (k,kk,iens) = pam::hydrostatic_pressure  ( hy_params , zloc , zbot(iens) , ztop(iens) ,
                                                                    iens                     );
           hyDensGLL     (k,kk,iens) = pam::hydrostatic_density   ( hy_params , zloc , zbot(iens) , ztop(iens) ,
-                                                                   iens              , GRAV );
+                                                                   iens              , grav );
           hyDensThetaGLL(k,kk,iens) =      hydrostatic_dens_theta( hy_params , zloc , zbot(iens) , ztop(iens) ,
                                                                    iens , C0 , gamma        );
           hyThetaGLL    (k,kk,iens) =      hydrostatic_theta     ( hy_params , zloc , zbot(iens) , ztop(iens) ,
-                                                                   iens , C0 , gamma , GRAV );
+                                                                   iens , C0 , gamma , grav );
         }
       });
     }
@@ -769,10 +770,10 @@ public:
   void init_state_and_tracers( PamCoupler &coupler ) {
     Rd    = coupler.R_d;
     cp    = coupler.cp_d;
-    gamma = cp / (cp-Rd);
     p0    = coupler.p0;
     Rv    = coupler.R_v;
-
+    grav  = coupler.grav;
+    gamma = cp / (cp-Rd);
     real kappa = Rd/cp;
 
     C0 = pow( Rd * pow( p0 , -kappa ) , gamma );
@@ -810,6 +811,7 @@ public:
     YAKL_SCOPE( num_tracers              , this->num_tracers             );
     YAKL_SCOPE( tracer_adds_mass         , this->tracer_adds_mass        );
     YAKL_SCOPE( idWV                     , this->idWV                    );
+    YAKL_SCOPE( grav                     , this->grav                    );
 
     real5d state   = coupler.dm.get<real,5>("dynamics_state"  );
     real5d tracers = coupler.dm.get<real,5>("dynamics_tracers");
@@ -830,8 +832,8 @@ public:
           if        (data_spec == DATA_SPEC_THERMAL) {
             // Compute constant theta hydrostatic background state
             real th  = 300;
-            real rh = profiles::initConstTheta_density (th,zloc,Rd,cp,gamma,p0,C0);
-            real ph = profiles::initConstTheta_pressure(th,zloc,Rd,cp,gamma,p0,C0);
+            real rh = profiles::initConstTheta_density (th,zloc,Rd,cp,gamma,p0,C0,grav);
+            real ph = profiles::initConstTheta_pressure(th,zloc,Rd,cp,gamma,p0,C0,grav);
             real wt = gllWts_ord(kk);
             hyDensCells     (k,iens) += rh    * wt;
             hyThetaCells    (k,iens) += th    * wt;
@@ -848,8 +850,8 @@ public:
           if        (data_spec == DATA_SPEC_THERMAL) {
             // Compute constant theta hydrostatic background state
             real th = 300;
-            real rh = profiles::initConstTheta_density (th,zloc,Rd,cp,gamma,p0,C0);
-            real ph = profiles::initConstTheta_pressure(th,zloc,Rd,cp,gamma,p0,C0);
+            real rh = profiles::initConstTheta_density (th,zloc,Rd,cp,gamma,p0,C0,grav);
+            real ph = profiles::initConstTheta_pressure(th,zloc,Rd,cp,gamma,p0,C0,grav);
             hyDensGLL     (k,kk,iens) = rh;
             hyThetaGLL    (k,kk,iens) = th;
             hyDensThetaGLL(k,kk,iens) = rh*th;
@@ -881,7 +883,7 @@ public:
               if        (data_spec == DATA_SPEC_THERMAL) {
                 // Compute constant theta hydrostatic background state
                 real th = 300;
-                real rh = profiles::initConstTheta_density(th,zloc,Rd,cp,gamma,p0,C0);
+                real rh = profiles::initConstTheta_density(th,zloc,Rd,cp,gamma,p0,C0,grav);
                 real tp = profiles::ellipsoid_linear(xloc, yloc, zloc, xlen/2, ylen/2, 2000, 2000, 2000, 2000, 2 );
                 real t = th + tp;
                 real r = rh;
@@ -917,7 +919,7 @@ public:
 
               // Compute constant theta hydrostatic background state
               real th = 300;
-              real rh = profiles::initConstTheta_density(th,zloc,Rd,cp,gamma,p0,C0);
+              real rh = profiles::initConstTheta_density(th,zloc,Rd,cp,gamma,p0,C0,grav);
 
               // Initialize tracer mass based on dry state
               // Vapor perturbation profile
@@ -1027,13 +1029,13 @@ public:
         // Compute full density at this location
         real temp      = profiles::init_supercell_temperature (zloc, z_0, z_trop, ztop(iens), T_0, T_trop, T_top);
         real press_dry = profiles::init_supercell_pressure_dry(zloc, z_0, z_trop, ztop(iens), T_0, T_trop, T_top,
-                                                               p_0, Rd);
+                                                               p_0, Rd, grav);
         real dens_dry  = press_dry / (Rd*temp);
         real qvs       = profiles::init_supercell_sat_mix_dry(press_dry, temp);
         real relhum    = profiles::init_supercell_relhum(zloc, z_0, z_trop);
         if (relhum * qvs > 0.014_fp) relhum = 0.014_fp / qvs;
         real qv        = min( 0.014_fp , qvs*relhum );
-        quad_temp(k,kk,kkk,iens) = -(1+qv)*GRAV/(Rd+qv*Rv)/temp;
+        quad_temp(k,kk,kkk,iens) = -(1+qv)*grav/(Rd+qv*Rv)/temp;
       });
 
       parallel_for( "Spatial.h init_state 5" , nens , YAKL_LAMBDA (int iens) {
@@ -1057,7 +1059,7 @@ public:
         real zloc = vert_interface(k,iens) + 0.5_fp*dz(k,iens) + gllPts_ngll(kk)*dz(k,iens);
         real temp       = profiles::init_supercell_temperature (zloc, z_0, z_trop, ztop(iens), T_0, T_trop, T_top);
         real press_tmp  = profiles::init_supercell_pressure_dry(zloc, z_0, z_trop, ztop(iens), T_0, T_trop, T_top,
-                                                                p_0, Rd);
+                                                                p_0, Rd, grav);
         real qvs        = profiles::init_supercell_sat_mix_dry(press_tmp, temp);
         real relhum     = profiles::init_supercell_relhum(zloc, z_0, z_trop);
         if (relhum * qvs > 0.014_fp) relhum = 0.014_fp / qvs;
@@ -1100,7 +1102,7 @@ public:
         real qv         = dens_vap / dens_dry;
         real zloc       = vert_interface(k,iens) + 0.5_fp*dz(k,iens);
         real press_tmp  = profiles::init_supercell_pressure_dry(zloc, z_0, z_trop, ztop(iens), T_0, T_trop, T_top,
-                                                                p_0, Rd);
+                                                                p_0, Rd, grav);
         real qvs        = profiles::init_supercell_sat_mix_dry(press_tmp, temp);
         real relhum     = qv / qvs;
         real T          = temp - 273;
@@ -2012,6 +2014,7 @@ public:
     YAKL_SCOPE( vert_sten_to_gll        , this->vert_sten_to_gll       );
     YAKL_SCOPE( vert_sten_to_coefs      , this->vert_sten_to_coefs     );
     YAKL_SCOPE( vert_weno_recon_lower   , this->vert_weno_recon_lower  );
+    YAKL_SCOPE( grav                    , this->grav                   );
 
     // Pre-process the tracers by dividing by density inside the domain
     // After this, we can reconstruct tracers only (not rho * tracer)
@@ -2213,7 +2216,7 @@ public:
         stateTend(idR,k,j,i,iens) = 0;
         stateTend(idU,k,j,i,iens) = 0;
         stateTend(idV,k,j,i,iens) = 0;
-        stateTend(idW,k,j,i,iens) = -GRAV * ravg;
+        stateTend(idW,k,j,i,iens) = -grav * ravg;
         stateTend(idT,k,j,i,iens) = 0;
       } // END: reconstruct, time-avg, and store state & state fluxes
 
