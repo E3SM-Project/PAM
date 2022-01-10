@@ -104,24 +104,24 @@ public:
 
 
 
-  void timeStep( DataManager &dm , real dt ) {
-    auto rho_v        = dm.get_lev_col<real>("water_vapor");
-    auto rho_c        = dm.get_lev_col<real>("cloud_liquid");
-    auto rho_r        = dm.get_lev_col<real>("precip_liquid");
-    auto rho_dry      = dm.get_lev_col<real>("density_dry");
-    auto temp         = dm.get_lev_col<real>("temp");
+  void timeStep( PamCoupler &coupler , real dt ) {
+    auto rho_v        = coupler.dm.get_lev_col<real>("water_vapor");
+    auto rho_c        = coupler.dm.get_lev_col<real>("cloud_liquid");
+    auto rho_r        = coupler.dm.get_lev_col<real>("precip_liquid");
+    auto rho_dry      = coupler.dm.get_lev_col<real>("density_dry");
+    auto temp         = coupler.dm.get_lev_col<real>("temp");
 
     #ifdef PAM_DEBUG
       validate_array_positive(rho_v);
       validate_array_positive(rho_c);
       validate_array_positive(rho_r);
-      real mass_init = compute_total_mass( dm );
+      real mass_init = compute_total_mass( coupler.dm );
     #endif
 
-    int nz   = dm.get_dimension_size("z"   );
-    int ny   = dm.get_dimension_size("y"   );
-    int nx   = dm.get_dimension_size("x"   );
-    int nens = dm.get_dimension_size("nens");
+    int nz   = coupler.dm.get_dimension_size("z"   );
+    int ny   = coupler.dm.get_dimension_size("y"   );
+    int nx   = coupler.dm.get_dimension_size("x"   );
+    int nens = coupler.dm.get_dimension_size("nens");
     int ncol = ny*nx*nens;
 
     // These are inputs to kessler(...)
@@ -131,7 +131,7 @@ public:
     real2d pressure("pressure",nz,ncol);
     real2d theta   ("theta"   ,nz,ncol);
     real2d exner   ("exner"   ,nz,ncol);
-    auto zmid_in = dm.get<real,2>("vertical_midpoint_height");
+    auto zmid_in = coupler.dm.get<real,2>("vertical_midpoint_height");
 
     // We have to broadcast the midpoint heights to all columns within a CRM to avoid the microphysics needing
     // to know about the difference between nx,ny and nens
@@ -156,7 +156,7 @@ public:
       theta   (k,i) = temp(k,i) / exner(k,i);
     });
 
-    auto precl = dm.get_collapsed<real>("precl");
+    auto precl = coupler.dm.get_collapsed<real>("precl");
 
     // #define KESSLER_USE_FORTRAN
 
@@ -238,7 +238,7 @@ public:
       validate_array_positive(rho_v);
       validate_array_positive(rho_c);
       validate_array_positive(rho_r);
-      real mass_final = compute_total_mass( dm );
+      real mass_final = compute_total_mass( coupler.dm );
       real reldiff = abs(mass_final - mass_init) / ( abs(mass_init) + 1.e-20 );
       real tol = 1.e-13;
       if (std::is_same<real,float>::value) tol = 1.e-6;

@@ -401,7 +401,7 @@ public:
 
 
   // Given the model data and CFL value, compute the maximum stable time step
-  real compute_time_step(DataManager &dm, real cfl_in = -1) {
+  real compute_time_step(PamCoupler &coupler, real cfl_in = -1) {
     real cfl = cfl_in;
     if (cfl < 0) cfl = 0.8;
 
@@ -416,8 +416,8 @@ public:
       YAKL_SCOPE( C0                   , this->C0                  );
 
       // Convert data from DataManager to state and tracers array for convenience
-      real5d state   = dm.get<real,5>("dynamics_state");
-      real5d tracers = dm.get<real,5>("dynamics_tracers");
+      real5d state   = coupler.dm.get<real,5>("dynamics_state");
+      real5d tracers = coupler.dm.get<real,5>("dynamics_tracers");
 
       // Allocate a 3-D array for the max stable time steps (we'll use this for a reduction later)
       real4d dt3d("dt3d",nz,ny,nx,nens);
@@ -2414,7 +2414,7 @@ public:
 
 
 
-  void output(DataManager &dm, real etime) const {
+  void output(PamCoupler &coupler, real etime) const {
     YAKL_SCOPE( dx                    , this->dx                   );
     YAKL_SCOPE( dy                    , this->dy                   );
     YAKL_SCOPE( hyDensCells           , this->hyDensCells          );
@@ -2444,7 +2444,7 @@ public:
         nc.write(yloc.createHostCopy(),"y",{"y"});
 
         // z-coordinate
-        auto zint = dm.get<real,2>("vertical_interface_height");
+        auto zint = coupler.dm.get<real,2>("vertical_interface_height");
         real1d zmid("zmid",nz);
         parallel_for( "Spatial.h output 3" , nz , YAKL_LAMBDA (int i) {
           zmid(i) = ( zint(i,iens) + zint(i+1,iens) ) / 2;
@@ -2471,8 +2471,8 @@ public:
         nc.write1(etime,"t",ulIndex,"t");
       }
 
-      real5d state   = dm.get<real,5>("dynamics_state");
-      real5d tracers = dm.get<real,5>("dynamics_tracers");
+      real5d state   = coupler.dm.get<real,5>("dynamics_state");
+      real5d tracers = coupler.dm.get<real,5>("dynamics_tracers");
 
       real3d data("data",nz,ny,nx);
       // rho'

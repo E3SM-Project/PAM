@@ -68,7 +68,7 @@ public:
 
 
 
-  void timeStep( DataManager &dm , real dt ) {
+  void timeStep( PamCoupler &coupler , real dt ) {
     // Do microphysicsy stuff to the coupler variables and the tracers
   }
 

@@ -251,57 +251,57 @@ public:
 
 
 
-  void timeStep( DataManager &dm , real dt ) {
+  void timeStep( PamCoupler &coupler , real dt ) {
 
     // Get the dimensions sizes
-    int nz   = dm.get_dimension_size("z"   );
-    int ny   = dm.get_dimension_size("y"   );
-    int nx   = dm.get_dimension_size("x"   );
-    int nens = dm.get_dimension_size("nens");
+    int nz   = coupler.dm.get_dimension_size("z"   );
+    int ny   = coupler.dm.get_dimension_size("y"   );
+    int nx   = coupler.dm.get_dimension_size("x"   );
+    int nens = coupler.dm.get_dimension_size("nens");
     int ncol = ny*nx*nens;
 
     // Get tracers dimensioned as (nz,ny*nx*nens)
-    auto rho_c  = dm.get_lev_col<real>("cloud_water"    );
-    auto rho_nc = dm.get_lev_col<real>("cloud_water_num");
-    auto rho_r  = dm.get_lev_col<real>("rain"           );
-    auto rho_nr = dm.get_lev_col<real>("rain_num"       );
-    auto rho_i  = dm.get_lev_col<real>("ice"            );
-    auto rho_ni = dm.get_lev_col<real>("ice_num"        );
-    auto rho_m  = dm.get_lev_col<real>("ice_rime"       );
-    auto rho_bm = dm.get_lev_col<real>("ice_rime_vol"   );
-    auto rho_v  = dm.get_lev_col<real>("water_vapor"    );
+    auto rho_c  = coupler.dm.get_lev_col<real>("cloud_water"    );
+    auto rho_nc = coupler.dm.get_lev_col<real>("cloud_water_num");
+    auto rho_r  = coupler.dm.get_lev_col<real>("rain"           );
+    auto rho_nr = coupler.dm.get_lev_col<real>("rain_num"       );
+    auto rho_i  = coupler.dm.get_lev_col<real>("ice"            );
+    auto rho_ni = coupler.dm.get_lev_col<real>("ice_num"        );
+    auto rho_m  = coupler.dm.get_lev_col<real>("ice_rime"       );
+    auto rho_bm = coupler.dm.get_lev_col<real>("ice_rime_vol"   );
+    auto rho_v  = coupler.dm.get_lev_col<real>("water_vapor"    );
 
     // Get coupler state
-    auto rho_dry      = dm.get_lev_col<real>("density_dry");
-    auto temp         = dm.get_lev_col<real>("temp");
+    auto rho_dry      = coupler.dm.get_lev_col<real>("density_dry");
+    auto temp         = coupler.dm.get_lev_col<real>("temp");
 
     // Calculate the grid spacing
-    auto zint_in = dm.get<real,2>("vertical_interface_height");
+    auto zint_in = coupler.dm.get<real,2>("vertical_interface_height");
     real2d dz("dz",nz,ny*nx*nens);
     parallel_for( "micro dz" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       dz(k,j*nx*nens + i*nens + iens) = zint_in(k+1,iens) - zint_in(k,iens);
     });
 
     // Get everything from the DataManager that's not a tracer but is persistent across multiple micro calls
-    auto precip_liq_surf    = dm.get_collapsed<real>("precip_liq_surf"   );
-    auto precip_ice_surf    = dm.get_collapsed<real>("precip_ice_surf"   );
-    auto diag_eff_radius_qc = dm.get_lev_col  <real>("diag_eff_radius_qc");
-    auto diag_eff_radius_qi = dm.get_lev_col  <real>("diag_eff_radius_qi");
-    auto bulk_qi            = dm.get_lev_col  <real>("bulk_qi"           );
-    auto mu_c               = dm.get_lev_col  <real>("mu_c"              );
-    auto lamc               = dm.get_lev_col  <real>("lamc"              );
-    auto qv2qi_depos_tend   = dm.get_lev_col  <real>("qv2qi_depos_tend"  );
-    auto precip_total_tend  = dm.get_lev_col  <real>("precip_total_tend" );
-    auto nevapr             = dm.get_lev_col  <real>("nevapr"            );
-    auto qr_evap_tend       = dm.get_lev_col  <real>("qr_evap_tend"      );
-    auto liq_ice_exchange   = dm.get_lev_col  <real>("liq_ice_exchange"  );
-    auto vap_liq_exchange   = dm.get_lev_col  <real>("vap_liq_exchange"  );
-    auto vap_ice_exchange   = dm.get_lev_col  <real>("vap_ice_exchange"  );
-    auto qv_prev            = dm.get_lev_col  <real>("qv_prev"           );
-    auto t_prev             = dm.get_lev_col  <real>("t_prev"            );
+    auto precip_liq_surf    = coupler.dm.get_collapsed<real>("precip_liq_surf"   );
+    auto precip_ice_surf    = coupler.dm.get_collapsed<real>("precip_ice_surf"   );
+    auto diag_eff_radius_qc = coupler.dm.get_lev_col  <real>("diag_eff_radius_qc");
+    auto diag_eff_radius_qi = coupler.dm.get_lev_col  <real>("diag_eff_radius_qi");
+    auto bulk_qi            = coupler.dm.get_lev_col  <real>("bulk_qi"           );
+    auto mu_c               = coupler.dm.get_lev_col  <real>("mu_c"              );
+    auto lamc               = coupler.dm.get_lev_col  <real>("lamc"              );
+    auto qv2qi_depos_tend   = coupler.dm.get_lev_col  <real>("qv2qi_depos_tend"  );
+    auto precip_total_tend  = coupler.dm.get_lev_col  <real>("precip_total_tend" );
+    auto nevapr             = coupler.dm.get_lev_col  <real>("nevapr"            );
+    auto qr_evap_tend       = coupler.dm.get_lev_col  <real>("qr_evap_tend"      );
+    auto liq_ice_exchange   = coupler.dm.get_lev_col  <real>("liq_ice_exchange"  );
+    auto vap_liq_exchange   = coupler.dm.get_lev_col  <real>("vap_liq_exchange"  );
+    auto vap_ice_exchange   = coupler.dm.get_lev_col  <real>("vap_ice_exchange"  );
+    auto qv_prev            = coupler.dm.get_lev_col  <real>("qv_prev"           );
+    auto t_prev             = coupler.dm.get_lev_col  <real>("t_prev"            );
 
-    auto precip_liq_flux_dm = dm.get<real,4>("precip_liq_flux");
-    auto precip_ice_flux_dm = dm.get<real,4>("precip_ice_flux");
+    auto precip_liq_flux_dm = coupler.dm.get<real,4>("precip_liq_flux");
+    auto precip_ice_flux_dm = coupler.dm.get<real,4>("precip_ice_flux");
     real2d precip_liq_flux("precip_liq_flux",nz+1,ny*nx*nens);
     real2d precip_ice_flux("precip_ice_flux",nz+1,ny*nx*nens);
     parallel_for( "micro precip_flux" , SimpleBounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
@@ -309,7 +309,7 @@ public:
       precip_ice_flux(k,nx*nens*j + nens*i + iens) = precip_ice_flux_dm(k,j,i,iens);
     });
 
-    auto p3_tend_out_dm = dm.get<real,5>("p3_tend_out");
+    auto p3_tend_out_dm = coupler.dm.get<real,5>("p3_tend_out");
     real3d p3_tend_out("p3_tend_out",49,nz,ny*nx*nens);
     parallel_for( "micro tend_out" , SimpleBounds<5>(49,nz,ny,nx,nens) , YAKL_LAMBDA (int l, int k, int j, int i, int iens) {
       p3_tend_out(l,k,nx*nens*j + nens*i + iens) = p3_tend_out_dm(l,k,j,i,iens);

@@ -68,26 +68,26 @@ int main(int argc, char** argv) {
 
     real etime = 0;
 
-    if (outFreq >= 0) dycore.output( coupler.dm , etime );
+    if (outFreq >= 0) dycore.output( coupler , etime );
 
     real dtphys = dtphys_in;
     while (etime < simTime) {
-      if (dtphys_in == 0.) { dtphys = dycore.compute_time_step(coupler.dm); }
+      if (dtphys_in == 0.) { dtphys = dycore.compute_time_step(coupler); }
       if (etime + dtphys > simTime) { dtphys = simTime - etime; }
 
       yakl::timer_start("micro");
-      micro.timeStep( coupler.dm , dtphys );
+      micro.timeStep( coupler , dtphys );
       yakl::timer_stop("micro");
 
       yakl::timer_start("dycore");
-      dycore.timeStep( coupler.dm , dtphys );
+      dycore.timeStep( coupler , dtphys );
       yakl::timer_stop("dycore");
 
       etime += dtphys;
       if (outFreq >= 0. && etime / outFreq >= numOut+1) {
         std::cout << "Etime , dtphys: " << etime << " , " << dtphys << "\n";
         yakl::timer_start("output");
-        dycore.output( coupler.dm , etime );
+        dycore.output( coupler , etime );
         yakl::timer_stop("output");
         numOut++;
       }
@@ -95,7 +95,7 @@ int main(int argc, char** argv) {
 
     std::cout << "Elapsed Time: " << etime << "\n";
 
-    dycore.finalize( coupler.dm );
+    dycore.finalize( coupler );
 
     yakl::timer_stop("main");
   }

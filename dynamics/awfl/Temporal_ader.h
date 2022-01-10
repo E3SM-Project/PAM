@@ -54,13 +54,13 @@ public:
   }
 
 
-  void output(DataManager &dm, real etime) const {
-    space_op.output(dm , etime);
+  void output(PamCoupler &coupler, real etime) const {
+    space_op.output(coupler , etime);
   }
 
 
-  real compute_time_step(DataManager &dm, real cfl_in = -1) {
-    return space_op.compute_time_step(dm, cfl_in);
+  real compute_time_step(PamCoupler &coupler, real cfl_in = -1) {
+    return space_op.compute_time_step(coupler, cfl_in);
   }
 
 
@@ -96,19 +96,19 @@ public:
   }
 
 
-  void timeStep( DataManager &dm , real dtphys ) {
+  void timeStep( PamCoupler &coupler , real dtphys ) {
     YAKL_SCOPE( stateTend       , this->stateTend           );
     YAKL_SCOPE( tracerTend      , this->tracerTend          );
     YAKL_SCOPE( sponge_cells    , this->sponge_cells        );
     YAKL_SCOPE( sponge_strength , this->sponge_strength     );
     YAKL_SCOPE( hyDensCells     , this->space_op.hyDensCells);
 
-    real dt = compute_time_step( dm );
+    real dt = compute_time_step( coupler );
 
-    space_op.convert_coupler_state_to_dynamics( dm );
+    space_op.convert_coupler_state_to_dynamics( coupler.dm );
 
-    real5d state   = dm.get<real,5>("dynamics_state");
-    real5d tracers = dm.get<real,5>("dynamics_tracers");
+    real5d state   = coupler.dm.get<real,5>("dynamics_state");
+    real5d tracers = coupler.dm.get<real,5>("dynamics_tracers");
 
     int idR         = space_op.idR;
     int idU         = space_op.idU;
@@ -132,7 +132,7 @@ public:
         validate_array_positive(tracers);
         validate_array_inf_nan(state);
         validate_array_inf_nan(tracers);
-        std::vector<real> mass_init = compute_mass( dm );
+        std::vector<real> mass_init = compute_mass( coupler.dm );
       #endif
 
       ScalarLiveOut<bool> neg_too_large(false);
@@ -165,7 +165,7 @@ public:
           std::cerr << "WARNING: Correcting a non-machine-precision negative tracer value" << std::endl;
           // endrun();
         }
-        std::vector<real> mass_final = compute_mass( dm );
+        std::vector<real> mass_final = compute_mass( coupler.dm );
         for (int l=0; l < mass_final.size(); l++) {
           real mass_diff;
           if (mass_init[l] > 0) {
@@ -190,8 +190,8 @@ public:
       space_op.switch_directions();
 
       if (sponge_cells > 0) {
-        real2d zint = dm.get<real,2>("vertical_interface_height");
-        real2d zmid = dm.get<real,2>("vertical_midpoint_height");
+        real2d zint = coupler.dm.get<real,2>("vertical_interface_height");
+        real2d zmid = coupler.dm.get<real,2>("vertical_midpoint_height");
         parallel_for( "Sponge" , SimpleBounds<4>(sponge_cells,ny,nx,nens) , YAKL_LAMBDA (int kk, int j, int i, int iens) {
           int k = nz-1-kk;
           real z1 = zint(nz-sponge_cells,iens);
@@ -217,11 +217,11 @@ public:
 
     }
 
-    space_op.convert_dynamics_to_coupler_state( dm );
+    space_op.convert_dynamics_to_coupler_state( coupler.dm );
   }
 
 
-  void finalize(DataManager &dm) { }
+  void finalize(PamCoupler &coupler) { }
 
 
   const char * dycore_name() const { return "AWFL"; }
