@@ -174,6 +174,7 @@ public:
     YAKL_SCOPE( Rd               , this->Rd               );
     YAKL_SCOPE( Rv               , this->Rv               );
     YAKL_SCOPE( tracer_adds_mass , this->tracer_adds_mass );
+    YAKL_SCOPE( idWV , this->idWV );
 
     MultipleFields<max_tracers,real4d> dm_tracers;
     for (int tr = 0; tr < num_tracers; tr++) {
@@ -247,6 +248,7 @@ public:
     YAKL_SCOPE( gllPts_ngll      , this->gllPts_ngll      );
     YAKL_SCOPE( dz               , this->dz               );
     YAKL_SCOPE( vert_interface   , this->vert_interface   );
+    YAKL_SCOPE( idWV             , this->idWV             );
 
     real5d state       = dm.get<real,5>( "dynamics_state"   );
     real5d tracers     = dm.get<real,5>( "dynamics_tracers" );
@@ -807,6 +809,7 @@ public:
     YAKL_SCOPE( vert_interface           , this->vert_interface          );
     YAKL_SCOPE( num_tracers              , this->num_tracers             );
     YAKL_SCOPE( tracer_adds_mass         , this->tracer_adds_mass        );
+    YAKL_SCOPE( idWV                     , this->idWV                    );
 
     real5d state   = coupler.dm.get<real,5>("dynamics_state"  );
     real5d tracers = coupler.dm.get<real,5>("dynamics_tracers");
