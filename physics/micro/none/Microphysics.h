@@ -74,22 +74,6 @@ public:
 
 
 
-  // The tracer masses are already output to file by the dycore.
-  // This is to output additional fields with an already opened netcdf file (nc)
-  void output(DataManager &dm, yakl::SimpleNetCDF &nc, int ulIndex, int iens) const {
-    // EXAMPLE BELOW:
-    // auto precl = dm.get<real,3>("precl");
-    // int nx = dm.get_dimension_size("x");
-    // int ny = dm.get_dimension_size("y");
-    // real2d data("data",ny,nx);
-    // parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
-    //   data(j,i) = precl(j,i,iens);
-    // });
-    // nc.write1(data.createHostCopy(),"precl",{"y","x"},ulIndex,"t");
-  }
-
-
-
   std::string micro_name() const {
     return "none";
   }

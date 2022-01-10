@@ -60,7 +60,7 @@ int main(int argc, char** argv) {
     #endif
 
     // Initialize the dry state
-    dycore.init_state_and_tracers( coupler.dm , micro );
+    dycore.init_state_and_tracers( coupler );
 
     // Now that we have an initial state, define hydrostasis for each ensemble member
     auto press = pam::compute_pressure_array( coupler.dm , micro.R_d , micro.R_v );
@@ -68,11 +68,11 @@ int main(int argc, char** argv) {
 
     real etime = 0;
 
-    if (outFreq >= 0) dycore.output( coupler.dm , micro , etime );
+    if (outFreq >= 0) dycore.output( coupler.dm , etime );
 
     real dtphys = dtphys_in;
     while (etime < simTime) {
-      if (dtphys_in == 0.) { dtphys = dycore.compute_time_step(coupler.dm, micro); }
+      if (dtphys_in == 0.) { dtphys = dycore.compute_time_step(coupler.dm); }
       if (etime + dtphys > simTime) { dtphys = simTime - etime; }
 
       yakl::timer_start("micro");
@@ -80,14 +80,14 @@ int main(int argc, char** argv) {
       yakl::timer_stop("micro");
 
       yakl::timer_start("dycore");
-      dycore.timeStep( coupler.dm , micro , dtphys );
+      dycore.timeStep( coupler.dm , dtphys );
       yakl::timer_stop("dycore");
 
       etime += dtphys;
       if (outFreq >= 0. && etime / outFreq >= numOut+1) {
         std::cout << "Etime , dtphys: " << etime << " , " << dtphys << "\n";
         yakl::timer_start("output");
-        dycore.output( coupler.dm , micro , etime );
+        dycore.output( coupler.dm , etime );
         yakl::timer_stop("output");
         numOut++;
       }

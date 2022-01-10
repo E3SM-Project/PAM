@@ -427,19 +427,6 @@ public:
 
 
 
-  void output(DataManager &dm, yakl::SimpleNetCDF &nc, int ulIndex, int iens) const {
-    auto precl = dm.get<real,3>("precl");
-    int nx = dm.get_dimension_size("x");
-    int ny = dm.get_dimension_size("y");
-    real2d data("data",ny,nx);
-    parallel_for( "kessler output" , SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
-      data(j,i) = precl(j,i,iens);
-    });
-    nc.write1(data.createHostCopy(),"precl",{"y","x"},ulIndex,"t");
-  }
-
-
-
   std::string micro_name() const {
     return "kessler";
   }

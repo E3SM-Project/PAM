@@ -646,15 +646,6 @@ public:
 
 
 
-
-  // These are outputs that are not tracer mass. Tracer mass is handled by the dycore instead
-  // This assumes the NetCDF handler "nc" is already open and will be closed later
-  // This is for a single ensemble index
-  void output(DataManager &dm, yakl::SimpleNetCDF &nc, int ulIndex, int iens) const {
-  }
-
-
-
   std::string micro_name() const {
     return "p3";
   }

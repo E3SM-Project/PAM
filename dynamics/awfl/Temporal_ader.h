@@ -34,15 +34,13 @@ public:
   }
 
 
-  template <class MICRO>
-  void convert_dynamics_to_coupler_state( DataManager &dm , MICRO &micro ) {
-    space_op.convert_dynamics_to_coupler_state( dm , micro );
+  void convert_dynamics_to_coupler_state( DataManager &dm ) {
+    space_op.convert_dynamics_to_coupler_state( dm );
   }
 
 
-  template <class MICRO>
-  void convert_coupler_state_to_dynamics( DataManager &dm , MICRO &micro ) {
-    space_op.convert_coupler_state_to_dynamics( dm , micro );
+  void convert_coupler_state_to_dynamics( DataManager &dm ) {
+    space_op.convert_coupler_state_to_dynamics( dm );
   }
 
 
@@ -51,27 +49,18 @@ public:
   }
 
 
-  template <class MICRO>
-  void init_state_and_tracers( DataManager &dm , MICRO const &micro ) {
-    space_op.init_state_and_tracers( dm , micro );
+  void init_state_and_tracers( PamCoupler &coupler ) {
+    space_op.init_state_and_tracers( coupler );
   }
 
 
-  template <class F, class MICRO>
-  void init_tracer_by_location(std::string name , F const &init_mass , DataManager &dm, MICRO const &micro) const {
-    space_op.init_tracer_by_location(name , init_mass , dm, micro);
+  void output(DataManager &dm, real etime) const {
+    space_op.output(dm , etime);
   }
 
 
-  template <class MICRO>
-  void output(DataManager &dm, MICRO const &micro, real etime) const {
-    space_op.output(dm , micro , etime);
-  }
-
-
-  template <class MICRO>
-  real compute_time_step(DataManager &dm, MICRO const &micro, real cfl_in = -1) {
-    return space_op.compute_time_step(dm, micro, cfl_in);
+  real compute_time_step(DataManager &dm, real cfl_in = -1) {
+    return space_op.compute_time_step(dm, cfl_in);
   }
 
 
@@ -107,17 +96,16 @@ public:
   }
 
 
-  template <class MICRO>
-  void timeStep( DataManager &dm , MICRO const &micro , real dtphys ) {
+  void timeStep( DataManager &dm , real dtphys ) {
     YAKL_SCOPE( stateTend       , this->stateTend           );
     YAKL_SCOPE( tracerTend      , this->tracerTend          );
     YAKL_SCOPE( sponge_cells    , this->sponge_cells        );
     YAKL_SCOPE( sponge_strength , this->sponge_strength     );
     YAKL_SCOPE( hyDensCells     , this->space_op.hyDensCells);
 
-    real dt = compute_time_step( dm , micro );
+    real dt = compute_time_step( dm );
 
-    space_op.convert_coupler_state_to_dynamics( dm , micro );
+    space_op.convert_coupler_state_to_dynamics( dm );
 
     real5d state   = dm.get<real,5>("dynamics_state");
     real5d tracers = dm.get<real,5>("dynamics_tracers");
@@ -154,7 +142,7 @@ public:
         real dtloc = dt;
 
         // Compute the tendencies for state and tracers
-        space_op.computeTendencies( state , stateTend , tracers , tracerTend , micro , dtloc , spl );
+        space_op.computeTendencies( state , stateTend , tracers , tracerTend , dtloc , spl );
 
         parallel_for( "Temporal_ader.h apply tendencies" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
           for (int l=0; l < num_state; l++) {
@@ -229,7 +217,7 @@ public:
 
     }
 
-    space_op.convert_dynamics_to_coupler_state( dm , micro );
+    space_op.convert_dynamics_to_coupler_state( dm );
   }
 
 

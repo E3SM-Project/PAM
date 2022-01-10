@@ -30,6 +30,8 @@ public:
   real C0   ;
   real Rv   ;
 
+  int idWV;  // Tracer index for water vapor (set in add_tracer by testing the tracer name against "water_vapor"
+
   real hydrostasis_parameters_sum;
 
   typedef real5d StateArr;  // Array of state variables (rho, rho*u, rho*v, rho*w, and rho*theta)
@@ -145,6 +147,7 @@ public:
   // When this class is created, initialize num_tracers to zero
   Spatial_operator() {
     num_tracers = 0;
+    idWV = -1;
   }
 
 
@@ -154,8 +157,7 @@ public:
 
 
 
-  template <class MICRO>
-  void convert_dynamics_to_coupler_state( DataManager &dm , MICRO &micro ) {
+  void convert_dynamics_to_coupler_state( DataManager &dm ) {
     real5d state       = dm.get<real,5>( "dynamics_state"   );
     real5d tracers     = dm.get<real,5>( "dynamics_tracers" );
     real4d dm_dens_dry = dm.get<real,4>( "density_dry"      );
@@ -172,8 +174,6 @@ public:
     YAKL_SCOPE( Rd               , this->Rd               );
     YAKL_SCOPE( Rv               , this->Rv               );
     YAKL_SCOPE( tracer_adds_mass , this->tracer_adds_mass );
-
-    int idWV = micro.get_water_vapor_index();
 
     MultipleFields<max_tracers,real4d> dm_tracers;
     for (int tr = 0; tr < num_tracers; tr++) {
@@ -225,8 +225,7 @@ public:
 
 
 
-  template <class MICRO>
-  void convert_coupler_state_to_dynamics( DataManager &dm , MICRO &micro ) {
+  void convert_coupler_state_to_dynamics( DataManager &dm ) {
     auto hy_params = dm.get<real,2>("hydrostasis_parameters");
 
     YAKL_SCOPE( hyPressureCells  , this->hyPressureCells  );
@@ -256,8 +255,6 @@ public:
     real4d dm_vvel     = dm.get<real,4>( "vvel"             );
     real4d dm_wvel     = dm.get<real,4>( "wvel"             );
     real4d dm_temp     = dm.get<real,4>( "temp"             );
-
-    int idWV = micro.get_water_vapor_index();
 
     MultipleFields<max_tracers,real4d> dm_tracers;
     for (int tr = 0; tr < num_tracers; tr++) {
@@ -358,15 +355,10 @@ public:
       tracer_adds_mass(tr) = adds_mass; // Store whether it adds mass (otherwise it's passive)
     });
 
+    if (name == std::string("water_vapor")) idWV = tr;
+
     // Return the index of this tracer to the caller
     return tr;
-  }
-
-
-
-  // Take an initially dry fluid state and adjust it to account for moist tracers
-  template <class MICRO>
-  void adjust_state_for_moisture(DataManager &dm , MICRO const &micro) const {
   }
 
 
@@ -409,8 +401,7 @@ public:
 
 
   // Given the model data and CFL value, compute the maximum stable time step
-  template <class MICRO>
-  real compute_time_step(DataManager &dm, MICRO const &micro, real cfl_in = -1) {
+  real compute_time_step(DataManager &dm, real cfl_in = -1) {
     real cfl = cfl_in;
     if (cfl < 0) cfl = 0.8;
 
@@ -773,15 +764,14 @@ public:
 
 
   // Initialize the state
-  template <class MICRO>
-  void init_state_and_tracers( DataManager &dm , MICRO const &micro ) {
-    Rd    = micro.R_d;
-    cp    = micro.cp_d;
-    gamma = micro.gamma_d;
-    p0    = micro.p0;
-    Rv    = micro.R_v;
+  void init_state_and_tracers( PamCoupler &coupler ) {
+    Rd    = coupler.R_d;
+    cp    = coupler.cp_d;
+    gamma = cp / (cp-Rd);
+    p0    = coupler.p0;
+    Rv    = coupler.R_v;
 
-    real kappa = micro.kappa_d;
+    real kappa = Rd/cp;
 
     C0 = pow( Rd * pow( p0 , -kappa ) , gamma );
 
@@ -818,8 +808,8 @@ public:
     YAKL_SCOPE( num_tracers              , this->num_tracers             );
     YAKL_SCOPE( tracer_adds_mass         , this->tracer_adds_mass        );
 
-    real5d state   = dm.get<real,5>("dynamics_state"  );
-    real5d tracers = dm.get<real,5>("dynamics_tracers");
+    real5d state   = coupler.dm.get<real,5>("dynamics_state"  );
+    real5d tracers = coupler.dm.get<real,5>("dynamics_tracers");
 
     // If the data_spec is thermal or ..., then initialize the domain with Exner pressure-based hydrostasis
     // This is mostly to make plotting potential temperature perturbation easier for publications
@@ -903,8 +893,6 @@ public:
         }
       });
 
-      int idWV = micro.get_water_vapor_index();
-
       parallel_for( "Spatial.h init_tracers" , SimpleBounds<4>(nz,ny,nx,nens) ,
                     YAKL_LAMBDA (int k, int j, int i, int iens) {
         tracers(idWV,hs+k,hs+j,hs+i,iens) = 0;
@@ -944,7 +932,7 @@ public:
         }
       });
 
-      int index_vapor = micro.get_water_vapor_index();
+      int index_vapor = idWV;
 
       parallel_for( "Spatial.h adjust_moisture" , SimpleBounds<4>(nz,ny,nx,nens) ,
                     YAKL_LAMBDA (int k, int j, int i, int iens) {
@@ -1147,8 +1135,7 @@ public:
       }
       nc.close();
 
-      int idWV = micro.get_water_vapor_index();
-      real5d tracers = dm.get<real,5>("dynamics_tracers");
+      real5d tracers = coupler.dm.get<real,5>("dynamics_tracers");
 
       parallel_for( "Spatial.h init_state 12" , SimpleBounds<4>(nz,ny,nx,nens) ,
                     YAKL_LAMBDA (int k, int j, int i, int iens) {
@@ -1220,46 +1207,45 @@ public:
 
     } // if (data_spec == DATA_SPEC_SUPERCELL)
 
-    convert_dynamics_to_coupler_state( dm , micro );
+    convert_dynamics_to_coupler_state( coupler.dm );
   }
 
 
 
   // Compute state and tendency time derivatives from the state
-  template <class MICRO>
   void computeTendencies( real5d &state   , real5d &stateTend  ,
                           real5d &tracers , real5d &tracerTend ,
-                          MICRO const &micro, real &dt , int splitIndex ) {
+                          real &dt , int splitIndex ) {
     if (sim2d) {
       if (dimSwitch) {
         if        (splitIndex == 0) {
-          computeTendenciesX( state , stateTend , tracers , tracerTend , micro , dt );
+          computeTendenciesX( state , stateTend , tracers , tracerTend , dt );
         } else if (splitIndex == 1) {
-          computeTendenciesZ( state , stateTend , tracers , tracerTend , micro , dt );
+          computeTendenciesZ( state , stateTend , tracers , tracerTend , dt );
         }
       } else {
         if        (splitIndex == 0) {
-          computeTendenciesZ( state , stateTend , tracers , tracerTend , micro , dt );
+          computeTendenciesZ( state , stateTend , tracers , tracerTend , dt );
         } else if (splitIndex == 1) {
-          computeTendenciesX( state , stateTend , tracers , tracerTend , micro , dt );
+          computeTendenciesX( state , stateTend , tracers , tracerTend , dt );
         }
       }
     } else {
       if (dimSwitch) {
         if        (splitIndex == 0) {
-          computeTendenciesX( state , stateTend , tracers , tracerTend , micro , dt );
+          computeTendenciesX( state , stateTend , tracers , tracerTend , dt );
         } else if (splitIndex == 1) {
-          computeTendenciesY( state , stateTend , tracers , tracerTend , micro , dt );
+          computeTendenciesY( state , stateTend , tracers , tracerTend , dt );
         } else if (splitIndex == 2) {
-          computeTendenciesZ( state , stateTend , tracers , tracerTend , micro , dt );
+          computeTendenciesZ( state , stateTend , tracers , tracerTend , dt );
         }
       } else {
         if        (splitIndex == 0) {
-          computeTendenciesZ( state , stateTend , tracers , tracerTend , micro , dt );
+          computeTendenciesZ( state , stateTend , tracers , tracerTend , dt );
         } else if (splitIndex == 1) {
-          computeTendenciesY( state , stateTend , tracers , tracerTend , micro , dt );
+          computeTendenciesY( state , stateTend , tracers , tracerTend , dt );
         } else if (splitIndex == 2) {
-          computeTendenciesX( state , stateTend , tracers , tracerTend , micro , dt );
+          computeTendenciesX( state , stateTend , tracers , tracerTend , dt );
         }
       }
     }
@@ -1273,10 +1259,9 @@ public:
 
 
 
-  template <class MICRO>
   void computeTendenciesX( real5d &state   , real5d &stateTend  ,
                            real5d &tracers , real5d &tracerTend ,
-                           MICRO const &micro, real &dt ) {
+                           real &dt ) {
     YAKL_SCOPE( nx                      , this->nx                     );
     YAKL_SCOPE( weno_scalars            , this->weno_scalars           );
     YAKL_SCOPE( weno_winds              , this->weno_winds             );
@@ -1643,10 +1628,9 @@ public:
 
 
 
-  template <class MICRO>
   void computeTendenciesY( real5d &state   , real5d &stateTend  ,
                            real5d &tracers , real5d &tracerTend ,
-                           MICRO const &micro, real &dt ) {
+                           real &dt ) {
     YAKL_SCOPE( ny                      , this->ny                     );
     YAKL_SCOPE( weno_scalars            , this->weno_scalars           );
     YAKL_SCOPE( weno_winds              , this->weno_winds             );
@@ -2000,10 +1984,9 @@ public:
 
 
 
-  template <class MICRO>
   void computeTendenciesZ( real5d &state   , real5d &stateTend  ,
                            real5d &tracers , real5d &tracerTend ,
-                           MICRO const &micro, real &dt ) {
+                           real &dt ) {
     YAKL_SCOPE( nz                      , this->nz                     );
     YAKL_SCOPE( weno_scalars            , this->weno_scalars           );
     YAKL_SCOPE( weno_winds              , this->weno_winds             );
@@ -2431,8 +2414,7 @@ public:
 
 
 
-  template <class MICRO>
-  void output(DataManager &dm, MICRO const &micro, real etime) const {
+  void output(DataManager &dm, real etime) const {
     YAKL_SCOPE( dx                    , this->dx                   );
     YAKL_SCOPE( dy                    , this->dy                   );
     YAKL_SCOPE( hyDensCells           , this->hyDensCells          );
@@ -2536,8 +2518,6 @@ public:
         });
         nc.write1(data.createHostCopy(),std::string("tracer_")+tracer_name[tr],{"z","y","x"},ulIndex,"t");
       }
-
-      micro.output(dm, nc, ulIndex, iens);
 
       // Close the file
       nc.close();
