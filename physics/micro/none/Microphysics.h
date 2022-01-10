@@ -9,32 +9,30 @@ public:
 
   int tracer_index_vapor;
 
-  struct Constants {
-    real R_d               ;
-    real cp_d              ;
-    real cv_d              ;
-    real gamma_d           ;
-    real kappa_d           ;
-    real R_v               ;
-    real cp_v              ;
-    real cv_v              ;
-    real p0                ;
-  };
-
-  Constants constants;
+  real R_d    ;
+  real cp_d   ;
+  real cv_d   ;
+  real gamma_d;
+  real kappa_d;
+  real R_v    ;
+  real cp_v   ;
+  real cv_v   ;
+  real p0     ;
+  real grav   ;
 
 
 
   Microphysics() {
-    constants.R_d         = 287.;
-    constants.cp_d        = 1003.;
-    constants.cv_d        = constants.cp_d - constants.R_d;
-    constants.gamma_d     = constants.cp_d / constants.cv_d;
-    constants.kappa_d     = constants.R_d  / constants.cp_d;
-    constants.R_v         = 461.;
-    constants.cp_v        = 1859;
-    constants.cv_v        = constants.R_v - constants.cp_v;
-    constants.p0          = 1.e5;
+    R_d     = 287.;
+    cp_d    = 1003.;
+    cv_d    = cp_d - R_d;
+    gamma_d = cp_d / cv_d;
+    kappa_d = R_d  / cp_d;
+    R_v     = 461.;
+    cp_v    = 1859;
+    cv_v    = R_v - cp_v;
+    p0      = 1.e5;
+    grav    = 9.81;
   }
 
 

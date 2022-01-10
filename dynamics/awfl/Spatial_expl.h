@@ -773,13 +773,13 @@ public:
   // Initialize the state
   template <class MICRO>
   void init_state_and_tracers( DataManager &dm , MICRO const &micro ) {
-    Rd    = micro.constants.R_d;
-    cp    = micro.constants.cp_d;
-    gamma = micro.constants.gamma_d;
-    p0    = micro.constants.p0;
-    Rv    = micro.constants.R_v;
+    Rd    = micro.R_d;
+    cp    = micro.cp_d;
+    gamma = micro.gamma_d;
+    p0    = micro.p0;
+    Rv    = micro.R_v;
 
-    real kappa = micro.constants.kappa_d;
+    real kappa = micro.kappa_d;
 
     C0 = pow( Rd * pow( p0 , -kappa ) , gamma );
 

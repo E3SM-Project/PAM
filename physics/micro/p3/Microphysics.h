@@ -39,18 +39,16 @@ public:
   // Doesn't actually have to be static or constexpr. Could be assigned in the constructor
   int static constexpr num_tracers = 9;
 
-  // You should set these int he constructor
-  struct Constants {
-    real R_d    ;
-    real cp_d   ;
-    real cv_d   ;
-    real gamma_d;
-    real kappa_d;
-    real R_v    ;
-    real cp_v   ;
-    real cv_v   ;
-    real p0     ;
-  };
+  // You should set these in the constructor
+  real R_d    ;
+  real cp_d   ;
+  real cv_d   ;
+  real gamma_d;
+  real kappa_d;
+  real R_v    ;
+  real cp_v   ;
+  real cv_v   ;
+  real p0     ;
 
   real grav;
   real cp_l;
@@ -59,8 +57,6 @@ public:
   int tracer_index_vapor;
 
   bool first_step;
-
-  Constants constants;
 
   SArray<int,1,num_tracers> tracer_IDs; // tracer index for microphysics tracers
 
@@ -80,18 +76,18 @@ public:
   // TODO: Make sure the constants vibe with P3
   // Set constants and likely num_tracers as well, and anything else you can do immediately
   Microphysics() {
-    constants.R_d     = 287.;
-    constants.cp_d    = 1003.;
-    constants.cv_d    = constants.cp_d - constants.R_d;
-    constants.gamma_d = constants.cp_d / constants.cv_d;
-    constants.kappa_d = constants.R_d  / constants.cp_d;
-    constants.R_v     = 461.;
-    constants.cp_v    = 1859;
-    constants.cv_v    = constants.R_v - constants.cp_v;
-    constants.p0      = 1.e5;
-    grav              = 9.81;
-    first_step        = true;
-    cp_l              = 4218.;
+    R_d        = 287.;
+    cp_d       = 1003.;
+    cv_d       = cp_d - R_d;
+    gamma_d    = cp_d / cv_d;
+    kappa_d    = R_d  / cp_d;
+    R_v        = 461.;
+    cp_v       = 1859;
+    cv_v       = R_v - cp_v;
+    p0         = 1.e5;
+    grav       = 9.81;
+    first_step = true;
+    cp_l       = 4218.;
   }
 
 
@@ -240,7 +236,7 @@ public:
     real pi     = M_PI;
     int  iulog  = 1;
     bool masterproc = true;
-    micro_p3_utils_init_fortran( constants.cp_d , constants.R_d , constants.R_v , rhoh2o , mwh2o , mwdry ,
+    micro_p3_utils_init_fortran( cp_d , R_d , R_v , rhoh2o , mwh2o , mwdry ,
                                  grav , latvap , latice, cp_l , tmelt , pi , iulog , masterproc );
 
     std::string dir = "../../physics/micro/p3";
@@ -344,13 +340,13 @@ public:
     // Compute quantities needed for inputs to P3
     //////////////////////////////////////////////////////////////////////////////
     // Force constants into local scope
-    real gamma_d = this->constants.gamma_d;
-    real R_d     = this->constants.R_d;
-    real R_v     = this->constants.R_v;
-    real cp_d    = this->constants.cp_d;
-    real cp_v    = this->constants.cp_v;
+    real gamma_d = this->gamma_d;
+    real R_d     = this->R_d;
+    real R_v     = this->R_v;
+    real cp_d    = this->cp_d;
+    real cp_v    = this->cp_v;
     real cp_l    = this->cp_l;
-    real p0      = this->constants.p0;
+    real p0      = this->p0;
 
     YAKL_SCOPE( first_step , this->first_step );
     YAKL_SCOPE( grav       , this->grav       );

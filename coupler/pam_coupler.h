@@ -176,31 +176,35 @@ namespace pam {
   class PamCoupler {
     public:
 
-    real R_d;
-    real R_v;
-    real grav;
+    real R_d;   // Dry air gas constant
+    real R_v;   // Water vapor gas constant
+    real cp_d;  // Dry air specific heat at constant pressure
+    real cp_v;  // Water vapor specific heat at constant pressure
+    real grav;  // Acceleration due to gravity (m s^-2): typically 9.81
+    real p0;    // Reference pressure (Pa): typically 10^5
 
     DataManager dm;
 
 
+
     PamCoupler() {
-      R_d  = 287.;
-      R_v  = 461.;
-      grav = 9.8;
+      this->R_d  = 287 ;
+      this->R_v  = 461 ;
+      this->cp_d = 1004;
+      this->cp_v = 1859;
+      this->grav = 9.81;
+      this->p0   = 1.e5;
     }
 
 
 
-    PamCoupler(real R_d, real R_v) {
-      this->R_d = R_d;
-      this->R_v = R_v;
-    }
-
-
-
-    inline void set_gas_constants(real R_d, real R_v) {
-      this->R_d = R_d;
-      this->R_v = R_v;
+    inline void set_phys_constants(real R_d, real R_v, real cp_d, real cp_v, real grav=9.81, real p0=1.e5) {
+      this->R_d  = R_d ;
+      this->R_v  = R_v ;
+      this->cp_d = cp_d;
+      this->cp_v = cp_v;
+      this->grav = grav;
+      this->p0   = p0  ;
     }
 
 

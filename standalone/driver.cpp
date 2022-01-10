@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
     Microphysics micro;
 
     // Use microphysics gas constants values in the coupler
-    coupler.set_gas_constants(micro.constants.R_d , micro.constants.R_v);
+    coupler.set_phys_constants( micro.R_d , micro.R_v , micro.cp_d , micro.cp_v , micro.grav , micro.p0 );
 
     // Allocate coupler state
     coupler.allocate_coupler_state( nz , ny , nx , nens );
@@ -63,7 +63,7 @@ int main(int argc, char** argv) {
     dycore.init_state_and_tracers( coupler.dm , micro );
 
     // Now that we have an initial state, define hydrostasis for each ensemble member
-    auto press = pam::compute_pressure_array( coupler.dm , micro.constants.R_d , micro.constants.R_v );
+    auto press = pam::compute_pressure_array( coupler.dm , micro.R_d , micro.R_v );
     coupler.update_hydrostasis( press );
 
     real etime = 0;
