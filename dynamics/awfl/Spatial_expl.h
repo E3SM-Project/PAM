@@ -902,22 +902,19 @@ public:
 
               real wt = gllWts_ord(kk) * gllWts_ord(jj) * gllWts_ord(ii);
               tracers(idWV,hs+k,hs+j,hs+i,iens) += r_v / (rh+r_v) * rh * wt;
+              for (int tr=0; tr < num_tracers; tr++) {
+                if (tr != idWV) tracers(tr,hs+k,hs+j,hs+i,iens) = 0;
+              }
             }
           }
         }
       });
 
-      int index_vapor = idWV;
-
       parallel_for( "Spatial.h adjust_moisture" , SimpleBounds<4>(nz,ny,nx,nens) ,
                     YAKL_LAMBDA (int k, int j, int i, int iens) {
         // Add tracer density to dry density if it adds mass
         real rho_dry = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens);
-        for (int tr=0; tr < num_tracers; tr++) {
-          if (tracer_adds_mass(tr)) {
-            state(idR,hs+k,hs+j,hs+i,iens) += tracers(tr,hs+k,hs+j,hs+i,iens);
-          }
-        }
+        state(idR,hs+k,hs+j,hs+i,iens) += tracers(idWV,hs+k,hs+j,hs+i,iens);
         real rho_moist = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens);
 
         // Adjust momenta for moist density
@@ -931,7 +928,7 @@ public:
         real temp  = press / Rd / rho_dry;         // Temp (same dry or moist)
 
         // Compute moist theta
-        real rho_v = tracers(index_vapor,hs+k,hs+j,hs+i,iens);
+        real rho_v = tracers(idWV,hs+k,hs+j,hs+i,iens);
         real R_moist = Rd * (rho_dry / rho_moist) + Rv * (rho_v / rho_moist);
         real press_moist = rho_moist * R_moist * temp;
         real rho_theta_moist = pow( press_moist / C0 , 1._fp/gamma );
