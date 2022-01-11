@@ -62,8 +62,8 @@ int main(int argc, char** argv) {
       std::cout << "Micro : " << micro .micro_name() << std::endl;
     #endif
 
-    // Initialize the dry state
-    dycore.init2( coupler );
+    // Only for the idealized standalone driver; clearly not going to be used for the MMF driver
+    dycore.init_idealized_state_and_tracers( coupler );
 
     // Now that we have an initial state, define hydrostasis for each ensemble member
     coupler.update_hydrostasis( coupler.compute_pressure_array() );

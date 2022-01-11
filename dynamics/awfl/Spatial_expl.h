@@ -5,7 +5,7 @@
 #include "TransformMatrices.h"
 #include "TransformMatrices_variable.h"
 #include "WenoLimiter.h"
-#include "Profiles.h"
+#include "idealized_profiles.h"
 #include "DataManager.h"
 #include "pam_coupler.h"
 
@@ -97,8 +97,6 @@ public:
 
   bool sim2d;  // Whether we're simulating in 2-D
 
-  real sim_time;  // How long to simulate
-
   // Grid spacing in each dimension
   real dx;
   real dy;
@@ -158,14 +156,12 @@ public:
 
 
 
-  void convert_dynamics_to_coupler_state( DataManager &dm ) {
-    real5d state       = dm.get<real,5>( "dynamics_state"   );
-    real5d tracers     = dm.get<real,5>( "dynamics_tracers" );
-    real4d dm_dens_dry = dm.get<real,4>( "density_dry"      );
-    real4d dm_uvel     = dm.get<real,4>( "uvel"             );
-    real4d dm_vvel     = dm.get<real,4>( "vvel"             );
-    real4d dm_wvel     = dm.get<real,4>( "wvel"             );
-    real4d dm_temp     = dm.get<real,4>( "temp"             );
+  void convert_dynamics_to_coupler_state( PamCoupler &coupler , real5d &state , real5d &tracers ) {
+    real4d dm_dens_dry = coupler.dm.get<real,4>( "density_dry"      );
+    real4d dm_uvel     = coupler.dm.get<real,4>( "uvel"             );
+    real4d dm_vvel     = coupler.dm.get<real,4>( "vvel"             );
+    real4d dm_wvel     = coupler.dm.get<real,4>( "wvel"             );
+    real4d dm_temp     = coupler.dm.get<real,4>( "temp"             );
 
     YAKL_SCOPE( hyDensCells      , this->hyDensCells      );
     YAKL_SCOPE( hyDensThetaCells , this->hyDensThetaCells );
@@ -179,7 +175,7 @@ public:
 
     MultipleFields<max_tracers,real4d> dm_tracers;
     for (int tr = 0; tr < num_tracers; tr++) {
-      auto trac = dm.get<real,4>( tracer_name[tr] );
+      auto trac = coupler.dm.get<real,4>( tracer_name[tr] );
       dm_tracers.add_field( trac );
     }
 
@@ -227,8 +223,8 @@ public:
 
 
 
-  void convert_coupler_state_to_dynamics( DataManager &dm ) {
-    auto hy_params = dm.get<real,2>("hydrostasis_parameters");
+  void convert_coupler_state_to_dynamics( PamCoupler &coupler , real5d &state , real5d &tracers ) {
+    auto hy_params = coupler.dm.get<real,2>("hydrostasis_parameters");
 
     YAKL_SCOPE( hyPressureCells  , this->hyPressureCells  );
     YAKL_SCOPE( hyThetaCells     , this->hyThetaCells     );
@@ -252,17 +248,15 @@ public:
     YAKL_SCOPE( idWV             , this->idWV             );
     YAKL_SCOPE( grav             , this->grav             );
 
-    real5d state       = dm.get<real,5>( "dynamics_state"   );
-    real5d tracers     = dm.get<real,5>( "dynamics_tracers" );
-    real4d dm_dens_dry = dm.get<real,4>( "density_dry"      );
-    real4d dm_uvel     = dm.get<real,4>( "uvel"             );
-    real4d dm_vvel     = dm.get<real,4>( "vvel"             );
-    real4d dm_wvel     = dm.get<real,4>( "wvel"             );
-    real4d dm_temp     = dm.get<real,4>( "temp"             );
+    real4d dm_dens_dry = coupler.dm.get<real,4>( "density_dry"      );
+    real4d dm_uvel     = coupler.dm.get<real,4>( "uvel"             );
+    real4d dm_vvel     = coupler.dm.get<real,4>( "vvel"             );
+    real4d dm_wvel     = coupler.dm.get<real,4>( "wvel"             );
+    real4d dm_temp     = coupler.dm.get<real,4>( "temp"             );
 
     MultipleFields<max_tracers,real4d> dm_tracers;
     for (int tr = 0; tr < num_tracers; tr++) {
-      auto trac = dm.get<real,4>( tracer_name[tr] );
+      auto trac = coupler.dm.get<real,4>( tracer_name[tr] );
       dm_tracers.add_field( trac );
     }
 
@@ -411,8 +405,12 @@ public:
       YAKL_SCOPE( C0                   , this->C0                  );
 
       // Convert data from DataManager to state and tracers array for convenience
-      real5d state   = coupler.dm.get<real,5>("dynamics_state");
-      real5d tracers = coupler.dm.get<real,5>("dynamics_tracers");
+      real4d dm_dens_dry = coupler.dm.get<real,4>( "density_dry" );
+      real4d dm_uvel     = coupler.dm.get<real,4>( "uvel"        );
+      real4d dm_vvel     = coupler.dm.get<real,4>( "vvel"        );
+      real4d dm_wvel     = coupler.dm.get<real,4>( "wvel"        );
+      real4d dm_temp     = coupler.dm.get<real,4>( "temp"        );
+      real4d dm_dens_vap = coupler.dm.get<real,4>( "water_vapor" );
 
       // Allocate a 3-D array for the max stable time steps (we'll use this for a reduction later)
       real4d dt3d("dt3d",nz,ny,nx,nens);
@@ -420,16 +418,16 @@ public:
       // Loop through the cells, calculate the max stable time step for each cell
       parallel_for( "Spatial.h compute_time_step" , SimpleBounds<4>(nz,ny,nx,nens) ,
                     YAKL_LAMBDA (int k, int j, int i, int iens) {
-        // Get the state
-        real r = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens);
-        real u = state(idU,hs+k,hs+j,hs+i,iens) / r;
-        real v = state(idV,hs+k,hs+j,hs+i,iens) / r;
-        real w = state(idW,hs+k,hs+j,hs+i,iens) / r;
-        real t = ( state(idT,hs+k,hs+j,hs+i,iens) + hyDensThetaCells(k,iens) ) / r;
-        real p = C0*pow(r*t,gamma);
-
-        // Compute the speed of sound (constant kappa assumption)
-        real cs = sqrt(gamma*p/r);
+        real rho_d = dm_dens_dry(k,j,i,iens);
+        real u     = dm_uvel    (k,j,i,iens);
+        real v     = dm_vvel    (k,j,i,iens);
+        real w     = dm_wvel    (k,j,i,iens);
+        real temp  = dm_temp    (k,j,i,iens);
+        real rho_v = dm_dens_vap(k,j,i,iens);
+        real p = Rd * rho_d * temp + Rv * rho_v * temp;
+        // This neglects non-wv mass-adding tracers, but these are small, and their lack only increases cs
+        // Thus the resulting time step is conservative w/r to these missing masses, which is more stable
+        real cs = sqrt(gamma*p/(rho_v+rho_d));
 
         // Compute the maximum stable time step in each direction
         real udt = cfl * dx         / max( abs(u-cs) , abs(u+cs) );
@@ -451,8 +449,6 @@ public:
   // Initialize crap needed by recon()
   void init(int ny, int nx, int nens, real xlen, real ylen, int num_tracers, PamCoupler &coupler) {
     using yakl::intrinsics::matmul_cr;
-
-    std::string inFile = coupler.get_note( "standalone_input_file" );
 
     this->nens = nens;
     this->nx = nx;
@@ -480,7 +476,19 @@ public:
     dtInit = 0;
     dimSwitch = true;
 
-    #if defined(PAM_STANDALONE)
+    std::string inFile = coupler.get_note( "standalone_input_file" );
+
+    // If inFile is empty, then we aren't reading in an input file
+    if (inFile == std::string("")) {
+      weno_scalars            = true;
+      weno_winds              = true;
+      data_spec               = DATA_SPEC_EXTERNAL;
+      bc_x                    = BC_PERIODIC;
+      bc_y                    = BC_PERIODIC;
+      bc_z                    = BC_WALL;
+      out_prefix              = "test";
+      balance_initial_density = false;
+    } else {
       // Read the YAML input file
       YAML::Node config = YAML::LoadFile(inFile);
 
@@ -532,20 +540,7 @@ public:
       out_prefix = config["out_prefix"].as<std::string>();
 
       balance_initial_density = config["balance_initial_density"].as<bool>();
-
-      sim_time = config["simTime"].as<real>();
-
-    #else
-      weno_scalars            = true;
-      weno_winds              = true;
-      data_spec               = DATA_SPEC_SUPERCELL;
-      bc_x                    = BC_PERIODIC;
-      bc_y                    = BC_PERIODIC;
-      bc_z                    = BC_WALL;
-      out_prefix              = "test";
-      balance_initial_density = false;
-      sim_time                = 900;
-    #endif
+    }
 
     // Determine whether this is a 2-D simulation
     sim2d = ny == 1;
@@ -729,26 +724,6 @@ public:
     hyThetaGLL       = real3d("hyThetaGLL        ",nz,ngll,nens);
     hyDensThetaGLL   = real3d("hyDensThetaGLL    ",nz,ngll,nens);
 
-    // Register and allocate state data with the DataManager
-    coupler.dm.register_and_allocate<real>( "dynamics_state"   , "dynamics state"   ,
-                                            {num_state  ,nz+2*hs,ny+2*hs,nx+2*hs,nens} ,
-                                            {"num_state"  ,"nz_halo","ny_halo","nx_halo","nens"} );
-    coupler.dm.register_and_allocate<real>( "dynamics_tracers" , "dynamics tracers" ,
-                                            {num_tracers,nz+2*hs,ny+2*hs,nx+2*hs,nens} ,
-                                            {"num_tracers","nz_halo","ny_halo","nx_halo","nens"} );
-
-    auto state   = coupler.dm.get<real,5>("dynamics_state");
-    auto tracers = coupler.dm.get<real,5>("dynamics_tracers");
-    parallel_for( "Spatial.h init 4" , SimpleBounds<4>(nz+2*hs,ny+2*hs,nx+2*hs,nens) ,
-                  YAKL_LAMBDA (int k, int j, int i, int iens) {
-      for (int l=0; l < num_state; l++) {
-        state(l,k,j,i,iens) = 0;
-      }
-      for (int tr=0; tr < num_tracers; tr++) {
-        tracers(tr,k,j,i,iens) = 0;
-      }
-    });
-
     #ifdef PAM_STANDALONE
       std::cout << "nx: " << nx << "\n";
       std::cout << "ny: " << ny << "\n";
@@ -757,7 +732,6 @@ public:
       std::cout << "ylen (m): " << ylen << "\n";
       std::cout << "zbot (m): " << zbot.createHostCopy()(0) << "\n";
       std::cout << "ztop (m): " << ztop.createHostCopy()(0) << "\n";
-      std::cout << "Simulation time (s): " << sim_time << "\n";
       std::cout << "Vertical interface heights: ";
       auto zint_host = zint.createHostCopy();
       for (int k=0; k < nz+1; k++) {
@@ -770,7 +744,7 @@ public:
 
 
   // Initialize the state
-  void init2( PamCoupler &coupler ) {
+  void init_idealized_state_and_tracers( PamCoupler &coupler ) {
     YAKL_SCOPE( nx                       , this->nx                      );
     YAKL_SCOPE( ny                       , this->ny                      );
     YAKL_SCOPE( nz                       , this->nz                      );
@@ -806,8 +780,11 @@ public:
     YAKL_SCOPE( idWV                     , this->idWV                    );
     YAKL_SCOPE( grav                     , this->grav                    );
 
-    real5d state   = coupler.dm.get<real,5>("dynamics_state"  );
-    real5d tracers = coupler.dm.get<real,5>("dynamics_tracers");
+    // If data's being specified by the driver externally, then there's nothing to do here
+    if (data_spec == DATA_SPEC_EXTERNAL) return;
+
+    real5d state   = createStateArr();
+    real5d tracers = createTracerArr();
 
     // If the data_spec is thermal or ..., then initialize the domain with Exner pressure-based hydrostasis
     // This is mostly to make plotting potential temperature perturbation easier for publications
@@ -1205,7 +1182,7 @@ public:
 
     } // if (data_spec == DATA_SPEC_SUPERCELL)
 
-    convert_dynamics_to_coupler_state( coupler.dm );
+    convert_dynamics_to_coupler_state( coupler , state , tracers );
   }
 
 
@@ -2413,7 +2390,7 @@ public:
 
 
 
-  void output(PamCoupler &coupler, real etime) const {
+  void output(PamCoupler &coupler, real etime) {
     YAKL_SCOPE( dx                    , this->dx                   );
     YAKL_SCOPE( dy                    , this->dy                   );
     YAKL_SCOPE( hyDensCells           , this->hyDensCells          );
@@ -2422,6 +2399,10 @@ public:
     YAKL_SCOPE( hyPressureCells       , this->hyPressureCells      );
     YAKL_SCOPE( gamma                 , this->gamma                );
     YAKL_SCOPE( C0                    , this->C0                   );
+
+    real5d state   = createStateArr();
+    real5d tracers = createTracerArr();
+    convert_coupler_state_to_dynamics( coupler , state , tracers );
 
     for (int iens = 0; iens < nens; iens++) {
       std::string fname = out_prefix + std::string("_") + std::to_string(iens) + std::string(".nc");
@@ -2469,9 +2450,6 @@ public:
         // Write the elapsed time
         nc.write1(etime,"t",ulIndex,"t");
       }
-
-      real5d state   = coupler.dm.get<real,5>("dynamics_state");
-      real5d tracers = coupler.dm.get<real,5>("dynamics_tracers");
 
       real3d data("data",nz,ny,nx);
       // rho'

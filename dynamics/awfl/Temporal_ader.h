@@ -51,12 +51,12 @@ public:
   }
 
 
-  void init2( PamCoupler &coupler ) {
-    space_op.init2( coupler );
+  void init_idealized_state_and_tracers( PamCoupler &coupler ) {
+    space_op.init_idealized_state_and_tracers( coupler );
   }
 
 
-  void output(PamCoupler &coupler, real etime) const {
+  void output(PamCoupler &coupler, real etime) {
     space_op.output(coupler , etime);
   }
 
@@ -66,13 +66,11 @@ public:
   }
 
 
-  std::vector<real> compute_mass( DataManager &dm ) {
-    real5d state   = dm.get<real,5>("dynamics_state");
-    real5d tracers = dm.get<real,5>("dynamics_tracers");
-    int nz = dm.get_dimension_size("z");
-    int ny = dm.get_dimension_size("y");
-    int nx = dm.get_dimension_size("x");
-    int nens = dm.get_dimension_size("nens");
+  std::vector<real> compute_mass( PamCoupler &coupler , real5d &state , real5d &tracers ) {
+    int nz = coupler.dm.get_dimension_size("z");
+    int ny = coupler.dm.get_dimension_size("y");
+    int nx = coupler.dm.get_dimension_size("x");
+    int nens = coupler.dm.get_dimension_size("nens");
 
     int idR = Spatial::idR;
     int hs  = Spatial::hs;
@@ -107,10 +105,15 @@ public:
 
     real dt = compute_time_step( coupler );
 
-    space_op.convert_coupler_state_to_dynamics( coupler.dm );
+    real5d state   = space_op.createStateArr();
+    real5d tracers = space_op.createTracerArr();
 
-    real5d state   = coupler.dm.get<real,5>("dynamics_state");
-    real5d tracers = coupler.dm.get<real,5>("dynamics_tracers");
+    #ifdef PAM_DEBUG
+      memset(state   , 0._fp);
+      memset(tracers , 0._fp);
+    #endif
+
+    space_op.convert_coupler_state_to_dynamics( coupler , state , tracers );
 
     int idR         = space_op.idR;
     int idU         = space_op.idU;
@@ -134,7 +137,7 @@ public:
         validate_array_positive(tracers);
         validate_array_inf_nan(state);
         validate_array_inf_nan(tracers);
-        std::vector<real> mass_init = compute_mass( coupler.dm );
+        std::vector<real> mass_init = compute_mass( coupler , state , tracers );
       #endif
 
       ScalarLiveOut<bool> neg_too_large(false);
@@ -167,7 +170,7 @@ public:
           std::cerr << "WARNING: Correcting a non-machine-precision negative tracer value" << std::endl;
           // endrun();
         }
-        std::vector<real> mass_final = compute_mass( coupler.dm );
+        std::vector<real> mass_final = compute_mass( coupler , state , tracers );
         for (int l=0; l < mass_final.size(); l++) {
           real mass_diff;
           if (mass_init[l] > 0) {
@@ -219,7 +222,7 @@ public:
 
     }
 
-    space_op.convert_dynamics_to_coupler_state( coupler.dm );
+    space_op.convert_dynamics_to_coupler_state( coupler , state , tracers );
   }
 
 

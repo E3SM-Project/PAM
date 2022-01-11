@@ -64,6 +64,9 @@ public:
 
     // Register and allocate the tracers in the DataManager
     coupler.dm.register_and_allocate<real>( "water_vapor"   , "Water Vapor"   , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+
+    auto rho_v = coupler.dm.get<real,4>("water_vapor");
+    parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) { rho_v(k,j,i,iens) = 0; } );
   }
 
 
