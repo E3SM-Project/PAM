@@ -1,4 +1,6 @@
 
+#pragma once
+
 #include "pam_const.h"
 #include "pam_coupler.h"
 

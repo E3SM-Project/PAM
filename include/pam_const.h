@@ -21,6 +21,11 @@ int constexpr pam_ord = PAM_ORD;
 
 typedef double real;
 
+int constexpr max_fields = 50;
+
+template <class T, int N>
+using MultiField = MultipleFields< max_fields , Array<T,N,memDevice,styleC> >;
+
 YAKL_INLINE real constexpr operator"" _fp( long double x ) {
   return static_cast<real>(x);
 }
