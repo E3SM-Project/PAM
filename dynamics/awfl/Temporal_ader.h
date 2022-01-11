@@ -27,9 +27,14 @@ public:
 
     std::string inFile = coupler.get_note( "standalone_input_file" );
 
-    YAML::Node config = YAML::LoadFile(inFile);
-    sponge_cells    = config["sponge_cells"   ].as<int>();
-    sponge_strength = config["sponge_strength"].as<real>();
+    if (inFile != "") {
+      YAML::Node config = YAML::LoadFile(inFile);
+      sponge_cells    = config["sponge_cells"   ].as<int>();
+      sponge_strength = config["sponge_strength"].as<real>();
+    } else {
+      sponge_cells    = 0;
+      sponge_strength = 0;
+    }
 
     stateTend  = space_op.createStateTendArr ();
     tracerTend = space_op.createTracerTendArr();
