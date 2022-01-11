@@ -63,8 +63,7 @@ int main(int argc, char** argv) {
       std::cout << "Micro : " << micro .micro_name() << std::endl;
     #endif
 
-    // Only for the idealized standalone driver; clearly not going to be used for the MMF driver
-    dycore.init_idealized_state_and_tracers( coupler );
+    // TODO: Initialize CRM data using supercell background state
 
     // Now that we have an initial state, define hydrostasis for each ensemble member
     coupler.update_hydrostasis( coupler.compute_pressure_array() );
