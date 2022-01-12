@@ -22,8 +22,8 @@ public:
 
   Spatial space_op;
 
-  void init(real xlen, real ylen, int num_tracers, PamCoupler &coupler) {
-    space_op.init(xlen, ylen, num_tracers, coupler);
+  void init(int num_tracers, PamCoupler &coupler) {
+    space_op.init(num_tracers, coupler);
 
     std::string inFile = coupler.get_note( "standalone_input_file" );
 

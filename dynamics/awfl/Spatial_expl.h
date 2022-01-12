@@ -448,14 +448,14 @@ public:
 
 
   // Initialize crap needed by recon()
-  void init(real xlen, real ylen, int num_tracers, PamCoupler &coupler) {
+  void init(int num_tracers, PamCoupler &coupler) {
     using yakl::intrinsics::matmul_cr;
 
     this->nens = coupler.get_nens();
     this->nx = coupler.get_nx();
     this->ny = coupler.get_ny();
-    this->xlen = xlen;
-    this->ylen = ylen;
+    this->xlen = coupler.get_xlen();
+    this->ylen = coupler.get_ylen();
     this->num_tracers = num_tracers;
 
     this->hydrostasis_parameters_sum = 0;

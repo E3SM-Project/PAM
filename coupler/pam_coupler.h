@@ -98,6 +98,8 @@ namespace pam {
     real cp_v;  // Water vapor specific heat at constant pressure
     real grav;  // Acceleration due to gravity (m s^-2): typically 9.81
     real p0;    // Reference pressure (Pa): typically 10^5
+    real xlen;  // Domain length in the x-direction in meters
+    real ylen;  // Domain length in the y-direction in meters
 
     DataManager dm;
 
@@ -109,7 +111,15 @@ namespace pam {
       this->cp_v = 1859;
       this->grav = 9.81;
       this->p0   = 1.e5;
+      this->xlen = -1;
+      this->ylen = -1;
     }
+
+
+    real get_xlen() const { return this->xlen; }
+
+
+    real get_ylen() const { return this->ylen; }
 
 
     int get_nx() const {
@@ -171,9 +181,11 @@ namespace pam {
     }
 
 
-    inline void set_vertical_grid(real2d const &zint_in) {
+    inline void set_grid(real xlen, real ylen, real2d const &zint_in) {
       int nz    = get_nz();
       int nens  = get_nens();
+      this->xlen = xlen;
+      this->ylen = ylen;
       auto zint = dm.get<real,2>("vertical_interface_height");
       auto zmid = dm.get<real,2>("vertical_midpoint_height" );
       parallel_for( "vert grid 1" , SimpleBounds<2>(nz+1,nens) , YAKL_LAMBDA (int k, int iens) {
@@ -183,9 +195,11 @@ namespace pam {
     }
 
 
-    inline void set_vertical_grid(real1d const &zint_in) {
+    inline void set_grid(real xlen, real ylen, real1d const &zint_in) {
       int nz    = get_nz();
       int nens  = get_nens();
+      this->xlen = xlen;
+      this->ylen = ylen;
       auto zint = dm.get<real,2>("vertical_interface_height");
       auto zmid = dm.get<real,2>("vertical_midpoint_height" );
       parallel_for( "vert grid 2" , SimpleBounds<2>(nz+1,nens) , YAKL_LAMBDA (int k, int iens) {

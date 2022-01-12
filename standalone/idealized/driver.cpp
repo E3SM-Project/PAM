@@ -45,8 +45,8 @@ int main(int argc, char** argv) {
     // Allocate coupler state
     coupler.allocate_coupler_state( nz , ny , nx , nens );
 
-    // Set the vertical grid in the coupler
-    coupler.set_vertical_grid( zint_in );
+    // Set the horizontal domain lengths and the vertical grid in the coupler
+    coupler.set_grid( xlen , ylen , zint_in );
 
     int numOut = 0;
 
@@ -54,7 +54,7 @@ int main(int argc, char** argv) {
     coupler.add_note( "standalone_input_file" , inFile );
 
     // Initialize the dycore and the microphysics
-    dycore.init( xlen , ylen , micro.get_num_tracers() , coupler );
+    dycore.init( micro.get_num_tracers() , coupler );
     micro .init( dycore , coupler );
 
     #ifdef PAM_STANDALONE
