@@ -7,7 +7,7 @@ crm_nx   : 128
 crm_ny   : 1
 
 # Number of CRMs
-ncrms    : 1
+nens     : 1
 
 # Vertical height cooridnates file
 vcoords  : vcoords_tanh_60L_20km.nc

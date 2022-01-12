@@ -20,7 +20,7 @@ int main(int argc, char** argv) {
     real simTime     = config["simTime"    ].as<real>();
     int  crm_nx      = config["crm_nx"     ].as<int>();
     int  crm_ny      = config["crm_ny"     ].as<int>();
-    int  ncrms       = config["ncrms"      ].as<int>();
+    int  nens        = config["nens"       ].as<int>();
     real xlen        = config["xlen"       ].as<real>();
     real ylen        = config["ylen"       ].as<real>();
     real dt_gcm      = config["dt_gcm"     ].as<real>();
@@ -44,7 +44,7 @@ int main(int argc, char** argv) {
     coupler.set_phys_constants( micro.R_d , micro.R_v , micro.cp_d , micro.cp_v , micro.grav , micro.p0 );
 
     // Allocate coupler state
-    coupler.allocate_coupler_state( nz , ny , nx , nens );
+    coupler.allocate_coupler_state( nz , crm_ny , crm_nx , nens );
 
     // Set the vertical grid in the coupler
     coupler.set_vertical_grid( zint_in );
