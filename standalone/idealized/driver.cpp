@@ -54,8 +54,8 @@ int main(int argc, char** argv) {
     coupler.add_note( "standalone_input_file" , inFile );
 
     // Initialize the dycore and the microphysics
-    dycore.init( ny , nx , nens , xlen , ylen , micro.get_num_tracers() , coupler );
-    micro .init( ny , nx , nens , dycore , coupler );
+    dycore.init( xlen , ylen , micro.get_num_tracers() , coupler );
+    micro .init( dycore , coupler );
 
     #ifdef PAM_STANDALONE
       std::cout << "Dycore: " << dycore.dycore_name() << std::endl;

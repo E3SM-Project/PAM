@@ -22,8 +22,8 @@ public:
 
   Spatial space_op;
 
-  void init(int ny, int nx, int nens, real xlen, real ylen, int num_tracers, PamCoupler &coupler) {
-    space_op.init(ny, nx, nens, xlen, ylen, num_tracers, coupler);
+  void init(real xlen, real ylen, int num_tracers, PamCoupler &coupler) {
+    space_op.init(xlen, ylen, num_tracers, coupler);
 
     std::string inFile = coupler.get_note( "standalone_input_file" );
 
@@ -72,10 +72,10 @@ public:
 
 
   std::vector<real> compute_mass( PamCoupler &coupler , real5d &state , real5d &tracers ) {
-    int nz = coupler.dm.get_dimension_size("z");
-    int ny = coupler.dm.get_dimension_size("y");
-    int nx = coupler.dm.get_dimension_size("x");
-    int nens = coupler.dm.get_dimension_size("nens");
+    int nz   = coupler.get_nz();
+    int ny   = coupler.get_ny();
+    int nx   = coupler.get_nx();
+    int nens = coupler.get_nens();
 
     int idR = Spatial::idR;
     int hs  = Spatial::hs;

@@ -112,8 +112,11 @@ public:
   // Can do whatever you want, but mainly for registering tracers and allocating data
   // and storing the water vapor tracer index
   template <class DC>
-  void init(int ny, int nx, int nens , DC &dycore , PamCoupler &coupler) {
-    int nz = coupler.dm.get_dimension_size("z");
+  void init(DC &dycore , PamCoupler &coupler) {
+    int nx   = coupler.get_nx  ();
+    int ny   = coupler.get_ny  ();
+    int nz   = coupler.get_nz  ();
+    int nens = coupler.get_nens();
 
     // Register tracers in the dycore
     //                                        name                 description            positive   adds mass
@@ -242,7 +245,7 @@ public:
     micro_p3_utils_init_fortran( cp_d , R_d , R_v , rhoh2o , mwh2o , mwdry ,
                                  grav , latvap , latice, cp_l , tmelt , pi , iulog , masterproc );
 
-    std::string dir = "../../physics/micro/p3";
+    std::string dir = "../../../physics/micro/p3";
     std::string ver = "4";
     int dir_len = dir.length();
     int ver_len = ver.length();

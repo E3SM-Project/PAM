@@ -82,8 +82,11 @@ public:
   // Can do whatever you want, but mainly for registering tracers and allocating data
   // and storing the water vapor tracer index
   template <class DC>
-  void init(int ny, int nx, int nens , DC &dycore , PamCoupler &coupler) {
-    int nz = coupler.dm.get_dimension_size("z");
+  void init(DC &dycore , PamCoupler &coupler) {
+    int nx   = coupler.get_nx  ();
+    int ny   = coupler.get_ny  ();
+    int nz   = coupler.get_nz  ();
+    int nens = coupler.get_nens();
 
     // Register tracers in the dycore
     //                                        name            description                positive   adds mass

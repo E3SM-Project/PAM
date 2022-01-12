@@ -448,12 +448,12 @@ public:
 
 
   // Initialize crap needed by recon()
-  void init(int ny, int nx, int nens, real xlen, real ylen, int num_tracers, PamCoupler &coupler) {
+  void init(real xlen, real ylen, int num_tracers, PamCoupler &coupler) {
     using yakl::intrinsics::matmul_cr;
 
-    this->nens = nens;
-    this->nx = nx;
-    this->ny = ny;
+    this->nens = coupler.get_nens();
+    this->nx = coupler.get_nx();
+    this->ny = coupler.get_ny();
     this->xlen = xlen;
     this->ylen = ylen;
     this->num_tracers = num_tracers;
@@ -551,7 +551,7 @@ public:
     // Store vertical cell interface heights in the data manager
     auto zint = coupler.dm.get<real,2>("vertical_interface_height");
 
-    nz = coupler.dm.get_dimension_size("z");
+    nz = coupler.get_nz();
 
     // Get the height of the z-dimension
     zbot = real1d("zbot",nens);
