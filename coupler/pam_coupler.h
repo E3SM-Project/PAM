@@ -5,6 +5,7 @@
 #include "DataManager.h"
 #include "vertical_interp.h"
 #include "YAKL_netcdf.h"
+#include "Notes.h"
 
 
 namespace pam {
@@ -89,11 +90,7 @@ namespace pam {
   class PamCoupler {
     public:
 
-    struct Note {
-      std::string key;
-      std::string value;
-    };
-    std::vector<Note> notes;
+    Notes notes;
 
     real R_d;   // Dry air gas constant
     real R_v;   // Water vapor gas constant
@@ -118,16 +115,25 @@ namespace pam {
 
 
     void add_note( std::string key , std::string value ) {
-      notes.push_back({key,value});
+      notes.add_note(key,value);
     }
 
 
 
-    std::string get_note( std::string key ) {
-      for (int i=0; i < notes.size(); i++) {
-        if (key == notes[i].key) return notes[i].value;
-      }
-      return "";
+    std::string get_note( std::string key ) const {
+      return notes.get_note(key);
+    }
+
+
+
+    bool note_exists( std::string key ) const {
+      return notes.note_exists(key);
+    }
+
+
+
+    void delete_note( std::string key ) {
+      notes.delete_note(key);
     }
 
 
