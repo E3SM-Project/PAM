@@ -17,14 +17,15 @@ int main(int argc, char** argv) {
     std::string inFile(argv[1]);
     YAML::Node config = YAML::LoadFile(inFile);
     if ( !config            ) { endrun("ERROR: Invalid YAML input file"); }
-    real simTime   = config["simTime"].as<real>();
-    real outFreq   = config["outFreq"].as<real>();
-    int  nx        = config["nx"     ].as<int>();
-    int  ny        = config["ny"     ].as<int>();
-    int  nens      = config["nens"   ].as<int>();
-    real xlen      = config["xlen"   ].as<real>();
-    real ylen      = config["ylen"   ].as<real>();
-    real dtphys_in = config["dtphys" ].as<real>();
+    real simTime     = config["simTime"    ].as<real>();
+    int  crm_nx      = config["crm_nx"     ].as<int>();
+    int  crm_ny      = config["crm_ny"     ].as<int>();
+    int  ncrms       = config["ncrms"      ].as<int>();
+    real xlen        = config["xlen"       ].as<real>();
+    real ylen        = config["ylen"       ].as<real>();
+    real dt_gcm      = config["dt_gcm"     ].as<real>();
+    real dt_crm_phys = config["dt_crm_phys"].as<real>();
+    real outFreq     = config["outFreq"    ].as<real>();
 
     // Store vertical coordinates
     std::string vcoords_file = config["vcoords"].as<std::string>();
@@ -62,8 +63,7 @@ int main(int argc, char** argv) {
       std::cout << "Micro : " << micro .micro_name() << std::endl;
     #endif
 
-    // Only for the idealized standalone driver; clearly not going to be used for the MMF driver
-    dycore.init_idealized_state_and_tracers( coupler );
+    // TODO: Initialize CRM data using supercell background state
 
     // Now that we have an initial state, define hydrostasis for each ensemble member
     coupler.update_hydrostasis( coupler.compute_pressure_array() );

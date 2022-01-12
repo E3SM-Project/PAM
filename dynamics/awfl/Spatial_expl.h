@@ -502,6 +502,8 @@ public:
         data_spec = DATA_SPEC_THERMAL;
       } else if (dataStr == "supercell") {
         data_spec = DATA_SPEC_SUPERCELL;
+      } else if (dataStr == "external") {
+        data_spec = DATA_SPEC_EXTERNAL;
       } else {
         endrun("ERROR: Invalid data_spec");
       }
