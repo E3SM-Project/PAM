@@ -254,7 +254,7 @@ public:
 
 
 
-  void timeStep( PamCoupler &coupler , real dt ) {
+  void timeStep( PamCoupler &coupler , real dt , real etime ) {
 
     // Get the dimensions sizes
     int nz   = coupler.dm.get_dimension_size("z"   );

@@ -78,11 +78,11 @@ int main(int argc, char** argv) {
       if (etime + dtphys > simTime) { dtphys = simTime - etime; }
 
       yakl::timer_start("micro");
-      micro.timeStep( coupler , dtphys );
+      micro.timeStep( coupler , dtphys , etime );
       yakl::timer_stop("micro");
 
       yakl::timer_start("dycore");
-      dycore.timeStep( coupler , dtphys );
+      dycore.timeStep( coupler , dtphys , etime );
       yakl::timer_stop("dycore");
 
       etime += dtphys;

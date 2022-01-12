@@ -101,7 +101,7 @@ public:
   }
 
 
-  void timeStep( PamCoupler &coupler , real dtphys ) {
+  void timeStep( PamCoupler &coupler , real dtphys , real etime ) {
     YAKL_SCOPE( stateTend       , this->stateTend           );
     YAKL_SCOPE( tracerTend      , this->tracerTend          );
     YAKL_SCOPE( sponge_cells    , this->sponge_cells        );
