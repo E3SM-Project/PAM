@@ -10,7 +10,7 @@ public:
   struct Note {
     std::string key;
     std::string value;
-  }
+  };
 
   std::vector<Note> notes;
 
@@ -39,7 +39,7 @@ public:
 
   void delete_note( std::string key ) {
     for (int i=0; i < notes.size(); i++) {
-      if (key == notes[i].key) notes.erase(i);
+      if (key == notes[i].key) notes.erase(notes.begin()+i);
     }
   }
 };

@@ -102,7 +102,6 @@ namespace pam {
     DataManager dm;
 
 
-
     PamCoupler() {
       this->R_d  = 287 ;
       this->R_v  = 461 ;
@@ -113,11 +112,38 @@ namespace pam {
     }
 
 
+    int get_nx() const {
+      if (dm.find_dimension("x") == -1) return -1;
+      return dm.get_dimension_size("x");
+    }
+
+
+    int get_ny() const {
+      if (dm.find_dimension("y") == -1) return -1;
+      return dm.get_dimension_size("y");
+    }
+
+
+    int get_nz() const {
+      if (dm.find_dimension("z") == -1) return -1;
+      return dm.get_dimension_size("z");
+    }
+
+
+    int get_nens() const {
+      if (dm.find_dimension("nens") == -1) return -1;
+      return dm.get_dimension_size("nens");
+    }
+
+
+    int get_ncrms() const {
+      return get_nens();
+    }
+
 
     void add_note( std::string key , std::string value ) {
       notes.add_note(key,value);
     }
-
 
 
     std::string get_note( std::string key ) const {
@@ -125,17 +151,14 @@ namespace pam {
     }
 
 
-
     bool note_exists( std::string key ) const {
       return notes.note_exists(key);
     }
 
 
-
     void delete_note( std::string key ) {
       notes.delete_note(key);
     }
-
 
 
     inline void set_phys_constants(real R_d, real R_v, real cp_d, real cp_v, real grav=9.81, real p0=1.e5) {
@@ -148,10 +171,9 @@ namespace pam {
     }
 
 
-
     inline void set_vertical_grid(real2d const &zint_in) {
-      int nz   = dm.get_dimension_size("z");
-      int nens = dm.get_dimension_size("nens");
+      int nz    = get_nz();
+      int nens  = get_nens();
       auto zint = dm.get<real,2>("vertical_interface_height");
       auto zmid = dm.get<real,2>("vertical_midpoint_height" );
       parallel_for( "vert grid 1" , SimpleBounds<2>(nz+1,nens) , YAKL_LAMBDA (int k, int iens) {
@@ -161,10 +183,9 @@ namespace pam {
     }
 
 
-
     inline void set_vertical_grid(real1d const &zint_in) {
-      int nz   = dm.get_dimension_size("z");
-      int nens = dm.get_dimension_size("nens");
+      int nz    = get_nz();
+      int nens  = get_nens();
       auto zint = dm.get<real,2>("vertical_interface_height");
       auto zmid = dm.get<real,2>("vertical_midpoint_height" );
       parallel_for( "vert grid 2" , SimpleBounds<2>(nz+1,nens) , YAKL_LAMBDA (int k, int iens) {
@@ -226,10 +247,10 @@ namespace pam {
       auto hy_press  = dm.get<real,2>("hydrostatic_pressure"     );
       auto hy_dens   = dm.get<real,2>("hydrostatic_density"      );
 
-      int nz   = dm.get_dimension_size("z");
-      int ny   = dm.get_dimension_size("y");
-      int nx   = dm.get_dimension_size("x");
-      int nens = dm.get_dimension_size("nens");
+      int nz   = get_nz();
+      int ny   = get_ny();
+      int nx   = get_nx();
+      int nens = get_nens();
 
       int constexpr npts = 10;
       int constexpr npts_tanh = npts - 2;
@@ -313,10 +334,10 @@ namespace pam {
       auto dens_wv  = dm.get<real,4>("water_vapor");
       auto temp     = dm.get<real,4>("temp");
 
-      int nz   = dens_dry.dimension[0];
-      int ny   = dens_dry.dimension[1];
-      int nx   = dens_dry.dimension[2];
-      int nens = dens_dry.dimension[3];
+      int nz   = get_nz();
+      int ny   = get_ny();
+      int nx   = get_nx();
+      int nens = get_nens();
 
       real4d pressure("pressure",nz,ny,nx,nens);
 
@@ -340,10 +361,10 @@ namespace pam {
       auto hy_press  = dm.get<real,2>("hydrostatic_pressure");
       auto hy_params = dm.get<real,2>("hydrostasis_parameters");
 
-      int nz   = dm.get_dimension_size("z");
-      int ny   = dm.get_dimension_size("y");
-      int nx   = dm.get_dimension_size("x");
-      int nens = dm.get_dimension_size("nens");
+      int nz   = get_nz();
+      int ny   = get_ny();
+      int nx   = get_nx();
+      int nens = get_nens();
 
       real4d press_pert("press_pert",nz,ny,nx,nens);
 
@@ -374,10 +395,10 @@ namespace pam {
       auto hy_dens   = dm.get<real,2>("hydrostatic_density");
       auto hy_params = dm.get<real,2>("hydrostasis_parameters");
 
-      int nz   = dm.get_dimension_size("z");
-      int ny   = dm.get_dimension_size("y");
-      int nx   = dm.get_dimension_size("x");
-      int nens = dm.get_dimension_size("nens");
+      int nz   = get_nz();
+      int ny   = get_ny();
+      int nx   = get_nx();
+      int nens = get_nens();
 
       real4d dens_pert("dens_pert",nz,ny,nx,nens);
 
