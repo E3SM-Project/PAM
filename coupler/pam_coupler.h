@@ -116,6 +116,12 @@ namespace pam {
     }
 
 
+    ~PamCoupler {
+      dm    = DataManager();
+      notes = Notes();
+    }
+
+
     real get_xlen() const { return this->xlen; }
 
 
