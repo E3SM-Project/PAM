@@ -228,41 +228,14 @@ public:
   // All floating point values are checked for infinities. All entries are checked for NaNs.
   // This is EXPENSIVE. All arrays are copied to the host, and the checks are performed on the host
   void validate_all( bool die_on_failed_check = false ) const {
-    // Check for NaNs
-    for (int id = 0; id < entries.size(); id++) {
-      if      (entry_type_is_same<short int>             (id)) { validate_single_nan<short int>             (id,die_on_failed_check); }
-      else if (entry_type_is_same<int>                   (id)) { validate_single_nan<int>                   (id,die_on_failed_check); }
-      else if (entry_type_is_same<long int>              (id)) { validate_single_nan<long int>              (id,die_on_failed_check); }
-      else if (entry_type_is_same<long long int>         (id)) { validate_single_nan<long long int>         (id,die_on_failed_check); }
-      else if (entry_type_is_same<unsigned short int>    (id)) { validate_single_nan<unsigned short int>    (id,die_on_failed_check); }
-      else if (entry_type_is_same<unsigned int>          (id)) { validate_single_nan<unsigned int>          (id,die_on_failed_check); }
-      else if (entry_type_is_same<unsigned long int>     (id)) { validate_single_nan<unsigned long int>     (id,die_on_failed_check); }
-      else if (entry_type_is_same<unsigned long long int>(id)) { validate_single_nan<unsigned long long int>(id,die_on_failed_check); }
-      else if (entry_type_is_same<float>                 (id)) { validate_single_nan<float>                 (id,die_on_failed_check); }
-      else if (entry_type_is_same<double>                (id)) { validate_single_nan<double>                (id,die_on_failed_check); }
-      else if (entry_type_is_same<long double>           (id)) { validate_single_nan<long double>           (id,die_on_failed_check); }
-
-      // Check for inf
-      if      (entry_type_is_same<float>                 (id)) { validate_single_inf<float>                 (id,die_on_failed_check); }
-      else if (entry_type_is_same<double>                (id)) { validate_single_inf<double>                (id,die_on_failed_check); }
-      else if (entry_type_is_same<long double>           (id)) { validate_single_inf<long double>           (id,die_on_failed_check); }
-
-      // Check for negative values in positive-definite variables
-      if      (entry_type_is_same<short int>             (id)) { validate_single_pos<short int>             (id,die_on_failed_check); }
-      else if (entry_type_is_same<int>                   (id)) { validate_single_pos<int>                   (id,die_on_failed_check); }
-      else if (entry_type_is_same<long int>              (id)) { validate_single_pos<long int>              (id,die_on_failed_check); }
-      else if (entry_type_is_same<long long int>         (id)) { validate_single_pos<long long int>         (id,die_on_failed_check); }
-      else if (entry_type_is_same<float>                 (id)) { validate_single_pos<float>                 (id,die_on_failed_check); }
-      else if (entry_type_is_same<double>                (id)) { validate_single_pos<double>                (id,die_on_failed_check); }
-      else if (entry_type_is_same<long double>           (id)) { validate_single_pos<long double>           (id,die_on_failed_check); }
-    }
+    for (int id = 0; id < entries.size(); id++) { validate( entries[i].name , die_on_failed_check ); }
   }
 
 
   // Validate one entry. positive-definite entries are validated to ensure no negative values
   // All floating point values are checked for infinities. All entries are checked for NaNs.
   // This is EXPENSIVE. All arrays are copied to the host, and the checks are performed on the host
-  void validate( std::string name , bool die_on_failed_check = false ) {
+  void validate( std::string name , bool die_on_failed_check = false ) const {
     validate_nan(name,die_on_failed_check);
     validate_inf(name,die_on_failed_check);
     validate_pos(name,die_on_failed_check);
@@ -272,58 +245,50 @@ public:
   // Validate one entry for NaNs
   // This is EXPENSIVE. All arrays are copied to the host, and the checks are performed on the host
   void validate_nan( std::string name , bool die_on_failed_check = false ) const {
-    int id = find_entry_or_error(name);
-    if      (entry_type_is_same<short int>             (id)) { validate_single_nan<short int>             (id,die_on_failed_check); }
-    else if (entry_type_is_same<int>                   (id)) { validate_single_nan<int>                   (id,die_on_failed_check); }
-    else if (entry_type_is_same<long int>              (id)) { validate_single_nan<long int>              (id,die_on_failed_check); }
-    else if (entry_type_is_same<long long int>         (id)) { validate_single_nan<long long int>         (id,die_on_failed_check); }
-    else if (entry_type_is_same<unsigned short int>    (id)) { validate_single_nan<unsigned short int>    (id,die_on_failed_check); }
-    else if (entry_type_is_same<unsigned int>          (id)) { validate_single_nan<unsigned int>          (id,die_on_failed_check); }
-    else if (entry_type_is_same<unsigned long int>     (id)) { validate_single_nan<unsigned long int>     (id,die_on_failed_check); }
-    else if (entry_type_is_same<unsigned long long int>(id)) { validate_single_nan<unsigned long long int>(id,die_on_failed_check); }
-    else if (entry_type_is_same<float>                 (id)) { validate_single_nan<float>                 (id,die_on_failed_check); }
-    else if (entry_type_is_same<double>                (id)) { validate_single_nan<double>                (id,die_on_failed_check); }
-    else if (entry_type_is_same<long double>           (id)) { validate_single_nan<long double>           (id,die_on_failed_check); }
+    if      (entry_type_is_same<short int>             (id)) { validate_single_nan<short int>             (name,die_on_failed_check); }
+    else if (entry_type_is_same<int>                   (id)) { validate_single_nan<int>                   (name,die_on_failed_check); }
+    else if (entry_type_is_same<long int>              (id)) { validate_single_nan<long int>              (name,die_on_failed_check); }
+    else if (entry_type_is_same<long long int>         (id)) { validate_single_nan<long long int>         (name,die_on_failed_check); }
+    else if (entry_type_is_same<unsigned short int>    (id)) { validate_single_nan<unsigned short int>    (name,die_on_failed_check); }
+    else if (entry_type_is_same<unsigned int>          (id)) { validate_single_nan<unsigned int>          (name,die_on_failed_check); }
+    else if (entry_type_is_same<unsigned long int>     (id)) { validate_single_nan<unsigned long int>     (name,die_on_failed_check); }
+    else if (entry_type_is_same<unsigned long long int>(id)) { validate_single_nan<unsigned long long int>(name,die_on_failed_check); }
+    else if (entry_type_is_same<float>                 (id)) { validate_single_nan<float>                 (name,die_on_failed_check); }
+    else if (entry_type_is_same<double>                (id)) { validate_single_nan<double>                (name,die_on_failed_check); }
+    else if (entry_type_is_same<long double>           (id)) { validate_single_nan<long double>           (name,die_on_failed_check); }
   }
 
 
   // Validate one entry for infs
   // This is EXPENSIVE. All arrays are copied to the host, and the checks are performed on the host
   void validate_inf( std::string name , bool die_on_failed_check = false ) const {
-    int id = find_entry_or_error(name);
-    if      (entry_type_is_same<float>                 (id)) { validate_single_inf<float>                 (id,die_on_failed_check); }
-    else if (entry_type_is_same<double>                (id)) { validate_single_inf<double>                (id,die_on_failed_check); }
-    else if (entry_type_is_same<long double>           (id)) { validate_single_inf<long double>           (id,die_on_failed_check); }
+    if      (entry_type_is_same<float>      (id)) { validate_single_inf<float>      (name,die_on_failed_check); }
+    else if (entry_type_is_same<double>     (id)) { validate_single_inf<double>     (name,die_on_failed_check); }
+    else if (entry_type_is_same<long double>(id)) { validate_single_inf<long double>(name,die_on_failed_check); }
   }
 
 
   // Validate one entry for negative values
   // This is EXPENSIVE. All arrays are copied to the host, and the checks are performed on the host
   void validate_pos( std::string name , bool die_on_failed_check = false ) const {
-    int id = find_entry_or_error(name);
-    if      (entry_type_is_same<short int>             (id)) { validate_single_pos<short int>             (id,die_on_failed_check); }
-    else if (entry_type_is_same<int>                   (id)) { validate_single_pos<int>                   (id,die_on_failed_check); }
-    else if (entry_type_is_same<long int>              (id)) { validate_single_pos<long int>              (id,die_on_failed_check); }
-    else if (entry_type_is_same<long long int>         (id)) { validate_single_pos<long long int>         (id,die_on_failed_check); }
-    else if (entry_type_is_same<float>                 (id)) { validate_single_pos<float>                 (id,die_on_failed_check); }
-    else if (entry_type_is_same<double>                (id)) { validate_single_pos<double>                (id,die_on_failed_check); }
-    else if (entry_type_is_same<long double>           (id)) { validate_single_pos<long double>           (id,die_on_failed_check); }
+    if      (entry_type_is_same<short int>    (id)) { validate_single_pos<short int>    (name,die_on_failed_check); }
+    else if (entry_type_is_same<int>          (id)) { validate_single_pos<int>          (name,die_on_failed_check); }
+    else if (entry_type_is_same<long int>     (id)) { validate_single_pos<long int>     (name,die_on_failed_check); }
+    else if (entry_type_is_same<long long int>(id)) { validate_single_pos<long long int>(name,die_on_failed_check); }
+    else if (entry_type_is_same<float>        (id)) { validate_single_pos<float>        (name,die_on_failed_check); }
+    else if (entry_type_is_same<double>       (id)) { validate_single_pos<double>       (name,die_on_failed_check); }
+    else if (entry_type_is_same<long double>  (id)) { validate_single_pos<long double>  (name,die_on_failed_check); }
   }
 
 
   // INTERNAL USE: check one entry id for NaNs
   template <class T>
-  void validate_single_nan(int id , bool die_on_failed_check = false) const {
-    T *arr_dev = (T *) entries[id].ptr;
-    size_t nelems = get_num_elems(id);
-    T *arr = (T *) yakl::yaklAllocHost( nelems*sizeof(T) , "Nan check");
-    yakl::memcpy_device_to_host(arr,arr_dev,nelems*sizeof(T));
-    for (int i=0; i < nelems; i++) {
-      if ( std::isnan( arr[i] ) ) {
+  void validate_single_nan(std::string name , bool die_on_failed_check = false) const {
+    auto arr = get_collased<T>(name).createHostCopy();
+    for (int i=0; i < arr.get_elem_count(); i++) {
+      if ( std::isnan( arr(i) ) ) {
         std::cerr << "WARNING: NaN discovered in: " << entries[id].name << " at global index: " << i << "\n";
-        if (die_on_failed_check) {
-          endrun("");
-        }
+        if (die_on_failed_check) endrun("");
       }
     }
   }
@@ -331,17 +296,12 @@ public:
 
   // INTERNAL USE: check one entry id for infs
   template <class T>
-  void validate_single_inf(int id , bool die_on_failed_check = false) const {
-    T *arr_dev = (T *) entries[id].ptr;
-    size_t nelems = get_num_elems(id);
-    T *arr = (T *) yakl::yaklAllocHost( nelems*sizeof(T) , "Inf check");
-    yakl::memcpy_device_to_host(arr,arr_dev,nelems*sizeof(T));
-    for (int i=0; i < nelems; i++) {
-      if ( std::isinf( arr[i] ) ) {
+  void validate_single_inf(std::string name , bool die_on_failed_check = false) const {
+    auto arr = get_collased<T>(name).createHostCopy();
+    for (int i=0; i < arr.get_elem_count(); i++) {
+      if ( std::isinf( arr(i) ) ) {
         std::cerr << "WARNING: inf discovered in: " << entries[id].name << " at global index: " << i << "\n";
-        if (die_on_failed_check) {
-          endrun("");
-        }
+        if (die_on_failed_check) endrun("");
       }
     }
   }
@@ -349,30 +309,18 @@ public:
 
   // INTERNAL USE: check one entry id for negative values
   template <class T>
-  void validate_single_pos(int id , bool die_on_failed_check = false) const {
+  void validate_single_pos(std::string name , bool die_on_failed_check = false) const {
+    int id = find_entry_or_error( name );
     if (entries[id].positive) {
-      T *arr_dev = (T *) entries[id].ptr;
-      size_t nelems = get_num_elems(id);
-      T *arr = (T *) yakl::yaklAllocHost( nelems*sizeof(T) , "Neg check");
-      yakl::memcpy_device_to_host(arr,arr_dev,nelems*sizeof(T));
-      for (int i=0; i < nelems; i++) {
+      auto arr = get_collased<T>(name).createHostCopy();
+      for (int i=0; i < arr.get_elem_count(); i++) {
         if ( arr[i] < 0. ) {
           std::cerr << "WARNING: negative value discovered in positive-definite entry: " << entries[id].name
                     << " at global index: " << i << "\n";
-          if (die_on_failed_check) {
-            endrun("");
-          }
+          if (die_on_failed_check) endrun("");
         }
       }
     }
-  }
-
-
-  // INTENRAL USE: get the number of elements for this entry id
-  size_t get_num_elems(int id) const {
-    size_t nelems = entries[id].dims[0];
-    for (int i=1; i < entries[id].dims.size(); i++) { nelems *= entries[id].dims[i]; }
-    return nelems;
   }
 
 
