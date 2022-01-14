@@ -245,17 +245,18 @@ public:
   // Validate one entry for NaNs
   // This is EXPENSIVE. All arrays are copied to the host, and the checks are performed on the host
   void validate_nan( std::string name , bool die_on_failed_check = false ) const {
-    if      (entry_type_is_same<short int>             (id)) { validate_single_nan<short int>             (name,die_on_failed_check); }
-    else if (entry_type_is_same<int>                   (id)) { validate_single_nan<int>                   (name,die_on_failed_check); }
-    else if (entry_type_is_same<long int>              (id)) { validate_single_nan<long int>              (name,die_on_failed_check); }
-    else if (entry_type_is_same<long long int>         (id)) { validate_single_nan<long long int>         (name,die_on_failed_check); }
-    else if (entry_type_is_same<unsigned short int>    (id)) { validate_single_nan<unsigned short int>    (name,die_on_failed_check); }
-    else if (entry_type_is_same<unsigned int>          (id)) { validate_single_nan<unsigned int>          (name,die_on_failed_check); }
-    else if (entry_type_is_same<unsigned long int>     (id)) { validate_single_nan<unsigned long int>     (name,die_on_failed_check); }
-    else if (entry_type_is_same<unsigned long long int>(id)) { validate_single_nan<unsigned long long int>(name,die_on_failed_check); }
-    else if (entry_type_is_same<float>                 (id)) { validate_single_nan<float>                 (name,die_on_failed_check); }
-    else if (entry_type_is_same<double>                (id)) { validate_single_nan<double>                (name,die_on_failed_check); }
-    else if (entry_type_is_same<long double>           (id)) { validate_single_nan<long double>           (name,die_on_failed_check); }
+    bool die = die_on_failed_check;
+    if      (entry_type_is_same<short int>             (id)) { validate_single_nan<short int>             (name,die); }
+    else if (entry_type_is_same<int>                   (id)) { validate_single_nan<int>                   (name,die); }
+    else if (entry_type_is_same<long int>              (id)) { validate_single_nan<long int>              (name,die); }
+    else if (entry_type_is_same<long long int>         (id)) { validate_single_nan<long long int>         (name,die); }
+    else if (entry_type_is_same<unsigned short int>    (id)) { validate_single_nan<unsigned short int>    (name,die); }
+    else if (entry_type_is_same<unsigned int>          (id)) { validate_single_nan<unsigned int>          (name,die); }
+    else if (entry_type_is_same<unsigned long int>     (id)) { validate_single_nan<unsigned long int>     (name,die); }
+    else if (entry_type_is_same<unsigned long long int>(id)) { validate_single_nan<unsigned long long int>(name,die); }
+    else if (entry_type_is_same<float>                 (id)) { validate_single_nan<float>                 (name,die); }
+    else if (entry_type_is_same<double>                (id)) { validate_single_nan<double>                (name,die); }
+    else if (entry_type_is_same<long double>           (id)) { validate_single_nan<long double>           (name,die); }
   }
 
 
@@ -388,7 +389,8 @@ public:
   }
 
 
-  // INTERNAL USE: End the run if the templated number of dimensions is not the same as the entry id's number of dimensions
+  // INTERNAL USE: End the run if the templated number of dimensions is not the same as the entry id's
+  //     number of dimensions
   template <int N>
   void validate_dims(int id) const {
     if ( N != entries[id].dims.size() ) {
@@ -406,6 +408,7 @@ public:
 
 
   // Deallocate all entries, and set the entries and dimensions to empty vectors. This is called by the destructor
+  // Generally meat for internal use, but perhaps there are cases where the user might want to call this directly.
   void finalize() {
     for (int i=0; i < entries.size(); i++) {
       yakl::yaklFreeDevice( entries[i].ptr , entries[i].name.c_str() );
