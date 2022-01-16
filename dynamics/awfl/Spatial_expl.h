@@ -404,6 +404,8 @@ public:
       YAKL_SCOPE( hyDensThetaCells     , this->hyDensThetaCells    );
       YAKL_SCOPE( gamma                , this->gamma               );
       YAKL_SCOPE( C0                   , this->C0                  );
+      YAKL_SCOPE( Rd                   , this->Rd                  );
+      YAKL_SCOPE( Rv                   , this->Rv                  );
 
       // Convert data from DataManager to state and tracers array for convenience
       real4d dm_dens_dry = coupler.dm.get<real,4>( "density_dry" );
