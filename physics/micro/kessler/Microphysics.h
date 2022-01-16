@@ -100,11 +100,11 @@ public:
 
 
 
-  real compute_total_mass( DataManager &dm ) {
-    auto rho_v = dm.get<real,4>("water_vapor");
-    auto rho_c = dm.get<real,4>("cloud_liquid");
-    auto rho_r = dm.get<real,4>("precip_liquid");
-    auto zint  = dm.get<real,2>("vertical_interface_height");
+  real compute_total_mass( DataManager const &dm ) const {
+    auto rho_v = dm.get<real const,4>("water_vapor");
+    auto rho_c = dm.get<real const,4>("cloud_liquid");
+    auto rho_r = dm.get<real const,4>("precip_liquid");
+    auto zint  = dm.get<real const,2>("vertical_interface_height");
     int nz   = dm.get_dimension_size("z");
     int ny   = dm.get_dimension_size("y");
     int nx   = dm.get_dimension_size("x");
@@ -119,12 +119,12 @@ public:
 
 
 
-  void timeStep( PamCoupler &coupler , real dt , real etime ) {
-    auto rho_v        = coupler.dm.get_lev_col<real>("water_vapor");
-    auto rho_c        = coupler.dm.get_lev_col<real>("cloud_liquid");
-    auto rho_r        = coupler.dm.get_lev_col<real>("precip_liquid");
-    auto rho_dry      = coupler.dm.get_lev_col<real>("density_dry");
-    auto temp         = coupler.dm.get_lev_col<real>("temp");
+  void timeStep( PamCoupler &coupler , real dt , real etime ) const {
+    auto rho_v        = coupler.dm.get_lev_col<real      >("water_vapor");
+    auto rho_c        = coupler.dm.get_lev_col<real      >("cloud_liquid");
+    auto rho_r        = coupler.dm.get_lev_col<real      >("precip_liquid");
+    auto rho_dry      = coupler.dm.get_lev_col<real const>("density_dry");
+    auto temp         = coupler.dm.get_lev_col<real      >("temp");
 
     #ifdef PAM_DEBUG
       validate_array_positive(rho_v);
@@ -146,7 +146,7 @@ public:
     real2d pressure("pressure",nz,ncol);
     real2d theta   ("theta"   ,nz,ncol);
     real2d exner   ("exner"   ,nz,ncol);
-    auto zmid_in = coupler.dm.get<real,2>("vertical_midpoint_height");
+    auto zmid_in = coupler.dm.get<real const,2>("vertical_midpoint_height");
 
     // We have to broadcast the midpoint heights to all columns within a CRM to avoid the microphysics needing
     // to know about the difference between nx,ny and nens
@@ -335,9 +335,8 @@ public:
   //
   ///////////////////////////////////////////////////////////////////////////////
 
-  void kessler(real2d &theta, real2d &qv, real2d &qc, real2d &qr, real2d const &rho,
-               real1d &precl, real2d const &z, real2d const &pk, real dt,
-               real Rd, real cp, real p0) {
+  void kessler(real2d const &theta, real2d const &qv, real2d const &qc, real2d const &qr, realConst2d rho,
+               real1d const &precl, realConst2d z, realConst2d pk, real dt, real Rd, real cp, real p0) const {
     int nz = theta.dimension[0];
     int ncol = theta.dimension[1];
 
