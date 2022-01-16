@@ -3,9 +3,6 @@
 
 namespace sam1mom {
 
-  using yakl::fortran::parallel_for;
-  using yakl::fortran::SimpleBounds;
-  using yakl::fortran::Bounds;
   using yakl::intrinsics::shape;
   using yakl::intrinsics::size;
   using yakl::min;
@@ -133,13 +130,13 @@ namespace sam1mom {
       // Compute initial quantities
       /////////////////////////////////////////////////
       // do icol = 1 , ncol
-      parallel_for( ncol , YAKL_LAMBDA (int icol) {
+      yakl::fortran::parallel_for( ncol , YAKL_LAMBDA (int icol) {
         dz(icol) = zint(icol,2) - zint(icol,1);
       });
 
       // do k = 1 , nz
       //   do icol = 1 , ncol
-      parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
+      yakl::fortran::parallel_for( yakl::fortran::Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
         // Compute adz
         adz(icol,k) = ( zint(icol,k+1) - zint(icol,k) ) / dz(icol);
 
@@ -230,7 +227,7 @@ namespace sam1mom {
       /////////////////////////////////////////////////////////////////////////////
       // do k = 1 , nz
       //   do icol = 1 , ncol
-      parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
+      yakl::fortran::parallel_for( yakl::fortran::Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
         // Compute qcl, qci, qpl, qpi, and t
         real omn = max( 0. , min( 1. , (tabs(icol,k)-tbgmin)*a_bg ) );
         real omp = max( 0. , min( 1. , (tabs(icol,k)-tprmin)*a_pr ) );
@@ -275,7 +272,7 @@ namespace sam1mom {
       ///////////////////////////////////////////////////
       // do k = 1 , nz
       //   do icol = 1 , ncol
-      parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
+      yakl::fortran::parallel_for( yakl::fortran::Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
         // Compute qv
         qv(icol,k) = q(icol,k) - qn(icol,k);
 
@@ -333,7 +330,7 @@ namespace sam1mom {
 
       // do k=1,nz
       //   do icol = 1 , ncol
-      parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
+      yakl::fortran::parallel_for( yakl::fortran::Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
         real pratio = sqrt(1.29 / rho(icol,k));
         real rrr1=393./(tabs0(icol,k)+120.)* pow( (tabs0(icol,k)/273.) , 1.5 );
         real rrr2=pow( (tabs0(icol,k)/273.) , 1.94 )*(1000./pres(icol,k));
@@ -402,7 +399,7 @@ namespace sam1mom {
 
       // do k = 1, nz
       //   do icol = 1, ncol
-      parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
+      yakl::fortran::parallel_for( yakl::fortran::Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
         real qsatt;
         q(icol,k)=max( 0. , q(icol,k) );
         // Initial guess for temperature assuming no cloud water/ice:
@@ -518,14 +515,14 @@ namespace sam1mom {
 
       // do k=1,nz
       //   do icol = 1 , ncol
-      parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
+      yakl::fortran::parallel_for( yakl::fortran::Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
         qpsrc(icol,k)=0.;
         qpevp(icol,k)=0.;
       });
 
       // do k=1,nz
       //   do icol = 1 , ncol
-      parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
+      yakl::fortran::parallel_for( yakl::fortran::Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
         //-------     Autoconversion/accretion
         if (qn(icol,k)+qp(icol,k) > 0. ) {
           real omn = max( 0. , min( 1. , (tabs(icol,k)-tbgmin)*a_bg ) );
@@ -646,7 +643,7 @@ namespace sam1mom {
       real2d fz  ("fz"  ,ncol,nz+1);
 
       // do icol = 1 , ncol
-      parallel_for( ncol , YAKL_LAMBDA (int icol) {
+      yakl::fortran::parallel_for( ncol , YAKL_LAMBDA (int icol) {
         kmax(icol) = 0;
         kmin(icol) = nz+1;
         for (int k=1; k <= nz; k++) {
@@ -662,7 +659,7 @@ namespace sam1mom {
       // LeVeque, Cambridge University Press, 2002).
       // do k = 1 , nz+1
       //   do icol = 1 , ncol
-      parallel_for( Bounds<2>(nz+1,ncol) , YAKL_LAMBDA (int k, int icol) {
+      yakl::fortran::parallel_for( yakl::fortran::Bounds<2>(nz+1,ncol) , YAKL_LAMBDA (int k, int icol) {
         if (k >= max(1,kmin(icol)-1) && k <= kmax(icol) ) {
           // Set up indices for x-y planes above and below current plane.
           int kc = min(nz,k+1);
@@ -705,7 +702,7 @@ namespace sam1mom {
 
       // do k=1, nz+1
       //   do icol = 1 , ncol
-      parallel_for( Bounds<2>(nz+1,ncol) , YAKL_LAMBDA (int k, int icol) {
+      yakl::fortran::parallel_for( yakl::fortran::Bounds<2>(nz+1,ncol) , YAKL_LAMBDA (int k, int icol) {
         if ( k >= max(1,kmin(icol)-2) && k <= kmax(icol) ) {
           real coef=dtn/(dz(icol)*adz(icol,k)*rho(icol,k));
           // The cloud ice increment is the difference of the fluxes.
@@ -762,7 +759,7 @@ namespace sam1mom {
 
       // do k=1,nz
       //   do icol = 1 , ncol
-      parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
+      yakl::fortran::parallel_for( yakl::fortran::Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
         omega(icol,k) = max( 0. , min( 1. , (tabs(icol,k)-tprmin)*a_pr ) );
       });
 
@@ -809,7 +806,7 @@ namespace sam1mom {
 
       // do k = 1,nz
       //   do icol = 1 , ncol
-      parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
+      yakl::fortran::parallel_for( yakl::fortran::Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
         rhofac (icol,k) = sqrt(1.29/rho(icol,k));
         irhoadz(icol,k) = 1./(rho(icol,k)*adz(icol,k)); // Useful factor
         int kb = max(1,k-1);
@@ -824,7 +821,7 @@ namespace sam1mom {
       real2d tmp2d("tmp2d",ncol,nz);
       // do k=1,nz
       //   do icol = 1 , ncol
-      parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
+      yakl::fortran::parallel_for( yakl::fortran::Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
         lfac(icol,k) = fac_cond + (1-omega(icol,k))*fac_fus;
         real tvel = term_vel_qp(qp(icol,k),rho(icol,k),tabs(icol,k),qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,
                                 a_gr,vgrau,cgrau,vsnow,csnow);
@@ -846,7 +843,7 @@ namespace sam1mom {
         nprec = ceil(prec_cfl/0.9);
         // do k = 1,nz
         //   do icol = 1 , ncol
-        parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
+        yakl::fortran::parallel_for( yakl::fortran::Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
           // wp already includes factor of dt, so reduce it by a factor equal to the number of precipitation steps.
           wp(icol,k) = wp(icol,k)/nprec;
         });
@@ -858,13 +855,13 @@ namespace sam1mom {
       for (int iprec = 1; iprec <= nprec; iprec++) {
         // do k = 1,nz
         //   do icol = 1 , ncol
-        parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
+        yakl::fortran::parallel_for( yakl::fortran::Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
           tmp_qp(icol,k) = qp(icol,k); // Temporary array for qp in this column
         });
 
         // do k=1,nz
         //   do icol = 1 , ncol
-        parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
+        yakl::fortran::parallel_for( yakl::fortran::Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
           int kc=min(nz,k+1);
           int kb=max(1 ,k-1);
           mx(icol,k)=max( tmp_qp(icol,kb) , max( tmp_qp(icol,kc) , tmp_qp(icol,k) ) );
@@ -875,14 +872,14 @@ namespace sam1mom {
 
         // do k=1,nz
         //   do icol = 1 , ncol
-        parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
+        yakl::fortran::parallel_for( yakl::fortran::Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
           int kc=k+1;
           tmp_qp(icol,k)=tmp_qp(icol,k)-(fz(icol,kc)-fz(icol,k))*irhoadz(icol,k); // Update temporary qp
         });
 
         // do k=1,nz
         //   do icol = 1 , ncol
-        parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
+        yakl::fortran::parallel_for( yakl::fortran::Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
           // Also, compute anti-diffusive correction to previous (upwind) approximation to the flux
           int kb=max(1,k-1);
           // The precipitation velocity is a cell-centered quantity, since it is computed from the cell-centered
@@ -895,7 +892,7 @@ namespace sam1mom {
         //---------- non-osscilatory option ---------------
         // do k=1,nz
         //   do icol = 1 , ncol
-        parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
+        yakl::fortran::parallel_for( yakl::fortran::Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
           int kc=min(nz,k+1);
           int kb=max(1 ,k-1);
           mx(icol,k)=max(tmp_qp(icol,kb),max(tmp_qp(icol,kc),max(tmp_qp(icol,k),mx(icol,k))));
@@ -906,7 +903,7 @@ namespace sam1mom {
         });
         // do k=1,nz
         //   do icol = 1 , ncol
-        parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
+        yakl::fortran::parallel_for( yakl::fortran::Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
           int kb=max(1,k-1);
           // Add limited flux correction to fz(k).
           fz(icol,k) = fz(icol,k) + pp(www(icol,k))*min(1.,min(mx(icol,k ),mn(icol,kb))) - 
@@ -917,7 +914,7 @@ namespace sam1mom {
         // energy using precipitation fluxes computed in this column.
         // do k=1,nz
         //   do icol = 1 , ncol
-        parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
+        yakl::fortran::parallel_for( yakl::fortran::Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
           int kc=k+1;
           // Update precipitation mass fraction.
           // Note that fz is the total flux, including both the upwind flux and the anti-diffusive correction.
@@ -938,7 +935,7 @@ namespace sam1mom {
           // Re-compute precipitation velocity using new value of qp.
           // do k=1,nz
           //   do icol = 1 , ncol
-          parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
+          yakl::fortran::parallel_for( yakl::fortran::Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int icol) {
             //Passing variables via first index because of PGI bug with pointers
             real tvel = term_vel_qp(qp(icol,k),rho(icol,k),tabs(icol,k),qp_threshold,tprmin,a_pr,vrain,crain,
                                     tgrmin,a_gr,vgrau,cgrau,vsnow,csnow);
