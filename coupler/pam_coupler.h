@@ -117,8 +117,8 @@ namespace pam {
 
 
     ~PamCoupler() {
-      dm    = DataManager();
-      notes = Notes();
+      dm.finalize();
+      notes.finalize();
     }
 
 

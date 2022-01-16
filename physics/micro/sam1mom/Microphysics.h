@@ -114,7 +114,7 @@ public:
 
 
 
-  void timeStep( PamCoupler &coupler , real dt , real etime ) {
+  void timeStep( PamCoupler &coupler , real dt , real etime ) const {
 
     // Get the dimensions sizes
     int nz   = coupler.dm.get_dimension_size("z"   );
@@ -129,11 +129,11 @@ public:
     auto rho_p = coupler.dm.get_lev_col<real>("precip"     );
 
     // Get coupler state
-    auto rho_dry = coupler.dm.get_lev_col<real>("density_dry");
-    auto temp    = coupler.dm.get_lev_col<real>("temp");
+    auto rho_dry = coupler.dm.get_lev_col<real const>("density_dry");
+    auto temp    = coupler.dm.get_lev_col<real      >("temp");
 
     // Calculate the grid spacing
-    auto zint_in = coupler.dm.get<real,2>("vertical_interface_height");
+    auto zint_in = coupler.dm.get<real const,2>("vertical_interface_height");
     real2d zint("zint",nz+1,ny*nx*nens);
     parallel_for( "micro dz" , SimpleBounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       zint(k,j*nx*nens + i*nens + iens) = zint_in(k,iens);

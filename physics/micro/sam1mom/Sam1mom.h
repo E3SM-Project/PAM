@@ -27,6 +27,24 @@ namespace sam1mom {
   typedef yakl::Array<int,7,yakl::memDevice,yakl::styleFortran> int7d;
   typedef yakl::Array<int,8,yakl::memDevice,yakl::styleFortran> int8d;
 
+  typedef yakl::Array<real const,1,yakl::memDevice,yakl::styleFortran> realConst1d;
+  typedef yakl::Array<real const,2,yakl::memDevice,yakl::styleFortran> realConst2d;
+  typedef yakl::Array<real const,3,yakl::memDevice,yakl::styleFortran> realConst3d;
+  typedef yakl::Array<real const,4,yakl::memDevice,yakl::styleFortran> realConst4d;
+  typedef yakl::Array<real const,5,yakl::memDevice,yakl::styleFortran> realConst5d;
+  typedef yakl::Array<real const,6,yakl::memDevice,yakl::styleFortran> realConst6d;
+  typedef yakl::Array<real const,7,yakl::memDevice,yakl::styleFortran> realConst7d;
+  typedef yakl::Array<real const,8,yakl::memDevice,yakl::styleFortran> realConst8d;
+
+  typedef yakl::Array<int const,1,yakl::memDevice,yakl::styleFortran> intConst1d;
+  typedef yakl::Array<int const,2,yakl::memDevice,yakl::styleFortran> intConst2d;
+  typedef yakl::Array<int const,3,yakl::memDevice,yakl::styleFortran> intConst3d;
+  typedef yakl::Array<int const,4,yakl::memDevice,yakl::styleFortran> intConst4d;
+  typedef yakl::Array<int const,5,yakl::memDevice,yakl::styleFortran> intConst5d;
+  typedef yakl::Array<int const,6,yakl::memDevice,yakl::styleFortran> intConst6d;
+  typedef yakl::Array<int const,7,yakl::memDevice,yakl::styleFortran> intConst7d;
+  typedef yakl::Array<int const,8,yakl::memDevice,yakl::styleFortran> intConst8d;
+
 
 
   class Sam1mom {
@@ -88,8 +106,8 @@ namespace sam1mom {
     // qv  (ncol,nz  ): water vapor
     // qn  (ncol,nz  ): cloud condensate (liquid + ice)
     // qp  (ncol,nz  ): total precipitating water
-    void main(real dt, real2d const &zint, real2d const &rho, real2d const &rhow, real2d const &pres,
-              real2d &tabs, real2d &qv, real2d &qn, real2d &qp) {
+    void main(real dt, realConst2d zint, realConst2d rho, realConst2d rhow, realConst2d pres,
+              real2d const &tabs, real2d const &qv, real2d const &qn, real2d const &qp) const {
 
       int ncol = size(rho,1);
       int nz   = size(rho,2);
@@ -290,15 +308,15 @@ namespace sam1mom {
 
 
 
-    void precip_init(real2d const &tabs0, real2d const &pres, real2d const &rho, real2d &accrsi, real2d &accrsc,
-                     real2d &coefice, real2d &evaps1, real2d &evaps2, real2d &accrgi, real2d &accrgc, real2d &evapg1,
-                     real2d &evapg2, real2d &accrrc, real2d &evapr1, real2d &evapr2,
+    void precip_init(realConst2d tabs0, realConst2d pres, realConst2d rho, real2d const &accrsi, real2d const &accrsc,
+                     real2d const &coefice, real2d const &evaps1, real2d const &evaps2, real2d const &accrgi, real2d const &accrgc, real2d const &evapg1,
+                     real2d const &evapg2, real2d const &accrrc, real2d const &evapr1, real2d const &evapr2,
                      real b_rain, real b_snow, real b_grau, real a_grau, real a_rain, real a_snow, real diffelq,
                      real egccoef, real egicoef, real erccoef, real esccoef, real esicoef, real lcond, real lsub,
                      real muelq, real nzerog, real nzeror, real nzeros, real rhog, real rhor, real rhos, real rv,
                      real therco,
                      real &gam3, real &gamr1, real &gamr2, real &gamr3, real &gams1, real &gams2, real &gams3,
-                     real &gamg1, real &gamg2, real &gamg3) {
+                     real &gamg1, real &gamg2, real &gamg3) const {
 
       int ncol = size(tabs0,1);
       int nz   = size(tabs0,2);
@@ -383,9 +401,9 @@ namespace sam1mom {
     // qp   (ncol,nz): total precipitating water
     // pres (ncol,nz): pressure,mb at scalar levels
     // qn   (ncol,nz): cloud condensate (liquid + ice)
-    void cloud(real2d &q, real2d &tabs, real2d const &t, real2d const &gamaz, real2d &qp, real2d const &pres,
-               real2d &qn, real tbgmax, real tbgmin, real tprmax, real tprmin, real fac_cond, real fac_fus,
-               real fac_sub, real tgrmax, real tgrmin) {
+    void cloud(real2d const &q, real2d const &tabs, realConst2d t, realConst2d gamaz, real2d const &qp, realConst2d pres,
+               real2d const &qn, real tbgmax, real tbgmin, real tprmax, real tprmin, real fac_cond, real fac_fus,
+               real fac_sub, real tgrmax, real tgrmin) const {
       int ncol = size(q,1);
       int nz   = size(q,2);
 
@@ -497,12 +515,12 @@ namespace sam1mom {
     // evaps2 : Undocumented
     // evapg1 : Undocumented
     // evapg2 : Undocumented
-    void precip_proc(real2d &qpsrc, real2d &qpevp, real2d &qn, real2d &qp, real2d const &tabs, real2d const &coefice,
-                     real2d const &accrrc, real2d const &accrsc, real2d const &accrsi, real2d const &accrgc,
-                     real2d const &accrgi, real2d &q, real2d const &pres, real2d const &evapr1, real2d const &evapr2,
-                     real2d const &evaps1, real2d const &evaps2, real2d const &evapg1, real2d const &evapg2, real a_bg,
+    void precip_proc(real2d const &qpsrc, real2d const &qpevp, real2d const &qn, real2d const &qp, realConst2d tabs, realConst2d coefice,
+                     realConst2d accrrc, realConst2d accrsc, realConst2d accrsi, realConst2d accrgc,
+                     realConst2d accrgi, real2d const &q, realConst2d pres, realConst2d evapr1, realConst2d evapr2,
+                     realConst2d evaps1, realConst2d evaps2, realConst2d evapg1, realConst2d evapg2, real a_bg,
                      real a_gr, real a_pr, real alphaelq, real b_grau, real b_rain, real b_snow, real betaelq,
-                     real dtn, real qci0, real qcw0, real qp_threshold, real tbgmin, real tgrmin, real tprmin) {
+                     real dtn, real qci0, real qcw0, real qp_threshold, real tbgmin, real tgrmin, real tprmin) const {
       int ncol = size(qpsrc,1);
       int nz   = size(qpsrc,2);
 
@@ -632,9 +650,9 @@ namespace sam1mom {
     // precsfc (ncol   ): surface precip. rate
     // precssfc(ncol   ): surface ice precip. rate
     // dtn              : current dynamical timestep (can be smaller than dt)
-    void ice_fall( real2d const &qcl, real2d const &qci, real2d const &tabs, real2d const &adz, real1d const &dz,
-                   real2d const &rho, real2d &q, real2d &t, real1d &precsfc, real1d &precssfc, real dtn, real fac_cond,
-                   real fac_fus ) {
+    void ice_fall( realConst2d qcl, realConst2d qci, realConst2d tabs, realConst2d adz, realConst1d dz,
+                   realConst2d rho, real2d const &q, real2d const &t, real1d const &precsfc, real1d const &precssfc, real dtn, real fac_cond,
+                   real fac_fus ) const {
       int ncol = size(qcl,1);
       int nz   = size(qcl,2);
 
@@ -739,12 +757,12 @@ namespace sam1mom {
     // precflux(ncol,nz  ): for statistics
     // precsfc (ncol     ): surface precip. rate
     // precssfc(ncol     ): surface ice precip. rate
-    void micro_precip_fall(real2d const &rho, real2d const &adz, real1d const &dz, real2d const &rhow, real2d &qp,
-                           real2d &t, real2d const &tabs, real2d &qpfall, real2d &precflux, real1d &precsfc,
-                           real1d &precssfc, real qp_threshold, real tprmin, real a_pr, real tgrmin, real a_gr,
+    void micro_precip_fall(realConst2d rho, realConst2d adz, realConst1d dz, realConst2d rhow, real2d const &qp,
+                           real2d const &t, realConst2d tabs, real2d const &qpfall, real2d const &precflux, real1d const &precsfc,
+                           real1d const &precssfc, real qp_threshold, real tprmin, real a_pr, real tgrmin, real a_gr,
                            real dtn, real fac_cond, real fac_fus, real b_rain, real b_snow, real b_grau, real a_rain,
                            real a_snow, real a_grau, real gamr3, real gams3, real gamg3, real rhor, real rhos,
-                           real rhog, real nzeror, real nzeros, real nzerog) {
+                           real rhog, real nzeror, real nzeros, real nzerog) const {
       int ncol = size(rho,1);
       int nz   = size(rho,2);
 
@@ -783,11 +801,11 @@ namespace sam1mom {
     // precflux(ncol,nz  ): for statistics
     // precsfc (ncol     ): surface precip. rate
     // precssfc(ncol     ): surface ice precip. rate
-    void precip_fall(real2d const &rho, real2d const &adz, real1d const &dz, real2d const &omega, 
-                     real2d const &rhow, real2d &qp, real2d &t, real2d const &tabs, real2d &qpfall,
-                     real2d &precflux, real1d &precsfc, real1d &precssfc, real qp_threshold, real tprmin,
+    void precip_fall(realConst2d rho, realConst2d adz, realConst1d dz, realConst2d omega, 
+                     realConst2d rhow, real2d const &qp, real2d const &t, realConst2d tabs, real2d const &qpfall,
+                     real2d const &precflux, real1d const &precsfc, real1d const &precssfc, real qp_threshold, real tprmin,
                      real a_pr, real vrain, real crain, real tgrmin, real a_gr, real vgrau, real cgrau,
-                     real vsnow, real csnow, real dtn, real fac_cond, real fac_fus) {
+                     real vsnow, real csnow, real dtn, real fac_cond, real fac_fus) const {
       int ncol = size(rho,1);
       int nz   = size(rho,2);
 

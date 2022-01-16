@@ -15,7 +15,10 @@ public:
   std::vector<Note> notes;
 
 
-  ~Notes() { notes = std::vector<Note>(); }
+  ~Notes() { finalize(); }
+
+
+  void finalize() { notes = std::vector<Note>(); }
 
 
   void add_note( std::string key , std::string value ) {

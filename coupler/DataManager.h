@@ -35,6 +35,11 @@ public:
     dimensions = std::vector<Dimension>();
   }
 
+  DataManager( DataManager &&dm      ) = delete;
+  DataManager( DataManager const &dm ) = delete;
+  DataManager &operator=( DataManager &&dm      ) = delete;
+  DataManager &operator=( DataManager const &dm ) = delete;
+
 
   ~DataManager() {
     // finalize deallocates all entries and resets entries and dimensions to empty vectors
