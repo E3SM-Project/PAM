@@ -12,7 +12,7 @@ namespace pam {
 
 
 
-  YAKL_INLINE real hydrostatic_pressure( real2d const &hy_params , real z_in , real zbot , real ztop ,
+  YAKL_INLINE real hydrostatic_pressure( realConst2d hy_params , real z_in , real zbot , real ztop ,
                                          int iens             ) {
     real z = ( z_in - zbot ) / (ztop - zbot);
     real a0 = hy_params(0,iens);
@@ -31,7 +31,7 @@ namespace pam {
 
 
 
-  YAKL_INLINE real hydrostatic_density( real2d const &hy_params , real z_in , real zbot , real ztop ,
+  YAKL_INLINE real hydrostatic_density( realConst2d hy_params , real z_in , real zbot , real ztop ,
                                         int iens , real grav ) {
     real z = ( z_in - zbot ) / (ztop - zbot);
     real a1 = hy_params(1,iens);
@@ -51,7 +51,7 @@ namespace pam {
 
 
 
-  YAKL_INLINE real hydrostatic_density_deriv( real2d const &hy_params , real z_in , real zbot , real ztop ,
+  YAKL_INLINE real hydrostatic_density_deriv( realConst2d hy_params , real z_in , real zbot , real ztop ,
                                               int iens , real grav ) {
     real z = ( z_in - zbot ) / (ztop - zbot);
     real a0 = hy_params(0,iens);
@@ -116,7 +116,7 @@ namespace pam {
     }
 
 
-    ~PamCoupler {
+    ~PamCoupler() {
       dm    = DataManager();
       notes = Notes();
     }
@@ -350,9 +350,9 @@ namespace pam {
 
 
     real4d compute_pressure_array() const {
-      auto dens_dry = dm.get<real,4>("density_dry");
-      auto dens_wv  = dm.get<real,4>("water_vapor");
-      auto temp     = dm.get<real,4>("temp");
+      auto dens_dry = dm.get<real const,4>("density_dry");
+      auto dens_wv  = dm.get<real const,4>("water_vapor");
+      auto temp     = dm.get<real const,4>("temp");
 
       int nz   = get_nz();
       int ny   = get_ny();
@@ -377,9 +377,9 @@ namespace pam {
 
 
     real4d interp_pressure_interfaces( real4d const &press ) const {
-      auto zint      = dm.get<real,2>("vertical_interface_height");
-      auto hy_press  = dm.get<real,2>("hydrostatic_pressure");
-      auto hy_params = dm.get<real,2>("hydrostasis_parameters");
+      auto zint      = dm.get<real const,2>("vertical_interface_height");
+      auto hy_press  = dm.get<real const,2>("hydrostatic_pressure");
+      auto hy_params = dm.get<real const,2>("hydrostasis_parameters");
 
       int nz   = get_nz();
       int ny   = get_ny();
@@ -411,9 +411,9 @@ namespace pam {
 
 
     real4d interp_density_interfaces( real4d const &dens ) const {
-      auto zint      = dm.get<real,2>("vertical_interface_height");
-      auto hy_dens   = dm.get<real,2>("hydrostatic_density");
-      auto hy_params = dm.get<real,2>("hydrostasis_parameters");
+      auto zint      = dm.get<real const,2>("vertical_interface_height");
+      auto hy_dens   = dm.get<real const,2>("hydrostatic_density");
+      auto hy_params = dm.get<real const,2>("hydrostasis_parameters");
 
       int nz   = get_nz();
       int ny   = get_ny();

@@ -46,7 +46,7 @@ public:
   template <class T>
   void set_scalar( std::string name , std::string desc , T value ) {
     int id = find_entry( name );
-    if (id == -1) register_and_allocate( name , desc , {1} );
+    if (id == -1) register_and_allocate<T>( name , desc , {1} );
     auto arr = get<T,1>(name);
     if (arr.get_elem_count() > 1) endrun("ERROR: retriving array as if it were a scalar");
     arr(0) = value;
@@ -58,7 +58,7 @@ public:
   // If you want to write to a scalar, you need to use set_scalar()
   template <class T>
   T get_scalar( std::string name ) {
-    typedef typename std::add_const(T) const TCONST;
+    typedef typename std::add_const<T>::type const TCONST;
     auto arr = get<TCONST,1>(name);
     if (arr.get_elem_count() > 1) endrun("ERROR: retriving array as if it were a scalar");
     return arr(0);
@@ -122,7 +122,7 @@ public:
   // deallocate a named entry, and erase the entry from the list
   template <class T>
   void unregister_and_deallocate( std::string name ) {
-    int id = fine_entry_or_error( name );
+    int id = find_entry_or_error( name );
     yakl::yaklFreeDevice( entries[id].ptr , entries[id].name.c_str() );
     entries.erase( entries.begin() + id );
   }
@@ -131,14 +131,14 @@ public:
   // reset the dirty flag to false for all entries
   // when the dirty flag is true, then the entry has been potentially written to since its creation or previous cleaning
   void clean_all_entries() {
-    for (int i=0; i < entries.size(); i++) { entries[id].dirty = false; }
+    for (int i=0; i < entries.size(); i++) { entries[i].dirty = false; }
   }
 
 
   // reset the dirty flag to false for a single entry
   // when the dirty flag is true, then the entry has been potentially written to since its creation or previous cleaning
   void clean_entry( std::string name ) {
-    id = find_entry_or_error( name );
+    int id = find_entry_or_error( name );
     entries[id].dirty = false;
   }
 
@@ -146,7 +146,7 @@ public:
   // Get the dirty flag for a single entry
   // when the dirty flag is true, then the entry has been potentially written to since its creation or previous cleaning
   bool entry_is_dirty( std::string name ) const {
-    id = find_entry_or_error( name );
+    int id = find_entry_or_error( name );
     return entries[id].dirty;
   }
 
@@ -156,21 +156,20 @@ public:
   std::vector<std::string> get_dirty_entries( ) const {
     std::vector<std::string> dirty_entries;
     for (int i=0; i < entries.size(); i++) {
-      if (entries[i].dirty) dirty_entires.push_back( entries[i].name );
+      if (entries[i].dirty) dirty_entries.push_back( entries[i].name );
     }
     return dirty_entries;
   }
 
 
-  // Get a YAKL device array (styleC) for the entry of this name
+  // Get a READ ONLY YAKL device array (styleC) for the entry of this name
   // If T is not const, then the dirty flag is set to true because it can be potentially written to
   // T must match the registered type (const and volatile are ignored in this comparison)
   // N must match the registered number of dimensions
-  template <class T, int N>
+  template <class T, int N , typename std::enable_if< std::is_const<T>::value , int >::type = 0 >
   Array<T,N,memDevice,styleC> get( std::string name ) const {
     // Make sure we have this name as an entry
     int id = find_entry_or_error( name );
-    if (! std::is_const(T)) entries[id].dirty = true;
     // Make sure it's the right type and dimensionality
     validate_type<T>(id);
     validate_dims<N>(id);
@@ -179,17 +178,33 @@ public:
   }
 
 
-  // Get a YAKL device array (styleC) for the entry of this name
+  // Get a READ/WRITE YAKL device array (styleC) for the entry of this name
+  // If T is not const, then the dirty flag is set to true because it can be potentially written to
+  // T must match the registered type (const and volatile are ignored in this comparison)
+  // N must match the registered number of dimensions
+  template <class T, int N , typename std::enable_if< ! std::is_const<T>::value , int >::type = 0 >
+  Array<T,N,memDevice,styleC> get( std::string name ) {
+    // Make sure we have this name as an entry
+    int id = find_entry_or_error( name );
+    entries[id].dirty = true;
+    // Make sure it's the right type and dimensionality
+    validate_type<T>(id);
+    validate_dims<N>(id);
+    Array<T,N,memDevice,styleC> ret( name.c_str() , (T *) entries[id].ptr , entries[id].dims );
+    return ret;
+  }
+
+
+  // Get a READ ONLY YAKL device array (styleC) for the entry of this name
   // If T is not const, then the dirty flag is set to true because it can be potentially written to
   // T must match the registered type (const and volatile are ignored in this comparison)
   // First dimension is assumed to be the vertical index
   // All dimensions after first dimension are assumed to be horizontal indices that can be aggregated without
   //     regard to ordering. Fastest varying dimensions in the aggregated horizontal dimensions are maintained.
-  template <class T>
+  template <class T, typename std::enable_if< std::is_const<T>::value , int>::type = 0 >
   Array<T,2,memDevice,styleC> get_lev_col( std::string name ) const {
     // Make sure we have this name as an entry
     int id = find_entry_or_error( name );
-    if (! std::is_const(T)) entries[id].dirty = true;
     // Make sure it's the right type
     validate_type<T>(id);
     validate_dims_lev_col(id);
@@ -203,16 +218,60 @@ public:
   }
 
 
-  // Get a YAKL device array (styleC) for the entry of this name
+  // Get a READ/WRITE YAKL device array (styleC) for the entry of this name
+  // If T is not const, then the dirty flag is set to true because it can be potentially written to
+  // T must match the registered type (const and volatile are ignored in this comparison)
+  // First dimension is assumed to be the vertical index
+  // All dimensions after first dimension are assumed to be horizontal indices that can be aggregated without
+  //     regard to ordering. Fastest varying dimensions in the aggregated horizontal dimensions are maintained.
+  template <class T, typename std::enable_if< ! std::is_const<T>::value , int>::type = 0 >
+  Array<T,2,memDevice,styleC> get_lev_col( std::string name ) {
+    // Make sure we have this name as an entry
+    int id = find_entry_or_error( name );
+    entries[id].dirty = true;
+    // Make sure it's the right type
+    validate_type<T>(id);
+    validate_dims_lev_col(id);
+    int nlev = entries[id].dims[0];
+    int ncol = 1;
+    for (int i=1; i < entries[id].dims.size(); i++) {
+      ncol *= entries[id].dims[i];
+    }
+    Array<T,2,memDevice,styleC> ret( name.c_str() , (T *) entries[id].ptr , nlev , ncol );
+    return ret;
+  }
+
+
+  // Get a READ ONLY YAKL device array (styleC) for the entry of this name
   // If T is not const, then the dirty flag is set to true because it can be potentially written to
   // T must match the registered type (const and volatile are ignored in this comparison)
   // All dimensions are collapsed to a single dimension.
   // Fastest varying dimensions in the aggregated dimensions are maintained.
-  template <class T>
+  template <class T, typename std::enable_if< std::is_const<T>::value , int>::type = 0 >
   Array<T,1,memDevice,styleC> get_collapsed( std::string name ) const {
     // Make sure we have this name as an entry
     int id = find_entry_or_error( name );
-    if (! std::is_const(T)) entries[id].dirty = true;
+    // Make sure it's the right type
+    validate_type<T>(id);
+    int ncells = entries[id].dims[0];
+    for (int i=1; i < entries[id].dims.size(); i++) {
+      ncells *= entries[id].dims[i];
+    }
+    Array<T,1,memDevice,styleC> ret( name.c_str() , (T *) entries[id].ptr , ncells );
+    return ret;
+  }
+
+
+  // Get a READ/WRITE YAKL device array (styleC) for the entry of this name
+  // If T is not const, then the dirty flag is set to true because it can be potentially written to
+  // T must match the registered type (const and volatile are ignored in this comparison)
+  // All dimensions are collapsed to a single dimension.
+  // Fastest varying dimensions in the aggregated dimensions are maintained.
+  template <class T, typename std::enable_if< ! std::is_const<T>::value , int>::type = 0 >
+  Array<T,1,memDevice,styleC> get_collapsed( std::string name ) {
+    // Make sure we have this name as an entry
+    int id = find_entry_or_error( name );
+    entries[id].dirty = true;
     // Make sure it's the right type
     validate_type<T>(id);
     int ncells = entries[id].dims[0];
@@ -228,7 +287,7 @@ public:
   // All floating point values are checked for infinities. All entries are checked for NaNs.
   // This is EXPENSIVE. All arrays are copied to the host, and the checks are performed on the host
   void validate_all( bool die_on_failed_check = false ) const {
-    for (int id = 0; id < entries.size(); id++) { validate( entries[i].name , die_on_failed_check ); }
+    for (int id = 0; id < entries.size(); id++) { validate( entries[id].name , die_on_failed_check ); }
   }
 
 
@@ -246,49 +305,52 @@ public:
   // This is EXPENSIVE. All arrays are copied to the host, and the checks are performed on the host
   void validate_nan( std::string name , bool die_on_failed_check = false ) const {
     bool die = die_on_failed_check;
-    if      (entry_type_is_same<short int>             (id)) { validate_single_nan<short int>             (name,die); }
-    else if (entry_type_is_same<int>                   (id)) { validate_single_nan<int>                   (name,die); }
-    else if (entry_type_is_same<long int>              (id)) { validate_single_nan<long int>              (name,die); }
-    else if (entry_type_is_same<long long int>         (id)) { validate_single_nan<long long int>         (name,die); }
-    else if (entry_type_is_same<unsigned short int>    (id)) { validate_single_nan<unsigned short int>    (name,die); }
-    else if (entry_type_is_same<unsigned int>          (id)) { validate_single_nan<unsigned int>          (name,die); }
-    else if (entry_type_is_same<unsigned long int>     (id)) { validate_single_nan<unsigned long int>     (name,die); }
-    else if (entry_type_is_same<unsigned long long int>(id)) { validate_single_nan<unsigned long long int>(name,die); }
-    else if (entry_type_is_same<float>                 (id)) { validate_single_nan<float>                 (name,die); }
-    else if (entry_type_is_same<double>                (id)) { validate_single_nan<double>                (name,die); }
-    else if (entry_type_is_same<long double>           (id)) { validate_single_nan<long double>           (name,die); }
+    int id = find_entry_or_error(name);
+    if      (entry_type_is_same<short int>             (id)) { validate_single_nan<short int const>             (name,die); }
+    else if (entry_type_is_same<int>                   (id)) { validate_single_nan<int const>                   (name,die); }
+    else if (entry_type_is_same<long int>              (id)) { validate_single_nan<long int const>              (name,die); }
+    else if (entry_type_is_same<long long int>         (id)) { validate_single_nan<long long int const>         (name,die); }
+    else if (entry_type_is_same<unsigned short int>    (id)) { validate_single_nan<unsigned short int const>    (name,die); }
+    else if (entry_type_is_same<unsigned int>          (id)) { validate_single_nan<unsigned int const>          (name,die); }
+    else if (entry_type_is_same<unsigned long int>     (id)) { validate_single_nan<unsigned long int const>     (name,die); }
+    else if (entry_type_is_same<unsigned long long int>(id)) { validate_single_nan<unsigned long long int const>(name,die); }
+    else if (entry_type_is_same<float>                 (id)) { validate_single_nan<float const>                 (name,die); }
+    else if (entry_type_is_same<double>                (id)) { validate_single_nan<double const>                (name,die); }
+    else if (entry_type_is_same<long double>           (id)) { validate_single_nan<long double const>           (name,die); }
   }
 
 
   // Validate one entry for infs
   // This is EXPENSIVE. All arrays are copied to the host, and the checks are performed on the host
   void validate_inf( std::string name , bool die_on_failed_check = false ) const {
-    if      (entry_type_is_same<float>      (id)) { validate_single_inf<float>      (name,die_on_failed_check); }
-    else if (entry_type_is_same<double>     (id)) { validate_single_inf<double>     (name,die_on_failed_check); }
-    else if (entry_type_is_same<long double>(id)) { validate_single_inf<long double>(name,die_on_failed_check); }
+    int id = find_entry_or_error(name);
+    if      (entry_type_is_same<float>      (id)) { validate_single_inf<float const>      (name,die_on_failed_check); }
+    else if (entry_type_is_same<double>     (id)) { validate_single_inf<double const>     (name,die_on_failed_check); }
+    else if (entry_type_is_same<long double>(id)) { validate_single_inf<long double const>(name,die_on_failed_check); }
   }
 
 
   // Validate one entry for negative values
   // This is EXPENSIVE. All arrays are copied to the host, and the checks are performed on the host
   void validate_pos( std::string name , bool die_on_failed_check = false ) const {
-    if      (entry_type_is_same<short int>    (id)) { validate_single_pos<short int>    (name,die_on_failed_check); }
-    else if (entry_type_is_same<int>          (id)) { validate_single_pos<int>          (name,die_on_failed_check); }
-    else if (entry_type_is_same<long int>     (id)) { validate_single_pos<long int>     (name,die_on_failed_check); }
-    else if (entry_type_is_same<long long int>(id)) { validate_single_pos<long long int>(name,die_on_failed_check); }
-    else if (entry_type_is_same<float>        (id)) { validate_single_pos<float>        (name,die_on_failed_check); }
-    else if (entry_type_is_same<double>       (id)) { validate_single_pos<double>       (name,die_on_failed_check); }
-    else if (entry_type_is_same<long double>  (id)) { validate_single_pos<long double>  (name,die_on_failed_check); }
+    int id = find_entry_or_error(name);
+    if      (entry_type_is_same<short int>    (id)) { validate_single_pos<short int const>    (name,die_on_failed_check); }
+    else if (entry_type_is_same<int>          (id)) { validate_single_pos<int const>          (name,die_on_failed_check); }
+    else if (entry_type_is_same<long int>     (id)) { validate_single_pos<long int const>     (name,die_on_failed_check); }
+    else if (entry_type_is_same<long long int>(id)) { validate_single_pos<long long int const>(name,die_on_failed_check); }
+    else if (entry_type_is_same<float>        (id)) { validate_single_pos<float const>        (name,die_on_failed_check); }
+    else if (entry_type_is_same<double>       (id)) { validate_single_pos<double const>       (name,die_on_failed_check); }
+    else if (entry_type_is_same<long double>  (id)) { validate_single_pos<long double const>  (name,die_on_failed_check); }
   }
 
 
   // INTERNAL USE: check one entry id for NaNs
   template <class T>
   void validate_single_nan(std::string name , bool die_on_failed_check = false) const {
-    auto arr = get_collased<T>(name).createHostCopy();
+    auto arr = get_collapsed<T>(name).createHostCopy();
     for (int i=0; i < arr.get_elem_count(); i++) {
       if ( std::isnan( arr(i) ) ) {
-        std::cerr << "WARNING: NaN discovered in: " << entries[id].name << " at global index: " << i << "\n";
+        std::cerr << "WARNING: NaN discovered in: " << name << " at global index: " << i << "\n";
         if (die_on_failed_check) endrun("");
       }
     }
@@ -298,10 +360,10 @@ public:
   // INTERNAL USE: check one entry id for infs
   template <class T>
   void validate_single_inf(std::string name , bool die_on_failed_check = false) const {
-    auto arr = get_collased<T>(name).createHostCopy();
+    auto arr = get_collapsed<T>(name).createHostCopy();
     for (int i=0; i < arr.get_elem_count(); i++) {
       if ( std::isinf( arr(i) ) ) {
-        std::cerr << "WARNING: inf discovered in: " << entries[id].name << " at global index: " << i << "\n";
+        std::cerr << "WARNING: inf discovered in: " << name << " at global index: " << i << "\n";
         if (die_on_failed_check) endrun("");
       }
     }
@@ -313,10 +375,10 @@ public:
   void validate_single_pos(std::string name , bool die_on_failed_check = false) const {
     int id = find_entry_or_error( name );
     if (entries[id].positive) {
-      auto arr = get_collased<T>(name).createHostCopy();
+      auto arr = get_collapsed<T>(name).createHostCopy();
       for (int i=0; i < arr.get_elem_count(); i++) {
-        if ( arr[i] < 0. ) {
-          std::cerr << "WARNING: negative value discovered in positive-definite entry: " << entries[id].name
+        if ( arr(i) < 0. ) {
+          std::cerr << "WARNING: negative value discovered in positive-definite entry: " << name
                     << " at global index: " << i << "\n";
           if (die_on_failed_check) endrun("");
         }

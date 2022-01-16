@@ -51,7 +51,7 @@ namespace pam {
 
 
 
-    inline real4d cells_to_edges( real4d const &data ,
+    inline real4d cells_to_edges( realConst4d data ,
                                   int bc_lower ,
                                   int bc_upper ) {
       int nz   = data.dimension[0];
@@ -144,7 +144,7 @@ namespace pam {
 
 
 
-    inline void init( real2d const &zint ) {
+    inline void init( realConst2d zint ) {
       int nz   = zint.dimension[0]-1;
       int nens = zint.dimension[1];
       real2d zint_ghost("zint_ghost",nz+2*hs+1,nens);
