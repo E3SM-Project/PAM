@@ -53,7 +53,7 @@ namespace pam {
 
     inline real4d cells_to_edges( realConst4d data ,
                                   int bc_lower ,
-                                  int bc_upper ) {
+                                  int bc_upper ) const {
       int nz   = data.dimension[0];
       int ny   = data.dimension[1];
       int nx   = data.dimension[2];

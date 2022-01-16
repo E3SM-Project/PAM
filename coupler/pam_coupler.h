@@ -257,7 +257,7 @@ namespace pam {
 
 
 
-    inline void update_hydrostasis( real4d const &pressure ) {
+    inline void update_hydrostasis( realConst4d pressure ) {
       using yakl::intrinsics::matmul_cr;
       using yakl::intrinsics::matinv_ge;
 
@@ -376,7 +376,7 @@ namespace pam {
 
 
 
-    real4d interp_pressure_interfaces( real4d const &press ) const {
+    real4d interp_pressure_interfaces( realConst4d press ) const {
       auto zint      = dm.get<real const,2>("vertical_interface_height");
       auto hy_press  = dm.get<real const,2>("hydrostatic_pressure");
       auto hy_params = dm.get<real const,2>("hydrostasis_parameters");
@@ -410,7 +410,7 @@ namespace pam {
 
 
 
-    real4d interp_density_interfaces( real4d const &dens ) const {
+    real4d interp_density_interfaces( realConst4d dens ) const {
       auto zint      = dm.get<real const,2>("vertical_interface_height");
       auto hy_dens   = dm.get<real const,2>("hydrostatic_density");
       auto hy_params = dm.get<real const,2>("hydrostasis_parameters");
@@ -446,7 +446,7 @@ namespace pam {
 
 
 
-    template <class FP> YAKL_INLINE void get_gll_points(SArray<FP,1,9> &rslt) {
+    template <class FP> YAKL_INLINE static void get_gll_points(SArray<FP,1,9> &rslt) {
       rslt(0)=-0.50000000000000000000000000000000000000;
       rslt(1)=-0.44987899770573007865617262220916897903;
       rslt(2)=-0.33859313975536887672294271354567122536;
@@ -460,7 +460,7 @@ namespace pam {
 
 
 
-    template <class FP> YAKL_INLINE void get_gll_weights(SArray<FP,1,9> &rslt) {
+    template <class FP> YAKL_INLINE static void get_gll_weights(SArray<FP,1,9> &rslt) {
       rslt(0)=0.013888888888888888888888888888888888889;
       rslt(1)=0.082747680780402762523169860014604152919;
       rslt(2)=0.13726935625008086764035280928968636297;

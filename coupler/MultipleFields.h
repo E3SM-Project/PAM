@@ -48,6 +48,10 @@ public:
     num_fields++;
   }
 
+  YAKL_INLINE T &get_field( int tr ) const {
+    return this->fields(tr);
+  }
+
   YAKL_INLINE auto operator() (int tr, int i1) const -> decltype(fields(tr)(i1)) {
     return this->fields(tr)(i1);
   }

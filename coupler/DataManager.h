@@ -57,7 +57,7 @@ public:
   // It is not possible to get_scalar by reference because this would be confusing
   // If you want to write to a scalar, you need to use set_scalar()
   template <class T>
-  T get_scalar( std::string name ) {
+  T get_scalar( std::string name ) const {
     typedef typename std::add_const<T>::type const TCONST;
     auto arr = get<TCONST,1>(name);
     if (arr.get_elem_count() > 1) endrun("ERROR: retriving array as if it were a scalar");
