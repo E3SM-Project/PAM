@@ -22,7 +22,7 @@ public:
 
   Spatial space_op;
 
-  void init(int num_tracers, PamCoupler &coupler) {
+  void init(int num_tracers, PamCoupler const &coupler) {
     space_op.init(num_tracers, coupler);
 
     std::string inFile = coupler.get_note( "standalone_input_file" );
@@ -41,16 +41,6 @@ public:
   }
 
 
-  void convert_dynamics_to_coupler_state( DataManager &dm ) {
-    space_op.convert_dynamics_to_coupler_state( dm );
-  }
-
-
-  void convert_coupler_state_to_dynamics( DataManager &dm ) {
-    space_op.convert_coupler_state_to_dynamics( dm );
-  }
-
-
   int add_tracer(std::string name , std::string desc , bool pos_def , bool adds_mass) {
     return space_op.add_tracer(name , desc , pos_def , adds_mass);
   }
@@ -61,17 +51,17 @@ public:
   }
 
 
-  void output(PamCoupler &coupler, real etime) {
+  void output(PamCoupler const &coupler, real etime) {
     space_op.output(coupler , etime);
   }
 
 
-  real compute_time_step(PamCoupler &coupler, real cfl_in = -1) {
+  real compute_time_step(PamCoupler const &coupler, real cfl_in = -1) {
     return space_op.compute_time_step(coupler, cfl_in);
   }
 
 
-  std::vector<real> compute_mass( PamCoupler &coupler , real5d &state , real5d &tracers ) {
+  std::vector<real> compute_mass( PamCoupler const &coupler , realConst5d state , realConst5d tracers ) const {
     int nz   = coupler.get_nz();
     int ny   = coupler.get_ny();
     int nx   = coupler.get_nx();
