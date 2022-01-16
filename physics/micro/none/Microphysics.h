@@ -62,8 +62,8 @@ public:
     int nens = coupler.get_nens();
 
     // Register tracers in the dycore
-    //                                          name              description       positive   adds mass
-    tracer_index_vapor = dycore.add_tracer(coupler.dm , "water_vapor"   , "Water Vapor"   , true     , true);
+    //                                     name              description       positive   adds mass
+    tracer_index_vapor = dycore.add_tracer("water_vapor"   , "Water Vapor"   , true     , true);
 
     // Register and allocate the tracers in the DataManager
     coupler.dm.register_and_allocate<real>( "water_vapor"   , "Water Vapor"   , {nz,ny,nx,nens} , {"z","y","x","nens"} );

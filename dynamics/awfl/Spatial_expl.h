@@ -157,7 +157,7 @@ public:
 
 
 
-  void convert_dynamics_to_coupler_state( PamCoupler &coupler , real5d &state , real5d &tracers ) {
+  void convert_dynamics_to_coupler_state( PamCoupler &coupler , realConst5d state , realConst5d tracers ) const {
     real4d dm_dens_dry = coupler.dm.get<real,4>( "density_dry"      );
     real4d dm_uvel     = coupler.dm.get<real,4>( "uvel"             );
     real4d dm_vvel     = coupler.dm.get<real,4>( "vvel"             );
@@ -206,7 +206,7 @@ public:
 
 
 
-  YAKL_INLINE static real hydrostatic_dens_theta( real2d const &hy_params , real z , real zbot , real ztop ,
+  YAKL_INLINE static real hydrostatic_dens_theta( realConst2d hy_params , real z , real zbot , real ztop ,
                                                   int iens , real C0 , real gamma ) {
     real p = pam::hydrostatic_pressure( hy_params , z , zbot , ztop , iens );
     // p = C0*(rho*theta)^gamma
@@ -215,7 +215,7 @@ public:
 
 
 
-  YAKL_INLINE static real hydrostatic_theta( real2d const &hy_params , real z , real zbot , real ztop ,
+  YAKL_INLINE static real hydrostatic_theta( realConst2d hy_params , real z , real zbot , real ztop ,
                                              int iens , real C0 , real gamma , real grav ) {
     real rt =      hydrostatic_dens_theta( hy_params , z , zbot , ztop , iens , C0 , gamma        );
     real r  = pam::hydrostatic_density   ( hy_params , z , zbot , ztop , iens              , grav );
@@ -225,7 +225,7 @@ public:
 
 
   void convert_coupler_state_to_dynamics( PamCoupler &coupler , real5d &state , real5d &tracers ) {
-    auto hy_params = coupler.dm.get<real,2>("hydrostasis_parameters");
+    auto hy_params = coupler.dm.get<real const,2>("hydrostasis_parameters");
 
     YAKL_SCOPE( hyPressureCells  , this->hyPressureCells  );
     YAKL_SCOPE( hyThetaCells     , this->hyThetaCells     );
@@ -249,15 +249,15 @@ public:
     YAKL_SCOPE( idWV             , this->idWV             );
     YAKL_SCOPE( grav             , this->grav             );
 
-    real4d dm_dens_dry = coupler.dm.get<real,4>( "density_dry"      );
-    real4d dm_uvel     = coupler.dm.get<real,4>( "uvel"             );
-    real4d dm_vvel     = coupler.dm.get<real,4>( "vvel"             );
-    real4d dm_wvel     = coupler.dm.get<real,4>( "wvel"             );
-    real4d dm_temp     = coupler.dm.get<real,4>( "temp"             );
+    auto dm_dens_dry = coupler.dm.get<real const,4>( "density_dry"      );
+    auto dm_uvel     = coupler.dm.get<real const,4>( "uvel"             );
+    auto dm_vvel     = coupler.dm.get<real const,4>( "vvel"             );
+    auto dm_wvel     = coupler.dm.get<real const,4>( "wvel"             );
+    auto dm_temp     = coupler.dm.get<real const,4>( "temp"             );
 
-    MultipleFields<max_tracers,real4d> dm_tracers;
+    MultipleFields<max_tracers,realConst4d> dm_tracers;
     for (int tr = 0; tr < num_tracers; tr++) {
-      auto trac = coupler.dm.get<real,4>( tracer_name[tr] );
+      auto trac = coupler.dm.get<real const,4>( tracer_name[tr] );
       dm_tracers.add_field( trac );
     }
 
@@ -330,7 +330,7 @@ public:
 
 
   // Initialize a tracer
-  int add_tracer(DataManager &dm , std::string name , std::string desc , bool pos_def , bool adds_mass) {
+  int add_tracer(std::string name , std::string desc , bool pos_def , bool adds_mass) {
     YAKL_SCOPE( tracer_pos       , this->tracer_pos       );
     YAKL_SCOPE( tracer_adds_mass , this->tracer_adds_mass );
 

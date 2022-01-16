@@ -89,10 +89,10 @@ public:
     int nens = coupler.get_nens();
 
     // Register tracers in the dycore
-    //                                        name            description                positive   adds mass
-    tracer_IDs(ID_V) = dycore.add_tracer(coupler.dm , "water_vapor" , "Water Vapor"            , true     , true );
-    tracer_IDs(ID_N) = dycore.add_tracer(coupler.dm , "cloud_cond"  , "Total Cloud Condensate" , true     , true );
-    tracer_IDs(ID_P) = dycore.add_tracer(coupler.dm , "precip"      , "Total Precip"           , true     , true );
+    //                                   name            description                positive   adds mass
+    tracer_IDs(ID_V) = dycore.add_tracer("water_vapor" , "Water Vapor"            , true     , true );
+    tracer_IDs(ID_N) = dycore.add_tracer("cloud_cond"  , "Total Cloud Condensate" , true     , true );
+    tracer_IDs(ID_P) = dycore.add_tracer("precip"      , "Total Precip"           , true     , true );
 
     // Register and allocate the tracers in the DataManager
     coupler.dm.register_and_allocate<real>( "water_vapor" , "Water Vapor"            , {nz,ny,nx,nens} , {"z","y","x","nens"} );

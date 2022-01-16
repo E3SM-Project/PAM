@@ -48,8 +48,17 @@ public:
     num_fields++;
   }
 
-  YAKL_INLINE real &operator() (int tr, int k, int j, int i, int iens) const {
-    return this->fields(tr)(k,j,i,iens);
+  YAKL_INLINE auto operator() (int tr, int i1) const -> decltype(fields(tr)(i1)) {
+    return this->fields(tr)(i1);
+  }
+  YAKL_INLINE auto operator() (int tr, int i1, int i2) const -> decltype(fields(tr)(i1,i2)) {
+    return this->fields(tr)(i1,i2);
+  }
+  YAKL_INLINE auto operator() (int tr, int i1, int i2, int i3) const -> decltype(fields(tr)(i1,i2,i3)) {
+    return this->fields(tr)(i1,i2,i3);
+  }
+  YAKL_INLINE auto operator() (int tr, int i1, int i2, int i3, int i4) const -> decltype(fields(tr)(i1,i2,i3,i4)) {
+    return this->fields(tr)(i1,i2,i3,i4);
   }
 };
 

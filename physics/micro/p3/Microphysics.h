@@ -119,16 +119,16 @@ public:
     int nens = coupler.get_nens();
 
     // Register tracers in the dycore
-    //                                        name                 description            positive   adds mass
-    tracer_IDs(ID_C ) = dycore.add_tracer(coupler.dm , "cloud_water"     , "Cloud Water Mass"   , true     , true );
-    tracer_IDs(ID_NC) = dycore.add_tracer(coupler.dm , "cloud_water_num" , "Cloud Water Number" , true     , false);
-    tracer_IDs(ID_R ) = dycore.add_tracer(coupler.dm , "rain"            , "Rain Water Mass"    , true     , true );
-    tracer_IDs(ID_NR) = dycore.add_tracer(coupler.dm , "rain_num"        , "Rain Water Number"  , true     , false);
-    tracer_IDs(ID_I ) = dycore.add_tracer(coupler.dm , "ice"             , "Ice Mass"           , true     , true );
-    tracer_IDs(ID_NI) = dycore.add_tracer(coupler.dm , "ice_num"         , "Ice Number"         , true     , false);
-    tracer_IDs(ID_M ) = dycore.add_tracer(coupler.dm , "ice_rime"        , "Ice-Rime Mass"      , true     , false);
-    tracer_IDs(ID_BM) = dycore.add_tracer(coupler.dm , "ice_rime_vol"    , "Ice-Rime Volume"    , true     , false);
-    tracer_IDs(ID_V ) = dycore.add_tracer(coupler.dm , "water_vapor"     , "Water Vapor"        , true     , true );
+    //                                    name                description            positive   adds mass
+    tracer_IDs(ID_C ) = dycore.add_tracer("cloud_water"     , "Cloud Water Mass"   , true     , true );
+    tracer_IDs(ID_NC) = dycore.add_tracer("cloud_water_num" , "Cloud Water Number" , true     , false);
+    tracer_IDs(ID_R ) = dycore.add_tracer("rain"            , "Rain Water Mass"    , true     , true );
+    tracer_IDs(ID_NR) = dycore.add_tracer("rain_num"        , "Rain Water Number"  , true     , false);
+    tracer_IDs(ID_I ) = dycore.add_tracer("ice"             , "Ice Mass"           , true     , true );
+    tracer_IDs(ID_NI) = dycore.add_tracer("ice_num"         , "Ice Number"         , true     , false);
+    tracer_IDs(ID_M ) = dycore.add_tracer("ice_rime"        , "Ice-Rime Mass"      , true     , false);
+    tracer_IDs(ID_BM) = dycore.add_tracer("ice_rime_vol"    , "Ice-Rime Volume"    , true     , false);
+    tracer_IDs(ID_V ) = dycore.add_tracer("water_vapor"     , "Water Vapor"        , true     , true );
 
     // Register and allocate the tracers in the DataManager
     coupler.dm.register_and_allocate<real>( "cloud_water"     , "Cloud Water Mass"   , {nz,ny,nx,nens} , {"z","y","x","nens"} );

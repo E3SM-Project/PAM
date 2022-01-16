@@ -51,8 +51,8 @@ public:
   }
 
 
-  int add_tracer(DataManager &dm , std::string name , std::string desc , bool pos_def , bool adds_mass) {
-    return space_op.add_tracer(dm , name , desc , pos_def , adds_mass);
+  int add_tracer(std::string name , std::string desc , bool pos_def , bool adds_mass) {
+    return space_op.add_tracer(name , desc , pos_def , adds_mass);
   }
 
 
