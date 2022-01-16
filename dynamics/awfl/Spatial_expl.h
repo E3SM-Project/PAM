@@ -224,7 +224,7 @@ public:
 
 
 
-  void convert_coupler_state_to_dynamics( PamCoupler &coupler , real5d &state , real5d &tracers ) {
+  void convert_coupler_state_to_dynamics( PamCoupler const &coupler , real5d const &state , real5d const &tracers ) {
     auto hy_params = coupler.dm.get<real const,2>("hydrostasis_parameters");
 
     YAKL_SCOPE( hyPressureCells  , this->hyPressureCells  );
@@ -450,7 +450,7 @@ public:
 
 
   // Initialize crap needed by recon()
-  void init(int num_tracers, PamCoupler &coupler) {
+  void init(int num_tracers, PamCoupler const &coupler) {
     using yakl::intrinsics::matmul_cr;
 
     this->nens = coupler.get_nens();
@@ -1190,9 +1190,9 @@ public:
 
 
   // Compute state and tendency time derivatives from the state
-  void computeTendencies( real5d &state   , real5d &stateTend  ,
-                          real5d &tracers , real5d &tracerTend ,
-                          real &dt , int splitIndex ) {
+  void computeTendencies( real5d const &state   , real5d const &stateTend  ,
+                          real5d const &tracers , real5d const &tracerTend ,
+                          real &dt , int splitIndex ) const {
     if (sim2d) {
       if (dimSwitch) {
         if        (splitIndex == 0) {
@@ -1236,9 +1236,9 @@ public:
 
 
 
-  void computeTendenciesX( real5d &state   , real5d &stateTend  ,
-                           real5d &tracers , real5d &tracerTend ,
-                           real &dt ) {
+  void computeTendenciesX( real5d const &state   , real5d const &stateTend  ,
+                           real5d const &tracers , real5d const &tracerTend ,
+                           real &dt ) const {
     YAKL_SCOPE( nx                      , this->nx                     );
     YAKL_SCOPE( weno_scalars            , this->weno_scalars           );
     YAKL_SCOPE( weno_winds              , this->weno_winds             );
@@ -1605,9 +1605,9 @@ public:
 
 
 
-  void computeTendenciesY( real5d &state   , real5d &stateTend  ,
-                           real5d &tracers , real5d &tracerTend ,
-                           real &dt ) {
+  void computeTendenciesY( real5d const &state   , real5d const &stateTend  ,
+                           real5d const &tracers , real5d const &tracerTend ,
+                           real &dt ) const {
     YAKL_SCOPE( ny                      , this->ny                     );
     YAKL_SCOPE( weno_scalars            , this->weno_scalars           );
     YAKL_SCOPE( weno_winds              , this->weno_winds             );
@@ -1961,9 +1961,9 @@ public:
 
 
 
-  void computeTendenciesZ( real5d &state   , real5d &stateTend  ,
-                           real5d &tracers , real5d &tracerTend ,
-                           real &dt ) {
+  void computeTendenciesZ( real5d const &state   , real5d const &stateTend  ,
+                           real5d const &tracers , real5d const &tracerTend ,
+                           real &dt ) const {
     YAKL_SCOPE( nz                      , this->nz                     );
     YAKL_SCOPE( weno_scalars            , this->weno_scalars           );
     YAKL_SCOPE( weno_winds              , this->weno_winds             );
@@ -2392,7 +2392,7 @@ public:
 
 
 
-  void output(PamCoupler &coupler, real etime) {
+  void output(PamCoupler const &coupler, real etime) {
     YAKL_SCOPE( dx                    , this->dx                   );
     YAKL_SCOPE( dy                    , this->dy                   );
     YAKL_SCOPE( hyDensCells           , this->hyDensCells          );
@@ -2426,7 +2426,7 @@ public:
         nc.write(yloc.createHostCopy(),"y",{"y"});
 
         // z-coordinate
-        auto zint = coupler.dm.get<real,2>("vertical_interface_height");
+        auto zint = coupler.dm.get<real const,2>("vertical_interface_height");
         real1d zmid("zmid",nz);
         parallel_for( "Spatial.h output 3" , nz , YAKL_LAMBDA (int i) {
           zmid(i) = ( zint(i,iens) + zint(i+1,iens) ) / 2;
