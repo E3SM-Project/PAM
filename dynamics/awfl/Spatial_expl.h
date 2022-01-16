@@ -391,7 +391,7 @@ public:
 
 
   // Given the model data and CFL value, compute the maximum stable time step
-  real compute_time_step(PamCoupler &coupler, real cfl_in = -1) {
+  real compute_time_step(PamCoupler const &coupler, real cfl_in = -1) {
     real cfl = cfl_in;
     if (cfl < 0) cfl = 0.8;
 
@@ -408,12 +408,12 @@ public:
       YAKL_SCOPE( Rv                   , this->Rv                  );
 
       // Convert data from DataManager to state and tracers array for convenience
-      real4d dm_dens_dry = coupler.dm.get<real,4>( "density_dry" );
-      real4d dm_uvel     = coupler.dm.get<real,4>( "uvel"        );
-      real4d dm_vvel     = coupler.dm.get<real,4>( "vvel"        );
-      real4d dm_wvel     = coupler.dm.get<real,4>( "wvel"        );
-      real4d dm_temp     = coupler.dm.get<real,4>( "temp"        );
-      real4d dm_dens_vap = coupler.dm.get<real,4>( "water_vapor" );
+      auto dm_dens_dry = coupler.dm.get<real const,4>( "density_dry" );
+      auto dm_uvel     = coupler.dm.get<real const,4>( "uvel"        );
+      auto dm_vvel     = coupler.dm.get<real const,4>( "vvel"        );
+      auto dm_wvel     = coupler.dm.get<real const,4>( "wvel"        );
+      auto dm_temp     = coupler.dm.get<real const,4>( "temp"        );
+      auto dm_dens_vap = coupler.dm.get<real const,4>( "water_vapor" );
 
       // Allocate a 3-D array for the max stable time steps (we'll use this for a reduction later)
       real4d dt3d("dt3d",nz,ny,nx,nens);
@@ -551,7 +551,7 @@ public:
     sim2d = ny == 1;
 
     // Store vertical cell interface heights in the data manager
-    auto zint = coupler.dm.get<real,2>("vertical_interface_height");
+    auto zint = coupler.dm.get<real const,2>("vertical_interface_height");
 
     nz = coupler.get_nz();
 
