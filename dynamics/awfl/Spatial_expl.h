@@ -1112,8 +1112,6 @@ public:
       }
       nc.close();
 
-      real5d tracers = coupler.dm.get<real,5>("dynamics_tracers");
-
       parallel_for( "Spatial.h init_state 12" , SimpleBounds<4>(nz,ny,nx,nens) ,
                     YAKL_LAMBDA (int k, int j, int i, int iens) {
         state  (idR ,hs+k,hs+j,hs+i,iens) = 0;
