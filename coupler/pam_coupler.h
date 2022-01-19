@@ -92,14 +92,15 @@ namespace pam {
 
     Notes notes;
 
-    real R_d;   // Dry air gas constant
-    real R_v;   // Water vapor gas constant
-    real cp_d;  // Dry air specific heat at constant pressure
-    real cp_v;  // Water vapor specific heat at constant pressure
-    real grav;  // Acceleration due to gravity (m s^-2): typically 9.81
-    real p0;    // Reference pressure (Pa): typically 10^5
-    real xlen;  // Domain length in the x-direction in meters
-    real ylen;  // Domain length in the y-direction in meters
+    real R_d;    // Dry air gas constant
+    real R_v;    // Water vapor gas constant
+    real cp_d;   // Dry air specific heat at constant pressure
+    real cp_v;   // Water vapor specific heat at constant pressure
+    real grav;   // Acceleration due to gravity (m s^-2): typically 9.81
+    real p0;     // Reference pressure (Pa): typically 10^5
+    real xlen;   // Domain length in the x-direction in meters
+    real ylen;   // Domain length in the y-direction in meters
+    real dt_gcm; // Time step of the GCM for this MMF invocation
 
     DataManager dm;
 
@@ -120,6 +121,12 @@ namespace pam {
       dm.finalize();
       notes.finalize();
     }
+
+
+    void set_dt_gcm(real dt_gcm) { this->dt_gcm = dt_gcm; }
+
+
+    real get_dt_gcm() const { return this->dt_gcm; }
 
 
     real get_xlen() const { return this->xlen; }

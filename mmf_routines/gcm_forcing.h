@@ -10,12 +10,12 @@ inline void compute_gcm_forcing_tendencies( PamCoupler &coupler , real2d &rho_d_
   using yakl::atomicAdd;
   auto &dm = coupler.dm;
   // Get current state from coupler
-  auto rho_d = dm.get<real,4>( "density_dry" );
-  auto uvel  = dm.get<real,4>( "uvel"        );
-  auto vvel  = dm.get<real,4>( "vvel"        );
-  auto wvel  = dm.get<real,4>( "wvel"        );
-  auto temp  = dm.get<real,4>( "temp"        );
-  auto rho_v = dm.get<real,4>( "water_vapor" );
+  auto rho_d = dm.get<real const,4>( "density_dry" );
+  auto uvel  = dm.get<real const,4>( "uvel"        );
+  auto vvel  = dm.get<real const,4>( "vvel"        );
+  auto wvel  = dm.get<real const,4>( "wvel"        );
+  auto temp  = dm.get<real const,4>( "temp"        );
+  auto rho_v = dm.get<real const,4>( "water_vapor" );
 
   int nz   = dm.get_dimension("z"   );
   int ny   = dm.get_dimension("y"   );
@@ -97,14 +97,33 @@ inline void apply_gcm_forcing_tendencies( PamCoupler &coupler , real dt ) {
   auto gcm_tend_temp  = dm.get<real,2>("gcm_tend_temp" );
   auto gcm_tend_rho_v = dm.get<real,2>("gcm_tend_rho_v");
 
-  parallel_for( "Compute summed column of current state" , SimpleBounds<4>(nz,ny,nx,nens) , 
+  real1d rho_v_neg_mass("rho_v_neg_mass",nens);
+  real1d rho_v_pos_mass("rho_v_pos_mass",nens);
+
+  parallel_for( "Apply GCM forcing" , SimpleBounds<4>(nz,ny,nx,nens) , 
                 YAKL_LAMBDA (int k, int j, int i, int iens) {
+    // Apply forcing
     rho_d(k,j,i,iens) += gcm_tend_rho_d(k,iens) * dt;
     uvel (k,j,i,iens) += gcm_tend_uvel (k,iens) * dt;
     vvel (k,j,i,iens) += gcm_tend_vvel (k,iens) * dt;
     wvel (k,j,i,iens) += gcm_tend_wvel (k,iens) * dt;
     temp (k,j,i,iens) += gcm_tend_temp (k,iens) * dt;
     rho_v(k,j,i,iens) += gcm_tend_rho_v(k,iens) * dt;
+    // Compute negative and positive mass for rho_v, and set negative masses to zero
+    if (rho_v(k,j,i,iens) < 0) {
+      atomicAdd( rho_v_neg_mass(iens) , -rho_v(k,j,i,iens) );
+      rho_v(k,j,i,iens) = 0;
+    } else if (rho_v(k,j,i,iens) > 0) {
+      atomicAdd( rho_v_pos_mass(iens) , rho_v(k,j,i,iens) );
+    }
+  });
+
+  parallel_for( "Multiplicative hole filler for negative values" , SimpleBounds<4>(nz,ny,nx,nens) , 
+                YAKL_LAMBDA (int k, int j, int i, int iens) {
+    // Redistribute added mass from filling negative values by taking mass away from each positive mass cell
+    // Take away mass according to the proportion of total positive mass in this cell
+    real factor = rho_v(k,j,i,iens) / rho_v_pos_mass(iens);
+    rho_v(k,j,i,iens) = max( 0._fp , rho_v(k,j,i,iens) - rho_v_neg_mass(iens) * factor );
   });
 }
 
