@@ -33,12 +33,17 @@ public:
   DataManager() {
     entries    = std::vector<Entry>();
     dimensions = std::vector<Dimension>();
+    num_assigned_dims = 0;
   }
 
   DataManager( DataManager &&dm      ) = delete;
   DataManager( DataManager const &dm ) = delete;
   DataManager &operator=( DataManager &&dm      ) = delete;
   DataManager &operator=( DataManager const &dm ) = delete;
+
+  int num_assigned_dims;
+
+  std::mutex mtx;
 
 
   ~DataManager() {
@@ -47,11 +52,23 @@ public:
   }
 
 
+  void add_dimension( std::string name , int len ) {
+    int dimid = find_dimension( name );
+    if (dimid > 0) {
+      if ( dimensions[dimid].len != len ) {
+        endrun("ERROR: Adding a dimension that already exists with a different size than the existing dimension");
+      }
+      return;  // Avoid adding a duplicate entry
+    }
+    dimensions.push_back( {name , len} );
+  }
+
+
   // set a scalar value. If it doesn't exist, it allocates and registers it first
   template <class T>
   void set_scalar( std::string name , std::string desc , T value ) {
     int id = find_entry( name );
-    if (id == -1) register_and_allocate<T>( name , desc , {1} );
+    if (id == -1) register_and_allocate<T>( name , desc , {1} , {"one_scalar"} );
     auto arr = get<T,1>(name);
     if (arr.get_elem_count() > 1) endrun("ERROR: retriving array as if it were a scalar");
     arr(0) = value;
@@ -107,6 +124,22 @@ public:
             endrun("ERROR: Dimension already exists but has a different length");
           }
         }
+      }
+    } else {
+      // If dim_names was not passed, then let's try to find some. If we can't, then we'll have to create them
+      std::string loc_dim_name = "";
+      for (int i=0; i < dims.size(); i++) { // i is local var dims index
+        for (int ii=0; ii < this->dimensions.size(); ii++) { // ii is data manager dimensions index
+          if (dims[i] == this->dimensions[ii].len) loc_dim_name = this->dimensions[i].name;
+          break;
+        }
+        if (loc_dim_name == "") {
+          this->mtx.lock();
+          loc_dim_name = std::string("assigned_dim_") + std::to_string(this->num_assigned_dims);
+          this->num_assigned_dims++;
+          this->mtx.unlock();
+        }
+        dim_names.push_back(loc_dim_name);
       }
     }
 

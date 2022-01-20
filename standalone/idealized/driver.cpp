@@ -53,7 +53,7 @@ int main(int argc, char** argv) {
     // This is for the dycore to pull out to determine how to do idealized test cases
     coupler.add_note( "standalone_input_file" , inFile );
 
-    // Initialize the dycore and the microphysics
+    // Initialize the microphysics (registers the microphysics's tracers)
     micro .init( coupler );
     // Before calling dycore.init(coupler), be sure ALL TRACERS HAVE BEEN REGISTERED ALREADY in the coupler
     dycore.init( coupler );
