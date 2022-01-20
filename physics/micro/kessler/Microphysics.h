@@ -25,10 +25,6 @@ public:
   real p0     ;
   real grav   ;
 
-  int tracer_index_vapor;
-
-  SArray<int,1,num_tracers> tracer_IDs; // tracer index for microphysics tracers
-
   int static constexpr ID_V = 0;  // Local index for water vapor
   int static constexpr ID_C = 1;  // Local index for cloud liquid
   int static constexpr ID_R = 2;  // Local index for precipitated liquid (rain)
@@ -56,31 +52,17 @@ public:
 
 
 
-  int get_water_vapor_index() const {
-    return tracer_index_vapor;
-  }
-
-
-
-  template <class DC>
-  void init(DC &dycore , PamCoupler &coupler) {
+  void init(PamCoupler &coupler) {
     int nx   = coupler.get_nx  ();
     int ny   = coupler.get_ny  ();
     int nz   = coupler.get_nz  ();
     int nens = coupler.get_nens();
 
-    // Register tracers in the dycore
-    //                                   name              description       positive   adds mass
-    tracer_IDs(ID_V) = dycore.add_tracer("water_vapor"   , "Water Vapor"   , true     , true);
-    tracer_IDs(ID_C) = dycore.add_tracer("cloud_liquid"  , "Cloud liquid"  , true     , true);
-    tracer_IDs(ID_R) = dycore.add_tracer("precip_liquid" , "precip_liquid" , true     , true);
-
-    // Register and allocate the tracers in the DataManager
-    coupler.dm.register_and_allocate<real>( "water_vapor"   , "Water Vapor"   , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "cloud_liquid"  , "Cloud liquid"  , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "precip_liquid" , "precip_liquid" , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-
-    tracer_index_vapor = tracer_IDs(ID_V);
+    // Register tracers in the coupler
+    //                 name              description       positive   adds mass
+    coupler.add_tracer("water_vapor"   , "Water Vapor"   , true     , true);
+    coupler.add_tracer("cloud_liquid"  , "Cloud liquid"  , true     , true);
+    coupler.add_tracer("precip_liquid" , "precip_liquid" , true     , true);
 
     // Register and allocation non-tracer quantities used by the microphysics
     coupler.dm.register_and_allocate<real>( "precl" , "precipitation rate" , {ny,nx,nens} , {"y","x","nens"} );

@@ -34,11 +34,6 @@ public:
 
   bool first_step;
 
-  // This must be set during init() so we can return it in the get_water_vapor_index function
-  int tracer_index_vapor;
-
-  SArray<int,1,num_tracers> tracer_IDs; // tracer index for microphysics tracers
-
   // Indices for all of your tracer quantities
   int static constexpr ID_V  = 0;  // Local index for Water Vapor       
   int static constexpr ID_N  = 1;  // Local index for Total Cloud Condensage (liquid + ice)
@@ -72,43 +67,27 @@ public:
 
 
 
-  // This must return the correct index of water vapor **AFTER** init(...) is called
-  int get_water_vapor_index() const {
-    return tracer_index_vapor;
-  }
-
-
-
   // Can do whatever you want, but mainly for registering tracers and allocating data
-  // and storing the water vapor tracer index
-  template <class DC>
-  void init(DC &dycore , PamCoupler &coupler) {
+  void init(PamCoupler &coupler) {
     int nx   = coupler.get_nx  ();
     int ny   = coupler.get_ny  ();
     int nz   = coupler.get_nz  ();
     int nens = coupler.get_nens();
 
-    // Register tracers in the dycore
-    //                                   name            description                positive   adds mass
-    tracer_IDs(ID_V) = dycore.add_tracer("water_vapor" , "Water Vapor"            , true     , true );
-    tracer_IDs(ID_N) = dycore.add_tracer("cloud_cond"  , "Total Cloud Condensate" , true     , true );
-    tracer_IDs(ID_P) = dycore.add_tracer("precip"      , "Total Precip"           , true     , true );
+    // Register tracers in the coupler
+    //                 name            description                positive   adds mass
+    coupler.add_tracer("water_vapor" , "Water Vapor"            , true     , true );
+    coupler.add_tracer("cloud_cond"  , "Total Cloud Condensate" , true     , true );
+    coupler.add_tracer("precip"      , "Total Precip"           , true     , true );
 
-    // Register and allocate the tracers in the DataManager
-    coupler.dm.register_and_allocate<real>( "water_vapor" , "Water Vapor"            , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "cloud_cond"  , "Total Cloud Condensate" , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "precip"      , "Total Precip"           , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    auto water_vapor = coupler.dm.get_collapsed<real>( "water_vapor" );
+    auto cloud_cond  = coupler.dm.get_collapsed<real>( "cloud_cond"  );
+    auto precip      = coupler.dm.get_collapsed<real>( "precip"      );
 
-    tracer_index_vapor = tracer_IDs(ID_V);
-
-    auto water_vapor = coupler.dm.get<real,4>( "water_vapor" );
-    auto cloud_cond  = coupler.dm.get<real,4>( "cloud_cond"  );
-    auto precip      = coupler.dm.get<real,4>( "precip"      );
-
-    parallel_for( "micro zero" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      water_vapor(k,j,i,iens) = 0;
-      cloud_cond (k,j,i,iens) = 0;
-      precip     (k,j,i,iens) = 0;
+    parallel_for( "micro zero" , nz*ny*nx*nens , YAKL_LAMBDA (int i) {
+      water_vapor(i) = 0;
+      cloud_cond (i) = 0;
+      precip     (i) = 0;
     });
   }
 

@@ -104,22 +104,42 @@ namespace pam {
 
     DataManager dm;
 
+    struct Tracer {
+      std::string name;
+      std::string desc;
+      bool        positive;
+      bool        adds_mass;
+    };
+
+    std::vector<Tracer> tracers;
+
 
     PamCoupler() {
-      this->R_d  = 287 ;
-      this->R_v  = 461 ;
-      this->cp_d = 1004;
-      this->cp_v = 1859;
-      this->grav = 9.81;
-      this->p0   = 1.e5;
-      this->xlen = -1;
-      this->ylen = -1;
+      this->R_d    = 287 ;
+      this->R_v    = 461 ;
+      this->cp_d   = 1004;
+      this->cp_v   = 1859;
+      this->grav   = 9.81;
+      this->p0     = 1.e5;
+      this->xlen   = -1;
+      this->ylen   = -1;
+      this->dt_gcm = -1;
     }
 
 
     ~PamCoupler() {
       dm.finalize();
       notes.finalize();
+      tracers = std::vector<Tracer>();
+      this->R_d    = 287 ;
+      this->R_v    = 461 ;
+      this->cp_d   = 1004;
+      this->cp_v   = 1859;
+      this->grav   = 9.81;
+      this->p0     = 1.e5;
+      this->xlen   = -1;
+      this->ylen   = -1;
+      this->dt_gcm = -1;
     }
 
 
@@ -184,7 +204,7 @@ namespace pam {
     }
 
 
-    inline void set_phys_constants(real R_d, real R_v, real cp_d, real cp_v, real grav=9.81, real p0=1.e5) {
+    void set_phys_constants(real R_d, real R_v, real cp_d, real cp_v, real grav=9.81, real p0=1.e5) {
       this->R_d  = R_d ;
       this->R_v  = R_v ;
       this->cp_d = cp_d;
@@ -194,7 +214,7 @@ namespace pam {
     }
 
 
-    inline void set_grid(real xlen, real ylen, real2d const &zint_in) {
+    void set_grid(real xlen, real ylen, realConst2d zint_in) {
       int nz    = get_nz();
       int nens  = get_nens();
       this->xlen = xlen;
@@ -208,7 +228,7 @@ namespace pam {
     }
 
 
-    inline void set_grid(real xlen, real ylen, real1d const &zint_in) {
+    void set_grid(real xlen, real ylen, realConst1d zint_in) {
       int nz    = get_nz();
       int nens  = get_nens();
       this->xlen = xlen;
@@ -222,8 +242,57 @@ namespace pam {
     }
 
 
+    
+    void add_tracer( std::string tracer_name , std::string tracer_desc , bool positive , bool adds_mass ) {
+      int nz   = get_nz  ();
+      int ny   = get_ny  ();
+      int nx   = get_nx  ();
+      int nens = get_nens();
+      dm.register_and_allocate<real>( tracer_name , tracer_desc , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+      tracers.push_back( { tracer_name , tracer_desc , positive , adds_mass } );
+    }
 
-    inline void allocate_coupler_state( int nz, int ny, int nx, int nens ) {
+
+
+    int get_num_tracers() const { return tracers.size(); }
+
+
+    
+    std::vector<std::string> get_tracer_names() const {
+      std::vector<std::string> ret;
+      for (int i=0; i < tracers.size(); i++) { ret.push_back( tracers[i].name ); }
+      return ret;
+    }
+
+
+    
+    void get_tracer_info(std::string tracer_name , std::string &tracer_desc, bool &tracer_found ,
+                         bool &positive , bool &adds_mass) const {
+      std::vector<std::string> ret;
+      for (int i=0; i < tracers.size(); i++) {
+        if (tracer_name == tracers[i].name) {
+          positive     = tracers[i].positive ;
+          tracer_desc  = tracers[i].desc     ;
+          adds_mass    = tracers[i].adds_mass;
+          tracer_found = true;
+          return;
+        }
+      }
+      tracer_found = false;
+    }
+
+
+    
+    bool tracer_exists( std::string tracer_name ) const {
+      for (int i=0; i < tracers.size(); i++) {
+        if (tracer_name == tracers[i].name) return true;
+      }
+      return false;
+    }
+
+
+
+    void allocate_coupler_state( int nz, int ny, int nx, int nens ) {
       dm.register_and_allocate<real>( "density_dry"               , "dry density"               , {nz,ny,nx,nens} , {"z","y","x","nens"} );
       dm.register_and_allocate<real>( "uvel"                      , "x-direction velocity"      , {nz,ny,nx,nens} , {"z","y","x","nens"} );
       dm.register_and_allocate<real>( "vvel"                      , "y-direction velocity"      , {nz,ny,nx,nens} , {"z","y","x","nens"} );
@@ -264,7 +333,7 @@ namespace pam {
 
 
 
-    inline void update_hydrostasis( realConst4d pressure ) {
+    void update_hydrostasis( realConst4d pressure ) {
       using yakl::intrinsics::matmul_cr;
       using yakl::intrinsics::matinv_ge;
 

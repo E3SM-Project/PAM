@@ -11,7 +11,8 @@ int main(int argc, char** argv) {
   {
     yakl::timer_start("main");
 
-    pam::PamCoupler coupler;
+    // Creates one PamCoupler object in static scope (no parameters assumes 1 thread)
+    mmf_interface_init();
 
     if (argc <= 1) { endrun("ERROR: Must pass the input YAML filename as a parameter"); }
     std::string inFile(argv[1]);
@@ -36,18 +37,18 @@ int main(int argc, char** argv) {
     nc.read(zint_in,"vertical_interfaces");
     nc.close();
 
+    // Allocates the coupler state (density_dry, uvel, vvel, wvel, temp, vert grid, hydro background) for thread 0
+    mmf_allocate_coupler_state( nz , crm_ny , crm_nx , nens );
+
     // Create the dycore and the microphysics
     Dycore       dycore;
     Microphysics micro;
 
-    // Use microphysics gas constants values in the coupler
-    coupler.set_phys_constants( micro.R_d , micro.R_v , micro.cp_d , micro.cp_v , micro.grav , micro.p0 );
-
-    // Allocate coupler state
-    coupler.allocate_coupler_state( nz , crm_ny , crm_nx , nens );
+    // Set physical constants for coupler at thread 0 using microphysics data
+    mmf_set_phys_constants( micro.R_d , micro.R_v , micro.cp_d , micro.cp_v , micro.grav , micro.p0 );
 
     // Set the vertical grid in the coupler
-    coupler.set_vertical_grid( zint_in );
+    mmf_set_vertical_grid( zint_in );
 
     int numOut = 0;
 
@@ -55,8 +56,8 @@ int main(int argc, char** argv) {
     coupler.add_note( "standalone_input_file" , inFile );
 
     // Initialize the dycore and the microphysics
-    dycore.init( ny , nx , nens , xlen , ylen , micro.get_num_tracers() , coupler );
-    micro .init( ny , nx , nens , dycore , coupler );
+    dycore.init( micro.get_num_tracers() , coupler );
+    micro .init( dycore , coupler );
 
     #ifdef PAM_STANDALONE
       std::cout << "Dycore: " << dycore.dycore_name() << std::endl;

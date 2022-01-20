@@ -56,12 +56,7 @@ public:
   real grav;
   real cp_l;
 
-  // This must be set during init() so we can return it in the get_water_vapor_index function
-  int tracer_index_vapor;
-
   bool first_step;
-
-  SArray<int,1,num_tracers> tracer_IDs; // tracer index for microphysics tracers
 
   // Indices for all of your tracer quantities
   int static constexpr ID_C  = 0;  // Local index for Cloud Water Mass  
@@ -102,46 +97,24 @@ public:
 
 
 
-  // This must return the correct index of water vapor **AFTER** init(...) is called
-  int get_water_vapor_index() const {
-    return tracer_index_vapor;
-  }
-
-
-
   // Can do whatever you want, but mainly for registering tracers and allocating data
-  // and storing the water vapor tracer index
-  template <class DC>
-  void init(DC &dycore , PamCoupler &coupler) {
+  void init(PamCoupler &coupler) {
     int nx   = coupler.get_nx  ();
     int ny   = coupler.get_ny  ();
     int nz   = coupler.get_nz  ();
     int nens = coupler.get_nens();
 
-    // Register tracers in the dycore
-    //                                    name                description            positive   adds mass
-    tracer_IDs(ID_C ) = dycore.add_tracer("cloud_water"     , "Cloud Water Mass"   , true     , true );
-    tracer_IDs(ID_NC) = dycore.add_tracer("cloud_water_num" , "Cloud Water Number" , true     , false);
-    tracer_IDs(ID_R ) = dycore.add_tracer("rain"            , "Rain Water Mass"    , true     , true );
-    tracer_IDs(ID_NR) = dycore.add_tracer("rain_num"        , "Rain Water Number"  , true     , false);
-    tracer_IDs(ID_I ) = dycore.add_tracer("ice"             , "Ice Mass"           , true     , true );
-    tracer_IDs(ID_NI) = dycore.add_tracer("ice_num"         , "Ice Number"         , true     , false);
-    tracer_IDs(ID_M ) = dycore.add_tracer("ice_rime"        , "Ice-Rime Mass"      , true     , false);
-    tracer_IDs(ID_BM) = dycore.add_tracer("ice_rime_vol"    , "Ice-Rime Volume"    , true     , false);
-    tracer_IDs(ID_V ) = dycore.add_tracer("water_vapor"     , "Water Vapor"        , true     , true );
-
-    // Register and allocate the tracers in the DataManager
-    coupler.dm.register_and_allocate<real>( "cloud_water"     , "Cloud Water Mass"   , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "cloud_water_num" , "Cloud Water Number" , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "rain"            , "Rain Water Mass"    , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "rain_num"        , "Rain Water Number"  , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "ice"             , "Ice Mass"           , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "ice_num"         , "Ice Number"         , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "ice_rime"        , "Ice-Rime Mass"      , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "ice_rime_vol"    , "Ice-Rime Volume"    , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "water_vapor"     , "Water Vapor"        , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-
-    tracer_index_vapor = tracer_IDs(ID_V);
+    // Register tracers in the coupler
+    //                 name                description            positive   adds mass
+    coupler.add_tracer("cloud_water"     , "Cloud Water Mass"   , true     , true );
+    coupler.add_tracer("cloud_water_num" , "Cloud Water Number" , true     , false);
+    coupler.add_tracer("rain"            , "Rain Water Mass"    , true     , true );
+    coupler.add_tracer("rain_num"        , "Rain Water Number"  , true     , false);
+    coupler.add_tracer("ice"             , "Ice Mass"           , true     , true );
+    coupler.add_tracer("ice_num"         , "Ice Number"         , true     , false);
+    coupler.add_tracer("ice_rime"        , "Ice-Rime Mass"      , true     , false);
+    coupler.add_tracer("ice_rime_vol"    , "Ice-Rime Volume"    , true     , false);
+    coupler.add_tracer("water_vapor"     , "Water Vapor"        , true     , true );
 
     // Register and allocation non-tracer quantities used by the microphysics
     int p3_nout = 49;

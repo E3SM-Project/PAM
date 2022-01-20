@@ -329,30 +329,6 @@ public:
 
 
 
-  // Initialize a tracer
-  int add_tracer(std::string name , std::string desc , bool pos_def , bool adds_mass) {
-    YAKL_SCOPE( tracer_pos       , this->tracer_pos       );
-    YAKL_SCOPE( tracer_adds_mass , this->tracer_adds_mass );
-
-    int tr = tracer_name.size();  // Index to insert this tracer at
-    if (tr == num_tracers) {
-      endrun("ERROR: adding more tracers than initially requested");
-    }
-    tracer_name.push_back(name);  // Store name
-    tracer_desc.push_back(desc);  // Store description
-    parallel_for( "Spatial.h add_tracer" , 1 , YAKL_LAMBDA (int i) {
-      tracer_pos      (tr) = pos_def;   // Store whether it's positive-definite
-      tracer_adds_mass(tr) = adds_mass; // Store whether it adds mass (otherwise it's passive)
-    });
-
-    if (name == std::string("water_vapor")) idWV = tr;
-
-    // Return the index of this tracer to the caller
-    return tr;
-  }
-
-
-
   real5d createStateArr() const {
     return real5d("stateArr",num_state,nz+2*hs,ny+2*hs,nx+2*hs,nens);
   }
@@ -450,7 +426,7 @@ public:
 
 
   // Initialize crap needed by recon()
-  void init(int num_tracers, PamCoupler const &coupler) {
+  void init(PamCoupler const &coupler) {
     using yakl::intrinsics::matmul_cr;
 
     this->nens = coupler.get_nens();
@@ -458,7 +434,7 @@ public:
     this->ny = coupler.get_ny();
     this->xlen = coupler.get_xlen();
     this->ylen = coupler.get_ylen();
-    this->num_tracers = num_tracers;
+    this->num_tracers = coupler.get_num_tracers();
 
     this->hydrostasis_parameters_sum = 0;
 
@@ -474,6 +450,29 @@ public:
     // Allocate device arrays for whether tracers are positive-definite or add mass
     tracer_pos       = bool1d("tracer_pos"      ,num_tracers);
     tracer_adds_mass = bool1d("tracer_adds_mass",num_tracers);
+    boolHost1d tracer_pos_host      ("tracer_pos_host"      ,num_tracers);
+    boolHost1d tracer_adds_mass_host("tracer_adds_mass_host",num_tracers);
+
+    std::vector<std::string> tracer_names_loc = coupler.get_tracer_names();
+    bool water_vapor_found = false;
+    for (int tr=0; tr < num_tracers; tr++) {
+      bool found, positive, adds_mass;
+      std::string desc;
+      coupler.get_tracer_info( tracer_names_loc[tr] , desc , found , positive , adds_mass );
+      tracer_name.push_back(tracer_names_loc[tr]);
+      tracer_desc.push_back(desc);
+      tracer_pos_host      (tr) = positive ;
+      tracer_adds_mass_host(tr) = adds_mass;
+      if (tracer_names_loc[tr] == std::string("water_vapor")) {
+        idWV = tr;
+        water_vapor_found = true;
+      }
+    }
+    if (! water_vapor_found) endrun("ERROR: processed registered tracers, and water_vapor was not found");
+
+    tracer_pos_host      .deep_copy_to(tracer_pos      );
+    tracer_adds_mass_host.deep_copy_to(tracer_adds_mass);
+    fence();
 
     // Inialize time step to zero, and dimensional splitting switch
     dtInit = 0;
