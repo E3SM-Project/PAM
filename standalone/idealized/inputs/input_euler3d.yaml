@@ -1,17 +1,17 @@
 ---
 # Simulation time in seconds
-simTime  : 1000
+simTime  : 7200
 
 # Number of cells to use
 nx       : 50
-ny       : 1
+ny       : 25
 
 # Vertical height cooridnates file
-vcoords  : vcoords_equal_25_10km.nc
+vcoords  : vcoords_equal_60_20km.nc
 
 # Lengths of the dimensions in meters
-xlen     : 20000
-ylen     : 10000
+xlen     : 200000
+ylen     : 100000
 
 bc_x   : periodic
 bc_y   : periodic
@@ -24,7 +24,7 @@ weno_winds   : true
 # 200km x 100km x 20km  for supercell
 # 20km  x 20km  x 10km  for thermal
 # Data to initialize: thermal, supercell
-initData : thermal
+initData : supercell
 
 # Output filename
 out_prefix  : test
@@ -33,7 +33,7 @@ out_prefix  : test
 dtphys: 0.
 
 # Output frequency in seconds
-outFreq: 0.
+outFreq: 100.
 
 # Number of ensembles
 nens : 1

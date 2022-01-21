@@ -7,8 +7,8 @@
 
 // It is best if id is globally unique for each batch of CRMs
 inline void perturb_temperature( PamCoupler &coupler , int id ) {
-  int constexpr num_levels = 5;
-  real constexpr magnitude = 1.;
+  int constexpr num_levels = 10;
+  real constexpr magnitude = 3.;
 
   int nz   = coupler.get_nz  ();
   int ny   = coupler.get_ny  ();

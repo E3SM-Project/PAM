@@ -200,6 +200,13 @@ public:
   }
 
 
+  bool entry_exists( std::string name ) const {
+    int id = find_entry(name);
+    if (id >= 0) return true;
+    return false;
+  }
+
+
   // Get a READ ONLY YAKL device array (styleC) for the entry of this name
   // If T is not const, then the dirty flag is set to true because it can be potentially written to
   // T must match the registered type (const and volatile are ignored in this comparison)

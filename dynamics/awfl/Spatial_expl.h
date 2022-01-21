@@ -1169,7 +1169,7 @@ public:
                 theta_pert = amp * pow( cos(M_PI*rad/2) , 2._fp );
               }
 
-              dens_theta += dens * theta_pert;
+              // dens_theta += dens * theta_pert;
 
               real factor = gllWts_ngll(ii) * gllWts_ngll(jj) * gllWts_ngll(kk);
               state  (idR ,hs+k,hs+j,hs+i,iens) += (dens - hyDensGLL(k,kk,iens))            * factor;

@@ -6,6 +6,7 @@
 #include "DataManager.h"
 #include "mmf_interface.h"
 #include "perturb_temperature.h"
+#include "gcm_forcing.h"
 
 
 int main(int argc, char** argv) {
@@ -53,8 +54,6 @@ int main(int argc, char** argv) {
     // Set the vertical grid in the coupler
     mmf_interface::set_grid( xlen , ylen , zint_in );
 
-    int numOut = 0;
-
     // This is for the dycore to pull out to determine how to do idealized test cases
     mmf_interface::set_option( "standalone_input_file" , inFile );
 
@@ -73,73 +72,17 @@ int main(int argc, char** argv) {
       std::cout << "Micro : " << micro .micro_name() << std::endl;
     #endif
 
-    // Initialize CRM data using supercell background state
-    nc.open(coldata,yakl::NETCDF_MODE_READ);
-    real1d input_zmid, input_rho_d, input_uvel, input_vvel, input_wvel, input_temp, input_rho_v, input_rho_c;
-    // These read calls will allocate the arrays internally
-    nc.read(input_zmid  ,"z"           );
-    nc.read(input_rho_d ,"density_dry" );
-    nc.read(input_uvel  ,"uvel"        );
-    nc.read(input_vvel  ,"vvel"        );
-    nc.read(input_wvel  ,"wvel"        );
-    nc.read(input_temp  ,"temp"        );
-    nc.read(input_rho_v ,"water_vapor" );
-    nc.read(input_rho_c ,"cloud_liquid");
-    nc.close();
+    // Only for the idealized standalone driver; clearly not going to be used for the MMF driver
+    dycore.init_idealized_state_and_tracers( coupler );
 
-    int input_nz = input_zmid.dimension[0];
-
-    auto crm_zmid = coupler.dm.get<real,2>("vertical_midpoint_height");
-
-    real1d gcm_rho_d("gcm_rho_d",crm_nz);
-    real1d gcm_uvel ("gcm_uvel ",crm_nz);
-    real1d gcm_vvel ("gcm_vvel ",crm_nz);
-    real1d gcm_wvel ("gcm_wvel ",crm_nz);
-    real1d gcm_temp ("gcm_temp ",crm_nz);
-    real1d gcm_rho_v("gcm_rho_v",crm_nz);
-    real1d gcm_rho_c("gcm_rho_c",crm_nz);
-
-    // Linear interpolation from col data to PAM model data
-    parallel_for( crm_nz , YAKL_LAMBDA (int k) {
-      int iens = 0;
-
-      int  ind1, ind2;
-      real d1  , d2  ;
-      if (crm_zmid(k,iens) < input_zmid(0)) {
-        ind1 = 0;
-        ind2 = 0;
-        d1   = 1;
-        d2   = 1;
-      } else if (crm_zmid(k,iens) > input_zmid(input_nz-1)) {
-        ind1 = input_nz-1;
-        ind2 = input_nz-1;
-        d1   = 1;
-        d2   = 1;
-      } else {
-        for (int kk=0; kk < input_nz; kk++) {
-          if (crm_zmid(k,iens) > input_zmid(kk)) {
-            ind1 = kk;
-          } else {
-            break;
-          }
-        }
-        ind2 = ind1+1;
-        d1 = crm_zmid(k,iens) - input_zmid(ind1);
-        d2 = input_zmid(ind2) - crm_zmid(k,iens);
-      }
-
-      real w1 = 1._fp - d1 / (d1 + d2);
-      real w2 = 1._fp - d2 / (d1 + d2);
-      
-      gcm_rho_d(k) = w1 * input_rho_d(ind1) + w2 * input_rho_d(ind2);
-      gcm_uvel (k) = w1 * input_uvel (ind1) + w2 * input_uvel (ind2);
-      gcm_vvel (k) = w1 * input_vvel (ind1) + w2 * input_vvel (ind2);
-      gcm_wvel (k) = w1 * input_wvel (ind1) + w2 * input_wvel (ind2);
-      gcm_temp (k) = w1 * input_temp (ind1) + w2 * input_temp (ind2);
-      gcm_rho_v(k) = w1 * input_rho_v(ind1) + w2 * input_rho_v(ind2);
-      gcm_rho_c(k) = w1 * input_rho_c(ind1) + w2 * input_rho_c(ind2);
-    });
-
+    real2d gcm_rho_d("gcm_rho_d",crm_nz,nens);
+    real2d gcm_uvel ("gcm_uvel" ,crm_nz,nens);
+    real2d gcm_vvel ("gcm_vvel" ,crm_nz,nens);
+    real2d gcm_wvel ("gcm_wvel" ,crm_nz,nens);
+    real2d gcm_temp ("gcm_temp" ,crm_nz,nens);
+    real2d gcm_rho_v("gcm_rho_v",crm_nz,nens);
+    real2d gcm_rho_c("gcm_rho_c",crm_nz,nens);
+    real r_nx_ny = 1._fp / (crm_nx*crm_ny);
     auto rho_d = coupler.dm.get<real,4>("density_dry" );
     auto uvel  = coupler.dm.get<real,4>("uvel"        );
     auto vvel  = coupler.dm.get<real,4>("vvel"        );
@@ -147,16 +90,24 @@ int main(int argc, char** argv) {
     auto temp  = coupler.dm.get<real,4>("temp"        );
     auto rho_v = coupler.dm.get<real,4>("water_vapor" );
     auto rho_c = coupler.dm.get<real,4>("cloud_liquid");
-
-    // Set CRM data to uniform column
-    parallel_for( Bounds<4>(crm_nz,crm_ny,crm_nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      rho_d(k,j,i,iens) = gcm_rho_d(k);
-      uvel (k,j,i,iens) = gcm_uvel (k);
-      vvel (k,j,i,iens) = gcm_vvel (k);
-      wvel (k,j,i,iens) = gcm_wvel (k);
-      temp (k,j,i,iens) = gcm_temp (k);
-      rho_v(k,j,i,iens) = gcm_rho_v(k);
-      rho_c(k,j,i,iens) = gcm_rho_c(k);
+    // Compute a column to force the model with by averaging the columns at init
+    parallel_for( Bounds<4>(crm_nz,crm_ny,crm_nx,nens) , YAKL_DEVICE_LAMBDA (int k, int j, int i, int iens) {
+      gcm_rho_d(k,iens) = 0;
+      gcm_uvel (k,iens) = 0;
+      gcm_vvel (k,iens) = 0;
+      gcm_wvel (k,iens) = 0;
+      gcm_temp (k,iens) = 0;
+      gcm_rho_v(k,iens) = 0;
+      gcm_rho_c(k,iens) = 0;
+    });
+    parallel_for( Bounds<4>(crm_nz,crm_ny,crm_nx,nens) , YAKL_DEVICE_LAMBDA (int k, int j, int i, int iens) {
+      yakl::atomicAdd( gcm_rho_d(k,iens) , rho_d(k,j,i,iens) * r_nx_ny );
+      yakl::atomicAdd( gcm_uvel (k,iens) , uvel (k,j,i,iens) * r_nx_ny );
+      yakl::atomicAdd( gcm_vvel (k,iens) , vvel (k,j,i,iens) * r_nx_ny );
+      yakl::atomicAdd( gcm_wvel (k,iens) , wvel (k,j,i,iens) * r_nx_ny );
+      yakl::atomicAdd( gcm_temp (k,iens) , temp (k,j,i,iens) * r_nx_ny );
+      yakl::atomicAdd( gcm_rho_v(k,iens) , rho_v(k,j,i,iens) * r_nx_ny );
+      yakl::atomicAdd( gcm_rho_c(k,iens) , rho_c(k,j,i,iens) * r_nx_ny );
     });
 
     perturb_temperature( coupler , 0 );
@@ -164,36 +115,48 @@ int main(int argc, char** argv) {
     // Now that we have an initial state, define hydrostasis for each ensemble member
     coupler.update_hydrostasis( coupler.compute_pressure_array() );
 
-    real etime = 0;
+    real etime_gcm = 0;
+    int numOut = 0;
 
-    // if (outFreq >= 0) dycore.output( coupler , etime );
+    if (outFreq >= 0) dycore.output( coupler , etime_gcm );
 
-    // real dtphys = dtphys_in;
-    // while (etime < simTime) {
-    //   if (dtphys_in == 0.) { dtphys = dycore.compute_time_step(coupler); }
-    //   if (etime + dtphys > simTime) { dtphys = simTime - etime; }
+    while (etime_gcm < simTime) {
+      if (etime_gcm + dt_gcm > simTime) { dt_gcm = simTime - etime_gcm; }
 
-    //   yakl::timer_start("micro");
-    //   micro.timeStep( coupler , dtphys );
-    //   yakl::timer_stop("micro");
+      compute_gcm_forcing_tendencies( coupler , gcm_rho_d , gcm_uvel , gcm_vvel , gcm_wvel , gcm_temp , gcm_rho_v , dt_gcm );
 
-    //   yakl::timer_start("dycore");
-    //   dycore.timeStep( coupler , dtphys );
-    //   yakl::timer_stop("dycore");
+      real etime_crm = 0;
+      real simTime_crm = dt_gcm;
+      real dt_crm = dt_crm_phys;
+      while (etime_crm < simTime_crm) {
+        if (dt_crm == 0.) { dt_crm = dycore.compute_time_step(coupler); }
+        if (etime_crm + dt_crm > simTime_crm) { dt_crm = simTime_crm - etime_crm; }
 
-    //   etime += dtphys;
-    //   if (outFreq >= 0. && etime / outFreq >= numOut+1) {
-    //     std::cout << "Etime , dtphys: " << etime << " , " << dtphys << "\n";
-    //     yakl::timer_start("output");
-    //     dycore.output( coupler , etime );
-    //     yakl::timer_stop("output");
-    //     numOut++;
-    //   }
-    // }
+        yakl::timer_start("micro");
+        micro.timeStep( coupler , dt_crm , etime_crm );
+        yakl::timer_stop("micro");
 
-    // std::cout << "Elapsed Time: " << etime << "\n";
+        yakl::timer_start("dycore");
+        dycore.timeStep( coupler , dt_crm , etime_crm );
+        yakl::timer_stop("dycore");
 
-    // dycore.finalize( coupler );
+        apply_gcm_forcing_tendencies( coupler , dt_crm );
+
+        etime_crm += dt_crm;
+        etime_gcm += dt_crm;
+        if (outFreq >= 0. && etime_gcm / outFreq >= numOut+1) {
+          std::cout << "Etime , dt_crm: " << etime_gcm << " , " << dt_crm << "\n";
+          yakl::timer_start("output");
+          dycore.output( coupler , etime_gcm );
+          yakl::timer_stop("output");
+          numOut++;
+        }
+      }
+    }
+
+    std::cout << "Elapsed Time: " << etime_gcm << "\n";
+
+    dycore.finalize( coupler );
 
     mmf_interface::finalize();
 
@@ -201,3 +164,98 @@ int main(int argc, char** argv) {
   }
   yakl::finalize();
 }
+
+
+
+
+
+
+
+
+//     // Initialize CRM data using supercell background state
+//     nc.open(coldata,yakl::NETCDF_MODE_READ);
+//     real1d input_zmid, input_rho_d, input_uvel, input_vvel, input_wvel, input_temp, input_rho_v, input_rho_c;
+//     // These read calls will allocate the arrays internally
+//     nc.read(input_zmid  ,"z"           );
+//     nc.read(input_rho_d ,"density_dry" );
+//     nc.read(input_uvel  ,"uvel"        );
+//     nc.read(input_vvel  ,"vvel"        );
+//     nc.read(input_wvel  ,"wvel"        );
+//     nc.read(input_temp  ,"temp"        );
+//     nc.read(input_rho_v ,"water_vapor" );
+//     nc.read(input_rho_c ,"cloud_liquid");
+//     nc.close();
+// 
+//     int input_nz = input_zmid.dimension[0];
+// 
+//     auto crm_zmid = coupler.dm.get<real,2>("vertical_midpoint_height");
+// 
+//     real1d gcm_rho_d("gcm_rho_d",crm_nz);
+//     real1d gcm_uvel ("gcm_uvel ",crm_nz);
+//     real1d gcm_vvel ("gcm_vvel ",crm_nz);
+//     real1d gcm_wvel ("gcm_wvel ",crm_nz);
+//     real1d gcm_temp ("gcm_temp ",crm_nz);
+//     real1d gcm_rho_v("gcm_rho_v",crm_nz);
+//     real1d gcm_rho_c("gcm_rho_c",crm_nz);
+// 
+//     // Linear interpolation from col data to PAM model data
+//     parallel_for( crm_nz , YAKL_LAMBDA (int k) {
+//       int iens = 0;
+// 
+//       int  ind1, ind2;
+//       real d1  , d2  ;
+//       if (crm_zmid(k,iens) < input_zmid(0)) {
+//         ind1 = 0;
+//         ind2 = 0;
+//         d1   = 1;
+//         d2   = 1;
+//       } else if (crm_zmid(k,iens) > input_zmid(input_nz-1)) {
+//         ind1 = input_nz-1;
+//         ind2 = input_nz-1;
+//         d1   = 1;
+//         d2   = 1;
+//       } else {
+//         for (int kk=0; kk < input_nz; kk++) {
+//           if (crm_zmid(k,iens) > input_zmid(kk)) {
+//             ind1 = kk;
+//           } else {
+//             break;
+//           }
+//         }
+//         ind2 = ind1+1;
+//         d1 = crm_zmid(k,iens) - input_zmid(ind1);
+//         d2 = input_zmid(ind2) - crm_zmid(k,iens);
+//       }
+// 
+//       real w1 = 1._fp - d1 / (d1 + d2);
+//       real w2 = 1._fp - d2 / (d1 + d2);
+//       
+//       gcm_rho_d(k) = w1 * input_rho_d(ind1) + w2 * input_rho_d(ind2);
+//       gcm_uvel (k) = w1 * input_uvel (ind1) + w2 * input_uvel (ind2);
+//       gcm_vvel (k) = w1 * input_vvel (ind1) + w2 * input_vvel (ind2);
+//       gcm_wvel (k) = w1 * input_wvel (ind1) + w2 * input_wvel (ind2);
+//       gcm_temp (k) = w1 * input_temp (ind1) + w2 * input_temp (ind2);
+//       gcm_rho_v(k) = w1 * input_rho_v(ind1) + w2 * input_rho_v(ind2);
+//       gcm_rho_c(k) = w1 * input_rho_c(ind1) + w2 * input_rho_c(ind2);
+//     });
+// 
+//     auto rho_d = coupler.dm.get<real,4>("density_dry" );
+//     auto uvel  = coupler.dm.get<real,4>("uvel"        );
+//     auto vvel  = coupler.dm.get<real,4>("vvel"        );
+//     auto wvel  = coupler.dm.get<real,4>("wvel"        );
+//     auto temp  = coupler.dm.get<real,4>("temp"        );
+//     auto rho_v = coupler.dm.get<real,4>("water_vapor" );
+//     auto rho_c = coupler.dm.get<real,4>("cloud_liquid");
+// 
+//     // Set CRM data to uniform column
+//     parallel_for( Bounds<4>(crm_nz,crm_ny,crm_nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+//       rho_d(k,j,i,iens) = gcm_rho_d(k);
+//       uvel (k,j,i,iens) = gcm_uvel (k);
+//       vvel (k,j,i,iens) = gcm_vvel (k);
+//       wvel (k,j,i,iens) = gcm_wvel (k);
+//       temp (k,j,i,iens) = gcm_temp (k);
+//       rho_v(k,j,i,iens) = gcm_rho_v(k);
+//       rho_c(k,j,i,iens) = gcm_rho_c(k);
+//     });
+
+
