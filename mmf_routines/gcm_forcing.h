@@ -107,8 +107,13 @@ inline void apply_gcm_forcing_tendencies( PamCoupler &coupler , real dt ) {
   auto gcm_tend_temp  = dm.get<real,2>("gcm_tend_temp" );
   auto gcm_tend_rho_v = dm.get<real,2>("gcm_tend_rho_v");
 
-  real1d rho_v_neg_mass("rho_v_neg_mass",nens);
-  real1d rho_v_pos_mass("rho_v_pos_mass",nens);
+  real3d rho_v_neg_mass("rho_v_neg_mass",ny,nx,nens);
+  real3d rho_v_pos_mass("rho_v_pos_mass",ny,nx,nens);
+
+  parallel_for( Bounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int iens) {
+    rho_v_neg_mass(j,i,iens) = 0;
+    rho_v_pos_mass(j,i,iens) = 0;
+  });
 
   parallel_for( "Apply GCM forcing" , SimpleBounds<4>(nz,ny,nx,nens) , 
                 YAKL_DEVICE_LAMBDA (int k, int j, int i, int iens) {
@@ -121,20 +126,31 @@ inline void apply_gcm_forcing_tendencies( PamCoupler &coupler , real dt ) {
     rho_v(k,j,i,iens) += gcm_tend_rho_v(k,iens) * dt;
     // Compute negative and positive mass for rho_v, and set negative masses to zero
     if (rho_v(k,j,i,iens) < 0) {
-      // atomicAdd( rho_v_neg_mass(iens) , -rho_v(k,j,i,iens) );
+      atomicAdd( rho_v_neg_mass(j,i,iens) , -rho_v(k,j,i,iens) );
       rho_v(k,j,i,iens) = 0;
     } else if (rho_v(k,j,i,iens) > 0) {
-      // atomicAdd( rho_v_pos_mass(iens) , rho_v(k,j,i,iens) );
+      atomicAdd( rho_v_pos_mass(j,i,iens) , rho_v(k,j,i,iens) );
     }
   });
 
-  // parallel_for( "Multiplicative hole filler for negative values" , SimpleBounds<4>(nz,ny,nx,nens) , 
-  //               YAKL_LAMBDA (int k, int j, int i, int iens) {
-  //   // Redistribute added mass from filling negative values by taking mass away from each positive mass cell
-  //   // Take away mass according to the proportion of total positive mass in this cell
-  //   real factor = rho_v(k,j,i,iens) / rho_v_pos_mass(iens);
-  //   rho_v(k,j,i,iens) = max( 0._fp , rho_v(k,j,i,iens) - rho_v_neg_mass(iens) * factor );
-  // });
+  #ifdef PAM_DEBUG
+    ScalarLiveOut<bool> neg_too_large(false);
+  #endif
+
+  parallel_for( "Multiplicative hole filler for negative values" , SimpleBounds<4>(nz,ny,nx,nens) , 
+                YAKL_LAMBDA (int k, int j, int i, int iens) {
+    // Redistribute added mass from filling negative values by taking mass away from each positive mass cell
+    // Take away mass according to the proportion of total positive mass in this cell
+    #ifdef PAM_DEBUG
+      if (rho_v_neg_mass(j,i,iens) > rho_v_pos_mass(j,i,iens)) neg_too_large = true;
+    #endif
+    real factor = rho_v(k,j,i,iens) / rho_v_pos_mass(j,i,iens);
+    rho_v(k,j,i,iens) = max( 0._fp , rho_v(k,j,i,iens) - rho_v_neg_mass(j,i,iens) * factor );
+  });
+
+  #ifdef PAM_DEBUG
+    if (neg_too_large) std::cout << "WARNING: Negative values larger than positive values can fill\n";
+  #endif
 }
 
 

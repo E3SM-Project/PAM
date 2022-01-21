@@ -140,7 +140,7 @@ int main(int argc, char** argv) {
         dycore.timeStep( coupler , dt_crm , etime_crm );
         yakl::timer_stop("dycore");
 
-        apply_gcm_forcing_tendencies( coupler , dt_crm );
+        // apply_gcm_forcing_tendencies( coupler , dt_crm );
 
         etime_crm += dt_crm;
         etime_gcm += dt_crm;

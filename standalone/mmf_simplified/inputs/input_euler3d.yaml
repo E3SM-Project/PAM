@@ -39,7 +39,7 @@ dt_gcm: 900
 dt_crm_phys: 0
 
 # Output frequency in seconds
-outFreq: 100
+outFreq: 25
 
 # Number of sponge layer cells
 sponge_cells: 0
