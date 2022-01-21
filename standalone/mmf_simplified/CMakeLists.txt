@@ -15,8 +15,11 @@ add_subdirectory(${YAKL_HOME} ${YAKL_BIN})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../externals/eigen)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../coupler)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../mmf_interface)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../mmf_routines)
 
-set(DRIVER_SRC driver.cpp)
+set(DRIVER_SRC driver.cpp
+               ${CMAKE_CURRENT_SOURCE_DIR}/../../mmf_interface/mmf_interface_globals.cpp)
 
 # Main driver
 add_executable(driver ${DRIVER_SRC})

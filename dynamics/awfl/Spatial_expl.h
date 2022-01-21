@@ -543,7 +543,11 @@ public:
       // Read the output filename
       out_prefix = config["out_prefix"].as<std::string>();
 
-      balance_initial_density = config["balance_initial_density"].as<bool>();
+      if (config["balance_initial_density"]) {
+        balance_initial_density = config["balance_initial_density"].as<bool>();
+      } else {
+        balance_initial_density = false;
+      }
     }
 
     // Determine whether this is a 2-D simulation

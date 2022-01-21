@@ -336,6 +336,7 @@ namespace pam {
     void update_hydrostasis( realConst4d pressure ) {
       using yakl::intrinsics::matmul_cr;
       using yakl::intrinsics::matinv_ge;
+      using yakl::atomicAdd;
 
       auto zint      = dm.get<real,2>("vertical_interface_height");
       auto zmid      = dm.get<real,2>("vertical_midpoint_height" );
@@ -347,6 +348,14 @@ namespace pam {
       int ny   = get_ny();
       int nx   = get_nx();
       int nens = get_nens();
+
+      // Compute average column of pressure for each ensemble
+      real2d pressure_col("pressure_col",nz,nens);
+      memset( pressure_col , 0._fp );
+      real r_nx_ny = 1._fp / (nx*ny);
+      parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_DEVICE_LAMBDA (int k, int j, int i, int iens) {
+        atomicAdd( pressure_col(k,iens) , pressure(k,j,i,iens)*r_nx_ny );
+      });
 
       int constexpr npts = 10;
       int constexpr npts_tanh = npts - 2;
@@ -393,7 +402,7 @@ namespace pam {
         //   used for GCM coupling in an MMF setting
         SArray<double,1,npts> logp;
         for (int ii=0; ii < npts; ii++) {
-          logp(ii) = log(pressure(z_indices(ii),0,0,iens));
+          logp(ii) = log(pressure_col(z_indices(ii),iens));
         }
 
         auto params = matmul_cr( vand_inv , logp );
