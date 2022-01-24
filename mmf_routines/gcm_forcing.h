@@ -16,17 +16,22 @@
 //    state_crm_new = state_crm + (state_gcm-state_crm)  ===>  state_crm_new = state_gcm
 // Therefore, we are forcing the average CRM column state at the end of the MMF step to be the same as the input GCM
 //    state PLUS whatever internal CRM dynamics were produced along the way.
-inline void compute_gcm_forcing_tendencies( PamCoupler &coupler , real2d &rho_d_in , real2d &uvel_in , real2d &vvel_in ,
-                                            real2d &wvel_in , real2d &temp_in , real2d &rho_v_in , real dt_gcm ) {
+inline void compute_gcm_forcing_tendencies( PamCoupler &coupler , real dt_gcm ) {
   using yakl::atomicAdd;
   auto &dm = coupler.dm;
+
   // Get current state from coupler
   auto rho_d = dm.get<real const,4>( "density_dry" );
   auto uvel  = dm.get<real const,4>( "uvel"        );
   auto vvel  = dm.get<real const,4>( "vvel"        );
-  auto wvel  = dm.get<real const,4>( "wvel"        );
   auto temp  = dm.get<real const,4>( "temp"        );
   auto rho_v = dm.get<real const,4>( "water_vapor" );
+
+  auto rho_d_gcm = dm.get<real const,2> ( "gcm_density_dry" );
+  auto uvel_gcm  = dm.get<real const,2> ( "gcm_uvel"        );
+  auto vvel_gcm  = dm.get<real const,2> ( "gcm_vvel"        );
+  auto temp_gcm  = dm.get<real const,2> ( "gcm_temp"        );
+  auto rho_v_gcm = dm.get<real const,2> ( "gcm_water_vapor" );
 
   int nz   = dm.get_dimension_size("z"   );
   int ny   = dm.get_dimension_size("y"   );
@@ -37,7 +42,6 @@ inline void compute_gcm_forcing_tendencies( PamCoupler &coupler , real2d &rho_d_
   real2d colavg_rho_d("colavg_rho_d",nz,nens);
   real2d colavg_uvel ("colavg_uvel" ,nz,nens);
   real2d colavg_vvel ("colavg_vvel" ,nz,nens);
-  real2d colavg_wvel ("colavg_wvel" ,nz,nens);
   real2d colavg_temp ("colavg_temp" ,nz,nens);
   real2d colavg_rho_v("colavg_rho_v",nz,nens);
 
@@ -47,7 +51,6 @@ inline void compute_gcm_forcing_tendencies( PamCoupler &coupler , real2d &rho_d_
     colavg_rho_d(k,iens) = 0;
     colavg_uvel (k,iens) = 0;
     colavg_vvel (k,iens) = 0;
-    colavg_wvel (k,iens) = 0;
     colavg_temp (k,iens) = 0;
     colavg_rho_v(k,iens) = 0;
   });
@@ -59,21 +62,18 @@ inline void compute_gcm_forcing_tendencies( PamCoupler &coupler , real2d &rho_d_
     atomicAdd( colavg_rho_d(k,iens) , rho_d(k,j,i,iens) * r_nx_ny );
     atomicAdd( colavg_uvel (k,iens) , uvel (k,j,i,iens) * r_nx_ny );
     atomicAdd( colavg_vvel (k,iens) , vvel (k,j,i,iens) * r_nx_ny );
-    atomicAdd( colavg_wvel (k,iens) , wvel (k,j,i,iens) * r_nx_ny );
     atomicAdd( colavg_temp (k,iens) , temp (k,j,i,iens) * r_nx_ny );
     atomicAdd( colavg_rho_v(k,iens) , rho_v(k,j,i,iens) * r_nx_ny );
   });
 
   // We need the GCM forcing tendencies later, so store these in the coupler's data manager
   // If they've already been registered, the do not register them again
-  if (! dm.entry_exists("gcm_tend_rho_d")) {
+  if (! dm.entry_exists("gcm_tend_uvel")) {
     dm.register_and_allocate<real>( "gcm_tend_rho_d" , "GCM forcing tendency for dry density"         ,
                                     {nz,nens} , {"z","nens"} );
     dm.register_and_allocate<real>( "gcm_tend_uvel"  , "GCM forcing tendency for u-velocity"          ,
                                     {nz,nens} , {"z","nens"} );
     dm.register_and_allocate<real>( "gcm_tend_vvel"  , "GCM forcing tendency for v-velocity"          ,
-                                    {nz,nens} , {"z","nens"} );
-    dm.register_and_allocate<real>( "gcm_tend_wvel"  , "GCM forcing tendency for w-velocity"          ,
                                     {nz,nens} , {"z","nens"} );
     dm.register_and_allocate<real>( "gcm_tend_temp"  , "GCM forcing tendency for temperature"         ,
                                     {nz,nens} , {"z","nens"} );
@@ -85,7 +85,6 @@ inline void compute_gcm_forcing_tendencies( PamCoupler &coupler , real2d &rho_d_
   auto gcm_tend_rho_d = dm.get<real,2>("gcm_tend_rho_d");
   auto gcm_tend_uvel  = dm.get<real,2>("gcm_tend_uvel" );
   auto gcm_tend_vvel  = dm.get<real,2>("gcm_tend_vvel" );
-  auto gcm_tend_wvel  = dm.get<real,2>("gcm_tend_wvel" );
   auto gcm_tend_temp  = dm.get<real,2>("gcm_tend_temp" );
   auto gcm_tend_rho_v = dm.get<real,2>("gcm_tend_rho_v");
 
@@ -94,12 +93,11 @@ inline void compute_gcm_forcing_tendencies( PamCoupler &coupler , real2d &rho_d_
   //    GCM physics time step to be evenly distributed over the course of the MMF calculations for this step
   parallel_for( "Compute GCM forcing tendencies" , SimpleBounds<2>(nz,nens) , 
                 YAKL_LAMBDA (int k, int iens) {
-    gcm_tend_rho_d(k,iens) = ( rho_d_in(k,iens) - colavg_rho_d(k,iens) ) * r_dt_gcm;
-    gcm_tend_uvel (k,iens) = ( uvel_in (k,iens) - colavg_uvel (k,iens) ) * r_dt_gcm;
-    gcm_tend_vvel (k,iens) = ( vvel_in (k,iens) - colavg_vvel (k,iens) ) * r_dt_gcm;
-    gcm_tend_wvel (k,iens) = ( wvel_in (k,iens) - colavg_wvel (k,iens) ) * r_dt_gcm;
-    gcm_tend_temp (k,iens) = ( temp_in (k,iens) - colavg_temp (k,iens) ) * r_dt_gcm;
-    gcm_tend_rho_v(k,iens) = ( rho_v_in(k,iens) - colavg_rho_v(k,iens) ) * r_dt_gcm;
+    gcm_tend_rho_d(k,iens) = ( rho_d_gcm(k,iens) - colavg_rho_d(k,iens) ) * r_dt_gcm;
+    gcm_tend_uvel (k,iens) = ( uvel_gcm (k,iens) - colavg_uvel (k,iens) ) * r_dt_gcm;
+    gcm_tend_vvel (k,iens) = ( vvel_gcm (k,iens) - colavg_vvel (k,iens) ) * r_dt_gcm;
+    gcm_tend_temp (k,iens) = ( temp_gcm (k,iens) - colavg_temp (k,iens) ) * r_dt_gcm;
+    gcm_tend_rho_v(k,iens) = ( rho_v_gcm(k,iens) - colavg_rho_v(k,iens) ) * r_dt_gcm;
   });
 }
 
@@ -120,6 +118,8 @@ inline void apply_gcm_forcing_tendencies( PamCoupler &coupler , real dt ) {
   using yakl::atomicAdd;
   auto &dm = coupler.dm;
 
+  bool force_density = coupler.get_option<std::string>("density_forcing") == "loose";
+
   int nz   = dm.get_dimension_size("z"   );
   int ny   = dm.get_dimension_size("y"   );
   int nx   = dm.get_dimension_size("x"   );
@@ -129,7 +129,6 @@ inline void apply_gcm_forcing_tendencies( PamCoupler &coupler , real dt ) {
   auto rho_d = dm.get<real,4>( "density_dry" );
   auto uvel  = dm.get<real,4>( "uvel"        );
   auto vvel  = dm.get<real,4>( "vvel"        );
-  auto wvel  = dm.get<real,4>( "wvel"        );
   auto temp  = dm.get<real,4>( "temp"        );
   auto rho_v = dm.get<real,4>( "water_vapor" );
 
@@ -137,7 +136,6 @@ inline void apply_gcm_forcing_tendencies( PamCoupler &coupler , real dt ) {
   auto gcm_tend_rho_d = dm.get<real,2>("gcm_tend_rho_d");
   auto gcm_tend_uvel  = dm.get<real,2>("gcm_tend_uvel" );
   auto gcm_tend_vvel  = dm.get<real,2>("gcm_tend_vvel" );
-  auto gcm_tend_wvel  = dm.get<real,2>("gcm_tend_wvel" );
   auto gcm_tend_temp  = dm.get<real,2>("gcm_tend_temp" );
   auto gcm_tend_rho_v = dm.get<real,2>("gcm_tend_rho_v");
 
@@ -158,10 +156,9 @@ inline void apply_gcm_forcing_tendencies( PamCoupler &coupler , real dt ) {
   parallel_for( "Apply GCM forcing" , SimpleBounds<4>(nz,ny,nx,nens) , 
                 YAKL_DEVICE_LAMBDA (int k, int j, int i, int iens) {
     // Apply forcing
-    rho_d(k,j,i,iens) += gcm_tend_rho_d(k,iens) * dt;
+    if (force_density) rho_d(k,j,i,iens) += gcm_tend_rho_d(k,iens) * dt;
     uvel (k,j,i,iens) += gcm_tend_uvel (k,iens) * dt;
     vvel (k,j,i,iens) += gcm_tend_vvel (k,iens) * dt;
-    wvel (k,j,i,iens) += gcm_tend_wvel (k,iens) * dt;
     temp (k,j,i,iens) += gcm_tend_temp (k,iens) * dt;
     rho_v(k,j,i,iens) += gcm_tend_rho_v(k,iens) * dt;
     // Compute negative and positive mass for rho_v, and set negative masses to zero (essentially adding mass)

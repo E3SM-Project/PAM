@@ -25,7 +25,7 @@ public:
   void init(PamCoupler const &coupler) {
     space_op.init(coupler);
 
-    std::string inFile = coupler.get_note( "standalone_input_file" );
+    std::string inFile = coupler.get_option<std::string>( "standalone_input_file" );
 
     if (inFile != "") {
       YAML::Node config = YAML::LoadFile(inFile);
@@ -144,7 +144,8 @@ public:
         // Compute the tendencies for state and tracers
         space_op.computeTendencies( state , stateTend , tracers , tracerTend , dtloc , spl );
 
-        parallel_for( "Temporal_ader.h apply tendencies" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+        parallel_for( "Temporal_ader.h apply tendencies" , SimpleBounds<4>(nz,ny,nx,nens) ,
+                      YAKL_LAMBDA (int k, int j, int i, int iens) {
           for (int l=0; l < num_state; l++) {
             state(l,hs+k,hs+j,hs+i,iens) += dtloc * stateTend(l,k,j,i,iens);
           }
@@ -192,7 +193,8 @@ public:
       if (sponge_cells > 0) {
         real2d zint = coupler.dm.get<real,2>("vertical_interface_height");
         real2d zmid = coupler.dm.get<real,2>("vertical_midpoint_height");
-        parallel_for( "Sponge" , SimpleBounds<4>(sponge_cells,ny,nx,nens) , YAKL_LAMBDA (int kk, int j, int i, int iens) {
+        parallel_for( "Sponge" , SimpleBounds<4>(sponge_cells,ny,nx,nens) ,
+                      YAKL_LAMBDA (int kk, int j, int i, int iens) {
           int k = nz-1-kk;
           real z1 = zint(nz-sponge_cells,iens);
           real z2 = zint(nz             ,iens);
@@ -213,6 +215,15 @@ public:
           //   tracers(tr,hs+k,hs+j,hs+i,iens) = trac * dens_new;
           // }
         });
+      }
+
+      if (coupler.dycore_functions.size() > 0) {
+        space_op.convert_dynamics_to_coupler_state( coupler , state , tracers );
+        for (int i=0; i < coupler.dycore_functions.size(); i++) {
+          auto &func = coupler.dycore_functions[i];
+          func(coupler , dt);
+        }
+        space_op.convert_coupler_state_to_dynamics( coupler , state , tracers );
       }
 
     }

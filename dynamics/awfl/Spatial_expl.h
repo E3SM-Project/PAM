@@ -478,7 +478,7 @@ public:
     dtInit = 0;
     dimSwitch = true;
 
-    std::string inFile = coupler.get_note( "standalone_input_file" );
+    std::string inFile = coupler.get_option<std::string>( "standalone_input_file" );
 
     // If inFile is empty, then we aren't reading in an input file
     if (inFile == std::string("")) {

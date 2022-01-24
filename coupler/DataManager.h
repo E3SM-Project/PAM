@@ -64,29 +64,6 @@ public:
   }
 
 
-  // set a scalar value. If it doesn't exist, it allocates and registers it first
-  template <class T>
-  void set_scalar( std::string name , std::string desc , T value ) {
-    int id = find_entry( name );
-    if (id == -1) register_and_allocate<T>( name , desc , {1} , {"one_scalar"} );
-    auto arr = get<T,1>(name);
-    if (arr.get_elem_count() > 1) endrun("ERROR: retriving array as if it were a scalar");
-    arr(0) = value;
-  }
-
-
-  // returns a scalar value by its entry name and uses a const type to avoid dirtying the entry
-  // It is not possible to get_scalar by reference because this would be confusing
-  // If you want to write to a scalar, you need to use set_scalar()
-  template <class T>
-  T get_scalar( std::string name ) const {
-    typedef typename std::add_const<T>::type const TCONST;
-    auto arr = get<TCONST,1>(name);
-    if (arr.get_elem_count() > 1) endrun("ERROR: retriving array as if it were a scalar");
-    return arr(0);
-  }
-
-
   // Create an entry and allocate it. if dim_names is passed, then check dimension sizes for consistency
   // if positive == true, then positivity validation checks for positivity; otherwise, ignores it.
   // While zeroing the allocation upon creation might be nice, it's not efficient in all GPU contexts

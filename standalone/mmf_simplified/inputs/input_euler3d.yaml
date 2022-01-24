@@ -36,7 +36,7 @@ out_prefix  : test
 dt_gcm: 900
 
 # CRM physics time step
-dt_crm_phys: 0
+dt_crm_phys: 20
 
 # Output frequency in seconds
 outFreq: 25
@@ -46,5 +46,11 @@ sponge_cells: 0
 
 # Strenght of the sponge layer [0:1]
 sponge_strength: 0.1
+
+# Specify how to force density from the GCM (loose, strict, or off)
+density_forcing: loose
+
+# If true, GCM forcing is applied at the finest dycore time step; otherwise at coarser CRM physics time step
+forcing_at_dycore_time_step: true
 
 

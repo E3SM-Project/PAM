@@ -5,7 +5,7 @@
 #include "DataManager.h"
 #include "vertical_interp.h"
 #include "YAKL_netcdf.h"
-#include "Notes.h"
+#include "Options.h"
 
 
 namespace pam {
@@ -90,7 +90,7 @@ namespace pam {
   class PamCoupler {
     public:
 
-    Notes notes;
+    Options options;
 
     real R_d;    // Dry air gas constant
     real R_v;    // Water vapor gas constant
@@ -113,6 +113,8 @@ namespace pam {
 
     std::vector<Tracer> tracers;
 
+    std::vector< std::function< void ( PamCoupler & , real ) > > dycore_functions;
+
 
     PamCoupler() {
       this->R_d    = 287 ;
@@ -129,7 +131,7 @@ namespace pam {
 
     ~PamCoupler() {
       dm.finalize();
-      notes.finalize();
+      options.finalize();
       tracers = std::vector<Tracer>();
       this->R_d    = 287 ;
       this->R_v    = 461 ;
@@ -184,23 +186,36 @@ namespace pam {
     }
 
 
-    void add_note( std::string key , std::string value ) {
-      notes.add_note(key,value);
+    template <class T>
+    void add_option( std::string key , T value ) {
+      options.add_option<T>(key,value);
     }
 
 
-    std::string get_note( std::string key ) const {
-      return notes.get_note(key);
+    template <class T>
+    void set_option( std::string key , T value ) {
+      options.set_option<T>(key,value);
     }
 
 
-    bool note_exists( std::string key ) const {
-      return notes.note_exists(key);
+    template <class T>
+    T get_option( std::string key ) const {
+      return options.get_option<T>(key);
     }
 
 
-    void delete_note( std::string key ) {
-      notes.delete_note(key);
+    bool option_exists( std::string key ) const {
+      return options.option_exists(key);
+    }
+
+
+    void delete_option( std::string key ) {
+      options.delete_option(key);
+    }
+
+
+    void add_dycore_function( std::function< void ( PamCoupler & , real ) > func ) {
+      dycore_functions.push_back( func );
     }
 
 
@@ -293,16 +308,26 @@ namespace pam {
 
 
     void allocate_coupler_state( int nz, int ny, int nx, int nens ) {
-      dm.register_and_allocate<real>( "density_dry"               , "dry density"               , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-      dm.register_and_allocate<real>( "uvel"                      , "x-direction velocity"      , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-      dm.register_and_allocate<real>( "vvel"                      , "y-direction velocity"      , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-      dm.register_and_allocate<real>( "wvel"                      , "z-direction velocity"      , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-      dm.register_and_allocate<real>( "temp"                      , "temperature"               , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-      dm.register_and_allocate<real>( "vertical_interface_height" , "vertical interface height" , {nz+1    ,nens} , {"zp1"      ,"nens"} );
-      dm.register_and_allocate<real>( "vertical_midpoint_height"  , "vertical midpoint height"  , {nz      ,nens} , {"z"        ,"nens"} );
-      dm.register_and_allocate<real>( "hydrostasis_parameters"    , "hydrostasis parameters"    , {10      ,nens} , {"ten"      ,"nens"} );
-      dm.register_and_allocate<real>( "hydrostatic_pressure"      , "hydrostasis pressure"      , {nz      ,nens} , {"z"        ,"nens"} );
-      dm.register_and_allocate<real>( "hydrostatic_density"       , "hydrostasis density"       , {nz      ,nens} , {"z"        ,"nens"} );
+      dm.register_and_allocate<real>( "density_dry"               , "dry density"               ,
+                                      {nz,ny,nx,nens} , {"z","y","x","nens"} );
+      dm.register_and_allocate<real>( "uvel"                      , "x-direction velocity"      ,
+                                      {nz,ny,nx,nens} , {"z","y","x","nens"} );
+      dm.register_and_allocate<real>( "vvel"                      , "y-direction velocity"      ,
+                                      {nz,ny,nx,nens} , {"z","y","x","nens"} );
+      dm.register_and_allocate<real>( "wvel"                      , "z-direction velocity"      ,
+                                      {nz,ny,nx,nens} , {"z","y","x","nens"} );
+      dm.register_and_allocate<real>( "temp"                      , "temperature"               ,
+                                      {nz,ny,nx,nens} , {"z","y","x","nens"} );
+      dm.register_and_allocate<real>( "vertical_interface_height" , "vertical interface height" ,
+                                      {nz+1    ,nens} , {"zp1"      ,"nens"} );
+      dm.register_and_allocate<real>( "vertical_midpoint_height"  , "vertical midpoint height"  ,
+                                      {nz      ,nens} , {"z"        ,"nens"} );
+      dm.register_and_allocate<real>( "hydrostasis_parameters"    , "hydrostasis parameters"    ,
+                                      {10      ,nens} , {"ten"      ,"nens"} );
+      dm.register_and_allocate<real>( "hydrostatic_pressure"      , "hydrostasis pressure"      ,
+                                      {nz      ,nens} , {"z"        ,"nens"} );
+      dm.register_and_allocate<real>( "hydrostatic_density"       , "hydrostasis density"       ,
+                                      {nz      ,nens} , {"z"        ,"nens"} );
 
       auto density_dry  = dm.get_collapsed<real>("density_dry"              );
       auto uvel         = dm.get_collapsed<real>("uvel"                     );
@@ -451,7 +476,8 @@ namespace pam {
       YAKL_SCOPE( R_d , this->R_d );
       YAKL_SCOPE( R_v , this->R_v );
 
-      parallel_for( "coupler pressure" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      parallel_for( "coupler pressure" , SimpleBounds<4>(nz,ny,nx,nens) ,
+                    YAKL_LAMBDA (int k, int j, int i, int iens) {
         real rho_d = dens_dry(k,j,i,iens);
         real rho_v = dens_wv (k,j,i,iens);
         real T     = temp    (k,j,i,iens);
@@ -476,7 +502,8 @@ namespace pam {
       real4d press_pert("press_pert",nz,ny,nx,nens);
 
       // Compute pressure perturbation
-      parallel_for( "coup press pert" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      parallel_for( "coup press pert" , SimpleBounds<4>(nz,ny,nx,nens) ,
+                    YAKL_LAMBDA (int k, int j, int i, int iens) {
         press_pert(k,j,i,iens) = press(k,j,i,iens) - hy_press(k,iens);
       });
 
@@ -488,8 +515,10 @@ namespace pam {
                                                      vert_interp.BC_ZERO_GRADIENT );
 
       // Add hydrostasis at cell edges to get back full pressure
-      parallel_for( "coup press edges" , SimpleBounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-        press_edges(k,j,i,iens) += hydrostatic_pressure( hy_params , zint(k,iens) , zint(0,iens) , zint(nz,iens) , iens );
+      parallel_for( "coup press edges" , SimpleBounds<4>(nz+1,ny,nx,nens) ,
+                    YAKL_LAMBDA (int k, int j, int i, int iens) {
+        press_edges(k,j,i,iens) += hydrostatic_pressure( hy_params , zint(k,iens) , zint(0,iens) ,
+                                                         zint(nz,iens) , iens );
       });
       
       return press_edges;
@@ -512,7 +541,8 @@ namespace pam {
       YAKL_SCOPE( grav , this->grav );
 
       // Compute density perturbation
-      parallel_for( "coup dens pert" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      parallel_for( "coup dens pert" , SimpleBounds<4>(nz,ny,nx,nens) ,
+                    YAKL_LAMBDA (int k, int j, int i, int iens) {
         dens_pert(k,j,i,iens) = dens(k,j,i,iens) - hy_dens(k,iens);
       });
 
@@ -524,8 +554,10 @@ namespace pam {
                                                     vert_interp.BC_ZERO_GRADIENT );
 
       // Add hydrostasis at cell edges to get back full density
-      parallel_for( "coup dens edges" , SimpleBounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-        dens_edges(k,j,i,iens) += hydrostatic_density( hy_params , zint(k,iens) , zint(0,iens) , zint(nz,iens) , iens , grav );
+      parallel_for( "coup dens edges" , SimpleBounds<4>(nz+1,ny,nx,nens) ,
+                    YAKL_LAMBDA (int k, int j, int i, int iens) {
+        dens_edges(k,j,i,iens) += hydrostatic_density( hy_params , zint(k,iens) , zint(0,iens) ,
+                                                       zint(nz,iens) , iens , grav );
       });
       
       return dens_edges;

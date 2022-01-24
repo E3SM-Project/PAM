@@ -3,7 +3,7 @@
 
 #include "pam_coupler.h"
 #include "DataManager.h"
-#include "Notes.h"
+#include "Options.h"
 #include <string>
 #include <vector>
 
@@ -100,53 +100,33 @@ namespace mmf_interface {
   }
 
 
-  // Allocate room and name the field to be retrieved later
+  // Set a configuration option
   template <class T>
-  inline void set_scalar( std::string name , std::string desc , T value , int thread_id=0 ) {
+  inline void set_option( std::string name , T value , int thread_id=0 ) {
     check_thread_id(thread_id);
-    auto &dm = pam_interface_couplers[thread_id].dm;
-    dm.set_scalar<T>( name , desc , value );
-  }
-
-
-  // Allocate room and name the field to be retrieved later
-  template <class T>
-  inline T get_scalar( std::string name , int thread_id=0 ) {
-    check_thread_id(thread_id);
-    auto &dm = pam_interface_couplers[thread_id].dm;
-    return dm.get_scalar<T>( name );
+    pam_interface_couplers[thread_id].set_option<T>(name,value);
   }
 
 
   // Set a configuration option
-  inline void set_option( std::string name , std::string value , int thread_id=0 ) {
+  template <class T>
+  inline T get_option( std::string name , int thread_id=0 ) {
     check_thread_id(thread_id);
-    auto &notes = pam_interface_couplers[thread_id].notes;
-    notes.set_note( name , value );
-  }
-
-
-  // Set a configuration option
-  inline std::string get_option( std::string name , int thread_id=0 ) {
-    check_thread_id(thread_id);
-    auto &notes = pam_interface_couplers[thread_id].notes;
-    return notes.get_note( name );
+    return pam_interface_couplers[thread_id].get_option<T>(name);
   }
 
 
   // Set a configuration option
   inline bool option_is_set( std::string name , int thread_id=0 ) {
     check_thread_id(thread_id);
-    auto &notes = pam_interface_couplers[thread_id].notes;
-    return notes.note_exists( name );
+    return pam_interface_couplers[thread_id].option_exists(name);
   }
 
 
   // Set a configuration option
   inline void remove_option( std::string name , int thread_id=0 ) {
     check_thread_id(thread_id);
-    auto &notes = pam_interface_couplers[thread_id].notes;
-    notes.delete_note( name );
+    pam_interface_couplers[thread_id].delete_option(name);
   }
 
 }

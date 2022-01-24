@@ -7,6 +7,7 @@
 #include "mmf_interface.h"
 #include "perturb_temperature.h"
 #include "gcm_forcing.h"
+#include "gcm_density_forcing.h"
 
 
 int main(int argc, char** argv) {
@@ -32,6 +33,20 @@ int main(int argc, char** argv) {
     real outFreq        = config["outFreq"    ].as<real>();
     std::string coldata = config["column_data"].as<std::string>();
 
+    // How to apply the density forcing: loose (force it like sam does); strict (enforce it strictly every time step)
+    if (config["density_forcing"]) {
+      mmf_interface::set_option<std::string>("density_forcing",config["density_forcing"].as<std::string>());
+    } else {
+      mmf_interface::set_option<std::string>("density_forcing","loose");
+    }
+
+    // Apply forcing at dynamics time step?  If false, it's applied at the CRM physics time step
+    if (config["forcing_at_dycore_time_step"]) {
+      mmf_interface::set_option<bool>( "forcing_at_dycore_time_step" , config["forcing_at_dycore_time_step"].as<bool>() );
+    } else {
+      mmf_interface::set_option<bool>( "forcing_at_dycore_time_step" , false );
+    }
+
     // Store vertical coordinates
     std::string vcoords_file = config["vcoords"].as<std::string>();
     yakl::SimpleNetCDF nc;
@@ -55,7 +70,7 @@ int main(int argc, char** argv) {
     mmf_interface::set_grid( xlen , ylen , zint_in );
 
     // This is for the dycore to pull out to determine how to do idealized test cases
-    mmf_interface::set_option( "standalone_input_file" , inFile );
+    mmf_interface::set_option<std::string>( "standalone_input_file" , inFile );
 
     ///////////////////////////////////////////////////////////////////////////////
     // This is the end of the mmf_interface code. Using coupler directly from here
@@ -75,21 +90,27 @@ int main(int argc, char** argv) {
     // Only for the idealized standalone driver; clearly not going to be used for the MMF driver
     dycore.init_idealized_state_and_tracers( coupler );
 
-    real2d gcm_rho_d("gcm_rho_d",crm_nz,nens);
-    real2d gcm_uvel ("gcm_uvel" ,crm_nz,nens);
-    real2d gcm_vvel ("gcm_vvel" ,crm_nz,nens);
-    real2d gcm_wvel ("gcm_wvel" ,crm_nz,nens);
-    real2d gcm_temp ("gcm_temp" ,crm_nz,nens);
-    real2d gcm_rho_v("gcm_rho_v",crm_nz,nens);
-    real2d gcm_rho_c("gcm_rho_c",crm_nz,nens);
-    real r_nx_ny = 1._fp / (crm_nx*crm_ny);
+    mmf_interface::register_and_allocate_array<real>("gcm_density_dry","GCM column dry density"     ,{crm_nz,nens});
+    mmf_interface::register_and_allocate_array<real>("gcm_uvel"       ,"GCM column u-velocity"      ,{crm_nz,nens});
+    mmf_interface::register_and_allocate_array<real>("gcm_vvel"       ,"GCM column v-velocity"      ,{crm_nz,nens});
+    mmf_interface::register_and_allocate_array<real>("gcm_wvel"       ,"GCM column w-velocity"      ,{crm_nz,nens});
+    mmf_interface::register_and_allocate_array<real>("gcm_temp"       ,"GCM column temperature"     ,{crm_nz,nens});
+    mmf_interface::register_and_allocate_array<real>("gcm_water_vapor","GCM column water vapor mass",{crm_nz,nens});
+
+    auto gcm_rho_d = coupler.dm.get<real,2>("gcm_density_dry");
+    auto gcm_uvel  = coupler.dm.get<real,2>("gcm_uvel"       );
+    auto gcm_vvel  = coupler.dm.get<real,2>("gcm_vvel"       );
+    auto gcm_wvel  = coupler.dm.get<real,2>("gcm_wvel"       );
+    auto gcm_temp  = coupler.dm.get<real,2>("gcm_temp"       );
+    auto gcm_rho_v = coupler.dm.get<real,2>("gcm_water_vapor");
+
     auto rho_d = coupler.dm.get<real,4>("density_dry" );
     auto uvel  = coupler.dm.get<real,4>("uvel"        );
     auto vvel  = coupler.dm.get<real,4>("vvel"        );
     auto wvel  = coupler.dm.get<real,4>("wvel"        );
     auto temp  = coupler.dm.get<real,4>("temp"        );
     auto rho_v = coupler.dm.get<real,4>("water_vapor" );
-    auto rho_c = coupler.dm.get<real,4>("cloud_liquid");
+
     // Compute a column to force the model with by averaging the columns at init
     parallel_for( Bounds<4>(crm_nz,crm_ny,crm_nx,nens) , YAKL_DEVICE_LAMBDA (int k, int j, int i, int iens) {
       gcm_rho_d(k,iens) = 0;
@@ -98,8 +119,8 @@ int main(int argc, char** argv) {
       gcm_wvel (k,iens) = 0;
       gcm_temp (k,iens) = 0;
       gcm_rho_v(k,iens) = 0;
-      gcm_rho_c(k,iens) = 0;
     });
+    real r_nx_ny = 1._fp / (crm_nx*crm_ny);  // Avoid costly divisions
     parallel_for( Bounds<4>(crm_nz,crm_ny,crm_nx,nens) , YAKL_DEVICE_LAMBDA (int k, int j, int i, int iens) {
       yakl::atomicAdd( gcm_rho_d(k,iens) , rho_d(k,j,i,iens) * r_nx_ny );
       yakl::atomicAdd( gcm_uvel (k,iens) , uvel (k,j,i,iens) * r_nx_ny );
@@ -107,13 +128,19 @@ int main(int argc, char** argv) {
       yakl::atomicAdd( gcm_wvel (k,iens) , wvel (k,j,i,iens) * r_nx_ny );
       yakl::atomicAdd( gcm_temp (k,iens) , temp (k,j,i,iens) * r_nx_ny );
       yakl::atomicAdd( gcm_rho_v(k,iens) , rho_v(k,j,i,iens) * r_nx_ny );
-      yakl::atomicAdd( gcm_rho_c(k,iens) , rho_c(k,j,i,iens) * r_nx_ny );
     });
 
     perturb_temperature( coupler , 0 );
 
     // Now that we have an initial state, define hydrostasis for each ensemble member
     coupler.update_hydrostasis( coupler.compute_pressure_array() );
+
+    bool forcing_at_dycore_time_step = coupler.get_option<bool>("forcing_at_dycore_time_step");
+
+    if (forcing_at_dycore_time_step) {
+      coupler.add_dycore_function( gcm_density_forcing          );
+      coupler.add_dycore_function( apply_gcm_forcing_tendencies );
+    }
 
     real etime_gcm = 0;
     int numOut = 0;
@@ -123,7 +150,7 @@ int main(int argc, char** argv) {
     while (etime_gcm < simTime) {
       if (etime_gcm + dt_gcm > simTime) { dt_gcm = simTime - etime_gcm; }
 
-      compute_gcm_forcing_tendencies( coupler , gcm_rho_d , gcm_uvel , gcm_vvel , gcm_wvel , gcm_temp , gcm_rho_v , dt_gcm );
+      compute_gcm_forcing_tendencies( coupler , dt_gcm );
 
       real etime_crm = 0;
       real simTime_crm = dt_gcm;
@@ -140,7 +167,10 @@ int main(int argc, char** argv) {
         dycore.timeStep( coupler , dt_crm , etime_crm );
         yakl::timer_stop("dycore");
 
-        apply_gcm_forcing_tendencies( coupler , dt_crm );
+        if (! forcing_at_dycore_time_step) {
+          gcm_density_forcing         (coupler , dt_crm);
+          apply_gcm_forcing_tendencies(coupler , dt_crm);
+        }
 
         etime_crm += dt_crm;
         etime_gcm += dt_crm;
