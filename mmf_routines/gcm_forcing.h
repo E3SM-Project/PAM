@@ -6,6 +6,8 @@
 #include "pam_coupler.h"
 
 
+// This routine is only called once at the beginning of an MMF calculation (at the beginning of a GCM time step)
+// 
 // Let's call the current GCM state at the beginning of the MMF step for this GCM physics time step: state_gcm
 // Let's call the current column-averaged CRM state at the same point in time: state_crm
 // The GCM forces the CRM in the MMF by computing (state_gcm - state_crm) and evenly adding this differeince to the
@@ -104,6 +106,8 @@ inline void compute_gcm_forcing_tendencies( PamCoupler &coupler , real2d &rho_d_
 
 
 
+// This routine is intended to be called frequently throughout the MMF calculation
+// 
 // Apply the precomputed GCM forcing tendencies evenly throughout the course of the MMF calculations
 // This applies the forcing over the time domain [t_n , t_n + dt]
 // It's possible to produce negative values in tracers in this routine. For instance, if you net remove mass
