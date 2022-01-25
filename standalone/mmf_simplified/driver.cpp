@@ -175,7 +175,9 @@ int main(int argc, char** argv) {
         etime_crm += dt_crm;
         etime_gcm += dt_crm;
         if (outFreq >= 0. && etime_gcm / outFreq >= numOut+1) {
-          std::cout << "Etime , dt_crm: " << etime_gcm << " , " << dt_crm << "\n";
+          std::cout << "Etime , dt_crm , maxw: " << etime_gcm << " , "
+                                                 << dt_crm    << " , "
+                                                 << yakl::intrinsics::maxval(wvel) << "\n";
           yakl::timer_start("output");
           dycore.output( coupler , etime_gcm );
           yakl::timer_stop("output");

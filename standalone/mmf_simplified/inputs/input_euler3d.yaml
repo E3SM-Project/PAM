@@ -2,6 +2,7 @@
 # Simulation time in seconds
 # simTime  : 28800
 simTime  : 86400
+# simTime  : 1800
 
 # Number of cells to use in the CRMs
 crm_nx   : 128
@@ -49,7 +50,7 @@ sponge_cells: 0
 sponge_strength: 0.1
 
 # Specify how to force density from the GCM (loose, strict, or off)
-density_forcing: strict
+density_forcing: loose
 
 # If true, GCM forcing is applied at the finest dycore time step; otherwise at coarser CRM physics time step
 forcing_at_dycore_time_step: true
