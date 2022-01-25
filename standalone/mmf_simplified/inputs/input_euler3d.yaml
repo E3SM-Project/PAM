@@ -49,9 +49,9 @@ sponge_cells: 0
 sponge_strength: 0.1
 
 # Specify how to force density from the GCM (loose, strict, or off)
-density_forcing: loose
+density_forcing: strict
 
 # If true, GCM forcing is applied at the finest dycore time step; otherwise at coarser CRM physics time step
-forcing_at_dycore_time_step: false
+forcing_at_dycore_time_step: true
 
 
