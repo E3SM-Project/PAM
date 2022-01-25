@@ -330,7 +330,7 @@ public:
     YAKL_SCOPE( first_step , this->first_step );
     YAKL_SCOPE( grav       , this->grav       );
 
-    // Save initial state, and compute inputs for kessler(...)
+    // Save initial state, and compute inputs for p3(...)
     parallel_for( "micro adjust preprocess" , SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
       // Compute total density
       real rho = rho_dry(k,i) + rho_c(k,i) + rho_r(k,i) + rho_m(k,i) + rho_v(k,i);
