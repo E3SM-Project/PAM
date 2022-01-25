@@ -72,6 +72,13 @@ int main(int argc, char** argv) {
     // This is for the dycore to pull out to determine how to do idealized test cases
     mmf_interface::set_option<std::string>( "standalone_input_file" , inFile );
 
+    mmf_interface::register_and_allocate_array<real>("gcm_density_dry","GCM column dry density"     ,{crm_nz,nens});
+    mmf_interface::register_and_allocate_array<real>("gcm_uvel"       ,"GCM column u-velocity"      ,{crm_nz,nens});
+    mmf_interface::register_and_allocate_array<real>("gcm_vvel"       ,"GCM column v-velocity"      ,{crm_nz,nens});
+    mmf_interface::register_and_allocate_array<real>("gcm_wvel"       ,"GCM column w-velocity"      ,{crm_nz,nens});
+    mmf_interface::register_and_allocate_array<real>("gcm_temp"       ,"GCM column temperature"     ,{crm_nz,nens});
+    mmf_interface::register_and_allocate_array<real>("gcm_water_vapor","GCM column water vapor mass",{crm_nz,nens});
+
     ///////////////////////////////////////////////////////////////////////////////
     // This is the end of the mmf_interface code. Using coupler directly from here
     ///////////////////////////////////////////////////////////////////////////////
@@ -90,13 +97,6 @@ int main(int argc, char** argv) {
     // Only for the idealized standalone driver; clearly not going to be used for the MMF driver
     dycore.init_idealized_state_and_tracers( coupler );
 
-    mmf_interface::register_and_allocate_array<real>("gcm_density_dry","GCM column dry density"     ,{crm_nz,nens});
-    mmf_interface::register_and_allocate_array<real>("gcm_uvel"       ,"GCM column u-velocity"      ,{crm_nz,nens});
-    mmf_interface::register_and_allocate_array<real>("gcm_vvel"       ,"GCM column v-velocity"      ,{crm_nz,nens});
-    mmf_interface::register_and_allocate_array<real>("gcm_wvel"       ,"GCM column w-velocity"      ,{crm_nz,nens});
-    mmf_interface::register_and_allocate_array<real>("gcm_temp"       ,"GCM column temperature"     ,{crm_nz,nens});
-    mmf_interface::register_and_allocate_array<real>("gcm_water_vapor","GCM column water vapor mass",{crm_nz,nens});
-
     auto gcm_rho_d = coupler.dm.get<real,2>("gcm_density_dry");
     auto gcm_uvel  = coupler.dm.get<real,2>("gcm_uvel"       );
     auto gcm_vvel  = coupler.dm.get<real,2>("gcm_vvel"       );
@@ -104,12 +104,12 @@ int main(int argc, char** argv) {
     auto gcm_temp  = coupler.dm.get<real,2>("gcm_temp"       );
     auto gcm_rho_v = coupler.dm.get<real,2>("gcm_water_vapor");
 
-    auto rho_d = coupler.dm.get<real,4>("density_dry" );
-    auto uvel  = coupler.dm.get<real,4>("uvel"        );
-    auto vvel  = coupler.dm.get<real,4>("vvel"        );
-    auto wvel  = coupler.dm.get<real,4>("wvel"        );
-    auto temp  = coupler.dm.get<real,4>("temp"        );
-    auto rho_v = coupler.dm.get<real,4>("water_vapor" );
+    auto rho_d = coupler.dm.get<real const,4>("density_dry" );
+    auto uvel  = coupler.dm.get<real const,4>("uvel"        );
+    auto vvel  = coupler.dm.get<real const,4>("vvel"        );
+    auto wvel  = coupler.dm.get<real const,4>("wvel"        );
+    auto temp  = coupler.dm.get<real const,4>("temp"        );
+    auto rho_v = coupler.dm.get<real const,4>("water_vapor" );
 
     // Compute a column to force the model with by averaging the columns at init
     parallel_for( Bounds<4>(crm_nz,crm_ny,crm_nx,nens) , YAKL_DEVICE_LAMBDA (int k, int j, int i, int iens) {
