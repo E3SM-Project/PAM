@@ -369,7 +369,7 @@ public:
   // Given the model data and CFL value, compute the maximum stable time step
   real compute_time_step(PamCoupler const &coupler, real cfl_in = -1) {
     real cfl = cfl_in;
-    if (cfl < 0) cfl = 0.8;
+    if (cfl < 0) cfl = 0.75;
 
     // If we've already computed the time step, then don't compute it again
     if (dtInit <= 0) {

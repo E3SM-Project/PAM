@@ -333,7 +333,7 @@ public:
     // Save initial state, and compute inputs for kessler(...)
     parallel_for( "micro adjust preprocess" , SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
       // Compute total density
-      real rho = rho_dry(k,i) + rho_c(k,i) + rho_r(k,i) + rho_i(k,i) + rho_v(k,i);
+      real rho = rho_dry(k,i) + rho_c(k,i) + rho_r(k,i) + rho_m(k,i) + rho_v(k,i);
 
       // TODO: Find perhaps a more appropriate adjustment scheme that produces what P3 expects
       // P3 doesn't do saturation adjustment, so we need to do that ahead of time
@@ -489,21 +489,21 @@ public:
     // Convert P3 outputs into dynamics coupler state and tracer masses
     ///////////////////////////////////////////////////////////////////////////////
     parallel_for( "micro post process" , SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
-      rho_c    (k,i) = max( qc(k,i)*rho_dry(k,i) , 0._fp );
-      rho_nc   (k,i) = max( nc(k,i)*rho_dry(k,i) , 0._fp );
-      rho_r    (k,i) = max( qr(k,i)*rho_dry(k,i) , 0._fp );
-      rho_nr   (k,i) = max( nr(k,i)*rho_dry(k,i) , 0._fp );
-      rho_i    (k,i) = max( qi(k,i)*rho_dry(k,i) , 0._fp );
-      rho_ni   (k,i) = max( ni(k,i)*rho_dry(k,i) , 0._fp );
-      rho_m    (k,i) = max( qm(k,i)*rho_dry(k,i) , 0._fp );
-      rho_bm   (k,i) = max( bm(k,i)*rho_dry(k,i) , 0._fp );
-      rho_v    (k,i) = max( qv(k,i)*rho_dry(k,i) , 0._fp );
+      rho_c  (k,i) = max( qc(k,i)*rho_dry(k,i) , 0._fp );
+      rho_nc (k,i) = max( nc(k,i)*rho_dry(k,i) , 0._fp );
+      rho_r  (k,i) = max( qr(k,i)*rho_dry(k,i) , 0._fp );
+      rho_nr (k,i) = max( nr(k,i)*rho_dry(k,i) , 0._fp );
+      rho_i  (k,i) = max( qi(k,i)*rho_dry(k,i) , 0._fp );
+      rho_ni (k,i) = max( ni(k,i)*rho_dry(k,i) , 0._fp );
+      rho_m  (k,i) = max( qm(k,i)*rho_dry(k,i) , 0._fp );
+      rho_bm (k,i) = max( bm(k,i)*rho_dry(k,i) , 0._fp );
+      rho_v  (k,i) = max( qv(k,i)*rho_dry(k,i) , 0._fp );
       // While micro changes total pressure, thus changing exner, the definition
       // of theta depends on the old exner pressure, so we'll use old exner here
-      temp     (k,i) = theta(k,i) * exner(k,i);
+      temp   (k,i) = theta(k,i) * exner(k,i);
       // Save qv and temperature for the next call to p3_main
-      qv_prev  (k,i) = max( qv(k,i) , 0._fp );
-      t_prev   (k,i) = temp(k,i);
+      qv_prev(k,i) = max( qv(k,i) , 0._fp );
+      t_prev (k,i) = temp(k,i);
     });
 
   }
