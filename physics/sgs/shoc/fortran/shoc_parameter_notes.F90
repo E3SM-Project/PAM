@@ -1,8 +1,11 @@
 
 ! MAIN QUESTIONS:
-! * Does SHOC expect ground to be at nlev-1 or zero? (I'm prett
-! * How do I back out water vapor and cloud liquid from SHOC's outputs?
 ! * Are there tunable parameters to increase or decrease overall dissipation?
+
+! NOTES:
+! * TKE needs to be registered as a tracer!
+! * SHOC expects the model top to be at index 1 and model bottom to be at index nlev
+! * qw (total water) is vapor + cloud liquid:    qv(i,k) = qw(i,k) - ql(i,k) 
 
 
 subroutine shoc_init( &
@@ -56,23 +59,23 @@ subroutine shoc_main ( &
   real(rtype), intent(in   ) :: thv         (shcol,nlev              ) !UNDERSTOOD   https://glossary.ametsoc.org/wiki/Virtual_potential_temperature ??  virtual potential temperature [K]
   real(rtype), intent(in   ) :: w_field     (shcol,nlev              ) !UNDERSTOOD   large scale vertical velocity [m/s]
   real(rtype), intent(in   ) :: wthl_sfc    (shcol                   ) !UNDERSTOOD   Surface sensible heat flux [K m/s]
-  real(rtype), intent(in   ) :: wqw_sfc     (shcol                   ) !UNDERSTOOD   Surface latent heat flux [kg/kg m/s]
+  real(rtype), intent(in   ) :: wqw_sfc     (shcol                   ) !UNDERSTOOD   SURFACE FLUX OF TOTAL WATER DRY MIXING RATIO (VAPOR + CLOUD LIQUID);  Surface latent heat flux [kg/kg m/s]
   real(rtype), intent(in   ) :: uw_sfc      (shcol                   ) !UNDERSTOOD   Surface momentum flux (u-direction) [m2/s2]
   real(rtype), intent(in   ) :: vw_sfc      (shcol                   ) !UNDERSTOOD   Surface momentum flux (v-direction) [m2/s2]
-  real(rtype), intent(in   ) :: wtracer_sfc (shcol      ,num_qtracers) !QUESTION     MASS OR DRY MIXING RATIO? Surface flux for tracers [varies]
+  real(rtype), intent(in   ) :: wtracer_sfc (shcol      ,num_qtracers) !UNDERSTOOD   DRY MIXING RATIOS, SAME DEFINITIONS AS QTRACERS;  Surface flux for tracers [varies]
   real(rtype), intent(in   ) :: exner       (shcol,nlev              ) !UNDERSTOOD   Exner function [-]
   real(rtype), intent(in   ) :: phis        (shcol                   ) !UNDERSTOOD   Host model surface geopotential height
   real(rtype), intent(inout) :: host_dse    (shcol,nlev              ) !UNDERSTOOD   prognostic temp variable of host model;  dry static energy [J/kg];  dse = Cp*T + g*z + phis
   real(rtype), intent(inout) :: tke         (shcol,nlev              ) !UNDERSTOOD   turbulent kinetic energy [m2/s2]
   real(rtype), intent(inout) :: thetal      (shcol,nlev              ) !UNDERSTOOD   https://glossary.ametsoc.org/wiki/Liquid_water_potential_temperature ??  liquid water potential temperature [K]
-  real(rtype), intent(inout) :: qw          (shcol,nlev              ) !QUESTION     INCLUDE CLOUD ICE AND / OR PRECIPITANTS?  total water mixing ratio [kg/kg]
+  real(rtype), intent(inout) :: qw          (shcol,nlev              ) !UNDERSTOOD   VAPOR + CLOUD LIQUID;   total water mixing ratio [kg/kg]
   real(rtype), intent(inout) :: u_wind      (shcol,nlev              ) !UNDERSTOOD   u wind component [m/s]
   real(rtype), intent(inout) :: v_wind      (shcol,nlev              ) !UNDERSTOOD   v wind component [m/s]
-  real(rtype), intent(inout) :: wthv_sec    (shcol,nlev              ) !UNDERSTOOD   https://glossary.ametsoc.org/wiki/Buoyancy_flux ??  buoyancy flux [K m/s]
-  real(rtype), intent(inout) :: qtracers    (shcol,nlev ,num_qtracers) !QUESTION     MASS OR DRY MIXING RATIOS? tracers [varies]
-  real(rtype), intent(inout) :: tk          (shcol,nlev              ) !QUESTION     HOW TO INITIALIZE?   eddy coefficient for momentum [m2/s]
-  real(rtype), intent(inout) :: tkh         (shcol,nlev              ) !QUESTION     HOW TO INITIALIZE?   eddy coefficent for heat [m2/s]
-  real(rtype), intent(inout) :: shoc_cldfrac(shcol,nlev              ) !QUESTION     HOW TO INITIALIZE?   Cloud fraction [-]
+  real(rtype), intent(inout) :: wthv_sec    (shcol,nlev              ) !UNDERSTOOD   https://glossary.ametsoc.org/wiki/Buoyancy_flux ??   buoyancy flux [K m/s]
+  real(rtype), intent(inout) :: qtracers    (shcol,nlev ,num_qtracers) !UNDERSTOOD   THIS IS DRY MIXING RATIOS. EXCLUDE QV AND QC         tracers [varies]
+  real(rtype), intent(inout) :: tk          (shcol,nlev              ) !UNDERSTOOD   INIT TO ZERO, THEN LET SHOC HANDLE IT FROM THERE     eddy coefficient for momentum [m2/s]
+  real(rtype), intent(inout) :: tkh         (shcol,nlev              ) !UNDERSTOOD   INIT TO ZERO, THEN LET SHOC HANDLE IT FROM THERE     eddy coefficent for heat [m2/s]
+  real(rtype), intent(inout) :: shoc_cldfrac(shcol,nlev              ) !UNDERSTOOD   INIT TO ZERO, THEN LET SHOC HANDLE IT FROM THERE     Cloud fraction [-]
   real(rtype), intent(inout) :: shoc_ql     (shcol,nlev              ) !UNDERSTOOD   cloud liquid mixing ratio [kg/kg]
   real(rtype), intent(  out) :: pblh        (shcol                   ) ! planetary boundary layer depth [m]
   real(rtype), intent(  out) :: shoc_ql2    (shcol,nlev              ) ! cloud liquid mixing ratio variance [kg^2/kg^2]
