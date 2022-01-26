@@ -28,9 +28,9 @@ module shoc_intr
   use shoc,          only: linear_interp, largeneg 
   use spmd_utils,    only: masterproc
  
-  implicit none	
+  implicit none        
 
-  public :: shoc_init_cnst, shoc_implements_cnst		   
+  public :: shoc_init_cnst, shoc_implements_cnst                   
 
   ! define physics buffer indicies here
   integer :: tke_idx, &     ! turbulent kinetic energy
@@ -45,11 +45,11 @@ module shoc_intr
              qlst_idx, &         ! Physical in-cloud LWC
              qist_idx, &         ! Physical in-cloud IWC
              dp_frac_idx, &      ! deep convection cloud fraction
-	     cmeliq_idx, &       ! cmeliq_idx index in physics buffer
-	     icwmrdp_idx, &      ! In cloud mixing ratio for deep convection
+             cmeliq_idx, &       ! cmeliq_idx index in physics buffer
+             icwmrdp_idx, &      ! In cloud mixing ratio for deep convection
              sh_frac_idx, &      ! shallow convection cloud fraction
              relvar_idx, &       ! relative cloud water variance
-	     kvh_idx, &          ! SHOC eddy diffusivity on thermo levels
+             kvh_idx, &          ! SHOC eddy diffusivity on thermo levels
              kvm_idx, &          ! SHOC eddy diffusivity on mom levels
              pblh_idx, &         ! PBL pbuf
              accre_enhan_idx, &  ! optional accretion enhancement factor for MG
@@ -59,7 +59,7 @@ module shoc_intr
              radf_idx, &
              tpert_idx, &
              fice_idx, &
-	     vmag_gust_idx 	     	     
+             vmag_gust_idx                           
   
   integer, public :: &
     ixtke = 0
@@ -254,9 +254,9 @@ end function shoc_implements_cnst
     use physics_buffer,         only: pbuf_get_index, pbuf_set_field, &
                                       physics_buffer_desc
     use rad_constituents,       only: rad_cnst_get_info, rad_cnst_get_mode_num_idx, &
-                                      rad_cnst_get_mam_mmr_idx	
-    use constituents,           only: cnst_get_ind	
-    use shoc,                   only: shoc_init			      			      
+                                      rad_cnst_get_mam_mmr_idx        
+    use constituents,           only: cnst_get_ind        
+    use shoc,                   only: shoc_init                                                            
     use cam_history,            only: horiz_only, addfld, add_default
     use error_messages,         only: handle_errmsg
     use trb_mtn_stress,         only: init_tms   
@@ -401,8 +401,8 @@ end function shoc_implements_cnst
  
     call shoc_init( &
           pver, gravit, rair, rh2o, cpair, &
-	  zvir, latvap, latice, karman, &
-	  pref_mid, nbot_shoc, ntop_shoc )   
+          zvir, latvap, latice, karman, &
+          pref_mid, nbot_shoc, ntop_shoc )   
     
     ! --------------- !
     ! End             !
@@ -419,9 +419,9 @@ end function shoc_implements_cnst
   
   subroutine shoc_tend_e3sm( &
                              state, ptend_all, pbuf, hdtime, &
-			     cmfmc, cam_in, sgh30, &
-			     macmic_it, cld_macmic_num_steps, &
-			     dlf, det_s, det_ice, alst_o)
+                             cmfmc, cam_in, sgh30, &
+                             macmic_it, cld_macmic_num_steps, &
+                             dlf, det_s, det_ice, alst_o)
   
   !------------------------------------------------------------------- !
   ! Provide tendencies of shallow convection , turbulence, and         !
@@ -431,12 +431,12 @@ end function shoc_implements_cnst
     use physics_types,  only: physics_state, physics_ptend, &
                               physics_state_copy, physics_ptend_init, &
                               physics_ptend_sum 
-			      
+                              
     use physics_update_mod, only: physics_update
 
     use physics_buffer, only: pbuf_get_index, pbuf_old_tim_idx, pbuf_get_field, &
-                              pbuf_set_field, physics_buffer_desc	
-			      
+                              pbuf_set_field, physics_buffer_desc        
+                              
     use ppgrid,         only: pver, pverp, pcols
     use constituents,   only: cnst_get_ind
     use camsrfexch,     only: cam_in_t
@@ -465,7 +465,7 @@ end function shoc_implements_cnst
    real(r8),            intent(in)    :: cmfmc(pcols,pverp)       ! convective mass flux--m sub c           [kg/m2/s]
    real(r8),            intent(in)    :: sgh30(pcols)             ! std deviation of orography              [m]
    integer,             intent(in)    :: cld_macmic_num_steps     ! number of mac-mic iterations
-   integer,             intent(in)    :: macmic_it                ! number of mac-mic iterations    		      		  
+   integer,             intent(in)    :: macmic_it                ! number of mac-mic iterations                                            
    ! ---------------------- !
    ! Input-Output Auguments !
    ! ---------------------- !
@@ -796,15 +796,15 @@ end function shoc_implements_cnst
 
    call shoc_main( &
         ncol, pver, pverp, dtime, nadv, & ! Input
-	host_dx_in(:ncol), host_dy_in(:ncol), thv(:ncol,:),& ! Input
+        host_dx_in(:ncol), host_dy_in(:ncol), thv(:ncol,:),& ! Input
         zt_g(:ncol,:), zi_g(:ncol,:), state%pmid(:ncol,:pver), state%pint(:ncol,:pverp), state1%pdel(:ncol,:pver),& ! Input
-	wpthlp_sfc(:ncol), wprtp_sfc(:ncol), upwp_sfc(:ncol), vpwp_sfc(:ncol), & ! Input
-	wtracer_sfc(:ncol,:), edsclr_dim, wm_zt(:ncol,:), & ! Input
-	exner(:ncol,:),state1%phis(:ncol), & ! Input
-	shoc_s(:ncol,:), tke_zt(:ncol,:), thlm(:ncol,:), rtm(:ncol,:), & ! Input/Ouput
-	um(:ncol,:), vm(:ncol,:), edsclr_in(:ncol,:,:), & ! Input/Output
-	wthv(:ncol,:),tkh(:ncol,:),tk(:ncol,:), & ! Input/Output
-	rcm(:ncol,:),cloud_frac(:ncol,:), & ! Input/Output
+        wpthlp_sfc(:ncol), wprtp_sfc(:ncol), upwp_sfc(:ncol), vpwp_sfc(:ncol), & ! Input
+        wtracer_sfc(:ncol,:), edsclr_dim, wm_zt(:ncol,:), & ! Input
+        exner(:ncol,:),state1%phis(:ncol), & ! Input
+        shoc_s(:ncol,:), tke_zt(:ncol,:), thlm(:ncol,:), rtm(:ncol,:), & ! Input/Ouput
+        um(:ncol,:), vm(:ncol,:), edsclr_in(:ncol,:,:), & ! Input/Output
+        wthv(:ncol,:),tkh(:ncol,:),tk(:ncol,:), & ! Input/Output
+        rcm(:ncol,:),cloud_frac(:ncol,:), & ! Input/Output
         pblh(:ncol), & ! Output
         shoc_mix_out(:ncol,:), isotropy_out(:ncol,:), & ! Output (diagnostic)
         w_sec_out(:ncol,:), thl_sec_out(:ncol,:), qw_sec_out(:ncol,:), qwthl_sec_out(:ncol,:), & ! Output (diagnostic)   
@@ -1042,7 +1042,7 @@ end function shoc_implements_cnst
       enddo
     enddo
    
-    cld(:,1:pver) = cloud_frac(:,1:pver)	
+    cld(:,1:pver) = cloud_frac(:,1:pver)        
 
     ! --------------------------------------------------------!
     ! Output fields
