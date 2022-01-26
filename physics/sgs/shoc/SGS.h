@@ -42,6 +42,9 @@ public:
   real p0           ;
   bool micro_kessler;
   bool micro_p3     ;
+  real latvap       ;
+  real latice       ;
+  real karman       ;
 
   real grav;
   real cp_l;
@@ -70,6 +73,9 @@ public:
     cp_l          = 4218.;
     micro_kessler = false;
     micro_p3      = false;
+    latvap        = 2.5E6 ;
+    latice        = 3.50E5;
+    karman        = 0.4;
   }
 
 
@@ -94,23 +100,23 @@ public:
 
     // Register and allocation non-tracer quantities used by the microphysics
     int p3_nout = 49;
-    coupler.dm.register_and_allocate<real>( "wthv_sec"     , "Buoyancy flux [K m/s]"                , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "tk"           , "Eddy coefficient for momentum [m2/s]" , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "tkh"          , "Eddy coefficent for heat [m2/s]"      , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "shoc_cldfrac" , "Cloud fraction [-]"                   , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "wthv_sec" , "Buoyancy flux [K m/s]"                , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "tk"       , "Eddy coefficient for momentum [m2/s]" , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "tkh"      , "Eddy coefficent for heat [m2/s]"      , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "cldfrac"  , "Cloud fraction [-]"                   , {nz,ny,nx,nens} , {"z","y","x","nens"} );
 
-    auto tke          = coupler.dm.get<real,4>( "tke"          );
-    auto wthv_sec     = coupler.dm.get<real,4>( "wthv_sec"     );
-    auto tk           = coupler.dm.get<real,4>( "tk"           );
-    auto tkh          = coupler.dm.get<real,4>( "tkh"          );
-    auto shoc_cldfrac = coupler.dm.get<real,4>( "shoc_cldfrac" );
+    auto tke      = coupler.dm.get<real,4>( "tke"      );
+    auto wthv_sec = coupler.dm.get<real,4>( "wthv_sec" );
+    auto tk       = coupler.dm.get<real,4>( "tk"       );
+    auto tkh      = coupler.dm.get<real,4>( "tkh"      );
+    auto cldfrac  = coupler.dm.get<real,4>( "cldfrac"  );
 
     parallel_for( "sgs zero" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      tke         (k,j,i,iens) = 0;
-      wthv_sec    (k,j,i,iens) = 0;
-      tk          (k,j,i,iens) = 0;
-      tkh         (k,j,i,iens) = 0;
-      shoc_cldfrac(k,j,i,iens) = 0;
+      tke     (k,j,i,iens) = 0;
+      wthv_sec(k,j,i,iens) = 0;
+      tk      (k,j,i,iens) = 0;
+      tkh     (k,j,i,iens) = 0;
+      cldfrac (k,j,i,iens) = 0;
     });
   }
 
@@ -124,193 +130,199 @@ public:
     int nens = coupler.get_nens();
     int ncol = ny*nx*nens;
 
-    // This check is here instead of init because it's not guaranteed the micro has called init before sgs
-    if (! coupler.option_exists("micro")) {
-      endrun("ERROR: SHOC requires coupler.set_option<std::string>(\"micro\",...) to be set");
-    }
-    std::string micro_scheme = coupler.get_option<std::string>("micro");
-    if      (micro_scheme == "kessler") { micro_kessler = true; }
-    else if (micro_scheme == "p3"     ) { micro_p3      = true; }
-    else { endrun("ERROR: SHOC only meant to run with kessler or p3 microphysics"); }
-
-    auto pres     = coupler.compute_pressure_array(); 
+    auto pres_mid = coupler.compute_pressure_array(); 
     auto pres_int = coupler.interp_pressure_interfaces( pres );
 
     // SHOC init requires reference pressure, which we do not have available for the init() call
     if (first_step) {
-      real constexpr latvap = 2.5E6 ;
-      real constexpr latice = 3.50E5;
-      real constexpr karman = 0.4;
       // TODO: See if a more appropriate reference pressure should be used
       // pref is only used to limit PBL height to 400mb, so this should be OK
       // Invert the first column in x, z, and ensemble to use as reference pressure for shoc
       real1d pref_shoc("pref_shoc",nz);
       parallel_for( Bounds<2>(nz) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-        pref_shoc(k,j,i,iens) = pres(nz-1-k,0,0,0);
+        pref_shoc(k,j,i,iens) = pres_mid(nz-1-k,0,0,0);
       });
       shoc_init( nz , grav , R_d , R_v , cp_d , R_v / R_d -1 , latvap , latice , karman ,
                  pref_shoc.createHostCopy().data() , nlev , 1 );
+
+      // This check is here instead of init because it's not guaranteed the micro has called init before sgs
+      if (! coupler.option_exists("micro")) {
+        endrun("ERROR: SHOC requires coupler.set_option<std::string>(\"micro\",...) to be set");
+      }
+      std::string micro_scheme = coupler.get_option<std::string>("micro");
+      if      (micro_scheme == "kessler") { micro_kessler = true; }
+      else if (micro_scheme == "p3"     ) { micro_p3      = true; }
+      else { endrun("ERROR: SHOC only meant to run with kessler or p3 microphysics"); }
+
       first_step = false;
     }
 
     // Get saved SHOC-related variables
-    auto tke          = coupler.dm.get_lev_col<real>( "tke"          ); // PAM Tracer                 ; don't compute
-    auto wthv_sec     = coupler.dm.get_lev_col<real>( "wthv_sec"     ); // Reuse from last SHOC output; don't compute
-    auto tk           = coupler.dm.get_lev_col<real>( "tk"           ); // Reuse from last SHOC output; don't compute
-    auto tkh          = coupler.dm.get_lev_col<real>( "tkh"          ); // Reuse from last SHOC output; don't compute
-    auto shoc_cldfrac = coupler.dm.get_lev_col<real>( "shoc_cldfrac" ); // Reuse from last SHOC output; don't compute
+    auto tke      = coupler.dm.get_lev_col<real>( "tke"      ); // PAM Tracer                 ; don't compute
+    auto wthv_sec = coupler.dm.get_lev_col<real>( "wthv_sec" ); // Reuse from last SHOC output; don't compute
+    auto tk       = coupler.dm.get_lev_col<real>( "tk"       ); // Reuse from last SHOC output; don't compute
+    auto tkh      = coupler.dm.get_lev_col<real>( "tkh"      ); // Reuse from last SHOC output; don't compute
+    auto cldfrac  = coupler.dm.get_lev_col<real>( "cldfrac"  ); // Reuse from last SHOC output; don't compute
     // Get coupler state
     auto rho_d        = coupler.dm.get_lev_col<real>( "density_dry"  );
     auto uvel         = coupler.dm.get_lev_col<real>( "uvel"         );
     auto vvel         = coupler.dm.get_lev_col<real>( "vvel"         );
     auto wvel         = coupler.dm.get_lev_col<real>( "wvel"         );
     auto temp         = coupler.dm.get_lev_col<real>( "temp"         );
-    auto rho_v        = coupler.dm.get_lev_col<real>( "water_vapor"  );
+    auto rho_v        = coupler.dm.get_lev_col<real>( "water_vapor"  ); // Water vapor mass
 
     // Grab cloud liquid tracer, and determine what other tracers to diffuse in SHOC
+    // TODO: Maybe tracers don't have to be mixing ratios? Dividing number concentration by rho_dry doesn't seem to make much sense
     // TODO: Do we add water vapor and cloud liquid to the diffused tracers, or does SHOC do that already?
     // TODO: If we add new MMF modules that add other tracers that need to be diffused, then this situation
     //       must be handled
-    std::vector<std::string> extra_tracer_names;
-    real2d rho_c;
+    MultiField<real,2> qtracers_pam;  // Extra tracers for SHOC to diffuse
+    real2d rho_c;                     // Cloud liquid mass (name differs for different micro schemes)
     if        (micro_kessler) {
-      extra_tracer_names.push_back("precip_liquid");
       rho_c = coupler.dm.get_lev_col<real>( "cloud_liquid" );
+      qtracers_pam.add_field( coupler.dm.get_lev_col<real>("precip_liquid") );
     } else if (micro_p3     ) {
       rho_c = coupler.dm.get_lev_col<real>( "cloud_water"  );
-      extra_tracer_names.push_back("cloud_water_num");
-      extra_tracer_names.push_back("rain"           );
-      extra_tracer_names.push_back("rain_num"       );
-      extra_tracer_names.push_back("ice"            );
-      extra_tracer_names.push_back("ice_num"        );
-      extra_tracer_names.push_back("ice_rime"       );
-      extra_tracer_names.push_back("ice_rime_vol"   );
+      qtracers_pam.add_field( coupler.dm.get_lev_col<real>("cloud_water_num") );
+      qtracers_pam.add_field( coupler.dm.get_lev_col<real>("rain"           ) );
+      qtracers_pam.add_field( coupler.dm.get_lev_col<real>("rain_num"       ) );
+      qtracers_pam.add_field( coupler.dm.get_lev_col<real>("ice"            ) );
+      qtracers_pam.add_field( coupler.dm.get_lev_col<real>("ice_num"        ) );
+      qtracers_pam.add_field( coupler.dm.get_lev_col<real>("ice_rime"       ) );
+      qtracers_pam.add_field( coupler.dm.get_lev_col<real>("ice_rime_vol"   ) );
     }
+
+    int num_qtracers = qtracers_pam.get_num_fields();
 
     auto zint = coupler.dm.get<real,2>("vertical_interface_height");
     auto zmid = coupler.dm.get<real,2>("vertical_midpoint_height" );
 
+    real crm_dx = coupler.get_xlen() / nx;
+    real crm_dy;
+    if (ny == 1) { crm_dy = crm_dx;                  }
+    else         { crm_dy = coupler.get_ylen() / ny; }
+
     // Create variables for SHOC call (these are all inverted for vertical indices
-    real1d host_dx     ("host_dx     ",                  ncol); // grid spacing of host model in x direction [m]
-    real1d host_dy     ("host_dy     ",                  ncol); // grid spacing of host model in y direction [m]
-    real2d zt_grid     ("zt_grid     ",             nz  ,ncol); // heights, for thermo grid [m]
-    real2d zi_grid     ("zi_grid     ",             nz+1,ncol); // heights, for interface grid [m]
-    real2d pres        ("pres        ",             nz  ,ncol); // pressure levels on thermo grid [Pa]
-    real2d presi       ("presi       ",             nz+1,ncol); // pressure levels on interface grid [Pa]
-    real2d pdel        ("pdel        ",             nz  ,ncol); // Differences in pressure levels [Pa]
-    real2d thv         ("thv         ",             nz  ,ncol); // virtual potential temperature [K]
-    real2d w_field     ("w_field     ",             nz  ,ncol); // large scale vertical velocity [m/s]
-    real1d wthl_sfc    ("wthl_sfc    ",                  ncol); // Surface sensible heat flux [K m/s]
-    real1d wqw_sfc     ("wqw_sfc     ",                  ncol); // Surface latent heat flux [kg/kg m/s]
-    real1d uw_sfc      ("uw_sfc      ",                  ncol); // Surface momentum flux (u-direction) [m2/s2]
-    real1d vw_sfc      ("vw_sfc      ",                  ncol); // Surface momentum flux (v-direction) [m2/s2]
-    real2d wtracer_sfc ("wtracer_sfc ",num_qtracers,     ncol); // Surface flux for tracers [varies]
-    real2d exner       ("exner       ",             nz  ,ncol); // Exner function [-]
-    real1d phis        ("phis        ",                  ncol); // Host model surface geopotential height
-    real2d host_dse    ("host_dse    ",             nz  ,ncol); // dry static energy [J/kg];  dse = Cp*T + g*z + phis
-    real2d tke         ("tke         ",             nz  ,ncol); // turbulent kinetic energy [m2/s2]
-    real2d thetal      ("thetal      ",             nz  ,ncol); // liquid water potential temperature [K]
-    real2d qw          ("qw          ",             nz  ,ncol); // total water mixing ratio [kg/kg]
-    real2d u_wind      ("u_wind      ",             nz  ,ncol); // u wind component [m/s]
-    real2d v_wind      ("v_wind      ",             nz  ,ncol); // v wind component [m/s]
-    real2d wthv_sec    ("wthv_sec    ",             nz  ,ncol); // buoyancy flux [K m/s]
-    real3d qtracers    ("qtracers    ",num_qtracers,nz  ,ncol); // tracers [varies]
-    real2d tk          ("tk          ",             nz  ,ncol); // eddy coefficient for momentum [m2/s]
-    real2d tkh         ("tkh         ",             nz  ,ncol); // eddy coefficent for heat [m2/s]
-    real2d shoc_cldfrac("shoc_cldfrac",             nz  ,ncol); // Cloud fraction [-]
-    real2d shoc_ql     ("shoc_ql     ",             nz  ,ncol); // cloud liquid mixing ratio [kg/kg]
-    real1d pblh        ("pblh        ",                  ncol); // planetary boundary layer depth [m]
-    real2d shoc_ql2    ("shoc_ql2    ",             nz  ,ncol); // cloud liquid mixing ratio variance [kg^2/kg^2]
-    real2d shoc_mix    ("shoc_mix    ",             nz  ,ncol); // Turbulent length scale [m]
-    real2d w_sec       ("w_sec       ",             nz  ,ncol); // vertical velocity variance [m2/s2]
-    real2d thl_sec     ("thl_sec     ",             nz+1,ncol); // temperature variance [K^2]
-    real2d qw_sec      ("qw_sec      ",             nz+1,ncol); // moisture variance [kg2/kg2]
-    real2d qwthl_sec   ("qwthl_sec   ",             nz+1,ncol); // temp moisture covariance [K kg/kg]
-    real2d wthl_sec    ("wthl_sec    ",             nz+1,ncol); // vertical heat flux [K m/s]
-    real2d wqw_sec     ("wqw_sec     ",             nz+1,ncol); // vertical moisture flux [K m/s]
-    real2d wtke_sec    ("wtke_sec    ",             nz+1,ncol); // vertical tke flux [m3/s3]
-    real2d uw_sec      ("uw_sec      ",             nz+1,ncol); // vertical zonal momentum flux [m2/s2]
-    real2d vw_sec      ("vw_sec      ",             nz+1,ncol); // vertical meridional momentum flux [m2/s2]
-    real2d w3          ("w3          ",             nz+1,ncol); // third moment vertical velocity [m3/s3]
-    real2d wqls_sec    ("wqls_sec    ",             nz  ,ncol); // liquid water flux [kg/kg m/s]
-    real2d brunt       ("brunt       ",             nz  ,ncol); // brunt vaisala frequency [s-1]
-    real2d isotropy    ("isotropy    ",             nz  ,ncol); // return to isotropic timescale [s]
+    real1d shoc_host_dx    ("shoc_host_dx"    ,                  ncol); // grid spacing of host model in x direction [m]
+    real1d shoc_host_dy    ("shoc_host_dy"    ,                  ncol); // grid spacing of host model in y direction [m]
+    real2d shoc_zt_grid    ("shoc_zt_grid"    ,             nz  ,ncol); // heights, for thermo grid [m]
+    real2d shoc_zi_grid    ("shoc_zi_grid"    ,             nz+1,ncol); // heights, for interface grid [m]
+    real2d shoc_pres       ("shoc_pres"       ,             nz  ,ncol); // pressure levels on thermo grid [Pa]
+    real2d shoc_presi      ("shoc_presi"      ,             nz+1,ncol); // pressure levels on interface grid [Pa]
+    real2d shoc_pdel       ("shoc_pdel"       ,             nz  ,ncol); // Differences in pressure levels [Pa]
+    real2d shoc_thv        ("shoc_thv"        ,             nz  ,ncol); // virtual potential temperature [K]
+    real2d shoc_w_field    ("shoc_w_field"    ,             nz  ,ncol); // large scale vertical velocity [m/s]
+    real1d shoc_wthl_sfc   ("shoc_wthl_sfc"   ,                  ncol); // Surface sensible heat flux [K m/s]
+    real1d shoc_wqw_sfc    ("shoc_wqw_sfc"    ,                  ncol); // Surface latent heat flux [kg/kg m/s]
+    real1d shoc_uw_sfc     ("shoc_uw_sfc"     ,                  ncol); // Surface momentum flux (u-direction) [m2/s2]
+    real1d shoc_vw_sfc     ("shoc_vw_sfc"     ,                  ncol); // Surface momentum flux (v-direction) [m2/s2]
+    real2d shoc_wtracer_sfc("shoc_wtracer_sfc",num_qtracers,     ncol); // Surface flux for tracers [varies]
+    real2d shoc_exner      ("shoc_exner"      ,             nz  ,ncol); // Exner function [-]
+    real1d shoc_phis       ("shoc_phis"       ,                  ncol); // Host model surface geopotential height
+    real2d shoc_host_dse   ("shoc_host_dse"   ,             nz  ,ncol); // dry static energy [J/kg];  dse = Cp*T + g*z + phis
+    real2d shoc_tke        ("shoc_tke"        ,             nz  ,ncol); // turbulent kinetic energy [m2/s2]
+    real2d shoc_thetal     ("shoc_thetal"     ,             nz  ,ncol); // liquid water potential temperature [K]
+    real2d shoc_qw         ("shoc_qw"         ,             nz  ,ncol); // total water mixing ratio [kg/kg]
+    real2d shoc_u_wind     ("shoc_u_wind"     ,             nz  ,ncol); // u wind component [m/s]
+    real2d shoc_v_wind     ("shoc_v_wind"     ,             nz  ,ncol); // v wind component [m/s]
+    real2d shoc_wthv_sec   ("shoc_wthv_sec"   ,             nz  ,ncol); // buoyancy flux [K m/s]
+    real3d shoc_qtracers   ("shoc_qtracers"   ,num_qtracers,nz  ,ncol); // tracers [varies]
+    real2d shoc_tk         ("shoc_tk"         ,             nz  ,ncol); // eddy coefficient for momentum [m2/s]
+    real2d shoc_tkh        ("shoc_tkh"        ,             nz  ,ncol); // eddy coefficent for heat [m2/s]
+    real2d shoc_cldfrac    ("shoc_cldfrac"    ,             nz  ,ncol); // Cloud fraction [-]
+    real2d shoc_ql         ("shoc_ql"         ,             nz  ,ncol); // cloud liquid mixing ratio [kg/kg]
+    real1d shoc_pblh       ("shoc_pblh"       ,                  ncol); // OUT: planetary boundary layer depth [m]
+    real2d shoc_ql2        ("shoc_ql2"        ,             nz  ,ncol); // OUT: cloud liquid mixing ratio variance [kg^2/kg^2]
+    real2d shoc_mix        ("shoc_mix"        ,             nz  ,ncol); // OUT: Turbulent length scale [m]
+    real2d shoc_w_sec      ("shoc_w_sec"      ,             nz  ,ncol); // OUT: vertical velocity variance [m2/s2]
+    real2d shoc_thl_sec    ("shoc_thl_sec"    ,             nz+1,ncol); // OUT: temperature variance [K^2]
+    real2d shoc_qw_sec     ("shoc_qw_sec"     ,             nz+1,ncol); // OUT: moisture variance [kg2/kg2]
+    real2d shoc_qwthl_sec  ("shoc_qwthl_sec"  ,             nz+1,ncol); // OUT: temp moisture covariance [K kg/kg]
+    real2d shoc_wthl_sec   ("shoc_wthl_sec"   ,             nz+1,ncol); // OUT: vertical heat flux [K m/s]
+    real2d shoc_wqw_sec    ("shoc_wqw_sec"    ,             nz+1,ncol); // OUT: vertical moisture flux [K m/s]
+    real2d shoc_wtke_sec   ("shoc_wtke_sec"   ,             nz+1,ncol); // OUT: vertical tke flux [m3/s3]
+    real2d shoc_uw_sec     ("shoc_uw_sec"     ,             nz+1,ncol); // OUT: vertical zonal momentum flux [m2/s2]
+    real2d shoc_vw_sec     ("shoc_vw_sec"     ,             nz+1,ncol); // OUT: vertical meridional momentum flux [m2/s2]
+    real2d shoc_w3         ("shoc_w3"         ,             nz+1,ncol); // OUT: third moment vertical velocity [m3/s3]
+    real2d shoc_wqls_sec   ("shoc_wqls_sec"   ,             nz  ,ncol); // OUT: liquid water flux [kg/kg m/s]
+    real2d shoc_brunt      ("shoc_brunt"      ,             nz  ,ncol); // OUT: brunt vaisala frequency [s-1]
+    real2d shoc_isotropy   ("shoc_isotropy"   ,             nz  ,ncol); // OUT: return to isotropic timescale [s]
 
+    real p0     = this->p0    ;
+    real grav   = this->grav  ;
+    real R_d    = this->R_d   ;
+    real cp_d   = this->cp_d  ;
+    real latvap = this->latvap;
 
+    parallel_for( Bounds<2>(nz+1,ncol) , YAKL_LAMBDA (int k, int i) {
+      if (k == 0) {
+        shoc_host_dx    (i) = crm_dx;
+        shoc_host_dy    (i) = crm_dy;
+        shoc_wthl_sfc   (i) = 0;
+        shoc_wqw_sfc    (i) = 0;
+        shoc_uw_sfc     (i) = 0;
+        shoc_vw_sfc     (i) = 0;
+        shoc_phis       (i) = zint(0,i) * grav;
+        for (int tr = 0; tr < num_qtracers; tr++) {
+          shoc_wtracer_sfc(tr,i) = 0;
+        }
+      }
+      if (k < nz) {
+        int k_shoc = nz-1-k;
+        real z       = zmid     (k_shoc,i);
+        real press   = press_mid(k_shoc,i);
+        real temp    = temp     (k_shoc,i);
+        real qv      = rho_v    (k_shoc,i) / rho_d(k_shoc,i);
+        real ql      = rho_c    (k_shoc,i) / rho_d(k_shoc,i);
+        real exner   = pow( press / p0 , R_d / cp_d );
+        real theta   = temp / exner;
+        // https://glossary.ametsoc.org/wiki/Virtual_potential_temperature
+        real theta_v = theta * (1 + 0.61_fp * qv - ql);
+        // https://glossary.ametsoc.org/wiki/Liquid_water_potential_temperature
+        real theta_l = theta - (theta/temp) * (latvap/cp_d) * ql;
+        // dry static energy = Cp*T + g*z + phis
+        real dse     = cp_d * temp + grav * z + grav * zint(0,i);
+        shoc_zt_grid (k,i) = z;
+        shoc_pres    (k,i) = press;
+        shoc_pdel    (k,i) = pres_int(k_shoc+1,i) - pres_int(k_shoc,i);
+        shoc_thv     (k,i) = theta_v;
+        shoc_w_field (k,i) = wvel(k_shoc,i);
+        shoc_exner   (k,i) = exner;
+        shoc_host_dse(k,i) = dse;
+        shoc_tke     (k,i) = tke(k_shoc,i);
+        shoc_thetal  (k,i) = theta_l;
+        shoc_qw      (k,i) = ( rho_v(k_shoc,i) + rho_c(k_shoc,i) ) / rho_d(k_shoc,i);
+        shoc_u_wind  (k,i) = uvel(k_shoc,i);
+        shoc_v_wind  (k,i) = vvel(k_shoc,i);
+        shoc_wthv_sec(k,i) = wthv_sec(k_shoc,i);
+        for (int tr=0; tr < num_qtracers; tr++) {
+          shoc_qtracers(tr,k,i) = qtracers_pam(tr,k_shoc,i) / rho_d(k_shoc,i);
+        }
+        shoc_tk     (k,i) = tk     (k_shoc,i);
+        shoc_tkh    (k,i) = tkh    (k_shoc,i);
+        shoc_cldfrac(k,i) = cldfrac(k_shoc,i);
+        shoc_ql     (k,i) = rho_c  (k_shoc,i) / rho_d(k_shoc,i);
+      }
+      shoc_zi_grid(k,i) = zint    (nz-k,i);
+      shoc_presi  (k,i) = pres_int(nz-k,i);
+    });
 
-
-
-//      subroutine shoc_main ( &
-//           shcol, nlev, nlevi, dtime, nadv, &   ! Input
-//           host_dx, host_dy,thv, &              ! Input
-//           zt_grid,zi_grid,pres,presi,pdel,&    ! Input
-//           wthl_sfc, wqw_sfc, uw_sfc, vw_sfc, & ! Input
-//           wtracer_sfc,num_qtracers,w_field, &  ! Input
-//           exner,phis, &                        ! Input
-//           host_dse, tke, thetal, qw, &         ! Input/Output
-//           u_wind, v_wind,qtracers,&            ! Input/Output
-//           wthv_sec,tkh,tk,&                    ! Input/Output
-//           shoc_ql,shoc_cldfrac,&               ! Input/Output
-//           pblh,&                               ! Output
-//           shoc_mix, isotropy,&                 ! Output (diagnostic)
-//           w_sec, thl_sec, qw_sec, qwthl_sec,&  ! Output (diagnostic)
-//           wthl_sec, wqw_sec, wtke_sec,&        ! Output (diagnostic)
-//           uw_sec, vw_sec, w3,&                 ! Output (diagnostic)
-//           wqls_sec, brunt, shoc_ql2 &          ! Output (diagnostic)
-//        integer    , intent(in   ) :: shcol                                  !UNDERSTOOD   number of SHOC columns in the array
-//        integer    , intent(in   ) :: nlev                                   !UNDERSTOOD   number of levels [-]
-//        integer    , intent(in   ) :: nlevi                                  !UNDERSTOOD   number of levels on interface grid [-]
-//        integer    , intent(in   ) :: num_qtracers                           !UNDERSTOOD   number of tracers [-]
-//        integer    , intent(in   ) :: nadv                                   !UNDERSTOOD   THIS WILL MOST LIKELY BE 1 ;  number of times to loop SHOC
-//        real(rtype), intent(in   ) :: dtime                                  !UNDERSTOOD   NAMELISTS HAVE DTIME = 150s;  SHOC timestep [s]
-//        real(rtype), intent(in   ) :: host_dx     (shcol                   ) !UNDERSTOOD   grid spacing of host model in x direction [m]
-//        real(rtype), intent(in   ) :: host_dy     (shcol                   ) !UNDERSTOOD   grid spacing of host model in y direction [m]
-//        real(rtype), intent(in   ) :: zt_grid     (shcol,nlev              ) !UNDERSTOOD   heights, for thermo grid [m]
-//        real(rtype), intent(in   ) :: zi_grid     (shcol,nlevi             ) !UNDERSTOOD   heights, for interface grid [m]
-//        real(rtype), intent(in   ) :: pres        (shcol,nlev              ) !UNDERSTOOD   pressure levels on thermo grid [Pa]
-//        real(rtype), intent(in   ) :: presi       (shcol,nlevi             ) !UNDERSTOOD   pressure levels on interface grid [Pa]
-//        real(rtype), intent(in   ) :: pdel        (shcol,nlev              ) !UNDERSTOOD   Differences in pressure levels [Pa]
-//        real(rtype), intent(in   ) :: thv         (shcol,nlev              ) !UNDERSTOOD   https://glossary.ametsoc.org/wiki/Virtual_potential_temperature ??  virtual potential temperature [K]
-//        real(rtype), intent(in   ) :: w_field     (shcol,nlev              ) !UNDERSTOOD   large scale vertical velocity [m/s]
-//        real(rtype), intent(in   ) :: wthl_sfc    (shcol                   ) !UNDERSTOOD   Surface sensible heat flux [K m/s]
-//        real(rtype), intent(in   ) :: wqw_sfc     (shcol                   ) !UNDERSTOOD   SURFACE FLUX OF TOTAL WATER DRY MIXING RATIO (VAPOR + CLOUD LIQUID);  Surface latent heat flux [kg/kg m/s]
-//        real(rtype), intent(in   ) :: uw_sfc      (shcol                   ) !UNDERSTOOD   Surface momentum flux (u-direction) [m2/s2]
-//        real(rtype), intent(in   ) :: vw_sfc      (shcol                   ) !UNDERSTOOD   Surface momentum flux (v-direction) [m2/s2]
-//        real(rtype), intent(in   ) :: wtracer_sfc (shcol      ,num_qtracers) !UNDERSTOOD   DRY MIXING RATIOS, SAME DEFINITIONS AS QTRACERS;  Surface flux for tracers [varies]
-//        real(rtype), intent(in   ) :: exner       (shcol,nlev              ) !UNDERSTOOD   Exner function [-]
-//        real(rtype), intent(in   ) :: phis        (shcol                   ) !UNDERSTOOD   Host model surface geopotential height
-//        real(rtype), intent(inout) :: host_dse    (shcol,nlev              ) !UNDERSTOOD   prognostic temp variable of host model;  dry static energy [J/kg];  dse = Cp*T + g*z + phis
-//        real(rtype), intent(inout) :: tke         (shcol,nlev              ) !UNDERSTOOD   turbulent kinetic energy [m2/s2]
-//        real(rtype), intent(inout) :: thetal      (shcol,nlev              ) !UNDERSTOOD   https://glossary.ametsoc.org/wiki/Liquid_water_potential_temperature ??  liquid water potential temperature [K]
-//        real(rtype), intent(inout) :: qw          (shcol,nlev              ) !UNDERSTOOD   VAPOR + CLOUD LIQUID;   total water mixing ratio [kg/kg]
-//        real(rtype), intent(inout) :: u_wind      (shcol,nlev              ) !UNDERSTOOD   u wind component [m/s]
-//        real(rtype), intent(inout) :: v_wind      (shcol,nlev              ) !UNDERSTOOD   v wind component [m/s]
-//        real(rtype), intent(inout) :: wthv_sec    (shcol,nlev              ) !UNDERSTOOD   https://glossary.ametsoc.org/wiki/Buoyancy_flux ??   buoyancy flux [K m/s]
-//        real(rtype), intent(inout) :: qtracers    (shcol,nlev ,num_qtracers) !UNDERSTOOD   THIS IS DRY MIXING RATIOS. EXCLUDE QV AND QC         tracers [varies]
-//        real(rtype), intent(inout) :: tk          (shcol,nlev              ) !UNDERSTOOD   INIT TO ZERO, THEN LET SHOC HANDLE IT FROM THERE     eddy coefficient for momentum [m2/s]
-//        real(rtype), intent(inout) :: tkh         (shcol,nlev              ) !UNDERSTOOD   INIT TO ZERO, THEN LET SHOC HANDLE IT FROM THERE     eddy coefficent for heat [m2/s]
-//        real(rtype), intent(inout) :: shoc_cldfrac(shcol,nlev              ) !UNDERSTOOD   INIT TO ZERO, THEN LET SHOC HANDLE IT FROM THERE     Cloud fraction [-]
-//        real(rtype), intent(inout) :: shoc_ql     (shcol,nlev              ) !UNDERSTOOD   cloud liquid mixing ratio [kg/kg]
-//        real(rtype), intent(  out) :: pblh        (shcol                   ) ! planetary boundary layer depth [m]
-//        real(rtype), intent(  out) :: shoc_ql2    (shcol,nlev              ) ! cloud liquid mixing ratio variance [kg^2/kg^2]
-//        real(rtype), intent(  out) :: shoc_mix    (shcol,nlev              ) ! Turbulent length scale [m]
-//        real(rtype), intent(  out) :: w_sec       (shcol,nlev              ) ! vertical velocity variance [m2/s2]
-//        real(rtype), intent(  out) :: thl_sec     (shcol,nlevi             ) ! temperature variance [K^2]
-//        real(rtype), intent(  out) :: qw_sec      (shcol,nlevi             ) ! moisture variance [kg2/kg2]
-//        real(rtype), intent(  out) :: qwthl_sec   (shcol,nlevi             ) ! temp moisture covariance [K kg/kg]
-//        real(rtype), intent(  out) :: wthl_sec    (shcol,nlevi             ) ! vertical heat flux [K m/s]
-//        real(rtype), intent(  out) :: wqw_sec     (shcol,nlevi             ) ! vertical moisture flux [K m/s]
-//        real(rtype), intent(  out) :: wtke_sec    (shcol,nlevi             ) ! vertical tke flux [m3/s3]
-//        real(rtype), intent(  out) :: uw_sec      (shcol,nlevi             ) ! vertical zonal momentum flux [m2/s2]
-//        real(rtype), intent(  out) :: vw_sec      (shcol,nlevi             ) ! vertical meridional momentum flux [m2/s2]
-//        real(rtype), intent(  out) :: w3          (shcol,nlevi             ) ! third moment vertical velocity [m3/s3]
-//        real(rtype), intent(  out) :: wqls_sec    (shcol,nlev              ) ! liquid water flux [kg/kg m/s]
-//        real(rtype), intent(  out) :: brunt       (shcol,nlev              ) ! brunt vaisala frequency [s-1]
-//        real(rtype), intent(  out) :: isotropy    (shcol,nlev              ) ! return to isotropic timescale [s]
-
-
-
-
+    shoc_main_fortran( ncol, nlev, nlev+1, dt, 1, 
+                       shoc_host_dx, shoc_host_dy,shoc_thv, 
+                       shoc_zt_grid,shoc_zi_grid,shoc_pres,shoc_presi,shoc_pdel,
+                       shoc_wthl_sfc, shoc_wqw_sfc, shoc_uw_sfc, shoc_vw_sfc, 
+                       shoc_wtracer_sfc,shoc_num_qtracers,shoc_w_field, 
+                       shoc_exner,shoc_phis, 
+                       shoc_host_dse, shoc_tke, shoc_thetal, shoc_qw, 
+                       shoc_u_wind, shoc_v_wind,shoc_qtracers,
+                       shoc_wthv_sec,shoc_tkh,shoc_tk,
+                       shoc_ql,shoc_cldfrac,
+                       shoc_pblh,
+                       shoc_mix, shoc_isotropy,
+                       shoc_w_sec, shoc_thl_sec, shoc_qw_sec, shoc_qwthl_sec,
+                       shoc_wthl_sec, shoc_wqw_sec, shoc_wtke_sec,
+                       shoc_uw_sec, shoc_vw_sec, shoc_w3,
+                       shoc_wqls_sec, shoc_brunt, shoc_ql2 );
 
   }
 
