@@ -78,6 +78,8 @@ public:
       rho_p(k,j,i,iens) = 0;
       if (k == 0) precl(j,i,iens) = 0;
     });
+
+    coupler.set_option<std::string>("micro","kessler");
   }
 
 

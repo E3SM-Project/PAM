@@ -89,6 +89,8 @@ public:
       cloud_cond (i) = 0;
       precip     (i) = 0;
     });
+
+    coupler.set_option<std::string>("micro","sam1mom");
   }
 
 

@@ -31,15 +31,17 @@ public:
   int static constexpr num_tracers = 1;
 
   // You should set these in the constructor
-  real R_d    ;
-  real cp_d   ;
-  real cv_d   ;
-  real gamma_d;
-  real kappa_d;
-  real R_v    ;
-  real cp_v   ;
-  real cv_v   ;
-  real p0     ;
+  real R_d          ;
+  real cp_d         ;
+  real cv_d         ;
+  real gamma_d      ;
+  real kappa_d      ;
+  real R_v          ;
+  real cp_v         ;
+  real cv_v         ;
+  real p0           ;
+  bool micro_kessler;
+  bool micro_p3     ;
 
   real grav;
   real cp_l;
@@ -54,18 +56,20 @@ public:
   // TODO: Make sure the constants vibe with P3
   // Set constants and likely num_tracers as well, and anything else you can do immediately
   SGS() {
-    R_d        = 287.;
-    cp_d       = 1003.;
-    cv_d       = cp_d - R_d;
-    gamma_d    = cp_d / cv_d;
-    kappa_d    = R_d  / cp_d;
-    R_v        = 461.;
-    cp_v       = 1859;
-    cv_v       = R_v - cp_v;
-    p0         = 1.e5;
-    grav       = 9.81;
-    first_step = true;
-    cp_l       = 4218.;
+    R_d           = 287.;
+    cp_d          = 1003.;
+    cv_d          = cp_d - R_d;
+    gamma_d       = cp_d / cv_d;
+    kappa_d       = R_d  / cp_d;
+    R_v           = 461.;
+    cp_v          = 1859;
+    cv_v          = R_v - cp_v;
+    p0            = 1.e5;
+    grav          = 9.81;
+    first_step    = true;
+    cp_l          = 4218.;
+    micro_kessler = false;
+    micro_p3      = false;
   }
 
 
@@ -120,6 +124,15 @@ public:
     int nens = coupler.get_nens();
     int ncol = ny*nx*nens;
 
+    // This check is here instead of init because it's not guaranteed the micro has called init before sgs
+    if (! coupler.option_exists("micro")) {
+      endrun("ERROR: SHOC requires coupler.set_option<std::string>(\"micro\",...) to be set");
+    }
+    std::string micro_scheme = coupler.get_option<std::string>("micro");
+    if      (micro_scheme == "kessler") { micro_kessler = true; }
+    else if (micro_scheme == "p3"     ) { micro_p3      = true; }
+    else { endrun("ERROR: SHOC only meant to run with kessler or p3 microphysics"); }
+
     auto pres     = coupler.compute_pressure_array(); 
     auto pres_int = coupler.interp_pressure_interfaces( pres );
 
@@ -141,11 +154,11 @@ public:
     }
 
     // Get saved SHOC-related variables
-    auto tke          = coupler.dm.get_lev_col<real>( "tke"          ); // PAM Tracer
-    auto wthv_sec     = coupler.dm.get_lev_col<real>( "wthv_sec"     ); // Reuse from last SHOC output
-    auto tk           = coupler.dm.get_lev_col<real>( "tk"           ); // Reuse from last SHOC output
-    auto tkh          = coupler.dm.get_lev_col<real>( "tkh"          ); // Reuse from last SHOC output
-    auto shoc_cldfrac = coupler.dm.get_lev_col<real>( "shoc_cldfrac" ); // Reuse from last SHOC output
+    auto tke          = coupler.dm.get_lev_col<real>( "tke"          ); // PAM Tracer                 ; don't compute
+    auto wthv_sec     = coupler.dm.get_lev_col<real>( "wthv_sec"     ); // Reuse from last SHOC output; don't compute
+    auto tk           = coupler.dm.get_lev_col<real>( "tk"           ); // Reuse from last SHOC output; don't compute
+    auto tkh          = coupler.dm.get_lev_col<real>( "tkh"          ); // Reuse from last SHOC output; don't compute
+    auto shoc_cldfrac = coupler.dm.get_lev_col<real>( "shoc_cldfrac" ); // Reuse from last SHOC output; don't compute
     // Get coupler state
     auto rho_d        = coupler.dm.get_lev_col<real>( "density_dry"  );
     auto uvel         = coupler.dm.get_lev_col<real>( "uvel"         );
@@ -154,10 +167,28 @@ public:
     auto temp         = coupler.dm.get_lev_col<real>( "temp"         );
     auto rho_v        = coupler.dm.get_lev_col<real>( "water_vapor"  );
 
-    // Calculate the grid spacing
-    auto zint_in = coupler.dm.get<real,2>("vertical_interface_height");
+    // Grab cloud liquid tracer, and determine what other tracers to diffuse in SHOC
+    // TODO: Do we add water vapor and cloud liquid to the diffused tracers, or does SHOC do that already?
+    // TODO: If we add new MMF modules that add other tracers that need to be diffused, then this situation
+    //       must be handled
+    std::vector<std::string> extra_tracer_names;
+    real2d rho_c;
+    if        (micro_kessler) {
+      extra_tracer_names.push_back("precip_liquid");
+      rho_c = coupler.dm.get_lev_col<real>( "cloud_liquid" );
+    } else if (micro_p3     ) {
+      rho_c = coupler.dm.get_lev_col<real>( "cloud_water"  );
+      extra_tracer_names.push_back("cloud_water_num");
+      extra_tracer_names.push_back("rain"           );
+      extra_tracer_names.push_back("rain_num"       );
+      extra_tracer_names.push_back("ice"            );
+      extra_tracer_names.push_back("ice_num"        );
+      extra_tracer_names.push_back("ice_rime"       );
+      extra_tracer_names.push_back("ice_rime_vol"   );
+    }
 
-    int num_qtracers = ???;
+    auto zint = coupler.dm.get<real,2>("vertical_interface_height");
+    auto zmid = coupler.dm.get<real,2>("vertical_midpoint_height" );
 
     // Create variables for SHOC call (these are all inverted for vertical indices
     real1d host_dx     ("host_dx     ",                  ncol); // grid spacing of host model in x direction [m]

@@ -223,6 +223,8 @@ public:
     int dir_len = dir.length();
     int ver_len = ver.length();
     p3_init_fortran( dir.c_str() , dir_len , ver.c_str() , ver_len );
+
+    coupler.set_option<std::string>("micro","p3");
   }
 
 
