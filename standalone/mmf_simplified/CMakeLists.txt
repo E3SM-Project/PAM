@@ -40,7 +40,7 @@ else ()
 endif()
 
 # Add scream common if it's needed
-if ("${PAM_MICRO}" STREQUAL "p3")
+if ("${PAM_MICRO}" STREQUAL "p3" OR "${PAM_SGS}" STREQUAL "shoc")
   set(USE_SCREAM TRUE)
 endif()
 
@@ -68,12 +68,19 @@ else ()
   endif()
 endif()
 
+#Choose SGS
+if     ("${PAM_SGS}" STREQUAL "shoc")
+  add_subdirectory(../../physics/sgs/shoc ./sgs)
+elseif ("${PAM_SGS}" STREQUAL "none")
+  add_subdirectory(../../physics/sgs/none ./sgs)
+endif()
+
 include(${YAKL_HOME}/yakl_utils.cmake)
 yakl_process_target(driver)
 
 if (${USE_SCREAM})
   target_link_libraries(scream_common)
 endif()
-target_link_libraries(driver dycore micro ${NCFLAGS} -lyaml-cpp)
+target_link_libraries(driver dycore micro sgs ${NCFLAGS} -lyaml-cpp)
 
 

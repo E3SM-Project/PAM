@@ -3,6 +3,7 @@
 #include "pam_coupler.h"
 #include "Dycore.h"
 #include "Microphysics.h"
+#include "SGS.h"
 #include "DataManager.h"
 #include "mmf_interface.h"
 #include "perturb_temperature.h"
@@ -62,6 +63,7 @@ int main(int argc, char** argv) {
     // Create the dycore and the microphysics
     Dycore       dycore;
     Microphysics micro;
+    SGS          sgs;
 
     // Set physical constants for coupler at thread 0 using microphysics data
     mmf_interface::set_phys_constants( micro.R_d , micro.R_v , micro.cp_d , micro.cp_v , micro.grav , micro.p0 );
@@ -84,14 +86,17 @@ int main(int argc, char** argv) {
     ///////////////////////////////////////////////////////////////////////////////
     auto &coupler = mmf_interface::get_coupler();
 
-    // Initialize the microphysics (registers the microphysics's tracers)
+    // Initialize the microphysics
     micro .init( coupler );
+    // Initialize the SGS
+    sgs   .init( coupler );
     // Before calling dycore.init(coupler), be sure ALL TRACERS HAVE BEEN REGISTERED ALREADY in the coupler
     dycore.init( coupler );
 
     #ifdef PAM_STANDALONE
       std::cout << "Dycore: " << dycore.dycore_name() << std::endl;
-      std::cout << "Micro : " << micro .micro_name() << std::endl;
+      std::cout << "Micro : " << micro .micro_name () << std::endl;
+      std::cout << "SGS   : " << sgs   .sgs_name   () << std::endl;
     #endif
 
     // Only for the idealized standalone driver; clearly not going to be used for the MMF driver
@@ -158,6 +163,10 @@ int main(int argc, char** argv) {
       while (etime_crm < simTime_crm) {
         if (dt_crm == 0.) { dt_crm = dycore.compute_time_step(coupler); }
         if (etime_crm + dt_crm > simTime_crm) { dt_crm = simTime_crm - etime_crm; }
+
+        yakl::timer_start("sgs");
+        sgs.timeStep( coupler , dt_crm , etime_crm );
+        yakl::timer_stop("sgs");
 
         yakl::timer_start("micro");
         micro.timeStep( coupler , dt_crm , etime_crm );

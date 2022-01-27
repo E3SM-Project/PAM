@@ -43,7 +43,7 @@ public:
     return *this;
   }
 
-  YAKL_INLINE void add_field( T &field ) {
+  YAKL_INLINE void add_field( T const &field ) {
     this->fields(num_fields) = field;
     num_fields++;
   }

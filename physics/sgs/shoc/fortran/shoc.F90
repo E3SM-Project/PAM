@@ -122,7 +122,7 @@ contains
 subroutine shoc_init( &
          nlev, gravit, rair, rh2o, cpair, &
          zvir, latvap, latice, karman, &
-         pref_mid, nbot_shoc, ntop_shoc)
+         pref_mid, nbot_shoc, ntop_shoc) bind(C,name="shoc_init_fortran")
 
   implicit none
 
@@ -196,7 +196,7 @@ subroutine shoc_main ( &
 #ifdef SCREAM_CONFIG_IS_CMAKE
      , elapsed_s &
 #endif
-     )
+     ) bind(C,name="shoc_main_fortran")
 
 #ifdef SCREAM_CONFIG_IS_CMAKE
     use shoc_iso_f, only: shoc_main_f
