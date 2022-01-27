@@ -878,7 +878,7 @@ public:
 
       parallel_for( "Spatial.h init_tracers" , SimpleBounds<4>(nz,ny,nx,nens) ,
                     YAKL_LAMBDA (int k, int j, int i, int iens) {
-        tracers(idWV,hs+k,hs+j,hs+i,iens) = 0;
+        for (int tr=0; tr < num_tracers; tr++) { tracers(tr,hs+k,hs+j,hs+i,iens) = 0; }
         // Loop over quadrature points
         for (int kk=0; kk<ord; kk++) {
           for (int jj=0; jj<ord; jj++) {
@@ -1122,7 +1122,7 @@ public:
         state  (idV ,hs+k,hs+j,hs+i,iens) = 0;
         state  (idW ,hs+k,hs+j,hs+i,iens) = 0;
         state  (idT ,hs+k,hs+j,hs+i,iens) = 0;
-        tracers(idWV,hs+k,hs+j,hs+i,iens) = 0;
+        for (int tr=0; tr < num_tracers; tr++) { tracers(tr,hs+k,hs+j,hs+i,iens) = 0; }
         for (int kk=0; kk < ngll; kk++) {
           for (int jj=0; jj < ngll; jj++) {
             for (int ii=0; ii < ngll; ii++) {

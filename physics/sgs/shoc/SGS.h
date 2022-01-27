@@ -266,6 +266,8 @@ public:
     real2d shoc_brunt      ("shoc_brunt"      ,             nz  ,ncol); // OUT: brunt vaisala frequency [s-1]
     real2d shoc_isotropy   ("shoc_isotropy"   ,             nz  ,ncol); // OUT: return to isotropic timescale [s]
 
+    std::cout << "BEFORE temp: " << yakl::intrinsics::sum(temp) / ncol / nz << "\n";
+
     real p0     = this->p0    ;
     real grav   = this->grav  ;
     real R_d    = this->R_d   ;
@@ -440,41 +442,25 @@ public:
     // Process outputs from SHOC (reordering the vertical dimension)
     parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
       int k_shoc = nz-1-k;
-      temp(k,i) = ( shoc_host_dse(k_shoc,i) - grav * zmid(k,i) - grav * zint(0,i) ) / cp_d;
+      // TODO: What about rho_dry ??
       uvel(k,i) = shoc_u_wind(k_shoc,i);
       vvel(k,i) = shoc_v_wind(k_shoc,i);
       // TODO: What about wvel ??
-      // TODO: What about rho_dry ??
-      rho_c(k,i) = shoc_ql(k_shoc,i) * rho_d(k,i);
+      temp(k,i) = ( shoc_host_dse(k_shoc,i) - grav * zmid(k,i) - grav * zint(0,i) ) / cp_d;
       rho_v(k,i) = shoc_qw(k_shoc,i) * rho_d(k,i) - shoc_ql(k_shoc,i) * rho_d(k,i);
+      rho_c(k,i) = shoc_ql(k_shoc,i) * rho_d(k,i);
       for (int tr=0; tr < num_qtracers; tr++) {
         qtracers_pam(tr,k,i) = shoc_qtracers(tr,k_shoc,i);
       }
+      tke     (k,i) = shoc_tke     (k_shoc,i);
+      wthv_sec(k,i) = shoc_wthv_sec(k_shoc,i);
+      tk      (k,i) = shoc_tk      (k_shoc,i);
+      tkh     (k,i) = shoc_tkh     (k_shoc,i);
+      cldfrac (k,i) = shoc_cldfrac (k_shoc,i);
     });
-  }
 
+    std::cout << "AFTER temp: " << yakl::intrinsics::sum(temp) / ncol / nz << "\n";
 
-
-  // Returns saturation vapor pressure
-  // TODO: Make this the same as P3's
-  YAKL_INLINE static real saturation_vapor_pressure(real temp) {
-    real tc = temp - 273.15;
-    return 610.94 * exp( 17.625*tc / (243.04+tc) );
-  }
-
-
-
-  YAKL_INLINE static real latent_heat_condensation(real temp) {
-    real tc = temp - 273.15;
-    return (2500.8 - 2.36*tc + 0.0016*tc*tc - 0.00006*tc*tc*tc)*1000;
-  }
-
-
-
-  YAKL_INLINE static real cp_moist(real rho_d, real rho_v, real rho_c, real cp_d, real cp_v, real cp_l) {
-    // For the moist specific heat, ignore other species than water vapor and cloud droplets
-    real rho = rho_d + rho_v + rho_c;
-    return rho_d / rho * cp_d  +  rho_v / rho * cp_v  +  rho_c / rho * cp_l;
   }
 
 

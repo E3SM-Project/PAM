@@ -5,14 +5,14 @@ simTime  : 86400
 # simTime  : 1800
 
 # Number of cells to use in the CRMs
-crm_nx   : 128
+crm_nx   : 16
 crm_ny   : 1
 
 # Number of CRMs
 nens     : 1
 
 # Vertical height cooridnates file
-vcoords  : vcoords_equal_60_20km.nc
+vcoords  : vcoords_equal_20_20km.nc
 
 # mmf column forcing data
 column_data : column_forcing_data.nc
