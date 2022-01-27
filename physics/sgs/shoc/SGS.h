@@ -236,6 +236,7 @@ public:
     real1d shoc_vw_sfc     ("shoc_vw_sfc"     ,                  ncol); // Surface momentum flux (v-direction) [m2/s2]
     real2d shoc_wtracer_sfc("shoc_wtracer_sfc",num_qtracers,     ncol); // Surface flux for tracers [varies]
     real2d shoc_exner      ("shoc_exner"      ,             nz  ,ncol); // Exner function [-]
+    real2d shoc_inv_exner  ("shoc_inv_exner"  ,             nz  ,ncol); // 1/Exner [-]
     real1d shoc_phis       ("shoc_phis"       ,                  ncol); // Host model surface geopotential height
     real2d shoc_host_dse   ("shoc_host_dse"   ,             nz  ,ncol); // dry static energy [J/kg];  dse = Cp*T + g*z + phis
     real2d shoc_tke        ("shoc_tke"        ,             nz  ,ncol); // turbulent kinetic energy [m2/s2]
@@ -265,8 +266,6 @@ public:
     real2d shoc_wqls_sec   ("shoc_wqls_sec"   ,             nz  ,ncol); // OUT: liquid water flux [kg/kg m/s]
     real2d shoc_brunt      ("shoc_brunt"      ,             nz  ,ncol); // OUT: brunt vaisala frequency [s-1]
     real2d shoc_isotropy   ("shoc_isotropy"   ,             nz  ,ncol); // OUT: return to isotropic timescale [s]
-
-    std::cout << "BEFORE temp: " << yakl::intrinsics::sum(temp) / ncol / nz << "\n";
 
     real p0     = this->p0    ;
     real grav   = this->grav  ;
@@ -300,22 +299,24 @@ public:
         // https://glossary.ametsoc.org/wiki/Virtual_potential_temperature
         real theta_v = theta * (1 + 0.61_fp * qv - ql);
         // https://glossary.ametsoc.org/wiki/Liquid_water_potential_temperature
-        real theta_l = theta - (theta/t) * (latvap/cp_d) * ql;
+        // According to update_host_dse, the simplified version is used here
+        real theta_l = theta - (latvap/cp_d) * ql;
         // dry static energy = Cp*T + g*z + phis
         real dse     = cp_d * t + grav * z + grav * zint(0,i);
-        shoc_zt_grid (k,i) = z;
-        shoc_pres    (k,i) = press;
-        shoc_pdel    (k,i) = pres_int(k_shoc+1,i) - pres_int(k_shoc,i);
-        shoc_thv     (k,i) = theta_v;
-        shoc_w_field (k,i) = wvel(k_shoc,i);
-        shoc_exner   (k,i) = exner;
-        shoc_host_dse(k,i) = dse;
-        shoc_tke     (k,i) = tke(k_shoc,i);
-        shoc_thetal  (k,i) = theta_l;
-        shoc_qw      (k,i) = ( rho_v(k_shoc,i) + rho_c(k_shoc,i) ) / rho_d(k_shoc,i);
-        shoc_u_wind  (k,i) = uvel(k_shoc,i);
-        shoc_v_wind  (k,i) = vvel(k_shoc,i);
-        shoc_wthv_sec(k,i) = wthv_sec(k_shoc,i);
+        shoc_zt_grid  (k,i) = z;
+        shoc_pres     (k,i) = press;
+        shoc_pdel     (k,i) = pres_int(k_shoc+1,i) - pres_int(k_shoc,i);
+        shoc_thv      (k,i) = theta_v;
+        shoc_w_field  (k,i) = wvel(k_shoc,i);
+        shoc_exner    (k,i) = exner;
+        shoc_inv_exner(k,i) = 1._fp / exner;
+        shoc_host_dse (k,i) = dse;
+        shoc_tke      (k,i) = tke(k_shoc,i);
+        shoc_thetal   (k,i) = theta_l;
+        shoc_qw       (k,i) = ( rho_v(k_shoc,i) + rho_c(k_shoc,i) ) / rho_d(k_shoc,i);
+        shoc_u_wind   (k,i) = uvel(k_shoc,i);
+        shoc_v_wind   (k,i) = vvel(k_shoc,i);
+        shoc_wthv_sec (k,i) = wthv_sec(k_shoc,i);
         for (int tr=0; tr < num_qtracers; tr++) {
           // TODO: I'm pretty sure from the application of vd_shoc_solve in shoc that this can be total mass
           shoc_qtracers(tr,k,i) = qtracers_pam(tr,k_shoc,i);
@@ -345,6 +346,7 @@ public:
     auto shoc_vw_sfc_host      = shoc_vw_sfc     .createHostCopy();
     auto shoc_wtracer_sfc_host = shoc_wtracer_sfc.createHostCopy();
     auto shoc_exner_host       = shoc_exner      .createHostCopy();
+    auto shoc_inv_exner_host   = shoc_inv_exner  .createHostCopy();
     auto shoc_phis_host        = shoc_phis       .createHostCopy();
     auto shoc_host_dse_host    = shoc_host_dse   .createHostCopy();
     auto shoc_tke_host         = shoc_tke        .createHostCopy();
@@ -377,22 +379,23 @@ public:
 
     int nadv = 1;
     int nzp1 = nz+1;
-    // shoc_main_fortran( ncol, nz, nzp1, dt, nadv, 
-    //                    shoc_host_dx_host.data(), shoc_host_dy_host.data(), shoc_thv_host.data(), 
-    //                    shoc_zt_grid_host.data(), shoc_zi_grid_host.data(), shoc_pres_host.data(), shoc_presi_host.data(), shoc_pdel_host.data(),
-    //                    shoc_wthl_sfc_host.data(), shoc_wqw_sfc_host.data(), shoc_uw_sfc_host.data(), shoc_vw_sfc_host.data(), 
-    //                    shoc_wtracer_sfc_host.data(), num_qtracers, shoc_w_field_host.data(), 
-    //                    shoc_exner_host.data(), shoc_phis_host.data(), 
-    //                    shoc_host_dse_host.data(), shoc_tke_host.data(), shoc_thetal_host.data(), shoc_qw_host.data(), 
-    //                    shoc_u_wind_host.data(), shoc_v_wind_host.data(), shoc_qtracers_host.data(),
-    //                    shoc_wthv_sec_host.data(), shoc_tkh_host.data(), shoc_tk_host.data(),
-    //                    shoc_ql_host.data(), shoc_cldfrac_host.data(),
-    //                    shoc_pblh_host.data(),
-    //                    shoc_mix_host.data(), shoc_isotropy_host.data(),
-    //                    shoc_w_sec_host.data(), shoc_thl_sec_host.data(), shoc_qw_sec_host.data(), shoc_qwthl_sec_host.data(),
-    //                    shoc_wthl_sec_host.data(), shoc_wqw_sec_host.data(), shoc_wtke_sec_host.data(),
-    //                    shoc_uw_sec_host.data(), shoc_vw_sec_host.data(), shoc_w3_host.data(),
-    //                    shoc_wqls_sec_host.data(), shoc_brunt_host.data(), shoc_ql2_host.data() );
+    // IMPORTANT: SHOC appears to actually want 1/exner for the exner parameter
+    shoc_main_fortran( ncol, nz, nzp1, dt, nadv, 
+                       shoc_host_dx_host.data(), shoc_host_dy_host.data(), shoc_thv_host.data(), 
+                       shoc_zt_grid_host.data(), shoc_zi_grid_host.data(), shoc_pres_host.data(), shoc_presi_host.data(), shoc_pdel_host.data(),
+                       shoc_wthl_sfc_host.data(), shoc_wqw_sfc_host.data(), shoc_uw_sfc_host.data(), shoc_vw_sfc_host.data(), 
+                       shoc_wtracer_sfc_host.data(), num_qtracers, shoc_w_field_host.data(), 
+                       shoc_inv_exner_host.data(), shoc_phis_host.data(), 
+                       shoc_host_dse_host.data(), shoc_tke_host.data(), shoc_thetal_host.data(), shoc_qw_host.data(), 
+                       shoc_u_wind_host.data(), shoc_v_wind_host.data(), shoc_qtracers_host.data(),
+                       shoc_wthv_sec_host.data(), shoc_tkh_host.data(), shoc_tk_host.data(),
+                       shoc_ql_host.data(), shoc_cldfrac_host.data(),
+                       shoc_pblh_host.data(),
+                       shoc_mix_host.data(), shoc_isotropy_host.data(),
+                       shoc_w_sec_host.data(), shoc_thl_sec_host.data(), shoc_qw_sec_host.data(), shoc_qwthl_sec_host.data(),
+                       shoc_wthl_sec_host.data(), shoc_wqw_sec_host.data(), shoc_wtke_sec_host.data(),
+                       shoc_uw_sec_host.data(), shoc_vw_sec_host.data(), shoc_w3_host.data(),
+                       shoc_wqls_sec_host.data(), shoc_brunt_host.data(), shoc_ql2_host.data() );
 
     shoc_host_dx_host    .deep_copy_to(shoc_host_dx    );
     shoc_host_dy_host    .deep_copy_to(shoc_host_dy    );
@@ -409,6 +412,7 @@ public:
     shoc_vw_sfc_host     .deep_copy_to(shoc_vw_sfc     );
     shoc_wtracer_sfc_host.deep_copy_to(shoc_wtracer_sfc);
     shoc_exner_host      .deep_copy_to(shoc_exner      );
+    shoc_inv_exner_host  .deep_copy_to(shoc_inv_exner  );
     shoc_phis_host       .deep_copy_to(shoc_phis       );
     shoc_host_dse_host   .deep_copy_to(shoc_host_dse   );
     shoc_tke_host        .deep_copy_to(shoc_tke        );
@@ -458,8 +462,6 @@ public:
       tkh     (k,i) = shoc_tkh     (k_shoc,i);
       cldfrac (k,i) = shoc_cldfrac (k_shoc,i);
     });
-
-    std::cout << "AFTER temp: " << yakl::intrinsics::sum(temp) / ncol / nz << "\n";
 
   }
 
