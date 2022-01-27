@@ -373,10 +373,6 @@ public:
       nc_nuceat_tend (k,i) = 0;
       nccn_prescribed(k,i) = 0;
       ni_activated   (k,i) = 0;
-      // Assume cloud fracton is always 1
-      cld_frac_l(k,i) = 1;
-      cld_frac_i(k,i) = 1;
-      cld_frac_r(k,i) = 1;
       // inv_qc_relvar is always set to one
       inv_qc_relvar(k,i) = 1;
       // col_location is for debugging only, and it will be ignored for now
@@ -387,6 +383,18 @@ public:
         t_prev (k,i) = temp(k,i);
       }
     });
+
+    if (sgs_shoc) {
+      auto ast = coupler.dm.get_lev_col<real>("cldfrac");
+      get_cloud_fraction( ast , qc , qr , qi , cld_frac_i , cld_frac_l , cld_frac_r );
+    } else {
+      parallel_for( SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
+        // Assume cloud fracton is always 1
+        cld_frac_l(k,i) = 1;
+        cld_frac_i(k,i) = 1;
+        cld_frac_r(k,i) = 1;
+      });
+    }
 
     int it = 1;
     int its = 1;
@@ -629,6 +637,38 @@ public:
         }
       }
     }
+  }
+
+
+
+  void get_cloud_fraction( realConst2d ast , realConst2d qc , realConst2d qr , realConst2d qi ,
+                           real2d const &cld_frac_i , real2d const &cld_frac_l , real2d const &cld_frac_r ) {
+    int nz   = ast.dimension[0];
+    int ncol = ast.dimension[1];
+
+    real constexpr mincld = 0.0001;
+    real constexpr qsmall = 1.e-14;
+
+    parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
+      cld_frac_i(k,i) = max(ast(k,i), mincld);
+      cld_frac_l(k,i) = max(ast(k,i), mincld);
+      cld_frac_r(k,i) = max(ast(k,i), mincld);
+    });
+
+    // precipitation fraction 
+    // max overlap is the max cloud fraction in all layers above which are
+    // connected to this one by a continuous band of precip mass. If
+    // there's no precip mass falling into a cell, it's precip frac is equal
+    // to the cloud frac, which is probably ~zero.
+    // IF rain or ice mix ratios are smaller than threshold,
+    // then leave cld_frac_r as cloud fraction at current level
+    parallel_for( ncol , YAKL_LAMBDA (int i) {
+      for (int k=nz-2; k >= 0; k--) {
+        if ( qr(k+1,i) >= qsmall || qi(k+1,i) >= qsmall ) {
+          cld_frac_r(k,i) = max( cld_frac_r(k+1,i) , cld_frac_r(k,i) );
+        }
+      }
+    });
   }
 
 
