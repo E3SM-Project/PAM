@@ -1,8 +1,8 @@
 ---
 # Simulation time in seconds
 # simTime  : 28800
-simTime  : 86400
-# simTime  : 1800
+# simTime  : 86400
+simTime  : 1800
 
 # Number of cells to use in the CRMs
 crm_nx   : 128
@@ -41,7 +41,7 @@ dt_gcm: 900
 dt_crm_phys: 0.
 
 # Output frequency in seconds
-outFreq: 0.
+outFreq: 20.
 
 # Number of sponge layer cells
 sponge_cells: 0
