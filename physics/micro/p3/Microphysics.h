@@ -342,7 +342,7 @@ public:
     // Save initial state, and compute inputs for p3(...)
     parallel_for( "micro adjust preprocess" , SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
       // Compute total density
-      real rho = rho_dry(k,i) + rho_c(k,i) + rho_r(k,i) + rho_m(k,i) + rho_v(k,i);
+      real rho = rho_dry(k,i) + rho_c(k,i) + rho_r(k,i) + rho_i(k,i) + rho_v(k,i);
 
       // P3 doesn't do saturation adjustment, so we need to do that ahead of time
       // If we're using SHOC, then it does saturation adjustment, so no need to do it here

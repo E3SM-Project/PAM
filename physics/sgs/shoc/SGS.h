@@ -56,7 +56,7 @@ public:
 
 
 
-  // TODO: Make sure the constants vibe with P3
+  // TODO: Make sure the constants vibe with the rest of the model physics
   // Set constants and likely num_tracers as well, and anything else you can do immediately
   SGS() {
     R_d           = 287.;
@@ -183,6 +183,7 @@ public:
 
     // Grab cloud liquid tracer, and determine what other tracers to diffuse in SHOC
     // TODO: Do we add water vapor and cloud liquid to the diffused tracers, or does SHOC do that already?
+    //       I'm pretty sure SHOC does it already for qv and qc. qw=qv+qc is diffused, and other handing is applied to ql
     // TODO: If we add new MMF modules that add other tracers that need to be diffused, then this situation
     //       must be handled
     MultiField<real,2> qtracers_pam;  // Extra tracers for SHOC to diffuse
