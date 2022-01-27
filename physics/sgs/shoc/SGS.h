@@ -377,22 +377,22 @@ public:
 
     int nadv = 1;
     int nzp1 = nz+1;
-    shoc_main_fortran( ncol, nz, nzp1, dt, nadv, 
-                       shoc_host_dx_host.data(), shoc_host_dy_host.data(), shoc_thv_host.data(), 
-                       shoc_zt_grid_host.data(), shoc_zi_grid_host.data(), shoc_pres_host.data(), shoc_presi_host.data(), shoc_pdel_host.data(),
-                       shoc_wthl_sfc_host.data(), shoc_wqw_sfc_host.data(), shoc_uw_sfc_host.data(), shoc_vw_sfc_host.data(), 
-                       shoc_wtracer_sfc_host.data(), num_qtracers, shoc_w_field_host.data(), 
-                       shoc_exner_host.data(), shoc_phis_host.data(), 
-                       shoc_host_dse_host.data(), shoc_tke_host.data(), shoc_thetal_host.data(), shoc_qw_host.data(), 
-                       shoc_u_wind_host.data(), shoc_v_wind_host.data(), shoc_qtracers_host.data(),
-                       shoc_wthv_sec_host.data(), shoc_tkh_host.data(), shoc_tk_host.data(),
-                       shoc_ql_host.data(), shoc_cldfrac_host.data(),
-                       shoc_pblh_host.data(),
-                       shoc_mix_host.data(), shoc_isotropy_host.data(),
-                       shoc_w_sec_host.data(), shoc_thl_sec_host.data(), shoc_qw_sec_host.data(), shoc_qwthl_sec_host.data(),
-                       shoc_wthl_sec_host.data(), shoc_wqw_sec_host.data(), shoc_wtke_sec_host.data(),
-                       shoc_uw_sec_host.data(), shoc_vw_sec_host.data(), shoc_w3_host.data(),
-                       shoc_wqls_sec_host.data(), shoc_brunt_host.data(), shoc_ql2_host.data() );
+    // shoc_main_fortran( ncol, nz, nzp1, dt, nadv, 
+    //                    shoc_host_dx_host.data(), shoc_host_dy_host.data(), shoc_thv_host.data(), 
+    //                    shoc_zt_grid_host.data(), shoc_zi_grid_host.data(), shoc_pres_host.data(), shoc_presi_host.data(), shoc_pdel_host.data(),
+    //                    shoc_wthl_sfc_host.data(), shoc_wqw_sfc_host.data(), shoc_uw_sfc_host.data(), shoc_vw_sfc_host.data(), 
+    //                    shoc_wtracer_sfc_host.data(), num_qtracers, shoc_w_field_host.data(), 
+    //                    shoc_exner_host.data(), shoc_phis_host.data(), 
+    //                    shoc_host_dse_host.data(), shoc_tke_host.data(), shoc_thetal_host.data(), shoc_qw_host.data(), 
+    //                    shoc_u_wind_host.data(), shoc_v_wind_host.data(), shoc_qtracers_host.data(),
+    //                    shoc_wthv_sec_host.data(), shoc_tkh_host.data(), shoc_tk_host.data(),
+    //                    shoc_ql_host.data(), shoc_cldfrac_host.data(),
+    //                    shoc_pblh_host.data(),
+    //                    shoc_mix_host.data(), shoc_isotropy_host.data(),
+    //                    shoc_w_sec_host.data(), shoc_thl_sec_host.data(), shoc_qw_sec_host.data(), shoc_qwthl_sec_host.data(),
+    //                    shoc_wthl_sec_host.data(), shoc_wqw_sec_host.data(), shoc_wtke_sec_host.data(),
+    //                    shoc_uw_sec_host.data(), shoc_vw_sec_host.data(), shoc_w3_host.data(),
+    //                    shoc_wqls_sec_host.data(), shoc_brunt_host.data(), shoc_ql2_host.data() );
 
     shoc_host_dx_host    .deep_copy_to(shoc_host_dx    );
     shoc_host_dy_host    .deep_copy_to(shoc_host_dy    );
