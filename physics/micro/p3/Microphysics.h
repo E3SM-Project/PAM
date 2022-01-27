@@ -373,8 +373,6 @@ public:
       nc_nuceat_tend (k,i) = 0;
       nccn_prescribed(k,i) = 0;
       ni_activated   (k,i) = 0;
-      // inv_qc_relvar is always set to one
-      inv_qc_relvar(k,i) = 1;
       // col_location is for debugging only, and it will be ignored for now
       if (k < 3) { col_location(k,i) = 1; }
 
@@ -385,7 +383,8 @@ public:
     });
 
     if (sgs_shoc) {
-      auto ast = coupler.dm.get_lev_col<real>("cldfrac");
+      auto ast      = coupler.dm.get_lev_col<real>("cldfrac");
+      inv_qc_relvar = coupler.dm.get_lev_col<real>("relvar" );
       get_cloud_fraction( ast , qc , qr , qi , cld_frac_i , cld_frac_l , cld_frac_r );
     } else {
       parallel_for( SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
@@ -393,6 +392,8 @@ public:
         cld_frac_l(k,i) = 1;
         cld_frac_i(k,i) = 1;
         cld_frac_r(k,i) = 1;
+        // inv_qc_relvar is always set to one
+        inv_qc_relvar(k,i) = 1;
       });
     }
 

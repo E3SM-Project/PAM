@@ -104,12 +104,14 @@ public:
     coupler.dm.register_and_allocate<real>( "tk"       , "Eddy coefficient for momentum [m2/s]" , {nz,ny,nx,nens} , {"z","y","x","nens"} );
     coupler.dm.register_and_allocate<real>( "tkh"      , "Eddy coefficent for heat [m2/s]"      , {nz,ny,nx,nens} , {"z","y","x","nens"} );
     coupler.dm.register_and_allocate<real>( "cldfrac"  , "Cloud fraction [-]"                   , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "relvar"   , "Relative cloud water variance"        , {nz,ny,nx,nens} , {"z","y","x","nens"} );
 
     auto tke      = coupler.dm.get<real,4>( "tke"      );
     auto wthv_sec = coupler.dm.get<real,4>( "wthv_sec" );
     auto tk       = coupler.dm.get<real,4>( "tk"       );
     auto tkh      = coupler.dm.get<real,4>( "tkh"      );
     auto cldfrac  = coupler.dm.get<real,4>( "cldfrac"  );
+    auto relvar   = coupler.dm.get<real,4>( "relvar"   );
 
     parallel_for( "sgs zero" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       tke     (k,j,i,iens) = 0;
@@ -117,6 +119,7 @@ public:
       tk      (k,j,i,iens) = 0;
       tkh     (k,j,i,iens) = 0;
       cldfrac (k,j,i,iens) = 0;
+      relvar  (k,j,i,iens) = 0;
     });
 
     coupler.set_option<std::string>("sgs","shoc");
@@ -169,6 +172,7 @@ public:
     auto tk       = coupler.dm.get_lev_col<real>( "tk"       ); // Reuse from last SHOC output; don't compute
     auto tkh      = coupler.dm.get_lev_col<real>( "tkh"      ); // Reuse from last SHOC output; don't compute
     auto cldfrac  = coupler.dm.get_lev_col<real>( "cldfrac"  ); // Reuse from last SHOC output; don't compute
+    auto relvar   = coupler.dm.get_lev_col<real>( "relvar"   ); // Computed on output for P3
     // Get coupler state
     auto rho_d        = coupler.dm.get_lev_col<real>( "density_dry"  );
     auto uvel         = coupler.dm.get_lev_col<real>( "uvel"         );
@@ -459,6 +463,13 @@ public:
       tk      (k,i) = shoc_tk      (k_shoc,i);
       tkh     (k,i) = shoc_tkh     (k_shoc,i);
       cldfrac (k,i) = min(1._fp , shoc_cldfrac (k_shoc,i) );
+      real rcm  = shoc_ql (k_shoc,i);
+      real rcm2 = shoc_ql2(k_shoc,i);
+      if ( rcm != 0 && rcm2 != 0 ) {
+        relvar(k,i) = min( 10._fp , max( 0.001_fp , rcm*rcm / rcm2 ) );
+      } else {
+        relvar(k,i) = 1;
+      }
     });
 
     first_step = false;
