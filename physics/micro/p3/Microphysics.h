@@ -56,6 +56,8 @@ public:
   real grav;
   real cp_l;
 
+  bool sgs_shoc;
+
   bool first_step;
 
   // Indices for all of your tracer quantities
@@ -86,6 +88,7 @@ public:
     grav       = 9.81;
     first_step = true;
     cp_l       = 4218.;
+    sgs_shoc   = false;
   }
 
 
@@ -230,6 +233,9 @@ public:
 
 
   void timeStep( PamCoupler &coupler , real dt , real etime ) {
+    if (first_step) {
+      if (coupler.get_option<std::string>("sgs") == "shoc") sgs_shoc = true;
+    }
 
     // Get the dimensions sizes
     int nz   = coupler.dm.get_dimension_size("z"   );
@@ -330,6 +336,7 @@ public:
     real p0      = this->p0;
 
     YAKL_SCOPE( first_step , this->first_step );
+    YAKL_SCOPE( sgs_shoc   , this->sgs_shoc   );
     YAKL_SCOPE( grav       , this->grav       );
 
     // Save initial state, and compute inputs for p3(...)
@@ -337,10 +344,13 @@ public:
       // Compute total density
       real rho = rho_dry(k,i) + rho_c(k,i) + rho_r(k,i) + rho_m(k,i) + rho_v(k,i);
 
-      // TODO: Find perhaps a more appropriate adjustment scheme that produces what P3 expects
       // P3 doesn't do saturation adjustment, so we need to do that ahead of time
-      compute_adjusted_state(rho, rho_dry(k,i) , rho_v(k,i) , rho_c(k,i) , temp(k,i),
-                             R_v , cp_d , cp_v , cp_l);
+      // If we're using SHOC, then it does saturation adjustment, so no need to do it here
+      if (! sgs_shoc) {
+        // TODO: Find perhaps a more appropriate adjustment scheme that produces what P3 expects
+        compute_adjusted_state(rho, rho_dry(k,i) , rho_v(k,i) , rho_c(k,i) , temp(k,i),
+                               R_v , cp_d , cp_v , cp_l);
+      }
 
       // Compute quantities for P3
       qc       (k,i) = rho_c (k,i) / rho_dry(k,i);
@@ -377,8 +387,6 @@ public:
         t_prev (k,i) = temp(k,i);
       }
     });
-
-    first_step = false;
 
     int it = 1;
     int its = 1;
@@ -508,6 +516,7 @@ public:
       t_prev (k,i) = temp(k,i);
     });
 
+    first_step = false;
   }
 
 

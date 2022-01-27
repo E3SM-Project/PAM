@@ -161,8 +161,6 @@ public:
       if      (micro_scheme == "kessler") { micro_kessler = true; }
       else if (micro_scheme == "p3"     ) { micro_p3      = true; }
       else { endrun("ERROR: SHOC only meant to run with kessler or p3 microphysics"); }
-
-      first_step = false;
     }
 
     // Get saved SHOC-related variables
@@ -460,9 +458,10 @@ public:
       wthv_sec(k,i) = shoc_wthv_sec(k_shoc,i);
       tk      (k,i) = shoc_tk      (k_shoc,i);
       tkh     (k,i) = shoc_tkh     (k_shoc,i);
-      cldfrac (k,i) = shoc_cldfrac (k_shoc,i);
+      cldfrac (k,i) = min(1._fp , shoc_cldfrac (k_shoc,i) );
     });
 
+    first_step = false;
   }
 
 
