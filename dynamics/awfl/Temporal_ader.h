@@ -14,9 +14,6 @@ template <class Spatial> class Temporal_operator {
 public:
   static_assert(nTimeDerivs <= ngll , "ERROR: nTimeDerivs must be <= ngll.");
 
-  int  sponge_cells;
-  real sponge_strength;
-
   real5d stateTend;
   real5d tracerTend;
 
@@ -24,17 +21,6 @@ public:
 
   void init(PamCoupler const &coupler) {
     space_op.init(coupler);
-
-    std::string inFile = coupler.get_option<std::string>( "standalone_input_file" );
-
-    if (inFile != "") {
-      YAML::Node config = YAML::LoadFile(inFile);
-      sponge_cells    = config["sponge_cells"   ].as<int>();
-      sponge_strength = config["sponge_strength"].as<real>();
-    } else {
-      sponge_cells    = 0;
-      sponge_strength = 0;
-    }
 
     stateTend  = space_op.createStateTendArr ();
     tracerTend = space_op.createTracerTendArr();
@@ -94,8 +80,6 @@ public:
   void timeStep( PamCoupler &coupler , real dtphys , real etime ) {
     YAKL_SCOPE( stateTend       , this->stateTend           );
     YAKL_SCOPE( tracerTend      , this->tracerTend          );
-    YAKL_SCOPE( sponge_cells    , this->sponge_cells        );
-    YAKL_SCOPE( sponge_strength , this->sponge_strength     );
     YAKL_SCOPE( hyDensCells     , this->space_op.hyDensCells);
 
     real dt = compute_time_step( coupler );
@@ -189,33 +173,6 @@ public:
       #endif
 
       space_op.switch_directions();
-
-      if (sponge_cells > 0) {
-        real2d zint = coupler.dm.get<real,2>("vertical_interface_height");
-        real2d zmid = coupler.dm.get<real,2>("vertical_midpoint_height");
-        parallel_for( "Sponge" , SimpleBounds<4>(sponge_cells,ny,nx,nens) ,
-                      YAKL_LAMBDA (int kk, int j, int i, int iens) {
-          int k = nz-1-kk;
-          real z1 = zint(nz-sponge_cells,iens);
-          real z2 = zint(nz             ,iens);
-          real znorm = (zmid(k,iens)-z1) / (z2 - z1);
-          real mult = 1 - sponge_strength * ( cos(M_PI*znorm - M_PI) + 1 ) * 0.5_fp;
-          real hydens = hyDensCells(k,iens);
-          real dens_old = state(idR,hs+k,hs+j,hs+i,iens) + hydens;
-          // state(idR,hs+k,hs+j,hs+i,iens) *= mult;
-          // state(idU,hs+k,hs+j,hs+i,iens) *= mult;
-          // state(idV,hs+k,hs+j,hs+i,iens) *= mult;
-          state(idW,hs+k,hs+j,hs+i,iens) *= mult;
-          state(idT,hs+k,hs+j,hs+i,iens) *= mult;
-          // real dens_new = state(idR,hs+k,hs+j,hs+i,iens) + hydens;
-          // for (int tr=0; tr < num_tracers; tr++) {
-          //   real trac = tracers(tr,hs+k,hs+j,hs+i,iens);
-          //   trac = trac / dens_old;
-          //   trac *= mult;
-          //   tracers(tr,hs+k,hs+j,hs+i,iens) = trac * dens_new;
-          // }
-        });
-      }
 
       if (coupler.dycore_functions.size() > 0) {
         space_op.convert_dynamics_to_coupler_state( coupler , state , tracers );

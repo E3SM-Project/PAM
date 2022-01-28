@@ -376,10 +376,7 @@ public:
       YAKL_SCOPE( dx                   , this->dx                  );
       YAKL_SCOPE( dy                   , this->dy                  );
       YAKL_SCOPE( dz                   , this->dz                  );
-      YAKL_SCOPE( hyDensCells          , this->hyDensCells         );
-      YAKL_SCOPE( hyDensThetaCells     , this->hyDensThetaCells    );
       YAKL_SCOPE( gamma                , this->gamma               );
-      YAKL_SCOPE( C0                   , this->C0                  );
       YAKL_SCOPE( Rd                   , this->Rd                  );
       YAKL_SCOPE( Rv                   , this->Rv                  );
 
@@ -784,7 +781,6 @@ public:
     YAKL_SCOPE( balance_initial_density  , this->balance_initial_density );
     YAKL_SCOPE( vert_interface           , this->vert_interface          );
     YAKL_SCOPE( num_tracers              , this->num_tracers             );
-    YAKL_SCOPE( tracer_adds_mass         , this->tracer_adds_mass        );
     YAKL_SCOPE( idWV                     , this->idWV                    );
     YAKL_SCOPE( grav                     , this->grav                    );
 
@@ -1005,7 +1001,6 @@ public:
         real temp      = profiles::init_supercell_temperature (zloc, z_0, z_trop, ztop(iens), T_0, T_trop, T_top);
         real press_dry = profiles::init_supercell_pressure_dry(zloc, z_0, z_trop, ztop(iens), T_0, T_trop, T_top,
                                                                p_0, Rd, grav);
-        real dens_dry  = press_dry / (Rd*temp);
         real qvs       = profiles::init_supercell_sat_mix_dry(press_dry, temp);
         real relhum    = profiles::init_supercell_relhum(zloc, z_0, z_trop);
         if (relhum * qvs > 0.014_fp) relhum = 0.014_fp / qvs;
@@ -1042,8 +1037,6 @@ public:
         real press      = hyPressureGLL(k,kk,iens);
         real dens_dry   = press / (Rd+qv*Rv) / temp;
         real dens_vap   = qv * dens_dry;
-        real press_vap  = dens_vap * Rv * temp;
-        real press_dry  = dens_dry * Rd * temp;
         real dens       = dens_dry + dens_vap;
         real dens_theta = pow( press / C0 , 1._fp / gamma );
         real theta      = dens_theta / dens;
@@ -1164,11 +1157,11 @@ public:
 
               real rad = sqrt( xn*xn + yn*yn + zn*zn );
 
-              real theta_pert = 0;
-              if (rad < 1) {
-                theta_pert = amp * pow( cos(M_PI*rad/2) , 2._fp );
-              }
-
+              // TODO: enable this whenever you want the standalone idealize non-MMF test for supercell
+              // real theta_pert = 0;
+              // if (rad < 1) {
+              //   theta_pert = amp * pow( cos(M_PI*rad/2) , 2._fp );
+              // }
               // dens_theta += dens * theta_pert;
 
               real factor = gllWts_ngll(ii) * gllWts_ngll(jj) * gllWts_ngll(kk);
@@ -2454,27 +2447,43 @@ public:
         nc.write1(etime,"t",ulIndex,"t");
       }
 
+      std::vector<std::string> tracer_names = coupler.get_tracer_names();
+      int num_tracers = coupler.get_num_tracers();
+      // Create MultiField of all state and tracer full variables, since we're doing the same operation on each
+      MultiField<real const,4> fields;
+      fields.add_field( coupler.dm.get<real const,4>("density_dry") );
+      fields.add_field( coupler.dm.get<real const,4>("uvel"       ) );
+      fields.add_field( coupler.dm.get<real const,4>("vvel"       ) );
+      fields.add_field( coupler.dm.get<real const,4>("wvel"       ) );
+      fields.add_field( coupler.dm.get<real const,4>("temp"       ) );
+      for (int tr=0; tr < num_tracers; tr++) {
+        fields.add_field( coupler.dm.get<real const,4>(tracer_names[tr]) );
+      }
+
+      // First, write out standard coupler state
       real3d data("data",nz,ny,nx);
+      parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = fields(0,k,j,i,iens); });
+      nc.write1(data,"density"    ,{"z","y","x"},ulIndex,"t");
+      parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = fields(1,k,j,i,iens); });
+      nc.write1(data,"uvel"       ,{"z","y","x"},ulIndex,"t");
+      parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = fields(2,k,j,i,iens); });
+      nc.write1(data,"vvel"       ,{"z","y","x"},ulIndex,"t");
+      parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = fields(3,k,j,i,iens); });
+      nc.write1(data,"wvel"       ,{"z","y","x"},ulIndex,"t");
+      parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = fields(4,k,j,i,iens); });
+      nc.write1(data,"temperature",{"z","y","x"},ulIndex,"t");
+      for (int tr=0; tr < num_tracers; tr++) {
+        parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = fields(5+tr,k,j,i,iens); });
+        nc.write1(data,tracer_names[tr],{"z","y","x"},ulIndex,"t");
+      }
+
+
+      // Next, write out any dycore-oriented fields for idealized test cases
       // rho'
       parallel_for( "Spatial.h output 7" , SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
         data(k,j,i) = state(idR,hs+k,hs+j,hs+i,iens);
       });
       nc.write1(data.createHostCopy(),"dens_pert",{"z","y","x"},ulIndex,"t");
-      // u
-      parallel_for( "Spatial.h output 8" , SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-        data(k,j,i) = state(idU,hs+k,hs+j,hs+i,iens) / ( state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens) );
-      });
-      nc.write1(data.createHostCopy(),"u",{"z","y","x"},ulIndex,"t");
-      // v
-      parallel_for( "Spatial.h output 9" , SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-        data(k,j,i) = state(idV,hs+k,hs+j,hs+i,iens) / ( state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens) );
-      });
-      nc.write1(data.createHostCopy(),"v",{"z","y","x"},ulIndex,"t");
-      // w
-      parallel_for( "Spatial.h output 10" , SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-        data(k,j,i) = state(idW,hs+k,hs+j,hs+i,iens) / ( state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens) );
-      });
-      nc.write1(data.createHostCopy(),"w",{"z","y","x"},ulIndex,"t");
       // theta'
       parallel_for( "Spatial.h output 11" , SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
         real r =   state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells     (k,iens);
@@ -2490,14 +2499,6 @@ public:
         data(k,j,i) = p - hyPressureCells(k,iens);
       });
       nc.write1(data.createHostCopy(),"pressure_pert",{"z","y","x"},ulIndex,"t");
-
-      for (int tr=0; tr < num_tracers; tr++) {
-        parallel_for( "Spatial.h output 13" , SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-          real r = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens);
-          data(k,j,i) = tracers(tr,hs+k,hs+j,hs+i,iens)/r;
-        });
-        nc.write1(data.createHostCopy(),std::string("tracer_")+tracer_name[tr],{"z","y","x"},ulIndex,"t");
-      }
 
       // Close the file
       nc.close();

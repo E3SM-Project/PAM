@@ -327,7 +327,6 @@ public:
     // Compute quantities needed for inputs to P3
     //////////////////////////////////////////////////////////////////////////////
     // Force constants into local scope
-    real gamma_d = this->gamma_d;
     real R_d     = this->R_d;
     real R_v     = this->R_v;
     real cp_d    = this->cp_d;

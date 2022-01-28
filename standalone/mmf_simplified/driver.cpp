@@ -9,6 +9,7 @@
 #include "perturb_temperature.h"
 #include "gcm_forcing.h"
 #include "gcm_density_forcing.h"
+#include "sponge_layer.h"
 
 
 int main(int argc, char** argv) {
@@ -145,6 +146,7 @@ int main(int argc, char** argv) {
     if (forcing_at_dycore_time_step) {
       coupler.add_dycore_function( gcm_density_forcing          );
       coupler.add_dycore_function( apply_gcm_forcing_tendencies );
+      coupler.add_dycore_function( sponge_layer                 );
     }
 
     real etime_gcm = 0;
@@ -179,6 +181,7 @@ int main(int argc, char** argv) {
         if (! forcing_at_dycore_time_step) {
           gcm_density_forcing         (coupler , dt_crm);
           apply_gcm_forcing_tendencies(coupler , dt_crm);
+          sponge_layer                (coupler , dt_crm);
         }
 
         etime_crm += dt_crm;
