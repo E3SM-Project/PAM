@@ -14,6 +14,8 @@ inline void sponge_layer( PamCoupler &coupler , real dt ) {
 
   int num_layers = 10;  // Number of model top vertical layers that participate in the sponge relaxation
 
+  int WFLD = 3; // fourth entry into "fields" is the "w velocity" field. Set the havg to zero for WFLD
+
   // Get a list of tracer names for retrieval
   std::vector<std::string> tracer_names = coupler.get_tracer_names();
   int num_tracers = coupler.get_num_tracers();
@@ -53,7 +55,7 @@ inline void sponge_layer( PamCoupler &coupler , real dt ) {
   // Compute the horizontal average for each vertical level (that we use for the sponge layer) and ensemble
   parallel_for( Bounds<5>(num_fields,num_layers,ny,nx,nens) , YAKL_DEVICE_LAMBDA (int ifld, int kloc, int j, int i, int iens) {
     int k = nz - 1 - kloc;
-    yakl::atomicAdd( havg_fields(ifld,k,iens) , full_fields(ifld,k,j,i,iens) * r_nx_ny );
+    if (ifld != WFLD) yakl::atomicAdd( havg_fields(ifld,k,iens) , full_fields(ifld,k,j,i,iens) * r_nx_ny );
   });
 
   auto zint = coupler.dm.get<real,2>("vertical_interface_height");
@@ -67,7 +69,7 @@ inline void sponge_layer( PamCoupler &coupler , real dt ) {
     int k = nz - 1 - kloc;
     real rel_dist = ( zint(nz,iens) - zmid(k,iens) ) / ( zint(nz,iens) - zmid(nz-1-(num_layers-1),iens) );
     real space_factor = ( cos(M_PI*rel_dist) + 1 ) / 2;
-    real factor = space_factor*space_factor * time_factor;
+    real factor = space_factor * time_factor;
     full_fields(ifld,k,j,i,iens) += ( havg_fields(ifld,k,iens) - full_fields(ifld,k,j,i,iens) ) * factor;
   });
 }
