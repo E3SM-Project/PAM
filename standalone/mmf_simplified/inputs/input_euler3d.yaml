@@ -1,7 +1,8 @@
 ---
 # Simulation time in seconds
-# simTime  : 28800
-simTime  : 86400
+# simTime  : 28800    # 8 hours
+# simTime  : 86400    # 1 day
+simTime  : 432000   # 5 days
 # simTime  : 1800
 
 # Number of cells to use in the CRMs
