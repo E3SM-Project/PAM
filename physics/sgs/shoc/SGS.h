@@ -94,9 +94,15 @@ public:
     int nz   = coupler.get_nz  ();
     int nens = coupler.get_nens();
 
-    // Register tracers in the coupler
-    //                 name    description                              positive   adds mass
-    coupler.add_tracer("tke" , "Turbulent Kinetic Energy (m^2/s^2)"   , true     , false );
+    if ( coupler.get_option<bool>("advect_tke") ) {
+      // Register tracers in the coupler
+      //                 name    description                              positive   adds mass
+      coupler.add_tracer("tke" , "Turbulent Kinetic Energy (m^2/s^2)"   , true     , false );
+      std::cout << "ADVECTING_TKE\n";
+    } else {
+      coupler.dm.register_and_allocate<real>( "tke" , "Turbulent Kinetic Energy (m^2/s^2)" , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+      std::cout << "*NOT* ADVECTING_TKE\n";
+    }
 
     // Register and allocation non-tracer quantities used by the microphysics
     coupler.dm.register_and_allocate<real>( "wthv_sec" , "Buoyancy flux [K m/s]"                , {nz,ny,nx,nens} , {"z","y","x","nens"} );
@@ -299,15 +305,17 @@ public:
         real exner   = pow( press / p0 , R_d / cp_d );
         real theta   = t / exner;
         // https://glossary.ametsoc.org/wiki/Virtual_potential_temperature
-        real theta_v = theta * (1 + 0.61_fp * qv - ql);
+        // TODO: Figure out which of these SHOC wants
+        // real theta_v = theta * (1 + 0.61_fp * qv - ql);
+        real theta_v = theta * (1 + 0.61_fp * qv);
         // https://glossary.ametsoc.org/wiki/Liquid_water_potential_temperature
         // According to update_host_dse, the simplified version is used here
         real theta_l = theta - (latvap/cp_d) * ql;
         // dry static energy = Cp*T + g*z + phis
-        real dse     = cp_d * t + grav * z + grav * zint(0,i);
+        real dse     = cp_d * t + grav * z;
         shoc_zt_grid  (k,i) = z;
         shoc_pres     (k,i) = press;
-        shoc_pdel     (k,i) = pres_int(k_shoc+1,i) - pres_int(k_shoc,i);
+        shoc_pdel     (k,i) = pres_int(k_shoc,i) - pres_int(k_shoc+1,i);
         shoc_thv      (k,i) = theta_v;
         shoc_w_field  (k,i) = wvel(k_shoc,i);
         shoc_exner    (k,i) = exner;
@@ -452,7 +460,7 @@ public:
       uvel(k,i) = shoc_u_wind(k_shoc,i);
       vvel(k,i) = shoc_v_wind(k_shoc,i);
       // TODO: What about wvel ??
-      temp(k,i) = ( shoc_host_dse(k_shoc,i) - grav * zmid(k,i) - grav * zint(0,i) ) / cp_d;
+      temp(k,i) = ( shoc_host_dse(k_shoc,i) - grav * zmid(k,i) ) / cp_d;
       rho_v(k,i) = shoc_qw(k_shoc,i) * rho_d(k,i) - shoc_ql(k_shoc,i) * rho_d(k,i);
       rho_c(k,i) = shoc_ql(k_shoc,i) * rho_d(k,i);
       for (int tr=0; tr < num_qtracers; tr++) {

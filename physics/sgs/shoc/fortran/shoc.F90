@@ -2346,11 +2346,31 @@ subroutine shoc_assumed_pdf(&
 
       ! Check to ensure Tl1_1 and Tl1_2 are not negative. endrun otherwise
       if (Tl1_1 .le. 0._rtype) then
+         write(*,*) 'k         : ' , k         
+         write(*,*) 'thl_first : ' , thl_first 
+         write(*,*) 'w_first   : ' , w_first   
+         write(*,*) 'qw_first  : ' , qw_first  
+         write(*,*) 'w3var     : ' , w3var     
+         write(*,*) 'thlsec    : ' , thlsec    
+         write(*,*) 'qwsec     : ' , qwsec     
+         write(*,*) 'qwthlsec  : ' , qwthlsec  
+         write(*,*) 'wqwsec    : ' , wqwsec    
+         write(*,*) 'wthlsec   : ' , wthlsec   
          write(err_msg,*)'ERROR: Tl1_1 is .le. 0 before shoc_assumed_pdf_compute_qs in shoc. Tl1_1 is:',Tl1_1
          call endscreamrun(err_msg)
       endif
 
       if (Tl1_2 .le. 0._rtype) then
+         write(*,*) 'k         : ' , k         
+         write(*,*) 'thl_first : ' , thl_first 
+         write(*,*) 'w_first   : ' , w_first   
+         write(*,*) 'qw_first  : ' , qw_first  
+         write(*,*) 'w3var     : ' , w3var     
+         write(*,*) 'thlsec    : ' , thlsec    
+         write(*,*) 'qwsec     : ' , qwsec     
+         write(*,*) 'qwthlsec  : ' , qwthlsec  
+         write(*,*) 'wqwsec    : ' , wqwsec    
+         write(*,*) 'wthlsec   : ' , wthlsec   
          write(err_msg,*)'ERROR: Tl1_2 is .le. 0 before shoc_assumed_pdf_compute_qs in shoc. Tl1_2 is:',Tl1_2
          call endscreamrun(err_msg)
       endif

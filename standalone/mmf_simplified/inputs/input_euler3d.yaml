@@ -3,7 +3,7 @@
 # simTime  : 28800    # 8 hours
 # simTime  : 86400    # 1 day
 simTime  : 432000   # 5 days
-# simTime  : 1800
+# simTime  : 1800    # 30 min
 
 # Number of cells to use in the CRMs
 crm_nx   : 128
@@ -39,7 +39,7 @@ out_prefix  : test
 dt_gcm: 900
 
 # CRM physics time step
-dt_crm_phys: 10.
+dt_crm_phys: 60.
 
 # Output frequency in seconds
 outFreq: 20.
@@ -49,5 +49,8 @@ density_forcing: loose
 
 # If true, GCM forcing is applied at the finest dycore time step; otherwise at coarser CRM physics time step
 forcing_at_dycore_time_step: true
+
+# Whether or not to advect TKE in SGS scheme
+advect_tke: true
 
 

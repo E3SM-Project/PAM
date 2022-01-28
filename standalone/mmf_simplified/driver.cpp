@@ -34,6 +34,9 @@ int main(int argc, char** argv) {
     real dt_crm_phys    = config["dt_crm_phys"].as<real>();
     real outFreq        = config["outFreq"    ].as<real>();
     std::string coldata = config["column_data"].as<std::string>();
+    bool advect_tke     = config["advect_tke" ].as<bool>();
+
+    mmf_interface::set_option<bool>("advect_tke",advect_tke);
 
     // How to apply the density forcing: loose (force it like sam does); strict (enforce it strictly every time step)
     if (config["density_forcing"]) {
