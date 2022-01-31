@@ -45,6 +45,8 @@ if ("${PAM_MICRO}" STREQUAL "p3" OR "${PAM_SGS}" STREQUAL "shoc")
 endif()
 
 if (${USE_SCREAM})
+  option(EKAT_ENABLE_TESTS OFF FORCE)
+  add_subdirectory(../../externals/EKAT        ./ekat         )
   add_subdirectory(../../physics/scream_common ./scream_common)
   include_directories(${CMAKE_CURRENT_BINARY_DIR}/scream_common)
 endif()
@@ -81,6 +83,6 @@ yakl_process_target(driver)
 if (${USE_SCREAM})
   target_link_libraries(scream_common)
 endif()
-target_link_libraries(driver dycore micro sgs ${NCFLAGS} -lyaml-cpp)
+target_link_libraries(driver dycore micro sgs ekat ${NCFLAGS})
 
 
