@@ -2,12 +2,6 @@
 
 ./cmakeclean.sh
 
-export CC=mpicc
-export CXX=mpic++
-export FC=mpif90
-export F90=mpif90
-export F77=mpif90
-
 cmake      \
   -DYAKL_CUDA_FLAGS="${YAKL_CUDA_FLAGS} -DPAM_STANDALONE"         \
   -DYAKL_CXX_FLAGS="${YAKL_CXX_FLAGS} -DPAM_STANDALONE"           \
@@ -23,3 +17,4 @@ cmake      \
   -DPAM_MICRO="p3"                                                \
   -DPAM_SGS="shoc"                                                \
   ..
+
