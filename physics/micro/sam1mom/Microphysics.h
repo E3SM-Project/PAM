@@ -95,7 +95,7 @@ public:
 
 
 
-  void timeStep( PamCoupler &coupler , real dt , real etime ) const {
+  void timeStep( PamCoupler &coupler , real dt ) const {
 
     // Get the dimensions sizes
     int nz   = coupler.dm.get_dimension_size("z"   );

@@ -110,10 +110,19 @@ namespace pam {
       bool        positive;
       bool        adds_mass;
     };
-
     std::vector<Tracer> tracers;
 
-    std::vector< std::function< void ( PamCoupler & , real ) > > dycore_functions;
+    struct DycoreFunction {
+      std::string                                   name;
+      std::function< void ( PamCoupler & , real ) > func;
+    };
+    std::vector< DycoreFunction > dycore_functions;
+
+    struct MMFFunction {
+      std::string                                   name;
+      std::function< void ( PamCoupler & , real ) > func;
+    };
+    std::vector< MMFFunction > mmf_functions;
 
 
     PamCoupler() {
@@ -214,8 +223,65 @@ namespace pam {
     }
 
 
-    void add_dycore_function( std::function< void ( PamCoupler & , real ) > func ) {
-      dycore_functions.push_back( func );
+    void add_dycore_function( std::string name , std::function< void ( PamCoupler & , real ) > func ) {
+      dycore_functions.push_back( { name , func } );
+    }
+
+
+    void add_mmf_function( std::string name , std::function< void ( PamCoupler & , real ) > func ) {
+      mmf_functions.push_back( { name , func } );
+    }
+
+
+    void run_mmf_functions(real dt_crm) {
+      for (int i=0; i < mmf_functions.size(); i++) {
+        #ifdef PAM_FUNCTION_TRACE
+          dm.clean_all_entries();
+        #endif
+        #ifdef PAM_FUNCTION_TIMERS
+          yakl::timer_start( mmf_functions[i].name.c_str() );
+        #endif
+        mmf_functions[i].func( *this , dt_crm );
+        #ifdef PAM_FUNCTION_TIMERS
+          yakl::timer_stop ( mmf_functions[i].name.c_str() );
+        #endif
+        #ifdef PAM_FUNCTION_TRACE
+          auto dirty_entry_names = dm.get_dirty_entries();
+          std::cout << "MMF Function " << mmf_functions[i].name << " ran with a time step of "
+                    << dt_crm << " seconds and wrote to the following coupler entries: ";
+          for (int e=0; e < dirty_entry_names.size(); e++) {
+            std::cout << dirty_entry_names[e];
+            if (e <= dirty_entry_names.size()-1) std::cout << ", ";
+          }
+          std::cout << "\n\n";
+        #endif
+      }
+    }
+
+
+    void run_dycore_functions(real dt_dycore) {
+      for (int i=0; i < dycore_functions.size(); i++) {
+        #ifdef PAM_FUNCTION_TRACE
+          dm.clean_all_entries();
+        #endif
+        #ifdef PAM_FUNCTION_TIMERS
+          yakl::timer_start( dycore_functions[i].name.c_str() );
+        #endif
+        dycore_functions[i].func( *this , dt_dycore );
+        #ifdef PAM_FUNCTION_TIMERS
+          yakl::timer_stop ( dycore_functions[i].name.c_str() );
+        #endif
+        #ifdef PAM_FUNCTION_TRACE
+          auto dirty_entry_names = dm.get_dirty_entries();
+          std::cout << "Dycore Function " << dycore_functions[i].name << " ran with a time step of "
+                    << dt_dycore << " seconds and wrote to the following coupler entries: ";
+          for (int e=0; e < dirty_entry_names.size(); e++) {
+            std::cout << dirty_entry_names[e];
+            if (e <= dirty_entry_names.size()-1) std::cout << ", ";
+          }
+          std::cout << "\n\n";
+        #endif
+      }
     }
 
 

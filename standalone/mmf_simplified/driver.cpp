@@ -52,6 +52,9 @@ int main(int argc, char** argv) {
       mmf_interface::set_option<bool>( "forcing_at_dycore_time_step" , false );
     }
 
+    // This is for the dycore to pull out to determine how to do idealized test cases
+    mmf_interface::set_option<std::string>( "standalone_input_file" , inFile );
+
     // Store vertical coordinates
     std::string vcoords_file = config["vcoords"].as<std::string>();
     yakl::SimpleNetCDF nc;
@@ -74,9 +77,6 @@ int main(int argc, char** argv) {
 
     // Set the vertical grid in the coupler
     mmf_interface::set_grid( xlen , ylen , zint_in );
-
-    // This is for the dycore to pull out to determine how to do idealized test cases
-    mmf_interface::set_option<std::string>( "standalone_input_file" , inFile );
 
     mmf_interface::register_and_allocate_array<real>("gcm_density_dry","GCM column dry density"     ,{crm_nz,nens});
     mmf_interface::register_and_allocate_array<real>("gcm_uvel"       ,"GCM column u-velocity"      ,{crm_nz,nens});
@@ -144,12 +144,24 @@ int main(int argc, char** argv) {
     // Now that we have an initial state, define hydrostasis for each ensemble member
     coupler.update_hydrostasis( coupler.compute_pressure_array() );
 
+    coupler.add_mmf_function( "sgs"    , [&] (PamCoupler &coupler, real dt) { sgs   .timeStep(coupler,dt); } );
+    coupler.add_mmf_function( "micro"  , [&] (PamCoupler &coupler, real dt) { micro .timeStep(coupler,dt); } );
+    coupler.add_mmf_function( "dycore" , [&] (PamCoupler &coupler, real dt) { dycore.timeStep(coupler,dt); } );
+
     bool forcing_at_dycore_time_step = coupler.get_option<bool>("forcing_at_dycore_time_step");
 
     if (forcing_at_dycore_time_step) {
-      coupler.add_dycore_function( gcm_density_forcing          );
-      coupler.add_dycore_function( apply_gcm_forcing_tendencies );
-      coupler.add_dycore_function( sponge_layer                 );
+      if ( coupler.get_option<std::string>("density_forcing") == "strict" ) {
+        coupler.add_dycore_function( "gcm_density_forcing"          , gcm_density_forcing          );
+      }
+      coupler.add_dycore_function( "apply_gcm_forcing_tendencies" , apply_gcm_forcing_tendencies );
+      coupler.add_dycore_function( "sponge_layer"                 , sponge_layer                 );
+    } else {
+      if ( coupler.get_option<std::string>("density_forcing") == "strict" ) {
+        coupler.add_mmf_function( "gcm_density_forcing"          , gcm_density_forcing          );
+      }
+      coupler.add_mmf_function( "apply_gcm_forcing_tendencies" , apply_gcm_forcing_tendencies );
+      coupler.add_mmf_function( "sponge_layer"                 , sponge_layer                 );
     }
 
     real etime_gcm = 0;
@@ -169,23 +181,7 @@ int main(int argc, char** argv) {
         if (dt_crm == 0.) { dt_crm = dycore.compute_time_step(coupler); }
         if (etime_crm + dt_crm > simTime_crm) { dt_crm = simTime_crm - etime_crm; }
 
-        yakl::timer_start("sgs");
-        sgs.timeStep( coupler , dt_crm , etime_crm );
-        yakl::timer_stop("sgs");
-
-        yakl::timer_start("micro");
-        micro.timeStep( coupler , dt_crm , etime_crm );
-        yakl::timer_stop("micro");
-
-        yakl::timer_start("dycore");
-        dycore.timeStep( coupler , dt_crm , etime_crm );
-        yakl::timer_stop("dycore");
-
-        if (! forcing_at_dycore_time_step) {
-          gcm_density_forcing         (coupler , dt_crm);
-          apply_gcm_forcing_tendencies(coupler , dt_crm);
-          sponge_layer                (coupler , dt_crm);
-        }
+        coupler.run_mmf_functions( dt_crm );
 
         etime_crm += dt_crm;
         etime_gcm += dt_crm;

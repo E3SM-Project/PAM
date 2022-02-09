@@ -133,11 +133,11 @@ inline void apply_gcm_forcing_tendencies( PamCoupler &coupler , real dt ) {
   auto rho_v = dm.get<real,4>( "water_vapor" );
 
   // GCM forcing tendencies for the average CRM column state
-  auto gcm_tend_rho_d = dm.get<real,2>("gcm_tend_rho_d");
-  auto gcm_tend_uvel  = dm.get<real,2>("gcm_tend_uvel" );
-  auto gcm_tend_vvel  = dm.get<real,2>("gcm_tend_vvel" );
-  auto gcm_tend_temp  = dm.get<real,2>("gcm_tend_temp" );
-  auto gcm_tend_rho_v = dm.get<real,2>("gcm_tend_rho_v");
+  auto gcm_tend_rho_d = dm.get<real const,2>("gcm_tend_rho_d");
+  auto gcm_tend_uvel  = dm.get<real const,2>("gcm_tend_uvel" );
+  auto gcm_tend_vvel  = dm.get<real const,2>("gcm_tend_vvel" );
+  auto gcm_tend_temp  = dm.get<real const,2>("gcm_tend_temp" );
+  auto gcm_tend_rho_v = dm.get<real const,2>("gcm_tend_rho_v");
 
   // We need these arrays for multiplicative hole filling
   // Holes are only filled inside vertical columns at first because it leads to a very infrequent collision

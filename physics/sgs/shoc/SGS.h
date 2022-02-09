@@ -132,7 +132,7 @@ public:
 
 
 
-  void timeStep( PamCoupler &coupler , real dt , real etime ) {
+  void timeStep( PamCoupler &coupler , real dt ) {
     // Get the dimensions sizes
     int nz   = coupler.get_nz();
     int ny   = coupler.get_ny();

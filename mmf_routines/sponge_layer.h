@@ -58,8 +58,8 @@ inline void sponge_layer( PamCoupler &coupler , real dt ) {
     if (ifld != WFLD) yakl::atomicAdd( havg_fields(ifld,k,iens) , full_fields(ifld,k,j,i,iens) * r_nx_ny );
   });
 
-  auto zint = coupler.dm.get<real,2>("vertical_interface_height");
-  auto zmid = coupler.dm.get<real,2>("vertical_midpoint_height" );
+  auto zint = coupler.dm.get<real const,2>("vertical_interface_height");
+  auto zmid = coupler.dm.get<real const,2>("vertical_midpoint_height" );
 
   real constexpr time_scale = 60;  // strength of each application is dt / time_scale  (same as SAM's tau_min)
   real time_factor = dt / time_scale;

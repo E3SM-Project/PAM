@@ -232,7 +232,7 @@ public:
 
 
 
-  void timeStep( PamCoupler &coupler , real dt , real etime ) {
+  void timeStep( PamCoupler &coupler , real dt ) {
     if (first_step) {
       if (coupler.get_option<std::string>("sgs") == "shoc") sgs_shoc = true;
     }

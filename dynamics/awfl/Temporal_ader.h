@@ -77,7 +77,7 @@ public:
   }
 
 
-  void timeStep( PamCoupler &coupler , real dtphys , real etime ) {
+  void timeStep( PamCoupler &coupler , real dtphys ) {
     YAKL_SCOPE( stateTend       , this->stateTend           );
     YAKL_SCOPE( tracerTend      , this->tracerTend          );
     YAKL_SCOPE( hyDensCells     , this->space_op.hyDensCells);
@@ -176,10 +176,9 @@ public:
 
       if (coupler.dycore_functions.size() > 0) {
         space_op.convert_dynamics_to_coupler_state( coupler , state , tracers );
-        for (int i=0; i < coupler.dycore_functions.size(); i++) {
-          auto &func = coupler.dycore_functions[i];
-          func(coupler , dt);
-        }
+
+        coupler.run_dycore_functions( dt );
+
         space_op.convert_coupler_state_to_dynamics( coupler , state , tracers );
       }
 

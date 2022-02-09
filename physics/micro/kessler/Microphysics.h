@@ -103,7 +103,7 @@ public:
 
 
 
-  void timeStep( PamCoupler &coupler , real dt , real etime ) const {
+  void timeStep( PamCoupler &coupler , real dt ) const {
     auto rho_v        = coupler.dm.get_lev_col<real      >("water_vapor");
     auto rho_c        = coupler.dm.get_lev_col<real      >("cloud_liquid");
     auto rho_r        = coupler.dm.get_lev_col<real      >("precip_liquid");

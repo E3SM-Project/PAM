@@ -8,8 +8,6 @@
 
 // Force column-averaged CRM density very strictly to match the GCM density
 inline void gcm_density_forcing( PamCoupler &coupler , real dt ) {
-  if ( coupler.get_option<std::string>("density_forcing") != "strict" ) return;
-
   using yakl::atomicAdd;
   auto &dm = coupler.dm;
 
