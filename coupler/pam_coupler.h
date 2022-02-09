@@ -251,7 +251,7 @@ namespace pam {
                     << dt_crm << " seconds and wrote to the following coupler entries: ";
           for (int e=0; e < dirty_entry_names.size(); e++) {
             std::cout << dirty_entry_names[e];
-            if (e <= dirty_entry_names.size()-1) std::cout << ", ";
+            if (e < dirty_entry_names.size()-1) std::cout << ", ";
           }
           std::cout << "\n\n";
         #endif
@@ -277,7 +277,7 @@ namespace pam {
                     << dt_dycore << " seconds and wrote to the following coupler entries: ";
           for (int e=0; e < dirty_entry_names.size(); e++) {
             std::cout << dirty_entry_names[e];
-            if (e <= dirty_entry_names.size()-1) std::cout << ", ";
+            if (e < dirty_entry_names.size()-1) std::cout << ", ";
           }
           std::cout << "\n\n";
         #endif
