@@ -67,6 +67,7 @@ int main(int argc, char** argv) {
     // Allocates the coupler state (density_dry, uvel, vvel, wvel, temp, vert grid, hydro background) for thread 0
     mmf_interface::allocate_coupler_state( crm_nz , crm_ny , crm_nx , nens );
 
+    // NORMALLY THIS WOULD BE DONE INSIDE THE CRM, BUT WE'RE USING CONSTANTS DEFINED BY THE CRM MICRO SCHEME
     // Create the dycore and the microphysics
     Dycore       dycore;
     Microphysics micro;
@@ -88,6 +89,7 @@ int main(int argc, char** argv) {
     ///////////////////////////////////////////////////////////////////////////////
     // This is the end of the mmf_interface code. Using coupler directly from here
     ///////////////////////////////////////////////////////////////////////////////
+
     auto &coupler = mmf_interface::get_coupler();
 
     // Initialize the microphysics
@@ -101,6 +103,7 @@ int main(int argc, char** argv) {
       std::cout << "Dycore: " << dycore.dycore_name() << std::endl;
       std::cout << "Micro : " << micro .micro_name () << std::endl;
       std::cout << "SGS   : " << sgs   .sgs_name   () << std::endl;
+      std::cout << "\n";
     #endif
 
     // Only for the idealized standalone driver; clearly not going to be used for the MMF driver
@@ -152,17 +155,25 @@ int main(int argc, char** argv) {
 
     if (forcing_at_dycore_time_step) {
       if ( coupler.get_option<std::string>("density_forcing") == "strict" ) {
-        coupler.add_dycore_function( "gcm_density_forcing"          , gcm_density_forcing          );
+        coupler.add_dycore_function( "gcm_density_forcing" , gcm_density_forcing );
       }
       coupler.add_dycore_function( "apply_gcm_forcing_tendencies" , apply_gcm_forcing_tendencies );
       coupler.add_dycore_function( "sponge_layer"                 , sponge_layer                 );
     } else {
       if ( coupler.get_option<std::string>("density_forcing") == "strict" ) {
-        coupler.add_mmf_function( "gcm_density_forcing"          , gcm_density_forcing          );
+        coupler.add_mmf_function( "gcm_density_forcing" , gcm_density_forcing );
       }
       coupler.add_mmf_function( "apply_gcm_forcing_tendencies" , apply_gcm_forcing_tendencies );
       coupler.add_mmf_function( "sponge_layer"                 , sponge_layer                 );
     }
+
+    std::cout << "The following functions are called at the MMF time step:\n";
+    coupler.print_mmf_functions();
+    std::cout << "\n";
+
+    std::cout << "The following functions are called within the dycore at the dycore time step:\n";
+    coupler.print_dycore_functions();
+    std::cout << "\n";
 
     real etime_gcm = 0;
     int numOut = 0;
@@ -181,7 +192,19 @@ int main(int argc, char** argv) {
         if (dt_crm == 0.) { dt_crm = dycore.compute_time_step(coupler); }
         if (etime_crm + dt_crm > simTime_crm) { dt_crm = simTime_crm - etime_crm; }
 
-        coupler.run_mmf_functions( dt_crm );
+        // You can run things this way:
+        coupler.run_mmf_function( "sgs"    , dt_crm );
+        coupler.run_mmf_function( "micro"  , dt_crm );
+        // Dycore runs all functions added via coupler.add_dycore_function in the order they were added after
+        //   each dycore time step
+        coupler.run_mmf_function( "dycore" , dt_crm );
+        if (! forcing_at_dycore_time_step) {
+          coupler.run_mmf_function( "apply_gcm_forcing_tendencies" , dt_crm );
+          coupler.run_mmf_function( "sponge_layer"                 , dt_crm );
+        }
+
+        // OR you can run it this way, which does the same thing:
+        // coupler.run_mmf_functions(dt_crm);
 
         etime_crm += dt_crm;
         etime_gcm += dt_crm;
