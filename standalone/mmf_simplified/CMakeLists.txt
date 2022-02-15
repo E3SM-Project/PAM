@@ -92,8 +92,8 @@ include(${YAKL_HOME}/yakl_utils.cmake)
 yakl_process_target(driver)
 
 if (${USE_SCREAM})
-  target_link_libraries(scream_common)
+  target_link_libraries(scream_common physics_share p3 shoc)
 endif()
-target_link_libraries(driver dycore micro sgs physics_share p3 shoc ${NCFLAGS})
+target_link_libraries(driver dycore micro sgs ${NCFLAGS})
 
 

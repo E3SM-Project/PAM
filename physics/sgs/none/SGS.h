@@ -25,7 +25,7 @@ public:
 
 
 
-  void timeStep( PamCoupler &coupler , real dt , real etime ) {
+  void timeStep( PamCoupler &coupler , real dt ) {
   }
 
 
