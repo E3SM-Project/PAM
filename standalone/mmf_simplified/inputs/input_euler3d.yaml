@@ -48,7 +48,7 @@ outFreq: 20.
 density_forcing: loose
 
 # If true, GCM forcing is applied at the finest dycore time step; otherwise at coarser CRM physics time step
-forcing_at_dycore_time_step: true
+forcing_at_dycore_time_step: false
 
 # Whether or not to advect TKE in SGS scheme
 advect_tke: true
