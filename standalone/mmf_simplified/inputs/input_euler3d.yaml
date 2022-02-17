@@ -3,7 +3,7 @@
 # simTime  : 28800    # 8 hours
 # simTime  : 86400    # 1 day
 # simTime  : 432000   # 5 days
-simTime  : 1800    # 30 min
+simTime  : 3600   # 30 min
 
 # Number of cells to use in the CRMs
 crm_nx   : 128
@@ -42,7 +42,7 @@ dt_gcm: 900
 dt_crm_phys: 0.
 
 # Output frequency in seconds
-outFreq: 20.
+outFreq: -1.
 
 # Specify how to force density from the GCM (loose, strict, or off)
 density_forcing: loose
