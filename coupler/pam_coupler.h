@@ -6,6 +6,7 @@
 #include "vertical_interp.h"
 #include "YAKL_netcdf.h"
 #include "Options.h"
+#include "ArrayIR.h"
 
 
 namespace pam {
@@ -83,6 +84,35 @@ namespace pam {
 
   YAKL_INLINE real compute_pressure( real rho_d, real rho_v, real T, real R_d, real R_v ) {
     return rho_d*R_d*T + rho_v*R_v*T;
+  }
+
+
+
+  template <class T, int N, int memSpace>
+  inline ArrayIR<T,N> yakl_array_to_arrayIR( yakl::Array<T,N,memSpace,yakl::styleC> const &array ) {
+    if (! array.is_initialized()) {
+      yakl_throw("Error: converting non-initialized Array object into ArrayIR is not allowed");
+    }
+    std::vector<unsigned int> dims(N);
+    for (int i=0; i < N; i++) { dims[i] = array.dimension[i]; }
+    int memory_space;
+    if      (memSpace == yakl::memHost  ) { memory_space = ArrayIR::memHost  ; }
+    else if (memSpace == yakl::memDevice) { memory_space = ArrayIR::memDevice; }
+    #ifdef YAKL_DEBUG
+      return ArrayIR<T,N>( array.data , dims , memory_space , array.myname );
+    #else
+      return ArrayIR<T,N>( array.data , dims , memory_space );
+    #endif
+  }
+
+
+
+  template <class T, int N, int memSpace>
+  inline yakl::Array<T,N,memSpace,yakl::styleC> arrayIR_to_yakl_array( ArrayIR<T,N> const &arrayIR ) {
+    if (! arrayIR.is_initialized()) {
+      yakl_throw("Error: converting non-initialized ArrayIR object into Array is not allowed");
+    }
+    return yakl::Array<T,N,memSpace,yakl::styleC>( arrayIR.get_label() , arrayIR.get_data() , arrayIR.get_dims() );
   }
 
 

@@ -341,117 +341,171 @@ public:
       shoc_presi  (k,i) = pres_int(k_shoc,i);
     });
 
-    auto shoc_host_dx_host     = shoc_host_dx    .createHostCopy();
-    auto shoc_host_dy_host     = shoc_host_dy    .createHostCopy();
-    auto shoc_zt_grid_host     = shoc_zt_grid    .createHostCopy();
-    auto shoc_zi_grid_host     = shoc_zi_grid    .createHostCopy();
-    auto shoc_pres_host        = shoc_pres       .createHostCopy();
-    auto shoc_presi_host       = shoc_presi      .createHostCopy();
-    auto shoc_pdel_host        = shoc_pdel       .createHostCopy();
-    auto shoc_thv_host         = shoc_thv        .createHostCopy();
-    auto shoc_w_field_host     = shoc_w_field    .createHostCopy();
-    auto shoc_wthl_sfc_host    = shoc_wthl_sfc   .createHostCopy();
-    auto shoc_wqw_sfc_host     = shoc_wqw_sfc    .createHostCopy();
-    auto shoc_uw_sfc_host      = shoc_uw_sfc     .createHostCopy();
-    auto shoc_vw_sfc_host      = shoc_vw_sfc     .createHostCopy();
-    auto shoc_wtracer_sfc_host = shoc_wtracer_sfc.createHostCopy();
-    auto shoc_exner_host       = shoc_exner      .createHostCopy();
-    auto shoc_inv_exner_host   = shoc_inv_exner  .createHostCopy();
-    auto shoc_phis_host        = shoc_phis       .createHostCopy();
-    auto shoc_host_dse_host    = shoc_host_dse   .createHostCopy();
-    auto shoc_tke_host         = shoc_tke        .createHostCopy();
-    auto shoc_thetal_host      = shoc_thetal     .createHostCopy();
-    auto shoc_qw_host          = shoc_qw         .createHostCopy();
-    auto shoc_u_wind_host      = shoc_u_wind     .createHostCopy();
-    auto shoc_v_wind_host      = shoc_v_wind     .createHostCopy();
-    auto shoc_wthv_sec_host    = shoc_wthv_sec   .createHostCopy();
-    auto shoc_qtracers_host    = shoc_qtracers   .createHostCopy();
-    auto shoc_tk_host          = shoc_tk         .createHostCopy();
-    auto shoc_tkh_host         = shoc_tkh        .createHostCopy();
-    auto shoc_cldfrac_host     = shoc_cldfrac    .createHostCopy();
-    auto shoc_ql_host          = shoc_ql         .createHostCopy();
-    auto shoc_pblh_host        = shoc_pblh       .createHostCopy();
-    auto shoc_ql2_host         = shoc_ql2        .createHostCopy();
-    auto shoc_mix_host         = shoc_mix        .createHostCopy();
-    auto shoc_w_sec_host       = shoc_w_sec      .createHostCopy();
-    auto shoc_thl_sec_host     = shoc_thl_sec    .createHostCopy();
-    auto shoc_qw_sec_host      = shoc_qw_sec     .createHostCopy();
-    auto shoc_qwthl_sec_host   = shoc_qwthl_sec  .createHostCopy();
-    auto shoc_wthl_sec_host    = shoc_wthl_sec   .createHostCopy();
-    auto shoc_wqw_sec_host     = shoc_wqw_sec    .createHostCopy();
-    auto shoc_wtke_sec_host    = shoc_wtke_sec   .createHostCopy();
-    auto shoc_uw_sec_host      = shoc_uw_sec     .createHostCopy();
-    auto shoc_vw_sec_host      = shoc_vw_sec     .createHostCopy();
-    auto shoc_w3_host          = shoc_w3         .createHostCopy();
-    auto shoc_wqls_sec_host    = shoc_wqls_sec   .createHostCopy();
-    auto shoc_brunt_host       = shoc_brunt      .createHostCopy();
-    auto shoc_isotropy_host    = shoc_isotropy   .createHostCopy();
+    #if 0
 
-    int nadv = 1;
-    int nzp1 = nz+1;
-    // IMPORTANT: SHOC appears to actually want 1/exner for the exner parameter
-    shoc_main_fortran( ncol, nz, nzp1, dt, nadv, 
-                       shoc_host_dx_host.data(), shoc_host_dy_host.data(), shoc_thv_host.data(), 
-                       shoc_zt_grid_host.data(), shoc_zi_grid_host.data(), shoc_pres_host.data(), shoc_presi_host.data(), shoc_pdel_host.data(),
-                       shoc_wthl_sfc_host.data(), shoc_wqw_sfc_host.data(), shoc_uw_sfc_host.data(), shoc_vw_sfc_host.data(), 
-                       shoc_wtracer_sfc_host.data(), num_qtracers, shoc_w_field_host.data(), 
-                       shoc_inv_exner_host.data(), shoc_phis_host.data(), 
-                       shoc_host_dse_host.data(), shoc_tke_host.data(), shoc_thetal_host.data(), shoc_qw_host.data(), 
-                       shoc_u_wind_host.data(), shoc_v_wind_host.data(), shoc_qtracers_host.data(),
-                       shoc_wthv_sec_host.data(), shoc_tkh_host.data(), shoc_tk_host.data(),
-                       shoc_ql_host.data(), shoc_cldfrac_host.data(),
-                       shoc_pblh_host.data(),
-                       shoc_mix_host.data(), shoc_isotropy_host.data(),
-                       shoc_w_sec_host.data(), shoc_thl_sec_host.data(), shoc_qw_sec_host.data(), shoc_qwthl_sec_host.data(),
-                       shoc_wthl_sec_host.data(), shoc_wqw_sec_host.data(), shoc_wtke_sec_host.data(),
-                       shoc_uw_sec_host.data(), shoc_vw_sec_host.data(), shoc_w3_host.data(),
-                       shoc_wqls_sec_host.data(), shoc_brunt_host.data(), shoc_ql2_host.data() );
+      auto shoc_host_dx_host     = shoc_host_dx    .createHostCopy();
+      auto shoc_host_dy_host     = shoc_host_dy    .createHostCopy();
+      auto shoc_zt_grid_host     = shoc_zt_grid    .createHostCopy();
+      auto shoc_zi_grid_host     = shoc_zi_grid    .createHostCopy();
+      auto shoc_pres_host        = shoc_pres       .createHostCopy();
+      auto shoc_presi_host       = shoc_presi      .createHostCopy();
+      auto shoc_pdel_host        = shoc_pdel       .createHostCopy();
+      auto shoc_thv_host         = shoc_thv        .createHostCopy();
+      auto shoc_w_field_host     = shoc_w_field    .createHostCopy();
+      auto shoc_wthl_sfc_host    = shoc_wthl_sfc   .createHostCopy();
+      auto shoc_wqw_sfc_host     = shoc_wqw_sfc    .createHostCopy();
+      auto shoc_uw_sfc_host      = shoc_uw_sfc     .createHostCopy();
+      auto shoc_vw_sfc_host      = shoc_vw_sfc     .createHostCopy();
+      auto shoc_wtracer_sfc_host = shoc_wtracer_sfc.createHostCopy();
+      auto shoc_exner_host       = shoc_exner      .createHostCopy();
+      auto shoc_inv_exner_host   = shoc_inv_exner  .createHostCopy();
+      auto shoc_phis_host        = shoc_phis       .createHostCopy();
+      auto shoc_host_dse_host    = shoc_host_dse   .createHostCopy();
+      auto shoc_tke_host         = shoc_tke        .createHostCopy();
+      auto shoc_thetal_host      = shoc_thetal     .createHostCopy();
+      auto shoc_qw_host          = shoc_qw         .createHostCopy();
+      auto shoc_u_wind_host      = shoc_u_wind     .createHostCopy();
+      auto shoc_v_wind_host      = shoc_v_wind     .createHostCopy();
+      auto shoc_wthv_sec_host    = shoc_wthv_sec   .createHostCopy();
+      auto shoc_qtracers_host    = shoc_qtracers   .createHostCopy();
+      auto shoc_tk_host          = shoc_tk         .createHostCopy();
+      auto shoc_tkh_host         = shoc_tkh        .createHostCopy();
+      auto shoc_cldfrac_host     = shoc_cldfrac    .createHostCopy();
+      auto shoc_ql_host          = shoc_ql         .createHostCopy();
+      auto shoc_pblh_host        = shoc_pblh       .createHostCopy();
+      auto shoc_ql2_host         = shoc_ql2        .createHostCopy();
+      auto shoc_mix_host         = shoc_mix        .createHostCopy();
+      auto shoc_w_sec_host       = shoc_w_sec      .createHostCopy();
+      auto shoc_thl_sec_host     = shoc_thl_sec    .createHostCopy();
+      auto shoc_qw_sec_host      = shoc_qw_sec     .createHostCopy();
+      auto shoc_qwthl_sec_host   = shoc_qwthl_sec  .createHostCopy();
+      auto shoc_wthl_sec_host    = shoc_wthl_sec   .createHostCopy();
+      auto shoc_wqw_sec_host     = shoc_wqw_sec    .createHostCopy();
+      auto shoc_wtke_sec_host    = shoc_wtke_sec   .createHostCopy();
+      auto shoc_uw_sec_host      = shoc_uw_sec     .createHostCopy();
+      auto shoc_vw_sec_host      = shoc_vw_sec     .createHostCopy();
+      auto shoc_w3_host          = shoc_w3         .createHostCopy();
+      auto shoc_wqls_sec_host    = shoc_wqls_sec   .createHostCopy();
+      auto shoc_brunt_host       = shoc_brunt      .createHostCopy();
+      auto shoc_isotropy_host    = shoc_isotropy   .createHostCopy();
 
-    shoc_host_dx_host    .deep_copy_to(shoc_host_dx    );
-    shoc_host_dy_host    .deep_copy_to(shoc_host_dy    );
-    shoc_zt_grid_host    .deep_copy_to(shoc_zt_grid    );
-    shoc_zi_grid_host    .deep_copy_to(shoc_zi_grid    );
-    shoc_pres_host       .deep_copy_to(shoc_pres       );
-    shoc_presi_host      .deep_copy_to(shoc_presi      );
-    shoc_pdel_host       .deep_copy_to(shoc_pdel       );
-    shoc_thv_host        .deep_copy_to(shoc_thv        );
-    shoc_w_field_host    .deep_copy_to(shoc_w_field    );
-    shoc_wthl_sfc_host   .deep_copy_to(shoc_wthl_sfc   );
-    shoc_wqw_sfc_host    .deep_copy_to(shoc_wqw_sfc    );
-    shoc_uw_sfc_host     .deep_copy_to(shoc_uw_sfc     );
-    shoc_vw_sfc_host     .deep_copy_to(shoc_vw_sfc     );
-    shoc_wtracer_sfc_host.deep_copy_to(shoc_wtracer_sfc);
-    shoc_exner_host      .deep_copy_to(shoc_exner      );
-    shoc_inv_exner_host  .deep_copy_to(shoc_inv_exner  );
-    shoc_phis_host       .deep_copy_to(shoc_phis       );
-    shoc_host_dse_host   .deep_copy_to(shoc_host_dse   );
-    shoc_tke_host        .deep_copy_to(shoc_tke        );
-    shoc_thetal_host     .deep_copy_to(shoc_thetal     );
-    shoc_qw_host         .deep_copy_to(shoc_qw         );
-    shoc_u_wind_host     .deep_copy_to(shoc_u_wind     );
-    shoc_v_wind_host     .deep_copy_to(shoc_v_wind     );
-    shoc_wthv_sec_host   .deep_copy_to(shoc_wthv_sec   );
-    shoc_qtracers_host   .deep_copy_to(shoc_qtracers   );
-    shoc_tk_host         .deep_copy_to(shoc_tk         );
-    shoc_tkh_host        .deep_copy_to(shoc_tkh        );
-    shoc_cldfrac_host    .deep_copy_to(shoc_cldfrac    );
-    shoc_ql_host         .deep_copy_to(shoc_ql         );
-    shoc_pblh_host       .deep_copy_to(shoc_pblh       );
-    shoc_ql2_host        .deep_copy_to(shoc_ql2        );
-    shoc_mix_host        .deep_copy_to(shoc_mix        );
-    shoc_w_sec_host      .deep_copy_to(shoc_w_sec      );
-    shoc_thl_sec_host    .deep_copy_to(shoc_thl_sec    );
-    shoc_qw_sec_host     .deep_copy_to(shoc_qw_sec     );
-    shoc_qwthl_sec_host  .deep_copy_to(shoc_qwthl_sec  );
-    shoc_wthl_sec_host   .deep_copy_to(shoc_wthl_sec   );
-    shoc_wqw_sec_host    .deep_copy_to(shoc_wqw_sec    );
-    shoc_wtke_sec_host   .deep_copy_to(shoc_wtke_sec   );
-    shoc_uw_sec_host     .deep_copy_to(shoc_uw_sec     );
-    shoc_vw_sec_host     .deep_copy_to(shoc_vw_sec     );
-    shoc_w3_host         .deep_copy_to(shoc_w3         );
-    shoc_wqls_sec_host   .deep_copy_to(shoc_wqls_sec   );
-    shoc_brunt_host      .deep_copy_to(shoc_brunt      );
-    shoc_isotropy_host   .deep_copy_to(shoc_isotropy   );
+      int nadv = 1;
+      int nzp1 = nz+1;
+      // IMPORTANT: SHOC appears to actually want 1/exner for the exner parameter
+      shoc_main_fortran( ncol, nz, nzp1, dt, nadv, 
+                         shoc_host_dx_host.data(), shoc_host_dy_host.data(), shoc_thv_host.data(), 
+                         shoc_zt_grid_host.data(), shoc_zi_grid_host.data(), shoc_pres_host.data(), shoc_presi_host.data(), shoc_pdel_host.data(),
+                         shoc_wthl_sfc_host.data(), shoc_wqw_sfc_host.data(), shoc_uw_sfc_host.data(), shoc_vw_sfc_host.data(), 
+                         shoc_wtracer_sfc_host.data(), num_qtracers, shoc_w_field_host.data(), 
+                         shoc_inv_exner_host.data(), shoc_phis_host.data(), 
+                         shoc_host_dse_host.data(), shoc_tke_host.data(), shoc_thetal_host.data(), shoc_qw_host.data(), 
+                         shoc_u_wind_host.data(), shoc_v_wind_host.data(), shoc_qtracers_host.data(),
+                         shoc_wthv_sec_host.data(), shoc_tkh_host.data(), shoc_tk_host.data(),
+                         shoc_ql_host.data(), shoc_cldfrac_host.data(),
+                         shoc_pblh_host.data(),
+                         shoc_mix_host.data(), shoc_isotropy_host.data(),
+                         shoc_w_sec_host.data(), shoc_thl_sec_host.data(), shoc_qw_sec_host.data(), shoc_qwthl_sec_host.data(),
+                         shoc_wthl_sec_host.data(), shoc_wqw_sec_host.data(), shoc_wtke_sec_host.data(),
+                         shoc_uw_sec_host.data(), shoc_vw_sec_host.data(), shoc_w3_host.data(),
+                         shoc_wqls_sec_host.data(), shoc_brunt_host.data(), shoc_ql2_host.data() );
+
+      shoc_host_dx_host    .deep_copy_to(shoc_host_dx    );
+      shoc_host_dy_host    .deep_copy_to(shoc_host_dy    );
+      shoc_zt_grid_host    .deep_copy_to(shoc_zt_grid    );
+      shoc_zi_grid_host    .deep_copy_to(shoc_zi_grid    );
+      shoc_pres_host       .deep_copy_to(shoc_pres       );
+      shoc_presi_host      .deep_copy_to(shoc_presi      );
+      shoc_pdel_host       .deep_copy_to(shoc_pdel       );
+      shoc_thv_host        .deep_copy_to(shoc_thv        );
+      shoc_w_field_host    .deep_copy_to(shoc_w_field    );
+      shoc_wthl_sfc_host   .deep_copy_to(shoc_wthl_sfc   );
+      shoc_wqw_sfc_host    .deep_copy_to(shoc_wqw_sfc    );
+      shoc_uw_sfc_host     .deep_copy_to(shoc_uw_sfc     );
+      shoc_vw_sfc_host     .deep_copy_to(shoc_vw_sfc     );
+      shoc_wtracer_sfc_host.deep_copy_to(shoc_wtracer_sfc);
+      shoc_exner_host      .deep_copy_to(shoc_exner      );
+      shoc_inv_exner_host  .deep_copy_to(shoc_inv_exner  );
+      shoc_phis_host       .deep_copy_to(shoc_phis       );
+      shoc_host_dse_host   .deep_copy_to(shoc_host_dse   );
+      shoc_tke_host        .deep_copy_to(shoc_tke        );
+      shoc_thetal_host     .deep_copy_to(shoc_thetal     );
+      shoc_qw_host         .deep_copy_to(shoc_qw         );
+      shoc_u_wind_host     .deep_copy_to(shoc_u_wind     );
+      shoc_v_wind_host     .deep_copy_to(shoc_v_wind     );
+      shoc_wthv_sec_host   .deep_copy_to(shoc_wthv_sec   );
+      shoc_qtracers_host   .deep_copy_to(shoc_qtracers   );
+      shoc_tk_host         .deep_copy_to(shoc_tk         );
+      shoc_tkh_host        .deep_copy_to(shoc_tkh        );
+      shoc_cldfrac_host    .deep_copy_to(shoc_cldfrac    );
+      shoc_ql_host         .deep_copy_to(shoc_ql         );
+      shoc_pblh_host       .deep_copy_to(shoc_pblh       );
+      shoc_ql2_host        .deep_copy_to(shoc_ql2        );
+      shoc_mix_host        .deep_copy_to(shoc_mix        );
+      shoc_w_sec_host      .deep_copy_to(shoc_w_sec      );
+      shoc_thl_sec_host    .deep_copy_to(shoc_thl_sec    );
+      shoc_qw_sec_host     .deep_copy_to(shoc_qw_sec     );
+      shoc_qwthl_sec_host  .deep_copy_to(shoc_qwthl_sec  );
+      shoc_wthl_sec_host   .deep_copy_to(shoc_wthl_sec   );
+      shoc_wqw_sec_host    .deep_copy_to(shoc_wqw_sec    );
+      shoc_wtke_sec_host   .deep_copy_to(shoc_wtke_sec   );
+      shoc_uw_sec_host     .deep_copy_to(shoc_uw_sec     );
+      shoc_vw_sec_host     .deep_copy_to(shoc_vw_sec     );
+      shoc_w3_host         .deep_copy_to(shoc_w3         );
+      shoc_wqls_sec_host   .deep_copy_to(shoc_wqls_sec   );
+      shoc_brunt_host      .deep_copy_to(shoc_brunt      );
+      shoc_isotropy_host   .deep_copy_to(shoc_isotropy   );
+
+    #else
+
+      shoc_from_pam( ncol, nz, nzp1, dt, nadv, 
+                     yakl_array_to_arrayIR( shoc_host_dx_host     ),
+                     yakl_array_to_arrayIR( shoc_host_dy_host     ),
+                     yakl_array_to_arrayIR( shoc_thv_host         ),
+                     yakl_array_to_arrayIR( shoc_zt_grid_host     ),
+                     yakl_array_to_arrayIR( shoc_zi_grid_host     ),
+                     yakl_array_to_arrayIR( shoc_pres_host        ),
+                     yakl_array_to_arrayIR( shoc_presi_host       ),
+                     yakl_array_to_arrayIR( shoc_pdel_host        ),
+                     yakl_array_to_arrayIR( shoc_wthl_sfc_host    ),
+                     yakl_array_to_arrayIR( shoc_wqw_sfc_host     ),
+                     yakl_array_to_arrayIR( shoc_uw_sfc_host      ),
+                     yakl_array_to_arrayIR( shoc_vw_sfc_host      ),
+                     yakl_array_to_arrayIR( shoc_wtracer_sfc_host ),
+                                       num_qtracers,
+                     yakl_array_to_arrayIR( shoc_w_field_host     ),
+                     yakl_array_to_arrayIR( shoc_inv_exner_host   ),
+                     yakl_array_to_arrayIR( shoc_phis_host        ),
+                     yakl_array_to_arrayIR( shoc_host_dse_host    ),
+                     yakl_array_to_arrayIR( shoc_tke_host         ),
+                     yakl_array_to_arrayIR( shoc_thetal_host      ),
+                     yakl_array_to_arrayIR( shoc_qw_host          ),
+                     yakl_array_to_arrayIR( shoc_u_wind_host      ),
+                     yakl_array_to_arrayIR( shoc_v_wind_host      ),
+                     yakl_array_to_arrayIR( shoc_qtracers_host    ),
+                     yakl_array_to_arrayIR( shoc_wthv_sec_host    ),
+                     yakl_array_to_arrayIR( shoc_tkh_host         ),
+                     yakl_array_to_arrayIR( shoc_tk_host          ),
+                     yakl_array_to_arrayIR( shoc_ql_host          ),
+                     yakl_array_to_arrayIR( shoc_cldfrac_host     ),
+                     yakl_array_to_arrayIR( shoc_pblh_host        ),
+                     yakl_array_to_arrayIR( shoc_mix_host         ),
+                     yakl_array_to_arrayIR( shoc_isotropy_host    ),
+                     yakl_array_to_arrayIR( shoc_w_sec_host       ),
+                     yakl_array_to_arrayIR( shoc_thl_sec_host     ),
+                     yakl_array_to_arrayIR( shoc_qw_sec_host      ),
+                     yakl_array_to_arrayIR( shoc_qwthl_sec_host   ),
+                     yakl_array_to_arrayIR( shoc_wthl_sec_host    ),
+                     yakl_array_to_arrayIR( shoc_wqw_sec_host     ),
+                     yakl_array_to_arrayIR( shoc_wtke_sec_host    ),
+                     yakl_array_to_arrayIR( shoc_uw_sec_host      ),
+                     yakl_array_to_arrayIR( shoc_vw_sec_host      ),
+                     yakl_array_to_arrayIR( shoc_w3_host          ),
+                     yakl_array_to_arrayIR( shoc_wqls_sec_host    ),
+                     yakl_array_to_arrayIR( shoc_brunt_host       ),
+                     yakl_array_to_arrayIR( shoc_ql2_host         )
+                   );
+
+    #endif
 
     // Process outputs from SHOC (reordering the vertical dimension)
     parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
