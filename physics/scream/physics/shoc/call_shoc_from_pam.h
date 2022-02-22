@@ -256,6 +256,45 @@ namespace pam {
     typename ekat::KokkosTypes<Device>::view_2d<Spack>  SHOCHistoryOutput_brunt    ("SHOCHistoryOutput_brunt    " , ncol , nlev  );
     typename ekat::KokkosTypes<Device>::view_2d<Spack>  SHOCHistoryOutput_isotropy ("SHOCHistoryOutput_isotropy " , ncol , nlev  );
 
+    // Initialize the inputs
+    Kokkos::parallel_for( Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0},{ncol,nlevi}) , KOKKOS_LAMBDA (int i, int k) {
+      SHOCInput_zi_grid(i,k) = zi_grid(k,i);
+      SHOCInput_presi  (i,k) = presi  (k,i);
+      if (k < nlev) {
+        SHOCInput_zt_grid           (i  ,k) = zt_grid     (k,i);
+        SHOCInput_pres              (i  ,k) = pres        (k,i);
+        SHOCInput_pdel              (i  ,k) = pdel        (k,i);
+        SHOCInput_thv               (i  ,k) = thv         (k,i);
+        SHOCInput_w_field           (i  ,k) = w_field     (k,i);
+        SHOCInput_inv_exner         (i  ,k) = inv_exner   (k,i);
+        SHOCInputOutput_host_dse    (i  ,k) = host_dse    (k,i);
+        SHOCInputOutput_tke         (i  ,k) = tke         (k,i);
+        SHOCInputOutput_thetal      (i  ,k) = thetal      (k,i);
+        SHOCInputOutput_qw          (i  ,k) = qw          (k,i);
+        SHOCInputOutput_horiz_wind  (i,0,k) = u_wind      (k,i);
+        SHOCInputOutput_horiz_wind  (i,1,k) = v_wind      (k,i);
+        SHOCInputOutput_wthv_sec    (i  ,k) = wthv_sec    (k,i);
+        SHOCInputOutput_tk          (i  ,k) = tk          (k,i);
+        SHOCInputOutput_shoc_cldfrac(i  ,k) = cldfrac     (k,i);
+        SHOCInputOutput_shoc_ql     (i  ,k) = ql          (k,i);
+        for (int tr = 0; tr < num_qtracers; tr++) {
+          SHOCInputOutput_qtracers(i,tr,k) = qtracers(tr,k,i);
+        }
+      }
+      if (k == 0) {
+        SHOCInput_dx      (i) = host_dx (i);
+        SHOCInput_dy      (i) = host_dy (i);
+        SHOCInput_wthl_sfc(i) = wthl_sfc(i);
+        SHOCInput_wqw_sfc (i) = wqw_sfc (i);
+        SHOCInput_uw_sfc  (i) = uw_sfc  (i);
+        SHOCInput_vw_sfc  (i) = vw_sfc  (i);
+        SHOCInput_phis    (i) = phis    (i);
+        for (int tr = 0; tr < num_qtracers; tr++) {
+          SHOCInput_wtracer_sfc(i,tr) = wtracer_sfc(tr,i);
+        }
+      }
+    });
+
     // Create the structs used by SHOC main
     SHOCInput         shoc_in   ;
     SHOCInputOutput   shoc_inout;
