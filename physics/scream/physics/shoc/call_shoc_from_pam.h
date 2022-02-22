@@ -73,8 +73,9 @@ namespace pam {
   }
 
 
+  // TODO: Change this to only accept IRMemDevice
   template <class real, int memSpace>
-  void call_shoc_from_pam( int ncol, int nz, int nzp1, real dt, int nadv, int num_qtracers,
+  void call_shoc_from_pam( int ncol, int nlev, int nlevi, real dt, int nadv, int num_qtracers,
                            ArrayIR<real,1,memSpace> shoc_host_dx    ,
                            ArrayIR<real,1,memSpace> shoc_host_dy    ,
                            ArrayIR<real,2,memSpace> shoc_thv        ,
@@ -119,6 +120,7 @@ namespace pam {
                            ArrayIR<real,2,memSpace> shoc_wqls_sec   ,
                            ArrayIR<real,2,memSpace> shoc_brunt      ,
                            ArrayIR<real,2,memSpace> shoc_ql2        ) {
+    // Create some convenient types using ekat and shoc Functions
     typedef real                                          Scalar           ;
     typedef ekat::DefaultDevice                           Device           ;
     typedef typename scream::shoc::Functions<real,Device> Functions        ;
@@ -128,13 +130,10 @@ namespace pam {
     typedef typename Functions::SHOCOutput                SHOCOutput       ;
     typedef typename Functions::SHOCHistoryOutput         SHOCHistoryOutput;
 
-    int constexpr pack_size = SCREAM_SMALL_PACK_SIZE;
+    static_assert( SCREAM_SMALL_PACK_SIZE == 1 ,
+                   "ERROR: PAM's shoc integration isn't setup to deal with SCREAM_SMALL_PACK_SIZE > 1" );
 
-    SHOCInput         shoc_in   ;
-    SHOCInputOutput   shoc_inout;
-    SHOCOutput        shoc_out  ;
-    SHOCHistoryOutput shoc_hist ;
-
+    // Transform the PAM ArrayIR metadata and data pointers into Kokkos View objects of the appropriate dimensions
     auto host_dx     = arrayIR_to_kokkos_view( shoc_host_dx     );
     auto host_dy     = arrayIR_to_kokkos_view( shoc_host_dy     );
     auto thv         = arrayIR_to_kokkos_view( shoc_thv         );
@@ -180,33 +179,90 @@ namespace pam {
     auto brunt       = arrayIR_to_kokkos_view( shoc_brunt       );
     auto ql2         = arrayIR_to_kokkos_view( shoc_ql2         );
 
-    int npacks_z = (nz-1) / pack_size + 1;  // ceiling operation for the number of packs in the z-direction
+    // There appears to be no documentation in SHOC's C++ code about what the dimension ordering should be
+    // for variables within the SHOC* structs. I found the following in scream's shoc_functions_f90.cpp file
+    // which is the best I can gather at this point. It's pretty cumbersome having to sort through and match
+    // things up.
+    // std::vector<int> dim1_2d_sizes = {shcol, shcol, shcol, shcol, shcol,
+    //                                   shcol, shcol, shcol, shcol, shcol,
+    //                                   shcol, shcol, shcol, shcol, shcol,
+    //                                   shcol, shcol, shcol, shcol,
+    //                                   shcol, shcol, shcol, shcol, shcol,
+    //                                   shcol, shcol, shcol, shcol, shcol,
+    //                                   shcol, shcol, shcol, shcol, shcol};
+    // std::vector<int> dim2_2d_sizes = {nlev,  nlevi, nlev,         nlevi, nlev,
+    //                                   nlev,  nlev,  num_qtracers, nlev,  nlev,
+    //                                   nlev,  nlev,  nlev,         nlev,  nlev,
+    //                                   nlev,  nlev,  nlev,  nlev,
+    //                                   nlev,  nlev,  nlev,         nlevi, nlevi,
+    //                                   nlevi, nlevi, nlevi,        nlevi, nlevi,
+    //                                   nlevi, nlevi, nlev,         nlev,  nlev};
+    // std::vector<const Real*> ptr_array_1d = {host_dx, host_dy, wthl_sfc, wqw_sfc,
+    //                                          uw_sfc,  vw_sfc,  phis};
+    // std::vector<const Real*> ptr_array_2d = {zt_grid,   zi_grid,  pres,        presi,        pdel,
+    //                                          thv,       w_field,  wtracer_sfc, inv_exner,        host_dse,
+    //                                          tke,       thetal,   qw,          u_wind,       v_wind,
+    //                                          wthv_sec,  tk,       shoc_cldfrac, shoc_ql,
+    //                                          shoc_ql2,  shoc_mix, w_sec,       thl_sec,      qw_sec,
+    //                                          qwthl_sec, wthl_sec, wqw_sec,     wtke_sec,     uw_sec,
+    //                                          vw_sec,    w3,       wqls_sec,    brunt,        isotropy};
+    // view_3d horiz_wind_d("horiz_wind",shcol,2,nlev_packs);
+    // view_3d qtracers_cxx_d("qtracers",shcol,num_qtracers,nlev_packs);
 
-    /////////////////////////////////////////////////////////////////////
-    // INPUTS
-    /////////////////////////////////////////////////////////////////////
-    typename ekat::KokkosTypes<Device>::view_1d<Scalar> SHOCInput_dx         ( "dx"                         , ncol            );
-    typename ekat::KokkosTypes<Device>::view_1d<Scalar> SHOCInput_dy         ( "dy"                         , ncol            );
-    typename ekat::KokkosTypes<Device>::view_2d<Spack > SHOCInput_zt_grid    ( "zt_grid"                    , ncol , npacks_z );
-    typename ekat::KokkosTypes<Device>::view_2d<Spack > SHOCInput_zi_grid    ( "zi_grid"                    , ncol , npacks_z );
-    typename ekat::KokkosTypes<Device>::view_2d<Spack > SHOCInput_pres       ( "pres"                       , ncol , npacks_z );
-    typename ekat::KokkosTypes<Device>::view_2d<Spack > SHOCInput_presi      ( "presi"                      , ncol , npacks_z );
-    typename ekat::KokkosTypes<Device>::view_2d<Spack > SHOCInput_pdel       ( "pdel"                       , ncol , npacks_z );
-    typename ekat::KokkosTypes<Device>::view_2d<Spack > SHOCInput_thv        ( "thv"                        , ncol , npacks_z );
-    typename ekat::KokkosTypes<Device>::view_2d<Spack > SHOCInput_w_field    ( "w_field"                    , ncol , npacks_z );
-    typename ekat::KokkosTypes<Device>::view_1d<Scalar> SHOCInput_wthl_sfc   ( "wthl_sfc"                   , ncol            );
-    typename ekat::KokkosTypes<Device>::view_1d<Scalar> SHOCInput_wqw_sfc    ( "wqw_sfc"                    , ncol            );
-    typename ekat::KokkosTypes<Device>::view_1d<Scalar> SHOCInput_uw_sfc     ( "uw_sfc"                     , ncol            );
-    typename ekat::KokkosTypes<Device>::view_1d<Scalar> SHOCInput_vw_sfc     ( "vw_sfc"                     , ncol            );
-    typename ekat::KokkosTypes<Device>::view_2d<Spack > SHOCInput_wtracer_sfc( "wtracer_sfc" , num_qtracers , ncol            );  // TODO: Why is this a Spack?
-    typename ekat::KokkosTypes<Device>::view_2d<Spack > SHOCInput_inv_exner  ( "inv_exner"                  , ncol , npacks_z );
-    typename ekat::KokkosTypes<Device>::view_1d<Scalar> SHOCInput_phis       ( "phis"                       , ncol            );
+    // Create the Views that will be used in SHOC main
+    typename ekat::KokkosTypes<Device>::view_1d<Scalar> SHOCInput_dx         ( "SHOCInput_dx         " , ncol                );
+    typename ekat::KokkosTypes<Device>::view_1d<Scalar> SHOCInput_dy         ( "SHOCInput_dy         " , ncol                );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > SHOCInput_zt_grid    ( "SHOCInput_zt_grid    " , ncol , nlev         );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > SHOCInput_zi_grid    ( "SHOCInput_zi_grid    " , ncol , nlevi        );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > SHOCInput_pres       ( "SHOCInput_pres       " , ncol , nlev         );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > SHOCInput_presi      ( "SHOCInput_presi      " , ncol , nlevi        );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > SHOCInput_pdel       ( "SHOCInput_pdel       " , ncol , nlev         );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > SHOCInput_thv        ( "SHOCInput_thv        " , ncol , nlev         );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > SHOCInput_w_field    ( "SHOCInput_w_field    " , ncol , nlev         );
+    typename ekat::KokkosTypes<Device>::view_1d<Scalar> SHOCInput_wthl_sfc   ( "SHOCInput_wthl_sfc   " , ncol                );
+    typename ekat::KokkosTypes<Device>::view_1d<Scalar> SHOCInput_wqw_sfc    ( "SHOCInput_wqw_sfc    " , ncol                );
+    typename ekat::KokkosTypes<Device>::view_1d<Scalar> SHOCInput_uw_sfc     ( "SHOCInput_uw_sfc     " , ncol                );
+    typename ekat::KokkosTypes<Device>::view_1d<Scalar> SHOCInput_vw_sfc     ( "SHOCInput_vw_sfc     " , ncol                );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > SHOCInput_wtracer_sfc( "SHOCInput_wtracer_sfc" , ncol , num_qtracers );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > SHOCInput_inv_exner  ( "SHOCInput_inv_exner  " , ncol , nlev         );
+    typename ekat::KokkosTypes<Device>::view_1d<Scalar> SHOCInput_phis       ( "SHOCInput_phis       " , ncol                );
 
+    typename ekat::KokkosTypes<Device>::view_2d<Spack>  SHOCInputOutput_host_dse    ("SHOCInputOutput_host_dse    " , ncol                , nlev );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack>  SHOCInputOutput_tke         ("SHOCInputOutput_tke         " , ncol                , nlev );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack>  SHOCInputOutput_thetal      ("SHOCInputOutput_thetal      " , ncol                , nlev );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack>  SHOCInputOutput_qw          ("SHOCInputOutput_qw          " , ncol                , nlev );
+    typename ekat::KokkosTypes<Device>::view_3d<Spack>  SHOCInputOutput_horiz_wind  ("SHOCInputOutput_horiz_wind  " , ncol ,            2 , nlev );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack>  SHOCInputOutput_wthv_sec    ("SHOCInputOutput_wthv_sec    " , ncol                , nlev );
+    typename ekat::KokkosTypes<Device>::view_3d<Spack>  SHOCInputOutput_qtracers    ("SHOCInputOutput_qtracers    " , ncol , num_qtracers , nlev );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack>  SHOCInputOutput_tk          ("SHOCInputOutput_tk          " , ncol                , nlev );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack>  SHOCInputOutput_shoc_cldfrac("SHOCInputOutput_shoc_cldfrac" , ncol                , nlev );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack>  SHOCInputOutput_shoc_ql     ("SHOCInputOutput_shoc_ql     " , ncol                , nlev );
 
+    typename ekat::KokkosTypes<Device>::view_1d<Scalar> SHOCOutput_pblh    ("SHOCOutput_pblh    " , ncol        );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack>  SHOCOutput_shoc_ql2("SHOCOutput_shoc_ql2" , ncol , nlev );
 
+    typename ekat::KokkosTypes<Device>::view_2d<Spack>  SHOCHistoryOutput_shoc_mix ("SHOCHistoryOutput_shoc_mix " , ncol , nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack>  SHOCHistoryOutput_w_sec    ("SHOCHistoryOutput_w_sec    " , ncol , nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack>  SHOCHistoryOutput_thl_sec  ("SHOCHistoryOutput_thl_sec  " , ncol , nlevi );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack>  SHOCHistoryOutput_qw_sec   ("SHOCHistoryOutput_qw_sec   " , ncol , nlevi );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack>  SHOCHistoryOutput_qwthl_sec("SHOCHistoryOutput_qwthl_sec" , ncol , nlevi );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack>  SHOCHistoryOutput_wthl_sec ("SHOCHistoryOutput_wthl_sec " , ncol , nlevi );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack>  SHOCHistoryOutput_wqw_sec  ("SHOCHistoryOutput_wqw_sec  " , ncol , nlevi );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack>  SHOCHistoryOutput_wtke_sec ("SHOCHistoryOutput_wtke_sec " , ncol , nlevi );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack>  SHOCHistoryOutput_uw_sec   ("SHOCHistoryOutput_uw_sec   " , ncol , nlevi );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack>  SHOCHistoryOutput_vw_sec   ("SHOCHistoryOutput_vw_sec   " , ncol , nlevi );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack>  SHOCHistoryOutput_w3       ("SHOCHistoryOutput_w3       " , ncol , nlevi );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack>  SHOCHistoryOutput_wqls_sec ("SHOCHistoryOutput_wqls_sec " , ncol , nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack>  SHOCHistoryOutput_brunt    ("SHOCHistoryOutput_brunt    " , ncol , nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack>  SHOCHistoryOutput_isotropy ("SHOCHistoryOutput_isotropy " , ncol , nlev  );
 
+    // Create the structs used by SHOC main
+    SHOCInput         shoc_in   ;
+    SHOCInputOutput   shoc_inout;
+    SHOCOutput        shoc_out  ;
+    SHOCHistoryOutput shoc_hist ;
 
-
+    // Assign the Views to the structs used by SHOC main
     shoc_in.dx          = SHOCInput_dx         ;
     shoc_in.dy          = SHOCInput_dy         ;
     shoc_in.zt_grid     = SHOCInput_zt_grid    ;
@@ -223,6 +279,35 @@ namespace pam {
     shoc_in.wtracer_sfc = SHOCInput_wtracer_sfc;
     shoc_in.inv_exner   = SHOCInput_inv_exner  ;
     shoc_in.phis        = SHOCInput_phis       ;
+
+    shoc_inout.host_dse     = SHOCInputOutput_host_dse    ;
+    shoc_inout.tke          = SHOCInputOutput_tke         ;
+    shoc_inout.thetal       = SHOCInputOutput_thetal      ;
+    shoc_inout.qw           = SHOCInputOutput_qw          ;
+    shoc_inout.horiz_wind   = SHOCInputOutput_horiz_wind  ;
+    shoc_inout.wthv_sec     = SHOCInputOutput_wthv_sec    ;
+    shoc_inout.qtracers     = SHOCInputOutput_qtracers    ;
+    shoc_inout.tk           = SHOCInputOutput_tk          ;
+    shoc_inout.shoc_cldfrac = SHOCInputOutput_shoc_cldfrac;
+    shoc_inout.shoc_ql      = SHOCInputOutput_shoc_ql     ;
+
+    shoc_out.pblh     = SHOCOutput_pblh    ;
+    shoc_out.shoc_ql2 = SHOCOutput_shoc_ql2;
+
+    shoc_hist.shoc_mix  = SHOCHistoryOutput_shoc_mix ;
+    shoc_hist.w_sec     = SHOCHistoryOutput_w_sec    ;
+    shoc_hist.thl_sec   = SHOCHistoryOutput_thl_sec  ;
+    shoc_hist.qw_sec    = SHOCHistoryOutput_qw_sec   ;
+    shoc_hist.qwthl_sec = SHOCHistoryOutput_qwthl_sec;
+    shoc_hist.wthl_sec  = SHOCHistoryOutput_wthl_sec ;
+    shoc_hist.wqw_sec   = SHOCHistoryOutput_wqw_sec  ;
+    shoc_hist.wtke_sec  = SHOCHistoryOutput_wtke_sec ;
+    shoc_hist.uw_sec    = SHOCHistoryOutput_uw_sec   ;
+    shoc_hist.vw_sec    = SHOCHistoryOutput_vw_sec   ;
+    shoc_hist.w3        = SHOCHistoryOutput_w3       ;
+    shoc_hist.wqls_sec  = SHOCHistoryOutput_wqls_sec ;
+    shoc_hist.brunt     = SHOCHistoryOutput_brunt    ;
+    shoc_hist.isotropy  = SHOCHistoryOutput_isotropy ;
 
     // Kokkos::parallel_for( MDRangePolicy<> )
 
