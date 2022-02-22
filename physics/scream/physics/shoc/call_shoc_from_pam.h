@@ -75,7 +75,7 @@ namespace pam {
 
   // TODO: Change this to only accept IRMemDevice
   template <class real, int memSpace>
-  void call_shoc_from_pam( int ncol, int nlev, int nlevi, real dt, int nadv, int num_qtracers,
+  void call_shoc_from_pam( int const ncol, int const nlev, int const nlevi, real const dtime, int const nadv, int const num_qtracers,
                            ArrayIR<real,1,memSpace> shoc_host_dx    ,
                            ArrayIR<real,1,memSpace> shoc_host_dy    ,
                            ArrayIR<real,2,memSpace> shoc_thv        ,
@@ -351,6 +351,29 @@ namespace pam {
     /////////////////////////////////////////////////////////////////
     // TODO: Call shoc main
     /////////////////////////////////////////////////////////////////
+    const auto nlev_packs = ekat::npack<Spack>(nlev);
+    const auto policy = ekat::ExeSpaceUtils<ekat::KokkosTypes<Device>::ExeSpace>::get_default_team_policy(ncol,nlev_packs);
+    const auto nlevi_packs = ekat::npack<Spack>(nlevi);
+    const int n_wind_slots = ekat::npack<Spack>(2)*Spack::n;
+    const int n_trac_slots = ekat::npack<Spack>(num_qtracers+3)*Spack::n;
+    typename Functions::WorkspaceMgr workspace_mgr(nlevi_packs, 13+(n_wind_slots+n_trac_slots), policy);
+    const int npbl = nlev;
+
+    const auto elapsed_microsec = Functions::shoc_main(ncol, nlev, nlevi, npbl, nadv, num_qtracers, dtime,
+                                                       workspace_mgr, shoc_in, shoc_inout, shoc_out, shoc_hist);
+    // static Int shoc_main(
+    //   const Int&               shcol,                // Number of SHOC columns in the array
+    //   const Int&               nlev,                 // Number of levels
+    //   const Int&               nlevi,                // Number of levels on interface grid
+    //   const Int&               npbl,                 // Maximum number of levels in pbl from surface
+    //   const Int&               nadv,                 // Number of times to loop SHOC
+    //   const Int&               num_q_tracers,        // Number of tracers
+    //   const Scalar&            dtime,                // SHOC timestep [s]
+    //   const WorkspaceMgr&      workspace_mgr,        // WorkspaceManager for local variables
+    //   const SHOCInput&         shoc_input,           // Input
+    //   const SHOCInputOutput&   shoc_input_output,    // Input/Output
+    //   const SHOCOutput&        shoc_output,          // Output
+    //   const SHOCHistoryOutput& shoc_history_output); // Output (diagnostic)
 
     Kokkos::parallel_for( Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0},{ncol,nlevi}) , KOKKOS_LAMBDA (int i, int k) {
       thl_sec  (k,i) = SHOCHistoryOutput_thl_sec  (i,k)[0];
