@@ -261,22 +261,22 @@ namespace pam {
       SHOCInput_zi_grid(i,k) = zi_grid(k,i);
       SHOCInput_presi  (i,k) = presi  (k,i);
       if (k < nlev) {
-        SHOCInput_zt_grid           (i  ,k) = zt_grid     (k,i);
-        SHOCInput_pres              (i  ,k) = pres        (k,i);
-        SHOCInput_pdel              (i  ,k) = pdel        (k,i);
-        SHOCInput_thv               (i  ,k) = thv         (k,i);
-        SHOCInput_w_field           (i  ,k) = w_field     (k,i);
-        SHOCInput_inv_exner         (i  ,k) = inv_exner   (k,i);
-        SHOCInputOutput_host_dse    (i  ,k) = host_dse    (k,i);
-        SHOCInputOutput_tke         (i  ,k) = tke         (k,i);
-        SHOCInputOutput_thetal      (i  ,k) = thetal      (k,i);
-        SHOCInputOutput_qw          (i  ,k) = qw          (k,i);
-        SHOCInputOutput_horiz_wind  (i,0,k) = u_wind      (k,i);
-        SHOCInputOutput_horiz_wind  (i,1,k) = v_wind      (k,i);
-        SHOCInputOutput_wthv_sec    (i  ,k) = wthv_sec    (k,i);
-        SHOCInputOutput_tk          (i  ,k) = tk          (k,i);
-        SHOCInputOutput_shoc_cldfrac(i  ,k) = cldfrac     (k,i);
-        SHOCInputOutput_shoc_ql     (i  ,k) = ql          (k,i);
+        SHOCInput_zt_grid           (i  ,k) = zt_grid  (k,i);
+        SHOCInput_pres              (i  ,k) = pres     (k,i);
+        SHOCInput_pdel              (i  ,k) = pdel     (k,i);
+        SHOCInput_thv               (i  ,k) = thv      (k,i);
+        SHOCInput_w_field           (i  ,k) = w_field  (k,i);
+        SHOCInput_inv_exner         (i  ,k) = inv_exner(k,i);
+        SHOCInputOutput_host_dse    (i  ,k) = host_dse (k,i);
+        SHOCInputOutput_tke         (i  ,k) = tke      (k,i);
+        SHOCInputOutput_thetal      (i  ,k) = thetal   (k,i);
+        SHOCInputOutput_qw          (i  ,k) = qw       (k,i);
+        SHOCInputOutput_horiz_wind  (i,0,k) = u_wind   (k,i);
+        SHOCInputOutput_horiz_wind  (i,1,k) = v_wind   (k,i);
+        SHOCInputOutput_wthv_sec    (i  ,k) = wthv_sec (k,i);
+        SHOCInputOutput_tk          (i  ,k) = tk       (k,i);
+        SHOCInputOutput_shoc_cldfrac(i  ,k) = cldfrac  (k,i);
+        SHOCInputOutput_shoc_ql     (i  ,k) = ql       (k,i);
         for (int tr = 0; tr < num_qtracers; tr++) {
           SHOCInputOutput_qtracers(i,tr,k) = qtracers(tr,k,i);
         }
@@ -348,7 +348,45 @@ namespace pam {
     shoc_hist.brunt     = SHOCHistoryOutput_brunt    ;
     shoc_hist.isotropy  = SHOCHistoryOutput_isotropy ;
 
-    // Kokkos::parallel_for( MDRangePolicy<> )
+    /////////////////////////////////////////////////////////////////
+    // TODO: Call shoc main
+    /////////////////////////////////////////////////////////////////
+
+    Kokkos::parallel_for( Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0},{ncol,nlevi}) , KOKKOS_LAMBDA (int i, int k) {
+      thl_sec  (k,i) = SHOCHistoryOutput_thl_sec  (i,k)[0];
+      qw_sec   (k,i) = SHOCHistoryOutput_qw_sec   (i,k)[0];
+      qwthl_sec(k,i) = SHOCHistoryOutput_qwthl_sec(i,k)[0];
+      wthl_sec (k,i) = SHOCHistoryOutput_wthl_sec (i,k)[0];
+      wqw_sec  (k,i) = SHOCHistoryOutput_wqw_sec  (i,k)[0];
+      wtke_sec (k,i) = SHOCHistoryOutput_wtke_sec (i,k)[0];
+      uw_sec   (k,i) = SHOCHistoryOutput_uw_sec   (i,k)[0];
+      vw_sec   (k,i) = SHOCHistoryOutput_vw_sec   (i,k)[0];
+      w3       (k,i) = SHOCHistoryOutput_w3       (i,k)[0];
+      if (k < nlev) {
+        host_dse    (k,i) = SHOCInputOutput_host_dse    (i  ,k)[0];
+        tke         (k,i) = SHOCInputOutput_tke         (i  ,k)[0];
+        thetal      (k,i) = SHOCInputOutput_thetal      (i  ,k)[0];
+        qw          (k,i) = SHOCInputOutput_qw          (i  ,k)[0];
+        u_wind      (k,i) = SHOCInputOutput_horiz_wind  (i,0,k)[0];
+        v_wind      (k,i) = SHOCInputOutput_horiz_wind  (i,1,k)[0];
+        wthv_sec    (k,i) = SHOCInputOutput_wthv_sec    (i  ,k)[0];
+        tk          (k,i) = SHOCInputOutput_tk          (i  ,k)[0];
+        cldfrac     (k,i) = SHOCInputOutput_shoc_cldfrac(i  ,k)[0];
+        ql          (k,i) = SHOCInputOutput_shoc_ql     (i  ,k)[0];
+        ql2         (k,i) = SHOCOutput_shoc_ql2         (i  ,k)[0];
+        mix         (k,i) = SHOCHistoryOutput_shoc_mix  (i  ,k)[0];
+        w_sec       (k,i) = SHOCHistoryOutput_w_sec     (i  ,k)[0];
+        wqls_sec    (k,i) = SHOCHistoryOutput_wqls_sec  (i  ,k)[0];
+        brunt       (k,i) = SHOCHistoryOutput_brunt     (i  ,k)[0];
+        isotropy    (k,i) = SHOCHistoryOutput_isotropy  (i  ,k)[0];
+        for (int tr = 0; tr < num_qtracers; tr++) {
+          qtracers(tr,k,i) = SHOCInputOutput_qtracers(i,tr,k)[0];
+        }
+      }
+      if (k == 0) {
+        pblh(i) = SHOCOutput_pblh(i);
+      }
+    });
 
   }
 
