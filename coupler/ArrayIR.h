@@ -1,6 +1,10 @@
 
 #pragma once
 
+#include <iostream>
+#include <string>
+#include <vector>
+
 // The ArrayIR class holds metadata for a contiguous array in either host or device memory
 // For safety, it should be assumed that device memory cannot be accessed on the host and
 // vice versa. Any assumptions beyond this are up to the user if it is known a priori that,
@@ -23,92 +27,86 @@
 // Also for safety, it is expected that metadata is set only via the constructor and then is
 // read-only from there. There is no reason for this data to change after creation.
 
-template <class T, int N>
-struct ArrayIR {
-public:
-  int static constexpr memHost   = 1;
-  int static constexpr memDevice = 2;
-  T *          my_data;
-  unsigned int dims[N];
-  int          memory_space;
-  std::string  label;
+namespace pam {
 
-  ArrayIR () { this->my_data = nullptr; };
-  ~ArrayIR() { this->my_data = nullptr; };
+  int constexpr IRMemHost   = 1;
+  int constexpr IRMemDevice = 2;
 
-  ArrayIR(T *my_data , std::vector<unsigned int> dims , int memory_space , std::string label = "") {
-    // Check and set data pointer
-    if (my_data == nullptr) {
-      std::cerr << "Error: ArrayIR constructor called with data == nullptr." << std::endl;
-      throw "";
-    }
-    this->my_data = my_data;
+  template <class T, int N, int memSpace>
+  struct ArrayIR {
+  public:
+    T *          my_data;
+    unsigned int dims[N];
+    std::string  label;
 
-    // Check and set dimensions
-    if (N != dims.size() {
-      std::cerr << "Error: ArrayIR constructor dimension sizes do not match the template parameter N." << std::endl;
-      throw "";
-    }
-    for (int i=0; i < dims.size(); i++) {
-      if (dims[i] <= 0) {
-        std::cerr << "Error: ArrayIR constructor dimension is <= 0." << std::endl;
+    ArrayIR () { this->my_data = nullptr; };
+    ~ArrayIR() { this->my_data = nullptr; };
+
+    ArrayIR(T *my_data , std::vector<unsigned int> dims , std::string label = "") {
+      // Check and set data pointer
+      if (my_data == nullptr) {
+        std::cerr << "Error: ArrayIR constructor called with data == nullptr." << std::endl;
         throw "";
       }
-      this->dims[i] = dims[i];
+      this->my_data = my_data;
+
+      // Check and set dimensions
+      if (N != dims.size() ) {
+        std::cerr << "Error: ArrayIR constructor dimension sizes do not match the template parameter N." << std::endl;
+        throw "";
+      }
+      for (int i=0; i < dims.size(); i++) {
+        if (dims[i] <= 0) {
+          std::cerr << "Error: ArrayIR constructor dimension is <= 0." << std::endl;
+          throw "";
+        }
+        this->dims[i] = dims[i];
+      }
+
+      // Set label
+      this->label = label;
     }
 
-    // Check and set memory_space
-    if (memory_space != memHost && memory_space != memDevice) {
-      std::cerr << "Error: ArrayIR constructor called with invalid memory_space specification. " 
-                << "It must be ArrayIR::memHost or ArrayIR::memDevice." << std::endl;
-      throw "";
+
+    ArrayIR            (ArrayIR<T,N,memSpace> const &rhs) {
+      this->my_data = rhs.my_data;
+      for (int i=0; i < N; i++) { this->dims[i] = rhs.dims[i]; }
+      this->label = rhs.label;
     }
-    this->memory_space = memory_space;
+    ArrayIR & operator=(ArrayIR<T,N,memSpace> const &rhs) {
+      if (this == &rhs) return *this;
+      this->my_data = rhs.my_data;
+      for (int i=0; i < N; i++) { this->dims[i] = rhs.dims[i]; }
+      this->label = rhs.label;
+      return *this;
+    }
+    ArrayIR            (ArrayIR<T,N,memSpace> &&rhs) {
+      this->my_data = rhs.my_data;
+      for (int i=0; i < N; i++) { this->dims[i] = rhs.dims[i]; }
+      this->label = rhs.label;
+    }
+    ArrayIR& operator= (ArrayIR<T,N,memSpace> &&rhs) {
+      if (this == &rhs) return *this;
+      this->my_data = rhs.my_data;
+      for (int i=0; i < N; i++) { this->dims[i] = rhs.dims[i]; }
+      this->label = rhs.label;
+      return *this;
+    }
 
-    // Set label
-    this->label = label;
-  }
+    T * data    () const { return this->my_data; }
+    T * get_data() const { return this->my_data; }
 
+    std::vector<unsigned int> get_dims() const {
+      std::vector<unsigned int> ret(N);
+      for (int i=0; i < N; i++) { ret[i] = this->dims[i]; }
+      return ret;
+    }
 
-  ArrayIR            (ArrayIR<T,N> const &rhs) {
-    this->my_data = rhs.my_data;
-    for (int i=0; i < N; i++) { this->dims[i] = rhs.dims[i]; }
-    this->memory_space = rhs.memory_space;
-  }
-  ArrayIR & operator=(ArrayIR<T,N> const &rhs) {
-    if (this == &rhs) return *this;
-    this->my_data = rhs.my_data;
-    for (int i=0; i < N; i++) { this->dims[i] = rhs.dims[i]; }
-    this->memory_space = rhs.memory_space;
-    return *this;
-  }
-  ArrayIR            (ArrayIR<T,N> &&rhs) {
-    this->my_data = rhs.my_data;
-    for (int i=0; i < N; i++) { this->dims[i] = rhs.dims[i]; }
-    this->memory_space = rhs.memory_space;
-  }
-  ArrayIR& operator= (ArrayIR<T,N> &&rhs) {
-    if (this == &rhs) return *this;
-    this->my_data = rhs.my_data;
-    for (int i=0; i < N; i++) { this->dims[i] = rhs.dims[i]; }
-    this->memory_space = rhs.memory_space;
-    return *this;
-  }
+    std::string get_label() const { return this->label; }
 
-  T * data    () const { return this->my_data; }
-  T * get_data() const { return this->my_data; }
+    bool initialized() const { return this->my_data != nullptr; }
+  };
 
-  std::vector<unsigned int> get_dims() const {
-    std::vector<unsigned int> ret(N);
-    for (int i=0; i < N; i++) { ret[i] = this->dims[i]; }
-    return ret;
-  }
-
-  int get_memory_space() const { return this->memory_space; }
-
-  std::string get_label() const { return this->label; }
-
-  bool is_initialized() const { return this->my_data != nullptr; }
-};
+}
 
 

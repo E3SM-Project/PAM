@@ -42,7 +42,7 @@ dt_gcm: 900
 dt_crm_phys: 0.
 
 # Output frequency in seconds
-outFreq: -1.
+outFreq: 0.
 
 # Specify how to force density from the GCM (loose, strict, or off)
 density_forcing: loose

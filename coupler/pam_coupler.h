@@ -88,31 +88,50 @@ namespace pam {
 
 
 
-  template <class T, int N, int memSpace>
-  inline ArrayIR<T,N> yakl_array_to_arrayIR( yakl::Array<T,N,memSpace,yakl::styleC> const &array ) {
-    if (! array.is_initialized()) {
-      yakl_throw("Error: converting non-initialized Array object into ArrayIR is not allowed");
+  template <class T, int N>
+  inline ArrayIR<T,N,IRMemHost> yakl_array_to_arrayIR( yakl::Array<T,N,yakl::memHost,yakl::styleC> const &array ) {
+    if (! array.initialized()) {
+      yakl::yakl_throw("Error: converting non-initialized Array object into ArrayIR is not allowed");
     }
     std::vector<unsigned int> dims(N);
     for (int i=0; i < N; i++) { dims[i] = array.dimension[i]; }
-    int memory_space;
-    if      (memSpace == yakl::memHost  ) { memory_space = ArrayIR::memHost  ; }
-    else if (memSpace == yakl::memDevice) { memory_space = ArrayIR::memDevice; }
     #ifdef YAKL_DEBUG
-      return ArrayIR<T,N>( array.data , dims , memory_space , array.myname );
+      return ArrayIR<T,N,IRMemHost>( array.data() , dims , array.myname );
     #else
-      return ArrayIR<T,N>( array.data , dims , memory_space );
+      return ArrayIR<T,N,IRMemHost>( array.data() , dims );
+    #endif
+  }
+
+  template <class T, int N>
+  inline ArrayIR<T,N,IRMemDevice> yakl_array_to_arrayIR( yakl::Array<T,N,yakl::memDevice,yakl::styleC> const &array ) {
+    if (! array.initialized()) {
+      yakl::yakl_throw("Error: converting non-initialized Array object into ArrayIR is not allowed");
+    }
+    std::vector<unsigned int> dims(N);
+    for (int i=0; i < N; i++) { dims[i] = array.dimension[i]; }
+    #ifdef YAKL_DEBUG
+      return ArrayIR<T,N,IRMemDevice>( array.data() , dims , array.myname );
+    #else
+      return ArrayIR<T,N,IRMemDevice>( array.data() , dims );
     #endif
   }
 
 
 
-  template <class T, int N, int memSpace>
-  inline yakl::Array<T,N,memSpace,yakl::styleC> arrayIR_to_yakl_array( ArrayIR<T,N> const &arrayIR ) {
-    if (! arrayIR.is_initialized()) {
-      yakl_throw("Error: converting non-initialized ArrayIR object into Array is not allowed");
+  template <class T, int N>
+  inline yakl::Array<T,N,yakl::memHost,yakl::styleC> arrayIR_to_yakl_array( ArrayIR<T,N,IRMemHost> const &arrayIR ) {
+    if (! arrayIR.initialized()) {
+      yakl::yakl_throw("Error: converting non-initialized ArrayIR object into Array is not allowed");
     }
-    return yakl::Array<T,N,memSpace,yakl::styleC>( arrayIR.get_label() , arrayIR.get_data() , arrayIR.get_dims() );
+    return yakl::Array<T,N,yakl::memHost,yakl::styleC>( arrayIR.get_label() , arrayIR.get_data() , arrayIR.get_dims() );
+  }
+
+  template <class T, int N>
+  inline yakl::Array<T,N,yakl::memDevice,yakl::styleC> arrayIR_to_yakl_array( ArrayIR<T,N,IRMemDevice> const &arrayIR ) {
+    if (! arrayIR.initialized()) {
+      yakl::yakl_throw("Error: converting non-initialized ArrayIR object into Array is not allowed");
+    }
+    return yakl::Array<T,N,yakl::memDevice,yakl::styleC>( arrayIR.get_label() , arrayIR.get_data() , arrayIR.get_dims() );
   }
 
 
