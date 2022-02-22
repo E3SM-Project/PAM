@@ -45,6 +45,20 @@ if ("${PAM_MICRO}" STREQUAL "p3" OR "${PAM_SGS}" STREQUAL "shoc")
 endif()
 
 if (${USE_SCREAM})
+  ###############################################################
+  ###############################################################
+  ## FOR KOKKOS DEBUG; REMOVE LATER TODO: 
+  ###############################################################
+  ###############################################################
+  set(CMAKE_BUILD_TYPE_ci "debug" CACHE STRING "")
+  set(Kokkos_ENABLE_DEBUG TRUE CACHE BOOL "")
+  set(Kokkos_ENABLE_DEBUG_BOUNDS_CHECK TRUE CACHE BOOL "")
+  set(Kokkos_ENABLE_DEBUG_DUALVIEW_MODIFY_CHECK TRUE CACHE BOOL "")
+  ###############################################################
+  ###############################################################
+  ## FOR KOKKOS DEBUG; REMOVE LATER TODO: 
+  ###############################################################
+  ###############################################################
   include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../physics/scream)
   include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../physics/scream/physics/shoc)
   set(SCREAM_F90_MODULES "${CMAKE_CURRENT_BINARY_DIR}/scream_f90_modules")

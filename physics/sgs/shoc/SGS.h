@@ -95,6 +95,8 @@ public:
     int nz   = coupler.get_nz  ();
     int nens = coupler.get_nens();
 
+    pam::kokkos_initialize();
+
     if ( coupler.get_option<bool>("advect_tke") ) {
       // Register tracers in the coupler
       //                 name    description                              positive   adds mass
@@ -459,51 +461,51 @@ public:
     #else
 
       int nadv = 1;
-      pam::call_shoc_from_pam( ncol, nz, nz+1, dt, nadv, num_qtracers,
-                               pam::yakl_array_to_arrayIR( shoc_host_dx     ),
-                               pam::yakl_array_to_arrayIR( shoc_host_dy     ),
-                               pam::yakl_array_to_arrayIR( shoc_thv         ),
-                               pam::yakl_array_to_arrayIR( shoc_zt_grid     ),
-                               pam::yakl_array_to_arrayIR( shoc_zi_grid     ),
-                               pam::yakl_array_to_arrayIR( shoc_pres        ),
-                               pam::yakl_array_to_arrayIR( shoc_presi       ),
-                               pam::yakl_array_to_arrayIR( shoc_pdel        ),
-                               pam::yakl_array_to_arrayIR( shoc_wthl_sfc    ),
-                               pam::yakl_array_to_arrayIR( shoc_wqw_sfc     ),
-                               pam::yakl_array_to_arrayIR( shoc_uw_sfc      ),
-                               pam::yakl_array_to_arrayIR( shoc_vw_sfc      ),
-                               pam::yakl_array_to_arrayIR( shoc_wtracer_sfc ),
-                               pam::yakl_array_to_arrayIR( shoc_w_field     ),
-                               pam::yakl_array_to_arrayIR( shoc_inv_exner   ),
-                               pam::yakl_array_to_arrayIR( shoc_phis        ),
-                               pam::yakl_array_to_arrayIR( shoc_host_dse    ),
-                               pam::yakl_array_to_arrayIR( shoc_tke         ),
-                               pam::yakl_array_to_arrayIR( shoc_thetal      ),
-                               pam::yakl_array_to_arrayIR( shoc_qw          ),
-                               pam::yakl_array_to_arrayIR( shoc_u_wind      ),
-                               pam::yakl_array_to_arrayIR( shoc_v_wind      ),
-                               pam::yakl_array_to_arrayIR( shoc_qtracers    ),
-                               pam::yakl_array_to_arrayIR( shoc_wthv_sec    ),
-                               pam::yakl_array_to_arrayIR( shoc_tkh         ),
-                               pam::yakl_array_to_arrayIR( shoc_tk          ),
-                               pam::yakl_array_to_arrayIR( shoc_ql          ),
-                               pam::yakl_array_to_arrayIR( shoc_cldfrac     ),
-                               pam::yakl_array_to_arrayIR( shoc_pblh        ),
-                               pam::yakl_array_to_arrayIR( shoc_mix         ),
-                               pam::yakl_array_to_arrayIR( shoc_isotropy    ),
-                               pam::yakl_array_to_arrayIR( shoc_w_sec       ),
-                               pam::yakl_array_to_arrayIR( shoc_thl_sec     ),
-                               pam::yakl_array_to_arrayIR( shoc_qw_sec      ),
-                               pam::yakl_array_to_arrayIR( shoc_qwthl_sec   ),
-                               pam::yakl_array_to_arrayIR( shoc_wthl_sec    ),
-                               pam::yakl_array_to_arrayIR( shoc_wqw_sec     ),
-                               pam::yakl_array_to_arrayIR( shoc_wtke_sec    ),
-                               pam::yakl_array_to_arrayIR( shoc_uw_sec      ),
-                               pam::yakl_array_to_arrayIR( shoc_vw_sec      ),
-                               pam::yakl_array_to_arrayIR( shoc_w3          ),
-                               pam::yakl_array_to_arrayIR( shoc_wqls_sec    ),
-                               pam::yakl_array_to_arrayIR( shoc_brunt       ),
-                               pam::yakl_array_to_arrayIR( shoc_ql2         ) );
+      pam::call_shoc_main_from_pam( ncol, nz, nz+1, dt, nadv, num_qtracers,
+                                    pam::yakl_array_to_arrayIR( shoc_host_dx     ),
+                                    pam::yakl_array_to_arrayIR( shoc_host_dy     ),
+                                    pam::yakl_array_to_arrayIR( shoc_thv         ),
+                                    pam::yakl_array_to_arrayIR( shoc_zt_grid     ),
+                                    pam::yakl_array_to_arrayIR( shoc_zi_grid     ),
+                                    pam::yakl_array_to_arrayIR( shoc_pres        ),
+                                    pam::yakl_array_to_arrayIR( shoc_presi       ),
+                                    pam::yakl_array_to_arrayIR( shoc_pdel        ),
+                                    pam::yakl_array_to_arrayIR( shoc_wthl_sfc    ),
+                                    pam::yakl_array_to_arrayIR( shoc_wqw_sfc     ),
+                                    pam::yakl_array_to_arrayIR( shoc_uw_sfc      ),
+                                    pam::yakl_array_to_arrayIR( shoc_vw_sfc      ),
+                                    pam::yakl_array_to_arrayIR( shoc_wtracer_sfc ),
+                                    pam::yakl_array_to_arrayIR( shoc_w_field     ),
+                                    pam::yakl_array_to_arrayIR( shoc_inv_exner   ),
+                                    pam::yakl_array_to_arrayIR( shoc_phis        ),
+                                    pam::yakl_array_to_arrayIR( shoc_host_dse    ),
+                                    pam::yakl_array_to_arrayIR( shoc_tke         ),
+                                    pam::yakl_array_to_arrayIR( shoc_thetal      ),
+                                    pam::yakl_array_to_arrayIR( shoc_qw          ),
+                                    pam::yakl_array_to_arrayIR( shoc_u_wind      ),
+                                    pam::yakl_array_to_arrayIR( shoc_v_wind      ),
+                                    pam::yakl_array_to_arrayIR( shoc_qtracers    ),
+                                    pam::yakl_array_to_arrayIR( shoc_wthv_sec    ),
+                                    pam::yakl_array_to_arrayIR( shoc_tkh         ),
+                                    pam::yakl_array_to_arrayIR( shoc_tk          ),
+                                    pam::yakl_array_to_arrayIR( shoc_ql          ),
+                                    pam::yakl_array_to_arrayIR( shoc_cldfrac     ),
+                                    pam::yakl_array_to_arrayIR( shoc_pblh        ),
+                                    pam::yakl_array_to_arrayIR( shoc_mix         ),
+                                    pam::yakl_array_to_arrayIR( shoc_isotropy    ),
+                                    pam::yakl_array_to_arrayIR( shoc_w_sec       ),
+                                    pam::yakl_array_to_arrayIR( shoc_thl_sec     ),
+                                    pam::yakl_array_to_arrayIR( shoc_qw_sec      ),
+                                    pam::yakl_array_to_arrayIR( shoc_qwthl_sec   ),
+                                    pam::yakl_array_to_arrayIR( shoc_wthl_sec    ),
+                                    pam::yakl_array_to_arrayIR( shoc_wqw_sec     ),
+                                    pam::yakl_array_to_arrayIR( shoc_wtke_sec    ),
+                                    pam::yakl_array_to_arrayIR( shoc_uw_sec      ),
+                                    pam::yakl_array_to_arrayIR( shoc_vw_sec      ),
+                                    pam::yakl_array_to_arrayIR( shoc_w3          ),
+                                    pam::yakl_array_to_arrayIR( shoc_wqls_sec    ),
+                                    pam::yakl_array_to_arrayIR( shoc_brunt       ),
+                                    pam::yakl_array_to_arrayIR( shoc_ql2         ) );
 
     #endif
 
@@ -537,6 +539,10 @@ public:
     first_step = false;
   }
 
+
+  void finalize(PamCoupler &coupler) {
+    pam::kokkos_finalize();
+  }
 
 
   std::string sgs_name() const {
