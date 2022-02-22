@@ -104,6 +104,8 @@ namespace pam {
 
     std::string get_label() const { return this->label; }
 
+    char const * get_label_c_str() const { return this->label.c_str(); }
+
     bool initialized() const { return this->my_data != nullptr; }
   };
 
