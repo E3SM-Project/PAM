@@ -50,6 +50,8 @@ public:
   real grav;
   real cp_l;
 
+  int npbl;
+
   bool first_step;
 
   // Indices for all of your tracer quantities
@@ -77,6 +79,7 @@ public:
     latvap        = 2.5E6 ;
     latice        = 3.50E5;
     karman        = 0.4;
+    npbl          = -1;
   }
 
 
@@ -159,10 +162,21 @@ public:
         pref_shoc(k) = pres_mid(nz-1-k,0);
       });
       real zvir = R_v / R_d - 1;
-      int kbot = nz;
-      int ktop = 1;
-      shoc_init_fortran( nz , grav , R_d , R_v , cp_d , zvir , latvap , latice , karman ,
-                         pref_shoc.createHostCopy().data() , kbot , ktop );
+      
+      #if 0
+
+        int kbot = nz;
+        int ktop = 1;
+        shoc_init_fortran( nz , grav , R_d , R_v , cp_d , zvir , latvap , latice , karman ,
+                           pref_shoc.createHostCopy().data() , kbot , ktop );
+
+      #else
+
+        int kbot = nz-1;
+        int ktop = 0;
+        this->npbl = pam::call_shoc_init_from_pam( kbot , ktop , pam::yakl_array_to_arrayIR( pref_shoc ) );
+
+      #endif
 
       // This check is here instead of init because it's not guaranteed the micro has called init before sgs
       if (! coupler.option_exists("micro")) {
@@ -461,7 +475,7 @@ public:
     #else
 
       int nadv = 1;
-      pam::call_shoc_main_from_pam( ncol, nz, nz+1, dt, nadv, num_qtracers,
+      pam::call_shoc_main_from_pam( ncol, nz, nz+1, dt, nadv, num_qtracers, this->npbl,
                                     pam::yakl_array_to_arrayIR( shoc_host_dx     ),
                                     pam::yakl_array_to_arrayIR( shoc_host_dy     ),
                                     pam::yakl_array_to_arrayIR( shoc_thv         ),

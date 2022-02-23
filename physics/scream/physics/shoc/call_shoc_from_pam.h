@@ -12,7 +12,10 @@ namespace pam {
   void kokkos_finalize();
 
 
-  void call_shoc_main_from_pam( int ncol, int nlev, int nlevi, double dtime, int nadv, int num_qtracers,
+  int call_shoc_init_from_pam (int nbot_shoc, int ntop_shoc, ArrayIR<double,1,IRMemDevice> input_pref_mid);
+
+
+  void call_shoc_main_from_pam( int ncol, int nlev, int nlevi, double dtime, int nadv, int num_qtracers, int npbl,
                                 ArrayIR<double,1,IRMemDevice> shoc_host_dx    ,
                                 ArrayIR<double,1,IRMemDevice> shoc_host_dy    ,
                                 ArrayIR<double,2,IRMemDevice> shoc_thv        ,

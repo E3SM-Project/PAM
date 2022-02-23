@@ -129,51 +129,71 @@ namespace pam {
   }
 
 
-  void call_shoc_main_from_pam( int ncol, int nlev, int nlevi, double dtime, int nadv, int num_qtracers,
-                                ArrayIR<double,1,IRMemDevice> shoc_host_dx    ,
-                                ArrayIR<double,1,IRMemDevice> shoc_host_dy    ,
-                                ArrayIR<double,2,IRMemDevice> shoc_thv        ,
-                                ArrayIR<double,2,IRMemDevice> shoc_zt_grid    ,
-                                ArrayIR<double,2,IRMemDevice> shoc_zi_grid    ,
-                                ArrayIR<double,2,IRMemDevice> shoc_pres       ,
-                                ArrayIR<double,2,IRMemDevice> shoc_presi      ,
-                                ArrayIR<double,2,IRMemDevice> shoc_pdel       ,
-                                ArrayIR<double,1,IRMemDevice> shoc_wthl_sfc   ,
-                                ArrayIR<double,1,IRMemDevice> shoc_wqw_sfc    ,
-                                ArrayIR<double,1,IRMemDevice> shoc_uw_sfc     ,
-                                ArrayIR<double,1,IRMemDevice> shoc_vw_sfc     ,
-                                ArrayIR<double,2,IRMemDevice> shoc_wtracer_sfc,
-                                ArrayIR<double,2,IRMemDevice> shoc_w_field    ,
-                                ArrayIR<double,2,IRMemDevice> shoc_inv_exner  ,
-                                ArrayIR<double,1,IRMemDevice> shoc_phis       ,
-                                ArrayIR<double,2,IRMemDevice> shoc_host_dse   ,
-                                ArrayIR<double,2,IRMemDevice> shoc_tke        ,
-                                ArrayIR<double,2,IRMemDevice> shoc_thetal     ,
-                                ArrayIR<double,2,IRMemDevice> shoc_qw         ,
-                                ArrayIR<double,2,IRMemDevice> shoc_u_wind     ,
-                                ArrayIR<double,2,IRMemDevice> shoc_v_wind     ,
-                                ArrayIR<double,3,IRMemDevice> shoc_qtracers   ,
-                                ArrayIR<double,2,IRMemDevice> shoc_wthv_sec   ,
-                                ArrayIR<double,2,IRMemDevice> shoc_tkh        ,
-                                ArrayIR<double,2,IRMemDevice> shoc_tk         ,
-                                ArrayIR<double,2,IRMemDevice> shoc_ql         ,
-                                ArrayIR<double,2,IRMemDevice> shoc_cldfrac    ,
-                                ArrayIR<double,1,IRMemDevice> shoc_pblh       ,
-                                ArrayIR<double,2,IRMemDevice> shoc_mix        ,
-                                ArrayIR<double,2,IRMemDevice> shoc_isotropy   ,
-                                ArrayIR<double,2,IRMemDevice> shoc_w_sec      ,
-                                ArrayIR<double,2,IRMemDevice> shoc_thl_sec    ,
-                                ArrayIR<double,2,IRMemDevice> shoc_qw_sec     ,
-                                ArrayIR<double,2,IRMemDevice> shoc_qwthl_sec  ,
-                                ArrayIR<double,2,IRMemDevice> shoc_wthl_sec   ,
-                                ArrayIR<double,2,IRMemDevice> shoc_wqw_sec    ,
-                                ArrayIR<double,2,IRMemDevice> shoc_wtke_sec   ,
-                                ArrayIR<double,2,IRMemDevice> shoc_uw_sec     ,
-                                ArrayIR<double,2,IRMemDevice> shoc_vw_sec     ,
-                                ArrayIR<double,2,IRMemDevice> shoc_w3         ,
-                                ArrayIR<double,2,IRMemDevice> shoc_wqls_sec   ,
-                                ArrayIR<double,2,IRMemDevice> shoc_brunt      ,
-                                ArrayIR<double,2,IRMemDevice> shoc_ql2        ) {
+  // Computes and returns nbpl
+  int call_shoc_init_from_pam (int nbot_shoc, int ntop_shoc, ArrayIR<double,1,IRMemDevice> input_pref_mid) {
+    typedef ekat::DefaultDevice                             Device;
+    typedef typename scream::shoc::Functions<double,Device> SHOC  ;
+    typedef typename SHOC::Spack                            Spack ;
+
+    int nlev = input_pref_mid.get_dims()[0];
+
+    auto pref_mid = arrayIR_to_kokkos_view( input_pref_mid );
+
+    typename ekat::KokkosTypes<Device>::view_1d<Spack> pref_spack("pref_spack",nlev);
+
+    Kokkos::parallel_for( Kokkos::RangePolicy<>(0,nlev) , KOKKOS_LAMBDA (int k) {
+      pref_spack(k) = pref_mid(k);
+    });
+
+    return SHOC::shoc_init( nbot_shoc , ntop_shoc , pref_spack );
+  }
+
+
+  void call_shoc_main_from_pam( int ncol, int nlev, int nlevi, double dtime, int nadv, int num_qtracers, int npbl,
+                                ArrayIR<double,1,IRMemDevice> input_host_dx    ,
+                                ArrayIR<double,1,IRMemDevice> input_host_dy    ,
+                                ArrayIR<double,2,IRMemDevice> input_thv        ,
+                                ArrayIR<double,2,IRMemDevice> input_zt_grid    ,
+                                ArrayIR<double,2,IRMemDevice> input_zi_grid    ,
+                                ArrayIR<double,2,IRMemDevice> input_pres       ,
+                                ArrayIR<double,2,IRMemDevice> input_presi      ,
+                                ArrayIR<double,2,IRMemDevice> input_pdel       ,
+                                ArrayIR<double,1,IRMemDevice> input_wthl_sfc   ,
+                                ArrayIR<double,1,IRMemDevice> input_wqw_sfc    ,
+                                ArrayIR<double,1,IRMemDevice> input_uw_sfc     ,
+                                ArrayIR<double,1,IRMemDevice> input_vw_sfc     ,
+                                ArrayIR<double,2,IRMemDevice> input_wtracer_sfc,
+                                ArrayIR<double,2,IRMemDevice> input_w_field    ,
+                                ArrayIR<double,2,IRMemDevice> input_inv_exner  ,
+                                ArrayIR<double,1,IRMemDevice> input_phis       ,
+                                ArrayIR<double,2,IRMemDevice> input_host_dse   ,
+                                ArrayIR<double,2,IRMemDevice> input_tke        ,
+                                ArrayIR<double,2,IRMemDevice> input_thetal     ,
+                                ArrayIR<double,2,IRMemDevice> input_qw         ,
+                                ArrayIR<double,2,IRMemDevice> input_u_wind     ,
+                                ArrayIR<double,2,IRMemDevice> input_v_wind     ,
+                                ArrayIR<double,3,IRMemDevice> input_qtracers   ,
+                                ArrayIR<double,2,IRMemDevice> input_wthv_sec   ,
+                                ArrayIR<double,2,IRMemDevice> input_tkh        ,
+                                ArrayIR<double,2,IRMemDevice> input_tk         ,
+                                ArrayIR<double,2,IRMemDevice> input_ql         ,
+                                ArrayIR<double,2,IRMemDevice> input_cldfrac    ,
+                                ArrayIR<double,1,IRMemDevice> input_pblh       ,
+                                ArrayIR<double,2,IRMemDevice> input_mix        ,
+                                ArrayIR<double,2,IRMemDevice> input_isotropy   ,
+                                ArrayIR<double,2,IRMemDevice> input_w_sec      ,
+                                ArrayIR<double,2,IRMemDevice> input_thl_sec    ,
+                                ArrayIR<double,2,IRMemDevice> input_qw_sec     ,
+                                ArrayIR<double,2,IRMemDevice> input_qwthl_sec  ,
+                                ArrayIR<double,2,IRMemDevice> input_wthl_sec   ,
+                                ArrayIR<double,2,IRMemDevice> input_wqw_sec    ,
+                                ArrayIR<double,2,IRMemDevice> input_wtke_sec   ,
+                                ArrayIR<double,2,IRMemDevice> input_uw_sec     ,
+                                ArrayIR<double,2,IRMemDevice> input_vw_sec     ,
+                                ArrayIR<double,2,IRMemDevice> input_w3         ,
+                                ArrayIR<double,2,IRMemDevice> input_wqls_sec   ,
+                                ArrayIR<double,2,IRMemDevice> input_brunt      ,
+                                ArrayIR<double,2,IRMemDevice> input_ql2        ) {
     // Create some convenient types using ekat and shoc Functions
     typedef double                                          Scalar           ;
     typedef ekat::DefaultDevice                             Device           ;
@@ -189,50 +209,50 @@ namespace pam {
                    "ERROR: PAM's shoc integration isn't setup to deal with SCREAM_SMALL_PACK_SIZE > 1" );
 
     // Transform the PAM ArrayIR metadata and data pointers into Kokkos View objects of the appropriate dimensions
-    auto host_dx     = arrayIR_to_kokkos_view( shoc_host_dx     );
-    auto host_dy     = arrayIR_to_kokkos_view( shoc_host_dy     );
-    auto thv         = arrayIR_to_kokkos_view( shoc_thv         );
-    auto zt_grid     = arrayIR_to_kokkos_view( shoc_zt_grid     );
-    auto zi_grid     = arrayIR_to_kokkos_view( shoc_zi_grid     );
-    auto pres        = arrayIR_to_kokkos_view( shoc_pres        );
-    auto presi       = arrayIR_to_kokkos_view( shoc_presi       );
-    auto pdel        = arrayIR_to_kokkos_view( shoc_pdel        );
-    auto wthl_sfc    = arrayIR_to_kokkos_view( shoc_wthl_sfc    );
-    auto wqw_sfc     = arrayIR_to_kokkos_view( shoc_wqw_sfc     );
-    auto uw_sfc      = arrayIR_to_kokkos_view( shoc_uw_sfc      );
-    auto vw_sfc      = arrayIR_to_kokkos_view( shoc_vw_sfc      );
-    auto wtracer_sfc = arrayIR_to_kokkos_view( shoc_wtracer_sfc );
-    auto w_field     = arrayIR_to_kokkos_view( shoc_w_field     );
-    auto inv_exner   = arrayIR_to_kokkos_view( shoc_inv_exner   );
-    auto phis        = arrayIR_to_kokkos_view( shoc_phis        );
-    auto host_dse    = arrayIR_to_kokkos_view( shoc_host_dse    );
-    auto tke         = arrayIR_to_kokkos_view( shoc_tke         );
-    auto thetal      = arrayIR_to_kokkos_view( shoc_thetal      );
-    auto qw          = arrayIR_to_kokkos_view( shoc_qw          );
-    auto u_wind      = arrayIR_to_kokkos_view( shoc_u_wind      );
-    auto v_wind      = arrayIR_to_kokkos_view( shoc_v_wind      );
-    auto qtracers    = arrayIR_to_kokkos_view( shoc_qtracers    );
-    auto wthv_sec    = arrayIR_to_kokkos_view( shoc_wthv_sec    );
-    auto tkh         = arrayIR_to_kokkos_view( shoc_tkh         );
-    auto tk          = arrayIR_to_kokkos_view( shoc_tk          );
-    auto ql          = arrayIR_to_kokkos_view( shoc_ql          );
-    auto cldfrac     = arrayIR_to_kokkos_view( shoc_cldfrac     );
-    auto pblh        = arrayIR_to_kokkos_view( shoc_pblh        );
-    auto mix         = arrayIR_to_kokkos_view( shoc_mix         );
-    auto isotropy    = arrayIR_to_kokkos_view( shoc_isotropy    );
-    auto w_sec       = arrayIR_to_kokkos_view( shoc_w_sec       );
-    auto thl_sec     = arrayIR_to_kokkos_view( shoc_thl_sec     );
-    auto qw_sec      = arrayIR_to_kokkos_view( shoc_qw_sec      );
-    auto qwthl_sec   = arrayIR_to_kokkos_view( shoc_qwthl_sec   );
-    auto wthl_sec    = arrayIR_to_kokkos_view( shoc_wthl_sec    );
-    auto wqw_sec     = arrayIR_to_kokkos_view( shoc_wqw_sec     );
-    auto wtke_sec    = arrayIR_to_kokkos_view( shoc_wtke_sec    );
-    auto uw_sec      = arrayIR_to_kokkos_view( shoc_uw_sec      );
-    auto vw_sec      = arrayIR_to_kokkos_view( shoc_vw_sec      );
-    auto w3          = arrayIR_to_kokkos_view( shoc_w3          );
-    auto wqls_sec    = arrayIR_to_kokkos_view( shoc_wqls_sec    );
-    auto brunt       = arrayIR_to_kokkos_view( shoc_brunt       );
-    auto ql2         = arrayIR_to_kokkos_view( shoc_ql2         );
+    auto host_dx     = arrayIR_to_kokkos_view( input_host_dx     );
+    auto host_dy     = arrayIR_to_kokkos_view( input_host_dy     );
+    auto thv         = arrayIR_to_kokkos_view( input_thv         );
+    auto zt_grid     = arrayIR_to_kokkos_view( input_zt_grid     );
+    auto zi_grid     = arrayIR_to_kokkos_view( input_zi_grid     );
+    auto pres        = arrayIR_to_kokkos_view( input_pres        );
+    auto presi       = arrayIR_to_kokkos_view( input_presi       );
+    auto pdel        = arrayIR_to_kokkos_view( input_pdel        );
+    auto wthl_sfc    = arrayIR_to_kokkos_view( input_wthl_sfc    );
+    auto wqw_sfc     = arrayIR_to_kokkos_view( input_wqw_sfc     );
+    auto uw_sfc      = arrayIR_to_kokkos_view( input_uw_sfc      );
+    auto vw_sfc      = arrayIR_to_kokkos_view( input_vw_sfc      );
+    auto wtracer_sfc = arrayIR_to_kokkos_view( input_wtracer_sfc );
+    auto w_field     = arrayIR_to_kokkos_view( input_w_field     );
+    auto inv_exner   = arrayIR_to_kokkos_view( input_inv_exner   );
+    auto phis        = arrayIR_to_kokkos_view( input_phis        );
+    auto host_dse    = arrayIR_to_kokkos_view( input_host_dse    );
+    auto tke         = arrayIR_to_kokkos_view( input_tke         );
+    auto thetal      = arrayIR_to_kokkos_view( input_thetal      );
+    auto qw          = arrayIR_to_kokkos_view( input_qw          );
+    auto u_wind      = arrayIR_to_kokkos_view( input_u_wind      );
+    auto v_wind      = arrayIR_to_kokkos_view( input_v_wind      );
+    auto qtracers    = arrayIR_to_kokkos_view( input_qtracers    );
+    auto wthv_sec    = arrayIR_to_kokkos_view( input_wthv_sec    );
+    auto tkh         = arrayIR_to_kokkos_view( input_tkh         );
+    auto tk          = arrayIR_to_kokkos_view( input_tk          );
+    auto ql          = arrayIR_to_kokkos_view( input_ql          );
+    auto cldfrac     = arrayIR_to_kokkos_view( input_cldfrac     );
+    auto pblh        = arrayIR_to_kokkos_view( input_pblh        );
+    auto mix         = arrayIR_to_kokkos_view( input_mix         );
+    auto isotropy    = arrayIR_to_kokkos_view( input_isotropy    );
+    auto w_sec       = arrayIR_to_kokkos_view( input_w_sec       );
+    auto thl_sec     = arrayIR_to_kokkos_view( input_thl_sec     );
+    auto qw_sec      = arrayIR_to_kokkos_view( input_qw_sec      );
+    auto qwthl_sec   = arrayIR_to_kokkos_view( input_qwthl_sec   );
+    auto wthl_sec    = arrayIR_to_kokkos_view( input_wthl_sec    );
+    auto wqw_sec     = arrayIR_to_kokkos_view( input_wqw_sec     );
+    auto wtke_sec    = arrayIR_to_kokkos_view( input_wtke_sec    );
+    auto uw_sec      = arrayIR_to_kokkos_view( input_uw_sec      );
+    auto vw_sec      = arrayIR_to_kokkos_view( input_vw_sec      );
+    auto w3          = arrayIR_to_kokkos_view( input_w3          );
+    auto wqls_sec    = arrayIR_to_kokkos_view( input_wqls_sec    );
+    auto brunt       = arrayIR_to_kokkos_view( input_brunt       );
+    auto ql2         = arrayIR_to_kokkos_view( input_ql2         );
 
     // There appears to be no documentation in SHOC's C++ code about what the dimension ordering should be
     // for variables within the SHOC* structs. I found the following in scream's shoc_functions_f90.cpp file
@@ -406,12 +426,11 @@ namespace pam {
     shoc_hist.isotropy  = SHOCHistoryOutput_isotropy ;
 
     // Call shoc_main
-    const auto nlev_packs = ekat::npack<Spack>(nlev);
-    const auto policy = ekat::ExeSpaceUtils<ekat::KokkosTypes<Device>::ExeSpace>::get_default_team_policy(ncol,nlev_packs);
-    const auto nlevi_packs = ekat::npack<Spack>(nlevi);
-    const int n_wind_slots = ekat::npack<Spack>(2)*Spack::n;
-    const int n_trac_slots = ekat::npack<Spack>(num_qtracers+3)*Spack::n;
-    const int npbl = nlev;
+    auto const nlev_packs   = ekat::npack<Spack>(nlev);
+    auto const policy       = ekat::ExeSpaceUtils<ekat::KokkosTypes<Device>::ExeSpace>::get_default_team_policy(ncol,nlev_packs);
+    auto const nlevi_packs  = ekat::npack<Spack>(nlevi);
+    int  const n_wind_slots = ekat::npack<Spack>(2)*Spack::n;
+    int  const n_trac_slots = ekat::npack<Spack>(num_qtracers+3)*Spack::n;
     WorkspaceMgr workspace_mgr(nlevi_packs, 13+(n_wind_slots+n_trac_slots), policy);
 
     // static Int shoc_main(
