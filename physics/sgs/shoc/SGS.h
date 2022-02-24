@@ -62,12 +62,12 @@ public:
   // TODO: Make sure the constants vibe with the rest of the model physics
   // Set constants and likely num_tracers as well, and anything else you can do immediately
   SGS() {
-    R_d           = 287.;
-    cp_d          = 1003.;
+    R_d           = 287.042;
+    cp_d          = 1004.64;
     cv_d          = cp_d - R_d;
     gamma_d       = cp_d / cv_d;
     kappa_d       = R_d  / cp_d;
-    R_v           = 461.;
+    R_v           = 461.505;
     cp_v          = 1859;
     cv_v          = R_v - cp_v;
     p0            = 1.e5;
@@ -76,8 +76,8 @@ public:
     cp_l          = 4218.;
     micro_kessler = false;
     micro_p3      = false;
-    latvap        = 2.5E6 ;
-    latice        = 3.50E5;
+    latvap        = 2501000.0;
+    latice        = 333700.0;
     karman        = 0.4;
     npbl          = -1;
   }
