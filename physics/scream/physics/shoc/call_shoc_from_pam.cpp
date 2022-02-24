@@ -446,7 +446,7 @@ namespace pam {
       }
     });
 
-    // TODO: get rid of this. This is for debugging only
+    // TODO: get rid of this. This is for debugging only to make sure the copies maintain zero diffs
     Kokkos::parallel_for( Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0},{ncol,nlevi}) , KOKKOS_LAMBDA (int i, int k) {
       zi_grid(k,i) = SHOCInput_zi_grid(i,k)[0];
       presi  (k,i) = SHOCInput_presi  (i,k)[0];
