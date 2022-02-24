@@ -162,21 +162,22 @@ public:
         pref_shoc(k) = pres_mid(nz-1-k,0);
       });
       real zvir = R_v / R_d - 1;
+      int kbot, ktop;
       
-      // #if 1
+      #if 0
 
-        int kbot = nz;
-        int ktop = 1;
+        kbot = nz;
+        ktop = 1;
         shoc_init_fortran( nz , grav , R_d , R_v , cp_d , zvir , latvap , latice , karman ,
                            pref_shoc.createHostCopy().data() , kbot , ktop );
 
-      // #else
+      #else
 
         kbot = nz-1;
         ktop = 0;
         this->npbl = pam::call_shoc_init_from_pam( kbot , ktop , pam::yakl_array_to_arrayIR( pref_shoc ) );
 
-      // #endif
+      #endif
 
       // This check is here instead of init because it's not guaranteed the micro has called init before sgs
       if (! coupler.option_exists("micro")) {
@@ -360,7 +361,7 @@ public:
 
     int nadv = 1;
 
-    // #if 1
+    #if 0
 
       auto shoc_host_dx_host     = shoc_host_dx    .createHostCopy();
       auto shoc_host_dy_host     = shoc_host_dy    .createHostCopy();
@@ -427,53 +428,53 @@ public:
                          shoc_uw_sec_host.data(), shoc_vw_sec_host.data(), shoc_w3_host.data(),
                          shoc_wqls_sec_host.data(), shoc_brunt_host.data(), shoc_ql2_host.data() );
 
-      // shoc_host_dx_host    .deep_copy_to(shoc_host_dx    );
-      // shoc_host_dy_host    .deep_copy_to(shoc_host_dy    );
-      // shoc_zt_grid_host    .deep_copy_to(shoc_zt_grid    );
-      // shoc_zi_grid_host    .deep_copy_to(shoc_zi_grid    );
-      // shoc_pres_host       .deep_copy_to(shoc_pres       );
-      // shoc_presi_host      .deep_copy_to(shoc_presi      );
-      // shoc_pdel_host       .deep_copy_to(shoc_pdel       );
-      // shoc_thv_host        .deep_copy_to(shoc_thv        );
-      // shoc_w_field_host    .deep_copy_to(shoc_w_field    );
-      // shoc_wthl_sfc_host   .deep_copy_to(shoc_wthl_sfc   );
-      // shoc_wqw_sfc_host    .deep_copy_to(shoc_wqw_sfc    );
-      // shoc_uw_sfc_host     .deep_copy_to(shoc_uw_sfc     );
-      // shoc_vw_sfc_host     .deep_copy_to(shoc_vw_sfc     );
-      // shoc_wtracer_sfc_host.deep_copy_to(shoc_wtracer_sfc);
-      // shoc_exner_host      .deep_copy_to(shoc_exner      );
-      // shoc_inv_exner_host  .deep_copy_to(shoc_inv_exner  );
-      // shoc_phis_host       .deep_copy_to(shoc_phis       );
-      // shoc_host_dse_host   .deep_copy_to(shoc_host_dse   );
-      // shoc_tke_host        .deep_copy_to(shoc_tke        );
-      // shoc_thetal_host     .deep_copy_to(shoc_thetal     );
-      // shoc_qw_host         .deep_copy_to(shoc_qw         );
-      // shoc_u_wind_host     .deep_copy_to(shoc_u_wind     );
-      // shoc_v_wind_host     .deep_copy_to(shoc_v_wind     );
-      // shoc_wthv_sec_host   .deep_copy_to(shoc_wthv_sec   );
-      // shoc_qtracers_host   .deep_copy_to(shoc_qtracers   );
-      // shoc_tk_host         .deep_copy_to(shoc_tk         );
-      // shoc_tkh_host        .deep_copy_to(shoc_tkh        );
-      // shoc_cldfrac_host    .deep_copy_to(shoc_cldfrac    );
-      // shoc_ql_host         .deep_copy_to(shoc_ql         );
-      // shoc_pblh_host       .deep_copy_to(shoc_pblh       );
-      // shoc_ql2_host        .deep_copy_to(shoc_ql2        );
-      // shoc_mix_host        .deep_copy_to(shoc_mix        );
-      // shoc_w_sec_host      .deep_copy_to(shoc_w_sec      );
-      // shoc_thl_sec_host    .deep_copy_to(shoc_thl_sec    );
-      // shoc_qw_sec_host     .deep_copy_to(shoc_qw_sec     );
-      // shoc_qwthl_sec_host  .deep_copy_to(shoc_qwthl_sec  );
-      // shoc_wthl_sec_host   .deep_copy_to(shoc_wthl_sec   );
-      // shoc_wqw_sec_host    .deep_copy_to(shoc_wqw_sec    );
-      // shoc_wtke_sec_host   .deep_copy_to(shoc_wtke_sec   );
-      // shoc_uw_sec_host     .deep_copy_to(shoc_uw_sec     );
-      // shoc_vw_sec_host     .deep_copy_to(shoc_vw_sec     );
-      // shoc_w3_host         .deep_copy_to(shoc_w3         );
-      // shoc_wqls_sec_host   .deep_copy_to(shoc_wqls_sec   );
-      // shoc_brunt_host      .deep_copy_to(shoc_brunt      );
-      // shoc_isotropy_host   .deep_copy_to(shoc_isotropy   );
+      shoc_host_dx_host    .deep_copy_to(shoc_host_dx    );
+      shoc_host_dy_host    .deep_copy_to(shoc_host_dy    );
+      shoc_zt_grid_host    .deep_copy_to(shoc_zt_grid    );
+      shoc_zi_grid_host    .deep_copy_to(shoc_zi_grid    );
+      shoc_pres_host       .deep_copy_to(shoc_pres       );
+      shoc_presi_host      .deep_copy_to(shoc_presi      );
+      shoc_pdel_host       .deep_copy_to(shoc_pdel       );
+      shoc_thv_host        .deep_copy_to(shoc_thv        );
+      shoc_w_field_host    .deep_copy_to(shoc_w_field    );
+      shoc_wthl_sfc_host   .deep_copy_to(shoc_wthl_sfc   );
+      shoc_wqw_sfc_host    .deep_copy_to(shoc_wqw_sfc    );
+      shoc_uw_sfc_host     .deep_copy_to(shoc_uw_sfc     );
+      shoc_vw_sfc_host     .deep_copy_to(shoc_vw_sfc     );
+      shoc_wtracer_sfc_host.deep_copy_to(shoc_wtracer_sfc);
+      shoc_exner_host      .deep_copy_to(shoc_exner      );
+      shoc_inv_exner_host  .deep_copy_to(shoc_inv_exner  );
+      shoc_phis_host       .deep_copy_to(shoc_phis       );
+      shoc_host_dse_host   .deep_copy_to(shoc_host_dse   );
+      shoc_tke_host        .deep_copy_to(shoc_tke        );
+      shoc_thetal_host     .deep_copy_to(shoc_thetal     );
+      shoc_qw_host         .deep_copy_to(shoc_qw         );
+      shoc_u_wind_host     .deep_copy_to(shoc_u_wind     );
+      shoc_v_wind_host     .deep_copy_to(shoc_v_wind     );
+      shoc_wthv_sec_host   .deep_copy_to(shoc_wthv_sec   );
+      shoc_qtracers_host   .deep_copy_to(shoc_qtracers   );
+      shoc_tk_host         .deep_copy_to(shoc_tk         );
+      shoc_tkh_host        .deep_copy_to(shoc_tkh        );
+      shoc_cldfrac_host    .deep_copy_to(shoc_cldfrac    );
+      shoc_ql_host         .deep_copy_to(shoc_ql         );
+      shoc_pblh_host       .deep_copy_to(shoc_pblh       );
+      shoc_ql2_host        .deep_copy_to(shoc_ql2        );
+      shoc_mix_host        .deep_copy_to(shoc_mix        );
+      shoc_w_sec_host      .deep_copy_to(shoc_w_sec      );
+      shoc_thl_sec_host    .deep_copy_to(shoc_thl_sec    );
+      shoc_qw_sec_host     .deep_copy_to(shoc_qw_sec     );
+      shoc_qwthl_sec_host  .deep_copy_to(shoc_qwthl_sec  );
+      shoc_wthl_sec_host   .deep_copy_to(shoc_wthl_sec   );
+      shoc_wqw_sec_host    .deep_copy_to(shoc_wqw_sec    );
+      shoc_wtke_sec_host   .deep_copy_to(shoc_wtke_sec   );
+      shoc_uw_sec_host     .deep_copy_to(shoc_uw_sec     );
+      shoc_vw_sec_host     .deep_copy_to(shoc_vw_sec     );
+      shoc_w3_host         .deep_copy_to(shoc_w3         );
+      shoc_wqls_sec_host   .deep_copy_to(shoc_wqls_sec   );
+      shoc_brunt_host      .deep_copy_to(shoc_brunt      );
+      shoc_isotropy_host   .deep_copy_to(shoc_isotropy   );
 
-    // #else
+    #else
 
       pam::call_shoc_main_from_pam( ncol, nz, nz+1, dt, nadv, num_qtracers, this->npbl,
                                     pam::yakl_array_to_arrayIR( shoc_host_dx     ),
@@ -521,56 +522,7 @@ public:
                                     pam::yakl_array_to_arrayIR( shoc_brunt       ),
                                     pam::yakl_array_to_arrayIR( shoc_ql2         ) );
 
-    // #endif
-
-    using yakl::intrinsics::sum;
-    using yakl::intrinsics::abs;
-    using std::abs;
-    std::cout << "             " << std::setw(25) << "Fortran SHOC value"            << "," << std::setw(25) << "EKAT SHOC value"          << "," << std::setw(25) << "Rel. Abs. Diff."                                                                               << std::endl;
-    std::cout << "host_dx    : " << std::setw(25) << sum(abs(shoc_host_dx_host    )) << "," << std::setw(25) << sum(abs(shoc_host_dx    )) << "," << std::setw(25) << abs(sum(abs(shoc_host_dx    ))-sum(abs(shoc_host_dx_host    )))/sum(abs(shoc_host_dx_host    )) << std::endl;
-    std::cout << "host_dy    : " << std::setw(25) << sum(abs(shoc_host_dy_host    )) << "," << std::setw(25) << sum(abs(shoc_host_dy    )) << "," << std::setw(25) << abs(sum(abs(shoc_host_dy    ))-sum(abs(shoc_host_dy_host    )))/sum(abs(shoc_host_dy_host    )) << std::endl;
-    std::cout << "zt_grid    : " << std::setw(25) << sum(abs(shoc_zt_grid_host    )) << "," << std::setw(25) << sum(abs(shoc_zt_grid    )) << "," << std::setw(25) << abs(sum(abs(shoc_zt_grid    ))-sum(abs(shoc_zt_grid_host    )))/sum(abs(shoc_zt_grid_host    )) << std::endl;
-    std::cout << "zi_grid    : " << std::setw(25) << sum(abs(shoc_zi_grid_host    )) << "," << std::setw(25) << sum(abs(shoc_zi_grid    )) << "," << std::setw(25) << abs(sum(abs(shoc_zi_grid    ))-sum(abs(shoc_zi_grid_host    )))/sum(abs(shoc_zi_grid_host    )) << std::endl;
-    std::cout << "pres       : " << std::setw(25) << sum(abs(shoc_pres_host       )) << "," << std::setw(25) << sum(abs(shoc_pres       )) << "," << std::setw(25) << abs(sum(abs(shoc_pres       ))-sum(abs(shoc_pres_host       )))/sum(abs(shoc_pres_host       )) << std::endl;
-    std::cout << "presi      : " << std::setw(25) << sum(abs(shoc_presi_host      )) << "," << std::setw(25) << sum(abs(shoc_presi      )) << "," << std::setw(25) << abs(sum(abs(shoc_presi      ))-sum(abs(shoc_presi_host      )))/sum(abs(shoc_presi_host      )) << std::endl;
-    std::cout << "pdel       : " << std::setw(25) << sum(abs(shoc_pdel_host       )) << "," << std::setw(25) << sum(abs(shoc_pdel       )) << "," << std::setw(25) << abs(sum(abs(shoc_pdel       ))-sum(abs(shoc_pdel_host       )))/sum(abs(shoc_pdel_host       )) << std::endl;
-    std::cout << "thv        : " << std::setw(25) << sum(abs(shoc_thv_host        )) << "," << std::setw(25) << sum(abs(shoc_thv        )) << "," << std::setw(25) << abs(sum(abs(shoc_thv        ))-sum(abs(shoc_thv_host        )))/sum(abs(shoc_thv_host        )) << std::endl;
-    std::cout << "w_field    : " << std::setw(25) << sum(abs(shoc_w_field_host    )) << "," << std::setw(25) << sum(abs(shoc_w_field    )) << "," << std::setw(25) << abs(sum(abs(shoc_w_field    ))-sum(abs(shoc_w_field_host    )))/sum(abs(shoc_w_field_host    )) << std::endl;
-    std::cout << "wthl_sfc   : " << std::setw(25) << sum(abs(shoc_wthl_sfc_host   )) << "," << std::setw(25) << sum(abs(shoc_wthl_sfc   )) << "," << std::setw(25) << abs(sum(abs(shoc_wthl_sfc   ))-sum(abs(shoc_wthl_sfc_host   )))/sum(abs(shoc_wthl_sfc_host   )) << std::endl;
-    std::cout << "wqw_sfc    : " << std::setw(25) << sum(abs(shoc_wqw_sfc_host    )) << "," << std::setw(25) << sum(abs(shoc_wqw_sfc    )) << "," << std::setw(25) << abs(sum(abs(shoc_wqw_sfc    ))-sum(abs(shoc_wqw_sfc_host    )))/sum(abs(shoc_wqw_sfc_host    )) << std::endl;
-    std::cout << "uw_sfc     : " << std::setw(25) << sum(abs(shoc_uw_sfc_host     )) << "," << std::setw(25) << sum(abs(shoc_uw_sfc     )) << "," << std::setw(25) << abs(sum(abs(shoc_uw_sfc     ))-sum(abs(shoc_uw_sfc_host     )))/sum(abs(shoc_uw_sfc_host     )) << std::endl;
-    std::cout << "vw_sfc     : " << std::setw(25) << sum(abs(shoc_vw_sfc_host     )) << "," << std::setw(25) << sum(abs(shoc_vw_sfc     )) << "," << std::setw(25) << abs(sum(abs(shoc_vw_sfc     ))-sum(abs(shoc_vw_sfc_host     )))/sum(abs(shoc_vw_sfc_host     )) << std::endl;
-    std::cout << "wtracer_sfc: " << std::setw(25) << sum(abs(shoc_wtracer_sfc_host)) << "," << std::setw(25) << sum(abs(shoc_wtracer_sfc)) << "," << std::setw(25) << abs(sum(abs(shoc_wtracer_sfc))-sum(abs(shoc_wtracer_sfc_host)))/sum(abs(shoc_wtracer_sfc_host)) << std::endl;
-    std::cout << "inv_exner  : " << std::setw(25) << sum(abs(shoc_inv_exner_host  )) << "," << std::setw(25) << sum(abs(shoc_inv_exner  )) << "," << std::setw(25) << abs(sum(abs(shoc_inv_exner  ))-sum(abs(shoc_inv_exner_host  )))/sum(abs(shoc_inv_exner_host  )) << std::endl;
-    std::cout << "phis       : " << std::setw(25) << sum(abs(shoc_phis_host       )) << "," << std::setw(25) << sum(abs(shoc_phis       )) << "," << std::setw(25) << abs(sum(abs(shoc_phis       ))-sum(abs(shoc_phis_host       )))/sum(abs(shoc_phis_host       )) << std::endl;
-    std::cout << "host_dse   : " << std::setw(25) << sum(abs(shoc_host_dse_host   )) << "," << std::setw(25) << sum(abs(shoc_host_dse   )) << "," << std::setw(25) << abs(sum(abs(shoc_host_dse   ))-sum(abs(shoc_host_dse_host   )))/sum(abs(shoc_host_dse_host   )) << std::endl;
-    std::cout << "tke        : " << std::setw(25) << sum(abs(shoc_tke_host        )) << "," << std::setw(25) << sum(abs(shoc_tke        )) << "," << std::setw(25) << abs(sum(abs(shoc_tke        ))-sum(abs(shoc_tke_host        )))/sum(abs(shoc_tke_host        )) << std::endl;
-    std::cout << "thetal     : " << std::setw(25) << sum(abs(shoc_thetal_host     )) << "," << std::setw(25) << sum(abs(shoc_thetal     )) << "," << std::setw(25) << abs(sum(abs(shoc_thetal     ))-sum(abs(shoc_thetal_host     )))/sum(abs(shoc_thetal_host     )) << std::endl;
-    std::cout << "qw         : " << std::setw(25) << sum(abs(shoc_qw_host         )) << "," << std::setw(25) << sum(abs(shoc_qw         )) << "," << std::setw(25) << abs(sum(abs(shoc_qw         ))-sum(abs(shoc_qw_host         )))/sum(abs(shoc_qw_host         )) << std::endl;
-    std::cout << "u_wind     : " << std::setw(25) << sum(abs(shoc_u_wind_host     )) << "," << std::setw(25) << sum(abs(shoc_u_wind     )) << "," << std::setw(25) << abs(sum(abs(shoc_u_wind     ))-sum(abs(shoc_u_wind_host     )))/sum(abs(shoc_u_wind_host     )) << std::endl;
-    std::cout << "v_wind     : " << std::setw(25) << sum(abs(shoc_v_wind_host     )) << "," << std::setw(25) << sum(abs(shoc_v_wind     )) << "," << std::setw(25) << abs(sum(abs(shoc_v_wind     ))-sum(abs(shoc_v_wind_host     )))/sum(abs(shoc_v_wind_host     )) << std::endl;
-    std::cout << "wthv_sec   : " << std::setw(25) << sum(abs(shoc_wthv_sec_host   )) << "," << std::setw(25) << sum(abs(shoc_wthv_sec   )) << "," << std::setw(25) << abs(sum(abs(shoc_wthv_sec   ))-sum(abs(shoc_wthv_sec_host   )))/sum(abs(shoc_wthv_sec_host   )) << std::endl;
-    std::cout << "qtracers   : " << std::setw(25) << sum(abs(shoc_qtracers_host   )) << "," << std::setw(25) << sum(abs(shoc_qtracers   )) << "," << std::setw(25) << abs(sum(abs(shoc_qtracers   ))-sum(abs(shoc_qtracers_host   )))/sum(abs(shoc_qtracers_host   )) << std::endl;
-    std::cout << "tk         : " << std::setw(25) << sum(abs(shoc_tk_host         )) << "," << std::setw(25) << sum(abs(shoc_tk         )) << "," << std::setw(25) << abs(sum(abs(shoc_tk         ))-sum(abs(shoc_tk_host         )))/sum(abs(shoc_tk_host         )) << std::endl;
-    std::cout << "cldfrac    : " << std::setw(25) << sum(abs(shoc_cldfrac_host    )) << "," << std::setw(25) << sum(abs(shoc_cldfrac    )) << "," << std::setw(25) << abs(sum(abs(shoc_cldfrac    ))-sum(abs(shoc_cldfrac_host    )))/sum(abs(shoc_cldfrac_host    )) << std::endl;
-    std::cout << "ql         : " << std::setw(25) << sum(abs(shoc_ql_host         )) << "," << std::setw(25) << sum(abs(shoc_ql         )) << "," << std::setw(25) << abs(sum(abs(shoc_ql         ))-sum(abs(shoc_ql_host         )))/sum(abs(shoc_ql_host         )) << std::endl;
-    std::cout << "pblh       : " << std::setw(25) << sum(abs(shoc_pblh_host       )) << "," << std::setw(25) << sum(abs(shoc_pblh       )) << "," << std::setw(25) << abs(sum(abs(shoc_pblh       ))-sum(abs(shoc_pblh_host       )))/sum(abs(shoc_pblh_host       )) << std::endl;
-    std::cout << "ql2        : " << std::setw(25) << sum(abs(shoc_ql2_host        )) << "," << std::setw(25) << sum(abs(shoc_ql2        )) << "," << std::setw(25) << abs(sum(abs(shoc_ql2        ))-sum(abs(shoc_ql2_host        )))/sum(abs(shoc_ql2_host        )) << std::endl;
-    std::cout << "mix        : " << std::setw(25) << sum(abs(shoc_mix_host        )) << "," << std::setw(25) << sum(abs(shoc_mix        )) << "," << std::setw(25) << abs(sum(abs(shoc_mix        ))-sum(abs(shoc_mix_host        )))/sum(abs(shoc_mix_host        )) << std::endl;
-    std::cout << "w_sec      : " << std::setw(25) << sum(abs(shoc_w_sec_host      )) << "," << std::setw(25) << sum(abs(shoc_w_sec      )) << "," << std::setw(25) << abs(sum(abs(shoc_w_sec      ))-sum(abs(shoc_w_sec_host      )))/sum(abs(shoc_w_sec_host      )) << std::endl;
-    std::cout << "thl_sec    : " << std::setw(25) << sum(abs(shoc_thl_sec_host    )) << "," << std::setw(25) << sum(abs(shoc_thl_sec    )) << "," << std::setw(25) << abs(sum(abs(shoc_thl_sec    ))-sum(abs(shoc_thl_sec_host    )))/sum(abs(shoc_thl_sec_host    )) << std::endl;
-    std::cout << "qw_sec     : " << std::setw(25) << sum(abs(shoc_qw_sec_host     )) << "," << std::setw(25) << sum(abs(shoc_qw_sec     )) << "," << std::setw(25) << abs(sum(abs(shoc_qw_sec     ))-sum(abs(shoc_qw_sec_host     )))/sum(abs(shoc_qw_sec_host     )) << std::endl;
-    std::cout << "qwthl_sec  : " << std::setw(25) << sum(abs(shoc_qwthl_sec_host  )) << "," << std::setw(25) << sum(abs(shoc_qwthl_sec  )) << "," << std::setw(25) << abs(sum(abs(shoc_qwthl_sec  ))-sum(abs(shoc_qwthl_sec_host  )))/sum(abs(shoc_qwthl_sec_host  )) << std::endl;
-    std::cout << "wthl_sec   : " << std::setw(25) << sum(abs(shoc_wthl_sec_host   )) << "," << std::setw(25) << sum(abs(shoc_wthl_sec   )) << "," << std::setw(25) << abs(sum(abs(shoc_wthl_sec   ))-sum(abs(shoc_wthl_sec_host   )))/sum(abs(shoc_wthl_sec_host   )) << std::endl;
-    std::cout << "wqw_sec    : " << std::setw(25) << sum(abs(shoc_wqw_sec_host    )) << "," << std::setw(25) << sum(abs(shoc_wqw_sec    )) << "," << std::setw(25) << abs(sum(abs(shoc_wqw_sec    ))-sum(abs(shoc_wqw_sec_host    )))/sum(abs(shoc_wqw_sec_host    )) << std::endl;
-    std::cout << "wtke_sec   : " << std::setw(25) << sum(abs(shoc_wtke_sec_host   )) << "," << std::setw(25) << sum(abs(shoc_wtke_sec   )) << "," << std::setw(25) << abs(sum(abs(shoc_wtke_sec   ))-sum(abs(shoc_wtke_sec_host   )))/sum(abs(shoc_wtke_sec_host   )) << std::endl;
-    std::cout << "uw_sec     : " << std::setw(25) << sum(abs(shoc_uw_sec_host     )) << "," << std::setw(25) << sum(abs(shoc_uw_sec     )) << "," << std::setw(25) << abs(sum(abs(shoc_uw_sec     ))-sum(abs(shoc_uw_sec_host     )))/sum(abs(shoc_uw_sec_host     )) << std::endl;
-    std::cout << "vw_sec     : " << std::setw(25) << sum(abs(shoc_vw_sec_host     )) << "," << std::setw(25) << sum(abs(shoc_vw_sec     )) << "," << std::setw(25) << abs(sum(abs(shoc_vw_sec     ))-sum(abs(shoc_vw_sec_host     )))/sum(abs(shoc_vw_sec_host     )) << std::endl;
-    std::cout << "w3         : " << std::setw(25) << sum(abs(shoc_w3_host         )) << "," << std::setw(25) << sum(abs(shoc_w3         )) << "," << std::setw(25) << abs(sum(abs(shoc_w3         ))-sum(abs(shoc_w3_host         )))/sum(abs(shoc_w3_host         )) << std::endl;
-    std::cout << "wqls_sec   : " << std::setw(25) << sum(abs(shoc_wqls_sec_host   )) << "," << std::setw(25) << sum(abs(shoc_wqls_sec   )) << "," << std::setw(25) << abs(sum(abs(shoc_wqls_sec   ))-sum(abs(shoc_wqls_sec_host   )))/sum(abs(shoc_wqls_sec_host   )) << std::endl;
-    std::cout << "brunt      : " << std::setw(25) << sum(abs(shoc_brunt_host      )) << "," << std::setw(25) << sum(abs(shoc_brunt      )) << "," << std::setw(25) << abs(sum(abs(shoc_brunt      ))-sum(abs(shoc_brunt_host      )))/sum(abs(shoc_brunt_host      )) << std::endl;
-    std::cout << "isotropy   : " << std::setw(25) << sum(abs(shoc_isotropy_host   )) << "," << std::setw(25) << sum(abs(shoc_isotropy   )) << "," << std::setw(25) << abs(sum(abs(shoc_isotropy   ))-sum(abs(shoc_isotropy_host   )))/sum(abs(shoc_isotropy_host   )) << std::endl;
-
+    #endif
 
     // Process outputs from SHOC (reordering the vertical dimension)
     parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
