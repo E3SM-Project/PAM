@@ -446,6 +446,32 @@ namespace pam {
       }
     });
 
+    // TODO: get rid of this. This is for debugging only
+    Kokkos::parallel_for( Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0},{ncol,nlevi}) , KOKKOS_LAMBDA (int i, int k) {
+      zi_grid(k,i) = SHOCInput_zi_grid(i,k)[0];
+      presi  (k,i) = SHOCInput_presi  (i,k)[0];
+      if (k < nlev) {
+        zt_grid  (k,i) = SHOCInput_zt_grid           (i  ,k)[0];
+        pres     (k,i) = SHOCInput_pres              (i  ,k)[0];
+        pdel     (k,i) = SHOCInput_pdel              (i  ,k)[0];
+        thv      (k,i) = SHOCInput_thv               (i  ,k)[0];
+        w_field  (k,i) = SHOCInput_w_field           (i  ,k)[0];
+        inv_exner(k,i) = SHOCInput_inv_exner         (i  ,k)[0];
+      }
+      if (k == 0) {
+        host_dx (i) = SHOCInput_dx      (i);
+        host_dy (i) = SHOCInput_dy      (i);
+        wthl_sfc(i) = SHOCInput_wthl_sfc(i);
+        wqw_sfc (i) = SHOCInput_wqw_sfc (i);
+        uw_sfc  (i) = SHOCInput_uw_sfc  (i);
+        vw_sfc  (i) = SHOCInput_vw_sfc  (i);
+        phis    (i) = SHOCInput_phis    (i);
+        for (int tr = 0; tr < num_qtracers; tr++) {
+          wtracer_sfc(tr,i) = SHOCInput_wtracer_sfc(i,tr)[0];
+        }
+      }
+    });
+
     Kokkos::fence();
 
   }

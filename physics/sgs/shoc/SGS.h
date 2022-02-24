@@ -163,20 +163,20 @@ public:
       });
       real zvir = R_v / R_d - 1;
       
-      #if 0
+      // #if 1
 
         int kbot = nz;
         int ktop = 1;
         shoc_init_fortran( nz , grav , R_d , R_v , cp_d , zvir , latvap , latice , karman ,
                            pref_shoc.createHostCopy().data() , kbot , ktop );
 
-      #else
+      // #else
 
-        int kbot = nz-1;
-        int ktop = 0;
+        kbot = nz-1;
+        ktop = 0;
         this->npbl = pam::call_shoc_init_from_pam( kbot , ktop , pam::yakl_array_to_arrayIR( pref_shoc ) );
 
-      #endif
+      // #endif
 
       // This check is here instead of init because it's not guaranteed the micro has called init before sgs
       if (! coupler.option_exists("micro")) {
@@ -358,7 +358,9 @@ public:
       shoc_presi  (k,i) = pres_int(k_shoc,i);
     });
 
-    #if 0
+    int nadv = 1;
+
+    // #if 1
 
       auto shoc_host_dx_host     = shoc_host_dx    .createHostCopy();
       auto shoc_host_dy_host     = shoc_host_dy    .createHostCopy();
@@ -406,7 +408,6 @@ public:
       auto shoc_brunt_host       = shoc_brunt      .createHostCopy();
       auto shoc_isotropy_host    = shoc_isotropy   .createHostCopy();
 
-      int nadv = 1;
       int nzp1 = nz+1;
       // IMPORTANT: SHOC appears to actually want 1/exner for the exner parameter
       shoc_main_fortran( ncol, nz, nzp1, dt, nadv, 
@@ -426,55 +427,54 @@ public:
                          shoc_uw_sec_host.data(), shoc_vw_sec_host.data(), shoc_w3_host.data(),
                          shoc_wqls_sec_host.data(), shoc_brunt_host.data(), shoc_ql2_host.data() );
 
-      shoc_host_dx_host    .deep_copy_to(shoc_host_dx    );
-      shoc_host_dy_host    .deep_copy_to(shoc_host_dy    );
-      shoc_zt_grid_host    .deep_copy_to(shoc_zt_grid    );
-      shoc_zi_grid_host    .deep_copy_to(shoc_zi_grid    );
-      shoc_pres_host       .deep_copy_to(shoc_pres       );
-      shoc_presi_host      .deep_copy_to(shoc_presi      );
-      shoc_pdel_host       .deep_copy_to(shoc_pdel       );
-      shoc_thv_host        .deep_copy_to(shoc_thv        );
-      shoc_w_field_host    .deep_copy_to(shoc_w_field    );
-      shoc_wthl_sfc_host   .deep_copy_to(shoc_wthl_sfc   );
-      shoc_wqw_sfc_host    .deep_copy_to(shoc_wqw_sfc    );
-      shoc_uw_sfc_host     .deep_copy_to(shoc_uw_sfc     );
-      shoc_vw_sfc_host     .deep_copy_to(shoc_vw_sfc     );
-      shoc_wtracer_sfc_host.deep_copy_to(shoc_wtracer_sfc);
-      shoc_exner_host      .deep_copy_to(shoc_exner      );
-      shoc_inv_exner_host  .deep_copy_to(shoc_inv_exner  );
-      shoc_phis_host       .deep_copy_to(shoc_phis       );
-      shoc_host_dse_host   .deep_copy_to(shoc_host_dse   );
-      shoc_tke_host        .deep_copy_to(shoc_tke        );
-      shoc_thetal_host     .deep_copy_to(shoc_thetal     );
-      shoc_qw_host         .deep_copy_to(shoc_qw         );
-      shoc_u_wind_host     .deep_copy_to(shoc_u_wind     );
-      shoc_v_wind_host     .deep_copy_to(shoc_v_wind     );
-      shoc_wthv_sec_host   .deep_copy_to(shoc_wthv_sec   );
-      shoc_qtracers_host   .deep_copy_to(shoc_qtracers   );
-      shoc_tk_host         .deep_copy_to(shoc_tk         );
-      shoc_tkh_host        .deep_copy_to(shoc_tkh        );
-      shoc_cldfrac_host    .deep_copy_to(shoc_cldfrac    );
-      shoc_ql_host         .deep_copy_to(shoc_ql         );
-      shoc_pblh_host       .deep_copy_to(shoc_pblh       );
-      shoc_ql2_host        .deep_copy_to(shoc_ql2        );
-      shoc_mix_host        .deep_copy_to(shoc_mix        );
-      shoc_w_sec_host      .deep_copy_to(shoc_w_sec      );
-      shoc_thl_sec_host    .deep_copy_to(shoc_thl_sec    );
-      shoc_qw_sec_host     .deep_copy_to(shoc_qw_sec     );
-      shoc_qwthl_sec_host  .deep_copy_to(shoc_qwthl_sec  );
-      shoc_wthl_sec_host   .deep_copy_to(shoc_wthl_sec   );
-      shoc_wqw_sec_host    .deep_copy_to(shoc_wqw_sec    );
-      shoc_wtke_sec_host   .deep_copy_to(shoc_wtke_sec   );
-      shoc_uw_sec_host     .deep_copy_to(shoc_uw_sec     );
-      shoc_vw_sec_host     .deep_copy_to(shoc_vw_sec     );
-      shoc_w3_host         .deep_copy_to(shoc_w3         );
-      shoc_wqls_sec_host   .deep_copy_to(shoc_wqls_sec   );
-      shoc_brunt_host      .deep_copy_to(shoc_brunt      );
-      shoc_isotropy_host   .deep_copy_to(shoc_isotropy   );
+      // shoc_host_dx_host    .deep_copy_to(shoc_host_dx    );
+      // shoc_host_dy_host    .deep_copy_to(shoc_host_dy    );
+      // shoc_zt_grid_host    .deep_copy_to(shoc_zt_grid    );
+      // shoc_zi_grid_host    .deep_copy_to(shoc_zi_grid    );
+      // shoc_pres_host       .deep_copy_to(shoc_pres       );
+      // shoc_presi_host      .deep_copy_to(shoc_presi      );
+      // shoc_pdel_host       .deep_copy_to(shoc_pdel       );
+      // shoc_thv_host        .deep_copy_to(shoc_thv        );
+      // shoc_w_field_host    .deep_copy_to(shoc_w_field    );
+      // shoc_wthl_sfc_host   .deep_copy_to(shoc_wthl_sfc   );
+      // shoc_wqw_sfc_host    .deep_copy_to(shoc_wqw_sfc    );
+      // shoc_uw_sfc_host     .deep_copy_to(shoc_uw_sfc     );
+      // shoc_vw_sfc_host     .deep_copy_to(shoc_vw_sfc     );
+      // shoc_wtracer_sfc_host.deep_copy_to(shoc_wtracer_sfc);
+      // shoc_exner_host      .deep_copy_to(shoc_exner      );
+      // shoc_inv_exner_host  .deep_copy_to(shoc_inv_exner  );
+      // shoc_phis_host       .deep_copy_to(shoc_phis       );
+      // shoc_host_dse_host   .deep_copy_to(shoc_host_dse   );
+      // shoc_tke_host        .deep_copy_to(shoc_tke        );
+      // shoc_thetal_host     .deep_copy_to(shoc_thetal     );
+      // shoc_qw_host         .deep_copy_to(shoc_qw         );
+      // shoc_u_wind_host     .deep_copy_to(shoc_u_wind     );
+      // shoc_v_wind_host     .deep_copy_to(shoc_v_wind     );
+      // shoc_wthv_sec_host   .deep_copy_to(shoc_wthv_sec   );
+      // shoc_qtracers_host   .deep_copy_to(shoc_qtracers   );
+      // shoc_tk_host         .deep_copy_to(shoc_tk         );
+      // shoc_tkh_host        .deep_copy_to(shoc_tkh        );
+      // shoc_cldfrac_host    .deep_copy_to(shoc_cldfrac    );
+      // shoc_ql_host         .deep_copy_to(shoc_ql         );
+      // shoc_pblh_host       .deep_copy_to(shoc_pblh       );
+      // shoc_ql2_host        .deep_copy_to(shoc_ql2        );
+      // shoc_mix_host        .deep_copy_to(shoc_mix        );
+      // shoc_w_sec_host      .deep_copy_to(shoc_w_sec      );
+      // shoc_thl_sec_host    .deep_copy_to(shoc_thl_sec    );
+      // shoc_qw_sec_host     .deep_copy_to(shoc_qw_sec     );
+      // shoc_qwthl_sec_host  .deep_copy_to(shoc_qwthl_sec  );
+      // shoc_wthl_sec_host   .deep_copy_to(shoc_wthl_sec   );
+      // shoc_wqw_sec_host    .deep_copy_to(shoc_wqw_sec    );
+      // shoc_wtke_sec_host   .deep_copy_to(shoc_wtke_sec   );
+      // shoc_uw_sec_host     .deep_copy_to(shoc_uw_sec     );
+      // shoc_vw_sec_host     .deep_copy_to(shoc_vw_sec     );
+      // shoc_w3_host         .deep_copy_to(shoc_w3         );
+      // shoc_wqls_sec_host   .deep_copy_to(shoc_wqls_sec   );
+      // shoc_brunt_host      .deep_copy_to(shoc_brunt      );
+      // shoc_isotropy_host   .deep_copy_to(shoc_isotropy   );
 
-    #else
+    // #else
 
-      int nadv = 1;
       pam::call_shoc_main_from_pam( ncol, nz, nz+1, dt, nadv, num_qtracers, this->npbl,
                                     pam::yakl_array_to_arrayIR( shoc_host_dx     ),
                                     pam::yakl_array_to_arrayIR( shoc_host_dy     ),
@@ -521,7 +521,53 @@ public:
                                     pam::yakl_array_to_arrayIR( shoc_brunt       ),
                                     pam::yakl_array_to_arrayIR( shoc_ql2         ) );
 
-    #endif
+    // #endif
+      std::cout << "                  " << std::setw(25) << "Fortran SHOC value"                         << "  ,  " << std::setw(25) << "EKAT SHOC value"                       << "  ,  " << std::setw(25) << "Relative Absolute Difference"                                                                                                                     << std::endl;
+      std::cout << "shoc_host_dx    : " << std::setw(25) << yakl::intrinsics::sum(shoc_host_dx_host    ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_host_dx    ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_host_dx    ) - yakl::intrinsics::sum(shoc_host_dx_host    ) ) / abs( yakl::intrinsics::sum(shoc_host_dx_host    ) ) << std::endl;
+      std::cout << "shoc_host_dy    : " << std::setw(25) << yakl::intrinsics::sum(shoc_host_dy_host    ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_host_dy    ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_host_dy    ) - yakl::intrinsics::sum(shoc_host_dy_host    ) ) / abs( yakl::intrinsics::sum(shoc_host_dy_host    ) ) << std::endl;
+      std::cout << "shoc_zt_grid    : " << std::setw(25) << yakl::intrinsics::sum(shoc_zt_grid_host    ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_zt_grid    ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_zt_grid    ) - yakl::intrinsics::sum(shoc_zt_grid_host    ) ) / abs( yakl::intrinsics::sum(shoc_zt_grid_host    ) ) << std::endl;
+      std::cout << "shoc_zi_grid    : " << std::setw(25) << yakl::intrinsics::sum(shoc_zi_grid_host    ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_zi_grid    ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_zi_grid    ) - yakl::intrinsics::sum(shoc_zi_grid_host    ) ) / abs( yakl::intrinsics::sum(shoc_zi_grid_host    ) ) << std::endl;
+      std::cout << "shoc_pres       : " << std::setw(25) << yakl::intrinsics::sum(shoc_pres_host       ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_pres       ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_pres       ) - yakl::intrinsics::sum(shoc_pres_host       ) ) / abs( yakl::intrinsics::sum(shoc_pres_host       ) ) << std::endl;
+      std::cout << "shoc_presi      : " << std::setw(25) << yakl::intrinsics::sum(shoc_presi_host      ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_presi      ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_presi      ) - yakl::intrinsics::sum(shoc_presi_host      ) ) / abs( yakl::intrinsics::sum(shoc_presi_host      ) ) << std::endl;
+      std::cout << "shoc_pdel       : " << std::setw(25) << yakl::intrinsics::sum(shoc_pdel_host       ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_pdel       ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_pdel       ) - yakl::intrinsics::sum(shoc_pdel_host       ) ) / abs( yakl::intrinsics::sum(shoc_pdel_host       ) ) << std::endl;
+      std::cout << "shoc_thv        : " << std::setw(25) << yakl::intrinsics::sum(shoc_thv_host        ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_thv        ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_thv        ) - yakl::intrinsics::sum(shoc_thv_host        ) ) / abs( yakl::intrinsics::sum(shoc_thv_host        ) ) << std::endl;
+      std::cout << "shoc_w_field    : " << std::setw(25) << yakl::intrinsics::sum(shoc_w_field_host    ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_w_field    ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_w_field    ) - yakl::intrinsics::sum(shoc_w_field_host    ) ) / abs( yakl::intrinsics::sum(shoc_w_field_host    ) ) << std::endl;
+      std::cout << "shoc_wthl_sfc   : " << std::setw(25) << yakl::intrinsics::sum(shoc_wthl_sfc_host   ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_wthl_sfc   ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_wthl_sfc   ) - yakl::intrinsics::sum(shoc_wthl_sfc_host   ) ) / abs( yakl::intrinsics::sum(shoc_wthl_sfc_host   ) ) << std::endl;
+      std::cout << "shoc_wqw_sfc    : " << std::setw(25) << yakl::intrinsics::sum(shoc_wqw_sfc_host    ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_wqw_sfc    ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_wqw_sfc    ) - yakl::intrinsics::sum(shoc_wqw_sfc_host    ) ) / abs( yakl::intrinsics::sum(shoc_wqw_sfc_host    ) ) << std::endl;
+      std::cout << "shoc_uw_sfc     : " << std::setw(25) << yakl::intrinsics::sum(shoc_uw_sfc_host     ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_uw_sfc     ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_uw_sfc     ) - yakl::intrinsics::sum(shoc_uw_sfc_host     ) ) / abs( yakl::intrinsics::sum(shoc_uw_sfc_host     ) ) << std::endl;
+      std::cout << "shoc_vw_sfc     : " << std::setw(25) << yakl::intrinsics::sum(shoc_vw_sfc_host     ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_vw_sfc     ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_vw_sfc     ) - yakl::intrinsics::sum(shoc_vw_sfc_host     ) ) / abs( yakl::intrinsics::sum(shoc_vw_sfc_host     ) ) << std::endl;
+      std::cout << "shoc_wtracer_sfc: " << std::setw(25) << yakl::intrinsics::sum(shoc_wtracer_sfc_host) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_wtracer_sfc) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_wtracer_sfc) - yakl::intrinsics::sum(shoc_wtracer_sfc_host) ) / abs( yakl::intrinsics::sum(shoc_wtracer_sfc_host) ) << std::endl;
+      std::cout << "shoc_exner      : " << std::setw(25) << yakl::intrinsics::sum(shoc_exner_host      ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_exner      ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_exner      ) - yakl::intrinsics::sum(shoc_exner_host      ) ) / abs( yakl::intrinsics::sum(shoc_exner_host      ) ) << std::endl;
+      std::cout << "shoc_inv_exner  : " << std::setw(25) << yakl::intrinsics::sum(shoc_inv_exner_host  ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_inv_exner  ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_inv_exner  ) - yakl::intrinsics::sum(shoc_inv_exner_host  ) ) / abs( yakl::intrinsics::sum(shoc_inv_exner_host  ) ) << std::endl;
+      std::cout << "shoc_phis       : " << std::setw(25) << yakl::intrinsics::sum(shoc_phis_host       ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_phis       ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_phis       ) - yakl::intrinsics::sum(shoc_phis_host       ) ) / abs( yakl::intrinsics::sum(shoc_phis_host       ) ) << std::endl;
+      std::cout << "shoc_host_dse   : " << std::setw(25) << yakl::intrinsics::sum(shoc_host_dse_host   ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_host_dse   ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_host_dse   ) - yakl::intrinsics::sum(shoc_host_dse_host   ) ) / abs( yakl::intrinsics::sum(shoc_host_dse_host   ) ) << std::endl;
+      std::cout << "shoc_tke        : " << std::setw(25) << yakl::intrinsics::sum(shoc_tke_host        ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_tke        ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_tke        ) - yakl::intrinsics::sum(shoc_tke_host        ) ) / abs( yakl::intrinsics::sum(shoc_tke_host        ) ) << std::endl;
+      std::cout << "shoc_thetal     : " << std::setw(25) << yakl::intrinsics::sum(shoc_thetal_host     ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_thetal     ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_thetal     ) - yakl::intrinsics::sum(shoc_thetal_host     ) ) / abs( yakl::intrinsics::sum(shoc_thetal_host     ) ) << std::endl;
+      std::cout << "shoc_qw         : " << std::setw(25) << yakl::intrinsics::sum(shoc_qw_host         ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_qw         ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_qw         ) - yakl::intrinsics::sum(shoc_qw_host         ) ) / abs( yakl::intrinsics::sum(shoc_qw_host         ) ) << std::endl;
+      std::cout << "shoc_u_wind     : " << std::setw(25) << yakl::intrinsics::sum(shoc_u_wind_host     ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_u_wind     ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_u_wind     ) - yakl::intrinsics::sum(shoc_u_wind_host     ) ) / abs( yakl::intrinsics::sum(shoc_u_wind_host     ) ) << std::endl;
+      std::cout << "shoc_v_wind     : " << std::setw(25) << yakl::intrinsics::sum(shoc_v_wind_host     ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_v_wind     ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_v_wind     ) - yakl::intrinsics::sum(shoc_v_wind_host     ) ) / abs( yakl::intrinsics::sum(shoc_v_wind_host     ) ) << std::endl;
+      std::cout << "shoc_wthv_sec   : " << std::setw(25) << yakl::intrinsics::sum(shoc_wthv_sec_host   ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_wthv_sec   ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_wthv_sec   ) - yakl::intrinsics::sum(shoc_wthv_sec_host   ) ) / abs( yakl::intrinsics::sum(shoc_wthv_sec_host   ) ) << std::endl;
+      std::cout << "shoc_qtracers   : " << std::setw(25) << yakl::intrinsics::sum(shoc_qtracers_host   ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_qtracers   ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_qtracers   ) - yakl::intrinsics::sum(shoc_qtracers_host   ) ) / abs( yakl::intrinsics::sum(shoc_qtracers_host   ) ) << std::endl;
+      std::cout << "shoc_tk         : " << std::setw(25) << yakl::intrinsics::sum(shoc_tk_host         ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_tk         ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_tk         ) - yakl::intrinsics::sum(shoc_tk_host         ) ) / abs( yakl::intrinsics::sum(shoc_tk_host         ) ) << std::endl;
+      std::cout << "shoc_cldfrac    : " << std::setw(25) << yakl::intrinsics::sum(shoc_cldfrac_host    ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_cldfrac    ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_cldfrac    ) - yakl::intrinsics::sum(shoc_cldfrac_host    ) ) / abs( yakl::intrinsics::sum(shoc_cldfrac_host    ) ) << std::endl;
+      std::cout << "shoc_ql         : " << std::setw(25) << yakl::intrinsics::sum(shoc_ql_host         ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_ql         ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_ql         ) - yakl::intrinsics::sum(shoc_ql_host         ) ) / abs( yakl::intrinsics::sum(shoc_ql_host         ) ) << std::endl;
+      std::cout << "shoc_pblh       : " << std::setw(25) << yakl::intrinsics::sum(shoc_pblh_host       ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_pblh       ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_pblh       ) - yakl::intrinsics::sum(shoc_pblh_host       ) ) / abs( yakl::intrinsics::sum(shoc_pblh_host       ) ) << std::endl;
+      std::cout << "shoc_ql2        : " << std::setw(25) << yakl::intrinsics::sum(shoc_ql2_host        ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_ql2        ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_ql2        ) - yakl::intrinsics::sum(shoc_ql2_host        ) ) / abs( yakl::intrinsics::sum(shoc_ql2_host        ) ) << std::endl;
+      std::cout << "shoc_mix        : " << std::setw(25) << yakl::intrinsics::sum(shoc_mix_host        ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_mix        ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_mix        ) - yakl::intrinsics::sum(shoc_mix_host        ) ) / abs( yakl::intrinsics::sum(shoc_mix_host        ) ) << std::endl;
+      std::cout << "shoc_w_sec      : " << std::setw(25) << yakl::intrinsics::sum(shoc_w_sec_host      ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_w_sec      ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_w_sec      ) - yakl::intrinsics::sum(shoc_w_sec_host      ) ) / abs( yakl::intrinsics::sum(shoc_w_sec_host      ) ) << std::endl;
+      std::cout << "shoc_thl_sec    : " << std::setw(25) << yakl::intrinsics::sum(shoc_thl_sec_host    ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_thl_sec    ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_thl_sec    ) - yakl::intrinsics::sum(shoc_thl_sec_host    ) ) / abs( yakl::intrinsics::sum(shoc_thl_sec_host    ) ) << std::endl;
+      std::cout << "shoc_qw_sec     : " << std::setw(25) << yakl::intrinsics::sum(shoc_qw_sec_host     ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_qw_sec     ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_qw_sec     ) - yakl::intrinsics::sum(shoc_qw_sec_host     ) ) / abs( yakl::intrinsics::sum(shoc_qw_sec_host     ) ) << std::endl;
+      std::cout << "shoc_qwthl_sec  : " << std::setw(25) << yakl::intrinsics::sum(shoc_qwthl_sec_host  ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_qwthl_sec  ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_qwthl_sec  ) - yakl::intrinsics::sum(shoc_qwthl_sec_host  ) ) / abs( yakl::intrinsics::sum(shoc_qwthl_sec_host  ) ) << std::endl;
+      std::cout << "shoc_wthl_sec   : " << std::setw(25) << yakl::intrinsics::sum(shoc_wthl_sec_host   ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_wthl_sec   ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_wthl_sec   ) - yakl::intrinsics::sum(shoc_wthl_sec_host   ) ) / abs( yakl::intrinsics::sum(shoc_wthl_sec_host   ) ) << std::endl;
+      std::cout << "shoc_wqw_sec    : " << std::setw(25) << yakl::intrinsics::sum(shoc_wqw_sec_host    ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_wqw_sec    ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_wqw_sec    ) - yakl::intrinsics::sum(shoc_wqw_sec_host    ) ) / abs( yakl::intrinsics::sum(shoc_wqw_sec_host    ) ) << std::endl;
+      std::cout << "shoc_wtke_sec   : " << std::setw(25) << yakl::intrinsics::sum(shoc_wtke_sec_host   ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_wtke_sec   ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_wtke_sec   ) - yakl::intrinsics::sum(shoc_wtke_sec_host   ) ) / abs( yakl::intrinsics::sum(shoc_wtke_sec_host   ) ) << std::endl;
+      std::cout << "shoc_uw_sec     : " << std::setw(25) << yakl::intrinsics::sum(shoc_uw_sec_host     ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_uw_sec     ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_uw_sec     ) - yakl::intrinsics::sum(shoc_uw_sec_host     ) ) / abs( yakl::intrinsics::sum(shoc_uw_sec_host     ) ) << std::endl;
+      std::cout << "shoc_vw_sec     : " << std::setw(25) << yakl::intrinsics::sum(shoc_vw_sec_host     ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_vw_sec     ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_vw_sec     ) - yakl::intrinsics::sum(shoc_vw_sec_host     ) ) / abs( yakl::intrinsics::sum(shoc_vw_sec_host     ) ) << std::endl;
+      std::cout << "shoc_w3         : " << std::setw(25) << yakl::intrinsics::sum(shoc_w3_host         ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_w3         ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_w3         ) - yakl::intrinsics::sum(shoc_w3_host         ) ) / abs( yakl::intrinsics::sum(shoc_w3_host         ) ) << std::endl;
+      std::cout << "shoc_wqls_sec   : " << std::setw(25) << yakl::intrinsics::sum(shoc_wqls_sec_host   ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_wqls_sec   ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_wqls_sec   ) - yakl::intrinsics::sum(shoc_wqls_sec_host   ) ) / abs( yakl::intrinsics::sum(shoc_wqls_sec_host   ) ) << std::endl;
+      std::cout << "shoc_brunt      : " << std::setw(25) << yakl::intrinsics::sum(shoc_brunt_host      ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_brunt      ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_brunt      ) - yakl::intrinsics::sum(shoc_brunt_host      ) ) / abs( yakl::intrinsics::sum(shoc_brunt_host      ) ) << std::endl;
+      std::cout << "shoc_isotropy   : " << std::setw(25) << yakl::intrinsics::sum(shoc_isotropy_host   ) << "  ,  " << std::setw(25) << yakl::intrinsics::sum(shoc_isotropy   ) << "  ,  " << std::setw(25) << abs(yakl::intrinsics::sum(shoc_isotropy   ) - yakl::intrinsics::sum(shoc_isotropy_host   ) ) / abs( yakl::intrinsics::sum(shoc_isotropy_host   ) ) << std::endl;
+
 
     // Process outputs from SHOC (reordering the vertical dimension)
     parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
