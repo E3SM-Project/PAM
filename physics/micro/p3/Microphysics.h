@@ -119,8 +119,8 @@ public:
     coupler.add_tracer("ice_rime_vol"    , "Ice-Rime Volume"    , true     , false);
     coupler.add_tracer("water_vapor"     , "Water Vapor"        , true     , true );
 
-    coupler.dm.register_and_allocate<real>( "qv_prev" , "qv from the previous step"          , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "t_prev"  , "Temperature from the previous step" , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    coupler.dm.register_and_allocate<real>("qv_prev","qv from prev step"         ,{nz,ny,nx,nens},{"z","y","x","nens"});
+    coupler.dm.register_and_allocate<real>("t_prev" ,"Temperature from prev step",{nz,ny,nx,nens},{"z","y","x","nens"});
 
     auto cloud_water     = coupler.dm.get<real,4>( "cloud_water"     );
     auto cloud_water_num = coupler.dm.get<real,4>( "cloud_water_num" );
@@ -162,7 +162,7 @@ public:
                                  grav , latvap , latice, cp_l , tmelt , pi , iulog , masterproc );
 
     std::string dir = "../../../physics/micro/p3";
-    std::string ver = "4";
+    std::string ver = "4.1";
     int dir_len = dir.length();
     int ver_len = ver.length();
     p3_init_fortran( dir.c_str() , dir_len , ver.c_str() , ver_len );
@@ -325,113 +325,120 @@ public:
         inv_qc_relvar(k,i) = 1;
       });
     }
-
+    double elapsed_s;
+    int its, ite, kts, kte;
     int it = 1;
-    int its = 1;
-    int ite = ncol;
-    int kts = 1;
-    int kte = nz;
     bool do_predict_nc = false;
     bool do_prescribed_CCN = false;
-    double elapsed_s;
 
-    auto qc_host                 = qc                .createHostCopy();
-    auto nc_host                 = nc                .createHostCopy();
-    auto qr_host                 = qr                .createHostCopy();
-    auto nr_host                 = nr                .createHostCopy();
-    auto theta_host              = theta             .createHostCopy();
-    auto qv_host                 = qv                .createHostCopy();
-    auto qi_host                 = qi                .createHostCopy();
-    auto qm_host                 = qm                .createHostCopy();
-    auto ni_host                 = ni                .createHostCopy();
-    auto bm_host                 = bm                .createHostCopy();
-    auto pressure_host           = pressure          .createHostCopy();
-    auto dz_host                 = dz                .createHostCopy();
-    auto nc_nuceat_tend_host     = nc_nuceat_tend    .createHostCopy();
-    auto nccn_prescribed_host    = nccn_prescribed   .createHostCopy();
-    auto ni_activated_host       = ni_activated      .createHostCopy();
-    auto inv_qc_relvar_host      = inv_qc_relvar     .createHostCopy();
-    auto precip_liq_surf_host    = precip_liq_surf   .createHostCopy();
-    auto precip_ice_surf_host    = precip_ice_surf   .createHostCopy();
-    auto diag_eff_radius_qc_host = diag_eff_radius_qc.createHostCopy();
-    auto diag_eff_radius_qi_host = diag_eff_radius_qi.createHostCopy();
-    auto bulk_qi_host            = bulk_qi           .createHostCopy();
-    auto dpres_host              = dpres             .createHostCopy();
-    auto inv_exner_host          = inv_exner         .createHostCopy();
-    auto qv2qi_depos_tend_host   = qv2qi_depos_tend  .createHostCopy();
-    auto precip_total_tend_host  = precip_total_tend .createHostCopy();
-    auto nevapr_host             = nevapr            .createHostCopy();
-    auto qr_evap_tend_host       = qr_evap_tend      .createHostCopy();
-    auto precip_liq_flux_host    = precip_liq_flux   .createHostCopy();
-    auto precip_ice_flux_host    = precip_ice_flux   .createHostCopy();
-    auto cld_frac_r_host         = cld_frac_r        .createHostCopy();
-    auto cld_frac_l_host         = cld_frac_l        .createHostCopy();
-    auto cld_frac_i_host         = cld_frac_i        .createHostCopy();
-    auto p3_tend_out_host        = p3_tend_out       .createHostCopy();
-    auto mu_c_host               = mu_c              .createHostCopy();
-    auto lamc_host               = lamc              .createHostCopy();
-    auto liq_ice_exchange_host   = liq_ice_exchange  .createHostCopy();
-    auto vap_liq_exchange_host   = vap_liq_exchange  .createHostCopy();
-    auto vap_ice_exchange_host   = vap_ice_exchange  .createHostCopy();
-    auto qv_prev_host            = qv_prev           .createHostCopy();
-    auto t_prev_host             = t_prev            .createHostCopy();
-    auto col_location_host       = col_location      .createHostCopy();
+    #if 1
 
-    p3_main_fortran(qc_host.data() , nc_host.data() , qr_host.data() , nr_host.data() , theta_host.data() ,
-                    qv_host.data() , dt , qi_host.data() , qm_host.data() , ni_host.data() , bm_host.data() ,
-                    pressure_host.data() , dz_host.data() , nc_nuceat_tend_host.data() ,
-                    nccn_prescribed_host.data() , ni_activated_host.data() , inv_qc_relvar_host.data() , it ,
-                    precip_liq_surf_host.data() , precip_ice_surf_host.data() , its , ite , kts , kte ,
-                    diag_eff_radius_qc_host.data() , diag_eff_radius_qi_host.data() , bulk_qi_host.data() ,
-                    do_predict_nc , do_prescribed_CCN , dpres_host.data() , inv_exner_host.data() ,
-                    qv2qi_depos_tend_host.data() , precip_total_tend_host.data() , nevapr_host.data() ,
-                    qr_evap_tend_host.data() , precip_liq_flux_host.data() , precip_ice_flux_host.data() ,
-                    cld_frac_r_host.data() , cld_frac_l_host.data() , cld_frac_i_host.data() ,
-                    p3_tend_out_host.data() , mu_c_host.data() , lamc_host.data() , liq_ice_exchange_host.data() ,
-                    vap_liq_exchange_host.data() , vap_ice_exchange_host.data() , qv_prev_host.data() ,
-                    t_prev_host.data() , col_location_host.data() , &elapsed_s );
+      its = 1;
+      ite = ncol;
+      kts = 1;
+      kte = nz;
+      auto qc_host                 = qc                .createHostCopy();
+      auto nc_host                 = nc                .createHostCopy();
+      auto qr_host                 = qr                .createHostCopy();
+      auto nr_host                 = nr                .createHostCopy();
+      auto theta_host              = theta             .createHostCopy();
+      auto qv_host                 = qv                .createHostCopy();
+      auto qi_host                 = qi                .createHostCopy();
+      auto qm_host                 = qm                .createHostCopy();
+      auto ni_host                 = ni                .createHostCopy();
+      auto bm_host                 = bm                .createHostCopy();
+      auto pressure_host           = pressure          .createHostCopy();
+      auto dz_host                 = dz                .createHostCopy();
+      auto nc_nuceat_tend_host     = nc_nuceat_tend    .createHostCopy();
+      auto nccn_prescribed_host    = nccn_prescribed   .createHostCopy();
+      auto ni_activated_host       = ni_activated      .createHostCopy();
+      auto inv_qc_relvar_host      = inv_qc_relvar     .createHostCopy();
+      auto precip_liq_surf_host    = precip_liq_surf   .createHostCopy();
+      auto precip_ice_surf_host    = precip_ice_surf   .createHostCopy();
+      auto diag_eff_radius_qc_host = diag_eff_radius_qc.createHostCopy();
+      auto diag_eff_radius_qi_host = diag_eff_radius_qi.createHostCopy();
+      auto bulk_qi_host            = bulk_qi           .createHostCopy();
+      auto dpres_host              = dpres             .createHostCopy();
+      auto inv_exner_host          = inv_exner         .createHostCopy();
+      auto qv2qi_depos_tend_host   = qv2qi_depos_tend  .createHostCopy();
+      auto precip_total_tend_host  = precip_total_tend .createHostCopy();
+      auto nevapr_host             = nevapr            .createHostCopy();
+      auto qr_evap_tend_host       = qr_evap_tend      .createHostCopy();
+      auto precip_liq_flux_host    = precip_liq_flux   .createHostCopy();
+      auto precip_ice_flux_host    = precip_ice_flux   .createHostCopy();
+      auto cld_frac_r_host         = cld_frac_r        .createHostCopy();
+      auto cld_frac_l_host         = cld_frac_l        .createHostCopy();
+      auto cld_frac_i_host         = cld_frac_i        .createHostCopy();
+      auto p3_tend_out_host        = p3_tend_out       .createHostCopy();
+      auto mu_c_host               = mu_c              .createHostCopy();
+      auto lamc_host               = lamc              .createHostCopy();
+      auto liq_ice_exchange_host   = liq_ice_exchange  .createHostCopy();
+      auto vap_liq_exchange_host   = vap_liq_exchange  .createHostCopy();
+      auto vap_ice_exchange_host   = vap_ice_exchange  .createHostCopy();
+      auto qv_prev_host            = qv_prev           .createHostCopy();
+      auto t_prev_host             = t_prev            .createHostCopy();
+      auto col_location_host       = col_location      .createHostCopy();
 
-    qc_host                .deep_copy_to( qc                 );
-    nc_host                .deep_copy_to( nc                 );
-    qr_host                .deep_copy_to( qr                 );
-    nr_host                .deep_copy_to( nr                 );
-    theta_host             .deep_copy_to( theta              );
-    qv_host                .deep_copy_to( qv                 );
-    qi_host                .deep_copy_to( qi                 );
-    qm_host                .deep_copy_to( qm                 );
-    ni_host                .deep_copy_to( ni                 );
-    bm_host                .deep_copy_to( bm                 );
-    pressure_host          .deep_copy_to( pressure           );
-    dz_host                .deep_copy_to( dz                 );
-    nc_nuceat_tend_host    .deep_copy_to( nc_nuceat_tend     );
-    nccn_prescribed_host   .deep_copy_to( nccn_prescribed    );
-    ni_activated_host      .deep_copy_to( ni_activated       );
-    inv_qc_relvar_host     .deep_copy_to( inv_qc_relvar      );
-    precip_liq_surf_host   .deep_copy_to( precip_liq_surf    );
-    precip_ice_surf_host   .deep_copy_to( precip_ice_surf    );
-    diag_eff_radius_qc_host.deep_copy_to( diag_eff_radius_qc );
-    diag_eff_radius_qi_host.deep_copy_to( diag_eff_radius_qi );
-    bulk_qi_host           .deep_copy_to( bulk_qi            );
-    dpres_host             .deep_copy_to( dpres              );
-    inv_exner_host         .deep_copy_to( inv_exner          );
-    qv2qi_depos_tend_host  .deep_copy_to( qv2qi_depos_tend   );
-    precip_total_tend_host .deep_copy_to( precip_total_tend  );
-    nevapr_host            .deep_copy_to( nevapr             );
-    qr_evap_tend_host      .deep_copy_to( qr_evap_tend       );
-    precip_liq_flux_host   .deep_copy_to( precip_liq_flux    );
-    precip_ice_flux_host   .deep_copy_to( precip_ice_flux    );
-    cld_frac_r_host        .deep_copy_to( cld_frac_r         );
-    cld_frac_l_host        .deep_copy_to( cld_frac_l         );
-    cld_frac_i_host        .deep_copy_to( cld_frac_i         );
-    p3_tend_out_host       .deep_copy_to( p3_tend_out        );
-    mu_c_host              .deep_copy_to( mu_c               );
-    lamc_host              .deep_copy_to( lamc               );
-    liq_ice_exchange_host  .deep_copy_to( liq_ice_exchange   );
-    vap_liq_exchange_host  .deep_copy_to( vap_liq_exchange   );
-    vap_ice_exchange_host  .deep_copy_to( vap_ice_exchange   );
-    qv_prev_host           .deep_copy_to( qv_prev            );
-    t_prev_host            .deep_copy_to( t_prev             );
-    col_location_host      .deep_copy_to( col_location       );
+      p3_main_fortran(qc_host.data() , nc_host.data() , qr_host.data() , nr_host.data() , theta_host.data() ,
+                      qv_host.data() , dt , qi_host.data() , qm_host.data() , ni_host.data() , bm_host.data() ,
+                      pressure_host.data() , dz_host.data() , nc_nuceat_tend_host.data() ,
+                      nccn_prescribed_host.data() , ni_activated_host.data() , inv_qc_relvar_host.data() , it ,
+                      precip_liq_surf_host.data() , precip_ice_surf_host.data() , its , ite , kts , kte ,
+                      diag_eff_radius_qc_host.data() , diag_eff_radius_qi_host.data() , bulk_qi_host.data() ,
+                      do_predict_nc , do_prescribed_CCN , dpres_host.data() , inv_exner_host.data() ,
+                      qv2qi_depos_tend_host.data() , precip_total_tend_host.data() , nevapr_host.data() ,
+                      qr_evap_tend_host.data() , precip_liq_flux_host.data() , precip_ice_flux_host.data() ,
+                      cld_frac_r_host.data() , cld_frac_l_host.data() , cld_frac_i_host.data() ,
+                      p3_tend_out_host.data() , mu_c_host.data() , lamc_host.data() , liq_ice_exchange_host.data() ,
+                      vap_liq_exchange_host.data() , vap_ice_exchange_host.data() , qv_prev_host.data() ,
+                      t_prev_host.data() , col_location_host.data() , &elapsed_s );
+
+      qc_host                .deep_copy_to( qc                 );
+      nc_host                .deep_copy_to( nc                 );
+      qr_host                .deep_copy_to( qr                 );
+      nr_host                .deep_copy_to( nr                 );
+      theta_host             .deep_copy_to( theta              );
+      qv_host                .deep_copy_to( qv                 );
+      qi_host                .deep_copy_to( qi                 );
+      qm_host                .deep_copy_to( qm                 );
+      ni_host                .deep_copy_to( ni                 );
+      bm_host                .deep_copy_to( bm                 );
+      pressure_host          .deep_copy_to( pressure           );
+      dz_host                .deep_copy_to( dz                 );
+      nc_nuceat_tend_host    .deep_copy_to( nc_nuceat_tend     );
+      nccn_prescribed_host   .deep_copy_to( nccn_prescribed    );
+      ni_activated_host      .deep_copy_to( ni_activated       );
+      inv_qc_relvar_host     .deep_copy_to( inv_qc_relvar      );
+      precip_liq_surf_host   .deep_copy_to( precip_liq_surf    );
+      precip_ice_surf_host   .deep_copy_to( precip_ice_surf    );
+      diag_eff_radius_qc_host.deep_copy_to( diag_eff_radius_qc );
+      diag_eff_radius_qi_host.deep_copy_to( diag_eff_radius_qi );
+      bulk_qi_host           .deep_copy_to( bulk_qi            );
+      dpres_host             .deep_copy_to( dpres              );
+      inv_exner_host         .deep_copy_to( inv_exner          );
+      qv2qi_depos_tend_host  .deep_copy_to( qv2qi_depos_tend   );
+      precip_total_tend_host .deep_copy_to( precip_total_tend  );
+      nevapr_host            .deep_copy_to( nevapr             );
+      qr_evap_tend_host      .deep_copy_to( qr_evap_tend       );
+      precip_liq_flux_host   .deep_copy_to( precip_liq_flux    );
+      precip_ice_flux_host   .deep_copy_to( precip_ice_flux    );
+      cld_frac_r_host        .deep_copy_to( cld_frac_r         );
+      cld_frac_l_host        .deep_copy_to( cld_frac_l         );
+      cld_frac_i_host        .deep_copy_to( cld_frac_i         );
+      p3_tend_out_host       .deep_copy_to( p3_tend_out        );
+      mu_c_host              .deep_copy_to( mu_c               );
+      lamc_host              .deep_copy_to( lamc               );
+      liq_ice_exchange_host  .deep_copy_to( liq_ice_exchange   );
+      vap_liq_exchange_host  .deep_copy_to( vap_liq_exchange   );
+      vap_ice_exchange_host  .deep_copy_to( vap_ice_exchange   );
+      qv_prev_host           .deep_copy_to( qv_prev            );
+      t_prev_host            .deep_copy_to( t_prev             );
+      col_location_host      .deep_copy_to( col_location       );
+    
+    #else
+
+
+    #endif
                     
     ///////////////////////////////////////////////////////////////////////////////
     // Convert P3 outputs into dynamics coupler state and tracer masses
