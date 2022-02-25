@@ -119,94 +119,34 @@ public:
     coupler.add_tracer("ice_rime_vol"    , "Ice-Rime Volume"    , true     , false);
     coupler.add_tracer("water_vapor"     , "Water Vapor"        , true     , true );
 
-    // Register and allocation non-tracer quantities used by the microphysics
-    int p3_nout = 49;
-    coupler.dm.register_and_allocate<real>( "precip_liq_surf"    , "precipitation rate, liquid       m s-1"              , {             ny,nx,nens} , {                "y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "precip_ice_surf"    , "precipitation rate, solid        m s-1"              , {             ny,nx,nens} , {                "y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "diag_eff_radius_qc" , "effective radius, cloud          m"                  , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "diag_eff_radius_qi" , "effective radius, ice            m"                  , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "bulk_qi"            , "bulk density of ice              kg m-3"             , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "mu_c"               , "Size distribution shape parameter for radiation"     , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "lamc"               , "Size distribution slope parameter for radiation"     , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "qv2qi_depos_tend"   , "qitend due to deposition/sublimation"                , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "precip_total_tend"  , "Total precipitation (rain + snow)"                   , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "nevapr"             , "evaporation of total precipitation (rain + snow)"    , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "qr_evap_tend"       , "evaporation of rain"                                 , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "precip_liq_flux"    , "grid-box average rain flux (kg m^-2 s^-1) pverp"     , {        nz+1,ny,nx,nens} , {          "zp1","y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "precip_ice_flux"    , "grid-box average ice/snow flux (kg m^-2 s^-1) pverp" , {        nz+1,ny,nx,nens} , {          "zp1","y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "liq_ice_exchange"   , "sum of liq-ice phase change tendenices"              , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "vap_liq_exchange"   , "sum of vap-liq phase change tendenices"              , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "vap_ice_exchange"   , "sum of vap-ice phase change tendenices"              , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "p3_tend_out"        , "micro physics tendencies"                            , {p3_nout,nz  ,ny,nx,nens} , {"p3_nout","z"  ,"y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "qv_prev"            , "qv from the previous step"                           , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "t_prev"             , "Temperature from the previous step"                  , {        nz  ,ny,nx,nens} , {          "z"  ,"y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "qv_prev" , "qv from the previous step"          , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    coupler.dm.register_and_allocate<real>( "t_prev"  , "Temperature from the previous step" , {nz,ny,nx,nens} , {"z","y","x","nens"} );
 
-    auto cloud_water         = coupler.dm.get<real,4>( "cloud_water"        );
-    auto cloud_water_num     = coupler.dm.get<real,4>( "cloud_water_num"    );
-    auto rain                = coupler.dm.get<real,4>( "rain"               );
-    auto rain_num            = coupler.dm.get<real,4>( "rain_num"           );
-    auto ice                 = coupler.dm.get<real,4>( "ice"                );
-    auto ice_num             = coupler.dm.get<real,4>( "ice_num"            );
-    auto ice_rime            = coupler.dm.get<real,4>( "ice_rime"           );
-    auto ice_rime_vol        = coupler.dm.get<real,4>( "ice_rime_vol"       );
-    auto water_vapor         = coupler.dm.get<real,4>( "water_vapor"        );
-    auto precip_liq_surf     = coupler.dm.get<real,3>( "precip_liq_surf"    );
-    auto precip_ice_surf     = coupler.dm.get<real,3>( "precip_ice_surf"    );
-    auto diag_eff_radius_qc  = coupler.dm.get<real,4>( "diag_eff_radius_qc" );
-    auto diag_eff_radius_qi  = coupler.dm.get<real,4>( "diag_eff_radius_qi" );
-    auto bulk_qi             = coupler.dm.get<real,4>( "bulk_qi"            );
-    auto mu_c                = coupler.dm.get<real,4>( "mu_c"               );
-    auto lamc                = coupler.dm.get<real,4>( "lamc"               );
-    auto qv2qi_depos_tend    = coupler.dm.get<real,4>( "qv2qi_depos_tend"   );
-    auto precip_total_tend   = coupler.dm.get<real,4>( "precip_total_tend"  );
-    auto nevapr              = coupler.dm.get<real,4>( "nevapr"             );
-    auto qr_evap_tend        = coupler.dm.get<real,4>( "qr_evap_tend"       );
-    auto precip_liq_flux     = coupler.dm.get<real,4>( "precip_liq_flux"    );
-    auto precip_ice_flux     = coupler.dm.get<real,4>( "precip_ice_flux"    );
-    auto liq_ice_exchange    = coupler.dm.get<real,4>( "liq_ice_exchange"   );
-    auto vap_liq_exchange    = coupler.dm.get<real,4>( "vap_liq_exchange"   );
-    auto vap_ice_exchange    = coupler.dm.get<real,4>( "vap_ice_exchange"   );
-    auto p3_tend_out         = coupler.dm.get<real,5>( "p3_tend_out"        );
-    auto qv_prev             = coupler.dm.get<real,4>( "qv_prev"            );
-    auto t_prev              = coupler.dm.get<real,4>( "t_prev"             );
+    auto cloud_water     = coupler.dm.get<real,4>( "cloud_water"     );
+    auto cloud_water_num = coupler.dm.get<real,4>( "cloud_water_num" );
+    auto rain            = coupler.dm.get<real,4>( "rain"            );
+    auto rain_num        = coupler.dm.get<real,4>( "rain_num"        );
+    auto ice             = coupler.dm.get<real,4>( "ice"             );
+    auto ice_num         = coupler.dm.get<real,4>( "ice_num"         );
+    auto ice_rime        = coupler.dm.get<real,4>( "ice_rime"        );
+    auto ice_rime_vol    = coupler.dm.get<real,4>( "ice_rime_vol"    );
+    auto water_vapor     = coupler.dm.get<real,4>( "water_vapor"     );
+    auto qv_prev         = coupler.dm.get<real,4>( "qv_prev"         );
+    auto t_prev          = coupler.dm.get<real,4>( "t_prev"          );
 
-    parallel_for( "micro zero" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      cloud_water       (k,j,i,iens) = 0;
-      cloud_water_num   (k,j,i,iens) = 0;
-      rain              (k,j,i,iens) = 0;
-      rain_num          (k,j,i,iens) = 0;
-      ice               (k,j,i,iens) = 0;
-      ice_num           (k,j,i,iens) = 0;
-      ice_rime          (k,j,i,iens) = 0;
-      ice_rime_vol      (k,j,i,iens) = 0;
-      water_vapor       (k,j,i,iens) = 0;
-      precip_liq_surf   (  j,i,iens) = 0;
-      precip_ice_surf   (  j,i,iens) = 0;
-      diag_eff_radius_qc(k,j,i,iens) = 0;
-      diag_eff_radius_qi(k,j,i,iens) = 0;
-      bulk_qi           (k,j,i,iens) = 0;
-      mu_c              (k,j,i,iens) = 0;
-      lamc              (k,j,i,iens) = 0;
-      qv2qi_depos_tend  (k,j,i,iens) = 0;
-      precip_total_tend (k,j,i,iens) = 0;
-      nevapr            (k,j,i,iens) = 0;
-      qr_evap_tend      (k,j,i,iens) = 0;
-      precip_liq_flux   (k,j,i,iens) = 0;
-      precip_ice_flux   (k,j,i,iens) = 0;
-      liq_ice_exchange  (k,j,i,iens) = 0;
-      vap_liq_exchange  (k,j,i,iens) = 0;
-      vap_ice_exchange  (k,j,i,iens) = 0;
-      qv_prev           (k,j,i,iens) = 0;
-      t_prev            (k,j,i,iens) = 0;
-
-      if (k == nz-1) {
-        precip_liq_flux(nz,j,i,iens) = 0;
-        precip_ice_flux(nz,j,i,iens) = 0;
-      }
-
-      for (int l=0; l < p3_nout; l++) {
-        p3_tend_out(l,k,j,i,iens) = 0;
-      }
+    parallel_for( "micro zero" , SimpleBounds<4>(nz,ny,nx,nens) ,
+                  YAKL_LAMBDA (int k, int j, int i, int iens) {
+      cloud_water    (k,j,i,iens) = 0;
+      cloud_water_num(k,j,i,iens) = 0;
+      rain           (k,j,i,iens) = 0;
+      rain_num       (k,j,i,iens) = 0;
+      ice            (k,j,i,iens) = 0;
+      ice_num        (k,j,i,iens) = 0;
+      ice_rime       (k,j,i,iens) = 0;
+      ice_rime_vol   (k,j,i,iens) = 0;
+      water_vapor    (k,j,i,iens) = 0;
+      qv_prev        (k,j,i,iens) = 0;
+      t_prev         (k,j,i,iens) = 0;
     });
 
     real rhoh2o = 1000.;
@@ -256,72 +196,62 @@ public:
     auto rho_v  = coupler.dm.get_lev_col<real>("water_vapor"    );
 
     // Get coupler state
-    auto rho_dry      = coupler.dm.get_lev_col<real>("density_dry");
-    auto temp         = coupler.dm.get_lev_col<real>("temp");
+    auto rho_dry = coupler.dm.get_lev_col<real>("density_dry");
+    auto temp    = coupler.dm.get_lev_col<real>("temp"       );
 
     // Calculate the grid spacing
     auto zint_in = coupler.dm.get<real,2>("vertical_interface_height");
     real2d dz("dz",nz,ny*nx*nens);
-    parallel_for( "micro dz" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+    parallel_for( "micro dz" , SimpleBounds<4>(nz,ny,nx,nens) ,
+                  YAKL_LAMBDA (int k, int j, int i, int iens) {
       dz(k,j*nx*nens + i*nens + iens) = zint_in(k+1,iens) - zint_in(k,iens);
     });
 
     // Get everything from the DataManager that's not a tracer but is persistent across multiple micro calls
-    auto precip_liq_surf    = coupler.dm.get_collapsed<real>("precip_liq_surf"   );
-    auto precip_ice_surf    = coupler.dm.get_collapsed<real>("precip_ice_surf"   );
-    auto diag_eff_radius_qc = coupler.dm.get_lev_col  <real>("diag_eff_radius_qc");
-    auto diag_eff_radius_qi = coupler.dm.get_lev_col  <real>("diag_eff_radius_qi");
-    auto bulk_qi            = coupler.dm.get_lev_col  <real>("bulk_qi"           );
-    auto mu_c               = coupler.dm.get_lev_col  <real>("mu_c"              );
-    auto lamc               = coupler.dm.get_lev_col  <real>("lamc"              );
-    auto qv2qi_depos_tend   = coupler.dm.get_lev_col  <real>("qv2qi_depos_tend"  );
-    auto precip_total_tend  = coupler.dm.get_lev_col  <real>("precip_total_tend" );
-    auto nevapr             = coupler.dm.get_lev_col  <real>("nevapr"            );
-    auto qr_evap_tend       = coupler.dm.get_lev_col  <real>("qr_evap_tend"      );
-    auto liq_ice_exchange   = coupler.dm.get_lev_col  <real>("liq_ice_exchange"  );
-    auto vap_liq_exchange   = coupler.dm.get_lev_col  <real>("vap_liq_exchange"  );
-    auto vap_ice_exchange   = coupler.dm.get_lev_col  <real>("vap_ice_exchange"  );
-    auto qv_prev            = coupler.dm.get_lev_col  <real>("qv_prev"           );
-    auto t_prev             = coupler.dm.get_lev_col  <real>("t_prev"            );
+    auto qv_prev = coupler.dm.get_lev_col<real>("qv_prev");
+    auto t_prev  = coupler.dm.get_lev_col<real>("t_prev" );
 
-    auto precip_liq_flux_dm = coupler.dm.get<real,4>("precip_liq_flux");
-    auto precip_ice_flux_dm = coupler.dm.get<real,4>("precip_ice_flux");
-    real2d precip_liq_flux("precip_liq_flux",nz+1,ny*nx*nens);
-    real2d precip_ice_flux("precip_ice_flux",nz+1,ny*nx*nens);
-    parallel_for( "micro precip_flux" , SimpleBounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      precip_liq_flux(k,nx*nens*j + nens*i + iens) = precip_liq_flux_dm(k,j,i,iens);
-      precip_ice_flux(k,nx*nens*j + nens*i + iens) = precip_ice_flux_dm(k,j,i,iens);
-    });
-
-    auto p3_tend_out_dm = coupler.dm.get<real,5>("p3_tend_out");
-    real3d p3_tend_out("p3_tend_out",49,nz,ny*nx*nens);
-    parallel_for( "micro tend_out" , SimpleBounds<5>(49,nz,ny,nx,nens) , YAKL_LAMBDA (int l, int k, int j, int i, int iens) {
-      p3_tend_out(l,k,nx*nens*j + nens*i + iens) = p3_tend_out_dm(l,k,j,i,iens);
-    });
-
-    // These are inputs to p3
-    real2d qc             ("qc"             ,nz,ncol);
-    real2d nc             ("nc"             ,nz,ncol);
-    real2d qr             ("qr"             ,nz,ncol);
-    real2d nr             ("nr"             ,nz,ncol);
-    real2d qi             ("qi"             ,nz,ncol);
-    real2d ni             ("ni"             ,nz,ncol);
-    real2d qm             ("qm"             ,nz,ncol);
-    real2d bm             ("bm"             ,nz,ncol);
-    real2d qv             ("qv"             ,nz,ncol);
-    real2d pressure       ("pressure"       ,nz,ncol);
-    real2d theta          ("theta"          ,nz,ncol);
-    real2d exner          ("exner"          ,nz,ncol);
-    real2d inv_exner      ("inv_exner"      ,nz,ncol);
-    real2d dpres          ("dpres"          ,nz,ncol);
-    real2d nc_nuceat_tend ("nc_nuceat_tend" ,nz,ncol);
-    real2d nccn_prescribed("nccn_prescribed",nz,ncol);
-    real2d ni_activated   ("ni_activated"   ,nz,ncol);
-    real2d cld_frac_i     ("cld_frac_i"     ,nz,ncol);
-    real2d cld_frac_l     ("cld_frac_l"     ,nz,ncol);
-    real2d cld_frac_r     ("cld_frac_r"     ,nz,ncol);
-    real2d inv_qc_relvar  ("inv_qc_relvar"  ,nz,ncol);
-    real2d col_location   ("col_location"   ,3 ,ncol);
+    // Allocates inputs and outputs
+    int p3_nout = 49;
+    real2d qc                ( "qc"                 ,           nz   , ncol );
+    real2d nc                ( "nc"                 ,           nz   , ncol );
+    real2d qr                ( "qr"                 ,           nz   , ncol );
+    real2d nr                ( "nr"                 ,           nz   , ncol );
+    real2d qi                ( "qi"                 ,           nz   , ncol );
+    real2d ni                ( "ni"                 ,           nz   , ncol );
+    real2d qm                ( "qm"                 ,           nz   , ncol );
+    real2d bm                ( "bm"                 ,           nz   , ncol );
+    real2d qv                ( "qv"                 ,           nz   , ncol );
+    real2d pressure          ( "pressure"           ,           nz   , ncol );
+    real2d theta             ( "theta"              ,           nz   , ncol );
+    real2d exner             ( "exner"              ,           nz   , ncol );
+    real2d inv_exner         ( "inv_exner"          ,           nz   , ncol );
+    real2d dpres             ( "dpres"              ,           nz   , ncol );
+    real2d nc_nuceat_tend    ( "nc_nuceat_tend"     ,           nz   , ncol );
+    real2d nccn_prescribed   ( "nccn_prescribed"    ,           nz   , ncol );
+    real2d ni_activated      ( "ni_activated"       ,           nz   , ncol );
+    real2d cld_frac_i        ( "cld_frac_i"         ,           nz   , ncol );
+    real2d cld_frac_l        ( "cld_frac_l"         ,           nz   , ncol );
+    real2d cld_frac_r        ( "cld_frac_r"         ,           nz   , ncol );
+    real2d inv_qc_relvar     ( "inv_qc_relvar"      ,           nz   , ncol );
+    real2d col_location      ( "col_location"       ,           3    , ncol );
+    real1d precip_liq_surf   ( "precip_liq_surf"    ,                  ncol );
+    real1d precip_ice_surf   ( "precip_ice_surf"    ,                  ncol );
+    real2d diag_eff_radius_qc( "diag_eff_radius_qc" ,           nz   , ncol );
+    real2d diag_eff_radius_qi( "diag_eff_radius_qi" ,           nz   , ncol );
+    real2d bulk_qi           ( "bulk_qi"            ,           nz   , ncol );
+    real2d mu_c              ( "mu_c"               ,           nz   , ncol );
+    real2d lamc              ( "lamc"               ,           nz   , ncol );
+    real2d qv2qi_depos_tend  ( "qv2qi_depos_tend"   ,           nz   , ncol );
+    real2d precip_total_tend ( "precip_total_tend"  ,           nz   , ncol );
+    real2d nevapr            ( "nevapr"             ,           nz   , ncol );
+    real2d qr_evap_tend      ( "qr_evap_tend"       ,           nz   , ncol );
+    real2d precip_liq_flux   ( "precip_liq_flux"    ,           nz+1 , ncol );
+    real2d precip_ice_flux   ( "precip_ice_flux"    ,           nz+1 , ncol );
+    real2d liq_ice_exchange  ( "liq_ice_exchange"   ,           nz   , ncol );
+    real2d vap_liq_exchange  ( "vap_liq_exchange"   ,           nz   , ncol );
+    real2d vap_ice_exchange  ( "vap_ice_exchange"   ,           nz   , ncol );
+    real3d p3_tend_out       ( "p3_tend_out"        , p3_nout , nz   , ncol );
 
     //////////////////////////////////////////////////////////////////////////////
     // Compute quantities needed for inputs to P3
