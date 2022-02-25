@@ -5,13 +5,6 @@
 
 namespace pam {
 
-
-  void kokkos_initialize();
-
-
-  void kokkos_finalize();
-
-
   int call_shoc_init_from_pam (int nbot_shoc, int ntop_shoc, ArrayIR<double,1,IRMemDevice> input_pref_mid);
 
 
