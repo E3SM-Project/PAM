@@ -162,7 +162,7 @@ public:
                                  grav , latvap , latice, cp_l , tmelt , pi , iulog , masterproc );
 
     std::string dir = "../../../physics/micro/p3";
-    std::string ver = "4.1";
+    std::string ver = "4.1.1";
     int dir_len = dir.length();
     int ver_len = ver.length();
     p3_init_fortran( dir.c_str() , dir_len , ver.c_str() , ver_len );
