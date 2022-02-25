@@ -76,18 +76,18 @@ public:
   // TODO: Make sure the constants vibe with P3
   // Set constants and likely num_tracers as well, and anything else you can do immediately
   Microphysics() {
-    R_d        = 287.;
-    cp_d       = 1003.;
+    R_d        = 287.042;
+    cp_d       = 1004.64;
     cv_d       = cp_d - R_d;
     gamma_d    = cp_d / cv_d;
     kappa_d    = R_d  / cp_d;
-    R_v        = 461.;
+    R_v        = 461.505;
     cp_v       = 1859;
     cv_v       = R_v - cp_v;
     p0         = 1.e5;
-    grav       = 9.81;
+    grav       = 9.80616;
     first_step = true;
-    cp_l       = 4218.;
+    cp_l       = 4188.0;
     sgs_shoc   = false;
   }
 
@@ -152,8 +152,8 @@ public:
     real rhoh2o = 1000.;
     real mwdry  = 28.966;
     real mwh2o  = 0.622 * mwdry;
-    real latvap = 2.5E6;
-    real latice = 3.50E5;
+    real latvap = 2501000.0;
+    real latice = 333700.0;
     real tmelt  = 273.15;
     real pi     = M_PI;
     int  iulog  = 1;
