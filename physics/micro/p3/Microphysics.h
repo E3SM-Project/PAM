@@ -4,6 +4,8 @@
 #include "awfl_const.h"
 #include "DataManager.h"
 #include "pam_coupler.h"
+#include "call_p3_from_pam.h"
+#include "pam_scream_routines.h"
 
 using pam::PamCoupler;
 
@@ -331,7 +333,7 @@ public:
     bool do_predict_nc = false;
     bool do_prescribed_CCN = false;
 
-    #if 1
+    #if 0
 
       its = 1;
       ite = ncol;
@@ -437,6 +439,48 @@ public:
     
     #else
 
+      pam::call_p3_main_from_pam(dt , it , its , ite , kts , kte , do_predict_nc , do_prescribed_CCN , elapsed_s ,
+                                 pam::yakl_array_to_arrayIR( qc                 ) ,
+                                 pam::yakl_array_to_arrayIR( nc                 ) ,
+                                 pam::yakl_array_to_arrayIR( qr                 ) ,
+                                 pam::yakl_array_to_arrayIR( nr                 ) ,
+                                 pam::yakl_array_to_arrayIR( theta              ) ,
+                                 pam::yakl_array_to_arrayIR( qv                 ) ,
+                                 pam::yakl_array_to_arrayIR( qi                 ) ,
+                                 pam::yakl_array_to_arrayIR( qm                 ) ,
+                                 pam::yakl_array_to_arrayIR( ni                 ) ,
+                                 pam::yakl_array_to_arrayIR( bm                 ) ,
+                                 pam::yakl_array_to_arrayIR( pressure           ) ,
+                                 pam::yakl_array_to_arrayIR( dz                 ) ,
+                                 pam::yakl_array_to_arrayIR( nc_nuceat_tend     ) ,
+                                 pam::yakl_array_to_arrayIR( nccn_prescribed    ) ,
+                                 pam::yakl_array_to_arrayIR( ni_activated       ) ,
+                                 pam::yakl_array_to_arrayIR( inv_qc_relvar      ) ,
+                                 pam::yakl_array_to_arrayIR( precip_liq_surf    ) ,
+                                 pam::yakl_array_to_arrayIR( precip_ice_surf    ) ,
+                                 pam::yakl_array_to_arrayIR( diag_eff_radius_qc ) ,
+                                 pam::yakl_array_to_arrayIR( diag_eff_radius_qi ) ,
+                                 pam::yakl_array_to_arrayIR( bulk_qi            ) ,
+                                 pam::yakl_array_to_arrayIR( dpres              ) ,
+                                 pam::yakl_array_to_arrayIR( inv_exner          ) ,
+                                 pam::yakl_array_to_arrayIR( qv2qi_depos_tend   ) ,
+                                 pam::yakl_array_to_arrayIR( precip_total_tend  ) ,
+                                 pam::yakl_array_to_arrayIR( nevapr             ) ,
+                                 pam::yakl_array_to_arrayIR( qr_evap_tend       ) ,
+                                 pam::yakl_array_to_arrayIR( precip_liq_flux    ) ,
+                                 pam::yakl_array_to_arrayIR( precip_ice_flux    ) ,
+                                 pam::yakl_array_to_arrayIR( cld_frac_r         ) ,
+                                 pam::yakl_array_to_arrayIR( cld_frac_l         ) ,
+                                 pam::yakl_array_to_arrayIR( cld_frac_i         ) ,
+                                 pam::yakl_array_to_arrayIR( p3_tend_out        ) ,
+                                 pam::yakl_array_to_arrayIR( mu_c               ) ,
+                                 pam::yakl_array_to_arrayIR( lamc               ) ,
+                                 pam::yakl_array_to_arrayIR( liq_ice_exchange   ) ,
+                                 pam::yakl_array_to_arrayIR( vap_liq_exchange   ) ,
+                                 pam::yakl_array_to_arrayIR( vap_ice_exchange   ) ,
+                                 pam::yakl_array_to_arrayIR( qv_prev            ) ,
+                                 pam::yakl_array_to_arrayIR( t_prev             ) ,
+                                 pam::yakl_array_to_arrayIR( col_location       ) );
 
     #endif
                     
