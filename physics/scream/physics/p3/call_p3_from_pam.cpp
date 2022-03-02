@@ -130,6 +130,50 @@ namespace pam {
     const int nlev_pack = ekat::npack<Spack>(nlev);
     const auto policy = ekat::ExeSpaceUtils<ekat::KokkosTypes<Device>::ExeSpace>::get_default_team_policy(ncol, nlev_pack);
     ekat::WorkspaceManager<Spack,Device> workspace_mgr(nlev_pack, 52, policy);
+
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > P3PrognosticState_qc                  ("qc                ",ncol,nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > P3PrognosticState_nc                  ("nc                ",ncol,nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > P3PrognosticState_qr                  ("qr                ",ncol,nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > P3PrognosticState_nr                  ("nr                ",ncol,nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > P3PrognosticState_qi                  ("qi                ",ncol,nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > P3PrognosticState_qm                  ("qm                ",ncol,nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > P3PrognosticState_ni                  ("ni                ",ncol,nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > P3PrognosticState_bm                  ("bm                ",ncol,nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > P3PrognosticState_qv                  ("qv                ",ncol,nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > P3PrognosticState_th                  ("th                ",ncol,nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > P3DiagnosticInputs_nc_nuceat_tend     ("nc_nuceat_tend    ",ncol,nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > P3DiagnosticInputs_nccn               ("nccn              ",ncol,nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > P3DiagnosticInputs_ni_activated       ("ni_activated      ",ncol,nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > P3DiagnosticInputs_inv_qc_relvar      ("inv_qc_relvar     ",ncol,nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > P3DiagnosticInputs_cld_frac_i         ("cld_frac_i        ",ncol,nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > P3DiagnosticInputs_cld_frac_l         ("cld_frac_l        ",ncol,nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > P3DiagnosticInputs_cld_frac_r         ("cld_frac_r        ",ncol,nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > P3DiagnosticInputs_pres               ("pres              ",ncol,nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > P3DiagnosticInputs_dz                 ("dz                ",ncol,nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > P3DiagnosticInputs_dpres              ("dpres             ",ncol,nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > P3DiagnosticInputs_inv_exner          ("inv_exner         ",ncol,nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > P3DiagnosticInputs_qv_prev            ("qv_prev           ",ncol,nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > P3DiagnosticInputs_t_prev             ("t_prev            ",ncol,nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > P3DiagnosticOutputs_qv2qi_depos_tend  ("qv2qi_depos_tend  ",ncol,nlev  );
+    typename ekat::KokkosTypes<Device>::view_1d<Scalar> P3DiagnosticOutputs_precip_liq_surf   ("precip_liq_surf   ",ncol       );
+    typename ekat::KokkosTypes<Device>::view_1d<Scalar> P3DiagnosticOutputs_precip_ice_surf   ("precip_ice_surf   ",ncol       );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > P3DiagnosticOutputs_diag_eff_radius_qc("diag_eff_radius_qc",ncol,nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > P3DiagnosticOutputs_diag_eff_radius_qi("diag_eff_radius_qi",ncol,nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > P3DiagnosticOutputs_rho_qi            ("rho_qi            ",ncol,nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > P3DiagnosticOutputs_precip_liq_flux   ("precip_liq_flux   ",ncol,nlev+1);
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > P3DiagnosticOutputs_precip_ice_flux   ("precip_ice_flux   ",ncol,nlev+1);
+    double                                              P3Infrastructure_dt                                                     ;
+    int                                                 P3Infrastructure_it                                                     ;
+    int                                                 P3Infrastructure_its                                                    ;
+    int                                                 P3Infrastructure_ite                                                    ;
+    int                                                 P3Infrastructure_kts                                                    ;
+    int                                                 P3Infrastructure_kte                                                    ;
+    bool                                                P3Infrastructure_predictNc                                              ;
+    bool                                                P3Infrastructure_prescribedCCN                                          ;
+    typename ekat::KokkosTypes<Device>::view_2d<Scalar> P3Infrastructure_col_location         ("col_location      ",ncol,nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > P3HistoryOnly_liq_ice_exchange        ("liq_ice_exchange  ",ncol,nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > P3HistoryOnly_vap_liq_exchange        ("vap_liq_exchange  ",ncol,nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > P3HistoryOnly_vap_ice_exchange        ("vap_ice_exchange  ",ncol,nlev  );
   }
 
 }
