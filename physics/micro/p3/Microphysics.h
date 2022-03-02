@@ -439,7 +439,8 @@ public:
     
     #else
 
-      pam::call_p3_main_from_pam(dt , it , its , ite , kts , kte , do_predict_nc , do_prescribed_CCN , elapsed_s ,
+      pam::call_p3_main_from_pam(dt , it , its-1 , ite-1 , kts-1 , kte-1 , do_predict_nc , do_prescribed_CCN ,
+                                 elapsed_s ,
                                  pam::yakl_array_to_arrayIR( qc                 ) ,
                                  pam::yakl_array_to_arrayIR( nc                 ) ,
                                  pam::yakl_array_to_arrayIR( qr                 ) ,

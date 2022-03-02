@@ -154,7 +154,7 @@ namespace pam {
     typename ekat::KokkosTypes<Device>::view_2d<Spack > P3DiagnosticInputs_inv_exner          ("inv_exner         ",ncol,nlev  );
     typename ekat::KokkosTypes<Device>::view_2d<Spack > P3DiagnosticInputs_qv_prev            ("qv_prev           ",ncol,nlev  );
     typename ekat::KokkosTypes<Device>::view_2d<Spack > P3DiagnosticInputs_t_prev             ("t_prev            ",ncol,nlev  );
-    typename ekat::KokkosTypes<Device>::view_2d<Spack > P3DiagnosticOutputs_qv2qi_depos_tend  ("qv2qi_depos_tend  ",ncol,nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Spack > P2DiagnosticOutputs_qv2qi_depos_tend  ("qv2qi_depos_tend  ",ncol,nlev  );
     typename ekat::KokkosTypes<Device>::view_1d<Scalar> P3DiagnosticOutputs_precip_liq_surf   ("precip_liq_surf   ",ncol       );
     typename ekat::KokkosTypes<Device>::view_1d<Scalar> P3DiagnosticOutputs_precip_ice_surf   ("precip_ice_surf   ",ncol       );
     typename ekat::KokkosTypes<Device>::view_2d<Spack > P3DiagnosticOutputs_diag_eff_radius_qc("diag_eff_radius_qc",ncol,nlev  );
@@ -174,6 +174,100 @@ namespace pam {
     typename ekat::KokkosTypes<Device>::view_2d<Spack > P3HistoryOnly_liq_ice_exchange        ("liq_ice_exchange  ",ncol,nlev  );
     typename ekat::KokkosTypes<Device>::view_2d<Spack > P3HistoryOnly_vap_liq_exchange        ("vap_liq_exchange  ",ncol,nlev  );
     typename ekat::KokkosTypes<Device>::view_2d<Spack > P3HistoryOnly_vap_ice_exchange        ("vap_ice_exchange  ",ncol,nlev  );
+
+    // Initialize the inputs
+    P3Infrastructure_dt            = dt               ;
+    P3Infrastructure_it            = it               ;
+    P3Infrastructure_its           = its              ;
+    P3Infrastructure_ite           = ite              ;
+    P3Infrastructure_kts           = kts              ;
+    P3Infrastructure_kte           = kte              ;
+    P3Infrastructure_predictNc     = do_predict_nc    ;
+    P3Infrastructure_prescribedCCN = do_prescribed_CCN;
+    Kokkos::parallel_for( Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0},{ncol,nlev}) , KOKKOS_LAMBDA (int i, int k) {
+      P3PrognosticState_qc             (i,k) = qc             (k,i);
+      P3PrognosticState_nc             (i,k) = nc             (k,i);
+      P3PrognosticState_qr             (i,k) = qr             (k,i);
+      P3PrognosticState_nr             (i,k) = nr             (k,i);
+      P3PrognosticState_qi             (i,k) = qi             (k,i);
+      P3PrognosticState_qm             (i,k) = qm             (k,i);
+      P3PrognosticState_ni             (i,k) = ni             (k,i);
+      P3PrognosticState_bm             (i,k) = bm             (k,i);
+      P3PrognosticState_qv             (i,k) = qv             (k,i);
+      P3PrognosticState_th             (i,k) = theta          (k,i);
+      P3DiagnosticInputs_nc_nuceat_tend(i,k) = nc_nuceat_tend (k,i);
+      P3DiagnosticInputs_nccn          (i,k) = nccn_prescribed(k,i);
+      P3DiagnosticInputs_ni_activated  (i,k) = ni_activated   (k,i);
+      P3DiagnosticInputs_inv_qc_relvar (i,k) = inv_qc_relvar  (k,i);
+      P3DiagnosticInputs_cld_frac_i    (i,k) = cld_frac_i     (k,i);
+      P3DiagnosticInputs_cld_frac_l    (i,k) = cld_frac_l     (k,i);
+      P3DiagnosticInputs_cld_frac_r    (i,k) = cld_frac_r     (k,i);
+      P3DiagnosticInputs_pres          (i,k) = pressure       (k,i);
+      P3DiagnosticInputs_dz            (i,k) = dz             (k,i);
+      P3DiagnosticInputs_dpres         (i,k) = dpres          (k,i);
+      P3DiagnosticInputs_inv_exner     (i,k) = inv_exner      (k,i);
+      P3DiagnosticInputs_qv_prev       (i,k) = qv_prev        (k,i);
+      P3DiagnosticInputs_t_prev        (i,k) = t_prev         (k,i);
+      P3Infrastructure_col_location    (i,k) = col_location   (k,i);
+    });
+
+    Kokkos::fence();
+
+    P3PrognosticState   prog_state;
+    P3DiagnosticInputs  diag_inputs;
+    P3DiagnosticOutputs diag_outputs;
+    P3Infrastructure    infrastructure;
+    P3HistoryOnly       history_only;
+
+    prog_state.qc                   = P3PrognosticState_qc                  ;
+    prog_state.nc                   = P3PrognosticState_nc                  ;
+    prog_state.qr                   = P3PrognosticState_qr                  ;
+    prog_state.nr                   = P3PrognosticState_nr                  ;
+    prog_state.qi                   = P3PrognosticState_qi                  ;
+    prog_state.qm                   = P3PrognosticState_qm                  ;
+    prog_state.ni                   = P3PrognosticState_ni                  ;
+    prog_state.bm                   = P3PrognosticState_bm                  ;
+    prog_state.qv                   = P3PrognosticState_qv                  ;
+    prog_state.th                   = P3PrognosticState_th                  ;
+    diag_inputs.nc_nuceat_tend      = P3DiagnosticInputs_nc_nuceat_tend     ;
+    diag_inputs.nccn                = P3DiagnosticInputs_nccn               ;
+    diag_inputs.ni_activated        = P3DiagnosticInputs_ni_activated       ;
+    diag_inputs.inv_qc_relvar       = P3DiagnosticInputs_inv_qc_relvar      ;
+    diag_inputs.cld_frac_i          = P3DiagnosticInputs_cld_frac_i         ;
+    diag_inputs.cld_frac_l          = P3DiagnosticInputs_cld_frac_l         ;
+    diag_inputs.cld_frac_r          = P3DiagnosticInputs_cld_frac_r         ;
+    diag_inputs.pres                = P3DiagnosticInputs_pres               ;
+    diag_inputs.dz                  = P3DiagnosticInputs_dz                 ;
+    diag_inputs.dpres               = P3DiagnosticInputs_dpres              ;
+    diag_inputs.inv_exner           = P3DiagnosticInputs_inv_exner          ;
+    diag_inputs.qv_prev             = P3DiagnosticInputs_qv_prev            ;
+    diag_inputs.t_prev              = P3DiagnosticInputs_t_prev             ;
+    diag_outputs.qv2qi_depos_tend   = P2DiagnosticOutputs_qv2qi_depos_tend  ;
+    diag_outputs.precip_liq_surf    = P3DiagnosticOutputs_precip_liq_surf   ;
+    diag_outputs.precip_ice_surf    = P3DiagnosticOutputs_precip_ice_surf   ;
+    diag_outputs.diag_eff_radius_qc = P3DiagnosticOutputs_diag_eff_radius_qc;
+    diag_outputs.diag_eff_radius_qi = P3DiagnosticOutputs_diag_eff_radius_qi;
+    diag_outputs.rho_qi             = P3DiagnosticOutputs_rho_qi            ;
+    diag_outputs.precip_liq_flux    = P3DiagnosticOutputs_precip_liq_flux   ;
+    diag_outputs.precip_ice_flux    = P3DiagnosticOutputs_precip_ice_flux   ;
+    infrastructure.dt               = P3Infrastructure_dt                   ;
+    infrastructure.it               = P3Infrastructure_it                   ;
+    infrastructure.its              = P3Infrastructure_its                  ;
+    infrastructure.ite              = P3Infrastructure_ite                  ;
+    infrastructure.kts              = P3Infrastructure_kts                  ;
+    infrastructure.kte              = P3Infrastructure_kte                  ;
+    infrastructure.predictNc        = P3Infrastructure_predictNc            ;
+    infrastructure.prescribedCCN    = P3Infrastructure_prescribedCCN        ;
+    infrastructure.col_location     = P3Infrastructure_col_location         ;
+    history_only.liq_ice_exchange   = P3HistoryOnly_liq_ice_exchange        ;
+    history_only.vap_liq_exchange   = P3HistoryOnly_vap_liq_exchange        ;
+    history_only.vap_ice_exchange   = P3HistoryOnly_vap_ice_exchange        ;
+
+    auto elapsed_microsec = P3::p3_main(prog_state, diag_inputs, diag_outputs, infrastructure,
+                                        history_only, lookup_tables, workspace_mgr, ncol, nlev);
+
+
+
   }
 
 }
