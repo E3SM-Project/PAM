@@ -62,6 +62,9 @@ namespace pam {
     typedef typename P3::P3LookupTables                     P3LookupTables     ;
     typedef typename ekat::WorkspaceManager<Spack,Device>   WorkspaceManager   ;
 
+    int nlev = kte - kts + 1;
+    int ncol = ite - its + 1;
+
     static_assert( SCREAM_SMALL_PACK_SIZE == 1 ,
                    "ERROR: PAM's p3 integration isn't setup to deal with SCREAM_SMALL_PACK_SIZE > 1" );
 
@@ -107,6 +110,26 @@ namespace pam {
     auto qv_prev             = arrayIR_to_kokkos_view( input_qv_prev            );
     auto t_prev              = arrayIR_to_kokkos_view( input_t_prev             );
     auto col_location        = arrayIR_to_kokkos_view( input_col_location       );
+
+    typedef typename P3::view_1d_table       view_1d_table     ;
+    typedef typename P3::view_2d_table       view_2d_table     ;
+    typedef typename P3::view_ice_table      view_ice_table    ;
+    typedef typename P3::view_collect_table  view_collect_table;
+    typedef typename P3::view_dnu_table      view_dnu_table    ;
+    view_1d_table      mu_r_table_vals;
+    view_2d_table      vn_table_vals, vm_table_vals, revap_table_vals;
+    view_ice_table     ice_table_vals;
+    view_collect_table collect_table_vals;
+    view_dnu_table     dnu_table_vals;
+    P3::init_kokkos_ice_lookup_tables(ice_table_vals, collect_table_vals);
+    P3::init_kokkos_tables(vn_table_vals, vm_table_vals, revap_table_vals, mu_r_table_vals, dnu_table_vals);
+
+    P3LookupTables lookup_tables{mu_r_table_vals, vn_table_vals, vm_table_vals, revap_table_vals,
+                                 ice_table_vals, collect_table_vals, dnu_table_vals};
+
+    const int nlev_pack = ekat::npack<Spack>(nlev);
+    const auto policy = ekat::ExeSpaceUtils<ekat::KokkosTypes<Device>::ExeSpace>::get_default_team_policy(ncol, nlev_pack);
+    ekat::WorkspaceManager<Spack,Device> workspace_mgr(nlev_pack, 52, policy);
   }
 
 }
