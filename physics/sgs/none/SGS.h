@@ -35,6 +35,10 @@ public:
   }
 
 
+  void finalize(PamCoupler &coupler) {
+  }
+
+
 
 };
 

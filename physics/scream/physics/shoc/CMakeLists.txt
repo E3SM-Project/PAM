@@ -42,6 +42,7 @@ set(SHOC_SRCS
     shoc_tridiag_solver.cpp
     shoc_update_host_dse.cpp
     shoc_update_prognostics_implicit.cpp
+    call_shoc_from_pam.cpp
 ) # SHOC ETI SRCS
 
 add_library(shoc ${SHOC_SRCS})

@@ -12,11 +12,13 @@ namespace scream
 
 // Scalar types
 using ekat::Int;
-#ifdef SCREAM_DOUBLE_PRECISION
+// #ifdef SCREAM_DOUBLE_PRECISION
+// using Real = double;
+// #else
+// using Real = float;
+// #endif
+
 using Real = double;
-#else
-using Real = float;
-#endif
 
 // Kokkos types
 using ekat::KokkosTypes;

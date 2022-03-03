@@ -2,7 +2,8 @@ module p3_iso_c
   use iso_c_binding
   implicit none
 
-#include "scream_config.f"
+! #include "scream_config.f"
+#define SCREAM_DOUBLE_PRECISION
 #ifdef SCREAM_DOUBLE_PRECISION
 # define c_real c_double
 #else

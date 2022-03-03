@@ -39,10 +39,10 @@ out_prefix  : test
 dt_gcm: 900
 
 # CRM physics time step
-dt_crm_phys: 0.
+dt_crm_phys: 20.
 
 # Output frequency in seconds
-outFreq: -1.
+outFreq: 0.
 
 # Specify how to force density from the GCM (loose, strict, or off)
 density_forcing: loose

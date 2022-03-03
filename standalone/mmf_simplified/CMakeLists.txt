@@ -45,18 +45,33 @@ if ("${PAM_MICRO}" STREQUAL "p3" OR "${PAM_SGS}" STREQUAL "shoc")
 endif()
 
 if (${USE_SCREAM})
+  ###############################################################
+  ###############################################################
+  ## FOR KOKKOS DEBUG; REMOVE LATER TODO: 
+  ###############################################################
+  ###############################################################
+  set(CMAKE_BUILD_TYPE_ci "debug" CACHE STRING "")
+  set(Kokkos_ENABLE_DEBUG TRUE CACHE BOOL "")
+  set(Kokkos_ENABLE_DEBUG_BOUNDS_CHECK TRUE CACHE BOOL "")
+  set(Kokkos_ENABLE_DEBUG_DUALVIEW_MODIFY_CHECK TRUE CACHE BOOL "")
+  ###############################################################
+  ###############################################################
+  ## FOR KOKKOS DEBUG; REMOVE LATER TODO: 
+  ###############################################################
+  ###############################################################
   include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../physics/scream)
+  include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../physics/scream/physics/shoc)
   set(SCREAM_F90_MODULES "${CMAKE_CURRENT_BINARY_DIR}/scream_f90_modules")
   separate_arguments(SCREAM_F90_FLAGS UNIX_COMMAND "${YAKL_F90_FLAGS}")
   set(SCREAM_Fortran_FLAGS ${SCREAM_F90_FLAGS})
   set(SCREAM_LIB_ONLY TRUE)
   option(EKAT_ENABLE_TESTS OFF FORCE)
-  # add_subdirectory(../../externals/EKAT                ./ekat                )
-  # add_subdirectory(../../physics/scream/share          ./scream_share        )
+  add_subdirectory(../../externals/EKAT                ./ekat                )
+  add_subdirectory(../../physics/scream/share          ./scream_share        )
   add_subdirectory(../../physics/scream_common         ./scream_common       )
-  # add_subdirectory(../../physics/scream/physics/share  ./scream_physics_share)
-  # add_subdirectory(../../physics/scream/physics/p3     ./scream_p3           )
-  # add_subdirectory(../../physics/scream/physics/shoc   ./scream_shoc         )
+  add_subdirectory(../../physics/scream/physics/share  ./scream_physics_share)
+  add_subdirectory(../../physics/scream/physics/p3     ./scream_p3           )
+  add_subdirectory(../../physics/scream/physics/shoc   ./scream_shoc         )
   include_directories(${CMAKE_CURRENT_BINARY_DIR}/scream_common       )
   include_directories(${CMAKE_CURRENT_BINARY_DIR}/scream_physics_share)
   include_directories(${CMAKE_CURRENT_BINARY_DIR}/scream_f90_modules  )
@@ -91,10 +106,10 @@ endif()
 include(${YAKL_HOME}/yakl_utils.cmake)
 yakl_process_target(driver)
 
+target_link_libraries(driver dycore micro sgs)
 if (${USE_SCREAM})
-  # target_link_libraries(scream_common physics_share p3 shoc)
-  target_link_libraries(scream_common)
+  target_link_libraries(driver scream_common p3 shoc)
 endif()
-target_link_libraries(driver dycore micro sgs ${NCFLAGS})
+target_link_libraries(driver ${NCFLAGS})
 
 
