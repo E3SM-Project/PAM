@@ -170,7 +170,7 @@ namespace pam {
     int                                                 P3Infrastructure_kte                                                    ;
     bool                                                P3Infrastructure_predictNc                                              ;
     bool                                                P3Infrastructure_prescribedCCN                                          ;
-    typename ekat::KokkosTypes<Device>::view_2d<Scalar> P3Infrastructure_col_location         ("col_location      ",ncol,nlev  );
+    typename ekat::KokkosTypes<Device>::view_2d<Scalar> P3Infrastructure_col_location         ("col_location      ",ncol,3     );
     typename ekat::KokkosTypes<Device>::view_2d<Spack > P3HistoryOnly_liq_ice_exchange        ("liq_ice_exchange  ",ncol,nlev  );
     typename ekat::KokkosTypes<Device>::view_2d<Spack > P3HistoryOnly_vap_liq_exchange        ("vap_liq_exchange  ",ncol,nlev  );
     typename ekat::KokkosTypes<Device>::view_2d<Spack > P3HistoryOnly_vap_ice_exchange        ("vap_ice_exchange  ",ncol,nlev  );
@@ -209,7 +209,9 @@ namespace pam {
       P3DiagnosticInputs_inv_exner     (i,k) = inv_exner      (k,i);
       P3DiagnosticInputs_qv_prev       (i,k) = qv_prev        (k,i);
       P3DiagnosticInputs_t_prev        (i,k) = t_prev         (k,i);
-      P3Infrastructure_col_location    (i,k) = col_location   (k,i);
+      if (k < 3) {
+        P3Infrastructure_col_location    (i,k) = col_location   (k,i);
+      }
     });
 
     Kokkos::fence();
@@ -266,6 +268,8 @@ namespace pam {
 
     auto elapsed_microsec = P3::p3_main(prog_state, diag_inputs, diag_outputs, infrastructure,
                                         history_only, lookup_tables, workspace_mgr, ncol, nlev);
+
+    Kokkos::fence();
 
     Kokkos::parallel_for( Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0},{ncol,nlev+1}) , KOKKOS_LAMBDA (int i, int k) {
       precip_liq_flux(k,i) = P3DiagnosticOutputs_precip_liq_flux(i,k)[0];
