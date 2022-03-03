@@ -7,7 +7,7 @@
 #include "call_shoc_from_pam.h"
 #include "pam_scream_routines.h"
 
-#define SHOC_FORTRAN
+// #define SHOC_FORTRAN
 
 using pam::PamCoupler;
 
