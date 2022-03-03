@@ -184,6 +184,7 @@ namespace pam {
     P3Infrastructure_kte           = kte              ;
     P3Infrastructure_predictNc     = do_predict_nc    ;
     P3Infrastructure_prescribedCCN = do_prescribed_CCN;
+
     Kokkos::parallel_for( Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0},{ncol,nlev}) , KOKKOS_LAMBDA (int i, int k) {
       P3PrognosticState_qc             (i,k) = qc             (k,i);
       P3PrognosticState_nc             (i,k) = nc             (k,i);
@@ -266,8 +267,35 @@ namespace pam {
     auto elapsed_microsec = P3::p3_main(prog_state, diag_inputs, diag_outputs, infrastructure,
                                         history_only, lookup_tables, workspace_mgr, ncol, nlev);
 
+    Kokkos::parallel_for( Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0},{ncol,nlev+1}) , KOKKOS_LAMBDA (int i, int k) {
+      precip_liq_flux(k,i) = P3DiagnosticOutputs_precip_liq_flux(i,k)[0];
+      precip_ice_flux(k,i) = P3DiagnosticOutputs_precip_ice_flux(i,k)[0];
+      if (k < nlev) {
+        qc                (k,i) = P3PrognosticState_qc                  (i,k)[0];
+        nc                (k,i) = P3PrognosticState_nc                  (i,k)[0];
+        qr                (k,i) = P3PrognosticState_qr                  (i,k)[0];
+        nr                (k,i) = P3PrognosticState_nr                  (i,k)[0];
+        qi                (k,i) = P3PrognosticState_qi                  (i,k)[0];
+        qm                (k,i) = P3PrognosticState_qm                  (i,k)[0];
+        ni                (k,i) = P3PrognosticState_ni                  (i,k)[0];
+        bm                (k,i) = P3PrognosticState_bm                  (i,k)[0];
+        qv                (k,i) = P3PrognosticState_qv                  (i,k)[0];
+        theta             (k,i) = P3PrognosticState_th                  (i,k)[0];
+        qv2qi_depos_tend  (k,i) = P2DiagnosticOutputs_qv2qi_depos_tend  (i,k)[0];
+        diag_eff_radius_qc(k,i) = P3DiagnosticOutputs_diag_eff_radius_qc(i,k)[0];
+        diag_eff_radius_qi(k,i) = P3DiagnosticOutputs_diag_eff_radius_qi(i,k)[0];
+        bulk_qi           (k,i) = P3DiagnosticOutputs_rho_qi            (i,k)[0];
+        liq_ice_exchange  (k,i) = P3HistoryOnly_liq_ice_exchange        (i,k)[0];
+        vap_liq_exchange  (k,i) = P3HistoryOnly_vap_liq_exchange        (i,k)[0];
+        vap_ice_exchange  (k,i) = P3HistoryOnly_vap_ice_exchange        (i,k)[0];
+      }
+      if (k == 0) {
+        precip_liq_surf(i) = P3DiagnosticOutputs_precip_liq_surf(i);
+        precip_ice_surf(i) = P3DiagnosticOutputs_precip_ice_surf(i);
+      }
+    });
 
-
+    Kokkos::fence();
   }
 
 }
