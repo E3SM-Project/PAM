@@ -158,11 +158,11 @@ public:
 
     real rhoh2o = 1000.;
     real mwdry  = 28.966;
-    real mwh2o  = 0.622 * mwdry;
+    real mwh2o  = 18.016;
     real latvap = 2501000.0;
     real latice = 333700.0;
     real tmelt  = 273.15;
-    real pi     = M_PI;
+    real pi     = 3.14159265;
     int  iulog  = 1;
     bool masterproc = true;
     micro_p3_utils_init_fortran( cp_d , R_d , R_v , rhoh2o , mwh2o , mwdry ,
