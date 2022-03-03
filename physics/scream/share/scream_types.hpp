@@ -3,22 +3,23 @@
 
 #include "ekat/ekat.hpp"
 #include "ekat/kokkos/ekat_kokkos_types.hpp"
-
+// #include "scream_config.h"
+#define SCREAM_DOUBLE_PRECISION
+#define SCREAM_PACK_CHECK_BOUNDS
 #define SCREAM_PACK_SIZE 1
 #define SCREAM_SMALL_PACK_SIZE 1
+#define SCREAM_STRICT_FP
 
 namespace scream
 {
 
 // Scalar types
 using ekat::Int;
-// #ifdef SCREAM_DOUBLE_PRECISION
-// using Real = double;
-// #else
-// using Real = float;
-// #endif
-
+#ifdef SCREAM_DOUBLE_PRECISION
 using Real = double;
+#else
+using Real = float;
+#endif
 
 // Kokkos types
 using ekat::KokkosTypes;
@@ -35,10 +36,20 @@ enum class RepoState {
   Closed
 };
 
+// The type of this run
+enum class RunType {
+  Initial,
+  Restarted
+};
+
 // We cannot expect BFB results between f90 and cxx if optimizations are on.
 // Same goes for cuda-memcheck because it makes the bfb math layer prohibitively
 // expensive and so must be turned off.
-static constexpr bool SCREAM_BFB_TESTING = false;
+// #if defined (NDEBUG) || defined (EKAT_ENABLE_CUDA_MEMCHECK)
+// static constexpr bool SCREAM_BFB_TESTING = false;
+// #else
+static constexpr bool SCREAM_BFB_TESTING = true;
+// #endif
 
 /*
  * Utility function for handling floating point literals,

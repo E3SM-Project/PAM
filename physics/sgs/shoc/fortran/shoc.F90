@@ -201,12 +201,12 @@ subroutine shoc_main ( &
      wthl_sec, wqw_sec, wtke_sec,&        ! Output (diagnostic)
      uw_sec, vw_sec, w3,&                 ! Output (diagnostic)
      wqls_sec, brunt, shoc_ql2 &          ! Output (diagnostic)
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
      , elapsed_s &
 #endif
      ) bind(C,name="shoc_main_fortran")
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
     use shoc_iso_f, only: shoc_main_f
 #endif
 
@@ -326,7 +326,7 @@ subroutine shoc_main ( &
   ! return to isotropic timescale [s]
   real(rtype), intent(out) :: isotropy(shcol,nlev)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   real(rtype), optional, intent(out) :: elapsed_s ! duration of main loop in seconds
 #endif
 
@@ -360,11 +360,11 @@ subroutine shoc_main ( &
               se_a(shcol),ke_a(shcol),&
               wv_a(shcol),wl_a(shcol)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   integer :: clock_count1, clock_count_rate, clock_count_max, clock_count2, clock_count_diff
 #endif
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   if (use_cxx) then
     call shoc_main_f(shcol, nlev, nlevi, dtime, nadv, npbl,& ! Input
                      host_dx, host_dy,thv, &                 ! Input
@@ -386,7 +386,7 @@ subroutine shoc_main ( &
   endif
 #endif
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
     call system_clock(clock_count1, clock_count_rate, clock_count_max)
 #endif
 
@@ -549,7 +549,7 @@ subroutine shoc_main ( &
      ustar,obklen,kbfs,shoc_cldfrac,&     ! Input
      pblh)                                ! Output
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   call system_clock(clock_count2, clock_count_rate, clock_count_max)
   clock_count_diff = clock_count2 - clock_count1
   if (present(elapsed_s)) then
@@ -574,7 +574,7 @@ subroutine shoc_grid( &
   !  throughout the SHOC parameterization, also define air
   !  density in SHOC
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
     use shoc_iso_f, only: shoc_grid_f
 #endif
 
@@ -605,7 +605,7 @@ subroutine shoc_grid( &
   ! local variables
   integer :: i, k
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   if (use_cxx) then
     call shoc_grid_f(shcol,nlev,nlevi,&
                      zt_grid,zi_grid,pdel,&
@@ -650,7 +650,7 @@ subroutine compute_shoc_vapor( &
   !   based on SHOC's prognostic total water mixing ratio
   !   and diagnostic cloud water mixing ratio.
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   use shoc_iso_f, only: compute_shoc_vapor_f
 #endif
 
@@ -673,7 +673,7 @@ subroutine compute_shoc_vapor( &
 ! LOCAL VARIABLES
   integer :: i, k
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   if (use_cxx) then
     call compute_shoc_vapor_f(shcol,nlev,qw,ql,qv)
      return
@@ -703,7 +703,7 @@ subroutine update_prognostics_implicit( &
          thetal,qw,tracer,tke,&           ! Input/Output
          u_wind,v_wind)                   ! Input/Output
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   use shoc_iso_f, only: update_prognostics_implicit_f
 #endif
 
@@ -775,7 +775,7 @@ subroutine update_prognostics_implicit( &
   real(rtype) :: dl(shcol,nlev) ! Factorized subdiagonal for solver
   real(rtype) :: d(shcol,nlev)  ! Factorized diagonal for solver
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   if (use_cxx) then
     call update_prognostics_implicit_f(&
            shcol,nlev,nlevi,num_tracer,&    ! Input
@@ -850,7 +850,7 @@ end subroutine update_prognostics_implicit
 
 subroutine compute_tmpi(nlevi, shcol, dtime, rho_zi, dz_zi, tmpi)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   use shoc_iso_f, only: compute_tmpi_f
 #endif
 
@@ -869,7 +869,7 @@ subroutine compute_tmpi(nlevi, shcol, dtime, rho_zi, dz_zi, tmpi)
   !local vars
   integer :: i, k
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   if (use_cxx) then
     call compute_tmpi_f(nlevi, shcol, dtime, rho_zi, dz_zi, tmpi)
      return
@@ -888,7 +888,7 @@ end subroutine compute_tmpi
 
 subroutine dp_inverse(nlev, shcol, rho_zt, dz_zt, rdp_zt)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   use shoc_iso_f, only: dp_inverse_f
 #endif
 
@@ -905,7 +905,7 @@ subroutine dp_inverse(nlev, shcol, rho_zt, dz_zt, rdp_zt)
   !local vars
   integer :: i, k
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   if (use_cxx) then
     call dp_inverse_f(nlev, shcol, rho_zt, dz_zt, rdp_zt)
      return
@@ -1068,7 +1068,7 @@ subroutine diag_second_shoc_moments(&
          qwthl_sec, uw_sec, vw_sec, wtke_sec, & ! Output
          w_sec)                                 ! Output
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
     use shoc_iso_f, only: diag_second_shoc_moments_f
 #endif
 
@@ -1142,7 +1142,7 @@ subroutine diag_second_shoc_moments(&
   real(rtype) :: wstar(shcol)
   real(rtype) :: ustar2(shcol)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
    if (use_cxx) then
      call  diag_second_shoc_moments_f(shcol,nlev,nlevi,  &
               thetal,qw,u_wind,v_wind,tke, isotropy,tkh,tk, dz_zi,zt_grid,zi_grid,shoc_mix, &
@@ -1207,7 +1207,7 @@ subroutine diag_second_moments_srf(&
   !  properties needed for the the lower
   !  boundary condition for the second order moments needed
   !  for the SHOC parameterization.
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
     use shoc_iso_f, only: shoc_diag_second_moments_srf_f
 #endif
 
@@ -1236,7 +1236,7 @@ subroutine diag_second_moments_srf(&
   ! Constants to parameterize surface variances
   real(rtype), parameter :: z_const = 1.0_rtype
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
    if (use_cxx) then
       call shoc_diag_second_moments_srf_f(shcol,wthl_sfc, uw_sfc, vw_sfc, &            ! Input
             ustar2,wstar)                          ! Output
@@ -1271,7 +1271,7 @@ subroutine diag_second_moments_lbycond(&
          uw_sec, vw_sec, wtke_sec,&                   ! Output
          thl_sec, qw_sec, qwthl_sec)                  ! Output
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
     use shoc_iso_f, only: diag_second_moments_lbycond_f
 #endif
 
@@ -1328,7 +1328,7 @@ subroutine diag_second_moments_lbycond(&
   real(rtype), parameter :: a_const = 1.8_rtype
   real(rtype), parameter :: ufmin = 0.01_rtype
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
    if (use_cxx) then
       call diag_second_moments_lbycond_f(     &
                 shcol,           &                           ! Input
@@ -1375,7 +1375,7 @@ subroutine diag_second_moments(&
          qwthl_sec,uw_sec,vw_sec,wtke_sec, &    ! Input/Output
          w_sec)                                 ! Output
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
     use shoc_iso_f, only: diag_second_moments_f
 #endif
 
@@ -1448,7 +1448,7 @@ subroutine diag_second_moments(&
   real(rtype) :: tkh_zi(shcol,nlevi)
   real(rtype) :: tk_zi(shcol,nlevi)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
    if (use_cxx) then
      call diag_second_moments_f(shcol,nlev,nlevi,thetal,qw,u_wind,v_wind,tke, &         ! Input
                                 isotropy,tkh,tk,dz_zi,zt_grid,zi_grid,shoc_mix, &      ! Input
@@ -1522,7 +1522,7 @@ subroutine calc_shoc_varorcovar(&
   !  (depending on if invar1 is the same as invar2)
   !  for a given set of inputs
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
     use shoc_iso_f, only: calc_shoc_varorcovar_f
 #endif
 
@@ -1556,7 +1556,7 @@ subroutine calc_shoc_varorcovar(&
   integer :: i, k, kt
   real(rtype) :: sm, grid_dz2
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
    if (use_cxx) then
       call calc_shoc_varorcovar_f(shcol,nlev,nlevi,tunefac,isotropy_zi,tkh_zi,dz_zi,invar1,invar2,&  ! Input
            varorcovar)                              ! Input/Output)
@@ -1590,7 +1590,7 @@ subroutine calc_shoc_vertflux(&
   !  downgradient diffusion for a given set of
   !  input variables
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
     use shoc_iso_f, only: calc_shoc_vertflux_f
 #endif
 
@@ -1617,7 +1617,7 @@ subroutine calc_shoc_vertflux(&
   integer :: i, k, kt
   real(rtype) :: grid_dz
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
    if (use_cxx) then
       call calc_shoc_vertflux_f(shcol,nlev,nlevi,tkh_zi,dz_zi,invar,&  ! Input
            vertflux)                              ! Input/Output)
@@ -1653,7 +1653,7 @@ subroutine diag_second_moments_ubycond(&
   !  needed for the SHOC parameterization.  Currently
   !  set all to zero.
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
     use shoc_iso_f, only: shoc_diag_second_moments_ubycond_f
 #endif
   implicit none
@@ -1683,7 +1683,7 @@ subroutine diag_second_moments_ubycond(&
   ! LOCAL VARIABLES
   integer :: i
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
    if (use_cxx) then
        call shoc_diag_second_moments_ubycond_f(&
                              shcol, &                    ! Input
@@ -1725,7 +1725,7 @@ subroutine diag_third_shoc_moments(&
   !  for the skewness calculation in the PDF.
   !  This calculation follows that of Canuto et al. (2001)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
     use shoc_iso_f, only: diag_third_shoc_moments_f
 #endif
 
@@ -1772,7 +1772,7 @@ subroutine diag_third_shoc_moments(&
   real(rtype) :: brunt_zi(shcol,nlevi)
   real(rtype) :: thetal_zi(shcol,nlevi)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   if (use_cxx) then
       call diag_third_shoc_moments_f(&
         shcol,nlev,nlevi, &                 ! Input
@@ -1815,7 +1815,7 @@ subroutine compute_diag_third_shoc_moment(&
           thetal_zi,&                        ! Input
           w3)                                ! Output
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   use shoc_iso_f, only: compute_diag_third_shoc_moment_f
 #endif
 
@@ -1856,7 +1856,7 @@ subroutine compute_diag_third_shoc_moment(&
   real(rtype) :: buoy_sgs2, bet2
   real(rtype) :: f0, f1, f2, f3, f4, f5
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   if (use_cxx) then
     call compute_diag_third_shoc_moment_f(shcol,nlev,nlevi,w_sec,thl_sec, &   ! Input
                                           wthl_sec, tke, dz_zt, dz_zi, &      ! Input
@@ -2100,7 +2100,7 @@ subroutine clipping_diag_third_shoc_moments(&
            nlevi,shcol,w_sec_zi,& ! Input
            w3)                    ! Input/Output
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
     use shoc_iso_f, only: clipping_diag_third_shoc_moments_f
 #endif
 
@@ -2122,7 +2122,7 @@ subroutine clipping_diag_third_shoc_moments(&
 
   integer k, i
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
    if (use_cxx) then
       call clipping_diag_third_shoc_moments_f(nlevi,shcol,w_sec_zi, & ! Input
                                               w3)                     ! Input/Output
@@ -2164,7 +2164,7 @@ subroutine shoc_assumed_pdf(&
   !  TKE equation.  This code follows the appendix of
   !  Larson et al. (2002) for Analytic Double Gaussian 1
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   use shoc_iso_f, only: shoc_assumed_pdf_f
 #endif
 
@@ -2245,7 +2245,7 @@ subroutine shoc_assumed_pdf(&
   real(rtype) :: qwthl_sec_zt(shcol,nlev)
   real(rtype) :: qw_sec_zt(shcol,nlev)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   if (use_cxx) then
      call shoc_assumed_pdf_f(&
        shcol,nlev,nlevi, &                ! Input
@@ -3024,7 +3024,7 @@ end subroutine shoc_tke
 
 subroutine integ_column_stability(nlev, shcol, dz_zt, pres, brunt, brunt_int)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   use shoc_iso_f, only: integ_column_stability_f
 #endif
 
@@ -3045,7 +3045,7 @@ subroutine integ_column_stability(nlev, shcol, dz_zt, pres, brunt, brunt_int)
   !local variables
   integer :: i, k
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   if (use_cxx) then
      call integ_column_stability_f(nlev, shcol, dz_zt, pres, brunt, brunt_int)
      return
@@ -3071,7 +3071,7 @@ end subroutine integ_column_stability
 
 subroutine compute_shr_prod(nlevi, nlev, shcol, dz_zi, u_wind, v_wind, sterm)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   use shoc_iso_f, only: compute_shr_prod_f
 #endif
 
@@ -3095,7 +3095,7 @@ subroutine compute_shr_prod(nlevi, nlev, shcol, dz_zi, u_wind, v_wind, sterm)
   ! Turbulent coefficient
   real(rtype), parameter :: Ck_sh = 0.1_rtype
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   if (use_cxx) then
      call compute_shr_prod_f(nlevi, nlev, shcol, dz_zi, u_wind, v_wind, sterm)
      return
@@ -3132,7 +3132,7 @@ end subroutine compute_shr_prod
 subroutine adv_sgs_tke(nlev, shcol, dtime, shoc_mix, wthv_sec, &
      sterm_zt, tk, tke, a_diss)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   use shoc_iso_f, only: adv_sgs_tke_f
 #endif
 
@@ -3166,7 +3166,7 @@ subroutine adv_sgs_tke(nlev, shcol, dtime, shoc_mix, wthv_sec, &
 
   real(rtype) :: Ck, Cs, Ce, Ce1, Ce2, Cee
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   if (use_cxx) then
      call adv_sgs_tke_f(nlev, shcol, dtime, shoc_mix, wthv_sec, &
           sterm_zt, tk, tke, a_diss)
@@ -3217,7 +3217,7 @@ subroutine isotropic_ts(nlev, shcol, brunt_int, tke, a_diss, brunt, isotropy)
   ! moments in SHOC
   !------------------------------------------------------------
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   use shoc_iso_f, only: isotropic_ts_f
 #endif
 
@@ -3246,7 +3246,7 @@ subroutine isotropic_ts(nlev, shcol, brunt_int, tke, a_diss, brunt, isotropy)
   !Parameters
   real(rtype), parameter :: maxiso       = 20000.0_rtype ! Return to isotropic timescale [s]
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   if (use_cxx) then
      call isotropic_ts_f(nlev, shcol, brunt_int, tke, a_diss, brunt, isotropy)
      return
@@ -3283,7 +3283,7 @@ subroutine eddy_diffusivities(nlev, shcol, obklen, pblh, zt_grid, &
   ! Compute eddy diffusivity for heat and momentum
   !------------------------------------------------------------
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
     use shoc_iso_f, only: eddy_diffusivities_f
 #endif
 
@@ -3326,7 +3326,7 @@ subroutine eddy_diffusivities(nlev, shcol, obklen, pblh, zt_grid, &
   ! stability diffusivities
   real(rtype), parameter :: pbl_trans = 200.0_rtype
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
    if (use_cxx) then
       call eddy_diffusivities_f(nlev, shcol, obklen, pblh, zt_grid, &
                                 shoc_mix, sterm_zt, isotropy, tke, tkh, tk)
@@ -3379,7 +3379,7 @@ subroutine check_tke(&
              shcol,nlev,& ! Input
              tke)         ! Input/Output
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
     use shoc_iso_f, only: check_tke_f
 #endif
 
@@ -3397,7 +3397,7 @@ subroutine check_tke(&
 ! LOCAL VARIABLES
   integer :: i, k
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
    if (use_cxx) then
       call check_tke_f(shcol,nlev, & ! Input
            tke)                      ! Input/Output
@@ -3427,7 +3427,7 @@ subroutine shoc_length(&
   !  mixing length scale, which is used to compute the
   !  turbulent dissipation in the SGS TKE equation
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   use shoc_iso_f, only: shoc_length_f
 #endif
 
@@ -3466,7 +3466,7 @@ subroutine shoc_length(&
   real(rtype) :: thv_zi(shcol,nlevi)
   real(rtype) :: l_inf(shcol)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
    if (use_cxx) then
       call shoc_length_f(shcol,nlev,nlevi,host_dx,host_dy,&
                          zt_grid,zi_grid,dz_zt,tke,&
@@ -3646,7 +3646,7 @@ subroutine shoc_energy_integrals(&
          rtm,rcm,u_wind,v_wind,&        ! Input
          se_int,ke_int,wv_int,wl_int)   ! Output
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
     use shoc_iso_f, only: shoc_energy_integrals_f
 #endif
 
@@ -3684,7 +3684,7 @@ subroutine shoc_energy_integrals(&
   integer :: i, k
   real(rtype) :: rvm
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
    if (use_cxx) then
       call shoc_energy_integrals_f(shcol,nlev,host_dse,pdel,&   ! Input
                                    rtm,rcm,u_wind,v_wind,&      ! Input
@@ -3719,7 +3719,7 @@ subroutine update_host_dse(&
          shoc_ql,inv_exner,zt_grid,phis,&  ! Input
          host_dse)                         ! Output
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
     use shoc_iso_f, only: update_host_dse_f
 #endif
 
@@ -3751,7 +3751,7 @@ subroutine update_host_dse(&
 
   integer :: i, k
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
    if (use_cxx) then
       call update_host_dse_f(shcol,nlev,thlm,shoc_ql,inv_exner,zt_grid,phis, &  ! Input
            host_dse)                              ! Input/Output)
@@ -3782,7 +3782,7 @@ subroutine shoc_energy_fixer(&
          rho_zt,tke,pint,&              ! Input
          host_dse)                      ! Input/Output
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   use shoc_iso_f, only: shoc_energy_fixer_f
 #endif
 
@@ -3838,7 +3838,7 @@ subroutine shoc_energy_fixer(&
   real(rtype) :: se_dis(shcol), te_a(shcol), te_b(shcol)
   integer :: shoctop(shcol)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
    if (use_cxx) then
       call shoc_energy_fixer_f(shcol,nlev,nlevi,dtime,nadv,& ! Input
                               zt_grid,zi_grid,&              ! Input
@@ -4052,7 +4052,7 @@ subroutine shoc_diag_obklen(&
          cldliq_sfc,qv_sfc,&        ! Input
          ustar,kbfs,obklen)         ! Ouput
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   use shoc_iso_f, only: shoc_diag_obklen_f
 #endif
 
@@ -4089,7 +4089,7 @@ subroutine shoc_diag_obklen(&
   real(rtype) :: th_sfc  ! potential temperature at surface
   real(rtype) :: thv_sfc ! virtual potential temperature at surface
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   if (use_cxx) then
     call shoc_diag_obklen_f(shcol,uw_sfc,vw_sfc,&      ! Input
                             wthl_sfc,wqw_sfc,thl_sfc,& ! Input
@@ -4120,7 +4120,7 @@ subroutine pblintd(&
        ustar,obklen,kbfs,cldn,&       ! Input
        pblh)                          ! Output
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   use shoc_iso_f, only: pblintd_f
 #endif
 
@@ -4183,7 +4183,7 @@ subroutine pblintd(&
 
     logical(btype)  :: check(shcol)            ! True=>chk if Richardson no.>critcal
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   if (use_cxx) then
     call pblintd_f(&
       shcol,nlev,nlevi,npbl,&        ! Input
@@ -4258,7 +4258,7 @@ subroutine pblintd_init_pot(&
        shcol,nlev,&             ! Input
        thl,ql,q,&               ! Input
        thv)                     ! Output
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
     use shoc_iso_f, only: shoc_pblintd_init_pot_f
 #endif
     !------------------------------Arguments--------------------------------
@@ -4279,7 +4279,7 @@ subroutine pblintd_init_pot(&
     integer  :: k                       ! level index
     real(rtype) :: th
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
    if (use_cxx) then
       call shoc_pblintd_init_pot_f(shcol,nlev,thl,ql,q,&               ! Input
                                    thv)                     ! Output
@@ -4333,7 +4333,7 @@ subroutine pblintd_height(&
        thv,thv_ref,&             ! Input
        pblh,rino,check)          ! Output
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
     use shoc_iso_f, only: pblintd_height_f
 #endif
 
@@ -4365,7 +4365,7 @@ subroutine pblintd_height(&
     integer  :: k                       ! level index
     real(rtype) :: vvk                     ! velocity magnitude squared
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
    if (use_cxx) then
       call pblintd_height_f(shcol,nlev,npbl,z,u,v,ustar,thv,thv_ref,& ! Input
                             pblh,rino,check)                          ! Output
@@ -4400,7 +4400,7 @@ subroutine pblintd_surf_temp(&
        tlv,&                       ! Output
        pblh,check,rino)            ! InOutput
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
     use shoc_iso_f, only: pblintd_surf_temp_f
 #endif
 
@@ -4434,7 +4434,7 @@ subroutine pblintd_surf_temp(&
     real(rtype), parameter :: sffrac=  0.1_rtype      ! Surface layer fraction of boundary layer
     real(rtype), parameter :: binm  = betam*sffrac ! betam * sffrac
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
    if (use_cxx) then
       call pblintd_surf_temp_f(shcol,nlev,nlevi,&          ! Input
                          z,ustar,obklen,kbfs,thv,&   ! Input
@@ -4465,7 +4465,7 @@ subroutine pblintd_check_pblh(&
        z,ustar,check,&                ! Input
        pblh)                          ! Output
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
     use shoc_iso_f, only: pblintd_check_pblh_f
 #endif
 
@@ -4488,7 +4488,7 @@ subroutine pblintd_check_pblh(&
     !
     integer  :: i                       ! longitude index
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
    if (use_cxx) then
       call pblintd_check_pblh_f(shcol,nlev,nlevi,npbl,z,ustar,check,pblh)
       return
@@ -4521,7 +4521,7 @@ subroutine pblintd_cldcheck(      &
                    zi,cldn,          &                  ! Input
                    pblh)                                ! InOutput
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
     use shoc_iso_f, only: shoc_pblintd_cldcheck_f
 #endif
 
@@ -4544,7 +4544,7 @@ subroutine pblintd_cldcheck(      &
     integer  :: i                       ! longitude index
     logical(btype)  :: cldcheck(shcol)      ! True=>if cloud in lowest layer
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
    if (use_cxx) then
       call shoc_pblintd_cldcheck_f(shcol, nlev, nlevi, zi, cldn, pblh)
       return
@@ -4575,7 +4575,7 @@ end subroutine pblintd_cldcheck
 
 subroutine linear_interp(x1,x2,y1,y2,km1,km2,ncol,minthresh)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
     use shoc_iso_f, only: linear_interp_f
 #endif
 
@@ -4590,7 +4590,7 @@ subroutine linear_interp(x1,x2,y1,y2,km1,km2,ncol,minthresh)
 
     integer :: k1, k2, i
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
    if (use_cxx) then
       call linear_interp_f(x1,x2,y1,y2,km1,km2,ncol,minthresh)
       return
@@ -4664,7 +4664,7 @@ subroutine compute_brunt_shoc_length(nlev,nlevi,shcol,dz_zt,thv,thv_zi,brunt)
   !
   ! Computes the brunt_visala frequency
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   use shoc_iso_f, only: compute_brunt_shoc_length_f
 #endif
 
@@ -4680,7 +4680,7 @@ subroutine compute_brunt_shoc_length(nlev,nlevi,shcol,dz_zt,thv,thv_zi,brunt)
   real(rtype), intent(out) :: brunt(shcol, nlev)
   integer k, i
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   if (use_cxx) then
     call compute_brunt_shoc_length_f(nlev,nlevi,shcol,dz_zt,thv,thv_zi,brunt)
     return
@@ -4700,7 +4700,7 @@ subroutine compute_l_inf_shoc_length(nlev,shcol,zt_grid,dz_zt,tke,l_inf)
   !=========================================================
   !
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   use shoc_iso_f, only: compute_l_inf_shoc_length_f
 #endif
 
@@ -4711,7 +4711,7 @@ subroutine compute_l_inf_shoc_length(nlev,shcol,zt_grid,dz_zt,tke,l_inf)
   real(rtype) :: tkes, numer(shcol), denom(shcol)
   integer k, i
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   if (use_cxx) then
     call compute_l_inf_shoc_length_f(nlev,shcol,zt_grid,dz_zt,tke,l_inf)
     return
@@ -4737,7 +4737,7 @@ end subroutine compute_l_inf_shoc_length
 
 subroutine compute_shoc_mix_shoc_length(nlev,shcol,tke,brunt,zt_grid,l_inf,shoc_mix)
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   use shoc_iso_f, only: compute_shoc_mix_shoc_length_f
 #endif
 
@@ -4763,7 +4763,7 @@ subroutine compute_shoc_mix_shoc_length(nlev,shcol,tke,brunt,zt_grid,l_inf,shoc_
   ! Turnover timescale [s]
   real(rtype), parameter :: tscale = 400._rtype
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   if (use_cxx) then
     call compute_shoc_mix_shoc_length_f(nlev,shcol,tke,brunt,zt_grid,l_inf,& !Input
                                         shoc_mix) ! Ouptut
@@ -4791,7 +4791,7 @@ subroutine check_length_scale_shoc_length(nlev,shcol,host_dx,host_dy,shoc_mix)
   ! Do checks on the length scale.  Make sure it is not
   !  larger than the grid mesh of the host model.
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   use shoc_iso_f, only: check_length_scale_shoc_length_f
 #endif
 
@@ -4802,7 +4802,7 @@ subroutine check_length_scale_shoc_length(nlev,shcol,host_dx,host_dy,shoc_mix)
   real(rtype), intent(inout) :: shoc_mix(shcol, nlev)
   integer k, i
 
-#ifdef SCREAM_CONFIG_IS_CMAKE
+#ifdef SCREAM_CONFIG_IS_CMAKE_STOPITPLEASE
   if (use_cxx) then
     call check_length_scale_shoc_length_f(nlev,shcol,host_dx,host_dy,shoc_mix)
     return

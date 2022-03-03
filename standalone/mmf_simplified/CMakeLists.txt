@@ -56,7 +56,7 @@ if (${USE_SCREAM})
   set(Kokkos_ENABLE_DEBUG_DUALVIEW_MODIFY_CHECK TRUE CACHE BOOL "")
   ###############################################################
   ###############################################################
-  ## FOR KOKKOS DEBUG; REMOVE LATER TODO: 
+  ###############################################################
   ###############################################################
   ###############################################################
   include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../physics/scream)
@@ -68,10 +68,13 @@ if (${USE_SCREAM})
   option(EKAT_ENABLE_TESTS OFF FORCE)
   add_subdirectory(../../externals/EKAT                ./ekat                )
   add_subdirectory(../../physics/scream/share          ./scream_share        )
-  add_subdirectory(../../physics/scream_common         ./scream_common       )
   add_subdirectory(../../physics/scream/physics/share  ./scream_physics_share)
+  add_subdirectory(../../physics/scream_common         ./scream_common       )
+  add_dependencies(scream_common physics_share)
   add_subdirectory(../../physics/scream/physics/p3     ./scream_p3           )
+  add_dependencies(p3 physics_share)
   add_subdirectory(../../physics/scream/physics/shoc   ./scream_shoc         )
+  add_dependencies(shoc physics_share)
   include_directories(${CMAKE_CURRENT_BINARY_DIR}/scream_common       )
   include_directories(${CMAKE_CURRENT_BINARY_DIR}/scream_physics_share)
   include_directories(${CMAKE_CURRENT_BINARY_DIR}/scream_f90_modules  )

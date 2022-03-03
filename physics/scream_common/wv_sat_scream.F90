@@ -13,6 +13,11 @@ module wv_sat_scream
   ! get real kind from utils
   use scream_types,  only: rtype
   use micro_p3_utils, only: T_zerodegc
+#ifdef SCREAM_CONFIG_IS_CMAKE
+  use physics_share_f2c, only: cxx_pow, cxx_sqrt, cxx_cbrt, cxx_gamma, cxx_log, &
+                                 cxx_log10, cxx_exp, cxx_tanh
+#endif
+
 
   implicit none
   private

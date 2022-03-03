@@ -246,6 +246,32 @@ namespace pam {
       }
     });
 
+    Kokkos::parallel_for( Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0},{ncol,nlevi}) , KOKKOS_LAMBDA (int i, int k) {
+      SHOCHistoryOutput_thl_sec  (i,k) = 0;
+      SHOCHistoryOutput_qw_sec   (i,k) = 0;
+      SHOCHistoryOutput_qwthl_sec(i,k) = 0;
+      SHOCHistoryOutput_wthl_sec (i,k) = 0;
+      SHOCHistoryOutput_wqw_sec  (i,k) = 0;
+      SHOCHistoryOutput_wtke_sec (i,k) = 0;
+      SHOCHistoryOutput_uw_sec   (i,k) = 0;
+      SHOCHistoryOutput_vw_sec   (i,k) = 0;
+      SHOCHistoryOutput_w3       (i,k) = 0;
+      if (k < nlev) {
+        SHOCOutput_shoc_ql2         (i  ,k) = 0;
+        SHOCHistoryOutput_shoc_mix  (i  ,k) = 0;
+        SHOCHistoryOutput_w_sec     (i  ,k) = 0;
+        SHOCHistoryOutput_wqls_sec  (i  ,k) = 0;
+        SHOCHistoryOutput_brunt     (i  ,k) = 0;
+        SHOCHistoryOutput_isotropy  (i  ,k) = 0;
+        for (int tr = 0; tr < num_qtracers; tr++) {
+          SHOCInputOutput_qtracers(i,tr,k) = 0;
+        }
+      }
+      if (k == 0) {
+        SHOCOutput_pblh(i) = 0;
+      }
+    });
+
     Kokkos::fence();
 
     // Create the structs used by SHOC main
@@ -361,32 +387,6 @@ namespace pam {
       }
       if (k == 0) {
         pblh(i) = SHOCOutput_pblh(i);
-      }
-    });
-
-    // TODO: get rid of this. This is for debugging only to make sure the copies maintain zero diffs
-    Kokkos::parallel_for( Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0},{ncol,nlevi}) , KOKKOS_LAMBDA (int i, int k) {
-      zi_grid(k,i) = SHOCInput_zi_grid(i,k)[0];
-      presi  (k,i) = SHOCInput_presi  (i,k)[0];
-      if (k < nlev) {
-        zt_grid  (k,i) = SHOCInput_zt_grid           (i  ,k)[0];
-        pres     (k,i) = SHOCInput_pres              (i  ,k)[0];
-        pdel     (k,i) = SHOCInput_pdel              (i  ,k)[0];
-        thv      (k,i) = SHOCInput_thv               (i  ,k)[0];
-        w_field  (k,i) = SHOCInput_w_field           (i  ,k)[0];
-        inv_exner(k,i) = SHOCInput_inv_exner         (i  ,k)[0];
-      }
-      if (k == 0) {
-        host_dx (i) = SHOCInput_dx      (i);
-        host_dy (i) = SHOCInput_dy      (i);
-        wthl_sfc(i) = SHOCInput_wthl_sfc(i);
-        wqw_sfc (i) = SHOCInput_wqw_sfc (i);
-        uw_sfc  (i) = SHOCInput_uw_sfc  (i);
-        vw_sfc  (i) = SHOCInput_vw_sfc  (i);
-        phis    (i) = SHOCInput_phis    (i);
-        for (int tr = 0; tr < num_qtracers; tr++) {
-          wtracer_sfc(tr,i) = SHOCInput_wtracer_sfc(i,tr)[0];
-        }
       }
     });
 

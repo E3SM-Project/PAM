@@ -2,7 +2,7 @@ module shoc_iso_c
   use iso_c_binding
   implicit none
 
-#include "scream_config.f"
+! #include "scream_config.f"
 #ifdef SCREAM_DOUBLE_PRECISION
 # define c_real c_double
 #else
@@ -114,7 +114,7 @@ contains
      wtracer_sfc, num_qtracers, w_field, inv_exner, phis, host_dse, tke, thetal, &
      qw, u_wind, v_wind, qtracers, wthv_sec, tkh, tk, shoc_ql, shoc_cldfrac, &
      pblh, shoc_mix, isotropy, w_sec, thl_sec, qw_sec, qwthl_sec, wthl_sec,  &
-     wqw_sec, wtke_sec, uw_sec, vw_sec, w3, wqls_sec, brunt,shoc_ql2,elapsed_s)
+     wqw_sec, wtke_sec, uw_sec, vw_sec, w3, wqls_sec, brunt,shoc_ql2)
   end subroutine shoc_main_c
 
   subroutine shoc_use_cxx_c(arg_use_cxx) bind(C)

@@ -7,7 +7,8 @@
 #include "call_p3_from_pam.h"
 #include "pam_scream_routines.h"
 
-// #define P3_FORTRAN
+#define P3_FORTRAN
+#define P3_DEBUG
 
 using pam::PamCoupler;
 
@@ -63,6 +64,8 @@ public:
   bool sgs_shoc;
 
   bool first_step;
+
+  real etime;
 
   // Indices for all of your tracer quantities
   int static constexpr ID_C  = 0;  // Local index for Cloud Water Mass  
@@ -172,6 +175,8 @@ public:
     p3_init_fortran( dir.c_str() , dir_len , ver.c_str() , ver_len );
 
     coupler.set_option<std::string>("micro","p3");
+
+    etime = 0;
   }
 
 
@@ -334,6 +339,169 @@ public:
     int it = 1;
     bool do_predict_nc = false;
     bool do_prescribed_CCN = false;
+
+
+    #ifdef P3_DEBUG
+    if (etime > 10) {
+      its = 1;
+      ite = ncol;
+      kts = 1;
+      kte = nz;
+      auto qc_host                 = qc                .createHostCopy();
+      auto nc_host                 = nc                .createHostCopy();
+      auto qr_host                 = qr                .createHostCopy();
+      auto nr_host                 = nr                .createHostCopy();
+      auto theta_host              = theta             .createHostCopy();
+      auto qv_host                 = qv                .createHostCopy();
+      auto qi_host                 = qi                .createHostCopy();
+      auto qm_host                 = qm                .createHostCopy();
+      auto ni_host                 = ni                .createHostCopy();
+      auto bm_host                 = bm                .createHostCopy();
+      auto pressure_host           = pressure          .createHostCopy();
+      auto dz_host                 = dz                .createHostCopy();
+      auto nc_nuceat_tend_host     = nc_nuceat_tend    .createHostCopy();
+      auto nccn_prescribed_host    = nccn_prescribed   .createHostCopy();
+      auto ni_activated_host       = ni_activated      .createHostCopy();
+      auto inv_qc_relvar_host      = inv_qc_relvar     .createHostCopy();
+      auto precip_liq_surf_host    = precip_liq_surf   .createHostCopy();
+      auto precip_ice_surf_host    = precip_ice_surf   .createHostCopy();
+      auto diag_eff_radius_qc_host = diag_eff_radius_qc.createHostCopy();
+      auto diag_eff_radius_qi_host = diag_eff_radius_qi.createHostCopy();
+      auto bulk_qi_host            = bulk_qi           .createHostCopy();
+      auto dpres_host              = dpres             .createHostCopy();
+      auto inv_exner_host          = inv_exner         .createHostCopy();
+      auto qv2qi_depos_tend_host   = qv2qi_depos_tend  .createHostCopy();
+      auto precip_total_tend_host  = precip_total_tend .createHostCopy();
+      auto nevapr_host             = nevapr            .createHostCopy();
+      auto qr_evap_tend_host       = qr_evap_tend      .createHostCopy();
+      auto precip_liq_flux_host    = precip_liq_flux   .createHostCopy();
+      auto precip_ice_flux_host    = precip_ice_flux   .createHostCopy();
+      auto cld_frac_r_host         = cld_frac_r        .createHostCopy();
+      auto cld_frac_l_host         = cld_frac_l        .createHostCopy();
+      auto cld_frac_i_host         = cld_frac_i        .createHostCopy();
+      auto p3_tend_out_host        = p3_tend_out       .createHostCopy();
+      auto mu_c_host               = mu_c              .createHostCopy();
+      auto lamc_host               = lamc              .createHostCopy();
+      auto liq_ice_exchange_host   = liq_ice_exchange  .createHostCopy();
+      auto vap_liq_exchange_host   = vap_liq_exchange  .createHostCopy();
+      auto vap_ice_exchange_host   = vap_ice_exchange  .createHostCopy();
+      auto qv_prev_host            = qv_prev           .createHostCopy();
+      auto t_prev_host             = t_prev            .createHostCopy();
+      auto col_location_host       = col_location      .createHostCopy();
+
+      p3_main_fortran(qc_host.data() , nc_host.data() , qr_host.data() , nr_host.data() , theta_host.data() ,
+                      qv_host.data() , dt , qi_host.data() , qm_host.data() , ni_host.data() , bm_host.data() ,
+                      pressure_host.data() , dz_host.data() , nc_nuceat_tend_host.data() ,
+                      nccn_prescribed_host.data() , ni_activated_host.data() , inv_qc_relvar_host.data() , it ,
+                      precip_liq_surf_host.data() , precip_ice_surf_host.data() , its , ite , kts , kte ,
+                      diag_eff_radius_qc_host.data() , diag_eff_radius_qi_host.data() , bulk_qi_host.data() ,
+                      do_predict_nc , do_prescribed_CCN , dpres_host.data() , inv_exner_host.data() ,
+                      qv2qi_depos_tend_host.data() , precip_total_tend_host.data() , nevapr_host.data() ,
+                      qr_evap_tend_host.data() , precip_liq_flux_host.data() , precip_ice_flux_host.data() ,
+                      cld_frac_r_host.data() , cld_frac_l_host.data() , cld_frac_i_host.data() ,
+                      p3_tend_out_host.data() , mu_c_host.data() , lamc_host.data() , liq_ice_exchange_host.data() ,
+                      vap_liq_exchange_host.data() , vap_ice_exchange_host.data() , qv_prev_host.data() ,
+                      t_prev_host.data() , col_location_host.data() , &elapsed_s );
+
+      its = 0;
+      ite = ncol-1;
+      kts = 0;
+      kte = nz-1;
+      pam::call_p3_main_from_pam(dt , it , its , ite , kts , kte , do_predict_nc , do_prescribed_CCN ,
+                                 elapsed_s ,
+                                 pam::yakl_array_to_arrayIR( qc                 ) ,
+                                 pam::yakl_array_to_arrayIR( nc                 ) ,
+                                 pam::yakl_array_to_arrayIR( qr                 ) ,
+                                 pam::yakl_array_to_arrayIR( nr                 ) ,
+                                 pam::yakl_array_to_arrayIR( theta              ) ,
+                                 pam::yakl_array_to_arrayIR( qv                 ) ,
+                                 pam::yakl_array_to_arrayIR( qi                 ) ,
+                                 pam::yakl_array_to_arrayIR( qm                 ) ,
+                                 pam::yakl_array_to_arrayIR( ni                 ) ,
+                                 pam::yakl_array_to_arrayIR( bm                 ) ,
+                                 pam::yakl_array_to_arrayIR( pressure           ) ,
+                                 pam::yakl_array_to_arrayIR( dz                 ) ,
+                                 pam::yakl_array_to_arrayIR( nc_nuceat_tend     ) ,
+                                 pam::yakl_array_to_arrayIR( nccn_prescribed    ) ,
+                                 pam::yakl_array_to_arrayIR( ni_activated       ) ,
+                                 pam::yakl_array_to_arrayIR( inv_qc_relvar      ) ,
+                                 pam::yakl_array_to_arrayIR( precip_liq_surf    ) ,
+                                 pam::yakl_array_to_arrayIR( precip_ice_surf    ) ,
+                                 pam::yakl_array_to_arrayIR( diag_eff_radius_qc ) ,
+                                 pam::yakl_array_to_arrayIR( diag_eff_radius_qi ) ,
+                                 pam::yakl_array_to_arrayIR( bulk_qi            ) ,
+                                 pam::yakl_array_to_arrayIR( dpres              ) ,
+                                 pam::yakl_array_to_arrayIR( inv_exner          ) ,
+                                 pam::yakl_array_to_arrayIR( qv2qi_depos_tend   ) ,
+                                 pam::yakl_array_to_arrayIR( precip_total_tend  ) ,
+                                 pam::yakl_array_to_arrayIR( nevapr             ) ,
+                                 pam::yakl_array_to_arrayIR( qr_evap_tend       ) ,
+                                 pam::yakl_array_to_arrayIR( precip_liq_flux    ) ,
+                                 pam::yakl_array_to_arrayIR( precip_ice_flux    ) ,
+                                 pam::yakl_array_to_arrayIR( cld_frac_r         ) ,
+                                 pam::yakl_array_to_arrayIR( cld_frac_l         ) ,
+                                 pam::yakl_array_to_arrayIR( cld_frac_i         ) ,
+                                 pam::yakl_array_to_arrayIR( p3_tend_out        ) ,
+                                 pam::yakl_array_to_arrayIR( mu_c               ) ,
+                                 pam::yakl_array_to_arrayIR( lamc               ) ,
+                                 pam::yakl_array_to_arrayIR( liq_ice_exchange   ) ,
+                                 pam::yakl_array_to_arrayIR( vap_liq_exchange   ) ,
+                                 pam::yakl_array_to_arrayIR( vap_ice_exchange   ) ,
+                                 pam::yakl_array_to_arrayIR( qv_prev            ) ,
+                                 pam::yakl_array_to_arrayIR( t_prev             ) ,
+                                 pam::yakl_array_to_arrayIR( col_location       ) );
+
+      using yakl::intrinsics::abs;
+      using yakl::intrinsics::sum;
+      using std::abs;
+      #define DEBUG_PRINT(var,var_host) std::cout << std::setw(20) << #var": " << std::setw(20) << sum(abs(var)) << " , " \
+                                                                               << std::setw(20) << sum(abs(var_host)) << " , " \
+                                                                               << std::setw(20) << abs(sum(abs(var)) - sum(abs(var_host))) / (sum(abs(var_host))+1.e-50) << std::endl
+      DEBUG_PRINT(qc                ,qc_host                );
+      DEBUG_PRINT(nc                ,nc_host                );
+      DEBUG_PRINT(qr                ,qr_host                );
+      DEBUG_PRINT(nr                ,nr_host                );
+      DEBUG_PRINT(theta             ,theta_host             );
+      DEBUG_PRINT(qv                ,qv_host                );
+      DEBUG_PRINT(qi                ,qi_host                );
+      DEBUG_PRINT(qm                ,qm_host                );
+      DEBUG_PRINT(ni                ,ni_host                );
+      DEBUG_PRINT(bm                ,bm_host                );
+      DEBUG_PRINT(pressure          ,pressure_host          );
+      DEBUG_PRINT(dz                ,dz_host                );
+      DEBUG_PRINT(nc_nuceat_tend    ,nc_nuceat_tend_host    );
+      DEBUG_PRINT(nccn_prescribed   ,nccn_prescribed_host   );
+      DEBUG_PRINT(ni_activated      ,ni_activated_host      );
+      DEBUG_PRINT(inv_qc_relvar     ,inv_qc_relvar_host     );
+      DEBUG_PRINT(precip_liq_surf   ,precip_liq_surf_host   );
+      DEBUG_PRINT(precip_ice_surf   ,precip_ice_surf_host   );
+      DEBUG_PRINT(diag_eff_radius_qc,diag_eff_radius_qc_host);
+      DEBUG_PRINT(diag_eff_radius_qi,diag_eff_radius_qi_host);
+      DEBUG_PRINT(bulk_qi           ,bulk_qi_host           );
+      DEBUG_PRINT(dpres             ,dpres_host             );
+      DEBUG_PRINT(inv_exner         ,inv_exner_host         );
+      DEBUG_PRINT(qv2qi_depos_tend  ,qv2qi_depos_tend_host  );
+      // DEBUG_PRINT(precip_total_tend ,precip_total_tend_host );
+      // DEBUG_PRINT(nevapr            ,nevapr_host            );
+      // DEBUG_PRINT(qr_evap_tend      ,qr_evap_tend_host      );
+      DEBUG_PRINT(precip_liq_flux   ,precip_liq_flux_host   );
+      DEBUG_PRINT(precip_ice_flux   ,precip_ice_flux_host   );
+      DEBUG_PRINT(cld_frac_r        ,cld_frac_r_host        );
+      DEBUG_PRINT(cld_frac_l        ,cld_frac_l_host        );
+      DEBUG_PRINT(cld_frac_i        ,cld_frac_i_host        );
+      // DEBUG_PRINT(p3_tend_out       ,p3_tend_out_host       );
+      // DEBUG_PRINT(mu_c              ,mu_c_host              );
+      // DEBUG_PRINT(lamc              ,lamc_host              );
+      DEBUG_PRINT(liq_ice_exchange  ,liq_ice_exchange_host  );
+      DEBUG_PRINT(vap_liq_exchange  ,vap_liq_exchange_host  );
+      DEBUG_PRINT(vap_ice_exchange  ,vap_ice_exchange_host  );
+      DEBUG_PRINT(qv_prev           ,qv_prev_host           );
+      DEBUG_PRINT(t_prev            ,t_prev_host            );
+      DEBUG_PRINT(col_location      ,col_location_host      );
+      abort();
+    }
+    #endif
+
 
     #ifdef P3_FORTRAN
 
@@ -513,6 +681,7 @@ public:
     });
 
     first_step = false;
+    etime += dt;
   }
 
 

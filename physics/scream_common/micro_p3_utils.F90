@@ -82,22 +82,20 @@ module micro_p3_utils
     subroutine micro_p3_utils_init(cpair,rair,rh2o,rhoh2o,mwh2o,mwdry,gravit,latvap,latice, &
                    cpliq,tmelt,pi,iulog,masterproc) bind(C,name="micro_p3_utils_init_fortran")
 
-    use iso_c_binding
-    implicit none
-    real(c_double) , intent(in) :: cpair
-    real(c_double) , intent(in) :: rair
-    real(c_double) , intent(in) :: rh2o
-    real(c_double) , intent(in) :: rhoh2o
-    real(c_double) , intent(in) :: mwh2o
-    real(c_double) , intent(in) :: mwdry
-    real(c_double) , intent(in) :: gravit
-    real(c_double) , intent(in) :: latvap
-    real(c_double) , intent(in) :: latice
-    real(c_double) , intent(in) :: cpliq
-    real(c_double) , intent(in) :: tmelt
-    real(c_double) , intent(in) :: pi
-    integer(c_int) , intent(in) :: iulog
-    logical(c_bool), intent(in) :: masterproc
+    real(rtype), intent(in) :: cpair
+    real(rtype), intent(in) :: rair
+    real(rtype), intent(in) :: rh2o
+    real(rtype), intent(in) :: rhoh2o
+    real(rtype), intent(in) :: mwh2o
+    real(rtype), intent(in) :: mwdry
+    real(rtype), intent(in) :: gravit
+    real(rtype), intent(in) :: latvap
+    real(rtype), intent(in) :: latice
+    real(rtype), intent(in) :: cpliq
+    real(rtype), intent(in) :: tmelt
+    real(rtype), intent(in) :: pi
+    integer, intent(in)     :: iulog
+    logical(btype), intent(in)     :: masterproc
 
     ! logfile info
     iulog_e3sm      = iulog

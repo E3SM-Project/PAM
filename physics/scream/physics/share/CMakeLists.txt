@@ -1,7 +1,8 @@
 set(PHYSICS_SHARE_SRCS
-  #physics_share_f2c.F90
+  physics_share_f2c.F90
   physics_share.cpp
   physics_test_data.cpp
+  # The files below are compiled in scream_common
   #./cam/physics_utils.F90
   #./cam/scream_abortutils.F90
   #./cam/wv_sat_scream.F90
@@ -17,10 +18,10 @@ endif()
 
 add_library(physics_share ${PHYSICS_SHARE_SRCS})
 set_target_properties(physics_share PROPERTIES Fortran_MODULE_DIRECTORY ${SCREAM_F90_MODULES})
+target_include_directories(physics_share PUBLIC ${SCREAM_F90_MODULES})
 target_link_libraries(physics_share scream_share)
 target_compile_options(physics_share PUBLIC $<$<COMPILE_LANGUAGE:Fortran>:${SCREAM_Fortran_FLAGS}>)
 
 if (NOT SCREAM_LIB_ONLY)
   add_subdirectory(tests)
 endif()
-

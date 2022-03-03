@@ -3,7 +3,6 @@ module p3_iso_f
   implicit none
 
 ! #include "scream_config.f"
-#define SCREAM_DOUBLE_PRECISION
 #ifdef SCREAM_DOUBLE_PRECISION
 # define c_real c_double
 #else

@@ -1,5 +1,18 @@
 set(SHOC_SRCS
-    shoc_ic_cases.cpp
+  shoc_f90.cpp
+  shoc_functions_f90.cpp
+  shoc_iso_c.f90
+  shoc_iso_f.f90
+)
+
+set(SHOC_HEADERS
+  shoc.hpp
+  shoc_constants.hpp
+)
+
+# Add ETI source files if not on CUDA
+if (NOT CUDA_BUILD OR Kokkos_ENABLE_CUDA_RELOCATABLE_DEVICE_CODE)
+  list(APPEND SHOC_SRCS
     shoc_adv_sgs_tke.cpp
     shoc_assumed_pdf.cpp
     shoc_calc_shoc_varorcovar.cpp
@@ -43,12 +56,13 @@ set(SHOC_SRCS
     shoc_update_host_dse.cpp
     shoc_update_prognostics_implicit.cpp
     call_shoc_from_pam.cpp
-) # SHOC ETI SRCS
+  ) # SHOC ETI SRCS
+endif()
 
 add_library(shoc ${SHOC_SRCS})
 target_include_directories(shoc PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../share)
 set_target_properties(shoc PROPERTIES Fortran_MODULE_DIRECTORY ${SCREAM_F90_MODULES})
-target_link_libraries(shoc physics_share scream_share)
+target_link_libraries(shoc physics_share scream_share scream_common sgs)
 target_compile_options(shoc PUBLIC $<$<COMPILE_LANGUAGE:Fortran>:${SCREAM_Fortran_FLAGS}>)
 
 if (NOT SCREAM_LIB_ONLY)

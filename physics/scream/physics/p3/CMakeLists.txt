@@ -1,5 +1,13 @@
 set(P3_SRCS
-    p3_ic_cases.cpp
+  p3_f90.cpp
+  p3_functions_f90.cpp
+  p3_iso_c.f90
+  p3_iso_f.f90
+)
+
+# Add ETI source files if not on CUDA
+if (NOT CUDA_BUILD OR Kokkos_ENABLE_CUDA_RELOCATABLE_DEVICE_CODE)
+  list(APPEND P3_SRCS
     p3_upwind.cpp
     p3_cloud_sed.cpp
     p3_ice_sed.cpp
@@ -43,9 +51,8 @@ set(P3_SRCS
     p3_ni_conservation.cpp
     p3_prevent_liq_supersaturation.cpp
     call_p3_from_pam.cpp
-    p3_iso_c.f90
-    p3_iso_f.f90
-) # P3 ETI SRCS
+  ) # P3 ETI SRCS
+endif()
 
 add_library(p3 ${P3_SRCS})
 target_include_directories(p3 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../share)
