@@ -7,7 +7,7 @@
 #include "call_shoc_from_pam.h"
 #include "pam_scream_routines.h"
 
-#define SHOC_FORTRAN
+// #define SHOC_FORTRAN
 // #define SHOC_DEBUG
 
 using pam::PamCoupler;
@@ -107,7 +107,7 @@ public:
     cp_v          = 1859;
     cv_v          = R_v - cp_v;
     p0            = 1.e5;
-    grav          = 9.81;
+    grav          = 9.80616;
     first_step    = true;
     cp_l          = 4218.;
     micro_kessler = false;
@@ -198,7 +198,7 @@ public:
       parallel_for( Bounds<1>(nz) , YAKL_LAMBDA (int k) {
         pref_shoc(k) = pres_mid(nz-1-k,0);
       });
-      real zvir = R_v / R_d - 1;
+      real zvir = R_v / R_d - 1.;
       int kbot, ktop;
       
       // #ifdef SHOC_FORTRAN

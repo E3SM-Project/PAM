@@ -46,17 +46,12 @@ endif()
 
 if (${USE_SCREAM})
   ###############################################################
-  ###############################################################
   ## FOR KOKKOS DEBUG; REMOVE LATER TODO: 
   ###############################################################
-  ###############################################################
-  set(CMAKE_BUILD_TYPE_ci "debug" CACHE STRING "")
-  set(Kokkos_ENABLE_DEBUG TRUE CACHE BOOL "")
-  set(Kokkos_ENABLE_DEBUG_BOUNDS_CHECK TRUE CACHE BOOL "")
-  set(Kokkos_ENABLE_DEBUG_DUALVIEW_MODIFY_CHECK TRUE CACHE BOOL "")
-  ###############################################################
-  ###############################################################
-  ###############################################################
+  # set(CMAKE_BUILD_TYPE_ci "debug" CACHE STRING "")
+  # set(Kokkos_ENABLE_DEBUG TRUE CACHE BOOL "")
+  # set(Kokkos_ENABLE_DEBUG_BOUNDS_CHECK TRUE CACHE BOOL "")
+  # set(Kokkos_ENABLE_DEBUG_DUALVIEW_MODIFY_CHECK TRUE CACHE BOOL "")
   ###############################################################
   ###############################################################
   include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../physics/scream)

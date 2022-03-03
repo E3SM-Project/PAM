@@ -246,32 +246,6 @@ namespace pam {
       }
     });
 
-    Kokkos::parallel_for( Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0},{ncol,nlevi}) , KOKKOS_LAMBDA (int i, int k) {
-      SHOCHistoryOutput_thl_sec  (i,k) = 0;
-      SHOCHistoryOutput_qw_sec   (i,k) = 0;
-      SHOCHistoryOutput_qwthl_sec(i,k) = 0;
-      SHOCHistoryOutput_wthl_sec (i,k) = 0;
-      SHOCHistoryOutput_wqw_sec  (i,k) = 0;
-      SHOCHistoryOutput_wtke_sec (i,k) = 0;
-      SHOCHistoryOutput_uw_sec   (i,k) = 0;
-      SHOCHistoryOutput_vw_sec   (i,k) = 0;
-      SHOCHistoryOutput_w3       (i,k) = 0;
-      if (k < nlev) {
-        SHOCOutput_shoc_ql2         (i  ,k) = 0;
-        SHOCHistoryOutput_shoc_mix  (i  ,k) = 0;
-        SHOCHistoryOutput_w_sec     (i  ,k) = 0;
-        SHOCHistoryOutput_wqls_sec  (i  ,k) = 0;
-        SHOCHistoryOutput_brunt     (i  ,k) = 0;
-        SHOCHistoryOutput_isotropy  (i  ,k) = 0;
-        for (int tr = 0; tr < num_qtracers; tr++) {
-          SHOCInputOutput_qtracers(i,tr,k) = 0;
-        }
-      }
-      if (k == 0) {
-        SHOCOutput_pblh(i) = 0;
-      }
-    });
-
     Kokkos::fence();
 
     // Create the structs used by SHOC main
