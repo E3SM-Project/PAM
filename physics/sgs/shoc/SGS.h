@@ -7,6 +7,8 @@
 #include "call_shoc_from_pam.h"
 #include "pam_scream_routines.h"
 
+#define SHOC_FORTRAN
+
 using pam::PamCoupler;
 
 
@@ -165,7 +167,7 @@ public:
       real zvir = R_v / R_d - 1;
       int kbot, ktop;
       
-      #if 0
+      #ifdef SHOC_FORTRAN
 
         kbot = nz;
         ktop = 1;
@@ -362,7 +364,7 @@ public:
 
     int nadv = 1;
 
-    #if 0
+    #ifdef SHOC_FORTRAN
 
       auto shoc_host_dx_host     = shoc_host_dx    .createHostCopy();
       auto shoc_host_dy_host     = shoc_host_dy    .createHostCopy();

@@ -210,7 +210,7 @@ namespace pam {
       P3DiagnosticInputs_qv_prev       (i,k) = qv_prev        (k,i);
       P3DiagnosticInputs_t_prev        (i,k) = t_prev         (k,i);
       if (k < 3) {
-        P3Infrastructure_col_location    (i,k) = col_location   (k,i);
+        P3Infrastructure_col_location(i,k) = col_location(k,i);
       }
     });
 

@@ -7,6 +7,8 @@
 #include "call_p3_from_pam.h"
 #include "pam_scream_routines.h"
 
+// #define P3_FORTRAN
+
 using pam::PamCoupler;
 
 
@@ -333,7 +335,7 @@ public:
     bool do_predict_nc = false;
     bool do_prescribed_CCN = false;
 
-    #if 0
+    #ifdef P3_FORTRAN
 
       its = 1;
       ite = ncol;
