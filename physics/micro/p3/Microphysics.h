@@ -7,7 +7,7 @@
 #include "call_p3_from_pam.h"
 #include "pam_scream_routines.h"
 
-// #define P3_FORTRAN
+#define P3_FORTRAN
 // #define P3_DEBUG
 
 using pam::PamCoupler;

@@ -5,10 +5,10 @@
 #include "ekat/kokkos/ekat_kokkos_types.hpp"
 // #include "scream_config.h"
 #define SCREAM_DOUBLE_PRECISION
-#define SCREAM_PACK_CHECK_BOUNDS
 #define SCREAM_PACK_SIZE 1
 #define SCREAM_SMALL_PACK_SIZE 1
-#define SCREAM_STRICT_FP
+// #define SCREAM_PACK_CHECK_BOUNDS
+// #define SCREAM_STRICT_FP
 
 namespace scream
 {

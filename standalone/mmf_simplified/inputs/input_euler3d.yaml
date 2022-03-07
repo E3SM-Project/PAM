@@ -2,8 +2,8 @@
 # Simulation time in seconds
 # simTime  : 28800    # 8 hours
 # simTime  : 86400    # 1 day
-# simTime  : 432000   # 5 days
-simTime  : 3600   # 30 min
+simTime  : 432000   # 5 days
+# simTime  : 3600   # 30 min
 
 # Number of cells to use in the CRMs
 crm_nx   : 128
@@ -39,7 +39,7 @@ out_prefix  : test
 dt_gcm: 900
 
 # CRM physics time step
-dt_crm_phys: 20.
+dt_crm_phys: 0.
 
 # Output frequency in seconds
 outFreq: 0.

@@ -7,40 +7,10 @@
 #include "call_shoc_from_pam.h"
 #include "pam_scream_routines.h"
 
-// #define SHOC_FORTRAN
+#define SHOC_FORTRAN
 // #define SHOC_DEBUG
 
 using pam::PamCoupler;
-
-
-template <class T, int N, int memSpace1, int memSpace2, int style>
-yakl::Array<T,N,memHost,style> operator-(yakl::Array<T,N,memSpace1,style> a, yakl::Array<T,N,memSpace2,style> b) {
-  int n = a.totElems();
-  yakl::Array<T,N,memHost,style> ret;
-  ret = a.createHostCopy();
-  for (int i=0; i < n; i++) { ret.myData[i] = a.myData[i] - b.myData[i]; }
-  return ret;
-}
-
-
-template <class T, int N, int memSpace1, int style>
-yakl::Array<T,N,memHost,style> operator+(yakl::Array<T,N,memSpace1,style> a, T b) {
-  int n = a.totElems();
-  yakl::Array<T,N,memHost,style> ret;
-  ret = a.createHostCopy();
-  for (int i=0; i < n; i++) { ret.myData[i] = a.myData[i] + b; }
-  return ret;
-}
-
-
-template <class T, int N, int memSpace1, int memSpace2, int style>
-yakl::Array<T,N,memHost,style> operator/(yakl::Array<T,N,memSpace1,style> a, yakl::Array<T,N,memSpace2,style> b) {
-  int n = a.totElems();
-  yakl::Array<T,N,memHost,style> ret;
-  ret = a.createHostCopy();
-  for (int i=0; i < n; i++) { ret.myData[i] = a.myData[i] / b.myData[i]; }
-  return ret;
-}
 
 
 extern "C"
@@ -200,21 +170,37 @@ public:
       });
       real zvir = R_v / R_d - 1.;
       int kbot, ktop;
-      
-      // #ifdef SHOC_FORTRAN
+
+      #ifdef SHOC_DEBUG
 
         kbot = nz;
         ktop = 1;
         shoc_init_fortran( nz , grav , R_d , R_v , cp_d , zvir , latvap , latice , karman ,
                            pref_shoc.createHostCopy().data() , kbot , ktop );
 
-      // #else
-
         kbot = nz-1;
         ktop = 0;
         this->npbl = pam::call_shoc_init_from_pam( kbot , ktop , pam::yakl_array_to_arrayIR( pref_shoc ) );
 
-      // #endif
+      #else
+
+        #ifdef SHOC_FORTRAN
+
+          kbot = nz;
+          ktop = 1;
+          shoc_init_fortran( nz , grav , R_d , R_v , cp_d , zvir , latvap , latice , karman ,
+                             pref_shoc.createHostCopy().data() , kbot , ktop );
+
+        #else
+
+          kbot = nz-1;
+          ktop = 0;
+          this->npbl = pam::call_shoc_init_from_pam( kbot , ktop , pam::yakl_array_to_arrayIR( pref_shoc ) );
+
+        #endif
+
+      #endif
+      
 
       // This check is here instead of init because it's not guaranteed the micro has called init before sgs
       if (! coupler.option_exists("micro")) {
@@ -260,6 +246,7 @@ public:
       qtracers_pam.add_field( coupler.dm.get_lev_col<real>("ice_num"        ) );
       qtracers_pam.add_field( coupler.dm.get_lev_col<real>("ice_rime"       ) );
       qtracers_pam.add_field( coupler.dm.get_lev_col<real>("ice_rime_vol"   ) );
+      qtracers_pam.add_field( coupler.dm.get_lev_col<real>("density_dry"    ) );
     }
 
     int num_qtracers = qtracers_pam.get_num_fields();
@@ -517,300 +504,54 @@ public:
       using yakl::intrinsics::abs;
       using yakl::intrinsics::sum;
       using std::abs;
-
-
-
-      yakl::SimpleNetCDF nc; 
-      nc.create("debug_diff.nc");
-      nc.write( (shoc_host_dx.createHostCopy()   - shoc_host_dx_host  ) / (abs(shoc_host_dx_host  ) + 1.e-50) , "shoc_host_dx"     , {       "ncol"} );
-      nc.write( (shoc_host_dy.createHostCopy()   - shoc_host_dy_host  ) / (abs(shoc_host_dy_host  ) + 1.e-50) , "shoc_host_dy"     , {       "ncol"} );
-      nc.write( (shoc_zt_grid.createHostCopy()   - shoc_zt_grid_host  ) / (abs(shoc_zt_grid_host  ) + 1.e-50) , "shoc_zt_grid"     , {"nz"  ,"ncol"} );
-      nc.write( (shoc_zi_grid.createHostCopy()   - shoc_zi_grid_host  ) / (abs(shoc_zi_grid_host  ) + 1.e-50) , "shoc_zi_grid"     , {"nzp1","ncol"} );
-      nc.write( (shoc_pres.createHostCopy()      - shoc_pres_host     ) / (abs(shoc_pres_host     ) + 1.e-50) , "shoc_pres"        , {"nz"  ,"ncol"} );
-      nc.write( (shoc_presi.createHostCopy()     - shoc_presi_host    ) / (abs(shoc_presi_host    ) + 1.e-50) , "shoc_presi"       , {"nzp1","ncol"} );
-      nc.write( (shoc_pdel.createHostCopy()      - shoc_pdel_host     ) / (abs(shoc_pdel_host     ) + 1.e-50) , "shoc_pdel"        , {"nz"  ,"ncol"} );
-      nc.write( (shoc_thv.createHostCopy()       - shoc_thv_host      ) / (abs(shoc_thv_host      ) + 1.e-50) , "shoc_thv"         , {"nz"  ,"ncol"} );
-      nc.write( (shoc_w_field.createHostCopy()   - shoc_w_field_host  ) / (abs(shoc_w_field_host  ) + 1.e-50) , "shoc_w_field"     , {"nz"  ,"ncol"} );
-      nc.write( (shoc_wthl_sfc.createHostCopy()  - shoc_wthl_sfc_host ) / (abs(shoc_wthl_sfc_host ) + 1.e-50) , "shoc_wthl_sfc"    , {       "ncol"} );
-      nc.write( (shoc_wqw_sfc.createHostCopy()   - shoc_wqw_sfc_host  ) / (abs(shoc_wqw_sfc_host  ) + 1.e-50) , "shoc_wqw_sfc"     , {       "ncol"} );
-      nc.write( (shoc_uw_sfc.createHostCopy()    - shoc_uw_sfc_host   ) / (abs(shoc_uw_sfc_host   ) + 1.e-50) , "shoc_uw_sfc"      , {       "ncol"} );
-      nc.write( (shoc_vw_sfc.createHostCopy()    - shoc_vw_sfc_host   ) / (abs(shoc_vw_sfc_host   ) + 1.e-50) , "shoc_vw_sfc"      , {       "ncol"} );
-      nc.write( (shoc_exner.createHostCopy()     - shoc_exner_host    ) / (abs(shoc_exner_host    ) + 1.e-50) , "shoc_exner"       , {"nz"  ,"ncol"} );
-      nc.write( (shoc_inv_exner.createHostCopy() - shoc_inv_exner_host) / (abs(shoc_inv_exner_host) + 1.e-50) , "shoc_inv_exner"   , {"nz"  ,"ncol"} );
-      nc.write( (shoc_phis.createHostCopy()      - shoc_phis_host     ) / (abs(shoc_phis_host     ) + 1.e-50) , "shoc_phis"        , {       "ncol"} );
-      nc.write( (shoc_host_dse.createHostCopy()  - shoc_host_dse_host ) / (abs(shoc_host_dse_host ) + 1.e-50) , "shoc_host_dse"    , {"nz"  ,"ncol"} );
-      nc.write( (shoc_tke.createHostCopy()       - shoc_tke_host      ) / (abs(shoc_tke_host      ) + 1.e-50) , "shoc_tke"         , {"nz"  ,"ncol"} );
-      nc.write( (shoc_thetal.createHostCopy()    - shoc_thetal_host   ) / (abs(shoc_thetal_host   ) + 1.e-50) , "shoc_thetal"      , {"nz"  ,"ncol"} );
-      nc.write( (shoc_qw.createHostCopy()        - shoc_qw_host       ) / (abs(shoc_qw_host       ) + 1.e-50) , "shoc_qw"          , {"nz"  ,"ncol"} );
-      nc.write( (shoc_u_wind.createHostCopy()    - shoc_u_wind_host   ) / (abs(shoc_u_wind_host   ) + 1.e-50) , "shoc_u_wind"      , {"nz"  ,"ncol"} );
-      nc.write( (shoc_v_wind.createHostCopy()    - shoc_v_wind_host   ) / (abs(shoc_v_wind_host   ) + 1.e-50) , "shoc_v_wind"      , {"nz"  ,"ncol"} );
-      nc.write( (shoc_wthv_sec.createHostCopy()  - shoc_wthv_sec_host ) / (abs(shoc_wthv_sec_host ) + 1.e-50) , "shoc_wthv_sec"    , {"nz"  ,"ncol"} );
-      nc.write( (shoc_tk.createHostCopy()        - shoc_tk_host       ) / (abs(shoc_tk_host       ) + 1.e-50) , "shoc_tk"          , {"nz"  ,"ncol"} );
-      nc.write( (shoc_cldfrac.createHostCopy()   - shoc_cldfrac_host  ) / (abs(shoc_cldfrac_host  ) + 1.e-50) , "shoc_cldfrac"     , {"nz"  ,"ncol"} );
-      nc.write( (shoc_ql.createHostCopy()        - shoc_ql_host       ) / (abs(shoc_ql_host       ) + 1.e-50) , "shoc_ql"          , {"nz"  ,"ncol"} );
-      nc.write( (shoc_pblh.createHostCopy()      - shoc_pblh_host     ) / (abs(shoc_pblh_host     ) + 1.e-50) , "shoc_pblh"        , {       "ncol"} );
-      nc.write( (shoc_ql2.createHostCopy()       - shoc_ql2_host      ) / (abs(shoc_ql2_host      ) + 1.e-50) , "shoc_ql2"         , {"nz"  ,"ncol"} );
-      nc.write( (shoc_mix.createHostCopy()       - shoc_mix_host      ) / (abs(shoc_mix_host      ) + 1.e-50) , "shoc_mix"         , {"nz"  ,"ncol"} );
-      nc.write( (shoc_w_sec.createHostCopy()     - shoc_w_sec_host    ) / (abs(shoc_w_sec_host    ) + 1.e-50) , "shoc_w_sec"       , {"nz"  ,"ncol"} );
-      nc.write( (shoc_thl_sec.createHostCopy()   - shoc_thl_sec_host  ) / (abs(shoc_thl_sec_host  ) + 1.e-50) , "shoc_thl_sec"     , {"nzp1","ncol"} );
-      nc.write( (shoc_qw_sec.createHostCopy()    - shoc_qw_sec_host   ) / (abs(shoc_qw_sec_host   ) + 1.e-50) , "shoc_qw_sec"      , {"nzp1","ncol"} );
-      nc.write( (shoc_qwthl_sec.createHostCopy() - shoc_qwthl_sec_host) / (abs(shoc_qwthl_sec_host) + 1.e-50) , "shoc_qwthl_sec"   , {"nzp1","ncol"} );
-      nc.write( (shoc_wthl_sec.createHostCopy()  - shoc_wthl_sec_host ) / (abs(shoc_wthl_sec_host ) + 1.e-50) , "shoc_wthl_sec"    , {"nzp1","ncol"} );
-      nc.write( (shoc_wqw_sec.createHostCopy()   - shoc_wqw_sec_host  ) / (abs(shoc_wqw_sec_host  ) + 1.e-50) , "shoc_wqw_sec"     , {"nzp1","ncol"} );
-      nc.write( (shoc_wtke_sec.createHostCopy()  - shoc_wtke_sec_host ) / (abs(shoc_wtke_sec_host ) + 1.e-50) , "shoc_wtke_sec"    , {"nzp1","ncol"} );
-      nc.write( (shoc_uw_sec.createHostCopy()    - shoc_uw_sec_host   ) / (abs(shoc_uw_sec_host   ) + 1.e-50) , "shoc_uw_sec"      , {"nzp1","ncol"} );
-      nc.write( (shoc_vw_sec.createHostCopy()    - shoc_vw_sec_host   ) / (abs(shoc_vw_sec_host   ) + 1.e-50) , "shoc_vw_sec"      , {"nzp1","ncol"} );
-      nc.write( (shoc_w3.createHostCopy()        - shoc_w3_host       ) / (abs(shoc_w3_host       ) + 1.e-50) , "shoc_w3"          , {"nzp1","ncol"} );
-      nc.write( (shoc_wqls_sec.createHostCopy()  - shoc_wqls_sec_host ) / (abs(shoc_wqls_sec_host ) + 1.e-50) , "shoc_wqls_sec"    , {"nz"  ,"ncol"} );
-      nc.write( (shoc_brunt.createHostCopy()     - shoc_brunt_host    ) / (abs(shoc_brunt_host    ) + 1.e-50) , "shoc_brunt"       , {"nz"  ,"ncol"} );
-      nc.write( (shoc_isotropy.createHostCopy()  - shoc_isotropy_host ) / (abs(shoc_isotropy_host ) + 1.e-50) , "shoc_isotropy"    , {"nz"  ,"ncol"} );
-      nc.close();
-
-
-
-
-      nc.create("debug_ekat.nc");
-      nc.write( shoc_host_dx.createHostCopy()   , "shoc_host_dx"     , {       "ncol"} );
-      nc.write( shoc_host_dy.createHostCopy()   , "shoc_host_dy"     , {       "ncol"} );
-      nc.write( shoc_zt_grid.createHostCopy()   , "shoc_zt_grid"     , {"nz"  ,"ncol"} );
-      nc.write( shoc_zi_grid.createHostCopy()   , "shoc_zi_grid"     , {"nzp1","ncol"} );
-      nc.write( shoc_pres.createHostCopy()      , "shoc_pres"        , {"nz"  ,"ncol"} );
-      nc.write( shoc_presi.createHostCopy()     , "shoc_presi"       , {"nzp1","ncol"} );
-      nc.write( shoc_pdel.createHostCopy()      , "shoc_pdel"        , {"nz"  ,"ncol"} );
-      nc.write( shoc_thv.createHostCopy()       , "shoc_thv"         , {"nz"  ,"ncol"} );
-      nc.write( shoc_w_field.createHostCopy()   , "shoc_w_field"     , {"nz"  ,"ncol"} );
-      nc.write( shoc_wthl_sfc.createHostCopy()  , "shoc_wthl_sfc"    , {       "ncol"} );
-      nc.write( shoc_wqw_sfc.createHostCopy()   , "shoc_wqw_sfc"     , {       "ncol"} );
-      nc.write( shoc_uw_sfc.createHostCopy()    , "shoc_uw_sfc"      , {       "ncol"} );
-      nc.write( shoc_vw_sfc.createHostCopy()    , "shoc_vw_sfc"      , {       "ncol"} );
-      nc.write( shoc_exner.createHostCopy()     , "shoc_exner"       , {"nz"  ,"ncol"} );
-      nc.write( shoc_inv_exner.createHostCopy() , "shoc_inv_exner"   , {"nz"  ,"ncol"} );
-      nc.write( shoc_phis.createHostCopy()      , "shoc_phis"        , {       "ncol"} );
-      nc.write( shoc_host_dse.createHostCopy()  , "shoc_host_dse"    , {"nz"  ,"ncol"} );
-      nc.write( shoc_tke.createHostCopy()       , "shoc_tke"         , {"nz"  ,"ncol"} );
-      nc.write( shoc_thetal.createHostCopy()    , "shoc_thetal"      , {"nz"  ,"ncol"} );
-      nc.write( shoc_qw.createHostCopy()        , "shoc_qw"          , {"nz"  ,"ncol"} );
-      nc.write( shoc_u_wind.createHostCopy()    , "shoc_u_wind"      , {"nz"  ,"ncol"} );
-      nc.write( shoc_v_wind.createHostCopy()    , "shoc_v_wind"      , {"nz"  ,"ncol"} );
-      nc.write( shoc_wthv_sec.createHostCopy()  , "shoc_wthv_sec"    , {"nz"  ,"ncol"} );
-      nc.write( shoc_tk.createHostCopy()        , "shoc_tk"          , {"nz"  ,"ncol"} );
-      nc.write( shoc_cldfrac.createHostCopy()   , "shoc_cldfrac"     , {"nz"  ,"ncol"} );
-      nc.write( shoc_ql.createHostCopy()        , "shoc_ql"          , {"nz"  ,"ncol"} );
-      nc.write( shoc_pblh.createHostCopy()      , "shoc_pblh"        , {       "ncol"} );
-      nc.write( shoc_ql2.createHostCopy()       , "shoc_ql2"         , {"nz"  ,"ncol"} );
-      nc.write( shoc_mix.createHostCopy()       , "shoc_mix"         , {"nz"  ,"ncol"} );
-      nc.write( shoc_w_sec.createHostCopy()     , "shoc_w_sec"       , {"nz"  ,"ncol"} );
-      nc.write( shoc_thl_sec.createHostCopy()   , "shoc_thl_sec"     , {"nzp1","ncol"} );
-      nc.write( shoc_qw_sec.createHostCopy()    , "shoc_qw_sec"      , {"nzp1","ncol"} );
-      nc.write( shoc_qwthl_sec.createHostCopy() , "shoc_qwthl_sec"   , {"nzp1","ncol"} );
-      nc.write( shoc_wthl_sec.createHostCopy()  , "shoc_wthl_sec"    , {"nzp1","ncol"} );
-      nc.write( shoc_wqw_sec.createHostCopy()   , "shoc_wqw_sec"     , {"nzp1","ncol"} );
-      nc.write( shoc_wtke_sec.createHostCopy()  , "shoc_wtke_sec"    , {"nzp1","ncol"} );
-      nc.write( shoc_uw_sec.createHostCopy()    , "shoc_uw_sec"      , {"nzp1","ncol"} );
-      nc.write( shoc_vw_sec.createHostCopy()    , "shoc_vw_sec"      , {"nzp1","ncol"} );
-      nc.write( shoc_w3.createHostCopy()        , "shoc_w3"          , {"nzp1","ncol"} );
-      nc.write( shoc_wqls_sec.createHostCopy()  , "shoc_wqls_sec"    , {"nz"  ,"ncol"} );
-      nc.write( shoc_brunt.createHostCopy()     , "shoc_brunt"       , {"nz"  ,"ncol"} );
-      nc.write( shoc_isotropy.createHostCopy()  , "shoc_isotropy"    , {"nz"  ,"ncol"} );
-      nc.close();
-
-
-
-      nc.create("debug_fortran.nc");
-      nc.write( shoc_host_dx_host  , "shoc_host_dx"     , {       "ncol"} );
-      nc.write( shoc_host_dy_host  , "shoc_host_dy"     , {       "ncol"} );
-      nc.write( shoc_zt_grid_host  , "shoc_zt_grid"     , {"nz"  ,"ncol"} );
-      nc.write( shoc_zi_grid_host  , "shoc_zi_grid"     , {"nzp1","ncol"} );
-      nc.write( shoc_pres_host     , "shoc_pres"        , {"nz"  ,"ncol"} );
-      nc.write( shoc_presi_host    , "shoc_presi"       , {"nzp1","ncol"} );
-      nc.write( shoc_pdel_host     , "shoc_pdel"        , {"nz"  ,"ncol"} );
-      nc.write( shoc_thv_host      , "shoc_thv"         , {"nz"  ,"ncol"} );
-      nc.write( shoc_w_field_host  , "shoc_w_field"     , {"nz"  ,"ncol"} );
-      nc.write( shoc_wthl_sfc_host , "shoc_wthl_sfc"    , {       "ncol"} );
-      nc.write( shoc_wqw_sfc_host  , "shoc_wqw_sfc"     , {       "ncol"} );
-      nc.write( shoc_uw_sfc_host   , "shoc_uw_sfc"      , {       "ncol"} );
-      nc.write( shoc_vw_sfc_host   , "shoc_vw_sfc"      , {       "ncol"} );
-      nc.write( shoc_exner_host    , "shoc_exner"       , {"nz"  ,"ncol"} );
-      nc.write( shoc_inv_exner_host, "shoc_inv_exner"   , {"nz"  ,"ncol"} );
-      nc.write( shoc_phis_host     , "shoc_phis"        , {       "ncol"} );
-      nc.write( shoc_host_dse_host , "shoc_host_dse"    , {"nz"  ,"ncol"} );
-      nc.write( shoc_tke_host      , "shoc_tke"         , {"nz"  ,"ncol"} );
-      nc.write( shoc_thetal_host   , "shoc_thetal"      , {"nz"  ,"ncol"} );
-      nc.write( shoc_qw_host       , "shoc_qw"          , {"nz"  ,"ncol"} );
-      nc.write( shoc_u_wind_host   , "shoc_u_wind"      , {"nz"  ,"ncol"} );
-      nc.write( shoc_v_wind_host   , "shoc_v_wind"      , {"nz"  ,"ncol"} );
-      nc.write( shoc_wthv_sec_host , "shoc_wthv_sec"    , {"nz"  ,"ncol"} );
-      nc.write( shoc_tk_host       , "shoc_tk"          , {"nz"  ,"ncol"} );
-      nc.write( shoc_cldfrac_host  , "shoc_cldfrac"     , {"nz"  ,"ncol"} );
-      nc.write( shoc_ql_host       , "shoc_ql"          , {"nz"  ,"ncol"} );
-      nc.write( shoc_pblh_host     , "shoc_pblh"        , {       "ncol"} );
-      nc.write( shoc_ql2_host      , "shoc_ql2"         , {"nz"  ,"ncol"} );
-      nc.write( shoc_mix_host      , "shoc_mix"         , {"nz"  ,"ncol"} );
-      nc.write( shoc_w_sec_host    , "shoc_w_sec"       , {"nz"  ,"ncol"} );
-      nc.write( shoc_thl_sec_host  , "shoc_thl_sec"     , {"nzp1","ncol"} );
-      nc.write( shoc_qw_sec_host   , "shoc_qw_sec"      , {"nzp1","ncol"} );
-      nc.write( shoc_qwthl_sec_host, "shoc_qwthl_sec"   , {"nzp1","ncol"} );
-      nc.write( shoc_wthl_sec_host , "shoc_wthl_sec"    , {"nzp1","ncol"} );
-      nc.write( shoc_wqw_sec_host  , "shoc_wqw_sec"     , {"nzp1","ncol"} );
-      nc.write( shoc_wtke_sec_host , "shoc_wtke_sec"    , {"nzp1","ncol"} );
-      nc.write( shoc_uw_sec_host   , "shoc_uw_sec"      , {"nzp1","ncol"} );
-      nc.write( shoc_vw_sec_host   , "shoc_vw_sec"      , {"nzp1","ncol"} );
-      nc.write( shoc_w3_host       , "shoc_w3"          , {"nzp1","ncol"} );
-      nc.write( shoc_wqls_sec_host , "shoc_wqls_sec"    , {"nz"  ,"ncol"} );
-      nc.write( shoc_brunt_host    , "shoc_brunt"       , {"nz"  ,"ncol"} );
-      nc.write( shoc_isotropy_host , "shoc_isotropy"    , {"nz"  ,"ncol"} );
-      nc.close();
-
-
-
-
-      real adiff_shoc_host_dx     = 0;
-      real adiff_shoc_host_dy     = 0;
-      real adiff_shoc_zt_grid     = 0;
-      real adiff_shoc_zi_grid     = 0;
-      real adiff_shoc_pres        = 0;
-      real adiff_shoc_presi       = 0;
-      real adiff_shoc_pdel        = 0;
-      real adiff_shoc_thv         = 0;
-      real adiff_shoc_w_field     = 0;
-      real adiff_shoc_wthl_sfc    = 0;
-      real adiff_shoc_wqw_sfc     = 0;
-      real adiff_shoc_uw_sfc      = 0;
-      real adiff_shoc_vw_sfc      = 0;
-      real adiff_shoc_wtracer_sfc = 0;
-      real adiff_shoc_exner       = 0;
-      real adiff_shoc_inv_exner   = 0;
-      real adiff_shoc_phis        = 0;
-      real adiff_shoc_host_dse    = 0;
-      real adiff_shoc_tke         = 0;
-      real adiff_shoc_thetal      = 0;
-      real adiff_shoc_qw          = 0;
-      real adiff_shoc_u_wind      = 0;
-      real adiff_shoc_v_wind      = 0;
-      real adiff_shoc_wthv_sec    = 0;
-      real adiff_shoc_qtracers    = 0;
-      real adiff_shoc_tk          = 0;
-      real adiff_shoc_tkh         = 0;
-      real adiff_shoc_cldfrac     = 0;
-      real adiff_shoc_ql          = 0;
-      real adiff_shoc_pblh        = 0;
-      real adiff_shoc_ql2         = 0;
-      real adiff_shoc_mix         = 0;
-      real adiff_shoc_w_sec       = 0;
-      real adiff_shoc_thl_sec     = 0;
-      real adiff_shoc_qw_sec      = 0;
-      real adiff_shoc_qwthl_sec   = 0;
-      real adiff_shoc_wthl_sec    = 0;
-      real adiff_shoc_wqw_sec     = 0;
-      real adiff_shoc_wtke_sec    = 0;
-      real adiff_shoc_uw_sec      = 0;
-      real adiff_shoc_vw_sec      = 0;
-      real adiff_shoc_w3          = 0;
-      real adiff_shoc_wqls_sec    = 0;
-      real adiff_shoc_brunt       = 0;
-      real adiff_shoc_isotropy    = 0;
-      for (int k=0; k < nz+1; k++) {
-        for (int i=0; i < ncol; i++) {
-          adiff_shoc_thl_sec   += abs(shoc_thl_sec  (k,i) - shoc_thl_sec_host  (k,i));
-          adiff_shoc_qw_sec    += abs(shoc_qw_sec   (k,i) - shoc_qw_sec_host   (k,i));
-          adiff_shoc_qwthl_sec += abs(shoc_qwthl_sec(k,i) - shoc_qwthl_sec_host(k,i));
-          adiff_shoc_wthl_sec  += abs(shoc_wthl_sec (k,i) - shoc_wthl_sec_host (k,i));
-          adiff_shoc_wqw_sec   += abs(shoc_wqw_sec  (k,i) - shoc_wqw_sec_host  (k,i));
-          adiff_shoc_wtke_sec  += abs(shoc_wtke_sec (k,i) - shoc_wtke_sec_host (k,i));
-          adiff_shoc_uw_sec    += abs(shoc_uw_sec   (k,i) - shoc_uw_sec_host   (k,i));
-          adiff_shoc_vw_sec    += abs(shoc_vw_sec   (k,i) - shoc_vw_sec_host   (k,i));
-          adiff_shoc_w3        += abs(shoc_w3       (k,i) - shoc_w3_host       (k,i));
-          adiff_shoc_zi_grid   += abs(shoc_zi_grid  (k,i) - shoc_zi_grid_host  (k,i));
-          adiff_shoc_presi     += abs(shoc_presi    (k,i) - shoc_presi_host    (k,i));
-          if (k < nz) {
-            adiff_shoc_zt_grid   += abs(shoc_zt_grid  (k,i) - shoc_zt_grid_host  (k,i));
-            adiff_shoc_pres      += abs(shoc_pres     (k,i) - shoc_pres_host     (k,i));
-            adiff_shoc_pdel      += abs(shoc_pdel     (k,i) - shoc_pdel_host     (k,i));
-            adiff_shoc_thv       += abs(shoc_thv      (k,i) - shoc_thv_host      (k,i));
-            adiff_shoc_w_field   += abs(shoc_w_field  (k,i) - shoc_w_field_host  (k,i));
-            adiff_shoc_exner     += abs(shoc_exner    (k,i) - shoc_exner_host    (k,i));
-            adiff_shoc_inv_exner += abs(shoc_inv_exner(k,i) - shoc_inv_exner_host(k,i));
-            adiff_shoc_host_dse  += abs(shoc_host_dse (k,i) - shoc_host_dse_host (k,i));
-            adiff_shoc_tke       += abs(shoc_tke      (k,i) - shoc_tke_host      (k,i));
-            adiff_shoc_thetal    += abs(shoc_thetal   (k,i) - shoc_thetal_host   (k,i));
-            adiff_shoc_qw        += abs(shoc_qw       (k,i) - shoc_qw_host       (k,i));
-            adiff_shoc_u_wind    += abs(shoc_u_wind   (k,i) - shoc_u_wind_host   (k,i));
-            adiff_shoc_v_wind    += abs(shoc_v_wind   (k,i) - shoc_v_wind_host   (k,i));
-            adiff_shoc_wthv_sec  += abs(shoc_wthv_sec (k,i) - shoc_wthv_sec_host (k,i));
-            adiff_shoc_tk        += abs(shoc_tk       (k,i) - shoc_tk_host       (k,i));
-            adiff_shoc_tkh       += abs(shoc_tkh      (k,i) - shoc_tkh_host      (k,i));
-            adiff_shoc_cldfrac   += abs(shoc_cldfrac  (k,i) - shoc_cldfrac_host  (k,i));
-            adiff_shoc_ql        += abs(shoc_ql       (k,i) - shoc_ql_host       (k,i));
-            adiff_shoc_ql2       += abs(shoc_ql2      (k,i) - shoc_ql2_host      (k,i));
-            adiff_shoc_mix       += abs(shoc_mix      (k,i) - shoc_mix_host      (k,i));
-            adiff_shoc_w_sec     += abs(shoc_w_sec    (k,i) - shoc_w_sec_host    (k,i));
-            adiff_shoc_wqls_sec  += abs(shoc_wqls_sec (k,i) - shoc_wqls_sec_host (k,i));
-            adiff_shoc_brunt     += abs(shoc_brunt    (k,i) - shoc_brunt_host    (k,i));
-            adiff_shoc_isotropy  += abs(shoc_isotropy (k,i) - shoc_isotropy_host (k,i));
-            for (int tr=0; tr < num_qtracers; tr++) {
-              adiff_shoc_qtracers += abs(shoc_qtracers(tr,k,i) - shoc_qtracers_host(tr,k,i));
-            }
-          }
-          if (k == 0) {
-            adiff_shoc_host_dx  += abs(shoc_host_dx (i) - shoc_host_dx_host (i));
-            adiff_shoc_host_dy  += abs(shoc_host_dy (i) - shoc_host_dy_host (i));
-            adiff_shoc_wthl_sfc += abs(shoc_wthl_sfc(i) - shoc_wthl_sfc_host(i));
-            adiff_shoc_wqw_sfc  += abs(shoc_wqw_sfc (i) - shoc_wqw_sfc_host (i));
-            adiff_shoc_uw_sfc   += abs(shoc_uw_sfc  (i) - shoc_uw_sfc_host  (i));
-            adiff_shoc_vw_sfc   += abs(shoc_vw_sfc  (i) - shoc_vw_sfc_host  (i));
-            adiff_shoc_phis     += abs(shoc_phis    (i) - shoc_phis_host    (i));
-            adiff_shoc_pblh     += abs(shoc_pblh    (i) - shoc_pblh_host    (i));
-            for (int tr=0; tr < num_qtracers; tr++) {
-              adiff_shoc_wtracer_sfc += abs(shoc_wtracer_sfc(tr,i) - shoc_wtracer_sfc_host(tr,i));
-            }
-          }
-        }
-      }
-      std::cout << "shoc_host_dx    : " << std::scientific << adiff_shoc_host_dx     /sum(abs(shoc_host_dx_host     )) << std::endl;
-      std::cout << "shoc_host_dy    : " << std::scientific << adiff_shoc_host_dy     /sum(abs(shoc_host_dy_host     )) << std::endl;
-      std::cout << "shoc_zt_grid    : " << std::scientific << adiff_shoc_zt_grid     /sum(abs(shoc_zt_grid_host     )) << std::endl;
-      std::cout << "shoc_zi_grid    : " << std::scientific << adiff_shoc_zi_grid     /sum(abs(shoc_zi_grid_host     )) << std::endl;
-      std::cout << "shoc_pres       : " << std::scientific << adiff_shoc_pres        /sum(abs(shoc_pres_host        )) << std::endl;
-      std::cout << "shoc_presi      : " << std::scientific << adiff_shoc_presi       /sum(abs(shoc_presi_host       )) << std::endl;
-      std::cout << "shoc_pdel       : " << std::scientific << adiff_shoc_pdel        /sum(abs(shoc_pdel_host        )) << std::endl;
-      std::cout << "shoc_thv        : " << std::scientific << adiff_shoc_thv         /sum(abs(shoc_thv_host         )) << std::endl;
-      std::cout << "shoc_w_field    : " << std::scientific << adiff_shoc_w_field     /sum(abs(shoc_w_field_host     )) << std::endl;
-      std::cout << "shoc_wthl_sfc   : " << std::scientific << adiff_shoc_wthl_sfc    /sum(abs(shoc_wthl_sfc_host    )) << std::endl;
-      std::cout << "shoc_wqw_sfc    : " << std::scientific << adiff_shoc_wqw_sfc     /sum(abs(shoc_wqw_sfc_host     )) << std::endl;
-      std::cout << "shoc_uw_sfc     : " << std::scientific << adiff_shoc_uw_sfc      /sum(abs(shoc_uw_sfc_host      )) << std::endl;
-      std::cout << "shoc_vw_sfc     : " << std::scientific << adiff_shoc_vw_sfc      /sum(abs(shoc_vw_sfc_host      )) << std::endl;
-      std::cout << "shoc_wtracer_sfc: " << std::scientific << adiff_shoc_wtracer_sfc /sum(abs(shoc_wtracer_sfc_host )) << std::endl;
-      std::cout << "shoc_exner      : " << std::scientific << adiff_shoc_exner       /sum(abs(shoc_exner_host       )) << std::endl;
-      std::cout << "shoc_inv_exner  : " << std::scientific << adiff_shoc_inv_exner   /sum(abs(shoc_inv_exner_host   )) << std::endl;
-      std::cout << "shoc_phis       : " << std::scientific << adiff_shoc_phis        /sum(abs(shoc_phis_host        )) << std::endl;
-      std::cout << "shoc_host_dse   : " << std::scientific << adiff_shoc_host_dse    /sum(abs(shoc_host_dse_host    )) << std::endl;
-      std::cout << "shoc_tke        : " << std::scientific << adiff_shoc_tke         /sum(abs(shoc_tke_host         )) << std::endl;
-      std::cout << "shoc_thetal     : " << std::scientific << adiff_shoc_thetal      /sum(abs(shoc_thetal_host      )) << std::endl;
-      std::cout << "shoc_qw         : " << std::scientific << adiff_shoc_qw          /sum(abs(shoc_qw_host          )) << std::endl;
-      std::cout << "shoc_u_wind     : " << std::scientific << adiff_shoc_u_wind      /sum(abs(shoc_u_wind_host      )) << std::endl;
-      std::cout << "shoc_v_wind     : " << std::scientific << adiff_shoc_v_wind      /sum(abs(shoc_v_wind_host      )) << std::endl;
-      std::cout << "shoc_wthv_sec   : " << std::scientific << adiff_shoc_wthv_sec    /sum(abs(shoc_wthv_sec_host    )) << std::endl;
-      std::cout << "shoc_qtracers   : " << std::scientific << adiff_shoc_qtracers    /sum(abs(shoc_qtracers_host    )) << std::endl;
-      std::cout << "shoc_tk         : " << std::scientific << adiff_shoc_tk          /sum(abs(shoc_tk_host          )) << std::endl;
-      std::cout << "shoc_tkh        : " << std::scientific << adiff_shoc_tkh         /sum(abs(shoc_tkh_host         )) << std::endl;
-      std::cout << "shoc_cldfrac    : " << std::scientific << adiff_shoc_cldfrac     /sum(abs(shoc_cldfrac_host     )) << std::endl;
-      std::cout << "shoc_ql         : " << std::scientific << adiff_shoc_ql          /sum(abs(shoc_ql_host          )) << std::endl;
-      std::cout << "shoc_pblh       : " << std::scientific << adiff_shoc_pblh        /sum(abs(shoc_pblh_host        )) << std::endl;
-      std::cout << "shoc_ql2        : " << std::scientific << adiff_shoc_ql2         /sum(abs(shoc_ql2_host         )) << std::endl;
-      std::cout << "shoc_mix        : " << std::scientific << adiff_shoc_mix         /sum(abs(shoc_mix_host         )) << std::endl;
-      std::cout << "shoc_w_sec      : " << std::scientific << adiff_shoc_w_sec       /sum(abs(shoc_w_sec_host       )) << std::endl;
-      std::cout << "shoc_thl_sec    : " << std::scientific << adiff_shoc_thl_sec     /sum(abs(shoc_thl_sec_host     )) << std::endl;
-      std::cout << "shoc_qw_sec     : " << std::scientific << adiff_shoc_qw_sec      /sum(abs(shoc_qw_sec_host      )) << std::endl;
-      std::cout << "shoc_qwthl_sec  : " << std::scientific << adiff_shoc_qwthl_sec   /sum(abs(shoc_qwthl_sec_host   )) << std::endl;
-      std::cout << "shoc_wthl_sec   : " << std::scientific << adiff_shoc_wthl_sec    /sum(abs(shoc_wthl_sec_host    )) << std::endl;
-      std::cout << "shoc_wqw_sec    : " << std::scientific << adiff_shoc_wqw_sec     /sum(abs(shoc_wqw_sec_host     )) << std::endl;
-      std::cout << "shoc_wtke_sec   : " << std::scientific << adiff_shoc_wtke_sec    /sum(abs(shoc_wtke_sec_host    )) << std::endl;
-      std::cout << "shoc_uw_sec     : " << std::scientific << adiff_shoc_uw_sec      /sum(abs(shoc_uw_sec_host      )) << std::endl;
-      std::cout << "shoc_vw_sec     : " << std::scientific << adiff_shoc_vw_sec      /sum(abs(shoc_vw_sec_host      )) << std::endl;
-      std::cout << "shoc_w3         : " << std::scientific << adiff_shoc_w3          /sum(abs(shoc_w3_host          )) << std::endl;
-      std::cout << "shoc_wqls_sec   : " << std::scientific << adiff_shoc_wqls_sec    /sum(abs(shoc_wqls_sec_host    )) << std::endl;
-      std::cout << "shoc_brunt      : " << std::scientific << adiff_shoc_brunt       /sum(abs(shoc_brunt_host       )) << std::endl;
-      std::cout << "shoc_isotropy   : " << std::scientific << adiff_shoc_isotropy    /sum(abs(shoc_isotropy_host    )) << std::endl;
+      #define DEBUG_PRINT(var,var_host) std::cout << std::setw(20) << #var": " << std::setw(20) << sum(abs(var)) << " , " \
+                                                                               << std::setw(20) << sum(abs(var_host)) << " , " \
+                                                                               << std::setw(20) << abs(sum(abs(var)) - sum(abs(var_host))) / (sum(abs(var_host))+1.e-50) << std::endl
+      DEBUG_PRINT( shoc_host_dx     , shoc_host_dx_host     );
+      DEBUG_PRINT( shoc_host_dy     , shoc_host_dy_host     );
+      DEBUG_PRINT( shoc_zt_grid     , shoc_zt_grid_host     );
+      DEBUG_PRINT( shoc_zi_grid     , shoc_zi_grid_host     );
+      DEBUG_PRINT( shoc_pres        , shoc_pres_host        );
+      DEBUG_PRINT( shoc_presi       , shoc_presi_host       );
+      DEBUG_PRINT( shoc_pdel        , shoc_pdel_host        );
+      DEBUG_PRINT( shoc_thv         , shoc_thv_host         );
+      DEBUG_PRINT( shoc_w_field     , shoc_w_field_host     );
+      DEBUG_PRINT( shoc_wthl_sfc    , shoc_wthl_sfc_host    );
+      DEBUG_PRINT( shoc_wqw_sfc     , shoc_wqw_sfc_host     );
+      DEBUG_PRINT( shoc_uw_sfc      , shoc_uw_sfc_host      );
+      DEBUG_PRINT( shoc_vw_sfc      , shoc_vw_sfc_host      );
+      DEBUG_PRINT( shoc_wtracer_sfc , shoc_wtracer_sfc_host );
+      DEBUG_PRINT( shoc_exner       , shoc_exner_host       );
+      DEBUG_PRINT( shoc_inv_exner   , shoc_inv_exner_host   );
+      DEBUG_PRINT( shoc_phis        , shoc_phis_host        );
+      DEBUG_PRINT( shoc_host_dse    , shoc_host_dse_host    );
+      DEBUG_PRINT( shoc_tke         , shoc_tke_host         );
+      DEBUG_PRINT( shoc_thetal      , shoc_thetal_host      );
+      DEBUG_PRINT( shoc_qw          , shoc_qw_host          );
+      DEBUG_PRINT( shoc_u_wind      , shoc_u_wind_host      );
+      DEBUG_PRINT( shoc_v_wind      , shoc_v_wind_host      );
+      DEBUG_PRINT( shoc_wthv_sec    , shoc_wthv_sec_host    );
+      DEBUG_PRINT( shoc_qtracers    , shoc_qtracers_host    );
+      DEBUG_PRINT( shoc_tk          , shoc_tk_host          );
+      // DEBUG_PRINT( shoc_tkh         , shoc_tkh_host         );
+      DEBUG_PRINT( shoc_cldfrac     , shoc_cldfrac_host     );
+      DEBUG_PRINT( shoc_ql          , shoc_ql_host          );
+      DEBUG_PRINT( shoc_pblh        , shoc_pblh_host        );
+      DEBUG_PRINT( shoc_ql2         , shoc_ql2_host         );
+      DEBUG_PRINT( shoc_mix         , shoc_mix_host         );
+      DEBUG_PRINT( shoc_w_sec       , shoc_w_sec_host       );
+      DEBUG_PRINT( shoc_thl_sec     , shoc_thl_sec_host     );
+      DEBUG_PRINT( shoc_qw_sec      , shoc_qw_sec_host      );
+      DEBUG_PRINT( shoc_qwthl_sec   , shoc_qwthl_sec_host   );
+      DEBUG_PRINT( shoc_wthl_sec    , shoc_wthl_sec_host    );
+      DEBUG_PRINT( shoc_wqw_sec     , shoc_wqw_sec_host     );
+      DEBUG_PRINT( shoc_wtke_sec    , shoc_wtke_sec_host    );
+      DEBUG_PRINT( shoc_uw_sec      , shoc_uw_sec_host      );
+      DEBUG_PRINT( shoc_vw_sec      , shoc_vw_sec_host      );
+      DEBUG_PRINT( shoc_w3          , shoc_w3_host          );
+      DEBUG_PRINT( shoc_wqls_sec    , shoc_wqls_sec_host    );
+      DEBUG_PRINT( shoc_brunt       , shoc_brunt_host       );
+      DEBUG_PRINT( shoc_isotropy    , shoc_isotropy_host    );
       abort();
     }
     #endif
@@ -983,6 +724,9 @@ public:
     // Process outputs from SHOC (reordering the vertical dimension)
     parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
       int k_shoc = nz-1-k;
+      for (int tr=0; tr < num_qtracers; tr++) {
+        qtracers_pam(tr,k,i) = shoc_qtracers(tr,k_shoc,i);
+      }
       // TODO: What about rho_dry ??
       uvel(k,i) = shoc_u_wind(k_shoc,i);
       vvel(k,i) = shoc_v_wind(k_shoc,i);
@@ -990,9 +734,6 @@ public:
       temp(k,i) = ( shoc_host_dse(k_shoc,i) - grav * zmid(k,i) ) / cp_d;
       rho_v(k,i) = shoc_qw(k_shoc,i) * rho_d(k,i) - shoc_ql(k_shoc,i) * rho_d(k,i);
       rho_c(k,i) = shoc_ql(k_shoc,i) * rho_d(k,i);
-      for (int tr=0; tr < num_qtracers; tr++) {
-        qtracers_pam(tr,k,i) = shoc_qtracers(tr,k_shoc,i);
-      }
       tke     (k,i) = shoc_tke     (k_shoc,i);
       wthv_sec(k,i) = shoc_wthv_sec(k_shoc,i);
       tk      (k,i) = shoc_tk      (k_shoc,i);
