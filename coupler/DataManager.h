@@ -7,7 +7,8 @@
 using yakl::Array;
 
 
-class DataManager {
+template <int memSpace = yakl::memDevice>
+class DataManagerTemplate {
 public:
 
   struct Entry {
@@ -29,24 +30,36 @@ public:
   std::vector<Entry>     entries;
   std::vector<Dimension> dimensions;
 
+  std::function<void *( size_t , char const * )> allocate;
+  std::function<void  ( void * , char const * )> deallocate;
 
-  DataManager() {
+
+  DataManagerTemplate() {
     entries    = std::vector<Entry>();
     dimensions = std::vector<Dimension>();
     num_assigned_dims = 0;
+    if (memSpace == memDevice) {
+      allocate   = [] (size_t bytes,char const *label) -> void * { return yakl::yaklAllocDevice(bytes,label); };
+      deallocate = [] (void *ptr   ,char const *label)           {        yakl::yaklFreeDevice (ptr  ,label); };
+    } else if (memSpace == memHost) {
+      allocate   = [] (size_t bytes,char const *label) -> void * { return yakl::yaklAllocHost(bytes,label); };
+      deallocate = [] (void *ptr   ,char const *label)           {        yakl::yaklFreeHost (ptr  ,label); };
+    } else {
+      yakl::yakl_throw("ERROR: DataManagerTemplate created with invalid memSpace template parameter");
+    }
   }
 
-  DataManager( DataManager &&dm      ) = delete;
-  DataManager( DataManager const &dm ) = delete;
-  DataManager &operator=( DataManager &&dm      ) = delete;
-  DataManager &operator=( DataManager const &dm ) = delete;
+  DataManagerTemplate( DataManagerTemplate &&dm      ) = delete;
+  DataManagerTemplate( DataManagerTemplate const &dm ) = delete;
+  DataManagerTemplate &operator=( DataManagerTemplate &&dm      ) = delete;
+  DataManagerTemplate &operator=( DataManagerTemplate const &dm ) = delete;
 
   int num_assigned_dims;
 
   std::mutex mtx;
 
 
-  ~DataManager() {
+  ~DataManagerTemplate() {
     // finalize deallocates all entries and resets entries and dimensions to empty vectors
     finalize();
   }
@@ -124,7 +137,7 @@ public:
     loc.name      = name;
     loc.desc      = desc;
     loc.type_hash = get_type_hash<T>();
-    loc.ptr       = yakl::yaklAllocDevice( get_data_size(dims)*sizeof(T) , name.c_str() );
+    loc.ptr       = allocate( get_data_size(dims)*sizeof(T) , name.c_str() );
     loc.dims      = dims;
     loc.dim_names = dim_names;
     loc.positive  = positive;
@@ -138,7 +151,7 @@ public:
   template <class T>
   void unregister_and_deallocate( std::string name ) {
     int id = find_entry_or_error( name );
-    yakl::yaklFreeDevice( entries[id].ptr , entries[id].name.c_str() );
+    deallocate( entries[id].ptr , entries[id].name.c_str() );
     entries.erase( entries.begin() + id );
   }
 
@@ -184,47 +197,47 @@ public:
   }
 
 
-  // Get a READ ONLY YAKL device array (styleC) for the entry of this name
+  // Get a READ ONLY YAKL array (styleC) for the entry of this name
   // If T is not const, then the dirty flag is set to true because it can be potentially written to
   // T must match the registered type (const and volatile are ignored in this comparison)
   // N must match the registered number of dimensions
   template <class T, int N , typename std::enable_if< std::is_const<T>::value , int >::type = 0 >
-  Array<T,N,memDevice,styleC> get( std::string name ) const {
+  Array<T,N,memSpace,styleC> get( std::string name ) const {
     // Make sure we have this name as an entry
     int id = find_entry_or_error( name );
     // Make sure it's the right type and dimensionality
     validate_type<T>(id);
     validate_dims<N>(id);
-    Array<T,N,memDevice,styleC> ret( name.c_str() , (T *) entries[id].ptr , entries[id].dims );
+    Array<T,N,memSpace,styleC> ret( name.c_str() , (T *) entries[id].ptr , entries[id].dims );
     return ret;
   }
 
 
-  // Get a READ/WRITE YAKL device array (styleC) for the entry of this name
+  // Get a READ/WRITE YAKL array (styleC) for the entry of this name
   // If T is not const, then the dirty flag is set to true because it can be potentially written to
   // T must match the registered type (const and volatile are ignored in this comparison)
   // N must match the registered number of dimensions
   template <class T, int N , typename std::enable_if< ! std::is_const<T>::value , int >::type = 0 >
-  Array<T,N,memDevice,styleC> get( std::string name ) {
+  Array<T,N,memSpace,styleC> get( std::string name ) {
     // Make sure we have this name as an entry
     int id = find_entry_or_error( name );
     entries[id].dirty = true;
     // Make sure it's the right type and dimensionality
     validate_type<T>(id);
     validate_dims<N>(id);
-    Array<T,N,memDevice,styleC> ret( name.c_str() , (T *) entries[id].ptr , entries[id].dims );
+    Array<T,N,memSpace,styleC> ret( name.c_str() , (T *) entries[id].ptr , entries[id].dims );
     return ret;
   }
 
 
-  // Get a READ ONLY YAKL device array (styleC) for the entry of this name
+  // Get a READ ONLY YAKL array (styleC) for the entry of this name
   // If T is not const, then the dirty flag is set to true because it can be potentially written to
   // T must match the registered type (const and volatile are ignored in this comparison)
   // First dimension is assumed to be the vertical index
   // All dimensions after first dimension are assumed to be horizontal indices that can be aggregated without
   //     regard to ordering. Fastest varying dimensions in the aggregated horizontal dimensions are maintained.
   template <class T, typename std::enable_if< std::is_const<T>::value , int>::type = 0 >
-  Array<T,2,memDevice,styleC> get_lev_col( std::string name ) const {
+  Array<T,2,memSpace,styleC> get_lev_col( std::string name ) const {
     // Make sure we have this name as an entry
     int id = find_entry_or_error( name );
     // Make sure it's the right type
@@ -235,19 +248,19 @@ public:
     for (int i=1; i < entries[id].dims.size(); i++) {
       ncol *= entries[id].dims[i];
     }
-    Array<T,2,memDevice,styleC> ret( name.c_str() , (T *) entries[id].ptr , nlev , ncol );
+    Array<T,2,memSpace,styleC> ret( name.c_str() , (T *) entries[id].ptr , nlev , ncol );
     return ret;
   }
 
 
-  // Get a READ/WRITE YAKL device array (styleC) for the entry of this name
+  // Get a READ/WRITE YAKL array (styleC) for the entry of this name
   // If T is not const, then the dirty flag is set to true because it can be potentially written to
   // T must match the registered type (const and volatile are ignored in this comparison)
   // First dimension is assumed to be the vertical index
   // All dimensions after first dimension are assumed to be horizontal indices that can be aggregated without
   //     regard to ordering. Fastest varying dimensions in the aggregated horizontal dimensions are maintained.
   template <class T, typename std::enable_if< ! std::is_const<T>::value , int>::type = 0 >
-  Array<T,2,memDevice,styleC> get_lev_col( std::string name ) {
+  Array<T,2,memSpace,styleC> get_lev_col( std::string name ) {
     // Make sure we have this name as an entry
     int id = find_entry_or_error( name );
     entries[id].dirty = true;
@@ -259,18 +272,18 @@ public:
     for (int i=1; i < entries[id].dims.size(); i++) {
       ncol *= entries[id].dims[i];
     }
-    Array<T,2,memDevice,styleC> ret( name.c_str() , (T *) entries[id].ptr , nlev , ncol );
+    Array<T,2,memSpace,styleC> ret( name.c_str() , (T *) entries[id].ptr , nlev , ncol );
     return ret;
   }
 
 
-  // Get a READ ONLY YAKL device array (styleC) for the entry of this name
+  // Get a READ ONLY YAKL array (styleC) for the entry of this name
   // If T is not const, then the dirty flag is set to true because it can be potentially written to
   // T must match the registered type (const and volatile are ignored in this comparison)
   // All dimensions are collapsed to a single dimension.
   // Fastest varying dimensions in the aggregated dimensions are maintained.
   template <class T, typename std::enable_if< std::is_const<T>::value , int>::type = 0 >
-  Array<T,1,memDevice,styleC> get_collapsed( std::string name ) const {
+  Array<T,1,memSpace,styleC> get_collapsed( std::string name ) const {
     // Make sure we have this name as an entry
     int id = find_entry_or_error( name );
     // Make sure it's the right type
@@ -279,18 +292,18 @@ public:
     for (int i=1; i < entries[id].dims.size(); i++) {
       ncells *= entries[id].dims[i];
     }
-    Array<T,1,memDevice,styleC> ret( name.c_str() , (T *) entries[id].ptr , ncells );
+    Array<T,1,memSpace,styleC> ret( name.c_str() , (T *) entries[id].ptr , ncells );
     return ret;
   }
 
 
-  // Get a READ/WRITE YAKL device array (styleC) for the entry of this name
+  // Get a READ/WRITE YAKL array (styleC) for the entry of this name
   // If T is not const, then the dirty flag is set to true because it can be potentially written to
   // T must match the registered type (const and volatile are ignored in this comparison)
   // All dimensions are collapsed to a single dimension.
   // Fastest varying dimensions in the aggregated dimensions are maintained.
   template <class T, typename std::enable_if< ! std::is_const<T>::value , int>::type = 0 >
-  Array<T,1,memDevice,styleC> get_collapsed( std::string name ) {
+  Array<T,1,memSpace,styleC> get_collapsed( std::string name ) {
     // Make sure we have this name as an entry
     int id = find_entry_or_error( name );
     entries[id].dirty = true;
@@ -300,7 +313,7 @@ public:
     for (int i=1; i < entries[id].dims.size(); i++) {
       ncells *= entries[id].dims[i];
     }
-    Array<T,1,memDevice,styleC> ret( name.c_str() , (T *) entries[id].ptr , ncells );
+    Array<T,1,memSpace,styleC> ret( name.c_str() , (T *) entries[id].ptr , ncells );
     return ret;
   }
 
@@ -495,7 +508,7 @@ public:
   // Generally meat for internal use, but perhaps there are cases where the user might want to call this directly.
   void finalize() {
     for (int i=0; i < entries.size(); i++) {
-      yakl::yaklFreeDevice( entries[i].ptr , entries[i].name.c_str() );
+      deallocate( entries[i].ptr , entries[i].name.c_str() );
     }
     entries    = std::vector<Entry>();
     dimensions = std::vector<Dimension>();
@@ -503,4 +516,7 @@ public:
 
 
 };
+
+typedef DataManagerTemplate<yakl::memDevice> DataManager;
+typedef DataManagerTemplate<yakl::memHost> DataManagerHost;
 

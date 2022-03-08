@@ -151,7 +151,8 @@ namespace pam {
     real ylen;   // Domain length in the y-direction in meters
     real dt_gcm; // Time step of the GCM for this MMF invocation
 
-    DataManager dm;
+    DataManager     dm;
+    DataManagerHost dm_host;
 
     struct Tracer {
       std::string name;
