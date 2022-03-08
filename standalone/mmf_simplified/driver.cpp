@@ -17,9 +17,6 @@ int main(int argc, char** argv) {
   {
     yakl::timer_start("main");
 
-    // Creates one PamCoupler object in static scope (no parameters assumes 1 thread)
-    mmf_interface::init();
-
     if (argc <= 1) { endrun("ERROR: Must pass the input YAML filename as a parameter"); }
     std::string inFile(argv[1]);
     YAML::Node config = YAML::LoadFile(inFile);
@@ -36,24 +33,26 @@ int main(int argc, char** argv) {
     std::string coldata = config["column_data"].as<std::string>();
     bool advect_tke     = config["advect_tke" ].as<bool>();
 
-    mmf_interface::set_option<bool>("advect_tke",advect_tke);
+    auto &coupler = mmf_interface::get_coupler();
+
+    coupler.set_option<bool>("advect_tke",advect_tke);
 
     // How to apply the density forcing: loose (force it like sam does); strict (enforce it strictly every time step)
     if (config["density_forcing"]) {
-      mmf_interface::set_option<std::string>("density_forcing",config["density_forcing"].as<std::string>());
+      coupler.set_option<std::string>("density_forcing",config["density_forcing"].as<std::string>());
     } else {
-      mmf_interface::set_option<std::string>("density_forcing","loose");
+      coupler.set_option<std::string>("density_forcing","loose");
     }
 
     // Apply forcing at dynamics time step?  If false, it's applied at the CRM physics time step
     if (config["forcing_at_dycore_time_step"]) {
-      mmf_interface::set_option<bool>( "forcing_at_dycore_time_step" , config["forcing_at_dycore_time_step"].as<bool>() );
+      coupler.set_option<bool>( "forcing_at_dycore_time_step" , config["forcing_at_dycore_time_step"].as<bool>() );
     } else {
-      mmf_interface::set_option<bool>( "forcing_at_dycore_time_step" , false );
+      coupler.set_option<bool>( "forcing_at_dycore_time_step" , false );
     }
 
     // This is for the dycore to pull out to determine how to do idealized test cases
-    mmf_interface::set_option<std::string>( "standalone_input_file" , inFile );
+    coupler.set_option<std::string>( "standalone_input_file" , inFile );
 
     // Store vertical coordinates
     std::string vcoords_file = config["vcoords"].as<std::string>();
@@ -65,7 +64,7 @@ int main(int argc, char** argv) {
     nc.close();
 
     // Allocates the coupler state (density_dry, uvel, vvel, wvel, temp, vert grid, hydro background) for thread 0
-    mmf_interface::allocate_coupler_state( crm_nz , crm_ny , crm_nx , nens );
+    coupler.allocate_coupler_state( crm_nz , crm_ny , crm_nx , nens );
 
     // NORMALLY THIS WOULD BE DONE INSIDE THE CRM, BUT WE'RE USING CONSTANTS DEFINED BY THE CRM MICRO SCHEME
     // Create the dycore and the microphysics
@@ -74,23 +73,17 @@ int main(int argc, char** argv) {
     SGS          sgs;
 
     // Set physical constants for coupler at thread 0 using microphysics data
-    mmf_interface::set_phys_constants( micro.R_d , micro.R_v , micro.cp_d , micro.cp_v , micro.grav , micro.p0 );
+    coupler.set_phys_constants( micro.R_d , micro.R_v , micro.cp_d , micro.cp_v , micro.grav , micro.p0 );
 
     // Set the vertical grid in the coupler
-    mmf_interface::set_grid( xlen , ylen , zint_in );
+    coupler.set_grid( xlen , ylen , zint_in );
 
-    mmf_interface::register_and_allocate_array<real>("gcm_density_dry","GCM column dry density"     ,{crm_nz,nens});
-    mmf_interface::register_and_allocate_array<real>("gcm_uvel"       ,"GCM column u-velocity"      ,{crm_nz,nens});
-    mmf_interface::register_and_allocate_array<real>("gcm_vvel"       ,"GCM column v-velocity"      ,{crm_nz,nens});
-    mmf_interface::register_and_allocate_array<real>("gcm_wvel"       ,"GCM column w-velocity"      ,{crm_nz,nens});
-    mmf_interface::register_and_allocate_array<real>("gcm_temp"       ,"GCM column temperature"     ,{crm_nz,nens});
-    mmf_interface::register_and_allocate_array<real>("gcm_water_vapor","GCM column water vapor mass",{crm_nz,nens});
-
-    ///////////////////////////////////////////////////////////////////////////////
-    // This is the end of the mmf_interface code. Using coupler directly from here
-    ///////////////////////////////////////////////////////////////////////////////
-
-    auto &coupler = mmf_interface::get_coupler();
+    coupler.dm.register_and_allocate<real>("gcm_density_dry","GCM column dry density"     ,{crm_nz,nens});
+    coupler.dm.register_and_allocate<real>("gcm_uvel"       ,"GCM column u-velocity"      ,{crm_nz,nens});
+    coupler.dm.register_and_allocate<real>("gcm_vvel"       ,"GCM column v-velocity"      ,{crm_nz,nens});
+    coupler.dm.register_and_allocate<real>("gcm_wvel"       ,"GCM column w-velocity"      ,{crm_nz,nens});
+    coupler.dm.register_and_allocate<real>("gcm_temp"       ,"GCM column temperature"     ,{crm_nz,nens});
+    coupler.dm.register_and_allocate<real>("gcm_water_vapor","GCM column water vapor mass",{crm_nz,nens});
 
     // Initialize the microphysics
     micro .init( coupler );

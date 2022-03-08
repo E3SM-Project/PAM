@@ -2,88 +2,176 @@
 #include "mmf_interface.h"
 
 
-extern "C" mmf_interface_init( int thread_id ) {
-  mmf_interface::init(thread_id);
+extern "C" void mmf_interface_gcm_initialize() {
+  mmf_interface::gcm_initialize();
 }
 
 
-extern "C" mmf_interface_finalize() {
+extern "C" void mmf_interface_gcm_tendency() {
+  mmf_interface::gcm_tendency();
+}
+
+
+extern "C" void mmf_interface_gcm_finalize() {
+  mmf_interface::gcm_finalize();
+}
+
+
+extern "C" void mmf_interface_finalize() {
   mmf_interface::finalize();
 }
 
 
-extern "C" mmf_interface_allocate_coupler_state(int nz, int ny, int nx, int nens, int thread_id) {
-  mmf_interface::allocate_coupler_state(nz,ny,nx,nens,thread_id);
+extern "C" void mmf_interface_set_option_bool(char const *name , bool value ) {
+  mmf_interface::set_option( name , value );
+}
+extern "C" void mmf_interface_set_option_int(char const *name , int value ) {
+  mmf_interface::set_option( name , value );
+}
+extern "C" void mmf_interface_set_option_string(char const *name , char const *value ) {
+  mmf_interface::set_option( name , std::string(value) );
+}
+extern "C" void mmf_interface_set_option_float(char const *name , float value ) {
+  mmf_interface::set_option( name , value );
+}
+extern "C" void mmf_interface_set_option_double(char const *name , double value ) {
+  mmf_interface::set_option( name , value );
 }
 
 
-extern "C" mmf_interface_set_phys_constants(double R_d, double R_v, double cp_d, double cp_v, double grav, double p0,
-                                            int thread_id) {
-  mmf_interface::mmf_interface_set_phys_constants(R_d, R_v, cp_d, cp_v, grav, p0, thread_id);
+extern "C" void mmf_interface_get_option_bool(char const *name , bool &value ) {
+  value = mmf_interface::get_option<bool>( name );
+}
+extern "C" void mmf_interface_get_option_int(char const *name , int &value ) {
+  value = mmf_interface::get_option<int>( name );
+}
+extern "C" void mmf_interface_get_option_string(char const *name , char const *value ) {
+  value = mmf_interface::get_option<std::string>( name ).c_str();
+}
+extern "C" void mmf_interface_get_option_float(char const *name , float &value ) {
+  value = mmf_interface::get_option<float>( name );
+}
+extern "C" void mmf_interface_get_option_double(char const *name , double &value ) {
+  value = mmf_interface::get_option<double>( name );
 }
 
 
-// Set grid with 2-D z-interface array dimensioned nz,nens with nens the fastest varying index
-extern "C" mmf_interface_set_grid_zgrid2d(double xlen, double ylen, double *zint_p, int thread_id) {
-  mmf_interface::check_thread_id(thread_id);
-  int nz   = pam_interface_couplers[thread_id].get_nz  ();
-  int nens = pam_interface_couplers[thread_id].get_nens();
-  real2d zint("zint",zint_p,nz,nens);
-  mmf_interface::set_grid(xlen,ylen,zint,thread_id);
+extern "C" void mmf_interface_option_exists(char const *name , bool &exists ) {
+  exists = mmf_interface::option_is_set( name );
 }
 
 
-// Set grid with 1-D z-interface array dimensioned nz
-extern "C" mmf_interface_set_grid_zgrid1d(double xlen, double ylen, double *zint_p, int thread_id) {
-  mmf_interface::check_thread_id(thread_id);
-  int nens = pam_interface_couplers[thread_id].get_nens();
-  real1d zint("zint",zint_p,nz);
-  mmf_interface::set_grid(xlen,ylen,zint,thread_id);
+extern "C" void mmf_interface_remove_option(char const *name ) {
+  mmf_interface::remove_option( name );
 }
 
 
-// Set grid with 1-D z-interface array dimensioned nz
-extern "C" mmf_interface_register_dimension(char const *name, int len, int thread_id) {
-  mmf_interface::register_dimension(std::string(name) , len , thread_id);
+extern "C" void mmf_interface_create_array_bool(char const *name, char const *desc, int *dims, int ndims) {
+  auto reg = [] (std::string name , std::string desc , std::vector<int> dims ) {
+    mmf_interface::register_and_allocate_array<bool>(name,desc,dims);
+  };
+  if (ndims == 1) reg(name,desc,{dims[0]});
+  if (ndims == 2) reg(name,desc,{dims[0],dims[1]});
+  if (ndims == 3) reg(name,desc,{dims[0],dims[1],dims[2]});
+  if (ndims == 4) reg(name,desc,{dims[0],dims[1],dims[2],dims[3]});
+  if (ndims == 5) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4]});
+  if (ndims == 6) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4],dims[5]});
+  if (ndims == 7) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4],dims[5],dims[6]});
+}
+extern "C" void mmf_interface_create_array_int(char const *name, char const *desc, int *dims, int ndims) {
+  auto reg = [] (std::string name , std::string desc , std::vector<int> dims ) {
+    mmf_interface::register_and_allocate_array<int>(name,desc,dims);
+  };
+  if (ndims == 1) reg(name,desc,{dims[0]});
+  if (ndims == 2) reg(name,desc,{dims[0],dims[1]});
+  if (ndims == 3) reg(name,desc,{dims[0],dims[1],dims[2]});
+  if (ndims == 4) reg(name,desc,{dims[0],dims[1],dims[2],dims[3]});
+  if (ndims == 5) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4]});
+  if (ndims == 6) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4],dims[5]});
+  if (ndims == 7) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4],dims[5],dims[6]});
+}
+extern "C" void mmf_interface_create_array_float(char const *name, char const *desc, int *dims, int ndims) {
+  auto reg = [] (std::string name , std::string desc , std::vector<int> dims ) {
+    mmf_interface::register_and_allocate_array<float>(name,desc,dims);
+  };
+  if (ndims == 1) reg(name,desc,{dims[0]});
+  if (ndims == 2) reg(name,desc,{dims[0],dims[1]});
+  if (ndims == 3) reg(name,desc,{dims[0],dims[1],dims[2]});
+  if (ndims == 4) reg(name,desc,{dims[0],dims[1],dims[2],dims[3]});
+  if (ndims == 5) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4]});
+  if (ndims == 6) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4],dims[5]});
+  if (ndims == 7) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4],dims[5],dims[6]});
+}
+extern "C" void mmf_interface_create_array_double(char const *name, char const *desc, int *dims, int ndims) {
+  auto reg = [] (std::string name , std::string desc , std::vector<int> dims ) {
+    mmf_interface::register_and_allocate_array<double>(name,desc,dims);
+  };
+  if (ndims == 1) reg(name,desc,{dims[0]});
+  if (ndims == 2) reg(name,desc,{dims[0],dims[1]});
+  if (ndims == 3) reg(name,desc,{dims[0],dims[1],dims[2]});
+  if (ndims == 4) reg(name,desc,{dims[0],dims[1],dims[2],dims[3]});
+  if (ndims == 5) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4]});
+  if (ndims == 6) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4],dims[5]});
+  if (ndims == 7) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4],dims[5],dims[6]});
 }
 
 
-// Allocate room and name the field to be retrieved later. Dimensions should be in C ordering
-extern "C" void mmf_interface_register_and_allocate_array_double( char const * name , char const * desc , int ndims ,
-                                                                  int *dims_p , int thread_id ) {
-  std::vector<int> dims(ndims);   for (int i=0; i < ndims; i++) { dims[i] = dims_p[i]; }
-  mmf_interface::register_and_allocate_array<double>( std::string(name) , std::string(desc) , dims , int thread_id );
-}
-extern "C" void mmf_interface_register_and_allocate_array_float ( char const * name , char const * desc , int ndims ,
-                                                                  int *dims_p , int thread_id ) {
-  std::vector<int> dims(ndims);   for (int i=0; i < ndims; i++) { dims[i] = dims_p[i]; }
-  mmf_interface::register_and_allocate_array<float>( std::string(name) , std::string(desc) , dims , int thread_id );
-}
-extern "C" void mmf_interface_register_and_allocate_array_int   ( char const * name , char const * desc , int ndims ,
-                                                                  int *dims_p , int thread_id ) {
-  std::vector<int> dims(ndims);   for (int i=0; i < ndims; i++) { dims[i] = dims_p[i]; }
-  mmf_interface::register_and_allocate_array<int>( std::string(name) , std::string(desc) , dims , int thread_id );
-}
-extern "C" void mmf_interface_register_and_allocate_array_bool  ( char const * name , char const * desc , int ndims ,
-                                                                  int *dims_p , int thread_id ) {
-  std::vector<int> dims(ndims);   for (int i=0; i < ndims; i++) { dims[i] = dims_p[i]; }
-  mmf_interface::register_and_allocate_array<bool>( std::string(name) , std::string(desc) , dims , int thread_id );
+extern "C" void mmf_interface_destroy_array(char const *name) {
+  mmf_interface::unregister_and_deallocate_array(name);
 }
 
 
-// Allocate room and name the field to be retrieved later. Dimensions should be in C ordering
-extern "C" void mmf_interface_unregister_and_deallocate_double( char const * name , int thread_id ) {
-  mmf_interface::unregister_and_deallocate<double>( std::string(name) , thread_id );
+extern "C" void mmf_interface_get_array_bool(char const *name, bool *ptr, int *dims, int ndims) {
+  using mmf_interface::get_array;
+  if (ndims==1) auto var=get_array<bool,1>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data();
+  if (ndims==2) auto var=get_array<bool,2>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data();
+  if (ndims==3) auto var=get_array<bool,3>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data();
+  if (ndims==4) auto var=get_array<bool,4>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data();
+  if (ndims==5) auto var=get_array<bool,5>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data();
+  if (ndims==6) auto var=get_array<bool,6>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data();
+  if (ndims==7) auto var=get_array<bool,7>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data();
 }
-extern "C" void mmf_interface_unregister_and_deallocate_float ( char const * name , int thread_id ) {
-  mmf_interface::unregister_and_deallocate<float>( std::string(name) , thread_id );
+extern "C" void mmf_interface_get_array_int(char const *name, bool *ptr, int *d, int ndims) {
+  using mmf_interface::get_array;
+  if (ndims==1) auto var=get_array<int,1>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data();
+  if (ndims==2) auto var=get_array<int,2>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data();
+  if (ndims==3) auto var=get_array<int,3>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data();
+  if (ndims==4) auto var=get_array<int,4>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data();
+  if (ndims==5) auto var=get_array<int,5>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data();
+  if (ndims==6) auto var=get_array<int,6>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data();
+  if (ndims==7) auto var=get_array<int,7>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data();
 }
-extern "C" void mmf_interface_unregister_and_deallocate_int   ( char const * name , int thread_id ) {
-  mmf_interface::unregister_and_deallocate<int>( std::string(name) , thread_id );
+extern "C" void mmf_interface_get_array_float(char const *name, bool *ptr, int *d, int ndims) {
+  using mmf_interface::get_array;
+  if (ndims==1) auto var=get_array<float,1>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data();
+  if (ndims==2) auto var=get_array<float,2>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data();
+  if (ndims==3) auto var=get_array<float,3>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data();
+  if (ndims==4) auto var=get_array<float,4>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data();
+  if (ndims==5) auto var=get_array<float,5>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data();
+  if (ndims==6) auto var=get_array<float,6>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data();
+  if (ndims==7) auto var=get_array<float,7>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data();
 }
-extern "C" void mmf_interface_unregister_and_deallocate_bool  ( char const * name , int thread_id ) {
-  mmf_interface::unregister_and_deallocate<bool>( std::string(name) , thread_id );
+extern "C" void mmf_interface_get_array_double(char const *name, bool *ptr, int *d, int ndims) {
+  using mmf_interface::get_array;
+  if (ndims==1) auto var=get_array<double,1>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data();
+  if (ndims==2) auto var=get_array<double,2>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data();
+  if (ndims==3) auto var=get_array<double,3>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data();
+  if (ndims==4) auto var=get_array<double,4>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data();
+  if (ndims==5) auto var=get_array<double,5>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data();
+  if (ndims==6) auto var=get_array<double,6>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data();
+  if (ndims==7) auto var=get_array<double,7>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data();
 }
+
+
+extern "C" void mmf_interface_array_exists(char const *name, bool &exists) {
+  exists = mmf_interface::array_exists(name);
+}
+
+
+extern "C" void mmf_interface_register_dimension(char const *name, int len) {
+  exists = mmf_interface::register_dimension(name,len);
+}
+
 
 
 

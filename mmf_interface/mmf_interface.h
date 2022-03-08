@@ -7,128 +7,106 @@
 #include <string>
 #include <vector>
 
-// This is a vector because CPU threaded regions will require a different PamCoupler instance for each thread
-extern std::vector<PamCoupler> pam_interface_couplers;
+// IMPORTANT: The mmf_interface routines only deal with host-side data. These are the GCM-facing routines,
+// and only some of them are callable from Fortran bindings. All routines with Fortran bindings have a comment
+// that says "THIS HAS FORTRAN BINDINGS". To use this data on the GPU, it must be replicated to the GPU data manager
+// from a C++-side interface routines
 
 namespace mmf_interface {
+  using yakl::Array;
+  using yakl::memHost;
+  using yakl::styleC;
 
-  inline void check_thread_id(int thread_id) {
-    if (thread_id >= pam_interface_couplers.size()) {
-      endrun("ERROR: thread_id is larger than pam_interface_couplers.size()");
-    }
-    if (thread_id < 0) {
-      endrun("ERROR: thread_id is  less than zero");
-    }
-  }
+  // This is a vector because CPU threaded regions will require a different PamCoupler instance for each thread
+  extern std::vector<PamCoupler> couplers;
 
 
-  // This is intended to be called at the beginning of the simulation, not at the beginning of every GCM time step
-  inline void init(int nthreads=1) {
-    if (nthreads < 0) endrun("ERROR: nthreads is less than zero");
-    pam_interface_couplers = std::vector<PamCoupler>(nthreads);
-  }
+  // User provided function to perform initialization as called by the GCM
+  // This is called once at the beginning of the simulation, not every time step
+  // THIS HAS FORTRAN BINDINGS
+  extern std::function<void()> gcm_initialize;
+
+
+  // User provided function to perform a tendency calculation as called by the GCM
+  // This is called every time step
+  // THIS HAS FORTRAN BINDINGS
+  extern std::function<void()> gcm_tend;
+
+
+  // User provided function to finalize as called by the GCM
+  // This is called once at the beginning of the simulation, not every time step
+  // THIS HAS FORTRAN BINDINGS
+  extern std::function<void()> gcm_finalize;
 
 
   // This is intended to be called at the end of the simulation, not at the end of every GCM time step
-  inline void finalize() {
-    pam_interface_couplers = std::vector<PamCoupler>();
+  // THIS HAS FORTRAN BINDINGS
+  inline void finalize() { couplers.clear(); }
+
+
+  // Obtains the coupler for this thread ID: std::this_thread::get_id()
+  inline PamCoupler & get_coupler() {
+    std::thread::id tid = std::this_thread::get_id();
+    for (int i=0; i < couplers.size(); i++) { if (tid == couplers[i].thread_id) return couplers[i]; }
+    // If we got here, there isn't a coupler for this thread yet, so let's create one and return it
+    couplers.emplace_back();
+    return couplers.back();
   }
 
 
-  // This is intended to be called at the beginning of the simulation, not at the beginning of every GCM time step
-  inline void allocate_coupler_state(int nz, int ny, int nx, int nens, int thread_id=0) {
-    check_thread_id(thread_id);
-    pam_interface_couplers[thread_id].allocate_coupler_state( nz , ny , nx , nens );
-  }
+  // Register a dimension name in this thread's coupler
+  // When you register and allocate an array, the dimensions are named for you. Therefore, this exists to predefine
+  // a name for a dimension of a given size so that you have the dimensions names you want.
+  // This is here because it's not easy to pass arrays of strings from Fortran to C++ and vice versa
+  // THIS HAS FORTRAN BINDINGS
+  inline void register_dimension(std::string name, int len) { get_coupler().dm_host.add_dimension(name,len); }
 
 
-  inline PamCoupler & get_coupler(int thread_id=0) {
-    check_thread_id(thread_id);
-    return pam_interface_couplers[thread_id];
-  }
-
-
-  // This is intended to be called at the beginning of the simulation, not at the beginning of every GCM time step
-  inline void set_phys_constants(real R_d, real R_v, real cp_d, real cp_v, real grav, real p0, int thread_id=0) {
-    check_thread_id(thread_id);
-    pam_interface_couplers[thread_id].set_phys_constants( R_d ,  R_v ,  cp_d ,  cp_v ,  grav ,  p0 );
-  }
-
-
-  inline void set_grid(real xlen, real ylen, realConst2d zint_in, int thread_id=0) {
-    check_thread_id(thread_id);
-    pam_interface_couplers[thread_id].set_grid(xlen, ylen, zint_in);
-  }
-
-
-  inline void set_grid(real xlen, real ylen, realConst1d zint_in, int thread_id=0) {
-    check_thread_id(thread_id);
-    pam_interface_couplers[thread_id].set_grid(xlen, ylen, zint_in);
-  }
-
-
-  inline void register_dimension( std::string name , int len , int thread_id=0 ) {
-    check_thread_id(thread_id);
-    pam_interface_couplers[thread_id].dm.add_dimension( name , len );
-  }
-
-
-  // Allocate room and name the field to be retrieved later
+  // Allocate an array, and store its metadata in the host-side data manager "dm_host" for this thread's coupler
+  // THIS HAS FORTRAN BINDINGS
   template <class T>
-  inline void register_and_allocate_array( std::string name , std::string desc , std::vector<int> dims , int thread_id=0 ) {
-    check_thread_id(thread_id);
-    auto &dm = pam_interface_couplers[thread_id].dm;
-    dm.register_and_allocate<T>( name , desc , dims );
+  inline void register_and_allocate_array(std::string name, std::string desc, std::vector<int> dims) {
+    get_coupler().dm_host.register_and_allocate<T>( name , desc , dims );
   }
 
 
-  // Allocate room and name the field to be retrieved later
+  // Deallocate an array, and erase its metadata from the host-side data manager "dm_host" for this thread's coupler
+  // THIS HAS FORTRAN BINDINGS
   template <class T>
-  inline void unregister_and_deallocate( std::string name , int thread_id=0 ) {
-    check_thread_id(thread_id);
-    auto &dm = pam_interface_couplers[thread_id].dm;
-    dm.unregister_and_deallocate<T>( name );
-  }
+  inline void unregister_and_deallocate(std::string name) { get_coupler().dm_host.unregister_and_deallocate<T>(name); }
 
 
-  // Retrieve the field for writing or reading
+  // Get an array from the host-side data manager "dm_host" for this thread's coupler
+  // THIS HAS FORTRAN BINDINGS
   template <class T, int N>
-  inline Array<T,N,memDevice,styleC> get_array( std::string name , int thread_id=0 ) {
-    check_thread_id(thread_id);
-    auto &dm = pam_interface_couplers[thread_id].dm;
-    return dm.get<T,N>( name );
-  }
+  inline Array<T,N,memHost,styleC> get_array(std::string name) { return get_coupler().dm_host.get<T,N>(name); }
 
 
-  // Set a configuration option
+  // Check if an array of this name has been registered and allocated in this thread's coupler
+  // THIS HAS FORTRAN BINDINGS
+  inline bool array_exists(std::string name) { return get_coupler().dm_host.entry_exists(name); }
+
+
+  // Set a {key,value} option pair in this thread's coupler
+  // THIS HAS FORTRAN BINDINGS
   template <class T>
-  inline void set_option( std::string name , T value , int thread_id=0 ) {
-    check_thread_id(thread_id);
-    pam_interface_couplers[thread_id].set_option<T>(name,value);
-  }
+  inline void set_option(std::string name, T value) { get_coupler().set_option<T>(name,value); }
 
 
-  // Set a configuration option
+  // Get the option value for the given name from this thread's coupler
+  // THIS HAS FORTRAN BINDINGS
   template <class T>
-  inline T get_option( std::string name , int thread_id=0 ) {
-    check_thread_id(thread_id);
-    return pam_interface_couplers[thread_id].get_option<T>(name);
-  }
+  inline T get_option(std::string name) { return get_coupler().get_option<T>(name); }
 
 
-  // Set a configuration option
-  inline bool option_is_set( std::string name , int thread_id=0 ) {
-    check_thread_id(thread_id);
-    return pam_interface_couplers[thread_id].option_exists(name);
-  }
+  // Check if the option of this name has been set in this thread's coupler
+  // THIS HAS FORTRAN BINDINGS
+  inline bool option_is_set(std::string name) { return get_coupler().option_exists(name); }
 
 
-  // Set a configuration option
-  inline void remove_option( std::string name , int thread_id=0 ) {
-    check_thread_id(thread_id);
-    pam_interface_couplers[thread_id].delete_option(name);
-  }
-
+  // Remove this option from this thread's coupler
+  // THIS HAS FORTRAN BINDINGS
+  inline void remove_option(std::string name) { get_coupler().delete_option(name); }
 }
 
 

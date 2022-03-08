@@ -21,7 +21,7 @@ inline void sponge_layer( PamCoupler &coupler , real dt ) {
   int num_tracers = coupler.get_num_tracers();
 
   // Allocate MultiField of all state and tracer havg variables, since we're doing the same operation on each
-  MultiField<real,2> havg_fields;
+  pam::MultiField<real,2> havg_fields;
   havg_fields.add_field( real2d("havg_rho_d",nz,nens) );
   havg_fields.add_field( real2d("havg_uvel" ,nz,nens) );
   havg_fields.add_field( real2d("havg_vvel" ,nz,nens) );
@@ -33,7 +33,7 @@ inline void sponge_layer( PamCoupler &coupler , real dt ) {
   }
 
   // Create MultiField of all state and tracer full variables, since we're doing the same operation on each
-  MultiField<real,4> full_fields;
+  pam::MultiField<real,4> full_fields;
   full_fields.add_field( coupler.dm.get<real,4>("density_dry") );
   full_fields.add_field( coupler.dm.get<real,4>("uvel"       ) );
   full_fields.add_field( coupler.dm.get<real,4>("vvel"       ) );

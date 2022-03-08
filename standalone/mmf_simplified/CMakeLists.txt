@@ -19,7 +19,8 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../mmf_interface)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../mmf_routines)
 
 set(DRIVER_SRC driver.cpp
-               ${CMAKE_CURRENT_SOURCE_DIR}/../../mmf_interface/mmf_interface_globals.cpp)
+               ${CMAKE_CURRENT_SOURCE_DIR}/../../mmf_interface/mmf_interface_globals.cpp
+               ${CMAKE_CURRENT_SOURCE_DIR}/../../coupler/pam_coupler_globals.cpp)
 
 # Main driver
 add_executable(driver ${DRIVER_SRC})

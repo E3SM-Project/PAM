@@ -139,6 +139,8 @@ namespace pam {
   class PamCoupler {
     public:
 
+    std::thread::id thread_id;
+
     Options options;
 
     real R_d;    // Dry air gas constant
@@ -185,7 +187,14 @@ namespace pam {
       this->xlen   = -1;
       this->ylen   = -1;
       this->dt_gcm = -1;
+      this->thread_id = std::this_thread::get_id();
     }
+
+
+    PamCoupler(PamCoupler &&) = default;
+    PamCoupler &operator=(PamCoupler &&) = default;
+    PamCoupler(PamCoupler const &) = delete;
+    PamCoupler &operator=(PamCoupler const &) = delete;
 
 
     ~PamCoupler() {

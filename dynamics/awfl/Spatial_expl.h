@@ -174,7 +174,7 @@ public:
     YAKL_SCOPE( tracer_adds_mass , this->tracer_adds_mass );
     YAKL_SCOPE( idWV , this->idWV );
 
-    MultipleFields<max_tracers,real4d> dm_tracers;
+    pam::MultipleFields<max_tracers,real4d> dm_tracers;
     for (int tr = 0; tr < num_tracers; tr++) {
       auto trac = coupler.dm.get<real,4>( tracer_name[tr] );
       dm_tracers.add_field( trac );
@@ -255,7 +255,7 @@ public:
     auto dm_wvel     = coupler.dm.get<real const,4>( "wvel"             );
     auto dm_temp     = coupler.dm.get<real const,4>( "temp"             );
 
-    MultipleFields<max_tracers,realConst4d> dm_tracers;
+    pam::MultipleFields<max_tracers,realConst4d> dm_tracers;
     for (int tr = 0; tr < num_tracers; tr++) {
       auto trac = coupler.dm.get<real const,4>( tracer_name[tr] );
       dm_tracers.add_field( trac );
@@ -2450,7 +2450,7 @@ public:
       std::vector<std::string> tracer_names = coupler.get_tracer_names();
       int num_tracers = coupler.get_num_tracers();
       // Create MultiField of all state and tracer full variables, since we're doing the same operation on each
-      MultiField<real const,4> fields;
+      pam::MultiField<real const,4> fields;
       fields.add_field( coupler.dm.get<real const,4>("density_dry") );
       fields.add_field( coupler.dm.get<real const,4>("uvel"       ) );
       fields.add_field( coupler.dm.get<real const,4>("vvel"       ) );

@@ -3,6 +3,7 @@
 
 #include "YAKL.h"
 #include "yaml-cpp/yaml.h"
+#include <thread>
 
 using yakl::SArray;
 using yakl::c::parallel_for;
