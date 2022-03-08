@@ -18,7 +18,7 @@ namespace mmf_interface {
   using yakl::styleC;
 
   // This is a vector because CPU threaded regions will require a different PamCoupler instance for each thread
-  extern std::vector<PamCoupler> couplers;
+  extern std::vector<pam::PamCoupler> couplers;
 
 
   // User provided function to perform initialization as called by the GCM
@@ -30,7 +30,7 @@ namespace mmf_interface {
   // User provided function to perform a tendency calculation as called by the GCM
   // This is called every time step
   // THIS HAS FORTRAN BINDINGS
-  extern std::function<void()> gcm_tend;
+  extern std::function<void()> gcm_tendency;
 
 
   // User provided function to finalize as called by the GCM
@@ -45,7 +45,7 @@ namespace mmf_interface {
 
 
   // Obtains the coupler for this thread ID: std::this_thread::get_id()
-  inline PamCoupler & get_coupler() {
+  inline pam::PamCoupler & get_coupler() {
     std::thread::id tid = std::this_thread::get_id();
     for (int i=0; i < couplers.size(); i++) { if (tid == couplers[i].thread_id) return couplers[i]; }
     // If we got here, there isn't a coupler for this thread yet, so let's create one and return it
@@ -72,8 +72,7 @@ namespace mmf_interface {
 
   // Deallocate an array, and erase its metadata from the host-side data manager "dm_host" for this thread's coupler
   // THIS HAS FORTRAN BINDINGS
-  template <class T>
-  inline void unregister_and_deallocate(std::string name) { get_coupler().dm_host.unregister_and_deallocate<T>(name); }
+  inline void unregister_and_deallocate(std::string name) { get_coupler().dm_host.unregister_and_deallocate(name); }
 
 
   // Get an array from the host-side data manager "dm_host" for this thread's coupler

@@ -7,7 +7,7 @@ namespace mmf_interface {
   std::vector<pam::PamCoupler> couplers;
 
   std::function<void()> gcm_initialize = [] () { yakl::yakl_throw("ERROR: user has not set gcm_initialize()"); };
-  std::function<void()> gcm_tend       = [] () { yakl::yakl_throw("ERROR: user has not set gcm_tend      ()"); };
+  std::function<void()> gcm_tendency   = [] () { yakl::yakl_throw("ERROR: user has not set gcm_tendency  ()"); };
   std::function<void()> gcm_finalize   = [] () { yakl::yakl_throw("ERROR: user has not set gcm_finalize  ()"); };
 }
 

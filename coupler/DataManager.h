@@ -150,7 +150,6 @@ namespace pam {
 
 
     // deallocate a named entry, and erase the entry from the list
-    template <class T>
     void unregister_and_deallocate( std::string name ) {
       int id = find_entry_or_error( name );
       deallocate( entries[id].ptr , entries[id].name.c_str() );
