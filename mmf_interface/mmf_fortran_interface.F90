@@ -35,7 +35,7 @@ module mmf_fortran_interface
   end interface
 
 
-  interface mmf_set_option_c
+  interface
     subroutine mmf_set_option_logical_c(key,val) bind(C,name='mmf_interface_set_option_bool')
       use iso_c_binding
       implicit none
@@ -69,7 +69,7 @@ module mmf_fortran_interface
   end interface
 
 
-  interface mmf_get_option_c
+  interface
     subroutine mmf_get_option_logical_c(key,val) bind(C,name='mmf_interface_get_option_bool')
       use iso_c_binding
       implicit none
@@ -82,12 +82,17 @@ module mmf_fortran_interface
       character(kind=c_char) :: key(*)
       integer(c_int)         :: val
     end subroutine
-    subroutine mmf_get_option_string_c(key,val,len) bind(C,name='mmf_interface_get_option_string')
+    subroutine mmf_get_option_stringlen_c(key,len) bind(C,name='mmf_interface_get_option_stringlen')
+      use iso_c_binding
+      implicit none
+      character(kind=c_char) :: key(*)
+      integer(c_int)         :: len
+    end subroutine
+    subroutine mmf_get_option_string_c(key,val) bind(C,name='mmf_interface_get_option_string')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: key(*)
       character(kind=c_char) :: val(*)
-      integer(c_int)         :: len
     end subroutine
     subroutine mmf_get_option_float_c(key,val) bind(C,name='mmf_interface_get_option_float')
       use iso_c_binding
@@ -161,7 +166,7 @@ module mmf_fortran_interface
   end interface
 
 
-  interface mmf_get_array_c
+  interface
     subroutine mmf_get_array_bool_c(label,ptr,dims,ndims)
       use iso_c_binding
       implicit none
@@ -238,7 +243,6 @@ contains
     enddo
     string_f2c(len+1) = char(0)
   end function
-
   function string_c2f(c,len)
     implicit none
     character(c_char), intent(in) :: c(*)
@@ -311,10 +315,13 @@ contains
     implicit none
     character(len=*)     , intent(in   ) :: key
     character(len=maxlen), intent(  out) :: val
-    character(kind=c_char) :: val_c(maxlen)
+    character(kind=c_char), allocatable :: val_c(:)
     integer(c_int) :: len
-    call mmf_get_option_string_c( string_f2c(key,len_trim(key)) , val_c , len )
+    call mmf_get_option_stringlen_c( string_f2c(key,len_trim(key)) , len )
+    allocate(val_c(len))
+    call mmf_get_option_string_c( string_f2c(key,len_trim(key)) , val_c )
     val = string_c2f( val_c , len )
+    deallocate(val_c)
   end subroutine
   subroutine mmf_get_option_float(key,val)
     implicit none

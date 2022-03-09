@@ -45,10 +45,13 @@ extern "C" void mmf_interface_get_option_bool(char const *name , bool &value ) {
 extern "C" void mmf_interface_get_option_int(char const *name , int &value ) {
   value = mmf_interface::get_option<int>( name );
 }
-extern "C" void mmf_interface_get_option_string(char const *name , char *value , int &len ) {
+extern "C" void mmf_interface_get_option_stringlen(char const *name , int &len ) {
+  std::string value_loc = mmf_interface::get_option<std::string>( name );
+  len = value_loc.size();
+}
+extern "C" void mmf_interface_get_option_string(char const *name , char *value ) {
   std::string value_loc = mmf_interface::get_option<std::string>( name );
   for (int i=0; i < value_loc.size(); i++) { value[i] = value_loc[i]; }
-  len = value_loc.size();
 }
 extern "C" void mmf_interface_get_option_float(char const *name , float &value ) {
   value = mmf_interface::get_option<float>( name );
