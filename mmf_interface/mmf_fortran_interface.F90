@@ -341,5 +341,21 @@ contains
   end subroutine
 
 
+  subroutine mmf_option_exists(key,exists)
+    implicit none
+    character(len=*), intent(in   ) :: key
+    logical         , intent(  out) :: exists
+    logical(c_bool) :: exists_c
+    call mmf_option_exists_c( string_f2c(key,len_trim(key)) , exists_c )
+    exists = exists_c
+  end subroutine
+
+
+  subroutine mmf_remove_option(key)
+    implicit none
+    character(len=*), intent(in   ) :: key
+    call mmf_remove_option_c( string_f2c(key,len_trim(key)) )
+  end subroutine
+
 endmodule mmf_fortran_interface
 
