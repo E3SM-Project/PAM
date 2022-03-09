@@ -188,6 +188,7 @@ namespace pam {
       this->ylen   = -1;
       this->dt_gcm = -1;
       this->thread_id = std::this_thread::get_id();
+      std::cout << "Createing new coupler: " << this->thread_id << "\n";
     }
 
 

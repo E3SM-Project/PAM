@@ -126,7 +126,8 @@ extern "C" void mmf_interface_destroy_array(char const *name) {
 }
 
 
-extern "C" void mmf_interface_get_array_bool(char const *name, bool *ptr, int *dims, int ndims) {
+// TODO: This doesn't work becuase you need a double pointer or something to actually change the pointer address
+extern "C" void mmf_interface_get_array_bool(char const *name, bool * &ptr, int *dims, int ndims) {
   using mmf_interface::get_array;
   if (ndims==1) { auto var=get_array<bool,1>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data(); }
   if (ndims==2) { auto var=get_array<bool,2>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data(); }
@@ -136,7 +137,7 @@ extern "C" void mmf_interface_get_array_bool(char const *name, bool *ptr, int *d
   if (ndims==6) { auto var=get_array<bool,6>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data(); }
   if (ndims==7) { auto var=get_array<bool,7>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data(); }
 }
-extern "C" void mmf_interface_get_array_int(char const *name, int *ptr, int *dims, int ndims) {
+extern "C" void mmf_interface_get_array_int(char const *name, int * &ptr, int *dims, int ndims) {
   using mmf_interface::get_array;
   if (ndims==1) { auto var=get_array<int,1>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data(); }
   if (ndims==2) { auto var=get_array<int,2>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data(); }
@@ -146,7 +147,7 @@ extern "C" void mmf_interface_get_array_int(char const *name, int *ptr, int *dim
   if (ndims==6) { auto var=get_array<int,6>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data(); }
   if (ndims==7) { auto var=get_array<int,7>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data(); }
 }
-extern "C" void mmf_interface_get_array_float(char const *name, float *ptr, int *dims, int ndims) {
+extern "C" void mmf_interface_get_array_float(char const *name, float * &ptr, int *dims, int ndims) {
   using mmf_interface::get_array;
   if (ndims==1) { auto var=get_array<float,1>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data(); }
   if (ndims==2) { auto var=get_array<float,2>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data(); }
@@ -156,7 +157,7 @@ extern "C" void mmf_interface_get_array_float(char const *name, float *ptr, int 
   if (ndims==6) { auto var=get_array<float,6>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data(); }
   if (ndims==7) { auto var=get_array<float,7>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data(); }
 }
-extern "C" void mmf_interface_get_array_double(char const *name, double *ptr, int *dims, int ndims) {
+extern "C" void mmf_interface_get_array_double(char const *name, double * &ptr, int *dims, int ndims) {
   using mmf_interface::get_array;
   if (ndims==1) { auto var=get_array<double,1>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data(); }
   if (ndims==2) { auto var=get_array<double,2>(name); for (int i=0; i<ndims; i++) { dims[i]=var.dimension[i]; }; ptr=var.data(); }

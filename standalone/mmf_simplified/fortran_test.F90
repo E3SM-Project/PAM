@@ -26,7 +26,9 @@ program fortran_test
   call mmf_get_array("blah",blah)
   call mmf_create_array_double("blah2","blah2 array",[10,12])
   call mmf_get_array("blah2",blah2)
-  blah(1) = .true.
+  blah2 = 2.
+  write(*,*) blah2
+  call mmf_finalize()
   call gator_finalize()
 end program
 
