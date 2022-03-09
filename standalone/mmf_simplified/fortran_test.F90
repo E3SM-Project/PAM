@@ -6,6 +6,7 @@ program fortran_test
   implicit none
   character(len=maxlen) :: str
   logical(c_bool), pointer, contiguous :: blah(:)
+  real(c_double), pointer, contiguous :: blah2(:,:)
   real(8) :: num
   logical :: exists
   call gator_init()
@@ -23,5 +24,9 @@ program fortran_test
   write(*,*) exists
   call mmf_create_array_logical("blah","blah array",[10])
   call mmf_get_array("blah",blah)
+  call mmf_create_array_double("blah2","blah2 array",[10,12])
+  call mmf_get_array("blah2",blah2)
+  blah(1) = .true.
+  call gator_finalize()
 end program
 

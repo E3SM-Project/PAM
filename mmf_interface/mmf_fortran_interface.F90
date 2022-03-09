@@ -2,12 +2,19 @@
 module mmf_fortran_interface
   use iso_c_binding
   implicit none
-
   integer, parameter :: maxlen = 256
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !! Interfaces for Fortran-facing routines
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  interface mmf_finalize
+    module procedure mmf_finalize
+  end interface
+
+  interface mmf_register_dimension
+    module procedure mmf_register_dimension
+  end interface
+
   interface mmf_set_option
     module procedure mmf_set_option_logical
     module procedure mmf_set_option_integer
@@ -24,16 +31,60 @@ module mmf_fortran_interface
     module procedure mmf_get_option_double
   end interface
 
+  interface mmf_option_exists
+    module procedure mmf_option_exists
+  end interface
 
+  interface mmf_remove_option
+    module procedure mmf_remove_option
+  end interface
+
+  interface mmf_get_array
+    module procedure mmf_get_array_logical_1d
+    module procedure mmf_get_array_logical_2d
+    module procedure mmf_get_array_logical_3d
+    module procedure mmf_get_array_logical_4d
+    module procedure mmf_get_array_logical_5d
+    module procedure mmf_get_array_logical_6d
+    module procedure mmf_get_array_logical_7d
+    module procedure mmf_get_array_integer_1d
+    module procedure mmf_get_array_integer_2d
+    module procedure mmf_get_array_integer_3d
+    module procedure mmf_get_array_integer_4d
+    module procedure mmf_get_array_integer_5d
+    module procedure mmf_get_array_integer_6d
+    module procedure mmf_get_array_integer_7d
+    module procedure mmf_get_array_float_1d
+    module procedure mmf_get_array_float_2d
+    module procedure mmf_get_array_float_3d
+    module procedure mmf_get_array_float_4d
+    module procedure mmf_get_array_float_5d
+    module procedure mmf_get_array_float_6d
+    module procedure mmf_get_array_float_7d
+    module procedure mmf_get_array_double_1d
+    module procedure mmf_get_array_double_2d
+    module procedure mmf_get_array_double_3d
+    module procedure mmf_get_array_double_4d
+    module procedure mmf_get_array_double_5d
+    module procedure mmf_get_array_double_6d
+    module procedure mmf_get_array_double_7d
+  end interface
+
+  interface mmf_destroy_array
+    module procedure mmf_destroy_array
+  end interface
+
+  interface mmf_array_exists
+    module procedure mmf_array_exists
+  end interface
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !! Interfaces for extern "C" routines
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   interface
-    subroutine mmf_finalize() bind(C,name='mmf_interface_finalize')
+    subroutine mmf_finalize_c() bind(C,name='mmf_interface_finalize')
     end subroutine
   end interface
-
 
   interface
     subroutine mmf_set_option_logical_c(key,val) bind(C,name='mmf_interface_set_option_bool')
@@ -67,7 +118,6 @@ module mmf_fortran_interface
       real(c_double), value  :: val
     end subroutine
   end interface
-
 
   interface
     subroutine mmf_get_option_logical_c(key,val) bind(C,name='mmf_interface_get_option_bool')
@@ -108,7 +158,6 @@ module mmf_fortran_interface
     end subroutine
   end interface
 
-
   interface
     subroutine mmf_option_exists_c(key,exists) bind(C,name='mmf_interface_option_exists')
       use iso_c_binding
@@ -118,7 +167,6 @@ module mmf_fortran_interface
     end subroutine
   end interface
 
-
   interface
     subroutine mmf_remove_option_c(key) bind(C,name='mmf_interface_remove_option')
       use iso_c_binding
@@ -126,7 +174,6 @@ module mmf_fortran_interface
       character(kind=c_char) :: key(*)
     end subroutine
   end interface
-
 
   interface
     subroutine mmf_create_array_logical_c(key,desc,dims,ndims) bind(C,name='mmf_interface_create_array_bool')
@@ -165,7 +212,6 @@ module mmf_fortran_interface
     end subroutine
   end interface
 
-
   interface
     subroutine mmf_get_array_bool_c(label,ptr,dims,ndims) bind(C,name='mmf_interface_get_array_bool')
       use iso_c_binding
@@ -201,7 +247,6 @@ module mmf_fortran_interface
     end subroutine
   end interface
 
-
   interface
     subroutine mmf_destroy_array_c(key) bind(C,name='mmf_interface_destroy_array')
       use iso_c_binding
@@ -209,7 +254,6 @@ module mmf_fortran_interface
       character(kind=c_char) :: key(*)
     end subroutine
   end interface
-
 
   interface
     subroutine mmf_array_exists_c(key,exists) bind(C,name='mmf_interface_array_exists')
@@ -220,7 +264,6 @@ module mmf_fortran_interface
     end subroutine
   end interface
 
-
   interface
     subroutine mmf_register_dimension_c(key,len) bind(C,name='mmf_interface_register_dimension')
       use iso_c_binding
@@ -230,7 +273,9 @@ module mmf_fortran_interface
     end subroutine
   end interface
 
+
 contains
+
 
   function string_f2c(fort,len)
     implicit none
@@ -253,6 +298,11 @@ contains
       string_c2f(i:i) = c(i)
     enddo
   end function
+
+
+  subroutine mmf_finalize()
+    call mmf_finalize_c()
+  end subroutine
 
 
   subroutine mmf_register_dimension(key,len)
@@ -408,64 +458,275 @@ contains
   end subroutine
 
 
-  ! subroutine mmf_get_array(label,ptr)
-  !   implicit none
-  !   character(len=*)                    , intent(in   ) :: label
-  !   logical(c_bool), pointer, contiguous                :: ptr(:)
-  !   integer(c_int) :: dims(1)
-  !   type(c_ptr)    :: ptr_c
-  !   write(*,*) rank(ptr)
-  !   ! call mmf_get_array_bool_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 1 )
-  !   ! call c_f_pointer( ptr_c , ptr , [dims(1)] )
-  ! end subroutine
-  ! subroutine mmf_get_array(label,ptr)
-  !   implicit none
-  !   character(len=*)                    , intent(in   ) :: label
-  !   logical(c_bool), pointer, contiguous                :: ptr(:,:)
-  !   integer(c_int) :: dims(1)
-  !   type(c_ptr)    :: ptr_c
-  !   write(*,*) rank(ptr)
-  !   ! call mmf_get_array_bool_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 1 )
-  !   ! call c_f_pointer( ptr_c , ptr , [dims(1)] )
-  ! end subroutine
+  subroutine mmf_get_array_logical_1d(label,ptr)
+    implicit none
+    character(len=*)                    , intent(in   ) :: label
+    logical(c_bool), pointer, contiguous                :: ptr(:)
+    integer(c_int) :: dims(1)
+    type(c_ptr)    :: ptr_c
+    call mmf_get_array_bool_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 1 )
+    call c_f_pointer( ptr_c , ptr , [dims(1)] )
+  end subroutine
+  subroutine mmf_get_array_logical_2d(label,ptr)
+    implicit none
+    character(len=*)                    , intent(in   ) :: label
+    logical(c_bool), pointer, contiguous                :: ptr(:,:)
+    integer(c_int) :: dims(2)
+    type(c_ptr)    :: ptr_c
+    call mmf_get_array_bool_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 2 )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2)] )
+  end subroutine
+  subroutine mmf_get_array_logical_3d(label,ptr)
+    implicit none
+    character(len=*)                    , intent(in   ) :: label
+    logical(c_bool), pointer, contiguous                :: ptr(:,:,:)
+    integer(c_int) :: dims(3)
+    type(c_ptr)    :: ptr_c
+    call mmf_get_array_bool_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 3 )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3)] )
+  end subroutine
+  subroutine mmf_get_array_logical_4d(label,ptr)
+    implicit none
+    character(len=*)                    , intent(in   ) :: label
+    logical(c_bool), pointer, contiguous                :: ptr(:,:,:,:)
+    integer(c_int) :: dims(4)
+    type(c_ptr)    :: ptr_c
+    call mmf_get_array_bool_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 4 )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3),dims(4)] )
+  end subroutine
+  subroutine mmf_get_array_logical_5d(label,ptr)
+    implicit none
+    character(len=*)                    , intent(in   ) :: label
+    logical(c_bool), pointer, contiguous                :: ptr(:,:,:,:,:)
+    integer(c_int) :: dims(5)
+    type(c_ptr)    :: ptr_c
+    call mmf_get_array_bool_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 5 )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3),dims(4),dims(5)] )
+  end subroutine
+  subroutine mmf_get_array_logical_6d(label,ptr)
+    implicit none
+    character(len=*)                    , intent(in   ) :: label
+    logical(c_bool), pointer, contiguous                :: ptr(:,:,:,:,:,:)
+    integer(c_int) :: dims(6)
+    type(c_ptr)    :: ptr_c
+    call mmf_get_array_bool_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 6 )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3),dims(4),dims(5),dims(6)] )
+  end subroutine
+  subroutine mmf_get_array_logical_7d(label,ptr)
+    implicit none
+    character(len=*)                    , intent(in   ) :: label
+    logical(c_bool), pointer, contiguous                :: ptr(:,:,:,:,:,:,:)
+    integer(c_int) :: dims(7)
+    type(c_ptr)    :: ptr_c
+    call mmf_get_array_bool_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 7 )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3),dims(4),dims(5),dims(6),dims(7)] )
+  end subroutine
+  subroutine mmf_get_array_integer_1d(label,ptr)
+    implicit none
+    character(len=*)                    , intent(in   ) :: label
+    integer(c_int) , pointer, contiguous                :: ptr(:)
+    integer(c_int) :: dims(1)
+    type(c_ptr)    :: ptr_c
+    call mmf_get_array_integer_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 1 )
+    call c_f_pointer( ptr_c , ptr , [dims(1)] )
+  end subroutine
+  subroutine mmf_get_array_integer_2d(label,ptr)
+    implicit none
+    character(len=*)                    , intent(in   ) :: label
+    integer(c_int) , pointer, contiguous                :: ptr(:,:)
+    integer(c_int) :: dims(2)
+    type(c_ptr)    :: ptr_c
+    call mmf_get_array_integer_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 2 )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2)] )
+  end subroutine
+  subroutine mmf_get_array_integer_3d(label,ptr)
+    implicit none
+    character(len=*)                    , intent(in   ) :: label
+    integer(c_int) , pointer, contiguous                :: ptr(:,:,:)
+    integer(c_int) :: dims(3)
+    type(c_ptr)    :: ptr_c
+    call mmf_get_array_integer_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 3 )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3)] )
+  end subroutine
+  subroutine mmf_get_array_integer_4d(label,ptr)
+    implicit none
+    character(len=*)                    , intent(in   ) :: label
+    integer(c_int) , pointer, contiguous                :: ptr(:,:,:,:)
+    integer(c_int) :: dims(4)
+    type(c_ptr)    :: ptr_c
+    call mmf_get_array_integer_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 4 )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3),dims(4)] )
+  end subroutine
+  subroutine mmf_get_array_integer_5d(label,ptr)
+    implicit none
+    character(len=*)                    , intent(in   ) :: label
+    integer(c_int) , pointer, contiguous                :: ptr(:,:,:,:,:)
+    integer(c_int) :: dims(5)
+    type(c_ptr)    :: ptr_c
+    call mmf_get_array_integer_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 5 )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3),dims(4),dims(5)] )
+  end subroutine
+  subroutine mmf_get_array_integer_6d(label,ptr)
+    implicit none
+    character(len=*)                    , intent(in   ) :: label
+    integer(c_int) , pointer, contiguous                :: ptr(:,:,:,:,:,:)
+    integer(c_int) :: dims(6)
+    type(c_ptr)    :: ptr_c
+    call mmf_get_array_integer_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 6 )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3),dims(4),dims(5),dims(6)] )
+  end subroutine
+  subroutine mmf_get_array_integer_7d(label,ptr)
+    implicit none
+    character(len=*)                    , intent(in   ) :: label
+    integer(c_int) , pointer, contiguous                :: ptr(:,:,:,:,:,:,:)
+    integer(c_int) :: dims(7)
+    type(c_ptr)    :: ptr_c
+    call mmf_get_array_integer_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 7 )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3),dims(4),dims(5),dims(6),dims(7)] )
+  end subroutine
+  subroutine mmf_get_array_float_1d(label,ptr)
+    implicit none
+    character(len=*)                    , intent(in   ) :: label
+    real(c_float)  , pointer, contiguous                :: ptr(:)
+    integer(c_int) :: dims(1)
+    type(c_ptr)    :: ptr_c
+    call mmf_get_array_float_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 1 )
+    call c_f_pointer( ptr_c , ptr , [dims(1)] )
+  end subroutine
+  subroutine mmf_get_array_float_2d(label,ptr)
+    implicit none
+    character(len=*)                    , intent(in   ) :: label
+    real(c_float)  , pointer, contiguous                :: ptr(:,:)
+    integer(c_int) :: dims(2)
+    type(c_ptr)    :: ptr_c
+    call mmf_get_array_float_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 2 )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2)] )
+  end subroutine
+  subroutine mmf_get_array_float_3d(label,ptr)
+    implicit none
+    character(len=*)                    , intent(in   ) :: label
+    real(c_float)  , pointer, contiguous                :: ptr(:,:,:)
+    integer(c_int) :: dims(3)
+    type(c_ptr)    :: ptr_c
+    call mmf_get_array_float_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 3 )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3)] )
+  end subroutine
+  subroutine mmf_get_array_float_4d(label,ptr)
+    implicit none
+    character(len=*)                    , intent(in   ) :: label
+    real(c_float)  , pointer, contiguous                :: ptr(:,:,:,:)
+    integer(c_int) :: dims(4)
+    type(c_ptr)    :: ptr_c
+    call mmf_get_array_float_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 4 )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3),dims(4)] )
+  end subroutine
+  subroutine mmf_get_array_float_5d(label,ptr)
+    implicit none
+    character(len=*)                    , intent(in   ) :: label
+    real(c_float)  , pointer, contiguous                :: ptr(:,:,:,:,:)
+    integer(c_int) :: dims(5)
+    type(c_ptr)    :: ptr_c
+    call mmf_get_array_float_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 5 )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3),dims(4),dims(5)] )
+  end subroutine
+  subroutine mmf_get_array_float_6d(label,ptr)
+    implicit none
+    character(len=*)                    , intent(in   ) :: label
+    real(c_float)  , pointer, contiguous                :: ptr(:,:,:,:,:,:)
+    integer(c_int) :: dims(6)
+    type(c_ptr)    :: ptr_c
+    call mmf_get_array_float_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 6 )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3),dims(4),dims(5),dims(6)] )
+  end subroutine
+  subroutine mmf_get_array_float_7d(label,ptr)
+    implicit none
+    character(len=*)                    , intent(in   ) :: label
+    real(c_float)  , pointer, contiguous                :: ptr(:,:,:,:,:,:,:)
+    integer(c_int) :: dims(7)
+    type(c_ptr)    :: ptr_c
+    call mmf_get_array_float_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 7 )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3),dims(4),dims(5),dims(6),dims(7)] )
+  end subroutine
+  subroutine mmf_get_array_double_1d(label,ptr)
+    implicit none
+    character(len=*)                    , intent(in   ) :: label
+    real(c_double) , pointer, contiguous                :: ptr(:)
+    integer(c_int) :: dims(1)
+    type(c_ptr)    :: ptr_c
+    call mmf_get_array_double_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 1 )
+    call c_f_pointer( ptr_c , ptr , [dims(1)] )
+  end subroutine
+  subroutine mmf_get_array_double_2d(label,ptr)
+    implicit none
+    character(len=*)                    , intent(in   ) :: label
+    real(c_double) , pointer, contiguous                :: ptr(:,:)
+    integer(c_int) :: dims(2)
+    type(c_ptr)    :: ptr_c
+    call mmf_get_array_double_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 2 )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2)] )
+  end subroutine
+  subroutine mmf_get_array_double_3d(label,ptr)
+    implicit none
+    character(len=*)                    , intent(in   ) :: label
+    real(c_double) , pointer, contiguous                :: ptr(:,:,:)
+    integer(c_int) :: dims(3)
+    type(c_ptr)    :: ptr_c
+    call mmf_get_array_double_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 3 )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3)] )
+  end subroutine
+  subroutine mmf_get_array_double_4d(label,ptr)
+    implicit none
+    character(len=*)                    , intent(in   ) :: label
+    real(c_double) , pointer, contiguous                :: ptr(:,:,:,:)
+    integer(c_int) :: dims(4)
+    type(c_ptr)    :: ptr_c
+    call mmf_get_array_double_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 4 )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3),dims(4)] )
+  end subroutine
+  subroutine mmf_get_array_double_5d(label,ptr)
+    implicit none
+    character(len=*)                    , intent(in   ) :: label
+    real(c_double) , pointer, contiguous                :: ptr(:,:,:,:,:)
+    integer(c_int) :: dims(5)
+    type(c_ptr)    :: ptr_c
+    call mmf_get_array_double_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 5 )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3),dims(4),dims(5)] )
+  end subroutine
+  subroutine mmf_get_array_double_6d(label,ptr)
+    implicit none
+    character(len=*)                    , intent(in   ) :: label
+    real(c_double) , pointer, contiguous                :: ptr(:,:,:,:,:,:)
+    integer(c_int) :: dims(6)
+    type(c_ptr)    :: ptr_c
+    call mmf_get_array_double_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 6 )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3),dims(4),dims(5),dims(6)] )
+  end subroutine
+  subroutine mmf_get_array_double_7d(label,ptr)
+    implicit none
+    character(len=*)                    , intent(in   ) :: label
+    real(c_double) , pointer, contiguous                :: ptr(:,:,:,:,:,:,:)
+    integer(c_int) :: dims(7)
+    type(c_ptr)    :: ptr_c
+    call mmf_get_array_double_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 7 )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3),dims(4),dims(5),dims(6),dims(7)] )
+  end subroutine
 
 
+  subroutine mmf_destroy_array(key)
+    implicit none
+    character(len=*), intent(in) :: key
+    call mmf_destroy_array_c( string_f2c(key,len_trim(key)) )
+  end subroutine
 
-  ! interface
-  !   subroutine mmf_get_array_bool_c(label,ptr,dims,ndims)
-  !     use iso_c_binding
-  !     implicit none
-  !     character(kind=c_char) :: label(*)
-  !     logical(c_bool)        :: ptr(*)
-  !     integer(c_int)         :: dims(*)
-  !     integer(c_int), value  :: ndims
-  !   end subroutine
-  !   subroutine mmf_get_array_integer_c(label,ptr,dims,ndims)
-  !     use iso_c_binding
-  !     implicit none
-  !     character(kind=c_char) :: label(*)
-  !     integer(c_int)         :: ptr(*)
-  !     integer(c_int)         :: dims(*)
-  !     integer(c_int), value  :: ndims
-  !   end subroutine
-  !   subroutine mmf_get_array_float_c(label,ptr,dims,ndims)
-  !     use iso_c_binding
-  !     implicit none
-  !     character(kind=c_char) :: label(*)
-  !     real(c_float)          :: ptr(*)
-  !     integer(c_int)         :: dims(*)
-  !     integer(c_int), value  :: ndims
-  !   end subroutine
-  !   subroutine mmf_get_array_double_c(label,ptr,dims,ndims)
-  !     use iso_c_binding
-  !     implicit none
-  !     character(kind=c_char) :: label(*)
-  !     real(c_double)         :: ptr(*)
-  !     integer(c_int)         :: dims(*)
-  !     integer(c_int), value  :: ndims
-  !   end subroutine
-  ! end interface
 
+  subroutine mmf_array_exists(key,exists)
+    implicit none
+    character(len=*), intent(in   ) :: key
+    logical         , intent(  out) :: exists
+    logical(c_bool) :: exists_c
+    call mmf_array_exists_c( string_f2c(key,len_trim(key)) , exists_c )
+    exists = exists_c
+  end subroutine
 
 endmodule mmf_fortran_interface
 
