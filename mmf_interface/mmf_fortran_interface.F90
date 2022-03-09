@@ -138,7 +138,7 @@ module mmf_fortran_interface
     end subroutine
   end interface
   interface
-    subroutine mmf_create_array_int_c(key,desc,dims,ndims) bind(C,name='mmf_interface_create_array_int')
+    subroutine mmf_create_array_integer_c(key,desc,dims,ndims) bind(C,name='mmf_interface_create_array_int')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: key(*), desc(*)
@@ -167,35 +167,35 @@ module mmf_fortran_interface
 
 
   interface
-    subroutine mmf_get_array_bool_c(label,ptr,dims,ndims)
+    subroutine mmf_get_array_bool_c(label,ptr,dims,ndims) bind(C,name='mmf_interface_get_array_bool')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: label(*)
-      logical(c_bool)        :: ptr(*)
+      type(c_ptr)            :: ptr
       integer(c_int)         :: dims(*)
       integer(c_int), value  :: ndims
     end subroutine
-    subroutine mmf_get_array_int_c(label,ptr,dims,ndims)
+    subroutine mmf_get_array_integer_c(label,ptr,dims,ndims) bind(C,name='mmf_interface_get_array_int')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: label(*)
-      integer(c_int)         :: ptr(*)
+      type(c_ptr)            :: ptr
       integer(c_int)         :: dims(*)
       integer(c_int), value  :: ndims
     end subroutine
-    subroutine mmf_get_array_float_c(label,ptr,dims,ndims)
+    subroutine mmf_get_array_float_c(label,ptr,dims,ndims) bind(C,name='mmf_interface_get_array_float')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: label(*)
-      real(c_float)          :: ptr(*)
+      type(c_ptr)            :: ptr
       integer(c_int)         :: dims(*)
       integer(c_int), value  :: ndims
     end subroutine
-    subroutine mmf_get_array_double_c(label,ptr,dims,ndims)
+    subroutine mmf_get_array_double_c(label,ptr,dims,ndims) bind(C,name='mmf_interface_get_array_double')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: label(*)
-      real(c_double)         :: ptr(*)
+      type(c_ptr)            :: ptr
       integer(c_int)         :: dims(*)
       integer(c_int), value  :: ndims
     end subroutine
@@ -356,6 +356,116 @@ contains
     character(len=*), intent(in   ) :: key
     call mmf_remove_option_c( string_f2c(key,len_trim(key)) )
   end subroutine
+
+
+  subroutine mmf_create_array_logical(key,desc,dims)
+    implicit none
+    character(len=*), intent(in) :: key
+    character(len=*), intent(in) :: desc
+    integer         , intent(in) :: dims(:)
+    integer :: ndims
+    integer(c_int), allocatable :: dims_c(:)
+    ndims = size(dims)
+    allocate(dims_c(ndims))
+    dims_c = dims
+    call mmf_create_array_logical_c( string_f2c(key,len_trim(key)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims )
+  end subroutine
+  subroutine mmf_create_array_integer(key,desc,dims)
+    implicit none
+    character(len=*), intent(in) :: key
+    character(len=*), intent(in) :: desc
+    integer         , intent(in) :: dims(:)
+    integer :: ndims
+    integer(c_int), allocatable :: dims_c(:)
+    ndims = size(dims)
+    allocate(dims_c(ndims))
+    dims_c = dims
+    call mmf_create_array_integer_c( string_f2c(key,len_trim(key)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims )
+  end subroutine
+  subroutine mmf_create_array_float(key,desc,dims)
+    implicit none
+    character(len=*), intent(in) :: key
+    character(len=*), intent(in) :: desc
+    integer         , intent(in) :: dims(:)
+    integer :: ndims
+    integer(c_int), allocatable :: dims_c(:)
+    ndims = size(dims)
+    allocate(dims_c(ndims))
+    dims_c = dims
+    call mmf_create_array_float_c( string_f2c(key,len_trim(key)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims )
+  end subroutine
+  subroutine mmf_create_array_double(key,desc,dims)
+    implicit none
+    character(len=*), intent(in) :: key
+    character(len=*), intent(in) :: desc
+    integer         , intent(in) :: dims(:)
+    integer :: ndims
+    integer(c_int), allocatable :: dims_c(:)
+    ndims = size(dims)
+    allocate(dims_c(ndims))
+    dims_c = dims
+    call mmf_create_array_double_c( string_f2c(key,len_trim(key)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims )
+  end subroutine
+
+
+  ! subroutine mmf_get_array(label,ptr)
+  !   implicit none
+  !   character(len=*)                    , intent(in   ) :: label
+  !   logical(c_bool), pointer, contiguous                :: ptr(:)
+  !   integer(c_int) :: dims(1)
+  !   type(c_ptr)    :: ptr_c
+  !   write(*,*) rank(ptr)
+  !   ! call mmf_get_array_bool_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 1 )
+  !   ! call c_f_pointer( ptr_c , ptr , [dims(1)] )
+  ! end subroutine
+  ! subroutine mmf_get_array(label,ptr)
+  !   implicit none
+  !   character(len=*)                    , intent(in   ) :: label
+  !   logical(c_bool), pointer, contiguous                :: ptr(:,:)
+  !   integer(c_int) :: dims(1)
+  !   type(c_ptr)    :: ptr_c
+  !   write(*,*) rank(ptr)
+  !   ! call mmf_get_array_bool_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 1 )
+  !   ! call c_f_pointer( ptr_c , ptr , [dims(1)] )
+  ! end subroutine
+
+
+
+  ! interface
+  !   subroutine mmf_get_array_bool_c(label,ptr,dims,ndims)
+  !     use iso_c_binding
+  !     implicit none
+  !     character(kind=c_char) :: label(*)
+  !     logical(c_bool)        :: ptr(*)
+  !     integer(c_int)         :: dims(*)
+  !     integer(c_int), value  :: ndims
+  !   end subroutine
+  !   subroutine mmf_get_array_integer_c(label,ptr,dims,ndims)
+  !     use iso_c_binding
+  !     implicit none
+  !     character(kind=c_char) :: label(*)
+  !     integer(c_int)         :: ptr(*)
+  !     integer(c_int)         :: dims(*)
+  !     integer(c_int), value  :: ndims
+  !   end subroutine
+  !   subroutine mmf_get_array_float_c(label,ptr,dims,ndims)
+  !     use iso_c_binding
+  !     implicit none
+  !     character(kind=c_char) :: label(*)
+  !     real(c_float)          :: ptr(*)
+  !     integer(c_int)         :: dims(*)
+  !     integer(c_int), value  :: ndims
+  !   end subroutine
+  !   subroutine mmf_get_array_double_c(label,ptr,dims,ndims)
+  !     use iso_c_binding
+  !     implicit none
+  !     character(kind=c_char) :: label(*)
+  !     real(c_double)         :: ptr(*)
+  !     integer(c_int)         :: dims(*)
+  !     integer(c_int), value  :: ndims
+  !   end subroutine
+  ! end interface
+
 
 endmodule mmf_fortran_interface
 

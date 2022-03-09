@@ -232,7 +232,7 @@ public:
     //       I'm pretty sure SHOC does it already for qv and qc. qw=qv+qc is diffused, and other handing is applied to ql
     // TODO: If we add new MMF modules that add other tracers that need to be diffused, then this situation
     //       must be handled
-    MultiField<real,2> qtracers_pam;  // Extra tracers for SHOC to diffuse
+    pam::MultiField<real,2> qtracers_pam;  // Extra tracers for SHOC to diffuse
     real2d rho_c;                     // Cloud liquid mass (name differs for different micro schemes)
     if        (micro_kessler) {
       rho_c = coupler.dm.get_lev_col<real>( "cloud_liquid" );
@@ -247,6 +247,7 @@ public:
       qtracers_pam.add_field( coupler.dm.get_lev_col<real>("ice_rime"       ) );
       qtracers_pam.add_field( coupler.dm.get_lev_col<real>("ice_rime_vol"   ) );
       qtracers_pam.add_field( coupler.dm.get_lev_col<real>("density_dry"    ) );
+      qtracers_pam.add_field( coupler.dm.get_lev_col<real>("wvel"           ) );
     }
 
     int num_qtracers = qtracers_pam.get_num_fields();
@@ -727,13 +728,13 @@ public:
       for (int tr=0; tr < num_qtracers; tr++) {
         qtracers_pam(tr,k,i) = shoc_qtracers(tr,k_shoc,i);
       }
-      // TODO: What about rho_dry ??
-      uvel(k,i) = shoc_u_wind(k_shoc,i);
-      vvel(k,i) = shoc_v_wind(k_shoc,i);
-      // TODO: What about wvel ??
-      temp(k,i) = ( shoc_host_dse(k_shoc,i) - grav * zmid(k,i) ) / cp_d;
-      rho_v(k,i) = shoc_qw(k_shoc,i) * rho_d(k,i) - shoc_ql(k_shoc,i) * rho_d(k,i);
-      rho_c(k,i) = shoc_ql(k_shoc,i) * rho_d(k,i);
+      // Dry density added as a tracer and diffused via that route
+      uvel    (k,i) = shoc_u_wind(k_shoc,i);
+      vvel    (k,i) = shoc_v_wind(k_shoc,i);
+      // Vertical velocity added as a tracer and diffused via that route
+      temp    (k,i) = (shoc_thetal(k_shoc,i) + (latvap/cp_d) * shoc_ql(k_shoc,i)) / shoc_inv_exner(k_shoc,i);
+      rho_v   (k,i) = shoc_qw(k_shoc,i) * rho_d(k,i) - shoc_ql(k_shoc,i) * rho_d(k,i);
+      rho_c   (k,i) = shoc_ql(k_shoc,i) * rho_d(k,i);
       tke     (k,i) = shoc_tke     (k_shoc,i);
       wthv_sec(k,i) = shoc_wthv_sec(k_shoc,i);
       tk      (k,i) = shoc_tk      (k_shoc,i);
