@@ -10,6 +10,7 @@
 #include "gcm_forcing.h"
 #include "gcm_density_forcing.h"
 #include "sponge_layer.h"
+#include "saturation_adjustment.h"
 
 
 int main(int argc, char** argv) {
@@ -159,6 +160,8 @@ int main(int argc, char** argv) {
       coupler.add_mmf_function( "apply_gcm_forcing_tendencies" , apply_gcm_forcing_tendencies );
       coupler.add_mmf_function( "sponge_layer"                 , sponge_layer                 );
     }
+
+    // coupler.add_dycore_function( "saturation_adjustment" , saturation_adjustment );
 
     std::cout << "The following functions are called at the MMF time step:\n";
     coupler.print_mmf_functions();

@@ -109,34 +109,13 @@ endif()
 include(${YAKL_HOME}/yakl_utils.cmake)
 yakl_process_target(driver)
 
-
-
-
-
-add_executable(fortran_test fortran_test.F90
-               ${CMAKE_CURRENT_SOURCE_DIR}/../../mmf_interface/mmf_interface_globals.cpp
-               ${CMAKE_CURRENT_SOURCE_DIR}/../../mmf_interface/mmf_interface_extern_c.cpp
-               ${CMAKE_CURRENT_SOURCE_DIR}/../../mmf_interface/mmf_fortran_interface.F90
-               ${CMAKE_CURRENT_SOURCE_DIR}/../../coupler/pam_coupler_globals.cpp)
-yakl_process_target(fortran_test)
-
-
-
-
 target_link_libraries(driver dycore micro sgs)
-target_link_libraries(fortran_test dycore micro sgs)
 if (${USE_SCREAM})
   target_link_libraries(driver scream_common p3)
-  target_link_libraries(fortran_test scream_common p3)
   if ("${PAM_SGS}" STREQUAL "shoc")
     target_link_libraries(driver shoc)
-    target_link_libraries(fortran_test shoc)
   endif()
 endif()
 target_link_libraries(driver ${NCFLAGS})
-target_link_libraries(fortran_test ${NCFLAGS})
-
-
-
 
 

@@ -2473,7 +2473,10 @@ public:
       parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = fields(4,k,j,i,iens); });
       nc.write1(data,"temperature",{"z","y","x"},ulIndex,"t");
       for (int tr=0; tr < num_tracers; tr++) {
-        parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = fields(5+tr,k,j,i,iens); });
+        parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+          // data(k,j,i) = fields(5+tr,k,j,i,iens) / (state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens));
+          data(k,j,i) = fields(5+tr,k,j,i,iens);
+        });
         nc.write1(data,tracer_names[tr],{"z","y","x"},ulIndex,"t");
       }
 

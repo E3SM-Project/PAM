@@ -5,7 +5,6 @@
 #include "pam_coupler.h"
 
 
-// It is best if id is globally unique for each batch of CRMs
 inline void sponge_layer( PamCoupler &coupler , real dt ) {
   int nz   = coupler.get_nz  ();
   int ny   = coupler.get_ny  ();

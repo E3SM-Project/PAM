@@ -80,7 +80,6 @@ public:
 
 
 
-  // TODO: Make sure the constants vibe with P3
   // Set constants and likely num_tracers as well, and anything else you can do immediately
   Microphysics() {
     R_d        = 287.042;
@@ -193,6 +192,27 @@ public:
     int nens = coupler.dm.get_dimension_size("nens");
     int ncol = ny*nx*nens;
 
+    auto zint_in = coupler.dm.get<real,2>("vertical_interface_height");
+
+    real crm_dx = coupler.get_xlen() / nx;
+    real crm_dy = ny == 1 ? crm_dx : coupler.get_ylen() / ny;
+
+    #ifdef PAM_DEBUG
+      real mass0;
+      {
+        auto rho_v = coupler.dm.get<real,4>( "water_vapor" );
+        auto rho_c = coupler.dm.get<real,4>( "cloud_water" );
+        auto rho_r = coupler.dm.get<real,4>( "rain"        );
+        auto rho_i = coupler.dm.get<real,4>( "ice"         );
+        real4d mass4d("mass4d",nz,ny,nx,nens);
+        parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+          mass4d(k,j,i,iens) = (rho_v(k,j,i,iens) + rho_c(k,j,i,iens) + rho_r(k,j,i,iens) + rho_i(k,j,i,iens)) *
+                               crm_dx * crm_dy * (zint_in(k+1,iens) - zint_in(k,iens));
+        });
+        mass0 = yakl::intrinsics::sum(mass4d);
+      }
+    #endif
+
     // Get tracers dimensioned as (nz,ny*nx*nens)
     auto rho_c  = coupler.dm.get_lev_col<real>("cloud_water"    );
     auto rho_nc = coupler.dm.get_lev_col<real>("cloud_water_num");
@@ -209,7 +229,6 @@ public:
     auto temp    = coupler.dm.get_lev_col<real>("temp"       );
 
     // Calculate the grid spacing
-    auto zint_in = coupler.dm.get<real,2>("vertical_interface_height");
     real2d dz("dz",nz,ny*nx*nens);
     parallel_for( "micro dz" , SimpleBounds<4>(nz,ny,nx,nens) ,
                   YAKL_LAMBDA (int k, int j, int i, int iens) {
@@ -285,7 +304,6 @@ public:
       // P3 doesn't do saturation adjustment, so we need to do that ahead of time
       // If we're using SHOC, then it does saturation adjustment, so no need to do it here
       if (! sgs_shoc) {
-        // TODO: Find perhaps a more appropriate adjustment scheme that produces what P3 expects
         compute_adjusted_state(rho, rho_dry(k,i) , rho_v(k,i) , rho_c(k,i) , temp(k,i),
                                R_v , cp_d , cp_v , cp_l);
       }
@@ -306,7 +324,7 @@ public:
       theta    (k,i) = temp(k,i) / exner(k,i);
       // P3 uses dpres to calculate density via the hydrostatic assumption.
       // So we just reverse this to compute dpres to give true density
-      dpres(k,i) = rho * grav * dz(k,i);
+      dpres(k,i) = rho_dry(k,i) * grav * dz(k,i);
       // nc_nuceat_tend, nccn_prescribed, and ni_activated are not used
       nc_nuceat_tend (k,i) = 0;
       nccn_prescribed(k,i) = 0;
@@ -680,6 +698,26 @@ public:
       t_prev (k,i) = temp(k,i);
     });
 
+    #ifdef PAM_DEBUG
+      real mass;
+      {
+        auto rho_v = coupler.dm.get<real,4>( "water_vapor" );
+        auto rho_c = coupler.dm.get<real,4>( "cloud_water" );
+        auto rho_r = coupler.dm.get<real,4>( "rain"        );
+        auto rho_i = coupler.dm.get<real,4>( "ice"         );
+        real4d mass4d("mass4d",nz,ny,nx,nens);
+        real3d sfc_precip_mass3d("sfc_precip_mass3d",ny,nx,nens);
+        parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+          int icol = j*nx*nens + i*nens + iens;
+          mass4d(k,j,i,iens) = (rho_v(k,j,i,iens) + rho_c(k,j,i,iens) + rho_r(k,j,i,iens) + rho_i(k,j,i,iens)) *
+                               crm_dx * crm_dy * (zint_in(k+1,iens) - zint_in(k,iens));
+          sfc_precip_mass3d(j,i,iens) = dt*crm_dx*crm_dy*( precip_liq_surf(icol)*1000. + precip_ice_surf(icol)*1000. );
+        });
+        mass = yakl::intrinsics::sum(mass4d) + yakl::intrinsics::sum(sfc_precip_mass3d);
+      }
+      if ( abs(mass-mass0)/mass0 > 1.e-13 ) std::cout << "WARNING: P3 mass isn't conserved to machine precision\n";
+    #endif
+
     first_step = false;
     etime += dt;
   }
@@ -687,7 +725,6 @@ public:
 
 
   // Returns saturation vapor pressure
-  // TODO: Make this the same as P3's
   YAKL_INLINE static real saturation_vapor_pressure(real temp) {
     real tc = temp - 273.15;
     return 610.94 * exp( 17.625*tc / (243.04+tc) );
