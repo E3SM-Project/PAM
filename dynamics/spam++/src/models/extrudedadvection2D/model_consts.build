@@ -1,0 +1,4 @@
+#tracer sizing
+-D_NTRACERS_NOFCT=3
+-D_NTRACERS_FCT=3
+-D_NTRACERS_Q=3

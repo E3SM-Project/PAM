@@ -1,0 +1,27 @@
+// Topology
+nx = 100
+ny = 100
+nz = 1
+
+// Time stepping
+dt = 250.0 // 0.005
+Nsteps = 1000 // 4000 57600 20000
+Nout = 100 // 500 6400 1000
+Nstat = 1
+TStype = dt
+cfl = 0.5
+
+// Parallel decomposition
+nprocx = 2
+nprocy = 2
+
+// initial condition
+dataInit = doublevortex // densitywave
+acoustic_balance = false
+
+tracerInit1 = square
+tracerInit2 = gaussian
+tracerInit3 = doublesquare
+tracerFCTInit1 = square
+tracerFCTInit2 = gaussian
+tracerFCTInit3 = doublesquare
