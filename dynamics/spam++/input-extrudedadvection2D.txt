@@ -1,16 +1,16 @@
 // Topology
-nx = 100
+nx = 10
 ny = 1
-nz = 100
+nz = 10
 
 // Time stepping
 dt = 0.005
-Nsteps = 500
-Nout = 50
+Nsteps = 1
+Nout = 1
 Nstat = 1
 
 // Parallel decomposition
-nprocx = 4
+nprocx = 1
 nprocy = 1
 nprocz = 1
 

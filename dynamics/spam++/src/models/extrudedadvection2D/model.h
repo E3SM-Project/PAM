@@ -99,24 +99,24 @@ public:
 
   TransformMatrices<real> trans;
 
-  SArray<real,reconstruction_order,2> primal_to_gll;
-  SArray<real,reconstruction_order,reconstruction_order,reconstruction_order> primal_wenoRecon;
-  SArray<real,(reconstruction_order-1)/2+2> primal_wenoIdl;
+  SArray<real,1,reconstruction_order,2> primal_to_gll;
+  SArray<real,3,reconstruction_order,reconstruction_order,reconstruction_order> primal_wenoRecon;
+  SArray<real,1,(reconstruction_order-1)/2+2> primal_wenoIdl;
   real primal_wenoSigma;
 
-  SArray<real,dual_reconstruction_order,2> dual_to_gll;
-  SArray<real,dual_reconstruction_order,dual_reconstruction_order,dual_reconstruction_order> dual_wenoRecon;
-  SArray<real,(dual_reconstruction_order-1)/2+2> dual_wenoIdl;
+  SArray<real,1,dual_reconstruction_order,2> dual_to_gll;
+  SArray<real,3,dual_reconstruction_order,dual_reconstruction_order,dual_reconstruction_order> dual_wenoRecon;
+  SArray<real,1,(dual_reconstruction_order-1)/2+2> dual_wenoIdl;
   real dual_wenoSigma;
 
-  SArray<real,vert_reconstruction_order,2> primal_vert_to_gll;
-  SArray<real,vert_reconstruction_order,vert_reconstruction_order,vert_reconstruction_order> primal_vert_wenoRecon;
-  SArray<real,(vert_reconstruction_order-1)/2+2> primal_vert_wenoIdl;
+  SArray<real,1,vert_reconstruction_order,2> primal_vert_to_gll;
+  SArray<real,3,vert_reconstruction_order,vert_reconstruction_order,vert_reconstruction_order> primal_vert_wenoRecon;
+  SArray<real,1,(vert_reconstruction_order-1)/2+2> primal_vert_wenoIdl;
   real primal_vert_wenoSigma;
 
-  SArray<real,dual_vert_reconstruction_order,2> dual_vert_to_gll;
-  SArray<real,dual_vert_reconstruction_order,dual_vert_reconstruction_order,dual_vert_reconstruction_order> dual_vert_wenoRecon;
-  SArray<real,(dual_vert_reconstruction_order-1)/2+2> dual_vert_wenoIdl;
+  SArray<real,1,dual_vert_reconstruction_order,2> dual_vert_to_gll;
+  SArray<real,3,dual_vert_reconstruction_order,dual_vert_reconstruction_order,dual_vert_reconstruction_order> dual_vert_wenoRecon;
+  SArray<real,1,(dual_vert_reconstruction_order-1)/2+2> dual_vert_wenoIdl;
   real dual_vert_wenoSigma;
   
   bool is_initialized;
@@ -273,24 +273,24 @@ public:
 
   TransformMatrices<real> trans;
 
-  SArray<real,reconstruction_order,2> primal_to_gll;
-  SArray<real,reconstruction_order,reconstruction_order,reconstruction_order> primal_wenoRecon;
-  SArray<real,(reconstruction_order-1)/2+2> primal_wenoIdl;
+  SArray<real,1,reconstruction_order,2> primal_to_gll;
+  SArray<real,1,reconstruction_order,reconstruction_order,reconstruction_order> primal_wenoRecon;
+  SArray<real,1,(reconstruction_order-1)/2+2> primal_wenoIdl;
   real primal_wenoSigma;
 
-  SArray<real,dual_reconstruction_order,2> dual_to_gll;
-  SArray<real,dual_reconstruction_order,dual_reconstruction_order,dual_reconstruction_order> dual_wenoRecon;
-  SArray<real,(dual_reconstruction_order-1)/2+2> dual_wenoIdl;
+  SArray<real,1,dual_reconstruction_order,2> dual_to_gll;
+  SArray<real,3,dual_reconstruction_order,dual_reconstruction_order,dual_reconstruction_order> dual_wenoRecon;
+  SArray<real,1,(dual_reconstruction_order-1)/2+2> dual_wenoIdl;
   real dual_wenoSigma;
 
-  SArray<real,vert_reconstruction_order,2> primal_vert_to_gll;
-  SArray<real,vert_reconstruction_order,vert_reconstruction_order,vert_reconstruction_order> primal_vert_wenoRecon;
-  SArray<real,(vert_reconstruction_order-1)/2+2> primal_vert_wenoIdl;
+  SArray<real,1,vert_reconstruction_order,2> primal_vert_to_gll;
+  SArray<real,3,vert_reconstruction_order,vert_reconstruction_order,vert_reconstruction_order> primal_vert_wenoRecon;
+  SArray<real,1,(vert_reconstruction_order-1)/2+2> primal_vert_wenoIdl;
   real primal_vert_wenoSigma;
 
-  SArray<real,dual_vert_reconstruction_order,2> dual_vert_to_gll;
-  SArray<real,dual_vert_reconstruction_order,dual_vert_reconstruction_order,dual_vert_reconstruction_order> dual_vert_wenoRecon;
-  SArray<real,(dual_vert_reconstruction_order-1)/2+2> dual_vert_wenoIdl;
+  SArray<real,1,dual_vert_reconstruction_order,2> dual_vert_to_gll;
+  SArray<real,3,dual_vert_reconstruction_order,dual_vert_reconstruction_order,dual_vert_reconstruction_order> dual_vert_wenoRecon;
+  SArray<real,1,(dual_vert_reconstruction_order-1)/2+2> dual_vert_wenoIdl;
   real dual_vert_wenoSigma;
   
   bool is_initialized;
@@ -585,7 +585,7 @@ compute_Dxz<nQdofs> (xtend.fields_arr[QXZVAR].data, auxiliary_vars.fields_arr[QX
 class Stat
 {
 public:
-  realArr data;
+  real2d data;
   std::string name;
   int ndofs;
 
@@ -597,7 +597,7 @@ void initialize(std::string statName, int ndof, ModelParameters &params, Paralle
 
   if (par.masterproc)
   {
-    data = realArr(name.c_str(), ndofs, params.Nsteps/params.Nstat + 1);
+    data = real2d(name.c_str(), ndofs, params.Nsteps/params.Nstat + 1);
   }
 }
 
@@ -641,10 +641,10 @@ public:
   {
 
 
-      SArray<real,ntdofs> masslocal, massglobal;
-      SArray<real,ntdofs> densmaxlocal, densmaxglobal;
-      SArray<real,ntdofs> densminlocal, densminglobal;
-      SArray<real,nQdofs> Qlocal, Qglobal;
+      SArray<real,1,ntdofs> masslocal, massglobal;
+      SArray<real,1,ntdofs> densmaxlocal, densmaxglobal;
+      SArray<real,1,ntdofs> densminlocal, densminglobal;
+      SArray<real,1,nQdofs> Qlocal, Qglobal;
 
       for (int l=0;l<ntdofs;l++) {masslocal(l) = 0.; massglobal(l) = 0.;}
       for (int l=0;l<ntdofs;l++) {densmaxlocal(l) = 0.; densmaxglobal(l) = 0.;}
@@ -690,7 +690,7 @@ this->stats_arr[QXZSTAT].data(l,i) = Qglobal(l);
 };
 
 
-template <uint nvars> void set_dofs_arr(SArray<int, nvars, 3> &dofs_arr, int var, int basedof, int extdof, int ndofs)
+template <uint nvars> void set_dofs_arr(SArray<int,2, nvars, 3> &dofs_arr, int var, int basedof, int extdof, int ndofs)
 {
   dofs_arr(var, 0) = basedof;
   dofs_arr(var, 1) = extdof;
@@ -699,7 +699,7 @@ template <uint nvars> void set_dofs_arr(SArray<int, nvars, 3> &dofs_arr, int var
 
 // *******   VariableSet Initialization   ***********//
 template <uint nprog, uint nconst, uint naux, uint ndiag> void initialize_variables(const Topology &ptopo, const Topology &dtopo,
-SArray<int, nprog, 3> &prog_ndofs_arr, SArray<int, nconst, 3> &const_ndofs_arr, SArray<int, naux, 3> &aux_ndofs_arr, SArray<int, ndiag, 3> &diag_ndofs_arr,
+SArray<int,2, nprog, 3> &prog_ndofs_arr, SArray<int,2, nconst, 3> &const_ndofs_arr, SArray<int,2, naux, 3> &aux_ndofs_arr, SArray<int,2, ndiag, 3> &diag_ndofs_arr,
 std::array<std::string, nprog> &prog_names_arr, std::array<std::string, nconst> &const_names_arr, std::array<std::string, naux> &aux_names_arr, std::array<std::string, ndiag> &diag_names_arr,
 std::array<const Topology *, nprog> &prog_topo_arr, std::array<const Topology *, nconst> &const_topo_arr, std::array<const Topology *, naux> &aux_topo_arr, std::array<const Topology *, ndiag> &diag_topo_arr)
 {

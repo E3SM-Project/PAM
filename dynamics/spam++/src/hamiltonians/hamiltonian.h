@@ -13,15 +13,15 @@
 // 
 // public: 
 // 
-//   virtual real YAKL_INLINE compute_alpha(const realArr dens0, int is, int js, int ks, int i, int j, int k) {};
-//   virtual real YAKL_INLINE compute_specific_entropic_var(const realArr dens0, int is, int js, int ks, int i, int j, int k)  {};
-//   virtual real YAKL_INLINE compute_qd(const realArr dens0, int is, int js, int ks, int i, int j, int k)  {};
-//   virtual real YAKL_INLINE compute_qv(const realArr dens0, int is, int js, int ks, int i, int j, int k)  {};
-//   virtual real YAKL_INLINE compute_ql(const realArr dens0, int is, int js, int ks, int i, int j, int k)  {};
-//   virtual real YAKL_INLINE compute_qi(const realArr dens0, int is, int js, int ks, int i, int j, int k)  {};  
+//   virtual real YAKL_INLINE compute_alpha(const real4d dens0, int is, int js, int ks, int i, int j, int k) {};
+//   virtual real YAKL_INLINE compute_specific_entropic_var(const real4d dens0, int is, int js, int ks, int i, int j, int k)  {};
+//   virtual real YAKL_INLINE compute_qd(const real4d dens0, int is, int js, int ks, int i, int j, int k)  {};
+//   virtual real YAKL_INLINE compute_qv(const real4d dens0, int is, int js, int ks, int i, int j, int k)  {};
+//   virtual real YAKL_INLINE compute_ql(const real4d dens0, int is, int js, int ks, int i, int j, int k)  {};
+//   virtual real YAKL_INLINE compute_qi(const real4d dens0, int is, int js, int ks, int i, int j, int k)  {};  
 // 
-//   virtual void YAKL_INLINE compute_D(const realArr dens0, int is, int js, int ks, int i, int j, int k) {};
-//   virtual real YAKL_INLINE compute_entropic_var(const realArr dens0, int is, int js, int ks, int i, int j, int k)  {};
+//   virtual void YAKL_INLINE compute_D(const real4d dens0, int is, int js, int ks, int i, int j, int k) {};
+//   virtual real YAKL_INLINE compute_entropic_var(const real4d dens0, int is, int js, int ks, int i, int j, int k)  {};
 //   // Here we do assume that D is a linear combination of Dks. This is very reasonable.
 //   virtual int YAKL_INLINE compute_partialDpartialDl(int l) {};
 
@@ -37,28 +37,28 @@
 // // ie rho is the 1st variable
 // // note that fct and nofct versions of ce/mce have same variable ordering! (but will have different ndensity_nofct and ndensity_fct...)
 // class rhoVarSet {
-//   real YAKL_INLINE compute_alpha(const realArr dens0, int is, int js, int ks, int i, int j, int k) {
+//   real YAKL_INLINE compute_alpha(const real4d dens0, int is, int js, int ks, int i, int j, int k) {
 //     return 1./dens0(0, k+ks, j+js, i+is);
 //   };
-//   real YAKL_INLINE compute_specific_entropic_var(const realArr dens0, int is, int js, int ks, int i, int j, int k) {
+//   real YAKL_INLINE compute_specific_entropic_var(const real4d dens0, int is, int js, int ks, int i, int j, int k) {
 //     return dens0(1, k+ks, j+js, i+is)/dens0(0, k+ks, j+js, i+is);
 //   };
-//   real YAKL_INLINE compute_qd(const realArr dens0, int is, int js, int ks, int i, int j, int k) {
+//   real YAKL_INLINE compute_qd(const real4d dens0, int is, int js, int ks, int i, int j, int k) {
 //     return (dens0(0, k+ks, j+js, i+is) - dens0(2, k+ks, j+js, i+is) - dens0(3, k+ks, j+js, i+is) - dens0(4, k+ks, j+js, i+is))/dens0(0, k+ks, j+js, i+is);
 //   };
-//   real YAKL_INLINE compute_qv(const realArr dens0, int is, int js, int ks, int i, int j, int k) {
+//   real YAKL_INLINE compute_qv(const real4d dens0, int is, int js, int ks, int i, int j, int k) {
 //     return dens0(2, k+ks, j+js, i+is)/dens0(0, k+ks, j+js, i+is);
 //   };
-//   real YAKL_INLINE compute_ql(const realArr dens0, int is, int js, int ks, int i, int j, int k) {
+//   real YAKL_INLINE compute_ql(const real4d dens0, int is, int js, int ks, int i, int j, int k) {
 //     return dens0(3, k+ks, j+js, i+is)/dens0(0, k+ks, j+js, i+is);
 //   };
-//   real YAKL_INLINE compute_qi(const realArr dens0, int is, int js, int ks, int i, int j, int k) {
+//   real YAKL_INLINE compute_qi(const real4d dens0, int is, int js, int ks, int i, int j, int k) {
 //     return dens0(4, k+ks, j+js, i+is)/dens0(0, k+ks, j+js, i+is);
 //   };
-//   void YAKL_INLINE compute_D(const realArr dens, int is, int js, int ks, int i, int j, int k) {
+//   void YAKL_INLINE compute_D(const real4d dens, int is, int js, int ks, int i, int j, int k) {
 //   return dens(0, k+ks, j+js, i+is);
 //   };
-//   real YAKL_INLINE compute_entropic_var(const realArr dens, int is, int js, int ks, int i, int j, int k)  {
+//   real YAKL_INLINE compute_entropic_var(const real4d dens, int is, int js, int ks, int i, int j, int k)  {
 //   return dens(1, k+ks, j+js, i+is);
 //   };
 //   real YAKL_INLINE compute_partialDpartialDl(int l) {
@@ -83,30 +83,30 @@
 //   //   ql = rho_l/rho;
 //   //   qi = rho_i/rho;
 //   // with rho = rho_d + rho_v + rho_l + rho_i
-//       real YAKL_INLINE compute_alpha(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {
+//       real YAKL_INLINE compute_alpha(const real4d dens0, const real4d densfct0, int is, int js, int ks, int i, int j, int k) {
 //         return 1./compute_D(dens0, is, js, ks, i, j, k);
 //       }
 // 
-//       real YAKL_INLINE compute_specific_entropic_var(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {
+//       real YAKL_INLINE compute_specific_entropic_var(const real4d dens0, const real4d densfct0, int is, int js, int ks, int i, int j, int k) {
 //         return dens0(1, k+ks, j+js, i+is)/compute_D(dens0, is, js, ks, i, j, k);
 //       }
-//       real YAKL_INLINE compute_qd(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {
+//       real YAKL_INLINE compute_qd(const real4d dens0, const real4d densfct0, int is, int js, int ks, int i, int j, int k) {
 //         return dens0(0, k+ks, j+js, i+is))/compute_D(dens0, is, js, ks, i, j, k);
 //       }
-//       real YAKL_INLINE compute_qv(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {
+//       real YAKL_INLINE compute_qv(const real4d dens0, const real4d densfct0, int is, int js, int ks, int i, int j, int k) {
 //         return dens0(2, k+ks, j+js, i+is)/compute_D(dens0, is, js, ks, i, j, k);
 //       }
-//       real YAKL_INLINE compute_ql(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {
+//       real YAKL_INLINE compute_ql(const real4d dens0, const real4d densfct0, int is, int js, int ks, int i, int j, int k) {
 //         return dens0(3, k+ks, j+js, i+is)/compute_D(dens0, is, js, ks, i, j, k);
 //       }
-//       real YAKL_INLINE compute_qi(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {
+//       real YAKL_INLINE compute_qi(const real4d dens0, const real4d densfct0, int is, int js, int ks, int i, int j, int k) {
 //         return dens0(4, k+ks, j+js, i+is)/compute_D(dens0, is, js, ks, i, j, k);
 //       }
 // 
-//   void YAKL_INLINE compute_D(const realArr dens, int is, int js, int ks, int i, int j, int k) {
+//   void YAKL_INLINE compute_D(const real4d dens, int is, int js, int ks, int i, int j, int k) {
 //   return dens0(0, k+ks, j+js, i+is) + dens0(2, k+ks, j+js, i+is) + dens0(3, k+ks, j+js, i+is) + dens0(4, k+ks, j+js, i+is);
 //   };
-//   real YAKL_INLINE compute_entropic_var(const realArr dens, int is, int js, int ks, int i, int j, int k)  {
+//   real YAKL_INLINE compute_entropic_var(const real4d dens, int is, int js, int ks, int i, int j, int k)  {
 //   return dens(1, k+ks, j+js, i+is);
 //   };
 //   real YAKL_INLINE compute_partialDpartialDl(int l) {
@@ -139,7 +139,7 @@
 // 
 // class Hk : public VariableSet, public Hamiltonian {
 // public:
-// real YAKL_INLINE compute_KE(const realArr v, const realArr dens, int is, int js, int ks, int i, int j, int k)
+// real YAKL_INLINE compute_KE(const real4d v, const real4d dens, int is, int js, int ks, int i, int j, int k)
 // {
 // 
 //   real KE;
@@ -187,7 +187,7 @@
 // }
 // 
 // 
-//  void YAKL_INLINE compute_dKdv(realArr F, realArr K, realArr HE, const realArr v, const realArr U, const realArr dens0, int is, int js, int ks, int i, int j, int k)
+//  void YAKL_INLINE compute_dKdv(real4d F, real4d K, real4d HE, const real4d v, const real4d U, const real4d dens0, int is, int js, int ks, int i, int j, int k)
 // {
 //   SArray<real,ndims,2> D0;
 //   SArray<real,ndims> he;
@@ -222,7 +222,7 @@
 // }
 // 
 // // Note that this ADDS to Bvar...
-// void YAKL_INLINE compute_dKddens(realArr B, const realArr K, int is, int js, int ks, int i, int j, int k)
+// void YAKL_INLINE compute_dKddens(real4d B, const real4d K, int is, int js, int ks, int i, int j, int k)
 // {
 //   SArray<real,1> K0;
 //   compute_I<1, diff_ord>(K0, K, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);

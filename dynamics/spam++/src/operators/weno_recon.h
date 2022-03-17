@@ -224,7 +224,7 @@ real YAKL_INLINE interp_weno11(real phim5, real phim4, real phim3, real phim2, r
 
 
 
-template<uint ndofs, uint nd> void YAKL_INLINE weno(SArray<real,ndofs,nd,2> &edgerecon, SArray<real,ndofs,nd,1> const &dens) {
+template<uint ndofs, uint nd> void YAKL_INLINE weno(SArray<real,3,ndofs,nd,2> &edgerecon, SArray<real,3,ndofs,nd,1> const &dens) {
     for (int l=0; l<ndofs; l++) {
       for (int d=0; d<nd; d++) {
           edgerecon(l,d,0) = dens(l,d,0);
@@ -233,7 +233,7 @@ template<uint ndofs, uint nd> void YAKL_INLINE weno(SArray<real,ndofs,nd,2> &edg
       }
 }
 
-template<uint ndofs, uint nd> void YAKL_INLINE weno(SArray<real,ndofs,nd,2> &edgerecon, SArray<real,ndofs,nd,3> const &dens) {
+template<uint ndofs, uint nd> void YAKL_INLINE weno(SArray<real,3,ndofs,nd,2> &edgerecon, SArray<real,3,ndofs,nd,3> const &dens) {
     for (int l=0; l<ndofs; l++) {
       for (int d=0; d<nd; d++) {
           edgerecon(l,d,0) = interp_weno3(dens(l,d,2), dens(l,d,1), dens(l,d,0));
@@ -242,7 +242,7 @@ template<uint ndofs, uint nd> void YAKL_INLINE weno(SArray<real,ndofs,nd,2> &edg
       }
 }
 
-template<uint ndofs, uint nd> void YAKL_INLINE weno(SArray<real,ndofs,nd,2> &edgerecon, SArray<real,ndofs,nd,5> const &dens) {
+template<uint ndofs, uint nd> void YAKL_INLINE weno(SArray<real,3,ndofs,nd,2> &edgerecon, SArray<real,3,ndofs,nd,5> const &dens) {
     for (int l=0; l<ndofs; l++) {
       for (int d=0; d<nd; d++) {
           edgerecon(l,d,0) = interp_weno5(dens(l,d,4), dens(l,d,3), dens(l,d,2), dens(l,d,1), dens(l,d,0));
@@ -251,7 +251,7 @@ template<uint ndofs, uint nd> void YAKL_INLINE weno(SArray<real,ndofs,nd,2> &edg
       }
 }
 
-template<uint ndofs, uint nd> void YAKL_INLINE weno(SArray<real,ndofs,nd,2> &edgerecon, SArray<real,ndofs,nd,7> const &dens) {
+template<uint ndofs, uint nd> void YAKL_INLINE weno(SArray<real,3,ndofs,nd,2> &edgerecon, SArray<real,3,ndofs,nd,7> const &dens) {
     for (int l=0; l<ndofs; l++) {
       for (int d=0; d<nd; d++) {
           edgerecon(l,d,0) = interp_weno7(dens(l,d,6), dens(l,d,5), dens(l,d,4), dens(l,d,3), dens(l,d,2), dens(l,d,1), dens(l,d,0));
@@ -260,7 +260,7 @@ template<uint ndofs, uint nd> void YAKL_INLINE weno(SArray<real,ndofs,nd,2> &edg
       }
 }
 
-template<uint ndofs, uint nd> void YAKL_INLINE weno(SArray<real,ndofs,nd,2> &edgerecon, SArray<real,ndofs,nd,9> const &dens) {
+template<uint ndofs, uint nd> void YAKL_INLINE weno(SArray<real,3,ndofs,nd,2> &edgerecon, SArray<real,3,ndofs,nd,9> const &dens) {
     for (int l=0; l<ndofs; l++) {
       for (int d=0; d<nd; d++) {
           edgerecon(l,d,0) = interp_weno9(dens(l,d,8), dens(l,d,7), dens(l,d,6), dens(l,d,5), dens(l,d,4), dens(l,d,3), dens(l,d,2), dens(l,d,1), dens(l,d,0));
@@ -269,7 +269,7 @@ template<uint ndofs, uint nd> void YAKL_INLINE weno(SArray<real,ndofs,nd,2> &edg
       }
 }
 
-template<uint ndofs, uint nd> void YAKL_INLINE weno(SArray<real,ndofs,nd,2> &edgerecon, SArray<real,ndofs,nd,11> const &dens) {
+template<uint ndofs, uint nd> void YAKL_INLINE weno(SArray<real,3,ndofs,nd,2> &edgerecon, SArray<real,3,ndofs,nd,11> const &dens) {
     for (int l=0; l<ndofs; l++) {
       for (int d=0; d<nd; d++) {
           edgerecon(l,d,0) = interp_weno11(dens(l,d,10), dens(l,d,9), dens(l,d,8), dens(l,d,7), dens(l,d,6), dens(l,d,5), dens(l,d,4), dens(l,d,3), dens(l,d,2), dens(l,d,1), dens(l,d,0));

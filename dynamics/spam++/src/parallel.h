@@ -27,9 +27,9 @@ public:
   int halox = -1;
   int haloy = -1;
 
-  SArray<int,2> x_neigh;
-  SArray<int,2> y_neigh;
-  SArray<int,2> z_neigh;
+  SArray<int,1, 2> x_neigh;
+  SArray<int,1, 2> y_neigh;
+  SArray<int,1, 2> z_neigh;
   
   int ll_neigh, ur_neigh, ul_neigh, lr_neigh;
 

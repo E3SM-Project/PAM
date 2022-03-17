@@ -28,9 +28,9 @@ class Hamiltonian_CE_Hs {
  }
  
 
- real YAKL_INLINE compute_PE(const realArr dens, const realArr geop, int is, int js, int ks, int i, int j, int k)
+ real YAKL_INLINE compute_PE(const real4d dens, const real4d geop, int is, int js, int ks, int i, int j, int k)
  {
-   SArray<real,1> geop0;
+   SArray<real,1,1> geop0;
    #ifdef _EXTRUDED   
    compute_Iext<1,diff_ord,vert_diff_ord> (geop0, geop, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
    #else
@@ -44,17 +44,17 @@ class Hamiltonian_CE_Hs {
  //   alpha = 1./rho;
  //   entropic_var = entropic_density/rho;
 
-     real YAKL_INLINE compute_alpha(const realArr dens0, int is, int js, int ks, int i, int j, int k) {
+     real YAKL_INLINE compute_alpha(const real4d dens0, int is, int js, int ks, int i, int j, int k) {
        return 1./dens0(0, k+ks, j+js, i+is);
      }
      
-     real YAKL_INLINE compute_entropic_var(const realArr dens0, int is, int js, int ks, int i, int j, int k) {
+     real YAKL_INLINE compute_entropic_var(const real4d dens0, int is, int js, int ks, int i, int j, int k) {
        return dens0(1, k+ks, j+js, i+is)/dens0(0, k+ks, j+js, i+is);
      }
 
- real YAKL_INLINE compute_IE(const realArr dens, int is, int js, int ks, int i, int j, int k)
+ real YAKL_INLINE compute_IE(const real4d dens, int is, int js, int ks, int i, int j, int k)
  {
-   SArray<real,2> dens0;
+   SArray<real,1,2> dens0;
    #ifdef _EXTRUDED   
    compute_Iext<2, diff_ord, vert_diff_ord>(dens0, dens, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
    #else
@@ -65,10 +65,10 @@ class Hamiltonian_CE_Hs {
    return dens(0, k+ks, j+js, i+is) * thermo->compute_U(alpha, entropic_var, 0, 0, 0, 0);
  }
 
-  void YAKL_INLINE compute_dHsdx(realArr B, const realArr dens0, const realArr geop, int is, int js, int ks, int i, int j, int k)
+  void YAKL_INLINE compute_dHsdx(real4d B, const real4d dens0, const real4d geop, int is, int js, int ks, int i, int j, int k)
   {
 
-    SArray<real,1> geop0;
+    SArray<real,1,1> geop0;
 
     #ifdef _EXTRUDED   
     compute_Iext<1,diff_ord,vert_diff_ord> (geop0, geop, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
@@ -124,9 +124,9 @@ class Hamiltonian_MCE_rho_Hs {
  }
  
 
- real YAKL_INLINE compute_PE(const realArr dens, const realArr geop, int is, int js, int ks, int i, int j, int k)
+ real YAKL_INLINE compute_PE(const real4d dens, const real4d geop, int is, int js, int ks, int i, int j, int k)
  {
-   SArray<real,1> geop0;
+   SArray<real,1,1> geop0;
 
    #ifdef _EXTRUDED   
    compute_Iext<1,diff_ord,vert_diff_ord> (geop0, geop, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
@@ -144,31 +144,31 @@ class Hamiltonian_MCE_rho_Hs {
  //   qv = rho_v/rho;
  //   ql = rho_l/rho;
  //   qi = rho_i/rho;
-     real YAKL_INLINE compute_alpha(const realArr dens0, int is, int js, int ks, int i, int j, int k) {
+     real YAKL_INLINE compute_alpha(const real4d dens0, int is, int js, int ks, int i, int j, int k) {
        return 1./dens0(0, k+ks, j+js, i+is);
      }
      
-     real YAKL_INLINE compute_entropic_var(const realArr dens0, int is, int js, int ks, int i, int j, int k) {
+     real YAKL_INLINE compute_entropic_var(const real4d dens0, int is, int js, int ks, int i, int j, int k) {
        return dens0(1, k+ks, j+js, i+is)/dens0(0, k+ks, j+js, i+is);
      }
-     real YAKL_INLINE compute_qd(const realArr dens0, int is, int js, int ks, int i, int j, int k) {
+     real YAKL_INLINE compute_qd(const real4d dens0, int is, int js, int ks, int i, int j, int k) {
        return (dens0(0, k+ks, j+js, i+is) - dens0(2, k+ks, j+js, i+is) - dens0(3, k+ks, j+js, i+is) - dens0(4, k+ks, j+js, i+is))/dens0(0, k+ks, j+js, i+is);
      }
-     real YAKL_INLINE compute_qv(const realArr dens0, int is, int js, int ks, int i, int j, int k) {
+     real YAKL_INLINE compute_qv(const real4d dens0, int is, int js, int ks, int i, int j, int k) {
        return dens0(2, k+ks, j+js, i+is)/dens0(0, k+ks, j+js, i+is);
      }
-     real YAKL_INLINE compute_ql(const realArr dens0, int is, int js, int ks, int i, int j, int k) {
+     real YAKL_INLINE compute_ql(const real4d dens0, int is, int js, int ks, int i, int j, int k) {
        return dens0(3, k+ks, j+js, i+is)/dens0(0, k+ks, j+js, i+is);
      }
-     real YAKL_INLINE compute_qi(const realArr dens0, int is, int js, int ks, int i, int j, int k) {
+     real YAKL_INLINE compute_qi(const real4d dens0, int is, int js, int ks, int i, int j, int k) {
        return dens0(4, k+ks, j+js, i+is)/dens0(0, k+ks, j+js, i+is);
      }
 
 
- real YAKL_INLINE compute_IE(const realArr dens, int is, int js, int ks, int i, int j, int k)
+ real YAKL_INLINE compute_IE(const real4d dens, int is, int js, int ks, int i, int j, int k)
  {
 
-   SArray<real,5> dens0;
+   SArray<real,1,5> dens0;
    #ifdef _EXTRUDED   
    compute_Iext<5, diff_ord, vert_diff_ord>(dens0, dens, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
    #else
@@ -184,10 +184,10 @@ class Hamiltonian_MCE_rho_Hs {
    return dens(0, k+ks, j+js, i+is) * thermo->compute_U(alpha, entropic_var, qd, qv, ql, qi);
  }
 
-  void YAKL_INLINE compute_dHsdx(realArr B, const realArr dens0, const realArr geop, int is, int js, int ks, int i, int j, int k)
+  void YAKL_INLINE compute_dHsdx(real4d B, const real4d dens0, const real4d geop, int is, int js, int ks, int i, int j, int k)
   {
 
-    SArray<real,1> geop0;
+    SArray<real,1,1> geop0;
 
     #ifdef _EXTRUDED   
     compute_Iext<1,diff_ord,vert_diff_ord> (geop0, geop, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
@@ -259,10 +259,10 @@ class Hamiltonian_MCE_rhod_Hs {
  }
  
 
- real YAKL_INLINE compute_PE(const realArr dens, const realArr densfct, const realArr geop, int is, int js, int ks, int i, int j, int k)
+ real YAKL_INLINE compute_PE(const real4d dens, const real4d densfct, const real4d geop, int is, int js, int ks, int i, int j, int k)
  {
    
-   SArray<real,1> geop0;
+   SArray<real,1,1> geop0;
    compute_I<1,diff_ord> (geop0, geop, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
    
    return (dens(0, k+ks, j+js, i+is) + densfct(0, k+ks, j+js, i+is) + densfct(1, k+ks, j+js, i+is) + densfct(2, k+ks, j+js, i+is) ) * geop0(0);
@@ -276,32 +276,32 @@ class Hamiltonian_MCE_rhod_Hs {
  //   ql = rho_l/rho;
  //   qi = rho_i/rho;
  // with rho = rho_d + rho_v + rho_l + rho_i
-     real YAKL_INLINE compute_alpha(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {
+     real YAKL_INLINE compute_alpha(const real4d dens0, const real4d densfct0, int is, int js, int ks, int i, int j, int k) {
        return 1./(dens0(0, k+ks, j+js, i+is) + densfct0(0, k+ks, j+js, i+is) + densfct0(1, k+ks, j+js, i+is) + densfct0(2, k+ks, j+js, i+is));
      }
      
-     real YAKL_INLINE compute_entropic_var(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {
+     real YAKL_INLINE compute_entropic_var(const real4d dens0, const real4d densfct0, int is, int js, int ks, int i, int j, int k) {
        return dens0(1, k+ks, j+js, i+is)/(dens0(0, k+ks, j+js, i+is) + densfct0(0, k+ks, j+js, i+is) + densfct0(1, k+ks, j+js, i+is) + densfct0(2, k+ks, j+js, i+is));
      }
-     real YAKL_INLINE compute_qd(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {
+     real YAKL_INLINE compute_qd(const real4d dens0, const real4d densfct0, int is, int js, int ks, int i, int j, int k) {
        return (dens0(0, k+ks, j+js, i+is))/(dens0(0, k+ks, j+js, i+is) + densfct0(0, k+ks, j+js, i+is) + densfct0(1, k+ks, j+js, i+is) + densfct0(2, k+ks, j+js, i+is));
      }
-     real YAKL_INLINE compute_qv(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {
+     real YAKL_INLINE compute_qv(const real4d dens0, const real4d densfct0, int is, int js, int ks, int i, int j, int k) {
        return densfct0(0, k+ks, j+js, i+is)/(dens0(0, k+ks, j+js, i+is) + densfct0(0, k+ks, j+js, i+is) + densfct0(1, k+ks, j+js, i+is) + densfct0(2, k+ks, j+js, i+is));
      }
-     real YAKL_INLINE compute_ql(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {
+     real YAKL_INLINE compute_ql(const real4d dens0, const real4d densfct0, int is, int js, int ks, int i, int j, int k) {
        return densfct0(1, k+ks, j+js, i+is)/(dens0(0, k+ks, j+js, i+is) + densfct0(0, k+ks, j+js, i+is) + densfct0(1, k+ks, j+js, i+is) + densfct0(2, k+ks, j+js, i+is));
      }
-     real YAKL_INLINE compute_qi(const realArr dens0, const realArr densfct0, int is, int js, int ks, int i, int j, int k) {
+     real YAKL_INLINE compute_qi(const real4d dens0, const real4d densfct0, int is, int js, int ks, int i, int j, int k) {
        return densfct0(2, k+ks, j+js, i+is)/(dens0(0, k+ks, j+js, i+is) + densfct0(0, k+ks, j+js, i+is) + densfct0(1, k+ks, j+js, i+is) + densfct0(2, k+ks, j+js, i+is));
      }
 
 
- real YAKL_INLINE compute_IE(const realArr dens, const realArr densfct, int is, int js, int ks, int i, int j, int k)
+ real YAKL_INLINE compute_IE(const real4d dens, const real4d densfct, int is, int js, int ks, int i, int j, int k)
  {
 
-   SArray<real,2> dens0;
-   SArray<real,3> densfct0;
+   SArray<real,1,2> dens0;
+   SArray<real,1,3> densfct0;
    compute_I<2, diff_ord>(dens0, dens, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
    compute_I<3, diff_ord>(densfct0, densfct, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
    real rho = dens0(0) + densfct(0) + densfct(1) + densfct(2);
@@ -314,10 +314,10 @@ class Hamiltonian_MCE_rhod_Hs {
    return rho * thermo->compute_U(alpha, entropic_var, qd, qv, ql, qi);
  }
 
-  void YAKL_INLINE compute_dHsdx(realArr B, realArr Bfct, const realArr dens0, const realArr densfct0, const realArr geop, int is, int js, int ks, int i, int j, int k)
+  void YAKL_INLINE compute_dHsdx(real4d B, real4d Bfct, const real4d dens0, const real4d densfct0, const real4d geop, int is, int js, int ks, int i, int j, int k)
   {
 
-    SArray<real,1> geop0;
+    SArray<real,1,1> geop0;
     compute_I<1,diff_ord> (geop0, geop, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
     
     real alpha = compute_alpha(dens0, densfct0, is, js, ks, i, j, k);
@@ -350,7 +350,7 @@ class Hamiltonian_MCE_rhod_Hs {
 // p-variants
 // class Hamiltonian_CE_p_Hs : public Hamiltonian_CE_Hs
 // {
-//   real YAKL_INLINE compute_IE(const realArr dens, const realArr densfct, int is, int js, int ks, int i, int j, int k)
+//   real YAKL_INLINE compute_IE(const real4d dens, const real4d densfct, int is, int js, int ks, int i, int j, int k)
 //   {
 //     SArray<real,2> dens0;
 //     compute_I<2, diff_ord>(dens0, dens, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
@@ -359,7 +359,7 @@ class Hamiltonian_MCE_rhod_Hs {
 //     return dens(0, k+ks, j+js, i+is) * thermo->compute_H(p, entropic_var, 0, 0, 0, 0) - p;
 //   }
 // 
-//    void YAKL_INLINE compute_dHsdx(realArr B, realArr Bfct, const realArr dens0, const realArr densfct0, const realArr geop, int is, int js, int ks, int i, int j, int k)
+//    void YAKL_INLINE compute_dHsdx(real4d B, real4d Bfct, const real4d dens0, const real4d densfct0, const real4d geop, int is, int js, int ks, int i, int j, int k)
 //    {
 // 
 //      SArray<real,1> geop0;
@@ -379,7 +379,7 @@ class Hamiltonian_MCE_rhod_Hs {
 // 
 // class Hamiltonian_MCE_rho_p_Hs : public Hamiltonian_MCE_rho_Hs
 // {
-//   real YAKL_INLINE compute_IE(const realArr dens, const realArr densfct, int is, int js, int ks, int i, int j, int k)
+//   real YAKL_INLINE compute_IE(const real4d dens, const real4d densfct, int is, int js, int ks, int i, int j, int k)
 //   {
 // 
 //     SArray<real,2> dens0;
@@ -396,7 +396,7 @@ class Hamiltonian_MCE_rhod_Hs {
 //     return dens(0, k+ks, j+js, i+is) * thermo->compute_H(p, entropic_var, qd, qv, ql, qi) - p;
 //   }
 // 
-//    void YAKL_INLINE compute_dHsdx(realArr B, realArr Bfct, const realArr dens0, const realArr densfct0, const realArr geop, int is, int js, int ks, int i, int j, int k)
+//    void YAKL_INLINE compute_dHsdx(real4d B, real4d Bfct, const real4d dens0, const real4d densfct0, const real4d geop, int is, int js, int ks, int i, int j, int k)
 //    {
 // 
 //      SArray<real,1> geop0;
@@ -430,7 +430,7 @@ class Hamiltonian_MCE_rhod_Hs {
 // 
 // class Hamiltonian_MCE_rhod_p_Hs : public Hamiltonian_MCE_rhod_Hs
 // {
-//   real YAKL_INLINE compute_IE(const realArr dens, const realArr densfct, int is, int js, int ks, int i, int j, int k)
+//   real YAKL_INLINE compute_IE(const real4d dens, const real4d densfct, int is, int js, int ks, int i, int j, int k)
 //   {
 // 
 //     SArray<real,2> dens0;
@@ -448,7 +448,7 @@ class Hamiltonian_MCE_rhod_Hs {
 //     return rho * thermo->compute_H(p, entropic_var, qd, qv, ql, qi) - p;
 //   }
 // 
-//    void YAKL_INLINE compute_dHsdx(realArr B, realArr Bfct, const realArr dens0, const realArr densfct0, const realArr geop, int is, int js, int ks, int i, int j, int k)
+//    void YAKL_INLINE compute_dHsdx(real4d B, real4d Bfct, const real4d dens0, const real4d densfct0, const real4d geop, int is, int js, int ks, int i, int j, int k)
 //    {
 // 
 //      SArray<real,1> geop0;

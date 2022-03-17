@@ -93,10 +93,10 @@ int main(int argc, char** argv) {
     // Allocate the variables
     std::cout << "start init variable sets and exchange sets\n" << std::flush;
     //this gives basedof, extdof and ndofs
-    SArray<int, nprognostic, 3> prog_dofs_arr;
-    SArray<int, nconstant, 3> const_dofs_arr;
-    SArray<int, ndiagnostic, 3> diag_dofs_arr;
-    SArray<int, nauxiliary, 3> aux_dofs_arr;
+    SArray<int,2, nprognostic, 3> prog_dofs_arr;
+    SArray<int,2, nconstant, 3> const_dofs_arr;
+    SArray<int,2, ndiagnostic, 3> diag_dofs_arr;
+    SArray<int,2, nauxiliary, 3> aux_dofs_arr;
     std::array<std::string, nprognostic> prog_names_arr;
     std::array<std::string, nconstant> const_names_arr;
     std::array<std::string, ndiagnostic> diag_names_arr;

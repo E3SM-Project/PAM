@@ -25,40 +25,40 @@ public:
     int _nz, _nloop, _nloop_halo;
     int mirror_size;
     
-    realArrHost haloSendBuf_Xm_host;
-    realArrHost haloRecvBuf_Xm_host;
-    realArr haloSendBuf_Xm;
-    realArr haloRecvBuf_Xm;
-    realArrHost haloSendBuf_Xp_host;
-    realArrHost haloRecvBuf_Xp_host;
-    realArr haloSendBuf_Xp;
-    realArr haloRecvBuf_Xp;
+    realHost1d haloSendBuf_Xm_host;
+    realHost1d haloRecvBuf_Xm_host;
+    real1d haloSendBuf_Xm;
+    real1d haloRecvBuf_Xm;
+    realHost1d haloSendBuf_Xp_host;
+    realHost1d haloRecvBuf_Xp_host;
+    real1d haloSendBuf_Xp;
+    real1d haloRecvBuf_Xp;
 
-    realArrHost haloSendBuf_Ym_host;
-    realArrHost haloRecvBuf_Ym_host;
-    realArr haloSendBuf_Ym;
-    realArr haloRecvBuf_Ym;
-    realArrHost haloSendBuf_Yp_host;
-    realArrHost haloRecvBuf_Yp_host;
-    realArr haloSendBuf_Yp;
-    realArr haloRecvBuf_Yp;
+    realHost1d haloSendBuf_Ym_host;
+    realHost1d haloRecvBuf_Ym_host;
+    real1d haloSendBuf_Ym;
+    real1d haloRecvBuf_Ym;
+    realHost1d haloSendBuf_Yp_host;
+    realHost1d haloRecvBuf_Yp_host;
+    real1d haloSendBuf_Yp;
+    real1d haloRecvBuf_Yp;
 
-    realArrHost haloSendBuf_XYll_host;
-    realArrHost haloRecvBuf_XYll_host;
-    realArr haloSendBuf_XYll;
-    realArr haloRecvBuf_XYll;
-    realArrHost haloSendBuf_XYul_host;
-    realArrHost haloRecvBuf_XYul_host;
-    realArr haloSendBuf_XYul;
-    realArr haloRecvBuf_XYul;
-    realArrHost haloSendBuf_XYlr_host;
-    realArrHost haloRecvBuf_XYlr_host;
-    realArr haloSendBuf_XYlr;
-    realArr haloRecvBuf_XYlr;
-    realArrHost haloSendBuf_XYur_host;
-    realArrHost haloRecvBuf_XYur_host;
-    realArr haloSendBuf_XYur;
-    realArr haloRecvBuf_XYur;
+    realHost1d haloSendBuf_XYll_host;
+    realHost1d haloRecvBuf_XYll_host;
+    real1d haloSendBuf_XYll;
+    real1d haloRecvBuf_XYll;
+    realHost1d haloSendBuf_XYul_host;
+    realHost1d haloRecvBuf_XYul_host;
+    real1d haloSendBuf_XYul;
+    real1d haloRecvBuf_XYul;
+    realHost1d haloSendBuf_XYlr_host;
+    realHost1d haloRecvBuf_XYlr_host;
+    real1d haloSendBuf_XYlr;
+    real1d haloRecvBuf_XYlr;
+    realHost1d haloSendBuf_XYur_host;
+    realHost1d haloRecvBuf_XYur_host;
+    real1d haloSendBuf_XYur;
+    real1d haloRecvBuf_XYur;
     
     // 4 corners in 2D
     MPI_Request sReq [4];
@@ -136,45 +136,45 @@ void Exchange::initialize(const Exchange &exch)
     this->mirror_size = this->topology->n_cells_x*this->topology->n_cells_y*this->topology->mirror_halo;
 
 
-   this->haloSendBuf_Xm = realArr("haloSendBuf_Xm", this->bufsize_x);
-   this->haloRecvBuf_Xm = realArr("haloRecvBuf_Xm", this->bufsize_x);
+   this->haloSendBuf_Xm = real1d("haloSendBuf_Xm", this->bufsize_x);
+   this->haloRecvBuf_Xm = real1d("haloRecvBuf_Xm", this->bufsize_x);
    this->haloSendBuf_Xm_host = this->haloSendBuf_Xm.createHostCopy();
    this->haloRecvBuf_Xm_host = this->haloRecvBuf_Xm.createHostCopy();
-   this->haloSendBuf_Xp = realArr("haloSendBuf_Xp", this->bufsize_x);
-   this->haloRecvBuf_Xp = realArr("haloRecvBuf_Xp", this->bufsize_x);
+   this->haloSendBuf_Xp = real1d("haloSendBuf_Xp", this->bufsize_x);
+   this->haloRecvBuf_Xp = real1d("haloRecvBuf_Xp", this->bufsize_x);
    this->haloSendBuf_Xp_host = this->haloSendBuf_Xp.createHostCopy();
    this->haloRecvBuf_Xp_host = this->haloRecvBuf_Xp.createHostCopy();
 
    if (ndims == 2) {
-     this->haloSendBuf_Ym = realArr("haloSendBuf_Ym", this->bufsize_y);
-     this->haloRecvBuf_Ym = realArr("haloRecvBuf_Ym", this->bufsize_y);
+     this->haloSendBuf_Ym = real1d("haloSendBuf_Ym", this->bufsize_y);
+     this->haloRecvBuf_Ym = real1d("haloRecvBuf_Ym", this->bufsize_y);
      this->haloSendBuf_Ym_host = this->haloSendBuf_Ym.createHostCopy();
      this->haloRecvBuf_Ym_host = this->haloRecvBuf_Ym.createHostCopy();
-     this->haloSendBuf_Yp = realArr("haloSendBuf_Yp", this->bufsize_y);
-     this->haloRecvBuf_Yp = realArr("haloRecvBuf_Yp", this->bufsize_y);
+     this->haloSendBuf_Yp = real1d("haloSendBuf_Yp", this->bufsize_y);
+     this->haloRecvBuf_Yp = real1d("haloRecvBuf_Yp", this->bufsize_y);
      this->haloSendBuf_Yp_host = this->haloSendBuf_Yp.createHostCopy();
      this->haloRecvBuf_Yp_host = this->haloRecvBuf_Yp.createHostCopy();
    }
    
      if (ndims == 2) {
 
-     this->haloSendBuf_XYll = realArr("haloSendBuf_XYll", this->bufsize_xy);
-     this->haloRecvBuf_XYll = realArr("haloRecvBuf_XYll", this->bufsize_xy);
+     this->haloSendBuf_XYll = real1d("haloSendBuf_XYll", this->bufsize_xy);
+     this->haloRecvBuf_XYll = real1d("haloRecvBuf_XYll", this->bufsize_xy);
      this->haloSendBuf_XYll_host = this->haloSendBuf_XYll.createHostCopy();
      this->haloRecvBuf_XYll_host = this->haloRecvBuf_XYll.createHostCopy();
      
-     this->haloSendBuf_XYul = realArr("haloSendBuf_XYul", this->bufsize_xy);
-     this->haloRecvBuf_XYul = realArr("haloRecvBuf_XYul", this->bufsize_xy);
+     this->haloSendBuf_XYul = real1d("haloSendBuf_XYul", this->bufsize_xy);
+     this->haloRecvBuf_XYul = real1d("haloRecvBuf_XYul", this->bufsize_xy);
      this->haloSendBuf_XYul_host = this->haloSendBuf_XYul.createHostCopy();
      this->haloRecvBuf_XYul_host = this->haloRecvBuf_XYul.createHostCopy();
      
-     this->haloSendBuf_XYlr = realArr("haloSendBuf_XYlr", this->bufsize_xy);
-     this->haloRecvBuf_XYlr = realArr("haloRecvBuf_XYlr", this->bufsize_xy);
+     this->haloSendBuf_XYlr = real1d("haloSendBuf_XYlr", this->bufsize_xy);
+     this->haloRecvBuf_XYlr = real1d("haloRecvBuf_XYlr", this->bufsize_xy);
      this->haloSendBuf_XYlr_host = this->haloSendBuf_XYlr.createHostCopy();
      this->haloRecvBuf_XYlr_host = this->haloRecvBuf_XYlr.createHostCopy();
      
-     this->haloSendBuf_XYur = realArr("haloSendBuf_XYur", this->bufsize_xy);
-     this->haloRecvBuf_XYur = realArr("haloRecvBuf_XYur", this->bufsize_xy);
+     this->haloSendBuf_XYur = real1d("haloSendBuf_XYur", this->bufsize_xy);
+     this->haloRecvBuf_XYur = real1d("haloRecvBuf_XYur", this->bufsize_xy);
      this->haloSendBuf_XYur_host = this->haloSendBuf_XYur.createHostCopy();
      this->haloRecvBuf_XYur_host = this->haloRecvBuf_XYur.createHostCopy();
    }

@@ -8,12 +8,12 @@
 #include "weno_func_recon.h"
 
 template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord=2, uint hs=(ord-1)/2> void YAKL_INLINE compute_twisted_edge_recon(
-  realArr edgereconvar, const realArr var, int is, int js, int ks, int i, int j, int k,
-  SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,ord,tord> const &to_gll, SArray<real,hs+2> const &wenoIdl, real wenoSigma)
+  real4d edgereconvar, const real4d var, int is, int js, int ks, int i, int j, int k,
+  SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,2,ord,tord> const &to_gll, SArray<real,1,hs+2> const &wenoIdl, real wenoSigma)
   {
 
-SArray<real,ndofs,ndims,ord> stencil;
-SArray<real,ndofs,ndims,2> edgerecon;
+SArray<real,3,ndofs,ndims,ord> stencil;
+SArray<real,3,ndofs,ndims,2> edgerecon;
 
 for (int p=0; p<ord; p++) {
 for (int l=0; l<ndofs; l++) {
@@ -35,11 +35,11 @@ edgereconvar(l + d*ndofs + ndofs*ndims*m, k+ks, j+js, i+is) = edgerecon(l,d,m);
 }
 
 template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord=2, uint hs=(ord-1)/2> void YAKL_INLINE compute_twisted_vert_edge_recon(
-  realArr vertedgereconvar, const realArr var, int is, int js, int ks, int i, int j, int k,
-  SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,ord,tord> const &to_gll, SArray<real,hs+2> const &wenoIdl, real wenoSigma)
+  real4d vertedgereconvar, const real4d var, int is, int js, int ks, int i, int j, int k,
+  SArray<real,3,ord,ord,ord> const &wenoRecon, SArray<real,2,ord,tord> const &to_gll, SArray<real,1,hs+2> const &wenoIdl, real wenoSigma)
   {
-    SArray<real,ndofs,1,ord> stencil;
-    SArray<real,ndofs,1,2> edgerecon;
+    SArray<real,3,ndofs,1,ord> stencil;
+    SArray<real,3,ndofs,1,2> edgerecon;
 
     for (int p=0; p<ord; p++) {
     for (int l=0; l<ndofs; l++) {
@@ -57,12 +57,12 @@ template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord=2, uint
  }
 
 template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord=2, uint hs=(ord-1)/2> void YAKL_INLINE compute_straight_edge_recon(
-  realArr edgereconvar, const realArr var, int is, int js, int ks, int i, int j, int k,
-  SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,ord,tord> const &to_gll, SArray<real,hs+2> const &wenoIdl, real wenoSigma)
+  real4d edgereconvar, const real4d var, int is, int js, int ks, int i, int j, int k,
+  SArray<real,3,ord,ord,ord> const &wenoRecon, SArray<real,2,ord,tord> const &to_gll, SArray<real,1,hs+2> const &wenoIdl, real wenoSigma)
   {
 
-SArray<real,ndofs,ndims,ord> stencil;
-SArray<real,ndofs,ndims,2> edgerecon;
+SArray<real,3,ndofs,ndims,ord> stencil;
+SArray<real,3,ndofs,ndims,2> edgerecon;
 
 for (int p=0; p<ord; p++) {
 for (int l=0; l<ndofs; l++) {
@@ -86,11 +86,11 @@ edgereconvar(l + d*ndofs + ndofs*ndims*m, k+ks, j+js, i+is) = edgerecon(l,d,m);
 
 
 template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord=2, uint hs=(ord-1)/2> void YAKL_INLINE compute_straight_xz_edge_recon(
-  realArr edgereconvar, const realArr var, int is, int js, int ks, int i, int j, int k,
-  SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,ord,tord> const &to_gll, SArray<real,hs+2> const &wenoIdl, real wenoSigma)
+  real4d edgereconvar, const real4d var, int is, int js, int ks, int i, int j, int k,
+  SArray<real,3,ord,ord,ord> const &wenoRecon, SArray<real,2,ord,tord> const &to_gll, SArray<real,1,hs+2> const &wenoIdl, real wenoSigma)
 {
-  SArray<real,ndofs,1,ord> stencil;
-  SArray<real,ndofs,1,2> edgerecon;
+  SArray<real,3,ndofs,1,ord> stencil;
+  SArray<real,3,ndofs,1,2> edgerecon;
 
   for (int p=0; p<ord; p++) {
   for (int l=0; l<ndofs; l++) {
@@ -108,11 +108,11 @@ template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord=2, uint
 }
 
 template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord=2, uint hs=(ord-1)/2> void YAKL_INLINE compute_straight_xz_vert_edge_recon(
-  realArr edgereconvar, const realArr var, int is, int js, int ks, int i, int j, int k,
-  SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,ord,tord> const &to_gll, SArray<real,hs+2> const &wenoIdl, real wenoSigma)
+  real4d edgereconvar, const real4d var, int is, int js, int ks, int i, int j, int k,
+  SArray<real,3,ord,ord,ord> const &wenoRecon, SArray<real,2,ord,tord> const &to_gll, SArray<real,1,hs+2> const &wenoIdl, real wenoSigma)
 {
-  SArray<real,ndofs,1,ord> stencil;
-  SArray<real,ndofs,1,2> edgerecon;
+  SArray<real,3,ndofs,1,ord> stencil;
+  SArray<real,3,ndofs,1,2> edgerecon;
 
   for (int p=0; p<ord; p++) {
   for (int l=0; l<ndofs; l++) {
@@ -158,7 +158,7 @@ template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord=2, uint
 
 
 
-template<uint ndofs, uint nd> void YAKL_INLINE centered_recon(SArray<real,ndofs,nd> &recon, SArray<real,ndofs,nd,2> const &edgerecon) {
+template<uint ndofs, uint nd> void YAKL_INLINE centered_recon(SArray<real,2,ndofs,nd> &recon, SArray<real,ndofs,nd,2> const &edgerecon) {
 
     for (int l=0; l<ndofs; l++) {
       for (int d=0; d<nd; d++) {
@@ -167,7 +167,7 @@ template<uint ndofs, uint nd> void YAKL_INLINE centered_recon(SArray<real,ndofs,
   }
 }
 
-template<uint ndofs, uint nd> void YAKL_INLINE upwind_recon(SArray<real,ndofs,nd> &recon, SArray<real,ndofs,nd,2> const &edgerecon, SArray<real,nd> const &flux) {
+template<uint ndofs, uint nd> void YAKL_INLINE upwind_recon(SArray<real,2,ndofs,nd> &recon, SArray<real,3,ndofs,nd,2> const &edgerecon, SArray<real,1,nd> const &flux) {
 
     real upwind_param;
     for (int l=0; l<ndofs; l++) {
@@ -182,12 +182,12 @@ template<uint ndofs, uint nd> void YAKL_INLINE upwind_recon(SArray<real,ndofs,nd
 
 
 template <uint ndofs, RECONSTRUCTION_TYPE recontype> void YAKL_INLINE compute_twisted_recon(
-  realArr reconvar, const realArr edgereconvar, const realArr U, int is, int js, int ks, int i, int j, int k)
+  real4d reconvar, const real4d edgereconvar, const real4d U, int is, int js, int ks, int i, int j, int k)
   {
 
-SArray<real,ndofs,ndims> recon;
-SArray<real,ndims> uvar;
-SArray<real,ndofs,ndims,2> edgerecon;
+SArray<real,2,ndofs,ndims> recon;
+SArray<real,1,ndims> uvar;
+SArray<real,3,ndofs,ndims,2> edgerecon;
 
 for (int d=0; d<ndims; d++) {
   uvar(d) = U(d, k+ks, j+js, i+is);
@@ -216,12 +216,12 @@ reconvar(l+d*ndofs, k+ks, j+js, i+is) = recon(l,d);
 }
 
 template <uint ndofs, RECONSTRUCTION_TYPE recontype> void YAKL_INLINE compute_twisted_vert_recon(
-  realArr vertreconvar, const realArr vertedgereconvar, const realArr UW, int is, int js, int ks, int i, int j, int k)
+  real4d vertreconvar, const real4d vertedgereconvar, const real4d UW, int is, int js, int ks, int i, int j, int k)
   {
     
-    SArray<real,ndofs,1> recon;
-    SArray<real,1> uvar;
-    SArray<real,ndofs,1,2> edgerecon;
+    SArray<real,2,ndofs,1> recon;
+    SArray<real,1,1> uvar;
+    SArray<real,3,ndofs,1,2> edgerecon;
 
       uvar(0) = UW(0, k+ks, j+js, i+is);
     for (int l=0; l<ndofs; l++) {
@@ -240,11 +240,11 @@ template <uint ndofs, RECONSTRUCTION_TYPE recontype> void YAKL_INLINE compute_tw
   
   
 template <uint ndofs, RECONSTRUCTION_TYPE recontype> void YAKL_INLINE compute_straight_recon(
-  realArr reconvar, const realArr edgereconvar, const realArr UT, int is, int js, int ks, int i, int j, int k)
+  real4d reconvar, const real4d edgereconvar, const real4d UT, int is, int js, int ks, int i, int j, int k)
   {
-    SArray<real,ndofs,ndims> recon;
-    SArray<real,ndims> uvar;
-    SArray<real,ndofs,ndims,2> edgerecon;
+    SArray<real,2,ndofs,ndims> recon;
+    SArray<real,1,ndims> uvar;
+    SArray<real,3,ndofs,ndims,2> edgerecon;
 
     for (int d=ndims-1; d>=0; d--) {
       uvar(d) = UT(d, k+ks, j+js, i+is);
@@ -280,11 +280,11 @@ template <uint ndofs, RECONSTRUCTION_TYPE recontype> void YAKL_INLINE compute_st
 
 
   template <uint ndofs, RECONSTRUCTION_TYPE recontype> void YAKL_INLINE compute_straight_xz_recon(
-    realArr reconvar, const realArr edgereconvar, const realArr WT, int is, int js, int ks, int i, int j, int k)
+    real4d reconvar, const real4d edgereconvar, const real4d WT, int is, int js, int ks, int i, int j, int k)
     {
-      SArray<real,ndofs,1> recon;
-      SArray<real,1> uvar;
-      SArray<real,ndofs,1,2> edgerecon;
+      SArray<real,2,ndofs,1> recon;
+      SArray<real,1,1> uvar;
+      SArray<real,3,ndofs,1,2> edgerecon;
         uvar(0) = WT(0, k+ks, j+js, i+is);
 //POSSIBLY NEED A "TWIST" IE SIGN CHANGE?
       for (int l=0; l<ndofs; l++) {
@@ -302,11 +302,11 @@ template <uint ndofs, RECONSTRUCTION_TYPE recontype> void YAKL_INLINE compute_st
     }
     
   template <uint ndofs, RECONSTRUCTION_TYPE recontype> void YAKL_INLINE compute_straight_xz_vert_recon(
-    realArr reconvar, const realArr edgereconvar, const realArr VT, int is, int js, int ks, int i, int j, int k)
+    real4d reconvar, const real4d edgereconvar, const real4d VT, int is, int js, int ks, int i, int j, int k)
   {
-    SArray<real,ndofs,1> recon;
-    SArray<real,1> uvar;
-    SArray<real,ndofs,1,2> edgerecon;
+    SArray<real,2,ndofs,1> recon;
+    SArray<real,1,1> uvar;
+    SArray<real,3,ndofs,1,2> edgerecon;
       uvar(0) = -VT(0, k+ks, j+js, i+is);
 //POSSIBLY NEED A "TWIST" IE SIGN CHANGE?
     for (int l=0; l<ndofs; l++) {

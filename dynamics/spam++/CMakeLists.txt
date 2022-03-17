@@ -2,7 +2,15 @@
 
 
 cmake_minimum_required(VERSION 3.0)
-project(spam++ CXX)
+project(spam++)
+
+enable_language(Fortran)
+enable_language(CXX)
+enable_language(C)
+if ("${YAKL_ARCH}" STREQUAL "CUDA")
+  enable_language(CUDA)
+endif()
+
 
 if ("${GENERAL_COMPILE_CONST}" STREQUAL "")
 file(READ src/compile_consts.build general_defines)
@@ -23,24 +31,20 @@ add_definitions(${definecmd})
 endif()
 endforeach()
 
-
-
-
-
-
-
-# basically the build script takes 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXXFLAGS}")
 
 include_directories(${PNETCDF_INCLUDE})
 link_directories(${PNETCDF_LIB})
 link_libraries(pnetcdf)
 
-add_subdirectory(externals/YAKL)
-include_directories(externals/YAKL)
-include_directories(externals/cub)
-include_directories(externals/hipCUB)
-include_directories(externals/rocPRIM)
+set(YAKL_HOME ${CMAKE_CURRENT_SOURCE_DIR}/../../externals/YAKL)
+set(YAKL_BIN  ${CMAKE_CURRENT_BINARY_DIR}/yakl)
+add_subdirectory(${YAKL_HOME} ${YAKL_BIN})
+
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../externals/eigen)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../coupler)
+
 
 include_directories(src)
 include_directories(src/driver)

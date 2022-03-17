@@ -33,9 +33,9 @@ public:
   int const_var_ids[nconst], prog_var_ids[nprog], diag_var_ids[ndiag];
   int tVar;
   std::string outputName;
-  std::array<realArr, nprog> prog_temp_arr;
-  std::array<realArr, nconst> const_temp_arr;
-  std::array<realArr, ndiag> diag_temp_arr;
+  std::array<real4d, nprog> prog_temp_arr;
+  std::array<real4d, nconst> const_temp_arr;
+  std::array<real4d, ndiag> diag_temp_arr;
   const VariableSet<nprog> *prog_vars;
   const VariableSet<nconst> *const_vars;
   const VariableSet<ndiag> *diag_vars;
@@ -118,7 +118,7 @@ public:
            {const_dim_ids[0] = const_var_dim_ids[i]; const_dim_ids[1] = diDim; const_dim_ids[2] = dyDim; const_dim_ids[3] = dxDim;}
          }
          ncwrap( ncmpi_def_var( ncid , this->const_vars->fields_arr[i].name.c_str() , REAL_NC , 4 , const_dim_ids , &const_var_ids[i]  ) , __LINE__ );
-         this->const_temp_arr[i] = realArr(this->const_vars->fields_arr[i].name.c_str(), this->const_vars->fields_arr[i].total_dofs, this->const_vars->fields_arr[i]._nz, this->const_vars->fields_arr[i].topology->n_cells_y, this->const_vars->fields_arr[i].topology->n_cells_x);
+         this->const_temp_arr[i] = real4d(this->const_vars->fields_arr[i].name.c_str(), this->const_vars->fields_arr[i].total_dofs, this->const_vars->fields_arr[i]._nz, this->const_vars->fields_arr[i].topology->n_cells_y, this->const_vars->fields_arr[i].topology->n_cells_x);
        }
        }
 
@@ -140,7 +140,7 @@ public:
            {prog_dim_ids[0] = tVar; prog_dim_ids[1] = prog_var_dim_ids[i]; prog_dim_ids[2] = diDim; prog_dim_ids[3] = dyDim; prog_dim_ids[4] = dxDim;}
          }
          ncwrap( ncmpi_def_var( ncid , this->prog_vars->fields_arr[i].name.c_str() , REAL_NC , 5 , prog_dim_ids , &prog_var_ids[i]  ) , __LINE__ );
-         this->prog_temp_arr[i] = realArr(this->prog_vars->fields_arr[i].name.c_str(), this->prog_vars->fields_arr[i].total_dofs, this->prog_vars->fields_arr[i]._nz, this->prog_vars->fields_arr[i].topology->n_cells_y, this->prog_vars->fields_arr[i].topology->n_cells_x);
+         this->prog_temp_arr[i] = real4d(this->prog_vars->fields_arr[i].name.c_str(), this->prog_vars->fields_arr[i].total_dofs, this->prog_vars->fields_arr[i]._nz, this->prog_vars->fields_arr[i].topology->n_cells_y, this->prog_vars->fields_arr[i].topology->n_cells_x);
          }
        }
 
@@ -162,7 +162,7 @@ public:
            {diag_dim_ids[0] = tVar; diag_dim_ids[1] = diag_var_dim_ids[i]; diag_dim_ids[2] = diDim; diag_dim_ids[3] = dyDim; diag_dim_ids[4] = dxDim;}
          }
          ncwrap( ncmpi_def_var( ncid , this->diag_vars->fields_arr[i].name.c_str() , REAL_NC , 5 , diag_dim_ids , &diag_var_ids[i]  ) , __LINE__ );
-         this->diag_temp_arr[i] = realArr(this->diag_vars->fields_arr[i].name.c_str(), this->diag_vars->fields_arr[i].total_dofs, this->diag_vars->fields_arr[i]._nz, this->diag_vars->fields_arr[i].topology->n_cells_y, this->diag_vars->fields_arr[i].topology->n_cells_x);
+         this->diag_temp_arr[i] = real4d(this->diag_vars->fields_arr[i].name.c_str(), this->diag_vars->fields_arr[i].total_dofs, this->diag_vars->fields_arr[i]._nz, this->diag_vars->fields_arr[i].topology->n_cells_y, this->diag_vars->fields_arr[i].topology->n_cells_x);
        }
        }
 

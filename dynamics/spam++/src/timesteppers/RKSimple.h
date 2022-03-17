@@ -17,7 +17,7 @@ template<uint nprog, uint nconst, uint naux, uint nstages> class RKSimpleTimeInt
 
 public:
 
-  SArray<real, nstages> stage_coeffs;
+  SArray<real,1, nstages> stage_coeffs;
   VariableSet<nprog> xtend;
   VariableSet<nprog> xtemp;
   VariableSet<nprog> *x;

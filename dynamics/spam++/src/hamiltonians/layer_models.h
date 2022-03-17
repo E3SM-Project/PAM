@@ -24,11 +24,11 @@ void initialize(ModelParameters &params, ThermoPotential &thermodynamics, Geomet
  this->is_initialized = true;
 }
 
-real YAKL_INLINE compute_PE(const realArr dens, const realArr hs, int is, int js, int ks, int i, int j, int k)
+real YAKL_INLINE compute_PE(const real4d dens, const real4d hs, int is, int js, int ks, int i, int j, int k)
 {
 // Assumes things are stored in dens as as 0=h, 1=S, tracers
 //P = S * hs + 1/2 S * h + sum_nt 1/2 h * t + sum_nt 1/2 h * tfct;
-SArray<real,2> dens0;
+SArray<real,1,2> dens0;
 #ifdef _EXTRUDED   
 compute_Iext<2,diff_ord,vert_diff_ord> (dens0, dens, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
 #else
@@ -40,7 +40,7 @@ compute_I<2,diff_ord> (dens0, dens, *this->primal_geometry, *this->dual_geometry
  
 }
 
-real YAKL_INLINE compute_IE(const realArr dens, int is, int js, int ks, int i, int j, int k)
+real YAKL_INLINE compute_IE(const real4d dens, int is, int js, int ks, int i, int j, int k)
 {
  return 0;
 }
@@ -54,13 +54,13 @@ real YAKL_INLINE compute_IE(const realArr dens, int is, int js, int ks, int i, i
 //For now all Hs just take one extra argument: hs or geop!
 //So it is ok for a bit
 
-void YAKL_INLINE compute_dHsdx(realArr B, const realArr dens0, const realArr hs, int is, int js, int ks, int i, int j, int k)
+void YAKL_INLINE compute_dHsdx(real4d B, const real4d dens0, const real4d hs, int is, int js, int ks, int i, int j, int k)
 {
 
   // Assumes things are stored in dens as as 0=h, 1=S, tracers
 
   //compute I hs
-  SArray<real,1> hs0;
+  SArray<real,1,1> hs0;
   #ifdef _EXTRUDED   
   compute_Iext<1, diff_ord, vert_diff_ord>(hs0, hs, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
   #else
@@ -106,12 +106,12 @@ void initialize(ModelParameters &params, ThermoPotential &thermodynamics, Geomet
  g = params.g;
 }
 
-real YAKL_INLINE compute_PE(const realArr dens, const realArr hs, int is, int js, int ks, int i, int j, int k)
+real YAKL_INLINE compute_PE(const real4d dens, const real4d hs, int is, int js, int ks, int i, int j, int k)
 {
   // Assumes things are stored in dens as as 0=h, tracers
 
 //P = g * h * hs + 1/2 g * h * h + sum_nt 1/2 h * t + sum_nt 1/2 h * tfct;
-SArray<real,1> h0;
+SArray<real,1,1> h0;
 #ifdef _EXTRUDED   
 compute_Iext<1,diff_ord,vert_diff_ord> (h0, dens, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
 #else
@@ -125,19 +125,19 @@ for (int l=1; l<ndensity; l++) { PE += 0.5 * h0(0) * dens(l, k+ks, j+js, i+is);}
  
 }
 
-real YAKL_INLINE compute_IE(const realArr dens, int is, int js, int ks, int i, int j, int k)
+real YAKL_INLINE compute_IE(const real4d dens, int is, int js, int ks, int i, int j, int k)
 {
  return 0;
 }
 
-void YAKL_INLINE compute_dHsdx(realArr B, const realArr dens0, const realArr hs, int is, int js, int ks, int i, int j, int k)
+void YAKL_INLINE compute_dHsdx(real4d B, const real4d dens0, const real4d hs, int is, int js, int ks, int i, int j, int k)
 {
   // Assumes things are stored in dens as as 0=h, tracers
 
 
 //ELIMINATE THIS EVENTUALLY...
   //compute I hs
-  SArray<real,1> hs0;
+  SArray<real,1,1> hs0;
   #ifdef _EXTRUDED   
   compute_Iext<1, diff_ord,vert_diff_ord>(hs0, hs, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
   #else

@@ -1,38 +1,123 @@
-#ifndef _COMMON_H_
-#define _COMMON_H_
+#pragma once
 
 #include <cmath>
 #include <iostream>
 #include <cstring>
 
-#include "Array.h"
-#include "SArray.h"
-#if defined(__USE_HIP__)
-  #include "hip/hip_runtime.h"
-#endif
+#include "YAKL.h"
+//#include <thread>
 
 using yakl::SArray;
+using yakl::c::parallel_for;
+using yakl::c::SimpleBounds;
+using yakl::c::Bounds;
+using yakl::memDevice;
+using yakl::memHost;
+using yakl::styleC;
+using yakl::index_t;
 
 typedef unsigned long ulong;
 typedef unsigned int  uint;
 
 // Declaring the precision for the model
 typedef double real;
+
 #define PNETCDF_PUT_VAR ncmpi_put_vara_double
 #define PNETCDF_PUT_VAR_ALL ncmpi_put_vara_double_all
 #define REAL_NC NC_DOUBLE
 #define REAL_MPI MPI_DOUBLE
 
 
-// Define a real array type, presumed on the "device"
+// Define array types, presumed on the "device"
 #if defined(__USE_CUDA__) || defined(__USE_HIP__)
-  typedef yakl::Array<real,yakl::memDevice> realArr;
+
+typedef yakl::Array<real,1,yakl::memDevice,yakl::styleC> real1d;
+typedef yakl::Array<real,2,yakl::memDevice,yakl::styleC> real2d;
+typedef yakl::Array<real,3,yakl::memDevice,yakl::styleC> real3d;
+typedef yakl::Array<real,4,yakl::memDevice,yakl::styleC> real4d;
+typedef yakl::Array<real,5,yakl::memDevice,yakl::styleC> real5d;
+typedef yakl::Array<real,6,yakl::memDevice,yakl::styleC> real6d;
+typedef yakl::Array<real,7,yakl::memDevice,yakl::styleC> real7d;
+typedef yakl::Array<real,8,yakl::memDevice,yakl::styleC> real8d;
+
+typedef yakl::Array<int,1,yakl::memDevice,yakl::styleC> int1d;
+typedef yakl::Array<int,2,yakl::memDevice,yakl::styleC> int2d;
+typedef yakl::Array<int,3,yakl::memDevice,yakl::styleC> int3d;
+typedef yakl::Array<int,4,yakl::memDevice,yakl::styleC> int4d;
+typedef yakl::Array<int,5,yakl::memDevice,yakl::styleC> int5d;
+typedef yakl::Array<int,6,yakl::memDevice,yakl::styleC> int6d;
+typedef yakl::Array<int,7,yakl::memDevice,yakl::styleC> int7d;
+typedef yakl::Array<int,8,yakl::memDevice,yakl::styleC> int8d;
+
+typedef yakl::Array<bool,1,yakl::memDevice,yakl::styleC> bool1d;
+typedef yakl::Array<bool,2,yakl::memDevice,yakl::styleC> bool2d;
+typedef yakl::Array<bool,3,yakl::memDevice,yakl::styleC> bool3d;
+typedef yakl::Array<bool,4,yakl::memDevice,yakl::styleC> bool4d;
+typedef yakl::Array<bool,5,yakl::memDevice,yakl::styleC> bool5d;
+typedef yakl::Array<bool,6,yakl::memDevice,yakl::styleC> bool6d;
+typedef yakl::Array<bool,7,yakl::memDevice,yakl::styleC> bool7d;
+typedef yakl::Array<bool,8,yakl::memDevice,yakl::styleC> bool8d;
+
 #else
-  typedef yakl::Array<real,yakl::memHost> realArr;
+
+typedef yakl::Array<real,1,yakl::memHost,yakl::styleC> real1d;
+typedef yakl::Array<real,2,yakl::memHost,yakl::styleC> real2d;
+typedef yakl::Array<real,3,yakl::memHost,yakl::styleC> real3d;
+typedef yakl::Array<real,4,yakl::memHost,yakl::styleC> real4d;
+typedef yakl::Array<real,5,yakl::memHost,yakl::styleC> real5d;
+typedef yakl::Array<real,6,yakl::memHost,yakl::styleC> real6d;
+typedef yakl::Array<real,7,yakl::memHost,yakl::styleC> real7d;
+typedef yakl::Array<real,8,yakl::memHost,yakl::styleC> real8d;
+
+typedef yakl::Array<int,1,yakl::memHost,yakl::styleC> int1d;
+typedef yakl::Array<int,2,yakl::memHost,yakl::styleC> int2d;
+typedef yakl::Array<int,3,yakl::memHost,yakl::styleC> int3d;
+typedef yakl::Array<int,4,yakl::memHost,yakl::styleC> int4d;
+typedef yakl::Array<int,5,yakl::memHost,yakl::styleC> int5d;
+typedef yakl::Array<int,6,yakl::memHost,yakl::styleC> int6d;
+typedef yakl::Array<int,7,yakl::memHost,yakl::styleC> int7d;
+typedef yakl::Array<int,8,yakl::memHost,yakl::styleC> int8d;
+
+typedef yakl::Array<bool,1,yakl::memHost,yakl::styleC> bool1d;
+typedef yakl::Array<bool,2,yakl::memHost,yakl::styleC> bool2d;
+typedef yakl::Array<bool,3,yakl::memHost,yakl::styleC> bool3d;
+typedef yakl::Array<bool,4,yakl::memHost,yakl::styleC> bool4d;
+typedef yakl::Array<bool,5,yakl::memHost,yakl::styleC> bool5d;
+typedef yakl::Array<bool,6,yakl::memHost,yakl::styleC> bool6d;
+typedef yakl::Array<bool,7,yakl::memHost,yakl::styleC> bool7d;
+typedef yakl::Array<bool,8,yakl::memHost,yakl::styleC> bool8d;
+
 #endif
 
-// Define a real array type on the "host"
-typedef yakl::Array<real,yakl::memHost> realArrHost;
+// Define array types on the "host"
+
+
+typedef yakl::Array<real,1,yakl::memHost,yakl::styleC> realHost1d;
+typedef yakl::Array<real,2,yakl::memHost,yakl::styleC> realHost2d;
+typedef yakl::Array<real,3,yakl::memHost,yakl::styleC> realHost3d;
+typedef yakl::Array<real,4,yakl::memHost,yakl::styleC> realHost4d;
+typedef yakl::Array<real,5,yakl::memHost,yakl::styleC> realHost5d;
+typedef yakl::Array<real,6,yakl::memHost,yakl::styleC> realHost6d;
+typedef yakl::Array<real,7,yakl::memHost,yakl::styleC> realHost7d;
+typedef yakl::Array<real,8,yakl::memHost,yakl::styleC> realHost8d;
+
+typedef yakl::Array<int,1,yakl::memHost,yakl::styleC> intHost1d;
+typedef yakl::Array<int,2,yakl::memHost,yakl::styleC> intHost2d;
+typedef yakl::Array<int,3,yakl::memHost,yakl::styleC> intHost3d;
+typedef yakl::Array<int,4,yakl::memHost,yakl::styleC> intHost4d;
+typedef yakl::Array<int,5,yakl::memHost,yakl::styleC> intHost5d;
+typedef yakl::Array<int,6,yakl::memHost,yakl::styleC> intHost6d;
+typedef yakl::Array<int,7,yakl::memHost,yakl::styleC> intHost7d;
+typedef yakl::Array<int,8,yakl::memHost,yakl::styleC> intHost8d;
+
+typedef yakl::Array<bool,1,yakl::memHost,yakl::styleC> boolHost1d;
+typedef yakl::Array<bool,2,yakl::memHost,yakl::styleC> boolHost2d;
+typedef yakl::Array<bool,3,yakl::memHost,yakl::styleC> boolHost3d;
+typedef yakl::Array<bool,4,yakl::memHost,yakl::styleC> boolHost4d;
+typedef yakl::Array<bool,5,yakl::memHost,yakl::styleC> boolHost5d;
+typedef yakl::Array<bool,6,yakl::memHost,yakl::styleC> boolHost6d;
+typedef yakl::Array<bool,7,yakl::memHost,yakl::styleC> boolHost7d;
+typedef yakl::Array<bool,8,yakl::memHost,yakl::styleC> boolHost8d;
 
 // This will convert what would otherwise be double literals to the real type to avoid
 // double precision arithmetic if real is single precision.
@@ -132,8 +217,3 @@ uint constexpr maxhalosize = 15; //mymax(reconstruction_order+1,differential_ord
 uint constexpr mirroringhalo = 9; //mymax(reconstruction_order+1,differential_order)/2; // IS THIS ALWAYS CORRECT?
 
 #include "model-compile-consts.h"
-
-
-
-
-#endif

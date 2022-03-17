@@ -4,7 +4,7 @@
 #include "common.h"
 
 
-template<uint ndofs, uint nd> void YAKL_INLINE cfv(SArray<real,ndofs,nd,2> &edgerecon, SArray<real,ndofs,nd,1> const &dens) {
+template<uint ndofs, uint nd> void YAKL_INLINE cfv(SArray<real,3,ndofs,nd,2> &edgerecon, SArray<real,3,ndofs,nd,1> const &dens) {
     for (int l=0; l<ndofs; l++) {
       for (int d=0; d<nd; d++) {
           edgerecon(l,d,0) = dens(l,d,0);
@@ -14,7 +14,7 @@ template<uint ndofs, uint nd> void YAKL_INLINE cfv(SArray<real,ndofs,nd,2> &edge
 }
 
 
-template<uint ndofs, uint nd> void YAKL_INLINE cfv(SArray<real,ndofs,nd,2> &edgerecon, SArray<real,ndofs,nd,3> const &dens) {
+template<uint ndofs, uint nd> void YAKL_INLINE cfv(SArray<real,3,ndofs,nd,2> &edgerecon, SArray<real,3,ndofs,nd,3> const &dens) {
     real er;
     for (int l=0; l<ndofs; l++) {
       for (int d=0; d<nd; d++) {
@@ -26,7 +26,7 @@ template<uint ndofs, uint nd> void YAKL_INLINE cfv(SArray<real,ndofs,nd,2> &edge
 }
 
 
-template<uint ndofs, uint nd> void YAKL_INLINE cfv(SArray<real,ndofs,nd,2> &edgerecon, SArray<real,ndofs,nd,5> const &dens) {
+template<uint ndofs, uint nd> void YAKL_INLINE cfv(SArray<real,3,ndofs,nd,2> &edgerecon, SArray<real,3,ndofs,nd,5> const &dens) {
     real er;
     for (int l=0; l<ndofs; l++) {
       for (int d=0; d<nd; d++) {
@@ -37,7 +37,7 @@ template<uint ndofs, uint nd> void YAKL_INLINE cfv(SArray<real,ndofs,nd,2> &edge
       }
 }
 
-template<uint ndofs, uint nd> void YAKL_INLINE cfv(SArray<real,ndofs,nd,2> &edgerecon, SArray<real,ndofs,nd,7> const &dens) {
+template<uint ndofs, uint nd> void YAKL_INLINE cfv(SArray<real,3,ndofs,nd,2> &edgerecon, SArray<real,3,ndofs,nd,7> const &dens) {
     real er;
     for (int l=0; l<ndofs; l++) {
       for (int d=0; d<nd; d++) {
@@ -49,7 +49,7 @@ template<uint ndofs, uint nd> void YAKL_INLINE cfv(SArray<real,ndofs,nd,2> &edge
 }
 
 
-template<uint ndofs, uint nd> void YAKL_INLINE cfv(SArray<real,ndofs,nd,2> &edgerecon, SArray<real,ndofs,nd,9> const &dens) {
+template<uint ndofs, uint nd> void YAKL_INLINE cfv(SArray<real,3,ndofs,nd,2> &edgerecon, SArray<real,3,ndofs,nd,9> const &dens) {
     real er;
     for (int l=0; l<ndofs; l++) {
       for (int d=0; d<nd; d++) {

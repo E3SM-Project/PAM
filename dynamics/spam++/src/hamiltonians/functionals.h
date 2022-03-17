@@ -21,10 +21,10 @@ void initialize(ModelParameters &params)
   this->is_initialized = true;
 }
 
-real YAKL_INLINE compute_hv(const realArr dens, int is, int js, int ks, int i, int j, int k)
+real YAKL_INLINE compute_hv(const real4d dens, int is, int js, int ks, int i, int j, int k)
 {
-  SArray<real,1> hv;
-  SArray<real,4> Dv;
+  SArray<real,1,1> hv;
+  SArray<real,1,4> Dv;
 
   // compute hv = R h
   Dv(0) = dens(0, k+ks, j+js, i+is);
@@ -36,22 +36,22 @@ real YAKL_INLINE compute_hv(const realArr dens, int is, int js, int ks, int i, i
   return hv(0);
 }
 
-real YAKL_INLINE compute_zeta(const realArr v, int is, int js, int ks, int i, int j, int k)
+real YAKL_INLINE compute_zeta(const real4d v, int is, int js, int ks, int i, int j, int k)
 {
-  SArray<real,1> zeta;
+  SArray<real,1,1> zeta;
   // compute zeta = D2 v
   compute_D2<1>(zeta, v, is, js, ks, i, j, k);
   return zeta(0);
 }
 
-real YAKL_INLINE compute_eta(const realArr v, const realArr coriolis, int is, int js, int ks, int i, int j, int k)
+real YAKL_INLINE compute_eta(const real4d v, const real4d coriolis, int is, int js, int ks, int i, int j, int k)
 {
   real zeta = compute_zeta(v, is, js, ks, i, j, k);
   return zeta + coriolis(0, k+ks, j+js, i+is);
 }
 
 
-void YAKL_INLINE compute_q0f0(realArr q0, realArr f0, const realArr v, const realArr dens, const realArr coriolis, int is, int js, int ks, int i, int j, int k)
+void YAKL_INLINE compute_q0f0(real4d q0, real4d f0, const real4d v, const real4d dens, const real4d coriolis, int is, int js, int ks, int i, int j, int k)
 {
 
   real hv = compute_hv(dens, is, js, ks, i, j, k);
@@ -63,7 +63,7 @@ void YAKL_INLINE compute_q0f0(realArr q0, realArr f0, const realArr v, const rea
 
 }
 
-void YAKL_INLINE compute_q0(realArr q0, const realArr v, const realArr dens, int is, int js, int ks, int i, int j, int k)
+void YAKL_INLINE compute_q0(real4d q0, const real4d v, const real4d dens, int is, int js, int ks, int i, int j, int k)
 {
 real hv = compute_hv(dens, is, js, ks, i, j, k);
 real zeta = compute_zeta(v, is, js, ks, i, j, k);
@@ -71,7 +71,7 @@ real zeta = compute_zeta(v, is, js, ks, i, j, k);
   q0(0, k+ks, j+js, i+is) = zeta / hv;
 }
 
-pvpe YAKL_INLINE compute_PVPE(const realArr v, const realArr dens, const realArr coriolis, int is, int js, int ks, int i, int j, int k)
+pvpe YAKL_INLINE compute_PVPE(const real4d v, const real4d dens, const real4d coriolis, int is, int js, int ks, int i, int j, int k)
 {
   pvpe vals;
   real eta = compute_eta(v, coriolis, is, js, ks, i, j, k);
@@ -101,7 +101,7 @@ pvpe YAKL_INLINE compute_PVPE(const realArr v, const realArr dens, const realArr
 //   this->is_initialized = true;
 // }
 // 
-// real YAKL_INLINE compute_hv(const realArr dens, const realArr densfct, int is, int js, int ks, int i, int j, int k)
+// real YAKL_INLINE compute_hv(const real4d dens, const real4d densfct, int is, int js, int ks, int i, int j, int k)
 // {
 //   SArray<real,1> hv;
 //   SArray<real,4> Dv;
@@ -117,7 +117,7 @@ pvpe YAKL_INLINE compute_PVPE(const realArr v, const realArr dens, const realArr
 //   return hv(0);
 // }
 // 
-// real YAKL_INLINE compute_zeta(const realArr v, int is, int js, int ks, int i, int j, int k)
+// real YAKL_INLINE compute_zeta(const real4d v, int is, int js, int ks, int i, int j, int k)
 // {
 //   SArray<real,1> zeta;
 //   // compute zeta = D2 v
@@ -125,14 +125,14 @@ pvpe YAKL_INLINE compute_PVPE(const realArr v, const realArr dens, const realArr
 //   return zeta(0);
 // }
 // 
-// real YAKL_INLINE compute_eta(const realArr v, const realArr coriolis, int is, int js, int ks, int i, int j, int k)
+// real YAKL_INLINE compute_eta(const real4d v, const real4d coriolis, int is, int js, int ks, int i, int j, int k)
 // {
 //   real zeta = compute_zeta(v, is, js, ks, i, j, k);
 //   return zeta + coriolis(0, k+ks, j+js, i+is);
 // }
 // 
 // 
-// void YAKL_INLINE compute_q0f0(realArr q0, realArr f0, const realArr v, const realArr dens, const realArr densfct, const realArr coriolis, int is, int js, int ks, int i, int j, int k)
+// void YAKL_INLINE compute_q0f0(real4d q0, real4d f0, const real4d v, const real4d dens, const real4d densfct, const real4d coriolis, int is, int js, int ks, int i, int j, int k)
 // {
 // 
 //   real hv = compute_hv(dens, densfct, is, js, ks, i, j, k);
@@ -144,7 +144,7 @@ pvpe YAKL_INLINE compute_PVPE(const realArr v, const realArr dens, const realArr
 // 
 // }
 // 
-// void YAKL_INLINE compute_q0(realArr q0, const realArr v, const realArr dens, const realArr densfct, int is, int js, int ks, int i, int j, int k)
+// void YAKL_INLINE compute_q0(real4d q0, const real4d v, const real4d dens, const real4d densfct, int is, int js, int ks, int i, int j, int k)
 // {
 // real hv = compute_hv(dens, densfct, is, js, ks, i, j, k);
 // real zeta = compute_zeta(v, is, js, ks, i, j, k);
@@ -152,7 +152,7 @@ pvpe YAKL_INLINE compute_PVPE(const realArr v, const realArr dens, const realArr
 //   q0(0, k+ks, j+js, i+is) = zeta / hv;
 // }
 // 
-// pvpe YAKL_INLINE compute_PVPE(const realArr v, const realArr dens, const realArr densfct, const realArr coriolis, int is, int js, int ks, int i, int j, int k)
+// pvpe YAKL_INLINE compute_PVPE(const real4d v, const real4d dens, const real4d densfct, const real4d coriolis, int is, int js, int ks, int i, int j, int k)
 // {
 //   pvpe vals;
 //   real eta = compute_eta(v, coriolis, is, js, ks, i, j, k);
@@ -195,10 +195,10 @@ void initialize(ModelParameters &params)
   this->is_initialized = true;
 }
 
-real YAKL_INLINE compute_hv(const realArr dens, int is, int js, int ks, int i, int j, int k)
+real YAKL_INLINE compute_hv(const real4d dens, int is, int js, int ks, int i, int j, int k)
 {
-  SArray<real,1> hv;
-  SArray<real,4> Dv;
+  SArray<real,1,1> hv;
+  SArray<real,1,4> Dv;
   
   // compute hv = R h
   // Uses linearity of R
@@ -211,15 +211,15 @@ real YAKL_INLINE compute_hv(const realArr dens, int is, int js, int ks, int i, i
   return hv(0);
 }
 
-real YAKL_INLINE compute_zeta(const realArr v, const realArr w, int is, int js, int ks, int i, int j, int k)
+real YAKL_INLINE compute_zeta(const real4d v, const real4d w, int is, int js, int ks, int i, int j, int k)
 {
-  SArray<real,1> zeta;
+  SArray<real,1,1> zeta;
   // compute zeta = Dxz "v"
   compute_Dxz<1> (zeta, v, w, is, js, ks, i, j, k);
   return zeta(0);
 }
 
-void YAKL_INLINE compute_qxz0(realArr qxz0, const realArr v, const realArr w, const realArr dens, int is, int js, int ks, int i, int j, int k)
+void YAKL_INLINE compute_qxz0(real4d qxz0, const real4d v, const real4d w, const real4d dens, int is, int js, int ks, int i, int j, int k)
 {
   //Need to subtract 1 here since d00(i,k) corresponds to p11(i,k)
  real hv = compute_hv(dens, is, js, ks, i, j, k-1);
@@ -228,7 +228,7 @@ void YAKL_INLINE compute_qxz0(realArr qxz0, const realArr v, const realArr w, co
 qxz0(0, k+ks, j+js, i+is) = zeta / hv;
 }
 
-pvpe YAKL_INLINE compute_PVPE(const realArr v, const realArr w, const realArr dens, int is, int js, int ks, int i, int j, int k)
+pvpe YAKL_INLINE compute_PVPE(const real4d v, const real4d w, const real4d dens, int is, int js, int ks, int i, int j, int k)
 {
   pvpe vals;
   //No subtraction here since this is called on primal cells p11

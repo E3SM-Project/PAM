@@ -5,7 +5,7 @@
 
 
 
-template<uint ndofs> void YAKL_INLINE calculate_edgeflux(SArray<real,ndofs,ndims> &edgeflux, SArray<real,ndofs,ndims> const &recon, SArray<real,ndims> const &flux)
+template<uint ndofs> void YAKL_INLINE calculate_edgeflux(SArray<real,2,ndofs,ndims> &edgeflux, SArray<real,2,ndofs,ndims> const &recon, SArray<real,1,ndims> const &flux)
 {
   for (int l=0; l<ndofs; l++) {
   for (int d=0; d<ndims; d++) {
@@ -13,11 +13,11 @@ template<uint ndofs> void YAKL_INLINE calculate_edgeflux(SArray<real,ndofs,ndims
   }}
 }
 
-template<uint ndofs> YAKL_INLINE void compute_edgefluxes(realArr edgefluxvar, const realArr reconvar, const realArr U, int is, int js, int ks, int i, int j, int k)
+template<uint ndofs> YAKL_INLINE void compute_edgefluxes(real4d edgefluxvar, const real4d reconvar, const real4d U, int is, int js, int ks, int i, int j, int k)
 {
-SArray<real,ndofs,ndims> edgeflux;
-SArray<real,ndofs,ndims> recon;
-SArray<real,ndims> flux;
+SArray<real,2,ndofs,ndims> edgeflux;
+SArray<real,2,ndofs,ndims> recon;
+SArray<real,1,ndims> flux;
 for (int d=0; d<ndims; d++) {
 flux(d) = U(d, k+ks, j+js, i+is);
 for (int l=0; l<ndofs; l++) {
@@ -31,17 +31,17 @@ edgefluxvar(l+d*ndofs, k+ks, j+js, i+is) = edgeflux(l,d);
 }}
 }
 
-template<uint ndofs> void YAKL_INLINE calculate_vertedgeflux(SArray<real,ndofs> &edgeflux, SArray<real,ndofs> const &recon, real const &flux)
+template<uint ndofs> void YAKL_INLINE calculate_vertedgeflux(SArray<real,1,ndofs> &edgeflux, SArray<real,1,ndofs> const &recon, real const &flux)
 {
   for (int l=0; l<ndofs; l++) {
     edgeflux(l) = recon(l) * flux;
   }
 }
 
-template<uint ndofs> YAKL_INLINE void compute_vertedgefluxes(realArr vertedgefluxvar, const realArr vertreconvar, const realArr UW, int is, int js, int ks, int i, int j, int k)
+template<uint ndofs> YAKL_INLINE void compute_vertedgefluxes(real4d vertedgefluxvar, const real4d vertreconvar, const real4d UW, int is, int js, int ks, int i, int j, int k)
 {
-  SArray<real,ndofs> edgeflux;
-  SArray<real,ndofs> recon;
+  SArray<real,1,ndofs> edgeflux;
+  SArray<real,1,ndofs> recon;
   real flux;
   flux = UW(0, k+ks, j+js, i+is);
   for (int l=0; l<ndofs; l++) {
@@ -55,7 +55,7 @@ template<uint ndofs> YAKL_INLINE void compute_vertedgefluxes(realArr vertedgeflu
 }
 
 
-template<uint ndofs> void YAKL_INLINE calculate_Mf(SArray<real,ndofs> &Mf, SArray<real,ndofs,ndims,2> const &edgeflux, real dt)
+template<uint ndofs> void YAKL_INLINE calculate_Mf(SArray<real,1,ndofs> &Mf, SArray<real,3,ndofs,ndims,2> const &edgeflux, real dt)
 {
     real eps = 1.0e-8;
         for (int l=0; l<ndofs; l++) {
@@ -68,7 +68,7 @@ template<uint ndofs> void YAKL_INLINE calculate_Mf(SArray<real,ndofs> &Mf, SArra
         }
 }
 
-template<uint ndofs> void YAKL_INLINE calculate_Mfext(SArray<real,ndofs> &Mf, SArray<real,ndofs,ndims,2> const &edgeflux, SArray<real,ndofs,2> const &vertedgeflux, real dt)
+template<uint ndofs> void YAKL_INLINE calculate_Mfext(SArray<real,1,ndofs> &Mf, SArray<real,3,ndofs,ndims,2> const &edgeflux, SArray<real,2,ndofs,2> const &vertedgeflux, real dt)
 {
     real eps = 1.0e-8;
         for (int l=0; l<ndofs; l++) {
@@ -82,10 +82,10 @@ template<uint ndofs> void YAKL_INLINE calculate_Mfext(SArray<real,ndofs> &Mf, SA
         }
 }
 
-template<uint ndofs> YAKL_INLINE void compute_Mf(realArr Mfvar, const realArr edgefluxvar, real dt, int is, int js, int ks, int i, int j, int k)
+template<uint ndofs> YAKL_INLINE void compute_Mf(real4d Mfvar, const real4d edgefluxvar, real dt, int is, int js, int ks, int i, int j, int k)
 {
-SArray<real,ndofs> Mf;
-SArray<real,ndofs,ndims,2> edgeflux;
+SArray<real,1,ndofs> Mf;
+SArray<real,3,ndofs,ndims,2> edgeflux;
 for (int l=0; l<ndofs; l++) {
   for (int m=0; m<2; m++) {
     for (int d=0; d<ndims; d++) {
@@ -96,11 +96,11 @@ for (int l=0; l<ndofs; l++) {
     for (int l=0; l<ndofs; l++) { Mfvar(l, k+ks, j+js, i+is) = Mf(l); }
 }
 
-template<uint ndofs> YAKL_INLINE void compute_Mfext(realArr Mfvar, const realArr edgefluxvar, const realArr vertedgefluxvar, real dt, int is, int js, int ks, int i, int j, int k)
+template<uint ndofs> YAKL_INLINE void compute_Mfext(real4d Mfvar, const real4d edgefluxvar, const real4d vertedgefluxvar, real dt, int is, int js, int ks, int i, int j, int k)
 {
-SArray<real,ndofs> Mf;
-SArray<real,ndofs,ndims,2> edgeflux;
-SArray<real,ndofs,2> vertedgeflux;
+SArray<real,1,ndofs> Mf;
+SArray<real,3,ndofs,ndims,2> edgeflux;
+SArray<real,2,ndofs,2> vertedgeflux;
 for (int l=0; l<ndofs; l++) {
   for (int m=0; m<2; m++) {
     for (int d=0; d<ndims; d++) {
@@ -115,7 +115,7 @@ vertedgeflux(l,m) = vertedgefluxvar(l, k+ks+m, j+js, i+is);
 
 
 
-template<uint ndofs> void YAKL_INLINE calculate_phi(SArray<real,ndofs,ndims> &Phi, SArray<real,ndofs,ndims,2> const &q, SArray<real,ndofs,ndims,2> const &Mf, SArray<real,ndofs,ndims> const &edgeflux)
+template<uint ndofs> void YAKL_INLINE calculate_phi(SArray<real,2,ndofs,ndims> &Phi, SArray<real,3,ndofs,ndims,2> const &q, SArray<real,3,ndofs,ndims,2> const &Mf, SArray<real,2,ndofs,ndims> const &edgeflux)
 {
 
     real upwind_param;
@@ -129,7 +129,7 @@ template<uint ndofs> void YAKL_INLINE calculate_phi(SArray<real,ndofs,ndims> &Ph
     }
 }
 
-template<uint ndofs> void YAKL_INLINE calculate_phivert(SArray<real,ndofs> &Phivert, SArray<real,ndofs,2> const &q, SArray<real,ndofs,2> const &Mf, SArray<real,ndofs> const &vertedgeflux)
+template<uint ndofs> void YAKL_INLINE calculate_phivert(SArray<real,1,ndofs> &Phivert, SArray<real,2,ndofs,2> const &q, SArray<real,2,ndofs,2> const &Mf, SArray<real,1,ndofs> const &vertedgeflux)
 {
     real upwind_param;
         for (int l=0; l<ndofs; l++) {
@@ -139,12 +139,12 @@ template<uint ndofs> void YAKL_INLINE calculate_phivert(SArray<real,ndofs> &Phiv
     }
 }
 
-template<uint ndofs> YAKL_INLINE void compute_Phi(realArr Phivar, const realArr edgefluxvar, const realArr Mfvar, const realArr qvar, int is, int js, int ks, int i, int j, int k)
+template<uint ndofs> YAKL_INLINE void compute_Phi(real4d Phivar, const real4d edgefluxvar, const real4d Mfvar, const real4d qvar, int is, int js, int ks, int i, int j, int k)
 {
-SArray<real,ndofs,ndims> Phi;
-SArray<real,ndofs,ndims,2> const q;
-SArray<real,ndofs,ndims,2> const Mf;
-SArray<real,ndofs,ndims> edgeflux;
+SArray<real,2,ndofs,ndims> Phi;
+SArray<real,3,ndofs,ndims,2> const q;
+SArray<real,3,ndofs,ndims,2> const Mf;
+SArray<real,2,ndofs,ndims> edgeflux;
 
 for (int d=0; d<ndims; d++) {
     for (int l=0; l<ndofs; l++) {
@@ -168,12 +168,12 @@ for (int d=0; d<ndims; d++) {
 }
 
 
-template<uint ndofs> YAKL_INLINE void compute_Phivert(realArr Phivertvar, const realArr vertedgefluxvar, const realArr Mfvar, const realArr qvar, int is, int js, int ks, int i, int j, int k)
+template<uint ndofs> YAKL_INLINE void compute_Phivert(real4d Phivertvar, const real4d vertedgefluxvar, const real4d Mfvar, const real4d qvar, int is, int js, int ks, int i, int j, int k)
 {
-SArray<real,ndofs> Phivert;
-SArray<real,ndofs,2> const qvert;
-SArray<real,ndofs,2> const Mfvert;
-SArray<real,ndofs> vertedgeflux;
+SArray<real,1,ndofs> Phivert;
+SArray<real,2,ndofs,2> const qvert;
+SArray<real,2,ndofs,2> const Mfvert;
+SArray<real,1,ndofs> vertedgeflux;
 
 for (int l=0; l<ndofs; l++) {
 vertedgeflux(l) = vertedgefluxvar(l, k+ks, j+js, i+is);

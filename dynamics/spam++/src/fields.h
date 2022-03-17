@@ -12,7 +12,7 @@ class Field {
 
 public :
 
-  realArr data;
+  real4d data;
   const Topology *topology;
   std::string name;
   int total_dofs; //total number of dofs in a "horiz" slice ie at each layer or interface
@@ -86,7 +86,7 @@ public :
     this->total_dofs = this->ndofs ;
     if (ndims == 2 && this->basedof==1) { this->total_dofs = 2*this->ndofs; } //2 edges per cell in 2D
 
-      this->data = realArr(this->name.c_str(), this->total_dofs , this->_nz+2*this->topology->mirror_halo, this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x);
+      this->data = real4d(this->name.c_str(), this->total_dofs , this->_nz+2*this->topology->mirror_halo, this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x);
 
 
     this->zero();

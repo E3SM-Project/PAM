@@ -21,7 +21,7 @@ public:
   VariableSet( const VariableSet<num_fields> &vs) = delete;
   VariableSet& operator=( const VariableSet<num_fields> &vs) = delete;
   void printinfo();
-  void initialize(const std::string name, std::array<std::string, num_fields> &names_arr, std::array<const Topology *, num_fields> &topo_arr, SArray<int, num_fields, 3> &ndofs_arr);
+  void initialize(const std::string name, std::array<std::string, num_fields> &names_arr, std::array<const Topology *, num_fields> &topo_arr, SArray<int,2, num_fields, 3> &ndofs_arr);
   void initialize(const VariableSet< num_fields> &vs, const std::string name);
   void copy(const VariableSet<num_fields> &vs);
   void waxpy(real alpha, const VariableSet<num_fields> &x, const VariableSet<num_fields> &y);
@@ -38,7 +38,7 @@ public:
   ExchangeSet();
   ExchangeSet( const ExchangeSet<num_fields> &exch) = delete;
   ExchangeSet& operator=( const ExchangeSet<num_fields> &exch) = delete;
-  void initialize(std::array<const Topology *, num_fields> &topo_arr, SArray<int, num_fields, 3> &ndofs_arr);
+  void initialize(std::array<const Topology *, num_fields> &topo_arr, SArray<int,2, num_fields, 3> &ndofs_arr);
   void initialize(const ExchangeSet<num_fields> &es);
   void printinfo();
   void exchange_variable_set(VariableSet<num_fields> &vs);
@@ -53,7 +53,7 @@ template<uint num_fields> ExchangeSet<num_fields>::ExchangeSet()
 }
 
 
-template<uint num_fields> void ExchangeSet<num_fields>::initialize(std::array<const Topology *, num_fields> &topo_arr, SArray<int, num_fields, 3> &ndofs_arr)
+template<uint num_fields> void ExchangeSet<num_fields>::initialize(std::array<const Topology *, num_fields> &topo_arr, SArray<int,2, num_fields, 3> &ndofs_arr)
 {
   for (int i=0; i<num_fields; i++)
   {
@@ -108,7 +108,7 @@ template<uint num_fields> void ExchangeSet<num_fields>::initialize(const Exchang
   }
 
 
-  template<uint num_fields> void VariableSet<num_fields>::initialize(const std::string name, std::array<std::string, num_fields> &names_arr, std::array<const Topology *, num_fields> &topo_arr, SArray<int, num_fields, 3> &ndofs_arr)
+  template<uint num_fields> void VariableSet<num_fields>::initialize(const std::string name, std::array<std::string, num_fields> &names_arr, std::array<const Topology *, num_fields> &topo_arr, SArray<int,2, num_fields, 3> &ndofs_arr)
   {
     this->baseName = name;
     for (int i=0; i<num_fields; i++)
