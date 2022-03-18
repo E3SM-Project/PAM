@@ -48,7 +48,7 @@ flux(1,1) = Uvar(0, k+ks, j+js, i+is+1);
 flux(1,2) = Uvar(0, k+ks, j+js-1, i+is);
 flux(1,3) = Uvar(0, k+ks, j+js-1, i+is+1);
 
-   SArray<real,2,ndofs,2,5> recon;
+   SArray<real,3,ndofs,2,5> recon;
    for (int l=0; l<ndofs; l++) {
      recon(l,0,0) = reconvar(l+1*ndofs, k+ks, j+js, i+is);
      recon(l,0,1) = reconvar(l+1*ndofs, k+ks, j+js, i+is-1);

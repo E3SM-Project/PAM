@@ -7639,5 +7639,9 @@ namespace TransformMatrices {
 
   }
 
+  // Hack to make 1st order CFV/WENO work
+
+  template<class FP> YAKL_INLINE void coefs_to_gll_lower(SArray<FP,2,1,2> &rslt) {
+  }
 }
 

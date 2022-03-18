@@ -1,12 +1,12 @@
 // Topology
 nx = 100
 ny = 1
-nz = 150  //100 doublevortex, 150 for rb/mrb
+nz = 100  //100 doublevortex, 150 for rb/mrb
 
 // Time stepping
-dt = 0.015625 // 0.015625 for mrb, 0.025 for rb, 250.0 for doublevortex
-Nsteps = 57600 // 4000 57600
-Nout = 6400 // 500 6400
+dt = 250.0 // 0.015625 for mrb, 0.025 for rb, 250.0 for doublevortex
+Nsteps = 100 // 4000 57600
+Nout = 100 // 500 6400
 Nstat = 1
 TStype = dt
 cfl = 0.5
@@ -16,7 +16,7 @@ nprocx = 4
 nprocy = 1
 
 // initial condition
-dataInit = mrb // doublevortex rb mrb
+dataInit = doublevortex // doublevortex rb mrb
 acoustic_balance = false
 
 tracerInit1 = gaussian

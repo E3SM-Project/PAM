@@ -669,7 +669,7 @@ public:
 
 
 
-  void compute( VariableSet<nprog> &progvars,  VariableSet<nconst> &constvars, int i)
+  void compute( VariableSet<nprog> &progvars,  VariableSet<nconst> &constvars, int tind)
   {
 
 
@@ -707,14 +707,14 @@ public:
   {
     for (int l=0;l<ntdofs;l++)
     {
-  this->stats_arr[DENSSTAT].data(l,i) = massglobal(l);
-  this->stats_arr[DENSMAXSTAT].data(l,i) = densmaxglobal(l);
-  this->stats_arr[DENSMINSTAT].data(l,i) = densminglobal(l);
+  this->stats_arr[DENSSTAT].data(l,tind) = massglobal(l);
+  this->stats_arr[DENSMAXSTAT].data(l,tind) = densmaxglobal(l);
+  this->stats_arr[DENSMINSTAT].data(l,tind) = densminglobal(l);
 }
 
 for (int l=0;l<nQdofs;l++)
 {
-this->stats_arr[QXZSTAT].data(l,i) = Qglobal(l);
+this->stats_arr[QXZSTAT].data(l,tind) = Qglobal(l);
 }
 
   }

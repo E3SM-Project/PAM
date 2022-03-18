@@ -438,7 +438,7 @@ public:
 
   void printinfo();
 
-  void YAKL_INLINE get_0form_quad_pts_wts(int i, int j, SArray<coords<2>,1,1> &quad_pts_phys, SArray<real,1> &quad_wts_phys);
+  void YAKL_INLINE get_0form_quad_pts_wts(int i, int j, SArray<coords<2>,1,1> &quad_pts_phys, SArray<real,1,1> &quad_wts_phys);
   void YAKL_INLINE get_1form_quad_pts_wts(int i, int j, SArray<coords<2>,1,nquadx> &x_quad_pts_phys, SArray<real,1,nquadx> &x_quad_wts_phys, SArray<coords<2>,1,nquady> &y_quad_pts_phys, SArray<real,1,nquady> &y_quad_wts_phys);
   void YAKL_INLINE get_2form_quad_pts_wts(int i, int j, SArray<coords<2>,2,nquadx,nquady> &quad_pts_phys, SArray<real,2,nquadx,nquady> &quad_wts_phys);
   void YAKL_INLINE get_edge_tangents(int i, int j, SArray<vec<2>,1,nquadx> &x_tangents, SArray<vec<2>,1,nquady> &y_tangents);
@@ -476,14 +476,14 @@ template<uint nquadx, uint nquady, uint nquadz> Geometry<nquadx,nquady,nquadz>::
   int js = this->topology->js;
   int ks = this->topology->ks;
 
-  SArray<coords<2>,1,1> quad_pts_phys;
-  SArray<real,1,1> quad_wts_phys;
+
 
   //yakl::parallel_for("Set0FormValues", this->topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
   //  int k, j, i;
   //  yakl::unpackIndices(iGlob, this->topology->nl, this->topology->n_cells_y, this->topology->n_cells_x ,k, j, i);
     parallel_for( Bounds<3>(this->topology->nl, this->topology->n_cells_y, this->topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
-
+      SArray<coords<2>,1,1> quad_pts_phys;
+      SArray<real,1,1> quad_wts_phys;
       get_0form_quad_pts_wts(i, j, quad_pts_phys, quad_wts_phys);
       field.data(ndof, k+ks, j+js, i+is) = initial_value_function(quad_pts_phys(0).x, quad_pts_phys(0).y) * quad_wts_phys(0);
   });
@@ -492,8 +492,7 @@ template<uint nquadx, uint nquady, uint nquadz> Geometry<nquadx,nquady,nquadz>::
   template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<nquadx,nquady,nquadz>::set_2form_values(real (*initial_value_function)(real, real), Field &field, int ndof)
 {
 
-  SArray<coords<2>,2,nquadx,nquady> quad_pts_phys;
-  SArray<real,2,nquadx,nquady> quad_wts_phys;
+
 
   int is = this->topology->is;
   int js = this->topology->js;
@@ -504,7 +503,8 @@ template<uint nquadx, uint nquady, uint nquadz> Geometry<nquadx,nquady,nquadz>::
 //    int k, j, i;
 //    yakl::unpackIndices(iGlob, this->topology->nl, this->topology->n_cells_y, this->topology->n_cells_x ,k, j, i);
 parallel_for( Bounds<3>(this->topology->nl, this->topology->n_cells_y, this->topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
-
+  SArray<coords<2>,2,nquadx,nquady> quad_pts_phys;
+  SArray<real,2,nquadx,nquady> quad_wts_phys;
     get_2form_quad_pts_wts(i, j, quad_pts_phys, quad_wts_phys);
     real tempval = 0.0;
     for (int nqx=0; nqx<nquadx; nqx++) {
@@ -519,15 +519,6 @@ parallel_for( Bounds<3>(this->topology->nl, this->topology->n_cells_y, this->top
 
   template<uint nquadx, uint nquady, uint nquadz>  YAKL_INLINE void Geometry<nquadx,nquady,nquadz>::set_1form_values(vec<2> (*initial_value_function)(real, real), Field &field, int ndof, LINE_INTEGRAL_TYPE line_type)
   {
-      SArray<coords<2>,1,nquadx> x_quad_pts_phys;
-      SArray<real,1,nquadx> x_quad_wts_phys;
-      SArray<coords<2>,1,nquady> y_quad_pts_phys;
-      SArray<real,1,nquady> y_quad_wts_phys;
-
-      SArray<vec<2>,1,nquadx> x_line_vec;
-      SArray<vec<2>,1,nquady> y_line_vec;
-
-      vec<2> initval;
 
       int is = this->topology->is;
       int js = this->topology->js;
@@ -548,6 +539,16 @@ parallel_for( Bounds<3>(this->topology->nl, this->topology->n_cells_y, this->top
 //        int k, j, i;
 //        yakl::unpackIndices(iGlob, this->topology->nl, this->topology->n_cells_y, this->topology->n_cells_x ,k, j, i);
         parallel_for( Bounds<3>(this->topology->nl, this->topology->n_cells_y, this->topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
+          
+          SArray<coords<2>,1,nquadx> x_quad_pts_phys;
+          SArray<real,1,nquadx> x_quad_wts_phys;
+          SArray<coords<2>,1,nquady> y_quad_pts_phys;
+          SArray<real,1,nquady> y_quad_wts_phys;
+
+          SArray<vec<2>,1,nquadx> x_line_vec;
+          SArray<vec<2>,1,nquady> y_line_vec;
+
+          vec<2> initval;
 
         get_1form_quad_pts_wts(i, j, x_quad_pts_phys, x_quad_wts_phys, y_quad_pts_phys, y_quad_wts_phys);
 
