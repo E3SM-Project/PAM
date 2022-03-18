@@ -97,24 +97,24 @@ public:
   Geometry<1,1,1> *dual_geometry;
   ExchangeSet<ndiag> *diag_exchange;
 
-  TransformMatrices<real> trans;
+  //TransformMatrices<real> trans;
 
-  SArray<real,1,reconstruction_order,2> primal_to_gll;
+  SArray<real,2,reconstruction_order,2> primal_to_gll;
   SArray<real,3,reconstruction_order,reconstruction_order,reconstruction_order> primal_wenoRecon;
   SArray<real,1,(reconstruction_order-1)/2+2> primal_wenoIdl;
   real primal_wenoSigma;
 
-  SArray<real,1,dual_reconstruction_order,2> dual_to_gll;
+  SArray<real,2,dual_reconstruction_order,2> dual_to_gll;
   SArray<real,3,dual_reconstruction_order,dual_reconstruction_order,dual_reconstruction_order> dual_wenoRecon;
   SArray<real,1,(dual_reconstruction_order-1)/2+2> dual_wenoIdl;
   real dual_wenoSigma;
 
-  SArray<real,1,vert_reconstruction_order,2> primal_vert_to_gll;
+  SArray<real,2,vert_reconstruction_order,2> primal_vert_to_gll;
   SArray<real,3,vert_reconstruction_order,vert_reconstruction_order,vert_reconstruction_order> primal_vert_wenoRecon;
   SArray<real,1,(vert_reconstruction_order-1)/2+2> primal_vert_wenoIdl;
   real primal_vert_wenoSigma;
 
-  SArray<real,1,dual_vert_reconstruction_order,2> dual_vert_to_gll;
+  SArray<real,2,dual_vert_reconstruction_order,2> dual_vert_to_gll;
   SArray<real,3,dual_vert_reconstruction_order,dual_vert_reconstruction_order,dual_vert_reconstruction_order> dual_vert_wenoRecon;
   SArray<real,1,(dual_vert_reconstruction_order-1)/2+2> dual_vert_wenoIdl;
   real dual_vert_wenoSigma;
@@ -134,20 +134,20 @@ public:
      this->dual_geometry = &dgeom;
      this->diag_exchange = &diag_exchange;
 
-     trans.coefs_to_gll_lower( primal_to_gll );
-     trans.weno_sten_to_coefs(primal_wenoRecon);
+     TransformMatrices::coefs_to_gll_lower( primal_to_gll );
+     TransformMatrices::weno_sten_to_coefs(primal_wenoRecon);
      wenoSetIdealSigma<reconstruction_order>(primal_wenoIdl,primal_wenoSigma);
 
-     trans.coefs_to_gll_lower( dual_to_gll );
-     trans.weno_sten_to_coefs(dual_wenoRecon);
+     TransformMatrices::coefs_to_gll_lower( dual_to_gll );
+     TransformMatrices::weno_sten_to_coefs(dual_wenoRecon);
      wenoSetIdealSigma<dual_reconstruction_order>(dual_wenoIdl,dual_wenoSigma);
 
-     trans.coefs_to_gll_lower( primal_vert_to_gll );
-     trans.weno_sten_to_coefs(primal_vert_wenoRecon);
+     TransformMatrices::coefs_to_gll_lower( primal_vert_to_gll );
+     TransformMatrices::weno_sten_to_coefs(primal_vert_wenoRecon);
      wenoSetIdealSigma<vert_reconstruction_order>(primal_vert_wenoIdl,primal_vert_wenoSigma);
 
-     trans.coefs_to_gll_lower( dual_vert_to_gll );
-     trans.weno_sten_to_coefs(dual_vert_wenoRecon);
+     TransformMatrices::coefs_to_gll_lower( dual_vert_to_gll );
+     TransformMatrices::weno_sten_to_coefs(dual_vert_wenoRecon);
      wenoSetIdealSigma<dual_vert_reconstruction_order>(dual_vert_wenoIdl,dual_vert_wenoSigma);
     
      this->is_initialized = true;
@@ -163,9 +163,10 @@ public:
      int pjs = primal_topology->js;
      int pks = primal_topology->ks;
      
-     yakl::parallel_for("ComputeDens0", primal_topology->n_cells_interfaces, YAKL_LAMBDA (int iGlob) {
-       int k, j, i;
-       yakl::unpackIndices(iGlob, primal_topology->ni, primal_topology->n_cells_y, primal_topology->n_cells_x, k, j, i);
+     // yakl::parallel_for("ComputeDens0", primal_topology->n_cells_interfaces, YAKL_LAMBDA (int iGlob) {
+     //   int k, j, i;
+     //   yakl::unpackIndices(iGlob, primal_topology->ni, primal_topology->n_cells_y, primal_topology->n_cells_x, k, j, i);
+       parallel_for( Bounds<3>( primal_topology->ni, primal_topology->n_cells_y, primal_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
      compute_Iext<ntdofs, diff_ord, vert_diff_ord>(diagnostic_vars.fields_arr[DENSLDIAGVAR].data, x.fields_arr[DENSVAR].data, *this->primal_geometry, *this->dual_geometry, pis, pjs, pks, i, j, k);
      });
 
@@ -175,9 +176,11 @@ public:
      int djs = dual_topology->js;
      int dks = dual_topology->ks;
      
-     yakl::parallel_for("ComputeQ0", dual_topology->n_cells_interfaces_internal, YAKL_LAMBDA (int iGlob) {
-       int k, j, i;
-       yakl::unpackIndices(iGlob, dual_topology->ni -2, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+     // yakl::parallel_for("ComputeQ0", dual_topology->n_cells_interfaces_internal, YAKL_LAMBDA (int iGlob) {
+     //   int k, j, i;
+     //   yakl::unpackIndices(iGlob, dual_topology->ni -2, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+       parallel_for( Bounds<3>( dual_topology->ni-2, dual_topology->n_cells_y, dual_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
+
      compute_Jext<nQdofs, diff_ord, vert_diff_ord>(diagnostic_vars.fields_arr[QXZDIAGVAR].data, x.fields_arr[QXZVAR].data, *this->primal_geometry, *this->dual_geometry, dis, djs, dks, i, j, k+1);
      });
 
@@ -271,24 +274,24 @@ public:
   Geometry<1,1,1> *primal_geometry;
   Geometry<1,1,1> *dual_geometry;
 
-  TransformMatrices<real> trans;
+  //TransformMatrices<real> trans;
 
-  SArray<real,1,reconstruction_order,2> primal_to_gll;
-  SArray<real,1,reconstruction_order,reconstruction_order,reconstruction_order> primal_wenoRecon;
+  SArray<real,2,reconstruction_order,2> primal_to_gll;
+  SArray<real,3,reconstruction_order,reconstruction_order,reconstruction_order> primal_wenoRecon;
   SArray<real,1,(reconstruction_order-1)/2+2> primal_wenoIdl;
   real primal_wenoSigma;
 
-  SArray<real,1,dual_reconstruction_order,2> dual_to_gll;
+  SArray<real,2,dual_reconstruction_order,2> dual_to_gll;
   SArray<real,3,dual_reconstruction_order,dual_reconstruction_order,dual_reconstruction_order> dual_wenoRecon;
   SArray<real,1,(dual_reconstruction_order-1)/2+2> dual_wenoIdl;
   real dual_wenoSigma;
 
-  SArray<real,1,vert_reconstruction_order,2> primal_vert_to_gll;
+  SArray<real,2,vert_reconstruction_order,2> primal_vert_to_gll;
   SArray<real,3,vert_reconstruction_order,vert_reconstruction_order,vert_reconstruction_order> primal_vert_wenoRecon;
   SArray<real,1,(vert_reconstruction_order-1)/2+2> primal_vert_wenoIdl;
   real primal_vert_wenoSigma;
 
-  SArray<real,1,dual_vert_reconstruction_order,2> dual_vert_to_gll;
+  SArray<real,2,dual_vert_reconstruction_order,2> dual_vert_to_gll;
   SArray<real,3,dual_vert_reconstruction_order,dual_vert_reconstruction_order,dual_vert_reconstruction_order> dual_vert_wenoRecon;
   SArray<real,1,(dual_vert_reconstruction_order-1)/2+2> dual_vert_wenoIdl;
   real dual_vert_wenoSigma;
@@ -309,20 +312,20 @@ public:
      this->aux_exchange = &aux_exchange;
      this->const_exchange = &const_exchange;
 
-     trans.coefs_to_gll_lower( primal_to_gll );
-     trans.weno_sten_to_coefs(primal_wenoRecon);
+     TransformMatrices::coefs_to_gll_lower( primal_to_gll );
+     TransformMatrices::weno_sten_to_coefs(primal_wenoRecon);
      wenoSetIdealSigma<reconstruction_order>(primal_wenoIdl,primal_wenoSigma);
 
-     trans.coefs_to_gll_lower( dual_to_gll );
-     trans.weno_sten_to_coefs(dual_wenoRecon);
+     TransformMatrices::coefs_to_gll_lower( dual_to_gll );
+     TransformMatrices::weno_sten_to_coefs(dual_wenoRecon);
      wenoSetIdealSigma<dual_reconstruction_order>(dual_wenoIdl,dual_wenoSigma);
 
-     trans.coefs_to_gll_lower( primal_vert_to_gll );
-     trans.weno_sten_to_coefs(primal_vert_wenoRecon);
+     TransformMatrices::coefs_to_gll_lower( primal_vert_to_gll );
+     TransformMatrices::weno_sten_to_coefs(primal_vert_wenoRecon);
      wenoSetIdealSigma<vert_reconstruction_order>(primal_vert_wenoIdl,primal_vert_wenoSigma);
 
-     trans.coefs_to_gll_lower( dual_vert_to_gll );
-     trans.weno_sten_to_coefs(dual_vert_wenoRecon);
+     TransformMatrices::coefs_to_gll_lower( dual_vert_to_gll );
+     TransformMatrices::weno_sten_to_coefs(dual_vert_wenoRecon);
      wenoSetIdealSigma<dual_vert_reconstruction_order>(dual_vert_wenoIdl,dual_vert_wenoSigma);
     
     this->is_initialized = true;
@@ -342,30 +345,37 @@ public:
 
     // Compute U = H V and UW = Hv W
 
-    yakl::parallel_for("ComputeUVAR", dual_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
-      int k, j, i;
-      yakl::unpackIndices(iGlob, dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+    //yakl::parallel_for("ComputeUVAR", dual_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
+      //int k, j, i;
+      //yakl::unpackIndices(iGlob, dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+      parallel_for( Bounds<3>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
+
     compute_Hext<1, diff_ord>(const_vars.fields_arr[UVAR].data, const_vars.fields_arr[VVAR].data, *this->primal_geometry, *this->dual_geometry, dis, djs, dks, i, j, k);
     });
     this->const_exchange->exchanges_arr[UVAR].exchange_field(const_vars.fields_arr[UVAR]);
     
-    yakl::parallel_for("ComputeUWVAR", dual_topology->n_cells_interfaces_internal, YAKL_LAMBDA (int iGlob) {
-      int k, j, i;
-      yakl::unpackIndices(iGlob, dual_topology->ni-2, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+    //yakl::parallel_for("ComputeUWVAR", dual_topology->n_cells_interfaces_internal, YAKL_LAMBDA (int iGlob) {
+    //  int k, j, i;
+    //  yakl::unpackIndices(iGlob, dual_topology->ni-2, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+    parallel_for( Bounds<3>( dual_topology->ni-2, dual_topology->n_cells_y, dual_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
     compute_Hv<1, vert_diff_ord>(const_vars.fields_arr[UWVAR].data, const_vars.fields_arr[WVAR].data, *this->primal_geometry, *this->dual_geometry, dis, djs, dks, i, j, k+1);
     });    
     this->const_exchange->exchanges_arr[UWVAR].exchange_field(const_vars.fields_arr[UWVAR]);
 
     //compute VT = "Wxz" Uw ie w/Uw at v
     //compute WT = "Wxz" U ie v/U at w 
-    yakl::parallel_for("ComputeVTVAR", primal_topology->n_cells_interfaces, YAKL_LAMBDA (int iGlob) {
-      int k, j, i;
-      yakl::unpackIndices(iGlob, primal_topology->ni, primal_topology->n_cells_y, primal_topology->n_cells_x, k, j, i);
+  //  yakl::parallel_for("ComputeVTVAR", primal_topology->n_cells_interfaces, YAKL_LAMBDA (int iGlob) {
+    //  int k, j, i;
+    //  yakl::unpackIndices(iGlob, primal_topology->ni, primal_topology->n_cells_y, primal_topology->n_cells_x, k, j, i);
+      parallel_for( Bounds<3>( primal_topology->ni, primal_topology->n_cells_y, primal_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
+
 compute_Wxz_u(const_vars.fields_arr[VTVAR].data,const_vars.fields_arr[UWVAR].data, pis, pjs, pks, i, j, k);
  });
-    yakl::parallel_for("ComputeWTVAR", primal_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
-      int k, j, i;
-      yakl::unpackIndices(iGlob, primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, k, j, i);
+    //yakl::parallel_for("ComputeWTVAR", primal_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
+    //  int k, j, i;
+    //  yakl::unpackIndices(iGlob, primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, k, j, i);
+      parallel_for( Bounds<3>( primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
+
 compute_Wxz_w(const_vars.fields_arr[WTVAR].data,const_vars.fields_arr[UVAR].data, pis, pjs, pks, i, j, k);
  });
     this->const_exchange->exchanges_arr[VTVAR].exchange_field(const_vars.fields_arr[VTVAR]);
@@ -394,17 +404,19 @@ int dks = dual_topology->ks;
 
 // Compute Q0
 
-yakl::parallel_for("ComputeQ0VAR", dual_topology->n_cells_interfaces_internal, YAKL_LAMBDA (int iGlob) {
-  int k, j, i;
-  yakl::unpackIndices(iGlob, dual_topology->ni-2, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+//yakl::parallel_for("ComputeQ0VAR", dual_topology->n_cells_interfaces_internal, YAKL_LAMBDA (int iGlob) {
+//  int k, j, i;
+//  yakl::unpackIndices(iGlob, dual_topology->ni-2, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+parallel_for( Bounds<3>( dual_topology->ni-2, dual_topology->n_cells_y, dual_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
 compute_Jext<nQdofs, diff_ord, vert_diff_ord>(auxiliary_vars.fields_arr[QXZ0VAR].data, x.fields_arr[QXZVAR].data, *this->primal_geometry, *this->dual_geometry, dis, djs, dks, i, j, k+1);
 });
 
 // Compute DENS0
 
-yakl::parallel_for("ComputeDens0VAR", primal_topology->n_cells_interfaces, YAKL_LAMBDA (int iGlob) {
-  int k, j, i;
-   yakl::unpackIndices(iGlob, primal_topology->ni, primal_topology->n_cells_y, primal_topology->n_cells_x, k, j, i);
+//yakl::parallel_for("ComputeDens0VAR", primal_topology->n_cells_interfaces, YAKL_LAMBDA (int iGlob) {
+//  int k, j, i;
+//   yakl::unpackIndices(iGlob, primal_topology->ni, primal_topology->n_cells_y, primal_topology->n_cells_x, k, j, i);
+parallel_for( Bounds<3>( primal_topology->ni, primal_topology->n_cells_y, primal_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
 compute_Iext<ntdofs, diff_ord, vert_diff_ord>(auxiliary_vars.fields_arr[DENS0VAR].data, x.fields_arr[DENSVAR].data, *this->primal_geometry, *this->dual_geometry, pis, pjs, pks, i, j, k);
 });
 
@@ -415,9 +427,10 @@ this->aux_exchange->exchanges_arr[QXZ0VAR].exchange_field(auxiliary_vars.fields_
 
 //compute qrecon
 
-yakl::parallel_for("ComputeQEdgeRecon", primal_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
-  int k, j, i;
-  yakl::unpackIndices(iGlob, primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, k, j, i);
+// yakl::parallel_for("ComputeQEdgeRecon", primal_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
+//   int k, j, i;
+//   yakl::unpackIndices(iGlob, primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, k, j, i);
+parallel_for( Bounds<3>( primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
 
    compute_straight_xz_edge_recon<nQdofs, reconstruction_type, reconstruction_order>(
      auxiliary_vars.fields_arr[QXZEDGERECONVAR].data, auxiliary_vars.fields_arr[QXZ0VAR].data, pis, pjs, pks, i, j, k,
@@ -432,15 +445,17 @@ yakl::parallel_for("ComputeQEdgeRecon", primal_topology->n_cells_layers, YAKL_LA
 this->aux_exchange->exchanges_arr[QXZEDGERECONVAR].exchange_field(auxiliary_vars.fields_arr[QXZEDGERECONVAR]);
 this->aux_exchange->exchanges_arr[QXZVERTEDGERECONVAR].exchange_field(auxiliary_vars.fields_arr[QXZVERTEDGERECONVAR]);
 
-yakl::parallel_for("ComputeQRECON", primal_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
-  int k, j, i;
-  yakl::unpackIndices(iGlob, primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, k, j, i);
+// yakl::parallel_for("ComputeQRECON", primal_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
+//   int k, j, i;
+//   yakl::unpackIndices(iGlob, primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, k, j, i);
+parallel_for( Bounds<3>( primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
   compute_straight_xz_recon<nQdofs, reconstruction_type>(
     auxiliary_vars.fields_arr[QXZRECONVAR].data, auxiliary_vars.fields_arr[QXZEDGERECONVAR].data, const_vars.fields_arr[WTVAR].data, pis, pjs, pks, i, j, k);
 });
-yakl::parallel_for("ComputeQVERTRECON", primal_topology->n_cells_interfaces, YAKL_LAMBDA (int iGlob) {
-  int k, j, i;
-  yakl::unpackIndices(iGlob, primal_topology->ni, primal_topology->n_cells_y, primal_topology->n_cells_x, k, j, i);
+// yakl::parallel_for("ComputeQVERTRECON", primal_topology->n_cells_interfaces, YAKL_LAMBDA (int iGlob) {
+//   int k, j, i;
+//   yakl::unpackIndices(iGlob, primal_topology->ni, primal_topology->n_cells_y, primal_topology->n_cells_x, k, j, i);
+parallel_for( Bounds<3>( primal_topology->ni, primal_topology->n_cells_y, primal_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
   compute_straight_xz_vert_recon<nQdofs, vert_reconstruction_type>(
     auxiliary_vars.fields_arr[QXZVERTRECONVAR].data, auxiliary_vars.fields_arr[QXZVERTEDGERECONVAR].data, const_vars.fields_arr[VTVAR].data, pis, pjs, pks, i, j, k);
 });
@@ -449,9 +464,10 @@ this->aux_exchange->exchanges_arr[QXZVERTRECONVAR].exchange_field(auxiliary_vars
 
 //compute Densrecon
 
-yakl::parallel_for("ComputeDensEdgeRecon", dual_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
-  int k, j, i;
-  yakl::unpackIndices(iGlob, dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+// yakl::parallel_for("ComputeDensEdgeRecon", dual_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
+//   int k, j, i;
+//   yakl::unpackIndices(iGlob, dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+  parallel_for( Bounds<3>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
 
   compute_twisted_edge_recon<ntdofs, dual_reconstruction_type, dual_reconstruction_order>(
     auxiliary_vars.fields_arr[DENSEDGERECONVAR].data, auxiliary_vars.fields_arr[DENS0VAR].data, dis, djs, dks, i, j, k,
@@ -465,16 +481,19 @@ yakl::parallel_for("ComputeDensEdgeRecon", dual_topology->n_cells_layers, YAKL_L
 this->aux_exchange->exchanges_arr[DENSEDGERECONVAR].exchange_field(auxiliary_vars.fields_arr[DENSEDGERECONVAR]);
 this->aux_exchange->exchanges_arr[DENSVERTEDGERECONVAR].exchange_field(auxiliary_vars.fields_arr[DENSVERTEDGERECONVAR]);
 
-yakl::parallel_for("ComputeDensRECON", dual_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
-  int k, j, i;
-  yakl::unpackIndices(iGlob, dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+// yakl::parallel_for("ComputeDensRECON", dual_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
+//   int k, j, i;
+//   yakl::unpackIndices(iGlob, dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+  parallel_for( Bounds<3>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
+
   compute_twisted_recon<ntdofs, dual_reconstruction_type>(
     auxiliary_vars.fields_arr[DENSRECONVAR].data, auxiliary_vars.fields_arr[DENSEDGERECONVAR].data, const_vars.fields_arr[UVAR].data, dis, djs, dks, i, j, k);
   });
 
-    yakl::parallel_for("ComputeDensVertRECON", dual_topology->n_cells_interfaces_internal, YAKL_LAMBDA (int iGlob) {
-      int k, j, i;
-      yakl::unpackIndices(iGlob, dual_topology->ni-2, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+    // yakl::parallel_for("ComputeDensVertRECON", dual_topology->n_cells_interfaces_internal, YAKL_LAMBDA (int iGlob) {
+    //   int k, j, i;
+    //   yakl::unpackIndices(iGlob, dual_topology->ni-2, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+      parallel_for( Bounds<3>( dual_topology->ni-2, dual_topology->n_cells_y, dual_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
     compute_twisted_vert_recon<ntdofs, dual_vert_reconstruction_type>(
       auxiliary_vars.fields_arr[DENSVERTRECONVAR].data, auxiliary_vars.fields_arr[DENSVERTEDGERECONVAR].data, const_vars.fields_arr[UWVAR].data, dis, djs, dks, i, j, k+1);
 });
@@ -483,15 +502,19 @@ this->aux_exchange->exchanges_arr[DENSVERTRECONVAR].exchange_field(auxiliary_var
 
 
 // compute FCT stuff
-      yakl::parallel_for("ComputeEdgeFlux", dual_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
-        int k, j, i;
-        yakl::unpackIndices(iGlob, dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+      // yakl::parallel_for("ComputeEdgeFlux", dual_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
+      //   int k, j, i;
+      //   yakl::unpackIndices(iGlob, dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+        parallel_for( Bounds<3>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
+
       compute_edgefluxes<ntdofs> (auxiliary_vars.fields_arr[EDGEFLUXVAR].data, auxiliary_vars.fields_arr[DENSRECONVAR].data, const_vars.fields_arr[UVAR].data, dis, djs, dks, i, j, k);
       });
       
-      yakl::parallel_for("ComputeVertEdgeFlux", dual_topology->n_cells_interfaces_internal, YAKL_LAMBDA (int iGlob) {
-        int k, j, i;
-        yakl::unpackIndices(iGlob, dual_topology->ni-2, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+      // yakl::parallel_for("ComputeVertEdgeFlux", dual_topology->n_cells_interfaces_internal, YAKL_LAMBDA (int iGlob) {
+      //   int k, j, i;
+      //   yakl::unpackIndices(iGlob, dual_topology->ni-2, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+        parallel_for( Bounds<3>( dual_topology->ni-2, dual_topology->n_cells_y, dual_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
+
       compute_vertedgefluxes<ntdofs> (auxiliary_vars.fields_arr[VERTEDGEFLUXVAR].data, auxiliary_vars.fields_arr[DENSVERTRECONVAR].data, const_vars.fields_arr[UWVAR].data, dis, djs, dks, i, j, k+1);
       });
       
@@ -499,23 +522,28 @@ this->aux_exchange->exchanges_arr[EDGEFLUXVAR].exchange_field(auxiliary_vars.fie
 this->aux_exchange->exchanges_arr[VERTEDGEFLUXVAR].exchange_field(auxiliary_vars.fields_arr[VERTEDGEFLUXVAR]);
 
 
-yakl::parallel_for("ComputeMf", dual_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
-  int k, j, i;
-  yakl::unpackIndices(iGlob, dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+// yakl::parallel_for("ComputeMf", dual_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
+//   int k, j, i;
+//   yakl::unpackIndices(iGlob, dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+  parallel_for( Bounds<3>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
+
   compute_Mfext<ntdofs> (auxiliary_vars.fields_arr[MFVAR].data, auxiliary_vars.fields_arr[EDGEFLUXVAR].data, auxiliary_vars.fields_arr[VERTEDGEFLUXVAR].data, dt, dis, djs, dks, i, j, k);
 });
 
     this->aux_exchange->exchanges_arr[MFVAR].exchange_field(auxiliary_vars.fields_arr[MFVAR]);
 
-    yakl::parallel_for("ComputePhiVert", dual_topology->n_cells_interfaces_internal, YAKL_LAMBDA (int iGlob) {
-      int k, j, i;
-      yakl::unpackIndices(iGlob, dual_topology->ni-2, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+    // yakl::parallel_for("ComputePhiVert", dual_topology->n_cells_interfaces_internal, YAKL_LAMBDA (int iGlob) {
+    //   int k, j, i;
+    //   yakl::unpackIndices(iGlob, dual_topology->ni-2, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+      parallel_for( Bounds<3>( dual_topology->ni-2, dual_topology->n_cells_y, dual_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
+
       compute_Phivert<ntdofs> (auxiliary_vars.fields_arr[PHIVERTVAR].data, auxiliary_vars.fields_arr[VERTEDGEFLUXVAR].data, auxiliary_vars.fields_arr[MFVAR].data, x.fields_arr[DENSVAR].data, dis, djs, dks, i, j, k+1);
     });
 
-    yakl::parallel_for("ComputePhi", dual_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
-      int k, j, i;
-      yakl::unpackIndices(iGlob, dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+    // yakl::parallel_for("ComputePhi", dual_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
+    //   int k, j, i;
+    //   yakl::unpackIndices(iGlob, dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+      parallel_for( Bounds<3>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
       compute_Phi<ntdofs> (auxiliary_vars.fields_arr[PHIVAR].data, auxiliary_vars.fields_arr[EDGEFLUXVAR].data, auxiliary_vars.fields_arr[MFVAR].data, x.fields_arr[DENSVAR].data, dis, djs, dks, i, j, k);
     });
     
@@ -532,9 +560,10 @@ yakl::parallel_for("ComputeMf", dual_topology->n_cells_layers, YAKL_LAMBDA (int 
 
 
 // //compute Q flux
-   yakl::parallel_for("ComputeQFLUX", primal_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
-     int k, j, i;
-     yakl::unpackIndices(iGlob, primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, k, j, i);
+   // yakl::parallel_for("ComputeQFLUX", primal_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
+   //   int k, j, i;
+   //   yakl::unpackIndices(iGlob, primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, k, j, i);
+     parallel_for( Bounds<3>( primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
 
      if (qf_choice == QF_MODE::EC)
     { compute_Qxz_w_EC<nQdofs>(auxiliary_vars.fields_arr[QXZFLUXVAR].data, auxiliary_vars.fields_arr[QXZRECONVAR].data, auxiliary_vars.fields_arr[QXZVERTRECONVAR].data, const_vars.fields_arr[UVAR].data, pis, pjs, pks, i, j, k);}
@@ -543,10 +572,11 @@ yakl::parallel_for("ComputeMf", dual_topology->n_cells_layers, YAKL_LAMBDA (int 
     { compute_Qxz_w_nonEC<nQdofs>(auxiliary_vars.fields_arr[QXZFLUXVAR].data, auxiliary_vars.fields_arr[QXZRECONVAR].data, const_vars.fields_arr[UVAR].data, pis, pjs, pks, i, j, k);}
 
 });
-   yakl::parallel_for("ComputeQVERTFLUX", primal_topology->n_cells_interfaces, YAKL_LAMBDA (int iGlob) {
-     int k, j, i;
-     yakl::unpackIndices(iGlob, primal_topology->ni, primal_topology->n_cells_y, primal_topology->n_cells_x, k, j, i);
-
+   // yakl::parallel_for("ComputeQVERTFLUX", primal_topology->n_cells_interfaces, YAKL_LAMBDA (int iGlob) {
+   //   int k, j, i;
+   //   yakl::unpackIndices(iGlob, primal_topology->ni, primal_topology->n_cells_y, primal_topology->n_cells_x, k, j, i);
+   parallel_for( Bounds<3>( primal_topology->ni, primal_topology->n_cells_y, primal_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
+     
      if (qf_choice == QF_MODE::EC)
      { compute_Qxz_u_EC<nQdofs>(auxiliary_vars.fields_arr[QXZVERTFLUXVAR].data, auxiliary_vars.fields_arr[QXZRECONVAR].data, auxiliary_vars.fields_arr[QXZVERTRECONVAR].data, const_vars.fields_arr[UWVAR].data, pis, pjs, pks, i, j, k);}
 
@@ -559,16 +589,18 @@ yakl::parallel_for("ComputeMf", dual_topology->n_cells_layers, YAKL_LAMBDA (int 
 
 
 // // Compute Dxz "QXZFLUX"
-yakl::parallel_for("ComputeQXZTend", primal_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
-  int k, j, i;
-  yakl::unpackIndices(iGlob, primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, k, j, i);
+// yakl::parallel_for("ComputeQXZTend", primal_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
+//   int k, j, i;
+//   yakl::unpackIndices(iGlob, primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, k, j, i);
+parallel_for( Bounds<3>( primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
 compute_Dxz<nQdofs> (xtend.fields_arr[QXZVAR].data, auxiliary_vars.fields_arr[QXZVERTFLUXVAR].data, auxiliary_vars.fields_arr[QXZFLUXVAR].data, pis, pjs, pks, i, j, k);
 });
 
 // compute D2bar "F"
-    yakl::parallel_for("ComputeDensTend", dual_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
-      int k, j, i;
-      yakl::unpackIndices(iGlob, dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+    // yakl::parallel_for("ComputeDensTend", dual_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
+    //   int k, j, i;
+    //   yakl::unpackIndices(iGlob, dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
+      parallel_for( Bounds<3>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
       compute_wDbar2_fct<ntdofs> (xtend.fields_arr[DENSVAR].data, auxiliary_vars.fields_arr[DENSRECONVAR].data, auxiliary_vars.fields_arr[PHIVAR].data, const_vars.fields_arr[UVAR].data, dis, djs, dks, i, j, k);
       compute_wDvbar_fct<ntdofs, ADD_MODE::ADD> (xtend.fields_arr[DENSVAR].data, auxiliary_vars.fields_arr[DENSVERTRECONVAR].data, auxiliary_vars.fields_arr[PHIVERTVAR].data, const_vars.fields_arr[UWVAR].data, dis, djs, dks, i, j, k);
     });

@@ -191,30 +191,35 @@ void Exchange::initialize(const Exchange &exch)
    int js = this->topology->js;
    int ks = this->topology->ks;
 
-// CAN WE SWAP LOOP ORDERING IN UNPACK INDICES TO USUAL K,J,I?
-// YES, SHOULD BE FINE....
    //pack left (x-) and  right (x+)
-   yakl::parallel_for("PackLeftRight", this->bufsize_x, YAKL_LAMBDA (int iGlob) {
-     int ndof, ii, k, j;
-     yakl::unpackIndices(iGlob, this->total_dofs, this->topology->halosize_x, this->_nz, this->topology->n_cells_y, ndof, ii, k, j);
+  // yakl::parallel_for("PackLeftRight", this->bufsize_x, YAKL_LAMBDA (int iGlob) {
+    // int ndof, ii, k, j;
+    // yakl::unpackIndices(iGlob, this->total_dofs, this->topology->halosize_x, this->_nz, this->topology->n_cells_y, ndof, ii, k, j);
+     parallel_for( Bounds<4>(this->total_dofs, this->topology->halosize_x, this->_nz, this->topology->n_cells_y) , YAKL_LAMBDA(int ndof, int ii, int k, int j) { 
+     int iGlob = ndof + ii*this->total_dofs + k*this->total_dofs*this->topology->halosize_x + j*this->total_dofs*this->topology->halosize_x*this->_nz;
+     
      this->haloSendBuf_Xp(iGlob) = field.data(ndof, k+ks, j+js, ii+is+this->topology->n_cells_x-this->topology->halosize_x);
      this->haloSendBuf_Xm(iGlob) = field.data(ndof, k+ks, j+js, ii+is);
    });
 
    //pack down (y-) and up (y+)
    if (ndims ==2) {
-     yakl::parallel_for("PackDownUp", this->bufsize_y, YAKL_LAMBDA (int iGlob) {
-       int ndof, i, k, jj;
-       yakl::unpackIndices(iGlob, this->total_dofs, this->topology->halosize_y, this->_nz, this->topology->n_cells_x, ndof, jj, k, i);
+    // yakl::parallel_for("PackDownUp", this->bufsize_y, YAKL_LAMBDA (int iGlob) {
+      // int ndof, i, k, jj;
+      // yakl::unpackIndices(iGlob, this->total_dofs, this->topology->halosize_y, this->_nz, this->topology->n_cells_x, ndof, jj, k, i);
+      parallel_for( Bounds<4>(this->total_dofs, this->topology->halosize_y, this->_nz, this->topology->n_cells_x) , YAKL_LAMBDA(int ndof, int jj, int k, int i) { 
+        int iGlob = ndof + jj*this->total_dofs + k*this->total_dofs*this->topology->halosize_y + i*this->total_dofs*this->topology->halosize_y*this->_nz;
        this->haloSendBuf_Yp(iGlob) = field.data(ndof, k+ks, jj+js+this->topology->n_cells_y-this->topology->halosize_y, i+is);
        this->haloSendBuf_Ym(iGlob) = field.data(ndof, k+ks, jj+js, i+is);
      });
    }
 
    if (ndims ==2) {
-     yakl::parallel_for("PackCorners", this->bufsize_xy, YAKL_LAMBDA (int iGlob) {
-       int ndof, ii, k, jj;
-       yakl::unpackIndices(iGlob, this->total_dofs, this->topology->halosize_y, this->topology->halosize_x, this->_nz, ndof, jj, ii, k);
+     //yakl::parallel_for("PackCorners", this->bufsize_xy, YAKL_LAMBDA (int iGlob) {
+       //int ndof, ii, k, jj;
+       //yakl::unpackIndices(iGlob, this->total_dofs, this->topology->halosize_y, this->topology->halosize_x, this->_nz, ndof, jj, ii, k);
+       parallel_for( Bounds<4>(this->total_dofs, this->topology->halosize_y, this->topology->halosize_x, this->_nz) , YAKL_LAMBDA(int ndof, int jj, int ii, int k) { 
+      int iGlob = ndof + jj*this->total_dofs + ii*this->total_dofs*this->topology->halosize_y + k*this->total_dofs*this->topology->halosize_y*this->topology->halosize_x;
        this->haloSendBuf_XYll(iGlob) = field.data(ndof, k+ks, jj+js, ii+is);
        this->haloSendBuf_XYur(iGlob) = field.data(ndof, k+ks, jj+js+this->topology->n_cells_y-this->topology->halosize_y, ii+is+this->topology->n_cells_x-this->topology->halosize_x);
        this->haloSendBuf_XYul(iGlob) = field.data(ndof, k+ks, jj+js+this->topology->n_cells_y-this->topology->halosize_y, ii+is);
@@ -233,27 +238,33 @@ void Exchange::initialize(const Exchange &exch)
    int ks = this->topology->ks;
 
    //unpack left (x-) and  right (x+)
-   yakl::parallel_for("UnpackLeftRight", this->bufsize_x, YAKL_LAMBDA (int iGlob) {
-     int ndof, ii, k, j;
-     yakl::unpackIndices(iGlob, this->total_dofs, this->topology->halosize_x, this->_nz, this->topology->n_cells_y, ndof, ii, k, j);
+   //yakl::parallel_for("UnpackLeftRight", this->bufsize_x, YAKL_LAMBDA (int iGlob) {
+    // int ndof, ii, k, j;
+    // yakl::unpackIndices(iGlob, this->total_dofs, this->topology->halosize_x, this->_nz, this->topology->n_cells_y, ndof, ii, k, j);
+    parallel_for( Bounds<4>(this->total_dofs, this->topology->halosize_x, this->_nz, this->topology->n_cells_y) , YAKL_LAMBDA(int ndof, int ii, int k, int j) { 
+      int iGlob = ndof + ii*this->total_dofs + k*this->total_dofs*this->topology->halosize_x + j*this->total_dofs*this->topology->halosize_x*this->_nz;
      field.data(ndof, k+ks, j+js, ii+is-this->topology->halosize_x) = this->haloRecvBuf_Xm(iGlob);
      field.data(ndof, k+ks, j+js, ii+is+this->topology->n_cells_x) = this->haloRecvBuf_Xp(iGlob);
    });
 
    //unpack down (y-) and up (y+)
    if (ndims ==2) {
-     yakl::parallel_for("UnpackDownUp", this->bufsize_y, YAKL_LAMBDA (int iGlob) {
-       int ndof, i, k, jj;
-       yakl::unpackIndices(iGlob, this->total_dofs, this->topology->halosize_y, this->_nz, this->topology->n_cells_x, ndof, jj, k, i);
+     //yakl::parallel_for("UnpackDownUp", this->bufsize_y, YAKL_LAMBDA (int iGlob) {
+      // int ndof, i, k, jj;
+       //yakl::unpackIndices(iGlob, this->total_dofs, this->topology->halosize_y, this->_nz, this->topology->n_cells_x, ndof, jj, k, i);
+       parallel_for( Bounds<4>(this->total_dofs, this->topology->halosize_y, this->_nz, this->topology->n_cells_x) , YAKL_LAMBDA(int ndof, int jj, int k, int i) { 
+         int iGlob = ndof + jj*this->total_dofs + k*this->total_dofs*this->topology->halosize_y + i*this->total_dofs*this->topology->halosize_y*this->_nz;
        field.data(ndof, k+ks, jj+js-this->topology->halosize_y, i+is) = this->haloRecvBuf_Ym(iGlob);
        field.data(ndof, k+ks, jj+js+this->topology->n_cells_y, i+is) = this->haloRecvBuf_Yp(iGlob);
      });
    }
 
    if (ndims ==2) {
-     yakl::parallel_for("UnpackCorners", this->bufsize_xy, YAKL_LAMBDA (int iGlob) {
-       int ndof, ii, k, jj;
-       yakl::unpackIndices(iGlob, this->total_dofs, this->topology->halosize_y, this->topology->halosize_x, this->_nz, ndof, jj, ii, k);
+     //yakl::parallel_for("UnpackCorners", this->bufsize_xy, YAKL_LAMBDA (int iGlob) {
+      // int ndof, ii, k, jj;
+      // yakl::unpackIndices(iGlob, this->total_dofs, this->topology->halosize_y, this->topology->halosize_x, this->_nz, ndof, jj, ii, k);
+      parallel_for( Bounds<4>(this->total_dofs, this->topology->halosize_y, this->topology->halosize_x, this->_nz) , YAKL_LAMBDA(int ndof, int jj, int ii, int k) { 
+        int iGlob = ndof + jj*this->total_dofs + ii*this->total_dofs*this->topology->halosize_y + k*this->total_dofs*this->topology->halosize_y*this->topology->halosize_x;
        field.data(ndof, k+ks, jj+js-this->topology->halosize_y, ii+is-this->topology->halosize_x) = this->haloRecvBuf_XYll(iGlob);
        field.data(ndof, k+ks, jj+js+this->topology->n_cells_y, ii+is+this->topology->n_cells_x) = this->haloRecvBuf_XYur(iGlob);
        field.data(ndof, k+ks, jj+js-this->topology->halosize_y, ii+is+this->topology->n_cells_x) = this->haloRecvBuf_XYlr(iGlob);
@@ -297,7 +308,9 @@ void Exchange::initialize(const Exchange &exch)
 
    else
    {
-     yakl::parallel_for( this->bufsize_x , YAKL_LAMBDA (int iGlob) {
+     
+     //yakl::parallel_for( this->bufsize_x , YAKL_LAMBDA (int iGlob) {
+     parallel_for( Bounds<1>(this->bufsize_x) , YAKL_LAMBDA(int iGlob) { 
        this->haloRecvBuf_Xp(iGlob) = this->haloSendBuf_Xm(iGlob);
        this->haloRecvBuf_Xm(iGlob) = this->haloSendBuf_Xp(iGlob);
      });
@@ -339,7 +352,8 @@ void Exchange::initialize(const Exchange &exch)
 
    else
    {
-   yakl::parallel_for( this->bufsize_y , YAKL_LAMBDA (int iGlob) {
+   //yakl::parallel_for( this->bufsize_y , YAKL_LAMBDA (int iGlob) {
+     parallel_for( Bounds<1>(this->bufsize_y) , YAKL_LAMBDA(int iGlob) { 
      this->haloRecvBuf_Yp(iGlob) = this->haloSendBuf_Ym(iGlob);
      this->haloRecvBuf_Ym(iGlob) = this->haloSendBuf_Yp(iGlob);
    });
@@ -386,7 +400,8 @@ void Exchange::initialize(const Exchange &exch)
    
    else
    {
- yakl::parallel_for( this->bufsize_xy , YAKL_LAMBDA (int iGlob) {
+ //yakl::parallel_for( this->bufsize_xy , YAKL_LAMBDA (int iGlob) {
+ parallel_for( Bounds<1>(this->bufsize_xy) , YAKL_LAMBDA(int iGlob) { 
    this->haloRecvBuf_XYll(iGlob) = this->haloSendBuf_XYur(iGlob);
    this->haloRecvBuf_XYur(iGlob) = this->haloSendBuf_XYll(iGlob);
    this->haloRecvBuf_XYul(iGlob) = this->haloSendBuf_XYlr(iGlob);
@@ -402,15 +417,17 @@ void Exchange::exchange_mirror(Field &field)
   int js = this->topology->js;
   int ks = this->topology->ks;
   
-  yakl::parallel_for("MirrorTop", this->mirror_size, YAKL_LAMBDA (int iGlob) {
-    int ndof, kk, i, j;
-    yakl::unpackIndices(iGlob, this->total_dofs, this->topology->mirror_halo, this->topology->n_cells_x, this->topology->n_cells_y, ndof, kk, i, j);
+  //yakl::parallel_for("MirrorTop", this->mirror_size, YAKL_LAMBDA (int iGlob) {
+  //  int ndof, kk, i, j;
+  //  yakl::unpackIndices(iGlob, this->total_dofs, this->topology->mirror_halo, this->topology->n_cells_x, this->topology->n_cells_y, ndof, kk, i, j);
+  parallel_for( Bounds<4>(this->total_dofs, this->topology->mirror_halo, this->topology->n_cells_x, this->topology->n_cells_y) , YAKL_LAMBDA(int ndof, int kk, int i, int j) { 
     field.data(ndof, this->_nz+ks+kk, j+js, i+is) = field.data(ndof, this->_nz+ks-kk, j+js, i+is);
   });
   
-  yakl::parallel_for("MirrorBottom", this->mirror_size, YAKL_LAMBDA (int iGlob) {
-    int ndof, kk, i, j;
-    yakl::unpackIndices(iGlob, this->total_dofs, this->topology->mirror_halo, this->topology->n_cells_x, this->topology->n_cells_y, ndof, kk, i, j);
+  //yakl::parallel_for("MirrorBottom", this->mirror_size, YAKL_LAMBDA (int iGlob) {
+  //  int ndof, kk, i, j;
+  //  yakl::unpackIndices(iGlob, this->total_dofs, this->topology->mirror_halo, this->topology->n_cells_x, this->topology->n_cells_y, ndof, kk, i, j);
+  parallel_for( Bounds<4>(this->total_dofs, this->topology->mirror_halo, this->topology->n_cells_x, this->topology->n_cells_y) , YAKL_LAMBDA(int ndof, int kk, int i, int j) { 
     field.data(ndof, ks-kk, j+js, i+is) = field.data(ndof, ks+kk, j+js, i+is);
   });
   

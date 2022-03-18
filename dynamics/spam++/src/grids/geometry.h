@@ -499,7 +499,6 @@ template<uint nquadx, uint nquady, uint nquadz> Geometry<nquadx,nquady,nquadz>::
   int js = this->topology->js;
   int ks = this->topology->ks;
 
-  real tempval;
 
 //  yakl::parallel_for("Set2FormValues", this->topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
 //    int k, j, i;
@@ -507,7 +506,7 @@ template<uint nquadx, uint nquady, uint nquadz> Geometry<nquadx,nquady,nquadz>::
 parallel_for( Bounds<3>(this->topology->nl, this->topology->n_cells_y, this->topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
 
     get_2form_quad_pts_wts(i, j, quad_pts_phys, quad_wts_phys);
-    tempval = 0.0;
+    real tempval = 0.0;
     for (int nqx=0; nqx<nquadx; nqx++) {
       for (int nqy=0; nqy<nquady; nqy++) {
           tempval = tempval + initial_value_function(quad_pts_phys(nqx, nqy).x, quad_pts_phys(nqx, nqy).y) * quad_wts_phys(nqx, nqy);
@@ -534,7 +533,6 @@ parallel_for( Bounds<3>(this->topology->nl, this->topology->n_cells_y, this->top
       int js = this->topology->js;
       int ks = this->topology->ks;
 
-      real tempval;
 
       //twisted edges
       int yedge_offset = 0;
@@ -557,20 +555,20 @@ parallel_for( Bounds<3>(this->topology->nl, this->topology->n_cells_y, this->top
         if (line_type == LINE_INTEGRAL_TYPE::NORMAL) {get_edge_normals(i, j, x_line_vec, y_line_vec);}
 
       // y-edge
-        tempval = 0.0;
+        real tempvaly = 0.0;
       for (int nqy=0; nqy<nquady; nqy++) {
         initval = initial_value_function(y_quad_pts_phys(nqy).x, y_quad_pts_phys(nqy).y);
-        tempval = tempval + (initval.u * y_line_vec(nqy).u + initval.v * y_line_vec(nqy).v) * y_quad_wts_phys(nqy);
+        tempvaly = tempvaly + (initval.u * y_line_vec(nqy).u + initval.v * y_line_vec(nqy).v) * y_quad_wts_phys(nqy);
       }
-      field.data(ndof+yedge_offset, k+ks, j+js, i+is) = tempval;
+      field.data(ndof+yedge_offset, k+ks, j+js, i+is) = tempvaly;
 
             // x-edge
-            tempval = 0.0;
+            real tempvalx = 0.0;
             for (int nqx=0; nqx<nquadx; nqx++) {
               initval = initial_value_function(x_quad_pts_phys(nqx).x, x_quad_pts_phys(nqx).y);
-              tempval = tempval + (initval.u * x_line_vec(nqx).u + initval.v * x_line_vec(nqx).v) * x_quad_wts_phys(nqx);
+              tempvalx = tempvalx + (initval.u * x_line_vec(nqx).u + initval.v * x_line_vec(nqx).v) * x_quad_wts_phys(nqx);
             }
-            field.data(ndof+xedge_offset, k+ks, j+js, i+is) = tempval;
+            field.data(ndof+xedge_offset, k+ks, j+js, i+is) = tempvalx;
       });
   }
 
@@ -936,13 +934,12 @@ template<uint nquadx, uint nquady, uint nquadz> Geometry<nquadx,nquady,nquadz>::
     int js = this->topology->js;
     int ks = this->topology->ks;
   
-    SArray<coordsext<2>,1,1> quad_pts_phys;
-    SArray<real,1,1> quad_wts_phys;
-  
 //    yakl::parallel_for("Set0FormValues", this->topology->n_cells_interfaces, YAKL_LAMBDA (int iGlob) {
 //      int k, j, i;
 //      yakl::unpackIndices(iGlob, this->topology->ni, this->topology->n_cells_y, this->topology->n_cells_x ,k, j, i);
 parallel_for( Bounds<3>(this->topology->ni, this->topology->n_cells_y, this->topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
+  SArray<coordsext<2>,1,1> quad_pts_phys;
+  SArray<real,1,1> quad_wts_phys;
         get_00form_quad_pts_wts(i, k, quad_pts_phys, quad_wts_phys);
         field.data(ndof, k+ks, j+js, i+is) = initial_value_function(quad_pts_phys(0).x, quad_pts_phys(0).z) * quad_wts_phys(0);
     });
@@ -950,46 +947,52 @@ parallel_for( Bounds<3>(this->topology->ni, this->topology->n_cells_y, this->top
 }
   template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<nquadx,nquady,nquadz>::set_11form_values(real (*initial_value_function)(real, real), Field &field, int ndof)
 {
-    SArray<coordsext<2>,2,nquadx,nquadz> quad_pts_phys;
-    SArray<real,2,nquadx,nquadz> quad_wts_phys;
+
   
     int is = this->topology->is;
     int js = this->topology->js;
     int ks = this->topology->ks;
 
-    real tempval;
   
 //    yakl::parallel_for("Set2FormValues", this->topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
 //      int k, j, i;
 //      yakl::unpackIndices(iGlob, this->topology->nl, this->topology->n_cells_y, this->topology->n_cells_x ,k, j, i);
 parallel_for( Bounds<3>(this->topology->nl, this->topology->n_cells_y, this->topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
-      tempval = 0.0;
+  
+  SArray<coordsext<2>,2,nquadx,nquadz> quad_pts_phys;
+  SArray<real,2,nquadx,nquadz> quad_wts_phys;
+      real tempval = 0.0;
+      
+      get_11form_quad_pts_wts(i, k, quad_pts_phys, quad_wts_phys);
+
       for (int nqx=0; nqx<nquadx; nqx++) {
         for (int nqz=0; nqz<nquadz; nqz++) {
             tempval = tempval + initial_value_function(quad_pts_phys(nqx, nqz).x, quad_pts_phys(nqx, nqz).z) * quad_wts_phys(nqx, nqz);
           }}
+          //std::cout << i << " " << j << " " << k << " " << tempval << " " << quad_pts_phys(0, 0).x << " " << quad_pts_phys(0, 0).z << " " << quad_wts_phys(0, 0) << "\n" << std::flush;
+
         field.data(ndof, k+ks, j+js, i+is) = tempval;
     });
 }
   
   template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<nquadx,nquady,nquadz>::set_01form_values(vecext<2> (*initial_value_function)(real, real), Field &field, int ndof, LINE_INTEGRAL_TYPE line_type)
 {
-      SArray<coordsext<2>,1,nquadz> edge_quad_pts_phys;
-      SArray<real,1,nquadz> edge_quad_wts_phys;
-      SArray<vecext<2>,1,nquadz> edge_line_vec;
-      vecext<2> initval;
+
   
       int is = this->topology->is;
       int js = this->topology->js;
       int ks = this->topology->ks;
-
-      real tempval;
   
   //    yakl::parallel_for("Set01FormValues", this->topology->n_cells_layers , YAKL_LAMBDA (int iGlob) {
   //      int k, j, i;
   //      yakl::unpackIndices(iGlob, this->topology->nl, this->topology->n_cells_y, this->topology->n_cells_x ,k, j, i);
         parallel_for( Bounds<3>(this->topology->nl, this->topology->n_cells_y, this->topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
-  
+          real tempval = 0.0;
+          SArray<coordsext<2>,1,nquadz> edge_quad_pts_phys;
+          SArray<real,1,nquadz> edge_quad_wts_phys;
+          SArray<vecext<2>,1,nquadz> edge_line_vec;
+          vecext<2> initval;
+          
         get_01form_quad_pts_wts(i, k, edge_quad_pts_phys, edge_quad_wts_phys);
   
         if (line_type == LINE_INTEGRAL_TYPE::TANGENT) {get_01edge_tangents(i, k, edge_line_vec);}
@@ -1006,22 +1009,21 @@ parallel_for( Bounds<3>(this->topology->nl, this->topology->n_cells_y, this->top
 
   template<uint nquadx, uint nquady, uint nquadz> YAKL_INLINE void Geometry<nquadx,nquady,nquadz>::set_10form_values(vecext<2> (*initial_value_function)(real, real), Field &field, int ndof, LINE_INTEGRAL_TYPE line_type)
 {
-  SArray<coordsext<2>,1,nquadx> edge_quad_pts_phys;
-  SArray<real,1,nquadx> edge_quad_wts_phys;
-  SArray<vecext<2>,1,nquadx> edge_line_vec;
-  vecext<2> initval;
 
   int is = this->topology->is;
   int js = this->topology->js;
   int ks = this->topology->ks;
 
-  real tempval;
-
 //  yakl::parallel_for("Set10FormValues", this->topology->n_cells_interfaces , YAKL_LAMBDA (int iGlob) {
 //    int k, j, i;
 //    yakl::unpackIndices(iGlob, this->topology->ni, this->topology->n_cells_y, this->topology->n_cells_x ,k, j, i);
     parallel_for( Bounds<3>(this->topology->ni, this->topology->n_cells_y, this->topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
-
+      SArray<coordsext<2>,1,nquadx> edge_quad_pts_phys;
+      SArray<real,1,nquadx> edge_quad_wts_phys;
+      SArray<vecext<2>,1,nquadx> edge_line_vec;
+      vecext<2> initval;
+    real tempval = 0.0;
+    
     get_10form_quad_pts_wts(i, k, edge_quad_pts_phys, edge_quad_wts_phys);
 
     if (line_type == LINE_INTEGRAL_TYPE::TANGENT) {get_10edge_tangents(i, k, edge_line_vec);}

@@ -18,8 +18,8 @@ public:
   bool is_initialized;
 
   VariableSet();
-  VariableSet( const VariableSet<num_fields> &vs) = delete;
-  VariableSet& operator=( const VariableSet<num_fields> &vs) = delete;
+  //VariableSet( const VariableSet<num_fields> &vs) = delete;
+  //VariableSet& operator=( const VariableSet<num_fields> &vs) = delete;
   void printinfo();
   void initialize(const std::string name, std::array<std::string, num_fields> &names_arr, std::array<const Topology *, num_fields> &topo_arr, SArray<int,2, num_fields, 3> &ndofs_arr);
   void initialize(const VariableSet< num_fields> &vs, const std::string name);

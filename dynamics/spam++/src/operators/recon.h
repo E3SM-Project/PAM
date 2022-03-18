@@ -9,7 +9,7 @@
 
 template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord=2, uint hs=(ord-1)/2> void YAKL_INLINE compute_twisted_edge_recon(
   real4d edgereconvar, const real4d var, int is, int js, int ks, int i, int j, int k,
-  SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,2,ord,tord> const &to_gll, SArray<real,1,hs+2> const &wenoIdl, real wenoSigma)
+  SArray<real,3,ord,ord,ord> const &wenoRecon, SArray<real,2,ord,tord> const &to_gll, SArray<real,1,hs+2> const &wenoIdl, real wenoSigma)
   {
 
 SArray<real,3,ndofs,ndims,ord> stencil;
@@ -158,7 +158,7 @@ template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord=2, uint
 
 
 
-template<uint ndofs, uint nd> void YAKL_INLINE centered_recon(SArray<real,2,ndofs,nd> &recon, SArray<real,ndofs,nd,2> const &edgerecon) {
+template<uint ndofs, uint nd> void YAKL_INLINE centered_recon(SArray<real,2,ndofs,nd> &recon, SArray<real,3,ndofs,nd,2> const &edgerecon) {
 
     for (int l=0; l<ndofs; l++) {
       for (int d=0; d<nd; d++) {

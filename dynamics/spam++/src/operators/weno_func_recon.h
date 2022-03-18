@@ -156,19 +156,19 @@ template<uint ord, uint tord=2, uint hs=(ord-1)/2> YAKL_INLINE void compute_weno
   real lo_avg;
   real const eps = 1.0e-20;
 
-  TransformMatrices<real> transform;
+  //TransformMatrices<real> transform;
 
   // Compute total variation of all candidate polynomials
   for (int i=0; i<hs+1; i++) {
     for (int ii=0; ii<hs+1; ii++) {
       lotmp(ii) = a(i,ii);
     }
-    tv(i) = transform.coefs_to_tv(lotmp);
+    tv(i) = TransformMatrices::coefs_to_tv(lotmp);
   }
   for (int ii=0; ii<ord; ii++) {
     hitmp(ii) = a(hs+1,ii);
   }
-  tv(hs+1) = transform.coefs_to_tv(hitmp);
+  tv(hs+1) = TransformMatrices::coefs_to_tv(hitmp);
 
   // Reduce the bridge polynomial TV to something closer to the other TV values
   lo_avg = 0._fp;
@@ -247,7 +247,7 @@ template<uint ord, uint tord=2, uint hs=(ord-1)/2> YAKL_INLINE void reconStencil
 }
 
 
-template<uint ndofs, uint nd, uint ord, uint tord=2, uint hs=(ord-1)/2> void YAKL_INLINE weno_func(SArray<real,1,ndofs,nd,2> &edgerecon, SArray<real,3,ndofs,nd,ord> const &dens,
+template<uint ndofs, uint nd, uint ord, uint tord=2, uint hs=(ord-1)/2> void YAKL_INLINE weno_func(SArray<real,3,ndofs,nd,2> &edgerecon, SArray<real,3,ndofs,nd,ord> const &dens,
   SArray<real,3,ord,ord,ord> const &wenoRecon, SArray<real,2,ord,2> const &to_gll, SArray<real,1,hs+2> const &wenoIdl, real wenoSigma) {
 
   SArray<real,1,ord> stencil;

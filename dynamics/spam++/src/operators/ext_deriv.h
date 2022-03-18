@@ -63,7 +63,7 @@ if (addmode == ADD_MODE::ADD) {for (int l=0; l<ndofs; l++) { tendvar(l, k+ks, j+
 
 }
 
-template<uint ndofs> void YAKL_INLINE wDvbar( SArray<real,1,ndofs> &var, SArray<real,2,ndofs,2> const &recon, SArray<real,2,2> const &flux ) {
+template<uint ndofs> void YAKL_INLINE wDvbar( SArray<real,1,ndofs> &var, SArray<real,2,ndofs,2> const &recon, SArray<real,1,2> const &flux ) {
   for (int l=0; l<ndofs; l++) {
     var(l) = flux(1) * recon(l,1) - flux(0) * recon(l,0);
   }

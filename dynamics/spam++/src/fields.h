@@ -23,8 +23,8 @@ public :
 
   bool is_initialized;
   Field();
-  Field( const Field &f) = delete;
-  Field& operator=( const Field &f) = delete;
+  //Field( const Field &f) = delete;
+  //Field& operator=( const Field &f) = delete;
   void printinfo();
   void initialize(const Field &f, const std::string fieldName);
   void initialize(const Topology &topo, const std::string fieldName, int bdof, int edof, int nd);
@@ -96,20 +96,22 @@ public :
 
   void Field::set(real val)
   {
-    yakl::parallel_for("SetField", this->_nloop_halo, YAKL_LAMBDA (int iGlob) {
-      int k, j, i;
-      yakl::unpackIndices(iGlob, this->_nz +2*this->topology->mirror_halo, this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x, k, j, i);
-      for (int ndof=0; ndof<this->total_dofs; ndof++) {
+//    yakl::parallel_for("SetField", this->_nloop_halo, YAKL_LAMBDA (int iGlob) {
+//      int k, j, i;
+//      yakl::unpackIndices(iGlob, this->_nz +2*this->topology->mirror_halo, this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x, k, j, i);
+      parallel_for( Bounds<4>(this->total_dofs, this->_nz +2*this->topology->mirror_halo,this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x) , YAKL_LAMBDA(int ndof, int k, int j, int i) { 
+      //for (int ndof=0; ndof<this->total_dofs; ndof++) {
         this->data(ndof, k, j, i) = val;
-      }
+      //}
     });    
   }
 
   void Field::set(int ndof, real val)
   {
-    yakl::parallel_for("SetField", this->_nloop_halo, YAKL_LAMBDA (int iGlob) {
-      int k, j, i;
-      yakl::unpackIndices(iGlob, this->_nz +2*this->topology->mirror_halo, this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x, k, j, i);
+//    yakl::parallel_for("SetField", this->_nloop_halo, YAKL_LAMBDA (int iGlob) {
+//      int k, j, i;
+//      yakl::unpackIndices(iGlob, this->_nz +2*this->topology->mirror_halo, this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x, k, j, i);
+parallel_for( Bounds<3>(this->_nz +2*this->topology->mirror_halo,this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x) , YAKL_LAMBDA(int k, int j, int i) { 
         this->data(ndof, k, j, i) = val;
     });    
   }
@@ -117,20 +119,22 @@ public :
 
   void Field::zero()
   {
-    yakl::parallel_for("ZeroField", this->_nloop_halo, YAKL_LAMBDA (int iGlob) {
-      int k, j, i;
-      yakl::unpackIndices(iGlob, this->_nz +2*this->topology->mirror_halo, this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x, k, j, i);
-      for (int ndof=0; ndof<this->total_dofs; ndof++) {
+//    yakl::parallel_for("ZeroField", this->_nloop_halo, YAKL_LAMBDA (int iGlob) {
+//      int k, j, i;
+//      yakl::unpackIndices(iGlob, this->_nz +2*this->topology->mirror_halo, this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x, k, j, i);
+parallel_for( Bounds<4>(this->total_dofs, this->_nz +2*this->topology->mirror_halo,this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x) , YAKL_LAMBDA(int ndof, int k, int j, int i) { 
+    //  for (int ndof=0; ndof<this->total_dofs; ndof++) {
         this->data(ndof, k, j, i) = 0.0;
-      }
+    //  }
     });
   }
   
   void Field::zero(int ndof)
   {
-    yakl::parallel_for("ZeroField", this->_nloop_halo, YAKL_LAMBDA (int iGlob) {
-      int k, j, i;
-      yakl::unpackIndices(iGlob, this->_nz +2*this->topology->mirror_halo, this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x, k, j, i);
+//    yakl::parallel_for("ZeroField", this->_nloop_halo, YAKL_LAMBDA (int iGlob) {
+//      int k, j, i;
+//      yakl::unpackIndices(iGlob, this->_nz +2*this->topology->mirror_halo, this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x, k, j, i);
+parallel_for( Bounds<3>(this->_nz +2*this->topology->mirror_halo,this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x) , YAKL_LAMBDA(int k, int j, int i) { 
         this->data(ndof, k, j, i) = 0.0;
     });
   }
@@ -142,12 +146,13 @@ public :
     int is = this->topology->is;
     int js = this->topology->js;
     int ks = this->topology->ks;
-    yakl::parallel_for("CopyField", this->_nloop, YAKL_LAMBDA (int iGlob) {
-      int k, j, i;
-      yakl::unpackIndices(iGlob, this->_nz, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
-      for (int ndof=0; ndof<this->total_dofs; ndof++) {
+  //  yakl::parallel_for("CopyField", this->_nloop, YAKL_LAMBDA (int iGlob) {
+  //    int k, j, i;
+  //    yakl::unpackIndices(iGlob, this->_nz, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
+  parallel_for( Bounds<4>(this->total_dofs, this->_nz,this->topology->n_cells_y, this->topology->n_cells_x) , YAKL_LAMBDA(int ndof, int k, int j, int i) { 
+  //    for (int ndof=0; ndof<this->total_dofs; ndof++) {
         this->data(ndof, k+ks, j+js, i+is) = f.data(ndof, k+ks, j+js, i+is);
-      }
+    //  }
     });
   }
 
@@ -158,12 +163,13 @@ public :
     int is = this->topology->is;
     int js = this->topology->js;
     int ks = this->topology->ks;
-    yakl::parallel_for("WAXPYField", this->_nloop, YAKL_LAMBDA (int iGlob) {
-      int k, j, i;
-      yakl::unpackIndices(iGlob, this->_nz, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
-      for (int ndof=0; ndof<this->total_dofs; ndof++) {
+    //yakl::parallel_for("WAXPYField", this->_nloop, YAKL_LAMBDA (int iGlob) {
+    //  int k, j, i;
+    //  yakl::unpackIndices(iGlob, this->_nz, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
+    parallel_for( Bounds<4>(this->total_dofs, this->_nz,this->topology->n_cells_y, this->topology->n_cells_x) , YAKL_LAMBDA(int ndof, int k, int j, int i) { 
+    //  for (int ndof=0; ndof<this->total_dofs; ndof++) {
         this->data(ndof, k+ks, j+js, i+is) = alpha * x.data(ndof, k+ks, j+js, i+is) + y.data(ndof, k+ks, j+js, i+is);
-      }
+    //  }
     });
   }
 
@@ -174,12 +180,13 @@ public :
     int is = this->topology->is;
     int js = this->topology->js;
     int ks = this->topology->ks;
-    yakl::parallel_for("WAXPBYPCZField", this->_nloop, YAKL_LAMBDA (int iGlob) {
-      int k, j, i;
-      yakl::unpackIndices(iGlob, this->_nz, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
-      for (int ndof=0; ndof<this->total_dofs; ndof++) {
+    //yakl::parallel_for("WAXPBYPCZField", this->_nloop, YAKL_LAMBDA (int iGlob) {
+    //  int k, j, i;
+    //  yakl::unpackIndices(iGlob, this->_nz, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
+    parallel_for( Bounds<4>(this->total_dofs, this->_nz,this->topology->n_cells_y, this->topology->n_cells_x) , YAKL_LAMBDA(int ndof, int k, int j, int i) { 
+    //  for (int ndof=0; ndof<this->total_dofs; ndof++) {
         this->data(ndof, k+ks, j+js, i+is) = alpha * x.data(ndof, k+ks, j+js, i+is) + beta * y.data(ndof, k+ks, j+js, i+is) + gamma * z.data(ndof, k+ks, j+js, i+is);
-      }
+    //  }
     });
   }
 
@@ -187,17 +194,22 @@ public :
   real Field::sum()
   {
 
-    int is = this->topology->is;
-    int js = this->topology->js;
-    int ks = this->topology->ks;
-    real sum = 0.0;
-    yakl::parallel_for("SumField", this->_nloop, YAKL_LAMBDA (int iGlob) {
-      int k, j, i;
-      yakl::unpackIndices(iGlob, this->_nz, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
-      for (int ndof=0; ndof<this->total_dofs; ndof++) {
-        sum += this->data(ndof, k+ks, j+js, i+is);
-      }
-    });
+    //int is = this->topology->is;
+    //int js = this->topology->js;
+    //int ks = this->topology->ks;
+    //real sum = 0.0;
+    
+    //THIS SUMS OVER THE HALO ELEMENTS :(
+    real sum = yakl::intrinsics::sum(this->data);
+    
+    //THIS CODE WAS ACTUALLY A REDUCTION, AND IT IS A MIRACLE IT EVER WORKED!
+    //yakl::parallel_for("SumField", this->_nloop, YAKL_LAMBDA (int iGlob) {
+    //  int k, j, i;
+    //  yakl::unpackIndices(iGlob, this->_nz, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
+    //  for (int ndof=0; ndof<this->total_dofs; ndof++) {
+    //    sum += this->data(ndof, k+ks, j+js, i+is);
+    //  }
+    //});
     return sum;
   }
 
@@ -205,33 +217,40 @@ public :
   real Field::sum(int ndof)
   {
 
-    int is = this->topology->is;
-    int js = this->topology->js;
-    int ks = this->topology->ks;
-    real sum = 0.0;
-    yakl::parallel_for("SumField", this->_nloop, YAKL_LAMBDA (int iGlob) {
-      int k, j, i;
-      yakl::unpackIndices(iGlob, this->_nz, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
-        sum += this->data(ndof, k+ks, j+js, i+is);
-    });
+    //THIS SUMS OVER THE HALO ELEMENTS, AND IS NOT SPECIFIC TO NDOF :(
+    real sum = yakl::intrinsics::sum(this->data);
+
+    //THIS CODE WAS ACTUALLY A REDUCTION, AND IT IS A MIRACLE IT EVER WORKED!
+    // int is = this->topology->is;
+    // int js = this->topology->js;
+    // int ks = this->topology->ks;
+    // real sum = 0.0;
+    // yakl::parallel_for("SumField", this->_nloop, YAKL_LAMBDA (int iGlob) {
+    //   int k, j, i;
+    //   yakl::unpackIndices(iGlob, this->_nz, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
+    //     sum += this->data(ndof, k+ks, j+js, i+is);
+    // });
     return sum;
   }
 
   // computes min of field
  real Field::min()
   {
+    //THIS SUMS OVER THE HALO ELEMENTS :(
+    real min = yakl::intrinsics::minval(this->data);
 
-    int is = this->topology->is;
-    int js = this->topology->js;
-    int ks = this->topology->ks;
-    real min = this->data(0, 0, js, is);
-    yakl::parallel_for("MinField", this->_nloop, YAKL_LAMBDA (int iGlob) {
-      int k, j, i;
-      yakl::unpackIndices(iGlob, this->_nz, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
-      for (int ndof=0; ndof<this->total_dofs; ndof++) {
-        min = mymin(this->data(ndof, k+ks, j+js, i+is), min);
-      }
-    });
+    //THIS CODE WAS ACTUALLY A REDUCTION, AND IT IS A MIRACLE IT EVER WORKED!
+    //int is = this->topology->is;
+    //int js = this->topology->js;
+    //int ks = this->topology->ks;
+    // real min = this->data(0, 0, js, is);
+    // yakl::parallel_for("MinField", this->_nloop, YAKL_LAMBDA (int iGlob) {
+    //   int k, j, i;
+    //   yakl::unpackIndices(iGlob, this->_nz, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
+    //   for (int ndof=0; ndof<this->total_dofs; ndof++) {
+    //     min = mymin(this->data(ndof, k+ks, j+js, i+is), min);
+    //   }
+    // });
     return min;
   }
 
@@ -239,15 +258,19 @@ public :
  real Field::min(int ndof)
   {
 
-    int is = this->topology->is;
-    int js = this->topology->js;
-    int ks = this->topology->ks;
-    real min = this->data(ndof, 0, js, is);
-    yakl::parallel_for("MinField", this->_nloop, YAKL_LAMBDA (int iGlob) {
-      int k, j, i;
-      yakl::unpackIndices(iGlob, this->_nz, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
-        min = mymin(this->data(ndof, k+ks, j+js, i+is), min);
-    });
+    //THIS SUMS OVER THE HALO ELEMENTS, AND IS NOT SPECIFIC TO NDOF :(
+    real min = yakl::intrinsics::minval(this->data);
+
+    //THIS CODE WAS ACTUALLY A REDUCTION, AND IT IS A MIRACLE IT EVER WORKED!
+    // int is = this->topology->is;
+    // int js = this->topology->js;
+    // int ks = this->topology->ks;
+    // real min = this->data(ndof, 0, js, is);
+    // yakl::parallel_for("MinField", this->_nloop, YAKL_LAMBDA (int iGlob) {
+    //   int k, j, i;
+    //   yakl::unpackIndices(iGlob, this->_nz, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
+    //     min = mymin(this->data(ndof, k+ks, j+js, i+is), min);
+    // });
     return min;
   }
 
@@ -255,17 +278,21 @@ public :
   real Field::max()
   {
 
-    int is = this->topology->is;
-    int js = this->topology->js;
-    int ks = this->topology->ks;
-    real max = this->data(0, 0, js, is);
-    yakl::parallel_for("MaxField", this->_nloop, YAKL_LAMBDA (int iGlob) {
-      int k, j, i;
-      yakl::unpackIndices(iGlob, this->_nz, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
-      for (int ndof=0; ndof<this->total_dofs; ndof++) {
-        max = mymax(this->data(ndof, k+ks, j+js, i+is), max);
-      }
-    });
+    //THIS SUMS OVER THE HALO ELEMENTS :(
+    real max = yakl::intrinsics::maxval(this->data);
+
+    //THIS CODE WAS ACTUALLY A REDUCTION, AND IT IS A MIRACLE IT EVER WORKED!
+    // int is = this->topology->is;
+    // int js = this->topology->js;
+    // int ks = this->topology->ks;
+    // real max = this->data(0, 0, js, is);
+    // yakl::parallel_for("MaxField", this->_nloop, YAKL_LAMBDA (int iGlob) {
+    //   int k, j, i;
+    //   yakl::unpackIndices(iGlob, this->_nz, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
+    //   for (int ndof=0; ndof<this->total_dofs; ndof++) {
+    //     max = mymax(this->data(ndof, k+ks, j+js, i+is), max);
+    //   }
+    // });
     return max;
   }
 
@@ -273,15 +300,19 @@ public :
   real Field::max(int ndof)
   {
 
-    int is = this->topology->is;
-    int js = this->topology->js;
-    int ks = this->topology->ks;
-    real max = this->data(ndof, 0, js, is);
-    yakl::parallel_for("MaxField", this->_nloop, YAKL_LAMBDA (int iGlob) {
-      int k, j, i;
-      yakl::unpackIndices(iGlob, this->_nz, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
-        max = mymax(this->data(ndof, k+ks, j+js, i+is), max);
-    });
+    //THIS SUMS OVER THE HALO ELEMENTS, AND IS NOT SPECIFIC TO NDOF :(
+    real max = yakl::intrinsics::maxval(this->data);
+    
+    //THIS CODE WAS ACTUALLY A REDUCTION, AND IT IS A MIRACLE IT EVER WORKED!
+    // int is = this->topology->is;
+    // int js = this->topology->js;
+    // int ks = this->topology->ks;
+    // real max = this->data(ndof, 0, js, is);
+    // yakl::parallel_for("MaxField", this->_nloop, YAKL_LAMBDA (int iGlob) {
+    //   int k, j, i;
+    //   yakl::unpackIndices(iGlob, this->_nz, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
+    //     max = mymax(this->data(ndof, k+ks, j+js, i+is), max);
+    // });
     return max;
   }
 
