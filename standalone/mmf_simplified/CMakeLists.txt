@@ -115,6 +115,8 @@ if (${USE_SCREAM})
   if ("${PAM_SGS}" STREQUAL "shoc")
     target_link_libraries(driver shoc)
   endif()
+else()
+  target_link_libraries(driver yaml-cpp)
 endif()
 target_link_libraries(driver ${NCFLAGS})
 

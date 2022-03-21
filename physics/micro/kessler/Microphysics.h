@@ -84,7 +84,7 @@ public:
 
 
 
-  real compute_total_mass( DataManager const &dm ) const {
+  real compute_total_mass( pam::DataManager const &dm ) const {
     auto rho_v = dm.get<real const,4>("water_vapor");
     auto rho_c = dm.get<real const,4>("cloud_liquid");
     auto rho_r = dm.get<real const,4>("precip_liquid");
