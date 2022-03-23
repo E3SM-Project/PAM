@@ -2,7 +2,7 @@
 set(MYSRC matvec.cpp)
 
 add_executable(matvec ${MYSRC})
-target_compile_features(matvec PUBLIC cxx_std_14)
+target_compile_features(matvec PUBLIC cxx_std_17)
 include_directories(../..)
 include_directories(../../../../include)
 target_link_libraries(matvec yakl)

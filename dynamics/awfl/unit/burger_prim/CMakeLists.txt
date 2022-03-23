@@ -2,7 +2,7 @@
 set(MYSRC burger_prim.cpp)
 
 add_executable(burger_prim ${MYSRC})
-target_compile_features(burger_prim PUBLIC cxx_std_14)
+target_compile_features(burger_prim PUBLIC cxx_std_17)
 include_directories(../..)
 target_link_libraries(burger_prim yakl)
 

@@ -2,7 +2,7 @@
 set(MYSRC recon_regular.cpp)
 
 add_executable(recon_regular ${MYSRC})
-target_compile_features(recon_regular PUBLIC cxx_std_14)
+target_compile_features(recon_regular PUBLIC cxx_std_17)
 include_directories(../..)
 include_directories(../../../../include)
 target_link_libraries(recon_regular yakl)

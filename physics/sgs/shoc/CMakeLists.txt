@@ -2,7 +2,6 @@
 set(SGS_SRC fortran/shoc.F90)
 
 add_library(sgs ${SGS_SRC})
-target_compile_features(sgs PUBLIC cxx_std_14)
 target_include_directories(sgs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(sgs PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(sgs scream_common physics_share)

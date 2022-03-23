@@ -2,7 +2,6 @@
 set(MICRO_SRC fortran/micro_p3.F90)
 
 add_library(micro ${MICRO_SRC})
-target_compile_features(micro PUBLIC cxx_std_14)
 target_include_directories(micro PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(micro PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(micro scream_common physics_share)
