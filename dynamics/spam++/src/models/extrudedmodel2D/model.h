@@ -32,7 +32,7 @@ uint constexpr nconstant = 2;
 //fct stuff- Phi, Mf, edgeflux
 //Q/W STUFF?
 
-uint constexpr nauxiliary = 27;
+uint constexpr nauxiliary = 32;
 
 #define FVAR 0
 #define BVAR 1
@@ -66,6 +66,11 @@ uint constexpr nauxiliary = 27;
 #define FTVAR 25
 #define FTWVAR 26
 
+#define FXZ0VAR 27
+#define CORIOLISXZRECONVAR 28
+#define CORIOLISXZEDGERECONVAR 29
+#define CORIOLISXZVERTRECONVAR 30
+#define CORIOLISXZVERTEDGERECONVAR 31
 
 // q, associated concentration 0-forms for den
 
@@ -332,7 +337,7 @@ public:
 //   int k, j, i;
 //   yakl::unpackIndices(iGlob, dual_topology->ni-2, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
    parallel_for( Bounds<3>( dual_topology->ni-2, dual_topology->n_cells_y, dual_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
- PVPE.compute_qxz0(diagnostic_vars.fields_arr[QXZDIAGVAR].data, x.fields_arr[VVAR].data, x.fields_arr[WVAR].data, x.fields_arr[DENSVAR].data, dis, djs, dks, i, j, k+1);
+ PVPE.compute_qxz0(diagnostic_vars.fields_arr[QXZDIAGVAR].data, x.fields_arr[VVAR].data, x.fields_arr[WVAR].data, x.fields_arr[DENSVAR].data, const_vars.fields_arr[CORIOLISXZVAR].data, dis, djs, dks, i, j, k+1);
  });
    
 }
@@ -436,8 +441,8 @@ public:
   {}
  
    void YAKL_INLINE compute_functional_derivatives_and_diagnostic_quantities_I(
-    real4d Uvar, real4d UWvar, real4d qxz0var, real4d dens0var, 
-    const real4d Vvar, const real4d Wvar, const real4d densvar) {
+    real4d Uvar, real4d UWvar, real4d qxz0var, real4d fxz0var, real4d dens0var, 
+    const real4d Vvar, const real4d Wvar, const real4d densvar, const real4d coriolisxzvar) {
 
 int pis = primal_topology->is;
 int pjs = primal_topology->js;
@@ -474,7 +479,7 @@ compute_Hv<1, vert_diff_ord>(UWvar, Wvar, *this->primal_geometry, *this->dual_ge
 //   int k, j, i;
 //   yakl::unpackIndices(iGlob, dual_topology->ni-2, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
   parallel_for( Bounds<3>( dual_topology->ni-2, dual_topology->n_cells_y, dual_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
-PVPE.compute_qxz0(qxz0var, Vvar, Wvar, densvar, dis, djs, dks, i, j, k+1);
+PVPE.compute_qxz0fxz0(qxz0var, fxz0var, Vvar, Wvar, densvar, coriolisxzvar, dis, djs, dks, i, j, k+1);
 });
 
     }
@@ -544,8 +549,10 @@ Hk.compute_dKddens<ADD_MODE::ADD>(Bvar, Kvar, pis, pjs, pks, i, j, k);
     }
 
 
-  void YAKL_INLINE compute_edge_reconstructions(real4d densedgereconvar, real4d densvertedgereconvar, real4d qxzedgereconvar, real4d qxzvertedgereconvar, 
-    const real4d dens0var, const real4d qxz0var) {
+  void YAKL_INLINE compute_edge_reconstructions(real4d densedgereconvar, real4d densvertedgereconvar, 
+    real4d qxzedgereconvar, real4d qxzvertedgereconvar, 
+    real4d coriolisxzedgereconvar, real4d coriolisxzvertedgereconvar,
+    const real4d dens0var, const real4d qxz0var, const real4d fxz0var) {
 
       int dis = dual_topology->is;
       int djs = dual_topology->js;
@@ -581,7 +588,15 @@ Hk.compute_dKddens<ADD_MODE::ADD>(Bvar, Kvar, pis, pjs, pks, i, j, k);
            compute_straight_xz_vert_edge_recon<1, vert_reconstruction_type, vert_reconstruction_order>(
              qxzvertedgereconvar, qxz0var, pis, pjs, pks, i, j, k,
              primal_vert_wenoRecon, primal_vert_to_gll, primal_vert_wenoIdl, primal_vert_wenoSigma);
-          
+  
+             compute_straight_xz_edge_recon<1, coriolis_reconstruction_type, coriolis_reconstruction_order>(
+               coriolisxzedgereconvar, fxz0var, pis, pjs, pks, i, j, k,
+               coriolis_wenoRecon, coriolis_to_gll, coriolis_wenoIdl, coriolis_wenoSigma);
+
+             compute_straight_xz_vert_edge_recon<1, coriolis_vert_reconstruction_type, coriolis_vert_reconstruction_order>(
+               coriolisxzvertedgereconvar, fxz0var, pis, pjs, pks, i, j, k,
+               coriolis_vert_wenoRecon, coriolis_vert_to_gll, coriolis_vert_wenoIdl, coriolis_vert_wenoSigma);
+               
         });
         
   }
@@ -589,8 +604,10 @@ Hk.compute_dKddens<ADD_MODE::ADD>(Bvar, Kvar, pis, pjs, pks, i, j, k);
   void YAKL_INLINE compute_recons(
   real4d densreconvar,  real4d densvertreconvar,
   real4d qxzreconvar,  real4d qxzvertreconvar,
+  real4d coriolisxzreconvar,  real4d coriolisxzvertreconvar,
   const real4d densedgereconvar, const real4d densvertedgereconvar, 
   const real4d qxzedgereconvar, const real4d qxzvertedgereconvar,
+  const real4d coriolisxzedgereconvar, const real4d coriolisxzvertedgereconvar,
   const real4d HEvar, const real4d HEWvar,
   const real4d Uvar, const real4d UWvar,
   const real4d FTvar, const real4d FTWvar) {
@@ -639,6 +656,9 @@ int pks = primal_topology->ks;
 
   compute_straight_xz_recon<1, reconstruction_type>(
     qxzreconvar, qxzedgereconvar, FTWvar, pis, pjs, pks, i, j, k);
+    
+    compute_straight_xz_recon<1, coriolis_reconstruction_type>(
+      coriolisxzreconvar, coriolisxzedgereconvar, FTWvar, pis, pjs, pks, i, j, k);
 });
 // yakl::parallel_for("ComputeQVERTRECON", primal_topology->n_cells_interfaces, YAKL_LAMBDA (int iGlob) {
 //   int k, j, i;
@@ -646,6 +666,9 @@ int pks = primal_topology->ks;
   parallel_for( Bounds<3>( primal_topology->ni, primal_topology->n_cells_y, primal_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
   compute_straight_xz_vert_recon<1, vert_reconstruction_type>(
     qxzvertreconvar, qxzvertedgereconvar, FTvar, pis, pjs, pks, i, j, k);
+    
+    compute_straight_xz_vert_recon<1, coriolis_vert_reconstruction_type>(
+      coriolisxzvertreconvar, coriolisxzvertedgereconvar, FTvar, pis, pjs, pks, i, j, k);
 });
 
 }
@@ -654,6 +677,7 @@ int pks = primal_topology->ks;
   real4d denstendvar, real4d Vtendvar, real4d Wtendvar,
   const real4d densreconvar, const real4d densvertreconvar,
   const real4d qxzreconvar, const real4d qxzvertreconvar,
+  const real4d coriolisxzreconvar, const real4d coriolisxzvertreconvar,
   const real4d Bvar, const real4d Fvar, const real4d FWvar, const real4d Phivar, const real4d Phivertvar) {
 
 int pis = primal_topology->is;
@@ -674,6 +698,9 @@ int dks = dual_topology->ks;
   { compute_Qxz_w_EC<1, ADD_MODE::ADD>(Wtendvar, qxzreconvar, qxzvertreconvar, Fvar, pis, pjs, pks, i, j, k);}
    if (qf_choice == QF_MODE::NOEC)
   { compute_Qxz_w_nonEC<1, ADD_MODE::ADD>(Wtendvar, qxzreconvar, Fvar, pis, pjs, pks, i, j, k);}
+  
+  compute_Qxz_w_EC<1, ADD_MODE::ADD>(Wtendvar, coriolisxzreconvar, coriolisxzvertreconvar, Fvar, pis, pjs, pks, i, j, k);
+
 });
 
 // yakl::parallel_for("ComputePrimalTendencies", primal_topology->n_cells_interfaces, YAKL_LAMBDA (int iGlob) {
@@ -686,6 +713,7 @@ int dks = dual_topology->ks;
   { compute_Qxz_u_EC<1, ADD_MODE::ADD>(Vtendvar,qxzreconvar, qxzvertreconvar,FWvar, pis, pjs, pks, i, j, k);}
   if (qf_choice == QF_MODE::NOEC)
   { compute_Qxz_u_nonEC<1, ADD_MODE::ADD>(Vtendvar, qxzvertreconvar, FWvar, pis, pjs, pks, i, j, k);}
+  compute_Qxz_u_EC<1, ADD_MODE::ADD>(Vtendvar,coriolisxzreconvar, coriolisxzvertreconvar,FWvar, pis, pjs, pks, i, j, k);
 });
 
 // yakl::parallel_for("ComputeDualTendencies", dual_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
@@ -706,14 +734,15 @@ int dks = dual_topology->ks;
        
       //Compute U, W, q0, dens0
       compute_functional_derivatives_and_diagnostic_quantities_I(
-      auxiliary_vars.fields_arr[UVAR].data, auxiliary_vars.fields_arr[UWVAR].data, auxiliary_vars.fields_arr[QXZ0VAR].data,
+      auxiliary_vars.fields_arr[UVAR].data, auxiliary_vars.fields_arr[UWVAR].data, auxiliary_vars.fields_arr[QXZ0VAR].data, auxiliary_vars.fields_arr[FXZ0VAR].data,
       auxiliary_vars.fields_arr[DENS0VAR].data,
-      x.fields_arr[VVAR].data, x.fields_arr[WVAR].data, x.fields_arr[DENSVAR].data);
+      x.fields_arr[VVAR].data, x.fields_arr[WVAR].data, x.fields_arr[DENSVAR].data, const_vars.fields_arr[CORIOLISXZVAR].data);
       
       this->aux_exchange->exchanges_arr[UVAR].exchange_field(auxiliary_vars.fields_arr[UVAR]);
       this->aux_exchange->exchanges_arr[UWVAR].exchange_field(auxiliary_vars.fields_arr[UWVAR]);
       this->aux_exchange->exchanges_arr[DENS0VAR].exchange_field(auxiliary_vars.fields_arr[DENS0VAR]);
       this->aux_exchange->exchanges_arr[QXZ0VAR].exchange_field(auxiliary_vars.fields_arr[QXZ0VAR]);
+      this->aux_exchange->exchanges_arr[FXZ0VAR].exchange_field(auxiliary_vars.fields_arr[FXZ0VAR]);
 
       //Compute K, F, FW, he, hew
       compute_functional_derivatives_and_diagnostic_quantities_II(
@@ -747,18 +776,23 @@ int dks = dual_topology->ks;
       compute_edge_reconstructions(
       auxiliary_vars.fields_arr[DENSEDGERECONVAR].data, auxiliary_vars.fields_arr[DENSVERTEDGERECONVAR].data, 
       auxiliary_vars.fields_arr[QXZEDGERECONVAR].data, auxiliary_vars.fields_arr[QXZVERTEDGERECONVAR].data,
-      auxiliary_vars.fields_arr[DENS0VAR].data, auxiliary_vars.fields_arr[QXZ0VAR].data);
+      auxiliary_vars.fields_arr[CORIOLISXZEDGERECONVAR].data, auxiliary_vars.fields_arr[CORIOLISXZVERTEDGERECONVAR].data,
+      auxiliary_vars.fields_arr[DENS0VAR].data, auxiliary_vars.fields_arr[QXZ0VAR].data, auxiliary_vars.fields_arr[FXZ0VAR].data);
 
       this->aux_exchange->exchanges_arr[DENSEDGERECONVAR].exchange_field(auxiliary_vars.fields_arr[DENSEDGERECONVAR]);
       this->aux_exchange->exchanges_arr[DENSVERTEDGERECONVAR].exchange_field(auxiliary_vars.fields_arr[DENSVERTEDGERECONVAR]);
       this->aux_exchange->exchanges_arr[QXZEDGERECONVAR].exchange_field(auxiliary_vars.fields_arr[QXZEDGERECONVAR]);
-      this->aux_exchange->exchanges_arr[QXZVERTEDGERECONVAR].exchange_field(auxiliary_vars.fields_arr[QXZVERTEDGERECONVAR]);
+      this->aux_exchange->exchanges_arr[QXZEDGERECONVAR].exchange_field(auxiliary_vars.fields_arr[QXZEDGERECONVAR]);
+      this->aux_exchange->exchanges_arr[CORIOLISXZVERTEDGERECONVAR].exchange_field(auxiliary_vars.fields_arr[CORIOLISXZVERTEDGERECONVAR]);
+      this->aux_exchange->exchanges_arr[CORIOLISXZVERTEDGERECONVAR].exchange_field(auxiliary_vars.fields_arr[CORIOLISXZVERTEDGERECONVAR]);
 
       compute_recons(
       auxiliary_vars.fields_arr[DENSRECONVAR].data, auxiliary_vars.fields_arr[DENSVERTRECONVAR].data, 
       auxiliary_vars.fields_arr[QXZRECONVAR].data, auxiliary_vars.fields_arr[QXZVERTRECONVAR].data, 
+      auxiliary_vars.fields_arr[CORIOLISXZRECONVAR].data, auxiliary_vars.fields_arr[CORIOLISXZVERTRECONVAR].data, 
       auxiliary_vars.fields_arr[DENSEDGERECONVAR].data, auxiliary_vars.fields_arr[DENSVERTEDGERECONVAR].data,
       auxiliary_vars.fields_arr[QXZEDGERECONVAR].data, auxiliary_vars.fields_arr[QXZVERTEDGERECONVAR].data,
+      auxiliary_vars.fields_arr[CORIOLISXZEDGERECONVAR].data, auxiliary_vars.fields_arr[CORIOLISXZVERTEDGERECONVAR].data,
       auxiliary_vars.fields_arr[HEVAR].data, auxiliary_vars.fields_arr[HEWVAR].data,
       auxiliary_vars.fields_arr[UVAR].data, auxiliary_vars.fields_arr[UWVAR].data,
       auxiliary_vars.fields_arr[FTVAR].data, auxiliary_vars.fields_arr[FTWVAR].data);
@@ -767,6 +801,8 @@ int dks = dual_topology->ks;
       this->aux_exchange->exchanges_arr[DENSVERTRECONVAR].exchange_field(auxiliary_vars.fields_arr[DENSVERTRECONVAR]);
       this->aux_exchange->exchanges_arr[QXZRECONVAR].exchange_field(auxiliary_vars.fields_arr[QXZRECONVAR]);
       this->aux_exchange->exchanges_arr[QXZVERTRECONVAR].exchange_field(auxiliary_vars.fields_arr[QXZVERTRECONVAR]);
+      this->aux_exchange->exchanges_arr[CORIOLISXZRECONVAR].exchange_field(auxiliary_vars.fields_arr[CORIOLISXZRECONVAR]);
+      this->aux_exchange->exchanges_arr[CORIOLISXZVERTRECONVAR].exchange_field(auxiliary_vars.fields_arr[CORIOLISXZVERTRECONVAR]);
 
 
 //Compute fct
@@ -830,6 +866,7 @@ this->aux_exchange->exchanges_arr[PHIVERTVAR].exchange_field(auxiliary_vars.fiel
       xtend.fields_arr[DENSVAR].data, xtend.fields_arr[VVAR].data, xtend.fields_arr[WVAR].data,
       auxiliary_vars.fields_arr[DENSRECONVAR].data, auxiliary_vars.fields_arr[DENSVERTRECONVAR].data,
       auxiliary_vars.fields_arr[QXZRECONVAR].data, auxiliary_vars.fields_arr[QXZVERTRECONVAR].data,
+      auxiliary_vars.fields_arr[CORIOLISXZRECONVAR].data, auxiliary_vars.fields_arr[CORIOLISXZVERTRECONVAR].data,
       auxiliary_vars.fields_arr[BVAR].data, auxiliary_vars.fields_arr[FVAR].data, auxiliary_vars.fields_arr[FWVAR].data, 
       auxiliary_vars.fields_arr[PHIVAR].data, auxiliary_vars.fields_arr[PHIVERTVAR].data);
 }
@@ -974,7 +1011,7 @@ int pks = primal_topology->ks;
   parallel_for( Bounds<3>( primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
   
    pvpe vals_pvpe;
-   vals_pvpe = PVPE.compute_PVPE(progvars.fields_arr[VVAR].data, progvars.fields_arr[WVAR].data, progvars.fields_arr[DENSVAR].data, pis, pjs, pks, i, j, k);
+   vals_pvpe = PVPE.compute_PVPE(progvars.fields_arr[VVAR].data, progvars.fields_arr[WVAR].data, progvars.fields_arr[DENSVAR].data, constvars.fields_arr[CORIOLISXZVAR].data, pis, pjs, pks, i, j, k);
    PVarr(k, j, i) = vals_pvpe.pv;
    PENSarr(k, j, i) = vals_pvpe.pe;
     });
@@ -1154,7 +1191,23 @@ std::array<const Topology *, nprog> &prog_topo_arr, std::array<const Topology *,
   aux_names_arr[FTWVAR] = "FTW";
   set_dofs_arr(aux_ndofs_arr, FTVAR, 1, 0, 1); //FT = straight (1,0)-form ie Fw at v pts
   set_dofs_arr(aux_ndofs_arr, FTWVAR, 0, 1, 1); //FTW = straight (0,1)-form ie F at w pts
-    
+  
+  aux_topo_arr[FXZ0VAR] = &dtopo;
+  aux_topo_arr[CORIOLISXZRECONVAR] = &ptopo;
+  aux_topo_arr[CORIOLISXZEDGERECONVAR] = &ptopo; 
+  aux_topo_arr[CORIOLISXZVERTRECONVAR] = &ptopo;
+  aux_topo_arr[CORIOLISXZVERTEDGERECONVAR] = &ptopo; 
+  aux_names_arr[FXZ0VAR] = "fxz0";
+  aux_names_arr[CORIOLISXZRECONVAR] = "coriolisxzrecon";
+  aux_names_arr[CORIOLISXZEDGERECONVAR] = "coriolisxzedgerecon";
+  aux_names_arr[CORIOLISXZVERTRECONVAR] = "coriolisxzvertrecon";
+  aux_names_arr[CORIOLISXZVERTEDGERECONVAR] = "coriolisxzvertedgerecon";
+  set_dofs_arr(aux_ndofs_arr, FXZ0VAR, 0, 0, 1);  //fxz0 is a twisted 0,0 form
+  set_dofs_arr(aux_ndofs_arr, CORIOLISXZRECONVAR, 0, 1, 1);  //coriolisxzrecon lives on vert primal edges, associated with w
+  set_dofs_arr(aux_ndofs_arr, CORIOLISXZEDGERECONVAR, ndims, 1, 2*1); //coriolisxzedgerecon lives on primal cells, associated with Fw/w
+  set_dofs_arr(aux_ndofs_arr, CORIOLISXZVERTRECONVAR, 1, 0, 1);  //coriolisxzsvertrecon lives on horiz primal edges, associated with v
+  set_dofs_arr(aux_ndofs_arr, CORIOLISXZVERTEDGERECONVAR, ndims, 1, 2*1); //coriolisxzvertedgerecon lives on primal cells, associated with F/v  
+  
   // q, concentration 0-forms for dens
   diag_topo_arr[DENSLDIAGVAR] = &ptopo;
   diag_names_arr[DENSLDIAGVAR] = "densl";

@@ -312,7 +312,7 @@ public:
     //   int k, j, i;
     //   yakl::unpackIndices(iGlob, dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
        parallel_for( Bounds<3>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
-     PVPE.compute_q0(diagnostic_vars.fields_arr[QDIAGVAR].data, x.fields_arr[VVAR].data, x.fields_arr[DENSVAR].data, dis, djs, dks, i, j, k);
+     PVPE.compute_q0(diagnostic_vars.fields_arr[QDIAGVAR].data, x.fields_arr[VVAR].data, x.fields_arr[DENSVAR].data, const_vars.fields_arr[CORIOLISVAR].data, dis, djs, dks, i, j, k);
      });
 }
 
