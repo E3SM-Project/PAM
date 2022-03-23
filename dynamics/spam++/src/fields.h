@@ -35,6 +35,12 @@ public :
   void zero(int ndof);
   void set(real val);
   void set(int ndof, real val);
+  void set_top_bnd(real val);
+  void set_top_bnd(int ndof, real val);
+  void set_bottom_bnd(real val);
+  void set_bottom_bnd(int ndof, real val);
+  void set_bnd(real val);
+  void set_bnd(int ndof, real val);
   // real sum();
   // real min();
   // real max();
@@ -96,27 +102,58 @@ public :
 
   void Field::set(real val)
   {
-//    yakl::parallel_for("SetField", this->_nloop_halo, YAKL_LAMBDA (int iGlob) {
-//      int k, j, i;
-//      yakl::unpackIndices(iGlob, this->_nz +2*this->topology->mirror_halo, this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x, k, j, i);
       parallel_for( Bounds<4>(this->total_dofs, this->_nz +2*this->topology->mirror_halo,this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x) , YAKL_LAMBDA(int ndof, int k, int j, int i) { 
-      //for (int ndof=0; ndof<this->total_dofs; ndof++) {
         this->data(ndof, k, j, i) = val;
-      //}
     });    
   }
 
   void Field::set(int ndof, real val)
   {
-//    yakl::parallel_for("SetField", this->_nloop_halo, YAKL_LAMBDA (int iGlob) {
-//      int k, j, i;
-//      yakl::unpackIndices(iGlob, this->_nz +2*this->topology->mirror_halo, this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x, k, j, i);
 parallel_for( Bounds<3>(this->_nz +2*this->topology->mirror_halo,this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x) , YAKL_LAMBDA(int k, int j, int i) { 
         this->data(ndof, k, j, i) = val;
     });    
   }
-  
 
+  void Field::set_top_bnd(real val)
+  {
+      parallel_for( Bounds<3>(this->total_dofs,this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x) , YAKL_LAMBDA(int ndof, int j, int i) { 
+        this->data(ndof, this->_nz + this->topology->mirror_halo, j, i) = val;
+    });    
+  }
+
+  void Field::set_top_bnd(int ndof, real val)
+  {
+parallel_for( Bounds<2>(this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x) , YAKL_LAMBDA(int j, int i) { 
+  this->data(ndof, this->_nz + this->topology->mirror_halo, j, i) = val;
+    });    
+  }
+
+  void Field::set_bottom_bnd(real val)
+  {
+      parallel_for( Bounds<3>(this->total_dofs,this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x) , YAKL_LAMBDA(int ndof, int j, int i) { 
+        this->data(ndof, this->topology->mirror_halo, j, i) = val;
+    });    
+  }
+
+  void Field::set_bottom_bnd(int ndof, real val)
+  {
+parallel_for( Bounds<2>(this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x) , YAKL_LAMBDA(int j, int i) { 
+  this->data(ndof, this->topology->mirror_halo, j, i) = val;
+    });    
+  }
+
+  void Field::set_bnd(real val)
+  {
+    set_top_bnd(val);
+    set_bottom_bnd(val);
+  }
+  
+  void Field::set_bnd(int ndof, real val)
+  {
+    set_top_bnd(ndof, val);
+    set_bottom_bnd(ndof, val);
+  }
+  
   void Field::zero()
   {
 //    yakl::parallel_for("ZeroField", this->_nloop_halo, YAKL_LAMBDA (int iGlob) {

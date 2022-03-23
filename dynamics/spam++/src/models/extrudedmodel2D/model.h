@@ -340,6 +340,7 @@ public:
  PVPE.compute_qxz0(diagnostic_vars.fields_arr[QXZDIAGVAR].data, x.fields_arr[VVAR].data, x.fields_arr[WVAR].data, x.fields_arr[DENSVAR].data, const_vars.fields_arr[CORIOLISXZVAR].data, dis, djs, dks, i, j, k+1);
  });
    
+   diagnostic_vars.fields_arr[QXZDIAGVAR].set_bnd(0.0);
 }
 
 };
@@ -737,6 +738,10 @@ int dks = dual_topology->ks;
       auxiliary_vars.fields_arr[UVAR].data, auxiliary_vars.fields_arr[UWVAR].data, auxiliary_vars.fields_arr[QXZ0VAR].data, auxiliary_vars.fields_arr[FXZ0VAR].data,
       auxiliary_vars.fields_arr[DENS0VAR].data,
       x.fields_arr[VVAR].data, x.fields_arr[WVAR].data, x.fields_arr[DENSVAR].data, const_vars.fields_arr[CORIOLISXZVAR].data);
+  
+      auxiliary_vars.fields_arr[QXZ0VAR].set_bnd(0.0);
+      auxiliary_vars.fields_arr[FXZ0VAR].set_bnd(0.0);
+      auxiliary_vars.fields_arr[UWVAR].set_bnd(0.0);
       
       this->aux_exchange->exchanges_arr[UVAR].exchange_field(auxiliary_vars.fields_arr[UVAR]);
       this->aux_exchange->exchanges_arr[UWVAR].exchange_field(auxiliary_vars.fields_arr[UWVAR]);
@@ -751,7 +756,9 @@ int dks = dual_topology->ks;
 
       //std::cout << "HE min/max " << auxiliary_vars.fields_arr[HEVAR].min() << " " << auxiliary_vars.fields_arr[HEVAR].max() << " " << auxiliary_vars.fields_arr[HEVAR].sum() << "\n" <<std::flush;
       //std::cout << "HEw min/max " << auxiliary_vars.fields_arr[HEWVAR].min() << " " << auxiliary_vars.fields_arr[HEWVAR].max() << " " << auxiliary_vars.fields_arr[HEWVAR].sum() << "\n" <<std::flush;
-      
+
+      auxiliary_vars.fields_arr[FWVAR].set_bnd(0.0);
+
       this->aux_exchange->exchanges_arr[FVAR].exchange_field(auxiliary_vars.fields_arr[FVAR]);
       this->aux_exchange->exchanges_arr[FWVAR].exchange_field(auxiliary_vars.fields_arr[FWVAR]);
       this->aux_exchange->exchanges_arr[KVAR].exchange_field(auxiliary_vars.fields_arr[KVAR]);
