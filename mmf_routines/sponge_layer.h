@@ -52,7 +52,7 @@ inline void sponge_layer( PamCoupler &coupler , real dt ) {
   });
 
   // Compute the horizontal average for each vertical level (that we use for the sponge layer) and ensemble
-  parallel_for( Bounds<5>(num_fields,num_layers,ny,nx,nens) , YAKL_DEVICE_LAMBDA (int ifld, int kloc, int j, int i, int iens) {
+  parallel_for( Bounds<5>(num_fields,num_layers,ny,nx,nens) , YAKL_LAMBDA (int ifld, int kloc, int j, int i, int iens) {
     int k = nz - 1 - kloc;
     if (ifld != WFLD) yakl::atomicAdd( havg_fields(ifld,k,iens) , full_fields(ifld,k,j,i,iens) * r_nx_ny );
   });

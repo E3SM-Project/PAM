@@ -26,7 +26,7 @@ inline void gcm_density_forcing( PamCoupler &coupler , real dt ) {
   memset( rho_d_colavg , 0._fp );
 
   real r_nx_ny = 1._fp / (nx*ny);  // Avoid costly divisions
-  parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_DEVICE_LAMBDA (int k, int j, int i, int iens) {
+  parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
     atomicAdd( rho_d_colavg(k,iens) , rho_d(k,j,i,iens)*r_nx_ny );
   });
 

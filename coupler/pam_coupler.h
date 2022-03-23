@@ -562,8 +562,8 @@ namespace pam {
       using yakl::intrinsics::matinv_ge;
       using yakl::atomicAdd;
 
-      auto zint      = dm.get<real,2>("vertical_interface_height");
-      auto zmid      = dm.get<real,2>("vertical_midpoint_height" );
+      auto zint      = dm.get<real const,2>("vertical_interface_height");
+      auto zmid      = dm.get<real const,2>("vertical_midpoint_height" );
       auto hy_params = dm.get<real,2>("hydrostasis_parameters"   );
       auto hy_press  = dm.get<real,2>("hydrostatic_pressure"     );
       auto hy_dens   = dm.get<real,2>("hydrostatic_density"      );
@@ -577,7 +577,7 @@ namespace pam {
       real2d pressure_col("pressure_col",nz,nens);
       memset( pressure_col , 0._fp );
       real r_nx_ny = 1._fp / (nx*ny);
-      parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_DEVICE_LAMBDA (int k, int j, int i, int iens) {
+      parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
         // TODO: Switch the statements below for production runs
         // atomicAdd( pressure_col(k,iens) , pressure(k,j,i,iens)*r_nx_ny );
         pressure_col(k,iens) = pressure(k,0,0,iens);

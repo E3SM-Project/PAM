@@ -57,7 +57,7 @@ inline void compute_gcm_forcing_tendencies( PamCoupler &coupler , real dt_gcm ) 
 
   real r_nx_ny  = 1._fp / (nx*ny);  // precompute reciprocal to avoid costly divisions
   parallel_for( "Compute average column of current CRM state" , SimpleBounds<4>(nz,ny,nx,nens) , 
-                YAKL_DEVICE_LAMBDA (int k, int j, int i, int iens) {
+                YAKL_LAMBDA (int k, int j, int i, int iens) {
     // yakl::atomicAdd ensures only one thread performs an update at a time to avoid data races and wrong answers
     atomicAdd( colavg_rho_d(k,iens) , rho_d(k,j,i,iens) * r_nx_ny );
     atomicAdd( colavg_uvel (k,iens) , uvel (k,j,i,iens) * r_nx_ny );
@@ -154,7 +154,7 @@ inline void apply_gcm_forcing_tendencies( PamCoupler &coupler , real dt ) {
   // Apply the GCM forcing, and keep track of negative mass we had to fill and available positive mass
   //    to balance the added mass in the corrective step in the next kernel
   parallel_for( "Apply GCM forcing" , SimpleBounds<4>(nz,ny,nx,nens) , 
-                YAKL_DEVICE_LAMBDA (int k, int j, int i, int iens) {
+                YAKL_LAMBDA (int k, int j, int i, int iens) {
     // Apply forcing
     if (force_density) rho_d(k,j,i,iens) += gcm_tend_rho_d(k,iens) * dt;
     uvel (k,j,i,iens) += gcm_tend_uvel (k,iens) * dt;
@@ -211,7 +211,7 @@ inline void apply_gcm_forcing_tendencies( PamCoupler &coupler , real dt ) {
     // Also reducing rho_v (which is guaranteed >= 0 at this point) into rho_v_pos_mass_glob to determine the mass
     //    we have available to work with.
     parallel_for( "Compute global positive and negative masses" , SimpleBounds<4>(nz,ny,nx,nens) , 
-                  YAKL_DEVICE_LAMBDA (int k, int j, int i, int iens) {
+                  YAKL_LAMBDA (int k, int j, int i, int iens) {
       if (k == 0) atomicAdd( rho_v_neg_mass(iens) , rho_v_neg_mass(j,i,iens) );
       atomicAdd( rho_v_pos_mass_glob(iens) , rho_v(k,j,i,iens) );
     });

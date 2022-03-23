@@ -118,7 +118,7 @@ int main(int argc, char** argv) {
     auto rho_v = coupler.dm.get<real const,4>("water_vapor" );
 
     // Compute a column to force the model with by averaging the columns at init
-    parallel_for( Bounds<4>(crm_nz,crm_ny,crm_nx,nens) , YAKL_DEVICE_LAMBDA (int k, int j, int i, int iens) {
+    parallel_for( Bounds<4>(crm_nz,crm_ny,crm_nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       gcm_rho_d(k,iens) = 0;
       gcm_uvel (k,iens) = 0;
       gcm_vvel (k,iens) = 0;
@@ -127,7 +127,7 @@ int main(int argc, char** argv) {
       gcm_rho_v(k,iens) = 0;
     });
     real r_nx_ny = 1._fp / (crm_nx*crm_ny);  // Avoid costly divisions
-    parallel_for( Bounds<4>(crm_nz,crm_ny,crm_nx,nens) , YAKL_DEVICE_LAMBDA (int k, int j, int i, int iens) {
+    parallel_for( Bounds<4>(crm_nz,crm_ny,crm_nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       yakl::atomicAdd( gcm_rho_d(k,iens) , rho_d(k,j,i,iens) * r_nx_ny );
       yakl::atomicAdd( gcm_uvel (k,iens) , uvel (k,j,i,iens) * r_nx_ny );
       yakl::atomicAdd( gcm_vvel (k,iens) , vvel (k,j,i,iens) * r_nx_ny );
