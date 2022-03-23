@@ -411,28 +411,39 @@ void Exchange::initialize(const Exchange &exch)
 
 }
   
+
+
 void Exchange::exchange_mirror(Field &field)
 {
   int is = this->topology->is;
   int js = this->topology->js;
   int ks = this->topology->ks;
   
-  //yakl::parallel_for("MirrorTop", this->mirror_size, YAKL_LAMBDA (int iGlob) {
-  //  int ndof, kk, i, j;
-  //  yakl::unpackIndices(iGlob, this->total_dofs, this->topology->mirror_halo, this->topology->n_cells_x, this->topology->n_cells_y, ndof, kk, i, j);
+  //vertical layers
+  if (this->extdof == 1) {
+    //Mirror Top
   parallel_for( Bounds<4>(this->total_dofs, this->topology->mirror_halo, this->topology->n_cells_x, this->topology->n_cells_y) , YAKL_LAMBDA(int ndof, int kk, int i, int j) { 
-    field.data(ndof, this->_nz+ks+kk, j+js, i+is) = field.data(ndof, this->_nz+ks-kk, j+js, i+is);
+    field.data(ndof, this->_nz+ks+kk, j+js, i+is) = field.data(ndof, this->_nz+ks-kk-1, j+js, i+is);
   });
-  
-  //yakl::parallel_for("MirrorBottom", this->mirror_size, YAKL_LAMBDA (int iGlob) {
-  //  int ndof, kk, i, j;
-  //  yakl::unpackIndices(iGlob, this->total_dofs, this->topology->mirror_halo, this->topology->n_cells_x, this->topology->n_cells_y, ndof, kk, i, j);
+  //Mirror Bottom
   parallel_for( Bounds<4>(this->total_dofs, this->topology->mirror_halo, this->topology->n_cells_x, this->topology->n_cells_y) , YAKL_LAMBDA(int ndof, int kk, int i, int j) { 
-    field.data(ndof, ks-kk, j+js, i+is) = field.data(ndof, ks+kk, j+js, i+is);
+    field.data(ndof, ks-kk-1, j+js, i+is) = field.data(ndof, ks+kk, j+js, i+is);
   });
-  
 }
 
+//vertical interfaces
+if (this->extdof == 0) {
+//Mirror Top
+  parallel_for( Bounds<4>(this->total_dofs, this->topology->mirror_halo, this->topology->n_cells_x, this->topology->n_cells_y) , YAKL_LAMBDA(int ndof, int kk, int i, int j) { 
+    field.data(ndof, this->_nz+ks+kk, j+js, i+is) = field.data(ndof, this->_nz+ks-kk-2, j+js, i+is);
+  });
+  //Mirror Bottom
+  parallel_for( Bounds<4>(this->total_dofs, this->topology->mirror_halo, this->topology->n_cells_x, this->topology->n_cells_y) , YAKL_LAMBDA(int ndof, int kk, int i, int j) { 
+    field.data(ndof, ks-kk-1, j+js, i+is) = field.data(ndof, ks+kk+1, j+js, i+is);
+  });
+}
+
+}
 
 // EVENTUALLY WE SHOULD BE MORE CLEVER HERE IE GROUP ALL THE SEND/RECVS IN X/Y TOGETHER, ETC.
 void Exchange::exchange()

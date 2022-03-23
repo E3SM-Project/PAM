@@ -519,8 +519,7 @@ Geometry<nquadx, nquady, nquadz> &primal_geom, Geometry<nquadx, nquady, nquadz> 
   primal_geom.set_10form_values(double_vortex_v, progvars.fields_arr[VVAR], 0, LINE_INTEGRAL_TYPE::TANGENT);
   primal_geom.set_01form_values(double_vortex_v,progvars.fields_arr[WVAR], 0, LINE_INTEGRAL_TYPE::TANGENT);
 
-//HOW SHOULD CORIOLIS REALLY WORK HERE?
-  //primal_geom.set_2form_values(double_vortex_coriolis, constvars.fields_arr[CORIOLISVAR], 0);
+  primal_geom.set_11form_values(double_vortex_coriolis, constvars.fields_arr[CORIOLISXZVAR], 0);
 
 // HOW DO GENERALIZE THESE?
 // WANT TO SCALE TRACER FIELDS BY ACTUAL HEIGHT FIELDS...

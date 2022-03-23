@@ -1,6 +1,6 @@
 #tracers
--D_NTRACERS_NOFCT=0
--D_NTRACERS_FCT=0
+-D_NTRACERS_NOFCT=3
+-D_NTRACERS_FCT=3
 
 #ce specific choices
 -D_IDEAL_GAS_POTTEMP

@@ -68,6 +68,7 @@ dens = DS.dens
 QXZl = DS.QXZl
 densl = DS.densl
 hs = DS.hs
+coriolisxz = DS.coriolisxz
 
 K = DS.K
 F = DS.F
@@ -76,9 +77,11 @@ he = DS.he
 hew = DS.hew
 
 plotvar_scalar2D('hs', hs.isel(hs_ndofs=0, dual_ncells_y=0),0)
+plotvar_scalar2D('coriolisxz', coriolisxz.isel(coriolisxz_ndofs=0, primal_ncells_y=0),0)
 
 for i in Nlist:
     plotvar_scalar2D('qxz', QXZl.isel(t=i,QXZl_ndofs=0, dual_ncells_y=0),i)
+
     plotvar_scalar2D('v', v.isel(t=i,v_ndofs=0, primal_ncells_y=0),i)
     plotvar_scalar2D('w', w.isel(t=i,w_ndofs=0, primal_ncells_y=0),i)
 

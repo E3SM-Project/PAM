@@ -23,9 +23,9 @@ uint constexpr nprognostic = 3;
 #define DENSVAR 2
 
 // hs, coriolis
-uint constexpr nconstant = 1;
+uint constexpr nconstant = 2;
 #define HSVAR 0
-//#define CORIOLISVAR 1
+#define CORIOLISXZVAR 1
 
 //functional derivatives = F, FW, B, K, he, hew
 //primal grid reconstruction stuff- U, W, dens0, edgerecon, recon, vertedgerecon, vertrecon
@@ -1060,13 +1060,9 @@ std::array<const Topology *, nprog> &prog_topo_arr, std::array<const Topology *,
   const_topo_arr[HSVAR] = &dtopo;
   const_names_arr[HSVAR] = "hs";
   set_dofs_arr(const_ndofs_arr, HSVAR, ndims, 1, 1); //hs = twisted (n,1)-form
-
-// CAREFUL HERE WITH CORIOLIS- THIS IS IN THE "VERTICAL SLICE"
-// HOW DO WE GENERALIZE TO 3D?
-// we should really have qxy, qyz, qxz + associated coriolis components...
-  //const_topo_arr[CORIOLISVAR] = &ptopo;
-  //const_names_arr[CORIOLISVAR] = "coriolis";
-  //set_dofs_arr(const_ndofs_arr, CORIOLISVAR, 1, 1, 1); //f = straight (1,1)-form
+  const_topo_arr[CORIOLISXZVAR] = &ptopo;
+  const_names_arr[CORIOLISXZVAR] = "coriolisxz";
+  set_dofs_arr(const_ndofs_arr, CORIOLISXZVAR, 1, 1, 1); //f = straight (1,1)-form
   
   //functional derivatives = F, B, K, he, U
   aux_topo_arr[BVAR] = &ptopo;
