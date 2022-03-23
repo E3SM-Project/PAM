@@ -94,6 +94,7 @@ template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord=2, uint
 
   for (int p=0; p<ord; p++) {
   for (int l=0; l<ndofs; l++) {
+    //The +1 in k here is required since twisted 0-forms have extra dofs at the top and bottom, and we are looping over straight cells!
     stencil(l,0,p) = var(l, k+ks+1, j+js, i+is+p-hs);
   }}
 
@@ -286,7 +287,6 @@ template <uint ndofs, RECONSTRUCTION_TYPE recontype> void YAKL_INLINE compute_st
       SArray<real,1,1> uvar;
       SArray<real,3,ndofs,1,2> edgerecon;
         uvar(0) = WT(0, k+ks, j+js, i+is);
-//POSSIBLY NEED A "TWIST" IE SIGN CHANGE?
       for (int l=0; l<ndofs; l++) {
         edgerecon(l,0,0) = edgereconvar(l + ndofs*1, k+ks, j+js, i+is);
         edgerecon(l,0,1) = edgereconvar(l + ndofs*0, k+ks, j+js, i+is+1);
@@ -307,8 +307,8 @@ template <uint ndofs, RECONSTRUCTION_TYPE recontype> void YAKL_INLINE compute_st
     SArray<real,2,ndofs,1> recon;
     SArray<real,1,1> uvar;
     SArray<real,3,ndofs,1,2> edgerecon;
+    //Needs a "twist"
       uvar(0) = -VT(0, k+ks, j+js, i+is);
-//POSSIBLY NEED A "TWIST" IE SIGN CHANGE?
     for (int l=0; l<ndofs; l++) {
       edgerecon(l,0,0) = edgereconvar(l + ndofs*1, k+ks-1, j+js, i+is);
       edgerecon(l,0,1) = edgereconvar(l + ndofs*0, k+ks, j+js, i+is);
