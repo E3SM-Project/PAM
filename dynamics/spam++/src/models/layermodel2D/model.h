@@ -709,6 +709,8 @@ public:
   Geometry<1,1,1> *primal_geometry;
   Geometry<1,1,1> *dual_geometry;
   
+  real3d TEarr, KEarr, PEarr, IEarr, PVarr, PENSarr, trimmed_density;
+  
   void initialize(ModelParameters &params, Parallel &par, const Topology &primal_topo, const Topology &dual_topo, Geometry<1,1,1> &primal_geom, Geometry<1,1,1> &dual_geom)
   {
     this->primal_topology = &primal_topo;
@@ -725,6 +727,14 @@ public:
     stats_arr[PESTAT].initialize("pens", 1, params, par);
     masterproc = par.masterproc;
     
+    TEarr = real3d("TE", this->dual_topology->nl, this->dual_topology->n_cells_y, this->dual_topology->n_cells_x);
+    KEarr = real3d("KE", this->dual_topology->nl, this->dual_topology->n_cells_y, this->dual_topology->n_cells_x);
+    IEarr = real3d("IE", this->dual_topology->nl, this->dual_topology->n_cells_y, this->dual_topology->n_cells_x);
+    PEarr = real3d("PE", this->dual_topology->nl, this->dual_topology->n_cells_y, this->dual_topology->n_cells_x);
+    PVarr = real3d("PV", this->primal_topology->nl, this->primal_topology->n_cells_y, this->primal_topology->n_cells_x);
+    PENSarr = real3d("PENS", this->primal_topology->nl, this->primal_topology->n_cells_y, this->primal_topology->n_cells_x);
+    trimmed_density = real3d("trimmed_density", this->dual_topology->nl, this->dual_topology->n_cells_y, this->dual_topology->n_cells_x);
+
   }
 
 
@@ -764,19 +774,20 @@ int dks = dual_topology->ks;
       //   int k, j, i;
       //   yakl::unpackIndices(iGlob, dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, k, j, i);
       parallel_for( Bounds<3>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
-        
          real KE, PE, IE;
-
 KE = Hk.compute_KE(progvars.fields_arr[VVAR].data, progvars.fields_arr[DENSVAR].data, dis, djs, dks, i, j, k);
 PE = Hs.compute_PE(progvars.fields_arr[DENSVAR].data, constvars.fields_arr[HSVAR].data, dis, djs, dks, i, j, k);
 IE = Hs.compute_IE(progvars.fields_arr[DENSVAR].data, dis, djs, dks, i, j, k);
-
-// elocal(3) += IE;
-// elocal(2) += PE;
-// elocal(1) += KE;
-// elocal(0) += KE + PE + IE;
-
+TEarr(k, j, i) = KE + PE + IE;
+KEarr(k, j, i) = KE;
+PEarr(k, j, i) = PE;
+IEarr(k, j, i) = IE;
 });
+
+elocal(0) = yakl::intrinsics::sum(TEarr);
+elocal(1) = yakl::intrinsics::sum(KEarr);
+elocal(2) = yakl::intrinsics::sum(PEarr);
+elocal(3) = yakl::intrinsics::sum(IEarr);
 
 int pis = primal_topology->is;
 int pjs = primal_topology->js;
@@ -786,20 +797,24 @@ int pks = primal_topology->ks;
 //   int k, j, i;
 //   yakl::unpackIndices(iGlob, primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, k, j, i);
   parallel_for( Bounds<3>( primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
-  
    pvpe vals_pvpe;
    vals_pvpe = PVPE.compute_PVPE(progvars.fields_arr[VVAR].data, progvars.fields_arr[DENSVAR].data, constvars.fields_arr[CORIOLISVAR].data, pis, pjs, 0, i, j, k);
-//THIS IS ACTUALLY A REDUCTION- FIX IT
-   // pvlocal(0) += vals_pvpe.pv;
-   //  pelocal(0) += vals_pvpe.pe;
-    
+   PVarr(k, j, i) = vals_pvpe.pv;
+   PENSarr(k, j, i) = vals_pvpe.pe;
     });
 
+    pvlocal(0) = yakl::intrinsics::sum(PVarr);
+    pelocal(0) = yakl::intrinsics::sum(PENSarr);
+    
     for (int l=0;l<ndensity;l++)
     {
-    masslocal(l) = progvars.fields_arr[DENSVAR].sum(l);
-    densmaxlocal(l) = progvars.fields_arr[DENSVAR].max(l);
-    densminlocal(l) = progvars.fields_arr[DENSVAR].min(l);
+      parallel_for( Bounds<3>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
+        trimmed_density(k,j,i) = progvars.fields_arr[DENSVAR].data(l,k+dks,j+djs,i+dis);
+      });
+
+    masslocal(l) = yakl::intrinsics::sum(trimmed_density);
+    densmaxlocal(l) = yakl::intrinsics::maxval(trimmed_density);
+    densminlocal(l) = yakl::intrinsics::minval(trimmed_density);
     }
 
     //MPI sum/min/max

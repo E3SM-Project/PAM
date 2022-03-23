@@ -650,7 +650,8 @@ public:
   const Topology *dual_topology;
   Geometry<1,1,1> *primal_geometry;
   Geometry<1,1,1> *dual_geometry;
-  
+  real3d trimmed_dual_density, trimmed_primal_density;
+
   void initialize(ModelParameters &params, Parallel &par, const Topology &primal_topo, const Topology &dual_topo, Geometry<1,1,1> &primal_geom, Geometry<1,1,1> &dual_geom)
   {
     this->primal_topology = &primal_topo;
@@ -664,7 +665,10 @@ public:
     stats_arr[DENSMINSTAT].initialize("densmin", ntdofs, params, par);
     stats_arr[QXZSTAT].initialize("qmass", nQdofs, params, par);
     masterproc = par.masterproc;
-    
+  
+    trimmed_dual_density = real3d("trimmed_dual_density", this->dual_topology->nl, this->dual_topology->n_cells_y, this->dual_topology->n_cells_x);
+    trimmed_primal_density = real3d("trimmed_primal_density", this->primal_topology->nl, this->primal_topology->n_cells_y, this->primal_topology->n_cells_x);
+
   }
 
 
@@ -681,17 +685,33 @@ public:
       for (int l=0;l<ntdofs;l++) {masslocal(l) = 0.; massglobal(l) = 0.;}
       for (int l=0;l<ntdofs;l++) {densmaxlocal(l) = 0.; densmaxglobal(l) = 0.;}
       for (int l=0;l<ntdofs;l++) {densminlocal(l) = 0.; densminglobal(l) = 0.;}
-    
+  
+      int dis = dual_topology->is;
+      int djs = dual_topology->js;
+      int dks = dual_topology->ks;
+      
     for (int l=0;l<ntdofs;l++)
     {
-    masslocal(l) = progvars.fields_arr[DENSVAR].sum(l);
-    densmaxlocal(l) = progvars.fields_arr[DENSVAR].max(l);
-    densminlocal(l) = progvars.fields_arr[DENSVAR].min(l);
+      parallel_for( Bounds<3>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
+        trimmed_dual_density(k,j,i) = progvars.fields_arr[DENSVAR].data(l,k+dks,j+djs,i+dis);
+      });
+
+    masslocal(l) = yakl::intrinsics::sum(trimmed_dual_density);
+    densmaxlocal(l) = yakl::intrinsics::maxval(trimmed_dual_density);
+    densminlocal(l) = yakl::intrinsics::minval(trimmed_dual_density);
     }
 
+    int pis = primal_topology->is;
+    int pjs = primal_topology->js;
+    int pks = primal_topology->ks;
+    
     for (int l=0;l<nQdofs;l++)
     {
-    Qlocal(l) = progvars.fields_arr[QXZVAR].sum(l);
+      parallel_for( Bounds<3>( primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
+        trimmed_primal_density(k,j,i) = progvars.fields_arr[QXZVAR].data(l,k+pks,j+pjs,i+pis);
+      });
+
+    Qlocal(l) = yakl::intrinsics::sum(trimmed_primal_density);
     }
     
     

@@ -35,12 +35,12 @@ public :
   void zero(int ndof);
   void set(real val);
   void set(int ndof, real val);
-  real sum();
-  real min();
-  real max();
-  real sum(int ndof);
-  real min(int ndof);
-  real max(int ndof);
+  // real sum();
+  // real min();
+  // real max();
+  // real sum(int ndof);
+  // real min(int ndof);
+  // real max(int ndof);
 };
 
     Field::Field()
@@ -189,131 +189,131 @@ parallel_for( Bounds<3>(this->_nz +2*this->topology->mirror_halo,this->topology-
     //  }
     });
   }
-
-  // computes sum of field
-  real Field::sum()
-  {
-
-    //int is = this->topology->is;
-    //int js = this->topology->js;
-    //int ks = this->topology->ks;
-    //real sum = 0.0;
-    
-    //THIS SUMS OVER THE HALO ELEMENTS :(
-    real sum = yakl::intrinsics::sum(this->data);
-    
-    //THIS CODE WAS ACTUALLY A REDUCTION, AND IT IS A MIRACLE IT EVER WORKED!
-    //yakl::parallel_for("SumField", this->_nloop, YAKL_LAMBDA (int iGlob) {
-    //  int k, j, i;
-    //  yakl::unpackIndices(iGlob, this->_nz, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
-    //  for (int ndof=0; ndof<this->total_dofs; ndof++) {
-    //    sum += this->data(ndof, k+ks, j+js, i+is);
-    //  }
-    //});
-    return sum;
-  }
-
-  // computes sum of field
-  real Field::sum(int ndof)
-  {
-
-    //THIS SUMS OVER THE HALO ELEMENTS, AND IS NOT SPECIFIC TO NDOF :(
-    real sum = yakl::intrinsics::sum(this->data);
-
-    //THIS CODE WAS ACTUALLY A REDUCTION, AND IT IS A MIRACLE IT EVER WORKED!
-    // int is = this->topology->is;
-    // int js = this->topology->js;
-    // int ks = this->topology->ks;
-    // real sum = 0.0;
-    // yakl::parallel_for("SumField", this->_nloop, YAKL_LAMBDA (int iGlob) {
-    //   int k, j, i;
-    //   yakl::unpackIndices(iGlob, this->_nz, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
-    //     sum += this->data(ndof, k+ks, j+js, i+is);
-    // });
-    return sum;
-  }
-
-  // computes min of field
- real Field::min()
-  {
-    //THIS SUMS OVER THE HALO ELEMENTS :(
-    real min = yakl::intrinsics::minval(this->data);
-
-    //THIS CODE WAS ACTUALLY A REDUCTION, AND IT IS A MIRACLE IT EVER WORKED!
-    //int is = this->topology->is;
-    //int js = this->topology->js;
-    //int ks = this->topology->ks;
-    // real min = this->data(0, 0, js, is);
-    // yakl::parallel_for("MinField", this->_nloop, YAKL_LAMBDA (int iGlob) {
-    //   int k, j, i;
-    //   yakl::unpackIndices(iGlob, this->_nz, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
-    //   for (int ndof=0; ndof<this->total_dofs; ndof++) {
-    //     min = mymin(this->data(ndof, k+ks, j+js, i+is), min);
-    //   }
-    // });
-    return min;
-  }
-
-  // computes min of field
- real Field::min(int ndof)
-  {
-
-    //THIS SUMS OVER THE HALO ELEMENTS, AND IS NOT SPECIFIC TO NDOF :(
-    real min = yakl::intrinsics::minval(this->data);
-
-    //THIS CODE WAS ACTUALLY A REDUCTION, AND IT IS A MIRACLE IT EVER WORKED!
-    // int is = this->topology->is;
-    // int js = this->topology->js;
-    // int ks = this->topology->ks;
-    // real min = this->data(ndof, 0, js, is);
-    // yakl::parallel_for("MinField", this->_nloop, YAKL_LAMBDA (int iGlob) {
-    //   int k, j, i;
-    //   yakl::unpackIndices(iGlob, this->_nz, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
-    //     min = mymin(this->data(ndof, k+ks, j+js, i+is), min);
-    // });
-    return min;
-  }
-
-  // computes max of field
-  real Field::max()
-  {
-
-    //THIS SUMS OVER THE HALO ELEMENTS :(
-    real max = yakl::intrinsics::maxval(this->data);
-
-    //THIS CODE WAS ACTUALLY A REDUCTION, AND IT IS A MIRACLE IT EVER WORKED!
-    // int is = this->topology->is;
-    // int js = this->topology->js;
-    // int ks = this->topology->ks;
-    // real max = this->data(0, 0, js, is);
-    // yakl::parallel_for("MaxField", this->_nloop, YAKL_LAMBDA (int iGlob) {
-    //   int k, j, i;
-    //   yakl::unpackIndices(iGlob, this->_nz, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
-    //   for (int ndof=0; ndof<this->total_dofs; ndof++) {
-    //     max = mymax(this->data(ndof, k+ks, j+js, i+is), max);
-    //   }
-    // });
-    return max;
-  }
-
-  // computes max of field
-  real Field::max(int ndof)
-  {
-
-    //THIS SUMS OVER THE HALO ELEMENTS, AND IS NOT SPECIFIC TO NDOF :(
-    real max = yakl::intrinsics::maxval(this->data);
-    
-    //THIS CODE WAS ACTUALLY A REDUCTION, AND IT IS A MIRACLE IT EVER WORKED!
-    // int is = this->topology->is;
-    // int js = this->topology->js;
-    // int ks = this->topology->ks;
-    // real max = this->data(ndof, 0, js, is);
-    // yakl::parallel_for("MaxField", this->_nloop, YAKL_LAMBDA (int iGlob) {
-    //   int k, j, i;
-    //   yakl::unpackIndices(iGlob, this->_nz, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
-    //     max = mymax(this->data(ndof, k+ks, j+js, i+is), max);
-    // });
-    return max;
-  }
+ // 
+ //  // computes sum of field
+ //  real Field::sum()
+ //  {
+ // 
+ //    //int is = this->topology->is;
+ //    //int js = this->topology->js;
+ //    //int ks = this->topology->ks;
+ //    //real sum = 0.0;
+ // 
+ //    //THIS SUMS OVER THE HALO ELEMENTS :(
+ //    real sum = yakl::intrinsics::sum(this->data);
+ // 
+ //    //THIS CODE WAS ACTUALLY A REDUCTION, AND IT IS A MIRACLE IT EVER WORKED!
+ //    //yakl::parallel_for("SumField", this->_nloop, YAKL_LAMBDA (int iGlob) {
+ //    //  int k, j, i;
+ //    //  yakl::unpackIndices(iGlob, this->_nz, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
+ //    //  for (int ndof=0; ndof<this->total_dofs; ndof++) {
+ //    //    sum += this->data(ndof, k+ks, j+js, i+is);
+ //    //  }
+ //    //});
+ //    return sum;
+ //  }
+ // 
+ //  // computes sum of field
+ //  real Field::sum(int ndof)
+ //  {
+ // 
+ //    //THIS SUMS OVER THE HALO ELEMENTS, AND IS NOT SPECIFIC TO NDOF :(
+ //    real sum = yakl::intrinsics::sum(this->data);
+ // 
+ //    //THIS CODE WAS ACTUALLY A REDUCTION, AND IT IS A MIRACLE IT EVER WORKED!
+ //    // int is = this->topology->is;
+ //    // int js = this->topology->js;
+ //    // int ks = this->topology->ks;
+ //    // real sum = 0.0;
+ //    // yakl::parallel_for("SumField", this->_nloop, YAKL_LAMBDA (int iGlob) {
+ //    //   int k, j, i;
+ //    //   yakl::unpackIndices(iGlob, this->_nz, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
+ //    //     sum += this->data(ndof, k+ks, j+js, i+is);
+ //    // });
+ //    return sum;
+ //  }
+ // 
+ //  // computes min of field
+ // real Field::min()
+ //  {
+ //    //THIS SUMS OVER THE HALO ELEMENTS :(
+ //    real min = yakl::intrinsics::minval(this->data);
+ // 
+ //    //THIS CODE WAS ACTUALLY A REDUCTION, AND IT IS A MIRACLE IT EVER WORKED!
+ //    //int is = this->topology->is;
+ //    //int js = this->topology->js;
+ //    //int ks = this->topology->ks;
+ //    // real min = this->data(0, 0, js, is);
+ //    // yakl::parallel_for("MinField", this->_nloop, YAKL_LAMBDA (int iGlob) {
+ //    //   int k, j, i;
+ //    //   yakl::unpackIndices(iGlob, this->_nz, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
+ //    //   for (int ndof=0; ndof<this->total_dofs; ndof++) {
+ //    //     min = mymin(this->data(ndof, k+ks, j+js, i+is), min);
+ //    //   }
+ //    // });
+ //    return min;
+ //  }
+ // 
+ //  // computes min of field
+ // real Field::min(int ndof)
+ //  {
+ // 
+ //    //THIS SUMS OVER THE HALO ELEMENTS, AND IS NOT SPECIFIC TO NDOF :(
+ //    real min = yakl::intrinsics::minval(this->data);
+ // 
+ //    //THIS CODE WAS ACTUALLY A REDUCTION, AND IT IS A MIRACLE IT EVER WORKED!
+ //    // int is = this->topology->is;
+ //    // int js = this->topology->js;
+ //    // int ks = this->topology->ks;
+ //    // real min = this->data(ndof, 0, js, is);
+ //    // yakl::parallel_for("MinField", this->_nloop, YAKL_LAMBDA (int iGlob) {
+ //    //   int k, j, i;
+ //    //   yakl::unpackIndices(iGlob, this->_nz, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
+ //    //     min = mymin(this->data(ndof, k+ks, j+js, i+is), min);
+ //    // });
+ //    return min;
+ //  }
+ // 
+ //  // computes max of field
+ //  real Field::max()
+ //  {
+ // 
+ //    //THIS SUMS OVER THE HALO ELEMENTS :(
+ //    real max = yakl::intrinsics::maxval(this->data);
+ // 
+ //    //THIS CODE WAS ACTUALLY A REDUCTION, AND IT IS A MIRACLE IT EVER WORKED!
+ //    // int is = this->topology->is;
+ //    // int js = this->topology->js;
+ //    // int ks = this->topology->ks;
+ //    // real max = this->data(0, 0, js, is);
+ //    // yakl::parallel_for("MaxField", this->_nloop, YAKL_LAMBDA (int iGlob) {
+ //    //   int k, j, i;
+ //    //   yakl::unpackIndices(iGlob, this->_nz, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
+ //    //   for (int ndof=0; ndof<this->total_dofs; ndof++) {
+ //    //     max = mymax(this->data(ndof, k+ks, j+js, i+is), max);
+ //    //   }
+ //    // });
+ //    return max;
+ //  }
+ // 
+ //  // computes max of field
+ //  real Field::max(int ndof)
+ //  {
+ // 
+ //    //THIS SUMS OVER THE HALO ELEMENTS, AND IS NOT SPECIFIC TO NDOF :(
+ //    real max = yakl::intrinsics::maxval(this->data);
+ // 
+ //    //THIS CODE WAS ACTUALLY A REDUCTION, AND IT IS A MIRACLE IT EVER WORKED!
+ //    // int is = this->topology->is;
+ //    // int js = this->topology->js;
+ //    // int ks = this->topology->ks;
+ //    // real max = this->data(ndof, 0, js, is);
+ //    // yakl::parallel_for("MaxField", this->_nloop, YAKL_LAMBDA (int iGlob) {
+ //    //   int k, j, i;
+ //    //   yakl::unpackIndices(iGlob, this->_nz, this->topology->n_cells_y, this->topology->n_cells_x, k, j, i);
+ //    //     max = mymax(this->data(ndof, k+ks, j+js, i+is), max);
+ //    // });
+ //    return max;
+ //  }
 
 #endif
