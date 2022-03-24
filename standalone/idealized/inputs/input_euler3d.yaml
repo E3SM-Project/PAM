@@ -1,13 +1,13 @@
 ---
 # Simulation time in seconds
-simTime  : 7200
+simTime  : 1000
 
 # Number of cells to use
-nx       : 50
-ny       : 25
+nx       : 100
+ny       : 1
 
 # Vertical height cooridnates file
-vcoords  : vcoords_equal_60_20km.nc
+vcoords  : vcoords_equal_50_10km.nc
 
 # Lengths of the dimensions in meters
 xlen     : 200000
@@ -24,7 +24,7 @@ weno_winds   : true
 # 200km x 100km x 20km  for supercell
 # 20km  x 20km  x 10km  for thermal
 # Data to initialize: thermal, supercell
-initData : supercell
+initData : thermal
 
 # Output filename
 out_prefix  : test

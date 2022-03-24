@@ -3,6 +3,7 @@
 #include "pam_coupler.h"
 #include "Dycore.h"
 #include "Microphysics.h"
+#include "SGS.h"
 #include "DataManager.h"
 
 
@@ -17,17 +18,17 @@ int main(int argc, char** argv) {
     std::string inFile(argv[1]);
     YAML::Node config = YAML::LoadFile(inFile);
     if ( !config            ) { endrun("ERROR: Invalid YAML input file"); }
-    real simTime   = config["simTime"].as<real>();
-    real outFreq   = config["outFreq"].as<real>();
-    int  nx        = config["nx"     ].as<int>();
-    int  ny        = config["ny"     ].as<int>();
-    int  nens      = config["nens"   ].as<int>();
-    real xlen      = config["xlen"   ].as<real>();
-    real ylen      = config["ylen"   ].as<real>();
-    real dtphys_in = config["dtphys" ].as<real>();
-
-    // Store vertical coordinates
+    real        simTime      = config["simTime"].as<real>();
+    real        outFreq      = config["outFreq"].as<real>();
+    int         crm_nx       = config["crm_nx" ].as<int>();
+    int         crm_ny       = config["crm_ny" ].as<int>();
+    int         nens         = config["nens"   ].as<int>();
+    real        xlen         = config["xlen"   ].as<real>();
+    real        ylen         = config["ylen"   ].as<real>();
+    real        dtphys_in    = config["dtphys" ].as<real>();
     std::string vcoords_file = config["vcoords"].as<std::string>();
+
+    // Read vertical coordinates
     yakl::SimpleNetCDF nc;
     nc.open(vcoords_file);
     int nz = nc.getDimSize("num_interfaces") - 1;
@@ -38,29 +39,29 @@ int main(int argc, char** argv) {
     // Create the dycore and the microphysics
     Dycore       dycore;
     Microphysics micro;
+    SGS          sgs;
 
     // Use microphysics gas constants values in the coupler
     coupler.set_phys_constants( micro.R_d , micro.R_v , micro.cp_d , micro.cp_v , micro.grav , micro.p0 );
 
     // Allocate coupler state
-    coupler.allocate_coupler_state( nz , ny , nx , nens );
+    coupler.allocate_coupler_state( crm_nz , crm_ny , crm_nx , nens );
 
     // Set the horizontal domain lengths and the vertical grid in the coupler
     coupler.set_grid( xlen , ylen , zint_in );
 
-    int numOut = 0;
-
     // This is for the dycore to pull out to determine how to do idealized test cases
-    coupler.add_note( "standalone_input_file" , inFile );
+    coupler.set_option<std::string>( "standalone_input_file" , inFile );
 
-    // Initialize the microphysics (registers the microphysics's tracers)
     micro .init( coupler );
-    // Before calling dycore.init(coupler), be sure ALL TRACERS HAVE BEEN REGISTERED ALREADY in the coupler
+    sgs   .init( coupler );
     dycore.init( coupler );
 
     #ifdef PAM_STANDALONE
       std::cout << "Dycore: " << dycore.dycore_name() << std::endl;
-      std::cout << "Micro : " << micro .micro_name() << std::endl;
+      std::cout << "Micro : " << micro .micro_name () << std::endl;
+      std::cout << "SGS   : " << sgs   .sgs_name   () << std::endl;
+      std::cout << "\n";
     #endif
 
     // Only for the idealized standalone driver; clearly not going to be used for the MMF driver
@@ -70,6 +71,7 @@ int main(int argc, char** argv) {
     coupler.update_hydrostasis( coupler.compute_pressure_array() );
 
     real etime = 0;
+    int  numOut = 0;
 
     if (outFreq >= 0) dycore.output( coupler , etime );
 
