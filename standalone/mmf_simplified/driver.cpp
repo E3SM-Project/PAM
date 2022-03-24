@@ -16,6 +16,8 @@
 int main(int argc, char** argv) {
   yakl::init();
   {
+    using yakl::intrinsics::abs;
+    using yakl::intrinsics::maxval;
     yakl::timer_start("main");
 
     if (argc <= 1) { endrun("ERROR: Must pass the input YAML filename as a parameter"); }
@@ -30,7 +32,6 @@ int main(int argc, char** argv) {
     real ylen           = config["ylen"       ].as<real>();
     real dt_gcm         = config["dt_gcm"     ].as<real>();
     real dt_crm_phys    = config["dt_crm_phys"].as<real>();
-    real outFreq        = config["outFreq"    ].as<real>();
     std::string coldata = config["column_data"].as<std::string>();
     bool advect_tke     = config["advect_tke" ].as<bool>();
 
@@ -86,12 +87,9 @@ int main(int argc, char** argv) {
     coupler.dm.register_and_allocate<real>("gcm_temp"       ,"GCM column temperature"     ,{crm_nz,nens});
     coupler.dm.register_and_allocate<real>("gcm_water_vapor","GCM column water vapor mass",{crm_nz,nens});
 
-    // Initialize the microphysics
     micro .init( coupler );
-    // Initialize the SGS
     sgs   .init( coupler );
-    // Before calling dycore.init(coupler), be sure ALL TRACERS HAVE BEEN REGISTERED ALREADY in the coupler
-    dycore.init( coupler );
+    dycore.init( coupler );  // dycore should set idealized conditions here
 
     #ifdef PAM_STANDALONE
       std::cout << "Dycore: " << dycore.dycore_name() << std::endl;
@@ -99,9 +97,6 @@ int main(int argc, char** argv) {
       std::cout << "SGS   : " << sgs   .sgs_name   () << std::endl;
       std::cout << "\n";
     #endif
-
-    // Only for the idealized standalone driver; clearly not going to be used for the MMF driver
-    dycore.init_idealized_state_and_tracers( coupler );
 
     auto gcm_rho_d = coupler.dm.get<real,2>("gcm_density_dry");
     auto gcm_uvel  = coupler.dm.get<real,2>("gcm_uvel"       );
@@ -172,9 +167,6 @@ int main(int argc, char** argv) {
     std::cout << "\n";
 
     real etime_gcm = 0;
-    int numOut = 0;
-
-    if (outFreq >= 0) dycore.output( coupler , etime_gcm );
 
     while (etime_gcm < simTime) {
       if (etime_gcm + dt_gcm > simTime) { dt_gcm = simTime - etime_gcm; }
@@ -204,15 +196,10 @@ int main(int argc, char** argv) {
 
         etime_crm += dt_crm;
         etime_gcm += dt_crm;
-        if (outFreq >= 0. && etime_gcm / outFreq >= numOut+1) {
-          std::cout << "Etime , dt_crm , maxw: " << etime_gcm << " , "
-                                                 << dt_crm    << " , "
-                                                 << yakl::intrinsics::maxval(yakl::intrinsics::abs(wvel)) << "\n";
-          yakl::timer_start("output");
-          dycore.output( coupler , etime_gcm );
-          yakl::timer_stop("output");
-          numOut++;
-        }
+        real maxw = maxval(abs(coupler.dm.get_collapsed<real const>("wvel")));
+        std::cout << "Etime , dtphys, maxw: " << etime_gcm << " , " 
+                                              << dt_crm    << " , "
+                                              << std::setw(10) << maxw << "\n";
       }
     }
 

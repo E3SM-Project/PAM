@@ -15,4 +15,5 @@ cmake      \
   -DYAKL_ARCH="${YAKL_ARCH}"                                      \
   -DPAM_DYCORE="awfl"                                             \
   -DPAM_MICRO="kessler"                                           \
+  -DPAM_SGS="none"                                                \
   ..

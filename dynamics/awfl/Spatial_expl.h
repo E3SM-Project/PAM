@@ -423,7 +423,7 @@ public:
 
 
   // Initialize crap needed by recon()
-  void init(PamCoupler const &coupler) {
+  void init(PamCoupler &coupler) {
     using yakl::intrinsics::matmul_cr;
 
     this->nens = coupler.get_nens();
@@ -744,6 +744,10 @@ public:
       }
       std::cout << "\n\n";
     #endif
+
+    init_idealized_state_and_tracers( coupler );
+
+    output( coupler , 0._fp );
   }
 
 
