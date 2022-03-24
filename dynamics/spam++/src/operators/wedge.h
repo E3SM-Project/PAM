@@ -117,7 +117,6 @@ if (addmode == ADD_MODE::ADD){
 
 }
 
-// NOT 100% SURE ON BOUNDARIES HERE...
 template<uint ndofs, ADD_MODE addmode=ADD_MODE::REPLACE> void YAKL_INLINE compute_Qxz_w_EC(real4d qflux, const real4d reconvar, const real4d vertreconvar, const real4d Uvar, int is, int js, int ks, int i, int j, int k)
 {
   SArray<real,1,4> flux;
@@ -147,6 +146,57 @@ template<uint ndofs, ADD_MODE addmode=ADD_MODE::REPLACE> void YAKL_INLINE comput
   if (addmode == ADD_MODE::ADD){
   for (int l=0; l<ndofs; l++) { qflux(l, k+ks, j+js, i+is) += 1./4. * (flux(0) + flux(1) + flux(2) + flux(3)) * reconvar(l, k+ks, j+js, i+is); }}
 }
+template<uint ndofs, ADD_MODE addmode=ADD_MODE::REPLACE> void YAKL_INLINE compute_Qxz_w_EC_top(real4d qflux, const real4d reconvar, const real4d vertreconvar, const real4d Uvar, int is, int js, int ks, int i, int j, int k)
+{
+  SArray<real,1,2> flux;
+  SArray<real,1,2> recon;
+  flux(0) = Uvar(0, k+ks, j+js, i+is);
+  flux(1) = Uvar(0, k+ks, j+js, i+is+1);
+  for (int l=0; l<ndofs; l++) {
+  recon(0) = (vertreconvar(l, k+ks, j+js, i+is) + reconvar(l, k+ks, j+js, i+is)) /2.;
+  recon(1) = (vertreconvar(l, k+ks, j+js, i+is+1)+ reconvar(l, k+ks, j+js, i+is)) /2.;
+  if (addmode == ADD_MODE::REPLACE){ qflux(l, k+ks, j+js, i+is) = 1./4. * (flux(0)*recon(0) + flux(1)*recon(1)); }
+  if (addmode == ADD_MODE::ADD){ qflux(l, k+ks, j+js, i+is) += 1./4. * (flux(0)*recon(0) + flux(1)*recon(1)); }
+  }
+}
+template<uint ndofs, ADD_MODE addmode=ADD_MODE::REPLACE> void YAKL_INLINE compute_Qxz_w_nonEC_top(real4d qflux, const real4d reconvar, const real4d Uvar, int is, int js, int ks, int i, int j, int k)
+{
+  SArray<real,1,2> flux;
+  flux(0) = Uvar(0, k+ks, j+js, i+is);
+  flux(1) = Uvar(0, k+ks, j+js, i+is+1);
+  if (addmode == ADD_MODE::REPLACE) {
+  for (int l=0; l<ndofs; l++) { qflux(l, k+ks, j+js, i+is) = 1./4. * (flux(0) + flux(1)) * reconvar(l, k+ks, j+js, i+is); }}
+  if (addmode == ADD_MODE::ADD){
+  for (int l=0; l<ndofs; l++) { qflux(l, k+ks, j+js, i+is) += 1./4. * (flux(0) + flux(1)) * reconvar(l, k+ks, j+js, i+is); }}
+}
+template<uint ndofs, ADD_MODE addmode=ADD_MODE::REPLACE> void YAKL_INLINE compute_Qxz_w_EC_bottom(real4d qflux, const real4d reconvar, const real4d vertreconvar, const real4d Uvar, int is, int js, int ks, int i, int j, int k)
+{
+  SArray<real,1,2> flux;
+  SArray<real,1,2> recon;
+  flux(0) = Uvar(0, k+ks+1, j+js, i+is);
+  flux(1) = Uvar(0, k+ks+1, j+js, i+is+1);
+  for (int l=0; l<ndofs; l++) {
+  recon(0) = (vertreconvar(l, k+ks+1, j+js, i+is)+ reconvar(l, k+ks, j+js, i+is)) /2.;
+  recon(1) = (vertreconvar(l, k+ks+1, j+js, i+is+1)+ reconvar(l, k+ks, j+js, i+is)) /2.;
+  if (addmode == ADD_MODE::REPLACE){ qflux(l, k+ks, j+js, i+is) = 1./4. * (flux(0)*recon(0) + flux(1)*recon(1)); }
+  if (addmode == ADD_MODE::ADD){ qflux(l, k+ks, j+js, i+is) += 1./4. * (flux(0)*recon(0) + flux(1)*recon(1)); }
+  }
+}
+template<uint ndofs, ADD_MODE addmode=ADD_MODE::REPLACE> void YAKL_INLINE compute_Qxz_w_nonEC_bottom(real4d qflux, const real4d reconvar, const real4d Uvar, int is, int js, int ks, int i, int j, int k)
+{
+  SArray<real,1,2> flux;
+  flux(0) = Uvar(0, k+ks+1, j+js, i+is);
+  flux(1) = Uvar(0, k+ks+1, j+js, i+is+1);
+  if (addmode == ADD_MODE::REPLACE) {
+  for (int l=0; l<ndofs; l++) { qflux(l, k+ks, j+js, i+is) = 1./4. * (flux(0) + flux(1)) * reconvar(l, k+ks, j+js, i+is); }}
+  if (addmode == ADD_MODE::ADD){
+  for (int l=0; l<ndofs; l++) { qflux(l, k+ks, j+js, i+is) += 1./4. * (flux(0) + flux(1)) * reconvar(l, k+ks, j+js, i+is); }}
+}
+
+
+
+
+
 template<uint ndofs, ADD_MODE addmode=ADD_MODE::REPLACE> void YAKL_INLINE compute_Qxz_u_EC(real4d qvertflux, const real4d reconvar, const real4d vertreconvar, const real4d UWvar, int is, int js, int ks, int i, int j, int k)
 {
   SArray<real,1,4> flux;
@@ -180,6 +230,46 @@ template<uint ndofs, ADD_MODE addmode=ADD_MODE::REPLACE> void YAKL_INLINE comput
   for (int l=0; l<ndofs; l++) { qvertflux(l, k+ks, j+js, i+is) += -1./4. * (flux(0) + flux(1) + flux(2) + flux(3)) * vertreconvar(l, k+ks, j+js, i+is); }}
 }
 
+
+template<uint ndofs, ADD_MODE addmode=ADD_MODE::REPLACE> void YAKL_INLINE compute_Qxz_u_top(real4d qvertflux, const real4d vertreconvar, const real4d UWvar, int is, int js, int ks, int i, int j, int k)
+{
+  SArray<real,1,2> flux;
+  flux(0) = UWvar(0, k+ks+1, j+js, i+is);
+  flux(1) = UWvar(0, k+ks+1, j+js, i+is-1);
+  //Added the minus sign here
+  if (addmode == ADD_MODE::REPLACE){
+  for (int l=0; l<ndofs; l++) { qvertflux(l, k+ks, j+js, i+is) = -1./2. * (flux(0) + flux(1)) * vertreconvar(l, k+ks, j+js, i+is); }}
+  if (addmode == ADD_MODE::ADD){
+  for (int l=0; l<ndofs; l++) { qvertflux(l, k+ks, j+js, i+is) += -1./2. * (flux(0) + flux(1)) * vertreconvar(l, k+ks, j+js, i+is); }}
+}
+template<uint ndofs, ADD_MODE addmode=ADD_MODE::REPLACE> void YAKL_INLINE compute_Qxz_u_bottom(real4d qvertflux, const real4d vertreconvar, const real4d UWvar, int is, int js, int ks, int i, int j, int k)
+{
+SArray<real,1,2> flux;
+flux(0) = UWvar(0, k+ks, j+js, i+is);
+flux(1) = UWvar(0, k+ks, j+js, i+is-1);
+//Added the minus sign here
+if (addmode == ADD_MODE::REPLACE){
+for (int l=0; l<ndofs; l++) { qvertflux(l, k+ks, j+js, i+is) = -1./2. * (flux(0) + flux(1)) * vertreconvar(l, k+ks, j+js, i+is); }}
+if (addmode == ADD_MODE::ADD){
+for (int l=0; l<ndofs; l++) { qvertflux(l, k+ks, j+js, i+is) += -1./2. * (flux(0) + flux(1)) * vertreconvar(l, k+ks, j+js, i+is); }}
+}
+template<uint ndofs, ADD_MODE addmode=ADD_MODE::REPLACE> void YAKL_INLINE compute_Qxz_u_nonEC_top(real4d qvertflux, const real4d vertreconvar, const real4d UWvar, int is, int js, int ks, int i, int j, int k)
+{
+  compute_Qxz_u_top<ndofs, addmode>(qvertflux, vertreconvar, UWvar, is, js, ks, i, j, k);
+}
+template<uint ndofs, ADD_MODE addmode=ADD_MODE::REPLACE> void YAKL_INLINE compute_Qxz_u_EC_top(real4d qvertflux, const real4d reconvar, const real4d vertreconvar, const real4d UWvar, int is, int js, int ks, int i, int j, int k)
+{
+ compute_Qxz_u_top<ndofs, addmode>(qvertflux, vertreconvar, UWvar, is, js, ks, i, j, k);
+}
+template<uint ndofs, ADD_MODE addmode=ADD_MODE::REPLACE> void YAKL_INLINE compute_Qxz_u_nonEC_bottom(real4d qvertflux, const real4d vertreconvar, const real4d UWvar, int is, int js, int ks, int i, int j, int k)
+{
+  compute_Qxz_u_bottom<ndofs, addmode>(qvertflux, vertreconvar, UWvar, is, js, ks, i, j, k);
+}
+template<uint ndofs, ADD_MODE addmode=ADD_MODE::REPLACE> void YAKL_INLINE compute_Qxz_u_EC_bottom(real4d qvertflux, const real4d reconvar, const real4d vertreconvar, const real4d UWvar, int is, int js, int ks, int i, int j, int k)
+{
+ compute_Qxz_u_bottom<ndofs, addmode>(qvertflux, vertreconvar, UWvar, is, js, ks, i, j, k);
+}
+
 // W
 void YAKL_INLINE W2D( SArray<real,1,2> &vel, SArray<real,2,2,4> const &flux) {
         //x-dir
@@ -211,18 +301,33 @@ W2D(ut, flux);
 }
 
 // Wxz
-// NOT 100% SURE ON BOUNDARIES HERE...
-// THEY ARE A LITTLE BROKEN, THIS IS OK
 void YAKL_INLINE compute_Wxz_u(real4d VTvar, const real4d UWvar, int is, int js, int ks, int i, int j, int k)
+{
+  SArray<real,1,4> flux;
+  flux(0) = UWvar(0, k+ks, j+js, i+is);
+  flux(1) = UWvar(0, k+ks, j+js, i+is-1);
+  flux(2) = UWvar(0, k+ks+1, j+js, i+is);
+  flux(3) = UWvar(0, k+ks+1, j+js, i+is-1);
+  //Added the minus sign here
+  VTvar(0, k+ks, j+js, i+is) = -1./4. * (flux(0) + flux(1) + flux(2) + flux(3));
+}
+void YAKL_INLINE compute_Wxz_u_top(real4d VTvar, const real4d UWvar, int is, int js, int ks, int i, int j, int k)
+{
+SArray<real,1,2> flux;
+flux(0) = UWvar(0, k+ks+1, j+js, i+is) ;
+flux(1) = UWvar(0, k+ks+1, j+js, i+is-1);
+//Added the minus sign here
+VTvar(0, k+ks, j+js, i+is) = -1./2. * (flux(0) + flux(1));
+}
+void YAKL_INLINE compute_Wxz_u_bottom(real4d VTvar, const real4d UWvar, int is, int js, int ks, int i, int j, int k)
 {
 SArray<real,1,4> flux;
 flux(0) = UWvar(0, k+ks, j+js, i+is);
 flux(1) = UWvar(0, k+ks, j+js, i+is-1);
-flux(2) = UWvar(0, k+ks+1, j+js, i+is);
-flux(3) = UWvar(0, k+ks+1, j+js, i+is-1);
 //Added the minus sign here
-  VTvar(0, k+ks, j+js, i+is) = -1./4. * (flux(0) + flux(1) + flux(2) + flux(3));
+VTvar(0, k+ks, j+js, i+is) = -1./2. * (flux(0) + flux(1));
 }
+
 void YAKL_INLINE compute_Wxz_w(real4d WTvar, const real4d Uvar, int is, int js, int ks, int i, int j, int k)
 {
 SArray<real,1,4> flux;
@@ -232,6 +337,25 @@ flux(2) = Uvar(0, k+ks+1, j+js, i+is);
 flux(3) = Uvar(0, k+ks+1, j+js, i+is+1);
 WTvar(0, k+ks, j+js, i+is) = 1./4. * (flux(0) + flux(1) + flux(2) + flux(3));
 }
+void YAKL_INLINE compute_Wxz_w_top(real4d WTvar, const real4d Uvar, int is, int js, int ks, int i, int j, int k)
+{
+SArray<real,1,2> flux;
+flux(0) = Uvar(0, k+ks, j+js, i+is);
+flux(1) = Uvar(0, k+ks, j+js, i+is+1);
+WTvar(0, k+ks, j+js, i+is) = 1./4. * (flux(0) + flux(1));
+}
+void YAKL_INLINE compute_Wxz_w_bottom(real4d WTvar, const real4d Uvar, int is, int js, int ks, int i, int j, int k)
+{
+SArray<real,1,2> flux;
+flux(0) = Uvar(0, k+ks+1, j+js, i+is);
+flux(1) = Uvar(0, k+ks+1, j+js, i+is+1);
+WTvar(0, k+ks, j+js, i+is) = 1./4. * (flux(0) + flux(1));
+}
+
+
+
+
+
 
 // R
 void YAKL_INLINE R( SArray<real,1,1> &vard, SArray<real,1,2> const &varp) {
@@ -287,41 +411,9 @@ var(dof, k+ks, j+js, i+is) = var2;
 }
 
 
-void YAKL_INLINE compute_Rext(real &var, const real4d densvar, int is, int js, int ks, int i, int j, int k)
-{
-SArray<real,1,1> dualdens;
-  if (ndims==1)
-  {
-    SArray<real,1,4> dens;
-    dens(0) = densvar(0, k+ks, j+js, i+is);
-    dens(1) = densvar(0, k+ks, j+js, i+is-1);
-    dens(2) = densvar(0, k+ks-1, j+js, i+is);
-    dens(3) = densvar(0, k+ks-1, j+js, i+is-1);
-    R(dualdens, dens);
-  }
-  if (ndims==2)
-  {
-    SArray<real,1,8> dens;
-    dens(0) = densvar(0, k+ks, j+js, i+is);
-    dens(1) = densvar(0, k+ks, j+js, i+is-1);
-    dens(2) = densvar(0, k+ks, j+js-1, i+is);
-    dens(3) = densvar(0, k+ks, j+js-1, i+is-1);
-    dens(4) = densvar(0, k+ks-1, j+js, i+is);
-    dens(5) = densvar(0, k+ks-1, j+js, i+is-1);
-    dens(6) = densvar(0, k+ks-1, j+js-1, i+is);
-    dens(7) = densvar(0, k+ks-1, j+js-1, i+is-1);
-    R(dualdens, dens);
-  }
-var = dualdens(0);
+void YAKL_INLINE Rbnd( SArray<real,1,1> &vard, SArray<real,1,4> const &varp) {
+  vard(0) = 1./4. * (varp(0) + varp(1)) + 1./2.*(varp(2) + varp(3));
 }
-
-void YAKL_INLINE compute_Rext(real4d var, const real4d densvar, int is, int js, int ks, int i, int j, int k)
-{
-real var2;
-compute_Rext (var2,densvar,is,js,ks,i,j,k);
-var(0, k+ks, j+js, i+is) = var2;
-}
-
 
 
 

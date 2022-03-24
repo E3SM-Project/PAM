@@ -95,9 +95,10 @@ for i in Nlist:
     for l,name in zip(range(ndensity), dens_names):
             plotvar_scalar2D(name, dens.isel(t=i,dens_ndofs=l, dual_ncells_y=0),i)
             plotvar_scalar2D(name+'l', densl.isel(t=i,densl_ndofs=l, primal_ncells_y=0),i)
-    if model in ['tswe','ce','mce']:
-            plotvar_scalar2D('thetal', densl.isel(t=i,densl_ndofs=1, primal_ncells_y=0) / densl.isel(t=i,densl_ndofs=0, primal_ncells_y=0),i)
-# EVENTUALL DO NZ-TYPE PLOTTING HERE!
+#THIS ASSUMES TOTAL DENSITY IS IN DENS(0)
+            plotvar_scalar2D(name+'c', dens.isel(t=i,dens_ndofs=l, dual_ncells_y=0) / dens.isel(t=i,dens_ndofs=0, dual_ncells_y=0),i)
+    #if model in ['tswe','ce','mce']:
+    #        plotvar_scalar2D('thetal', dens.isel(t=i,dens_ndofs=1, dual_ncells_y=0) / dens.isel(t=i,dens_ndofs=0, dual_ncells_y=0),i)
 
 
 

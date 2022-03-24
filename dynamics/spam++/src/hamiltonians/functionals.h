@@ -213,6 +213,38 @@ real YAKL_INLINE compute_hvxz(const real4d dens, int is, int js, int ks, int i, 
   return hv(0);
 }
 
+real YAKL_INLINE compute_hvxz_top(const real4d dens, int is, int js, int ks, int i, int j, int k)
+{
+  SArray<real,1,1> hv;
+  SArray<real,1,4> Dv;
+  
+  // compute hv = R h
+  // Uses linearity of R
+  Dv(0) = dens(0, k+ks, j+js, i+is);
+  Dv(1) = dens(0, k+ks, j+js, i+is-1);
+  Dv(2) = dens(0, k+ks+1, j+js, i+is); //gets 1/2
+  Dv(3) = dens(0, k+ks+1, j+js, i+is-1); //gets 1/2
+  Rbnd(hv, Dv);
+  
+  return hv(0);
+}
+
+real YAKL_INLINE compute_hvxz_bottom(const real4d dens, int is, int js, int ks, int i, int j, int k)
+{
+  SArray<real,1,1> hv;
+  SArray<real,1,4> Dv;
+  
+  // compute hv = R h
+  // Uses linearity of R
+  Dv(0) = dens(0, k+ks+1, j+js, i+is);
+  Dv(1) = dens(0, k+ks+1, j+js, i+is-1);
+  Dv(2) = dens(0, k+ks, j+js, i+is); //gets 1/2
+  Dv(3) = dens(0, k+ks, j+js, i+is-1); //gets 1/2
+  Rbnd(hv, Dv);
+  
+  return hv(0);
+}
+
 real YAKL_INLINE compute_zetaxz(const real4d v, const real4d w, int is, int js, int ks, int i, int j, int k)
 {
   SArray<real,1,1> zeta;
@@ -237,11 +269,53 @@ void YAKL_INLINE compute_qxz0(real4d qxz0, const real4d v, const real4d w, const
 qxz0(0, k+ks, j+js, i+is) = eta / hv;
 }
 
+//This computes true qxz
+void YAKL_INLINE compute_qxz0_top(real4d qxz0, const real4d v, const real4d w, const real4d dens, const real4d coriolisxz, int is, int js, int ks, int i, int j, int k)
+{
+  //Need to subtract 1 here since d00(i,k) corresponds to p11(i,k)
+ real hv = compute_hvxz_top(dens, is, js, ks, i, j, k-1);
+ real eta = compute_etaxz(v, w, coriolisxz, is, js, ks, i, j, k-1);
+ // compute q0 = zeta / hv and f0 = f / hv
+qxz0(0, k+ks, j+js, i+is) = eta / hv;
+}
+
+//This computes true qxz
+void YAKL_INLINE compute_qxz0_bottom(real4d qxz0, const real4d v, const real4d w, const real4d dens, const real4d coriolisxz, int is, int js, int ks, int i, int j, int k)
+{
+  //Need to subtract 1 here since d00(i,k) corresponds to p11(i,k)
+ real hv = compute_hvxz_bottom(dens, is, js, ks, i, j, k-1);
+ real eta = compute_etaxz(v, w, coriolisxz, is, js, ks, i, j, k-1);
+ // compute q0 = zeta / hv and f0 = f / hv
+qxz0(0, k+ks, j+js, i+is) = eta / hv;
+}
+
 //This computes relative qxz
 void YAKL_INLINE compute_qxz0fxz0(real4d qxz0, real4d fxz0, const real4d v, const real4d w, const real4d dens, const real4d coriolisxz, int is, int js, int ks, int i, int j, int k)
 {
   //Need to subtract 1 here since d00(i,k) corresponds to p11(i,k)
  real hv = compute_hvxz(dens, is, js, ks, i, j, k-1);
+ real zeta = compute_zetaxz(v, w, is, js, ks, i, j, k-1);
+ // compute q0 = zeta / hv and f0 = f / hv
+qxz0(0, k+ks, j+js, i+is) = zeta / hv;
+fxz0(0, k+ks, j+js, i+is) = coriolisxz(0, k+ks, j+js, i+is) / hv;
+}
+
+//This computes relative qxz
+void YAKL_INLINE compute_qxz0fxz0_top(real4d qxz0, real4d fxz0, const real4d v, const real4d w, const real4d dens, const real4d coriolisxz, int is, int js, int ks, int i, int j, int k)
+{
+  //Need to subtract 1 here since d00(i,k) corresponds to p11(i,k)
+ real hv = compute_hvxz_top(dens, is, js, ks, i, j, k-1);
+ real zeta = compute_zetaxz(v, w, is, js, ks, i, j, k-1);
+ // compute q0 = zeta / hv and f0 = f / hv
+qxz0(0, k+ks, j+js, i+is) = zeta / hv;
+fxz0(0, k+ks, j+js, i+is) = coriolisxz(0, k+ks, j+js, i+is) / hv;
+}
+
+//This computes relative qxz
+void YAKL_INLINE compute_qxz0fxz0_bottom(real4d qxz0, real4d fxz0, const real4d v, const real4d w, const real4d dens, const real4d coriolisxz, int is, int js, int ks, int i, int j, int k)
+{
+  //Need to subtract 1 here since d00(i,k) corresponds to p11(i,k)
+ real hv = compute_hvxz_bottom(dens, is, js, ks, i, j, k-1);
  real zeta = compute_zetaxz(v, w, is, js, ks, i, j, k-1);
  // compute q0 = zeta / hv and f0 = f / hv
 qxz0(0, k+ks, j+js, i+is) = zeta / hv;
@@ -255,10 +329,32 @@ pvpe YAKL_INLINE compute_PVPE(const real4d v, const real4d w, const real4d dens,
   real eta = compute_etaxz(v, w, coriolisxz, is, js, ks, i, j, k);
   real hv = compute_hvxz(dens, is, js, ks, i, j, k);
   real q0 = eta / hv;
-  
   vals.pv = eta;
   vals.pe = 0.5 * eta * q0;
-  
+  return vals;
+}
+
+pvpe YAKL_INLINE compute_PVPE_top(const real4d v, const real4d w, const real4d dens, const real4d coriolisxz, int is, int js, int ks, int i, int j, int k)
+{
+  pvpe vals;
+  //No subtraction here since this is called on primal cells p11
+  real eta = compute_etaxz(v, w, coriolisxz, is, js, ks, i, j, k);
+  real hv = compute_hvxz_top(dens, is, js, ks, i, j, k);
+  real q0 = eta / hv;
+  vals.pv = eta;
+  vals.pe = 0.5 * eta * q0;
+  return vals;
+}
+
+pvpe YAKL_INLINE compute_PVPE_bottom(const real4d v, const real4d w, const real4d dens, const real4d coriolisxz, int is, int js, int ks, int i, int j, int k)
+{
+  pvpe vals;
+  //No subtraction here since this is called on primal cells p11
+  real eta = compute_etaxz(v, w, coriolisxz, is, js, ks, i, j, k);
+  real hv = compute_hvxz_bottom(dens, is, js, ks, i, j, k);
+  real q0 = eta / hv;
+  vals.pv = eta;
+  vals.pe = 0.5 * eta * q0;
   return vals;
 }
 

@@ -74,27 +74,12 @@ coriolis = DS.coriolis
 plotvar_scalar2D('hs', hs.isel(hs_ndofs=0,dual_nlayers=0),0)
 plotvar_scalar2D('coriolis', coriolis.isel(coriolis_ndofs=0,primal_nlayers=0),0)
 
-# WHERE EXACTLY SHOULD sl/trl/trfctl live? are they straight 0-forms? twisted n-forms?
 for i in Nlist:
     plotvar_scalar2D('q', q.isel(t=i,q_ndofs=0,dual_nlayers=0),i)
     plotvar_vector2D('v', v.isel(t=i,v_ndofs=0,primal_nlayers=0), v.isel(t=i,v_ndofs=1,primal_nlayers=0),i)
     for l,name in zip(range(ndensity), dens_names):
             plotvar_scalar2D(name, dens.isel(t=i,dens_ndofs=l,dual_nlayers=0),i)
             plotvar_scalar2D(name+'l', densl.isel(t=i,densl_ndofs=l,primal_nlayers=0),i)
-
-# EVENTUALL DO NZ-TYPE PLOTTING HERE!
-
-#plotvar_scalar2D('hs1', hs.isel(hs_ndofs=0,dual_nlayers=1),0)
-#plotvar_scalar2D('coriolis1', coriolis.isel(coriolis_ndofs=0,primal_nlayers=1),0)
-
-#for i in Nlist:
-#    plotvar_scalar2D('q1', q.isel(t=i,q_ndofs=0,dual_nlayers=1),i)
-#    plotvar_vector2D('v1', v.isel(t=i,v_ndofs=0,primal_nlayers=1), v.isel(t=i,v_ndofs=1,primal_nlayers=1),i)
-#    for l,name in zip(range(ndensity), dens_names):
-#            plotvar_scalar2D(name+str(1), dens.isel(t=i,dens_ndofs=l,dual_nlayers=1),i)
-#            plotvar_scalar2D(name+str(1)+'l', densl.isel(t=i,densl_ndofs=l,primal_nlayers=1),i)
-#    if ndensity_fct > 0:
-#        for l,name in zip(range(ndensity_fct), densfct_names):
-#            plotvar_scalar2D(name+str(1), densfct.isel(t=i,densfct_ndofs=l,dual_nlayers=1),i)
-#            plotvar_scalar2D(name+str(1)+'l', densfctl.isel(t=i,densfctl_ndofs=l,primal_nlayers=1),i)
+#THIS ASSUMES TOTAL DENSITY IS IN DENS(0)
+            plotvar_scalar2D(name+'c', dens.isel(t=i,dens_ndofs=l,dual_nlayers=0) / dens.isel(t=i,dens_ndofs=0,dual_nlayers=0),i)
 

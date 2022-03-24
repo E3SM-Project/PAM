@@ -359,39 +359,35 @@ void YAKL_INLINE compute_dKddens(real4d B, const real4d K, int is, int js, int k
     this->is_initialized = true;
   }
 
+  real YAKL_INLINE compute_KE_top(const real4d v, const real4d w, const real4d dens, int is, int js, int ks, int i, int j, int k)
+{
+  real K2 = 0.;
+  // Have to subtract 1 from k here since UW has an extra dof compared to w!
+  SArray<real,1,1> UW0;
+  compute_Hv<1,vert_diff_ord> (UW0, w, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k-1);
+  real w0;
+  //Have to subtract 1 from k here since UW has an extra dof compared to w
+  w0 = w(0,k+ks-1,j+js,i+is);
+  K2 += 0.5 * w0*UW0(0);
+return _compute_KE(K2, v, w, dens, is, js, ks, i, j, k);
+}
+
+real YAKL_INLINE compute_KE_bottom(const real4d v, const real4d w, const real4d dens, int is, int js, int ks, int i, int j, int k)
+{
+  real K2 = 0.;
+  // Have to subtract 1 from k here since UW has an extra dof compared to w!
+  SArray<real,1,1> UW1;
+  compute_Hv<1,vert_diff_ord> (UW1, w, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
+  real w1;
+  //Have to subtract 1 from k here since UW has an extra dof compared to w
+  w1 = w(0,k+ks,j+js,i+is);
+  K2 += 0.5 * w1*UW1(0);
+return _compute_KE(K2, v, w, dens, is, js, ks, i, j, k);
+}
+
   real YAKL_INLINE compute_KE(const real4d v, const real4d w, const real4d dens, int is, int js, int ks, int i, int j, int k)
   {
-    
-//     SArray<real,1> K2;
-//     SArray<real,ndims,1> U0, Uup, Uright;
-//     SArray<real,1> UW0, UW1;
-//     SArray<real,1> h0;
-//     SArray<real,ndims,2> U;
-//     SArray<real,2> UW;
-// 
-//     //compute U = H v, UW = Hv w
-//     compute_Hext<1,diff_ord> (U0, v, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
-//     compute_Hext<1,diff_ord> (Uright, v, *this->primal_geometry, *this->dual_geometry, is, js, ks, i+1, j, k);
-//     //Have to subtract 1 from k here since UW has an extra dof compared to w!
-// //THINK ABOUT THIS!
-//     compute_Hv<1,vert_diff_ord> (UW0, w, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k-1);
-//     compute_Hv<1,vert_diff_ord> (UW1, w, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
-//     U(0,0) = U0(0);
-//     U(0,1) = Uright(0);
-//     UW(0) = UW0(0);
-//     UW(1) = UW1(0);
-//     if (ndims>=2) {
-//       compute_Hext<1,diff_ord> (Uup, v, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j+1, k);
-//     U(1,0) = U0(1);
-//     U(1,1) = Uup(1);    
-//   }
-//     //compute K = 1/2 * PhiT(U,V) + 1/2 * PhiTW(UW,W)
-//     compute_phiT(K2, U, v, is, js, ks, i, j, k);
-//     compute_phiTW<ADD_MODE::ADD>(K2, UW, w, is, js, ks, i, j, k);
-//     K2(0) *= 0.5;
-
       real K2 = 0.;
-
       // Have to subtract 1 from k here since UW has an extra dof compared to w!
       SArray<real,1,1> UW0, UW1;
       compute_Hv<1,vert_diff_ord> (UW0, w, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k-1);
@@ -401,7 +397,11 @@ void YAKL_INLINE compute_dKddens(real4d B, const real4d K, int is, int js, int k
       w0 = w(0,k+ks-1,j+js,i+is);
       w1 = w(0,k+ks,j+js,i+is);
       K2 += 0.5 * (w0*UW0(0) + w1*UW1(0));
-
+    return _compute_KE(K2, v, w, dens, is, js, ks, i, j, k);
+  }
+  
+    real YAKL_INLINE _compute_KE(real K2, const real4d v, const real4d w, const real4d dens, int is, int js, int ks, int i, int j, int k)
+    {
       real v0, v1;
       SArray<real,1,ndims> U0, U1;
       compute_Hext<1,diff_ord> (U0, v, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k);
