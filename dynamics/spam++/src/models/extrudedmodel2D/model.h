@@ -346,7 +346,6 @@ PVPE.compute_qxz0_bottom(diagnostic_vars.fields_arr[QXZDIAGVAR].data, x.fields_a
 PVPE.compute_qxz0_top(diagnostic_vars.fields_arr[QXZDIAGVAR].data, x.fields_arr[VVAR].data, x.fields_arr[WVAR].data, x.fields_arr[DENSVAR].data, const_vars.fields_arr[CORIOLISXZVAR].data, dis, djs, dks, i, j, dual_topology->ni-2);
 });
 
-   // Really we need to do special stuff at the 
    diagnostic_vars.fields_arr[QXZDIAGVAR].set_bnd(0.0);
 }
 

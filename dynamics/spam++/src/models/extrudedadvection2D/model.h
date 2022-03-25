@@ -367,17 +367,23 @@ public:
   //  yakl::parallel_for("ComputeVTVAR", primal_topology->n_cells_interfaces, YAKL_LAMBDA (int iGlob) {
     //  int k, j, i;
     //  yakl::unpackIndices(iGlob, primal_topology->ni, primal_topology->n_cells_y, primal_topology->n_cells_x, k, j, i);
-      parallel_for( Bounds<3>( primal_topology->ni, primal_topology->n_cells_y, primal_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
-
-compute_Wxz_u(const_vars.fields_arr[VTVAR].data,const_vars.fields_arr[UWVAR].data, pis, pjs, pks, i, j, k);
+      parallel_for( Bounds<3>( primal_topology->ni-2, primal_topology->n_cells_y, primal_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
+compute_Wxz_u(const_vars.fields_arr[VTVAR].data,const_vars.fields_arr[UWVAR].data, pis, pjs, pks, i, j, k+1);
  });
+ parallel_for( Bounds<2>( primal_topology->n_cells_y, primal_topology->n_cells_x) , YAKL_LAMBDA(int j, int i) { 
+compute_Wxz_u_bottom(const_vars.fields_arr[VTVAR].data,const_vars.fields_arr[UWVAR].data, pis, pjs, pks, i, j, 0);
+compute_Wxz_u_top(const_vars.fields_arr[VTVAR].data,const_vars.fields_arr[UWVAR].data, pis, pjs, pks, i, j, primal_topology->ni-1);
+});
     //yakl::parallel_for("ComputeWTVAR", primal_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
     //  int k, j, i;
     //  yakl::unpackIndices(iGlob, primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, k, j, i);
       parallel_for( Bounds<3>( primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
-
 compute_Wxz_w(const_vars.fields_arr[WTVAR].data,const_vars.fields_arr[UVAR].data, pis, pjs, pks, i, j, k);
  });
+ parallel_for( Bounds<2>( primal_topology->n_cells_y, primal_topology->n_cells_x) , YAKL_LAMBDA(int j, int i) { 
+compute_Wxz_w_bottom(const_vars.fields_arr[WTVAR].data,const_vars.fields_arr[UVAR].data, pis, pjs, pks, i, j, 0);
+compute_Wxz_w_top(const_vars.fields_arr[WTVAR].data,const_vars.fields_arr[UVAR].data, pis, pjs, pks, i, j, primal_topology->nl-1);
+});
     this->const_exchange->exchanges_arr[VTVAR].exchange_field(const_vars.fields_arr[VTVAR]);
     this->const_exchange->exchanges_arr[WTVAR].exchange_field(const_vars.fields_arr[WTVAR]);
 
@@ -563,27 +569,38 @@ this->aux_exchange->exchanges_arr[VERTEDGEFLUXVAR].exchange_field(auxiliary_vars
    // yakl::parallel_for("ComputeQFLUX", primal_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
    //   int k, j, i;
    //   yakl::unpackIndices(iGlob, primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, k, j, i);
-     parallel_for( Bounds<3>( primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
-
+     parallel_for( Bounds<3>( primal_topology->nl-2, primal_topology->n_cells_y, primal_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
      if (qf_choice == QF_MODE::EC)
-    { compute_Qxz_w_EC<nQdofs>(auxiliary_vars.fields_arr[QXZFLUXVAR].data, auxiliary_vars.fields_arr[QXZRECONVAR].data, auxiliary_vars.fields_arr[QXZVERTRECONVAR].data, const_vars.fields_arr[UVAR].data, pis, pjs, pks, i, j, k);}
-
+    { compute_Qxz_w_EC<nQdofs>(auxiliary_vars.fields_arr[QXZFLUXVAR].data, auxiliary_vars.fields_arr[QXZRECONVAR].data, auxiliary_vars.fields_arr[QXZVERTRECONVAR].data, const_vars.fields_arr[UVAR].data, pis, pjs, pks, i, j, k+1);}
      if (qf_choice == QF_MODE::NOEC)
-    { compute_Qxz_w_nonEC<nQdofs>(auxiliary_vars.fields_arr[QXZFLUXVAR].data, auxiliary_vars.fields_arr[QXZRECONVAR].data, const_vars.fields_arr[UVAR].data, pis, pjs, pks, i, j, k);}
-
+    { compute_Qxz_w_nonEC<nQdofs>(auxiliary_vars.fields_arr[QXZFLUXVAR].data, auxiliary_vars.fields_arr[QXZRECONVAR].data, const_vars.fields_arr[UVAR].data, pis, pjs, pks, i, j, k+1);}
+});
+parallel_for( Bounds<2>( primal_topology->n_cells_y, primal_topology->n_cells_x) , YAKL_LAMBDA(int j, int i) { 
+if (qf_choice == QF_MODE::EC)
+{ compute_Qxz_w_EC_bottom<nQdofs>(auxiliary_vars.fields_arr[QXZFLUXVAR].data, auxiliary_vars.fields_arr[QXZRECONVAR].data, auxiliary_vars.fields_arr[QXZVERTRECONVAR].data, const_vars.fields_arr[UVAR].data, pis, pjs, pks, i, j, 0);
+  compute_Qxz_w_EC_top<nQdofs>(auxiliary_vars.fields_arr[QXZFLUXVAR].data, auxiliary_vars.fields_arr[QXZRECONVAR].data, auxiliary_vars.fields_arr[QXZVERTRECONVAR].data, const_vars.fields_arr[UVAR].data, pis, pjs, pks, i, j, 0);}
+if (qf_choice == QF_MODE::NOEC)
+{ compute_Qxz_w_nonEC_bottom<nQdofs>(auxiliary_vars.fields_arr[QXZFLUXVAR].data, auxiliary_vars.fields_arr[QXZRECONVAR].data, const_vars.fields_arr[UVAR].data, pis, pjs, pks, i, j, primal_topology->nl-1);
+  compute_Qxz_w_nonEC_top<nQdofs>(auxiliary_vars.fields_arr[QXZFLUXVAR].data, auxiliary_vars.fields_arr[QXZRECONVAR].data, const_vars.fields_arr[UVAR].data, pis, pjs, pks, i, j, primal_topology->nl-1);}
 });
    // yakl::parallel_for("ComputeQVERTFLUX", primal_topology->n_cells_interfaces, YAKL_LAMBDA (int iGlob) {
    //   int k, j, i;
    //   yakl::unpackIndices(iGlob, primal_topology->ni, primal_topology->n_cells_y, primal_topology->n_cells_x, k, j, i);
-   parallel_for( Bounds<3>( primal_topology->ni, primal_topology->n_cells_y, primal_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
-     
+   parallel_for( Bounds<3>( primal_topology->ni-2, primal_topology->n_cells_y, primal_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
      if (qf_choice == QF_MODE::EC)
-     { compute_Qxz_u_EC<nQdofs>(auxiliary_vars.fields_arr[QXZVERTFLUXVAR].data, auxiliary_vars.fields_arr[QXZRECONVAR].data, auxiliary_vars.fields_arr[QXZVERTRECONVAR].data, const_vars.fields_arr[UWVAR].data, pis, pjs, pks, i, j, k);}
-
+     { compute_Qxz_u_EC<nQdofs>(auxiliary_vars.fields_arr[QXZVERTFLUXVAR].data, auxiliary_vars.fields_arr[QXZRECONVAR].data, auxiliary_vars.fields_arr[QXZVERTRECONVAR].data, const_vars.fields_arr[UWVAR].data, pis, pjs, pks, i, j, k+1);}
      if (qf_choice == QF_MODE::NOEC)
-     { compute_Qxz_u_nonEC<nQdofs>(auxiliary_vars.fields_arr[QXZVERTFLUXVAR].data, auxiliary_vars.fields_arr[QXZVERTRECONVAR].data, const_vars.fields_arr[UWVAR].data, pis, pjs, pks, i, j, k);}
-
+     { compute_Qxz_u_nonEC<nQdofs>(auxiliary_vars.fields_arr[QXZVERTFLUXVAR].data, auxiliary_vars.fields_arr[QXZVERTRECONVAR].data, const_vars.fields_arr[UWVAR].data, pis, pjs, pks, i, j, k+1);}
 });
+parallel_for( Bounds<2>( primal_topology->n_cells_y, primal_topology->n_cells_x) , YAKL_LAMBDA(int j, int i) { 
+  if (qf_choice == QF_MODE::EC)
+  { compute_Qxz_u_EC_bottom<nQdofs>(auxiliary_vars.fields_arr[QXZVERTFLUXVAR].data, auxiliary_vars.fields_arr[QXZRECONVAR].data, auxiliary_vars.fields_arr[QXZVERTRECONVAR].data, const_vars.fields_arr[UWVAR].data, pis, pjs, pks, i, j, 0);
+    compute_Qxz_u_EC_top<nQdofs>(auxiliary_vars.fields_arr[QXZVERTFLUXVAR].data, auxiliary_vars.fields_arr[QXZRECONVAR].data, auxiliary_vars.fields_arr[QXZVERTRECONVAR].data, const_vars.fields_arr[UWVAR].data, pis, pjs, pks, i, j, primal_topology->ni-1);}
+  if (qf_choice == QF_MODE::NOEC)
+  { compute_Qxz_u_nonEC_bottom<nQdofs>(auxiliary_vars.fields_arr[QXZVERTFLUXVAR].data, auxiliary_vars.fields_arr[QXZVERTRECONVAR].data, const_vars.fields_arr[UWVAR].data, pis, pjs, pks, i, j, 0);
+    compute_Qxz_u_nonEC_top<nQdofs>(auxiliary_vars.fields_arr[QXZVERTFLUXVAR].data, auxiliary_vars.fields_arr[QXZVERTRECONVAR].data, const_vars.fields_arr[UWVAR].data, pis, pjs, pks, i, j, primal_topology->ni-1);}
+});
+
     this->aux_exchange->exchanges_arr[QXZFLUXVAR].exchange_field(auxiliary_vars.fields_arr[QXZFLUXVAR]);
     this->aux_exchange->exchanges_arr[QXZVERTFLUXVAR].exchange_field(auxiliary_vars.fields_arr[QXZVERTFLUXVAR]);
 

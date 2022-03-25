@@ -5,7 +5,7 @@ nz = 100  //100 doublevortex, 150 for rb/mrb
 
 // Time stepping
 dt = 250.0 // 0.015625 for mrb, 0.025 for rb, 250.0 for doublevortex
-Nsteps = 1000 // 4000 57600
+Nsteps = 100 // 4000 57600
 Nout = 100 // 500 6400
 Nstat = 1
 TStype = dt
