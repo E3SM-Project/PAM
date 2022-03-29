@@ -1,0 +1,18 @@
+#tracers
+-D_NTRACERS_NOFCT=3
+-D_NTRACERS_FCT=3
+
+#ce specific choices
+-D_IDEAL_GAS_POTTEMP
+#-D_IDEAL_GAS_ENTROPY
+
+#mce specific choices
+-D_CONST_KAPPA_VIRPOTTEMP
+#-D_CONST_KAPPA_ENTROPY
+#-D_UNAPPROX_ENTROPY
+#-D_UNAPPROX_POTTEMP
+#-D_USE_RHOD_VARIANT
+
+#ce/mce specific choices
+#-D_USE_P_VARIANT
+

@@ -1,0 +1,28 @@
+// Topology
+nx = 100
+ny = 1
+nz = 150
+
+// Time stepping
+dt = 0.015625
+Nsteps = 57600 // 
+Nout =  6400 //
+Nstat = 1
+TStype = dt
+cfl = 0.5
+
+// Parallel decomposition
+nprocx = 4
+nprocy = 1
+nprocz = 1
+
+// initial condition
+dataInit = mrb
+acoustic_balance = false
+
+tracerInit1 = square
+tracerInit2 = gaussian
+tracerInit3 = doublesquare
+tracerFCTInit1 = square
+tracerFCTInit2 = gaussian
+tracerFCTInit3 = doublesquare

@@ -1,0 +1,27 @@
+// Topology
+nx = 100
+ny = 100
+nz = 30
+
+// Time stepping
+dt = 0.005
+Nsteps = 200
+Nout = 1
+Nstat = 1
+
+// Parallel decomposition
+nprocx = 2
+nprocy = 2
+nprocz = 1
+
+// initial condition
+dataInit1 = square
+dataInit2 = gaussian
+dataInit3 = vortices
+dataFCTInit1 = square
+dataFCTInit2 = gaussian
+dataFCTInit3 = vortices
+dataQInit1 = square
+dataQInit2 = gaussian
+dataQInit3 = vortices
+windInit = uniform_xy
