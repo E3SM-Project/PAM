@@ -1393,6 +1393,9 @@ public:
       }
     });
 
+    real5d state_flux ("state_flux" ,num_state  ,nz,ny,nx+1,nens);
+    real5d tracer_flux("tracer_flux",num_tracers,nz,ny,nx+1,nens);
+
     //////////////////////////////////////////////////////////
     // Compute the upwind fluxes
     //////////////////////////////////////////////////////////
@@ -1452,22 +1455,25 @@ public:
       real q4 = w3 + w*w5 + w*w6;
       real q5 =      t*w5 + t*w6;
 
-      stateLimits(idR,0,k,j,i,iens) = q2;
-      stateLimits(idU,0,k,j,i,iens) = q2*q2/q1 + C0*pow(q5,gamma);
-      stateLimits(idV,0,k,j,i,iens) = q2*q3/q1;
-      stateLimits(idW,0,k,j,i,iens) = q2*q4/q1;
-      stateLimits(idT,0,k,j,i,iens) = q2*q5/q1;
+      state_flux(idR,k,j,i,iens) = q2;
+      state_flux(idU,k,j,i,iens) = q2*q2/q1 + C0*pow(q5,gamma);
+      state_flux(idV,k,j,i,iens) = q2*q3/q1;
+      state_flux(idW,k,j,i,iens) = q2*q4/q1;
+      state_flux(idT,k,j,i,iens) = q2*q5/q1;
 
       // COMPUTE UPWIND TRACER FLUXES
       // Handle it one tracer at a time
       for (int tr=0; tr < num_tracers; tr++) {
         if (u > 0) {
-          tracerLimits(tr,0,k,j,i,iens) = q2 * tracerLimits(tr,0,k,j,i,iens) / r_L;
+          tracer_flux(tr,k,j,i,iens) = q2 * tracerLimits(tr,0,k,j,i,iens) / r_L;
         } else {
-          tracerLimits(tr,0,k,j,i,iens) = q2 * tracerLimits(tr,1,k,j,i,iens) / r_R;
+          tracer_flux(tr,k,j,i,iens) = q2 * tracerLimits(tr,1,k,j,i,iens) / r_R;
         }
       }
     });
+
+    stateLimits  = real6d();
+    tracerLimits = real6d();
 
     //////////////////////////////////////////////////////////
     // Limit the tracer fluxes for positivity
@@ -1479,25 +1485,25 @@ public:
       // Solid wall BCs mean u == 0 at boundaries, so we assume periodic if u != 0
       if (tracer_pos(tr)) {
         // Compute and apply the flux reduction factor of the upwind cell
-        if      (tracerLimits(tr,0,k,j,i,iens) > 0) {
+        if      (tracer_flux(tr,k,j,i,iens) > 0) {
           // if u > 0, then it pulls mass out of the left cell
           int ind_i = i-1;
           // TODO: Relax the periodic assumption here
           if (ind_i == -1) ind_i = nx-1;
-          real f1 = min( tracerLimits(tr,0,k,j,ind_i  ,iens) , 0._fp );
-          real f2 = max( tracerLimits(tr,0,k,j,ind_i+1,iens) , 0._fp );
+          real f1 = min( tracer_flux(tr,k,j,ind_i  ,iens) , 0._fp );
+          real f2 = max( tracer_flux(tr,k,j,ind_i+1,iens) , 0._fp );
           real fluxOut = dt*(f2-f1)/dx;
           real mass = tracers(tr,hs+k,hs+j,hs+ind_i,iens);
           if (fluxOut > 0) {
             fct_mult(tr,k,j,i,iens) = min( 1._fp , mass / fluxOut );
           }
-        } else if (tracerLimits(tr,0,k,j,i,iens) < 0) {
+        } else if (tracer_flux(tr,k,j,i,iens) < 0) {
           // upwind is to the right of this interface
           int ind_i = i;
           // TODO: Relax the periodic assumption here
           if (ind_i == nx) ind_i = 0;
-          real f1 = min( tracerLimits(tr,0,k,j,ind_i  ,iens) , 0._fp );
-          real f2 = max( tracerLimits(tr,0,k,j,ind_i+1,iens) , 0._fp );
+          real f1 = min( tracer_flux(tr,k,j,ind_i  ,iens) , 0._fp );
+          real f2 = max( tracer_flux(tr,k,j,ind_i+1,iens) , 0._fp );
           real fluxOut = dt*(f2-f1)/dx;
           real mass = tracers(tr,hs+k,hs+j,hs+ind_i,iens);
           if (fluxOut > 0) {
@@ -1516,13 +1522,13 @@ public:
         if (sim2d && l == idV) {
           stateTend(l,k,j,i,iens) = 0;
         } else {
-          stateTend(l,k,j,i,iens) = - ( stateLimits(l,0,k,j,i+1,iens) - stateLimits(l,0,k,j,i,iens) ) / dx;
+          stateTend(l,k,j,i,iens) = - ( state_flux(l,k,j,i+1,iens) - state_flux(l,k,j,i,iens) ) / dx;
         }
       }
       for (int l = 0; l < num_tracers; l++) {
         // Compute tracer tendency
-        tracerTend(l,k,j,i,iens) = - ( tracerLimits(l,0,k,j,i+1,iens)*fct_mult(l,k,j,i+1,iens) -
-                                       tracerLimits(l,0,k,j,i  ,iens)*fct_mult(l,k,j,i  ,iens) ) / dx;
+        tracerTend(l,k,j,i,iens) = - ( tracer_flux(l,k,j,i+1,iens)*fct_mult(l,k,j,i+1,iens) -
+                                       tracer_flux(l,k,j,i  ,iens)*fct_mult(l,k,j,i  ,iens) ) / dx;
       }
     });
   }
@@ -1688,6 +1694,9 @@ public:
       }
     });
 
+    real5d state_flux ("state_flux" ,num_state  ,nz,ny+1,nx,nens);
+    real5d tracer_flux("tracer_flux",num_tracers,nz,ny+1,nx,nens);
+
     //////////////////////////////////////////////////////////
     // Compute the upwind fluxes
     //////////////////////////////////////////////////////////
@@ -1747,22 +1756,25 @@ public:
       real q4 = w3 + w*w5 + w*w6;
       real q5 =      t*w5 + t*w6;
 
-      stateLimits(idR,0,k,j,i,iens) = q3;
-      stateLimits(idU,0,k,j,i,iens) = q3*q2/q1;
-      stateLimits(idV,0,k,j,i,iens) = q3*q3/q1 + C0*pow(q5,gamma);
-      stateLimits(idW,0,k,j,i,iens) = q3*q4/q1;
-      stateLimits(idT,0,k,j,i,iens) = q3*q5/q1;
+      state_flux(idR,k,j,i,iens) = q3;
+      state_flux(idU,k,j,i,iens) = q3*q2/q1;
+      state_flux(idV,k,j,i,iens) = q3*q3/q1 + C0*pow(q5,gamma);
+      state_flux(idW,k,j,i,iens) = q3*q4/q1;
+      state_flux(idT,k,j,i,iens) = q3*q5/q1;
 
       // COMPUTE UPWIND TRACER FLUXES
       // Handle it one tracer at a time
       for (int tr=0; tr < num_tracers; tr++) {
         if (v > 0) {
-          tracerLimits(tr,0,k,j,i,iens) = q3 * tracerLimits(tr,0,k,j,i,iens) / r_L;
+          tracer_flux(tr,k,j,i,iens) = q3 * tracerLimits(tr,0,k,j,i,iens) / r_L;
         } else {
-          tracerLimits(tr,0,k,j,i,iens) = q3 * tracerLimits(tr,1,k,j,i,iens) / r_R;
+          tracer_flux(tr,k,j,i,iens) = q3 * tracerLimits(tr,1,k,j,i,iens) / r_R;
         }
       }
     });
+
+    stateLimits  = real6d();
+    tracerLimits = real6d();
 
     //////////////////////////////////////////////////////////
     // Limit the tracer fluxes for positivity
@@ -1774,23 +1786,23 @@ public:
       // Solid wall BCs mean u == 0 at boundaries, so we assume periodic if u != 0
       if (tracer_pos(tr)) {
         // Compute and apply the flux reduction factor of the upwind cell
-        if      (tracerLimits(tr,0,k,j,i,iens) > 0) {
+        if      (tracer_flux(tr,k,j,i,iens) > 0) {
           // upwind is to the left of this interface
           int ind_j = j-1;
           if (ind_j == -1) ind_j = ny-1;
-          real f1 = min( tracerLimits(tr,0,k,ind_j  ,i,iens) , 0._fp );
-          real f2 = max( tracerLimits(tr,0,k,ind_j+1,i,iens) , 0._fp );
+          real f1 = min( tracer_flux(tr,k,ind_j  ,i,iens) , 0._fp );
+          real f2 = max( tracer_flux(tr,k,ind_j+1,i,iens) , 0._fp );
           real fluxOut = dt*(f2-f1)/dy;
           real mass = tracers(tr,hs+k,hs+ind_j,hs+i,iens);
           if (fluxOut > 0) {
             fct_mult(tr,k,j,i,iens) = min( 1._fp , mass / fluxOut );
           }
-        } else if (tracerLimits(tr,0,k,j,i,iens) < 0) {
+        } else if (tracer_flux(tr,k,j,i,iens) < 0) {
           // upwind is to the right of this interface
           int ind_j = j;
           if (ind_j == ny) ind_j = 0;
-          real f1 = min( tracerLimits(tr,0,k,ind_j  ,i,iens) , 0._fp );
-          real f2 = max( tracerLimits(tr,0,k,ind_j+1,i,iens) , 0._fp );
+          real f1 = min( tracer_flux(tr,k,ind_j  ,i,iens) , 0._fp );
+          real f2 = max( tracer_flux(tr,k,ind_j+1,i,iens) , 0._fp );
           real fluxOut = dt*(f2-f1)/dy;
           real mass = tracers(tr,hs+k,hs+ind_j,hs+i,iens);
           if (fluxOut > 0) {
@@ -1806,12 +1818,12 @@ public:
     parallel_for( "Spatial.h Y tendendies" , SimpleBounds<4>(nz,ny,nx,nens) ,
                   YAKL_LAMBDA(int k, int j, int i, int iens) {
       for (int l=0; l < num_state; l++) {
-        stateTend(l,k,j,i,iens) = - ( stateLimits(l,0,k,j+1,i,iens) - stateLimits(l,0,k,j,i,iens) ) / dy;
+        stateTend(l,k,j,i,iens) = - ( state_flux(l,k,j+1,i,iens) - state_flux(l,k,j,i,iens) ) / dy;
       }
       for (int l=0; l < num_tracers; l++) {
         // Compute the tracer tendency
-        tracerTend(l,k,j,i,iens) = - ( tracerLimits(l,0,k,j+1,i,iens)*fct_mult(l,k,j+1,i,iens) -
-                                       tracerLimits(l,0,k,j  ,i,iens)*fct_mult(l,k,j  ,i,iens) ) / dy;
+        tracerTend(l,k,j,i,iens) = - ( tracer_flux(l,k,j+1,i,iens)*fct_mult(l,k,j+1,i,iens) -
+                                       tracer_flux(l,k,j  ,i,iens)*fct_mult(l,k,j  ,i,iens) ) / dy;
       }
     });
   }
@@ -2035,6 +2047,9 @@ public:
       }
     });
 
+    real5d state_flux ("state_flux" ,num_state  ,nz+1,ny,nx,nens);
+    real5d tracer_flux("tracer_flux",num_tracers,nz+1,ny,nx,nens);
+
     //////////////////////////////////////////////////////////
     // Compute the upwind fluxes
     //////////////////////////////////////////////////////////
@@ -2092,22 +2107,25 @@ public:
       real q4 = w*w1 + (w-cs)*w5 + (w+cs)*w6;
       real q5 =      t*w5 + t*w6;
 
-      stateLimits(idR,0,k,j,i,iens) = q4;
-      stateLimits(idU,0,k,j,i,iens) = q4*q2/q1;
-      stateLimits(idV,0,k,j,i,iens) = q4*q3/q1;
-      stateLimits(idW,0,k,j,i,iens) = q4*q4/q1 + C0*pow(q5,gamma);
-      stateLimits(idT,0,k,j,i,iens) = q4*q5/q1;
+      state_flux(idR,k,j,i,iens) = q4;
+      state_flux(idU,k,j,i,iens) = q4*q2/q1;
+      state_flux(idV,k,j,i,iens) = q4*q3/q1;
+      state_flux(idW,k,j,i,iens) = q4*q4/q1 + C0*pow(q5,gamma);
+      state_flux(idT,k,j,i,iens) = q4*q5/q1;
 
       // COMPUTE UPWIND TRACER FLUXES
       // Handle it one tracer at a time
       for (int tr=0; tr < num_tracers; tr++) {
         if (w > 0) {
-          tracerLimits(tr,0,k,j,i,iens) = q4 * tracerLimits(tr,0,k,j,i,iens) / r_L;
+          tracer_flux(tr,k,j,i,iens) = q4 * tracerLimits(tr,0,k,j,i,iens) / r_L;
         } else {
-          tracerLimits(tr,0,k,j,i,iens) = q4 * tracerLimits(tr,1,k,j,i,iens) / r_R;
+          tracer_flux(tr,k,j,i,iens) = q4 * tracerLimits(tr,1,k,j,i,iens) / r_R;
         }
       }
     });
+
+    stateLimits  = real6d();
+    tracerLimits = real6d();
 
     //////////////////////////////////////////////////////////
     // Limit the tracer fluxes for positivity
@@ -2116,26 +2134,26 @@ public:
     parallel_for( "Spatial.h Z FCT" , SimpleBounds<5>(num_tracers,nz+1,ny,nx,nens) ,
                   YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
       fct_mult(tr,k,j,i,iens) = 1.;
-      if (k == 0 || k == nz) tracerLimits(tr,0,k,j,i,iens) = 0;
+      if (k == 0 || k == nz) tracer_flux(tr,k,j,i,iens) = 0;
       // Solid wall BCs mean w == 0 at boundaries
       if (tracer_pos(tr)) {
         // Compute and apply the flux reduction factor of the upwind cell
-        if      (tracerLimits(tr,0,k,j,i,iens) > 0) {
+        if      (tracer_flux(tr,k,j,i,iens) > 0) {
           int ind_k = k-1;
           // upwind is to the left of this interface
-          real f1 = min( tracerLimits(tr,0,ind_k  ,j,i,iens) , 0._fp );
-          real f2 = max( tracerLimits(tr,0,ind_k+1,j,i,iens) , 0._fp );
+          real f1 = min( tracer_flux(tr,ind_k  ,j,i,iens) , 0._fp );
+          real f2 = max( tracer_flux(tr,ind_k+1,j,i,iens) , 0._fp );
           real fluxOut = dt*(f2-f1)/dz(ind_k,iens);
           real dens = state(idR,hs+ind_k,hs+j,hs+i,iens) + hyDensCells(ind_k,iens);
           real mass = tracers(tr,hs+ind_k,hs+j,hs+i,iens) * dens;
           if (fluxOut > 0) {
             fct_mult(tr,k,j,i,iens) = min( 1._fp , mass / fluxOut );
           }
-        } else if (tracerLimits(tr,0,k,j,i,iens) < 0) {
+        } else if (tracer_flux(tr,k,j,i,iens) < 0) {
           int ind_k = k;
           // upwind is to the right of this interface
-          real f1 = min( tracerLimits(tr,0,ind_k  ,j,i,iens) , 0._fp );
-          real f2 = max( tracerLimits(tr,0,ind_k+1,j,i,iens) , 0._fp );
+          real f1 = min( tracer_flux(tr,ind_k  ,j,i,iens) , 0._fp );
+          real f2 = max( tracer_flux(tr,ind_k+1,j,i,iens) , 0._fp );
           real fluxOut = dt*(f2-f1)/dz(ind_k,iens);
           real dens = state(idR,hs+ind_k,hs+j,hs+i,iens) + hyDensCells(ind_k,iens);
           real mass = tracers(tr,hs+ind_k,hs+j,hs+i,iens) * dens;
@@ -2155,13 +2173,13 @@ public:
         if (sim2d && l == idV) {
           stateTend(l,k,j,i,iens) = 0;
         } else {
-          stateTend(l,k,j,i,iens) += - ( stateLimits(l,0,k+1,j,i,iens) - stateLimits(l,0,k,j,i,iens) ) / dz(k,iens);
+          stateTend(l,k,j,i,iens) += - ( state_flux(l,k+1,j,i,iens) - state_flux(l,k,j,i,iens) ) / dz(k,iens);
         }
       }
       for (int l=0; l < num_tracers; l++) {
         // Compute tracer tendency
-        tracerTend(l,k,j,i,iens) = - ( tracerLimits(l,0,k+1,j,i,iens)*fct_mult(l,k+1,j,i,iens) -
-                                       tracerLimits(l,0,k  ,j,i,iens)*fct_mult(l,k  ,j,i,iens) ) / dz(k,iens);
+        tracerTend(l,k,j,i,iens) = - ( tracer_flux(l,k+1,j,i,iens)*fct_mult(l,k+1,j,i,iens) -
+                                       tracer_flux(l,k  ,j,i,iens)*fct_mult(l,k  ,j,i,iens) ) / dz(k,iens);
         // Multiply density back onto the tracers
         tracers(l,hs+k,hs+j,hs+i,iens) *= (state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens));
       }
