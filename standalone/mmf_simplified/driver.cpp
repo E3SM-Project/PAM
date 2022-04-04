@@ -131,7 +131,7 @@ int main(int argc, char** argv) {
       yakl::atomicAdd( gcm_rho_v(k,iens) , rho_v(k,j,i,iens) * r_nx_ny );
     });
 
-    perturb_temperature( coupler , 0 );
+    modules::perturb_temperature( coupler , 0 );
 
     // Now that we have an initial state, define hydrostasis for each ensemble member
     coupler.update_hydrostasis( coupler.compute_pressure_array() );
@@ -144,16 +144,16 @@ int main(int argc, char** argv) {
 
     if (forcing_at_dycore_time_step) {
       if ( coupler.get_option<std::string>("density_forcing") == "strict" ) {
-        coupler.add_dycore_function( "gcm_density_forcing" , gcm_density_forcing );
+        coupler.add_dycore_function( "gcm_density_forcing" , modules::gcm_density_forcing );
       }
-      coupler.add_dycore_function( "apply_gcm_forcing_tendencies" , apply_gcm_forcing_tendencies );
-      coupler.add_dycore_function( "sponge_layer"                 , sponge_layer                 );
+      coupler.add_dycore_function( "apply_gcm_forcing_tendencies" , modules::apply_gcm_forcing_tendencies );
+      coupler.add_dycore_function( "sponge_layer"                 , modules::sponge_layer                 );
     } else {
       if ( coupler.get_option<std::string>("density_forcing") == "strict" ) {
-        coupler.add_mmf_function( "gcm_density_forcing" , gcm_density_forcing );
+        coupler.add_mmf_function( "gcm_density_forcing" , modules::gcm_density_forcing );
       }
-      coupler.add_mmf_function( "apply_gcm_forcing_tendencies" , apply_gcm_forcing_tendencies );
-      coupler.add_mmf_function( "sponge_layer"                 , sponge_layer                 );
+      coupler.add_mmf_function( "apply_gcm_forcing_tendencies" , modules::apply_gcm_forcing_tendencies );
+      coupler.add_mmf_function( "sponge_layer"                 , modules::sponge_layer                 );
     }
 
     // coupler.add_dycore_function( "saturation_adjustment" , saturation_adjustment );
@@ -171,7 +171,7 @@ int main(int argc, char** argv) {
     while (etime_gcm < simTime) {
       if (etime_gcm + dt_gcm > simTime) { dt_gcm = simTime - etime_gcm; }
 
-      compute_gcm_forcing_tendencies( coupler , dt_gcm );
+      modules::compute_gcm_forcing_tendencies( coupler , dt_gcm );
 
       real etime_crm = 0;
       real simTime_crm = dt_gcm;
