@@ -1,10 +1,14 @@
 ---
 # Simulation time in number of time steps
-simTime  : 1000
+simSteps  : 1000
 
 # Number of cells to use
 crm_nx       : 100
 crm_ny       : 100
+
+# Lengths of the dimensions in meters
+xlen     : 5000000
+ylen     : 5000000
 
 # Data to initialize: doublevortex rb mrb
 initData : doublevortex
@@ -22,8 +26,8 @@ dtphys: 250.0
 out_prefix  : test
 
 # Output frequency in number of time steps
-outFreq: 100
-statFreq: 1
+outSteps: 100
+statSteps: 1
 
 # Number of ensembles
 nens : 1

@@ -20,15 +20,16 @@ int main(int argc, char** argv) {
     std::string inFile(argv[1]);
     YAML::Node config = YAML::LoadFile(inFile);
     if ( !config            ) { endrun("ERROR: Invalid YAML input file"); }
-    real        simTime      = config["simTime"].as<real>();
-    int         crm_nx       = config["crm_nx" ].as<int>();
-    int         crm_ny       = config["crm_ny" ].as<int>();
-    int         nens         = config["nens"   ].as<int>();
-    real        xlen         = config["xlen"   ].as<real>();
-    real        ylen         = config["ylen"   ].as<real>();
-    real        dtphys_in    = config["dtphys" ].as<real>();
-    std::string vcoords_file = config["vcoords"].as<std::string>();
-    bool        use_coupler_hydrostasis = config["use_coupler_hydrostasis"].as<bool>();
+    real        simTime      = config["simTime" ].as<real>(0.0);
+    real        simSteps     = config["simSteps"].as<int>(0);
+    int         crm_nx       = config["crm_nx"  ].as<int>();
+    int         crm_ny       = config["crm_ny"  ].as<int>();
+    int         nens         = config["nens"    ].as<int>();
+    real        xlen         = config["xlen"    ].as<real>();
+    real        ylen         = config["ylen"    ].as<real>();
+    real        dtphys_in    = config["dtphys"  ].as<real>();
+    std::string vcoords_file = config["vcoords" ].as<std::string>("vcoords_none.nc");
+    bool        use_coupler_hydrostasis = config["use_coupler_hydrostasis"].as<bool>(false);
 
     // Read vertical coordinates
     yakl::SimpleNetCDF nc;
@@ -36,7 +37,7 @@ int main(int argc, char** argv) {
     int crm_nz = nc.getDimSize("num_interfaces") - 1;
     real1d zint_in("zint_in",crm_nz+1);
     nc.read(zint_in,"vertical_interfaces");
-    nc.close();
+    nc.close();      
 
     // Create the dycore and the microphysics
     Dycore       dycore;
@@ -48,7 +49,7 @@ int main(int argc, char** argv) {
 
     // Allocate coupler state
     coupler.allocate_coupler_state( crm_nz , crm_ny , crm_nx , nens );
-
+    
     // Set the horizontal domain lengths and the vertical grid in the coupler
     coupler.set_grid( xlen , ylen , zint_in );
 
@@ -70,7 +71,8 @@ int main(int argc, char** argv) {
     if (use_coupler_hydrostasis) coupler.update_hydrostasis( coupler.compute_pressure_array() );
 
     real etime = 0;
-
+    if (simTime == 0.0) {  simTime = simSteps * dtphys_in; }
+    
     real dtphys = dtphys_in;
     while (etime < simTime) {
       if (dtphys_in == 0.) { dtphys = dycore.compute_time_step(coupler); }

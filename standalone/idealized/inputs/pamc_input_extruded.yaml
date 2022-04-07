@@ -1,6 +1,6 @@
 ---
 # Simulation time in number of time steps
-simTime  : 57600
+simSteps  : 57600
 
 # Number of cells to use
 crm_nx       : 100
@@ -31,8 +31,8 @@ out_prefix  : test
 dtphys: 0.025
 
 # Output frequency in number of time steps
-outFreq: 6400
-statFreq: 1
+outSteps: 6400
+statSteps: 1
 
 # Number of ensembles
 nens : 1
