@@ -1,0 +1,34 @@
+---
+# Simulation time in number of time steps
+simTime  : 1000
+
+# Number of cells to use
+crm_nx       : 100
+crm_ny       : 100
+
+# Data to initialize: doublevortex rb mrb
+initData : doublevortex
+initTracer1: square
+initTracer2: gaussian
+initTracer3: doublesquare
+initTracer1: square
+initTracer2: gaussian
+initTracer3: doublesquare
+
+# CRM physics time step
+dtphys: 250.0
+
+# Output filename
+out_prefix  : test
+
+# Output frequency in number of time steps
+outFreq: 100
+statFreq: 1
+
+# Number of ensembles
+nens : 1
+
+# Parallel decomposition
+nprocx : 2
+nprocy : 2
+

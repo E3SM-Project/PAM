@@ -6,7 +6,7 @@ simTime  : 1000
 crm_nx       : 100
 crm_ny       : 1
 
-# Vertical height cooridnates file
+# Vertical height coordinates file
 vcoords  : vcoords_equal_100_20km.nc
 
 # Lengths of the dimensions in meters

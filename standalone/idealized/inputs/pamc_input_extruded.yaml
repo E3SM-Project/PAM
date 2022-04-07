@@ -1,0 +1,43 @@
+---
+# Simulation time in number of time steps
+simTime  : 57600
+
+# Number of cells to use
+crm_nx       : 100
+crm_ny       : 1
+
+# Vertical height coordinates file
+vcoords  : vcoords_equal_100_20km.nc
+
+# Data to initialize: doublevortex rb mrb
+initData : rb
+initTracer1: square
+initTracer2: gaussian
+initTracer3: doublesquare
+initTracer1: square
+initTracer2: gaussian
+initTracer3: doublesquare
+
+# Balance initial density to avoid initial acoustics
+balance_initial_density: false
+
+# Whether to use the coupler's hydrostasis
+use_coupler_hydrostasis: true
+
+# Output filename
+out_prefix  : test
+
+# CRM physics time step
+dtphys: 0.025
+
+# Output frequency in number of time steps
+outFreq: 6400
+statFreq: 1
+
+# Number of ensembles
+nens : 1
+
+# Parallel decomposition
+nprocx : 4
+nprocy : 1
+
