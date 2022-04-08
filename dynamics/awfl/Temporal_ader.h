@@ -192,11 +192,11 @@ public:
 
     space_op.convert_dynamics_to_coupler_state( coupler , state , tracers );
 
-    etime += dt;
+    etime += dtphys;
     if (out_freq >= 0. && etime / out_freq >= num_out+1) {
-      yakl::timer_start("output");
-      space_op.output( coupler , etime );
-      yakl::timer_stop("output");
+      // yakl::timer_start("output");
+      // space_op.output( coupler , etime );
+      // yakl::timer_stop("output");
       num_out++;
     }
 

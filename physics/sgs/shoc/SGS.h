@@ -1,8 +1,6 @@
 
 #pragma once
 
-#include "awfl_const.h"
-#include "DataManager.h"
 #include "pam_coupler.h"
 #include "call_shoc_from_pam.h"
 #include "pam_scream_routines.h"

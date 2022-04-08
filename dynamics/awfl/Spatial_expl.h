@@ -729,25 +729,9 @@ public:
     hyThetaGLL       = real3d("hyThetaGLL        ",nz,ngll,nens);
     hyDensThetaGLL   = real3d("hyDensThetaGLL    ",nz,ngll,nens);
 
-    #ifdef PAM_STANDALONE
-      std::cout << "nx: " << nx << "\n";
-      std::cout << "ny: " << ny << "\n";
-      std::cout << "nz: " << nz << "\n";
-      std::cout << "xlen (m): " << xlen << "\n";
-      std::cout << "ylen (m): " << ylen << "\n";
-      std::cout << "zbot (m): " << zbot.createHostCopy()(0) << "\n";
-      std::cout << "ztop (m): " << ztop.createHostCopy()(0) << "\n";
-      std::cout << "Vertical interface heights: ";
-      auto zint_host = zint.createHostCopy();
-      for (int k=0; k < nz+1; k++) {
-        std::cout << zint_host(k,0) << "  ";
-      }
-      std::cout << "\n\n";
-    #endif
-
     init_idealized_state_and_tracers( coupler );
 
-    output( coupler , 0._fp );
+    // output( coupler , 0._fp );
   }
 
 
@@ -1093,24 +1077,24 @@ public:
         hyDensVapCells  (k,iens) = dens_vap;
       });
 
-      // Dump out data to plot a skew-T log-P diagram
-      yakl::SimpleNetCDF nc;
-      nc.create("skew.nc");
-      real1d data("data",nz);
-      for (int iens=0; iens < nens; iens++) {
-        parallel_for( "Spatial.h init_state 8" , nz , YAKL_LAMBDA (int k) { data(k) = z(k,iens); });
-        nc.write(data.createHostCopy(),"z"          ,{"z"});
+      // // Dump out data to plot a skew-T log-P diagram
+      // yakl::SimpleNetCDF nc;
+      // nc.create("skew.nc");
+      // real1d data("data",nz);
+      // for (int iens=0; iens < nens; iens++) {
+      //   parallel_for( "Spatial.h init_state 8" , nz , YAKL_LAMBDA (int k) { data(k) = z(k,iens); });
+      //   nc.write(data.createHostCopy(),"z"          ,{"z"});
 
-        parallel_for( "Spatial.h init_state 9" , nz , YAKL_LAMBDA (int k) { data(k) = hyPressureCells(k,iens); });
-        nc.write(data.createHostCopy(),"pressure"   ,{"z"});
+      //   parallel_for( "Spatial.h init_state 9" , nz , YAKL_LAMBDA (int k) { data(k) = hyPressureCells(k,iens); });
+      //   nc.write(data.createHostCopy(),"pressure"   ,{"z"});
 
-        parallel_for( "Spatial.h init_state 10" , nz , YAKL_LAMBDA (int k) { data(k) = temp_hy(k,iens); });
-        nc.write(data.createHostCopy(),"temperature",{"z"});
+      //   parallel_for( "Spatial.h init_state 10" , nz , YAKL_LAMBDA (int k) { data(k) = temp_hy(k,iens); });
+      //   nc.write(data.createHostCopy(),"temperature",{"z"});
 
-        parallel_for( "Spatial.h init_state 11" , nz , YAKL_LAMBDA (int k) { data(k) = tdew_hy(k,iens); });
-        nc.write(data.createHostCopy(),"dew_point"  ,{"z"});
-      }
-      nc.close();
+      //   parallel_for( "Spatial.h init_state 11" , nz , YAKL_LAMBDA (int k) { data(k) = tdew_hy(k,iens); });
+      //   nc.write(data.createHostCopy(),"dew_point"  ,{"z"});
+      // }
+      // nc.close();
 
       parallel_for( "Spatial.h init_state 12" , SimpleBounds<4>(nz,ny,nx,nens) ,
                     YAKL_LAMBDA (int k, int j, int i, int iens) {

@@ -1,8 +1,6 @@
 
 #pragma once
 
-#include "awfl_const.h"
-#include "DataManager.h"
 #include "pam_coupler.h"
 
 using pam::PamCoupler;
