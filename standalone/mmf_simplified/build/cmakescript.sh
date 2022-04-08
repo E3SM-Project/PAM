@@ -13,6 +13,7 @@ cmake      \
   -DYAKL_F90_FLAGS="${YAKL_F90_FLAGS}"                            \
   -DNCFLAGS="${NCFLAGS}"                                          \
   -DYAKL_ARCH="${YAKL_ARCH}"                                      \
+  -DCMAKE_CUDA_HOST_COMPILER="mpic++"                             \
   -DPAM_DYCORE="awfl"                                             \
   -DPAM_MICRO="kessler"                                           \
   -DPAM_SGS="none"                                                \

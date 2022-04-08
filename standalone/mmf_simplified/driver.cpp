@@ -186,8 +186,9 @@ int main(int argc, char** argv) {
     int  num_out = 0;
 
     // Output the initial state
-    output( coupler , etime_gcm );
+    if (out_freq >= 0. ) output( coupler , etime_gcm );
 
+    yakl::timer_start("main_loop");
     while (etime_gcm < simTime) {
       if (etime_gcm + dt_gcm > simTime) { dt_gcm = simTime - etime_gcm; }
 
@@ -218,12 +219,13 @@ int main(int argc, char** argv) {
           if (mainproc) {
             std::cout << "Etime , dtphys, maxw: " << etime_gcm << " , " 
                                                   << dt_crm    << " , "
-                                                  << std::setw(10) << maxw << "\n";
+                                                  << std::setw(10) << maxw << std::endl;
           }
           num_out++;
         }
       }
     }
+    yakl::timer_stop("main_loop");
 
     if (mainproc) {
       std::cout << "Elapsed Time: " << etime_gcm << "\n";

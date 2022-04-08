@@ -4,17 +4,17 @@
 # simTime  : 86400    # 1 day
 # simTime  : 432000   # 5 days
 # simTime  : 3600   # 30 min
-simTime : 60
+simTime : 7200
 
 # Number of cells to use in the CRMs
-crm_nx   : 128
+crm_nx   : 64
 crm_ny   : 1
 
 # Number of CRMs
 nens     : 1
 
 # Vertical height cooridnates file
-vcoords  : vcoords_equal_60_20km.nc
+vcoords  : vcoords_equal_50_20km.nc
 
 # mmf column forcing data
 column_data : column_forcing_data.nc
@@ -43,7 +43,7 @@ dt_gcm: 900
 dt_crm_phys: 20.
 
 # Output frequency in seconds
-outFreq: 0.
+outFreq: -1.
 
 # Specify how to force density from the GCM (loose, strict, or off)
 density_forcing: loose
