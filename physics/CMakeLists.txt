@@ -7,34 +7,7 @@ if ("${PAM_MICRO}" STREQUAL "p3" OR "${PAM_SGS}" STREQUAL "shoc")
 endif()
 
 if (${USE_SCREAM})
-  ###############################################################
-  ## FOR KOKKOS DEBUG; REMOVE LATER TODO: 
-  ###############################################################
-  # set(CMAKE_BUILD_TYPE_ci "debug" CACHE STRING "")
-  # set(Kokkos_ENABLE_DEBUG TRUE CACHE BOOL "")
-  # set(Kokkos_ENABLE_DEBUG_BOUNDS_CHECK TRUE CACHE BOOL "")
-  # set(Kokkos_ENABLE_DEBUG_DUALVIEW_MODIFY_CHECK TRUE CACHE BOOL "")
-  ###############################################################
-  ###############################################################
-  include_directories(scream)
-  include_directories(scream/physics/shoc)
-  set(SCREAM_F90_MODULES "${CMAKE_CURRENT_BINARY_DIR}/scream_f90_modules")
-  separate_arguments(SCREAM_F90_FLAGS UNIX_COMMAND "${YAKL_F90_FLAGS}")
-  set(SCREAM_Fortran_FLAGS ${SCREAM_F90_FLAGS} CACHE STRING "" FORCE)
-  set(SCREAM_LIB_ONLY TRUE)
-  option(EKAT_ENABLE_TESTS OFF FORCE)
-  add_subdirectory(../externals/EKAT     ./ekat                )
-  add_subdirectory(scream/share          ./scream_share        )
-  add_subdirectory(scream/physics/share  ./scream_physics_share)
-  add_subdirectory(scream/physics/p3     ./scream_p3           )
-  add_subdirectory(scream/physics/shoc   ./scream_shoc         )
-  add_dependencies(p3   physics_share)
-  add_dependencies(shoc physics_share)
-  target_include_directories(shoc PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../pam_core)
-  target_include_directories(shoc PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/scream/physics/shoc)
-  target_include_directories(p3   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../pam_core)
-  include_directories(${CMAKE_CURRENT_BINARY_DIR}/scream_physics_share)
-  include_directories(${CMAKE_CURRENT_BINARY_DIR}/scream_f90_modules  )
+  add_subdirectory(scream)
 endif()
 
 #Choose microphysics

@@ -17,5 +17,9 @@ cmake      \
   -DPAM_DYCORE="awfl"                                             \
   -DPAM_MICRO="p3"                                                \
   -DPAM_SGS="shoc"                                                \
+  -DKokkos_ENABLE_CUDA=ON                                         \
+  -DKokkos_ARCH_KEPLER35=ON                                       \
+  -DKokkos_ENABLE_CUDA_LAMBDA=ON                                  \
+  -DKokkos_ENABLE_CUDA_CONSTEXPR=ON                               \
   ..
 
