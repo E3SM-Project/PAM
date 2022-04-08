@@ -1146,11 +1146,11 @@ public:
               real rad = sqrt( xn*xn + yn*yn + zn*zn );
 
               // TODO: enable this whenever you want the standalone idealize non-MMF test for supercell
-              // real theta_pert = 0;
-              // if (rad < 1) {
-              //   theta_pert = amp * pow( cos(M_PI*rad/2) , 2._fp );
-              // }
-              // dens_theta += dens * theta_pert;
+              real theta_pert = 0;
+              if (rad < 1) {
+                theta_pert = amp * pow( cos(M_PI*rad/2) , 5._fp );
+              }
+              dens_theta += dens * theta_pert;
 
               real factor = gllWts_ngll(ii) * gllWts_ngll(jj) * gllWts_ngll(kk);
               state  (idR ,hs+k,hs+j,hs+i,iens) += (dens - hyDensGLL(k,kk,iens))            * factor;
