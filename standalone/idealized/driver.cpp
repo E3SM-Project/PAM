@@ -10,6 +10,9 @@
 int main(int argc, char** argv) {
   yakl::init();
   {
+    
+    int ierr = MPI_Init( &argc , &argv );
+    
     using yakl::intrinsics::abs;
     using yakl::intrinsics::maxval;
     yakl::timer_start("main");
@@ -103,5 +106,7 @@ int main(int argc, char** argv) {
 
     yakl::timer_stop("main");
   }
+  
+  int ierr = MPI_Finalize();
   yakl::finalize();
 }

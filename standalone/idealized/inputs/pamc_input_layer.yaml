@@ -1,6 +1,6 @@
 ---
 # Simulation time in number of time steps
-simSteps  : 1000
+simSteps  : 1
 
 # Number of cells to use
 crm_nx       : 100
@@ -15,9 +15,9 @@ initData : doublevortex
 initTracer1: square
 initTracer2: gaussian
 initTracer3: doublesquare
-initTracer1: square
-initTracer2: gaussian
-initTracer3: doublesquare
+initFCTTracer1: square
+initFCTTracer2: gaussian
+initFCTTracer3: doublesquare
 
 # CRM physics time step
 dtphys: 250.0
@@ -26,13 +26,13 @@ dtphys: 250.0
 out_prefix  : test
 
 # Output frequency in number of time steps
-outSteps: 100
+outSteps: 1
 statSteps: 1
 
 # Number of ensembles
 nens : 1
 
 # Parallel decomposition
-nprocx : 2
-nprocy : 2
+nprocx : 1
+nprocy : 1
 

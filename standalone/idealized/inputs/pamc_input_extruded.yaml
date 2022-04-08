@@ -14,9 +14,9 @@ initData : rb
 initTracer1: square
 initTracer2: gaussian
 initTracer3: doublesquare
-initTracer1: square
-initTracer2: gaussian
-initTracer3: doublesquare
+initFCTTracer1: square
+initFCTTracer2: gaussian
+initFCTTracer3: doublesquare
 
 # Balance initial density to avoid initial acoustics
 balance_initial_density: false
