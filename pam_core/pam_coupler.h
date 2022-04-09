@@ -137,7 +137,7 @@ namespace pam {
 
 
   class PamCoupler {
-    public:
+  protected:
 
     std::thread::id thread_id;
 
@@ -176,6 +176,8 @@ namespace pam {
     };
     std::vector< MMFFunction > mmf_functions;
 
+
+  public:
 
     PamCoupler() {
       this->R_d    = 287 ;
@@ -216,22 +218,22 @@ namespace pam {
     void set_dt_gcm(real dt_gcm) { this->dt_gcm = dt_gcm; }
 
 
-    std::thread::id         get_thread_id                    () const { return this->thread_id    ; }    
-    real                    get_R_d                          () const { return this->R_d          ; }    
-    real                    get_R_v                          () const { return this->R_v          ; }    
-    real                    get_cp_d                         () const { return this->cp_d         ; }    
-    real                    get_cp_v                         () const { return this->cp_v         ; }    
-    real                    get_grav                         () const { return this->grav         ; }    
-    real                    get_p0                           () const { return this->p0           ; }    
-    real                    get_xlen                         () const { return this->xlen         ; }    
-    real                    get_ylen                         () const { return this->ylen         ; }    
-    real                    get_dx                           () const { return get_xlen()/get_nx(); }    
-    real                    get_dy                           () const { return get_ylen()/get_ny(); }    
-    real                    get_dt_gcm                       () const { return this->dt_gcm       ; }    
-    DataManager const &     get_data_manager_device_readonly () const { return this->dm           ; }    
-    DataManager       &     get_data_manager_device_readwrite()       { return this->dm           ; }    
-    DataManagerHost const & get_data_manager_host_readonly   () const { return this->dm_host      ; }    
-    DataManagerHost       & get_data_manager_host_readwrite  ()       { return this->dm_host      ; }    
+    std::thread::id         get_thread_id                  () const { return this->thread_id    ; }    
+    real                    get_R_d                        () const { return this->R_d          ; }    
+    real                    get_R_v                        () const { return this->R_v          ; }    
+    real                    get_cp_d                       () const { return this->cp_d         ; }    
+    real                    get_cp_v                       () const { return this->cp_v         ; }    
+    real                    get_grav                       () const { return this->grav         ; }    
+    real                    get_p0                         () const { return this->p0           ; }    
+    real                    get_xlen                       () const { return this->xlen         ; }    
+    real                    get_ylen                       () const { return this->ylen         ; }    
+    real                    get_dx                         () const { return get_xlen()/get_nx(); }    
+    real                    get_dy                         () const { return get_ylen()/get_ny(); }    
+    real                    get_dt_gcm                     () const { return this->dt_gcm       ; }    
+    DataManager const &     get_data_manager_readonly      () const { return this->dm           ; }    
+    DataManager       &     get_data_manager_readwrite     ()       { return this->dm           ; }    
+    DataManagerHost const & get_data_manager_host_readonly () const { return this->dm_host      ; }    
+    DataManagerHost       & get_data_manager_host_readwrite()       { return this->dm_host      ; }    
 
 
     int get_nx() const {
@@ -298,6 +300,30 @@ namespace pam {
 
     void add_mmf_function( std::string name , std::function< void ( PamCoupler & , real ) > func ) {
       mmf_functions.push_back( { name , func } );
+    }
+
+
+    int get_num_mmf_functions() const { return mmf_functions.size(); }
+
+
+    std::vector<std::string> get_mmf_function_names() const {
+      std::vector<std::string> names;
+      for (auto & func : mmf_functions) {
+        names.push_back(func.name);
+      }
+      return names;
+    }
+
+
+    int get_num_dycore_functions() const { return dycore_functions.size(); }
+
+
+    std::vector<std::string> get_dycore_function_names() const {
+      std::vector<std::string> names;
+      for (auto & func : dycore_functions) {
+        names.push_back(func.name);
+      }
+      return names;
     }
 
 
@@ -409,20 +435,6 @@ namespace pam {
           }
           std::cout << "\n\n";
         #endif
-      }
-    }
-
-
-    void print_mmf_functions() {
-      for (int i=0; i < mmf_functions.size(); i++) {
-        std::cout << mmf_functions[i].name << "\n";
-      }
-    }
-
-
-    void print_dycore_functions() {
-      for (int i=0; i < dycore_functions.size(); i++) {
-        std::cout << dycore_functions[i].name << "\n";
       }
     }
 

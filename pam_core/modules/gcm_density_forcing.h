@@ -11,7 +11,7 @@ namespace modules {
   // Force column-averaged CRM density very strictly to match the GCM density
   inline void gcm_density_forcing( PamCoupler &coupler , real dt ) {
     using yakl::atomicAdd;
-    auto &dm = coupler.dm;
+    auto &dm = coupler.get_data_manager_readwrite();
 
     int nz   = dm.get_dimension_size("z"   );
     int ny   = dm.get_dimension_size("y"   );

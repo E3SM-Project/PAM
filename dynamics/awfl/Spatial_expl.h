@@ -158,11 +158,13 @@ public:
 
 
   void convert_dynamics_to_coupler_state( PamCoupler &coupler , realConst5d state , realConst5d tracers ) const {
-    real4d dm_dens_dry = coupler.dm.get<real,4>( "density_dry"      );
-    real4d dm_uvel     = coupler.dm.get<real,4>( "uvel"             );
-    real4d dm_vvel     = coupler.dm.get<real,4>( "vvel"             );
-    real4d dm_wvel     = coupler.dm.get<real,4>( "wvel"             );
-    real4d dm_temp     = coupler.dm.get<real,4>( "temp"             );
+    auto &dm = coupler.get_data_manager_readwrite();
+
+    real4d dm_dens_dry = dm.get<real,4>( "density_dry"      );
+    real4d dm_uvel     = dm.get<real,4>( "uvel"             );
+    real4d dm_vvel     = dm.get<real,4>( "vvel"             );
+    real4d dm_wvel     = dm.get<real,4>( "wvel"             );
+    real4d dm_temp     = dm.get<real,4>( "temp"             );
 
     YAKL_SCOPE( hyDensCells      , this->hyDensCells      );
     YAKL_SCOPE( hyDensThetaCells , this->hyDensThetaCells );
@@ -176,7 +178,7 @@ public:
 
     pam::MultipleFields<max_tracers,real4d> dm_tracers;
     for (int tr = 0; tr < num_tracers; tr++) {
-      auto trac = coupler.dm.get<real,4>( tracer_name[tr] );
+      auto trac = dm.get<real,4>( tracer_name[tr] );
       dm_tracers.add_field( trac );
     }
 
@@ -225,7 +227,8 @@ public:
 
 
   void convert_coupler_state_to_dynamics( PamCoupler const &coupler , real5d const &state , real5d const &tracers ) {
-    auto hy_params = coupler.dm.get<real const,2>("hydrostasis_parameters");
+    auto &dm = coupler.get_data_manager_readonly();
+    auto hy_params = dm.get<real const,2>("hydrostasis_parameters");
 
     YAKL_SCOPE( hyPressureCells  , this->hyPressureCells  );
     YAKL_SCOPE( hyThetaCells     , this->hyThetaCells     );
@@ -249,15 +252,15 @@ public:
     YAKL_SCOPE( idWV             , this->idWV             );
     YAKL_SCOPE( grav             , this->grav             );
 
-    auto dm_dens_dry = coupler.dm.get<real const,4>( "density_dry"      );
-    auto dm_uvel     = coupler.dm.get<real const,4>( "uvel"             );
-    auto dm_vvel     = coupler.dm.get<real const,4>( "vvel"             );
-    auto dm_wvel     = coupler.dm.get<real const,4>( "wvel"             );
-    auto dm_temp     = coupler.dm.get<real const,4>( "temp"             );
+    auto dm_dens_dry = dm.get<real const,4>( "density_dry"      );
+    auto dm_uvel     = dm.get<real const,4>( "uvel"             );
+    auto dm_vvel     = dm.get<real const,4>( "vvel"             );
+    auto dm_wvel     = dm.get<real const,4>( "wvel"             );
+    auto dm_temp     = dm.get<real const,4>( "temp"             );
 
     pam::MultipleFields<max_tracers,realConst4d> dm_tracers;
     for (int tr = 0; tr < num_tracers; tr++) {
-      auto trac = coupler.dm.get<real const,4>( tracer_name[tr] );
+      auto trac = dm.get<real const,4>( tracer_name[tr] );
       dm_tracers.add_field( trac );
     }
 
@@ -380,13 +383,15 @@ public:
       YAKL_SCOPE( Rd                   , this->Rd                  );
       YAKL_SCOPE( Rv                   , this->Rv                  );
 
+      auto &dm = coupler.get_data_manager_readonly();
+
       // Convert data from DataManager to state and tracers array for convenience
-      auto dm_dens_dry = coupler.dm.get<real const,4>( "density_dry" );
-      auto dm_uvel     = coupler.dm.get<real const,4>( "uvel"        );
-      auto dm_vvel     = coupler.dm.get<real const,4>( "vvel"        );
-      auto dm_wvel     = coupler.dm.get<real const,4>( "wvel"        );
-      auto dm_temp     = coupler.dm.get<real const,4>( "temp"        );
-      auto dm_dens_vap = coupler.dm.get<real const,4>( "water_vapor" );
+      auto dm_dens_dry = dm.get<real const,4>( "density_dry" );
+      auto dm_uvel     = dm.get<real const,4>( "uvel"        );
+      auto dm_vvel     = dm.get<real const,4>( "vvel"        );
+      auto dm_wvel     = dm.get<real const,4>( "wvel"        );
+      auto dm_temp     = dm.get<real const,4>( "temp"        );
+      auto dm_dens_vap = dm.get<real const,4>( "water_vapor" );
 
       // Allocate a 3-D array for the max stable time steps (we'll use this for a reduction later)
       real4d dt3d("dt3d",nz,ny,nx,nens);
@@ -427,19 +432,19 @@ public:
     using yakl::intrinsics::matmul_cr;
 
     this->nens = coupler.get_nens();
-    this->nx = coupler.get_nx();
-    this->ny = coupler.get_ny();
+    this->nx   = coupler.get_nx();
+    this->ny   = coupler.get_ny();
     this->xlen = coupler.get_xlen();
     this->ylen = coupler.get_ylen();
     this->num_tracers = coupler.get_num_tracers();
 
     this->hydrostasis_parameters_sum = 0;
 
-    this->Rd    = coupler.R_d;
-    this->cp    = coupler.cp_d;
-    this->p0    = coupler.p0;
-    this->Rv    = coupler.R_v;
-    this->grav  = coupler.grav;
+    this->Rd    = coupler.get_R_d ();
+    this->cp    = coupler.get_cp_d();
+    this->p0    = coupler.get_p0  ();
+    this->Rv    = coupler.get_R_v ();
+    this->grav  = coupler.get_grav();
     this->gamma = cp / (cp-Rd);
     real kappa = Rd/cp;
     this->C0 = pow( Rd * pow( p0 , -kappa ) , gamma );
@@ -551,7 +556,8 @@ public:
     sim2d = ny == 1;
 
     // Store vertical cell interface heights in the data manager
-    auto zint = coupler.dm.get<real const,2>("vertical_interface_height");
+    auto &dm = coupler.get_data_manager_readonly();
+    auto zint = dm.get<real const,2>("vertical_interface_height");
 
     nz = coupler.get_nz();
 
@@ -2190,6 +2196,8 @@ public:
     real5d tracers = createTracerArr();
     convert_coupler_state_to_dynamics( coupler , state , tracers );
 
+    auto &dm = coupler.get_data_manager_readonly();
+
     for (int iens = 0; iens < nens; iens++) {
       std::string fname = out_prefix + std::string("_") + std::to_string(iens) + std::string(".nc");
 
@@ -2210,7 +2218,7 @@ public:
         nc.write(yloc.createHostCopy(),"y",{"y"});
 
         // z-coordinate
-        auto zint = coupler.dm.get<real const,2>("vertical_interface_height");
+        auto zint = dm.get<real const,2>("vertical_interface_height");
         real1d zmid("zmid",nz);
         parallel_for( "Spatial.h output 3" , nz , YAKL_LAMBDA (int i) {
           zmid(i) = ( zint(i,iens) + zint(i+1,iens) ) / 2;
@@ -2241,13 +2249,13 @@ public:
       int num_tracers = coupler.get_num_tracers();
       // Create MultiField of all state and tracer full variables, since we're doing the same operation on each
       pam::MultiField<real const,4> fields;
-      fields.add_field( coupler.dm.get<real const,4>("density_dry") );
-      fields.add_field( coupler.dm.get<real const,4>("uvel"       ) );
-      fields.add_field( coupler.dm.get<real const,4>("vvel"       ) );
-      fields.add_field( coupler.dm.get<real const,4>("wvel"       ) );
-      fields.add_field( coupler.dm.get<real const,4>("temp"       ) );
+      fields.add_field( dm.get<real const,4>("density_dry") );
+      fields.add_field( dm.get<real const,4>("uvel"       ) );
+      fields.add_field( dm.get<real const,4>("vvel"       ) );
+      fields.add_field( dm.get<real const,4>("wvel"       ) );
+      fields.add_field( dm.get<real const,4>("temp"       ) );
       for (int tr=0; tr < num_tracers; tr++) {
-        fields.add_field( coupler.dm.get<real const,4>(tracer_names[tr]) );
+        fields.add_field( dm.get<real const,4>(tracer_names[tr]) );
       }
 
       // First, write out standard coupler state

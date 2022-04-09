@@ -62,13 +62,15 @@ public:
     coupler.add_tracer("cloud_liquid"  , "Cloud liquid"  , true     , true);
     coupler.add_tracer("precip_liquid" , "precip_liquid" , true     , true);
 
-    // Register and allocation non-tracer quantities used by the microphysics
-    coupler.dm.register_and_allocate<real>( "precl" , "precipitation rate" , {ny,nx,nens} , {"y","x","nens"} );
+    auto &dm = coupler.get_data_manager_readwrite();
 
-    auto rho_v = coupler.dm.get<real,4>("water_vapor"  );
-    auto rho_c = coupler.dm.get<real,4>("cloud_liquid" );
-    auto rho_p = coupler.dm.get<real,4>("precip_liquid");
-    auto precl = coupler.dm.get<real,3>("precl"        );
+    // Register and allocation non-tracer quantities used by the microphysics
+    dm.register_and_allocate<real>( "precl" , "precipitation rate" , {ny,nx,nens} , {"y","x","nens"} );
+
+    auto rho_v = dm.get<real,4>("water_vapor"  );
+    auto rho_c = dm.get<real,4>("cloud_liquid" );
+    auto rho_p = dm.get<real,4>("precip_liquid");
+    auto precl = dm.get<real,3>("precl"        );
 
     parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       rho_v(k,j,i,iens) = 0;
@@ -102,23 +104,25 @@ public:
 
 
   void timeStep( PamCoupler &coupler , real dt ) const {
-    auto rho_v        = coupler.dm.get_lev_col<real      >("water_vapor");
-    auto rho_c        = coupler.dm.get_lev_col<real      >("cloud_liquid");
-    auto rho_r        = coupler.dm.get_lev_col<real      >("precip_liquid");
-    auto rho_dry      = coupler.dm.get_lev_col<real const>("density_dry");
-    auto temp         = coupler.dm.get_lev_col<real      >("temp");
+    auto &dm = coupler.get_data_manager_readwrite();
+
+    auto rho_v   = dm.get_lev_col<real      >("water_vapor");
+    auto rho_c   = dm.get_lev_col<real      >("cloud_liquid");
+    auto rho_r   = dm.get_lev_col<real      >("precip_liquid");
+    auto rho_dry = dm.get_lev_col<real const>("density_dry");
+    auto temp    = dm.get_lev_col<real      >("temp");
 
     #ifdef PAM_DEBUG
       validate_array_positive(rho_v);
       validate_array_positive(rho_c);
       validate_array_positive(rho_r);
-      real mass_init = compute_total_mass( coupler.dm );
+      real mass_init = compute_total_mass( dm );
     #endif
 
-    int nz   = coupler.dm.get_dimension_size("z"   );
-    int ny   = coupler.dm.get_dimension_size("y"   );
-    int nx   = coupler.dm.get_dimension_size("x"   );
-    int nens = coupler.dm.get_dimension_size("nens");
+    int nz   = coupler.get_nz  ();
+    int ny   = coupler.get_ny  ();
+    int nx   = coupler.get_nx  ();
+    int nens = coupler.get_nens();
     int ncol = ny*nx*nens;
 
     // These are inputs to kessler(...)
@@ -128,7 +132,7 @@ public:
     real2d pressure("pressure",nz,ncol);
     real2d theta   ("theta"   ,nz,ncol);
     real2d exner   ("exner"   ,nz,ncol);
-    auto zmid_in = coupler.dm.get<real const,2>("vertical_midpoint_height");
+    auto zmid_in = dm.get<real const,2>("vertical_midpoint_height");
 
     // We have to broadcast the midpoint heights to all columns within a CRM to avoid the microphysics needing
     // to know about the difference between nx,ny and nens
@@ -153,7 +157,7 @@ public:
       theta   (k,i) = temp(k,i) / exner(k,i);
     });
 
-    auto precl = coupler.dm.get_collapsed<real>("precl");
+    auto precl = dm.get_collapsed<real>("precl");
 
     // #define KESSLER_USE_FORTRAN
 
@@ -235,7 +239,7 @@ public:
       validate_array_positive(rho_v);
       validate_array_positive(rho_c);
       validate_array_positive(rho_r);
-      real mass_final = compute_total_mass( coupler.dm );
+      real mass_final = compute_total_mass( dm );
       real reldiff = abs(mass_final - mass_init) / ( abs(mass_init) + 1.e-20 );
       real tol = 1.e-13;
       if (std::is_same<real,float>::value) tol = 1.e-6;

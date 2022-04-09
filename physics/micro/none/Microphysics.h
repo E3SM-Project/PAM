@@ -53,8 +53,10 @@ public:
     //                 name              description       positive   adds mass
     coupler.add_tracer("water_vapor"   , "Water Vapor"   , true     , true);
 
+    auto &dm = coupler.get_data_manager_readwrite();
+
     // Zero out the tracers
-    auto rho_v = coupler.dm.get_collapsed<real>("water_vapor");
+    auto rho_v = dm.get_collapsed<real>("water_vapor");
     parallel_for( nz*ny*nx*nens , YAKL_LAMBDA (int i) { rho_v(i) = 0; } );
 
     coupler.set_option<std::string>("micro","none");

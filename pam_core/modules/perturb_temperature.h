@@ -19,7 +19,8 @@ namespace modules {
     size_t seed = static_cast<size_t>(id*nz*nx*ny*nens);
 
     // ny*nx*nens can all be globbed together for this routine
-    auto temp = coupler.dm.get_lev_col<real>("temp");
+    auto &dm = coupler.get_data_manager_readwrite();
+    auto temp = dm.get_lev_col<real>("temp");
     int ncol = ny*nx*nens;
 
     parallel_for( "perturb temperature" , SimpleBounds<2>(num_levels,ncol) , YAKL_LAMBDA (int k, int i) {

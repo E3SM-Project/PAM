@@ -89,7 +89,8 @@ int main(int argc, char** argv) {
       yakl::timer_stop("dycore");
 
       etime += dtphys;
-      real maxw = maxval(abs(coupler.dm.get_collapsed<real const>("wvel")));
+      auto &dm = coupler.get_data_manager_readonly();
+      real maxw = maxval(abs(dm.get_collapsed<real const>("wvel")));
       std::cout << "Etime , dtphys, maxw: " << etime  << " , " 
                                             << dtphys << " , "
                                             << std::setw(10) << maxw << "\n";

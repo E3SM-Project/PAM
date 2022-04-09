@@ -19,7 +19,7 @@ namespace modules {
   //    state PLUS whatever internal CRM dynamics were produced along the way.
   inline void compute_gcm_forcing_tendencies( PamCoupler &coupler , real dt_gcm ) {
     using yakl::atomicAdd;
-    auto &dm = coupler.dm;
+    auto &dm = coupler.get_data_manager_readwrite();
 
     // Get current state from coupler
     auto rho_d = dm.get<real const,4>( "density_dry" );
@@ -117,7 +117,7 @@ namespace modules {
   //    to be low.
   inline void apply_gcm_forcing_tendencies( PamCoupler &coupler , real dt ) {
     using yakl::atomicAdd;
-    auto &dm = coupler.dm;
+    auto &dm = coupler.get_data_manager_readwrite();
 
     bool force_density = coupler.get_option<std::string>("density_forcing") == "loose";
 

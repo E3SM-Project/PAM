@@ -78,9 +78,11 @@ public:
     coupler.add_tracer("cloud_cond"  , "Total Cloud Condensate" , true     , true );
     coupler.add_tracer("precip"      , "Total Precip"           , true     , true );
 
-    auto water_vapor = coupler.dm.get_collapsed<real>( "water_vapor" );
-    auto cloud_cond  = coupler.dm.get_collapsed<real>( "cloud_cond"  );
-    auto precip      = coupler.dm.get_collapsed<real>( "precip"      );
+    auto &dm = coupler.get_data_manager_readwrite();
+
+    auto water_vapor = dm.get_collapsed<real>( "water_vapor" );
+    auto cloud_cond  = dm.get_collapsed<real>( "cloud_cond"  );
+    auto precip      = dm.get_collapsed<real>( "precip"      );
 
     parallel_for( "micro zero" , nz*ny*nx*nens , YAKL_LAMBDA (int i) {
       water_vapor(i) = 0;
@@ -94,25 +96,26 @@ public:
 
 
   void timeStep( PamCoupler &coupler , real dt ) const {
+    auto &dm = coupler.get_data_manager_readwrite();
 
     // Get the dimensions sizes
-    int nz   = coupler.dm.get_dimension_size("z"   );
-    int ny   = coupler.dm.get_dimension_size("y"   );
-    int nx   = coupler.dm.get_dimension_size("x"   );
-    int nens = coupler.dm.get_dimension_size("nens");
+    int nz   = dm.get_dimension_size("z"   );
+    int ny   = dm.get_dimension_size("y"   );
+    int nx   = dm.get_dimension_size("x"   );
+    int nens = dm.get_dimension_size("nens");
     int ncol = ny*nx*nens;
 
     // Get tracers dimensioned as (nz,ny*nx*nens)
-    auto rho_v = coupler.dm.get_lev_col<real>("water_vapor");
-    auto rho_n = coupler.dm.get_lev_col<real>("cloud_cond" );
-    auto rho_p = coupler.dm.get_lev_col<real>("precip"     );
+    auto rho_v = dm.get_lev_col<real>("water_vapor");
+    auto rho_n = dm.get_lev_col<real>("cloud_cond" );
+    auto rho_p = dm.get_lev_col<real>("precip"     );
 
     // Get coupler state
-    auto rho_dry = coupler.dm.get_lev_col<real const>("density_dry");
-    auto temp    = coupler.dm.get_lev_col<real      >("temp");
+    auto rho_dry = dm.get_lev_col<real const>("density_dry");
+    auto temp    = dm.get_lev_col<real      >("temp");
 
     // Calculate the grid spacing
-    auto zint_in = coupler.dm.get<real const,2>("vertical_interface_height");
+    auto zint_in = dm.get<real const,2>("vertical_interface_height");
     real2d zint("zint",nz+1,ny*nx*nens);
     parallel_for( "micro dz" , SimpleBounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       zint(k,j*nx*nens + i*nens + iens) = zint_in(k,iens);

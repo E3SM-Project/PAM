@@ -113,13 +113,14 @@ namespace modules {
 
   inline void saturation_adjustment( PamCoupler &coupler , real dt ) {
     using yakl::intrinsics::size;
-    real1d rho_d = coupler.dm.get_collapsed<real>("density_dry");
-    real1d temp  = coupler.dm.get_collapsed<real>("temp");
-    real1d rho_v = coupler.dm.get_collapsed<real>("water_vapor");
+    auto &dm = coupler.get_data_manager_readwrite();
+    real1d rho_d = dm.get_collapsed<real>("density_dry");
+    real1d temp  = dm.get_collapsed<real>("temp");
+    real1d rho_v = dm.get_collapsed<real>("water_vapor");
     real1d rho_c;
     std::string micro_scheme = coupler.get_option<std::string>("micro");
-    if      (micro_scheme == "kessler") { rho_c = coupler.dm.get_collapsed<real>( "cloud_liquid" ); }
-    else if (micro_scheme == "p3"     ) { rho_c = coupler.dm.get_collapsed<real>( "cloud_water"  ); }
+    if      (micro_scheme == "kessler") { rho_c = dm.get_collapsed<real>( "cloud_liquid" ); }
+    else if (micro_scheme == "p3"     ) { rho_c = dm.get_collapsed<real>( "cloud_water"  ); }
     else { endrun("ERROR: saturation_adjustment.h only currently supports kessler and p3 microphysics"); }
     auto tracer_names = coupler.get_tracer_names();
     pam::MultiField<real,1> massy_tracers;
@@ -127,11 +128,11 @@ namespace modules {
       std::string desc;
       bool        found, positive, adds_mass;
       coupler.get_tracer_info(tracer_names[tr],desc,found,positive,adds_mass);
-      if (adds_mass) massy_tracers.add_field( coupler.dm.get_collapsed<real>(tracer_names[tr]) );
+      if (adds_mass) massy_tracers.add_field( dm.get_collapsed<real>(tracer_names[tr]) );
     }
-    real R_v  = coupler.R_v ;
-    real cp_d = coupler.cp_d;
-    real cp_v = coupler.cp_v;
+    real R_v  = coupler.get_R_v ();
+    real cp_d = coupler.get_cp_d();
+    real cp_v = coupler.get_cp_v();
     real cp_l = 4188.0;
     parallel_for( SimpleBounds<1>(size(rho_d)) , YAKL_LAMBDA (int i) {
       real rho = rho_d(i);

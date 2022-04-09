@@ -180,11 +180,9 @@ public:
 
       space_op.switch_directions();
 
-      if (coupler.dycore_functions.size() > 0) {
+      if (coupler.get_num_dycore_functions() > 0) {
         space_op.convert_dynamics_to_coupler_state( coupler , state , tracers );
-
         coupler.run_dycore_functions( dt );
-
         space_op.convert_coupler_state_to_dynamics( coupler , state , tracers );
       }
 

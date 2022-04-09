@@ -107,19 +107,21 @@ public:
     //                 name    description                              positive   adds mass
     coupler.add_tracer("tke" , "Turbulent Kinetic Energy (m^2/s^2)"   , true     , false );
 
-    // Register and allocation non-tracer quantities used by the microphysics
-    coupler.dm.register_and_allocate<real>( "wthv_sec" , "Buoyancy flux [K m/s]"                , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "tk"       , "Eddy coefficient for momentum [m2/s]" , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "tkh"      , "Eddy coefficent for heat [m2/s]"      , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "cldfrac"  , "Cloud fraction [-]"                   , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    coupler.dm.register_and_allocate<real>( "relvar"   , "Relative cloud water variance"        , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    auto &dm = coupler.get_data_manager_readwrite();
 
-    auto tke      = coupler.dm.get<real,4>( "tke"      );
-    auto wthv_sec = coupler.dm.get<real,4>( "wthv_sec" );
-    auto tk       = coupler.dm.get<real,4>( "tk"       );
-    auto tkh      = coupler.dm.get<real,4>( "tkh"      );
-    auto cldfrac  = coupler.dm.get<real,4>( "cldfrac"  );
-    auto relvar   = coupler.dm.get<real,4>( "relvar"   );
+    // Register and allocation non-tracer quantities used by the microphysics
+    dm.register_and_allocate<real>( "wthv_sec" , "Buoyancy flux [K m/s]"                , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    dm.register_and_allocate<real>( "tk"       , "Eddy coefficient for momentum [m2/s]" , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    dm.register_and_allocate<real>( "tkh"      , "Eddy coefficent for heat [m2/s]"      , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    dm.register_and_allocate<real>( "cldfrac"  , "Cloud fraction [-]"                   , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    dm.register_and_allocate<real>( "relvar"   , "Relative cloud water variance"        , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+
+    auto tke      = dm.get<real,4>( "tke"      );
+    auto wthv_sec = dm.get<real,4>( "wthv_sec" );
+    auto tk       = dm.get<real,4>( "tk"       );
+    auto tkh      = dm.get<real,4>( "tkh"      );
+    auto cldfrac  = dm.get<real,4>( "cldfrac"  );
+    auto relvar   = dm.get<real,4>( "relvar"   );
 
     parallel_for( "sgs zero" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       tke     (k,j,i,iens) = 0;
@@ -143,14 +145,16 @@ public:
     int nens = coupler.get_nens();
     int ncol = ny*nx*nens;
 
+    auto &dm = coupler.get_data_manager_readwrite();
+
     auto pres_mid_tmp = coupler.compute_pressure_array();
     auto pres_int_tmp = coupler.interp_pressure_interfaces( pres_mid_tmp );
 
     auto pres_mid = pres_mid_tmp.reshape<2>({nz  ,ncol});
     auto pres_int = pres_int_tmp.reshape<2>({nz+1,ncol});
 
-    auto zint_pam = coupler.dm.get<real,2>("vertical_interface_height");
-    auto zmid_pam = coupler.dm.get<real,2>("vertical_midpoint_height" );
+    auto zint_pam = dm.get<real,2>("vertical_interface_height");
+    auto zmid_pam = dm.get<real,2>("vertical_midpoint_height" );
 
     real crm_dx = coupler.get_xlen() / nx;
     real crm_dy = ny == 1 ? crm_dx : coupler.get_ylen() / ny;
@@ -193,11 +197,11 @@ public:
     #ifdef PAM_DEBUG
       real mass0;
       {
-        auto rho_d = coupler.dm.get<real,4>( "density_dry" );
-        auto rho_v = coupler.dm.get<real,4>( "water_vapor" );
+        auto rho_d = dm.get<real,4>( "density_dry" );
+        auto rho_v = dm.get<real,4>( "water_vapor" );
         real4d rho_c;
-        if      (micro_kessler) { rho_c = coupler.dm.get<real,4>( "cloud_liquid" ); }
-        else if (micro_p3     ) { rho_c = coupler.dm.get<real,4>( "cloud_water"  ); }
+        if      (micro_kessler) { rho_c = dm.get<real,4>( "cloud_liquid" ); }
+        else if (micro_p3     ) { rho_c = dm.get<real,4>( "cloud_water"  ); }
         real4d mass4d("mass4d",nz,ny,nx,nens);
         parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
           mass4d(k,j,i,iens) = ( rho_d(k,j,i,iens) + rho_v(k,j,i,iens) + rho_c(k,j,i,iens) ) *
@@ -208,19 +212,19 @@ public:
     #endif
 
     // Get saved SHOC-related variables
-    auto tke      = coupler.dm.get_lev_col<real>( "tke"      ); // PAM Tracer                 ; don't compute
-    auto wthv_sec = coupler.dm.get_lev_col<real>( "wthv_sec" ); // Reuse from last SHOC output; don't compute
-    auto tk       = coupler.dm.get_lev_col<real>( "tk"       ); // Reuse from last SHOC output; don't compute
-    auto tkh      = coupler.dm.get_lev_col<real>( "tkh"      ); // Reuse from last SHOC output; don't compute
-    auto cldfrac  = coupler.dm.get_lev_col<real>( "cldfrac"  ); // Reuse from last SHOC output; don't compute
-    auto relvar   = coupler.dm.get_lev_col<real>( "relvar"   ); // Computed on output for P3
+    auto tke      = dm.get_lev_col<real>( "tke"      ); // PAM Tracer                 ; don't compute
+    auto wthv_sec = dm.get_lev_col<real>( "wthv_sec" ); // Reuse from last SHOC output; don't compute
+    auto tk       = dm.get_lev_col<real>( "tk"       ); // Reuse from last SHOC output; don't compute
+    auto tkh      = dm.get_lev_col<real>( "tkh"      ); // Reuse from last SHOC output; don't compute
+    auto cldfrac  = dm.get_lev_col<real>( "cldfrac"  ); // Reuse from last SHOC output; don't compute
+    auto relvar   = dm.get_lev_col<real>( "relvar"   ); // Computed on output for P3
     // Get coupler state
-    auto rho_d        = coupler.dm.get_lev_col<real>( "density_dry"  );
-    auto uvel         = coupler.dm.get_lev_col<real>( "uvel"         );
-    auto vvel         = coupler.dm.get_lev_col<real>( "vvel"         );
-    auto wvel         = coupler.dm.get_lev_col<real>( "wvel"         );
-    auto temp         = coupler.dm.get_lev_col<real>( "temp"         );
-    auto rho_v        = coupler.dm.get_lev_col<real>( "water_vapor"  ); // Water vapor mass
+    auto rho_d        = dm.get_lev_col<real>( "density_dry"  );
+    auto uvel         = dm.get_lev_col<real>( "uvel"         );
+    auto vvel         = dm.get_lev_col<real>( "vvel"         );
+    auto wvel         = dm.get_lev_col<real>( "wvel"         );
+    auto temp         = dm.get_lev_col<real>( "temp"         );
+    auto rho_v        = dm.get_lev_col<real>( "water_vapor"  ); // Water vapor mass
 
     // TODO: What do we do about rho_dry and wvel ???
 
@@ -230,17 +234,17 @@ public:
     pam::MultiField<real,2> qtracers_pam;  // Extra tracers for SHOC to diffuse
     real2d rho_c;                     // Cloud liquid mass (name differs for different micro schemes)
     if        (micro_kessler) {
-      rho_c = coupler.dm.get_lev_col<real>( "cloud_liquid" );
-      qtracers_pam.add_field( coupler.dm.get_lev_col<real>("precip_liquid") );
+      rho_c = dm.get_lev_col<real>( "cloud_liquid" );
+      qtracers_pam.add_field( dm.get_lev_col<real>("precip_liquid") );
     } else if (micro_p3     ) {
-      rho_c = coupler.dm.get_lev_col<real>( "cloud_water"  );
-      qtracers_pam.add_field( coupler.dm.get_lev_col<real>("cloud_water_num") );
-      qtracers_pam.add_field( coupler.dm.get_lev_col<real>("rain"           ) );
-      qtracers_pam.add_field( coupler.dm.get_lev_col<real>("rain_num"       ) );
-      qtracers_pam.add_field( coupler.dm.get_lev_col<real>("ice"            ) );
-      qtracers_pam.add_field( coupler.dm.get_lev_col<real>("ice_num"        ) );
-      qtracers_pam.add_field( coupler.dm.get_lev_col<real>("ice_rime"       ) );
-      qtracers_pam.add_field( coupler.dm.get_lev_col<real>("ice_rime_vol"   ) );
+      rho_c = dm.get_lev_col<real>( "cloud_water"  );
+      qtracers_pam.add_field( dm.get_lev_col<real>("cloud_water_num") );
+      qtracers_pam.add_field( dm.get_lev_col<real>("rain"           ) );
+      qtracers_pam.add_field( dm.get_lev_col<real>("rain_num"       ) );
+      qtracers_pam.add_field( dm.get_lev_col<real>("ice"            ) );
+      qtracers_pam.add_field( dm.get_lev_col<real>("ice_num"        ) );
+      qtracers_pam.add_field( dm.get_lev_col<real>("ice_rime"       ) );
+      qtracers_pam.add_field( dm.get_lev_col<real>("ice_rime_vol"   ) );
     }
 
     int num_qtracers = qtracers_pam.get_num_fields();
@@ -566,11 +570,11 @@ public:
     #ifdef PAM_DEBUG
       real mass;
       {
-        auto rho_d = coupler.dm.get<real,4>( "density_dry" );
-        auto rho_v = coupler.dm.get<real,4>( "water_vapor" );
+        auto rho_d = dm.get<real,4>( "density_dry" );
+        auto rho_v = dm.get<real,4>( "water_vapor" );
         real4d rho_c;
-        if      (micro_kessler) { rho_c = coupler.dm.get<real,4>( "cloud_liquid" ); }
-        else if (micro_p3     ) { rho_c = coupler.dm.get<real,4>( "cloud_water"  ); }
+        if      (micro_kessler) { rho_c = dm.get<real,4>( "cloud_liquid" ); }
+        else if (micro_p3     ) { rho_c = dm.get<real,4>( "cloud_water"  ); }
         real4d mass4d("mass4d",nz,ny,nx,nens);
         parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
           mass4d(k,j,i,iens) = ( rho_d(k,j,i,iens) + rho_v(k,j,i,iens) + rho_c(k,j,i,iens) ) *

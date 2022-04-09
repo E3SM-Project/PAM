@@ -91,12 +91,14 @@ int main(int argc, char** argv) {
     // Set the vertical grid in the coupler
     coupler.set_grid( xlen , ylen , zint_in );
 
-    coupler.dm.register_and_allocate<real>("gcm_density_dry","GCM column dry density"     ,{crm_nz,nens});
-    coupler.dm.register_and_allocate<real>("gcm_uvel"       ,"GCM column u-velocity"      ,{crm_nz,nens});
-    coupler.dm.register_and_allocate<real>("gcm_vvel"       ,"GCM column v-velocity"      ,{crm_nz,nens});
-    coupler.dm.register_and_allocate<real>("gcm_wvel"       ,"GCM column w-velocity"      ,{crm_nz,nens});
-    coupler.dm.register_and_allocate<real>("gcm_temp"       ,"GCM column temperature"     ,{crm_nz,nens});
-    coupler.dm.register_and_allocate<real>("gcm_water_vapor","GCM column water vapor mass",{crm_nz,nens});
+    auto &dm = coupler.get_data_manager_readwrite();
+
+    dm.register_and_allocate<real>("gcm_density_dry","GCM column dry density"     ,{crm_nz,nens});
+    dm.register_and_allocate<real>("gcm_uvel"       ,"GCM column u-velocity"      ,{crm_nz,nens});
+    dm.register_and_allocate<real>("gcm_vvel"       ,"GCM column v-velocity"      ,{crm_nz,nens});
+    dm.register_and_allocate<real>("gcm_wvel"       ,"GCM column w-velocity"      ,{crm_nz,nens});
+    dm.register_and_allocate<real>("gcm_temp"       ,"GCM column temperature"     ,{crm_nz,nens});
+    dm.register_and_allocate<real>("gcm_water_vapor","GCM column water vapor mass",{crm_nz,nens});
 
     micro .init( coupler );
     sgs   .init( coupler );
@@ -122,19 +124,19 @@ int main(int argc, char** argv) {
       }
     #endif
 
-    auto gcm_rho_d = coupler.dm.get<real,2>("gcm_density_dry");
-    auto gcm_uvel  = coupler.dm.get<real,2>("gcm_uvel"       );
-    auto gcm_vvel  = coupler.dm.get<real,2>("gcm_vvel"       );
-    auto gcm_wvel  = coupler.dm.get<real,2>("gcm_wvel"       );
-    auto gcm_temp  = coupler.dm.get<real,2>("gcm_temp"       );
-    auto gcm_rho_v = coupler.dm.get<real,2>("gcm_water_vapor");
+    auto gcm_rho_d = dm.get<real,2>("gcm_density_dry");
+    auto gcm_uvel  = dm.get<real,2>("gcm_uvel"       );
+    auto gcm_vvel  = dm.get<real,2>("gcm_vvel"       );
+    auto gcm_wvel  = dm.get<real,2>("gcm_wvel"       );
+    auto gcm_temp  = dm.get<real,2>("gcm_temp"       );
+    auto gcm_rho_v = dm.get<real,2>("gcm_water_vapor");
 
-    auto rho_d = coupler.dm.get<real const,4>("density_dry" );
-    auto uvel  = coupler.dm.get<real const,4>("uvel"        );
-    auto vvel  = coupler.dm.get<real const,4>("vvel"        );
-    auto wvel  = coupler.dm.get<real const,4>("wvel"        );
-    auto temp  = coupler.dm.get<real const,4>("temp"        );
-    auto rho_v = coupler.dm.get<real const,4>("water_vapor" );
+    auto rho_d = dm.get<real const,4>("density_dry" );
+    auto uvel  = dm.get<real const,4>("uvel"        );
+    auto vvel  = dm.get<real const,4>("vvel"        );
+    auto wvel  = dm.get<real const,4>("wvel"        );
+    auto temp  = dm.get<real const,4>("temp"        );
+    auto rho_v = dm.get<real const,4>("water_vapor" );
 
     // Compute a column to force the model with by averaging the columns at init
     parallel_for( Bounds<4>(crm_nz,crm_ny,crm_nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
@@ -215,7 +217,7 @@ int main(int argc, char** argv) {
           yakl::timer_start("output");
           output( coupler , etime_gcm );
           yakl::timer_stop("output");
-          real maxw = maxval(abs(coupler.dm.get_collapsed<real const>("wvel")));
+          real maxw = maxval(abs(dm.get_collapsed<real const>("wvel")));
           if (mainproc) {
             std::cout << "Etime , dtphys, maxw: " << etime_gcm << " , " 
                                                   << dt_crm    << " , "
@@ -258,6 +260,8 @@ void output( pam::PamCoupler const &coupler , real etime ) {
   auto ny = coupler.get_ny();
   auto nz = coupler.get_nz();
 
+  auto &dm = coupler.get_data_manager_readonly();
+
   MPI_Barrier(MPI_COMM_WORLD);
   for (int rr=0; rr < nranks; rr++) {
     MPI_Barrier(MPI_COMM_WORLD);
@@ -284,7 +288,7 @@ void output( pam::PamCoupler const &coupler , real etime ) {
         nc.write(yloc.createHostCopy(),"y",{"y"});
 
         // z-coordinate
-        auto zint = coupler.dm.get<real const,2>("vertical_interface_height");
+        auto zint = dm.get<real const,2>("vertical_interface_height");
         real1d zmid("zmid",nz);
         parallel_for( "Spatial.h output 3" , nz , YAKL_LAMBDA (int i) {
           zmid(i) = ( zint(i,0) + zint(i+1,0) ) / 2;
@@ -305,13 +309,13 @@ void output( pam::PamCoupler const &coupler , real etime ) {
       int num_tracers = coupler.get_num_tracers();
       // Create MultiField of all state and tracer full variables, since we're doing the same operation on each
       pam::MultiField<real const,4> fields;
-      fields.add_field( coupler.dm.get<real const,4>("density_dry") );
-      fields.add_field( coupler.dm.get<real const,4>("uvel"       ) );
-      fields.add_field( coupler.dm.get<real const,4>("vvel"       ) );
-      fields.add_field( coupler.dm.get<real const,4>("wvel"       ) );
-      fields.add_field( coupler.dm.get<real const,4>("temp"       ) );
+      fields.add_field( dm.get<real const,4>("density_dry") );
+      fields.add_field( dm.get<real const,4>("uvel"       ) );
+      fields.add_field( dm.get<real const,4>("vvel"       ) );
+      fields.add_field( dm.get<real const,4>("wvel"       ) );
+      fields.add_field( dm.get<real const,4>("temp"       ) );
       for (int tr=0; tr < num_tracers; tr++) {
-        fields.add_field( coupler.dm.get<real const,4>(tracer_names[tr]) );
+        fields.add_field( dm.get<real const,4>(tracer_names[tr]) );
       }
 
       // First, write out standard coupler state
