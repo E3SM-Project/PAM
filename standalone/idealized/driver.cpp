@@ -35,13 +35,19 @@ int main(int argc, char** argv) {
     bool        use_coupler_hydrostasis = config["use_coupler_hydrostasis"].as<bool>(false);
 
     // Read vertical coordinates
-    yakl::SimpleNetCDF nc;
-    nc.open(vcoords_file);
-    int crm_nz = nc.getDimSize("num_interfaces") - 1;
-    real1d zint_in("zint_in",crm_nz+1);
-    nc.read(zint_in,"vertical_interfaces");
-    nc.close();      
+//THIS IS BROKEN IN PARALLEL
+    // yakl::SimpleNetCDF nc;
+    // nc.open(vcoords_file);
+    // int crm_nz = nc.getDimSize("num_interfaces") - 1;
+    // real1d zint_in("zint_in",crm_nz+1);
+    // nc.read(zint_in,"vertical_interfaces");
+    // nc.close();      
 
+    int crm_nz = 1;
+    real1d zint_in("zint_in",crm_nz+1);
+    zint_in(0) = 0.0;
+    zint_in(1) = 1.0;
+    
     // Create the dycore and the microphysics
     Dycore       dycore;
     Microphysics micro;
@@ -107,6 +113,7 @@ int main(int argc, char** argv) {
     yakl::timer_stop("main");
   }
   
-  int ierr = MPI_Finalize();
   yakl::finalize();
+  int ierr = MPI_Finalize();
+
 }

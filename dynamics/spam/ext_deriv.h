@@ -1,5 +1,4 @@
-#ifndef _EXT_DERIV_H_
-#define _EXT_DERIV_H_
+#pragma once
 
 #include "common.h"
 
@@ -221,7 +220,3 @@ template<uint ndofs, ADD_MODE addmode=ADD_MODE::REPLACE> void YAKL_INLINE comput
     if (addmode == ADD_MODE::ADD) {tendvar(l, k+ks, j+js, i+is) += tend(l);}
   }
 }
-
-
-
-#endif

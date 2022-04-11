@@ -1,6 +1,5 @@
 
-#ifndef _HODGE_STARS_H_
-#define _HODGE_STARS_H_
+#pragma once
 
 #include "common.h"
 #include "geometry.h"
@@ -342,4 +341,3 @@ template<uint ndofs, uint hord,  uint vord, ADD_MODE addmode=ADD_MODE::REPLACE, 
   if (addmode == ADD_MODE::REPLACE) {for (int l=0; l<ndofs; l++) {var0(l, k+ks, j+js, i+is) = x0(l);}}
   if (addmode == ADD_MODE::ADD) {for (int l=0; l<ndofs; l++) {var0(l, k+ks, j+js, i+is) += x0(l);}}
 }
-#endif

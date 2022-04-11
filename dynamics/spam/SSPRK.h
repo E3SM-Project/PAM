@@ -1,7 +1,4 @@
-
-
-#ifndef _SSPRK_H_
-#define _SSPRK_H_
+#pragma once
 
 
 #include "common.h"
@@ -12,7 +9,7 @@
 
 
 
-template<uint nprog, uint nconst, uint naux, uint nstages> class SSPKKTimeIntegrator {
+template<uint nprog, uint nconst, uint naux> class SSPKKTimeIntegrator {
 
 public:
 
@@ -27,32 +24,35 @@ public:
     VariableSet<nconst> *const_vars;
     VariableSet<naux> *auxiliary_vars;
     ExchangeSet<nprog> *x_exchange;
-
+    std::string tstype;
+    
   bool is_initialized;
   SSPKKTimeIntegrator();
-  SSPKKTimeIntegrator( const SSPKKTimeIntegrator<nprog,nconst,naux,nstages> &ssprk) = delete;
-  SSPKKTimeIntegrator& operator=( const SSPKKTimeIntegrator<nprog,nconst,naux,nstages> &ssprk) = delete;
-  void initialize(Tendencies<nprog, nconst, naux> &tend, VariableSet<nprog> &xvars, VariableSet<nconst> &consts, VariableSet<naux> &auxiliarys, ExchangeSet<nprog> &prog_exch);
+  SSPKKTimeIntegrator( const SSPKKTimeIntegrator<nprog,nconst,naux> &ssprk) = delete;
+  SSPKKTimeIntegrator& operator=( const SSPKKTimeIntegrator<nprog,nconst,naux> &ssprk) = delete;
+  void initialize(Parameters &params, Tendencies<nprog, nconst, naux> &tend, VariableSet<nprog> &xvars, VariableSet<nconst> &consts, VariableSet<naux> &auxiliarys, ExchangeSet<nprog> &prog_exch);
   void stepForward(real dt);
 
 
 };
 
 
-    template<uint nprog, uint nconst, uint naux, uint nstages> SSPKKTimeIntegrator<nprog,nconst,naux,nstages>::SSPKKTimeIntegrator()
+    template<uint nprog, uint nconst, uint naux> SSPKKTimeIntegrator<nprog,nconst,naux>::SSPKKTimeIntegrator()
     {
       this->is_initialized = false;
       std::cout << "CREATED SSPKK\n";
     }
 
 
-  template<uint nprog, uint nconst, uint naux, uint nstages> void SSPKKTimeIntegrator<nprog,nconst,naux,nstages>::initialize(Tendencies<nprog, nconst, naux> &tend, VariableSet<nprog> &xvars, VariableSet<nconst> &consts, VariableSet<naux> &auxiliarys, ExchangeSet<nprog> &prog_exch)
+  template<uint nprog, uint nconst, uint naux> void SSPKKTimeIntegrator<nprog,nconst,naux>::initialize(Parameters &params, Tendencies<nprog, nconst, naux> &tend, VariableSet<nprog> &xvars, VariableSet<nconst> &consts, VariableSet<naux> &auxiliarys, ExchangeSet<nprog> &prog_exch)
   {
+    tstype = params.tstype;
+    
     this->x1.initialize(xvars, "x1");
     this->F1.initialize(xvars, "F1");
     this->x2.initialize(xvars, "x2");
     this->F2.initialize(xvars, "F2");
-    if (nstages == 3)
+    if (tstype == "ssprk3")
     {
     this->x3.initialize(xvars, "x3");
     this->F3.initialize(xvars, "F3");
@@ -65,7 +65,7 @@ public:
     this->is_initialized = true;
   }
 
-  template<uint nprog, uint nconst, uint naux, uint nstages> void SSPKKTimeIntegrator<nprog,nconst,naux,nstages>::stepForward(real dt)
+  template<uint nprog, uint nconst, uint naux> void SSPKKTimeIntegrator<nprog,nconst,naux>::stepForward(real dt)
   {
 
       this->tendencies->compute_rhs(dt, *this->const_vars, *this->x, *this->auxiliary_vars, this->F1);
@@ -73,15 +73,14 @@ public:
       this->x_exchange->exchange_variable_set(this->x1);
       this->tendencies->compute_rhs(dt, *this->const_vars, this->x1, *this->auxiliary_vars, this->F2);
 
-     if (nstages == 2)
+     if (tstype == "ssprk2")
      {
     this->x2.waxpbypcz(0.5, 0.5, -0.5*dt, *this->x, this->x1, this->F2);
     this->x->copy(this->x2);
     }
 
-    if (nstages == 3)
+    if (tstype == "ssprk3")
     {
-
    this->x2.waxpbypcz(0.75, 0.25, -0.25*dt, *this->x, this->x1, this->F2);
    this->x_exchange->exchange_variable_set(this->x2);
    this->tendencies->compute_rhs(dt, *this->const_vars, this->x2, *this->auxiliary_vars, this->F3);
@@ -92,5 +91,3 @@ public:
    this->x_exchange->exchange_variable_set(*this->x);
 
   }
-
-#endif

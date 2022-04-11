@@ -1,5 +1,4 @@
-#ifndef _WENO_FUNC_RECON_H_
-#define _WENO_FUNC_RECON_H_
+#pragma once
 
 #include "common.h"
 #include "TransformMatrices.h"
@@ -263,5 +262,3 @@ template<uint ndofs, uint nd, uint ord, uint tord=2, uint hs=(ord-1)/2> void YAK
      }
       }
 }
-
-#endif

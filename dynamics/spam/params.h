@@ -14,12 +14,14 @@ public:
 
   int Nsteps = -1;
   int Nout = -1;
-  real dt = -1.;
+  real dtcrm = -1.;
+  real dtphys = -1.;
   int Nstat = -1;
   std::string outputName;
   std::string initdataStr;
   std::string tracerdataStr[ntracers];
-  
+  std::string tstype;
+
   real xlen, ylen;
   real xc, yc;
 
@@ -75,20 +77,24 @@ void readParamsFile(std::string inFile, Parameters &params, Parallel &par, int n
    std::cout << "Error: nranks != nprocx * nprocy\n"; exit(-1); 
  }
 
- //WRONG...
- params.dt = config["dtphys"].as<real>();
- 
+ //WRONG WAY TO HANDLE dtphys=-1....
+ params.dtcrm = config["dtcrm"].as<real>();
+ params.dtphys = config["dtphys"].as<real>();
+
   //THIS STUFF SHOULD REALLY BE SET BY IC...
   params.xlen = config["xlen"].as<real>();
   params.ylen = config["ylen"].as<real>();
   params.xc = params.xlen/2.;
   params.yc = params.ylen/2.;
 
+// NEEDS NEW LOGIC FOR TIME BASED CONTROL
   params.Nsteps = config["simSteps"].as<int>();
   params.Nout = config["outSteps"].as<int>();
   params.Nstat = config["statSteps"].as<int>();
 
-  params.outputName = config["out_prefix"].as<std::string>("output");
+  params.tstype = config["tstype"].as<std::string>();
+
+  params.outputName = config["out_prefix"].as<std::string>("output") + "_dycore" + ".nc";
   params.acoustic_balance = config["balance_initial_density"].as<bool>(false);
 
 
@@ -96,7 +102,7 @@ void readParamsFile(std::string inFile, Parameters &params, Parallel &par, int n
   params.initdataStr = config["initData"].as<std::string>();
   for (int i=0;i<ntracers_nofct;i++)
   {params.tracerdataStr[i] = config["initTracer" + std::to_string(i+1)].as<std::string>();}
-  for (int i=ntracers_nofct;i<ntracers_fct;i++)
+  for (int i=ntracers_nofct;i<ntracers;i++)
   {params.tracerdataStr[i] = config["initFCTTracer" + std::to_string(i-ntracers_nofct+1)].as<std::string>();}
   
   //Get my process grid IDs
@@ -184,7 +190,8 @@ void readParamsFile(std::string inFile, Parameters &params, Parallel &par, int n
     std::cout << "halox:      " << par.halox    << "\n";
     std::cout << "haloy:      " << par.haloy    << "\n";
     
-    std::cout << "dt:         " << params.dt         << "\n";
+    std::cout << "dtcrm:         " << params.dtcrm         << "\n";
+    std::cout << "dtphys:         " << params.dtphys         << "\n";
     std::cout << "Nsteps:     " << params.Nsteps     << "\n";
     std::cout << "Nout:       " << params.Nout       << "\n";
     std::cout << "outputName: " << params.outputName << "\n";

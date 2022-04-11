@@ -1,5 +1,4 @@
-#ifndef _FCT_H_
-#define _FCT_H_
+#pragma once
 
 #include "common.h"
 
@@ -187,5 +186,3 @@ for (int l=0; l<ndofs; l++) {
 Phivertvar(l, k+ks, j+js, i+is) = Phivert(l);
 }
 }
-
-#endif

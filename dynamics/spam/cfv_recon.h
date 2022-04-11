@@ -1,5 +1,4 @@
-#ifndef _CFV_RECON_H_
-#define _CFV_RECON_H_
+#pragma once
 
 #include "common.h"
 
@@ -59,6 +58,3 @@ template<uint ndofs, uint nd> void YAKL_INLINE cfv(SArray<real,3,ndofs,nd,2> &ed
         }
       }
 }
-
-
-#endif

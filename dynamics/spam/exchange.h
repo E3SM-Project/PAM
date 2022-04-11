@@ -199,7 +199,7 @@ void Exchange::initialize(const Exchange &exch)
 
    //pack down (y-) and up (y+)
    if (ndims ==2) {
-      parallel_for( Bounds<5>(this->total_dofs, this->topology->halosize_y, this->_nz, this->topology->n_cells_x) , YAKL_LAMBDA(int ndof, int jj, int k, int i, int n) { 
+      parallel_for( Bounds<5>(this->total_dofs, this->topology->halosize_y, this->_nz, this->topology->n_cells_x, this->nens) , YAKL_LAMBDA(int ndof, int jj, int k, int i, int n) { 
          int iGlob = ndof + jj*this->total_dofs + k*this->total_dofs*this->topology->halosize_y + i*this->total_dofs*this->topology->halosize_y*this->_nz + n*this->total_dofs*this->topology->halosize_y*this->_nz*this->topology->n_cells_x;
        this->haloSendBuf_Yp(iGlob) = field.data(ndof, k+ks, jj+js+this->topology->n_cells_y-this->topology->halosize_y, i+is, n);
        this->haloSendBuf_Ym(iGlob) = field.data(ndof, k+ks, jj+js, i+is, n);

@@ -1,5 +1,4 @@
-#ifndef _WENO_RECON_H_
-#define _WENO_RECON_H_
+#pragma once
 
 #include "common.h"
 
@@ -277,4 +276,4 @@ template<uint ndofs, uint nd> void YAKL_INLINE weno(SArray<real,3,ndofs,nd,2> &e
         }
       }
 }
-#endif
+

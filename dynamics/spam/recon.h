@@ -1,6 +1,5 @@
 
-#ifndef _RECON_H_
-#define _RECON_H_
+#pragma once
 
 #include "common.h"
 #include "weno_recon.h"
@@ -322,4 +321,3 @@ template <uint ndofs, RECONSTRUCTION_TYPE recontype> void YAKL_INLINE compute_st
     reconvar(l, k+ks, j+js, i+is) = recon(l,0);
   }
   }
-#endif

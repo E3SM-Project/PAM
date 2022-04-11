@@ -28,6 +28,7 @@ void initialize(std::string statName, int statndof, int statsize, int statnens, 
 
 };
 
+
 template <uint nprog, uint nconst, uint nstats> class Stats
 {
 public:
@@ -50,8 +51,10 @@ public:
     this->primal_geometry = &primal_geom;
     this->dual_geometry = &dual_geom;
     this->nens = params.nens;
-    masterproc = par.masterproc;
+    this->masterproc = par.masterproc;
     this->statsize = params.Nsteps/params.Nstat + 1;
-
   }
+  
+  virtual void compute( VariableSet<nprog> &progvars,  VariableSet<nconst> &constvars, int tind) {};
+
 };

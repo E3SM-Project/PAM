@@ -1,6 +1,6 @@
 ---
 # Simulation time in number of time steps
-simSteps  : 1
+simSteps  : 10
 
 # Number of cells to use
 crm_nx       : 100
@@ -20,14 +20,17 @@ initFCTTracer2: gaussian
 initFCTTracer3: doublesquare
 
 # CRM physics time step
-dtphys: 250.0
+dtphys: 1000.0
+dtcrm: 250.0
 
 # Output filename
 out_prefix  : test
 
 # Output frequency in number of time steps
-outSteps: 1
+outSteps: 5
 statSteps: 1
+
+tstype: kgrk4
 
 # Number of ensembles
 nens : 1

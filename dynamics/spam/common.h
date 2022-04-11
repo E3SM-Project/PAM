@@ -11,37 +11,7 @@
 #include <math.h>
 #include "yaml-cpp/yaml.h"
 
-typedef unsigned long ulong;
-typedef unsigned int  uint;
-
-// Declaring the precision for the model
-typedef double real;
-#define REAL_NC NC_DOUBLE
-#define REAL_MPI MPI_DOUBLE
-
-#define PNETCDF_PUT_VAR ncmpi_put_vara_double
-#define PNETCDF_PUT_VAR_ALL ncmpi_put_vara_double_all
-
-
-// Specifying templated min and max functions
-template <class T> YAKL_INLINE T mymin( T const v1 , T const v2 ) {
-  if (v1 < v2) { return v1; }
-  else         { return v2; }
-}
-template <class T> YAKL_INLINE T mymax( T const v1 , T const v2 ) {
-  if (v1 > v2) { return v1; }
-  else         { return v2; }
-}
-
-
-// Add mode for various operators
-enum class ADD_MODE { REPLACE, ADD };
-
-//Boundary types
-enum class BND_TYPE { PERIODIC, NONE };
-
-////////////////////////////////////////////////////////////////////////////////////
-
+////////////// These control the settings for SPAM++    //////////////
 
 // Spatial derivatives order of accuracy ie Hodge stars [2,4,6] (vert only supports 2 for now)
 uint constexpr diff_ord = 2;
@@ -81,6 +51,41 @@ uint constexpr ic_quad_pts = 5;
 uint constexpr maxhalosize = 15; //mymax(reconstruction_order+1,differential_order)/2; // IS THIS ALWAYS CORRECT?
 uint constexpr mirroringhalo = 9; //mymax(reconstruction_order+1,differential_order)/2; // IS THIS ALWAYS CORRECT?
 
+//0 = RKSimple, 1=SSPRK
+#define _TIME_TYPE 0
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+typedef unsigned long ulong;
+typedef unsigned int  uint;
+
+// Declaring the precision for the model
+typedef double real;
+#define REAL_NC NC_DOUBLE
+#define REAL_MPI MPI_DOUBLE
+
+#define PNETCDF_PUT_VAR ncmpi_put_vara_double
+#define PNETCDF_PUT_VAR_ALL ncmpi_put_vara_double_all
+
+
+// Specifying templated min and max functions
+template <class T> YAKL_INLINE T mymin( T const v1 , T const v2 ) {
+  if (v1 < v2) { return v1; }
+  else         { return v2; }
+}
+template <class T> YAKL_INLINE T mymax( T const v1 , T const v2 ) {
+  if (v1 > v2) { return v1; }
+  else         { return v2; }
+}
+
+
+// Add mode for various operators
+enum class ADD_MODE { REPLACE, ADD };
+
+//Boundary types
+enum class BND_TYPE { PERIODIC, NONE };
+
+
 #ifdef _LAYER
 #include "layermodel-header.h"
 #elif _EXTRUDED
@@ -95,3 +100,6 @@ template <uint nvars> void set_dofs_arr(SArray<int,2, nvars, 3> &dofs_arr, int v
   dofs_arr(var, 1) = extdof;
   dofs_arr(var, 2) = ndofs;
 }
+
+
+

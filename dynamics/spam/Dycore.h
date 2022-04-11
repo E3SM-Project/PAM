@@ -4,7 +4,9 @@
 #include "pam_coupler.h" //Has DataManager and pam_const
 #include "common.h"
 #include "variable_sets.h"
-#include "fileio.h"
+#include "singleio.h"
+//#include "fileio.h"
+//#include "new_fileio.h"
 #include "topology.h"
 #include "geometry.h"
 #include "params.h"
@@ -16,6 +18,8 @@
 #elif _ADVECTION
 #include "advectionmodel.h"
 #endif
+#include "SSPRK.h"
+#include "RKSimple.h"
 
 using pam::PamCoupler;
 
@@ -33,7 +37,7 @@ class Dycore {
     UniformRectangularStraightExtrudedGeometry<1,1,1> tendencies_primal_geometry;
     UniformRectangularTwistedExtrudedGeometry<1,1,1> tendencies_dual_geometry;
 #endif
-    Stats<nprognostic, nconstant, nstats> stats;
+    ModelStats<nprognostic, nconstant, nstats> stats;
     VariableSet<nprognostic> prognostic_vars;
     VariableSet<nconstant> constant_vars;
     VariableSet<ndiagnostic> diagnostic_vars;
@@ -43,24 +47,23 @@ class Dycore {
     ExchangeSet<nauxiliary> aux_exchange;
     ExchangeSet<ndiagnostic> diag_exchange;
     FileIO<nprognostic, nconstant, ndiagnostic, nstats> io;
-    //Tendencies<nprognostic, nconstant, nauxiliary> tendencies;
-    //Diagnostics<nprognostic, nconstant, ndiagnostic> diagnostics;
+    ModelTendencies<nprognostic, nconstant, nauxiliary> tendencies;
+    ModelDiagnostics<nprognostic, nconstant, ndiagnostic> diagnostics;
     Topology primal_topology;
     Topology dual_topology;
     Parameters params;
     Parallel par;    
-    // #if _TIME_TYPE==0
-    //       RKSimpleTimeIntegrator<nprognostic, nconstant, nauxiliary, 4> tint;
-    // #endif
-    // #if _TIME_TYPE==1
-    //       SSPKKTimeIntegrator<nprognostic, nconstant, nauxiliary, 3> tint;
-    // #endif
-    // #if _TIME_TYPE==2
-    //       SSPKKTimeIntegrator<nprognostic, nconstant, nauxiliary, 2> tint;
-    // #endif    
+    #if _TIME_TYPE==0
+          RKSimpleTimeIntegrator<nprognostic, nconstant, nauxiliary> tint;
+    #endif
+    #if _TIME_TYPE==1
+          SSPKKTimeIntegrator<nprognostic, nconstant, nauxiliary> tint;
+    #endif
     
     int ierr;
     real etime = 0.0;
+    uint prevstep = 0;
+    uint nsteps = 0;
 
   void init(PamCoupler const &coupler) {
 
@@ -129,25 +132,26 @@ class Dycore {
     std::cout << "start set initial conditions\n" << std::flush;
     set_initial_conditions<nprognostic, nconstant, ic_quad_pts, ic_quad_pts, ic_quad_pts>(params, prognostic_vars, constant_vars, ic_primal_geometry, ic_dual_geometry);
     // Do a boundary exchange
-    //prog_exchange.exchange_variable_set(prognostic_vars);
-    //const_exchange.exchange_variable_set(constant_vars);
+    prog_exchange.exchange_variable_set(prognostic_vars);
+    const_exchange.exchange_variable_set(constant_vars);
     std::cout << "end set initial conditions\n" << std::flush;
     // 
     // // Initialize the time stepper, tendencies, diagnostics; compute initial stats
-    // std::cout << "start ts init\n" << std::flush;
-    // tendencies.initialize(params, primal_topology, dual_topology, tendencies_primal_geometry, tendencies_dual_geometry, aux_exchange, const_exchange);
-    // tendencies.compute_constants(constant_vars, prognostic_vars);
-    // diagnostics.initialize(primal_topology, dual_topology, tendencies_primal_geometry, tendencies_dual_geometry, diag_exchange);
-    // tint.initialize(tendencies, prognostic_vars, constant_vars, auxiliary_vars, prog_exchange);
-    // std::cout << "end ts init\n" << std::flush;
-    //stats.compute(prognostic_vars, constant_vars, 0);
+    std::cout << "start ts init\n" << std::flush;
+    tendencies.initialize(params, primal_topology, dual_topology, tendencies_primal_geometry, tendencies_dual_geometry, aux_exchange, const_exchange);
+    tendencies.compute_constants(constant_vars, prognostic_vars);
+    diagnostics.initialize(primal_topology, dual_topology, tendencies_primal_geometry, tendencies_dual_geometry, diag_exchange);
+    tint.initialize(params, tendencies, prognostic_vars, constant_vars, auxiliary_vars, prog_exchange);
+    std::cout << "end ts init\n" << std::flush;
+    stats.compute(prognostic_vars, constant_vars, 0);
 
     // Output the initial model state
     std::cout << "start initial output\n" << std::flush;
-    //diagnostics.compute_diag(constant_vars, prognostic_vars, diagnostic_vars);
+    diagnostics.compute_diag(constant_vars, prognostic_vars, diagnostic_vars);
     io.outputInit(etime);
     std::cout << "end initial output\n" << std::flush;
     
+    prevstep = 0;
   };
     
     
@@ -164,40 +168,39 @@ class Dycore {
       
   void timeStep( PamCoupler &coupler , real dtphys ) {
     
-    //TAKE SOME NUMBER OF STEPS
+    //THIS LOGIC NEEDS UPDATING FOR TIME BASED LOOPING
+    nsteps = (int) (dtphys / params.dtcrm); 
+    
     // Time stepping loop
-    // std::cout << "start timestepping loop\n" << std::flush;
+    std::cout << "start timestepping loop\n" << std::flush;
+    //THIS LOGIC NEEDS UPDATING FOR TIME BASED LOOPING
     // stats.compute(prognostic_vars, constant_vars, 0);
-    // for (uint nstep = 1; nstep<params.Nsteps+1; nstep++) {
+    for (uint nstep = 0; nstep<nsteps; nstep++) {
     // 
-    //   yakl::fence();
-    //   tint.stepForward(params.dt);
-    //   yakl::fence();
+       yakl::fence();
+       tint.stepForward(params.dtcrm);
+       yakl::fence();
     // 
-    //   etime += params.dt;
-    //   if (nstep%params.Nout == 0) {
-    //     std::cout << "step " << nstep << " time " << params.etime << "\n";
-    //     diagnostics.compute_diag(constant_vars, prognostic_vars, diagnostic_vars);
-    //     io.output(nstep, etime);
-    //   }
+       etime += params.dtcrm;
+      if ((nstep+prevstep)%params.Nout == 0) {
+        std::cout << "step " << (nstep+prevstep) << " time " << etime << "\n";
+        diagnostics.compute_diag(constant_vars, prognostic_vars, diagnostic_vars);
+        io.output(etime);
+      }
     // 
-    //   if (nstep%params.Nstat == 0)
-    //   {
-    //     stats.compute(prognostic_vars, constant_vars, nstep/params.Nstat);
-    //   }
+       if (nstep%params.Nstat == 0)
+       {
+         stats.compute(prognostic_vars, constant_vars, (nstep+prevstep)/params.Nstat);
+       }
     // 
-    // }
-    // io.outputStats(stats);
+    }
+    prevstep += nsteps;
     // 
-    // std::cout << "end timestepping loop\n" << std::flush;
+    std::cout << "end timestepping loop\n" << std::flush;
   };
         
   void finalize(PamCoupler &coupler) { 
-    // io.outputStats(stats);
-
-    // std::cout << "start io close\n" << std::flush;
-    // io.close();
-    // std::cout << "end io close\n" << std::flush;
+    io.outputStats(stats);
   }
   
   const char * dycore_name() const { return "SPAM++"; }

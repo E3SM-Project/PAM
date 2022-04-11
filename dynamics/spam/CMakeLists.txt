@@ -2,6 +2,12 @@
 add_library(dycore INTERFACE)
 target_include_directories(dycore INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 
+
+#include_directories(dycore INTERFACE /home/celdred/parallel-netcdf-gnu/include)
+#link_directories(dycore INTERFACE /home/celdred/parallel-netcdf-gnu/lib)
+#target_link_libraries(dycore INTERFACE pnetcdf)
+
+
 if ("${PAMC_MODEL}" STREQUAL "advection")
 target_compile_definitions(dycore INTERFACE -D_ADVECTION)
 endif()

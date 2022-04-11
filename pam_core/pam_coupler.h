@@ -4,7 +4,7 @@
 #include "pam_const.h"
 #include "DataManager.h"
 #include "vertical_interp.h"
-#include "YAKL_netcdf.h"
+//#include "YAKL_netcdf.h"
 #include "Options.h"
 #include "ArrayIR.h"
 

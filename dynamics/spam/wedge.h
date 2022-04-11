@@ -1,11 +1,6 @@
-
-
-#ifndef _WEDGE_H_
-#define _WEDGE_H_
+#pragma once
 
 #include "common.h"
-#include <cmath>
-#include <iostream>
 
 // Q
   template<uint ndofs> void YAKL_INLINE Q2D( SArray<real,2,ndofs,2> &vel, SArray<real,3,ndofs,2,5> const &recon, SArray<real,2,2,4> const &flux) {
@@ -571,5 +566,3 @@ v(1) = wvar(0,k+ks,j+js,i+is);
 if (addmode == ADD_MODE::REPLACE) {var(0) = phiTW(uw, v);}
 if (addmode == ADD_MODE::ADD) {var(0) += phiTW(uw, v);}
 }
-
-  #endif

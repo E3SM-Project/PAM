@@ -4,6 +4,7 @@
 #include "common.h"
 #include "variable_sets.h"
 #include "pnetcdf.h"
+
 #include "common.h"
 #include "stats.h"
 
@@ -56,7 +57,6 @@ public:
   void outputStats(const Stats<nprog, nconst, nstats> &stats);
   void close();
 
-
 };
 
 
@@ -77,8 +77,10 @@ public:
        this->diag_vars = &diagvars;
        this->statistics = &stats;
        this->masterproc = par.masterproc;
-
+       
+       std::cout << outName << "\n";
        ncwrap( ncmpi_create( MPI_COMM_WORLD , this->outputName.c_str() , NC_CLOBBER , MPI_INFO_NULL , &ncid ) , __LINE__ );
+       std::cout << outName << "\n";
 
        //Define time and cell dimensions
        ncwrap( ncmpi_def_dim( ncid , "t" , (MPI_Offset) NC_UNLIMITED , &tDim ) , __LINE__ );
