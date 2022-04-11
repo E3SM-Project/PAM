@@ -272,12 +272,12 @@ for (int l=0; l<ndofs; l++) {
 for (int d=0; d<ndims; d++) {
   if (d==0)
   {
-x(l,d,p) = var(l, k+ks, j+js, i+is+p-off);
+x(l,d,p) = var(l, k+ks, j+js, i+is+p-off, n);
 Jgeom(d,p) = dgeom.get_area_lform(0, 0, k+ks, j+js, i+is+p-off) / pgeom.get_area_lform(ndims, 0, k+ks, j+js, i+is+p-off);
 }
 if (d==1)
 {
-x(l,d,p) = var(l, k+ks, j+js+p-off, i+is);
+x(l,d,p) = var(l, k+ks, j+js+p-off, i+is, n);
 Jgeom(d,p) = dgeom.get_area_lform(0, 0, k+ks, j+js+p-off, i+is) / pgeom.get_area_lform(ndims, 0, k+ks, j+js+p-off, i+is);
 }
 }}}

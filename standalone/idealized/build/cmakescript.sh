@@ -16,7 +16,7 @@ cmake      \
   -DPAM_DYCORE="spam++"                                             \
   -DPAM_MICRO="none"                                           \
   -DPAM_SGS="none"                                                \
-  -DPAMC_MODEL="layer"                                                \
+  -DPAMC_MODEL="layermodel"                                                \
   -DPAMC_HAMIL="swe"                                                \
   -DPAMC_THERMO="none"                                                \
   ..

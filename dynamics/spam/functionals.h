@@ -16,7 +16,7 @@ public:
      this->is_initialized = false;
 }
 
-void initialize(Parameters &params)
+void initialize()
 {
   this->is_initialized = true;
 }
@@ -192,7 +192,7 @@ public:
      this->is_initialized = false;
 }
 
-void initialize(Parameters &params)
+void initialize()
 {
   this->is_initialized = true;
 }

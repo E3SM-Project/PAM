@@ -86,15 +86,15 @@
 class Hamiltonian_Hk {
   
 public:
-  Geometry<1,1,1> *primal_geometry;
-  Geometry<1,1,1> *dual_geometry;
+  Geometry *primal_geometry;
+  Geometry *dual_geometry;
   bool is_initialized;
 
    Hamiltonian_Hk() {
      this->is_initialized = false;
 }
 
-void initialize(Parameters &params, Geometry<1,1,1> &primal_geom, Geometry<1,1,1> &dual_geom)
+void initialize(Geometry &primal_geom, Geometry &dual_geom)
 {
   this->primal_geometry = &primal_geom;
   this->dual_geometry = &dual_geom;

@@ -10,8 +10,8 @@
 
 class Hamiltonian_CE_Hs {
  public:
-   Geometry<1,1,1> *primal_geometry;
-   Geometry<1,1,1> *dual_geometry;
+   Geometry *primal_geometry;
+   Geometry *dual_geometry;
    bool is_initialized;
    ThermoPotential *thermo;
    
@@ -19,7 +19,7 @@ class Hamiltonian_CE_Hs {
       this->is_initialized = false;
  }
  
- void initialize(Parameters &params, ThermoPotential &thermodynamics, Geometry<1,1,1> &primal_geom, Geometry<1,1,1> &dual_geom)
+ void initialize(Parameters &params, ThermoPotential &thermodynamics, Geometry &primal_geom, Geometry &dual_geom)
  {
    this->thermo = &thermodynamics;
    this->primal_geometry = &primal_geom;
@@ -106,8 +106,8 @@ class Hamiltonian_CE_Hs {
 //Right now this assumes dens is rho, S, rho_v, rho_l, rho_i
 class Hamiltonian_MCE_rho_Hs {
  public:
-   Geometry<1,1,1> *primal_geometry;
-   Geometry<1,1,1> *dual_geometry;
+   Geometry *primal_geometry;
+   Geometry *dual_geometry;
    bool is_initialized;
    ThermoPotential *thermo;
    
@@ -115,7 +115,7 @@ class Hamiltonian_MCE_rho_Hs {
       this->is_initialized = false;
  }
  
- void initialize(Parameters &params, ThermoPotential &thermodynamics, Geometry<1,1,1> &primal_geom, Geometry<1,1,1> &dual_geom)
+ void initialize(Parameters &params, ThermoPotential &thermodynamics, Geometry &primal_geom, Geometry &dual_geom)
  {
    this->thermo = &thermodynamics;
    this->primal_geometry = &primal_geom;

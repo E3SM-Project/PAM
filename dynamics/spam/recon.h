@@ -7,7 +7,7 @@
 #include "weno_func_recon.h"
 
 template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord=2, uint hs=(ord-1)/2> void YAKL_INLINE compute_twisted_edge_recon(
-  real4d edgereconvar, const real4d var, int is, int js, int ks, int i, int j, int k,
+  real5d edgereconvar, const real5d var, int is, int js, int ks, int i, int j, int k, int n,
   SArray<real,3,ord,ord,ord> const &wenoRecon, SArray<real,2,ord,tord> const &to_gll, SArray<real,1,hs+2> const &wenoIdl, real wenoSigma)
   {
 
@@ -17,8 +17,8 @@ SArray<real,3,ndofs,ndims,2> edgerecon;
 for (int p=0; p<ord; p++) {
 for (int l=0; l<ndofs; l++) {
   for (int d=0; d<ndims; d++) {
-  if (d==0) {stencil(l,d,p) = var(l, k+ks, j+js, i+is+p-hs);}
-  if (d==1) {stencil(l,d,p) = var(l, k+ks, j+js+p-hs, i+is);}
+  if (d==0) {stencil(l,d,p) = var(l, k+ks, j+js, i+is+p-hs, n);}
+  if (d==1) {stencil(l,d,p) = var(l, k+ks, j+js+p-hs, i+is, n);}
 }}}
 
 if (recontype == RECONSTRUCTION_TYPE::CFV) { cfv<ndofs, ndims> (edgerecon, stencil); }
@@ -28,13 +28,13 @@ if (recontype == RECONSTRUCTION_TYPE::WENOFUNC) { weno_func<ndofs, ndims, ord> (
 for (int d=0; d<ndims; d++) {
 for (int l=0; l<ndofs; l++) {
 for (int m=0; m<2; m++) {
-edgereconvar(l + d*ndofs + ndofs*ndims*m, k+ks, j+js, i+is) = edgerecon(l,d,m);
+edgereconvar(l + d*ndofs + ndofs*ndims*m, k+ks, j+js, i+is, n) = edgerecon(l,d,m);
 }}}
 
 }
 
 template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord=2, uint hs=(ord-1)/2> void YAKL_INLINE compute_twisted_vert_edge_recon(
-  real4d vertedgereconvar, const real4d var, int is, int js, int ks, int i, int j, int k,
+  real5d vertedgereconvar, const real5d var, int is, int js, int ks, int i, int j, int k, int n,
   SArray<real,3,ord,ord,ord> const &wenoRecon, SArray<real,2,ord,tord> const &to_gll, SArray<real,1,hs+2> const &wenoIdl, real wenoSigma)
   {
     SArray<real,3,ndofs,1,ord> stencil;
@@ -42,7 +42,7 @@ template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord=2, uint
 
     for (int p=0; p<ord; p++) {
     for (int l=0; l<ndofs; l++) {
-      stencil(l,0,p) = var(l, k+ks+p-hs, j+js, i+is);
+      stencil(l,0,p) = var(l, k+ks+p-hs, j+js, i+is, n);
     }}
 
     if (recontype == RECONSTRUCTION_TYPE::CFV) { cfv<ndofs,1> (edgerecon, stencil); }
@@ -51,12 +51,12 @@ template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord=2, uint
 
     for (int l=0; l<ndofs; l++) {
     for (int m=0; m<2; m++) {
-    vertedgereconvar(l + ndofs*m, k+ks, j+js, i+is) = edgerecon(l,0,m);
+    vertedgereconvar(l + ndofs*m, k+ks, j+js, i+is, n) = edgerecon(l,0,m);
     }}
  }
 
 template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord=2, uint hs=(ord-1)/2> void YAKL_INLINE compute_straight_edge_recon(
-  real4d edgereconvar, const real4d var, int is, int js, int ks, int i, int j, int k,
+  real5d edgereconvar, const real5d var, int is, int js, int ks, int i, int j, int k, int n,
   SArray<real,3,ord,ord,ord> const &wenoRecon, SArray<real,2,ord,tord> const &to_gll, SArray<real,1,hs+2> const &wenoIdl, real wenoSigma)
   {
 
@@ -66,8 +66,8 @@ SArray<real,3,ndofs,ndims,2> edgerecon;
 for (int p=0; p<ord; p++) {
 for (int l=0; l<ndofs; l++) {
   for (int d=ndims-1; d>=0; d--) {
-  if (d==ndims-1) {stencil(l,d,p) = var(l, k+ks, j+js, i+is+p-hs);}
-  if (d==ndims-2) {stencil(l,d,p) = var(l, k+ks, j+js+p-hs, i+is);}
+  if (d==ndims-1) {stencil(l,d,p) = var(l, k+ks, j+js, i+is+p-hs, n);}
+  if (d==ndims-2) {stencil(l,d,p) = var(l, k+ks, j+js+p-hs, i+is, n);}
   //if (d==ndims-3) {stencil(l,d,p) = var(l, k+ks+p-hs, j+js, i+is);}
 }}}
 
@@ -78,14 +78,14 @@ if (recontype == RECONSTRUCTION_TYPE::WENOFUNC) { weno_func<ndofs, ndims, ord> (
 for (int d=ndims-1; d>=0; d--) {
 for (int l=0; l<ndofs; l++) {
 for (int m=0; m<2; m++) {
-edgereconvar(l + d*ndofs + ndofs*ndims*m, k+ks, j+js, i+is) = edgerecon(l,d,m);
+edgereconvar(l + d*ndofs + ndofs*ndims*m, k+ks, j+js, i+is, n) = edgerecon(l,d,m);
 }}}
 
 }
 
 
 template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord=2, uint hs=(ord-1)/2> void YAKL_INLINE compute_straight_xz_edge_recon(
-  real4d edgereconvar, const real4d var, int is, int js, int ks, int i, int j, int k,
+  real5d edgereconvar, const real5d var, int is, int js, int ks, int i, int j, int k, int n,
   SArray<real,3,ord,ord,ord> const &wenoRecon, SArray<real,2,ord,tord> const &to_gll, SArray<real,1,hs+2> const &wenoIdl, real wenoSigma)
 {
   SArray<real,3,ndofs,1,ord> stencil;
@@ -94,7 +94,7 @@ template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord=2, uint
   for (int p=0; p<ord; p++) {
   for (int l=0; l<ndofs; l++) {
     //The +1 in k here is required since twisted 0-forms have extra dofs at the top and bottom, and we are looping over straight cells!
-    stencil(l,0,p) = var(l, k+ks+1, j+js, i+is+p-hs);
+    stencil(l,0,p) = var(l, k+ks+1, j+js, i+is+p-hs, n);
   }}
 
   if (recontype == RECONSTRUCTION_TYPE::CFV) { cfv<ndofs, 1> (edgerecon, stencil); }
@@ -103,12 +103,12 @@ template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord=2, uint
 
   for (int l=0; l<ndofs; l++) {
   for (int m=0; m<2; m++) {
-  edgereconvar(l + ndofs*m, k+ks, j+js, i+is) = edgerecon(l,0,m);
+  edgereconvar(l + ndofs*m, k+ks, j+js, i+is, n) = edgerecon(l,0,m);
   }}
 }
 
 template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord=2, uint hs=(ord-1)/2> void YAKL_INLINE compute_straight_xz_vert_edge_recon(
-  real4d edgereconvar, const real4d var, int is, int js, int ks, int i, int j, int k,
+  real5d edgereconvar, const real5d var, int is, int js, int ks, int i, int j, int k, int n,
   SArray<real,3,ord,ord,ord> const &wenoRecon, SArray<real,2,ord,tord> const &to_gll, SArray<real,1,hs+2> const &wenoIdl, real wenoSigma)
 {
   SArray<real,3,ndofs,1,ord> stencil;
@@ -117,7 +117,7 @@ template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord=2, uint
   for (int p=0; p<ord; p++) {
   for (int l=0; l<ndofs; l++) {
     //The +1 in k here is required since twisted 0-forms have extra dofs at the top and bottom, and we are looping over straight cells!
-    stencil(l,0,p) = var(l, k+ks+p-hs+1, j+js, i+is);
+    stencil(l,0,p) = var(l, k+ks+p-hs+1, j+js, i+is, n);
     //NOT SURE THIS IS TRUE? DIDNT SEEM TO FIX ANYTHING :(
     //stencil(l,0,p) = var(l, k+ks+p-hs, j+js, i+is);
   }}
@@ -128,7 +128,7 @@ template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord=2, uint
 
   for (int l=0; l<ndofs; l++) {
   for (int m=0; m<2; m++) {
-  edgereconvar(l + ndofs*m, k+ks, j+js, i+is) = edgerecon(l,0,m);
+  edgereconvar(l + ndofs*m, k+ks, j+js, i+is, n) = edgerecon(l,0,m);
   }}
 }
 
@@ -182,7 +182,7 @@ template<uint ndofs, uint nd> void YAKL_INLINE upwind_recon(SArray<real,2,ndofs,
 
 
 template <uint ndofs, RECONSTRUCTION_TYPE recontype> void YAKL_INLINE compute_twisted_recon(
-  real4d reconvar, const real4d edgereconvar, const real4d U, int is, int js, int ks, int i, int j, int k)
+  real5d reconvar, const real5d edgereconvar, const real5d U, int is, int js, int ks, int i, int j, int k, int n)
   {
 
 SArray<real,2,ndofs,ndims> recon;
@@ -190,17 +190,17 @@ SArray<real,1,ndims> uvar;
 SArray<real,3,ndofs,ndims,2> edgerecon;
 
 for (int d=0; d<ndims; d++) {
-  uvar(d) = U(d, k+ks, j+js, i+is);
+  uvar(d) = U(d, k+ks, j+js, i+is, n);
 for (int l=0; l<ndofs; l++) {
   if (d==0)
   {
-  edgerecon(l,d,0) = edgereconvar(l + d*ndofs + ndofs*ndims*1, k+ks, j+js, i+is-1);
-  edgerecon(l,d,1) = edgereconvar(l + d*ndofs + ndofs*ndims*0, k+ks, j+js, i+is);
+  edgerecon(l,d,0) = edgereconvar(l + d*ndofs + ndofs*ndims*1, k+ks, j+js, i+is-1, n);
+  edgerecon(l,d,1) = edgereconvar(l + d*ndofs + ndofs*ndims*0, k+ks, j+js, i+is, n);
 }
 if (d==1)
 {
-  edgerecon(l,d,0) = edgereconvar(l + d*ndofs + ndofs*ndims*1, k+ks, j+js-1, i+is);
-  edgerecon(l,d,1) = edgereconvar(l + d*ndofs + ndofs*ndims*0, k+ks, j+js, i+is);
+  edgerecon(l,d,0) = edgereconvar(l + d*ndofs + ndofs*ndims*1, k+ks, j+js-1, i+is, n);
+  edgerecon(l,d,1) = edgereconvar(l + d*ndofs + ndofs*ndims*0, k+ks, j+js, i+is, n);
 }
 }}
 
@@ -210,23 +210,23 @@ if (recontype == RECONSTRUCTION_TYPE::WENOFUNC) { upwind_recon<ndofs, ndims>(rec
 
 for (int d=0; d<ndims; d++) {
 for (int l=0; l<ndofs; l++) {
-reconvar(l+d*ndofs, k+ks, j+js, i+is) = recon(l,d);
+reconvar(l+d*ndofs, k+ks, j+js, i+is, n) = recon(l,d);
 }}
 
 }
 
 template <uint ndofs, RECONSTRUCTION_TYPE recontype> void YAKL_INLINE compute_twisted_vert_recon(
-  real4d vertreconvar, const real4d vertedgereconvar, const real4d UW, int is, int js, int ks, int i, int j, int k)
+  real5d vertreconvar, const real5d vertedgereconvar, const real5d UW, int is, int js, int ks, int i, int j, int k, int n)
   {
     
     SArray<real,2,ndofs,1> recon;
     SArray<real,1,1> uvar;
     SArray<real,3,ndofs,1,2> edgerecon;
 
-      uvar(0) = UW(0, k+ks, j+js, i+is);
+      uvar(0) = UW(0, k+ks, j+js, i+is, n);
     for (int l=0; l<ndofs; l++) {
-       edgerecon(l,0,0) = vertedgereconvar(l + ndofs*1, k+ks-1, j+js, i+is);
-       edgerecon(l,0,1) = vertedgereconvar(l + ndofs*0, k+ks, j+js, i+is);
+       edgerecon(l,0,0) = vertedgereconvar(l + ndofs*1, k+ks-1, j+js, i+is, n);
+       edgerecon(l,0,1) = vertedgereconvar(l + ndofs*0, k+ks, j+js, i+is, n);
     }
 
       if (recontype == RECONSTRUCTION_TYPE::CFV) { centered_recon<ndofs, 1>(recon, edgerecon); }
@@ -234,32 +234,32 @@ template <uint ndofs, RECONSTRUCTION_TYPE recontype> void YAKL_INLINE compute_tw
       if (recontype == RECONSTRUCTION_TYPE::WENOFUNC) { upwind_recon<ndofs, 1>(recon, edgerecon, uvar); }
       
       for (int l=0; l<ndofs; l++) {
-      vertreconvar(l, k+ks, j+js, i+is) = recon(l,0);
+      vertreconvar(l, k+ks, j+js, i+is, n) = recon(l,0);
       }
   }
   
   
 template <uint ndofs, RECONSTRUCTION_TYPE recontype> void YAKL_INLINE compute_straight_recon(
-  real4d reconvar, const real4d edgereconvar, const real4d UT, int is, int js, int ks, int i, int j, int k)
+  real5d reconvar, const real5d edgereconvar, const real5d UT, int is, int js, int ks, int i, int j, int k, int n)
   {
     SArray<real,2,ndofs,ndims> recon;
     SArray<real,1,ndims> uvar;
     SArray<real,3,ndofs,ndims,2> edgerecon;
 
     for (int d=ndims-1; d>=0; d--) {
-      uvar(d) = UT(d, k+ks, j+js, i+is);
+      uvar(d) = UT(d, k+ks, j+js, i+is, n);
       if (ndims ==2 && d==ndims-2) {uvar(d) = -uvar(d);} //corrects for "twist" in 2D
 
     for (int l=0; l<ndofs; l++) {
       if (d==ndims-1)
       {
-      edgerecon(l,d,0) = edgereconvar(l + d*ndofs + ndofs*ndims*1, k+ks, j+js, i+is);
-      edgerecon(l,d,1) = edgereconvar(l + d*ndofs + ndofs*ndims*0, k+ks, j+js, i+is+1);
+      edgerecon(l,d,0) = edgereconvar(l + d*ndofs + ndofs*ndims*1, k+ks, j+js, i+is, n);
+      edgerecon(l,d,1) = edgereconvar(l + d*ndofs + ndofs*ndims*0, k+ks, j+js, i+is+1, n);
     }
     if (d==ndims-2)
     {
-    edgerecon(l,d,0) = edgereconvar(l + d*ndofs + ndofs*ndims*1, k+ks, j+js, i+is);
-    edgerecon(l,d,1) = edgereconvar(l + d*ndofs + ndofs*ndims*0, k+ks, j+js+1, i+is);
+    edgerecon(l,d,0) = edgereconvar(l + d*ndofs + ndofs*ndims*1, k+ks, j+js, i+is, n);
+    edgerecon(l,d,1) = edgereconvar(l + d*ndofs + ndofs*ndims*0, k+ks, j+js+1, i+is, n);
   }
   // if (d==ndims-3)
   // {
@@ -274,21 +274,21 @@ template <uint ndofs, RECONSTRUCTION_TYPE recontype> void YAKL_INLINE compute_st
 
     for (int d=ndims-1; d>=0; d--) {
     for (int l=0; l<ndofs; l++) {
-    reconvar(l+d*ndofs, k+ks, j+js, i+is) = recon(l,d);
+    reconvar(l+d*ndofs, k+ks, j+js, i+is, n) = recon(l,d);
   }}
   }
 
 
   template <uint ndofs, RECONSTRUCTION_TYPE recontype> void YAKL_INLINE compute_straight_xz_recon(
-    real4d reconvar, const real4d edgereconvar, const real4d WT, int is, int js, int ks, int i, int j, int k)
+    real5d reconvar, const real5d edgereconvar, const real5d WT, int is, int js, int ks, int i, int j, int k, int n)
     {
       SArray<real,2,ndofs,1> recon;
       SArray<real,1,1> uvar;
       SArray<real,3,ndofs,1,2> edgerecon;
-        uvar(0) = WT(0, k+ks, j+js, i+is);
+        uvar(0) = WT(0, k+ks, j+js, i+is, n);
       for (int l=0; l<ndofs; l++) {
-        edgerecon(l,0,0) = edgereconvar(l + ndofs*1, k+ks, j+js, i+is);
-        edgerecon(l,0,1) = edgereconvar(l + ndofs*0, k+ks, j+js, i+is+1);
+        edgerecon(l,0,0) = edgereconvar(l + ndofs*1, k+ks, j+js, i+is, n);
+        edgerecon(l,0,1) = edgereconvar(l + ndofs*0, k+ks, j+js, i+is+1, n);
       }
 
       if (recontype == RECONSTRUCTION_TYPE::CFV) { centered_recon<ndofs, 1>(recon, edgerecon); }
@@ -296,21 +296,21 @@ template <uint ndofs, RECONSTRUCTION_TYPE recontype> void YAKL_INLINE compute_st
       if (recontype == RECONSTRUCTION_TYPE::WENOFUNC) { upwind_recon<ndofs, 1>(recon, edgerecon, uvar); }
 
       for (int l=0; l<ndofs; l++) {
-      reconvar(l, k+ks, j+js, i+is) = recon(l,0);
+      reconvar(l, k+ks, j+js, i+is, n) = recon(l,0);
     }
     }
     
   template <uint ndofs, RECONSTRUCTION_TYPE recontype> void YAKL_INLINE compute_straight_xz_vert_recon(
-    real4d reconvar, const real4d edgereconvar, const real4d VT, int is, int js, int ks, int i, int j, int k)
+    real5d reconvar, const real5d edgereconvar, const real5d VT, int is, int js, int ks, int i, int j, int k, int n)
   {
     SArray<real,2,ndofs,1> recon;
     SArray<real,1,1> uvar;
     SArray<real,3,ndofs,1,2> edgerecon;
     //Needs a "twist"
-      uvar(0) = -VT(0, k+ks, j+js, i+is);
+      uvar(0) = -VT(0, k+ks, j+js, i+is, n);
     for (int l=0; l<ndofs; l++) {
-      edgerecon(l,0,0) = edgereconvar(l + ndofs*1, k+ks-1, j+js, i+is);
-      edgerecon(l,0,1) = edgereconvar(l + ndofs*0, k+ks, j+js, i+is);
+      edgerecon(l,0,0) = edgereconvar(l + ndofs*1, k+ks-1, j+js, i+is, n);
+      edgerecon(l,0,1) = edgereconvar(l + ndofs*0, k+ks, j+js, i+is, n);
     }
 
     if (recontype == RECONSTRUCTION_TYPE::CFV) { centered_recon<ndofs, 1>(recon, edgerecon); }
@@ -318,6 +318,6 @@ template <uint ndofs, RECONSTRUCTION_TYPE recontype> void YAKL_INLINE compute_st
     if (recontype == RECONSTRUCTION_TYPE::WENOFUNC) { upwind_recon<ndofs, 1>(recon, edgerecon, uvar); }
 
     for (int l=0; l<ndofs; l++) {
-    reconvar(l, k+ks, j+js, i+is) = recon(l,0);
+    reconvar(l, k+ks, j+js, i+is, n) = recon(l,0);
   }
   }

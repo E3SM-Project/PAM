@@ -5,10 +5,6 @@ uint constexpr ndims = 2;
 
 uint constexpr ntracers_nofct = 3;
 uint constexpr ntracers_fct = 3;
-//uint constexpr MAXTRACERS = 6;
-
-//enum class DATA_INIT { DOUBLEVORTEX, RB, MRB, LRB, MLRB, DENSITYWAVE };
-//enum class TRACER_INIT { GAUSSIAN, SQUARE, DOUBLESQUARE };
 
 // Set dens and ntracers/ntracersfct sizes
 uint constexpr ntracers = ntracers_nofct + ntracers_fct;

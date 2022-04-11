@@ -32,9 +32,6 @@ public:
   //DATA_INIT data_init_cond;
   //TRACER_INIT tracer_init_cond[ntracers];
   bool acoustic_balance;
-
-//THIS SHOULD MOVE TO HAMILTONIANS...
-  real g;
   
 };
 
@@ -90,7 +87,7 @@ void readParamsFile(std::string inFile, Parameters &params, Parallel &par, int n
   params.yc = params.ylen/2.;
 
 // NEEDS NEW LOGIC FOR TIME BASED CONTROL
-  params.Nsteps = config["simSteps"].as<int>();
+  params.Nsteps = config["simSteps"].as<int>() * params.crm_per_phys;
   params.Nout = config["outSteps"].as<int>();
   params.Nstat = config["statSteps"].as<int>();
 
@@ -99,8 +96,8 @@ void readParamsFile(std::string inFile, Parameters &params, Parallel &par, int n
   params.outputName = config["out_prefix"].as<std::string>("output") + "_dycore" + ".nc";
   params.acoustic_balance = config["balance_initial_density"].as<bool>(false);
 
-
-  // Read the data initialization option
+//THIS IS HAMILTONIAN EQN SET SPECIFIC...
+  // Read the data initialization options
   params.initdataStr = config["initData"].as<std::string>();
   for (int i=0;i<ntracers_nofct;i++)
   {params.tracerdataStr[i] = config["initTracer" + std::to_string(i+1)].as<std::string>();}

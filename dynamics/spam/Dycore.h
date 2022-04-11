@@ -11,12 +11,14 @@
 #include "geometry.h"
 #include "params.h"
 #include "parallel.h"
-#ifdef _LAYER
+#if defined _HAMILTONIAN && defined _LAYER
 #include "layermodel.h"
-#elif _EXTRUDED
+#elif defined _HAMILTONIAN && defined _EXTRUDED
 #include "extrudedmodel.h"
-#elif _ADVECTION
-#include "advectionmodel.h"
+#elif defined _ADVECTION && defined _LAYER 
+#include "layeradvection.h"
+#elif defined _ADVECTION && defined _EXTRUDED 
+#include "extrudedadvection.h"
 #endif
 #include "SSPRK.h"
 #include "RKSimple.h"
@@ -166,8 +168,6 @@ class Dycore {
         
     // Time stepping loop
     std::cout << "start timestepping loop\n" << std::flush;
-    //THIS LOGIC NEEDS UPDATING FOR TIME BASED LOOPING
-    // stats.compute(prognostic_vars, constant_vars, 0);
     for (uint nstep = 0; nstep<params.crm_per_phys; nstep++) {
     // 
        yakl::fence();

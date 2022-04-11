@@ -7,20 +7,26 @@
 
 class Hamiltonian_TSWE_Hs {
 public:
- Geometry<1,1,1> *primal_geometry;
- Geometry<1,1,1> *dual_geometry;
+ Geometry *primal_geometry;
+ Geometry *dual_geometry;
  bool is_initialized;
  ThermoPotential *thermo;
+ real g;
 
   Hamiltonian_TSWE_Hs() {
     this->is_initialized = false;
 }
 
-void initialize(Parameters &params, ThermoPotential &thermodynamics, Geometry<1,1,1> &primal_geom, Geometry<1,1,1> &dual_geom) 
+void initialize(ThermoPotential &thermodynamics, Geometry &primal_geom, Geometry &dual_geom) 
 {
  this->primal_geometry = &primal_geom;
  this->dual_geometry = &dual_geom;
  this->is_initialized = true;
+}
+
+void set_parameters(real gin)
+{
+  this->g = gin;
 }
 
 real YAKL_INLINE compute_PE(const real5d dens, const real5d hs, int is, int js, int ks, int i, int j, int k, int n)
@@ -87,8 +93,8 @@ void YAKL_INLINE compute_dHsdx(real5d B, const real5d dens0, const real5d hs, in
 
 class Hamiltonian_SWE_Hs {
 public:
- Geometry<1,1,1> *primal_geometry;
- Geometry<1,1,1> *dual_geometry;
+ Geometry *primal_geometry;
+ Geometry *dual_geometry;
  bool is_initialized;
  real g;
  ThermoPotential *thermo;
@@ -97,12 +103,16 @@ public:
     this->is_initialized = false;
 }
 
-void initialize(Parameters &params, ThermoPotential &thermodynamics, Geometry<1,1,1> &primal_geom, Geometry<1,1,1> &dual_geom) 
+void initialize(ThermoPotential &thermodynamics, Geometry &primal_geom, Geometry &dual_geom) 
 {
  this->primal_geometry = &primal_geom;
  this->dual_geometry = &dual_geom;
  this->is_initialized = true;
- g = params.g;
+}
+
+void set_parameters(real gin)
+{
+  this->g = gin;
 }
 
 real YAKL_INLINE compute_PE(const real5d dens, const real5d hs, int is, int js, int ks, int i, int j, int k, int n)
@@ -145,7 +155,7 @@ void YAKL_INLINE compute_dHsdx(real5d B, const real5d dens0, const real5d hs, in
 
   // Compute dHdh = g h + g hs + sum_nt 1/2 t + sum_nt 1/2 tfct
   B(0, k+ks, j+js, i+is, n) = g * hs(0) + g * dens0(0, k+ks, j+js, i+is, n);
-  for (int l=1; l<ndensity; l++) { B(0, k+ks, j+js, i+is) += dens0(l, k+ks, j+js, i+is, n)/2.;}
+  for (int l=1; l<ndensity; l++) { B(0, k+ks, j+js, i+is, n) += dens0(l, k+ks, j+js, i+is, n)/2.;}
 
   //Compute dHdt = 1/2 h
   for (int l=1; l<ndensity; l++) { B(l, k+ks, j+js, i+is, n) = dens0(0, k+ks, j+js, i+is, n)/2.;}

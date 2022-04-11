@@ -81,6 +81,16 @@ template <class T> YAKL_INLINE T mymax( T const v1 , T const v2 ) {
 }
 
 
+//Utility function for settings dofs_arr
+template <uint nvars> void set_dofs_arr(SArray<int,2, nvars, 3> &dofs_arr, int var, int basedof, int extdof, int ndofs)
+{
+  dofs_arr(var, 0) = basedof;
+  dofs_arr(var, 1) = extdof;
+  dofs_arr(var, 2) = ndofs;
+}
+
+
+
 // Add mode for various operators
 enum class ADD_MODE { REPLACE, ADD };
 
@@ -88,20 +98,15 @@ enum class ADD_MODE { REPLACE, ADD };
 enum class BND_TYPE { PERIODIC, NONE };
 
 
-#ifdef _LAYER
+#if defined _HAMILTONIAN && defined _LAYER
 #include "layermodel-header.h"
-#elif _EXTRUDED
+#elif defined _HAMILTONIAN && defined _EXTRUDED
 #include "extrudedmodel-header.h"
-#elif _ADVECTION
-#include "advectionmodel-header.h"
+#elif defined _ADVECTION && defined _LAYER 
+#include "layeradvection-header.h"
+#elif defined _ADVECTION && defined _EXTRUDED 
+#include "extrudedadvection-header.h"
 #endif
-
-template <uint nvars> void set_dofs_arr(SArray<int,2, nvars, 3> &dofs_arr, int var, int basedof, int extdof, int ndofs)
-{
-  dofs_arr(var, 0) = basedof;
-  dofs_arr(var, 1) = extdof;
-  dofs_arr(var, 2) = ndofs;
-}
 
 
 
