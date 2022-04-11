@@ -16,6 +16,7 @@ public:
   int Nout = -1;
   real dtcrm = -1.;
   real dtphys = -1.;
+  int crm_per_phys = -1;
   int Nstat = -1;
   std::string outputName;
   std::string initdataStr;
@@ -78,9 +79,10 @@ void readParamsFile(std::string inFile, Parameters &params, Parallel &par, int n
  }
 
  //WRONG WAY TO HANDLE dtphys=-1....
- params.dtcrm = config["dtcrm"].as<real>();
  params.dtphys = config["dtphys"].as<real>();
-
+ params.crm_per_phys = config["crm_per_phys"].as<int>();
+ params.dtcrm =  params.dtphys / params.crm_per_phys;
+ 
   //THIS STUFF SHOULD REALLY BE SET BY IC...
   params.xlen = config["xlen"].as<real>();
   params.ylen = config["ylen"].as<real>();

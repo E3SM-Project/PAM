@@ -29,7 +29,7 @@ void initialize(std::string statName, int statndof, int statsize, int statnens, 
 };
 
 
-template <uint nprog, uint nconst, uint nstats> class Stats
+class Stats
 {
 public:
   std::array<Stat,nstats> stats_arr;
@@ -39,12 +39,12 @@ public:
   int masterproc;
   const Topology *primal_topology;
   const Topology *dual_topology;
-  Geometry<1,1,1> *primal_geometry;
-  Geometry<1,1,1> *dual_geometry;
+  Geometry *primal_geometry;
+  Geometry *dual_geometry;
   int nens;
   int statsize;
 
-  void initialize(Parameters &params, Parallel &par, const Topology &primal_topo, const Topology &dual_topo, Geometry<1,1,1> &primal_geom, Geometry<1,1,1> &dual_geom)
+  void initialize(Parameters &params, Parallel &par, const Topology &primal_topo, const Topology &dual_topo, Geometry &primal_geom, Geometry &dual_geom)
   {
     this->primal_topology = &primal_topo;
     this->dual_topology = &dual_topo;
@@ -55,6 +55,6 @@ public:
     this->statsize = params.Nsteps/params.Nstat + 1;
   }
   
-  virtual void compute( VariableSet<nprog> &progvars,  VariableSet<nconst> &constvars, int tind) {};
+  virtual void compute( VariableSet<nprognostic> &progvars,  VariableSet<nconstant> &constvars, int tind) {};
 
 };

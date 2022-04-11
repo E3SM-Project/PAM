@@ -44,7 +44,9 @@ enum class QF_MODE { EC, NOEC };
 QF_MODE constexpr qf_choice = QF_MODE::EC;
 
 // initial condition quadrature pts
-uint constexpr ic_quad_pts = 5;
+uint constexpr ic_quad_pts_x = 5;
+uint constexpr ic_quad_pts_y = 5;
+uint constexpr ic_quad_pts_z = 5;
 
 // FIX THIS
 // Halo sizes
@@ -52,7 +54,7 @@ uint constexpr maxhalosize = 15; //mymax(reconstruction_order+1,differential_ord
 uint constexpr mirroringhalo = 9; //mymax(reconstruction_order+1,differential_order)/2; // IS THIS ALWAYS CORRECT?
 
 //0 = RKSimple, 1=SSPRK
-#define _TIME_TYPE 0
+#define _TIME_TYPE 1
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 

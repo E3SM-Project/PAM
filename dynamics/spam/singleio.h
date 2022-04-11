@@ -5,7 +5,7 @@
 #include "stats.h"
 #include "YAKL_netcdf.h"
 
-template<uint nprog, uint nconst, uint ndiag, uint nstats> class FileIO {
+class FileIO {
 
 public:
   
@@ -14,33 +14,33 @@ public:
   yakl::SimpleNetCDF nc;
   int ulIndex = 0; // Unlimited dimension index to place this data at
   
-  std::array<real5d, nprog> prog_temp_arr;
-  std::array<real5d, nconst> const_temp_arr;
-  std::array<real5d, ndiag> diag_temp_arr;
+  std::array<real5d, nprognostic> prog_temp_arr;
+  std::array<real5d, nconstant> const_temp_arr;
+  std::array<real5d, ndiagnostic> diag_temp_arr;
   std::string outputName;
 
-  const VariableSet<nprog> *prog_vars;
-  const VariableSet<nconst> *const_vars;
-  const VariableSet<ndiag> *diag_vars;
-  Stats<nprog, nconst, nstats> *statistics;
+  const VariableSet<nprognostic> *prog_vars;
+  const VariableSet<nconstant> *const_vars;
+  const VariableSet<ndiagnostic> *diag_vars;
+  Stats *statistics;
   
   FileIO();
-  FileIO( const FileIO<nprog,nconst,ndiag,nstats> &fio) = delete;
-  FileIO& operator=( const FileIO<nprog,nconst,ndiag,nstats> &fio) = delete;
-  void initialize(std::string outputName, Topology &ptopo, Topology &dtopo, Parallel &par, const VariableSet<nprog> &progvars, const VariableSet<nconst> &const_vars, const VariableSet<ndiag> &diagvars, Stats<nprog, nconst, nstats> &stats);
+  FileIO( const FileIO &fio) = delete;
+  FileIO& operator=( const FileIO &fio) = delete;
+  void initialize(std::string outputName, Topology &ptopo, Topology &dtopo, Parallel &par, const VariableSet<nprognostic> &progvars, const VariableSet<nconstant> &const_vars, const VariableSet<ndiagnostic> &diagvars, Stats &stats);
   void output(real time);
   void outputInit(real time);
-  void outputStats(const Stats<nprog, nconst, nstats> &stats);
+  void outputStats(const Stats &stats);
 };
 
 
-template<uint nprog, uint nconst, uint ndiag, uint nstats> FileIO<nprog,nconst,ndiag,nstats>::FileIO()
+FileIO::FileIO()
 {
   this->is_initialized = false;
   std::cout << "CREATED FILEIO\n";
 }
 
-template<uint nprog, uint nconst, uint ndiag, uint nstats> void FileIO<nprog,nconst,ndiag,nstats>::initialize(std::string outName, Topology &ptopo, Topology &dtopo, Parallel &par, const VariableSet<nprog> &progvars, const VariableSet<nconst> &constvars, const VariableSet<ndiag> &diagvars, Stats<nprog, nconst, nstats> &stats)
+ void FileIO::initialize(std::string outName, Topology &ptopo, Topology &dtopo, Parallel &par, const VariableSet<nprognostic> &progvars, const VariableSet<nconstant> &constvars, const VariableSet<ndiagnostic> &diagvars, Stats &stats)
 {
      this->outputName = outName;
      this->prog_vars = &progvars;
@@ -95,7 +95,7 @@ template<uint nprog, uint nconst, uint ndiag, uint nstats> void FileIO<nprog,nco
 
    }
    
-   template<uint nprog, uint nconst, uint ndiag, uint nstats> void FileIO<nprog,nconst,ndiag,nstats>::output(real time)
+   void FileIO::output(real time)
    {        
      nc.open(this->outputName,yakl::NETCDF_MODE_WRITE);
      ulIndex = nc.getDimSize("t");
@@ -155,7 +155,7 @@ template<uint nprog, uint nconst, uint ndiag, uint nstats> void FileIO<nprog,nco
 
    }
    
-   template<uint nprog, uint nconst, uint ndiag, uint nstats> void FileIO<nprog,nconst,ndiag,nstats>::outputInit(real time)
+  void FileIO::outputInit(real time)
    {
      nc.open(this->outputName,yakl::NETCDF_MODE_WRITE);
 
@@ -189,7 +189,7 @@ template<uint nprog, uint nconst, uint ndiag, uint nstats> void FileIO<nprog,nco
      
    }
    
-   template<uint nprog, uint nconst, uint ndiag, uint nstats>  void FileIO<nprog,nconst,ndiag,nstats>::outputStats(const Stats<nprog, nconst, nstats> &stats)
+   void FileIO::outputStats(const Stats &stats)
    {
      nc.open(this->outputName,yakl::NETCDF_MODE_WRITE);
      

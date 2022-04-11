@@ -10,38 +10,38 @@
 
 #define NSTAGESMAX 6
 
-template<uint nprog, uint nconst, uint naux> class RKSimpleTimeIntegrator {
+class RKSimpleTimeIntegrator {
 
 public:
 
   SArray<real,1, NSTAGESMAX> stage_coeffs;
-  VariableSet<nprog> xtend;
-  VariableSet<nprog> xtemp;
-  VariableSet<nprog> *x;
-  Tendencies<nprog, nconst, naux> *tendencies;
-  VariableSet<nconst> *const_vars;
-  VariableSet<naux> *auxiliary_vars;
-  ExchangeSet<nprog> *x_exchange;
+  VariableSet<nprognostic> xtend;
+  VariableSet<nprognostic> xtemp;
+  VariableSet<nprognostic> *x;
+  Tendencies *tendencies;
+  VariableSet<nconstant> *const_vars;
+  VariableSet<nauxiliary> *auxiliary_vars;
+  ExchangeSet<nprognostic> *x_exchange;
   uint nstages;
   
   bool is_initialized;
   RKSimpleTimeIntegrator();
-  RKSimpleTimeIntegrator( const RKSimpleTimeIntegrator<nprog,nconst,naux> &rksimple) = delete;
-  RKSimpleTimeIntegrator& operator=( const RKSimpleTimeIntegrator<nprog,nconst,naux> &rksimple) = delete;
-  void initialize(Parameters &params, Tendencies<nprog, nconst, naux> &tend, VariableSet<nprog> &xvars, VariableSet<nconst> &consts, VariableSet<naux> &auxiliarys, ExchangeSet<nprog> &prog_exch);
+  RKSimpleTimeIntegrator( const RKSimpleTimeIntegrator &rksimple) = delete;
+  RKSimpleTimeIntegrator& operator=( const RKSimpleTimeIntegrator &rksimple) = delete;
+  void initialize(Parameters &params, Tendencies &tend, VariableSet<nprognostic> &xvars, VariableSet<nconstant> &consts, VariableSet<nauxiliary> &auxiliarys, ExchangeSet<nprognostic> &prog_exch);
   void stepForward(real dt);
   void set_stage_coefficients(Parameters &params);
 
 };
 
 
-    template<uint nprog, uint nconst, uint naux> RKSimpleTimeIntegrator<nprog,nconst,naux>::RKSimpleTimeIntegrator()
+    RKSimpleTimeIntegrator::RKSimpleTimeIntegrator()
     {
       this->is_initialized = false;
       std::cout << "CREATED RKSIMPLE\n";
     }
 
-    template<uint nprog, uint nconst, uint naux> void RKSimpleTimeIntegrator<nprog,nconst,naux>::set_stage_coefficients(Parameters &params)
+    void RKSimpleTimeIntegrator::set_stage_coefficients(Parameters &params)
       {
         if (params.tstype == "kgrk4")
         {
@@ -53,7 +53,7 @@ public:
         }
       }
 
-  template<uint nprog, uint nconst, uint naux> void RKSimpleTimeIntegrator<nprog,nconst,naux>::initialize(Parameters &params, Tendencies<nprog, nconst, naux> &tend, VariableSet<nprog> &xvars, VariableSet<nconst> &consts, VariableSet<naux> &auxiliarys, ExchangeSet<nprog> &prog_exch)
+  void RKSimpleTimeIntegrator::initialize(Parameters &params, Tendencies &tend, VariableSet<nprognostic> &xvars, VariableSet<nconstant> &consts, VariableSet<nauxiliary> &auxiliarys, ExchangeSet<nprognostic> &prog_exch)
   {
     this->xtemp.initialize(xvars, "xtemp");
     this->xtend.initialize(xvars, "xtend");
@@ -66,7 +66,7 @@ public:
     this->is_initialized = true;
   }
 
-  template<uint nprog, uint nconst, uint naux> void RKSimpleTimeIntegrator<nprog,nconst,naux>::stepForward(real dt)
+  void RKSimpleTimeIntegrator::stepForward(real dt)
   {
 
     this->tendencies->compute_rhs(dt, *this->const_vars, *this->x, *this->auxiliary_vars, this->xtend);
@@ -74,7 +74,7 @@ public:
 
     for (int i=1; i<nstages; i++)
     {
-      std::cout << "stage " << i << "\n";
+      //std::cout << "stage " << i << "\n";
       this->x_exchange->exchange_variable_set(this->xtemp);
       this->tendencies->compute_rhs(dt, *this->const_vars, this->xtemp, *this->auxiliary_vars, this->xtend);
       this->xtemp.waxpy(-1.*dt * this->stage_coeffs(i), this->xtend, *this->x);

@@ -5,7 +5,7 @@
 #include "model.h"
 
 // #include "ext_deriv.h"
-// #include "hodge_star.h"
+#include "hodge_star.h"
 // #include "fct.h"
 // #include "recon.h"
 // #include "wedge.h"
@@ -55,39 +55,40 @@
 
 // *******   Diagnostics   ***********//
 
-template <uint nprog, uint nconst, uint ndiag>class ModelDiagnostics: public Diagnostics<nprog,nconst,ndiag> {
+class ModelDiagnostics: public Diagnostics {
 public:
 
- void compute_diag(const VariableSet<nconst> &const_vars, VariableSet<nprog> &x, VariableSet<ndiag> &diagnostic_vars)
- {}
-// 
-//   int dis = dual_topology->is;
-//   int djs = dual_topology->js;
-//   int dks = dual_topology->ks;
-// 
-//   int pis = primal_topology->is;
-//   int pjs = primal_topology->js;
-//   int pks = primal_topology->ks;
-// 
-//     parallel_for( Bounds<4>( primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
-//   compute_I<ndensity, diff_ord>(diagnostic_vars.fields_arr[DENSLDIAGVAR].data, x.fields_arr[DENSVAR].data, *this->primal_geometry, *this->dual_geometry, pis, pjs, pks, i, j, k, n);
-//   });
-// 
-//     parallel_for( Bounds<4>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens, dual_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
-//   PVPE.compute_q0(diagnostic_vars.fields_arr[QDIAGVAR].data, x.fields_arr[VVAR].data, x.fields_arr[DENSVAR].data, const_vars.fields_arr[CORIOLISVAR].data, dis, djs, dks, i, j, k, n);
-//   });
+ void compute_diag(const VariableSet<nconstant> &const_vars, VariableSet<nprognostic> &x, VariableSet<ndiagnostic> &diagnostic_vars)
+ {
+
+  int dis = this->dual_topology->is;
+  int djs = this->dual_topology->js;
+  int dks = this->dual_topology->ks;
+
+  int pis = this->primal_topology->is;
+  int pjs = this->primal_topology->js;
+  int pks = this->primal_topology->ks;
+
+    parallel_for( Bounds<4>( this->primal_topology->nl, this->primal_topology->n_cells_y, this->primal_topology->n_cells_x, this->primal_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
+  compute_I<ndensity, diff_ord>(diagnostic_vars.fields_arr[DENSLDIAGVAR].data, x.fields_arr[DENSVAR].data, *this->primal_geometry, *this->dual_geometry, pis, pjs, pks, i, j, k, n);
+  });
+
+  //   parallel_for( Bounds<4>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens, dual_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
+  // PVPE.compute_q0(diagnostic_vars.fields_arr[QDIAGVAR].data, x.fields_arr[VVAR].data, x.fields_arr[DENSVAR].data, const_vars.fields_arr[CORIOLISVAR].data, dis, djs, dks, i, j, k, n);
+  // });
+}
 
 };
 
 // *******   Tendencies   ***********//
 
-template <uint nprog, uint nconst, uint naux> class ModelTendencies: public Tendencies<nprog,nconst,naux> {
+class ModelTendencies: public Tendencies {
 public:
 
- void initialize(Parameters &params, const Topology &primal_topo, const Topology &dual_topo, Geometry<1,1,1> &primal_geom, Geometry<1,1,1> &dual_geom, ExchangeSet<naux> &aux_exchange, ExchangeSet<nconst> &const_exchange)
+ void initialize(Parameters &params, const Topology &primal_topo, const Topology &dual_topo, Geometry &primal_geom, Geometry &dual_geom, ExchangeSet<nauxiliary> &aux_exchange, ExchangeSet<nconstant> &const_exchange)
  {
 
-Tendencies<nprog,nconst,naux>::initialize(params, primal_topo, dual_topo, primal_geom, dual_geom, aux_exchange, const_exchange);
+Tendencies::initialize(params, primal_topo, dual_topo, primal_geom, dual_geom, aux_exchange, const_exchange);
 //    PVPE.initialize(params);
 //    Hk.initialize(params, *this->primal_geometry, *this->dual_geometry);
 //    Hs.initialize(params, thermo, *this->primal_geometry, *this->dual_geometry);
@@ -95,7 +96,7 @@ Tendencies<nprog,nconst,naux>::initialize(params, primal_topo, dual_topo, primal
 }
 
 // 
-     void compute_constants(VariableSet<nconst> &const_vars, VariableSet<nprog> &x)
+     void compute_constants(VariableSet<nconstant> &const_vars, VariableSet<nprognostic> &x)
      {}
 // 
 //      void YAKL_INLINE compute_functional_derivatives_and_diagnostic_quantities_I(
@@ -245,7 +246,7 @@ Tendencies<nprog,nconst,naux>::initialize(params, primal_topo, dual_topo, primal
 // 
 // 
 // 
-     void YAKL_INLINE compute_rhs(real dt, VariableSet<nconst> &const_vars, VariableSet<nprog> &x, VariableSet<naux> &auxiliary_vars, VariableSet<nprog> &xtend)
+     void YAKL_INLINE compute_rhs(real dt, VariableSet<nconstant> &const_vars, VariableSet<nprognostic> &x, VariableSet<nauxiliary> &auxiliary_vars, VariableSet<nprognostic> &xtend)
      {}
 // 
 //         //Compute U, q0, hf, dens0
@@ -341,14 +342,14 @@ Tendencies<nprog,nconst,naux>::initialize(params, primal_topo, dual_topo, primal
 
 // *******   Statistics   ***********//
 
-template <uint nprog, uint nconst, uint nstats>class ModelStats: public Stats<nprog,nconst,nstats> {
+class ModelStats: public Stats {
 public:
   
    real3d TEarr, KEarr, PEarr, IEarr, PVarr, PENSarr, trimmed_density;
    
-  void initialize(Parameters &params, Parallel &par, const Topology &primal_topo, const Topology &dual_topo, Geometry<1,1,1> &primal_geom, Geometry<1,1,1> &dual_geom)
+  void initialize(Parameters &params, Parallel &par, const Topology &primal_topo, const Topology &dual_topo, Geometry &primal_geom, Geometry &dual_geom)
 {
-  Stats<nprog,nconst,nstats>::initialize(params, par, primal_topo, dual_topo, primal_geom, dual_geom);
+  Stats::initialize(params, par, primal_topo, dual_topo, primal_geom, dual_geom);
   this->stats_arr[DENSSTAT].initialize("mass", ndensity, this->statsize, this->nens, this->masterproc);
   this->stats_arr[DENSMAXSTAT].initialize("densmax", ndensity, this->statsize, this->nens, this->masterproc);
   this->stats_arr[DENSMINSTAT].initialize("densmin", ndensity, this->statsize, this->nens, this->masterproc);
@@ -366,7 +367,7 @@ public:
   
 }
 
-   void compute( VariableSet<nprog> &progvars,  VariableSet<nconst> &constvars, int tind)
+   void compute( VariableSet<nprognostic> &progvars,  VariableSet<nconstant> &constvars, int tind)
    {}
 // 
 //     for (int n=0;n<nens;n++)
@@ -478,10 +479,10 @@ public:
 
 
 // *******   VariableSet Initialization   ***********//
-template <uint nprog, uint nconst, uint naux, uint ndiag> void initialize_variables(const Topology &ptopo, const Topology &dtopo,
-SArray<int,2, nprog, 3> &prog_ndofs_arr, SArray<int,2, nconst, 3> &const_ndofs_arr, SArray<int,2, naux, 3> &aux_ndofs_arr, SArray<int,2, ndiag, 3> &diag_ndofs_arr,
-std::array<std::string, nprog> &prog_names_arr, std::array<std::string, nconst> &const_names_arr, std::array<std::string, naux> &aux_names_arr, std::array<std::string, ndiag> &diag_names_arr,
-std::array<const Topology *, nprog> &prog_topo_arr, std::array<const Topology *, nconst> &const_topo_arr, std::array<const Topology *, naux> &aux_topo_arr, std::array<const Topology *, ndiag> &diag_topo_arr)
+void initialize_variables(const Topology &ptopo, const Topology &dtopo,
+SArray<int,2, nprognostic, 3> &prog_ndofs_arr, SArray<int,2, nconstant, 3> &const_ndofs_arr, SArray<int,2, nauxiliary, 3> &aux_ndofs_arr, SArray<int,2, ndiagnostic, 3> &diag_ndofs_arr,
+std::array<std::string, nprognostic> &prog_names_arr, std::array<std::string, nconstant> &const_names_arr, std::array<std::string, nauxiliary> &aux_names_arr, std::array<std::string, ndiagnostic> &diag_names_arr,
+std::array<const Topology *, nprognostic> &prog_topo_arr, std::array<const Topology *, nconstant> &const_topo_arr, std::array<const Topology *, nauxiliary> &aux_topo_arr, std::array<const Topology *, ndiagnostic> &diag_topo_arr)
 {
 
   //primal grid represents straight quantities, dual grid twisted quantities
@@ -676,8 +677,8 @@ real YAKL_INLINE double_vortex_tracer_gaussian(real x, real y)     {return doubl
 
 
 
-template <int nprog, int nconst, int nquadx, int nquady, int nquadz> void set_initial_conditions (Parameters &params, VariableSet<nprog> &progvars, VariableSet<nconst> &constvars, 
-Geometry<nquadx, nquady, nquadz> &primal_geom, Geometry<nquadx, nquady, nquadz> &dual_geom)
+void set_initial_conditions (Parameters &params, VariableSet<nprognostic> &progvars, VariableSet<nconstant> &constvars, 
+Geometry &primal_geom, Geometry &dual_geom)
 {
 
   if (params.initdataStr == "doublevortex")

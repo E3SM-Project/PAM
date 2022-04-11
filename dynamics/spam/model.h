@@ -9,14 +9,14 @@
 #include "weno_func_recon.h" // needed to set TransformMatrices related stuff
 
 //THIS NEEDS SLIGHT MODIFICATION FOR EXTRUDED- ADD MORE TRANSFORM RELATED STUFF?
-template <uint nprog, uint nconst, uint ndiag> class Diagnostics {
+class Diagnostics {
 public:
 
   const Topology *primal_topology;
   const Topology *dual_topology;
-  Geometry<1,1,1> *primal_geometry;
-  Geometry<1,1,1> *dual_geometry;
-  ExchangeSet<ndiag> *diag_exchange;
+  Geometry *primal_geometry;
+  Geometry *dual_geometry;
+  ExchangeSet<ndiagnostic> *diag_exchange;
 
   bool is_initialized;
 
@@ -25,7 +25,7 @@ public:
      std::cout << "CREATED DIAGNOSTICS\n";
    }
 
-   void initialize(const Topology &ptopo, const Topology &dtopo, Geometry<1,1,1> &pgeom, Geometry<1,1,1> &dgeom, ExchangeSet<ndiag> &diag_exchange)
+   void initialize(const Topology &ptopo, const Topology &dtopo, Geometry &pgeom, Geometry &dgeom, ExchangeSet<ndiagnostic> &diag_exchange)
    {
      this->primal_topology = &ptopo;
      this->dual_topology = &dtopo;
@@ -36,20 +36,20 @@ public:
      this->is_initialized = true;
    }
    
-   virtual void compute_diag(const VariableSet<nconst> &const_vars, VariableSet<nprog> &x, VariableSet<ndiag> &diagnostic_vars) {};
+   virtual void compute_diag(const VariableSet<nconstant> &const_vars, VariableSet<nprognostic> &x, VariableSet<ndiagnostic> &diagnostic_vars) {};
 
 };
 
 //THIS NEEDS SLIGHT MODIFICATION FOR EXTRUDED- ADD MORE TRANSFORM RELATED STUFF?
-template <uint nprog, uint nconst, uint naux> class Tendencies {
+class Tendencies {
 public:
 
   const Topology *primal_topology;
   const Topology *dual_topology;
-  ExchangeSet<naux> *aux_exchange;
-  ExchangeSet<nconst> *const_exchange;
-  Geometry<1,1,1> *primal_geometry;
-  Geometry<1,1,1> *dual_geometry;
+  ExchangeSet<nauxiliary> *aux_exchange;
+  ExchangeSet<nconstant> *const_exchange;
+  Geometry *primal_geometry;
+  Geometry *dual_geometry;
 
   SArray<real,2,reconstruction_order,2> primal_to_gll;
   SArray<real,3,reconstruction_order,reconstruction_order,reconstruction_order> primal_wenoRecon;
@@ -73,7 +73,7 @@ public:
      std::cout << "CREATED TENDENCIES\n";
    }
 
-   void initialize(Parameters &params, const Topology &primal_topo, const Topology &dual_topo, Geometry<1,1,1> &primal_geom, Geometry<1,1,1> &dual_geom, ExchangeSet<naux> &aux_exchange, ExchangeSet<nconst> &const_exchange)
+   void initialize(Parameters &params, const Topology &primal_topo, const Topology &dual_topo, Geometry &primal_geom, Geometry &dual_geom, ExchangeSet<nauxiliary> &aux_exchange, ExchangeSet<nconstant> &const_exchange)
    {
      this->primal_topology = &primal_topo;
      this->dual_topology = &dual_topo;
@@ -96,8 +96,8 @@ public:
     
     this->is_initialized = true;
   }
-  virtual void compute_constants(VariableSet<nconst> &const_vars, VariableSet<nprog> &x) {};
-  virtual void YAKL_INLINE compute_rhs(real dt, VariableSet<nconst> &const_vars, VariableSet<nprog> &x, VariableSet<naux> &auxiliary_vars, VariableSet<nprog> &xtend) {};
+  virtual void compute_constants(VariableSet<nconstant> &const_vars, VariableSet<nprognostic> &x) {};
+  virtual void YAKL_INLINE compute_rhs(real dt, VariableSet<nconstant> &const_vars, VariableSet<nprognostic> &x, VariableSet<nauxiliary> &auxiliary_vars, VariableSet<nprognostic> &xtend) {};
 };
 
 

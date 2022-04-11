@@ -27,17 +27,16 @@ class Dycore {
   public:
 
 #ifdef _LAYER
-    UniformRectangularStraightGeometry<ic_quad_pts,ic_quad_pts,ic_quad_pts> ic_primal_geometry;
-    UniformRectangularTwistedGeometry<ic_quad_pts,ic_quad_pts,ic_quad_pts> ic_dual_geometry;
-    UniformRectangularStraightGeometry<1,1,1> tendencies_primal_geometry;
-    UniformRectangularTwistedGeometry<1,1,1> tendencies_dual_geometry;
+    UniformRectangularStraightGeometry primal_geometry;
+    UniformRectangularTwistedGeometry dual_geometry;
 #elif _EXTRUDED    
-    UniformRectangularStraightExtrudedGeometry<ic_quad_pts,ic_quad_pts,ic_quad_pts> ic_primal_geometry;
-    UniformRectangularTwistedExtrudedGeometry<ic_quad_pts,ic_quad_pts,ic_quad_pts> ic_dual_geometry;
-    UniformRectangularStraightExtrudedGeometry<1,1,1> tendencies_primal_geometry;
-    UniformRectangularTwistedExtrudedGeometry<1,1,1> tendencies_dual_geometry;
+    UniformRectangularStraightExtrudedGeometry primal_geometry;
+    UniformRectangularTwistedExtrudedGeometry dual_geometry;
 #endif
-    ModelStats<nprognostic, nconstant, nstats> stats;
+// ADVECTION CHOICE HERE IS BROKEN!
+// BASICALLY NEED ADDITIONAL COMPILE FLAGS IE GEOM/TOPO TYPE (LAYER VS EXTRUDED) AND EQNSET TYPE (HAMIL, ADVECTION)
+
+    ModelStats stats;
     VariableSet<nprognostic> prognostic_vars;
     VariableSet<nconstant> constant_vars;
     VariableSet<ndiagnostic> diagnostic_vars;
@@ -46,24 +45,23 @@ class Dycore {
     ExchangeSet<nconstant> const_exchange;
     ExchangeSet<nauxiliary> aux_exchange;
     ExchangeSet<ndiagnostic> diag_exchange;
-    FileIO<nprognostic, nconstant, ndiagnostic, nstats> io;
-    ModelTendencies<nprognostic, nconstant, nauxiliary> tendencies;
-    ModelDiagnostics<nprognostic, nconstant, ndiagnostic> diagnostics;
+    FileIO io;
+    ModelTendencies tendencies;
+    ModelDiagnostics diagnostics;
     Topology primal_topology;
     Topology dual_topology;
     Parameters params;
     Parallel par;    
     #if _TIME_TYPE==0
-          RKSimpleTimeIntegrator<nprognostic, nconstant, nauxiliary> tint;
+          RKSimpleTimeIntegrator tint;
     #endif
     #if _TIME_TYPE==1
-          SSPKKTimeIntegrator<nprognostic, nconstant, nauxiliary> tint;
+          SSPKKTimeIntegrator tint;
     #endif
     
     int ierr;
     real etime = 0.0;
     uint prevstep = 0;
-    uint nsteps = 0;
 
   void init(PamCoupler const &coupler) {
 
@@ -83,11 +81,9 @@ class Dycore {
     // Initialize the grid
     std::cout << "start init topo/geom\n" << std::flush;
     primal_topology.initialize(par,true);
-    ic_primal_geometry.initialize(primal_topology, params);
-    tendencies_primal_geometry.initialize(primal_topology, params);
+    primal_geometry.initialize(primal_topology, params);
     dual_topology.initialize(par,false);
-    ic_dual_geometry.initialize(dual_topology, params);
-    tendencies_dual_geometry.initialize(dual_topology, params);
+    dual_geometry.initialize(dual_topology, params);
     std::cout << "finish init topo/geom\n" << std::flush;
 
     // Allocate the variables
@@ -105,7 +101,7 @@ class Dycore {
     std::array<const Topology *, nconstant> const_topo_arr;
     std::array<const Topology *, ndiagnostic> diag_topo_arr;
     std::array<const Topology *, nauxiliary> aux_topo_arr;
-    initialize_variables<nprognostic, nconstant, nauxiliary, ndiagnostic>(primal_topology, dual_topology,
+    initialize_variables(primal_topology, dual_topology,
         prog_dofs_arr, const_dofs_arr, aux_dofs_arr, diag_dofs_arr,
         prog_names_arr, const_names_arr, aux_names_arr, diag_names_arr,
         prog_topo_arr, const_topo_arr, aux_topo_arr, diag_topo_arr);
@@ -121,7 +117,7 @@ class Dycore {
     std::cout << "finish init variable sets\n" << std::flush;    
 
     // Initialize the statistics
-    stats.initialize(params, par, primal_topology, dual_topology, tendencies_primal_geometry, tendencies_dual_geometry);
+    stats.initialize(params, par, primal_topology, dual_topology, primal_geometry, dual_geometry);
     
     // Create the outputter
     std::cout << "start io init\n" << std::flush;
@@ -130,7 +126,7 @@ class Dycore {
     // 
     // set the initial conditions
     std::cout << "start set initial conditions\n" << std::flush;
-    set_initial_conditions<nprognostic, nconstant, ic_quad_pts, ic_quad_pts, ic_quad_pts>(params, prognostic_vars, constant_vars, ic_primal_geometry, ic_dual_geometry);
+    set_initial_conditions(params, prognostic_vars, constant_vars, primal_geometry, dual_geometry);
     // Do a boundary exchange
     prog_exchange.exchange_variable_set(prognostic_vars);
     const_exchange.exchange_variable_set(constant_vars);
@@ -138,9 +134,9 @@ class Dycore {
     // 
     // // Initialize the time stepper, tendencies, diagnostics; compute initial stats
     std::cout << "start ts init\n" << std::flush;
-    tendencies.initialize(params, primal_topology, dual_topology, tendencies_primal_geometry, tendencies_dual_geometry, aux_exchange, const_exchange);
+    tendencies.initialize(params, primal_topology, dual_topology, primal_geometry, dual_geometry, aux_exchange, const_exchange);
     tendencies.compute_constants(constant_vars, prognostic_vars);
-    diagnostics.initialize(primal_topology, dual_topology, tendencies_primal_geometry, tendencies_dual_geometry, diag_exchange);
+    diagnostics.initialize(primal_topology, dual_topology, primal_geometry, dual_geometry, diag_exchange);
     tint.initialize(params, tendencies, prognostic_vars, constant_vars, auxiliary_vars, prog_exchange);
     std::cout << "end ts init\n" << std::flush;
     stats.compute(prognostic_vars, constant_vars, 0);
@@ -151,7 +147,7 @@ class Dycore {
     io.outputInit(etime);
     std::cout << "end initial output\n" << std::flush;
     
-    prevstep = 0;
+    prevstep = 1;
   };
     
     
@@ -167,15 +163,12 @@ class Dycore {
   //void output(PamCoupler const &coupler, real etime) {};
       
   void timeStep( PamCoupler &coupler , real dtphys ) {
-    
-    //THIS LOGIC NEEDS UPDATING FOR TIME BASED LOOPING
-    nsteps = (int) (dtphys / params.dtcrm); 
-    
+        
     // Time stepping loop
     std::cout << "start timestepping loop\n" << std::flush;
     //THIS LOGIC NEEDS UPDATING FOR TIME BASED LOOPING
     // stats.compute(prognostic_vars, constant_vars, 0);
-    for (uint nstep = 0; nstep<nsteps; nstep++) {
+    for (uint nstep = 0; nstep<params.crm_per_phys; nstep++) {
     // 
        yakl::fence();
        tint.stepForward(params.dtcrm);
@@ -194,7 +187,7 @@ class Dycore {
        }
     // 
     }
-    prevstep += nsteps;
+    prevstep += params.crm_per_phys;
     // 
     std::cout << "end timestepping loop\n" << std::flush;
   };
