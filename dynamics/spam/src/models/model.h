@@ -7,7 +7,6 @@
 #include "variable_sets.h"
 #include "weno_func_recon.h" // needed to set TransformMatrices related stuff
 
-//THIS NEEDS SLIGHT MODIFICATION FOR EXTRUDED- ADD MORE TRANSFORM RELATED STUFF?
 class Diagnostics {
 public:
 
@@ -39,7 +38,6 @@ public:
 
 };
 
-//THIS NEEDS SLIGHT MODIFICATION FOR EXTRUDED- ADD MORE TRANSFORM RELATED STUFF?
 class Tendencies {
 public:
 
@@ -99,5 +97,42 @@ public:
   virtual void YAKL_INLINE compute_rhs(real dt, VariableSet<nconstant> &const_vars, VariableSet<nprognostic> &x, VariableSet<nauxiliary> &auxiliary_vars, VariableSet<nprognostic> &xtend) {};
 };
 
+class ExtrudedTendencies: public Tendencies {
+  
+  SArray<real,2,vert_reconstruction_order,2> primal_vert_to_gll;
+  SArray<real,3,vert_reconstruction_order,vert_reconstruction_order,vert_reconstruction_order> primal_vert_wenoRecon;
+  SArray<real,1,(vert_reconstruction_order-1)/2+2> primal_vert_wenoIdl;
+  real primal_vert_wenoSigma;
+
+  SArray<real,2,dual_vert_reconstruction_order,2> dual_vert_to_gll;
+  SArray<real,3,dual_vert_reconstruction_order,dual_vert_reconstruction_order,dual_vert_reconstruction_order> dual_vert_wenoRecon;
+  SArray<real,1,(dual_vert_reconstruction_order-1)/2+2> dual_vert_wenoIdl;
+  real dual_vert_wenoSigma;
+
+  SArray<real,2,coriolis_vert_reconstruction_order,2> coriolis_vert_to_gll;
+  SArray<real,3,coriolis_vert_reconstruction_order,coriolis_vert_reconstruction_order,coriolis_vert_reconstruction_order> coriolis_vert_wenoRecon;
+  SArray<real,1,(coriolis_vert_reconstruction_order-1)/2+2> coriolis_vert_wenoIdl;
+  real coriolis_vert_wenoSigma;
+
+  void initialize(ModelParameters &params, const Topology &primal_topo, const Topology &dual_topo, Geometry &primal_geom, Geometry &dual_geom, ExchangeSet<nauxiliary> &aux_exchange, ExchangeSet<nconstant> &const_exchange)
+  {
+   Tendencies::initialize(params, primal_topo, dual_topo, primal_geom, dual_geom, aux_exchange, const_exchange);
+   
+   TransformMatrices::coefs_to_gll_lower( primal_vert_to_gll );
+   TransformMatrices::weno_sten_to_coefs(primal_vert_wenoRecon);
+   wenoSetIdealSigma<vert_reconstruction_order>(primal_vert_wenoIdl,primal_vert_wenoSigma);
+
+   TransformMatrices::coefs_to_gll_lower( dual_vert_to_gll );
+   TransformMatrices::weno_sten_to_coefs(dual_vert_wenoRecon);
+   wenoSetIdealSigma<dual_vert_reconstruction_order>(dual_vert_wenoIdl,dual_vert_wenoSigma);
+
+   TransformMatrices::coefs_to_gll_lower( coriolis_vert_to_gll );
+   TransformMatrices::weno_sten_to_coefs(coriolis_vert_wenoRecon);
+   wenoSetIdealSigma<coriolis_vert_reconstruction_order>(coriolis_vert_wenoIdl,coriolis_vert_wenoSigma);
+   
+   this->is_initialized = true;
+ }
+ 
+};
 
 
