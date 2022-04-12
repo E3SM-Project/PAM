@@ -3,8 +3,8 @@
 // Number of Dimensions
 uint constexpr ndims = 2;
 
-uint constexpr ntracers_nofct = 3;
-uint constexpr ntracers_fct = 3;
+uint constexpr ntracers_nofct = 0;
+uint constexpr ntracers_fct = 0;
 
 // Set dens and ntracers/ntracersfct sizes
 uint constexpr ntracers = ntracers_nofct + ntracers_fct;

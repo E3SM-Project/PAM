@@ -56,7 +56,7 @@ int main(int argc, char** argv) {
     //set xlen, ylen based on init cond if needed
     if (xlen < 0 or ylen < 0)
     {dycore.set_domain_sizes(config["initData"].as<std::string>(), xlen, ylen);}
-    std::cout << xlen << " " << ylen << "\n";
+    //std::cout << xlen << " " << ylen << "\n";
 
     // Use microphysics gas constants values in the coupler
     coupler.set_phys_constants( micro.R_d , micro.R_v , micro.cp_d , micro.cp_v , micro.grav , micro.p0 );

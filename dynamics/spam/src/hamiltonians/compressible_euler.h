@@ -19,13 +19,17 @@ class Hamiltonian_CE_Hs {
       this->is_initialized = false;
  }
  
- void initialize(Parameters &params, ThermoPotential &thermodynamics, Geometry &primal_geom, Geometry &dual_geom)
+ void initialize(ThermoPotential &thermodynamics, Geometry &primal_geom, Geometry &dual_geom)
  {
    this->thermo = &thermodynamics;
    this->primal_geometry = &primal_geom;
    this->dual_geometry = &dual_geom;
    this->is_initialized = true;
  }
+
+void set_parameters(real gin)
+{
+}
  
 
  real YAKL_INLINE compute_PE(const real5d dens, const real5d geop, int is, int js, int ks, int i, int j, int k, int n)
@@ -116,7 +120,7 @@ class Hamiltonian_MCE_rho_Hs {
       this->is_initialized = false;
  }
  
- void initialize(Parameters &params, ThermoPotential &thermodynamics, Geometry &primal_geom, Geometry &dual_geom)
+ void initialize(ThermoPotential &thermodynamics, Geometry &primal_geom, Geometry &dual_geom)
  {
    this->thermo = &thermodynamics;
    this->primal_geometry = &primal_geom;
@@ -124,6 +128,9 @@ class Hamiltonian_MCE_rho_Hs {
    this->is_initialized = true;
  }
  
+void set_parameters(real gin)
+{
+}
 
  real YAKL_INLINE compute_PE(const real5d dens, const real5d geop, int is, int js, int ks, int i, int j, int k, int n)
  {

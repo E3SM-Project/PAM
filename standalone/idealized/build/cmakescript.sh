@@ -17,6 +17,6 @@ cmake      \
   -DPAM_MICRO="none"                                           \
   -DPAM_SGS="none"                                                \
   -DPAMC_MODEL="layermodel"                                                \
-  -DPAMC_HAMIL="tswe"                                                \
-  -DPAMC_THERMO="none"                                                \
+  -DPAMC_HAMIL="ce"                                                \
+  -DPAMC_THERMO="idealgaspottemp"                                                \
   ..

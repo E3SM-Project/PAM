@@ -192,11 +192,11 @@ class Dycore {
   
   void set_domain_sizes(std::string initData, real &xlen, real &ylen)
   {
-    std::cout << "setting domain sizes\n";
+    //std::cout << "setting domain sizes\n";
     set_domain_sizes_ic(params, initData);
     xlen = params.xlen;
     ylen = params.ylen;
-    std::cout << params.xlen << " " << params.ylen << "\n";
+    //std::cout << params.xlen << " " << params.ylen << "\n";
   }
 };
 
