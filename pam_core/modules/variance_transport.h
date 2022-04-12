@@ -1,4 +1,6 @@
 
+#pragma once
+
 #include "pam_coupler.h"
 
 // Enforce that this CRM's variance w/r to the column mean be forced toward the input variance
