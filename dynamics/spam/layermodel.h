@@ -581,25 +581,25 @@ std::array<const Topology *, nprognostic> &prog_topo_arr, std::array<const Topol
 //***************** Set Initial Conditions ***************************//
 
 struct dbv_constants {
-real const g = 9.80616;
-real const Lx = 5000. * 1000.;
-real const Ly = 5000. * 1000.;
-real const coriolis = 0.00006147;
-real const H0 = 750.0;
-real const ox = 0.1;
-real const oy = 0.1;
-real const sigmax = 3./40.*Lx;
-real const sigmay = 3./40.*Ly;
-real const dh = 75.0;
-real const xc1 = (0.5-ox) * Lx;
-real const yc1 = (0.5-oy) * Ly;
-real const xc2 = (0.5+ox) * Lx;
-real const yc2 = (0.5+oy) * Ly;
-real const xc = 0.5 * Lx;
-real const yc = 0.5 * Ly;
-real const c = 0.05;
-real const a = 1.0/3.0;
-real const D = 0.5 * Lx;
+real const g = 9.80616_fp;
+real const Lx = 5000000._fp;
+real const Ly = 5000000._fp;
+real const coriolis = 0.00006147_fp;
+real const H0 = 750.0_fp;
+real const ox = 0.1_fp;
+real const oy = 0.1_fp;
+real const sigmax = 3._fp/40._fp*Lx;
+real const sigmay = 3._fp/40._fp*Ly;
+real const dh = 75.0_fp;
+real const xc1 = (0.5_fp - ox) * Lx;
+real const yc1 = (0.5_fp - oy) * Ly;
+real const xc2 = (0.5_fp + ox) * Lx;
+real const yc2 = (0.5_fp + oy) * Ly;
+real const xc = 0.5_fp * Lx;
+real const yc = 0.5_fp * Ly;
+real const c = 0.05_fp;
+real const a = 1.0_fp/3.0_fp;
+real const D = 0.5_fp * Lx;
 };
 dbv_constants dbl_vortex_constants;
 
@@ -611,39 +611,39 @@ real YAKL_INLINE double_vortex_coriolis(real x, real y)
 
 real YAKL_INLINE double_vortex_h(real x, real y)
 {
-  real xprime1 = dbl_vortex_constants.Lx / (M_PI * dbl_vortex_constants.sigmax) * sin(M_PI / dbl_vortex_constants.Lx * (x - dbl_vortex_constants.xc1));
-  real yprime1 = dbl_vortex_constants.Ly / (M_PI * dbl_vortex_constants.sigmay) * sin(M_PI / dbl_vortex_constants.Ly * (y - dbl_vortex_constants.yc1));
-  real xprime2 = dbl_vortex_constants.Lx / (M_PI * dbl_vortex_constants.sigmax) * sin(M_PI / dbl_vortex_constants.Lx * (x - dbl_vortex_constants.xc2));
-  real yprime2 = dbl_vortex_constants.Ly / (M_PI * dbl_vortex_constants.sigmay) * sin(M_PI / dbl_vortex_constants.Ly * (y - dbl_vortex_constants.yc2));
-  real xprimeprime1 = dbl_vortex_constants.Lx / (2.0 * M_PI * dbl_vortex_constants.sigmax) * sin(2 * M_PI / dbl_vortex_constants.Lx * (x - dbl_vortex_constants.xc1));
-  real yprimeprime1 = dbl_vortex_constants.Ly / (2.0 * M_PI * dbl_vortex_constants.sigmay) * sin(2 * M_PI / dbl_vortex_constants.Ly * (y - dbl_vortex_constants.yc1));
-  real xprimeprime2 = dbl_vortex_constants.Lx / (2.0 * M_PI * dbl_vortex_constants.sigmax) * sin(2 * M_PI / dbl_vortex_constants.Lx * (x - dbl_vortex_constants.xc2));
-  real yprimeprime2 = dbl_vortex_constants.Ly / (2.0 * M_PI * dbl_vortex_constants.sigmay) * sin(2 * M_PI / dbl_vortex_constants.Ly * (y - dbl_vortex_constants.yc2));
+  real xprime1 = dbl_vortex_constants.Lx / (pi * dbl_vortex_constants.sigmax) * sin(pi / dbl_vortex_constants.Lx * (x - dbl_vortex_constants.xc1));
+  real yprime1 = dbl_vortex_constants.Ly / (pi * dbl_vortex_constants.sigmay) * sin(pi / dbl_vortex_constants.Ly * (y - dbl_vortex_constants.yc1));
+  real xprime2 = dbl_vortex_constants.Lx / (pi * dbl_vortex_constants.sigmax) * sin(pi / dbl_vortex_constants.Lx * (x - dbl_vortex_constants.xc2));
+  real yprime2 = dbl_vortex_constants.Ly / (pi * dbl_vortex_constants.sigmay) * sin(pi / dbl_vortex_constants.Ly * (y - dbl_vortex_constants.yc2));
+  real xprimeprime1 = dbl_vortex_constants.Lx / (2.0_fp * pi * dbl_vortex_constants.sigmax) * sin(2.0_fp * pi / dbl_vortex_constants.Lx * (x - dbl_vortex_constants.xc1));
+  real yprimeprime1 = dbl_vortex_constants.Ly / (2.0_fp * pi * dbl_vortex_constants.sigmay) * sin(2.0_fp * pi / dbl_vortex_constants.Ly * (y - dbl_vortex_constants.yc1));
+  real xprimeprime2 = dbl_vortex_constants.Lx / (2.0_fp * pi * dbl_vortex_constants.sigmax) * sin(2.0_fp * pi / dbl_vortex_constants.Lx * (x - dbl_vortex_constants.xc2));
+  real yprimeprime2 = dbl_vortex_constants.Ly / (2.0_fp * pi * dbl_vortex_constants.sigmay) * sin(2.0_fp * pi / dbl_vortex_constants.Ly * (y - dbl_vortex_constants.yc2));
 
-  return dbl_vortex_constants.H0 - dbl_vortex_constants.dh * (exp(-0.5 * (xprime1 * xprime1 + yprime1 * yprime1)) + exp(-0.5 * (xprime2 * xprime2 + yprime2 * yprime2)) - 4. * M_PI * dbl_vortex_constants.sigmax * dbl_vortex_constants.sigmay / dbl_vortex_constants.Lx / dbl_vortex_constants.Ly);
+  return dbl_vortex_constants.H0 - dbl_vortex_constants.dh * (exp(-0.5_fp * (xprime1 * xprime1 + yprime1 * yprime1)) + exp(-0.5_fp * (xprime2 * xprime2 + yprime2 * yprime2)) - 4._fp * pi * dbl_vortex_constants.sigmax * dbl_vortex_constants.sigmay / dbl_vortex_constants.Lx / dbl_vortex_constants.Ly);
 }
 
 vec<2> YAKL_INLINE double_vortex_v(real x, real y) {
 vec<2> vvec;
 
-real xprime1 = dbl_vortex_constants.Lx / (M_PI * dbl_vortex_constants.sigmax) * sin(M_PI / dbl_vortex_constants.Lx * (x - dbl_vortex_constants.xc1));
-real yprime1 = dbl_vortex_constants.Ly / (M_PI * dbl_vortex_constants.sigmay) * sin(M_PI / dbl_vortex_constants.Ly * (y - dbl_vortex_constants.yc1));
-real xprime2 = dbl_vortex_constants.Lx / (M_PI * dbl_vortex_constants.sigmax) * sin(M_PI / dbl_vortex_constants.Lx * (x - dbl_vortex_constants.xc2));
-real yprime2 = dbl_vortex_constants.Ly / (M_PI * dbl_vortex_constants.sigmay) * sin(M_PI / dbl_vortex_constants.Ly * (y - dbl_vortex_constants.yc2));
-real xprimeprime1 = dbl_vortex_constants.Lx / (2.0 * M_PI * dbl_vortex_constants.sigmax) * sin(2 * M_PI / dbl_vortex_constants.Lx * (x - dbl_vortex_constants.xc1));
-real yprimeprime1 = dbl_vortex_constants.Ly / (2.0 * M_PI * dbl_vortex_constants.sigmay) * sin(2 * M_PI / dbl_vortex_constants.Ly * (y - dbl_vortex_constants.yc1));
-real xprimeprime2 = dbl_vortex_constants.Lx / (2.0 * M_PI * dbl_vortex_constants.sigmax) * sin(2 * M_PI / dbl_vortex_constants.Lx * (x - dbl_vortex_constants.xc2));
-real yprimeprime2 = dbl_vortex_constants.Ly / (2.0 * M_PI * dbl_vortex_constants.sigmay) * sin(2 * M_PI / dbl_vortex_constants.Ly * (y - dbl_vortex_constants.yc2));
+real xprime1 = dbl_vortex_constants.Lx / (pi * dbl_vortex_constants.sigmax) * sin(pi / dbl_vortex_constants.Lx * (x - dbl_vortex_constants.xc1));
+real yprime1 = dbl_vortex_constants.Ly / (pi * dbl_vortex_constants.sigmay) * sin(pi / dbl_vortex_constants.Ly * (y - dbl_vortex_constants.yc1));
+real xprime2 = dbl_vortex_constants.Lx / (pi * dbl_vortex_constants.sigmax) * sin(pi / dbl_vortex_constants.Lx * (x - dbl_vortex_constants.xc2));
+real yprime2 = dbl_vortex_constants.Ly / (pi * dbl_vortex_constants.sigmay) * sin(pi / dbl_vortex_constants.Ly * (y - dbl_vortex_constants.yc2));
+real xprimeprime1 = dbl_vortex_constants.Lx / (2.0_fp * pi * dbl_vortex_constants.sigmax) * sin(2.0_fp * pi / dbl_vortex_constants.Lx * (x - dbl_vortex_constants.xc1));
+real yprimeprime1 = dbl_vortex_constants.Ly / (2.0_fp * pi * dbl_vortex_constants.sigmay) * sin(2.0_fp * pi / dbl_vortex_constants.Ly * (y - dbl_vortex_constants.yc1));
+real xprimeprime2 = dbl_vortex_constants.Lx / (2.0_fp * pi * dbl_vortex_constants.sigmax) * sin(2.0_fp * pi / dbl_vortex_constants.Lx * (x - dbl_vortex_constants.xc2));
+real yprimeprime2 = dbl_vortex_constants.Ly / (2.0_fp * pi * dbl_vortex_constants.sigmay) * sin(2.0_fp * pi / dbl_vortex_constants.Ly * (y - dbl_vortex_constants.yc2));
 
-vvec.u = - dbl_vortex_constants.g * dbl_vortex_constants.dh / dbl_vortex_constants.coriolis / dbl_vortex_constants.sigmay * (yprimeprime1 * exp(-0.5*(xprime1 * xprime1 + yprime1 * yprime1)) + yprimeprime2 * exp(-0.5*(xprime2 * xprime2 + yprime2 * yprime2)));
-vvec.v = dbl_vortex_constants.g * dbl_vortex_constants.dh / dbl_vortex_constants.coriolis / dbl_vortex_constants.sigmax * (xprimeprime1 * exp(-0.5*(xprime1 * xprime1 + yprime1 * yprime1)) + xprimeprime2 * exp(-0.5*(xprime2 * xprime2 + yprime2 * yprime2)));
+vvec.u = - dbl_vortex_constants.g * dbl_vortex_constants.dh / dbl_vortex_constants.coriolis / dbl_vortex_constants.sigmay * (yprimeprime1 * exp(-0.5_fp*(xprime1 * xprime1 + yprime1 * yprime1)) + yprimeprime2 * exp(-0.5_fp*(xprime2 * xprime2 + yprime2 * yprime2)));
+vvec.v = dbl_vortex_constants.g * dbl_vortex_constants.dh / dbl_vortex_constants.coriolis / dbl_vortex_constants.sigmax * (xprimeprime1 * exp(-0.5_fp*(xprime1 * xprime1 + yprime1 * yprime1)) + xprimeprime2 * exp(-0.5_fp*(xprime2 * xprime2 + yprime2 * yprime2)));
 return vvec;
 }
 
 real YAKL_INLINE double_vortex_S(real x, real y)
 {
   //real sval = g * (1. + c * sin(2. * M_PI / Lx * (x - xc)) * sin(2. * M_PI / Ly * (y - yc)) * exp(-((x-xc)*(x-xc) + (y-yc)*(y-yc))/(a*a*D*D)));
-  real sval = dbl_vortex_constants.g * (1. + dbl_vortex_constants.c * exp(-((x-dbl_vortex_constants.xc)*(x-dbl_vortex_constants.xc) + (y-dbl_vortex_constants.yc)*(y-dbl_vortex_constants.yc))/(dbl_vortex_constants.a*dbl_vortex_constants.a*dbl_vortex_constants.D*dbl_vortex_constants.D)));
+  real sval = dbl_vortex_constants.g * (1._fp + dbl_vortex_constants.c * exp(-((x-dbl_vortex_constants.xc)*(x-dbl_vortex_constants.xc) + (y-dbl_vortex_constants.yc)*(y-dbl_vortex_constants.yc))/(dbl_vortex_constants.a*dbl_vortex_constants.a*dbl_vortex_constants.D*dbl_vortex_constants.D)));
   //real sval = g * (1. + c * sin(2. * M_PI / Lx * (x- xc)));
   //real sval = g;
   //real sval = g * (1. + c * ((x > 0.35 * Lx && x < 0.65 * Lx && y > 0.35 * Ly && y < 0.65 * Ly ) ? 1. : 0.));
@@ -660,15 +660,15 @@ real YAKL_INLINE double_vortex_S(real x, real y)
 // IN FACT, I THINK ALL TEST CASES STRUCTURES SHOULD INHERIT FROM A MASTER STRUCTURE THAT HAS LX/LY/ETC ALREADY SET UP?
 // SOMETHING LIKE THIS...
 
-real YAKL_INLINE tracer_square_cent(real x, real y)         {return (x > 0.35*dbl_vortex_constants.Lx && x < 0.65*dbl_vortex_constants.Lx && y > 0.35*dbl_vortex_constants.Ly && y < 0.65*dbl_vortex_constants.Ly                        ) ? 0.005 : 0.;}
-real YAKL_INLINE tracer_square_ur(real x, real y)         {return (x > 0.6*dbl_vortex_constants.Lx && x < 0.9*dbl_vortex_constants.Lx && y > 0.6*dbl_vortex_constants.Ly && y < 0.9*dbl_vortex_constants.Ly                        ) ? 0.005 : 0.;}
-real YAKL_INLINE tracer_square_ll(real x, real y)         {return (x > 0.1*dbl_vortex_constants.Lx && x < 0.4*dbl_vortex_constants.Lx && y > 0.1*dbl_vortex_constants.Ly && y < 0.4*dbl_vortex_constants.Ly                        ) ? 0.005 : 0.;}
+real YAKL_INLINE tracer_square_cent(real x, real y)         {return (x > 0.35_fp*dbl_vortex_constants.Lx && x < 0.65_fp*dbl_vortex_constants.Lx && y > 0.35_fp*dbl_vortex_constants.Ly && y < 0.65_fp*dbl_vortex_constants.Ly                        ) ? 0.005_fp : 0.;}
+real YAKL_INLINE tracer_square_ur(real x, real y)         {return (x > 0.6_fp*dbl_vortex_constants.Lx && x < 0.9_fp*dbl_vortex_constants.Lx && y > 0.6_fp*dbl_vortex_constants.Ly && y < 0.9_fp*dbl_vortex_constants.Ly                        ) ? 0.005_fp : 0.;}
+real YAKL_INLINE tracer_square_ll(real x, real y)         {return (x > 0.1_fp*dbl_vortex_constants.Lx && x < 0.4_fp*dbl_vortex_constants.Lx && y > 0.1_fp*dbl_vortex_constants.Ly && y < 0.4_fp*dbl_vortex_constants.Ly                        ) ? 0.005_fp : 0.;}
 real YAKL_INLINE tracer_square_urpll(real x, real y)         {return tracer_square_ur(x,y) + tracer_square_ll(x,y);}
 
 real YAKL_INLINE double_vortex_tracer_square_cent (real x, real y) {return double_vortex_h(x,y) * tracer_square_cent(x, y);}
 real YAKL_INLINE double_vortex_tracer_square_urpll (real x, real y) {return double_vortex_h(x,y) * tracer_square_urpll(x, y);}
 
-real YAKL_INLINE double_vortex_tracer_gaussian(real x, real y)     {return double_vortex_h(x,y) * 0.005 * exp(-((x-dbl_vortex_constants.xc)*(x-dbl_vortex_constants.xc) + (y-dbl_vortex_constants.yc)*(y-dbl_vortex_constants.yc))/(dbl_vortex_constants.a*dbl_vortex_constants.a*dbl_vortex_constants.D*dbl_vortex_constants.D));}
+real YAKL_INLINE double_vortex_tracer_gaussian(real x, real y)     {return double_vortex_h(x,y) * 0.005_fp * exp(-((x-dbl_vortex_constants.xc)*(x-dbl_vortex_constants.xc) + (y-dbl_vortex_constants.yc)*(y-dbl_vortex_constants.yc))/(dbl_vortex_constants.a*dbl_vortex_constants.a*dbl_vortex_constants.D*dbl_vortex_constants.D));}
 //{ return 0.005 *double_vortex_h(x,y) * exp(-100. * pow((x-xc)/Lx,2.)) * exp(-100. * pow((y-yc)/Ly,2.)); }
 
 

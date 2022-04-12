@@ -81,7 +81,7 @@ pvpe YAKL_INLINE compute_PVPE(const real5d v, const real5d dens, const real5d co
   real q0 = eta / hv;
 
   vals.pv = eta;
-  vals.pe = 0.5 * eta * q0;
+  vals.pe = 0.5_fp * eta * q0;
   
   return vals;
 }
@@ -330,7 +330,7 @@ pvpe YAKL_INLINE compute_PVPE(const real5d v, const real5d w, const real5d dens,
   real hv = compute_hvxz(dens, is, js, ks, i, j, k, n);
   real q0 = eta / hv;
   vals.pv = eta;
-  vals.pe = 0.5 * eta * q0;
+  vals.pe = 0.5_fp * eta * q0;
   return vals;
 }
 
@@ -342,7 +342,7 @@ pvpe YAKL_INLINE compute_PVPE_top(const real5d v, const real5d w, const real5d d
   real hv = compute_hvxz_top(dens, is, js, ks, i, j, k, n);
   real q0 = eta / hv;
   vals.pv = eta;
-  vals.pe = 0.5 * eta * q0;
+  vals.pe = 0.5_fp * eta * q0;
   return vals;
 }
 
@@ -354,7 +354,7 @@ pvpe YAKL_INLINE compute_PVPE_bottom(const real5d v, const real5d w, const real5
   real hv = compute_hvxz_bottom(dens, is, js, ks, i, j, k, n);
   real q0 = eta / hv;
   vals.pv = eta;
-  vals.pe = 0.5 * eta * q0;
+  vals.pe = 0.5_fp * eta * q0;
   return vals;
 }
 

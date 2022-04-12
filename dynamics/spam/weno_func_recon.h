@@ -13,7 +13,7 @@ template<uint ord, uint tord=2, uint hs=(ord-1)/2> YAKL_INLINE void map_weights(
 
 template<uint ord, uint tord=2, uint hs=(ord-1)/2> YAKL_INLINE void convexify( SArray<real,1,hs+2> &wts ) {
   real sum = 0._fp;
-  real const eps = 1.0e-20;
+  real const eps = 1.0e-20_fp;
   for (int i=0; i<hs+2; i++) { sum += wts(i); }
   for (int i=0; i<hs+2; i++) { wts(i) /= (sum + eps); }
 }
@@ -153,7 +153,7 @@ template<uint ord, uint tord=2, uint hs=(ord-1)/2> YAKL_INLINE void compute_weno
   SArray<real,1,hs+1> lotmp;
   SArray<real,1,ord > hitmp;
   real lo_avg;
-  real const eps = 1.0e-20;
+  real const eps = 1.0e-20_fp;
 
   //TransformMatrices<real> transform;
 

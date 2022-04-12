@@ -11,7 +11,15 @@
 #include <math.h>
 #include "yaml-cpp/yaml.h"
 
+typedef unsigned long ulong;
+typedef unsigned int  uint;
+
 ////////////// These control the settings for SPAM++    //////////////
+
+// Declaring the precision for the model
+typedef double real;
+#define REAL_MPI MPI_DOUBLE
+//#define REAL_NC NC_DOUBLE
 
 // Spatial derivatives order of accuracy ie Hodge stars [2,4,6] (vert only supports 2 for now)
 uint constexpr diff_ord = 2;
@@ -58,17 +66,10 @@ uint constexpr mirroringhalo = 9; //mymax(reconstruction_order+1,differential_or
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 
-typedef unsigned long ulong;
-typedef unsigned int  uint;
+real const pi = 3.141592653589793238462643383279502884197169399375105820974944_fp;
 
-// Declaring the precision for the model
-typedef double real;
-#define REAL_NC NC_DOUBLE
-#define REAL_MPI MPI_DOUBLE
-
-#define PNETCDF_PUT_VAR ncmpi_put_vara_double
-#define PNETCDF_PUT_VAR_ALL ncmpi_put_vara_double_all
-
+//#define PNETCDF_PUT_VAR ncmpi_put_vara_double
+//#define PNETCDF_PUT_VAR_ALL ncmpi_put_vara_double_all
 
 // Specifying templated min and max functions
 template <class T> YAKL_INLINE T mymin( T const v1 , T const v2 ) {

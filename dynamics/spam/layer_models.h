@@ -39,8 +39,8 @@ compute_Iext<2,diff_ord,vert_diff_ord> (dens0, dens, *this->primal_geometry, *th
 #else
 compute_I<2,diff_ord> (dens0, dens, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k, n);
 #endif
- real PE = hs(0, k+ks, j+js, i+is, n) * dens0(1) + 0.5 * dens0(0) * dens(1, k+ks, j+js, i+is, n);
- for (int l=2; l<ndensity; l++) { PE += 0.5 * dens0(0) * dens(l, k+ks, j+js, i+is, n);}
+ real PE = hs(0, k+ks, j+js, i+is, n) * dens0(1) + 0.5_fp * dens0(0) * dens(1, k+ks, j+js, i+is, n);
+ for (int l=2; l<ndensity; l++) { PE += 0.5_fp * dens0(0) * dens(l, k+ks, j+js, i+is, n);}
  return PE;
  
 }
@@ -74,14 +74,14 @@ void YAKL_INLINE compute_dHsdx(real5d B, const real5d dens0, const real5d hs, in
   //ELIMINATE THIS EVENTUALLY IE EITHER STORE AS A SEPARATE CONSTANT OR COMPUTE ONCE?...
   
   // Compute dHdh = 1/2 S + sum_nt 1/2 t
-  B(0, k+ks, j+js, i+is, n) = dens0(1, k+ks, j+js, i+is, n)/2. ;
-  for (int l=2; l<ndensity; l++) { B(0, k+ks, j+js, i+is, n) += dens0(l, k+ks, j+js, i+is, n)/2.;}
+  B(0, k+ks, j+js, i+is, n) = dens0(1, k+ks, j+js, i+is, n) * 0.5_fp ;
+  for (int l=2; l<ndensity; l++) { B(0, k+ks, j+js, i+is, n) += dens0(l, k+ks, j+js, i+is, n) * 0.5_fp;}
         
   //Compute dHdS = 1/2 h + hs
-  B(1, k+ks, j+js, i+is, n) = hs0(0) + dens0(0, k+ks, j+js, i+is, n)/2.;
+  B(1, k+ks, j+js, i+is, n) = hs0(0) + dens0(0, k+ks, j+js, i+is, n) * 0.5_fp;
 
   //Compute dHdt = 1/2 h for tracers
-  for (int l=2; l<ndensity; l++) { B(l, k+ks, j+js, i+is, n) = dens0(0, k+ks, j+js, i+is, n)/2.;}
+  for (int l=2; l<ndensity; l++) { B(l, k+ks, j+js, i+is, n) = dens0(0, k+ks, j+js, i+is, n) * 0.5_fp;}
   
 }
 };
@@ -128,8 +128,8 @@ compute_I<1,diff_ord> (h0, dens, *this->primal_geometry, *this->dual_geometry, i
 #endif
 //ELIMINATE THIS EVENTUALLY IE EITHER STORE AS A SEPARATE CONSTANT OR COMPUTE ONCE?...
 
- real PE = g * hs(0, k+ks, j+js, i+is, n) * h0(0) + 0.5 * g * h0(0) * dens(0, k+ks, j+js, i+is, n);
-for (int l=1; l<ndensity; l++) { PE += 0.5 * h0(0) * dens(l, k+ks, j+js, i+is, n);}
+ real PE = g * hs(0, k+ks, j+js, i+is, n) * h0(0) + 0.5_fp * g * h0(0) * dens(0, k+ks, j+js, i+is, n);
+for (int l=1; l<ndensity; l++) { PE += 0.5_fp * h0(0) * dens(l, k+ks, j+js, i+is, n);}
  return PE;
  
 }
@@ -155,10 +155,10 @@ void YAKL_INLINE compute_dHsdx(real5d B, const real5d dens0, const real5d hs, in
 
   // Compute dHdh = g h + g hs + sum_nt 1/2 t + sum_nt 1/2 tfct
   B(0, k+ks, j+js, i+is, n) = g * hs(0) + g * dens0(0, k+ks, j+js, i+is, n);
-  for (int l=1; l<ndensity; l++) { B(0, k+ks, j+js, i+is, n) += dens0(l, k+ks, j+js, i+is, n)/2.;}
+  for (int l=1; l<ndensity; l++) { B(0, k+ks, j+js, i+is, n) += dens0(l, k+ks, j+js, i+is, n) * 0.5_fp;}
 
   //Compute dHdt = 1/2 h
-  for (int l=1; l<ndensity; l++) { B(l, k+ks, j+js, i+is, n) = dens0(0, k+ks, j+js, i+is, n)/2.;}
+  for (int l=1; l<ndensity; l++) { B(l, k+ks, j+js, i+is, n) = dens0(0, k+ks, j+js, i+is, n) * 0.5_fp;}
 
 }
 };

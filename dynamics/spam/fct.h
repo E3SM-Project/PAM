@@ -56,7 +56,7 @@ template<uint ndofs> YAKL_INLINE void compute_vertedgefluxes(real5d vertedgeflux
 
 template<uint ndofs> void YAKL_INLINE calculate_Mf(SArray<real,1,ndofs> &Mf, SArray<real,3,ndofs,ndims,2> const &edgeflux, real dt)
 {
-    real eps = 1.0e-8;
+    real eps = 1.0e-8_fp;
         for (int l=0; l<ndofs; l++) {
           Mf(l) = 0.;
           for (int d=0; d<ndims; d++) {
@@ -69,7 +69,7 @@ template<uint ndofs> void YAKL_INLINE calculate_Mf(SArray<real,1,ndofs> &Mf, SAr
 
 template<uint ndofs> void YAKL_INLINE calculate_Mfext(SArray<real,1,ndofs> &Mf, SArray<real,3,ndofs,ndims,2> const &edgeflux, SArray<real,2,ndofs,2> const &vertedgeflux, real dt)
 {
-    real eps = 1.0e-8;
+    real eps = 1.0e-8_fp;
         for (int l=0; l<ndofs; l++) {
           Mf(l) = 0.;
           for (int d=0; d<ndims; d++) {
@@ -122,8 +122,8 @@ template<uint ndofs> void YAKL_INLINE calculate_phi(SArray<real,2,ndofs,ndims> &
         for (int l=0; l<ndofs; l++) {
           for (int d=0; d<ndims; d++) {
             upwind_param = copysign(1.0, edgeflux(l,d));
-            upwind_param = 0.5*(upwind_param + fabs(upwind_param));
-            Phi(l,d) = mymin(1., q(l,d,1)/Mf(l,d,1)) * (1. - upwind_param) + mymin(1., q(l,d,0)/Mf(l,d,0)) * upwind_param;
+            upwind_param = 0.5_fp*(upwind_param + fabs(upwind_param));
+            Phi(l,d) = mymin(1._fp, q(l,d,1)/Mf(l,d,1)) * (1._fp - upwind_param) + mymin(1._fp, q(l,d,0)/Mf(l,d,0)) * upwind_param;
           }
     }
 }
@@ -133,8 +133,8 @@ template<uint ndofs> void YAKL_INLINE calculate_phivert(SArray<real,1,ndofs> &Ph
     real upwind_param;
         for (int l=0; l<ndofs; l++) {
             upwind_param = copysign(1.0, vertedgeflux(l));
-            upwind_param = 0.5*(upwind_param + fabs(upwind_param));
-            Phivert(l) = mymin(1., q(l,1)/Mf(l,1)) * (1. - upwind_param) + mymin(1., q(l,0)/Mf(l,0)) * upwind_param;
+            upwind_param = 0.5_fp*(upwind_param + fabs(upwind_param));
+            Phivert(l) = mymin(1._fp, q(l,1)/Mf(l,1)) * (1. - upwind_param) + mymin(1._fp, q(l,0)/Mf(l,0)) * upwind_param;
     }
 }
 

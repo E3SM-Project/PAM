@@ -45,7 +45,7 @@ class Hamiltonian_CE_Hs {
  //   entropic_var = entropic_density/rho;
 
      real YAKL_INLINE compute_alpha(const real5d dens0, int is, int js, int ks, int i, int j, int k, int n) {
-       return 1./dens0(0, k+ks, j+js, i+is, n);
+       return 1._fp/dens0(0, k+ks, j+js, i+is, n);
      }
      
      real YAKL_INLINE compute_entropic_var(const real5d dens0, int is, int js, int ks, int i, int j, int k, int n) {
@@ -60,7 +60,8 @@ class Hamiltonian_CE_Hs {
    #else
    compute_I<2, diff_ord>(dens0, dens, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k, n);
    #endif   
-   real alpha = 1./dens0(0);
+   
+   real alpha = 1._fp/dens0(0);
    real entropic_var = dens0(1)/dens0(0);
    return dens(0, k+ks, j+js, i+is, n) * thermo->compute_U(alpha, entropic_var, 0, 0, 0, 0);
  }
@@ -145,7 +146,7 @@ class Hamiltonian_MCE_rho_Hs {
  //   ql = rho_l/rho;
  //   qi = rho_i/rho;
      real YAKL_INLINE compute_alpha(const real5d dens0, int is, int js, int ks, int i, int j, int k, int n) {
-       return 1./dens0(0, k+ks, j+js, i+is, n);
+       return 1._fp/dens0(0, k+ks, j+js, i+is, n);
      }
      
      real YAKL_INLINE compute_entropic_var(const real5d dens0, int is, int js, int ks, int i, int j, int k, int n) {
@@ -175,7 +176,7 @@ class Hamiltonian_MCE_rho_Hs {
    compute_I<5, diff_ord>(dens0, dens, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k, n);
    #endif   
    
-   real alpha = 1./dens0(0);
+   real alpha = 1._fp/dens0(0);
    real entropic_var = dens0(1)/dens0(0);
    real qd = (dens0(0) - dens0(2) - dens0(3) - dens0(4))/dens0(0);
    real qv = dens0(2) / dens0(0);

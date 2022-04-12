@@ -17,6 +17,6 @@ cmake      \
   -DPAM_MICRO="none"                                           \
   -DPAM_SGS="none"                                                \
   -DPAMC_MODEL="layermodel"                                                \
-  -DPAMC_HAMIL="swe"                                                \
+  -DPAMC_HAMIL="tswe"                                                \
   -DPAMC_THERMO="none"                                                \
   ..

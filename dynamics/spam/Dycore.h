@@ -35,8 +35,6 @@ class Dycore {
     UniformRectangularStraightExtrudedGeometry primal_geometry;
     UniformRectangularTwistedExtrudedGeometry dual_geometry;
 #endif
-// ADVECTION CHOICE HERE IS BROKEN!
-// BASICALLY NEED ADDITIONAL COMPILE FLAGS IE GEOM/TOPO TYPE (LAYER VS EXTRUDED) AND EQNSET TYPE (HAMIL, ADVECTION)
 
     ModelStats stats;
     VariableSet<nprognostic> prognostic_vars;
@@ -77,7 +75,7 @@ class Dycore {
     readParamsFile(inFile, params, par, coupler.get_nz());
     std::cout << "read parameters\n" << std::flush;
     
-// HOW DO WE HANDLE LX/LY/XC/YC; and constants like g?    
+// HOW DO WE HANDLE LX/LY/XC/YC;
 // ALSO VERTICAL LEVELS STUFF?
 
     // Initialize the grid
@@ -158,37 +156,31 @@ class Dycore {
     
   // Given the model data and CFL value, compute the maximum stable time step
   real compute_time_step(PamCoupler const &coupler, real cfl_in = -1) {return 0._fp;};
-    
-    
-  //void init_idealized_state_and_tracers( PamCoupler &coupler ) {};
-    
-  //void output(PamCoupler const &coupler, real etime) {};
-      
+        
   void timeStep( PamCoupler &coupler , real dtphys ) {
         
     // Time stepping loop
     std::cout << "start timestepping loop\n" << std::flush;
     for (uint nstep = 0; nstep<params.crm_per_phys; nstep++) {
-    // 
        yakl::fence();
        tint.stepForward(params.dtcrm);
        yakl::fence();
-    // 
+       
        etime += params.dtcrm;
       if ((nstep+prevstep)%params.Nout == 0) {
         std::cout << "step " << (nstep+prevstep) << " time " << etime << "\n";
         diagnostics.compute_diag(constant_vars, prognostic_vars, diagnostic_vars);
         io.output(etime);
       }
-    // 
+      
        if (nstep%params.Nstat == 0)
        {
          stats.compute(prognostic_vars, constant_vars, (nstep+prevstep)/params.Nstat);
        }
-    // 
+       
     }
     prevstep += params.crm_per_phys;
-    // 
+
     std::cout << "end timestepping loop\n" << std::flush;
   };
         

@@ -144,7 +144,7 @@ real YAKL_INLINE compute_KE(const real5d v, const real5d dens, int is, int js, i
     {
       KE = KE + he(d) * (U(d) * v(d,k+ks,j+js,i+is, n));
     }
-  return 1./2. * KE;
+  return 0.5_fp * KE;
 
 }
 
@@ -184,7 +184,7 @@ real YAKL_INLINE compute_KE(const real5d v, const real5d dens, int is, int js, i
   
   //compute K = 1/2 * PhiT(U,V)
   compute_phiT(K, U, v, is, js, ks, i, j, k, n);
-  K(0, k+ks, j+js, i+is, n) *= 0.5;
+  K(0, k+ks, j+js, i+is, n) *= 0.5_fp;
   
 }
 
