@@ -7,6 +7,9 @@
 namespace modules {
 
   inline void sponge_layer( PamCoupler &coupler , real dt ) {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+
     int nz   = coupler.get_nz  ();
     int ny   = coupler.get_ny  ();
     int nx   = coupler.get_nx  ();

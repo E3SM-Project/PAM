@@ -4,8 +4,6 @@
 #include "awfl_const.h"
 #include "pam_coupler.h"
 
-using pam::PamCoupler;
-
 int  constexpr nTimeDerivs = 1;
 bool constexpr timeAvg     = true;
 int  constexpr nAder       = ngll;
@@ -23,7 +21,7 @@ public:
   int num_out;
   real out_freq;
 
-  void init(PamCoupler &coupler) {
+  void init(pam::PamCoupler &coupler) {
     space_op.init(coupler);
 
     stateTend  = space_op.createStateTendArr ();
@@ -43,17 +41,20 @@ public:
   }
 
 
-  void init_idealized_state_and_tracers( PamCoupler &coupler ) {
+  void init_idealized_state_and_tracers( pam::PamCoupler &coupler ) {
     space_op.init_idealized_state_and_tracers( coupler );
   }
 
 
-  real compute_time_step(PamCoupler const &coupler, real cfl_in = -1) {
+  real compute_time_step(pam::PamCoupler const &coupler, real cfl_in = -1) {
     return space_op.compute_time_step(coupler, cfl_in);
   }
 
 
-  std::vector<real> compute_mass( PamCoupler const &coupler , realConst5d state , realConst5d tracers ) const {
+  std::vector<real> compute_mass( pam::PamCoupler const &coupler , realConst5d state , realConst5d tracers ) const {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+
     int nz   = coupler.get_nz();
     int ny   = coupler.get_ny();
     int nx   = coupler.get_nx();
@@ -83,7 +84,10 @@ public:
   }
 
 
-  void timeStep( PamCoupler &coupler , real dtphys ) {
+  void timeStep( pam::PamCoupler &coupler , real dtphys ) {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+
     YAKL_SCOPE( stateTend       , this->stateTend           );
     YAKL_SCOPE( tracerTend      , this->tracerTend          );
     YAKL_SCOPE( hyDensCells     , this->space_op.hyDensCells);
@@ -201,7 +205,7 @@ public:
   }
 
 
-  void finalize(PamCoupler &coupler) { }
+  void finalize(pam::PamCoupler &coupler) { }
 
 
   const char * dycore_name() const { return "AWFL"; }

@@ -4,9 +4,6 @@
 #include "pam_coupler.h"
 #include "Sam1mom.h"
 
-using pam::PamCoupler;
-
-
 extern "C"
 void sam1mom_main_fortran(double &dt, int &ncol, int &nz, double *zint, double *rho, double *rhow, double *pres, 
                           double *tabs, double *qv, double *qn, double *qp);
@@ -66,7 +63,10 @@ public:
 
 
   // Can do whatever you want, but mainly for registering tracers and allocating data
-  void init(PamCoupler &coupler) {
+  void init(pam::PamCoupler &coupler) {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+
     int nx   = coupler.get_nx  ();
     int ny   = coupler.get_ny  ();
     int nz   = coupler.get_nz  ();
@@ -95,7 +95,10 @@ public:
 
 
 
-  void timeStep( PamCoupler &coupler , real dt ) const {
+  void timeStep( pam::PamCoupler &coupler , real dt ) const {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+
     auto &dm = coupler.get_data_manager_readwrite();
 
     // Get the dimensions sizes

@@ -10,8 +10,6 @@
 #include "DataManager.h"
 #include "pam_coupler.h"
 
-using pam::PamCoupler;
-
 
 template <int nTimeDerivs, bool timeAvg, int nAder>
 class Spatial_operator {
@@ -157,7 +155,10 @@ public:
 
 
 
-  void convert_dynamics_to_coupler_state( PamCoupler &coupler , realConst5d state , realConst5d tracers ) const {
+  void convert_dynamics_to_coupler_state( pam::PamCoupler &coupler , realConst5d state , realConst5d tracers ) const {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+
     auto &dm = coupler.get_data_manager_readwrite();
 
     real4d dm_dens_dry = dm.get<real,4>( "density_dry"      );
@@ -226,7 +227,10 @@ public:
 
 
 
-  void convert_coupler_state_to_dynamics( PamCoupler const &coupler , real5d const &state , real5d const &tracers ) {
+  void convert_coupler_state_to_dynamics( pam::PamCoupler const &coupler , real5d const &state , real5d const &tracers ) {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+
     auto &dm = coupler.get_data_manager_readonly();
     auto hy_params = dm.get<real const,2>("hydrostasis_parameters");
 
@@ -370,7 +374,10 @@ public:
 
 
   // Given the model data and CFL value, compute the maximum stable time step
-  real compute_time_step(PamCoupler const &coupler, real cfl_in = -1) {
+  real compute_time_step(pam::PamCoupler const &coupler, real cfl_in = -1) {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+
     real cfl = cfl_in;
     if (cfl < 0) cfl = 0.75;
 
@@ -428,7 +435,10 @@ public:
 
 
   // Initialize crap needed by recon()
-  void init(PamCoupler &coupler) {
+  void init(pam::PamCoupler &coupler) {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+
     using yakl::intrinsics::matmul_cr;
 
     this->nens = coupler.get_nens();
@@ -743,7 +753,10 @@ public:
 
 
   // Initialize the state
-  void init_idealized_state_and_tracers( PamCoupler &coupler ) {
+  void init_idealized_state_and_tracers( pam::PamCoupler &coupler ) {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+
     YAKL_SCOPE( nx                       , this->nx                      );
     YAKL_SCOPE( ny                       , this->ny                      );
     YAKL_SCOPE( nz                       , this->nz                      );
@@ -1236,6 +1249,9 @@ public:
   void computeTendenciesX( real5d const &state   , real5d const &stateTend  ,
                            real5d const &tracers , real5d const &tracerTend ,
                            real &dt ) const {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+
     YAKL_SCOPE( nx                      , this->nx                     );
     YAKL_SCOPE( weno_scalars            , this->weno_scalars           );
     YAKL_SCOPE( weno_winds              , this->weno_winds             );
@@ -1537,6 +1553,9 @@ public:
   void computeTendenciesY( real5d const &state   , real5d const &stateTend  ,
                            real5d const &tracers , real5d const &tracerTend ,
                            real &dt ) const {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+
     YAKL_SCOPE( ny                      , this->ny                     );
     YAKL_SCOPE( weno_scalars            , this->weno_scalars           );
     YAKL_SCOPE( weno_winds              , this->weno_winds             );
@@ -1832,6 +1851,9 @@ public:
   void computeTendenciesZ( real5d const &state   , real5d const &stateTend  ,
                            real5d const &tracers , real5d const &tracerTend ,
                            real &dt ) const {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+
     YAKL_SCOPE( nz                      , this->nz                     );
     YAKL_SCOPE( weno_scalars            , this->weno_scalars           );
     YAKL_SCOPE( weno_winds              , this->weno_winds             );
@@ -2182,7 +2204,10 @@ public:
 
 
 
-  void output(PamCoupler const &coupler, real etime) {
+  void output(pam::PamCoupler const &coupler, real etime) {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+
     YAKL_SCOPE( dx                    , this->dx                   );
     YAKL_SCOPE( dy                    , this->dy                   );
     YAKL_SCOPE( hyDensCells           , this->hyDensCells          );

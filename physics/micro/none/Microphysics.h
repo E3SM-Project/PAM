@@ -3,8 +3,6 @@
 
 #include "pam_coupler.h"
 
-using pam::PamCoupler;
-
 class Microphysics {
 public:
 
@@ -44,7 +42,10 @@ public:
 
 
   // Have to declare at least water vapor
-  void init(PamCoupler &coupler) {
+  void init(pam::PamCoupler &coupler) {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+
     int nx   = coupler.get_nx  ();
     int ny   = coupler.get_ny  ();
     int nz   = coupler.get_nz  ();
@@ -64,7 +65,7 @@ public:
 
 
 
-  void timeStep( PamCoupler &coupler , real dt ) {
+  void timeStep( pam::PamCoupler &coupler , real dt ) {
     // Do microphysicsy stuff to the coupler variables and the tracers
   }
 

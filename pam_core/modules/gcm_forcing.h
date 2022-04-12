@@ -18,7 +18,10 @@ namespace modules {
   // Therefore, we are forcing the average CRM column state at the end of the MMF step to be the same as the input GCM
   //    state PLUS whatever internal CRM dynamics were produced along the way.
   inline void compute_gcm_forcing_tendencies( PamCoupler &coupler , real dt_gcm ) {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
     using yakl::atomicAdd;
+
     auto &dm = coupler.get_data_manager_readwrite();
 
     // Get current state from coupler
@@ -116,6 +119,8 @@ namespace modules {
   // Multiplicative hole fillers do reduce gradients, but we expect the frequency / magnitude of negative values
   //    to be low.
   inline void apply_gcm_forcing_tendencies( PamCoupler &coupler , real dt ) {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
     using yakl::atomicAdd;
     auto &dm = coupler.get_data_manager_readwrite();
 

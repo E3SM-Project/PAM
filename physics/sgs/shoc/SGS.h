@@ -7,8 +7,6 @@
 
 #define SHOC_FORTRAN
 
-using pam::PamCoupler;
-
 
 extern "C"
 void shoc_init_fortran(int &nlev, double &gravit, double &rair, double &rh2o, double &cpair, double &zvir, double &latvap,
@@ -95,7 +93,10 @@ public:
 
 
   // Can do whatever you want, but mainly for registering tracers and allocating data
-  void init(PamCoupler &coupler) {
+  void init(pam::PamCoupler &coupler) {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+
     int nx   = coupler.get_nx  ();
     int ny   = coupler.get_ny  ();
     int nz   = coupler.get_nz  ();
@@ -137,7 +138,10 @@ public:
 
 
 
-  void timeStep( PamCoupler &coupler , real dt ) {
+  void timeStep( pam::PamCoupler &coupler , real dt ) {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+
     // Get the dimensions sizes
     int nz   = coupler.get_nz();
     int ny   = coupler.get_ny();
@@ -590,7 +594,7 @@ public:
   }
 
 
-  void finalize(PamCoupler &coupler) {
+  void finalize(pam::PamCoupler &coupler) {
     pam::kokkos_finalize();
   }
 

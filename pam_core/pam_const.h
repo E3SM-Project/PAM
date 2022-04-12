@@ -6,13 +6,10 @@
 #include <thread>
 
 using yakl::SArray;
-using yakl::c::parallel_for;
-using yakl::c::SimpleBounds;
-using yakl::c::Bounds;
 using yakl::memDevice;
 using yakl::memHost;
 using yakl::styleC;
-using yakl::index_t;
+using yakl::Array;
 
 #ifndef PAM_ORD
   #define PAM_ORD 5

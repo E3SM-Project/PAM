@@ -3,8 +3,6 @@
 
 #include "pam_coupler.h"
 
-using pam::PamCoupler;
-
 extern "C" void kessler_fortran(double *theta, double *qv, double *qc, double *qr, double *rho,
                                 double *pk, double &dt, double *z, int &nz, double &precl);
 
@@ -50,7 +48,10 @@ public:
 
 
 
-  void init(PamCoupler &coupler) {
+  void init(pam::PamCoupler &coupler) {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+
     int nx   = coupler.get_nx  ();
     int ny   = coupler.get_ny  ();
     int nz   = coupler.get_nz  ();
@@ -85,6 +86,9 @@ public:
 
 
   real compute_total_mass( pam::DataManager const &dm ) const {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+
     auto rho_v = dm.get<real const,4>("water_vapor");
     auto rho_c = dm.get<real const,4>("cloud_liquid");
     auto rho_r = dm.get<real const,4>("precip_liquid");
@@ -103,7 +107,10 @@ public:
 
 
 
-  void timeStep( PamCoupler &coupler , real dt ) const {
+  void timeStep( pam::PamCoupler &coupler , real dt ) const {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+
     auto &dm = coupler.get_data_manager_readwrite();
 
     auto rho_v   = dm.get_lev_col<real      >("water_vapor");

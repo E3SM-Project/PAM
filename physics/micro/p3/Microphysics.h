@@ -8,9 +8,6 @@
 #define P3_FORTRAN
 // #define P3_DEBUG
 
-using pam::PamCoupler;
-
-
 extern "C"
 void p3_main_fortran(double *qc , double *nc , double *qr , double *nr , double *th_atm , double *qv ,
                      double &dt , double *qi , double *qm , double *ni , double *bm , double *pres ,
@@ -105,7 +102,10 @@ public:
 
 
   // Can do whatever you want, but mainly for registering tracers and allocating data
-  void init(PamCoupler &coupler) {
+  void init(pam::PamCoupler &coupler) {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+
     int nx   = coupler.get_nx  ();
     int ny   = coupler.get_ny  ();
     int nz   = coupler.get_nz  ();
@@ -180,7 +180,10 @@ public:
 
 
 
-  void timeStep( PamCoupler &coupler , real dt ) {
+  void timeStep( pam::PamCoupler &coupler , real dt ) {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+
     if (first_step) {
       if (coupler.get_option<std::string>("sgs") == "shoc") sgs_shoc = true;
     }

@@ -13,6 +13,9 @@ namespace modules {
 
 
     void init( pam::PamCoupler const &coupler ) {
+      using yakl::c::parallel_for;
+      using yakl::c::SimpleBounds;
+
       this->nz             = coupler.get_nz  ();
       this->ny             = coupler.get_ny  ();
       this->nx             = coupler.get_nx  ();
@@ -49,6 +52,9 @@ namespace modules {
 
 
     void apply_forcing( pam::PamCoupler &coupler , real dt ) {
+      using yakl::c::parallel_for;
+      using yakl::c::SimpleBounds;
+
       YAKL_SCOPE( temp_factor    , this->temp_factor    );
       YAKL_SCOPE( rho_v_factor   , this->rho_v_factor   );
 
@@ -87,6 +93,9 @@ namespace modules {
 
     void compute_variance( realConst4d   temp     , realConst4d   rho_v     ,
                            real2d const &temp_var , real2d const &rho_v_var ) {
+      using yakl::c::parallel_for;
+      using yakl::c::SimpleBounds;
+
       // Initialize mean and variance to zero in the same kernel to reduce kernel count
       real2d temp_mean ("temp_mean" ,nz,nens);
       real2d rho_v_mean("rho_v_mean",nz,nens);

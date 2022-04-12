@@ -8,6 +8,9 @@ namespace modules {
 
   // It is best if id is globally unique for each batch of CRMs
   inline void perturb_temperature( PamCoupler &coupler , int id ) {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+
     int constexpr num_levels = 10;
     real constexpr magnitude = 3.;
 

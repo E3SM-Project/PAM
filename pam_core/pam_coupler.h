@@ -450,6 +450,9 @@ namespace pam {
 
 
     void set_grid(real xlen, real ylen, realConst2d zint_in) {
+      using yakl::c::parallel_for;
+      using yakl::c::SimpleBounds;
+
       int nz    = get_nz();
       int nens  = get_nens();
       this->xlen = xlen;
@@ -464,6 +467,9 @@ namespace pam {
 
 
     void set_grid(real xlen, real ylen, realConst1d zint_in) {
+      using yakl::c::parallel_for;
+      using yakl::c::SimpleBounds;
+
       int nz    = get_nz();
       int nens  = get_nens();
       this->xlen = xlen;
@@ -528,6 +534,9 @@ namespace pam {
 
 
     void allocate_coupler_state( int nz, int ny, int nx, int nens ) {
+      using yakl::c::parallel_for;
+      using yakl::c::SimpleBounds;
+
       dm.register_and_allocate<real>( "density_dry"               , "dry density"               ,
                                       {nz,ny,nx,nens} , {"z","y","x","nens"} );
       dm.register_and_allocate<real>( "uvel"                      , "x-direction velocity"      ,
@@ -579,6 +588,8 @@ namespace pam {
 
 
     void update_hydrostasis( realConst4d pressure ) {
+      using yakl::c::parallel_for;
+      using yakl::c::SimpleBounds;
       using yakl::intrinsics::matmul_cr;
       using yakl::intrinsics::matinv_ge;
       using yakl::atomicAdd;
@@ -598,7 +609,7 @@ namespace pam {
       real2d pressure_col("pressure_col",nz,nens);
       memset( pressure_col , 0._fp );
       real r_nx_ny = 1._fp / (nx*ny);
-      parallel_for( Bounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
         // TODO: Switch the statements below for production runs
         // atomicAdd( pressure_col(k,iens) , pressure(k,j,i,iens)*r_nx_ny );
         pressure_col(k,iens) = pressure(k,0,0,iens);
@@ -682,6 +693,9 @@ namespace pam {
 
 
     real4d compute_pressure_array() const {
+      using yakl::c::parallel_for;
+      using yakl::c::SimpleBounds;
+
       auto dens_dry = dm.get<real const,4>("density_dry");
       auto dens_wv  = dm.get<real const,4>("water_vapor");
       auto temp     = dm.get<real const,4>("temp");
@@ -710,6 +724,9 @@ namespace pam {
 
 
     real4d interp_pressure_interfaces( realConst4d press ) const {
+      using yakl::c::parallel_for;
+      using yakl::c::SimpleBounds;
+
       auto zint      = dm.get<real const,2>("vertical_interface_height");
       auto hy_press  = dm.get<real const,2>("hydrostatic_pressure");
       auto hy_params = dm.get<real const,2>("hydrostasis_parameters");
@@ -747,6 +764,9 @@ namespace pam {
 
 
     real4d interp_density_interfaces( realConst4d dens ) const {
+      using yakl::c::parallel_for;
+      using yakl::c::SimpleBounds;
+
       auto zint      = dm.get<real const,2>("vertical_interface_height");
       auto hy_dens   = dm.get<real const,2>("hydrostatic_density");
       auto hy_params = dm.get<real const,2>("hydrostasis_parameters");
