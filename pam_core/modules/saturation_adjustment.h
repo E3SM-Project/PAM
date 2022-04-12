@@ -111,7 +111,7 @@ namespace modules {
   }
 
 
-  inline void saturation_adjustment( PamCoupler &coupler , real dt ) {
+  inline void saturation_adjustment( pam::PamCoupler &coupler , real dt ) {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
     using yakl::intrinsics::size;

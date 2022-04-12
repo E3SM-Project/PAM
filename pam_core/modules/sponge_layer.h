@@ -6,7 +6,7 @@
 
 namespace modules {
 
-  inline void sponge_layer( PamCoupler &coupler , real dt ) {
+  inline void sponge_layer( pam::PamCoupler &coupler , real dt ) {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
 

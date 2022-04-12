@@ -7,7 +7,7 @@
 namespace modules {
 
   // It is best if id is globally unique for each batch of CRMs
-  inline void perturb_temperature( PamCoupler &coupler , int id ) {
+  inline void perturb_temperature( pam::PamCoupler &coupler , int id ) {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
 

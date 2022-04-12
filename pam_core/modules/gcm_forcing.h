@@ -15,7 +15,7 @@ namespace modules {
   //    state_crm_new = state_crm + (state_gcm-state_crm)  ===>  state_crm_new = state_gcm
   // Therefore, we are forcing the average CRM column state at the end of the MMF step to be the same as the input GCM
   //    state PLUS whatever internal CRM dynamics were produced along the way.
-  inline void compute_gcm_forcing_tendencies( PamCoupler &coupler , real dt_gcm ) {
+  inline void compute_gcm_forcing_tendencies( pam::PamCoupler &coupler , real dt_gcm ) {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
     using yakl::atomicAdd;
@@ -116,13 +116,11 @@ namespace modules {
   //    negative values and then removes that mass from other cells proportional to each cell's existing mass.
   // Multiplicative hole fillers do reduce gradients, but we expect the frequency / magnitude of negative values
   //    to be low.
-  inline void apply_gcm_forcing_tendencies( PamCoupler &coupler , real dt ) {
+  inline void apply_gcm_forcing_tendencies( pam::PamCoupler &coupler , real dt ) {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
     using yakl::atomicAdd;
     auto &dm = coupler.get_data_manager_readwrite();
-
-    bool force_density = coupler.get_option<std::string>("density_forcing") == "loose";
 
     int nz   = dm.get_dimension_size("z"   );
     int ny   = dm.get_dimension_size("y"   );
@@ -160,7 +158,7 @@ namespace modules {
     parallel_for( "Apply GCM forcing" , SimpleBounds<4>(nz,ny,nx,nens) , 
                   YAKL_LAMBDA (int k, int j, int i, int iens) {
       // Apply forcing
-      if (force_density) rho_d(k,j,i,iens) += gcm_tend_rho_d(k,iens) * dt;
+      rho_d(k,j,i,iens) += gcm_tend_rho_d(k,iens) * dt;
       uvel (k,j,i,iens) += gcm_tend_uvel (k,iens) * dt;
       vvel (k,j,i,iens) += gcm_tend_vvel (k,iens) * dt;
       temp (k,j,i,iens) += gcm_tend_temp (k,iens) * dt;

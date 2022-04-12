@@ -126,19 +126,11 @@ public:
   real        ylen;
   real1d      zbot;
   real1d      ztop;
-  // Boundary condition in each direction
-  int         bc_x;
-  int         bc_y;
-  int         bc_z;
   // Whether to use WENO for scalars and also for winds
   bool        weno_scalars;
   bool        weno_winds;
-  // Name of the output file
-  std::string out_prefix;
   // How to initialize the data
   int         data_spec;
-  // Whether to balance initial density to avoid acoustics at the start
-  bool balance_initial_density;
 
 
   // When this class is created, initialize num_tracers to zero
@@ -496,11 +488,6 @@ public:
       weno_scalars            = true;
       weno_winds              = true;
       data_spec               = DATA_SPEC_EXTERNAL;
-      bc_x                    = BC_PERIODIC;
-      bc_y                    = BC_PERIODIC;
-      bc_z                    = BC_WALL;
-      out_prefix              = "test";
-      balance_initial_density = false;
     } else {
       // Read the YAML input file
       YAML::Node config = YAML::LoadFile(inFile);
@@ -519,45 +506,6 @@ public:
         data_spec = DATA_SPEC_EXTERNAL;
       } else {
         endrun("ERROR: Invalid data_spec");
-      }
-
-      // Read the x-direction boundary condition option
-      std::string bc_x_str = config["bc_x"].as<std::string>();
-      if        (bc_x_str == "periodic" ) {
-        bc_x = BC_PERIODIC;
-      } else if (bc_x_str == "wall"     ) {
-        bc_x = BC_WALL;
-      } else {
-        endrun("Invalid bc_x");
-      }
-
-      // Read the y-direction boundary condition option
-      std::string bc_y_str = config["bc_y"].as<std::string>();
-      if        (bc_y_str == "periodic" ) {
-        bc_y = BC_PERIODIC;
-      } else if (bc_y_str == "wall"     ) {
-        bc_y = BC_WALL;
-      } else {
-        endrun("Invalid bc_y");
-      }
-
-      // Read the z-direction boundary condition option
-      std::string bc_z_str = config["bc_z"].as<std::string>();
-      if        (bc_z_str == "periodic" ) {
-        bc_z = BC_PERIODIC;
-      } else if (bc_z_str == "wall"     ) {
-        bc_z = BC_WALL;
-      } else {
-        endrun("Invalid bc_z");
-      }
-
-      // Read the output filename
-      out_prefix = config["out_prefix"].as<std::string>();
-
-      if (config["balance_initial_density"]) {
-        balance_initial_density = config["balance_initial_density"].as<bool>();
-      } else {
-        balance_initial_density = false;
       }
     }
 
@@ -746,7 +694,6 @@ public:
 
     init_idealized_state_and_tracers( coupler );
 
-    // output( coupler , 0._fp );
   }
 
 
@@ -784,7 +731,6 @@ public:
     YAKL_SCOPE( gamma                    , this->gamma                   );
     YAKL_SCOPE( p0                       , this->p0                      );
     YAKL_SCOPE( C0                       , this->C0                      );
-    YAKL_SCOPE( balance_initial_density  , this->balance_initial_density );
     YAKL_SCOPE( vert_interface           , this->vert_interface          );
     YAKL_SCOPE( num_tracers              , this->num_tracers             );
     YAKL_SCOPE( idWV                     , this->idWV                    );
@@ -867,8 +813,6 @@ public:
                 real tp = profiles::ellipsoid_linear(xloc, yloc, zloc, xlen/2, ylen/2, 2000, 2000, 2000, 2000, 2 );
                 real t = th + tp;
                 real r = rh;
-                // Line below balances initial density to remove the acoustic wave
-                if (balance_initial_density) r = rh*th/t;
 
                 state(idR,hs+k,hs+j,hs+i,iens) += (r - rh)*wt;
                 state(idT,hs+k,hs+j,hs+i,iens) += (r*t - rh*th) * wt;
@@ -948,23 +892,6 @@ public:
 
         for (int tr = 0 ; tr < num_tracers ; tr++) {
           tracers(tr,hs+k,hs+j,hs+i,iens) = tracers(tr,hs+k,hs+j,hs+i,iens) / rho_dry * rho_moist;
-        }
-
-        if (balance_initial_density) {
-          real rh  = hyDensCells     (k,iens);
-          real rth = hyDensThetaCells(k,iens);
-          real rt = state(idT,hs+k,hs+j,hs+i,iens) + rth;
-          real r  = state(idR,hs+k,hs+j,hs+i,iens) + rh;
-          real t  = rt / r;
-          r = rth/t;
-          state(idR,hs+k,hs+j,hs+i,iens) = r - rh;
-          state(idU,hs+k,hs+j,hs+i,iens) = state(idU,hs+k,hs+j,hs+i,iens) / rho_moist * r;
-          state(idV,hs+k,hs+j,hs+i,iens) = state(idV,hs+k,hs+j,hs+i,iens) / rho_moist * r;
-          state(idW,hs+k,hs+j,hs+i,iens) = state(idW,hs+k,hs+j,hs+i,iens) / rho_moist * r;
-          state(idT,hs+k,hs+j,hs+i,iens) = r*t - rth;
-          for (int tr = 0 ; tr < num_tracers ; tr++) {
-            tracers(tr,hs+k,hs+j,hs+i,iens) = tracers(tr,hs+k,hs+j,hs+i,iens) / rho_moist * r;
-          }
         }
       });
 
@@ -1094,25 +1021,6 @@ public:
         hyThetaCells    (k,iens) = theta;
         hyDensVapCells  (k,iens) = dens_vap;
       });
-
-      // // Dump out data to plot a skew-T log-P diagram
-      // yakl::SimpleNetCDF nc;
-      // nc.create("skew.nc");
-      // real1d data("data",nz);
-      // for (int iens=0; iens < nens; iens++) {
-      //   parallel_for( "Spatial.h init_state 8" , nz , YAKL_LAMBDA (int k) { data(k) = z(k,iens); });
-      //   nc.write(data.createHostCopy(),"z"          ,{"z"});
-
-      //   parallel_for( "Spatial.h init_state 9" , nz , YAKL_LAMBDA (int k) { data(k) = hyPressureCells(k,iens); });
-      //   nc.write(data.createHostCopy(),"pressure"   ,{"z"});
-
-      //   parallel_for( "Spatial.h init_state 10" , nz , YAKL_LAMBDA (int k) { data(k) = temp_hy(k,iens); });
-      //   nc.write(data.createHostCopy(),"temperature",{"z"});
-
-      //   parallel_for( "Spatial.h init_state 11" , nz , YAKL_LAMBDA (int k) { data(k) = tdew_hy(k,iens); });
-      //   nc.write(data.createHostCopy(),"dew_point"  ,{"z"});
-      // }
-      // nc.close();
 
       parallel_for( "Spatial.h init_state 12" , SimpleBounds<4>(nz,ny,nx,nens) ,
                     YAKL_LAMBDA (int k, int j, int i, int iens) {
@@ -1267,7 +1175,6 @@ public:
     YAKL_SCOPE( dx                      , this->dx                     );
     YAKL_SCOPE( tracer_pos              , this->tracer_pos             );
     YAKL_SCOPE( num_tracers             , this->num_tracers            );
-    YAKL_SCOPE( bc_x                    , this->bc_x                   );
     YAKL_SCOPE( gamma                   , this->gamma                  );
     YAKL_SCOPE( C0                      , this->C0                     );
 
@@ -1571,7 +1478,6 @@ public:
     YAKL_SCOPE( dy                      , this->dy                     );
     YAKL_SCOPE( tracer_pos              , this->tracer_pos             );
     YAKL_SCOPE( num_tracers             , this->num_tracers            );
-    YAKL_SCOPE( bc_y                    , this->bc_y                   );
     YAKL_SCOPE( gamma                   , this->gamma                  );
     YAKL_SCOPE( C0                      , this->C0                     );
 
@@ -1868,7 +1774,6 @@ public:
     YAKL_SCOPE( dz                      , this->dz                     );
     YAKL_SCOPE( tracer_pos              , this->tracer_pos             );
     YAKL_SCOPE( num_tracers             , this->num_tracers            );
-    YAKL_SCOPE( bc_z                    , this->bc_z                   );
     YAKL_SCOPE( gllWts_ngll             , this->gllWts_ngll            );
     YAKL_SCOPE( gamma                   , this->gamma                  );
     YAKL_SCOPE( C0                      , this->C0                     );
@@ -1942,10 +1847,8 @@ public:
           for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idW,wrapz(k,kk,nz),hs+j,hs+i,iens); }
           reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc , weno_recon_lower_loc ,
                                   idl , sigma , weno_winds );
-          if (bc_z == BC_WALL) {
-            if (k == nz-1) gll(ngll-1) = 0;
-            if (k == 0   ) gll(0     ) = 0;
-          }
+          if (k == nz-1) gll(ngll-1) = 0;
+          if (k == 0   ) gll(0     ) = 0;
           for (int kk=0; kk < ngll; kk++) { rw_DTs(0,kk) = gll(kk); }
 
           // theta
@@ -1972,7 +1875,7 @@ public:
         if (nAder > 1) {
           diffTransformEulerConsZ( r_DTs , ru_DTs , rv_DTs , rw_DTs , rt_DTs , rwu_DTs , rwv_DTs , rww_DTs ,
                                    rwt_DTs , rt_gamma_DTs , derivMatrix , hyPressureGLL , C0 , gamma , k ,
-                                   dz(k,iens) , bc_z , nz , iens );
+                                   dz(k,iens) , nz , iens );
         }
 
         SArray<real,1,ngll> r_tavg, rw_tavg;
@@ -2047,10 +1950,8 @@ public:
             for (int kk=0; kk < ngll; kk++) { rt_DTs(0,kk) = max( 0._fp , rt_DTs(0,kk) ); }
           }
 
-          if (bc_z == BC_WALL) {
-            if (k == nz-1) rwt_DTs(0,ngll-1) = 0;
-            if (k == 0   ) rwt_DTs(0,0     ) = 0;
-          }
+          if (k == nz-1) rwt_DTs(0,ngll-1) = 0;
+          if (k == 0   ) rwt_DTs(0,0     ) = 0;
 
           tracerLimits(tr,1,k  ,j,i,iens) = rt_DTs (0,0     ); // Left interface
           tracerLimits(tr,0,k+1,j,i,iens) = rt_DTs (0,ngll-1); // Right interface
@@ -2200,136 +2101,6 @@ public:
 
 
   const char * getName() { return ""; }
-
-
-
-  void output(pam::PamCoupler const &coupler, real etime) {
-    using yakl::c::parallel_for;
-    using yakl::c::SimpleBounds;
-
-    YAKL_SCOPE( dx                    , this->dx                   );
-    YAKL_SCOPE( dy                    , this->dy                   );
-    YAKL_SCOPE( hyDensCells           , this->hyDensCells          );
-    YAKL_SCOPE( hyDensThetaCells      , this->hyDensThetaCells     );
-    YAKL_SCOPE( hyThetaCells          , this->hyThetaCells         );
-    YAKL_SCOPE( hyPressureCells       , this->hyPressureCells      );
-    YAKL_SCOPE( gamma                 , this->gamma                );
-    YAKL_SCOPE( C0                    , this->C0                   );
-
-    real5d state   = createStateArr();
-    real5d tracers = createTracerArr();
-    convert_coupler_state_to_dynamics( coupler , state , tracers );
-
-    auto &dm = coupler.get_data_manager_readonly();
-
-    for (int iens = 0; iens < nens; iens++) {
-      std::string fname = out_prefix + std::string("_") + std::to_string(iens) + std::string(".nc");
-
-      yakl::SimpleNetCDF nc;
-      int ulIndex = 0; // Unlimited dimension index to place this data at
-      // Create or open the file
-      if (etime == 0.) {
-        nc.create(fname);
-
-        // x-coordinate
-        real1d xloc("xloc",nx);
-        parallel_for( "Spatial.h output 1" , nx , YAKL_LAMBDA (int i) { xloc(i) = (i+0.5)*dx; });
-        nc.write(xloc.createHostCopy(),"x",{"x"});
-
-        // y-coordinate
-        real1d yloc("yloc",ny);
-        parallel_for( "Spatial.h output 2" , ny , YAKL_LAMBDA (int i) { yloc(i) = (i+0.5)*dy; });
-        nc.write(yloc.createHostCopy(),"y",{"y"});
-
-        // z-coordinate
-        auto zint = dm.get<real const,2>("vertical_interface_height");
-        real1d zmid("zmid",nz);
-        parallel_for( "Spatial.h output 3" , nz , YAKL_LAMBDA (int i) {
-          zmid(i) = ( zint(i,iens) + zint(i+1,iens) ) / 2;
-        });
-        nc.write(zmid.createHostCopy(),"z",{"z"});
-
-        // hydrostatic density, theta, and pressure
-        parallel_for( "Spatial.h output 4" , nz , YAKL_LAMBDA (int k) { zmid(k) = hyDensCells(k,iens); });
-        nc.write(zmid.createHostCopy(),"hyDens"    ,{"z"});
-
-        parallel_for( "Spatial.h output 5" , nz , YAKL_LAMBDA (int k) { zmid(k) = hyPressureCells(k,iens); });
-        nc.write(zmid.createHostCopy(),"hyPressure",{"z"});
-
-        parallel_for( "Spatial.h output 6" , nz , YAKL_LAMBDA (int k) { zmid(k) = hyThetaCells(k,iens); });
-        nc.write(zmid.createHostCopy(),"hyTheta"   ,{"z"});
-
-        // Create time variable
-        nc.write1(0._fp,"t",0,"t");
-      } else {
-        nc.open(fname,yakl::NETCDF_MODE_WRITE);
-        ulIndex = nc.getDimSize("t");
-
-        // Write the elapsed time
-        nc.write1(etime,"t",ulIndex,"t");
-      }
-
-      std::vector<std::string> tracer_names = coupler.get_tracer_names();
-      int num_tracers = coupler.get_num_tracers();
-      // Create MultiField of all state and tracer full variables, since we're doing the same operation on each
-      pam::MultiField<real const,4> fields;
-      fields.add_field( dm.get<real const,4>("density_dry") );
-      fields.add_field( dm.get<real const,4>("uvel"       ) );
-      fields.add_field( dm.get<real const,4>("vvel"       ) );
-      fields.add_field( dm.get<real const,4>("wvel"       ) );
-      fields.add_field( dm.get<real const,4>("temp"       ) );
-      for (int tr=0; tr < num_tracers; tr++) {
-        fields.add_field( dm.get<real const,4>(tracer_names[tr]) );
-      }
-
-      // First, write out standard coupler state
-      real3d data("data",nz,ny,nx);
-      parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = fields(0,k,j,i,iens); });
-      nc.write1(data,"density"    ,{"z","y","x"},ulIndex,"t");
-      parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = fields(1,k,j,i,iens); });
-      nc.write1(data,"uvel"       ,{"z","y","x"},ulIndex,"t");
-      parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = fields(2,k,j,i,iens); });
-      nc.write1(data,"vvel"       ,{"z","y","x"},ulIndex,"t");
-      parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = fields(3,k,j,i,iens); });
-      nc.write1(data,"wvel"       ,{"z","y","x"},ulIndex,"t");
-      parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = fields(4,k,j,i,iens); });
-      nc.write1(data,"temperature",{"z","y","x"},ulIndex,"t");
-      for (int tr=0; tr < num_tracers; tr++) {
-        parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-          // data(k,j,i) = fields(5+tr,k,j,i,iens) / (state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens));
-          data(k,j,i) = fields(5+tr,k,j,i,iens);
-        });
-        nc.write1(data,tracer_names[tr],{"z","y","x"},ulIndex,"t");
-      }
-
-
-      // Next, write out any dycore-oriented fields for idealized test cases
-      // rho'
-      parallel_for( "Spatial.h output 7" , SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-        data(k,j,i) = state(idR,hs+k,hs+j,hs+i,iens);
-      });
-      nc.write1(data.createHostCopy(),"dens_pert",{"z","y","x"},ulIndex,"t");
-      // theta'
-      parallel_for( "Spatial.h output 11" , SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-        real r =   state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells     (k,iens);
-        real t = ( state(idT,hs+k,hs+j,hs+i,iens) + hyDensThetaCells(k,iens) ) / r;
-        data(k,j,i) = t - hyThetaCells(k,iens);
-      });
-      nc.write1(data.createHostCopy(),"pot_temp_pert",{"z","y","x"},ulIndex,"t");
-      // pressure'
-      parallel_for( "Spatial.h output 12" , SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
-        real r  = state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens);
-        real rt = state(idT,hs+k,hs+j,hs+i,iens) + hyDensThetaCells(k,iens);
-        real p  = C0*pow(rt,gamma);
-        data(k,j,i) = p - hyPressureCells(k,iens);
-      });
-      nc.write1(data.createHostCopy(),"pressure_pert",{"z","y","x"},ulIndex,"t");
-
-      // Close the file
-      nc.close();
-
-    }
-  }
 
 
 
@@ -2556,7 +2327,7 @@ public:
                                                    SArray<real,2,ngll,ngll> const &deriv ,
                                                    real3d const &hyPressureGLL ,
                                                    real C0, real gamma ,
-                                                   int k , real dz , int bc_z , int nz , int iens ) {
+                                                   int k , real dz , int nz , int iens ) {
     // zero out the non-linear DTs
     for (int kt=1; kt < nAder; kt++) {
       for (int ii=0; ii < ngll; ii++) {
@@ -2591,10 +2362,8 @@ public:
         rw(kt+1,ii) = -drww_p_dz/dz/(kt+1);
         rt(kt+1,ii) = -drwt_dz  /dz/(kt+1);
 
-        if (bc_z == BC_WALL) {
-          if (k == nz-1) rw(kt+1,ngll-1) = 0;
-          if (k == 0   ) rw(kt+1,0     ) = 0;
-        }
+        if (k == nz-1) rw(kt+1,ngll-1) = 0;
+        if (k == 0   ) rw(kt+1,0     ) = 0;
       }
 
       // Compute ru* at the next time level

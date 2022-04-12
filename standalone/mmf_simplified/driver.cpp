@@ -6,7 +6,6 @@
 #include "mmf_interface.h"
 #include "perturb_temperature.h"
 #include "gcm_forcing.h"
-#include "gcm_density_forcing.h"
 #include "sponge_layer.h"
 #include "saturation_adjustment.h"
 
@@ -34,9 +33,7 @@ int main(int argc, char** argv) {
     real ylen           = config["ylen"       ].as<real>();
     real dt_gcm         = config["dt_gcm"     ].as<real>();
     real dt_crm_phys    = config["dt_crm_phys"].as<real>();
-    real out_freq       = config["outFreq"    ].as<real>();
-    std::string coldata = config["column_data"].as<std::string>();
-    bool advect_tke     = config["advect_tke" ].as<bool>();
+    real out_freq       = config["out_freq"   ].as<real>();
 
     int nranks;
     int myrank;
@@ -45,22 +42,6 @@ int main(int argc, char** argv) {
     bool mainproc = (myrank == 0);
 
     auto &coupler = mmf_interface::get_coupler();
-
-    coupler.set_option<bool>("advect_tke",advect_tke);
-
-    // How to apply the density forcing: loose (force it like sam does); strict (enforce it strictly every time step)
-    if (config["density_forcing"]) {
-      coupler.set_option<std::string>("density_forcing",config["density_forcing"].as<std::string>());
-    } else {
-      coupler.set_option<std::string>("density_forcing","loose");
-    }
-
-    // Apply forcing at dynamics time step?  If false, it's applied at the CRM physics time step
-    if (config["forcing_at_dycore_time_step"]) {
-      coupler.set_option<bool>( "forcing_at_dycore_time_step" , config["forcing_at_dycore_time_step"].as<bool>() );
-    } else {
-      coupler.set_option<bool>( "forcing_at_dycore_time_step" , false );
-    }
 
     // This is for the dycore to pull out to determine how to do idealized test cases
     coupler.set_option<std::string>( "standalone_input_file" , inFile );
@@ -160,26 +141,11 @@ int main(int argc, char** argv) {
     // Now that we have an initial state, define hydrostasis for each ensemble member
     coupler.update_hydrostasis( coupler.compute_pressure_array() );
 
-    coupler.add_mmf_function( "sgs"    , [&] (PamCoupler &coupler, real dt) { sgs   .timeStep(coupler,dt); } );
-    coupler.add_mmf_function( "micro"  , [&] (PamCoupler &coupler, real dt) { micro .timeStep(coupler,dt); } );
-    coupler.add_mmf_function( "dycore" , [&] (PamCoupler &coupler, real dt) { dycore.timeStep(coupler,dt); } );
-
-    bool forcing_at_dycore_time_step = coupler.get_option<bool>("forcing_at_dycore_time_step");
-
-    if (forcing_at_dycore_time_step) {
-      if ( coupler.get_option<std::string>("density_forcing") == "strict" ) {
-        coupler.add_dycore_function( "gcm_density_forcing" , modules::gcm_density_forcing );
-      }
-      coupler.add_dycore_function( "apply_gcm_forcing_tendencies" , modules::apply_gcm_forcing_tendencies );
-      coupler.add_dycore_function( "sponge_layer"                 , modules::sponge_layer                 );
-    } else {
-      if ( coupler.get_option<std::string>("density_forcing") == "strict" ) {
-        coupler.add_mmf_function( "gcm_density_forcing" , modules::gcm_density_forcing );
-      }
-      coupler.add_mmf_function( "apply_gcm_forcing_tendencies" , modules::apply_gcm_forcing_tendencies );
-      coupler.add_mmf_function( "sponge_layer"                 , modules::sponge_layer                 );
-    }
-
+    coupler.add_mmf_function( "apply_gcm_forcing_tendencies" , modules::apply_gcm_forcing_tendencies );
+    coupler.add_mmf_function( "dycore" , [&] (pam::PamCoupler &coupler, real dt) { dycore.timeStep(coupler,dt); } );
+    coupler.add_mmf_function( "sgs"    , [&] (pam::PamCoupler &coupler, real dt) { sgs   .timeStep(coupler,dt); } );
+    coupler.add_mmf_function( "micro"  , [&] (pam::PamCoupler &coupler, real dt) { micro .timeStep(coupler,dt); } );
+    coupler.add_mmf_function( "sponge_layer"                 , modules::sponge_layer                 );
     // coupler.add_dycore_function( "saturation_adjustment" , saturation_adjustment );
 
     real etime_gcm = 0;
@@ -201,13 +167,11 @@ int main(int argc, char** argv) {
         if (dt_crm == 0.) { dt_crm = dycore.compute_time_step(coupler); }
         if (etime_crm + dt_crm > simTime_crm) { dt_crm = simTime_crm - etime_crm; }
 
-        coupler.run_mmf_function( "sgs"    , dt_crm );
-        coupler.run_mmf_function( "micro"  , dt_crm );
-        coupler.run_mmf_function( "dycore" , dt_crm );
-        if (! forcing_at_dycore_time_step) {
-          coupler.run_mmf_function( "apply_gcm_forcing_tendencies" , dt_crm );
-          coupler.run_mmf_function( "sponge_layer"                 , dt_crm );
-        }
+        coupler.run_mmf_function( "apply_gcm_forcing_tendencies" , dt_crm );
+        coupler.run_mmf_function( "dycore"                       , dt_crm );
+        coupler.run_mmf_function( "sponge_layer"                 , dt_crm );
+        coupler.run_mmf_function( "sgs"                          , dt_crm );
+        coupler.run_mmf_function( "micro"                        , dt_crm );
 
         etime_crm += dt_crm;
         etime_gcm += dt_crm;

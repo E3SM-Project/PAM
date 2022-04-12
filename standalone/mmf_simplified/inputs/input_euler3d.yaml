@@ -16,16 +16,9 @@ nens     : 1
 # Vertical height cooridnates file
 vcoords  : vcoords_equal_50_20km.nc
 
-# mmf column forcing data
-column_data : column_forcing_data.nc
-
 # Domain size of the CRMs
 xlen     : 128000
 ylen     : 64000
-
-bc_x   : periodic
-bc_y   : periodic
-bc_z   : wall
 
 weno_scalars : true
 
@@ -43,15 +36,6 @@ dt_gcm: 900
 dt_crm_phys: 20.
 
 # Output frequency in seconds
-outFreq: -1.
-
-# Specify how to force density from the GCM (loose, strict, or off)
-density_forcing: loose
-
-# If true, GCM forcing is applied at the finest dycore time step; otherwise at coarser CRM physics time step
-forcing_at_dycore_time_step: false
-
-# Whether or not to advect TKE in SGS scheme
-advect_tke: true
+out_freq: 0.
 
 

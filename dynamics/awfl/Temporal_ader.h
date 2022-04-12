@@ -18,21 +18,13 @@ public:
   Spatial space_op;
 
   real etime;
-  int num_out;
-  real out_freq;
 
   void init(pam::PamCoupler &coupler) {
     space_op.init(coupler);
 
     stateTend  = space_op.createStateTendArr ();
     tracerTend = space_op.createTracerTendArr();
-
-    std::string inFile = coupler.get_option<std::string>( "standalone_input_file" );
-    YAML::Node config = YAML::LoadFile(inFile);
-    if ( !config ) { endrun("ERROR: Invalid YAML input file"); }
-    real outFreq = config["outFreq"].as<real>();
     etime   = 0;
-    num_out = 0;
   }
 
 
@@ -195,13 +187,6 @@ public:
     space_op.convert_dynamics_to_coupler_state( coupler , state , tracers );
 
     etime += dtphys;
-    if (out_freq >= 0. && etime / out_freq >= num_out+1) {
-      // yakl::timer_start("output");
-      // space_op.output( coupler , etime );
-      // yakl::timer_stop("output");
-      num_out++;
-    }
-
   }
 
 
