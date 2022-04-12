@@ -1,10 +1,8 @@
 
-#include "pam_const.h"
 #include "pam_coupler.h"
 #include "Dycore.h"
 #include "Microphysics.h"
 #include "SGS.h"
-#include "DataManager.h"
 #include "mmf_interface.h"
 #include "perturb_temperature.h"
 #include "gcm_forcing.h"

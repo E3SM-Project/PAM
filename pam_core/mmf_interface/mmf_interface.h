@@ -2,7 +2,6 @@
 #pragma once
 
 #include "pam_coupler.h"
-#include "DataManager.h"
 #include "Options.h"
 #include <string>
 #include <vector>
@@ -13,9 +12,6 @@
 // from a C++-side interface routines
 
 namespace mmf_interface {
-  using yakl::Array;
-  using yakl::memHost;
-  using yakl::styleC;
 
   // This is a vector because CPU threaded regions will require a different PamCoupler instance for each thread
   extern std::vector<pam::PamCoupler> couplers;

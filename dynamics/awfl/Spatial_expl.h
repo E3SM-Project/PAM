@@ -7,7 +7,6 @@
 #include "WenoLimiter.h"
 #include "idealized_profiles.h"
 #include "MultipleFields.h"
-#include "DataManager.h"
 #include "pam_coupler.h"
 
 

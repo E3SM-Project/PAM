@@ -1,8 +1,6 @@
 
 #pragma once
 
-#include "pam_const.h"
-#include "DataManager.h"
 #include "pam_coupler.h"
 
 namespace modules {
