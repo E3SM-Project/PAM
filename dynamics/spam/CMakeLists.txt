@@ -7,6 +7,12 @@ target_include_directories(dycore INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 #link_directories(dycore INTERFACE /home/celdred/parallel-netcdf-gnu/lib)
 #target_link_libraries(dycore INTERFACE pnetcdf)
 
+target_include_directories(dycore INTERFACE src)
+target_include_directories(dycore INTERFACE src/models)
+target_include_directories(dycore INTERFACE src/operators)
+target_include_directories(dycore INTERFACE src/timesteppers)
+target_include_directories(dycore INTERFACE src/hamiltonians)
+target_include_directories(dycore INTERFACE src/grids)
 
 if ("${PAMC_MODEL}" STREQUAL "layeradvection")
 target_compile_definitions(dycore INTERFACE -D_ADVECTION)

@@ -72,7 +72,7 @@ public:
   compute_I<ndensity, diff_ord>(diagnostic_vars.fields_arr[DENSLDIAGVAR].data, x.fields_arr[DENSVAR].data, *this->primal_geometry, *this->dual_geometry, pis, pjs, pks, i, j, k, n);
   });
 
-    parallel_for( Bounds<4>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens, dual_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
+    parallel_for( Bounds<4>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
   PVPE.compute_q0(diagnostic_vars.fields_arr[QDIAGVAR].data, x.fields_arr[VVAR].data, x.fields_arr[DENSVAR].data, const_vars.fields_arr[CORIOLISVAR].data, dis, djs, dks, i, j, k, n);
   });
 }
@@ -672,7 +672,17 @@ real YAKL_INLINE double_vortex_tracer_gaussian(real x, real y)     {return doubl
 //{ return 0.005 *double_vortex_h(x,y) * exp(-100. * pow((x-xc)/Lx,2.)) * exp(-100. * pow((y-yc)/Ly,2.)); }
 
 
-
+void set_domain_sizes_ic (Parameters &params, std::string initData)
+{
+  if (initData == "doublevortex")
+{
+  params.xlen = dbl_vortex_constants.Lx;
+  params.ylen = dbl_vortex_constants.Ly;
+  params.xc = dbl_vortex_constants.xc;
+  params.yc = dbl_vortex_constants.yc;
+}
+}
+  
 void set_initial_conditions (Parameters &params, VariableSet<nprognostic> &progvars, VariableSet<nconstant> &constvars, 
 Geometry &primal_geom, Geometry &dual_geom)
 {

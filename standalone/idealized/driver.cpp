@@ -23,35 +23,40 @@ int main(int argc, char** argv) {
     std::string inFile(argv[1]);
     YAML::Node config = YAML::LoadFile(inFile);
     if ( !config            ) { endrun("ERROR: Invalid YAML input file"); }
-    real        simTime      = config["simTime" ].as<real>(0.0);
+    real        simTime      = config["simTime" ].as<real>(0.0_fp);
     real        simSteps     = config["simSteps"].as<int>(0);
     int         crm_nx       = config["crm_nx"  ].as<int>();
     int         crm_ny       = config["crm_ny"  ].as<int>();
     int         nens         = config["nens"    ].as<int>();
-    real        xlen         = config["xlen"    ].as<real>();
-    real        ylen         = config["ylen"    ].as<real>();
+    real        xlen         = config["xlen"    ].as<real>(-1.0_fp);
+    real        ylen         = config["ylen"    ].as<real>(-1.0_fp);
     real        dtphys_in    = config["dtphys"  ].as<real>();
     std::string vcoords_file = config["vcoords" ].as<std::string>("vcoords_none.nc");
     bool        use_coupler_hydrostasis = config["use_coupler_hydrostasis"].as<bool>(false);
 
     // Read vertical coordinates
 //THIS IS BROKEN IN PARALLEL
-    // yakl::SimpleNetCDF nc;
-    // nc.open(vcoords_file);
-    // int crm_nz = nc.getDimSize("num_interfaces") - 1;
-    // real1d zint_in("zint_in",crm_nz+1);
-    // nc.read(zint_in,"vertical_interfaces");
-    // nc.close();      
-
-    int crm_nz = 1;
+    yakl::SimpleNetCDF nc;
+    nc.open(vcoords_file);
+    int crm_nz = nc.getDimSize("num_interfaces") - 1;
     real1d zint_in("zint_in",crm_nz+1);
-    zint_in(0) = 0.0;
-    zint_in(1) = 1.0;
+    nc.read(zint_in,"vertical_interfaces");
+    nc.close();      
+
+    // int crm_nz = 1;
+    // real1d zint_in("zint_in",crm_nz+1);
+    // zint_in(0) = 0.0_fp;
+    // zint_in(1) = 1.0_fp;
     
     // Create the dycore and the microphysics
     Dycore       dycore;
     Microphysics micro;
     SGS          sgs;
+    
+    //set xlen, ylen based on init cond if needed
+    if (xlen < 0 or ylen < 0)
+    {dycore.set_domain_sizes(config["initData"].as<std::string>(), xlen, ylen);}
+    std::cout << xlen << " " << ylen << "\n";
 
     // Use microphysics gas constants values in the coupler
     coupler.set_phys_constants( micro.R_d , micro.R_v , micro.cp_d , micro.cp_v , micro.grav , micro.p0 );

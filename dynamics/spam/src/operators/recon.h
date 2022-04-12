@@ -118,8 +118,6 @@ template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord=2, uint
   for (int l=0; l<ndofs; l++) {
     //The +1 in k here is required since twisted 0-forms have extra dofs at the top and bottom, and we are looping over straight cells!
     stencil(l,0,p) = var(l, k+ks+p-hs+1, j+js, i+is, n);
-    //NOT SURE THIS IS TRUE? DIDNT SEEM TO FIX ANYTHING :(
-    //stencil(l,0,p) = var(l, k+ks+p-hs, j+js, i+is);
   }}
 
   if (recontype == RECONSTRUCTION_TYPE::CFV) { cfv<ndofs, 1> (edgerecon, stencil); }

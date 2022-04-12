@@ -6,10 +6,6 @@ simSteps  : 25
 crm_nx       : 100
 crm_ny       : 100
 
-# Lengths of the dimensions in meters
-xlen     : 1.0
-ylen     : 1.0
-
 # Data to initialize: doublevortex rb mrb
 initWind : doublevortex
 initTracer1: square

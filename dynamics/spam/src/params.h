@@ -26,11 +26,6 @@ public:
   real xlen, ylen;
   real xc, yc;
 
-  //std::string xbnd = "periodic";
-  //std::string ybnd = "periodic";
-
-  //DATA_INIT data_init_cond;
-  //TRACER_INIT tracer_init_cond[ntracers];
   bool acoustic_balance;
   
 };
@@ -75,21 +70,18 @@ void readParamsFile(std::string inFile, Parameters &params, Parallel &par, int n
    std::cout << "Error: nranks != nprocx * nprocy\n"; exit(-1); 
  }
 
- //WRONG WAY TO HANDLE dtphys=-1....
- params.dtphys = config["dtphys"].as<real>();
- params.crm_per_phys = config["crm_per_phys"].as<int>();
- params.dtcrm =  params.dtphys / params.crm_per_phys;
- 
-  //THIS STUFF SHOULD REALLY BE SET BY IC...
-  params.xlen = config["xlen"].as<real>();
-  params.ylen = config["ylen"].as<real>();
-  params.xc = params.xlen/2.;
-  params.yc = params.ylen/2.;
 
-// NEEDS NEW LOGIC FOR TIME BASED CONTROL
-  params.Nsteps = config["simSteps"].as<int>() * params.crm_per_phys;
-  params.Nout = config["outSteps"].as<int>();
-  params.Nstat = config["statSteps"].as<int>();
+
+  params.dtphys = config["dtphys"].as<real>();
+  params.crm_per_phys = config["crm_per_phys"].as<int>(0);
+  params.Nout = config["outSteps"].as<int>(0);
+  params.Nstat = config["statSteps"].as<int>(0);
+  int simSteps = config["simSteps"].as<int>(0);
+  if (not (params.dtphys > 0.0_fp) or  not (simSteps > 0) or not (params.crm_per_phys > 0)  or not (params.Nout > 0) or not (params.Nstat > 0)) 
+  {endrun("spam++ must use step-based time control logic ie set simSteps >0, dtphys>0, crm_per_phys >0, outSteps >0, statSteps >0");}
+  
+  params.dtcrm =  params.dtphys / params.crm_per_phys;
+  params.Nsteps = simSteps * params.crm_per_phys;
 
   params.tstype = config["tstype"].as<std::string>();
 
