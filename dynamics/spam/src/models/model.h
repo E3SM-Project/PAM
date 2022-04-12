@@ -4,7 +4,6 @@
 #include "topology.h"
 #include "geometry.h"
 #include "geometry.h"
-#include "params.h"
 #include "variable_sets.h"
 #include "weno_func_recon.h" // needed to set TransformMatrices related stuff
 
@@ -73,7 +72,7 @@ public:
      std::cout << "CREATED TENDENCIES\n";
    }
 
-   void initialize(Parameters &params, const Topology &primal_topo, const Topology &dual_topo, Geometry &primal_geom, Geometry &dual_geom, ExchangeSet<nauxiliary> &aux_exchange, ExchangeSet<nconstant> &const_exchange)
+   void initialize(ModelParameters &params, const Topology &primal_topo, const Topology &dual_topo, Geometry &primal_geom, Geometry &dual_geom, ExchangeSet<nauxiliary> &aux_exchange, ExchangeSet<nconstant> &const_exchange)
    {
      this->primal_topology = &primal_topo;
      this->dual_topology = &dual_topo;

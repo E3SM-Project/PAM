@@ -1,6 +1,6 @@
 ---
 # Simulation time in number of physics time steps
-simSteps  : 57600 #1280
+simSteps  : 11520 #1280
 #11520 * 5 = 57600
 #200 *5 = 1000
 
@@ -9,7 +9,7 @@ crm_nx       : 100
 crm_ny       : 150
 
 # Data to initialize: doublevortex risingbubble moistrisingbubble
-initData : risingbubble
+initData : moistrisingbubble
 initTracer1: square
 initTracer2: gaussian
 initTracer3: doublesquare

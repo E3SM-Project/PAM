@@ -84,7 +84,7 @@ public:
 class ModelTendencies: public Tendencies {
 public:
 
- void initialize(Parameters &params, const Topology &primal_topo, const Topology &dual_topo, Geometry &primal_geom, Geometry &dual_geom, ExchangeSet<nauxiliary> &aux_exchange, ExchangeSet<nconstant> &const_exchange)
+ void initialize(ModelParameters &params, const Topology &primal_topo, const Topology &dual_topo, Geometry &primal_geom, Geometry &dual_geom, ExchangeSet<nauxiliary> &aux_exchange, ExchangeSet<nconstant> &const_exchange)
  {
 
 Tendencies::initialize(params, primal_topo, dual_topo, primal_geom, dual_geom, aux_exchange, const_exchange);
@@ -343,7 +343,7 @@ public:
   
    real3d TEarr, KEarr, PEarr, IEarr, PVarr, PENSarr, trimmed_density;
    
-  void initialize(Parameters &params, Parallel &par, const Topology &primal_topo, const Topology &dual_topo, Geometry &primal_geom, Geometry &dual_geom)
+  void initialize(ModelParameters &params, Parallel &par, const Topology &primal_topo, const Topology &dual_topo, Geometry &primal_geom, Geometry &dual_geom)
 {
   Stats::initialize(params, par, primal_topo, dual_topo, primal_geom, dual_geom);
   this->stats_arr[DENSSTAT].initialize("mass", ndensity, this->statsize, this->nens, this->masterproc);
@@ -810,10 +810,23 @@ real YAKL_INLINE flat_geop(real x, real z, real g)
 
 
 
+ void readModelParamsFile(std::string inFile, ModelParameters &params, Parallel &par, int nz)
+ {
+   readParamsFile( inFile, params, par, nz);
+   
+   params.acoustic_balance = config["balance_initial_density"].as<bool>(false);
+
+   // Read the data initialization options
+   params.initdataStr = config["initData"].as<std::string>();
+   for (int i=0;i<ntracers_nofct;i++)
+   {params.tracerdataStr[i] = config["initTracer" + std::to_string(i+1)].as<std::string>();}
+   for (int i=ntracers_nofct;i<ntracers;i++)
+   {params.tracerdataStr[i] = config["initFCTTracer" + std::to_string(i-ntracers_nofct+1)].as<std::string>();}
+   
+ }
 
 
-
-void set_domain_sizes_ic (Parameters &params, std::string initData)
+void set_domain_sizes_ic (ModelParameters &params, std::string initData)
 {
   if (initData == "doublevortex")
 {
@@ -831,7 +844,7 @@ params.yc = rb_constants.Ly  * 0.5_fp;
 }
 }
   
-void set_initial_conditions (Parameters &params, VariableSet<nprognostic> &progvars, VariableSet<nconstant> &constvars, 
+void set_initial_conditions (ModelParameters &params, VariableSet<nprognostic> &progvars, VariableSet<nconstant> &constvars, 
 Geometry &primal_geom, Geometry &dual_geom)
 {
 

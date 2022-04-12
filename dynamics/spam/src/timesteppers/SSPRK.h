@@ -28,7 +28,7 @@ public:
   SSPKKTimeIntegrator();
   SSPKKTimeIntegrator( const SSPKKTimeIntegrator &ssprk) = delete;
   SSPKKTimeIntegrator& operator=( const SSPKKTimeIntegrator &ssprk) = delete;
-  void initialize(Parameters &params, Tendencies &tend, VariableSet<nprognostic> &xvars, VariableSet<nconstant> &consts, VariableSet<nauxiliary> &auxiliarys, ExchangeSet<nprognostic> &prog_exch);
+  void initialize(ModelParameters &params, Tendencies &tend, VariableSet<nprognostic> &xvars, VariableSet<nconstant> &consts, VariableSet<nauxiliary> &auxiliarys, ExchangeSet<nprognostic> &prog_exch);
   void stepForward(real dt);
 
 
@@ -42,7 +42,7 @@ public:
     }
 
 
-  void SSPKKTimeIntegrator::initialize(Parameters &params, Tendencies &tend, VariableSet<nprognostic> &xvars, VariableSet<nconstant> &consts, VariableSet<nauxiliary> &auxiliarys, ExchangeSet<nprognostic> &prog_exch)
+  void SSPKKTimeIntegrator::initialize(ModelParameters &params, Tendencies &tend, VariableSet<nprognostic> &xvars, VariableSet<nconstant> &consts, VariableSet<nauxiliary> &auxiliarys, ExchangeSet<nprognostic> &prog_exch)
   {
     tstype = params.tstype;
     

@@ -156,7 +156,7 @@ class UniformRectangularTwistedGeometry: public Geometry {
 public:
 
 
-  void initialize(const Topology &topo, const Parameters &params);
+  void initialize(const Topology &topo, const ModelParameters &params);
 
   void printinfo();
 
@@ -178,7 +178,7 @@ class UniformRectangularStraightGeometry: public Geometry {
 
 public:
 
-  void initialize(const Topology &topo, const Parameters &params);
+  void initialize(const Topology &topo, const ModelParameters &params);
 
   void printinfo();
 
@@ -306,7 +306,7 @@ parallel_for( Bounds<4>(this->topology->nl, this->topology->n_cells_y, this->top
       });
   }
 
-void UniformRectangularTwistedGeometry::initialize(const Topology &topo, const Parameters &params)
+void UniformRectangularTwistedGeometry::initialize(const Topology &topo, const ModelParameters &params)
 {
 
 Geometry::initialize(topo);
@@ -381,7 +381,7 @@ void YAKL_INLINE UniformRectangularTwistedGeometry::get_1form_quad_pts_wts(int i
 }
 
 
-void UniformRectangularStraightGeometry::initialize(const Topology &topo, const Parameters &params)
+void UniformRectangularStraightGeometry::initialize(const Topology &topo, const ModelParameters &params)
 {
 
 Geometry::initialize(topo);
@@ -585,7 +585,7 @@ class UniformRectangularTwistedExtrudedGeometry: public Geometry {
 
 public:
 
-  void initialize(const Topology &topo, const Parameters &params);
+  void initialize(const Topology &topo, const ModelParameters &params);
 
   void printinfo();
 
@@ -614,7 +614,7 @@ class UniformRectangularStraightExtrudedGeometry: public Geometry {
 
 public:
 
-  void initialize(const Topology &topo, const Parameters &params);
+  void initialize(const Topology &topo, const ModelParameters &params);
 
   void printinfo();
 
@@ -751,7 +751,7 @@ YAKL_INLINE void Geometry::set_01form_values(vecext<2> (*initial_value_function)
 });
 }
 
-void UniformRectangularTwistedExtrudedGeometry::initialize(const Topology &topo, const Parameters &params)
+void UniformRectangularTwistedExtrudedGeometry::initialize(const Topology &topo, const ModelParameters &params)
 {
 
 Geometry::initialize(topo);
@@ -877,7 +877,7 @@ void YAKL_INLINE UniformRectangularTwistedExtrudedGeometry::get_10form_quad_pts_
 }
 
 
-void UniformRectangularStraightExtrudedGeometry::initialize(const Topology &topo, const Parameters &params)
+void UniformRectangularStraightExtrudedGeometry::initialize(const Topology &topo, const ModelParameters &params)
 {
 
 Geometry::initialize(topo);

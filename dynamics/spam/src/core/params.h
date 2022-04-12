@@ -3,33 +3,6 @@
 #include "parallel.h"
 #include "common.h"
 
-class Parameters
-{
-public:
-
-  int nx_glob = -1;
-  int ny_glob = -1;
-  int nz = -1;
-  int nens = -1;
-
-  int Nsteps = -1;
-  int Nout = -1;
-  real dtcrm = -1.;
-  real dtphys = -1.;
-  int crm_per_phys = -1;
-  int Nstat = -1;
-  std::string outputName;
-  std::string initdataStr;
-  std::string tracerdataStr[ntracers];
-  std::string tstype;
-
-  real xlen, ylen;
-  real xc, yc;
-
-  bool acoustic_balance;
-  
-};
-
 int ij_to_l(int i, int j, int nx)
 {
   return j * nx + i;
@@ -43,9 +16,7 @@ int wrap(int i, int nx)
 }
 
 
-
-
-void readParamsFile(std::string inFile, Parameters &params, Parallel &par, int nz) {
+void readParamsFile(std::string inFile, ModelParameters &params, Parallel &par, int nz) {
   
   //Read config file
   YAML::Node config = YAML::LoadFile(inFile);
@@ -86,16 +57,7 @@ void readParamsFile(std::string inFile, Parameters &params, Parallel &par, int n
   params.tstype = config["tstype"].as<std::string>();
 
   params.outputName = config["out_prefix"].as<std::string>("output") + "_dycore" + ".nc";
-  params.acoustic_balance = config["balance_initial_density"].as<bool>(false);
 
-//THIS IS HAMILTONIAN EQN SET SPECIFIC...
-  // Read the data initialization options
-  params.initdataStr = config["initData"].as<std::string>();
-  for (int i=0;i<ntracers_nofct;i++)
-  {params.tracerdataStr[i] = config["initTracer" + std::to_string(i+1)].as<std::string>();}
-  for (int i=ntracers_nofct;i<ntracers;i++)
-  {params.tracerdataStr[i] = config["initFCTTracer" + std::to_string(i-ntracers_nofct+1)].as<std::string>();}
-  
   //Get my process grid IDs
   par.py = floor(par.myrank / par.nprocx);
   par.px = par.myrank - par.nprocx * par.py;

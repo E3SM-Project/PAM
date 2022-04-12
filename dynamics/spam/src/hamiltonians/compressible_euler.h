@@ -258,7 +258,7 @@ void set_parameters(real gin)
 //       this->is_initialized = false;
 //  }
 // 
-//  void initialize(Parameters &params, ThermoPotential &thermodynamics, Geometry<1,1,1> &primal_geom, Geometry<1,1,1> &dual_geom)
+//  void initialize(ModelParameters &params, ThermoPotential &thermodynamics, Geometry<1,1,1> &primal_geom, Geometry<1,1,1> &dual_geom)
 //  {
 //    this->thermo = &thermodynamics;
 //    this->primal_geometry = &primal_geom;

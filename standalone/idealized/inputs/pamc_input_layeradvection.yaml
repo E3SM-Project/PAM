@@ -8,12 +8,15 @@ crm_ny       : 100
 
 # Data to initialize: doublevortex rb mrb
 initWind : doublevortex
-initTracer1: square
-initTracer2: gaussian
-initTracer3: doublesquare
-initFCTTracer1: square
-initFCTTracer2: gaussian
-initFCTTracer3: doublesquare
+initT1: square
+initT2: gaussian
+initT3: doublesquare
+initTFCT1: square
+initTFCT2: gaussian
+initTFCT3: doublesquare
+initQ: square
+initQ: gaussian
+initQ: doublesquare
 
 # Time steps
 dtphys: 1000.0
@@ -26,7 +29,7 @@ out_prefix  : test
 outSteps: 10
 statSteps: 1
 
-tstype: ssprk2
+tstype: ssprk3
 
 # Number of ensembles
 nens : 1

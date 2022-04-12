@@ -90,7 +90,28 @@ template <uint nvars> void set_dofs_arr(SArray<int,2, nvars, 3> &dofs_arr, int v
   dofs_arr(var, 2) = ndofs;
 }
 
+class Parameters
+{
+public:
 
+  int nx_glob = -1;
+  int ny_glob = -1;
+  int nz = -1;
+  int nens = -1;
+
+  int Nsteps = -1;
+  int Nout = -1;
+  real dtcrm = -1.;
+  real dtphys = -1.;
+  int crm_per_phys = -1;
+  int Nstat = -1;
+  std::string outputName;
+  std::string tstype;
+
+  real xlen, ylen;
+  real xc, yc;
+
+};
 
 // Add mode for various operators
 enum class ADD_MODE { REPLACE, ADD };
@@ -100,13 +121,13 @@ enum class BND_TYPE { PERIODIC, NONE };
 
 
 #if defined _HAMILTONIAN && defined _LAYER
-#include "layermodel-header.h"
+#include "layermodel-common.h"
 #elif defined _HAMILTONIAN && defined _EXTRUDED
-#include "extrudedmodel-header.h"
+#include "extrudedmodel-common.h"
 #elif defined _ADVECTION && defined _LAYER 
-#include "layeradvection-header.h"
+#include "layeradvection-common.h"
 #elif defined _ADVECTION && defined _EXTRUDED 
-#include "extrudedadvection-header.h"
+#include "extrudedadvection-common.h"
 #endif
 
 

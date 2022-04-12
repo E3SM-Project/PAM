@@ -4,9 +4,7 @@
 #include "pam_coupler.h" //Has DataManager and pam_const
 #include "common.h"
 #include "variable_sets.h"
-#include "singleio.h"
-//#include "fileio.h"
-//#include "new_fileio.h"
+#include "fileio.h"
 #include "topology.h"
 #include "geometry.h"
 #include "params.h"
@@ -50,7 +48,7 @@ class Dycore {
     ModelDiagnostics diagnostics;
     Topology primal_topology;
     Topology dual_topology;
-    Parameters params;
+    ModelParameters params;
     Parallel par;    
     #if _TIME_TYPE==0
           RKSimpleTimeIntegrator tint;

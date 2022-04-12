@@ -3,7 +3,6 @@
 #include "common.h"
 #include "topology.h"
 #include "geometry.h"
-#include "params.h"
 #include "parallel.h"
 
 class Stat
@@ -44,7 +43,7 @@ public:
   int nens;
   int statsize;
 
-  void initialize(Parameters &params, Parallel &par, const Topology &primal_topo, const Topology &dual_topo, Geometry &primal_geom, Geometry &dual_geom)
+  void initialize(ModelParameters &params, Parallel &par, const Topology &primal_topo, const Topology &dual_topo, Geometry &primal_geom, Geometry &dual_geom)
   {
     this->primal_topology = &primal_topo;
     this->dual_topology = &dual_topo;

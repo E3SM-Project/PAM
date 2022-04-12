@@ -1,10 +1,12 @@
 #pragma once
 
-// Number of Dimensions
-uint constexpr ndims = 2;
-
 uint constexpr ntracers_nofct = 0;
 uint constexpr ntracers_fct = 0;
+
+//////////////////////////////////////////////////////////////////////////////
+
+// Number of Dimensions
+uint constexpr ndims = 2;
 
 // Set dens and ntracers/ntracersfct sizes
 uint constexpr ntracers = ntracers_nofct + ntracers_fct;
@@ -90,3 +92,11 @@ uint constexpr nstats = 6;
 #define ESTAT 3
 #define PVSTAT 4
 #define PESTAT 5
+
+class ModelParameters : public Parameters
+{
+public: 
+  std::string initdataStr;
+  std::string tracerdataStr[ntracers];
+  bool acoustic_balance;
+};
