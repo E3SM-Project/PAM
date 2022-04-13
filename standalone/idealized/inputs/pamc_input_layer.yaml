@@ -1,6 +1,6 @@
 ---
 # Simulation time in number of physics time steps
-simSteps  : 11520 #1280
+simSteps  : 1 #1280
 #11520 * 5 = 57600
 #200 *5 = 1000
 

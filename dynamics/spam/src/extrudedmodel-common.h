@@ -87,16 +87,9 @@ uint constexpr nauxiliary = 32;
 
 // q, associated concentration 0-forms for den
 
-uint constexpr ndiagnostic = 9;
+uint constexpr ndiagnostic = 2;
 #define DENSLDIAGVAR 0
 #define QXZDIAGVAR 1
-#define FDIAGVAR 2
-#define KDIAGVAR 3
-#define HEDIAGVAR 4
-#define FWDIAGVAR 5
-#define HEWDIAGVAR 6
-#define UDIAGVAR 7
-#define UWDIAGVAR 8
 
 //track total densities, dens min/max, energy (total, K, P, I), PV, PE
 uint constexpr nstats = 6;

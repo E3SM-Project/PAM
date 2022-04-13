@@ -132,6 +132,7 @@ template<uint ndofs, uint ord, ADD_MODE addmode=ADD_MODE::REPLACE, uint off=ord/
 
 
 
+
 template<uint ndofs> void YAKL_INLINE I(SArray<real,1,ndofs> &var, SArray<real,3,ndofs,ndims,1> const &dens, SArray<real,2,ndims,1> const &Igeom) {
 
   for (int l=0; l<ndofs; l++) {
@@ -143,7 +144,8 @@ template<uint ndofs> void YAKL_INLINE I(SArray<real,1,ndofs> &var, SArray<real,3
   for (int l=0; l<ndofs; l++) {
     var(l) = Igeom(0,1) * dens(l,0,1);
     for (int d=0; d<ndims; d++) {
-        var(l) += -1.0_fp/48.0_fp* Igeom(d,0) * dens(l,d,0) + 2.0_fp/48.0_fp* Igeom(d,1) * dens(l,d,1) - 1.0_fp/48.0_fp* Igeom(d,2) * dens(l,d,2);
+        //var(l) += -1.0_fp/48.0_fp* Igeom(d,0) * dens(l,d,0) + 2.0_fp/48.0_fp* Igeom(d,1) * dens(l,d,1) - 1.0_fp/48.0_fp* Igeom(d,2) * dens(l,d,2);
+        var(l) += -1.0_fp/24.0_fp* Igeom(d,0) * dens(l,d,0) + 2.0_fp/24.0_fp* Igeom(d,1) * dens(l,d,1) - 1.0_fp/24.0_fp* Igeom(d,2) * dens(l,d,2);
       }
     }
 }
@@ -152,7 +154,8 @@ template<uint ndofs> void YAKL_INLINE I(SArray<real,1,ndofs> &var, SArray<real,3
   for (int l=0; l<ndofs; l++) {
     var(l) = Igeom(0,2) * dens(l,0,2);
     for (int d=0; d<ndims; d++) {
-          var(l) += 1.0_fp/576.0_fp*Igeom(d,0) * dens(l,d,0) - 16.0_fp/576.0_fp*Igeom(d,1) * dens(l,d,1) + 30.0_fp/576.0_fp* Igeom(d,2) * dens(l,d,2) - 16.0_fp/576.0_fp* Igeom(d,3) * dens(l,d,3) + 1.0_fp/576.0_fp* Igeom(d,4) * dens(l,d,4);
+          //var(l) += 1.0_fp/576.0_fp*Igeom(d,0) * dens(l,d,0) - 16.0_fp/576.0_fp*Igeom(d,1) * dens(l,d,1) + 30.0_fp/576.0_fp* Igeom(d,2) * dens(l,d,2) - 16.0_fp/576.0_fp* Igeom(d,3) * dens(l,d,3) + 1.0_fp/576.0_fp* Igeom(d,4) * dens(l,d,4);
+          var(l) += 9.0_fp/1920.0_fp*Igeom(d,0) * dens(l,d,0) - 116.0_fp/1920.0_fp*Igeom(d,1) * dens(l,d,1) + 214.0_fp/1920.0_fp* Igeom(d,2) * dens(l,d,2) - 116.0_fp/1920.0_fp* Igeom(d,3) * dens(l,d,3) + 9.0_fp/1920.0_fp* Igeom(d,4) * dens(l,d,4);
 }
 }
 }
@@ -248,7 +251,8 @@ template<uint ndofs> void YAKL_INLINE J(SArray<real,1,ndofs> &var, SArray<real,3
   for (int l=0; l<ndofs; l++) {
     var(l) = Jgeom(0,1) * dens(l,0,1);
     for (int d=0; d<ndims; d++) {
-        var(l) += -1.0_fp/48.0_fp* Jgeom(d,0) * dens(l,d,0) + 2.0_fp/48.0_fp* Jgeom(d,1) * dens(l,d,1) - 1.0_fp/48.0_fp* Jgeom(d,2) * dens(l,d,2);
+        //var(l) += -1.0_fp/48.0_fp* Jgeom(d,0) * dens(l,d,0) + 2.0_fp/48.0_fp* Jgeom(d,1) * dens(l,d,1) - 1.0_fp/48.0_fp* Jgeom(d,2) * dens(l,d,2);
+        var(l) += -1.0_fp/24.0_fp* Jgeom(d,0) * dens(l,d,0) + 2.0_fp/24.0_fp* Jgeom(d,1) * dens(l,d,1) - 1.0_fp/24.0_fp* Jgeom(d,2) * dens(l,d,2);
       }
     }
 }
@@ -257,7 +261,8 @@ template<uint ndofs> void YAKL_INLINE J(SArray<real,1,ndofs> &var, SArray<real,3
   for (int l=0; l<ndofs; l++) {
     var(l) = Jgeom(0,2) * dens(l,0,2);
     for (int d=0; d<ndims; d++) {
-          var(l) += 1.0_fp/576.0_fp*Jgeom(d,0) * dens(l,d,0) - 16.0_fp/576.0_fp*Jgeom(d,1) * dens(l,d,1) + 30.0_fp/576.0_fp* Jgeom(d,2) * dens(l,d,2) - 16.0_fp/576.0_fp* Jgeom(d,3) * dens(l,d,3) + 1.0_fp/576.0_fp* Jgeom(d,4) * dens(l,d,4);
+          //var(l) += 1.0_fp/576.0_fp*Jgeom(d,0) * dens(l,d,0) - 16.0_fp/576.0_fp*Jgeom(d,1) * dens(l,d,1) + 30.0_fp/576.0_fp* Jgeom(d,2) * dens(l,d,2) - 16.0_fp/576.0_fp* Jgeom(d,3) * dens(l,d,3) + 1.0_fp/576.0_fp* Jgeom(d,4) * dens(l,d,4);
+          var(l) += 9.0_fp/1920.0_fp*Jgeom(d,0) * dens(l,d,0) - 116.0_fp/1920.0_fp*Jgeom(d,1) * dens(l,d,1) + 214.0_fp/1920.0_fp* Jgeom(d,2) * dens(l,d,2) - 116.0_fp/1920.0_fp* Jgeom(d,3) * dens(l,d,3) + 9.0_fp/1920.0_fp* Jgeom(d,4) * dens(l,d,4);
 }
 }
 }

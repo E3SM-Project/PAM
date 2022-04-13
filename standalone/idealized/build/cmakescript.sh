@@ -18,6 +18,6 @@ cmake      \
   -DPAM_SGS="none"                                                \
   -DPAMC_MODEL="layermodel"                                                \
   -DPAMC_HAMIL="ce"                                                \
-  -DPAMC_THERMO="none"                                                \
+  -DPAMC_THERMO="idealgaspottemp"                                                \
   -DPAMC_IO="serial"                                                \
   ..

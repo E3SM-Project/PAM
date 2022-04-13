@@ -73,8 +73,8 @@ class Dycore {
     readModelParamsFile(inFile, params, par, coupler.get_nz());
     std::cout << "read parameters\n" << std::flush;
     
-// HOW DO WE HANDLE LX/LY/XC/YC;
-// ALSO VERTICAL LEVELS STUFF?
+// HOW DO WE HANDLE VERTICAL LEVELS STUFF?
+// BASICALLY A NEW GEOMETRY, I THINK?
 
     // Initialize the grid
     std::cout << "start init topo/geom\n" << std::flush;
