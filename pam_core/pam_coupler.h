@@ -537,26 +537,22 @@ namespace pam {
       using yakl::c::parallel_for;
       using yakl::c::SimpleBounds;
 
-      dm.register_and_allocate<real>( "density_dry"               , "dry density"               ,
-                                      {nz,ny,nx,nens} , {"z","y","x","nens"} );
-      dm.register_and_allocate<real>( "uvel"                      , "x-direction velocity"      ,
-                                      {nz,ny,nx,nens} , {"z","y","x","nens"} );
-      dm.register_and_allocate<real>( "vvel"                      , "y-direction velocity"      ,
-                                      {nz,ny,nx,nens} , {"z","y","x","nens"} );
-      dm.register_and_allocate<real>( "wvel"                      , "z-direction velocity"      ,
-                                      {nz,ny,nx,nens} , {"z","y","x","nens"} );
-      dm.register_and_allocate<real>( "temp"                      , "temperature"               ,
-                                      {nz,ny,nx,nens} , {"z","y","x","nens"} );
-      dm.register_and_allocate<real>( "vertical_interface_height" , "vertical interface height" ,
-                                      {nz+1    ,nens} , {"zp1"      ,"nens"} );
-      dm.register_and_allocate<real>( "vertical_midpoint_height"  , "vertical midpoint height"  ,
-                                      {nz      ,nens} , {"z"        ,"nens"} );
-      dm.register_and_allocate<real>( "hydrostasis_parameters"    , "hydrostasis parameters"    ,
-                                      {10      ,nens} , {"ten"      ,"nens"} );
-      dm.register_and_allocate<real>( "hydrostatic_pressure"      , "hydrostasis pressure"      ,
-                                      {nz      ,nens} , {"z"        ,"nens"} );
-      dm.register_and_allocate<real>( "hydrostatic_density"       , "hydrostasis density"       ,
-                                      {nz      ,nens} , {"z"        ,"nens"} );
+      dm.register_and_allocate<real>("density_dry"              ,"dry density"                ,{nz,ny,nx,nens},{"z","y","x","nens"});
+      dm.register_and_allocate<real>("uvel"                     ,"x-direction velocity"       ,{nz,ny,nx,nens},{"z","y","x","nens"});
+      dm.register_and_allocate<real>("vvel"                     ,"y-direction velocity"       ,{nz,ny,nx,nens},{"z","y","x","nens"});
+      dm.register_and_allocate<real>("wvel"                     ,"z-direction velocity"       ,{nz,ny,nx,nens},{"z","y","x","nens"});
+      dm.register_and_allocate<real>("temp"                     ,"temperature"                ,{nz,ny,nx,nens},{"z","y","x","nens"});
+      dm.register_and_allocate<real>("vertical_interface_height","vertical interface height"  ,{nz+1    ,nens},{"zp1"      ,"nens"});
+      dm.register_and_allocate<real>("vertical_midpoint_height" ,"vertical midpoint height"   ,{nz      ,nens},{"z"        ,"nens"});
+      dm.register_and_allocate<real>("hydrostasis_parameters"   ,"hydrostasis parameters"     ,{10      ,nens},{"ten"      ,"nens"});
+      dm.register_and_allocate<real>("hydrostatic_pressure"     ,"hydrostasis pressure"       ,{nz      ,nens},{"z"        ,"nens"});
+      dm.register_and_allocate<real>("hydrostatic_density"      ,"hydrostasis density"        ,{nz      ,nens},{"z"        ,"nens"});
+      dm.register_and_allocate<real>("gcm_density_dry"          ,"GCM column dry density"     ,{nz      ,nens},{"z"        ,"nens"});
+      dm.register_and_allocate<real>("gcm_uvel"                 ,"GCM column u-velocity"      ,{nz      ,nens},{"z"        ,"nens"});
+      dm.register_and_allocate<real>("gcm_vvel"                 ,"GCM column v-velocity"      ,{nz      ,nens},{"z"        ,"nens"});
+      dm.register_and_allocate<real>("gcm_wvel"                 ,"GCM column w-velocity"      ,{nz      ,nens},{"z"        ,"nens"});
+      dm.register_and_allocate<real>("gcm_temp"                 ,"GCM column temperature"     ,{nz      ,nens},{"z"        ,"nens"});
+      dm.register_and_allocate<real>("gcm_water_vapor"          ,"GCM column water vapor mass",{nz      ,nens},{"z"        ,"nens"});
 
       auto density_dry  = dm.get_collapsed<real>("density_dry"              );
       auto uvel         = dm.get_collapsed<real>("uvel"                     );
@@ -568,6 +564,12 @@ namespace pam {
       auto hy_params    = dm.get_collapsed<real>("hydrostasis_parameters"   );
       auto hy_press     = dm.get_collapsed<real>("hydrostatic_pressure"     );
       auto hy_dens      = dm.get_collapsed<real>("hydrostatic_density"      );
+      auto gcm_rho_d    = dm.get_collapsed<real>("gcm_density_dry"          );
+      auto gcm_uvel     = dm.get_collapsed<real>("gcm_uvel"                 );
+      auto gcm_vvel     = dm.get_collapsed<real>("gcm_vvel"                 );
+      auto gcm_wvel     = dm.get_collapsed<real>("gcm_wvel"                 );
+      auto gcm_temp     = dm.get_collapsed<real>("gcm_temp"                 );
+      auto gcm_rho_v    = dm.get_collapsed<real>("gcm_water_vapor"          );
 
       parallel_for( "coupler zero" , SimpleBounds<1>(nz*ny*nx*nens) , YAKL_LAMBDA (int i) {
         density_dry (i) = 0;
@@ -577,9 +579,15 @@ namespace pam {
         temp        (i) = 0;
         if (i < (nz+1)*nens) zint(i) = 0;
         if (i < (nz  )*nens) {
-          zmid    (i) = 0;
-          hy_press(i) = 0;
-          hy_dens (i) = 0;
+          zmid     (i) = 0;
+          hy_press (i) = 0;
+          hy_dens  (i) = 0;
+          gcm_rho_d(i) = 0;
+          gcm_uvel (i) = 0;
+          gcm_vvel (i) = 0;
+          gcm_wvel (i) = 0;
+          gcm_temp (i) = 0;
+          gcm_rho_v(i) = 0;
         }
         if (i < 5     *nens) hy_params(i) = 0;
       });
@@ -587,7 +595,7 @@ namespace pam {
 
 
 
-    void update_hydrostasis( realConst4d pressure ) {
+    void update_hydrostasis() {
       using yakl::c::parallel_for;
       using yakl::c::SimpleBounds;
       using yakl::intrinsics::matmul_cr;
@@ -600,17 +608,27 @@ namespace pam {
       auto hy_press  = dm.get<real,2>("hydrostatic_pressure"     );
       auto hy_dens   = dm.get<real,2>("hydrostatic_density"      );
 
+      auto dens_dry = dm.get<real const,4>("density_dry");
+      auto dens_wv  = dm.get<real const,4>("water_vapor");
+      auto temp     = dm.get<real const,4>("temp");
+
       int nz   = get_nz();
       int ny   = get_ny();
       int nx   = get_nx();
       int nens = get_nens();
+
+      YAKL_SCOPE( R_d , this->R_d );
+      YAKL_SCOPE( R_v , this->R_v );
 
       // Compute average column of pressure for each ensemble
       real2d pressure_col("pressure_col",nz,nens);
       memset( pressure_col , 0._fp );
       real r_nx_ny = 1._fp / (nx*ny);
       parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-        atomicAdd( pressure_col(k,iens) , pressure(k,j,i,iens)*r_nx_ny );
+        real rho_d = dens_dry(k,j,i,iens);
+        real rho_v = dens_wv (k,j,i,iens);
+        real T     = temp    (k,j,i,iens);
+        atomicAdd( pressure_col(k,iens) , compute_pressure( rho_d , rho_v , T , R_d , R_v )*r_nx_ny );
       });
 
       int constexpr npts = 10;

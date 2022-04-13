@@ -70,13 +70,6 @@ int main(int argc, char** argv) {
     // Set the GCM column data for each ensemble to the supercell initial state
     auto &dm = coupler.get_data_manager_readwrite();
 
-    dm.register_and_allocate<real>("gcm_density_dry","GCM column dry density"     ,{crm_nz,nens});
-    dm.register_and_allocate<real>("gcm_uvel"       ,"GCM column u-velocity"      ,{crm_nz,nens});
-    dm.register_and_allocate<real>("gcm_vvel"       ,"GCM column v-velocity"      ,{crm_nz,nens});
-    dm.register_and_allocate<real>("gcm_wvel"       ,"GCM column w-velocity"      ,{crm_nz,nens});
-    dm.register_and_allocate<real>("gcm_temp"       ,"GCM column temperature"     ,{crm_nz,nens});
-    dm.register_and_allocate<real>("gcm_water_vapor","GCM column water vapor mass",{crm_nz,nens});
-
     auto gcm_rho_d = dm.get<real,2>("gcm_density_dry");
     auto gcm_uvel  = dm.get<real,2>("gcm_uvel"       );
     auto gcm_vvel  = dm.get<real,2>("gcm_vvel"       );
@@ -131,7 +124,7 @@ int main(int argc, char** argv) {
     modules::broadcast_initial_gcm_column( coupler );
 
     // Now that we have an initial state, define hydrostasis for each ensemble member
-    coupler.update_hydrostasis( coupler.compute_pressure_array() );
+    coupler.update_hydrostasis();
 
     modules::perturb_temperature( coupler , 0 );
 
