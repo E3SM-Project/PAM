@@ -88,6 +88,7 @@ void readParamsFile(std::string inFile, ModelParameters &params, Parallel &par, 
     par.x_neigh(1) = ij_to_l(wrap(par.px+1,par.nprocx), par.py, par.nprocx);
 
     // y-dir
+    par.y_neigh(0) = -1; par.y_neigh(1) = -1;
     if (ndims==2)
     {
       par.y_neigh(0) = ij_to_l(par.px, wrap(par.py-1,par.nprocy), par.nprocx);
@@ -155,8 +156,10 @@ void readParamsFile(std::string inFile, ModelParameters &params, Parallel &par, 
 
     std::cout << "xlen:       " << params.xlen       << "\n";
     std::cout << "ylen:       " << params.ylen       << "\n";
+    std::cout << "zlen:       " << params.zlen       << "\n";
     std::cout << "xc:         " << params.xc         << "\n";
     std::cout << "yc:         " << params.yc         << "\n";
+    std::cout << "zc:         " << params.zc         << "\n";
   }
 
 

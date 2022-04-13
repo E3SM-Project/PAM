@@ -1,0 +1,43 @@
+---
+# Simulation time in number of physics time steps
+simSteps  : 200 #1280
+#11520 * 5 = 57600
+#200 *5 = 1000
+
+# Number of cells to use
+crm_nx       : 100
+crm_ny       : 100
+crm_nz       : 1
+
+# Data to initialize: doublevortex risingbubble moistrisingbubble
+initData : doublevortex
+initTracer1: square
+initTracer2: gaussian
+initTracer3: doublesquare
+initFCTTracer1: square
+initFCTTracer2: gaussian
+initFCTTracer3: doublesquare
+
+# Time steps
+dtphys: 1000.
+crm_per_phys: 5
+#0.015625 * 5 = 0.078125
+#200 * 5 = 1000 for doublevortex
+ 
+# Output filename
+out_prefix  : test
+
+# Output frequency in number of CRM time steps
+outSteps: 100
+statSteps: 1
+#100 6400
+
+tstype: ssprk3
+
+# Number of ensembles
+nens : 1
+
+# Parallel decomposition
+nprocx : 1
+nprocy : 1
+

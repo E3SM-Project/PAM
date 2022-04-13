@@ -19,11 +19,11 @@ pv = DS.pv
 densmax = DS.densmax
 densmin = DS.densmin
 
-#maybe mass/tracer stuff gets a list of names of size ndensity/ndensityfct?
+
+
 
 if model == 'swe':
     dens_names = ['h',]
-    densfct_names = []
     dens_stat_names = ['mass',]
     nprogdens = 1
 if model == 'tswe':
@@ -36,12 +36,11 @@ if model == 'ce':
     dens_stat_names = ['mass','entropic_var_density',]
     nprogdens = 2
 
-#THIS BREAKS FOR RHOD VARIANTS...
+#THIS IS A LITLTE BROKEN FOR RHOD VARIANTS...
 #probably ok, this is just a quick and dirty plotting script...
-# MAYBE MODEL ARGUMENT BECOMES MCED THOUGH?
 if model == 'mce':
-    dens_names = ['rho','Theta','rho_v', 'rho_l', 'rho_i']
-    dens_stat_names = ['mass','entropic_var_density','vapor', 'liquid', 'ice']
+    dens_names = ['rho','Theta','rho_v', 'rho_l', 'rho_i']    
+    dens_stat_names = ['mass','entropic_var_density','vapor', 'liquid', 'ice']    
     nprogdens = 5
     
 for k in range(ndensity-nprogdens):
@@ -66,23 +65,33 @@ for n in range(nens):
 Nlist = np.arange(0,nt)
 
 v = DS.v
+w = DS.w
 dens = DS.dens
-q = DS.q
+QXZl = DS.QXZl
 densl = DS.densl
 hs = DS.hs
-coriolis = DS.coriolis
+coriolisxz = DS.coriolisxz
 
 for n in range(nens):
 
-    plotvar_scalar2D('hs.' + str(n), hs.isel(hs_ndofs=0,dual_nlayers=0,nens=n),0)
-    plotvar_scalar2D('coriolis.' + str(n), coriolis.isel(coriolis_ndofs=0,primal_nlayers=0,nens=n),0)
+    plotvar_scalar2D('hs.'+ str(n), hs.isel(hs_ndofs=0, dual_ncells_y=0,nens=n),0)
+    plotvar_scalar2D('coriolisxz.'+ str(n), coriolisxz.isel(coriolisxz_ndofs=0, primal_ncells_y=0,nens=n),0)
 
     for i in Nlist:
-        plotvar_scalar2D('q.' + str(n), q.isel(t=i,q_ndofs=0,dual_nlayers=0,nens=n),i)
-        plotvar_vector2D('v.' + str(n), v.isel(t=i,v_ndofs=0,primal_nlayers=0,nens=n), v.isel(t=i,v_ndofs=1,primal_nlayers=0,nens=n),i)
+        plotvar_scalar2D('qxz.'+ str(n), QXZl.isel(t=i,QXZl_ndofs=0, dual_ncells_y=0,nens=n),i)
+
+        plotvar_scalar2D('v.'+ str(n), v.isel(t=i,v_ndofs=0, primal_ncells_y=0,nens=n),i)
+        plotvar_scalar2D('w.'+ str(n), w.isel(t=i,w_ndofs=0, primal_ncells_y=0,nens=n),i)
+
+
         for l,name in zip(range(ndensity), dens_names):
-            plotvar_scalar2D(name +'.' + str(n), dens.isel(t=i,dens_ndofs=l,dual_nlayers=0,nens=n),i)
-            plotvar_scalar2D(name+'l.' + str(n), densl.isel(t=i,densl_ndofs=l,primal_nlayers=0,nens=n),i)
+            plotvar_scalar2D(name + '.' + str(n), dens.isel(t=i,dens_ndofs=l, dual_ncells_y=0,nens=n),i)
+            plotvar_scalar2D(name+'l.'+ str(n), densl.isel(t=i,densl_ndofs=l, primal_ncells_y=0,nens=n),i)
 #THIS ASSUMES TOTAL DENSITY IS IN DENS(0)
-            plotvar_scalar2D(name+'c.' + str(n), dens.isel(t=i,dens_ndofs=l,dual_nlayers=0,nens=n) / dens.isel(t=i,dens_ndofs=0,dual_nlayers=0,nens=n),i)
+            plotvar_scalar2D(name+'c.'+ str(n), dens.isel(t=i,dens_ndofs=l, dual_ncells_y=0,nens=n) / dens.isel(t=i,dens_ndofs=0, dual_ncells_y=0,nens=n),i)
+    #if model in ['tswe','ce','mce']:
+    #        plotvar_scalar2D('thetal', dens.isel(t=i,dens_ndofs=1, dual_ncells_y=0,nens=n) / dens.isel(t=i,dens_ndofs=0, dual_ncells_y=0,nens=n),i)
+
+
+
 

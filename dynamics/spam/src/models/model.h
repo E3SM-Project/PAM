@@ -98,7 +98,7 @@ public:
 };
 
 class ExtrudedTendencies: public Tendencies {
-  
+  public:
   SArray<real,2,vert_reconstruction_order,2> primal_vert_to_gll;
   SArray<real,3,vert_reconstruction_order,vert_reconstruction_order,vert_reconstruction_order> primal_vert_wenoRecon;
   SArray<real,1,(vert_reconstruction_order-1)/2+2> primal_vert_wenoIdl;

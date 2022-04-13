@@ -188,12 +188,13 @@ class Dycore {
   
   const char * dycore_name() const { return "SPAM++"; }
   
-  void set_domain_sizes(std::string initData, real &xlen, real &ylen)
+  void set_domain_sizes(std::string initData, real &xlen, real &ylen, real &zlen)
   {
     //std::cout << "setting domain sizes\n";
     set_domain_sizes_ic(params, initData);
     xlen = params.xlen;
     ylen = params.ylen;
+    zlen = params.zlen;
     //std::cout << params.xlen << " " << params.ylen << "\n";
   }
 };

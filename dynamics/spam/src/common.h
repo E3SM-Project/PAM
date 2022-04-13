@@ -108,8 +108,8 @@ public:
   std::string outputName;
   std::string tstype;
 
-  real xlen, ylen;
-  real xc, yc;
+  real xlen, ylen, zlen;
+  real xc, yc, zc;
 
 };
 

@@ -719,7 +719,7 @@ YAKL_INLINE void Geometry::set_01form_values(vecext<2> (*initial_value_function)
         initval = initial_value_function(edge_quad_pts_phys(nqz).x, edge_quad_pts_phys(nqz).z);
         tempval = tempval + (initval.u * edge_line_vec(nqz).u + initval.w * edge_line_vec(nqz).w) * edge_quad_wts_phys(nqz);
       }
-      field.data(ndof, k+ks, j+js, i+is) = tempval;  
+      field.data(ndof, k+ks, j+js, i+is, n) = tempval;  
     });
 }
 
@@ -782,7 +782,7 @@ void UniformRectangularTwistedExtrudedGeometry::printinfo()
 }
 
  real YAKL_INLINE UniformRectangularTwistedExtrudedGeometry::get_area_00entity(int k, int j, int i)
-{ return 1.; }
+{ return 1._fp; }
 
 real YAKL_INLINE UniformRectangularTwistedExtrudedGeometry::get_area_01entity(int k, int j, int i)
 { 
@@ -883,15 +883,15 @@ void UniformRectangularStraightExtrudedGeometry::initialize(const Topology &topo
 Geometry::initialize(topo);
 
 this->Lx = params.xlen;
-this->Ly = 0._fp;
+this->Ly = 1._fp;
 this->Lz = params.zlen;
 
 this->xc = params.xc;
-this->yc = 0._fp;
+this->yc = 0.5_fp;
 this->zc = params.zlen/2.;
 
 this->dx = params.xlen/params.nx_glob;
-this->dy = 0._fp;
+this->dy = 1._fp;
 this->dz = params.zlen/params.nz;
 
 this->straight = true;

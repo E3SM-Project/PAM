@@ -95,7 +95,7 @@ public:
  void initialize(ModelParameters &params, const Topology &primal_topo, const Topology &dual_topo, Geometry &primal_geom, Geometry &dual_geom, ExchangeSet<nauxiliary> &aux_exchange, ExchangeSet<nconstant> &const_exchange)
  {
 
-Tendencies::initialize(params, primal_topo, dual_topo, primal_geom, dual_geom, aux_exchange, const_exchange);
+ExtrudedTendencies::initialize(params, primal_topo, dual_topo, primal_geom, dual_geom, aux_exchange, const_exchange);
    PVPE.initialize();
    Hk.initialize(*this->primal_geometry, *this->dual_geometry);
    Hs.initialize(thermo, *this->primal_geometry, *this->dual_geometry);
@@ -106,8 +106,7 @@ Tendencies::initialize(params, primal_topo, dual_topo, primal_geom, dual_geom, a
      void compute_constants(VariableSet<nconstant> &const_vars, VariableSet<nprognostic> &x)
      {}
 
-     void YAKL_INLINE compute_rhs(real dt, VariableSet<nconstant> &const_vars, VariableSet<nprognostic> &x, VariableSet<nauxiliary> &auxiliary_vars, VariableSet<nprognostic> &xtend)
-     {
+
        void YAKL_INLINE compute_functional_derivatives_and_diagnostic_quantities_I(
         real5d Uvar, real5d UWvar, real5d qxz0var, real5d fxz0var, real5d dens0var, 
         const real5d Vvar, const real5d Wvar, const real5d densvar, const real5d coriolisxzvar) {
@@ -129,13 +128,13 @@ Tendencies::initialize(params, primal_topo, dual_topo, primal_geom, dual_geom, a
     });
   
       parallel_for("Compute UWVar", Bounds<4>( dual_topology->ni-2, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
-    compute_Hv<1, vert_diff_ord>(UWvar, Wvar, *this->primal_geometry, *this->dual_geometry, dis, djs, dks, i, j, k, n+1);
+    compute_Hv<1, vert_diff_ord>(UWvar, Wvar, *this->primal_geometry, *this->dual_geometry, dis, djs, dks, i, j, k+1, n);
     });    
 
       parallel_for("Compute Q0, F0", Bounds<4>( dual_topology->ni-3, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
     PVPE.compute_qxz0fxz0(qxz0var, fxz0var, Vvar, Wvar, densvar, coriolisxzvar, dis, djs, dks, i, j, k+2, n);
     });
-    parallel_for("Compute Q0, F0 bnd", Bounds<3>( dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA(int j, int i) { 
+    parallel_for("Compute Q0, F0 bnd", Bounds<3>( dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA(int j, int i, int n) { 
     PVPE.compute_qxz0fxz0_bottom(qxz0var, fxz0var, Vvar, Wvar, densvar, coriolisxzvar, dis, djs, dks, i, j, 1, n);
     PVPE.compute_qxz0fxz0_top(qxz0var, fxz0var, Vvar, Wvar, densvar, coriolisxzvar, dis, djs, dks, i, j,  dual_topology->ni-2, n);
     });
@@ -178,14 +177,14 @@ Tendencies::initialize(params, primal_topo, dual_topo, primal_geom, dual_geom, a
     parallel_for("Compute FTvar", Bounds<4>( primal_topology->ni-2, primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
     compute_Wxz_u(FTvar, FWvar, pis, pjs, pks, i, j, k+1, n);
     });
-    parallel_for("Compute FTvar bnd", Bounds<3>( primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens) , YAKL_LAMBDA(int j, int i) { 
+    parallel_for("Compute FTvar bnd", Bounds<3>( primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens) , YAKL_LAMBDA(int j, int i, int n) { 
     compute_Wxz_u_bottom(FTvar, FWvar, pis, pjs, pks, i, j, 0, n);
     compute_Wxz_u_top(FTvar, FWvar, pis, pjs, pks, i, j, primal_topology->ni-1, n);
     });
       parallel_for("Compute FTWvar", Bounds<4>( primal_topology->nl-2, primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
     compute_Wxz_w(FTWvar, Fvar, pis, pjs, pks, i, j, k+1, n);
     });
-    parallel_for("Compute FTWvar bnd", Bounds<3>( primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens) , YAKL_LAMBDA(int j, int i) { 
+    parallel_for("Compute FTWvar bnd", Bounds<3>( primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens) , YAKL_LAMBDA(int j, int i, int n) { 
     compute_Wxz_w_bottom(FTWvar, Fvar, pis, pjs, pks, i, j, 0, n);
     compute_Wxz_w_top(FTWvar, Fvar, pis, pjs, pks, i, j, primal_topology->nl-1, n);
     });
@@ -261,7 +260,7 @@ Tendencies::initialize(params, primal_topo, dual_topo, primal_geom, dual_geom, a
         //scale twisted recons
         for (int d=0;d<ndims;d++) {
         for (int l=0;l<ndensity;l++) {
-        densreconvar(l+d*ndensity,k+dks,j+djs,i+dis) = densreconvar(l+d*ndensity,k+dks,j+djs,i+dis) / HEvar(d,k+dks,j+djs,i+dis);
+        densreconvar(l+d*ndensity,k+dks,j+djs,i+dis,n) = densreconvar(l+d*ndensity,k+dks,j+djs,i+dis,n) / HEvar(d,k+dks,j+djs,i+dis,n);
       }}
       });
 
@@ -271,7 +270,7 @@ Tendencies::initialize(params, primal_topo, dual_topo, primal_geom, dual_geom, a
           densvertreconvar, densvertedgereconvar, UWvar, dis, djs, dks, i, j, k+1, n);
           //scale twisted recons
           for (int l=0;l<ndensity;l++) {
-          densvertreconvar(l,k+dks+1,j+djs,i+dis) = densvertreconvar(l,k+dks+1,j+djs,i+dis) / HEWvar(0,k+dks+1,j+djs,i+dis);
+          densvertreconvar(l,k+dks+1,j+djs,i+dis,n) = densvertreconvar(l,k+dks+1,j+djs,i+dis,n) / HEWvar(0,k+dks+1,j+djs,i+dis,n);
         }
     });
 
@@ -314,7 +313,7 @@ Tendencies::initialize(params, primal_topo, dual_topo, primal_geom, dual_geom, a
       { compute_Qxz_w_nonEC<1, ADD_MODE::ADD>(Wtendvar, qxzreconvar, Fvar, pis, pjs, pks, i, j, k+1, n);}
       compute_Qxz_w_EC<1, ADD_MODE::ADD>(Wtendvar, coriolisxzreconvar, coriolisxzvertreconvar, Fvar, pis, pjs, pks, i, j, k+1, n);
     });
-    parallel_for("Compute Wtend Bnd", Bounds<3>(primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens) , YAKL_LAMBDA(int j, int i) { 
+    parallel_for("Compute Wtend Bnd", Bounds<3>(primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens) , YAKL_LAMBDA(int j, int i, int n) { 
     compute_wDv_fct<ndensity> (Wtendvar, densvertreconvar, Phivertvar, Bvar, pis, pjs, pks, i, j, 0, n);
     compute_wDv_fct<ndensity> (Wtendvar, densvertreconvar, Phivertvar, Bvar, pis, pjs, pks, i, j, primal_topology->nl-1, n);
      if (qf_choice == QF_MODE::EC)
@@ -335,7 +334,7 @@ Tendencies::initialize(params, primal_topo, dual_topo, primal_geom, dual_geom, a
       { compute_Qxz_u_nonEC<1, ADD_MODE::ADD>(Vtendvar, qxzvertreconvar, FWvar, pis, pjs, pks, i, j, k+1, n);}
       compute_Qxz_u_EC<1, ADD_MODE::ADD>(Vtendvar,coriolisxzreconvar, coriolisxzvertreconvar,FWvar, pis, pjs, pks, i, j, k+1, n);
     });
-    parallel_for("Compute Vtend Bnd",Bounds<3>( primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens) , YAKL_LAMBDA(int j, int i) { 
+    parallel_for("Compute Vtend Bnd",Bounds<3>( primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens) , YAKL_LAMBDA(int j, int i, int n) { 
     compute_wD1_fct<ndensity> (Vtendvar, densreconvar, Phivar, Bvar, pis, pjs, pks, i, j, 0, n);
     compute_wD1_fct<ndensity> (Vtendvar, densreconvar, Phivar, Bvar, pis, pjs, pks, i, j, primal_topology->ni-1, n);
     if (qf_choice == QF_MODE::EC)
@@ -358,7 +357,7 @@ Tendencies::initialize(params, primal_topo, dual_topo, primal_geom, dual_geom, a
 
 
       
-      void YAKL_INLINE compute_rhs(real dt, VariableSet<nconst> &const_vars, VariableSet<nprog> &x, VariableSet<naux> &auxiliary_vars, VariableSet<nprog> &xtend)
+      void YAKL_INLINE compute_rhs(real dt, VariableSet<nconstant> &const_vars, VariableSet<nprognostic> &x, VariableSet<nauxiliary> &auxiliary_vars, VariableSet<nprognostic> &xtend)
       {
            
           //Compute U, W, q0, dens0
@@ -585,7 +584,6 @@ int pis = primal_topology->is;
 int pjs = primal_topology->js;
 int pks = primal_topology->ks;
 
-
 parallel_for("Compute PV/PE stats", Bounds<3>( primal_topology->nl-2, primal_topology->n_cells_y, primal_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
  pvpe vals_pvpe;
  vals_pvpe = PVPE.compute_PVPE(progvars.fields_arr[VVAR].data, progvars.fields_arr[WVAR].data, progvars.fields_arr[DENSVAR].data, constvars.fields_arr[CORIOLISXZVAR].data, pis, pjs, pks, i, j, k+1, n);
@@ -607,7 +605,7 @@ parallel_for("Compute PV/PE stats", Bounds<3>( primal_topology->nl-2, primal_top
 
     for (int l=0;l<ndensity;l++)
     {
-      parallel_for("Compute trimmed density", Bounds<3>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i, int n) { 
+      parallel_for("Compute trimmed density", Bounds<3>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
         trimmed_density(k,j,i) = progvars.fields_arr[DENSVAR].data(l,k+dks,j+djs,i+dis,n);
       });
 
@@ -1039,7 +1037,10 @@ real YAKL_INLINE flat_geop(real x, real z, real g)
  void readModelParamsFile(std::string inFile, ModelParameters &params, Parallel &par, int nz)
  {
    readParamsFile( inFile, params, par, nz);
-   
+
+   //Read config file
+   YAML::Node config = YAML::LoadFile(inFile);
+      
    params.acoustic_balance = config["balance_initial_density"].as<bool>(false);
 
    // Read the data initialization options
@@ -1054,19 +1055,22 @@ real YAKL_INLINE flat_geop(real x, real z, real g)
 
 void set_domain_sizes_ic (ModelParameters &params, std::string initData)
 {
+  params.ylen = 1.0;
+  params.yc = 0.5;
+  
   if (initData == "doublevortex")
 {
   params.xlen = dbl_vortex_constants.Lx;
-  params.ylen = dbl_vortex_constants.Ly;
+  params.zlen = dbl_vortex_constants.Ly;
   params.xc = dbl_vortex_constants.xc;
-  params.yc = dbl_vortex_constants.yc;
+  params.zc = dbl_vortex_constants.yc;
 }
 if (initData == "risingbubble" or initData == "moistrisingbubble")
 {
 params.xlen = rb_constants.Lx;
-params.ylen = rb_constants.Ly;
+params.zlen = rb_constants.Ly;
 params.xc = rb_constants.Lx * 0.5_fp;
-params.yc = rb_constants.Ly  * 0.5_fp;
+params.zc = rb_constants.Ly  * 0.5_fp;
 }
 }
   

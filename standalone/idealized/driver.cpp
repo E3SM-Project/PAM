@@ -27,37 +27,46 @@ int main(int argc, char** argv) {
     real        simSteps     = config["simSteps"].as<int>(0);
     int         crm_nx       = config["crm_nx"  ].as<int>();
     int         crm_ny       = config["crm_ny"  ].as<int>();
+    int         crm_nz       = config["crm_nz"  ].as<int>(0);
     int         nens         = config["nens"    ].as<int>();
     real        xlen         = config["xlen"    ].as<real>(-1.0_fp);
     real        ylen         = config["ylen"    ].as<real>(-1.0_fp);
+    real        zlen         = config["ylen"    ].as<real>(-1.0_fp);
     real        dtphys_in    = config["dtphys"  ].as<real>();
-    std::string vcoords_file = config["vcoords" ].as<std::string>("vcoords_none.nc");
+    std::string vcoords_file = config["vcoords" ].as<std::string>("");
     bool        use_coupler_hydrostasis = config["use_coupler_hydrostasis"].as<bool>(false);
 
     // Read vertical coordinates
+    real1d zint_in;
 //THIS IS BROKEN IN PARALLEL
+if (crm_nz == 0)
+{
     yakl::SimpleNetCDF nc;
     nc.open(vcoords_file);
-    int crm_nz = nc.getDimSize("num_interfaces") - 1;
-    real1d zint_in("zint_in",crm_nz+1);
+    crm_nz = nc.getDimSize("num_interfaces") - 1;
+    zint_in = real1d("zint_in",crm_nz+1);
     nc.read(zint_in,"vertical_interfaces");
-    nc.close();      
+    nc.close();
+}
 
-    // int crm_nz = 1;
-    // real1d zint_in("zint_in",crm_nz+1);
-    // zint_in(0) = 0.0_fp;
-    // zint_in(1) = 1.0_fp;
-    
     // Create the dycore and the microphysics
     Dycore       dycore;
     Microphysics micro;
     SGS          sgs;
     
-    //set xlen, ylen based on init cond if needed
-    if (xlen < 0 or ylen < 0)
-    {dycore.set_domain_sizes(config["initData"].as<std::string>(), xlen, ylen);}
+    //set xlen, ylen, zlen based on init cond if needed
+    if (xlen < 0 or ylen < 0 or zlen < 0)
+    {dycore.set_domain_sizes(config["initData"].as<std::string>(), xlen, ylen, zlen);}
     //std::cout << xlen << " " << ylen << "\n";
 
+    if (not crm_nz == 0) //We are using a uniform vertical grid with crm_nz levels; in this case zlen must be set
+    {
+      zint_in = real1d("zint_in",crm_nz+1);
+      real dz = zlen/crm_nz;
+      for (int i=0;i<crm_nz+1;i++)
+      {zint_in(i) = i*dz;}
+    }
+    
     // Use microphysics gas constants values in the coupler
     coupler.set_phys_constants( micro.R_d , micro.R_v , micro.cp_d , micro.cp_v , micro.grav , micro.p0 );
 

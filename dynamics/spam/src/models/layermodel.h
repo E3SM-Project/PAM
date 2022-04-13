@@ -699,7 +699,7 @@ real YAKL_INLINE isentropic_p(real x, real z, real theta0, real g)
 real YAKL_INLINE isentropic_rho(real x, real z, real theta0, real g) {
   real p = isentropic_p(x, z, theta0, g);
   real T = isentropic_T(x, z, theta0, g);
-  real alpha = thermo.compute_alpha(p, T, 1, 0, 0, 0);
+  real alpha = thermo.compute_alpha(p, T, 1.0_fp, 0, 0, 0);
   return 1._fp/alpha;
 }
 
@@ -731,7 +731,7 @@ real YAKL_INLINE flat_geop(real x, real z, real g)
    real r = sqrt((x-rb_constants.xc)*(x-rb_constants.xc) + (z-rb_constants.zc)*(z-rb_constants.zc));
    real dtheta = (r<rb_constants.rc) ? rb_constants.dss * 0.5_fp * (1._fp + cos(pi * r/rb_constants.rc)) : 0._fp;
    real dT = dtheta * pow(p/thermo.cst.pr, thermo.cst.kappa_d);
-   return thermo.compute_entropic_var(p, T+dT, 0, 0, 0, 0);
+   return thermo.compute_entropic_var(p, T+dT, 1.0_fp, 0, 0, 0);
  }
 
  real YAKL_INLINE rb_rho(real x, real z)
@@ -773,11 +773,12 @@ real YAKL_INLINE flat_geop(real x, real z, real g)
    real pv = svp * rh;
    return pv / (thermo.cst.Rv * Th);
  }
-
+ 
+ //THESE q's are a little off for certain thermo choices....!
  real YAKL_INLINE mrb_rho_d(real x, real z) {
    real p = isentropic_p(x, z, rb_constants.theta0, rb_constants.g);
    real T = isentropic_T(x, z, rb_constants.theta0, rb_constants.g);
-   real alpha = thermo.compute_alpha(p, T, 1, 0, 0, 0);
+   real alpha = thermo.compute_alpha(p, T, 1.0_fp, 0, 0, 0);
    return 1._fp/alpha;
  }
 
@@ -787,13 +788,14 @@ real YAKL_INLINE flat_geop(real x, real z, real g)
    return rhod + rhov;
  }
 
+ //THESE q's are a little off for certain thermo choices....!
  real YAKL_INLINE mrb_entropicdensity(real x, real z) {
    real p = isentropic_p(x, z, rb_constants.theta0, rb_constants.g);
    real T = isentropic_T(x, z, rb_constants.theta0, rb_constants.g);
    real r = sqrt((x-rb_constants.xc)*(x-rb_constants.xc) + (z-rb_constants.zc)*(z-rb_constants.zc));
    real dtheta = (r<rb_constants.rc) ? rb_constants.dss * 0.5_fp * (1. + cos(pi * r/rb_constants.rc)) : 0._fp;
    real dT = dtheta * pow(p/thermo.cst.pr, thermo.cst.kappa_d);
-   real theta = thermo.compute_entropic_var(p, T+dT, 1, 0, 0, 0);
+   real theta = thermo.compute_entropic_var(p, T+dT, 1.0_fp, 0, 0, 0);
    return theta * mrb_rho(x,z);
  }
 
@@ -828,6 +830,8 @@ real YAKL_INLINE flat_geop(real x, real z, real g)
 
 void set_domain_sizes_ic (ModelParameters &params, std::string initData)
 {
+  params.zlen = 1.0;
+  params.zc = 0.5;
   if (initData == "doublevortex")
 {
   params.xlen = dbl_vortex_constants.Lx;
