@@ -481,14 +481,10 @@ public:
     dtInit = 0;
     dimSwitch = true;
 
-    std::string inFile = coupler.get_option<std::string>( "standalone_input_file" );
-
     // If inFile is empty, then we aren't reading in an input file
-    if (inFile == std::string("")) {
-      weno_scalars            = true;
-      weno_winds              = true;
-      data_spec               = DATA_SPEC_EXTERNAL;
-    } else {
+    if (coupler.option_exists("standalone_input_file")) {
+      std::string inFile = coupler.get_option<std::string>( "standalone_input_file" );
+
       // Read the YAML input file
       YAML::Node config = YAML::LoadFile(inFile);
 
@@ -507,6 +503,10 @@ public:
       } else {
         endrun("ERROR: Invalid data_spec");
       }
+    } else {
+      weno_scalars            = true;
+      weno_winds              = true;
+      data_spec               = DATA_SPEC_EXTERNAL;
     }
 
     // Determine whether this is a 2-D simulation
@@ -1071,7 +1071,6 @@ public:
 
               real rad = sqrt( xn*xn + yn*yn + zn*zn );
 
-              // TODO: enable this whenever you want the standalone idealize non-MMF test for supercell
               real theta_pert = 0;
               if (rad < 1) {
                 theta_pert = amp * pow( cos(M_PI*rad/2) , 5._fp );
@@ -1844,7 +1843,10 @@ public:
           for (int kk=0; kk < ngll; kk++) { rv_DTs(0,kk) = gll(kk); }
 
           // w
-          for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idW,wrapz(k,kk,nz),hs+j,hs+i,iens); }
+          for (int kk=0; kk < ord; kk++) {
+            stencil(kk) = state(idW,wrapz(k,kk,nz),hs+j,hs+i,iens);
+            if (k+kk > hs+nz-1 || k+kk < hs) stencil(kk) = 0;
+          }
           reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc , weno_recon_lower_loc ,
                                   idl , sigma , weno_winds );
           if (k == nz-1) gll(ngll-1) = 0;

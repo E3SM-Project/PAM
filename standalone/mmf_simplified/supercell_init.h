@@ -1,10 +1,12 @@
 
 #pragma once
 
-#include "pam_coupler.h"
+#include "pam_const.h"
 #include "idealized_profiles.h"
 
-inline void supercell_init( pam::PamCoupler &coupler ) {
+inline void supercell_init( realConst1d vert_interface , real1d &rho_d_col , real1d &uvel_col , real1d &vvel_col ,
+                            real1d &wvel_col , real1d &temp_col , real1d &rho_v_col , real Rd ,
+                            real Rv , real grav) {
   using yakl::c::parallel_for;
   using yakl::c::SimpleBounds;
   using profiles::init_supercell_temperature ;
@@ -27,16 +29,6 @@ inline void supercell_init( pam::PamCoupler &coupler ) {
   gll_wts(3)=0.27222222222222222222222222222222222222;
   gll_wts(4)=0.050000000000000000000000000000000000000;
 
-  auto Rd    = coupler.get_R_d ();
-  auto cp    = coupler.get_cp_d();
-  auto p0    = coupler.get_p0  ();
-  auto Rv    = coupler.get_R_v ();
-  auto grav  = coupler.get_grav();
-
-  auto &dm = coupler.get_data_manager_readwrite();
-
-  auto vert_interface = dm.get<real,2>("vertical_interface_height");
-
   // This uses a piecewise linear profile for Temperature
   real constexpr z_0    = 0;
   real constexpr z_trop = 12000;
@@ -45,20 +37,19 @@ inline void supercell_init( pam::PamCoupler &coupler ) {
   real constexpr T_top  = 213;
   real constexpr p_0    = 100000;
 
-  real4d quad_temp     ("quad_temp"     ,nz,ord-1,ord,nens);
-  real3d hyPressureGLL ("hyPressureGLL" ,nz,ord,nens);
+  int nz = yakl::intrinsics::size(vert_interface)-1;
+  std::cout << "DEBUG nz: " << nz << std::endl;
 
-  real3d hyDensVapGLL  ("hyDensVapGLL"  ,nz,ord,nens);
-  real2d hyDensVapCells("hyDensVapCells",nz,nens);
+  real3d quad_temp("quad_temp",nz,ord-1,ord);
 
   // We'll use T and qv plus hydrostasis and equation of state to integrate total pressure
   // Combine  dp/dz=-rho_d*(1+qv)*g  with  p=rho_d*(Rd + qv*Rv)*T  via rho_d to create quadrature term for
   //     integrating ln(p)
-  parallel_for( SimpleBounds<4>(nz,ord-1,ord,nens) ,
-                YAKL_LAMBDA (int k, int kk, int kkk, int iens) {
-    real dz = vert_interface(k+1,iens) - vert_interface(k,iens);
+  parallel_for( SimpleBounds<3>(nz,ord-1,ord) ,
+                YAKL_LAMBDA (int k, int kk, int kkk) {
+    real dz = vert_interface(k+1) - vert_interface(k);
     // Middle of this cell
-    real cellmid   = vert_interface(k,iens) + 0.5_fp*dz;
+    real cellmid   = vert_interface(k) + 0.5_fp*dz;
     // Bottom, top, and middle of the space between these two ord GLL points
     real ord_b    = cellmid + gll_pts(kk  )*dz;
     real ord_t    = cellmid + gll_pts(kk+1)*dz;
@@ -68,61 +59,59 @@ inline void supercell_init( pam::PamCoupler &coupler ) {
     // Compute the locate of this ord GLL point within the ord GLL points
     real zloc      = ord_m + ord_dz * gll_pts(kkk);
     // Compute full density at this location
-    real ztop = vert_interface(nz,iens);
+    real ztop = vert_interface(nz);
     real temp      = init_supercell_temperature (zloc, z_0, z_trop, ztop, T_0, T_trop, T_top);
     real press_dry = init_supercell_pressure_dry(zloc, z_0, z_trop, ztop, T_0, T_trop, T_top, p_0, Rd, grav);
     real qvs       = init_supercell_sat_mix_dry(press_dry, temp);
     real relhum    = init_supercell_relhum(zloc, z_0, z_trop);
     if (relhum * qvs > 0.014_fp) relhum = 0.014_fp / qvs;
     real qv        = min( 0.014_fp , qvs*relhum );
-    quad_temp(k,kk,kkk,iens) = -(1+qv)*grav/(Rd+qv*Rv)/temp;
+    quad_temp(k,kk,kkk) = -(1+qv)*grav/(Rd+qv*Rv)/temp;
   });
 
+  real2d hyPressureGLL("hyPressureGLL",nz,ord);
+
   // Integrate to get total pressure at GLL points within each cell domain
-  parallel_for( nens , YAKL_LAMBDA (int iens) {
-    hyPressureGLL(0,0,iens) = p_0;
+  parallel_for( 1 , YAKL_LAMBDA (int dummy) {
+    hyPressureGLL(0,0) = p_0;
     for (int k=0; k < nz; k++) {
+      real dz = vert_interface(k+1) - vert_interface(k);
       for (int kk=0; kk < ord-1; kk++) {
         real tot = 0;
         for (int kkk=0; kkk < ord; kkk++) {
-          tot += quad_temp(k,kk,kkk,iens) * gll_wts(kkk);
+          tot += quad_temp(k,kk,kkk) * gll_wts(kkk);
         }
-        tot *= dz(k,iens) * ( gll_pts(kk+1) - gll_pts(kk) );
-        hyPressureGLL(k,kk+1,iens) = hyPressureGLL(k,kk,iens) * exp( tot );
+        tot *= dz * ( gll_pts(kk+1) - gll_pts(kk) );
+        hyPressureGLL(k,kk+1) = hyPressureGLL(k,kk) * exp( tot );
         if (kk == ord-2 && k < nz-1) {
-          hyPressureGLL(k+1,0,iens) = hyPressureGLL(k,ord-1,iens);
+          hyPressureGLL(k+1,0) = hyPressureGLL(k,ord-1);
         }
       }
     }
   });
 
-  real2d rho_d_col("rho_d_col",nz,nens);
-  real2d uvel_col ("uvel_col" ,nz,nens);
-  real2d vvel_col ("vvel_col" ,nz,nens);
-  real2d wvel_col ("wvel_col" ,nz,nens);
-  real2d temp_col ("temp_col" ,nz,nens);
-  real2d rho_v_col("rho_v_col",nz,nens);
+  quad_temp = real3d();
 
   // Compute cell averages of dry density, wind velocities, temperature, and water vapor mass
-  parallel_for( SimpleBounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
-    rho_d_col = 0;
-    uvel_col  = 0;
-    vvel_col  = 0;
-    wvel_col  = 0;
-    temp_col  = 0;
-    rho_v_col = 0;
+  parallel_for( SimpleBounds<1>(nz) , YAKL_LAMBDA (int k) {
+    rho_d_col(k) = 0;
+    uvel_col (k) = 0;
+    vvel_col (k) = 0;
+    wvel_col (k) = 0;
+    temp_col (k) = 0;
+    rho_v_col(k) = 0;
     for (int kk=0; kk < ord; kk++) {
-      real dz        = vert_interface(k+1,iens) - vert_interface(k,iens);
-      real zmid      = 0.5_fp * (vert_interface(k,iens) + vert_interface(k+1,iens));
+      real dz        = vert_interface(k+1) - vert_interface(k);
+      real zmid      = 0.5_fp * (vert_interface(k) + vert_interface(k+1));
       real zloc      = zmid + gll_pts(kk)*dz;
-      real ztop      = vert_interface(nz,iens);
+      real ztop      = vert_interface(nz);
       real temp      = init_supercell_temperature (zloc, z_0, z_trop, ztop, T_0, T_trop, T_top);
       real press_dry = init_supercell_pressure_dry(zloc, z_0, z_trop, ztop, T_0, T_trop, T_top, p_0, Rd, grav);
       real qvs       = init_supercell_sat_mix_dry(press_dry, temp);
       real relhum    = init_supercell_relhum(zloc, z_0, z_trop);
       if (relhum * qvs > 0.014_fp) relhum = 0.014_fp / qvs;
       real qv        = min( 0.014_fp , qvs*relhum );
-      real p         = hyPressureGLL(k,kk,iens);
+      real p         = hyPressureGLL(k,kk);
       real rho_d     = p / (Rd + qv*Rv) / temp;
       real rho_v     = qv * rho_d;
 
@@ -135,29 +124,13 @@ inline void supercell_init( pam::PamCoupler &coupler ) {
       real vvel       = 0;
       real wvel       = 0;
 
-      rho_d_col(k,iens) += rho_d * gll_wts(kk);
-      uvel_col (k,iens) += uvel  * gll_wts(kk);
-      vvel_col (k,iens) += vvel  * gll_wts(kk);
-      wvel_col (k,iens) += wvel  * gll_wts(kk);
-      temp_col (k,iens) += temp  * gll_wts(kk);
-      rho_v_col(k,iens) += rho_v * gll_wts(kk);
+      rho_d_col(k) += rho_d * gll_wts(kk);
+      uvel_col (k) += uvel  * gll_wts(kk);
+      vvel_col (k) += vvel  * gll_wts(kk);
+      wvel_col (k) += wvel  * gll_wts(kk);
+      temp_col (k) += temp  * gll_wts(kk);
+      rho_v_col(k) += rho_v * gll_wts(kk);
     }
-  });
-
-  auto rho_d = dm.get<real,4>("density_dry");
-  auto uvel  = dm.get<real,4>("uvel"       );
-  auto vvel  = dm.get<real,4>("vvel"       );
-  auto wvel  = dm.get<real,4>("wvel"       );
-  auto temp  = dm.get<real,4>("temp"       );
-  auto rho_v = dm.get<real,4>("water_vapor");
-
-  parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-    rho_d(k,j,i,iens) = rho_d_col(k,iens);
-    uvel (k,j,i,iens) = uvel_col (k,iens);
-    vvel (k,j,i,iens) = vvel_col (k,iens);
-    wvel (k,j,i,iens) = wvel_col (k,iens);
-    temp (k,j,i,iens) = temp_col (k,iens);
-    rho_v(k,j,i,iens) = rho_v_col(k,iens);
   });
 
 }

@@ -4,15 +4,11 @@
 #include "pam_coupler.h"
 #include "YAKL_netcdf.h"
 
-inline void output( pam::PamCoupler const &coupler , real etime ) {
+inline void output( pam::PamCoupler const &coupler , std::string out_prefix , real etime ) {
   int nranks;
   int myrank;
   MPI_Comm_size( MPI_COMM_WORLD , &nranks );
   MPI_Comm_rank( MPI_COMM_WORLD , &myrank );
-
-  std::string inFile = coupler.get_option<std::string>( "standalone_input_file" );
-  YAML::Node config = YAML::LoadFile(inFile);
-  auto out_prefix = config["out_prefix"].as<std::string>();
 
   auto dx = coupler.get_dx();
   auto dy = coupler.get_dy();
