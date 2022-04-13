@@ -42,17 +42,21 @@ FileIO::FileIO()
 
  void FileIO::initialize(std::string outName, Topology &ptopo, Topology &dtopo, Parallel &par, const VariableSet<nprognostic> &progvars, const VariableSet<nconstant> &constvars, const VariableSet<ndiagnostic> &diagvars, Stats &stats)
 {
+
+
+  
      this->outputName = outName;
      this->prog_vars = &progvars;
      this->const_vars = &constvars;
      this->diag_vars = &diagvars;
      this->statistics = &stats;
      this->masterproc = par.masterproc;
-     std::cout << outName << "\n";
+     
+     int nranks;
+     int ierr = MPI_Comm_size(MPI_COMM_WORLD,&nranks);
+     if (nranks > 1) {endrun("spam++ cannot use serial IO in a parallel run");}     
      
      nc.create(this->outputName);
-     std::cout << outName << "\n";
-
      nc.createDim( "t" );
      nc.createDim( "primal_ncells_x" ,  ptopo.nx_glob );
      nc.createDim( "primal_ncells_y" ,  ptopo.ny_glob );

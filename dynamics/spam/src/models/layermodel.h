@@ -68,11 +68,11 @@ public:
   int pjs = primal_topology->js;
   int pks = primal_topology->ks;
 
-    parallel_for( Bounds<4>( primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
+    parallel_for("Compute Dens0 Diag", Bounds<4>( primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
   compute_I<ndensity, diff_ord>(diagnostic_vars.fields_arr[DENSLDIAGVAR].data, x.fields_arr[DENSVAR].data, *this->primal_geometry, *this->dual_geometry, pis, pjs, pks, i, j, k, n);
   });
 
-    parallel_for( Bounds<4>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
+    parallel_for("Compute Q0 Diag", Bounds<4>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
   PVPE.compute_q0(diagnostic_vars.fields_arr[QDIAGVAR].data, x.fields_arr[VVAR].data, x.fields_arr[DENSVAR].data, const_vars.fields_arr[CORIOLISVAR].data, dis, djs, dks, i, j, k, n);
   });
 }
@@ -110,13 +110,13 @@ Tendencies::initialize(params, primal_topo, dual_topo, primal_geom, dual_geom, a
   int djs = dual_topology->js;
   int dks = dual_topology->ks;
 
-          parallel_for( Bounds<4>( primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
-          // compute dens0var = I densvar
+  // compute dens0var = I densvar
+          parallel_for("Compute Dens0", Bounds<4>( primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
           compute_I<ndensity, diff_ord>(dens0var, densvar, *this->primal_geometry, *this->dual_geometry, pis, pjs, pks, i, j, k, n);
   });
 
-    parallel_for( Bounds<4>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
-    // compute U = H v, q0, f0
+  // compute U = H v, q0, f0
+    parallel_for("Compute U, Q0, F0", Bounds<4>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
     compute_H<1, diff_ord>(Uvar, Vvar, *this->primal_geometry, *this->dual_geometry, dis, djs, dks, i, j, k, n);
     PVPE.compute_q0f0(Q0var, f0var, Vvar, densvar, coriolisvar, dis, djs, dks, i, j, k, n);
         });
@@ -129,7 +129,7 @@ Tendencies::initialize(params, primal_topo, dual_topo, primal_geom, dual_geom, a
           int djs = dual_topology->js;
           int dks = dual_topology->ks;
 
-            parallel_for( Bounds<4>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
+            parallel_for("Compute F/K/HE", Bounds<4>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
           Hk.compute_dKdv(Fvar, Kvar, HEvar, Vvar, Uvar, dens0var, dis, djs, dks, i, j, k, n);
         });
 
@@ -145,10 +145,7 @@ Tendencies::initialize(params, primal_topo, dual_topo, primal_geom, dual_geom, a
   int pjs = primal_topology->js;
   int pks = primal_topology->ks;
 
-        // yakl::parallel_for("ComputeDiagIII", primal_topology->n_cells_layers, YAKL_LAMBDA (int iGlob) {
-        //   int k, j, i;
-        //   yakl::unpackIndices(iGlob, primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens, k, j, i);
-          parallel_for( Bounds<4>( primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
+          parallel_for("Compute FT/B", Bounds<4>( primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
   compute_W(FTvar, Fvar, pis, pjs, pks, i, j, k, n);
   Hs.compute_dHsdx(Bvar, dens0var, HSvar, pis, pjs, pks, i, j, k, n);
   Hk.compute_dKddens(Bvar, Kvar, pis, pjs, pks, i, j, k, n);
@@ -170,12 +167,12 @@ Tendencies::initialize(params, primal_topo, dual_topo, primal_geom, dual_geom, a
         int djs = dual_topology->js;
         int dks = dual_topology->ks;
 
-        parallel_for( Bounds<4>( primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
+        parallel_for("Compute straight edge recons", Bounds<4>( primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
         compute_straight_edge_recon<1, reconstruction_type, reconstruction_order>(Qedgereconvar, Q0var, pis, pjs, pks, i, j, k, n, primal_wenoRecon, primal_to_gll, primal_wenoIdl, primal_wenoSigma);
         compute_straight_edge_recon<1, coriolis_reconstruction_type, coriolis_reconstruction_order>(fedgereconvar, f0var, pis, pjs, pks, i, j, k, n, coriolis_wenoRecon, coriolis_to_gll, coriolis_wenoIdl, coriolis_wenoSigma);
       });
 
-        parallel_for( Bounds<4>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
+        parallel_for("Compute twisted edge recons", Bounds<4>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
         compute_twisted_edge_recon<ndensity, dual_reconstruction_type, dual_reconstruction_order>(densedgereconvar, dens0var, dis, djs, dks, i, j, k, n, dual_wenoRecon, dual_to_gll, dual_wenoIdl, dual_wenoSigma);
       });
 
@@ -196,13 +193,13 @@ Tendencies::initialize(params, primal_topo, dual_topo, primal_geom, dual_geom, a
       int djs = dual_topology->js;
       int dks = dual_topology->ks;
 
-        parallel_for( Bounds<4>( primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
+        parallel_for("Compute straight recons", Bounds<4>( primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
         compute_straight_recon<1, reconstruction_type>(Qreconvar, Qedgereconvar, FTvar, pis, pjs, pks, i, j, k, n);
         compute_straight_recon<1, coriolis_reconstruction_type>(Coriolisreconvar, fedgereconvar, FTvar, pis, pjs, pks, i, j, k, n);
       });
 
 
-        parallel_for( Bounds<4>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
+        parallel_for("Compute twisted recons", Bounds<4>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
         compute_twisted_recon<ndensity, dual_reconstruction_type>(densreconvar, densedgereconvar, Uvar, dis, djs, dks, i, j, k, n);
       //scale primal recons
       for (int d=0;d<ndims;d++) {
@@ -227,7 +224,7 @@ Tendencies::initialize(params, primal_topo, dual_topo, primal_geom, dual_geom, a
       int djs = dual_topology->js;
       int dks = dual_topology->ks;
 
-          parallel_for( Bounds<4>( primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
+          parallel_for("Compute v tend", Bounds<4>( primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
       compute_wD1_fct<ndensity> (Vtendvar, densreconvar, Phivar, Bvar, pis, pjs, pks, i, j, k, n);
       if (qf_choice == QF_MODE::EC)
       { compute_Q_EC<1, ADD_MODE::ADD>(Vtendvar, Qreconvar, Fvar, pis, pjs, pks, i, j, k, n);}
@@ -236,7 +233,7 @@ Tendencies::initialize(params, primal_topo, dual_topo, primal_geom, dual_geom, a
       compute_Q_EC<1, ADD_MODE::ADD>(Vtendvar, Coriolisreconvar, Fvar, pis, pjs, pks, i, j, k, n);
   });
 
-    parallel_for( Bounds<4>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
+    parallel_for("Compute dens tend", Bounds<4>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
     compute_wDbar2_fct<ndensity> (denstendvar, densreconvar, Phivar, Fvar, dis, djs, dks, i, j, k, n);
     });
 
@@ -301,18 +298,18 @@ Tendencies::initialize(params, primal_topo, dual_topo, primal_geom, dual_geom, a
   int djs = dual_topology->js;
   int dks = dual_topology->ks;
 
-    parallel_for( Bounds<4>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
+    parallel_for("Compute edgefluxes", Bounds<4>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
   compute_edgefluxes<ndensity> (auxiliary_vars.fields_arr[EDGEFLUXVAR].data, auxiliary_vars.fields_arr[DENSRECONVAR].data, auxiliary_vars.fields_arr[FVAR].data, dis, djs, dks, i, j, k, n);
   });
   this->aux_exchange->exchanges_arr[EDGEFLUXVAR].exchange_field(auxiliary_vars.fields_arr[EDGEFLUXVAR]);
 
-  parallel_for( Bounds<4>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
+  parallel_for("Compute Mf", Bounds<4>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
   compute_Mf<ndensity> (auxiliary_vars.fields_arr[MFVAR].data, auxiliary_vars.fields_arr[EDGEFLUXVAR].data, dt, dis, djs, dks, i, j, k, n);
   });
 
   this->aux_exchange->exchanges_arr[MFVAR].exchange_field(auxiliary_vars.fields_arr[MFVAR]);
 
-  parallel_for( Bounds<4>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
+  parallel_for("Compute Phi", Bounds<4>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
   compute_Phi<ndensity> (auxiliary_vars.fields_arr[PHIVAR].data, auxiliary_vars.fields_arr[EDGEFLUXVAR].data, auxiliary_vars.fields_arr[MFVAR].data, x.fields_arr[DENSVAR].data, dis, djs, dks, i, j, k, n);
   });
 
@@ -397,7 +394,7 @@ int dis = dual_topology->is;
 int djs = dual_topology->js;
 int dks = dual_topology->ks;
 
-      parallel_for( Bounds<3>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
+      parallel_for("Compute energy stats", Bounds<3>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
          real KE, PE, IE;
 KE = Hk.compute_KE(progvars.fields_arr[VVAR].data, progvars.fields_arr[DENSVAR].data, dis, djs, dks, i, j, k, n);
 PE = Hs.compute_PE(progvars.fields_arr[DENSVAR].data, constvars.fields_arr[HSVAR].data, dis, djs, dks, i, j, k, n);
@@ -418,7 +415,7 @@ int pjs = primal_topology->js;
 int pks = primal_topology->ks;
 
 
-  parallel_for( Bounds<3>( primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
+  parallel_for("Compute pv/pens stats", Bounds<3>( primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
    pvpe vals_pvpe;
    vals_pvpe = PVPE.compute_PVPE(progvars.fields_arr[VVAR].data, progvars.fields_arr[DENSVAR].data, constvars.fields_arr[CORIOLISVAR].data, pis, pjs, pks, i, j, k, n);
    PVarr(k, j, i) = vals_pvpe.pv;
@@ -430,7 +427,7 @@ int pks = primal_topology->ks;
 
     for (int l=0;l<ndensity;l++)
     {
-      parallel_for( Bounds<3>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
+      parallel_for("Compute trimmed density", Bounds<3>( dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x) , YAKL_LAMBDA(int k, int j, int i) { 
         trimmed_density(k,j,i) = progvars.fields_arr[DENSVAR].data(l,k+dks,j+djs,i+dis,n);
       });
 
@@ -571,7 +568,7 @@ std::array<const Topology *, nprognostic> &prog_topo_arr, std::array<const Topol
 
   #if defined _AN || defined _MAN
   aux_topo_arr[PVAR] = &ptopo; //p = straight 0-form
-  aux_names_arr[PVAR] = "p";
+  aux_names_arr[PVAR] = "p"; 
   set_dofs_arr(aux_ndofs_arr, PVAR, 0, 1, 1);  //p = straight 0-form
   #endif
   
@@ -813,7 +810,10 @@ real YAKL_INLINE flat_geop(real x, real z, real g)
  void readModelParamsFile(std::string inFile, ModelParameters &params, Parallel &par, int nz)
  {
    readParamsFile( inFile, params, par, nz);
-   
+
+   //Read config file
+   YAML::Node config = YAML::LoadFile(inFile);
+    
    params.acoustic_balance = config["balance_initial_density"].as<bool>(false);
 
    // Read the data initialization options

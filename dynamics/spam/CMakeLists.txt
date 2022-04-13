@@ -78,8 +78,15 @@ if ("${PAMC_THERMO}" STREQUAL "unapproxentropy")
 target_compile_definitions(dycore INTERFACE -D_UNAPPROX_ENTROPY)
 endif()
 
-
-
+if ("${PAMC_IO}" STREQUAL "parallel")
+target_compile_definitions(dycore INTERFACE -D_PARALLELIO)
+endif()
+if ("${PAMC_IO}" STREQUAL "serial")
+target_compile_definitions(dycore INTERFACE -D_SERIALIO)
+endif()
+if ("${PAMC_IO}" STREQUAL "none")
+target_compile_definitions(dycore INTERFACE -D_NOIO)
+endif()
 
 
 

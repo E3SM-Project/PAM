@@ -9,7 +9,7 @@ crm_nx       : 100
 crm_ny       : 150
 
 # Data to initialize: doublevortex risingbubble moistrisingbubble
-initData : moistrisingbubble
+initData : risingbubble
 initTracer1: square
 initTracer2: gaussian
 initTracer3: doublesquare
@@ -18,7 +18,7 @@ initFCTTracer2: gaussian
 initFCTTracer3: doublesquare
 
 # Time steps
-dtphys: 0.078125
+dtphys: 1000.0
 crm_per_phys: 5
 #0.015625 * 5 = 0.078125
 #200 * 5 = 1000 for doublevortex
@@ -29,7 +29,7 @@ out_prefix  : test
 # Output frequency in number of CRM time steps
 outSteps: 6400
 statSteps: 1
-#100
+#100 6400
 
 tstype: ssprk3
 

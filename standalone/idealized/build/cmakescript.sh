@@ -17,6 +17,7 @@ cmake      \
   -DPAM_MICRO="none"                                           \
   -DPAM_SGS="none"                                                \
   -DPAMC_MODEL="layermodel"                                                \
-  -DPAMC_HAMIL="mce_rho"                                                \
-  -DPAMC_THERMO="constkappavirpottemp"                                                \
+  -DPAMC_HAMIL="ce"                                                \
+  -DPAMC_THERMO="none"                                                \
+  -DPAMC_IO="serial"                                                \
   ..

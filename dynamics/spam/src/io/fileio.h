@@ -2,7 +2,14 @@
 
 #include "common.h"
 
-//BE SMART ABOUT STUFF HERE?
-//IE PART OF BUILD FLAGS!
-//AND THEN THROW AN ERROR IF "WRONG" IO USED ie serial in parallel MPI run...
+#ifdef _PARALLELIO
+#include "yakl_parallel_io.h"
+#endif
+
+#ifdef _SERIALIO
 #include "yakl_serial_io.h"
+#endif
+
+#ifdef _NOIO
+#include "blank_io.h"
+#endif

@@ -101,42 +101,42 @@ public :
 
   void Field::set(real val)
   {
-      parallel_for( Bounds<5>(this->total_dofs, this->_nz +2*this->topology->mirror_halo,this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x, this->topology->nens) , YAKL_LAMBDA(int ndof, int k, int j, int i, int n) { 
+      parallel_for("Field set val", Bounds<5>(this->total_dofs, this->_nz +2*this->topology->mirror_halo,this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x, this->topology->nens) , YAKL_LAMBDA(int ndof, int k, int j, int i, int n) { 
         this->data(ndof, k, j, i, n) = val;
     });    
   }
 
   void Field::set(int ndof, real val)
   {
-parallel_for( Bounds<4>(this->_nz +2*this->topology->mirror_halo,this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x, this->topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
+parallel_for("Field set val ndof", Bounds<4>(this->_nz +2*this->topology->mirror_halo,this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x, this->topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
         this->data(ndof, k, j, i, n) = val;
     });    
   }
 
   void Field::set_top_bnd(real val)
   {
-      parallel_for( Bounds<4>(this->total_dofs,this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x, this->topology->nens) , YAKL_LAMBDA(int ndof, int j, int i, int n) { 
+      parallel_for("Field set top bnd val", Bounds<4>(this->total_dofs,this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x, this->topology->nens) , YAKL_LAMBDA(int ndof, int j, int i, int n) { 
         this->data(ndof, this->_nz + this->topology->mirror_halo, j, i, n) = val;
     });    
   }
 
   void Field::set_top_bnd(int ndof, real val)
   {
-parallel_for( Bounds<3>(this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x, this->topology->nens) , YAKL_LAMBDA(int j, int i, int n) { 
+parallel_for("Field set top bnd val ndof", Bounds<3>(this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x, this->topology->nens) , YAKL_LAMBDA(int j, int i, int n) { 
   this->data(ndof, this->_nz + this->topology->mirror_halo, j, i, n) = val;
     });    
   }
 
   void Field::set_bottom_bnd(real val)
   {
-      parallel_for( Bounds<4>(this->total_dofs,this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x, this->topology->nens) , YAKL_LAMBDA(int ndof, int j, int i, int n) { 
+      parallel_for("Field set bottom val", Bounds<4>(this->total_dofs,this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x, this->topology->nens) , YAKL_LAMBDA(int ndof, int j, int i, int n) { 
         this->data(ndof, this->topology->mirror_halo, j, i, n) = val;
     });    
   }
 
   void Field::set_bottom_bnd(int ndof, real val)
   {
-parallel_for( Bounds<3>(this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x, this->topology->nens) , YAKL_LAMBDA(int j, int i, int n) { 
+parallel_for("Field set bottom bnd val ndof", Bounds<3>(this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x, this->topology->nens) , YAKL_LAMBDA(int j, int i, int n) { 
   this->data(ndof, this->topology->mirror_halo, j, i, n) = val;
     });    
   }
@@ -155,17 +155,14 @@ parallel_for( Bounds<3>(this->topology->n_cells_y+2*this->topology->halosize_y, 
   
   void Field::zero()
   {
-parallel_for( Bounds<5>(this->total_dofs, this->_nz +2*this->topology->mirror_halo,this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x, this->topology->nens) , YAKL_LAMBDA(int ndof, int k, int j, int i, int n) { 
+parallel_for("Field zero", Bounds<5>(this->total_dofs, this->_nz +2*this->topology->mirror_halo,this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x, this->topology->nens) , YAKL_LAMBDA(int ndof, int k, int j, int i, int n) { 
         this->data(ndof, k, j, i, n) = 0.0;
     });
   }
   
   void Field::zero(int ndof)
   {
-//    yakl::parallel_for("ZeroField", this->_nloop_halo, YAKL_LAMBDA (int iGlob) {
-//      int k, j, i;
-//      yakl::unpackIndices(iGlob, this->_nz +2*this->topology->mirror_halo, this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x, k, j, i);
-parallel_for( Bounds<4>(this->_nz +2*this->topology->mirror_halo,this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x, this->topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
+parallel_for("Field zero ndof", Bounds<4>(this->_nz +2*this->topology->mirror_halo,this->topology->n_cells_y+2*this->topology->halosize_y, this->topology->n_cells_x+2*this->topology->halosize_x, this->topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
         this->data(ndof, k, j, i, n) = 0.0;
     });
   }
@@ -177,7 +174,7 @@ parallel_for( Bounds<4>(this->_nz +2*this->topology->mirror_halo,this->topology-
     int is = this->topology->is;
     int js = this->topology->js;
     int ks = this->topology->ks;
-  parallel_for( Bounds<5>(this->total_dofs, this->_nz,this->topology->n_cells_y, this->topology->n_cells_x, this->topology->nens) , YAKL_LAMBDA(int ndof, int k, int j, int i, int n) { 
+  parallel_for("Field copy", Bounds<5>(this->total_dofs, this->_nz,this->topology->n_cells_y, this->topology->n_cells_x, this->topology->nens) , YAKL_LAMBDA(int ndof, int k, int j, int i, int n) { 
         this->data(ndof, k+ks, j+js, i+is, n) = f.data(ndof, k+ks, j+js, i+is, n);
     });
   }
@@ -189,7 +186,7 @@ parallel_for( Bounds<4>(this->_nz +2*this->topology->mirror_halo,this->topology-
     int is = this->topology->is;
     int js = this->topology->js;
     int ks = this->topology->ks;
-    parallel_for( Bounds<5>(this->total_dofs, this->_nz,this->topology->n_cells_y, this->topology->n_cells_x, this->topology->nens) , YAKL_LAMBDA(int ndof, int k, int j, int i, int n) { 
+    parallel_for("Field waxpy", Bounds<5>(this->total_dofs, this->_nz,this->topology->n_cells_y, this->topology->n_cells_x, this->topology->nens) , YAKL_LAMBDA(int ndof, int k, int j, int i, int n) { 
         this->data(ndof, k+ks, j+js, i+is, n) = alpha * x.data(ndof, k+ks, j+js, i+is, n) + y.data(ndof, k+ks, j+js, i+is, n);
     });
   }
@@ -201,7 +198,7 @@ parallel_for( Bounds<4>(this->_nz +2*this->topology->mirror_halo,this->topology-
     int is = this->topology->is;
     int js = this->topology->js;
     int ks = this->topology->ks;
-    parallel_for( Bounds<5>(this->total_dofs, this->_nz,this->topology->n_cells_y, this->topology->n_cells_x, this->topology->nens) , YAKL_LAMBDA(int ndof, int k, int j, int i, int n) { 
+    parallel_for("Field waxpbypcz", Bounds<5>(this->total_dofs, this->_nz,this->topology->n_cells_y, this->topology->n_cells_x, this->topology->nens) , YAKL_LAMBDA(int ndof, int k, int j, int i, int n) { 
         this->data(ndof, k+ks, j+js, i+is, n) = alpha * x.data(ndof, k+ks, j+js, i+is, n) + beta * y.data(ndof, k+ks, j+js, i+is, n) + gamma * z.data(ndof, k+ks, j+js, i+is, n);
     });
   }

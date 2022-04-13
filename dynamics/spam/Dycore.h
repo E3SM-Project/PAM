@@ -70,7 +70,7 @@ class Dycore {
     //Set parameters
     std::string inFile = coupler.get_option<std::string>( "standalone_input_file" );
     std::cout << "reading parameters\n" << std::flush;
-    readParamsFile(inFile, params, par, coupler.get_nz());
+    readModelParamsFile(inFile, params, par, coupler.get_nz());
     std::cout << "read parameters\n" << std::flush;
     
 // HOW DO WE HANDLE LX/LY/XC/YC;

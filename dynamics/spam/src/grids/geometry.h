@@ -221,7 +221,7 @@ YAKL_INLINE void Geometry::set_0form_values(real (*initial_value_function)(real,
   int ks = this->topology->ks;
 
 
-    parallel_for( Bounds<4>(this->topology->nl, this->topology->n_cells_y, this->topology->n_cells_x, this->topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
+    parallel_for("Set 0 form values", Bounds<4>(this->topology->nl, this->topology->n_cells_y, this->topology->n_cells_x, this->topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
       SArray<coords<2>,1,1> quad_pts_phys;
       SArray<real,1,1> quad_wts_phys;
       get_0form_quad_pts_wts(i, j, quad_pts_phys, quad_wts_phys);
@@ -238,7 +238,7 @@ YAKL_INLINE void Geometry::set_0form_values(real (*initial_value_function)(real,
   int js = this->topology->js;
   int ks = this->topology->ks;
 
-parallel_for( Bounds<4>(this->topology->nl, this->topology->n_cells_y, this->topology->n_cells_x, this->topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
+parallel_for("Set 2 form values", Bounds<4>(this->topology->nl, this->topology->n_cells_y, this->topology->n_cells_x, this->topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
   SArray<coords<2>,2,ic_quad_pts_x,ic_quad_pts_y> quad_pts_phys;
   SArray<real,2,ic_quad_pts_x,ic_quad_pts_y> quad_wts_phys;
     get_2form_quad_pts_wts(i, j, quad_pts_phys, quad_wts_phys);
@@ -271,7 +271,7 @@ parallel_for( Bounds<4>(this->topology->nl, this->topology->n_cells_y, this->top
         xedge_offset = 0;
       }
 
-        parallel_for( Bounds<4>(this->topology->nl, this->topology->n_cells_y, this->topology->n_cells_x, this->topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
+        parallel_for("Set 1 form values", Bounds<4>(this->topology->nl, this->topology->n_cells_y, this->topology->n_cells_x, this->topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
           
           SArray<coords<2>,1,ic_quad_pts_x> x_quad_pts_phys;
           SArray<real,1,ic_quad_pts_x> x_quad_wts_phys;
@@ -660,7 +660,7 @@ YAKL_INLINE void Geometry::set_00form_values(real (*initial_value_function)(real
     int js = this->topology->js;
     int ks = this->topology->ks;
   
-parallel_for( Bounds<4>(this->topology->ni, this->topology->n_cells_y, this->topology->n_cells_x, this->topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
+parallel_for("Set 00 form values", Bounds<4>(this->topology->ni, this->topology->n_cells_y, this->topology->n_cells_x, this->topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
   SArray<coordsext<2>,1,1> quad_pts_phys;
   SArray<real,1,1> quad_wts_phys;
         get_00form_quad_pts_wts(i, k, quad_pts_phys, quad_wts_phys);
@@ -676,7 +676,7 @@ YAKL_INLINE void Geometry::set_11form_values(real (*initial_value_function)(real
     int js = this->topology->js;
     int ks = this->topology->ks;
 
-parallel_for( Bounds<4>(this->topology->nl, this->topology->n_cells_y, this->topology->n_cells_x, this->topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
+parallel_for("Set 11 form values", Bounds<4>(this->topology->nl, this->topology->n_cells_y, this->topology->n_cells_x, this->topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
   
   SArray<coordsext<2>,2,ic_quad_pts_x,ic_quad_pts_z> quad_pts_phys;
   SArray<real,2,ic_quad_pts_x,ic_quad_pts_z> quad_wts_phys;
@@ -702,7 +702,7 @@ YAKL_INLINE void Geometry::set_01form_values(vecext<2> (*initial_value_function)
       int ks = this->topology->ks;
   
 
-        parallel_for( Bounds<4>(this->topology->nl, this->topology->n_cells_y, this->topology->n_cells_x, this->topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
+        parallel_for("Set 01 form values", Bounds<4>(this->topology->nl, this->topology->n_cells_y, this->topology->n_cells_x, this->topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
           real tempval = 0.0_fp;
           SArray<coordsext<2>,1,ic_quad_pts_z> edge_quad_pts_phys;
           SArray<real,1,ic_quad_pts_z> edge_quad_wts_phys;
@@ -730,7 +730,7 @@ YAKL_INLINE void Geometry::set_01form_values(vecext<2> (*initial_value_function)
   int js = this->topology->js;
   int ks = this->topology->ks;
 
-    parallel_for( Bounds<4>(this->topology->ni, this->topology->n_cells_y, this->topology->n_cells_x, this->topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
+    parallel_for("Set 10 form values", Bounds<4>(this->topology->ni, this->topology->n_cells_y, this->topology->n_cells_x, this->topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
       SArray<coordsext<2>,1,ic_quad_pts_x> edge_quad_pts_phys;
       SArray<real,1,ic_quad_pts_x> edge_quad_wts_phys;
       SArray<vecext<2>,1,ic_quad_pts_x> edge_line_vec;
