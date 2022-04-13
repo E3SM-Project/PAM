@@ -610,9 +610,7 @@ namespace pam {
       memset( pressure_col , 0._fp );
       real r_nx_ny = 1._fp / (nx*ny);
       parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-        // TODO: Switch the statements below for production runs
-        // atomicAdd( pressure_col(k,iens) , pressure(k,j,i,iens)*r_nx_ny );
-        pressure_col(k,iens) = pressure(k,0,0,iens);
+        atomicAdd( pressure_col(k,iens) , pressure(k,j,i,iens)*r_nx_ny );
       });
 
       int constexpr npts = 10;

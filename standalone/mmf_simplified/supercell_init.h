@@ -38,7 +38,6 @@ inline void supercell_init( realConst1d vert_interface , real1d &rho_d_col , rea
   real constexpr p_0    = 100000;
 
   int nz = yakl::intrinsics::size(vert_interface)-1;
-  std::cout << "DEBUG nz: " << nz << std::endl;
 
   real3d quad_temp("quad_temp",nz,ord-1,ord);
 

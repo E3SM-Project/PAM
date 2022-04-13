@@ -56,40 +56,6 @@ int main(int argc, char** argv) {
     // Allocates the coupler state (density_dry, uvel, vvel, wvel, temp, vert grid, hydro background) for thread 0
     coupler.allocate_coupler_state( crm_nz , crm_ny , crm_nx , nens );
 
-    // NORMALLY THIS WOULD BE DONE INSIDE THE CRM, BUT WE'RE USING CONSTANTS DEFINED BY THE CRM MICRO SCHEME
-    // Create the dycore and the microphysics
-    Dycore       dycore;
-    Microphysics micro;
-    SGS          sgs;
-
-    if (mainproc) {
-      std::cout << "Dycore: " << dycore.dycore_name() << std::endl;
-      std::cout << "Micro : " << micro .micro_name () << std::endl;
-      std::cout << "SGS   : " << sgs   .sgs_name   () << std::endl;
-      std::cout << "\n";
-      std::cout << "crm_nx:   " << crm_nx << "\n";
-      std::cout << "crm_ny:   " << crm_ny << "\n";
-      std::cout << "crm_nz:   " << crm_nz << "\n";
-      std::cout << "xlen (m): " << xlen << "\n";
-      std::cout << "ylen (m): " << ylen << "\n";
-      std::cout << "Vertical interface heights: ";
-      auto zint_host = zint_in.createHostCopy();
-      for (int k=0; k < crm_nz+1; k++) {
-        std::cout << zint_host(k) << "  ";
-      }
-      std::cout << "\n\n";
-    }
-
-    // Set physical constants for coupler at thread 0 using microphysics data
-    coupler.set_phys_constants( micro.R_d , micro.R_v , micro.cp_d , micro.cp_v , micro.grav , micro.p0 );
-
-    // Set the vertical grid in the coupler
-    coupler.set_grid( xlen , ylen , zint_in );
-
-    micro .init( coupler );
-    sgs   .init( coupler );
-    dycore.init( coupler );
-
     // Compute a supercell initial column
     real1d rho_d_col("rho_d_col",crm_nz);
     real1d uvel_col ("uvel_col" ,crm_nz);
@@ -127,13 +93,47 @@ int main(int argc, char** argv) {
       gcm_rho_v(k,iens) = rho_v_col(k);
     });
 
+    // NORMALLY THIS WOULD BE DONE INSIDE THE CRM, BUT WE'RE USING CONSTANTS DEFINED BY THE CRM MICRO SCHEME
+    // Create the dycore and the microphysics
+    Dycore       dycore;
+    Microphysics micro;
+    SGS          sgs;
+
+    if (mainproc) {
+      std::cout << "Dycore: " << dycore.dycore_name() << std::endl;
+      std::cout << "Micro : " << micro .micro_name () << std::endl;
+      std::cout << "SGS   : " << sgs   .sgs_name   () << std::endl;
+      std::cout << "\n";
+      std::cout << "crm_nx:   " << crm_nx << "\n";
+      std::cout << "crm_ny:   " << crm_ny << "\n";
+      std::cout << "crm_nz:   " << crm_nz << "\n";
+      std::cout << "xlen (m): " << xlen << "\n";
+      std::cout << "ylen (m): " << ylen << "\n";
+      std::cout << "Vertical interface heights: ";
+      auto zint_host = zint_in.createHostCopy();
+      for (int k=0; k < crm_nz+1; k++) {
+        std::cout << zint_host(k) << "  ";
+      }
+      std::cout << "\n\n";
+    }
+
+    // Set physical constants for coupler at thread 0 using microphysics data
+    coupler.set_phys_constants( micro.R_d , micro.R_v , micro.cp_d , micro.cp_v , micro.grav , micro.p0 );
+
+    // Set the vertical grid in the coupler
+    coupler.set_grid( xlen , ylen , zint_in );
+
+    micro .init( coupler );
+    sgs   .init( coupler );
+    dycore.init( coupler );
+
     // Initialize the CRM internal state from the initial GCM column and random temperature perturbations
     modules::broadcast_initial_gcm_column( coupler );
 
-    modules::perturb_temperature( coupler , 0 );
-
     // Now that we have an initial state, define hydrostasis for each ensemble member
     coupler.update_hydrostasis( coupler.compute_pressure_array() );
+
+    modules::perturb_temperature( coupler , 0 );
 
     coupler.add_mmf_function( "apply_gcm_forcing_tendencies" , modules::apply_gcm_forcing_tendencies );
     coupler.add_mmf_function( "dycore" , [&] (pam::PamCoupler &coupler, real dt) { dycore.timeStep(coupler,dt); } );

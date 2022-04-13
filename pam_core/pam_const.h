@@ -252,6 +252,7 @@ inline void endrun(std::string err="") {
 
 template <class T, int N, int MEM, int STYLE>
 inline void validate_array_nan( yakl::Array<T,N,MEM,STYLE> const &arr) {
+  using yakl::c::parallel_for;
   yakl::ScalarLiveOut<bool> nan_found(false);
   parallel_for( "validate nan" , arr.totElems() , YAKL_LAMBDA (int i) {
     if ( std::isnan(arr.myData[i]) ) { nan_found = true; }
@@ -262,6 +263,7 @@ inline void validate_array_nan( yakl::Array<T,N,MEM,STYLE> const &arr) {
 
 template <class T, int N, int MEM, int STYLE>
 inline void validate_array_inf( yakl::Array<T,N,MEM,STYLE> const &arr) {
+  using yakl::c::parallel_for;
   yakl::ScalarLiveOut<bool> inf_found(false);
   parallel_for( "validate inf" , arr.totElems() , YAKL_LAMBDA (int i) {
     if ( std::isinf(arr.myData[i]) ) { inf_found = true; }
@@ -272,6 +274,7 @@ inline void validate_array_inf( yakl::Array<T,N,MEM,STYLE> const &arr) {
 
 template <class T, int N, int MEM, int STYLE>
 inline void validate_array_inf_nan( yakl::Array<T,N,MEM,STYLE> const &arr) {
+  using yakl::c::parallel_for;
   yakl::ScalarLiveOut<bool> nan_found(false);
   yakl::ScalarLiveOut<bool> inf_found(false);
   parallel_for( "validate inf nan" , arr.totElems() , YAKL_LAMBDA (int i) {
@@ -285,6 +288,7 @@ inline void validate_array_inf_nan( yakl::Array<T,N,MEM,STYLE> const &arr) {
 
 template <class T, int N, int MEM, int STYLE>
 inline void validate_array_positive( yakl::Array<T,N,MEM,STYLE> const &arr) {
+  using yakl::c::parallel_for;
   yakl::ScalarLiveOut<bool> neg_found(false);
   parallel_for( "validate positive" , arr.totElems() , YAKL_LAMBDA (int i) {
     if ( arr.myData[i] < 0. ) { neg_found = true; }

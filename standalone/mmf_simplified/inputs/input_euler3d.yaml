@@ -11,7 +11,7 @@ crm_nx   : 64
 crm_ny   : 1
 
 # Number of CRMs
-nens     : 1
+nens     : 20
 
 # Vertical height cooridnates file
 vcoords  : vcoords_equal_50_20km.nc
@@ -36,6 +36,6 @@ dt_gcm: 900
 dt_crm_phys: 0.
 
 # Output frequency in seconds
-out_freq: 0.
+out_freq: 20.
 
 
