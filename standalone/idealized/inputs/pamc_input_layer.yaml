@@ -18,7 +18,7 @@ initFCTTracer2: gaussian
 initFCTTracer3: doublesquare
 
 # Time steps
-dtphys: 1000.0
+dtphys: 0.078125
 crm_per_phys: 5
 #0.015625 * 5 = 0.078125
 #200 * 5 = 1000 for doublevortex
