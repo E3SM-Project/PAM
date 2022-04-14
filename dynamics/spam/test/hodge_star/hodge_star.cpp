@@ -25,18 +25,18 @@ struct ModelParameters : public Parameters {};
 
 real YAKL_INLINE fun_x(real x, real y)
 {
-  return sin(2 * M_PI * x); 
+  return sin(2 * M_PI * x);
 }
 
 real YAKL_INLINE fun_y(real x, real y)
 {
-  return sin(2 * M_PI * y); 
+  return sin(2 * M_PI * y);
 }
 
 real YAKL_INLINE fun_xy(real x, real y)
 {
-  real sx = sin(2 * M_PI * x); 
-  real sy = sin(2 * M_PI * y); 
+  real sx = sin(2 * M_PI * x);
+  real sy = sin(2 * M_PI * y);
   return sx * sy;
 }
 
@@ -95,7 +95,7 @@ struct ConvergenceTest
         rates[l] = std::log2(errs[l] / errs[l+1]);
       }
     }
-    
+
   }
 
   void print_errors_and_rates() const
@@ -133,10 +133,10 @@ Parallel parallel_stub(int nx, int ny)
   par.nx_glob = par.nx = nx;
   par.ny_glob = par.ny = ny;
   par.nz = 1;
-  
+
   par.nprocx = par.nprocy = par.nranks = 1;
   par.masterproc = par.myrank = par.px = par.py = 0;
-  
+
   par.i_beg = 0;
   par.i_end = nx - 1;
   par.j_beg = 0;
@@ -146,7 +146,7 @@ Parallel parallel_stub(int nx, int ny)
   par.haloy = maxhalosize;
   par.x_neigh(0) = par.x_neigh(1) = par.y_neigh(0) = par.y_neigh(1) = 0;
   par.ll_neigh = par.ur_neigh = par.ul_neigh = par.lr_neigh = 0;
-  
+
   par.nens = 1;
 
   return par;
@@ -159,7 +159,7 @@ struct PeriodicUnitSquare
 
   UniformRectangularStraightGeometry primal_geometry;
   UniformRectangularTwistedGeometry dual_geometry;
-  
+
   PeriodicUnitSquare(int nx, int ny)
   {
     ModelParameters params;
@@ -172,7 +172,7 @@ struct PeriodicUnitSquare
     params.yc = 0;
 
     Parallel par = parallel_stub(nx, ny);
-    
+
     primal_topology.initialize(par, true);
     dual_topology.initialize(par, false);
 
@@ -210,10 +210,10 @@ real compute_I_error(int np, real (*ic_fun)(real, real))
     int dis = square.dual_topology.is;
     int djs = square.dual_topology.js;
     int dks = square.dual_topology.ks;
-   
+
     {
       tw2_exchng.exchange_field(tw2);
-      
+
       //this shouldnt be necessary ?
       Geometry *pgeom = &square.primal_geometry;
       Geometry *dgeom = &square.dual_geometry;
@@ -222,7 +222,7 @@ real compute_I_error(int np, real (*ic_fun)(real, real))
                              square.primal_topology.n_cells_y,
                              square.primal_topology.n_cells_x),
       YAKL_LAMBDA(int k, int j, int i)
-      { 
+      {
           compute_I<1, diff_ord>(st0.data, tw2.data, *pgeom, *dgeom, pis, pjs, pks, i, j, k, 0);
       });
     }
@@ -232,7 +232,7 @@ real compute_I_error(int np, real (*ic_fun)(real, real))
                            square.primal_topology.n_cells_y,
                            square.primal_topology.n_cells_x),
     YAKL_LAMBDA(int k, int j, int i)
-    { 
+    {
       st0_err.data(0, pks + k, pjs + j, pis + i) =
         abs(st0.data(0, pks + k, pjs + j, pis + i) - st0_expected.data(0, pks + k, pjs + j, pis + i));
     });
@@ -256,7 +256,7 @@ void test_I_convergence()
     auto conv_xy = ConvergenceTest<nlevels>("I 2 xy", compute_I_error<diff_order>, fun_xy);
     conv_xy.check_rate(2, atol);
   }
-  
+
   {
     const int diff_order = 4;
     auto conv_x = ConvergenceTest<nlevels>("I 4 x", compute_I_error<diff_order>, fun_x);
@@ -266,7 +266,7 @@ void test_I_convergence()
     auto conv_xy = ConvergenceTest<nlevels>("I 4 xy", compute_I_error<diff_order>, fun_xy);
     conv_xy.check_rate(4, atol);
   }
-  
+
   {
     const int diff_order = 6;
     auto conv_x = ConvergenceTest<nlevels>("I 6 x", compute_I_error<diff_order>, fun_x);
@@ -306,8 +306,8 @@ real compute_H_error(int np, vec<2> (*ic_fun)(real, real))
     int dis = square.dual_topology.is;
     int djs = square.dual_topology.js;
     int dks = square.dual_topology.ks;
-   
-   
+
+
     {
       st1_exchng.exchange_field(st1);
 
@@ -319,7 +319,7 @@ real compute_H_error(int np, vec<2> (*ic_fun)(real, real))
                              square.dual_topology.n_cells_y,
                              square.dual_topology.n_cells_x),
       YAKL_LAMBDA(int k, int j, int i)
-      { 
+      {
         compute_H<1, diff_ord>(tw1.data, st1.data, *pgeom, *dgeom, dis, djs, dks, i, j, k, 0);
       });
     }
@@ -329,13 +329,13 @@ real compute_H_error(int np, vec<2> (*ic_fun)(real, real))
                            square.dual_topology.n_cells_y,
                            square.dual_topology.n_cells_x),
     YAKL_LAMBDA(int k, int j, int i)
-    { 
-      tw1_err.data(0, pks + k, pjs + j, pis + i) = 
+    {
+      tw1_err.data(0, pks + k, pjs + j, pis + i) =
         abs(tw1.data(0, pks + k, pjs + j, pis + i) - tw1_expected.data(0, pks + k, pjs + j, pis + i));
-      tw1_err.data(1, pks + k, pjs + j, pis + i) = 
+      tw1_err.data(1, pks + k, pjs + j, pis + i) =
         abs(tw1.data(1, pks + k, pjs + j, pis + i) - tw1_expected.data(1, pks + k, pjs + j, pis + i));
     });
-                   
+
 
     real errf = yakl::intrinsics::maxval(tw1_err.data);
 
@@ -357,7 +357,7 @@ void test_H_convergence()
     auto conv_xy = ConvergenceTest<nlevels>("H 2 xy", compute_H_error<diff_order>, vecfun_xy);
     conv_xy.check_rate(3, atol);
   }
-  
+
   {
     const int diff_order = 4;
     auto conv_x = ConvergenceTest<nlevels>("H 4 x", compute_H_error<diff_order>, vecfun_x);
@@ -367,7 +367,7 @@ void test_H_convergence()
     auto conv_xy = ConvergenceTest<nlevels>("H 4 xy", compute_H_error<diff_order>, vecfun_xy);
     conv_xy.check_rate(3, atol);
   }
-  
+
   {
     const int diff_order = 6;
     auto conv_x = ConvergenceTest<nlevels>("H 6 x", compute_H_error<diff_order>, vecfun_x);
@@ -386,6 +386,6 @@ int main()
 
   test_I_convergence();
   test_H_convergence();
-  
+
   yakl::finalize();
 }
