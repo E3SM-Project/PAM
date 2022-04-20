@@ -17,7 +17,7 @@ template<uint ndofs, ADD_MODE addmode=ADD_MODE::REPLACE> YAKL_INLINE void comput
 {
   SArray<real,1,ndofs> tend;
   SArray<real,3,ndofs,ndims,2> recon;
-  SArray<real,1,ndims,2> flux;
+  SArray<real,2,ndims,2> flux;
 
   for (int d=0; d<ndims; d++) {
     for (int m=0; m<2; m++) {
