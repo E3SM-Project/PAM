@@ -33,7 +33,7 @@ ThermoPotential thermo;
 class ModelDiagnostics: public Diagnostics {
 public:
 
- void compute_diag(time, const FieldSet<nconstant> &const_vars, FieldSet<nprognostic> &x, FieldSet<ndiagnostic> &diagnostic_vars)
+ void compute_diag(ModelParameters &params, time, const FieldSet<nconstant> &const_vars, FieldSet<nprognostic> &x, FieldSet<ndiagnostic> &diagnostic_vars)
  {
 
   int dis = dual_topology->is;

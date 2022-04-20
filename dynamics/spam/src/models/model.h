@@ -33,7 +33,7 @@ public:
      this->is_initialized = true;
    }
    
-   virtual void compute_diag(real time, const FieldSet<nconstant> &const_vars, FieldSet<nprognostic> &x, FieldSet<ndiagnostic> &diagnostic_vars) {};
+   virtual void compute_diag(ModelParameters &params, real time, const FieldSet<nconstant> &const_vars, FieldSet<nprognostic> &x, FieldSet<ndiagnostic> &diagnostic_vars) {};
 
 };
 

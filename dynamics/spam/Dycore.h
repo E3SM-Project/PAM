@@ -150,13 +150,8 @@ class Dycore {
     tendencies.convert_dynamics_to_coupler_state(coupler, prognostic_vars, constant_vars);
     
     // Output the initial model state
-<<<<<<< HEAD
     debug_print("start initial io", par.masterproc);
-    diagnostics.compute_diag(constant_vars, prognostic_vars, diagnostic_vars);
-=======
-    std::cout << "start initial output\n" << std::flush;
-    diagnostics.compute_diag(0, constant_vars, prognostic_vars, diagnostic_vars);
->>>>>>> 09f36a6 (Pass time to compute_diag)
+    diagnostics.compute_diag(params, 0, constant_vars, prognostic_vars, diagnostic_vars);
     io.outputInit(etime);
     debug_print("end initial io", par.masterproc);
     
@@ -183,13 +178,8 @@ class Dycore {
        
        etime += params.dtcrm;
       if ((nstep+prevstep)%params.Nout == 0) {
-<<<<<<< HEAD
         serial_print("dycore step " + std::to_string((nstep+prevstep)) + " time " + std::to_string(etime), par.masterproc);
-        diagnostics.compute_diag(constant_vars, prognostic_vars, diagnostic_vars);
-=======
-        std::cout << "step " << (nstep+prevstep) << " time " << etime << "\n";
-        diagnostics.compute_diag(etime, constant_vars, prognostic_vars, diagnostic_vars);
->>>>>>> 09f36a6 (Pass time to compute_diag)
+        diagnostics.compute_diag(params, etime, constant_vars, prognostic_vars, diagnostic_vars);
         io.output(etime);
         io.outputStats(stats);
       }
