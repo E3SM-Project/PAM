@@ -16,7 +16,7 @@
 class ModelDiagnostics: public Diagnostics {
 public:
 
- void compute_diag(const VariableSet<nconstant> &const_vars, VariableSet<nprognostic> &x, VariableSet<ndiagnostic> &diagnostic_vars)
+ void compute_diag(real time, const VariableSet<nconstant> &const_vars, VariableSet<nprognostic> &x, VariableSet<ndiagnostic> &diagnostic_vars)
  {
    // Compute T0
    int pis = primal_topology->is;
