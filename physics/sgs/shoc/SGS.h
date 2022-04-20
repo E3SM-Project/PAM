@@ -152,10 +152,8 @@ public:
     auto &dm = coupler.get_data_manager_readwrite();
 
     auto pres_mid_tmp = coupler.compute_pressure_array();
-    auto pres_int_tmp = coupler.interp_pressure_interfaces( pres_mid_tmp );
 
     auto pres_mid = pres_mid_tmp.reshape<2>({nz  ,ncol});
-    auto pres_int = pres_int_tmp.reshape<2>({nz+1,ncol});
 
     auto zint_pam = dm.get<real,2>("vertical_interface_height");
     auto zmid_pam = dm.get<real,2>("vertical_midpoint_height" );
@@ -335,6 +333,7 @@ public:
       if (k < nz) {
         int k_shoc = nz-1-k;
         real z       = zmid    (k,i);
+        real dz      = zint(k+1,i) - zint(k,i);
         real press   = pres_mid(k,i);
         real t       = temp    (k,i);
         real qv      = rho_v   (k,i) / rho_d(k,i);
@@ -352,8 +351,7 @@ public:
         shoc_qw       (k_shoc,i) = qv + ql;
         shoc_zt_grid  (k_shoc,i) = z;
         shoc_pres     (k_shoc,i) = press;
-        // shoc_pdel     (k_shoc,i) = pres_int(k,i) - pres_int(k+1,i);
-        shoc_pdel     (k_shoc,i) = grav * rho_d(k,i);
+        shoc_pdel     (k_shoc,i) = grav * rho_d(k,i) * dz;
         shoc_thv      (k_shoc,i) = theta_v;
         shoc_w_field  (k_shoc,i) = wvel(k,i);
         shoc_exner    (k_shoc,i) = exner;
@@ -374,7 +372,15 @@ public:
       }
       int k_shoc = nz-k;
       shoc_zi_grid(k_shoc,i) = zint    (k,i);
-      shoc_presi  (k_shoc,i) = pres_int(k,i);
+      real pres_int;
+      if      (k == 0 ) {
+        pres_int = pres_mid(k  ,i) + grav*rho_d(k  ,i)*(zint(k+1,i)-zint(k  ,i))/2;
+      } else if (k == nz) {
+        pres_int = pres_mid(k-1,i) - grav*rho_d(k-1,i)*(zint(k  ,i)-zint(k-1,i))/2;
+      } else {
+        pres_int = 0.5_fp * ( pres_mid(k-1,i) - grav*rho_d(k-1,i)*(zint(k  ,i)-zint(k-1,i))/2 +
+                              pres_mid(k  ,i) + grav*rho_d(k  ,i)*(zint(k+1,i)-zint(k  ,i))/2 ); }
+      shoc_presi  (k_shoc,i) = pres_int;
     });
 
     int nadv = 1;

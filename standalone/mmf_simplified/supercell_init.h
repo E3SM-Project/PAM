@@ -64,7 +64,7 @@ inline void supercell_init( realConst1d vert_interface , real1d &rho_d_col , rea
     real qvs       = init_supercell_sat_mix_dry(press_dry, temp);
     real relhum    = init_supercell_relhum(zloc, z_0, z_trop);
     if (relhum * qvs > 0.014_fp) relhum = 0.014_fp / qvs;
-    real qv        = min( 0.014_fp , qvs*relhum );
+    real qv        = std::min( 0.014_fp , qvs*relhum );
     quad_temp(k,kk,kkk) = -(1+qv)*grav/(Rd+qv*Rv)/temp;
   });
 
@@ -109,7 +109,7 @@ inline void supercell_init( realConst1d vert_interface , real1d &rho_d_col , rea
       real qvs       = init_supercell_sat_mix_dry(press_dry, temp);
       real relhum    = init_supercell_relhum(zloc, z_0, z_trop);
       if (relhum * qvs > 0.014_fp) relhum = 0.014_fp / qvs;
-      real qv        = min( 0.014_fp , qvs*relhum );
+      real qv        = std::min( 0.014_fp , qvs*relhum );
       real p         = hyPressureGLL(k,kk);
       real rho_d     = p / (Rd + qv*Rv) / temp;
       real rho_v     = qv * rho_d;

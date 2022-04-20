@@ -56,13 +56,12 @@ public:
     int hs  = Spatial::hs;
     int num_tracers = space_op.num_tracers;
     YAKL_SCOPE( dz          , space_op.dz          );
-    YAKL_SCOPE( hyDensCells , space_op.hyDensCells );
 
     std::vector<real> mass(num_tracers+1);
     real4d tmp("tmp",nz,ny,nx,nens);
 
     parallel_for( "Temporal_ader.h state mass" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      tmp(k,j,i,iens) = (state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens)) * dz(k,iens);
+      tmp(k,j,i,iens) = state(idR,hs+k,hs+j,hs+i,iens) * dz(k,iens);
     });
     mass[0] = yakl::intrinsics::sum(tmp);
 
@@ -82,7 +81,6 @@ public:
 
     YAKL_SCOPE( stateTend       , this->stateTend           );
     YAKL_SCOPE( tracerTend      , this->tracerTend          );
-    YAKL_SCOPE( hyDensCells     , this->space_op.hyDensCells);
 
     real dt = compute_time_step( coupler );
 

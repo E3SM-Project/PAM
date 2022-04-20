@@ -130,7 +130,7 @@ namespace profiles {
     real yn = (y-y0)/yrad;
     real zn = (z-z0)/zrad;
     real dist = sqrt( xn*xn + yn*yn + zn*zn );
-    return amp * max( 1._fp - dist , 0._fp );
+    return amp * std::max( 1._fp - dist , 0._fp );
   }
 
 
