@@ -141,9 +141,11 @@ enum class BND_TYPE { PERIODIC, NONE };
 #include "layermodel-common.h"
 #elif defined _HAMILTONIAN && defined _EXTRUDED
 #include "extrudedmodel-common.h"
-#elif defined _ADVECTION && defined _LAYER 
+#elif defined _LINSWE && defined _LAYER
+#include "linswe-common.h"
+#elif defined _ADVECTION && defined _LAYER
 #include "layeradvection-common.h"
-#elif defined _ADVECTION && defined _EXTRUDED 
+#elif defined _ADVECTION && defined _EXTRUDED
 #include "extrudedadvection-common.h"
 #endif
 

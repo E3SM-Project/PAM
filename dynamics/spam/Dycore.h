@@ -18,6 +18,8 @@
 #include "layeradvection.h"
 #elif defined _ADVECTION && defined _EXTRUDED 
 #include "extrudedadvection.h"
+#elif defined _LINSWE && defined _LAYER 
+#include "linswemodel.h"
 #endif
 #include "SSPRK.h"
 #include "RKSimple.h"
