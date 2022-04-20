@@ -140,10 +140,16 @@ public:
   virtual real YAKL_INLINE get_area_11entity(int k, int j, int i) {};
   virtual real YAKL_INLINE get_area_10entity(int k, int j, int i) {};
   virtual real YAKL_INLINE get_area_01entity(int k, int j, int i) {};
-  
-  YAKL_INLINE void set_0form_values(real (*initial_value_function)(real, real), Field &field, int ndof);
-  YAKL_INLINE void set_1form_values(vec<2> (*initial_value_function)(real, real), Field &field, int ndof, LINE_INTEGRAL_TYPE line_type);
-  YAKL_INLINE void set_2form_values(real (*initial_value_function)(real, real), Field &field, int ndof);
+
+  // expects real initial_value_function(real, real)
+  template<class F>
+  YAKL_INLINE void set_0form_values(F initial_value_function, Field &field, int ndof);
+  // expects vec<2> initial_value_function(real, real),
+  template<class F>
+  YAKL_INLINE void set_1form_values(F initial_value_function, Field &field, int ndof, LINE_INTEGRAL_TYPE line_type);
+  // expects real initial_value_function(real, real)
+  template<class F>
+  YAKL_INLINE void set_2form_values(F initial_value_function, Field &field, int ndof);
 
   real dx, dy;
   real Lx, Ly;
@@ -212,7 +218,9 @@ void Geometry::initialize(const Topology &topo)
 }
 
 
-YAKL_INLINE void Geometry::set_0form_values(real (*initial_value_function)(real, real), Field &field, int ndof)
+// expect real initial_value_function(real, real)
+template<class F>
+YAKL_INLINE void Geometry::set_0form_values(F initial_value_function, Field &field, int ndof)
 {
 
   int is = this->topology->is;
@@ -228,7 +236,9 @@ YAKL_INLINE void Geometry::set_0form_values(real (*initial_value_function)(real,
   });
 }
 
-  YAKL_INLINE void Geometry::set_2form_values(real (*initial_value_function)(real, real), Field &field, int ndof)
+  // expects real initial_value_function(real, real)
+  template<class F>
+  YAKL_INLINE void Geometry::set_2form_values(F initial_value_function, Field &field, int ndof)
 {
 
 
@@ -252,7 +262,9 @@ parallel_for("Set 2 form values", SimpleBounds<4>(this->topology->nl, this->topo
 
 
 
-  YAKL_INLINE void Geometry::set_1form_values(vec<2> (*initial_value_function)(real, real), Field &field, int ndof, LINE_INTEGRAL_TYPE line_type)
+  // expects vec<2> initial_value_function(real, real)
+  template<class F>
+  YAKL_INLINE void Geometry::set_1form_values(F initial_value_function, Field &field, int ndof, LINE_INTEGRAL_TYPE line_type)
   {
 
       int is = this->topology->is;
