@@ -29,6 +29,8 @@ void shoc_main_fortran(int &shcol, int &nlev, int &nlevi, double &dtime, int &na
                        double *wqls_sec, double *brunt, double *shoc_ql2 );
 
 
+int static constexpr num_tracers_sgs = 1;
+
 class SGS {
 public:
   // Doesn't actually have to be static or constexpr. Could be assigned in the constructor

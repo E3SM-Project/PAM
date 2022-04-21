@@ -155,8 +155,6 @@ public:
   // Make sure it's odd-order-accurate
   static_assert(ord%2 == 1,"ERROR: ord must be an odd integer");
 
-
-
   void convert_dynamics_to_coupler_state( PamCoupler &coupler , realConst5d state , realConst5d tracers ) const {
     real4d dm_dens_dry = coupler.dm.get<real,4>( "density_dry"      );
     real4d dm_uvel     = coupler.dm.get<real,4>( "uvel"             );

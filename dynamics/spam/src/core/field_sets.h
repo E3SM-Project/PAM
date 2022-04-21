@@ -8,7 +8,7 @@
 
 
 
-template<uint num_fields> class VariableSet {
+template<uint num_fields> class FieldSet {
 
 public:
 
@@ -16,15 +16,15 @@ public:
   std::string baseName;
   bool is_initialized;
 
-  VariableSet();
-  //VariableSet( const VariableSet<num_fields> &vs) = delete;
-  //VariableSet& operator=( const VariableSet<num_fields> &vs) = delete;
+  FieldSet();
+  //FieldSet( const FieldSet<num_fields> &vs) = delete;
+  //FieldSet& operator=( const FieldSet<num_fields> &vs) = delete;
   void printinfo();
   void initialize(const std::string name, std::array<std::string, num_fields> &names_arr, std::array<const Topology *, num_fields> &topo_arr, SArray<int,2, num_fields, 3> &ndofs_arr);
-  void initialize(const VariableSet< num_fields> &vs, const std::string name);
-  void copy(const VariableSet<num_fields> &vs);
-  void waxpy(real alpha, const VariableSet<num_fields> &x, const VariableSet<num_fields> &y);
-  void waxpbypcz(real alpha, real beta, real gamma, const VariableSet<num_fields> &x, const VariableSet<num_fields> &y, const VariableSet<num_fields> &z);
+  void initialize(const FieldSet< num_fields> &vs, const std::string name);
+  void copy(const FieldSet<num_fields> &vs);
+  void waxpy(real alpha, const FieldSet<num_fields> &x, const FieldSet<num_fields> &y);
+  void waxpbypcz(real alpha, real beta, real gamma, const FieldSet<num_fields> &x, const FieldSet<num_fields> &y, const FieldSet<num_fields> &z);
 };
 
 
@@ -40,7 +40,7 @@ public:
   void initialize(std::array<const Topology *, num_fields> &topo_arr, SArray<int,2, num_fields, 3> &ndofs_arr);
   void initialize(const ExchangeSet<num_fields> &es);
   void printinfo();
-  void exchange_variable_set(VariableSet<num_fields> &vs);
+  void exchange_variable_set(FieldSet<num_fields> &vs);
 };
 
 
@@ -48,7 +48,6 @@ public:
 template<uint num_fields> ExchangeSet<num_fields>::ExchangeSet()
 {
   this->is_initialized = false;
-  std::cout << "CREATED EXCHANGE SET\n";
 }
 
 
@@ -71,7 +70,7 @@ template<uint num_fields> void ExchangeSet<num_fields>::printinfo()
 }
 
 //EVENTUALLY THIS SHOULD BE MORE CLEVER IE PACK ALL THE FIELDS AT ONCE, ETC.
-template<uint num_fields> void ExchangeSet<num_fields>::exchange_variable_set(VariableSet<num_fields> &vs)
+template<uint num_fields> void ExchangeSet<num_fields>::exchange_variable_set(FieldSet<num_fields> &vs)
 {
   for (int i=0; i<num_fields; i++)
   {
@@ -91,15 +90,14 @@ template<uint num_fields> void ExchangeSet<num_fields>::initialize(const Exchang
 
 
 
-    template<uint num_fields> VariableSet<num_fields>::VariableSet()
+    template<uint num_fields> FieldSet<num_fields>::FieldSet()
     {
       this->is_initialized = false;
-      std::cout << "CREATED VARIABLE SET\n";
     }
 
-  template<uint num_fields> void VariableSet<num_fields>::printinfo()
+  template<uint num_fields> void FieldSet<num_fields>::printinfo()
   {
-  std::cout << "variable set info " << this->baseName << "\n" << std::flush;
+  std::cout << "field set info " << this->baseName << "\n" << std::flush;
   for (int i=0; i<num_fields; i++)
   {
     this->fields_arr[i].printinfo();
@@ -107,7 +105,7 @@ template<uint num_fields> void ExchangeSet<num_fields>::initialize(const Exchang
   }
 
 
-  template<uint num_fields> void VariableSet<num_fields>::initialize(const std::string name, std::array<std::string, num_fields> &names_arr, std::array<const Topology *, num_fields> &topo_arr, SArray<int,2, num_fields, 3> &ndofs_arr)
+  template<uint num_fields> void FieldSet<num_fields>::initialize(const std::string name, std::array<std::string, num_fields> &names_arr, std::array<const Topology *, num_fields> &topo_arr, SArray<int,2, num_fields, 3> &ndofs_arr)
   {
     this->baseName = name;
     for (int i=0; i<num_fields; i++)
@@ -117,8 +115,8 @@ template<uint num_fields> void ExchangeSet<num_fields>::initialize(const Exchang
     this->is_initialized = true;
   }
 
-  // creates a new VariableSet that has the same fields as vs
-  template<uint num_fields> void VariableSet<num_fields>::initialize(const VariableSet<num_fields> &vs, const std::string name) //,  EXCHANGE_TYPE exch_type)
+  // creates a new FieldSet that has the same fields as vs
+  template<uint num_fields> void FieldSet<num_fields>::initialize(const FieldSet<num_fields> &vs, const std::string name) //,  EXCHANGE_TYPE exch_type)
   {
     this->baseName = name;
     for (int i=0; i<num_fields; i++)
@@ -129,7 +127,7 @@ template<uint num_fields> void ExchangeSet<num_fields>::initialize(const Exchang
   }
 
   // copies data from vs into self
-  template<uint num_fields> void VariableSet<num_fields>::copy(const VariableSet<num_fields> &vs)
+  template<uint num_fields> void FieldSet<num_fields>::copy(const FieldSet<num_fields> &vs)
   {
     for (int i=0; i<num_fields; i++)
     {
@@ -138,7 +136,7 @@ template<uint num_fields> void ExchangeSet<num_fields>::initialize(const Exchang
   }
 
   // Computes w (self) = alpha x + y
-  template<uint num_fields> void VariableSet<num_fields>::waxpy(real alpha, const VariableSet<num_fields> &x, const VariableSet<num_fields> &y)
+  template<uint num_fields> void FieldSet<num_fields>::waxpy(real alpha, const FieldSet<num_fields> &x, const FieldSet<num_fields> &y)
   {
     for (int i=0; i<num_fields; i++)
     {
@@ -148,7 +146,7 @@ template<uint num_fields> void ExchangeSet<num_fields>::initialize(const Exchang
 
 
   // Computes w (self) = alpha x + beta * y + gamma * z
-  template<uint num_fields> void VariableSet<num_fields>::waxpbypcz(real alpha, real beta, real gamma, const VariableSet<num_fields> &x, const VariableSet<num_fields> &y, const VariableSet<num_fields> &z)
+  template<uint num_fields> void FieldSet<num_fields>::waxpbypcz(real alpha, real beta, real gamma, const FieldSet<num_fields> &x, const FieldSet<num_fields> &y, const FieldSet<num_fields> &z)
   {
     for (int i=0; i<num_fields; i++)
     {

@@ -90,13 +90,25 @@ template <uint nvars> void set_dofs_arr(SArray<int,2, nvars, 3> &dofs_arr, int v
   dofs_arr(var, 2) = ndofs;
 }
 
+//Utility functions for serial output
+void inline debug_print(std::string out, int masterproc)
+{
+  #ifdef PAM_DEBUG
+  if (masterproc) {std::cout << out << "\n";}
+  #endif
+}
+void inline serial_print(std::string out, int masterproc)
+{
+  if (masterproc) {std::cout << out << "\n";}
+}
+
 class Parameters
 {
 public:
 
   int nx_glob = -1;
   int ny_glob = -1;
-  int nz = -1;
+  int nz_dual = -1;
   int nens = -1;
 
   int Nsteps = -1;
@@ -110,6 +122,8 @@ public:
 
   real xlen, ylen, zlen;
   real xc, yc, zc;
+
+  int masterproc;
 
 };
 

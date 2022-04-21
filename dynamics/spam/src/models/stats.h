@@ -54,6 +54,6 @@ public:
     this->statsize = params.Nsteps/params.Nstat + 1;
   }
   
-  virtual void compute( VariableSet<nprognostic> &progvars,  VariableSet<nconstant> &constvars, int tind) {};
+  virtual void compute( FieldSet<nprognostic> &progvars,  FieldSet<nconstant> &constvars, int tind) {};
 
 };

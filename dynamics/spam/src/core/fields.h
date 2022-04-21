@@ -51,7 +51,6 @@ public :
     Field::Field()
     {
       this->is_initialized = false;
-      std::cout << "CREATED FIELD\n";
     }
 
   void Field::printinfo()

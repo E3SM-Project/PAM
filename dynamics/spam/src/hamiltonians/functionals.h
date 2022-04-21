@@ -3,22 +3,26 @@
 
 
 #include "common.h"
+#include "variableset.h"
 
 struct pvpe {
   real pv=0., pe=0.;
 };
 
+//ADD SUPPORT FOR GETTING TOTAL DENSITY FROM VARSET...
 class Functional_PVPE {
 public:
   bool is_initialized;
+  VariableSet *varset;
 
    Functional_PVPE() {
      this->is_initialized = false;
 }
 
-void initialize()
+void initialize(VariableSet &variableset)
 {
   this->is_initialized = true;
+  this->varset = &variableset;
 }
 
 real YAKL_INLINE compute_hv(const real5d dens, int is, int js, int ks, int i, int j, int k, int n)
@@ -187,14 +191,16 @@ class Functional_PVPE_extruded {
 
 public:
   bool is_initialized;
+  VariableSet *varset;
 
    Functional_PVPE_extruded() {
      this->is_initialized = false;
 }
 
-void initialize()
+void initialize(VariableSet &variableset)
 {
   this->is_initialized = true;
+  this->varset = &variableset;
 }
 
 real YAKL_INLINE compute_hvxz(const real5d dens, int is, int js, int ks, int i, int j, int k, int n)

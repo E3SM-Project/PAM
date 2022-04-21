@@ -13,6 +13,8 @@ extern "C"
 void sam1mom_main_fortran(double &dt, int &ncol, int &nz, double *zint, double *rho, double *rhow, double *pres, 
                           double *tabs, double *qv, double *qn, double *qp);
 
+int static constexpr num_tracers_micro = 3;
+
 class Microphysics {
 public:
   // Doesn't actually have to be static or constexpr. Could be assigned in the constructor

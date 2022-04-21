@@ -3,7 +3,7 @@
 
 #include "common.h"
 #include "thermo.h"
-
+#include "variableset.h"
 
 
 // ADD p-variants
@@ -14,17 +14,19 @@ class Hamiltonian_CE_Hs {
    Geometry *dual_geometry;
    bool is_initialized;
    ThermoPotential *thermo;
+   VariableSet *varset;
    
     Hamiltonian_CE_Hs() {
       this->is_initialized = false;
  }
  
- void initialize(ThermoPotential &thermodynamics, Geometry &primal_geom, Geometry &dual_geom)
+ void initialize(ThermoPotential &thermodynamics, VariableSet &variableset, Geometry &primal_geom, Geometry &dual_geom)
  {
    this->thermo = &thermodynamics;
    this->primal_geometry = &primal_geom;
    this->dual_geometry = &dual_geom;
    this->is_initialized = true;
+   this->varset = &variableset;
  }
 
 void set_parameters(real gin)
@@ -44,45 +46,46 @@ void set_parameters(real gin)
    return dens(0, k+ks, j+js, i+is, n) * geop0(0);
    
  }
- 
- //   alpha = 1./rho;
- //   entropic_var = entropic_density/rho;
-
-     real YAKL_INLINE compute_alpha(const real5d dens0, int is, int js, int ks, int i, int j, int k, int n) {
-       return 1._fp/dens0(0, k+ks, j+js, i+is, n);
-     }
-     
-     real YAKL_INLINE compute_entropic_var(const real5d dens0, int is, int js, int ks, int i, int j, int k, int n) {
-       return dens0(1, k+ks, j+js, i+is)/dens0(0, k+ks, j+js, i+is, n);
-     }
 
  real YAKL_INLINE compute_IE(const real5d dens, int is, int js, int ks, int i, int j, int k, int n)
  {
-   SArray<real,1,2> dens0;
-   #ifdef _EXTRUDED   
-   compute_Iext<2, diff_ord, vert_diff_ord>(dens0, dens, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k, n);
-   #else
-   compute_I<2, diff_ord>(dens0, dens, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k, n);
-   #endif   
+   // SArray<real,1,2> dens0;
+   // #ifdef _EXTRUDED   
+   // compute_Iext<2, diff_ord, vert_diff_ord>(dens0, dens, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k, n);
+   // #else
+   // compute_I<2, diff_ord>(dens0, dens, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k, n);
+   // #endif   
    
-   real alpha = 1._fp/dens0(0);
-   real entropic_var = dens0(1)/dens0(0);
-   return dens(0, k+ks, j+js, i+is, n) * thermo->compute_U(alpha, entropic_var, 0, 0, 0, 0);
+   real alpha = varset->get_alpha(dens, k, j, i, ks, js, is, n);
+   real entropic_var = varset->get_entropic_var(dens, k, j, i, ks, js, is, n);
+   return dens(0, k+ks, j+js, i+is, n) * thermo->compute_U(alpha, entropic_var, 0._fp, 0._fp, 0._fp, 0._fp);
  }
 
-  void YAKL_INLINE compute_dHsdx(real5d B, const real5d dens0, const real5d geop, int is, int js, int ks, int i, int j, int k, int n)
+  void YAKL_INLINE compute_dHsdx(real5d B, const real5d dens, const real5d geop, int is, int js, int ks, int i, int j, int k, int n)
   {
 
-    SArray<real,1,1> geop0;
-
+    SArray<real,1,1> geop0;    
     #ifdef _EXTRUDED   
     compute_Iext<1,diff_ord,vert_diff_ord> (geop0, geop, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k, n);
     #else
     compute_I<1,diff_ord> (geop0, geop, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k, n);
     #endif   
 
-    real alpha = compute_alpha(dens0, is, js, ks, i, j, k, n);
-    real entropic_var = compute_entropic_var(dens0, is, js, ks, i, j, k, n);
+    // SArray<real,1,2> dens0;
+    // #ifdef _EXTRUDED   
+    // compute_Iext<2, diff_ord, vert_diff_ord>(dens0, dens, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k, n);
+    // #else
+    // compute_I<2, diff_ord>(dens0, dens, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k, n);
+    // #endif   
+    
+    //real alpha = 1.0_fp / dens0(0); 
+    //real entropic_var = dens(1)/dens(0); 
+    
+    // real alpha = 1.0_fp / dens(0,k+ks,j+js,i+is,n); 
+    // real entropic_var = dens(1,k+ks,j+js,i+is,n)/dens(0,k+ks,j+js,i+is,n); 
+    
+    real alpha = varset->get_alpha(dens, k, j, i, ks, js, is, n);
+    real entropic_var = varset->get_entropic_var(dens, k, j, i, ks, js, is, n);
     
     real U = thermo->compute_U(alpha, entropic_var, 0, 0, 0, 0);
     real p = -thermo->compute_dUdalpha(alpha, entropic_var, 0, 0, 0, 0);
@@ -105,27 +108,25 @@ void set_parameters(real gin)
 // MCE MODEL HAS CHOICES OF PREDICTED VARS IE RHO VS RHOD, AND ALSO THERMO
 
 
-// The right way to do this is with mixins! ie both Hs and Ks (and probably PVPE as well) inherit from a variableset class that knows how to compute things like D, entropic var density, etc. from dens!
-// This allows basically arbitrary indexing into stuff....
-
-//Right now this assumes dens is rho, S, rho_v, rho_l, rho_i
-class Hamiltonian_MCE_rho_Hs {
+class Hamiltonian_MCE_Hs {
  public:
    Geometry *primal_geometry;
    Geometry *dual_geometry;
    bool is_initialized;
    ThermoPotential *thermo;
+   VariableSet *varset;
    
-    Hamiltonian_MCE_rho_Hs() {
+    Hamiltonian_MCE_Hs() {
       this->is_initialized = false;
  }
  
- void initialize(ThermoPotential &thermodynamics, Geometry &primal_geom, Geometry &dual_geom)
+ void initialize(ThermoPotential &thermodynamics, VariableSet &variableset, Geometry &primal_geom, Geometry &dual_geom)
  {
    this->thermo = &thermodynamics;
    this->primal_geometry = &primal_geom;
    this->dual_geometry = &dual_geom;
    this->is_initialized = true;
+   this->varset = &variableset;
  }
  
 void set_parameters(real gin)
@@ -146,53 +147,27 @@ void set_parameters(real gin)
    
  }
  
- //   alpha = 1./rho;
- //   compute_entropic_var = entropic_density/rho;
- //   qd = (rho - \sum_n \rho_s)/rho;
- //   qv = rho_v/rho;
- //   ql = rho_l/rho;
- //   qi = rho_i/rho;
-     real YAKL_INLINE compute_alpha(const real5d dens0, int is, int js, int ks, int i, int j, int k, int n) {
-       return 1._fp/dens0(0, k+ks, j+js, i+is, n);
-     }
-     
-     real YAKL_INLINE compute_entropic_var(const real5d dens0, int is, int js, int ks, int i, int j, int k, int n) {
-       return dens0(1, k+ks, j+js, i+is, n)/dens0(0, k+ks, j+js, i+is, n);
-     }
-     real YAKL_INLINE compute_qd(const real5d dens0, int is, int js, int ks, int i, int j, int k, int n) {
-       return (dens0(0, k+ks, j+js, i+is, n) - dens0(2, k+ks, j+js, i+is, n) - dens0(3, k+ks, j+js, i+is, n) - dens0(4, k+ks, j+js, i+is, n))/dens0(0, k+ks, j+js, i+is, n);
-     }
-     real YAKL_INLINE compute_qv(const real5d dens0, int is, int js, int ks, int i, int j, int k, int n) {
-       return dens0(2, k+ks, j+js, i+is, n)/dens0(0, k+ks, j+js, i+is, n);
-     }
-     real YAKL_INLINE compute_ql(const real5d dens0, int is, int js, int ks, int i, int j, int k, int n) {
-       return dens0(3, k+ks, j+js, i+is, n)/dens0(0, k+ks, j+js, i+is, n);
-     }
-     real YAKL_INLINE compute_qi(const real5d dens0, int is, int js, int ks, int i, int j, int k, int n) {
-       return dens0(4, k+ks, j+js, i+is, n)/dens0(0, k+ks, j+js, i+is, n);
-     }
-
-
  real YAKL_INLINE compute_IE(const real5d dens, int is, int js, int ks, int i, int j, int k, int n)
  {
 
-   SArray<real,1,5> dens0;
-   #ifdef _EXTRUDED   
-   compute_Iext<5, diff_ord, vert_diff_ord>(dens0, dens, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k, n);
-   #else
-   compute_I<5, diff_ord>(dens0, dens, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k, n);
-   #endif   
+   // SArray<real,1,5> dens0;
+   // #ifdef _EXTRUDED   
+   // compute_Iext<5, diff_ord, vert_diff_ord>(dens0, dens, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k, n);
+   // #else
+   // compute_I<5, diff_ord>(dens0, dens, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k, n);
+   // #endif   
    
-   real alpha = 1._fp/dens0(0);
-   real entropic_var = dens0(1)/dens0(0);
-   real qd = (dens0(0) - dens0(2) - dens0(3) - dens0(4))/dens0(0);
-   real qv = dens0(2) / dens0(0);
-   real ql = dens0(3) / dens0(0);
-   real qi = dens0(4) / dens0(0);
+   real alpha = varset->get_alpha(dens, k, j, i, ks, js, is, n);
+   real entropic_var = varset->get_entropic_var(dens, k, j, i, ks, js, is, n);
+   real qd = varset->get_qd(dens, k, j, i, ks, js, is, n);
+   real qv = varset->get_qv(dens, k, j, i, ks, js, is, n);
+   real ql = varset->get_ql(dens, k, j, i, ks, js, is, n);
+   real qi = varset->get_qi(dens, k, j, i, ks, js, is, n);
    return dens(0, k+ks, j+js, i+is, n) * thermo->compute_U(alpha, entropic_var, qd, qv, ql, qi);
  }
 
-  void YAKL_INLINE compute_dHsdx(real5d B, const real5d dens0, const real5d geop, int is, int js, int ks, int i, int j, int k, int n)
+//THIS NEEDS FIXING, BUT SHOULD BE COMPLETELY GENERAL NOW!
+  void YAKL_INLINE compute_dHsdx(real5d B, const real5d dens, const real5d geop, int is, int js, int ks, int i, int j, int k, int n)
   {
 
     SArray<real,1,1> geop0;
@@ -202,13 +177,13 @@ void set_parameters(real gin)
     #else
     compute_I<1,diff_ord> (geop0, geop, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k, n);
     #endif   
-    
-    real alpha = compute_alpha(dens0, is, js, ks, i, j, k, n);
-    real entropic_var = compute_entropic_var(dens0, is, js, ks, i, j, k, n);
-    real qd = compute_qd(dens0, is, js, ks, i, j, k, n);
-    real qv = compute_qv(dens0, is, js, ks, i, j, k, n);
-    real ql = compute_ql(dens0, is, js, ks, i, j, k, n);
-    real qi = compute_qi(dens0, is, js, ks, i, j, k, n);
+
+    real alpha = varset->get_alpha(dens, k, j, i, ks, js, is, n);
+    real entropic_var = varset->get_entropic_var(dens, k, j, i, ks, js, is, n);
+    real qd = varset->get_qd(dens, k, j, i, ks, js, is, n);
+    real qv = varset->get_qv(dens, k, j, i, ks, js, is, n);
+    real ql = varset->get_ql(dens, k, j, i, ks, js, is, n);
+    real qi = varset->get_qi(dens, k, j, i, ks, js, is, n);
     
     real U = thermo->compute_U(alpha, entropic_var, qd, qv, ql, qi);
     real p = -thermo->compute_dUdalpha(alpha, entropic_var, qd, qv, ql, qi);

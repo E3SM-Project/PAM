@@ -24,21 +24,20 @@ void readParamsFile(std::string inFile, ModelParameters &params, Parallel &par, 
   // Determine if I'm the master process
   if (par.myrank == 0) { par.masterproc = 1;}
   else { par.masterproc = 0; }
+  params.masterproc = par.masterproc;
   
   int ierr;
 
  params.nx_glob = config["crm_nx"].as<int>();
  params.ny_glob = config["crm_ny"].as<int>();
  params.nens = config["nens"].as<int>();
- params.nz = nz;
+ params.nz_dual = nz;
 
  par.nprocx = config["nprocx"].as<int>();
  par.nprocy = config["nprocy"].as<int>();
 
  if (!(par.nprocx * par.nprocy == par.nranks)) { 
-   std::cout << par.nprocx << " " << par.nprocy << " " << par.nranks << "\n"; exit(-1); 
-
-   std::cout << "Error: nranks != nprocx * nprocy\n"; exit(-1); 
+   endrun("Error: nranks != nprocx * nprocy");
  }
 
 
@@ -79,7 +78,7 @@ void readParamsFile(std::string inFile, ModelParameters &params, Parallel &par, 
     par.ny_glob = params.ny_glob;
     }
     
-    par.nz = params.nz;
+    par.nz = params.nz_dual;
     par.nens = params.nens;
 
     // Determine my neighbors
@@ -101,10 +100,6 @@ void readParamsFile(std::string inFile, ModelParameters &params, Parallel &par, 
     }
     
     // set boundaries
-    // if (!strcmp(params.xbnd.c_str(),"periodic")) {par.xbnd = BND_TYPE::PERIODIC;}
-    // if (!strcmp(params.xbnd.c_str(),"none")) {par.xbnd = BND_TYPE::NONE;}
-    // if (!strcmp(params.ybnd.c_str(),"periodic")) {par.ybnd = BND_TYPE::PERIODIC;}
-    // if (!strcmp(params.ybnd.c_str(),"none")) {par.ybnd = BND_TYPE::NONE;}
     par.xbnd = BND_TYPE::PERIODIC;
     par.ybnd = BND_TYPE::PERIODIC;
     
@@ -113,7 +108,7 @@ void readParamsFile(std::string inFile, ModelParameters &params, Parallel &par, 
     par.haloy = maxhalosize;
         
     // Debug output for the parallel decomposition
-    if (1) {
+    #ifdef PAM_DEBUG
       ierr = MPI_Barrier(MPI_COMM_WORLD);
       for (int rr=0; rr < par.nranks; rr++) {
         if (rr == par.myrank) {
@@ -129,7 +124,7 @@ void readParamsFile(std::string inFile, ModelParameters &params, Parallel &par, 
         ierr = MPI_Barrier(MPI_COMM_WORLD);
       }
       ierr = MPI_Barrier(MPI_COMM_WORLD);
-    }
+    #endif
 
 
 
@@ -137,8 +132,8 @@ void readParamsFile(std::string inFile, ModelParameters &params, Parallel &par, 
   if (par.masterproc) {
     std::cout << "nx:         " << params.nx_glob    << "\n";
     std::cout << "ny:         " << params.ny_glob    << "\n";
-    std::cout << "nl:         " << params.nz    << "\n";
-    std::cout << "ni:         " << params.nz+1    << "\n";
+    std::cout << "nl dual:         " << params.nz_dual    << "\n";
+    std::cout << "ni dual:         " << params.nz_dual+1    << "\n";
     std::cout << "nens:         " << params.nens    << "\n";
 
     std::cout << "halox:      " << par.halox    << "\n";
@@ -147,6 +142,8 @@ void readParamsFile(std::string inFile, ModelParameters &params, Parallel &par, 
     std::cout << "dtcrm:         " << params.dtcrm         << "\n";
     std::cout << "dtphys:         " << params.dtphys         << "\n";
     std::cout << "Nsteps:     " << params.Nsteps     << "\n";
+    std::cout << "simSteps:     " << simSteps     << "\n";
+    std::cout << "crm per phys:     " << params.crm_per_phys     << "\n";
     std::cout << "Nout:       " << params.Nout       << "\n";
     std::cout << "outputName: " << params.outputName << "\n";
 

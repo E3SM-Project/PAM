@@ -4,7 +4,7 @@
 
 #include "common.h"
 #include "topology.h"
-#include "variable_sets.h"
+#include "field_sets.h"
 #include "exchange.h"
 #include "model.h"
 
@@ -15,12 +15,12 @@ class RKSimpleTimeIntegrator {
 public:
 
   SArray<real,1, NSTAGESMAX> stage_coeffs;
-  VariableSet<nprognostic> xtend;
-  VariableSet<nprognostic> xtemp;
-  VariableSet<nprognostic> *x;
+  FieldSet<nprognostic> xtend;
+  FieldSet<nprognostic> xtemp;
+  FieldSet<nprognostic> *x;
   Tendencies *tendencies;
-  VariableSet<nconstant> *const_vars;
-  VariableSet<nauxiliary> *auxiliary_vars;
+  FieldSet<nconstant> *const_vars;
+  FieldSet<nauxiliary> *auxiliary_vars;
   ExchangeSet<nprognostic> *x_exchange;
   uint nstages;
   
@@ -28,7 +28,7 @@ public:
   RKSimpleTimeIntegrator();
   RKSimpleTimeIntegrator( const RKSimpleTimeIntegrator &rksimple) = delete;
   RKSimpleTimeIntegrator& operator=( const RKSimpleTimeIntegrator &rksimple) = delete;
-  void initialize(ModelParameters &params, Tendencies &tend, VariableSet<nprognostic> &xvars, VariableSet<nconstant> &consts, VariableSet<nauxiliary> &auxiliarys, ExchangeSet<nprognostic> &prog_exch);
+  void initialize(ModelParameters &params, Tendencies &tend, FieldSet<nprognostic> &xvars, FieldSet<nconstant> &consts, FieldSet<nauxiliary> &auxiliarys, ExchangeSet<nprognostic> &prog_exch);
   void stepForward(real dt);
   void set_stage_coefficients(ModelParameters &params);
 
@@ -38,7 +38,6 @@ public:
     RKSimpleTimeIntegrator::RKSimpleTimeIntegrator()
     {
       this->is_initialized = false;
-      std::cout << "CREATED RKSIMPLE\n";
     }
 
     void RKSimpleTimeIntegrator::set_stage_coefficients(ModelParameters &params)
@@ -53,7 +52,7 @@ public:
         }
       }
 
-  void RKSimpleTimeIntegrator::initialize(ModelParameters &params, Tendencies &tend, VariableSet<nprognostic> &xvars, VariableSet<nconstant> &consts, VariableSet<nauxiliary> &auxiliarys, ExchangeSet<nprognostic> &prog_exch)
+  void RKSimpleTimeIntegrator::initialize(ModelParameters &params, Tendencies &tend, FieldSet<nprognostic> &xvars, FieldSet<nconstant> &consts, FieldSet<nauxiliary> &auxiliarys, ExchangeSet<nprognostic> &prog_exch)
   {
     this->xtemp.initialize(xvars, "xtemp");
     this->xtend.initialize(xvars, "xtend");

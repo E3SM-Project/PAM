@@ -7,6 +7,7 @@
 
 using pam::PamCoupler;
 
+int static constexpr num_tracers_sgs = 0;
 
 class SGS {
 public:

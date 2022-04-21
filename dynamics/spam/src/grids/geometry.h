@@ -643,7 +643,6 @@ public:
  Geometry::Geometry()
     {
       this->is_initialized = false;
-      std::cout << "CREATED GEOMETRY\n";
     }
 
  void Geometry::initialize(const Topology &topo)
@@ -766,7 +765,7 @@ this->zc = params.zlen * 0.5_fp;
 
 this->dx = params.xlen/params.nx_glob;
 this->dy = 1._fp;
-this->dz = params.zlen/params.nz;
+this->dz = params.zlen/(params.nz_dual-1);
 
 this->straight = false;
 
@@ -892,7 +891,7 @@ this->zc = params.zlen/2.;
 
 this->dx = params.xlen/params.nx_glob;
 this->dy = 1._fp;
-this->dz = params.zlen/params.nz;
+this->dz = params.zlen/(params.nz_dual-1);
 
 this->straight = true;
 

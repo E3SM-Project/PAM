@@ -10,6 +10,7 @@
 #include "recon.h"
 #include "wedge.h"
 #include "hamiltonian.h"
+#include "variableset.h"
 
 // *******   Functionals/Hamiltonians   ***********//
 
@@ -20,20 +21,28 @@ Hamiltonian_Hk_extruded Hk;
 
 #ifdef _SWE
 Hamiltonian_SWE_Hs Hs;
+VariableSet_SWE varset;
 #elif _TSWE
 Hamiltonian_TSWE_Hs Hs;
+VariableSet_TSWE varset;
 #elif _CE
 Hamiltonian_CE_Hs Hs;
+VariableSet_CE varset;
+#elif _MCErho
+Hamiltonian_MCE_Hs Hs;
+VariableSet_MCE_rho varset;
+#elif _MCErhod
+Hamiltonian_MCE_Hs Hs;
+VariableSet_MCE_rhod varset;
 #elif _CEp
 Hamiltonian_CE_p_Hs Hs;
-#elif _MCErho
-Hamiltonian_MCE_rho_Hs Hs;
+VariableSet_CE_p varset;
 #elif _MCErhop
-Hamiltonian_MCE_rho_p_Hs Hs;
-#elif _MCErhod
-Hamiltonian_MCE_rhod_Hs Hs;
+Hamiltonian_MCE_p_Hs Hs;
+VariableSet_MCE_rhop varset;
 #elif _MCErhodp
-Hamiltonian_MCE_rhod_p_Hs Hs;
+Hamiltonian_MCE_p_Hs Hs;
+VariableSet_MCE_rhodp varset;
 #endif
 //ADD ANELASTIC + MOIST ANELASTIC
 //MIGHT NEED MORE CLEVER Hk/PVPE HERE? NOT SURE...
@@ -57,7 +66,7 @@ Unapprox_Entropy thermo;
 class ModelDiagnostics: public Diagnostics {
 public:
 
- void compute_diag(const VariableSet<nconstant> &const_vars, VariableSet<nprognostic> &x, VariableSet<ndiagnostic> &diagnostic_vars)
+ void compute_diag(const FieldSet<nconstant> &const_vars, FieldSet<nprognostic> &x, FieldSet<ndiagnostic> &diagnostic_vars)
  {
 
   int dis = dual_topology->is;
@@ -92,20 +101,23 @@ PVPE.compute_qxz0_top(diagnostic_vars.fields_arr[QXZDIAGVAR].data, x.fields_arr[
 class ModelTendencies: public ExtrudedTendencies {
 public:
 
- void initialize(ModelParameters &params, const Topology &primal_topo, const Topology &dual_topo, Geometry &primal_geom, Geometry &dual_geom, ExchangeSet<nauxiliary> &aux_exchange, ExchangeSet<nconstant> &const_exchange)
+ void initialize(PamCoupler &coupler, ModelParameters &params, Topology &primal_topo, Topology &dual_topo, Geometry &primal_geom, Geometry &dual_geom, ExchangeSet<nauxiliary> &aux_exchange, ExchangeSet<nconstant> &const_exchange)
  {
 
 ExtrudedTendencies::initialize(params, primal_topo, dual_topo, primal_geom, dual_geom, aux_exchange, const_exchange);
-   PVPE.initialize();
-   Hk.initialize(*this->primal_geometry, *this->dual_geometry);
-   Hs.initialize(thermo, *this->primal_geometry, *this->dual_geometry);
-
+   varset.initialize(coupler, params, thermo,  *this->primal_topology, *this->dual_topology, *this->primal_geometry, *this->dual_geometry);
+   PVPE.initialize(varset);
+   Hk.initialize(varset, *this->primal_geometry, *this->dual_geometry);
+   Hs.initialize(thermo, varset, *this->primal_geometry, *this->dual_geometry);
 }
 
+void convert_dynamics_to_coupler_state(PamCoupler &coupler, const FieldSet<nprognostic> &prog_vars, const FieldSet<nconstant> &const_vars)
+{varset.convert_dynamics_to_coupler_state(coupler, prog_vars, const_vars);}
+void convert_coupler_to_dynamics_state(PamCoupler &coupler, FieldSet<nprognostic> &prog_vars, const FieldSet<nconstant> &const_vars)
+{varset.convert_coupler_to_dynamics_state(coupler, prog_vars, const_vars);}
 
-     void compute_constants(VariableSet<nconstant> &const_vars, VariableSet<nprognostic> &x)
+     void compute_constants(FieldSet<nconstant> &const_vars, FieldSet<nprognostic> &x)
      {}
-
 
        void YAKL_INLINE compute_functional_derivatives_and_diagnostic_quantities_I(
         real5d Uvar, real5d UWvar, real5d qxz0var, real5d fxz0var, real5d dens0var, 
@@ -167,12 +179,11 @@ ExtrudedTendencies::initialize(params, primal_topo, dual_topo, primal_geom, dual
       void  YAKL_INLINE compute_functional_derivatives_and_diagnostic_quantities_III(
         real5d Bvar, real5d FTvar, real5d FTWvar,
         const real5d Fvar, const real5d Uvar, const real5d FWvar, const real5d UWvar,
-        const real5d Kvar, const real5d dens0var, const real5d HSvar) {
+        const real5d Kvar, const real5d densvar, const real5d HSvar) {
 
     int pis = primal_topology->is;
     int pjs = primal_topology->js;
     int pks = primal_topology->ks;
-
 
     parallel_for("Compute FTvar", Bounds<4>( primal_topology->ni-2, primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
     compute_Wxz_u(FTvar, FWvar, pis, pjs, pks, i, j, k+1, n);
@@ -189,12 +200,11 @@ ExtrudedTendencies::initialize(params, primal_topo, dual_topo, primal_geom, dual
     compute_Wxz_w_top(FTWvar, Fvar, pis, pjs, pks, i, j, primal_topology->nl-1, n);
     });
             parallel_for("Compute Bvar", Bounds<4>( primal_topology->ni, primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens) , YAKL_LAMBDA(int k, int j, int i, int n) { 
-    Hs.compute_dHsdx(Bvar, dens0var, HSvar, pis, pjs, pks, i, j, k, n);
+    Hs.compute_dHsdx(Bvar, densvar, HSvar, pis, pjs, pks, i, j, k, n);
     Hk.compute_dKddens<ADD_MODE::ADD>(Bvar, Kvar, pis, pjs, pks, i, j, k, n);
         });
 
         }
-
 
       void YAKL_INLINE compute_edge_reconstructions(real5d densedgereconvar, real5d densvertedgereconvar, 
         real5d qxzedgereconvar, real5d qxzvertedgereconvar, 
@@ -357,7 +367,7 @@ ExtrudedTendencies::initialize(params, primal_topo, dual_topo, primal_geom, dual
 
 
       
-      void YAKL_INLINE compute_rhs(real dt, VariableSet<nconstant> &const_vars, VariableSet<nprognostic> &x, VariableSet<nauxiliary> &auxiliary_vars, VariableSet<nprognostic> &xtend)
+      void YAKL_INLINE compute_rhs(real dt, FieldSet<nconstant> &const_vars, FieldSet<nprognostic> &x, FieldSet<nauxiliary> &auxiliary_vars, FieldSet<nprognostic> &xtend)
       {
            
           //Compute U, W, q0, dens0
@@ -386,16 +396,14 @@ ExtrudedTendencies::initialize(params, primal_topo, dual_topo, primal_geom, dual
           this->aux_exchange->exchanges_arr[KVAR].exchange_field(auxiliary_vars.fields_arr[KVAR]);
           this->aux_exchange->exchanges_arr[HEVAR].exchange_field(auxiliary_vars.fields_arr[HEVAR]);
           this->aux_exchange->exchanges_arr[HEWVAR].exchange_field(auxiliary_vars.fields_arr[HEWVAR]);
-          
-          //std::cout << "HE min/max " << auxiliary_vars.fields_arr[HEVAR].min() << " " << auxiliary_vars.fields_arr[HEVAR].max() << " " << auxiliary_vars.fields_arr[HEVAR].sum() << "\n" <<std::flush;
-          //std::cout << "HEw min/max " << auxiliary_vars.fields_arr[HEWVAR].min() << " " << auxiliary_vars.fields_arr[HEWVAR].max() << " " << auxiliary_vars.fields_arr[HEWVAR].sum() << "\n" <<std::flush;
-          
+              
           //Compute FT, B
           compute_functional_derivatives_and_diagnostic_quantities_III(
           auxiliary_vars.fields_arr[BVAR].data,  auxiliary_vars.fields_arr[FTVAR].data, auxiliary_vars.fields_arr[FTWVAR].data,
           auxiliary_vars.fields_arr[FVAR].data, auxiliary_vars.fields_arr[UVAR].data,
           auxiliary_vars.fields_arr[FWVAR].data, auxiliary_vars.fields_arr[UWVAR].data,
-          auxiliary_vars.fields_arr[KVAR].data, auxiliary_vars.fields_arr[DENS0VAR].data, const_vars.fields_arr[HSVAR].data);
+          auxiliary_vars.fields_arr[KVAR].data, x.fields_arr[DENSVAR].data, const_vars.fields_arr[HSVAR].data);
+          //auxiliary_vars.fields_arr[KVAR].data, auxiliary_vars.fields_arr[DENS0VAR].data, const_vars.fields_arr[HSVAR].data);
 
           this->aux_exchange->exchanges_arr[BVAR].exchange_field(auxiliary_vars.fields_arr[BVAR]);
           this->aux_exchange->exchanges_arr[FTVAR].exchange_field(auxiliary_vars.fields_arr[FTVAR]);
@@ -462,10 +470,14 @@ ExtrudedTendencies::initialize(params, primal_topo, dual_topo, primal_geom, dual
     });
 
     //Don't do FCT for non-FCT vars
-        for (int l=0; l<ndensity_nofct; l++)
+        for (int l=0; l<ndensity; l++)
         {
-        auxiliary_vars.fields_arr[PHIVAR].set(l, 1.0);
-        auxiliary_vars.fields_arr[PHIVERTVAR].set(l, 1.0);
+          //if (not varset.dens_pos(l))
+          if (!varset.dens_pos[l])
+          {
+          auxiliary_vars.fields_arr[PHIVAR].set(l, 1.0);
+          auxiliary_vars.fields_arr[PHIVERTVAR].set(l, 1.0);
+          }
         }
         
     this->aux_exchange->exchanges_arr[PHIVAR].exchange_field(auxiliary_vars.fields_arr[PHIVAR]);
@@ -513,7 +525,7 @@ public:
   
 }
 
-   void compute( VariableSet<nprognostic> &progvars,  VariableSet<nconstant> &constvars, int tind)
+   void compute( FieldSet<nprognostic> &progvars,  FieldSet<nconstant> &constvars, int tind)
    {
 
     for (int n=0;n<nens;n++)
@@ -649,7 +661,7 @@ parallel_for("Compute PV/PE stats", Bounds<3>( primal_topology->nl-2, primal_top
 };
 
 
-// *******   VariableSet Initialization   ***********//
+// *******   FieldSet Initialization   ***********//
 void initialize_variables(const Topology &ptopo, const Topology &dtopo,
 SArray<int,2, nprognostic, 3> &prog_ndofs_arr, SArray<int,2, nconstant, 3> &const_ndofs_arr, SArray<int,2, nauxiliary, 3> &aux_ndofs_arr, SArray<int,2, ndiagnostic, 3> &diag_ndofs_arr,
 std::array<std::string, nprognostic> &prog_names_arr, std::array<std::string, nconstant> &const_names_arr, std::array<std::string, nauxiliary> &aux_names_arr, std::array<std::string, ndiagnostic> &diag_names_arr,
@@ -1045,21 +1057,30 @@ real YAKL_INLINE flat_geop(real x, real z, real g)
 
    // Read the data initialization options
    params.initdataStr = config["initData"].as<std::string>();
-   for (int i=0;i<ntracers_nofct;i++)
-   {params.tracerdataStr[i] = config["initTracer" + std::to_string(i+1)].as<std::string>();}
-   for (int i=ntracers_nofct;i<ntracers;i++)
-   {params.tracerdataStr[i] = config["initFCTTracer" + std::to_string(i-ntracers_nofct+1)].as<std::string>();}
+
+   serial_print("IC: " + params.initdataStr, par.masterproc);
+   serial_print("acoustically balanced: " + std::to_string(params.acoustic_balance), par.masterproc);
    
+   for (int i=0;i<ntracers_dycore;i++)
+   {
+     params.tracerdataStr[i] = config["initTracer" + std::to_string(i+1)].as<std::string>();
+     params.dycore_tracerpos[i] = config["initTracerPos" + std::to_string(i+1)].as<bool>();
+     serial_print("Dycore Tracer" + std::to_string(i) + " IC: " + params.tracerdataStr[i], par.masterproc);
+   }
+   
+
  }
 
 
 void set_domain_sizes_ic (ModelParameters &params, std::string initData)
 {
+
   params.ylen = 1.0;
   params.yc = 0.5;
   
   if (initData == "doublevortex")
 {
+  
   params.xlen = dbl_vortex_constants.Lx;
   params.zlen = dbl_vortex_constants.Ly;
   params.xc = dbl_vortex_constants.xc;
@@ -1074,14 +1095,12 @@ params.zc = rb_constants.Ly  * 0.5_fp;
 }
 }
   
-void set_initial_conditions (ModelParameters &params, VariableSet<nprognostic> &progvars, VariableSet<nconstant> &constvars, 
+void set_initial_conditions (ModelParameters &params, FieldSet<nprognostic> &progvars, FieldSet<nconstant> &constvars, 
 Geometry &primal_geom, Geometry &dual_geom)
 {
 
   if (params.initdataStr == "doublevortex")
   {
-    std::cout << "IC: double vortex " << "\n";
-
       dual_geom.set_11form_values(double_vortex_h, progvars.fields_arr[DENSVAR], 0);
 #ifdef _TSWE
       dual_geom.set_11form_values(double_vortex_S, progvars.fields_arr[DENSVAR], 1);
@@ -1095,21 +1114,19 @@ primal_geom.set_01form_values(double_vortex_v,progvars.fields_arr[WVAR], 0, LINE
 // HOW DO GENERALIZE THESE?
 // WANT TO SCALE TRACER FIELDS BY ACTUAL HEIGHT FIELDS...
 // SHOULD BE USABLE FOR ANY IC!
-for (int i=0; i<ntracers; i++)
+for (int i=0; i<ntracers_dycore; i++)
 {
-if (params.tracerdataStr[i] == "gaussian") {dual_geom.set_11form_values(double_vortex_tracer_gaussian, progvars.fields_arr[DENSVAR], i+ndensity-ntracers);}
-if (params.tracerdataStr[i] == "square") {dual_geom.set_11form_values(double_vortex_tracer_square_cent, progvars.fields_arr[DENSVAR], i+ndensity-ntracers);}
-if (params.tracerdataStr[i] == "doublesquare") {dual_geom.set_11form_values(double_vortex_tracer_square_urpll, progvars.fields_arr[DENSVAR], i+ndensity-ntracers);}
+if (params.tracerdataStr[i] == "gaussian") {dual_geom.set_11form_values(double_vortex_tracer_gaussian, progvars.fields_arr[DENSVAR], i+ndensity-ntracers_dycore);}
+if (params.tracerdataStr[i] == "square") {dual_geom.set_11form_values(double_vortex_tracer_square_cent, progvars.fields_arr[DENSVAR], i+ndensity-ntracers_dycore);}
+if (params.tracerdataStr[i] == "doublesquare") {dual_geom.set_11form_values(double_vortex_tracer_square_urpll, progvars.fields_arr[DENSVAR], i+ndensity-ntracers_dycore);}
 }
 Hs.set_parameters(dbl_vortex_constants.g);
   }
   
   if (params.initdataStr == "risingbubble")
   {
-    std::cout << "IC: small rising bubble " << "\n";
     if (params.acoustic_balance)
     {
-      std::cout << "acoustically balanced " << "\n";
     dual_geom.set_11form_values(rb_rho_acousticbalance, progvars.fields_arr[DENSVAR], 0);
     dual_geom.set_11form_values(rb_entropicdensity_acousticbalance, progvars.fields_arr[DENSVAR], 1);
     }
@@ -1125,8 +1142,6 @@ Hs.set_parameters(dbl_vortex_constants.g);
   // ADD ACOUSTIC BALANCING HERE
   if (params.initdataStr == "moistrisingbubble")
   {
-    std::cout << "IC: small moist rising bubble " << "\n";
-    
     // ADD ANELASTIC/MOIST ANELASTIC?
     #if defined _MCErhod || defined _MCErhodp
     dual_geom.set_11form_values(mrb_rho_d, progvars.fields_arr[DENSVAR], 0);
@@ -1134,7 +1149,7 @@ Hs.set_parameters(dbl_vortex_constants.g);
     dual_geom.set_11form_values(mrb_rho, progvars.fields_arr[DENSVAR], 0);    
     #endif
     dual_geom.set_11form_values(mrb_entropicdensity, progvars.fields_arr[DENSVAR], 1);
-    dual_geom.set_11form_values(mrb_rho_v, progvars.fields_arr[DENSVAR], 2);
+    dual_geom.set_11form_values(mrb_rho_v, progvars.fields_arr[DENSVAR], varset.dm_id_vap + ndensity_nophysics);
     dual_geom.set_11form_values(rb_geop, constvars.fields_arr[HSVAR], 0);
   }
   

@@ -23,6 +23,11 @@ public:
   int num_out;
   real out_freq;
 
+  void set_domain_sizes(std::string initData, real &xlen, real &ylen, real &zlen)
+  {
+
+  }
+  
   void init(PamCoupler &coupler) {
     space_op.init(coupler);
 

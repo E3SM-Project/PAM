@@ -4,7 +4,7 @@
 #include "topology.h"
 #include "geometry.h"
 #include "geometry.h"
-#include "variable_sets.h"
+#include "field_sets.h"
 #include "weno_func_recon.h" // needed to set TransformMatrices related stuff
 
 class Diagnostics {
@@ -20,7 +20,6 @@ public:
 
    Diagnostics() {
      this->is_initialized = false;
-     std::cout << "CREATED DIAGNOSTICS\n";
    }
 
    void initialize(const Topology &ptopo, const Topology &dtopo, Geometry &pgeom, Geometry &dgeom, ExchangeSet<ndiagnostic> &diag_exchange)
@@ -34,15 +33,15 @@ public:
      this->is_initialized = true;
    }
    
-   virtual void compute_diag(const VariableSet<nconstant> &const_vars, VariableSet<nprognostic> &x, VariableSet<ndiagnostic> &diagnostic_vars) {};
+   virtual void compute_diag(const FieldSet<nconstant> &const_vars, FieldSet<nprognostic> &x, FieldSet<ndiagnostic> &diagnostic_vars) {};
 
 };
 
 class Tendencies {
 public:
 
-  const Topology *primal_topology;
-  const Topology *dual_topology;
+  Topology *primal_topology;
+  Topology *dual_topology;
   ExchangeSet<nauxiliary> *aux_exchange;
   ExchangeSet<nconstant> *const_exchange;
   Geometry *primal_geometry;
@@ -67,10 +66,9 @@ public:
   
    Tendencies() {
      this->is_initialized = false;
-     std::cout << "CREATED TENDENCIES\n";
    }
 
-   void initialize(ModelParameters &params, const Topology &primal_topo, const Topology &dual_topo, Geometry &primal_geom, Geometry &dual_geom, ExchangeSet<nauxiliary> &aux_exchange, ExchangeSet<nconstant> &const_exchange)
+   void initialize(ModelParameters &params, Topology &primal_topo, Topology &dual_topo, Geometry &primal_geom, Geometry &dual_geom, ExchangeSet<nauxiliary> &aux_exchange, ExchangeSet<nconstant> &const_exchange)
    {
      this->primal_topology = &primal_topo;
      this->dual_topology = &dual_topo;
@@ -93,8 +91,8 @@ public:
     
     this->is_initialized = true;
   }
-  virtual void compute_constants(VariableSet<nconstant> &const_vars, VariableSet<nprognostic> &x) {};
-  virtual void YAKL_INLINE compute_rhs(real dt, VariableSet<nconstant> &const_vars, VariableSet<nprognostic> &x, VariableSet<nauxiliary> &auxiliary_vars, VariableSet<nprognostic> &xtend) {};
+  virtual void compute_constants(FieldSet<nconstant> &const_vars, FieldSet<nprognostic> &x) {};
+  virtual void YAKL_INLINE compute_rhs(real dt, FieldSet<nconstant> &const_vars, FieldSet<nprognostic> &x, FieldSet<nauxiliary> &auxiliary_vars, FieldSet<nprognostic> &xtend) {};
 };
 
 class ExtrudedTendencies: public Tendencies {
@@ -114,7 +112,7 @@ class ExtrudedTendencies: public Tendencies {
   SArray<real,1,(coriolis_vert_reconstruction_order-1)/2+2> coriolis_vert_wenoIdl;
   real coriolis_vert_wenoSigma;
 
-  void initialize(ModelParameters &params, const Topology &primal_topo, const Topology &dual_topo, Geometry &primal_geom, Geometry &dual_geom, ExchangeSet<nauxiliary> &aux_exchange, ExchangeSet<nconstant> &const_exchange)
+  void initialize(ModelParameters &params, Topology &primal_topo, Topology &dual_topo, Geometry &primal_geom, Geometry &dual_geom, ExchangeSet<nauxiliary> &aux_exchange, ExchangeSet<nconstant> &const_exchange)
   {
    Tendencies::initialize(params, primal_topo, dual_topo, primal_geom, dual_geom, aux_exchange, const_exchange);
    

@@ -3,7 +3,7 @@
 
 #include "common.h"
 #include "topology.h"
-#include "variable_sets.h"
+#include "field_sets.h"
 #include "exchange.h"
 #include "model.h"
 
@@ -11,16 +11,16 @@ class SSPKKTimeIntegrator {
 
 public:
 
-    VariableSet<nprognostic> F1;
-    VariableSet<nprognostic> x1;
-    VariableSet<nprognostic> F2;
-    VariableSet<nprognostic> x2;
-    VariableSet<nprognostic> x3;
-    VariableSet<nprognostic> F3;
-    VariableSet<nprognostic> *x;
+    FieldSet<nprognostic> F1;
+    FieldSet<nprognostic> x1;
+    FieldSet<nprognostic> F2;
+    FieldSet<nprognostic> x2;
+    FieldSet<nprognostic> x3;
+    FieldSet<nprognostic> F3;
+    FieldSet<nprognostic> *x;
     Tendencies *tendencies;
-    VariableSet<nconstant> *const_vars;
-    VariableSet<nauxiliary> *auxiliary_vars;
+    FieldSet<nconstant> *const_vars;
+    FieldSet<nauxiliary> *auxiliary_vars;
     ExchangeSet<nprognostic> *x_exchange;
     std::string tstype;
     
@@ -28,7 +28,7 @@ public:
   SSPKKTimeIntegrator();
   SSPKKTimeIntegrator( const SSPKKTimeIntegrator &ssprk) = delete;
   SSPKKTimeIntegrator& operator=( const SSPKKTimeIntegrator &ssprk) = delete;
-  void initialize(ModelParameters &params, Tendencies &tend, VariableSet<nprognostic> &xvars, VariableSet<nconstant> &consts, VariableSet<nauxiliary> &auxiliarys, ExchangeSet<nprognostic> &prog_exch);
+  void initialize(ModelParameters &params, Tendencies &tend, FieldSet<nprognostic> &xvars, FieldSet<nconstant> &consts, FieldSet<nauxiliary> &auxiliarys, ExchangeSet<nprognostic> &prog_exch);
   void stepForward(real dt);
 
 
@@ -38,11 +38,10 @@ public:
     SSPKKTimeIntegrator::SSPKKTimeIntegrator()
     {
       this->is_initialized = false;
-      std::cout << "CREATED SSPKK\n";
     }
 
 
-  void SSPKKTimeIntegrator::initialize(ModelParameters &params, Tendencies &tend, VariableSet<nprognostic> &xvars, VariableSet<nconstant> &consts, VariableSet<nauxiliary> &auxiliarys, ExchangeSet<nprognostic> &prog_exch)
+  void SSPKKTimeIntegrator::initialize(ModelParameters &params, Tendencies &tend, FieldSet<nprognostic> &xvars, FieldSet<nconstant> &consts, FieldSet<nauxiliary> &auxiliarys, ExchangeSet<nprognostic> &prog_exch)
   {
     tstype = params.tstype;
     

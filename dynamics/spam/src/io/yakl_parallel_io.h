@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common.h"
-#include "variable_sets.h"
+#include "field_sets.h"
 #include "stats.h"
 #include "YAKL_pnetcdf.h"
 
@@ -19,15 +19,15 @@ public:
   std::array<real5d, ndiag> diag_temp_arr;
   std::string outputName;
 
-  const VariableSet<nprog> *prog_vars;
-  const VariableSet<nconst> *const_vars;
-  const VariableSet<ndiag> *diag_vars;
+  const FieldSet<nprog> *prog_vars;
+  const FieldSet<nconst> *const_vars;
+  const FieldSet<ndiag> *diag_vars;
   Stats<nprog, nconst, nstats> *statistics;
   
   FileIO();
   FileIO( const FileIO<nprog,nconst,ndiag,nstats> &fio) = delete;
   FileIO& operator=( const FileIO<nprog,nconst,ndiag,nstats> &fio) = delete;
-  void initialize(std::string outputName, Topology &ptopo, Topology &dtopo, Parallel &par, const VariableSet<nprog> &progvars, const VariableSet<nconst> &const_vars, const VariableSet<ndiag> &diagvars, Stats<nprog, nconst, nstats> &stats);
+  void initialize(std::string outputName, Topology &ptopo, Topology &dtopo, Parallel &par, const FieldSet<nprog> &progvars, const FieldSet<nconst> &const_vars, const FieldSet<ndiag> &diagvars, Stats<nprog, nconst, nstats> &stats);
   void output(int nstep, real time);
   void outputInit(real time);
   void outputStats(const Stats<nprog, nconst, nstats> &stats);
@@ -37,10 +37,9 @@ public:
 template<uint nprog, uint nconst, uint ndiag, uint nstats> FileIO<nprog,nconst,ndiag,nstats>::FileIO()
 {
   this->is_initialized = false;
-  std::cout << "CREATED FILEIO\n";
 }
 
-template<uint nprog, uint nconst, uint ndiag, uint nstats> void FileIO<nprog,nconst,ndiag,nstats>::initialize(std::string outName, Topology &ptopo, Topology &dtopo, Parallel &par, const VariableSet<nprog> &progvars, const VariableSet<nconst> &constvars, const VariableSet<ndiag> &diagvars, Stats<nprog, nconst, nstats> &stats)
+template<uint nprog, uint nconst, uint ndiag, uint nstats> void FileIO<nprog,nconst,ndiag,nstats>::initialize(std::string outName, Topology &ptopo, Topology &dtopo, Parallel &par, const FieldSet<nprog> &progvars, const FieldSet<nconst> &constvars, const FieldSet<ndiag> &diagvars, Stats<nprog, nconst, nstats> &stats)
 {
      this->outputName = outName;
      this->prog_vars = &progvars;
@@ -48,10 +47,8 @@ template<uint nprog, uint nconst, uint ndiag, uint nstats> void FileIO<nprog,nco
      this->diag_vars = &diagvars;
      this->statistics = &stats;
      this->masterproc = par.masterproc;
-     std::cout << outName << "\n";
      
      nc.create(this->outputName);
-     std::cout << outName << "\n";
 
      // nc.create_unlim_dim( "t" );
      // nc.create_dim( "primal_ncells_x" ,  ptopo.nx_glob );

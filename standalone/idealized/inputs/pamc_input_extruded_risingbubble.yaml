@@ -1,6 +1,6 @@
 ---
 # Simulation time in number of physics time steps
-simSteps  : 11520 #1280
+simSteps  : 1 #1280
 #11520 * 5 = 57600
 #200 *5 = 1000
 
@@ -14,15 +14,9 @@ crm_nz       : 150
 
 # Data to initialize: doublevortex rb mrb
 initData : moistrisingbubble
-initTracer1: square
-initTracer2: gaussian
-initTracer3: doublesquare
-initFCTTracer1: square
-initFCTTracer2: gaussian
-initFCTTracer3: doublesquare
 
 # Time steps
-dtphys: 1000.
+dtphys: 0.078125
 crm_per_phys: 5
 #0.015625 * 5 = 0.078125
 #200 * 5 = 1000 for doublevortex
@@ -31,7 +25,7 @@ crm_per_phys: 5
 out_prefix  : test
 
 # Output frequency in number of CRM time steps
-outSteps: 100
+outSteps: 6400
 statSteps: 1
 #100 6400
 

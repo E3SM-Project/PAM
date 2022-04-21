@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include "variableset.h"
 
 // // This kinetic energy functional assumes that dens(0) holds the total density
 // class Hamiltonian_Hk1D_rho {
@@ -81,24 +82,25 @@
  
  
  
-// This kinetic energy functional assumes that dens(0) holds the total density
-// GENERALIZE WHEN VARIABLE SETS INTRODUCED
+
 class Hamiltonian_Hk {
   
 public:
   Geometry *primal_geometry;
   Geometry *dual_geometry;
+  VariableSet *varset;
   bool is_initialized;
 
    Hamiltonian_Hk() {
      this->is_initialized = false;
 }
 
-void initialize(Geometry &primal_geom, Geometry &dual_geom)
+void initialize(VariableSet &variableset, Geometry &primal_geom, Geometry &dual_geom)
 {
   this->primal_geometry = &primal_geom;
   this->dual_geometry = &dual_geom;
   this->is_initialized = true;
+  this->varset = &variableset;
 }
 
 real YAKL_INLINE compute_KE(const real5d v, const real5d dens, int is, int js, int ks, int i, int j, int k, int n)
@@ -149,6 +151,7 @@ real YAKL_INLINE compute_KE(const real5d v, const real5d dens, int is, int js, i
 }
 
 
+//FIX THIS TO GET TOTAL DENSITY FROM VARSET!
  void YAKL_INLINE compute_dKdv(real5d F, real5d K, real5d HE, const real5d v, const real5d U, const real5d dens0, int is, int js, int ks, int i, int j, int k, int n)
 {
   SArray<real,2,ndims,2> D0;
@@ -188,6 +191,7 @@ real YAKL_INLINE compute_KE(const real5d v, const real5d dens, int is, int js, i
   
 }
 
+//FIX THIS TO GET TOTAL DENSITY FROM VARSET!
 // Note that this ADDS to Bvar...
 void YAKL_INLINE compute_dKddens(real5d B, const real5d K, int is, int js, int ks, int i, int j, int k, int n)
 {
@@ -338,24 +342,24 @@ void YAKL_INLINE compute_dKddens(real5d B, const real5d K, int is, int js, int k
 // 
 // 
 // 
-  // This kinetic energy functional assumes density is the sum of a compile time list of indices of DENS
-  // EVENTUALLY, RIGHT NOW IT JUST USES DENS(0)...
   class Hamiltonian_Hk_extruded {
 
   public:
     Geometry *primal_geometry;
     Geometry *dual_geometry;
+    VariableSet *varset;
     bool is_initialized;
 
      Hamiltonian_Hk_extruded() {
        this->is_initialized = false;
   }
 
-  void initialize(Geometry &primal_geom, Geometry &dual_geom)
+  void initialize(VariableSet &variableset, Geometry &primal_geom, Geometry &dual_geom)
   {
     this->primal_geometry = &primal_geom;
     this->dual_geometry = &dual_geom;
     this->is_initialized = true;
+    this->varset = &variableset;
   }
 
   real YAKL_INLINE compute_KE_top(const real5d v, const real5d w, const real5d dens, int is, int js, int ks, int i, int j, int k, int n)
@@ -429,7 +433,7 @@ return _compute_KE(K2, v, w, dens, is, js, ks, i, j, k, n);
 
   }
 
-
+//FIX THIS TO GET TOTAL DENSITY FROM VARSET!
   void YAKL_INLINE compute_Fw(real5d FW, real5d HEw, const real5d UW, const real5d dens0, int is, int js, int ks, int i, int j, int k, int n)
 {
   //SArray<real,2> Dv;
@@ -480,6 +484,7 @@ return _compute_KE(K2, v, w, dens, is, js, ks, i, j, k, n);
   //K(0, k+ks, j+js, i+is) *= 0.5;
 }
 
+//FIX THIS TO GET TOTAL DENSITY FROM VARSET!
    void YAKL_INLINE compute_F(real5d F, real5d HE, const real5d U, const real5d dens0, int is, int js, int ks, int i, int j, int k, int n)
   {
     SArray<real,2,ndims,2> D0;
@@ -509,6 +514,7 @@ return _compute_KE(K2, v, w, dens, is, js, ks, i, j, k, n);
     //std::cout << "HE in Hk " << i << " " << j << " " << k << " " << HE(0,k+ks,j+js,i+is) << "\n" << std::flush;
   }
 
+  //FIX THIS TO GET TOTAL DENSITY FROM VARSET!
   template<ADD_MODE addmode=ADD_MODE::REPLACE> void YAKL_INLINE compute_dKddens(real5d B, const real5d K, int is, int js, int ks, int i, int j, int k, int n)
   {
     SArray<real,1,1> K0;

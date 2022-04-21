@@ -89,7 +89,6 @@ public:
     Exchange::Exchange()
       {
         this->is_initialized = false;
-        std::cout << "CREATED EXCHANGE\n";
       }
 
 

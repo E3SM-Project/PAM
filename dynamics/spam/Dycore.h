@@ -1,9 +1,10 @@
 #pragma once
 
+#include "DataManager.h"
 #include "MultipleFields.h"
 #include "pam_coupler.h" //Has DataManager and pam_const
 #include "common.h"
-#include "variable_sets.h"
+#include "field_sets.h"
 #include "fileio.h"
 #include "topology.h"
 #include "geometry.h"
@@ -35,10 +36,10 @@ class Dycore {
 #endif
 
     ModelStats stats;
-    VariableSet<nprognostic> prognostic_vars;
-    VariableSet<nconstant> constant_vars;
-    VariableSet<ndiagnostic> diagnostic_vars;
-    VariableSet<nauxiliary> auxiliary_vars;
+    FieldSet<nprognostic> prognostic_vars;
+    FieldSet<nconstant> constant_vars;
+    FieldSet<ndiagnostic> diagnostic_vars;
+    FieldSet<nauxiliary> auxiliary_vars;
     ExchangeSet<nprognostic> prog_exchange;
     ExchangeSet<nconstant> const_exchange;
     ExchangeSet<nauxiliary> aux_exchange;
@@ -61,31 +62,33 @@ class Dycore {
     real etime = 0.0;
     uint prevstep = 0;
 
-  void init(PamCoupler const &coupler) {
-
+  void init(PamCoupler &coupler) {
+    
+    serial_print("setting up dycore", par.masterproc);
+    
     // Get MPI Info
     ierr = MPI_Comm_size(MPI_COMM_WORLD,&par.nranks);
     ierr = MPI_Comm_rank(MPI_COMM_WORLD,&par.myrank);
     
     //Set parameters
     std::string inFile = coupler.get_option<std::string>( "standalone_input_file" );
-    std::cout << "reading parameters\n" << std::flush;
+    debug_print("reading parameters", par.masterproc);
     readModelParamsFile(inFile, params, par, coupler.get_nz());
-    std::cout << "read parameters\n" << std::flush;
+    debug_print("read parameters", par.masterproc);
     
 // HOW DO WE HANDLE VERTICAL LEVELS STUFF?
 // BASICALLY A NEW GEOMETRY, I THINK?
 
     // Initialize the grid
-    std::cout << "start init topo/geom\n" << std::flush;
+    debug_print("start init topo/geom", par.masterproc);
     primal_topology.initialize(par,true);
     primal_geometry.initialize(primal_topology, params);
     dual_topology.initialize(par,false);
     dual_geometry.initialize(dual_topology, params);
-    std::cout << "finish init topo/geom\n" << std::flush;
+    debug_print("finish init topo/geom", par.masterproc);
 
     // Allocate the variables
-    std::cout << "start init variable sets and exchange sets\n" << std::flush;
+    debug_print("start init field/exchange sets", par.masterproc);
     //this gives basedof, extdof and ndofs
     SArray<int,2, nprognostic, 3> prog_dofs_arr;
     SArray<int,2, nconstant, 3> const_dofs_arr;
@@ -112,53 +115,63 @@ class Dycore {
     const_exchange.initialize(const_topo_arr, const_dofs_arr);
     aux_exchange.initialize(aux_topo_arr, aux_dofs_arr);
     diag_exchange.initialize(diag_topo_arr, diag_dofs_arr);
-    std::cout << "finish init variable sets\n" << std::flush;    
+    debug_print("finish init field/exchange sets", par.masterproc);
 
     // Initialize the statistics
+    debug_print("start stats init", par.masterproc);
     stats.initialize(params, par, primal_topology, dual_topology, primal_geometry, dual_geometry);
+    debug_print("end stats init", par.masterproc);
     
     // Create the outputter
-    std::cout << "start io init\n" << std::flush;
+    debug_print("start io init", par.masterproc);
     io.initialize(params.outputName, primal_topology, dual_topology, par, prognostic_vars, constant_vars, diagnostic_vars, stats);
-    std::cout << "end io init\n" << std::flush;
-    // 
+    debug_print("finish io init", par.masterproc);
+
+//EVENTUALLY THIS NEEDS TO BE MORE CLEVER IE POSSIBLY DO NOTHING BASED ON THE IC STRING?
     // set the initial conditions
-    std::cout << "start set initial conditions\n" << std::flush;
+    debug_print("start ic setting", par.masterproc);
     set_initial_conditions(params, prognostic_vars, constant_vars, primal_geometry, dual_geometry);
     // Do a boundary exchange
     prog_exchange.exchange_variable_set(prognostic_vars);
     const_exchange.exchange_variable_set(constant_vars);
-    std::cout << "end set initial conditions\n" << std::flush;
-    // 
+    debug_print("end ic setting", par.masterproc);
+
+
     // // Initialize the time stepper, tendencies, diagnostics; compute initial stats
-    std::cout << "start ts init\n" << std::flush;
-    tendencies.initialize(params, primal_topology, dual_topology, primal_geometry, dual_geometry, aux_exchange, const_exchange);
+    debug_print("start ts/tendencies/diagnostics init", par.masterproc);
+    tendencies.initialize(coupler, params, primal_topology, dual_topology, primal_geometry, dual_geometry, aux_exchange, const_exchange);
     tendencies.compute_constants(constant_vars, prognostic_vars);
     diagnostics.initialize(primal_topology, dual_topology, primal_geometry, dual_geometry, diag_exchange);
     tint.initialize(params, tendencies, prognostic_vars, constant_vars, auxiliary_vars, prog_exchange);
-    std::cout << "end ts init\n" << std::flush;
+    debug_print("end ts/tendencies/diagnostics init", par.masterproc);
     stats.compute(prognostic_vars, constant_vars, 0);
 
+    // convert dynamics state to Coupler state
+    tendencies.convert_dynamics_to_coupler_state(coupler, prognostic_vars, constant_vars);
+    
+    
     // Output the initial model state
-    std::cout << "start initial output\n" << std::flush;
+    debug_print("start initial io", par.masterproc);
     diagnostics.compute_diag(constant_vars, prognostic_vars, diagnostic_vars);
     io.outputInit(etime);
-    std::cout << "end initial output\n" << std::flush;
+    debug_print("end initial io", par.masterproc);
     
     prevstep = 1;
   };
     
     
-  //void convert_dynamics_to_coupler_state( PamCoupler &coupler , real5d state , real5d tracers ) const {};
-  //void convert_coupler_state_to_dynamics( PamCoupler const &coupler , real5d const &state , real5d const &tracers ) {};
-    
   // Given the model data and CFL value, compute the maximum stable time step
   real compute_time_step(PamCoupler const &coupler, real cfl_in = -1) {return 0._fp;};
         
   void timeStep( PamCoupler &coupler , real dtphys ) {
-        
+
+    serial_print("taking a dycore dtphys step", par.masterproc);
+
+    // convert Coupler state to dynamics state
+    tendencies.convert_coupler_to_dynamics_state(coupler, prognostic_vars, constant_vars);
+    
     // Time stepping loop
-    std::cout << "start timestepping loop\n" << std::flush;
+    debug_print("start time stepping loop", par.masterproc);
     for (uint nstep = 0; nstep<params.crm_per_phys; nstep++) {
        yakl::fence();
        tint.stepForward(params.dtcrm);
@@ -166,9 +179,10 @@ class Dycore {
        
        etime += params.dtcrm;
       if ((nstep+prevstep)%params.Nout == 0) {
-        std::cout << "step " << (nstep+prevstep) << " time " << etime << "\n";
+        serial_print("dycore step " + std::to_string((nstep+prevstep)) + " time " + std::to_string(etime), par.masterproc);
         diagnostics.compute_diag(constant_vars, prognostic_vars, diagnostic_vars);
         io.output(etime);
+        io.outputStats(stats);
       }
       
        if (nstep%params.Nstat == 0)
@@ -179,9 +193,16 @@ class Dycore {
     }
     prevstep += params.crm_per_phys;
 
-    std::cout << "end timestepping loop\n" << std::flush;
+    // convert dynamics state to Coupler state
+    tendencies.convert_dynamics_to_coupler_state(coupler, prognostic_vars, constant_vars);
+    
+//ADD COUPLER DYCORE FUNCTIONS HERE AS WELL
+
+debug_print("end time stepping loop", par.masterproc);
   };
-        
+
+
+
   void finalize(PamCoupler &coupler) { 
     io.outputStats(stats);
   }
@@ -190,12 +211,10 @@ class Dycore {
   
   void set_domain_sizes(std::string initData, real &xlen, real &ylen, real &zlen)
   {
-    //std::cout << "setting domain sizes\n";
     set_domain_sizes_ic(params, initData);
     xlen = params.xlen;
     ylen = params.ylen;
     zlen = params.zlen;
-    //std::cout << params.xlen << " " << params.ylen << "\n";
   }
 };
 

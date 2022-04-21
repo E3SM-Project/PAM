@@ -106,6 +106,12 @@ public:
   
   virtual real YAKL_INLINE solve_p(real rho, real entropic_var, real qd, real qv, real ql, real qi)
   {};
+
+  virtual real YAKL_INLINE compute_T(real alpha, real entropic_var, real qd, real qv, real ql, real qi)
+  {};
+
+  virtual real YAKL_INLINE compute_entropic_var_from_T(real alpha, real T, real qd, real qv, real ql, real qi)
+  {};
 };
 
 // This ignores any q arguments, as expected
@@ -180,6 +186,18 @@ public:
   { 
     return cst.pr * pow(entropic_var * rho * cst.Rd/cst.pr,cst.gamma_d);
   };
+
+  real YAKL_INLINE compute_T(real alpha, real entropic_var, real qd, real qv, real ql, real qi)
+  {
+    real p = cst.pr * pow(entropic_var * cst.Rd / (alpha * cst.pr),cst.gamma_d);
+    return alpha * p / cst.Rd ;
+  };
+
+  real YAKL_INLINE compute_entropic_var_from_T(real alpha, real T, real qd, real qv, real ql, real qi)
+  {
+    real p = cst.Rd  * T / alpha;
+    return cst.Rd  * T / cst.Rd * pow(cst.pr / p, cst.kappa_d);
+  };
   
 };
 
@@ -248,6 +266,10 @@ public:
 
 // THE INTERNAL ENERGY HERE IS NOT BEING CONSERVED PROPERLY, IN THE SENSE THAT IT'S VALUE OSCILLATIONS STRONGLY...
 // POSSIBLY DUE TO LARGE VARIATIONS INDUCED BY -cst.Cvd*(qd * cst.Rd + qv * cst.Rv)/cst.Rd*cst.Tr?
+// not entirely sure here, need to done more checking!
+
+// ALSO, FIX LATENT HEAT DEFS TO MATCH CHANGES IN PAPER
+
 class ConstantKappa_VirtualPottemp : public ThermoPotential {
 public: 
 
@@ -335,7 +357,20 @@ public:
   { 
     return cst.pr * pow(entropic_var * rho * cst.Rd/cst.pr,cst.gamma_d);
   };
-  
+
+  real YAKL_INLINE compute_T(real alpha, real entropic_var, real qd, real qv, real ql, real qi)
+  {
+    real Rstar = cst.Rd * qd + cst.Rv * qv;
+    real p = cst.pr * pow(entropic_var * cst.Rd / (alpha * cst.pr),cst.gamma_d);
+    return alpha * p / Rstar;
+  };
+
+  real YAKL_INLINE compute_entropic_var_from_T(real alpha, real T, real qd, real qv, real ql, real qi)
+  {
+    real Rstar = cst.Rd * qd + cst.Rv * qv;
+    real p = Rstar * T / alpha;
+    return Rstar * T / cst.Rd * pow(cst.pr / p, cst.kappa_d);
+  };
 };
 
 

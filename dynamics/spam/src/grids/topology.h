@@ -42,7 +42,6 @@ void printinfo();
   Topology::Topology()
   {
     this->is_initialized = false;
-    std::cout << "CREATED TOPOLOGY\n";
   }
 
 
@@ -74,10 +73,10 @@ void printinfo();
     this->nl = par.nz;
     this->ni = par.nz + 1; 
     #ifdef _EXTRUDED      
-    if (!this->primal)
+    if (this->primal)
     {
-      this->nl = par.nz + 1;
-      this->ni = par.nz + 2;  
+      this->nl = par.nz - 1;
+      this->ni = par.nz;  
     }
     #endif
 

@@ -5,7 +5,7 @@
 #include "Microphysics.h"
 #include "SGS.h"
 #include "DataManager.h"
-
+#include "mpi.h"
 
 int main(int argc, char** argv) {
   yakl::init();

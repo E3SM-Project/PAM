@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common.h"
-#include "variable_sets.h"
+#include "field_sets.h"
 #include "stats.h"
 #include "YAKL_netcdf.h"
 
@@ -19,15 +19,15 @@ public:
   std::array<real5d, ndiagnostic> diag_temp_arr;
   std::string outputName;
 
-  const VariableSet<nprognostic> *prog_vars;
-  const VariableSet<nconstant> *const_vars;
-  const VariableSet<ndiagnostic> *diag_vars;
+  const FieldSet<nprognostic> *prog_vars;
+  const FieldSet<nconstant> *const_vars;
+  const FieldSet<ndiagnostic> *diag_vars;
   Stats *statistics;
   
   FileIO();
   FileIO( const FileIO &fio) = delete;
   FileIO& operator=( const FileIO &fio) = delete;
-  void initialize(std::string outputName, Topology &ptopo, Topology &dtopo, Parallel &par, const VariableSet<nprognostic> &progvars, const VariableSet<nconstant> &const_vars, const VariableSet<ndiagnostic> &diagvars, Stats &stats);
+  void initialize(std::string outputName, Topology &ptopo, Topology &dtopo, Parallel &par, const FieldSet<nprognostic> &progvars, const FieldSet<nconstant> &const_vars, const FieldSet<ndiagnostic> &diagvars, Stats &stats);
   void output(real time);
   void outputInit(real time);
   void outputStats(const Stats &stats);
@@ -37,10 +37,9 @@ public:
 FileIO::FileIO()
 {
   this->is_initialized = false;
-  std::cout << "CREATED FILEIO\n";
 }
 
- void FileIO::initialize(std::string outName, Topology &ptopo, Topology &dtopo, Parallel &par, const VariableSet<nprognostic> &progvars, const VariableSet<nconstant> &constvars, const VariableSet<ndiagnostic> &diagvars, Stats &stats)
+ void FileIO::initialize(std::string outName, Topology &ptopo, Topology &dtopo, Parallel &par, const FieldSet<nprognostic> &progvars, const FieldSet<nconstant> &constvars, const FieldSet<ndiagnostic> &diagvars, Stats &stats)
 {
 
 
