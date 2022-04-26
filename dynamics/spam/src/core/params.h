@@ -16,6 +16,57 @@ int wrap(int i, int nx)
 }
 
 
+void _partition_domain(std::string inFile, ModelParameters &params, Parallel &par)
+{
+
+  //Read config file
+  YAML::Node config = YAML::LoadFile(inFile);
+
+  int ierr;
+  
+  // Get MPI Info
+  ierr = MPI_Comm_rank(MPI_COMM_WORLD,&par.actualrank);
+  par.masterproc = par.actualrank == 0;
+  params.masterproc = par.masterproc;
+  #ifdef _PAMC_INNERMPI
+  ierr = MPI_Comm_size(MPI_COMM_WORLD,&par.nranks);
+  ierr = MPI_Comm_rank(MPI_COMM_WORLD,&par.myrank);
+  // Determine if I'm the master process
+  #else
+  par.nranks = 1;
+  par.myrank = 0;
+  #endif
+  
+  params.nx_glob = config["crm_nx"].as<int>();
+  params.ny_glob = config["crm_ny"].as<int>();
+  par.nprocx = config["nprocx"].as<int>();
+  par.nprocy = config["nprocy"].as<int>();
+  
+  if (!(par.nprocx * par.nprocy == par.nranks)) {endrun("Error: nranks != nprocx * nprocy");}
+
+    //Get my process grid IDs
+    par.py = floor(par.myrank / par.nprocx);
+    par.px = par.myrank - par.nprocx * par.py;
+
+      //Get my beginning and ending global indices; and domain sizes
+      double nper;
+      nper = ((double) params.nx_glob)/par.nprocx;
+      par.i_beg = (int) round( nper* par.px    );
+      par.i_end = (int) round( nper*(par.px+1) )-1;
+      par.nx = par.i_end - par.i_beg + 1;
+      par.nx_glob = params.nx_glob;
+      
+      if (ndims >=2)
+      {
+      nper = ((double) params.ny_glob)/par.nprocy;
+      par.j_beg = (int) round( nper* par.py    );
+      par.j_end = (int) round( nper*(par.py+1) )-1;
+      par.ny = par.j_end - par.j_beg + 1;
+      par.ny_glob = params.ny_glob;
+      }
+  
+}
+
 void readParamsFile(std::string inFile, ModelParameters &params, Parallel &par, int nz) {
   
   //Read config file
@@ -23,19 +74,8 @@ void readParamsFile(std::string inFile, ModelParameters &params, Parallel &par, 
 
   int ierr;
 
- params.nx_glob = config["crm_nx"].as<int>();
- params.ny_glob = config["crm_ny"].as<int>();
  params.nens = config["nens"].as<int>();
  params.nz_dual = nz;
-
- par.nprocx = config["nprocx"].as<int>();
- par.nprocy = config["nprocy"].as<int>();
-
- if (!(par.nprocx * par.nprocy == par.nranks)) { 
-   endrun("Error: nranks != nprocx * nprocy");
- }
-
-
 
   params.dtphys = config["dtphys"].as<real>();
   params.crm_per_phys = config["crm_per_phys"].as<int>(0);
@@ -51,27 +91,6 @@ void readParamsFile(std::string inFile, ModelParameters &params, Parallel &par, 
   params.tstype = config["tstype"].as<std::string>();
 
   params.outputName = config["dycore_out_prefix"].as<std::string>("output");
-
-  //Get my process grid IDs
-  par.py = floor(par.myrank / par.nprocx);
-  par.px = par.myrank - par.nprocx * par.py;
-
-    //Get my beginning and ending global indices; and domain sizes
-    double nper;
-    nper = ((double) params.nx_glob)/par.nprocx;
-    par.i_beg = (int) round( nper* par.px    );
-    par.i_end = (int) round( nper*(par.px+1) )-1;
-    par.nx = par.i_end - par.i_beg + 1;
-    par.nx_glob = params.nx_glob;
-
-    if (ndims >=2)
-    {
-    nper = ((double) params.ny_glob)/par.nprocy;
-    par.j_beg = (int) round( nper* par.py    );
-    par.j_end = (int) round( nper*(par.py+1) )-1;
-    par.ny = par.j_end - par.j_beg + 1;
-    par.ny_glob = params.ny_glob;
-    }
     
     par.nz = params.nz_dual;
     par.nens = params.nens;

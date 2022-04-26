@@ -19,11 +19,9 @@ public:
 
   real etime;
 
-  void set_domain_sizes(std::string initData, real &xlen, real &ylen, real &zlen)
-  {
-
-  }
+  void set_domain_sizes(std::string initData, real &xlen, real &ylen, real &zlen) {}
   
+  void partition_domain(std::string infile, int &crm_nx, int &crm_ny) {}
 
   void init(pam::PamCoupler &coupler) {
 

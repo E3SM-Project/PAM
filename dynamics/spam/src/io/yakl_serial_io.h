@@ -44,7 +44,7 @@ FileIO::FileIO()
 
 
   
-     this->outputName = outName + std::to_string(par.myrank) + ".nc";
+     this->outputName = outName + std::to_string(par.actualrank) + ".nc";
      this->prog_vars = &progvars;
      this->const_vars = &constvars;
      this->diag_vars = &diagvars;

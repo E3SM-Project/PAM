@@ -15,6 +15,7 @@ public:
 
   int nranks = -1;
   int myrank = -1;
+  int actualrank = -1;
   bool masterproc;
   int px = -1;
   int py = -1;
@@ -42,9 +43,3 @@ public:
   BND_TYPE ybnd;
 
 };
-
-
-void parallel_logging()
-{
-
-}

@@ -133,7 +133,7 @@ void Exchange::initialize(const Exchange &exch)
    this->bufsize_xy = this->topology->halosize_y*this->total_dofs*this->topology->halosize_x*this->_nz*this->nens;
 
    this->mirror_size = this->topology->n_cells_x*this->topology->n_cells_y*this->topology->mirror_halo*this->nens;
-
+   
    this->haloSendBuf_Xm = real1d("haloSendBuf_Xm", this->bufsize_x);
    this->haloRecvBuf_Xm = real1d("haloRecvBuf_Xm", this->bufsize_x);
    this->haloSendBuf_Xm_host = this->haloSendBuf_Xm.createHostCopy();

@@ -20,5 +20,5 @@ cmake      \
   -DPAMC_HAMIL="tswe"                                                \
   -DPAMC_THERMO="none"                                                \
   -DPAMC_IO="serial"                                                \
-  -DPAMC_MPI="true"                                                \
+  -DPAMC_INNERMPI="true"                                                \
   ..

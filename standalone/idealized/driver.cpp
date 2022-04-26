@@ -43,7 +43,7 @@ int main(int argc, char** argv) {
     std::string vcoords_file = config["vcoords" ].as<std::string>("");
     bool        use_coupler_hydrostasis = config["use_coupler_hydrostasis"].as<bool>(false);
     auto out_freq                = config["out_freq"   ].as<real>(0);
-    auto out_prefix              = config["out_prefix" ].as<std::string>();
+    auto out_prefix              = config["out_prefix" ].as<std::string>("test");
 
     // Read vertical coordinates
     real1d zint_in;
@@ -67,10 +67,9 @@ if (crm_nz == 0)
     //set xlen, ylen, zlen based on init cond if needed
     if (xlen < 0 or ylen < 0 or zlen < 0)
     {dycore.set_domain_sizes(config["initData"].as<std::string>(), xlen, ylen, zlen);}
-
-    #ifdef _PAMC_MPI
-    dycore.partition_nx_ny(crm_nx, crm_ny);
-    #endif
+    
+    //this partitions the domain if PAMC_MPI is set, otherwise it does nothing
+    dycore.partition_domain(inFile, crm_nx, crm_ny);
     
     if (not crm_nz == 0) //We are using a uniform vertical grid with crm_nz levels; in this case zlen must be set
     {
