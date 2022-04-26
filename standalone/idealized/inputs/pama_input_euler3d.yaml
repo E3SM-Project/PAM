@@ -30,10 +30,10 @@ initData : thermal
 out_prefix  : test
 
 # CRM physics time step
-dtphys: 20.
+dtphys: 0.
 
 # Output frequency in seconds
-outFreq: 0.
+out_freq: 0.
 
 # Number of ensembles
 nens : 1

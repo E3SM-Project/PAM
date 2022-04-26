@@ -1,11 +1,7 @@
 
 #pragma once
 
-#include "awfl_const.h"
-#include "DataManager.h"
 #include "pam_coupler.h"
-
-using pam::PamCoupler;
 
 
 class SGS {
@@ -19,13 +15,13 @@ public:
 
 
   // Can do whatever you want, but mainly for registering tracers and allocating data
-  void init(PamCoupler &coupler) {
+  void init(pam::PamCoupler &coupler) {
     coupler.set_option<std::string>("sgs","none");
   }
 
 
 
-  void timeStep( PamCoupler &coupler , real dt ) {
+  void timeStep( pam::PamCoupler &coupler , real dt ) {
   }
 
 
@@ -35,7 +31,7 @@ public:
   }
 
 
-  void finalize(PamCoupler &coupler) {
+  void finalize(pam::PamCoupler &coupler) {
   }
 
 

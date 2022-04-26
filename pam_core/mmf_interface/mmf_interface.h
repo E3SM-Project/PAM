@@ -2,7 +2,6 @@
 #pragma once
 
 #include "pam_coupler.h"
-#include "DataManager.h"
 #include "Options.h"
 #include <string>
 #include <vector>
@@ -13,9 +12,6 @@
 // from a C++-side interface routines
 
 namespace mmf_interface {
-  using yakl::Array;
-  using yakl::memHost;
-  using yakl::styleC;
 
   // This is a vector because CPU threaded regions will require a different PamCoupler instance for each thread
   extern std::vector<pam::PamCoupler> couplers;
@@ -47,7 +43,7 @@ namespace mmf_interface {
   // Obtains the coupler for this thread ID: std::this_thread::get_id()
   inline pam::PamCoupler & get_coupler() {
     std::thread::id tid = std::this_thread::get_id();
-    for (int i=0; i < couplers.size(); i++) { if (tid == couplers[i].thread_id) return couplers[i]; }
+    for (int i=0; i < couplers.size(); i++) { if (tid == couplers[i].get_thread_id()) return couplers[i]; }
     // If we got here, there isn't a coupler for this thread yet, so let's create one and return it
     couplers.emplace_back();
     return couplers.back();
@@ -59,31 +55,39 @@ namespace mmf_interface {
   // a name for a dimension of a given size so that you have the dimensions names you want.
   // This is here because it's not easy to pass arrays of strings from Fortran to C++ and vice versa
   // THIS HAS FORTRAN BINDINGS
-  inline void register_dimension(std::string name, int len) { get_coupler().dm_host.add_dimension(name,len); }
+  inline void register_dimension(std::string name, int len) {
+    get_coupler().get_data_manager_host_readwrite().add_dimension(name,len);
+  }
 
 
   // Allocate an array, and store its metadata in the host-side data manager "dm_host" for this thread's coupler
   // THIS HAS FORTRAN BINDINGS
   template <class T>
   inline void register_and_allocate_array(std::string name, std::string desc, std::vector<int> dims) {
-    get_coupler().dm_host.register_and_allocate<T>( name , desc , dims );
+    get_coupler().get_data_manager_host_readwrite().register_and_allocate<T>( name , desc , dims );
   }
 
 
   // Deallocate an array, and erase its metadata from the host-side data manager "dm_host" for this thread's coupler
   // THIS HAS FORTRAN BINDINGS
-  inline void unregister_and_deallocate(std::string name) { get_coupler().dm_host.unregister_and_deallocate(name); }
+  inline void unregister_and_deallocate(std::string name) {
+    get_coupler().get_data_manager_host_readwrite().unregister_and_deallocate(name);
+  }
 
 
   // Get an array from the host-side data manager "dm_host" for this thread's coupler
   // THIS HAS FORTRAN BINDINGS
   template <class T, int N>
-  inline Array<T,N,memHost,styleC> get_array(std::string name) { return get_coupler().dm_host.get<T,N>(name); }
+  inline Array<T,N,memHost,styleC> get_array(std::string name) {
+    return get_coupler().get_data_manager_host_readwrite().get<T,N>(name);
+  }
 
 
   // Check if an array of this name has been registered and allocated in this thread's coupler
   // THIS HAS FORTRAN BINDINGS
-  inline bool array_exists(std::string name) { return get_coupler().dm_host.entry_exists(name); }
+  inline bool array_exists(std::string name) {
+    return get_coupler().get_data_manager_host_readwrite().entry_exists(name);
+  }
 
 
   // Set a {key,value} option pair in this thread's coupler

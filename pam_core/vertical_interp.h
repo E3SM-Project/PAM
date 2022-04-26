@@ -54,6 +54,9 @@ namespace pam {
     inline real4d cells_to_edges( realConst4d data ,
                                   int bc_lower ,
                                   int bc_upper ) const {
+      using yakl::c::parallel_for;
+      using yakl::c::SimpleBounds;
+
       int nz   = data.dimension[0];
       int ny   = data.dimension[1];
       int nx   = data.dimension[2];
@@ -145,6 +148,9 @@ namespace pam {
 
 
     inline void init( realConst2d zint ) {
+      using yakl::c::parallel_for;
+      using yakl::c::SimpleBounds;
+
       int nz   = zint.dimension[0]-1;
       int nens = zint.dimension[1];
       real2d zint_ghost("zint_ghost",nz+2*hs+1,nens);

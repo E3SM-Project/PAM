@@ -12,7 +12,10 @@ namespace modules {
   // The returned array always has 3 dimensions: { names.size() , vertical_size , nens }
   // N must be > 2 for this routine to be meaningful: nz, nens, and the "column" dimensions
   template <class T, int N>
-  inline real3d column_averaged_fields( PamCoupler &coupler , std::vector<std::string> names ) {
+  inline real3d column_averaged_fields( pam::PamCoupler &coupler , std::vector<std::string> names ) {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+
     auto tmp = coupler.dm.get<T,N>( names[0] );
 
     int num_fields = names.size();

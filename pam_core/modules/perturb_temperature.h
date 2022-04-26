@@ -7,7 +7,10 @@
 namespace modules {
 
   // It is best if id is globally unique for each batch of CRMs
-  inline void perturb_temperature( PamCoupler &coupler , int id ) {
+  inline void perturb_temperature( pam::PamCoupler &coupler , int id ) {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+
     int constexpr num_levels = 10;
     real constexpr magnitude = 3.;
 
@@ -19,7 +22,8 @@ namespace modules {
     size_t seed = static_cast<size_t>(id*nz*nx*ny*nens);
 
     // ny*nx*nens can all be globbed together for this routine
-    auto temp = coupler.dm.get_lev_col<real>("temp");
+    auto &dm = coupler.get_data_manager_readwrite();
+    auto temp = dm.get_lev_col<real>("temp");
     int ncol = ny*nx*nens;
 
     parallel_for( "perturb temperature" , SimpleBounds<2>(num_levels,ncol) , YAKL_LAMBDA (int k, int i) {

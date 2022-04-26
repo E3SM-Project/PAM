@@ -19,7 +19,9 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../pam_core pam_core)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../physics  physics )
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../dynamics dynamics)
 
-add_executable(driver driver.cpp)
+add_executable(driver driver.cpp supercell_init.cpp supercell_init.F90)
+
+set_source_files_properties(supercell_init.F90 PROPERTY COMPILE_FLAGS "${YAKL_F90_FLAGS}")
 
 include(${YAKL_HOME}/yakl_utils.cmake)
 yakl_process_target(driver)

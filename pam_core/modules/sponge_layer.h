@@ -6,7 +6,10 @@
 
 namespace modules {
 
-  inline void sponge_layer( PamCoupler &coupler , real dt ) {
+  inline void sponge_layer( pam::PamCoupler &coupler , real dt ) {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+
     int nz   = coupler.get_nz  ();
     int ny   = coupler.get_ny  ();
     int nx   = coupler.get_nx  ();
@@ -32,15 +35,17 @@ namespace modules {
       havg_fields.add_field( real2d(name,nz,nens) );
     }
 
+    auto &dm = coupler.get_data_manager_readwrite();
+
     // Create MultiField of all state and tracer full variables, since we're doing the same operation on each
     pam::MultiField<real,4> full_fields;
-    full_fields.add_field( coupler.dm.get<real,4>("density_dry") );
-    full_fields.add_field( coupler.dm.get<real,4>("uvel"       ) );
-    full_fields.add_field( coupler.dm.get<real,4>("vvel"       ) );
-    full_fields.add_field( coupler.dm.get<real,4>("wvel"       ) );
-    full_fields.add_field( coupler.dm.get<real,4>("temp"       ) );
+    full_fields.add_field( dm.get<real,4>("density_dry") );
+    full_fields.add_field( dm.get<real,4>("uvel"       ) );
+    full_fields.add_field( dm.get<real,4>("vvel"       ) );
+    full_fields.add_field( dm.get<real,4>("wvel"       ) );
+    full_fields.add_field( dm.get<real,4>("temp"       ) );
     for (int tr=0; tr < num_tracers; tr++) {
-      full_fields.add_field( coupler.dm.get<real,4>(tracer_names[tr]) );
+      full_fields.add_field( dm.get<real,4>(tracer_names[tr]) );
     }
 
     int num_fields = havg_fields.get_num_fields();
@@ -58,8 +63,8 @@ namespace modules {
       if (ifld != WFLD) yakl::atomicAdd( havg_fields(ifld,k,iens) , full_fields(ifld,k,j,i,iens) * r_nx_ny );
     });
 
-    auto zint = coupler.dm.get<real const,2>("vertical_interface_height");
-    auto zmid = coupler.dm.get<real const,2>("vertical_midpoint_height" );
+    auto zint = dm.get<real const,2>("vertical_interface_height");
+    auto zmid = dm.get<real const,2>("vertical_midpoint_height" );
 
     real constexpr time_scale = 60;  // strength of each application is dt / time_scale  (same as SAM's tau_min)
     real time_factor = dt / time_scale;

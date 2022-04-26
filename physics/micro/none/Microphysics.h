@@ -1,11 +1,7 @@
 
 #pragma once
 
-#include "awfl_const.h"
-#include "DataManager.h"
 #include "pam_coupler.h"
-
-using pam::PamCoupler;
 
 class Microphysics {
 public:
@@ -46,7 +42,10 @@ public:
 
 
   // Have to declare at least water vapor
-  void init(PamCoupler &coupler) {
+  void init(pam::PamCoupler &coupler) {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+
     int nx   = coupler.get_nx  ();
     int ny   = coupler.get_ny  ();
     int nz   = coupler.get_nz  ();
@@ -55,8 +54,10 @@ public:
     //                 name              description       positive   adds mass
     coupler.add_tracer("water_vapor"   , "Water Vapor"   , true     , true);
 
+    auto &dm = coupler.get_data_manager_readwrite();
+
     // Zero out the tracers
-    auto rho_v = coupler.dm.get_collapsed<real>("water_vapor");
+    auto rho_v = dm.get_collapsed<real>("water_vapor");
     parallel_for( nz*ny*nx*nens , YAKL_LAMBDA (int i) { rho_v(i) = 0; } );
 
     coupler.set_option<std::string>("micro","none");
@@ -64,7 +65,7 @@ public:
 
 
 
-  void timeStep( PamCoupler &coupler , real dt ) {
+  void timeStep( pam::PamCoupler &coupler , real dt ) {
     // Do microphysicsy stuff to the coupler variables and the tracers
   }
 

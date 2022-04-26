@@ -4,8 +4,6 @@
 #include "awfl_const.h"
 #include "pam_coupler.h"
 
-using pam::PamCoupler;
-
 int  constexpr nTimeDerivs = 1;
 bool constexpr timeAvg     = true;
 int  constexpr nAder       = ngll;
@@ -20,21 +18,13 @@ public:
   Spatial space_op;
 
   real etime;
-  int num_out;
-  real out_freq;
 
-  void init(PamCoupler &coupler) {
+  void init(pam::PamCoupler &coupler) {
     space_op.init(coupler);
 
     stateTend  = space_op.createStateTendArr ();
     tracerTend = space_op.createTracerTendArr();
-
-    std::string inFile = coupler.get_option<std::string>( "standalone_input_file" );
-    YAML::Node config = YAML::LoadFile(inFile);
-    if ( !config ) { endrun("ERROR: Invalid YAML input file"); }
-    real outFreq = config["outFreq"].as<real>();
     etime   = 0;
-    num_out = 0;
   }
 
 
@@ -43,17 +33,20 @@ public:
   }
 
 
-  void init_idealized_state_and_tracers( PamCoupler &coupler ) {
+  void init_idealized_state_and_tracers( pam::PamCoupler &coupler ) {
     space_op.init_idealized_state_and_tracers( coupler );
   }
 
 
-  real compute_time_step(PamCoupler const &coupler, real cfl_in = -1) {
+  real compute_time_step(pam::PamCoupler const &coupler, real cfl_in = -1) {
     return space_op.compute_time_step(coupler, cfl_in);
   }
 
 
-  std::vector<real> compute_mass( PamCoupler const &coupler , realConst5d state , realConst5d tracers ) const {
+  std::vector<real> compute_mass( pam::PamCoupler const &coupler , realConst5d state , realConst5d tracers ) const {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+
     int nz   = coupler.get_nz();
     int ny   = coupler.get_ny();
     int nx   = coupler.get_nx();
@@ -63,13 +56,12 @@ public:
     int hs  = Spatial::hs;
     int num_tracers = space_op.num_tracers;
     YAKL_SCOPE( dz          , space_op.dz          );
-    YAKL_SCOPE( hyDensCells , space_op.hyDensCells );
 
     std::vector<real> mass(num_tracers+1);
     real4d tmp("tmp",nz,ny,nx,nens);
 
     parallel_for( "Temporal_ader.h state mass" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      tmp(k,j,i,iens) = (state(idR,hs+k,hs+j,hs+i,iens) + hyDensCells(k,iens)) * dz(k,iens);
+      tmp(k,j,i,iens) = state(idR,hs+k,hs+j,hs+i,iens) * dz(k,iens);
     });
     mass[0] = yakl::intrinsics::sum(tmp);
 
@@ -83,10 +75,12 @@ public:
   }
 
 
-  void timeStep( PamCoupler &coupler , real dtphys ) {
+  void timeStep( pam::PamCoupler &coupler , real dtphys ) {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+
     YAKL_SCOPE( stateTend       , this->stateTend           );
     YAKL_SCOPE( tracerTend      , this->tracerTend          );
-    YAKL_SCOPE( hyDensCells     , this->space_op.hyDensCells);
 
     real dt = compute_time_step( coupler );
 
@@ -180,11 +174,9 @@ public:
 
       space_op.switch_directions();
 
-      if (coupler.dycore_functions.size() > 0) {
+      if (coupler.get_num_dycore_functions() > 0) {
         space_op.convert_dynamics_to_coupler_state( coupler , state , tracers );
-
         coupler.run_dycore_functions( dt );
-
         space_op.convert_coupler_state_to_dynamics( coupler , state , tracers );
       }
 
@@ -192,18 +184,11 @@ public:
 
     space_op.convert_dynamics_to_coupler_state( coupler , state , tracers );
 
-    etime += dt;
-    if (out_freq >= 0. && etime / out_freq >= num_out+1) {
-      yakl::timer_start("output");
-      space_op.output( coupler , etime );
-      yakl::timer_stop("output");
-      num_out++;
-    }
-
+    etime += dtphys;
   }
 
 
-  void finalize(PamCoupler &coupler) { }
+  void finalize(pam::PamCoupler &coupler) { }
 
 
   const char * dycore_name() const { return "AWFL"; }
