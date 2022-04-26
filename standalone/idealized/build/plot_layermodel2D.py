@@ -3,7 +3,7 @@ from plot_helpers import plotvar_scalar2D, plotvar_vector2D, plot_stat, plot_raw
 import numpy as np
 import sys
 
-DS = xr.open_dataset('test_dycore.nc')
+DS = xr.open_dataset('test_dycore0.nc')
 DS.load()
 
 ndensity = DS.dims['dens_ndofs']

@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
 
     // Read vertical coordinates
     real1d zint_in;
-//THIS IS BROKEN FOR PARALLEL IO CASE
+//THIS IS BROKEN FOR PARALLEL IO CASE- maybe this is okay ie switch entirely to standard netcdf?
 if (crm_nz == 0)
 {
     yakl::SimpleNetCDF nc;
@@ -58,6 +58,7 @@ if (crm_nz == 0)
     nc.close();
 }
 
+
     // Create the dycore and the microphysics
     Dycore       dycore;
     Microphysics micro;
@@ -66,8 +67,11 @@ if (crm_nz == 0)
     //set xlen, ylen, zlen based on init cond if needed
     if (xlen < 0 or ylen < 0 or zlen < 0)
     {dycore.set_domain_sizes(config["initData"].as<std::string>(), xlen, ylen, zlen);}
-    //std::cout << xlen << " " << ylen << "\n";
 
+    #ifdef _PAMC_MPI
+    dycore.partition_nx_ny(crm_nx, crm_ny);
+    #endif
+    
     if (not crm_nz == 0) //We are using a uniform vertical grid with crm_nz levels; in this case zlen must be set
     {
       zint_in = real1d("zint_in",crm_nz+1);
@@ -132,9 +136,11 @@ if (crm_nz == 0)
 
       auto &dm = coupler.get_data_manager_readonly();
       real maxw = maxval(abs(dm.get_collapsed<real const>("wvel")));
+      if (masterproc) {
       std::cout << "Etime , dtphys, maxw: " << etime  << " , " 
                                             << dtphys << " , "
                                             << std::setw(10) << maxw << "\n";
+      }
         if (out_freq >= 0. && etime / out_freq >= num_out+1) {
           yakl::timer_start("output");
           output( coupler , out_prefix , etime );

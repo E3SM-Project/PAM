@@ -14,10 +14,11 @@ cmake      \
   -DNCFLAGS="${NCFLAGS}"                                          \
   -DYAKL_ARCH="${YAKL_ARCH}"                                      \
   -DPAM_DYCORE="spam++"                                             \
-  -DPAM_MICRO="p3"                                           \
-  -DPAM_SGS="shoc"                                                \
-  -DPAMC_MODEL="extrudedmodel"                                                \
-  -DPAMC_HAMIL="mce_rho"                                                \
-  -DPAMC_THERMO="constkappavirpottemp"                                                \
+  -DPAM_MICRO="none"                                           \
+  -DPAM_SGS="none"                                                \
+  -DPAMC_MODEL="layermodel"                                                \
+  -DPAMC_HAMIL="tswe"                                                \
+  -DPAMC_THERMO="none"                                                \
   -DPAMC_IO="serial"                                                \
+  -DPAMC_MPI="true"                                                \
   ..

@@ -36,6 +36,9 @@ uint constexpr nprognostic = 2;
 #define VVAR 0
 #define DENSVAR 1
 
+//This is needed in order for varset to compile for layermodel- it shouldn't ever be used so the -1 is okay (and will trigger an easy to catch bug if it is!)
+#define WVAR -1
+
 // hs, coriolis
 uint constexpr nconstant = 2;
 #define HSVAR 0

@@ -65,11 +65,20 @@ class Dycore {
   void init(PamCoupler &coupler) {
     
     // Get MPI Info
+    #ifdef _PAMC_MPI
     ierr = MPI_Comm_size(MPI_COMM_WORLD,&par.nranks);
     ierr = MPI_Comm_rank(MPI_COMM_WORLD,&par.myrank);
     // Determine if I'm the master process
     par.masterproc = par.myrank == 0;
+    #else
+    par.nranks = 1;
+    par.myrank = 0;
+    int actualrank;
+    ierr = MPI_Comm_rank(MPI_COMM_WORLD,&actualrank);
+    par.masterproc = actualrank == 0;    
+    #endif
     params.masterproc = par.masterproc;
+
 
     serial_print("setting up dycore", par.masterproc);
 
@@ -220,6 +229,12 @@ debug_print("end time stepping loop", par.masterproc);
     xlen = params.xlen;
     ylen = params.ylen;
     zlen = params.zlen;
+  }
+  
+  void partition_nx_ny(int &crm_nx, int &crm_ny)
+  {
+    //crm_nx = ;
+    //crm_ny = ;
   }
 };
 

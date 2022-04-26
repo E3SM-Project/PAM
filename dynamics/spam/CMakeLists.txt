@@ -88,5 +88,9 @@ if ("${PAMC_IO}" STREQUAL "none")
 target_compile_definitions(dycore INTERFACE -D_NOIO)
 endif()
 
+if ("${PAMC_MPI}" STREQUAL "true")
+target_compile_definitions(dycore INTERFACE -D_PAMC_MPI)
+endif()
+
 
 
