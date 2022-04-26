@@ -120,6 +120,10 @@ public:
     int dis = dual_topology->is;
     int djs = dual_topology->js;
     int dks = dual_topology->ks;
+
+    int pis = primal_topology->is;
+    int pjs = primal_topology->js;
+    int pks = primal_topology->ks;
     
     real4d dm_dens_dry = coupler.dm.get<real,4>( "density_dry"      );
     real4d dm_uvel     = coupler.dm.get<real,4>( "uvel"             );
@@ -137,14 +141,27 @@ public:
       
 
   // IN 3D THIS IS MORE COMPLICATED
-  
-       //real uvel_l  = prog_vars.fields_arr[VVAR].data(0,k+pks,j+pjs,i+pis,n) / pgeom.get_area_10entity(k+pks,j+pjs,i+pis);
-       //real uvel_r  = prog_vars.fields_arr[VVAR].data(0,k+pks,j+pjs,i+pis+1,n) / pgeom.get_area_10entity(k+pks,j+pjs,i+pis+1);
-//DO SOMETHING DIFFERENT AT K=0 ....
-       //real wvel_u  = prog_vars.fields_arr[WVAR].data(0,k+pks,j+pjs,i+pis,n) / pgeom.get_area_01entity(k+pks,j+pjs,i+pis);
-       //real wvel_d  = prog_vars.fields_arr[WVAR].data(0,k+pks-1,j+pjs,i+pis,n) / pgeom.get_area_01entity(k+pks-1,j+pjs,i+pis);
+        real uvel_l  = prog_vars.fields_arr[VVAR].data(0,k+pks,j+pjs,i+pis,n) / primal_geometry->get_area_10entity(k+pks,j+pjs,i+pis);
+        real uvel_r  = prog_vars.fields_arr[VVAR].data(0,k+pks,j+pjs,i+pis+1,n) / primal_geometry->get_area_10entity(k+pks,j+pjs,i+pis+1);
+        real wvel_d = 0.0_fp;
+        real wvel_u = 0.0_fp;
+        if(k==0)
+        {
+          wvel_u  = 2.0_fp * prog_vars.fields_arr[WVAR].data(0,k+pks,j+pjs,i+pis,n) / primal_geometry->get_area_01entity(k+pks,j+pjs,i+pis);
+          wvel_d  = 0.0_fp;
+        }
+        else if (k==(dual_topology->nl))
+        {
+          wvel_u  = 0.0_fp;
+          wvel_d  = 2.0_fp * prog_vars.fields_arr[WVAR].data(0,k+pks-1,j+pjs,i+pis,n) / primal_geometry->get_area_01entity(k+pks-1,j+pjs,i+pis);
+        }
+        else
+        {
+        wvel_u  = prog_vars.fields_arr[WVAR].data(0,k+pks,j+pjs,i+pis,n) / primal_geometry->get_area_01entity(k+pks,j+pjs,i+pis);
+        wvel_d  = prog_vars.fields_arr[WVAR].data(0,k+pks-1,j+pjs,i+pis,n) / primal_geometry->get_area_01entity(k+pks-1,j+pjs,i+pis);
+        }
    //EVENTUALLY FIX THIS FOR 3D...
-       //real vvel  = 0.0_fp;
+       real vvel  = 0.0_fp;
        
       real qd = get_qd(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
       real qv = get_qv(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
@@ -160,9 +177,9 @@ public:
       real temp = thermo->compute_T(alpha, entropic_var, qd, qv, ql, qi);
         
       dm_dens_dry(k,j,i,n) = get_dry_density(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n) / dual_geometry->get_area_11entity(k+dks,j+djs,i+dis);
-      // dm_uvel    (k,j,i,n) = (uvel_l + uvel_r) * 0.5_fp;
-      // dm_vvel    (k,j,i,n) = vvel;
-      // dm_wvel    (k,j,i,n) = (wvel_u + wvel_d) * 0.5_fp;
+      dm_uvel    (k,j,i,n) = (uvel_l + uvel_r) * 0.5_fp;
+      dm_vvel    (k,j,i,n) = vvel;
+      dm_wvel    (k,j,i,n) = (wvel_u + wvel_d) * 0.5_fp;
       dm_temp    (k,j,i,n) = temp;
       
       for (int tr=ndensity_nophysics; tr < ndensity; tr++) {
@@ -179,7 +196,11 @@ public:
     int dis = dual_topology->is;
     int djs = dual_topology->js;
     int dks = dual_topology->ks;
-        
+
+    int pis = primal_topology->is;
+    int pjs = primal_topology->js;
+    int pks = primal_topology->ks;
+    
     auto dm_dens_dry = coupler.dm.get<real const,4>( "density_dry"      );
     auto dm_uvel     = coupler.dm.get<real const,4>( "uvel"             );
     auto dm_vvel     = coupler.dm.get<real const,4>( "vvel"             );
@@ -192,7 +213,7 @@ public:
       dm_tracers.add_field( trac );
     }
 
-    parallel_for( "Coupler to Dynamics State" , Bounds<4>(dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA (int k, int j, int i, int n) {
+    parallel_for( "Coupler to Dynamics State Dual" , Bounds<4>(dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA (int k, int j, int i, int n) {
 
     real temp = dm_temp(k,j,i,n);
     
@@ -223,7 +244,19 @@ public:
 
     });
 
-  }
+    parallel_for( "Coupler to Dynamics State Primal U" , Bounds<4>(primal_topology->ni, primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens) , YAKL_LAMBDA (int k, int j, int i, int n) {
+    //periodic wrapping
+    int il = i-1;
+    if (i==0) {il = primal_topology->n_cells_x -1;}
+    prog_vars.fields_arr[VVAR].data(0,k+pks,j+pjs,i+pis,n) = (dm_uvel(k,j,il,n) + dm_uvel(k,j,i,n)) * 0.5_fp * primal_geometry->get_area_10entity(k+pks,j+pjs,i+pis);
+  });
+
+  parallel_for( "Coupler to Dynamics State Primal W" , Bounds<4>(primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens) , YAKL_LAMBDA (int k, int j, int i, int n) {
+  prog_vars.fields_arr[WVAR].data(0,k+pks,j+pjs,i+pis,n) = (dm_wvel(k,j,i,n) + dm_wvel(k+1,j,i,n)) * 0.5_fp * primal_geometry->get_area_01entity(k+pks,j+pjs,i+pis);
+  });
+
+}
+
 };
 
 //ADD ANELASTIC AND PRESSURE VERSIONS HERE ALSO

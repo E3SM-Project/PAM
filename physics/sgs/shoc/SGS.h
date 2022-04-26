@@ -1,7 +1,6 @@
 
 #pragma once
 
-#include "awfl_const.h"
 #include "DataManager.h"
 #include "pam_coupler.h"
 #include "call_shoc_from_pam.h"
@@ -554,14 +553,14 @@ public:
       wthv_sec(k,i) = shoc_wthv_sec(k_shoc,i);
       tk      (k,i) = shoc_tk      (k_shoc,i);
       tkh     (k,i) = shoc_tkh     (k_shoc,i);
-      cldfrac (k,i) = min(1._fp , shoc_cldfrac (k_shoc,i) );
+      cldfrac (k,i) = yakl::min(1._fp , shoc_cldfrac (k_shoc,i) );
       for (int tr=0; tr < num_qtracers; tr++) {
         qtracers_pam(tr,k,i) = shoc_qtracers(tr,k_shoc,i) * rho_d(k,i);
       }
       real rcm  = shoc_ql (k_shoc,i);
       real rcm2 = shoc_ql2(k_shoc,i);
       if ( rcm != 0 && rcm2 != 0 ) {
-        relvar(k,i) = min( 10._fp , max( 0.001_fp , rcm*rcm / rcm2 ) );
+        relvar(k,i) = yakl::min( 10._fp , yakl::max( 0.001_fp , rcm*rcm / rcm2 ) );
       } else {
         relvar(k,i) = 1;
       }
