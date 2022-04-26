@@ -199,7 +199,7 @@ public:
         //  int k, j, i;
         //  yakl::unpackIndices(iGlob, this->prog_vars->fields_arr[l]._nz, this->prog_vars->fields_arr[l].topology->n_cells_y, this->prog_vars->fields_arr[l].topology->n_cells_x, k, j, i);
         //  for (int ndof=0; ndof<this->prog_vars->fields_arr[l].total_dofs; ndof++) {
-        parallel_for( Bounds<5>(this->prog_vars->fields_arr[l].total_dofs, this->prog_vars->fields_arr[l]._nz, this->prog_vars->fields_arr[l].topology->n_cells_y, this->prog_vars->fields_arr[l].topology->n_cells_x, this->prog_vars->fields_arr[l].topology->nens) , YAKL_LAMBDA(int ndof, int k, int j, int i, int n) { 
+        parallel_for( SimpleBounds<5>(this->prog_vars->fields_arr[l].total_dofs, this->prog_vars->fields_arr[l]._nz, this->prog_vars->fields_arr[l].topology->n_cells_y, this->prog_vars->fields_arr[l].topology->n_cells_x, this->prog_vars->fields_arr[l].topology->nens) , YAKL_LAMBDA(int ndof, int k, int j, int i, int n) { 
             this->prog_temp_arr[l](ndof, k, j, i, n) = this->prog_vars->fields_arr[l].data(ndof, k+ks, j+js, i+is, n);
         //  }
         });
@@ -224,7 +224,7 @@ public:
         //  int k, j, i;
         //  yakl::unpackIndices(iGlob, this->diag_vars->fields_arr[l]._nz, this->diag_vars->fields_arr[l].topology->n_cells_y, this->diag_vars->fields_arr[l].topology->n_cells_x, k, j, i);
         //  for (int ndof=0; ndof<this->diag_vars->fields_arr[l].total_dofs; ndof++) {
-        parallel_for( Bounds<5>(this->diag_vars->fields_arr[l].total_dofs, this->diag_vars->fields_arr[l]._nz, this->diag_vars->fields_arr[l].topology->n_cells_y, this->diag_vars->fields_arr[l].topology->n_cells_x, this->diag_vars->fields_arr[l].topology->nens) , YAKL_LAMBDA(int ndof, int k, int j, int i, int n) { 
+        parallel_for( SimpleBounds<5>(this->diag_vars->fields_arr[l].total_dofs, this->diag_vars->fields_arr[l]._nz, this->diag_vars->fields_arr[l].topology->n_cells_y, this->diag_vars->fields_arr[l].topology->n_cells_x, this->diag_vars->fields_arr[l].topology->nens) , YAKL_LAMBDA(int ndof, int k, int j, int i, int n) { 
             this->diag_temp_arr[l](ndof, k, j, i, n) = this->diag_vars->fields_arr[l].data(ndof, k+ks, j+js, i+is, n);
         //}
         });
@@ -260,7 +260,7 @@ public:
       //  int k, j, i;
       //  yakl::unpackIndices(iGlob, this->const_vars->fields_arr[l]._nz, this->const_vars->fields_arr[l].topology->n_cells_y, this->const_vars->fields_arr[l].topology->n_cells_x, k, j, i);
       //  for (int ndof=0; ndof<this->const_vars->fields_arr[l].total_dofs; ndof++) {
-      parallel_for( Bounds<5>(this->const_vars->fields_arr[l].total_dofs, this->const_vars->fields_arr[l]._nz, this->const_vars->fields_arr[l].topology->n_cells_y, this->const_vars->fields_arr[l].topology->n_cells_x, this->const_vars->fields_arr[l].topology->nens) , YAKL_LAMBDA(int ndof, int k, int j, int i, int n) { 
+      parallel_for( SimpleBounds<5>(this->const_vars->fields_arr[l].total_dofs, this->const_vars->fields_arr[l]._nz, this->const_vars->fields_arr[l].topology->n_cells_y, this->const_vars->fields_arr[l].topology->n_cells_x, this->const_vars->fields_arr[l].topology->nens) , YAKL_LAMBDA(int ndof, int k, int j, int i, int n) { 
           this->const_temp_arr[l](ndof, k, j, i, n) = this->const_vars->fields_arr[l].data(ndof, k+ks, j+js, i+is, n);
       //  }
       });
@@ -283,7 +283,7 @@ public:
       //  int k, j, i;
       //  yakl::unpackIndices(iGlob, this->prog_vars->fields_arr[l]._nz, this->prog_vars->fields_arr[l].topology->n_cells_y, this->prog_vars->fields_arr[l].topology->n_cells_x, k, j, i);
       //  for (int ndof=0; ndof<this->prog_vars->fields_arr[l].total_dofs; ndof++) {
-      parallel_for( Bounds<5>(this->prog_vars->fields_arr[l].total_dofs, this->prog_vars->fields_arr[l]._nz, this->prog_vars->fields_arr[l].topology->n_cells_y, this->prog_vars->fields_arr[l].topology->n_cells_x, this->prog_vars->fields_arr[l].topology->nens) , YAKL_LAMBDA(int ndof, int k, int j, int i, int n) { 
+      parallel_for( SimpleBounds<5>(this->prog_vars->fields_arr[l].total_dofs, this->prog_vars->fields_arr[l]._nz, this->prog_vars->fields_arr[l].topology->n_cells_y, this->prog_vars->fields_arr[l].topology->n_cells_x, this->prog_vars->fields_arr[l].topology->nens) , YAKL_LAMBDA(int ndof, int k, int j, int i, int n) { 
           this->prog_temp_arr[l](ndof, k, j, i, n) = this->prog_vars->fields_arr[l].data(ndof, k+ks, j+js, i+is, n);
       //  }
       });
@@ -306,7 +306,7 @@ public:
       //  int k, j, i;
       //  yakl::unpackIndices(iGlob, this->diag_vars->fields_arr[l]._nz, this->diag_vars->fields_arr[l].topology->n_cells_y, this->diag_vars->fields_arr[l].topology->n_cells_x, k, j, i);
       //  for (int ndof=0; ndof<this->diag_vars->fields_arr[l].total_dofs; ndof++) {
-      parallel_for( Bounds<5>(this->diag_vars->fields_arr[l].total_dofs, this->diag_vars->fields_arr[l]._nz, this->diag_vars->fields_arr[l].topology->n_cells_y, this->diag_vars->fields_arr[l].topology->n_cells_x, this->diag_vars->fields_arr[l].topology->nens) , YAKL_LAMBDA(int ndof, int k, int j, int i, int n) { 
+      parallel_for( SimpleBounds<5>(this->diag_vars->fields_arr[l].total_dofs, this->diag_vars->fields_arr[l]._nz, this->diag_vars->fields_arr[l].topology->n_cells_y, this->diag_vars->fields_arr[l].topology->n_cells_x, this->diag_vars->fields_arr[l].topology->nens) , YAKL_LAMBDA(int ndof, int k, int j, int i, int n) { 
           this->diag_temp_arr[l](ndof, k, j, i, n) = this->diag_vars->fields_arr[l].data(ndof, k+ks, j+js, i+is, n);
       //  }
       });

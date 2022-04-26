@@ -50,7 +50,7 @@ void readParamsFile(std::string inFile, ModelParameters &params, Parallel &par, 
 
   params.tstype = config["tstype"].as<std::string>();
 
-  params.outputName = config["out_prefix"].as<std::string>("output");
+  params.outputName = config["dycore_out_prefix"].as<std::string>("output");
 
   //Get my process grid IDs
   par.py = floor(par.myrank / par.nprocx);

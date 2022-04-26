@@ -11,6 +11,9 @@
 #include <math.h>
 #include "yaml-cpp/yaml.h"
 
+using yakl::c::parallel_for;
+using yakl::c::SimpleBounds;
+
 typedef unsigned long ulong;
 typedef unsigned int  uint;
 

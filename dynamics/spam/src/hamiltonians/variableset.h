@@ -124,20 +124,22 @@ public:
     int pis = primal_topology->is;
     int pjs = primal_topology->js;
     int pks = primal_topology->ks;
-    
-    real4d dm_dens_dry = coupler.dm.get<real,4>( "density_dry"      );
-    real4d dm_uvel     = coupler.dm.get<real,4>( "uvel"             );
-    real4d dm_vvel     = coupler.dm.get<real,4>( "vvel"             );
-    real4d dm_wvel     = coupler.dm.get<real,4>( "wvel"             );
-    real4d dm_temp     = coupler.dm.get<real,4>( "temp"             );
+
+    auto &dm = coupler.get_data_manager_readwrite();
+
+    real4d dm_dens_dry = dm.get<real,4>( "density_dry"      );
+    real4d dm_uvel     = dm.get<real,4>( "uvel"             );
+    real4d dm_vvel     = dm.get<real,4>( "vvel"             );
+    real4d dm_wvel     = dm.get<real,4>( "wvel"             );
+    real4d dm_temp     = dm.get<real,4>( "temp"             );
 
     pam::MultipleFields<ntracers_physics,real4d> dm_tracers;
     for (int tr = 0; tr < ntracers_physics; tr++) {
-      auto trac = coupler.dm.get<real,4>( dens_name[tr+ndensity_nophysics] );
+      auto trac = dm.get<real,4>( dens_name[tr+ndensity_nophysics] );
       dm_tracers.add_field( trac );
     }
 
-    parallel_for( "Dynamics to Coupler State" , Bounds<4>(dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA (int k, int j, int i, int n) {
+    parallel_for( "Dynamics to Coupler State" , SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA (int k, int j, int i, int n) {
       
 
   // IN 3D THIS IS MORE COMPLICATED
@@ -200,20 +202,22 @@ public:
     int pis = primal_topology->is;
     int pjs = primal_topology->js;
     int pks = primal_topology->ks;
-    
-    auto dm_dens_dry = coupler.dm.get<real const,4>( "density_dry"      );
-    auto dm_uvel     = coupler.dm.get<real const,4>( "uvel"             );
-    auto dm_vvel     = coupler.dm.get<real const,4>( "vvel"             );
-    auto dm_wvel     = coupler.dm.get<real const,4>( "wvel"             );
-    auto dm_temp     = coupler.dm.get<real const,4>( "temp"             );
+
+    auto &dm = coupler.get_data_manager_readonly();
+
+    auto dm_dens_dry = dm.get<real const,4>( "density_dry"      );
+    auto dm_uvel     = dm.get<real const,4>( "uvel"             );
+    auto dm_vvel     = dm.get<real const,4>( "vvel"             );
+    auto dm_wvel     = dm.get<real const,4>( "wvel"             );
+    auto dm_temp     = dm.get<real const,4>( "temp"             );
 
     pam::MultipleFields<ntracers_physics,realConst4d> dm_tracers;
     for (int tr = 0; tr < ntracers_physics; tr++) {
-      auto trac = coupler.dm.get<real const,4>( dens_name[tr+ndensity_nophysics] );
+      auto trac = dm.get<real const,4>( dens_name[tr+ndensity_nophysics] );
       dm_tracers.add_field( trac );
     }
 
-    parallel_for( "Coupler to Dynamics State Dual" , Bounds<4>(dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA (int k, int j, int i, int n) {
+    parallel_for( "Coupler to Dynamics State Dual" , SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA (int k, int j, int i, int n) {
 
     real temp = dm_temp(k,j,i,n);
     
@@ -244,14 +248,14 @@ public:
 
     });
 
-    parallel_for( "Coupler to Dynamics State Primal U" , Bounds<4>(primal_topology->ni, primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens) , YAKL_LAMBDA (int k, int j, int i, int n) {
+    parallel_for( "Coupler to Dynamics State Primal U" , SimpleBounds<4>(primal_topology->ni, primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens) , YAKL_LAMBDA (int k, int j, int i, int n) {
     //periodic wrapping
     int il = i-1;
     if (i==0) {il = primal_topology->n_cells_x -1;}
     prog_vars.fields_arr[VVAR].data(0,k+pks,j+pjs,i+pis,n) = (dm_uvel(k,j,il,n) + dm_uvel(k,j,i,n)) * 0.5_fp * primal_geometry->get_area_10entity(k+pks,j+pjs,i+pis);
   });
 
-  parallel_for( "Coupler to Dynamics State Primal W" , Bounds<4>(primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens) , YAKL_LAMBDA (int k, int j, int i, int n) {
+  parallel_for( "Coupler to Dynamics State Primal W" , SimpleBounds<4>(primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens) , YAKL_LAMBDA (int k, int j, int i, int n) {
   prog_vars.fields_arr[WVAR].data(0,k+pks,j+pjs,i+pis,n) = (dm_wvel(k,j,i,n) + dm_wvel(k+1,j,i,n)) * 0.5_fp * primal_geometry->get_area_01entity(k+pks,j+pjs,i+pis);
   });
 

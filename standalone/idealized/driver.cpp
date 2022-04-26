@@ -8,11 +8,11 @@
 #include "output.h"
 
 int main(int argc, char** argv) {
-  MPI_Init( &argc , &argv );
+  int ierr = MPI_Init( &argc , &argv );
   yakl::init();
+  
   {
     
-    int ierr = MPI_Init( &argc , &argv );
     int myrank;
     bool masterproc;
     ierr = MPI_Comm_rank(MPI_COMM_WORLD,&myrank);
@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
     real        dtphys_in    = config["dtphys"  ].as<real>();
     std::string vcoords_file = config["vcoords" ].as<std::string>("");
     bool        use_coupler_hydrostasis = config["use_coupler_hydrostasis"].as<bool>(false);
-    auto out_freq                = config["out_freq"   ].as<real>();
+    auto out_freq                = config["out_freq"   ].as<real>(0);
     auto out_prefix              = config["out_prefix" ].as<std::string>();
 
     // Read vertical coordinates
@@ -153,7 +153,6 @@ if (crm_nz == 0)
   
   yakl::finalize();
 
-  int ierr = MPI_Finalize();
+  ierr = MPI_Finalize();
 
-  MPI_Finalize();
 }
