@@ -26,3 +26,12 @@ include(${YAKL_HOME}/yakl_utils.cmake)
 
 # Test directories
 add_subdirectory(hodge_star)
+add_subdirectory(fields)
+add_subdirectory(grid)
+add_subdirectory(hamiltonians)
+add_subdirectory(io)
+add_subdirectory(models)
+add_subdirectory(operator_properties)
+add_subdirectory(parallel)
+add_subdirectory(timesteppers)
+
