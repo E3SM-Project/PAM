@@ -1,17 +1,12 @@
 
 #pragma once
 
-//#include "awfl_const.h"
-#include "DataManager.h"
 #include "pam_coupler.h"
 #include "call_p3_from_pam.h"
 #include "pam_scream_routines.h"
 
 #define P3_FORTRAN
 // #define P3_DEBUG
-
-using pam::PamCoupler;
-
 
 extern "C"
 void p3_main_fortran(double *qc , double *nc , double *qr , double *nr , double *th_atm , double *qv ,
@@ -108,7 +103,10 @@ public:
 
 
   // Can do whatever you want, but mainly for registering tracers and allocating data
-  void init(PamCoupler &coupler) {
+  void init(pam::PamCoupler &coupler) {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+
     int nx   = coupler.get_nx  ();
     int ny   = coupler.get_ny  ();
     int nz   = coupler.get_nz  ();
@@ -126,20 +124,22 @@ public:
     coupler.add_tracer("ice_rime_vol"    , "Ice-Rime Volume"    , true     , false);
     coupler.add_tracer("water_vapor"     , "Water Vapor"        , true     , true );
 
-    coupler.dm.register_and_allocate<real>("qv_prev","qv from prev step"         ,{nz,ny,nx,nens},{"z","y","x","nens"});
-    coupler.dm.register_and_allocate<real>("t_prev" ,"Temperature from prev step",{nz,ny,nx,nens},{"z","y","x","nens"});
+    auto &dm = coupler.get_data_manager_readwrite();
 
-    auto cloud_water     = coupler.dm.get<real,4>( "cloud_water"     );
-    auto cloud_water_num = coupler.dm.get<real,4>( "cloud_water_num" );
-    auto rain            = coupler.dm.get<real,4>( "rain"            );
-    auto rain_num        = coupler.dm.get<real,4>( "rain_num"        );
-    auto ice             = coupler.dm.get<real,4>( "ice"             );
-    auto ice_num         = coupler.dm.get<real,4>( "ice_num"         );
-    auto ice_rime        = coupler.dm.get<real,4>( "ice_rime"        );
-    auto ice_rime_vol    = coupler.dm.get<real,4>( "ice_rime_vol"    );
-    auto water_vapor     = coupler.dm.get<real,4>( "water_vapor"     );
-    auto qv_prev         = coupler.dm.get<real,4>( "qv_prev"         );
-    auto t_prev          = coupler.dm.get<real,4>( "t_prev"          );
+    dm.register_and_allocate<real>("qv_prev","qv from prev step"         ,{nz,ny,nx,nens},{"z","y","x","nens"});
+    dm.register_and_allocate<real>("t_prev" ,"Temperature from prev step",{nz,ny,nx,nens},{"z","y","x","nens"});
+
+    auto cloud_water     = dm.get<real,4>( "cloud_water"     );
+    auto cloud_water_num = dm.get<real,4>( "cloud_water_num" );
+    auto rain            = dm.get<real,4>( "rain"            );
+    auto rain_num        = dm.get<real,4>( "rain_num"        );
+    auto ice             = dm.get<real,4>( "ice"             );
+    auto ice_num         = dm.get<real,4>( "ice_num"         );
+    auto ice_rime        = dm.get<real,4>( "ice_rime"        );
+    auto ice_rime_vol    = dm.get<real,4>( "ice_rime_vol"    );
+    auto water_vapor     = dm.get<real,4>( "water_vapor"     );
+    auto qv_prev         = dm.get<real,4>( "qv_prev"         );
+    auto t_prev          = dm.get<real,4>( "t_prev"          );
 
     parallel_for( "micro zero" , SimpleBounds<4>(nz,ny,nx,nens) ,
                   YAKL_LAMBDA (int k, int j, int i, int iens) {
@@ -181,19 +181,23 @@ public:
 
 
 
-  void timeStep( PamCoupler &coupler , real dt ) {
+  void timeStep( pam::PamCoupler &coupler , real dt ) {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+
     if (first_step) {
       if (coupler.get_option<std::string>("sgs") == "shoc") sgs_shoc = true;
     }
+    auto &dm = coupler.get_data_manager_readwrite();
 
     // Get the dimensions sizes
-    int nz   = coupler.dm.get_dimension_size("z"   );
-    int ny   = coupler.dm.get_dimension_size("y"   );
-    int nx   = coupler.dm.get_dimension_size("x"   );
-    int nens = coupler.dm.get_dimension_size("nens");
+    int nz   = coupler.get_nz  ();
+    int ny   = coupler.get_ny  ();
+    int nx   = coupler.get_nx  ();
+    int nens = coupler.get_nens();
     int ncol = ny*nx*nens;
 
-    auto zint_in = coupler.dm.get<real,2>("vertical_interface_height");
+    auto zint_in = dm.get<real,2>("vertical_interface_height");
 
     real crm_dx = coupler.get_xlen() / nx;
     real crm_dy = ny == 1 ? crm_dx : coupler.get_ylen() / ny;
@@ -201,10 +205,10 @@ public:
     #ifdef PAM_DEBUG
       real mass0;
       {
-        auto rho_v = coupler.dm.get<real,4>( "water_vapor" );
-        auto rho_c = coupler.dm.get<real,4>( "cloud_water" );
-        auto rho_r = coupler.dm.get<real,4>( "rain"        );
-        auto rho_i = coupler.dm.get<real,4>( "ice"         );
+        auto rho_v = dm.get<real,4>( "water_vapor" );
+        auto rho_c = dm.get<real,4>( "cloud_water" );
+        auto rho_r = dm.get<real,4>( "rain"        );
+        auto rho_i = dm.get<real,4>( "ice"         );
         real4d mass4d("mass4d",nz,ny,nx,nens);
         parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
           mass4d(k,j,i,iens) = (rho_v(k,j,i,iens) + rho_c(k,j,i,iens) + rho_r(k,j,i,iens) + rho_i(k,j,i,iens)) *
@@ -215,19 +219,19 @@ public:
     #endif
 
     // Get tracers dimensioned as (nz,ny*nx*nens)
-    auto rho_c  = coupler.dm.get_lev_col<real>("cloud_water"    );
-    auto rho_nc = coupler.dm.get_lev_col<real>("cloud_water_num");
-    auto rho_r  = coupler.dm.get_lev_col<real>("rain"           );
-    auto rho_nr = coupler.dm.get_lev_col<real>("rain_num"       );
-    auto rho_i  = coupler.dm.get_lev_col<real>("ice"            );
-    auto rho_ni = coupler.dm.get_lev_col<real>("ice_num"        );
-    auto rho_m  = coupler.dm.get_lev_col<real>("ice_rime"       );
-    auto rho_bm = coupler.dm.get_lev_col<real>("ice_rime_vol"   );
-    auto rho_v  = coupler.dm.get_lev_col<real>("water_vapor"    );
+    auto rho_c  = dm.get_lev_col<real>("cloud_water"    );
+    auto rho_nc = dm.get_lev_col<real>("cloud_water_num");
+    auto rho_r  = dm.get_lev_col<real>("rain"           );
+    auto rho_nr = dm.get_lev_col<real>("rain_num"       );
+    auto rho_i  = dm.get_lev_col<real>("ice"            );
+    auto rho_ni = dm.get_lev_col<real>("ice_num"        );
+    auto rho_m  = dm.get_lev_col<real>("ice_rime"       );
+    auto rho_bm = dm.get_lev_col<real>("ice_rime_vol"   );
+    auto rho_v  = dm.get_lev_col<real>("water_vapor"    );
 
     // Get coupler state
-    auto rho_dry = coupler.dm.get_lev_col<real>("density_dry");
-    auto temp    = coupler.dm.get_lev_col<real>("temp"       );
+    auto rho_dry = dm.get_lev_col<real>("density_dry");
+    auto temp    = dm.get_lev_col<real>("temp"       );
 
     // Calculate the grid spacing
     real2d dz("dz",nz,ny*nx*nens);
@@ -237,8 +241,8 @@ public:
     });
 
     // Get everything from the DataManager that's not a tracer but is persistent across multiple micro calls
-    auto qv_prev = coupler.dm.get_lev_col<real>("qv_prev");
-    auto t_prev  = coupler.dm.get_lev_col<real>("t_prev" );
+    auto qv_prev = dm.get_lev_col<real>("qv_prev");
+    auto t_prev  = dm.get_lev_col<real>("t_prev" );
 
     // Allocates inputs and outputs
     int p3_nout = 49;
@@ -340,8 +344,8 @@ public:
     });
 
     if (sgs_shoc) {
-      auto ast      = coupler.dm.get_lev_col<real>("cldfrac");
-      inv_qc_relvar = coupler.dm.get_lev_col<real>("relvar" );
+      auto ast      = dm.get_lev_col<real>("cldfrac");
+      inv_qc_relvar = dm.get_lev_col<real>("relvar" );
       get_cloud_fraction( ast , qc , qr , qi , cld_frac_i , cld_frac_l , cld_frac_r );
     } else {
       parallel_for( SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
@@ -702,10 +706,10 @@ public:
     #ifdef PAM_DEBUG
       real mass;
       {
-        auto rho_v = coupler.dm.get<real,4>( "water_vapor" );
-        auto rho_c = coupler.dm.get<real,4>( "cloud_water" );
-        auto rho_r = coupler.dm.get<real,4>( "rain"        );
-        auto rho_i = coupler.dm.get<real,4>( "ice"         );
+        auto rho_v = dm.get<real,4>( "water_vapor" );
+        auto rho_c = dm.get<real,4>( "cloud_water" );
+        auto rho_r = dm.get<real,4>( "rain"        );
+        auto rho_i = dm.get<real,4>( "ice"         );
         real4d mass4d("mass4d",nz,ny,nx,nens);
         real3d sfc_precip_mass3d("sfc_precip_mass3d",ny,nx,nens);
         parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {

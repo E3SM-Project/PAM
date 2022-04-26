@@ -1,13 +1,14 @@
 
-#include "pam_const.h"
 #include "pam_coupler.h"
 #include "Dycore.h"
 #include "Microphysics.h"
 #include "SGS.h"
 #include "DataManager.h"
 #include "mpi.h"
+#include "output.h"
 
 int main(int argc, char** argv) {
+  MPI_Init( &argc , &argv );
   yakl::init();
   {
     
@@ -28,6 +29,7 @@ int main(int argc, char** argv) {
     std::string inFile(argv[1]);
     YAML::Node config = YAML::LoadFile(inFile);
     if ( !config            ) { endrun("ERROR: Invalid YAML input file"); }
+
     real        simTime      = config["simTime" ].as<real>(0.0_fp);
     real        simSteps     = config["simSteps"].as<int>(0);
     int         crm_nx       = config["crm_nx"  ].as<int>();
@@ -40,6 +42,8 @@ int main(int argc, char** argv) {
     real        dtphys_in    = config["dtphys"  ].as<real>();
     std::string vcoords_file = config["vcoords" ].as<std::string>("");
     bool        use_coupler_hydrostasis = config["use_coupler_hydrostasis"].as<bool>(false);
+    auto out_freq                = config["out_freq"   ].as<real>();
+    auto out_prefix              = config["out_prefix" ].as<std::string>();
 
     // Read vertical coordinates
     real1d zint_in;
@@ -98,11 +102,15 @@ if (crm_nz == 0)
     #endif
 
     // Now that we have an initial state, define hydrostasis for each ensemble member
-    if (use_coupler_hydrostasis) coupler.update_hydrostasis( coupler.compute_pressure_array() );
+    if (use_coupler_hydrostasis) coupler.update_hydrostasis( );
 
     real etime = 0;
     if (simTime == 0.0) {  simTime = simSteps * dtphys_in; }
     
+    int  num_out = 0;
+    // Output the initial state
+    if (out_freq >= 0. ) output( coupler , out_prefix , etime );
+
     real dtphys = dtphys_in;
     while (etime < simTime) {
       if (dtphys_in == 0.) { dtphys = dycore.compute_time_step(coupler); }
@@ -121,13 +129,19 @@ if (crm_nz == 0)
       yakl::timer_stop("dycore");
 
       etime += dtphys;
-      real maxw = maxval(abs(coupler.dm.get_collapsed<real const>("wvel")));
-      if (masterproc)
-      {
+
+      auto &dm = coupler.get_data_manager_readonly();
+      real maxw = maxval(abs(dm.get_collapsed<real const>("wvel")));
       std::cout << "Etime , dtphys, maxw: " << etime  << " , " 
                                             << dtphys << " , "
                                             << std::setw(10) << maxw << "\n";
-      }
+        if (out_freq >= 0. && etime / out_freq >= num_out+1) {
+          yakl::timer_start("output");
+          output( coupler , out_prefix , etime );
+          yakl::timer_stop("output");
+          num_out++;
+        }
+
     }
 
     if (masterproc) {std::cout << "Elapsed Time: " << etime << "\n";}
@@ -138,6 +152,8 @@ if (crm_nz == 0)
   }
   
   yakl::finalize();
+
   int ierr = MPI_Finalize();
 
+  MPI_Finalize();
 }
