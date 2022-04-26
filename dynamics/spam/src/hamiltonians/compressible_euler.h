@@ -161,9 +161,11 @@ void set_parameters(real gin)
    real entropic_var = varset->get_entropic_var(dens, k, j, i, ks, js, is, n);
    real qd = varset->get_qd(dens, k, j, i, ks, js, is, n);
    real qv = varset->get_qv(dens, k, j, i, ks, js, is, n);
-   real ql = varset->get_ql(dens, k, j, i, ks, js, is, n);
-   real qi = varset->get_qi(dens, k, j, i, ks, js, is, n);
-   return dens(0, k+ks, j+js, i+is, n) * thermo->compute_U(alpha, entropic_var, qd, qv, ql, qi);
+   real ql = 0.0_fp;
+   real qi = 0.0_fp;
+   if (varset->liquid_found) {ql = varset->get_ql(dens, k, j, i, ks, js, is, n);}
+   if (varset->ice_found) {qi = varset->get_qi(dens, k, j, i, ks, js, is, n);}
+   return varset->get_total_density(dens, k, j, i, ks, js, is, n) * thermo->compute_U(alpha, entropic_var, qd, qv, ql, qi);
  }
 
 //THIS NEEDS FIXING, BUT SHOULD BE COMPLETELY GENERAL NOW!
@@ -182,8 +184,10 @@ void set_parameters(real gin)
     real entropic_var = varset->get_entropic_var(dens, k, j, i, ks, js, is, n);
     real qd = varset->get_qd(dens, k, j, i, ks, js, is, n);
     real qv = varset->get_qv(dens, k, j, i, ks, js, is, n);
-    real ql = varset->get_ql(dens, k, j, i, ks, js, is, n);
-    real qi = varset->get_qi(dens, k, j, i, ks, js, is, n);
+    real ql = 0.0_fp;
+    real qi = 0.0_fp;
+    if (varset->liquid_found) {ql = varset->get_ql(dens, k, j, i, ks, js, is, n);}
+    if (varset->ice_found) {qi = varset->get_qi(dens, k, j, i, ks, js, is, n);}
     
     real U = thermo->compute_U(alpha, entropic_var, qd, qv, ql, qi);
     real p = -thermo->compute_dUdalpha(alpha, entropic_var, qd, qv, ql, qi);
@@ -198,9 +202,11 @@ void set_parameters(real gin)
     ql * (generalized_chemical_potential_d - generalized_chemical_potential_l) + 
     qi * (generalized_chemical_potential_d - generalized_chemical_potential_i);
     B(1, k+ks, j+js, i+is, n) = generalized_Exner;
-    B(2, k+ks, j+js, i+is, n) = generalized_chemical_potential_v - generalized_chemical_potential_d;
-    B(3, k+ks, j+js, i+is, n) = generalized_chemical_potential_l - generalized_chemical_potential_d;
-    B(4, k+ks, j+js, i+is, n) = generalized_chemical_potential_i - generalized_chemical_potential_d;
+
+//THESE INDICES ARE BROKEN!
+    B(varset->dm_id_vap + ndensity_nophysics, k+ks, j+js, i+is, n) = generalized_chemical_potential_v - generalized_chemical_potential_d;
+    if (varset->liquid_found) {B(varset->dm_id_liq + ndensity_nophysics, k+ks, j+js, i+is, n) = generalized_chemical_potential_l - generalized_chemical_potential_d;}
+    if (varset->ice_found) {B(varset->dm_id_ice + ndensity_nophysics, k+ks, j+js, i+is, n) = generalized_chemical_potential_i - generalized_chemical_potential_d;}
     
   }
 };

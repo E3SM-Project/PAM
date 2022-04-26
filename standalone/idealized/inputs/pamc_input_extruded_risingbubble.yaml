@@ -1,6 +1,6 @@
 ---
 # Simulation time in number of physics time steps
-simSteps  : 1 #1280
+simSteps  : 1280 #1280
 #11520 * 5 = 57600
 #200 *5 = 1000
 
@@ -35,6 +35,6 @@ tstype: ssprk3
 nens : 1
 
 # Parallel decomposition
-nprocx : 1
+nprocx : 4
 nprocy : 1
 

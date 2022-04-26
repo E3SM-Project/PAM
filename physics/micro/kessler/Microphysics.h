@@ -10,11 +10,11 @@ using pam::PamCoupler;
 extern "C" void kessler_fortran(double *theta, double *qv, double *qc, double *qr, double *rho,
                                 double *pk, double &dt, double *z, int &nz, double &precl);
 
-int static constexpr num_tracers_micro = 4;
+int static constexpr num_tracers_micro = 3;
 
 class Microphysics {
 public:
-  int static constexpr num_tracers = 4;
+  int static constexpr num_tracers = 3;
 
   real R_d    ;
   real cp_d   ;
@@ -64,20 +64,17 @@ public:
     coupler.add_tracer("water_vapor"   , "Water Vapor"   , true     , true);
     coupler.add_tracer("cloud_liquid"  , "Cloud liquid"  , true     , true);
     coupler.add_tracer("precip_liquid" , "precip_liquid" , true     , true);
-    coupler.add_tracer("cloud_ice"    , "Cloud Ice (Mass)"   ,  true     , true);
 
     // Register and allocation non-tracer quantities used by the microphysics
     coupler.dm.register_and_allocate<real>( "precl" , "precipitation rate" , {ny,nx,nens} , {"y","x","nens"} );
 
     auto rho_v = coupler.dm.get<real,4>("water_vapor"  );
     auto rho_c = coupler.dm.get<real,4>("cloud_liquid" );
-    auto rho_i = coupler.dm.get<real,4>("cloud_ice" );
     auto rho_p = coupler.dm.get<real,4>("precip_liquid");
     auto precl = coupler.dm.get<real,3>("precl"        );
 
     parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       rho_v(k,j,i,iens) = 0;
-      rho_i(k,j,i,iens) = 0;
       rho_c(k,j,i,iens) = 0;
       rho_p(k,j,i,iens) = 0;
       if (k == 0) precl(j,i,iens) = 0;

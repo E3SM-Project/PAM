@@ -2,25 +2,48 @@ import xarray as xr
 from plot_helpers import plotvar_scalar2D, plotvar_vector2D, plot_stat, plot_rawstat
 import numpy as np
 import sys
+import yaml
 
-DS = xr.open_dataset('test0.nc')
-DS.load()
 
-ndensity = DS.dims['dens_ndofs']
-nt = DS.dims['t']
 model = sys.argv[1]
-nens = DS.dims['nens']
+nprocs = int(sys.argv[3])
+with open(sys.argv[2], 'r') as file:
+    config = yaml.safe_load(file)
+    ncbase = config['out_prefix']
+    crm_nx = config['crm_nx']
+    crm_ny = config['crm_ny']
+    nprocx = config['nprocx']
+    nprocy = config['nprocy']
 
-mass = DS.mass
-energy = DS.energy
-pens = DS.pens
-pv = DS.pv
+DSarr = []
+varr = []
+warr = []
+densarr = []
+QXZlarr = []
+denslarr = []
+hsarr = []
+coriolisxzarr = []
 
-densmax = DS.densmax
-densmin = DS.densmin
-
-
-
+for i in range(nprocs):
+    DS = xr.open_dataset(ncbase + str(i) + '.nc')
+    DS.load()
+    ndensity = DS.dims['dens_ndofs']
+    nt = DS.dims['t']
+    nens = DS.dims['nens']
+    if (i==0):
+        mass = DS.mass
+        energy = DS.energy
+        pens = DS.pens
+        pv = DS.pv
+        densmax = DS.densmax
+        densmin = DS.densmin
+    varr.append(DS.v)
+    warr.append(DS.w)
+    densarr.append(DS.dens)
+    QXZlarr.append(DS.QXZl)
+    denslarr.append(DS.densl)
+    hsarr.append(DS.hs)
+    coriolisxzarr.append(DS.coriolisxz)
 
 if model == 'swe':
     dens_names = ['h',]
@@ -38,6 +61,8 @@ if model == 'ce':
 
 #THIS IS A LITLTE BROKEN FOR RHOD VARIANTS...
 #probably ok, this is just a quick and dirty plotting script...
+
+#SUPER WRONG NOW FOR NAMES
 if model == 'mce':
     dens_names = ['rho','Theta','rho_v', 'rho_l', 'rho_i']    
     dens_stat_names = ['mass','entropic_var_density','vapor', 'liquid', 'ice']    
@@ -61,16 +86,11 @@ for n in range(nens):
     plot_stat('total_pens.'+ str(n), pens.isel(pens_ndofs=0, nens=n))
     plot_stat('total_pv.'+ str(n), pv.isel(pv_ndofs=0, nens=n))
 
+def build_data(
 
 Nlist = np.arange(0,nt)
 
-v = DS.v
-w = DS.w
-dens = DS.dens
-QXZl = DS.QXZl
-densl = DS.densl
-hs = DS.hs
-coriolisxz = DS.coriolisxz
+
 
 for n in range(nens):
 

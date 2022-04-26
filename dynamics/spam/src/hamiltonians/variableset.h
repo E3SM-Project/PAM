@@ -16,9 +16,12 @@ public:
   //bool1d                   dens_pos;       // Whether each density is positive-definite
   bool                   dens_pos[ndensity];       // Whether each density is positive-definite
   
-  real dm_id_vap;
-  real dm_id_liq;
-  real dm_id_ice;
+  int dm_id_vap = -1;
+  int dm_id_liq = -1;
+  int dm_id_ice = -1;
+
+  bool ice_found = false;
+  bool liquid_found = false;
 
   ThermoPotential *thermo;
   Geometry *primal_geometry;
@@ -49,8 +52,6 @@ public:
     
     std::vector<std::string> tracer_names_loc = coupler.get_tracer_names();
     bool water_vapor_found = false;
-    bool liquid_found = false;
-    bool ice_found = false;
     for (int tr=0; tr < ntracers_physics; tr++) {
       bool found, positive, adds_mass;
       std::string desc;
@@ -63,7 +64,7 @@ public:
         dm_id_vap = tr;
         water_vapor_found = true;
       }
-      if (tracer_names_loc[tr] == std::string("cloud_liquid")) {
+      if (tracer_names_loc[tr] == std::string("cloud_liquid") || tracer_names_loc[tr] == std::string("cloud_water")) {
         dm_id_liq = tr;
         liquid_found = true;
       }
@@ -74,9 +75,9 @@ public:
     }
     if (ntracers_physics>0)
     {
-    if (! water_vapor_found) endrun("ERROR: processed registered tracers, and water_vapor was not found");
-    if (! liquid_found) endrun("ERROR: processed registered tracers, and cloud_liquid was not found");
-    if (! ice_found) endrun("ERROR: processed registered tracers, and cloud_ice was not found");
+    if (! water_vapor_found) {endrun("ERROR: processed registered tracers, and water_vapor was not found");}
+    //if (! liquid_found) {endrun("ERROR: processed registered tracers, and cloud_liquid was not found");}
+    //if (! ice_found) {endrun("ERROR: processed registered tracers, and cloud_ice was not found");}
     }
     
     for (int i=ndensity_dycore; i<ndensity_nophysics; i++)
@@ -97,18 +98,14 @@ public:
   virtual real YAKL_INLINE get_total_density(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {};
   virtual real YAKL_INLINE get_dry_density(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {};
   virtual real YAKL_INLINE get_entropic_var(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {};
-  virtual real YAKL_INLINE get_vap_density(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {};
-  virtual real YAKL_INLINE get_liq_density(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {};
-  virtual real YAKL_INLINE get_ice_density(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {};
-  virtual void YAKL_INLINE set_total_density(real dens, real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {};
-  virtual void YAKL_INLINE set_dry_density(real drydens, real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {};
-  virtual void YAKL_INLINE set_entropic_density(real entropic_var, real dens, real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {};
+  virtual void YAKL_INLINE set_density(real dens, real dry_dens, real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {};
+  virtual void YAKL_INLINE set_entropic_density(real entropic_var_density, real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {};
   virtual real YAKL_INLINE get_alpha(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {};
   virtual real YAKL_INLINE get_qd(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {};
   virtual real YAKL_INLINE get_qv(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {};
   virtual real YAKL_INLINE get_ql(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {};
   virtual real YAKL_INLINE get_qi(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {};
-  
+
   void convert_dynamics_to_coupler_state(PamCoupler &coupler, const FieldSet<nprognostic> &prog_vars, const FieldSet<nconstant> &const_vars) {};
   void convert_coupler_to_dynamics_state(PamCoupler &coupler, FieldSet<nprognostic> &prog_vars, const FieldSet<nconstant> &const_vars) {};
 };
@@ -148,22 +145,21 @@ public:
        //real wvel_d  = prog_vars.fields_arr[WVAR].data(0,k+pks-1,j+pjs,i+pis,n) / pgeom.get_area_01entity(k+pks-1,j+pjs,i+pis);
    //EVENTUALLY FIX THIS FOR 3D...
        //real vvel  = 0.0_fp;
-  
-      real dens = get_total_density(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
-      real dens_dry = get_dry_density(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
-      real dens_vap = get_vap_density(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
-      real dens_liq = get_liq_density(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
-      real dens_ice = get_ice_density(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);    
+       
+      real qd = get_qd(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
+      real qv = get_qv(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
+      real alpha = get_alpha(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
       real entropic_var = get_entropic_var(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);   
+      
+      real ql = 0.0_fp;
+      if (liquid_found) {ql = get_qv(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);}
 
-      real qd = dens_dry / dens;
-      real qv = dens_vap / dens;
-      real ql = dens_liq / dens;
-      real qi = dens_ice / dens;
-      real alpha = 1.0_fp / dens;
+      real qi = 0.0_fp;
+      if (ice_found) {qi = get_qi(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);}
+      
       real temp = thermo->compute_T(alpha, entropic_var, qd, qv, ql, qi);
         
-      dm_dens_dry(k,j,i,n) = dens_dry;
+      dm_dens_dry(k,j,i,n) = get_dry_density(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n) / dual_geometry->get_area_11entity(k+dks,j+djs,i+dis);
       // dm_uvel    (k,j,i,n) = (uvel_l + uvel_r) * 0.5_fp;
       // dm_vvel    (k,j,i,n) = vvel;
       // dm_wvel    (k,j,i,n) = (wvel_u + wvel_d) * 0.5_fp;
@@ -202,22 +198,24 @@ public:
     
     //ADD VELOCITY COUPLING IN HERE PROPERLY
     //SHOULD REALLY BE LOOPING OVER PRIMAL EDGES, PROBABLY...
-    
-    real dens_vap = dm_tracers(dm_id_vap,k,j,i,n);
-    real dens_liq = dm_tracers(dm_id_liq,k,j,i,n);
-    real dens_ice = dm_tracers(dm_id_ice,k,j,i,n);
     real dens_dry = dm_dens_dry(k,j,i,n);
+    real dens_vap = dm_tracers(dm_id_vap,k,j,i,n);
+    real dens_liq = 0.0_fp;
+    real dens_ice = 0.0_fp;
+    if (liquid_found) {dens_liq = dm_tracers(dm_id_liq,k,j,i,n);}
+    if (ice_found) {dens_ice = dm_tracers(dm_id_ice,k,j,i,n);}
     real dens = dens_dry + dens_ice + dens_liq + dens_vap;
+
     real qd = dens_dry / dens;
     real qv = dens_vap / dens;
     real ql = dens_liq / dens;
     real qi = dens_ice / dens;
+
     real alpha = 1.0_fp / dens;
     real entropic_var = thermo->compute_entropic_var_from_T(alpha, temp, qd, qv, ql, qi);
     
-    set_total_density(dens, prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
-    set_dry_density(dens_dry, prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
-    set_entropic_density(entropic_var, dens, prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
+    set_density(dens * dual_geometry->get_area_11entity(k+dks,j+djs,i+dis), dens_dry * dual_geometry->get_area_11entity(k+dks,j+djs,i+dis), prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
+    set_entropic_density(entropic_var * dens * dual_geometry->get_area_11entity(k+dks,j+djs,i+dis), prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
 
     for (int tr=ndensity_nophysics; tr < ndensity; tr++) {
       prog_vars.fields_arr[DENSVAR].data(tr,k+dks,j+djs,i+dis,n) = dm_tracers(tr-ndensity_nophysics,k,j,i,n) * dual_geometry->get_area_11entity(k+dks,j+djs,i+dis);
@@ -230,6 +228,7 @@ public:
 
 //ADD ANELASTIC AND PRESSURE VERSIONS HERE ALSO
 class VariableSet_SWE : public VariableSet {
+public:
   void initialize(PamCoupler &coupler, ModelParameters &params, ThermoPotential &thermodynamics, Topology &primal_topo, Topology &dual_topo, Geometry &primal_geom, Geometry &dual_geom)
   {
     dens_name[0] = "h";
@@ -240,6 +239,7 @@ class VariableSet_SWE : public VariableSet {
 };
 
 class VariableSet_TSWE : public VariableSet {
+public:
   void initialize(PamCoupler &coupler, ModelParameters &params, ThermoPotential &thermodynamics, Topology &primal_topo, Topology &dual_topo, Geometry &primal_geom, Geometry &dual_geom)
   {
     dens_name[0] = "h";
@@ -273,7 +273,8 @@ public:
 };
   
   
-  
+//We rely on physics packages ie micro to provide water species- must at least have vapor and cloud liquid
+
 class VariableSet_MCE_rho : public VariableSet_Couple {
 public:
   void initialize(PamCoupler &coupler, ModelParameters &params, ThermoPotential &thermodynamics, Topology &primal_topo, Topology &dual_topo, Geometry &primal_geom, Geometry &dual_geom)
@@ -286,50 +287,52 @@ public:
     dens_pos[1] = false;
     VariableSet::initialize(coupler, params, thermodynamics, primal_topo, dual_topo, primal_geom, dual_geom);
   }
-  real YAKL_INLINE get_total_density(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
-    return densvar(0,k+ks,j+js,i+is,n) / dual_geometry->get_area_11entity(k+ks,j+js,i+is);
-  };
   
-  real YAKL_INLINE get_dry_density(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
-    return (densvar(0,k+ks,j+js,i+is,n) - densvar(dm_id_vap + ndensity_nophysics,k+ks,j+js,i+is,n) - densvar(dm_id_liq + ndensity_nophysics,k+ks,j+js,i+is,n) - densvar(dm_id_ice + ndensity_nophysics,k+ks,j+js,i+is,n)) / dual_geometry->get_area_11entity(k+ks,j+js,i+is);
-  };
+
+  real YAKL_INLINE get_total_density(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
+    return densvar(0,k+ks,j+js,i+is,n);
+  }
+
   real YAKL_INLINE get_entropic_var(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
     return densvar(1,k+ks,j+js,i+is,n) / densvar(0,k+ks,j+js,i+is,n);
-  };
-  real YAKL_INLINE get_vap_density(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
-    return densvar(dm_id_vap + ndensity_nophysics,k+ks,j+js,i+is,n) / dual_geometry->get_area_11entity(k+ks,j+js,i+is);
-  };
-  real YAKL_INLINE get_liq_density(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
-    return densvar(dm_id_liq + ndensity_nophysics,k+ks,j+js,i+is,n) / dual_geometry->get_area_11entity(k+ks,j+js,i+is);
-  };
-  real YAKL_INLINE get_ice_density(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
-    return densvar(dm_id_ice + ndensity_nophysics,k+ks,j+js,i+is,n) / dual_geometry->get_area_11entity(k+ks,j+js,i+is);
-  };
+  }
 
   real YAKL_INLINE get_alpha(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
     return dual_geometry->get_area_11entity(k+ks,j+js,i+is) / densvar(0,k+ks,j+js,i+is,n);
-  };
-  real YAKL_INLINE get_qd(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
-    return (densvar(0,k+ks,j+js,i+is,n) - densvar(dm_id_vap + ndensity_nophysics,k+ks,j+js,i+is,n) - densvar(dm_id_liq + ndensity_nophysics,k+ks,j+js,i+is,n) - densvar(dm_id_ice + ndensity_nophysics,k+ks,j+js,i+is,n)) / densvar(0,k+ks,j+js,i+is,n);
-  };
+  }
+
   real YAKL_INLINE get_qv(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
     return densvar(dm_id_vap + ndensity_nophysics,k+ks,j+js,i+is,n) / densvar(0,k+ks,j+js,i+is,n);
-  };
+  }
   real YAKL_INLINE get_ql(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
     return densvar(dm_id_liq + ndensity_nophysics,k+ks,j+js,i+is,n) / densvar(0,k+ks,j+js,i+is,n);
-  };
+  }
   real YAKL_INLINE get_qi(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
     return densvar(dm_id_ice + ndensity_nophysics,k+ks,j+js,i+is,n) / densvar(0,k+ks,j+js,i+is,n);
-  };
+  }
   
-  void YAKL_INLINE set_total_density(real dens, real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
-    densvar(0,k+ks,j+js,i+is,n) = dens * dual_geometry->get_area_11entity(k+ks,j+js,i+is);
-  };
-  void YAKL_INLINE set_dry_density(real drydens, real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
-  };
-  void YAKL_INLINE set_entropic_density(real entropic_var, real dens, real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
-    densvar(1,k+ks,j+js,i+is,n) = entropic_var * dens * dual_geometry->get_area_11entity(k+ks,j+js,i+is);
-  };
+  real YAKL_INLINE _water_dens(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
+    real vap_dens = densvar(dm_id_vap + ndensity_nophysics,k+ks,j+js,i+is,n);
+    real liq_dens = 0.0_fp;
+    real ice_dens = 0.0_fp;
+    if (liquid_found) {liq_dens = densvar(dm_id_liq + ndensity_nophysics,k+ks,j+js,i+is,n);}
+    if (ice_found) {ice_dens = densvar(dm_id_ice + ndensity_nophysics,k+ks,j+js,i+is,n);}
+    return vap_dens + liq_dens + ice_dens;
+  }   
+  
+  real YAKL_INLINE get_dry_density(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
+    return (densvar(0,k+ks,j+js,i+is,n) - _water_dens(densvar, k, j, i, ks, js, is, n));
+  }
+  real YAKL_INLINE get_qd(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
+    return (densvar(0,k+ks,j+js,i+is,n) - _water_dens(densvar, k, j, i, ks, js, is, n)) / densvar(0,k+ks,j+js,i+is,n);
+  }
+
+  void YAKL_INLINE set_density(real dens, real dryden, real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
+    densvar(0,k+ks,j+js,i+is,n) = dens;
+  }
+  void YAKL_INLINE set_entropic_density(real entropic_var_density, real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
+    densvar(1,k+ks,j+js,i+is,n) = entropic_var_density;
+  }
   
   
 };
@@ -346,48 +349,44 @@ public:
     dens_pos[1] = false;
     VariableSet::initialize(coupler, params, thermodynamics, primal_topo, dual_topo, primal_geom, dual_geom);
   }
-  real YAKL_INLINE get_total_density(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
-    return (densvar(0,k+ks,j+js,i+is,n) + densvar(dm_id_vap + ndensity_nophysics,k+ks,j+js,i+is,n) + densvar(dm_id_liq + ndensity_nophysics,k+ks,j+js,i+is,n) + densvar(dm_id_ice + ndensity_nophysics,k+ks,j+js,i+is,n)) / dual_geometry->get_area_11entity(k+ks,j+js,i+is);
-  };
+
+real YAKL_INLINE get_total_density(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
+  real dry_dens = densvar(0,k+ks,j+js,i+is,n);
+  real vap_dens = densvar(dm_id_vap + ndensity_nophysics,k+ks,j+js,i+is,n);
+  real liq_dens = 0.0_fp;
+  real ice_dens = 0.0_fp;
+  if (liquid_found) {liq_dens = densvar(dm_id_liq + ndensity_nophysics,k+ks,j+js,i+is,n);}
+  if (ice_found) {ice_dens = densvar(dm_id_ice + ndensity_nophysics,k+ks,j+js,i+is,n);}
+  return dry_dens + vap_dens + liq_dens + ice_dens;
+}
   
   real YAKL_INLINE get_dry_density(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
-    return densvar(0,k+ks,j+js,i+is,n) / dual_geometry->get_area_11entity(k+ks,j+js,i+is);
-  };
+    return densvar(0,k+ks,j+js,i+is,n);
+  }
   real YAKL_INLINE get_entropic_var(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
-    return densvar(1,k+ks,j+js,i+is,n) / (densvar(0,k+ks,j+js,i+is,n) + densvar(dm_id_vap + ndensity_nophysics,k+ks,j+js,i+is,n) + densvar(dm_id_liq + ndensity_nophysics,k+ks,j+js,i+is,n) + densvar(dm_id_ice + ndensity_nophysics,k+ks,j+js,i+is,n));
-  };
-  real YAKL_INLINE get_vap_density(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
-    return densvar(dm_id_vap + ndensity_nophysics,k+ks,j+js,i+is,n) / dual_geometry->get_area_11entity(k+ks,j+js,i+is);
-  };
-  real YAKL_INLINE get_liq_density(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
-    return densvar(dm_id_liq + ndensity_nophysics,k+ks,j+js,i+is,n) / dual_geometry->get_area_11entity(k+ks,j+js,i+is);
-  };
-  real YAKL_INLINE get_ice_density(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
-    return densvar(dm_id_ice + ndensity_nophysics,k+ks,j+js,i+is,n) / dual_geometry->get_area_11entity(k+ks,j+js,i+is);
-  };
+    return densvar(1,k+ks,j+js,i+is,n) / get_total_density(densvar, k, j, i, ks, js, is, n);
+  }
   
   real YAKL_INLINE get_alpha(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
-    return dual_geometry->get_area_11entity(k+ks,j+js,i+is) / (densvar(0,k+ks,j+js,i+is,n) + densvar(dm_id_vap + ndensity_nophysics,k+ks,j+js,i+is,n) + densvar(dm_id_liq + ndensity_nophysics,k+ks,j+js,i+is,n) + densvar(dm_id_ice + ndensity_nophysics,k+ks,j+js,i+is,n));
-  };
+    return dual_geometry->get_area_11entity(k+ks,j+js,i+is) / get_total_density(densvar, k, j, i, ks, js, is, n);
+  }
   real YAKL_INLINE get_qd(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
-    return densvar(0,k+ks,j+js,i+is,n) / (densvar(0,k+ks,j+js,i+is,n) + densvar(dm_id_vap + ndensity_nophysics,k+ks,j+js,i+is,n) + densvar(dm_id_liq + ndensity_nophysics,k+ks,j+js,i+is,n) + densvar(dm_id_ice + ndensity_nophysics,k+ks,j+js,i+is,n));
-  };
+    return densvar(0,k+ks,j+js,i+is,n) / get_total_density(densvar, k, j, i, ks, js, is, n);
+  }
+  
   real YAKL_INLINE get_qv(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
-    return densvar(dm_id_vap + ndensity_nophysics,k+ks,j+js,i+is,n) / (densvar(0,k+ks,j+js,i+is,n) + densvar(dm_id_vap + ndensity_nophysics,k+ks,j+js,i+is,n) + densvar(dm_id_liq + ndensity_nophysics,k+ks,j+js,i+is,n) + densvar(dm_id_ice + ndensity_nophysics,k+ks,j+js,i+is,n));
-  };
+    return densvar(dm_id_vap + ndensity_nophysics,k+ks,j+js,i+is,n) /  get_total_density(densvar, k, j, i, ks, js, is, n);  
+  }
   real YAKL_INLINE get_ql(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
-    return densvar(dm_id_liq + ndensity_nophysics,k+ks,j+js,i+is,n) / (densvar(0,k+ks,j+js,i+is,n) + densvar(dm_id_vap + ndensity_nophysics,k+ks,j+js,i+is,n) + densvar(dm_id_liq + ndensity_nophysics,k+ks,j+js,i+is,n) + densvar(dm_id_ice + ndensity_nophysics,k+ks,j+js,i+is,n));
-  };
+    return densvar(dm_id_liq + ndensity_nophysics,k+ks,j+js,i+is,n) /  get_total_density(densvar, k, j, i, ks, js, is, n);  
+  }
   real YAKL_INLINE get_qi(const real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
-    return densvar(dm_id_ice + ndensity_nophysics,k+ks,j+js,i+is,n) / (densvar(0,k+ks,j+js,i+is,n) + densvar(dm_id_vap + ndensity_nophysics,k+ks,j+js,i+is,n) + densvar(dm_id_liq + ndensity_nophysics,k+ks,j+js,i+is,n) + densvar(dm_id_ice + ndensity_nophysics,k+ks,j+js,i+is,n));
-  };
-
-  void YAKL_INLINE set_total_density(real dens, real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
-  };
-  void YAKL_INLINE set_dry_density(real drydens, real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
-    densvar(0,k+ks,j+js,i+is,n) = drydens * dual_geometry->get_area_11entity(k+ks,j+js,i+is);
-  };
-  void YAKL_INLINE set_entropic_density(real entropic_var, real dens, real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
-    densvar(1,k+ks,j+js,i+is,n) = entropic_var * dens * dual_geometry->get_area_11entity(k+ks,j+js,i+is);
-  };
+    return densvar(dm_id_ice + ndensity_nophysics,k+ks,j+js,i+is,n) /  get_total_density(densvar, k, j, i, ks, js, is, n);  
+  }
+  void YAKL_INLINE set_density(real dens, real drydens, real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
+    densvar(0,k+ks,j+js,i+is,n) = drydens;
+  }
+  void YAKL_INLINE set_entropic_density(real entropic_var_density, real5d densvar, int k, int j, int i, int ks, int js, int is, int n) {
+    densvar(1,k+ks,j+js,i+is,n) = entropic_var_density;
+  }
 };

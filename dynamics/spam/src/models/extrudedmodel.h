@@ -17,8 +17,6 @@
 Functional_PVPE_extruded PVPE;
 Hamiltonian_Hk_extruded Hk;
 
-// EVENTUALLY THESE NEED VARIABLESETS, AND A MORE CLEVER UNIFIED HAMILTONIAN IDEALLY?
-
 #ifdef _SWE
 Hamiltonian_SWE_Hs Hs;
 VariableSet_SWE varset;
@@ -45,7 +43,6 @@ Hamiltonian_MCE_p_Hs Hs;
 VariableSet_MCE_rhodp varset;
 #endif
 //ADD ANELASTIC + MOIST ANELASTIC
-//MIGHT NEED MORE CLEVER Hk/PVPE HERE? NOT SURE...
 
 #ifdef _THERMONONE
 ThermoPotential thermo;
@@ -923,6 +920,23 @@ real const rh0 = 0.8;
 };
 smallbubble_constants rb_constants;
 
+struct largebubble_constants  {
+  real const g = 9.80616;
+  real const Lx = 20000.;
+  real const Lz = 20000.;
+  real const xc = 0.5 * Lx;
+  real const zc = 0.5 * Lz;
+  real const theta0 = 300.0;
+  real const bzc = 2000.;
+  real const xrad = 2000.;
+  real const zrad = 2000.;
+  real const amp_theta = 2.0;
+  real const amp_vapor = 0.8;
+  real const Cpv = 1859.;
+  real const Cpd = 1003.;
+};
+largebubble_constants lrb_constants;
+
 // Universal
 
 real YAKL_INLINE isentropic_T(real x, real z, real theta0, real g)
@@ -961,6 +975,11 @@ real YAKL_INLINE flat_geop(real x, real z, real g)
    real tc = temp - 273.15_fp;
    return 610.94_fp * exp( 17.625_fp*tc / (243.04_fp + tc) );
  }
+
+
+
+
+
 
  // (Moist) Rising Bubble (small-scale)
 
@@ -1043,6 +1062,79 @@ real YAKL_INLINE flat_geop(real x, real z, real g)
 
 
 
+ // (Moist) Rising Bubble (large-scale)
+
+ real YAKL_INLINE lrb_entropicvar(real x, real z) {
+   
+   real p = isentropic_p(x, z, lrb_constants.theta0, lrb_constants.g);
+   real T0 = isentropic_T(x, z, lrb_constants.theta0, lrb_constants.g);
+   real dtheta = linear_ellipsoid(x, z, lrb_constants.xc, lrb_constants.bzc, lrb_constants.xrad, lrb_constants.zrad, lrb_constants.amp_theta);
+   real dT = dtheta * pow(p/thermo.cst.pr, thermo.cst.kappa_d);
+   return thermo.compute_entropic_var(p, T0+dT, 0, 0, 0, 0);
+
+ }
+
+ real YAKL_INLINE lrb_rho(real x, real z)
+ {
+   return isentropic_rho(x, z, lrb_constants.theta0, lrb_constants.g);
+ }
+
+ real YAKL_INLINE lrb_entropicdensity(real x, real z) {
+   return lrb_entropicvar(x,z) * lrb_rho(x,z);
+ }
+
+ // real YAKL_INLINE lrb_rho_acousticbalance(real x, real z) {
+ //   real rho_b = lrb_rho(x,z);
+ //   real theta = lrb_entropicvar(x,z);
+ //   return rho_b * lrb_constants.theta0 / theta;
+ // 
+ // }
+ // 
+ // real YAKL_INLINE lrb_entropicdensity_acousticbalance(real x, real z) {
+ //   return lrb_entropicvar(x,z) * lrb_rho_acousticbalance(x,z);
+ // }
+
+ real YAKL_INLINE lrb_geop(real x, real z)
+ {
+   return flat_geop(x,z,lrb_constants.g);
+ }
+
+ real YAKL_INLINE mlrb_rho_d(real x, real z) {
+   real p = isentropic_p(x, z, lrb_constants.theta0, lrb_constants.g);
+   real T = isentropic_T(x, z, lrb_constants.theta0, lrb_constants.g);
+   real alpha = thermo.compute_alpha(p, T, 1, 0, 0, 0);
+   return 1._fp/alpha;
+ }
+
+ real YAKL_INLINE mlrb_rho_v(real x, real z) {
+  
+   real pert = linear_ellipsoid(x, z, lrb_constants.xc, lrb_constants.bzc, lrb_constants.xrad, lrb_constants.zrad, lrb_constants.amp_vapor);
+   real Th = isentropic_T(x, z, lrb_constants.theta0, rb_constants.g);
+   real svp = saturation_vapor_pressure(Th);
+   real pv = svp * pert;
+   return pv / (thermo.cst.Rv * Th);
+ }
+
+
+ real YAKL_INLINE mlrb_rho(real x, real z) {
+   real rhod = mlrb_rho_d(x,z);
+   real rhov = mlrb_rho_v(x,z);
+   return rhod + rhov;
+ }
+
+ real YAKL_INLINE mlrb_entropicvar(real x, real z) {
+   
+   real p = isentropic_p(x, z, lrb_constants.theta0, lrb_constants.g);
+   real T0 = isentropic_T(x, z, lrb_constants.theta0, lrb_constants.g);
+   real dtheta = linear_ellipsoid(x, z, lrb_constants.xc, lrb_constants.bzc, lrb_constants.xrad, lrb_constants.zrad, lrb_constants.amp_theta);
+   real dT = dtheta * pow(p/thermo.cst.pr, thermo.cst.kappa_d);
+   return thermo.compute_entropic_var(p, T0+dT, 1, 0, 0, 0);
+ }
+ 
+ real YAKL_INLINE mlrb_entropicdensity(real x, real z) {
+   return mlrb_entropicvar(x,z) * mlrb_rho(x,z);
+ }
+
 
 
 
@@ -1063,8 +1155,8 @@ real YAKL_INLINE flat_geop(real x, real z, real g)
    
    for (int i=0;i<ntracers_dycore;i++)
    {
-     params.tracerdataStr[i] = config["initTracer" + std::to_string(i+1)].as<std::string>();
-     params.dycore_tracerpos[i] = config["initTracerPos" + std::to_string(i+1)].as<bool>();
+     params.tracerdataStr[i] = config["initTracer" + std::to_string(i)].as<std::string>();
+     params.dycore_tracerpos[i] = config["initTracerPos" + std::to_string(i)].as<bool>();
      serial_print("Dycore Tracer" + std::to_string(i) + " IC: " + params.tracerdataStr[i], par.masterproc);
    }
    
@@ -1093,6 +1185,15 @@ params.zlen = rb_constants.Ly;
 params.xc = rb_constants.Lx * 0.5_fp;
 params.zc = rb_constants.Ly  * 0.5_fp;
 }
+
+if (initData == "largerisingbubble" or initData == "moistlargerisingbubble")
+{
+params.xlen = lrb_constants.Lx;
+params.zlen = lrb_constants.Lz;
+params.xc = lrb_constants.Lx * 0.5_fp;
+params.zc = lrb_constants.Lz  * 0.5_fp;
+}
+
 }
   
 void set_initial_conditions (ModelParameters &params, FieldSet<nprognostic> &progvars, FieldSet<nconstant> &constvars, 
@@ -1116,9 +1217,9 @@ primal_geom.set_01form_values(double_vortex_v,progvars.fields_arr[WVAR], 0, LINE
 // SHOULD BE USABLE FOR ANY IC!
 for (int i=0; i<ntracers_dycore; i++)
 {
-if (params.tracerdataStr[i] == "gaussian") {dual_geom.set_11form_values(double_vortex_tracer_gaussian, progvars.fields_arr[DENSVAR], i+ndensity-ntracers_dycore);}
-if (params.tracerdataStr[i] == "square") {dual_geom.set_11form_values(double_vortex_tracer_square_cent, progvars.fields_arr[DENSVAR], i+ndensity-ntracers_dycore);}
-if (params.tracerdataStr[i] == "doublesquare") {dual_geom.set_11form_values(double_vortex_tracer_square_urpll, progvars.fields_arr[DENSVAR], i+ndensity-ntracers_dycore);}
+if (params.tracerdataStr[i] == "gaussian") {dual_geom.set_11form_values(double_vortex_tracer_gaussian, progvars.fields_arr[DENSVAR], i+ndensity_dycore);}
+if (params.tracerdataStr[i] == "square") {dual_geom.set_11form_values(double_vortex_tracer_square_cent, progvars.fields_arr[DENSVAR], i+ndensity_dycore);}
+if (params.tracerdataStr[i] == "doublesquare") {dual_geom.set_11form_values(double_vortex_tracer_square_urpll, progvars.fields_arr[DENSVAR], i+ndensity_dycore);}
 }
 Hs.set_parameters(dbl_vortex_constants.g);
   }
@@ -1151,6 +1252,36 @@ Hs.set_parameters(dbl_vortex_constants.g);
     dual_geom.set_11form_values(mrb_entropicdensity, progvars.fields_arr[DENSVAR], 1);
     dual_geom.set_11form_values(mrb_rho_v, progvars.fields_arr[DENSVAR], varset.dm_id_vap + ndensity_nophysics);
     dual_geom.set_11form_values(rb_geop, constvars.fields_arr[HSVAR], 0);
+  }
+  
+  if (params.initdataStr == "largerisingbubble")
+  {
+    // if (params.acoustic_balance)
+    // {
+    // dual_geom.set_11form_values(lrb_rho_acousticbalance, progvars.fields_arr[DENSVAR], 0);
+    // dual_geom.set_11form_values(lrb_entropicdensity_acousticbalance, progvars.fields_arr[DENSVAR], 1);
+    // }
+    // else
+    // {
+      dual_geom.set_11form_values(lrb_rho, progvars.fields_arr[DENSVAR], 0);
+      dual_geom.set_11form_values(lrb_entropicdensity, progvars.fields_arr[DENSVAR], 1);      
+    //}
+    dual_geom.set_11form_values(lrb_geop, constvars.fields_arr[HSVAR], 0);
+  }
+
+  
+  // ADD ACOUSTIC BALANCING HERE
+  if (params.initdataStr == "moistlargerisingbubble")
+  {
+    // ADD ANELASTIC/MOIST ANELASTIC?
+    #if defined _MCErhod || defined _MCErhodp
+    dual_geom.set_11form_values(mlrb_rho_d, progvars.fields_arr[DENSVAR], 0);
+    #elif defined _MCErho || defined _MCErhop
+    dual_geom.set_11form_values(mlrb_rho, progvars.fields_arr[DENSVAR], 0);    
+    #endif
+    dual_geom.set_11form_values(mlrb_entropicdensity, progvars.fields_arr[DENSVAR], 1);
+    dual_geom.set_11form_values(mlrb_rho_v, progvars.fields_arr[DENSVAR], varset.dm_id_vap + ndensity_nophysics);
+    dual_geom.set_11form_values(lrb_geop, constvars.fields_arr[HSVAR], 0);
   }
   
 }

@@ -64,18 +64,21 @@ class Dycore {
 
   void init(PamCoupler &coupler) {
     
-    serial_print("setting up dycore", par.masterproc);
-    
     // Get MPI Info
     ierr = MPI_Comm_size(MPI_COMM_WORLD,&par.nranks);
     ierr = MPI_Comm_rank(MPI_COMM_WORLD,&par.myrank);
-    
+    // Determine if I'm the master process
+    par.masterproc = par.myrank == 0;
+    params.masterproc = par.masterproc;
+
+    serial_print("setting up dycore", par.masterproc);
+
     //Set parameters
-    std::string inFile = coupler.get_option<std::string>( "standalone_input_file" );
     debug_print("reading parameters", par.masterproc);
+    std::string inFile = coupler.get_option<std::string>( "standalone_input_file" );
     readModelParamsFile(inFile, params, par, coupler.get_nz());
     debug_print("read parameters", par.masterproc);
-    
+
 // HOW DO WE HANDLE VERTICAL LEVELS STUFF?
 // BASICALLY A NEW GEOMETRY, I THINK?
 
@@ -127,28 +130,30 @@ class Dycore {
     io.initialize(params.outputName, primal_topology, dual_topology, par, prognostic_vars, constant_vars, diagnostic_vars, stats);
     debug_print("finish io init", par.masterproc);
 
-//EVENTUALLY THIS NEEDS TO BE MORE CLEVER IE POSSIBLY DO NOTHING BASED ON THE IC STRING?
-    // set the initial conditions
+    // // Initialize the tendencies and diagnostics
+    debug_print("start tendencies/diagnostic init", par.masterproc);
+    tendencies.initialize(coupler, params, primal_topology, dual_topology, primal_geometry, dual_geometry, aux_exchange, const_exchange);
+    diagnostics.initialize(primal_topology, dual_topology, primal_geometry, dual_geometry, diag_exchange);
+    debug_print("end tendencies/diagnostic init", par.masterproc);
+
+    //EVENTUALLY THIS NEEDS TO BE MORE CLEVER IE POSSIBLY DO NOTHING BASED ON THE IC STRING?
+    // set the initial conditions and compute initial stats
     debug_print("start ic setting", par.masterproc);
     set_initial_conditions(params, prognostic_vars, constant_vars, primal_geometry, dual_geometry);
-    // Do a boundary exchange
     prog_exchange.exchange_variable_set(prognostic_vars);
     const_exchange.exchange_variable_set(constant_vars);
-    debug_print("end ic setting", par.masterproc);
-
-
-    // // Initialize the time stepper, tendencies, diagnostics; compute initial stats
-    debug_print("start ts/tendencies/diagnostics init", par.masterproc);
-    tendencies.initialize(coupler, params, primal_topology, dual_topology, primal_geometry, dual_geometry, aux_exchange, const_exchange);
     tendencies.compute_constants(constant_vars, prognostic_vars);
-    diagnostics.initialize(primal_topology, dual_topology, primal_geometry, dual_geometry, diag_exchange);
-    tint.initialize(params, tendencies, prognostic_vars, constant_vars, auxiliary_vars, prog_exchange);
-    debug_print("end ts/tendencies/diagnostics init", par.masterproc);
+    const_exchange.exchange_variable_set(constant_vars);
     stats.compute(prognostic_vars, constant_vars, 0);
+    debug_print("end ic setting", par.masterproc);
+        
+    // // Initialize the time stepper 
+    debug_print("start ts init", par.masterproc);
+    tint.initialize(params, tendencies, prognostic_vars, constant_vars, auxiliary_vars, prog_exchange);
+    debug_print("end ts init", par.masterproc);
 
     // convert dynamics state to Coupler state
     tendencies.convert_dynamics_to_coupler_state(coupler, prognostic_vars, constant_vars);
-    
     
     // Output the initial model state
     debug_print("start initial io", par.masterproc);

@@ -21,11 +21,6 @@ void readParamsFile(std::string inFile, ModelParameters &params, Parallel &par, 
   //Read config file
   YAML::Node config = YAML::LoadFile(inFile);
 
-  // Determine if I'm the master process
-  if (par.myrank == 0) { par.masterproc = 1;}
-  else { par.masterproc = 0; }
-  params.masterproc = par.masterproc;
-  
   int ierr;
 
  params.nx_glob = config["crm_nx"].as<int>();
@@ -55,7 +50,7 @@ void readParamsFile(std::string inFile, ModelParameters &params, Parallel &par, 
 
   params.tstype = config["tstype"].as<std::string>();
 
-  params.outputName = config["out_prefix"].as<std::string>("output") + "_dycore" + ".nc";
+  params.outputName = config["out_prefix"].as<std::string>("output");
 
   //Get my process grid IDs
   par.py = floor(par.myrank / par.nprocx);

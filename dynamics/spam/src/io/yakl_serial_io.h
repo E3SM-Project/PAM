@@ -44,34 +44,53 @@ FileIO::FileIO()
 
 
   
-     this->outputName = outName;
+     this->outputName = outName + std::to_string(par.myrank) + ".nc";
      this->prog_vars = &progvars;
      this->const_vars = &constvars;
      this->diag_vars = &diagvars;
      this->statistics = &stats;
      this->masterproc = par.masterproc;
      
-     int nranks;
-     int ierr = MPI_Comm_size(MPI_COMM_WORLD,&nranks);
-     if (nranks > 1) {endrun("spam++ cannot use serial IO in a parallel run");}     
+     //int nranks;
+     //int ierr = MPI_Comm_size(MPI_COMM_WORLD,&nranks);
+     //if (nranks > 1) {endrun("spam++ cannot use serial IO in a parallel run");}     
+     
+     
+     //NEED TO OUTPUT A LOT MORE INFO HERE
+     // start/end indices, density names, etc.
+     // basically all the info that is output to terminal
+     // also coordinate values for various dofs
+     // and dof values for various fields
+     // some of these are field attributes, and some are global attributes
+     
+     // field attributes- dof values, density names
+     // global attributes- start/end indices, initial cond, dt's, nsteps/out/stat, nranks, nprocx/nprocy, crm_per_phys, etc. basically all the yaml file info; plus some parallel decomp stuff
+     // new arrays- coordinate values for all the various dofs
      
      nc.create(this->outputName);
      nc.createDim( "t" );
-     nc.createDim( "primal_ncells_x" ,  ptopo.nx_glob );
-     nc.createDim( "primal_ncells_y" ,  ptopo.ny_glob );
+     //nc.createDim( "primal_ncells_x" ,  ptopo.nx_glob );
+     //nc.createDim( "primal_ncells_y" ,  ptopo.ny_glob );
+     nc.createDim( "primal_ncells_x" ,  ptopo.n_cells_x );
+     nc.createDim( "primal_ncells_y" ,  ptopo.n_cells_y );
      nc.createDim( "primal_nlayers" ,  ptopo.nl );
      nc.createDim( "primal_ninterfaces" ,  ptopo.ni );
-     nc.createDim( "dual_ncells_x" ,  dtopo.nx_glob );
-     nc.createDim( "dual_ncells_y" ,  dtopo.ny_glob );
+     //nc.createDim( "dual_ncells_x" ,  dtopo.nx_glob );
+     //nc.createDim( "dual_ncells_y" ,  dtopo.ny_glob );
+     nc.createDim( "dual_ncells_x" ,  dtopo.n_cells_x );
+     nc.createDim( "dual_ncells_y" ,  dtopo.n_cells_y );
      nc.createDim( "dual_nlayers" ,  dtopo.nl );
      nc.createDim( "dual_ninterfaces" ,  dtopo.ni );
      nc.createDim( "nens" ,  ptopo.nens );
 
+     if (this->masterproc)
+     {
        nc.createDim( "statsize" ,  this->statistics->statsize );
        for (int l=0; l<this->statistics->stats_arr.size(); l++)
        {
          nc.createDim( this->statistics->stats_arr[l].name + "_ndofs" ,  this->statistics->stats_arr[l].ndofs );
      }
+   }
      
       
          for (int i=0; i<this->const_vars->fields_arr.size(); i++)
@@ -194,6 +213,8 @@ FileIO::FileIO()
    
    void FileIO::outputStats(const Stats &stats)
    {
+     if (this->masterproc)
+     {
      nc.open(this->outputName,yakl::NETCDF_MODE_WRITE);
      
      for (int l=0; l<this->statistics->stats_arr.size(); l++)
@@ -202,6 +223,7 @@ FileIO::FileIO()
      }
      
      nc.close();
+   }
 
    }
 

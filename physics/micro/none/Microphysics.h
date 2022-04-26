@@ -7,7 +7,7 @@
 
 using pam::PamCoupler;
 
-int static constexpr num_tracers_micro = 3;
+int static constexpr num_tracers_micro = 1;
 
 class Microphysics {
 public:
@@ -42,7 +42,7 @@ public:
 
   // Gotta have at least three tracers- the mass of water species
   int get_num_tracers() const {
-    return 3;
+    return 1;
   }
 
 
@@ -56,18 +56,12 @@ public:
 
     //                 name              description            positive   adds mass
     coupler.add_tracer("water_vapor"  , "Water Vapor"   ,       true     , true);
-    coupler.add_tracer("cloud_liquid" , "Cloud Liquid (Mass)",  true     , true);
-    coupler.add_tracer("cloud_ice"    , "Cloud Ice (Mass)"   ,  true     , true);
 
     // Zero out the tracers
     auto rho_v = coupler.dm.get_collapsed<real>("water_vapor");
-    auto rho_l = coupler.dm.get_collapsed<real>("cloud_liquid");
-    auto rho_i = coupler.dm.get_collapsed<real>("cloud_ice");
 
     parallel_for( nz*ny*nx*nens , YAKL_LAMBDA (int i) { 
 	rho_v(i) = 0; 
-	rho_l(i) = 0;
-	rho_i(i) = 0;
 	} );
 
     coupler.set_option<std::string>("micro","none");

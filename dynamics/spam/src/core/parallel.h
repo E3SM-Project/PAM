@@ -15,7 +15,7 @@ public:
 
   int nranks = -1;
   int myrank = -1;
-  int masterproc = -1;
+  bool masterproc;
   int px = -1;
   int py = -1;
 

@@ -201,7 +201,6 @@ public:
 Geometry::Geometry()
     {
       this->is_initialized = false;
-      std::cout << "CREATED GEOMETRY\n";
     }
 
 void Geometry::initialize(const Topology &topo)

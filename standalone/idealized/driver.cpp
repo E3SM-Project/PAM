@@ -12,6 +12,11 @@ int main(int argc, char** argv) {
   {
     
     int ierr = MPI_Init( &argc , &argv );
+    int myrank;
+    bool masterproc;
+    ierr = MPI_Comm_rank(MPI_COMM_WORLD,&myrank);
+    // Determine if I'm the master process
+    masterproc = myrank == 0;
     
     using yakl::intrinsics::abs;
     using yakl::intrinsics::maxval;
@@ -38,7 +43,7 @@ int main(int argc, char** argv) {
 
     // Read vertical coordinates
     real1d zint_in;
-//THIS IS BROKEN IN PARALLEL
+//THIS IS BROKEN FOR PARALLEL IO CASE
 if (crm_nz == 0)
 {
     yakl::SimpleNetCDF nc;
@@ -84,10 +89,12 @@ if (crm_nz == 0)
     dycore.init( coupler ); // Dycore should initialize its own state here
 
     #ifdef PAM_STANDALONE
+    if (masterproc) {
       std::cout << "Dycore: " << dycore.dycore_name() << std::endl;
       std::cout << "Micro : " << micro .micro_name () << std::endl;
       std::cout << "SGS   : " << sgs   .sgs_name   () << std::endl;
       std::cout << "\n";
+    }
     #endif
 
     // Now that we have an initial state, define hydrostasis for each ensemble member
@@ -115,12 +122,15 @@ if (crm_nz == 0)
 
       etime += dtphys;
       real maxw = maxval(abs(coupler.dm.get_collapsed<real const>("wvel")));
+      if (masterproc)
+      {
       std::cout << "Etime , dtphys, maxw: " << etime  << " , " 
                                             << dtphys << " , "
                                             << std::setw(10) << maxw << "\n";
+      }
     }
 
-    std::cout << "Elapsed Time: " << etime << "\n";
+    if (masterproc) {std::cout << "Elapsed Time: " << etime << "\n";}
 
     dycore.finalize( coupler );
 

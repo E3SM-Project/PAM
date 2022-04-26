@@ -14,7 +14,7 @@ cmake      \
   -DNCFLAGS="${NCFLAGS}"                                          \
   -DYAKL_ARCH="${YAKL_ARCH}"                                      \
   -DPAM_DYCORE="spam++"                                             \
-  -DPAM_MICRO="kessler"                                           \
+  -DPAM_MICRO="p3"                                           \
   -DPAM_SGS="none"                                                \
   -DPAMC_MODEL="extrudedmodel"                                                \
   -DPAMC_HAMIL="mce_rho"                                                \

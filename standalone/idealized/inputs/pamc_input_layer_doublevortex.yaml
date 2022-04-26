@@ -11,12 +11,19 @@ crm_nz       : 1
 
 # Data to initialize: doublevortex risingbubble moistrisingbubble
 initData : doublevortex
-initTracer1: square
-initTracer2: gaussian
-initTracer3: doublesquare
-initFCTTracer1: square
-initFCTTracer2: gaussian
-initFCTTracer3: doublesquare
+initTracer0: square
+initTracer1: gaussian
+initTracer2: doublesquare
+initTracer3: square
+initTracer4: gaussian
+initTracer5: doublesquare
+
+initTracerPos0: false
+initTracerPos1: false
+initTracerPos2: false
+initTracerPos3: true
+initTracerPos4: true
+initTracerPos5: true
 
 # Time steps
 dtphys: 1000.
@@ -38,6 +45,6 @@ tstype: ssprk3
 nens : 1
 
 # Parallel decomposition
-nprocx : 1
-nprocy : 1
+nprocx : 2
+nprocy : 2
 
