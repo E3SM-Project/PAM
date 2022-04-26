@@ -167,7 +167,7 @@ public:
     if (first_step) {
       // Invert the first column in x, z, and ensemble to use as reference pressure for shoc
       real1d pref_shoc("pref_shoc",nz);
-      parallel_for( Bounds<1>(nz) , YAKL_LAMBDA (int k) {
+      parallel_for( SimpleBounds<1>(nz) , YAKL_LAMBDA (int k) {
         pref_shoc(k) = pres_mid(nz-1-k,0);
       });
       real zvir = R_v / R_d - 1.;
@@ -256,7 +256,7 @@ public:
     real4d zint_tmp("zint_tmp",nz+1,ny,nx,nens);
     real4d zmid_tmp("zint_tmp",nz  ,ny,nx,nens);
 
-    parallel_for( Bounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+    parallel_for( SimpleBounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       zint_tmp(k,j,i,iens) = zint_pam(k,iens);
       if (k < nz) zmid_tmp(k,j,i,iens) = zmid_pam(k,iens);
     });
@@ -319,7 +319,7 @@ public:
     real latvap = this->latvap;
 
     // Compute inputs for SHOC (reordering the vertical dimension)
-    parallel_for( Bounds<2>(nz+1,ncol) , YAKL_LAMBDA (int k, int i) {
+    parallel_for( SimpleBounds<2>(nz+1,ncol) , YAKL_LAMBDA (int k, int i) {
       if (k == 0) {
         shoc_host_dx    (i) = crm_dx;
         shoc_host_dy    (i) = crm_dy;
@@ -552,7 +552,7 @@ public:
     #endif
 
     // Process outputs from SHOC (reordering the vertical dimension)
-    parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
+    parallel_for( SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
       int k_shoc = nz-1-k;
       real qw = shoc_qw(k_shoc,i);
       real ql = shoc_ql(k_shoc,i);

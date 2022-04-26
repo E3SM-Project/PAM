@@ -842,13 +842,15 @@ public:
 
   void get_cloud_fraction( realConst2d ast , realConst2d qc , realConst2d qr , realConst2d qi ,
                            real2d const &cld_frac_i , real2d const &cld_frac_l , real2d const &cld_frac_r ) {
+    using yakl::c::SimpleBounds;
+
     int nz   = ast.dimension[0];
     int ncol = ast.dimension[1];
 
     real constexpr mincld = 0.0001;
     real constexpr qsmall = 1.e-14;
 
-    parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
+    parallel_for( SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
       cld_frac_i(k,i) = yakl::max(ast(k,i), mincld);
       cld_frac_l(k,i) = yakl::max(ast(k,i), mincld);
       cld_frac_r(k,i) = yakl::max(ast(k,i), mincld);

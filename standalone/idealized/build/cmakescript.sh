@@ -14,8 +14,8 @@ cmake      \
   -DNCFLAGS="${NCFLAGS}"                                          \
   -DYAKL_ARCH="${YAKL_ARCH}"                                      \
   -DPAM_DYCORE="spam++"                                             \
-  -DPAM_MICRO="none"                                           \
-  -DPAM_SGS="none"                                                \
+  -DPAM_MICRO="p3"                                           \
+  -DPAM_SGS="shoc"                                                \
   -DPAMC_MODEL="extrudedmodel"                                                \
   -DPAMC_HAMIL="mce_rho"                                                \
   -DPAMC_THERMO="constkappavirpottemp"                                                \
