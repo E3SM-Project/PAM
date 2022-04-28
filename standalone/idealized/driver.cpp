@@ -57,14 +57,6 @@ int main(int argc, char** argv) {
       nc.read(zint_in,"vertical_interfaces");
       nc.close();
     }
-
-    if (not crm_nz == 0) //We are using a uniform vertical grid with crm_nz levels; in this case zlen must be set
-    {
-      zint_in = real1d("zint_in",crm_nz+1);
-      real dz = zlen/crm_nz;
-      for (int i=0;i<crm_nz+1;i++)
-      {zint_in(i) = i*dz;}
-    }
     
     // Create the dycore and the microphysics
     Dycore       dycore;
@@ -74,6 +66,15 @@ int main(int argc, char** argv) {
     //set xlen, ylen, zlen based on init cond if needed
     if (xlen < 0 or ylen < 0 or zlen < 0)
     {set_domain_sizes(config["initData"].as<std::string>(), crm_ny, crm_nz, xlen, ylen, zlen);}
+    
+    //This requires zlen, so it must happen after domain sizes are set
+    if (not crm_nz == 0) //We are using a uniform vertical grid with crm_nz levels; in this case zlen must be set
+    {
+      zint_in = real1d("zint_in",crm_nz+1);
+      real dz = zlen/crm_nz;
+      for (int i=0;i<crm_nz+1;i++)
+      {zint_in(i) = i*dz;}
+    }
     
     //this partitions the domain if INNER_MPI is set, otherwise it does nothing
     if (inner_mpi)
