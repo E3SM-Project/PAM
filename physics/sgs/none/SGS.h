@@ -1,9 +1,6 @@
 
 #pragma once
 
-
-int static constexpr num_tracers_sgs = 0;
-
 #include "pam_coupler.h"
 
 
@@ -15,7 +12,9 @@ public:
   SGS() {
   }
 
-
+  static int constexpr get_num_tracers() {
+    return 0;
+  }
 
   // Can do whatever you want, but mainly for registering tracers and allocating data
   void init(pam::PamCoupler &coupler) {

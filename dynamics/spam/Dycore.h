@@ -199,28 +199,13 @@ class Dycore {
 debug_print("end time stepping loop", par.masterproc);
   };
 
-
-
   void finalize(PamCoupler &coupler) { 
     io.outputStats(stats);
   }
   
   const char * dycore_name() const { return "SPAM++"; }
   
-  void set_domain_sizes(std::string initData, real &xlen, real &ylen, real &zlen)
-  {
-    set_domain_sizes_ic(params, initData);
-    xlen = params.xlen;
-    ylen = params.ylen;
-    zlen = params.zlen;
-  }
-  
-  void partition_domain(std::string infile, int &crm_nx, int &crm_ny)
-  {
-    _partition_domain(infile, params, par);
-    crm_nx = par.nx;
-    if (ndims>=2) {crm_ny = par.ny;}
-  }
+
 };
 
 

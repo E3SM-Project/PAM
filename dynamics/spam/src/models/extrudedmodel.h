@@ -907,33 +907,33 @@ real YAKL_INLINE double_vortex_tracer_gaussian(real x, real y)     {return doubl
 
 
 struct smallbubble_constants {
-real const g = 9.80616;
-real const Lx = 1000.;
-real const Ly = 1500.;
-real const xc = 0.5 * Lx;
-real const yc = 0.5 * Ly;
-real const theta0 = 300.0;
-real const zc = 350.;
-real const dss = 0.5;
-real const rc = 250.;
-real const rh0 = 0.8;
+real const g = 9.80616_fp;
+real const Lx = 1000._fp;
+real const Ly = 1500._fp;
+real const yc = 0.5_fp * Ly;
+real const xc = 0.5_fp * Lx;
+real const theta0 = 300.0_fp;
+real const zc = 350._fp;
+real const dss = 0.5_fp;
+real const rc = 250._fp;
+real const rh0 = 0.8_fp;
 };
 smallbubble_constants rb_constants;
 
 struct largebubble_constants  {
-  real const g = 9.80616;
-  real const Lx = 20000.;
-  real const Lz = 20000.;
-  real const xc = 0.5 * Lx;
-  real const zc = 0.5 * Lz;
-  real const theta0 = 300.0;
-  real const bzc = 2000.;
-  real const xrad = 2000.;
-  real const zrad = 2000.;
-  real const amp_theta = 2.0;
-  real const amp_vapor = 0.8;
-  real const Cpv = 1859.;
-  real const Cpd = 1003.;
+  real const g = 9.80616_fp;
+  real const Lx = 20000._fp;
+  real const Lz = 20000._fp;
+  real const xc = 0.5_fp * Lx;
+  real const zc = 0.5_fp * Lz;
+  real const theta0 = 300.0_fp;
+  real const bzc = 2000._fp;
+  real const xrad = 2000._fp;
+  real const zrad = 2000._fp;
+  real const amp_theta = 2.0_fp;
+  real const amp_vapor = 0.8_fp;
+  real const Cpv = 1859._fp;
+  real const Cpd = 1003._fp;
 };
 largebubble_constants lrb_constants;
 

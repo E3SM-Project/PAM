@@ -5,6 +5,7 @@
 #include "SGS.h"
 #include "mpi.h"
 #include "output.h"
+#include "init.h"
 
 int main(int argc, char** argv) {
   int ierr = MPI_Init( &argc , &argv );
@@ -37,12 +38,13 @@ int main(int argc, char** argv) {
     int         nens         = config["nens"    ].as<int>();
     real        xlen         = config["xlen"    ].as<real>(-1.0_fp);
     real        ylen         = config["ylen"    ].as<real>(-1.0_fp);
-    real        zlen         = config["ylen"    ].as<real>(-1.0_fp);
+    real        zlen         = config["zlen"    ].as<real>(-1.0_fp);
     real        dtphys_in    = config["dtphys"  ].as<real>();
     std::string vcoords_file = config["vcoords" ].as<std::string>("");
     bool        use_coupler_hydrostasis = config["use_coupler_hydrostasis"].as<bool>(false);
     auto out_freq                = config["out_freq"   ].as<real>(0);
     auto out_prefix              = config["out_prefix" ].as<std::string>("test");
+    bool        inner_mpi = config["inner_mpi"].as<bool>(false);
 
     // Read vertical coordinates
     real1d zint_in;
@@ -56,19 +58,6 @@ int main(int argc, char** argv) {
       nc.close();
     }
 
-
-    // Create the dycore and the microphysics
-    Dycore       dycore;
-    Microphysics micro;
-    SGS          sgs;
-    
-    //set xlen, ylen, zlen based on init cond if needed
-    if (xlen < 0 or ylen < 0 or zlen < 0)
-    {dycore.set_domain_sizes(config["initData"].as<std::string>(), xlen, ylen, zlen);}
-    
-    //this partitions the domain if PAMC_MPI is set, otherwise it does nothing
-    dycore.partition_domain(inFile, crm_nx, crm_ny);
-    
     if (not crm_nz == 0) //We are using a uniform vertical grid with crm_nz levels; in this case zlen must be set
     {
       zint_in = real1d("zint_in",crm_nz+1);
@@ -76,6 +65,19 @@ int main(int argc, char** argv) {
       for (int i=0;i<crm_nz+1;i++)
       {zint_in(i) = i*dz;}
     }
+    
+    // Create the dycore and the microphysics
+    Dycore       dycore;
+    Microphysics micro;
+    SGS          sgs;
+    
+    //set xlen, ylen, zlen based on init cond if needed
+    if (xlen < 0 or ylen < 0 or zlen < 0)
+    {set_domain_sizes(config["initData"].as<std::string>(), crm_ny, crm_nz, xlen, ylen, zlen);}
+    
+    //this partitions the domain if INNER_MPI is set, otherwise it does nothing
+    if (inner_mpi)
+    {partition_domain(inFile, crm_nx, crm_ny);}
     
     // Use microphysics gas constants values in the coupler
     coupler.set_phys_constants( micro.R_d , micro.R_v , micro.cp_d , micro.cp_v , micro.grav , micro.p0 );
@@ -106,6 +108,7 @@ int main(int argc, char** argv) {
     if (use_coupler_hydrostasis) coupler.update_hydrostasis( );
 
     real etime = 0;
+    // There are two ways of time control- setting total simulation time (simTime) or setting number of physics time steps (simSteps)
     if (simTime == 0.0) {  simTime = simSteps * dtphys_in; }
     
     int  num_out = 0;

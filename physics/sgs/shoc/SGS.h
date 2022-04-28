@@ -27,8 +27,6 @@ void shoc_main_fortran(int &shcol, int &nlev, int &nlevi, double &dtime, int &na
 
 class SGS {
 public:
-  // Doesn't actually have to be static or constexpr. Could be assigned in the constructor
-  int static constexpr num_tracers = 1;
 
   // You should set these in the constructor
   real R_d          ;
@@ -86,8 +84,8 @@ public:
 
 
   // This must return the correct # of tracers **BEFORE** init(...) is called
-  YAKL_INLINE static int get_num_tracers() {
-    return num_tracers;
+  static int constexpr get_num_tracers() {
+    return 1;
   }
 
 
