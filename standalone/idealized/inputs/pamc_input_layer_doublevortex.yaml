@@ -45,6 +45,7 @@ tstype: ssprk3
 nens : 1
 
 # Parallel decomposition
+inner_mpi : true
 nprocx : 1
 nprocy : 1
 

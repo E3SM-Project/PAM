@@ -28,7 +28,7 @@ uint constexpr ntracers_physics = 0;
 // Here we have assumed that the micro has at least defined the 3 key tracers: mass of (cloud) vapor/liquid/ice (the last might be zero, depending on the microphysics)
 #elif defined _MCErho || defined _MCErhop || defined _MCErhod || defined _MCErhodp
 uint constexpr ndensity_dycore = 2;
-uint constexpr ntracers_physics = num_tracers_sgs + num_tracers_micro;
+uint constexpr ntracers_physics = Microphysics::get_num_tracers() + SGS::get_num_tracers();
 #endif
 //ADD ANELASTIC + MOIST ANELASTIC
 

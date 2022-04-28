@@ -11,6 +11,9 @@ void partition_domain(std::string inFile, int &crm_nx, int &crm_ny)
   int j_beg, j_end;
   double nper;
 
+  //Read config file
+  YAML::Node config = YAML::LoadFile(inFile);
+  
   int nprocx = config["nprocx"].as<int>();
   int nprocy = config["nprocy"].as<int>();
   ierr = MPI_Comm_size(MPI_COMM_WORLD,&nranks);
@@ -26,13 +29,13 @@ void partition_domain(std::string inFile, int &crm_nx, int &crm_ny)
 
   //Get my beginning and ending global indices; and domain sizes
   nper = ((double) nx_glob)/nprocx;
-  par.i_beg = (int) round( nper* px    );
-  par.i_end = (int) round( nper*(px+1) )-1;
-  crm_x = i_end - i_beg + 1;
+  i_beg = (int) round( nper* px    );
+  i_end = (int) round( nper*(px+1) )-1;
+  crm_nx = i_end - i_beg + 1;
 
   nper = ((double) ny_glob)/nprocy;
   j_beg = (int) round( nper* py    );
-  j_end = (int) round( nperar.py+1) )-1;
+  j_end = (int) round( nper*(py+1) )-1;
   crm_ny = j_end - j_beg + 1;
   
 }

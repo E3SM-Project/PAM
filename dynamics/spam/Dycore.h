@@ -67,10 +67,11 @@ class Dycore {
     serial_print("setting up dycore", par.masterproc);
 
     //Set parameters
-    debug_print("reading parameters", par.masterproc);
+    
+    debug_print("reading parameters and partitioning domain/setting domain sizes", par.masterproc);
     std::string inFile = coupler.get_option<std::string>( "standalone_input_file" );
     readModelParamsFile(inFile, params, par, coupler.get_nz());
-    debug_print("read parameters", par.masterproc);
+    debug_print("read parameters and partitioned domain/setting domain sizes", par.masterproc);
 
 // HOW DO WE HANDLE VERTICAL LEVELS STUFF?
 // BASICALLY A NEW GEOMETRY, I THINK?

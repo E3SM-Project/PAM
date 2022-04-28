@@ -1140,7 +1140,6 @@ real YAKL_INLINE flat_geop(real x, real z, real g)
 
  void readModelParamsFile(std::string inFile, ModelParameters &params, Parallel &par, int nz)
  {
-   readParamsFile( inFile, params, par, nz);
 
    //Read config file
    YAML::Node config = YAML::LoadFile(inFile);
@@ -1160,41 +1159,36 @@ real YAKL_INLINE flat_geop(real x, real z, real g)
      serial_print("Dycore Tracer" + std::to_string(i) + " IC: " + params.tracerdataStr[i], par.masterproc);
    }
    
-
+   params.ylen = 1.0;
+   params.yc = 0.5;
+   
+   if (params.initdataStr == "doublevortex")
+ {
+   
+   params.xlen = dbl_vortex_constants.Lx;
+   params.zlen = dbl_vortex_constants.Ly;
+   params.xc = dbl_vortex_constants.xc;
+   params.zc = dbl_vortex_constants.yc;
+ }
+ if (params.initdataStr == "risingbubble" or params.initdataStr == "moistrisingbubble")
+ {
+ params.xlen = rb_constants.Lx;
+ params.zlen = rb_constants.Ly;
+ params.xc = rb_constants.Lx * 0.5_fp;
+ params.zc = rb_constants.Ly  * 0.5_fp;
  }
 
+ if (params.initdataStr == "largerisingbubble" or params.initdataStr == "moistlargerisingbubble")
+ {
+ params.xlen = lrb_constants.Lx;
+ params.zlen = lrb_constants.Lz;
+ params.xc = lrb_constants.Lx * 0.5_fp;
+ params.zc = lrb_constants.Lz  * 0.5_fp;
+ }
+ 
+   readParamsFile( inFile, params, par, nz);
+ }
 
-void set_domain_sizes_ic (ModelParameters &params, std::string initData)
-{
-
-  params.ylen = 1.0;
-  params.yc = 0.5;
-  
-  if (initData == "doublevortex")
-{
-  
-  params.xlen = dbl_vortex_constants.Lx;
-  params.zlen = dbl_vortex_constants.Ly;
-  params.xc = dbl_vortex_constants.xc;
-  params.zc = dbl_vortex_constants.yc;
-}
-if (initData == "risingbubble" or initData == "moistrisingbubble")
-{
-params.xlen = rb_constants.Lx;
-params.zlen = rb_constants.Ly;
-params.xc = rb_constants.Lx * 0.5_fp;
-params.zc = rb_constants.Ly  * 0.5_fp;
-}
-
-if (initData == "largerisingbubble" or initData == "moistlargerisingbubble")
-{
-params.xlen = lrb_constants.Lx;
-params.zlen = lrb_constants.Lz;
-params.xc = lrb_constants.Lx * 0.5_fp;
-params.zc = lrb_constants.Lz  * 0.5_fp;
-}
-
-}
   
 void set_initial_conditions (ModelParameters &params, FieldSet<nprognostic> &progvars, FieldSet<nconstant> &constvars, 
 Geometry &primal_geom, Geometry &dual_geom)

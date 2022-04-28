@@ -9,9 +9,7 @@ uint constexpr ntracers_active = 6; //applies only for swe/tswe, determines how 
 uint constexpr ndims = 2;
 
 // Set dens sizes
-//uint constexpr ntracers = ntracers_dycore + ntracers_physics;
-//Tracers are stored as dycore_tracers, physics_tracers
-//Dycore tracers never add mass
+//Dycore tracers don't add mass
 
 uint constexpr ntracers_physics = 0;
 
@@ -19,13 +17,7 @@ uint constexpr ntracers_physics = 0;
 uint constexpr ndensity_dycore = 1;
 #elif _TSWE
 uint constexpr ndensity_dycore = 2;
-#elif defined _CE || defined _CEp
-uint constexpr ndensity_dycore = 2;
-// Here we have assumed that the micro has at least defined the 3 key tracers: mass of (cloud) vapor/liquid/ice (the last might be zero, depending on the microphysics)
-#elif defined _MCErho || defined _MCErhop || defined _MCErhod || defined _MCErhodp
-uint constexpr ndensity_dycore = 2;
 #endif
-//ADD ANELASTIC + MOIST ANELASTIC
 
 uint constexpr ndensity_nophysics = ndensity_dycore + ntracers_dycore;
 uint constexpr ndensity = ndensity_dycore + ntracers_dycore;
@@ -77,11 +69,6 @@ uint constexpr nauxiliary = 18;
 #define EDGEFLUXVAR 16
 #define MFVAR 17
 
-//ADD ANELASTIC + MOIST ANELASTIC
-#if defined _CEp || defined _MCErhop || defined _MCErhodp
-#define PVAR 18
-#endif
-
 // q, associated concentration 0-forms for den
 
 uint constexpr ndiagnostic = 2;
@@ -104,5 +91,4 @@ public:
   std::string initdataStr;
   std::string tracerdataStr[ntracers_dycore];
   bool dycore_tracerpos[ntracers_dycore];
-  bool acoustic_balance;
 };

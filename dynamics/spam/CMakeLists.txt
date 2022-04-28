@@ -88,9 +88,4 @@ if ("${PAMC_IO}" STREQUAL "none")
 target_compile_definitions(dycore INTERFACE -D_NOIO)
 endif()
 
-if ("${PAMC_INNERMPI}" STREQUAL "true")
-target_compile_definitions(dycore INTERFACE -D_PAMC_INNERMPI)
-endif()
-
-
 

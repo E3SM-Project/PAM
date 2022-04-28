@@ -16,33 +16,35 @@ int wrap(int i, int nx)
 }
 
 
-void _partition_domain(std::string inFile, ModelParameters &params, Parallel &par)
-{
-
+void readParamsFile(std::string inFile, ModelParameters &params, Parallel &par, int nz) {
+  
   //Read config file
   YAML::Node config = YAML::LoadFile(inFile);
 
   int ierr;
   
   // Get MPI Info
+  bool        inner_mpi = config["inner_mpi"].as<bool>(false);
   ierr = MPI_Comm_rank(MPI_COMM_WORLD,&par.actualrank);
   par.masterproc = par.actualrank == 0;
   params.masterproc = par.masterproc;
-  #ifdef _PAMC_INNERMPI
+  if (inner_mpi)
+  {
   ierr = MPI_Comm_size(MPI_COMM_WORLD,&par.nranks);
   ierr = MPI_Comm_rank(MPI_COMM_WORLD,&par.myrank);
-  // Determine if I'm the master process
-  #else
+  }
+  else
+  {
   par.nranks = 1;
   par.myrank = 0;
-  #endif
+  }
   
   params.nx_glob = config["crm_nx"].as<int>();
   params.ny_glob = config["crm_ny"].as<int>();
   par.nprocx = config["nprocx"].as<int>();
   par.nprocy = config["nprocy"].as<int>();
   
-  if (!(par.nprocx * par.nprocy == par.nranks)) {endrun("Error: nranks != nprocx * nprocy");}
+  //if (!(par.nprocx * par.nprocy == par.nranks)) {endrun("Error: nranks != nprocx * nprocy");}
 
     //Get my process grid IDs
     par.py = floor(par.myrank / par.nprocx);
@@ -64,16 +66,7 @@ void _partition_domain(std::string inFile, ModelParameters &params, Parallel &pa
       par.ny = par.j_end - par.j_beg + 1;
       par.ny_glob = params.ny_glob;
       }
-  
-}
-
-void readParamsFile(std::string inFile, ModelParameters &params, Parallel &par, int nz) {
-  
-  //Read config file
-  YAML::Node config = YAML::LoadFile(inFile);
-
-  int ierr;
-
+      
  params.nens = config["nens"].as<int>();
  params.nz_dual = nz;
 

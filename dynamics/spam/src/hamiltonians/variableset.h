@@ -15,6 +15,7 @@ public:
   std::string dens_desc[ndensity];      // Description of each density
   //bool1d                   dens_pos;       // Whether each density is positive-definite
   bool                   dens_pos[ndensity];       // Whether each density is positive-definite
+  bool couple_wind;
   
   int dm_id_vap = -1;
   int dm_id_liq = -1;
@@ -37,7 +38,10 @@ public:
     this->dual_geometry = &dual_geom;
     this->primal_topology = &primal_topo;
     this->dual_topology = &dual_topo;
-  
+    
+    //If more physics parameterizations are added this logic might need to change
+    couple_wind = !(coupler.get_option<std::string>("sgs") == "none");
+     
 //dens_pos IS NOT BEING PROPERLY DEALLOCATED AT THE END OF THE RUN IE WHEN THE POOL IS DESTROYED
 //THIS IS REALLY WEIRD
     // Allocate device arrays for whether densities are positive-definite
@@ -76,8 +80,6 @@ public:
     if (ntracers_physics>0)
     {
     if (! water_vapor_found) {endrun("ERROR: processed registered tracers, and water_vapor was not found");}
-    //if (! liquid_found) {endrun("ERROR: processed registered tracers, and cloud_liquid was not found");}
-    //if (! ice_found) {endrun("ERROR: processed registered tracers, and cloud_ice was not found");}
     }
     
     for (int i=ndensity_dycore; i<ndensity_nophysics; i++)
@@ -139,9 +141,10 @@ public:
       dm_tracers.add_field( trac );
     }
 
-    parallel_for( "Dynamics to Coupler State" , SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA (int k, int j, int i, int n) {
+if (couple_wind)
+{
+    parallel_for( "Dynamics to Coupler State winds" , SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA (int k, int j, int i, int n) {
       
-
   // IN 3D THIS IS MORE COMPLICATED
         real uvel_l  = prog_vars.fields_arr[VVAR].data(0,k+pks,j+pjs,i+pis,n) / primal_geometry->get_area_10entity(k+pks,j+pjs,i+pis);
         real uvel_r  = prog_vars.fields_arr[VVAR].data(0,k+pks,j+pjs,i+pis+1,n) / primal_geometry->get_area_10entity(k+pks,j+pjs,i+pis+1);
@@ -164,7 +167,15 @@ public:
         }
    //EVENTUALLY FIX THIS FOR 3D...
        real vvel  = 0.0_fp;
+  
+       dm_uvel    (k,j,i,n) = (uvel_l + uvel_r) * 0.5_fp;
+       dm_vvel    (k,j,i,n) = vvel;
+       dm_wvel    (k,j,i,n) = (wvel_u + wvel_d) * 0.5_fp;
        
+      });
+}
+       parallel_for( "Dynamics to Coupler State densities" , SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA (int k, int j, int i, int n) {
+
       real qd = get_qd(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
       real qv = get_qv(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
       real alpha = get_alpha(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
@@ -179,11 +190,7 @@ public:
       real temp = thermo->compute_T(alpha, entropic_var, qd, qv, ql, qi);
         
       dm_dens_dry(k,j,i,n) = get_dry_density(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n) / dual_geometry->get_area_11entity(k+dks,j+djs,i+dis);
-      dm_uvel    (k,j,i,n) = (uvel_l + uvel_r) * 0.5_fp;
-      dm_vvel    (k,j,i,n) = vvel;
-      dm_wvel    (k,j,i,n) = (wvel_u + wvel_d) * 0.5_fp;
       dm_temp    (k,j,i,n) = temp;
-      
       for (int tr=ndensity_nophysics; tr < ndensity; tr++) {
         dm_tracers(tr-ndensity_nophysics,k,j,i,n) = prog_vars.fields_arr[DENSVAR].data(tr,k+dks,j+djs,i+dis,n) / dual_geometry->get_area_11entity(k+dks,j+djs,i+dis);
       }
@@ -217,12 +224,10 @@ public:
       dm_tracers.add_field( trac );
     }
 
-    parallel_for( "Coupler to Dynamics State Dual" , SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA (int k, int j, int i, int n) {
+    parallel_for( "Coupler to Dynamics State Densities" , SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y, dual_topology->n_cells_x, dual_topology->nens) , YAKL_LAMBDA (int k, int j, int i, int n) {
 
     real temp = dm_temp(k,j,i,n);
     
-    //ADD VELOCITY COUPLING IN HERE PROPERLY
-    //SHOULD REALLY BE LOOPING OVER PRIMAL EDGES, PROBABLY...
     real dens_dry = dm_dens_dry(k,j,i,n);
     real dens_vap = dm_tracers(dm_id_vap,k,j,i,n);
     real dens_liq = 0.0_fp;
@@ -248,6 +253,8 @@ public:
 
     });
 
+    if (couple_wind)
+    {
     parallel_for( "Coupler to Dynamics State Primal U" , SimpleBounds<4>(primal_topology->ni, primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens) , YAKL_LAMBDA (int k, int j, int i, int n) {
     //periodic wrapping
     int il = i-1;
@@ -255,9 +262,11 @@ public:
     prog_vars.fields_arr[VVAR].data(0,k+pks,j+pjs,i+pis,n) = (dm_uvel(k,j,il,n) + dm_uvel(k,j,i,n)) * 0.5_fp * primal_geometry->get_area_10entity(k+pks,j+pjs,i+pis);
   });
 
+  //EVENTUALLY THIS NEEDS TO HAVE A FLAG ON IT!
   parallel_for( "Coupler to Dynamics State Primal W" , SimpleBounds<4>(primal_topology->nl, primal_topology->n_cells_y, primal_topology->n_cells_x, primal_topology->nens) , YAKL_LAMBDA (int k, int j, int i, int n) {
   prog_vars.fields_arr[WVAR].data(0,k+pks,j+pjs,i+pis,n) = (dm_wvel(k,j,i,n) + dm_wvel(k+1,j,i,n)) * 0.5_fp * primal_geometry->get_area_01entity(k+pks,j+pjs,i+pis);
   });
+}
 
 }
 

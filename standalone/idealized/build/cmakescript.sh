@@ -18,7 +18,7 @@ cmake      \
   -DNCFLAGS="${NCFLAGS}"                                          \
   -DYAKL_ARCH="${YAKL_ARCH}"                                      \
   -DPAM_DYCORE="spam++"                                           \
-  -DPAM_MICRO="none"                                             \
-  -DPAM_SGS="none"                                                \
+  -DPAM_MICRO="p3"                                             \
+  -DPAM_SGS="shoc"                                                \
   ${add_cmake_vars} \
   ..
