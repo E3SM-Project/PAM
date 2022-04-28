@@ -39,8 +39,6 @@ void p3_init_fortran(char const *lookup_file_dir , int &dir_len , char const *ve
 class Microphysics {
 public:
   // Doesn't actually have to be static or constexpr. Could be assigned in the constructor
-  int static constexpr num_tracers = 9;
-
   // You should set these in the constructor
   real R_d    ;
   real cp_d   ;
@@ -94,8 +92,8 @@ public:
 
 
   // This must return the correct # of tracers **BEFORE** init(...) is called
-  YAKL_INLINE static int get_num_tracers() {
-    return num_tracers;
+  static int constexpr get_num_tracers() {
+    return 9;
   }
 
 

@@ -17,8 +17,8 @@ cmake      \
   -DYAKL_F90_FLAGS="${YAKL_F90_FLAGS}"                            \
   -DNCFLAGS="${NCFLAGS}"                                          \
   -DYAKL_ARCH="${YAKL_ARCH}"                                      \
-  -DPAM_DYCORE="awfl"                                           \
-  -DPAM_MICRO="kessler"                                              \
+  -DPAM_DYCORE="spam++"                                           \
+  -DPAM_MICRO="none"                                             \
   -DPAM_SGS="none"                                                \
   ${add_cmake_vars} \
   ..

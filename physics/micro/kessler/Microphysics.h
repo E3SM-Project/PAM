@@ -8,7 +8,6 @@ extern "C" void kessler_fortran(double *theta, double *qv, double *qc, double *q
 
 class Microphysics {
 public:
-  int static constexpr num_tracers = 3;
 
   real R_d    ;
   real cp_d   ;
@@ -41,8 +40,8 @@ public:
 
 
 
-  YAKL_INLINE static int get_num_tracers() {
-    return num_tracers;
+  static int constexpr get_num_tracers() {
+    return 3;
   }
 
 

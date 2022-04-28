@@ -35,7 +35,7 @@ public:
 
 
   // Gotta have at least three tracers- the mass of water species
-  int get_num_tracers() const {
+  static int constexpr get_num_tracers() {
     return 1;
   }
 
