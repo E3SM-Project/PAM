@@ -25,8 +25,6 @@ void shoc_main_fortran(int &shcol, int &nlev, int &nlevi, double &dtime, int &na
                        double *wqls_sec, double *brunt, double *shoc_ql2 );
 
 
-int static constexpr num_tracers_sgs = 1;
-
 class SGS {
 public:
   // Doesn't actually have to be static or constexpr. Could be assigned in the constructor
@@ -566,14 +564,14 @@ public:
       wthv_sec(k,i) = shoc_wthv_sec(k_shoc,i);
       tk      (k,i) = shoc_tk      (k_shoc,i);
       tkh     (k,i) = shoc_tkh     (k_shoc,i);
-      cldfrac (k,i) = yakl::min(1._fp , shoc_cldfrac (k_shoc,i) );
+      cldfrac (k,i) = std::min(1._fp , shoc_cldfrac (k_shoc,i) );
       for (int tr=0; tr < num_qtracers; tr++) {
         qtracers_pam(tr,k,i) = shoc_qtracers(tr,k_shoc,i) * rho_d(k,i);
       }
       real rcm  = shoc_ql (k_shoc,i);
       real rcm2 = shoc_ql2(k_shoc,i);
       if ( rcm != 0 && rcm2 != 0 ) {
-        relvar(k,i) = yakl::min( 10._fp , yakl::max( 0.001_fp , rcm*rcm / rcm2 ) );
+        relvar(k,i) = std::min( 10._fp , std::max( 0.001_fp , rcm*rcm / rcm2 ) );
       } else {
         relvar(k,i) = 1;
       }

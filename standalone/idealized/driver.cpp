@@ -3,7 +3,6 @@
 #include "Dycore.h"
 #include "Microphysics.h"
 #include "SGS.h"
-#include "DataManager.h"
 #include "mpi.h"
 #include "output.h"
 
@@ -47,16 +46,15 @@ int main(int argc, char** argv) {
 
     // Read vertical coordinates
     real1d zint_in;
-//THIS IS BROKEN FOR PARALLEL IO CASE- maybe this is okay ie switch entirely to standard netcdf?
-if (crm_nz == 0)
-{
-    yakl::SimpleNetCDF nc;
-    nc.open(vcoords_file);
-    crm_nz = nc.getDimSize("num_interfaces") - 1;
-    zint_in = real1d("zint_in",crm_nz+1);
-    nc.read(zint_in,"vertical_interfaces");
-    nc.close();
-}
+    //THIS IS BROKEN FOR PARALLEL IO CASE- maybe this is okay ie switch entirely to standard netcdf?
+    if (crm_nz == 0) {
+      yakl::SimpleNetCDF nc;
+      nc.open(vcoords_file);
+      crm_nz = nc.getDimSize("num_interfaces") - 1;
+      zint_in = real1d("zint_in",crm_nz+1);
+      nc.read(zint_in,"vertical_interfaces");
+      nc.close();
+    }
 
 
     // Create the dycore and the microphysics

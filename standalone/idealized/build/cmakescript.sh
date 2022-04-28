@@ -1,6 +1,10 @@
-#!/bin/bash
+#!/bin/bash -x
 
 ./cmakeclean.sh
+
+if [[ "$1" != "" ]]; then
+  . $1
+fi
 
 cmake      \
   -DYAKL_CUDA_FLAGS="${YAKL_CUDA_FLAGS} -DPAM_STANDALONE"         \
@@ -13,12 +17,8 @@ cmake      \
   -DYAKL_F90_FLAGS="${YAKL_F90_FLAGS}"                            \
   -DNCFLAGS="${NCFLAGS}"                                          \
   -DYAKL_ARCH="${YAKL_ARCH}"                                      \
-  -DPAM_DYCORE="spam++"                                             \
-  -DPAM_MICRO="none"                                           \
+  -DPAM_DYCORE="awfl"                                           \
+  -DPAM_MICRO="kessler"                                              \
   -DPAM_SGS="none"                                                \
-  -DPAMC_MODEL="layermodel"                                                \
-  -DPAMC_HAMIL="tswe"                                                \
-  -DPAMC_THERMO="none"                                                \
-  -DPAMC_IO="serial"                                                \
-  -DPAMC_INNERMPI="true"                                                \
+  ${add_cmake_vars} \
   ..

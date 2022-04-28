@@ -1,10 +1,6 @@
 
 #pragma once
 
-
-
-int static constexpr num_tracers_micro = 1;
-
 #include "pam_coupler.h"
 
 class Microphysics {

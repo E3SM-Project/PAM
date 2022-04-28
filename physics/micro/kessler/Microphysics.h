@@ -6,8 +6,6 @@
 extern "C" void kessler_fortran(double *theta, double *qv, double *qc, double *qr, double *rho,
                                 double *pk, double &dt, double *z, int &nz, double &precl);
 
-int static constexpr num_tracers_micro = 3;
-
 class Microphysics {
 public:
   int static constexpr num_tracers = 3;
@@ -396,10 +394,10 @@ public:
       // Adjustment terms
       parallel_for( "kessler main 3" , SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
         // Autoconversion and accretion rates following KW eq. 2.13a,b
-        real qrprod = qc(k,i) - ( qc(k,i)-dt0*yakl::max( 0.001_fp * (qc(k,i)-0.001_fp) , 0._fp ) ) /
+        real qrprod = qc(k,i) - ( qc(k,i)-dt0*std::max( 0.001_fp * (qc(k,i)-0.001_fp) , 0._fp ) ) /
                                 ( 1 + dt0 * 2.2_fp * pow( qr(k,i) , 0.875_fp ) );
-        qc(k,i) = yakl::max( qc(k,i)-qrprod , 0._fp );
-        qr(k,i) = yakl::max( qr(k,i)+qrprod+sed(k,i) , 0._fp );
+        qc(k,i) = std::max( qc(k,i)-qrprod , 0._fp );
+        qr(k,i) = std::max( qr(k,i)+qrprod+sed(k,i) , 0._fp );
 
         // Saturation vapor mixing ratio (gm/gm) following KW eq. 2.11
         real tmp = pk(k,i)*theta(k,i)-36._fp;
@@ -410,16 +408,16 @@ public:
         real tmp1 = dt0*( ( ( 1.6_fp + 124.9_fp * pow( r(k,i)*qr(k,i) , 0.2046_fp ) ) *
                             pow( r(k,i)*qr(k,i) , 0.525_fp ) ) /
                           ( 2550000._fp * pc(k,i) / (3.8_fp * qvs)+540000._fp) ) * 
-                        ( yakl::max(qvs-qv(k,i),0._fp) / (r(k,i)*qvs) );
-        real tmp2 = yakl::max( -prod-qc(k,i) , 0._fp );
+                        ( std::max(qvs-qv(k,i),0._fp) / (r(k,i)*qvs) );
+        real tmp2 = std::max( -prod-qc(k,i) , 0._fp );
         real tmp3 = qr(k,i);
-        real ern = yakl::min( tmp1 , yakl::min( tmp2 , tmp3 ) );
+        real ern = std::min( tmp1 , std::min( tmp2 , tmp3 ) );
 
         // Saturation adjustment following KW eq. 3.10
         theta(k,i)= theta(k,i) + lv / (cp*pk(k,i)) * 
-                                 ( yakl::max( prod , -qc(k,i) ) - ern );
-        qv(k,i) = yakl::max( qv(k,i) - yakl::max( prod , -qc(k,i) ) + ern , 0._fp );
-        qc(k,i) = qc(k,i) + yakl::max( prod , -qc(k,i) );
+                                 ( std::max( prod , -qc(k,i) ) - ern );
+        qv(k,i) = std::max( qv(k,i) - std::max( prod , -qc(k,i) ) + ern , 0._fp );
+        qc(k,i) = qc(k,i) + std::max( prod , -qc(k,i) );
         qr(k,i) = qr(k,i) - ern;
 
         // Recalculate liquid water terminal velocity
