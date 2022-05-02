@@ -20,6 +20,7 @@ public:
   real etime;
 
   void init(pam::PamCoupler &coupler) {
+
     space_op.init(coupler);
 
     stateTend  = space_op.createStateTendArr ();

@@ -27,8 +27,6 @@ void shoc_main_fortran(int &shcol, int &nlev, int &nlevi, double &dtime, int &na
 
 class SGS {
 public:
-  // Doesn't actually have to be static or constexpr. Could be assigned in the constructor
-  int static constexpr num_tracers = 1;
 
   // You should set these in the constructor
   real R_d          ;
@@ -86,8 +84,8 @@ public:
 
 
   // This must return the correct # of tracers **BEFORE** init(...) is called
-  YAKL_INLINE static int get_num_tracers() {
-    return num_tracers;
+  static int constexpr get_num_tracers() {
+    return 1;
   }
 
 
@@ -165,7 +163,7 @@ public:
     if (first_step) {
       // Invert the first column in x, z, and ensemble to use as reference pressure for shoc
       real1d pref_shoc("pref_shoc",nz);
-      parallel_for( Bounds<1>(nz) , YAKL_LAMBDA (int k) {
+      parallel_for( SimpleBounds<1>(nz) , YAKL_LAMBDA (int k) {
         pref_shoc(k) = pres_mid(nz-1-k,0);
       });
       real zvir = R_v / R_d - 1.;
@@ -254,7 +252,7 @@ public:
     real4d zint_tmp("zint_tmp",nz+1,ny,nx,nens);
     real4d zmid_tmp("zint_tmp",nz  ,ny,nx,nens);
 
-    parallel_for( Bounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+    parallel_for( SimpleBounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       zint_tmp(k,j,i,iens) = zint_pam(k,iens);
       if (k < nz) zmid_tmp(k,j,i,iens) = zmid_pam(k,iens);
     });
@@ -317,7 +315,7 @@ public:
     real latvap = this->latvap;
 
     // Compute inputs for SHOC (reordering the vertical dimension)
-    parallel_for( Bounds<2>(nz+1,ncol) , YAKL_LAMBDA (int k, int i) {
+    parallel_for( SimpleBounds<2>(nz+1,ncol) , YAKL_LAMBDA (int k, int i) {
       if (k == 0) {
         shoc_host_dx    (i) = crm_dx;
         shoc_host_dy    (i) = crm_dy;
@@ -550,7 +548,7 @@ public:
     #endif
 
     // Process outputs from SHOC (reordering the vertical dimension)
-    parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
+    parallel_for( SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
       int k_shoc = nz-1-k;
       real qw = shoc_qw(k_shoc,i);
       real ql = shoc_ql(k_shoc,i);
@@ -564,14 +562,14 @@ public:
       wthv_sec(k,i) = shoc_wthv_sec(k_shoc,i);
       tk      (k,i) = shoc_tk      (k_shoc,i);
       tkh     (k,i) = shoc_tkh     (k_shoc,i);
-      cldfrac (k,i) = min(1._fp , shoc_cldfrac (k_shoc,i) );
+      cldfrac (k,i) = std::min(1._fp , shoc_cldfrac (k_shoc,i) );
       for (int tr=0; tr < num_qtracers; tr++) {
         qtracers_pam(tr,k,i) = shoc_qtracers(tr,k_shoc,i) * rho_d(k,i);
       }
       real rcm  = shoc_ql (k_shoc,i);
       real rcm2 = shoc_ql2(k_shoc,i);
       if ( rcm != 0 && rcm2 != 0 ) {
-        relvar(k,i) = min( 10._fp , max( 0.001_fp , rcm*rcm / rcm2 ) );
+        relvar(k,i) = std::min( 10._fp , std::max( 0.001_fp , rcm*rcm / rcm2 ) );
       } else {
         relvar(k,i) = 1;
       }

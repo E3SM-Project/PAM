@@ -1,0 +1,40 @@
+---
+# Simulation time in number of physics time steps
+simSteps  : 25
+
+# Number of cells to use
+crm_nx       : 100
+crm_ny       : 100
+
+# Data to initialize: doublevortex rb mrb
+initWind : doublevortex
+initT1: square
+initT2: gaussian
+initT3: doublesquare
+initTFCT1: square
+initTFCT2: gaussian
+initTFCT3: doublesquare
+initQ: square
+initQ: gaussian
+initQ: doublesquare
+
+# Time steps
+dtphys: 1000.0
+crm_per_phys: 4
+
+# Output filename
+out_prefix  : test
+
+# Output frequency in number of CRM time steps
+outSteps: 10
+statSteps: 1
+
+tstype: ssprk3
+
+# Number of ensembles
+nens : 1
+
+# Parallel decomposition
+nprocx : 1
+nprocy : 1
+

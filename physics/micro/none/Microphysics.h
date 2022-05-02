@@ -34,8 +34,8 @@ public:
 
 
 
-  // Gotta have at least one tracer
-  int get_num_tracers() const {
+  // Gotta have at least three tracers- the mass of water species
+  static int constexpr get_num_tracers() {
     return 1;
   }
 
@@ -51,12 +51,13 @@ public:
     int nz   = coupler.get_nz  ();
     int nens = coupler.get_nens();
 
-    //                 name              description       positive   adds mass
-    coupler.add_tracer("water_vapor"   , "Water Vapor"   , true     , true);
+    //                 name              description            positive   adds mass
+    coupler.add_tracer("water_vapor"  , "Water Vapor"   ,       true     , true);
 
     auto &dm = coupler.get_data_manager_readwrite();
 
     // Zero out the tracers
+
     auto rho_v = dm.get_collapsed<real>("water_vapor");
     parallel_for( nz*ny*nx*nens , YAKL_LAMBDA (int i) { rho_v(i) = 0; } );
 

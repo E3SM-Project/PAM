@@ -141,8 +141,6 @@ public:
   // Make sure it's odd-order-accurate
   static_assert(ord%2 == 1,"ERROR: ord must be an odd integer");
 
-
-
   void convert_dynamics_to_coupler_state( pam::PamCoupler &coupler , realConst5d state , realConst5d tracers ) const {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;

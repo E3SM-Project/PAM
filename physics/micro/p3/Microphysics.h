@@ -36,12 +36,9 @@ extern "C"
 void p3_init_fortran(char const *lookup_file_dir , int &dir_len , char const *version_p3 , int &ver_len );
 
 
-
 class Microphysics {
 public:
   // Doesn't actually have to be static or constexpr. Could be assigned in the constructor
-  int static constexpr num_tracers = 9;
-
   // You should set these in the constructor
   real R_d    ;
   real cp_d   ;
@@ -95,8 +92,8 @@ public:
 
 
   // This must return the correct # of tracers **BEFORE** init(...) is called
-  YAKL_INLINE static int get_num_tracers() {
-    return num_tracers;
+  static int constexpr get_num_tracers() {
+    return 9;
   }
 
 
@@ -685,20 +682,20 @@ public:
     // Convert P3 outputs into dynamics coupler state and tracer masses
     ///////////////////////////////////////////////////////////////////////////////
     parallel_for( "micro post process" , SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
-      rho_c  (k,i) = max( qc(k,i)*rho_dry(k,i) , 0._fp );
-      rho_nc (k,i) = max( nc(k,i)*rho_dry(k,i) , 0._fp );
-      rho_r  (k,i) = max( qr(k,i)*rho_dry(k,i) , 0._fp );
-      rho_nr (k,i) = max( nr(k,i)*rho_dry(k,i) , 0._fp );
-      rho_i  (k,i) = max( qi(k,i)*rho_dry(k,i) , 0._fp );
-      rho_ni (k,i) = max( ni(k,i)*rho_dry(k,i) , 0._fp );
-      rho_m  (k,i) = max( qm(k,i)*rho_dry(k,i) , 0._fp );
-      rho_bm (k,i) = max( bm(k,i)*rho_dry(k,i) , 0._fp );
-      rho_v  (k,i) = max( qv(k,i)*rho_dry(k,i) , 0._fp );
+      rho_c  (k,i) = std::max( qc(k,i)*rho_dry(k,i) , 0._fp );
+      rho_nc (k,i) = std::max( nc(k,i)*rho_dry(k,i) , 0._fp );
+      rho_r  (k,i) = std::max( qr(k,i)*rho_dry(k,i) , 0._fp );
+      rho_nr (k,i) = std::max( nr(k,i)*rho_dry(k,i) , 0._fp );
+      rho_i  (k,i) = std::max( qi(k,i)*rho_dry(k,i) , 0._fp );
+      rho_ni (k,i) = std::max( ni(k,i)*rho_dry(k,i) , 0._fp );
+      rho_m  (k,i) = std::max( qm(k,i)*rho_dry(k,i) , 0._fp );
+      rho_bm (k,i) = std::max( bm(k,i)*rho_dry(k,i) , 0._fp );
+      rho_v  (k,i) = std::max( qv(k,i)*rho_dry(k,i) , 0._fp );
       // While micro changes total pressure, thus changing exner, the definition
       // of theta depends on the old exner pressure, so we'll use old exner here
       temp   (k,i) = theta(k,i) * exner(k,i);
       // Save qv and temperature for the next call to p3_main
-      qv_prev(k,i) = max( qv(k,i) , 0._fp );
+      qv_prev(k,i) = std::max( qv(k,i) , 0._fp );
       t_prev (k,i) = temp(k,i);
     });
 
@@ -775,8 +772,8 @@ public:
       bool keep_iterating = true;
       while (keep_iterating) {
         real rho_cond = (cond1 + cond2) / 2;                    // How much water vapor to condense for this iteration
-        real rv_loc = max( 0._fp , rho_v - rho_cond );          // New vapor density
-        real rc_loc = max( 0._fp , rho_c + rho_cond );          // New cloud liquid density
+        real rv_loc = std::max( 0._fp , rho_v - rho_cond );          // New vapor density
+        real rc_loc = std::max( 0._fp , rho_c + rho_cond );          // New cloud liquid density
         real Lv = latent_heat_condensation(temp);               // Compute latent heat of condensation
         real cp = cp_moist(rho_d,rv_loc,rc_loc,cp_d,cp_v,cp_l); // New moist specific heat at constant pressure
         real temp_loc = temp + rho_cond*Lv/(rho*cp);            // New temperature after condensation
@@ -812,8 +809,8 @@ public:
       bool keep_iterating = true;
       while (keep_iterating) {
         real rho_evap = (evap1 + evap2) / 2;                    // How much water vapor to evapense
-        real rv_loc = max( 0._fp , rho_v + rho_evap );          // New vapor density
-        real rc_loc = max( 0._fp , rho_c - rho_evap );          // New cloud liquid density
+        real rv_loc = std::max( 0._fp , rho_v + rho_evap );          // New vapor density
+        real rc_loc = std::max( 0._fp , rho_c - rho_evap );          // New cloud liquid density
         real Lv = latent_heat_condensation(temp);               // Compute latent heat of condensation for water
         real cp = cp_moist(rho_d,rv_loc,rc_loc,cp_d,cp_v,cp_l); // New moist specific heat
         real temp_loc = temp - rho_evap*Lv/(rho*cp);            // New temperature after evaporation
@@ -841,16 +838,18 @@ public:
 
   void get_cloud_fraction( realConst2d ast , realConst2d qc , realConst2d qr , realConst2d qi ,
                            real2d const &cld_frac_i , real2d const &cld_frac_l , real2d const &cld_frac_r ) {
+    using yakl::c::SimpleBounds;
+
     int nz   = ast.dimension[0];
     int ncol = ast.dimension[1];
 
     real constexpr mincld = 0.0001;
     real constexpr qsmall = 1.e-14;
 
-    parallel_for( Bounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
-      cld_frac_i(k,i) = max(ast(k,i), mincld);
-      cld_frac_l(k,i) = max(ast(k,i), mincld);
-      cld_frac_r(k,i) = max(ast(k,i), mincld);
+    parallel_for( SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
+      cld_frac_i(k,i) = std::max(ast(k,i), mincld);
+      cld_frac_l(k,i) = std::max(ast(k,i), mincld);
+      cld_frac_r(k,i) = std::max(ast(k,i), mincld);
     });
 
     // precipitation fraction 
@@ -863,7 +862,7 @@ public:
     parallel_for( ncol , YAKL_LAMBDA (int i) {
       for (int k=nz-2; k >= 0; k--) {
         if ( qr(k+1,i) >= qsmall || qi(k+1,i) >= qsmall ) {
-          cld_frac_r(k,i) = max( cld_frac_r(k+1,i) , cld_frac_r(k,i) );
+          cld_frac_r(k,i) = std::max( cld_frac_r(k+1,i) , cld_frac_r(k,i) );
         }
       }
     });

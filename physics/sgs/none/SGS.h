@@ -12,7 +12,9 @@ public:
   SGS() {
   }
 
-
+  static int constexpr get_num_tracers() {
+    return 0;
+  }
 
   // Can do whatever you want, but mainly for registering tracers and allocating data
   void init(pam::PamCoupler &coupler) {
