@@ -1,0 +1,31 @@
+---
+# Simulation time in number of physics time steps
+simSteps  : 400
+
+# Number of cells to use
+crm_nx       : 100
+crm_ny       : 2
+crm_nz       : 1
+
+# Data to initialize: doublevortex risingbubble moistrisingbubble
+initData : gaussian1d
+
+# Time steps
+dtphys: 0.01
+crm_per_phys: 1
+ 
+# Output filename
+out_prefix  : test
+
+# Output frequency in number of CRM time steps
+outSteps: 20
+statSteps: 1
+
+tstype: ssprk3
+
+# Number of ensembles
+nens : 1
+
+# Parallel decomposition
+nprocx : 1
+nprocy : 1
