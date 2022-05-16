@@ -17,7 +17,7 @@ initData : {init}
 dtphys: {dt}
 crm_per_phys: 1
 # Output filename
-out_prefix  : {output}
+dycore_out_prefix  : {output}
 
 # Output frequency in number of CRM time steps
 outSteps: {nsteps}
@@ -63,11 +63,11 @@ if __name__ == "__main__":
         print(f"nsteps = {nsteps}, dt = {dt}")
         input = "input_conv_linswe"
 
-        output = f"output_{l}"
+        output = f"output_{l}_"
         open(input, "w").write(input_template.format(init=init, nsteps=nsteps, nx=nx,ny=ny,dt=dt,output=output))
         subprocess.run(["./driver", input], capture_output=True)
 
-        DS = xr.open_dataset(f"{output}_dycore.nc")
+        DS = xr.open_dataset(f"{output}0.nc")
         DS.load()
 
         it = -1
@@ -85,7 +85,7 @@ if __name__ == "__main__":
         
         DS.close()
         os.remove(input)
-        os.remove(f"{output}_dycore.nc")
+        os.remove(f"{output}0.nc")
     
     ratesc = np.log2(errsc[0:nlevels-1] / errsc[1:nlevels])
     ratesv = np.log2(errsv[0:nlevels-1] / errsv[1:nlevels])

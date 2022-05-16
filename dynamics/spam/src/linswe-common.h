@@ -1,26 +1,27 @@
 #pragma once
 
-uint constexpr ntracers_nofct = 0;
-uint constexpr ntracers_fct = 0;
+uint constexpr ntracers_dycore = 0;
+uint constexpr ntracers_active = 0;
+uint constexpr ntracers_physics = 0;
+uint constexpr ndensity_dycore = 1;
+uint constexpr ndensity_nophysics = ndensity_dycore + ntracers_dycore;
+uint constexpr ndensity = ndensity_dycore + ntracers_dycore;
+
 
 //////////////////////////////////////////////////////////////////////////////
 
 // Number of Dimensions
 uint constexpr ndims = 2;
 
-// Set dens and ntracers/ntracersfct sizes
-uint constexpr ntracers = ntracers_nofct + ntracers_fct;
-
-uint constexpr ndensity_nofct = 1 + ntracers_nofct;
-uint constexpr ndensity_fct = ntracers_fct;
-
-uint constexpr ndensity = ndensity_nofct + ndensity_fct;
 
 // Number of variables
 // v, h
 uint constexpr nprognostic = 2;
 #define VVAR 0
-#define HVAR 1
+#define DENSVAR 1
+
+//This is needed in order for varset to compile for layermodel- it shouldn't ever be used so the -1 is okay (and will trigger an easy to catch bug if it is!)
+#define WVAR -1
 
 // G, HREF
 uint constexpr nconstant = 4;
@@ -49,4 +50,6 @@ uint constexpr nstats = 1;
 class ModelParameters : public Parameters {
 public:
   std::string initdataStr;
+  std::string tracerdataStr[ntracers_dycore];
+  bool dycore_tracerpos[ntracers_dycore];
 };

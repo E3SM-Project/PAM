@@ -15,6 +15,7 @@ real constexpr _H = 10;
 real constexpr _G = 10;
 
 Hamiltonian_Hk Hk;
+VariableSet_SWE varset;
 Hamiltonian_SWE_Hs Hs;
 ThermoPotential thermo;
 
@@ -65,9 +66,9 @@ vec<2> YAKL_INLINE gaussian1d_v(real x, real y, real t) {
 class ModelDiagnostics : public Diagnostics {
 public:
   void compute_diag(ModelParameters &params, real time,
-                    const VariableSet<nconstant> &const_vars,
-                    VariableSet<nprognostic> &x,
-                    VariableSet<ndiagnostic> &diagnostic_vars) {
+                    const FieldSet<nconstant> &const_vars,
+                    FieldSet<nprognostic> &x,
+                    FieldSet<ndiagnostic> &diagnostic_vars) {
 
     int dis = dual_topology->is;
     int djs = dual_topology->js;
@@ -101,12 +102,12 @@ public:
 
     parallel_for(
         "Compute H0 Diag",
-        Bounds<4>(primal_topology->nl, primal_topology->n_cells_y,
+        SimpleBounds<4>(primal_topology->nl, primal_topology->n_cells_y,
                   primal_topology->n_cells_x, primal_topology->nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_I<ndensity, diff_ord>(
               diagnostic_vars.fields_arr[H0DIAGVAR].data,
-              x.fields_arr[HVAR].data, *this->primal_geometry,
+              x.fields_arr[DENSVAR].data, *this->primal_geometry,
               *this->dual_geometry, pis, pjs, pks, i, j, k, n);
         });
   }
@@ -116,33 +117,40 @@ public:
 
 class ModelTendencies : public Tendencies {
 public:
-  void initialize(ModelParameters &params, const Topology &primal_topo,
-                  const Topology &dual_topo, Geometry &primal_geom,
+  void initialize(PamCoupler &coupler, ModelParameters &params, Topology &primal_topo,
+                  Topology &dual_topo, Geometry &primal_geom,
                   Geometry &dual_geom, ExchangeSet<nauxiliary> &aux_exchange,
                   ExchangeSet<nconstant> &const_exchange) {
 
     Tendencies::initialize(params, primal_topo, dual_topo, primal_geom,
                            dual_geom, aux_exchange, const_exchange);
-    Hk.initialize(*this->primal_geometry, *this->dual_geometry);
-    Hs.initialize(thermo, *this->primal_geometry, *this->dual_geometry);
+
+  varset.initialize(coupler, params, thermo,  *this->primal_topology, *this->dual_topology, *this->primal_geometry, *this->dual_geometry);
+    Hk.initialize(varset, *this->primal_geometry, *this->dual_geometry);
+    Hs.initialize(thermo, varset, *this->primal_geometry, *this->dual_geometry);
   }
 
-  void compute_constants(VariableSet<nconstant> &const_vars,
-                         VariableSet<nprognostic> &x) {}
+  void convert_dynamics_to_coupler_state(PamCoupler &coupler, const FieldSet<nprognostic> &prog_vars, const FieldSet<nconstant> &const_vars)
+  {varset.convert_dynamics_to_coupler_state(coupler, prog_vars, const_vars);}
+  void convert_coupler_to_dynamics_state(PamCoupler &coupler, FieldSet<nprognostic> &prog_vars, const FieldSet<nconstant> &const_vars)
+  {varset.convert_coupler_to_dynamics_state(coupler, prog_vars, const_vars);}
 
-  void YAKL_INLINE compute_rhs(real dt, VariableSet<nconstant> &const_vars,
-                               VariableSet<nprognostic> &x,
-                               VariableSet<nauxiliary> &auxiliary_vars,
-                               VariableSet<nprognostic> &xtend) {
+  void compute_constants(FieldSet<nconstant> &const_vars,
+                         FieldSet<nprognostic> &x) {}
+
+  void YAKL_INLINE compute_rhs(real dt, FieldSet<nconstant> &const_vars,
+                               FieldSet<nprognostic> &x,
+                               FieldSet<nauxiliary> &auxiliary_vars,
+                               FieldSet<nprognostic> &xtend) {
 
     const auto G = const_vars.fields_arr[GRAVVAR].data;
     const auto H = const_vars.fields_arr[HREFVAR].data;
 
     const auto v = x.fields_arr[VVAR].data;
-    const auto h = x.fields_arr[HVAR].data;
+    const auto h = x.fields_arr[DENSVAR].data;
 
     auto vtend = xtend.fields_arr[VVAR].data;
-    auto htend = xtend.fields_arr[HVAR].data;
+    auto htend = xtend.fields_arr[DENSVAR].data;
 
     auto u = auxiliary_vars.fields_arr[UVAR].data;
     auto h0 = auxiliary_vars.fields_arr[H0VAR].data;
@@ -157,7 +165,7 @@ public:
 
     parallel_for(
         "Compute h0",
-        Bounds<4>(primal_topology->nl, primal_topology->n_cells_y,
+        SimpleBounds<4>(primal_topology->nl, primal_topology->n_cells_y,
                   primal_topology->n_cells_x, primal_topology->nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_I<ndensity, diff_ord>(h0, h, *this->primal_geometry,
@@ -167,7 +175,7 @@ public:
 
     parallel_for(
         "Compute u",
-        Bounds<4>(dual_topology->nl, dual_topology->n_cells_y,
+        SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y,
                   dual_topology->n_cells_x, dual_topology->nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_H<1, diff_ord>(u, v, *this->primal_geometry,
@@ -182,7 +190,7 @@ public:
 
     parallel_for(
         "Compute v tend",
-        Bounds<4>(primal_topology->nl, primal_topology->n_cells_y,
+        SimpleBounds<4>(primal_topology->nl, primal_topology->n_cells_y,
                   primal_topology->n_cells_x, primal_topology->nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_wD1<ndensity>(vtend, G, h0, pis, pjs, pks, i, j, k, n);
@@ -190,7 +198,7 @@ public:
 
     parallel_for(
         "Compute h tend",
-        Bounds<4>(dual_topology->nl, dual_topology->n_cells_y,
+        SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y,
                   dual_topology->n_cells_x, dual_topology->nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_wDbar2<ndensity>(htend, H, u, dis, djs, dks, i, j, k, n);
@@ -224,8 +232,8 @@ public:
                this->dual_topology->n_cells_x);
   }
 
-  void compute(VariableSet<nprognostic> &progvars,
-               VariableSet<nconstant> &constvars, int tind) {
+  void compute(FieldSet<nprognostic> &progvars,
+               FieldSet<nconstant> &constvars, int tind) {
 
     for (int n = 0; n < nens; n++) {
 
@@ -244,7 +252,7 @@ public:
 
       parallel_for(
           "Compute energy stats",
-          Bounds<3>(dual_topology->nl, dual_topology->n_cells_y,
+          SimpleBounds<3>(dual_topology->nl, dual_topology->n_cells_y,
                     dual_topology->n_cells_x),
           YAKL_LAMBDA(int k, int j, int i) {
             real KE, PE;
@@ -281,7 +289,7 @@ public:
   }
 };
 
-// *******   VariableSet Initialization   ***********//
+// *******   FieldSet Initialization   ***********//
 void initialize_variables(
     const Topology &ptopo, const Topology &dtopo,
     SArray<int, 2, nprognostic, 3> &prog_ndofs_arr,
@@ -301,11 +309,11 @@ void initialize_variables(
 
   // v, h
   prog_topo_arr[VVAR] = &ptopo;
-  prog_topo_arr[HVAR] = &dtopo;
+  prog_topo_arr[DENSVAR] = &dtopo;
   prog_names_arr[VVAR] = "v";
-  prog_names_arr[HVAR] = "h";
+  prog_names_arr[DENSVAR] = "h";
   set_dofs_arr(prog_ndofs_arr, VVAR, 1, 1, 1); // v = straight 1-form
-  set_dofs_arr(prog_ndofs_arr, HVAR, ndims, 1,
+  set_dofs_arr(prog_ndofs_arr, DENSVAR, ndims, 1,
                ndensity); // h = twisted n-form
 
   aux_topo_arr[UVAR] = &dtopo;
@@ -350,17 +358,6 @@ void initialize_variables(
 
 //***************** Set Initial Conditions ***************************//
 
-void readModelParamsFile(std::string inFile, ModelParameters &params,
-                         Parallel &par, int nz) {
-  readParamsFile(inFile, params, par, nz);
-
-  // Read config file
-  YAML::Node config = YAML::LoadFile(inFile);
-
-  // Read the data initialization options
-  params.initdataStr = config["initData"].as<std::string>();
-}
-
 void set_domain_sizes_ic(ModelParameters &params, std::string initData) {
   params.zlen = 1.0;
   params.zc = 0.5;
@@ -372,9 +369,22 @@ void set_domain_sizes_ic(ModelParameters &params, std::string initData) {
   }
 }
 
+void readModelParamsFile(std::string inFile, ModelParameters &params,
+                         Parallel &par, int nz) {
+  readParamsFile(inFile, params, par, nz);
+
+  // Read config file
+  YAML::Node config = YAML::LoadFile(inFile);
+
+  // Read the data initialization options
+  params.initdataStr = config["initData"].as<std::string>();
+
+  set_domain_sizes_ic(params, params.initdataStr);
+}
+
 void set_initial_conditions(ModelParameters &params,
-                            VariableSet<nprognostic> &progvars,
-                            VariableSet<nconstant> &constvars,
+                            FieldSet<nprognostic> &progvars,
+                            FieldSet<nconstant> &constvars,
                             Geometry &primal_geom, Geometry &dual_geom) {
 
   Hs.set_parameters(_G);
@@ -389,7 +399,7 @@ void set_initial_conditions(ModelParameters &params,
               << "\n";
     auto h_f = [=](real x, real y) { return gaussian1d_h(x, y, 0); };
     auto v_f = [=](real x, real y) { return gaussian1d_v(x, y, 0); };
-    dual_geom.set_2form_values(h_f, progvars.fields_arr[HVAR], 0);
+    dual_geom.set_2form_values(h_f, progvars.fields_arr[DENSVAR], 0);
     primal_geom.set_1form_values(v_f, progvars.fields_arr[VVAR], 0,
                                  LINE_INTEGRAL_TYPE::TANGENT);
   } else if (params.initdataStr == "sol2d") {
@@ -397,7 +407,7 @@ void set_initial_conditions(ModelParameters &params,
               << "\n";
     auto h_f = [=](real x, real y) { return sol2d_h(x, y, 0); };
     auto v_f = [=](real x, real y) { return sol2d_v(x, y, 0); };
-    dual_geom.set_2form_values(h_f, progvars.fields_arr[HVAR], 0);
+    dual_geom.set_2form_values(h_f, progvars.fields_arr[DENSVAR], 0);
     primal_geom.set_1form_values(v_f, progvars.fields_arr[VVAR], 0,
                                  LINE_INTEGRAL_TYPE::TANGENT);
   }
