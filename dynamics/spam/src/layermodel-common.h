@@ -46,9 +46,9 @@ uint constexpr nconstant = 2;
 // edgerecon, recon fct stuff- Phi, Mf, edgeflux
 
 #if defined _CEp || defined _MCErhop || defined _MCErhodp
-uint constexpr nauxiliary = 19;
+uint constexpr nauxiliary = 20;
 #else
-uint constexpr nauxiliary = 18;
+uint constexpr nauxiliary = 19;
 #endif
 
 #define FVAR 0
@@ -72,6 +72,7 @@ uint constexpr nauxiliary = 18;
 #define PHIVAR 15
 #define EDGEFLUXVAR 16
 #define MFVAR 17
+#define FVAR2 18
 
 // track total densities, dens min/max, densfct min/max, energy (total, K, P,
 // I), PV, PE,

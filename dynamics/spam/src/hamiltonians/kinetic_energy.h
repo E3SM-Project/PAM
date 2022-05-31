@@ -159,10 +159,42 @@ public:
   }
 
   // FIX THIS TO GET TOTAL DENSITY FROM VARSET!
-  void YAKL_INLINE compute_dKdv(real5d F, real5d K, real5d HE, const real5d v,
-                                const real5d U, const real5d dens0, int is,
-                                int js, int ks, int i, int j, int k,
-                                int n) const {
+  void YAKL_INLINE compute_F_and_K(real5d F, real5d K, const real5d v,
+                                   const real5d U, const real5d dens0, int is,
+                                   int js, int ks, int i, int j, int k, int n) {
+    SArray<real, 2, ndims, 2> D0;
+    SArray<real, 1, ndims> he;
+
+    // compute he = phi * h0
+    for (int d = 0; d < ndims; d++) {
+      if (d == 0) {
+        D0(d, 0) = dens0(0, k + ks, j + js, i + is, n);
+        D0(d, 1) = dens0(0, k + ks, j + js, i + is - 1, n);
+      }
+      if (d == 1) {
+        D0(d, 0) = dens0(0, k + ks, j + js, i + is, n);
+        D0(d, 1) = dens0(0, k + ks, j + js - 1, i + is, n);
+      }
+      if (d == 2) {
+        D0(d, 0) = dens0(0, k + ks, j + js, i + is, n);
+        D0(d, 1) = dens0(0, k + ks - 1, j + js, i + is, n);
+      }
+    }
+    phi(he, D0);
+
+    // compute F = he * U
+    for (int d = 0; d < ndims; d++) {
+      F(d, k + ks, j + js, i + is, n) = U(d, k + ks, j + js, i + is, n) * he(d);
+    }
+
+    // compute K = 1/2 * PhiT(U,V)
+    compute_phiT(K, U, v, is, js, ks, i, j, k, n);
+    K(0, k + ks, j + js, i + is, n) *= 0.5_fp;
+  }
+
+  void YAKL_INLINE compute_F_and_he(real5d F, real5d HE, const real5d U,
+                                    const real5d dens0, int is, int js, int ks,
+                                    int i, int j, int k, int n) {
     SArray<real, 2, ndims, 2> D0;
     SArray<real, 1, ndims> he;
 
@@ -185,13 +217,9 @@ public:
 
     // compute F = he * U, set HE
     for (int d = 0; d < ndims; d++) {
-      HE(d, k + ks, j + js, i + is, n) = he(d);
       F(d, k + ks, j + js, i + is, n) = U(d, k + ks, j + js, i + is, n) * he(d);
+      HE(d, k + ks, j + js, i + is, n) = he(d);
     }
-
-    // compute K = 1/2 * PhiT(U,V)
-    compute_phiT(K, U, v, is, js, ks, i, j, k, n);
-    K(0, k + ks, j + js, i + is, n) *= 0.5_fp;
   }
 
   // FIX THIS TO GET TOTAL DENSITY FROM VARSET!
