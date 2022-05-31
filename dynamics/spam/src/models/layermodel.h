@@ -131,19 +131,13 @@ public:
   }
 
   void compute_constants(FieldSet<nconstant> &const_vars,
-                         FieldSet<nprognostic> &x) {}
+                         FieldSet<nprognostic> &x) override {}
 
-  void compute_functional_derivatives_and_diagnostic_quantities_I(
-      real5d Uvar, real5d Q0var, real5d f0var, real5d dens0var,
-      const real5d Vvar, const real5d densvar, const real5d coriolisvar) {
+  void YAKL_INLINE compute_dens0(real5d dens0var, const real5d densvar) {
 
     int pis = primal_topology.is;
     int pjs = primal_topology.js;
     int pks = primal_topology.ks;
-
-    int dis = dual_topology.is;
-    int djs = dual_topology.js;
-    int dks = dual_topology.ks;
 
     // compute dens0var = I densvar
     parallel_for(
@@ -155,9 +149,36 @@ public:
               dens0var, densvar, this->primal_geometry, this->dual_geometry,
               pis, pjs, pks, i, j, k, n);
         });
+  }
 
-    // compute U = H v, q0, f0
+  void YAKL_INLINE compute_U(real5d Uvar, const real5d Vvar) {
+
+    int dis = dual_topology.is;
+    int djs = dual_topology.js;
+    int dks = dual_topology.ks;
+
+    // compute U = H v
+    parallel_for(
+        "Compute U",
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          compute_H<1, diff_ord>(Uvar, Vvar, *this->primal_geometry,
+                                 *this->dual_geometry, dis, djs, dks, i, j, k,
+                                 n);
+        });
+  }
+
+  void YAKL_INLINE compute_U_and_q0f0(real5d Uvar, real5d Q0var, real5d f0var,
+                                      const real5d Vvar, const real5d densvar,
+                                      const real5d coriolisvar) {
+
+    int dis = dual_topology.is;
+    int djs = dual_topology.js;
+    int dks = dual_topology.ks;
+
     YAKL_SCOPE(PVPE, ::PVPE);
+    // compute U Hv, q0, f0
     parallel_for(
         "Compute U, Q0, F0",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
@@ -171,9 +192,8 @@ public:
         });
   }
 
-  void compute_functional_derivatives_and_diagnostic_quantities_II(
-      real5d Fvar, real5d Kvar, real5d HEvar, const real5d Vvar,
-      const real5d Uvar, const real5d dens0var) {
+  void YAKL_INLINE compute_F_and_K(real5d Fvar, real5d Kvar, const real5d Vvar,
+                                   const real5d Uvar, const real5d dens0var) {
 
     int dis = dual_topology.is;
     int djs = dual_topology.js;
@@ -181,18 +201,34 @@ public:
 
     YAKL_SCOPE(Hk, ::Hk);
     parallel_for(
-        "Compute F/K/HE",
+        "Compute F/K",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          Hk.compute_dKdv(Fvar, Kvar, HEvar, Vvar, Uvar, dens0var, dis, djs,
-                          dks, i, j, k, n);
+          Hk.compute_F_and_K(Fvar, Kvar, Vvar, Uvar, dens0var, dis, djs, dks, i,
+                             j, k, n);
         });
   }
 
-  void compute_functional_derivatives_and_diagnostic_quantities_III(
-      real5d FTvar, real5d Bvar, const real5d Fvar, const real5d Uvar,
-      const real5d Kvar, const real5d densvar, const real5d HSvar) {
+  void YAKL_INLINE compute_F_and_he(real5d Fvar, real5d HEvar,
+                                    const real5d Uvar, const real5d dens0var) {
+
+    int dis = dual_topology.is;
+    int djs = dual_topology.js;
+    int dks = dual_topology.ks;
+
+    parallel_for(
+        "Compute F/he",
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          Hk.compute_F_and_he(Fvar, HEvar, Uvar, dens0var, dis, djs, dks, i, j,
+                              k, n);
+        });
+  }
+
+  void YAKL_INLINE compute_B(real5d Bvar, const real5d Kvar,
+                             const real5d densvar, const real5d HSvar) {
 
     int pis = primal_topology.is;
     int pjs = primal_topology.js;
@@ -201,20 +237,33 @@ public:
     YAKL_SCOPE(Hk, ::Hk);
     YAKL_SCOPE(Hs, ::Hs);
     parallel_for(
-        "Compute FT/B",
+        "Compute B",
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_W(FTvar, Fvar, pis, pjs, pks, i, j, k, n);
           Hs.compute_dHsdx(Bvar, densvar, HSvar, pis, pjs, pks, i, j, k, n);
           Hk.compute_dKddens(Bvar, Kvar, pis, pjs, pks, i, j, k, n);
         });
   }
 
-  void compute_edge_reconstructions(real5d densedgereconvar,
-                                    real5d Qedgereconvar, real5d fedgereconvar,
-                                    const real5d dens0var, const real5d Q0var,
-                                    const real5d f0var) {
+  void YAKL_INLINE compute_FT(real5d FTvar, const real5d Fvar) {
+
+    int pis = primal_topology.is;
+    int pjs = primal_topology.js;
+    int pks = primal_topology.ks;
+
+    parallel_for(
+        "Compute FT",
+        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          compute_W(FTvar, Fvar, pis, pjs, pks, i, j, k, n);
+        });
+  }
+
+  void YAKL_INLINE compute_edge_reconstructions(
+      real5d densedgereconvar, real5d Qedgereconvar, real5d fedgereconvar,
+      const real5d dens0var, const real5d Q0var, const real5d f0var) {
 
     int pis = primal_topology.is;
     int pjs = primal_topology.js;
@@ -338,56 +387,74 @@ public:
         });
   }
 
-  void compute_rhs(real dt, FieldSet<nconstant> &const_vars,
-                   FieldSet<nprognostic> &x,
-                   FieldSet<nauxiliary> &auxiliary_vars,
-                   FieldSet<nprognostic> &xtend) {
+  void YAKL_INLINE compute_functional_derivatives(
+      real dt, FieldSet<nconstant> &const_vars, FieldSet<nprognostic> &x,
+      FieldSet<nauxiliary> &auxiliary_vars) override {
 
-    // Compute U, q0, hf, dens0
-    compute_functional_derivatives_and_diagnostic_quantities_I(
-        auxiliary_vars.fields_arr[UVAR].data,
-        auxiliary_vars.fields_arr[Q0VAR].data,
-        auxiliary_vars.fields_arr[F0VAR].data,
-        auxiliary_vars.fields_arr[DENS0VAR].data, x.fields_arr[VVAR].data,
-        x.fields_arr[DENSVAR].data, const_vars.fields_arr[CORIOLISVAR].data);
+    compute_dens0(auxiliary_vars.fields_arr[DENS0VAR].data,
+                  x.fields_arr[DENSVAR].data);
+    compute_U(auxiliary_vars.fields_arr[UVAR].data, x.fields_arr[VVAR].data);
 
     this->aux_exchange->exchanges_arr[UVAR].exchange_field(
         auxiliary_vars.fields_arr[UVAR]);
     this->aux_exchange->exchanges_arr[DENS0VAR].exchange_field(
         auxiliary_vars.fields_arr[DENS0VAR]);
-    this->aux_exchange->exchanges_arr[Q0VAR].exchange_field(
-        auxiliary_vars.fields_arr[Q0VAR]);
-    this->aux_exchange->exchanges_arr[F0VAR].exchange_field(
-        auxiliary_vars.fields_arr[F0VAR]);
 
-    // Compute K, F, he
-    compute_functional_derivatives_and_diagnostic_quantities_II(
-        auxiliary_vars.fields_arr[FVAR].data,
-        auxiliary_vars.fields_arr[KVAR].data,
-        auxiliary_vars.fields_arr[HEVAR].data, x.fields_arr[VVAR].data,
-        auxiliary_vars.fields_arr[UVAR].data,
-        auxiliary_vars.fields_arr[DENS0VAR].data);
+    compute_F_and_K(auxiliary_vars.fields_arr[FVAR].data,
+                    auxiliary_vars.fields_arr[KVAR].data,
+                    x.fields_arr[VVAR].data,
+                    auxiliary_vars.fields_arr[UVAR].data,
+                    auxiliary_vars.fields_arr[DENS0VAR].data);
 
     this->aux_exchange->exchanges_arr[FVAR].exchange_field(
         auxiliary_vars.fields_arr[FVAR]);
     this->aux_exchange->exchanges_arr[KVAR].exchange_field(
         auxiliary_vars.fields_arr[KVAR]);
+
+    compute_B(auxiliary_vars.fields_arr[BVAR].data,
+              auxiliary_vars.fields_arr[KVAR].data, x.fields_arr[DENSVAR].data,
+              const_vars.fields_arr[HSVAR].data);
+
+    this->aux_exchange->exchanges_arr[BVAR].exchange_field(
+        auxiliary_vars.fields_arr[BVAR]);
+  }
+
+  void YAKL_INLINE apply_symplectic(real dt, FieldSet<nconstant> &const_vars,
+                                    FieldSet<nprognostic> &x,
+                                    FieldSet<nauxiliary> &auxiliary_vars,
+                                    FieldSet<nprognostic> &xtend) override {
+    compute_dens0(auxiliary_vars.fields_arr[DENS0VAR].data,
+                  x.fields_arr[DENSVAR].data);
+    compute_U_and_q0f0(auxiliary_vars.fields_arr[UVAR].data,
+                       auxiliary_vars.fields_arr[Q0VAR].data,
+                       auxiliary_vars.fields_arr[F0VAR].data,
+                       x.fields_arr[VVAR].data, x.fields_arr[DENSVAR].data,
+                       const_vars.fields_arr[CORIOLISVAR].data);
+
+    this->aux_exchange->exchanges_arr[DENS0VAR].exchange_field(
+        auxiliary_vars.fields_arr[DENS0VAR]);
+    this->aux_exchange->exchanges_arr[UVAR].exchange_field(
+        auxiliary_vars.fields_arr[UVAR]);
+    this->aux_exchange->exchanges_arr[Q0VAR].exchange_field(
+        auxiliary_vars.fields_arr[Q0VAR]);
+    this->aux_exchange->exchanges_arr[F0VAR].exchange_field(
+        auxiliary_vars.fields_arr[F0VAR]);
+
+    compute_F_and_he(auxiliary_vars.fields_arr[FVAR2].data,
+                     auxiliary_vars.fields_arr[HEVAR].data,
+                     auxiliary_vars.fields_arr[UVAR].data,
+                     auxiliary_vars.fields_arr[DENS0VAR].data);
+
+    this->aux_exchange->exchanges_arr[FVAR2].exchange_field(
+        auxiliary_vars.fields_arr[FVAR2]);
     this->aux_exchange->exchanges_arr[HEVAR].exchange_field(
         auxiliary_vars.fields_arr[HEVAR]);
 
-    // Compute FT, B
-    compute_functional_derivatives_and_diagnostic_quantities_III(
-        auxiliary_vars.fields_arr[FTVAR].data,
-        auxiliary_vars.fields_arr[BVAR].data,
-        auxiliary_vars.fields_arr[FVAR].data,
-        auxiliary_vars.fields_arr[UVAR].data,
-        auxiliary_vars.fields_arr[KVAR].data, x.fields_arr[DENSVAR].data,
-        const_vars.fields_arr[HSVAR].data);
+    compute_FT(auxiliary_vars.fields_arr[FTVAR].data,
+               auxiliary_vars.fields_arr[FVAR2].data);
 
     this->aux_exchange->exchanges_arr[FTVAR].exchange_field(
         auxiliary_vars.fields_arr[FTVAR]);
-    this->aux_exchange->exchanges_arr[BVAR].exchange_field(
-        auxiliary_vars.fields_arr[BVAR]);
 
     // Compute densrecon, qrecon and frecon
     compute_edge_reconstructions(
@@ -722,12 +789,14 @@ void initialize_variables(const Topology &ptopo, const Topology &dtopo,
   aux_names_arr[KVAR] = "K";
   aux_names_arr[BVAR] = "B";
   aux_names_arr[FVAR] = "F";
+  aux_names_arr[FVAR2] = "F2";
   aux_names_arr[UVAR] = "U";
   aux_names_arr[HEVAR] = "he";
-  set_dofs_arr(aux_ndofs_arr, BVAR, 0, 1, ndensity);  // B = straight 0-form
-  set_dofs_arr(aux_ndofs_arr, KVAR, ndims, 1, 1);     // K = twisted n-form
-  set_dofs_arr(aux_ndofs_arr, FVAR, ndims - 1, 1, 1); // F = twisted (n-1)-form
-  set_dofs_arr(aux_ndofs_arr, UVAR, ndims - 1, 1, 1); // U = twisted (n-1)-form
+  set_dofs_arr(aux_ndofs_arr, BVAR, 0, 1, ndensity);   // B = straight 0-form
+  set_dofs_arr(aux_ndofs_arr, KVAR, ndims, 1, 1);      // K = twisted n-form
+  set_dofs_arr(aux_ndofs_arr, FVAR, ndims - 1, 1, 1);  // F = twisted (n-1)-form
+  set_dofs_arr(aux_ndofs_arr, FVAR2, ndims - 1, 1, 1); // F = twisted (n-1)-form
+  set_dofs_arr(aux_ndofs_arr, UVAR, ndims - 1, 1, 1);  // U = twisted (n-1)-form
   set_dofs_arr(aux_ndofs_arr, HEVAR, ndims - 1, 1,
                1); // he lives on dual edges, associated with F
 

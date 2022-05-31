@@ -87,7 +87,7 @@ public:
 class ModelTendencies : public Tendencies {
 public:
   void compute_constants(VariableSet<nconstant> &const_vars,
-                         VariableSet<nprognostic> &x) {
+                         VariableSet<nprognostic> &x) override {
 
     parallel_for(
         "Compute Uvar",
@@ -119,7 +119,7 @@ public:
   void YAKL_INLINE compute_rhs(real dt, VariableSet<nconstant> &const_vars,
                                VariableSet<nprognostic> &x,
                                VariableSet<nauxiliary> &auxiliary_vars,
-                               VariableSet<nprognostic> &xtend) {
+                               VariableSet<nprognostic> &xtend) override {
 
     int pis = primal_topology->is;
     int pjs = primal_topology->js;
