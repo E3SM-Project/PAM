@@ -20,6 +20,7 @@
 #include "extrudedadvection.h"
 #endif
 #include "RKSimple.h"
+#include "SI.h"
 #include "SSPRK.h"
 #include <memory>
 
@@ -50,6 +51,10 @@ public:
 #endif
 #if _TIME_TYPE == 1
   SSPKKTimeIntegrator tint;
+#endif
+#if _TIME_TYPE == 2
+  ModelLinearSystem linear_system;
+  SITimeIntegrator tint;
 #endif
 
   int ierr;
@@ -151,8 +156,16 @@ public:
 
     // // Initialize the time stepper
     debug_print("start ts init", par.masterproc);
+#if _TIME_TYPE == 2
+    linear_system.initialize(params, primal_topology, dual_topology,
+                             primal_geometry, dual_geometry, aux_exchange,
+                             prog_exchange);
+    tint.initialize(params, tendencies, linear_system, prognostic_vars,
+                    constant_vars, auxiliary_vars, prog_exchange);
+#else
     tint.initialize(params, tendencies, prognostic_vars, constant_vars,
                     auxiliary_vars, prog_exchange);
+#endif
     debug_print("end ts init", par.masterproc);
 
     // convert dynamics state to Coupler state

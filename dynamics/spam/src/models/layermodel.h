@@ -8,6 +8,7 @@
 #include "fct.h"
 #include "hamiltonian.h"
 #include "hodge_star.h"
+#include "pocketfft_hdronly.h"
 #include "recon.h"
 #include "thermo.h"
 #include "wedge.h"
@@ -555,6 +556,204 @@ public:
                        auxiliary_vars.fields_arr[BVAR].data,
                        auxiliary_vars.fields_arr[FVAR].data,
                        auxiliary_vars.fields_arr[PHIVAR].data);
+  }
+};
+
+// *******   Linear system   ***********//
+typedef yakl::Array<complex, 2, yakl::memDevice, yakl::styleC> complex2d;
+class ModelLinearSystem : public LinearSystem {
+public:
+  complex2d ch, cv0, cv1;
+
+  void initialize(ModelParameters &params, Topology &primal_topo,
+                  Topology &dual_topo, Geometry &primal_geom,
+                  Geometry &dual_geom, ExchangeSet<nauxiliary> &aux_exchange,
+                  ExchangeSet<nprognostic> &prog_exchange) override {
+    LinearSystem::initialize(params, primal_topo, dual_topo, primal_geom,
+                             dual_geom, aux_exchange, prog_exchange);
+
+    ch = complex2d("ch", dual_topo.n_cells_y, dual_topo.n_cells_x);
+    cv0 = complex2d("cv0", primal_topo.n_cells_y, primal_topo.n_cells_x);
+    cv1 = complex2d("cv1", primal_topo.n_cells_y, primal_topo.n_cells_x);
+  }
+
+  virtual void YAKL_INLINE solve(real dt, FieldSet<nprognostic> &rhs,
+                                 FieldSet<nconstant> &const_vars,
+                                 FieldSet<nauxiliary> &auxiliary_vars,
+                                 FieldSet<nprognostic> &solution) override {
+
+    auto grav = Hs.g;
+    // TODO: get this from somwhere
+    real ref_height = 750;
+    auto n_cells_x = dual_topology->n_cells_x;
+    auto n_cells_y = dual_topology->n_cells_y;
+
+    auto nl = dual_topology->nl;
+    int pis = primal_topology->is;
+    int pjs = primal_topology->js;
+    int pks = primal_topology->ks;
+    int dis = dual_topology->is;
+    int djs = dual_topology->js;
+    int dks = dual_topology->ks;
+
+    auto v_rhs = rhs.fields_arr[VVAR].data;
+    auto h_rhs = rhs.fields_arr[DENSVAR].data;
+
+    constexpr bool single_eq = false;
+
+    real scale = 1.0 / (n_cells_x * n_cells_y);
+    pocketfft::shape_t shape(2);
+    pocketfft::stride_t stride(2);
+    shape[0] = n_cells_y;
+    shape[1] = n_cells_x;
+    stride[0] = n_cells_x * sizeof(complex);
+    stride[1] = sizeof(complex);
+    pocketfft::shape_t axes = {0, 1};
+
+    if (single_eq) {
+      auto u = auxiliary_vars.fields_arr[UVAR].data;
+      parallel_for(
+          "linsolve compute u",
+          SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y,
+                          dual_topology->n_cells_x, dual_topology->nens),
+          YAKL_LAMBDA(int k, int j, int i, int n) {
+            compute_H<1, diff_ord>(u, v_rhs, *this->primal_geometry,
+                                   *this->dual_geometry, dis, djs, dks, i, j, k,
+                                   n);
+          });
+      this->aux_exchange->exchanges_arr[UVAR].exchange_field(
+          auxiliary_vars.fields_arr[UVAR]);
+
+      parallel_for(
+          "linsolve prepare h rhs",
+          SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y,
+                          dual_topology->n_cells_x, dual_topology->nens),
+          YAKL_LAMBDA(int k, int j, int i, int n) {
+            real h = h_rhs(0, dks + k, djs + j, dis + i, n);
+            compute_cwDbar2<ndensity>(h_rhs, ref_height, u, dis, djs, dks, i, j,
+                                      k, n);
+            h_rhs(0, dks + k, djs + j, dis + i, n) *= -0.5_fp * dt;
+            h_rhs(0, dks + k, djs + j, dis + i, n) += h;
+          });
+    }
+
+    if (single_eq) {
+      parallel_for(
+          "fft copy in", SimpleBounds<2>(n_cells_y, n_cells_x),
+          YAKL_LAMBDA(int j, int i) {
+            ch(j, i) = h_rhs(0, dks, j + djs, i + dis, 0);
+          });
+    } else {
+      parallel_for(
+          "fft copy in", SimpleBounds<2>(n_cells_y, n_cells_x),
+          YAKL_LAMBDA(int j, int i) {
+            ch(j, i) = h_rhs(0, dks, j + djs, i + dis, 0);
+            cv0(j, i) = v_rhs(0, pks, j + pjs, i + pis, 0);
+            cv1(j, i) = v_rhs(1, pks, j + pjs, i + pis, 0);
+          });
+    }
+
+    yakl::timer_start("fft fwd");
+    // fftw_execute(fwd_h);
+    pocketfft::c2c(shape, stride, stride, axes, pocketfft::FORWARD, ch.data(),
+                   ch.data(), 1._fp);
+    if (!single_eq) {
+      pocketfft::c2c(shape, stride, stride, axes, pocketfft::FORWARD,
+                     cv0.data(), cv0.data(), 1._fp);
+      pocketfft::c2c(shape, stride, stride, axes, pocketfft::FORWARD,
+                     cv1.data(), cv1.data(), 1._fp);
+    }
+    yakl::timer_stop("fft fwd");
+
+    parallel_for(
+        "fft invert", SimpleBounds<2>(n_cells_y, n_cells_x),
+        YAKL_LAMBDA(int j, int i) {
+          complex cI =
+              fourier_I<diff_ord>(*primal_geometry, *dual_geometry, pis, pjs,
+                                  pks, i, j, 0, 0, n_cells_x, n_cells_y, nl);
+          SArray<complex, 1, ndims> cD1;
+          fourier_cwD1(cD1, grav, i, j, 0, n_cells_x, n_cells_y, nl);
+          SArray<complex, 1, ndims> cH;
+          fourier_H<diff_ord>(cH, *primal_geometry, *dual_geometry, pis, pjs,
+                              pks, i, j, 0, 0, n_cells_x, n_cells_y, nl);
+          SArray<complex, 1, ndims> cD2bar;
+          fourier_cwDbar2(cD2bar, ref_height, i, j, 0, n_cells_x, n_cells_y,
+                          nl);
+
+          complex hn = (ch(j, i) - 0.5_fp * dt * cD2bar(0) * cH(0) * cv0(j, i) -
+                        0.5_fp * dt * cD2bar(1) * cH(1) * cv1(j, i));
+          complex hd =
+              (1._fp - 0.25_fp * dt * dt * cD1(0) * cD2bar(0) * cI * cH(0) -
+               0.25_fp * dt * dt * cD1(1) * cD2bar(1) * cI * cH(1));
+
+          if (single_eq) {
+            ch(j, i) /= hd;
+          } else {
+            ch(j, i) = hn / hd;
+            cv0(j, i) -= 0.5_fp * dt * cD1(0) * cI * ch(j, i);
+            cv1(j, i) -= 0.5_fp * dt * cD1(1) * cI * ch(j, i);
+          }
+        });
+
+    yakl::timer_start("fft bwd");
+    pocketfft::c2c(shape, stride, stride, axes, pocketfft::BACKWARD, ch.data(),
+                   ch.data(), scale);
+    if (!single_eq) {
+      pocketfft::c2c(shape, stride, stride, axes, pocketfft::BACKWARD,
+                     cv0.data(), cv0.data(), scale);
+      pocketfft::c2c(shape, stride, stride, axes, pocketfft::BACKWARD,
+                     cv1.data(), cv1.data(), scale);
+    }
+    yakl::timer_stop("fft bwd");
+
+    auto h_sol = solution.fields_arr[DENSVAR].data;
+    auto v_sol = solution.fields_arr[VVAR].data;
+
+    parallel_for(
+        "fft copy out", SimpleBounds<2>(n_cells_y, n_cells_x),
+        YAKL_LAMBDA(int j, int i) {
+          h_sol(0, dks, j + djs, i + dis, 0) = ch(j, i).real();
+
+          if (!single_eq) {
+            v_sol(0, dks, j + djs, i + dis, 0) = cv0(j, i).real();
+            v_sol(1, dks, j + djs, i + dis, 0) = cv1(j, i).real();
+          }
+        });
+
+    if (single_eq) {
+
+      prog_exchange->exchanges_arr[DENSVAR].exchange_field(
+          solution.fields_arr[DENSVAR]);
+
+      auto h0 = auxiliary_vars.fields_arr[DENS0VAR].data;
+      parallel_for(
+          "linsolve compute h0",
+          SimpleBounds<4>(primal_topology->nl, primal_topology->n_cells_y,
+                          primal_topology->n_cells_x, primal_topology->nens),
+          YAKL_LAMBDA(int k, int j, int i, int n) {
+            compute_I<ndensity, diff_ord>(h0, h_sol, *this->primal_geometry,
+                                          *this->dual_geometry, pis, pjs, pks,
+                                          i, j, k, n);
+          });
+
+      this->aux_exchange->exchanges_arr[DENS0VAR].exchange_field(
+          auxiliary_vars.fields_arr[DENS0VAR]);
+
+      parallel_for(
+          "linsolve extract v from h",
+          SimpleBounds<4>(primal_topology->nl, primal_topology->n_cells_y,
+                          primal_topology->n_cells_x, primal_topology->nens),
+          YAKL_LAMBDA(int k, int j, int i, int n) {
+            real v0 = v_rhs(0, dks, j + djs, i + dis, 0);
+            real v1 = v_rhs(1, dks, j + djs, i + dis, 0);
+            compute_cwD1<ndensity>(v_sol, grav, h0, pis, pjs, pks, i, j, k, n);
+
+            v_sol(0, dks, j + djs, i + dis, 0) *= -0.5_fp * dt;
+            v_sol(1, dks, j + djs, i + dis, 0) *= -0.5_fp * dt;
+            v_sol(0, dks, j + djs, i + dis, 0) += v0;
+            v_sol(1, dks, j + djs, i + dis, 0) += v1;
+          });
+    }
   }
 };
 
