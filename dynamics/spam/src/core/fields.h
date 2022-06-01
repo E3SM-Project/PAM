@@ -26,6 +26,7 @@ public:
                   int edof, int nd);
   void copy(const Field &f);
   void waxpy(real alpha, const Field &x, const Field &y);
+  void waxpby(real alpha, real beta, const Field &x, const Field &y);
   void waxpbypcz(real alpha, real beta, real gamma, const Field &x,
                  const Field &y, const Field &z);
   void zero();
@@ -232,6 +233,23 @@ void Field::waxpy(real alpha, const Field &x, const Field &y) {
         this->data(ndof, k + ks, j + js, i + is, n) =
             alpha * x.data(ndof, k + ks, j + js, i + is, n) +
             y.data(ndof, k + ks, j + js, i + is, n);
+      });
+}
+
+// Computes w (self) = alpha x + beta * y
+void Field::waxpby(real alpha, real beta, const Field &x, const Field &y) {
+
+  int is = this->topology->is;
+  int js = this->topology->js;
+  int ks = this->topology->ks;
+  parallel_for(
+      "Field waxpby",
+      SimpleBounds<5>(this->total_dofs, this->_nz, this->topology->n_cells_y,
+                      this->topology->n_cells_x, this->topology->nens),
+      YAKL_LAMBDA(int ndof, int k, int j, int i, int n) {
+        this->data(ndof, k + ks, j + js, i + is, n) =
+            alpha * x.data(ndof, k + ks, j + js, i + is, n) +
+            beta * y.data(ndof, k + ks, j + js, i + is, n);
       });
 }
 
