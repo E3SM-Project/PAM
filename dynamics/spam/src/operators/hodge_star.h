@@ -85,6 +85,66 @@ void YAKL_INLINE compute_H(real5d uvar, const real5d vvar,
   }
 }
 
+void YAKL_INLINE Hhat(SArray<complex, 1, ndims> &u,
+                      SArray<real, 2, ndims, 1> const &Hgeom,
+                      SArray<complex, 2, ndims, 1> const &shift) {
+  for (int d = 0; d < ndims; d++) {
+    u(d) = Hgeom(d, 0) * shift(d, 0);
+  }
+}
+
+void YAKL_INLINE Hhat(SArray<complex, 1, ndims> &u,
+                      SArray<real, 2, ndims, 3> const &Hgeom,
+                      SArray<complex, 2, ndims, 3> const &shift) {
+  for (int d = 0; d < ndims; d++) {
+    u(d) = -1.0_fp / 24.0_fp * Hgeom(d, 0) * shift(d, 0) +
+           26.0_fp / 24.0_fp * Hgeom(d, 1) * shift(d, 1) -
+           1.0_fp / 24.0_fp * Hgeom(d, 2) * shift(d, 2);
+  }
+}
+
+void YAKL_INLINE Hhat(SArray<complex, 1, ndims> &u,
+                      SArray<real, 2, ndims, 5> const &Hgeom,
+                      SArray<complex, 2, ndims, 5> const &shift) {
+  for (int d = 0; d < ndims; d++) {
+    u(d) = 9.0_fp / 1920.0_fp * Hgeom(d, 0) * shift(d, 0) -
+           116.0_fp / 1920.0_fp * Hgeom(d, 1) * shift(d, 1) +
+           2134.0_fp / 1920.0_fp * Hgeom(d, 2) * shift(d, 2) -
+           116.0_fp / 1920.0_fp * Hgeom(d, 3) * shift(d, 3) +
+           9.0_fp / 1920.0_fp * Hgeom(d, 4) * shift(d, 4);
+  }
+}
+
+template <uint ord, int off = ord / 2 - 1>
+void YAKL_INLINE fourier_H(SArray<complex, 1, ndims> &u, Geometry &pgeom,
+                           Geometry &dgeom, int is, int js, int ks, int i,
+                           int j, int k, int n, int nx, int ny, int nz) {
+  complex im(0._fp, 1._fp);
+  SArray<complex, 2, ndims, ord - 1> shift;
+  SArray<real, 2, ndims, ord - 1> Hgeom;
+  for (int p = 0; p < ord - 1; p++) {
+    for (int d = 0; d < ndims; d++) {
+      if (d == 0) {
+        real fac = (2 * pi * i * (p - off)) / nx;
+        shift(d, p) = std::exp(im * fac);
+        Hgeom(d, p) =
+            dgeom.get_area_lform(ndims - 1, d, k + ks, j + js,
+                                 i + is + p - off) /
+            pgeom.get_area_lform(1, d, k + ks, j + js, i + is + p - off);
+      }
+      if (d == 1) {
+        real fac = (2 * pi * j * (p - off)) / ny;
+        shift(d, p) = std::exp(im * fac);
+        Hgeom(d, p) =
+            dgeom.get_area_lform(ndims - 1, d, k + ks, j + js + p - off,
+                                 i + is) /
+            pgeom.get_area_lform(1, d, k + ks, j + js + p - off, i + is);
+      }
+    }
+  }
+  Hhat(u, Hgeom, shift);
+}
+
 // Note the indexing here, this is key
 real YAKL_INLINE compute_Hv(const real5d wvar, const Geometry<Straight> &pgeom,
                             const Geometry<Twisted> &dgeom, int is, int js,
@@ -271,6 +331,61 @@ void YAKL_INLINE compute_I(real5d var0, const real5d var,
       var0(l, k + ks, j + js, i + is, n) += x0(l);
     }
   }
+}
+
+complex YAKL_INLINE Ihat(SArray<real, 2, ndims, 1> const &Igeom,
+                         const SArray<complex, 2, ndims, 1> &shift) {
+  return Igeom(0, 0) * shift(0, 0);
+}
+complex YAKL_INLINE Ihat(const SArray<real, 2, ndims, 3> &Igeom,
+                         const SArray<complex, 2, ndims, 3> &shift) {
+  complex res = Igeom(0, 1) * shift(0, 1);
+  for (int d = 0; d < ndims; d++) {
+    res += -1.0_fp / 24.0_fp * Igeom(d, 0) * shift(d, 0) +
+           2.0_fp / 24.0_fp * Igeom(d, 1) * shift(d, 1) -
+           1.0_fp / 24.0_fp * Igeom(d, 2) * shift(d, 2);
+  }
+  return res;
+}
+complex YAKL_INLINE Ihat(const SArray<real, 2, ndims, 5> &Igeom,
+                         const SArray<complex, 2, ndims, 5> &shift) {
+  complex res = Igeom(0, 2) * shift(0, 2);
+  for (int d = 0; d < ndims; d++) {
+    res += 9.0_fp / 1920.0_fp * Igeom(d, 0) * shift(d, 0) -
+           116.0_fp / 1920.0_fp * Igeom(d, 1) * shift(d, 1) +
+           214.0_fp / 1920.0_fp * Igeom(d, 2) * shift(d, 2) -
+           116.0_fp / 1920.0_fp * Igeom(d, 3) * shift(d, 3) +
+           9.0_fp / 1920.0_fp * Igeom(d, 4) * shift(d, 4);
+  }
+  return res;
+}
+
+template <uint ord, int off = ord / 2 - 1>
+complex YAKL_INLINE fourier_I(Geometry &pgeom, Geometry &dgeom, int is, int js,
+                              int ks, int i, int j, int k, int n, int nx,
+                              int ny, int nz) {
+  SArray<real, 2, ndims, ord - 1> Igeom;
+  SArray<complex, 2, ndims, ord - 1> shift;
+  complex im(0._fp, 1._fp);
+  for (int p = 0; p < ord - 1; p++) {
+    for (int d = 0; d < ndims; d++) {
+      if (d == 0) {
+        real fac = (2 * pi * i * (p - off)) / nx;
+        shift(d, p) = std::exp(im * fac);
+        Igeom(d, p) =
+            pgeom.get_area_lform(0, 0, k + ks, j + js, i + is + p - off) /
+            dgeom.get_area_lform(ndims, 0, k + ks, j + js, i + is + p - off);
+      }
+      if (d == 1) {
+        real fac = (2 * pi * j * (p - off)) / ny;
+        shift(d, p) = std::exp(im * fac);
+        Igeom(d, p) =
+            pgeom.get_area_lform(0, 0, k + ks, j + js + p - off, i + is) /
+            dgeom.get_area_lform(ndims, 0, k + ks, j + js + p - off, i + is);
+      }
+    }
+  }
+  return Ihat(Igeom, shift);
 }
 
 // BROKEN FOR 2D+1D EXT
