@@ -10,3 +10,7 @@
 [submodule "externals/EKAT"]
 	path = externals/EKAT
 	url = git@github.com:E3SM-Project/EKAT.git
+[submodule "externals/pocketfft"]
+	path = externals/pocketfft
+	url = git@gitlab.mpcdf.mpg.de:mtr/pocketfft/
+	branch = cpp
