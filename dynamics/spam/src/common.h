@@ -6,6 +6,7 @@
 #include "mpi.h"
 #include "yaml-cpp/yaml.h"
 #include <array>
+#include <complex>
 #include <fstream>
 #include <math.h>
 #include <sstream>
@@ -21,6 +22,7 @@ typedef unsigned int uint;
 
 // Declaring the precision for the model
 typedef double real;
+typedef std::complex<real> complex;
 #define REAL_MPI MPI_DOUBLE
 //#define REAL_NC NC_DOUBLE
 
@@ -68,15 +70,13 @@ uint constexpr ic_quad_pts_z = 5;
 
 // FIX THIS
 // Halo sizes
-uint constexpr maxhalosize =
-    15; // mymax(reconstruction_order+1,differential_order)/2;
-        // // IS THIS ALWAYS CORRECT?
-uint constexpr mirroringhalo =
-    9; // mymax(reconstruction_order+1,differential_order)/2;
-       // // IS THIS ALWAYS CORRECT?
+uint constexpr maxhalosize = 15; // mymax(reconstruction_order+1,differential_order)/2;
+                                 // // IS THIS ALWAYS CORRECT?
+uint constexpr mirroringhalo = 9; // mymax(reconstruction_order+1,differential_order)/2;
+                                  // // IS THIS ALWAYS CORRECT?
 
 // 0 = RKSimple, 1=SSPRK
-#define _TIME_TYPE 1
+#define _TIME_TYPE 2
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 

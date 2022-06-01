@@ -281,3 +281,34 @@ public:
     this->is_initialized = true;
   }
 };
+
+class LinearSystem {
+public:
+  Topology *primal_topology;
+  Topology *dual_topology;
+  ExchangeSet<nprognostic> *prog_exchange;
+  ExchangeSet<nauxiliary> *aux_exchange;
+  Geometry *primal_geometry;
+  Geometry *dual_geometry;
+
+  bool is_initialized = false;
+
+  virtual void initialize(ModelParameters &params, Topology &primal_topo,
+                          Topology &dual_topo, Geometry &primal_geom,
+                          Geometry &dual_geom,
+                          ExchangeSet<nauxiliary> &aux_exchange,
+                          ExchangeSet<nprognostic> &prog_exchange) {
+    this->primal_topology = &primal_topo;
+    this->dual_topology = &dual_topo;
+    this->primal_geometry = &primal_geom;
+    this->dual_geometry = &dual_geom;
+    this->aux_exchange = &aux_exchange;
+    this->prog_exchange = &prog_exchange;
+    this->is_initialized = true;
+  }
+
+  virtual void YAKL_INLINE solve(real dt, FieldSet<nprognostic> &rhs,
+                                 FieldSet<nconstant> &const_vars,
+                                 FieldSet<nauxiliary> &auxiliary_vars,
+                                 FieldSet<nprognostic> &solution) = 0;
+};

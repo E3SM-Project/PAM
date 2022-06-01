@@ -24,5 +24,9 @@ add_executable(driver driver.cpp)
 include(${YAKL_HOME}/yakl_utils.cmake)
 yakl_process_target(driver)
 
-target_link_libraries(driver dynamics physics pam_core ${NCFLAGS})
+set(POCKETFFT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../externals/pocketfft)
+add_library(pocketfft INTERFACE)
+target_include_directories(pocketfft INTERFACE ${POCKETFFT_DIR})
+
+target_link_libraries(driver dynamics physics pam_core pocketfft ${NCFLAGS})
 
