@@ -216,21 +216,21 @@ YAKL_INLINE void compute_wDvbar_fct(real5d tendvar, const real5d vertreconvar,
 }
 
 template <uint ndofs>
-void YAKL_INLINE cwD1(SArray<real, 1, ndims> &var, real c,
+void YAKL_INLINE cwD1(SArray<real, 1, ndims> &var, SArray<real, 1, ndofs> &c,
                       SArray<real, 3, ndofs, ndims, 2> const &dens) {
 
   for (int d = 0; d < ndims; d++) {
     var(d) = 0.0;
     for (int l = 0; l < ndofs; l++) {
-      var(d) += c * (dens(l, d, 1) - dens(l, d, 0));
+      var(d) += c(l) * (dens(l, d, 1) - dens(l, d, 0));
     }
   }
 }
 
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_cwD1(real5d tendvar, real c, const real5d densvar,
-                              int is, int js, int ks, int i, int j, int k,
-                              int n) {
+void YAKL_INLINE compute_cwD1(real5d tendvar, SArray<real, 1, ndofs> &c,
+                              const real5d densvar, int is, int js, int ks,
+                              int i, int j, int k, int n) {
   SArray<real, 1, ndims> tend;
   SArray<real, 2, ndofs, ndims> recon;
   SArray<real, 3, ndofs, ndims, 2> dens;

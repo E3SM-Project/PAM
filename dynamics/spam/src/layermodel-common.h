@@ -23,6 +23,7 @@ uint constexpr ndensity_dycore = 2;
 
 uint constexpr ndensity_nophysics = ndensity_dycore + ntracers_dycore;
 uint constexpr ndensity = ndensity_dycore + ntracers_dycore;
+uint constexpr ndensity_active = ndensity_dycore + ntracers_active;
 
 // Number of variables
 // v, dens

@@ -599,7 +599,7 @@ public:
     auto v_rhs = rhs.fields_arr[VVAR].data;
     auto h_rhs = rhs.fields_arr[DENSVAR].data;
 
-    constexpr bool single_eq = false;
+    constexpr bool single_eq = true;
 
     real scale = 1.0 / (n_cells_x * n_cells_y);
     pocketfft::shape_t shape(2);
@@ -610,8 +610,43 @@ public:
     stride[1] = sizeof(complex);
     pocketfft::shape_t axes = {0, 1};
 
+    solution.copy(rhs);
+    prog_exchange->exchange_variable_set(solution);
+
     if (single_eq) {
       auto u = auxiliary_vars.fields_arr[UVAR].data;
+      auto h0 = auxiliary_vars.fields_arr[DENS0VAR].data;
+      auto h_sol = solution.fields_arr[DENSVAR].data;
+
+      parallel_for(
+          "linsolve compute h0",
+          SimpleBounds<4>(primal_topology->nl, primal_topology->n_cells_y,
+                          primal_topology->n_cells_x, primal_topology->nens),
+          YAKL_LAMBDA(int k, int j, int i, int n) {
+            compute_I<ndensity_active, diff_ord>(
+                h0, h_sol, *this->primal_geometry, *this->dual_geometry, pis,
+                pjs, pks, i, j, k, n);
+          });
+
+      this->aux_exchange->exchanges_arr[DENS0VAR].exchange_field(
+          auxiliary_vars.fields_arr[DENS0VAR]);
+
+      parallel_for(
+          "linsolve ???",
+          SimpleBounds<4>(primal_topology->nl, primal_topology->n_cells_y,
+                          primal_topology->n_cells_x, primal_topology->nens),
+          YAKL_LAMBDA(int k, int j, int i, int n) {
+            SArray<real, 1, ndensity_active> c;
+            c(0) = 0;
+            for (int dof = 1; dof < ndensity_active; ++dof) {
+              c(dof) = -0.25_fp * dt;
+            }
+            compute_cwD1<ndensity_active, ADD_MODE::ADD>(v_rhs, c, h0, pis, pjs,
+                                                         pks, i, j, k, n);
+          });
+
+      prog_exchange->exchanges_arr[VVAR].exchange_field(rhs.fields_arr[VVAR]);
+
       parallel_for(
           "linsolve compute u",
           SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y,
@@ -630,8 +665,7 @@ public:
                           dual_topology->n_cells_x, dual_topology->nens),
           YAKL_LAMBDA(int k, int j, int i, int n) {
             real h = h_rhs(0, dks + k, djs + j, dis + i, n);
-            compute_cwDbar2<ndensity>(h_rhs, ref_height, u, dis, djs, dks, i, j,
-                                      k, n);
+            compute_cwDbar2<1>(h_rhs, ref_height, u, dis, djs, dks, i, j, k, n);
             h_rhs(0, dks + k, djs + j, dis + i, n) *= -0.5_fp * dt;
             h_rhs(0, dks + k, djs + j, dis + i, n) += h;
           });
@@ -731,9 +765,9 @@ public:
           SimpleBounds<4>(primal_topology->nl, primal_topology->n_cells_y,
                           primal_topology->n_cells_x, primal_topology->nens),
           YAKL_LAMBDA(int k, int j, int i, int n) {
-            compute_I<ndensity, diff_ord>(h0, h_sol, *this->primal_geometry,
-                                          *this->dual_geometry, pis, pjs, pks,
-                                          i, j, k, n);
+            compute_I<1, diff_ord>(h0, h_sol, *this->primal_geometry,
+                                   *this->dual_geometry, pis, pjs, pks, i, j, k,
+                                   n);
           });
 
       this->aux_exchange->exchanges_arr[DENS0VAR].exchange_field(
@@ -746,7 +780,13 @@ public:
           YAKL_LAMBDA(int k, int j, int i, int n) {
             real v0 = v_rhs(0, dks, j + djs, i + dis, 0);
             real v1 = v_rhs(1, dks, j + djs, i + dis, 0);
-            compute_cwD1<ndensity>(v_sol, grav, h0, pis, pjs, pks, i, j, k, n);
+            SArray<real, 1, ndensity_active> c;
+            c(0) = grav;
+            for (int dof = 1; dof < ndensity_active; ++dof) {
+              c(dof) = 0.5_fp;
+            }
+            compute_cwD1<ndensity_active>(v_sol, c, h0, pis, pjs, pks, i, j, k,
+                                          n);
 
             v_sol(0, dks, j + djs, i + dis, 0) *= -0.5_fp * dt;
             v_sol(1, dks, j + djs, i + dis, 0) *= -0.5_fp * dt;
