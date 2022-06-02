@@ -635,7 +635,11 @@ public:
                         primal_topology->n_cells_x, primal_topology->nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           SArray<real, 1, ndensity_active> c;
+#ifdef _SWE
           c(0) = 0;
+#elif _TSWE
+          c(0) = 0.25_fp * grav * dt;
+#endif
           for (int dof = 1; dof < ndensity_active; ++dof) {
             c(dof) = -0.25_fp * dt;
           }
@@ -710,7 +714,12 @@ public:
     parallel_for(
         "fft copy out", SimpleBounds<2>(n_cells_y, n_cells_x),
         YAKL_LAMBDA(int j, int i) {
-          dens_sol(0, dks, j + djs, i + dis, 0) = complex_dens(j, i).real();
+          real dens_old = dens_sol(0, dks, j + djs, i + dis, 0);
+          real dens_new = complex_dens(j, i).real();
+          dens_sol(0, dks, j + djs, i + dis, 0) = dens_new;
+#ifdef _TSWE
+          dens_sol(1, dks, j + djs, i + dis, 0) -= grav * (dens_old - dens_new);
+#endif
         });
 
     prog_exchange->exchanges_arr[DENSVAR].exchange_field(
@@ -737,7 +746,11 @@ public:
           real v0 = v_rhs(0, dks, j + djs, i + dis, 0);
           real v1 = v_rhs(1, dks, j + djs, i + dis, 0);
           SArray<real, 1, ndensity_active> c;
+#ifdef _SWE
           c(0) = grav;
+#elif _TSWE
+          c(0) = 0.5_fp * grav;
+#endif
           for (int dof = 1; dof < ndensity_active; ++dof) {
             c(dof) = 0.5_fp;
           }
