@@ -11,12 +11,10 @@ template <uint nquad> class SITimeIntegrator {
 public:
   SArray<real, 1, nquad> quad_pts;
   SArray<real, 1, nquad> quad_wts;
-  FieldSet<nprognostic> F;
   FieldSet<nprognostic> *x;
   FieldSet<nprognostic> dx;
   FieldSet<nprognostic> xn;
   FieldSet<nprognostic> xm;
-  FieldSet<nprognostic> res;
   Tendencies *tendencies;
   LinearSystem *linear_system;
   FieldSet<nconstant> *const_vars;
@@ -49,11 +47,9 @@ void SITimeIntegrator<nquad>::initialize(ModelParameters &params,
 
   set_ref_quad_pts_wts(this->quad_pts, this->quad_wts);
 
-  this->F.initialize(xvars, "F");
   this->dx.initialize(xvars, "dx");
   this->xn.initialize(xvars, "xn");
   this->xm.initialize(xvars, "xm");
-  this->res.initialize(xvars, "res");
   this->x = &xvars;
   this->tendencies = &tend;
   this->linear_system = &linsys;
@@ -64,52 +60,28 @@ void SITimeIntegrator<nquad>::initialize(ModelParameters &params,
   this->is_initialized = true;
 }
 
-// real slownorm(FieldSet<nprognostic> &x, ExchangeSet<nprognostic> &x_exch)
-//{
-//   x_exch.exchange_variable_set(x);
-//   real accum = 0;
-//   for (auto f : x.fields_arr)
-//   {
-//     accum = std::max(yakl::intrinsics::maxval(yakl::intrinsics::abs(f.data)),
-//     accum);
-//   }
-//
-//   return accum;
-// }
-real slownorm(FieldSet<nprognostic> &x, ExchangeSet<nprognostic> &x_exch) {
+real norm(FieldSet<nprognostic> &x) {
+  // note that this function assumes that x halos have been exchanged
   real accum = 0;
-
   for (auto f : x.fields_arr) {
-    auto topo = f.topology;
-    real4d trim("trim", f.total_dofs, f._nz, topo->n_cells_y, topo->n_cells_x);
-    int is = topo->is;
-    int js = topo->js;
-    int ks = topo->ks;
-    parallel_for(
-        "Compute trimmed density",
-        SimpleBounds<4>(f.total_dofs, topo->nl, topo->n_cells_y,
-                        // SimpleBounds<4>(1, topo->nl, topo->n_cells_y,
-                        topo->n_cells_x),
-        YAKL_LAMBDA(int l, int k, int j, int i) {
-          trim(l, k, j, i) = f.data(l, k + ks, j + js, i + is, 0);
-        });
-    accum =
-        std::max(yakl::intrinsics::maxval(yakl::intrinsics::abs(trim)), accum);
+    accum = std::max(yakl::intrinsics::maxval(yakl::intrinsics::abs(f.data)),
+                     accum);
   }
-
   return accum;
 }
 
 template <uint nquad> void SITimeIntegrator<nquad>::stepForward(real dt) {
 
   this->tendencies->compute_rhs(dt, *this->const_vars, *this->x,
-                                *this->auxiliary_vars, this->F);
+                                *this->auxiliary_vars, this->dx);
   this->xn.copy(*this->x);
-  this->res.waxpbypcz(-1, 1, -dt, this->xn, *this->x, this->F);
+  // store residual in xm
+  this->xm.waxpbypcz(-1, 1, -dt, this->xn, *this->x, this->dx);
+  this->x_exchange->exchange_variable_set(this->xm);
 
   int iter = 0;
 
-  real res_norm = slownorm(res, *this->x_exchange);
+  real res_norm = norm(xm);
   real initial_norm = res_norm;
   std::cout << "Initial res norm: " << res_norm << std::endl;
   while (true) {
@@ -117,9 +89,7 @@ template <uint nquad> void SITimeIntegrator<nquad>::stepForward(real dt) {
       break;
     }
 
-    this->x_exchange->exchange_variable_set(this->xn);
-    this->x_exchange->exchange_variable_set(this->res);
-    this->linear_system->solve(dt, this->res, *this->const_vars,
+    this->linear_system->solve(dt, this->xm, *this->const_vars,
                                *this->auxiliary_vars, this->dx);
 
     this->xn.waxpy(1, this->dx, this->xn);
@@ -144,11 +114,12 @@ template <uint nquad> void SITimeIntegrator<nquad>::stepForward(real dt) {
     this->x_exchange->exchange_variable_set(this->xm);
 
     this->tendencies->apply_symplectic(dt, *this->const_vars, this->xm,
-                                       *this->auxiliary_vars, this->F);
+                                       *this->auxiliary_vars, this->dx);
 
-    this->res.waxpbypcz(-1, 1, -dt, this->xn, *this->x, this->F);
-
-    res_norm = slownorm(res, *this->x_exchange);
+    // store residual in xm
+    this->xm.waxpbypcz(-1, 1, -dt, this->xn, *this->x, this->dx);
+    this->x_exchange->exchange_variable_set(this->xm);
+    res_norm = norm(xm);
 
     iter++;
 
