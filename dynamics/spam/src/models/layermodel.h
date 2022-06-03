@@ -560,10 +560,10 @@ public:
 };
 
 // *******   Linear system   ***********//
-typedef yakl::Array<complex, 2, yakl::memDevice, yakl::styleC> complex2d;
+typedef yakl::Array<complex, 4, yakl::memDevice, yakl::styleC> complex4d;
 class ModelLinearSystem : public LinearSystem {
 public:
-  complex2d complex_dens;
+  complex4d complex_dens;
 
   void initialize(ModelParameters &params, Topology &primal_topo,
                   Topology &dual_topo, Geometry &primal_geom,
@@ -572,8 +572,8 @@ public:
     LinearSystem::initialize(params, primal_topo, dual_topo, primal_geom,
                              dual_geom, aux_exchange, prog_exchange);
 
-    complex_dens =
-        complex2d("complex dens", dual_topo.n_cells_y, dual_topo.n_cells_x);
+    complex_dens = complex4d("complex dens", dual_topo.nl, dual_topo.n_cells_y,
+                             dual_topo.n_cells_x, dual_topo.nens);
   }
 
   virtual void YAKL_INLINE solve(real dt, FieldSet<nprognostic> &rhs,
@@ -588,8 +588,9 @@ public:
 
     auto n_cells_x = dual_topology->n_cells_x;
     auto n_cells_y = dual_topology->n_cells_y;
-
     auto nl = dual_topology->nl;
+    auto nens = dual_topology->nens;
+
     int pis = primal_topology->is;
     int pjs = primal_topology->js;
     int pks = primal_topology->ks;
@@ -598,13 +599,27 @@ public:
     int dks = dual_topology->ks;
 
     real scale = 1.0 / (n_cells_x * n_cells_y);
-    pocketfft::shape_t shape(2);
-    pocketfft::stride_t stride(2);
-    shape[0] = n_cells_y;
-    shape[1] = n_cells_x;
-    stride[0] = n_cells_x * sizeof(complex);
-    stride[1] = sizeof(complex);
-    pocketfft::shape_t axes = {0, 1};
+    pocketfft::shape_t shape(4);
+    pocketfft::stride_t stride(4);
+
+    shape[0] = nl;
+    shape[1] = n_cells_y;
+    shape[2] = n_cells_x;
+    shape[3] = nens;
+
+    // stride[0] = n_cells_x * sizeof(complex);
+    // stride[1] = sizeof(complex);
+
+    stride[3] = sizeof(complex);
+    for (int i = 2; i >= 0; i--) {
+      stride[i] = stride[i + 1] * shape[i + 1];
+    }
+
+    // stride[0] = n_cells_x * sizeof(complex);
+    // stride[2] = n_ens * sizeof(complex);
+    // stride[3] = sizeof(complex);
+
+    pocketfft::shape_t axes = {1, 2};
 
     solution.copy(rhs);
     prog_exchange->exchange_variable_set(solution);
@@ -674,9 +689,11 @@ public:
         });
 
     parallel_for(
-        "fft copy in", SimpleBounds<2>(n_cells_y, n_cells_x),
-        YAKL_LAMBDA(int j, int i) {
-          complex_dens(j, i) = dens_rhs(0, dks, j + djs, i + dis, 0);
+        "fft copy in",
+        SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y,
+                        dual_topology->n_cells_x, dual_topology->nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          complex_dens(k, j, i, n) = dens_rhs(0, k + dks, j + djs, i + dis, n);
         });
 
     yakl::timer_start("fft fwd");
@@ -685,8 +702,10 @@ public:
     yakl::timer_stop("fft fwd");
 
     parallel_for(
-        "fft invert", SimpleBounds<2>(n_cells_y, n_cells_x),
-        YAKL_LAMBDA(int j, int i) {
+        "fft invert",
+        SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y,
+                        dual_topology->n_cells_x, dual_topology->nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
           complex cI =
               fourier_I<diff_ord>(*primal_geometry, *dual_geometry, pis, pjs,
                                   pks, i, j, 0, 0, n_cells_x, n_cells_y, nl);
@@ -703,7 +722,7 @@ public:
               (1._fp - 0.25_fp * dt * dt * cD1(0) * cD2bar(0) * cI * cH(0) -
                0.25_fp * dt * dt * cD1(1) * cD2bar(1) * cI * cH(1));
 
-          complex_dens(j, i) /= hd;
+          complex_dens(k, j, i, n) /= hd;
         });
 
     yakl::timer_start("fft bwd");
@@ -712,13 +731,16 @@ public:
     yakl::timer_stop("fft bwd");
 
     parallel_for(
-        "fft copy out", SimpleBounds<2>(n_cells_y, n_cells_x),
-        YAKL_LAMBDA(int j, int i) {
-          real dens_old = dens_sol(0, dks, j + djs, i + dis, 0);
-          real dens_new = complex_dens(j, i).real();
-          dens_sol(0, dks, j + djs, i + dis, 0) = dens_new;
+        "fft copy out",
+        SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y,
+                        dual_topology->n_cells_x, dual_topology->nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          real dens_old = dens_sol(0, k + dks, j + djs, i + dis, n);
+          real dens_new = complex_dens(k, j, i, n).real();
+          dens_sol(0, k + dks, j + djs, i + dis, n) = dens_new;
 #ifdef _TSWE
-          dens_sol(1, dks, j + djs, i + dis, 0) -= grav * (dens_old - dens_new);
+          dens_sol(1, k + dks, j + djs, i + dis, n) -=
+              grav * (dens_old - dens_new);
 #endif
         });
 
@@ -743,8 +765,8 @@ public:
         SimpleBounds<4>(primal_topology->nl, primal_topology->n_cells_y,
                         primal_topology->n_cells_x, primal_topology->nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          real v0 = v_rhs(0, dks, j + djs, i + dis, 0);
-          real v1 = v_rhs(1, dks, j + djs, i + dis, 0);
+          real v0 = v_rhs(0, k + dks, j + djs, i + dis, n);
+          real v1 = v_rhs(1, k + dks, j + djs, i + dis, n);
           SArray<real, 1, ndensity_active> c;
 #ifdef _SWE
           c(0) = grav;
@@ -757,10 +779,10 @@ public:
           compute_cwD1<ndensity_active>(v_sol, c, dens0, pis, pjs, pks, i, j, k,
                                         n);
 
-          v_sol(0, dks, j + djs, i + dis, 0) *= -0.5_fp * dt;
-          v_sol(1, dks, j + djs, i + dis, 0) *= -0.5_fp * dt;
-          v_sol(0, dks, j + djs, i + dis, 0) += v0;
-          v_sol(1, dks, j + djs, i + dis, 0) += v1;
+          v_sol(0, k + dks, j + djs, i + dis, n) *= -0.5_fp * dt;
+          v_sol(1, k + dks, j + djs, i + dis, n) *= -0.5_fp * dt;
+          v_sol(0, k + dks, j + djs, i + dis, n) += v0;
+          v_sol(1, k + dks, j + djs, i + dis, n) += v1;
         });
 
     yakl::timer_stop("Linear solve");
