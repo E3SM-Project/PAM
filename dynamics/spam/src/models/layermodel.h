@@ -628,17 +628,10 @@ public:
     shape[2] = n_cells_x;
     shape[3] = nens;
 
-    // stride[0] = n_cells_x * sizeof(complex);
-    // stride[1] = sizeof(complex);
-
     stride[3] = sizeof(complex);
     for (int i = 2; i >= 0; i--) {
       stride[i] = stride[i + 1] * shape[i + 1];
     }
-
-    // stride[0] = n_cells_x * sizeof(complex);
-    // stride[2] = n_ens * sizeof(complex);
-    // stride[3] = sizeof(complex);
 
     pocketfft::shape_t axes = {1, 2};
 
@@ -727,21 +720,20 @@ public:
         SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y,
                         dual_topology->n_cells_x, dual_topology->nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          complex cI =
+          real cI =
               fourier_I<diff_ord>(*primal_geometry, *dual_geometry, pis, pjs,
                                   pks, i, j, 0, 0, n_cells_x, n_cells_y, nl);
-          SArray<complex, 1, ndims> cD1;
-          fourier_cwD1(cD1, grav, i, j, 0, n_cells_x, n_cells_y, nl);
-          SArray<complex, 1, ndims> cH;
+
+          SArray<real, 1, ndims> cH;
           fourier_H<diff_ord>(cH, *primal_geometry, *dual_geometry, pis, pjs,
                               pks, i, j, 0, 0, n_cells_x, n_cells_y, nl);
-          SArray<complex, 1, ndims> cD2bar;
-          fourier_cwDbar2(cD2bar, ref_height, i, j, 0, n_cells_x, n_cells_y,
-                          nl);
 
-          complex hd =
-              (1._fp - 0.25_fp * dt * dt * cD1(0) * cD2bar(0) * cI * cH(0) -
-               0.25_fp * dt * dt * cD1(1) * cD2bar(1) * cI * cH(1));
+          SArray<real, 1, ndims> cD1Dbar2;
+          fourier_cwD1Dbar2(cD1Dbar2, grav * ref_height, i, j, 0, n_cells_x,
+                            n_cells_y, nl);
+
+          real hd = (1._fp - 0.25_fp * dt * dt * cD1Dbar2(0) * cI * cH(0) -
+                     0.25_fp * dt * dt * cD1Dbar2(1) * cI * cH(1));
 
           complex_dens(k, j, i, n) /= hd;
         });

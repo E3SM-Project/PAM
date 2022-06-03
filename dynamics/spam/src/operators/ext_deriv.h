@@ -50,10 +50,9 @@ YAKL_INLINE void compute_cwDbar2(real5d tendvar, real c, const real5d U, int is,
   }
 }
 
-void YAKL_INLINE fourier_cwDbar2(const SArray<complex, 1, ndims> &Dbar2hat,
-                                 const real c, int i, int j, int k, int nx,
-                                 int ny, int nz) {
-  complex im(0._fp, 1._fp);
+void YAKL_INLINE fourier_cwD1Dbar2(const SArray<real, 1, ndims> &D1Dbar2hat,
+                                   const real c, int i, int j, int k, int nx,
+                                   int ny, int nz) {
   for (int d = 0; d < ndims; d++) {
     real fac;
     if (d == 0) {
@@ -63,7 +62,7 @@ void YAKL_INLINE fourier_cwDbar2(const SArray<complex, 1, ndims> &Dbar2hat,
       fac = (2 * pi * j) / ny;
     }
     // if (d==2) { fac = (2 * pi * k) / nz; }
-    Dbar2hat(d) = c * (std::exp(im * fac) - 1._fp);
+    D1Dbar2hat(d) = 2 * c * (cos(fac) - 1);
   }
 }
 
@@ -254,23 +253,6 @@ void YAKL_INLINE compute_cwD1(real5d tendvar, SArray<real, 1, ndofs> &c,
     if (addmode == ADD_MODE::ADD) {
       tendvar(d, k + ks, j + js, i + is, n) += tend(d);
     }
-  }
-}
-
-void YAKL_INLINE fourier_cwD1(SArray<complex, 1, ndims> &D1hat,
-                              const real coeff, int i, int j, int k, int nx,
-                              int ny, int nz) {
-  complex im(0._fp, 1._fp);
-  for (int d = 0; d < ndims; d++) {
-    real fac;
-    if (d == 0) {
-      fac = (2 * pi * i) / nx;
-    }
-    if (d == 1) {
-      fac = (2 * pi * j) / ny;
-    }
-    // if (d==2) {fac = (2 * pi * k) / nz; }
-    D1hat(d) = coeff * (1._fp - std::exp(-im * fac));
   }
 }
 
