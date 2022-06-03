@@ -6,17 +6,15 @@
 #include "model.h"
 #include "topology.h"
 
-class SITimeIntegrator {
+template <uint nquad> class SITimeIntegrator {
 
 public:
+  SArray<real, 1, nquad> quad_pts;
+  SArray<real, 1, nquad> quad_wts;
   FieldSet<nprognostic> F;
-  FieldSet<nprognostic> F1;
-  FieldSet<nprognostic> F2;
   FieldSet<nprognostic> *x;
   FieldSet<nprognostic> dx;
   FieldSet<nprognostic> xn;
-  FieldSet<nprognostic> x1;
-  FieldSet<nprognostic> x2;
   FieldSet<nprognostic> xm;
   FieldSet<nprognostic> res;
   Tendencies *tendencies;
@@ -36,26 +34,25 @@ public:
   void stepForward(real dt);
 };
 
-SITimeIntegrator::SITimeIntegrator() {
+template <uint nquad> SITimeIntegrator<nquad>::SITimeIntegrator() {
   this->is_initialized = false;
   std::cout << "CREATED SI\n";
 }
 
-void SITimeIntegrator::initialize(ModelParameters &params, Tendencies &tend,
-                                  LinearSystem &linsys,
-                                  FieldSet<nprognostic> &xvars,
-                                  FieldSet<nconstant> &consts,
-                                  FieldSet<nauxiliary> &auxiliarys,
-                                  ExchangeSet<nprognostic> &prog_exch) {
+template <uint nquad>
+void SITimeIntegrator<nquad>::initialize(ModelParameters &params,
+                                         Tendencies &tend, LinearSystem &linsys,
+                                         FieldSet<nprognostic> &xvars,
+                                         FieldSet<nconstant> &consts,
+                                         FieldSet<nauxiliary> &auxiliarys,
+                                         ExchangeSet<nprognostic> &prog_exch) {
+
+  set_ref_quad_pts_wts(this->quad_pts, this->quad_wts);
 
   this->F.initialize(xvars, "F");
-  this->F1.initialize(xvars, "F1");
-  this->F2.initialize(xvars, "F2");
   this->dx.initialize(xvars, "dx");
   this->xn.initialize(xvars, "xn");
   this->xm.initialize(xvars, "xm");
-  this->x1.initialize(xvars, "x1");
-  this->x2.initialize(xvars, "x2");
   this->res.initialize(xvars, "res");
   this->x = &xvars;
   this->tendencies = &tend;
@@ -63,9 +60,6 @@ void SITimeIntegrator::initialize(ModelParameters &params, Tendencies &tend,
   this->const_vars = &consts;
   this->auxiliary_vars = &auxiliarys;
   this->x_exchange = &prog_exch;
-
-  // this->tendencies->initialize_linsolver(params, tend, prog_exch, xvars,
-  // consts, auxiliarys);
 
   this->is_initialized = true;
 }
@@ -93,8 +87,9 @@ real slownorm(FieldSet<nprognostic> &x, ExchangeSet<nprognostic> &x_exch) {
     int ks = topo->ks;
     parallel_for(
         "Compute trimmed density",
-        // SimpleBounds<4>(f.total_dofs, topo->nl, topo->n_cells_y,
-        SimpleBounds<4>(1, topo->nl, topo->n_cells_y, topo->n_cells_x),
+        SimpleBounds<4>(f.total_dofs, topo->nl, topo->n_cells_y,
+                        // SimpleBounds<4>(1, topo->nl, topo->n_cells_y,
+                        topo->n_cells_x),
         YAKL_LAMBDA(int l, int k, int j, int i) {
           trim(l, k, j, i) = f.data(l, k + ks, j + js, i + is, 0);
         });
@@ -105,10 +100,7 @@ real slownorm(FieldSet<nprognostic> &x, ExchangeSet<nprognostic> &x_exch) {
   return accum;
 }
 
-void SITimeIntegrator::stepForward(real dt) {
-
-  real gamma1 = 0.5_fp * (1._fp - 1._fp / std::sqrt(3._fp));
-  real gamma2 = 0.5_fp * (1._fp + 1._fp / std::sqrt(3._fp));
+template <uint nquad> void SITimeIntegrator<nquad>::stepForward(real dt) {
 
   this->tendencies->compute_rhs(dt, *this->const_vars, *this->x,
                                 *this->auxiliary_vars, this->F);
@@ -132,24 +124,28 @@ void SITimeIntegrator::stepForward(real dt) {
 
     this->xn.waxpy(1, this->dx, this->xn);
 
+    this->xm.waxpby(1 - this->quad_pts(0), this->quad_pts(0), *this->x,
+                    this->xn);
+    this->x_exchange->exchange_variable_set(this->xm);
+    this->tendencies->compute_functional_derivatives(
+        ADD_MODE::REPLACE, this->quad_wts(0), dt, *this->const_vars, this->xm,
+        *this->auxiliary_vars);
+
+    for (int m = 1; m < nquad; ++m) {
+      this->xm.waxpby(1 - this->quad_pts(m), this->quad_pts(m), *this->x,
+                      this->xn);
+      this->x_exchange->exchange_variable_set(this->xm);
+      this->tendencies->compute_functional_derivatives(
+          ADD_MODE::ADD, this->quad_wts(m), dt, *this->const_vars, this->xm,
+          *this->auxiliary_vars);
+    }
+
     this->xm.waxpby(0.5_fp, 0.5_fp, *this->x, this->xn);
     this->x_exchange->exchange_variable_set(this->xm);
-    this->x1.waxpby(1 - gamma1, gamma1, *this->x, this->xn);
-    this->x2.waxpby(1 - gamma2, gamma2, *this->x, this->xn);
 
-    this->x_exchange->exchange_variable_set(this->x1);
-    this->tendencies->compute_functional_derivatives(
-        dt, *this->const_vars, this->x1, *this->auxiliary_vars);
     this->tendencies->apply_symplectic(dt, *this->const_vars, this->xm,
-                                       *this->auxiliary_vars, this->F1);
+                                       *this->auxiliary_vars, this->F);
 
-    this->x_exchange->exchange_variable_set(this->x2);
-    this->tendencies->compute_functional_derivatives(
-        dt, *this->const_vars, this->x2, *this->auxiliary_vars);
-    this->tendencies->apply_symplectic(dt, *this->const_vars, this->xm,
-                                       *this->auxiliary_vars, this->F2);
-
-    this->F.waxpby(0.5_fp, 0.5_fp, this->F1, this->F2);
     this->res.waxpbypcz(-1, 1, -dt, this->xn, *this->x, this->F);
 
     res_norm = slownorm(res, *this->x_exchange);

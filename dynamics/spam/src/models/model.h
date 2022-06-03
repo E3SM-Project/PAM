@@ -214,8 +214,8 @@ public:
                                  FieldSet<nprognostic> &x) = 0;
 
   virtual void YAKL_INLINE compute_functional_derivatives(
-      real dt, FieldSet<nconstant> &const_vars, FieldSet<nprognostic> &x,
-      FieldSet<nauxiliary> &auxiliary_vars) = 0;
+      ADD_MODE addmode, real fac, real dt, FieldSet<nconstant> &const_vars,
+      FieldSet<nprognostic> &x, FieldSet<nauxiliary> &auxiliary_vars) = 0;
 
   virtual void YAKL_INLINE apply_symplectic(
       real dt, FieldSet<nconstant> &const_vars, FieldSet<nprognostic> &x,
@@ -225,7 +225,8 @@ public:
                                        FieldSet<nprognostic> &x,
                                        FieldSet<nauxiliary> &auxiliary_vars,
                                        FieldSet<nprognostic> &xtend) {
-    compute_functional_derivatives(dt, const_vars, x, auxiliary_vars);
+    compute_functional_derivatives(ADD_MODE::REPLACE, 1._fp, dt, const_vars, x,
+                                   auxiliary_vars);
     apply_symplectic(dt, const_vars, x, auxiliary_vars, xtend);
   }
 };

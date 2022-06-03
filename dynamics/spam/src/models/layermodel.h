@@ -193,8 +193,10 @@ public:
         });
   }
 
-  void YAKL_INLINE compute_F_and_K(real5d Fvar, real5d Kvar, const real5d Vvar,
-                                   const real5d Uvar, const real5d dens0var) {
+  template <ADD_MODE addmode = ADD_MODE::REPLACE>
+  void YAKL_INLINE compute_F_and_K(real fac, real5d Fvar, real5d Kvar,
+                                   const real5d Vvar, const real5d Uvar,
+                                   const real5d dens0var) {
 
     int dis = dual_topology.is;
     int djs = dual_topology.js;
@@ -206,8 +208,8 @@ public:
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          Hk.compute_F_and_K(Fvar, Kvar, Vvar, Uvar, dens0var, dis, djs, dks, i,
-                             j, k, n);
+          Hk.compute_F_and_K<addmode>(Fvar, Kvar, Vvar, Uvar, dens0var, dis,
+                                      djs, dks, i, j, k, n, fac);
         });
   }
 
@@ -228,7 +230,8 @@ public:
         });
   }
 
-  void YAKL_INLINE compute_B(real5d Bvar, const real5d Kvar,
+  template <ADD_MODE addmode = ADD_MODE::REPLACE>
+  void YAKL_INLINE compute_B(real fac, real5d Bvar, const real5d Kvar,
                              const real5d densvar, const real5d HSvar) {
 
     int pis = primal_topology.is;
@@ -242,8 +245,9 @@ public:
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          Hs.compute_dHsdx(Bvar, densvar, HSvar, pis, pjs, pks, i, j, k, n);
-          Hk.compute_dKddens(Bvar, Kvar, pis, pjs, pks, i, j, k, n);
+          Hs.compute_dHsdx<addmode>(Bvar, densvar, HSvar, pis, pjs, pks, i, j,
+                                    k, n, fac);
+          Hk.compute_dKddens(Bvar, Kvar, pis, pjs, pks, i, j, k, n, fac);
         });
   }
 
@@ -389,8 +393,8 @@ public:
   }
 
   void YAKL_INLINE compute_functional_derivatives(
-      real dt, FieldSet<nconstant> &const_vars, FieldSet<nprognostic> &x,
-      FieldSet<nauxiliary> &auxiliary_vars) override {
+      ADD_MODE addmode, real fac, real dt, FieldSet<nconstant> &const_vars,
+      FieldSet<nprognostic> &x, FieldSet<nauxiliary> &auxiliary_vars) override {
 
     compute_dens0(auxiliary_vars.fields_arr[DENS0VAR].data,
                   x.fields_arr[DENSVAR].data);
@@ -401,20 +405,37 @@ public:
     this->aux_exchange->exchanges_arr[DENS0VAR].exchange_field(
         auxiliary_vars.fields_arr[DENS0VAR]);
 
-    compute_F_and_K(auxiliary_vars.fields_arr[FVAR].data,
-                    auxiliary_vars.fields_arr[KVAR].data,
-                    x.fields_arr[VVAR].data,
-                    auxiliary_vars.fields_arr[UVAR].data,
-                    auxiliary_vars.fields_arr[DENS0VAR].data);
+    // doing it this way because virtual functions cannot be templates :(
+    if (addmode == ADD_MODE::ADD) {
+      compute_F_and_K<ADD_MODE::ADD>(fac, auxiliary_vars.fields_arr[FVAR].data,
+                                     auxiliary_vars.fields_arr[KVAR].data,
+                                     x.fields_arr[VVAR].data,
+                                     auxiliary_vars.fields_arr[UVAR].data,
+                                     auxiliary_vars.fields_arr[DENS0VAR].data);
+    } else if (addmode == ADD_MODE::REPLACE) {
+      compute_F_and_K<ADD_MODE::REPLACE>(
+          fac, auxiliary_vars.fields_arr[FVAR].data,
+          auxiliary_vars.fields_arr[KVAR].data, x.fields_arr[VVAR].data,
+          auxiliary_vars.fields_arr[UVAR].data,
+          auxiliary_vars.fields_arr[DENS0VAR].data);
+    }
 
     this->aux_exchange->exchanges_arr[FVAR].exchange_field(
         auxiliary_vars.fields_arr[FVAR]);
     this->aux_exchange->exchanges_arr[KVAR].exchange_field(
         auxiliary_vars.fields_arr[KVAR]);
 
-    compute_B(auxiliary_vars.fields_arr[BVAR].data,
-              auxiliary_vars.fields_arr[KVAR].data, x.fields_arr[DENSVAR].data,
-              const_vars.fields_arr[HSVAR].data);
+    if (addmode == ADD_MODE::ADD) {
+      compute_B<ADD_MODE::ADD>(fac, auxiliary_vars.fields_arr[BVAR].data,
+                               auxiliary_vars.fields_arr[KVAR].data,
+                               x.fields_arr[DENSVAR].data,
+                               const_vars.fields_arr[HSVAR].data);
+    } else if (addmode == ADD_MODE::REPLACE) {
+      compute_B<ADD_MODE::REPLACE>(fac, auxiliary_vars.fields_arr[BVAR].data,
+                                   auxiliary_vars.fields_arr[KVAR].data,
+                                   x.fields_arr[DENSVAR].data,
+                                   const_vars.fields_arr[HSVAR].data);
+    }
 
     this->aux_exchange->exchanges_arr[BVAR].exchange_field(
         auxiliary_vars.fields_arr[BVAR]);
