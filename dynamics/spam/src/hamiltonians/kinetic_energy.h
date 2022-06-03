@@ -159,9 +159,12 @@ public:
   }
 
   // FIX THIS TO GET TOTAL DENSITY FROM VARSET!
+
+  template <ADD_MODE addmode = ADD_MODE::REPLACE>
   void YAKL_INLINE compute_F_and_K(real5d F, real5d K, const real5d v,
                                    const real5d U, const real5d dens0, int is,
-                                   int js, int ks, int i, int j, int k, int n) {
+                                   int js, int ks, int i, int j, int k, int n,
+                                   real fac = 1._fp) {
     SArray<real, 2, ndims, 2> D0;
     SArray<real, 1, ndims> he;
 
@@ -184,7 +187,13 @@ public:
 
     // compute F = he * U
     for (int d = 0; d < ndims; d++) {
-      F(d, k + ks, j + js, i + is, n) = U(d, k + ks, j + js, i + is, n) * he(d);
+      if (addmode == ADD_MODE::REPLACE) {
+        F(d, k + ks, j + js, i + is, n) =
+            fac * U(d, k + ks, j + js, i + is, n) * he(d);
+      } else if (addmode == ADD_MODE::ADD) {
+        F(d, k + ks, j + js, i + is, n) +=
+            fac * U(d, k + ks, j + js, i + is, n) * he(d);
+      }
     }
 
     // compute K = 1/2 * PhiT(U,V)
@@ -225,11 +234,12 @@ public:
   // FIX THIS TO GET TOTAL DENSITY FROM VARSET!
   //  Note that this ADDS to Bvar...
   void YAKL_INLINE compute_dKddens(real5d B, const real5d K, int is, int js,
-                                   int ks, int i, int j, int k, int n) const {
+                                   int ks, int i, int j, int k, int n,
+                                   real fac = 1._fp) const {
     SArray<real, 1, 1> K0;
     compute_I<1, diff_ord>(K0, K, this->primal_geometry, this->dual_geometry,
                            is, js, ks, i, j, k, n);
-    B(0, k + ks, j + js, i + is, n) += K0(0);
+    B(0, k + ks, j + js, i + is, n) += fac * K0(0);
   }
 };
 

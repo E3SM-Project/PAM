@@ -59,9 +59,10 @@ public:
   // For now all Hs just take one extra argument: hs or geop!
   // So it is ok for a bit
 
+  template <ADD_MODE addmode = ADD_MODE::REPLACE>
   void YAKL_INLINE compute_dHsdx(real5d B, const real5d dens, const real5d hs,
                                  int is, int js, int ks, int i, int j, int k,
-                                 int n) const {
+                                 int n, real fac = 1._fp) const {
 
     // Assumes things are stored in dens as as 0=h, 1=S, active tracers,
     // inactive tracers
@@ -91,17 +92,30 @@ public:
 #endif
 
     // Compute dHdh = 1/2 S + sum_nt 1/2 t
-    B(0, k + ks, j + js, i + is, n) = dens0(1) * 0.5_fp;
+    if (addmode == ADD_MODE::REPLACE) {
+      B(0, k + ks, j + js, i + is, n) = fac * dens0(1) * 0.5_fp;
+    } else if (addmode == ADD_MODE::ADD) {
+      B(0, k + ks, j + js, i + is, n) += fac * dens0(1) * 0.5_fp;
+    }
+
     for (int l = 2; l < ntracers_active + 2; l++) {
-      B(0, k + ks, j + js, i + is, n) += dens0(l) * 0.5_fp;
+      B(0, k + ks, j + js, i + is, n) += fac * dens0(l) * 0.5_fp;
     }
 
     // Compute dHdS = 1/2 h + hs
-    B(1, k + ks, j + js, i + is, n) = hs0(0) + dens0(0) * 0.5_fp;
+    if (addmode == ADD_MODE::REPLACE) {
+      B(1, k + ks, j + js, i + is, n) = fac * (hs0(0) + dens0(0) * 0.5_fp);
+    } else if (addmode == ADD_MODE::ADD) {
+      B(1, k + ks, j + js, i + is, n) += fac * (hs0(0) + dens0(0) * 0.5_fp);
+    }
 
     // Compute dHdt = 1/2 h for active tracers
     for (int l = 2; l < ntracers_active + 2; l++) {
-      B(l, k + ks, j + js, i + is, n) = dens0(0) * 0.5_fp;
+      if (addmode == ADD_MODE::REPLACE) {
+        B(l, k + ks, j + js, i + is, n) = fac * dens0(0) * 0.5_fp;
+      } else if (addmode == ADD_MODE::ADD) {
+        B(l, k + ks, j + js, i + is, n) += fac * dens0(0) * 0.5_fp;
+      }
     }
   }
 };
@@ -157,9 +171,10 @@ public:
     return 0;
   }
 
+  template <ADD_MODE addmode = ADD_MODE::REPLACE>
   void YAKL_INLINE compute_dHsdx(real5d B, const real5d dens, const real5d hs,
                                  int is, int js, int ks, int i, int j, int k,
-                                 int n) const {
+                                 int n, real fac = 1._fp) const {
     // Assumes things are stored in dens as as 0=h, active tracers, inactive
     // tracers
 
@@ -187,14 +202,22 @@ public:
 #endif
 
     // Compute dHdh = g h + g hs + sum_nt 1/2 t + sum_nt 1/2 tfct
-    B(0, k + ks, j + js, i + is, n) = g * hs0(0) + g * dens0(0);
+    if (addmode == ADD_MODE::REPLACE) {
+      B(0, k + ks, j + js, i + is, n) = fac * (g * hs0(0) + g * dens0(0));
+    } else if (addmode == ADD_MODE::ADD) {
+      B(0, k + ks, j + js, i + is, n) += fac * (g * hs0(0) + g * dens0(0));
+    }
     for (int l = 1; l < ntracers_active + 1; l++) {
-      B(0, k + ks, j + js, i + is, n) += dens0(l) * 0.5_fp;
+      B(0, k + ks, j + js, i + is, n) += fac * dens0(l) * 0.5_fp;
     }
 
     // Compute dHdt = 1/2 h
     for (int l = 1; l < ntracers_active + 1; l++) {
-      B(l, k + ks, j + js, i + is, n) = dens0(0) * 0.5_fp;
+      if (addmode == ADD_MODE::REPLACE) {
+        B(l, k + ks, j + js, i + is, n) = fac * dens0(0) * 0.5_fp;
+      } else if (addmode == ADD_MODE::ADD) {
+        B(l, k + ks, j + js, i + is, n) += fac * dens0(0) * 0.5_fp;
+      }
     }
   }
 };
