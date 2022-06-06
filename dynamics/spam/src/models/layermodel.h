@@ -300,7 +300,10 @@ void convert_coupler_to_dynamics_state(PamCoupler &coupler, FieldSet<nprognostic
     //if (not varset.dens_pos(l))
     if (!varset.dens_pos[l])
     {
-    auxiliary_vars.fields_arr[PHIVAR].set(l, 1.0);
+      for (int d = 0; d < ndims; ++d)
+      {
+        auxiliary_vars.fields_arr[PHIVAR].set(l + d * ndensity, 1.0);
+      }
     }
   }
 
