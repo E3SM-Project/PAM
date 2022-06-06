@@ -80,12 +80,17 @@ template <uint nquad> void SITimeIntegrator<nquad>::stepForward(real dt) {
   this->x_exchange->exchange_variable_set(this->xm);
 
   int iter = 0;
+  int maxiters = 50;
 
   real res_norm = norm(xm);
   real initial_norm = res_norm;
   std::cout << "Initial res norm: " << res_norm << std::endl;
   while (true) {
-    if (res_norm / initial_norm < 1e-10 || iter > 200) {
+    if (res_norm / initial_norm < 1e-10 || iter > maxiters) {
+      if (iter > maxiters) {
+        std::cout << "!!! Newton did not converge after " << maxiters
+                  << " iters" << std::endl;
+      }
       break;
     }
 
