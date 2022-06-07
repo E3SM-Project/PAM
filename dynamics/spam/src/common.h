@@ -142,6 +142,7 @@ public:
   int Nstat = -1;
   std::string outputName;
   std::string tstype;
+  real si_tolerance = -1;
 
   real xlen, ylen, zlen;
   real xc, yc, zc;

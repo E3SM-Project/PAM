@@ -8,12 +8,12 @@
 #include <sstream>
 
 constexpr int si_verbosity_level = 0;
-constexpr real tol = 1e-7;
 
 template <uint nquad> class SITimeIntegrator {
 
 public:
   int step;
+  real tol;
   real avg_iters;
   SArray<real, 1, nquad> quad_pts;
   SArray<real, 1, nquad> quad_wts;
@@ -62,6 +62,7 @@ void SITimeIntegrator<nquad>::initialize(ModelParameters &params,
   this->auxiliary_vars = &auxiliarys;
   this->x_exchange = &prog_exch;
 
+  this->tol = params.si_tolerance;
   this->step = 0;
   this->avg_iters = 0;
 
@@ -101,7 +102,7 @@ template <uint nquad> void SITimeIntegrator<nquad>::stepForward(real dt) {
     std::cout << msg.str() << std::endl;
   }
   while (true) {
-    if (res_norm / initial_norm < tol) {
+    if (res_norm / initial_norm < this->tol) {
       converged = true;
       break;
     } else if (iter > maxiters) {
@@ -161,7 +162,7 @@ template <uint nquad> void SITimeIntegrator<nquad>::stepForward(real dt) {
       msg << "Newton solve converged in " << iter << " iters.\n";
     } else {
       msg << "!!! Newton solve failed to converge in " << iter << " iters.\n";
-      msg << "!!! Solver tolerance: " << tol << "\n";
+      msg << "!!! Solver tolerance: " << this->tol << "\n";
       msg << "!!! Achieved tolerance: " << res_norm / initial_norm << "\n";
     }
     msg << "Iters avg: " << this->avg_iters;
