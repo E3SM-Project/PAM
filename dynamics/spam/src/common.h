@@ -77,8 +77,8 @@ uint constexpr mirroringhalo =
     9; // mymax(reconstruction_order+1,differential_order)/2;
        // // IS THIS ALWAYS CORRECT?
 
-// 0 = RKSimple, 1=SSPRK
-#define _TIME_TYPE 2
+// 0 = RKSimple, 1=SSPRK, 2=SI
+#define _TIME_TYPE 1
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 
