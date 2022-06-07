@@ -5,10 +5,16 @@
 #include "field_sets.h"
 #include "model.h"
 #include "topology.h"
+#include <sstream>
+
+constexpr int si_verbosity_level = 0;
+constexpr real tol = 1e-7;
 
 template <uint nquad> class SITimeIntegrator {
 
 public:
+  int step;
+  real avg_iters;
   SArray<real, 1, nquad> quad_pts;
   SArray<real, 1, nquad> quad_wts;
   FieldSet<nprognostic> *x;
@@ -34,7 +40,6 @@ public:
 
 template <uint nquad> SITimeIntegrator<nquad>::SITimeIntegrator() {
   this->is_initialized = false;
-  std::cout << "CREATED SI\n";
 }
 
 template <uint nquad>
@@ -56,6 +61,9 @@ void SITimeIntegrator<nquad>::initialize(ModelParameters &params,
   this->const_vars = &consts;
   this->auxiliary_vars = &auxiliarys;
   this->x_exchange = &prog_exch;
+
+  this->step = 0;
+  this->avg_iters = 0;
 
   this->is_initialized = true;
 }
@@ -84,13 +92,19 @@ template <uint nquad> void SITimeIntegrator<nquad>::stepForward(real dt) {
 
   real res_norm = norm(xm);
   real initial_norm = res_norm;
-  std::cout << "Initial res norm: " << res_norm << std::endl;
+  bool converged = false;
+
+  if (si_verbosity_level > 0) {
+    std::stringstream msg;
+    msg << "Starting Newton iteration, step = " << step
+        << ", initial residual = " << res_norm;
+    std::cout << msg.str() << std::endl;
+  }
   while (true) {
-    if (res_norm / initial_norm < 1e-10 || iter > maxiters) {
-      if (iter > maxiters) {
-        std::cout << "!!! Newton did not converge after " << maxiters
-                  << " iters" << std::endl;
-      }
+    if (res_norm / initial_norm < tol) {
+      converged = true;
+      break;
+    } else if (iter > maxiters) {
       break;
     }
 
@@ -128,7 +142,30 @@ template <uint nquad> void SITimeIntegrator<nquad>::stepForward(real dt) {
 
     iter++;
 
-    std::cout << "Iter: " << iter << " " << res_norm << std::endl;
+    if (si_verbosity_level > 1) {
+      std::stringstream msg;
+      msg << "Iter: " << iter << " "
+          << " " << res_norm;
+      std::cout << msg.str() << std::endl;
+    }
+  }
+
+  this->avg_iters *= step;
+  this->step += 1;
+  this->avg_iters += iter;
+  this->avg_iters /= step;
+
+  if (si_verbosity_level > 0) {
+    std::stringstream msg;
+    if (converged) {
+      msg << "Newton solve converged in " << iter << " iters.\n";
+    } else {
+      msg << "!!! Newton solve failed to converge in " << iter << " iters.\n";
+      msg << "!!! Solver tolerance: " << tol << "\n";
+      msg << "!!! Achieved tolerance: " << res_norm / initial_norm << "\n";
+    }
+    msg << "Iters avg: " << this->avg_iters;
+    std::cout << msg.str() << std::endl;
   }
 
   this->x->copy(this->xn);
