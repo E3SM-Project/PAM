@@ -30,15 +30,18 @@ ThermoPotential thermo;
 
 // *******   Diagnostics   ***********//
 
-class ModelDiagnostics : public Diagnostics {
-public:
-  void compute_diag(const FieldSet<nconstant> &const_vars,
-                    FieldSet<nprognostic> &x,
-                    FieldSet<ndiagnostic> &diagnostic_vars) {
+class Dens0Diagnostic : public Diagnostic {
+  void initialize(const Topology &ptopo, const Topology &dtopo, Geometry &pgeom,
+                  Geometry &dgeom) override {
+    // concentration 0-forms for dens
+    name = "densl";
+    topology = &ptopo;
+    dofs_arr = {0, 1, ndensity}; // densldiag = straight 0-form
+    Diagnostic::initialize(ptopo, dtopo, pgeom, dgeom);
+  }
 
-    int dis = dual_topology->is;
-    int djs = dual_topology->js;
-    int dks = dual_topology->ks;
+  void compute(real time, const FieldSet<nconstant> &const_vars,
+               const FieldSet<nprognostic> &x) override {
 
     int pis = primal_topology->is;
     int pjs = primal_topology->js;
@@ -50,23 +53,46 @@ public:
                         primal_topology->n_cells_x, primal_topology->nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_I<ndensity, diff_ord>(
-              diagnostic_vars.fields_arr[DENSLDIAGVAR].data,
-              x.fields_arr[DENSVAR].data, *this->primal_geometry,
+              field.data, x.fields_arr[DENSVAR].data, *this->primal_geometry,
               *this->dual_geometry, pis, pjs, pks, i, j, k, n);
         });
+  }
+};
+
+class Q0Diagnostic : public Diagnostic {
+  void initialize(const Topology &ptopo, const Topology &dtopo, Geometry &pgeom,
+                  Geometry &dgeom) override {
+    name = "q";
+    topology = &dtopo;
+    dofs_arr = {0, 1, 1}; // qdiag = twisted 0-form
+    Diagnostic::initialize(ptopo, dtopo, pgeom, dgeom);
+  }
+
+  void compute(real time, const FieldSet<nconstant> &const_vars,
+               const FieldSet<nprognostic> &x) override {
+
+    int dis = dual_topology->is;
+    int djs = dual_topology->js;
+    int dks = dual_topology->ks;
 
     parallel_for(
         "Compute Q0 Diag",
         SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y,
                         dual_topology->n_cells_x, dual_topology->nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          PVPE.compute_q0(diagnostic_vars.fields_arr[QDIAGVAR].data,
-                          x.fields_arr[VVAR].data, x.fields_arr[DENSVAR].data,
+          PVPE.compute_q0(field.data, x.fields_arr[VVAR].data,
+                          x.fields_arr[DENSVAR].data,
                           const_vars.fields_arr[CORIOLISVAR].data, dis, djs,
                           dks, i, j, k, n);
         });
   }
 };
+
+void add_model_diagnostics(
+    std::vector<std::unique_ptr<Diagnostic>> &diagnostics) {
+  diagnostics.emplace_back(std::make_unique<Dens0Diagnostic>());
+  diagnostics.emplace_back(std::make_unique<Q0Diagnostic>());
+}
 
 // *******   Tendencies   ***********//
 
@@ -653,15 +679,12 @@ void initialize_variables(
     SArray<int, 2, nprognostic, 3> &prog_ndofs_arr,
     SArray<int, 2, nconstant, 3> &const_ndofs_arr,
     SArray<int, 2, nauxiliary, 3> &aux_ndofs_arr,
-    SArray<int, 2, ndiagnostic, 3> &diag_ndofs_arr,
     std::array<std::string, nprognostic> &prog_names_arr,
     std::array<std::string, nconstant> &const_names_arr,
     std::array<std::string, nauxiliary> &aux_names_arr,
-    std::array<std::string, ndiagnostic> &diag_names_arr,
     std::array<const Topology *, nprognostic> &prog_topo_arr,
     std::array<const Topology *, nconstant> &const_topo_arr,
-    std::array<const Topology *, nauxiliary> &aux_topo_arr,
-    std::array<const Topology *, ndiagnostic> &diag_topo_arr) {
+    std::array<const Topology *, nauxiliary> &aux_topo_arr) {
 
   // primal grid represents straight quantities, dual grid twisted quantities
 
@@ -743,15 +766,6 @@ void initialize_variables(
                1); // coriolisrecon lives on primal edges, associated with FT
   set_dofs_arr(aux_ndofs_arr, CORIOLISEDGERECONVAR, 2, 1,
                4); // coriolisedgerecon lives on primal cells
-
-  // q, concentration 0-forms for dens
-  diag_topo_arr[QDIAGVAR] = &dtopo;
-  diag_topo_arr[DENSLDIAGVAR] = &ptopo;
-  diag_names_arr[QDIAGVAR] = "q";
-  diag_names_arr[DENSLDIAGVAR] = "densl";
-  set_dofs_arr(diag_ndofs_arr, QDIAGVAR, 0, 1, 1); // qdiag = twisted 0-form
-  set_dofs_arr(diag_ndofs_arr, DENSLDIAGVAR, 0, 1,
-               ndensity); // densldiag = straight 0-form
 
   // fct stuff- Phi, Mf, edgeflux
   aux_topo_arr[PHIVAR] = &dtopo;

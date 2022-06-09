@@ -6,32 +6,34 @@
 #include "topology.h"
 #include "weno_func_recon.h" // needed to set TransformMatrices related stuff
 
-class Diagnostics {
+class Diagnostic {
 public:
+  std::string name;
+  std::array<int, 3> dofs_arr;
+  const Topology *topology;
   const Topology *primal_topology;
-  const Topology *dual_topology;
   Geometry *primal_geometry;
+  const Topology *dual_topology;
   Geometry *dual_geometry;
-  ExchangeSet<ndiagnostic> *diag_exchange;
+  Field field;
 
   bool is_initialized;
 
-  Diagnostics() { this->is_initialized = false; }
+  Diagnostic() { this->is_initialized = false; }
 
-  void initialize(const Topology &ptopo, const Topology &dtopo, Geometry &pgeom,
-                  Geometry &dgeom, ExchangeSet<ndiagnostic> &diag_exchange) {
+  virtual void compute(real time, const FieldSet<nconstant> &const_vars,
+                       const FieldSet<nprognostic> &x) = 0;
+
+  virtual void initialize(const Topology &ptopo, const Topology &dtopo,
+                          Geometry &pgeom, Geometry &dgeom) {
     this->primal_topology = &ptopo;
     this->dual_topology = &dtopo;
     this->primal_geometry = &pgeom;
     this->dual_geometry = &dgeom;
-    this->diag_exchange = &diag_exchange;
-
+    field.initialize(*topology, name, dofs_arr[0], dofs_arr[1], dofs_arr[2]);
     this->is_initialized = true;
   }
-
-  virtual void compute_diag(const FieldSet<nconstant> &const_vars,
-                            FieldSet<nprognostic> &x,
-                            FieldSet<ndiagnostic> &diagnostic_vars){};
+  virtual ~Diagnostic() = default;
 };
 
 class Tendencies {

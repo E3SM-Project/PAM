@@ -3,6 +3,7 @@
 #include "YAKL_netcdf.h"
 #include "common.h"
 #include "field_sets.h"
+#include "model.h"
 #include "stats.h"
 
 class FileIO {
@@ -15,12 +16,12 @@ public:
 
   std::array<real5d, nprognostic> prog_temp_arr;
   std::array<real5d, nconstant> const_temp_arr;
-  std::array<real5d, ndiagnostic> diag_temp_arr;
+  std::vector<real5d> diag_temp_arr;
   std::string outputName;
 
   const FieldSet<nprognostic> *prog_vars;
   const FieldSet<nconstant> *const_vars;
-  const FieldSet<ndiagnostic> *diag_vars;
+  const std::vector<std::unique_ptr<Diagnostic>> *diagnostics;
   Stats *statistics;
 
   FileIO();
@@ -29,7 +30,8 @@ public:
   void initialize(std::string outputName, Topology &ptopo, Topology &dtopo,
                   Parallel &par, const FieldSet<nprognostic> &progvars,
                   const FieldSet<nconstant> &const_vars,
-                  const FieldSet<ndiagnostic> &diagvars, Stats &stats);
+                  const std::vector<std::unique_ptr<Diagnostic>> &diag,
+                  Stats &stats);
   void output(real time);
   void outputInit(real time);
   void outputStats(const Stats &stats);
@@ -40,12 +42,13 @@ FileIO::FileIO() { this->is_initialized = false; }
 void FileIO::initialize(std::string outName, Topology &ptopo, Topology &dtopo,
                         Parallel &par, const FieldSet<nprognostic> &progvars,
                         const FieldSet<nconstant> &constvars,
-                        const FieldSet<ndiagnostic> &diagvars, Stats &stats) {
+                        const std::vector<std::unique_ptr<Diagnostic>> &diag,
+                        Stats &stats) {
 
   this->outputName = outName + std::to_string(par.actualrank) + ".nc";
   this->prog_vars = &progvars;
   this->const_vars = &constvars;
-  this->diag_vars = &diagvars;
+  this->diagnostics = &diag;
   this->statistics = &stats;
   this->masterproc = par.masterproc;
 
@@ -114,16 +117,13 @@ void FileIO::initialize(std::string outName, Topology &ptopo, Topology &dtopo,
                this->prog_vars->fields_arr[i].topology->nens);
   }
 
-  for (int i = 0; i < this->diag_vars->fields_arr.size(); i++) {
-    nc.createDim(this->diag_vars->fields_arr[i].name + "_ndofs",
-                 this->diag_vars->fields_arr[i].total_dofs);
-    this->diag_temp_arr[i] =
-        real5d(this->diag_vars->fields_arr[i].name.c_str(),
-               this->diag_vars->fields_arr[i].total_dofs,
-               this->diag_vars->fields_arr[i]._nz,
-               this->diag_vars->fields_arr[i].topology->n_cells_y,
-               this->diag_vars->fields_arr[i].topology->n_cells_x,
-               this->diag_vars->fields_arr[i].topology->nens);
+  for (auto &diag : *diagnostics) {
+    auto &field = diag->field;
+    nc.createDim(field.name + "_ndofs", field.total_dofs);
+    diag_temp_arr.emplace_back(real5d(field.name.c_str(), field.total_dofs,
+                                      field._nz, field.topology->n_cells_y,
+                                      field.topology->n_cells_x,
+                                      field.topology->nens));
   }
 
   nc.close();
@@ -190,54 +190,44 @@ void FileIO::output(real time) {
     }
   }
 
-  for (int l = 0; l < this->diag_vars->fields_arr.size(); l++) {
+  for (int l = 0; l < diagnostics->size(); l++) {
+    auto &field = (*diagnostics)[l]->field;
 
-    int is = this->diag_vars->fields_arr[l].topology->is;
-    int js = this->diag_vars->fields_arr[l].topology->js;
-    int ks = this->diag_vars->fields_arr[l].topology->ks;
+    int is = field.topology->is;
+    int js = field.topology->js;
+    int ks = field.topology->ks;
     parallel_for(
-        SimpleBounds<5>(this->diag_vars->fields_arr[l].total_dofs,
-                        this->diag_vars->fields_arr[l]._nz,
-                        this->diag_vars->fields_arr[l].topology->n_cells_y,
-                        this->diag_vars->fields_arr[l].topology->n_cells_x,
-                        this->diag_vars->fields_arr[l].topology->nens),
+        SimpleBounds<5>(field.total_dofs, field._nz, field.topology->n_cells_y,
+                        field.topology->n_cells_x, field.topology->nens),
         YAKL_LAMBDA(int ndof, int k, int j, int i, int n) {
           this->diag_temp_arr[l](ndof, k, j, i, n) =
-              this->diag_vars->fields_arr[l].data(ndof, k + ks, j + js, i + is,
-                                                  n);
+              field.data(ndof, k + ks, j + js, i + is, n);
         });
 
-    if (this->diag_vars->fields_arr[l].topology->primal) {
-      if (this->diag_vars->fields_arr[l].extdof == 1) {
-        nc.write1(this->diag_temp_arr[l].createHostCopy(),
-                  this->diag_vars->fields_arr[l].name,
-                  {this->diag_vars->fields_arr[l].name + "_ndofs",
-                   "primal_nlayers", "primal_ncells_y", "primal_ncells_x",
-                   "nens"},
+    if (field.topology->primal) {
+      if (field.extdof == 1) {
+        nc.write1(this->diag_temp_arr[l].createHostCopy(), field.name,
+                  {field.name + "_ndofs", "primal_nlayers", "primal_ncells_y",
+                   "primal_ncells_x", "nens"},
                   ulIndex, "t");
       }
-      if (this->diag_vars->fields_arr[l].extdof == 0) {
-        nc.write1(this->diag_temp_arr[l].createHostCopy(),
-                  this->diag_vars->fields_arr[l].name,
-                  {this->diag_vars->fields_arr[l].name + "_ndofs",
-                   "primal_ninterfaces", "primal_ncells_y", "primal_ncells_x",
-                   "nens"},
+      if (field.extdof == 0) {
+        nc.write1(this->diag_temp_arr[l].createHostCopy(), field.name,
+                  {field.name + "_ndofs", "primal_ninterfaces",
+                   "primal_ncells_y", "primal_ncells_x", "nens"},
                   ulIndex, "t");
       }
     } else {
-      if (this->diag_vars->fields_arr[l].extdof == 1) {
-        nc.write1(this->diag_temp_arr[l].createHostCopy(),
-                  this->diag_vars->fields_arr[l].name,
-                  {this->diag_vars->fields_arr[l].name + "_ndofs",
-                   "dual_nlayers", "dual_ncells_y", "dual_ncells_x", "nens"},
+      if (field.extdof == 1) {
+        nc.write1(this->diag_temp_arr[l].createHostCopy(), field.name,
+                  {field.name + "_ndofs", "dual_nlayers", "dual_ncells_y",
+                   "dual_ncells_x", "nens"},
                   ulIndex, "t");
       }
-      if (this->diag_vars->fields_arr[l].extdof == 0) {
-        nc.write1(this->diag_temp_arr[l].createHostCopy(),
-                  this->diag_vars->fields_arr[l].name,
-                  {this->diag_vars->fields_arr[l].name + "_ndofs",
-                   "dual_ninterfaces", "dual_ncells_y", "dual_ncells_x",
-                   "nens"},
+      if (field.extdof == 0) {
+        nc.write1(this->diag_temp_arr[l].createHostCopy(), field.name,
+                  {field.name + "_ndofs", "dual_ninterfaces", "dual_ncells_y",
+                   "dual_ncells_x", "nens"},
                   ulIndex, "t");
       }
     }
