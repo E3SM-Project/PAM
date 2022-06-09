@@ -2,8 +2,7 @@
 
 #include "common.h"
 
-class Parallel
-{
+class Parallel {
 public:
   int nx = -1;
   int ny = -1;
@@ -28,9 +27,9 @@ public:
   int halox = -1;
   int haloy = -1;
 
-  SArray<int,1, 2> x_neigh;
-  SArray<int,1, 2> y_neigh;
-  
+  SArray<int, 1, 2> x_neigh;
+  SArray<int, 1, 2> y_neigh;
+
   int ll_neigh = -1;
   int ur_neigh = -1;
   int ul_neigh = -1;
@@ -41,5 +40,4 @@ public:
 
   BND_TYPE xbnd;
   BND_TYPE ybnd;
-
 };

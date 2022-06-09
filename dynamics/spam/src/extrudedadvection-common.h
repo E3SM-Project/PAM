@@ -4,9 +4,7 @@ uint constexpr ntnofctdofs = 3;
 uint constexpr ntfctdofs = 3;
 uint constexpr nQdofs = 3;
 
-
 ////////////////////////////////////////
-
 
 // Number of Dimensions
 uint constexpr ndims = 1;
@@ -28,10 +26,9 @@ uint constexpr nconstant = 7;
 #define WTVAR 5
 #define D2VAR 6
 
-//functional derivatives = F, FW, B, K, he, hew
-//primal grid reconstruction stuff- U, W, dens0, edgerecon, recon, vertedgerecon, vertrecon
-//fct stuff- Phi, Mf, edgeflux
-//Q/W STUFF?
+// functional derivatives = F, FW, B, K, he, hew
+// primal grid reconstruction stuff- U, W, dens0, edgerecon, recon,
+// vertedgerecon, vertrecon fct stuff- Phi, Mf, edgeflux Q/W STUFF?
 
 uint constexpr nauxiliary = 17;
 
@@ -69,7 +66,7 @@ uint constexpr ndiagnostic = 9;
 #define QXZVERTFLUXDIAGVAR 7
 #define D2DIAGVAR 8
 
-//track total densities, dens min/max
+// track total densities, dens min/max
 uint constexpr nstats = 4;
 
 #define DENSSTAT 0
@@ -77,9 +74,8 @@ uint constexpr nstats = 4;
 #define DENSMAXSTAT 2
 #define QXZSTAT 3
 
-class ModelParameters : public Parameters
-{
-public: 
+class ModelParameters : public Parameters {
+public:
   std::string windInitStr;
   std::string TInitStr[ntdofs];
   std::string QInitStr[nQdofs];

@@ -4,9 +4,7 @@ uint constexpr ntnofctdofs = 3;
 uint constexpr ntfctdofs = 3;
 uint constexpr nQdofs = 3;
 
-
 ////////////////////////////////////////
-
 
 // Number of Dimensions
 uint constexpr ndims = 2;
@@ -46,9 +44,8 @@ uint constexpr nstats = 4;
 #define TMAXSTAT 2
 #define QMASSSTAT 3
 
-class ModelParameters : public Parameters
-{
-public: 
+class ModelParameters : public Parameters {
+public:
   std::string windInitStr;
   std::string TInitStr[ntdofs];
   std::string QInitStr[nQdofs];
