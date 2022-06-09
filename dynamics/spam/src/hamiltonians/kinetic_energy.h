@@ -1,7 +1,9 @@
 #pragma once
 
 #include "common.h"
+#include "hodge_star.h"
 #include "variableset.h"
+#include "wedge.h"
 
 // // This kinetic energy functional assumes that dens(0) holds the total
 // density class Hamiltonian_Hk1D_rho {

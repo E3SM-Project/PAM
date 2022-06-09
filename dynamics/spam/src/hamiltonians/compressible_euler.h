@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include "hodge_star.h"
 #include "thermo.h"
 #include "variableset.h"
 

@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include "variableset.h"
+#include "wedge.h"
 
 struct pvpe {
   real pv = 0., pe = 0.;
