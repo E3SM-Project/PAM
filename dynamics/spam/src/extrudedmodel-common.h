@@ -97,12 +97,6 @@ uint constexpr nauxiliary = 32;
 #define CORIOLISXZVERTRECONVAR 30
 #define CORIOLISXZVERTEDGERECONVAR 31
 
-// q, associated concentration 0-forms for den
-
-uint constexpr ndiagnostic = 2;
-#define DENSLDIAGVAR 0
-#define QXZDIAGVAR 1
-
 // track total densities, dens min/max, energy (total, K, P, I), PV, PE
 uint constexpr nstats = 6;
 

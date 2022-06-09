@@ -60,15 +60,18 @@ Unapprox_Entropy thermo;
 
 // *******   Diagnostics   ***********//
 
-class ModelDiagnostics : public Diagnostics {
-public:
-  void compute_diag(const FieldSet<nconstant> &const_vars,
-                    FieldSet<nprognostic> &x,
-                    FieldSet<ndiagnostic> &diagnostic_vars) {
+class Dens0Diagnostic : public Diagnostic {
+  void initialize(const Topology &ptopo, const Topology &dtopo, Geometry &pgeom,
+                  Geometry &dgeom) override {
+    // concentration 0-forms for dens
+    name = "densl";
+    topology = &ptopo;
+    dofs_arr = {0, 0, ndensity}; // densldiag = straight (0,0)-form
+    Diagnostic::initialize(ptopo, dtopo, pgeom, dgeom);
+  }
 
-    int dis = dual_topology->is;
-    int djs = dual_topology->js;
-    int dks = dual_topology->ks;
+  void compute(real time, const FieldSet<nconstant> &const_vars,
+               const FieldSet<nprognostic> &x) override {
 
     int pis = primal_topology->is;
     int pjs = primal_topology->js;
@@ -80,19 +83,35 @@ public:
                         primal_topology->n_cells_x, primal_topology->nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_Iext<ndensity, diff_ord, vert_diff_ord>(
-              diagnostic_vars.fields_arr[DENSLDIAGVAR].data,
-              x.fields_arr[DENSVAR].data, *this->primal_geometry,
+              field.data, x.fields_arr[DENSVAR].data, *this->primal_geometry,
               *this->dual_geometry, pis, pjs, pks, i, j, k, n);
         });
+  }
+};
+
+class QXZ0Diagnostic : public Diagnostic {
+  void initialize(const Topology &ptopo, const Topology &dtopo, Geometry &pgeom,
+                  Geometry &dgeom) override {
+    name = "QXZl";
+    topology = &dtopo;
+    dofs_arr = {0, 0, 1}; // // Qldiag = twisted (0,0)-form
+    Diagnostic::initialize(ptopo, dtopo, pgeom, dgeom);
+  }
+
+  void compute(real time, const FieldSet<nconstant> &const_vars,
+               const FieldSet<nprognostic> &x) override {
+
+    int dis = dual_topology->is;
+    int djs = dual_topology->js;
+    int dks = dual_topology->ks;
 
     parallel_for(
         "Compute Q0 DIAG",
         SimpleBounds<4>(dual_topology->ni - 3, dual_topology->n_cells_y,
                         dual_topology->n_cells_x, dual_topology->nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          PVPE.compute_qxz0(diagnostic_vars.fields_arr[QXZDIAGVAR].data,
-                            x.fields_arr[VVAR].data, x.fields_arr[WVAR].data,
-                            x.fields_arr[DENSVAR].data,
+          PVPE.compute_qxz0(field.data, x.fields_arr[VVAR].data,
+                            x.fields_arr[WVAR].data, x.fields_arr[DENSVAR].data,
                             const_vars.fields_arr[CORIOLISXZVAR].data, dis, djs,
                             dks, i, j, k + 2, n);
         });
@@ -103,23 +122,27 @@ public:
         SimpleBounds<3>(dual_topology->n_cells_y, dual_topology->n_cells_x,
                         dual_topology->nens),
         YAKL_LAMBDA(int j, int i, int n) {
-          PVPE.compute_qxz0_bottom(diagnostic_vars.fields_arr[QXZDIAGVAR].data,
-                                   x.fields_arr[VVAR].data,
+          PVPE.compute_qxz0_bottom(field.data, x.fields_arr[VVAR].data,
                                    x.fields_arr[WVAR].data,
                                    x.fields_arr[DENSVAR].data,
                                    const_vars.fields_arr[CORIOLISXZVAR].data,
                                    dis, djs, dks, i, j, 1, n);
-          PVPE.compute_qxz0_top(diagnostic_vars.fields_arr[QXZDIAGVAR].data,
-                                x.fields_arr[VVAR].data,
+          PVPE.compute_qxz0_top(field.data, x.fields_arr[VVAR].data,
                                 x.fields_arr[WVAR].data,
                                 x.fields_arr[DENSVAR].data,
                                 const_vars.fields_arr[CORIOLISXZVAR].data, dis,
                                 djs, dks, i, j, dual_topology->ni - 2, n);
         });
 
-    diagnostic_vars.fields_arr[QXZDIAGVAR].set_bnd(0.0);
+    field.set_bnd(0.0);
   }
 };
+
+void add_model_diagnostics(
+    std::vector<std::unique_ptr<Diagnostic>> &diagnostics) {
+  diagnostics.emplace_back(std::make_unique<Dens0Diagnostic>());
+  diagnostics.emplace_back(std::make_unique<QXZ0Diagnostic>());
+}
 
 // *******   Tendencies   ***********//
 
@@ -1056,15 +1079,12 @@ void initialize_variables(
     SArray<int, 2, nprognostic, 3> &prog_ndofs_arr,
     SArray<int, 2, nconstant, 3> &const_ndofs_arr,
     SArray<int, 2, nauxiliary, 3> &aux_ndofs_arr,
-    SArray<int, 2, ndiagnostic, 3> &diag_ndofs_arr,
     std::array<std::string, nprognostic> &prog_names_arr,
     std::array<std::string, nconstant> &const_names_arr,
     std::array<std::string, nauxiliary> &aux_names_arr,
-    std::array<std::string, ndiagnostic> &diag_names_arr,
     std::array<const Topology *, nprognostic> &prog_topo_arr,
     std::array<const Topology *, nconstant> &const_topo_arr,
-    std::array<const Topology *, nauxiliary> &aux_topo_arr,
-    std::array<const Topology *, ndiagnostic> &diag_topo_arr) {
+    std::array<const Topology *, nauxiliary> &aux_topo_arr) {
 
   // primal grid represents straight quantities, dual grid twisted quantities
   // ndims is the BASEDIM size!
@@ -1228,16 +1248,6 @@ void initialize_variables(
   set_dofs_arr(aux_ndofs_arr, CORIOLISXZVERTEDGERECONVAR, ndims, 1,
                2 * 1); // coriolisxzvertedgerecon lives on primal cells,
                        // associated with F/v
-
-  // q, concentration 0-forms for dens
-  diag_topo_arr[DENSLDIAGVAR] = &ptopo;
-  diag_names_arr[DENSLDIAGVAR] = "densl";
-  set_dofs_arr(diag_ndofs_arr, DENSLDIAGVAR, 0, 0,
-               ndensity); // densldiag = straight (0,0)-form
-  diag_topo_arr[QXZDIAGVAR] = &dtopo;
-  diag_names_arr[QXZDIAGVAR] = "QXZl";
-  set_dofs_arr(diag_ndofs_arr, QXZDIAGVAR, 0, 0,
-               1); // Qldiag = twisted (0,0)-form
 
   // #if defined _AN || defined _MAN
   // aux_topo_arr[PVAR] = &ptopo; //p = straight 0-form
