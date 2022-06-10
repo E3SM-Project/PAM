@@ -145,13 +145,18 @@ public:
   virtual real YAKL_INLINE get_area_10entity(int k, int j, int i){};
   virtual real YAKL_INLINE get_area_01entity(int k, int j, int i){};
 
-  YAKL_INLINE void set_0form_values(real (*initial_value_function)(real, real),
-                                    Field &field, int ndof);
-  YAKL_INLINE void
-  set_1form_values(vec<2> (*initial_value_function)(real, real), Field &field,
-                   int ndof, LINE_INTEGRAL_TYPE line_type);
-  YAKL_INLINE void set_2form_values(real (*initial_value_function)(real, real),
-                                    Field &field, int ndof);
+  // expects real initial_value_function(real, real)
+  template <class F>
+  YAKL_INLINE void set_0form_values(F initial_value_function, Field &field,
+                                    int ndof);
+  // expects vec<2> initial_value_function(real, real),
+  template <class F>
+  YAKL_INLINE void set_1form_values(F initial_value_function, Field &field,
+                                    int ndof, LINE_INTEGRAL_TYPE line_type);
+  // expects real initial_value_function(real, real)
+  template <class F>
+  YAKL_INLINE void set_2form_values(F initial_value_function, Field &field,
+                                    int ndof);
 
   real dx, dy;
   real Lx, Ly;
@@ -234,9 +239,10 @@ void Geometry::initialize(const Topology &topo) {
                                             this->y_quad_wts_ref);
 }
 
-YAKL_INLINE void
-Geometry::set_0form_values(real (*initial_value_function)(real, real),
-                           Field &field, int ndof) {
+// expect real initial_value_function(real, real)
+template <class F>
+YAKL_INLINE void Geometry::set_0form_values(F initial_value_function,
+                                            Field &field, int ndof) {
 
   int is = this->topology->is;
   int js = this->topology->js;
@@ -256,9 +262,10 @@ Geometry::set_0form_values(real (*initial_value_function)(real, real),
       });
 }
 
-YAKL_INLINE void
-Geometry::set_2form_values(real (*initial_value_function)(real, real),
-                           Field &field, int ndof) {
+// expects real initial_value_function(real, real)
+template <class F>
+YAKL_INLINE void Geometry::set_2form_values(F initial_value_function,
+                                            Field &field, int ndof) {
 
   int is = this->topology->is;
   int js = this->topology->js;
@@ -285,10 +292,11 @@ Geometry::set_2form_values(real (*initial_value_function)(real, real),
       });
 }
 
-YAKL_INLINE void
-Geometry::set_1form_values(vec<2> (*initial_value_function)(real, real),
-                           Field &field, int ndof,
-                           LINE_INTEGRAL_TYPE line_type) {
+// expects vec<2> initial_value_function(real, real)
+template <class F>
+YAKL_INLINE void Geometry::set_1form_values(F initial_value_function,
+                                            Field &field, int ndof,
+                                            LINE_INTEGRAL_TYPE line_type) {
 
   int is = this->topology->is;
   int js = this->topology->js;
@@ -663,16 +671,23 @@ public:
 
   virtual real YAKL_INLINE get_area_lform(int l, int d, int k, int j, int i){};
 
-  YAKL_INLINE void set_00form_values(real (*initial_value_function)(real, real),
-                                     Field &field, int ndof);
-  YAKL_INLINE void set_11form_values(real (*initial_value_function)(real, real),
-                                     Field &field, int ndof);
-  YAKL_INLINE void
-  set_10form_values(vecext<2> (*initial_value_function)(real, real),
-                    Field &field, int ndof, LINE_INTEGRAL_TYPE line_type);
-  YAKL_INLINE void
-  set_01form_values(vecext<2> (*initial_value_function)(real, real),
-                    Field &field, int ndof, LINE_INTEGRAL_TYPE line_type);
+  // expects real initial_value_function(real, real),
+  template <class F>
+  YAKL_INLINE void set_00form_values(F initial_value_function, Field &field,
+                                     int ndof);
+  // expects real initial_value_function(real, real),
+  template <class F>
+  YAKL_INLINE void set_11form_values(F initial_value_function, Field &field,
+                                     int ndof);
+  // expects vecext<2> initial_value_function(real, real),
+  template <class F>
+  YAKL_INLINE void set_10form_values(F initial_value_function, Field &field,
+                                     int ndof, LINE_INTEGRAL_TYPE line_type);
+
+  // expects vecext<2> initial_value_function(real, real),
+  template <class F>
+  YAKL_INLINE void set_01form_values(F initial_value_function, Field &field,
+                                     int ndof, LINE_INTEGRAL_TYPE line_type);
 
   real dx, dy, dz;
   real Lx, Ly, Lz;
@@ -767,9 +782,10 @@ void Geometry::initialize(const Topology &topo) {
                                             this->v_quad_wts_ref);
 }
 
-YAKL_INLINE void
-Geometry::set_00form_values(real (*initial_value_function)(real, real),
-                            Field &field, int ndof) {
+// expects real initial_value_function(real, real)
+template <class F>
+YAKL_INLINE void Geometry::set_00form_values(F initial_value_function,
+                                             Field &field, int ndof) {
   int is = this->topology->is;
   int js = this->topology->js;
   int ks = this->topology->ks;
@@ -787,9 +803,10 @@ Geometry::set_00form_values(real (*initial_value_function)(real, real),
             quad_wts_phys(0);
       });
 }
-YAKL_INLINE void
-Geometry::set_11form_values(real (*initial_value_function)(real, real),
-                            Field &field, int ndof) {
+// expects real initial_value_function(real, real)
+template <class F>
+YAKL_INLINE void Geometry::set_11form_values(F initial_value_function,
+                                             Field &field, int ndof) {
 
   int is = this->topology->is;
   int js = this->topology->js;
@@ -819,10 +836,11 @@ Geometry::set_11form_values(real (*initial_value_function)(real, real),
       });
 }
 
-YAKL_INLINE void
-Geometry::set_01form_values(vecext<2> (*initial_value_function)(real, real),
-                            Field &field, int ndof,
-                            LINE_INTEGRAL_TYPE line_type) {
+// expects vecext<2> initial_value_function(real, real),
+template <class F>
+YAKL_INLINE void Geometry::set_01form_values(F initial_value_function,
+                                             Field &field, int ndof,
+                                             LINE_INTEGRAL_TYPE line_type) {
 
   int is = this->topology->is;
   int js = this->topology->js;
@@ -860,10 +878,11 @@ Geometry::set_01form_values(vecext<2> (*initial_value_function)(real, real),
       });
 }
 
-YAKL_INLINE void
-Geometry::set_10form_values(vecext<2> (*initial_value_function)(real, real),
-                            Field &field, int ndof,
-                            LINE_INTEGRAL_TYPE line_type) {
+// expects vecext<2> initial_value_function(real, real),
+template <class F>
+YAKL_INLINE void Geometry::set_10form_values(F initial_value_function,
+                                             Field &field, int ndof,
+                                             LINE_INTEGRAL_TYPE line_type) {
 
   int is = this->topology->is;
   int js = this->topology->js;
