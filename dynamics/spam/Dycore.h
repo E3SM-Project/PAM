@@ -35,6 +35,7 @@ public:
   UniformRectangularTwistedExtrudedGeometry dual_geometry;
 #endif
 
+  std::unique_ptr<TestCase> testcase;
   ModelStats stats;
   FieldSet<nprognostic> prognostic_vars;
   FieldSet<nconstant> constant_vars;
@@ -71,7 +72,7 @@ public:
         par.masterproc);
     std::string inFile =
         coupler.get_option<std::string>("standalone_input_file");
-    readModelParamsFile(inFile, params, par, coupler.get_nz());
+    readModelParamsFile(inFile, params, par, coupler.get_nz(), testcase);
     debug_print("read parameters and partitioned domain/setting domain sizes",
                 par.masterproc);
 
@@ -144,8 +145,8 @@ public:
     // THE IC STRING?
     //  set the initial conditions and compute initial stats
     debug_print("start ic setting", par.masterproc);
-    set_initial_conditions(params, prognostic_vars, constant_vars,
-                           primal_geometry, dual_geometry);
+    testcase->set_initial_conditions(prognostic_vars, constant_vars,
+                                     primal_geometry, dual_geometry);
     prog_exchange.exchange_variable_set(prognostic_vars);
     const_exchange.exchange_variable_set(constant_vars);
     tendencies.compute_constants(constant_vars, prognostic_vars);
