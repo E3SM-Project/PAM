@@ -36,6 +36,78 @@ public:
   virtual ~Diagnostic() = default;
 };
 
+real YAKL_INLINE tracer_constant(real x, real y, real Lx, real Ly, real xc,
+                                 real yc) {
+  return 1000;
+}
+real YAKL_INLINE tracer_square_cent(real x, real y, real Lx, real Ly, real xc,
+                                    real yc) {
+  return (x > 0.35_fp * Lx && x < 0.65_fp * Lx && y > 0.35_fp * Ly &&
+          y < 0.65_fp * Ly)
+             ? 0.005_fp
+             : 0.;
+}
+real YAKL_INLINE tracer_square_ur(real x, real y, real Lx, real Ly, real xc,
+                                  real yc) {
+  return (x > 0.6_fp * Lx && x < 0.9_fp * Lx && y > 0.6_fp * Ly &&
+          y < 0.9_fp * Ly)
+             ? 0.005_fp
+             : 0.;
+}
+real YAKL_INLINE tracer_square_ll(real x, real y, real Lx, real Ly, real xc,
+                                  real yc) {
+  return (x > 0.1_fp * Lx && x < 0.4_fp * Lx && y > 0.1_fp * Ly &&
+          y < 0.4_fp * Ly)
+             ? 0.005_fp
+             : 0.;
+}
+real YAKL_INLINE tracer_square_urpll(real x, real y, real Lx, real Ly, real xc,
+                                     real yc) {
+  return tracer_square_ur(x, y, Lx, Ly, xc, yc) +
+         tracer_square_ll(x, y, Lx, Ly, xc, yc);
+}
+
+real YAKL_INLINE tracer_gaussian(real x, real y, real Lx, real Ly, real xc,
+                                 real yc) {
+  real const a = 1.0_fp / 3.0_fp;
+  real const D = 0.5_fp * Lx;
+  return 0.005_fp *
+         exp(-((x - xc) * (x - xc) + (y - yc) * (y - yc)) / (a * a * D * D));
+}
+
+class TestCase {
+public:
+  using tracer_ptr = real (*)(real, real, real, real, real, real);
+  std::array<tracer_ptr, ntracers_dycore> tracer_f;
+
+  bool is_initialized;
+  TestCase() { this->is_initialized = false; }
+
+  void set_tracers(ModelParameters &params) {
+    for (int i = 0; i < ntracers_dycore; i++) {
+      if (params.tracerdataStr[i] == "gaussian") {
+        tracer_f[i] = tracer_gaussian;
+      } else if (params.tracerdataStr[i] == "square") {
+        tracer_f[i] = tracer_square_cent;
+      } else if (params.tracerdataStr[i] == "doublesquare") {
+        tracer_f[i] = tracer_square_urpll;
+      } else {
+        // by default set tracers to constant
+        tracer_f[i] = tracer_constant;
+      }
+    }
+  }
+
+  virtual void set_domain(ModelParameters &params) = 0;
+  virtual void set_initial_conditions(FieldSet<nprognostic> &progvars,
+                                      FieldSet<nconstant> &constvars,
+                                      Geometry &primal_geom,
+                                      Geometry &dual_geom) = 0;
+  // virtual void add_diagnostics(real time, const FieldSet<nconstant>
+  // &const_vars);
+  virtual ~TestCase() = default;
+};
+
 class Tendencies {
 public:
   Topology *primal_topology;
