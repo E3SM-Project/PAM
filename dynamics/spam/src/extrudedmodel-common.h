@@ -4,7 +4,9 @@
 #include "SGS.h"
 
 uint constexpr ntracers_dycore = 0;
-uint constexpr ntracers_active = 0; //applies only for swe/tswe, determines how many of the tracers are dynamically active
+uint constexpr ntracers_active =
+    0; // applies only for swe/tswe, determines how many of the tracers are
+       // dynamically active
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -12,9 +14,9 @@ uint constexpr ntracers_active = 0; //applies only for swe/tswe, determines how 
 uint constexpr ndims = 1;
 
 // Set dens sizes
-//uint constexpr ntracers = ntracers_dycore + ntracers_physics;
-//Tracers are stored as dycore_tracers, physics_tracers
-//Dycore tracers never add mass
+// uint constexpr ntracers = ntracers_dycore + ntracers_physics;
+// Tracers are stored as dycore_tracers, physics_tracers
+// Dycore tracers never add mass
 
 #ifdef _SWE
 uint constexpr ndensity_dycore = 1;
@@ -25,12 +27,16 @@ uint constexpr ntracers_physics = 0;
 #elif defined _CE || defined _CEp
 uint constexpr ndensity_dycore = 2;
 uint constexpr ntracers_physics = 0;
-// Here we have assumed that the micro has at least defined the 3 key tracers: mass of (cloud) vapor/liquid/ice (the last might be zero, depending on the microphysics)
-#elif defined _MCErho || defined _MCErhop || defined _MCErhod || defined _MCErhodp
+// Here we have assumed that the micro has at least defined the 3 key tracers:
+// mass of (cloud) vapor/liquid/ice (the last might be zero, depending on the
+// microphysics)
+#elif defined _MCErho || defined _MCErhop || defined _MCErhod ||               \
+    defined _MCErhodp
 uint constexpr ndensity_dycore = 2;
-uint constexpr ntracers_physics = Microphysics::get_num_tracers() + SGS::get_num_tracers();
+uint constexpr ntracers_physics =
+    Microphysics::get_num_tracers() + SGS::get_num_tracers();
 #endif
-//ADD ANELASTIC + MOIST ANELASTIC
+// ADD ANELASTIC + MOIST ANELASTIC
 
 uint constexpr ndensity_nophysics = ndensity_dycore + ntracers_dycore;
 uint constexpr ndensity = ndensity_dycore + ntracers_dycore + ntracers_physics;
@@ -47,10 +53,9 @@ uint constexpr nconstant = 2;
 #define HSVAR 0
 #define CORIOLISXZVAR 1
 
-//functional derivatives = F, FW, B, K, he, hew
-//primal grid reconstruction stuff- U, W, dens0, edgerecon, recon, vertedgerecon, vertrecon
-//fct stuff- Phi, Mf, edgeflux
-//Q/W STUFF?
+// functional derivatives = F, FW, B, K, he, hew
+// primal grid reconstruction stuff- U, W, dens0, edgerecon, recon,
+// vertedgerecon, vertrecon fct stuff- Phi, Mf, edgeflux Q/W STUFF?
 
 uint constexpr nauxiliary = 32;
 
@@ -98,7 +103,7 @@ uint constexpr ndiagnostic = 2;
 #define DENSLDIAGVAR 0
 #define QXZDIAGVAR 1
 
-//track total densities, dens min/max, energy (total, K, P, I), PV, PE
+// track total densities, dens min/max, energy (total, K, P, I), PV, PE
 uint constexpr nstats = 6;
 
 #define DENSSTAT 0
@@ -108,14 +113,13 @@ uint constexpr nstats = 6;
 #define PVSTAT 4
 #define PESTAT 5
 
-//ADD ANELASTIC + MOIST ANELASTIC
-// #if defined _CEp || defined _MCErhop || defined _MCErhodp
-// #define PVAR 18
-// #endif
+// ADD ANELASTIC + MOIST ANELASTIC
+//  #if defined _CEp || defined _MCErhop || defined _MCErhodp
+//  #define PVAR 18
+//  #endif
 
-class ModelParameters : public Parameters
-{
-public: 
+class ModelParameters : public Parameters {
+public:
   std::string initdataStr;
   std::string tracerdataStr[ntracers_dycore];
   bool dycore_tracerpos[ntracers_dycore];

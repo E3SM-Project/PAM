@@ -1,7 +1,9 @@
 #pragma once
 
 uint constexpr ntracers_dycore = 6;
-uint constexpr ntracers_active = 6; //applies only for swe/tswe, determines how many of the tracers are dynamically active
+uint constexpr ntracers_active =
+    6; // applies only for swe/tswe, determines how many of the tracers are
+       // dynamically active
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -9,7 +11,7 @@ uint constexpr ntracers_active = 6; //applies only for swe/tswe, determines how 
 uint constexpr ndims = 2;
 
 // Set dens sizes
-//Dycore tracers don't add mass
+// Dycore tracers don't add mass
 
 uint constexpr ntracers_physics = 0;
 
@@ -28,7 +30,9 @@ uint constexpr nprognostic = 2;
 #define VVAR 0
 #define DENSVAR 1
 
-//This is needed in order for varset to compile for layermodel- it shouldn't ever be used so the -1 is okay (and will trigger an easy to catch bug if it is!)
+// This is needed in order for varset to compile for layermodel- it shouldn't
+// ever be used so the -1 is okay (and will trigger an easy to catch bug if it
+// is!)
 #define WVAR -1
 
 // hs, coriolis
@@ -36,10 +40,10 @@ uint constexpr nconstant = 2;
 #define HSVAR 0
 #define CORIOLISVAR 1
 
-//functional derivatives = F, B, K, he
-//dual grid reconstruction stuff- q0, f0, FT, qedgerecon, qrecon, coriolisedgercon, coriolisrecon
-//primal grid reconstruction stuff- U, dens0, edgerecon, recon
-//fct stuff- Phi, Mf, edgeflux
+// functional derivatives = F, B, K, he
+// dual grid reconstruction stuff- q0, f0, FT, qedgerecon, qrecon,
+// coriolisedgercon, coriolisrecon primal grid reconstruction stuff- U, dens0,
+// edgerecon, recon fct stuff- Phi, Mf, edgeflux
 
 #if defined _CEp || defined _MCErhop || defined _MCErhodp
 uint constexpr nauxiliary = 19;
@@ -75,7 +79,8 @@ uint constexpr ndiagnostic = 2;
 #define QDIAGVAR 0
 #define DENSLDIAGVAR 1
 
-//track total densities, dens min/max, densfct min/max, energy (total, K, P, I), PV, PE,
+// track total densities, dens min/max, densfct min/max, energy (total, K, P,
+// I), PV, PE,
 uint constexpr nstats = 6;
 
 #define DENSSTAT 0
@@ -85,9 +90,8 @@ uint constexpr nstats = 6;
 #define PVSTAT 4
 #define PESTAT 5
 
-class ModelParameters : public Parameters
-{
-public: 
+class ModelParameters : public Parameters {
+public:
   std::string initdataStr;
   std::string tracerdataStr[ntracers_dycore];
   bool dycore_tracerpos[ntracers_dycore];
