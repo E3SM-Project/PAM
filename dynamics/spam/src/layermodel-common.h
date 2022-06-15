@@ -73,12 +73,6 @@ uint constexpr nauxiliary = 18;
 #define EDGEFLUXVAR 16
 #define MFVAR 17
 
-// q, associated concentration 0-forms for den
-
-uint constexpr ndiagnostic = 2;
-#define QDIAGVAR 0
-#define DENSLDIAGVAR 1
-
 // track total densities, dens min/max, densfct min/max, energy (total, K, P,
 // I), PV, PE,
 uint constexpr nstats = 6;
