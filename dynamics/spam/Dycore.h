@@ -96,9 +96,9 @@ public:
     std::array<std::string, nprognostic> prog_names_arr;
     std::array<std::string, nconstant> const_names_arr;
     std::array<std::string, nauxiliary> aux_names_arr;
-    std::array<const Topology *, nprognostic> prog_topo_arr;
-    std::array<const Topology *, nconstant> const_topo_arr;
-    std::array<const Topology *, nauxiliary> aux_topo_arr;
+    std::array<Topology, nprognostic> prog_topo_arr;
+    std::array<Topology, nconstant> const_topo_arr;
+    std::array<Topology, nauxiliary> aux_topo_arr;
     initialize_variables(primal_topology, dual_topology, prog_dofs_arr,
                          const_dofs_arr, aux_dofs_arr, prog_names_arr,
                          const_names_arr, aux_names_arr, prog_topo_arr,

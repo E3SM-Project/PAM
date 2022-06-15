@@ -7,7 +7,7 @@ class Field {
 
 public:
   real5d data;
-  const Topology *topology;
+  Topology topology;
   std::string name;
   int total_dofs; // total number of dofs in a "horiz" slice ie at each layer or
                   // interface
@@ -58,27 +58,27 @@ void Field::printinfo() {
 
 // creates a new Field f with same parameters as self, without copying data over
 void Field::initialize(const Field &f, const std::string fieldName) {
-  this->initialize(*f.topology, fieldName, f.basedof, f.extdof, f.ndofs);
+  this->initialize(f.topology, fieldName, f.basedof, f.extdof, f.ndofs);
 }
 
 void Field::initialize(const Topology &topo, const std::string fieldName,
                        int bdof, int edof, int nd) {
 
-  this->topology = &topo;
+  this->topology = topo;
   this->name = fieldName;
   this->basedof = bdof;
   this->extdof = edof;
   this->ndofs = nd;
 
   if (this->extdof == 0) {
-    this->_nz = this->topology->ni;
-    // this->_nloop = this->topology->n_cells_interfaces;
-    // this->_nloop_halo = this->topology->n_cells_interfaces_with_halo;
+    this->_nz = this->topology.ni;
+    // this->_nloop = this->topology.n_cells_interfaces;
+    // this->_nloop_halo = this->topology.n_cells_interfaces_with_halo;
   }
   if (this->extdof == 1) {
-    this->_nz = this->topology->nl;
-    // this->_nloop = this->topology->n_cells_layers;
-    // this->_nloop_halo = this->topology->n_cells_layers_with_halo;
+    this->_nz = this->topology.nl;
+    // this->_nloop = this->topology.n_cells_layers;
+    // this->_nloop_halo = this->topology.n_cells_layers_with_halo;
   }
 
   this->total_dofs = this->ndofs;
@@ -86,12 +86,11 @@ void Field::initialize(const Topology &topo, const std::string fieldName,
     this->total_dofs = 2 * this->ndofs;
   } // 2 edges per cell in 2D
 
-  this->data =
-      real5d(this->name.c_str(), this->total_dofs,
-             this->_nz + 2 * this->topology->mirror_halo,
-             this->topology->n_cells_y + 2 * this->topology->halosize_y,
-             this->topology->n_cells_x + 2 * this->topology->halosize_x,
-             this->topology->nens);
+  this->data = real5d(this->name.c_str(), this->total_dofs,
+                      this->_nz + 2 * this->topology.mirror_halo,
+                      this->topology.n_cells_y + 2 * this->topology.halosize_y,
+                      this->topology.n_cells_x + 2 * this->topology.halosize_x,
+                      this->topology.nens);
 
   this->zero();
   this->is_initialized = true;
@@ -100,11 +99,11 @@ void Field::initialize(const Topology &topo, const std::string fieldName,
 void Field::set(real val) {
   parallel_for(
       "Field set val",
-      SimpleBounds<5>(
-          this->total_dofs, this->_nz + 2 * this->topology->mirror_halo,
-          this->topology->n_cells_y + 2 * this->topology->halosize_y,
-          this->topology->n_cells_x + 2 * this->topology->halosize_x,
-          this->topology->nens),
+      SimpleBounds<5>(this->total_dofs,
+                      this->_nz + 2 * this->topology.mirror_halo,
+                      this->topology.n_cells_y + 2 * this->topology.halosize_y,
+                      this->topology.n_cells_x + 2 * this->topology.halosize_x,
+                      this->topology.nens),
       YAKL_LAMBDA(int ndof, int k, int j, int i, int n) {
         this->data(ndof, k, j, i, n) = val;
       });
@@ -113,11 +112,10 @@ void Field::set(real val) {
 void Field::set(int ndof, real val) {
   parallel_for(
       "Field set val ndof",
-      SimpleBounds<4>(
-          this->_nz + 2 * this->topology->mirror_halo,
-          this->topology->n_cells_y + 2 * this->topology->halosize_y,
-          this->topology->n_cells_x + 2 * this->topology->halosize_x,
-          this->topology->nens),
+      SimpleBounds<4>(this->_nz + 2 * this->topology.mirror_halo,
+                      this->topology.n_cells_y + 2 * this->topology.halosize_y,
+                      this->topology.n_cells_x + 2 * this->topology.halosize_x,
+                      this->topology.nens),
       YAKL_LAMBDA(int k, int j, int i, int n) {
         this->data(ndof, k, j, i, n) = val;
       });
@@ -126,52 +124,46 @@ void Field::set(int ndof, real val) {
 void Field::set_top_bnd(real val) {
   parallel_for(
       "Field set top bnd val",
-      SimpleBounds<4>(
-          this->total_dofs,
-          this->topology->n_cells_y + 2 * this->topology->halosize_y,
-          this->topology->n_cells_x + 2 * this->topology->halosize_x,
-          this->topology->nens),
+      SimpleBounds<4>(this->total_dofs,
+                      this->topology.n_cells_y + 2 * this->topology.halosize_y,
+                      this->topology.n_cells_x + 2 * this->topology.halosize_x,
+                      this->topology.nens),
       YAKL_LAMBDA(int ndof, int j, int i, int n) {
-        this->data(ndof, this->_nz + this->topology->mirror_halo, j, i, n) =
-            val;
+        this->data(ndof, this->_nz + this->topology.mirror_halo, j, i, n) = val;
       });
 }
 
 void Field::set_top_bnd(int ndof, real val) {
   parallel_for(
       "Field set top bnd val ndof",
-      SimpleBounds<3>(
-          this->topology->n_cells_y + 2 * this->topology->halosize_y,
-          this->topology->n_cells_x + 2 * this->topology->halosize_x,
-          this->topology->nens),
+      SimpleBounds<3>(this->topology.n_cells_y + 2 * this->topology.halosize_y,
+                      this->topology.n_cells_x + 2 * this->topology.halosize_x,
+                      this->topology.nens),
       YAKL_LAMBDA(int j, int i, int n) {
-        this->data(ndof, this->_nz + this->topology->mirror_halo, j, i, n) =
-            val;
+        this->data(ndof, this->_nz + this->topology.mirror_halo, j, i, n) = val;
       });
 }
 
 void Field::set_bottom_bnd(real val) {
   parallel_for(
       "Field set bottom val",
-      SimpleBounds<4>(
-          this->total_dofs,
-          this->topology->n_cells_y + 2 * this->topology->halosize_y,
-          this->topology->n_cells_x + 2 * this->topology->halosize_x,
-          this->topology->nens),
+      SimpleBounds<4>(this->total_dofs,
+                      this->topology.n_cells_y + 2 * this->topology.halosize_y,
+                      this->topology.n_cells_x + 2 * this->topology.halosize_x,
+                      this->topology.nens),
       YAKL_LAMBDA(int ndof, int j, int i, int n) {
-        this->data(ndof, this->topology->mirror_halo, j, i, n) = val;
+        this->data(ndof, this->topology.mirror_halo, j, i, n) = val;
       });
 }
 
 void Field::set_bottom_bnd(int ndof, real val) {
   parallel_for(
       "Field set bottom bnd val ndof",
-      SimpleBounds<3>(
-          this->topology->n_cells_y + 2 * this->topology->halosize_y,
-          this->topology->n_cells_x + 2 * this->topology->halosize_x,
-          this->topology->nens),
+      SimpleBounds<3>(this->topology.n_cells_y + 2 * this->topology.halosize_y,
+                      this->topology.n_cells_x + 2 * this->topology.halosize_x,
+                      this->topology.nens),
       YAKL_LAMBDA(int j, int i, int n) {
-        this->data(ndof, this->topology->mirror_halo, j, i, n) = val;
+        this->data(ndof, this->topology.mirror_halo, j, i, n) = val;
       });
 }
 
@@ -188,11 +180,11 @@ void Field::set_bnd(int ndof, real val) {
 void Field::zero() {
   parallel_for(
       "Field zero",
-      SimpleBounds<5>(
-          this->total_dofs, this->_nz + 2 * this->topology->mirror_halo,
-          this->topology->n_cells_y + 2 * this->topology->halosize_y,
-          this->topology->n_cells_x + 2 * this->topology->halosize_x,
-          this->topology->nens),
+      SimpleBounds<5>(this->total_dofs,
+                      this->_nz + 2 * this->topology.mirror_halo,
+                      this->topology.n_cells_y + 2 * this->topology.halosize_y,
+                      this->topology.n_cells_x + 2 * this->topology.halosize_x,
+                      this->topology.nens),
       YAKL_LAMBDA(int ndof, int k, int j, int i, int n) {
         this->data(ndof, k, j, i, n) = 0.0;
       });
@@ -201,11 +193,10 @@ void Field::zero() {
 void Field::zero(int ndof) {
   parallel_for(
       "Field zero ndof",
-      SimpleBounds<4>(
-          this->_nz + 2 * this->topology->mirror_halo,
-          this->topology->n_cells_y + 2 * this->topology->halosize_y,
-          this->topology->n_cells_x + 2 * this->topology->halosize_x,
-          this->topology->nens),
+      SimpleBounds<4>(this->_nz + 2 * this->topology.mirror_halo,
+                      this->topology.n_cells_y + 2 * this->topology.halosize_y,
+                      this->topology.n_cells_x + 2 * this->topology.halosize_x,
+                      this->topology.nens),
       YAKL_LAMBDA(int k, int j, int i, int n) {
         this->data(ndof, k, j, i, n) = 0.0;
       });
@@ -214,13 +205,13 @@ void Field::zero(int ndof) {
 // copies data from f into self
 void Field::copy(const Field &f) {
 
-  int is = this->topology->is;
-  int js = this->topology->js;
-  int ks = this->topology->ks;
+  int is = this->topology.is;
+  int js = this->topology.js;
+  int ks = this->topology.ks;
   parallel_for(
       "Field copy",
-      SimpleBounds<5>(this->total_dofs, this->_nz, this->topology->n_cells_y,
-                      this->topology->n_cells_x, this->topology->nens),
+      SimpleBounds<5>(this->total_dofs, this->_nz, this->topology.n_cells_y,
+                      this->topology.n_cells_x, this->topology.nens),
       YAKL_LAMBDA(int ndof, int k, int j, int i, int n) {
         this->data(ndof, k + ks, j + js, i + is, n) =
             f.data(ndof, k + ks, j + js, i + is, n);
@@ -230,13 +221,13 @@ void Field::copy(const Field &f) {
 // Computes w (self) = alpha x + y
 void Field::waxpy(real alpha, const Field &x, const Field &y) {
 
-  int is = this->topology->is;
-  int js = this->topology->js;
-  int ks = this->topology->ks;
+  int is = this->topology.is;
+  int js = this->topology.js;
+  int ks = this->topology.ks;
   parallel_for(
       "Field waxpy",
-      SimpleBounds<5>(this->total_dofs, this->_nz, this->topology->n_cells_y,
-                      this->topology->n_cells_x, this->topology->nens),
+      SimpleBounds<5>(this->total_dofs, this->_nz, this->topology.n_cells_y,
+                      this->topology.n_cells_x, this->topology.nens),
       YAKL_LAMBDA(int ndof, int k, int j, int i, int n) {
         this->data(ndof, k + ks, j + js, i + is, n) =
             alpha * x.data(ndof, k + ks, j + js, i + is, n) +
@@ -248,13 +239,13 @@ void Field::waxpy(real alpha, const Field &x, const Field &y) {
 void Field::waxpbypcz(real alpha, real beta, real gamma, const Field &x,
                       const Field &y, const Field &z) {
 
-  int is = this->topology->is;
-  int js = this->topology->js;
-  int ks = this->topology->ks;
+  int is = this->topology.is;
+  int js = this->topology.js;
+  int ks = this->topology.ks;
   parallel_for(
       "Field waxpbypcz",
-      SimpleBounds<5>(this->total_dofs, this->_nz, this->topology->n_cells_y,
-                      this->topology->n_cells_x, this->topology->nens),
+      SimpleBounds<5>(this->total_dofs, this->_nz, this->topology.n_cells_y,
+                      this->topology.n_cells_x, this->topology.nens),
       YAKL_LAMBDA(int ndof, int k, int j, int i, int n) {
         this->data(ndof, k + ks, j + js, i + is, n) =
             alpha * x.data(ndof, k + ks, j + js, i + is, n) +

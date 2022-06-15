@@ -35,7 +35,7 @@ class Dens0Diagnostic : public Diagnostic {
                   Geometry &dgeom) override {
     // concentration 0-forms for dens
     name = "densl";
-    topology = &ptopo;
+    topology = ptopo;
     dofs_arr = {0, 1, ndensity}; // densldiag = straight 0-form
     Diagnostic::initialize(ptopo, dtopo, pgeom, dgeom);
   }
@@ -43,14 +43,14 @@ class Dens0Diagnostic : public Diagnostic {
   void compute(real time, const FieldSet<nconstant> &const_vars,
                const FieldSet<nprognostic> &x) override {
 
-    int pis = primal_topology->is;
-    int pjs = primal_topology->js;
-    int pks = primal_topology->ks;
+    int pis = primal_topology.is;
+    int pjs = primal_topology.js;
+    int pks = primal_topology.ks;
 
     parallel_for(
         "Compute Dens0 Diag",
-        SimpleBounds<4>(primal_topology->nl, primal_topology->n_cells_y,
-                        primal_topology->n_cells_x, primal_topology->nens),
+        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_I<ndensity, diff_ord>(
               field.data, x.fields_arr[DENSVAR].data, *this->primal_geometry,
@@ -63,7 +63,7 @@ class Q0Diagnostic : public Diagnostic {
   void initialize(const Topology &ptopo, const Topology &dtopo, Geometry &pgeom,
                   Geometry &dgeom) override {
     name = "q";
-    topology = &dtopo;
+    topology = dtopo;
     dofs_arr = {0, 1, 1}; // qdiag = twisted 0-form
     Diagnostic::initialize(ptopo, dtopo, pgeom, dgeom);
   }
@@ -71,14 +71,14 @@ class Q0Diagnostic : public Diagnostic {
   void compute(real time, const FieldSet<nconstant> &const_vars,
                const FieldSet<nprognostic> &x) override {
 
-    int dis = dual_topology->is;
-    int djs = dual_topology->js;
-    int dks = dual_topology->ks;
+    int dis = dual_topology.is;
+    int djs = dual_topology.js;
+    int dks = dual_topology.ks;
 
     parallel_for(
         "Compute Q0 Diag",
-        SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y,
-                        dual_topology->n_cells_x, dual_topology->nens),
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           PVPE.compute_q0(field.data, x.fields_arr[VVAR].data,
                           x.fields_arr[DENSVAR].data,
@@ -105,8 +105,8 @@ public:
                   ExchangeSet<nconstant> &const_exchange) {
     Tendencies::initialize(params, primal_topo, dual_topo, primal_geom,
                            dual_geom, aux_exchange, const_exchange);
-    varset.initialize(coupler, params, thermo, *this->primal_topology,
-                      *this->dual_topology, *this->primal_geometry,
+    varset.initialize(coupler, params, thermo, this->primal_topology,
+                      this->dual_topology, *this->primal_geometry,
                       *this->dual_geometry);
     PVPE.initialize(varset);
     Hk.initialize(varset, *this->primal_geometry, *this->dual_geometry);
@@ -133,19 +133,19 @@ public:
       real5d Uvar, real5d Q0var, real5d f0var, real5d dens0var,
       const real5d Vvar, const real5d densvar, const real5d coriolisvar) {
 
-    int pis = primal_topology->is;
-    int pjs = primal_topology->js;
-    int pks = primal_topology->ks;
+    int pis = primal_topology.is;
+    int pjs = primal_topology.js;
+    int pks = primal_topology.ks;
 
-    int dis = dual_topology->is;
-    int djs = dual_topology->js;
-    int dks = dual_topology->ks;
+    int dis = dual_topology.is;
+    int djs = dual_topology.js;
+    int dks = dual_topology.ks;
 
     // compute dens0var = I densvar
     parallel_for(
         "Compute Dens0",
-        SimpleBounds<4>(primal_topology->nl, primal_topology->n_cells_y,
-                        primal_topology->n_cells_x, primal_topology->nens),
+        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_I<ndensity, diff_ord>(
               dens0var, densvar, *this->primal_geometry, *this->dual_geometry,
@@ -155,8 +155,8 @@ public:
     // compute U = H v, q0, f0
     parallel_for(
         "Compute U, Q0, F0",
-        SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y,
-                        dual_topology->n_cells_x, dual_topology->nens),
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_H<1, diff_ord>(Uvar, Vvar, *this->primal_geometry,
                                  *this->dual_geometry, dis, djs, dks, i, j, k,
@@ -170,14 +170,14 @@ public:
       real5d Fvar, real5d Kvar, real5d HEvar, const real5d Vvar,
       const real5d Uvar, const real5d dens0var) {
 
-    int dis = dual_topology->is;
-    int djs = dual_topology->js;
-    int dks = dual_topology->ks;
+    int dis = dual_topology.is;
+    int djs = dual_topology.js;
+    int dks = dual_topology.ks;
 
     parallel_for(
         "Compute F/K/HE",
-        SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y,
-                        dual_topology->n_cells_x, dual_topology->nens),
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           Hk.compute_dKdv(Fvar, Kvar, HEvar, Vvar, Uvar, dens0var, dis, djs,
                           dks, i, j, k, n);
@@ -188,14 +188,14 @@ public:
       real5d FTvar, real5d Bvar, const real5d Fvar, const real5d Uvar,
       const real5d Kvar, const real5d densvar, const real5d HSvar) {
 
-    int pis = primal_topology->is;
-    int pjs = primal_topology->js;
-    int pks = primal_topology->ks;
+    int pis = primal_topology.is;
+    int pjs = primal_topology.js;
+    int pks = primal_topology.ks;
 
     parallel_for(
         "Compute FT/B",
-        SimpleBounds<4>(primal_topology->nl, primal_topology->n_cells_y,
-                        primal_topology->n_cells_x, primal_topology->nens),
+        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_W(FTvar, Fvar, pis, pjs, pks, i, j, k, n);
           Hs.compute_dHsdx(Bvar, densvar, HSvar, pis, pjs, pks, i, j, k, n);
@@ -207,18 +207,18 @@ public:
       real5d densedgereconvar, real5d Qedgereconvar, real5d fedgereconvar,
       const real5d dens0var, const real5d Q0var, const real5d f0var) {
 
-    int pis = primal_topology->is;
-    int pjs = primal_topology->js;
-    int pks = primal_topology->ks;
+    int pis = primal_topology.is;
+    int pjs = primal_topology.js;
+    int pks = primal_topology.ks;
 
-    int dis = dual_topology->is;
-    int djs = dual_topology->js;
-    int dks = dual_topology->ks;
+    int dis = dual_topology.is;
+    int djs = dual_topology.js;
+    int dks = dual_topology.ks;
 
     parallel_for(
         "Compute straight edge recons",
-        SimpleBounds<4>(primal_topology->nl, primal_topology->n_cells_y,
-                        primal_topology->n_cells_x, primal_topology->nens),
+        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_straight_edge_recon<1, reconstruction_type,
                                       reconstruction_order>(
@@ -233,8 +233,8 @@ public:
 
     parallel_for(
         "Compute twisted edge recons",
-        SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y,
-                        dual_topology->n_cells_x, dual_topology->nens),
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_twisted_edge_recon<ndensity, dual_reconstruction_type,
                                      dual_reconstruction_order>(
@@ -251,18 +251,18 @@ public:
                                   const real5d HEvar, const real5d FTvar,
                                   const real5d Uvar) {
 
-    int pis = primal_topology->is;
-    int pjs = primal_topology->js;
-    int pks = primal_topology->ks;
+    int pis = primal_topology.is;
+    int pjs = primal_topology.js;
+    int pks = primal_topology.ks;
 
-    int dis = dual_topology->is;
-    int djs = dual_topology->js;
-    int dks = dual_topology->ks;
+    int dis = dual_topology.is;
+    int djs = dual_topology.js;
+    int dks = dual_topology.ks;
 
     parallel_for(
         "Compute straight recons",
-        SimpleBounds<4>(primal_topology->nl, primal_topology->n_cells_y,
-                        primal_topology->n_cells_x, primal_topology->nens),
+        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_straight_recon<1, reconstruction_type>(
               Qreconvar, Qedgereconvar, FTvar, pis, pjs, pks, i, j, k, n);
@@ -273,8 +273,8 @@ public:
 
     parallel_for(
         "Compute twisted recons",
-        SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y,
-                        dual_topology->n_cells_x, dual_topology->nens),
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_twisted_recon<ndensity, dual_reconstruction_type>(
               densreconvar, densedgereconvar, Uvar, dis, djs, dks, i, j, k, n);
@@ -296,18 +296,18 @@ public:
                                       const real5d Bvar, const real5d Fvar,
                                       const real5d Phivar) {
 
-    int pis = primal_topology->is;
-    int pjs = primal_topology->js;
-    int pks = primal_topology->ks;
+    int pis = primal_topology.is;
+    int pjs = primal_topology.js;
+    int pks = primal_topology.ks;
 
-    int dis = dual_topology->is;
-    int djs = dual_topology->js;
-    int dks = dual_topology->ks;
+    int dis = dual_topology.is;
+    int djs = dual_topology.js;
+    int dks = dual_topology.ks;
 
     parallel_for(
         "Compute v tend",
-        SimpleBounds<4>(primal_topology->nl, primal_topology->n_cells_y,
-                        primal_topology->n_cells_x, primal_topology->nens),
+        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_wD1_fct<ndensity>(Vtendvar, densreconvar, Phivar, Bvar, pis,
                                     pjs, pks, i, j, k, n);
@@ -325,8 +325,8 @@ public:
 
     parallel_for(
         "Compute dens tend",
-        SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y,
-                        dual_topology->n_cells_x, dual_topology->nens),
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_wDbar2_fct<ndensity>(denstendvar, densreconvar, Phivar, Fvar,
                                        dis, djs, dks, i, j, k, n);
@@ -419,14 +419,14 @@ public:
 
     // Compute fct
 
-    int dis = dual_topology->is;
-    int djs = dual_topology->js;
-    int dks = dual_topology->ks;
+    int dis = dual_topology.is;
+    int djs = dual_topology.js;
+    int dks = dual_topology.ks;
 
     parallel_for(
         "Compute edgefluxes",
-        SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y,
-                        dual_topology->n_cells_x, dual_topology->nens),
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_edgefluxes<ndensity>(
               auxiliary_vars.fields_arr[EDGEFLUXVAR].data,
@@ -438,8 +438,8 @@ public:
 
     parallel_for(
         "Compute Mf",
-        SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y,
-                        dual_topology->n_cells_x, dual_topology->nens),
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_Mf<ndensity>(auxiliary_vars.fields_arr[MFVAR].data,
                                auxiliary_vars.fields_arr[EDGEFLUXVAR].data, dt,
@@ -451,8 +451,8 @@ public:
 
     parallel_for(
         "Compute Phi",
-        SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y,
-                        dual_topology->n_cells_x, dual_topology->nens),
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_Phi<ndensity>(auxiliary_vars.fields_arr[PHIVAR].data,
                                 auxiliary_vars.fields_arr[EDGEFLUXVAR].data,
@@ -511,26 +511,26 @@ public:
                                        this->masterproc);
 
     this->TEarr =
-        real3d("TE", this->dual_topology->nl, this->dual_topology->n_cells_y,
-               this->dual_topology->n_cells_x);
+        real3d("TE", this->dual_topology.nl, this->dual_topology.n_cells_y,
+               this->dual_topology.n_cells_x);
     this->KEarr =
-        real3d("KE", this->dual_topology->nl, this->dual_topology->n_cells_y,
-               this->dual_topology->n_cells_x);
+        real3d("KE", this->dual_topology.nl, this->dual_topology.n_cells_y,
+               this->dual_topology.n_cells_x);
     this->IEarr =
-        real3d("IE", this->dual_topology->nl, this->dual_topology->n_cells_y,
-               this->dual_topology->n_cells_x);
+        real3d("IE", this->dual_topology.nl, this->dual_topology.n_cells_y,
+               this->dual_topology.n_cells_x);
     this->PEarr =
-        real3d("PE", this->dual_topology->nl, this->dual_topology->n_cells_y,
-               this->dual_topology->n_cells_x);
-    this->PVarr = real3d("PV", this->primal_topology->nl,
-                         this->primal_topology->n_cells_y,
-                         this->primal_topology->n_cells_x);
-    this->PENSarr = real3d("PENS", this->primal_topology->nl,
-                           this->primal_topology->n_cells_y,
-                           this->primal_topology->n_cells_x);
+        real3d("PE", this->dual_topology.nl, this->dual_topology.n_cells_y,
+               this->dual_topology.n_cells_x);
+    this->PVarr =
+        real3d("PV", this->primal_topology.nl, this->primal_topology.n_cells_y,
+               this->primal_topology.n_cells_x);
+    this->PENSarr = real3d("PENS", this->primal_topology.nl,
+                           this->primal_topology.n_cells_y,
+                           this->primal_topology.n_cells_x);
     this->trimmed_density =
-        real3d("trimmed_density", this->dual_topology->nl,
-               this->dual_topology->n_cells_y, this->dual_topology->n_cells_x);
+        real3d("trimmed_density", this->dual_topology.nl,
+               this->dual_topology.n_cells_y, this->dual_topology.n_cells_x);
   }
 
   void compute(FieldSet<nprognostic> &progvars, FieldSet<nconstant> &constvars,
@@ -570,14 +570,14 @@ public:
         densminglobal(l) = 0.;
       }
 
-      int dis = dual_topology->is;
-      int djs = dual_topology->js;
-      int dks = dual_topology->ks;
+      int dis = dual_topology.is;
+      int djs = dual_topology.js;
+      int dks = dual_topology.ks;
 
       parallel_for(
           "Compute energy stats",
-          SimpleBounds<3>(dual_topology->nl, dual_topology->n_cells_y,
-                          dual_topology->n_cells_x),
+          SimpleBounds<3>(dual_topology.nl, dual_topology.n_cells_y,
+                          dual_topology.n_cells_x),
           YAKL_LAMBDA(int k, int j, int i) {
             real KE, PE, IE;
             KE = Hk.compute_KE(progvars.fields_arr[VVAR].data,
@@ -599,14 +599,14 @@ public:
       elocal(2) = yakl::intrinsics::sum(PEarr);
       elocal(3) = yakl::intrinsics::sum(IEarr);
 
-      int pis = primal_topology->is;
-      int pjs = primal_topology->js;
-      int pks = primal_topology->ks;
+      int pis = primal_topology.is;
+      int pjs = primal_topology.js;
+      int pks = primal_topology.ks;
 
       parallel_for(
           "Compute pv/pens stats",
-          SimpleBounds<3>(primal_topology->nl, primal_topology->n_cells_y,
-                          primal_topology->n_cells_x),
+          SimpleBounds<3>(primal_topology.nl, primal_topology.n_cells_y,
+                          primal_topology.n_cells_x),
           YAKL_LAMBDA(int k, int j, int i) {
             pvpe vals_pvpe;
             vals_pvpe =
@@ -624,8 +624,8 @@ public:
       for (int l = 0; l < ndensity; l++) {
         parallel_for(
             "Compute trimmed density",
-            SimpleBounds<3>(dual_topology->nl, dual_topology->n_cells_y,
-                            dual_topology->n_cells_x),
+            SimpleBounds<3>(dual_topology.nl, dual_topology.n_cells_y,
+                            dual_topology.n_cells_x),
             YAKL_LAMBDA(int k, int j, int i) {
               trimmed_density(k, j, i) = progvars.fields_arr[DENSVAR].data(
                   l, k + dks, j + djs, i + dis, n);
@@ -674,23 +674,22 @@ public:
 };
 
 // *******   FieldSet Initialization   ***********//
-void initialize_variables(
-    const Topology &ptopo, const Topology &dtopo,
-    SArray<int, 2, nprognostic, 3> &prog_ndofs_arr,
-    SArray<int, 2, nconstant, 3> &const_ndofs_arr,
-    SArray<int, 2, nauxiliary, 3> &aux_ndofs_arr,
-    std::array<std::string, nprognostic> &prog_names_arr,
-    std::array<std::string, nconstant> &const_names_arr,
-    std::array<std::string, nauxiliary> &aux_names_arr,
-    std::array<const Topology *, nprognostic> &prog_topo_arr,
-    std::array<const Topology *, nconstant> &const_topo_arr,
-    std::array<const Topology *, nauxiliary> &aux_topo_arr) {
+void initialize_variables(const Topology &ptopo, const Topology &dtopo,
+                          SArray<int, 2, nprognostic, 3> &prog_ndofs_arr,
+                          SArray<int, 2, nconstant, 3> &const_ndofs_arr,
+                          SArray<int, 2, nauxiliary, 3> &aux_ndofs_arr,
+                          std::array<std::string, nprognostic> &prog_names_arr,
+                          std::array<std::string, nconstant> &const_names_arr,
+                          std::array<std::string, nauxiliary> &aux_names_arr,
+                          std::array<Topology, nprognostic> &prog_topo_arr,
+                          std::array<Topology, nconstant> &const_topo_arr,
+                          std::array<Topology, nauxiliary> &aux_topo_arr) {
 
   // primal grid represents straight quantities, dual grid twisted quantities
 
   // v, dens
-  prog_topo_arr[VVAR] = &ptopo;
-  prog_topo_arr[DENSVAR] = &dtopo;
+  prog_topo_arr[VVAR] = ptopo;
+  prog_topo_arr[DENSVAR] = dtopo;
   prog_names_arr[VVAR] = "v";
   prog_names_arr[DENSVAR] = "dens";
   set_dofs_arr(prog_ndofs_arr, VVAR, 1, 1, 1); // v = straight 1-form
@@ -698,19 +697,19 @@ void initialize_variables(
                ndensity); // dens = twisted n-form
 
   // hs, coriolis
-  const_topo_arr[HSVAR] = &dtopo;
-  const_topo_arr[CORIOLISVAR] = &ptopo;
+  const_topo_arr[HSVAR] = dtopo;
+  const_topo_arr[CORIOLISVAR] = ptopo;
   const_names_arr[HSVAR] = "hs";
   const_names_arr[CORIOLISVAR] = "coriolis";
   set_dofs_arr(const_ndofs_arr, HSVAR, ndims, 1, 1);   // hs = twisted n-form
   set_dofs_arr(const_ndofs_arr, CORIOLISVAR, 2, 1, 1); // f = straight 2-form
 
   // functional derivatives = F, B, K, he, U
-  aux_topo_arr[BVAR] = &ptopo;
-  aux_topo_arr[FVAR] = &dtopo;
-  aux_topo_arr[UVAR] = &dtopo;
-  aux_topo_arr[HEVAR] = &dtopo;
-  aux_topo_arr[KVAR] = &dtopo;
+  aux_topo_arr[BVAR] = ptopo;
+  aux_topo_arr[FVAR] = dtopo;
+  aux_topo_arr[UVAR] = dtopo;
+  aux_topo_arr[HEVAR] = dtopo;
+  aux_topo_arr[KVAR] = dtopo;
   aux_names_arr[KVAR] = "K";
   aux_names_arr[BVAR] = "B";
   aux_names_arr[FVAR] = "F";
@@ -724,9 +723,9 @@ void initialize_variables(
                1); // he lives on dual edges, associated with F
 
   // dens primal grid reconstruction stuff- dens0, edgerecon, recon
-  aux_topo_arr[DENSRECONVAR] = &dtopo;
-  aux_topo_arr[DENSEDGERECONVAR] = &dtopo;
-  aux_topo_arr[DENS0VAR] = &ptopo;
+  aux_topo_arr[DENSRECONVAR] = dtopo;
+  aux_topo_arr[DENSEDGERECONVAR] = dtopo;
+  aux_topo_arr[DENS0VAR] = ptopo;
   aux_names_arr[DENS0VAR] = "dens0";
   aux_names_arr[DENSRECONVAR] = "densrecon";
   aux_names_arr[DENSEDGERECONVAR] = "densedgerecon";
@@ -741,13 +740,13 @@ void initialize_variables(
 
   // dual grid reconstruction stuff- q0, f0, FT, qedgerecon, qrecon,
   // coriolisedgercon, coriolisrecon
-  aux_topo_arr[FTVAR] = &ptopo;
-  aux_topo_arr[CORIOLISRECONVAR] = &ptopo;
-  aux_topo_arr[CORIOLISEDGERECONVAR] = &ptopo;
-  aux_topo_arr[Q0VAR] = &dtopo;
-  aux_topo_arr[F0VAR] = &dtopo;
-  aux_topo_arr[QRECONVAR] = &ptopo;
-  aux_topo_arr[QEDGERECONVAR] = &ptopo;
+  aux_topo_arr[FTVAR] = ptopo;
+  aux_topo_arr[CORIOLISRECONVAR] = ptopo;
+  aux_topo_arr[CORIOLISEDGERECONVAR] = ptopo;
+  aux_topo_arr[Q0VAR] = dtopo;
+  aux_topo_arr[F0VAR] = dtopo;
+  aux_topo_arr[QRECONVAR] = ptopo;
+  aux_topo_arr[QEDGERECONVAR] = ptopo;
   aux_names_arr[FTVAR] = "FT";
   aux_names_arr[CORIOLISRECONVAR] = "coriolisrecon";
   aux_names_arr[CORIOLISEDGERECONVAR] = "coriolisedgerecon";
@@ -768,9 +767,9 @@ void initialize_variables(
                4); // coriolisedgerecon lives on primal cells
 
   // fct stuff- Phi, Mf, edgeflux
-  aux_topo_arr[PHIVAR] = &dtopo;
-  aux_topo_arr[MFVAR] = &dtopo;
-  aux_topo_arr[EDGEFLUXVAR] = &dtopo;
+  aux_topo_arr[PHIVAR] = dtopo;
+  aux_topo_arr[MFVAR] = dtopo;
+  aux_topo_arr[EDGEFLUXVAR] = dtopo;
   aux_names_arr[PHIVAR] = "Phi";
   aux_names_arr[MFVAR] = "Mf";
   aux_names_arr[EDGEFLUXVAR] = "edgeflux";

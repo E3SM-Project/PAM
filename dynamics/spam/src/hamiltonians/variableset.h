@@ -26,8 +26,8 @@ public:
   ThermoPotential *thermo;
   Geometry *primal_geometry;
   Geometry *dual_geometry;
-  Topology *primal_topology;
-  Topology *dual_topology;
+  Topology primal_topology;
+  Topology dual_topology;
 
   void initialize(PamCoupler &coupler, ModelParameters &params,
                   ThermoPotential &thermodynamics, Topology &primal_topo,
@@ -37,8 +37,8 @@ public:
     this->thermo = &thermodynamics;
     this->primal_geometry = &primal_geom;
     this->dual_geometry = &dual_geom;
-    this->primal_topology = &primal_topo;
-    this->dual_topology = &dual_topo;
+    this->primal_topology = primal_topo;
+    this->dual_topology = dual_topo;
 
     // If more physics parameterizations are added this logic might need to
     // change
@@ -147,13 +147,13 @@ public:
                                     const FieldSet<nprognostic> &prog_vars,
                                     const FieldSet<nconstant> &const_vars) {
 
-    int dis = dual_topology->is;
-    int djs = dual_topology->js;
-    int dks = dual_topology->ks;
+    int dis = dual_topology.is;
+    int djs = dual_topology.js;
+    int dks = dual_topology.ks;
 
-    int pis = primal_topology->is;
-    int pjs = primal_topology->js;
-    int pks = primal_topology->ks;
+    int pis = primal_topology.is;
+    int pjs = primal_topology.js;
+    int pks = primal_topology.ks;
 
     auto &dm = coupler.get_data_manager_readwrite();
 
@@ -172,8 +172,8 @@ public:
     if (couple_wind) {
       parallel_for(
           "Dynamics to Coupler State winds",
-          SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y,
-                          dual_topology->n_cells_x, dual_topology->nens),
+          SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                          dual_topology.n_cells_x, dual_topology.nens),
           YAKL_LAMBDA(int k, int j, int i, int n) {
             // IN 3D THIS IS MORE COMPLICATED
             real uvel_l =
@@ -193,7 +193,7 @@ public:
                                                   n) /
                   primal_geometry->get_area_01entity(k + pks, j + pjs, i + pis);
               wvel_d = 0.0_fp;
-            } else if (k == (dual_topology->nl)) {
+            } else if (k == (dual_topology.nl)) {
               wvel_u = 0.0_fp;
               wvel_d = 2.0_fp *
                        prog_vars.fields_arr[WVAR].data(0, k + pks - 1, j + pjs,
@@ -220,8 +220,8 @@ public:
     }
     parallel_for(
         "Dynamics to Coupler State densities",
-        SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y,
-                        dual_topology->n_cells_x, dual_topology->nens),
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           real qd = get_qd(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks,
                            djs, dis, n);
@@ -265,13 +265,13 @@ public:
                                     FieldSet<nprognostic> &prog_vars,
                                     const FieldSet<nconstant> &const_vars) {
 
-    int dis = dual_topology->is;
-    int djs = dual_topology->js;
-    int dks = dual_topology->ks;
+    int dis = dual_topology.is;
+    int djs = dual_topology.js;
+    int dks = dual_topology.ks;
 
-    int pis = primal_topology->is;
-    int pjs = primal_topology->js;
-    int pks = primal_topology->ks;
+    int pis = primal_topology.is;
+    int pjs = primal_topology.js;
+    int pks = primal_topology.ks;
 
     auto &dm = coupler.get_data_manager_readonly();
 
@@ -289,8 +289,8 @@ public:
 
     parallel_for(
         "Coupler to Dynamics State Densities",
-        SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y,
-                        dual_topology->n_cells_x, dual_topology->nens),
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           real temp = dm_temp(k, j, i, n);
 
@@ -337,13 +337,13 @@ public:
     if (couple_wind) {
       parallel_for(
           "Coupler to Dynamics State Primal U",
-          SimpleBounds<4>(primal_topology->ni, primal_topology->n_cells_y,
-                          primal_topology->n_cells_x, primal_topology->nens),
+          SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                          primal_topology.n_cells_x, primal_topology.nens),
           YAKL_LAMBDA(int k, int j, int i, int n) {
             // periodic wrapping
             int il = i - 1;
             if (i == 0) {
-              il = primal_topology->n_cells_x - 1;
+              il = primal_topology.n_cells_x - 1;
             }
             prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, i + pis, n) =
                 (dm_uvel(k, j, il, n) + dm_uvel(k, j, i, n)) * 0.5_fp *
@@ -353,8 +353,8 @@ public:
       // EVENTUALLY THIS NEEDS TO HAVE A FLAG ON IT!
       parallel_for(
           "Coupler to Dynamics State Primal W",
-          SimpleBounds<4>(primal_topology->nl, primal_topology->n_cells_y,
-                          primal_topology->n_cells_x, primal_topology->nens),
+          SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                          primal_topology.n_cells_x, primal_topology.nens),
           YAKL_LAMBDA(int k, int j, int i, int n) {
             prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs, i + pis, n) =
                 (dm_wvel(k, j, i, n) + dm_wvel(k + 1, j, i, n)) * 0.5_fp *

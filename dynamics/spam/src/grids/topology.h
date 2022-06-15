@@ -29,10 +29,8 @@ public:
   bool primal;
 
   Topology();
-  Topology(const Topology &topo) = delete;
-  Topology &operator=(const Topology &topo) = delete;
   void initialize(Parallel &par, bool isprimal);
-  void printinfo();
+  void printinfo() const;
 };
 
 Topology::Topology() { this->is_initialized = false; }
@@ -113,7 +111,7 @@ void Topology::initialize(Parallel &par, bool isprimal) {
   this->is_initialized = true;
 }
 
-void Topology::printinfo() {
+void Topology::printinfo() const {
   if (this->primal) {
     std::cout << "topology info: type primal\n" << std::flush;
   } else {

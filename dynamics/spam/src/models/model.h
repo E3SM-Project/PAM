@@ -10,10 +10,10 @@ class Diagnostic {
 public:
   std::string name;
   std::array<int, 3> dofs_arr;
-  const Topology *topology;
-  const Topology *primal_topology;
+  Topology topology;
+  Topology primal_topology;
   Geometry *primal_geometry;
-  const Topology *dual_topology;
+  Topology dual_topology;
   Geometry *dual_geometry;
   Field field;
 
@@ -26,11 +26,11 @@ public:
 
   virtual void initialize(const Topology &ptopo, const Topology &dtopo,
                           Geometry &pgeom, Geometry &dgeom) {
-    this->primal_topology = &ptopo;
-    this->dual_topology = &dtopo;
+    this->primal_topology = ptopo;
+    this->dual_topology = dtopo;
     this->primal_geometry = &pgeom;
     this->dual_geometry = &dgeom;
-    field.initialize(*topology, name, dofs_arr[0], dofs_arr[1], dofs_arr[2]);
+    field.initialize(topology, name, dofs_arr[0], dofs_arr[1], dofs_arr[2]);
     this->is_initialized = true;
   }
   virtual ~Diagnostic() = default;
@@ -110,8 +110,8 @@ public:
 
 class Tendencies {
 public:
-  Topology *primal_topology;
-  Topology *dual_topology;
+  Topology primal_topology;
+  Topology dual_topology;
   ExchangeSet<nauxiliary> *aux_exchange;
   ExchangeSet<nconstant> *const_exchange;
   Geometry *primal_geometry;
@@ -146,8 +146,8 @@ public:
                   Topology &dual_topo, Geometry &primal_geom,
                   Geometry &dual_geom, ExchangeSet<nauxiliary> &aux_exchange,
                   ExchangeSet<nconstant> &const_exchange) {
-    this->primal_topology = &primal_topo;
-    this->dual_topology = &dual_topo;
+    this->primal_topology = primal_topo;
+    this->dual_topology = dual_topo;
     this->primal_geometry = &primal_geom;
     this->dual_geometry = &dual_geom;
     this->aux_exchange = &aux_exchange;
