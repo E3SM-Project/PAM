@@ -23,7 +23,8 @@ public:
   void set_parameters(real gin) { this->g = gin; }
 
   real YAKL_INLINE compute_PE(const real5d dens, const real5d hs, int is,
-                              int js, int ks, int i, int j, int k, int n) {
+                              int js, int ks, int i, int j, int k,
+                              int n) const {
     // Assumes things are stored in dens as as 0=h, 1=S, active tracers,
     // inactive tracers
     // P = S * hs + 1/2 S * h + sum_nt 1/2 h * t;
@@ -45,7 +46,7 @@ public:
   }
 
   real YAKL_INLINE compute_IE(const real5d dens, int is, int js, int ks, int i,
-                              int j, int k, int n) {
+                              int j, int k, int n) const {
     return 0;
   }
 
@@ -60,7 +61,7 @@ public:
 
   void YAKL_INLINE compute_dHsdx(real5d B, const real5d dens, const real5d hs,
                                  int is, int js, int ks, int i, int j, int k,
-                                 int n) {
+                                 int n) const {
 
     // Assumes things are stored in dens as as 0=h, 1=S, active tracers,
     // inactive tracers
@@ -125,7 +126,8 @@ public:
   void set_parameters(real gin) { this->g = gin; }
 
   real YAKL_INLINE compute_PE(const real5d dens, const real5d hs, int is,
-                              int js, int ks, int i, int j, int k, int n) {
+                              int js, int ks, int i, int j, int k,
+                              int n) const {
     // Assumes things are stored in dens as as 0=h, active tracers, inactive
     // tracers
 
@@ -151,13 +153,13 @@ public:
   }
 
   real YAKL_INLINE compute_IE(const real5d dens, int is, int js, int ks, int i,
-                              int j, int k, int n) {
+                              int j, int k, int n) const {
     return 0;
   }
 
   void YAKL_INLINE compute_dHsdx(real5d B, const real5d dens, const real5d hs,
                                  int is, int js, int ks, int i, int j, int k,
-                                 int n) {
+                                 int n) const {
     // Assumes things are stored in dens as as 0=h, active tracers, inactive
     // tracers
 

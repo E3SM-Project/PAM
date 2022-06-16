@@ -109,7 +109,7 @@ public:
   }
 
   real YAKL_INLINE compute_KE(const real5d v, const real5d dens, int is, int js,
-                              int ks, int i, int j, int k, int n) {
+                              int ks, int i, int j, int k, int n) const {
 
     real KE;
     SArray<real, 1, 1> h0, h0im1, h0jm1, h0km1;
@@ -161,7 +161,8 @@ public:
   // FIX THIS TO GET TOTAL DENSITY FROM VARSET!
   void YAKL_INLINE compute_dKdv(real5d F, real5d K, real5d HE, const real5d v,
                                 const real5d U, const real5d dens0, int is,
-                                int js, int ks, int i, int j, int k, int n) {
+                                int js, int ks, int i, int j, int k,
+                                int n) const {
     SArray<real, 2, ndims, 2> D0;
     SArray<real, 1, ndims> he;
 
@@ -196,7 +197,7 @@ public:
   // FIX THIS TO GET TOTAL DENSITY FROM VARSET!
   //  Note that this ADDS to Bvar...
   void YAKL_INLINE compute_dKddens(real5d B, const real5d K, int is, int js,
-                                   int ks, int i, int j, int k, int n) {
+                                   int ks, int i, int j, int k, int n) const {
     SArray<real, 1, 1> K0;
     compute_I<1, diff_ord>(K0, K, this->primal_geometry, this->dual_geometry,
                            is, js, ks, i, j, k, n);
@@ -379,7 +380,7 @@ public:
 
   real YAKL_INLINE compute_KE_top(const real5d v, const real5d w,
                                   const real5d dens, int is, int js, int ks,
-                                  int i, int j, int k, int n) {
+                                  int i, int j, int k, int n) const {
     real K2 = 0.;
     // Have to subtract 1 from k here since UW has an extra dof compared to w!
     SArray<real, 1, 1> UW0;
@@ -395,7 +396,7 @@ public:
 
   real YAKL_INLINE compute_KE_bottom(const real5d v, const real5d w,
                                      const real5d dens, int is, int js, int ks,
-                                     int i, int j, int k, int n) {
+                                     int i, int j, int k, int n) const {
     real K2 = 0.;
     // Have to subtract 1 from k here since UW has an extra dof compared to w!
     SArray<real, 1, 1> UW1;
@@ -410,7 +411,7 @@ public:
 
   real YAKL_INLINE compute_KE(const real5d v, const real5d w, const real5d dens,
                               int is, int js, int ks, int i, int j, int k,
-                              int n) {
+                              int n) const {
     real K2 = 0.;
     // Have to subtract 1 from k here since UW has an extra dof compared to w!
     SArray<real, 1, 1> UW0, UW1;
@@ -429,7 +430,7 @@ public:
 
   real YAKL_INLINE _compute_KE(real K2, const real5d v, const real5d w,
                                const real5d dens, int is, int js, int ks, int i,
-                               int j, int k, int n) {
+                               int j, int k, int n) const {
     real v0, v1;
     SArray<real, 1, ndims> U0, U1;
     compute_Hext<1, diff_ord>(U0, v, this->primal_geometry, this->dual_geometry,
@@ -467,7 +468,7 @@ public:
   // FIX THIS TO GET TOTAL DENSITY FROM VARSET!
   void YAKL_INLINE compute_Fw(real5d FW, real5d HEw, const real5d UW,
                               const real5d dens0, int is, int js, int ks, int i,
-                              int j, int k, int n) {
+                              int j, int k, int n) const {
     // SArray<real,2> Dv;
     // compute hew = phiw * h0
     // Dv(0) = dens0(0, k+ks, j+js, i+is);
@@ -485,7 +486,7 @@ public:
 
   void YAKL_INLINE compute_K(real5d K, const real5d v, const real5d U,
                              const real5d w, const real5d UW, int is, int js,
-                             int ks, int i, int j, int k, int n) {
+                             int ks, int i, int j, int k, int n) const {
     // compute K = 1/2 * PhiT(U,V) + 1/2 * PhiTW(UW,W)
     real K2 = 0.;
 
@@ -522,7 +523,7 @@ public:
   // FIX THIS TO GET TOTAL DENSITY FROM VARSET!
   void YAKL_INLINE compute_F(real5d F, real5d HE, const real5d U,
                              const real5d dens0, int is, int js, int ks, int i,
-                             int j, int k, int n) {
+                             int j, int k, int n) const {
     SArray<real, 2, ndims, 2> D0;
     SArray<real, 1, ndims> he;
 
@@ -550,7 +551,7 @@ public:
   // FIX THIS TO GET TOTAL DENSITY FROM VARSET!
   template <ADD_MODE addmode = ADD_MODE::REPLACE>
   void YAKL_INLINE compute_dKddens(real5d B, const real5d K, int is, int js,
-                                   int ks, int i, int j, int k, int n) {
+                                   int ks, int i, int j, int k, int n) const {
     SArray<real, 1, 1> K0;
     compute_Iext<1, diff_ord, vert_diff_ord>(K0, K, this->primal_geometry,
                                              this->dual_geometry, is, js, ks, i,

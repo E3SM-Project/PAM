@@ -23,7 +23,7 @@ public:
   }
 
   real YAKL_INLINE compute_hv(const real5d dens, int is, int js, int ks, int i,
-                              int j, int k, int n) {
+                              int j, int k, int n) const {
     SArray<real, 1, 1> hv;
     SArray<real, 1, 4> Dv;
 
@@ -38,7 +38,7 @@ public:
   }
 
   real YAKL_INLINE compute_zeta(const real5d v, int is, int js, int ks, int i,
-                                int j, int k, int n) {
+                                int j, int k, int n) const {
     SArray<real, 1, 1> zeta;
     // compute zeta = D2 v
     compute_D2<1>(zeta, v, is, js, ks, i, j, k, n);
@@ -46,7 +46,8 @@ public:
   }
 
   real YAKL_INLINE compute_eta(const real5d v, const real5d coriolis, int is,
-                               int js, int ks, int i, int j, int k, int n) {
+                               int js, int ks, int i, int j, int k,
+                               int n) const {
     real zeta = compute_zeta(v, is, js, ks, i, j, k, n);
     return zeta + coriolis(0, k + ks, j + js, i + is, n);
   }
@@ -55,7 +56,7 @@ public:
   void YAKL_INLINE compute_q0f0(real5d q0, real5d f0, const real5d v,
                                 const real5d dens, const real5d coriolis,
                                 int is, int js, int ks, int i, int j, int k,
-                                int n) {
+                                int n) const {
 
     real hv = compute_hv(dens, is, js, ks, i, j, k, n);
     real zeta = compute_zeta(v, is, js, ks, i, j, k, n);
@@ -69,7 +70,7 @@ public:
   // This computes TRUE q0
   void YAKL_INLINE compute_q0(real5d q0, const real5d v, const real5d dens,
                               const real5d coriolis, int is, int js, int ks,
-                              int i, int j, int k, int n) {
+                              int i, int j, int k, int n) const {
     real hv = compute_hv(dens, is, js, ks, i, j, k, n);
     real eta = compute_eta(v, coriolis, is, js, ks, i, j, k, n);
     // compute q0 = zeta / hv and f0 = f / hv
@@ -78,7 +79,7 @@ public:
 
   pvpe YAKL_INLINE compute_PVPE(const real5d v, const real5d dens,
                                 const real5d coriolis, int is, int js, int ks,
-                                int i, int j, int k, int n) {
+                                int i, int j, int k, int n) const {
     pvpe vals;
     real eta = compute_eta(v, coriolis, is, js, ks, i, j, k, n);
     real hv = compute_hv(dens, is, js, ks, i, j, k, n);
@@ -197,7 +198,7 @@ public:
   }
 
   real YAKL_INLINE compute_hvxz(const real5d dens, int is, int js, int ks,
-                                int i, int j, int k, int n) {
+                                int i, int j, int k, int n) const {
     SArray<real, 1, 1> hv;
     SArray<real, 1, 4> Dv;
 
@@ -213,7 +214,7 @@ public:
   }
 
   real YAKL_INLINE compute_hvxz_top(const real5d dens, int is, int js, int ks,
-                                    int i, int j, int k, int n) {
+                                    int i, int j, int k, int n) const {
     SArray<real, 1, 1> hv;
     SArray<real, 1, 4> Dv;
 
@@ -229,7 +230,8 @@ public:
   }
 
   real YAKL_INLINE compute_hvxz_bottom(const real5d dens, int is, int js,
-                                       int ks, int i, int j, int k, int n) {
+                                       int ks, int i, int j, int k,
+                                       int n) const {
     SArray<real, 1, 1> hv;
     SArray<real, 1, 4> Dv;
 
@@ -245,7 +247,8 @@ public:
   }
 
   real YAKL_INLINE compute_zetaxz(const real5d v, const real5d w, int is,
-                                  int js, int ks, int i, int j, int k, int n) {
+                                  int js, int ks, int i, int j, int k,
+                                  int n) const {
     SArray<real, 1, 1> zeta;
     // compute zeta = Dxz "v"
     compute_Dxz<1>(zeta, v, w, is, js, ks, i, j, k, n);
@@ -254,7 +257,7 @@ public:
 
   real YAKL_INLINE compute_etaxz(const real5d v, const real5d w,
                                  const real5d coriolisxz, int is, int js,
-                                 int ks, int i, int j, int k, int n) {
+                                 int ks, int i, int j, int k, int n) const {
     real zeta = compute_zetaxz(v, w, is, js, ks, i, j, k, n);
     return zeta + coriolisxz(0, k + ks, j + js, i + is, n);
   }
@@ -263,7 +266,7 @@ public:
   void YAKL_INLINE compute_qxz0(real5d qxz0, const real5d v, const real5d w,
                                 const real5d dens, const real5d coriolisxz,
                                 int is, int js, int ks, int i, int j, int k,
-                                int n) {
+                                int n) const {
     // Need to subtract 1 here since d00(i,k) corresponds to p11(i,k)
     real hv = compute_hvxz(dens, is, js, ks, i, j, k - 1, n);
     real eta = compute_etaxz(v, w, coriolisxz, is, js, ks, i, j, k - 1, n);
@@ -275,7 +278,7 @@ public:
   void YAKL_INLINE compute_qxz0_top(real5d qxz0, const real5d v, const real5d w,
                                     const real5d dens, const real5d coriolisxz,
                                     int is, int js, int ks, int i, int j, int k,
-                                    int n) {
+                                    int n) const {
     // Need to subtract 1 here since d00(i,k) corresponds to p11(i,k)
     real hv = compute_hvxz_top(dens, is, js, ks, i, j, k - 1, n);
     real eta = compute_etaxz(v, w, coriolisxz, is, js, ks, i, j, k - 1, n);
@@ -287,7 +290,8 @@ public:
   void YAKL_INLINE compute_qxz0_bottom(real5d qxz0, const real5d v,
                                        const real5d w, const real5d dens,
                                        const real5d coriolisxz, int is, int js,
-                                       int ks, int i, int j, int k, int n) {
+                                       int ks, int i, int j, int k,
+                                       int n) const {
     // Need to subtract 1 here since d00(i,k) corresponds to p11(i,k)
     real hv = compute_hvxz_bottom(dens, is, js, ks, i, j, k - 1, n);
     real eta = compute_etaxz(v, w, coriolisxz, is, js, ks, i, j, k - 1, n);
@@ -299,7 +303,7 @@ public:
   void YAKL_INLINE compute_qxz0fxz0(real5d qxz0, real5d fxz0, const real5d v,
                                     const real5d w, const real5d dens,
                                     const real5d coriolisxz, int is, int js,
-                                    int ks, int i, int j, int k, int n) {
+                                    int ks, int i, int j, int k, int n) const {
     // Need to subtract 1 here since d00(i,k) corresponds to p11(i,k)
     real hv = compute_hvxz(dens, is, js, ks, i, j, k - 1, n);
     real zeta = compute_zetaxz(v, w, is, js, ks, i, j, k - 1, n);
@@ -314,7 +318,8 @@ public:
                                         const real5d v, const real5d w,
                                         const real5d dens,
                                         const real5d coriolisxz, int is, int js,
-                                        int ks, int i, int j, int k, int n) {
+                                        int ks, int i, int j, int k,
+                                        int n) const {
     // Need to subtract 1 here since d00(i,k) corresponds to p11(i,k)
     real hv = compute_hvxz_top(dens, is, js, ks, i, j, k - 1, n);
     real zeta = compute_zetaxz(v, w, is, js, ks, i, j, k - 1, n);
@@ -330,7 +335,7 @@ public:
                                            const real5d dens,
                                            const real5d coriolisxz, int is,
                                            int js, int ks, int i, int j, int k,
-                                           int n) {
+                                           int n) const {
     // Need to subtract 1 here since d00(i,k) corresponds to p11(i,k)
     real hv = compute_hvxz_bottom(dens, is, js, ks, i, j, k - 1, n);
     real zeta = compute_zetaxz(v, w, is, js, ks, i, j, k - 1, n);
@@ -343,7 +348,7 @@ public:
   pvpe YAKL_INLINE compute_PVPE(const real5d v, const real5d w,
                                 const real5d dens, const real5d coriolisxz,
                                 int is, int js, int ks, int i, int j, int k,
-                                int n) {
+                                int n) const {
     pvpe vals;
     // No subtraction here since this is called on primal cells p11
     real eta = compute_etaxz(v, w, coriolisxz, is, js, ks, i, j, k, n);
@@ -357,7 +362,7 @@ public:
   pvpe YAKL_INLINE compute_PVPE_top(const real5d v, const real5d w,
                                     const real5d dens, const real5d coriolisxz,
                                     int is, int js, int ks, int i, int j, int k,
-                                    int n) {
+                                    int n) const {
     pvpe vals;
     // No subtraction here since this is called on primal cells p11
     real eta = compute_etaxz(v, w, coriolisxz, is, js, ks, i, j, k, n);
@@ -371,7 +376,8 @@ public:
   pvpe YAKL_INLINE compute_PVPE_bottom(const real5d v, const real5d w,
                                        const real5d dens,
                                        const real5d coriolisxz, int is, int js,
-                                       int ks, int i, int j, int k, int n) {
+                                       int ks, int i, int j, int k,
+                                       int n) const {
     pvpe vals;
     // No subtraction here since this is called on primal cells p11
     real eta = compute_etaxz(v, w, coriolisxz, is, js, ks, i, j, k, n);

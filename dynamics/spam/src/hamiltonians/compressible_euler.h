@@ -30,7 +30,8 @@ public:
   void set_parameters(real gin) {}
 
   real YAKL_INLINE compute_PE(const real5d dens, const real5d geop, int is,
-                              int js, int ks, int i, int j, int k, int n) {
+                              int js, int ks, int i, int j, int k,
+                              int n) const {
     SArray<real, 1, 1> geop0;
 #ifdef _EXTRUDED
     compute_Iext<1, diff_ord, vert_diff_ord>(geop0, geop, this->primal_geometry,
@@ -45,7 +46,7 @@ public:
   }
 
   real YAKL_INLINE compute_IE(const real5d dens, int is, int js, int ks, int i,
-                              int j, int k, int n) {
+                              int j, int k, int n) const {
     // SArray<real,1,2> dens0;
     // #ifdef _EXTRUDED
     // compute_Iext<2, diff_ord, vert_diff_ord>(dens0, dens,
@@ -62,7 +63,7 @@ public:
 
   void YAKL_INLINE compute_dHsdx(real5d B, const real5d dens, const real5d geop,
                                  int is, int js, int ks, int i, int j, int k,
-                                 int n) {
+                                 int n) const {
 
     SArray<real, 1, 1> geop0;
 #ifdef _EXTRUDED
@@ -130,7 +131,8 @@ public:
   void set_parameters(real gin) {}
 
   real YAKL_INLINE compute_PE(const real5d dens, const real5d geop, int is,
-                              int js, int ks, int i, int j, int k, int n) {
+                              int js, int ks, int i, int j, int k,
+                              int n) const {
     SArray<real, 1, 1> geop0;
 
 #ifdef _EXTRUDED
@@ -146,7 +148,7 @@ public:
   }
 
   real YAKL_INLINE compute_IE(const real5d dens, int is, int js, int ks, int i,
-                              int j, int k, int n) {
+                              int j, int k, int n) const {
 
     // SArray<real,1,5> dens0;
     // #ifdef _EXTRUDED
@@ -175,7 +177,7 @@ public:
   // THIS NEEDS FIXING, BUT SHOULD BE COMPLETELY GENERAL NOW!
   void YAKL_INLINE compute_dHsdx(real5d B, const real5d dens, const real5d geop,
                                  int is, int js, int ks, int i, int j, int k,
-                                 int n) {
+                                 int n) const {
 
     SArray<real, 1, 1> geop0;
 
