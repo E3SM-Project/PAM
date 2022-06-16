@@ -104,7 +104,7 @@ void Field::set(real val) {
                       this->topology.n_cells_y + 2 * this->topology.halosize_y,
                       this->topology.n_cells_x + 2 * this->topology.halosize_x,
                       this->topology.nens),
-      YAKL_LAMBDA(int ndof, int k, int j, int i, int n) {
+      YAKL_CLASS_LAMBDA(int ndof, int k, int j, int i, int n) {
         this->data(ndof, k, j, i, n) = val;
       });
 }
@@ -116,7 +116,7 @@ void Field::set(int ndof, real val) {
                       this->topology.n_cells_y + 2 * this->topology.halosize_y,
                       this->topology.n_cells_x + 2 * this->topology.halosize_x,
                       this->topology.nens),
-      YAKL_LAMBDA(int k, int j, int i, int n) {
+      YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
         this->data(ndof, k, j, i, n) = val;
       });
 }
@@ -128,7 +128,7 @@ void Field::set_top_bnd(real val) {
                       this->topology.n_cells_y + 2 * this->topology.halosize_y,
                       this->topology.n_cells_x + 2 * this->topology.halosize_x,
                       this->topology.nens),
-      YAKL_LAMBDA(int ndof, int j, int i, int n) {
+      YAKL_CLASS_LAMBDA(int ndof, int j, int i, int n) {
         this->data(ndof, this->_nz + this->topology.mirror_halo, j, i, n) = val;
       });
 }
@@ -139,7 +139,7 @@ void Field::set_top_bnd(int ndof, real val) {
       SimpleBounds<3>(this->topology.n_cells_y + 2 * this->topology.halosize_y,
                       this->topology.n_cells_x + 2 * this->topology.halosize_x,
                       this->topology.nens),
-      YAKL_LAMBDA(int j, int i, int n) {
+      YAKL_CLASS_LAMBDA(int j, int i, int n) {
         this->data(ndof, this->_nz + this->topology.mirror_halo, j, i, n) = val;
       });
 }
@@ -151,7 +151,7 @@ void Field::set_bottom_bnd(real val) {
                       this->topology.n_cells_y + 2 * this->topology.halosize_y,
                       this->topology.n_cells_x + 2 * this->topology.halosize_x,
                       this->topology.nens),
-      YAKL_LAMBDA(int ndof, int j, int i, int n) {
+      YAKL_CLASS_LAMBDA(int ndof, int j, int i, int n) {
         this->data(ndof, this->topology.mirror_halo, j, i, n) = val;
       });
 }
@@ -162,7 +162,7 @@ void Field::set_bottom_bnd(int ndof, real val) {
       SimpleBounds<3>(this->topology.n_cells_y + 2 * this->topology.halosize_y,
                       this->topology.n_cells_x + 2 * this->topology.halosize_x,
                       this->topology.nens),
-      YAKL_LAMBDA(int j, int i, int n) {
+      YAKL_CLASS_LAMBDA(int j, int i, int n) {
         this->data(ndof, this->topology.mirror_halo, j, i, n) = val;
       });
 }
@@ -185,7 +185,7 @@ void Field::zero() {
                       this->topology.n_cells_y + 2 * this->topology.halosize_y,
                       this->topology.n_cells_x + 2 * this->topology.halosize_x,
                       this->topology.nens),
-      YAKL_LAMBDA(int ndof, int k, int j, int i, int n) {
+      YAKL_CLASS_LAMBDA(int ndof, int k, int j, int i, int n) {
         this->data(ndof, k, j, i, n) = 0.0;
       });
 }
@@ -197,7 +197,7 @@ void Field::zero(int ndof) {
                       this->topology.n_cells_y + 2 * this->topology.halosize_y,
                       this->topology.n_cells_x + 2 * this->topology.halosize_x,
                       this->topology.nens),
-      YAKL_LAMBDA(int k, int j, int i, int n) {
+      YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
         this->data(ndof, k, j, i, n) = 0.0;
       });
 }
@@ -212,7 +212,7 @@ void Field::copy(const Field &f) {
       "Field copy",
       SimpleBounds<5>(this->total_dofs, this->_nz, this->topology.n_cells_y,
                       this->topology.n_cells_x, this->topology.nens),
-      YAKL_LAMBDA(int ndof, int k, int j, int i, int n) {
+      YAKL_CLASS_LAMBDA(int ndof, int k, int j, int i, int n) {
         this->data(ndof, k + ks, j + js, i + is, n) =
             f.data(ndof, k + ks, j + js, i + is, n);
       });
@@ -228,7 +228,7 @@ void Field::waxpy(real alpha, const Field &x, const Field &y) {
       "Field waxpy",
       SimpleBounds<5>(this->total_dofs, this->_nz, this->topology.n_cells_y,
                       this->topology.n_cells_x, this->topology.nens),
-      YAKL_LAMBDA(int ndof, int k, int j, int i, int n) {
+      YAKL_CLASS_LAMBDA(int ndof, int k, int j, int i, int n) {
         this->data(ndof, k + ks, j + js, i + is, n) =
             alpha * x.data(ndof, k + ks, j + js, i + is, n) +
             y.data(ndof, k + ks, j + js, i + is, n);
@@ -246,7 +246,7 @@ void Field::waxpbypcz(real alpha, real beta, real gamma, const Field &x,
       "Field waxpbypcz",
       SimpleBounds<5>(this->total_dofs, this->_nz, this->topology.n_cells_y,
                       this->topology.n_cells_x, this->topology.nens),
-      YAKL_LAMBDA(int ndof, int k, int j, int i, int n) {
+      YAKL_CLASS_LAMBDA(int ndof, int k, int j, int i, int n) {
         this->data(ndof, k + ks, j + js, i + is, n) =
             alpha * x.data(ndof, k + ks, j + js, i + is, n) +
             beta * y.data(ndof, k + ks, j + js, i + is, n) +

@@ -7,7 +7,7 @@
 
 class Stat {
 public:
-  real3d data;
+  realHost3d data;
   std::string name;
   int ndofs, size, nens;
 
@@ -19,7 +19,7 @@ public:
     nens = statnens;
 
     if (masterproc) {
-      data = real3d(name.c_str(), ndofs, size, nens);
+      data = realHost3d(name.c_str(), ndofs, size, nens);
     }
   }
 };

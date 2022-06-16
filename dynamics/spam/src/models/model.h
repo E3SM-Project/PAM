@@ -172,10 +172,10 @@ public:
   }
   virtual void compute_constants(FieldSet<nconstant> &const_vars,
                                  FieldSet<nprognostic> &x){};
-  virtual void YAKL_INLINE compute_rhs(real dt, FieldSet<nconstant> &const_vars,
-                                       FieldSet<nprognostic> &x,
-                                       FieldSet<nauxiliary> &auxiliary_vars,
-                                       FieldSet<nprognostic> &xtend){};
+  virtual void compute_rhs(real dt, FieldSet<nconstant> &const_vars,
+                           FieldSet<nprognostic> &x,
+                           FieldSet<nauxiliary> &auxiliary_vars,
+                           FieldSet<nprognostic> &xtend){};
 };
 
 class ExtrudedTendencies : public Tendencies {

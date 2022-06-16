@@ -70,8 +70,6 @@ public:
   bool is_initialized;
 
   Exchange();
-  Exchange(const Exchange &exch) = delete;
-  Exchange &operator=(const Exchange &exch) = delete;
   void printinfo();
   void initialize(const Exchange &exch);
   void initialize(const Topology &topo, int nd0, int nd1, int nd2);
@@ -191,7 +189,7 @@ void Exchange::pack(const Field &field) {
   parallel_for(
       SimpleBounds<5>(this->total_dofs, this->topology.halosize_x, this->_nz,
                       this->topology.n_cells_y, this->nens),
-      YAKL_LAMBDA(int ndof, int ii, int k, int j, int n) {
+      YAKL_CLASS_LAMBDA(int ndof, int ii, int k, int j, int n) {
         int iGlob =
             ndof + ii * this->total_dofs +
             k * this->total_dofs * this->topology.halosize_x +
@@ -210,7 +208,7 @@ void Exchange::pack(const Field &field) {
     parallel_for(
         SimpleBounds<5>(this->total_dofs, this->topology.halosize_y, this->_nz,
                         this->topology.n_cells_x, this->nens),
-        YAKL_LAMBDA(int ndof, int jj, int k, int i, int n) {
+        YAKL_CLASS_LAMBDA(int ndof, int jj, int k, int i, int n) {
           int iGlob =
               ndof + jj * this->total_dofs +
               k * this->total_dofs * this->topology.halosize_y +
@@ -231,7 +229,7 @@ void Exchange::pack(const Field &field) {
     parallel_for(
         SimpleBounds<5>(this->total_dofs, this->topology.halosize_y,
                         this->topology.halosize_x, this->_nz, this->nens),
-        YAKL_LAMBDA(int ndof, int jj, int ii, int k, int n) {
+        YAKL_CLASS_LAMBDA(int ndof, int jj, int ii, int k, int n) {
           int iGlob = ndof + jj * this->total_dofs +
                       ii * this->total_dofs * this->topology.halosize_y +
                       k * this->total_dofs * this->topology.halosize_y *
@@ -267,7 +265,7 @@ void Exchange::unpack(Field &field) {
   parallel_for(
       SimpleBounds<5>(this->total_dofs, this->topology.halosize_x, this->_nz,
                       this->topology.n_cells_y, this->nens),
-      YAKL_LAMBDA(int ndof, int ii, int k, int j, int n) {
+      YAKL_CLASS_LAMBDA(int ndof, int ii, int k, int j, int n) {
         int iGlob =
             ndof + ii * this->total_dofs +
             k * this->total_dofs * this->topology.halosize_x +
@@ -282,12 +280,12 @@ void Exchange::unpack(Field &field) {
 
   // unpack down (y-) and up (y+)
   if (ndims == 2) {
-    // yakl::parallel_for("UnpackDownUp", this->bufsize_y, YAKL_LAMBDA (int
-    // iGlob) {
+    // yakl::parallel_for("UnpackDownUp", this->bufsize_y, YAKL_CLASS_LAMBDA
+    // (int iGlob) {
     parallel_for(
         SimpleBounds<5>(this->total_dofs, this->topology.halosize_y, this->_nz,
                         this->topology.n_cells_x, this->nens),
-        YAKL_LAMBDA(int ndof, int jj, int k, int i, int n) {
+        YAKL_CLASS_LAMBDA(int ndof, int jj, int k, int i, int n) {
           int iGlob =
               ndof + jj * this->total_dofs +
               k * this->total_dofs * this->topology.halosize_y +
@@ -306,7 +304,7 @@ void Exchange::unpack(Field &field) {
     parallel_for(
         SimpleBounds<5>(this->total_dofs, this->topology.halosize_y,
                         this->topology.halosize_x, this->_nz, this->nens),
-        YAKL_LAMBDA(int ndof, int jj, int ii, int k, int n) {
+        YAKL_CLASS_LAMBDA(int ndof, int jj, int ii, int k, int n) {
           int iGlob = ndof + jj * this->total_dofs +
                       ii * this->total_dofs * this->topology.halosize_y +
                       k * this->total_dofs * this->topology.halosize_y *
@@ -367,9 +365,9 @@ void Exchange::exchange_x() {
 
   else {
 
-    // yakl::parallel_for( this->bufsize_x , YAKL_LAMBDA (int iGlob) {
+    // yakl::parallel_for( this->bufsize_x , YAKL_CLASS_LAMBDA (int iGlob) {
     parallel_for(
-        SimpleBounds<1>(this->bufsize_x), YAKL_LAMBDA(int iGlob) {
+        SimpleBounds<1>(this->bufsize_x), YAKL_CLASS_LAMBDA(int iGlob) {
           this->haloRecvBuf_Xp(iGlob) = this->haloSendBuf_Xm(iGlob);
           this->haloRecvBuf_Xm(iGlob) = this->haloSendBuf_Xp(iGlob);
         });
@@ -414,9 +412,9 @@ void Exchange::exchange_y() {
   }
 
   else {
-    // yakl::parallel_for( this->bufsize_y , YAKL_LAMBDA (int iGlob) {
+    // yakl::parallel_for( this->bufsize_y , YAKL_CLASS_LAMBDA (int iGlob) {
     parallel_for(
-        SimpleBounds<1>(this->bufsize_y), YAKL_LAMBDA(int iGlob) {
+        SimpleBounds<1>(this->bufsize_y), YAKL_CLASS_LAMBDA(int iGlob) {
           this->haloRecvBuf_Yp(iGlob) = this->haloSendBuf_Ym(iGlob);
           this->haloRecvBuf_Ym(iGlob) = this->haloSendBuf_Yp(iGlob);
         });
@@ -476,9 +474,9 @@ void Exchange::exchange_corners() {
   }
 
   else {
-    // yakl::parallel_for( this->bufsize_xy , YAKL_LAMBDA (int iGlob) {
+    // yakl::parallel_for( this->bufsize_xy , YAKL_CLASS_LAMBDA (int iGlob) {
     parallel_for(
-        SimpleBounds<1>(this->bufsize_xy), YAKL_LAMBDA(int iGlob) {
+        SimpleBounds<1>(this->bufsize_xy), YAKL_CLASS_LAMBDA(int iGlob) {
           this->haloRecvBuf_XYll(iGlob) = this->haloSendBuf_XYur(iGlob);
           this->haloRecvBuf_XYur(iGlob) = this->haloSendBuf_XYll(iGlob);
           this->haloRecvBuf_XYul(iGlob) = this->haloSendBuf_XYlr(iGlob);
@@ -499,7 +497,7 @@ void Exchange::exchange_mirror(Field &field) {
         SimpleBounds<5>(this->total_dofs, this->topology.mirror_halo,
                         this->topology.n_cells_x, this->topology.n_cells_y,
                         this->nens),
-        YAKL_LAMBDA(int ndof, int kk, int i, int j, int n) {
+        YAKL_CLASS_LAMBDA(int ndof, int kk, int i, int j, int n) {
           field.data(ndof, this->_nz + ks + kk, j + js, i + is, n) =
               field.data(ndof, this->_nz + ks - kk - 1, j + js, i + is, n);
         });
@@ -508,7 +506,7 @@ void Exchange::exchange_mirror(Field &field) {
         SimpleBounds<5>(this->total_dofs, this->topology.mirror_halo,
                         this->topology.n_cells_x, this->topology.n_cells_y,
                         this->nens),
-        YAKL_LAMBDA(int ndof, int kk, int i, int j, int n) {
+        YAKL_CLASS_LAMBDA(int ndof, int kk, int i, int j, int n) {
           field.data(ndof, ks - kk - 1, j + js, i + is, n) =
               field.data(ndof, ks + kk, j + js, i + is, n);
         });
@@ -521,7 +519,7 @@ void Exchange::exchange_mirror(Field &field) {
         SimpleBounds<5>(this->total_dofs, this->topology.mirror_halo,
                         this->topology.n_cells_x, this->topology.n_cells_y,
                         this->nens),
-        YAKL_LAMBDA(int ndof, int kk, int i, int j, int n) {
+        YAKL_CLASS_LAMBDA(int ndof, int kk, int i, int j, int n) {
           field.data(ndof, this->_nz + ks + kk, j + js, i + is, n) =
               field.data(ndof, this->_nz + ks - kk - 2, j + js, i + is, n);
         });
@@ -530,7 +528,7 @@ void Exchange::exchange_mirror(Field &field) {
         SimpleBounds<5>(this->total_dofs, this->topology.mirror_halo,
                         this->topology.n_cells_x, this->topology.n_cells_y,
                         this->nens),
-        YAKL_LAMBDA(int ndof, int kk, int i, int j, int n) {
+        YAKL_CLASS_LAMBDA(int ndof, int kk, int i, int j, int n) {
           field.data(ndof, ks - kk - 1, j + js, i + is, n) =
               field.data(ndof, ks + kk + 1, j + js, i + is, n);
         });

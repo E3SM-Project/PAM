@@ -142,10 +142,10 @@ public:
                    SArray<vec<2>, 1, ic_quad_pts_y> &y_normals) const;
 
   real YAKL_INLINE get_area_lform(int l, int d, int k, int j, int i) const;
-  real YAKL_INLINE get_area_00entity(int k, int j, int i) const;
-  real YAKL_INLINE get_area_11entity(int k, int j, int i) const;
-  real YAKL_INLINE get_area_10entity(int k, int j, int i) const;
-  real YAKL_INLINE get_area_01entity(int k, int j, int i) const;
+  real YAKL_INLINE get_area_00entity(int k, int j, int i) const {};
+  real YAKL_INLINE get_area_11entity(int k, int j, int i) const {};
+  real YAKL_INLINE get_area_10entity(int k, int j, int i) const {};
+  real YAKL_INLINE get_area_01entity(int k, int j, int i) const {};
 
   // expects real initial_value_function(real, real)
   template <class F>
@@ -192,7 +192,7 @@ YAKL_INLINE void Geometry<T>::set_0form_values(F initial_value_function,
       "Set 0 form values",
       SimpleBounds<4>(this->topology.nl, this->topology.n_cells_y,
                       this->topology.n_cells_x, this->topology.nens),
-      YAKL_LAMBDA(int k, int j, int i, int n) {
+      YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
         SArray<coords<2>, 1, 1> quad_pts_phys;
         SArray<real, 1, 1> quad_wts_phys;
         get_0form_quad_pts_wts(i, j, quad_pts_phys, quad_wts_phys);
@@ -216,7 +216,7 @@ YAKL_INLINE void Geometry<T>::set_2form_values(F initial_value_function,
       "Set 2 form values",
       SimpleBounds<4>(this->topology.nl, this->topology.n_cells_y,
                       this->topology.n_cells_x, this->topology.nens),
-      YAKL_LAMBDA(int k, int j, int i, int n) {
+      YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
         SArray<coords<2>, 2, ic_quad_pts_x, ic_quad_pts_y> quad_pts_phys;
         SArray<real, 2, ic_quad_pts_x, ic_quad_pts_y> quad_wts_phys;
         get_2form_quad_pts_wts(i, j, quad_pts_phys, quad_wts_phys);
@@ -259,7 +259,7 @@ Geometry<T>::set_1form_values(F initial_value_function, Field &field, int ndof,
       "Set 1 form values",
       SimpleBounds<4>(this->topology.nl, this->topology.n_cells_y,
                       this->topology.n_cells_x, this->topology.nens),
-      YAKL_LAMBDA(int k, int j, int i, int n) {
+      YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
         SArray<coords<2>, 1, ic_quad_pts_x> x_quad_pts_phys;
         SArray<real, 1, ic_quad_pts_x> x_quad_wts_phys;
         SArray<coords<2>, 1, ic_quad_pts_y> y_quad_pts_phys;
@@ -675,7 +675,7 @@ YAKL_INLINE void Geometry<T>::set_00form_values(F initial_value_function,
       "Set 00 form values",
       SimpleBounds<4>(this->topology.ni, this->topology.n_cells_y,
                       this->topology.n_cells_x, this->topology.nens),
-      YAKL_LAMBDA(int k, int j, int i, int n) {
+      YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
         SArray<coordsext<2>, 1, 1> quad_pts_phys;
         SArray<real, 1, 1> quad_wts_phys;
         get_00form_quad_pts_wts(i, k, quad_pts_phys, quad_wts_phys);
@@ -698,7 +698,7 @@ YAKL_INLINE void Geometry<T>::set_11form_values(F initial_value_function,
       "Set 11 form values",
       SimpleBounds<4>(this->topology.nl, this->topology.n_cells_y,
                       this->topology.n_cells_x, this->topology.nens),
-      YAKL_LAMBDA(int k, int j, int i, int n) {
+      YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
         SArray<coordsext<2>, 2, ic_quad_pts_x, ic_quad_pts_z> quad_pts_phys;
         SArray<real, 2, ic_quad_pts_x, ic_quad_pts_z> quad_wts_phys;
         real tempval = 0.0_fp;
@@ -733,7 +733,7 @@ Geometry<T>::set_01form_values(F initial_value_function, Field &field, int ndof,
       "Set 01 form values",
       SimpleBounds<4>(this->topology.nl, this->topology.n_cells_y,
                       this->topology.n_cells_x, this->topology.nens),
-      YAKL_LAMBDA(int k, int j, int i, int n) {
+      YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
         real tempval = 0.0_fp;
         SArray<coordsext<2>, 1, ic_quad_pts_z> edge_quad_pts_phys;
         SArray<real, 1, ic_quad_pts_z> edge_quad_wts_phys;
@@ -776,7 +776,7 @@ Geometry<T>::set_10form_values(F initial_value_function, Field &field, int ndof,
       "Set 10 form values",
       SimpleBounds<4>(this->topology.ni, this->topology.n_cells_y,
                       this->topology.n_cells_x, this->topology.nens),
-      YAKL_LAMBDA(int k, int j, int i, int n) {
+      YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
         SArray<coordsext<2>, 1, ic_quad_pts_x> edge_quad_pts_phys;
         SArray<real, 1, ic_quad_pts_x> edge_quad_wts_phys;
         SArray<vecext<2>, 1, ic_quad_pts_x> edge_line_vec;
