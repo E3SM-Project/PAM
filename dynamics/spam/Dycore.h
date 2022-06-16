@@ -27,13 +27,8 @@ using pam::PamCoupler;
 
 class Dycore {
 public:
-#ifdef _LAYER
-  UniformRectangularStraightGeometry primal_geometry;
-  UniformRectangularTwistedGeometry dual_geometry;
-#elif _EXTRUDED
-  UniformRectangularStraightExtrudedGeometry primal_geometry;
-  UniformRectangularTwistedExtrudedGeometry dual_geometry;
-#endif
+  Geometry<Straight> primal_geometry;
+  Geometry<Twisted> dual_geometry;
 
   std::unique_ptr<TestCase> testcase;
   ModelStats stats;

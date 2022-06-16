@@ -9,8 +9,8 @@
 
 class Hamiltonian_CE_Hs {
 public:
-  Geometry *primal_geometry;
-  Geometry *dual_geometry;
+  Geometry<Straight> primal_geometry;
+  Geometry<Twisted> dual_geometry;
   bool is_initialized;
   ThermoPotential *thermo;
   VariableSet *varset;
@@ -18,10 +18,11 @@ public:
   Hamiltonian_CE_Hs() { this->is_initialized = false; }
 
   void initialize(ThermoPotential &thermodynamics, VariableSet &variableset,
-                  Geometry &primal_geom, Geometry &dual_geom) {
+                  const Geometry<Straight> &primal_geom,
+                  const Geometry<Twisted> &dual_geom) {
     this->thermo = &thermodynamics;
-    this->primal_geometry = &primal_geom;
-    this->dual_geometry = &dual_geom;
+    this->primal_geometry = primal_geom;
+    this->dual_geometry = dual_geom;
     this->is_initialized = true;
     this->varset = &variableset;
   }
@@ -32,12 +33,12 @@ public:
                               int js, int ks, int i, int j, int k, int n) {
     SArray<real, 1, 1> geop0;
 #ifdef _EXTRUDED
-    compute_Iext<1, diff_ord, vert_diff_ord>(
-        geop0, geop, *this->primal_geometry, *this->dual_geometry, is, js, ks,
-        i, j, k, n);
+    compute_Iext<1, diff_ord, vert_diff_ord>(geop0, geop, this->primal_geometry,
+                                             this->dual_geometry, is, js, ks, i,
+                                             j, k, n);
 #else
-    compute_I<1, diff_ord>(geop0, geop, *this->primal_geometry,
-                           *this->dual_geometry, is, js, ks, i, j, k, n);
+    compute_I<1, diff_ord>(geop0, geop, this->primal_geometry,
+                           this->dual_geometry, is, js, ks, i, j, k, n);
 #endif
 
     return dens(0, k + ks, j + js, i + is, n) * geop0(0);
@@ -65,12 +66,12 @@ public:
 
     SArray<real, 1, 1> geop0;
 #ifdef _EXTRUDED
-    compute_Iext<1, diff_ord, vert_diff_ord>(
-        geop0, geop, *this->primal_geometry, *this->dual_geometry, is, js, ks,
-        i, j, k, n);
+    compute_Iext<1, diff_ord, vert_diff_ord>(geop0, geop, this->primal_geometry,
+                                             this->dual_geometry, is, js, ks, i,
+                                             j, k, n);
 #else
-    compute_I<1, diff_ord>(geop0, geop, *this->primal_geometry,
-                           *this->dual_geometry, is, js, ks, i, j, k, n);
+    compute_I<1, diff_ord>(geop0, geop, this->primal_geometry,
+                           this->dual_geometry, is, js, ks, i, j, k, n);
 #endif
 
     // SArray<real,1,2> dens0;
@@ -108,8 +109,8 @@ public:
 
 class Hamiltonian_MCE_Hs {
 public:
-  Geometry *primal_geometry;
-  Geometry *dual_geometry;
+  Geometry<Straight> primal_geometry;
+  Geometry<Twisted> dual_geometry;
   bool is_initialized;
   ThermoPotential *thermo;
   VariableSet *varset;
@@ -117,10 +118,11 @@ public:
   Hamiltonian_MCE_Hs() { this->is_initialized = false; }
 
   void initialize(ThermoPotential &thermodynamics, VariableSet &variableset,
-                  Geometry &primal_geom, Geometry &dual_geom) {
+                  const Geometry<Straight> &primal_geom,
+                  const Geometry<Twisted> &dual_geom) {
     this->thermo = &thermodynamics;
-    this->primal_geometry = &primal_geom;
-    this->dual_geometry = &dual_geom;
+    this->primal_geometry = primal_geom;
+    this->dual_geometry = dual_geom;
     this->is_initialized = true;
     this->varset = &variableset;
   }
@@ -132,12 +134,12 @@ public:
     SArray<real, 1, 1> geop0;
 
 #ifdef _EXTRUDED
-    compute_Iext<1, diff_ord, vert_diff_ord>(
-        geop0, geop, *this->primal_geometry, *this->dual_geometry, is, js, ks,
-        i, j, k, n);
+    compute_Iext<1, diff_ord, vert_diff_ord>(geop0, geop, this->primal_geometry,
+                                             this->dual_geometry, is, js, ks, i,
+                                             j, k, n);
 #else
-    compute_I<1, diff_ord>(geop0, geop, *this->primal_geometry,
-                           *this->dual_geometry, is, js, ks, i, j, k, n);
+    compute_I<1, diff_ord>(geop0, geop, this->primal_geometry,
+                           this->dual_geometry, is, js, ks, i, j, k, n);
 #endif
 
     return dens(0, k + ks, j + js, i + is, n) * geop0(0);
@@ -178,12 +180,12 @@ public:
     SArray<real, 1, 1> geop0;
 
 #ifdef _EXTRUDED
-    compute_Iext<1, diff_ord, vert_diff_ord>(
-        geop0, geop, *this->primal_geometry, *this->dual_geometry, is, js, ks,
-        i, j, k, n);
+    compute_Iext<1, diff_ord, vert_diff_ord>(geop0, geop, this->primal_geometry,
+                                             this->dual_geometry, is, js, ks, i,
+                                             j, k, n);
 #else
-    compute_I<1, diff_ord>(geop0, geop, *this->primal_geometry,
-                           *this->dual_geometry, is, js, ks, i, j, k, n);
+    compute_I<1, diff_ord>(geop0, geop, this->primal_geometry,
+                           this->dual_geometry, is, js, ks, i, j, k, n);
 #endif
 
     real alpha = varset->get_alpha(dens, k, j, i, ks, js, is, n);

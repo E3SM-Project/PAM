@@ -24,19 +24,19 @@ public:
   bool liquid_found = false;
 
   ThermoPotential *thermo;
-  Geometry *primal_geometry;
-  Geometry *dual_geometry;
+  Geometry<Straight> primal_geometry;
+  Geometry<Twisted> dual_geometry;
   Topology primal_topology;
   Topology dual_topology;
 
   void initialize(PamCoupler &coupler, ModelParameters &params,
                   ThermoPotential &thermodynamics, Topology &primal_topo,
-                  Topology &dual_topo, Geometry &primal_geom,
-                  Geometry &dual_geom) {
+                  Topology &dual_topo, const Geometry<Straight> &primal_geom,
+                  const Geometry<Twisted> &dual_geom) {
 
     this->thermo = &thermodynamics;
-    this->primal_geometry = &primal_geom;
-    this->dual_geometry = &dual_geom;
+    this->primal_geometry = primal_geom;
+    this->dual_geometry = dual_geom;
     this->primal_topology = primal_topo;
     this->dual_topology = dual_topo;
 
@@ -179,11 +179,11 @@ public:
             real uvel_l =
                 prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, i + pis,
                                                 n) /
-                primal_geometry->get_area_10entity(k + pks, j + pjs, i + pis);
+                primal_geometry.get_area_10entity(k + pks, j + pjs, i + pis);
             real uvel_r = prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs,
                                                           i + pis + 1, n) /
-                          primal_geometry->get_area_10entity(k + pks, j + pjs,
-                                                             i + pis + 1);
+                          primal_geometry.get_area_10entity(k + pks, j + pjs,
+                                                            i + pis + 1);
             real wvel_d = 0.0_fp;
             real wvel_u = 0.0_fp;
             if (k == 0) {
@@ -191,24 +191,24 @@ public:
                   2.0_fp *
                   prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs, i + pis,
                                                   n) /
-                  primal_geometry->get_area_01entity(k + pks, j + pjs, i + pis);
+                  primal_geometry.get_area_01entity(k + pks, j + pjs, i + pis);
               wvel_d = 0.0_fp;
             } else if (k == (dual_topology.nl)) {
               wvel_u = 0.0_fp;
               wvel_d = 2.0_fp *
                        prog_vars.fields_arr[WVAR].data(0, k + pks - 1, j + pjs,
                                                        i + pis, n) /
-                       primal_geometry->get_area_01entity(k + pks - 1, j + pjs,
-                                                          i + pis);
+                       primal_geometry.get_area_01entity(k + pks - 1, j + pjs,
+                                                         i + pis);
             } else {
               wvel_u =
                   prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs, i + pis,
                                                   n) /
-                  primal_geometry->get_area_01entity(k + pks, j + pjs, i + pis);
+                  primal_geometry.get_area_01entity(k + pks, j + pjs, i + pis);
               wvel_d = prog_vars.fields_arr[WVAR].data(0, k + pks - 1, j + pjs,
                                                        i + pis, n) /
-                       primal_geometry->get_area_01entity(k + pks - 1, j + pjs,
-                                                          i + pis);
+                       primal_geometry.get_area_01entity(k + pks - 1, j + pjs,
+                                                         i + pis);
             }
             // EVENTUALLY FIX THIS FOR 3D...
             real vvel = 0.0_fp;
@@ -249,13 +249,13 @@ public:
           dm_dens_dry(k, j, i, n) =
               get_dry_density(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks,
                               djs, dis, n) /
-              dual_geometry->get_area_11entity(k + dks, j + djs, i + dis);
+              dual_geometry.get_area_11entity(k + dks, j + djs, i + dis);
           dm_temp(k, j, i, n) = temp;
           for (int tr = ndensity_nophysics; tr < ndensity; tr++) {
             dm_tracers(tr - ndensity_nophysics, k, j, i, n) =
                 prog_vars.fields_arr[DENSVAR].data(tr, k + dks, j + djs,
                                                    i + dis, n) /
-                dual_geometry->get_area_11entity(k + dks, j + djs, i + dis);
+                dual_geometry.get_area_11entity(k + dks, j + djs, i + dis);
           }
         });
   }
@@ -315,22 +315,21 @@ public:
           real entropic_var =
               thermo->compute_entropic_var_from_T(alpha, temp, qd, qv, ql, qi);
 
-          set_density(dens * dual_geometry->get_area_11entity(k + dks, j + djs,
-                                                              i + dis),
-                      dens_dry * dual_geometry->get_area_11entity(
-                                     k + dks, j + djs, i + dis),
-                      prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs,
-                      dis, n);
+          set_density(
+              dens * dual_geometry.get_area_11entity(k + dks, j + djs, i + dis),
+              dens_dry *
+                  dual_geometry.get_area_11entity(k + dks, j + djs, i + dis),
+              prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
           set_entropic_density(
               entropic_var * dens *
-                  dual_geometry->get_area_11entity(k + dks, j + djs, i + dis),
+                  dual_geometry.get_area_11entity(k + dks, j + djs, i + dis),
               prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
 
           for (int tr = ndensity_nophysics; tr < ndensity; tr++) {
             prog_vars.fields_arr[DENSVAR].data(tr, k + dks, j + djs, i + dis,
                                                n) =
                 dm_tracers(tr - ndensity_nophysics, k, j, i, n) *
-                dual_geometry->get_area_11entity(k + dks, j + djs, i + dis);
+                dual_geometry.get_area_11entity(k + dks, j + djs, i + dis);
           }
         });
 
@@ -347,7 +346,7 @@ public:
             }
             prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, i + pis, n) =
                 (dm_uvel(k, j, il, n) + dm_uvel(k, j, i, n)) * 0.5_fp *
-                primal_geometry->get_area_10entity(k + pks, j + pjs, i + pis);
+                primal_geometry.get_area_10entity(k + pks, j + pjs, i + pis);
           });
 
       // EVENTUALLY THIS NEEDS TO HAVE A FLAG ON IT!
@@ -358,7 +357,7 @@ public:
           YAKL_LAMBDA(int k, int j, int i, int n) {
             prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs, i + pis, n) =
                 (dm_wvel(k, j, i, n) + dm_wvel(k + 1, j, i, n)) * 0.5_fp *
-                primal_geometry->get_area_01entity(k + pks, j + pjs, i + pis);
+                primal_geometry.get_area_01entity(k + pks, j + pjs, i + pis);
           });
     }
   }
@@ -369,8 +368,8 @@ class VariableSet_SWE : public VariableSet {
 public:
   void initialize(PamCoupler &coupler, ModelParameters &params,
                   ThermoPotential &thermodynamics, Topology &primal_topo,
-                  Topology &dual_topo, Geometry &primal_geom,
-                  Geometry &dual_geom) {
+                  Topology &dual_topo, const Geometry<Straight> &primal_geom,
+                  const Geometry<Twisted> &dual_geom) {
     dens_name[0] = "h";
     dens_desc[0] = "fluid height";
     dens_pos[0] = false;
@@ -383,8 +382,8 @@ class VariableSet_TSWE : public VariableSet {
 public:
   void initialize(PamCoupler &coupler, ModelParameters &params,
                   ThermoPotential &thermodynamics, Topology &primal_topo,
-                  Topology &dual_topo, Geometry &primal_geom,
-                  Geometry &dual_geom) {
+                  Topology &dual_topo, const Geometry<Straight> &primal_geom,
+                  const Geometry<Twisted> &dual_geom) {
     dens_name[0] = "h";
     dens_name[1] = "S";
     dens_desc[0] = "fluid height";
@@ -400,8 +399,8 @@ class VariableSet_CE : public VariableSet {
 public:
   void initialize(PamCoupler &coupler, ModelParameters &params,
                   ThermoPotential &thermodynamics, Topology &primal_topo,
-                  Topology &dual_topo, Geometry &primal_geom,
-                  Geometry &dual_geom) {
+                  Topology &dual_topo, const Geometry<Straight> &primal_geom,
+                  const Geometry<Twisted> &dual_geom) {
     dens_name[0] = "rho";
     dens_name[1] = "S";
     dens_desc[0] = "fluid density";
@@ -418,7 +417,7 @@ public:
   };
   real YAKL_INLINE get_alpha(const real5d densvar, int k, int j, int i, int ks,
                              int js, int is, int n) {
-    return dual_geometry->get_area_11entity(k + ks, j + js, i + is) /
+    return dual_geometry.get_area_11entity(k + ks, j + js, i + is) /
            densvar(0, k + ks, j + js, i + is, n);
   };
 };
@@ -430,8 +429,8 @@ class VariableSet_MCE_rho : public VariableSet_Couple {
 public:
   void initialize(PamCoupler &coupler, ModelParameters &params,
                   ThermoPotential &thermodynamics, Topology &primal_topo,
-                  Topology &dual_topo, Geometry &primal_geom,
-                  Geometry &dual_geom) {
+                  Topology &dual_topo, const Geometry<Straight> &primal_geom,
+                  const Geometry<Twisted> &dual_geom) {
     dens_name[0] = "rho";
     dens_name[1] = "S";
     dens_desc[0] = "fluid density";
@@ -455,7 +454,7 @@ public:
 
   real YAKL_INLINE get_alpha(const real5d densvar, int k, int j, int i, int ks,
                              int js, int is, int n) {
-    return dual_geometry->get_area_11entity(k + ks, j + js, i + is) /
+    return dual_geometry.get_area_11entity(k + ks, j + js, i + is) /
            densvar(0, k + ks, j + js, i + is, n);
   }
 
@@ -519,8 +518,8 @@ class VariableSet_MCE_rhod : public VariableSet_Couple {
 public:
   void initialize(PamCoupler &coupler, ModelParameters &params,
                   ThermoPotential &thermodynamics, Topology &primal_topo,
-                  Topology &dual_topo, Geometry &primal_geom,
-                  Geometry &dual_geom) {
+                  Topology &dual_topo, const Geometry<Straight> &primal_geom,
+                  const Geometry<Twisted> &dual_geom) {
     dens_name[0] = "rho_d";
     dens_name[1] = "S";
     dens_desc[0] = "fluid dry density";
@@ -561,7 +560,7 @@ public:
 
   real YAKL_INLINE get_alpha(const real5d densvar, int k, int j, int i, int ks,
                              int js, int is, int n) {
-    return dual_geometry->get_area_11entity(k + ks, j + js, i + is) /
+    return dual_geometry.get_area_11entity(k + ks, j + js, i + is) /
            get_total_density(densvar, k, j, i, ks, js, is, n);
   }
   real YAKL_INLINE get_qd(const real5d densvar, int k, int j, int i, int ks,

@@ -61,8 +61,9 @@ Unapprox_Entropy thermo;
 // *******   Diagnostics   ***********//
 
 class Dens0Diagnostic : public Diagnostic {
-  void initialize(const Topology &ptopo, const Topology &dtopo, Geometry &pgeom,
-                  Geometry &dgeom) override {
+  void initialize(const Topology &ptopo, const Topology &dtopo,
+                  const Geometry<Straight> &pgeom,
+                  const Geometry<Twisted> &dgeom) override {
     // concentration 0-forms for dens
     name = "densl";
     topology = ptopo;
@@ -83,15 +84,16 @@ class Dens0Diagnostic : public Diagnostic {
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_Iext<ndensity, diff_ord, vert_diff_ord>(
-              field.data, x.fields_arr[DENSVAR].data, *this->primal_geometry,
-              *this->dual_geometry, pis, pjs, pks, i, j, k, n);
+              field.data, x.fields_arr[DENSVAR].data, this->primal_geometry,
+              this->dual_geometry, pis, pjs, pks, i, j, k, n);
         });
   }
 };
 
 class QXZ0Diagnostic : public Diagnostic {
-  void initialize(const Topology &ptopo, const Topology &dtopo, Geometry &pgeom,
-                  Geometry &dgeom) override {
+  void initialize(const Topology &ptopo, const Topology &dtopo,
+                  const Geometry<Straight> &pgeom,
+                  const Geometry<Twisted> &dgeom) override {
     name = "QXZl";
     topology = dtopo;
     dofs_arr = {0, 0, 1}; // // Qldiag = twisted (0,0)-form
@@ -150,18 +152,19 @@ class ModelTendencies : public ExtrudedTendencies {
 public:
   void initialize(PamCoupler &coupler, ModelParameters &params,
                   Topology &primal_topo, Topology &dual_topo,
-                  Geometry &primal_geom, Geometry &dual_geom,
+                  const Geometry<Straight> &primal_geom,
+                  const Geometry<Twisted> &dual_geom,
                   ExchangeSet<nauxiliary> &aux_exchange,
                   ExchangeSet<nconstant> &const_exchange) {
 
     ExtrudedTendencies::initialize(params, primal_topo, dual_topo, primal_geom,
                                    dual_geom, aux_exchange, const_exchange);
     varset.initialize(coupler, params, thermo, this->primal_topology,
-                      this->dual_topology, *this->primal_geometry,
-                      *this->dual_geometry);
+                      this->dual_topology, this->primal_geometry,
+                      this->dual_geometry);
     PVPE.initialize(varset);
-    Hk.initialize(varset, *this->primal_geometry, *this->dual_geometry);
-    Hs.initialize(thermo, varset, *this->primal_geometry, *this->dual_geometry);
+    Hk.initialize(varset, this->primal_geometry, this->dual_geometry);
+    Hs.initialize(thermo, varset, this->primal_geometry, this->dual_geometry);
   }
 
   void
@@ -199,7 +202,7 @@ public:
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_Iext<ndensity, diff_ord, vert_diff_ord>(
-              dens0var, densvar, *this->primal_geometry, *this->dual_geometry,
+              dens0var, densvar, this->primal_geometry, this->dual_geometry,
               pis, pjs, pks, i, j, k, n);
         });
 
@@ -208,9 +211,9 @@ public:
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_Hext<1, diff_ord>(Uvar, Vvar, *this->primal_geometry,
-                                    *this->dual_geometry, dis, djs, dks, i, j,
-                                    k, n);
+          compute_Hext<1, diff_ord>(Uvar, Vvar, this->primal_geometry,
+                                    this->dual_geometry, dis, djs, dks, i, j, k,
+                                    n);
         });
 
     parallel_for(
@@ -218,9 +221,9 @@ public:
         SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_Hv<1, vert_diff_ord>(UWvar, Wvar, *this->primal_geometry,
-                                       *this->dual_geometry, dis, djs, dks, i,
-                                       j, k + 1, n);
+          compute_Hv<1, vert_diff_ord>(UWvar, Wvar, this->primal_geometry,
+                                       this->dual_geometry, dis, djs, dks, i, j,
+                                       k + 1, n);
         });
 
     parallel_for(
@@ -841,7 +844,8 @@ public:
 
   void initialize(ModelParameters &params, Parallel &par,
                   const Topology &primal_topo, const Topology &dual_topo,
-                  Geometry &primal_geom, Geometry &dual_geom) {
+                  const Geometry<Straight> &primal_geom,
+                  const Geometry<Twisted> &dual_geom) {
     Stats::initialize(params, par, primal_topo, dual_topo, primal_geom,
                       dual_geom);
     this->stats_arr[DENSSTAT].initialize("mass", ndensity, this->statsize,
@@ -1354,8 +1358,8 @@ template <class T> class SWETestCase : public TestCase, public T {
 
   void set_initial_conditions(FieldSet<nprognostic> &progvars,
                               FieldSet<nconstant> &constvars,
-                              Geometry &primal_geom,
-                              Geometry &dual_geom) override {
+                              const Geometry<Straight> &primal_geom,
+                              const Geometry<Twisted> &dual_geom) override {
 
     dual_geom.set_11form_values(
         YAKL_LAMBDA(real x, real y) { return h_f(x, y); },
@@ -1407,8 +1411,8 @@ template <class T> class EulerTestCase : public TestCase, public T {
 
   void set_initial_conditions(FieldSet<nprognostic> &progvars,
                               FieldSet<nconstant> &constvars,
-                              Geometry &primal_geom,
-                              Geometry &dual_geom) override {
+                              const Geometry<Straight> &primal_geom,
+                              const Geometry<Twisted> &dual_geom) override {
 
     dual_geom.set_11form_values(
         YAKL_LAMBDA(real x, real z) { return rho_f(x, z); },
@@ -1457,8 +1461,8 @@ template <class T> class MoistEulerTestCase : public TestCase, public T {
 
   void set_initial_conditions(FieldSet<nprognostic> &progvars,
                               FieldSet<nconstant> &constvars,
-                              Geometry &primal_geom,
-                              Geometry &dual_geom) override {
+                              const Geometry<Straight> &primal_geom,
+                              const Geometry<Twisted> &dual_geom) override {
 
     dual_geom.set_11form_values(
         YAKL_LAMBDA(real x, real z) { return rho_f(x, z); },

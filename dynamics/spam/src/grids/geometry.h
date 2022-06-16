@@ -100,9 +100,12 @@ void set_ref_quad_pts_wts(SArray<T, 1, npts> &pts, SArray<T, 1, npts> &wts) {
 
 // *********************   2D Planar ******************************/
 
+struct Straight {};
+struct Twisted {};
+
 #ifndef _EXTRUDED
 
-class Geometry {
+template <class T> class Geometry {
 
 public:
   Topology topology;
@@ -110,139 +113,76 @@ public:
   bool straight;
 
   Geometry();
-  Geometry(const Geometry &geom) = delete;
-  Geometry &operator=(const Geometry &geom) = delete;
 
   SArray<real, 1, ic_quad_pts_x> x_quad_pts_ref;
   SArray<real, 1, ic_quad_pts_x> x_quad_wts_ref;
   SArray<real, 1, ic_quad_pts_y> y_quad_pts_ref;
   SArray<real, 1, ic_quad_pts_y> y_quad_wts_ref;
 
-  void initialize(const Topology &topo);
+  void initialize(const Topology &topo, const ModelParameters &params);
+  void printinfo() const;
 
-  virtual void YAKL_INLINE
+  void YAKL_INLINE
   get_0form_quad_pts_wts(int i, int j, SArray<coords<2>, 1, 1> &quad_pts_phys,
-                         SArray<real, 1, 1> &quad_wts_phys){};
-  virtual void YAKL_INLINE get_1form_quad_pts_wts(
+                         SArray<real, 1, 1> &quad_wts_phys) const;
+  void YAKL_INLINE get_1form_quad_pts_wts(
       int i, int j, SArray<coords<2>, 1, ic_quad_pts_x> &x_quad_pts_phys,
       SArray<real, 1, ic_quad_pts_x> &x_quad_wts_phys,
       SArray<coords<2>, 1, ic_quad_pts_y> &y_quad_pts_phys,
-      SArray<real, 1, ic_quad_pts_y> &y_quad_wts_phys){};
-  virtual void YAKL_INLINE get_2form_quad_pts_wts(
+      SArray<real, 1, ic_quad_pts_y> &y_quad_wts_phys) const;
+  void YAKL_INLINE get_2form_quad_pts_wts(
       int i, int j,
       SArray<coords<2>, 2, ic_quad_pts_x, ic_quad_pts_y> &quad_pts_phys,
-      SArray<real, 2, ic_quad_pts_x, ic_quad_pts_y> &quad_wts_phys){};
-  virtual void YAKL_INLINE
+      SArray<real, 2, ic_quad_pts_x, ic_quad_pts_y> &quad_wts_phys) const;
+  void YAKL_INLINE
   get_edge_tangents(int i, int j, SArray<vec<2>, 1, ic_quad_pts_x> &x_tangents,
-                    SArray<vec<2>, 1, ic_quad_pts_y> &y_tangents){};
-  virtual void YAKL_INLINE
+                    SArray<vec<2>, 1, ic_quad_pts_y> &y_tangents) const;
+  void YAKL_INLINE
   get_edge_normals(int i, int j, SArray<vec<2>, 1, ic_quad_pts_x> &x_normals,
-                   SArray<vec<2>, 1, ic_quad_pts_y> &y_normals){};
+                   SArray<vec<2>, 1, ic_quad_pts_y> &y_normals) const;
 
-  virtual real YAKL_INLINE get_area_lform(int l, int d, int k, int j, int i){};
-  virtual real YAKL_INLINE get_area_00entity(int k, int j, int i){};
-  virtual real YAKL_INLINE get_area_11entity(int k, int j, int i){};
-  virtual real YAKL_INLINE get_area_10entity(int k, int j, int i){};
-  virtual real YAKL_INLINE get_area_01entity(int k, int j, int i){};
+  real YAKL_INLINE get_area_lform(int l, int d, int k, int j, int i) const;
+  real YAKL_INLINE get_area_00entity(int k, int j, int i) const;
+  real YAKL_INLINE get_area_11entity(int k, int j, int i) const;
+  real YAKL_INLINE get_area_10entity(int k, int j, int i) const;
+  real YAKL_INLINE get_area_01entity(int k, int j, int i) const;
 
   // expects real initial_value_function(real, real)
   template <class F>
   YAKL_INLINE void set_0form_values(F initial_value_function, Field &field,
-                                    int ndof);
+                                    int ndof) const;
   // expects vec<2> initial_value_function(real, real),
   template <class F>
   YAKL_INLINE void set_1form_values(F initial_value_function, Field &field,
-                                    int ndof, LINE_INTEGRAL_TYPE line_type);
+                                    int ndof,
+                                    LINE_INTEGRAL_TYPE line_type) const;
   // expects real initial_value_function(real, real)
   template <class F>
   YAKL_INLINE void set_2form_values(F initial_value_function, Field &field,
-                                    int ndof);
+                                    int ndof) const;
 
   real dx, dy;
   real Lx, Ly;
   real xc, yc;
 };
 
-class UniformRectangularTwistedGeometry : public Geometry {
+template <class T> Geometry<T>::Geometry() { this->is_initialized = false; }
 
-public:
-  void initialize(const Topology &topo, const ModelParameters &params);
+template <class T>
+void initialize_common(Geometry<T> &geom, const Topology &topo) {
 
-  void printinfo();
-
-  void YAKL_INLINE
-  get_0form_quad_pts_wts(int i, int j, SArray<coords<2>, 1, 1> &quad_pts_phys,
-                         SArray<real, 1, 1> &quad_wts_phys);
-  void YAKL_INLINE get_1form_quad_pts_wts(
-      int i, int j, SArray<coords<2>, 1, ic_quad_pts_x> &x_quad_pts_phys,
-      SArray<real, 1, ic_quad_pts_x> &x_quad_wts_phys,
-      SArray<coords<2>, 1, ic_quad_pts_y> &y_quad_pts_phys,
-      SArray<real, 1, ic_quad_pts_y> &y_quad_wts_phys);
-  void YAKL_INLINE get_2form_quad_pts_wts(
-      int i, int j,
-      SArray<coords<2>, 2, ic_quad_pts_x, ic_quad_pts_y> &quad_pts_phys,
-      SArray<real, 2, ic_quad_pts_x, ic_quad_pts_y> &quad_wts_phys);
-  void YAKL_INLINE
-  get_edge_tangents(int i, int j, SArray<vec<2>, 1, ic_quad_pts_x> &x_tangents,
-                    SArray<vec<2>, 1, ic_quad_pts_y> &y_tangents);
-  void YAKL_INLINE
-  get_edge_normals(int i, int j, SArray<vec<2>, 1, ic_quad_pts_x> &x_normals,
-                   SArray<vec<2>, 1, ic_quad_pts_y> &y_normals);
-
-  real YAKL_INLINE get_area_lform(int l, int d, int k, int j, int i);
-  real YAKL_INLINE get_area_00entity(int k, int j, int i){};
-  real YAKL_INLINE get_area_11entity(int k, int j, int i){};
-  real YAKL_INLINE get_area_10entity(int k, int j, int i){};
-  real YAKL_INLINE get_area_01entity(int k, int j, int i){};
-};
-
-class UniformRectangularStraightGeometry : public Geometry {
-
-public:
-  void initialize(const Topology &topo, const ModelParameters &params);
-
-  void printinfo();
-
-  void YAKL_INLINE
-  get_0form_quad_pts_wts(int i, int j, SArray<coords<2>, 1, 1> &quad_pts_phys,
-                         SArray<real, 1, 1> &quad_wts_phys);
-  void YAKL_INLINE get_1form_quad_pts_wts(
-      int i, int j, SArray<coords<2>, 1, ic_quad_pts_x> &x_quad_pts_phys,
-      SArray<real, 1, ic_quad_pts_x> &x_quad_wts_phys,
-      SArray<coords<2>, 1, ic_quad_pts_y> &y_quad_pts_phys,
-      SArray<real, 1, ic_quad_pts_y> &y_quad_wts_phys);
-  void YAKL_INLINE get_2form_quad_pts_wts(
-      int i, int j,
-      SArray<coords<2>, 2, ic_quad_pts_x, ic_quad_pts_y> &quad_pts_phys,
-      SArray<real, 2, ic_quad_pts_x, ic_quad_pts_y> &quad_wts_phys);
-  void YAKL_INLINE
-  get_edge_tangents(int i, int j, SArray<vec<2>, 1, ic_quad_pts_x> &x_tangents,
-                    SArray<vec<2>, 1, ic_quad_pts_y> &y_tangents);
-  void YAKL_INLINE
-  get_edge_normals(int i, int j, SArray<vec<2>, 1, ic_quad_pts_x> &x_normals,
-                   SArray<vec<2>, 1, ic_quad_pts_y> &y_normals);
-  real YAKL_INLINE get_area_lform(int l, int d, int k, int j, int i);
-  real YAKL_INLINE get_area_00entity(int k, int j, int i){};
-  real YAKL_INLINE get_area_11entity(int k, int j, int i){};
-  real YAKL_INLINE get_area_10entity(int k, int j, int i){};
-  real YAKL_INLINE get_area_01entity(int k, int j, int i){};
-};
-
-Geometry::Geometry() { this->is_initialized = false; }
-
-void Geometry::initialize(const Topology &topo) {
-
-  this->topology = topo;
-  set_ref_quad_pts_wts<real, ic_quad_pts_x>(this->x_quad_pts_ref,
-                                            this->x_quad_wts_ref);
-  set_ref_quad_pts_wts<real, ic_quad_pts_y>(this->y_quad_pts_ref,
-                                            this->y_quad_wts_ref);
+  geom.topology = topo;
+  set_ref_quad_pts_wts<real, ic_quad_pts_x>(geom.x_quad_pts_ref,
+                                            geom.x_quad_wts_ref);
+  set_ref_quad_pts_wts<real, ic_quad_pts_y>(geom.y_quad_pts_ref,
+                                            geom.y_quad_wts_ref);
 }
 
 // expect real initial_value_function(real, real)
+template <class T>
 template <class F>
-YAKL_INLINE void Geometry::set_0form_values(F initial_value_function,
-                                            Field &field, int ndof) {
+YAKL_INLINE void Geometry<T>::set_0form_values(F initial_value_function,
+                                               Field &field, int ndof) const {
 
   int is = this->topology.is;
   int js = this->topology.js;
@@ -263,9 +203,10 @@ YAKL_INLINE void Geometry::set_0form_values(F initial_value_function,
 }
 
 // expects real initial_value_function(real, real)
+template <class T>
 template <class F>
-YAKL_INLINE void Geometry::set_2form_values(F initial_value_function,
-                                            Field &field, int ndof) {
+YAKL_INLINE void Geometry<T>::set_2form_values(F initial_value_function,
+                                               Field &field, int ndof) const {
 
   int is = this->topology.is;
   int js = this->topology.js;
@@ -293,10 +234,11 @@ YAKL_INLINE void Geometry::set_2form_values(F initial_value_function,
 }
 
 // expects vec<2> initial_value_function(real, real)
+template <class T>
 template <class F>
-YAKL_INLINE void Geometry::set_1form_values(F initial_value_function,
-                                            Field &field, int ndof,
-                                            LINE_INTEGRAL_TYPE line_type) {
+YAKL_INLINE void
+Geometry<T>::set_1form_values(F initial_value_function, Field &field, int ndof,
+                              LINE_INTEGRAL_TYPE line_type) const {
 
   int is = this->topology.is;
   int js = this->topology.js;
@@ -362,10 +304,11 @@ YAKL_INLINE void Geometry::set_1form_values(F initial_value_function,
       });
 }
 
-void UniformRectangularTwistedGeometry::initialize(
-    const Topology &topo, const ModelParameters &params) {
+template <>
+void Geometry<Twisted>::initialize(const Topology &topo,
+                                   const ModelParameters &params) {
 
-  Geometry::initialize(topo);
+  initialize_common(*this, topo);
 
   this->Lx = params.xlen;
   this->Ly = params.ylen;
@@ -381,16 +324,16 @@ void UniformRectangularTwistedGeometry::initialize(
   this->is_initialized = true;
 }
 
-void UniformRectangularTwistedGeometry::printinfo() {
+template <> void Geometry<Twisted>::printinfo() const {
   std::cout << "uniform rectangular geometry 2D info: twisted \n" << std::flush;
   std::cout << "Lx " << this->Lx << " Ly " << this->Ly << "\n" << std::flush;
   std::cout << "xc " << this->xc << " yc " << this->yc << "\n" << std::flush;
   std::cout << "dx " << this->dx << " dy " << this->dy << "\n" << std::flush;
 }
 
-real YAKL_INLINE UniformRectangularTwistedGeometry::get_area_lform(int l, int d,
-                                                                   int k, int j,
-                                                                   int i) {
+template <>
+real YAKL_INLINE Geometry<Twisted>::get_area_lform(int l, int d, int k, int j,
+                                                   int i) const {
   if (l == 0) {
     return 1._fp;
   }
@@ -407,9 +350,10 @@ real YAKL_INLINE UniformRectangularTwistedGeometry::get_area_lform(int l, int d,
   }
 }
 
-void YAKL_INLINE UniformRectangularTwistedGeometry::get_0form_quad_pts_wts(
+template <>
+void YAKL_INLINE Geometry<Twisted>::get_0form_quad_pts_wts(
     int i, int j, SArray<coords<2>, 1, 1> &quad_pts_phys,
-    SArray<real, 1, 1> &quad_wts_phys) {
+    SArray<real, 1, 1> &quad_wts_phys) const {
   quad_pts_phys(0).x =
       (i + this->topology.i_beg) * this->dx + this->xc - this->Lx * 0.5_fp;
   quad_pts_phys(0).y =
@@ -417,10 +361,11 @@ void YAKL_INLINE UniformRectangularTwistedGeometry::get_0form_quad_pts_wts(
   quad_wts_phys(0) = 1._fp;
 }
 
-void YAKL_INLINE UniformRectangularTwistedGeometry::get_2form_quad_pts_wts(
+template <>
+void YAKL_INLINE Geometry<Twisted>::get_2form_quad_pts_wts(
     int i, int j,
     SArray<coords<2>, 2, ic_quad_pts_x, ic_quad_pts_y> &quad_pts_phys,
-    SArray<real, 2, ic_quad_pts_x, ic_quad_pts_y> &quad_wts_phys) {
+    SArray<real, 2, ic_quad_pts_x, ic_quad_pts_y> &quad_wts_phys) const {
   real ll_corner_x =
       (i + this->topology.i_beg) * this->dx + this->xc - this->Lx * 0.5_fp;
   real ll_corner_y =
@@ -438,11 +383,12 @@ void YAKL_INLINE UniformRectangularTwistedGeometry::get_2form_quad_pts_wts(
     }
 }
 
-void YAKL_INLINE UniformRectangularTwistedGeometry::get_1form_quad_pts_wts(
+template <>
+void YAKL_INLINE Geometry<Twisted>::get_1form_quad_pts_wts(
     int i, int j, SArray<coords<2>, 1, ic_quad_pts_x> &x_quad_pts_phys,
     SArray<real, 1, ic_quad_pts_x> &x_quad_wts_phys,
     SArray<coords<2>, 1, ic_quad_pts_y> &y_quad_pts_phys,
-    SArray<real, 1, ic_quad_pts_y> &y_quad_wts_phys) {
+    SArray<real, 1, ic_quad_pts_y> &y_quad_wts_phys) const {
   real ll_corner_x =
       (i + this->topology.i_beg) * this->dx + this->xc - this->Lx * 0.5_fp;
   real ll_corner_y =
@@ -459,10 +405,11 @@ void YAKL_INLINE UniformRectangularTwistedGeometry::get_1form_quad_pts_wts(
   }
 }
 
-void UniformRectangularStraightGeometry::initialize(
-    const Topology &topo, const ModelParameters &params) {
+template <>
+void Geometry<Straight>::initialize(const Topology &topo,
+                                    const ModelParameters &params) {
 
-  Geometry::initialize(topo);
+  initialize_common(*this, topo);
 
   this->Lx = params.xlen;
   this->Ly = params.ylen;
@@ -478,7 +425,7 @@ void UniformRectangularStraightGeometry::initialize(
   this->is_initialized = true;
 }
 
-void UniformRectangularStraightGeometry::printinfo() {
+template <> void Geometry<Straight>::printinfo() const {
   std::cout << "uniform rectangular geometry 2D info: straight \n"
             << std::flush;
   std::cout << "Lx " << this->Lx << " Ly " << this->Ly << "\n" << std::flush;
@@ -486,8 +433,9 @@ void UniformRectangularStraightGeometry::printinfo() {
   std::cout << "dx " << this->dx << " dy " << this->dy << "\n" << std::flush;
 }
 
-real YAKL_INLINE UniformRectangularStraightGeometry::get_area_lform(
-    int l, int d, int k, int j, int i) {
+template <>
+real YAKL_INLINE Geometry<Straight>::get_area_lform(int l, int d, int k, int j,
+                                                    int i) const {
   if (l == 0) {
     return 1._fp;
   }
@@ -504,9 +452,10 @@ real YAKL_INLINE UniformRectangularStraightGeometry::get_area_lform(
   }
 }
 
-void YAKL_INLINE UniformRectangularStraightGeometry::get_0form_quad_pts_wts(
+template <>
+void YAKL_INLINE Geometry<Straight>::get_0form_quad_pts_wts(
     int i, int j, SArray<coords<2>, 1, 1> &quad_pts_phys,
-    SArray<real, 1, 1> &quad_wts_phys) {
+    SArray<real, 1, 1> &quad_wts_phys) const {
   quad_pts_phys(0).x = (i + this->topology.i_beg) * this->dx + this->xc -
                        this->Lx * 0.5_fp + this->dx * 0.5_fp;
   quad_pts_phys(0).y = (j + this->topology.j_beg) * this->dy + this->yc -
@@ -514,10 +463,11 @@ void YAKL_INLINE UniformRectangularStraightGeometry::get_0form_quad_pts_wts(
   quad_wts_phys(0) = 1.;
 }
 
-void YAKL_INLINE UniformRectangularStraightGeometry::get_2form_quad_pts_wts(
+template <>
+void YAKL_INLINE Geometry<Straight>::get_2form_quad_pts_wts(
     int i, int j,
     SArray<coords<2>, 2, ic_quad_pts_x, ic_quad_pts_y> &quad_pts_phys,
-    SArray<real, 2, ic_quad_pts_x, ic_quad_pts_y> &quad_wts_phys) {
+    SArray<real, 2, ic_quad_pts_x, ic_quad_pts_y> &quad_wts_phys) const {
   real ll_corner_x = (i + this->topology.i_beg) * this->dx + this->xc -
                      this->Lx * 0.5_fp - this->dx * 0.5_fp;
   real ll_corner_y = (j + this->topology.j_beg) * this->dy + this->yc -
@@ -535,11 +485,12 @@ void YAKL_INLINE UniformRectangularStraightGeometry::get_2form_quad_pts_wts(
     }
 }
 
-void YAKL_INLINE UniformRectangularStraightGeometry::get_1form_quad_pts_wts(
+template <>
+void YAKL_INLINE Geometry<Straight>::get_1form_quad_pts_wts(
     int i, int j, SArray<coords<2>, 1, ic_quad_pts_x> &x_quad_pts_phys,
     SArray<real, 1, ic_quad_pts_x> &x_quad_wts_phys,
     SArray<coords<2>, 1, ic_quad_pts_y> &y_quad_pts_phys,
-    SArray<real, 1, ic_quad_pts_y> &y_quad_wts_phys) {
+    SArray<real, 1, ic_quad_pts_y> &y_quad_wts_phys) const {
   real ll_corner_x = (i + this->topology.i_beg) * this->dx + this->xc -
                      this->Lx * 0.5_fp - this->dx * 0.5_fp;
   real ll_corner_y = (j + this->topology.j_beg) * this->dy + this->yc -
@@ -556,9 +507,10 @@ void YAKL_INLINE UniformRectangularStraightGeometry::get_1form_quad_pts_wts(
   }
 }
 
-void YAKL_INLINE UniformRectangularTwistedGeometry::get_edge_tangents(
+template <>
+void YAKL_INLINE Geometry<Twisted>::get_edge_tangents(
     int i, int j, SArray<vec<2>, 1, ic_quad_pts_x> &x_tangents,
-    SArray<vec<2>, 1, ic_quad_pts_y> &y_tangents) {
+    SArray<vec<2>, 1, ic_quad_pts_y> &y_tangents) const {
   for (int nqx = 0; nqx < ic_quad_pts_x; nqx++) {
     x_tangents(nqx).u = -1._fp;
     x_tangents(nqx).v = 0._fp;
@@ -569,9 +521,10 @@ void YAKL_INLINE UniformRectangularTwistedGeometry::get_edge_tangents(
   }
 }
 
-void YAKL_INLINE UniformRectangularTwistedGeometry::get_edge_normals(
+template <>
+void YAKL_INLINE Geometry<Twisted>::get_edge_normals(
     int i, int j, SArray<vec<2>, 1, ic_quad_pts_x> &x_normals,
-    SArray<vec<2>, 1, ic_quad_pts_y> &y_normals) {
+    SArray<vec<2>, 1, ic_quad_pts_y> &y_normals) const {
   for (int nqx = 0; nqx < ic_quad_pts_x; nqx++) {
     x_normals(nqx).u = 0._fp;
     x_normals(nqx).v = 1._fp;
@@ -585,9 +538,10 @@ void YAKL_INLINE UniformRectangularTwistedGeometry::get_edge_normals(
 // For straight edges in 2D, the twisted tangent is the straight normal, and the
 // straight normal is the twisted tangent
 
-void YAKL_INLINE UniformRectangularStraightGeometry::get_edge_tangents(
+template <>
+void YAKL_INLINE Geometry<Straight>::get_edge_tangents(
     int i, int j, SArray<vec<2>, 1, ic_quad_pts_x> &x_tangents,
-    SArray<vec<2>, 1, ic_quad_pts_y> &y_tangents) {
+    SArray<vec<2>, 1, ic_quad_pts_y> &y_tangents) const {
   for (int nqx = 0; nqx < ic_quad_pts_x; nqx++) {
     x_tangents(nqx).u = 1._fp;
     x_tangents(nqx).v = 0._fp;
@@ -598,9 +552,10 @@ void YAKL_INLINE UniformRectangularStraightGeometry::get_edge_tangents(
   }
 }
 
-void YAKL_INLINE UniformRectangularStraightGeometry::get_edge_normals(
+template <>
+void YAKL_INLINE Geometry<Straight>::get_edge_normals(
     int i, int j, SArray<vec<2>, 1, ic_quad_pts_x> &x_normals,
-    SArray<vec<2>, 1, ic_quad_pts_y> &y_normals) {
+    SArray<vec<2>, 1, ic_quad_pts_y> &y_normals) const {
   for (int nqx = 0; nqx < ic_quad_pts_x; nqx++) {
     x_normals(nqx).u = 0._fp;
     x_normals(nqx).v = 1._fp;
@@ -622,7 +577,7 @@ void YAKL_INLINE UniformRectangularStraightGeometry::get_edge_normals(
 // PART OF A BIGGER VARIABLE VERTICAL COORDINATE FIX IE REALLY SWAP EOMS TO A
 // GENERIC "TERRAIN-FOLLOWING" EULERIAN VERTICAL COORDINATE...
 
-class Geometry {
+template <class T> class Geometry {
 
 public:
   Topology topology;
@@ -630,162 +585,88 @@ public:
   bool straight;
 
   Geometry();
-  Geometry(const Geometry &geom) = delete;
-  Geometry &operator=(const Geometry &geom) = delete;
 
   SArray<real, 1, ic_quad_pts_x> x_quad_pts_ref;
   SArray<real, 1, ic_quad_pts_x> x_quad_wts_ref;
   SArray<real, 1, ic_quad_pts_z> v_quad_pts_ref;
   SArray<real, 1, ic_quad_pts_z> v_quad_wts_ref;
 
-  void initialize(const Topology &topo);
+  void initialize(const Topology &topo, const ModelParameters &params);
+  void printinfo() const;
 
-  virtual void YAKL_INLINE get_00form_quad_pts_wts(
+  void YAKL_INLINE get_00form_quad_pts_wts(
       int i, int k, SArray<coordsext<2>, 1, 1> &quad_pts_phys,
-      SArray<real, 1, 1> &quad_wts_phys){};
-  virtual void YAKL_INLINE get_11form_quad_pts_wts(
+      SArray<real, 1, 1> &quad_wts_phys) const;
+  void YAKL_INLINE get_11form_quad_pts_wts(
       int i, int k,
       SArray<coordsext<2>, 2, ic_quad_pts_x, ic_quad_pts_z> &quad_pts_phys,
-      SArray<real, 2, ic_quad_pts_x, ic_quad_pts_z> &quad_wts_phys){};
+      SArray<real, 2, ic_quad_pts_x, ic_quad_pts_z> &quad_wts_phys) const;
 
-  virtual void YAKL_INLINE get_01form_quad_pts_wts(
+  void YAKL_INLINE get_01form_quad_pts_wts(
       int i, int k, SArray<coordsext<2>, 1, ic_quad_pts_z> &v_quad_pts_phys,
-      SArray<real, 1, ic_quad_pts_z> &v_quad_wts_phys){};
-  virtual void YAKL_INLINE get_01edge_tangents(
-      int i, int k, SArray<vecext<2>, 1, ic_quad_pts_z> &v_tangents){};
-  virtual void YAKL_INLINE get_01edge_normals(
-      int i, int k, SArray<vecext<2>, 1, ic_quad_pts_z> &v_normals){};
+      SArray<real, 1, ic_quad_pts_z> &v_quad_wts_phys) const;
+  void YAKL_INLINE get_01edge_tangents(
+      int i, int k, SArray<vecext<2>, 1, ic_quad_pts_z> &v_tangents) const;
+  void YAKL_INLINE get_01edge_normals(
+      int i, int k, SArray<vecext<2>, 1, ic_quad_pts_z> &v_normals) const;
 
-  virtual void YAKL_INLINE get_10form_quad_pts_wts(
+  void YAKL_INLINE get_10form_quad_pts_wts(
       int i, int k, SArray<coordsext<2>, 1, ic_quad_pts_x> &x_quad_pts_phys,
-      SArray<real, 1, ic_quad_pts_x> &x_quad_wts_phys){};
-  virtual void YAKL_INLINE get_10edge_tangents(
-      int i, int k, SArray<vecext<2>, 1, ic_quad_pts_x> &x_tangents){};
-  virtual void YAKL_INLINE get_10edge_normals(
-      int i, int k, SArray<vecext<2>, 1, ic_quad_pts_x> &x_normals){};
+      SArray<real, 1, ic_quad_pts_x> &x_quad_wts_phys) const;
+  void YAKL_INLINE get_10edge_tangents(
+      int i, int k, SArray<vecext<2>, 1, ic_quad_pts_x> &x_tangents) const;
+  void YAKL_INLINE get_10edge_normals(
+      int i, int k, SArray<vecext<2>, 1, ic_quad_pts_x> &x_normals) const;
 
-  virtual real YAKL_INLINE get_area_00entity(int k, int j, int i){};
-  virtual real YAKL_INLINE get_area_11entity(int k, int j, int i){};
-  virtual real YAKL_INLINE get_area_10entity(int k, int j, int i){};
-  virtual real YAKL_INLINE get_area_01entity(int k, int j, int i){};
+  real YAKL_INLINE get_area_00entity(int k, int j, int i) const;
+  real YAKL_INLINE get_area_11entity(int k, int j, int i) const;
+  real YAKL_INLINE get_area_10entity(int k, int j, int i) const;
+  real YAKL_INLINE get_area_01entity(int k, int j, int i) const;
 
-  virtual real YAKL_INLINE get_area_lform(int l, int d, int k, int j, int i){};
+  real YAKL_INLINE get_area_lform(int l, int d, int k, int j, int i) const;
 
   // expects real initial_value_function(real, real),
   template <class F>
   YAKL_INLINE void set_00form_values(F initial_value_function, Field &field,
-                                     int ndof);
+                                     int ndof) const;
   // expects real initial_value_function(real, real),
   template <class F>
   YAKL_INLINE void set_11form_values(F initial_value_function, Field &field,
-                                     int ndof);
+                                     int ndof) const;
   // expects vecext<2> initial_value_function(real, real),
   template <class F>
   YAKL_INLINE void set_10form_values(F initial_value_function, Field &field,
-                                     int ndof, LINE_INTEGRAL_TYPE line_type);
+                                     int ndof,
+                                     LINE_INTEGRAL_TYPE line_type) const;
 
   // expects vecext<2> initial_value_function(real, real),
   template <class F>
   YAKL_INLINE void set_01form_values(F initial_value_function, Field &field,
-                                     int ndof, LINE_INTEGRAL_TYPE line_type);
+                                     int ndof,
+                                     LINE_INTEGRAL_TYPE line_type) const;
 
   real dx, dy, dz;
   real Lx, Ly, Lz;
   real xc, yc, zc;
 };
 
-class UniformRectangularTwistedExtrudedGeometry : public Geometry {
+template <class T> Geometry<T>::Geometry() { this->is_initialized = false; }
 
-public:
-  void initialize(const Topology &topo, const ModelParameters &params);
+template <class T>
+void initialize_common(Geometry<T> &geom, const Topology &topo) {
 
-  void printinfo();
-
-  void YAKL_INLINE get_00form_quad_pts_wts(
-      int i, int k, SArray<coordsext<2>, 1, 1> &quad_pts_phys,
-      SArray<real, 1, 1> &quad_wts_phys);
-  void YAKL_INLINE get_11form_quad_pts_wts(
-      int i, int k,
-      SArray<coordsext<2>, 2, ic_quad_pts_x, ic_quad_pts_z> &quad_pts_phys,
-      SArray<real, 2, ic_quad_pts_x, ic_quad_pts_z> &quad_wts_phys);
-
-  void YAKL_INLINE get_01form_quad_pts_wts(
-      int i, int k, SArray<coordsext<2>, 1, ic_quad_pts_z> &v_quad_pts_phys,
-      SArray<real, 1, ic_quad_pts_z> &v_quad_wts_phys);
-  void YAKL_INLINE get_01edge_tangents(
-      int i, int k, SArray<vecext<2>, 1, ic_quad_pts_z> &v_tangents);
-  void YAKL_INLINE get_01edge_normals(
-      int i, int k, SArray<vecext<2>, 1, ic_quad_pts_z> &v_normals);
-
-  void YAKL_INLINE get_10form_quad_pts_wts(
-      int i, int k, SArray<coordsext<2>, 1, ic_quad_pts_x> &x_quad_pts_phys,
-      SArray<real, 1, ic_quad_pts_x> &x_quad_wts_phys);
-  void YAKL_INLINE get_10edge_tangents(
-      int i, int k, SArray<vecext<2>, 1, ic_quad_pts_x> &x_tangents);
-  void YAKL_INLINE get_10edge_normals(
-      int i, int k, SArray<vecext<2>, 1, ic_quad_pts_x> &x_normals);
-
-  real YAKL_INLINE get_area_00entity(int k, int j, int i);
-  real YAKL_INLINE get_area_11entity(int k, int j, int i);
-  real YAKL_INLINE get_area_10entity(int k, int j, int i);
-  real YAKL_INLINE get_area_01entity(int k, int j, int i);
-
-  real YAKL_INLINE get_area_lform(int l, int d, int k, int j, int i){};
-};
-
-class UniformRectangularStraightExtrudedGeometry : public Geometry {
-
-public:
-  void initialize(const Topology &topo, const ModelParameters &params);
-
-  void printinfo();
-
-  void YAKL_INLINE get_00form_quad_pts_wts(
-      int i, int k, SArray<coordsext<2>, 1, 1> &quad_pts_phys,
-      SArray<real, 1, 1> &quad_wts_phys);
-  void YAKL_INLINE get_11form_quad_pts_wts(
-      int i, int k,
-      SArray<coordsext<2>, 2, ic_quad_pts_x, ic_quad_pts_z> &quad_pts_phys,
-      SArray<real, 2, ic_quad_pts_x, ic_quad_pts_z> &quad_wts_phys);
-
-  void YAKL_INLINE get_01form_quad_pts_wts(
-      int i, int k, SArray<coordsext<2>, 1, ic_quad_pts_z> &v_quad_pts_phys,
-      SArray<real, 1, ic_quad_pts_z> &v_quad_wts_phys);
-  void YAKL_INLINE get_01edge_tangents(
-      int i, int k, SArray<vecext<2>, 1, ic_quad_pts_z> &v_tangents);
-  void YAKL_INLINE get_01edge_normals(
-      int i, int k, SArray<vecext<2>, 1, ic_quad_pts_z> &v_normals);
-
-  void YAKL_INLINE get_10form_quad_pts_wts(
-      int i, int k, SArray<coordsext<2>, 1, ic_quad_pts_x> &x_quad_pts_phys,
-      SArray<real, 1, ic_quad_pts_x> &x_quad_wts_phys);
-  void YAKL_INLINE get_10edge_tangents(
-      int i, int k, SArray<vecext<2>, 1, ic_quad_pts_x> &x_tangents);
-  void YAKL_INLINE get_10edge_normals(
-      int i, int k, SArray<vecext<2>, 1, ic_quad_pts_x> &x_normals);
-
-  real YAKL_INLINE get_area_00entity(int k, int j, int i);
-  real YAKL_INLINE get_area_11entity(int k, int j, int i);
-  real YAKL_INLINE get_area_10entity(int k, int j, int i);
-  real YAKL_INLINE get_area_01entity(int k, int j, int i);
-  real YAKL_INLINE get_area_lform(int l, int d, int k, int j, int i){};
-};
-
-Geometry::Geometry() { this->is_initialized = false; }
-
-void Geometry::initialize(const Topology &topo) {
-
-  this->topology = topo;
-  set_ref_quad_pts_wts<real, ic_quad_pts_x>(this->x_quad_pts_ref,
-                                            this->x_quad_wts_ref);
-  set_ref_quad_pts_wts<real, ic_quad_pts_z>(this->v_quad_pts_ref,
-                                            this->v_quad_wts_ref);
+  geom.topology = topo;
+  set_ref_quad_pts_wts<real, ic_quad_pts_x>(geom.x_quad_pts_ref,
+                                            geom.x_quad_wts_ref);
+  set_ref_quad_pts_wts<real, ic_quad_pts_z>(geom.v_quad_pts_ref,
+                                            geom.v_quad_wts_ref);
 }
 
 // expects real initial_value_function(real, real)
+template <class T>
 template <class F>
-YAKL_INLINE void Geometry::set_00form_values(F initial_value_function,
-                                             Field &field, int ndof) {
+YAKL_INLINE void Geometry<T>::set_00form_values(F initial_value_function,
+                                                Field &field, int ndof) const {
   int is = this->topology.is;
   int js = this->topology.js;
   int ks = this->topology.ks;
@@ -804,9 +685,10 @@ YAKL_INLINE void Geometry::set_00form_values(F initial_value_function,
       });
 }
 // expects real initial_value_function(real, real)
+template <class T>
 template <class F>
-YAKL_INLINE void Geometry::set_11form_values(F initial_value_function,
-                                             Field &field, int ndof) {
+YAKL_INLINE void Geometry<T>::set_11form_values(F initial_value_function,
+                                                Field &field, int ndof) const {
 
   int is = this->topology.is;
   int js = this->topology.js;
@@ -837,10 +719,11 @@ YAKL_INLINE void Geometry::set_11form_values(F initial_value_function,
 }
 
 // expects vecext<2> initial_value_function(real, real),
+template <class T>
 template <class F>
-YAKL_INLINE void Geometry::set_01form_values(F initial_value_function,
-                                             Field &field, int ndof,
-                                             LINE_INTEGRAL_TYPE line_type) {
+YAKL_INLINE void
+Geometry<T>::set_01form_values(F initial_value_function, Field &field, int ndof,
+                               LINE_INTEGRAL_TYPE line_type) const {
 
   int is = this->topology.is;
   int js = this->topology.js;
@@ -879,10 +762,11 @@ YAKL_INLINE void Geometry::set_01form_values(F initial_value_function,
 }
 
 // expects vecext<2> initial_value_function(real, real),
+template <class T>
 template <class F>
-YAKL_INLINE void Geometry::set_10form_values(F initial_value_function,
-                                             Field &field, int ndof,
-                                             LINE_INTEGRAL_TYPE line_type) {
+YAKL_INLINE void
+Geometry<T>::set_10form_values(F initial_value_function, Field &field, int ndof,
+                               LINE_INTEGRAL_TYPE line_type) const {
 
   int is = this->topology.is;
   int js = this->topology.js;
@@ -920,10 +804,11 @@ YAKL_INLINE void Geometry::set_10form_values(F initial_value_function,
       });
 }
 
-void UniformRectangularTwistedExtrudedGeometry::initialize(
-    const Topology &topo, const ModelParameters &params) {
+template <>
+void Geometry<Twisted>::initialize(const Topology &topo,
+                                   const ModelParameters &params) {
 
-  Geometry::initialize(topo);
+  initialize_common(*this, topo);
 
   this->Lx = params.xlen;
   this->Ly = 1._fp;
@@ -942,7 +827,7 @@ void UniformRectangularTwistedExtrudedGeometry::initialize(
   this->is_initialized = true;
 }
 
-void UniformRectangularTwistedExtrudedGeometry::printinfo() {
+template <> void Geometry<Twisted>::printinfo() const {
   std::cout << "uniform rectangular geometry 2D info: twisted \n" << std::flush;
   std::cout << "Lx " << this->Lx << " Ly " << this->Ly << " Lz " << this->Lz
             << "\n"
@@ -955,13 +840,15 @@ void UniformRectangularTwistedExtrudedGeometry::printinfo() {
             << std::flush;
 }
 
-real YAKL_INLINE UniformRectangularTwistedExtrudedGeometry::get_area_00entity(
-    int k, int j, int i) {
+template <>
+real YAKL_INLINE Geometry<Twisted>::get_area_00entity(int k, int j,
+                                                      int i) const {
   return 1._fp;
 }
 
-real YAKL_INLINE UniformRectangularTwistedExtrudedGeometry::get_area_01entity(
-    int k, int j, int i) {
+template <>
+real YAKL_INLINE Geometry<Twisted>::get_area_01entity(int k, int j,
+                                                      int i) const {
   if (k == this->topology.ks ||
       k == this->topology.nl - 1 +
                this->topology.ks) // corrects for half-cells at top and bottom
@@ -971,13 +858,15 @@ real YAKL_INLINE UniformRectangularTwistedExtrudedGeometry::get_area_01entity(
   return this->dz;
 }
 
-real YAKL_INLINE UniformRectangularTwistedExtrudedGeometry::get_area_10entity(
-    int k, int j, int i) {
+template <>
+real YAKL_INLINE Geometry<Twisted>::get_area_10entity(int k, int j,
+                                                      int i) const {
   return this->dx;
 }
 
-real YAKL_INLINE UniformRectangularTwistedExtrudedGeometry::get_area_11entity(
-    int k, int j, int i) {
+template <>
+real YAKL_INLINE Geometry<Twisted>::get_area_11entity(int k, int j,
+                                                      int i) const {
   if (k == this->topology.ks ||
       k == this->topology.nl - 1 +
                this->topology.ks) // corrects for half-cells at top and bottom
@@ -987,10 +876,10 @@ real YAKL_INLINE UniformRectangularTwistedExtrudedGeometry::get_area_11entity(
   return this->dx * this->dz;
 }
 
-void YAKL_INLINE
-UniformRectangularTwistedExtrudedGeometry::get_00form_quad_pts_wts(
+template <>
+void YAKL_INLINE Geometry<Twisted>::get_00form_quad_pts_wts(
     int i, int k, SArray<coordsext<2>, 1, 1> &quad_pts_phys,
-    SArray<real, 1, 1> &quad_wts_phys) {
+    SArray<real, 1, 1> &quad_wts_phys) const {
   quad_pts_phys(0).x =
       (i + this->topology.i_beg) * this->dx + this->xc - this->Lx * 0.5_fp;
   quad_pts_phys(0).z = k * this->dz - this->dz * 0.5_fp;
@@ -1006,11 +895,11 @@ UniformRectangularTwistedExtrudedGeometry::get_00form_quad_pts_wts(
   quad_wts_phys(0) = 1.;
 }
 
-void YAKL_INLINE
-UniformRectangularTwistedExtrudedGeometry::get_11form_quad_pts_wts(
+template <>
+void YAKL_INLINE Geometry<Twisted>::get_11form_quad_pts_wts(
     int i, int k,
     SArray<coordsext<2>, 2, ic_quad_pts_x, ic_quad_pts_z> &quad_pts_phys,
-    SArray<real, 2, ic_quad_pts_x, ic_quad_pts_z> &quad_wts_phys) {
+    SArray<real, 2, ic_quad_pts_x, ic_quad_pts_z> &quad_wts_phys) const {
   real ll_corner_x =
       (i + this->topology.i_beg) * this->dx + this->xc - this->Lx * 0.5_fp;
   real ll_corner_z = k * this->dz - this->dz * 0.5_fp;
@@ -1038,10 +927,10 @@ UniformRectangularTwistedExtrudedGeometry::get_11form_quad_pts_wts(
     }
 }
 
-void YAKL_INLINE
-UniformRectangularTwistedExtrudedGeometry::get_01form_quad_pts_wts(
+template <>
+void YAKL_INLINE Geometry<Twisted>::get_01form_quad_pts_wts(
     int i, int k, SArray<coordsext<2>, 1, ic_quad_pts_z> &v_quad_pts_phys,
-    SArray<real, 1, ic_quad_pts_z> &v_quad_wts_phys) {
+    SArray<real, 1, ic_quad_pts_z> &v_quad_wts_phys) const {
   real ll_corner_x =
       (i + this->topology.i_beg) * this->dx + this->xc - this->Lx * 0.5_fp;
   real ll_corner_z = k * this->dz - this->dz * 0.5_fp;
@@ -1063,10 +952,10 @@ UniformRectangularTwistedExtrudedGeometry::get_01form_quad_pts_wts(
   }
 }
 
-void YAKL_INLINE
-UniformRectangularTwistedExtrudedGeometry::get_10form_quad_pts_wts(
+template <>
+void YAKL_INLINE Geometry<Twisted>::get_10form_quad_pts_wts(
     int i, int k, SArray<coordsext<2>, 1, ic_quad_pts_x> &x_quad_pts_phys,
-    SArray<real, 1, ic_quad_pts_x> &x_quad_wts_phys) {
+    SArray<real, 1, ic_quad_pts_x> &x_quad_wts_phys) const {
   real ll_corner_x =
       (i + this->topology.i_beg) * this->dx + this->xc - this->Lx * 0.5_fp;
   real ll_corner_z = k * this->dz - this->dz * 0.5_fp;
@@ -1086,10 +975,11 @@ UniformRectangularTwistedExtrudedGeometry::get_10form_quad_pts_wts(
   }
 }
 
-void UniformRectangularStraightExtrudedGeometry::initialize(
-    const Topology &topo, const ModelParameters &params) {
+template <>
+void Geometry<Straight>::initialize(const Topology &topo,
+                                    const ModelParameters &params) {
 
-  Geometry::initialize(topo);
+  initialize_common(*this, topo);
 
   this->Lx = params.xlen;
   this->Ly = 1._fp;
@@ -1108,7 +998,7 @@ void UniformRectangularStraightExtrudedGeometry::initialize(
   this->is_initialized = true;
 }
 
-void UniformRectangularStraightExtrudedGeometry::printinfo() {
+template <> void Geometry<Straight>::printinfo() const {
   std::cout << "uniform rectangular geometry 2D info: straight \n"
             << std::flush;
   std::cout << "Lx " << this->Lx << " Ly " << this->Ly << " Lz " << this->Lz
@@ -1122,41 +1012,45 @@ void UniformRectangularStraightExtrudedGeometry::printinfo() {
             << std::flush;
 }
 
-real YAKL_INLINE UniformRectangularStraightExtrudedGeometry::get_area_00entity(
-    int k, int j, int i) {
+template <>
+real YAKL_INLINE Geometry<Straight>::get_area_00entity(int k, int j,
+                                                       int i) const {
   return 1._fp;
 }
 
-real YAKL_INLINE UniformRectangularStraightExtrudedGeometry::get_area_01entity(
-    int k, int j, int i) {
+template <>
+real YAKL_INLINE Geometry<Straight>::get_area_01entity(int k, int j,
+                                                       int i) const {
   return this->dz;
 }
 
-real YAKL_INLINE UniformRectangularStraightExtrudedGeometry::get_area_10entity(
-    int k, int j, int i) {
+template <>
+real YAKL_INLINE Geometry<Straight>::get_area_10entity(int k, int j,
+                                                       int i) const {
   return this->dx;
 }
 
-real YAKL_INLINE UniformRectangularStraightExtrudedGeometry::get_area_11entity(
-    int k, int j, int i) {
+template <>
+real YAKL_INLINE Geometry<Straight>::get_area_11entity(int k, int j,
+                                                       int i) const {
   return this->dx * this->dz;
 }
 
-void YAKL_INLINE
-UniformRectangularStraightExtrudedGeometry::get_00form_quad_pts_wts(
+template <>
+void YAKL_INLINE Geometry<Straight>::get_00form_quad_pts_wts(
     int i, int k, SArray<coordsext<2>, 1, 1> &quad_pts_phys,
-    SArray<real, 1, 1> &quad_wts_phys) {
+    SArray<real, 1, 1> &quad_wts_phys) const {
   quad_pts_phys(0).x = (i + this->topology.i_beg) * this->dx + this->xc -
                        this->Lx * 0.5_fp + this->dx * 0.5_fp;
   quad_pts_phys(0).z = (k) * this->dz;
   quad_wts_phys(0) = 1._fp;
 }
 
-void YAKL_INLINE
-UniformRectangularStraightExtrudedGeometry::get_11form_quad_pts_wts(
+template <>
+void YAKL_INLINE Geometry<Straight>::get_11form_quad_pts_wts(
     int i, int k,
     SArray<coordsext<2>, 2, ic_quad_pts_x, ic_quad_pts_z> &quad_pts_phys,
-    SArray<real, 2, ic_quad_pts_x, ic_quad_pts_z> &quad_wts_phys) {
+    SArray<real, 2, ic_quad_pts_x, ic_quad_pts_z> &quad_wts_phys) const {
   real ll_corner_x = (i + this->topology.i_beg) * this->dx + this->xc -
                      this->Lx * 0.5_fp - this->dx * 0.5_fp;
   real ll_corner_z = k * this->dz;
@@ -1173,10 +1067,10 @@ UniformRectangularStraightExtrudedGeometry::get_11form_quad_pts_wts(
     }
 }
 
-void YAKL_INLINE
-UniformRectangularStraightExtrudedGeometry::get_01form_quad_pts_wts(
+template <>
+void YAKL_INLINE Geometry<Straight>::get_01form_quad_pts_wts(
     int i, int k, SArray<coordsext<2>, 1, ic_quad_pts_z> &v_quad_pts_phys,
-    SArray<real, 1, ic_quad_pts_z> &v_quad_wts_phys) {
+    SArray<real, 1, ic_quad_pts_z> &v_quad_wts_phys) const {
   // Careful because 01 edge actually starts at same point as 00 vertex
   // This is slightly different than 2D layer situation...
   real ll_corner_x = (i + this->topology.i_beg) * this->dx + this->xc -
@@ -1189,10 +1083,10 @@ UniformRectangularStraightExtrudedGeometry::get_01form_quad_pts_wts(
   }
 }
 
-void YAKL_INLINE
-UniformRectangularStraightExtrudedGeometry::get_10form_quad_pts_wts(
+template <>
+void YAKL_INLINE Geometry<Straight>::get_10form_quad_pts_wts(
     int i, int k, SArray<coordsext<2>, 1, ic_quad_pts_x> &x_quad_pts_phys,
-    SArray<real, 1, ic_quad_pts_x> &x_quad_wts_phys) {
+    SArray<real, 1, ic_quad_pts_x> &x_quad_wts_phys) const {
   real ll_corner_x = (i + this->topology.i_beg) * this->dx + this->xc -
                      this->Lx * 0.5_fp - this->dx * 0.5_fp;
   real ll_corner_z = k * this->dz;
@@ -1203,32 +1097,36 @@ UniformRectangularStraightExtrudedGeometry::get_10form_quad_pts_wts(
   }
 }
 
-void YAKL_INLINE UniformRectangularTwistedExtrudedGeometry::get_10edge_tangents(
-    int i, int k, SArray<vecext<2>, 1, ic_quad_pts_x> &x_tangents) {
+template <>
+void YAKL_INLINE Geometry<Twisted>::get_10edge_tangents(
+    int i, int k, SArray<vecext<2>, 1, ic_quad_pts_x> &x_tangents) const {
   for (int nqx = 0; nqx < ic_quad_pts_x; nqx++) {
     x_tangents(nqx).u = 1._fp;
     x_tangents(nqx).w = 0._fp;
   }
 }
 
-void YAKL_INLINE UniformRectangularTwistedExtrudedGeometry::get_01edge_tangents(
-    int i, int k, SArray<vecext<2>, 1, ic_quad_pts_z> &v_tangents) {
+template <>
+void YAKL_INLINE Geometry<Twisted>::get_01edge_tangents(
+    int i, int k, SArray<vecext<2>, 1, ic_quad_pts_z> &v_tangents) const {
   for (int nqz = 0; nqz < ic_quad_pts_z; nqz++) {
     v_tangents(nqz).u = 0._fp;
     v_tangents(nqz).w = -1._fp;
   }
 }
 
-void YAKL_INLINE UniformRectangularTwistedExtrudedGeometry::get_10edge_normals(
-    int i, int k, SArray<vecext<2>, 1, ic_quad_pts_x> &x_normals) {
+template <>
+void YAKL_INLINE Geometry<Twisted>::get_10edge_normals(
+    int i, int k, SArray<vecext<2>, 1, ic_quad_pts_x> &x_normals) const {
   for (int nqx = 0; nqx < ic_quad_pts_x; nqx++) {
     x_normals(nqx).u = 0._fp;
     x_normals(nqx).w = 1._fp;
   }
 }
 
-void YAKL_INLINE UniformRectangularTwistedExtrudedGeometry::get_01edge_normals(
-    int i, int k, SArray<vecext<2>, 1, ic_quad_pts_z> &v_normals) {
+template <>
+void YAKL_INLINE Geometry<Twisted>::get_01edge_normals(
+    int i, int k, SArray<vecext<2>, 1, ic_quad_pts_z> &v_normals) const {
   for (int nqz = 0; nqz < ic_quad_pts_z; nqz++) {
     v_normals(nqz).u = 1._fp;
     v_normals(nqz).w = 0._fp;
@@ -1238,34 +1136,36 @@ void YAKL_INLINE UniformRectangularTwistedExtrudedGeometry::get_01edge_normals(
 // For straight edges in 2D, the twisted tangent is the straight normal, and the
 // straight normal is the twisted tangent
 
-void YAKL_INLINE
-UniformRectangularStraightExtrudedGeometry::get_10edge_tangents(
-    int i, int k, SArray<vecext<2>, 1, ic_quad_pts_x> &x_tangents) {
+template <>
+void YAKL_INLINE Geometry<Straight>::get_10edge_tangents(
+    int i, int k, SArray<vecext<2>, 1, ic_quad_pts_x> &x_tangents) const {
   for (int nqx = 0; nqx < ic_quad_pts_x; nqx++) {
     x_tangents(nqx).u = 1._fp;
     x_tangents(nqx).w = 0._fp;
   }
 }
 
-void YAKL_INLINE
-UniformRectangularStraightExtrudedGeometry::get_01edge_tangents(
-    int i, int k, SArray<vecext<2>, 1, ic_quad_pts_z> &v_tangents) {
+template <>
+void YAKL_INLINE Geometry<Straight>::get_01edge_tangents(
+    int i, int k, SArray<vecext<2>, 1, ic_quad_pts_z> &v_tangents) const {
   for (int nqz = 0; nqz < ic_quad_pts_z; nqz++) {
     v_tangents(nqz).u = 0._fp;
     v_tangents(nqz).w = 1._fp;
   }
 }
 
-void YAKL_INLINE UniformRectangularStraightExtrudedGeometry::get_10edge_normals(
-    int i, int k, SArray<vecext<2>, 1, ic_quad_pts_x> &x_normals) {
+template <>
+void YAKL_INLINE Geometry<Straight>::get_10edge_normals(
+    int i, int k, SArray<vecext<2>, 1, ic_quad_pts_x> &x_normals) const {
   for (int nqx = 0; nqx < ic_quad_pts_x; nqx++) {
     x_normals(nqx).u = 0._fp;
     x_normals(nqx).w = -1._fp;
   }
 }
 
-void YAKL_INLINE UniformRectangularStraightExtrudedGeometry::get_01edge_normals(
-    int i, int k, SArray<vecext<2>, 1, ic_quad_pts_z> &v_normals) {
+template <>
+void YAKL_INLINE Geometry<Straight>::get_01edge_normals(
+    int i, int k, SArray<vecext<2>, 1, ic_quad_pts_z> &v_normals) const {
   for (int nqz = 0; nqz < ic_quad_pts_z; nqz++) {
     v_normals(nqz).u = 1._fp;
     v_normals(nqz).w = 0._fp;
