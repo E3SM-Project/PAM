@@ -37,66 +37,100 @@ public:
   virtual ~Diagnostic() = default;
 };
 
-real YAKL_INLINE tracer_constant(real x, real y, real Lx, real Ly, real xc,
-                                 real yc) {
-  return 1000;
-}
-real YAKL_INLINE tracer_square_cent(real x, real y, real Lx, real Ly, real xc,
-                                    real yc) {
-  return (x > 0.35_fp * Lx && x < 0.65_fp * Lx && y > 0.35_fp * Ly &&
-          y < 0.65_fp * Ly)
-             ? 0.005_fp
-             : 0.;
-}
-real YAKL_INLINE tracer_square_ur(real x, real y, real Lx, real Ly, real xc,
-                                  real yc) {
-  return (x > 0.6_fp * Lx && x < 0.9_fp * Lx && y > 0.6_fp * Ly &&
-          y < 0.9_fp * Ly)
-             ? 0.005_fp
-             : 0.;
-}
-real YAKL_INLINE tracer_square_ll(real x, real y, real Lx, real Ly, real xc,
-                                  real yc) {
-  return (x > 0.1_fp * Lx && x < 0.4_fp * Lx && y > 0.1_fp * Ly &&
-          y < 0.4_fp * Ly)
-             ? 0.005_fp
-             : 0.;
-}
-real YAKL_INLINE tracer_square_urpll(real x, real y, real Lx, real Ly, real xc,
-                                     real yc) {
-  return tracer_square_ur(x, y, Lx, Ly, xc, yc) +
-         tracer_square_ll(x, y, Lx, Ly, xc, yc);
-}
+enum class TRACER_TAG { CONSTANT, SQUARE, DOUBLESQUARE, GAUSSIAN };
+struct Tracer {
+  YAKL_INLINE virtual real compute(real x, real y, real Lx, real Ly, real xc,
+                                   real yc) = 0;
+};
 
-real YAKL_INLINE tracer_gaussian(real x, real y, real Lx, real Ly, real xc,
-                                 real yc) {
-  real const a = 1.0_fp / 3.0_fp;
-  real const D = 0.5_fp * Lx;
-  return 0.005_fp *
-         exp(-((x - xc) * (x - xc) + (y - yc) * (y - yc)) / (a * a * D * D));
-}
+struct TracerConstant : Tracer {
+  YAKL_INLINE real compute(real x, real y, real Lx, real Ly, real xc,
+                           real yc) override {
+    return 1000;
+  }
+};
+
+struct TracerSquare : Tracer {
+  YAKL_INLINE real compute(real x, real y, real Lx, real Ly, real xc,
+                           real yc) override {
+    return (x > 0.35_fp * Lx && x < 0.65_fp * Lx && y > 0.35_fp * Ly &&
+            y < 0.65_fp * Ly)
+               ? 0.005_fp
+               : 0.;
+  }
+};
+
+struct TracerDoubleSquare : Tracer {
+  real YAKL_INLINE tracer_square_ur(real x, real y, real Lx, real Ly, real xc,
+                                    real yc) {
+    return (x > 0.6_fp * Lx && x < 0.9_fp * Lx && y > 0.6_fp * Ly &&
+            y < 0.9_fp * Ly)
+               ? 0.005_fp
+               : 0.;
+  }
+  real YAKL_INLINE tracer_square_ll(real x, real y, real Lx, real Ly, real xc,
+                                    real yc) {
+    return (x > 0.1_fp * Lx && x < 0.4_fp * Lx && y > 0.1_fp * Ly &&
+            y < 0.4_fp * Ly)
+               ? 0.005_fp
+               : 0.;
+  }
+  YAKL_INLINE real compute(real x, real y, real Lx, real Ly, real xc,
+                           real yc) override {
+
+    return tracer_square_ur(x, y, Lx, Ly, xc, yc) +
+           tracer_square_ll(x, y, Lx, Ly, xc, yc);
+  }
+};
+
+struct TracerGaussian : Tracer {
+  YAKL_INLINE real compute(real x, real y, real Lx, real Ly, real xc,
+                           real yc) override {
+    real const a = 1.0_fp / 3.0_fp;
+    real const D = 0.5_fp * Lx;
+    return 0.005_fp *
+           exp(-((x - xc) * (x - xc) + (y - yc) * (y - yc)) / (a * a * D * D));
+  }
+};
 
 class TestCase {
 public:
-  using tracer_ptr = real (*)(real, real, real, real, real, real);
-  std::array<tracer_ptr, ntracers_dycore> tracer_f;
+  using TracerArr = yakl::Array<Tracer *, 1, yakl::memDevice, yakl::styleC>;
+  TracerArr tracer_f;
 
-  bool is_initialized;
-  TestCase() { this->is_initialized = false; }
+  TestCase() { this->tracer_f = TracerArr("tracer_f", ntracers_dycore); }
 
   void set_tracers(ModelParameters &params) {
+    SArray<TRACER_TAG, 1, ntracers_dycore> tracer_tag;
     for (int i = 0; i < ntracers_dycore; i++) {
       if (params.tracerdataStr[i] == "gaussian") {
-        tracer_f[i] = tracer_gaussian;
+        tracer_tag(i) = TRACER_TAG::GAUSSIAN;
       } else if (params.tracerdataStr[i] == "square") {
-        tracer_f[i] = tracer_square_cent;
+        tracer_tag(i) = TRACER_TAG::SQUARE;
       } else if (params.tracerdataStr[i] == "doublesquare") {
-        tracer_f[i] = tracer_square_urpll;
+        tracer_tag(i) = TRACER_TAG::DOUBLESQUARE;
       } else {
         // by default set tracers to constant
-        tracer_f[i] = tracer_constant;
+        tracer_tag(i) = TRACER_TAG::CONSTANT;
       }
     }
+
+    YAKL_SCOPE(tracer_f, this->tracer_f);
+    parallel_for(
+        ntracers_dycore, YAKL_LAMBDA(int i) {
+          if (tracer_tag(i) == TRACER_TAG::GAUSSIAN) {
+            tracer_f(i) = new TracerGaussian();
+          }
+          if (tracer_tag(i) == TRACER_TAG::SQUARE) {
+            tracer_f(i) = new TracerSquare();
+          }
+          if (tracer_tag(i) == TRACER_TAG::DOUBLESQUARE) {
+            tracer_f(i) = new TracerDoubleSquare();
+          }
+          if (tracer_tag(i) == TRACER_TAG::CONSTANT) {
+            tracer_f(i) = new TracerConstant();
+          }
+        });
   }
 
   virtual void set_domain(ModelParameters &params) = 0;
@@ -104,9 +138,15 @@ public:
                                       FieldSet<nconstant> &constvars,
                                       const Geometry<Straight> &primal_geom,
                                       const Geometry<Twisted> &dual_geom) = 0;
-  // virtual void add_diagnostics(real time, const FieldSet<nconstant>
-  // &const_vars);
   virtual ~TestCase() = default;
+
+  // why doesn't this work ? Tracers need to be deallocated !
+  // virtual ~TestCase() {
+  //   YAKL_SCOPE(tracer_f, this->tracer_f);
+  //   parallel_for(ntracers_dycore, YAKL_LAMBDA(int i) {
+  //     delete tracer_f(i);
+  //   });
+  // }
 };
 
 class Tendencies {
