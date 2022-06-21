@@ -7,7 +7,32 @@
 #include "thermo.h"
 using pam::PamCoupler;
 
-class VariableSet {
+struct VS_SWE {
+  static constexpr bool couple = false;
+};
+struct VS_TSWE {
+  static constexpr bool couple = false;
+};
+struct VS_CE {
+  static constexpr bool couple = false;
+};
+struct VS_MCE_rho {
+  static constexpr bool couple = true;
+};
+struct VS_MCE_rhod {
+  static constexpr bool couple = true;
+};
+struct VS_CE_p {
+  static constexpr bool couple = false;
+};
+struct VS_MCE_rhop {
+  static constexpr bool couple = false;
+};
+struct VS_MCE_rhodp {
+  static constexpr bool couple = false;
+};
+
+template <class T> class VariableSetBase {
 public:
   std::string dens_name[ndensity]; // Name of each density
   std::string dens_desc[ndensity]; // Description of each density
@@ -23,26 +48,32 @@ public:
   bool ice_found = false;
   bool liquid_found = false;
 
-  ThermoPotential *thermo;
+  ThermoPotential thermo;
   Geometry<Straight> primal_geometry;
   Geometry<Twisted> dual_geometry;
   Topology primal_topology;
   Topology dual_topology;
 
   void initialize(PamCoupler &coupler, ModelParameters &params,
-                  ThermoPotential &thermodynamics, Topology &primal_topo,
+                  const ThermoPotential &thermodynamics, Topology &primal_topo,
                   Topology &dual_topo, const Geometry<Straight> &primal_geom,
-                  const Geometry<Twisted> &dual_geom) {
+                  const Geometry<Twisted> &dual_geom);
+  static void initialize(VariableSetBase &varset, PamCoupler &coupler,
+                         ModelParameters &params,
+                         const ThermoPotential &thermodynamics,
+                         Topology &primal_topo, Topology &dual_topo,
+                         const Geometry<Straight> &primal_geom,
+                         const Geometry<Twisted> &dual_geom) {
 
-    this->thermo = &thermodynamics;
-    this->primal_geometry = primal_geom;
-    this->dual_geometry = dual_geom;
-    this->primal_topology = primal_topo;
-    this->dual_topology = dual_topo;
+    varset.thermo = thermodynamics;
+    varset.primal_geometry = primal_geom;
+    varset.dual_geometry = dual_geom;
+    varset.primal_topology = primal_topo;
+    varset.dual_topology = dual_topo;
 
     // If more physics parameterizations are added this logic might need to
     // change
-    couple_wind = !(coupler.get_option<std::string>("sgs") == "none");
+    varset.couple_wind = !(coupler.get_option<std::string>("sgs") == "none");
 
     // dens_pos IS NOT BEING PROPERLY DEALLOCATED AT THE END OF THE RUN IE WHEN
     // THE POOL IS DESTROYED THIS IS REALLY WEIRD
@@ -52,7 +83,7 @@ public:
 
     for (int l = ndensity_dycore; l < ndensity_nophysics; l++) {
       // dens_pos_host(l) = params.dycore_tracerpos[l-ndensity_dycore];
-      dens_pos[l] = params.dycore_tracerpos[l - ndensity_dycore];
+      varset.dens_pos[l] = params.dycore_tracerpos[l - ndensity_dycore];
     }
 
     std::vector<std::string> tracer_names_loc = coupler.get_tracer_names();
@@ -62,22 +93,22 @@ public:
       std::string desc;
       coupler.get_tracer_info(tracer_names_loc[tr], desc, found, positive,
                               adds_mass);
-      dens_name[tr + ndensity_nophysics] = tracer_names_loc[tr];
-      dens_desc[tr + ndensity_nophysics] = desc;
+      varset.dens_name[tr + ndensity_nophysics] = tracer_names_loc[tr];
+      varset.dens_desc[tr + ndensity_nophysics] = desc;
       // dens_pos_host      (tr+ndensity_nophysics) = positive ;
-      dens_pos[tr + ndensity_nophysics] = positive;
+      varset.dens_pos[tr + ndensity_nophysics] = positive;
       if (tracer_names_loc[tr] == std::string("water_vapor")) {
-        dm_id_vap = tr;
+        varset.dm_id_vap = tr;
         water_vapor_found = true;
       }
       if (tracer_names_loc[tr] == std::string("cloud_liquid") ||
           tracer_names_loc[tr] == std::string("cloud_water")) {
-        dm_id_liq = tr;
-        liquid_found = true;
+        varset.dm_id_liq = tr;
+        varset.liquid_found = true;
       }
       if (tracer_names_loc[tr] == std::string("cloud_ice")) {
-        dm_id_ice = tr;
-        ice_found = true;
+        varset.dm_id_ice = tr;
+        varset.ice_found = true;
       }
     }
     if (ntracers_physics > 0) {
@@ -88,14 +119,15 @@ public:
     }
 
     for (int i = ndensity_dycore; i < ndensity_nophysics; i++) {
-      dens_name[i] = "Tracer" + std::to_string(i - ndensity_dycore);
-      dens_desc[i] = "Dycore Tracer" + std::to_string(i - ndensity_dycore);
+      varset.dens_name[i] = "Tracer" + std::to_string(i - ndensity_dycore);
+      varset.dens_desc[i] =
+          "Dycore Tracer" + std::to_string(i - ndensity_dycore);
     }
 
     for (int i = 0; i < ndensity; i++) {
-      serial_print("Density" + std::to_string(i) + " Name: " + dens_name[i] +
-                       " Desc: " + dens_desc[i] +
-                       " Pos: " + std::to_string(dens_pos[i]),
+      serial_print("Density" + std::to_string(i) + " Name: " +
+                       varset.dens_name[i] + " Desc: " + varset.dens_desc[i] +
+                       " Pos: " + std::to_string(varset.dens_pos[i]),
                    params.masterproc);
     }
 
@@ -103,50 +135,45 @@ public:
     yakl::fence();
   }
 
-  virtual real YAKL_INLINE get_total_density(const real5d densvar, int k, int j,
-                                             int i, int ks, int js, int is,
-                                             int n){};
-  virtual real YAKL_INLINE get_dry_density(const real5d densvar, int k, int j,
-                                           int i, int ks, int js, int is,
-                                           int n){};
-  virtual real YAKL_INLINE get_entropic_var(const real5d densvar, int k, int j,
-                                            int i, int ks, int js, int is,
-                                            int n){};
-  virtual void YAKL_INLINE set_density(real dens, real dry_dens, real5d densvar,
-                                       int k, int j, int i, int ks, int js,
-                                       int is, int n){};
-  virtual void YAKL_INLINE set_entropic_density(real entropic_var_density,
-                                                real5d densvar, int k, int j,
-                                                int i, int ks, int js, int is,
-                                                int n){};
-  virtual real YAKL_INLINE get_alpha(const real5d densvar, int k, int j, int i,
-                                     int ks, int js, int is, int n){};
-  virtual real YAKL_INLINE get_qd(const real5d densvar, int k, int j, int i,
-                                  int ks, int js, int is, int n){};
-  virtual real YAKL_INLINE get_qv(const real5d densvar, int k, int j, int i,
-                                  int ks, int js, int is, int n){};
-  virtual real YAKL_INLINE get_ql(const real5d densvar, int k, int j, int i,
-                                  int ks, int js, int is, int n){};
-  virtual real YAKL_INLINE get_qi(const real5d densvar, int k, int j, int i,
-                                  int ks, int js, int is, int n){};
+  real YAKL_INLINE get_total_density(const real5d densvar, int k, int j, int i,
+                                     int ks, int js, int is, int n) const {};
+  real YAKL_INLINE get_dry_density(const real5d densvar, int k, int j, int i,
+                                   int ks, int js, int is, int n) const {};
+  real YAKL_INLINE get_entropic_var(const real5d densvar, int k, int j, int i,
+                                    int ks, int js, int is, int n) const {};
+  void YAKL_INLINE set_density(real dens, real dry_dens, real5d densvar, int k,
+                               int j, int i, int ks, int js, int is,
+                               int n) const {};
+  void YAKL_INLINE set_entropic_density(real entropic_var_density,
+                                        real5d densvar, int k, int j, int i,
+                                        int ks, int js, int is, int n) const {};
+  real YAKL_INLINE get_alpha(const real5d densvar, int k, int j, int i, int ks,
+                             int js, int is, int n) const {};
+  real YAKL_INLINE get_qd(const real5d densvar, int k, int j, int i, int ks,
+                          int js, int is, int n) const {};
+  real YAKL_INLINE get_qv(const real5d densvar, int k, int j, int i, int ks,
+                          int js, int is, int n) const {};
+  real YAKL_INLINE get_ql(const real5d densvar, int k, int j, int i, int ks,
+                          int js, int is, int n) const {};
+  real YAKL_INLINE get_qi(const real5d densvar, int k, int j, int i, int ks,
+                          int js, int is, int n) const {};
+  real YAKL_INLINE _water_dens(const real5d densvar, int k, int j, int i,
+                               int ks, int js, int is, int n) const {};
 
-  void
-  convert_dynamics_to_coupler_state(PamCoupler &coupler,
-                                    const FieldSet<nprognostic> &prog_vars,
-                                    const FieldSet<nconstant> &const_vars){};
-  void
-  convert_coupler_to_dynamics_state(PamCoupler &coupler,
-                                    FieldSet<nprognostic> &prog_vars,
-                                    const FieldSet<nconstant> &const_vars){};
+  void convert_dynamics_to_coupler_state(PamCoupler &coupler,
+                                         const FieldSet<nprognostic> &prog_vars,
+                                         const FieldSet<nconstant> &const_vars);
+  void convert_coupler_to_dynamics_state(PamCoupler &coupler,
+                                         FieldSet<nprognostic> &prog_vars,
+                                         const FieldSet<nconstant> &const_vars);
 };
 
-class VariableSet_Couple : public VariableSet {
-public:
-  void
-  convert_dynamics_to_coupler_state(PamCoupler &coupler,
-                                    const FieldSet<nprognostic> &prog_vars,
-                                    const FieldSet<nconstant> &const_vars) {
+template <class T>
+void VariableSetBase<T>::convert_dynamics_to_coupler_state(
+    PamCoupler &coupler, const FieldSet<nprognostic> &prog_vars,
+    const FieldSet<nconstant> &const_vars) {
 
+  if constexpr (T::couple) {
     int dis = dual_topology.is;
     int djs = dual_topology.js;
     int dks = dual_topology.ks;
@@ -174,7 +201,7 @@ public:
           "Dynamics to Coupler State winds",
           SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                           dual_topology.n_cells_x, dual_topology.nens),
-          YAKL_LAMBDA(int k, int j, int i, int n) {
+          YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
             // IN 3D THIS IS MORE COMPLICATED
             real uvel_l =
                 prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, i + pis,
@@ -222,7 +249,7 @@ public:
         "Dynamics to Coupler State densities",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
+        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
           real qd = get_qd(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks,
                            djs, dis, n);
           real qv = get_qv(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks,
@@ -244,7 +271,7 @@ public:
                         dis, n);
           }
 
-          real temp = thermo->compute_T(alpha, entropic_var, qd, qv, ql, qi);
+          real temp = thermo.compute_T(alpha, entropic_var, qd, qv, ql, qi);
 
           dm_dens_dry(k, j, i, n) =
               get_dry_density(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks,
@@ -259,12 +286,14 @@ public:
           }
         });
   }
+}
 
-  void
-  convert_coupler_to_dynamics_state(PamCoupler &coupler,
-                                    FieldSet<nprognostic> &prog_vars,
-                                    const FieldSet<nconstant> &const_vars) {
+template <class T>
+void VariableSetBase<T>::convert_coupler_to_dynamics_state(
+    PamCoupler &coupler, FieldSet<nprognostic> &prog_vars,
+    const FieldSet<nconstant> &const_vars) {
 
+  if constexpr (T::couple) {
     int dis = dual_topology.is;
     int djs = dual_topology.js;
     int dks = dual_topology.ks;
@@ -291,7 +320,7 @@ public:
         "Coupler to Dynamics State Densities",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
+        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
           real temp = dm_temp(k, j, i, n);
 
           real dens_dry = dm_dens_dry(k, j, i, n);
@@ -313,7 +342,7 @@ public:
 
           real alpha = 1.0_fp / dens;
           real entropic_var =
-              thermo->compute_entropic_var_from_T(alpha, temp, qd, qv, ql, qi);
+              thermo.compute_entropic_var_from_T(alpha, temp, qd, qv, ql, qi);
 
           set_density(
               dens * dual_geometry.get_area_11entity(k + dks, j + djs, i + dis),
@@ -338,7 +367,7 @@ public:
           "Coupler to Dynamics State Primal U",
           SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                           primal_topology.n_cells_x, primal_topology.nens),
-          YAKL_LAMBDA(int k, int j, int i, int n) {
+          YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
             // periodic wrapping
             int il = i - 1;
             if (i == 0) {
@@ -354,243 +383,319 @@ public:
           "Coupler to Dynamics State Primal W",
           SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                           primal_topology.n_cells_x, primal_topology.nens),
-          YAKL_LAMBDA(int k, int j, int i, int n) {
+          YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
             prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs, i + pis, n) =
                 (dm_wvel(k, j, i, n) + dm_wvel(k + 1, j, i, n)) * 0.5_fp *
                 primal_geometry.get_area_01entity(k + pks, j + pjs, i + pis);
           });
     }
   }
-};
+}
 
 // ADD ANELASTIC AND PRESSURE VERSIONS HERE ALSO
-class VariableSet_SWE : public VariableSet {
-public:
-  void initialize(PamCoupler &coupler, ModelParameters &params,
-                  ThermoPotential &thermodynamics, Topology &primal_topo,
-                  Topology &dual_topo, const Geometry<Straight> &primal_geom,
-                  const Geometry<Twisted> &dual_geom) {
-    dens_name[0] = "h";
-    dens_desc[0] = "fluid height";
-    dens_pos[0] = false;
-    VariableSet::initialize(coupler, params, thermodynamics, primal_topo,
-                            dual_topo, primal_geom, dual_geom);
-  }
-};
+template <>
+void VariableSetBase<VS_SWE>::initialize(PamCoupler &coupler,
+                                         ModelParameters &params,
+                                         const ThermoPotential &thermodynamics,
+                                         Topology &primal_topo,
+                                         Topology &dual_topo,
+                                         const Geometry<Straight> &primal_geom,
+                                         const Geometry<Twisted> &dual_geom) {
+  dens_name[0] = "h";
+  dens_desc[0] = "fluid height";
+  dens_pos[0] = false;
+  VariableSetBase::initialize(*this, coupler, params, thermodynamics,
+                              primal_topo, dual_topo, primal_geom, dual_geom);
+}
 
-class VariableSet_TSWE : public VariableSet {
-public:
-  void initialize(PamCoupler &coupler, ModelParameters &params,
-                  ThermoPotential &thermodynamics, Topology &primal_topo,
-                  Topology &dual_topo, const Geometry<Straight> &primal_geom,
-                  const Geometry<Twisted> &dual_geom) {
-    dens_name[0] = "h";
-    dens_name[1] = "S";
-    dens_desc[0] = "fluid height";
-    dens_desc[1] = "bouyancy density";
-    dens_pos[0] = false;
-    dens_pos[1] = false;
-    VariableSet::initialize(coupler, params, thermodynamics, primal_topo,
-                            dual_topo, primal_geom, dual_geom);
-  }
-};
+template <>
+void VariableSetBase<VS_TSWE>::initialize(PamCoupler &coupler,
+                                          ModelParameters &params,
+                                          const ThermoPotential &thermodynamics,
+                                          Topology &primal_topo,
+                                          Topology &dual_topo,
+                                          const Geometry<Straight> &primal_geom,
+                                          const Geometry<Twisted> &dual_geom) {
+  dens_name[0] = "h";
+  dens_name[1] = "S";
+  dens_desc[0] = "fluid height";
+  dens_desc[1] = "bouyancy density";
+  dens_pos[0] = false;
+  dens_pos[1] = false;
+  VariableSetBase::initialize(*this, coupler, params, thermodynamics,
+                              primal_topo, dual_topo, primal_geom, dual_geom);
+}
 
-class VariableSet_CE : public VariableSet {
-public:
-  void initialize(PamCoupler &coupler, ModelParameters &params,
-                  ThermoPotential &thermodynamics, Topology &primal_topo,
-                  Topology &dual_topo, const Geometry<Straight> &primal_geom,
-                  const Geometry<Twisted> &dual_geom) {
-    dens_name[0] = "rho";
-    dens_name[1] = "S";
-    dens_desc[0] = "fluid density";
-    dens_desc[1] = "entropic variable density";
-    dens_pos[0] = false;
-    dens_pos[1] = false;
-    VariableSet::initialize(coupler, params, thermodynamics, primal_topo,
-                            dual_topo, primal_geom, dual_geom);
-  }
-  real YAKL_INLINE get_entropic_var(const real5d densvar, int k, int j, int i,
-                                    int ks, int js, int is, int n) {
-    return densvar(1, k + ks, j + js, i + is, n) /
-           densvar(0, k + ks, j + js, i + is, n);
-  };
-  real YAKL_INLINE get_alpha(const real5d densvar, int k, int j, int i, int ks,
-                             int js, int is, int n) {
-    return dual_geometry.get_area_11entity(k + ks, j + js, i + is) /
-           densvar(0, k + ks, j + js, i + is, n);
-  };
-};
+template <>
+void VariableSetBase<VS_CE>::initialize(PamCoupler &coupler,
+                                        ModelParameters &params,
+                                        const ThermoPotential &thermodynamics,
+                                        Topology &primal_topo,
+                                        Topology &dual_topo,
+                                        const Geometry<Straight> &primal_geom,
+                                        const Geometry<Twisted> &dual_geom) {
+  dens_name[0] = "rho";
+  dens_name[1] = "S";
+  dens_desc[0] = "fluid density";
+  dens_desc[1] = "entropic variable density";
+  dens_pos[0] = false;
+  dens_pos[1] = false;
+  VariableSetBase::initialize(*this, coupler, params, thermodynamics,
+                              primal_topo, dual_topo, primal_geom, dual_geom);
+}
+
+template <>
+real YAKL_INLINE VariableSetBase<VS_CE>::get_entropic_var(const real5d densvar,
+                                                          int k, int j, int i,
+                                                          int ks, int js,
+                                                          int is, int n) const {
+  return densvar(1, k + ks, j + js, i + is, n) /
+         densvar(0, k + ks, j + js, i + is, n);
+}
+template <>
+real YAKL_INLINE VariableSetBase<VS_CE>::get_alpha(const real5d densvar, int k,
+                                                   int j, int i, int ks, int js,
+                                                   int is, int n) const {
+  return dual_geometry.get_area_11entity(k + ks, j + js, i + is) /
+         densvar(0, k + ks, j + js, i + is, n);
+}
 
 // We rely on physics packages ie micro to provide water species- must at least
 // have vapor and cloud liquid
 
-class VariableSet_MCE_rho : public VariableSet_Couple {
-public:
-  void initialize(PamCoupler &coupler, ModelParameters &params,
-                  ThermoPotential &thermodynamics, Topology &primal_topo,
-                  Topology &dual_topo, const Geometry<Straight> &primal_geom,
-                  const Geometry<Twisted> &dual_geom) {
-    dens_name[0] = "rho";
-    dens_name[1] = "S";
-    dens_desc[0] = "fluid density";
-    dens_desc[1] = "entropic variable density";
-    dens_pos[0] = false;
-    dens_pos[1] = false;
-    VariableSet::initialize(coupler, params, thermodynamics, primal_topo,
-                            dual_topo, primal_geom, dual_geom);
-  }
+template <>
+void VariableSetBase<VS_MCE_rho>::initialize(
+    PamCoupler &coupler, ModelParameters &params,
+    const ThermoPotential &thermodynamics, Topology &primal_topo,
+    Topology &dual_topo, const Geometry<Straight> &primal_geom,
+    const Geometry<Twisted> &dual_geom) {
+  dens_name[0] = "rho";
+  dens_name[1] = "S";
+  dens_desc[0] = "fluid density";
+  dens_desc[1] = "entropic variable density";
+  dens_pos[0] = false;
+  dens_pos[1] = false;
+  VariableSetBase::initialize(*this, coupler, params, thermodynamics,
+                              primal_topo, dual_topo, primal_geom, dual_geom);
+}
 
-  real YAKL_INLINE get_total_density(const real5d densvar, int k, int j, int i,
-                                     int ks, int js, int is, int n) {
-    return densvar(0, k + ks, j + js, i + is, n);
-  }
+template <>
+real YAKL_INLINE VariableSetBase<VS_MCE_rho>::get_total_density(
+    const real5d densvar, int k, int j, int i, int ks, int js, int is,
+    int n) const {
+  return densvar(0, k + ks, j + js, i + is, n);
+}
 
-  real YAKL_INLINE get_entropic_var(const real5d densvar, int k, int j, int i,
-                                    int ks, int js, int is, int n) {
-    return densvar(1, k + ks, j + js, i + is, n) /
-           densvar(0, k + ks, j + js, i + is, n);
-  }
+template <>
+real YAKL_INLINE VariableSetBase<VS_MCE_rho>::get_entropic_var(
+    const real5d densvar, int k, int j, int i, int ks, int js, int is,
+    int n) const {
+  return densvar(1, k + ks, j + js, i + is, n) /
+         densvar(0, k + ks, j + js, i + is, n);
+}
 
-  real YAKL_INLINE get_alpha(const real5d densvar, int k, int j, int i, int ks,
-                             int js, int is, int n) {
-    return dual_geometry.get_area_11entity(k + ks, j + js, i + is) /
-           densvar(0, k + ks, j + js, i + is, n);
-  }
+template <>
+real YAKL_INLINE VariableSetBase<VS_MCE_rho>::get_alpha(const real5d densvar,
+                                                        int k, int j, int i,
+                                                        int ks, int js, int is,
+                                                        int n) const {
+  return dual_geometry.get_area_11entity(k + ks, j + js, i + is) /
+         densvar(0, k + ks, j + js, i + is, n);
+}
 
-  real YAKL_INLINE get_qv(const real5d densvar, int k, int j, int i, int ks,
-                          int js, int is, int n) {
-    return densvar(dm_id_vap + ndensity_nophysics, k + ks, j + js, i + is, n) /
-           densvar(0, k + ks, j + js, i + is, n);
-  }
-  real YAKL_INLINE get_ql(const real5d densvar, int k, int j, int i, int ks,
-                          int js, int is, int n) {
-    return densvar(dm_id_liq + ndensity_nophysics, k + ks, j + js, i + is, n) /
-           densvar(0, k + ks, j + js, i + is, n);
-  }
-  real YAKL_INLINE get_qi(const real5d densvar, int k, int j, int i, int ks,
-                          int js, int is, int n) {
-    return densvar(dm_id_ice + ndensity_nophysics, k + ks, j + js, i + is, n) /
-           densvar(0, k + ks, j + js, i + is, n);
-  }
+template <>
+real YAKL_INLINE VariableSetBase<VS_MCE_rho>::get_qv(const real5d densvar,
+                                                     int k, int j, int i,
+                                                     int ks, int js, int is,
+                                                     int n) const {
+  return densvar(dm_id_vap + ndensity_nophysics, k + ks, j + js, i + is, n) /
+         densvar(0, k + ks, j + js, i + is, n);
+}
+template <>
+real YAKL_INLINE VariableSetBase<VS_MCE_rho>::get_ql(const real5d densvar,
+                                                     int k, int j, int i,
+                                                     int ks, int js, int is,
+                                                     int n) const {
+  return densvar(dm_id_liq + ndensity_nophysics, k + ks, j + js, i + is, n) /
+         densvar(0, k + ks, j + js, i + is, n);
+}
+template <>
+real YAKL_INLINE VariableSetBase<VS_MCE_rho>::get_qi(const real5d densvar,
+                                                     int k, int j, int i,
+                                                     int ks, int js, int is,
+                                                     int n) const {
+  return densvar(dm_id_ice + ndensity_nophysics, k + ks, j + js, i + is, n) /
+         densvar(0, k + ks, j + js, i + is, n);
+}
 
-  real YAKL_INLINE _water_dens(const real5d densvar, int k, int j, int i,
-                               int ks, int js, int is, int n) {
-    real vap_dens =
-        densvar(dm_id_vap + ndensity_nophysics, k + ks, j + js, i + is, n);
-    real liq_dens = 0.0_fp;
-    real ice_dens = 0.0_fp;
-    if (liquid_found) {
-      liq_dens =
-          densvar(dm_id_liq + ndensity_nophysics, k + ks, j + js, i + is, n);
-    }
-    if (ice_found) {
-      ice_dens =
-          densvar(dm_id_ice + ndensity_nophysics, k + ks, j + js, i + is, n);
-    }
-    return vap_dens + liq_dens + ice_dens;
+template <>
+real YAKL_INLINE VariableSetBase<VS_MCE_rho>::_water_dens(const real5d densvar,
+                                                          int k, int j, int i,
+                                                          int ks, int js,
+                                                          int is, int n) const {
+  real vap_dens =
+      densvar(dm_id_vap + ndensity_nophysics, k + ks, j + js, i + is, n);
+  real liq_dens = 0.0_fp;
+  real ice_dens = 0.0_fp;
+  if (liquid_found) {
+    liq_dens =
+        densvar(dm_id_liq + ndensity_nophysics, k + ks, j + js, i + is, n);
   }
+  if (ice_found) {
+    ice_dens =
+        densvar(dm_id_ice + ndensity_nophysics, k + ks, j + js, i + is, n);
+  }
+  return vap_dens + liq_dens + ice_dens;
+}
 
-  real YAKL_INLINE get_dry_density(const real5d densvar, int k, int j, int i,
-                                   int ks, int js, int is, int n) {
-    return (densvar(0, k + ks, j + js, i + is, n) -
-            _water_dens(densvar, k, j, i, ks, js, is, n));
-  }
-  real YAKL_INLINE get_qd(const real5d densvar, int k, int j, int i, int ks,
-                          int js, int is, int n) {
-    return (densvar(0, k + ks, j + js, i + is, n) -
-            _water_dens(densvar, k, j, i, ks, js, is, n)) /
-           densvar(0, k + ks, j + js, i + is, n);
-  }
+template <>
+real YAKL_INLINE VariableSetBase<VS_MCE_rho>::get_dry_density(
+    const real5d densvar, int k, int j, int i, int ks, int js, int is,
+    int n) const {
+  return (densvar(0, k + ks, j + js, i + is, n) -
+          _water_dens(densvar, k, j, i, ks, js, is, n));
+}
+template <>
+real YAKL_INLINE VariableSetBase<VS_MCE_rho>::get_qd(const real5d densvar,
+                                                     int k, int j, int i,
+                                                     int ks, int js, int is,
+                                                     int n) const {
+  return (densvar(0, k + ks, j + js, i + is, n) -
+          _water_dens(densvar, k, j, i, ks, js, is, n)) /
+         densvar(0, k + ks, j + js, i + is, n);
+}
 
-  void YAKL_INLINE set_density(real dens, real dryden, real5d densvar, int k,
-                               int j, int i, int ks, int js, int is, int n) {
-    densvar(0, k + ks, j + js, i + is, n) = dens;
-  }
-  void YAKL_INLINE set_entropic_density(real entropic_var_density,
-                                        real5d densvar, int k, int j, int i,
-                                        int ks, int js, int is, int n) {
-    densvar(1, k + ks, j + js, i + is, n) = entropic_var_density;
-  }
-};
+template <>
+void YAKL_INLINE VariableSetBase<VS_MCE_rho>::set_density(
+    real dens, real dryden, real5d densvar, int k, int j, int i, int ks, int js,
+    int is, int n) const {
+  densvar(0, k + ks, j + js, i + is, n) = dens;
+}
+template <>
+void YAKL_INLINE VariableSetBase<VS_MCE_rho>::set_entropic_density(
+    real entropic_var_density, real5d densvar, int k, int j, int i, int ks,
+    int js, int is, int n) const {
+  densvar(1, k + ks, j + js, i + is, n) = entropic_var_density;
+}
 
-class VariableSet_MCE_rhod : public VariableSet_Couple {
-public:
-  void initialize(PamCoupler &coupler, ModelParameters &params,
-                  ThermoPotential &thermodynamics, Topology &primal_topo,
-                  Topology &dual_topo, const Geometry<Straight> &primal_geom,
-                  const Geometry<Twisted> &dual_geom) {
-    dens_name[0] = "rho_d";
-    dens_name[1] = "S";
-    dens_desc[0] = "fluid dry density";
-    dens_desc[1] = "entropic variable density";
-    dens_pos[0] = false;
-    dens_pos[1] = false;
-    VariableSet::initialize(coupler, params, thermodynamics, primal_topo,
-                            dual_topo, primal_geom, dual_geom);
-  }
+template <>
+void VariableSetBase<VS_MCE_rhod>::initialize(
+    PamCoupler &coupler, ModelParameters &params,
+    const ThermoPotential &thermodynamics, Topology &primal_topo,
+    Topology &dual_topo, const Geometry<Straight> &primal_geom,
+    const Geometry<Twisted> &dual_geom) {
+  dens_name[0] = "rho_d";
+  dens_name[1] = "S";
+  dens_desc[0] = "fluid dry density";
+  dens_desc[1] = "entropic variable density";
+  dens_pos[0] = false;
+  dens_pos[1] = false;
+  VariableSetBase::initialize(*this, coupler, params, thermodynamics,
+                              primal_topo, dual_topo, primal_geom, dual_geom);
+}
 
-  real YAKL_INLINE get_total_density(const real5d densvar, int k, int j, int i,
-                                     int ks, int js, int is, int n) {
-    real dry_dens = densvar(0, k + ks, j + js, i + is, n);
-    real vap_dens =
-        densvar(dm_id_vap + ndensity_nophysics, k + ks, j + js, i + is, n);
-    real liq_dens = 0.0_fp;
-    real ice_dens = 0.0_fp;
-    if (liquid_found) {
-      liq_dens =
-          densvar(dm_id_liq + ndensity_nophysics, k + ks, j + js, i + is, n);
-    }
-    if (ice_found) {
-      ice_dens =
-          densvar(dm_id_ice + ndensity_nophysics, k + ks, j + js, i + is, n);
-    }
-    return dry_dens + vap_dens + liq_dens + ice_dens;
+template <>
+real YAKL_INLINE VariableSetBase<VS_MCE_rhod>::get_total_density(
+    const real5d densvar, int k, int j, int i, int ks, int js, int is,
+    int n) const {
+  real dry_dens = densvar(0, k + ks, j + js, i + is, n);
+  real vap_dens =
+      densvar(dm_id_vap + ndensity_nophysics, k + ks, j + js, i + is, n);
+  real liq_dens = 0.0_fp;
+  real ice_dens = 0.0_fp;
+  if (liquid_found) {
+    liq_dens =
+        densvar(dm_id_liq + ndensity_nophysics, k + ks, j + js, i + is, n);
   }
+  if (ice_found) {
+    ice_dens =
+        densvar(dm_id_ice + ndensity_nophysics, k + ks, j + js, i + is, n);
+  }
+  return dry_dens + vap_dens + liq_dens + ice_dens;
+}
 
-  real YAKL_INLINE get_dry_density(const real5d densvar, int k, int j, int i,
-                                   int ks, int js, int is, int n) {
-    return densvar(0, k + ks, j + js, i + is, n);
-  }
-  real YAKL_INLINE get_entropic_var(const real5d densvar, int k, int j, int i,
-                                    int ks, int js, int is, int n) {
-    return densvar(1, k + ks, j + js, i + is, n) /
-           get_total_density(densvar, k, j, i, ks, js, is, n);
-  }
+template <>
+real YAKL_INLINE VariableSetBase<VS_MCE_rhod>::get_dry_density(
+    const real5d densvar, int k, int j, int i, int ks, int js, int is,
+    int n) const {
+  return densvar(0, k + ks, j + js, i + is, n);
+}
+template <>
+real YAKL_INLINE VariableSetBase<VS_MCE_rhod>::get_entropic_var(
+    const real5d densvar, int k, int j, int i, int ks, int js, int is,
+    int n) const {
+  return densvar(1, k + ks, j + js, i + is, n) /
+         get_total_density(densvar, k, j, i, ks, js, is, n);
+}
 
-  real YAKL_INLINE get_alpha(const real5d densvar, int k, int j, int i, int ks,
-                             int js, int is, int n) {
-    return dual_geometry.get_area_11entity(k + ks, j + js, i + is) /
-           get_total_density(densvar, k, j, i, ks, js, is, n);
-  }
-  real YAKL_INLINE get_qd(const real5d densvar, int k, int j, int i, int ks,
-                          int js, int is, int n) {
-    return densvar(0, k + ks, j + js, i + is, n) /
-           get_total_density(densvar, k, j, i, ks, js, is, n);
-  }
+template <>
+real YAKL_INLINE VariableSetBase<VS_MCE_rhod>::get_alpha(const real5d densvar,
+                                                         int k, int j, int i,
+                                                         int ks, int js, int is,
+                                                         int n) const {
+  return dual_geometry.get_area_11entity(k + ks, j + js, i + is) /
+         get_total_density(densvar, k, j, i, ks, js, is, n);
+}
+template <>
+real YAKL_INLINE VariableSetBase<VS_MCE_rhod>::get_qd(const real5d densvar,
+                                                      int k, int j, int i,
+                                                      int ks, int js, int is,
+                                                      int n) const {
+  return densvar(0, k + ks, j + js, i + is, n) /
+         get_total_density(densvar, k, j, i, ks, js, is, n);
+}
 
-  real YAKL_INLINE get_qv(const real5d densvar, int k, int j, int i, int ks,
-                          int js, int is, int n) {
-    return densvar(dm_id_vap + ndensity_nophysics, k + ks, j + js, i + is, n) /
-           get_total_density(densvar, k, j, i, ks, js, is, n);
-  }
-  real YAKL_INLINE get_ql(const real5d densvar, int k, int j, int i, int ks,
-                          int js, int is, int n) {
-    return densvar(dm_id_liq + ndensity_nophysics, k + ks, j + js, i + is, n) /
-           get_total_density(densvar, k, j, i, ks, js, is, n);
-  }
-  real YAKL_INLINE get_qi(const real5d densvar, int k, int j, int i, int ks,
-                          int js, int is, int n) {
-    return densvar(dm_id_ice + ndensity_nophysics, k + ks, j + js, i + is, n) /
-           get_total_density(densvar, k, j, i, ks, js, is, n);
-  }
-  void YAKL_INLINE set_density(real dens, real drydens, real5d densvar, int k,
-                               int j, int i, int ks, int js, int is, int n) {
-    densvar(0, k + ks, j + js, i + is, n) = drydens;
-  }
-  void YAKL_INLINE set_entropic_density(real entropic_var_density,
-                                        real5d densvar, int k, int j, int i,
-                                        int ks, int js, int is, int n) {
-    densvar(1, k + ks, j + js, i + is, n) = entropic_var_density;
-  }
-};
+template <>
+real YAKL_INLINE VariableSetBase<VS_MCE_rhod>::get_qv(const real5d densvar,
+                                                      int k, int j, int i,
+                                                      int ks, int js, int is,
+                                                      int n) const {
+  return densvar(dm_id_vap + ndensity_nophysics, k + ks, j + js, i + is, n) /
+         get_total_density(densvar, k, j, i, ks, js, is, n);
+}
+template <>
+real YAKL_INLINE VariableSetBase<VS_MCE_rhod>::get_ql(const real5d densvar,
+                                                      int k, int j, int i,
+                                                      int ks, int js, int is,
+                                                      int n) const {
+  return densvar(dm_id_liq + ndensity_nophysics, k + ks, j + js, i + is, n) /
+         get_total_density(densvar, k, j, i, ks, js, is, n);
+}
+template <>
+real YAKL_INLINE VariableSetBase<VS_MCE_rhod>::get_qi(const real5d densvar,
+                                                      int k, int j, int i,
+                                                      int ks, int js, int is,
+                                                      int n) const {
+  return densvar(dm_id_ice + ndensity_nophysics, k + ks, j + js, i + is, n) /
+         get_total_density(densvar, k, j, i, ks, js, is, n);
+}
+template <>
+void YAKL_INLINE VariableSetBase<VS_MCE_rhod>::set_density(
+    real dens, real drydens, real5d densvar, int k, int j, int i, int ks,
+    int js, int is, int n) const {
+  densvar(0, k + ks, j + js, i + is, n) = drydens;
+}
+template <>
+void YAKL_INLINE VariableSetBase<VS_MCE_rhod>::set_entropic_density(
+    real entropic_var_density, real5d densvar, int k, int j, int i, int ks,
+    int js, int is, int n) const {
+  densvar(1, k + ks, j + js, i + is, n) = entropic_var_density;
+}
+
+#ifdef _SWE
+using VariableSet = VariableSetBase<VS_SWE>;
+#elif _TSWE
+using VariableSet = VariableSetBase<VS_TSWE>;
+#elif _CE
+using VariableSet = VariableSetBase<VS_CE>;
+#elif _MCErho
+using VariableSet = VariableSetBase<VS_MCE_rho>;
+#elif _MCErhod
+using VariableSet = VariableSetBase<VS_MCE_rhod>;
+#elif _CEp
+using VariableSet = VariableSetBase<VS_CE_p>;
+#elif _MCErhop
+using VariableSet = VariableSetBase<VS_MCE_rhop>;
+#elif _MCErhodp
+using VariableSet = VariableSetBase<VS_MCE_rhodp>;
+#endif

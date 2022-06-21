@@ -9,6 +9,7 @@
 #include "hamiltonian.h"
 #include "hodge_star.h"
 #include "recon.h"
+#include "thermo.h"
 #include "wedge.h"
 
 // *******   Functionals/Hamiltonians   ***********//
@@ -24,9 +25,7 @@ Hamiltonian_TSWE_Hs Hs;
 VariableSet_TSWE varset;
 #endif
 
-#ifdef _THERMONONE
 ThermoPotential thermo;
-#endif
 
 // *******   Diagnostics   ***********//
 

@@ -13,13 +13,13 @@ struct pvpe {
 class Functional_PVPE {
 public:
   bool is_initialized;
-  VariableSet *varset;
+  VariableSet varset;
 
   Functional_PVPE() { this->is_initialized = false; }
 
   void initialize(VariableSet &variableset) {
     this->is_initialized = true;
-    this->varset = &variableset;
+    this->varset = variableset;
   }
 
   real YAKL_INLINE compute_hv(const real5d dens, int is, int js, int ks, int i,
@@ -188,13 +188,13 @@ class Functional_PVPE_extruded {
 
 public:
   bool is_initialized;
-  VariableSet *varset;
+  VariableSet varset;
 
   Functional_PVPE_extruded() { this->is_initialized = false; }
 
   void initialize(VariableSet &variableset) {
     this->is_initialized = true;
-    this->varset = &variableset;
+    this->varset = variableset;
   }
 
   real YAKL_INLINE compute_hvxz(const real5d dens, int is, int js, int ks,

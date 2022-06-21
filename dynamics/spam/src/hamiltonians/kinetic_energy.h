@@ -94,7 +94,7 @@ class Hamiltonian_Hk {
 public:
   Geometry<Straight> primal_geometry;
   Geometry<Twisted> dual_geometry;
-  VariableSet *varset;
+  VariableSet varset;
   bool is_initialized;
 
   Hamiltonian_Hk() { this->is_initialized = false; }
@@ -105,7 +105,7 @@ public:
     this->primal_geometry = primal_geom;
     this->dual_geometry = dual_geom;
     this->is_initialized = true;
-    this->varset = &variableset;
+    this->varset = variableset;
   }
 
   real YAKL_INLINE compute_KE(const real5d v, const real5d dens, int is, int js,
@@ -364,7 +364,7 @@ class Hamiltonian_Hk_extruded {
 public:
   Geometry<Straight> primal_geometry;
   Geometry<Twisted> dual_geometry;
-  VariableSet *varset;
+  VariableSet varset;
   bool is_initialized;
 
   Hamiltonian_Hk_extruded() { this->is_initialized = false; }
@@ -375,7 +375,7 @@ public:
     this->primal_geometry = primal_geom;
     this->dual_geometry = dual_geom;
     this->is_initialized = true;
-    this->varset = &variableset;
+    this->varset = variableset;
   }
 
   real YAKL_INLINE compute_KE_top(const real5d v, const real5d w,

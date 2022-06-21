@@ -57,251 +57,256 @@ struct thermo_constants {
   real delta_d = Rd / Cvd;
 };
 
-class ThermoPotential {
+class ThermoNone {
 
 public:
   thermo_constants cst;
 
-  virtual real YAKL_INLINE compute_U(real alpha, real entropic_var, real qd,
-                                     real qv, real ql, real qi){};
+  real YAKL_INLINE compute_U(real alpha, real entropic_var, real qd, real qv,
+                             real ql, real qi) const {};
 
-  virtual real YAKL_INLINE compute_dUdalpha(real alpha, real entropic_var,
-                                            real qd, real qv, real ql,
-                                            real qi){};
+  real YAKL_INLINE compute_dUdalpha(real alpha, real entropic_var, real qd,
+                                    real qv, real ql, real qi) const {};
 
-  virtual real YAKL_INLINE compute_dUdentropic_var_density(real alpha,
-                                                           real entropic_var,
-                                                           real qd, real qv,
-                                                           real ql, real qi){};
+  real YAKL_INLINE compute_dUdentropic_var_density(real alpha,
+                                                   real entropic_var, real qd,
+                                                   real qv, real ql,
+                                                   real qi) const {};
 
-  virtual real YAKL_INLINE compute_dUdqd(real alpha, real entropic_var, real qd,
-                                         real qv, real ql, real qi){};
+  real YAKL_INLINE compute_dUdqd(real alpha, real entropic_var, real qd,
+                                 real qv, real ql, real qi) const {};
 
-  virtual real YAKL_INLINE compute_dUdqv(real alpha, real entropic_var, real qd,
-                                         real qv, real ql, real qi){};
+  real YAKL_INLINE compute_dUdqv(real alpha, real entropic_var, real qd,
+                                 real qv, real ql, real qi) const {};
 
-  virtual real YAKL_INLINE compute_dUdql(real alpha, real entropic_var, real qd,
-                                         real qv, real ql, real qi){};
+  real YAKL_INLINE compute_dUdql(real alpha, real entropic_var, real qd,
+                                 real qv, real ql, real qi) const {};
 
-  virtual real YAKL_INLINE compute_dUdqi(real alpha, real entropic_var, real qd,
-                                         real qv, real ql, real qi){};
+  real YAKL_INLINE compute_dUdqi(real alpha, real entropic_var, real qd,
+                                 real qv, real ql, real qi) const {};
 
-  virtual real YAKL_INLINE compute_H(real p, real entropic_var, real qd,
-                                     real qv, real ql, real qi){};
+  real YAKL_INLINE compute_H(real p, real entropic_var, real qd, real qv,
+                             real ql, real qi) const {};
 
-  virtual real YAKL_INLINE compute_dHdp(real p, real entropic_var, real qd,
-                                        real qv, real ql, real qi){};
+  real YAKL_INLINE compute_dHdp(real p, real entropic_var, real qd, real qv,
+                                real ql, real qi) const {};
 
-  virtual real YAKL_INLINE compute_dHdentropic_var_density(real p,
-                                                           real entropic_var,
-                                                           real qd, real qv,
-                                                           real ql, real qi){};
+  real YAKL_INLINE compute_dHdentropic_var_density(real p, real entropic_var,
+                                                   real qd, real qv, real ql,
+                                                   real qi) const {};
 
-  virtual real YAKL_INLINE compute_dHdqd(real p, real entropic_var, real qd,
-                                         real qv, real ql, real qi){};
+  real YAKL_INLINE compute_dHdqd(real p, real entropic_var, real qd, real qv,
+                                 real ql, real qi) const {};
 
-  virtual real YAKL_INLINE compute_dHdqv(real p, real entropic_var, real qd,
-                                         real qv, real ql, real qi){};
+  real YAKL_INLINE compute_dHdqv(real p, real entropic_var, real qd, real qv,
+                                 real ql, real qi) const {};
 
-  virtual real YAKL_INLINE compute_dHdql(real p, real entropic_var, real qd,
-                                         real qv, real ql, real qi){};
+  real YAKL_INLINE compute_dHdql(real p, real entropic_var, real qd, real qv,
+                                 real ql, real qi) const {};
 
-  virtual real YAKL_INLINE compute_dHdqi(real p, real entropic_var, real qd,
-                                         real qv, real ql, real qi){};
+  real YAKL_INLINE compute_dHdqi(real p, real entropic_var, real qd, real qv,
+                                 real ql, real qi) const {};
 
-  virtual real YAKL_INLINE compute_alpha(real p, real T, real qd, real qv,
-                                         real ql, real qi){};
+  real YAKL_INLINE compute_alpha(real p, real T, real qd, real qv, real ql,
+                                 real qi) const {};
 
-  virtual real YAKL_INLINE compute_entropic_var(real p, real T, real qd,
-                                                real qv, real ql, real qi){};
+  real YAKL_INLINE compute_entropic_var(real p, real T, real qd, real qv,
+                                        real ql, real qi) const {};
 
-  virtual real YAKL_INLINE solve_p(real rho, real entropic_var, real qd,
-                                   real qv, real ql, real qi){};
+  real YAKL_INLINE solve_p(real rho, real entropic_var, real qd, real qv,
+                           real ql, real qi) const {};
 
-  virtual real YAKL_INLINE compute_T(real alpha, real entropic_var, real qd,
-                                     real qv, real ql, real qi){};
+  real YAKL_INLINE compute_T(real alpha, real entropic_var, real qd, real qv,
+                             real ql, real qi) const {};
 
-  virtual real YAKL_INLINE compute_entropic_var_from_T(real alpha, real T,
-                                                       real qd, real qv,
-                                                       real ql, real qi){};
+  real YAKL_INLINE compute_entropic_var_from_T(real alpha, real T, real qd,
+                                               real qv, real ql,
+                                               real qi) const {};
 };
 
 // This ignores any q arguments, as expected
-class IdealGas_Pottemp : public ThermoPotential {
+class IdealGas_Pottemp {
 public:
+  thermo_constants cst;
+
   real YAKL_INLINE compute_U(real alpha, real entropic_var, real qd, real qv,
-                             real ql, real qi) {
+                             real ql, real qi) const {
     return cst.Cvd * pow(entropic_var, cst.gamma_d) *
            pow(cst.Rd / (alpha * cst.pr), cst.delta_d);
   };
 
   real YAKL_INLINE compute_dUdalpha(real alpha, real entropic_var, real qd,
-                                    real qv, real ql, real qi) {
+                                    real qv, real ql, real qi) const {
     return -cst.pr * pow(entropic_var * cst.Rd / (alpha * cst.pr), cst.gamma_d);
   };
 
   real YAKL_INLINE compute_dUdentropic_var_density(real alpha,
                                                    real entropic_var, real qd,
-                                                   real qv, real ql, real qi) {
+                                                   real qv, real ql,
+                                                   real qi) const {
     return cst.Cpd * pow(entropic_var * cst.Rd / (alpha * cst.pr), cst.delta_d);
   };
 
   real YAKL_INLINE compute_dUdqd(real alpha, real entropic_var, real qd,
-                                 real qv, real ql, real qi) {
+                                 real qv, real ql, real qi) const {
     return 0;
   };
 
   real YAKL_INLINE compute_dUdqv(real alpha, real entropic_var, real qd,
-                                 real qv, real ql, real qi) {
+                                 real qv, real ql, real qi) const {
     return 0;
   };
 
   real YAKL_INLINE compute_dUdql(real alpha, real entropic_var, real qd,
-                                 real qv, real ql, real qi) {
+                                 real qv, real ql, real qi) const {
     return 0;
   };
 
   real YAKL_INLINE compute_dUdqi(real alpha, real entropic_var, real qd,
-                                 real qv, real ql, real qi) {
+                                 real qv, real ql, real qi) const {
     return 0;
   };
 
   real YAKL_INLINE compute_H(real p, real entropic_var, real qd, real qv,
-                             real ql, real qi) {
+                             real ql, real qi) const {
     return cst.Cpd * entropic_var * pow(p / cst.pr, cst.kappa_d);
   };
 
   real YAKL_INLINE compute_dHdp(real p, real entropic_var, real qd, real qv,
-                                real ql, real qi) {
+                                real ql, real qi) const {
     return cst.Rd * entropic_var / p * pow(p / cst.pr, cst.kappa_d);
   };
 
   real YAKL_INLINE compute_dHdentropic_var_density(real p, real entropic_var,
                                                    real qd, real qv, real ql,
-                                                   real qi) {
+                                                   real qi) const {
     return cst.Cpd * pow(p / cst.pr, cst.kappa_d);
   };
 
   real YAKL_INLINE compute_dHdqd(real p, real entropic_var, real qd, real qv,
-                                 real ql, real qi) {
+                                 real ql, real qi) const {
     return 0;
   };
 
   real YAKL_INLINE compute_dHdqv(real p, real entropic_var, real qd, real qv,
-                                 real ql, real qi) {
+                                 real ql, real qi) const {
     return 0;
   };
 
   real YAKL_INLINE compute_dHdql(real p, real entropic_var, real qd, real qv,
-                                 real ql, real qi) {
+                                 real ql, real qi) const {
     return 0;
   };
 
   real YAKL_INLINE compute_dHdqi(real p, real entropic_var, real qd, real qv,
-                                 real ql, real qi) {
+                                 real ql, real qi) const {
     return 0;
   };
 
   real YAKL_INLINE compute_alpha(real p, real T, real qd, real qv, real ql,
-                                 real qi) {
+                                 real qi) const {
     return cst.Rd * T / p;
   };
 
   real YAKL_INLINE compute_entropic_var(real p, real T, real qd, real qv,
-                                        real ql, real qi) {
+                                        real ql, real qi) const {
     return T * pow(cst.pr / p, cst.kappa_d);
   };
 
   real YAKL_INLINE solve_p(real rho, real entropic_var, real qd, real qv,
-                           real ql, real qi) {
+                           real ql, real qi) const {
     return cst.pr * pow(entropic_var * rho * cst.Rd / cst.pr, cst.gamma_d);
   };
 
   real YAKL_INLINE compute_T(real alpha, real entropic_var, real qd, real qv,
-                             real ql, real qi) {
+                             real ql, real qi) const {
     real p =
         cst.pr * pow(entropic_var * cst.Rd / (alpha * cst.pr), cst.gamma_d);
     return alpha * p / cst.Rd;
-  };
+  }
 
   real YAKL_INLINE compute_entropic_var_from_T(real alpha, real T, real qd,
-                                               real qv, real ql, real qi) {
+                                               real qv, real ql,
+                                               real qi) const {
     real p = cst.Rd * T / alpha;
     return cst.Rd * T / cst.Rd * pow(cst.pr / p, cst.kappa_d);
-  };
+  }
 };
 
 // This ignores any q arguments, as expected
-class IdealGas_Entropy : public ThermoPotential {
+class IdealGas_Entropy {
 public:
+  thermo_constants cst;
+
   real YAKL_INLINE compute_U(real alpha, real entropic_var, real qd, real qv,
-                             real ql, real qi){};
+                             real ql, real qi) const {};
 
   real YAKL_INLINE compute_dUdalpha(real alpha, real entropic_var, real qd,
-                                    real qv, real ql, real qi){};
+                                    real qv, real ql, real qi) const {};
 
   real YAKL_INLINE compute_dUdentropic_var_density(real alpha,
                                                    real entropic_var, real qd,
-                                                   real qv, real ql, real qi){};
+                                                   real qv, real ql,
+                                                   real qi) const {};
 
   real YAKL_INLINE compute_dUdqd(real alpha, real entropic_var, real qd,
-                                 real qv, real ql, real qi) {
+                                 real qv, real ql, real qi) const {
     return 0;
   };
 
   real YAKL_INLINE compute_dUdqv(real alpha, real entropic_var, real qd,
-                                 real qv, real ql, real qi) {
+                                 real qv, real ql, real qi) const {
     return 0;
   };
 
   real YAKL_INLINE compute_dUdql(real alpha, real entropic_var, real qd,
-                                 real qv, real ql, real qi) {
+                                 real qv, real ql, real qi) const {
     return 0;
   };
 
   real YAKL_INLINE compute_dUdqi(real alpha, real entropic_var, real qd,
-                                 real qv, real ql, real qi) {
+                                 real qv, real ql, real qi) const {
     return 0;
   };
 
   real YAKL_INLINE compute_H(real p, real entropic_var, real qd, real qv,
-                             real ql, real qi){};
+                             real ql, real qi) const {};
 
   real YAKL_INLINE compute_dHdp(real p, real entropic_var, real qd, real qv,
-                                real ql, real qi){};
+                                real ql, real qi) const {};
 
   real YAKL_INLINE compute_dHdentropic_var_density(real p, real entropic_var,
                                                    real qd, real qv, real ql,
-                                                   real qi){};
+                                                   real qi) const {};
 
   real YAKL_INLINE compute_dHdqd(real p, real entropic_var, real qd, real qv,
-                                 real ql, real qi) {
+                                 real ql, real qi) const {
     return 0;
   };
 
   real YAKL_INLINE compute_dHdqv(real p, real entropic_var, real qd, real qv,
-                                 real ql, real qi) {
+                                 real ql, real qi) const {
     return 0;
   };
 
   real YAKL_INLINE compute_dHdql(real p, real entropic_var, real qd, real qv,
-                                 real ql, real qi) {
+                                 real ql, real qi) const {
     return 0;
   };
 
   real YAKL_INLINE compute_dHdqi(real p, real entropic_var, real qd, real qv,
-                                 real ql, real qi) {
+                                 real ql, real qi) const {
     return 0;
   };
 
   real YAKL_INLINE compute_alpha(real p, real T, real qd, real qv, real ql,
-                                 real qi){};
+                                 real qi) const {};
 
   real YAKL_INLINE compute_entropic_var(real p, real T, real qd, real qv,
-                                        real ql, real qi){};
+                                        real ql, real qi) const {};
 
   real YAKL_INLINE solve_p(real rho, real entropic_var, real qd, real qv,
-                           real ql, real qi){};
+                           real ql, real qi) const {};
 };
 
 // THE INTERNAL ENERGY HERE IS NOT BEING CONSERVED PROPERLY, IN THE SENSE THAT
@@ -311,10 +316,11 @@ public:
 
 // ALSO, FIX LATENT HEAT DEFS TO MATCH CHANGES IN PAPER
 
-class ConstantKappa_VirtualPottemp : public ThermoPotential {
+class ConstantKappa_VirtualPottemp {
 public:
+  thermo_constants cst;
   real YAKL_INLINE compute_U(real alpha, real entropic_var, real qd, real qv,
-                             real ql, real qi) {
+                             real ql, real qi) const {
     return cst.Cvd * pow(entropic_var, cst.gamma_d) *
            pow(cst.Rd / (alpha * cst.pr), cst.delta_d);
     //-cst.Cvd*(qd * cst.Rd + qv * cst.Rv)/cst.Rd*cst.Tr + qv*cst.Lvr -
@@ -322,95 +328,96 @@ public:
   };
 
   real YAKL_INLINE compute_dUdalpha(real alpha, real entropic_var, real qd,
-                                    real qv, real ql, real qi) {
+                                    real qv, real ql, real qi) const {
     return -cst.pr * pow(entropic_var * cst.Rd / (alpha * cst.pr), cst.gamma_d);
   };
 
   real YAKL_INLINE compute_dUdentropic_var_density(real alpha,
                                                    real entropic_var, real qd,
-                                                   real qv, real ql, real qi) {
+                                                   real qv, real ql,
+                                                   real qi) const {
     return cst.Cpd * pow(entropic_var * cst.Rd / (alpha * cst.pr), cst.delta_d);
   };
 
   real YAKL_INLINE compute_dUdqd(real alpha, real entropic_var, real qd,
-                                 real qv, real ql, real qi) {
+                                 real qv, real ql, real qi) const {
     return 0;
     // return -cst.Cvd * cst.Tr;
   };
 
   real YAKL_INLINE compute_dUdqv(real alpha, real entropic_var, real qd,
-                                 real qv, real ql, real qi) {
+                                 real qv, real ql, real qi) const {
     return 0;
     // return -cst.Cvd*cst.Rv/cst.Rd*cst.Tr + cst.Lvr - cst.Rv*cst.Tr;
   };
 
   real YAKL_INLINE compute_dUdql(real alpha, real entropic_var, real qd,
-                                 real qv, real ql, real qi) {
+                                 real qv, real ql, real qi) const {
     return 0;
   };
 
   real YAKL_INLINE compute_dUdqi(real alpha, real entropic_var, real qd,
-                                 real qv, real ql, real qi) {
+                                 real qv, real ql, real qi) const {
     return 0;
     // return -cst.Lfr;
   };
 
   real YAKL_INLINE compute_H(real p, real entropic_var, real qd, real qv,
-                             real ql, real qi) {
+                             real ql, real qi) const {
     return cst.Cpd * entropic_var * pow(p / cst.pr, cst.kappa_d) -
            cst.Cpd * (qd * cst.Rd + qv * cst.Rv) / cst.Rd * cst.Tr +
            qv * cst.Lvr + qd * cst.Rd * cst.Tr - qi * cst.Lfr;
   };
 
   real YAKL_INLINE compute_dHdp(real p, real entropic_var, real qd, real qv,
-                                real ql, real qi) {
+                                real ql, real qi) const {
     return cst.Rd * entropic_var / p * pow(p / cst.pr, cst.kappa_d);
   };
 
   real YAKL_INLINE compute_dHdentropic_var_density(real p, real entropic_var,
                                                    real qd, real qv, real ql,
-                                                   real qi) {
+                                                   real qi) const {
     return cst.Cpd * pow(p / cst.pr, cst.kappa_d);
   };
 
   real YAKL_INLINE compute_dHdqd(real p, real entropic_var, real qd, real qv,
-                                 real ql, real qi) {
+                                 real ql, real qi) const {
     return -cst.Cvd * cst.Tr;
   };
 
   real YAKL_INLINE compute_dHdqv(real p, real entropic_var, real qd, real qv,
-                                 real ql, real qi) {
+                                 real ql, real qi) const {
     return -cst.Cvd * cst.Rv / cst.Rd * cst.Tr + cst.Lvr - cst.Rv * cst.Tr;
   };
 
   real YAKL_INLINE compute_dHdql(real p, real entropic_var, real qd, real qv,
-                                 real ql, real qi) {
+                                 real ql, real qi) const {
     return 0;
   };
 
   real YAKL_INLINE compute_dHdqi(real p, real entropic_var, real qd, real qv,
-                                 real ql, real qi) {
+                                 real ql, real qi) const {
     return -cst.Lfr;
   };
 
   real YAKL_INLINE compute_alpha(real p, real T, real qd, real qv, real ql,
-                                 real qi) {
+                                 real qi) const {
     return (qd * cst.Rd + qv * cst.Rv) * T / p;
   };
 
   real YAKL_INLINE compute_entropic_var(real p, real T, real qd, real qv,
-                                        real ql, real qi) {
+                                        real ql, real qi) const {
     return (qd * cst.Rd + qv * cst.Rv) * T / cst.Rd *
            pow(cst.pr / p, cst.kappa_d);
   };
 
   real YAKL_INLINE solve_p(real rho, real entropic_var, real qd, real qv,
-                           real ql, real qi) {
+                           real ql, real qi) const {
     return cst.pr * pow(entropic_var * rho * cst.Rd / cst.pr, cst.gamma_d);
   };
 
   real YAKL_INLINE compute_T(real alpha, real entropic_var, real qd, real qv,
-                             real ql, real qi) {
+                             real ql, real qi) const {
     real Rstar = cst.Rd * qd + cst.Rv * qv;
     real p =
         cst.pr * pow(entropic_var * cst.Rd / (alpha * cst.pr), cst.gamma_d);
@@ -418,179 +425,200 @@ public:
   };
 
   real YAKL_INLINE compute_entropic_var_from_T(real alpha, real T, real qd,
-                                               real qv, real ql, real qi) {
+                                               real qv, real ql,
+                                               real qi) const {
     real Rstar = cst.Rd * qd + cst.Rv * qv;
     real p = Rstar * T / alpha;
     return Rstar * T / cst.Rd * pow(cst.pr / p, cst.kappa_d);
   };
 };
 
-class ConstantKappa_Entropy : public ThermoPotential {
+class ConstantKappa_Entropy {
 public:
+  thermo_constants cst;
   real YAKL_INLINE compute_U(real alpha, real entropic_var, real qd, real qv,
-                             real ql, real qi){};
+                             real ql, real qi) const {};
 
   real YAKL_INLINE compute_dUdalpha(real alpha, real entropic_var, real qd,
-                                    real qv, real ql, real qi){};
+                                    real qv, real ql, real qi) const {};
 
   real YAKL_INLINE compute_dUdentropic_var_density(real alpha,
                                                    real entropic_var, real qd,
-                                                   real qv, real ql, real qi){};
+                                                   real qv, real ql,
+                                                   real qi) const {};
 
   real YAKL_INLINE compute_dUdqd(real alpha, real entropic_var, real qd,
-                                 real qv, real ql, real qi){};
+                                 real qv, real ql, real qi) const {};
 
   real YAKL_INLINE compute_dUdqv(real alpha, real entropic_var, real qd,
-                                 real qv, real ql, real qi){};
+                                 real qv, real ql, real qi) const {};
 
   real YAKL_INLINE compute_dUdql(real alpha, real entropic_var, real qd,
-                                 real qv, real ql, real qi){};
+                                 real qv, real ql, real qi) const {};
 
   real YAKL_INLINE compute_dUdqi(real alpha, real entropic_var, real qd,
-                                 real qv, real ql, real qi){};
+                                 real qv, real ql, real qi) const {};
 
   real YAKL_INLINE compute_H(real p, real entropic_var, real qd, real qv,
-                             real ql, real qi){};
+                             real ql, real qi) const {};
 
   real YAKL_INLINE compute_dHdp(real p, real entropic_var, real qd, real qv,
-                                real ql, real qi){};
+                                real ql, real qi) const {};
 
   real YAKL_INLINE compute_dHdentropic_var_density(real p, real entropic_var,
                                                    real qd, real qv, real ql,
-                                                   real qi){};
+                                                   real qi) const {};
 
   real YAKL_INLINE compute_dHdqd(real p, real entropic_var, real qd, real qv,
-                                 real ql, real qi){};
+                                 real ql, real qi) const {};
 
   real YAKL_INLINE compute_dHdqv(real p, real entropic_var, real qd, real qv,
-                                 real ql, real qi){};
+                                 real ql, real qi) const {};
 
   real YAKL_INLINE compute_dHdql(real p, real entropic_var, real qd, real qv,
-                                 real ql, real qi){};
+                                 real ql, real qi) const {};
 
   real YAKL_INLINE compute_dHdqi(real p, real entropic_var, real qd, real qv,
-                                 real ql, real qi){};
+                                 real ql, real qi) const {};
 
   real YAKL_INLINE compute_alpha(real p, real T, real qd, real qv, real ql,
-                                 real qi){};
+                                 real qi) const {};
 
   real YAKL_INLINE compute_entropic_var(real p, real T, real qd, real qv,
-                                        real ql, real qi){};
+                                        real ql, real qi) const {};
 
   real YAKL_INLINE solve_p(real rho, real entropic_var, real qd, real qv,
-                           real ql, real qi){};
+                           real ql, real qi) const {};
 };
 
-class Unapprox_Pottemp : public ThermoPotential {
+class Unapprox_Pottemp {
 public:
+  thermo_constants cst;
   real YAKL_INLINE compute_U(real alpha, real entropic_var, real qd, real qv,
-                             real ql, real qi){};
+                             real ql, real qi) const {};
 
   real YAKL_INLINE compute_dUdalpha(real alpha, real entropic_var, real qd,
-                                    real qv, real ql, real qi){};
+                                    real qv, real ql, real qi) const {};
 
   real YAKL_INLINE compute_dUdentropic_var_density(real alpha,
                                                    real entropic_var, real qd,
-                                                   real qv, real ql, real qi){};
+                                                   real qv, real ql,
+                                                   real qi) const {};
 
   real YAKL_INLINE compute_dUdqd(real alpha, real entropic_var, real qd,
-                                 real qv, real ql, real qi){};
+                                 real qv, real ql, real qi) const {};
 
   real YAKL_INLINE compute_dUdqv(real alpha, real entropic_var, real qd,
-                                 real qv, real ql, real qi){};
+                                 real qv, real ql, real qi) const {};
 
   real YAKL_INLINE compute_dUdql(real alpha, real entropic_var, real qd,
-                                 real qv, real ql, real qi){};
+                                 real qv, real ql, real qi) const {};
 
   real YAKL_INLINE compute_dUdqi(real alpha, real entropic_var, real qd,
-                                 real qv, real ql, real qi){};
+                                 real qv, real ql, real qi) const {};
 
   real YAKL_INLINE compute_H(real p, real entropic_var, real qd, real qv,
-                             real ql, real qi){};
+                             real ql, real qi) const {};
 
   real YAKL_INLINE compute_dHdp(real p, real entropic_var, real qd, real qv,
-                                real ql, real qi){};
+                                real ql, real qi) const {};
 
   real YAKL_INLINE compute_dHdentropic_var_density(real p, real entropic_var,
                                                    real qd, real qv, real ql,
-                                                   real qi){};
+                                                   real qi) const {};
 
   real YAKL_INLINE compute_dHdqd(real p, real entropic_var, real qd, real qv,
-                                 real ql, real qi){};
+                                 real ql, real qi) const {};
 
   real YAKL_INLINE compute_dHdqv(real p, real entropic_var, real qd, real qv,
-                                 real ql, real qi){};
+                                 real ql, real qi) const {};
 
   real YAKL_INLINE compute_dHdql(real p, real entropic_var, real qd, real qv,
-                                 real ql, real qi){};
+                                 real ql, real qi) const {};
 
   real YAKL_INLINE compute_dHdqi(real p, real entropic_var, real qd, real qv,
-                                 real ql, real qi){};
+                                 real ql, real qi) const {};
 
   real YAKL_INLINE compute_alpha(real p, real T, real qd, real qv, real ql,
-                                 real qi){};
+                                 real qi) const {};
 
   real YAKL_INLINE compute_entropic_var(real p, real T, real qd, real qv,
-                                        real ql, real qi){};
+                                        real ql, real qi) const {};
 
   real YAKL_INLINE solve_p(real rho, real entropic_var, real qd, real qv,
-                           real ql, real qi){};
+                           real ql, real qi) const {};
 };
 
-class Unapprox_Entropy : public ThermoPotential {
+class Unapprox_Entropy {
 public:
+  thermo_constants cst;
   real YAKL_INLINE compute_U(real alpha, real entropic_var, real qd, real qv,
-                             real ql, real qi){};
+                             real ql, real qi) const {};
 
   real YAKL_INLINE compute_dUdalpha(real alpha, real entropic_var, real qd,
-                                    real qv, real ql, real qi){};
+                                    real qv, real ql, real qi) const {};
 
   real YAKL_INLINE compute_dUdentropic_var_density(real alpha,
                                                    real entropic_var, real qd,
-                                                   real qv, real ql, real qi){};
+                                                   real qv, real ql,
+                                                   real qi) const {};
 
   real YAKL_INLINE compute_dUdqd(real alpha, real entropic_var, real qd,
-                                 real qv, real ql, real qi){};
+                                 real qv, real ql, real qi) const {};
 
   real YAKL_INLINE compute_dUdqv(real alpha, real entropic_var, real qd,
-                                 real qv, real ql, real qi){};
+                                 real qv, real ql, real qi) const {};
 
   real YAKL_INLINE compute_dUdql(real alpha, real entropic_var, real qd,
-                                 real qv, real ql, real qi){};
+                                 real qv, real ql, real qi) const {};
 
   real YAKL_INLINE compute_dUdqi(real alpha, real entropic_var, real qd,
-                                 real qv, real ql, real qi){};
+                                 real qv, real ql, real qi) const {};
 
   real YAKL_INLINE compute_H(real p, real entropic_var, real qd, real qv,
-                             real ql, real qi){};
+                             real ql, real qi) const {};
 
   real YAKL_INLINE compute_dHdp(real p, real entropic_var, real qd, real qv,
-                                real ql, real qi){};
+                                real ql, real qi) const {};
 
   real YAKL_INLINE compute_dHdentropic_var_density(real p, real entropic_var,
                                                    real qd, real qv, real ql,
-                                                   real qi){};
+                                                   real qi) const {};
 
   real YAKL_INLINE compute_dHdqd(real p, real entropic_var, real qd, real qv,
-                                 real ql, real qi){};
+                                 real ql, real qi) const {};
 
   real YAKL_INLINE compute_dHdqv(real p, real entropic_var, real qd, real qv,
-                                 real ql, real qi){};
+                                 real ql, real qi) const {};
 
   real YAKL_INLINE compute_dHdql(real p, real entropic_var, real qd, real qv,
-                                 real ql, real qi){};
+                                 real ql, real qi) const {};
 
   real YAKL_INLINE compute_dHdqi(real p, real entropic_var, real qd, real qv,
-                                 real ql, real qi){};
+                                 real ql, real qi) const {};
 
   real YAKL_INLINE compute_alpha(real p, real T, real qd, real qv, real ql,
-                                 real qi){};
+                                 real qi) const {};
 
   real YAKL_INLINE compute_entropic_var(real p, real T, real qd, real qv,
-                                        real ql, real qi){};
+                                        real ql, real qi) const {};
 
   real YAKL_INLINE solve_p(real rho, real entropic_var, real qd, real qv,
-                           real ql, real qi){};
+                           real ql, real qi) const {};
 };
+
+#ifdef _THERMONONE
+using ThermoPotential = ThermoNone;
+#elif _IDEAL_GAS_POTTEMP
+using ThermoPotential = IdealGas_Pottemp;
+#elif _IDEAL_GAS_ENTROPY
+using ThermoPotential = IdealGas_Entropy;
+#elif _CONST_KAPPA_VIRPOTTEMP
+using ThermoPotential = ConstantKappa_VirtualPottemp;
+#elif _UNAPPROX_POTTEMP
+using ThermoPotential = Unapprox_Pottemp;
+#elif _UNAPPROX_ENTROPY
+using ThermoPotential = Unapprox_Entropy;
+#endif
 
 #endif
