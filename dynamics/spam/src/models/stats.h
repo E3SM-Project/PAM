@@ -7,7 +7,7 @@
 
 class Stat {
 public:
-  real3d data;
+  realHost3d data;
   std::string name;
   int ndofs, size, nens;
 
@@ -19,7 +19,7 @@ public:
     nens = statnens;
 
     if (masterproc) {
-      data = real3d(name.c_str(), ndofs, size, nens);
+      data = realHost3d(name.c_str(), ndofs, size, nens);
     }
   }
 };
@@ -31,20 +31,21 @@ public:
   MPI_Status Status[nstats];
   int ierr;
   int masterproc;
-  const Topology *primal_topology;
-  const Topology *dual_topology;
-  Geometry *primal_geometry;
-  Geometry *dual_geometry;
+  Topology primal_topology;
+  Topology dual_topology;
+  Geometry<Straight> primal_geometry;
+  Geometry<Twisted> dual_geometry;
   int nens;
   int statsize;
 
   void initialize(ModelParameters &params, Parallel &par,
                   const Topology &primal_topo, const Topology &dual_topo,
-                  Geometry &primal_geom, Geometry &dual_geom) {
-    this->primal_topology = &primal_topo;
-    this->dual_topology = &dual_topo;
-    this->primal_geometry = &primal_geom;
-    this->dual_geometry = &dual_geom;
+                  const Geometry<Straight> &primal_geom,
+                  const Geometry<Twisted> &dual_geom) {
+    this->primal_topology = primal_topo;
+    this->dual_topology = dual_topo;
+    this->primal_geometry = primal_geom;
+    this->dual_geometry = dual_geom;
     this->nens = params.nens;
     this->masterproc = par.masterproc;
     this->statsize = params.Nsteps / params.Nstat + 1;

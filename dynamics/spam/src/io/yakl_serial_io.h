@@ -100,9 +100,9 @@ void FileIO::initialize(std::string outName, Topology &ptopo, Topology &dtopo,
         real5d(this->const_vars->fields_arr[i].name.c_str(),
                this->const_vars->fields_arr[i].total_dofs,
                this->const_vars->fields_arr[i]._nz,
-               this->const_vars->fields_arr[i].topology->n_cells_y,
-               this->const_vars->fields_arr[i].topology->n_cells_x,
-               this->const_vars->fields_arr[i].topology->nens);
+               this->const_vars->fields_arr[i].topology.n_cells_y,
+               this->const_vars->fields_arr[i].topology.n_cells_x,
+               this->const_vars->fields_arr[i].topology.nens);
   }
 
   for (int i = 0; i < this->prog_vars->fields_arr.size(); i++) {
@@ -112,18 +112,18 @@ void FileIO::initialize(std::string outName, Topology &ptopo, Topology &dtopo,
         real5d(this->prog_vars->fields_arr[i].name.c_str(),
                this->prog_vars->fields_arr[i].total_dofs,
                this->prog_vars->fields_arr[i]._nz,
-               this->prog_vars->fields_arr[i].topology->n_cells_y,
-               this->prog_vars->fields_arr[i].topology->n_cells_x,
-               this->prog_vars->fields_arr[i].topology->nens);
+               this->prog_vars->fields_arr[i].topology.n_cells_y,
+               this->prog_vars->fields_arr[i].topology.n_cells_x,
+               this->prog_vars->fields_arr[i].topology.nens);
   }
 
   for (auto &diag : *diagnostics) {
     auto &field = diag->field;
     nc.createDim(field.name + "_ndofs", field.total_dofs);
     diag_temp_arr.emplace_back(real5d(field.name.c_str(), field.total_dofs,
-                                      field._nz, field.topology->n_cells_y,
-                                      field.topology->n_cells_x,
-                                      field.topology->nens));
+                                      field._nz, field.topology.n_cells_y,
+                                      field.topology.n_cells_x,
+                                      field.topology.nens));
   }
 
   nc.close();
@@ -139,22 +139,23 @@ void FileIO::output(real time) {
 
   for (int l = 0; l < this->prog_vars->fields_arr.size(); l++) {
 
-    int is = this->prog_vars->fields_arr[l].topology->is;
-    int js = this->prog_vars->fields_arr[l].topology->js;
-    int ks = this->prog_vars->fields_arr[l].topology->ks;
+    int is = this->prog_vars->fields_arr[l].topology.is;
+    int js = this->prog_vars->fields_arr[l].topology.js;
+    int ks = this->prog_vars->fields_arr[l].topology.ks;
+    YAKL_SCOPE(prog_vars_fields, this->prog_vars->fields_arr);
+    YAKL_SCOPE(prog_temp_arr, this->prog_temp_arr);
     parallel_for(
         SimpleBounds<5>(this->prog_vars->fields_arr[l].total_dofs,
                         this->prog_vars->fields_arr[l]._nz,
-                        this->prog_vars->fields_arr[l].topology->n_cells_y,
-                        this->prog_vars->fields_arr[l].topology->n_cells_x,
-                        this->prog_vars->fields_arr[l].topology->nens),
+                        this->prog_vars->fields_arr[l].topology.n_cells_y,
+                        this->prog_vars->fields_arr[l].topology.n_cells_x,
+                        this->prog_vars->fields_arr[l].topology.nens),
         YAKL_LAMBDA(int ndof, int k, int j, int i, int n) {
-          this->prog_temp_arr[l](ndof, k, j, i, n) =
-              this->prog_vars->fields_arr[l].data(ndof, k + ks, j + js, i + is,
-                                                  n);
+          prog_temp_arr[l](ndof, k, j, i, n) =
+              prog_vars_fields[l].data(ndof, k + ks, j + js, i + is, n);
         });
 
-    if (this->prog_vars->fields_arr[l].topology->primal) {
+    if (this->prog_vars->fields_arr[l].topology.primal) {
       if (this->prog_vars->fields_arr[l].extdof == 1) {
         nc.write1(this->prog_temp_arr[l].createHostCopy(),
                   this->prog_vars->fields_arr[l].name,
@@ -193,18 +194,19 @@ void FileIO::output(real time) {
   for (int l = 0; l < diagnostics->size(); l++) {
     auto &field = (*diagnostics)[l]->field;
 
-    int is = field.topology->is;
-    int js = field.topology->js;
-    int ks = field.topology->ks;
+    int is = field.topology.is;
+    int js = field.topology.js;
+    int ks = field.topology.ks;
+    YAKL_SCOPE(diag_temp_arr_l, this->diag_temp_arr[l]);
     parallel_for(
-        SimpleBounds<5>(field.total_dofs, field._nz, field.topology->n_cells_y,
-                        field.topology->n_cells_x, field.topology->nens),
+        SimpleBounds<5>(field.total_dofs, field._nz, field.topology.n_cells_y,
+                        field.topology.n_cells_x, field.topology.nens),
         YAKL_LAMBDA(int ndof, int k, int j, int i, int n) {
-          this->diag_temp_arr[l](ndof, k, j, i, n) =
+          diag_temp_arr_l(ndof, k, j, i, n) =
               field.data(ndof, k + ks, j + js, i + is, n);
         });
 
-    if (field.topology->primal) {
+    if (field.topology.primal) {
       if (field.extdof == 1) {
         nc.write1(this->diag_temp_arr[l].createHostCopy(), field.name,
                   {field.name + "_ndofs", "primal_nlayers", "primal_ncells_y",
@@ -241,22 +243,24 @@ void FileIO::outputInit(real time) {
 
   for (int l = 0; l < this->const_vars->fields_arr.size(); l++) {
 
-    int is = this->const_vars->fields_arr[l].topology->is;
-    int js = this->const_vars->fields_arr[l].topology->js;
-    int ks = this->const_vars->fields_arr[l].topology->ks;
+    int is = this->const_vars->fields_arr[l].topology.is;
+    int js = this->const_vars->fields_arr[l].topology.js;
+    int ks = this->const_vars->fields_arr[l].topology.ks;
+
+    YAKL_SCOPE(const_vars_fields, this->const_vars->fields_arr);
+    YAKL_SCOPE(const_temp_arr, this->const_temp_arr);
     parallel_for(
         SimpleBounds<5>(this->const_vars->fields_arr[l].total_dofs,
                         this->const_vars->fields_arr[l]._nz,
-                        this->const_vars->fields_arr[l].topology->n_cells_y,
-                        this->const_vars->fields_arr[l].topology->n_cells_x,
-                        this->const_vars->fields_arr[l].topology->nens),
+                        this->const_vars->fields_arr[l].topology.n_cells_y,
+                        this->const_vars->fields_arr[l].topology.n_cells_x,
+                        this->const_vars->fields_arr[l].topology.nens),
         YAKL_LAMBDA(int ndof, int k, int j, int i, int n) {
-          this->const_temp_arr[l](ndof, k, j, i, n) =
-              this->const_vars->fields_arr[l].data(ndof, k + ks, j + js, i + is,
-                                                   n);
+          const_temp_arr[l](ndof, k, j, i, n) =
+              const_vars_fields[l].data(ndof, k + ks, j + js, i + is, n);
         });
 
-    if (this->const_vars->fields_arr[l].topology->primal) {
+    if (this->const_vars->fields_arr[l].topology.primal) {
       if (this->const_vars->fields_arr[l].extdof == 1) {
         nc.write(this->const_temp_arr[l].createHostCopy(),
                  this->const_vars->fields_arr[l].name,
@@ -299,7 +303,7 @@ void FileIO::outputStats(const Stats &stats) {
 
     for (int l = 0; l < this->statistics->stats_arr.size(); l++) {
       nc.write(
-          this->statistics->stats_arr[l].data.createHostCopy(),
+          this->statistics->stats_arr[l].data,
           this->statistics->stats_arr[l].name,
           {this->statistics->stats_arr[l].name + "_ndofs", "statsize", "nens"});
     }

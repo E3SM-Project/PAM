@@ -72,8 +72,9 @@ int main(int argc, char** argv) {
     {
       zint_in = real1d("zint_in",crm_nz+1);
       real dz = zlen/crm_nz;
-      for (int i=0;i<crm_nz+1;i++)
-      {zint_in(i) = i*dz;}
+      parallel_for(crm_nz+1, YAKL_LAMBDA(int i) {
+        zint_in(i) = i*dz;
+      });
     }
     
     //this partitions the domain if INNER_MPI is set, otherwise it does nothing

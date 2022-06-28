@@ -27,14 +27,10 @@ using pam::PamCoupler;
 
 class Dycore {
 public:
-#ifdef _LAYER
-  UniformRectangularStraightGeometry primal_geometry;
-  UniformRectangularTwistedGeometry dual_geometry;
-#elif _EXTRUDED
-  UniformRectangularStraightExtrudedGeometry primal_geometry;
-  UniformRectangularTwistedExtrudedGeometry dual_geometry;
-#endif
+  Geometry<Straight> primal_geometry;
+  Geometry<Twisted> dual_geometry;
 
+  std::unique_ptr<TestCase> testcase;
   ModelStats stats;
   FieldSet<nprognostic> prognostic_vars;
   FieldSet<nconstant> constant_vars;
@@ -71,7 +67,7 @@ public:
         par.masterproc);
     std::string inFile =
         coupler.get_option<std::string>("standalone_input_file");
-    readModelParamsFile(inFile, params, par, coupler.get_nz());
+    readModelParamsFile(inFile, params, par, coupler.get_nz(), testcase);
     debug_print("read parameters and partitioned domain/setting domain sizes",
                 par.masterproc);
 
@@ -95,9 +91,9 @@ public:
     std::array<std::string, nprognostic> prog_names_arr;
     std::array<std::string, nconstant> const_names_arr;
     std::array<std::string, nauxiliary> aux_names_arr;
-    std::array<const Topology *, nprognostic> prog_topo_arr;
-    std::array<const Topology *, nconstant> const_topo_arr;
-    std::array<const Topology *, nauxiliary> aux_topo_arr;
+    std::array<Topology, nprognostic> prog_topo_arr;
+    std::array<Topology, nconstant> const_topo_arr;
+    std::array<Topology, nauxiliary> aux_topo_arr;
     initialize_variables(primal_topology, dual_topology, prog_dofs_arr,
                          const_dofs_arr, aux_dofs_arr, prog_names_arr,
                          const_names_arr, aux_names_arr, prog_topo_arr,
@@ -144,8 +140,8 @@ public:
     // THE IC STRING?
     //  set the initial conditions and compute initial stats
     debug_print("start ic setting", par.masterproc);
-    set_initial_conditions(params, prognostic_vars, constant_vars,
-                           primal_geometry, dual_geometry);
+    testcase->set_initial_conditions(prognostic_vars, constant_vars,
+                                     primal_geometry, dual_geometry);
     prog_exchange.exchange_variable_set(prognostic_vars);
     const_exchange.exchange_variable_set(constant_vars);
     tendencies.compute_constants(constant_vars, prognostic_vars);
