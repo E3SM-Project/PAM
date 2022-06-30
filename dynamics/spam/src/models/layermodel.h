@@ -17,12 +17,11 @@
 Functional_PVPE PVPE;
 Hamiltonian_Hk Hk;
 
+VariableSet varset;
 #ifdef _SWE
 Hamiltonian_SWE_Hs Hs;
-VariableSet_SWE varset;
 #elif _TSWE
 Hamiltonian_TSWE_Hs Hs;
-VariableSet_TSWE varset;
 #endif
 
 ThermoPotential thermo;
