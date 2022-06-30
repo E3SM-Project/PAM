@@ -585,6 +585,7 @@ typedef yakl::Array<complex, 4, yakl::memDevice, yakl::styleC> complex4d;
 class ModelLinearSystem : public LinearSystem {
 public:
   complex4d complex_dens;
+  real ref_height;
 
   void initialize(ModelParameters &params, Topology &primal_topo,
                   Topology &dual_topo, Geometry &primal_geom,
@@ -595,6 +596,12 @@ public:
 
     complex_dens = complex4d("complex dens", dual_topo.nl, dual_topo.n_cells_y,
                              dual_topo.n_cells_x, dual_topo.nens);
+
+    if (params.initdataStr == "doublevortex") {
+      this->ref_height = 750;
+    } else if (params.initdataStr == "bickleyjet") {
+      this->ref_height = 1.0;
+    }
   }
 
   virtual void YAKL_INLINE solve(real dt, FieldSet<nprognostic> &rhs,
@@ -604,8 +611,6 @@ public:
 
     yakl::timer_start("Linear solve");
     auto grav = Hs.g;
-    // TODO: get this from somwhere
-    real ref_height = 750;
 
     auto n_cells_x = dual_topology->n_cells_x;
     auto n_cells_y = dual_topology->n_cells_y;
@@ -1276,10 +1281,54 @@ struct DoubleVortex {
   }
 };
 
+//real YAKL_INLINE bickley_tracer(real x, real y) {
+//
+//  return std::sin(bickley_constants.k * y);
+//}
+
+struct BickleyJet {
+  static real constexpr g = 9.80616_fp;
+  static real constexpr Lx = 4 * pi;
+  static real constexpr Ly = 4 * pi;
+  static real constexpr eps = 0.1_fp;
+  static real constexpr l = 0.5_fp;
+  static real constexpr k = 0.5_fp;
+  static real constexpr xc = 0.5_fp * Lx;
+  static real constexpr yc = 0.5_fp * Ly;
+
+  static real YAKL_INLINE coriolis_f(real x, real y) { return 0; }
+
+  static real YAKL_INLINE h_f(real x, real y) {
+    return 1;
+  }
+
+  static vec<2> YAKL_INLINE v_f(real x, real y) {
+    vec<2> vvec;
+    real U = std::pow(std::cosh(y), -2);
+    real psi = std::exp(-std::pow(y + l / 10, 2) / (2 * l * l)) *
+               std::cos(k * x) * std::cos(k * y);
+
+    real u = psi * (k * std::tan(k * y) + y / (l * l));
+    real v = -psi * k * std::tan(k * x);
+
+    vec<2> vvec;
+    vvec.u = U + eps * u;
+    vvec.v = eps * v;
+
+    return vvec;
+  }
+
+  static real YAKL_INLINE S_f(real x, real y) {
+    return g * h_f(x, y);
+  }
+};
+
 void testcase_from_string(std::unique_ptr<TestCase> &testcase,
                           std::string name) {
   if (name == "doublevortex") {
     testcase = std::make_unique<SWETestCase<DoubleVortex>>();
+  } else if (name == "bickleyjet" {
+    testcase = std::make_unique<SWETestCase<BickleyJet>>();
   } else {
     throw std::runtime_error("unknown test case");
   }
