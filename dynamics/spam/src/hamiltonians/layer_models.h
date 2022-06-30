@@ -187,7 +187,7 @@ public:
 #endif
 
     // Compute dHdh = g h + g hs + sum_nt 1/2 t + sum_nt 1/2 tfct
-    B(0, k + ks, j + js, i + is, n) = g * hs(0) + g * dens0(0);
+    B(0, k + ks, j + js, i + is, n) = g * hs0(0) + g * dens0(0);
     for (int l = 1; l < ntracers_active + 1; l++) {
       B(0, k + ks, j + js, i + is, n) += dens0(l) * 0.5_fp;
     }
