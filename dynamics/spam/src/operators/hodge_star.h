@@ -113,9 +113,11 @@ void YAKL_INLINE Hhat(SArray<real, 1, ndims> &u,
 }
 
 template <uint ord, int off = ord / 2 - 1>
-void YAKL_INLINE fourier_H(SArray<real, 1, ndims> &u, Geometry &pgeom,
-                           Geometry &dgeom, int is, int js, int ks, int i,
-                           int j, int k, int n, int nx, int ny, int nz) {
+void YAKL_INLINE fourier_H(SArray<real, 1, ndims> &u,
+                           const Geometry<Straight> &pgeom,
+                           const Geometry<Twisted> &dgeom, int is, int js,
+                           int ks, int i, int j, int k, int n, int nx, int ny,
+                           int nz) {
   SArray<real, 2, ndims, off> shift;
   SArray<real, 1, ndims> Hgeom;
   for (int d = 0; d < ndims; d++) {
@@ -344,7 +346,8 @@ real YAKL_INLINE Ihat(real Igeom, const SArray<real, 2, ndims, 2> &shift) {
 }
 
 template <uint ord, int off = ord / 2 - 1>
-real YAKL_INLINE fourier_I(Geometry &pgeom, Geometry &dgeom, int is, int js,
+real YAKL_INLINE fourier_I(const Geometry<Straight> &pgeom,
+                           const Geometry<Twisted> &dgeom, int is, int js,
                            int ks, int i, int j, int k, int n, int nx, int ny,
                            int nz) {
   SArray<real, 2, ndims, off> shift;

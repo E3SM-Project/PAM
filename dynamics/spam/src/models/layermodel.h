@@ -164,8 +164,8 @@ public:
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_H<1, diff_ord>(Uvar, Vvar, *this->primal_geometry,
-                                 *this->dual_geometry, dis, djs, dks, i, j, k,
+          compute_H<1, diff_ord>(Uvar, Vvar, this->primal_geometry,
+                                 this->dual_geometry, dis, djs, dks, i, j, k,
                                  n);
         });
   }
@@ -587,9 +587,11 @@ public:
   complex4d complex_dens;
   real ref_height;
 
-  void initialize(ModelParameters &params, Topology &primal_topo,
-                  Topology &dual_topo, Geometry &primal_geom,
-                  Geometry &dual_geom, ExchangeSet<nauxiliary> &aux_exchange,
+  void initialize(ModelParameters &params, const Topology &primal_topo,
+                  const Topology &dual_topo,
+                  const Geometry<Straight> &primal_geom,
+                  const Geometry<Twisted> &dual_geom,
+                  ExchangeSet<nauxiliary> &aux_exchange,
                   ExchangeSet<nprognostic> &prog_exchange) override {
     LinearSystem::initialize(params, primal_topo, dual_topo, primal_geom,
                              dual_geom, aux_exchange, prog_exchange);
@@ -612,17 +614,17 @@ public:
     yakl::timer_start("Linear solve");
     auto grav = Hs.g;
 
-    auto n_cells_x = dual_topology->n_cells_x;
-    auto n_cells_y = dual_topology->n_cells_y;
-    auto nl = dual_topology->nl;
-    auto nens = dual_topology->nens;
+    auto n_cells_x = dual_topology.n_cells_x;
+    auto n_cells_y = dual_topology.n_cells_y;
+    auto nl = dual_topology.nl;
+    auto nens = dual_topology.nens;
 
-    int pis = primal_topology->is;
-    int pjs = primal_topology->js;
-    int pks = primal_topology->ks;
-    int dis = dual_topology->is;
-    int djs = dual_topology->js;
-    int dks = dual_topology->ks;
+    int pis = primal_topology.is;
+    int pjs = primal_topology.js;
+    int pks = primal_topology.ks;
+    int dis = dual_topology.is;
+    int djs = dual_topology.js;
+    int dks = dual_topology.ks;
 
     real scale = 1.0 / (n_cells_x * n_cells_y);
     pocketfft::shape_t shape(4);
@@ -652,12 +654,12 @@ public:
 
     parallel_for(
         "compute dens0",
-        SimpleBounds<4>(primal_topology->nl, primal_topology->n_cells_y,
-                        primal_topology->n_cells_x, primal_topology->nens),
+        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_I<ndensity_active, diff_ord>(
-              dens0, dens_sol, *this->primal_geometry, *this->dual_geometry,
-              pis, pjs, pks, i, j, k, n);
+              dens0, dens_sol, this->primal_geometry, this->dual_geometry, pis,
+              pjs, pks, i, j, k, n);
         });
 
     this->aux_exchange->exchanges_arr[DENS0VAR].exchange_field(
@@ -665,8 +667,8 @@ public:
 
     parallel_for(
         "prepare rhs 1",
-        SimpleBounds<4>(primal_topology->nl, primal_topology->n_cells_y,
-                        primal_topology->n_cells_x, primal_topology->nens),
+        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           SArray<real, 1, ndensity_active> c;
 #ifdef _SWE
@@ -685,11 +687,11 @@ public:
 
     parallel_for(
         "prepare rhs 2",
-        SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y,
-                        dual_topology->n_cells_x, dual_topology->nens),
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_H<1, diff_ord>(U, v_rhs, *this->primal_geometry,
-                                 *this->dual_geometry, dis, djs, dks, i, j, k,
+          compute_H<1, diff_ord>(U, v_rhs, this->primal_geometry,
+                                 this->dual_geometry, dis, djs, dks, i, j, k,
                                  n);
         });
     this->aux_exchange->exchanges_arr[UVAR].exchange_field(
@@ -697,8 +699,8 @@ public:
 
     parallel_for(
         "prepare rhs 3",
-        SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y,
-                        dual_topology->n_cells_x, dual_topology->nens),
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           real h = dens_rhs(0, dks + k, djs + j, dis + i, n);
           compute_cwDbar2<1>(dens_rhs, ref_height, U, dis, djs, dks, i, j, k,
@@ -709,8 +711,8 @@ public:
 
     parallel_for(
         "fft copy in",
-        SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y,
-                        dual_topology->n_cells_x, dual_topology->nens),
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           complex_dens(k, j, i, n) = dens_rhs(0, k + dks, j + djs, i + dis, n);
         });
@@ -722,16 +724,16 @@ public:
 
     parallel_for(
         "fft invert",
-        SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y,
-                        dual_topology->n_cells_x, dual_topology->nens),
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           real cI =
-              fourier_I<diff_ord>(*primal_geometry, *dual_geometry, pis, pjs,
-                                  pks, i, j, 0, 0, n_cells_x, n_cells_y, nl);
+              fourier_I<diff_ord>(primal_geometry, dual_geometry, pis, pjs, pks,
+                                  i, j, 0, 0, n_cells_x, n_cells_y, nl);
 
           SArray<real, 1, ndims> cH;
-          fourier_H<diff_ord>(cH, *primal_geometry, *dual_geometry, pis, pjs,
-                              pks, i, j, 0, 0, n_cells_x, n_cells_y, nl);
+          fourier_H<diff_ord>(cH, primal_geometry, dual_geometry, pis, pjs, pks,
+                              i, j, 0, 0, n_cells_x, n_cells_y, nl);
 
           SArray<real, 1, ndims> cD1Dbar2;
           fourier_cwD1Dbar2(cD1Dbar2, grav * ref_height, i, j, 0, n_cells_x,
@@ -750,8 +752,8 @@ public:
 
     parallel_for(
         "fft copy out",
-        SimpleBounds<4>(dual_topology->nl, dual_topology->n_cells_y,
-                        dual_topology->n_cells_x, dual_topology->nens),
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           real dens_old = dens_sol(0, k + dks, j + djs, i + dis, n);
           real dens_new = complex_dens(k, j, i, n).real();
@@ -767,11 +769,11 @@ public:
 
     parallel_for(
         "compute dens0",
-        SimpleBounds<4>(primal_topology->nl, primal_topology->n_cells_y,
-                        primal_topology->n_cells_x, primal_topology->nens),
+        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_I<1, diff_ord>(dens0, dens_sol, *this->primal_geometry,
-                                 *this->dual_geometry, pis, pjs, pks, i, j, k,
+          compute_I<1, diff_ord>(dens0, dens_sol, this->primal_geometry,
+                                 this->dual_geometry, pis, pjs, pks, i, j, k,
                                  n);
         });
 
@@ -780,8 +782,8 @@ public:
 
     parallel_for(
         "extract v from dens",
-        SimpleBounds<4>(primal_topology->nl, primal_topology->n_cells_y,
-                        primal_topology->n_cells_x, primal_topology->nens),
+        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           real v0 = v_rhs(0, k + dks, j + djs, i + dis, n);
           real v1 = v_rhs(1, k + dks, j + djs, i + dis, n);
@@ -1032,6 +1034,7 @@ void initialize_variables(const Topology &ptopo, const Topology &dtopo,
   // functional derivatives = F, B, K, he, U
   aux_topo_arr[BVAR] = ptopo;
   aux_topo_arr[FVAR] = dtopo;
+  aux_topo_arr[FVAR2] = dtopo;
   aux_topo_arr[UVAR] = dtopo;
   aux_topo_arr[HEVAR] = dtopo;
   aux_topo_arr[KVAR] = dtopo;
@@ -1281,10 +1284,10 @@ struct DoubleVortex {
   }
 };
 
-//real YAKL_INLINE bickley_tracer(real x, real y) {
+// real YAKL_INLINE bickley_tracer(real x, real y) {
 //
-//  return std::sin(bickley_constants.k * y);
-//}
+//   return std::sin(bickley_constants.k * y);
+// }
 
 struct BickleyJet {
   static real constexpr g = 9.80616_fp;
@@ -1298,9 +1301,7 @@ struct BickleyJet {
 
   static real YAKL_INLINE coriolis_f(real x, real y) { return 0; }
 
-  static real YAKL_INLINE h_f(real x, real y) {
-    return 1;
-  }
+  static real YAKL_INLINE h_f(real x, real y) { return 1; }
 
   static vec<2> YAKL_INLINE v_f(real x, real y) {
     vec<2> vvec;
@@ -1311,23 +1312,20 @@ struct BickleyJet {
     real u = psi * (k * std::tan(k * y) + y / (l * l));
     real v = -psi * k * std::tan(k * x);
 
-    vec<2> vvec;
     vvec.u = U + eps * u;
     vvec.v = eps * v;
 
     return vvec;
   }
 
-  static real YAKL_INLINE S_f(real x, real y) {
-    return g * h_f(x, y);
-  }
+  static real YAKL_INLINE S_f(real x, real y) { return g * h_f(x, y); }
 };
 
 void testcase_from_string(std::unique_ptr<TestCase> &testcase,
                           std::string name) {
   if (name == "doublevortex") {
     testcase = std::make_unique<SWETestCase<DoubleVortex>>();
-  } else if (name == "bickleyjet" {
+  } else if (name == "bickleyjet") {
     testcase = std::make_unique<SWETestCase<BickleyJet>>();
   } else {
     throw std::runtime_error("unknown test case");

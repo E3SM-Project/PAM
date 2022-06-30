@@ -82,7 +82,7 @@ uint constexpr mirroringhalo =
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 
-real const pi =
+real constexpr pi =
     3.141592653589793238462643383279502884197169399375105820974944_fp;
 
 //#define PNETCDF_PUT_VAR ncmpi_put_vara_double
