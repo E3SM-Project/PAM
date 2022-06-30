@@ -285,24 +285,25 @@ public:
 
 class LinearSystem {
 public:
-  Topology *primal_topology;
-  Topology *dual_topology;
+  Topology primal_topology;
+  Topology dual_topology;
   ExchangeSet<nprognostic> *prog_exchange;
   ExchangeSet<nauxiliary> *aux_exchange;
-  Geometry *primal_geometry;
-  Geometry *dual_geometry;
+  Geometry<Straight> primal_geometry;
+  Geometry<Twisted> dual_geometry;
 
   bool is_initialized = false;
 
-  virtual void initialize(ModelParameters &params, Topology &primal_topo,
-                          Topology &dual_topo, Geometry &primal_geom,
-                          Geometry &dual_geom,
+  virtual void initialize(ModelParameters &params, const Topology &primal_topo,
+                          const Topology &dual_topo,
+                          const Geometry<Straight> &primal_geom,
+                          const Geometry<Twisted> &dual_geom,
                           ExchangeSet<nauxiliary> &aux_exchange,
                           ExchangeSet<nprognostic> &prog_exchange) {
-    this->primal_topology = &primal_topo;
-    this->dual_topology = &dual_topo;
-    this->primal_geometry = &primal_geom;
-    this->dual_geometry = &dual_geom;
+    this->primal_topology = primal_topo;
+    this->dual_topology = dual_topo;
+    this->primal_geometry = primal_geom;
+    this->dual_geometry = dual_geom;
     this->aux_exchange = &aux_exchange;
     this->prog_exchange = &prog_exchange;
     this->is_initialized = true;

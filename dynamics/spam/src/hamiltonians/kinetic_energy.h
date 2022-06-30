@@ -164,7 +164,7 @@ public:
   void YAKL_INLINE compute_F_and_K(real5d F, real5d K, const real5d v,
                                    const real5d U, const real5d dens0, int is,
                                    int js, int ks, int i, int j, int k, int n,
-                                   real fac = 1._fp) {
+                                   real fac = 1._fp) const {
     SArray<real, 2, ndims, 2> D0;
     SArray<real, 1, ndims> he;
 
@@ -203,7 +203,7 @@ public:
 
   void YAKL_INLINE compute_F_and_he(real5d F, real5d HE, const real5d U,
                                     const real5d dens0, int is, int js, int ks,
-                                    int i, int j, int k, int n) {
+                                    int i, int j, int k, int n) const {
     SArray<real, 2, ndims, 2> D0;
     SArray<real, 1, ndims> he;
 
