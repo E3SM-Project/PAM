@@ -168,18 +168,11 @@ public:
   void compute_constants(FieldSet<nconstant> &const_vars,
                          FieldSet<nprognostic> &x) {}
 
-  void compute_functional_derivatives_and_diagnostic_quantities_I(
-      real5d Uvar, real5d UWvar, real5d qxz0var, real5d fxz0var,
-      real5d dens0var, const real5d Vvar, const real5d Wvar,
-      const real5d densvar, const real5d coriolisxzvar) {
+  void compute_dens0(real5d dens0var, const real5d densvar) {
 
     int pis = primal_topology.is;
     int pjs = primal_topology.js;
     int pks = primal_topology.ks;
-
-    int dis = dual_topology.is;
-    int djs = dual_topology.js;
-    int dks = dual_topology.ks;
 
     parallel_for(
         "Compute Dens0var",
@@ -190,6 +183,13 @@ public:
               dens0var, densvar, this->primal_geometry, this->dual_geometry,
               pis, pjs, pks, i, j, k, n);
         });
+  }
+
+  void compute_U(real5d Uvar, const real5d Vvar) {
+
+    int dis = dual_topology.is;
+    int djs = dual_topology.js;
+    int dks = dual_topology.ks;
 
     parallel_for(
         "Compute Uvar",
@@ -200,6 +200,12 @@ public:
                                     this->dual_geometry, dis, djs, dks, i, j, k,
                                     n);
         });
+  }
+
+  void compute_UW(real5d UWvar, const real5d Wvar) {
+    int dis = dual_topology.is;
+    int djs = dual_topology.js;
+    int dks = dual_topology.ks;
 
     parallel_for(
         "Compute UWVar",
@@ -210,6 +216,15 @@ public:
                                        this->dual_geometry, dis, djs, dks, i, j,
                                        k + 1, n);
         });
+  }
+
+  void compute_q0f0(real5d qxz0var, real5d fxz0var, const real5d Vvar,
+                    const real5d Wvar, const real5d densvar,
+                    const real5d coriolisxzvar) {
+
+    int dis = dual_topology.is;
+    int djs = dual_topology.js;
+    int dks = dual_topology.ks;
 
     YAKL_SCOPE(PVPE, ::PVPE);
     parallel_for(
@@ -234,18 +249,14 @@ public:
         });
   }
 
-  void compute_functional_derivatives_and_diagnostic_quantities_II(
-      real5d Fvar, real5d FWvar, real5d Kvar, real5d HEvar, real5d HEWvar,
-      const real5d Vvar, const real5d Uvar, const real5d Wvar,
-      const real5d UWvar, const real5d dens0var) {
+  void compute_F_FW_and_K(real5d Fvar, real5d FWvar, real5d Kvar, real5d HEvar,
+                          real5d HEWvar, const real5d Vvar, const real5d Uvar,
+                          const real5d Wvar, const real5d UWvar,
+                          const real5d dens0var) {
 
     int dis = dual_topology.is;
     int djs = dual_topology.js;
     int dks = dual_topology.ks;
-
-    int pis = primal_topology.is;
-    int pjs = primal_topology.js;
-    int pks = primal_topology.ks;
 
     // THIS WILL NEED SOME SLIGHT MODIFICATIONS FOR CASE OF NON-ZERO UWVAR_B IE
     // BOUNDARY FLUXES BUT FOR NOW IT IS FINE SINCE UWVAR=0 on BND AND THEREFORE
@@ -270,10 +281,8 @@ public:
         });
   }
 
-  void compute_functional_derivatives_and_diagnostic_quantities_III(
-      real5d Bvar, real5d FTvar, real5d FTWvar, const real5d Fvar,
-      const real5d Uvar, const real5d FWvar, const real5d UWvar,
-      const real5d Kvar, const real5d densvar, const real5d HSvar) {
+  void compute_FT_and_FTW(real5d FTvar, real5d FTWvar, const real5d Fvar,
+                          const real5d FWvar) {
 
     int pis = primal_topology.is;
     int pjs = primal_topology.js;
@@ -311,6 +320,14 @@ public:
           compute_Wxz_w_top(FTWvar, Fvar, pis, pjs, pks, i, j,
                             primal_topology.nl - 1, n);
         });
+  }
+
+  void compute_B(real5d Bvar, const real5d Kvar, const real5d densvar,
+                 const real5d HSvar) {
+
+    int pis = primal_topology.is;
+    int pjs = primal_topology.js;
+    int pks = primal_topology.ks;
 
     YAKL_SCOPE(Hk, ::Hk);
     YAKL_SCOPE(Hs, ::Hs);
@@ -597,23 +614,14 @@ public:
         });
   }
 
-  void compute_rhs(real dt, FieldSet<nconstant> &const_vars,
-                   FieldSet<nprognostic> &x,
-                   FieldSet<nauxiliary> &auxiliary_vars,
-                   FieldSet<nprognostic> &xtend) {
+  void YAKL_INLINE compute_functional_derivatives(
+      ADD_MODE addmode, real fac, real dt, FieldSet<nconstant> &const_vars,
+      FieldSet<nprognostic> &x, FieldSet<nauxiliary> &auxiliary_vars) override {
 
-    // Compute U, W, q0, dens0
-    compute_functional_derivatives_and_diagnostic_quantities_I(
-        auxiliary_vars.fields_arr[UVAR].data,
-        auxiliary_vars.fields_arr[UWVAR].data,
-        auxiliary_vars.fields_arr[QXZ0VAR].data,
-        auxiliary_vars.fields_arr[FXZ0VAR].data,
-        auxiliary_vars.fields_arr[DENS0VAR].data, x.fields_arr[VVAR].data,
-        x.fields_arr[WVAR].data, x.fields_arr[DENSVAR].data,
-        const_vars.fields_arr[CORIOLISXZVAR].data);
-
-    auxiliary_vars.fields_arr[QXZ0VAR].set_bnd(0.0);
-    auxiliary_vars.fields_arr[FXZ0VAR].set_bnd(0.0);
+    compute_dens0(auxiliary_vars.fields_arr[DENS0VAR].data,
+                  x.fields_arr[DENSVAR].data);
+    compute_U(auxiliary_vars.fields_arr[UVAR].data, x.fields_arr[VVAR].data);
+    compute_UW(auxiliary_vars.fields_arr[UWVAR].data, x.fields_arr[WVAR].data);
     auxiliary_vars.fields_arr[UWVAR].set_bnd(0.0);
     this->aux_exchange->exchanges_arr[UVAR].exchange_field(
         auxiliary_vars.fields_arr[UVAR]);
@@ -621,13 +629,9 @@ public:
         auxiliary_vars.fields_arr[UWVAR]);
     this->aux_exchange->exchanges_arr[DENS0VAR].exchange_field(
         auxiliary_vars.fields_arr[DENS0VAR]);
-    this->aux_exchange->exchanges_arr[QXZ0VAR].exchange_field(
-        auxiliary_vars.fields_arr[QXZ0VAR]);
-    this->aux_exchange->exchanges_arr[FXZ0VAR].exchange_field(
-        auxiliary_vars.fields_arr[FXZ0VAR]);
 
-    // Compute K, F, FW, he, hew
-    compute_functional_derivatives_and_diagnostic_quantities_II(
+    // SPLIT HE and F/K COMPUTE
+    compute_F_FW_and_K(
         auxiliary_vars.fields_arr[FVAR].data,
         auxiliary_vars.fields_arr[FWVAR].data,
         auxiliary_vars.fields_arr[KVAR].data,
@@ -649,23 +653,35 @@ public:
     this->aux_exchange->exchanges_arr[HEWVAR].exchange_field(
         auxiliary_vars.fields_arr[HEWVAR]);
 
-    // Compute FT, B
-    compute_functional_derivatives_and_diagnostic_quantities_III(
-        auxiliary_vars.fields_arr[BVAR].data,
-        auxiliary_vars.fields_arr[FTVAR].data,
-        auxiliary_vars.fields_arr[FTWVAR].data,
-        auxiliary_vars.fields_arr[FVAR].data,
-        auxiliary_vars.fields_arr[UVAR].data,
-        auxiliary_vars.fields_arr[FWVAR].data,
-        auxiliary_vars.fields_arr[UWVAR].data,
-        auxiliary_vars.fields_arr[KVAR].data, x.fields_arr[DENSVAR].data,
-        const_vars.fields_arr[HSVAR].data);
-    // auxiliary_vars.fields_arr[KVAR].data,
-    // auxiliary_vars.fields_arr[DENS0VAR].data,
-    // const_vars.fields_arr[HSVAR].data);
-
+    compute_B(auxiliary_vars.fields_arr[BVAR].data,
+              auxiliary_vars.fields_arr[KVAR].data, x.fields_arr[DENSVAR].data,
+              const_vars.fields_arr[HSVAR].data);
     this->aux_exchange->exchanges_arr[BVAR].exchange_field(
         auxiliary_vars.fields_arr[BVAR]);
+  }
+
+  void YAKL_INLINE apply_symplectic(real dt, FieldSet<nconstant> &const_vars,
+                                    FieldSet<nprognostic> &x,
+                                    FieldSet<nauxiliary> &auxiliary_vars,
+                                    FieldSet<nprognostic> &xtend) override {
+    compute_q0f0(auxiliary_vars.fields_arr[QXZ0VAR].data,
+                 auxiliary_vars.fields_arr[FXZ0VAR].data,
+                 x.fields_arr[VVAR].data, x.fields_arr[WVAR].data,
+                 x.fields_arr[DENSVAR].data,
+                 const_vars.fields_arr[CORIOLISXZVAR].data);
+
+    auxiliary_vars.fields_arr[QXZ0VAR].set_bnd(0.0);
+    auxiliary_vars.fields_arr[FXZ0VAR].set_bnd(0.0);
+    this->aux_exchange->exchanges_arr[QXZ0VAR].exchange_field(
+        auxiliary_vars.fields_arr[QXZ0VAR]);
+    this->aux_exchange->exchanges_arr[FXZ0VAR].exchange_field(
+        auxiliary_vars.fields_arr[FXZ0VAR]);
+
+    compute_FT_and_FTW(auxiliary_vars.fields_arr[FTVAR].data,
+                       auxiliary_vars.fields_arr[FTWVAR].data,
+                       auxiliary_vars.fields_arr[FVAR].data,
+                       auxiliary_vars.fields_arr[FWVAR].data);
+
     this->aux_exchange->exchanges_arr[FTVAR].exchange_field(
         auxiliary_vars.fields_arr[FTVAR]);
     this->aux_exchange->exchanges_arr[FTWVAR].exchange_field(
