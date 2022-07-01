@@ -249,8 +249,8 @@ public:
         });
   }
 
-  void compute_F_FW_and_K(real5d Fvar, real5d FWvar, real5d Kvar, real5d HEvar,
-                          real5d HEWvar, const real5d Vvar, const real5d Uvar,
+  void compute_F_FW_and_K(real5d Fvar, real5d FWvar, real5d Kvar,
+                          const real5d Vvar, const real5d Uvar,
                           const real5d Wvar, const real5d UWvar,
                           const real5d dens0var) {
 
@@ -267,7 +267,7 @@ public:
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          Hk.compute_F(Fvar, HEvar, Uvar, dens0var, dis, djs, dks, i, j, k, n);
+          Hk.compute_F(Fvar, Uvar, dens0var, dis, djs, dks, i, j, k, n);
           Hk.compute_K(Kvar, Vvar, Uvar, Wvar, UWvar, dis, djs, dks, i, j, k,
                        n);
         });
@@ -276,8 +276,38 @@ public:
         SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          Hk.compute_Fw(FWvar, HEWvar, UWvar, dens0var, dis, djs, dks, i, j,
-                        k + 1, n);
+          Hk.compute_Fw(FWvar, UWvar, dens0var, dis, djs, dks, i, j, k + 1, n);
+        });
+  }
+
+  void compute_F_FW_and_he(real5d Fvar, real5d FWvar, real5d HEvar,
+                           real5d HEWvar, const real5d Vvar, const real5d Uvar,
+                           const real5d Wvar, const real5d UWvar,
+                           const real5d dens0var) {
+
+    int dis = dual_topology.is;
+    int djs = dual_topology.js;
+    int dks = dual_topology.ks;
+
+    // THIS WILL NEED SOME SLIGHT MODIFICATIONS FOR CASE OF NON-ZERO UWVAR_B IE
+    // BOUNDARY FLUXES BUT FOR NOW IT IS FINE SINCE UWVAR=0 on BND AND THEREFORE
+    // K COMPUTATIONS IGNORE IT
+    YAKL_SCOPE(Hk, ::Hk);
+    parallel_for(
+        "Compute Fvar he",
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          Hk.compute_F_and_he(Fvar, HEvar, Uvar, dens0var, dis, djs, dks, i, j,
+                              k, n);
+        });
+    parallel_for(
+        "Compute FWvar he",
+        SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          Hk.compute_Fw_and_he(FWvar, HEWvar, UWvar, dens0var, dis, djs, dks, i,
+                               j, k + 1, n);
         });
   }
 
@@ -634,9 +664,7 @@ public:
     compute_F_FW_and_K(
         auxiliary_vars.fields_arr[FVAR].data,
         auxiliary_vars.fields_arr[FWVAR].data,
-        auxiliary_vars.fields_arr[KVAR].data,
-        auxiliary_vars.fields_arr[HEVAR].data,
-        auxiliary_vars.fields_arr[HEWVAR].data, x.fields_arr[VVAR].data,
+        auxiliary_vars.fields_arr[KVAR].data, x.fields_arr[VVAR].data,
         auxiliary_vars.fields_arr[UVAR].data, x.fields_arr[WVAR].data,
         auxiliary_vars.fields_arr[UWVAR].data,
         auxiliary_vars.fields_arr[DENS0VAR].data);
@@ -648,10 +676,6 @@ public:
         auxiliary_vars.fields_arr[FWVAR]);
     this->aux_exchange->exchanges_arr[KVAR].exchange_field(
         auxiliary_vars.fields_arr[KVAR]);
-    this->aux_exchange->exchanges_arr[HEVAR].exchange_field(
-        auxiliary_vars.fields_arr[HEVAR]);
-    this->aux_exchange->exchanges_arr[HEWVAR].exchange_field(
-        auxiliary_vars.fields_arr[HEWVAR]);
 
     compute_B(auxiliary_vars.fields_arr[BVAR].data,
               auxiliary_vars.fields_arr[KVAR].data, x.fields_arr[DENSVAR].data,
@@ -664,6 +688,40 @@ public:
                                     FieldSet<nprognostic> &x,
                                     FieldSet<nauxiliary> &auxiliary_vars,
                                     FieldSet<nprognostic> &xtend) override {
+
+    compute_dens0(auxiliary_vars.fields_arr[DENS0VAR].data,
+                  x.fields_arr[DENSVAR].data);
+    compute_U(auxiliary_vars.fields_arr[UVAR].data, x.fields_arr[VVAR].data);
+    compute_UW(auxiliary_vars.fields_arr[UWVAR].data, x.fields_arr[WVAR].data);
+    auxiliary_vars.fields_arr[UWVAR].set_bnd(0.0);
+
+    this->aux_exchange->exchanges_arr[UVAR].exchange_field(
+        auxiliary_vars.fields_arr[UVAR]);
+    this->aux_exchange->exchanges_arr[UWVAR].exchange_field(
+        auxiliary_vars.fields_arr[UWVAR]);
+    this->aux_exchange->exchanges_arr[DENS0VAR].exchange_field(
+        auxiliary_vars.fields_arr[DENS0VAR]);
+
+    compute_F_FW_and_he(
+        auxiliary_vars.fields_arr[FVAR2].data,
+        auxiliary_vars.fields_arr[FWVAR2].data,
+        auxiliary_vars.fields_arr[HEVAR].data,
+        auxiliary_vars.fields_arr[HEWVAR].data, x.fields_arr[VVAR].data,
+        auxiliary_vars.fields_arr[UVAR].data, x.fields_arr[WVAR].data,
+        auxiliary_vars.fields_arr[UWVAR].data,
+        auxiliary_vars.fields_arr[DENS0VAR].data);
+
+    auxiliary_vars.fields_arr[FWVAR2].set_bnd(0.0);
+    this->aux_exchange->exchanges_arr[FVAR2].exchange_field(
+        auxiliary_vars.fields_arr[FVAR2]);
+    this->aux_exchange->exchanges_arr[FWVAR2].exchange_field(
+        auxiliary_vars.fields_arr[FWVAR2]);
+
+    this->aux_exchange->exchanges_arr[HEVAR].exchange_field(
+        auxiliary_vars.fields_arr[HEVAR]);
+    this->aux_exchange->exchanges_arr[HEWVAR].exchange_field(
+        auxiliary_vars.fields_arr[HEWVAR]);
+
     compute_q0f0(auxiliary_vars.fields_arr[QXZ0VAR].data,
                  auxiliary_vars.fields_arr[FXZ0VAR].data,
                  x.fields_arr[VVAR].data, x.fields_arr[WVAR].data,
@@ -1125,30 +1183,37 @@ void initialize_variables(const Topology &ptopo, const Topology &dtopo,
   // functional derivatives = F, B, K, he, U
   aux_topo_arr[BVAR] = ptopo;
   aux_topo_arr[FVAR] = dtopo;
+  aux_topo_arr[FVAR2] = dtopo;
   aux_topo_arr[UVAR] = dtopo;
   aux_topo_arr[HEVAR] = dtopo;
   aux_topo_arr[FWVAR] = dtopo;
+  aux_topo_arr[FWVAR2] = dtopo;
   aux_topo_arr[UWVAR] = dtopo;
   aux_topo_arr[HEWVAR] = dtopo;
   aux_topo_arr[KVAR] = dtopo;
   aux_names_arr[KVAR] = "K";
   aux_names_arr[BVAR] = "B";
   aux_names_arr[FVAR] = "F";
+  aux_names_arr[FVAR2] = "F2";
   aux_names_arr[UVAR] = "U";
   aux_names_arr[HEVAR] = "he";
   aux_names_arr[FWVAR] = "Fw";
+  aux_names_arr[FWVAR2] = "Fw2";
   aux_names_arr[UWVAR] = "Uw";
   aux_names_arr[HEWVAR] = "hew";
   set_dofs_arr(aux_ndofs_arr, BVAR, 0, 0, ndensity);  // B = straight (0,0)-form
   set_dofs_arr(aux_ndofs_arr, KVAR, ndims, 1, 1);     // K = twisted (n,1)-form
   set_dofs_arr(aux_ndofs_arr, FVAR, ndims - 1, 1, 1); // F = twisted
                                                       // (n-1,1)-form
-  set_dofs_arr(aux_ndofs_arr, UVAR, ndims - 1, 1, 1); // U = twisted
-                                                      // (n-1,1)-form
+  set_dofs_arr(aux_ndofs_arr, FVAR2, ndims - 1, 1, 1); // F = twisted
+                                                       // (n-1,1)-form
+  set_dofs_arr(aux_ndofs_arr, UVAR, ndims - 1, 1, 1);  // U = twisted
+                                                       // (n-1,1)-form
   set_dofs_arr(aux_ndofs_arr, HEVAR, ndims - 1, 1,
                1); // he lives on horiz dual edges, associated with F
-  set_dofs_arr(aux_ndofs_arr, FWVAR, ndims, 0, 1); // Fw = twisted (n,0)-form
-  set_dofs_arr(aux_ndofs_arr, UWVAR, ndims, 0, 1); // Uw = twisted (n,0)-form
+  set_dofs_arr(aux_ndofs_arr, FWVAR, ndims, 0, 1);  // Fw = twisted (n,0)-form
+  set_dofs_arr(aux_ndofs_arr, FWVAR2, ndims, 0, 1); // Fw = twisted (n,0)-form
+  set_dofs_arr(aux_ndofs_arr, UWVAR, ndims, 0, 1);  // Uw = twisted (n,0)-form
   set_dofs_arr(aux_ndofs_arr, HEWVAR, ndims, 0,
                1); // hew lives on vert dual edges, associated with Fw
 
