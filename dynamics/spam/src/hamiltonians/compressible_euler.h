@@ -62,9 +62,10 @@ public:
            thermo.compute_U(alpha, entropic_var, 0._fp, 0._fp, 0._fp, 0._fp);
   }
 
+  template <ADD_MODE addmode = ADD_MODE::REPLACE>
   void YAKL_INLINE compute_dHsdx(real5d B, const real5d dens, const real5d geop,
                                  int is, int js, int ks, int i, int j, int k,
-                                 int n) const {
+                                 int n, real fac = 1._fp) const {
 
     SArray<real, 1, 1> geop0;
 #ifdef _EXTRUDED
@@ -98,9 +99,15 @@ public:
     real generalized_Exner =
         thermo.compute_dUdentropic_var_density(alpha, entropic_var, 0, 0, 0, 0);
 
-    B(0, k + ks, j + js, i + is, n) =
-        geop0(0) + U + p * alpha - entropic_var * generalized_Exner;
-    B(1, k + ks, j + js, i + is, n) = generalized_Exner;
+    if (addmode == ADD_MODE::REPLACE) {
+      B(0, k + ks, j + js, i + is, n) =
+          fac * (geop0(0) + U + p * alpha - entropic_var * generalized_Exner);
+      B(1, k + ks, j + js, i + is, n) = fac * generalized_Exner;
+    } else if (addmode == ADD_MODE::ADD) {
+      B(0, k + ks, j + js, i + is, n) +=
+          fac * (geop0(0) + U + p * alpha - entropic_var * generalized_Exner);
+      B(1, k + ks, j + js, i + is, n) += fac * generalized_Exner;
+    }
   }
 };
 
@@ -177,9 +184,10 @@ public:
   }
 
   // THIS NEEDS FIXING, BUT SHOULD BE COMPLETELY GENERAL NOW!
+  template <ADD_MODE addmode = ADD_MODE::REPLACE>
   void YAKL_INLINE compute_dHsdx(real5d B, const real5d dens, const real5d geop,
                                  int is, int js, int ks, int i, int j, int k,
-                                 int n) const {
+                                 int n, real fac = 1._fp) const {
 
     SArray<real, 1, 1> geop0;
 
@@ -218,26 +226,56 @@ public:
     real generalized_chemical_potential_i =
         thermo.compute_dUdqi(alpha, entropic_var, qd, qv, ql, qi);
 
-    B(0, k + ks, j + js, i + is, n) = geop0(0) + U + p * alpha -
-                                      entropic_var * generalized_Exner +
-                                      qv * (generalized_chemical_potential_d -
-                                            generalized_chemical_potential_v) +
-                                      ql * (generalized_chemical_potential_d -
-                                            generalized_chemical_potential_l) +
-                                      qi * (generalized_chemical_potential_d -
-                                            generalized_chemical_potential_i);
-    B(1, k + ks, j + js, i + is, n) = generalized_Exner;
+    if (addmode == ADD_MODE::REPLACE) {
+      B(0, k + ks, j + js, i + is, n) =
+          fac * (geop0(0) + U + p * alpha - entropic_var * generalized_Exner +
+                 qv * (generalized_chemical_potential_d -
+                       generalized_chemical_potential_v) +
+                 ql * (generalized_chemical_potential_d -
+                       generalized_chemical_potential_l) +
+                 qi * (generalized_chemical_potential_d -
+                       generalized_chemical_potential_i));
+      B(1, k + ks, j + js, i + is, n) = fac * generalized_Exner;
 
-    // THESE INDICES ARE BROKEN!
-    B(varset.dm_id_vap + ndensity_nophysics, k + ks, j + js, i + is, n) =
-        generalized_chemical_potential_v - generalized_chemical_potential_d;
-    if (varset.liquid_found) {
-      B(varset.dm_id_liq + ndensity_nophysics, k + ks, j + js, i + is, n) =
-          generalized_chemical_potential_l - generalized_chemical_potential_d;
-    }
-    if (varset.ice_found) {
-      B(varset.dm_id_ice + ndensity_nophysics, k + ks, j + js, i + is, n) =
-          generalized_chemical_potential_i - generalized_chemical_potential_d;
+      // THESE INDICES ARE BROKEN!
+      B(varset.dm_id_vap + ndensity_nophysics, k + ks, j + js, i + is, n) =
+          fac *
+          (generalized_chemical_potential_v - generalized_chemical_potential_d);
+      if (varset.liquid_found) {
+        B(varset.dm_id_liq + ndensity_nophysics, k + ks, j + js, i + is, n) =
+            fac * (generalized_chemical_potential_l -
+                   generalized_chemical_potential_d);
+      }
+      if (varset.ice_found) {
+        B(varset.dm_id_ice + ndensity_nophysics, k + ks, j + js, i + is, n) =
+            fac * (generalized_chemical_potential_i -
+                   generalized_chemical_potential_d);
+      }
+    } else if (addmode == ADD_MODE::ADD) {
+      B(0, k + ks, j + js, i + is, n) +=
+          fac * (geop0(0) + U + p * alpha - entropic_var * generalized_Exner +
+                 qv * (generalized_chemical_potential_d -
+                       generalized_chemical_potential_v) +
+                 ql * (generalized_chemical_potential_d -
+                       generalized_chemical_potential_l) +
+                 qi * (generalized_chemical_potential_d -
+                       generalized_chemical_potential_i));
+      B(1, k + ks, j + js, i + is, n) += fac * generalized_Exner;
+
+      // THESE INDICES ARE BROKEN!
+      B(varset.dm_id_vap + ndensity_nophysics, k + ks, j + js, i + is, n) +=
+          fac *
+          (generalized_chemical_potential_v - generalized_chemical_potential_d);
+      if (varset.liquid_found) {
+        B(varset.dm_id_liq + ndensity_nophysics, k + ks, j + js, i + is, n) +=
+            fac * (generalized_chemical_potential_l -
+                   generalized_chemical_potential_d);
+      }
+      if (varset.ice_found) {
+        B(varset.dm_id_ice + ndensity_nophysics, k + ks, j + js, i + is, n) +=
+            fac * (generalized_chemical_potential_i -
+                   generalized_chemical_potential_d);
+      }
     }
   }
 };

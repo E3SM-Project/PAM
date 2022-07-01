@@ -93,12 +93,17 @@ struct TracerGaussian : Tracer {
   }
 };
 
+class ReferenceState {};
+
 class TestCase {
 public:
   using TracerArr = yakl::Array<Tracer *, 1, yakl::memDevice, yakl::styleC>;
   TracerArr tracer_f;
 
   TestCase() { this->tracer_f = TracerArr("tracer_f", ntracers_dycore); }
+
+  virtual void
+  add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics) = 0;
 
   void set_tracers(ModelParameters &params) {
     SArray<TRACER_TAG, 1, ntracers_dycore> tracer_tag;
@@ -136,8 +141,12 @@ public:
   virtual void set_domain(ModelParameters &params) = 0;
   virtual void set_initial_conditions(FieldSet<nprognostic> &progvars,
                                       FieldSet<nconstant> &constvars,
+                                      ExchangeSet<nconstant> &const_exchange,
                                       const Geometry<Straight> &primal_geom,
                                       const Geometry<Twisted> &dual_geom) = 0;
+  virtual void set_reference_state(ReferenceState &refstate,
+                                   const Geometry<Straight> &primal_geom,
+                                   const Geometry<Twisted> &dual_geom) = 0;
   virtual ~TestCase() = default;
 
   // why doesn't this work ? Tracers need to be deallocated !
@@ -294,20 +303,23 @@ public:
 
   bool is_initialized = false;
 
-  virtual void initialize(ModelParameters &params, const Topology &primal_topo,
-                          const Topology &dual_topo,
-                          const Geometry<Straight> &primal_geom,
-                          const Geometry<Twisted> &dual_geom,
-                          ExchangeSet<nauxiliary> &aux_exchange,
+  virtual void initialize(ModelParameters &params,
+                          ReferenceState &reference_state, Tendencies *tend,
+                          FieldSet<nprognostic> &x,
+                          FieldSet<nconstant> &const_vars,
+                          FieldSet<nauxiliary> &auxiliary_vars,
                           ExchangeSet<nprognostic> &prog_exchange) {
-    this->primal_topology = primal_topo;
-    this->dual_topology = dual_topo;
-    this->primal_geometry = primal_geom;
-    this->dual_geometry = dual_geom;
-    this->aux_exchange = &aux_exchange;
+
+    this->primal_topology = tend->primal_topology;
+    this->dual_topology = tend->dual_topology;
+    this->primal_geometry = tend->primal_geometry;
+    this->dual_geometry = tend->dual_geometry;
+    this->aux_exchange = tend->aux_exchange;
     this->prog_exchange = &prog_exchange;
+
     this->is_initialized = true;
   }
+  virtual void compute_coefficients(real dt) = 0;
 
   virtual void YAKL_INLINE solve(real dt, FieldSet<nprognostic> &rhs,
                                  FieldSet<nconstant> &const_vars,

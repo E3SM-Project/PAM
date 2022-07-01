@@ -53,8 +53,9 @@ public:
   SSPKKTimeIntegrator tint;
 #endif
 #if _TIME_TYPE == 2
+  ModelReferenceState reference_state;
   ModelLinearSystem linear_system;
-  SITimeIntegrator<2> tint;
+  SITimeIntegrator<4> tint;
 #endif
 
   int ierr;
@@ -116,6 +117,7 @@ public:
 
     debug_print("start diagnostics init", par.masterproc);
     add_model_diagnostics(diagnostics);
+    testcase->add_diagnostics(diagnostics);
     for (auto &diag : diagnostics) {
       diag->initialize(primal_topology, dual_topology, primal_geometry,
                        dual_geometry);
@@ -146,7 +148,8 @@ public:
     //  set the initial conditions and compute initial stats
     debug_print("start ic setting", par.masterproc);
     testcase->set_initial_conditions(prognostic_vars, constant_vars,
-                                     primal_geometry, dual_geometry);
+                                     const_exchange, primal_geometry,
+                                     dual_geometry);
     prog_exchange.exchange_variable_set(prognostic_vars);
     const_exchange.exchange_variable_set(constant_vars);
     tendencies.compute_constants(constant_vars, prognostic_vars);
@@ -157,9 +160,13 @@ public:
     // // Initialize the time stepper
     debug_print("start ts init", par.masterproc);
 #if _TIME_TYPE == 2
-    linear_system.initialize(params, primal_topology, dual_topology,
-                             primal_geometry, dual_geometry, aux_exchange,
+    reference_state.initialize(primal_topology, dual_topology);
+    testcase->set_reference_state(reference_state, primal_geometry,
+                                  dual_geometry);
+    linear_system.initialize(params, reference_state, &tendencies,
+                             prognostic_vars, constant_vars, auxiliary_vars,
                              prog_exchange);
+    linear_system.compute_coefficients(params.dtcrm);
     tint.initialize(params, tendencies, linear_system, prognostic_vars,
                     constant_vars, auxiliary_vars, prog_exchange);
 #else

@@ -7,7 +7,7 @@
 #include "topology.h"
 #include <sstream>
 
-constexpr int si_verbosity_level = 0;
+constexpr int si_verbosity_level = 2;
 
 template <uint nquad> class SITimeIntegrator {
 
