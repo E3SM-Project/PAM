@@ -665,13 +665,23 @@ public:
     this->aux_exchange->exchanges_arr[DENS0VAR].exchange_field(
         auxiliary_vars.fields_arr[DENS0VAR]);
 
-    compute_F_FW_and_K(
-        fac, auxiliary_vars.fields_arr[FVAR].data,
-        auxiliary_vars.fields_arr[FWVAR].data,
-        auxiliary_vars.fields_arr[KVAR].data, x.fields_arr[VVAR].data,
-        auxiliary_vars.fields_arr[UVAR].data, x.fields_arr[WVAR].data,
-        auxiliary_vars.fields_arr[UWVAR].data,
-        auxiliary_vars.fields_arr[DENS0VAR].data);
+    if (addmode == ADD_MODE::ADD) {
+      compute_F_FW_and_K<ADD_MODE::ADD>(
+          fac, auxiliary_vars.fields_arr[FVAR].data,
+          auxiliary_vars.fields_arr[FWVAR].data,
+          auxiliary_vars.fields_arr[KVAR].data, x.fields_arr[VVAR].data,
+          auxiliary_vars.fields_arr[UVAR].data, x.fields_arr[WVAR].data,
+          auxiliary_vars.fields_arr[UWVAR].data,
+          auxiliary_vars.fields_arr[DENS0VAR].data);
+    } else if (addmode == ADD_MODE::REPLACE) {
+      compute_F_FW_and_K<ADD_MODE::REPLACE>(
+          fac, auxiliary_vars.fields_arr[FVAR].data,
+          auxiliary_vars.fields_arr[FWVAR].data,
+          auxiliary_vars.fields_arr[KVAR].data, x.fields_arr[VVAR].data,
+          auxiliary_vars.fields_arr[UVAR].data, x.fields_arr[WVAR].data,
+          auxiliary_vars.fields_arr[UWVAR].data,
+          auxiliary_vars.fields_arr[DENS0VAR].data);
+    }
 
     auxiliary_vars.fields_arr[FWVAR].set_bnd(0.0);
     this->aux_exchange->exchanges_arr[FVAR].exchange_field(
@@ -681,9 +691,17 @@ public:
     this->aux_exchange->exchanges_arr[KVAR].exchange_field(
         auxiliary_vars.fields_arr[KVAR]);
 
-    compute_B(fac, auxiliary_vars.fields_arr[BVAR].data,
-              auxiliary_vars.fields_arr[KVAR].data, x.fields_arr[DENSVAR].data,
-              const_vars.fields_arr[HSVAR].data);
+    if (addmode == ADD_MODE::ADD) {
+      compute_B<ADD_MODE::ADD>(fac, auxiliary_vars.fields_arr[BVAR].data,
+                               auxiliary_vars.fields_arr[KVAR].data,
+                               x.fields_arr[DENSVAR].data,
+                               const_vars.fields_arr[HSVAR].data);
+    } else if (addmode == ADD_MODE::REPLACE) {
+      compute_B<ADD_MODE::REPLACE>(fac, auxiliary_vars.fields_arr[BVAR].data,
+                                   auxiliary_vars.fields_arr[KVAR].data,
+                                   x.fields_arr[DENSVAR].data,
+                                   const_vars.fields_arr[HSVAR].data);
+    }
     this->aux_exchange->exchanges_arr[BVAR].exchange_field(
         auxiliary_vars.fields_arr[BVAR]);
   }
