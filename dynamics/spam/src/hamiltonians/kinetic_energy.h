@@ -501,9 +501,10 @@ public:
   }
 
   // FIX THIS TO GET TOTAL DENSITY FROM VARSET!
+  template <ADD_MODE addmode = ADD_MODE::REPLACE>
   void YAKL_INLINE compute_Fw(real5d FW, const real5d UW, const real5d dens0,
                               int is, int js, int ks, int i, int j, int k,
-                              int n) const {
+                              int n, real fac = 1._fp) const {
     // SArray<real,2> Dv;
     // compute hew = phiw * h0
     // Dv(0) = dens0(0, k+ks, j+js, i+is);
@@ -513,7 +514,13 @@ public:
     real hew = (dens0(0, k + ks, j + js, i + is, n) +
                 dens0(0, k + ks - 1, j + js, i + is, n)) /
                2.0;
-    FW(0, k + ks, j + js, i + is, n) = UW(0, k + ks, j + js, i + is, n) * hew;
+    if (addmode == ADD_MODE::REPLACE) {
+      FW(0, k + ks, j + js, i + is, n) =
+          fac * UW(0, k + ks, j + js, i + is, n) * hew;
+    } else if (addmode == ADD_MODE::ADD) {
+      FW(0, k + ks, j + js, i + is, n) +=
+          fac * UW(0, k + ks, j + js, i + is, n) * hew;
+    }
     // std::cout << "HEw in Hk " << i << " " << j << " " << k << " " <<
     // HEw(0,k+ks,j+js,i+is) << "\n" << std::flush;
   }
@@ -572,9 +579,10 @@ public:
   }
 
   // FIX THIS TO GET TOTAL DENSITY FROM VARSET!
+  template <ADD_MODE addmode = ADD_MODE::REPLACE>
   void YAKL_INLINE compute_F(real5d F, const real5d U, const real5d dens0,
-                             int is, int js, int ks, int i, int j, int k,
-                             int n) const {
+                             int is, int js, int ks, int i, int j, int k, int n,
+                             real fac = 1._fp) const {
     SArray<real, 2, ndims, 2> D0;
     SArray<real, 1, ndims> he;
 
@@ -592,7 +600,13 @@ public:
     phi(he, D0);
     // compute F = he * U, set HE
     for (int d = 0; d < ndims; d++) {
-      F(d, k + ks, j + js, i + is, n) = U(d, k + ks, j + js, i + is, n) * he(d);
+      if (addmode == ADD_MODE::REPLACE) {
+        F(d, k + ks, j + js, i + is, n) =
+            fac * U(d, k + ks, j + js, i + is, n) * he(d);
+      } else if (addmode == ADD_MODE::ADD) {
+        F(d, k + ks, j + js, i + is, n) +=
+            fac * U(d, k + ks, j + js, i + is, n) * he(d);
+      }
     }
     // std::cout << "HE in Hk " << i << " " << j << " " << k << " " <<
     // HE(0,k+ks,j+js,i+is) << "\n" << std::flush;
@@ -628,16 +642,17 @@ public:
   // FIX THIS TO GET TOTAL DENSITY FROM VARSET!
   template <ADD_MODE addmode = ADD_MODE::REPLACE>
   void YAKL_INLINE compute_dKddens(real5d B, const real5d K, int is, int js,
-                                   int ks, int i, int j, int k, int n) const {
+                                   int ks, int i, int j, int k, int n,
+                                   real fac = 1._fp) const {
     SArray<real, 1, 1> K0;
     compute_Iext<1, diff_ord, vert_diff_ord>(K0, K, this->primal_geometry,
                                              this->dual_geometry, is, js, ks, i,
                                              j, k, n);
     if (addmode == ADD_MODE::REPLACE) {
-      B(0, k + ks, j + js, i + is, n) = K0(0);
+      B(0, k + ks, j + js, i + is, n) = fac * K0(0);
     }
     if (addmode == ADD_MODE::ADD) {
-      B(0, k + ks, j + js, i + is, n) += K0(0);
+      B(0, k + ks, j + js, i + is, n) += fac * K0(0);
     }
   }
 };

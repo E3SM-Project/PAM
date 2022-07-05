@@ -166,7 +166,7 @@ public:
   }
 
   void compute_constants(FieldSet<nconstant> &const_vars,
-                         FieldSet<nprognostic> &x) {}
+                         FieldSet<nprognostic> &x) override {}
 
   void compute_dens0(real5d dens0var, const real5d densvar) {
 
@@ -249,7 +249,8 @@ public:
         });
   }
 
-  void compute_F_FW_and_K(real5d Fvar, real5d FWvar, real5d Kvar,
+  template <ADD_MODE addmode = ADD_MODE::REPLACE>
+  void compute_F_FW_and_K(real fac, real5d Fvar, real5d FWvar, real5d Kvar,
                           const real5d Vvar, const real5d Uvar,
                           const real5d Wvar, const real5d UWvar,
                           const real5d dens0var) {
@@ -267,7 +268,8 @@ public:
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          Hk.compute_F(Fvar, Uvar, dens0var, dis, djs, dks, i, j, k, n);
+          Hk.compute_F<addmode>(Fvar, Uvar, dens0var, dis, djs, dks, i, j, k, n,
+                                fac);
           Hk.compute_K(Kvar, Vvar, Uvar, Wvar, UWvar, dis, djs, dks, i, j, k,
                        n);
         });
@@ -276,7 +278,8 @@ public:
         SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          Hk.compute_Fw(FWvar, UWvar, dens0var, dis, djs, dks, i, j, k + 1, n);
+          Hk.compute_Fw<addmode>(FWvar, UWvar, dens0var, dis, djs, dks, i, j,
+                                 k + 1, n, fac);
         });
   }
 
@@ -352,7 +355,8 @@ public:
         });
   }
 
-  void compute_B(real5d Bvar, const real5d Kvar, const real5d densvar,
+  template <ADD_MODE addmode = ADD_MODE::REPLACE>
+  void compute_B(real fac, real5d Bvar, const real5d Kvar, const real5d densvar,
                  const real5d HSvar) {
 
     int pis = primal_topology.is;
@@ -366,9 +370,10 @@ public:
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          Hs.compute_dHsdx(Bvar, densvar, HSvar, pis, pjs, pks, i, j, k, n);
+          Hs.compute_dHsdx<addmode>(Bvar, densvar, HSvar, pis, pjs, pks, i, j,
+                                    k, n, fac);
           Hk.compute_dKddens<ADD_MODE::ADD>(Bvar, Kvar, pis, pjs, pks, i, j, k,
-                                            n);
+                                            n, fac);
         });
   }
 
@@ -660,9 +665,8 @@ public:
     this->aux_exchange->exchanges_arr[DENS0VAR].exchange_field(
         auxiliary_vars.fields_arr[DENS0VAR]);
 
-    // SPLIT HE and F/K COMPUTE
     compute_F_FW_and_K(
-        auxiliary_vars.fields_arr[FVAR].data,
+        fac, auxiliary_vars.fields_arr[FVAR].data,
         auxiliary_vars.fields_arr[FWVAR].data,
         auxiliary_vars.fields_arr[KVAR].data, x.fields_arr[VVAR].data,
         auxiliary_vars.fields_arr[UVAR].data, x.fields_arr[WVAR].data,
@@ -677,7 +681,7 @@ public:
     this->aux_exchange->exchanges_arr[KVAR].exchange_field(
         auxiliary_vars.fields_arr[KVAR]);
 
-    compute_B(auxiliary_vars.fields_arr[BVAR].data,
+    compute_B(fac, auxiliary_vars.fields_arr[BVAR].data,
               auxiliary_vars.fields_arr[KVAR].data, x.fields_arr[DENSVAR].data,
               const_vars.fields_arr[HSVAR].data);
     this->aux_exchange->exchanges_arr[BVAR].exchange_field(
