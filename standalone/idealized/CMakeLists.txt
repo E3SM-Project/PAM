@@ -28,5 +28,6 @@ set(POCKETFFT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../externals/pocketfft)
 add_library(pocketfft INTERFACE)
 target_include_directories(pocketfft INTERFACE ${POCKETFFT_DIR})
 
-target_link_libraries(driver dynamics physics pam_core pocketfft ${NCFLAGS})
+find_package(Eigen3)
+target_link_libraries(driver dynamics physics pam_core pocketfft Eigen3::Eigen ${NCFLAGS})
 

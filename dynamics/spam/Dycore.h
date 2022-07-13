@@ -116,6 +116,7 @@ public:
 
     debug_print("start diagnostics init", par.masterproc);
     add_model_diagnostics(diagnostics);
+    testcase->add_diagnostics(diagnostics);
     for (auto &diag : diagnostics) {
       diag->initialize(primal_topology, dual_topology, primal_geometry,
                        dual_geometry);
@@ -157,9 +158,8 @@ public:
     // // Initialize the time stepper
     debug_print("start ts init", par.masterproc);
 #if _TIME_TYPE == 2
-    linear_system.initialize(params, primal_topology, dual_topology,
-                             primal_geometry, dual_geometry, aux_exchange,
-                             prog_exchange);
+    linear_system.initialize(params, &tendencies, prognostic_vars,
+                             constant_vars, auxiliary_vars, prog_exchange);
     tint.initialize(params, tendencies, linear_system, prognostic_vars,
                     constant_vars, auxiliary_vars, prog_exchange);
 #else

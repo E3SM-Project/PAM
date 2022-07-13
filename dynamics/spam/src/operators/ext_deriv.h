@@ -85,7 +85,7 @@ YAKL_INLINE void compute_wDbar2(real5d tendvar, const real5d reconvar,
                                 int j, int k, int n) {
   SArray<real, 1, ndofs> tend;
   SArray<real, 3, ndofs, ndims, 2> recon;
-  SArray<real, 1, ndims, 2> flux;
+  SArray<real, 2, ndims, 2> flux;
 
   for (int d = 0; d < ndims; d++) {
     for (int m = 0; m < 2; m++) {
@@ -197,6 +197,34 @@ YAKL_INLINE void compute_wDvbar_fct(real5d tendvar, const real5d vertreconvar,
     for (int l = 0; l < ndofs; l++) {
       recon(l, m) = vertreconvar(l, k + ks + m, j + js, i + is, n) *
                     vertphivar(l, k + ks + m, j + js, i + is, n);
+    }
+  }
+
+  wDvbar<ndofs>(tend, recon, flux);
+
+  if (addmode == ADD_MODE::REPLACE) {
+    for (int l = 0; l < ndofs; l++) {
+      tendvar(l, k + ks, j + js, i + is, n) = tend(l);
+    }
+  }
+  if (addmode == ADD_MODE::ADD) {
+    for (int l = 0; l < ndofs; l++) {
+      tendvar(l, k + ks, j + js, i + is, n) += tend(l);
+    }
+  }
+}
+
+template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+YAKL_INLINE void compute_wDvbar(real5d tendvar, const real5d vertreconvar,
+                                const real5d UW, int is, int js, int ks, int i,
+                                int j, int k, int n) {
+  SArray<real, 1, ndofs> tend;
+  SArray<real, 2, ndofs, 2> recon;
+  SArray<real, 1, 2> flux;
+  for (int m = 0; m < 2; m++) {
+    flux(m) = UW(0, k + ks + m, j + js, i + is, n);
+    for (int l = 0; l < ndofs; l++) {
+      recon(l, m) = vertreconvar(l, k + ks + m, j + js, i + is, n);
     }
   }
 
@@ -355,6 +383,28 @@ void YAKL_INLINE compute_wDv_fct(real5d tendvar, const real5d vertreconvar,
     // Need to add 1 to k here because UW has an extra dof at the bottom
     recon(l) = vertreconvar(l, k + ks + 1, j + js, i + is, n) *
                Phivertvar(l, k + ks + 1, j + js, i + is, n);
+    dens(l, 1) = densvar(l, k + ks + 1, j + js, i + is, n);
+    dens(l, 0) = densvar(l, k + ks, j + js, i + is, n);
+  }
+  wDv<ndofs>(tend, recon, dens);
+  if (addmode == ADD_MODE::REPLACE) {
+    tendvar(0, k + ks, j + js, i + is, n) = tend;
+  }
+  if (addmode == ADD_MODE::ADD) {
+    tendvar(0, k + ks, j + js, i + is, n) += tend;
+  }
+}
+
+template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+void YAKL_INLINE compute_wDv(real5d tendvar, const real5d vertreconvar,
+                             const real5d densvar, int is, int js, int ks,
+                             int i, int j, int k, int n) {
+  real tend;
+  SArray<real, 1, ndofs> recon;
+  SArray<real, 2, ndofs, 2> dens;
+  for (int l = 0; l < ndofs; l++) {
+    // Need to add 1 to k here because UW has an extra dof at the bottom
+    recon(l) = vertreconvar(l, k + ks + 1, j + js, i + is, n);
     dens(l, 1) = densvar(l, k + ks + 1, j + js, i + is, n);
     dens(l, 0) = densvar(l, k + ks, j + js, i + is, n);
   }

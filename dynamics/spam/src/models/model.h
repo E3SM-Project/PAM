@@ -100,6 +100,9 @@ public:
 
   TestCase() { this->tracer_f = TracerArr("tracer_f", ntracers_dycore); }
 
+  virtual void
+  add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics) = 0;
+
   void set_tracers(ModelParameters &params) {
     SArray<TRACER_TAG, 1, ntracers_dycore> tracer_tag;
     for (int i = 0; i < ntracers_dycore; i++) {
@@ -213,6 +216,11 @@ public:
   virtual void compute_constants(FieldSet<nconstant> &const_vars,
                                  FieldSet<nprognostic> &x) = 0;
 
+  virtual void compute_linrhs(real dt, FieldSet<nconstant> &const_vars,
+                              FieldSet<nprognostic> &x,
+                              FieldSet<nauxiliary> &auxiliary_vars,
+                              FieldSet<nprognostic> &xtend) = 0;
+
   virtual void YAKL_INLINE compute_functional_derivatives(
       ADD_MODE addmode, real fac, real dt, FieldSet<nconstant> &const_vars,
       FieldSet<nprognostic> &x, FieldSet<nauxiliary> &auxiliary_vars) = 0;
@@ -228,6 +236,10 @@ public:
     compute_functional_derivatives(ADD_MODE::REPLACE, 1._fp, dt, const_vars, x,
                                    auxiliary_vars);
     apply_symplectic(dt, const_vars, x, auxiliary_vars, xtend);
+    // compute_linrhs(dt, const_vars,
+    //                x,
+    //                auxiliary_vars,
+    //                xtend);
   }
 };
 
@@ -294,18 +306,19 @@ public:
 
   bool is_initialized = false;
 
-  virtual void initialize(ModelParameters &params, const Topology &primal_topo,
-                          const Topology &dual_topo,
-                          const Geometry<Straight> &primal_geom,
-                          const Geometry<Twisted> &dual_geom,
-                          ExchangeSet<nauxiliary> &aux_exchange,
+  virtual void initialize(ModelParameters &params, Tendencies *tend,
+                          FieldSet<nprognostic> &x,
+                          FieldSet<nconstant> &const_vars,
+                          FieldSet<nauxiliary> &auxiliary_vars,
                           ExchangeSet<nprognostic> &prog_exchange) {
-    this->primal_topology = primal_topo;
-    this->dual_topology = dual_topo;
-    this->primal_geometry = primal_geom;
-    this->dual_geometry = dual_geom;
-    this->aux_exchange = &aux_exchange;
+
+    this->primal_topology = tend->primal_topology;
+    this->dual_topology = tend->dual_topology;
+    this->primal_geometry = tend->primal_geometry;
+    this->dual_geometry = tend->dual_geometry;
+    this->aux_exchange = tend->aux_exchange;
     this->prog_exchange = &prog_exchange;
+
     this->is_initialized = true;
   }
 
