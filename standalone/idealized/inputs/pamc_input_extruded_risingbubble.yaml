@@ -1,22 +1,23 @@
 ---
 # Simulation time in number of physics time steps
-simSteps  : 1280 #1280 11520
+simSteps  : 100 #1280 11520
 #11520 * 5 = 57600
 
 # Number of cells to use
-crm_nx       : 100
+crm_nx       : 30
 crm_ny       : 1
-crm_nz       : 150
+crm_nz       : 50
 
 # Vertical height coordinates file
 #vcoords  : vcoords_equal_100_20km.nc
 
 # Data to initialize: doublevortex rb mrb
-initData : moistrisingbubble
+initData : risingbubble
 
 # Time steps
-dtphys: 0.078125
-crm_per_phys: 5
+dtphys: 10.0
+#dtphys: 5.0
+crm_per_phys: 1
 #0.015625 * 5 = 0.078125
  
 # Output filename
@@ -27,8 +28,8 @@ dycore_out_prefix  : test_dycore
 out_freq : 100.0
 
 # Output frequency in number of CRM time steps
-outSteps: 6400
-statSteps: 1
+outSteps: 10
+statSteps: 5
 #6400
 
 tstype: ssprk3
@@ -38,6 +39,8 @@ nens : 1
 
 # Parallel decomposition
 inner_mpi : true
-nprocx : 4
+nprocx : 1
 nprocy : 1
+
+si_tolerance : 1e-5
 

@@ -2628,6 +2628,13 @@ struct DoubleVortex {
   }
 };
 
+real YAKL_INLINE isothermal_zdep(real x, real z, real var_s, real T_ref, real g,
+                                 const ThermoPotential &thermo) {
+  real Rd = thermo.cst.Rd;
+  real delta = g / (Rd * T_ref);
+  return var_s * exp(-delta * z);
+}
+
 template <bool acoustic_balance> struct RisingBubble {
   static real constexpr g = 9.80616_fp;
   static real constexpr Lx = 1000._fp;
@@ -2639,6 +2646,39 @@ template <bool acoustic_balance> struct RisingBubble {
   static real constexpr dss = 0.5_fp;
   static real constexpr rc = 250._fp;
   static real constexpr rh0 = 0.8_fp;
+  static real constexpr T_ref = 300.0_fp;
+  
+  static real YAKL_INLINE refnsq_f(real x, real z,
+                                   const ThermoPotential &thermo) {
+    real Rd = thermo.cst.Rd;
+    real gamma_d = thermo.cst.gamma_d;
+    real N2 = (gamma_d - 1) / gamma_d * g * g / (Rd * T_ref);
+    return N2;
+  }
+
+  static real YAKL_INLINE refrho_f(real x, real z,
+                                   const ThermoPotential &thermo) {
+    real Rd = thermo.cst.Rd;
+    real rho_s = thermo.cst.pr / (Rd * T_ref);
+    real rho_ref = isothermal_zdep(x, z, rho_s, T_ref, g, thermo);
+    return rho_ref;
+  }
+
+  static real YAKL_INLINE refp_f(real x, real z,
+                                 const ThermoPotential &thermo) {
+    real Rd = thermo.cst.Rd;
+    real rho_ref = refrho_f(x, z, thermo);
+    real p_ref = Rd * rho_ref * T_ref;
+    return p_ref;
+  }
+
+  static real YAKL_INLINE refentropicdensity_f(real x, real z,
+                                               const ThermoPotential &thermo) {
+    real rho_ref = refrho_f(x, z, thermo);
+    real p_ref = refp_f(x, z, thermo);
+    return rho_ref * thermo.compute_entropic_var(p_ref, T_ref, 0, 0, 0, 0);
+  }
+
 
   static real YAKL_INLINE rho_f(real x, real z, const ThermoPotential &thermo) {
     real rho_b = isentropic_rho(x, z, theta0, g, thermo);
@@ -2659,15 +2699,13 @@ template <bool acoustic_balance> struct RisingBubble {
     real dT = dtheta * pow(p / thermo.cst.pr, thermo.cst.kappa_d);
     return thermo.compute_entropic_var(p, T + dT, 0, 0, 0, 0);
   }
+  
+  static void
+  add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics) {
+    //diagnostics.emplace_back(std::make_unique<ExactDensityDiagnostic>());
+    //diagnostics.emplace_back(std::make_unique<BackgroundDensityDiagnostic>());
+  }
 
-  static real YAKL_INLINE refrho_f(real x, real z,
-                                   const ThermoPotential &thermo) {}
-
-  static real YAKL_INLINE refnsq_f(real x, real z,
-                                   const ThermoPotential &thermo) {}
-
-  static real YAKL_INLINE refentropicdensity_f(real x, real z,
-                                               const ThermoPotential &thermo) {}
 };
 
 struct MoistRisingBubble : public RisingBubble<false> {
@@ -2779,12 +2817,6 @@ struct MoistLargeRisingBubble : LargeRisingBubble {
   }
 };
 
-real YAKL_INLINE isothermal_zdep(real x, real z, real var_s, real T_ref, real g,
-                                 const ThermoPotential &thermo) {
-  real Rd = thermo.cst.Rd;
-  real delta = g / (Rd * T_ref);
-  return var_s * exp(-delta * z);
-}
 
 struct GravityWave {
   static real constexpr g = 9.80616_fp;
@@ -3113,12 +3145,12 @@ void testcase_from_string(std::unique_ptr<TestCase> &testcase, std::string name,
     // testcase = std::make_unique<SWETestCase<DoubleVortex>>();
   } else if (name == "gravitywave") {
     testcase = std::make_unique<EulerTestCase<GravityWave>>();
-    //} else if (name == "risingbubble") {
-    //  if (acoustic_balance) {
-    //    testcase = std::make_unique<EulerTestCase<RisingBubble<true>>>();
-    //  } else {
-    //    testcase = std::make_unique<EulerTestCase<RisingBubble<false>>>();
-    //  }
+  } else if (name == "risingbubble") {
+      if (acoustic_balance) {
+        testcase = std::make_unique<EulerTestCase<RisingBubble<true>>>();
+      } else {
+        testcase = std::make_unique<EulerTestCase<RisingBubble<false>>>();
+      }
     //} else if (name == "moistrisingbubble") {
     //  testcase = std::make_unique<MoistEulerTestCase<MoistRisingBubble>>();
     //} else if (name == "largerisingbubble") {
