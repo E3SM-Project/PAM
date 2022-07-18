@@ -1447,7 +1447,8 @@ public:
           real rho = dens0var(0, pks + k, pjs + j, pis + i, n);
           real Tht = dens0var(1, pks + k, pjs + j, pis + i, n);
 
-          real tht = Tht / rho_ref - (rho - rho_ref) / rho_ref * tht_ref;
+          //real tht = Tht / rho_ref - (rho - rho_ref) / rho_ref * tht_ref;
+          real tht = Tht / rho_ref - rho / rho_ref * tht_ref;
           real rho_ref2 = rho_ref * rho_ref;
           real p_ref = pr * pow(Rd * Tht_ref / pr, gamma_d);
           real dpdtht_ref = gamma_d * p_ref / tht_ref;
@@ -1455,8 +1456,8 @@ public:
           real Nref2 = refnsq0var(0, pks + k, pjs + j, pis + i, n);
           real cref2 = gamma_d * p_ref / rho_ref;
 
-          real drho = rho - rho_ref;
-          real dtht = tht - tht_ref;
+          real drho = rho;// - rho_ref;
+          real dtht = tht;// - tht_ref;
 
           real b0_drho = (cref2 * rho_ref - dpdtht_ref * tht_ref) / rho_ref2;
           real b0_dtht = dpdtht_ref / rho_ref -
@@ -1726,11 +1727,11 @@ public:
     F.initialize(x, "F");
     Q.initialize(x, "Q");
 
-    FieldSet<nprognostic> Z;
-    FieldSet<nprognostic> FZ;
-    Z.initialize(x, "Z");
-    FZ.initialize(x, "FZ");
-    tend->compute_linrhs(params.dtcrm, const_vars, Z, auxiliary_vars, FZ);
+    //FieldSet<nprognostic> Z;
+    //FieldSet<nprognostic> FZ;
+    //Z.initialize(x, "Z");
+    //FZ.initialize(x, "FZ");
+    //tend->compute_linrhs(params.dtcrm, const_vars, Z, auxiliary_vars, FZ);
 
     yakl::timer_start("compute coefficients");
     using TT = Eigen::Triplet<real>;
@@ -1739,7 +1740,7 @@ public:
       set_one(Q, i);
       prog_exchange.exchange_variable_set(Q);
       tend->compute_linrhs(params.dtcrm, const_vars, Q, auxiliary_vars, F);
-      F.waxpy(-1, FZ, F);
+      //F.waxpy(-1, FZ, F);
       for (int j = 0; j < N; ++j) {
         auto val = 0.5 * params.dtcrm * getindex(F, j);
         if (i == j) {
