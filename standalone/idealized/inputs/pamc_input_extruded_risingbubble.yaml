@@ -42,5 +42,5 @@ inner_mpi : true
 nprocx : 1
 nprocy : 1
 
-si_tolerance : 1e-5
+si_tolerance : 1e-8
 

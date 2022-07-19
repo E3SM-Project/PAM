@@ -1358,6 +1358,8 @@ public:
         auxiliary_vars.fields_arr[DENSVERTEDGERECONVAR].data;
     auto densreconvar = auxiliary_vars.fields_arr[DENSRECONVAR].data;
     auto densvertreconvar = auxiliary_vars.fields_arr[DENSVERTRECONVAR].data;
+    
+    auto bdens0var = const_vars.fields_arr[BDENS0VAR].data;
 
     parallel_for(
         "Compute Dens0var",
@@ -1430,48 +1432,17 @@ public:
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          real Rd = thermo.cst.Rd;
-          real pr = thermo.cst.pr;
-          real gamma_d = thermo.cst.gamma_d;
-          real Cpd = thermo.cst.Cpd;
-          real Cvd = thermo.cst.Cvd;
-          real grav = 9.80616_fp;
-          real grav2 = grav * grav;
 
-          real rho_ref = refdens0var(0, pks + k, pjs + j, pis + i, n);
-          real Tht_ref = refdens0var(1, pks + k, pjs + j, pis + i, n);
-          real tht_ref = Tht_ref / rho_ref;
-
-          // real rho = rho_ref + dens0var(0, pks + k, pjs + j, pis + i, n);
-          // real Tht = Tht_ref + dens0var(1, pks + k, pjs + j, pis + i, n);
           real rho = dens0var(0, pks + k, pjs + j, pis + i, n);
           real Tht = dens0var(1, pks + k, pjs + j, pis + i, n);
+          
+          real b0_rho = bdens0var(0, pks + k, pjs + j, pis + i, n);
+          real b0_Tht = bdens0var(1, pks + k, pjs + j, pis + i, n);
+          real b1_rho = bdens0var(2, pks + k, pjs + j, pis + i, n);
+          real b1_Tht = bdens0var(3, pks + k, pjs + j, pis + i, n);
 
-          //real tht = Tht / rho_ref - (rho - rho_ref) / rho_ref * tht_ref;
-          real tht = Tht / rho_ref - rho / rho_ref * tht_ref;
-          real rho_ref2 = rho_ref * rho_ref;
-          real p_ref = pr * pow(Rd * Tht_ref / pr, gamma_d);
-          real dpdtht_ref = gamma_d * p_ref / tht_ref;
-          real dpdtht_ref2 = dpdtht_ref * dpdtht_ref;
-          real Nref2 = refnsq0var(0, pks + k, pjs + j, pis + i, n);
-          real cref2 = gamma_d * p_ref / rho_ref;
-
-          real drho = rho;// - rho_ref;
-          real dtht = tht;// - tht_ref;
-
-          real b0_drho = (cref2 * rho_ref - dpdtht_ref * tht_ref) / rho_ref2;
-          real b0_dtht = dpdtht_ref / rho_ref -
-                         dpdtht_ref2 * tht_ref / (cref2 * rho_ref2) -
-                         dpdtht_ref2 * grav2 * tht_ref /
-                             (Nref2 * cref2 * cref2 * rho_ref2);
-
-          real b0 = drho * b0_drho + dtht * b0_dtht;
-
-          real b1_drho = dpdtht_ref / rho_ref2;
-          real b1_dtht = dpdtht_ref2 * (Nref2 * cref2 + grav2) /
-                         (Nref2 * cref2 * cref2 * rho_ref2);
-
-          real b1 = drho * b1_drho + dtht * b1_dtht;
+          real b0 = rho * b0_rho + Tht * b0_Tht;
+          real b1 = rho * b1_rho + Tht * b1_Tht;
 
           bvar(0, pks + k, pjs + j, pis + i, n) = b0;
           bvar(1, pks + k, pjs + j, pis + i, n) = b1;
@@ -1799,20 +1770,9 @@ public:
       setindex(solution, i, this->eigen_sol(i));
     }
 
-    // auto densvar = solution.fields_arr[DENSVAR].data;
-    // auto refdensvar = const_vars.fields_arr[REFDENSVAR].data;
-    // int dis = dual_topology.is;
-    // int djs = dual_topology.js;
-    // int dks = dual_topology.ks;
-    // parallel_for(
-    //     "add ref density",
-    //     SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-    //                     dual_topology.n_cells_x, dual_topology.nens),
-    //     YAKL_LAMBDA(int k, int j, int i, int n) {
-    //       densvar(0, dks + k, djs + j, dis + i, n) += refdensvar(0, dks + k,
-    //       djs + j, dis + i, n); densvar(1, dks + k, djs + j, dis + i, n) +=
-    //       refdensvar(1, dks + k, djs + j, dis + i, n);
-    // });
+    // fourier
+    // prepare rhs
+    
 
     yakl::timer_stop("linsolve");
   }
@@ -2261,6 +2221,11 @@ void initialize_variables(const Topology &ptopo, const Topology &dtopo,
   const_names_arr[REFNSQ0VAR] = "refnsq0";
   set_dofs_arr(const_ndofs_arr, REFNSQ0VAR, 0, 0,
                ndensity); // refnsq0 = straight (0,0)-form
+  
+  const_topo_arr[BDENS0VAR] = ptopo;
+  const_names_arr[BDENS0VAR] = "bdens0";
+  set_dofs_arr(const_ndofs_arr, BDENS0VAR, 0, 0,
+               ndensity * ndensity); // refdens0 = straight (0,0)-form
 }
 
 void testcase_from_string(std::unique_ptr<TestCase> &testcase, std::string name,
@@ -2474,6 +2439,7 @@ public:
     int pis = primal_topology.is;
     int pjs = primal_topology.js;
     int pks = primal_topology.ks;
+    
 
     parallel_for(
         "Compute refdens0var",
@@ -2484,6 +2450,54 @@ public:
               constvars.fields_arr[REFDENS0VAR].data,
               constvars.fields_arr[REFDENSVAR].data, primal_geom, dual_geom,
               pis, pjs, pks, i, j, k, n);
+        });
+    
+    auto bdens0var = constvars.fields_arr[BDENS0VAR].data;
+    auto refdensvar = constvars.fields_arr[REFDENSVAR].data;
+    auto refnsq0var = constvars.fields_arr[REFNSQ0VAR].data;
+    auto refdens0var = constvars.fields_arr[REFDENS0VAR].data;
+    parallel_for(
+        "Compute Bdens0var",
+        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+          real Rd = thermo.cst.Rd;
+          real pr = thermo.cst.pr;
+          real gamma_d = thermo.cst.gamma_d;
+          real Cpd = thermo.cst.Cpd;
+          real Cvd = thermo.cst.Cvd;
+          real grav = 9.80616_fp;
+          real grav2 = grav * grav;
+
+          real rho_ref = refdens0var(0, pks + k, pjs + j, pis + i, n);
+          real Tht_ref = refdens0var(1, pks + k, pjs + j, pis + i, n);
+          real tht_ref = Tht_ref / rho_ref;
+
+          real rho_ref2 = rho_ref * rho_ref;
+          real p_ref = pr * pow(Rd * Tht_ref / pr, gamma_d);
+          real dpdtht_ref = gamma_d * p_ref / tht_ref;
+          real dpdtht_ref2 = dpdtht_ref * dpdtht_ref;
+          real Nref2 = refnsq0var(0, pks + k, pjs + j, pis + i, n);
+          real cref2 = gamma_d * p_ref / rho_ref;
+
+          real b0_rho = (cref2 * rho_ref - dpdtht_ref * tht_ref) / rho_ref2;
+          real b0_tht = dpdtht_ref / rho_ref -
+                         dpdtht_ref2 * tht_ref / (cref2 * rho_ref2) -
+                         dpdtht_ref2 * grav2 * tht_ref /
+                             (Nref2 * cref2 * cref2 * rho_ref2);
+          real b0_Tht = b0_tht / rho_ref;
+          b0_rho -= tht_ref / rho_ref * b0_tht;
+
+          real b1_rho = dpdtht_ref / rho_ref2;
+          real b1_tht = dpdtht_ref2 * (Nref2 * cref2 + grav2) /
+                         (Nref2 * cref2 * cref2 * rho_ref2);
+          real b1_Tht = b1_tht / rho_ref;
+          b1_rho -= tht_ref / rho_ref * b1_tht;
+
+          bdens0var(0, pks + k, pjs + j, pis + i, n) = b0_rho;
+          bdens0var(1, pks + k, pjs + j, pis + i, n) = b0_Tht;
+          bdens0var(2, pks + k, pjs + j, pis + i, n) = b1_rho;
+          bdens0var(3, pks + k, pjs + j, pis + i, n) = b1_Tht;
         });
   }
 };
