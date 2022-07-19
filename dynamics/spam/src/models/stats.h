@@ -31,19 +31,14 @@ public:
   MPI_Status Status[nstats];
   int ierr;
   int masterproc;
-  Topology primal_topology;
-  Topology dual_topology;
   Geometry<Straight> primal_geometry;
   Geometry<Twisted> dual_geometry;
   int nens;
   int statsize;
 
   void initialize(ModelParameters &params, Parallel &par,
-                  const Topology &primal_topo, const Topology &dual_topo,
                   const Geometry<Straight> &primal_geom,
                   const Geometry<Twisted> &dual_geom) {
-    this->primal_topology = primal_topo;
-    this->dual_topology = dual_topo;
     this->primal_geometry = primal_geom;
     this->dual_geometry = dual_geom;
     this->nens = params.nens;

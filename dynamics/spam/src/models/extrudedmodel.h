@@ -44,18 +44,19 @@ ThermoPotential thermo;
 
 class Dens0Diagnostic : public Diagnostic {
 public:
-  void initialize(const Topology &ptopo, const Topology &dtopo,
-                  const Geometry<Straight> &pgeom,
+  void initialize(const Geometry<Straight> &pgeom,
                   const Geometry<Twisted> &dgeom) override {
     // concentration 0-forms for dens
     name = "densl";
-    topology = ptopo;
+    topology = pgeom.topology;
     dofs_arr = {0, 0, ndensity}; // densldiag = straight (0,0)-form
-    Diagnostic::initialize(ptopo, dtopo, pgeom, dgeom);
+    Diagnostic::initialize(pgeom, dgeom);
   }
 
   void compute(real time, const FieldSet<nconstant> &const_vars,
                const FieldSet<nprognostic> &x) override {
+
+    const auto &primal_topology = primal_geometry.topology;
 
     int pis = primal_topology.is;
     int pjs = primal_topology.js;
@@ -75,17 +76,18 @@ public:
 
 class QXZ0Diagnostic : public Diagnostic {
 public:
-  void initialize(const Topology &ptopo, const Topology &dtopo,
-                  const Geometry<Straight> &pgeom,
+  void initialize(const Geometry<Straight> &pgeom,
                   const Geometry<Twisted> &dgeom) override {
     name = "QXZl";
-    topology = dtopo;
+    topology = dgeom.topology;
     dofs_arr = {0, 0, 1}; // // Qldiag = twisted (0,0)-form
-    Diagnostic::initialize(ptopo, dtopo, pgeom, dgeom);
+    Diagnostic::initialize(pgeom, dgeom);
   }
 
   void compute(real time, const FieldSet<nconstant> &const_vars,
                const FieldSet<nprognostic> &x) override {
+
+    const auto &dual_topology = dual_geometry.topology;
 
     int dis = dual_topology.is;
     int djs = dual_topology.js;
@@ -136,16 +138,14 @@ void add_model_diagnostics(
 class ModelTendencies : public ExtrudedTendencies {
 public:
   void initialize(PamCoupler &coupler, ModelParameters &params,
-                  Topology &primal_topo, Topology &dual_topo,
                   const Geometry<Straight> &primal_geom,
                   const Geometry<Twisted> &dual_geom,
                   ExchangeSet<nauxiliary> &aux_exchange,
                   ExchangeSet<nconstant> &const_exchange) {
 
-    ExtrudedTendencies::initialize(params, primal_topo, dual_topo, primal_geom,
-                                   dual_geom, aux_exchange, const_exchange);
-    varset.initialize(coupler, params, thermo, this->primal_topology,
-                      this->dual_topology, this->primal_geometry,
+    ExtrudedTendencies::initialize(params, primal_geom, dual_geom, aux_exchange,
+                                   const_exchange);
+    varset.initialize(coupler, params, thermo, this->primal_geometry,
                       this->dual_geometry);
     PVPE.initialize(varset);
     Hk.initialize(varset, this->primal_geometry, this->dual_geometry);
@@ -172,6 +172,9 @@ public:
       real5d Uvar, real5d UWvar, real5d qxz0var, real5d fxz0var,
       real5d dens0var, const real5d Vvar, const real5d Wvar,
       const real5d densvar, const real5d coriolisxzvar) {
+
+    const auto &primal_topology = primal_geometry.topology;
+    const auto &dual_topology = dual_geometry.topology;
 
     int pis = primal_topology.is;
     int pjs = primal_topology.js;
@@ -239,6 +242,9 @@ public:
       const real5d Vvar, const real5d Uvar, const real5d Wvar,
       const real5d UWvar, const real5d dens0var) {
 
+    const auto &primal_topology = primal_geometry.topology;
+    const auto &dual_topology = dual_geometry.topology;
+
     int dis = dual_topology.is;
     int djs = dual_topology.js;
     int dks = dual_topology.ks;
@@ -274,6 +280,8 @@ public:
       real5d Bvar, real5d FTvar, real5d FTWvar, const real5d Fvar,
       const real5d Uvar, const real5d FWvar, const real5d UWvar,
       const real5d Kvar, const real5d densvar, const real5d HSvar) {
+
+    const auto &primal_topology = primal_geometry.topology;
 
     int pis = primal_topology.is;
     int pjs = primal_topology.js;
@@ -330,6 +338,9 @@ public:
       real5d qxzedgereconvar, real5d qxzvertedgereconvar,
       real5d coriolisxzedgereconvar, real5d coriolisxzvertedgereconvar,
       const real5d dens0var, const real5d qxz0var, const real5d fxz0var) {
+
+    const auto &primal_topology = primal_geometry.topology;
+    const auto &dual_topology = dual_geometry.topology;
 
     int dis = dual_topology.is;
     int djs = dual_topology.js;
@@ -394,6 +405,9 @@ public:
       const real5d coriolisxzvertedgereconvar, const real5d HEvar,
       const real5d HEWvar, const real5d Uvar, const real5d UWvar,
       const real5d FTvar, const real5d FTWvar) {
+
+    const auto &primal_topology = primal_geometry.topology;
+    const auto &dual_topology = dual_geometry.topology;
 
     int dis = dual_topology.is;
     int djs = dual_topology.js;
@@ -469,6 +483,9 @@ public:
                      const real5d coriolisxzvertreconvar, const real5d Bvar,
                      const real5d Fvar, const real5d FWvar, const real5d Phivar,
                      const real5d Phivertvar) {
+
+    const auto &primal_topology = primal_geometry.topology;
+    const auto &dual_topology = dual_geometry.topology;
 
     int pis = primal_topology.is;
     int pjs = primal_topology.js;
@@ -601,6 +618,8 @@ public:
                    FieldSet<nprognostic> &x,
                    FieldSet<nauxiliary> &auxiliary_vars,
                    FieldSet<nprognostic> &xtend) {
+
+    const auto &dual_topology = dual_geometry.topology;
 
     // Compute U, W, q0, dens0
     compute_functional_derivatives_and_diagnostic_quantities_I(
@@ -834,11 +853,9 @@ public:
   real3d TEarr, KEarr, PEarr, IEarr, PVarr, PENSarr, trimmed_density;
 
   void initialize(ModelParameters &params, Parallel &par,
-                  const Topology &primal_topo, const Topology &dual_topo,
                   const Geometry<Straight> &primal_geom,
                   const Geometry<Twisted> &dual_geom) {
-    Stats::initialize(params, par, primal_topo, dual_topo, primal_geom,
-                      dual_geom);
+    Stats::initialize(params, par, primal_geom, dual_geom);
     this->stats_arr[DENSSTAT].initialize("mass", ndensity, this->statsize,
                                          this->nens, this->masterproc);
     this->stats_arr[DENSMAXSTAT].initialize("densmax", ndensity, this->statsize,
@@ -852,31 +869,30 @@ public:
     this->stats_arr[PESTAT].initialize("pens", 1, this->statsize, this->nens,
                                        this->masterproc);
 
-    this->TEarr =
-        real3d("TE", this->dual_topology.nl, this->dual_topology.n_cells_y,
-               this->dual_topology.n_cells_x);
-    this->KEarr =
-        real3d("KE", this->dual_topology.nl, this->dual_topology.n_cells_y,
-               this->dual_topology.n_cells_x);
-    this->IEarr =
-        real3d("IE", this->dual_topology.nl, this->dual_topology.n_cells_y,
-               this->dual_topology.n_cells_x);
-    this->PEarr =
-        real3d("PE", this->dual_topology.nl, this->dual_topology.n_cells_y,
-               this->dual_topology.n_cells_x);
-    this->PVarr =
-        real3d("PV", this->primal_topology.nl, this->primal_topology.n_cells_y,
-               this->primal_topology.n_cells_x);
-    this->PENSarr = real3d("PENS", this->primal_topology.nl,
-                           this->primal_topology.n_cells_y,
-                           this->primal_topology.n_cells_x);
-    this->trimmed_density =
-        real3d("trimmed_density", this->dual_topology.nl,
-               this->dual_topology.n_cells_y, this->dual_topology.n_cells_x);
+    const auto &primal_topology = primal_geometry.topology;
+    const auto &dual_topology = dual_geometry.topology;
+
+    TEarr = real3d("TE", dual_topology.nl, dual_topology.n_cells_y,
+                   dual_topology.n_cells_x);
+    KEarr = real3d("KE", dual_topology.nl, dual_topology.n_cells_y,
+                   dual_topology.n_cells_x);
+    IEarr = real3d("IE", dual_topology.nl, dual_topology.n_cells_y,
+                   dual_topology.n_cells_x);
+    PEarr = real3d("PE", dual_topology.nl, dual_topology.n_cells_y,
+                   dual_topology.n_cells_x);
+    PVarr = real3d("PV", primal_topology.nl, primal_topology.n_cells_y,
+                   primal_topology.n_cells_x);
+    PENSarr = real3d("PENS", primal_topology.nl, primal_topology.n_cells_y,
+                     primal_topology.n_cells_x);
+    trimmed_density = real3d("trimmed_density", dual_topology.nl,
+                             dual_topology.n_cells_y, dual_topology.n_cells_x);
   }
 
   void compute(FieldSet<nprognostic> &progvars, FieldSet<nconstant> &constvars,
                int tind) {
+
+    const auto &primal_topology = primal_geometry.topology;
+    const auto &dual_topology = dual_geometry.topology;
 
     for (int n = 0; n < nens; n++) {
 

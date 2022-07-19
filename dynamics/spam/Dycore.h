@@ -112,15 +112,13 @@ public:
     debug_print("start diagnostics init", par.masterproc);
     add_model_diagnostics(diagnostics);
     for (auto &diag : diagnostics) {
-      diag->initialize(primal_topology, dual_topology, primal_geometry,
-                       dual_geometry);
+      diag->initialize(primal_geometry, dual_geometry);
     }
     debug_print("end diagnostics init", par.masterproc);
 
     // Initialize the statistics
     debug_print("start stats init", par.masterproc);
-    stats.initialize(params, par, primal_topology, dual_topology,
-                     primal_geometry, dual_geometry);
+    stats.initialize(params, par, primal_geometry, dual_geometry);
     debug_print("end stats init", par.masterproc);
 
     // Create the outputter
@@ -131,9 +129,8 @@ public:
 
     // // Initialize the tendencies and diagnostics
     debug_print("start tendencies init", par.masterproc);
-    tendencies.initialize(coupler, params, primal_topology, dual_topology,
-                          primal_geometry, dual_geometry, aux_exchange,
-                          const_exchange);
+    tendencies.initialize(coupler, params, primal_geometry, dual_geometry,
+                          aux_exchange, const_exchange);
     debug_print("end tendencies init", par.masterproc);
 
     // EVENTUALLY THIS NEEDS TO BE MORE CLEVER IE POSSIBLY DO NOTHING BASED ON
