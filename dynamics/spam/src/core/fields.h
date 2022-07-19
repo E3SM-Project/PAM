@@ -3,6 +3,12 @@
 #include "common.h"
 #include "topology.h"
 
+struct FieldDescription {
+  std::string name;
+  Topology topology;
+  int basedof, extdof, ndofs;
+};
+
 class Field {
 
 public:

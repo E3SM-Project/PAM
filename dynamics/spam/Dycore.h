@@ -85,28 +85,18 @@ public:
     // Allocate the variables
     debug_print("start init field/exchange sets", par.masterproc);
     // this gives basedof, extdof and ndofs
-    SArray<int, 2, nprognostic, 3> prog_dofs_arr;
-    SArray<int, 2, nconstant, 3> const_dofs_arr;
-    SArray<int, 2, nauxiliary, 3> aux_dofs_arr;
-    std::array<std::string, nprognostic> prog_names_arr;
-    std::array<std::string, nconstant> const_names_arr;
-    std::array<std::string, nauxiliary> aux_names_arr;
-    std::array<Topology, nprognostic> prog_topo_arr;
-    std::array<Topology, nconstant> const_topo_arr;
-    std::array<Topology, nauxiliary> aux_topo_arr;
-    initialize_variables(primal_topology, dual_topology, prog_dofs_arr,
-                         const_dofs_arr, aux_dofs_arr, prog_names_arr,
-                         const_names_arr, aux_names_arr, prog_topo_arr,
-                         const_topo_arr, aux_topo_arr);
+    std::array<FieldDescription, nprognostic> prog_desc_arr;
+    std::array<FieldDescription, nconstant> const_desc_arr;
+    std::array<FieldDescription, nauxiliary> aux_desc_arr;
+    initialize_variables(primal_topology, dual_topology, prog_desc_arr,
+                         const_desc_arr, aux_desc_arr);
 
-    prognostic_vars.initialize("x", prog_names_arr, prog_topo_arr,
-                               prog_dofs_arr);
-    constant_vars.initialize("cons", const_names_arr, const_topo_arr,
-                             const_dofs_arr);
-    auxiliary_vars.initialize("aux", aux_names_arr, aux_topo_arr, aux_dofs_arr);
-    prog_exchange.initialize(prog_topo_arr, prog_dofs_arr);
-    const_exchange.initialize(const_topo_arr, const_dofs_arr);
-    aux_exchange.initialize(aux_topo_arr, aux_dofs_arr);
+    prognostic_vars.initialize("x", prog_desc_arr);
+    constant_vars.initialize("cons", const_desc_arr);
+    auxiliary_vars.initialize("aux", aux_desc_arr);
+    prog_exchange.initialize(prog_desc_arr);
+    const_exchange.initialize(const_desc_arr);
+    aux_exchange.initialize(aux_desc_arr);
     debug_print("finish init field/exchange sets", par.masterproc);
 
     debug_print("start diagnostics init", par.masterproc);

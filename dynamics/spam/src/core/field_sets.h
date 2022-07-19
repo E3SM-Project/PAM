@@ -17,9 +17,7 @@ public:
   // FieldSet& operator=( const FieldSet<num_fields> &vs) = delete;
   void printinfo();
   void initialize(const std::string name,
-                  std::array<std::string, num_fields> &names_arr,
-                  std::array<Topology, num_fields> &topo_arr,
-                  SArray<int, 2, num_fields, 3> &ndofs_arr);
+                  const std::array<FieldDescription, num_fields> &desc_arr);
   void initialize(const FieldSet<num_fields> &vs, const std::string name);
   void copy(const FieldSet<num_fields> &vs);
   void waxpy(real alpha, const FieldSet<num_fields> &x,
@@ -38,8 +36,7 @@ public:
   ExchangeSet();
   ExchangeSet(const ExchangeSet<num_fields> &exch) = delete;
   ExchangeSet &operator=(const ExchangeSet<num_fields> &exch) = delete;
-  void initialize(std::array<Topology, num_fields> &topo_arr,
-                  SArray<int, 2, num_fields, 3> &ndofs_arr);
+  void initialize(const std::array<FieldDescription, num_fields> &desc_arr);
   void initialize(const ExchangeSet<num_fields> &es);
   void printinfo();
   void exchange_variable_set(FieldSet<num_fields> &vs);
@@ -51,11 +48,10 @@ template <uint num_fields> ExchangeSet<num_fields>::ExchangeSet() {
 
 template <uint num_fields>
 void ExchangeSet<num_fields>::initialize(
-    std::array<Topology, num_fields> &topo_arr,
-    SArray<int, 2, num_fields, 3> &ndofs_arr) {
+    const std::array<FieldDescription, num_fields> &desc_arr) {
   for (int i = 0; i < num_fields; i++) {
-    this->exchanges_arr[i].initialize(topo_arr[i], ndofs_arr(i, 0),
-                                      ndofs_arr(i, 1), ndofs_arr(i, 2));
+    this->exchanges_arr[i].initialize(desc_arr[i].topology, desc_arr[i].basedof,
+                                      desc_arr[i].extdof, desc_arr[i].ndofs);
   }
   this->is_initialized = true;
 }
@@ -96,13 +92,13 @@ template <uint num_fields> void FieldSet<num_fields>::printinfo() {
 
 template <uint num_fields>
 void FieldSet<num_fields>::initialize(
-    const std::string name, std::array<std::string, num_fields> &names_arr,
-    std::array<Topology, num_fields> &topo_arr,
-    SArray<int, 2, num_fields, 3> &ndofs_arr) {
+    const std::string name,
+    const std::array<FieldDescription, num_fields> &desc_arr) {
   this->baseName = name;
   for (int i = 0; i < num_fields; i++) {
-    this->fields_arr[i].initialize(topo_arr[i], names_arr[i], ndofs_arr(i, 0),
-                                   ndofs_arr(i, 1), ndofs_arr(i, 2));
+    this->fields_arr[i].initialize(desc_arr[i].topology, desc_arr[i].name,
+                                   desc_arr[i].basedof, desc_arr[i].extdof,
+                                   desc_arr[i].ndofs);
   }
   this->is_initialized = true;
 }

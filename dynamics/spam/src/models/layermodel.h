@@ -696,108 +696,64 @@ public:
 };
 
 // *******   FieldSet Initialization   ***********//
-void initialize_variables(const Topology &ptopo, const Topology &dtopo,
-                          SArray<int, 2, nprognostic, 3> &prog_ndofs_arr,
-                          SArray<int, 2, nconstant, 3> &const_ndofs_arr,
-                          SArray<int, 2, nauxiliary, 3> &aux_ndofs_arr,
-                          std::array<std::string, nprognostic> &prog_names_arr,
-                          std::array<std::string, nconstant> &const_names_arr,
-                          std::array<std::string, nauxiliary> &aux_names_arr,
-                          std::array<Topology, nprognostic> &prog_topo_arr,
-                          std::array<Topology, nconstant> &const_topo_arr,
-                          std::array<Topology, nauxiliary> &aux_topo_arr) {
+void initialize_variables(
+    const Topology &ptopo, const Topology &dtopo,
+    std::array<FieldDescription, nprognostic> &prog_desc_arr,
+    std::array<FieldDescription, nconstant> &const_desc_arr,
+    std::array<FieldDescription, nauxiliary> &aux_desc_arr) {
 
   // primal grid represents straight quantities, dual grid twisted quantities
 
   // v, dens
-  prog_topo_arr[VVAR] = ptopo;
-  prog_topo_arr[DENSVAR] = dtopo;
-  prog_names_arr[VVAR] = "v";
-  prog_names_arr[DENSVAR] = "dens";
-  set_dofs_arr(prog_ndofs_arr, VVAR, 1, 1, 1); // v = straight 1-form
-  set_dofs_arr(prog_ndofs_arr, DENSVAR, ndims, 1,
-               ndensity); // dens = twisted n-form
+  prog_desc_arr[VVAR] = {"v", ptopo, 1, 1, 1}; // v = straight 1-form
+  prog_desc_arr[DENSVAR] = {"dens", dtopo, ndims, 1,
+                            ndensity}; // dens = twisted n-form
 
   // hs, coriolis
-  const_topo_arr[HSVAR] = dtopo;
-  const_topo_arr[CORIOLISVAR] = ptopo;
-  const_names_arr[HSVAR] = "hs";
-  const_names_arr[CORIOLISVAR] = "coriolis";
-  set_dofs_arr(const_ndofs_arr, HSVAR, ndims, 1, 1);   // hs = twisted n-form
-  set_dofs_arr(const_ndofs_arr, CORIOLISVAR, 2, 1, 1); // f = straight 2-form
+  const_desc_arr[HSVAR] = {"hs", dtopo, ndims, 1, 1}; // hs = twisted n-form
+  const_desc_arr[CORIOLISVAR] = {"coriolis", ptopo, 2, 1,
+                                 1}; // f = straight 2-form
 
   // functional derivatives = F, B, K, he, U
-  aux_topo_arr[BVAR] = ptopo;
-  aux_topo_arr[FVAR] = dtopo;
-  aux_topo_arr[UVAR] = dtopo;
-  aux_topo_arr[HEVAR] = dtopo;
-  aux_topo_arr[KVAR] = dtopo;
-  aux_names_arr[KVAR] = "K";
-  aux_names_arr[BVAR] = "B";
-  aux_names_arr[FVAR] = "F";
-  aux_names_arr[UVAR] = "U";
-  aux_names_arr[HEVAR] = "he";
-  set_dofs_arr(aux_ndofs_arr, BVAR, 0, 1, ndensity);  // B = straight 0-form
-  set_dofs_arr(aux_ndofs_arr, KVAR, ndims, 1, 1);     // K = twisted n-form
-  set_dofs_arr(aux_ndofs_arr, FVAR, ndims - 1, 1, 1); // F = twisted (n-1)-form
-  set_dofs_arr(aux_ndofs_arr, UVAR, ndims - 1, 1, 1); // U = twisted (n-1)-form
-  set_dofs_arr(aux_ndofs_arr, HEVAR, ndims - 1, 1,
-               1); // he lives on dual edges, associated with F
+  aux_desc_arr[BVAR] = {"B", ptopo, 0, 1, ndensity};  // B = straight 0-form
+  aux_desc_arr[FVAR] = {"F", dtopo, ndims - 1, 1, 1}; // F = twisted (n-1)-form
+  aux_desc_arr[KVAR] = {"K", dtopo, ndims, 1, 1};     // K = twisted n-form
+  aux_desc_arr[HEVAR] = {"he", dtopo, ndims - 1, 1,
+                         1}; // he lives on dual edges, associated with F
+  aux_desc_arr[UVAR] = {"U", dtopo, ndims - 1, 1, 1}; // U = twisted (n-1)-form
 
   // dens primal grid reconstruction stuff- dens0, edgerecon, recon
-  aux_topo_arr[DENSRECONVAR] = dtopo;
-  aux_topo_arr[DENSEDGERECONVAR] = dtopo;
-  aux_topo_arr[DENS0VAR] = ptopo;
-  aux_names_arr[DENS0VAR] = "dens0";
-  aux_names_arr[DENSRECONVAR] = "densrecon";
-  aux_names_arr[DENSEDGERECONVAR] = "densedgerecon";
-  set_dofs_arr(aux_ndofs_arr, DENSRECONVAR, ndims - 1, 1,
-               ndensity); // densrecon lives on dual edges, associated with F
-  set_dofs_arr(
-      aux_ndofs_arr, DENSEDGERECONVAR, ndims, 1,
+  aux_desc_arr[DENS0VAR] = {"dens0", ptopo, 0, 1,
+                            ndensity}; // dens0 = straight 0-form
+  aux_desc_arr[DENSEDGERECONVAR] = {
+      "densedgerecon", dtopo, ndims, 1,
       2 * ndims *
-          ndensity); // densedgerecon lives on dual cells, associated with F
-  set_dofs_arr(aux_ndofs_arr, DENS0VAR, 0, 1,
-               ndensity); // dens0 = straight 0-form
+          ndensity}; // densedgerecon lives on dual cells, associated with F
+  aux_desc_arr[DENSRECONVAR] = {
+      "densrecon", dtopo, ndims - 1, 1,
+      ndensity}; // densrecon lives on dual edges, associated with F
 
   // dual grid reconstruction stuff- q0, f0, FT, qedgerecon, qrecon,
   // coriolisedgercon, coriolisrecon
-  aux_topo_arr[FTVAR] = ptopo;
-  aux_topo_arr[CORIOLISRECONVAR] = ptopo;
-  aux_topo_arr[CORIOLISEDGERECONVAR] = ptopo;
-  aux_topo_arr[Q0VAR] = dtopo;
-  aux_topo_arr[F0VAR] = dtopo;
-  aux_topo_arr[QRECONVAR] = ptopo;
-  aux_topo_arr[QEDGERECONVAR] = ptopo;
-  aux_names_arr[FTVAR] = "FT";
-  aux_names_arr[CORIOLISRECONVAR] = "coriolisrecon";
-  aux_names_arr[CORIOLISEDGERECONVAR] = "coriolisedgerecon";
-  aux_names_arr[Q0VAR] = "q";
-  aux_names_arr[F0VAR] = "f";
-  aux_names_arr[QRECONVAR] = "qrecon";
-  aux_names_arr[QEDGERECONVAR] = "qedgerecon";
-  set_dofs_arr(aux_ndofs_arr, FTVAR, 1, 1, 1); // FT = straight 1-form
-  set_dofs_arr(aux_ndofs_arr, Q0VAR, 0, 1, 1); // q0 = twisted 0-form
-  set_dofs_arr(aux_ndofs_arr, F0VAR, 0, 1, 1); // f0 = twisted 0-form
-  set_dofs_arr(aux_ndofs_arr, QRECONVAR, 1, 1,
-               1); // qrecon lives on primal edges, associated with FT
-  set_dofs_arr(aux_ndofs_arr, QEDGERECONVAR, 2, 1,
-               4); // qedgerecon lives on primal cells
-  set_dofs_arr(aux_ndofs_arr, CORIOLISRECONVAR, 1, 1,
-               1); // coriolisrecon lives on primal edges, associated with FT
-  set_dofs_arr(aux_ndofs_arr, CORIOLISEDGERECONVAR, 2, 1,
-               4); // coriolisedgerecon lives on primal cells
+  aux_desc_arr[Q0VAR] = {"q", dtopo, 0, 1, 1};  // q0 = twisted 0-form
+  aux_desc_arr[F0VAR] = {"f", dtopo, 0, 1, 1};  // f0 = twisted 0-form
+  aux_desc_arr[FTVAR] = {"FT", ptopo, 1, 1, 1}; // FT = straight 1-form
+  aux_desc_arr[QEDGERECONVAR] = {"qedgerecon", ptopo, 2, 1,
+                                 4}; // qedgerecon lives on primal cells
+  aux_desc_arr[QRECONVAR] = {
+      "qrecon", ptopo, 1, 1,
+      1}; // qrecon lives on primal edges, associated with FT
+  aux_desc_arr[CORIOLISEDGERECONVAR] = {
+      "coriolisedgerecon", ptopo, 2, 1,
+      4}; // coriolisedgerecon lives on primal cells
+  aux_desc_arr[CORIOLISRECONVAR] = {
+      "coriolisrecon", ptopo, 1, 1,
+      1}; // coriolisrecon lives on primal edges, associated with FT
 
   // fct stuff- Phi, Mf, edgeflux
-  aux_topo_arr[PHIVAR] = dtopo;
-  aux_topo_arr[MFVAR] = dtopo;
-  aux_topo_arr[EDGEFLUXVAR] = dtopo;
-  aux_names_arr[PHIVAR] = "Phi";
-  aux_names_arr[MFVAR] = "Mf";
-  aux_names_arr[EDGEFLUXVAR] = "edgeflux";
-  set_dofs_arr(aux_ndofs_arr, PHIVAR, ndims - 1, 1, ndensity);
-  set_dofs_arr(aux_ndofs_arr, MFVAR, ndims, 1, ndensity);
-  set_dofs_arr(aux_ndofs_arr, EDGEFLUXVAR, ndims - 1, 1, ndensity);
+  aux_desc_arr[PHIVAR] = {"Phi", dtopo, ndims - 1, 1, ndensity};
+  aux_desc_arr[MFVAR] = {"Mf", dtopo, ndims, 1, ndensity};
+  aux_desc_arr[EDGEFLUXVAR] = {"edgeflux", dtopo, ndims - 1, 1, ndensity};
 }
 
 void testcase_from_string(std::unique_ptr<TestCase> &testcase,
