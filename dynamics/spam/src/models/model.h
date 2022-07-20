@@ -139,6 +139,7 @@ public:
   virtual void set_domain(ModelParameters &params) = 0;
   virtual void set_initial_conditions(FieldSet<nprognostic> &progvars,
                                       FieldSet<nconstant> &constvars,
+                                      ExchangeSet<nconstant> &const_exchange,
                                       const Geometry<Straight> &primal_geom,
                                       const Geometry<Twisted> &dual_geom) = 0;
   virtual ~TestCase() = default;

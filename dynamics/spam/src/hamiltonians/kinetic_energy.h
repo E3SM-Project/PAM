@@ -541,6 +541,20 @@ public:
     // std::cout << "HEw in Hk " << i << " " << j << " " << k << " " <<
     // HEw(0,k+ks,j+js,i+is) << "\n" << std::flush;
   }
+  
+  void YAKL_INLINE compute_hew(real5d HEw, const real5d dens0, int is, int js, int ks,
+                                     int i, int j, int k, int n) const {
+    // SArray<real,2> Dv;
+    // compute hew = phiw * h0
+    // Dv(0) = dens0(0, k+ks, j+js, i+is);
+    // Dv(1) = dens0(0, k+ks-1, j+js, i+is);
+    // real hew = phiW(Dv);
+    // compute FW = hew * UW, set HEw
+    real hew = (dens0(0, k + ks, j + js, i + is, n) +
+                dens0(0, k + ks - 1, j + js, i + is, n)) /
+               2.0;
+    HEw(0, k + ks, j + js, i + is, n) = hew;
+  }
 
   void YAKL_INLINE compute_K(real5d K, const real5d v, const real5d U,
                              const real5d w, const real5d UW, int is, int js,
@@ -610,6 +624,28 @@ public:
     }
     // std::cout << "HE in Hk " << i << " " << j << " " << k << " " <<
     // HE(0,k+ks,j+js,i+is) << "\n" << std::flush;
+  }
+  
+  void YAKL_INLINE compute_he(real5d HE, const real5d dens0, int is, int js, int ks,
+                              int i, int j, int k, int n) const {
+    SArray<real, 2, ndims, 2> D0;
+    SArray<real, 1, ndims> he;
+
+    // compute he = phi * h0
+    for (int d = 0; d < ndims; d++) {
+      if (d == 0) {
+        D0(d, 0) = dens0(0, k + ks, j + js, i + is, n);
+        D0(d, 1) = dens0(0, k + ks, j + js, i + is - 1, n);
+      }
+      if (d == 1) {
+        D0(d, 0) = dens0(0, k + ks, j + js, i + is, n);
+        D0(d, 1) = dens0(0, k + ks, j + js - 1, i + is, n);
+      }
+    }
+    phi(he, D0);
+    for (int d = 0; d < ndims; d++) {
+      HE(d, k + ks, j + js, i + is, n) = he(d);
+    }
   }
 
   void YAKL_INLINE compute_F_and_he(real5d F, real5d HE, const real5d U,

@@ -146,7 +146,7 @@ public:
     // THE IC STRING?
     //  set the initial conditions and compute initial stats
     debug_print("start ic setting", par.masterproc);
-    testcase->set_initial_conditions(prognostic_vars, constant_vars,
+    testcase->set_initial_conditions(prognostic_vars, constant_vars, const_exchange,
                                      primal_geometry, dual_geometry);
     prog_exchange.exchange_variable_set(prognostic_vars);
     const_exchange.exchange_variable_set(constant_vars);
