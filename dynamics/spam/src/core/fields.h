@@ -14,6 +14,7 @@ class Field {
 public:
   real5d data;
   Topology topology;
+  Exchange *m_exchange;
   std::string name;
   int total_dofs; // total number of dofs in a "horiz" slice ie at each layer or
                   // interface
@@ -28,8 +29,8 @@ public:
   // Field& operator=( const Field &f) = delete;
   void printinfo();
   void initialize(const Field &f, const std::string fieldName);
-  void initialize(const Topology &topo, const std::string fieldName, int bdof,
-                  int edof, int nd);
+  void initialize(const Topology &topo, Exchange *exchng,
+                  const std::string fieldName, int bdof, int edof, int nd);
   void copy(const Field &f);
   void waxpy(real alpha, const Field &x, const Field &y);
   void waxpbypcz(real alpha, real beta, real gamma, const Field &x,
@@ -44,6 +45,7 @@ public:
   void set_bottom_bnd(int ndof, real val);
   void set_bnd(real val);
   void set_bnd(int ndof, real val);
+  void exchange();
   // real sum();
   // real min();
   // real max();
@@ -64,13 +66,16 @@ void Field::printinfo() {
 
 // creates a new Field f with same parameters as self, without copying data over
 void Field::initialize(const Field &f, const std::string fieldName) {
-  this->initialize(f.topology, fieldName, f.basedof, f.extdof, f.ndofs);
+  this->initialize(f.topology, f.m_exchange, fieldName, f.basedof, f.extdof,
+                   f.ndofs);
 }
 
-void Field::initialize(const Topology &topo, const std::string fieldName,
-                       int bdof, int edof, int nd) {
+void Field::initialize(const Topology &topo, Exchange *exchng,
+                       const std::string fieldName, int bdof, int edof,
+                       int nd) {
 
   this->topology = topo;
+  this->m_exchange = exchng;
   this->name = fieldName;
   this->basedof = bdof;
   this->extdof = edof;
@@ -259,3 +264,5 @@ void Field::waxpbypcz(real alpha, real beta, real gamma, const Field &x,
             gamma * z.data(ndof, k + ks, j + js, i + is, n);
       });
 }
+
+void Field::exchange() { m_exchange->exchange_data(data); }

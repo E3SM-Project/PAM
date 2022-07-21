@@ -103,11 +103,8 @@ class ModelTendencies : public Tendencies {
 public:
   void initialize(PamCoupler &coupler, ModelParameters &params,
                   const Geometry<Straight> &primal_geom,
-                  const Geometry<Twisted> &dual_geom,
-                  ExchangeSet<nauxiliary> &aux_exchange,
-                  ExchangeSet<nconstant> &const_exchange) {
-    Tendencies::initialize(params, primal_geom, dual_geom, aux_exchange,
-                           const_exchange);
+                  const Geometry<Twisted> &dual_geom) {
+    Tendencies::initialize(params, primal_geom, dual_geom);
     varset.initialize(coupler, params, thermo, this->primal_geometry,
                       this->dual_geometry);
     PVPE.initialize(varset);
@@ -134,7 +131,6 @@ public:
   void compute_functional_derivatives_and_diagnostic_quantities_I(
       real5d Uvar, real5d Q0var, real5d f0var, real5d dens0var,
       const real5d Vvar, const real5d densvar, const real5d coriolisvar) {
-
     const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
 
@@ -175,7 +171,6 @@ public:
   void compute_functional_derivatives_and_diagnostic_quantities_II(
       real5d Fvar, real5d Kvar, real5d HEvar, const real5d Vvar,
       const real5d Uvar, const real5d dens0var) {
-
     const auto &dual_topology = dual_geometry.topology;
 
     int dis = dual_topology.is;
@@ -196,7 +191,6 @@ public:
   void compute_functional_derivatives_and_diagnostic_quantities_III(
       real5d FTvar, real5d Bvar, const real5d Fvar, const real5d Uvar,
       const real5d Kvar, const real5d densvar, const real5d HSvar) {
-
     const auto &primal_topology = primal_geometry.topology;
 
     int pis = primal_topology.is;
@@ -220,7 +214,6 @@ public:
                                     real5d Qedgereconvar, real5d fedgereconvar,
                                     const real5d dens0var, const real5d Q0var,
                                     const real5d f0var) {
-
     const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
 
@@ -265,7 +258,6 @@ public:
                       const real5d Qedgereconvar, const real5d fedgereconvar,
                       const real5d HEvar, const real5d FTvar,
                       const real5d Uvar) {
-
     const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
 
@@ -311,7 +303,6 @@ public:
                           const real5d densreconvar, const real5d Qreconvar,
                           const real5d Coriolisreconvar, const real5d Bvar,
                           const real5d Fvar, const real5d Phivar) {
-
     const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
 
@@ -356,7 +347,6 @@ public:
                    FieldSet<nprognostic> &x,
                    FieldSet<nauxiliary> &auxiliary_vars,
                    FieldSet<nprognostic> &xtend) {
-
     const auto &dual_topology = dual_geometry.topology;
 
     // Compute U, q0, hf, dens0
@@ -367,14 +357,7 @@ public:
         auxiliary_vars.fields_arr[DENS0VAR].data, x.fields_arr[VVAR].data,
         x.fields_arr[DENSVAR].data, const_vars.fields_arr[CORIOLISVAR].data);
 
-    this->aux_exchange->exchanges_arr[UVAR].exchange_field(
-        auxiliary_vars.fields_arr[UVAR]);
-    this->aux_exchange->exchanges_arr[DENS0VAR].exchange_field(
-        auxiliary_vars.fields_arr[DENS0VAR]);
-    this->aux_exchange->exchanges_arr[Q0VAR].exchange_field(
-        auxiliary_vars.fields_arr[Q0VAR]);
-    this->aux_exchange->exchanges_arr[F0VAR].exchange_field(
-        auxiliary_vars.fields_arr[F0VAR]);
+    auxiliary_vars.exchange({UVAR, DENS0VAR, Q0VAR, F0VAR});
 
     // Compute K, F, he
     compute_functional_derivatives_and_diagnostic_quantities_II(
@@ -384,12 +367,7 @@ public:
         auxiliary_vars.fields_arr[UVAR].data,
         auxiliary_vars.fields_arr[DENS0VAR].data);
 
-    this->aux_exchange->exchanges_arr[FVAR].exchange_field(
-        auxiliary_vars.fields_arr[FVAR]);
-    this->aux_exchange->exchanges_arr[KVAR].exchange_field(
-        auxiliary_vars.fields_arr[KVAR]);
-    this->aux_exchange->exchanges_arr[HEVAR].exchange_field(
-        auxiliary_vars.fields_arr[HEVAR]);
+    auxiliary_vars.exchange({FVAR, KVAR, HEVAR});
 
     // Compute FT, B
     compute_functional_derivatives_and_diagnostic_quantities_III(
@@ -400,10 +378,7 @@ public:
         auxiliary_vars.fields_arr[KVAR].data, x.fields_arr[DENSVAR].data,
         const_vars.fields_arr[HSVAR].data);
 
-    this->aux_exchange->exchanges_arr[FTVAR].exchange_field(
-        auxiliary_vars.fields_arr[FTVAR]);
-    this->aux_exchange->exchanges_arr[BVAR].exchange_field(
-        auxiliary_vars.fields_arr[BVAR]);
+    auxiliary_vars.exchange({FTVAR, BVAR});
 
     // Compute densrecon, qrecon and frecon
     compute_edge_reconstructions(
@@ -414,12 +389,8 @@ public:
         auxiliary_vars.fields_arr[Q0VAR].data,
         auxiliary_vars.fields_arr[F0VAR].data);
 
-    this->aux_exchange->exchanges_arr[DENSEDGERECONVAR].exchange_field(
-        auxiliary_vars.fields_arr[DENSEDGERECONVAR]);
-    this->aux_exchange->exchanges_arr[QEDGERECONVAR].exchange_field(
-        auxiliary_vars.fields_arr[QEDGERECONVAR]);
-    this->aux_exchange->exchanges_arr[CORIOLISEDGERECONVAR].exchange_field(
-        auxiliary_vars.fields_arr[CORIOLISEDGERECONVAR]);
+    auxiliary_vars.exchange(
+        {DENSEDGERECONVAR, QEDGERECONVAR, CORIOLISEDGERECONVAR});
 
     compute_recons(auxiliary_vars.fields_arr[DENSRECONVAR].data,
                    auxiliary_vars.fields_arr[QRECONVAR].data,
@@ -431,12 +402,7 @@ public:
                    auxiliary_vars.fields_arr[FTVAR].data,
                    auxiliary_vars.fields_arr[UVAR].data);
 
-    this->aux_exchange->exchanges_arr[DENSRECONVAR].exchange_field(
-        auxiliary_vars.fields_arr[DENSRECONVAR]);
-    this->aux_exchange->exchanges_arr[QRECONVAR].exchange_field(
-        auxiliary_vars.fields_arr[QRECONVAR]);
-    this->aux_exchange->exchanges_arr[CORIOLISRECONVAR].exchange_field(
-        auxiliary_vars.fields_arr[CORIOLISRECONVAR]);
+    auxiliary_vars.exchange({DENSRECONVAR, QRECONVAR, CORIOLISRECONVAR});
 
     // Compute fct
 
@@ -454,8 +420,8 @@ public:
               auxiliary_vars.fields_arr[DENSRECONVAR].data,
               auxiliary_vars.fields_arr[FVAR].data, dis, djs, dks, i, j, k, n);
         });
-    this->aux_exchange->exchanges_arr[EDGEFLUXVAR].exchange_field(
-        auxiliary_vars.fields_arr[EDGEFLUXVAR]);
+
+    auxiliary_vars.exchange({EDGEFLUXVAR});
 
     parallel_for(
         "Compute Mf",
@@ -467,8 +433,7 @@ public:
                                dis, djs, dks, i, j, k, n);
         });
 
-    this->aux_exchange->exchanges_arr[MFVAR].exchange_field(
-        auxiliary_vars.fields_arr[MFVAR]);
+    auxiliary_vars.exchange({MFVAR});
 
     parallel_for(
         "Compute Phi",
@@ -492,8 +457,7 @@ public:
       }
     }
 
-    this->aux_exchange->exchanges_arr[PHIVAR].exchange_field(
-        auxiliary_vars.fields_arr[PHIVAR]);
+    auxiliary_vars.exchange({PHIVAR});
 
     // Compute tendencies
     compute_tendencies(xtend.fields_arr[DENSVAR].data,

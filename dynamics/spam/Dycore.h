@@ -91,12 +91,13 @@ public:
     initialize_variables(primal_topology, dual_topology, prog_desc_arr,
                          const_desc_arr, aux_desc_arr);
 
-    prognostic_vars.initialize("x", prog_desc_arr);
-    constant_vars.initialize("cons", const_desc_arr);
-    auxiliary_vars.initialize("aux", aux_desc_arr);
     prog_exchange.initialize(prog_desc_arr);
     const_exchange.initialize(const_desc_arr);
     aux_exchange.initialize(aux_desc_arr);
+
+    prognostic_vars.initialize("x", prog_desc_arr, prog_exchange);
+    constant_vars.initialize("cons", const_desc_arr, const_exchange);
+    auxiliary_vars.initialize("aux", aux_desc_arr, aux_exchange);
     debug_print("finish init field/exchange sets", par.masterproc);
 
     debug_print("start diagnostics init", par.masterproc);
@@ -119,8 +120,7 @@ public:
 
     // // Initialize the tendencies and diagnostics
     debug_print("start tendencies init", par.masterproc);
-    tendencies.initialize(coupler, params, primal_geometry, dual_geometry,
-                          aux_exchange, const_exchange);
+    tendencies.initialize(coupler, params, primal_geometry, dual_geometry);
     debug_print("end tendencies init", par.masterproc);
 
     // EVENTUALLY THIS NEEDS TO BE MORE CLEVER IE POSSIBLY DO NOTHING BASED ON
@@ -129,17 +129,17 @@ public:
     debug_print("start ic setting", par.masterproc);
     testcase->set_initial_conditions(prognostic_vars, constant_vars,
                                      primal_geometry, dual_geometry);
-    prog_exchange.exchange_variable_set(prognostic_vars);
-    const_exchange.exchange_variable_set(constant_vars);
+    prognostic_vars.exchange();
+    constant_vars.exchange();
     tendencies.compute_constants(constant_vars, prognostic_vars);
-    const_exchange.exchange_variable_set(constant_vars);
+    constant_vars.exchange();
     stats.compute(prognostic_vars, constant_vars, 0);
     debug_print("end ic setting", par.masterproc);
 
     // // Initialize the time stepper
     debug_print("start ts init", par.masterproc);
     tint.initialize(params, tendencies, prognostic_vars, constant_vars,
-                    auxiliary_vars, prog_exchange);
+                    auxiliary_vars);
     debug_print("end ts init", par.masterproc);
 
     // convert dynamics state to Coupler state

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "common.h"
-#include "fields.h"
 #include "topology.h"
 
 // Xm SendBuf holds the cells closest to x- ie the left side -> Go into Xp
@@ -73,14 +72,14 @@ public:
   void printinfo();
   void initialize(const Exchange &exch);
   void initialize(const Topology &topo, int nd0, int nd1, int nd2);
-  void pack(const Field &field);
-  void unpack(Field &field);
+  void pack(const real5d &data);
+  void unpack(real5d &data);
   void exchange();
-  void exchange_field(Field &field);
+  void exchange_data(real5d &data);
   void exchange_x();
   void exchange_y();
   void exchange_corners();
-  void exchange_mirror(Field &field);
+  void exchange_mirror(real5d &data);
 };
 
 Exchange::Exchange() { this->is_initialized = false; }
@@ -179,7 +178,7 @@ void Exchange::initialize(const Topology &topo, int bdof, int edof, int nd) {
   this->is_initialized = true;
 }
 
-void Exchange::pack(const Field &field) {
+void Exchange::pack(const real5d &data) {
 
   int is = this->topology.is;
   int js = this->topology.js;
@@ -196,11 +195,10 @@ void Exchange::pack(const Field &field) {
             j * this->total_dofs * this->topology.halosize_x * this->_nz +
             n * this->total_dofs * this->topology.halosize_x * this->_nz *
                 this->topology.n_cells_y;
-        this->haloSendBuf_Xp(iGlob) = field.data(
+        this->haloSendBuf_Xp(iGlob) = data(
             ndof, k + ks, j + js,
             ii + is + this->topology.n_cells_x - this->topology.halosize_x, n);
-        this->haloSendBuf_Xm(iGlob) =
-            field.data(ndof, k + ks, j + js, ii + is, n);
+        this->haloSendBuf_Xm(iGlob) = data(ndof, k + ks, j + js, ii + is, n);
       });
 
   // pack down (y-) and up (y+)
@@ -215,12 +213,11 @@ void Exchange::pack(const Field &field) {
               i * this->total_dofs * this->topology.halosize_y * this->_nz +
               n * this->total_dofs * this->topology.halosize_y * this->_nz *
                   this->topology.n_cells_x;
-          this->haloSendBuf_Yp(iGlob) = field.data(
+          this->haloSendBuf_Yp(iGlob) = data(
               ndof, k + ks,
               jj + js + this->topology.n_cells_y - this->topology.halosize_y,
               i + is, n);
-          this->haloSendBuf_Ym(iGlob) =
-              field.data(ndof, k + ks, jj + js, i + is, n);
+          this->haloSendBuf_Ym(iGlob) = data(ndof, k + ks, jj + js, i + is, n);
         });
   }
 
@@ -237,17 +234,17 @@ void Exchange::pack(const Field &field) {
                       n * this->total_dofs * this->topology.halosize_y *
                           this->topology.halosize_x * this->_nz;
           this->haloSendBuf_XYll(iGlob) =
-              field.data(ndof, k + ks, jj + js, ii + is, n);
-          this->haloSendBuf_XYur(iGlob) = field.data(
+              data(ndof, k + ks, jj + js, ii + is, n);
+          this->haloSendBuf_XYur(iGlob) = data(
               ndof, k + ks,
               jj + js + this->topology.n_cells_y - this->topology.halosize_y,
               ii + is + this->topology.n_cells_x - this->topology.halosize_x,
               n);
-          this->haloSendBuf_XYul(iGlob) = field.data(
+          this->haloSendBuf_XYul(iGlob) = data(
               ndof, k + ks,
               jj + js + this->topology.n_cells_y - this->topology.halosize_y,
               ii + is, n);
-          this->haloSendBuf_XYlr(iGlob) = field.data(
+          this->haloSendBuf_XYlr(iGlob) = data(
               ndof, k + ks, jj + js,
               ii + is + this->topology.n_cells_x - this->topology.halosize_x,
               n);
@@ -255,7 +252,7 @@ void Exchange::pack(const Field &field) {
   }
 }
 
-void Exchange::unpack(Field &field) {
+void Exchange::unpack(real5d &data) {
 
   int is = this->topology.is;
   int js = this->topology.js;
@@ -272,10 +269,10 @@ void Exchange::unpack(Field &field) {
             j * this->total_dofs * this->topology.halosize_x * this->_nz +
             n * this->total_dofs * this->topology.halosize_x * this->_nz *
                 this->topology.n_cells_y;
-        field.data(ndof, k + ks, j + js, ii + is - this->topology.halosize_x,
-                   n) = this->haloRecvBuf_Xm(iGlob);
-        field.data(ndof, k + ks, j + js, ii + is + this->topology.n_cells_x,
-                   n) = this->haloRecvBuf_Xp(iGlob);
+        data(ndof, k + ks, j + js, ii + is - this->topology.halosize_x, n) =
+            this->haloRecvBuf_Xm(iGlob);
+        data(ndof, k + ks, j + js, ii + is + this->topology.n_cells_x, n) =
+            this->haloRecvBuf_Xp(iGlob);
       });
 
   // unpack down (y-) and up (y+)
@@ -292,10 +289,10 @@ void Exchange::unpack(Field &field) {
               i * this->total_dofs * this->topology.halosize_y * this->_nz +
               n * this->total_dofs * this->topology.halosize_y * this->_nz *
                   this->topology.n_cells_x;
-          field.data(ndof, k + ks, jj + js - this->topology.halosize_y, i + is,
-                     n) = this->haloRecvBuf_Ym(iGlob);
-          field.data(ndof, k + ks, jj + js + this->topology.n_cells_y, i + is,
-                     n) = this->haloRecvBuf_Yp(iGlob);
+          data(ndof, k + ks, jj + js - this->topology.halosize_y, i + is, n) =
+              this->haloRecvBuf_Ym(iGlob);
+          data(ndof, k + ks, jj + js + this->topology.n_cells_y, i + is, n) =
+              this->haloRecvBuf_Yp(iGlob);
         });
   }
 
@@ -311,17 +308,17 @@ void Exchange::unpack(Field &field) {
                           this->topology.halosize_x +
                       n * this->total_dofs * this->topology.halosize_y *
                           this->topology.halosize_x * this->_nz;
-          field.data(ndof, k + ks, jj + js - this->topology.halosize_y,
-                     ii + is - this->topology.halosize_x, n) =
+          data(ndof, k + ks, jj + js - this->topology.halosize_y,
+               ii + is - this->topology.halosize_x, n) =
               this->haloRecvBuf_XYll(iGlob);
-          field.data(ndof, k + ks, jj + js + this->topology.n_cells_y,
-                     ii + is + this->topology.n_cells_x, n) =
+          data(ndof, k + ks, jj + js + this->topology.n_cells_y,
+               ii + is + this->topology.n_cells_x, n) =
               this->haloRecvBuf_XYur(iGlob);
-          field.data(ndof, k + ks, jj + js - this->topology.halosize_y,
-                     ii + is + this->topology.n_cells_x, n) =
+          data(ndof, k + ks, jj + js - this->topology.halosize_y,
+               ii + is + this->topology.n_cells_x, n) =
               this->haloRecvBuf_XYlr(iGlob);
-          field.data(ndof, k + ks, jj + js + this->topology.n_cells_y,
-                     ii + is - this->topology.halosize_x, n) =
+          data(ndof, k + ks, jj + js + this->topology.n_cells_y,
+               ii + is - this->topology.halosize_x, n) =
               this->haloRecvBuf_XYul(iGlob);
         });
   }
@@ -485,7 +482,7 @@ void Exchange::exchange_corners() {
   }
 }
 
-void Exchange::exchange_mirror(Field &field) {
+void Exchange::exchange_mirror(real5d &data) {
   int is = this->topology.is;
   int js = this->topology.js;
   int ks = this->topology.ks;
@@ -498,8 +495,8 @@ void Exchange::exchange_mirror(Field &field) {
                         this->topology.n_cells_x, this->topology.n_cells_y,
                         this->nens),
         YAKL_CLASS_LAMBDA(int ndof, int kk, int i, int j, int n) {
-          field.data(ndof, this->_nz + ks + kk, j + js, i + is, n) =
-              field.data(ndof, this->_nz + ks - kk - 1, j + js, i + is, n);
+          data(ndof, this->_nz + ks + kk, j + js, i + is, n) =
+              data(ndof, this->_nz + ks - kk - 1, j + js, i + is, n);
         });
     // Mirror Bottom
     parallel_for(
@@ -507,8 +504,8 @@ void Exchange::exchange_mirror(Field &field) {
                         this->topology.n_cells_x, this->topology.n_cells_y,
                         this->nens),
         YAKL_CLASS_LAMBDA(int ndof, int kk, int i, int j, int n) {
-          field.data(ndof, ks - kk - 1, j + js, i + is, n) =
-              field.data(ndof, ks + kk, j + js, i + is, n);
+          data(ndof, ks - kk - 1, j + js, i + is, n) =
+              data(ndof, ks + kk, j + js, i + is, n);
         });
   }
 
@@ -520,8 +517,8 @@ void Exchange::exchange_mirror(Field &field) {
                         this->topology.n_cells_x, this->topology.n_cells_y,
                         this->nens),
         YAKL_CLASS_LAMBDA(int ndof, int kk, int i, int j, int n) {
-          field.data(ndof, this->_nz + ks + kk, j + js, i + is, n) =
-              field.data(ndof, this->_nz + ks - kk - 2, j + js, i + is, n);
+          data(ndof, this->_nz + ks + kk, j + js, i + is, n) =
+              data(ndof, this->_nz + ks - kk - 2, j + js, i + is, n);
         });
     // Mirror Bottom
     parallel_for(
@@ -529,8 +526,8 @@ void Exchange::exchange_mirror(Field &field) {
                         this->topology.n_cells_x, this->topology.n_cells_y,
                         this->nens),
         YAKL_CLASS_LAMBDA(int ndof, int kk, int i, int j, int n) {
-          field.data(ndof, ks - kk - 1, j + js, i + is, n) =
-              field.data(ndof, ks + kk + 1, j + js, i + is, n);
+          data(ndof, ks - kk - 1, j + js, i + is, n) =
+              data(ndof, ks + kk + 1, j + js, i + is, n);
         });
   }
 }
@@ -547,12 +544,12 @@ void Exchange::exchange() {
   }
 }
 
-void Exchange::exchange_field(Field &field) {
-  this->pack(field);
+void Exchange::exchange_data(real5d &data) {
+  this->pack(data);
   this->exchange();
-  this->unpack(field);
+  this->unpack(data);
 
 #ifdef _EXTRUDED
-  exchange_mirror(field);
+  exchange_mirror(data);
 #endif
 }

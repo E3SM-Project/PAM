@@ -26,7 +26,8 @@ public:
                           const Geometry<Twisted> &dgeom) {
     this->primal_geometry = pgeom;
     this->dual_geometry = dgeom;
-    field.initialize(topology, name, dofs_arr[0], dofs_arr[1], dofs_arr[2]);
+    field.initialize(topology, nullptr, name, dofs_arr[0], dofs_arr[1],
+                     dofs_arr[2]);
     this->is_initialized = true;
   }
   virtual ~Diagnostic() = default;
@@ -146,8 +147,6 @@ public:
 
 class Tendencies {
 public:
-  ExchangeSet<nauxiliary> *aux_exchange;
-  ExchangeSet<nconstant> *const_exchange;
   Geometry<Straight> primal_geometry;
   Geometry<Twisted> dual_geometry;
 
@@ -178,13 +177,9 @@ public:
 
   void initialize(ModelParameters &params,
                   const Geometry<Straight> &primal_geom,
-                  const Geometry<Twisted> &dual_geom,
-                  ExchangeSet<nauxiliary> &aux_exchange,
-                  ExchangeSet<nconstant> &const_exchange) {
+                  const Geometry<Twisted> &dual_geom) {
     this->primal_geometry = primal_geom;
     this->dual_geometry = dual_geom;
-    this->aux_exchange = &aux_exchange;
-    this->const_exchange = &const_exchange;
 
     TransformMatrices::coefs_to_gll_lower(primal_to_gll);
     TransformMatrices::weno_sten_to_coefs(primal_wenoRecon);
@@ -236,11 +231,8 @@ public:
 
   void initialize(ModelParameters &params,
                   const Geometry<Straight> &primal_geom,
-                  const Geometry<Twisted> &dual_geom,
-                  ExchangeSet<nauxiliary> &aux_exchange,
-                  ExchangeSet<nconstant> &const_exchange) {
-    Tendencies::initialize(params, primal_geom, dual_geom, aux_exchange,
-                           const_exchange);
+                  const Geometry<Twisted> &dual_geom) {
+    Tendencies::initialize(params, primal_geom, dual_geom);
 
     TransformMatrices::coefs_to_gll_lower(primal_vert_to_gll);
     TransformMatrices::weno_sten_to_coefs(primal_vert_wenoRecon);
