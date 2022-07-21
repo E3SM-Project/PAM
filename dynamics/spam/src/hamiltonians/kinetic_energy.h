@@ -382,11 +382,9 @@ public:
                                   const real5d dens, int is, int js, int ks,
                                   int i, int j, int k, int n) const {
     real K2 = 0.;
-    // Have to subtract 1 from k here since UW has an extra dof compared to w!
     SArray<real, 1, 1> UW0;
     compute_Hv<1, vert_diff_ord>(UW0, w, this->primal_geometry,
-                                 this->dual_geometry, is, js, ks, i, j, k - 1,
-                                 n);
+                                 this->dual_geometry, is, js, ks, i, j, k, n);
     real w0;
     // Have to subtract 1 from k here since UW has an extra dof compared to w
     w0 = w(0, k + ks - 1, j + js, i + is, n);
@@ -398,10 +396,10 @@ public:
                                      const real5d dens, int is, int js, int ks,
                                      int i, int j, int k, int n) const {
     real K2 = 0.;
-    // Have to subtract 1 from k here since UW has an extra dof compared to w!
     SArray<real, 1, 1> UW1;
     compute_Hv<1, vert_diff_ord>(UW1, w, this->primal_geometry,
-                                 this->dual_geometry, is, js, ks, i, j, k, n);
+                                 this->dual_geometry, is, js, ks, i, j, k + 1,
+                                 n);
     real w1;
     // Have to subtract 1 from k here since UW has an extra dof compared to w
     w1 = w(0, k + ks, j + js, i + is, n);
@@ -413,13 +411,12 @@ public:
                               int is, int js, int ks, int i, int j, int k,
                               int n) const {
     real K2 = 0.;
-    // Have to subtract 1 from k here since UW has an extra dof compared to w!
     SArray<real, 1, 1> UW0, UW1;
     compute_Hv<1, vert_diff_ord>(UW0, w, this->primal_geometry,
-                                 this->dual_geometry, is, js, ks, i, j, k - 1,
-                                 n);
-    compute_Hv<1, vert_diff_ord>(UW1, w, this->primal_geometry,
                                  this->dual_geometry, is, js, ks, i, j, k, n);
+    compute_Hv<1, vert_diff_ord>(UW1, w, this->primal_geometry,
+                                 this->dual_geometry, is, js, ks, i, j, k + 1,
+                                 n);
     real w0, w1;
     // Have to subtract 1 from k here since UW has an extra dof compared to w
     w0 = w(0, k + ks - 1, j + js, i + is, n);
