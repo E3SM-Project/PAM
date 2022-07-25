@@ -23,6 +23,7 @@ typedef unsigned int uint;
 // Declaring the precision for the model
 typedef double real;
 typedef std::complex<real> complex;
+typedef yakl::Array<complex, 5, yakl::memDevice, yakl::styleC> complex5d;
 #define REAL_MPI MPI_DOUBLE
 //#define REAL_NC NC_DOUBLE
 

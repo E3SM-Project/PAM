@@ -232,6 +232,40 @@ void YAKL_INLINE compute_Hext(real5d uvar, const real5d vvar,
   }
 }
 
+template <uint ord, int off = ord / 2 - 1>
+void YAKL_INLINE fourier_Hext(SArray<real, 1, ndims> &u,
+                           const Geometry<Straight> &pgeom,
+                           const Geometry<Twisted> &dgeom, int is, int js,
+                           int ks, int i, int j, int k, int n, int nx, int ny,
+                           int nz) {
+  SArray<real, 2, ndims, off> shift;
+  SArray<real, 1, ndims> Hgeom;
+  for (int d = 0; d < ndims; d++) {
+      if (d == 0) {
+        Hgeom(d) =
+            dgeom.get_area_01entity(k + ks, j + js, i + is + 0 - off) /
+            pgeom.get_area_10entity(k + ks, j + js, i + is + 0 - off);
+      }
+      if (d == 1) {
+        Hgeom(d) =
+            dgeom.get_area_01entity(k + ks, j + js + 0 - off, i + is) /
+            pgeom.get_area_10entity(k + ks, j + js + 0 - off, i + is);
+      }
+  }
+
+  for (int p = 0; p < off; p++) {
+    for (int d = 0; d < ndims; d++) {
+      if (d == 0) {
+        shift(d, p) = (2 * pi * i * (p - off)) / nx;
+      }
+      if (d == 1) {
+        shift(d, p) = (2 * pi * j * (p - off)) / ny;
+      }
+    }
+  }
+  Hhat(u, Hgeom, shift);
+}
+
 template <uint ndofs>
 void YAKL_INLINE I(SArray<real, 1, ndofs> &var,
                    SArray<real, 3, ndofs, ndims, 1> const &dens,
@@ -426,6 +460,30 @@ void YAKL_INLINE compute_Iext(real5d var0, const real5d var,
   }
 }
 
+template <uint ord, int off = ord / 2 - 1>
+real YAKL_INLINE fourier_Iext(const Geometry<Straight> &pgeom,
+                           const Geometry<Twisted> &dgeom, int is, int js,
+                           int ks, int i, int j, int k, int n, int nx, int ny,
+                           int nz) {
+  SArray<real, 2, ndims, off> shift;
+
+  // assuming these are constant
+  real Igeom = pgeom.get_area_00entity(k + ks, j + js, i + is + 0 - off) /
+              dgeom.get_area_11entity(k + ks, j + js, i + is + 0 - off);
+
+  for (int p = 0; p < off; p++) {
+    for (int d = 0; d < ndims; d++) {
+      if (d == 0) {
+        shift(d, p) = (2 * pi * i * (p - off)) / nx;
+      }
+      if (d == 1) {
+        shift(d, p) = (2 * pi * j * (p - off)) / ny;
+      }
+    }
+  }
+  return Ihat(Igeom, shift);
+}
+
 template <uint ndofs>
 void YAKL_INLINE J(SArray<real, 1, ndofs> &var,
                    SArray<real, 3, ndofs, ndims, 1> const &dens,
@@ -581,3 +639,50 @@ void YAKL_INLINE compute_Jext(real5d var0, const real5d var,
     }
   }
 }
+
+// FOR TESTING
+
+// Note the indexing here, this is key
+complex YAKL_INLINE compute_Hv(const complex5d wvar, const Geometry<Straight> &pgeom,
+                            const Geometry<Twisted> &dgeom, int is, int js,
+                            int ks, int i, int j, int k, int n) {
+  // THIS IS 2ND ORDER AT BEST...
+  return wvar(0, k + ks - 1, j + js, i + is, n) *
+         dgeom.get_area_10entity(k + ks, j + js, i + is) /
+         pgeom.get_area_01entity(k + ks - 1, j + js, i + is);
+}
+
+// Indexing issues since we go from p01 to d10, and d10 has an "extended
+// boundary" ie boundary vert edges Since we index over d10, need to subtract 1
+// from k when indexing p01 ie the kth edge flux corresponds with the k-1th edge
+// velocity Also should be called with k=[1,...,ni-2] ie skip the first and last
+// fluxes, which are set diagnostically (=0 for no-flux bcs)
+template <uint ndofs, uint ord, ADD_MODE addmode = ADD_MODE::REPLACE,
+          uint off = ord / 2 - 1>
+void YAKL_INLINE compute_Hv(complex5d uwvar, const complex5d wvar,
+                            const Geometry<Straight> &pgeom,
+                            const Geometry<Twisted> &dgeom, int is, int js,
+                            int ks, int i, int j, int k, int n) {
+  complex uw = compute_Hv(wvar, pgeom, dgeom, is, js, ks, i, j, k, n);
+  if (addmode == ADD_MODE::REPLACE) {
+    uwvar(0, k + ks, j + js, i + is, n) = uw;
+  }
+  if (addmode == ADD_MODE::ADD) {
+    uwvar(0, k + ks, j + js, i + is, n) += uw;
+  }
+}
+template <uint ndofs, uint ord, ADD_MODE addmode = ADD_MODE::REPLACE,
+          uint off = ord / 2 - 1>
+void YAKL_INLINE compute_Hv(SArray<complex, 1, 1> &uwvar, const complex5d wvar,
+                            const Geometry<Straight> &pgeom,
+                            const Geometry<Twisted> &dgeom, int is, int js,
+                            int ks, int i, int j, int k, int n) {
+  complex uw = compute_Hv(wvar, pgeom, dgeom, is, js, ks, i, j, k, n);
+  if (addmode == ADD_MODE::REPLACE) {
+    uwvar(0) = uw;
+  }
+  if (addmode == ADD_MODE::ADD) {
+    uwvar(0) += uw;
+  }
+}
+
