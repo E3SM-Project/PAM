@@ -2126,7 +2126,7 @@ public:
                 dual_topology.ni); 
 
             real fI = fourier_Iext<diff_ord>(primal_geometry, dual_geometry, pis, pjs, pks,
-                                  i, j, 0, 0, n_cells_x, n_cells_y, dual_topology.ni);
+                                  i, j, k, 0, n_cells_x, n_cells_y, dual_topology.ni);
 
             SArray<real, 1, ndims> fH;
             fourier_Hext<diff_ord>(fH, primal_geometry, dual_geometry, pis, pjs, pks,
@@ -2134,7 +2134,8 @@ public:
 
             complex im(0, 1);
             complex fac = (2 * pi * i) / dual_topology.n_cells_x;
-            complex fD1 = exp(im * fac) - 1._fp;
+            //complex fD1 = exp(im * fac) - 1._fp;
+            complex fD1 = 1._fp - exp(-im * fac);
             real he = refhevar(0, dks + k, djs + j, dis + i, n);
 
             real c1 = 1 - dtf2 * fI * fH(0) * fD1Dbar(0) * (
@@ -2149,24 +2150,28 @@ public:
             complex c4 = -dtf * fD1 * fI * (refdens0recon * b0_rho + refdens1recon * b1_rho); 
             complex c5 = -dtf * fD1 * fI * (refdens0recon * b0_Tht + refdens1recon * b1_Tht); 
 
-            //complex lhs = c1 * complex_v(0, k, j, i, n) + 
-            //                c2 * complex_dens_halo(0, k + dks, j + djs, i + dis, n) +
-            //                c3 * complex_dens_halo(1, k + dks, j + djs, i + dis, n);
-            //complex rhs = complex_vrhs(0, k, j, i, n) +
-            //                c4 * complex_densrhs(0, k, j, i, n) +
-            //                c5 * complex_densrhs(1, k, j, i, n);
-            complex lhs1 = complex_dens(0, k, j, i, n);
-            complex lhs2 = dtf * fD1 * fH(0) * he * refdens0recon * complex_v(0, k, j, i, n);
-            complex lhs3 = dtf * complex_dens_halo(0, k + dks, j + djs, i + dis, n);
+            complex lhs = c1 * complex_v(0, k, j, i, n) + 
+                            c2 * complex_dens_halo(0, k + dks, j + djs, i + dis, n) +
+                            c3 * complex_dens_halo(1, k + dks, j + djs, i + dis, n);
+            complex rhs = complex_vrhs(0, k, j, i, n) +
+                            c4 * complex_densrhs(0, k, j, i, n) +
+                            c5 * complex_densrhs(1, k, j, i, n);
+            //complex lhs1 = complex_dens(0, k, j, i, n);
+            //complex lhs2 = dtf * fD1 * fH(0) * he * refdens0recon * complex_v(0, k, j, i, n);
+            //complex lhs3 = dtf * complex_dens_halo(0, k + dks, j + djs, i + dis, n);
 
-            complex lhs = complex_dens(1, k, j, i, n) +
-                          dtf * fD1 * fH(0) * he * refdens1recon * complex_v(0, k, j, i, n) +
-                          dtf * complex_dens_halo(1, k + dks, j + djs, i + dis, n);
-            complex rhs = complex_densrhs(1, k, j, i, n);
+            //complex lhs = complex_dens(1, k, j, i, n) +
+            //              dtf * fD1 * fH(0) * he * refdens1recon * complex_v(0, k, j, i, n) +
+            //              dtf * complex_dens_halo(1, k + dks, j + djs, i + dis, n);
+            //complex rhs = complex_densrhs(1, k, j, i, n);
 
+            complex lhs1 = c1 * complex_v(0, k, j, i, n);
+            complex lhs2 = c2 * complex_dens_halo(0, k + dks, j + djs, i + dis, n);
+            complex lhs3 = c3 * complex_dens_halo(1, k + dks, j + djs, i + dis, n);
 
-            if (i == 10) {
-              std::cout << k << " " << lhs1 << " " << lhs2 << " " << lhs3 << " " << lhs1 + lhs2 + lhs3 << " " << rhs  << std::endl;
+            if (i == 4) {
+              //std::cout << k << " " << lhs1 << " " << lhs2 << " " << lhs3 << " " << lhs - rhs << std::endl;
+              std::cout << k << " " << lhs - rhs << std::endl;
             }
       });
 
