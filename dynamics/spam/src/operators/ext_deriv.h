@@ -528,3 +528,7 @@ YAKL_INLINE void compute_wDvbar(complex5d tendvar, const real5d vertreconvar,
     }
   }
 }
+
+//void foo(complex1d l, complex1d d, complex1d u, real5d , int k) {
+//  l(k) = 
+//}
