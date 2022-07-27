@@ -1706,10 +1706,10 @@ class ModelLinearSystem : public LinearSystem {
   complex5d complex_dens0_halo;
   complex5d complex_densrhs_halo;
   
-  complex1d tri_l;
-  complex1d tri_d;
-  complex1d tri_u;
-  complex1d tri_rhs;
+  complex4d tri_l;
+  complex4d tri_d;
+  complex4d tri_u;
+  complex4d tri_rhs;
   
   real5d vtend;
   real5d wtend;
@@ -1850,10 +1850,12 @@ public:
     denstend = real5d("complex v halo", ndensity, dnlh, nyh,
                    nxh, nens);
     
-    tri_d = complex1d("tri d", pnl);
-    tri_rhs = complex1d("tri rhs", pnl);
-    tri_l = complex1d("tri l", pnl-1);
-    tri_u = complex1d("tri u", pnl-1);
+    tri_d = complex4d("tri d", pnl, ny, nx, nens);
+    tri_rhs = complex4d("tri rhs", pnl, ny, nx, nens);
+    //tri_l = complex1d("tri l", pnl-1, ny, nx, nens);
+    //tri_u = complex1d("tri u", pnl-1, ny, nx, nens);
+    tri_l = complex4d("tri l", pnl, ny, nx, nens);
+    tri_u = complex4d("tri u", pnl, ny, nx, nens);
   }
 
   virtual void YAKL_INLINE solve(real dt, FieldSet<nprognostic> &rhs,
@@ -2388,6 +2390,22 @@ public:
                                 i, j, k, 0, n_cells_x, n_cells_y, dual_topology.ni);
           real fI_kp1 = fourier_Iext<diff_ord>(primal_geometry, dual_geometry, pis, pjs, pks,
                                 i, j, k + 1, 0, n_cells_x, n_cells_y, dual_topology.ni);
+          
+          real gamma_fac_kp2 = refhewvar(0, pks + k + 2, pjs + j, pis + i, n) * 
+                               dual_geometry.get_area_10entity(k + 2 + dks, j + djs, i + dis) /
+                               primal_geometry.get_area_01entity(k + 1 + pks, j + pjs, i + pis);
+          real gamma_fac_kp1 = refhewvar(0, pks + k + 1, pjs + j, pis + i, n) * 
+                               dual_geometry.get_area_10entity(k + 1 + dks, j + djs, i + dis) /
+                               primal_geometry.get_area_01entity(k + 0 + pks, j + pjs, i + pis);
+          real gamma_fac_k = refhewvar(0, pks + k + 0, pjs + j, pis + i, n) * 
+                               dual_geometry.get_area_10entity(k + 0 + dks, j + djs, i + dis) /
+                               primal_geometry.get_area_01entity(k - 1 + pks, j + pjs, i + pis);
+          if (k == 0) {
+            gamma_fac_k = 0;
+          }
+          if (k == primal_topology.nl) {
+            gamma_fac_kp2 = 0;
+          }
 
           real alpha_kp1 = refdensvertreconvar(0, pks + k + 1, pjs + j, pis + i, n); 
           real beta_kp1 = fI_kp1 * bdens0var(0, pks + k + 1, pjs + j, pis + i, n);  
@@ -2397,12 +2415,24 @@ public:
           real gamma_kp1 = refdensvertreconvar(0, pks + k + 1, pjs + j, pis + i, n);
           real gamma_k = refdensvertreconvar(0, pks + k, pjs + j, pis + i, n);
 
-          complex uw_kp2 = complex_uw_halo(0, k + 2 + dks, j + djs, i + dis, n);
-          complex uw_kp1 = complex_uw_halo(0, k + 1 + dks, j + djs, i + dis, n);
-          complex uw_k = complex_uw_halo(0, k + dks, j + djs, i + dis, n);
+          gamma_kp2 *= gamma_fac_kp2;
+          gamma_kp1 *= gamma_fac_kp1;
+          gamma_k *= gamma_fac_k;
+
+          //complex uw_kp2 = complex_uw_halo(0, k + 2 + dks, j + djs, i + dis, n);
+          //complex uw_kp1 = complex_uw_halo(0, k + 1 + dks, j + djs, i + dis, n);
+          //complex uw_k = complex_uw_halo(0, k + dks, j + djs, i + dis, n);
+          complex uw_kp2 = complex_w_halo(0, k + 1 + dks, j + djs, i + dis, n);
+          complex uw_kp1 = complex_w_halo(0, k + 0 + dks, j + djs, i + dis, n);
+          complex uw_k = complex_w_halo(0, k - 1 + dks, j + djs, i + dis, n);
 
           complex term1 = alpha_kp1 * (beta_kp1 * gamma_kp2 * uw_kp2 -
                           gamma_kp1 * (beta_kp1 + beta_k) * uw_kp1 + beta_k * gamma_k * uw_k);
+
+          tri_u(k, j, i, n) = -dtf2 * alpha_kp1 * beta_kp1 * gamma_kp2;
+          tri_d(k, j, i, n) = dtf2 * alpha_kp1 * (beta_kp1 + beta_k) * gamma_kp1;
+          tri_l(k, j, i, n) = -dtf2 * alpha_kp1 * beta_k * gamma_k;
+
           
           alpha_kp1 = refdensvertreconvar(0, pks + k + 1, pjs + j, pis + i, n); 
           beta_kp1 = fI_kp1 * bdens0var(1, pks + k + 1, pjs + j, pis + i, n);  
@@ -2411,9 +2441,15 @@ public:
           gamma_kp2 = refdensvertreconvar(1, pks + k + 2, pjs + j, pis + i, n);
           gamma_kp1 = refdensvertreconvar(1, pks + k + 1, pjs + j, pis + i, n);
           gamma_k = refdensvertreconvar(1, pks + k, pjs + j, pis + i, n);
+          gamma_kp2 *= gamma_fac_kp2;
+          gamma_kp1 *= gamma_fac_kp1;
+          gamma_k *= gamma_fac_k;
           
           complex term2 = alpha_kp1 * (beta_kp1 * gamma_kp2 * uw_kp2 -
                           gamma_kp1 * (beta_kp1 + beta_k) * uw_kp1 + beta_k * gamma_k * uw_k);
+          tri_u(k, j, i, n) += -dtf2 * alpha_kp1 * beta_kp1 * gamma_kp2;
+          tri_d(k, j, i, n) += dtf2 * alpha_kp1 * (beta_kp1 + beta_k) * gamma_kp1;
+          tri_l(k, j, i, n) += -dtf2 * alpha_kp1 * beta_k * gamma_k;
           
           alpha_kp1 = refdensvertreconvar(1, pks + k + 1, pjs + j, pis + i, n); 
           beta_kp1 = fI_kp1 * bdens0var(2, pks + k + 1, pjs + j, pis + i, n);  
@@ -2422,9 +2458,15 @@ public:
           gamma_kp2 = refdensvertreconvar(0, pks + k + 2, pjs + j, pis + i, n);
           gamma_kp1 = refdensvertreconvar(0, pks + k + 1, pjs + j, pis + i, n);
           gamma_k = refdensvertreconvar(0, pks + k, pjs + j, pis + i, n);
+          gamma_kp2 *= gamma_fac_kp2;
+          gamma_kp1 *= gamma_fac_kp1;
+          gamma_k *= gamma_fac_k;
           
           complex term3 = alpha_kp1 * (beta_kp1 * gamma_kp2 * uw_kp2 -
                           gamma_kp1 * (beta_kp1 + beta_k) * uw_kp1 + beta_k * gamma_k * uw_k);
+          tri_u(k, j, i, n) += -dtf2 * alpha_kp1 * beta_kp1 * gamma_kp2;
+          tri_d(k, j, i, n) += dtf2 * alpha_kp1 * (beta_kp1 + beta_k) * gamma_kp1;
+          tri_l(k, j, i, n) += -dtf2 * alpha_kp1 * beta_k * gamma_k;
           
           alpha_kp1 = refdensvertreconvar(1, pks + k + 1, pjs + j, pis + i, n); 
           beta_kp1 = fI_kp1 * bdens0var(3, pks + k + 1, pjs + j, pis + i, n);  
@@ -2433,12 +2475,32 @@ public:
           gamma_kp2 = refdensvertreconvar(1, pks + k + 2, pjs + j, pis + i, n);
           gamma_kp1 = refdensvertreconvar(1, pks + k + 1, pjs + j, pis + i, n);
           gamma_k = refdensvertreconvar(1, pks + k, pjs + j, pis + i, n);
+          gamma_kp2 *= gamma_fac_kp2;
+          gamma_kp1 *= gamma_fac_kp1;
+          gamma_k *= gamma_fac_k;
           
           complex term4 = alpha_kp1 * (beta_kp1 * gamma_kp2 * uw_kp2 -
                           gamma_kp1 * (beta_kp1 + beta_k) * uw_kp1 + beta_k * gamma_k * uw_k);
+          tri_u(k, j, i, n) += -dtf2 * alpha_kp1 * beta_kp1 * gamma_kp2;
+          tri_d(k, j, i, n) += dtf2 * alpha_kp1 * (beta_kp1 + beta_k) * gamma_kp1;
+          tri_l(k, j, i, n) += -dtf2 * alpha_kp1 * beta_k * gamma_k;
 
           complex_wrhs2(0, k, j, i, n) = -dtf2 * (term1 + term2 + term3 + term4);
     });
+    
+    parallel_for(
+        "TEST",
+        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          complex w_kp1 = complex_w_halo(0, k + 1 + dks, j + djs, i + dis, n);
+          complex w_k = complex_w_halo(0, k + 0 + dks, j + djs, i + dis, n);
+          complex w_km1 = complex_w_halo(0, k - 1 + dks, j + djs, i + dis, n);
+          complex_wrhs2(0, k, j, i, n) = tri_l(k, j, i, n) * w_km1 +
+                                         tri_d(k, j, i, n) * w_k +
+                                         tri_u(k, j, i, n) * w_kp1;
+    });
+
 
     parallel_for(
         "TEST",
@@ -2460,7 +2522,7 @@ public:
             
             complex lhs = complex_w(0, k, j, i, n) + complex_wrhs2(0, k, j, i, n);
             complex rhs = complex_wrhs(0, k, j, i, n);
-            if (i == 0) {
+            if (i == 1) {
               std::cout << k << " " << lhs << " " << rhs << " " << lhs - rhs << std::endl;
             }
       });

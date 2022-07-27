@@ -24,6 +24,9 @@ typedef unsigned int uint;
 typedef double real;
 typedef std::complex<real> complex;
 typedef yakl::Array<complex, 5, yakl::memDevice, yakl::styleC> complex5d;
+typedef yakl::Array<complex, 4, yakl::memDevice, yakl::styleC> complex4d;
+typedef yakl::Array<complex, 3, yakl::memDevice, yakl::styleC> complex3d;
+typedef yakl::Array<complex, 2, yakl::memDevice, yakl::styleC> complex2d;
 typedef yakl::Array<complex, 1, yakl::memDevice, yakl::styleC> complex1d;
 #define REAL_MPI MPI_DOUBLE
 //#define REAL_NC NC_DOUBLE
