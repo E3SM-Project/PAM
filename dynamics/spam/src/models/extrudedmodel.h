@@ -1706,6 +1706,9 @@ class ModelLinearSystem : public LinearSystem {
   complex5d complex_dens0_halo;
   complex5d complex_densrhs_halo;
   
+  complex5d complex_b_halo;
+  complex5d complex_vertecon_halo;
+  
   complex4d tri_l;
   complex4d tri_d;
   complex4d tri_u;
@@ -1839,6 +1842,8 @@ public:
     complex_dens0_halo = complex5d("complex dens0 halo", ndensity, dnlh, nyh,
                           nxh, nens);
     complex_densrhs_halo = complex5d("complex densrhs halo", ndensity, dnlh, nyh,
+                          nxh, nens);
+    complex_b_halo = complex5d("complex b halo", ndensity, dnlh, nyh,
                           nxh, nens);
     
     vtend = real5d("complex v halo", 1, pnih, nyh,
@@ -2089,7 +2094,9 @@ public:
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wDvbar<ndensity>(
+          compute_wDbar2<ndensity>(denstend, refdensreconvar, fvar,
+                                       dis, djs, dks, i, j, k, n);
+          compute_wDvbar<ndensity, ADD_MODE::ADD>(
               denstend, refdensvertreconvar, fwvar, dis, djs, dks, i, j, k, n);
         });
     
@@ -2251,7 +2258,7 @@ public:
           complex_w(0, k, j, i, n) = sol_w(0, k + pks, j + pjs, i + pis, n);
           complex_wrhs(0, k, j, i, n) = rhs_w(0, k + pks, j + pjs, i + pis, n) +
                                         wtend(0, k + pks, j + pjs, i + pis, n); 
-          complex_wrhs2(0, k, j, i, n) = wtend2(0, k + pks, j + pjs, i + pis, n); 
+          //complex_wrhs2(0, k, j, i, n) = wtend2(0, k + pks, j + pjs, i + pis, n); 
         });
 
     pocketfft::c2c(shape_v, stride_v, stride_v, axes, pocketfft::FORWARD,
@@ -2485,7 +2492,178 @@ public:
           tri_d(k, j, i, n) += dtf2 * alpha_kp1 * (beta_kp1 + beta_k) * gamma_kp1;
           tri_l(k, j, i, n) += -dtf2 * alpha_kp1 * beta_k * gamma_k;
 
-          complex_wrhs2(0, k, j, i, n) = -dtf2 * (term1 + term2 + term3 + term4);
+    //      complex_wrhs2(0, k, j, i, n) = -dtf2 * (term1 + term2 + term3 + term4);
+    });
+
+    // HORIZONTAL CONTRIBUTION
+    
+    parallel_for(
+        "TEST",
+        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          complex vc0_kp1 = complex_vcoeff_halo(0, k + 1 + pks, j + pjs, i + pis, n);
+          complex vc0_k = complex_vcoeff_halo(0, k + pks, j + pjs, i + pis, n);
+          
+          complex vc1_kp1 = complex_vcoeff_halo(1, k + 1 + pks, j + pjs, i + pis, n);
+          complex vc1_k = complex_vcoeff_halo(1, k + pks, j + pjs, i + pis, n);
+          
+          complex vc2_kp1 = complex_vcoeff_halo(2, k + 1 + pks, j + pjs, i + pis, n);
+          complex vc2_k = complex_vcoeff_halo(2, k + pks, j + pjs, i + pis, n);
+        
+          real fI_k = fourier_Iext<diff_ord>(primal_geometry, dual_geometry, pis, pjs, pks,
+                                i, j, k, 0, n_cells_x, n_cells_y, dual_topology.ni);
+          real fI_kp1 = fourier_Iext<diff_ord>(primal_geometry, dual_geometry, pis, pjs, pks,
+                                i, j, k + 1, 0, n_cells_x, n_cells_y, dual_topology.ni);
+          
+          real gamma_fac_kp2 = refhewvar(0, pks + k + 2, pjs + j, pis + i, n) * 
+                               dual_geometry.get_area_10entity(k + 2 + dks, j + djs, i + dis) /
+                               primal_geometry.get_area_01entity(k + 1 + pks, j + pjs, i + pis);
+          real gamma_fac_kp1 = refhewvar(0, pks + k + 1, pjs + j, pis + i, n) * 
+                               dual_geometry.get_area_10entity(k + 1 + dks, j + djs, i + dis) /
+                               primal_geometry.get_area_01entity(k + 0 + pks, j + pjs, i + pis);
+          real gamma_fac_k = refhewvar(0, pks + k + 0, pjs + j, pis + i, n) * 
+                               dual_geometry.get_area_10entity(k + 0 + dks, j + djs, i + dis) /
+                               primal_geometry.get_area_01entity(k - 1 + pks, j + pjs, i + pis);
+          if (k == 0) {
+            gamma_fac_k = 0;
+          }
+          if (k == primal_topology.nl) {
+            gamma_fac_kp2 = 0;
+          }
+
+          SArray<real, 1, ndims> fH_kp1_a;
+          SArray<real, 1, ndims> fH_k_a;
+          fourier_Hext<diff_ord>(fH_kp1_a, primal_geometry, dual_geometry, pis, pjs, pks,
+                            i, j, k+1, 0, n_cells_x, n_cells_y, dual_topology.ni);
+          fourier_Hext<diff_ord>(fH_k_a, primal_geometry, dual_geometry, pis, pjs, pks,
+                            i, j, k, 0, n_cells_x, n_cells_y, dual_topology.ni);
+          real fHh_kp1 = fH_kp1_a(0);
+          real fHh_k = fH_k_a(0);
+
+          complex im(0, 1);
+          complex fac = (2 * pi * i) / dual_topology.n_cells_x;
+          complex fDbarh_kp1 = exp(im * fac) - 1._fp;
+          complex fDbarh_k = exp(im * fac) - 1._fp;
+          
+          real he_kp1 = refhevar(0, dks + k + 1, djs + j, dis + i, n);
+          real he_k = refhevar(0, dks + k, djs + j, dis + i, n);
+          real dens0_kp1 = refdensreconvar(0, pks + k + 1, pjs + j, pis + i, n);
+          real dens1_kp1 = refdensreconvar(1, pks + k + 1, pjs + j, pis + i, n);
+          real dens0_k = refdensreconvar(0, pks + k , pjs + j, pis + i, n);
+          real dens1_k = refdensreconvar(1, pks + k , pjs + j, pis + i, n);
+
+          // term 1
+          real alpha_kp1 = dtf2 * refdensvertreconvar(0, pks + k + 1, pjs + j, pis + i, n);
+          complex beta_kp1 = fI_kp1 * bdens0var(0, pks + k + 1, pjs + j, pis + i, n) * dens0_kp1 * 
+                             fDbarh_kp1 * he_kp1 * fHh_kp1;
+          complex beta_k = fI_k * bdens0var(0, pks + k, pjs + j, pis + i, n) * dens0_k * 
+                           fDbarh_k * he_k * fHh_k;
+          
+          complex_wrhs(0, k, j, i, n) += alpha_kp1 * (beta_kp1 * vc0_kp1  - beta_k * vc0_k);
+          real gamma_kp2 = refdensvertreconvar(0, pks + k + 2, pjs + j, pis + i, n);
+          real gamma_kp1 = refdensvertreconvar(0, pks + k + 1, pjs + j, pis + i, n);
+          real gamma_k = refdensvertreconvar(0, pks + k, pjs + j, pis + i, n);
+          gamma_kp2 *= gamma_fac_kp2;
+          gamma_kp1 *= gamma_fac_kp1;
+          gamma_k *= gamma_fac_k;
+          tri_u(k, j, i, n) += -alpha_kp1 * beta_kp1 * vc1_kp1 * gamma_kp2;
+          tri_d(k, j, i, n) += alpha_kp1 * (beta_kp1 * vc1_kp1 + beta_k * vc1_k) * gamma_kp1;
+          tri_l(k, j, i, n) += -alpha_kp1 * beta_k * vc1_k * gamma_k;
+          
+          gamma_kp2 = refdensvertreconvar(1, pks + k + 2, pjs + j, pis + i, n);
+          gamma_kp1 = refdensvertreconvar(1, pks + k + 1, pjs + j, pis + i, n);
+          gamma_k = refdensvertreconvar(1, pks + k, pjs + j, pis + i, n);
+          gamma_kp2 *= gamma_fac_kp2;
+          gamma_kp1 *= gamma_fac_kp1;
+          gamma_k *= gamma_fac_k;
+          tri_u(k, j, i, n) += -alpha_kp1 * beta_kp1 * vc2_kp1 * gamma_kp2;
+          tri_d(k, j, i, n) += alpha_kp1 * (beta_kp1 * vc2_kp1 + beta_k * vc2_k) * gamma_kp1;
+          tri_l(k, j, i, n) += -alpha_kp1 * beta_k * vc2_k * gamma_k;
+         
+          // term 2
+          alpha_kp1 = dtf2 * refdensvertreconvar(0, pks + k + 1, pjs + j, pis + i, n);
+          beta_kp1 = fI_kp1 * bdens0var(1, pks + k + 1, pjs + j, pis + i, n) * dens1_kp1 * 
+                             fDbarh_kp1 * he_kp1 * fHh_kp1;
+          beta_k = fI_k * bdens0var(1, pks + k, pjs + j, pis + i, n) * dens1_k * 
+                           fDbarh_k * he_k * fHh_k;
+          
+          complex_wrhs(0, k, j, i, n) += alpha_kp1 * (beta_kp1 * vc0_kp1  - beta_k * vc0_k);
+          gamma_kp2 = refdensvertreconvar(0, pks + k + 2, pjs + j, pis + i, n);
+          gamma_kp1 = refdensvertreconvar(0, pks + k + 1, pjs + j, pis + i, n);
+          gamma_k = refdensvertreconvar(0, pks + k, pjs + j, pis + i, n);
+          gamma_kp2 *= gamma_fac_kp2;
+          gamma_kp1 *= gamma_fac_kp1;
+          gamma_k *= gamma_fac_k;
+          tri_u(k, j, i, n) += -alpha_kp1 * beta_kp1 * vc1_kp1 * gamma_kp2;
+          tri_d(k, j, i, n) += alpha_kp1 * (beta_kp1 * vc1_kp1 + beta_k * vc1_k) * gamma_kp1;
+          tri_l(k, j, i, n) += -alpha_kp1 * beta_k * vc1_k * gamma_k;
+          
+          gamma_kp2 = refdensvertreconvar(1, pks + k + 2, pjs + j, pis + i, n);
+          gamma_kp1 = refdensvertreconvar(1, pks + k + 1, pjs + j, pis + i, n);
+          gamma_k = refdensvertreconvar(1, pks + k, pjs + j, pis + i, n);
+          gamma_kp2 *= gamma_fac_kp2;
+          gamma_kp1 *= gamma_fac_kp1;
+          gamma_k *= gamma_fac_k;
+          tri_u(k, j, i, n) += -alpha_kp1 * beta_kp1 * vc2_kp1 * gamma_kp2;
+          tri_d(k, j, i, n) += alpha_kp1 * (beta_kp1 * vc2_kp1 + beta_k * vc2_k) * gamma_kp1;
+          tri_l(k, j, i, n) += -alpha_kp1 * beta_k * vc2_k * gamma_k;
+         
+          // term 3
+          alpha_kp1 = dtf2 * refdensvertreconvar(1, pks + k + 1, pjs + j, pis + i, n);
+          beta_kp1 = fI_kp1 * bdens0var(2, pks + k + 1, pjs + j, pis + i, n) * dens0_kp1 * 
+                             fDbarh_kp1 * he_kp1 * fHh_kp1;
+          beta_k = fI_k * bdens0var(2, pks + k, pjs + j, pis + i, n) * dens0_k * 
+                           fDbarh_k * he_k * fHh_k;
+          
+          complex_wrhs(0, k, j, i, n) += alpha_kp1 * (beta_kp1 * vc0_kp1  - beta_k * vc0_k);
+          gamma_kp2 = refdensvertreconvar(0, pks + k + 2, pjs + j, pis + i, n);
+          gamma_kp1 = refdensvertreconvar(0, pks + k + 1, pjs + j, pis + i, n);
+          gamma_k = refdensvertreconvar(0, pks + k, pjs + j, pis + i, n);
+          gamma_kp2 *= gamma_fac_kp2;
+          gamma_kp1 *= gamma_fac_kp1;
+          gamma_k *= gamma_fac_k;
+          tri_u(k, j, i, n) += -alpha_kp1 * beta_kp1 * vc1_kp1 * gamma_kp2;
+          tri_d(k, j, i, n) += alpha_kp1 * (beta_kp1 * vc1_kp1 + beta_k * vc1_k) * gamma_kp1;
+          tri_l(k, j, i, n) += -alpha_kp1 * beta_k * vc1_k * gamma_k;
+          
+          gamma_kp2 = refdensvertreconvar(1, pks + k + 2, pjs + j, pis + i, n);
+          gamma_kp1 = refdensvertreconvar(1, pks + k + 1, pjs + j, pis + i, n);
+          gamma_k = refdensvertreconvar(1, pks + k, pjs + j, pis + i, n);
+          gamma_kp2 *= gamma_fac_kp2;
+          gamma_kp1 *= gamma_fac_kp1;
+          gamma_k *= gamma_fac_k;
+          tri_u(k, j, i, n) += -alpha_kp1 * beta_kp1 * vc2_kp1 * gamma_kp2;
+          tri_d(k, j, i, n) += alpha_kp1 * (beta_kp1 * vc2_kp1 + beta_k * vc2_k) * gamma_kp1;
+          tri_l(k, j, i, n) += -alpha_kp1 * beta_k * vc2_k * gamma_k;
+          
+          // term 4
+          alpha_kp1 = dtf2 * refdensvertreconvar(1, pks + k + 1, pjs + j, pis + i, n);
+          beta_kp1 = fI_kp1 * bdens0var(3, pks + k + 1, pjs + j, pis + i, n) * dens1_kp1 * 
+                             fDbarh_kp1 * he_kp1 * fHh_kp1;
+          beta_k = fI_k * bdens0var(3, pks + k, pjs + j, pis + i, n) * dens1_k * 
+                           fDbarh_k * he_k * fHh_k;
+          
+          complex_wrhs(0, k, j, i, n) += alpha_kp1 * (beta_kp1 * vc0_kp1  - beta_k * vc0_k);
+          gamma_kp2 = refdensvertreconvar(0, pks + k + 2, pjs + j, pis + i, n);
+          gamma_kp1 = refdensvertreconvar(0, pks + k + 1, pjs + j, pis + i, n);
+          gamma_k = refdensvertreconvar(0, pks + k, pjs + j, pis + i, n);
+          gamma_kp2 *= gamma_fac_kp2;
+          gamma_kp1 *= gamma_fac_kp1;
+          gamma_k *= gamma_fac_k;
+          tri_u(k, j, i, n) += -alpha_kp1 * beta_kp1 * vc1_kp1 * gamma_kp2;
+          tri_d(k, j, i, n) += alpha_kp1 * (beta_kp1 * vc1_kp1 + beta_k * vc1_k) * gamma_kp1;
+          tri_l(k, j, i, n) += -alpha_kp1 * beta_k * vc1_k * gamma_k;
+          
+          gamma_kp2 = refdensvertreconvar(1, pks + k + 2, pjs + j, pis + i, n);
+          gamma_kp1 = refdensvertreconvar(1, pks + k + 1, pjs + j, pis + i, n);
+          gamma_k = refdensvertreconvar(1, pks + k, pjs + j, pis + i, n);
+          gamma_kp2 *= gamma_fac_kp2;
+          gamma_kp1 *= gamma_fac_kp1;
+          gamma_k *= gamma_fac_k;
+          tri_u(k, j, i, n) += -alpha_kp1 * beta_kp1 * vc2_kp1 * gamma_kp2;
+          tri_d(k, j, i, n) += alpha_kp1 * (beta_kp1 * vc2_kp1 + beta_k * vc2_k) * gamma_kp1;
+          tri_l(k, j, i, n) += -alpha_kp1 * beta_k * vc2_k * gamma_k;
     });
     
     parallel_for(
@@ -3731,8 +3909,8 @@ template <bool acoustic_balance> struct RisingBubble {
     real T = isentropic_T(x, z, theta0, g, thermo);
     real r = sqrt((x - xc) * (x - xc) + (z - bzc) * (z - bzc));
     //real r = sqrt((z - bzc) * (z - bzc));
-    //real dtheta = (r < rc) ? dss * 0.5_fp * (1._fp + cos(pi * r / rc)) : 0._fp;
-    real dtheta = 0;
+    real dtheta = (r < rc) ? dss * 0.5_fp * (1._fp + cos(pi * r / rc)) : 0._fp;
+    //real dtheta = 0;
     real dT = dtheta * pow(p / thermo.cst.pr, thermo.cst.kappa_d);
     return thermo.compute_entropic_var(p, T + dT, 0, 0, 0, 0);
   }
