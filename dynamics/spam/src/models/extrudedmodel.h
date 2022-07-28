@@ -2664,6 +2664,14 @@ public:
           tri_u(k, j, i, n) += -alpha_kp1 * beta_kp1 * vc2_kp1 * gamma_kp2;
           tri_d(k, j, i, n) += alpha_kp1 * (beta_kp1 * vc2_kp1 + beta_k * vc2_k) * gamma_kp1;
           tri_l(k, j, i, n) += -alpha_kp1 * beta_k * vc2_k * gamma_k;
+          
+          tri_d(k, j, i, n) += 1;
+          tri_rhs(k, j, i, n) = complex_wrhs(0, k, j, i, n); 
+
+          //if (i == 0) {
+          //  std::cout << k << " " << tri_l(k, j, i, n) << " " << tri_d(k, j, i, n)  << " " << tri_u(k, j, i, n) << std::endl;
+          //}
+
     });
     
     parallel_for(
@@ -2678,7 +2686,89 @@ public:
                                          tri_d(k, j, i, n) * w_k +
                                          tri_u(k, j, i, n) * w_kp1;
     });
+    
+    parallel_for(
+        "Thomas",
+        SimpleBounds<3>(primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int j, int i, int n) {
 
+        int nz = primal_topology.nl;
+        for (int k = 1; k < nz; ++k) {
+          complex w = tri_l(k, j, i, n) / tri_d(k - 1, j, i, n);
+          tri_d(k, j, i, n) -= w * tri_u(k - 1, j, i, n);
+          tri_rhs(k, j, i, n) -= w * tri_rhs(k - 1, j, i, n);
+        }
+        tri_l(nz - 1, j, i, n) = tri_rhs(nz - 1, j, i, n) / tri_d(nz - 1, j, i, n);
+        for (int k = nz - 2; k >= 0; --k) {
+          tri_l(k, j, i, n) = (tri_rhs(k, j, i, n) - tri_u(k, j, i, n) * tri_l(k + 1, j, i, n)) / tri_d(k, j, i, n);
+        }
+    });
+    
+    parallel_for(
+        "Get v",
+        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          complex w_kp1;
+          if (k < primal_topology.ni) {
+            w_kp1 = tri_l(k, j, i, n);
+          } else {
+            w_kp1 = 0;
+          }
+          complex w_k;
+          if (k > 0 ) {
+            w_k = tri_l(k - 1, j, i, n);
+          } else {
+            w_k = 0;
+          }
+
+          real gamma_fac_kp2 = refhewvar(0, pks + k + 2, pjs + j, pis + i, n) * 
+                               dual_geometry.get_area_10entity(k + 2 + dks, j + djs, i + dis) /
+                               primal_geometry.get_area_01entity(k + 1 + pks, j + pjs, i + pis);
+          real gamma_fac_kp1 = refhewvar(0, pks + k + 1, pjs + j, pis + i, n) * 
+                               dual_geometry.get_area_10entity(k + 1 + dks, j + djs, i + dis) /
+                               primal_geometry.get_area_01entity(k + 0 + pks, j + pjs, i + pis);
+          real gamma_fac_k = refhewvar(0, pks + k + 0, pjs + j, pis + i, n) * 
+                               dual_geometry.get_area_10entity(k + 0 + dks, j + djs, i + dis) /
+                               primal_geometry.get_area_01entity(k - 1 + pks, j + pjs, i + pis);
+
+          real dens0_kp1 = refdensvertreconvar(0, pks + k + 1, pjs + j, pis + i, n);
+          real dens1_kp1 = refdensvertreconvar(1, pks + k + 1, pjs + j, pis + i, n);
+          real dens0_k = refdensvertreconvar(0, pks + k , pjs + j, pis + i, n);
+          real dens1_k = refdensvertreconvar(1, pks + k , pjs + j, pis + i, n);
+
+          //if (k == 0) {
+          //  gamma_fac_k = 0;
+          //}
+          //if (k == primal_topology.nl) {
+          //  gamma_fac_kp2 = 0;
+          //}
+
+          complex term1 = gamma_fac_kp1 * w_kp1 * dens0_kp1 - gamma_fac_k * w_k * dens0_k;
+          complex term2 = gamma_fac_kp1 * w_kp1 * dens1_kp1 - gamma_fac_k * w_k * dens1_k;
+          
+          complex vc0 = complex_vcoeff_halo(0, k + pks, j + pjs, i + pis, n);
+          complex vc1 = complex_vcoeff_halo(1, k + pks, j + pjs, i + pis, n);
+          complex vc2 = complex_vcoeff_halo(2, k + pks, j + pjs, i + pis, n);
+          
+          complex_v(0, k, j, i, n) = vc0 + vc1 * term1 + vc2 * term2;
+    });
+    
+    parallel_for(
+        "TEST",
+        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          complex_w(0, k, j, i, n) = tri_l(k, j, i, n);
+          complex w_k = complex_w_halo(0, k + 0 + dks, j + djs, i + dis, n);
+          complex v_k = complex_v_halo(0, k + 0 + dks, j + djs, i + dis, n);
+
+          if (i == 5) {
+           std::cout << k << " " << complex_v(0, k, j, i, n)  << " " << v_k << " " << complex_v(0, k, j, i, n) - v_k << std::endl;
+          }
+    });
+    exit(1);
 
     parallel_for(
         "TEST",
@@ -2698,7 +2788,7 @@ public:
             //  std::cout << k << " " << lhs - rhs << std::endl;
             //}
             
-            complex lhs = complex_w(0, k, j, i, n) + complex_wrhs2(0, k, j, i, n);
+            complex lhs = complex_wrhs2(0, k, j, i, n);
             complex rhs = complex_wrhs(0, k, j, i, n);
             if (i == 1) {
               std::cout << k << " " << lhs << " " << rhs << " " << lhs - rhs << std::endl;
