@@ -1869,16 +1869,16 @@ public:
                                  FieldSet<nprognostic> &solution) override {
 
     yakl::timer_start("linsolve");
-    auto N = realsize(rhs);
-    for (int i = 0; i < N; ++i) {
-      this->eigen_rhs(i) = getindex(rhs, i);
-    }
+    //auto N = realsize(rhs);
+    //for (int i = 0; i < N; ++i) {
+    //  this->eigen_rhs(i) = getindex(rhs, i);
+    //}
 
-    this->eigen_sol = this->lu.solve(this->eigen_rhs);
+    //this->eigen_sol = this->lu.solve(this->eigen_rhs);
 
-    for (int i = 0; i < N; ++i) {
-      setindex(solution, i, this->eigen_sol(i));
-    }
+    //for (int i = 0; i < N; ++i) {
+    //  setindex(solution, i, this->eigen_sol(i));
+    //}
     
     //int pis = primal_topology.is;
     //int pjs = primal_topology.js;
@@ -2801,29 +2801,29 @@ public:
     pocketfft::c2c(shape_w, stride_w, stride_w, axes, pocketfft::BACKWARD,
                    complex_w.data(), complex_w.data(), scale);
 
-    real* max_dw = new real;
-    *max_dw = 0;
-    parallel_for(
-        "check w",
-        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens), 
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          real dw = complex_w(0, k, j, i, n).real() - sol_w(0, k + pks, j + pjs, i + pis, n);
-          *max_dw = std::max(dw, *max_dw);
-    });
-    std::cout << "W check: " << *max_dw << std::endl;
-    
-    real* max_dv = new real;
-    *max_dv = 0;
-    parallel_for(
-        "check v",
-        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens), 
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          real dv = complex_v(0, k, j, i, n).real() - sol_v(0, k + pks, j + pjs, i + pis, n);
-          *max_dv = std::max(dv, *max_dv);
-    });
-    std::cout << "V check: " << *max_dv << std::endl;
+    //real* max_dw = new real;
+    //*max_dw = 0;
+    //parallel_for(
+    //    "check w",
+    //    SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+    //                    primal_topology.n_cells_x, primal_topology.nens), 
+    //    YAKL_LAMBDA(int k, int j, int i, int n) {
+    //      real dw = complex_w(0, k, j, i, n).real() - sol_w(0, k + pks, j + pjs, i + pis, n);
+    //      *max_dw = std::max(dw, *max_dw);
+    //});
+    //std::cout << "W check: " << *max_dw << std::endl;
+    //
+    //real* max_dv = new real;
+    //*max_dv = 0;
+    //parallel_for(
+    //    "check v",
+    //    SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+    //                    primal_topology.n_cells_x, primal_topology.nens), 
+    //    YAKL_LAMBDA(int k, int j, int i, int n) {
+    //      real dv = complex_v(0, k, j, i, n).real() - sol_v(0, k + pks, j + pjs, i + pis, n);
+    //      *max_dv = std::max(dv, *max_dv);
+    //});
+    //std::cout << "V check: " << *max_dv << std::endl;
     
     parallel_for(
         "store w",
@@ -2901,33 +2901,33 @@ public:
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wDbar2<ndensity>(denstend, refdensreconvar, fvar,
+          compute_wDbar2<ndensity>(sol_dens, refdensreconvar, fvar,
                                        dis, djs, dks, i, j, k, n);
           compute_wDvbar<ndensity, ADD_MODE::ADD>(
-              denstend, refdensvertreconvar, fwvar, dis, djs, dks, i, j, k, n);
+              sol_dens, refdensvertreconvar, fwvar, dis, djs, dks, i, j, k, n);
           for (int d = 0; d < ndensity; ++d) {
-            denstend(d, k + dks, j + djs, i + dis, n) *= -dt / 2;
-            denstend(d, k + dks, j + djs, i + dis, n) += rhs_dens(d, pks + k, pjs + j, pis + i, n);
+            sol_dens(d, k + dks, j + djs, i + dis, n) *= -dt / 2;
+            sol_dens(d, k + dks, j + djs, i + dis, n) += rhs_dens(d, pks + k, pjs + j, pis + i, n);
           }
         });
     
-    real* max_drho = new real;
-    real* max_dTht = new real;
-    *max_drho = 0;
-    *max_dTht = 0;
-    parallel_for(
-        "check dens",
-        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          real drho = denstend(0, k + dks, j + djs, i + dis, n) - sol_dens(0, k + dks, j + djs, i + dis, n);
-          *max_drho = std::max(drho, *max_drho);
-          
-          real dTht = denstend(1, k + dks, j + djs, i + dis, n) - sol_dens(1, k + dks, j + djs, i + dis, n);
-          *max_dTht = std::max(dTht, *max_dTht);
-    });
-    std::cout << "rho check: " << *max_drho << std::endl;
-    std::cout << "Tht check: " << *max_dTht << std::endl;
+    //real* max_drho = new real;
+    //real* max_dTht = new real;
+    //*max_drho = 0;
+    //*max_dTht = 0;
+    //parallel_for(
+    //    "check dens",
+    //    SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+    //                    dual_topology.n_cells_x, dual_topology.nens),
+    //    YAKL_LAMBDA(int k, int j, int i, int n) {
+    //      real drho = denstend(0, k + dks, j + djs, i + dis, n) - sol_dens(0, k + dks, j + djs, i + dis, n);
+    //      *max_drho = std::max(drho, *max_drho);
+    //      
+    //      real dTht = denstend(1, k + dks, j + djs, i + dis, n) - sol_dens(1, k + dks, j + djs, i + dis, n);
+    //      *max_dTht = std::max(dTht, *max_dTht);
+    //});
+    //std::cout << "rho check: " << *max_drho << std::endl;
+    //std::cout << "Tht check: " << *max_dTht << std::endl;
 
     // prepare rhs
 
