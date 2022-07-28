@@ -2699,9 +2699,9 @@ public:
           tri_d(k, j, i, n) -= w * tri_u(k - 1, j, i, n);
           tri_rhs(k, j, i, n) -= w * tri_rhs(k - 1, j, i, n);
         }
-        tri_l(nz - 1, j, i, n) = tri_rhs(nz - 1, j, i, n) / tri_d(nz - 1, j, i, n);
+        complex_w(0, nz - 1, j, i, n) = tri_rhs(nz - 1, j, i, n) / tri_d(nz - 1, j, i, n);
         for (int k = nz - 2; k >= 0; --k) {
-          tri_l(k, j, i, n) = (tri_rhs(k, j, i, n) - tri_u(k, j, i, n) * tri_l(k + 1, j, i, n)) / tri_d(k, j, i, n);
+          complex_w(0, k, j, i, n) = (tri_rhs(k, j, i, n) - tri_u(k, j, i, n) * complex_w(0, k + 1, j, i, n)) / tri_d(k, j, i, n);
         }
     });
     
@@ -2712,13 +2712,13 @@ public:
         YAKL_LAMBDA(int k, int j, int i, int n) {
           complex w_kp1;
           if (k < primal_topology.ni) {
-            w_kp1 = tri_l(k, j, i, n);
+            w_kp1 = complex_w(0, k, j, i, n);
           } else {
             w_kp1 = 0;
           }
           complex w_k;
           if (k > 0 ) {
-            w_k = tri_l(k - 1, j, i, n);
+            w_k = complex_w(0, k - 1, j, i, n);
           } else {
             w_k = 0;
           }
@@ -2755,47 +2755,179 @@ public:
           complex_v(0, k, j, i, n) = vc0 + vc1 * term1 + vc2 * term2;
     });
     
-    parallel_for(
-        "TEST",
-        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          complex_w(0, k, j, i, n) = tri_l(k, j, i, n);
-          complex w_k = complex_w_halo(0, k + 0 + dks, j + djs, i + dis, n);
-          complex v_k = complex_v_halo(0, k + 0 + dks, j + djs, i + dis, n);
+    //parallel_for(
+    //    "TEST",
+    //    SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+    //                    primal_topology.n_cells_x, primal_topology.nens),
+    //    YAKL_LAMBDA(int k, int j, int i, int n) {
+    //      complex_w(0, k, j, i, n) = tri_l(k, j, i, n);
+    //      complex w_k = complex_w_halo(0, k + 0 + dks, j + djs, i + dis, n);
+    //      complex v_k = complex_v_halo(0, k + 0 + dks, j + djs, i + dis, n);
 
-          if (i == 5) {
-           std::cout << k << " " << complex_v(0, k, j, i, n)  << " " << v_k << " " << complex_v(0, k, j, i, n) - v_k << std::endl;
-          }
+    //      if (i == 5) {
+    //       std::cout << k << " " << complex_v(0, k, j, i, n)  << " " << v_k << " " << complex_v(0, k, j, i, n) - v_k << std::endl;
+    //      }
+    //});
+    //exit(1);
+
+    //parallel_for(
+    //    "TEST",
+    //    SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+    //                    primal_topology.n_cells_x, primal_topology.nens),
+    //    YAKL_LAMBDA(int k, int j, int i, int n) {
+    //        //complex c0 = complex_vcoeff_halo(0, pks + k, pjs + j, pis + i, n);
+    //        //complex c1 = complex_vcoeff_halo(1, pks + k, pjs + j, pis + i, n);
+    //        //complex c2 = complex_vcoeff_halo(2, pks + k, pjs + j, pis + i, n);
+
+
+    //        //complex lhs = complex_v(0, k, j, i, n);
+    //        //complex rhs = c0 +
+    //        //                c1 * complex_dens_halo(0, k + pks, j + pjs, i + pis, n) +
+    //        //                c2 * complex_dens_halo(1, k + pks, j + pjs, i + pis, n);
+    //        //if (i == 4) {
+    //        //  std::cout << k << " " << lhs - rhs << std::endl;
+    //        //}
+    //        
+    //        complex lhs = complex_wrhs2(0, k, j, i, n);
+    //        complex rhs = complex_wrhs(0, k, j, i, n);
+    //        if (i == 1) {
+    //          std::cout << k << " " << lhs << " " << rhs << " " << lhs - rhs << std::endl;
+    //        }
+    //  });
+    //exit(1);
+    
+    pocketfft::c2c(shape_v, stride_v, stride_v, axes, pocketfft::BACKWARD,
+                   complex_v.data(), complex_v.data(), scale);
+    pocketfft::c2c(shape_w, stride_w, stride_w, axes, pocketfft::BACKWARD,
+                   complex_w.data(), complex_w.data(), scale);
+
+    real* max_dw = new real;
+    *max_dw = 0;
+    parallel_for(
+        "check w",
+        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens), 
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          real dw = complex_w(0, k, j, i, n).real() - sol_w(0, k + pks, j + pjs, i + pis, n);
+          *max_dw = std::max(dw, *max_dw);
     });
-    exit(1);
+    std::cout << "W check: " << *max_dw << std::endl;
+    
+    real* max_dv = new real;
+    *max_dv = 0;
+    parallel_for(
+        "check v",
+        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens), 
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          real dv = complex_v(0, k, j, i, n).real() - sol_v(0, k + pks, j + pjs, i + pis, n);
+          *max_dv = std::max(dv, *max_dv);
+    });
+    std::cout << "V check: " << *max_dv << std::endl;
+    
+    parallel_for(
+        "store w",
+        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens), 
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          sol_w(0, k + pks, j + pjs, i + pis, n) = complex_w(0, k, j, i, n).real();
+    });
+    parallel_for(
+        "store v",
+        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens), 
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          sol_v(0, k + pks, j + pjs, i + pis, n) = complex_v(0, k, j, i, n).real();
+    });
+
+    // back out densities
+    
+    parallel_for(
+        "Compute Uvar",
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          compute_Hext<1, diff_ord>(uvar, sol_v, this->primal_geometry,
+                                    this->dual_geometry, dis, djs, dks, i, j, k,
+                                    n);
+        });
 
     parallel_for(
-        "TEST",
-        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
+        "Compute UWVar",
+        SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-            //complex c0 = complex_vcoeff_halo(0, pks + k, pjs + j, pis + i, n);
-            //complex c1 = complex_vcoeff_halo(1, pks + k, pjs + j, pis + i, n);
-            //complex c2 = complex_vcoeff_halo(2, pks + k, pjs + j, pis + i, n);
+          compute_Hv<1, vert_diff_ord>(uwvar, sol_w, this->primal_geometry,
+                                       this->dual_geometry, dis, djs, dks, i, j,
+                                       k + 1, n);
+        });
 
+    auxiliary_vars.fields_arr[UWVAR].set_bnd(0.0);
+    this->aux_exchange->exchanges_arr[UVAR].exchange_field(
+        auxiliary_vars.fields_arr[UVAR]);
+    this->aux_exchange->exchanges_arr[UWVAR].exchange_field(
+        auxiliary_vars.fields_arr[UWVAR]);
 
-            //complex lhs = complex_v(0, k, j, i, n);
-            //complex rhs = c0 +
-            //                c1 * complex_dens_halo(0, k + pks, j + pjs, i + pis, n) +
-            //                c2 * complex_dens_halo(1, k + pks, j + pjs, i + pis, n);
-            //if (i == 4) {
-            //  std::cout << k << " " << lhs - rhs << std::endl;
-            //}
-            
-            complex lhs = complex_wrhs2(0, k, j, i, n);
-            complex rhs = complex_wrhs(0, k, j, i, n);
-            if (i == 1) {
-              std::cout << k << " " << lhs << " " << rhs << " " << lhs - rhs << std::endl;
-            }
-      });
+    parallel_for(
+        "Compute F",
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          Hk.compute_F_and_he(fvar, refhevar, uvar, refdens0var, dis, djs, dks, i,
+                              j, k, n);
+        });
 
-    exit(1);
+    parallel_for(
+        "Compute FWvar",
+        SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          Hk.compute_Fw_and_he(fwvar, refhewvar, uwvar, refdens0var, dis, djs, dks,
+                               i, j, k + 1, n);
+        });
+
+    auxiliary_vars.fields_arr[FWVAR].set_bnd(0.0);
+    this->aux_exchange->exchanges_arr[FVAR].exchange_field(
+        auxiliary_vars.fields_arr[FVAR]);
+    this->aux_exchange->exchanges_arr[FWVAR].exchange_field(
+        auxiliary_vars.fields_arr[FWVAR]);
+    this->aux_exchange->exchanges_arr[HEVAR].exchange_field(
+        auxiliary_vars.fields_arr[HEVAR]);
+    this->aux_exchange->exchanges_arr[HEWVAR].exchange_field(
+        auxiliary_vars.fields_arr[HEWVAR]);
+    
+    parallel_for(
+        "Compute Dens Tend",
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          compute_wDbar2<ndensity>(denstend, refdensreconvar, fvar,
+                                       dis, djs, dks, i, j, k, n);
+          compute_wDvbar<ndensity, ADD_MODE::ADD>(
+              denstend, refdensvertreconvar, fwvar, dis, djs, dks, i, j, k, n);
+          for (int d = 0; d < ndensity; ++d) {
+            denstend(d, k + dks, j + djs, i + dis, n) *= -dt / 2;
+            denstend(d, k + dks, j + djs, i + dis, n) += rhs_dens(d, pks + k, pjs + j, pis + i, n);
+          }
+        });
+    
+    real* max_drho = new real;
+    real* max_dTht = new real;
+    *max_drho = 0;
+    *max_dTht = 0;
+    parallel_for(
+        "check dens",
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          real drho = denstend(0, k + dks, j + djs, i + dis, n) - sol_dens(0, k + dks, j + djs, i + dis, n);
+          *max_drho = std::max(drho, *max_drho);
+          
+          real dTht = denstend(1, k + dks, j + djs, i + dis, n) - sol_dens(1, k + dks, j + djs, i + dis, n);
+          *max_dTht = std::max(dTht, *max_dTht);
+    });
+    std::cout << "rho check: " << *max_drho << std::endl;
+    std::cout << "Tht check: " << *max_dTht << std::endl;
 
     // prepare rhs
 
