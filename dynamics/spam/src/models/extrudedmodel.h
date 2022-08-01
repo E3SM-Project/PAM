@@ -2193,6 +2193,11 @@ public:
           sol_v(0, k + pks, j + pjs, i + pis, n) = complex_v(0, k, j, i, n).real();
     });
 
+    this->prog_exchange->exchanges_arr[VVAR].exchange_field(
+        solution.fields_arr[VVAR]);
+    this->prog_exchange->exchanges_arr[WVAR].exchange_field(
+        solution.fields_arr[WVAR]);
+
     // back out densities
     
     parallel_for(
