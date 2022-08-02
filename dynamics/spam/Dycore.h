@@ -160,6 +160,7 @@ public:
 #if _TIME_TYPE == 2
     linear_system.initialize(params, &tendencies, prognostic_vars,
                              constant_vars, auxiliary_vars, prog_exchange);
+    linear_system.compute_coefficients(params.dtcrm, constant_vars);
     tint.initialize(params, tendencies, linear_system, prognostic_vars,
                     constant_vars, auxiliary_vars, prog_exchange);
 #else

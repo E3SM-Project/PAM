@@ -322,6 +322,7 @@ public:
 
     this->is_initialized = true;
   }
+  virtual void compute_coefficients(real dt,FieldSet<nconstant> &constvars) = 0;
 
   virtual void YAKL_INLINE solve(real dt, FieldSet<nprognostic> &rhs,
                                  FieldSet<nconstant> &const_vars,
