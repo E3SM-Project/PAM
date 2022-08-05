@@ -53,6 +53,7 @@ public:
   SSPKKTimeIntegrator tint;
 #endif
 #if _TIME_TYPE == 2
+  ModelReferenceState reference_state;
   ModelLinearSystem linear_system;
   SITimeIntegrator<4> tint;
 #endif
@@ -158,9 +159,11 @@ public:
     // // Initialize the time stepper
     debug_print("start ts init", par.masterproc);
 #if _TIME_TYPE == 2
-    linear_system.initialize(params, &tendencies, prognostic_vars,
+    reference_state.initialize(primal_topology, dual_topology);
+    testcase->set_reference_state(reference_state, primal_geometry, dual_geometry);
+    linear_system.initialize(params, reference_state, &tendencies, prognostic_vars,
                              constant_vars, auxiliary_vars, prog_exchange);
-    linear_system.compute_coefficients(params.dtcrm, constant_vars);
+    linear_system.compute_coefficients(params.dtcrm, reference_state, constant_vars);
     tint.initialize(params, tendencies, linear_system, prognostic_vars,
                     constant_vars, auxiliary_vars, prog_exchange);
 #else

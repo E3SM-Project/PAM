@@ -93,6 +93,9 @@ struct TracerGaussian : Tracer {
   }
 };
 
+class ReferenceState {
+};
+
 class TestCase {
 public:
   using TracerArr = yakl::Array<Tracer *, 1, yakl::memDevice, yakl::styleC>;
@@ -140,6 +143,9 @@ public:
   virtual void set_initial_conditions(FieldSet<nprognostic> &progvars,
                                       FieldSet<nconstant> &constvars,
                                       ExchangeSet<nconstant> &const_exchange,
+                                      const Geometry<Straight> &primal_geom,
+                                      const Geometry<Twisted> &dual_geom) = 0;
+  virtual void set_reference_state(ReferenceState &refstate,
                                       const Geometry<Straight> &primal_geom,
                                       const Geometry<Twisted> &dual_geom) = 0;
   virtual ~TestCase() = default;
@@ -307,7 +313,7 @@ public:
 
   bool is_initialized = false;
 
-  virtual void initialize(ModelParameters &params, Tendencies *tend,
+  virtual void initialize(ModelParameters &params, ReferenceState &reference_state, Tendencies *tend,
                           FieldSet<nprognostic> &x,
                           FieldSet<nconstant> &const_vars,
                           FieldSet<nauxiliary> &auxiliary_vars,
@@ -322,7 +328,7 @@ public:
 
     this->is_initialized = true;
   }
-  virtual void compute_coefficients(real dt,FieldSet<nconstant> &constvars) = 0;
+  virtual void compute_coefficients(real dt, ReferenceState &refstate, FieldSet<nconstant> &constvars) = 0;
 
   virtual void YAKL_INLINE solve(real dt, FieldSet<nprognostic> &rhs,
                                  FieldSet<nconstant> &const_vars,
