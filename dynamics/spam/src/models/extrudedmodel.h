@@ -978,8 +978,6 @@ public:
 
     this->reference_state = static_cast<ModelReferenceState*>(&reference_state);
 
-    // fourier initialize
-
     auto pni = primal_topology.ni;
     auto pnl = primal_topology.nl;
     auto dni = dual_topology.ni;
@@ -1005,15 +1003,6 @@ public:
                           nx, nens);
 
     complex_vcoeff = complex5d("complex vcoeff", 3, pni, ny, nx, nens);
-    
-    vtend = real5d("complex v halo", 1, pnih, nyh,
-                   nxh, nens);
-    wtend = real5d("complex w halo", 1, pnlh, nyh,
-                    nxh, nens);
-    wtend2 = real5d("complex w halo", 1, pnlh, nyh,
-                    nxh, nens);
-    denstend = real5d("complex v halo", ndensity, dnlh, nyh,
-                   nxh, nens);
     
     tri_d = complex4d("tri d", pnl, ny, nx, nens);
     tri_l = complex4d("tri l", pnl, ny, nx, nens);
@@ -1391,7 +1380,7 @@ public:
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_Iext<ndensity, diff_ord, vert_diff_ord>(
-              rhs_dens0, rhs_dens, this->primal_geometry, this->dual_geometry,
+              sol_dens, rhs_dens, this->primal_geometry, this->dual_geometry,
               pis, pjs, pks, i, j, k, n);
         });
 
@@ -1401,8 +1390,8 @@ public:
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
 
-          real rho = rhs_dens0(0, pks + k, pjs + j, pis + i, n);
-          real Tht = rhs_dens0(1, pks + k, pjs + j, pis + i, n);
+          real rho = sol_dens(0, pks + k, pjs + j, pis + i, n);
+          real Tht = sol_dens(1, pks + k, pjs + j, pis + i, n);
           
           real b0_rho = refstate.Blin_coeff(0, 0, k, n);
           real b0_Tht = refstate.Blin_coeff(0, 1, k, n);
@@ -1425,7 +1414,7 @@ public:
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wDv<ndensity>(wtend, refstate.dens_di, bvar, pis, pjs, pks,
+          compute_wDv<ndensity>(sol_w, refstate.dens_di, bvar, pis, pjs, pks,
                                 i, j, k, n);
         });
     parallel_for(
@@ -1433,7 +1422,7 @@ public:
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wD1<ndensity>(vtend, refstate.dens_pi, bvar, pis, pjs, pks, i,
+          compute_wD1<ndensity>(sol_v, refstate.dens_pi, bvar, pis, pjs, pks, i,
                                 j, k, n);
         });
 
@@ -1470,7 +1459,7 @@ public:
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           complex_vrhs(0, k, j, i, n) = rhs_v(0, k + pks, j + pjs, i + pis, n) +
-                                        vtend(0, k + pks, j + pjs, i + pis, n);     
+                                        sol_v(0, k + pks, j + pjs, i + pis, n);     
         });
     
     parallel_for(
@@ -1479,7 +1468,7 @@ public:
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           complex_wrhs(0, k, j, i, n) = rhs_w(0, k + pks, j + pjs, i + pis, n) +
-                                        wtend(0, k + pks, j + pjs, i + pis, n); 
+                                        sol_w(0, k + pks, j + pjs, i + pis, n); 
         });
 
     yakl::timer_start("fft fwd");
