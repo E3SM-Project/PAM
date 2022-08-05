@@ -49,19 +49,9 @@ uint constexpr nprognostic = 3;
 #define DENSVAR 2
 
 // hs, coriolis
-uint constexpr nconstant = 12;
+uint constexpr nconstant = 2;
 #define HSVAR 0
 #define CORIOLISXZVAR 1
-#define REFDENSVAR 2
-#define REFDENS0VAR 3
-#define REFNSQ0VAR 4
-#define BDENS0VAR 5
-#define REFDENSRECONVAR 6
-#define REFDENSEDGERECONVAR 7
-#define REFDENSVERTRECONVAR 8
-#define REFDENSVERTEDGERECONVAR 9
-#define REFHEVAR 10
-#define REFHEWVAR 11
 
 // functional derivatives = F, FW, B, K, he, hew
 // primal grid reconstruction stuff- U, W, dens0, edgerecon, recon,

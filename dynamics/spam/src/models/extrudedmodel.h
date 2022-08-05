@@ -651,397 +651,6 @@ public:
         });
   }
 
-  // LINEAR
-  // void YAKL_INLINE compute_functional_derivatives(
-  //    ADD_MODE addmode, real fac, real dt, FieldSet<nconstant> &const_vars,
-  //    FieldSet<nprognostic> &x, FieldSet<nauxiliary> &auxiliary_vars) override
-  //    {
-
-  //  int pis = primal_topology.is;
-  //  int pjs = primal_topology.js;
-  //  int pks = primal_topology.ks;
-
-  //  int dis = dual_topology.is;
-  //  int djs = dual_topology.js;
-  //  int dks = dual_topology.ks;
-
-  //  auto densvar = x.fields_arr[DENSVAR].data;
-  //  auto vvar = x.fields_arr[VVAR].data;
-  //  auto wvar = x.fields_arr[WVAR].data;
-  //
-  //
-  //  auto refdensvar = const_vars.fields_arr[REFDENSVAR].data;
-  //  auto refnsq0var = const_vars.fields_arr[REFNSQ0VAR].data;
-  //  auto refdens0var = const_vars.fields_arr[REFDENS0VAR].data;
-
-  //  auto dens0var = auxiliary_vars.fields_arr[DENS0VAR].data;
-  //  auto uvar = auxiliary_vars.fields_arr[UVAR].data;
-  //  auto uwvar = auxiliary_vars.fields_arr[UWVAR].data;
-  //  auto bvar = auxiliary_vars.fields_arr[BVAR].data;
-  //
-  //  auto fvar = auxiliary_vars.fields_arr[FVAR].data;
-  //  auto fwvar = auxiliary_vars.fields_arr[FWVAR].data;
-  //  auto hevar = auxiliary_vars.fields_arr[HEVAR].data;
-  //  auto hewvar = auxiliary_vars.fields_arr[HEWVAR].data;
-
-  //  auto densedgereconvar = auxiliary_vars.fields_arr[DENSEDGERECONVAR].data;
-  //  auto densvertedgereconvar =
-  //  auxiliary_vars.fields_arr[DENSVERTEDGERECONVAR].data; auto densreconvar =
-  //  auxiliary_vars.fields_arr[DENSRECONVAR].data; auto densvertreconvar =
-  //  auxiliary_vars.fields_arr[DENSVERTRECONVAR].data;
-
-  //  parallel_for(
-  //      "Compute Dens0var",
-  //      SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
-  //                      primal_topology.n_cells_x, primal_topology.nens),
-  //      YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-  //        compute_Iext<ndensity, diff_ord, vert_diff_ord>(
-  //            dens0var, densvar, this->primal_geometry, this->dual_geometry,
-  //            pis, pjs, pks, i, j, k, n);
-  //      });
-
-  //  parallel_for(
-  //      "Compute Uvar",
-  //      SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-  //                      dual_topology.n_cells_x, dual_topology.nens),
-  //      YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-  //        compute_Hext<1, diff_ord>(uvar, vvar, this->primal_geometry,
-  //                                  this->dual_geometry, dis, djs, dks, i, j,
-  //                                  k, n);
-  //      });
-
-  //  parallel_for(
-  //      "Compute UWVar",
-  //      SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
-  //                      dual_topology.n_cells_x, dual_topology.nens),
-  //      YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-  //        compute_Hv<1, vert_diff_ord>(uwvar, wvar, this->primal_geometry,
-  //                                     this->dual_geometry, dis, djs, dks, i,
-  //                                     j, k + 1, n);
-  //      });
-
-  //  auxiliary_vars.fields_arr[UWVAR].set_bnd(0.0);
-  //  this->aux_exchange->exchanges_arr[UVAR].exchange_field(
-  //      auxiliary_vars.fields_arr[UVAR]);
-  //  this->aux_exchange->exchanges_arr[UWVAR].exchange_field(
-  //      auxiliary_vars.fields_arr[UWVAR]);
-  //  this->aux_exchange->exchanges_arr[DENS0VAR].exchange_field(
-  //      auxiliary_vars.fields_arr[DENS0VAR]);
-
-  //  parallel_for(
-  //      "Compute F",
-  //      SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-  //                      dual_topology.n_cells_x, dual_topology.nens),
-  //      YAKL_LAMBDA(int k, int j, int i, int n) {
-  //        Hk.compute_F_and_he(fvar, hevar, uvar, refdens0var, dis, djs, dks,
-  //        i, j, k, n);
-  //  });
-
-  //  parallel_for(
-  //      "Compute FWvar",
-  //      SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
-  //                      dual_topology.n_cells_x, dual_topology.nens),
-  //      YAKL_LAMBDA(int k, int j, int i, int n) {
-  //        Hk.compute_Fw_and_he(fwvar, hewvar, uwvar, refdens0var, dis, djs,
-  //        dks, i, j,
-  //                      k + 1, n);
-  //      });
-  //
-  //  auxiliary_vars.fields_arr[FWVAR].set_bnd(0.0);
-  //  this->aux_exchange->exchanges_arr[FVAR].exchange_field(
-  //      auxiliary_vars.fields_arr[FVAR]);
-  //  this->aux_exchange->exchanges_arr[FWVAR].exchange_field(
-  //      auxiliary_vars.fields_arr[FWVAR]);
-  //  this->aux_exchange->exchanges_arr[HEVAR].exchange_field(
-  //      auxiliary_vars.fields_arr[HEVAR]);
-  //  this->aux_exchange->exchanges_arr[HEWVAR].exchange_field(
-  //      auxiliary_vars.fields_arr[HEWVAR]);
-
-  //  parallel_for(
-  //      "Compute Bvar",
-  //      SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
-  //                      primal_topology.n_cells_x, primal_topology.nens),
-  //      YAKL_LAMBDA(int k, int j, int i, int n) {
-
-  //        real Rd = thermo.cst.Rd;
-  //        real pr = thermo.cst.pr;
-  //        real gamma_d = thermo.cst.gamma_d;
-  //        real Cpd = thermo.cst.Cpd;
-  //        real Cvd = thermo.cst.Cvd;
-  //        real grav = 9.80616_fp;
-  //        real grav2 = grav * grav;
-  //
-  //        real rho_ref = refdens0var(0, pks + k, pjs + j, pis + i, n);
-  //        real Tht_ref = refdens0var(1, pks + k, pjs + j, pis + i, n);
-  //        real tht_ref = Tht_ref / rho_ref;
-
-  //        //real rho = rho_ref + dens0var(0, pks + k, pjs + j, pis + i, n);
-  //        //real Tht = Tht_ref + dens0var(1, pks + k, pjs + j, pis + i, n);
-  //        real rho = dens0var(0, pks + k, pjs + j, pis + i, n);
-  //        real Tht = dens0var(1, pks + k, pjs + j, pis + i, n);
-
-  //        real tht = Tht / rho_ref - (rho - rho_ref) / rho_ref * tht_ref;
-  //        real rho_ref2 = rho_ref * rho_ref;
-  //        real p_ref = pr * pow(Rd * Tht_ref / pr, gamma_d);
-  //        real dpdtht_ref = gamma_d * p_ref / tht_ref;
-  //        real dpdtht_ref2 = dpdtht_ref * dpdtht_ref;
-  //        real Nref2 = refnsq0var(0, pks + k, pjs + j, pis + i, n);
-  //        real cref2 = gamma_d * p_ref / rho_ref;
-
-  //        real drho = rho - rho_ref;
-  //        real dtht = tht - tht_ref;
-
-  //        real b0_drho = (cref2 * rho_ref - dpdtht_ref * tht_ref) / rho_ref2;
-  //        real b0_dtht = dpdtht_ref / rho_ref - dpdtht_ref2 * tht_ref / (cref2
-  //        * rho_ref2) -
-  //                      dpdtht_ref2 * grav2 * tht_ref / (Nref2 * cref2 * cref2
-  //                      * rho_ref2);
-
-  //        real b0 = drho * b0_drho + dtht * b0_dtht;
-
-  //        real b1_drho = dpdtht_ref / rho_ref2;
-  //        real b1_dtht = dpdtht_ref2 * (Nref2 * cref2 + grav2) / (Nref2 *
-  //        cref2 * cref2 * rho_ref2);
-
-  //        real b1 = drho * b1_drho + dtht * b1_dtht;
-
-  //        bvar(0, pks + k, pjs + j, pis + i, n) = b0;
-  //        bvar(1, pks + k, pjs + j, pis + i, n) = b1;
-  //      });
-  //
-  //  this->aux_exchange->exchanges_arr[BVAR].exchange_field(
-  //      auxiliary_vars.fields_arr[BVAR]);
-  //}
-
-  //// LINEAR
-  // void YAKL_INLINE apply_symplectic(real dt, FieldSet<nconstant> &const_vars,
-  //                  FieldSet<nprognostic> &x,
-  //                  FieldSet<nauxiliary> &auxiliary_vars,
-  //                  FieldSet<nprognostic> &xtend) override {
-
-  //  int pis = primal_topology.is;
-  //  int pjs = primal_topology.js;
-  //  int pks = primal_topology.ks;
-
-  //  int dis = dual_topology.is;
-  //  int djs = dual_topology.js;
-  //  int dks = dual_topology.ks;
-
-  //  auto densvar = x.fields_arr[DENSVAR].data;
-  //  auto vvar = x.fields_arr[VVAR].data;
-  //  auto wvar = x.fields_arr[WVAR].data;
-  //
-  //  auto denstendvar = xtend.fields_arr[DENSVAR].data;
-  //  auto vtendvar = xtend.fields_arr[VVAR].data;
-  //  auto wtendvar = xtend.fields_arr[WVAR].data;
-  //
-  //  auto refdensvar = const_vars.fields_arr[REFDENSVAR].data;
-  //  auto refnsq0var = const_vars.fields_arr[REFNSQ0VAR].data;
-  //  auto refdens0var = const_vars.fields_arr[REFDENS0VAR].data;
-
-  //  auto dens0var = auxiliary_vars.fields_arr[DENS0VAR].data;
-  //  auto uvar = auxiliary_vars.fields_arr[UVAR].data;
-  //  auto uwvar = auxiliary_vars.fields_arr[UWVAR].data;
-  //  auto bvar = auxiliary_vars.fields_arr[BVAR].data;
-  //
-  //  auto fvar = auxiliary_vars.fields_arr[FVAR].data;
-  //  auto fwvar = auxiliary_vars.fields_arr[FWVAR].data;
-  //  auto fvar2 = auxiliary_vars.fields_arr[FVAR2].data;
-  //  auto fwvar2 = auxiliary_vars.fields_arr[FWVAR2].data;
-  //  auto hevar = auxiliary_vars.fields_arr[HEVAR].data;
-  //  auto hewvar = auxiliary_vars.fields_arr[HEWVAR].data;
-
-  //  auto densedgereconvar = auxiliary_vars.fields_arr[DENSEDGERECONVAR].data;
-  //  auto densvertedgereconvar =
-  //  auxiliary_vars.fields_arr[DENSVERTEDGERECONVAR].data; auto densreconvar =
-  //  auxiliary_vars.fields_arr[DENSRECONVAR].data; auto densvertreconvar =
-  //  auxiliary_vars.fields_arr[DENSVERTRECONVAR].data;
-
-  //  parallel_for(
-  //      "Compute Dens0var",
-  //      SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
-  //                      primal_topology.n_cells_x, primal_topology.nens),
-  //      YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-  //        compute_Iext<ndensity, diff_ord, vert_diff_ord>(
-  //            dens0var, densvar, this->primal_geometry, this->dual_geometry,
-  //            pis, pjs, pks, i, j, k, n);
-  //      });
-
-  //  parallel_for(
-  //      "Compute Uvar",
-  //      SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-  //                      dual_topology.n_cells_x, dual_topology.nens),
-  //      YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-  //        compute_Hext<1, diff_ord>(uvar, vvar, this->primal_geometry,
-  //                                  this->dual_geometry, dis, djs, dks, i, j,
-  //                                  k, n);
-  //      });
-
-  //  parallel_for(
-  //      "Compute UWVar",
-  //      SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
-  //                      dual_topology.n_cells_x, dual_topology.nens),
-  //      YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-  //        compute_Hv<1, vert_diff_ord>(uwvar, wvar, this->primal_geometry,
-  //                                     this->dual_geometry, dis, djs, dks, i,
-  //                                     j, k + 1, n);
-  //      });
-
-  //  auxiliary_vars.fields_arr[UWVAR].set_bnd(0.0);
-  //  this->aux_exchange->exchanges_arr[UVAR].exchange_field(
-  //      auxiliary_vars.fields_arr[UVAR]);
-  //  this->aux_exchange->exchanges_arr[UWVAR].exchange_field(
-  //      auxiliary_vars.fields_arr[UWVAR]);
-  //  this->aux_exchange->exchanges_arr[DENS0VAR].exchange_field(
-  //      auxiliary_vars.fields_arr[DENS0VAR]);
-
-  //  parallel_for(
-  //      "Compute F",
-  //      SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-  //                      dual_topology.n_cells_x, dual_topology.nens),
-  //      YAKL_LAMBDA(int k, int j, int i, int n) {
-  //        Hk.compute_F_and_he(fvar2, hevar, uvar, refdens0var, dis, djs, dks,
-  //        i, j, k, n);
-  //  });
-
-  //  parallel_for(
-  //      "Compute FWvar",
-  //      SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
-  //                      dual_topology.n_cells_x, dual_topology.nens),
-  //      YAKL_LAMBDA(int k, int j, int i, int n) {
-  //        Hk.compute_Fw_and_he(fwvar2, hewvar, uwvar, refdens0var, dis, djs,
-  //        dks, i, j,
-  //                      k + 1, n);
-  //      });
-  //
-  //  auxiliary_vars.fields_arr[FWVAR2].set_bnd(0.0);
-  //  this->aux_exchange->exchanges_arr[FVAR2].exchange_field(
-  //      auxiliary_vars.fields_arr[FVAR2]);
-  //  this->aux_exchange->exchanges_arr[FWVAR2].exchange_field(
-  //      auxiliary_vars.fields_arr[FWVAR2]);
-  //  this->aux_exchange->exchanges_arr[HEVAR].exchange_field(
-  //      auxiliary_vars.fields_arr[HEVAR]);
-  //  this->aux_exchange->exchanges_arr[HEWVAR].exchange_field(
-  //      auxiliary_vars.fields_arr[HEWVAR]);
-
-  //  parallel_for(
-  //      "ComputeDensEdgeRecon",
-  //      SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-  //                      dual_topology.n_cells_x, dual_topology.nens),
-  //      YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-  //        compute_twisted_edge_recon<ndensity, dual_reconstruction_type,
-  //                                   dual_reconstruction_order>(
-  //            densedgereconvar, refdens0var, dis, djs, dks, i, j, k, n,
-  //            dual_wenoRecon, dual_to_gll, dual_wenoIdl, dual_wenoSigma);
-  //        compute_twisted_vert_edge_recon<ndensity,
-  //                                        dual_vert_reconstruction_type,
-  //                                        dual_vert_reconstruction_order>(
-  //            densvertedgereconvar, refdens0var, dis, djs, dks, i, j, k, n,
-  //            dual_vert_wenoRecon, dual_vert_to_gll, dual_vert_wenoIdl,
-  //            dual_vert_wenoSigma);
-  //      });
-
-  //  this->aux_exchange->exchanges_arr[DENSEDGERECONVAR].exchange_field(
-  //      auxiliary_vars.fields_arr[DENSEDGERECONVAR]);
-  //  this->aux_exchange->exchanges_arr[DENSVERTEDGERECONVAR].exchange_field(
-  //      auxiliary_vars.fields_arr[DENSVERTEDGERECONVAR]);
-
-  //  parallel_for(
-  //      "ComputeDens recon",
-  //      SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-  //                      dual_topology.n_cells_x, dual_topology.nens),
-  //      YAKL_LAMBDA(int k, int j, int i, int n) {
-  //        compute_twisted_recon<ndensity, dual_reconstruction_type>(
-  //            densreconvar, densedgereconvar, uvar, dis, djs, dks, i, j, k,
-  //            n);
-
-  //        // scale twisted recons
-  //        for (int d = 0; d < ndims; d++) {
-  //          for (int l = 0; l < ndensity; l++) {
-  //            densreconvar(l + d * ndensity, k + dks, j + djs, i + dis, n) =
-  //                densreconvar(l + d * ndensity, k + dks, j + djs, i + dis, n)
-  //                / hevar(d, k + dks, j + djs, i + dis, n);
-  //          }
-  //        }
-  //      });
-
-  //  parallel_for(
-  //      "ComputeDensVertRECON",
-  //      SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
-  //                      dual_topology.n_cells_x, dual_topology.nens),
-  //      YAKL_LAMBDA(int k, int j, int i, int n) {
-  //        compute_twisted_vert_recon<ndensity, dual_vert_reconstruction_type>(
-  //            densvertreconvar, densvertedgereconvar, uwvar, dis, djs, dks, i,
-  //            j, k + 1, n);
-
-  //        // scale twisted recons
-  //        for (int l = 0; l < ndensity; l++) {
-  //          densvertreconvar(l, k + dks + 1, j + djs, i + dis, n) =
-  //              densvertreconvar(l, k + dks + 1, j + djs, i + dis, n) /
-  //              hewvar(0, k + dks + 1, j + djs, i + dis, n);
-  //        }
-  //      });
-
-  //  this->aux_exchange->exchanges_arr[DENSRECONVAR].exchange_field(
-  //      auxiliary_vars.fields_arr[DENSRECONVAR]);
-  //  this->aux_exchange->exchanges_arr[DENSVERTRECONVAR].exchange_field(
-  //      auxiliary_vars.fields_arr[DENSVERTRECONVAR]);
-
-  //  parallel_for(
-  //      "Compute Wtend",
-  //      SimpleBounds<4>(primal_topology.nl - 2, primal_topology.n_cells_y,
-  //                      primal_topology.n_cells_x, primal_topology.nens),
-  //      YAKL_LAMBDA(int k, int j, int i, int n) {
-  //        compute_wDv<ndensity>(wtendvar, densvertreconvar,
-  //                                  bvar, pis, pjs, pks, i, j, k + 1, n);
-  //      });
-
-  //  parallel_for(
-  //      "Compute Wtend Bnd",
-  //      SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
-  //                      primal_topology.nens),
-  //      YAKL_CLASS_LAMBDA(int j, int i, int n) {
-  //        compute_wDv<ndensity>(wtendvar, densvertreconvar,
-  //                                  bvar, pis, pjs, pks, i, j, 0, n);
-  //        compute_wDv<ndensity>(wtendvar, densvertreconvar,
-  //                                  bvar, pis, pjs, pks, i, j,
-  //                                  primal_topology.nl - 1, n);
-  //      });
-  //
-  //  parallel_for(
-  //      "Compute Vtend",
-  //      SimpleBounds<4>(primal_topology.ni - 2, primal_topology.n_cells_y,
-  //                      primal_topology.n_cells_x, primal_topology.nens),
-  //      YAKL_LAMBDA(int k, int j, int i, int n) {
-  //        compute_wD1<ndensity>(vtendvar, densreconvar, bvar, pis,
-  //                                  pjs, pks, i, j, k + 1, n);
-  //  });
-
-  //  parallel_for(
-  //      "Compute Vtend Bnd",
-  //      SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
-  //                      primal_topology.nens),
-  //      YAKL_CLASS_LAMBDA(int j, int i, int n) {
-  //        compute_wD1<ndensity>(vtendvar, densreconvar, bvar, pis,
-  //                                  pjs, pks, i, j, 0, n);
-  //        compute_wD1<ndensity>(vtendvar, densreconvar, bvar, pis,
-  //                                  pjs, pks, i, j, primal_topology.ni - 1,
-  //                                  n);
-  //      });
-
-  //  parallel_for(
-  //      "Compute Dens Tend",
-  //      SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-  //                      dual_topology.n_cells_x, dual_topology.nens),
-  //      YAKL_LAMBDA(int k, int j, int i, int n) {
-  //        compute_wDbar2<ndensity>(denstendvar, densreconvar, fvar,
-  //                                     dis, djs, dks, i, j, k, n);
-  //        compute_wDvbar<ndensity, ADD_MODE::ADD>(
-  //            denstendvar, densvertreconvar, fwvar, dis, djs, dks,
-  //            i, j, k, n);
-  //      });
-  //}
-
   // NONLINEAR
   void YAKL_INLINE compute_functional_derivatives(
       ADD_MODE addmode, real fac, real dt, FieldSet<nconstant> &const_vars,
@@ -1316,261 +925,6 @@ public:
                        auxiliary_vars.fields_arr[PHIVAR].data,
                        auxiliary_vars.fields_arr[PHIVERTVAR].data);
   }
-
-  void compute_linrhs(real dt, FieldSet<nconstant> &const_vars,
-                      FieldSet<nprognostic> &x,
-                      FieldSet<nauxiliary> &auxiliary_vars,
-                      FieldSet<nprognostic> &xtend) override {
-
-    int pis = primal_topology.is;
-    int pjs = primal_topology.js;
-    int pks = primal_topology.ks;
-
-    int dis = dual_topology.is;
-    int djs = dual_topology.js;
-    int dks = dual_topology.ks;
-
-    auto densvar = x.fields_arr[DENSVAR].data;
-    auto vvar = x.fields_arr[VVAR].data;
-    auto wvar = x.fields_arr[WVAR].data;
-
-    auto denstendvar = xtend.fields_arr[DENSVAR].data;
-    auto vtendvar = xtend.fields_arr[VVAR].data;
-    auto wtendvar = xtend.fields_arr[WVAR].data;
-
-    auto refdensvar = const_vars.fields_arr[REFDENSVAR].data;
-    auto refnsq0var = const_vars.fields_arr[REFNSQ0VAR].data;
-    auto refdens0var = const_vars.fields_arr[REFDENS0VAR].data;
-
-    auto dens0var = auxiliary_vars.fields_arr[DENS0VAR].data;
-    auto uvar = auxiliary_vars.fields_arr[UVAR].data;
-    auto uwvar = auxiliary_vars.fields_arr[UWVAR].data;
-    auto bvar = auxiliary_vars.fields_arr[BVAR].data;
-
-    auto fvar = auxiliary_vars.fields_arr[FVAR].data;
-    auto fwvar = auxiliary_vars.fields_arr[FWVAR].data;
-    auto hevar = auxiliary_vars.fields_arr[HEVAR].data;
-    auto hewvar = auxiliary_vars.fields_arr[HEWVAR].data;
-
-    auto densedgereconvar = auxiliary_vars.fields_arr[DENSEDGERECONVAR].data;
-    auto densvertedgereconvar =
-        auxiliary_vars.fields_arr[DENSVERTEDGERECONVAR].data;
-    auto densreconvar = auxiliary_vars.fields_arr[DENSRECONVAR].data;
-    auto densvertreconvar = auxiliary_vars.fields_arr[DENSVERTRECONVAR].data;
-    
-    auto bdens0var = const_vars.fields_arr[BDENS0VAR].data;
-    
-    auto refhevar = const_vars.fields_arr[REFHEVAR].data;
-    auto refhewvar = const_vars.fields_arr[REFHEWVAR].data;
-    auto refdensedgereconvar = const_vars.fields_arr[REFDENSEDGERECONVAR].data;
-    auto refdensvertedgereconvar =
-        const_vars.fields_arr[REFDENSVERTEDGERECONVAR].data;
-    auto refdensreconvar = const_vars.fields_arr[REFDENSRECONVAR].data;
-    auto refdensvertreconvar = const_vars.fields_arr[REFDENSVERTRECONVAR].data;
-
-    parallel_for(
-        "Compute Dens0var",
-        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-          compute_Iext<ndensity, diff_ord, vert_diff_ord>(
-              dens0var, densvar, this->primal_geometry, this->dual_geometry,
-              pis, pjs, pks, i, j, k, n);
-        });
-
-    parallel_for(
-        "Compute Uvar",
-        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-          compute_Hext<1, diff_ord>(uvar, vvar, this->primal_geometry,
-                                    this->dual_geometry, dis, djs, dks, i, j, k,
-                                    n);
-        });
-
-    parallel_for(
-        "Compute UWVar",
-        SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-          compute_Hv<1, vert_diff_ord>(uwvar, wvar, this->primal_geometry,
-                                       this->dual_geometry, dis, djs, dks, i, j,
-                                       k + 1, n);
-        });
-
-    auxiliary_vars.fields_arr[UWVAR].set_bnd(0.0);
-    this->aux_exchange->exchanges_arr[UVAR].exchange_field(
-        auxiliary_vars.fields_arr[UVAR]);
-    this->aux_exchange->exchanges_arr[UWVAR].exchange_field(
-        auxiliary_vars.fields_arr[UWVAR]);
-    this->aux_exchange->exchanges_arr[DENS0VAR].exchange_field(
-        auxiliary_vars.fields_arr[DENS0VAR]);
-
-    parallel_for(
-        "Compute F",
-        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          Hk.compute_F_and_he(fvar, hevar, uvar, refdens0var, dis, djs, dks, i,
-                              j, k, n);
-        });
-
-    parallel_for(
-        "Compute FWvar",
-        SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          Hk.compute_Fw_and_he(fwvar, hewvar, uwvar, refdens0var, dis, djs, dks,
-                               i, j, k + 1, n);
-        });
-
-    auxiliary_vars.fields_arr[FWVAR].set_bnd(0.0);
-    this->aux_exchange->exchanges_arr[FVAR].exchange_field(
-        auxiliary_vars.fields_arr[FVAR]);
-    this->aux_exchange->exchanges_arr[FWVAR].exchange_field(
-        auxiliary_vars.fields_arr[FWVAR]);
-    this->aux_exchange->exchanges_arr[HEVAR].exchange_field(
-        auxiliary_vars.fields_arr[HEVAR]);
-    this->aux_exchange->exchanges_arr[HEWVAR].exchange_field(
-        auxiliary_vars.fields_arr[HEWVAR]);
-
-    parallel_for(
-        "Compute Bvar",
-        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-
-          real rho = dens0var(0, pks + k, pjs + j, pis + i, n);
-          real Tht = dens0var(1, pks + k, pjs + j, pis + i, n);
-          
-          real b0_rho = bdens0var(0, pks + k, pjs + j, pis + i, n);
-          real b0_Tht = bdens0var(1, pks + k, pjs + j, pis + i, n);
-          real b1_rho = bdens0var(2, pks + k, pjs + j, pis + i, n);
-          real b1_Tht = bdens0var(3, pks + k, pjs + j, pis + i, n);
-
-          real b0 = rho * b0_rho + Tht * b0_Tht;
-          real b1 = rho * b1_rho + Tht * b1_Tht;
-
-          bvar(0, pks + k, pjs + j, pis + i, n) = b0;
-          bvar(1, pks + k, pjs + j, pis + i, n) = b1;
-        });
-
-    this->aux_exchange->exchanges_arr[BVAR].exchange_field(
-        auxiliary_vars.fields_arr[BVAR]);
-
-    //parallel_for(
-    //    "ComputeDensEdgeRecon",
-    //    SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-    //                    dual_topology.n_cells_x, dual_topology.nens),
-    //    YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-    //      compute_twisted_edge_recon<ndensity, dual_reconstruction_type,
-    //                                 dual_reconstruction_order>(
-    //          densedgereconvar, refdens0var, dis, djs, dks, i, j, k, n,
-    //          dual_wenoRecon, dual_to_gll, dual_wenoIdl, dual_wenoSigma);
-    //      compute_twisted_vert_edge_recon<ndensity,
-    //                                      dual_vert_reconstruction_type,
-    //                                      dual_vert_reconstruction_order>(
-    //          densvertedgereconvar, refdens0var, dis, djs, dks, i, j, k, n,
-    //          dual_vert_wenoRecon, dual_vert_to_gll, dual_vert_wenoIdl,
-    //          dual_vert_wenoSigma);
-    //    });
-
-    //this->aux_exchange->exchanges_arr[DENSEDGERECONVAR].exchange_field(
-    //    auxiliary_vars.fields_arr[DENSEDGERECONVAR]);
-    //this->aux_exchange->exchanges_arr[DENSVERTEDGERECONVAR].exchange_field(
-    //    auxiliary_vars.fields_arr[DENSVERTEDGERECONVAR]);
-
-    //parallel_for(
-    //    "ComputeDens recon",
-    //    SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-    //                    dual_topology.n_cells_x, dual_topology.nens),
-    //    YAKL_LAMBDA(int k, int j, int i, int n) {
-    //      compute_twisted_recon<ndensity, dual_reconstruction_type>(
-    //          densreconvar, densedgereconvar, uvar, dis, djs, dks, i, j, k, n);
-
-    //      // scale twisted recons
-    //      for (int d = 0; d < ndims; d++) {
-    //        for (int l = 0; l < ndensity; l++) {
-    //          densreconvar(l + d * ndensity, k + dks, j + djs, i + dis, n) =
-    //              densreconvar(l + d * ndensity, k + dks, j + djs, i + dis, n) /
-    //              hevar(d, k + dks, j + djs, i + dis, n);
-    //        }
-    //      }
-    //    });
-
-    //parallel_for(
-    //    "ComputeDensVertRECON",
-    //    SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
-    //                    dual_topology.n_cells_x, dual_topology.nens),
-    //    YAKL_LAMBDA(int k, int j, int i, int n) {
-    //      compute_twisted_vert_recon<ndensity, dual_vert_reconstruction_type>(
-    //          densvertreconvar, densvertedgereconvar, uwvar, dis, djs, dks, i,
-    //          j, k + 1, n);
-
-    //      // scale twisted recons
-    //      for (int l = 0; l < ndensity; l++) {
-    //        densvertreconvar(l, k + dks + 1, j + djs, i + dis, n) =
-    //            densvertreconvar(l, k + dks + 1, j + djs, i + dis, n) /
-    //            hewvar(0, k + dks + 1, j + djs, i + dis, n);
-    //      }
-    //    });
-
-    //this->aux_exchange->exchanges_arr[DENSRECONVAR].exchange_field(
-    //    auxiliary_vars.fields_arr[DENSRECONVAR]);
-    //this->aux_exchange->exchanges_arr[DENSVERTRECONVAR].exchange_field(
-    //    auxiliary_vars.fields_arr[DENSVERTRECONVAR]);
-
-    parallel_for(
-        "Compute Wtend",
-        SimpleBounds<4>(primal_topology.nl - 2, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wDv<ndensity>(wtendvar, refdensvertreconvar, bvar, pis, pjs, pks,
-                                i, j, k + 1, n);
-        });
-
-    parallel_for(
-        "Compute Wtend Bnd",
-        SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
-                        primal_topology.nens),
-        YAKL_CLASS_LAMBDA(int j, int i, int n) {
-          compute_wDv<ndensity>(wtendvar, refdensvertreconvar, bvar, pis, pjs, pks,
-                                i, j, 0, n);
-          compute_wDv<ndensity>(wtendvar, refdensvertreconvar, bvar, pis, pjs, pks,
-                                i, j, primal_topology.nl - 1, n);
-        });
-
-    parallel_for(
-        "Compute Vtend",
-        SimpleBounds<4>(primal_topology.ni - 2, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wD1<ndensity>(vtendvar, refdensreconvar, bvar, pis, pjs, pks, i,
-                                j, k + 1, n);
-        });
-
-    parallel_for(
-        "Compute Vtend Bnd",
-        SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
-                        primal_topology.nens),
-        YAKL_CLASS_LAMBDA(int j, int i, int n) {
-          compute_wD1<ndensity>(vtendvar, refdensreconvar, bvar, pis, pjs, pks, i,
-                                j, 0, n);
-          compute_wD1<ndensity>(vtendvar, refdensreconvar, bvar, pis, pjs, pks, i,
-                                j, primal_topology.ni - 1, n);
-        });
-
-    parallel_for(
-        "Compute Dens Tend",
-        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wDbar2<ndensity>(denstendvar, refdensreconvar, fvar, dis, djs,
-                                   dks, i, j, k, n);
-          compute_wDvbar<ndensity, ADD_MODE::ADD>(
-              denstendvar, refdensvertreconvar, fwvar, dis, djs, dks, i, j, k, n);
-        });
-  }
 };
 
 struct ModelReferenceState : ReferenceState {
@@ -1671,8 +1025,7 @@ public:
     l_tri_u = complex1d("tri u", pnl);
   }
   
-  virtual void compute_coefficients(real dt, ReferenceState &reference_state,
-                                    FieldSet<nconstant> &const_vars) override {
+  virtual void compute_coefficients(real dt) override {
     auto& refstate = *this->reference_state;
 
     auto n_cells_x = dual_topology.n_cells_x;
@@ -1999,12 +1352,6 @@ public:
     yakl::timer_start("linsolve");
 
     // fourier
-    auto refhevar = const_vars.fields_arr[REFHEVAR].data;
-    auto refhewvar = const_vars.fields_arr[REFHEWVAR].data;
-    auto refdensreconvar = const_vars.fields_arr[REFDENSRECONVAR].data;
-    auto bdens0var = const_vars.fields_arr[BDENS0VAR].data;
-    auto refdensvertreconvar = const_vars.fields_arr[REFDENSVERTRECONVAR].data;
-    auto refdens0var = const_vars.fields_arr[REFDENS0VAR].data;
 
     auto sol_dens = solution.fields_arr[DENSVAR].data;
     auto sol_v = solution.fields_arr[VVAR].data;
@@ -2078,7 +1425,7 @@ public:
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wDv<ndensity>(wtend, refdensvertreconvar, bvar, pis, pjs, pks,
+          compute_wDv<ndensity>(wtend, refstate.dens_di, bvar, pis, pjs, pks,
                                 i, j, k, n);
         });
     parallel_for(
@@ -2086,7 +1433,7 @@ public:
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wD1<ndensity>(vtend, refdensreconvar, bvar, pis, pjs, pks, i,
+          compute_wD1<ndensity>(vtend, refstate.dens_pi, bvar, pis, pjs, pks, i,
                                 j, k, n);
         });
 
@@ -2169,43 +1516,43 @@ public:
           complex fDbarh_kp1 = exp(im * fac) - 1._fp;
           complex fDbarh_k = exp(im * fac) - 1._fp;
           
-          real he_kp1 = refhevar(0, dks + k + 1, djs + j, dis + i, n);
-          real he_k = refhevar(0, dks + k, djs + j, dis + i, n);
-          real dens0_kp1 = refdensreconvar(0, pks + k + 1, pjs + j, pis + i, n);
-          real dens1_kp1 = refdensreconvar(1, pks + k + 1, pjs + j, pis + i, n);
-          real dens0_k = refdensreconvar(0, pks + k , pjs + j, pis + i, n);
-          real dens1_k = refdensreconvar(1, pks + k , pjs + j, pis + i, n);
+          real he_kp1 = refstate.he_pi(0, k + 1, n);
+          real he_k = refstate.he_pi(0, k, n);
+          real dens0_kp1 = refstate.dens_pi(0, k + 1, n);
+          real dens1_kp1 = refstate.dens_pi(1, k + 1, n);
+          real dens0_k = refstate.dens_pi(0, k, n);
+          real dens1_k = refstate.dens_pi(1, k, n);
 
           // term 1
-          real alpha_kp1 = dtf2 * refdensvertreconvar(0, pks + k + 1, pjs + j, pis + i, n);
-          complex beta_kp1 = fI_kp1 * bdens0var(0, pks + k + 1, pjs + j, pis + i, n) * dens0_kp1 * 
+          real alpha_kp1 = dtf2 * refstate.dens_di(0, k + 1, n);
+          complex beta_kp1 = fI_kp1 * refstate.Blin_coeff(0, 0, k + 1, n) * dens0_kp1 * 
                              fDbarh_kp1 * he_kp1 * fHh_kp1;
-          complex beta_k = fI_k * bdens0var(0, pks + k, pjs + j, pis + i, n) * dens0_k * 
+          complex beta_k = fI_k * refstate.Blin_coeff(0, 0, k, n) * dens0_k * 
                            fDbarh_k * he_k * fHh_k;
           
           complex_wrhs(0, k, j, i, n) += alpha_kp1 * (beta_kp1 * vc0_kp1  - beta_k * vc0_k);
           // term 2
-          alpha_kp1 = dtf2 * refdensvertreconvar(0, pks + k + 1, pjs + j, pis + i, n);
-          beta_kp1 = fI_kp1 * bdens0var(1, pks + k + 1, pjs + j, pis + i, n) * dens1_kp1 * 
+          alpha_kp1 = dtf2 * refstate.dens_di(0, k + 1, n);
+          beta_kp1 = fI_kp1 * refstate.Blin_coeff(0, 1, k + 1, n) * dens1_kp1 * 
                              fDbarh_kp1 * he_kp1 * fHh_kp1;
-          beta_k = fI_k * bdens0var(1, pks + k, pjs + j, pis + i, n) * dens1_k * 
+          beta_k = fI_k * refstate.Blin_coeff(0, 1, k, n) * dens1_k * 
                            fDbarh_k * he_k * fHh_k;
           
           complex_wrhs(0, k, j, i, n) += alpha_kp1 * (beta_kp1 * vc0_kp1  - beta_k * vc0_k);
          
           // term 3
-          alpha_kp1 = dtf2 * refdensvertreconvar(1, pks + k + 1, pjs + j, pis + i, n);
-          beta_kp1 = fI_kp1 * bdens0var(2, pks + k + 1, pjs + j, pis + i, n) * dens0_kp1 * 
+          alpha_kp1 = dtf2 * refstate.dens_di(1, k + 1, n);
+          beta_kp1 = fI_kp1 * refstate.Blin_coeff(1, 0, k + 1, n) * dens0_kp1 * 
                              fDbarh_kp1 * he_kp1 * fHh_kp1;
-          beta_k = fI_k * bdens0var(2, pks + k, pjs + j, pis + i, n) * dens0_k * 
+          beta_k = fI_k * refstate.Blin_coeff(1, 0, k, n) * dens0_k * 
                            fDbarh_k * he_k * fHh_k;
           
           complex_wrhs(0, k, j, i, n) += alpha_kp1 * (beta_kp1 * vc0_kp1  - beta_k * vc0_k);
           // term 4
-          alpha_kp1 = dtf2 * refdensvertreconvar(1, pks + k + 1, pjs + j, pis + i, n);
-          beta_kp1 = fI_kp1 * bdens0var(3, pks + k + 1, pjs + j, pis + i, n) * dens1_kp1 * 
+          alpha_kp1 = dtf2 * refstate.dens_di(1, k + 1, n);
+          beta_kp1 = fI_kp1 * refstate.Blin_coeff(1, 1, k + 1, n) * dens1_kp1 * 
                              fDbarh_kp1 * he_kp1 * fHh_kp1;
-          beta_k = fI_k * bdens0var(3, pks + k, pjs + j, pis + i, n) * dens1_k * 
+          beta_k = fI_k * refstate.Blin_coeff(1, 1, k, n) * dens1_k * 
                            fDbarh_k * he_k * fHh_k;
           
           complex_wrhs(0, k, j, i, n) += alpha_kp1 * (beta_kp1 * vc0_kp1  - beta_k * vc0_k);
@@ -2242,7 +1589,7 @@ public:
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           complex w_kp1;
-          if (k < primal_topology.ni) {
+          if (k < primal_topology.ni - 1) {
             w_kp1 = complex_w(0, k, j, i, n);
           } else {
             w_kp1 = 0;
@@ -2254,20 +1601,20 @@ public:
             w_k = 0;
           }
 
-          real gamma_fac_kp2 = refhewvar(0, pks + k + 2, pjs + j, pis + i, n) * 
+          real gamma_fac_kp2 = refstate.he_di(0, k + 2, n) * 
                                dual_geometry.get_area_10entity(k + 2 + dks, j + djs, i + dis) /
                                primal_geometry.get_area_01entity(k + 1 + pks, j + pjs, i + pis);
-          real gamma_fac_kp1 = refhewvar(0, pks + k + 1, pjs + j, pis + i, n) * 
+          real gamma_fac_kp1 = refstate.he_di(0, k + 1, n) * 
                                dual_geometry.get_area_10entity(k + 1 + dks, j + djs, i + dis) /
                                primal_geometry.get_area_01entity(k + 0 + pks, j + pjs, i + pis);
-          real gamma_fac_k = refhewvar(0, pks + k + 0, pjs + j, pis + i, n) * 
+          real gamma_fac_k = refstate.he_di(0, k, n) * 
                                dual_geometry.get_area_10entity(k + 0 + dks, j + djs, i + dis) /
                                primal_geometry.get_area_01entity(k - 1 + pks, j + pjs, i + pis);
 
-          real dens0_kp1 = refdensvertreconvar(0, pks + k + 1, pjs + j, pis + i, n);
-          real dens1_kp1 = refdensvertreconvar(1, pks + k + 1, pjs + j, pis + i, n);
-          real dens0_k = refdensvertreconvar(0, pks + k , pjs + j, pis + i, n);
-          real dens1_k = refdensvertreconvar(1, pks + k , pjs + j, pis + i, n);
+          real dens0_kp1 = refstate.dens_di(0, k + 1, n);
+          real dens1_kp1 = refstate.dens_di(1, k + 1, n);
+          real dens0_k = refstate.dens_di(0, k, n);
+          real dens1_k = refstate.dens_di(1, k, n);
 
           complex term0 = complex_vrhs(0, k, j, i, n);
           complex term1 = gamma_fac_kp1 * w_kp1 * dens0_kp1 - gamma_fac_k * w_k * dens0_k;
@@ -2310,7 +1657,7 @@ public:
     // back out densities
     
     parallel_for(
-        "Back out denisity U",
+        "Back out density U",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
@@ -2340,7 +1687,7 @@ public:
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          Hk.compute_F_and_he(fvar, refhevar, uvar, refdens0var, dis, djs, dks, i,
+          Hk.compute_F(fvar, uvar, refstate.he_pi, dis, djs, dks, i,
                               j, k, n);
         });
 
@@ -2349,7 +1696,7 @@ public:
         SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          Hk.compute_Fw_and_he(fwvar, refhewvar, uwvar, refdens0var, dis, djs, dks,
+          Hk.compute_Fw(fwvar, uwvar, refstate.he_di, dis, djs, dks,
                                i, j, k + 1, n);
         });
 
@@ -2358,20 +1705,16 @@ public:
         auxiliary_vars.fields_arr[FVAR]);
     this->aux_exchange->exchanges_arr[FWVAR].exchange_field(
         auxiliary_vars.fields_arr[FWVAR]);
-    this->aux_exchange->exchanges_arr[HEVAR].exchange_field(
-        auxiliary_vars.fields_arr[HEVAR]);
-    this->aux_exchange->exchanges_arr[HEWVAR].exchange_field(
-        auxiliary_vars.fields_arr[HEWVAR]);
     
     parallel_for(
         "Back out density",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wDbar2<ndensity>(sol_dens, refdensreconvar, fvar,
+          compute_wDbar2<ndensity>(sol_dens, refstate.dens_pi, fvar,
                                        dis, djs, dks, i, j, k, n);
           compute_wDvbar<ndensity, ADD_MODE::ADD>(
-              sol_dens, refdensvertreconvar, fwvar, dis, djs, dks, i, j, k, n);
+              sol_dens, refstate.dens_di, fwvar, dis, djs, dks, i, j, k, n);
           for (int d = 0; d < ndensity; ++d) {
             sol_dens(d, k + dks, j + djs, i + dis, n) *= -dt / 2;
             sol_dens(d, k + dks, j + djs, i + dis, n) += rhs_dens(d, pks + k, pjs + j, pis + i, n);
@@ -2812,55 +2155,6 @@ void initialize_variables(const Topology &ptopo, const Topology &dtopo,
   // aux_names_arr[PVAR] = "p";
   // set_dofs_arr(aux_ndofs_arr, PVAR, 0, 1, 1);  //p = straight 0-form
   // #endif
-
-  const_topo_arr[REFDENSVAR] = dtopo;
-  const_names_arr[REFDENSVAR] = "refdens";
-  set_dofs_arr(const_ndofs_arr, REFDENSVAR, ndims, 1,
-               ndensity); // refdens = twisted (n,1)-form
-  const_topo_arr[REFDENS0VAR] = ptopo;
-  const_names_arr[REFDENS0VAR] = "refdens0";
-  set_dofs_arr(const_ndofs_arr, REFDENS0VAR, 0, 0,
-               ndensity); // refdens0 = straight (0,0)-form
-  const_topo_arr[REFNSQ0VAR] = ptopo;
-  const_names_arr[REFNSQ0VAR] = "refnsq0";
-  set_dofs_arr(const_ndofs_arr, REFNSQ0VAR, 0, 0,
-               ndensity); // refnsq0 = straight (0,0)-form
-  
-  const_topo_arr[BDENS0VAR] = ptopo;
-  const_names_arr[BDENS0VAR] = "bdens0";
-  set_dofs_arr(const_ndofs_arr, BDENS0VAR, 0, 0,
-               ndensity * ndensity); // refdens0 = straight (0,0)-form
-
-  const_topo_arr[REFHEVAR] = dtopo;
-  const_names_arr[REFHEVAR] = "refhe";
-  set_dofs_arr(const_ndofs_arr, REFHEVAR, ndims - 1, 1,
-               1); // he lives on horiz dual edges, associated with F
-  const_topo_arr[REFHEWVAR] = dtopo;
-  const_names_arr[REFHEWVAR] = "refhew";
-  set_dofs_arr(const_ndofs_arr, REFHEWVAR, ndims, 0,
-               1); // hew lives on vert dual edges, associated with Fw
-
-  const_topo_arr[REFDENSRECONVAR] = dtopo;
-  const_topo_arr[REFDENSEDGERECONVAR] = dtopo;
-  const_topo_arr[REFDENSVERTRECONVAR] = dtopo;
-  const_topo_arr[REFDENSVERTEDGERECONVAR] = dtopo;
-  const_names_arr[REFDENSVERTRECONVAR] = "refdensvertrecon";
-  const_names_arr[REFDENSVERTEDGERECONVAR] = "refdensvertedgerecon";
-  const_names_arr[REFDENSRECONVAR] = "refdensrecon";
-  const_names_arr[REFDENSEDGERECONVAR] = "refdensedgerecon";
-  set_dofs_arr(
-      const_ndofs_arr, REFDENSRECONVAR, ndims - 1, 1,
-      ndensity); // densrecon lives on horiz dual edges, associated with F
-  set_dofs_arr(
-      const_ndofs_arr, REFDENSEDGERECONVAR, ndims, 1,
-      2 * ndims *
-          ndensity); // densedgerecon lives on dual cells, associated with F
-  set_dofs_arr(
-      const_ndofs_arr, REFDENSVERTRECONVAR, ndims, 0,
-      ndensity); // densvertrecon lives on vert dual edges, associated with Fw
-  set_dofs_arr(
-      const_ndofs_arr, REFDENSVERTEDGERECONVAR, ndims, 1,
-      2 * ndensity); // densedgerecon lives on dual cells, associated with Fw
 }
 
 void testcase_from_string(std::unique_ptr<TestCase> &testcase, std::string name,
@@ -3058,209 +2352,6 @@ public:
           },
           progvars.fields_arr[DENSVAR], i + ndensity_dycore);
     }
-   
-    // reference state stuff
-
-    auto bdens0var = constvars.fields_arr[BDENS0VAR].data;
-    auto refdensvar = constvars.fields_arr[REFDENSVAR].data;
-    auto refnsq0var = constvars.fields_arr[REFNSQ0VAR].data;
-    auto refdens0var = constvars.fields_arr[REFDENS0VAR].data;
-
-    auto refhevar = constvars.fields_arr[REFHEVAR].data;
-    auto refhewvar = constvars.fields_arr[REFHEWVAR].data;
-    auto refdensedgereconvar = constvars.fields_arr[REFDENSEDGERECONVAR].data;
-    auto refdensvertedgereconvar =
-        constvars.fields_arr[REFDENSVERTEDGERECONVAR].data;
-    auto refdensreconvar = constvars.fields_arr[REFDENSRECONVAR].data;
-    auto refdensvertreconvar = constvars.fields_arr[REFDENSVERTRECONVAR].data;
-
-    dual_geom.set_11form_values(
-        YAKL_LAMBDA(real x, real z) { return refrho_f(x, z, thermo); },
-        constvars.fields_arr[REFDENSVAR], 0);
-    dual_geom.set_11form_values(
-        YAKL_LAMBDA(real x, real z) {
-          return refentropicdensity_f(x, z, thermo);
-        },
-        constvars.fields_arr[REFDENSVAR], 1);
-
-    primal_geom.set_00form_values(
-        YAKL_LAMBDA(real x, real z) { return refnsq_f(x, z, thermo); },
-        constvars.fields_arr[REFNSQ0VAR], 0);
-
-    auto primal_topology = primal_geom.topology;
-    int pis = primal_topology.is;
-    int pjs = primal_topology.js;
-    int pks = primal_topology.ks;
-    
-    auto dual_topology = dual_geom.topology;
-    int dis = dual_topology.is;
-    int djs = dual_topology.js;
-    int dks = dual_topology.ks;
-    
-    const_exchange.exchanges_arr[REFDENSVAR].exchange_field(
-        constvars.fields_arr[REFDENSVAR]);
-    
-
-    primal_geom.set_00form_values(
-        YAKL_LAMBDA(real x, real z) { return refrho_f(x, z, thermo); },
-        constvars.fields_arr[REFDENS0VAR], 0);
-    primal_geom.set_00form_values(
-        YAKL_LAMBDA(real x, real z) { return refentropicdensity_f(x, z, thermo); },
-        constvars.fields_arr[REFDENS0VAR], 1);
-    //parallel_for(
-    //    "Compute refdens0var",
-    //    SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
-    //                    primal_topology.n_cells_x, primal_topology.nens),
-    //    YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-    //      compute_Iext<ndensity, diff_ord, vert_diff_ord>(
-    //          refdens0var,
-    //          refdensvar, primal_geom, dual_geom,
-    //          pis, pjs, pks, i, j, k, n);
-    //    });
-    
-    const_exchange.exchanges_arr[REFDENS0VAR].exchange_field(
-        constvars.fields_arr[REFDENS0VAR]);
-    
-    parallel_for(
-        "Compute refhe",
-        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          Hk.compute_he(refhevar, refdens0var, dis, djs, dks, i,
-                              j, k, n);
-        });
-
-    parallel_for(
-        "Compute refhew",
-        SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          Hk.compute_hew(refhewvar, refdens0var, dis, djs, dks,
-                               i, j, k + 1, n);
-        });
-    
-    const_exchange.exchanges_arr[REFHEVAR].exchange_field(
-        constvars.fields_arr[REFHEVAR]);
-    const_exchange.exchanges_arr[REFHEWVAR].exchange_field(
-        constvars.fields_arr[REFHEWVAR]);
-    
-    parallel_for(
-        "Compute Bdens0var",
-        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-          real Rd = thermo.cst.Rd;
-          real pr = thermo.cst.pr;
-          real gamma_d = thermo.cst.gamma_d;
-          real Cpd = thermo.cst.Cpd;
-          real Cvd = thermo.cst.Cvd;
-          real grav = 9.80616_fp;
-          real grav2 = grav * grav;
-
-          real rho_ref = refdens0var(0, pks + k, pjs + j, pis + i, n);
-          real Tht_ref = refdens0var(1, pks + k, pjs + j, pis + i, n);
-          real tht_ref = Tht_ref / rho_ref;
-
-          real rho_ref2 = rho_ref * rho_ref;
-          real p_ref = pr * pow(Rd * Tht_ref / pr, gamma_d);
-          real dpdtht_ref = gamma_d * p_ref / tht_ref;
-          real dpdtht_ref2 = dpdtht_ref * dpdtht_ref;
-          real Nref2 = refnsq0var(0, pks + k, pjs + j, pis + i, n);
-          real cref2 = gamma_d * p_ref / rho_ref;
-
-          real b0_rho = (cref2 * rho_ref - dpdtht_ref * tht_ref) / rho_ref2;
-          real b0_tht = dpdtht_ref / rho_ref -
-                         dpdtht_ref2 * tht_ref / (cref2 * rho_ref2) -
-                         dpdtht_ref2 * grav2 * tht_ref /
-                             (Nref2 * cref2 * cref2 * rho_ref2);
-          real b0_Tht = b0_tht / rho_ref;
-          b0_rho -= tht_ref / rho_ref * b0_tht;
-
-          real b1_rho = dpdtht_ref / rho_ref2;
-          real b1_tht = dpdtht_ref2 * (Nref2 * cref2 + grav2) /
-                         (Nref2 * cref2 * cref2 * rho_ref2);
-          real b1_Tht = b1_tht / rho_ref;
-          b1_rho -= tht_ref / rho_ref * b1_tht;
-
-          bdens0var(0, pks + k, pjs + j, pis + i, n) = b0_rho;
-          bdens0var(1, pks + k, pjs + j, pis + i, n) = b0_Tht;
-          bdens0var(2, pks + k, pjs + j, pis + i, n) = b1_rho;
-          bdens0var(3, pks + k, pjs + j, pis + i, n) = b1_Tht;
-        });
-
-    constexpr int ord = 1;
-    constexpr auto recon_type = RECONSTRUCTION_TYPE::CFV;
-
-    SArray<real, 3, ord, ord, ord> wenoRecon;
-    SArray<real, 2, ord, 2> to_gll;
-    SArray<real, 1, (ord-1)/2 + 2> wenoIdl;
-    real wenoSigma;
-    
-    parallel_for(
-        "ComputeDensEdgeRecon",
-        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-          compute_twisted_edge_recon<ndensity, recon_type,
-                                     ord>(
-              refdensedgereconvar, refdens0var, dis, djs, dks, i, j, k, n,
-              wenoRecon, to_gll, wenoIdl, wenoSigma);
-          compute_twisted_vert_edge_recon<ndensity,
-                                          recon_type,
-                                          ord>(
-              refdensvertedgereconvar, refdens0var, dis, djs, dks, i, j, k, n,
-              wenoRecon, to_gll, wenoIdl, wenoSigma);
-        });
-
-    const_exchange.exchanges_arr[REFDENSEDGERECONVAR].exchange_field(
-      constvars.fields_arr[REFDENSEDGERECONVAR]);
-    const_exchange.exchanges_arr[REFDENSVERTEDGERECONVAR].exchange_field(
-       constvars.fields_arr[REFDENSVERTEDGERECONVAR]);
-
-    // not used
-    auto uvar = refdensvar;
-    auto uwvar = refdensvar;
-
-    parallel_for(
-        "ComputeDens recon",
-        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_twisted_recon<ndensity, recon_type>(
-              refdensreconvar, refdensedgereconvar, uvar, dis, djs, dks, i, j, k, n);
-
-          // scale twisted recons
-          for (int d = 0; d < ndims; d++) {
-            for (int l = 0; l < ndensity; l++) {
-              refdensreconvar(l + d * ndensity, k + dks, j + djs, i + dis, n) =
-                  refdensreconvar(l + d * ndensity, k + dks, j + djs, i + dis, n) /
-                  refhevar(d, k + dks, j + djs, i + dis, n);
-            }
-          }
-        });
-
-    parallel_for(
-        "ComputeDensVertRECON",
-        SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_twisted_vert_recon<ndensity, recon_type>(
-              refdensvertreconvar, refdensvertedgereconvar, uwvar, dis, djs, dks, i,
-              j, k + 1, n);
-
-          // scale twisted recons
-          for (int l = 0; l < ndensity; l++) {
-            refdensvertreconvar(l, k + dks + 1, j + djs, i + dis, n) =
-                refdensvertreconvar(l, k + dks + 1, j + djs, i + dis, n) /
-                refhewvar(0, k + dks + 1, j + djs, i + dis, n);
-          }
-        });
-
-    const_exchange.exchanges_arr[REFDENSRECONVAR].exchange_field(
-        constvars.fields_arr[REFDENSRECONVAR]);
-    const_exchange.exchanges_arr[REFDENSVERTRECONVAR].exchange_field(
-        constvars.fields_arr[REFDENSVERTRECONVAR]);
-
   }
   
   void set_reference_state(ReferenceState &reference_state, 

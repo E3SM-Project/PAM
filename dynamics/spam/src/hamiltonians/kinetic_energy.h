@@ -524,6 +524,22 @@ public:
     // std::cout << "HEw in Hk " << i << " " << j << " " << k << " " <<
     // HEw(0,k+ks,j+js,i+is) << "\n" << std::flush;
   }
+ 
+  // version that takes a reference state
+  template <ADD_MODE addmode = ADD_MODE::REPLACE>
+  void YAKL_INLINE compute_Fw(real5d FW, const real5d UW, const real3d dens0,
+                              int is, int js, int ks, int i, int j, int k,
+                              int n, real fac = 1._fp) const {
+    real hew = dens0(0, k, n);
+    if (addmode == ADD_MODE::REPLACE) {
+      FW(0, k + ks, j + js, i + is, n) =
+          fac * UW(0, k + ks, j + js, i + is, n) * hew;
+    } else if (addmode == ADD_MODE::ADD) {
+      FW(0, k + ks, j + js, i + is, n) +=
+          fac * UW(0, k + ks, j + js, i + is, n) * hew;
+    }
+  }
+
   void YAKL_INLINE compute_Fw_and_he(real5d FW, real5d HEw, const real5d UW,
                                      const real5d dens0, int is, int js, int ks,
                                      int i, int j, int k, int n) const {
@@ -624,6 +640,26 @@ public:
     }
     // std::cout << "HE in Hk " << i << " " << j << " " << k << " " <<
     // HE(0,k+ks,j+js,i+is) << "\n" << std::flush;
+  }
+ 
+  // version that takes a reference state
+  template <ADD_MODE addmode = ADD_MODE::REPLACE>
+  void YAKL_INLINE compute_F(real5d F, const real5d U, const real3d dens0,
+                             int is, int js, int ks, int i, int j, int k, int n,
+                             real fac = 1._fp) const {
+    SArray<real, 2, ndims, 2> D0;
+    real he = dens0(0, k, n);
+
+    // compute F = he * U, set HE
+    for (int d = 0; d < ndims; d++) {
+      if (addmode == ADD_MODE::REPLACE) {
+        F(d, k + ks, j + js, i + is, n) =
+            fac * U(d, k + ks, j + js, i + is, n) * he;
+      } else if (addmode == ADD_MODE::ADD) {
+        F(d, k + ks, j + js, i + is, n) +=
+            fac * U(d, k + ks, j + js, i + is, n) * he;
+      }
+    }
   }
   
   void YAKL_INLINE compute_he(real5d HE, const real5d dens0, int is, int js, int ks,

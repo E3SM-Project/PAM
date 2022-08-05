@@ -223,11 +223,6 @@ public:
   virtual void compute_constants(FieldSet<nconstant> &const_vars,
                                  FieldSet<nprognostic> &x) = 0;
 
-  virtual void compute_linrhs(real dt, FieldSet<nconstant> &const_vars,
-                              FieldSet<nprognostic> &x,
-                              FieldSet<nauxiliary> &auxiliary_vars,
-                              FieldSet<nprognostic> &xtend) = 0;
-
   virtual void YAKL_INLINE compute_functional_derivatives(
       ADD_MODE addmode, real fac, real dt, FieldSet<nconstant> &const_vars,
       FieldSet<nprognostic> &x, FieldSet<nauxiliary> &auxiliary_vars) = 0;
@@ -243,10 +238,6 @@ public:
     compute_functional_derivatives(ADD_MODE::REPLACE, 1._fp, dt, const_vars, x,
                                    auxiliary_vars);
     apply_symplectic(dt, const_vars, x, auxiliary_vars, xtend);
-    // compute_linrhs(dt, const_vars,
-    //                x,
-    //                auxiliary_vars,
-    //                xtend);
   }
 };
 
@@ -328,7 +319,7 @@ public:
 
     this->is_initialized = true;
   }
-  virtual void compute_coefficients(real dt, ReferenceState &refstate, FieldSet<nconstant> &constvars) = 0;
+  virtual void compute_coefficients(real dt) = 0;
 
   virtual void YAKL_INLINE solve(real dt, FieldSet<nprognostic> &rhs,
                                  FieldSet<nconstant> &const_vars,

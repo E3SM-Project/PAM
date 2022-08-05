@@ -163,7 +163,7 @@ public:
     testcase->set_reference_state(reference_state, primal_geometry, dual_geometry);
     linear_system.initialize(params, reference_state, &tendencies, prognostic_vars,
                              constant_vars, auxiliary_vars, prog_exchange);
-    linear_system.compute_coefficients(params.dtcrm, reference_state, constant_vars);
+    linear_system.compute_coefficients(params.dtcrm);
     tint.initialize(params, tendencies, linear_system, prognostic_vars,
                     constant_vars, auxiliary_vars, prog_exchange);
 #else
