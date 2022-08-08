@@ -1005,7 +1005,8 @@ public:
     complex_w = complex5d("complex w", 1, pnl, ny, nx, nens);
     complex_wrhs = complex5d("complex wrhs", 1, pnl, ny, nx, nens);
 
-    complex_vcoeff = complex5d("complex vcoeff", 3, pni, ny, nx, nens);
+    complex_vcoeff =
+        complex5d("complex vcoeff", 1 + ndensity_dycore, pni, ny, nx, nens);
 
     tri_d = complex4d("tri d", pnl, ny, nx, nens);
     tri_l = complex4d("tri l", pnl, ny, nx, nens);
@@ -1035,51 +1036,47 @@ public:
 
     real dtf = dt / 2;
     real dtf2 = dt * dt / 4;
+
     parallel_for(
         "compute vcoeff",
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          real b0_rho = refstate.Blin_coeff(0, 0, k, n);
-          real b0_Tht = refstate.Blin_coeff(0, 1, k, n);
-          real b1_rho = refstate.Blin_coeff(1, 0, k, n);
-          real b1_Tht = refstate.Blin_coeff(1, 1, k, n);
-
-          real refdens0recon = refstate.dens_pi(0, k, n);
-          real refdens1recon = refstate.dens_pi(1, k, n);
-
           SArray<real, 1, ndims> fD1Dbar;
-          fourier_cwD1Dbar2(fD1Dbar, 1.0, i, j, k, dual_topology.n_cells_x,
+          fourier_cwD1Dbar2(fD1Dbar, 1, i, j, k, dual_topology.n_cells_x,
                             dual_topology.n_cells_y, dual_topology.ni);
 
           real fI = fourier_Iext<diff_ord>(primal_geometry, dual_geometry, pis,
                                            pjs, pks, i, j, k, 0, n_cells_x,
                                            n_cells_y, dual_topology.ni);
-
           SArray<real, 1, ndims> fH;
           fourier_Hext<diff_ord>(fH, primal_geometry, dual_geometry, pis, pjs,
                                  pks, i, j, k, 0, n_cells_x, n_cells_y,
                                  dual_topology.ni);
+          SArray<complex, 1, ndims> fD1;
+          fourier_cwD1(fD1, 1, i, j, k, dual_topology.n_cells_x,
+                       dual_topology.n_cells_y, dual_topology.ni);
 
-          complex im(0, 1);
-          complex fac = (2 * pi * i) / dual_topology.n_cells_x;
-          complex fD1 = 1._fp - exp(-im * fac);
           real he = refstate.he_pi(0, k, n);
 
-          real c1 = 1 - dtf2 * fI * fH(0) * fD1Dbar(0) *
-                            (he * refdens0recon * refdens0recon * b0_rho +
-                             he * refdens0recon * refdens1recon * b0_Tht +
-                             he * refdens1recon * refdens0recon * b1_rho +
-                             he * refdens1recon * refdens1recon * b1_Tht);
-
-          complex c2 = -fD1 * dtf2 * fI *
-                       (refdens0recon * b0_rho + refdens1recon * b1_rho);
-          complex c3 = -fD1 * dtf2 * fI *
-                       (refdens0recon * b0_Tht + refdens1recon * b1_Tht);
+          real c1 = 1;
+          for (int d1 = 0; d1 < ndensity_dycore; ++d1) {
+            for (int d2 = 0; d2 < ndensity_dycore; ++d2) {
+              c1 -= dtf2 * fI * fH(0) * fD1Dbar(0) * he *
+                    refstate.dens_pi(d1, k, n) * refstate.dens_pi(d2, k, n) *
+                    refstate.Blin_coeff(d1, d2, k, n);
+            }
+          }
 
           complex_vcoeff(0, k, j, i, n) = 1 / c1;
-          complex_vcoeff(1, k, j, i, n) = -c2 / c1;
-          complex_vcoeff(2, k, j, i, n) = -c3 / c1;
+          for (int d1 = 0; d1 < ndensity_dycore; ++d1) {
+            complex cd1 = 0;
+            for (int d2 = 0; d2 < ndensity_dycore; ++d2) {
+              cd1 += fD1(0) * dtf2 * fI * refstate.dens_pi(d2, k, n) *
+                     refstate.Blin_coeff(d2, d1, k, n);
+            }
+            complex_vcoeff(1 + d1, k, j, i, n) = cd1 / c1;
+          }
         });
 
     parallel_for(
@@ -2462,7 +2459,7 @@ public:
           real gamma_d = thermo.cst.gamma_d;
           real Cpd = thermo.cst.Cpd;
           real Cvd = thermo.cst.Cvd;
-          real grav = 9.80616_fp;
+          real grav = g;
           real grav2 = grav * grav;
 
           real rho_ref = refrho_f(x, z, thermo);
@@ -2473,7 +2470,6 @@ public:
           real rho_ref2 = rho_ref * rho_ref;
           real p_ref = thermo.solve_p(rho_ref, s_ref, 0, 0, 0, 0);
 
-          // real dpds_ref = gamma_d * p_ref / s_ref;
           real dpds_ref =
               thermo.compute_dpdentropic_var(alpha_ref, s_ref, 0, 0, 0, 0);
           real dpds_ref2 = dpds_ref * dpds_ref;

@@ -320,6 +320,23 @@ void YAKL_INLINE cwD1(SArray<real, 1, ndims> &var, SArray<real, 1, ndofs> &c,
   }
 }
 
+void YAKL_INLINE fourier_cwD1(const SArray<complex, 1, ndims> &D1hat,
+                              const real c, int i, int j, int k, int nx, int ny,
+                              int nz) {
+  for (int d = 0; d < ndims; d++) {
+    real fac;
+    if (d == 0) {
+      fac = (2 * pi * i) / nx;
+    }
+    if (d == 1) {
+      fac = (2 * pi * j) / ny;
+    }
+    // if (d==2) { fac = (2 * pi * k) / nz; }
+    complex im(0, 1);
+    D1hat(d) = 1._fp - exp(-im * fac);
+  }
+}
+
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_cwD1(real5d tendvar, SArray<real, 1, ndofs> &c,
                               const real5d densvar, int is, int js, int ks,
