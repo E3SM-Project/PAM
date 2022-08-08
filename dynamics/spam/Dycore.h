@@ -147,8 +147,9 @@ public:
     // THE IC STRING?
     //  set the initial conditions and compute initial stats
     debug_print("start ic setting", par.masterproc);
-    testcase->set_initial_conditions(prognostic_vars, constant_vars, const_exchange,
-                                     primal_geometry, dual_geometry);
+    testcase->set_initial_conditions(prognostic_vars, constant_vars,
+                                     const_exchange, primal_geometry,
+                                     dual_geometry);
     prog_exchange.exchange_variable_set(prognostic_vars);
     const_exchange.exchange_variable_set(constant_vars);
     tendencies.compute_constants(constant_vars, prognostic_vars);
@@ -160,9 +161,11 @@ public:
     debug_print("start ts init", par.masterproc);
 #if _TIME_TYPE == 2
     reference_state.initialize(primal_topology, dual_topology);
-    testcase->set_reference_state(reference_state, primal_geometry, dual_geometry);
-    linear_system.initialize(params, reference_state, &tendencies, prognostic_vars,
-                             constant_vars, auxiliary_vars, prog_exchange);
+    testcase->set_reference_state(reference_state, primal_geometry,
+                                  dual_geometry);
+    linear_system.initialize(params, reference_state, &tendencies,
+                             prognostic_vars, constant_vars, auxiliary_vars,
+                             prog_exchange);
     linear_system.compute_coefficients(params.dtcrm);
     tint.initialize(params, tendencies, linear_system, prognostic_vars,
                     constant_vars, auxiliary_vars, prog_exchange);

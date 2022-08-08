@@ -93,8 +93,7 @@ struct TracerGaussian : Tracer {
   }
 };
 
-class ReferenceState {
-};
+class ReferenceState {};
 
 class TestCase {
 public:
@@ -146,8 +145,8 @@ public:
                                       const Geometry<Straight> &primal_geom,
                                       const Geometry<Twisted> &dual_geom) = 0;
   virtual void set_reference_state(ReferenceState &refstate,
-                                      const Geometry<Straight> &primal_geom,
-                                      const Geometry<Twisted> &dual_geom) = 0;
+                                   const Geometry<Straight> &primal_geom,
+                                   const Geometry<Twisted> &dual_geom) = 0;
   virtual ~TestCase() = default;
 
   // why doesn't this work ? Tracers need to be deallocated !
@@ -304,7 +303,8 @@ public:
 
   bool is_initialized = false;
 
-  virtual void initialize(ModelParameters &params, ReferenceState &reference_state, Tendencies *tend,
+  virtual void initialize(ModelParameters &params,
+                          ReferenceState &reference_state, Tendencies *tend,
                           FieldSet<nprognostic> &x,
                           FieldSet<nconstant> &const_vars,
                           FieldSet<nauxiliary> &auxiliary_vars,

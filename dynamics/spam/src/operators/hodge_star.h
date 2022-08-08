@@ -234,23 +234,21 @@ void YAKL_INLINE compute_Hext(real5d uvar, const real5d vvar,
 
 template <uint ord, int off = ord / 2 - 1>
 void YAKL_INLINE fourier_Hext(SArray<real, 1, ndims> &u,
-                           const Geometry<Straight> &pgeom,
-                           const Geometry<Twisted> &dgeom, int is, int js,
-                           int ks, int i, int j, int k, int n, int nx, int ny,
-                           int nz) {
+                              const Geometry<Straight> &pgeom,
+                              const Geometry<Twisted> &dgeom, int is, int js,
+                              int ks, int i, int j, int k, int n, int nx,
+                              int ny, int nz) {
   SArray<real, 2, ndims, off> shift;
   SArray<real, 1, ndims> Hgeom;
   for (int d = 0; d < ndims; d++) {
-      if (d == 0) {
-        Hgeom(d) =
-            dgeom.get_area_01entity(k + ks, j + js, i + is + 0 - off) /
-            pgeom.get_area_10entity(k + ks, j + js, i + is + 0 - off);
-      }
-      if (d == 1) {
-        Hgeom(d) =
-            dgeom.get_area_01entity(k + ks, j + js + 0 - off, i + is) /
-            pgeom.get_area_10entity(k + ks, j + js + 0 - off, i + is);
-      }
+    if (d == 0) {
+      Hgeom(d) = dgeom.get_area_01entity(k + ks, j + js, i + is + 0 - off) /
+                 pgeom.get_area_10entity(k + ks, j + js, i + is + 0 - off);
+    }
+    if (d == 1) {
+      Hgeom(d) = dgeom.get_area_01entity(k + ks, j + js + 0 - off, i + is) /
+                 pgeom.get_area_10entity(k + ks, j + js + 0 - off, i + is);
+    }
   }
 
   for (int p = 0; p < off; p++) {
@@ -462,14 +460,14 @@ void YAKL_INLINE compute_Iext(real5d var0, const real5d var,
 
 template <uint ord, int off = ord / 2 - 1>
 real YAKL_INLINE fourier_Iext(const Geometry<Straight> &pgeom,
-                           const Geometry<Twisted> &dgeom, int is, int js,
-                           int ks, int i, int j, int k, int n, int nx, int ny,
-                           int nz) {
+                              const Geometry<Twisted> &dgeom, int is, int js,
+                              int ks, int i, int j, int k, int n, int nx,
+                              int ny, int nz) {
   SArray<real, 2, ndims, off> shift;
 
   // assuming these are constant
   real Igeom = pgeom.get_area_00entity(k + ks, j + js, i + is + 0 - off) /
-              dgeom.get_area_11entity(k + ks, j + js, i + is + 0 - off);
+               dgeom.get_area_11entity(k + ks, j + js, i + is + 0 - off);
 
   for (int p = 0; p < off; p++) {
     for (int d = 0; d < ndims; d++) {
@@ -643,9 +641,10 @@ void YAKL_INLINE compute_Jext(real5d var0, const real5d var,
 // FOR TESTING
 
 // Note the indexing here, this is key
-complex YAKL_INLINE compute_Hv(const complex5d wvar, const Geometry<Straight> &pgeom,
-                            const Geometry<Twisted> &dgeom, int is, int js,
-                            int ks, int i, int j, int k, int n) {
+complex YAKL_INLINE compute_Hv(const complex5d wvar,
+                               const Geometry<Straight> &pgeom,
+                               const Geometry<Twisted> &dgeom, int is, int js,
+                               int ks, int i, int j, int k, int n) {
   // THIS IS 2ND ORDER AT BEST...
   return wvar(0, k + ks - 1, j + js, i + is, n) *
          dgeom.get_area_10entity(k + ks, j + js, i + is) /
@@ -685,4 +684,3 @@ void YAKL_INLINE compute_Hv(SArray<complex, 1, 1> &uwvar, const complex5d wvar,
     uwvar(0) += uw;
   }
 }
-

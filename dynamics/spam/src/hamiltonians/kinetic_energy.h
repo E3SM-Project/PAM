@@ -524,7 +524,7 @@ public:
     // std::cout << "HEw in Hk " << i << " " << j << " " << k << " " <<
     // HEw(0,k+ks,j+js,i+is) << "\n" << std::flush;
   }
- 
+
   // version that takes a reference state
   template <ADD_MODE addmode = ADD_MODE::REPLACE>
   void YAKL_INLINE compute_Fw(real5d FW, const real5d UW, const real3d dens0,
@@ -557,9 +557,9 @@ public:
     // std::cout << "HEw in Hk " << i << " " << j << " " << k << " " <<
     // HEw(0,k+ks,j+js,i+is) << "\n" << std::flush;
   }
-  
-  void YAKL_INLINE compute_hew(real5d HEw, const real5d dens0, int is, int js, int ks,
-                                     int i, int j, int k, int n) const {
+
+  void YAKL_INLINE compute_hew(real5d HEw, const real5d dens0, int is, int js,
+                               int ks, int i, int j, int k, int n) const {
     // SArray<real,2> Dv;
     // compute hew = phiw * h0
     // Dv(0) = dens0(0, k+ks, j+js, i+is);
@@ -641,7 +641,7 @@ public:
     // std::cout << "HE in Hk " << i << " " << j << " " << k << " " <<
     // HE(0,k+ks,j+js,i+is) << "\n" << std::flush;
   }
- 
+
   // version that takes a reference state
   template <ADD_MODE addmode = ADD_MODE::REPLACE>
   void YAKL_INLINE compute_F(real5d F, const real5d U, const real3d dens0,
@@ -661,9 +661,9 @@ public:
       }
     }
   }
-  
-  void YAKL_INLINE compute_he(real5d HE, const real5d dens0, int is, int js, int ks,
-                              int i, int j, int k, int n) const {
+
+  void YAKL_INLINE compute_he(real5d HE, const real5d dens0, int is, int js,
+                              int ks, int i, int j, int k, int n) const {
     SArray<real, 2, ndims, 2> D0;
     SArray<real, 1, ndims> he;
 

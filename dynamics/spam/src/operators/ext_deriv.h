@@ -140,7 +140,7 @@ YAKL_INLINE void compute_wDbar2(real5d tendvar, const real3d reconvar,
         flux(d, m) = U(d, k + ks, j + js + m, i + is, n);
       }
       for (int l = 0; l < ndofs; l++) {
-          recon(l, d, m) = reconvar(l, k, n);
+        recon(l, d, m) = reconvar(l, k, n);
       }
     }
   }
@@ -621,11 +621,10 @@ void YAKL_INLINE wDvbar(SArray<complex, 1, ndofs> &var,
   }
 }
 
-
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 YAKL_INLINE void compute_wDvbar(complex5d tendvar, const real5d vertreconvar,
-                                const complex5d UW, int is, int js, int ks, int i,
-                                int j, int k, int n) {
+                                const complex5d UW, int is, int js, int ks,
+                                int i, int j, int k, int n) {
   SArray<complex, 1, ndofs> tend;
   SArray<real, 2, ndofs, 2> recon;
   SArray<complex, 1, 2> flux;
@@ -650,6 +649,6 @@ YAKL_INLINE void compute_wDvbar(complex5d tendvar, const real5d vertreconvar,
   }
 }
 
-//void foo(complex1d l, complex1d d, complex1d u, real5d , int k) {
-//  l(k) = 
-//}
+// void foo(complex1d l, complex1d d, complex1d u, real5d , int k) {
+//   l(k) =
+// }
