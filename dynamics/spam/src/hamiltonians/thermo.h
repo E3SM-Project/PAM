@@ -122,6 +122,9 @@ public:
   real YAKL_INLINE compute_entropic_var_from_T(real alpha, real T, real qd,
                                                real qv, real ql,
                                                real qi) const {};
+  real YAKL_INLINE compute_dpdentropic_var(real alpha, real entropic_var,
+                                           real qd, real qv, real ql,
+                                           real qi) const {};
 };
 
 // This ignores any q arguments, as expected
@@ -230,6 +233,14 @@ public:
                                                real qi) const {
     real p = cst.Rd * T / alpha;
     return cst.Rd * T / cst.Rd * pow(cst.pr / p, cst.kappa_d);
+  }
+
+  real YAKL_INLINE compute_dpdentropic_var(real alpha, real entropic_var,
+                                           real qd, real qv, real ql,
+                                           real qi) const {
+    real rho = 1 / alpha;
+    real p = solve_p(rho, entropic_var, qd, qv, ql, qi);
+    return cst.gamma_d * p / entropic_var;
   }
 };
 
@@ -348,6 +359,14 @@ public:
 
     real U = compute_U(alpha, entropic_var, qd, qv, ql, qi);
     return U / cst.Cvd;
+  }
+
+  real YAKL_INLINE compute_dpdentropic_var(real alpha, real entropic_var,
+                                           real qd, real qv, real ql,
+                                           real qi) const {
+    real dUds =
+        compute_dUdentropic_var_density(alpha, entropic_var, qd, qv, ql, qi);
+    return cst.Rd / cst.Cvd * dUds / alpha;
   }
 };
 
