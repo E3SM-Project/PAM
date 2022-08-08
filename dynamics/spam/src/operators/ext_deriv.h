@@ -50,6 +50,24 @@ YAKL_INLINE void compute_cwDbar2(real5d tendvar, real c, const real5d U, int is,
   }
 }
 
+complex YAKL_INLINE fourier_Dbar2(const real c, int i, int j, int k, int nx,
+                                  int ny, int nz) {
+  complex Dbar2hat;
+  for (int d = 0; d < ndims; d++) {
+    real fac;
+    if (d == 0) {
+      fac = (2 * pi * i) / nx;
+    }
+    if (d == 1) {
+      fac = (2 * pi * j) / ny;
+    }
+
+    complex im(0, 1);
+    Dbar2hat += exp(im * fac) - 1._fp;
+  }
+  return Dbar2hat;
+}
+
 void YAKL_INLINE fourier_cwD1Dbar2(const SArray<real, 1, ndims> &D1Dbar2hat,
                                    const real c, int i, int j, int k, int nx,
                                    int ny, int nz) {

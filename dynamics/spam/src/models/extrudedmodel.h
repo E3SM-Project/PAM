@@ -1103,6 +1103,7 @@ public:
               refstate.he_di(0, k, n) *
               dual_geometry.get_area_10entity(k + 0 + dks, j + djs, i + dis) /
               primal_geometry.get_area_01entity(k - 1 + pks, j + pjs, i + pis);
+
           if (k == 0) {
             gamma_fac_k = 0;
           }
@@ -1110,70 +1111,27 @@ public:
             gamma_fac_kp2 = 0;
           }
 
-          real alpha_kp1 = refstate.dens_di(0, k + 1, n);
-          real beta_kp1 = fI_kp1 * refstate.Blin_coeff(0, 0, k + 1, n);
-          real beta_k = fI_k * refstate.Blin_coeff(0, 0, k, n);
+          tri_u(k, j, i, n) = 0;
+          tri_d(k, j, i, n) = 1;
+          tri_l(k, j, i, n) = 0;
 
-          real gamma_kp2 = refstate.dens_di(0, k + 2, n);
-          real gamma_kp1 = refstate.dens_di(0, k + 1, n);
-          real gamma_k = refstate.dens_di(0, k, n);
+          for (int d1 = 0; d1 < ndensity_dycore; ++d1) {
+            for (int d2 = 0; d2 < ndensity_dycore; ++d2) {
+              real alpha_kp1 = refstate.dens_di(d1, k + 1, n);
 
-          gamma_kp2 *= gamma_fac_kp2;
-          gamma_kp1 *= gamma_fac_kp1;
-          gamma_k *= gamma_fac_k;
+              real beta_kp1 = fI_kp1 * refstate.Blin_coeff(d1, d2, k + 1, n);
+              real beta_k = fI_k * refstate.Blin_coeff(d1, d2, k, n);
 
-          tri_u(k, j, i, n) = -dtf2 * alpha_kp1 * beta_kp1 * gamma_kp2;
-          tri_d(k, j, i, n) =
-              dtf2 * alpha_kp1 * (beta_kp1 + beta_k) * gamma_kp1;
-          tri_l(k, j, i, n) = -dtf2 * alpha_kp1 * beta_k * gamma_k;
+              real gamma_kp2 = gamma_fac_kp2 * refstate.dens_di(d2, k + 2, n);
+              real gamma_kp1 = gamma_fac_kp1 * refstate.dens_di(d2, k + 1, n);
+              real gamma_k = gamma_fac_k * refstate.dens_di(d2, k, n);
 
-          alpha_kp1 = refstate.dens_di(0, k + 1, n);
-          beta_kp1 = fI_kp1 * refstate.Blin_coeff(0, 1, k + 1, n);
-          beta_k = fI_k * refstate.Blin_coeff(0, 1, k, n);
-
-          gamma_kp2 = refstate.dens_di(1, k + 2, n);
-          gamma_kp1 = refstate.dens_di(1, k + 1, n);
-          gamma_k = refstate.dens_di(1, k, n);
-          gamma_kp2 *= gamma_fac_kp2;
-          gamma_kp1 *= gamma_fac_kp1;
-          gamma_k *= gamma_fac_k;
-
-          tri_u(k, j, i, n) += -dtf2 * alpha_kp1 * beta_kp1 * gamma_kp2;
-          tri_d(k, j, i, n) +=
-              dtf2 * alpha_kp1 * (beta_kp1 + beta_k) * gamma_kp1;
-          tri_l(k, j, i, n) += -dtf2 * alpha_kp1 * beta_k * gamma_k;
-
-          alpha_kp1 = refstate.dens_di(1, k + 1, n);
-          beta_kp1 = fI_kp1 * refstate.Blin_coeff(1, 0, k + 1, n);
-          beta_k = fI_k * refstate.Blin_coeff(1, 0, k, n);
-
-          gamma_kp2 = refstate.dens_di(0, k + 2, n);
-          gamma_kp1 = refstate.dens_di(0, k + 1, n);
-          gamma_k = refstate.dens_di(0, k, n);
-          gamma_kp2 *= gamma_fac_kp2;
-          gamma_kp1 *= gamma_fac_kp1;
-          gamma_k *= gamma_fac_k;
-
-          tri_u(k, j, i, n) += -dtf2 * alpha_kp1 * beta_kp1 * gamma_kp2;
-          tri_d(k, j, i, n) +=
-              dtf2 * alpha_kp1 * (beta_kp1 + beta_k) * gamma_kp1;
-          tri_l(k, j, i, n) += -dtf2 * alpha_kp1 * beta_k * gamma_k;
-
-          alpha_kp1 = refstate.dens_di(1, k + 1, n);
-          beta_kp1 = fI_kp1 * refstate.Blin_coeff(1, 1, k + 1, n);
-          beta_k = fI_k * refstate.Blin_coeff(1, 1, k, n);
-
-          gamma_kp2 = refstate.dens_di(1, k + 2, n);
-          gamma_kp1 = refstate.dens_di(1, k + 1, n);
-          gamma_k = refstate.dens_di(1, k, n);
-          gamma_kp2 *= gamma_fac_kp2;
-          gamma_kp1 *= gamma_fac_kp1;
-          gamma_k *= gamma_fac_k;
-
-          tri_u(k, j, i, n) += -dtf2 * alpha_kp1 * beta_kp1 * gamma_kp2;
-          tri_d(k, j, i, n) +=
-              dtf2 * alpha_kp1 * (beta_kp1 + beta_k) * gamma_kp1;
-          tri_l(k, j, i, n) += -dtf2 * alpha_kp1 * beta_k * gamma_k;
+              tri_u(k, j, i, n) += -dtf2 * alpha_kp1 * beta_kp1 * gamma_kp2;
+              tri_d(k, j, i, n) +=
+                  dtf2 * alpha_kp1 * (beta_kp1 + beta_k) * gamma_kp1;
+              tri_l(k, j, i, n) += -dtf2 * alpha_kp1 * beta_k * gamma_k;
+            }
+          }
         });
 
     parallel_for(
@@ -1181,12 +1139,6 @@ public:
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          complex vc1_kp1 = complex_vcoeff(1, k + 1, j, i, n);
-          complex vc1_k = complex_vcoeff(1, k, j, i, n);
-
-          complex vc2_kp1 = complex_vcoeff(2, k + 1, j, i, n);
-          complex vc2_k = complex_vcoeff(2, k, j, i, n);
-
           real fI_k = fourier_Iext<diff_ord>(
               primal_geometry, dual_geometry, pis, pjs, pks, i, j, k, 0,
               n_cells_x, n_cells_y, dual_topology.ni);
@@ -1224,135 +1176,41 @@ public:
           real fHh_kp1 = fH_kp1_a(0);
           real fHh_k = fH_k_a(0);
 
-          complex im(0, 1);
-          complex fac = (2 * pi * i) / dual_topology.n_cells_x;
-          complex fDbarh_kp1 = exp(im * fac) - 1._fp;
-          complex fDbarh_k = exp(im * fac) - 1._fp;
+          complex fDbar2_kp1 = fourier_Dbar2(1, i, j, k + 1, n_cells_x,
+                                             n_cells_y, dual_topology.ni);
+          complex fDbar2_k =
+              fourier_Dbar2(1, i, j, k, n_cells_x, n_cells_y, dual_topology.ni);
 
           real he_kp1 = refstate.he_pi(0, k + 1, n);
           real he_k = refstate.he_pi(0, k, n);
-          real dens0_kp1 = refstate.dens_pi(0, k + 1, n);
-          real dens1_kp1 = refstate.dens_pi(1, k + 1, n);
-          real dens0_k = refstate.dens_pi(0, k, n);
-          real dens1_k = refstate.dens_pi(1, k, n);
 
-          // term 1
-          real alpha_kp1 = dtf2 * refstate.dens_di(0, k + 1, n);
-          complex beta_kp1 = fI_kp1 * refstate.Blin_coeff(0, 0, k + 1, n) *
-                             dens0_kp1 * fDbarh_kp1 * he_kp1 * fHh_kp1;
-          complex beta_k = fI_k * refstate.Blin_coeff(0, 0, k, n) * dens0_k *
-                           fDbarh_k * he_k * fHh_k;
+          for (int d1 = 0; d1 < ndensity_dycore; ++d1) {
+            for (int d2 = 0; d2 < ndensity_dycore; ++d2) {
+              for (int d3 = 0; d3 < ndensity_dycore; ++d3) {
 
-          real gamma_kp2 = refstate.dens_di(0, k + 2, n);
-          real gamma_kp1 = refstate.dens_di(0, k + 1, n);
-          real gamma_k = refstate.dens_di(0, k, n);
-          gamma_kp2 *= gamma_fac_kp2;
-          gamma_kp1 *= gamma_fac_kp1;
-          gamma_k *= gamma_fac_k;
-          tri_u(k, j, i, n) += -alpha_kp1 * beta_kp1 * vc1_kp1 * gamma_kp2;
-          tri_d(k, j, i, n) +=
-              alpha_kp1 * (beta_kp1 * vc1_kp1 + beta_k * vc1_k) * gamma_kp1;
-          tri_l(k, j, i, n) += -alpha_kp1 * beta_k * vc1_k * gamma_k;
+                real alpha_kp1 = dtf2 * refstate.dens_di(d1, k + 1, n);
+                complex beta_kp1 = fI_kp1 *
+                                   refstate.Blin_coeff(d1, d2, k + 1, n) *
+                                   refstate.dens_pi(d2, k + 1, n) * fDbar2_kp1 *
+                                   he_kp1 * fHh_kp1;
+                complex beta_k = fI_k * refstate.Blin_coeff(d1, d2, k, n) *
+                                 refstate.dens_pi(d2, k, n) * fDbar2_k * he_k *
+                                 fHh_k;
 
-          gamma_kp2 = refstate.dens_di(1, k + 2, n);
-          gamma_kp1 = refstate.dens_di(1, k + 1, n);
-          gamma_k = refstate.dens_di(1, k, n);
-          gamma_kp2 *= gamma_fac_kp2;
-          gamma_kp1 *= gamma_fac_kp1;
-          gamma_k *= gamma_fac_k;
-          tri_u(k, j, i, n) += -alpha_kp1 * beta_kp1 * vc2_kp1 * gamma_kp2;
-          tri_d(k, j, i, n) +=
-              alpha_kp1 * (beta_kp1 * vc2_kp1 + beta_k * vc2_k) * gamma_kp1;
-          tri_l(k, j, i, n) += -alpha_kp1 * beta_k * vc2_k * gamma_k;
+                real gamma_kp2 = gamma_fac_kp2 * refstate.dens_di(d3, k + 2, n);
+                real gamma_kp1 = gamma_fac_kp1 * refstate.dens_di(d3, k + 1, n);
+                real gamma_k = gamma_fac_k * refstate.dens_di(d3, k, n);
 
-          // term 2
-          alpha_kp1 = dtf2 * refstate.dens_di(0, k + 1, n);
-          beta_kp1 = fI_kp1 * refstate.Blin_coeff(0, 1, k + 1, n) * dens1_kp1 *
-                     fDbarh_kp1 * he_kp1 * fHh_kp1;
-          beta_k = fI_k * refstate.Blin_coeff(0, 1, k, n) * dens1_k * fDbarh_k *
-                   he_k * fHh_k;
+                complex vc_kp1 = complex_vcoeff(1 + d3, k + 1, j, i, n);
+                complex vc_k = complex_vcoeff(1 + d3, k, j, i, n);
 
-          gamma_kp2 = refstate.dens_di(0, k + 2, n);
-          gamma_kp1 = refstate.dens_di(0, k + 1, n);
-          gamma_k = refstate.dens_di(0, k, n);
-          gamma_kp2 *= gamma_fac_kp2;
-          gamma_kp1 *= gamma_fac_kp1;
-          gamma_k *= gamma_fac_k;
-          tri_u(k, j, i, n) += -alpha_kp1 * beta_kp1 * vc1_kp1 * gamma_kp2;
-          tri_d(k, j, i, n) +=
-              alpha_kp1 * (beta_kp1 * vc1_kp1 + beta_k * vc1_k) * gamma_kp1;
-          tri_l(k, j, i, n) += -alpha_kp1 * beta_k * vc1_k * gamma_k;
-
-          gamma_kp2 = refstate.dens_di(1, k + 2, n);
-          gamma_kp1 = refstate.dens_di(1, k + 1, n);
-          gamma_k = refstate.dens_di(1, k, n);
-          gamma_kp2 *= gamma_fac_kp2;
-          gamma_kp1 *= gamma_fac_kp1;
-          gamma_k *= gamma_fac_k;
-          tri_u(k, j, i, n) += -alpha_kp1 * beta_kp1 * vc2_kp1 * gamma_kp2;
-          tri_d(k, j, i, n) +=
-              alpha_kp1 * (beta_kp1 * vc2_kp1 + beta_k * vc2_k) * gamma_kp1;
-          tri_l(k, j, i, n) += -alpha_kp1 * beta_k * vc2_k * gamma_k;
-
-          // term 3
-          alpha_kp1 = dtf2 * refstate.dens_di(1, k + 1, n);
-          beta_kp1 = fI_kp1 * refstate.Blin_coeff(1, 0, k + 1, n) * dens0_kp1 *
-                     fDbarh_kp1 * he_kp1 * fHh_kp1;
-          beta_k = fI_k * refstate.Blin_coeff(1, 0, k, n) * dens0_k * fDbarh_k *
-                   he_k * fHh_k;
-
-          gamma_kp2 = refstate.dens_di(0, k + 2, n);
-          gamma_kp1 = refstate.dens_di(0, k + 1, n);
-          gamma_k = refstate.dens_di(0, k, n);
-          gamma_kp2 *= gamma_fac_kp2;
-          gamma_kp1 *= gamma_fac_kp1;
-          gamma_k *= gamma_fac_k;
-          tri_u(k, j, i, n) += -alpha_kp1 * beta_kp1 * vc1_kp1 * gamma_kp2;
-          tri_d(k, j, i, n) +=
-              alpha_kp1 * (beta_kp1 * vc1_kp1 + beta_k * vc1_k) * gamma_kp1;
-          tri_l(k, j, i, n) += -alpha_kp1 * beta_k * vc1_k * gamma_k;
-
-          gamma_kp2 = refstate.dens_di(1, k + 2, n);
-          gamma_kp1 = refstate.dens_di(1, k + 1, n);
-          gamma_k = refstate.dens_di(1, k, n);
-          gamma_kp2 *= gamma_fac_kp2;
-          gamma_kp1 *= gamma_fac_kp1;
-          gamma_k *= gamma_fac_k;
-          tri_u(k, j, i, n) += -alpha_kp1 * beta_kp1 * vc2_kp1 * gamma_kp2;
-          tri_d(k, j, i, n) +=
-              alpha_kp1 * (beta_kp1 * vc2_kp1 + beta_k * vc2_k) * gamma_kp1;
-          tri_l(k, j, i, n) += -alpha_kp1 * beta_k * vc2_k * gamma_k;
-
-          // term 4
-          alpha_kp1 = dtf2 * refstate.dens_di(1, k + 1, n);
-          beta_kp1 = fI_kp1 * refstate.Blin_coeff(1, 1, k + 1, n) * dens1_kp1 *
-                     fDbarh_kp1 * he_kp1 * fHh_kp1;
-          beta_k = fI_k * refstate.Blin_coeff(1, 1, k, n) * dens1_k * fDbarh_k *
-                   he_k * fHh_k;
-
-          gamma_kp2 = refstate.dens_di(0, k + 2, n);
-          gamma_kp1 = refstate.dens_di(0, k + 1, n);
-          gamma_k = refstate.dens_di(0, k, n);
-          gamma_kp2 *= gamma_fac_kp2;
-          gamma_kp1 *= gamma_fac_kp1;
-          gamma_k *= gamma_fac_k;
-          tri_u(k, j, i, n) += -alpha_kp1 * beta_kp1 * vc1_kp1 * gamma_kp2;
-          tri_d(k, j, i, n) +=
-              alpha_kp1 * (beta_kp1 * vc1_kp1 + beta_k * vc1_k) * gamma_kp1;
-          tri_l(k, j, i, n) += -alpha_kp1 * beta_k * vc1_k * gamma_k;
-
-          gamma_kp2 = refstate.dens_di(1, k + 2, n);
-          gamma_kp1 = refstate.dens_di(1, k + 1, n);
-          gamma_k = refstate.dens_di(1, k, n);
-          gamma_kp2 *= gamma_fac_kp2;
-          gamma_kp1 *= gamma_fac_kp1;
-          gamma_k *= gamma_fac_k;
-          tri_u(k, j, i, n) += -alpha_kp1 * beta_kp1 * vc2_kp1 * gamma_kp2;
-          tri_d(k, j, i, n) +=
-              alpha_kp1 * (beta_kp1 * vc2_kp1 + beta_k * vc2_k) * gamma_kp1;
-          tri_l(k, j, i, n) += -alpha_kp1 * beta_k * vc2_k * gamma_k;
-
-          tri_d(k, j, i, n) += 1;
+                tri_u(k, j, i, n) += -alpha_kp1 * beta_kp1 * vc_kp1 * gamma_kp2;
+                tri_d(k, j, i, n) +=
+                    alpha_kp1 * (beta_kp1 * vc_kp1 + beta_k * vc_k) * gamma_kp1;
+                tri_l(k, j, i, n) += -alpha_kp1 * beta_k * vc_k * gamma_k;
+              }
+            }
+          }
         });
   }
 
