@@ -1386,55 +1386,28 @@ public:
           real fHh_kp1 = fH_kp1_a(0);
           real fHh_k = fH_k_a(0);
 
-          complex im(0, 1);
-          complex fac = (2 * pi * i) / dual_topology.n_cells_x;
-          complex fDbarh_kp1 = exp(im * fac) - 1._fp;
-          complex fDbarh_k = exp(im * fac) - 1._fp;
+          complex fDbar2_kp1 = fourier_Dbar2(1, i, j, k + 1, n_cells_x,
+                                             n_cells_y, dual_topology.ni);
+          complex fDbar2_k =
+              fourier_Dbar2(1, i, j, k, n_cells_x, n_cells_y, dual_topology.ni);
 
           real he_kp1 = refstate.he_pi(0, k + 1, n);
           real he_k = refstate.he_pi(0, k, n);
-          real dens0_kp1 = refstate.dens_pi(0, k + 1, n);
-          real dens1_kp1 = refstate.dens_pi(1, k + 1, n);
-          real dens0_k = refstate.dens_pi(0, k, n);
-          real dens1_k = refstate.dens_pi(1, k, n);
 
-          // term 1
-          real alpha_kp1 = dtf2 * refstate.dens_di(0, k + 1, n);
-          complex beta_kp1 = fI_kp1 * refstate.Blin_coeff(0, 0, k + 1, n) *
-                             dens0_kp1 * fDbarh_kp1 * he_kp1 * fHh_kp1;
-          complex beta_k = fI_k * refstate.Blin_coeff(0, 0, k, n) * dens0_k *
-                           fDbarh_k * he_k * fHh_k;
-
-          complex_wrhs(0, k, j, i, n) +=
-              alpha_kp1 * (beta_kp1 * vc0_kp1 - beta_k * vc0_k);
-          // term 2
-          alpha_kp1 = dtf2 * refstate.dens_di(0, k + 1, n);
-          beta_kp1 = fI_kp1 * refstate.Blin_coeff(0, 1, k + 1, n) * dens1_kp1 *
-                     fDbarh_kp1 * he_kp1 * fHh_kp1;
-          beta_k = fI_k * refstate.Blin_coeff(0, 1, k, n) * dens1_k * fDbarh_k *
-                   he_k * fHh_k;
-
-          complex_wrhs(0, k, j, i, n) +=
-              alpha_kp1 * (beta_kp1 * vc0_kp1 - beta_k * vc0_k);
-
-          // term 3
-          alpha_kp1 = dtf2 * refstate.dens_di(1, k + 1, n);
-          beta_kp1 = fI_kp1 * refstate.Blin_coeff(1, 0, k + 1, n) * dens0_kp1 *
-                     fDbarh_kp1 * he_kp1 * fHh_kp1;
-          beta_k = fI_k * refstate.Blin_coeff(1, 0, k, n) * dens0_k * fDbarh_k *
-                   he_k * fHh_k;
-
-          complex_wrhs(0, k, j, i, n) +=
-              alpha_kp1 * (beta_kp1 * vc0_kp1 - beta_k * vc0_k);
-          // term 4
-          alpha_kp1 = dtf2 * refstate.dens_di(1, k + 1, n);
-          beta_kp1 = fI_kp1 * refstate.Blin_coeff(1, 1, k + 1, n) * dens1_kp1 *
-                     fDbarh_kp1 * he_kp1 * fHh_kp1;
-          beta_k = fI_k * refstate.Blin_coeff(1, 1, k, n) * dens1_k * fDbarh_k *
-                   he_k * fHh_k;
-
-          complex_wrhs(0, k, j, i, n) +=
-              alpha_kp1 * (beta_kp1 * vc0_kp1 - beta_k * vc0_k);
+          for (int d1 = 0; d1 < ndensity_dycore; ++d1) {
+            for (int d2 = 0; d2 < ndensity_dycore; ++d2) {
+              real alpha_kp1 = dtf2 * refstate.dens_di(d1, k + 1, n);
+              complex beta_kp1 = fI_kp1 *
+                                 refstate.Blin_coeff(d1, d2, k + 1, n) *
+                                 refstate.dens_pi(d2, k + 1, n) * fDbar2_kp1 *
+                                 he_kp1 * fHh_kp1;
+              complex beta_k = fI_k * refstate.Blin_coeff(d1, d2, k, n) *
+                               refstate.dens_pi(d2, k, n) * fDbar2_k * he_k *
+                               fHh_k;
+              complex_wrhs(0, k, j, i, n) +=
+                  alpha_kp1 * (beta_kp1 * vc0_kp1 - beta_k * vc0_k);
+            }
+          }
         });
 
     parallel_for(
