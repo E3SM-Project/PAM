@@ -1242,19 +1242,14 @@ public:
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          real rho = sol_dens(0, pks + k, pjs + j, pis + i, n);
-          real Tht = sol_dens(1, pks + k, pjs + j, pis + i, n);
-
-          real b0_rho = refstate.Blin_coeff(0, 0, k, n);
-          real b0_Tht = refstate.Blin_coeff(0, 1, k, n);
-          real b1_rho = refstate.Blin_coeff(1, 0, k, n);
-          real b1_Tht = refstate.Blin_coeff(1, 1, k, n);
-
-          real b0 = rho * b0_rho + Tht * b0_Tht;
-          real b1 = rho * b1_rho + Tht * b1_Tht;
-
-          bvar(0, pks + k, pjs + j, pis + i, n) = -dtf * b0;
-          bvar(1, pks + k, pjs + j, pis + i, n) = -dtf * b1;
+          for (int d1 = 0; d1 < ndensity; ++d1) {
+            real b_d1 = 0;
+            for (int d2 = 0; d2 < ndensity; ++d2) {
+              b_d1 -= dtf * refstate.Blin_coeff(d1, d2, k, n) *
+                      sol_dens(d2, pks + k, pjs + j, pis + i, n);
+            }
+            bvar(d1, pks + k, pjs + j, pis + i, n) = b_d1;
+          }
         });
 
     this->aux_exchange->exchanges_arr[BVAR].exchange_field(
@@ -2226,14 +2221,6 @@ public:
           }
 
           refstate.he_di(0, k, n) = refrho_f(x, z, thermo);
-          // refstate.he_di(0, k, n) = (refrho_f(x, zm, thermo) + refrho_f(x,
-          // zp, thermo)) / 2; if (k == 1) {
-          //   refstate.he_di(0, k, n) = 1.16061;
-          // }
-          // if (k == dual_topology.ni - 2) {
-          //   refstate.he_di(0, k, n) = 0.979746;
-          // }
-
           refstate.dens_di(0, k, n) =
               refrho_f(x, z, thermo) / refstate.he_di(0, k, n);
           refstate.dens_di(1, k, n) =
