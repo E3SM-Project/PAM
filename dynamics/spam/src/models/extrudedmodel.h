@@ -952,11 +952,8 @@ struct ModelReferenceState : ReferenceState {
 class ModelLinearSystem : public LinearSystem {
   ModelReferenceState *reference_state;
 
-  complex5d complex_v;
   complex5d complex_vrhs;
-  complex5d complex_w;
   complex5d complex_wrhs;
-
   complex5d complex_vcoeff;
 
   complex4d tri_l;
@@ -967,11 +964,6 @@ class ModelLinearSystem : public LinearSystem {
   complex1d l_tri_d;
   complex1d l_tri_u;
   complex1d l_tri_rhs;
-
-  real5d vtend;
-  real5d wtend;
-  real5d wtend2;
-  real5d denstend;
 
 public:
   void initialize(ModelParameters &params, ReferenceState &reference_state,
@@ -993,20 +985,11 @@ public:
     auto ny = primal_topology.n_cells_y;
     auto nens = primal_topology.nens;
 
-    auto nxh = nx + 2 * primal_topology.halosize_x;
-    auto nyh = nx + 2 * primal_topology.halosize_y;
-    auto pnih = pni + 2 * primal_topology.mirror_halo;
-    auto pnlh = pnl + 2 * primal_topology.mirror_halo;
-    auto dnih = dni + 2 * primal_topology.mirror_halo;
-    auto dnlh = dnl + 2 * primal_topology.mirror_halo;
-
-    complex_v = complex5d("complex v", 1, pni, ny, nx, nens);
     complex_vrhs = complex5d("complex vrhs", 1, pni, ny, nx, nens);
-    complex_w = complex5d("complex w", 1, pnl, ny, nx, nens);
     complex_wrhs = complex5d("complex wrhs", 1, pnl, ny, nx, nens);
 
     complex_vcoeff =
-        complex5d("complex vcoeff", 1 + ndensity_dycore, pni, ny, nx, nens);
+        complex5d("complex vcoeff", 1 + ndensity, pni, ny, nx, nens);
 
     tri_d = complex4d("tri d", pnl, ny, nx, nens);
     tri_l = complex4d("tri l", pnl, ny, nx, nens);
@@ -1060,8 +1043,8 @@ public:
           real he = refstate.he_pi(0, k, n);
 
           real c1 = 1;
-          for (int d1 = 0; d1 < ndensity_dycore; ++d1) {
-            for (int d2 = 0; d2 < ndensity_dycore; ++d2) {
+          for (int d1 = 0; d1 < ndensity; ++d1) {
+            for (int d2 = 0; d2 < ndensity; ++d2) {
               c1 -= dtf2 * fI * fH(0) * fD1Dbar(0) * he *
                     refstate.dens_pi(d1, k, n) * refstate.dens_pi(d2, k, n) *
                     refstate.Blin_coeff(d1, d2, k, n);
@@ -1069,9 +1052,9 @@ public:
           }
 
           complex_vcoeff(0, k, j, i, n) = 1 / c1;
-          for (int d1 = 0; d1 < ndensity_dycore; ++d1) {
+          for (int d1 = 0; d1 < ndensity; ++d1) {
             complex cd1 = 0;
-            for (int d2 = 0; d2 < ndensity_dycore; ++d2) {
+            for (int d2 = 0; d2 < ndensity; ++d2) {
               cd1 += fD1(0) * dtf2 * fI * refstate.dens_pi(d2, k, n) *
                      refstate.Blin_coeff(d2, d1, k, n);
             }
@@ -1104,19 +1087,12 @@ public:
               dual_geometry.get_area_10entity(k + 0 + dks, j + djs, i + dis) /
               primal_geometry.get_area_01entity(k - 1 + pks, j + pjs, i + pis);
 
-          if (k == 0) {
-            gamma_fac_k = 0;
-          }
-          if (k == primal_topology.nl) {
-            gamma_fac_kp2 = 0;
-          }
-
           tri_u(k, j, i, n) = 0;
           tri_d(k, j, i, n) = 1;
           tri_l(k, j, i, n) = 0;
 
-          for (int d1 = 0; d1 < ndensity_dycore; ++d1) {
-            for (int d2 = 0; d2 < ndensity_dycore; ++d2) {
+          for (int d1 = 0; d1 < ndensity; ++d1) {
+            for (int d2 = 0; d2 < ndensity; ++d2) {
               real alpha_kp1 = refstate.dens_di(d1, k + 1, n);
 
               real beta_kp1 = fI_kp1 * refstate.Blin_coeff(d1, d2, k + 1, n);
@@ -1158,12 +1134,6 @@ public:
               refstate.he_di(0, k, n) *
               dual_geometry.get_area_10entity(k + 0 + dks, j + djs, i + dis) /
               primal_geometry.get_area_01entity(k - 1 + pks, j + pjs, i + pis);
-          if (k == 0) {
-            gamma_fac_k = 0;
-          }
-          if (k == primal_topology.nl) {
-            gamma_fac_kp2 = 0;
-          }
 
           SArray<real, 1, ndims> fH_kp1_a;
           SArray<real, 1, ndims> fH_k_a;
@@ -1184,9 +1154,9 @@ public:
           real he_kp1 = refstate.he_pi(0, k + 1, n);
           real he_k = refstate.he_pi(0, k, n);
 
-          for (int d1 = 0; d1 < ndensity_dycore; ++d1) {
-            for (int d2 = 0; d2 < ndensity_dycore; ++d2) {
-              for (int d3 = 0; d3 < ndensity_dycore; ++d3) {
+          for (int d1 = 0; d1 < ndensity; ++d1) {
+            for (int d2 = 0; d2 < ndensity; ++d2) {
+              for (int d3 = 0; d3 < ndensity; ++d3) {
 
                 real alpha_kp1 = dtf2 * refstate.dens_di(d1, k + 1, n);
                 complex beta_kp1 = fI_kp1 *
@@ -1394,8 +1364,8 @@ public:
           real he_kp1 = refstate.he_pi(0, k + 1, n);
           real he_k = refstate.he_pi(0, k, n);
 
-          for (int d1 = 0; d1 < ndensity_dycore; ++d1) {
-            for (int d2 = 0; d2 < ndensity_dycore; ++d2) {
+          for (int d1 = 0; d1 < ndensity; ++d1) {
+            for (int d2 = 0; d2 < ndensity; ++d2) {
               real alpha_kp1 = dtf2 * refstate.dens_di(d1, k + 1, n);
               complex beta_kp1 = fI_kp1 *
                                  refstate.Blin_coeff(d1, d2, k + 1, n) *
@@ -1429,10 +1399,11 @@ public:
             l_tri_d(k) -= w * l_tri_u(k - 1);
             l_tri_rhs(k) -= w * l_tri_rhs(k - 1);
           }
-          complex_w(0, nz - 1, j, i, n) = l_tri_rhs(nz - 1) / l_tri_d(nz - 1);
+          complex_wrhs(0, nz - 1, j, i, n) =
+              l_tri_rhs(nz - 1) / l_tri_d(nz - 1);
           for (int k = nz - 2; k >= 0; --k) {
-            complex_w(0, k, j, i, n) =
-                (l_tri_rhs(k) - l_tri_u(k) * complex_w(0, k + 1, j, i, n)) /
+            complex_wrhs(0, k, j, i, n) =
+                (l_tri_rhs(k) - l_tri_u(k) * complex_wrhs(0, k + 1, j, i, n)) /
                 l_tri_d(k);
           }
         });
@@ -1444,13 +1415,13 @@ public:
         YAKL_LAMBDA(int k, int j, int i, int n) {
           complex w_kp1;
           if (k < primal_topology.ni - 1) {
-            w_kp1 = complex_w(0, k, j, i, n);
+            w_kp1 = complex_wrhs(0, k, j, i, n);
           } else {
             w_kp1 = 0;
           }
           complex w_k;
           if (k > 0) {
-            w_k = complex_w(0, k - 1, j, i, n);
+            w_k = complex_wrhs(0, k - 1, j, i, n);
           } else {
             w_k = 0;
           }
@@ -1468,29 +1439,20 @@ public:
               dual_geometry.get_area_10entity(k + 0 + dks, j + djs, i + dis) /
               primal_geometry.get_area_01entity(k - 1 + pks, j + pjs, i + pis);
 
-          real dens0_kp1 = refstate.dens_di(0, k + 1, n);
-          real dens1_kp1 = refstate.dens_di(1, k + 1, n);
-          real dens0_k = refstate.dens_di(0, k, n);
-          real dens1_k = refstate.dens_di(1, k, n);
-
-          complex term0 = complex_vrhs(0, k, j, i, n);
-          complex term1 =
-              gamma_fac_kp1 * w_kp1 * dens0_kp1 - gamma_fac_k * w_k * dens0_k;
-          complex term2 =
-              gamma_fac_kp1 * w_kp1 * dens1_kp1 - gamma_fac_k * w_k * dens1_k;
-
-          complex vc0 = complex_vcoeff(0, k, j, i, n);
-          complex vc1 = complex_vcoeff(1, k, j, i, n);
-          complex vc2 = complex_vcoeff(2, k, j, i, n);
-
-          complex_v(0, k, j, i, n) = vc0 * term0 + vc1 * term1 + vc2 * term2;
+          complex_vrhs(0, k, j, i, n) *= complex_vcoeff(0, k, j, i, n);
+          for (int d1 = 0; d1 < ndensity; ++d1) {
+            complex_vrhs(0, k, j, i, n) +=
+                complex_vcoeff(1 + d1, k, j, i, n) *
+                (gamma_fac_kp1 * refstate.dens_di(d1, k + 1, n) * w_kp1 -
+                 gamma_fac_k * refstate.dens_di(d1, k, n) * w_k);
+          }
         });
 
     yakl::timer_start("fft bwd");
     pocketfft::c2c(shape_v, stride_v, stride_v, axes, pocketfft::BACKWARD,
-                   complex_v.data(), complex_v.data(), scale);
+                   complex_vrhs.data(), complex_vrhs.data(), scale);
     pocketfft::c2c(shape_w, stride_w, stride_w, axes, pocketfft::BACKWARD,
-                   complex_w.data(), complex_w.data(), scale);
+                   complex_wrhs.data(), complex_wrhs.data(), scale);
     yakl::timer_stop("fft bwd");
 
     parallel_for(
@@ -1499,7 +1461,7 @@ public:
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           sol_w(0, k + pks, j + pjs, i + pis, n) =
-              complex_w(0, k, j, i, n).real();
+              complex_wrhs(0, k, j, i, n).real();
         });
     parallel_for(
         "store v",
@@ -1507,7 +1469,7 @@ public:
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           sol_v(0, k + pks, j + pjs, i + pis, n) =
-              complex_v(0, k, j, i, n).real();
+              complex_vrhs(0, k, j, i, n).real();
         });
 
     this->prog_exchange->exchanges_arr[VVAR].exchange_field(
