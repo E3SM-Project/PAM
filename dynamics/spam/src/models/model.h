@@ -11,9 +11,7 @@ public:
   std::string name;
   std::array<int, 3> dofs_arr;
   Topology topology;
-  Topology primal_topology;
   Geometry<Straight> primal_geometry;
-  Topology dual_topology;
   Geometry<Twisted> dual_geometry;
   Field field;
 
@@ -24,14 +22,12 @@ public:
   virtual void compute(real time, const FieldSet<nconstant> &const_vars,
                        const FieldSet<nprognostic> &x) = 0;
 
-  virtual void initialize(const Topology &ptopo, const Topology &dtopo,
-                          const Geometry<Straight> &pgeom,
+  virtual void initialize(const Geometry<Straight> &pgeom,
                           const Geometry<Twisted> &dgeom) {
-    this->primal_topology = ptopo;
-    this->dual_topology = dtopo;
     this->primal_geometry = pgeom;
     this->dual_geometry = dgeom;
-    field.initialize(topology, name, dofs_arr[0], dofs_arr[1], dofs_arr[2]);
+    field.initialize(topology, nullptr, name, dofs_arr[0], dofs_arr[1],
+                     dofs_arr[2]);
     this->is_initialized = true;
   }
   virtual ~Diagnostic() = default;
@@ -103,7 +99,7 @@ public:
   TestCase() { this->tracer_f = TracerArr("tracer_f", ntracers_dycore); }
 
   virtual void
-  add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics) = 0;
+  add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics) {};
 
   void set_tracers(ModelParameters &params) {
     SArray<TRACER_TAG, 1, ntracers_dycore> tracer_tag;
@@ -141,12 +137,11 @@ public:
   virtual void set_domain(ModelParameters &params) = 0;
   virtual void set_initial_conditions(FieldSet<nprognostic> &progvars,
                                       FieldSet<nconstant> &constvars,
-                                      ExchangeSet<nconstant> &const_exchange,
                                       const Geometry<Straight> &primal_geom,
                                       const Geometry<Twisted> &dual_geom) = 0;
   virtual void set_reference_state(ReferenceState &refstate,
                                    const Geometry<Straight> &primal_geom,
-                                   const Geometry<Twisted> &dual_geom) = 0;
+                                   const Geometry<Twisted> &dual_geom) {};
   virtual ~TestCase() = default;
 
   // why doesn't this work ? Tracers need to be deallocated !
@@ -160,10 +155,6 @@ public:
 
 class Tendencies {
 public:
-  Topology primal_topology;
-  Topology dual_topology;
-  ExchangeSet<nauxiliary> *aux_exchange;
-  ExchangeSet<nconstant> *const_exchange;
   Geometry<Straight> primal_geometry;
   Geometry<Twisted> dual_geometry;
 
@@ -192,17 +183,11 @@ public:
 
   Tendencies() { this->is_initialized = false; }
 
-  void initialize(ModelParameters &params, Topology &primal_topo,
-                  Topology &dual_topo, const Geometry<Straight> &primal_geom,
-                  const Geometry<Twisted> &dual_geom,
-                  ExchangeSet<nauxiliary> &aux_exchange,
-                  ExchangeSet<nconstant> &const_exchange) {
-    this->primal_topology = primal_topo;
-    this->dual_topology = dual_topo;
+  void initialize(ModelParameters &params,
+                  const Geometry<Straight> &primal_geom,
+                  const Geometry<Twisted> &dual_geom) {
     this->primal_geometry = primal_geom;
     this->dual_geometry = dual_geom;
-    this->aux_exchange = &aux_exchange;
-    this->const_exchange = &const_exchange;
 
     TransformMatrices::coefs_to_gll_lower(primal_to_gll);
     TransformMatrices::weno_sten_to_coefs(primal_wenoRecon);
@@ -265,13 +250,10 @@ public:
       coriolis_vert_wenoIdl;
   real coriolis_vert_wenoSigma;
 
-  void initialize(ModelParameters &params, Topology &primal_topo,
-                  Topology &dual_topo, const Geometry<Straight> &primal_geom,
-                  const Geometry<Twisted> &dual_geom,
-                  ExchangeSet<nauxiliary> &aux_exchange,
-                  ExchangeSet<nconstant> &const_exchange) {
-    Tendencies::initialize(params, primal_topo, dual_topo, primal_geom,
-                           dual_geom, aux_exchange, const_exchange);
+  void initialize(ModelParameters &params,
+                  const Geometry<Straight> &primal_geom,
+                  const Geometry<Twisted> &dual_geom) {
+    Tendencies::initialize(params, primal_geom, dual_geom);
 
     TransformMatrices::coefs_to_gll_lower(primal_vert_to_gll);
     TransformMatrices::weno_sten_to_coefs(primal_vert_wenoRecon);
@@ -294,32 +276,22 @@ public:
 
 class LinearSystem {
 public:
-  Topology primal_topology;
-  Topology dual_topology;
-  ExchangeSet<nprognostic> *prog_exchange;
-  ExchangeSet<nauxiliary> *aux_exchange;
   Geometry<Straight> primal_geometry;
   Geometry<Twisted> dual_geometry;
 
   bool is_initialized = false;
 
   virtual void initialize(ModelParameters &params,
-                          ReferenceState &reference_state, Tendencies *tend,
-                          FieldSet<nprognostic> &x,
-                          FieldSet<nconstant> &const_vars,
-                          FieldSet<nauxiliary> &auxiliary_vars,
-                          ExchangeSet<nprognostic> &prog_exchange) {
+                          const Geometry<Straight> &primal_geom,
+                          const Geometry<Twisted> &dual_geom,
+                          ReferenceState &reference_state) {
 
-    this->primal_topology = tend->primal_topology;
-    this->dual_topology = tend->dual_topology;
-    this->primal_geometry = tend->primal_geometry;
-    this->dual_geometry = tend->dual_geometry;
-    this->aux_exchange = tend->aux_exchange;
-    this->prog_exchange = &prog_exchange;
+    this->primal_geometry = primal_geom;
+    this->dual_geometry = dual_geom;
 
     this->is_initialized = true;
   }
-  virtual void compute_coefficients(real dt) = 0;
+  virtual void compute_coefficients(real dt) {};
 
   virtual void YAKL_INLINE solve(real dt, FieldSet<nprognostic> &rhs,
                                  FieldSet<nconstant> &const_vars,

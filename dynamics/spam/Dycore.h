@@ -91,43 +91,32 @@ public:
     // Allocate the variables
     debug_print("start init field/exchange sets", par.masterproc);
     // this gives basedof, extdof and ndofs
-    SArray<int, 2, nprognostic, 3> prog_dofs_arr;
-    SArray<int, 2, nconstant, 3> const_dofs_arr;
-    SArray<int, 2, nauxiliary, 3> aux_dofs_arr;
-    std::array<std::string, nprognostic> prog_names_arr;
-    std::array<std::string, nconstant> const_names_arr;
-    std::array<std::string, nauxiliary> aux_names_arr;
-    std::array<Topology, nprognostic> prog_topo_arr;
-    std::array<Topology, nconstant> const_topo_arr;
-    std::array<Topology, nauxiliary> aux_topo_arr;
-    initialize_variables(primal_topology, dual_topology, prog_dofs_arr,
-                         const_dofs_arr, aux_dofs_arr, prog_names_arr,
-                         const_names_arr, aux_names_arr, prog_topo_arr,
-                         const_topo_arr, aux_topo_arr);
+    std::array<FieldDescription, nprognostic> prog_desc_arr;
+    std::array<FieldDescription, nconstant> const_desc_arr;
+    std::array<FieldDescription, nauxiliary> aux_desc_arr;
+    initialize_variables(primal_topology, dual_topology, prog_desc_arr,
+                         const_desc_arr, aux_desc_arr);
 
-    prognostic_vars.initialize("x", prog_names_arr, prog_topo_arr,
-                               prog_dofs_arr);
-    constant_vars.initialize("cons", const_names_arr, const_topo_arr,
-                             const_dofs_arr);
-    auxiliary_vars.initialize("aux", aux_names_arr, aux_topo_arr, aux_dofs_arr);
-    prog_exchange.initialize(prog_topo_arr, prog_dofs_arr);
-    const_exchange.initialize(const_topo_arr, const_dofs_arr);
-    aux_exchange.initialize(aux_topo_arr, aux_dofs_arr);
+    prog_exchange.initialize(prog_desc_arr);
+    const_exchange.initialize(const_desc_arr);
+    aux_exchange.initialize(aux_desc_arr);
+
+    prognostic_vars.initialize("x", prog_desc_arr, prog_exchange);
+    constant_vars.initialize("cons", const_desc_arr, const_exchange);
+    auxiliary_vars.initialize("aux", aux_desc_arr, aux_exchange);
     debug_print("finish init field/exchange sets", par.masterproc);
 
     debug_print("start diagnostics init", par.masterproc);
     add_model_diagnostics(diagnostics);
     testcase->add_diagnostics(diagnostics);
     for (auto &diag : diagnostics) {
-      diag->initialize(primal_topology, dual_topology, primal_geometry,
-                       dual_geometry);
+      diag->initialize(primal_geometry, dual_geometry);
     }
     debug_print("end diagnostics init", par.masterproc);
 
     // Initialize the statistics
     debug_print("start stats init", par.masterproc);
-    stats.initialize(params, par, primal_topology, dual_topology,
-                     primal_geometry, dual_geometry);
+    stats.initialize(params, par, primal_geometry, dual_geometry);
     debug_print("end stats init", par.masterproc);
 
     // Create the outputter
@@ -138,9 +127,7 @@ public:
 
     // // Initialize the tendencies and diagnostics
     debug_print("start tendencies init", par.masterproc);
-    tendencies.initialize(coupler, params, primal_topology, dual_topology,
-                          primal_geometry, dual_geometry, aux_exchange,
-                          const_exchange);
+    tendencies.initialize(coupler, params, primal_geometry, dual_geometry);
     debug_print("end tendencies init", par.masterproc);
 
     // EVENTUALLY THIS NEEDS TO BE MORE CLEVER IE POSSIBLY DO NOTHING BASED ON
@@ -148,12 +135,12 @@ public:
     //  set the initial conditions and compute initial stats
     debug_print("start ic setting", par.masterproc);
     testcase->set_initial_conditions(prognostic_vars, constant_vars,
-                                     const_exchange, primal_geometry,
-                                     dual_geometry);
-    prog_exchange.exchange_variable_set(prognostic_vars);
-    const_exchange.exchange_variable_set(constant_vars);
+                                     primal_geometry, dual_geometry);
+    prognostic_vars.exchange();
+    constant_vars.exchange();
+    
     tendencies.compute_constants(constant_vars, prognostic_vars);
-    const_exchange.exchange_variable_set(constant_vars);
+    constant_vars.exchange();
     stats.compute(prognostic_vars, constant_vars, 0);
     debug_print("end ic setting", par.masterproc);
 
@@ -163,12 +150,10 @@ public:
     reference_state.initialize(primal_topology, dual_topology);
     testcase->set_reference_state(reference_state, primal_geometry,
                                   dual_geometry);
-    linear_system.initialize(params, reference_state, &tendencies,
-                             prognostic_vars, constant_vars, auxiliary_vars,
-                             prog_exchange);
+    linear_system.initialize(params, primal_geometry, dual_geometry, reference_state);
     linear_system.compute_coefficients(params.dtcrm);
     tint.initialize(params, tendencies, linear_system, prognostic_vars,
-                    constant_vars, auxiliary_vars, prog_exchange);
+                    constant_vars, auxiliary_vars);
 #else
     tint.initialize(params, tendencies, prognostic_vars, constant_vars,
                     auxiliary_vars, prog_exchange);

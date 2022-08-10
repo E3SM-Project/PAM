@@ -46,18 +46,19 @@ ThermoPotential thermo;
 
 class Dens0Diagnostic : public Diagnostic {
 public:
-  void initialize(const Topology &ptopo, const Topology &dtopo,
-                  const Geometry<Straight> &pgeom,
+  void initialize(const Geometry<Straight> &pgeom,
                   const Geometry<Twisted> &dgeom) override {
     // concentration 0-forms for dens
     name = "densl";
-    topology = ptopo;
+    topology = pgeom.topology;
     dofs_arr = {0, 0, ndensity}; // densldiag = straight (0,0)-form
-    Diagnostic::initialize(ptopo, dtopo, pgeom, dgeom);
+    Diagnostic::initialize(pgeom, dgeom);
   }
 
   void compute(real time, const FieldSet<nconstant> &const_vars,
                const FieldSet<nprognostic> &x) override {
+
+    const auto &primal_topology = primal_geometry.topology;
 
     int pis = primal_topology.is;
     int pjs = primal_topology.js;
@@ -77,17 +78,18 @@ public:
 
 class QXZ0Diagnostic : public Diagnostic {
 public:
-  void initialize(const Topology &ptopo, const Topology &dtopo,
-                  const Geometry<Straight> &pgeom,
+  void initialize(const Geometry<Straight> &pgeom,
                   const Geometry<Twisted> &dgeom) override {
     name = "QXZl";
-    topology = dtopo;
+    topology = dgeom.topology;
     dofs_arr = {0, 0, 1}; // // Qldiag = twisted (0,0)-form
-    Diagnostic::initialize(ptopo, dtopo, pgeom, dgeom);
+    Diagnostic::initialize(pgeom, dgeom);
   }
 
   void compute(real time, const FieldSet<nconstant> &const_vars,
                const FieldSet<nprognostic> &x) override {
+
+    const auto &dual_topology = dual_geometry.topology;
 
     int dis = dual_topology.is;
     int djs = dual_topology.js;
@@ -138,16 +140,11 @@ void add_model_diagnostics(
 class ModelTendencies : public ExtrudedTendencies {
 public:
   void initialize(PamCoupler &coupler, ModelParameters &params,
-                  Topology &primal_topo, Topology &dual_topo,
                   const Geometry<Straight> &primal_geom,
-                  const Geometry<Twisted> &dual_geom,
-                  ExchangeSet<nauxiliary> &aux_exchange,
-                  ExchangeSet<nconstant> &const_exchange) {
+                  const Geometry<Twisted> &dual_geom) {
 
-    ExtrudedTendencies::initialize(params, primal_topo, dual_topo, primal_geom,
-                                   dual_geom, aux_exchange, const_exchange);
-    varset.initialize(coupler, params, thermo, this->primal_topology,
-                      this->dual_topology, this->primal_geometry,
+    ExtrudedTendencies::initialize(params, primal_geom, dual_geom);
+    varset.initialize(coupler, params, thermo, this->primal_geometry,
                       this->dual_geometry);
     PVPE.initialize(varset);
     Hk.initialize(varset, this->primal_geometry, this->dual_geometry);
@@ -172,6 +169,8 @@ public:
 
   void compute_dens0(real5d dens0var, const real5d densvar) {
 
+    const auto &primal_topology = primal_geometry.topology;
+
     int pis = primal_topology.is;
     int pjs = primal_topology.js;
     int pks = primal_topology.ks;
@@ -188,6 +187,8 @@ public:
   }
 
   void compute_U(real5d Uvar, const real5d Vvar) {
+    
+    const auto &dual_topology = dual_geometry.topology;
 
     int dis = dual_topology.is;
     int djs = dual_topology.js;
@@ -205,6 +206,9 @@ public:
   }
 
   void compute_UW(real5d UWvar, const real5d Wvar) {
+    
+    const auto &dual_topology = dual_geometry.topology;
+
     int dis = dual_topology.is;
     int djs = dual_topology.js;
     int dks = dual_topology.ks;
@@ -223,6 +227,8 @@ public:
   void compute_q0f0(real5d qxz0var, real5d fxz0var, const real5d Vvar,
                     const real5d Wvar, const real5d densvar,
                     const real5d coriolisxzvar) {
+
+    const auto &dual_topology = dual_geometry.topology;
 
     int dis = dual_topology.is;
     int djs = dual_topology.js;
@@ -257,6 +263,8 @@ public:
                           const real5d Wvar, const real5d UWvar,
                           const real5d dens0var) {
 
+    const auto &dual_topology = dual_geometry.topology;
+
     int dis = dual_topology.is;
     int djs = dual_topology.js;
     int dks = dual_topology.ks;
@@ -289,6 +297,8 @@ public:
                            real5d HEWvar, const real5d Vvar, const real5d Uvar,
                            const real5d Wvar, const real5d UWvar,
                            const real5d dens0var) {
+    
+    const auto &dual_topology = dual_geometry.topology;
 
     int dis = dual_topology.is;
     int djs = dual_topology.js;
@@ -318,6 +328,8 @@ public:
 
   void compute_FT_and_FTW(real5d FTvar, real5d FTWvar, const real5d Fvar,
                           const real5d FWvar) {
+
+    const auto &primal_topology = primal_geometry.topology;
 
     int pis = primal_topology.is;
     int pjs = primal_topology.js;
@@ -360,6 +372,8 @@ public:
   template <ADD_MODE addmode = ADD_MODE::REPLACE>
   void compute_B(real fac, real5d Bvar, const real5d Kvar, const real5d densvar,
                  const real5d HSvar) {
+    
+    const auto &primal_topology = primal_geometry.topology;
 
     int pis = primal_topology.is;
     int pjs = primal_topology.js;
@@ -384,6 +398,9 @@ public:
       real5d qxzedgereconvar, real5d qxzvertedgereconvar,
       real5d coriolisxzedgereconvar, real5d coriolisxzvertedgereconvar,
       const real5d dens0var, const real5d qxz0var, const real5d fxz0var) {
+
+    const auto &primal_topology = primal_geometry.topology;
+    const auto &dual_topology = dual_geometry.topology;
 
     int dis = dual_topology.is;
     int djs = dual_topology.js;
@@ -448,6 +465,9 @@ public:
       const real5d coriolisxzvertedgereconvar, const real5d HEvar,
       const real5d HEWvar, const real5d Uvar, const real5d UWvar,
       const real5d FTvar, const real5d FTWvar) {
+
+    const auto &primal_topology = primal_geometry.topology;
+    const auto &dual_topology = dual_geometry.topology;
 
     int dis = dual_topology.is;
     int djs = dual_topology.js;
@@ -523,6 +543,9 @@ public:
                      const real5d coriolisxzvertreconvar, const real5d Bvar,
                      const real5d Fvar, const real5d FWvar, const real5d Phivar,
                      const real5d Phivertvar) {
+
+    const auto &primal_topology = primal_geometry.topology;
+    const auto &dual_topology = dual_geometry.topology;
 
     int pis = primal_topology.is;
     int pjs = primal_topology.js;
@@ -660,13 +683,9 @@ public:
                   x.fields_arr[DENSVAR].data);
     compute_U(auxiliary_vars.fields_arr[UVAR].data, x.fields_arr[VVAR].data);
     compute_UW(auxiliary_vars.fields_arr[UWVAR].data, x.fields_arr[WVAR].data);
+
     auxiliary_vars.fields_arr[UWVAR].set_bnd(0.0);
-    this->aux_exchange->exchanges_arr[UVAR].exchange_field(
-        auxiliary_vars.fields_arr[UVAR]);
-    this->aux_exchange->exchanges_arr[UWVAR].exchange_field(
-        auxiliary_vars.fields_arr[UWVAR]);
-    this->aux_exchange->exchanges_arr[DENS0VAR].exchange_field(
-        auxiliary_vars.fields_arr[DENS0VAR]);
+    auxiliary_vars.exchange({UVAR, UWVAR, DENS0VAR});
 
     if (addmode == ADD_MODE::ADD) {
       compute_F_FW_and_K<ADD_MODE::ADD>(
@@ -687,12 +706,7 @@ public:
     }
 
     auxiliary_vars.fields_arr[FWVAR].set_bnd(0.0);
-    this->aux_exchange->exchanges_arr[FVAR].exchange_field(
-        auxiliary_vars.fields_arr[FVAR]);
-    this->aux_exchange->exchanges_arr[FWVAR].exchange_field(
-        auxiliary_vars.fields_arr[FWVAR]);
-    this->aux_exchange->exchanges_arr[KVAR].exchange_field(
-        auxiliary_vars.fields_arr[KVAR]);
+    auxiliary_vars.exchange({FVAR, FWVAR, KVAR});
 
     if (addmode == ADD_MODE::ADD) {
       compute_B<ADD_MODE::ADD>(fac, auxiliary_vars.fields_arr[BVAR].data,
@@ -705,8 +719,7 @@ public:
                                    x.fields_arr[DENSVAR].data,
                                    const_vars.fields_arr[HSVAR].data);
     }
-    this->aux_exchange->exchanges_arr[BVAR].exchange_field(
-        auxiliary_vars.fields_arr[BVAR]);
+    auxiliary_vars.exchange({BVAR});
   }
 
   // NONLINEAR
@@ -714,6 +727,8 @@ public:
                                     FieldSet<nprognostic> &x,
                                     FieldSet<nauxiliary> &auxiliary_vars,
                                     FieldSet<nprognostic> &xtend) override {
+    
+    const auto &dual_topology = dual_geometry.topology;
 
     compute_dens0(auxiliary_vars.fields_arr[DENS0VAR].data,
                   x.fields_arr[DENSVAR].data);
@@ -721,12 +736,7 @@ public:
     compute_UW(auxiliary_vars.fields_arr[UWVAR].data, x.fields_arr[WVAR].data);
     auxiliary_vars.fields_arr[UWVAR].set_bnd(0.0);
 
-    this->aux_exchange->exchanges_arr[UVAR].exchange_field(
-        auxiliary_vars.fields_arr[UVAR]);
-    this->aux_exchange->exchanges_arr[UWVAR].exchange_field(
-        auxiliary_vars.fields_arr[UWVAR]);
-    this->aux_exchange->exchanges_arr[DENS0VAR].exchange_field(
-        auxiliary_vars.fields_arr[DENS0VAR]);
+    auxiliary_vars.exchange({UVAR, UWVAR, DENS0VAR});
 
     compute_F_FW_and_he(
         auxiliary_vars.fields_arr[FVAR2].data,
@@ -738,15 +748,7 @@ public:
         auxiliary_vars.fields_arr[DENS0VAR].data);
 
     auxiliary_vars.fields_arr[FWVAR2].set_bnd(0.0);
-    this->aux_exchange->exchanges_arr[FVAR2].exchange_field(
-        auxiliary_vars.fields_arr[FVAR2]);
-    this->aux_exchange->exchanges_arr[FWVAR2].exchange_field(
-        auxiliary_vars.fields_arr[FWVAR2]);
-
-    this->aux_exchange->exchanges_arr[HEVAR].exchange_field(
-        auxiliary_vars.fields_arr[HEVAR]);
-    this->aux_exchange->exchanges_arr[HEWVAR].exchange_field(
-        auxiliary_vars.fields_arr[HEWVAR]);
+    auxiliary_vars.exchange({FVAR2, FWVAR2, HEVAR, HEWVAR});
 
     compute_q0f0(auxiliary_vars.fields_arr[QXZ0VAR].data,
                  auxiliary_vars.fields_arr[FXZ0VAR].data,
@@ -756,20 +758,14 @@ public:
 
     auxiliary_vars.fields_arr[QXZ0VAR].set_bnd(0.0);
     auxiliary_vars.fields_arr[FXZ0VAR].set_bnd(0.0);
-    this->aux_exchange->exchanges_arr[QXZ0VAR].exchange_field(
-        auxiliary_vars.fields_arr[QXZ0VAR]);
-    this->aux_exchange->exchanges_arr[FXZ0VAR].exchange_field(
-        auxiliary_vars.fields_arr[FXZ0VAR]);
+    auxiliary_vars.exchange({QXZ0VAR, FXZ0VAR});
 
     compute_FT_and_FTW(auxiliary_vars.fields_arr[FTVAR].data,
                        auxiliary_vars.fields_arr[FTWVAR].data,
                        auxiliary_vars.fields_arr[FVAR2].data,
                        auxiliary_vars.fields_arr[FWVAR2].data);
 
-    this->aux_exchange->exchanges_arr[FTVAR].exchange_field(
-        auxiliary_vars.fields_arr[FTVAR]);
-    this->aux_exchange->exchanges_arr[FTWVAR].exchange_field(
-        auxiliary_vars.fields_arr[FTWVAR]);
+    auxiliary_vars.exchange({FTVAR, FTWVAR});
 
     // Compute densrecon, densvertrecon, qrecon and frecon
     compute_edge_reconstructions(
@@ -783,18 +779,10 @@ public:
         auxiliary_vars.fields_arr[QXZ0VAR].data,
         auxiliary_vars.fields_arr[FXZ0VAR].data);
 
-    this->aux_exchange->exchanges_arr[DENSEDGERECONVAR].exchange_field(
-        auxiliary_vars.fields_arr[DENSEDGERECONVAR]);
-    this->aux_exchange->exchanges_arr[DENSVERTEDGERECONVAR].exchange_field(
-        auxiliary_vars.fields_arr[DENSVERTEDGERECONVAR]);
-    this->aux_exchange->exchanges_arr[QXZEDGERECONVAR].exchange_field(
-        auxiliary_vars.fields_arr[QXZEDGERECONVAR]);
-    this->aux_exchange->exchanges_arr[QXZEDGERECONVAR].exchange_field(
-        auxiliary_vars.fields_arr[QXZEDGERECONVAR]);
-    this->aux_exchange->exchanges_arr[CORIOLISXZVERTEDGERECONVAR]
-        .exchange_field(auxiliary_vars.fields_arr[CORIOLISXZVERTEDGERECONVAR]);
-    this->aux_exchange->exchanges_arr[CORIOLISXZVERTEDGERECONVAR]
-        .exchange_field(auxiliary_vars.fields_arr[CORIOLISXZVERTEDGERECONVAR]);
+    auxiliary_vars.exchange({DENSEDGERECONVAR, DENSVERTEDGERECONVAR,
+                             QXZEDGERECONVAR, QXZVERTEDGERECONVAR,
+                             CORIOLISXZEDGERECONVAR,
+                             CORIOLISXZVERTEDGERECONVAR});
 
     compute_recons(auxiliary_vars.fields_arr[DENSRECONVAR].data,
                    auxiliary_vars.fields_arr[DENSVERTRECONVAR].data,
@@ -815,18 +803,9 @@ public:
                    auxiliary_vars.fields_arr[FTVAR].data,
                    auxiliary_vars.fields_arr[FTWVAR].data);
 
-    this->aux_exchange->exchanges_arr[DENSRECONVAR].exchange_field(
-        auxiliary_vars.fields_arr[DENSRECONVAR]);
-    this->aux_exchange->exchanges_arr[DENSVERTRECONVAR].exchange_field(
-        auxiliary_vars.fields_arr[DENSVERTRECONVAR]);
-    this->aux_exchange->exchanges_arr[QXZRECONVAR].exchange_field(
-        auxiliary_vars.fields_arr[QXZRECONVAR]);
-    this->aux_exchange->exchanges_arr[QXZVERTRECONVAR].exchange_field(
-        auxiliary_vars.fields_arr[QXZVERTRECONVAR]);
-    this->aux_exchange->exchanges_arr[CORIOLISXZRECONVAR].exchange_field(
-        auxiliary_vars.fields_arr[CORIOLISXZRECONVAR]);
-    this->aux_exchange->exchanges_arr[CORIOLISXZVERTRECONVAR].exchange_field(
-        auxiliary_vars.fields_arr[CORIOLISXZVERTRECONVAR]);
+    auxiliary_vars.exchange({DENSRECONVAR, DENSVERTRECONVAR, QXZRECONVAR,
+                             QXZVERTRECONVAR, CORIOLISXZRECONVAR,
+                             CORIOLISXZVERTRECONVAR});
 
     // Compute fct
     int dis = dual_topology.is;
@@ -853,10 +832,7 @@ public:
               auxiliary_vars.fields_arr[DENSVERTRECONVAR].data,
               auxiliary_vars.fields_arr[FWVAR].data, dis, djs, dks, i, j, k, n);
         });
-    this->aux_exchange->exchanges_arr[EDGEFLUXVAR].exchange_field(
-        auxiliary_vars.fields_arr[EDGEFLUXVAR]);
-    this->aux_exchange->exchanges_arr[VERTEDGEFLUXVAR].exchange_field(
-        auxiliary_vars.fields_arr[VERTEDGEFLUXVAR]);
+    auxiliary_vars.exchange({EDGEFLUXVAR, VERTEDGEFLUXVAR});
 
     parallel_for(
         "ComputeMf",
@@ -870,8 +846,7 @@ public:
               dks, i, j, k, n);
         });
 
-    this->aux_exchange->exchanges_arr[MFVAR].exchange_field(
-        auxiliary_vars.fields_arr[MFVAR]);
+    auxiliary_vars.exchange({MFVAR});
 
     parallel_for(
         "ComputePhiVert",
@@ -905,10 +880,7 @@ public:
       }
     }
 
-    this->aux_exchange->exchanges_arr[PHIVAR].exchange_field(
-        auxiliary_vars.fields_arr[PHIVAR]);
-    this->aux_exchange->exchanges_arr[PHIVERTVAR].exchange_field(
-        auxiliary_vars.fields_arr[PHIVERTVAR]);
+    auxiliary_vars.exchange({PHIVAR, PHIVERTVAR});
 
     // Compute tendencies
     compute_tendencies(xtend.fields_arr[DENSVAR].data,
@@ -966,21 +938,19 @@ class ModelLinearSystem : public LinearSystem {
   complex1d l_tri_rhs;
 
 public:
-  void initialize(ModelParameters &params, ReferenceState &reference_state,
-                  Tendencies *tend, FieldSet<nprognostic> &x,
-                  FieldSet<nconstant> &const_vars,
-                  FieldSet<nauxiliary> &auxiliary_vars,
-                  ExchangeSet<nprognostic> &prog_exchange) override {
-    LinearSystem::initialize(params, reference_state, tend, x, const_vars,
-                             auxiliary_vars, prog_exchange);
+  void initialize(ModelParameters &params,
+                  const Geometry<Straight> &primal_geom,
+                  const Geometry<Twisted> &dual_geom,
+                  ReferenceState &refstate) override {
+    
+    LinearSystem::initialize(params, primal_geom, dual_geom, refstate);
 
-    this->reference_state =
-        static_cast<ModelReferenceState *>(&reference_state);
+    this->reference_state = static_cast<ModelReferenceState*>(&refstate);
+
+    const auto& primal_topology = primal_geom.topology;
 
     auto pni = primal_topology.ni;
     auto pnl = primal_topology.nl;
-    auto dni = dual_topology.ni;
-    auto dnl = dual_topology.nl;
     auto nx = primal_topology.n_cells_x;
     auto ny = primal_topology.n_cells_y;
     auto nens = primal_topology.nens;
@@ -1003,6 +973,9 @@ public:
 
   virtual void compute_coefficients(real dt) override {
     auto &refstate = *this->reference_state;
+    
+    const auto& primal_topology = primal_geometry.topology;
+    const auto& dual_topology = dual_geometry.topology;
 
     auto n_cells_x = dual_topology.n_cells_x;
     auto n_cells_y = dual_topology.n_cells_y;
@@ -1190,6 +1163,9 @@ public:
                                  FieldSet<nprognostic> &solution) override {
 
     auto &refstate = *this->reference_state;
+    
+    const auto& primal_topology = primal_geometry.topology;
+    const auto& dual_topology = dual_geometry.topology;
 
     yakl::timer_start("linsolve");
 
@@ -1252,8 +1228,7 @@ public:
           }
         });
 
-    this->aux_exchange->exchanges_arr[BVAR].exchange_field(
-        auxiliary_vars.fields_arr[BVAR]);
+    auxiliary_vars.exchange({BVAR});
 
     parallel_for(
         "Compute wrhs mod",
@@ -1467,10 +1442,7 @@ public:
               complex_vrhs(0, k, j, i, n).real();
         });
 
-    this->prog_exchange->exchanges_arr[VVAR].exchange_field(
-        solution.fields_arr[VVAR]);
-    this->prog_exchange->exchanges_arr[WVAR].exchange_field(
-        solution.fields_arr[WVAR]);
+    solution.exchange({VVAR, WVAR});
 
     // back out densities
 
@@ -1495,10 +1467,7 @@ public:
         });
 
     auxiliary_vars.fields_arr[UWVAR].set_bnd(0.0);
-    this->aux_exchange->exchanges_arr[UVAR].exchange_field(
-        auxiliary_vars.fields_arr[UVAR]);
-    this->aux_exchange->exchanges_arr[UWVAR].exchange_field(
-        auxiliary_vars.fields_arr[UWVAR]);
+    auxiliary_vars.exchange({UVAR, UWVAR});
 
     parallel_for(
         "Back out density F",
@@ -1518,10 +1487,7 @@ public:
         });
 
     auxiliary_vars.fields_arr[FWVAR].set_bnd(0.0);
-    this->aux_exchange->exchanges_arr[FVAR].exchange_field(
-        auxiliary_vars.fields_arr[FVAR]);
-    this->aux_exchange->exchanges_arr[FWVAR].exchange_field(
-        auxiliary_vars.fields_arr[FWVAR]);
+    auxiliary_vars.exchange({FVAR, FWVAR});
 
     parallel_for(
         "Back out density",
@@ -1550,11 +1516,9 @@ public:
   real3d TEarr, KEarr, PEarr, IEarr, PVarr, PENSarr, trimmed_density;
 
   void initialize(ModelParameters &params, Parallel &par,
-                  const Topology &primal_topo, const Topology &dual_topo,
                   const Geometry<Straight> &primal_geom,
                   const Geometry<Twisted> &dual_geom) {
-    Stats::initialize(params, par, primal_topo, dual_topo, primal_geom,
-                      dual_geom);
+    Stats::initialize(params, par, primal_geom, dual_geom);
     this->stats_arr[DENSSTAT].initialize("mass", ndensity, this->statsize,
                                          this->nens, this->masterproc);
     this->stats_arr[DENSMAXSTAT].initialize("densmax", ndensity, this->statsize,
@@ -1568,31 +1532,30 @@ public:
     this->stats_arr[PESTAT].initialize("pens", 1, this->statsize, this->nens,
                                        this->masterproc);
 
-    this->TEarr =
-        real3d("TE", this->dual_topology.nl, this->dual_topology.n_cells_y,
-               this->dual_topology.n_cells_x);
-    this->KEarr =
-        real3d("KE", this->dual_topology.nl, this->dual_topology.n_cells_y,
-               this->dual_topology.n_cells_x);
-    this->IEarr =
-        real3d("IE", this->dual_topology.nl, this->dual_topology.n_cells_y,
-               this->dual_topology.n_cells_x);
-    this->PEarr =
-        real3d("PE", this->dual_topology.nl, this->dual_topology.n_cells_y,
-               this->dual_topology.n_cells_x);
-    this->PVarr =
-        real3d("PV", this->primal_topology.nl, this->primal_topology.n_cells_y,
-               this->primal_topology.n_cells_x);
-    this->PENSarr = real3d("PENS", this->primal_topology.nl,
-                           this->primal_topology.n_cells_y,
-                           this->primal_topology.n_cells_x);
-    this->trimmed_density =
-        real3d("trimmed_density", this->dual_topology.nl,
-               this->dual_topology.n_cells_y, this->dual_topology.n_cells_x);
+    const auto &primal_topology = primal_geometry.topology;
+    const auto &dual_topology = dual_geometry.topology;
+
+    TEarr = real3d("TE", dual_topology.nl, dual_topology.n_cells_y,
+                   dual_topology.n_cells_x);
+    KEarr = real3d("KE", dual_topology.nl, dual_topology.n_cells_y,
+                   dual_topology.n_cells_x);
+    IEarr = real3d("IE", dual_topology.nl, dual_topology.n_cells_y,
+                   dual_topology.n_cells_x);
+    PEarr = real3d("PE", dual_topology.nl, dual_topology.n_cells_y,
+                   dual_topology.n_cells_x);
+    PVarr = real3d("PV", primal_topology.nl, primal_topology.n_cells_y,
+                   primal_topology.n_cells_x);
+    PENSarr = real3d("PENS", primal_topology.nl, primal_topology.n_cells_y,
+                     primal_topology.n_cells_x);
+    trimmed_density = real3d("trimmed_density", dual_topology.nl,
+                             dual_topology.n_cells_y, dual_topology.n_cells_x);
   }
 
   void compute(FieldSet<nprognostic> &progvars, FieldSet<nconstant> &constvars,
                int tind) {
+
+    const auto &primal_topology = primal_geometry.topology;
+    const auto &dual_topology = dual_geometry.topology;
 
     for (int n = 0; n < nens; n++) {
 
@@ -1787,186 +1750,115 @@ public:
 };
 
 // *******   FieldSet Initialization   ***********//
-void initialize_variables(const Topology &ptopo, const Topology &dtopo,
-                          SArray<int, 2, nprognostic, 3> &prog_ndofs_arr,
-                          SArray<int, 2, nconstant, 3> &const_ndofs_arr,
-                          SArray<int, 2, nauxiliary, 3> &aux_ndofs_arr,
-                          std::array<std::string, nprognostic> &prog_names_arr,
-                          std::array<std::string, nconstant> &const_names_arr,
-                          std::array<std::string, nauxiliary> &aux_names_arr,
-                          std::array<Topology, nprognostic> &prog_topo_arr,
-                          std::array<Topology, nconstant> &const_topo_arr,
-                          std::array<Topology, nauxiliary> &aux_topo_arr) {
+void initialize_variables(
+    const Topology &ptopo, const Topology &dtopo,
+    std::array<FieldDescription, nprognostic> &prog_desc_arr,
+    std::array<FieldDescription, nconstant> &const_desc_arr,
+    std::array<FieldDescription, nauxiliary> &aux_desc_arr) {
 
   // primal grid represents straight quantities, dual grid twisted quantities
   // ndims is the BASEDIM size!
 
   // v, w, dens
-  prog_topo_arr[VVAR] = ptopo;
-  prog_topo_arr[WVAR] = ptopo;
-  prog_topo_arr[DENSVAR] = dtopo;
-  prog_names_arr[VVAR] = "v";
-  prog_names_arr[WVAR] = "w";
-  prog_names_arr[DENSVAR] = "dens";
-  set_dofs_arr(prog_ndofs_arr, VVAR, 1, 0, 1); // v = straight (1,0)-form
-  set_dofs_arr(prog_ndofs_arr, WVAR, 0, 1, 1); // w = straight (0,1)-form
-  set_dofs_arr(prog_ndofs_arr, DENSVAR, ndims, 1,
-               ndensity); // dens = twisted (n,1)-form
+  prog_desc_arr[VVAR] = {"v", ptopo, 1, 0, 1}; // v = straight (1,0)-form
+  prog_desc_arr[WVAR] = {"w", ptopo, 0, 1, 1}; // w = straight (0,1)-form
+  prog_desc_arr[DENSVAR] = {"dens", dtopo, ndims, 1,
+                            ndensity}; // dens = twisted (n,1)-form
 
   // hs
-  const_topo_arr[HSVAR] = dtopo;
-  const_names_arr[HSVAR] = "hs";
-  set_dofs_arr(const_ndofs_arr, HSVAR, ndims, 1, 1); // hs = twisted (n,1)-form
-  const_topo_arr[CORIOLISXZVAR] = ptopo;
-  const_names_arr[CORIOLISXZVAR] = "coriolisxz";
-  set_dofs_arr(const_ndofs_arr, CORIOLISXZVAR, 1, 1,
-               1); // f = straight (1,1)-form
+  const_desc_arr[HSVAR] = {"hs", dtopo, ndims, 1, 1}; // hs = twisted (n,1)-form
+  const_desc_arr[CORIOLISXZVAR] = {"coriolisxz", ptopo, 1, 1,
+                                   1}; // f = straight (1,1)-form
 
   // functional derivatives = F, B, K, he, U
-  aux_topo_arr[BVAR] = ptopo;
-  aux_topo_arr[FVAR] = dtopo;
-  aux_topo_arr[FVAR2] = dtopo;
-  aux_topo_arr[UVAR] = dtopo;
-  aux_topo_arr[HEVAR] = dtopo;
-  aux_topo_arr[FWVAR] = dtopo;
-  aux_topo_arr[FWVAR2] = dtopo;
-  aux_topo_arr[UWVAR] = dtopo;
-  aux_topo_arr[HEWVAR] = dtopo;
-  aux_topo_arr[KVAR] = dtopo;
-  aux_names_arr[KVAR] = "K";
-  aux_names_arr[BVAR] = "B";
-  aux_names_arr[FVAR] = "F";
-  aux_names_arr[FVAR2] = "F2";
-  aux_names_arr[UVAR] = "U";
-  aux_names_arr[HEVAR] = "he";
-  aux_names_arr[FWVAR] = "Fw";
-  aux_names_arr[FWVAR2] = "Fw2";
-  aux_names_arr[UWVAR] = "Uw";
-  aux_names_arr[HEWVAR] = "hew";
-  set_dofs_arr(aux_ndofs_arr, BVAR, 0, 0, ndensity);  // B = straight (0,0)-form
-  set_dofs_arr(aux_ndofs_arr, KVAR, ndims, 1, 1);     // K = twisted (n,1)-form
-  set_dofs_arr(aux_ndofs_arr, FVAR, ndims - 1, 1, 1); // F = twisted
+  aux_desc_arr[FVAR] = {"F", dtopo, ndims - 1, 1, 1}; // F = twisted
                                                       // (n-1,1)-form
-  set_dofs_arr(aux_ndofs_arr, FVAR2, ndims - 1, 1, 1); // F = twisted
-                                                       // (n-1,1)-form
-  set_dofs_arr(aux_ndofs_arr, UVAR, ndims - 1, 1, 1);  // U = twisted
-                                                       // (n-1,1)-form
-  set_dofs_arr(aux_ndofs_arr, HEVAR, ndims - 1, 1,
-               1); // he lives on horiz dual edges, associated with F
-  set_dofs_arr(aux_ndofs_arr, FWVAR, ndims, 0, 1);  // Fw = twisted (n,0)-form
-  set_dofs_arr(aux_ndofs_arr, FWVAR2, ndims, 0, 1); // Fw = twisted (n,0)-form
-  set_dofs_arr(aux_ndofs_arr, UWVAR, ndims, 0, 1);  // Uw = twisted (n,0)-form
-  set_dofs_arr(aux_ndofs_arr, HEWVAR, ndims, 0,
-               1); // hew lives on vert dual edges, associated with Fw
+  aux_desc_arr[FVAR2] = {"F2", dtopo, ndims - 1, 1, 1}; // F2 = twisted
+                                                      // (n-1,1)-form
+  aux_desc_arr[BVAR] = {"B", ptopo, 0, 0, ndensity};  // B = straight (0,0)-form
+
+  aux_desc_arr[KVAR] = {"K", dtopo, ndims, 1, 1}; // K = twisted (n,1)-form
+
+  aux_desc_arr[HEVAR] = {"he", dtopo, ndims - 1, 1,
+                         1}; // he lives on horiz dual edges, associated with F
+
+  aux_desc_arr[UVAR] = {"U", dtopo, ndims - 1, 1, 1}; // U = twisted
+                                                      // (n-1,1)-form
+
+  aux_desc_arr[FWVAR] = {"Fw", dtopo, ndims, 0, 1}; // Fw = twisted (n,0)-form
+  aux_desc_arr[FWVAR2] = {"Fw2", dtopo, ndims, 0, 1}; // Fw2 = twisted (n,0)-form
+
+  aux_desc_arr[HEWVAR] = {
+      "hew", dtopo, ndims, 0,
+      1}; // hew lives on vert dual edges, associated with Fw
+
+  aux_desc_arr[UWVAR] = {"Uw", dtopo, ndims, 0, 1}; // Uw = twisted (n,0)-form
 
   // dens primal grid reconstruction stuff- dens0, edgerecon, recon
-  aux_topo_arr[DENSRECONVAR] = dtopo;
-  aux_topo_arr[DENSEDGERECONVAR] = dtopo;
-  aux_topo_arr[DENSVERTRECONVAR] = dtopo;
-  aux_topo_arr[DENSVERTEDGERECONVAR] = dtopo;
-  aux_topo_arr[DENS0VAR] = ptopo;
-  aux_names_arr[DENS0VAR] = "dens0";
-  aux_names_arr[DENSVERTRECONVAR] = "densvertrecon";
-  aux_names_arr[DENSVERTEDGERECONVAR] = "densvertedgerecon";
-  aux_names_arr[DENSRECONVAR] = "densrecon";
-  aux_names_arr[DENSEDGERECONVAR] = "densedgerecon";
-  set_dofs_arr(
-      aux_ndofs_arr, DENSRECONVAR, ndims - 1, 1,
-      ndensity); // densrecon lives on horiz dual edges, associated with F
-  set_dofs_arr(
-      aux_ndofs_arr, DENSEDGERECONVAR, ndims, 1,
+  aux_desc_arr[DENS0VAR] = {"dens0", ptopo, 0, 0,
+                            ndensity}; // dens0 = straight (0,0)-form
+  aux_desc_arr[DENSEDGERECONVAR] = {
+      "densedgerecon", dtopo, ndims, 1,
       2 * ndims *
-          ndensity); // densedgerecon lives on dual cells, associated with F
-  set_dofs_arr(
-      aux_ndofs_arr, DENSVERTRECONVAR, ndims, 0,
-      ndensity); // densvertrecon lives on vert dual edges, associated with Fw
-  set_dofs_arr(
-      aux_ndofs_arr, DENSVERTEDGERECONVAR, ndims, 1,
-      2 * ndensity); // densedgerecon lives on dual cells, associated with Fw
-  set_dofs_arr(aux_ndofs_arr, DENS0VAR, 0, 0,
-               ndensity); // dens0 = straight (0,0)-form
+          ndensity}; // densedgerecon lives on dual cells, associated with F
+  aux_desc_arr[DENSRECONVAR] = {
+      "densrecon", dtopo, ndims - 1, 1,
+      ndensity}; // densrecon lives on horiz dual edges, associated with F
+  aux_desc_arr[DENSVERTEDGERECONVAR] = {
+      "densvertedgerecon", dtopo, ndims, 1,
+      2 * ndensity}; // densedgerecon lives on dual cells, associated with Fw
+  aux_desc_arr[DENSVERTRECONVAR] = {
+      "densvertrecon", dtopo, ndims, 0,
+      ndensity}; // densvertrecon lives on vert dual edges, associated with Fw
 
   // fct stuff- Phi, Mf, edgeflux
-  aux_topo_arr[PHIVAR] = dtopo;
-  aux_topo_arr[PHIVERTVAR] = dtopo;
-  aux_topo_arr[MFVAR] = dtopo;
-  aux_topo_arr[EDGEFLUXVAR] = dtopo;
-  aux_topo_arr[VERTEDGEFLUXVAR] = dtopo;
-  aux_names_arr[PHIVAR] = "Phi";
-  aux_names_arr[PHIVERTVAR] = "PhiVert";
-  aux_names_arr[MFVAR] = "Mf";
-  aux_names_arr[EDGEFLUXVAR] = "edgeflux";
-  aux_names_arr[VERTEDGEFLUXVAR] = "vertedgeflux";
-  set_dofs_arr(aux_ndofs_arr, PHIVAR, ndims - 1, 1, ndensity);
-  set_dofs_arr(aux_ndofs_arr, PHIVERTVAR, ndims, 0, ndensity);
-  set_dofs_arr(aux_ndofs_arr, MFVAR, ndims, 1, ndensity);
-  set_dofs_arr(aux_ndofs_arr, EDGEFLUXVAR, ndims - 1, 1, ndensity);
-  set_dofs_arr(aux_ndofs_arr, VERTEDGEFLUXVAR, ndims, 0, ndensity);
+  aux_desc_arr[PHIVAR] = {"Phi", dtopo, ndims - 1, 1, ndensity};
+  aux_desc_arr[MFVAR] = {"Mf", dtopo, ndims, 1, ndensity};
+  aux_desc_arr[EDGEFLUXVAR] = {"edgeflux", dtopo, ndims - 1, 1, ndensity};
+  aux_desc_arr[PHIVERTVAR] = {"PhiVert", dtopo, ndims, 0, ndensity};
+  aux_desc_arr[VERTEDGEFLUXVAR] = {"vertedgeflux", dtopo, ndims, 0, ndensity};
 
   // Q stuff
-  aux_topo_arr[QXZ0VAR] = dtopo;
-  aux_names_arr[QXZ0VAR] = "QXZ0";
-  set_dofs_arr(aux_ndofs_arr, QXZ0VAR, 0, 0, 1); // Q0 = twisted (0,0)-form
-  aux_topo_arr[QXZRECONVAR] = ptopo;
-  aux_topo_arr[QXZEDGERECONVAR] = ptopo;
-  aux_topo_arr[QXZVERTRECONVAR] = ptopo;
-  aux_topo_arr[QXZVERTEDGERECONVAR] = ptopo;
-  aux_topo_arr[QXZFLUXVAR] = ptopo;
-  aux_topo_arr[QXZVERTFLUXVAR] = ptopo;
-  aux_names_arr[QXZRECONVAR] = "qxzrecon";
-  aux_names_arr[QXZEDGERECONVAR] = "qxzedgerecon";
-  aux_names_arr[QXZVERTRECONVAR] = "qxzvertrecon";
-  aux_names_arr[QXZVERTEDGERECONVAR] = "qxzvertedgerecon";
-  aux_names_arr[QXZFLUXVAR] = "qxzflux";
-  aux_names_arr[QXZVERTFLUXVAR] = "qxzvertflux";
-  set_dofs_arr(aux_ndofs_arr, QXZRECONVAR, 0, 1,
-               1); // qxzrecon lives on vert primal edges, associated with w
-  set_dofs_arr(
-      aux_ndofs_arr, QXZEDGERECONVAR, ndims, 1,
-      2 * 1); // qxzedgerecon lives on primal cells, associated with Fw/w
-  set_dofs_arr(
-      aux_ndofs_arr, QXZVERTRECONVAR, 1, 0,
-      1); // qxzsvertrecon lives on horiz primal edges, associated with v
-  set_dofs_arr(
-      aux_ndofs_arr, QXZVERTEDGERECONVAR, ndims, 1,
-      2 * 1); // qxzvertedgerecon lives on primal cells, associated with F/v
-  set_dofs_arr(aux_ndofs_arr, QXZFLUXVAR, 0, 1,
-               1); // qxzflux lives on vert primal edges, associated with w
-  set_dofs_arr(aux_ndofs_arr, QXZVERTFLUXVAR, 1, 0,
-               1); // qxzvertflux lives on horiz primal edges, associated with v
+  aux_desc_arr[QXZ0VAR] = {"QXZ0", dtopo, 0, 0, 1}; // Q0 = twisted (0,0)-form
+  aux_desc_arr[QXZRECONVAR] = {
+      "qxzrecon", ptopo, 0, 1,
+      1}; // qxzrecon lives on vert primal edges, associated with w
+  aux_desc_arr[QXZEDGERECONVAR] = {
+      "qxzedgerecon", ptopo, ndims, 1,
+      2 * 1}; // qxzedgerecon lives on primal cells, associated with Fw/w
+  aux_desc_arr[QXZVERTRECONVAR] = {
+      "qxzvertrecon", ptopo, 1, 0,
+      1}; // qxzsvertrecon lives on horiz primal edges, associated with v
+  aux_desc_arr[QXZVERTEDGERECONVAR] = {
+      "qxzvertedgerecon", ptopo, ndims, 1,
+      2 * 1}; // qxzvertedgerecon lives on primal cells, associated with F/v
+  aux_desc_arr[QXZFLUXVAR] = {
+      "qxzflux", ptopo, 0, 1,
+      1}; // qxzflux lives on vert primal edges, associated with w
+  aux_desc_arr[QXZVERTFLUXVAR] = {
+      "qxzvertflux", ptopo, 1, 0,
+      1}; // qxzvertflux lives on horiz primal edges, associated with v
 
-  aux_topo_arr[FTVAR] = ptopo;
-  aux_topo_arr[FTWVAR] = ptopo;
-  aux_names_arr[FTVAR] = "FT";
-  aux_names_arr[FTWVAR] = "FTW";
-  set_dofs_arr(aux_ndofs_arr, FTVAR, 1, 0,
-               1); // FT = straight (1,0)-form ie Fw at v pts
-  set_dofs_arr(aux_ndofs_arr, FTWVAR, 0, 1,
-               1); // FTW = straight (0,1)-form ie F at w pts
+  aux_desc_arr[FTVAR] = {"FT", ptopo, 1, 0,
+                         1}; // FT = straight (1,0)-form ie Fw at v pts
+  aux_desc_arr[FTWVAR] = {"FTW", ptopo, 0, 1,
+                          1}; // FTW = straight (0,1)-form ie F at w pts
 
-  aux_topo_arr[FXZ0VAR] = dtopo;
-  aux_topo_arr[CORIOLISXZRECONVAR] = ptopo;
-  aux_topo_arr[CORIOLISXZEDGERECONVAR] = ptopo;
-  aux_topo_arr[CORIOLISXZVERTRECONVAR] = ptopo;
-  aux_topo_arr[CORIOLISXZVERTEDGERECONVAR] = ptopo;
-  aux_names_arr[FXZ0VAR] = "fxz0";
-  aux_names_arr[CORIOLISXZRECONVAR] = "coriolisxzrecon";
-  aux_names_arr[CORIOLISXZEDGERECONVAR] = "coriolisxzedgerecon";
-  aux_names_arr[CORIOLISXZVERTRECONVAR] = "coriolisxzvertrecon";
-  aux_names_arr[CORIOLISXZVERTEDGERECONVAR] = "coriolisxzvertedgerecon";
-  set_dofs_arr(aux_ndofs_arr, FXZ0VAR, 0, 0, 1); // fxz0 is a twisted 0,0 form
-  set_dofs_arr(
-      aux_ndofs_arr, CORIOLISXZRECONVAR, 0, 1,
-      1); // coriolisxzrecon lives on vert primal edges, associated with w
-  set_dofs_arr(
-      aux_ndofs_arr, CORIOLISXZEDGERECONVAR, ndims, 1,
-      2 * 1); // coriolisxzedgerecon lives on primal cells, associated with Fw/w
-  set_dofs_arr(
-      aux_ndofs_arr, CORIOLISXZVERTRECONVAR, 1, 0,
-      1); // coriolisxzsvertrecon lives on horiz primal edges, associated with v
-  set_dofs_arr(aux_ndofs_arr, CORIOLISXZVERTEDGERECONVAR, ndims, 1,
-               2 * 1); // coriolisxzvertedgerecon lives on primal cells,
-                       // associated with F/v
+  aux_desc_arr[FXZ0VAR] = {"fxz0", dtopo, 0, 0,
+                           1}; // fxz0 is a twisted 0,0 form
+  aux_desc_arr[CORIOLISXZRECONVAR] = {
+      "coriolisxzrecon", ptopo, 0, 1,
+      1}; // coriolisxzrecon lives on vert primal edges, associated with w
+  aux_desc_arr[CORIOLISXZEDGERECONVAR] = {
+      "coriolisxzedgerecon", ptopo, ndims, 1,
+      2 * 1}; // coriolisxzedgerecon lives on primal cells, associated with Fw/w
+  aux_desc_arr[CORIOLISXZVERTRECONVAR] = {
+      "coriolisxzvertrecon", ptopo, 1, 0,
+      1}; // coriolisxzsvertrecon lives on horiz primal edges, associated with v
+  aux_desc_arr[CORIOLISXZVERTEDGERECONVAR] = {
+      "coriolisxzvertedgerecon", ptopo, ndims, 1,
+      2 * 1}; // coriolisxzvertedgerecon lives on primal cells,
+              // associated with F/v
 
   // #if defined _AN || defined _MAN
   // aux_topo_arr[PVAR] = ptopo; //p = straight 0-form
@@ -2144,7 +2036,6 @@ public:
 
   void set_initial_conditions(FieldSet<nprognostic> &progvars,
                               FieldSet<nconstant> &constvars,
-                              ExchangeSet<nconstant> &const_exchange,
                               const Geometry<Straight> &primal_geom,
                               const Geometry<Twisted> &dual_geom) override {
 
@@ -2870,13 +2761,12 @@ struct GravityWave {
 
   struct ExactDensityDiagnostic : public Diagnostic {
 
-    void initialize(const Topology &ptopo, const Topology &dtopo,
-                    const Geometry<Straight> &pgeom,
+    void initialize(const Geometry<Straight> &pgeom,
                     const Geometry<Twisted> &dgeom) override {
       name = "dense";
-      topology = dtopo;
+      topology = dgeom.topology;
       dofs_arr = {1, 1, 2};
-      Diagnostic::initialize(ptopo, dtopo, pgeom, dgeom);
+      Diagnostic::initialize(pgeom, dgeom);
     }
 
     void compute(real time, const FieldSet<nconstant> &const_vars,
@@ -2899,13 +2789,12 @@ struct GravityWave {
 
   struct BackgroundDensityDiagnostic : public Diagnostic {
 
-    void initialize(const Topology &ptopo, const Topology &dtopo,
-                    const Geometry<Straight> &pgeom,
+    void initialize(const Geometry<Straight> &pgeom,
                     const Geometry<Twisted> &dgeom) override {
       name = "densb";
-      topology = dtopo;
+      topology = dgeom.topology;
       dofs_arr = {1, 1, 2};
-      Diagnostic::initialize(ptopo, dtopo, pgeom, dgeom);
+      Diagnostic::initialize(pgeom, dgeom);
     }
 
     void compute(real time, const FieldSet<nconstant> &const_vars,

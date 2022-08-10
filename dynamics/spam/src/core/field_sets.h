@@ -4,6 +4,21 @@
 #include "exchange.h"
 #include "fields.h"
 #include "topology.h"
+#include <initializer_list>
+
+template <uint num_fields> class ExchangeSet {
+
+public:
+  std::array<Exchange, num_fields> exchanges_arr;
+  bool is_initialized;
+
+  ExchangeSet();
+  ExchangeSet(const ExchangeSet<num_fields> &exch) = delete;
+  ExchangeSet &operator=(const ExchangeSet<num_fields> &exch) = delete;
+  void initialize(const std::array<FieldDescription, num_fields> &desc_arr);
+  void initialize(const ExchangeSet<num_fields> &es);
+  void printinfo();
+};
 
 template <uint num_fields> class FieldSet {
 
@@ -17,9 +32,8 @@ public:
   // FieldSet& operator=( const FieldSet<num_fields> &vs) = delete;
   void printinfo();
   void initialize(const std::string name,
-                  std::array<std::string, num_fields> &names_arr,
-                  std::array<Topology, num_fields> &topo_arr,
-                  SArray<int, 2, num_fields, 3> &ndofs_arr);
+                  const std::array<FieldDescription, num_fields> &desc_arr,
+                  ExchangeSet<num_fields> &exchange_set);
   void initialize(const FieldSet<num_fields> &vs, const std::string name);
   void copy(const FieldSet<num_fields> &vs);
   void waxpy(real alpha, const FieldSet<num_fields> &x,
@@ -29,22 +43,8 @@ public:
   void waxpbypcz(real alpha, real beta, real gamma,
                  const FieldSet<num_fields> &x, const FieldSet<num_fields> &y,
                  const FieldSet<num_fields> &z);
-};
-
-template <uint num_fields> class ExchangeSet {
-
-public:
-  std::array<Exchange, num_fields> exchanges_arr;
-  bool is_initialized;
-
-  ExchangeSet();
-  ExchangeSet(const ExchangeSet<num_fields> &exch) = delete;
-  ExchangeSet &operator=(const ExchangeSet<num_fields> &exch) = delete;
-  void initialize(std::array<Topology, num_fields> &topo_arr,
-                  SArray<int, 2, num_fields, 3> &ndofs_arr);
-  void initialize(const ExchangeSet<num_fields> &es);
-  void printinfo();
-  void exchange_variable_set(FieldSet<num_fields> &vs);
+  void exchange();
+  void exchange(const std::initializer_list<int> &indices);
 };
 
 template <uint num_fields> ExchangeSet<num_fields>::ExchangeSet() {
@@ -53,11 +53,10 @@ template <uint num_fields> ExchangeSet<num_fields>::ExchangeSet() {
 
 template <uint num_fields>
 void ExchangeSet<num_fields>::initialize(
-    std::array<Topology, num_fields> &topo_arr,
-    SArray<int, 2, num_fields, 3> &ndofs_arr) {
+    const std::array<FieldDescription, num_fields> &desc_arr) {
   for (int i = 0; i < num_fields; i++) {
-    this->exchanges_arr[i].initialize(topo_arr[i], ndofs_arr(i, 0),
-                                      ndofs_arr(i, 1), ndofs_arr(i, 2));
+    this->exchanges_arr[i].initialize(desc_arr[i].topology, desc_arr[i].basedof,
+                                      desc_arr[i].extdof, desc_arr[i].ndofs);
   }
   this->is_initialized = true;
 }
@@ -70,12 +69,13 @@ template <uint num_fields> void ExchangeSet<num_fields>::printinfo() {
 }
 
 // EVENTUALLY THIS SHOULD BE MORE CLEVER IE PACK ALL THE FIELDS AT ONCE, ETC.
-template <uint num_fields>
-void ExchangeSet<num_fields>::exchange_variable_set(FieldSet<num_fields> &vs) {
-  for (int i = 0; i < num_fields; i++) {
-    this->exchanges_arr[i].exchange_field(vs.fields_arr[i]);
-  }
-}
+// template <uint num_fields>
+// void ExchangeSet<num_fields>::exchange_variable_set(FieldSet<num_fields> &vs)
+// {
+//  for (int i = 0; i < num_fields; i++) {
+//    this->exchanges_arr[i].exchange_field(vs.fields_arr[i].data);
+//  }
+//}
 
 template <uint num_fields>
 void ExchangeSet<num_fields>::initialize(const ExchangeSet<num_fields> &es) {
@@ -98,13 +98,14 @@ template <uint num_fields> void FieldSet<num_fields>::printinfo() {
 
 template <uint num_fields>
 void FieldSet<num_fields>::initialize(
-    const std::string name, std::array<std::string, num_fields> &names_arr,
-    std::array<Topology, num_fields> &topo_arr,
-    SArray<int, 2, num_fields, 3> &ndofs_arr) {
+    const std::string name,
+    const std::array<FieldDescription, num_fields> &desc_arr,
+    ExchangeSet<num_fields> &exchange_set) {
   this->baseName = name;
   for (int i = 0; i < num_fields; i++) {
-    this->fields_arr[i].initialize(topo_arr[i], names_arr[i], ndofs_arr(i, 0),
-                                   ndofs_arr(i, 1), ndofs_arr(i, 2));
+    this->fields_arr[i].initialize(
+        desc_arr[i].topology, &exchange_set.exchanges_arr[i], desc_arr[i].name,
+        desc_arr[i].basedof, desc_arr[i].extdof, desc_arr[i].ndofs);
   }
   this->is_initialized = true;
 }
@@ -158,5 +159,19 @@ void FieldSet<num_fields>::waxpbypcz(real alpha, real beta, real gamma,
   for (int i = 0; i < num_fields; i++) {
     this->fields_arr[i].waxpbypcz(alpha, beta, gamma, x.fields_arr[i],
                                   y.fields_arr[i], z.fields_arr[i]);
+  }
+}
+
+template <uint num_fields> void FieldSet<num_fields>::exchange() {
+  for (auto &f : fields_arr) {
+    f.exchange();
+  }
+}
+
+// EVENTUALLY THIS SHOULD BE MORE CLEVER IE PACK ALL THE FIELDS AT ONCE, ETC.
+template <uint num_fields>
+void FieldSet<num_fields>::exchange(const std::initializer_list<int> &indices) {
+  for (int i : indices) {
+    fields_arr[i].exchange();
   }
 }

@@ -51,25 +51,20 @@ public:
   ThermoPotential thermo;
   Geometry<Straight> primal_geometry;
   Geometry<Twisted> dual_geometry;
-  Topology primal_topology;
-  Topology dual_topology;
 
   void initialize(PamCoupler &coupler, ModelParameters &params,
-                  const ThermoPotential &thermodynamics, Topology &primal_topo,
-                  Topology &dual_topo, const Geometry<Straight> &primal_geom,
+                  const ThermoPotential &thermodynamics,
+                  const Geometry<Straight> &primal_geom,
                   const Geometry<Twisted> &dual_geom);
   static void initialize(VariableSetBase &varset, PamCoupler &coupler,
                          ModelParameters &params,
                          const ThermoPotential &thermodynamics,
-                         Topology &primal_topo, Topology &dual_topo,
                          const Geometry<Straight> &primal_geom,
                          const Geometry<Twisted> &dual_geom) {
 
     varset.thermo = thermodynamics;
     varset.primal_geometry = primal_geom;
     varset.dual_geometry = dual_geom;
-    varset.primal_topology = primal_topo;
-    varset.dual_topology = dual_topo;
 
     // If more physics parameterizations are added this logic might need to
     // change
@@ -174,6 +169,9 @@ void VariableSetBase<T>::convert_dynamics_to_coupler_state(
     const FieldSet<nconstant> &const_vars) {
 
   if constexpr (T::couple) {
+    const auto &primal_topology = primal_geometry.topology;
+    const auto &dual_topology = dual_geometry.topology;
+
     int dis = dual_topology.is;
     int djs = dual_topology.js;
     int dks = dual_topology.ks;
@@ -294,6 +292,9 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_state(
     const FieldSet<nconstant> &const_vars) {
 
   if constexpr (T::couple) {
+    const auto &primal_topology = primal_geometry.topology;
+    const auto &dual_topology = dual_geometry.topology;
+
     int dis = dual_topology.is;
     int djs = dual_topology.js;
     int dks = dual_topology.ks;
@@ -397,23 +398,19 @@ template <>
 void VariableSetBase<VS_SWE>::initialize(PamCoupler &coupler,
                                          ModelParameters &params,
                                          const ThermoPotential &thermodynamics,
-                                         Topology &primal_topo,
-                                         Topology &dual_topo,
                                          const Geometry<Straight> &primal_geom,
                                          const Geometry<Twisted> &dual_geom) {
   dens_name[0] = "h";
   dens_desc[0] = "fluid height";
   dens_pos[0] = false;
   VariableSetBase::initialize(*this, coupler, params, thermodynamics,
-                              primal_topo, dual_topo, primal_geom, dual_geom);
+                              primal_geom, dual_geom);
 }
 
 template <>
 void VariableSetBase<VS_TSWE>::initialize(PamCoupler &coupler,
                                           ModelParameters &params,
                                           const ThermoPotential &thermodynamics,
-                                          Topology &primal_topo,
-                                          Topology &dual_topo,
                                           const Geometry<Straight> &primal_geom,
                                           const Geometry<Twisted> &dual_geom) {
   dens_name[0] = "h";
@@ -423,15 +420,13 @@ void VariableSetBase<VS_TSWE>::initialize(PamCoupler &coupler,
   dens_pos[0] = false;
   dens_pos[1] = false;
   VariableSetBase::initialize(*this, coupler, params, thermodynamics,
-                              primal_topo, dual_topo, primal_geom, dual_geom);
+                              primal_geom, dual_geom);
 }
 
 template <>
 void VariableSetBase<VS_CE>::initialize(PamCoupler &coupler,
                                         ModelParameters &params,
                                         const ThermoPotential &thermodynamics,
-                                        Topology &primal_topo,
-                                        Topology &dual_topo,
                                         const Geometry<Straight> &primal_geom,
                                         const Geometry<Twisted> &dual_geom) {
   dens_name[0] = "rho";
@@ -441,7 +436,7 @@ void VariableSetBase<VS_CE>::initialize(PamCoupler &coupler,
   dens_pos[0] = false;
   dens_pos[1] = false;
   VariableSetBase::initialize(*this, coupler, params, thermodynamics,
-                              primal_topo, dual_topo, primal_geom, dual_geom);
+                              primal_geom, dual_geom);
 }
 
 template <>
@@ -466,9 +461,8 @@ real YAKL_INLINE VariableSetBase<VS_CE>::get_alpha(const real5d densvar, int k,
 template <>
 void VariableSetBase<VS_MCE_rho>::initialize(
     PamCoupler &coupler, ModelParameters &params,
-    const ThermoPotential &thermodynamics, Topology &primal_topo,
-    Topology &dual_topo, const Geometry<Straight> &primal_geom,
-    const Geometry<Twisted> &dual_geom) {
+    const ThermoPotential &thermodynamics,
+    const Geometry<Straight> &primal_geom, const Geometry<Twisted> &dual_geom) {
   dens_name[0] = "rho";
   dens_name[1] = "S";
   dens_desc[0] = "fluid density";
@@ -476,7 +470,7 @@ void VariableSetBase<VS_MCE_rho>::initialize(
   dens_pos[0] = false;
   dens_pos[1] = false;
   VariableSetBase::initialize(*this, coupler, params, thermodynamics,
-                              primal_topo, dual_topo, primal_geom, dual_geom);
+                              primal_geom, dual_geom);
 }
 
 template <>
@@ -581,9 +575,8 @@ void YAKL_INLINE VariableSetBase<VS_MCE_rho>::set_entropic_density(
 template <>
 void VariableSetBase<VS_MCE_rhod>::initialize(
     PamCoupler &coupler, ModelParameters &params,
-    const ThermoPotential &thermodynamics, Topology &primal_topo,
-    Topology &dual_topo, const Geometry<Straight> &primal_geom,
-    const Geometry<Twisted> &dual_geom) {
+    const ThermoPotential &thermodynamics,
+    const Geometry<Straight> &primal_geom, const Geometry<Twisted> &dual_geom) {
   dens_name[0] = "rho_d";
   dens_name[1] = "S";
   dens_desc[0] = "fluid dry density";
@@ -591,7 +584,7 @@ void VariableSetBase<VS_MCE_rhod>::initialize(
   dens_pos[0] = false;
   dens_pos[1] = false;
   VariableSetBase::initialize(*this, coupler, params, thermodynamics,
-                              primal_topo, dual_topo, primal_geom, dual_geom);
+                              primal_geom, dual_geom);
 }
 
 template <>

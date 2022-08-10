@@ -2,7 +2,6 @@
 #pragma once
 
 #include "common.h"
-#include "exchange.h"
 #include "field_sets.h"
 #include "model.h"
 #include "topology.h"
@@ -19,7 +18,6 @@ public:
   Tendencies *tendencies;
   FieldSet<nconstant> *const_vars;
   FieldSet<nauxiliary> *auxiliary_vars;
-  ExchangeSet<nprognostic> *x_exchange;
   uint nstages;
 
   bool is_initialized;
@@ -29,8 +27,7 @@ public:
   operator=(const RKSimpleTimeIntegrator &rksimple) = delete;
   void initialize(ModelParameters &params, Tendencies &tend,
                   FieldSet<nprognostic> &xvars, FieldSet<nconstant> &consts,
-                  FieldSet<nauxiliary> &auxiliarys,
-                  ExchangeSet<nprognostic> &prog_exch);
+                  FieldSet<nauxiliary> &auxiliarys);
   void stepForward(real dt);
   void set_stage_coefficients(ModelParameters &params);
 };
@@ -53,15 +50,13 @@ void RKSimpleTimeIntegrator::initialize(ModelParameters &params,
                                         Tendencies &tend,
                                         FieldSet<nprognostic> &xvars,
                                         FieldSet<nconstant> &consts,
-                                        FieldSet<nauxiliary> &auxiliarys,
-                                        ExchangeSet<nprognostic> &prog_exch) {
+                                        FieldSet<nauxiliary> &auxiliarys) {
   this->xtemp.initialize(xvars, "xtemp");
   this->xtend.initialize(xvars, "xtend");
   this->x = &xvars;
   this->tendencies = &tend;
   this->const_vars = &consts;
   this->auxiliary_vars = &auxiliarys;
-  this->x_exchange = &prog_exch;
   set_stage_coefficients(params);
   this->is_initialized = true;
 }
@@ -74,7 +69,7 @@ void RKSimpleTimeIntegrator::stepForward(real dt) {
 
   for (int i = 1; i < nstages; i++) {
     // std::cout << "stage " << i << "\n";
-    this->x_exchange->exchange_variable_set(this->xtemp);
+    this->xtemp.exchange();
     this->tendencies->compute_rhs(dt, *this->const_vars, this->xtemp,
                                   *this->auxiliary_vars, this->xtend);
     this->xtemp.waxpy(-1. * dt * this->stage_coeffs(i), this->xtend, *this->x);
@@ -82,5 +77,5 @@ void RKSimpleTimeIntegrator::stepForward(real dt) {
   // THIS COPY CAN BE AVOIDED IF WE ARE CLEVER ie swap x and xtemp
   // Would require being careful with IO also?
   this->x->copy(this->xtemp);
-  this->x_exchange->exchange_variable_set(*this->x);
+  this->x->exchange();
 }

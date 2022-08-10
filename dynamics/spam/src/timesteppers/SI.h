@@ -25,7 +25,6 @@ public:
   LinearSystem *linear_system;
   FieldSet<nconstant> *const_vars;
   FieldSet<nauxiliary> *auxiliary_vars;
-  ExchangeSet<nprognostic> *x_exchange;
 
   bool is_initialized;
   SITimeIntegrator();
@@ -33,8 +32,7 @@ public:
   SITimeIntegrator &operator=(const SITimeIntegrator &) = delete;
   void initialize(ModelParameters &params, Tendencies &tend,
                   LinearSystem &linsys, FieldSet<nprognostic> &xvars,
-                  FieldSet<nconstant> &consts, FieldSet<nauxiliary> &auxiliarys,
-                  ExchangeSet<nprognostic> &prog_exch);
+                  FieldSet<nconstant> &consts, FieldSet<nauxiliary> &auxiliarys);
   void stepForward(real dt);
 };
 
@@ -47,8 +45,7 @@ void SITimeIntegrator<nquad>::initialize(ModelParameters &params,
                                          Tendencies &tend, LinearSystem &linsys,
                                          FieldSet<nprognostic> &xvars,
                                          FieldSet<nconstant> &consts,
-                                         FieldSet<nauxiliary> &auxiliarys,
-                                         ExchangeSet<nprognostic> &prog_exch) {
+                                         FieldSet<nauxiliary> &auxiliarys) {
 
   set_ref_quad_pts_wts(this->quad_pts, this->quad_wts);
 
@@ -60,7 +57,6 @@ void SITimeIntegrator<nquad>::initialize(ModelParameters &params,
   this->linear_system = &linsys;
   this->const_vars = &consts;
   this->auxiliary_vars = &auxiliarys;
-  this->x_exchange = &prog_exch;
 
   this->tol = params.si_tolerance;
   this->step = 0;
@@ -86,7 +82,7 @@ template <uint nquad> void SITimeIntegrator<nquad>::stepForward(real dt) {
   this->xn.copy(*this->x);
   // store residual in xm
   this->xm.waxpbypcz(-1, 1, -dt, this->xn, *this->x, this->dx);
-  this->x_exchange->exchange_variable_set(this->xm);
+  this->xm.exchange();
 
   int iter = 0;
   int maxiters = 50;
@@ -116,7 +112,7 @@ template <uint nquad> void SITimeIntegrator<nquad>::stepForward(real dt) {
 
     this->xm.waxpby(1 - this->quad_pts(0), this->quad_pts(0), *this->x,
                     this->xn);
-    this->x_exchange->exchange_variable_set(this->xm);
+    this->xm.exchange();
     this->tendencies->compute_functional_derivatives(
         ADD_MODE::REPLACE, this->quad_wts(0), dt, *this->const_vars, this->xm,
         *this->auxiliary_vars);
@@ -124,21 +120,21 @@ template <uint nquad> void SITimeIntegrator<nquad>::stepForward(real dt) {
     for (int m = 1; m < nquad; ++m) {
       this->xm.waxpby(1 - this->quad_pts(m), this->quad_pts(m), *this->x,
                       this->xn);
-      this->x_exchange->exchange_variable_set(this->xm);
+      this->xm.exchange();
       this->tendencies->compute_functional_derivatives(
           ADD_MODE::ADD, this->quad_wts(m), dt, *this->const_vars, this->xm,
           *this->auxiliary_vars);
     }
 
     this->xm.waxpby(0.5_fp, 0.5_fp, *this->x, this->xn);
-    this->x_exchange->exchange_variable_set(this->xm);
+    this->xm.exchange();
 
     this->tendencies->apply_symplectic(dt, *this->const_vars, this->xm,
                                        *this->auxiliary_vars, this->dx);
 
     // store residual in xm
     this->xm.waxpbypcz(-1, 1, -dt, this->xn, *this->x, this->dx);
-    this->x_exchange->exchange_variable_set(this->xm);
+    this->xm.exchange();
     res_norm = norm(xm);
 
     iter++;
@@ -170,5 +166,5 @@ template <uint nquad> void SITimeIntegrator<nquad>::stepForward(real dt) {
   }
 
   this->x->copy(this->xn);
-  this->x_exchange->exchange_variable_set(*this->x);
+  this->x->exchange();
 }

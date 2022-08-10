@@ -108,15 +108,6 @@ template <class T> YAKL_INLINE T mymax(T const v1, T const v2) {
   }
 }
 
-// Utility function for settings dofs_arr
-template <uint nvars>
-void set_dofs_arr(SArray<int, 2, nvars, 3> &dofs_arr, int var, int basedof,
-                  int extdof, int ndofs) {
-  dofs_arr(var, 0) = basedof;
-  dofs_arr(var, 1) = extdof;
-  dofs_arr(var, 2) = ndofs;
-}
-
 // Utility functions for serial output
 void inline debug_print(std::string out, int masterproc) {
 #ifdef PAM_DEBUG
