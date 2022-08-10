@@ -32,7 +32,8 @@ public:
   SITimeIntegrator &operator=(const SITimeIntegrator &) = delete;
   void initialize(ModelParameters &params, Tendencies &tend,
                   LinearSystem &linsys, FieldSet<nprognostic> &xvars,
-                  FieldSet<nconstant> &consts, FieldSet<nauxiliary> &auxiliarys);
+                  FieldSet<nconstant> &consts,
+                  FieldSet<nauxiliary> &auxiliarys);
   void stepForward(real dt);
 };
 

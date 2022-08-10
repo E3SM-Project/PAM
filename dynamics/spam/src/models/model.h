@@ -89,7 +89,12 @@ struct TracerGaussian : Tracer {
   }
 };
 
-class ReferenceState {};
+class ReferenceState {
+public:
+  bool is_initialized = false;
+  virtual void initialize(const Topology &primal_topology,
+                          const Topology &dual_topology) = 0;
+};
 
 class TestCase {
 public:
@@ -99,7 +104,7 @@ public:
   TestCase() { this->tracer_f = TracerArr("tracer_f", ntracers_dycore); }
 
   virtual void
-  add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics) {};
+  add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics){};
 
   void set_tracers(ModelParameters &params) {
     SArray<TRACER_TAG, 1, ntracers_dycore> tracer_tag;
@@ -141,7 +146,7 @@ public:
                                       const Geometry<Twisted> &dual_geom) = 0;
   virtual void set_reference_state(ReferenceState &refstate,
                                    const Geometry<Straight> &primal_geom,
-                                   const Geometry<Twisted> &dual_geom) {};
+                                   const Geometry<Twisted> &dual_geom){};
   virtual ~TestCase() = default;
 
   // why doesn't this work ? Tracers need to be deallocated !
@@ -291,7 +296,7 @@ public:
 
     this->is_initialized = true;
   }
-  virtual void compute_coefficients(real dt) {};
+  virtual void compute_coefficients(real dt){};
 
   virtual void YAKL_INLINE solve(real dt, FieldSet<nprognostic> &rhs,
                                  FieldSet<nconstant> &const_vars,

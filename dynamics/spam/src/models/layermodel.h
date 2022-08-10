@@ -28,10 +28,11 @@ Hamiltonian_TSWE_Hs Hs;
 ThermoPotential thermo;
 
 class ModelReferenceState : public ReferenceState {
-  public:
-
+public:
+  real ref_height;
   void initialize(const Topology &primal_topology,
-                  const Topology &dual_topology) {
+                  const Topology &dual_topology) override {
+    this->is_initialized = true;
   }
 };
 
@@ -571,19 +572,20 @@ public:
 };
 
 // *******   Linear system   ***********//
-typedef yakl::Array<complex, 4, yakl::memDevice, yakl::styleC> complex4d;
 class ModelLinearSystem : public LinearSystem {
 public:
   complex4d complex_dens;
-  real ref_height;
+  ModelReferenceState *reference_state;
 
   void initialize(ModelParameters &params,
                   const Geometry<Straight> &primal_geom,
                   const Geometry<Twisted> &dual_geom,
                   ReferenceState &refstate) override {
     LinearSystem::initialize(params, primal_geom, dual_geom, refstate);
-    
-    const auto& dual_topo = dual_geom.topology;
+
+    this->reference_state = static_cast<ModelReferenceState *>(&refstate);
+
+    const auto &dual_topo = dual_geom.topology;
 
     complex_dens = complex4d("complex dens", dual_topo.nl, dual_topo.n_cells_y,
                              dual_topo.n_cells_x, dual_topo.nens);
@@ -600,8 +602,9 @@ public:
                                  FieldSet<nauxiliary> &auxiliary_vars,
                                  FieldSet<nprognostic> &solution) override {
 
-    const auto& dual_topology = dual_geometry.topology;
-    const auto& primal_topology = primal_geometry.topology;
+    const auto &dual_topology = dual_geometry.topology;
+    const auto &primal_topology = primal_geometry.topology;
+    const auto &refstate = *reference_state;
 
     yakl::timer_start("Linear solve");
     auto grav = Hs.g;
@@ -693,8 +696,8 @@ public:
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           real h = dens_rhs(0, dks + k, djs + j, dis + i, n);
-          compute_cwDbar2<1>(dens_rhs, ref_height, U, dis, djs, dks, i, j, k,
-                             n);
+          compute_cwDbar2<1>(dens_rhs, refstate.ref_height, U, dis, djs, dks, i,
+                             j, k, n);
           dens_rhs(0, dks + k, djs + j, dis + i, n) *= -0.5_fp * dt;
           dens_rhs(0, dks + k, djs + j, dis + i, n) += h;
         });
@@ -726,8 +729,8 @@ public:
                               i, j, 0, 0, n_cells_x, n_cells_y, nl);
 
           SArray<real, 1, ndims> cD1Dbar2;
-          fourier_cwD1Dbar2(cD1Dbar2, grav * ref_height, i, j, 0, n_cells_x,
-                            n_cells_y, nl);
+          fourier_cwD1Dbar2(cD1Dbar2, grav * refstate.ref_height, i, j, 0,
+                            n_cells_x, n_cells_y, nl);
 
           real hd = (1._fp - 0.25_fp * dt * dt * cD1Dbar2(0) * cI * cH(0) -
                      0.25_fp * dt * dt * cD1Dbar2(1) * cI * cH(1));
@@ -1007,8 +1010,9 @@ void initialize_variables(
   // functional derivatives = F, B, K, he, U
   aux_desc_arr[BVAR] = {"B", ptopo, 0, 1, ndensity};  // B = straight 0-form
   aux_desc_arr[FVAR] = {"F", dtopo, ndims - 1, 1, 1}; // F = twisted (n-1)-form
-  aux_desc_arr[FVAR2] = {"F2", dtopo, ndims - 1, 1, 1}; // F2 = twisted (n-1)-form
-  aux_desc_arr[KVAR] = {"K", dtopo, ndims, 1, 1};     // K = twisted n-form
+  aux_desc_arr[FVAR2] = {"F2", dtopo, ndims - 1, 1,
+                         1};                      // F2 = twisted (n-1)-form
+  aux_desc_arr[KVAR] = {"K", dtopo, ndims, 1, 1}; // K = twisted n-form
   aux_desc_arr[HEVAR] = {"he", dtopo, ndims - 1, 1,
                          1}; // he lives on dual edges, associated with F
   aux_desc_arr[UVAR] = {"U", dtopo, ndims - 1, 1, 1}; // U = twisted (n-1)-form
@@ -1137,6 +1141,13 @@ public:
     }
     Hs.set_parameters(g);
   }
+
+  void set_reference_state(ReferenceState &reference_state,
+                           const Geometry<Straight> &primal_geom,
+                           const Geometry<Twisted> &dual_geom) override {
+    auto &refstate = static_cast<ModelReferenceState &>(reference_state);
+    refstate->ref_height = T::ref_height;
+  }
 };
 
 struct DoubleVortex {
@@ -1159,6 +1170,7 @@ struct DoubleVortex {
   static real constexpr c = 0.05_fp;
   static real constexpr a = 1.0_fp / 3.0_fp;
   static real constexpr D = 0.5_fp * Lx;
+  static real constexpr ref_height = H0;
 
   static real YAKL_INLINE coriolis_f(real x, real y) { return coriolis; }
 
@@ -1237,6 +1249,7 @@ struct BickleyJet {
   static real constexpr k = 0.5_fp;
   static real constexpr xc = 0.5_fp * Lx;
   static real constexpr yc = 0.5_fp * Ly;
+  static real constexpr ref_height = 1._fp;
 
   static real YAKL_INLINE coriolis_f(real x, real y) { return 0; }
 

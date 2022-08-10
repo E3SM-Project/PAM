@@ -138,7 +138,7 @@ public:
                                      primal_geometry, dual_geometry);
     prognostic_vars.exchange();
     constant_vars.exchange();
-    
+
     tendencies.compute_constants(constant_vars, prognostic_vars);
     constant_vars.exchange();
     stats.compute(prognostic_vars, constant_vars, 0);
@@ -150,7 +150,8 @@ public:
     reference_state.initialize(primal_topology, dual_topology);
     testcase->set_reference_state(reference_state, primal_geometry,
                                   dual_geometry);
-    linear_system.initialize(params, primal_geometry, dual_geometry, reference_state);
+    linear_system.initialize(params, primal_geometry, dual_geometry,
+                             reference_state);
     linear_system.compute_coefficients(params.dtcrm);
     tint.initialize(params, tendencies, linear_system, prognostic_vars,
                     constant_vars, auxiliary_vars);

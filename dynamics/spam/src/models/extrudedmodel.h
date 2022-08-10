@@ -187,7 +187,7 @@ public:
   }
 
   void compute_U(real5d Uvar, const real5d Vvar) {
-    
+
     const auto &dual_topology = dual_geometry.topology;
 
     int dis = dual_topology.is;
@@ -206,7 +206,7 @@ public:
   }
 
   void compute_UW(real5d UWvar, const real5d Wvar) {
-    
+
     const auto &dual_topology = dual_geometry.topology;
 
     int dis = dual_topology.is;
@@ -297,7 +297,7 @@ public:
                            real5d HEWvar, const real5d Vvar, const real5d Uvar,
                            const real5d Wvar, const real5d UWvar,
                            const real5d dens0var) {
-    
+
     const auto &dual_topology = dual_geometry.topology;
 
     int dis = dual_topology.is;
@@ -372,7 +372,7 @@ public:
   template <ADD_MODE addmode = ADD_MODE::REPLACE>
   void compute_B(real fac, real5d Bvar, const real5d Kvar, const real5d densvar,
                  const real5d HSvar) {
-    
+
     const auto &primal_topology = primal_geometry.topology;
 
     int pis = primal_topology.is;
@@ -727,7 +727,7 @@ public:
                                     FieldSet<nprognostic> &x,
                                     FieldSet<nauxiliary> &auxiliary_vars,
                                     FieldSet<nprognostic> &xtend) override {
-    
+
     const auto &dual_topology = dual_geometry.topology;
 
     compute_dens0(auxiliary_vars.fields_arr[DENS0VAR].data,
@@ -907,7 +907,7 @@ struct ModelReferenceState : ReferenceState {
   real4d Blin_coeff;
 
   void initialize(const Topology &primal_topology,
-                  const Topology &dual_topology) {
+                  const Topology &dual_topology) override {
     this->dens_pi = real3d("refdens_pi", ndensity, primal_topology.ni,
                            primal_topology.nens);
     this->dens_di =
@@ -917,6 +917,8 @@ struct ModelReferenceState : ReferenceState {
     this->he_di = real3d("refhe_di", 1, dual_topology.ni, dual_topology.nens);
     this->Blin_coeff = real4d("Blin coeff", ndensity, ndensity,
                               primal_topology.ni, primal_topology.nens);
+
+    this->is_initialized = true;
   }
 };
 
@@ -942,12 +944,12 @@ public:
                   const Geometry<Straight> &primal_geom,
                   const Geometry<Twisted> &dual_geom,
                   ReferenceState &refstate) override {
-    
+
     LinearSystem::initialize(params, primal_geom, dual_geom, refstate);
 
-    this->reference_state = static_cast<ModelReferenceState*>(&refstate);
+    this->reference_state = static_cast<ModelReferenceState *>(&refstate);
 
-    const auto& primal_topology = primal_geom.topology;
+    const auto &primal_topology = primal_geom.topology;
 
     auto pni = primal_topology.ni;
     auto pnl = primal_topology.nl;
@@ -973,9 +975,9 @@ public:
 
   virtual void compute_coefficients(real dt) override {
     auto &refstate = *this->reference_state;
-    
-    const auto& primal_topology = primal_geometry.topology;
-    const auto& dual_topology = dual_geometry.topology;
+
+    const auto &primal_topology = primal_geometry.topology;
+    const auto &dual_topology = dual_geometry.topology;
 
     auto n_cells_x = dual_topology.n_cells_x;
     auto n_cells_y = dual_topology.n_cells_y;
@@ -1047,18 +1049,15 @@ public:
               primal_geometry, dual_geometry, pis, pjs, pks, i, j, k + 1, 0,
               n_cells_x, n_cells_y, dual_topology.ni);
 
-          real gamma_fac_kp2 =
-              refstate.he_di(0, k + 2, n) *
-              dual_geometry.get_area_10entity(k + 2 + dks, j + djs, i + dis) /
-              primal_geometry.get_area_01entity(k + 1 + pks, j + pjs, i + pis);
-          real gamma_fac_kp1 =
-              refstate.he_di(0, k + 1, n) *
-              dual_geometry.get_area_10entity(k + 1 + dks, j + djs, i + dis) /
-              primal_geometry.get_area_01entity(k + 0 + pks, j + pjs, i + pis);
+          real gamma_fac_kp2 = refstate.he_di(0, k + 2, n) *
+                               Hv_coeff(primal_geometry, dual_geometry, pis,
+                                        pjs, pks, i, j, k + 2);
+          real gamma_fac_kp1 = refstate.he_di(0, k + 1, n) *
+                               Hv_coeff(primal_geometry, dual_geometry, pis,
+                                        pjs, pks, i, j, k + 1);
           real gamma_fac_k =
               refstate.he_di(0, k, n) *
-              dual_geometry.get_area_10entity(k + 0 + dks, j + djs, i + dis) /
-              primal_geometry.get_area_01entity(k - 1 + pks, j + pjs, i + pis);
+              Hv_coeff(primal_geometry, dual_geometry, pis, pjs, pks, i, j, k);
 
           tri_u(k, j, i, n) = 0;
           tri_d(k, j, i, n) = 1;
@@ -1095,18 +1094,15 @@ public:
               primal_geometry, dual_geometry, pis, pjs, pks, i, j, k + 1, 0,
               n_cells_x, n_cells_y, dual_topology.ni);
 
-          real gamma_fac_kp2 =
-              refstate.he_di(0, k + 2, n) *
-              dual_geometry.get_area_10entity(k + 2 + dks, j + djs, i + dis) /
-              primal_geometry.get_area_01entity(k + 1 + pks, j + pjs, i + pis);
-          real gamma_fac_kp1 =
-              refstate.he_di(0, k + 1, n) *
-              dual_geometry.get_area_10entity(k + 1 + dks, j + djs, i + dis) /
-              primal_geometry.get_area_01entity(k + 0 + pks, j + pjs, i + pis);
+          real gamma_fac_kp2 = refstate.he_di(0, k + 2, n) *
+                               Hv_coeff(primal_geometry, dual_geometry, pis,
+                                        pjs, pks, i, j, k + 2);
+          real gamma_fac_kp1 = refstate.he_di(0, k + 1, n) *
+                               Hv_coeff(primal_geometry, dual_geometry, pis,
+                                        pjs, pks, i, j, k + 1);
           real gamma_fac_k =
               refstate.he_di(0, k, n) *
-              dual_geometry.get_area_10entity(k + 0 + dks, j + djs, i + dis) /
-              primal_geometry.get_area_01entity(k - 1 + pks, j + pjs, i + pis);
+              Hv_coeff(primal_geometry, dual_geometry, pis, pjs, pks, i, j, k);
 
           SArray<real, 1, ndims> fH_kp1_a;
           SArray<real, 1, ndims> fH_k_a;
@@ -1163,9 +1159,9 @@ public:
                                  FieldSet<nprognostic> &solution) override {
 
     auto &refstate = *this->reference_state;
-    
-    const auto& primal_topology = primal_geometry.topology;
-    const auto& dual_topology = dual_geometry.topology;
+
+    const auto &primal_topology = primal_geometry.topology;
+    const auto &dual_topology = dual_geometry.topology;
 
     yakl::timer_start("linsolve");
 
@@ -1396,18 +1392,12 @@ public:
             w_k = 0;
           }
 
-          real gamma_fac_kp2 =
-              refstate.he_di(0, k + 2, n) *
-              dual_geometry.get_area_10entity(k + 2 + dks, j + djs, i + dis) /
-              primal_geometry.get_area_01entity(k + 1 + pks, j + pjs, i + pis);
-          real gamma_fac_kp1 =
-              refstate.he_di(0, k + 1, n) *
-              dual_geometry.get_area_10entity(k + 1 + dks, j + djs, i + dis) /
-              primal_geometry.get_area_01entity(k + 0 + pks, j + pjs, i + pis);
+          real gamma_fac_kp1 = refstate.he_di(0, k + 1, n) *
+                               Hv_coeff(primal_geometry, dual_geometry, pis,
+                                        pjs, pks, i, j, k + 1);
           real gamma_fac_k =
               refstate.he_di(0, k, n) *
-              dual_geometry.get_area_10entity(k + 0 + dks, j + djs, i + dis) /
-              primal_geometry.get_area_01entity(k - 1 + pks, j + pjs, i + pis);
+              Hv_coeff(primal_geometry, dual_geometry, pis, pjs, pks, i, j, k);
 
           complex_vrhs(0, k, j, i, n) *= complex_vcoeff(0, k, j, i, n);
           for (int d1 = 0; d1 < ndensity; ++d1) {
@@ -1771,11 +1761,11 @@ void initialize_variables(
                                    1}; // f = straight (1,1)-form
 
   // functional derivatives = F, B, K, he, U
-  aux_desc_arr[FVAR] = {"F", dtopo, ndims - 1, 1, 1}; // F = twisted
-                                                      // (n-1,1)-form
+  aux_desc_arr[FVAR] = {"F", dtopo, ndims - 1, 1, 1};   // F = twisted
+                                                        // (n-1,1)-form
   aux_desc_arr[FVAR2] = {"F2", dtopo, ndims - 1, 1, 1}; // F2 = twisted
-                                                      // (n-1,1)-form
-  aux_desc_arr[BVAR] = {"B", ptopo, 0, 0, ndensity};  // B = straight (0,0)-form
+                                                        // (n-1,1)-form
+  aux_desc_arr[BVAR] = {"B", ptopo, 0, 0, ndensity}; // B = straight (0,0)-form
 
   aux_desc_arr[KVAR] = {"K", dtopo, ndims, 1, 1}; // K = twisted (n,1)-form
 
@@ -1786,7 +1776,8 @@ void initialize_variables(
                                                       // (n-1,1)-form
 
   aux_desc_arr[FWVAR] = {"Fw", dtopo, ndims, 0, 1}; // Fw = twisted (n,0)-form
-  aux_desc_arr[FWVAR2] = {"Fw2", dtopo, ndims, 0, 1}; // Fw2 = twisted (n,0)-form
+  aux_desc_arr[FWVAR2] = {"Fw2", dtopo, ndims, 0,
+                          1}; // Fw2 = twisted (n,0)-form
 
   aux_desc_arr[HEWVAR] = {
       "hew", dtopo, ndims, 0,
@@ -1971,7 +1962,6 @@ public:
 
   void set_initial_conditions(FieldSet<nprognostic> &progvars,
                               FieldSet<nconstant> &constvars,
-                              ExchangeSet<nconstant> &const_exchange,
                               const Geometry<Straight> &primal_geom,
                               const Geometry<Twisted> &dual_geom) override {
 
@@ -2195,7 +2185,6 @@ public:
 
   void set_initial_conditions(FieldSet<nprognostic> &progvars,
                               FieldSet<nconstant> &constvars,
-                              ExchangeSet<nconstant> &const_exchange,
                               const Geometry<Straight> &primal_geom,
                               const Geometry<Twisted> &dual_geom) override {
 
@@ -2377,18 +2366,13 @@ template <bool acoustic_balance> struct RisingBubble {
     real p = isentropic_p(x, z, theta0, g, thermo);
     real T = isentropic_T(x, z, theta0, g, thermo);
     real r = sqrt((x - xc) * (x - xc) + (z - bzc) * (z - bzc));
-    // real r = sqrt((z - bzc) * (z - bzc));
     real dtheta = (r < rc) ? dss * 0.5_fp * (1._fp + cos(pi * r / rc)) : 0._fp;
-    // real dtheta = 0;
     real dT = dtheta * pow(p / thermo.cst.pr, thermo.cst.kappa_d);
     return thermo.compute_entropic_var(p, T + dT, 0, 0, 0, 0);
   }
 
   static void
-  add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics) {
-    // diagnostics.emplace_back(std::make_unique<ExactDensityDiagnostic>());
-    // diagnostics.emplace_back(std::make_unique<BackgroundDensityDiagnostic>());
-  }
+  add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics) {}
 };
 
 struct MoistRisingBubble : public RisingBubble<false> {
@@ -2443,6 +2427,38 @@ struct LargeRisingBubble {
   static real constexpr amp_vapor = 0.8_fp;
   static real constexpr Cpv = 1859._fp;
   static real constexpr Cpd = 1003._fp;
+  static real constexpr T_ref = 300.0_fp;
+
+  static real YAKL_INLINE refnsq_f(real x, real z,
+                                   const ThermoPotential &thermo) {
+    real Rd = thermo.cst.Rd;
+    real gamma_d = thermo.cst.gamma_d;
+    real N2 = (gamma_d - 1) / gamma_d * g * g / (Rd * T_ref);
+    return N2;
+  }
+
+  static real YAKL_INLINE refrho_f(real x, real z,
+                                   const ThermoPotential &thermo) {
+    real Rd = thermo.cst.Rd;
+    real rho_s = thermo.cst.pr / (Rd * T_ref);
+    real rho_ref = isothermal_zdep(x, z, rho_s, T_ref, g, thermo);
+    return rho_ref;
+  }
+
+  static real YAKL_INLINE refp_f(real x, real z,
+                                 const ThermoPotential &thermo) {
+    real Rd = thermo.cst.Rd;
+    real rho_ref = refrho_f(x, z, thermo);
+    real p_ref = Rd * rho_ref * T_ref;
+    return p_ref;
+  }
+
+  static real YAKL_INLINE refentropicdensity_f(real x, real z,
+                                               const ThermoPotential &thermo) {
+    real rho_ref = refrho_f(x, z, thermo);
+    real p_ref = refp_f(x, z, thermo);
+    return rho_ref * thermo.compute_entropic_var(p_ref, T_ref, 0, 0, 0, 0);
+  }
 
   static real YAKL_INLINE rho_f(real x, real z, const ThermoPotential &thermo) {
     return isentropic_rho(x, z, theta0, g, thermo);
@@ -2456,6 +2472,9 @@ struct LargeRisingBubble {
     real dT = dtheta * pow(p / thermo.cst.pr, thermo.cst.kappa_d);
     return thermo.compute_entropic_var(p, T0 + dT, 0, 0, 0, 0);
   }
+
+  static void
+  add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics) {}
 };
 
 struct MoistLargeRisingBubble : LargeRisingBubble {
@@ -2511,8 +2530,7 @@ struct GravityWave {
   static real constexpr u_0 = 0._fp;
   static real constexpr x_c = 150e3_fp;
   static real constexpr p_s = 1e5_fp;
-  // static real constexpr dT_max = 0.01_fp;
-  static real constexpr dT_max = 1.0_fp;
+  static real constexpr dT_max = 0.01_fp;
 
   static real YAKL_INLINE refnsq_f(real x, real z,
                                    const ThermoPotential &thermo) {
@@ -2563,7 +2581,6 @@ struct GravityWave {
     real rho = (rho_ref + drho);
 
     return rho;
-    // return rho_ref;
   }
 
   static real YAKL_INLINE rhoexact_f(real x, real z, real t,
@@ -2744,7 +2761,6 @@ struct GravityWave {
     real p = p_ref + dp;
 
     return thermo.compute_entropic_var(p, T, 0, 0, 0, 0);
-    // return thermo.compute_entropic_var(p_ref, T_ref, 0, 0, 0, 0);
   }
 
   static real YAKL_INLINE entropicdensity_f(real x, real z,
@@ -2822,7 +2838,7 @@ struct GravityWave {
 void testcase_from_string(std::unique_ptr<TestCase> &testcase, std::string name,
                           bool acoustic_balance) {
   if (name == "doublevortex") {
-    // testcase = std::make_unique<SWETestCase<DoubleVortex>>();
+    testcase = std::make_unique<SWETestCase<DoubleVortex>>();
   } else if (name == "gravitywave") {
     testcase = std::make_unique<EulerTestCase<GravityWave>>();
   } else if (name == "risingbubble") {
@@ -2831,13 +2847,12 @@ void testcase_from_string(std::unique_ptr<TestCase> &testcase, std::string name,
     } else {
       testcase = std::make_unique<EulerTestCase<RisingBubble<false>>>();
     }
-    //} else if (name == "moistrisingbubble") {
-    //  testcase = std::make_unique<MoistEulerTestCase<MoistRisingBubble>>();
-    //} else if (name == "largerisingbubble") {
-    //  testcase = std::make_unique<EulerTestCase<LargeRisingBubble>>();
-    //} else if (name == "moistlargerisingbubble") {
-    //  testcase =
-    //  std::make_unique<MoistEulerTestCase<MoistLargeRisingBubble>>();
+  } else if (name == "moistrisingbubble") {
+    testcase = std::make_unique<MoistEulerTestCase<MoistRisingBubble>>();
+  } else if (name == "largerisingbubble") {
+    testcase = std::make_unique<EulerTestCase<LargeRisingBubble>>();
+  } else if (name == "moistlargerisingbubble") {
+    testcase = std::make_unique<MoistEulerTestCase<MoistLargeRisingBubble>>();
   } else {
     throw std::runtime_error("unknown test case");
   }
