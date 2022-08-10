@@ -24,10 +24,5 @@ add_executable(driver driver.cpp)
 include(${YAKL_HOME}/yakl_utils.cmake)
 yakl_process_target(driver)
 
-set(POCKETFFT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../externals/pocketfft)
-add_library(pocketfft INTERFACE)
-target_include_directories(pocketfft INTERFACE ${POCKETFFT_DIR})
-
-find_package(Eigen3)
-target_link_libraries(driver dynamics physics pam_core pocketfft Eigen3::Eigen ${NCFLAGS})
+target_link_libraries(driver dynamics physics pam_core ${NCFLAGS})
 
