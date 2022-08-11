@@ -96,7 +96,7 @@ public:
     real U = thermo.compute_U(alpha, entropic_var, 0, 0, 0, 0);
     real p = -thermo.compute_dUdalpha(alpha, entropic_var, 0, 0, 0, 0);
     real generalized_Exner =
-        thermo.compute_dUdentropic_var_density(alpha, entropic_var, 0, 0, 0, 0);
+        thermo.compute_dUdentropic_var(alpha, entropic_var, 0, 0, 0, 0);
 
     B(0, k + ks, j + js, i + is, n) =
         geop0(0) + U + p * alpha - entropic_var * generalized_Exner;
@@ -207,8 +207,8 @@ public:
 
     real U = thermo.compute_U(alpha, entropic_var, qd, qv, ql, qi);
     real p = -thermo.compute_dUdalpha(alpha, entropic_var, qd, qv, ql, qi);
-    real generalized_Exner = thermo.compute_dUdentropic_var_density(
-        alpha, entropic_var, qd, qv, ql, qi);
+    real generalized_Exner =
+        thermo.compute_dUdentropic_var(alpha, entropic_var, qd, qv, ql, qi);
     real generalized_chemical_potential_d =
         thermo.compute_dUdqd(alpha, entropic_var, qd, qv, ql, qi);
     real generalized_chemical_potential_v =
@@ -357,7 +357,7 @@ public:
 //
 //     real U = thermo.compute_U(alpha, entropic_var, qd, qv, ql, qi);
 //     real p = -thermo.compute_dUdalpha(alpha, entropic_var, qd, qv, ql, qi);
-//     real generalized_Exner = thermo.compute_dUdentropic_var_density(alpha,
+//     real generalized_Exner = thermo.compute_dUdentropic_var(alpha,
 //     entropic_var, qd, qv, ql, qi); real generalized_chemical_potential_d =
 //     thermo.compute_dUdqd(alpha, entropic_var, qd, qv, ql, qi); real
 //     generalized_chemical_potential_v = thermo.compute_dUdqv(alpha,
@@ -409,7 +409,7 @@ public:
 //      entropic_var, 0, 0, 0, 0);
 //
 //      real H = thermo.compute_H(p, entropic_var, 0, 0, 0, 0);
-//      real generalized_Exner = thermo.compute_dHdentropic_var_density(p,
+//      real generalized_Exner = thermo.compute_dHdentropic_var(p,
 //      entropic_var, 0, 0, 0, 0);
 //
 //      B(0, k+ks, j+js, i+is) = geop0(0) + H - entropic_var *
@@ -458,7 +458,7 @@ public:
 //
 //      real p = thermo.solve_p(dens0(0, k+ks, j+js, i+is), entropic_var, qd,
 //      qv, ql, qi); real H = thermo.compute_H(p, entropic_var, qd, qv, ql,
-//      qi); real generalized_Exner = thermo.compute_dHdentropic_var_density(p,
+//      qi); real generalized_Exner = thermo.compute_dHdentropic_var(p,
 //      entropic_var, qd, qv, ql, qi); real generalized_chemical_potential_d =
 //      thermo.compute_dHdqd(p, entropic_var, qd, qv, ql, qi); real
 //      generalized_chemical_potential_v = thermo.compute_dHdqv(p,
@@ -523,7 +523,7 @@ public:
 //      thermo.solve_p(1./alpha, entropic_var, qd, qv, ql, qi);
 //
 //      real H = thermo.compute_H(p, entropic_var, qd, qv, ql, qi);
-//      real generalized_Exner = thermo.compute_dHdentropic_var_density(p,
+//      real generalized_Exner = thermo.compute_dHdentropic_var(p,
 //      entropic_var, qd, qv, ql, qi); real generalized_chemical_potential_d =
 //      thermo.compute_dHdqd(p, entropic_var, qd, qv, ql, qi); real
 //      generalized_chemical_potential_v = thermo.compute_dHdqv(p,

@@ -68,10 +68,9 @@ public:
   real YAKL_INLINE compute_dUdalpha(real alpha, real entropic_var, real qd,
                                     real qv, real ql, real qi) const {};
 
-  real YAKL_INLINE compute_dUdentropic_var_density(real alpha,
-                                                   real entropic_var, real qd,
-                                                   real qv, real ql,
-                                                   real qi) const {};
+  real YAKL_INLINE compute_dUdentropic_var(real alpha, real entropic_var,
+                                           real qd, real qv, real ql,
+                                           real qi) const {};
 
   real YAKL_INLINE compute_dUdqd(real alpha, real entropic_var, real qd,
                                  real qv, real ql, real qi) const {};
@@ -91,9 +90,8 @@ public:
   real YAKL_INLINE compute_dHdp(real p, real entropic_var, real qd, real qv,
                                 real ql, real qi) const {};
 
-  real YAKL_INLINE compute_dHdentropic_var_density(real p, real entropic_var,
-                                                   real qd, real qv, real ql,
-                                                   real qi) const {};
+  real YAKL_INLINE compute_dHdentropic_var(real p, real entropic_var, real qd,
+                                           real qv, real ql, real qi) const {};
 
   real YAKL_INLINE compute_dHdqd(real p, real entropic_var, real qd, real qv,
                                  real ql, real qi) const {};
@@ -146,10 +144,9 @@ public:
     return -cst.pr * pow(entropic_var * cst.Rd / (alpha * cst.pr), cst.gamma_d);
   };
 
-  real YAKL_INLINE compute_dUdentropic_var_density(real alpha,
-                                                   real entropic_var, real qd,
-                                                   real qv, real ql,
-                                                   real qi) const {
+  real YAKL_INLINE compute_dUdentropic_var(real alpha, real entropic_var,
+                                           real qd, real qv, real ql,
+                                           real qi) const {
     return cst.Cpd * pow(entropic_var * cst.Rd / (alpha * cst.pr), cst.delta_d);
   };
 
@@ -183,9 +180,8 @@ public:
     return cst.Rd * entropic_var / p * pow(p / cst.pr, cst.kappa_d);
   };
 
-  real YAKL_INLINE compute_dHdentropic_var_density(real p, real entropic_var,
-                                                   real qd, real qv, real ql,
-                                                   real qi) const {
+  real YAKL_INLINE compute_dHdentropic_var(real p, real entropic_var, real qd,
+                                           real qv, real ql, real qi) const {
     return cst.Cpd * pow(p / cst.pr, cst.kappa_d);
   };
 
@@ -274,10 +270,9 @@ public:
     return -cst.Rd / cst.Cvd * U / alpha;
   };
 
-  real YAKL_INLINE compute_dUdentropic_var_density(real alpha,
-                                                   real entropic_var, real qd,
-                                                   real qv, real ql,
-                                                   real qi) const {
+  real YAKL_INLINE compute_dUdentropic_var(real alpha, real entropic_var,
+                                           real qd, real qv, real ql,
+                                           real qi) const {
     real U = compute_U(alpha, entropic_var, qd, qv, ql, qi);
     return U / cst.Cvd;
   };
@@ -314,9 +309,8 @@ public:
     return cst.Rd * H / (p * cst.Cpd);
   }
 
-  real YAKL_INLINE compute_dHdentropic_var_density(real p, real entropic_var,
-                                                   real qd, real qv, real ql,
-                                                   real qi) const {
+  real YAKL_INLINE compute_dHdentropic_var(real p, real entropic_var, real qd,
+                                           real qv, real ql, real qi) const {
     real H = compute_H(p, entropic_var, qd, qv, ql, qi);
     return H / cst.Cpd;
   };
@@ -375,8 +369,7 @@ public:
   real YAKL_INLINE compute_dpdentropic_var(real alpha, real entropic_var,
                                            real qd, real qv, real ql,
                                            real qi) const {
-    real dUds =
-        compute_dUdentropic_var_density(alpha, entropic_var, qd, qv, ql, qi);
+    real dUds = compute_dUdentropic_var(alpha, entropic_var, qd, qv, ql, qi);
     return cst.Rd / cst.Cvd * dUds / alpha;
   }
 
@@ -412,10 +405,9 @@ public:
     return -cst.pr * pow(entropic_var * cst.Rd / (alpha * cst.pr), cst.gamma_d);
   };
 
-  real YAKL_INLINE compute_dUdentropic_var_density(real alpha,
-                                                   real entropic_var, real qd,
-                                                   real qv, real ql,
-                                                   real qi) const {
+  real YAKL_INLINE compute_dUdentropic_var(real alpha, real entropic_var,
+                                           real qd, real qv, real ql,
+                                           real qi) const {
     return cst.Cpd * pow(entropic_var * cst.Rd / (alpha * cst.pr), cst.delta_d);
   };
 
@@ -454,9 +446,8 @@ public:
     return cst.Rd * entropic_var / p * pow(p / cst.pr, cst.kappa_d);
   };
 
-  real YAKL_INLINE compute_dHdentropic_var_density(real p, real entropic_var,
-                                                   real qd, real qv, real ql,
-                                                   real qi) const {
+  real YAKL_INLINE compute_dHdentropic_var(real p, real entropic_var, real qd,
+                                           real qv, real ql, real qi) const {
     return cst.Cpd * pow(p / cst.pr, cst.kappa_d);
   };
 
@@ -522,10 +513,9 @@ public:
   real YAKL_INLINE compute_dUdalpha(real alpha, real entropic_var, real qd,
                                     real qv, real ql, real qi) const {};
 
-  real YAKL_INLINE compute_dUdentropic_var_density(real alpha,
-                                                   real entropic_var, real qd,
-                                                   real qv, real ql,
-                                                   real qi) const {};
+  real YAKL_INLINE compute_dUdentropic_var(real alpha, real entropic_var,
+                                           real qd, real qv, real ql,
+                                           real qi) const {};
 
   real YAKL_INLINE compute_dUdqd(real alpha, real entropic_var, real qd,
                                  real qv, real ql, real qi) const {};
@@ -545,9 +535,8 @@ public:
   real YAKL_INLINE compute_dHdp(real p, real entropic_var, real qd, real qv,
                                 real ql, real qi) const {};
 
-  real YAKL_INLINE compute_dHdentropic_var_density(real p, real entropic_var,
-                                                   real qd, real qv, real ql,
-                                                   real qi) const {};
+  real YAKL_INLINE compute_dHdentropic_var(real p, real entropic_var, real qd,
+                                           real qv, real ql, real qi) const {};
 
   real YAKL_INLINE compute_dHdqd(real p, real entropic_var, real qd, real qv,
                                  real ql, real qi) const {};
@@ -580,10 +569,9 @@ public:
   real YAKL_INLINE compute_dUdalpha(real alpha, real entropic_var, real qd,
                                     real qv, real ql, real qi) const {};
 
-  real YAKL_INLINE compute_dUdentropic_var_density(real alpha,
-                                                   real entropic_var, real qd,
-                                                   real qv, real ql,
-                                                   real qi) const {};
+  real YAKL_INLINE compute_dUdentropic_var(real alpha, real entropic_var,
+                                           real qd, real qv, real ql,
+                                           real qi) const {};
 
   real YAKL_INLINE compute_dUdqd(real alpha, real entropic_var, real qd,
                                  real qv, real ql, real qi) const {};
@@ -603,9 +591,8 @@ public:
   real YAKL_INLINE compute_dHdp(real p, real entropic_var, real qd, real qv,
                                 real ql, real qi) const {};
 
-  real YAKL_INLINE compute_dHdentropic_var_density(real p, real entropic_var,
-                                                   real qd, real qv, real ql,
-                                                   real qi) const {};
+  real YAKL_INLINE compute_dHdentropic_var(real p, real entropic_var, real qd,
+                                           real qv, real ql, real qi) const {};
 
   real YAKL_INLINE compute_dHdqd(real p, real entropic_var, real qd, real qv,
                                  real ql, real qi) const {};
@@ -638,10 +625,9 @@ public:
   real YAKL_INLINE compute_dUdalpha(real alpha, real entropic_var, real qd,
                                     real qv, real ql, real qi) const {};
 
-  real YAKL_INLINE compute_dUdentropic_var_density(real alpha,
-                                                   real entropic_var, real qd,
-                                                   real qv, real ql,
-                                                   real qi) const {};
+  real YAKL_INLINE compute_dUdentropic_var(real alpha, real entropic_var,
+                                           real qd, real qv, real ql,
+                                           real qi) const {};
 
   real YAKL_INLINE compute_dUdqd(real alpha, real entropic_var, real qd,
                                  real qv, real ql, real qi) const {};
@@ -661,9 +647,8 @@ public:
   real YAKL_INLINE compute_dHdp(real p, real entropic_var, real qd, real qv,
                                 real ql, real qi) const {};
 
-  real YAKL_INLINE compute_dHdentropic_var_density(real p, real entropic_var,
-                                                   real qd, real qv, real ql,
-                                                   real qi) const {};
+  real YAKL_INLINE compute_dHdentropic_var(real p, real entropic_var, real qd,
+                                           real qv, real ql, real qi) const {};
 
   real YAKL_INLINE compute_dHdqd(real p, real entropic_var, real qd, real qv,
                                  real ql, real qi) const {};
