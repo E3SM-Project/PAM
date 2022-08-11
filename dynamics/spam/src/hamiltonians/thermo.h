@@ -125,6 +125,9 @@ public:
   real YAKL_INLINE compute_dpdentropic_var(real alpha, real entropic_var,
                                            real qd, real qv, real ql,
                                            real qi) const {};
+
+  real YAKL_INLINE compute_soundspeed(real alpha, real entropic_var, real qd,
+                                      real qv, real ql, real qi) const {};
 };
 
 // This ignores any q arguments, as expected
@@ -241,6 +244,14 @@ public:
     real rho = 1 / alpha;
     real p = solve_p(rho, entropic_var, qd, qv, ql, qi);
     return cst.gamma_d * p / entropic_var;
+  }
+
+  real YAKL_INLINE compute_soundspeed(real alpha, real entropic_var, real qd,
+                                      real qv, real ql, real qi) const {
+
+    real rho = 1 / alpha;
+    real p = solve_p(rho, entropic_var, qd, qv, ql, qi);
+    return sqrt(cst.gamma_d * p * alpha);
   }
 };
 
@@ -367,6 +378,14 @@ public:
     real dUds =
         compute_dUdentropic_var_density(alpha, entropic_var, qd, qv, ql, qi);
     return cst.Rd / cst.Cvd * dUds / alpha;
+  }
+
+  real YAKL_INLINE compute_soundspeed(real alpha, real entropic_var, real qd,
+                                      real qv, real ql, real qi) const {
+
+    real rho = 1 / alpha;
+    real p = solve_p(rho, entropic_var, qd, qv, ql, qi);
+    return sqrt(cst.gamma_d * p * alpha);
   }
 };
 
