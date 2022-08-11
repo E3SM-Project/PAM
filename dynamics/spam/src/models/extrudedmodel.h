@@ -906,8 +906,8 @@ struct ModelReferenceState : ReferenceState {
 
   void initialize(const Topology &primal_topology,
                   const Topology &dual_topology) override {
-    this->q_pi = real3d("refq_pi", ndensity, primal_topology.ni,
-                           primal_topology.nens);
+    this->q_pi =
+        real3d("refq_pi", ndensity, primal_topology.ni, primal_topology.nens);
     this->q_di =
         real3d("refq_di", ndensity, dual_topology.ni, dual_topology.nens);
     this->rho_pi =
@@ -1126,10 +1126,9 @@ public:
               for (int d3 = 0; d3 < ndensity; ++d3) {
 
                 real alpha_kp1 = dtf2 * refstate.q_di(d1, k + 1, n);
-                complex beta_kp1 = fI_kp1 *
-                                   refstate.Blin_coeff(d1, d2, k + 1, n) *
-                                   refstate.q_pi(d2, k + 1, n) * fDbar2_kp1 *
-                                   he_kp1 * fHh_kp1;
+                complex beta_kp1 =
+                    fI_kp1 * refstate.Blin_coeff(d1, d2, k + 1, n) *
+                    refstate.q_pi(d2, k + 1, n) * fDbar2_kp1 * he_kp1 * fHh_kp1;
                 complex beta_k = fI_k * refstate.Blin_coeff(d1, d2, k, n) *
                                  refstate.q_pi(d2, k, n) * fDbar2_k * he_k *
                                  fHh_k;
@@ -1229,16 +1228,16 @@ public:
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wDv<ndensity>(sol_w, refstate.q_di, bvar, pis, pjs, pks, i,
-                                j, k, n);
+          compute_wDv<ndensity>(sol_w, refstate.q_di, bvar, pis, pjs, pks, i, j,
+                                k, n);
         });
     parallel_for(
         "Prepare rhs 4 - wD1",
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wD1<ndensity>(sol_v, refstate.q_pi, bvar, pis, pjs, pks, i,
-                                j, k, n);
+          compute_wD1<ndensity>(sol_v, refstate.q_pi, bvar, pis, pjs, pks, i, j,
+                                k, n);
         });
 
     real scale = 1.0 / (n_cells_x * n_cells_y);
@@ -1331,10 +1330,9 @@ public:
           for (int d1 = 0; d1 < ndensity; ++d1) {
             for (int d2 = 0; d2 < ndensity; ++d2) {
               real alpha_kp1 = dtf2 * refstate.q_di(d1, k + 1, n);
-              complex beta_kp1 = fI_kp1 *
-                                 refstate.Blin_coeff(d1, d2, k + 1, n) *
-                                 refstate.q_pi(d2, k + 1, n) * fDbar2_kp1 *
-                                 he_kp1 * fHh_kp1;
+              complex beta_kp1 =
+                  fI_kp1 * refstate.Blin_coeff(d1, d2, k + 1, n) *
+                  refstate.q_pi(d2, k + 1, n) * fDbar2_kp1 * he_kp1 * fHh_kp1;
               complex beta_k = fI_k * refstate.Blin_coeff(d1, d2, k, n) *
                                refstate.q_pi(d2, k, n) * fDbar2_k * he_k *
                                fHh_k;
@@ -1482,8 +1480,8 @@ public:
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wDbar2<ndensity>(sol_dens, refstate.q_pi, fvar, dis, djs,
-                                   dks, i, j, k, n);
+          compute_wDbar2<ndensity>(sol_dens, refstate.q_pi, fvar, dis, djs, dks,
+                                   i, j, k, n);
           compute_wDvbar<ndensity, ADD_MODE::ADD>(
               sol_dens, refstate.q_di, fwvar, dis, djs, dks, i, j, k, n);
           for (int d = 0; d < ndensity; ++d) {
@@ -1926,7 +1924,6 @@ real YAKL_INLINE isothermal_zdep(real x, real z, real var_s, real T_ref, real g,
   return var_s * exp(-delta * z);
 }
 
-
 real YAKL_INLINE linear_ellipsoid(real x, real z, real x0, real z0, real xrad,
                                   real zrad, real amp) {
   real xn = (x - x0) / xrad;
@@ -2142,7 +2139,8 @@ public:
           real dpds_ref2 = dpds_ref * dpds_ref;
 
           real Nref2 = refnsq_f(x, z, thermo);
-          real cref2 = gamma_d * p_ref / rho_ref;
+          real cref = thermo.compute_soundspeed(alpha_ref, s_ref, 0, 0, 0, 0);
+          real cref2 = cref * cref;
 
           real b0_rho = (cref2 * rho_ref - dpds_ref * s_ref) / rho_ref2;
           real b0_s =
