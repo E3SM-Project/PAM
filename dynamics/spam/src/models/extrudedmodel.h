@@ -912,7 +912,7 @@ struct ModelReferenceState : ReferenceState {
         real3d("refq_di", ndensity, dual_topology.ni, dual_topology.nens);
     this->rho_pi =
         real3d("refrho_pi", 1, primal_topology.ni, primal_topology.nens);
-    this->rho_di = real3d("refhe_di", 1, dual_topology.ni, dual_topology.nens);
+    this->rho_di = real3d("refrho_di", 1, dual_topology.ni, dual_topology.nens);
     this->Blin_coeff = real4d("Blin coeff", ndensity, ndensity,
                               primal_topology.ni, primal_topology.nens);
 
@@ -1917,11 +1917,24 @@ real YAKL_INLINE isentropic_rho(real x, real z, real theta0, real g,
   return 1._fp / alpha;
 }
 
-real YAKL_INLINE isothermal_zdep(real x, real z, real var_s, real T_ref, real g,
+real YAKL_INLINE isothermal_zdep(real z, real var_s, real T_ref, real g,
                                  const ThermoPotential &thermo) {
   real Rd = thermo.cst.Rd;
   real delta = g / (Rd * T_ref);
   return var_s * exp(-delta * z);
+}
+
+real YAKL_INLINE const_stability_p(real z, real N, real g, real ps, real Ts,
+                                   const ThermoPotential &thermo) {
+  real S = N * N / g;
+  real G = g / (thermo.cst.Cpd * Ts * S);
+  return ps * pow(1 - G * (1 - exp(-S * z)), 1 / thermo.cst.kappa_d);
+}
+real YAKL_INLINE const_stability_T(real z, real N, real g, real Ts,
+                                   const ThermoPotential &thermo) {
+  real S = N * N / g;
+  real G = g / (thermo.cst.Cpd * Ts * S);
+  return Ts * exp(S * z) * (1 - G * (1 - exp(-S * z)));
 }
 
 real YAKL_INLINE linear_ellipsoid(real x, real z, real x0, real z0, real xrad,
@@ -2068,20 +2081,18 @@ public:
         "Compute refstate rho_pi/q_pi",
         SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
         YAKL_LAMBDA(int k, int n) {
-          real x = 0;
           real z = k * primal_geom.dz;
-          refstate.rho_pi(0, k, n) = refrho_f(x, z, thermo);
+          refstate.rho_pi(0, k, n) = refrho_f(z, thermo);
           refstate.q_pi(0, k, n) =
-              refrho_f(x, z, thermo) / refstate.rho_pi(0, k, n);
+              refrho_f(z, thermo) / refstate.rho_pi(0, k, n);
           refstate.q_pi(1, k, n) =
-              refentropicdensity_f(x, z, thermo) / refstate.rho_pi(0, k, n);
+              refentropicdensity_f(z, thermo) / refstate.rho_pi(0, k, n);
         });
 
     parallel_for(
         "Compute refstate rho_di/q_di",
         SimpleBounds<2>(dual_topology.ni, primal_topology.nens),
         YAKL_LAMBDA(int k, int n) {
-          real x = 0;
           real dz = dual_geom.dz;
           real z;
           if (k == 0) {
@@ -2104,18 +2115,17 @@ public:
             zp = z + dz / 2;
           }
 
-          refstate.rho_di(0, k, n) = refrho_f(x, z, thermo);
+          refstate.rho_di(0, k, n) = refrho_f(z, thermo);
           refstate.q_di(0, k, n) =
-              refrho_f(x, z, thermo) / refstate.rho_di(0, k, n);
+              refrho_f(z, thermo) / refstate.rho_di(0, k, n);
           refstate.q_di(1, k, n) =
-              refentropicdensity_f(x, z, thermo) / refstate.rho_di(0, k, n);
+              refentropicdensity_f(z, thermo) / refstate.rho_di(0, k, n);
         });
 
     parallel_for(
         "Compute Blin_coeff",
         SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
         YAKL_LAMBDA(int k, int n) {
-          real x = 0;
           real z = k * primal_geom.dz;
 
           real Rd = thermo.cst.Rd;
@@ -2126,9 +2136,9 @@ public:
           real grav = g;
           real grav2 = grav * grav;
 
-          real rho_ref = refrho_f(x, z, thermo);
+          real rho_ref = refrho_f(z, thermo);
           real alpha_ref = 1 / rho_ref;
-          real S_ref = refentropicdensity_f(x, z, thermo);
+          real S_ref = refentropicdensity_f(z, thermo);
           real s_ref = S_ref / rho_ref;
 
           real rho_ref2 = rho_ref * rho_ref;
@@ -2138,7 +2148,7 @@ public:
               thermo.compute_dpdentropic_var(alpha_ref, s_ref, 0, 0, 0, 0);
           real dpds_ref2 = dpds_ref * dpds_ref;
 
-          real Nref2 = refnsq_f(x, z, thermo);
+          real Nref2 = refnsq_f(z, thermo);
           real cref = thermo.compute_soundspeed(alpha_ref, s_ref, 0, 0, 0, 0);
           real cref2 = cref * cref;
 
@@ -2316,35 +2326,32 @@ template <bool acoustic_balance> struct RisingBubble {
   static real constexpr rc = 250._fp;
   static real constexpr rh0 = 0.8_fp;
   static real constexpr T_ref = 300.0_fp;
+  static real constexpr N_ref = 0.0001;
 
-  static real YAKL_INLINE refnsq_f(real x, real z,
-                                   const ThermoPotential &thermo) {
-    real Rd = thermo.cst.Rd;
-    real gamma_d = thermo.cst.gamma_d;
-    real N2 = (gamma_d - 1) / gamma_d * g * g / (Rd * T_ref);
-    return N2;
+  static real YAKL_INLINE refnsq_f(real z, const ThermoPotential &thermo) {
+    return N_ref * N_ref;
   }
 
-  static real YAKL_INLINE refrho_f(real x, real z,
-                                   const ThermoPotential &thermo) {
-    real Rd = thermo.cst.Rd;
-    real rho_s = thermo.cst.pr / (Rd * T_ref);
-    real rho_ref = isothermal_zdep(x, z, rho_s, T_ref, g, thermo);
-    return rho_ref;
+  static real YAKL_INLINE refp_f(real z, const ThermoPotential &thermo) {
+    return const_stability_p(z, N_ref, g, thermo.cst.pr, theta0, thermo);
   }
 
-  static real YAKL_INLINE refp_f(real x, real z,
-                                 const ThermoPotential &thermo) {
-    real Rd = thermo.cst.Rd;
-    real rho_ref = refrho_f(x, z, thermo);
-    real p_ref = Rd * rho_ref * T_ref;
-    return p_ref;
+  static real YAKL_INLINE refT_f(real z, const ThermoPotential &thermo) {
+    return const_stability_T(z, N_ref, g, theta0, thermo);
   }
 
-  static real YAKL_INLINE refentropicdensity_f(real x, real z,
+  static real YAKL_INLINE refrho_f(real z, const ThermoPotential &thermo) {
+    real p = refp_f(z, thermo);
+    real T = refT_f(z, thermo);
+    real alpha = thermo.compute_alpha(p, T, 1, 0, 0, 0);
+    return 1._fp / alpha;
+  }
+
+  static real YAKL_INLINE refentropicdensity_f(real z,
                                                const ThermoPotential &thermo) {
-    real rho_ref = refrho_f(x, z, thermo);
-    real p_ref = refp_f(x, z, thermo);
+    real rho_ref = refrho_f(z, thermo);
+    real T_ref = refT_f(z, thermo);
+    real p_ref = refp_f(z, thermo);
     return rho_ref * thermo.compute_entropic_var(p_ref, T_ref, 0, 0, 0, 0);
   }
 
@@ -2424,36 +2431,32 @@ struct LargeRisingBubble {
   static real constexpr amp_vapor = 0.8_fp;
   static real constexpr Cpv = 1859._fp;
   static real constexpr Cpd = 1003._fp;
-  static real constexpr T_ref = 300.0_fp;
+  static real constexpr N_ref = 0.0001;
 
-  static real YAKL_INLINE refnsq_f(real x, real z,
-                                   const ThermoPotential &thermo) {
-    real Rd = thermo.cst.Rd;
-    real gamma_d = thermo.cst.gamma_d;
-    real N2 = (gamma_d - 1) / gamma_d * g * g / (Rd * T_ref);
-    return N2;
+  static real YAKL_INLINE refnsq_f(real z, const ThermoPotential &thermo) {
+    return N_ref * N_ref;
   }
 
-  static real YAKL_INLINE refrho_f(real x, real z,
-                                   const ThermoPotential &thermo) {
-    real Rd = thermo.cst.Rd;
-    real rho_s = thermo.cst.pr / (Rd * T_ref);
-    real rho_ref = isothermal_zdep(x, z, rho_s, T_ref, g, thermo);
-    return rho_ref;
+  static real YAKL_INLINE refp_f(real z, const ThermoPotential &thermo) {
+    return const_stability_p(z, N_ref, g, thermo.cst.pr, theta0, thermo);
   }
 
-  static real YAKL_INLINE refp_f(real x, real z,
-                                 const ThermoPotential &thermo) {
-    real Rd = thermo.cst.Rd;
-    real rho_ref = refrho_f(x, z, thermo);
-    real p_ref = Rd * rho_ref * T_ref;
-    return p_ref;
+  static real YAKL_INLINE refT_f(real z, const ThermoPotential &thermo) {
+    return const_stability_T(z, N_ref, g, theta0, thermo);
   }
 
-  static real YAKL_INLINE refentropicdensity_f(real x, real z,
+  static real YAKL_INLINE refrho_f(real z, const ThermoPotential &thermo) {
+    real p = refp_f(z, thermo);
+    real T = refT_f(z, thermo);
+    real alpha = thermo.compute_alpha(p, T, 1, 0, 0, 0);
+    return 1._fp / alpha;
+  }
+
+  static real YAKL_INLINE refentropicdensity_f(real z,
                                                const ThermoPotential &thermo) {
-    real rho_ref = refrho_f(x, z, thermo);
-    real p_ref = refp_f(x, z, thermo);
+    real rho_ref = refrho_f(z, thermo);
+    real T_ref = refT_f(z, thermo);
+    real p_ref = refp_f(z, thermo);
     return rho_ref * thermo.compute_entropic_var(p_ref, T_ref, 0, 0, 0, 0);
   }
 
@@ -2529,34 +2532,31 @@ struct GravityWave {
   static real constexpr p_s = 1e5_fp;
   static real constexpr dT_max = 0.01_fp;
 
-  static real YAKL_INLINE refnsq_f(real x, real z,
-                                   const ThermoPotential &thermo) {
+  static real YAKL_INLINE refnsq_f(real z, const ThermoPotential &thermo) {
     real Rd = thermo.cst.Rd;
     real gamma_d = thermo.cst.gamma_d;
     real N2 = (gamma_d - 1) / gamma_d * g * g / (Rd * T_ref);
     return N2;
   }
 
-  static real YAKL_INLINE refrho_f(real x, real z,
-                                   const ThermoPotential &thermo) {
+  static real YAKL_INLINE refrho_f(real z, const ThermoPotential &thermo) {
     real Rd = thermo.cst.Rd;
     real rho_s = p_s / (Rd * T_ref);
-    real rho_ref = isothermal_zdep(x, z, rho_s, T_ref, g, thermo);
+    real rho_ref = isothermal_zdep(z, rho_s, T_ref, g, thermo);
     return rho_ref;
   }
 
-  static real YAKL_INLINE refp_f(real x, real z,
-                                 const ThermoPotential &thermo) {
+  static real YAKL_INLINE refp_f(real z, const ThermoPotential &thermo) {
     real Rd = thermo.cst.Rd;
-    real rho_ref = refrho_f(x, z, thermo);
+    real rho_ref = refrho_f(z, thermo);
     real p_ref = Rd * rho_ref * T_ref;
     return p_ref;
   }
 
-  static real YAKL_INLINE refentropicdensity_f(real x, real z,
+  static real YAKL_INLINE refentropicdensity_f(real z,
                                                const ThermoPotential &thermo) {
-    real rho_ref = refrho_f(x, z, thermo);
-    real p_ref = refp_f(x, z, thermo);
+    real rho_ref = refrho_f(z, thermo);
+    real p_ref = refp_f(z, thermo);
     return rho_ref * thermo.compute_entropic_var(p_ref, T_ref, 0, 0, 0, 0);
   }
 
@@ -2566,7 +2566,7 @@ struct GravityWave {
     real delta = g / (Rd * T_ref);
     real rho_s = p_s / (Rd * T_ref);
 
-    real rho_ref = refrho_f(x, z, thermo);
+    real rho_ref = refrho_f(z, thermo);
 
     real dT_b = dT_max * exp(-pow((x - x_c) / d, 2)) * sin(pi * z / Lz);
     real dT = exp(delta * z / 2) * dT_b;
@@ -2646,7 +2646,7 @@ struct GravityWave {
     }
 
     real drho = exp(-delta * z / 2) * drho_b.real();
-    real rho = refrho_f(x, z, thermo) + drho;
+    real rho = refrho_f(z, thermo) + drho;
 
     return rho;
   }
@@ -2723,12 +2723,12 @@ struct GravityWave {
 
     complex dT_b = T_ref * (dp_b / p_s - drho_b / rho_s);
 
-    real p_ref = isothermal_zdep(x, z, p_s, T_ref, g, thermo);
+    real p_ref = isothermal_zdep(z, p_s, T_ref, g, thermo);
     real dp = exp(-delta * z / 2) * dp_b.real();
     real dT = exp(delta * z / 2) * dT_b.real();
 
     real drho = exp(-delta * z / 2) * drho_b.real();
-    real rho = refrho_f(x, z, thermo) + drho;
+    real rho = refrho_f(z, thermo) + drho;
 
     return rho *
            thermo.compute_entropic_var(p_ref + dp, T_ref + dT, 0, 0, 0, 0);
@@ -2741,7 +2741,7 @@ struct GravityWave {
     real delta = g / (Rd * T_ref);
     real rho_s = p_s / (Rd * T_ref);
 
-    real rho_ref = isothermal_zdep(x, z, rho_s, T_ref, g, thermo);
+    real rho_ref = isothermal_zdep(z, rho_s, T_ref, g, thermo);
 
     real dT_b = dT_max * exp(-pow((x - x_c) / d, 2)) * sin(pi * z / Lz);
     real dT = exp(delta * z / 2) * dT_b;
@@ -2753,7 +2753,7 @@ struct GravityWave {
     real rho = (rho_ref + drho);
 
     // real p = rho * Rd * T;
-    real p_ref = isothermal_zdep(x, z, p_s, T_ref, g, thermo);
+    real p_ref = isothermal_zdep(z, p_s, T_ref, g, thermo);
     real dp = Rd * T_ref * drho + Rd * rho_ref * dT;
     real p = p_ref + dp;
 
@@ -2787,14 +2787,14 @@ struct GravityWave {
 
       dual_geometry.set_11form_values(
           YAKL_LAMBDA(real x, real z) {
-            return rhoexact_f(x, z, time, thermo) - refrho_f(x, z, thermo);
+            return rhoexact_f(x, z, time, thermo) - refrho_f(z, thermo);
           },
           field, 0);
 
       dual_geometry.set_11form_values(
           YAKL_LAMBDA(real x, real z) {
             return entropicdensityexact_f(x, z, time, thermo) -
-                   refentropicdensity_f(x, z, thermo);
+                   refentropicdensity_f(z, thermo);
           },
           field, 1);
     }
@@ -2814,12 +2814,12 @@ struct GravityWave {
                  const FieldSet<nprognostic> &x) override {
 
       dual_geometry.set_11form_values(
-          YAKL_LAMBDA(real x, real z) { return refrho_f(x, z, thermo); }, field,
+          YAKL_LAMBDA(real x, real z) { return refrho_f(z, thermo); }, field,
           0);
 
       dual_geometry.set_11form_values(
           YAKL_LAMBDA(real x, real z) {
-            return refentropicdensity_f(x, z, thermo);
+            return refentropicdensity_f(z, thermo);
           },
           field, 1);
     }
