@@ -589,12 +589,6 @@ public:
 
     complex_dens = complex4d("complex dens", dual_topo.nl, dual_topo.n_cells_y,
                              dual_topo.n_cells_x, dual_topo.nens);
-
-    if (params.initdataStr == "doublevortex") {
-      this->ref_height = 750;
-    } else if (params.initdataStr == "bickleyjet") {
-      this->ref_height = 1.0;
-    }
   }
 
   virtual void YAKL_INLINE solve(real dt, FieldSet<nprognostic> &rhs,
@@ -1146,7 +1140,7 @@ public:
                            const Geometry<Straight> &primal_geom,
                            const Geometry<Twisted> &dual_geom) override {
     auto &refstate = static_cast<ModelReferenceState &>(reference_state);
-    refstate->ref_height = T::ref_height;
+    refstate.ref_height = T::ref_height;
   }
 };
 
