@@ -8,7 +8,6 @@
 #include "fct.h"
 #include "hamiltonian.h"
 #include "hodge_star.h"
-#include "pocketfft_hdronly.h"
 #include "recon.h"
 #include "thermo.h"
 #include "wedge.h"
@@ -138,7 +137,7 @@ public:
   void compute_constants(FieldSet<nconstant> &const_vars,
                          FieldSet<nprognostic> &x) override {}
 
-  void YAKL_INLINE compute_dens0(real5d dens0var, const real5d densvar) {
+  void compute_dens0(real5d dens0var, const real5d densvar) {
     const auto &primal_topology = primal_geometry.topology;
 
     int pis = primal_topology.is;
@@ -157,7 +156,7 @@ public:
         });
   }
 
-  void YAKL_INLINE compute_U(real5d Uvar, const real5d Vvar) {
+  void compute_U(real5d Uvar, const real5d Vvar) {
     const auto &dual_topology = dual_geometry.topology;
 
     int dis = dual_topology.is;
@@ -176,9 +175,9 @@ public:
         });
   }
 
-  void YAKL_INLINE compute_U_and_q0f0(real5d Uvar, real5d Q0var, real5d f0var,
-                                      const real5d Vvar, const real5d densvar,
-                                      const real5d coriolisvar) {
+  void compute_U_and_q0f0(real5d Uvar, real5d Q0var, real5d f0var,
+                          const real5d Vvar, const real5d densvar,
+                          const real5d coriolisvar) {
     const auto &dual_topology = dual_geometry.topology;
 
     int dis = dual_topology.is;
@@ -201,9 +200,8 @@ public:
   }
 
   template <ADD_MODE addmode = ADD_MODE::REPLACE>
-  void YAKL_INLINE compute_F_and_K(real fac, real5d Fvar, real5d Kvar,
-                                   const real5d Vvar, const real5d Uvar,
-                                   const real5d dens0var) {
+  void compute_F_and_K(real fac, real5d Fvar, real5d Kvar, const real5d Vvar,
+                       const real5d Uvar, const real5d dens0var) {
     const auto &dual_topology = dual_geometry.topology;
 
     int dis = dual_topology.is;
@@ -221,14 +219,15 @@ public:
         });
   }
 
-  void YAKL_INLINE compute_F_and_he(real5d Fvar, real5d HEvar,
-                                    const real5d Uvar, const real5d dens0var) {
+  void compute_F_and_he(real5d Fvar, real5d HEvar, const real5d Uvar,
+                        const real5d dens0var) {
     const auto &dual_topology = dual_geometry.topology;
 
     int dis = dual_topology.is;
     int djs = dual_topology.js;
     int dks = dual_topology.ks;
 
+    YAKL_SCOPE(Hk, ::Hk);
     parallel_for(
         "Compute F/he",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
@@ -240,8 +239,8 @@ public:
   }
 
   template <ADD_MODE addmode = ADD_MODE::REPLACE>
-  void YAKL_INLINE compute_B(real fac, real5d Bvar, const real5d Kvar,
-                             const real5d densvar, const real5d HSvar) {
+  void compute_B(real fac, real5d Bvar, const real5d Kvar, const real5d densvar,
+                 const real5d HSvar) {
     const auto &primal_topology = primal_geometry.topology;
 
     int pis = primal_topology.is;
@@ -261,7 +260,7 @@ public:
         });
   }
 
-  void YAKL_INLINE compute_FT(real5d FTvar, const real5d Fvar) {
+  void compute_FT(real5d FTvar, const real5d Fvar) {
     const auto &primal_topology = primal_geometry.topology;
 
     int pis = primal_topology.is;
@@ -277,9 +276,10 @@ public:
         });
   }
 
-  void YAKL_INLINE compute_edge_reconstructions(
-      real5d densedgereconvar, real5d Qedgereconvar, real5d fedgereconvar,
-      const real5d dens0var, const real5d Q0var, const real5d f0var) {
+  void compute_edge_reconstructions(real5d densedgereconvar,
+                                    real5d Qedgereconvar, real5d fedgereconvar,
+                                    const real5d dens0var, const real5d Q0var,
+                                    const real5d f0var) {
     const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
 
@@ -409,7 +409,7 @@ public:
         });
   }
 
-  void YAKL_INLINE compute_functional_derivatives(
+  void compute_functional_derivatives(
       ADD_MODE addmode, real fac, real dt, FieldSet<nconstant> &const_vars,
       FieldSet<nprognostic> &x, FieldSet<nauxiliary> &auxiliary_vars) override {
     const auto &dual_topology = dual_geometry.topology;
@@ -452,10 +452,10 @@ public:
     auxiliary_vars.exchange({BVAR});
   }
 
-  void YAKL_INLINE apply_symplectic(real dt, FieldSet<nconstant> &const_vars,
-                                    FieldSet<nprognostic> &x,
-                                    FieldSet<nauxiliary> &auxiliary_vars,
-                                    FieldSet<nprognostic> &xtend) override {
+  void apply_symplectic(real dt, FieldSet<nconstant> &const_vars,
+                        FieldSet<nprognostic> &x,
+                        FieldSet<nauxiliary> &auxiliary_vars,
+                        FieldSet<nprognostic> &xtend) override {
     const auto &dual_topology = dual_geometry.topology;
 
     compute_dens0(auxiliary_vars.fields_arr[DENS0VAR].data,
@@ -574,8 +574,11 @@ public:
 // *******   Linear system   ***********//
 class ModelLinearSystem : public LinearSystem {
 public:
-  complex4d complex_dens;
+  real4d dens_transform;
   ModelReferenceState *reference_state;
+  yakl::RealFFT1D<real> fft_y;
+  yakl::RealFFT1D<real> fft_x;
+  int nxf, nyf;
 
   void initialize(ModelParameters &params,
                   const Geometry<Straight> &primal_geom,
@@ -587,14 +590,21 @@ public:
 
     const auto &dual_topo = dual_geom.topology;
 
-    complex_dens = complex4d("complex dens", dual_topo.nl, dual_topo.n_cells_y,
-                             dual_topo.n_cells_x, dual_topo.nens);
+    int nx = dual_topo.n_cells_x;
+    this->nxf = nx + 2 - nx % 2;
+    int ny = dual_topo.n_cells_y;
+    this->nyf = ny + 2 - ny % 2;
+
+    dens_transform =
+        real4d("dens transform", dual_topo.nl, nyf, nxf, dual_topo.nens);
+    fft_x.init(dens_transform, 2, nx);
+    fft_y.init(dens_transform, 1, ny);
   }
 
-  virtual void YAKL_INLINE solve(real dt, FieldSet<nprognostic> &rhs,
-                                 FieldSet<nconstant> &const_vars,
-                                 FieldSet<nauxiliary> &auxiliary_vars,
-                                 FieldSet<nprognostic> &solution) override {
+  virtual void solve(real dt, FieldSet<nprognostic> &rhs,
+                     FieldSet<nconstant> &const_vars,
+                     FieldSet<nauxiliary> &auxiliary_vars,
+                     FieldSet<nprognostic> &solution) override {
 
     const auto &dual_topology = dual_geometry.topology;
     const auto &primal_topology = primal_geometry.topology;
@@ -614,22 +624,6 @@ public:
     int dis = dual_topology.is;
     int djs = dual_topology.js;
     int dks = dual_topology.ks;
-
-    real scale = 1.0 / (n_cells_x * n_cells_y);
-    pocketfft::shape_t shape(4);
-    pocketfft::stride_t stride(4);
-
-    shape[0] = nl;
-    shape[1] = n_cells_y;
-    shape[2] = n_cells_x;
-    shape[3] = nens;
-
-    stride[3] = sizeof(complex);
-    for (int i = 2; i >= 0; i--) {
-      stride[i] = stride[i + 1] * shape[i + 1];
-    }
-
-    pocketfft::shape_t axes = {1, 2};
 
     solution.copy(rhs);
     solution.exchange();
@@ -701,40 +695,43 @@ public:
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          complex_dens(k, j, i, n) = dens_rhs(0, k + dks, j + djs, i + dis, n);
+          dens_transform(k, j, i, n) =
+              dens_rhs(0, k + dks, j + djs, i + dis, n);
         });
 
     yakl::timer_start("fft fwd");
-    pocketfft::c2c(shape, stride, stride, axes, pocketfft::FORWARD,
-                   complex_dens.data(), complex_dens.data(), 1._fp);
+    fft_x.forward_real(dens_transform);
+    fft_y.forward_real(dens_transform);
     yakl::timer_stop("fft fwd");
 
     parallel_for(
         "fft invert",
-        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
+        SimpleBounds<4>(dual_topology.nl, nyf, nxf, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
+          int ik = i / 2;
+          int jk = j / 2;
+
           real cI =
               fourier_I<diff_ord>(primal_geometry, dual_geometry, pis, pjs, pks,
-                                  i, j, 0, 0, n_cells_x, n_cells_y, nl);
+                                  ik, jk, 0, 0, n_cells_x, n_cells_y, nl);
 
           SArray<real, 1, ndims> cH;
           fourier_H<diff_ord>(cH, primal_geometry, dual_geometry, pis, pjs, pks,
-                              i, j, 0, 0, n_cells_x, n_cells_y, nl);
+                              ik, jk, 0, 0, n_cells_x, n_cells_y, nl);
 
           SArray<real, 1, ndims> cD1Dbar2;
-          fourier_cwD1Dbar2(cD1Dbar2, grav * refstate.ref_height, i, j, 0,
+          fourier_cwD1Dbar2(cD1Dbar2, grav * refstate.ref_height, ik, jk, 0,
                             n_cells_x, n_cells_y, nl);
 
           real hd = (1._fp - 0.25_fp * dt * dt * cD1Dbar2(0) * cI * cH(0) -
                      0.25_fp * dt * dt * cD1Dbar2(1) * cI * cH(1));
 
-          complex_dens(k, j, i, n) /= hd;
+          dens_transform(k, j, i, n) /= hd;
         });
 
     yakl::timer_start("fft bwd");
-    pocketfft::c2c(shape, stride, stride, axes, pocketfft::BACKWARD,
-                   complex_dens.data(), complex_dens.data(), scale);
+    fft_x.inverse_real(dens_transform);
+    fft_y.inverse_real(dens_transform);
     yakl::timer_stop("fft bwd");
 
     parallel_for(
@@ -743,7 +740,7 @@ public:
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           real dens_old = dens_sol(0, k + dks, j + djs, i + dis, n);
-          real dens_new = complex_dens(k, j, i, n).real();
+          real dens_new = dens_transform(k, j, i, n);
           dens_sol(0, k + dks, j + djs, i + dis, n) = dens_new;
 #ifdef _TSWE
           dens_sol(1, k + dks, j + djs, i + dis, n) -=

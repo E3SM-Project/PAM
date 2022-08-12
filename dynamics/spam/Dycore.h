@@ -157,7 +157,7 @@ public:
                     constant_vars, auxiliary_vars);
 #else
     tint.initialize(params, tendencies, prognostic_vars, constant_vars,
-                    auxiliary_vars, prog_exchange);
+                    auxiliary_vars);
 #endif
     debug_print("end ts init", par.masterproc);
 

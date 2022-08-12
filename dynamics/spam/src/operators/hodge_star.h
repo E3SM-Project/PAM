@@ -87,7 +87,7 @@ void YAKL_INLINE compute_H(real5d uvar, const real5d vvar,
 
 void YAKL_INLINE Hhat(SArray<real, 1, ndims> &u,
                       SArray<real, 1, ndims> const &Hgeom,
-                      SArray<real, 2, ndims, 0> const &shift) {
+                      SArray<real, 2, ndims, 1> const &shift) {
   for (int d = 0; d < ndims; d++) {
     u(d) = Hgeom(d);
   }
@@ -95,7 +95,7 @@ void YAKL_INLINE Hhat(SArray<real, 1, ndims> &u,
 
 void YAKL_INLINE Hhat(SArray<real, 1, ndims> &u,
                       SArray<real, 1, ndims> const &Hgeom,
-                      SArray<real, 2, ndims, 1> const &shift) {
+                      SArray<real, 2, ndims, 2> const &shift) {
   for (int d = 0; d < ndims; d++) {
     u(d) = -2.0_fp / 24.0_fp * cos(shift(d, 0)) + 26.0_fp / 24.0_fp;
     u(d) *= Hgeom(d);
@@ -104,7 +104,7 @@ void YAKL_INLINE Hhat(SArray<real, 1, ndims> &u,
 
 void YAKL_INLINE Hhat(SArray<real, 1, ndims> &u,
                       SArray<real, 1, ndims> const &Hgeom,
-                      SArray<real, 2, ndims, 2> const &shift) {
+                      SArray<real, 2, ndims, 3> const &shift) {
   for (int d = 0; d < ndims; d++) {
     u(d) = 18.0_fp / 1920.0_fp * cos(shift(d, 0)) -
            232.0_fp / 1920.0_fp * cos(shift(d, 1)) + 2134.0_fp / 1920.0_fp;
@@ -118,7 +118,8 @@ void YAKL_INLINE fourier_H(SArray<real, 1, ndims> &u,
                            const Geometry<Twisted> &dgeom, int is, int js,
                            int ks, int i, int j, int k, int n, int nx, int ny,
                            int nz) {
-  SArray<real, 2, ndims, off> shift;
+  // Adding 1 to off because GPUs don't like zero size structs
+  SArray<real, 2, ndims, off + 1> shift;
   SArray<real, 1, ndims> Hgeom;
   for (int d = 0; d < ndims; d++) {
     Hgeom(d) = dgeom.get_area_lform(ndims - 1, d, k + ks, j + js, i + is) /
@@ -246,7 +247,9 @@ void YAKL_INLINE fourier_Hext(SArray<real, 1, ndims> &u,
                               const Geometry<Twisted> &dgeom, int is, int js,
                               int ks, int i, int j, int k, int n, int nx,
                               int ny, int nz) {
-  SArray<real, 2, ndims, off> shift;
+
+  // Adding 1 to off because GPUs don't like zero size structs
+  SArray<real, 2, ndims, off + 1> shift;
   SArray<real, 1, ndims> Hgeom;
   for (int d = 0; d < ndims; d++) {
     if (d == 0) {
@@ -366,17 +369,17 @@ void YAKL_INLINE compute_I(real5d var0, const real5d var,
   }
 }
 
-real YAKL_INLINE Ihat(real Igeom, const SArray<real, 2, ndims, 0> &shift) {
+real YAKL_INLINE Ihat(real Igeom, const SArray<real, 2, ndims, 1> &shift) {
   return Igeom;
 }
-real YAKL_INLINE Ihat(real &Igeom, const SArray<real, 2, ndims, 1> &shift) {
+real YAKL_INLINE Ihat(real &Igeom, const SArray<real, 2, ndims, 2> &shift) {
   real res = 1.0_fp;
   for (int d = 0; d < ndims; d++) {
     res += -2.0_fp / 24.0_fp * cos(shift(d, 0)) + 2.0_fp / 24.0_fp;
   }
   return Igeom * res;
 }
-real YAKL_INLINE Ihat(real Igeom, const SArray<real, 2, ndims, 2> &shift) {
+real YAKL_INLINE Ihat(real Igeom, const SArray<real, 2, ndims, 3> &shift) {
   real res = 1.0_fp;
   for (int d = 0; d < ndims; d++) {
     res += 18.0_fp / 1920.0_fp * cos(shift(d, 0)) -
@@ -390,7 +393,8 @@ real YAKL_INLINE fourier_I(const Geometry<Straight> &pgeom,
                            const Geometry<Twisted> &dgeom, int is, int js,
                            int ks, int i, int j, int k, int n, int nx, int ny,
                            int nz) {
-  SArray<real, 2, ndims, off> shift;
+  // Adding 1 to off because GPUs don't like zero size structs
+  SArray<real, 2, ndims, off + 1> shift;
 
   // assuming these are constant
   real Igeom = pgeom.get_area_lform(0, 0, k + ks, j + js, i + is) /
@@ -471,7 +475,8 @@ real YAKL_INLINE fourier_Iext(const Geometry<Straight> &pgeom,
                               const Geometry<Twisted> &dgeom, int is, int js,
                               int ks, int i, int j, int k, int n, int nx,
                               int ny, int nz) {
-  SArray<real, 2, ndims, off> shift;
+  // Adding 1 to off because GPUs don't like zero size structs
+  SArray<real, 2, ndims, off + 1> shift;
 
   // assuming these are constant
   real Igeom = pgeom.get_area_00entity(k + ks, j + js, i + is + 0 - off) /

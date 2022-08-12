@@ -7,11 +7,13 @@
 #include "yaml-cpp/yaml.h"
 #include <array>
 #include <complex>
+#include <extensions/YAKL_fft.h>
 #include <fstream>
 #include <math.h>
 #include <sstream>
 #include <string>
 
+using yakl::c::Bounds;
 using yakl::c::parallel_for;
 using yakl::c::SimpleBounds;
 

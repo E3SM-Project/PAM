@@ -13,8 +13,6 @@
 #include "variableset.h"
 #include "wedge.h"
 
-#include "pocketfft_hdronly.h"
-
 // *******   Functionals/Hamiltonians   ***********//
 
 Functional_PVPE_extruded PVPE;
@@ -924,6 +922,15 @@ struct ModelReferenceState : ReferenceState {
 class ModelLinearSystem : public LinearSystem {
   ModelReferenceState *reference_state;
 
+  yakl::RealFFT1D<real> fftv_x;
+  yakl::RealFFT1D<real> fftw_x;
+  // yakl::RealFFT1D<real> fftv_y;
+  // yakl::RealFFT1D<real> fftw_y;
+
+  int nxf, nyf;
+
+  real5d v_transform;
+  real5d w_transform;
   complex5d complex_vrhs;
   complex5d complex_wrhs;
   complex5d complex_vcoeff;
@@ -955,8 +962,18 @@ public:
     auto ny = primal_topology.n_cells_y;
     auto nens = primal_topology.nens;
 
+    this->nxf = nx + 2 - nx % 2;
+    this->nyf = ny + 2 - ny % 2;
+
+    v_transform = real5d("v transform", 1, pni, nyf, nxf, nens);
+    w_transform = real5d("w transform", 1, pnl, nyf, nxf, nens);
     complex_vrhs = complex5d("complex vrhs", 1, pni, ny, nx, nens);
     complex_wrhs = complex5d("complex wrhs", 1, pnl, ny, nx, nens);
+
+    fftv_x.init(v_transform, 3, nx);
+    fftw_x.init(w_transform, 3, nx);
+    // fftv_y.init(v_transform, 2, ny);
+    // fftw_y.init(w_transform, 2, ny);
 
     complex_vcoeff =
         complex5d("complex vcoeff", 1 + ndensity, pni, ny, nx, nens);
@@ -1240,62 +1257,59 @@ public:
                                 k, n);
         });
 
-    real scale = 1.0 / (n_cells_x * n_cells_y);
-    pocketfft::shape_t shape_v(5);
-    pocketfft::shape_t shape_w(5);
-    pocketfft::stride_t stride_v(5);
-    pocketfft::stride_t stride_w(5);
-
-    shape_v[0] = 1;
-    shape_v[1] = ni;
-    shape_v[2] = n_cells_y;
-    shape_v[3] = n_cells_x;
-    shape_v[4] = nens;
-
-    shape_w[0] = 1;
-    shape_w[1] = nl;
-    shape_w[2] = n_cells_y;
-    shape_w[3] = n_cells_x;
-    shape_w[4] = nens;
-
-    stride_v[4] = sizeof(complex);
-    stride_w[4] = sizeof(complex);
-    for (int i = 3; i >= 0; i--) {
-      stride_v[i] = stride_v[i + 1] * shape_v[i + 1];
-      stride_w[i] = stride_w[i + 1] * shape_w[i + 1];
-    }
-    pocketfft::shape_t axes = {2, 3};
-
     parallel_for(
-        "Load vrhs",
+        "Load v_transform",
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          complex_vrhs(0, k, j, i, n) = rhs_v(0, k + pks, j + pjs, i + pis, n) +
-                                        sol_v(0, k + pks, j + pjs, i + pis, n);
+          v_transform(0, k, j, i, n) = rhs_v(0, k + pks, j + pjs, i + pis, n) +
+                                       sol_v(0, k + pks, j + pjs, i + pis, n);
         });
 
     parallel_for(
-        "Load wrhs",
+        "Load w_transform",
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          complex_wrhs(0, k, j, i, n) = rhs_w(0, k + pks, j + pjs, i + pis, n) +
-                                        sol_w(0, k + pks, j + pjs, i + pis, n);
+          w_transform(0, k, j, i, n) = rhs_w(0, k + pks, j + pjs, i + pis, n) +
+                                       sol_w(0, k + pks, j + pjs, i + pis, n);
         });
 
     yakl::timer_start("fft fwd");
-    pocketfft::c2c(shape_v, stride_v, stride_v, axes, pocketfft::FORWARD,
-                   complex_vrhs.data(), complex_vrhs.data(), 1._fp);
-    pocketfft::c2c(shape_w, stride_w, stride_w, axes, pocketfft::FORWARD,
-                   complex_wrhs.data(), complex_wrhs.data(), 1._fp);
+    fftv_x.forward_real(v_transform);
+    fftw_x.forward_real(w_transform);
+    // fftv_y.forward_real(v_transform);
+    // fftw_y.forward_real(w_transform);
     yakl::timer_stop("fft fwd");
 
     parallel_for(
-        "Modify wrhs",
-        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
+        "Compute complex vrhs",
+        yakl::c::Bounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                           {0, nxf - 1, 2}, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
+          real v_real = v_transform(0, k, j, i, n);
+          real v_imag = v_transform(0, k, j, i + 1, n);
+          complex_vrhs(0, k, j, i / 2, n) = complex(v_real, v_imag);
+        });
+
+    parallel_for(
+        "Compute complex wrhs",
+        Bounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                  {0, nxf - 1, 2}, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          real w_real = w_transform(0, k, j, i, n);
+          real w_imag = w_transform(0, k, j, i + 1, n);
+          complex_wrhs(0, k, j, i / 2, n) = complex(w_real, w_imag);
+        });
+
+    parallel_for(
+        "Modify wrhs",
+        Bounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                  {0, (nxf - 1) / 2}, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          int ik = i / 2;
+          int jk = j / 2;
+
           complex vc0_kp1 = complex_vcoeff(0, k + 1, j, i, n) *
                             complex_vrhs(0, k + 1, j, i, n);
           complex vc0_k =
@@ -1344,8 +1358,8 @@ public:
 
     parallel_for(
         "Tridiagonal solve",
-        SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
-                        primal_topology.nens),
+        Bounds<3>(primal_topology.n_cells_y, {0, (nxf - 1) / 2},
+                  primal_topology.nens),
         YAKL_LAMBDA(int j, int i, int n) {
           int nz = primal_topology.nl;
 
@@ -1372,8 +1386,8 @@ public:
 
     parallel_for(
         "Compute vhat",
-        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
+        Bounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                  {0, (nxf - 1) / 2}, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           complex w_kp1;
           if (k < primal_topology.ni - 1) {
@@ -1404,11 +1418,31 @@ public:
           }
         });
 
+    parallel_for(
+        "Store complex vrhs",
+        yakl::c::Bounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                           {0, nxf - 1, 2}, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          v_transform(0, k, j, i, n) = complex_vrhs(0, k, j, i / 2, n).real();
+          v_transform(0, k, j, i + 1, n) =
+              complex_vrhs(0, k, j, i / 2, n).imag();
+        });
+
+    parallel_for(
+        "Store complex wrhs",
+        yakl::c::Bounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                           {0, nxf - 1, 2}, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          w_transform(0, k, j, i, n) = complex_wrhs(0, k, j, i / 2, n).real();
+          w_transform(0, k, j, i + 1, n) =
+              complex_wrhs(0, k, j, i / 2, n).imag();
+        });
+
     yakl::timer_start("fft bwd");
-    pocketfft::c2c(shape_v, stride_v, stride_v, axes, pocketfft::BACKWARD,
-                   complex_vrhs.data(), complex_vrhs.data(), scale);
-    pocketfft::c2c(shape_w, stride_w, stride_w, axes, pocketfft::BACKWARD,
-                   complex_wrhs.data(), complex_wrhs.data(), scale);
+    fftv_x.inverse_real(v_transform);
+    fftw_x.inverse_real(w_transform);
+    // fftv_y.inverse_real(v_transform);
+    // fftw_y.inverse_real(w_transform);
     yakl::timer_stop("fft bwd");
 
     parallel_for(
@@ -1416,16 +1450,14 @@ public:
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          sol_w(0, k + pks, j + pjs, i + pis, n) =
-              complex_wrhs(0, k, j, i, n).real();
+          sol_w(0, k + pks, j + pjs, i + pis, n) = w_transform(0, k, j, i, n);
         });
     parallel_for(
         "Store v",
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          sol_v(0, k + pks, j + pjs, i + pis, n) =
-              complex_vrhs(0, k, j, i, n).real();
+          sol_v(0, k + pks, j + pjs, i + pis, n) = v_transform(0, k, j, i, n);
         });
 
     solution.exchange({VVAR, WVAR});

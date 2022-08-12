@@ -212,18 +212,19 @@ public:
   virtual void compute_constants(FieldSet<nconstant> &const_vars,
                                  FieldSet<nprognostic> &x) = 0;
 
-  virtual void YAKL_INLINE compute_functional_derivatives(
+  virtual void compute_functional_derivatives(
       ADD_MODE addmode, real fac, real dt, FieldSet<nconstant> &const_vars,
       FieldSet<nprognostic> &x, FieldSet<nauxiliary> &auxiliary_vars) = 0;
 
-  virtual void YAKL_INLINE apply_symplectic(
-      real dt, FieldSet<nconstant> &const_vars, FieldSet<nprognostic> &x,
-      FieldSet<nauxiliary> &auxiliary_vars, FieldSet<nprognostic> &xtend) = 0;
+  virtual void apply_symplectic(real dt, FieldSet<nconstant> &const_vars,
+                                FieldSet<nprognostic> &x,
+                                FieldSet<nauxiliary> &auxiliary_vars,
+                                FieldSet<nprognostic> &xtend) = 0;
 
-  virtual void YAKL_INLINE compute_rhs(real dt, FieldSet<nconstant> &const_vars,
-                                       FieldSet<nprognostic> &x,
-                                       FieldSet<nauxiliary> &auxiliary_vars,
-                                       FieldSet<nprognostic> &xtend) {
+  virtual void compute_rhs(real dt, FieldSet<nconstant> &const_vars,
+                           FieldSet<nprognostic> &x,
+                           FieldSet<nauxiliary> &auxiliary_vars,
+                           FieldSet<nprognostic> &xtend) {
     compute_functional_derivatives(ADD_MODE::REPLACE, 1._fp, dt, const_vars, x,
                                    auxiliary_vars);
     apply_symplectic(dt, const_vars, x, auxiliary_vars, xtend);
@@ -298,8 +299,8 @@ public:
   }
   virtual void compute_coefficients(real dt){};
 
-  virtual void YAKL_INLINE solve(real dt, FieldSet<nprognostic> &rhs,
-                                 FieldSet<nconstant> &const_vars,
-                                 FieldSet<nauxiliary> &auxiliary_vars,
-                                 FieldSet<nprognostic> &solution) = 0;
+  virtual void solve(real dt, FieldSet<nprognostic> &rhs,
+                     FieldSet<nconstant> &const_vars,
+                     FieldSet<nauxiliary> &auxiliary_vars,
+                     FieldSet<nprognostic> &solution) = 0;
 };
