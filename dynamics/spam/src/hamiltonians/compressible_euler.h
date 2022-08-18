@@ -30,7 +30,7 @@ public:
 
   void set_parameters(real gin) {}
 
-  real YAKL_INLINE compute_PE(const real5d dens, const real5d geop, int is,
+  real YAKL_INLINE compute_PE(const real5d &dens, const real5d &geop, int is,
                               int js, int ks, int i, int j, int k,
                               int n) const {
     SArray<real, 1, 1> geop0;
@@ -46,7 +46,7 @@ public:
     return dens(0, k + ks, j + js, i + is, n) * geop0(0);
   }
 
-  real YAKL_INLINE compute_IE(const real5d dens, int is, int js, int ks, int i,
+  real YAKL_INLINE compute_IE(const real5d &dens, int is, int js, int ks, int i,
                               int j, int k, int n) const {
     // SArray<real,1,2> dens0;
     // #ifdef _EXTRUDED
@@ -63,9 +63,10 @@ public:
   }
 
   template <ADD_MODE addmode = ADD_MODE::REPLACE>
-  void YAKL_INLINE compute_dHsdx(real5d B, const real5d dens, const real5d geop,
-                                 int is, int js, int ks, int i, int j, int k,
-                                 int n, real fac = 1._fp) const {
+  void YAKL_INLINE compute_dHsdx(const real5d &B, const real5d &dens,
+                                 const real5d &geop, int is, int js, int ks,
+                                 int i, int j, int k, int n,
+                                 real fac = 1._fp) const {
 
     SArray<real, 1, 1> geop0;
 #ifdef _EXTRUDED
@@ -139,7 +140,7 @@ public:
 
   void set_parameters(real gin) {}
 
-  real YAKL_INLINE compute_PE(const real5d dens, const real5d geop, int is,
+  real YAKL_INLINE compute_PE(const real5d &dens, const real5d &geop, int is,
                               int js, int ks, int i, int j, int k,
                               int n) const {
     SArray<real, 1, 1> geop0;
@@ -156,7 +157,7 @@ public:
     return dens(0, k + ks, j + js, i + is, n) * geop0(0);
   }
 
-  real YAKL_INLINE compute_IE(const real5d dens, int is, int js, int ks, int i,
+  real YAKL_INLINE compute_IE(const real5d &dens, int is, int js, int ks, int i,
                               int j, int k, int n) const {
 
     // SArray<real,1,5> dens0;
@@ -185,9 +186,10 @@ public:
 
   // THIS NEEDS FIXING, BUT SHOULD BE COMPLETELY GENERAL NOW!
   template <ADD_MODE addmode = ADD_MODE::REPLACE>
-  void YAKL_INLINE compute_dHsdx(real5d B, const real5d dens, const real5d geop,
-                                 int is, int js, int ks, int i, int j, int k,
-                                 int n, real fac = 1._fp) const {
+  void YAKL_INLINE compute_dHsdx(const real5d &B, const real5d &dens,
+                                 const real5d &geop, int is, int js, int ks,
+                                 int i, int j, int k, int n,
+                                 real fac = 1._fp) const {
 
     SArray<real, 1, 1> geop0;
 
@@ -303,8 +305,8 @@ public:
 //  }
 //
 //
-//  real YAKL_INLINE compute_PE(const real5d dens, const real5d densfct, const
-//  real5d geop, int is, int js, int ks, int i, int j, int k)
+//  real YAKL_INLINE compute_PE(const real5d& dens, const real5d& densfct, const
+//  const real5d& geop, int is, int js, int ks, int i, int j, int k)
 //  {
 //
 //    SArray<real,1,1> geop0;
@@ -323,37 +325,37 @@ public:
 //  //   ql = rho_l/rho;
 //  //   qi = rho_i/rho;
 //  // with rho = rho_d + rho_v + rho_l + rho_i
-//      real YAKL_INLINE compute_alpha(const real5d dens0, const real5d
+//      real YAKL_INLINE compute_alpha(const real5d& dens0, const real5d&
 //      densfct0, int is, int js, int ks, int i, int j, int k, int n) {
 //        return 1./(dens0(0, k+ks, j+js, i+is) + densfct0(0, k+ks, j+js, i+is)
 //        + densfct0(1, k+ks, j+js, i+is) + densfct0(2, k+ks, j+js, i+is));
 //      }
 //
-//      real YAKL_INLINE compute_entropic_var(const real5d dens0, const real5d
+//      real YAKL_INLINE compute_entropic_var(const real5d& dens0, const real5d&
 //      densfct0, int is, int js, int ks, int i, int j, int k, int n) {
 //        return dens0(1, k+ks, j+js, i+is)/(dens0(0, k+ks, j+js, i+is) +
 //        densfct0(0, k+ks, j+js, i+is) + densfct0(1, k+ks, j+js, i+is) +
 //        densfct0(2, k+ks, j+js, i+is));
 //      }
-//      real YAKL_INLINE compute_qd(const real5d dens0, const real5d densfct0,
+//      real YAKL_INLINE compute_qd(const real5d& dens0, const real5d& densfct0,
 //      int is, int js, int ks, int i, int j, int k, int n) {
 //        return (dens0(0, k+ks, j+js, i+is))/(dens0(0, k+ks, j+js, i+is) +
 //        densfct0(0, k+ks, j+js, i+is) + densfct0(1, k+ks, j+js, i+is) +
 //        densfct0(2, k+ks, j+js, i+is));
 //      }
-//      real YAKL_INLINE compute_qv(const real5d dens0, const real5d densfct0,
+//      real YAKL_INLINE compute_qv(const real5d& dens0, const real5d& densfct0,
 //      int is, int js, int ks, int i, int j, int k, int n) {
 //        return densfct0(0, k+ks, j+js, i+is)/(dens0(0, k+ks, j+js, i+is) +
 //        densfct0(0, k+ks, j+js, i+is) + densfct0(1, k+ks, j+js, i+is) +
 //        densfct0(2, k+ks, j+js, i+is));
 //      }
-//      real YAKL_INLINE compute_ql(const real5d dens0, const real5d densfct0,
+//      real YAKL_INLINE compute_ql(const real5d& dens0, const real5d& densfct0,
 //      int is, int js, int ks, int i, int j, int k, int n) {
 //        return densfct0(1, k+ks, j+js, i+is)/(dens0(0, k+ks, j+js, i+is) +
 //        densfct0(0, k+ks, j+js, i+is) + densfct0(1, k+ks, j+js, i+is) +
 //        densfct0(2, k+ks, j+js, i+is));
 //      }
-//      real YAKL_INLINE compute_qi(const real5d dens0, const real5d densfct0,
+//      real YAKL_INLINE compute_qi(const real5d& dens0, const real5d& densfct0,
 //      int is, int js, int ks, int i, int j, int k, int n) {
 //        return densfct0(2, k+ks, j+js, i+is)/(dens0(0, k+ks, j+js, i+is) +
 //        densfct0(0, k+ks, j+js, i+is) + densfct0(1, k+ks, j+js, i+is) +
@@ -361,8 +363,8 @@ public:
 //      }
 //
 //
-//  real YAKL_INLINE compute_IE(const real5d dens, const real5d densfct, int is,
-//  int js, int ks, int i, int j, int k, int n)
+//  real YAKL_INLINE compute_IE(const real5d& dens, const real5d& densfct, int
+//  is, int js, int ks, int i, int j, int k, int n)
 //  {
 //
 //    SArray<real,1,2> dens0;
@@ -377,9 +379,9 @@ public:
 //    return rho * thermo.compute_U(alpha, entropic_var, qd, qv, ql, qi);
 //  }
 //
-//   void YAKL_INLINE compute_dHsdx(real5d B, real5d Bfct, const real5d dens0,
-//   const real5d densfct0, const real5d geop, int is, int js, int ks, int i,
-//   int j, int k, int n)
+//   void YAKL_INLINE compute_dHsdx(const real5d& B, const real5d& Bfct, const
+//   real5d& dens0, const real5d& densfct0, const real5d& geop, int is, int js,
+//   int ks, int i, int j, int k, int n)
 //   {
 //
 //     SArray<real,1,1> geop0;
@@ -422,7 +424,7 @@ public:
 // p-variants
 // class Hamiltonian_CE_p_Hs : public Hamiltonian_CE_Hs
 // {
-//   real YAKL_INLINE compute_IE(const real5d dens, const real5d densfct, int
+//   real YAKL_INLINE compute_IE(const real5d& dens, const real5d& densfct, int
 //   is, int js, int ks, int i, int j, int k)
 //   {
 //     SArray<real,2> dens0;
@@ -433,9 +435,9 @@ public:
 //     entropic_var, 0, 0, 0, 0) - p;
 //   }
 //
-//    void YAKL_INLINE compute_dHsdx(real5d B, real5d Bfct, const real5d dens0,
-//    const real5d densfct0, const real5d geop, int is, int js, int ks, int i,
-//    int j, int k)
+//    void YAKL_INLINE compute_dHsdx(const real5d& B, const real5d& Bfct, const
+//    real5d& dens0, const real5d& densfct0, const real5d& geop, int is, int js,
+//    int ks, int i, int j, int k)
 //    {
 //
 //      SArray<real,1> geop0;
@@ -458,7 +460,7 @@ public:
 //
 // class Hamiltonian_MCE_rho_p_Hs : public Hamiltonian_MCE_rho_Hs
 // {
-//   real YAKL_INLINE compute_IE(const real5d dens, const real5d densfct, int
+//   real YAKL_INLINE compute_IE(const real5d& dens, const real5d& densfct, int
 //   is, int js, int ks, int i, int j, int k)
 //   {
 //
@@ -479,9 +481,9 @@ public:
 //     qv, ql, qi) - p;
 //   }
 //
-//    void YAKL_INLINE compute_dHsdx(real5d B, real5d Bfct, const real5d dens0,
-//    const real5d densfct0, const real5d geop, int is, int js, int ks, int i,
-//    int j, int k)
+//    void YAKL_INLINE compute_dHsdx(const real5d& B, const real5d& Bfct, const
+//    real5d& dens0, const real5d& densfct0, const real5d& geop, int is, int js,
+//    int ks, int i, int j, int k)
 //    {
 //
 //      SArray<real,1> geop0;
@@ -522,7 +524,7 @@ public:
 //
 // class Hamiltonian_MCE_rhod_p_Hs : public Hamiltonian_MCE_rhod_Hs
 // {
-//   real YAKL_INLINE compute_IE(const real5d dens, const real5d densfct, int
+//   real YAKL_INLINE compute_IE(const real5d& dens, const real5d& densfct, int
 //   is, int js, int ks, int i, int j, int k)
 //   {
 //
@@ -543,9 +545,9 @@ public:
 //     return rho * thermo.compute_H(p, entropic_var, qd, qv, ql, qi) - p;
 //   }
 //
-//    void YAKL_INLINE compute_dHsdx(real5d B, real5d Bfct, const real5d dens0,
-//    const real5d densfct0, const real5d geop, int is, int js, int ks, int i,
-//    int j, int k)
+//    void YAKL_INLINE compute_dHsdx(const real5d& B, const real5d& Bfct, const
+//    real5d& dens0, const real5d& densfct0, const real5d& geop, int is, int js,
+//    int ks, int i, int j, int k)
 //    {
 //
 //      SArray<real,1> geop0;

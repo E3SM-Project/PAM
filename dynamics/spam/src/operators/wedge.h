@@ -40,8 +40,8 @@ void YAKL_INLINE Q2D_nonEC(SArray<real, 2, ndofs, 2> &vel,
 }
 
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_Q_EC(real5d qflux, const real5d reconvar,
-                              const real5d Uvar, int is, int js, int ks, int i,
+void YAKL_INLINE compute_Q_EC(const real5d &qflux, const real5d &reconvar,
+                              const real5d &Uvar, int is, int js, int ks, int i,
                               int j, int k, int n) {
 
   SArray<real, 2, ndofs, 2> vel;
@@ -87,8 +87,8 @@ void YAKL_INLINE compute_Q_EC(real5d qflux, const real5d reconvar,
 }
 
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_Q_nonEC(real5d qflux, const real5d reconvar,
-                                 const real5d Uvar, int is, int js, int ks,
+void YAKL_INLINE compute_Q_nonEC(const real5d &qflux, const real5d &reconvar,
+                                 const real5d &Uvar, int is, int js, int ks,
                                  int i, int j, int k, int n) {
 
   SArray<real, 2, ndofs, 2> vel;
@@ -125,10 +125,10 @@ void YAKL_INLINE compute_Q_nonEC(real5d qflux, const real5d reconvar,
 }
 
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_Qxz_w_EC(real5d qflux, const real5d reconvar,
-                                  const real5d vertreconvar, const real5d Uvar,
-                                  int is, int js, int ks, int i, int j, int k,
-                                  int n) {
+void YAKL_INLINE compute_Qxz_w_EC(const real5d &qflux, const real5d &reconvar,
+                                  const real5d &vertreconvar,
+                                  const real5d &Uvar, int is, int js, int ks,
+                                  int i, int j, int k, int n) {
   SArray<real, 1, 4> flux;
   SArray<real, 1, 4> recon;
   flux(0) = Uvar(0, k + ks, j + js, i + is, n);
@@ -161,9 +161,10 @@ void YAKL_INLINE compute_Qxz_w_EC(real5d qflux, const real5d reconvar,
   }
 }
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_Qxz_w_nonEC(real5d qflux, const real5d reconvar,
-                                     const real5d Uvar, int is, int js, int ks,
-                                     int i, int j, int k, int n) {
+void YAKL_INLINE compute_Qxz_w_nonEC(const real5d &qflux,
+                                     const real5d &reconvar, const real5d &Uvar,
+                                     int is, int js, int ks, int i, int j,
+                                     int k, int n) {
   SArray<real, 1, 4> flux;
   flux(0) = Uvar(0, k + ks, j + js, i + is, n);
   flux(1) = Uvar(0, k + ks, j + js, i + is + 1, n);
@@ -185,10 +186,11 @@ void YAKL_INLINE compute_Qxz_w_nonEC(real5d qflux, const real5d reconvar,
   }
 }
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_Qxz_w_EC_top(real5d qflux, const real5d reconvar,
-                                      const real5d vertreconvar,
-                                      const real5d Uvar, int is, int js, int ks,
-                                      int i, int j, int k, int n) {
+void YAKL_INLINE compute_Qxz_w_EC_top(const real5d &qflux,
+                                      const real5d &reconvar,
+                                      const real5d &vertreconvar,
+                                      const real5d &Uvar, int is, int js,
+                                      int ks, int i, int j, int k, int n) {
   SArray<real, 1, 2> flux;
   SArray<real, 1, 2> recon;
   flux(0) = Uvar(0, k + ks, j + js, i + is, n);
@@ -211,8 +213,9 @@ void YAKL_INLINE compute_Qxz_w_EC_top(real5d qflux, const real5d reconvar,
   }
 }
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_Qxz_w_nonEC_top(real5d qflux, const real5d reconvar,
-                                         const real5d Uvar, int is, int js,
+void YAKL_INLINE compute_Qxz_w_nonEC_top(const real5d &qflux,
+                                         const real5d &reconvar,
+                                         const real5d &Uvar, int is, int js,
                                          int ks, int i, int j, int k, int n) {
   SArray<real, 1, 2> flux;
   flux(0) = Uvar(0, k + ks, j + js, i + is, n);
@@ -233,9 +236,10 @@ void YAKL_INLINE compute_Qxz_w_nonEC_top(real5d qflux, const real5d reconvar,
   }
 }
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_Qxz_w_EC_bottom(real5d qflux, const real5d reconvar,
-                                         const real5d vertreconvar,
-                                         const real5d Uvar, int is, int js,
+void YAKL_INLINE compute_Qxz_w_EC_bottom(const real5d &qflux,
+                                         const real5d &reconvar,
+                                         const real5d &vertreconvar,
+                                         const real5d &Uvar, int is, int js,
                                          int ks, int i, int j, int k, int n) {
   SArray<real, 1, 2> flux;
   SArray<real, 1, 2> recon;
@@ -259,8 +263,9 @@ void YAKL_INLINE compute_Qxz_w_EC_bottom(real5d qflux, const real5d reconvar,
   }
 }
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_Qxz_w_nonEC_bottom(real5d qflux, const real5d reconvar,
-                                            const real5d Uvar, int is, int js,
+void YAKL_INLINE compute_Qxz_w_nonEC_bottom(const real5d &qflux,
+                                            const real5d &reconvar,
+                                            const real5d &Uvar, int is, int js,
                                             int ks, int i, int j, int k,
                                             int n) {
   SArray<real, 1, 2> flux;
@@ -283,10 +288,11 @@ void YAKL_INLINE compute_Qxz_w_nonEC_bottom(real5d qflux, const real5d reconvar,
 }
 
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_Qxz_u_EC(real5d qvertflux, const real5d reconvar,
-                                  const real5d vertreconvar, const real5d UWvar,
-                                  int is, int js, int ks, int i, int j, int k,
-                                  int n) {
+void YAKL_INLINE compute_Qxz_u_EC(const real5d &qvertflux,
+                                  const real5d &reconvar,
+                                  const real5d &vertreconvar,
+                                  const real5d &UWvar, int is, int js, int ks,
+                                  int i, int j, int k, int n) {
   SArray<real, 1, 4> flux;
   SArray<real, 1, 4> recon;
   flux(0) = UWvar(0, k + ks, j + js, i + is, n);
@@ -322,10 +328,10 @@ void YAKL_INLINE compute_Qxz_u_EC(real5d qvertflux, const real5d reconvar,
   }
 }
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_Qxz_u_nonEC(real5d qvertflux,
-                                     const real5d vertreconvar,
-                                     const real5d UWvar, int is, int js, int ks,
-                                     int i, int j, int k, int n) {
+void YAKL_INLINE compute_Qxz_u_nonEC(const real5d &qvertflux,
+                                     const real5d &vertreconvar,
+                                     const real5d &UWvar, int is, int js,
+                                     int ks, int i, int j, int k, int n) {
   SArray<real, 1, 4> flux;
   flux(0) = UWvar(0, k + ks, j + js, i + is, n);
   flux(1) = UWvar(0, k + ks, j + js, i + is - 1, n);
@@ -349,8 +355,9 @@ void YAKL_INLINE compute_Qxz_u_nonEC(real5d qvertflux,
 }
 
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_Qxz_u_top(real5d qvertflux, const real5d vertreconvar,
-                                   const real5d UWvar, int is, int js, int ks,
+void YAKL_INLINE compute_Qxz_u_top(const real5d &qvertflux,
+                                   const real5d &vertreconvar,
+                                   const real5d &UWvar, int is, int js, int ks,
                                    int i, int j, int k, int n) {
   SArray<real, 1, 2> flux;
   flux(0) = UWvar(0, k + ks + 1, j + js, i + is, n);
@@ -372,9 +379,9 @@ void YAKL_INLINE compute_Qxz_u_top(real5d qvertflux, const real5d vertreconvar,
   }
 }
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_Qxz_u_bottom(real5d qvertflux,
-                                      const real5d vertreconvar,
-                                      const real5d UWvar, int is, int js,
+void YAKL_INLINE compute_Qxz_u_bottom(const real5d &qvertflux,
+                                      const real5d &vertreconvar,
+                                      const real5d &UWvar, int is, int js,
                                       int ks, int i, int j, int k, int n) {
   SArray<real, 1, 2> flux;
   flux(0) = UWvar(0, k + ks, j + js, i + is, n);
@@ -396,35 +403,36 @@ void YAKL_INLINE compute_Qxz_u_bottom(real5d qvertflux,
   }
 }
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_Qxz_u_nonEC_top(real5d qvertflux,
-                                         const real5d vertreconvar,
-                                         const real5d UWvar, int is, int js,
+void YAKL_INLINE compute_Qxz_u_nonEC_top(const real5d &qvertflux,
+                                         const real5d &vertreconvar,
+                                         const real5d &UWvar, int is, int js,
                                          int ks, int i, int j, int k, int n) {
   compute_Qxz_u_top<ndofs, addmode>(qvertflux, vertreconvar, UWvar, is, js, ks,
                                     i, j, k, n);
 }
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_Qxz_u_EC_top(real5d qvertflux, const real5d reconvar,
-                                      const real5d vertreconvar,
-                                      const real5d UWvar, int is, int js,
+void YAKL_INLINE compute_Qxz_u_EC_top(const real5d &qvertflux,
+                                      const real5d &reconvar,
+                                      const real5d &vertreconvar,
+                                      const real5d &UWvar, int is, int js,
                                       int ks, int i, int j, int k, int n) {
   compute_Qxz_u_top<ndofs, addmode>(qvertflux, vertreconvar, UWvar, is, js, ks,
                                     i, j, k, n);
 }
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_Qxz_u_nonEC_bottom(real5d qvertflux,
-                                            const real5d vertreconvar,
-                                            const real5d UWvar, int is, int js,
+void YAKL_INLINE compute_Qxz_u_nonEC_bottom(const real5d &qvertflux,
+                                            const real5d &vertreconvar,
+                                            const real5d &UWvar, int is, int js,
                                             int ks, int i, int j, int k,
                                             int n) {
   compute_Qxz_u_bottom<ndofs, addmode>(qvertflux, vertreconvar, UWvar, is, js,
                                        ks, i, j, k, n);
 }
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_Qxz_u_EC_bottom(real5d qvertflux,
-                                         const real5d reconvar,
-                                         const real5d vertreconvar,
-                                         const real5d UWvar, int is, int js,
+void YAKL_INLINE compute_Qxz_u_EC_bottom(const real5d &qvertflux,
+                                         const real5d &reconvar,
+                                         const real5d &vertreconvar,
+                                         const real5d &UWvar, int is, int js,
                                          int ks, int i, int j, int k, int n) {
   compute_Qxz_u_bottom<ndofs, addmode>(qvertflux, vertreconvar, UWvar, is, js,
                                        ks, i, j, k, n);
@@ -439,8 +447,8 @@ void YAKL_INLINE W2D(SArray<real, 1, 2> &vel,
   vel(1) = 0.25_fp * (flux(1, 0) + flux(1, 1) + flux(1, 2) + flux(1, 3));
 }
 
-void YAKL_INLINE compute_W(real5d UTvar, const real5d Uvar, int is, int js,
-                           int ks, int i, int j, int k, int n) {
+void YAKL_INLINE compute_W(const real5d &UTvar, const real5d &Uvar, int is,
+                           int js, int ks, int i, int j, int k, int n) {
 
   SArray<real, 1, 2> ut;
   SArray<real, 2, 2, 4> flux;
@@ -460,8 +468,8 @@ void YAKL_INLINE compute_W(real5d UTvar, const real5d Uvar, int is, int js,
 }
 
 // Wxz
-void YAKL_INLINE compute_Wxz_u(real5d VTvar, const real5d UWvar, int is, int js,
-                               int ks, int i, int j, int k, int n) {
+void YAKL_INLINE compute_Wxz_u(const real5d &VTvar, const real5d &UWvar, int is,
+                               int js, int ks, int i, int j, int k, int n) {
   SArray<real, 1, 4> flux;
   flux(0) = UWvar(0, k + ks, j + js, i + is, n);
   flux(1) = UWvar(0, k + ks, j + js, i + is - 1, n);
@@ -471,17 +479,18 @@ void YAKL_INLINE compute_Wxz_u(real5d VTvar, const real5d UWvar, int is, int js,
   VTvar(0, k + ks, j + js, i + is, n) =
       -0.25_fp * (flux(0) + flux(1) + flux(2) + flux(3));
 }
-void YAKL_INLINE compute_Wxz_u_top(real5d VTvar, const real5d UWvar, int is,
-                                   int js, int ks, int i, int j, int k, int n) {
+void YAKL_INLINE compute_Wxz_u_top(const real5d &VTvar, const real5d &UWvar,
+                                   int is, int js, int ks, int i, int j, int k,
+                                   int n) {
   SArray<real, 1, 2> flux;
   flux(0) = UWvar(0, k + ks + 1, j + js, i + is, n);
   flux(1) = UWvar(0, k + ks + 1, j + js, i + is - 1, n);
   // Added the minus sign here
   VTvar(0, k + ks, j + js, i + is, n) = -0.5_fp * (flux(0) + flux(1));
 }
-void YAKL_INLINE compute_Wxz_u_bottom(real5d VTvar, const real5d UWvar, int is,
-                                      int js, int ks, int i, int j, int k,
-                                      int n) {
+void YAKL_INLINE compute_Wxz_u_bottom(const real5d &VTvar, const real5d &UWvar,
+                                      int is, int js, int ks, int i, int j,
+                                      int k, int n) {
   SArray<real, 1, 4> flux;
   flux(0) = UWvar(0, k + ks, j + js, i + is, n);
   flux(1) = UWvar(0, k + ks, j + js, i + is - 1, n);
@@ -489,8 +498,8 @@ void YAKL_INLINE compute_Wxz_u_bottom(real5d VTvar, const real5d UWvar, int is,
   VTvar(0, k + ks, j + js, i + is, n) = -0.5_fp * (flux(0) + flux(1));
 }
 
-void YAKL_INLINE compute_Wxz_w(real5d WTvar, const real5d Uvar, int is, int js,
-                               int ks, int i, int j, int k, int n) {
+void YAKL_INLINE compute_Wxz_w(const real5d &WTvar, const real5d &Uvar, int is,
+                               int js, int ks, int i, int j, int k, int n) {
   SArray<real, 1, 4> flux;
   flux(0) = Uvar(0, k + ks, j + js, i + is, n);
   flux(1) = Uvar(0, k + ks, j + js, i + is + 1, n);
@@ -499,16 +508,17 @@ void YAKL_INLINE compute_Wxz_w(real5d WTvar, const real5d Uvar, int is, int js,
   WTvar(0, k + ks, j + js, i + is, n) =
       0.25_fp * (flux(0) + flux(1) + flux(2) + flux(3));
 }
-void YAKL_INLINE compute_Wxz_w_top(real5d WTvar, const real5d Uvar, int is,
-                                   int js, int ks, int i, int j, int k, int n) {
+void YAKL_INLINE compute_Wxz_w_top(const real5d &WTvar, const real5d &Uvar,
+                                   int is, int js, int ks, int i, int j, int k,
+                                   int n) {
   SArray<real, 1, 2> flux;
   flux(0) = Uvar(0, k + ks, j + js, i + is, n);
   flux(1) = Uvar(0, k + ks, j + js, i + is + 1, n);
   WTvar(0, k + ks, j + js, i + is, n) = 0.25_fp * (flux(0) + flux(1));
 }
-void YAKL_INLINE compute_Wxz_w_bottom(real5d WTvar, const real5d Uvar, int is,
-                                      int js, int ks, int i, int j, int k,
-                                      int n) {
+void YAKL_INLINE compute_Wxz_w_bottom(const real5d &WTvar, const real5d &Uvar,
+                                      int is, int js, int ks, int i, int j,
+                                      int k, int n) {
   SArray<real, 1, 2> flux;
   flux(0) = Uvar(0, k + ks + 1, j + js, i + is, n);
   flux(1) = Uvar(0, k + ks + 1, j + js, i + is + 1, n);
@@ -528,7 +538,7 @@ void YAKL_INLINE R(SArray<real, 1, 1> &vard, SArray<real, 1, 8> const &varp) {
 }
 
 template <uint dof>
-void YAKL_INLINE compute_R(real &var, const real5d densvar, int is, int js,
+void YAKL_INLINE compute_R(real &var, const real5d &densvar, int is, int js,
                            int ks, int i, int j, int k, int n) {
   SArray<real, 1, 1> dualdens;
   if (ndims == 1) {
@@ -561,8 +571,8 @@ void YAKL_INLINE compute_R(real &var, const real5d densvar, int is, int js,
 }
 
 template <uint dof>
-void YAKL_INLINE compute_R(real5d var, const real5d densvar, int is, int js,
-                           int ks, int i, int j, int k, int n) {
+void YAKL_INLINE compute_R(const real5d &var, const real5d &densvar, int is,
+                           int js, int ks, int i, int j, int k, int n) {
   real var2;
   compute_R<dof>(var2, densvar, is, js, ks, i, j, k, n);
   var(dof, k + ks, j + js, i + is, n) = var2;
@@ -581,8 +591,8 @@ void YAKL_INLINE phi(SArray<real, 1, ndims> &vare,
   }
 }
 
-void YAKL_INLINE compute_phi(real5d var, const real5d densvar, int is, int js,
-                             int ks, int i, int j, int k, int n) {
+void YAKL_INLINE compute_phi(const real5d &var, const real5d &densvar, int is,
+                             int js, int ks, int i, int j, int k, int n) {
   SArray<real, 1, ndims> xe;
   SArray<real, 2, ndims, 2> x0;
   for (int d = 0; d < ndims; d++) {
@@ -609,8 +619,8 @@ real YAKL_INLINE phiW(SArray<real, 1, 2> const &var0) {
   return 0.5_fp * (var0(0) + var0(1));
 }
 
-void YAKL_INLINE compute_phiW(real5d var, const real5d densvar, int is, int js,
-                              int ks, int i, int j, int k, int n) {
+void YAKL_INLINE compute_phiW(const real5d &var, const real5d &densvar, int is,
+                              int js, int ks, int i, int j, int k, int n) {
   SArray<real, 1, 2> x0;
   x0(0) = densvar(0, k + ks, j + js, i + is, n);
   x0(1) = densvar(0, k + ks - 1, j + js, i + is, n);
@@ -629,9 +639,9 @@ void YAKL_INLINE phiT(SArray<real, 1, 1> &ke,
 }
 
 template <ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_phiT(real5d var, const real5d uvar, const real5d vvar,
-                              int is, int js, int ks, int i, int j, int k,
-                              int n) {
+void YAKL_INLINE compute_phiT(const real5d &var, const real5d &uvar,
+                              const real5d &vvar, int is, int js, int ks, int i,
+                              int j, int k, int n) {
   SArray<real, 1, 1> ke;
   SArray<real, 2, ndims, 2> u;
   SArray<real, 2, ndims, 2> v;
@@ -665,7 +675,7 @@ void YAKL_INLINE compute_phiT(real5d var, const real5d uvar, const real5d vvar,
 }
 void YAKL_INLINE compute_phiT(SArray<real, 1, 1> &var,
                               SArray<real, 2, ndims, 2> const &u,
-                              const real5d vvar, int is, int js, int ks, int i,
+                              const real5d &vvar, int is, int js, int ks, int i,
                               int j, int k, int n) {
   SArray<real, 2, ndims, 2> v;
   for (int d = 0; d < ndims; d++) {
@@ -691,9 +701,9 @@ real YAKL_INLINE phiTW(SArray<real, 1, 2> const &u,
 }
 
 template <ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_phiTW(real5d var, const real5d uwvar,
-                               const real5d wvar, int is, int js, int ks, int i,
-                               int j, int k, int n) {
+void YAKL_INLINE compute_phiTW(const real5d &var, const real5d &uwvar,
+                               const real5d &wvar, int is, int js, int ks,
+                               int i, int j, int k, int n) {
   SArray<real, 1, 2> u;
   SArray<real, 1, 2> v;
   u(0) = uwvar(0, k + ks, j + js, i + is, n);
@@ -711,7 +721,7 @@ void YAKL_INLINE compute_phiTW(real5d var, const real5d uwvar,
 
 template <ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_phiTW(SArray<real, 1, 1> &var,
-                               SArray<real, 1, 2> const &uw, const real5d wvar,
+                               SArray<real, 1, 2> const &uw, const real5d &wvar,
                                int is, int js, int ks, int i, int j, int k,
                                int n) {
   SArray<real, 1, 2> v;
