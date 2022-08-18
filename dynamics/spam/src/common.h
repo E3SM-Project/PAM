@@ -6,11 +6,14 @@
 #include "mpi.h"
 #include "yaml-cpp/yaml.h"
 #include <array>
+#include <complex>
+#include <extensions/YAKL_fft.h>
 #include <fstream>
 #include <math.h>
 #include <sstream>
 #include <string>
 
+using yakl::c::Bounds;
 using yakl::c::parallel_for;
 using yakl::c::SimpleBounds;
 
@@ -21,6 +24,12 @@ typedef unsigned int uint;
 
 // Declaring the precision for the model
 typedef double real;
+typedef std::complex<real> complex;
+typedef yakl::Array<complex, 5, yakl::memDevice, yakl::styleC> complex5d;
+typedef yakl::Array<complex, 4, yakl::memDevice, yakl::styleC> complex4d;
+typedef yakl::Array<complex, 3, yakl::memDevice, yakl::styleC> complex3d;
+typedef yakl::Array<complex, 2, yakl::memDevice, yakl::styleC> complex2d;
+typedef yakl::Array<complex, 1, yakl::memDevice, yakl::styleC> complex1d;
 #define REAL_MPI MPI_DOUBLE
 //#define REAL_NC NC_DOUBLE
 
@@ -75,12 +84,12 @@ uint constexpr mirroringhalo =
     9; // mymax(reconstruction_order+1,differential_order)/2;
        // // IS THIS ALWAYS CORRECT?
 
-// 0 = RKSimple, 1=SSPRK
+// 0 = RKSimple, 1=SSPRK, 2=SI
 #define _TIME_TYPE 1
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 
-real const pi =
+real constexpr pi =
     3.141592653589793238462643383279502884197169399375105820974944_fp;
 
 //#define PNETCDF_PUT_VAR ncmpi_put_vara_double
@@ -131,6 +140,7 @@ public:
   int Nstat = -1;
   std::string outputName;
   std::string tstype;
+  real si_tolerance = -1;
 
   real xlen, ylen, zlen;
   real xc, yc, zc;

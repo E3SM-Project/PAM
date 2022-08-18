@@ -84,6 +84,8 @@ void readParamsFile(std::string inFile, ModelParameters &params, Parallel &par,
 
   params.tstype = config["tstype"].as<std::string>();
 
+  params.si_tolerance = config["si_tolerance"].as<real>(1e-8);
+
   params.outputName = config["dycore_out_prefix"].as<std::string>("output");
 
   par.nz = params.nz_dual;

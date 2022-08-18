@@ -89,12 +89,22 @@ struct TracerGaussian : Tracer {
   }
 };
 
+class ReferenceState {
+public:
+  bool is_initialized = false;
+  virtual void initialize(const Topology &primal_topology,
+                          const Topology &dual_topology) = 0;
+};
+
 class TestCase {
 public:
   using TracerArr = yakl::Array<Tracer *, 1, yakl::memDevice, yakl::styleC>;
   TracerArr tracer_f;
 
   TestCase() { this->tracer_f = TracerArr("tracer_f", ntracers_dycore); }
+
+  virtual void
+  add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics){};
 
   void set_tracers(ModelParameters &params) {
     SArray<TRACER_TAG, 1, ntracers_dycore> tracer_tag;
@@ -134,6 +144,9 @@ public:
                                       FieldSet<nconstant> &constvars,
                                       const Geometry<Straight> &primal_geom,
                                       const Geometry<Twisted> &dual_geom) = 0;
+  virtual void set_reference_state(ReferenceState &refstate,
+                                   const Geometry<Straight> &primal_geom,
+                                   const Geometry<Twisted> &dual_geom){};
   virtual ~TestCase() = default;
 
   // why doesn't this work ? Tracers need to be deallocated !
@@ -197,11 +210,25 @@ public:
     this->is_initialized = true;
   }
   virtual void compute_constants(FieldSet<nconstant> &const_vars,
-                                 FieldSet<nprognostic> &x){};
+                                 FieldSet<nprognostic> &x) = 0;
+
+  virtual void compute_functional_derivatives(
+      ADD_MODE addmode, real fac, real dt, FieldSet<nconstant> &const_vars,
+      FieldSet<nprognostic> &x, FieldSet<nauxiliary> &auxiliary_vars) = 0;
+
+  virtual void apply_symplectic(real dt, FieldSet<nconstant> &const_vars,
+                                FieldSet<nprognostic> &x,
+                                FieldSet<nauxiliary> &auxiliary_vars,
+                                FieldSet<nprognostic> &xtend) = 0;
+
   virtual void compute_rhs(real dt, FieldSet<nconstant> &const_vars,
                            FieldSet<nprognostic> &x,
                            FieldSet<nauxiliary> &auxiliary_vars,
-                           FieldSet<nprognostic> &xtend){};
+                           FieldSet<nprognostic> &xtend) {
+    compute_functional_derivatives(ADD_MODE::REPLACE, 1._fp, dt, const_vars, x,
+                                   auxiliary_vars);
+    apply_symplectic(dt, const_vars, x, auxiliary_vars, xtend);
+  }
 };
 
 class ExtrudedTendencies : public Tendencies {
@@ -251,4 +278,29 @@ public:
 
     this->is_initialized = true;
   }
+};
+
+class LinearSystem {
+public:
+  Geometry<Straight> primal_geometry;
+  Geometry<Twisted> dual_geometry;
+
+  bool is_initialized = false;
+
+  virtual void initialize(ModelParameters &params,
+                          const Geometry<Straight> &primal_geom,
+                          const Geometry<Twisted> &dual_geom,
+                          ReferenceState &reference_state) {
+
+    this->primal_geometry = primal_geom;
+    this->dual_geometry = dual_geom;
+
+    this->is_initialized = true;
+  }
+  virtual void compute_coefficients(real dt){};
+
+  virtual void solve(real dt, FieldSet<nprognostic> &rhs,
+                     FieldSet<nconstant> &const_vars,
+                     FieldSet<nauxiliary> &auxiliary_vars,
+                     FieldSet<nprognostic> &solution) = 0;
 };

@@ -20,6 +20,7 @@
 #include "extrudedadvection.h"
 #endif
 #include "RKSimple.h"
+#include "SI.h"
 #include "SSPRK.h"
 #include <memory>
 
@@ -50,6 +51,11 @@ public:
 #endif
 #if _TIME_TYPE == 1
   SSPKKTimeIntegrator tint;
+#endif
+#if _TIME_TYPE == 2
+  ModelReferenceState reference_state;
+  ModelLinearSystem linear_system;
+  SITimeIntegrator<4> tint;
 #endif
 
   int ierr;
@@ -102,6 +108,7 @@ public:
 
     debug_print("start diagnostics init", par.masterproc);
     add_model_diagnostics(diagnostics);
+    testcase->add_diagnostics(diagnostics);
     for (auto &diag : diagnostics) {
       diag->initialize(primal_geometry, dual_geometry);
     }
@@ -131,6 +138,7 @@ public:
                                      primal_geometry, dual_geometry);
     prognostic_vars.exchange();
     constant_vars.exchange();
+
     tendencies.compute_constants(constant_vars, prognostic_vars);
     constant_vars.exchange();
     stats.compute(prognostic_vars, constant_vars, 0);
@@ -138,8 +146,19 @@ public:
 
     // // Initialize the time stepper
     debug_print("start ts init", par.masterproc);
+#if _TIME_TYPE == 2
+    reference_state.initialize(primal_topology, dual_topology);
+    testcase->set_reference_state(reference_state, primal_geometry,
+                                  dual_geometry);
+    linear_system.initialize(params, primal_geometry, dual_geometry,
+                             reference_state);
+    linear_system.compute_coefficients(params.dtcrm);
+    tint.initialize(params, tendencies, linear_system, prognostic_vars,
+                    constant_vars, auxiliary_vars);
+#else
     tint.initialize(params, tendencies, prognostic_vars, constant_vars,
                     auxiliary_vars);
+#endif
     debug_print("end ts init", par.masterproc);
 
     // convert dynamics state to Coupler state

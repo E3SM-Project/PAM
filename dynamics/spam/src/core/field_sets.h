@@ -38,6 +38,8 @@ public:
   void copy(const FieldSet<num_fields> &vs);
   void waxpy(real alpha, const FieldSet<num_fields> &x,
              const FieldSet<num_fields> &y);
+  void waxpby(real alpha, real beta, const FieldSet<num_fields> &x,
+              const FieldSet<num_fields> &y);
   void waxpbypcz(real alpha, real beta, real gamma,
                  const FieldSet<num_fields> &x, const FieldSet<num_fields> &y,
                  const FieldSet<num_fields> &z);
@@ -135,6 +137,16 @@ void FieldSet<num_fields>::waxpy(real alpha, const FieldSet<num_fields> &x,
                                  const FieldSet<num_fields> &y) {
   for (int i = 0; i < num_fields; i++) {
     this->fields_arr[i].waxpy(alpha, x.fields_arr[i], y.fields_arr[i]);
+  }
+}
+
+// Computes w (self) = alpha x + beta y
+template <uint num_fields>
+void FieldSet<num_fields>::waxpby(real alpha, real beta,
+                                  const FieldSet<num_fields> &x,
+                                  const FieldSet<num_fields> &y) {
+  for (int i = 0; i < num_fields; i++) {
+    this->fields_arr[i].waxpby(alpha, beta, x.fields_arr[i], y.fields_arr[i]);
   }
 }
 

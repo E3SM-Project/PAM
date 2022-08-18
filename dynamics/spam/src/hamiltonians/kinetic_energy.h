@@ -159,10 +159,51 @@ public:
   }
 
   // FIX THIS TO GET TOTAL DENSITY FROM VARSET!
-  void YAKL_INLINE compute_dKdv(real5d F, real5d K, real5d HE, const real5d v,
-                                const real5d U, const real5d dens0, int is,
-                                int js, int ks, int i, int j, int k,
-                                int n) const {
+
+  template <ADD_MODE addmode = ADD_MODE::REPLACE>
+  void YAKL_INLINE compute_F_and_K(real5d F, real5d K, const real5d v,
+                                   const real5d U, const real5d dens0, int is,
+                                   int js, int ks, int i, int j, int k, int n,
+                                   real fac = 1._fp) const {
+    SArray<real, 2, ndims, 2> D0;
+    SArray<real, 1, ndims> he;
+
+    // compute he = phi * h0
+    for (int d = 0; d < ndims; d++) {
+      if (d == 0) {
+        D0(d, 0) = dens0(0, k + ks, j + js, i + is, n);
+        D0(d, 1) = dens0(0, k + ks, j + js, i + is - 1, n);
+      }
+      if (d == 1) {
+        D0(d, 0) = dens0(0, k + ks, j + js, i + is, n);
+        D0(d, 1) = dens0(0, k + ks, j + js - 1, i + is, n);
+      }
+      if (d == 2) {
+        D0(d, 0) = dens0(0, k + ks, j + js, i + is, n);
+        D0(d, 1) = dens0(0, k + ks - 1, j + js, i + is, n);
+      }
+    }
+    phi(he, D0);
+
+    // compute F = he * U
+    for (int d = 0; d < ndims; d++) {
+      if (addmode == ADD_MODE::REPLACE) {
+        F(d, k + ks, j + js, i + is, n) =
+            fac * U(d, k + ks, j + js, i + is, n) * he(d);
+      } else if (addmode == ADD_MODE::ADD) {
+        F(d, k + ks, j + js, i + is, n) +=
+            fac * U(d, k + ks, j + js, i + is, n) * he(d);
+      }
+    }
+
+    // compute K = 1/2 * PhiT(U,V)
+    compute_phiT(K, U, v, is, js, ks, i, j, k, n);
+    K(0, k + ks, j + js, i + is, n) *= 0.5_fp;
+  }
+
+  void YAKL_INLINE compute_F_and_he(real5d F, real5d HE, const real5d U,
+                                    const real5d dens0, int is, int js, int ks,
+                                    int i, int j, int k, int n) const {
     SArray<real, 2, ndims, 2> D0;
     SArray<real, 1, ndims> he;
 
@@ -185,23 +226,20 @@ public:
 
     // compute F = he * U, set HE
     for (int d = 0; d < ndims; d++) {
-      HE(d, k + ks, j + js, i + is, n) = he(d);
       F(d, k + ks, j + js, i + is, n) = U(d, k + ks, j + js, i + is, n) * he(d);
+      HE(d, k + ks, j + js, i + is, n) = he(d);
     }
-
-    // compute K = 1/2 * PhiT(U,V)
-    compute_phiT(K, U, v, is, js, ks, i, j, k, n);
-    K(0, k + ks, j + js, i + is, n) *= 0.5_fp;
   }
 
   // FIX THIS TO GET TOTAL DENSITY FROM VARSET!
   //  Note that this ADDS to Bvar...
   void YAKL_INLINE compute_dKddens(real5d B, const real5d K, int is, int js,
-                                   int ks, int i, int j, int k, int n) const {
+                                   int ks, int i, int j, int k, int n,
+                                   real fac = 1._fp) const {
     SArray<real, 1, 1> K0;
     compute_I<1, diff_ord>(K0, K, this->primal_geometry, this->dual_geometry,
                            is, js, ks, i, j, k, n);
-    B(0, k + ks, j + js, i + is, n) += K0(0);
+    B(0, k + ks, j + js, i + is, n) += fac * K0(0);
   }
 };
 
@@ -463,9 +501,48 @@ public:
   }
 
   // FIX THIS TO GET TOTAL DENSITY FROM VARSET!
-  void YAKL_INLINE compute_Fw(real5d FW, real5d HEw, const real5d UW,
-                              const real5d dens0, int is, int js, int ks, int i,
-                              int j, int k, int n) const {
+  template <ADD_MODE addmode = ADD_MODE::REPLACE>
+  void YAKL_INLINE compute_Fw(real5d FW, const real5d UW, const real5d dens0,
+                              int is, int js, int ks, int i, int j, int k,
+                              int n, real fac = 1._fp) const {
+    // SArray<real,2> Dv;
+    // compute hew = phiw * h0
+    // Dv(0) = dens0(0, k+ks, j+js, i+is);
+    // Dv(1) = dens0(0, k+ks-1, j+js, i+is);
+    // real hew = phiW(Dv);
+    // compute FW = hew * UW, set HEw
+    real hew = (dens0(0, k + ks, j + js, i + is, n) +
+                dens0(0, k + ks - 1, j + js, i + is, n)) /
+               2.0;
+    if (addmode == ADD_MODE::REPLACE) {
+      FW(0, k + ks, j + js, i + is, n) =
+          fac * UW(0, k + ks, j + js, i + is, n) * hew;
+    } else if (addmode == ADD_MODE::ADD) {
+      FW(0, k + ks, j + js, i + is, n) +=
+          fac * UW(0, k + ks, j + js, i + is, n) * hew;
+    }
+    // std::cout << "HEw in Hk " << i << " " << j << " " << k << " " <<
+    // HEw(0,k+ks,j+js,i+is) << "\n" << std::flush;
+  }
+
+  // version that takes a reference state
+  template <ADD_MODE addmode = ADD_MODE::REPLACE>
+  void YAKL_INLINE compute_Fw(real5d FW, const real5d UW, const real3d dens0,
+                              int is, int js, int ks, int i, int j, int k,
+                              int n, real fac = 1._fp) const {
+    real hew = dens0(0, k, n);
+    if (addmode == ADD_MODE::REPLACE) {
+      FW(0, k + ks, j + js, i + is, n) =
+          fac * UW(0, k + ks, j + js, i + is, n) * hew;
+    } else if (addmode == ADD_MODE::ADD) {
+      FW(0, k + ks, j + js, i + is, n) +=
+          fac * UW(0, k + ks, j + js, i + is, n) * hew;
+    }
+  }
+
+  void YAKL_INLINE compute_Fw_and_he(real5d FW, real5d HEw, const real5d UW,
+                                     const real5d dens0, int is, int js, int ks,
+                                     int i, int j, int k, int n) const {
     // SArray<real,2> Dv;
     // compute hew = phiw * h0
     // Dv(0) = dens0(0, k+ks, j+js, i+is);
@@ -479,6 +556,20 @@ public:
     FW(0, k + ks, j + js, i + is, n) = UW(0, k + ks, j + js, i + is, n) * hew;
     // std::cout << "HEw in Hk " << i << " " << j << " " << k << " " <<
     // HEw(0,k+ks,j+js,i+is) << "\n" << std::flush;
+  }
+
+  void YAKL_INLINE compute_hew(real5d HEw, const real5d dens0, int is, int js,
+                               int ks, int i, int j, int k, int n) const {
+    // SArray<real,2> Dv;
+    // compute hew = phiw * h0
+    // Dv(0) = dens0(0, k+ks, j+js, i+is);
+    // Dv(1) = dens0(0, k+ks-1, j+js, i+is);
+    // real hew = phiW(Dv);
+    // compute FW = hew * UW, set HEw
+    real hew = (dens0(0, k + ks, j + js, i + is, n) +
+                dens0(0, k + ks - 1, j + js, i + is, n)) /
+               2.0;
+    HEw(0, k + ks, j + js, i + is, n) = hew;
   }
 
   void YAKL_INLINE compute_K(real5d K, const real5d v, const real5d U,
@@ -518,9 +609,84 @@ public:
   }
 
   // FIX THIS TO GET TOTAL DENSITY FROM VARSET!
-  void YAKL_INLINE compute_F(real5d F, real5d HE, const real5d U,
-                             const real5d dens0, int is, int js, int ks, int i,
-                             int j, int k, int n) const {
+  template <ADD_MODE addmode = ADD_MODE::REPLACE>
+  void YAKL_INLINE compute_F(real5d F, const real5d U, const real5d dens0,
+                             int is, int js, int ks, int i, int j, int k, int n,
+                             real fac = 1._fp) const {
+    SArray<real, 2, ndims, 2> D0;
+    SArray<real, 1, ndims> he;
+
+    // compute he = phi * h0
+    for (int d = 0; d < ndims; d++) {
+      if (d == 0) {
+        D0(d, 0) = dens0(0, k + ks, j + js, i + is, n);
+        D0(d, 1) = dens0(0, k + ks, j + js, i + is - 1, n);
+      }
+      if (d == 1) {
+        D0(d, 0) = dens0(0, k + ks, j + js, i + is, n);
+        D0(d, 1) = dens0(0, k + ks, j + js - 1, i + is, n);
+      }
+    }
+    phi(he, D0);
+    // compute F = he * U, set HE
+    for (int d = 0; d < ndims; d++) {
+      if (addmode == ADD_MODE::REPLACE) {
+        F(d, k + ks, j + js, i + is, n) =
+            fac * U(d, k + ks, j + js, i + is, n) * he(d);
+      } else if (addmode == ADD_MODE::ADD) {
+        F(d, k + ks, j + js, i + is, n) +=
+            fac * U(d, k + ks, j + js, i + is, n) * he(d);
+      }
+    }
+    // std::cout << "HE in Hk " << i << " " << j << " " << k << " " <<
+    // HE(0,k+ks,j+js,i+is) << "\n" << std::flush;
+  }
+
+  // version that takes a reference state
+  template <ADD_MODE addmode = ADD_MODE::REPLACE>
+  void YAKL_INLINE compute_F(real5d F, const real5d U, const real3d dens0,
+                             int is, int js, int ks, int i, int j, int k, int n,
+                             real fac = 1._fp) const {
+    SArray<real, 2, ndims, 2> D0;
+    real he = dens0(0, k, n);
+
+    // compute F = he * U, set HE
+    for (int d = 0; d < ndims; d++) {
+      if (addmode == ADD_MODE::REPLACE) {
+        F(d, k + ks, j + js, i + is, n) =
+            fac * U(d, k + ks, j + js, i + is, n) * he;
+      } else if (addmode == ADD_MODE::ADD) {
+        F(d, k + ks, j + js, i + is, n) +=
+            fac * U(d, k + ks, j + js, i + is, n) * he;
+      }
+    }
+  }
+
+  void YAKL_INLINE compute_he(real5d HE, const real5d dens0, int is, int js,
+                              int ks, int i, int j, int k, int n) const {
+    SArray<real, 2, ndims, 2> D0;
+    SArray<real, 1, ndims> he;
+
+    // compute he = phi * h0
+    for (int d = 0; d < ndims; d++) {
+      if (d == 0) {
+        D0(d, 0) = dens0(0, k + ks, j + js, i + is, n);
+        D0(d, 1) = dens0(0, k + ks, j + js, i + is - 1, n);
+      }
+      if (d == 1) {
+        D0(d, 0) = dens0(0, k + ks, j + js, i + is, n);
+        D0(d, 1) = dens0(0, k + ks, j + js - 1, i + is, n);
+      }
+    }
+    phi(he, D0);
+    for (int d = 0; d < ndims; d++) {
+      HE(d, k + ks, j + js, i + is, n) = he(d);
+    }
+  }
+
+  void YAKL_INLINE compute_F_and_he(real5d F, real5d HE, const real5d U,
+                                    const real5d dens0, int is, int js, int ks,
+                                    int i, int j, int k, int n) const {
     SArray<real, 2, ndims, 2> D0;
     SArray<real, 1, ndims> he;
 
@@ -548,16 +714,17 @@ public:
   // FIX THIS TO GET TOTAL DENSITY FROM VARSET!
   template <ADD_MODE addmode = ADD_MODE::REPLACE>
   void YAKL_INLINE compute_dKddens(real5d B, const real5d K, int is, int js,
-                                   int ks, int i, int j, int k, int n) const {
+                                   int ks, int i, int j, int k, int n,
+                                   real fac = 1._fp) const {
     SArray<real, 1, 1> K0;
     compute_Iext<1, diff_ord, vert_diff_ord>(K0, K, this->primal_geometry,
                                              this->dual_geometry, is, js, ks, i,
                                              j, k, n);
     if (addmode == ADD_MODE::REPLACE) {
-      B(0, k + ks, j + js, i + is, n) = K0(0);
+      B(0, k + ks, j + js, i + is, n) = fac * K0(0);
     }
     if (addmode == ADD_MODE::ADD) {
-      B(0, k + ks, j + js, i + is, n) += K0(0);
+      B(0, k + ks, j + js, i + is, n) += fac * K0(0);
     }
   }
 };
