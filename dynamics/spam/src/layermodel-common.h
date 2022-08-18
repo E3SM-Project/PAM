@@ -2,7 +2,7 @@
 
 uint constexpr ntracers_dycore = 6;
 uint constexpr ntracers_active =
-    0; // applies only for swe/tswe, determines how many of the tracers are
+    6; // applies only for swe/tswe, determines how many of the tracers are
        // dynamically active
 
 //////////////////////////////////////////////////////////////////////////////
