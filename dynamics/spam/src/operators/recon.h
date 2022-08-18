@@ -9,8 +9,8 @@
 template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord = 2,
           uint hs = (ord - 1) / 2>
 void YAKL_INLINE compute_twisted_edge_recon(
-    real5d edgereconvar, const real5d var, int is, int js, int ks, int i, int j,
-    int k, int n, SArray<real, 3, ord, ord, ord> const &wenoRecon,
+    const real5d &edgereconvar, const real5d &var, int is, int js, int ks,
+    int i, int j, int k, int n, SArray<real, 3, ord, ord, ord> const &wenoRecon,
     SArray<real, 2, ord, tord> const &to_gll,
     SArray<real, 1, hs + 2> const &wenoIdl, real wenoSigma) {
 
@@ -54,8 +54,8 @@ void YAKL_INLINE compute_twisted_edge_recon(
 template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord = 2,
           uint hs = (ord - 1) / 2>
 void YAKL_INLINE compute_twisted_vert_edge_recon(
-    real5d vertedgereconvar, const real5d var, int is, int js, int ks, int i,
-    int j, int k, int n, SArray<real, 3, ord, ord, ord> const &wenoRecon,
+    const real5d &vertedgereconvar, const real5d &var, int is, int js, int ks,
+    int i, int j, int k, int n, SArray<real, 3, ord, ord, ord> const &wenoRecon,
     SArray<real, 2, ord, tord> const &to_gll,
     SArray<real, 1, hs + 2> const &wenoIdl, real wenoSigma) {
   SArray<real, 3, ndofs, 1, ord> stencil;
@@ -89,8 +89,8 @@ void YAKL_INLINE compute_twisted_vert_edge_recon(
 template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord = 2,
           uint hs = (ord - 1) / 2>
 void YAKL_INLINE compute_straight_edge_recon(
-    real5d edgereconvar, const real5d var, int is, int js, int ks, int i, int j,
-    int k, int n, SArray<real, 3, ord, ord, ord> const &wenoRecon,
+    const real5d &edgereconvar, const real5d &var, int is, int js, int ks,
+    int i, int j, int k, int n, SArray<real, 3, ord, ord, ord> const &wenoRecon,
     SArray<real, 2, ord, tord> const &to_gll,
     SArray<real, 1, hs + 2> const &wenoIdl, real wenoSigma) {
 
@@ -135,8 +135,8 @@ void YAKL_INLINE compute_straight_edge_recon(
 template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord = 2,
           uint hs = (ord - 1) / 2>
 void YAKL_INLINE compute_straight_xz_edge_recon(
-    real5d edgereconvar, const real5d var, int is, int js, int ks, int i, int j,
-    int k, int n, SArray<real, 3, ord, ord, ord> const &wenoRecon,
+    const real5d &edgereconvar, const real5d &var, int is, int js, int ks,
+    int i, int j, int k, int n, SArray<real, 3, ord, ord, ord> const &wenoRecon,
     SArray<real, 2, ord, tord> const &to_gll,
     SArray<real, 1, hs + 2> const &wenoIdl, real wenoSigma) {
   SArray<real, 3, ndofs, 1, ord> stencil;
@@ -172,8 +172,8 @@ void YAKL_INLINE compute_straight_xz_edge_recon(
 template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord = 2,
           uint hs = (ord - 1) / 2>
 void YAKL_INLINE compute_straight_xz_vert_edge_recon(
-    real5d edgereconvar, const real5d var, int is, int js, int ks, int i, int j,
-    int k, int n, SArray<real, 3, ord, ord, ord> const &wenoRecon,
+    const real5d &edgereconvar, const real5d &var, int is, int js, int ks,
+    int i, int j, int k, int n, SArray<real, 3, ord, ord, ord> const &wenoRecon,
     SArray<real, 2, ord, tord> const &to_gll,
     SArray<real, 1, hs + 2> const &wenoIdl, real wenoSigma) {
   SArray<real, 3, ndofs, 1, ord> stencil;
@@ -235,9 +235,9 @@ void YAKL_INLINE upwind_recon(SArray<real, 2, ndofs, nd> &recon,
 }
 
 template <uint ndofs, RECONSTRUCTION_TYPE recontype>
-void YAKL_INLINE compute_twisted_recon(real5d reconvar,
-                                       const real5d edgereconvar,
-                                       const real5d U, int is, int js, int ks,
+void YAKL_INLINE compute_twisted_recon(const real5d &reconvar,
+                                       const real5d &edgereconvar,
+                                       const real5d &U, int is, int js, int ks,
                                        int i, int j, int k, int n) {
 
   SArray<real, 2, ndofs, ndims> recon;
@@ -280,9 +280,9 @@ void YAKL_INLINE compute_twisted_recon(real5d reconvar,
 }
 
 template <uint ndofs, RECONSTRUCTION_TYPE recontype>
-void YAKL_INLINE compute_twisted_vert_recon(real5d vertreconvar,
-                                            const real5d vertedgereconvar,
-                                            const real5d UW, int is, int js,
+void YAKL_INLINE compute_twisted_vert_recon(const real5d &vertreconvar,
+                                            const real5d &vertedgereconvar,
+                                            const real5d &UW, int is, int js,
                                             int ks, int i, int j, int k,
                                             int n) {
 
@@ -314,10 +314,10 @@ void YAKL_INLINE compute_twisted_vert_recon(real5d vertreconvar,
 }
 
 template <uint ndofs, RECONSTRUCTION_TYPE recontype>
-void YAKL_INLINE compute_straight_recon(real5d reconvar,
-                                        const real5d edgereconvar,
-                                        const real5d UT, int is, int js, int ks,
-                                        int i, int j, int k, int n) {
+void YAKL_INLINE compute_straight_recon(const real5d &reconvar,
+                                        const real5d &edgereconvar,
+                                        const real5d &UT, int is, int js,
+                                        int ks, int i, int j, int k, int n) {
   SArray<real, 2, ndofs, ndims> recon;
   SArray<real, 1, ndims> uvar;
   SArray<real, 3, ndofs, ndims, 2> edgerecon;
@@ -368,9 +368,9 @@ void YAKL_INLINE compute_straight_recon(real5d reconvar,
 }
 
 template <uint ndofs, RECONSTRUCTION_TYPE recontype>
-void YAKL_INLINE compute_straight_xz_recon(real5d reconvar,
-                                           const real5d edgereconvar,
-                                           const real5d WT, int is, int js,
+void YAKL_INLINE compute_straight_xz_recon(const real5d &reconvar,
+                                           const real5d &edgereconvar,
+                                           const real5d &WT, int is, int js,
                                            int ks, int i, int j, int k, int n) {
   SArray<real, 2, ndofs, 1> recon;
   SArray<real, 1, 1> uvar;
@@ -398,11 +398,11 @@ void YAKL_INLINE compute_straight_xz_recon(real5d reconvar,
 }
 
 template <uint ndofs, RECONSTRUCTION_TYPE recontype>
-void YAKL_INLINE compute_straight_xz_vert_recon(real5d reconvar,
-                                                const real5d edgereconvar,
-                                                const real5d VT, int is, int js,
-                                                int ks, int i, int j, int k,
-                                                int n) {
+void YAKL_INLINE compute_straight_xz_vert_recon(const real5d &reconvar,
+                                                const real5d &edgereconvar,
+                                                const real5d &VT, int is,
+                                                int js, int ks, int i, int j,
+                                                int k, int n) {
   SArray<real, 2, ndofs, 1> recon;
   SArray<real, 1, 1> uvar;
   SArray<real, 3, ndofs, 1, 2> edgerecon;

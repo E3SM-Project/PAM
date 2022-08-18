@@ -15,8 +15,9 @@ void YAKL_INLINE cwDbar2(SArray<real, 1, ndofs> &var, real c,
 }
 
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-YAKL_INLINE void compute_cwDbar2(real5d tendvar, real c, const real5d U, int is,
-                                 int js, int ks, int i, int j, int k, int n) {
+YAKL_INLINE void compute_cwDbar2(const real5d &tendvar, real c, const real5d &U,
+                                 int is, int js, int ks, int i, int j, int k,
+                                 int n) {
   SArray<real, 1, ndofs> tend;
   SArray<real, 3, ndofs, ndims, 2> recon;
   SArray<real, 2, ndims, 2> flux;
@@ -98,8 +99,8 @@ void YAKL_INLINE wDbar2(SArray<real, 1, ndofs> &var,
 }
 
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-YAKL_INLINE void compute_wDbar2(real5d tendvar, const real5d reconvar,
-                                const real5d U, int is, int js, int ks, int i,
+YAKL_INLINE void compute_wDbar2(const real5d &tendvar, const real5d &reconvar,
+                                const real5d &U, int is, int js, int ks, int i,
                                 int j, int k, int n) {
   SArray<real, 1, ndofs> tend;
   SArray<real, 3, ndofs, ndims, 2> recon;
@@ -142,8 +143,8 @@ YAKL_INLINE void compute_wDbar2(real5d tendvar, const real5d reconvar,
 
 // version that take a reference state
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-YAKL_INLINE void compute_wDbar2(real5d tendvar, const real3d reconvar,
-                                const real5d U, int is, int js, int ks, int i,
+YAKL_INLINE void compute_wDbar2(const real5d &tendvar, const real3d &reconvar,
+                                const real5d &U, int is, int js, int ks, int i,
                                 int j, int k, int n) {
   SArray<real, 1, ndofs> tend;
   SArray<real, 3, ndofs, ndims, 2> recon;
@@ -182,10 +183,10 @@ YAKL_INLINE void compute_wDbar2(real5d tendvar, const real3d reconvar,
 }
 
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-YAKL_INLINE void compute_wDbar2_fct(real5d tendvar, const real5d reconvar,
-                                    const real5d phivar, const real5d U, int is,
-                                    int js, int ks, int i, int j, int k,
-                                    int n) {
+YAKL_INLINE void
+compute_wDbar2_fct(const real5d &tendvar, const real5d &reconvar,
+                   const real5d &phivar, const real5d &U, int is, int js,
+                   int ks, int i, int j, int k, int n) {
   SArray<real, 1, ndofs> tend;
   SArray<real, 3, ndofs, ndims, 2> recon;
   SArray<real, 2, ndims, 2> flux;
@@ -240,10 +241,10 @@ void YAKL_INLINE wDvbar(SArray<real, 1, ndofs> &var,
 }
 
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-YAKL_INLINE void compute_wDvbar_fct(real5d tendvar, const real5d vertreconvar,
-                                    const real5d vertphivar, const real5d UW,
-                                    int is, int js, int ks, int i, int j, int k,
-                                    int n) {
+YAKL_INLINE void
+compute_wDvbar_fct(const real5d &tendvar, const real5d &vertreconvar,
+                   const real5d &vertphivar, const real5d &UW, int is, int js,
+                   int ks, int i, int j, int k, int n) {
   SArray<real, 1, ndofs> tend;
   SArray<real, 2, ndofs, 2> recon;
   SArray<real, 1, 2> flux;
@@ -270,9 +271,10 @@ YAKL_INLINE void compute_wDvbar_fct(real5d tendvar, const real5d vertreconvar,
 }
 
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-YAKL_INLINE void compute_wDvbar(real5d tendvar, const real5d vertreconvar,
-                                const real5d UW, int is, int js, int ks, int i,
-                                int j, int k, int n) {
+YAKL_INLINE void compute_wDvbar(const real5d &tendvar,
+                                const real5d &vertreconvar, const real5d &UW,
+                                int is, int js, int ks, int i, int j, int k,
+                                int n) {
   SArray<real, 1, ndofs> tend;
   SArray<real, 2, ndofs, 2> recon;
   SArray<real, 1, 2> flux;
@@ -299,9 +301,10 @@ YAKL_INLINE void compute_wDvbar(real5d tendvar, const real5d vertreconvar,
 
 // version that take a reference state
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-YAKL_INLINE void compute_wDvbar(real5d tendvar, const real3d vertreconvar,
-                                const real5d UW, int is, int js, int ks, int i,
-                                int j, int k, int n) {
+YAKL_INLINE void compute_wDvbar(const real5d &tendvar,
+                                const real3d &vertreconvar, const real5d &UW,
+                                int is, int js, int ks, int i, int j, int k,
+                                int n) {
   SArray<real, 1, ndofs> tend;
   SArray<real, 2, ndofs, 2> recon;
   SArray<real, 1, 2> flux;
@@ -356,8 +359,8 @@ void YAKL_INLINE fourier_cwD1(const SArray<complex, 1, ndims> &D1hat,
 }
 
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_cwD1(real5d tendvar, SArray<real, 1, ndofs> &c,
-                              const real5d densvar, int is, int js, int ks,
+void YAKL_INLINE compute_cwD1(const real5d &tendvar, SArray<real, 1, ndofs> &c,
+                              const real5d &densvar, int is, int js, int ks,
                               int i, int j, int k, int n) {
   SArray<real, 1, ndims> tend;
   SArray<real, 2, ndofs, ndims> recon;
@@ -399,8 +402,8 @@ void YAKL_INLINE wD1(SArray<real, 1, ndims> &var,
 }
 
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_wD1(real5d tendvar, const real5d reconvar,
-                             const real5d densvar, int is, int js, int ks,
+void YAKL_INLINE compute_wD1(const real5d &tendvar, const real5d &reconvar,
+                             const real5d &densvar, int is, int js, int ks,
                              int i, int j, int k, int n) {
   SArray<real, 1, ndims> tend;
   SArray<real, 2, ndofs, ndims> recon;
@@ -431,8 +434,8 @@ void YAKL_INLINE compute_wD1(real5d tendvar, const real5d reconvar,
 
 // version that takes a reference state
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_wD1(real5d tendvar, const real3d reconvar,
-                             const real5d densvar, int is, int js, int ks,
+void YAKL_INLINE compute_wD1(const real5d &tendvar, const real3d &reconvar,
+                             const real5d &densvar, int is, int js, int ks,
                              int i, int j, int k, int n) {
   SArray<real, 1, ndims> tend;
   SArray<real, 2, ndofs, ndims> recon;
@@ -462,8 +465,8 @@ void YAKL_INLINE compute_wD1(real5d tendvar, const real3d reconvar,
 }
 
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_wD1_fct(real5d tendvar, const real5d reconvar,
-                                 const real5d Phivar, const real5d densvar,
+void YAKL_INLINE compute_wD1_fct(const real5d &tendvar, const real5d &reconvar,
+                                 const real5d &Phivar, const real5d &densvar,
                                  int is, int js, int ks, int i, int j, int k,
                                  int n) {
   SArray<real, 1, ndims> tend;
@@ -505,10 +508,11 @@ void YAKL_INLINE wDv(real &var, SArray<real, 1, ndofs> const &recon,
 }
 
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_wDv_fct(real5d tendvar, const real5d vertreconvar,
-                                 const real5d Phivertvar, const real5d densvar,
-                                 int is, int js, int ks, int i, int j, int k,
-                                 int n) {
+void YAKL_INLINE compute_wDv_fct(const real5d &tendvar,
+                                 const real5d &vertreconvar,
+                                 const real5d &Phivertvar,
+                                 const real5d &densvar, int is, int js, int ks,
+                                 int i, int j, int k, int n) {
   real tend;
   SArray<real, 1, ndofs> recon;
   SArray<real, 2, ndofs, 2> dens;
@@ -529,8 +533,8 @@ void YAKL_INLINE compute_wDv_fct(real5d tendvar, const real5d vertreconvar,
 }
 
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_wDv(real5d tendvar, const real5d vertreconvar,
-                             const real5d densvar, int is, int js, int ks,
+void YAKL_INLINE compute_wDv(const real5d &tendvar, const real5d &vertreconvar,
+                             const real5d &densvar, int is, int js, int ks,
                              int i, int j, int k, int n) {
   real tend;
   SArray<real, 1, ndofs> recon;
@@ -552,8 +556,8 @@ void YAKL_INLINE compute_wDv(real5d tendvar, const real5d vertreconvar,
 
 // versiion that take a reference state
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_wDv(real5d tendvar, const real3d vertreconvar,
-                             const real5d densvar, int is, int js, int ks,
+void YAKL_INLINE compute_wDv(const real5d &tendvar, const real3d &vertreconvar,
+                             const real5d &densvar, int is, int js, int ks,
                              int i, int j, int k, int n) {
   real tend;
   SArray<real, 1, ndofs> recon;
@@ -584,7 +588,7 @@ void YAKL_INLINE D2(SArray<real, 1, ndofs> &var,
 }
 
 template <uint ndofs>
-void YAKL_INLINE compute_D2(SArray<real, 1, ndofs> &tend, const real5d fluxvar,
+void YAKL_INLINE compute_D2(SArray<real, 1, ndofs> &tend, const real5d &fluxvar,
                             int is, int js, int ks, int i, int j, int k,
                             int n) {
   SArray<real, 2, ndofs, 4> flux;
@@ -600,8 +604,9 @@ void YAKL_INLINE compute_D2(SArray<real, 1, ndofs> &tend, const real5d fluxvar,
 }
 
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_D2(real5d tendvar, const real5d fluxvar, int is,
-                            int js, int ks, int i, int j, int k, int n) {
+void YAKL_INLINE compute_D2(const real5d &tendvar, const real5d &fluxvar,
+                            int is, int js, int ks, int i, int j, int k,
+                            int n) {
   SArray<real, 1, ndofs> tend;
   compute_D2<ndofs>(tend, fluxvar, is, js, ks, i, j, k, n);
   if (addmode == ADD_MODE::REPLACE) {
@@ -617,8 +622,8 @@ void YAKL_INLINE compute_D2(real5d tendvar, const real5d fluxvar, int is,
 }
 
 template <uint ndofs>
-void YAKL_INLINE compute_Dxz(SArray<real, 1, ndofs> &tend, const real5d v,
-                             const real5d w, int is, int js, int ks, int i,
+void YAKL_INLINE compute_Dxz(SArray<real, 1, ndofs> &tend, const real5d &v,
+                             const real5d &w, int is, int js, int ks, int i,
                              int j, int k, int n) {
   SArray<real, 1, 4> flux;
   for (int l = 0; l < ndofs; l++) {
@@ -630,9 +635,9 @@ void YAKL_INLINE compute_Dxz(SArray<real, 1, ndofs> &tend, const real5d v,
   }
 }
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_Dxz(real5d tendvar, const real5d v, const real5d w,
-                             int is, int js, int ks, int i, int j, int k,
-                             int n) {
+void YAKL_INLINE compute_Dxz(const real5d &tendvar, const real5d &v,
+                             const real5d &w, int is, int js, int ks, int i,
+                             int j, int k, int n) {
   SArray<real, 1, ndofs> tend;
   compute_Dxz<ndofs>(tend, v, w, is, js, ks, i, j, k, n);
   for (int l = 0; l < ndofs; l++) {
