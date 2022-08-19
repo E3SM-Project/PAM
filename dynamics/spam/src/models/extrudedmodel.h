@@ -672,7 +672,7 @@ public:
         });
   }
 
-  void YAKL_INLINE compute_functional_derivatives(
+  void compute_functional_derivatives(
       ADD_MODE addmode, real fac, real dt, FieldSet<nconstant> &const_vars,
       FieldSet<nprognostic> &x, FieldSet<nauxiliary> &auxiliary_vars) override {
 
@@ -719,10 +719,10 @@ public:
     auxiliary_vars.exchange({BVAR});
   }
 
-  void YAKL_INLINE apply_symplectic(real dt, FieldSet<nconstant> &const_vars,
-                                    FieldSet<nprognostic> &x,
-                                    FieldSet<nauxiliary> &auxiliary_vars,
-                                    FieldSet<nprognostic> &xtend) override {
+  void apply_symplectic(real dt, FieldSet<nconstant> &const_vars,
+                        FieldSet<nprognostic> &x,
+                        FieldSet<nauxiliary> &auxiliary_vars,
+                        FieldSet<nprognostic> &xtend) override {
 
     const auto &dual_topology = dual_geometry.topology;
 
@@ -929,20 +929,17 @@ class ModelLinearSystem : public LinearSystem {
 
   int nxf, nyf;
 
-  real5d v_transform;
-  real5d w_transform;
-  complex5d complex_vrhs;
-  complex5d complex_wrhs;
+  real4d v_transform;
+  real4d w_transform;
+  complex4d complex_vrhs;
+  complex4d complex_wrhs;
   complex5d complex_vcoeff;
 
   complex4d tri_l;
   complex4d tri_d;
   complex4d tri_u;
 
-  complex1d l_tri_l;
-  complex1d l_tri_d;
-  complex1d l_tri_u;
-  complex1d l_tri_rhs;
+  complex4d tri_c;
 
 public:
   void initialize(ModelParameters &params,
@@ -965,15 +962,15 @@ public:
     this->nxf = nx + 2 - nx % 2;
     this->nyf = ny + 2 - ny % 2;
 
-    v_transform = real5d("v transform", 1, pni, nyf, nxf, nens);
-    w_transform = real5d("w transform", 1, pnl, nyf, nxf, nens);
-    complex_vrhs = complex5d("complex vrhs", 1, pni, ny, nx, nens);
-    complex_wrhs = complex5d("complex wrhs", 1, pnl, ny, nx, nens);
+    v_transform = real4d("v transform", pni, nyf, nxf, nens);
+    w_transform = real4d("w transform", pnl, nyf, nxf, nens);
+    complex_vrhs = complex4d("complex vrhs", pni, ny, nx, nens);
+    complex_wrhs = complex4d("complex wrhs", pnl, ny, nx, nens);
 
-    fftv_x.init(v_transform, 3, nx);
-    fftw_x.init(w_transform, 3, nx);
-    // fftv_y.init(v_transform, 2, ny);
-    // fftw_y.init(w_transform, 2, ny);
+    fftv_x.init(v_transform, 2, nx);
+    fftw_x.init(w_transform, 2, nx);
+    // fftv_y.init(v_transform, 1, ny);
+    // fftw_y.init(w_transform, 1, ny);
 
     complex_vcoeff =
         complex5d("complex vcoeff", 1 + ndensity, pni, ny, nx, nens);
@@ -981,11 +978,7 @@ public:
     tri_d = complex4d("tri d", pnl, ny, nx, nens);
     tri_l = complex4d("tri l", pnl, ny, nx, nens);
     tri_u = complex4d("tri u", pnl, ny, nx, nens);
-
-    l_tri_rhs = complex1d("tri rhs", pnl);
-    l_tri_d = complex1d("tri d", pnl);
-    l_tri_l = complex1d("tri l", pnl);
-    l_tri_u = complex1d("tri u", pnl);
+    tri_c = complex4d("tri c", pnl, ny, nx, nens);
   }
 
   virtual void compute_coefficients(real dt) override {
@@ -1167,10 +1160,10 @@ public:
         });
   }
 
-  virtual void YAKL_INLINE solve(real dt, FieldSet<nprognostic> &rhs,
-                                 FieldSet<nconstant> &const_vars,
-                                 FieldSet<nauxiliary> &auxiliary_vars,
-                                 FieldSet<nprognostic> &solution) override {
+  virtual void solve(real dt, FieldSet<nprognostic> &rhs,
+                     FieldSet<nconstant> &const_vars,
+                     FieldSet<nauxiliary> &auxiliary_vars,
+                     FieldSet<nprognostic> &solution) override {
 
     auto &refstate = *this->reference_state;
 
@@ -1262,8 +1255,8 @@ public:
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          v_transform(0, k, j, i, n) = rhs_v(0, k + pks, j + pjs, i + pis, n) +
-                                       sol_v(0, k + pks, j + pjs, i + pis, n);
+          v_transform(k, j, i, n) = rhs_v(0, k + pks, j + pjs, i + pis, n) +
+                                    sol_v(0, k + pks, j + pjs, i + pis, n);
         });
 
     parallel_for(
@@ -1271,8 +1264,8 @@ public:
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          w_transform(0, k, j, i, n) = rhs_w(0, k + pks, j + pjs, i + pis, n) +
-                                       sol_w(0, k + pks, j + pjs, i + pis, n);
+          w_transform(k, j, i, n) = rhs_w(0, k + pks, j + pjs, i + pis, n) +
+                                    sol_w(0, k + pks, j + pjs, i + pis, n);
         });
 
     yakl::timer_start("fft fwd");
@@ -1287,9 +1280,9 @@ public:
         yakl::c::Bounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                            {0, nxf - 1, 2}, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          real v_real = v_transform(0, k, j, i, n);
-          real v_imag = v_transform(0, k, j, i + 1, n);
-          complex_vrhs(0, k, j, i / 2, n) = complex(v_real, v_imag);
+          real v_real = v_transform(k, j, i, n);
+          real v_imag = v_transform(k, j, i + 1, n);
+          complex_vrhs(k, j, i / 2, n) = complex(v_real, v_imag);
         });
 
     parallel_for(
@@ -1297,9 +1290,9 @@ public:
         Bounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                   {0, nxf - 1, 2}, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          real w_real = w_transform(0, k, j, i, n);
-          real w_imag = w_transform(0, k, j, i + 1, n);
-          complex_wrhs(0, k, j, i / 2, n) = complex(w_real, w_imag);
+          real w_real = w_transform(k, j, i, n);
+          real w_imag = w_transform(k, j, i + 1, n);
+          complex_wrhs(k, j, i / 2, n) = complex(w_real, w_imag);
         });
 
     parallel_for(
@@ -1310,10 +1303,10 @@ public:
           int ik = i / 2;
           int jk = j / 2;
 
-          complex vc0_kp1 = complex_vcoeff(0, k + 1, j, i, n) *
-                            complex_vrhs(0, k + 1, j, i, n);
+          complex vc0_kp1 =
+              complex_vcoeff(0, k + 1, j, i, n) * complex_vrhs(k + 1, j, i, n);
           complex vc0_k =
-              complex_vcoeff(0, k, j, i, n) * complex_vrhs(0, k, j, i, n);
+              complex_vcoeff(0, k, j, i, n) * complex_vrhs(k, j, i, n);
 
           real fI_k = fourier_Iext<diff_ord>(
               primal_geometry, dual_geometry, pis, pjs, pks, i, j, k, 0,
@@ -1350,7 +1343,7 @@ public:
               complex beta_k = fI_k * refstate.Blin_coeff(d1, d2, k, n) *
                                refstate.q_pi(d2, k, n) * fDbar2_k * he_k *
                                fHh_k;
-              complex_wrhs(0, k, j, i, n) +=
+              complex_wrhs(k, j, i, n) +=
                   alpha_kp1 * (beta_kp1 * vc0_kp1 - beta_k * vc0_k);
             }
           }
@@ -1363,24 +1356,22 @@ public:
         YAKL_LAMBDA(int j, int i, int n) {
           int nz = primal_topology.nl;
 
-          for (int k = 0; k < nz; ++k) {
-            l_tri_l(k) = tri_l(k, j, i, n);
-            l_tri_d(k) = tri_d(k, j, i, n);
-            l_tri_u(k) = tri_u(k, j, i, n);
-            l_tri_rhs(k) = complex_wrhs(0, k, j, i, n);
+          tri_c(0, j, i, n) = tri_u(0, j, i, n) / tri_d(0, j, i, n);
+          for (int k = 1; k < nz - 1; ++k) {
+            tri_c(k, j, i, n) =
+                tri_u(k, j, i, n) /
+                (tri_d(k, j, i, n) - tri_l(k, j, i, n) * tri_c(k - 1, j, i, n));
           }
-
+          complex_wrhs(0, j, i, n) /= tri_d(0, j, i, n);
           for (int k = 1; k < nz; ++k) {
-            complex w = l_tri_l(k) / l_tri_d(k - 1);
-            l_tri_d(k) -= w * l_tri_u(k - 1);
-            l_tri_rhs(k) -= w * l_tri_rhs(k - 1);
+            complex_wrhs(k, j, i, n) =
+                (complex_wrhs(k, j, i, n) -
+                 tri_l(k, j, i, n) * complex_wrhs(k - 1, j, i, n)) /
+                (tri_d(k, j, i, n) - tri_l(k, j, i, n) * tri_c(k - 1, j, i, n));
           }
-          complex_wrhs(0, nz - 1, j, i, n) =
-              l_tri_rhs(nz - 1) / l_tri_d(nz - 1);
           for (int k = nz - 2; k >= 0; --k) {
-            complex_wrhs(0, k, j, i, n) =
-                (l_tri_rhs(k) - l_tri_u(k) * complex_wrhs(0, k + 1, j, i, n)) /
-                l_tri_d(k);
+            complex_wrhs(k, j, i, n) -=
+                tri_c(k, j, i, n) * complex_wrhs(k + 1, j, i, n);
           }
         });
 
@@ -1391,13 +1382,13 @@ public:
         YAKL_LAMBDA(int k, int j, int i, int n) {
           complex w_kp1;
           if (k < primal_topology.ni - 1) {
-            w_kp1 = complex_wrhs(0, k, j, i, n);
+            w_kp1 = complex_wrhs(k, j, i, n);
           } else {
             w_kp1 = 0;
           }
           complex w_k;
           if (k > 0) {
-            w_k = complex_wrhs(0, k - 1, j, i, n);
+            w_k = complex_wrhs(k - 1, j, i, n);
           } else {
             w_k = 0;
           }
@@ -1409,9 +1400,9 @@ public:
               refstate.rho_di(0, k, n) *
               Hv_coeff(primal_geometry, dual_geometry, pis, pjs, pks, i, j, k);
 
-          complex_vrhs(0, k, j, i, n) *= complex_vcoeff(0, k, j, i, n);
+          complex_vrhs(k, j, i, n) *= complex_vcoeff(0, k, j, i, n);
           for (int d1 = 0; d1 < ndensity; ++d1) {
-            complex_vrhs(0, k, j, i, n) +=
+            complex_vrhs(k, j, i, n) +=
                 complex_vcoeff(1 + d1, k, j, i, n) *
                 (gamma_fac_kp1 * refstate.q_di(d1, k + 1, n) * w_kp1 -
                  gamma_fac_k * refstate.q_di(d1, k, n) * w_k);
@@ -1423,9 +1414,8 @@ public:
         yakl::c::Bounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                            {0, nxf - 1, 2}, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          v_transform(0, k, j, i, n) = complex_vrhs(0, k, j, i / 2, n).real();
-          v_transform(0, k, j, i + 1, n) =
-              complex_vrhs(0, k, j, i / 2, n).imag();
+          v_transform(k, j, i, n) = complex_vrhs(k, j, i / 2, n).real();
+          v_transform(k, j, i + 1, n) = complex_vrhs(k, j, i / 2, n).imag();
         });
 
     parallel_for(
@@ -1433,9 +1423,8 @@ public:
         yakl::c::Bounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                            {0, nxf - 1, 2}, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          w_transform(0, k, j, i, n) = complex_wrhs(0, k, j, i / 2, n).real();
-          w_transform(0, k, j, i + 1, n) =
-              complex_wrhs(0, k, j, i / 2, n).imag();
+          w_transform(k, j, i, n) = complex_wrhs(k, j, i / 2, n).real();
+          w_transform(k, j, i + 1, n) = complex_wrhs(k, j, i / 2, n).imag();
         });
 
     yakl::timer_start("fft bwd");
@@ -1450,14 +1439,14 @@ public:
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          sol_w(0, k + pks, j + pjs, i + pis, n) = w_transform(0, k, j, i, n);
+          sol_w(0, k + pks, j + pjs, i + pis, n) = w_transform(k, j, i, n);
         });
     parallel_for(
         "Store v",
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          sol_v(0, k + pks, j + pjs, i + pis, n) = v_transform(0, k, j, i, n);
+          sol_v(0, k + pks, j + pjs, i + pis, n) = v_transform(k, j, i, n);
         });
 
     solution.exchange({VVAR, WVAR});
@@ -1487,6 +1476,7 @@ public:
     auxiliary_vars.fields_arr[UWVAR].set_bnd(0.0);
     auxiliary_vars.exchange({UVAR, UWVAR});
 
+    YAKL_SCOPE(Hk, ::Hk);
     parallel_for(
         "Recover densities 3 - F",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
@@ -2109,6 +2099,7 @@ public:
     const auto primal_topology = primal_geom.topology;
     const auto dual_topology = dual_geom.topology;
 
+    YAKL_SCOPE(thermo, ::thermo);
     parallel_for(
         "Compute refstate rho_pi/q_pi",
         SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
@@ -2133,18 +2124,6 @@ public:
             z = dual_geom.Lz;
           } else {
             z = (k - 0.5_fp) * dual_geom.dz;
-          }
-          real zm;
-          real zp;
-          if (k == 1) {
-            zm = 0;
-          } else {
-            zm = z - dz / 2;
-          }
-          if (k == dual_topology.ni - 2) {
-            zp = Lz;
-          } else {
-            zp = z + dz / 2;
           }
 
           refstate.rho_di(0, k, n) = refrho_f(z, thermo);
@@ -2649,16 +2628,21 @@ struct GravityWave {
         real beta2 = beta * beta;
 
         real fac1 = 1 / (beta * beta - alpha * alpha);
-        real L_m1 = (-cos(alpha * t) / alpha2 + cos(beta * t) / beta2) * fac1 +
-                    1 / (alpha2 * beta2);
-        real L_0 = (sin(alpha * t) / alpha - sin(beta * t) / beta) * fac1;
-        real L_1 = (cos(alpha * t) - cos(beta * t)) * fac1;
-        real L_2 = (-alpha * sin(alpha * t) + alpha * sin(beta * t)) * fac1;
-        real L_3 = (-alpha2 * cos(alpha * t) + beta2 * cos(beta * t)) * fac1;
+        real L_m1 =
+            (-std::cos(alpha * t) / alpha2 + std::cos(beta * t) / beta2) *
+                fac1 +
+            1 / (alpha2 * beta2);
+        real L_0 =
+            (std::sin(alpha * t) / alpha - std::sin(beta * t) / beta) * fac1;
+        real L_1 = (std::cos(alpha * t) - std::cos(beta * t)) * fac1;
+        real L_2 =
+            (-alpha * std::sin(alpha * t) + alpha * std::sin(beta * t)) * fac1;
+        real L_3 =
+            (-alpha2 * std::cos(alpha * t) + beta2 * std::cos(beta * t)) * fac1;
 
         if (alpha == 0) {
-          L_m1 = (beta2 * t * t - 1 + cos(beta * t)) / (beta2 * beta2);
-          L_0 = (beta * t - sin(beta * t)) / (beta2 * beta);
+          L_m1 = (beta2 * t * t - 1 + std::cos(beta * t)) / (beta2 * beta2);
+          L_0 = (beta * t - std::sin(beta * t)) / (beta2 * beta);
         }
 
         complex drhot_b0 = -rho_s / T_ref * dT_max / sqrt(pi) * d / Lx *
@@ -2721,16 +2705,21 @@ struct GravityWave {
         real beta2 = beta * beta;
 
         real fac1 = 1 / (beta * beta - alpha * alpha);
-        real L_m1 = (-cos(alpha * t) / alpha2 + cos(beta * t) / beta2) * fac1 +
-                    1 / (alpha2 * beta2);
-        real L_0 = (sin(alpha * t) / alpha - sin(beta * t) / beta) * fac1;
-        real L_1 = (cos(alpha * t) - cos(beta * t)) * fac1;
-        real L_2 = (-alpha * sin(alpha * t) + alpha * sin(beta * t)) * fac1;
-        real L_3 = (-alpha2 * cos(alpha * t) + beta2 * cos(beta * t)) * fac1;
+        real L_m1 =
+            (-std::cos(alpha * t) / alpha2 + std::cos(beta * t) / beta2) *
+                fac1 +
+            1 / (alpha2 * beta2);
+        real L_0 =
+            (std::sin(alpha * t) / alpha - std::sin(beta * t) / beta) * fac1;
+        real L_1 = (std::cos(alpha * t) - std::cos(beta * t)) * fac1;
+        real L_2 =
+            (-alpha * std::sin(alpha * t) + alpha * std::sin(beta * t)) * fac1;
+        real L_3 =
+            (-alpha2 * std::cos(alpha * t) + beta2 * std::cos(beta * t)) * fac1;
 
         if (alpha == 0) {
-          L_m1 = (beta2 * t * t - 1 + cos(beta * t)) / (beta2 * beta2);
-          L_0 = (beta * t - sin(beta * t)) / (beta2 * beta);
+          L_m1 = (beta2 * t * t - 1 + std::cos(beta * t)) / (beta2 * beta2);
+          L_0 = (beta * t - std::sin(beta * t)) / (beta2 * beta);
         }
 
         complex drhot_b0 = -rho_s / T_ref * dT_max / sqrt(pi) * d / Lx *
@@ -2775,7 +2764,7 @@ struct GravityWave {
 
     real rho_ref = isothermal_zdep(z, rho_s, T_ref, g, thermo);
 
-    real dT_b = dT_max * exp(-pow((x - x_c) / d, 2)) * sin(pi * z / Lz);
+    real dT_b = dT_max * exp(-pow((x - x_c) / d, 2)) * std::sin(pi * z / Lz);
     real dT = exp(delta * z / 2) * dT_b;
 
     real drho_b = -rho_s * dT_b / T_ref;
@@ -2817,6 +2806,7 @@ struct GravityWave {
     void compute(real time, const FieldSet<nconstant> &const_vars,
                  const FieldSet<nprognostic> &x) override {
 
+      YAKL_SCOPE(thermo, ::thermo);
       dual_geometry.set_11form_values(
           YAKL_LAMBDA(real x, real z) {
             return rhoexact_f(x, z, time, thermo) - refrho_f(z, thermo);
@@ -2845,6 +2835,7 @@ struct GravityWave {
     void compute(real time, const FieldSet<nconstant> &const_vars,
                  const FieldSet<nprognostic> &x) override {
 
+      YAKL_SCOPE(thermo, ::thermo);
       dual_geometry.set_11form_values(
           YAKL_LAMBDA(real x, real z) { return refrho_f(z, thermo); }, field,
           0);
