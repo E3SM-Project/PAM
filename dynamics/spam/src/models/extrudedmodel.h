@@ -672,7 +672,7 @@ public:
         });
   }
 
-  void YAKL_INLINE compute_functional_derivatives(
+  void compute_functional_derivatives(
       ADD_MODE addmode, real fac, real dt, FieldSet<nconstant> &const_vars,
       FieldSet<nprognostic> &x, FieldSet<nauxiliary> &auxiliary_vars) override {
 
