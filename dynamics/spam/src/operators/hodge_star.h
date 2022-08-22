@@ -38,7 +38,7 @@ void YAKL_INLINE H(SArray<real, 1, ndims> &var,
 }
 
 template <uint ndofs, uint ord, uint off = ord / 2 - 1>
-void YAKL_INLINE compute_H(SArray<real, 1, ndims> &u, const real5d vvar,
+void YAKL_INLINE compute_H(SArray<real, 1, ndims> &u, const real5d &vvar,
                            const Geometry<Straight> &pgeom,
                            const Geometry<Twisted> &dgeom, int is, int js,
                            int ks, int i, int j, int k, int n) {
@@ -67,7 +67,7 @@ void YAKL_INLINE compute_H(SArray<real, 1, ndims> &u, const real5d vvar,
 
 template <uint ndofs, uint ord, ADD_MODE addmode = ADD_MODE::REPLACE,
           uint off = ord / 2 - 1>
-void YAKL_INLINE compute_H(real5d uvar, const real5d vvar,
+void YAKL_INLINE compute_H(const real5d &uvar, const real5d &vvar,
                            const Geometry<Straight> &pgeom,
                            const Geometry<Twisted> &dgeom, int is, int js,
                            int ks, int i, int j, int k, int n) {
@@ -140,7 +140,7 @@ void YAKL_INLINE fourier_H(SArray<real, 1, ndims> &u,
 }
 
 // Note the indexing here, this is key
-real YAKL_INLINE compute_Hv(const real5d wvar, const Geometry<Straight> &pgeom,
+real YAKL_INLINE compute_Hv(const real5d &wvar, const Geometry<Straight> &pgeom,
                             const Geometry<Twisted> &dgeom, int is, int js,
                             int ks, int i, int j, int k, int n) {
   // THIS IS 2ND ORDER AT BEST...
@@ -164,7 +164,7 @@ real YAKL_INLINE Hv_coeff(const Geometry<Straight> &pgeom,
 // fluxes, which are set diagnostically (=0 for no-flux bcs)
 template <uint ndofs, uint ord, ADD_MODE addmode = ADD_MODE::REPLACE,
           uint off = ord / 2 - 1>
-void YAKL_INLINE compute_Hv(real5d uwvar, const real5d wvar,
+void YAKL_INLINE compute_Hv(const real5d &uwvar, const real5d &wvar,
                             const Geometry<Straight> &pgeom,
                             const Geometry<Twisted> &dgeom, int is, int js,
                             int ks, int i, int j, int k, int n) {
@@ -178,7 +178,7 @@ void YAKL_INLINE compute_Hv(real5d uwvar, const real5d wvar,
 }
 template <uint ndofs, uint ord, ADD_MODE addmode = ADD_MODE::REPLACE,
           uint off = ord / 2 - 1>
-void YAKL_INLINE compute_Hv(SArray<real, 1, 1> &uwvar, const real5d wvar,
+void YAKL_INLINE compute_Hv(SArray<real, 1, 1> &uwvar, const real5d &wvar,
                             const Geometry<Straight> &pgeom,
                             const Geometry<Twisted> &dgeom, int is, int js,
                             int ks, int i, int j, int k, int n) {
@@ -194,7 +194,7 @@ void YAKL_INLINE compute_Hv(SArray<real, 1, 1> &uwvar, const real5d wvar,
 // BROKEN FOR 2D+1D EXT
 // MAINLY IN THE AREA CALCS...
 template <uint ndofs, uint ord, uint off = ord / 2 - 1>
-void YAKL_INLINE compute_Hext(SArray<real, 1, ndims> &u, const real5d vvar,
+void YAKL_INLINE compute_Hext(SArray<real, 1, ndims> &u, const real5d &vvar,
                               const Geometry<Straight> &pgeom,
                               const Geometry<Twisted> &dgeom, int is, int js,
                               int ks, int i, int j, int k, int n) {
@@ -223,7 +223,7 @@ void YAKL_INLINE compute_Hext(SArray<real, 1, ndims> &u, const real5d vvar,
 // boundary"
 template <uint ndofs, uint ord, ADD_MODE addmode = ADD_MODE::REPLACE,
           uint off = ord / 2 - 1>
-void YAKL_INLINE compute_Hext(real5d uvar, const real5d vvar,
+void YAKL_INLINE compute_Hext(const real5d &uvar, const real5d &vvar,
                               const Geometry<Straight> &pgeom,
                               const Geometry<Twisted> &dgeom, int is, int js,
                               int ks, int i, int j, int k, int n) {
@@ -322,7 +322,7 @@ void YAKL_INLINE I(SArray<real, 1, ndofs> &var,
 }
 
 template <uint ndofs, uint ord, uint off = ord / 2 - 1>
-void YAKL_INLINE compute_I(SArray<real, 1, ndofs> &x0, const real5d var,
+void YAKL_INLINE compute_I(SArray<real, 1, ndofs> &x0, const real5d &var,
                            const Geometry<Straight> &pgeom,
                            const Geometry<Twisted> &dgeom, int is, int js,
                            int ks, int i, int j, int k, int n) {
@@ -351,7 +351,7 @@ void YAKL_INLINE compute_I(SArray<real, 1, ndofs> &x0, const real5d var,
 
 template <uint ndofs, uint ord, ADD_MODE addmode = ADD_MODE::REPLACE,
           uint off = ord / 2 - 1>
-void YAKL_INLINE compute_I(real5d var0, const real5d var,
+void YAKL_INLINE compute_I(const real5d &var0, const real5d &var,
                            const Geometry<Straight> &pgeom,
                            const Geometry<Twisted> &dgeom, int is, int js,
                            int ks, int i, int j, int k, int n) {
@@ -417,7 +417,7 @@ real YAKL_INLINE fourier_I(const Geometry<Straight> &pgeom,
 // JUST IN THE AREA FORM CALCS...
 template <uint ndofs, uint hord, uint vord, uint hoff = hord / 2 - 1,
           uint voff = vord / 2 - 1>
-void YAKL_INLINE compute_Iext(SArray<real, 1, ndofs> &x0, const real5d var,
+void YAKL_INLINE compute_Iext(SArray<real, 1, ndofs> &x0, const real5d &var,
                               const Geometry<Straight> &pgeom,
                               const Geometry<Twisted> &dgeom, int is, int js,
                               int ks, int i, int j, int k, int n) {
@@ -451,7 +451,7 @@ void YAKL_INLINE compute_Iext(SArray<real, 1, ndofs> &x0, const real5d var,
 template <uint ndofs, uint hord, uint vord,
           ADD_MODE addmode = ADD_MODE::REPLACE, uint hoff = hord / 2 - 1,
           uint voff = vord / 2 - 1>
-void YAKL_INLINE compute_Iext(real5d var0, const real5d var,
+void YAKL_INLINE compute_Iext(const real5d &var0, const real5d &var,
                               const Geometry<Straight> &pgeom,
                               const Geometry<Twisted> &dgeom, int is, int js,
                               int ks, int i, int j, int k, int n) {
@@ -542,7 +542,7 @@ void YAKL_INLINE J(SArray<real, 1, ndofs> &var,
 }
 
 template <uint ndofs, uint ord, uint off = ord / 2 - 1>
-void YAKL_INLINE compute_J(SArray<real, 1, ndofs> &x0, const real5d var,
+void YAKL_INLINE compute_J(SArray<real, 1, ndofs> &x0, const real5d &var,
                            const Geometry<Straight> &pgeom,
                            const Geometry<Twisted> &dgeom, int is, int js,
                            int ks, int i, int j, int k, int n) {
@@ -571,7 +571,7 @@ void YAKL_INLINE compute_J(SArray<real, 1, ndofs> &x0, const real5d var,
 
 template <uint ndofs, uint ord, ADD_MODE addmode = ADD_MODE::REPLACE,
           uint off = ord / 2 - 1>
-void YAKL_INLINE compute_J(real5d var0, const real5d var,
+void YAKL_INLINE compute_J(const real5d &var0, const real5d &var,
                            const Geometry<Straight> &pgeom,
                            const Geometry<Twisted> &dgeom, int is, int js,
                            int ks, int i, int j, int k, int n) {
@@ -593,7 +593,7 @@ void YAKL_INLINE compute_J(real5d var0, const real5d var,
 // JUST IN THE AREA CALCS...
 template <uint ndofs, uint hord, uint vord, uint hoff = hord / 2 - 1,
           uint voff = vord / 2 - 1>
-void YAKL_INLINE compute_Jext(SArray<real, 1, ndofs> &x0, const real5d var,
+void YAKL_INLINE compute_Jext(SArray<real, 1, ndofs> &x0, const real5d &var,
                               const Geometry<Straight> &pgeom,
                               const Geometry<Twisted> &dgeom, int is, int js,
                               int ks, int i, int j, int k, int n) {
@@ -632,7 +632,7 @@ void YAKL_INLINE compute_Jext(SArray<real, 1, ndofs> &x0, const real5d var,
 template <uint ndofs, uint hord, uint vord,
           ADD_MODE addmode = ADD_MODE::REPLACE, uint hoff = hord / 2 - 1,
           uint voff = vord / 2 - 1>
-void YAKL_INLINE compute_Jext(real5d var0, const real5d var,
+void YAKL_INLINE compute_Jext(const real5d &var0, const real5d &var,
                               const Geometry<Straight> &pgeom,
                               const Geometry<Twisted> &dgeom, int is, int js,
                               int ks, int i, int j, int k, int n) {

@@ -22,7 +22,7 @@ public:
 
   void set_parameters(real gin) { this->g = gin; }
 
-  real YAKL_INLINE compute_PE(const real5d dens, const real5d hs, int is,
+  real YAKL_INLINE compute_PE(const real5d &dens, const real5d &hs, int is,
                               int js, int ks, int i, int j, int k,
                               int n) const {
     // Assumes things are stored in dens as as 0=h, 1=S, active tracers,
@@ -45,7 +45,7 @@ public:
     return PE;
   }
 
-  real YAKL_INLINE compute_IE(const real5d dens, int is, int js, int ks, int i,
+  real YAKL_INLINE compute_IE(const real5d &dens, int is, int js, int ks, int i,
                               int j, int k, int n) const {
     return 0;
   }
@@ -60,9 +60,10 @@ public:
   // So it is ok for a bit
 
   template <ADD_MODE addmode = ADD_MODE::REPLACE>
-  void YAKL_INLINE compute_dHsdx(real5d B, const real5d dens, const real5d hs,
-                                 int is, int js, int ks, int i, int j, int k,
-                                 int n, real fac = 1._fp) const {
+  void YAKL_INLINE compute_dHsdx(const real5d &B, const real5d &dens,
+                                 const real5d &hs, int is, int js, int ks,
+                                 int i, int j, int k, int n,
+                                 real fac = 1._fp) const {
 
     // Assumes things are stored in dens as as 0=h, 1=S, active tracers,
     // inactive tracers
@@ -139,7 +140,7 @@ public:
 
   void set_parameters(real gin) { this->g = gin; }
 
-  real YAKL_INLINE compute_PE(const real5d dens, const real5d hs, int is,
+  real YAKL_INLINE compute_PE(const real5d &dens, const real5d &hs, int is,
                               int js, int ks, int i, int j, int k,
                               int n) const {
     // Assumes things are stored in dens as as 0=h, active tracers, inactive
@@ -166,15 +167,16 @@ public:
     return PE;
   }
 
-  real YAKL_INLINE compute_IE(const real5d dens, int is, int js, int ks, int i,
+  real YAKL_INLINE compute_IE(const real5d &dens, int is, int js, int ks, int i,
                               int j, int k, int n) const {
     return 0;
   }
 
   template <ADD_MODE addmode = ADD_MODE::REPLACE>
-  void YAKL_INLINE compute_dHsdx(real5d B, const real5d dens, const real5d hs,
-                                 int is, int js, int ks, int i, int j, int k,
-                                 int n, real fac = 1._fp) const {
+  void YAKL_INLINE compute_dHsdx(const real5d &B, const real5d &dens,
+                                 const real5d &hs, int is, int js, int ks,
+                                 int i, int j, int k, int n,
+                                 real fac = 1._fp) const {
     // Assumes things are stored in dens as as 0=h, active tracers, inactive
     // tracers
 
