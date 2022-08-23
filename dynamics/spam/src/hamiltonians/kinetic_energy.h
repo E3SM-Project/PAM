@@ -25,8 +25,8 @@
 //   this->is_initialized = true;
 // }
 //
-// real YAKL_INLINE compute_KE(const real5d v, const real5d dens, const real5d
-// densfct, int is, int js, int ks, int i, int j, int k)
+// real YAKL_INLINE compute_KE(const real5d& v, const real5d& dens, const
+// real5d& densfct, int is, int js, int ks, int i, int j, int k)
 // {
 //
 //   real KE, PE, IE;
@@ -55,9 +55,9 @@
 // }
 //
 //
-//  void YAKL_INLINE compute_dKdv(real5d F, real5d K, real5d HE, const real5d v,
-//  const real5d U, const real5d dens0, const real5d densfct0, int is, int js,
-//  int ks, int i, int j, int k)
+//  void YAKL_INLINE compute_dKdv(const real5d& F, const real5d& K, const
+//  real5d& HE, const real5d& v, const real5d& U, const real5d& dens0, const
+//  real5d& densfct0, int is, int js, int ks, int i, int j, int k)
 // {
 //   SArray<real,1,2> D0;
 //   SArray<real,1> he;
@@ -79,8 +79,8 @@
 // }
 //
 // // Note that this ADDS to Bvar...
-// void YAKL_INLINE compute_dKddens(real5d B, real5d Bfct, const real5d K, int
-// is, int js, int ks, int i, int j, int k)
+// void YAKL_INLINE compute_dKddens(const real5d& B, const real5d& Bfct, const
+// real5d& K, int is, int js, int ks, int i, int j, int k)
 // {
 //   SArray<real,1> K0;
 //   compute_I<1, diff_ord>(K0, K, *this->primal_geometry, *this->dual_geometry,
@@ -108,8 +108,9 @@ public:
     this->varset = variableset;
   }
 
-  real YAKL_INLINE compute_KE(const real5d v, const real5d dens, int is, int js,
-                              int ks, int i, int j, int k, int n) const {
+  real YAKL_INLINE compute_KE(const real5d &v, const real5d &dens, int is,
+                              int js, int ks, int i, int j, int k,
+                              int n) const {
 
     real KE;
     SArray<real, 1, 1> h0, h0im1, h0jm1, h0km1;
@@ -161,9 +162,10 @@ public:
   // FIX THIS TO GET TOTAL DENSITY FROM VARSET!
 
   template <ADD_MODE addmode = ADD_MODE::REPLACE>
-  void YAKL_INLINE compute_F_and_K(real5d F, real5d K, const real5d v,
-                                   const real5d U, const real5d dens0, int is,
-                                   int js, int ks, int i, int j, int k, int n,
+  void YAKL_INLINE compute_F_and_K(const real5d &F, const real5d &K,
+                                   const real5d &v, const real5d &U,
+                                   const real5d &dens0, int is, int js, int ks,
+                                   int i, int j, int k, int n,
                                    real fac = 1._fp) const {
     SArray<real, 2, ndims, 2> D0;
     SArray<real, 1, ndims> he;
@@ -201,9 +203,10 @@ public:
     K(0, k + ks, j + js, i + is, n) *= 0.5_fp;
   }
 
-  void YAKL_INLINE compute_F_and_he(real5d F, real5d HE, const real5d U,
-                                    const real5d dens0, int is, int js, int ks,
-                                    int i, int j, int k, int n) const {
+  void YAKL_INLINE compute_F_and_he(const real5d &F, const real5d &HE,
+                                    const real5d &U, const real5d &dens0,
+                                    int is, int js, int ks, int i, int j, int k,
+                                    int n) const {
     SArray<real, 2, ndims, 2> D0;
     SArray<real, 1, ndims> he;
 
@@ -233,8 +236,8 @@ public:
 
   // FIX THIS TO GET TOTAL DENSITY FROM VARSET!
   //  Note that this ADDS to Bvar...
-  void YAKL_INLINE compute_dKddens(real5d B, const real5d K, int is, int js,
-                                   int ks, int i, int j, int k, int n,
+  void YAKL_INLINE compute_dKddens(const real5d &B, const real5d &K, int is,
+                                   int js, int ks, int i, int j, int k, int n,
                                    real fac = 1._fp) const {
     SArray<real, 1, 1> K0;
     compute_I<1, diff_ord>(K0, K, this->primal_geometry, this->dual_geometry,
@@ -263,8 +266,8 @@ public:
 //    this->is_initialized = true;
 //  }
 //
-//  real YAKL_INLINE compute_KE(const real5d v, const real5d dens, const real5d
-//  densfct, int is, int js, int ks, int i, int j, int k, int n)
+//  real YAKL_INLINE compute_KE(const real5d& v, const real5d& dens, const
+//  real5d& densfct, int is, int js, int ks, int i, int j, int k, int n)
 //  {
 //
 //
@@ -326,9 +329,9 @@ public:
 //  }
 //
 //
-//   void YAKL_INLINE compute_dKdv(real5d F, real5d K, real5d HE, const real5d
-//   v, const real5d U, const real5d dens0, const real5d densfct0, int is, int
-//   js, int ks, int i, int j, int k, int n)
+//   void YAKL_INLINE compute_dKdv(const real5d& F, const real5d& K, const
+//   real5d& HE, const real5d& v, const real5d& U, const real5d& dens0, const
+//   real5d& densfct0, int is, int js, int ks, int i, int j, int k, int n)
 //  {
 //
 //    SArray<real,2,ndims,2> D0;
@@ -377,8 +380,8 @@ public:
 //  }
 //
 //  // Note that this ADDS to Bvar/Bfctvar...
-//  void YAKL_INLINE compute_dKddens(real5d B, real5d Bfct, const real5d K, int
-//  is, int js, int ks, int i, int j, int k, int n)
+//  void YAKL_INLINE compute_dKddens(const real5d& B, const real5d& Bfct, const
+//  real5d& K, int is, int js, int ks, int i, int j, int k, int n)
 //  {
 //    SArray<real,1,1> K0;
 //    compute_I<1, diff_ord>(K0, K, *this->primal_geometry,
@@ -416,8 +419,8 @@ public:
     this->varset = variableset;
   }
 
-  real YAKL_INLINE compute_KE_top(const real5d v, const real5d w,
-                                  const real5d dens, int is, int js, int ks,
+  real YAKL_INLINE compute_KE_top(const real5d &v, const real5d &w,
+                                  const real5d &dens, int is, int js, int ks,
                                   int i, int j, int k, int n) const {
     real K2 = 0.;
     SArray<real, 1, 1> UW0;
@@ -430,8 +433,8 @@ public:
     return _compute_KE(K2, v, w, dens, is, js, ks, i, j, k, n);
   }
 
-  real YAKL_INLINE compute_KE_bottom(const real5d v, const real5d w,
-                                     const real5d dens, int is, int js, int ks,
+  real YAKL_INLINE compute_KE_bottom(const real5d &v, const real5d &w,
+                                     const real5d &dens, int is, int js, int ks,
                                      int i, int j, int k, int n) const {
     real K2 = 0.;
     SArray<real, 1, 1> UW1;
@@ -445,9 +448,9 @@ public:
     return _compute_KE(K2, v, w, dens, is, js, ks, i, j, k, n);
   }
 
-  real YAKL_INLINE compute_KE(const real5d v, const real5d w, const real5d dens,
-                              int is, int js, int ks, int i, int j, int k,
-                              int n) const {
+  real YAKL_INLINE compute_KE(const real5d &v, const real5d &w,
+                              const real5d &dens, int is, int js, int ks, int i,
+                              int j, int k, int n) const {
     real K2 = 0.;
     SArray<real, 1, 1> UW0, UW1;
     compute_Hv<1, vert_diff_ord>(UW0, w, this->primal_geometry,
@@ -463,9 +466,9 @@ public:
     return _compute_KE(K2, v, w, dens, is, js, ks, i, j, k, n);
   }
 
-  real YAKL_INLINE _compute_KE(real K2, const real5d v, const real5d w,
-                               const real5d dens, int is, int js, int ks, int i,
-                               int j, int k, int n) const {
+  real YAKL_INLINE _compute_KE(real K2, const real5d &v, const real5d &w,
+                               const real5d &dens, int is, int js, int ks,
+                               int i, int j, int k, int n) const {
     real v0, v1;
     SArray<real, 1, ndims> U0, U1;
     compute_Hext<1, diff_ord>(U0, v, this->primal_geometry, this->dual_geometry,
@@ -502,9 +505,10 @@ public:
 
   // FIX THIS TO GET TOTAL DENSITY FROM VARSET!
   template <ADD_MODE addmode = ADD_MODE::REPLACE>
-  void YAKL_INLINE compute_Fw(real5d FW, const real5d UW, const real5d dens0,
-                              int is, int js, int ks, int i, int j, int k,
-                              int n, real fac = 1._fp) const {
+  void YAKL_INLINE compute_Fw(const real5d &FW, const real5d &UW,
+                              const real5d &dens0, int is, int js, int ks,
+                              int i, int j, int k, int n,
+                              real fac = 1._fp) const {
     // SArray<real,2> Dv;
     // compute hew = phiw * h0
     // Dv(0) = dens0(0, k+ks, j+js, i+is);
@@ -527,9 +531,9 @@ public:
 
   // version that takes a reference state
   template <ADD_MODE addmode = ADD_MODE::REPLACE>
-  void YAKL_INLINE compute_Fw(real5d FW, const real5d UW, const real3d dens0,
-                              int is, int js, int ks, int i, int j, int k,
-                              int n, real fac = 1._fp) const {
+  void YAKL_INLINE compute_Fw(const real5d &FW, const real5d &UW,
+                              const real3d dens0, int is, int js, int ks, int i,
+                              int j, int k, int n, real fac = 1._fp) const {
     real hew = dens0(0, k, n);
     if (addmode == ADD_MODE::REPLACE) {
       FW(0, k + ks, j + js, i + is, n) =
@@ -540,9 +544,10 @@ public:
     }
   }
 
-  void YAKL_INLINE compute_Fw_and_he(real5d FW, real5d HEw, const real5d UW,
-                                     const real5d dens0, int is, int js, int ks,
-                                     int i, int j, int k, int n) const {
+  void YAKL_INLINE compute_Fw_and_he(const real5d &FW, const real5d &HEw,
+                                     const real5d &UW, const real5d &dens0,
+                                     int is, int js, int ks, int i, int j,
+                                     int k, int n) const {
     // SArray<real,2> Dv;
     // compute hew = phiw * h0
     // Dv(0) = dens0(0, k+ks, j+js, i+is);
@@ -558,8 +563,9 @@ public:
     // HEw(0,k+ks,j+js,i+is) << "\n" << std::flush;
   }
 
-  void YAKL_INLINE compute_hew(real5d HEw, const real5d dens0, int is, int js,
-                               int ks, int i, int j, int k, int n) const {
+  void YAKL_INLINE compute_hew(const real5d &HEw, const real5d &dens0, int is,
+                               int js, int ks, int i, int j, int k,
+                               int n) const {
     // SArray<real,2> Dv;
     // compute hew = phiw * h0
     // Dv(0) = dens0(0, k+ks, j+js, i+is);
@@ -572,8 +578,8 @@ public:
     HEw(0, k + ks, j + js, i + is, n) = hew;
   }
 
-  void YAKL_INLINE compute_K(real5d K, const real5d v, const real5d U,
-                             const real5d w, const real5d UW, int is, int js,
+  void YAKL_INLINE compute_K(const real5d &K, const real5d &v, const real5d &U,
+                             const real5d &w, const real5d &UW, int is, int js,
                              int ks, int i, int j, int k, int n) const {
     // compute K = 1/2 * PhiT(U,V) + 1/2 * PhiTW(UW,W)
     real K2 = 0.;
@@ -610,9 +616,9 @@ public:
 
   // FIX THIS TO GET TOTAL DENSITY FROM VARSET!
   template <ADD_MODE addmode = ADD_MODE::REPLACE>
-  void YAKL_INLINE compute_F(real5d F, const real5d U, const real5d dens0,
-                             int is, int js, int ks, int i, int j, int k, int n,
-                             real fac = 1._fp) const {
+  void YAKL_INLINE compute_F(const real5d &F, const real5d &U,
+                             const real5d &dens0, int is, int js, int ks, int i,
+                             int j, int k, int n, real fac = 1._fp) const {
     SArray<real, 2, ndims, 2> D0;
     SArray<real, 1, ndims> he;
 
@@ -644,9 +650,9 @@ public:
 
   // version that takes a reference state
   template <ADD_MODE addmode = ADD_MODE::REPLACE>
-  void YAKL_INLINE compute_F(real5d F, const real5d U, const real3d dens0,
-                             int is, int js, int ks, int i, int j, int k, int n,
-                             real fac = 1._fp) const {
+  void YAKL_INLINE compute_F(const real5d &F, const real5d &U,
+                             const real3d dens0, int is, int js, int ks, int i,
+                             int j, int k, int n, real fac = 1._fp) const {
     SArray<real, 2, ndims, 2> D0;
     real he = dens0(0, k, n);
 
@@ -662,8 +668,9 @@ public:
     }
   }
 
-  void YAKL_INLINE compute_he(real5d HE, const real5d dens0, int is, int js,
-                              int ks, int i, int j, int k, int n) const {
+  void YAKL_INLINE compute_he(const real5d &HE, const real5d &dens0, int is,
+                              int js, int ks, int i, int j, int k,
+                              int n) const {
     SArray<real, 2, ndims, 2> D0;
     SArray<real, 1, ndims> he;
 
@@ -684,9 +691,10 @@ public:
     }
   }
 
-  void YAKL_INLINE compute_F_and_he(real5d F, real5d HE, const real5d U,
-                                    const real5d dens0, int is, int js, int ks,
-                                    int i, int j, int k, int n) const {
+  void YAKL_INLINE compute_F_and_he(const real5d &F, const real5d &HE,
+                                    const real5d &U, const real5d &dens0,
+                                    int is, int js, int ks, int i, int j, int k,
+                                    int n) const {
     SArray<real, 2, ndims, 2> D0;
     SArray<real, 1, ndims> he;
 
@@ -713,8 +721,8 @@ public:
 
   // FIX THIS TO GET TOTAL DENSITY FROM VARSET!
   template <ADD_MODE addmode = ADD_MODE::REPLACE>
-  void YAKL_INLINE compute_dKddens(real5d B, const real5d K, int is, int js,
-                                   int ks, int i, int j, int k, int n,
+  void YAKL_INLINE compute_dKddens(const real5d &B, const real5d &K, int is,
+                                   int js, int ks, int i, int j, int k, int n,
                                    real fac = 1._fp) const {
     SArray<real, 1, 1> K0;
     compute_Iext<1, diff_ord, vert_diff_ord>(K0, K, this->primal_geometry,
