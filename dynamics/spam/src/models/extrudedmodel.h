@@ -2593,6 +2593,10 @@ struct GravityWave {
 
   static real YAKL_INLINE rhoexact_f(real x, real z, real t,
                                      const ThermoPotential &thermo) {
+    real x_c = GravityWave::x_c;
+    real Lz = GravityWave::Lz;
+    real g = GravityWave::g;
+
     complex im(0, 1);
 
     real Rd = thermo.cst.Rd;
@@ -2669,6 +2673,13 @@ struct GravityWave {
 
   static real YAKL_INLINE entropicdensityexact_f(
       real x, real z, real t, const ThermoPotential &thermo) {
+
+    real x_c = GravityWave::x_c;
+    real Lz = GravityWave::Lz;
+    real g = GravityWave::g;
+    real p_s = GravityWave::p_s;
+    real T_ref = GravityWave::T_ref;
+
     complex im(0, 1);
 
     real Rd = thermo.cst.Rd;
@@ -2806,6 +2817,7 @@ struct GravityWave {
     void compute(real time, const FieldSet<nconstant> &const_vars,
                  const FieldSet<nprognostic> &x) override {
 
+      YAKL_SCOPE(thermo, ::thermo);
       dual_geometry.set_11form_values(
           YAKL_LAMBDA(real x, real z) {
             return rhoexact_f(x, z, time, thermo) - refrho_f(z, thermo);
@@ -2834,6 +2846,7 @@ struct GravityWave {
     void compute(real time, const FieldSet<nconstant> &const_vars,
                  const FieldSet<nprognostic> &x) override {
 
+      YAKL_SCOPE(thermo, ::thermo);
       dual_geometry.set_11form_values(
           YAKL_LAMBDA(real x, real z) { return refrho_f(z, thermo); }, field,
           0);
