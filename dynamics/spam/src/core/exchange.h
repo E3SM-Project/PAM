@@ -545,11 +545,19 @@ void Exchange::exchange() {
 }
 
 void Exchange::exchange_data(real5d &data) {
+  yakl::timer_start("pack");
   this->pack(data);
+  yakl::timer_stop("pack");
+  yakl::timer_start("exchange");
   this->exchange();
+  yakl::timer_stop("exchange");
+  yakl::timer_start("unpack");
   this->unpack(data);
+  yakl::timer_stop("unpack");
 
 #ifdef _EXTRUDED
+  yakl::timer_start("exchange_mirror");
   exchange_mirror(data);
+  yakl::timer_stop("exchange_mirror");
 #endif
 }
