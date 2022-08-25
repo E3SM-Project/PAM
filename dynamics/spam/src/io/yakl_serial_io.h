@@ -144,7 +144,7 @@ void FileIO::output(real time) {
     int ks = this->prog_vars->fields_arr[l].topology.ks;
     YAKL_SCOPE(prog_vars_fields, this->prog_vars->fields_arr);
     YAKL_SCOPE(prog_temp_arr, this->prog_temp_arr);
-    parallel_for(
+    parallel_for("spam output 1",
         SimpleBounds<5>(this->prog_vars->fields_arr[l].total_dofs,
                         this->prog_vars->fields_arr[l]._nz,
                         this->prog_vars->fields_arr[l].topology.n_cells_y,
@@ -198,7 +198,7 @@ void FileIO::output(real time) {
     int js = field.topology.js;
     int ks = field.topology.ks;
     YAKL_SCOPE(diag_temp_arr_l, this->diag_temp_arr[l]);
-    parallel_for(
+    parallel_for("spam output 2",
         SimpleBounds<5>(field.total_dofs, field._nz, field.topology.n_cells_y,
                         field.topology.n_cells_x, field.topology.nens),
         YAKL_LAMBDA(int ndof, int k, int j, int i, int n) {
@@ -249,7 +249,7 @@ void FileIO::outputInit(real time) {
 
     YAKL_SCOPE(const_vars_fields, this->const_vars->fields_arr);
     YAKL_SCOPE(const_temp_arr, this->const_temp_arr);
-    parallel_for(
+    parallel_for("spam output 3",
         SimpleBounds<5>(this->const_vars->fields_arr[l].total_dofs,
                         this->const_vars->fields_arr[l]._nz,
                         this->const_vars->fields_arr[l].topology.n_cells_y,

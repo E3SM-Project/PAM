@@ -59,7 +59,7 @@ public:
     // Zero out the tracers
 
     auto rho_v = dm.get_collapsed<real>("water_vapor");
-    parallel_for( nz*ny*nx*nens , YAKL_LAMBDA (int i) { rho_v(i) = 0; } );
+    parallel_for("zero water vapor", nz*ny*nx*nens , YAKL_LAMBDA (int i) { rho_v(i) = 0; } );
 
     coupler.set_option<std::string>("micro","none");
   }
