@@ -59,7 +59,9 @@ int main(int argc, char** argv) {
     }
     
     // Create the dycore and the microphysics
+    yakl::timer_start("dycore");
     Dycore       dycore;
+    yakl::timer_stop("dycore");
     Microphysics micro;
     SGS          sgs;
     
@@ -72,7 +74,7 @@ int main(int argc, char** argv) {
     {
       zint_in = real1d("zint_in",crm_nz+1);
       real dz = zlen/crm_nz;
-      parallel_for(crm_nz+1, YAKL_LAMBDA(int i) {
+      parallel_for("set vertical levels", crm_nz+1, YAKL_LAMBDA(int i) {
         zint_in(i) = i*dz;
       });
     }
@@ -95,7 +97,9 @@ int main(int argc, char** argv) {
 
     micro .init( coupler );
     sgs   .init( coupler );
+    yakl::timer_start("dycore");
     dycore.init( coupler ); // Dycore should initialize its own state here
+    yakl::timer_stop("dycore");
 
     #ifdef PAM_STANDALONE
     if (masterproc) {
@@ -115,11 +119,15 @@ int main(int argc, char** argv) {
     
     int  num_out = 0;
     // Output the initial state
+    yakl::timer_start("output");
     if (out_freq >= 0. ) output( coupler , out_prefix , etime );
+    yakl::timer_stop("output");
 
     real dtphys = dtphys_in;
     while (etime < simTime) {
+      yakl::timer_start("dycore");
       if (dtphys_in == 0.) { dtphys = dycore.compute_time_step(coupler); }
+      yakl::timer_stop("dycore");
       if (etime + dtphys > simTime) { dtphys = simTime - etime; }
 
       yakl::timer_start("sgs");
@@ -154,7 +162,9 @@ int main(int argc, char** argv) {
 
     if (masterproc) {std::cout << "Elapsed Time: " << etime << "\n";}
 
+    yakl::timer_start("dycore");
     dycore.finalize( coupler );
+    yakl::timer_stop("dycore");
 
     yakl::timer_stop("main");
   }
