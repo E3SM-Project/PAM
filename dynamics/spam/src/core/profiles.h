@@ -23,6 +23,8 @@ public:
   void printinfo();
   void initialize(const Topology &topo, const std::string profName, int bdof,
                   int edof, int nd);
+  void zero();
+  void zero(int dof);
 };
 
 Profile::Profile() { this->is_initialized = false; }
@@ -60,5 +62,21 @@ void Profile::initialize(const Topology &topo, const std::string profName,
                       this->_nz, // + 2 * this->topology.mirror_halo,
                       this->topology.nens);
 
+  zero();
   this->is_initialized = true;
+}
+
+void Profile::zero() {
+  parallel_for(
+      "Profile zero",
+      SimpleBounds<3>(this->total_dofs, this->_nz, this->topology.nens),
+      YAKL_CLASS_LAMBDA(int ndof, int k, int n) {
+        this->data(ndof, k, n) = 0.0;
+      });
+}
+
+void Profile::zero(int ndof) {
+  parallel_for(
+      "Profile zero ndof", SimpleBounds<2>(this->_nz, this->topology.nens),
+      YAKL_CLASS_LAMBDA(int k, int n) { this->data(ndof, k, n) = 0.0; });
 }

@@ -115,7 +115,8 @@ int constexpr si_verbosity_level = si_monitor_convergence;
 
 int constexpr si_max_iters = si_monitor_convergence > 1 ? 50 : 5;
 
-#if defined _EXTRUDED && defined _IDEAL_GAS_POTTEMP
+#if defined _EXTRUDED &&                                                       \
+    (defined _IDEAL_GAS_POTTEMP || defined _CONST_KAPPA_VIRPOTTEMP)
 bool constexpr si_compute_functional_derivatives_quadrature = false;
 #else
 bool constexpr si_compute_functional_derivatives_quadrature = true;
@@ -126,6 +127,9 @@ uint constexpr si_quad_pts = 4;
 
 real constexpr pi =
     3.141592653589793238462643383279502884197169399375105820974944_fp;
+
+// SI time stepper is not SSP so we need this for now
+bool constexpr remove_negative_densities = (_TIME_TYPE == 2);
 
 //#define PNETCDF_PUT_VAR ncmpi_put_vara_double
 //#define PNETCDF_PUT_VAR_ALL ncmpi_put_vara_double_all
