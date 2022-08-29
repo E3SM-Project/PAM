@@ -566,23 +566,16 @@ void Exchange::exchange_mirror(real5d &data) {
   YAKL_SCOPE(_nz, this->_nz);
   // vertical layers
   if (this->extdof == 1) {
-    // Mirror Top
     parallel_for(
-        "exchange mirror top",
+        "exchange mirror",
         SimpleBounds<5>(this->total_dofs, this->topology.mirror_halo,
                         this->topology.n_cells_x, this->topology.n_cells_y,
                         this->nens),
         YAKL_LAMBDA(int ndof, int kk, int i, int j, int n) {
+          // Mirror Top
           data(ndof, _nz + ks + kk, j + js, i + is, n) =
               data(ndof, _nz + ks - kk - 1, j + js, i + is, n);
-        });
-    // Mirror Bottom
-    parallel_for(
-        "exchange mirror bottom",
-        SimpleBounds<5>(this->total_dofs, this->topology.mirror_halo,
-                        this->topology.n_cells_x, this->topology.n_cells_y,
-                        this->nens),
-        YAKL_LAMBDA(int ndof, int kk, int i, int j, int n) {
+          // Mirror Bottom
           data(ndof, ks - kk - 1, j + js, i + is, n) =
               data(ndof, ks + kk, j + js, i + is, n);
         });
@@ -590,23 +583,16 @@ void Exchange::exchange_mirror(real5d &data) {
 
   // vertical interfaces
   if (this->extdof == 0) {
-    // Mirror Top
     parallel_for(
-        "exchange mirror top",
+        "exchange mirror",
         SimpleBounds<5>(this->total_dofs, this->topology.mirror_halo,
                         this->topology.n_cells_x, this->topology.n_cells_y,
                         this->nens),
         YAKL_LAMBDA(int ndof, int kk, int i, int j, int n) {
+          // Mirror Top
           data(ndof, _nz + ks + kk, j + js, i + is, n) =
               data(ndof, _nz + ks - kk - 2, j + js, i + is, n);
-        });
-    // Mirror Bottom
-    parallel_for(
-        "exchange mirror bottom",
-        SimpleBounds<5>(this->total_dofs, this->topology.mirror_halo,
-                        this->topology.n_cells_x, this->topology.n_cells_y,
-                        this->nens),
-        YAKL_LAMBDA(int ndof, int kk, int i, int j, int n) {
+          // Mirror Bottom
           data(ndof, ks - kk - 1, j + js, i + is, n) =
               data(ndof, ks + kk + 1, j + js, i + is, n);
         });
