@@ -65,6 +65,14 @@ RECONSTRUCTION_TYPE constexpr coriolis_vert_reconstruction_type =
     RECONSTRUCTION_TYPE::CFV;
 uint constexpr coriolis_vert_reconstruction_order = 3;
 
+uint constexpr max_reconstruction_order =
+    std::max({reconstruction_order, dual_reconstruction_order,
+              coriolis_reconstruction_order});
+
+uint constexpr max_vert_reconstruction_order =
+    std::max({vert_reconstruction_order, dual_vert_reconstruction_order,
+              coriolis_vert_reconstruction_order});
+
 // How to handle PV flux term
 // ADD AL81-TYPE SCHEME HERE EVENTUALLY AS WELL
 enum class QF_MODE { EC, NOEC };
@@ -75,14 +83,11 @@ uint constexpr ic_quad_pts_x = 5;
 uint constexpr ic_quad_pts_y = 5;
 uint constexpr ic_quad_pts_z = 5;
 
-// FIX THIS
 // Halo sizes
 uint constexpr maxhalosize =
-    15; // mymax(reconstruction_order+1,differential_order)/2;
-        // // IS THIS ALWAYS CORRECT?
+    std::max({(max_reconstruction_order - 1) / 2, diff_ord / 2});
 uint constexpr mirroringhalo =
-    9; // mymax(reconstruction_order+1,differential_order)/2;
-       // // IS THIS ALWAYS CORRECT?
+    std::max({(max_vert_reconstruction_order - 1) / 2, vert_diff_ord / 2});
 
 // 0 = RKSimple, 1=SSPRK, 2=SI
 #define _TIME_TYPE 1
