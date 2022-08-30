@@ -59,9 +59,7 @@ int main(int argc, char** argv) {
     }
     
     // Create the dycore and the microphysics
-    yakl::timer_start("dycore");
     Dycore       dycore;
-    yakl::timer_stop("dycore");
     Microphysics micro;
     SGS          sgs;
     
