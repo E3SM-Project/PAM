@@ -384,8 +384,8 @@ public:
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          Hs.compute_dHsdx<addmode>(Bvar, densvar, HSvar, pis, pjs, pks, i, j,
-                                    k, n, fac);
+          //Hs.compute_dHsdx<addmode>(Bvar, densvar, HSvar, pis, pjs, pks, i, j,
+          //                          k, n, fac);
           Hk.compute_dKddens<ADD_MODE::ADD>(Bvar, Kvar, pis, pjs, pks, i, j, k,
                                             n, fac);
         });
@@ -676,46 +676,174 @@ public:
       ADD_MODE addmode, real fac, real dt, FieldSet<nconstant> &const_vars,
       FieldSet<nprognostic> &x, FieldSet<nauxiliary> &auxiliary_vars) override {
 
-    compute_dens0(auxiliary_vars.fields_arr[DENS0VAR].data,
-                  x.fields_arr[DENSVAR].data);
-    compute_U(auxiliary_vars.fields_arr[UVAR].data, x.fields_arr[VVAR].data);
-    compute_UW(auxiliary_vars.fields_arr[UWVAR].data, x.fields_arr[WVAR].data);
+    const auto &primal_topology = primal_geometry.topology;
+    const auto &dual_topology = dual_geometry.topology;
 
-    auxiliary_vars.fields_arr[UWVAR].set_bnd(0.0);
-    auxiliary_vars.exchange({UVAR, UWVAR, DENS0VAR});
+    int pis = primal_topology.is;
+    int pjs = primal_topology.js;
+    int pks = primal_topology.ks;
 
-    if (addmode == ADD_MODE::ADD) {
-      compute_F_FW_and_K<ADD_MODE::ADD>(
-          fac, auxiliary_vars.fields_arr[FVAR].data,
-          auxiliary_vars.fields_arr[FWVAR].data,
-          auxiliary_vars.fields_arr[KVAR].data, x.fields_arr[VVAR].data,
-          auxiliary_vars.fields_arr[UVAR].data, x.fields_arr[WVAR].data,
-          auxiliary_vars.fields_arr[UWVAR].data,
-          auxiliary_vars.fields_arr[DENS0VAR].data);
-    } else if (addmode == ADD_MODE::REPLACE) {
-      compute_F_FW_and_K<ADD_MODE::REPLACE>(
-          fac, auxiliary_vars.fields_arr[FVAR].data,
-          auxiliary_vars.fields_arr[FWVAR].data,
-          auxiliary_vars.fields_arr[KVAR].data, x.fields_arr[VVAR].data,
-          auxiliary_vars.fields_arr[UVAR].data, x.fields_arr[WVAR].data,
-          auxiliary_vars.fields_arr[UWVAR].data,
-          auxiliary_vars.fields_arr[DENS0VAR].data);
-    }
+    const auto &densvar = x.fields_arr[DENSVAR].data;
+    const auto &Vvar = x.fields_arr[VVAR].data;
+    const auto &Wvar = x.fields_arr[WVAR].data;
+
+    const auto &dens0var = auxiliary_vars.fields_arr[DENS0VAR].data;
+    const auto &Uvar = auxiliary_vars.fields_arr[UVAR].data;
+    const auto &UWvar = auxiliary_vars.fields_arr[UWVAR].data;
+    const auto &Fvar = auxiliary_vars.fields_arr[FVAR].data;
+    const auto &FWvar = auxiliary_vars.fields_arr[FWVAR].data;
+    const auto &Kvar = auxiliary_vars.fields_arr[KVAR].data;
+    const auto &Bvar = auxiliary_vars.fields_arr[BVAR].data;
+    const auto &HSvar = const_vars.fields_arr[HSVAR].data;
+
+    parallel_for(
+        "TEST",
+        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+          
+          //compute_Iext<ndensity, diff_ord, vert_diff_ord>(
+          //    dens0var, densvar, this->primal_geometry, this->dual_geometry,
+          //    pis, pjs, pks, i, j, k, n);
+         
+          SArray<real, 1, ndensity> dens0_ik;
+          SArray<real, 1, ndensity> dens0_im1;
+          SArray<real, 1, ndensity> dens0_km1;
+          
+          compute_Iext<ndensity, diff_ord, vert_diff_ord>(
+              dens0_ik, densvar, this->primal_geometry, this->dual_geometry,
+              pis, pjs, pks, i, j, k, n);
+          compute_Iext<ndensity, diff_ord, vert_diff_ord>(
+              dens0_im1, densvar, this->primal_geometry, this->dual_geometry,
+              pis, pjs, pks, i-1, j, k, n);
+          compute_Iext<ndensity, diff_ord, vert_diff_ord>(
+              dens0_km1, densvar, this->primal_geometry, this->dual_geometry,
+              pis, pjs, pks, i, j, k-1, n);
+
+          //compute_Iext<ndensity, diff_ord, vert_diff_ord>(
+          //    dens0var, densvar, this->primal_geometry, this->dual_geometry,
+          //    pis, pjs, pks, i, j, k, n);
+
+
+          SArray<real, 1, ndims> u_ik;
+          SArray<real, 1, 1> uw_ik;
+          SArray<real, 1, ndims> u_ip1;
+          SArray<real, 1, 1> uw_kp1;
+
+          compute_Hext<1, diff_ord>(u_ik, Vvar, this->primal_geometry,
+                                    this->dual_geometry, pis, pjs, pks, i, j, k,
+                                    n);
+          compute_Hext<1, diff_ord>(u_ip1, Vvar, this->primal_geometry,
+                                    this->dual_geometry, pis, pjs, pks, i+1, j, k,
+                                    n);
+
+          if (k == 0 || k == (dual_topology.ni - 1)) {
+            uw_ik(0) = 0;
+          } else {
+            compute_Hv<1, vert_diff_ord>(uw_ik, Wvar, this->primal_geometry,
+                                         this->dual_geometry, pis, pjs, pks, i, j,
+                                         k, n);
+          }
+
+          if (k == -1 || k == (dual_topology.ni - 2)) {
+            uw_kp1(0) = 0;
+          } else {
+            compute_Hv<1, vert_diff_ord>(uw_kp1, Wvar, this->primal_geometry,
+                                         this->dual_geometry, pis, pjs, pks, i, j,
+                                         k+1, n);
+          }
+
+          real K2 = 0.5_fp * ( Vvar(0, k + pks, j + pjs, i + pis, n) * u_ik(0) +
+                               Vvar(0, k + pks, j + pjs, i + 1 + pis, n) * u_ip1(0));
+          K2 += 0.5_fp * (Wvar(0, k - 1 + pks, j + pjs, i + pis, n) * uw_ik(0) +
+                          Wvar(0, k + pks, j + pjs, i + pis, n) * uw_kp1(0));
+
+          //Kvar(0, k + pks, j + pjs, i + pis, n) = 0.5_fp * K2;
+          real K = 0.5_fp * K2;
+
+          if (addmode == ADD_MODE::ADD) {
+            Fvar(0, pks + k, pjs + j, pis + i, n) +=  fac * 
+              0.5_fp * (dens0_ik(0) + dens0_im1(0)) * u_ik(0);
+            FWvar(0, pks + k, pjs + j, pis + i, n) += fac *
+              0.5_fp * (dens0_ik(0) + dens0_km1(0)) * uw_ik(0);
+          } else if (addmode == ADD_MODE::REPLACE) {
+            Fvar(0, pks + k, pjs + j, pis + i, n)  =  fac * 
+              0.5_fp * (dens0_ik(0) + dens0_im1(0)) * u_ik(0);
+            FWvar(0, pks + k, pjs + j, pis + i, n) = fac *
+              0.5_fp * (dens0_ik(0) + dens0_km1(0)) * uw_ik(0);
+          }
+
+          //Uvar(0, k + pks, j + pjs, i + pis, n) = u_ik(0);
+          //UWvar(0, k + pks, j + pjs, i + pis, n) = uw_ik(0);
+          //for (int d = 0; d < ndensity; ++d) {
+          //  dens0var(d, pks + k, pjs + j, pis + i, n) = dens0_ik(d);
+          //}
+          
+          if (addmode == ADD_MODE::ADD) {
+            Hs.compute_dHsdx<ADD_MODE::ADD>(Bvar, densvar, HSvar, pis, pjs, pks, i, j,
+                                            k, n, fac);
+          } else if (addmode == ADD_MODE::REPLACE) {
+            Hs.compute_dHsdx<ADD_MODE::REPLACE>(Bvar, densvar, HSvar, pis, pjs, pks, i, j,
+                                                k, n, fac);
+          }
+
+          // hack
+          real Igeom =
+              primal_geometry.get_area_00entity(k + pks, j + pjs, i + pis) /
+              dual_geometry.get_area_11entity(k + pks, j + pjs, i + pis);
+          real K0 = Igeom * K;
+          Bvar(0, k + pks, j + pjs, i + pis, n) += fac * K0;
+
+          //Hk.compute_dKddens<ADD_MODE::ADD>(Bvar, Kvar, pis, pjs, pks, i, j, k,
+          //                                  n, fac);
+    });
+    
+    //compute_dens0(auxiliary_vars.fields_arr[DENS0VAR].data,
+    //              x.fields_arr[DENSVAR].data);
+    //compute_U(auxiliary_vars.fields_arr[UVAR].data, x.fields_arr[VVAR].data);
+    //compute_UW(auxiliary_vars.fields_arr[UWVAR].data, x.fields_arr[WVAR].data);
+    //auxiliary_vars.fields_arr[UWVAR].set_bnd(0.0);
+    //auxiliary_vars.exchange({UVAR, UWVAR, DENS0VAR});
+    //auxiliary_vars.fields_arr[UWVAR].set_bnd(0.0);
+
+    //auxiliary_vars.exchange({UVAR, UWVAR, DENS0VAR});
+    //auxiliary_vars.exchange({DENS0VAR});
+    
+
+    //if (addmode == ADD_MODE::ADD) {
+    //  compute_F_FW_and_K<ADD_MODE::ADD>(
+    //      fac, auxiliary_vars.fields_arr[FVAR2].data,
+    //      auxiliary_vars.fields_arr[FWVAR2].data,
+    //      auxiliary_vars.fields_arr[KVAR].data, x.fields_arr[VVAR].data,
+    //      auxiliary_vars.fields_arr[UVAR].data, x.fields_arr[WVAR].data,
+    //      auxiliary_vars.fields_arr[UWVAR].data,
+    //      auxiliary_vars.fields_arr[DENS0VAR].data);
+    //} else if (addmode == ADD_MODE::REPLACE) {
+    //  compute_F_FW_and_K<ADD_MODE::REPLACE>(
+    //      fac, auxiliary_vars.fields_arr[FVAR2].data,
+    //      auxiliary_vars.fields_arr[FWVAR2].data,
+    //      auxiliary_vars.fields_arr[KVAR].data, x.fields_arr[VVAR].data,
+    //      auxiliary_vars.fields_arr[UVAR].data, x.fields_arr[WVAR].data,
+    //      auxiliary_vars.fields_arr[UWVAR].data,
+    //      auxiliary_vars.fields_arr[DENS0VAR].data);
+    //}
+
 
     auxiliary_vars.fields_arr[FWVAR].set_bnd(0.0);
-    auxiliary_vars.exchange({FVAR, FWVAR, KVAR});
+    //auxiliary_vars.exchange({FVAR, FWVAR, KVAR});
+    auxiliary_vars.exchange({FVAR, FWVAR});
 
-    if (addmode == ADD_MODE::ADD) {
-      compute_B<ADD_MODE::ADD>(fac, auxiliary_vars.fields_arr[BVAR].data,
-                               auxiliary_vars.fields_arr[KVAR].data,
-                               x.fields_arr[DENSVAR].data,
-                               const_vars.fields_arr[HSVAR].data);
-    } else if (addmode == ADD_MODE::REPLACE) {
-      compute_B<ADD_MODE::REPLACE>(fac, auxiliary_vars.fields_arr[BVAR].data,
-                                   auxiliary_vars.fields_arr[KVAR].data,
-                                   x.fields_arr[DENSVAR].data,
-                                   const_vars.fields_arr[HSVAR].data);
-    }
+    //if (addmode == ADD_MODE::ADD) {
+    //  compute_B<ADD_MODE::ADD>(fac, auxiliary_vars.fields_arr[BVAR].data,
+    //                           auxiliary_vars.fields_arr[KVAR].data,
+    //                           x.fields_arr[DENSVAR].data,
+    //                           const_vars.fields_arr[HSVAR].data);
+    //} else if (addmode == ADD_MODE::REPLACE) {
+    //  compute_B<ADD_MODE::REPLACE>(fac, auxiliary_vars.fields_arr[BVAR].data,
+    //                               auxiliary_vars.fields_arr[KVAR].data,
+    //                               x.fields_arr[DENSVAR].data,
+    //                               const_vars.fields_arr[HSVAR].data);
+    //}
     auxiliary_vars.exchange({BVAR});
   }
 
