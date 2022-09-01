@@ -467,62 +467,97 @@ void YAKL_INLINE compute_W(const real5d &UTvar, const real5d &Uvar, int is,
   UTvar(1, k + ks, j + js, i + is, n) = ut(1);
 }
 
+void YAKL_INLINE Wxz_u(SArray<real, 1, 1> &vel,
+                       SArray<real, 1, 4> const &flux) {
+  // Added the minus sign here
+  vel(0) = -0.25_fp * (flux(0) + flux(1) + flux(2) + flux(3));
+}
+void YAKL_INLINE Wxz_u_boundary(SArray<real, 1, 1> &vel,
+                                SArray<real, 1, 2> const &flux) {
+
+  // Added the minus sign here
+  vel(0) = -0.5_fp * (flux(0) + flux(1));
+}
+
 // Wxz
 void YAKL_INLINE compute_Wxz_u(const real5d &VTvar, const real5d &UWvar, int is,
                                int js, int ks, int i, int j, int k, int n) {
   SArray<real, 1, 4> flux;
+  SArray<real, 1, 1> vel;
   flux(0) = UWvar(0, k + ks, j + js, i + is, n);
   flux(1) = UWvar(0, k + ks, j + js, i + is - 1, n);
   flux(2) = UWvar(0, k + ks + 1, j + js, i + is, n);
   flux(3) = UWvar(0, k + ks + 1, j + js, i + is - 1, n);
-  // Added the minus sign here
-  VTvar(0, k + ks, j + js, i + is, n) =
-      -0.25_fp * (flux(0) + flux(1) + flux(2) + flux(3));
+
+  Wxz_u(vel, flux);
+  VTvar(0, k + ks, j + js, i + is, n) = vel(0);
 }
 void YAKL_INLINE compute_Wxz_u_top(const real5d &VTvar, const real5d &UWvar,
                                    int is, int js, int ks, int i, int j, int k,
                                    int n) {
   SArray<real, 1, 2> flux;
+  SArray<real, 1, 1> vel;
   flux(0) = UWvar(0, k + ks + 1, j + js, i + is, n);
   flux(1) = UWvar(0, k + ks + 1, j + js, i + is - 1, n);
-  // Added the minus sign here
-  VTvar(0, k + ks, j + js, i + is, n) = -0.5_fp * (flux(0) + flux(1));
+
+  Wxz_u_boundary(vel, flux);
+  VTvar(0, k + ks, j + js, i + is, n) = vel(0);
 }
 void YAKL_INLINE compute_Wxz_u_bottom(const real5d &VTvar, const real5d &UWvar,
                                       int is, int js, int ks, int i, int j,
                                       int k, int n) {
-  SArray<real, 1, 4> flux;
+  SArray<real, 1, 2> flux;
+  SArray<real, 1, 1> vel;
   flux(0) = UWvar(0, k + ks, j + js, i + is, n);
   flux(1) = UWvar(0, k + ks, j + js, i + is - 1, n);
-  // Added the minus sign here
-  VTvar(0, k + ks, j + js, i + is, n) = -0.5_fp * (flux(0) + flux(1));
+
+  Wxz_u_boundary(vel, flux);
+  VTvar(0, k + ks, j + js, i + is, n) = vel(0);
+}
+
+void YAKL_INLINE Wxz_w(SArray<real, 1, 1> &vel,
+                       SArray<real, 1, 4> const &flux) {
+  vel(0) = 0.25_fp * (flux(0) + flux(1) + flux(2) + flux(3));
+}
+void YAKL_INLINE Wxz_w_boundary(SArray<real, 1, 1> &vel,
+                                SArray<real, 1, 2> const &flux) {
+
+  vel(0) = 0.25_fp * (flux(0) + flux(1));
 }
 
 void YAKL_INLINE compute_Wxz_w(const real5d &WTvar, const real5d &Uvar, int is,
                                int js, int ks, int i, int j, int k, int n) {
   SArray<real, 1, 4> flux;
+  SArray<real, 1, 1> vel;
   flux(0) = Uvar(0, k + ks, j + js, i + is, n);
   flux(1) = Uvar(0, k + ks, j + js, i + is + 1, n);
   flux(2) = Uvar(0, k + ks + 1, j + js, i + is, n);
   flux(3) = Uvar(0, k + ks + 1, j + js, i + is + 1, n);
-  WTvar(0, k + ks, j + js, i + is, n) =
-      0.25_fp * (flux(0) + flux(1) + flux(2) + flux(3));
+
+  Wxz_w(vel, flux);
+  WTvar(0, k + ks, j + js, i + is, n) = vel(0);
 }
 void YAKL_INLINE compute_Wxz_w_top(const real5d &WTvar, const real5d &Uvar,
                                    int is, int js, int ks, int i, int j, int k,
                                    int n) {
   SArray<real, 1, 2> flux;
+  SArray<real, 1, 1> vel;
   flux(0) = Uvar(0, k + ks, j + js, i + is, n);
   flux(1) = Uvar(0, k + ks, j + js, i + is + 1, n);
-  WTvar(0, k + ks, j + js, i + is, n) = 0.25_fp * (flux(0) + flux(1));
+
+  Wxz_w_boundary(vel, flux);
+  WTvar(0, k + ks, j + js, i + is, n) = vel(0);
 }
 void YAKL_INLINE compute_Wxz_w_bottom(const real5d &WTvar, const real5d &Uvar,
                                       int is, int js, int ks, int i, int j,
                                       int k, int n) {
   SArray<real, 1, 2> flux;
+  SArray<real, 1, 1> vel;
   flux(0) = Uvar(0, k + ks + 1, j + js, i + is, n);
   flux(1) = Uvar(0, k + ks + 1, j + js, i + is + 1, n);
-  WTvar(0, k + ks, j + js, i + is, n) = 0.25_fp * (flux(0) + flux(1));
+
+  Wxz_w_boundary(vel, flux);
+  WTvar(0, k + ks, j + js, i + is, n) = vel(0);
 }
 
 // R

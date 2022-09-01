@@ -237,15 +237,18 @@ void YAKL_INLINE upwind_recon(SArray<real, 2, ndofs, nd> &recon,
 template <uint ndofs, RECONSTRUCTION_TYPE recontype>
 void YAKL_INLINE compute_twisted_recon(const real5d &reconvar,
                                        const real5d &edgereconvar,
-                                       const real5d &U, int is, int js, int ks,
+                                       const Geometry<Straight> &pgeom,
+                                       const Geometry<Twisted> &dgeom,
+                                       const real5d &V, int is, int js, int ks,
                                        int i, int j, int k, int n) {
 
   SArray<real, 2, ndofs, ndims> recon;
   SArray<real, 1, ndims> uvar;
   SArray<real, 3, ndofs, ndims, 2> edgerecon;
 
+  compute_Hext<1, diff_ord>(uvar, V, pgeom, dgeom, is, js, ks, i, j, k, n);
+
   for (int d = 0; d < ndims; d++) {
-    uvar(d) = U(d, k + ks, j + js, i + is, n);
     for (int l = 0; l < ndofs; l++) {
       if (d == 0) {
         edgerecon(l, d, 0) = edgereconvar(l + d * ndofs + ndofs * ndims * 1,
@@ -280,17 +283,17 @@ void YAKL_INLINE compute_twisted_recon(const real5d &reconvar,
 }
 
 template <uint ndofs, RECONSTRUCTION_TYPE recontype>
-void YAKL_INLINE compute_twisted_vert_recon(const real5d &vertreconvar,
-                                            const real5d &vertedgereconvar,
-                                            const real5d &UW, int is, int js,
-                                            int ks, int i, int j, int k,
-                                            int n) {
+void YAKL_INLINE compute_twisted_vert_recon(
+    const real5d &vertreconvar, const real5d &vertedgereconvar,
+    const Geometry<Straight> &pgeom, const Geometry<Twisted> &dgeom,
+    const real5d &W, int is, int js, int ks, int i, int j, int k, int n) {
 
   SArray<real, 2, ndofs, 1> recon;
   SArray<real, 1, 1> uvar;
   SArray<real, 3, ndofs, 1, 2> edgerecon;
 
-  uvar(0) = UW(0, k + ks, j + js, i + is, n);
+  compute_Hv<1, vert_diff_ord>(uvar, W, pgeom, dgeom, is, js, ks, i, j, k, n);
+
   for (int l = 0; l < ndofs; l++) {
     edgerecon(l, 0, 0) =
         vertedgereconvar(l + ndofs * 1, k + ks - 1, j + js, i + is, n);
@@ -370,12 +373,31 @@ void YAKL_INLINE compute_straight_recon(const real5d &reconvar,
 template <uint ndofs, RECONSTRUCTION_TYPE recontype>
 void YAKL_INLINE compute_straight_xz_recon(const real5d &reconvar,
                                            const real5d &edgereconvar,
-                                           const real5d &WT, int is, int js,
+                                           const Geometry<Straight> &pgeom,
+                                           const Geometry<Twisted> &dgeom,
+                                           const real5d &V, int is, int js,
                                            int ks, int i, int j, int k, int n) {
   SArray<real, 2, ndofs, 1> recon;
   SArray<real, 1, 1> uvar;
   SArray<real, 3, ndofs, 1, 2> edgerecon;
-  uvar(0) = WT(0, k + ks, j + js, i + is, n);
+
+  SArray<real, 1, 1> f0, f1, f2, f3;
+  compute_Hext<1, diff_ord>(f0, V, pgeom, dgeom, is, js, ks, i, j, k, n);
+  compute_Hext<1, diff_ord>(f1, V, pgeom, dgeom, is, js, ks, i + 1, j, k, n);
+  compute_Hext<1, diff_ord>(f2, V, pgeom, dgeom, is, js, ks, i, j, k + 1, n);
+  compute_Hext<1, diff_ord>(f3, V, pgeom, dgeom, is, js, ks, i + 1, j, k + 1,
+                            n);
+
+  SArray<real, 1, 4> flux;
+  flux(0) = f0(0);
+  flux(1) = f1(0);
+  flux(2) = f2(0);
+  flux(3) = f3(0);
+
+  // this assumes that F and U signs are the same
+  // do we need to handle boundaries here ?
+  Wxz_w(uvar, flux);
+
   for (int l = 0; l < ndofs; l++) {
     edgerecon(l, 0, 0) = edgereconvar(l + ndofs * 1, k + ks, j + js, i + is, n);
     edgerecon(l, 0, 1) =
@@ -398,16 +420,32 @@ void YAKL_INLINE compute_straight_xz_recon(const real5d &reconvar,
 }
 
 template <uint ndofs, RECONSTRUCTION_TYPE recontype>
-void YAKL_INLINE compute_straight_xz_vert_recon(const real5d &reconvar,
-                                                const real5d &edgereconvar,
-                                                const real5d &VT, int is,
-                                                int js, int ks, int i, int j,
-                                                int k, int n) {
+void YAKL_INLINE compute_straight_xz_vert_recon(
+    const real5d &reconvar, const real5d &edgereconvar,
+    const Geometry<Straight> &pgeom, const Geometry<Twisted> &dgeom,
+    const real5d &W, int is, int js, int ks, int i, int j, int k, int n) {
   SArray<real, 2, ndofs, 1> recon;
   SArray<real, 1, 1> uvar;
   SArray<real, 3, ndofs, 1, 2> edgerecon;
+
+  SArray<real, 1, 1> f0, f1, f2, f3;
+  compute_Hv<1, vert_diff_ord>(f0, W, pgeom, dgeom, is, js, ks, i, j, k, n);
+  compute_Hv<1, vert_diff_ord>(f1, W, pgeom, dgeom, is, js, ks, i - 1, j, k, n);
+  compute_Hv<1, vert_diff_ord>(f2, W, pgeom, dgeom, is, js, ks, i, j, k + 1, n);
+  compute_Hv<1, vert_diff_ord>(f3, W, pgeom, dgeom, is, js, ks, i - 1, j, k + 1,
+                               n);
+  SArray<real, 1, 4> flux;
+  flux(0) = f0(0);
+  flux(1) = f1(0);
+  flux(2) = f2(0);
+  flux(3) = f3(0);
+
+  // this assumes that FW and UW signs are the same
+  // do we need to handle boundaries here ?
+  Wxz_u(uvar, flux);
   // Needs a "twist"
-  uvar(0) = -VT(0, k + ks, j + js, i + is, n);
+  uvar(0) *= -1;
+
   for (int l = 0; l < ndofs; l++) {
     edgerecon(l, 0, 0) =
         edgereconvar(l + ndofs * 1, k + ks - 1, j + js, i + is, n);
