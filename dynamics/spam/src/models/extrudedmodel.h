@@ -323,6 +323,37 @@ public:
                                j, k + 1, n);
         });
   }
+  
+  void compute_he(real5d HEvar, real5d HEWvar, const real5d dens0var) {
+
+    const auto &dual_topology = dual_geometry.topology;
+
+    int dis = dual_topology.is;
+    int djs = dual_topology.js;
+    int dks = dual_topology.ks;
+
+    // THIS WILL NEED SOME SLIGHT MODIFICATIONS FOR CASE OF NON-ZERO UWVAR_B IE
+    // BOUNDARY FLUXES BUT FOR NOW IT IS FINE SINCE UWVAR=0 on BND AND THEREFORE
+    // K COMPUTATIONS IGNORE IT
+    YAKL_SCOPE(Hk, ::Hk);
+    parallel_for(
+        "Compute he",
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          Hk.compute_he(HEvar, dens0var, dis, djs, dks, i, j,
+                              k, n);
+        });
+    parallel_for(
+        "Compute he",
+        SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          Hk.compute_hew(HEWvar, dens0var, dis, djs, dks, i,
+                               j, k + 1, n);
+        });
+  }
+
 
   void compute_FT_and_FTW(real5d FTvar, real5d FTWvar, const real5d Fvar,
                           const real5d FWvar) {
@@ -479,9 +510,10 @@ public:
         "ComputeDensRECON",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
+        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
           compute_twisted_recon<ndensity, dual_reconstruction_type>(
-              densreconvar, densedgereconvar, Uvar, dis, djs, dks, i, j, k, n);
+              densreconvar, densedgereconvar, this->primal_geometry, this->dual_geometry,
+              Uvar, dis, djs, dks, i, j, k, n);
           // scale twisted recons
           for (int d = 0; d < ndims; d++) {
             for (int l = 0; l < ndensity; l++) {
@@ -496,9 +528,10 @@ public:
         "ComputeDensVertRECON",
         SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
+        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
           compute_twisted_vert_recon<ndensity, dual_vert_reconstruction_type>(
-              densvertreconvar, densvertedgereconvar, UWvar, dis, djs, dks, i,
+              densvertreconvar, densvertedgereconvar, this->primal_geometry, this->dual_geometry,
+              UWvar, dis, djs, dks, i,
               j, k + 1, n);
           // scale twisted recons
           for (int l = 0; l < ndensity; l++) {
@@ -512,23 +545,31 @@ public:
         "ComputeQRECON",
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
+        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
           compute_straight_xz_recon<1, reconstruction_type>(
-              qxzreconvar, qxzedgereconvar, FTWvar, pis, pjs, pks, i, j, k, n);
+              qxzreconvar, qxzedgereconvar, 
+              this->primal_geometry, this->dual_geometry,
+              Uvar, pis, pjs, pks, i, j, k, n);
           compute_straight_xz_recon<1, coriolis_reconstruction_type>(
-              coriolisxzreconvar, coriolisxzedgereconvar, FTWvar, pis, pjs, pks,
+              coriolisxzreconvar, coriolisxzedgereconvar,
+              this->primal_geometry, this->dual_geometry,
+              Uvar, pis, pjs, pks,
               i, j, k, n);
         });
     parallel_for(
         "ComputeQVERTRECON",
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
+        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
           compute_straight_xz_vert_recon<1, vert_reconstruction_type>(
-              qxzvertreconvar, qxzvertedgereconvar, FTvar, pis, pjs, pks, i, j,
+              qxzvertreconvar, qxzvertedgereconvar,
+              this->primal_geometry, this->dual_geometry,
+              UWvar, pis, pjs, pks, i, j,
               k, n);
           compute_straight_xz_vert_recon<1, coriolis_vert_reconstruction_type>(
-              coriolisxzvertreconvar, coriolisxzvertedgereconvar, FTvar, pis,
+              coriolisxzvertreconvar, coriolisxzvertedgereconvar,
+              this->primal_geometry, this->dual_geometry,
+              UWvar, pis,
               pjs, pks, i, j, k, n);
         });
   }
@@ -840,23 +881,33 @@ public:
 
     compute_dens0(auxiliary_vars.fields_arr[DENS0VAR].data,
                   x.fields_arr[DENSVAR].data);
-    compute_U(auxiliary_vars.fields_arr[UVAR].data, x.fields_arr[VVAR].data);
-    compute_UW(auxiliary_vars.fields_arr[UWVAR].data, x.fields_arr[WVAR].data);
-    auxiliary_vars.fields_arr[UWVAR].set_bnd(0.0);
+    
+    //compute_U(auxiliary_vars.fields_arr[UVAR].data, x.fields_arr[VVAR].data);
+    //compute_UW(auxiliary_vars.fields_arr[UWVAR].data, x.fields_arr[WVAR].data);
+    //
+    //auxiliary_vars.fields_arr[UWVAR].set_bnd(0.0);
+    //auxiliary_vars.exchange({UVAR, UWVAR, DENS0VAR});
 
-    auxiliary_vars.exchange({UVAR, UWVAR, DENS0VAR});
+    //compute_F_FW_and_he(
+    //    auxiliary_vars.fields_arr[FVAR2].data,
+    //    auxiliary_vars.fields_arr[FWVAR2].data,
+    //    auxiliary_vars.fields_arr[HEVAR].data,
+    //    auxiliary_vars.fields_arr[HEWVAR].data, x.fields_arr[VVAR].data,
+    //    auxiliary_vars.fields_arr[UVAR].data, x.fields_arr[WVAR].data,
+    //    auxiliary_vars.fields_arr[UWVAR].data,
+    //    auxiliary_vars.fields_arr[DENS0VAR].data);
 
-    compute_F_FW_and_he(
-        auxiliary_vars.fields_arr[FVAR2].data,
-        auxiliary_vars.fields_arr[FWVAR2].data,
+    //auxiliary_vars.fields_arr[FWVAR2].set_bnd(0.0);
+    //auxiliary_vars.exchange({FVAR2, FWVAR2, HEVAR, HEWVAR});
+    
+    auxiliary_vars.exchange({DENS0VAR});
+    compute_he(
         auxiliary_vars.fields_arr[HEVAR].data,
-        auxiliary_vars.fields_arr[HEWVAR].data, x.fields_arr[VVAR].data,
-        auxiliary_vars.fields_arr[UVAR].data, x.fields_arr[WVAR].data,
-        auxiliary_vars.fields_arr[UWVAR].data,
+        auxiliary_vars.fields_arr[HEWVAR].data,
         auxiliary_vars.fields_arr[DENS0VAR].data);
-
-    auxiliary_vars.fields_arr[FWVAR2].set_bnd(0.0);
-    auxiliary_vars.exchange({FVAR2, FWVAR2, HEVAR, HEWVAR});
+   
+    // MW: don't need this exchange ?
+    // auxiliary_vars.exchange({HEVAR, HEWVAR});
 
     compute_q0f0(auxiliary_vars.fields_arr[QXZ0VAR].data,
                  auxiliary_vars.fields_arr[FXZ0VAR].data,
@@ -868,12 +919,11 @@ public:
     auxiliary_vars.fields_arr[FXZ0VAR].set_bnd(0.0);
     auxiliary_vars.exchange({QXZ0VAR, FXZ0VAR});
 
-    compute_FT_and_FTW(auxiliary_vars.fields_arr[FTVAR].data,
-                       auxiliary_vars.fields_arr[FTWVAR].data,
-                       auxiliary_vars.fields_arr[FVAR2].data,
-                       auxiliary_vars.fields_arr[FWVAR2].data);
-
-    auxiliary_vars.exchange({FTVAR, FTWVAR});
+    //compute_FT_and_FTW(auxiliary_vars.fields_arr[FTVAR].data,
+    //                   auxiliary_vars.fields_arr[FTWVAR].data,
+    //                   auxiliary_vars.fields_arr[FVAR2].data,
+    //                   auxiliary_vars.fields_arr[FWVAR2].data);
+    //auxiliary_vars.exchange({FTVAR, FTWVAR});
 
     // Compute densrecon, densvertrecon, qrecon and frecon
     compute_edge_reconstructions(
@@ -906,8 +956,8 @@ public:
                    auxiliary_vars.fields_arr[CORIOLISXZVERTEDGERECONVAR].data,
                    auxiliary_vars.fields_arr[HEVAR].data,
                    auxiliary_vars.fields_arr[HEWVAR].data,
-                   auxiliary_vars.fields_arr[UVAR].data,
-                   auxiliary_vars.fields_arr[UWVAR].data,
+                   x.fields_arr[VVAR].data,
+                   x.fields_arr[WVAR].data,
                    auxiliary_vars.fields_arr[FTVAR].data,
                    auxiliary_vars.fields_arr[FTWVAR].data);
 
