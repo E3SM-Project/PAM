@@ -406,9 +406,9 @@ void YAKL_INLINE compute_straight_xz_recon(const real5d &reconvar,
   
   SArray<real, 1, 4> flux;
   flux(0) = f0(0);
-  flux(1) = f1(1);
-  flux(2) = f2(2);
-  flux(3) = f3(3);
+  flux(1) = f1(0);
+  flux(2) = f2(0);
+  flux(3) = f3(0);
 
   // this assumes that F and U signs are the same
   // do we need to handle boundaries here ?
@@ -465,9 +465,9 @@ void YAKL_INLINE compute_straight_xz_vert_recon(const real5d &reconvar,
                                   n);
   SArray<real, 1, 4> flux;
   flux(0) = f0(0);
-  flux(1) = f1(1);
-  flux(2) = f2(2);
-  flux(3) = f3(3);
+  flux(1) = f1(0);
+  flux(2) = f2(0);
+  flux(3) = f3(0);
 
   // this assumes that FW and UW signs are the same
   // do we need to handle boundaries here ?
