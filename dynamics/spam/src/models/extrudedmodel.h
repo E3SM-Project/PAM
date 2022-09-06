@@ -727,6 +727,11 @@ public:
     const auto &Bvar = auxiliary_vars.fields_arr[BVAR].data;
     const auto &HSvar = const_vars.fields_arr[HSVAR].data;
 
+    const auto total_density_f =
+        YAKL_LAMBDA(const real5d &densvar, int k, int j, int i, int n) {
+      return varset.get_total_density(densvar, k, j, i, 0, 0, 0, n);
+    };
+
     YAKL_SCOPE(Hk, ::Hk);
     YAKL_SCOPE(Hs, ::Hs);
     parallel_for(
@@ -748,10 +753,6 @@ public:
           //     dens0_km1, densvar, this->primal_geometry, this->dual_geometry,
           //     pis, pjs, pks, i, j, k-1, n);
 
-          const auto total_density_f =
-              YAKL_LAMBDA(const real5d &densvar, int k, int j, int i, int n) {
-            return varset.get_total_density(densvar, k, j, i, 0, 0, 0, n);
-          };
 
           real dens0_ik = compute_Iext<diff_ord, vert_diff_ord>(
               total_density_f, densvar, this->primal_geometry,
