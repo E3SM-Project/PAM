@@ -235,24 +235,35 @@ public:
     YAKL_SCOPE(PVPE, ::PVPE);
     parallel_for(
         "Compute Q0, F0",
-        SimpleBounds<4>(dual_topology.ni - 3, dual_topology.n_cells_y,
+        SimpleBounds<4>(dual_topology.ni - 1, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          PVPE.compute_qxz0fxz0(qxz0var, fxz0var, Vvar, Wvar, densvar,
-                                coriolisxzvar, dis, djs, dks, i, j, k + 2, n);
+          if (k == 1) {
+            PVPE.compute_qxz0fxz0_bottom(qxz0var, fxz0var, Vvar, Wvar, densvar,
+                                         coriolisxzvar, dis, djs, dks, i, j, 1,
+                                         n);
+          } else if (k == dual_topology.ni - 2) {
+            PVPE.compute_qxz0fxz0_top(qxz0var, fxz0var, Vvar, Wvar, densvar,
+                                      coriolisxzvar, dis, djs, dks, i, j,
+                                      dual_topology.ni - 2, n);
+          } else {
+            PVPE.compute_qxz0fxz0(qxz0var, fxz0var, Vvar, Wvar, densvar,
+                                  coriolisxzvar, dis, djs, dks, i, j, k, n);
+          }
         });
-    parallel_for(
-        "Compute Q0, F0 bnd",
-        SimpleBounds<3>(dual_topology.n_cells_y, dual_topology.n_cells_x,
-                        dual_topology.nens),
-        YAKL_CLASS_LAMBDA(int j, int i, int n) {
-          PVPE.compute_qxz0fxz0_bottom(qxz0var, fxz0var, Vvar, Wvar, densvar,
-                                       coriolisxzvar, dis, djs, dks, i, j, 1,
-                                       n);
-          PVPE.compute_qxz0fxz0_top(qxz0var, fxz0var, Vvar, Wvar, densvar,
-                                    coriolisxzvar, dis, djs, dks, i, j,
-                                    dual_topology.ni - 2, n);
-        });
+
+    //parallel_for(
+    //    "Compute Q0, F0 bnd",
+    //    SimpleBounds<3>(dual_topology.n_cells_y, dual_topology.n_cells_x,
+    //                    dual_topology.nens),
+    //    YAKL_CLASS_LAMBDA(int j, int i, int n) {
+    //      PVPE.compute_qxz0fxz0_bottom(qxz0var, fxz0var, Vvar, Wvar, densvar,
+    //                                   coriolisxzvar, dis, djs, dks, i, j, 1,
+    //                                   n);
+    //      PVPE.compute_qxz0fxz0_top(qxz0var, fxz0var, Vvar, Wvar, densvar,
+    //                                coriolisxzvar, dis, djs, dks, i, j,
+    //                                dual_topology.ni - 2, n);
+    //    });
   }
 
   template <ADD_MODE addmode = ADD_MODE::REPLACE>
@@ -620,109 +631,163 @@ public:
 
     parallel_for(
         "Compute Wtend",
-        SimpleBounds<4>(primal_topology.nl - 2, primal_topology.n_cells_y,
+        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_wDv_fct<ndensity>(Wtendvar, densvertreconvar, Phivertvar,
-                                    Bvar, pis, pjs, pks, i, j, k + 1, n);
-          if (qf_choice == QF_MODE::EC) {
-            compute_Qxz_w_EC<1, ADD_MODE::ADD>(Wtendvar, qxzreconvar,
-                                               qxzvertreconvar, Fvar, pis, pjs,
-                                               pks, i, j, k + 1, n);
-          }
-          if (qf_choice == QF_MODE::NOEC) {
-            compute_Qxz_w_nonEC<1, ADD_MODE::ADD>(
-                Wtendvar, qxzreconvar, Fvar, pis, pjs, pks, i, j, k + 1, n);
-          }
-          compute_Qxz_w_EC<1, ADD_MODE::ADD>(Wtendvar, coriolisxzreconvar,
-                                             coriolisxzvertreconvar, Fvar, pis,
-                                             pjs, pks, i, j, k + 1, n);
+                                    Bvar, pis, pjs, pks, i, j, k, n);
+            if (k == 0) {
+              if (qf_choice == QF_MODE::EC) {
+              compute_Qxz_w_EC_bottom<1, ADD_MODE::ADD>(
+                  Wtendvar, qxzreconvar, qxzvertreconvar, Fvar, pis, pjs, pks, i,
+                  j, 0, n);
+              } else if (qf_choice == QF_MODE::NOEC) {
+              compute_Qxz_w_nonEC_bottom<1, ADD_MODE::ADD>(
+                  Wtendvar, qxzreconvar, Fvar, pis, pjs, pks, i, j, 0, n);
+              }
+              compute_Qxz_w_EC_bottom<1, ADD_MODE::ADD>(
+                  Wtendvar, coriolisxzreconvar, coriolisxzvertreconvar, Fvar, pis,
+                  pjs, pks, i, j, 0, n);
+            } else if (k == primal_topology.nl - 1) {
+              if (qf_choice == QF_MODE::EC) {
+                compute_Qxz_w_EC_top<1, ADD_MODE::ADD>(
+                    Wtendvar, qxzreconvar, qxzvertreconvar, Fvar, pis, pjs, pks, i,
+                    j, primal_topology.nl - 1, n);
+              } else if (qf_choice == QF_MODE::NOEC) {
+                compute_Qxz_w_nonEC_top<1, ADD_MODE::ADD>(
+                    Wtendvar, qxzreconvar, Fvar, pis, pjs, pks, i, j,
+                    primal_topology.nl - 1, n);
+                compute_Qxz_w_EC_top<1, ADD_MODE::ADD>(
+                    Wtendvar, coriolisxzreconvar, coriolisxzvertreconvar, Fvar, pis,
+                    pjs, pks, i, j, primal_topology.nl - 1, n);
+                    }
+            } else {
+              if (qf_choice == QF_MODE::EC) {
+                compute_Qxz_w_EC<1, ADD_MODE::ADD>(Wtendvar, qxzreconvar,
+                                                   qxzvertreconvar, Fvar, pis, pjs,
+                                                   pks, i, j, k, n);
+              } else if (qf_choice == QF_MODE::NOEC) {
+                compute_Qxz_w_nonEC<1, ADD_MODE::ADD>(
+                    Wtendvar, qxzreconvar, Fvar, pis, pjs, pks, i, j, k + 1, n);
+              }
+              compute_Qxz_w_EC<1, ADD_MODE::ADD>(Wtendvar, coriolisxzreconvar,
+                                                 coriolisxzvertreconvar, Fvar, pis,
+                                                 pjs, pks, i, j, k, n);
+            }
         });
-    parallel_for(
-        "Compute Wtend Bnd",
-        SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
-                        primal_topology.nens),
-        YAKL_CLASS_LAMBDA(int j, int i, int n) {
-          compute_wDv_fct<ndensity>(Wtendvar, densvertreconvar, Phivertvar,
-                                    Bvar, pis, pjs, pks, i, j, 0, n);
-          compute_wDv_fct<ndensity>(Wtendvar, densvertreconvar, Phivertvar,
-                                    Bvar, pis, pjs, pks, i, j,
-                                    primal_topology.nl - 1, n);
-          if (qf_choice == QF_MODE::EC) {
-            compute_Qxz_w_EC_bottom<1, ADD_MODE::ADD>(
-                Wtendvar, qxzreconvar, qxzvertreconvar, Fvar, pis, pjs, pks, i,
-                j, 0, n);
-            compute_Qxz_w_EC_top<1, ADD_MODE::ADD>(
-                Wtendvar, qxzreconvar, qxzvertreconvar, Fvar, pis, pjs, pks, i,
-                j, primal_topology.nl - 1, n);
-          }
-          if (qf_choice == QF_MODE::NOEC) {
-            compute_Qxz_w_nonEC_bottom<1, ADD_MODE::ADD>(
-                Wtendvar, qxzreconvar, Fvar, pis, pjs, pks, i, j, 0, n);
-            compute_Qxz_w_nonEC_top<1, ADD_MODE::ADD>(
-                Wtendvar, qxzreconvar, Fvar, pis, pjs, pks, i, j,
-                primal_topology.nl - 1, n);
-          }
-          compute_Qxz_w_EC_bottom<1, ADD_MODE::ADD>(
-              Wtendvar, coriolisxzreconvar, coriolisxzvertreconvar, Fvar, pis,
-              pjs, pks, i, j, 0, n);
-          compute_Qxz_w_EC_top<1, ADD_MODE::ADD>(
-              Wtendvar, coriolisxzreconvar, coriolisxzvertreconvar, Fvar, pis,
-              pjs, pks, i, j, primal_topology.nl - 1, n);
-        });
+    //parallel_for(
+    //    "Compute Wtend Bnd",
+    //    SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
+    //                    primal_topology.nens),
+    //    YAKL_CLASS_LAMBDA(int j, int i, int n) {
+    //      compute_wDv_fct<ndensity>(Wtendvar, densvertreconvar, Phivertvar,
+    //                                Bvar, pis, pjs, pks, i, j, 0, n);
+    //      compute_wDv_fct<ndensity>(Wtendvar, densvertreconvar, Phivertvar,
+    //                                Bvar, pis, pjs, pks, i, j,
+    //                                primal_topology.nl - 1, n);
+    //      if (qf_choice == QF_MODE::EC) {
+    //        compute_Qxz_w_EC_bottom<1, ADD_MODE::ADD>(
+    //            Wtendvar, qxzreconvar, qxzvertreconvar, Fvar, pis, pjs, pks, i,
+    //            j, 0, n);
+    //        compute_Qxz_w_EC_top<1, ADD_MODE::ADD>(
+    //            Wtendvar, qxzreconvar, qxzvertreconvar, Fvar, pis, pjs, pks, i,
+    //            j, primal_topology.nl - 1, n);
+    //      }
+    //      if (qf_choice == QF_MODE::NOEC) {
+    //        compute_Qxz_w_nonEC_bottom<1, ADD_MODE::ADD>(
+    //            Wtendvar, qxzreconvar, Fvar, pis, pjs, pks, i, j, 0, n);
+    //        compute_Qxz_w_nonEC_top<1, ADD_MODE::ADD>(
+    //            Wtendvar, qxzreconvar, Fvar, pis, pjs, pks, i, j,
+    //            primal_topology.nl - 1, n);
+    //      }
+    //      compute_Qxz_w_EC_bottom<1, ADD_MODE::ADD>(
+    //          Wtendvar, coriolisxzreconvar, coriolisxzvertreconvar, Fvar, pis,
+    //          pjs, pks, i, j, 0, n);
+    //      compute_Qxz_w_EC_top<1, ADD_MODE::ADD>(
+    //          Wtendvar, coriolisxzreconvar, coriolisxzvertreconvar, Fvar, pis,
+    //          pjs, pks, i, j, primal_topology.nl - 1, n);
+    //    });
 
     parallel_for(
         "Compute Vtend",
-        SimpleBounds<4>(primal_topology.ni - 2, primal_topology.n_cells_y,
+        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_wD1_fct<ndensity>(Vtendvar, densreconvar, Phivar, Bvar, pis,
-                                    pjs, pks, i, j, k + 1, n);
-          if (qf_choice == QF_MODE::EC) {
-            compute_Qxz_u_EC<1, ADD_MODE::ADD>(Vtendvar, qxzreconvar,
-                                               qxzvertreconvar, FWvar, pis, pjs,
-                                               pks, i, j, k + 1, n);
-          }
-          if (qf_choice == QF_MODE::NOEC) {
-            compute_Qxz_u_nonEC<1, ADD_MODE::ADD>(Vtendvar, qxzvertreconvar,
-                                                  FWvar, pis, pjs, pks, i, j,
-                                                  k + 1, n);
-          }
-          compute_Qxz_u_EC<1, ADD_MODE::ADD>(Vtendvar, coriolisxzreconvar,
-                                             coriolisxzvertreconvar, FWvar, pis,
-                                             pjs, pks, i, j, k + 1, n);
-        });
-    parallel_for(
-        "Compute Vtend Bnd",
-        SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
-                        primal_topology.nens),
-        YAKL_CLASS_LAMBDA(int j, int i, int n) {
-          compute_wD1_fct<ndensity>(Vtendvar, densreconvar, Phivar, Bvar, pis,
-                                    pjs, pks, i, j, 0, n);
-          compute_wD1_fct<ndensity>(Vtendvar, densreconvar, Phivar, Bvar, pis,
-                                    pjs, pks, i, j, primal_topology.ni - 1, n);
-          if (qf_choice == QF_MODE::EC) {
+                                    pjs, pks, i, j, k, n);
+          if (k == 0) {
+            if (qf_choice == QF_MODE::EC) {
+              compute_Qxz_u_EC_bottom<1, ADD_MODE::ADD>(
+                  Vtendvar, qxzreconvar, qxzvertreconvar, FWvar, pis, pjs, pks, i,
+                  j, 0, n);
+            } else if (qf_choice == QF_MODE::NOEC) {
+              compute_Qxz_u_nonEC_bottom<1, ADD_MODE::ADD>(
+                  Vtendvar, qxzvertreconvar, FWvar, pis, pjs, pks, i, j, 0, n);
+            }
             compute_Qxz_u_EC_bottom<1, ADD_MODE::ADD>(
-                Vtendvar, qxzreconvar, qxzvertreconvar, FWvar, pis, pjs, pks, i,
-                j, 0, n);
+                Vtendvar, coriolisxzreconvar, coriolisxzvertreconvar, FWvar, pis,
+                pjs, pks, i, j, 0, n);
+          } else if (k == primal_topology.ni - 1) {
+            if (qf_choice == QF_MODE::EC) {
+              compute_Qxz_u_EC_top<1, ADD_MODE::ADD>(
+                  Vtendvar, qxzreconvar, qxzvertreconvar, FWvar, pis, pjs, pks, i,
+                  j, primal_topology.ni - 1, n);
+            } else if (qf_choice == QF_MODE::NOEC) {
+              compute_Qxz_u_nonEC_top<1, ADD_MODE::ADD>(
+                  Vtendvar, qxzvertreconvar, FWvar, pis, pjs, pks, i, j,
+                  primal_topology.ni - 1, n);
+            }
             compute_Qxz_u_EC_top<1, ADD_MODE::ADD>(
-                Vtendvar, qxzreconvar, qxzvertreconvar, FWvar, pis, pjs, pks, i,
-                j, primal_topology.ni - 1, n);
+                Vtendvar, coriolisxzreconvar, coriolisxzvertreconvar, FWvar, pis,
+                pjs, pks, i, j, primal_topology.ni - 1, n);
+          } else 
+          {
+            if (qf_choice == QF_MODE::EC) {
+              compute_Qxz_u_EC<1, ADD_MODE::ADD>(Vtendvar, qxzreconvar,
+                                                 qxzvertreconvar, FWvar, pis, pjs,
+                                                 pks, i, j, k, n);
+            }
+            if (qf_choice == QF_MODE::NOEC) {
+              compute_Qxz_u_nonEC<1, ADD_MODE::ADD>(Vtendvar, qxzvertreconvar,
+                                                    FWvar, pis, pjs, pks, i, j,
+                                                    k, n);
+            }
+            compute_Qxz_u_EC<1, ADD_MODE::ADD>(Vtendvar, coriolisxzreconvar,
+                                               coriolisxzvertreconvar, FWvar, pis,
+                                               pjs, pks, i, j, k, n);
           }
-          if (qf_choice == QF_MODE::NOEC) {
-            compute_Qxz_u_nonEC_bottom<1, ADD_MODE::ADD>(
-                Vtendvar, qxzvertreconvar, FWvar, pis, pjs, pks, i, j, 0, n);
-            compute_Qxz_u_nonEC_top<1, ADD_MODE::ADD>(
-                Vtendvar, qxzvertreconvar, FWvar, pis, pjs, pks, i, j,
-                primal_topology.ni - 1, n);
-          }
-          compute_Qxz_u_EC_bottom<1, ADD_MODE::ADD>(
-              Vtendvar, coriolisxzreconvar, coriolisxzvertreconvar, FWvar, pis,
-              pjs, pks, i, j, 0, n);
-          compute_Qxz_u_EC_top<1, ADD_MODE::ADD>(
-              Vtendvar, coriolisxzreconvar, coriolisxzvertreconvar, FWvar, pis,
-              pjs, pks, i, j, primal_topology.ni - 1, n);
         });
+    //parallel_for(
+    //    "Compute Vtend Bnd",
+    //    SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
+    //                    primal_topology.nens),
+    //    YAKL_CLASS_LAMBDA(int j, int i, int n) {
+    //      compute_wD1_fct<ndensity>(Vtendvar, densreconvar, Phivar, Bvar, pis,
+    //                                pjs, pks, i, j, 0, n);
+    //      compute_wD1_fct<ndensity>(Vtendvar, densreconvar, Phivar, Bvar, pis,
+    //                                pjs, pks, i, j, primal_topology.ni - 1, n);
+    //      if (qf_choice == QF_MODE::EC) {
+    //        compute_Qxz_u_EC_bottom<1, ADD_MODE::ADD>(
+    //            Vtendvar, qxzreconvar, qxzvertreconvar, FWvar, pis, pjs, pks, i,
+    //            j, 0, n);
+    //        compute_Qxz_u_EC_top<1, ADD_MODE::ADD>(
+    //            Vtendvar, qxzreconvar, qxzvertreconvar, FWvar, pis, pjs, pks, i,
+    //            j, primal_topology.ni - 1, n);
+    //      }
+    //      if (qf_choice == QF_MODE::NOEC) {
+    //        compute_Qxz_u_nonEC_bottom<1, ADD_MODE::ADD>(
+    //            Vtendvar, qxzvertreconvar, FWvar, pis, pjs, pks, i, j, 0, n);
+    //        compute_Qxz_u_nonEC_top<1, ADD_MODE::ADD>(
+    //            Vtendvar, qxzvertreconvar, FWvar, pis, pjs, pks, i, j,
+    //            primal_topology.ni - 1, n);
+    //      }
+    //      compute_Qxz_u_EC_bottom<1, ADD_MODE::ADD>(
+    //          Vtendvar, coriolisxzreconvar, coriolisxzvertreconvar, FWvar, pis,
+    //          pjs, pks, i, j, 0, n);
+    //      compute_Qxz_u_EC_top<1, ADD_MODE::ADD>(
+    //          Vtendvar, coriolisxzreconvar, coriolisxzvertreconvar, FWvar, pis,
+    //          pjs, pks, i, j, primal_topology.ni - 1, n);
+    //    });
 
     parallel_for(
         "Compute Dens Tend",
