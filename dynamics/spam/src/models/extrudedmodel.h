@@ -488,7 +488,7 @@ public:
       real5d coriolisxzvertreconvar, const real5d densedgereconvar,
       const real5d densvertedgereconvar, const real5d qxzedgereconvar,
       const real5d qxzvertedgereconvar, const real5d coriolisxzedgereconvar,
-      const real5d coriolisxzvertedgereconvar, const real5d HEvar,
+      const real5d coriolisxzvertedgereconvar, const real5d densvar,
       const real5d HEWvar, const real5d Uvar, const real5d UWvar,
       const real5d FTvar, const real5d FTWvar) {
 
@@ -502,6 +502,13 @@ public:
     int pis = primal_topology.is;
     int pjs = primal_topology.js;
     int pks = primal_topology.ks;
+    
+    YAKL_SCOPE(varset, ::varset);
+
+    const auto total_density_f =
+        YAKL_LAMBDA(const real5d &densvar, int k, int j, int i, int n) {
+      return varset.get_total_density(densvar, k, j, i, 0, 0, 0, n);
+    };
 
     parallel_for(
         "ComputeDensRECON",
@@ -512,11 +519,26 @@ public:
               densreconvar, densedgereconvar, this->primal_geometry,
               this->dual_geometry, Uvar, dis, djs, dks, i, j, k, n);
           // scale twisted recons
+
+          //for (int d = 0; d < ndims; d++) {
+          //  for (int l = 0; l < ndensity; l++) {
+          //    densreconvar(l + d * ndensity, k + dks, j + djs, i + dis, n) =
+          //        densreconvar(l + d * ndensity, k + dks, j + djs, i + dis, n) /
+          //        HEvar(d, k + dks, j + djs, i + dis, n);
+          //  }
+          //}
+
+          real dens0_ik = compute_Iext<diff_ord, vert_diff_ord>(
+              total_density_f, densvar, this->primal_geometry,
+              this->dual_geometry, pis, pjs, pks, i, j, k, n);
+          real dens0_im1 = compute_Iext<diff_ord, vert_diff_ord>(
+              total_density_f, densvar, this->primal_geometry,
+              this->dual_geometry, pis, pjs, pks, i - 1, j, k, n);
+
+          real he = 0.5_fp * (dens0_ik + dens0_im1);
           for (int d = 0; d < ndims; d++) {
             for (int l = 0; l < ndensity; l++) {
-              densreconvar(l + d * ndensity, k + dks, j + djs, i + dis, n) =
-                  densreconvar(l + d * ndensity, k + dks, j + djs, i + dis, n) /
-                  HEvar(d, k + dks, j + djs, i + dis, n);
+              densreconvar(l + d * ndensity, k + dks, j + djs, i + dis, n) /= he;
             }
           }
         });
@@ -530,10 +552,22 @@ public:
               densvertreconvar, densvertedgereconvar, this->primal_geometry,
               this->dual_geometry, UWvar, dis, djs, dks, i, j, k + 1, n);
           // scale twisted recons
+          //for (int l = 0; l < ndensity; l++) {
+          //  densvertreconvar(l, k + dks + 1, j + djs, i + dis, n) =
+          //      densvertreconvar(l, k + dks + 1, j + djs, i + dis, n) /
+          //      HEWvar(0, k + dks + 1, j + djs, i + dis, n);
+          //}
+
+          real dens0_kp1 = compute_Iext<diff_ord, vert_diff_ord>(
+              total_density_f, densvar, this->primal_geometry,
+              this->dual_geometry, pis, pjs, pks, i, j, k + 1, n);
+          real dens0_ik = compute_Iext<diff_ord, vert_diff_ord>(
+              total_density_f, densvar, this->primal_geometry,
+              this->dual_geometry, pis, pjs, pks, i, j, k, n);
+
+          real hew = 0.5_fp * (dens0_kp1 + dens0_ik);
           for (int l = 0; l < ndensity; l++) {
-            densvertreconvar(l, k + dks + 1, j + djs, i + dis, n) =
-                densvertreconvar(l, k + dks + 1, j + djs, i + dis, n) /
-                HEWvar(0, k + dks + 1, j + djs, i + dis, n);
+            densvertreconvar(l, k + dks + 1, j + djs, i + dis, n) /= hew;
           }
         });
 
@@ -910,9 +944,9 @@ public:
     // auxiliary_vars.exchange({FVAR2, FWVAR2, HEVAR, HEWVAR});
 
     auxiliary_vars.exchange({DENS0VAR});
-    compute_he(auxiliary_vars.fields_arr[HEVAR].data,
-               auxiliary_vars.fields_arr[HEWVAR].data,
-               auxiliary_vars.fields_arr[DENS0VAR].data);
+    //compute_he(auxiliary_vars.fields_arr[HEVAR].data,
+    //           auxiliary_vars.fields_arr[HEWVAR].data,
+    //           auxiliary_vars.fields_arr[DENS0VAR].data);
 
     // MW: don't need this exchange ?
     // auxiliary_vars.exchange({HEVAR, HEWVAR});
@@ -962,7 +996,7 @@ public:
                    auxiliary_vars.fields_arr[QXZVERTEDGERECONVAR].data,
                    auxiliary_vars.fields_arr[CORIOLISXZEDGERECONVAR].data,
                    auxiliary_vars.fields_arr[CORIOLISXZVERTEDGERECONVAR].data,
-                   auxiliary_vars.fields_arr[HEVAR].data,
+                   x.fields_arr[DENSVAR].data,
                    auxiliary_vars.fields_arr[HEWVAR].data,
                    x.fields_arr[VVAR].data, x.fields_arr[WVAR].data,
                    auxiliary_vars.fields_arr[FTVAR].data,
