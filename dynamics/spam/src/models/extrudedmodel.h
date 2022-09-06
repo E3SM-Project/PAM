@@ -726,14 +726,16 @@ public:
     const auto &Kvar = auxiliary_vars.fields_arr[KVAR].data;
     const auto &Bvar = auxiliary_vars.fields_arr[BVAR].data;
     const auto &HSvar = const_vars.fields_arr[HSVAR].data;
+    
+    YAKL_SCOPE(Hk, ::Hk);
+    YAKL_SCOPE(Hs, ::Hs);
+    YAKL_SCOPE(varset, ::varset);
 
     const auto total_density_f =
         YAKL_LAMBDA(const real5d &densvar, int k, int j, int i, int n) {
       return varset.get_total_density(densvar, k, j, i, 0, 0, 0, n);
     };
 
-    YAKL_SCOPE(Hk, ::Hk);
-    YAKL_SCOPE(Hs, ::Hs);
     parallel_for(
         "Functional derivatives",
         SimpleBounds<4>(dual_topology.ni, dual_topology.n_cells_y,
