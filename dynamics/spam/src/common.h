@@ -159,6 +159,9 @@ enum class ADD_MODE { REPLACE, ADD };
 // Boundary types
 enum class BND_TYPE { PERIODIC, NONE };
 
+// operator extent for pointwise field operations
+enum class FIELDOP_EXTENT { WITHOUT_HALOS, WITH_HALOS };
+
 #if defined _HAMILTONIAN && defined _LAYER
 #include "layermodel-common.h"
 #elif defined _HAMILTONIAN && defined _EXTRUDED

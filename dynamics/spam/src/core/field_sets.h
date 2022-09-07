@@ -35,14 +35,18 @@ public:
                   const std::array<FieldDescription, num_fields> &desc_arr,
                   ExchangeSet<num_fields> &exchange_set);
   void initialize(const FieldSet<num_fields> &vs, const std::string name);
-  void copy(const FieldSet<num_fields> &vs);
+  void copy(const FieldSet<num_fields> &vs,
+            const FIELDOP_EXTENT extent = FIELDOP_EXTENT::WITHOUT_HALOS);
   void waxpy(real alpha, const FieldSet<num_fields> &x,
-             const FieldSet<num_fields> &y);
+             const FieldSet<num_fields> &y,
+             const FIELDOP_EXTENT extent = FIELDOP_EXTENT::WITHOUT_HALOS);
   void waxpby(real alpha, real beta, const FieldSet<num_fields> &x,
-              const FieldSet<num_fields> &y);
+              const FieldSet<num_fields> &y,
+              const FIELDOP_EXTENT extent = FIELDOP_EXTENT::WITHOUT_HALOS);
   void waxpbypcz(real alpha, real beta, real gamma,
                  const FieldSet<num_fields> &x, const FieldSet<num_fields> &y,
-                 const FieldSet<num_fields> &z);
+                 const FieldSet<num_fields> &z,
+                 const FIELDOP_EXTENT extent = FIELDOP_EXTENT::WITHOUT_HALOS);
   void exchange();
   void exchange(const std::initializer_list<int> &indices);
 };
@@ -125,18 +129,20 @@ void FieldSet<num_fields>::initialize(
 
 // copies data from vs into self
 template <uint num_fields>
-void FieldSet<num_fields>::copy(const FieldSet<num_fields> &vs) {
+void FieldSet<num_fields>::copy(const FieldSet<num_fields> &vs,
+                                const FIELDOP_EXTENT extent) {
   for (int i = 0; i < num_fields; i++) {
-    this->fields_arr[i].copy(vs.fields_arr[i]);
+    this->fields_arr[i].copy(vs.fields_arr[i], extent);
   }
 }
 
 // Computes w (self) = alpha x + y
 template <uint num_fields>
 void FieldSet<num_fields>::waxpy(real alpha, const FieldSet<num_fields> &x,
-                                 const FieldSet<num_fields> &y) {
+                                 const FieldSet<num_fields> &y,
+                                 const FIELDOP_EXTENT extent) {
   for (int i = 0; i < num_fields; i++) {
-    this->fields_arr[i].waxpy(alpha, x.fields_arr[i], y.fields_arr[i]);
+    this->fields_arr[i].waxpy(alpha, x.fields_arr[i], y.fields_arr[i], extent);
   }
 }
 
@@ -144,9 +150,11 @@ void FieldSet<num_fields>::waxpy(real alpha, const FieldSet<num_fields> &x,
 template <uint num_fields>
 void FieldSet<num_fields>::waxpby(real alpha, real beta,
                                   const FieldSet<num_fields> &x,
-                                  const FieldSet<num_fields> &y) {
+                                  const FieldSet<num_fields> &y,
+                                  const FIELDOP_EXTENT extent) {
   for (int i = 0; i < num_fields; i++) {
-    this->fields_arr[i].waxpby(alpha, beta, x.fields_arr[i], y.fields_arr[i]);
+    this->fields_arr[i].waxpby(alpha, beta, x.fields_arr[i], y.fields_arr[i],
+                               extent);
   }
 }
 
@@ -155,10 +163,11 @@ template <uint num_fields>
 void FieldSet<num_fields>::waxpbypcz(real alpha, real beta, real gamma,
                                      const FieldSet<num_fields> &x,
                                      const FieldSet<num_fields> &y,
-                                     const FieldSet<num_fields> &z) {
+                                     const FieldSet<num_fields> &z,
+                                     const FIELDOP_EXTENT extent) {
   for (int i = 0; i < num_fields; i++) {
     this->fields_arr[i].waxpbypcz(alpha, beta, gamma, x.fields_arr[i],
-                                  y.fields_arr[i], z.fields_arr[i]);
+                                  y.fields_arr[i], z.fields_arr[i], extent);
   }
 }
 

@@ -80,10 +80,12 @@ template <uint nquad> void SITimeIntegrator<nquad>::stepForward(real dt) {
 
   this->tendencies->compute_rhs(dt, *this->const_vars, *this->x,
                                 *this->auxiliary_vars, this->dx);
-  this->xn.copy(*this->x);
+  this->dx.exchange();
+  this->xn.copy(*this->x, FIELDOP_EXTENT::WITH_HALOS);
   // store residual in xm
-  this->xm.waxpbypcz(-1, 1, -dt, this->xn, *this->x, this->dx);
-  this->xm.exchange();
+  this->xm.waxpbypcz(-1, 1, -dt, this->xn, *this->x, this->dx,
+                     FIELDOP_EXTENT::WITH_HALOS);
+  // this->xm.exchange();
 
   int iter = 0;
   int maxiters = 50;
@@ -108,34 +110,39 @@ template <uint nquad> void SITimeIntegrator<nquad>::stepForward(real dt) {
 
     this->linear_system->solve(dt, this->xm, *this->const_vars,
                                *this->auxiliary_vars, this->dx);
+    this->dx.exchange();
 
-    this->xn.waxpy(1, this->dx, this->xn);
+    this->xn.waxpy(1, this->dx, this->xn, FIELDOP_EXTENT::WITH_HALOS);
+    // this->xn.exchange();
 
     this->xm.waxpby(1 - this->quad_pts(0), this->quad_pts(0), *this->x,
-                    this->xn);
-    this->xm.exchange();
+                    this->xn, FIELDOP_EXTENT::WITH_HALOS);
+    // this->xm.exchange();
     this->tendencies->compute_functional_derivatives(
         ADD_MODE::REPLACE, this->quad_wts(0), dt, *this->const_vars, this->xm,
         *this->auxiliary_vars);
 
     for (int m = 1; m < nquad; ++m) {
       this->xm.waxpby(1 - this->quad_pts(m), this->quad_pts(m), *this->x,
-                      this->xn);
-      this->xm.exchange();
+                      this->xn, FIELDOP_EXTENT::WITH_HALOS);
+      // this->xm.exchange();
       this->tendencies->compute_functional_derivatives(
           ADD_MODE::ADD, this->quad_wts(m), dt, *this->const_vars, this->xm,
           *this->auxiliary_vars);
     }
 
-    this->xm.waxpby(0.5_fp, 0.5_fp, *this->x, this->xn);
-    this->xm.exchange();
+    this->xm.waxpby(0.5_fp, 0.5_fp, *this->x, this->xn,
+                    FIELDOP_EXTENT::WITH_HALOS);
+    // this->xm.exchange();
 
     this->tendencies->apply_symplectic(dt, *this->const_vars, this->xm,
                                        *this->auxiliary_vars, this->dx);
+    this->dx.exchange();
 
     // store residual in xm
-    this->xm.waxpbypcz(-1, 1, -dt, this->xn, *this->x, this->dx);
-    this->xm.exchange();
+    this->xm.waxpbypcz(-1, 1, -dt, this->xn, *this->x, this->dx,
+                       FIELDOP_EXTENT::WITH_HALOS);
+    // this->xm.exchange();
     res_norm = norm(xm);
 
     iter++;
@@ -166,6 +173,6 @@ template <uint nquad> void SITimeIntegrator<nquad>::stepForward(real dt) {
     std::cout << msg.str() << std::endl;
   }
 
-  this->x->copy(this->xn);
-  this->x->exchange();
+  this->x->copy(this->xn, FIELDOP_EXTENT::WITH_HALOS);
+  // this->x->exchange();
 }

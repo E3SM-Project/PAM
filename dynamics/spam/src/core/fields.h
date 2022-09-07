@@ -31,11 +31,13 @@ public:
   void initialize(const Field &f, const std::string fieldName);
   void initialize(const Topology &topo, Exchange *exchng,
                   const std::string fieldName, int bdof, int edof, int nd);
-  void copy(const Field &f);
-  void waxpy(real alpha, const Field &x, const Field &y);
-  void waxpby(real alpha, real beta, const Field &x, const Field &y);
+  void copy(const Field &f, const FIELDOP_EXTENT extent);
+  void waxpy(real alpha, const Field &x, const Field &y,
+             const FIELDOP_EXTENT extent);
+  void waxpby(real alpha, real beta, const Field &x, const Field &y,
+              const FIELDOP_EXTENT extent);
   void waxpbypcz(real alpha, real beta, real gamma, const Field &x,
-                 const Field &y, const Field &z);
+                 const Field &y, const Field &z, const FIELDOP_EXTENT extent);
   void zero();
   void zero(int ndof);
   void set(real val);
@@ -47,6 +49,11 @@ public:
   void set_bnd(real val);
   void set_bnd(int ndof, real val);
   void exchange();
+
+  auto
+  bounds(const FIELDOP_EXTENT extent = FIELDOP_EXTENT::WITHOUT_HALOS) const;
+  auto
+  offsets(const FIELDOP_EXTENT extent = FIELDOP_EXTENT::WITHOUT_HALOS) const;
   // real sum();
   // real min();
   // real max();
@@ -106,6 +113,29 @@ void Field::initialize(const Topology &topo, Exchange *exchng,
 
   this->zero();
   this->is_initialized = true;
+}
+
+auto Field::bounds(const FIELDOP_EXTENT extent) const {
+  if (extent == FIELDOP_EXTENT::WITHOUT_HALOS) {
+    return SimpleBounds<5>(this->total_dofs, this->_nz,
+                           this->topology.n_cells_y, this->topology.n_cells_x,
+                           this->topology.nens);
+  } else if (extent == FIELDOP_EXTENT::WITH_HALOS) {
+    return SimpleBounds<5>(
+        this->total_dofs, this->_nz + 2 * this->topology.mirror_halo,
+        this->topology.n_cells_y + 2 * this->topology.halosize_y,
+        this->topology.n_cells_x + 2 * this->topology.halosize_x,
+        this->topology.nens);
+  }
+}
+
+auto Field::offsets(const FIELDOP_EXTENT extent) const {
+  if (extent == FIELDOP_EXTENT::WITHOUT_HALOS) {
+    return std::make_tuple(this->topology.is, this->topology.js,
+                           this->topology.ks);
+  } else if (extent == FIELDOP_EXTENT::WITH_HALOS) {
+    return std::make_tuple(0, 0, 0);
+  }
 }
 
 void Field::set(real val) {
@@ -215,15 +245,11 @@ void Field::zero(int ndof) {
 }
 
 // copies data from f into self
-void Field::copy(const Field &f) {
+void Field::copy(const Field &f, const FIELDOP_EXTENT extent) {
 
-  int is = this->topology.is;
-  int js = this->topology.js;
-  int ks = this->topology.ks;
+  const auto [is, js, ks] = this->offsets(extent);
   parallel_for(
-      "Field copy",
-      SimpleBounds<5>(this->total_dofs, this->_nz, this->topology.n_cells_y,
-                      this->topology.n_cells_x, this->topology.nens),
+      "Field copy", this->bounds(extent),
       YAKL_CLASS_LAMBDA(int ndof, int k, int j, int i, int n) {
         this->data(ndof, k + ks, j + js, i + is, n) =
             f.data(ndof, k + ks, j + js, i + is, n);
@@ -231,15 +257,12 @@ void Field::copy(const Field &f) {
 }
 
 // Computes w (self) = alpha x + y
-void Field::waxpy(real alpha, const Field &x, const Field &y) {
+void Field::waxpy(real alpha, const Field &x, const Field &y,
+                  const FIELDOP_EXTENT extent) {
 
-  int is = this->topology.is;
-  int js = this->topology.js;
-  int ks = this->topology.ks;
+  const auto [is, js, ks] = this->offsets(extent);
   parallel_for(
-      "Field waxpy",
-      SimpleBounds<5>(this->total_dofs, this->_nz, this->topology.n_cells_y,
-                      this->topology.n_cells_x, this->topology.nens),
+      "Field waxpy", this->bounds(extent),
       YAKL_CLASS_LAMBDA(int ndof, int k, int j, int i, int n) {
         this->data(ndof, k + ks, j + js, i + is, n) =
             alpha * x.data(ndof, k + ks, j + js, i + is, n) +
@@ -248,15 +271,12 @@ void Field::waxpy(real alpha, const Field &x, const Field &y) {
 }
 
 // Computes w (self) = alpha x + beta * y
-void Field::waxpby(real alpha, real beta, const Field &x, const Field &y) {
+void Field::waxpby(real alpha, real beta, const Field &x, const Field &y,
+                   const FIELDOP_EXTENT extent) {
 
-  int is = this->topology.is;
-  int js = this->topology.js;
-  int ks = this->topology.ks;
+  const auto [is, js, ks] = this->offsets(extent);
   parallel_for(
-      "Field waxpby",
-      SimpleBounds<5>(this->total_dofs, this->_nz, this->topology.n_cells_y,
-                      this->topology.n_cells_x, this->topology.nens),
+      "Field waxpby", this->bounds(extent),
       YAKL_CLASS_LAMBDA(int ndof, int k, int j, int i, int n) {
         this->data(ndof, k + ks, j + js, i + is, n) =
             alpha * x.data(ndof, k + ks, j + js, i + is, n) +
@@ -266,15 +286,12 @@ void Field::waxpby(real alpha, real beta, const Field &x, const Field &y) {
 
 // Computes w (self) = alpha x + beta * y + gamma * z
 void Field::waxpbypcz(real alpha, real beta, real gamma, const Field &x,
-                      const Field &y, const Field &z) {
+                      const Field &y, const Field &z,
+                      const FIELDOP_EXTENT extent) {
 
-  int is = this->topology.is;
-  int js = this->topology.js;
-  int ks = this->topology.ks;
+  const auto [is, js, ks] = this->offsets(extent);
   parallel_for(
-      "Field waxpbypcz",
-      SimpleBounds<5>(this->total_dofs, this->_nz, this->topology.n_cells_y,
-                      this->topology.n_cells_x, this->topology.nens),
+      "Field waxpbypcz", this->bounds(extent),
       YAKL_CLASS_LAMBDA(int ndof, int k, int j, int i, int n) {
         this->data(ndof, k + ks, j + js, i + is, n) =
             alpha * x.data(ndof, k + ks, j + js, i + is, n) +
