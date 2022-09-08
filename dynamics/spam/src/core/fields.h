@@ -2,6 +2,7 @@
 
 #include "common.h"
 #include "topology.h"
+#include <tuple>
 
 struct FieldDescription {
   std::string name;
@@ -247,7 +248,8 @@ void Field::zero(int ndof) {
 // copies data from f into self
 void Field::copy(const Field &f, const FIELDOP_EXTENT extent) {
 
-  const auto [is, js, ks] = this->offsets(extent);
+  int is, js, ks;
+  std::tie(is, js, ks) = this->offsets(extent);
   parallel_for(
       "Field copy", this->bounds(extent),
       YAKL_CLASS_LAMBDA(int ndof, int k, int j, int i, int n) {
@@ -260,7 +262,8 @@ void Field::copy(const Field &f, const FIELDOP_EXTENT extent) {
 void Field::waxpy(real alpha, const Field &x, const Field &y,
                   const FIELDOP_EXTENT extent) {
 
-  const auto [is, js, ks] = this->offsets(extent);
+  int is, js, ks;
+  std::tie(is, js, ks) = this->offsets(extent);
   parallel_for(
       "Field waxpy", this->bounds(extent),
       YAKL_CLASS_LAMBDA(int ndof, int k, int j, int i, int n) {
@@ -274,7 +277,8 @@ void Field::waxpy(real alpha, const Field &x, const Field &y,
 void Field::waxpby(real alpha, real beta, const Field &x, const Field &y,
                    const FIELDOP_EXTENT extent) {
 
-  const auto [is, js, ks] = this->offsets(extent);
+  int is, js, ks;
+  std::tie(is, js, ks) = this->offsets(extent);
   parallel_for(
       "Field waxpby", this->bounds(extent),
       YAKL_CLASS_LAMBDA(int ndof, int k, int j, int i, int n) {
@@ -289,7 +293,8 @@ void Field::waxpbypcz(real alpha, real beta, real gamma, const Field &x,
                       const Field &y, const Field &z,
                       const FIELDOP_EXTENT extent) {
 
-  const auto [is, js, ks] = this->offsets(extent);
+  int is, js, ks;
+  std::tie(is, js, ks) = this->offsets(extent);
   parallel_for(
       "Field waxpbypcz", this->bounds(extent),
       YAKL_CLASS_LAMBDA(int ndof, int k, int j, int i, int n) {
