@@ -3040,7 +3040,7 @@ struct GravityWave {
                  const FieldSet<nprognostic> &x) override {
 
       YAKL_SCOPE(thermo, ::thermo);
-      dual_geometry.set_01form_values(
+      primal_geometry.set_01form_values(
           YAKL_LAMBDA(real x, real z) { return wexact_f(x, z, time, thermo); },
           field, 0, LINE_INTEGRAL_TYPE::TANGENT);
     }
