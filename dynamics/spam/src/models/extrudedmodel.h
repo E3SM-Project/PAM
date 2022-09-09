@@ -2049,6 +2049,7 @@ public:
   using T::refentropicdensity_f;
   using T::refnsq_f;
   using T::refrho_f;
+  using T::v_f;
 
   void set_domain(ModelParameters &params) override {
     params.xlen = Lx;
@@ -2079,6 +2080,13 @@ public:
     dual_geom.set_11form_values(
         YAKL_LAMBDA(real x, real z) { return flat_geop(x, z, g); },
         constvars.fields_arr[HSVAR], 0);
+
+    primal_geom.set_10form_values(
+        YAKL_LAMBDA(real x, real y) { return v_f(x, y); },
+        progvars.fields_arr[VVAR], 0, LINE_INTEGRAL_TYPE::TANGENT);
+    primal_geom.set_01form_values(
+        YAKL_LAMBDA(real x, real y) { return v_f(x, y); },
+        progvars.fields_arr[WVAR], 0, LINE_INTEGRAL_TYPE::TANGENT);
 
     YAKL_SCOPE(tracer_f, this->tracer_f);
     for (int i = 0; i < ntracers_dycore; i++) {
@@ -2386,6 +2394,13 @@ template <bool acoustic_balance> struct RisingBubble {
     return thermo.compute_entropic_var(p, T + dT, 0, 0, 0, 0);
   }
 
+  static vecext<2> YAKL_INLINE v_f(real x, real y) {
+    vecext<2> vvec;
+    vvec.u = 0;
+    vvec.w = 0;
+    return vvec;
+  }
+
   static void
   add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics) {}
 };
@@ -2484,6 +2499,13 @@ struct LargeRisingBubble {
     return thermo.compute_entropic_var(p, T0 + dT, 0, 0, 0, 0);
   }
 
+  static vecext<2> YAKL_INLINE v_f(real x, real y) {
+    vecext<2> vvec;
+    vvec.u = 0;
+    vvec.w = 0;
+    return vvec;
+  }
+
   static void
   add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics) {}
 };
@@ -2530,7 +2552,7 @@ struct MoistLargeRisingBubble : LargeRisingBubble {
   }
 };
 
-struct GravityWave {
+template <bool add_perturbation> struct GravityWave {
   static real constexpr g = 9.80616_fp;
   static real constexpr Lx = 300e3_fp;
   static real constexpr Lz = 10e3_fp;
@@ -2538,8 +2560,8 @@ struct GravityWave {
   static real constexpr zc = 0.5_fp * Lz;
   static real constexpr d = 5e3_fp;
   static real constexpr T_ref = 250._fp;
-  static real constexpr u_0 = 0._fp;
-  static real constexpr x_c = 150e3_fp;
+  static real constexpr u_0 = 20._fp;
+  static real constexpr x_c = 100e3_fp;
   static real constexpr p_s = 1e5_fp;
   static real constexpr dT_max = 0.01_fp;
 
@@ -2585,94 +2607,125 @@ struct GravityWave {
     real drho_b = -rho_s * dT_b / T_ref;
     real drho = exp(-delta * z / 2) * drho_b;
 
-    real T = (T_ref + dT);
-    real rho = (rho_ref + drho);
+    real T = T_ref;
+    real rho = rho_ref;
+
+    if (add_perturbation) {
+      T += dT;
+      rho += drho;
+    }
 
     return rho;
   }
 
-  static real YAKL_INLINE rhoexact_f(real x, real z, real t,
-                                     const ThermoPotential &thermo) {
-    real x_c = GravityWave::x_c;
-    real Lz = GravityWave::Lz;
-    real g = GravityWave::g;
-
-    complex im(0, 1);
-
+  static real YAKL_INLINE entropicvar_f(real x, real z,
+                                        const ThermoPotential &thermo) {
     real Rd = thermo.cst.Rd;
-    real cv_d = thermo.cst.Cvd;
-    real cp_d = thermo.cst.Cpd;
 
-    real xp = x - u_0 * t;
     real delta = g / (Rd * T_ref);
-    real delta2 = delta * delta;
-    real delta4 = delta2 * delta2;
-    real c_s = sqrt(cp_d / cv_d * Rd * T_ref);
-    real c_s2 = c_s * c_s;
     real rho_s = p_s / (Rd * T_ref);
-    real f = 0;
-    real f2 = f * f;
 
-    complex drho_b = 0;
-    for (int m = -1; m < 2; m += 2) {
-      for (int n = -100; n < 101; n++) {
-        real k_x = 2 * pi * n / Lx;
-        real k_z = pi * m / Lz;
+    real rho_ref = isothermal_zdep(z, rho_s, T_ref, g, thermo);
 
-        real k_x2 = k_x * k_x;
-        real k_z2 = k_z * k_z;
+    real dT_b = dT_max * exp(-pow((x - x_c) / d, 2)) * std::sin(pi * z / Lz);
+    real dT = exp(delta * z / 2) * dT_b;
 
-        real p_1 = c_s2 * (k_x2 + k_z2 + delta2 / 4) + f2;
-        real q_1 =
-            g * k_x2 * (c_s2 * delta - g) + c_s2 * f2 * (k_z2 + delta2 / 4);
+    real drho_b = -rho_s * dT_b / T_ref;
+    real drho = exp(-delta * z / 2) * drho_b;
 
-        real alpha = sqrt(p_1 / 2 - sqrt(p_1 * p_1 / 4 - q_1));
-        real alpha2 = alpha * alpha;
-        real beta = sqrt(p_1 / 2 + sqrt(p_1 * p_1 / 4 - q_1));
-        real beta2 = beta * beta;
+    real T = (T_ref + dT);
+    real rho = rho_ref;
 
-        real fac1 = 1 / (beta * beta - alpha * alpha);
-        real L_m1 =
-            (-std::cos(alpha * t) / alpha2 + std::cos(beta * t) / beta2) *
-                fac1 +
-            1 / (alpha2 * beta2);
-        real L_0 =
-            (std::sin(alpha * t) / alpha - std::sin(beta * t) / beta) * fac1;
-        real L_1 = (std::cos(alpha * t) - std::cos(beta * t)) * fac1;
-        real L_2 =
-            (-alpha * std::sin(alpha * t) + alpha * std::sin(beta * t)) * fac1;
-        real L_3 =
-            (-alpha2 * std::cos(alpha * t) + beta2 * std::cos(beta * t)) * fac1;
+    // real p = rho * Rd * T;
+    real p_ref = isothermal_zdep(z, p_s, T_ref, g, thermo);
+    real dp = Rd * T_ref * drho + Rd * rho_ref * dT;
+    real p = p_ref;
 
-        if (alpha == 0) {
-          L_m1 = (beta2 * t * t - 1 + std::cos(beta * t)) / (beta2 * beta2);
-          L_0 = (beta * t - std::sin(beta * t)) / (beta2 * beta);
-        }
-
-        complex drhot_b0 = -rho_s / T_ref * dT_max / sqrt(pi) * d / Lx *
-                           exp(-d * d * k_x2 / 4) * exp(-im * k_x * x_c) * k_z *
-                           Lz / (2._fp * im);
-
-        complex drhot_b =
-            (L_3 + (p_1 + g * (im * k_z - delta / 2)) * L_1 +
-             (c_s2 * (k_z2 + delta2 / 4) + g * (im * k_z - delta / 2)) * f2 *
-                 L_m1) *
-            drhot_b0;
-
-        complex expfac = exp(im * (k_x * xp + k_z * z));
-
-        drho_b += drhot_b * expfac;
-      }
+    if (add_perturbation) {
+      rho += drho;
+      p += dp;
     }
 
-    real drho = exp(-delta * z / 2) * drho_b.real();
-    real rho = refrho_f(z, thermo) + drho;
+    return thermo.compute_entropic_var(p, T, 0, 0, 0, 0);
+  }
 
+  static real YAKL_INLINE entropicdensity_f(real x, real z,
+                                            const ThermoPotential &thermo) {
+    return rho_f(x, z, thermo) * entropicvar_f(x, z, thermo);
+  }
+
+  static vecext<2> YAKL_INLINE v_f(real x, real y) {
+    vecext<2> vvec;
+    vvec.u = u_0;
+    vvec.w = 0;
+    return vvec;
+  }
+
+  static real YAKL_INLINE rhoexact_f(real x, real z, real t,
+                                     const ThermoPotential &thermo) {
+    real rho = refrho_f(z, thermo);
+    if (add_perturbation) {
+      rho += sum_series(x, z, t, thermo).drho;
+    }
     return rho;
   }
 
   static real YAKL_INLINE entropicdensityexact_f(
       real x, real z, real t, const ThermoPotential &thermo) {
+
+    const auto sol = sum_series(x, z, t, thermo);
+
+    real p_ref = isothermal_zdep(z, p_s, T_ref, g, thermo);
+    real rho_ref = refrho_f(z, thermo);
+
+    real rho = rho_ref;
+    real p = p_ref;
+    real T = T_ref;
+
+    if (add_perturbation) {
+      rho += sol.drho;
+      p += sol.dp;
+      T += sol.dT;
+    }
+
+    return rho * thermo.compute_entropic_var(p, T, 0, 0, 0, 0);
+  }
+
+  static real YAKL_INLINE Texact_f(real x, real z, real t,
+                                   const ThermoPotential &thermo) {
+    real T = T_ref;
+    if (add_perturbation) {
+      T += sum_series(x, z, t, thermo).dT;
+    }
+    return T;
+  }
+
+  static vecext<2> YAKL_INLINE vexact_f(real x, real z, real t,
+                                        const ThermoPotential &thermo) {
+    vecext<2> v;
+
+    const auto sol = sum_series(x, z, t, thermo);
+    v.u = u_0;
+    v.w = 0;
+    if (add_perturbation) {
+      v.u += sol.du;
+      v.w += sol.dw;
+    }
+    return v;
+  }
+
+  struct SeriesSolution {
+    real drho;
+    real dp;
+    real dT;
+    real du;
+    real dv;
+    real dw;
+  };
+
+  static SeriesSolution YAKL_INLINE sum_series(real x, real z, real t,
+                                               const ThermoPotential &thermo) {
+    SeriesSolution sol;
 
     real x_c = GravityWave::x_c;
     real Lz = GravityWave::Lz;
@@ -2698,6 +2751,9 @@ struct GravityWave {
 
     complex drho_b = 0;
     complex dp_b = 0;
+    complex du_b = 0;
+    complex dv_b = 0;
+    complex dw_b = 0;
     for (int m = -1; m < 2; m += 2) {
       for (int n = -100; n < 101; n++) {
         real k_x = 2 * pi * n / Lx;
@@ -2724,7 +2780,7 @@ struct GravityWave {
             (std::sin(alpha * t) / alpha - std::sin(beta * t) / beta) * fac1;
         real L_1 = (std::cos(alpha * t) - std::cos(beta * t)) * fac1;
         real L_2 =
-            (-alpha * std::sin(alpha * t) + alpha * std::sin(beta * t)) * fac1;
+            (-alpha * std::sin(alpha * t) + beta * std::sin(beta * t)) * fac1;
         real L_3 =
             (-alpha2 * std::cos(alpha * t) + beta2 * std::cos(beta * t)) * fac1;
 
@@ -2746,66 +2802,37 @@ struct GravityWave {
         complex dpt_b = -(g - c_s2 * (im * k_z + delta / 2)) *
                         (L_1 + f2 * L_m1) * g * drhot_b0;
 
+        complex dut_b = im * k_x * (g - c_s2 * (im * k_z + delta / 2)) * L_0 *
+                        g * drhot_b0 / rho_s;
+
+        complex dvt_b = -f * im * k_x * (g - c_s2 * (im * k_z + delta / 2)) *
+                        L_m1 * g * drhot_b0 / rho_s;
+
+        complex dwt_b =
+            -(L_2 + (f2 + c_s2 * k_x2) * L_0) * g * drhot_b0 / rho_s;
+
         complex expfac = exp(im * (k_x * xp + k_z * z));
 
         drho_b += drhot_b * expfac;
         dp_b += dpt_b * expfac;
+        du_b += dut_b * expfac;
+        dv_b += dvt_b * expfac;
+        dw_b += dwt_b * expfac;
       }
     }
-
     complex dT_b = T_ref * (dp_b / p_s - drho_b / rho_s);
 
-    real p_ref = isothermal_zdep(z, p_s, T_ref, g, thermo);
-    real dp = exp(-delta * z / 2) * dp_b.real();
-    real dT = exp(delta * z / 2) * dT_b.real();
+    sol.drho = exp(-delta * z / 2) * drho_b.real();
+    sol.dp = exp(-delta * z / 2) * dp_b.real();
+    sol.dT = exp(delta * z / 2) * dT_b.real();
+    sol.du = exp(delta * z / 2) * du_b.real();
+    sol.dv = exp(delta * z / 2) * dv_b.real();
+    sol.dw = exp(delta * z / 2) * dw_b.real();
 
-    real drho = exp(-delta * z / 2) * drho_b.real();
-    real rho = refrho_f(z, thermo) + drho;
-
-    return rho *
-           thermo.compute_entropic_var(p_ref + dp, T_ref + dT, 0, 0, 0, 0);
-  }
-
-  static real YAKL_INLINE entropicvar_f(real x, real z,
-                                        const ThermoPotential &thermo) {
-    real Rd = thermo.cst.Rd;
-
-    real delta = g / (Rd * T_ref);
-    real rho_s = p_s / (Rd * T_ref);
-
-    real rho_ref = isothermal_zdep(z, rho_s, T_ref, g, thermo);
-
-    real dT_b = dT_max * exp(-pow((x - x_c) / d, 2)) * std::sin(pi * z / Lz);
-    real dT = exp(delta * z / 2) * dT_b;
-
-    real drho_b = -rho_s * dT_b / T_ref;
-    real drho = exp(-delta * z / 2) * drho_b;
-
-    real T = (T_ref + dT);
-    real rho = (rho_ref + drho);
-
-    // real p = rho * Rd * T;
-    real p_ref = isothermal_zdep(z, p_s, T_ref, g, thermo);
-    real dp = Rd * T_ref * drho + Rd * rho_ref * dT;
-    real p = p_ref + dp;
-
-    return thermo.compute_entropic_var(p, T, 0, 0, 0, 0);
-  }
-
-  static real YAKL_INLINE entropicdensity_f(real x, real z,
-                                            const ThermoPotential &thermo) {
-    return rho_f(x, z, thermo) * entropicvar_f(x, z, thermo);
-  }
-
-  static vecext<2> YAKL_INLINE v_f(real x, real y) {
-    vecext<2> vvec;
-    vvec.u = u_0;
-    vvec.w = 0;
-    return vvec;
+    return sol;
   }
 
   struct ExactDensityDiagnostic : public Diagnostic {
-
     void initialize(const Geometry<Straight> &pgeom,
                     const Geometry<Twisted> &dgeom) override {
       name = "dense";
@@ -2820,16 +2847,53 @@ struct GravityWave {
       YAKL_SCOPE(thermo, ::thermo);
       dual_geometry.set_11form_values(
           YAKL_LAMBDA(real x, real z) {
-            return rhoexact_f(x, z, time, thermo) - refrho_f(z, thermo);
+            return rhoexact_f(x, z, time, thermo);
           },
           field, 0);
 
       dual_geometry.set_11form_values(
           YAKL_LAMBDA(real x, real z) {
-            return entropicdensityexact_f(x, z, time, thermo) -
-                   refentropicdensity_f(z, thermo);
+            return entropicdensityexact_f(x, z, time, thermo);
           },
           field, 1);
+    }
+  };
+
+  struct ExactTemperatureDiagnostic : public Diagnostic {
+    void initialize(const Geometry<Straight> &pgeom,
+                    const Geometry<Twisted> &dgeom) override {
+      name = "Te";
+      topology = pgeom.topology;
+      dofs_arr = {0, 0, 1};
+      Diagnostic::initialize(pgeom, dgeom);
+    }
+
+    void compute(real time, const FieldSet<nconstant> &const_vars,
+                 const FieldSet<nprognostic> &x) override {
+
+      YAKL_SCOPE(thermo, ::thermo);
+      dual_geometry.set_00form_values(
+          YAKL_LAMBDA(real x, real z) { return Texact_f(x, z, time, thermo); },
+          field, 0);
+    }
+  };
+
+  struct ExactWDiagnostic : public Diagnostic {
+    void initialize(const Geometry<Straight> &pgeom,
+                    const Geometry<Twisted> &dgeom) override {
+      name = "we";
+      topology = pgeom.topology;
+      dofs_arr = {0, 1, 1};
+      Diagnostic::initialize(pgeom, dgeom);
+    }
+
+    void compute(real time, const FieldSet<nconstant> &const_vars,
+                 const FieldSet<nprognostic> &x) override {
+
+      YAKL_SCOPE(thermo, ::thermo);
+      primal_geometry.set_01form_values(
+          YAKL_LAMBDA(real x, real z) { return vexact_f(x, z, time, thermo); },
+          field, 0, LINE_INTEGRAL_TYPE::TANGENT);
     }
   };
 
@@ -2859,10 +2923,50 @@ struct GravityWave {
     }
   };
 
+  struct TemperatureDiagnostic : public Diagnostic {
+    void initialize(const Geometry<Straight> &pgeom,
+                    const Geometry<Twisted> &dgeom) override {
+      name = "T";
+      topology = pgeom.topology;
+      dofs_arr = {0, 0, 1};
+      Diagnostic::initialize(pgeom, dgeom);
+    }
+
+    void compute(real time, const FieldSet<nconstant> &const_vars,
+                 const FieldSet<nprognostic> &x) override {
+
+      const auto &primal_topology = primal_geometry.topology;
+
+      int pis = primal_topology.is;
+      int pjs = primal_topology.js;
+      int pks = primal_topology.ks;
+
+      const auto &densvar = x.fields_arr[DENSVAR].data;
+
+      YAKL_SCOPE(thermo, ::thermo);
+      YAKL_SCOPE(varset, ::varset);
+      parallel_for(
+          "Compute T diagnostic",
+          SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                          primal_topology.n_cells_x, primal_topology.nens),
+          YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+            real alpha = varset.get_alpha(densvar, k, j, i, pks, pjs, pis, n);
+            real entropic_var =
+                varset.get_entropic_var(densvar, k, j, i, pks, pjs, pis, n);
+            real T = thermo.compute_T(alpha, entropic_var, 1, 0, 0, 0);
+
+            field.data(0, k + pks, j + pjs, i + pis, n) = T;
+          });
+    }
+  };
+
   static void
   add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics) {
     diagnostics.emplace_back(std::make_unique<ExactDensityDiagnostic>());
+    diagnostics.emplace_back(std::make_unique<ExactWDiagnostic>());
+    diagnostics.emplace_back(std::make_unique<ExactTemperatureDiagnostic>());
     diagnostics.emplace_back(std::make_unique<BackgroundDensityDiagnostic>());
+    diagnostics.emplace_back(std::make_unique<TemperatureDiagnostic>());
   }
 };
 
@@ -2871,7 +2975,7 @@ void testcase_from_string(std::unique_ptr<TestCase> &testcase, std::string name,
   if (name == "doublevortex") {
     testcase = std::make_unique<SWETestCase<DoubleVortex>>();
   } else if (name == "gravitywave") {
-    testcase = std::make_unique<EulerTestCase<GravityWave>>();
+    testcase = std::make_unique<EulerTestCase<GravityWave<true>>>();
   } else if (name == "risingbubble") {
     if (acoustic_balance) {
       testcase = std::make_unique<EulerTestCase<RisingBubble<true>>>();
