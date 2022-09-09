@@ -3093,6 +3093,7 @@ struct GravityWave {
       const auto &densvar = x.fields_arr[DENSVAR].data;
 
       YAKL_SCOPE(thermo, ::thermo);
+      YAKL_SCOPE(varset, ::varset);
       parallel_for(
           "Compute T diagnostic",
           SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
