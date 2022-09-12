@@ -97,7 +97,6 @@ if __name__ == "__main__":
         dz = H / nz
 
         dt = base_dt / (2 ** l)
-        nt = int(np.ceil(timeend / dt))
         steps = int(np.ceil(timeend / dt))
         outsteps = steps
 
@@ -105,7 +104,7 @@ if __name__ == "__main__":
 
         inputfile["crm_nx"] = nx
         inputfile["crm_nz"] = nz
-        inputfile["crm_dt"] = dt
+        inputfile["dtphys"] = dt
         inputfile["simSteps"] = steps
         inputfile["outSteps"] = outsteps
         inputfile["statSteps"] = 1
@@ -125,7 +124,7 @@ if __name__ == "__main__":
 
     variables = ("T", "w", "rho", "S")
     outfiles  = {var : open(f"errors_{var}.txt", "w") for var in variables}
-    header = "{:5} {:8} {:8} {:10} {:10} {:10} {:10} {:10} {:10}\n".format("lev", "dx", "dt", "Linf", "Linf_r", "L2", "L2_r", "Ediss", "Ediff")
+    header = "{:5} {:8} {:8} {:10} {:10} {:10} {:10} {:10} {:10}\n".format("lev", "dx", "dt", "Linf", "Linf_r", "L2", "L2_r", "Ediss", "Edisp")
     for var in variables:
         outfiles[var].write(header)
         for l in range(nlevels):
