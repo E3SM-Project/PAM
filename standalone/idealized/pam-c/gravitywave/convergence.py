@@ -102,7 +102,6 @@ if __name__ == "__main__":
         outsteps = steps
 
         ofname = f"output_{nx}_{nz}_"
-        
 
         inputfile["crm_nx"] = nx
         inputfile["crm_nz"] = nz
@@ -126,8 +125,10 @@ if __name__ == "__main__":
 
     variables = ("T", "w", "rho", "S")
     outfiles  = {var : open(f"errors_{var}.txt", "w") for var in variables}
-    for l in range(nlevels):
-        for var in variables:
+    header = "{:5} {:8} {:8} {:10} {:10} {:10} {:10} {:10} {:10}\n".format("lev", "dx", "dt", "Linf", "Linf_r", "L2", "L2_r", "Ediss", "Ediff")
+    for var in variables:
+        outfiles[var].write(header)
+        for l in range(nlevels):
             err = errs[l][var]
             if l > 0:
                 rate_Linf = np.log2(errs[l-1][var][0] / errs[l][var][0])
@@ -135,6 +136,7 @@ if __name__ == "__main__":
             else:
                 rate_Linf = 0
                 rate_L2 = 0
-            line = f"{l:1} {dxs[l]:5.2f} {dts[l]:4.2f} {err[0]:.4e} {rate_Linf:.4e} {err[1]:.4e} {rate_L2:.4e} {err[2]:.4e} {err[3]:.4e}\n"
+            line = f"{l:<5} {dxs[l]:<8.2f} {dts[l]:<8.2f} {err[0]:<10.2e} {rate_Linf:<10.1e} {err[1]:<10.2e} {rate_L2:<10.1e} {err[2]:<10.2e} {err[3]:<10.2e}\n"
+
             outfiles[var].write(line)
 
