@@ -37,6 +37,19 @@ def compute_errors(dataset, nx, nz, dx, dz):
     w /= dz
     w_exact /= dz
 
+    rho /= (dx * dz)
+    rho_exact /= (dx * dz)
+    S /= (dx * dz)
+    S_exact /= (dx * dz)
+    
+    Linf_rho = np.max(np.abs((rho - rho_exact)))
+    L2_rho = np.sqrt(np.sum((rho - rho_exact) ** 2) / (nx * nz))
+    Ediss_rho, Edisp_rho = compute_Ediss_and_Edisp(rho, rho_exact)
+    
+    Linf_S = np.max(np.abs((S - S_exact)))
+    L2_S = np.sqrt(np.sum((S - S_exact) ** 2) / (nx * nz))
+    Ediss_S, Edisp_S = compute_Ediss_and_Edisp(S, S_exact)
+
     Linf_T = np.max(np.abs((T - T_exact)))
     L2_T = np.sqrt(np.sum((T - T_exact) ** 2) / (nx * nz))
     Ediss_T, Edisp_T = compute_Ediss_and_Edisp(T, T_exact)
@@ -45,7 +58,10 @@ def compute_errors(dataset, nx, nz, dx, dz):
     L2_w = np.sqrt(np.sum((w - w_exact) ** 2) / (nx * nz))
     Ediss_w, Edisp_w = compute_Ediss_and_Edisp(w, w_exact)
 
-    ret = {"T" : (Linf_T, L2_T, Ediss_T, Edisp_T), "w" : (Linf_w, L2_w, Ediss_w, Edisp_w)}
+    ret = {"T" : (Linf_T, L2_T, Ediss_T, Edisp_T),
+           "w" : (Linf_w, L2_w, Ediss_w, Edisp_w),
+           "rho" : (Linf_rho, L2_rho, Ediss_rho, Edisp_rho),
+           "S" : (Linf_S, L2_S, Ediss_S, Edisp_S)}
     return ret
 
 if __name__ == "__main__":
@@ -108,9 +124,10 @@ if __name__ == "__main__":
         dxs.append(dx)
         errs.append(err)
 
-    outfiles  = {"T" : open("errors_T.txt", "w"), "w" : open("errors_w", "w")}
+    variables = ("T", "w", "rho", "S")
+    outfiles  = {var : open(f"errors_{var}.txt", "w") for var in variables}
     for l in range(nlevels):
-        for var in ("T", "w"):
+        for var in variables:
             err = errs[l][var]
             if l > 0:
                 rate_Linf = np.log2(errs[l-1][var][0] / errs[l][var][0])
@@ -118,6 +135,6 @@ if __name__ == "__main__":
             else:
                 rate_Linf = 0
                 rate_L2 = 0
-            line = f"{l:1} {dxs[l]:4.0f} {dts[l]:3.0f} {err[0]:.4e} {rate_Linf:.4e} {err[1]:.4e} {rate_L2:.4e} {err[2]:.4e} {err[3]:.4e}\n"
+            line = f"{l:1} {dxs[l]:5.2f} {dts[l]:4.2f} {err[0]:.4e} {rate_Linf:.4e} {err[1]:.4e} {rate_L2:.4e} {err[2]:.4e} {err[3]:.4e}\n"
             outfiles[var].write(line)
 
