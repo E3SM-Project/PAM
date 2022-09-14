@@ -2662,7 +2662,7 @@ struct GravityWave {
             (std::sin(alpha * t) / alpha - std::sin(beta * t) / beta) * fac1;
         real L_1 = (std::cos(alpha * t) - std::cos(beta * t)) * fac1;
         real L_2 =
-            (-alpha * std::sin(alpha * t) + alpha * std::sin(beta * t)) * fac1;
+            (-alpha * std::sin(alpha * t) + beta * std::sin(beta * t)) * fac1;
         real L_3 =
             (-alpha2 * std::cos(alpha * t) + beta2 * std::cos(beta * t)) * fac1;
 
