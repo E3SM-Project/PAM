@@ -2049,6 +2049,7 @@ public:
   using T::refentropicdensity_f;
   using T::refnsq_f;
   using T::refrho_f;
+  using T::v_f;
 
   void set_domain(ModelParameters &params) override {
     params.xlen = Lx;
@@ -2079,6 +2080,13 @@ public:
     dual_geom.set_11form_values(
         YAKL_LAMBDA(real x, real z) { return flat_geop(x, z, g); },
         constvars.fields_arr[HSVAR], 0);
+
+    primal_geom.set_10form_values(
+        YAKL_LAMBDA(real x, real y) { return v_f(x, y); },
+        progvars.fields_arr[VVAR], 0, LINE_INTEGRAL_TYPE::TANGENT);
+    primal_geom.set_01form_values(
+        YAKL_LAMBDA(real x, real y) { return v_f(x, y); },
+        progvars.fields_arr[WVAR], 0, LINE_INTEGRAL_TYPE::TANGENT);
 
     YAKL_SCOPE(tracer_f, this->tracer_f);
     for (int i = 0; i < ntracers_dycore; i++) {
@@ -2386,6 +2394,13 @@ template <bool acoustic_balance> struct RisingBubble {
     return thermo.compute_entropic_var(p, T + dT, 0, 0, 0, 0);
   }
 
+  static vecext<2> YAKL_INLINE v_f(real x, real y) {
+    vecext<2> vvec;
+    vvec.u = 0;
+    vvec.w = 0;
+    return vvec;
+  }
+
   static void
   add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics) {}
 };
@@ -2484,6 +2499,13 @@ struct LargeRisingBubble {
     return thermo.compute_entropic_var(p, T0 + dT, 0, 0, 0, 0);
   }
 
+  static vecext<2> YAKL_INLINE v_f(real x, real y) {
+    vecext<2> vvec;
+    vvec.u = 0;
+    vvec.w = 0;
+    return vvec;
+  }
+
   static void
   add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics) {}
 };
@@ -2538,8 +2560,8 @@ struct GravityWave {
   static real constexpr zc = 0.5_fp * Lz;
   static real constexpr d = 5e3_fp;
   static real constexpr T_ref = 250._fp;
-  static real constexpr u_0 = 0._fp;
-  static real constexpr x_c = 150e3_fp;
+  static real constexpr u_0 = 20._fp;
+  static real constexpr x_c = 100e3_fp;
   static real constexpr p_s = 1e5_fp;
   static real constexpr dT_max = 0.01_fp;
 
