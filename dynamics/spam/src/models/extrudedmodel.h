@@ -389,6 +389,46 @@ public:
           Hk.compute_dKddens<ADD_MODE::ADD>(Bvar, Kvar, pis, pjs, pks, i, j, k,
                                             n, fac);
         });
+
+
+    //real dx = 300e3 / 300;
+    //real dz = 10e3 / 19;
+    //for (int k = 1; k < primal_topology.ni; ++k) {
+    // 
+    // real dzkm1;
+    // if(k == 1) {
+    //   dzkm1 = dz / 2;
+    // } else {
+    //   dzkm1 = dz;
+    // }
+    // real dzk;
+    // if(k == primal_topology.ni - 1) {
+    //   dzk = dz / 2;
+    // } else {
+    //   dzk = dz;
+    // }
+
+    // int i = 0;
+    // int j = 0;
+
+    // //real hskm1 = Bvar(0, k - 1 + pks, j + pjs, i + pis, 0);
+    // real hskm1 = HSvar(0, k - 1 + pks, j + pjs, i + pis, 0) / (dx * dzkm1);
+    // real Pkm1 = Bvar(1, k - 1 + pks, j + pjs, i + pis, 0);
+    // real rkm1 = densvar(0, k - 1 + pks, j + pjs, i + pis, 0) / (dx * dzkm1);
+    // real Skm1 = densvar(1, k - 1 + pks, j + pjs, i + pis, 0) / (dx * dzkm1);
+    // 
+    // //real hsk = Bvar(0, k  + pks, j + pjs, i + pis, 0);
+    // real hsk = HSvar(0, k + pks, j + pjs, i + pis, 0) / (dx * dzk);
+    // real Pk = Bvar(1, k  + pks, j + pjs, i + pis, 0);
+    // real rk = densvar(0, k  + pks, j + pjs, i + pis, 0) / (dx * dzk);
+    // real Sk = densvar(1, k  + pks, j + pjs, i + pis, 0) / (dx * dzk);
+
+    // real check = (Sk + Skm1) / (rk + rkm1) * (Pk - Pkm1) + hsk - hskm1;
+    //
+    // std::cout << k << " " << check << std::endl;
+    //}
+
+    //exit(1);
   }
 
   void compute_edge_reconstructions(
@@ -572,7 +612,13 @@ public:
           compute_Qxz_w_EC<1, ADD_MODE::ADD>(Wtendvar, coriolisxzreconvar,
                                              coriolisxzvertreconvar, Fvar, pis,
                                              pjs, pks, i, j, k + 1, n);
+
+          //if (i == 0) {
+          //  std::cout << k + 1 << " " << Wtendvar(0, k + 1 + dks, j + djs, i + dis, n) << std::endl;
+          //}
         });
+
+    //exit(1);
     parallel_for(
         "Compute Wtend Bnd",
         SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
@@ -725,6 +771,7 @@ public:
                         FieldSet<nprognostic> &xtend) override {
 
     const auto &dual_topology = dual_geometry.topology;
+
 
     compute_dens0(auxiliary_vars.fields_arr[DENS0VAR].data,
                   x.fields_arr[DENSVAR].data);
@@ -2081,6 +2128,153 @@ public:
         YAKL_LAMBDA(real x, real z) { return flat_geop(x, z, g); },
         constvars.fields_arr[HSVAR], 0);
 
+
+    const auto& hsvar = constvars.fields_arr[HSVAR].data;
+    const auto& densvar = progvars.fields_arr[DENSVAR].data;
+
+    const auto& dual_topology = dual_geom.topology;
+    int dis = dual_topology.is;
+    int djs = dual_topology.js;
+    int dks = dual_topology.ks;
+
+
+    real3d densb = real3d("balanced dens", 3, dual_topology.nl, dual_topology.nens);
+
+    real dx = dual_geom.dx;
+    real dz = dual_geom.dz;
+
+    // modify initial condition to get discrete balance
+    parallel_for(
+        "Hydrostatic balance",
+        SimpleBounds<1>(dual_topology.nens),
+        YAKL_LAMBDA(int n) {
+
+          int i = 0;
+          int j = 0;
+
+          real Rd = thermo.cst.Rd;
+          real pr = thermo.cst.pr;
+          real Cpd = thermo.cst.Cpd;
+          real Cvd = thermo.cst.Cvd;
+          real T0 = 250;
+
+          real Sk, Skm1, hsk, hskm1, Pkm1, Pk, rkm1, rk;
+
+          Skm1 = densvar(1, 0 + dks, j + djs, i + dis, n) / (dx * dz / 2);
+          rkm1 = std::pow(Skm1 / T0, Cpd / Cvd) * std::pow(Rd * T0 / pr, Rd / Cvd);
+          Pkm1 = Cpd * std::pow(Rd * Skm1 / pr, Rd / Cvd);
+          
+          densb(0, 0, n) = rkm1 * dx * dz / 2;
+          densb(1, 0, n) = Skm1 * dx * dz / 2;
+          densb(2, 0, n) = Pkm1 * dx * dz / 2;
+          
+          std::cout << 0 << " " << rkm1 << " " << Skm1  << std::endl;
+
+          for (int k = 1; k < dual_topology.nl; ++k) {
+            real dzkm1;
+            if(k == 1) {
+              dzkm1 = dz / 2;
+            } else {
+              dzkm1 = dz;
+            }
+            real dzk;
+            if(k == dual_topology.nl - 1) {
+              dzk = dz / 2;
+            } else {
+              dzk = dz;
+            }
+
+
+            hskm1 = hsvar(0, k - 1 + dks, j + djs, i + dis, n) / (dx * dzkm1);
+            hsk = hsvar(0, k + dks, j + djs, i + dis, n) / (dx * dzk);
+
+            // use the analytical value as initial guess
+            Sk = densvar(1, k + dks, j + djs, i + dis, n) / (dx * dzk);
+            Pk = Cpd * std::pow(Rd * Sk / pr, Rd / Cvd);
+
+            for (int m = 0; m < 10; ++m) {
+              Sk = pr / Rd * std::pow(Pk / Cpd, Cvd / Rd);
+              rk = std::pow(Sk / T0, Cpd / Cvd) * std::pow(Rd * T0 / pr, Rd / Cvd);
+              //real F = Pkm1 - 2 * (hsk - hskm1) / (Sk / rk + Skm1 / rkm1);
+              real F = Pkm1 - (hsk - hskm1) / ((Sk + Skm1) / (rk + rkm1));
+
+              Pk = F;
+              //std::cout << m << " " << Pk << " " << F << " " << F - Pk << std::endl;
+            }
+            
+            Sk = pr / Rd * std::pow(Pk / Cpd, Cvd / Rd);
+            rk = std::pow(Sk / T0, Cpd / Cvd) * std::pow(Rd * T0 / pr, Rd / Cvd);
+
+            densb(0, k, n) = rk * dx * dzk;
+            densb(1, k, n) = Sk * dx * dzk;
+            densb(2, k, n) = Pk * dx * dzk;
+
+            std::cout << k << " " << rk  << " " << Sk
+                      << " " << densvar(0, k + dks, j + djs, i + dis, n) / (dx * dzk)
+                      << " " << densvar(1, k + dks, j + djs, i + dis, n) / (dx * dzk) << std::endl;
+
+
+            Pkm1 = Pk;
+            rkm1 = rk;
+            Skm1 = Sk;
+          }
+        });
+
+
+    //for (int k = 1; k < dual_topology.nl; ++k) {
+    //  real dzkm1;
+    //  if(k == 1) {
+    //    dzkm1 = dz / 2;
+    //  } else {
+    //    dzkm1 = dz;
+    //  }
+    //  real dzk;
+    //  if(k == dual_topology.nl - 1) {
+    //    dzk = dz / 2;
+    //  } else {
+    //    dzk = dz;
+    //  }
+    //  int j = 0;
+    //  int i = 0;
+
+    //  real rk = densb(0, k, 0) / (dx * dzk);
+    //  real Sk = densb(1, k, 0) / (dx * dzk);
+    //  real Pk = densb(2, k, 0) / (dx * dzk);
+    //  real hsk = hsvar(0, k + dks, j + djs, i + dis, 0) / (dx * dzk);
+    //  
+    //  real rkm1 = densb(0, k - 1, 0) / (dx * dzkm1);
+    //  real Skm1 = densb(1, k - 1, 0) / (dx * dzkm1);
+    //  real Pkm1 = densb(2, k - 1, 0) / (dx * dzkm1);
+
+    //  real hskm1 = hsvar(0, k - 1 + dks, j + djs, i + dis, 0) / (dx * dzkm1);
+
+    //  real check = (Sk + Skm1) / (rk + rkm1) * (Pk - Pkm1) + hsk - hskm1;
+    //  std::cout << k << " " << check << std::endl;
+    //}
+    //exit(1);
+    
+    dual_geom.set_11form_values(
+        YAKL_LAMBDA(real x, real z) { return rho_f(x, z, thermo, true) - rho_f(x, z, thermo); },
+        //YAKL_LAMBDA(real x, real z) { return rho_f(x, z, thermo, true);},
+        progvars.fields_arr[DENSVAR], 0);
+    dual_geom.set_11form_values(
+        YAKL_LAMBDA(real x, real z) {
+          return rho_f(x, z, thermo, true) * entropicvar_f(x, z, thermo, true) -
+          rho_f(x, z, thermo) * entropicvar_f(x, z, thermo);  
+          //return rho_f(x, z, thermo, true) * entropicvar_f(x, z, thermo, true);
+        },
+        progvars.fields_arr[DENSVAR], 1);
+    
+    parallel_for(
+        "Add balanced state",
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+            densvar(0, k + dks, j + djs, i + dis, n) += densb(0, k, n);
+            densvar(1, k + dks, j + djs, i + dis, n) += densb(1, k, n);
+        });
+
+
     primal_geom.set_10form_values(
         YAKL_LAMBDA(real x, real y) { return v_f(x, y); },
         progvars.fields_arr[VVAR], 0, LINE_INTEGRAL_TYPE::TANGENT);
@@ -2593,7 +2787,7 @@ struct GravityWave {
     return rho_ref * thermo.compute_entropic_var(p_ref, T_ref, 0, 0, 0, 0);
   }
 
-  static real YAKL_INLINE rho_f(real x, real z, const ThermoPotential &thermo) {
+  static real YAKL_INLINE rho_f(real x, real z, const ThermoPotential &thermo, bool add_perturbation = false) {
     real Rd = thermo.cst.Rd;
 
     real delta = g / (Rd * T_ref);
@@ -2607,8 +2801,15 @@ struct GravityWave {
     real drho_b = -rho_s * dT_b / T_ref;
     real drho = exp(-delta * z / 2) * drho_b;
 
-    real T = (T_ref + dT);
-    real rho = (rho_ref + drho);
+    //real T = (T_ref + dT);
+    //real rho = (rho_ref + drho);
+    real T = T_ref;
+    real rho = rho_ref;
+    
+    if (add_perturbation) {
+      T += dT;
+      rho += drho;
+    }
 
     return rho;
   }
@@ -2966,7 +3167,7 @@ struct GravityWave {
   }
 
   static real YAKL_INLINE entropicvar_f(real x, real z,
-                                        const ThermoPotential &thermo) {
+                                        const ThermoPotential &thermo, bool add_perturbation = false) {
     real Rd = thermo.cst.Rd;
 
     real delta = g / (Rd * T_ref);
@@ -2980,20 +3181,27 @@ struct GravityWave {
     real drho_b = -rho_s * dT_b / T_ref;
     real drho = exp(-delta * z / 2) * drho_b;
 
-    real T = (T_ref + dT);
+    //real T = (T_ref + dT);
+    real T = T_ref;
+    if (add_perturbation) {
+      T += dT;
+    }
     real rho = (rho_ref + drho);
 
     // real p = rho * Rd * T;
     real p_ref = isothermal_zdep(z, p_s, T_ref, g, thermo);
     real dp = Rd * T_ref * drho + Rd * rho_ref * dT;
-    real p = p_ref + dp;
+    real p = p_ref;
+    if (add_perturbation) {
+      p += dp;
+    }
 
     return thermo.compute_entropic_var(p, T, 0, 0, 0, 0);
   }
 
   static real YAKL_INLINE entropicdensity_f(real x, real z,
-                                            const ThermoPotential &thermo) {
-    return rho_f(x, z, thermo) * entropicvar_f(x, z, thermo);
+                                            const ThermoPotential &thermo, bool add_perturbation) {
+    return rho_f(x, z, thermo, add_perturbation) * entropicvar_f(x, z, thermo, add_perturbation);
   }
 
   static vecext<2> YAKL_INLINE v_f(real x, real y) {
@@ -3143,22 +3351,24 @@ struct GravityWave {
 
 void testcase_from_string(std::unique_ptr<TestCase> &testcase, std::string name,
                           bool acoustic_balance) {
-  if (name == "doublevortex") {
-    testcase = std::make_unique<SWETestCase<DoubleVortex>>();
-  } else if (name == "gravitywave") {
+  if (name == "gravitywave") {
     testcase = std::make_unique<EulerTestCase<GravityWave>>();
-  } else if (name == "risingbubble") {
-    if (acoustic_balance) {
-      testcase = std::make_unique<EulerTestCase<RisingBubble<true>>>();
-    } else {
-      testcase = std::make_unique<EulerTestCase<RisingBubble<false>>>();
-    }
-  } else if (name == "moistrisingbubble") {
-    testcase = std::make_unique<MoistEulerTestCase<MoistRisingBubble>>();
-  } else if (name == "largerisingbubble") {
-    testcase = std::make_unique<EulerTestCase<LargeRisingBubble>>();
-  } else if (name == "moistlargerisingbubble") {
-    testcase = std::make_unique<MoistEulerTestCase<MoistLargeRisingBubble>>();
+  //if (name == "doublevortex") {
+  //  testcase = std::make_unique<SWETestCase<DoubleVortex>>();
+  //} else if (name == "gravitywave") {
+  //  testcase = std::make_unique<EulerTestCase<GravityWave>>();
+  //} else if (name == "risingbubble") {
+  //  if (acoustic_balance) {
+  //    testcase = std::make_unique<EulerTestCase<RisingBubble<true>>>();
+  //  } else {
+  //    testcase = std::make_unique<EulerTestCase<RisingBubble<false>>>();
+  //  }
+  //} else if (name == "moistrisingbubble") {
+  //  testcase = std::make_unique<MoistEulerTestCase<MoistRisingBubble>>();
+  //} else if (name == "largerisingbubble") {
+  //  testcase = std::make_unique<EulerTestCase<LargeRisingBubble>>();
+  //} else if (name == "moistlargerisingbubble") {
+  //  testcase = std::make_unique<MoistEulerTestCase<MoistLargeRisingBubble>>();
   } else {
     throw std::runtime_error("unknown test case");
   }
