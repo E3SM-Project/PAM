@@ -392,7 +392,7 @@ public:
   }
 
   void compute_edge_reconstructions(
-      real5d densedgereconvar, real5d densvertedgereconvar,
+      real5d densedgereconvar, real5d densvertedgereconvar, real5d densvertedgereconvar2, 
       real5d qxzedgereconvar, real5d qxzvertedgereconvar,
       real5d coriolisxzedgereconvar, real5d coriolisxzvertedgereconvar,
       const real5d dens0var, const real5d qxz0var, const real5d fxz0var) {
@@ -421,6 +421,13 @@ public:
                                           dual_vert_reconstruction_type,
                                           dual_vert_reconstruction_order>(
               densvertedgereconvar, dens0var, dis, djs, dks, i, j, k, n,
+              dual_vert_wenoRecon, dual_vert_to_gll, dual_vert_wenoIdl,
+              dual_vert_wenoSigma);
+
+          compute_twisted_vert_edge_recon<ndensity,
+                                          RECONSTRUCTION_TYPE::CFV,
+                                          dual_vert_reconstruction_order>(
+              densvertedgereconvar2, dens0var, dis, djs, dks, i, j, k, n,
               dual_vert_wenoRecon, dual_vert_to_gll, dual_vert_wenoIdl,
               dual_vert_wenoSigma);
         });
@@ -455,10 +462,12 @@ public:
   }
 
   void compute_recons(
-      real5d densreconvar, real5d densvertreconvar, real5d qxzreconvar,
+      real5d densreconvar, real5d densvertreconvar, real5d densvertreconvar2,real5d qxzreconvar,
       real5d qxzvertreconvar, real5d coriolisxzreconvar,
       real5d coriolisxzvertreconvar, const real5d densedgereconvar,
-      const real5d densvertedgereconvar, const real5d qxzedgereconvar,
+      const real5d densvertedgereconvar,
+      const real5d densvertedgereconvar2,
+      const real5d qxzedgereconvar,
       const real5d qxzvertedgereconvar, const real5d coriolisxzedgereconvar,
       const real5d coriolisxzvertedgereconvar, const real5d HEvar,
       const real5d HEWvar, const real5d Uvar, const real5d UWvar,
@@ -500,10 +509,18 @@ public:
           compute_twisted_vert_recon<ndensity, dual_vert_reconstruction_type>(
               densvertreconvar, densvertedgereconvar, UWvar, dis, djs, dks, i,
               j, k + 1, n);
+          compute_twisted_vert_recon<ndensity, RECONSTRUCTION_TYPE::CFV>(
+              densvertreconvar2, densvertedgereconvar2, UWvar, dis, djs, dks, i,
+              j, k + 1, n);
           // scale twisted recons
           for (int l = 0; l < ndensity; l++) {
             densvertreconvar(l, k + dks + 1, j + djs, i + dis, n) =
                 densvertreconvar(l, k + dks + 1, j + djs, i + dis, n) /
+                HEWvar(0, k + dks + 1, j + djs, i + dis, n);
+          }
+          for (int l = 0; l < ndensity; l++) {
+            densvertreconvar2(l, k + dks + 1, j + djs, i + dis, n) =
+                densvertreconvar2(l, k + dks + 1, j + djs, i + dis, n) /
                 HEWvar(0, k + dks + 1, j + djs, i + dis, n);
           }
         });
@@ -535,7 +552,9 @@ public:
 
   void
   compute_tendencies(real5d denstendvar, real5d Vtendvar, real5d Wtendvar,
-                     const real5d densreconvar, const real5d densvertreconvar,
+                     const real5d densreconvar,
+                     const real5d densvertreconvar,
+                     const real5d densvertreconvar2,
                      const real5d qxzreconvar, const real5d qxzvertreconvar,
                      const real5d coriolisxzreconvar,
                      const real5d coriolisxzvertreconvar, const real5d Bvar,
@@ -558,7 +577,7 @@ public:
         SimpleBounds<4>(primal_topology.nl - 2, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wDv_fct<ndensity>(Wtendvar, densvertreconvar, Phivertvar,
+          compute_wDv_fct<ndensity>(Wtendvar, densvertreconvar2, Phivertvar,
                                     Bvar, pis, pjs, pks, i, j, k + 1, n);
           if (qf_choice == QF_MODE::EC) {
             compute_Qxz_w_EC<1, ADD_MODE::ADD>(Wtendvar, qxzreconvar,
@@ -578,9 +597,9 @@ public:
         SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
                         primal_topology.nens),
         YAKL_CLASS_LAMBDA(int j, int i, int n) {
-          compute_wDv_fct<ndensity>(Wtendvar, densvertreconvar, Phivertvar,
+          compute_wDv_fct<ndensity>(Wtendvar, densvertreconvar2, Phivertvar,
                                     Bvar, pis, pjs, pks, i, j, 0, n);
-          compute_wDv_fct<ndensity>(Wtendvar, densvertreconvar, Phivertvar,
+          compute_wDv_fct<ndensity>(Wtendvar, densvertreconvar2, Phivertvar,
                                     Bvar, pis, pjs, pks, i, j,
                                     primal_topology.nl - 1, n);
           if (qf_choice == QF_MODE::EC) {
@@ -605,6 +624,8 @@ public:
               Wtendvar, coriolisxzreconvar, coriolisxzvertreconvar, Fvar, pis,
               pjs, pks, i, j, primal_topology.nl - 1, n);
         });
+
+    std::cout << "wtend: " << yakl::intrinsics::maxval(yakl::intrinsics::abs(Wtendvar)) << std::endl;
 
     parallel_for(
         "Compute Vtend",
@@ -767,6 +788,7 @@ public:
     compute_edge_reconstructions(
         auxiliary_vars.fields_arr[DENSEDGERECONVAR].data,
         auxiliary_vars.fields_arr[DENSVERTEDGERECONVAR].data,
+        auxiliary_vars.fields_arr[DENSVERTEDGERECONVAR2].data,
         auxiliary_vars.fields_arr[QXZEDGERECONVAR].data,
         auxiliary_vars.fields_arr[QXZVERTEDGERECONVAR].data,
         auxiliary_vars.fields_arr[CORIOLISXZEDGERECONVAR].data,
@@ -775,19 +797,21 @@ public:
         auxiliary_vars.fields_arr[QXZ0VAR].data,
         auxiliary_vars.fields_arr[FXZ0VAR].data);
 
-    auxiliary_vars.exchange({DENSEDGERECONVAR, DENSVERTEDGERECONVAR,
+    auxiliary_vars.exchange({DENSEDGERECONVAR, DENSVERTEDGERECONVAR, DENSVERTEDGERECONVAR2,
                              QXZEDGERECONVAR, QXZVERTEDGERECONVAR,
                              CORIOLISXZEDGERECONVAR,
                              CORIOLISXZVERTEDGERECONVAR});
 
     compute_recons(auxiliary_vars.fields_arr[DENSRECONVAR].data,
                    auxiliary_vars.fields_arr[DENSVERTRECONVAR].data,
+                   auxiliary_vars.fields_arr[DENSVERTRECONVAR2].data,
                    auxiliary_vars.fields_arr[QXZRECONVAR].data,
                    auxiliary_vars.fields_arr[QXZVERTRECONVAR].data,
                    auxiliary_vars.fields_arr[CORIOLISXZRECONVAR].data,
                    auxiliary_vars.fields_arr[CORIOLISXZVERTRECONVAR].data,
                    auxiliary_vars.fields_arr[DENSEDGERECONVAR].data,
                    auxiliary_vars.fields_arr[DENSVERTEDGERECONVAR].data,
+                   auxiliary_vars.fields_arr[DENSVERTEDGERECONVAR2].data,
                    auxiliary_vars.fields_arr[QXZEDGERECONVAR].data,
                    auxiliary_vars.fields_arr[QXZVERTEDGERECONVAR].data,
                    auxiliary_vars.fields_arr[CORIOLISXZEDGERECONVAR].data,
@@ -883,6 +907,7 @@ public:
                        xtend.fields_arr[VVAR].data, xtend.fields_arr[WVAR].data,
                        auxiliary_vars.fields_arr[DENSRECONVAR].data,
                        auxiliary_vars.fields_arr[DENSVERTRECONVAR].data,
+                       auxiliary_vars.fields_arr[DENSVERTRECONVAR2].data,
                        auxiliary_vars.fields_arr[QXZRECONVAR].data,
                        auxiliary_vars.fields_arr[QXZVERTRECONVAR].data,
                        auxiliary_vars.fields_arr[CORIOLISXZRECONVAR].data,
@@ -1816,7 +1841,13 @@ void initialize_variables(
   aux_desc_arr[DENSVERTEDGERECONVAR] = {
       "densvertedgerecon", dtopo, ndims, 1,
       2 * ndensity}; // densedgerecon lives on dual cells, associated with Fw
+  aux_desc_arr[DENSVERTEDGERECONVAR2] = {
+      "densvertedgerecon", dtopo, ndims, 1,
+      2 * ndensity}; // densedgerecon lives on dual cells, associated with Fw
   aux_desc_arr[DENSVERTRECONVAR] = {
+      "densvertrecon", dtopo, ndims, 0,
+      ndensity}; // densvertrecon lives on vert dual edges, associated with Fw
+  aux_desc_arr[DENSVERTRECONVAR2] = {
       "densvertrecon", dtopo, ndims, 0,
       ndensity}; // densvertrecon lives on vert dual edges, associated with Fw
 
@@ -2389,7 +2420,8 @@ template <bool acoustic_balance> struct RisingBubble {
     real p = isentropic_p(x, z, theta0, g, thermo);
     real T = isentropic_T(x, z, theta0, g, thermo);
     real r = sqrt((x - xc) * (x - xc) + (z - bzc) * (z - bzc));
-    real dtheta = (r < rc) ? dss * 0.5_fp * (1._fp + cos(pi * r / rc)) : 0._fp;
+    //real dtheta = (r < rc) ? dss * 0.5_fp * (1._fp + cos(pi * r / rc)) : 0._fp;
+    real dtheta = 0._fp;
     real dT = dtheta * pow(p / thermo.cst.pr, thermo.cst.kappa_d);
     return thermo.compute_entropic_var(p, T + dT, 0, 0, 0, 0);
   }
@@ -2560,7 +2592,7 @@ struct GravityWave {
   static real constexpr zc = 0.5_fp * Lz;
   static real constexpr d = 5e3_fp;
   static real constexpr T_ref = 250._fp;
-  static real constexpr u_0 = 20._fp;
+  static real constexpr u_0 = 0._fp;
   static real constexpr x_c = 100e3_fp;
   static real constexpr p_s = 1e5_fp;
   static real constexpr dT_max = 0.01_fp;
@@ -2607,8 +2639,10 @@ struct GravityWave {
     real drho_b = -rho_s * dT_b / T_ref;
     real drho = exp(-delta * z / 2) * drho_b;
 
-    real T = (T_ref + dT);
-    real rho = (rho_ref + drho);
+    //real T = (T_ref + dT);
+    //real rho = (rho_ref + drho);
+    real T = (T_ref);
+    real rho = (rho_ref);
 
     return rho;
   }
@@ -2800,6 +2834,38 @@ struct GravityWave {
     sol.du = exp(delta * z / 2) * du_b.real();
     sol.dv = exp(delta * z / 2) * dv_b.real();
     sol.dw = exp(delta * z / 2) * dw_b.real();
+    
+    return sol;
+  }
+
+  static real YAKL_INLINE entropicvar_f(real x, real z,
+                                        const ThermoPotential &thermo) {
+    real Rd = thermo.cst.Rd;
+
+    real delta = g / (Rd * T_ref);
+    real rho_s = p_s / (Rd * T_ref);
+
+    real rho_ref = isothermal_zdep(z, rho_s, T_ref, g, thermo);
+
+    real dT_b = dT_max * exp(-pow((x - x_c) / d, 2)) * std::sin(pi * z / Lz);
+    real dT = exp(delta * z / 2) * dT_b;
+
+    real drho_b = -rho_s * dT_b / T_ref;
+    real drho = exp(-delta * z / 2) * drho_b;
+
+    //real T = (T_ref + dT);
+    real T = (T_ref);
+    real rho = (rho_ref + drho);
+
+    // real p = rho * Rd * T;
+    real p_ref = isothermal_zdep(z, p_s, T_ref, g, thermo);
+    real dp = Rd * T_ref * drho + Rd * rho_ref * dT;
+    //real p = p_ref + dp;
+    real p = p_ref;
+
+    return thermo.compute_entropic_var(p, T, 0, 0, 0, 0);
+  }
+>>>>>>> 0da22d4 (debug)
 
     return sol;
   }
@@ -2942,12 +3008,128 @@ struct GravityWave {
   }
 };
 
+struct BalancedState {
+  static real constexpr g = 9.80616_fp;
+  static real constexpr Lx = 10e3;
+  static real constexpr Lz = 10e3;
+  static real constexpr xc = 0.5_fp * Lx;
+  static real constexpr zc = 0.5_fp * Lz;
+  static real constexpr p_s = 1e5;
+  static real constexpr T_ref = 300;
+  static real constexpr theta0 = 300;
+  static real constexpr N_ref = 0.0001;
+
+  //static real YAKL_INLINE refnsq_f(real z, const ThermoPotential &thermo) {
+  //  return N_ref * N_ref;
+  //}
+
+  //static real YAKL_INLINE refp_f(real z, const ThermoPotential &thermo) {
+  //  return const_stability_p(z, N_ref, g, thermo.cst.pr, theta0, thermo);
+  //}
+
+  //static real YAKL_INLINE refT_f(real z, const ThermoPotential &thermo) {
+  //  return const_stability_T(z, N_ref, g, theta0, thermo);
+  //}
+
+  //static real YAKL_INLINE refrho_f(real z, const ThermoPotential &thermo) {
+  //  real p = refp_f(z, thermo);
+  //  real T = refT_f(z, thermo);
+  //  real alpha = thermo.compute_alpha(p, T, 1, 0, 0, 0);
+  //  return 1._fp / alpha;
+  //}
+
+  //static real YAKL_INLINE refentropicvar_f(real z,
+  //                                             const ThermoPotential &thermo) {
+  //  real T_ref = refT_f(z, thermo);
+  //  real p_ref = refp_f(z, thermo);
+  //  return thermo.compute_entropic_var(p_ref, T_ref, 0, 0, 0, 0);
+  //}
+
+  static real YAKL_INLINE refnsq_f(real z, const ThermoPotential &thermo) {
+    real Rd = thermo.cst.Rd;
+    real gamma_d = thermo.cst.gamma_d;
+    real N2 = (gamma_d - 1) / gamma_d * g * g / (Rd * T_ref);
+    return N2;
+  }
+
+  static real YAKL_INLINE refrho_f(real z, const ThermoPotential &thermo) {
+    real Rd = thermo.cst.Rd;
+    real rho_s = p_s / (Rd * T_ref);
+    real rho_ref = isothermal_zdep(z, rho_s, T_ref, g, thermo);
+    return rho_ref;
+  }
+  
+  static real YAKL_INLINE refentropicvar_f(real z, const ThermoPotential &thermo) {
+    real p = isothermal_zdep(z, p_s, T_ref, g, thermo);
+    return thermo.compute_entropic_var(p, T_ref, 0, 0, 0, 0);
+  }
+
+  static real YAKL_INLINE refentropicdensity_f(real z,
+                                               const ThermoPotential &thermo) {
+    real rho_ref = refrho_f(z, thermo);
+    return rho_ref * refentropicvar_f(z, thermo);
+  }
+
+  static real YAKL_INLINE rho_f(real x, real z, const ThermoPotential &thermo) {
+    return refrho_f(z, thermo);
+    //return isentropic_rho(x, z, theta0, g, thermo);
+  }
+
+  static real YAKL_INLINE entropicvar_f(real x, real z,
+                                        const ThermoPotential &thermo) {
+    return refentropicvar_f(z, thermo);
+    //real p = isentropic_p(x, z, theta0, g, thermo);
+    //real T = isentropic_T(x, z, theta0, g, thermo);
+    //return thermo.compute_entropic_var(p, T, 0, 0, 0, 0);
+  }
+
+  static vecext<2> YAKL_INLINE v_f(real x, real y) {
+    vecext<2> vvec;
+    vvec.u = 0;
+    vvec.w = 0;
+    return vvec;
+  }
+  
+  struct BackgroundDensityDiagnostic : public Diagnostic {
+
+    void initialize(const Geometry<Straight> &pgeom,
+                    const Geometry<Twisted> &dgeom) override {
+      name = "densb";
+      topology = dgeom.topology;
+      dofs_arr = {1, 1, 2};
+      Diagnostic::initialize(pgeom, dgeom);
+    }
+
+    void compute(real time, const FieldSet<nconstant> &const_vars,
+                 const FieldSet<nprognostic> &x) override {
+
+      YAKL_SCOPE(thermo, ::thermo);
+      dual_geometry.set_11form_values(
+          YAKL_LAMBDA(real x, real z) { return refrho_f(z, thermo); }, field,
+          0);
+
+      dual_geometry.set_11form_values(
+          YAKL_LAMBDA(real x, real z) {
+            return refentropicdensity_f(z, thermo);
+          },
+          field, 1);
+    }
+  };
+
+  static void
+  add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics) {
+    diagnostics.emplace_back(std::make_unique<BackgroundDensityDiagnostic>());
+  }
+};
+
 void testcase_from_string(std::unique_ptr<TestCase> &testcase, std::string name,
                           bool acoustic_balance) {
   if (name == "doublevortex") {
     testcase = std::make_unique<SWETestCase<DoubleVortex>>();
   } else if (name == "gravitywave") {
     testcase = std::make_unique<EulerTestCase<GravityWave>>();
+  } else if (name == "balancedstate") {
+    testcase = std::make_unique<EulerTestCase<BalancedState>>();
   } else if (name == "risingbubble") {
     if (acoustic_balance) {
       testcase = std::make_unique<EulerTestCase<RisingBubble<true>>>();
