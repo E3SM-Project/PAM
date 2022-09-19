@@ -133,6 +133,29 @@ void add_model_diagnostics(
   diagnostics.emplace_back(std::make_unique<QXZ0Diagnostic>());
 }
 
+struct ModelReferenceState : ReferenceState {
+  real3d q_di;
+  real3d q_pi;
+  real3d rho_di;
+  real3d rho_pi;
+  real4d Blin_coeff;
+
+  void initialize(const Topology &primal_topology,
+                  const Topology &dual_topology) override {
+    this->q_pi =
+        real3d("refq_pi", ndensity, primal_topology.ni, primal_topology.nens);
+    this->q_di =
+        real3d("refq_di", ndensity, dual_topology.ni, dual_topology.nens);
+    this->rho_pi =
+        real3d("refrho_pi", 1, primal_topology.ni, primal_topology.nens);
+    this->rho_di = real3d("refrho_di", 1, dual_topology.ni, dual_topology.nens);
+    this->Blin_coeff = real4d("Blin coeff", ndensity, ndensity,
+                              primal_topology.ni, primal_topology.nens);
+
+    this->is_initialized = true;
+  }
+};
+
 // *******   Tendencies   ***********//
 
 class ModelTendencies : public ExtrudedTendencies {
@@ -408,12 +431,14 @@ public:
     int pis = primal_topology.is;
     int pjs = primal_topology.js;
     int pks = primal_topology.ks;
+    
 
     parallel_for(
         "ComputeDensEdgeRecon",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+
           compute_twisted_edge_recon<ndensity, dual_reconstruction_type,
                                      dual_reconstruction_order>(
               densedgereconvar, dens0var, dis, djs, dks, i, j, k, n,
@@ -431,8 +456,9 @@ public:
               densvertedgereconvar2, dens0var, dis, djs, dks, i, j, k, n,
               dual_vert_wenoRecon, dual_vert_to_gll, dual_vert_wenoIdl,
               dual_vert_wenoSigma);
-        });
 
+        });
+    
     parallel_for(
         "ComputeQEdgeRecon",
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
@@ -784,6 +810,24 @@ public:
                        auxiliary_vars.fields_arr[FWVAR2].data);
 
     auxiliary_vars.exchange({FTVAR, FTWVAR});
+    
+    auto &refstate = *static_cast<ModelReferenceState*>(reference_state);
+    auto &dens0var = auxiliary_vars.fields_arr[DENS0VAR].data;
+    auto &densedgereconvar = auxiliary_vars.fields_arr[DENSEDGERECONVAR].data;
+    auto &densvertedgereconvar = auxiliary_vars.fields_arr[DENSVERTEDGERECONVAR].data;
+    int dis = dual_topology.is;
+    int djs = dual_topology.js;
+    int dks = dual_topology.ks;
+
+    parallel_for(
+        "Subtract reference state",
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+          dens0var(0, k + dks, j + djs, i + dis, n) -= refstate.rho_pi(0, k, n);
+          dens0var(1, k + dks, j + djs, i + dis, n) -= refstate.rho_pi(0, k, n) * refstate.q_pi(1, k, n);
+    });
+    auxiliary_vars.exchange({DENS0VAR});
 
     // Compute densrecon, densvertrecon, qrecon and frecon
     compute_edge_reconstructions(
@@ -797,6 +841,38 @@ public:
         auxiliary_vars.fields_arr[DENS0VAR].data,
         auxiliary_vars.fields_arr[QXZ0VAR].data,
         auxiliary_vars.fields_arr[FXZ0VAR].data);
+    
+    parallel_for(
+        "Add reference state",
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+          densedgereconvar(0, k + dks, j + djs, i + dis, n) += refstate.rho_pi(0, k, n);
+          densedgereconvar(1, k + dks, j + djs, i + dis, n) += refstate.rho_pi(0, k, n) * refstate.q_pi(1, k, n);
+          densedgereconvar(2, k + dks, j + djs, i + dis, n) += refstate.rho_pi(0, k, n);
+          densedgereconvar(3, k + dks, j + djs, i + dis, n) += refstate.rho_pi(0, k, n) * refstate.q_pi(1, k, n);
+    });
+    parallel_for(
+        "Add reference state",
+        SimpleBounds<4>(dual_topology.ni, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+          densvertedgereconvar(0, k + dks, j + djs, i + dis, n) += refstate.rho_di(0, k, n);
+          densvertedgereconvar(1, k + dks, j + djs, i + dis, n) += refstate.rho_di(0, k, n) * refstate.q_di(1, k, n);
+          densvertedgereconvar(2, k + dks, j + djs, i + dis, n) += refstate.rho_di(0, k, n);
+          densvertedgereconvar(3, k + dks, j + djs, i + dis, n) += refstate.rho_di(0, k, n) * refstate.q_di(1, k, n);
+    });
+    
+    parallel_for(
+        "Add reference state",
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+          dens0var(0, k + dks, j + djs, i + dis, n) += refstate.rho_pi(0, k, n);
+          dens0var(1, k + dks, j + djs, i + dis, n) += refstate.rho_pi(0, k, n) * refstate.q_pi(1, k, n);
+    });
+    auxiliary_vars.exchange({DENS0VAR});
+
 
     auxiliary_vars.exchange({DENSEDGERECONVAR, DENSVERTEDGERECONVAR, DENSVERTEDGERECONVAR2,
                              QXZEDGERECONVAR, QXZVERTEDGERECONVAR,
@@ -829,10 +905,6 @@ public:
                              CORIOLISXZVERTRECONVAR});
 
     // Compute fct
-    int dis = dual_topology.is;
-    int djs = dual_topology.js;
-    int dks = dual_topology.ks;
-
     parallel_for(
         "ComputeEdgeFlux",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
@@ -921,28 +993,6 @@ public:
   }
 };
 
-struct ModelReferenceState : ReferenceState {
-  real3d q_di;
-  real3d q_pi;
-  real3d rho_di;
-  real3d rho_pi;
-  real4d Blin_coeff;
-
-  void initialize(const Topology &primal_topology,
-                  const Topology &dual_topology) override {
-    this->q_pi =
-        real3d("refq_pi", ndensity, primal_topology.ni, primal_topology.nens);
-    this->q_di =
-        real3d("refq_di", ndensity, dual_topology.ni, dual_topology.nens);
-    this->rho_pi =
-        real3d("refrho_pi", 1, primal_topology.ni, primal_topology.nens);
-    this->rho_di = real3d("refrho_di", 1, dual_topology.ni, dual_topology.nens);
-    this->Blin_coeff = real4d("Blin coeff", ndensity, ndensity,
-                              primal_topology.ni, primal_topology.nens);
-
-    this->is_initialized = true;
-  }
-};
 
 // *******   Linear system   ***********//
 class ModelLinearSystem : public LinearSystem {
