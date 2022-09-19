@@ -162,6 +162,7 @@ class Tendencies {
 public:
   Geometry<Straight> primal_geometry;
   Geometry<Twisted> dual_geometry;
+  ReferenceState *reference_state;
 
   SArray<real, 2, reconstruction_order, 2> primal_to_gll;
   SArray<real, 3, reconstruction_order, reconstruction_order,
@@ -190,9 +191,11 @@ public:
 
   void initialize(ModelParameters &params,
                   const Geometry<Straight> &primal_geom,
-                  const Geometry<Twisted> &dual_geom) {
+                  const Geometry<Twisted> &dual_geom,
+                  ReferenceState &refstate) {
     this->primal_geometry = primal_geom;
     this->dual_geometry = dual_geom;
+    this->reference_state = &refstate;
 
     TransformMatrices::coefs_to_gll_lower(primal_to_gll);
     TransformMatrices::weno_sten_to_coefs(primal_wenoRecon);
@@ -258,8 +261,9 @@ public:
 
   void initialize(ModelParameters &params,
                   const Geometry<Straight> &primal_geom,
-                  const Geometry<Twisted> &dual_geom) {
-    Tendencies::initialize(params, primal_geom, dual_geom);
+                  const Geometry<Twisted> &dual_geom,
+                  ReferenceState &refstate) {
+    Tendencies::initialize(params, primal_geom, dual_geom, refstate);
 
     TransformMatrices::coefs_to_gll_lower(primal_vert_to_gll);
     TransformMatrices::weno_sten_to_coefs(primal_vert_wenoRecon);
