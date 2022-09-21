@@ -813,7 +813,9 @@ public:
     
     auto &refstate = *static_cast<ModelReferenceState*>(reference_state);
     auto &densvar = x.fields_arr[DENSVAR].data;
+    auto &refdensvar = const_vars.fields_arr[REFDENSVAR].data;
     auto &dens0var = auxiliary_vars.fields_arr[DENS0VAR].data;
+    auto &denspertvar = auxiliary_vars.fields_arr[DENSPERTVAR].data;
     auto &densedgereconvar = auxiliary_vars.fields_arr[DENSEDGERECONVAR].data;
     auto &densvertedgereconvar = auxiliary_vars.fields_arr[DENSVERTEDGERECONVAR].data;
     int dis = dual_topology.is;
@@ -823,14 +825,29 @@ public:
     bool subtract_hydrostatic = true;
 
     if (subtract_hydrostatic) {
+      //parallel_for(
+      //    "Subtract reference state",
+      //    SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+      //                    dual_topology.n_cells_x, dual_topology.nens),
+      //    YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+      //      dens0var(0, k + dks, j + djs, i + dis, n) -= refstate.rho_pi(0, k, n);
+      //      dens0var(1, k + dks, j + djs, i + dis, n) -= refstate.rho_pi(0, k, n) * refstate.q_pi(1, k, n);
+      //});
+      //auxiliary_vars.exchange({DENS0VAR});
+
       parallel_for(
           "Subtract reference state",
           SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                           dual_topology.n_cells_x, dual_topology.nens),
           YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-            dens0var(0, k + dks, j + djs, i + dis, n) -= refstate.rho_pi(0, k, n);
-            dens0var(1, k + dks, j + djs, i + dis, n) -= refstate.rho_pi(0, k, n) * refstate.q_pi(1, k, n);
+            denspertvar(0, k + dks, j + djs, i + dis, n) =
+            densvar(0, k + dks, j + djs, i + dis, n) - refdensvar(0, k + dks, j + djs, i + dis, n);
+
+            denspertvar(1, k + dks, j + djs, i + dis, n) =
+            densvar(1, k + dks, j + djs, i + dis, n) - refdensvar(1, k + dks, j + djs, i + dis, n);
       });
+  
+      compute_dens0(dens0var, denspertvar);
       auxiliary_vars.exchange({DENS0VAR});
     }
 
@@ -1875,6 +1892,8 @@ void initialize_variables(
   const_desc_arr[HSVAR] = {"hs", dtopo, ndims, 1, 1}; // hs = twisted (n,1)-form
   const_desc_arr[CORIOLISXZVAR] = {"coriolisxz", ptopo, 1, 1,
                                    1}; // f = straight (1,1)-form
+  
+  const_desc_arr[REFDENSVAR] = {"refdens", dtopo, ndims, 1, ndensity}; // hs = twisted (n,1)-form
 
   // functional derivatives = F, B, K, he, U
   aux_desc_arr[FVAR] = {"F", dtopo, ndims - 1, 1, 1};   // F = twisted
@@ -1923,6 +1942,8 @@ void initialize_variables(
   aux_desc_arr[DENSVERTRECONVAR2] = {
       "densvertrecon", dtopo, ndims, 0,
       ndensity}; // densvertrecon lives on vert dual edges, associated with Fw
+  aux_desc_arr[DENSPERTVAR] = {"denspert", dtopo, ndims, 1,
+                            ndensity}; // dens = twisted (n,1)-form
 
   // fct stuff- Phi, Mf, edgeflux
   aux_desc_arr[PHIVAR] = {"Phi", dtopo, ndims - 1, 1, ndensity};
@@ -2184,6 +2205,13 @@ public:
     dual_geom.set_11form_values(
         YAKL_LAMBDA(real x, real z) { return flat_geop(x, z, g); },
         constvars.fields_arr[HSVAR], 0);
+    
+    dual_geom.set_11form_values(
+        YAKL_LAMBDA(real x, real z) { return refrho_f(z, thermo); },
+        constvars.fields_arr[REFDENSVAR], 0);
+    dual_geom.set_11form_values(
+        YAKL_LAMBDA(real x, real z) { return refentropicdensity_f(z, thermo); },
+        constvars.fields_arr[REFDENSVAR], 1);
 
     primal_geom.set_10form_values(
         YAKL_LAMBDA(real x, real y) { return v_f(x, y); },

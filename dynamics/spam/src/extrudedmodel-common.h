@@ -49,15 +49,16 @@ uint constexpr nprognostic = 3;
 #define DENSVAR 2
 
 // hs, coriolis
-uint constexpr nconstant = 2;
+uint constexpr nconstant = 3;
 #define HSVAR 0
 #define CORIOLISXZVAR 1
+#define REFDENSVAR 2
 
 // functional derivatives = F, FW, B, K, he, hew
 // primal grid reconstruction stuff- U, W, dens0, edgerecon, recon,
 // vertedgerecon, vertrecon fct stuff- Phi, Mf, edgeflux Q/W STUFF?
 
-uint constexpr nauxiliary = 36;
+uint constexpr nauxiliary = 37;
 
 #define FVAR 0
 #define BVAR 1
@@ -101,6 +102,7 @@ uint constexpr nauxiliary = 36;
 #define FWVAR2 33
 #define DENSVERTRECONVAR2 34
 #define DENSVERTEDGERECONVAR2 35
+#define DENSPERTVAR 36
 
 // track total densities, dens min/max, energy (total, K, P, I), PV, PE
 uint constexpr nstats = 6;
