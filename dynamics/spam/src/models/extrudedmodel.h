@@ -812,6 +812,7 @@ public:
     auxiliary_vars.exchange({FTVAR, FTWVAR});
     
     auto &refstate = *static_cast<ModelReferenceState*>(reference_state);
+    auto &densvar = x.fields_arr[DENSVAR].data;
     auto &dens0var = auxiliary_vars.fields_arr[DENS0VAR].data;
     auto &densedgereconvar = auxiliary_vars.fields_arr[DENSEDGERECONVAR].data;
     auto &densvertedgereconvar = auxiliary_vars.fields_arr[DENSVERTEDGERECONVAR].data;
@@ -819,15 +820,19 @@ public:
     int djs = dual_topology.js;
     int dks = dual_topology.ks;
 
-    parallel_for(
-        "Subtract reference state",
-        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-          dens0var(0, k + dks, j + djs, i + dis, n) -= refstate.rho_pi(0, k, n);
-          dens0var(1, k + dks, j + djs, i + dis, n) -= refstate.rho_pi(0, k, n) * refstate.q_pi(1, k, n);
-    });
-    auxiliary_vars.exchange({DENS0VAR});
+    bool subtract_hydrostatic = true;
+
+    if (subtract_hydrostatic) {
+      parallel_for(
+          "Subtract reference state",
+          SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                          dual_topology.n_cells_x, dual_topology.nens),
+          YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+            dens0var(0, k + dks, j + djs, i + dis, n) -= refstate.rho_pi(0, k, n);
+            dens0var(1, k + dks, j + djs, i + dis, n) -= refstate.rho_pi(0, k, n) * refstate.q_pi(1, k, n);
+      });
+      auxiliary_vars.exchange({DENS0VAR});
+    }
 
     // Compute densrecon, densvertrecon, qrecon and frecon
     compute_edge_reconstructions(
@@ -842,36 +847,53 @@ public:
         auxiliary_vars.fields_arr[QXZ0VAR].data,
         auxiliary_vars.fields_arr[FXZ0VAR].data);
     
-    parallel_for(
-        "Add reference state",
-        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-          densedgereconvar(0, k + dks, j + djs, i + dis, n) += refstate.rho_pi(0, k, n);
-          densedgereconvar(1, k + dks, j + djs, i + dis, n) += refstate.rho_pi(0, k, n) * refstate.q_pi(1, k, n);
-          densedgereconvar(2, k + dks, j + djs, i + dis, n) += refstate.rho_pi(0, k, n);
-          densedgereconvar(3, k + dks, j + djs, i + dis, n) += refstate.rho_pi(0, k, n) * refstate.q_pi(1, k, n);
-    });
-    parallel_for(
-        "Add reference state",
-        SimpleBounds<4>(dual_topology.ni, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-          densvertedgereconvar(0, k + dks, j + djs, i + dis, n) += refstate.rho_di(0, k, n);
-          densvertedgereconvar(1, k + dks, j + djs, i + dis, n) += refstate.rho_di(0, k, n) * refstate.q_di(1, k, n);
-          densvertedgereconvar(2, k + dks, j + djs, i + dis, n) += refstate.rho_di(0, k, n);
-          densvertedgereconvar(3, k + dks, j + djs, i + dis, n) += refstate.rho_di(0, k, n) * refstate.q_di(1, k, n);
-    });
+    if (subtract_hydrostatic) {
+      parallel_for(
+          "Add reference state",
+          SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                          dual_topology.n_cells_x, dual_topology.nens),
+          YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+            densedgereconvar(0, k + dks, j + djs, i + dis, n) += refstate.rho_pi(0, k, n);
+            densedgereconvar(1, k + dks, j + djs, i + dis, n) += refstate.rho_pi(0, k, n) * refstate.q_pi(1, k, n);
+            densedgereconvar(2, k + dks, j + djs, i + dis, n) += refstate.rho_pi(0, k, n);
+            densedgereconvar(3, k + dks, j + djs, i + dis, n) += refstate.rho_pi(0, k, n) * refstate.q_pi(1, k, n);
+      });
+    }
+
+
+    //for (int k = 0; k < dual_topology.nl; ++k) {
+    //  int i = 0;
+    //  int j = 0;
+    //  int n = 0;
+    //  std::cout << k
+    //    << " " << densvertedgereconvar(0, k + dks, j + djs, i + dis, n)
+    //    << " " << densvertedgereconvar(1, k + dks, j + djs, i + dis, n)
+    //    << " " << densvertedgereconvar(2, k + dks, j + djs, i + dis, n)
+    //    << " " << densvertedgereconvar(3, k + dks, j + djs, i + dis, n) << std::endl;
+    //}
+
+    if (subtract_hydrostatic) {
+      parallel_for(
+          "Add reference state",
+          SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                          dual_topology.n_cells_x, dual_topology.nens),
+          YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+            densvertedgereconvar(0, k + dks, j + djs, i + dis, n) += refstate.rho_di(0, k, n);
+            densvertedgereconvar(1, k + dks, j + djs, i + dis, n) += refstate.rho_di(0, k, n) * refstate.q_di(1, k, n);
+            densvertedgereconvar(2, k + dks, j + djs, i + dis, n) += refstate.rho_di(0, k + 1, n);
+            densvertedgereconvar(3, k + dks, j + djs, i + dis, n) += refstate.rho_di(0, k + 1, n) * refstate.q_di(1, k+1, n);
+      });
+    }
     
-    parallel_for(
-        "Add reference state",
-        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-          dens0var(0, k + dks, j + djs, i + dis, n) += refstate.rho_pi(0, k, n);
-          dens0var(1, k + dks, j + djs, i + dis, n) += refstate.rho_pi(0, k, n) * refstate.q_pi(1, k, n);
-    });
-    auxiliary_vars.exchange({DENS0VAR});
+    //parallel_for(
+    //    "Add reference state",
+    //    SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+    //                    dual_topology.n_cells_x, dual_topology.nens),
+    //    YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+    //      dens0var(0, k + dks, j + djs, i + dis, n) += refstate.rho_pi(0, k, n);
+    //      dens0var(1, k + dks, j + djs, i + dis, n) += refstate.rho_pi(0, k, n) * refstate.q_pi(1, k, n);
+    //});
+    //auxiliary_vars.exchange({DENS0VAR});
 
 
     auxiliary_vars.exchange({DENSEDGERECONVAR, DENSVERTEDGERECONVAR, DENSVERTEDGERECONVAR2,
