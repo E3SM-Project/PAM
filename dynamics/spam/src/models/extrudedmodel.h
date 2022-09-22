@@ -584,7 +584,9 @@ public:
                      const real5d densvertreconvar2,
                      const real5d qxzreconvar, const real5d qxzvertreconvar,
                      const real5d coriolisxzreconvar,
-                     const real5d coriolisxzvertreconvar, const real5d Bvar,
+                     const real5d coriolisxzvertreconvar,
+                     const real5d Bvar,
+                     const real5d Brefvar,
                      const real5d Fvar, const real5d FWvar, const real5d Phivar,
                      const real5d Phivertvar) {
 
@@ -606,6 +608,8 @@ public:
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_wDv_fct<ndensity>(Wtendvar, densvertreconvar2, Phivertvar,
                                     Bvar, pis, pjs, pks, i, j, k + 1, n);
+          compute_wDv<ndensity, ADD_MODE::ADD>(Wtendvar, densvertreconvar2,
+                                    Brefvar, pis, pjs, pks, i, j, k + 1, n);
           if (qf_choice == QF_MODE::EC) {
             compute_Qxz_w_EC<1, ADD_MODE::ADD>(Wtendvar, qxzreconvar,
                                                qxzvertreconvar, Fvar, pis, pjs,
@@ -626,8 +630,13 @@ public:
         YAKL_CLASS_LAMBDA(int j, int i, int n) {
           compute_wDv_fct<ndensity>(Wtendvar, densvertreconvar2, Phivertvar,
                                     Bvar, pis, pjs, pks, i, j, 0, n);
-          compute_wDv_fct<ndensity>(Wtendvar, densvertreconvar2, Phivertvar,
+          compute_wDv<ndensity, ADD_MODE::ADD>(Wtendvar, densvertreconvar2,
+                                    Brefvar, pis, pjs, pks, i, j, 0, n);
+          compute_wDv_fct<ndensity>(Wtendvar, densvertreconvar, Phivertvar,
                                     Bvar, pis, pjs, pks, i, j,
+                                    primal_topology.nl - 1, n);
+          compute_wDv<ndensity, ADD_MODE::ADD>(Wtendvar, densvertreconvar2,
+                                    Brefvar, pis, pjs, pks, i, j,
                                     primal_topology.nl - 1, n);
           if (qf_choice == QF_MODE::EC) {
             compute_Qxz_w_EC_bottom<1, ADD_MODE::ADD>(
@@ -818,6 +827,7 @@ public:
     auto &denspertvar = auxiliary_vars.fields_arr[DENSPERTVAR].data;
     auto &densedgereconvar = auxiliary_vars.fields_arr[DENSEDGERECONVAR].data;
     auto &densvertedgereconvar = auxiliary_vars.fields_arr[DENSVERTEDGERECONVAR].data;
+    auto &densvertedgereconvar2 = auxiliary_vars.fields_arr[DENSVERTEDGERECONVAR2].data;
     int dis = dual_topology.is;
     int djs = dual_topology.js;
     int dks = dual_topology.ks;
@@ -899,6 +909,11 @@ public:
             densvertedgereconvar(1, k + dks, j + djs, i + dis, n) += refstate.rho_di(0, k, n) * refstate.q_di(1, k, n);
             densvertedgereconvar(2, k + dks, j + djs, i + dis, n) += refstate.rho_di(0, k + 1, n);
             densvertedgereconvar(3, k + dks, j + djs, i + dis, n) += refstate.rho_di(0, k + 1, n) * refstate.q_di(1, k+1, n);
+            
+            densvertedgereconvar2(0, k + dks, j + djs, i + dis, n) = refstate.rho_di(0, k, n);
+            densvertedgereconvar2(1, k + dks, j + djs, i + dis, n) = refstate.rho_di(0, k, n) * refstate.q_di(1, k, n);
+            densvertedgereconvar2(2, k + dks, j + djs, i + dis, n) = refstate.rho_di(0, k + 1, n);
+            densvertedgereconvar2(3, k + dks, j + djs, i + dis, n) = refstate.rho_di(0, k + 1, n) * refstate.q_di(1, k+1, n);
       });
     }
     
@@ -1025,6 +1040,7 @@ public:
                        auxiliary_vars.fields_arr[CORIOLISXZRECONVAR].data,
                        auxiliary_vars.fields_arr[CORIOLISXZVERTRECONVAR].data,
                        auxiliary_vars.fields_arr[BVAR].data,
+                       const_vars.fields_arr[BREFVAR].data,
                        auxiliary_vars.fields_arr[FVAR].data,
                        auxiliary_vars.fields_arr[FWVAR].data,
                        auxiliary_vars.fields_arr[PHIVAR].data,
@@ -1894,6 +1910,7 @@ void initialize_variables(
                                    1}; // f = straight (1,1)-form
   
   const_desc_arr[REFDENSVAR] = {"refdens", dtopo, ndims, 1, ndensity}; // hs = twisted (n,1)-form
+  const_desc_arr[BREFVAR] = {"Bref", ptopo, 0, 0, ndensity};
 
   // functional derivatives = F, B, K, he, U
   aux_desc_arr[FVAR] = {"F", dtopo, ndims - 1, 1, 1};   // F = twisted
@@ -2192,8 +2209,20 @@ public:
                               FieldSet<nconstant> &constvars,
                               const Geometry<Straight> &primal_geom,
                               const Geometry<Twisted> &dual_geom) override {
+    
+    const auto &primal_topology = primal_geom.topology;
+    int pis = primal_topology.is;
+    int pjs = primal_topology.js;
+    int pks = primal_topology.ks;
 
     YAKL_SCOPE(thermo, ::thermo);
+    YAKL_SCOPE(Hk, ::Hk);
+    YAKL_SCOPE(Hs, ::Hs);
+
+    auto &hsvar = constvars.fields_arr[HSVAR].data;
+    auto &refdensvar = constvars.fields_arr[REFDENSVAR].data;
+    auto &Brefvar = constvars.fields_arr[BREFVAR].data;
+
     dual_geom.set_11form_values(
         YAKL_LAMBDA(real x, real z) { return rho_f(x, z, thermo); },
         progvars.fields_arr[DENSVAR], 0);
@@ -2212,6 +2241,18 @@ public:
     dual_geom.set_11form_values(
         YAKL_LAMBDA(real x, real z) { return refentropicdensity_f(z, thermo); },
         constvars.fields_arr[REFDENSVAR], 1);
+
+    parallel_for(
+        "Compute Brefvar",
+        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          Hs.compute_dHsdx(Brefvar, refdensvar, hsvar, pis, pjs, pks, i, j,
+                                    k, n);
+          Brefvar(0, k + pks, j + pjs, i + pis, n) *= -1;
+          Brefvar(1, k + pks, j + pjs, i + pis, n) *= -1;
+        });
+
 
     primal_geom.set_10form_values(
         YAKL_LAMBDA(real x, real y) { return v_f(x, y); },
@@ -2267,6 +2308,7 @@ public:
           }
 
           refstate.rho_di(0, k, n) = refrho_f(z, thermo);
+          //refstate.rho_di(0, k, n) = (refrho_f(z + dz / 2, thermo) + refrho_f(z - dz / 2, thermo)) / 2; 
           refstate.q_di(0, k, n) =
               refrho_f(z, thermo) / refstate.rho_di(0, k, n);
           refstate.q_di(1, k, n) =
@@ -2521,8 +2563,8 @@ template <bool acoustic_balance> struct RisingBubble {
     real p = isentropic_p(x, z, theta0, g, thermo);
     real T = isentropic_T(x, z, theta0, g, thermo);
     real r = sqrt((x - xc) * (x - xc) + (z - bzc) * (z - bzc));
-    //real dtheta = (r < rc) ? dss * 0.5_fp * (1._fp + cos(pi * r / rc)) : 0._fp;
-    real dtheta = 0._fp;
+    real dtheta = (r < rc) ? dss * 0.5_fp * (1._fp + cos(pi * r / rc)) : 0._fp;
+    //real dtheta = 0._fp;
     real dT = dtheta * pow(p / thermo.cst.pr, thermo.cst.kappa_d);
     return thermo.compute_entropic_var(p, T + dT, 0, 0, 0, 0);
   }
@@ -2693,7 +2735,7 @@ struct GravityWave {
   static real constexpr zc = 0.5_fp * Lz;
   static real constexpr d = 5e3_fp;
   static real constexpr T_ref = 250._fp;
-  static real constexpr u_0 = 0._fp;
+  static real constexpr u_0 = 20._fp;
   static real constexpr x_c = 100e3_fp;
   static real constexpr p_s = 1e5_fp;
   static real constexpr dT_max = 0.01_fp;
@@ -2740,10 +2782,10 @@ struct GravityWave {
     real drho_b = -rho_s * dT_b / T_ref;
     real drho = exp(-delta * z / 2) * drho_b;
 
-    //real T = (T_ref + dT);
-    //real rho = (rho_ref + drho);
-    real T = (T_ref);
-    real rho = (rho_ref);
+    real T = (T_ref + dT);
+    real rho = (rho_ref + drho);
+    //real T = (T_ref);
+    //real rho = (rho_ref);
 
     return rho;
   }
@@ -2954,15 +2996,15 @@ struct GravityWave {
     real drho_b = -rho_s * dT_b / T_ref;
     real drho = exp(-delta * z / 2) * drho_b;
 
-    //real T = (T_ref + dT);
-    real T = (T_ref);
+    real T = (T_ref + dT);
+    //real T = (T_ref);
     real rho = (rho_ref + drho);
 
     // real p = rho * Rd * T;
     real p_ref = isothermal_zdep(z, p_s, T_ref, g, thermo);
     real dp = Rd * T_ref * drho + Rd * rho_ref * dT;
-    //real p = p_ref + dp;
-    real p = p_ref;
+    real p = p_ref + dp;
+    //real p = p_ref;
 
     return thermo.compute_entropic_var(p, T, 0, 0, 0, 0);
   }
