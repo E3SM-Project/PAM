@@ -114,7 +114,9 @@ if __name__ == "__main__":
         yaml.dump(inputfile, open(ifname, "w"))
 
         print(f"running (nx, nz, dx, dz, dt, steps) = ({nx}, {nz}, {dx}, {dz}, {dt}, {steps})")
-        subprocess.run(["../driver", ifname], capture_output=True)
+        run = subprocess.run(["../driver", ifname], capture_output=True, text=True)
+        open(ofname + "stdout.txt", "w").write(run.stdout)
+        open(ofname + "stderr.txt", "w").write(run.stderr)
 
         dataset = Dataset(ofname + "0.nc", "r", format="NETCDF4")
         err = compute_errors(dataset, nx, nz, dx, dz)
