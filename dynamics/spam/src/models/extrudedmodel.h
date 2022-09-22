@@ -857,6 +857,7 @@ public:
             densvar(1, k + dks, j + djs, i + dis, n) - refdensvar(1, k + dks, j + djs, i + dis, n);
       });
   
+      auxiliary_vars.exchange({DENSPERTVAR});
       compute_dens0(dens0var, denspertvar);
       auxiliary_vars.exchange({DENS0VAR});
     }
@@ -2241,6 +2242,8 @@ public:
     dual_geom.set_11form_values(
         YAKL_LAMBDA(real x, real z) { return refentropicdensity_f(z, thermo); },
         constvars.fields_arr[REFDENSVAR], 1);
+
+    constvars.exchange();
 
     parallel_for(
         "Compute Brefvar",
