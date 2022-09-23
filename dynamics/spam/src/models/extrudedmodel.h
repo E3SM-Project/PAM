@@ -2984,38 +2984,6 @@ struct GravityWave {
     return sol;
   }
 
-  static real YAKL_INLINE entropicvar_f(real x, real z,
-                                        const ThermoPotential &thermo) {
-    real Rd = thermo.cst.Rd;
-
-    real delta = g / (Rd * T_ref);
-    real rho_s = p_s / (Rd * T_ref);
-
-    real rho_ref = isothermal_zdep(z, rho_s, T_ref, g, thermo);
-
-    real dT_b = dT_max * exp(-pow((x - x_c) / d, 2)) * std::sin(pi * z / Lz);
-    real dT = exp(delta * z / 2) * dT_b;
-
-    real drho_b = -rho_s * dT_b / T_ref;
-    real drho = exp(-delta * z / 2) * drho_b;
-
-    real T = (T_ref + dT);
-    //real T = (T_ref);
-    real rho = (rho_ref + drho);
-
-    // real p = rho * Rd * T;
-    real p_ref = isothermal_zdep(z, p_s, T_ref, g, thermo);
-    real dp = Rd * T_ref * drho + Rd * rho_ref * dT;
-    real p = p_ref + dp;
-    //real p = p_ref;
-
-    return thermo.compute_entropic_var(p, T, 0, 0, 0, 0);
-  }
->>>>>>> 0da22d4 (debug)
-
-    return sol;
-  }
-
   struct ExactDensityDiagnostic : public Diagnostic {
     void initialize(const Geometry<Straight> &pgeom,
                     const Geometry<Twisted> &dgeom) override {
