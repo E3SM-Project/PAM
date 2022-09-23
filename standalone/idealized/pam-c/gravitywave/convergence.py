@@ -74,6 +74,11 @@ if __name__ == "__main__":
         rundir = argv[1]
     else:
         rundir = "gw_convergence"
+    
+    if(len(argv) > 2):
+        base_dt = float(argv[2])
+    else:
+        base_dt = 20
 
     os.mkdir(rundir)
     os.chdir(rundir)
@@ -84,17 +89,16 @@ if __name__ == "__main__":
     H = 10e3
 
     base_nz = 20
-    base_dt = 20
 
     errs = []
     dts = []
     dxs = []
     for l in range(nlevels):
-        nz = base_nz * 2 ** l
-        nx = 15 * nz
+        nz = base_nz * 2 ** l + 1
+        nx = 15 * (nz - 1)
 
         dx = L / nx
-        dz = H / nz
+        dz = H / (nz - 1)
 
         dt = base_dt / (2 ** l)
         steps = int(np.ceil(timeend / dt))
