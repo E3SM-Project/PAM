@@ -2695,7 +2695,7 @@ struct GravityWave {
     real dw;
   };
 
-  static SeriesSolution sum_series(real x, real z, real t,
+  static SeriesSolution YAKL_INLINE sum_series(real x, real z, real t,
                                    const ThermoPotential &thermo) {
     SeriesSolution sol;
 
