@@ -606,7 +606,7 @@ public:
         SimpleBounds<4>(primal_topology.nl - 2, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wDv_fct<ndensity>(Wtendvar, densvertreconvar2, Phivertvar,
+          compute_wDv_fct<ndensity>(Wtendvar, densvertreconvar, Phivertvar,
                                     Bvar, pis, pjs, pks, i, j, k + 1, n);
           compute_wDv<ndensity, ADD_MODE::ADD>(Wtendvar, densvertreconvar2,
                                     Brefvar, pis, pjs, pks, i, j, k + 1, n);
@@ -628,7 +628,7 @@ public:
         SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
                         primal_topology.nens),
         YAKL_CLASS_LAMBDA(int j, int i, int n) {
-          compute_wDv_fct<ndensity>(Wtendvar, densvertreconvar2, Phivertvar,
+          compute_wDv_fct<ndensity>(Wtendvar, densvertreconvar, Phivertvar,
                                     Bvar, pis, pjs, pks, i, j, 0, n);
           compute_wDv<ndensity, ADD_MODE::ADD>(Wtendvar, densvertreconvar2,
                                     Brefvar, pis, pjs, pks, i, j, 0, n);
