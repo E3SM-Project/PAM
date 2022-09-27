@@ -577,6 +577,28 @@ void YAKL_INLINE compute_wDv(const real5d &tendvar, const real3d &vertreconvar,
   }
 }
 
+template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+void YAKL_INLINE compute_wDv(const real5d &tendvar, const real3d &vertreconvar,
+                             const real3d &densvar, int is, int js, int ks,
+                             int i, int j, int k, int n) {
+  real tend;
+  SArray<real, 1, ndofs> recon;
+  SArray<real, 2, ndofs, 2> dens;
+  for (int l = 0; l < ndofs; l++) {
+    // Need to add 1 to k here because UW has an extra dof at the bottom
+    recon(l) = vertreconvar(l, k + 1, n);
+    dens(l, 1) = densvar(l, k + 1, n);
+    dens(l, 0) = densvar(l, k, n);
+  }
+  wDv<ndofs>(tend, recon, dens);
+  if (addmode == ADD_MODE::REPLACE) {
+    tendvar(0, k + ks, j + js, i + is, n) = tend;
+  }
+  if (addmode == ADD_MODE::ADD) {
+    tendvar(0, k + ks, j + js, i + is, n) += tend;
+  }
+}
+
 template <uint ndofs>
 void YAKL_INLINE D2(SArray<real, 1, ndofs> &var,
                     SArray<real, 2, ndofs, 4> const &flux) {

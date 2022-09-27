@@ -136,6 +136,8 @@ public:
                                    int ks, int js, int is, int n) const {};
   real YAKL_INLINE get_entropic_var(const real5d &densvar, int k, int j, int i,
                                     int ks, int js, int is, int n) const {};
+  real YAKL_INLINE get_entropic_var(const real3d &densvar, int k, int ks,
+                                    int n) const {};
   void YAKL_INLINE set_density(real dens, real dry_dens, const real5d &densvar,
                                int k, int j, int i, int ks, int js, int is,
                                int n) const {};
@@ -145,6 +147,8 @@ public:
                                         int n) const {};
   real YAKL_INLINE get_alpha(const real5d &densvar, int k, int j, int i, int ks,
                              int js, int is, int n) const {};
+  real YAKL_INLINE get_alpha(const real3d &densvar, int k, int ks,
+                             int n) const {};
   real YAKL_INLINE get_qd(const real5d &densvar, int k, int j, int i, int ks,
                           int js, int is, int n) const {};
   real YAKL_INLINE get_qv(const real5d &densvar, int k, int j, int i, int ks,
@@ -456,11 +460,22 @@ real YAKL_INLINE VariableSetBase<VS_CE>::get_entropic_var(const real5d &densvar,
          densvar(0, k + ks, j + js, i + is, n);
 }
 template <>
+real YAKL_INLINE VariableSetBase<VS_CE>::get_entropic_var(const real3d &densvar,
+                                                          int k, int ks,
+                                                          int n) const {
+  return densvar(1, k, n) / densvar(0, k, n);
+}
+template <>
 real YAKL_INLINE VariableSetBase<VS_CE>::get_alpha(const real5d &densvar, int k,
                                                    int j, int i, int ks, int js,
                                                    int is, int n) const {
   return dual_geometry.get_area_11entity(k + ks, j + js, i + is) /
          densvar(0, k + ks, j + js, i + is, n);
+}
+template <>
+real YAKL_INLINE VariableSetBase<VS_CE>::get_alpha(const real3d &densvar, int k,
+                                                   int ks, int n) const {
+  return dual_geometry.get_area_11entity(k + ks, 0, 0) / densvar(0, k, n);
 }
 
 // We rely on physics packages ie micro to provide water species- must at least

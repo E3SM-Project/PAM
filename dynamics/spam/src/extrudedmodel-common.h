@@ -10,6 +10,11 @@ uint constexpr ntracers_active =
 
 //////////////////////////////////////////////////////////////////////////////
 
+// forces reference state to be in perfect hydrostatic balance by subtracting
+// the hydrostatic balance equation evaluated at the reference state in
+// the velocity tendency
+constexpr bool force_refstate_hydrostatic_balance = true;
+
 // Number of Dimensions
 uint constexpr ndims = 1;
 

@@ -446,6 +446,18 @@ void YAKL_INLINE compute_Iext(SArray<real, 1, ndofs> &x0, const real5d &var,
   //  BUT THIS IS 2nd ORDER RIGHT NOW!
 }
 
+template <uint ndofs, uint vord, uint voff = vord / 2 - 1>
+void YAKL_INLINE compute_Iv(SArray<real, 1, ndofs> &x0, const real3d &var,
+                            const Geometry<Straight> &pgeom,
+                            const Geometry<Twisted> &dgeom, int ks, int k,
+                            int n) {
+  real Igeom = pgeom.get_area_00entity(k + ks, 0, 0) /
+               dgeom.get_area_11entity(k + ks, 0, 0);
+  for (int l = 0; l < ndofs; l++) {
+    x0(l) = var(l, k, n) * Igeom;
+  }
+}
+
 // version of Iext that applies a transformation before computing x0
 // mainly used to apply Iext to total density
 template <uint hord, uint vord, uint hoff = hord / 2 - 1,
@@ -481,6 +493,38 @@ real YAKL_INLINE compute_Iext(F f, const real5d &var,
   return x0(0);
 }
 
+template <uint ndofs, uint hord, uint vord, uint hoff = hord / 2 - 1,
+          uint voff = vord / 2 - 1, class F>
+void YAKL_INLINE compute_Iext(F f, SArray<real, 1, ndofs> &x0,
+                              const real5d &var,
+                              const Geometry<Straight> &pgeom,
+                              const Geometry<Twisted> &dgeom, int is, int js,
+                              int ks, int i, int j, int k, int n) {
+  SArray<real, 3, ndofs, ndims, hord - 1> x;
+  SArray<real, 2, ndims, hord - 1> Igeom;
+  for (int p = 0; p < hord - 1; p++) {
+    for (int l = 0; l < ndofs; l++) {
+      for (int d = 0; d < ndims; d++) {
+        if (d == 0) {
+          x(l, d, p) = f(var, l, k + ks, j + js, i + is + p - hoff, n);
+          Igeom(d, p) =
+              pgeom.get_area_00entity(k + ks, j + js, i + is + p - hoff) /
+              dgeom.get_area_11entity(k + ks, j + js, i + is + p - hoff);
+        }
+        if (d == 1) {
+          x(l, d, p) = f(var, l, k + ks, j + js + p - hoff, i + is, n);
+          Igeom(d, p) =
+              pgeom.get_area_00entity(k + ks, j + js + p - hoff, i + is) /
+              dgeom.get_area_11entity(k + ks, j + js + p - hoff, i + is);
+        }
+      }
+    }
+  }
+  I<ndofs>(x0, x, Igeom);
+  // EVENTUALLY BE MORE CLEVER IN THE VERTICAL HERE
+  //  BUT THIS IS 2nd ORDER RIGHT NOW!
+}
+
 // Indexing here is fine, since we going from d11 to p00 and there is no
 // "extended" boundary in p00
 template <uint ndofs, uint hord, uint vord,
@@ -493,6 +537,28 @@ void YAKL_INLINE compute_Iext(const real5d &var0, const real5d &var,
   SArray<real, 1, ndofs> x0;
   compute_Iext<ndofs, hord, vord, hoff, voff>(x0, var, pgeom, dgeom, is, js, ks,
                                               i, j, k, n);
+  if (addmode == ADD_MODE::REPLACE) {
+    for (int l = 0; l < ndofs; l++) {
+      var0(l, k + ks, j + js, i + is, n) = x0(l);
+    }
+  }
+  if (addmode == ADD_MODE::ADD) {
+    for (int l = 0; l < ndofs; l++) {
+      var0(l, k + ks, j + js, i + is, n) += x0(l);
+    }
+  }
+}
+
+template <uint ndofs, uint hord, uint vord,
+          ADD_MODE addmode = ADD_MODE::REPLACE, uint hoff = hord / 2 - 1,
+          uint voff = vord / 2 - 1, class F>
+void YAKL_INLINE compute_Iext(F f, const real5d &var0, const real5d &var,
+                              const Geometry<Straight> &pgeom,
+                              const Geometry<Twisted> &dgeom, int is, int js,
+                              int ks, int i, int j, int k, int n) {
+  SArray<real, 1, ndofs> x0;
+  compute_Iext<ndofs, hord, vord, hoff, voff>(f, x0, var, pgeom, dgeom, is, js,
+                                              ks, i, j, k, n);
   if (addmode == ADD_MODE::REPLACE) {
     for (int l = 0; l < ndofs; l++) {
       var0(l, k + ks, j + js, i + is, n) = x0(l);
