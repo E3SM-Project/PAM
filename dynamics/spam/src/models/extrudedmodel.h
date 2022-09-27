@@ -256,118 +256,6 @@ public:
   }
 
   template <ADD_MODE addmode = ADD_MODE::REPLACE>
-  void compute_F_FW_and_K(real fac, real5d Fvar, real5d FWvar, real5d Kvar,
-                          const real5d Vvar, const real5d Uvar,
-                          const real5d Wvar, const real5d UWvar,
-                          const real5d dens0var) {
-
-    const auto &dual_topology = dual_geometry.topology;
-
-    int dis = dual_topology.is;
-    int djs = dual_topology.js;
-    int dks = dual_topology.ks;
-
-    // THIS WILL NEED SOME SLIGHT MODIFICATIONS FOR CASE OF NON-ZERO UWVAR_B IE
-    // BOUNDARY FLUXES BUT FOR NOW IT IS FINE SINCE UWVAR=0 on BND AND THEREFORE
-    // K COMPUTATIONS IGNORE IT
-    YAKL_SCOPE(Hk, ::Hk);
-    parallel_for(
-        "Compute Fvar, Kvar",
-        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          Hk.compute_F<addmode>(Fvar, Uvar, dens0var, dis, djs, dks, i, j, k, n,
-                                fac);
-          Hk.compute_K(Kvar, Vvar, Uvar, Wvar, UWvar, dis, djs, dks, i, j, k,
-                       n);
-        });
-    parallel_for(
-        "Compute FWvar",
-        SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          Hk.compute_Fw<addmode>(FWvar, UWvar, dens0var, dis, djs, dks, i, j,
-                                 k + 1, n, fac);
-        });
-  }
-
-  void compute_F_FW_and_he(real5d Fvar, real5d FWvar, real5d HEvar,
-                           real5d HEWvar, const real5d Vvar, const real5d Uvar,
-                           const real5d Wvar, const real5d UWvar,
-                           const real5d dens0var) {
-
-    const auto &dual_topology = dual_geometry.topology;
-
-    int dis = dual_topology.is;
-    int djs = dual_topology.js;
-    int dks = dual_topology.ks;
-
-    // THIS WILL NEED SOME SLIGHT MODIFICATIONS FOR CASE OF NON-ZERO UWVAR_B IE
-    // BOUNDARY FLUXES BUT FOR NOW IT IS FINE SINCE UWVAR=0 on BND AND THEREFORE
-    // K COMPUTATIONS IGNORE IT
-    YAKL_SCOPE(Hk, ::Hk);
-    parallel_for(
-        "Compute Fvar he",
-        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          Hk.compute_F_and_he(Fvar, HEvar, Uvar, dens0var, dis, djs, dks, i, j,
-                              k, n);
-        });
-    parallel_for(
-        "Compute FWvar he",
-        SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          Hk.compute_Fw_and_he(FWvar, HEWvar, UWvar, dens0var, dis, djs, dks, i,
-                               j, k + 1, n);
-        });
-  }
-
-  void compute_FT_and_FTW(real5d FTvar, real5d FTWvar, const real5d Fvar,
-                          const real5d FWvar) {
-
-    const auto &primal_topology = primal_geometry.topology;
-
-    int pis = primal_topology.is;
-    int pjs = primal_topology.js;
-    int pks = primal_topology.ks;
-
-    parallel_for(
-        "Compute FTvar",
-        SimpleBounds<4>(primal_topology.ni - 2, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_Wxz_u(FTvar, FWvar, pis, pjs, pks, i, j, k + 1, n);
-        });
-    parallel_for(
-        "Compute FTvar bnd",
-        SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
-                        primal_topology.nens),
-        YAKL_CLASS_LAMBDA(int j, int i, int n) {
-          compute_Wxz_u_bottom(FTvar, FWvar, pis, pjs, pks, i, j, 0, n);
-          compute_Wxz_u_top(FTvar, FWvar, pis, pjs, pks, i, j,
-                            primal_topology.ni - 1, n);
-        });
-    parallel_for(
-        "Compute FTWvar",
-        SimpleBounds<4>(primal_topology.nl - 2, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_Wxz_w(FTWvar, Fvar, pis, pjs, pks, i, j, k + 1, n);
-        });
-    parallel_for(
-        "Compute FTWvar bnd",
-        SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
-                        primal_topology.nens),
-        YAKL_CLASS_LAMBDA(int j, int i, int n) {
-          compute_Wxz_w_bottom(FTWvar, Fvar, pis, pjs, pks, i, j, 0, n);
-          compute_Wxz_w_top(FTWvar, Fvar, pis, pjs, pks, i, j,
-                            primal_topology.nl - 1, n);
-        });
-  }
-
-  template <ADD_MODE addmode = ADD_MODE::REPLACE>
   void compute_B(real fac, real5d Bvar, const real5d Kvar, const real5d densvar,
                  const real5d HSvar) {
 
@@ -460,9 +348,8 @@ public:
       real5d coriolisxzvertreconvar, const real5d densedgereconvar,
       const real5d densvertedgereconvar, const real5d qxzedgereconvar,
       const real5d qxzvertedgereconvar, const real5d coriolisxzedgereconvar,
-      const real5d coriolisxzvertedgereconvar, const real5d HEvar,
-      const real5d HEWvar, const real5d Uvar, const real5d UWvar,
-      const real5d FTvar, const real5d FTWvar) {
+      const real5d coriolisxzvertedgereconvar, const real5d densvar,
+      const real5d Vvar, const real5d Wvar) {
 
     const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
@@ -475,19 +362,35 @@ public:
     int pjs = primal_topology.js;
     int pks = primal_topology.ks;
 
+    YAKL_SCOPE(varset, ::varset);
+
+    const auto total_density_f =
+        YAKL_LAMBDA(const real5d &densvar, int k, int j, int i, int n) {
+      return varset.get_total_density(densvar, k, j, i, 0, 0, 0, n);
+    };
+
     parallel_for(
         "ComputeDensRECON",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
+        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
           compute_twisted_recon<ndensity, dual_reconstruction_type>(
-              densreconvar, densedgereconvar, Uvar, dis, djs, dks, i, j, k, n);
+              densreconvar, densedgereconvar, this->primal_geometry,
+              this->dual_geometry, Vvar, dis, djs, dks, i, j, k, n);
+
+          real dens0_ik = compute_Iext<diff_ord, vert_diff_ord>(
+              total_density_f, densvar, this->primal_geometry,
+              this->dual_geometry, pis, pjs, pks, i, j, k, n);
+          real dens0_im1 = compute_Iext<diff_ord, vert_diff_ord>(
+              total_density_f, densvar, this->primal_geometry,
+              this->dual_geometry, pis, pjs, pks, i - 1, j, k, n);
+
+          real he = 0.5_fp * (dens0_ik + dens0_im1);
           // scale twisted recons
           for (int d = 0; d < ndims; d++) {
             for (int l = 0; l < ndensity; l++) {
-              densreconvar(l + d * ndensity, k + dks, j + djs, i + dis, n) =
-                  densreconvar(l + d * ndensity, k + dks, j + djs, i + dis, n) /
-                  HEvar(d, k + dks, j + djs, i + dis, n);
+              densreconvar(l + d * ndensity, k + dks, j + djs, i + dis, n) /=
+                  he;
             }
           }
         });
@@ -496,15 +399,22 @@ public:
         "ComputeDensVertRECON",
         SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
+        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
           compute_twisted_vert_recon<ndensity, dual_vert_reconstruction_type>(
-              densvertreconvar, densvertedgereconvar, UWvar, dis, djs, dks, i,
-              j, k + 1, n);
+              densvertreconvar, densvertedgereconvar, this->primal_geometry,
+              this->dual_geometry, Wvar, dis, djs, dks, i, j, k + 1, n);
+
+          real dens0_kp1 = compute_Iext<diff_ord, vert_diff_ord>(
+              total_density_f, densvar, this->primal_geometry,
+              this->dual_geometry, pis, pjs, pks, i, j, k + 1, n);
+          real dens0_ik = compute_Iext<diff_ord, vert_diff_ord>(
+              total_density_f, densvar, this->primal_geometry,
+              this->dual_geometry, pis, pjs, pks, i, j, k, n);
+
+          real hew = 0.5_fp * (dens0_kp1 + dens0_ik);
           // scale twisted recons
           for (int l = 0; l < ndensity; l++) {
-            densvertreconvar(l, k + dks + 1, j + djs, i + dis, n) =
-                densvertreconvar(l, k + dks + 1, j + djs, i + dis, n) /
-                HEWvar(0, k + dks + 1, j + djs, i + dis, n);
+            densvertreconvar(l, k + dks + 1, j + djs, i + dis, n) /= hew;
           }
         });
 
@@ -512,24 +422,26 @@ public:
         "ComputeQRECON",
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
+        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
           compute_straight_xz_recon<1, reconstruction_type>(
-              qxzreconvar, qxzedgereconvar, FTWvar, pis, pjs, pks, i, j, k, n);
+              qxzreconvar, qxzedgereconvar, this->primal_geometry,
+              this->dual_geometry, Vvar, pis, pjs, pks, i, j, k, n);
           compute_straight_xz_recon<1, coriolis_reconstruction_type>(
-              coriolisxzreconvar, coriolisxzedgereconvar, FTWvar, pis, pjs, pks,
-              i, j, k, n);
+              coriolisxzreconvar, coriolisxzedgereconvar, this->primal_geometry,
+              this->dual_geometry, Vvar, pis, pjs, pks, i, j, k, n);
         });
     parallel_for(
         "ComputeQVERTRECON",
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
+        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
           compute_straight_xz_vert_recon<1, vert_reconstruction_type>(
-              qxzvertreconvar, qxzvertedgereconvar, FTvar, pis, pjs, pks, i, j,
-              k, n);
+              qxzvertreconvar, qxzvertedgereconvar, this->primal_geometry,
+              this->dual_geometry, Wvar, pis, pjs, pks, i, j, k, n);
           compute_straight_xz_vert_recon<1, coriolis_vert_reconstruction_type>(
-              coriolisxzvertreconvar, coriolisxzvertedgereconvar, FTvar, pis,
-              pjs, pks, i, j, k, n);
+              coriolisxzvertreconvar, coriolisxzvertedgereconvar,
+              this->primal_geometry, this->dual_geometry, Wvar, pis, pjs, pks,
+              i, j, k, n);
         });
   }
 
@@ -676,47 +588,115 @@ public:
       ADD_MODE addmode, real fac, real dt, FieldSet<nconstant> &const_vars,
       FieldSet<nprognostic> &x, FieldSet<nauxiliary> &auxiliary_vars) override {
 
-    compute_dens0(auxiliary_vars.fields_arr[DENS0VAR].data,
-                  x.fields_arr[DENSVAR].data);
-    compute_U(auxiliary_vars.fields_arr[UVAR].data, x.fields_arr[VVAR].data);
-    compute_UW(auxiliary_vars.fields_arr[UWVAR].data, x.fields_arr[WVAR].data);
+    const auto &primal_topology = primal_geometry.topology;
+    const auto &dual_topology = dual_geometry.topology;
 
-    auxiliary_vars.fields_arr[UWVAR].set_bnd(0.0);
-    auxiliary_vars.exchange({UVAR, UWVAR, DENS0VAR});
+    int pis = primal_topology.is;
+    int pjs = primal_topology.js;
+    int pks = primal_topology.ks;
 
-    if (addmode == ADD_MODE::ADD) {
-      compute_F_FW_and_K<ADD_MODE::ADD>(
-          fac, auxiliary_vars.fields_arr[FVAR].data,
-          auxiliary_vars.fields_arr[FWVAR].data,
-          auxiliary_vars.fields_arr[KVAR].data, x.fields_arr[VVAR].data,
-          auxiliary_vars.fields_arr[UVAR].data, x.fields_arr[WVAR].data,
-          auxiliary_vars.fields_arr[UWVAR].data,
-          auxiliary_vars.fields_arr[DENS0VAR].data);
-    } else if (addmode == ADD_MODE::REPLACE) {
-      compute_F_FW_and_K<ADD_MODE::REPLACE>(
-          fac, auxiliary_vars.fields_arr[FVAR].data,
-          auxiliary_vars.fields_arr[FWVAR].data,
-          auxiliary_vars.fields_arr[KVAR].data, x.fields_arr[VVAR].data,
-          auxiliary_vars.fields_arr[UVAR].data, x.fields_arr[WVAR].data,
-          auxiliary_vars.fields_arr[UWVAR].data,
-          auxiliary_vars.fields_arr[DENS0VAR].data);
-    }
+    const auto &densvar = x.fields_arr[DENSVAR].data;
+    const auto &Vvar = x.fields_arr[VVAR].data;
+    const auto &Wvar = x.fields_arr[WVAR].data;
 
-    auxiliary_vars.fields_arr[FWVAR].set_bnd(0.0);
-    auxiliary_vars.exchange({FVAR, FWVAR, KVAR});
+    const auto &Fvar = auxiliary_vars.fields_arr[FVAR].data;
+    const auto &FWvar = auxiliary_vars.fields_arr[FWVAR].data;
+    const auto &Kvar = auxiliary_vars.fields_arr[KVAR].data;
+    const auto &Bvar = auxiliary_vars.fields_arr[BVAR].data;
+    const auto &HSvar = const_vars.fields_arr[HSVAR].data;
 
-    if (addmode == ADD_MODE::ADD) {
-      compute_B<ADD_MODE::ADD>(fac, auxiliary_vars.fields_arr[BVAR].data,
-                               auxiliary_vars.fields_arr[KVAR].data,
-                               x.fields_arr[DENSVAR].data,
-                               const_vars.fields_arr[HSVAR].data);
-    } else if (addmode == ADD_MODE::REPLACE) {
-      compute_B<ADD_MODE::REPLACE>(fac, auxiliary_vars.fields_arr[BVAR].data,
-                                   auxiliary_vars.fields_arr[KVAR].data,
-                                   x.fields_arr[DENSVAR].data,
-                                   const_vars.fields_arr[HSVAR].data);
-    }
-    auxiliary_vars.exchange({BVAR});
+    YAKL_SCOPE(Hk, ::Hk);
+    YAKL_SCOPE(Hs, ::Hs);
+    YAKL_SCOPE(varset, ::varset);
+
+    const auto total_density_f =
+        YAKL_LAMBDA(const real5d &densvar, int k, int j, int i, int n) {
+      return varset.get_total_density(densvar, k, j, i, 0, 0, 0, n);
+    };
+
+    parallel_for(
+        "Functional derivatives",
+        SimpleBounds<4>(dual_topology.ni, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+          real dens0_ik = compute_Iext<diff_ord, vert_diff_ord>(
+              total_density_f, densvar, this->primal_geometry,
+              this->dual_geometry, pis, pjs, pks, i, j, k, n);
+          real dens0_im1 = compute_Iext<diff_ord, vert_diff_ord>(
+              total_density_f, densvar, this->primal_geometry,
+              this->dual_geometry, pis, pjs, pks, i - 1, j, k, n);
+          real dens0_km1 = compute_Iext<diff_ord, vert_diff_ord>(
+              total_density_f, densvar, this->primal_geometry,
+              this->dual_geometry, pis, pjs, pks, i, j, k - 1, n);
+
+          SArray<real, 1, ndims> u_ik;
+          SArray<real, 1, 1> uw_ik;
+          SArray<real, 1, ndims> u_ip1;
+          SArray<real, 1, 1> uw_kp1;
+
+          compute_Hext<1, diff_ord>(u_ik, Vvar, this->primal_geometry,
+                                    this->dual_geometry, pis, pjs, pks, i, j, k,
+                                    n);
+          compute_Hext<1, diff_ord>(u_ip1, Vvar, this->primal_geometry,
+                                    this->dual_geometry, pis, pjs, pks, i + 1,
+                                    j, k, n);
+
+          if (k == 0 || k == (dual_topology.ni - 1)) {
+            uw_ik(0) = 0;
+          } else {
+            compute_Hv<1, vert_diff_ord>(uw_ik, Wvar, this->primal_geometry,
+                                         this->dual_geometry, pis, pjs, pks, i,
+                                         j, k, n);
+          }
+
+          if (k == -1 || k == (dual_topology.ni - 2)) {
+            uw_kp1(0) = 0;
+          } else {
+            compute_Hv<1, vert_diff_ord>(uw_kp1, Wvar, this->primal_geometry,
+                                         this->dual_geometry, pis, pjs, pks, i,
+                                         j, k + 1, n);
+          }
+
+          real K2 =
+              0.5_fp * (Vvar(0, k + pks, j + pjs, i + pis, n) * u_ik(0) +
+                        Vvar(0, k + pks, j + pjs, i + 1 + pis, n) * u_ip1(0));
+          K2 += 0.5_fp * (Wvar(0, k - 1 + pks, j + pjs, i + pis, n) * uw_ik(0) +
+                          Wvar(0, k + pks, j + pjs, i + pis, n) * uw_kp1(0));
+
+          Kvar(0, k + pks, j + pjs, i + pis, n) = 0.5_fp * K2;
+
+          if (addmode == ADD_MODE::ADD) {
+            Fvar(0, pks + k, pjs + j, pis + i, n) +=
+                fac * 0.5_fp * (dens0_ik + dens0_im1) * u_ik(0);
+            FWvar(0, pks + k, pjs + j, pis + i, n) +=
+                fac * 0.5_fp * (dens0_ik + dens0_km1) * uw_ik(0);
+          } else if (addmode == ADD_MODE::REPLACE) {
+            Fvar(0, pks + k, pjs + j, pis + i, n) =
+                fac * 0.5_fp * (dens0_ik + dens0_im1) * u_ik(0);
+            FWvar(0, pks + k, pjs + j, pis + i, n) =
+                fac * 0.5_fp * (dens0_ik + dens0_km1) * uw_ik(0);
+          }
+
+          if (addmode == ADD_MODE::ADD) {
+            Hs.compute_dHsdx<ADD_MODE::ADD>(Bvar, densvar, HSvar, pis, pjs, pks,
+                                            i, j, k, n, fac);
+          } else if (addmode == ADD_MODE::REPLACE) {
+            Hs.compute_dHsdx<ADD_MODE::REPLACE>(Bvar, densvar, HSvar, pis, pjs,
+                                                pks, i, j, k, n, fac);
+          }
+        });
+    auxiliary_vars.exchange({KVAR});
+
+    parallel_for(
+        "Add K to B",
+        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+          Hk.compute_dKddens<ADD_MODE::ADD>(Bvar, Kvar, pis, pjs, pks, i, j, k,
+                                            n, fac);
+        });
+
+    auxiliary_vars.exchange({BVAR, FVAR, FWVAR});
   }
 
   void apply_symplectic(real dt, FieldSet<nconstant> &const_vars,
@@ -728,23 +708,8 @@ public:
 
     compute_dens0(auxiliary_vars.fields_arr[DENS0VAR].data,
                   x.fields_arr[DENSVAR].data);
-    compute_U(auxiliary_vars.fields_arr[UVAR].data, x.fields_arr[VVAR].data);
-    compute_UW(auxiliary_vars.fields_arr[UWVAR].data, x.fields_arr[WVAR].data);
-    auxiliary_vars.fields_arr[UWVAR].set_bnd(0.0);
 
-    auxiliary_vars.exchange({UVAR, UWVAR, DENS0VAR});
-
-    compute_F_FW_and_he(
-        auxiliary_vars.fields_arr[FVAR2].data,
-        auxiliary_vars.fields_arr[FWVAR2].data,
-        auxiliary_vars.fields_arr[HEVAR].data,
-        auxiliary_vars.fields_arr[HEWVAR].data, x.fields_arr[VVAR].data,
-        auxiliary_vars.fields_arr[UVAR].data, x.fields_arr[WVAR].data,
-        auxiliary_vars.fields_arr[UWVAR].data,
-        auxiliary_vars.fields_arr[DENS0VAR].data);
-
-    auxiliary_vars.fields_arr[FWVAR2].set_bnd(0.0);
-    auxiliary_vars.exchange({FVAR2, FWVAR2, HEVAR, HEWVAR});
+    auxiliary_vars.exchange({DENS0VAR});
 
     compute_q0f0(auxiliary_vars.fields_arr[QXZ0VAR].data,
                  auxiliary_vars.fields_arr[FXZ0VAR].data,
@@ -755,13 +720,6 @@ public:
     auxiliary_vars.fields_arr[QXZ0VAR].set_bnd(0.0);
     auxiliary_vars.fields_arr[FXZ0VAR].set_bnd(0.0);
     auxiliary_vars.exchange({QXZ0VAR, FXZ0VAR});
-
-    compute_FT_and_FTW(auxiliary_vars.fields_arr[FTVAR].data,
-                       auxiliary_vars.fields_arr[FTWVAR].data,
-                       auxiliary_vars.fields_arr[FVAR2].data,
-                       auxiliary_vars.fields_arr[FWVAR2].data);
-
-    auxiliary_vars.exchange({FTVAR, FTWVAR});
 
     // Compute densrecon, densvertrecon, qrecon and frecon
     compute_edge_reconstructions(
@@ -792,12 +750,8 @@ public:
                    auxiliary_vars.fields_arr[QXZVERTEDGERECONVAR].data,
                    auxiliary_vars.fields_arr[CORIOLISXZEDGERECONVAR].data,
                    auxiliary_vars.fields_arr[CORIOLISXZVERTEDGERECONVAR].data,
-                   auxiliary_vars.fields_arr[HEVAR].data,
-                   auxiliary_vars.fields_arr[HEWVAR].data,
-                   auxiliary_vars.fields_arr[UVAR].data,
-                   auxiliary_vars.fields_arr[UWVAR].data,
-                   auxiliary_vars.fields_arr[FTVAR].data,
-                   auxiliary_vars.fields_arr[FTWVAR].data);
+                   x.fields_arr[DENSVAR].data, x.fields_arr[VVAR].data,
+                   x.fields_arr[WVAR].data);
 
     auxiliary_vars.exchange({DENSRECONVAR, DENSVERTRECONVAR, QXZRECONVAR,
                              QXZVERTRECONVAR, CORIOLISXZRECONVAR,
@@ -1779,27 +1733,17 @@ void initialize_variables(
                                    1}; // f = straight (1,1)-form
 
   // functional derivatives = F, B, K, he, U
-  aux_desc_arr[FVAR] = {"F", dtopo, ndims - 1, 1, 1};   // F = twisted
-                                                        // (n-1,1)-form
-  aux_desc_arr[FVAR2] = {"F2", dtopo, ndims - 1, 1, 1}; // F2 = twisted
-                                                        // (n-1,1)-form
+  aux_desc_arr[FVAR] = {"F", dtopo, ndims - 1, 1, 1}; // F = twisted
+                                                      // (n-1,1)-form
+
   aux_desc_arr[BVAR] = {"B", ptopo, 0, 0, ndensity}; // B = straight (0,0)-form
 
   aux_desc_arr[KVAR] = {"K", dtopo, ndims, 1, 1}; // K = twisted (n,1)-form
-
-  aux_desc_arr[HEVAR] = {"he", dtopo, ndims - 1, 1,
-                         1}; // he lives on horiz dual edges, associated with F
 
   aux_desc_arr[UVAR] = {"U", dtopo, ndims - 1, 1, 1}; // U = twisted
                                                       // (n-1,1)-form
 
   aux_desc_arr[FWVAR] = {"Fw", dtopo, ndims, 0, 1}; // Fw = twisted (n,0)-form
-  aux_desc_arr[FWVAR2] = {"Fw2", dtopo, ndims, 0,
-                          1}; // Fw2 = twisted (n,0)-form
-
-  aux_desc_arr[HEWVAR] = {
-      "hew", dtopo, ndims, 0,
-      1}; // hew lives on vert dual edges, associated with Fw
 
   aux_desc_arr[UWVAR] = {"Uw", dtopo, ndims, 0, 1}; // Uw = twisted (n,0)-form
 
@@ -1847,11 +1791,6 @@ void initialize_variables(
   aux_desc_arr[QXZVERTFLUXVAR] = {
       "qxzvertflux", ptopo, 1, 0,
       1}; // qxzvertflux lives on horiz primal edges, associated with v
-
-  aux_desc_arr[FTVAR] = {"FT", ptopo, 1, 0,
-                         1}; // FT = straight (1,0)-form ie Fw at v pts
-  aux_desc_arr[FTWVAR] = {"FTW", ptopo, 0, 1,
-                          1}; // FTW = straight (0,1)-form ie F at w pts
 
   aux_desc_arr[FXZ0VAR] = {"fxz0", dtopo, 0, 0,
                            1}; // fxz0 is a twisted 0,0 form

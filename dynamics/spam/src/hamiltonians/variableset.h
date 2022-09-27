@@ -441,6 +441,13 @@ void VariableSetBase<VS_CE>::initialize(PamCoupler &coupler,
 }
 
 template <>
+real YAKL_INLINE VariableSetBase<VS_CE>::get_total_density(
+    const real5d &densvar, int k, int j, int i, int ks, int js, int is,
+    int n) const {
+  return densvar(0, k + ks, j + js, i + is, n);
+}
+
+template <>
 real YAKL_INLINE VariableSetBase<VS_CE>::get_entropic_var(const real5d &densvar,
                                                           int k, int j, int i,
                                                           int ks, int js,
