@@ -49,7 +49,7 @@ int main(int argc, char** argv) {
     // Read vertical coordinates
     real1d zint_in;
     //THIS IS BROKEN FOR PARALLEL IO CASE- maybe this is okay ie switch entirely to standard netcdf?
-    if (crm_nz == 0) {
+    if (! vcoords_file.empty()) {
       yakl::SimpleNetCDF nc;
       nc.open(vcoords_file);
       crm_nz = nc.getDimSize("num_interfaces") - 1;
@@ -64,12 +64,11 @@ int main(int argc, char** argv) {
     SGS          sgs;
     
     //set xlen, ylen, zlen based on init cond if needed
-    if (xlen < 0 or ylen < 0 or zlen < 0)
-    {set_domain_sizes(config["initData"].as<std::string>(), crm_ny, crm_nz, xlen, ylen, zlen);}
+    if (xlen < 0 or ylen < 0 or zlen < 0) { set_domain_sizes(config["initData"].as<std::string>(), crm_ny, crm_nz, xlen, ylen, zlen); }
     
     //This requires zlen, so it must happen after domain sizes are set
-    if (not crm_nz == 0) //We are using a uniform vertical grid with crm_nz levels; in this case zlen must be set
-    {
+    //We are using a uniform vertical grid with crm_nz levels; in this case zlen must be set
+    if (vcoords_file.empty()) {
       zint_in = real1d("zint_in",crm_nz+1);
       real dz = zlen/crm_nz;
       parallel_for("set vertical levels", crm_nz+1, YAKL_LAMBDA(int i) {
