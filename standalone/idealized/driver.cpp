@@ -5,7 +5,7 @@
 #include "SGS.h"
 #include "mpi.h"
 #include "output.h"
-#include "init.h"
+#include "pamc_init.h"
 
 int main(int argc, char** argv) {
   int ierr = MPI_Init( &argc , &argv );
