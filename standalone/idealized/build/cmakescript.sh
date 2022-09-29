@@ -15,10 +15,10 @@ cmake      \
   -DYAKL_HIP_FLAGS="${YAKL_HIP_FLAGS} -DPAM_STANDALONE"           \
   -DYAKL_C_FLAGS="${YAKL_C_FLAGS}"                                \
   -DYAKL_F90_FLAGS="${YAKL_F90_FLAGS}"                            \
-  -DNCFLAGS="${NCFLAGS}"                                          \
+  -DPAM_LINK_FLAGS="${PAM_LINK_FLAGS}"                            \
   -DYAKL_ARCH="${YAKL_ARCH}"                                      \
   -DPAM_DYCORE="spam++"                                           \
-  -DPAM_MICRO="p3"                                             \
+  -DPAM_MICRO="p3"                                                \
   -DPAM_SGS="shoc"                                                \
   ${add_cmake_vars} \
   ..
