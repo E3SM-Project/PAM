@@ -20,10 +20,8 @@ namespace awfl {
     auto nz    = coupler.get_nz();
     auto nens  = coupler.get_nens();
     auto Rd    = coupler.get_R_d();
-    auto cp_d  = coupler.get_cp_d();
-    auto cv_d  = cp_d - Rd;
-    auto gamma = cp_d / cv_d;
     auto Rv    = coupler.get_R_v();
+    auto gamma = coupler.get_gamma_d();
     auto sim2d = ny == 1;
 
     // Convert data from DataManager to state and tracers array for convenience

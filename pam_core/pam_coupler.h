@@ -178,22 +178,26 @@ namespace pam {
     void set_dt_gcm(real dt_gcm) { this->dt_gcm = dt_gcm; }
 
 
-    std::thread::id         get_thread_id                  () const { return this->thread_id    ; }    
-    real                    get_R_d                        () const { return this->R_d          ; }    
-    real                    get_R_v                        () const { return this->R_v          ; }    
-    real                    get_cp_d                       () const { return this->cp_d         ; }    
-    real                    get_cp_v                       () const { return this->cp_v         ; }    
-    real                    get_grav                       () const { return this->grav         ; }    
-    real                    get_p0                         () const { return this->p0           ; }    
-    real                    get_xlen                       () const { return this->xlen         ; }    
-    real                    get_ylen                       () const { return this->ylen         ; }    
-    real                    get_dx                         () const { return get_xlen()/get_nx(); }    
-    real                    get_dy                         () const { return get_ylen()/get_ny(); }    
-    real                    get_dt_gcm                     () const { return this->dt_gcm       ; }    
-    DataManager const &     get_data_manager_readonly      () const { return this->dm           ; }    
-    DataManager       &     get_data_manager_readwrite     ()       { return this->dm           ; }    
-    DataManagerHost const & get_data_manager_host_readonly () const { return this->dm_host      ; }    
-    DataManagerHost       & get_data_manager_host_readwrite()       { return this->dm_host      ; }    
+    std::thread::id         get_thread_id                  () const { return thread_id            ; }    
+    real                    get_R_d                        () const { return R_d                  ; }    
+    real                    get_R_v                        () const { return R_v                  ; }    
+    real                    get_cp_d                       () const { return cp_d                 ; }    
+    real                    get_cp_v                       () const { return cp_v                 ; }    
+    real                    get_cv_d                       () const { return get_cp_d()-get_R_d() ; }
+    real                    get_cv_v                       () const { return get_cp_v()-get_R_v() ; }
+    real                    get_gamma_d                    () const { return get_cp_d()/get_cv_d(); }
+    real                    get_gamma_v                    () const { return get_cp_v()/get_cv_v(); }
+    real                    get_grav                       () const { return grav                 ; }    
+    real                    get_p0                         () const { return p0                   ; }    
+    real                    get_xlen                       () const { return xlen                 ; }    
+    real                    get_ylen                       () const { return ylen                 ; }    
+    real                    get_dx                         () const { return get_xlen()/get_nx()  ; }    
+    real                    get_dy                         () const { return get_ylen()/get_ny()  ; }    
+    real                    get_dt_gcm                     () const { return dt_gcm               ; }    
+    DataManager const &     get_data_manager_readonly      () const { return dm                   ; }    
+    DataManager       &     get_data_manager_readwrite     ()       { return dm                   ; }    
+    DataManagerHost const & get_data_manager_host_readonly () const { return dm_host              ; }    
+    DataManagerHost       & get_data_manager_host_readwrite()       { return dm_host              ; }    
 
 
     int get_nx() const {
