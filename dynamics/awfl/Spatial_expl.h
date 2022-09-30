@@ -385,6 +385,7 @@ public:
         // Compute the maximum stable time step in each direction
         real udt = cfl * dx         / max( abs(u-cs) , abs(u+cs) );
         real vdt = cfl * dy         / max( abs(v-cs) , abs(v+cs) );
+        if (sim2d) vdt = std::numeric_limits<real>::max();
         real wdt = cfl * dz(k,iens) / max( abs(w-cs) , abs(w+cs) );
 
         // Compute the min of the max stable time steps

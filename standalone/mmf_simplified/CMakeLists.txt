@@ -26,5 +26,5 @@ set_source_files_properties(supercell_init.F90 PROPERTY COMPILE_FLAGS "${YAKL_F9
 include(${YAKL_HOME}/yakl_utils.cmake)
 yakl_process_target(driver)
 
-target_link_libraries(driver dynamics physics pam_core ${NCFLAGS})
+target_link_libraries(driver dynamics physics pam_core ${PAM_LINK_FLAGS})
 
