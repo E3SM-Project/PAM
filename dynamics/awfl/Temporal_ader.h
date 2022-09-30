@@ -54,7 +54,6 @@ public:
     int nens = coupler.get_nens();
 
     int idR = Spatial::idR;
-    int hs  = Spatial::hs;
     int num_tracers = space_op.num_tracers;
     YAKL_SCOPE( dz          , space_op.dz          );
 
@@ -106,7 +105,6 @@ public:
     int nens        = space_op.nens;
     int num_state   = space_op.num_state;
     int num_tracers = space_op.num_tracers;
-    int hs          = space_op.hs;
 
     int n_iter = ceil( dtphys / dt );
     dt = dtphys / n_iter;

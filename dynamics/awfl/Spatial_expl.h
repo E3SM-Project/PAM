@@ -9,6 +9,7 @@
 #include "MultipleFields.h"
 #include "pam_coupler.h"
 #include "compute_time_step.h"
+#include "reconstruct.h"
 
 
 template <int nTimeDerivs, bool timeAvg, int nAder>
@@ -17,7 +18,6 @@ public:
 
   static_assert(nTimeDerivs == 1 , "ERROR: This Spatial class isn't setup to use nTimeDerivs > 1");
 
-  int static constexpr hs = (ord-1)/2;
   int static constexpr num_state = 5;
   int static constexpr max_tracers = 50;
 
@@ -868,28 +868,28 @@ public:
 
           // Density
           for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idR,hs+k,hs+j,wrapx(i,ii,nx),iens); }
-          reconstruct_gll_values( stencil , gll , c2g , s2g , s2c , weno_recon_lower , idl , sigma , weno_scalars );
+          awfl::reconstruct_gll_values( stencil , gll , c2g , s2g , s2c , weno_recon_lower , idl , sigma , weno_scalars );
           // Add hydrostasis back on
           for (int ii=0; ii < ngll; ii++) { r_DTs(0,ii) = gll(ii); }
 
           // u
           for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idU,hs+k,hs+j,wrapx(i,ii,nx),iens); }
-          reconstruct_gll_values( stencil , gll , c2g , s2g , s2c , weno_recon_lower , idl , sigma , weno_winds );
+          awfl::reconstruct_gll_values( stencil , gll , c2g , s2g , s2c , weno_recon_lower , idl , sigma , weno_winds );
           for (int ii=0; ii < ngll; ii++) { ru_DTs(0,ii) = gll(ii); }
 
           // v
           for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idV,hs+k,hs+j,wrapx(i,ii,nx),iens); }
-          reconstruct_gll_values( stencil , gll , c2g , s2g , s2c , weno_recon_lower , idl , sigma , weno_winds );
+          awfl::reconstruct_gll_values( stencil , gll , c2g , s2g , s2c , weno_recon_lower , idl , sigma , weno_winds );
           for (int ii=0; ii < ngll; ii++) { rv_DTs(0,ii) = gll(ii); }
 
           // w
           for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idW,hs+k,hs+j,wrapx(i,ii,nx),iens); }
-          reconstruct_gll_values( stencil , gll , c2g , s2g , s2c , weno_recon_lower , idl , sigma , weno_winds );
+          awfl::reconstruct_gll_values( stencil , gll , c2g , s2g , s2c , weno_recon_lower , idl , sigma , weno_winds );
           for (int ii=0; ii < ngll; ii++) { rw_DTs(0,ii) = gll(ii); }
 
           // theta
           for (int ii=0; ii < ord; ii++) { stencil(ii) = state(idT,hs+k,hs+j,wrapx(i,ii,nx),iens); }
-          reconstruct_gll_values( stencil , gll , c2g , s2g , s2c , weno_recon_lower , idl , sigma , weno_scalars );
+          awfl::reconstruct_gll_values( stencil , gll , c2g , s2g , s2c , weno_recon_lower , idl , sigma , weno_scalars );
           // Add hydrostasis back on
           for (int ii=0; ii < ngll; ii++) { rt_DTs(0,ii) = gll(ii); }
         }
@@ -949,7 +949,7 @@ public:
             SArray<real,1,ngll> gll;
 
             for (int ii=0; ii < ord; ii++) { stencil(ii) = tracers(tr,hs+k,hs+j,wrapx(i,ii,nx),iens); }
-            reconstruct_gll_values( stencil , gll , c2g , s2g , s2c , weno_recon_lower , idl , sigma , weno_scalars );
+            awfl::reconstruct_gll_values( stencil , gll , c2g , s2g , s2c , weno_recon_lower , idl , sigma , weno_scalars );
             if (tracer_pos(tr)) {
               for (int ii=0; ii < ngll; ii++) { gll(ii) = max( 0._fp , gll(ii) ); }
             }
@@ -1169,28 +1169,28 @@ public:
 
           // Density
           for (int jj=0; jj < ord; jj++) { stencil(jj) = state(idR,hs+k,wrapy(j,jj,ny),hs+i,iens); }
-          reconstruct_gll_values( stencil , gll , c2g , s2g , s2c , weno_recon_lower , idl , sigma , weno_scalars );
+          awfl::reconstruct_gll_values( stencil , gll , c2g , s2g , s2c , weno_recon_lower , idl , sigma , weno_scalars );
           // Add hydrostasis back on
           for (int jj=0; jj < ngll; jj++) { r_DTs(0,jj) = gll(jj); }
 
           // u
           for (int jj=0; jj < ord; jj++) { stencil(jj) = state(idU,hs+k,wrapy(j,jj,ny),hs+i,iens); }
-          reconstruct_gll_values( stencil , gll , c2g , s2g , s2c , weno_recon_lower , idl , sigma , weno_winds );
+          awfl::reconstruct_gll_values( stencil , gll , c2g , s2g , s2c , weno_recon_lower , idl , sigma , weno_winds );
           for (int jj=0; jj < ngll; jj++) { ru_DTs(0,jj) = gll(jj); }
 
           // v
           for (int jj=0; jj < ord; jj++) { stencil(jj) = state(idV,hs+k,wrapy(j,jj,ny),hs+i,iens); }
-          reconstruct_gll_values( stencil , gll , c2g , s2g , s2c , weno_recon_lower , idl , sigma , weno_winds );
+          awfl::reconstruct_gll_values( stencil , gll , c2g , s2g , s2c , weno_recon_lower , idl , sigma , weno_winds );
           for (int jj=0; jj < ngll; jj++) { rv_DTs(0,jj) = gll(jj); }
 
           // w
           for (int jj=0; jj < ord; jj++) { stencil(jj) = state(idW,hs+k,wrapy(j,jj,ny),hs+i,iens); }
-          reconstruct_gll_values( stencil , gll , c2g , s2g , s2c , weno_recon_lower , idl , sigma , weno_winds );
+          awfl::reconstruct_gll_values( stencil , gll , c2g , s2g , s2c , weno_recon_lower , idl , sigma , weno_winds );
           for (int jj=0; jj < ngll; jj++) { rw_DTs(0,jj) = gll(jj); }
 
           // theta
           for (int jj=0; jj < ord; jj++) { stencil(jj) = state(idT,hs+k,wrapy(j,jj,ny),hs+i,iens); }
-          reconstruct_gll_values( stencil , gll , c2g , s2g , s2c , weno_recon_lower , idl , sigma , weno_scalars );
+          awfl::reconstruct_gll_values( stencil , gll , c2g , s2g , s2c , weno_recon_lower , idl , sigma , weno_scalars );
           // Add hydrostasis back on
           for (int jj=0; jj < ngll; jj++) { rt_DTs(0,jj) = gll(jj); }
         }
@@ -1250,7 +1250,7 @@ public:
             SArray<real,1,ngll> gll;
 
             for (int jj=0; jj < ord; jj++) { stencil(jj) = tracers(tr,hs+k,wrapy(j,jj,ny),hs+i,iens); }
-            reconstruct_gll_values( stencil , gll , c2g , s2g , s2c , weno_recon_lower , idl , sigma , weno_scalars );
+            awfl::reconstruct_gll_values( stencil , gll , c2g , s2g , s2c , weno_recon_lower , idl , sigma , weno_scalars );
             if (tracer_pos(tr)) {
               for (int jj=0; jj < ngll; jj++) { gll(jj) = max( 0._fp , gll(jj) ); }
             }
@@ -1504,20 +1504,20 @@ public:
               stencil(kk) = state(idR,k+kk,hs+j,hs+i,iens) - hyDensSten(k,kk,iens);
             }
           }
-          reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc , weno_recon_lower_loc ,
+          awfl::reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc , weno_recon_lower_loc ,
                                   idl , sigma , weno_scalars );
           // Add hydrostasis back on
           for (int kk=0; kk < ngll; kk++) { r_DTs(0,kk) = gll(kk) + hyDensGLL(k,kk,iens); }
 
           // u values and derivatives
           for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idU,wrapz(k,kk,nz),hs+j,hs+i,iens); }
-          reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc , weno_recon_lower_loc ,
+          awfl::reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc , weno_recon_lower_loc ,
                                   idl , sigma , weno_winds );
           for (int kk=0; kk < ngll; kk++) { ru_DTs(0,kk) = gll(kk); }
 
           // v
           for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idV,wrapz(k,kk,nz),hs+j,hs+i,iens); }
-          reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc , weno_recon_lower_loc ,
+          awfl::reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc , weno_recon_lower_loc ,
                                   idl , sigma , weno_winds );
           for (int kk=0; kk < ngll; kk++) { rv_DTs(0,kk) = gll(kk); }
 
@@ -1526,7 +1526,7 @@ public:
             stencil(kk) = state(idW,wrapz(k,kk,nz),hs+j,hs+i,iens);
             if (k+kk > hs+nz-1 || k+kk < hs) stencil(kk) = 0;
           }
-          reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc , weno_recon_lower_loc ,
+          awfl::reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc , weno_recon_lower_loc ,
                                   idl , sigma , weno_winds );
           if (k == nz-1) gll(ngll-1) = 0;
           if (k == 0   ) gll(0     ) = 0;
@@ -1540,7 +1540,7 @@ public:
               stencil(kk) = state(idT,k+kk,hs+j,hs+i,iens) - hyDensThetaSten(k,kk,iens);
             }
           }
-          reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc , weno_recon_lower_loc ,
+          awfl::reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc , weno_recon_lower_loc ,
                                   idl , sigma , weno_scalars );
           // Add hydrostasis back on
           for (int kk=0; kk < ngll; kk++) { rt_DTs(0,kk) = gll(kk) + hyDensThetaGLL(k,kk,iens); }
@@ -1612,7 +1612,7 @@ public:
             SArray<real,1,ngll> gll;
 
             for (int kk=0; kk < ord; kk++) { stencil(kk) = tracers(tr,wrapz(k,kk,nz),hs+j,hs+i,iens); }
-            reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc , weno_recon_lower_loc ,
+            awfl::reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc , weno_recon_lower_loc ,
                                     idl , sigma , weno_scalars );
             for (int kk=0; kk < ngll; kk++) { gll(kk) *= r_DTs(0,kk); }
             if (tracer_pos(tr)) {
@@ -1796,41 +1796,6 @@ public:
 
 
   // ord stencil values to ngll GLL values; store in DTs
-  YAKL_INLINE static void reconstruct_gll_values( SArray<real,1,ord> const stencil                      ,
-                                                  SArray<real,1,ngll> &gll                              ,
-                                                  SArray<real,2,ord,ngll> const &coefs_to_gll           ,
-                                                  SArray<real,2,ord,ngll> const &sten_to_gll            ,
-                                                  SArray<real,2,ord,ord>  const &sten_to_coefs          ,
-                                                  SArray<real,3,hs+1,hs+1,hs+1> const &weno_recon_lower ,
-                                                  SArray<real,1,hs+2> const &idl                        ,
-                                                  real sigma, bool doweno ) {
-    if (doweno) {
-
-      // Reconstruct values
-      SArray<real,1,ord> wenoCoefs;
-      weno::compute_weno_coefs<ord>( weno_recon_lower , sten_to_coefs , stencil , wenoCoefs , idl , sigma );
-      // Transform ord weno coefficients into ngll GLL points
-      for (int ii=0; ii<ngll; ii++) {
-        real tmp = 0;
-        for (int s=0; s < ord; s++) {
-          tmp += coefs_to_gll(s,ii) * wenoCoefs(s);
-        }
-        gll(ii) = tmp;
-      }
-
-    } else {
-
-      // Transform ord stencil cell averages into ngll GLL points
-      for (int ii=0; ii<ngll; ii++) {
-        real tmp = 0;
-        for (int s=0; s < ord; s++) {
-          tmp += sten_to_gll(s,ii) * stencil(s);
-        }
-        gll(ii) = tmp;
-      }
-
-    } // if doweno
-  }
 
 
 
