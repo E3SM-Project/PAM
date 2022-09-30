@@ -8,6 +8,7 @@
 #include "idealized_profiles.h"
 #include "MultipleFields.h"
 #include "pam_coupler.h"
+#include "compute_time_step.h"
 
 
 template <int nTimeDerivs, bool timeAvg, int nAder>
@@ -338,63 +339,8 @@ public:
 
 
 
-  // Given the model data and CFL value, compute the maximum stable time step
-  real compute_time_step(pam::PamCoupler const &coupler, real cfl_in = -1) {
-    using yakl::c::parallel_for;
-    using yakl::c::SimpleBounds;
-
-    real cfl = cfl_in;
-    if (cfl < 0) cfl = 0.75;
-
-    // If we've already computed the time step, then don't compute it again
-    if (dtInit <= 0) {
-      YAKL_SCOPE( dx                   , this->dx                  );
-      YAKL_SCOPE( dy                   , this->dy                  );
-      YAKL_SCOPE( dz                   , this->dz                  );
-      YAKL_SCOPE( gamma                , this->gamma               );
-      YAKL_SCOPE( Rd                   , this->Rd                  );
-      YAKL_SCOPE( Rv                   , this->Rv                  );
-
-      auto &dm = coupler.get_data_manager_readonly();
-
-      // Convert data from DataManager to state and tracers array for convenience
-      auto dm_dens_dry = dm.get<real const,4>( "density_dry" );
-      auto dm_uvel     = dm.get<real const,4>( "uvel"        );
-      auto dm_vvel     = dm.get<real const,4>( "vvel"        );
-      auto dm_wvel     = dm.get<real const,4>( "wvel"        );
-      auto dm_temp     = dm.get<real const,4>( "temp"        );
-      auto dm_dens_vap = dm.get<real const,4>( "water_vapor" );
-
-      // Allocate a 3-D array for the max stable time steps (we'll use this for a reduction later)
-      real4d dt3d("dt3d",nz,ny,nx,nens);
-
-      // Loop through the cells, calculate the max stable time step for each cell
-      parallel_for( "Spatial.h compute_time_step" , SimpleBounds<4>(nz,ny,nx,nens) ,
-                    YAKL_LAMBDA (int k, int j, int i, int iens) {
-        real rho_d = dm_dens_dry(k,j,i,iens);
-        real u     = dm_uvel    (k,j,i,iens);
-        real v     = dm_vvel    (k,j,i,iens);
-        real w     = dm_wvel    (k,j,i,iens);
-        real temp  = dm_temp    (k,j,i,iens);
-        real rho_v = dm_dens_vap(k,j,i,iens);
-        real p = Rd * rho_d * temp + Rv * rho_v * temp;
-        // This neglects non-wv mass-adding tracers, but these are small, and their lack only increases cs
-        // Thus the resulting time step is conservative w/r to these missing masses, which is more stable
-        real cs = sqrt(gamma*p/(rho_v+rho_d));
-
-        // Compute the maximum stable time step in each direction
-        real udt = cfl * dx         / max( abs(u-cs) , abs(u+cs) );
-        real vdt = cfl * dy         / max( abs(v-cs) , abs(v+cs) );
-        if (sim2d) vdt = std::numeric_limits<real>::max();
-        real wdt = cfl * dz(k,iens) / max( abs(w-cs) , abs(w+cs) );
-
-        // Compute the min of the max stable time steps
-        dt3d(k,j,i,iens) = min( min(udt,vdt) , wdt );
-      });
-      // Store to dtInit so we don't have to compute this again
-      dtInit = yakl::intrinsics::minval( dt3d );
-    }
-
+  real compute_time_step(pam::PamCoupler const &coupler, real cfl = 0.75) {
+    if (dtInit == 0) { dtInit = awfl::compute_time_step(coupler,cfl); }
     return dtInit;
   }
 

@@ -39,7 +39,7 @@ public:
   }
 
 
-  real compute_time_step(pam::PamCoupler const &coupler, real cfl_in = -1) {
+  real compute_time_step(pam::PamCoupler const &coupler, real cfl_in = 0.75) {
     return space_op.compute_time_step(coupler, cfl_in);
   }
 
