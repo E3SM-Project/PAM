@@ -12,20 +12,16 @@ template <class Spatial> class Temporal_operator {
 public:
   static_assert(nTimeDerivs <= ngll , "ERROR: nTimeDerivs must be <= ngll.");
 
-  real5d stateTend;
-  real5d tracerTend;
+  bool dim_switch;
 
   Spatial space_op;
 
   real etime;
 
   void init(pam::PamCoupler &coupler) {
-
     space_op.init(coupler);
-
-    stateTend  = space_op.createStateTendArr ();
-    tracerTend = space_op.createTracerTendArr();
     etime   = 0;
+    dim_switch = true;
   }
 
 
@@ -55,7 +51,7 @@ public:
 
     int idR = Spatial::idR;
     int num_tracers = space_op.num_tracers;
-    YAKL_SCOPE( dz          , space_op.dz          );
+    auto dz = coupler.get_data_manager_readonly().get<real const,2>("vertical_cell_dz");
 
     std::vector<real> mass(num_tracers+1);
     real4d tmp("tmp",nz,ny,nx,nens);
@@ -75,12 +71,34 @@ public:
   }
 
 
+  void apply_tendencies(real5d const &state , realConst5d state_tend ,
+                        real5d const &tracers , realConst5d tracer_tend , real dt ) {
+    int num_state   = state_tend.extent(0);
+    int nz          = state_tend.extent(1);
+    int ny          = state_tend.extent(2);
+    int nx          = state_tend.extent(3);
+    int nens        = state_tend.extent(4);
+    int num_tracers = tracer_tend.extent(0);
+
+    parallel_for( "Temporal_ader.h apply tendencies" , SimpleBounds<4>(nz,ny,nx,nens) ,
+                  YAKL_LAMBDA (int k, int j, int i, int iens) {
+      for (int l=0; l < num_state; l++) {
+        state(l,hs+k,hs+j,hs+i,iens) += dt * state_tend(l,k,j,i,iens);
+      }
+      for (int l=0; l < num_tracers; l++) {
+        tracers(l,hs+k,hs+j,hs+i,iens) += dt * tracer_tend(l,k,j,i,iens);
+        tracers(l,hs+k,hs+j,hs+i,iens) = std::max( 0._fp , tracers(l,hs+k,hs+j,hs+i,iens) );
+      }
+    });
+  }
+
+
   void timeStep( pam::PamCoupler &coupler , real dtphys ) {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
 
-    YAKL_SCOPE( stateTend       , this->stateTend           );
-    YAKL_SCOPE( tracerTend      , this->tracerTend          );
+    auto state_tend  = space_op.createStateTendArr ();
+    auto tracer_tend = space_op.createTracerTendArr();
 
     real dt = compute_time_step( coupler );
 
@@ -118,37 +136,28 @@ public:
         std::vector<real> mass_init = compute_mass( coupler , state , tracers );
       #endif
 
-      ScalarLiveOut<bool> neg_too_large(false);
+      if (dim_switch) {
+        space_op.compute_tendencies_x( state , state_tend , tracers , tracer_tend , dt );
+        apply_tendencies             ( state , state_tend , tracers , tracer_tend , dt );
 
-      // Loop over different items in the spatial splitting
-      for (int spl = 0 ; spl < space_op.numSplit() ; spl++) {
-        real dtloc = dt;
+        space_op.compute_tendencies_y( state , state_tend , tracers , tracer_tend , dt );
+        apply_tendencies             ( state , state_tend , tracers , tracer_tend , dt );
 
-        // Compute the tendencies for state and tracers
-        space_op.computeTendencies( state , stateTend , tracers , tracerTend , dtloc , spl );
+        space_op.compute_tendencies_z( state , state_tend , tracers , tracer_tend , dt );
+        apply_tendencies             ( state , state_tend , tracers , tracer_tend , dt );
+      } else {
+        space_op.compute_tendencies_z( state , state_tend , tracers , tracer_tend , dt );
+        apply_tendencies             ( state , state_tend , tracers , tracer_tend , dt );
 
-        parallel_for( "Temporal_ader.h apply tendencies" , SimpleBounds<4>(nz,ny,nx,nens) ,
-                      YAKL_LAMBDA (int k, int j, int i, int iens) {
-          for (int l=0; l < num_state; l++) {
-            state(l,hs+k,hs+j,hs+i,iens) += dtloc * stateTend(l,k,j,i,iens);
-          }
-          for (int l=0; l < num_tracers; l++) {
-            tracers(l,hs+k,hs+j,hs+i,iens) += dtloc * tracerTend(l,k,j,i,iens);
-            #ifdef PAM_DEBUG
-              if (tracers(l,hs+k,hs+j,hs+i,iens) < -1.e-10) {
-                neg_too_large = true;
-              }
-            #endif
-            tracers(l,hs+k,hs+j,hs+i,iens) = max( 0._fp , tracers(l,hs+k,hs+j,hs+i,iens) );
-          }
-        });
+        space_op.compute_tendencies_y( state , state_tend , tracers , tracer_tend , dt );
+        apply_tendencies             ( state , state_tend , tracers , tracer_tend , dt );
+
+        space_op.compute_tendencies_x( state , state_tend , tracers , tracer_tend , dt );
+        apply_tendencies             ( state , state_tend , tracers , tracer_tend , dt );
       }
+      dim_switch = ! dim_switch;
 
       #ifdef PAM_DEBUG
-        if (neg_too_large.hostRead()) {
-          std::cerr << "WARNING: Correcting a non-machine-precision negative tracer value" << std::endl;
-          // endrun();
-        }
         std::vector<real> mass_final = compute_mass( coupler , state , tracers );
         for (int l=0; l < mass_final.size(); l++) {
           real mass_diff;
@@ -170,8 +179,6 @@ public:
         validate_array_inf_nan(state);
         validate_array_inf_nan(tracers);
       #endif
-
-      space_op.switch_directions();
 
       if (coupler.get_num_dycore_functions() > 0) {
         space_op.convert_dynamics_to_coupler_state( coupler , state , tracers );

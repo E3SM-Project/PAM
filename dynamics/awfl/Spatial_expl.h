@@ -302,40 +302,19 @@ public:
 
 
 
-  real5d createStateArr() const {
-    return real5d("stateArr",num_state,nz+2*hs,ny+2*hs,nx+2*hs,nens);
-  }
+  real5d createStateArr() const { return real5d("stateArr",num_state,nz+2*hs,ny+2*hs,nx+2*hs,nens); }
 
 
 
-  real5d createTracerArr() const {
-    return real5d("tracerArr",num_tracers,nz+2*hs,ny+2*hs,nx+2*hs,nens);
-  }
+  real5d createTracerArr() const { return real5d("tracerArr",num_tracers,nz+2*hs,ny+2*hs,nx+2*hs,nens); }
 
 
 
-  real5d createStateTendArr() const {
-    return real5d("stateTendArr",num_state,nz,ny,nx,nens);
-  }
+  real5d createStateTendArr() const { return real5d("stateTendArr",num_state,nz,ny,nx,nens); }
 
 
 
-  real5d createTracerTendArr() const {
-    return real5d("tracerTendArr",num_tracers,nz,ny,nx,nens);
-  }
-
-
-
-  // Number of operator splittinng steps to use
-  // Normally this would be 3, but the z-directly CFL is reduced because of how the fluxes are
-  // handled in the presence of a solid wall boundary condition. I'm looking into how to fix this
-  int numSplit() const {
-    if (sim2d) {
-      return 2;
-    } else {
-      return 3;
-    }
-  }
+  real5d createTracerTendArr() const { return real5d("tracerTendArr",num_tracers,nz,ny,nx,nens); }
 
 
 
@@ -400,7 +379,6 @@ public:
 
     // Inialize time step to zero, and dimensional splitting switch
     dtInit = 0;
-    dimSwitch = true;
 
     // If inFile is empty, then we aren't reading in an input file
     if (coupler.option_exists("standalone_input_file")) {
@@ -772,53 +750,6 @@ public:
 
 
 
-  // Compute state and tendency time derivatives from the state
-  void computeTendencies( real5d const &state   , real5d const &stateTend  ,
-                          real5d const &tracers , real5d const &tracerTend ,
-                          real &dt , int splitIndex ) const {
-    if (sim2d) {
-      if (dimSwitch) {
-        if        (splitIndex == 0) {
-          computeTendenciesX( state , stateTend , tracers , tracerTend , dt );
-        } else if (splitIndex == 1) {
-          computeTendenciesZ( state , stateTend , tracers , tracerTend , dt );
-        }
-      } else {
-        if        (splitIndex == 0) {
-          computeTendenciesZ( state , stateTend , tracers , tracerTend , dt );
-        } else if (splitIndex == 1) {
-          computeTendenciesX( state , stateTend , tracers , tracerTend , dt );
-        }
-      }
-    } else {
-      if (dimSwitch) {
-        if        (splitIndex == 0) {
-          computeTendenciesX( state , stateTend , tracers , tracerTend , dt );
-        } else if (splitIndex == 1) {
-          computeTendenciesY( state , stateTend , tracers , tracerTend , dt );
-        } else if (splitIndex == 2) {
-          computeTendenciesZ( state , stateTend , tracers , tracerTend , dt );
-        }
-      } else {
-        if        (splitIndex == 0) {
-          computeTendenciesZ( state , stateTend , tracers , tracerTend , dt );
-        } else if (splitIndex == 1) {
-          computeTendenciesY( state , stateTend , tracers , tracerTend , dt );
-        } else if (splitIndex == 2) {
-          computeTendenciesX( state , stateTend , tracers , tracerTend , dt );
-        }
-      }
-    }
-  } // computeTendencies
-
-
-
-  void switch_directions() {
-    dimSwitch = ! dimSwitch;
-  }
-
-
-
   YAKL_INLINE static int wrapx(int i, int ii, int nx) {
     int ret = i+ii;
     if (ret < hs+0   ) ret += nx;
@@ -828,9 +759,9 @@ public:
 
 
 
-  void computeTendenciesX( real5d const &state   , real5d const &stateTend  ,
-                           real5d const &tracers , real5d const &tracerTend ,
-                           real &dt ) const {
+  void compute_tendencies_x( real5d const &state   , real5d const &stateTend  ,
+                             real5d const &tracers , real5d const &tracerTend ,
+                             real &dt ) const {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
 
@@ -1129,9 +1060,9 @@ public:
 
 
 
-  void computeTendenciesY( real5d const &state   , real5d const &stateTend  ,
-                           real5d const &tracers , real5d const &tracerTend ,
-                           real &dt ) const {
+  void compute_tendencies_y( real5d const &state   , real5d const &stateTend  ,
+                             real5d const &tracers , real5d const &tracerTend ,
+                             real &dt ) const {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
 
@@ -1424,9 +1355,9 @@ public:
 
 
 
-  void computeTendenciesZ( real5d const &state   , real5d const &stateTend  ,
-                           real5d const &tracers , real5d const &tracerTend ,
-                           real &dt ) const {
+  void compute_tendencies_z( real5d const &state   , real5d const &stateTend  ,
+                             real5d const &tracers , real5d const &tracerTend ,
+                             real &dt ) const {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
 
