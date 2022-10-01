@@ -25,11 +25,6 @@ public:
   }
 
 
-  int add_tracer(std::string name , std::string desc , bool pos_def , bool adds_mass) {
-    return space_op.add_tracer(name , desc , pos_def , adds_mass);
-  }
-
-
   void init_idealized_state_and_tracers( pam::PamCoupler &coupler ) {
     space_op.init_idealized_state_and_tracers( coupler );
   }
@@ -71,7 +66,7 @@ public:
   }
 
 
-  void apply_tendencies(real5d const &state , realConst5d state_tend ,
+  void apply_tendencies(real5d const &state   , realConst5d state_tend  ,
                         real5d const &tracers , realConst5d tracer_tend , real dt ) {
     int num_state   = state_tend.extent(0);
     int nz          = state_tend.extent(1);
@@ -97,17 +92,16 @@ public:
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
 
+    real dt = compute_time_step( coupler );
+
+    auto state       = space_op.createStateArr     ();
+    auto tracers     = space_op.createTracerArr    ();
     auto state_tend  = space_op.createStateTendArr ();
     auto tracer_tend = space_op.createTracerTendArr();
 
-    real dt = compute_time_step( coupler );
-
-    real5d state   = space_op.createStateArr();
-    real5d tracers = space_op.createTracerArr();
-
     #ifdef PAM_DEBUG
-      memset(state   , 0._fp);
-      memset(tracers , 0._fp);
+      state   = 0._fp;
+      tracers = 0._fp;
     #endif
 
     space_op.convert_coupler_state_to_dynamics( coupler , state , tracers );
@@ -117,10 +111,10 @@ public:
     int idV         = space_op.idV;
     int idW         = space_op.idW;
     int idT         = space_op.idT;
-    int nx          = space_op.nx;
-    int ny          = space_op.ny;
-    int nz          = space_op.nz;
-    int nens        = space_op.nens;
+    int nx          = coupler.get_nx();
+    int ny          = coupler.get_ny();
+    int nz          = coupler.get_nz();
+    int nens        = coupler.get_nens();
     int num_state   = space_op.num_state;
     int num_tracers = space_op.num_tracers;
 
@@ -137,22 +131,22 @@ public:
       #endif
 
       if (dim_switch) {
-        space_op.compute_tendencies_x( state , state_tend , tracers , tracer_tend , dt );
+        space_op.compute_tendencies_x( coupler , state , state_tend , tracers , tracer_tend , dt );
         apply_tendencies             ( state , state_tend , tracers , tracer_tend , dt );
 
         space_op.compute_tendencies_y( state , state_tend , tracers , tracer_tend , dt );
         apply_tendencies             ( state , state_tend , tracers , tracer_tend , dt );
 
-        space_op.compute_tendencies_z( state , state_tend , tracers , tracer_tend , dt );
+        space_op.compute_tendencies_z( coupler , state , state_tend , tracers , tracer_tend , dt );
         apply_tendencies             ( state , state_tend , tracers , tracer_tend , dt );
       } else {
-        space_op.compute_tendencies_z( state , state_tend , tracers , tracer_tend , dt );
+        space_op.compute_tendencies_z( coupler , state , state_tend , tracers , tracer_tend , dt );
         apply_tendencies             ( state , state_tend , tracers , tracer_tend , dt );
 
         space_op.compute_tendencies_y( state , state_tend , tracers , tracer_tend , dt );
         apply_tendencies             ( state , state_tend , tracers , tracer_tend , dt );
 
-        space_op.compute_tendencies_x( state , state_tend , tracers , tracer_tend , dt );
+        space_op.compute_tendencies_x( coupler , state , state_tend , tracers , tracer_tend , dt );
         apply_tendencies             ( state , state_tend , tracers , tracer_tend , dt );
       }
       dim_switch = ! dim_switch;
