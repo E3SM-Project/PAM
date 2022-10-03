@@ -246,7 +246,11 @@ void YAKL_INLINE compute_twisted_recon(const real5d &reconvar,
   SArray<real, 1, ndims> uvar;
   SArray<real, 3, ndofs, ndims, 2> edgerecon;
 
+#ifdef _EXTRUDED
   compute_Hext<1, diff_ord>(uvar, V, pgeom, dgeom, is, js, ks, i, j, k, n);
+#else
+  compute_H<1, diff_ord>(uvar, V, pgeom, dgeom, is, js, ks, i, j, k, n);
+#endif
 
   for (int d = 0; d < ndims; d++) {
     for (int l = 0; l < ndofs; l++) {
@@ -370,6 +374,7 @@ void YAKL_INLINE compute_straight_recon(const real5d &reconvar,
   }
 }
 
+#ifdef _EXTRUDED
 template <uint ndofs, RECONSTRUCTION_TYPE recontype>
 void YAKL_INLINE compute_straight_xz_recon(const real5d &reconvar,
                                            const real5d &edgereconvar,
@@ -466,3 +471,4 @@ void YAKL_INLINE compute_straight_xz_vert_recon(
     reconvar(l, k + ks, j + js, i + is, n) = recon(l, 0);
   }
 }
+#endif

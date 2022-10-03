@@ -323,7 +323,7 @@ public:
                       real5d Coriolisreconvar, const real5d densedgereconvar,
                       const real5d Qedgereconvar, const real5d fedgereconvar,
                       const real5d HEvar, const real5d FTvar,
-                      const real5d Uvar) {
+                      const real5d Vvar) {
     const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
 
@@ -351,9 +351,10 @@ public:
         "Compute twisted recons",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
+        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
           compute_twisted_recon<ndensity, dual_reconstruction_type>(
-              densreconvar, densedgereconvar, Uvar, dis, djs, dks, i, j, k, n);
+              densreconvar, densedgereconvar, this->primal_geometry,
+              this->dual_geometry, Vvar, dis, djs, dks, i, j, k, n);
           // scale primal recons
           for (int d = 0; d < ndims; d++) {
             for (int l = 0; l < ndensity; l++) {
@@ -500,7 +501,7 @@ public:
                    auxiliary_vars.fields_arr[CORIOLISEDGERECONVAR].data,
                    auxiliary_vars.fields_arr[HEVAR].data,
                    auxiliary_vars.fields_arr[FTVAR].data,
-                   auxiliary_vars.fields_arr[UVAR].data);
+                   x.fields_arr[VVAR].data);
 
     auxiliary_vars.exchange({DENSRECONVAR, QRECONVAR, CORIOLISRECONVAR});
 
