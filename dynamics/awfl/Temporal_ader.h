@@ -134,7 +134,7 @@ public:
         space_op.compute_tendencies_x( coupler , state , state_tend , tracers , tracer_tend , dt );
         apply_tendencies             ( state , state_tend , tracers , tracer_tend , dt );
 
-        space_op.compute_tendencies_y( state , state_tend , tracers , tracer_tend , dt );
+        space_op.compute_tendencies_y( coupler , state , state_tend , tracers , tracer_tend , dt );
         apply_tendencies             ( state , state_tend , tracers , tracer_tend , dt );
 
         space_op.compute_tendencies_z( coupler , state , state_tend , tracers , tracer_tend , dt );
@@ -143,7 +143,7 @@ public:
         space_op.compute_tendencies_z( coupler , state , state_tend , tracers , tracer_tend , dt );
         apply_tendencies             ( state , state_tend , tracers , tracer_tend , dt );
 
-        space_op.compute_tendencies_y( state , state_tend , tracers , tracer_tend , dt );
+        space_op.compute_tendencies_y( coupler , state , state_tend , tracers , tracer_tend , dt );
         apply_tendencies             ( state , state_tend , tracers , tracer_tend , dt );
 
         space_op.compute_tendencies_x( coupler , state , state_tend , tracers , tracer_tend , dt );

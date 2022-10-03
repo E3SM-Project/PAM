@@ -62,13 +62,12 @@ int main(int argc, char** argv) {
     Dycore       dycore;
     Microphysics micro;
     SGS          sgs;
-    
-    //set xlen, ylen, zlen based on init cond if needed
-    if (xlen < 0 or ylen < 0 or zlen < 0) { set_domain_sizes(config["initData"].as<std::string>(), crm_ny, crm_nz, xlen, ylen, zlen); }
-    
-    //This requires zlen, so it must happen after domain sizes are set
+
     //We are using a uniform vertical grid with crm_nz levels; in this case zlen must be set
     if (vcoords_file.empty()) {
+      //set xlen, ylen, zlen based on init cond if needed
+      if (xlen < 0 or ylen < 0 or zlen < 0) { set_domain_sizes(config["initData"].as<std::string>(), crm_ny, crm_nz, xlen, ylen, zlen); }
+      //This requires zlen, so it must happen after domain sizes are set
       zint_in = real1d("zint_in",crm_nz+1);
       real dz = zlen/crm_nz;
       parallel_for("set vertical levels", crm_nz+1, YAKL_LAMBDA(int i) {
@@ -85,7 +84,7 @@ int main(int argc, char** argv) {
 
     // Allocate coupler state
     coupler.allocate_coupler_state( crm_nz , crm_ny , crm_nx , nens );
-    
+
     // Set the horizontal domain lengths and the vertical grid in the coupler
     coupler.set_grid( xlen , ylen , zint_in );
 
