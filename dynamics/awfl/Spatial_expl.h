@@ -14,6 +14,7 @@
 #include "diff_trans_tracer.h"
 #include "diff_trans_rho_theta_full.h"
 #include "compute_time_average.h"
+#include "fct_positivity.h"
 
 
 template <int nTimeDerivs, bool timeAvg, int nAder>
@@ -923,7 +924,7 @@ public:
     //////////////////////////////////////////////////////////
     // Compute the upwind fluxes
     //////////////////////////////////////////////////////////
-    awfl::riemann_rho_theta_full_x(coupler, state_limits , state_flux , tracer_limits , tracer_flux );
+    awfl::riemann_rho_theta_full_x( coupler , state_limits , state_flux , tracer_limits , tracer_flux );
 
     state_limits  = real6d();
     tracer_limits = real6d();
@@ -931,40 +932,7 @@ public:
     //////////////////////////////////////////////////////////
     // Limit the tracer fluxes for positivity
     //////////////////////////////////////////////////////////
-    real5d fct_mult("fct_mult",num_tracers,nz,ny,nx+1,nens);
-    parallel_for( "Spatial.h X FCT" , SimpleBounds<5>(num_tracers,nz,ny,nx+1,nens) ,
-                  YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
-      fct_mult(tr,k,j,i,iens) = 1.;
-      // Solid wall BCs mean u == 0 at boundaries, so we assume periodic if u != 0
-      if (tracer_pos(tr)) {
-        // Compute and apply the flux reduction factor of the upwind cell
-        if      (tracer_flux(tr,k,j,i,iens) > 0) {
-          // if u > 0, then it pulls mass out of the left cell
-          int ind_i = i-1;
-          // TODO: Relax the periodic assumption here
-          if (ind_i == -1) ind_i = nx-1;
-          real f1 = min( tracer_flux(tr,k,j,ind_i  ,iens) , 0._fp );
-          real f2 = max( tracer_flux(tr,k,j,ind_i+1,iens) , 0._fp );
-          real fluxOut = dt*(f2-f1)/dx;
-          real mass = tracers(tr,hs+k,hs+j,hs+ind_i,iens);
-          if (fluxOut > 0) {
-            fct_mult(tr,k,j,i,iens) = min( 1._fp , mass / fluxOut );
-          }
-        } else if (tracer_flux(tr,k,j,i,iens) < 0) {
-          // upwind is to the right of this interface
-          int ind_i = i;
-          // TODO: Relax the periodic assumption here
-          if (ind_i == nx) ind_i = 0;
-          real f1 = min( tracer_flux(tr,k,j,ind_i  ,iens) , 0._fp );
-          real f2 = max( tracer_flux(tr,k,j,ind_i+1,iens) , 0._fp );
-          real fluxOut = dt*(f2-f1)/dx;
-          real mass = tracers(tr,hs+k,hs+j,hs+ind_i,iens);
-          if (fluxOut > 0) {
-            fct_mult(tr,k,j,i,iens) = min( 1._fp , mass / fluxOut );
-          }
-        }
-      }
-    });
+    awfl::fct_positivity_x( coupler , tracers , tracer_flux , tracer_pos , dt );
 
     //////////////////////////////////////////////////////////
     // Compute the tendencies
@@ -980,8 +948,7 @@ public:
       }
       for (int l = 0; l < num_tracers; l++) {
         // Compute tracer tendency
-        tracer_tend(l,k,j,i,iens) = - ( tracer_flux(l,k,j,i+1,iens)*fct_mult(l,k,j,i+1,iens) -
-                                        tracer_flux(l,k,j,i  ,iens)*fct_mult(l,k,j,i  ,iens) ) / dx;
+        tracer_tend(l,k,j,i,iens) = - ( tracer_flux(l,k,j,i+1,iens) - tracer_flux(l,k,j,i,iens) ) / dx;
       }
     });
   }
@@ -1177,38 +1144,7 @@ public:
     //////////////////////////////////////////////////////////
     // Limit the tracer fluxes for positivity
     //////////////////////////////////////////////////////////
-    real5d fct_mult("fct_mult",num_tracers,nz,ny+1,nx,nens);
-    parallel_for( "Spatial.h Y FCT" , SimpleBounds<5>(num_tracers,nz,ny+1,nx,nens) ,
-                  YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
-      fct_mult(tr,k,j,i,iens) = 1.;
-      // Solid wall BCs mean u == 0 at boundaries, so we assume periodic if u != 0
-      if (tracer_pos(tr)) {
-        // Compute and apply the flux reduction factor of the upwind cell
-        if      (tracer_flux(tr,k,j,i,iens) > 0) {
-          // upwind is to the left of this interface
-          int ind_j = j-1;
-          if (ind_j == -1) ind_j = ny-1;
-          real f1 = min( tracer_flux(tr,k,ind_j  ,i,iens) , 0._fp );
-          real f2 = max( tracer_flux(tr,k,ind_j+1,i,iens) , 0._fp );
-          real fluxOut = dt*(f2-f1)/dy;
-          real mass = tracers(tr,hs+k,hs+ind_j,hs+i,iens);
-          if (fluxOut > 0) {
-            fct_mult(tr,k,j,i,iens) = min( 1._fp , mass / fluxOut );
-          }
-        } else if (tracer_flux(tr,k,j,i,iens) < 0) {
-          // upwind is to the right of this interface
-          int ind_j = j;
-          if (ind_j == ny) ind_j = 0;
-          real f1 = min( tracer_flux(tr,k,ind_j  ,i,iens) , 0._fp );
-          real f2 = max( tracer_flux(tr,k,ind_j+1,i,iens) , 0._fp );
-          real fluxOut = dt*(f2-f1)/dy;
-          real mass = tracers(tr,hs+k,hs+ind_j,hs+i,iens);
-          if (fluxOut > 0) {
-            fct_mult(tr,k,j,i,iens) = min( 1._fp , mass / fluxOut );
-          }
-        }
-      }
-    });
+    awfl::fct_positivity_y( coupler, tracers, tracer_flux , tracer_pos, dt);
 
     //////////////////////////////////////////////////////////
     // Compute the tendencies
@@ -1220,8 +1156,7 @@ public:
       }
       for (int l=0; l < num_tracers; l++) {
         // Compute the tracer tendency
-        tracer_tend(l,k,j,i,iens) = - ( tracer_flux(l,k,j+1,i,iens)*fct_mult(l,k,j+1,i,iens) -
-                                        tracer_flux(l,k,j  ,i,iens)*fct_mult(l,k,j  ,i,iens) ) / dy;
+        tracer_tend(l,k,j,i,iens) = - ( tracer_flux(l,k,j+1,i,iens) - tracer_flux(l,k,j,i,iens) ) / dy;
       }
     });
   }
@@ -1483,39 +1418,7 @@ public:
     //////////////////////////////////////////////////////////
     // Limit the tracer fluxes for positivity
     //////////////////////////////////////////////////////////
-    real5d fct_mult("fct_mult",num_tracers,nz+1,ny,nx,nens);
-    parallel_for( "Spatial.h Z FCT" , SimpleBounds<5>(num_tracers,nz+1,ny,nx,nens) ,
-                  YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
-      fct_mult(tr,k,j,i,iens) = 1.;
-      if (k == 0 || k == nz) tracer_flux(tr,k,j,i,iens) = 0;
-      // Solid wall BCs mean w == 0 at boundaries
-      if (tracer_pos(tr)) {
-        // Compute and apply the flux reduction factor of the upwind cell
-        if      (tracer_flux(tr,k,j,i,iens) > 0) {
-          int ind_k = k-1;
-          // upwind is to the left of this interface
-          real f1 = min( tracer_flux(tr,ind_k  ,j,i,iens) , 0._fp );
-          real f2 = max( tracer_flux(tr,ind_k+1,j,i,iens) , 0._fp );
-          real fluxOut = dt*(f2-f1)/dz(ind_k,iens);
-          real dens = state(idR,hs+ind_k,hs+j,hs+i,iens);
-          real mass = tracers(tr,hs+ind_k,hs+j,hs+i,iens) * dens;
-          if (fluxOut > 0) {
-            fct_mult(tr,k,j,i,iens) = min( 1._fp , mass / fluxOut );
-          }
-        } else if (tracer_flux(tr,k,j,i,iens) < 0) {
-          int ind_k = k;
-          // upwind is to the right of this interface
-          real f1 = min( tracer_flux(tr,ind_k  ,j,i,iens) , 0._fp );
-          real f2 = max( tracer_flux(tr,ind_k+1,j,i,iens) , 0._fp );
-          real fluxOut = dt*(f2-f1)/dz(ind_k,iens);
-          real dens = state(idR,hs+ind_k,hs+j,hs+i,iens);
-          real mass = tracers(tr,hs+ind_k,hs+j,hs+i,iens) * dens;
-          if (fluxOut > 0) {
-            fct_mult(tr,k,j,i,iens) = min( 1._fp , mass / fluxOut );
-          }
-        }
-      }
-    });
+    awfl::fct_positivity_z( coupler , state , tracers , tracer_flux , tracer_pos , dt );
 
     //////////////////////////////////////////////////////////
     // Compute the tendencies
@@ -1531,8 +1434,7 @@ public:
       }
       for (int l=0; l < num_tracers; l++) {
         // Compute tracer tendency
-        tracer_tend(l,k,j,i,iens) = - ( tracer_flux(l,k+1,j,i,iens)*fct_mult(l,k+1,j,i,iens) -
-                                        tracer_flux(l,k  ,j,i,iens)*fct_mult(l,k  ,j,i,iens) ) / dz(k,iens);
+        tracer_tend(l,k,j,i,iens) = - ( tracer_flux(l,k+1,j,i,iens) - tracer_flux(l,k,j,i,iens) ) / dz(k,iens);
         // Multiply density back onto the tracers
         tracers(l,hs+k,hs+j,hs+i,iens) *= state(idR,hs+k,hs+j,hs+i,iens);
       }

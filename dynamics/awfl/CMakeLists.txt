@@ -1,5 +1,6 @@
 
 add_library(dycore compute_time_step.cpp 
+                   fct_positivity.cpp
                    riemann/riemann_rho_theta_full.cpp)
 target_include_directories(dycore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(dycore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/riemann)
