@@ -25,38 +25,51 @@ public:
 
   int static constexpr num_state = 5;
   int static constexpr max_tracers = 50;
+  // For indexing into the state and state tendency arrays
+  int static constexpr idR = 0;  // density perturbation
+  int static constexpr idU = 1;  // u
+  int static constexpr idV = 2;  // v
+  int static constexpr idW = 3;  // w
+  int static constexpr idT = 4;  // potential temperature perturbation
+  // The two boundary condition options for each direction
+  int static constexpr BC_PERIODIC = 0;
+  int static constexpr BC_WALL     = 1;
+  // Options for initializing the data
+  int static constexpr DATA_SPEC_EXTERNAL      = 0;
+  int static constexpr DATA_SPEC_THERMAL       = 1;
+  int static constexpr DATA_SPEC_SUPERCELL     = 2;
 
-  int idWV;  // Tracer index for water vapor (set in add_tracer by testing the tracer name against "water_vapor"
-
-  real hydrostasis_parameters_sum;
-
-  // Hydrostatically balanced values for density, potential temperature, and pressure (cell-averages)
-  real3d hyDensSten;
-  real3d hyDensThetaSten;
-
-  // Hydrostatically balanced values for density, potential temperature, and pressure (GLL points)
-  real3d hyDensGLL;
-  real3d hyPressureGLL;
-  real3d hyDensThetaGLL;
-
-  // Matrices to transform DOFs from one form to another
-  SArray<real,2,ord,ngll> coefs_to_gll;
-  SArray<real,2,ord,ngll> coefs_to_deriv_gll;
-  SArray<real,2,ord,ngll> sten_to_gll;
-  SArray<real,2,ord,ord > sten_to_coefs;
-  SArray<real,2,ord,ngll> sten_to_deriv_gll;
-  // WENO reconstruction matrices
-  SArray<real,3,hs+1,hs+1,hs+1> weno_recon_lower;
-  SArray<real,1,hs+2> idl;   // Ideal weights for WENO
-  real sigma;                // WENO sigma parameter (handicap high-order TV estimate)
-  // For ADER spatial derivative computation (ngll points -> coefs -> deriv -> ngll points)
-  SArray<real,2,ngll,ngll> derivMatrix;
-  // For quadrature
-  SArray<real,1,ord> gllWts_ord;
-  SArray<real,1,ord> gllPts_ord;
-  SArray<real,1,ngll> gllWts_ngll;
-  SArray<real,1,ngll> gllPts_ngll;
-
+  
+  bool   weno_scalars;                       // Use WENO limiting for scalars?
+  bool   weno_winds;                         // Use WENO limiting for winds?
+  int    data_spec;                          // How to initialize the data
+  real dtInit;                               // Initial time step (used throughout the simulation)
+  std::vector<std::string> tracer_name;      // Name of each tracer
+  std::vector<std::string> tracer_desc;      // Description of each tracer
+  bool1d                   tracer_pos;       // Whether each tracer is positive-definite
+  bool1d                   tracer_adds_mass; // Whether each tracer adds mass (otherwise it's passive)
+  int idWV;                                  // Tracer index for water vapor
+  // Hydrostatic background data
+  real hydrostasis_parameters_sum;  // Sum of the current parameters (to see if it's changed)
+  real3d hyDensSten;                // A stencil around each cell of hydrostatic density
+  real3d hyDensThetaSten;           // A stencil around each cell of hydrostatic density * potential temperature
+  real3d hyDensGLL;                 // GLL point values of hydrostatic background density in each cell
+  real3d hyPressureGLL;             // GLL point values of hydrostatic background pressure in each cell
+  real3d hyDensThetaGLL;            // GLL point values of hydrostatic background density*potential temperature
+  // Transformation matrices for various degrees of freedom
+  SArray<real,2,ord,ngll>       coefs_to_gll;
+  SArray<real,2,ord,ngll>       coefs_to_deriv_gll;
+  SArray<real,2,ord,ngll>       sten_to_gll;
+  SArray<real,2,ord,ord >       sten_to_coefs;
+  SArray<real,3,hs+1,hs+1,hs+1> weno_recon_lower;   // WENO reconstruction matrices
+  SArray<real,1,hs+2>           idl;                // Ideal weights for WENO
+  real                          sigma;              // WENO sigma parameter (handicap high-order TV estimate)
+  SArray<real,2,ngll,ngll>      derivMatrix;        // Transform matrix: ngll GLL pts -> ngll GLL derivs
+  SArray<real,1,ord >           gllWts_ord;
+  SArray<real,1,ord >           gllPts_ord;
+  SArray<real,1,ngll>           gllWts_ngll;
+  SArray<real,1,ngll>           gllPts_ngll;
+  // Vertical grid and reconstruction matrix information
   real2d vert_interface;
   real2d vert_interface_ghost;
   real3d vert_locs_normalized;
@@ -65,45 +78,6 @@ public:
   real4d vert_sten_to_gll;
   real4d vert_sten_to_coefs;
   real5d vert_weno_recon_lower;
-
-  // For indexing into the state and state tendency arrays
-  int static constexpr idR = 0;  // density perturbation
-  int static constexpr idU = 1;  // u
-  int static constexpr idV = 2;  // v
-  int static constexpr idW = 3;  // w
-  int static constexpr idT = 4;  // potential temperature perturbation
-
-  // The two boundary condition options for each direction
-  int static constexpr BC_PERIODIC = 0;
-  int static constexpr BC_WALL     = 1;
-
-  // Options for initializing the data
-  int static constexpr DATA_SPEC_EXTERNAL      = 0;
-  int static constexpr DATA_SPEC_THERMAL       = 1;
-  int static constexpr DATA_SPEC_SUPERCELL     = 2;
-
-  // Initial time step (used throughout the simulation)
-  real dtInit;
-
-  // Which direction we're passing through for a given time step (x,y,z)  or (z,y,x)
-  // For Strang splitting
-  bool dimSwitch;
-
-  std::vector<std::string> tracer_name;      // Name of each tracer
-  std::vector<std::string> tracer_desc;      // Description of each tracer
-  bool1d                   tracer_pos;       // Whether each tracer is positive-definite
-  bool1d                   tracer_adds_mass; // Whether each tracer adds mass (otherwise it's passive)
-
-  //////////////////////////////////////
-  // Values read from input file
-  //////////////////////////////////////
-  real1d      zbot;
-  real1d      ztop;
-  // Whether to use WENO for scalars and also for winds
-  bool        weno_scalars;
-  bool        weno_winds;
-  // How to initialize the data
-  int         data_spec;
 
 
   // When this class is created, initialize num_tracers to zero
@@ -429,16 +403,6 @@ public:
 
     auto nz = coupler.get_nz();
 
-    // Get the height of the z-dimension
-    zbot = real1d("zbot",nens);
-    ztop = real1d("ztop",nens);
-    YAKL_SCOPE( zbot , this->zbot );
-    YAKL_SCOPE( ztop , this->ztop );
-    parallel_for( "Spatial.h init 1" , nens , YAKL_LAMBDA (int iens) {
-      zbot(iens) = zint(0 ,iens);
-      ztop(iens) = zint(nz,iens);
-    });
-
     vert_interface        = real2d("vert_interface"      ,nz+1          ,nens);
     vert_interface_ghost  = real2d("vert_interface_ghost",nz+2*hs+1     ,nens);
     vert_locs_normalized  = real3d("vert_locs_normalized",nz,ord+1      ,nens);
@@ -568,7 +532,6 @@ public:
       this->coefs_to_deriv_gll = matmul_cr( c2g_lower , c2d );
       this->sten_to_coefs      = s2c;
       this->sten_to_gll        = matmul_cr( c2g_lower , s2c );
-      this->sten_to_deriv_gll  = matmul_cr( c2g_lower , matmul_cr( c2d , s2c ) );
     }
     // Store ader derivMatrix
     {
