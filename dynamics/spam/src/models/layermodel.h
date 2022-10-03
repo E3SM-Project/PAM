@@ -48,7 +48,8 @@ public:
     Diagnostic::initialize(pgeom, dgeom);
   }
 
-  void compute(real time, const FieldSet<nconstant> &const_vars,
+  void compute(real time, const ReferenceState &reference_state,
+               const FieldSet<nconstant> &const_vars,
                const FieldSet<nprognostic> &x) override {
 
     const auto &primal_topology = primal_geometry.topology;
@@ -78,7 +79,8 @@ public:
     Diagnostic::initialize(pgeom, dgeom);
   }
 
-  void compute(real time, const FieldSet<nconstant> &const_vars,
+  void compute(real time, const ReferenceState &reference_state,
+               const FieldSet<nconstant> &const_vars,
                const FieldSet<nprognostic> &x) override {
 
     const auto &dual_topology = dual_geometry.topology;

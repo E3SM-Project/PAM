@@ -83,7 +83,8 @@ public:
     Diagnostic::initialize(pgeom, dgeom);
   }
 
-  void compute(real time, const FieldSet<nconstant> &const_vars,
+  void compute(real time, const ReferenceState &reference_state,
+               const FieldSet<nconstant> &const_vars,
                const FieldSet<nprognostic> &x) override {
 
     const auto &primal_topology = primal_geometry.topology;
@@ -114,7 +115,8 @@ public:
     Diagnostic::initialize(pgeom, dgeom);
   }
 
-  void compute(real time, const FieldSet<nconstant> &const_vars,
+  void compute(real time, const ReferenceState &reference_state,
+               const FieldSet<nconstant> &const_vars,
                const FieldSet<nprognostic> &x) override {
 
     const auto &dual_topology = dual_geometry.topology;
@@ -2872,7 +2874,8 @@ template <bool add_perturbation> struct GravityWave {
       Diagnostic::initialize(pgeom, dgeom);
     }
 
-    void compute(real time, const FieldSet<nconstant> &const_vars,
+    void compute(real time, const ReferenceState &reference_state,
+                 const FieldSet<nconstant> &const_vars,
                  const FieldSet<nprognostic> &x) override {
 
       YAKL_SCOPE(thermo, ::thermo);
@@ -2899,7 +2902,8 @@ template <bool add_perturbation> struct GravityWave {
       Diagnostic::initialize(pgeom, dgeom);
     }
 
-    void compute(real time, const FieldSet<nconstant> &const_vars,
+    void compute(real time, const ReferenceState &reference_state,
+                 const FieldSet<nconstant> &const_vars,
                  const FieldSet<nprognostic> &x) override {
 
       YAKL_SCOPE(thermo, ::thermo);
@@ -2918,7 +2922,8 @@ template <bool add_perturbation> struct GravityWave {
       Diagnostic::initialize(pgeom, dgeom);
     }
 
-    void compute(real time, const FieldSet<nconstant> &const_vars,
+    void compute(real time, const ReferenceState &reference_state,
+                 const FieldSet<nconstant> &const_vars,
                  const FieldSet<nprognostic> &x) override {
 
       YAKL_SCOPE(thermo, ::thermo);
@@ -2938,7 +2943,8 @@ template <bool add_perturbation> struct GravityWave {
       Diagnostic::initialize(pgeom, dgeom);
     }
 
-    void compute(real time, const FieldSet<nconstant> &const_vars,
+    void compute(real time, const ReferenceState &reference_state,
+                 const FieldSet<nconstant> &const_vars,
                  const FieldSet<nprognostic> &x) override {
 
       YAKL_SCOPE(thermo, ::thermo);
@@ -2955,6 +2961,7 @@ template <bool add_perturbation> struct GravityWave {
   };
 
   struct TemperatureDiagnostic : public Diagnostic {
+    static constexpr bool linear_T = true;
     void initialize(const Geometry<Straight> &pgeom,
                     const Geometry<Twisted> &dgeom) override {
       name = "T";
@@ -2963,7 +2970,8 @@ template <bool add_perturbation> struct GravityWave {
       Diagnostic::initialize(pgeom, dgeom);
     }
 
-    void compute(real time, const FieldSet<nconstant> &const_vars,
+    void compute(real time, const ReferenceState &reference_state,
+                 const FieldSet<nconstant> &const_vars,
                  const FieldSet<nprognostic> &x) override {
 
       const auto &primal_topology = primal_geometry.topology;
@@ -2973,6 +2981,9 @@ template <bool add_perturbation> struct GravityWave {
       int pks = primal_topology.ks;
 
       const auto &densvar = x.fields_arr[DENSVAR].data;
+      const auto &refstate =
+          static_cast<const ModelReferenceState &>(reference_state);
+      const auto &refdens = refstate.dens.data;
 
       YAKL_SCOPE(thermo, ::thermo);
       YAKL_SCOPE(varset, ::varset);
@@ -2984,7 +2995,28 @@ template <bool add_perturbation> struct GravityWave {
             real alpha = varset.get_alpha(densvar, k, j, i, pks, pjs, pis, n);
             real entropic_var =
                 varset.get_entropic_var(densvar, k, j, i, pks, pjs, pis, n);
-            real T = thermo.compute_T(alpha, entropic_var, 1, 0, 0, 0);
+
+            real T;
+            if (!linear_T) {
+              T = thermo.compute_T(alpha, entropic_var, 1, 0, 0, 0);
+            } else {
+              real Rd = thermo.cst.Rd;
+              real refalpha = varset.get_alpha(refdens, k, pks, n);
+              real refentropic_var =
+                  varset.get_entropic_var(refdens, k, pks, n);
+
+              real rho = 1 / alpha;
+              real refrho = 1 / refalpha;
+
+              real p = thermo.solve_p(rho, entropic_var, 1, 0, 0, 0);
+              real refp = thermo.solve_p(refrho, refentropic_var, 1, 0, 0, 0);
+
+              real drho = rho - refrho;
+              real dp = p - refp;
+
+              T = T_ref + dp / (refrho * Rd) -
+                  refp / (refrho * refrho * Rd) * drho;
+            }
 
             field.data(0, k + pks, j + pjs, i + pis, n) = T;
           });

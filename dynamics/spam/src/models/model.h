@@ -6,6 +6,13 @@
 #include "topology.h"
 #include "weno_func_recon.h" // needed to set TransformMatrices related stuff
 
+class ReferenceState {
+public:
+  bool is_initialized = false;
+  virtual void initialize(const Topology &primal_topology,
+                          const Topology &dual_topology) = 0;
+};
+
 class Diagnostic {
 public:
   std::string name;
@@ -19,7 +26,8 @@ public:
 
   Diagnostic() { this->is_initialized = false; }
 
-  virtual void compute(real time, const FieldSet<nconstant> &const_vars,
+  virtual void compute(real time, const ReferenceState &refstate,
+                       const FieldSet<nconstant> &const_vars,
                        const FieldSet<nprognostic> &x) = 0;
 
   virtual void initialize(const Geometry<Straight> &pgeom,
@@ -87,13 +95,6 @@ struct TracerGaussian : Tracer {
     return 0.005_fp *
            exp(-((x - xc) * (x - xc) + (y - yc) * (y - yc)) / (a * a * D * D));
   }
-};
-
-class ReferenceState {
-public:
-  bool is_initialized = false;
-  virtual void initialize(const Topology &primal_topology,
-                          const Topology &dual_topology) = 0;
 };
 
 class TestCase {

@@ -172,7 +172,7 @@ public:
     // Output the initial model state
     debug_print("start initial io", par.masterproc);
     for (auto &diag : diagnostics) {
-      diag->compute(0, constant_vars, prognostic_vars);
+      diag->compute(0, reference_state, constant_vars, prognostic_vars);
     }
     stats.compute(prognostic_vars, constant_vars, 0);
     io.outputInit(etime);
@@ -208,7 +208,7 @@ public:
                          " time " + std::to_string(etime),
                      par.masterproc);
         for (auto &diag : diagnostics) {
-          diag->compute(etime, constant_vars, prognostic_vars);
+          diag->compute(etime, reference_state, constant_vars, prognostic_vars);
         }
         io.output(etime);
         io.outputStats(stats);
