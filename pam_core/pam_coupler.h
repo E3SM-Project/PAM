@@ -478,6 +478,53 @@ namespace pam {
     }
 
 
+
+    std::vector<std::string> get_tracer_descriptions() const {
+      std::vector<std::string> tracer_desc;
+      for (int i=0; i < tracers.size(); i++) { tracer_desc.push_back(tracers[i].desc); }
+      return tracer_desc;
+    }
+
+
+
+    bool1d get_tracer_positivity_array() const {
+      auto num_tracers = get_num_tracers();
+      boolHost1d tracer_pos_host("tracer_pos",num_tracers);
+      for (int i=0; i < tracers.size(); i++) { tracer_pos_host(i) = tracers[i].positive; }
+      return tracer_pos_host.createDeviceCopy();
+    }
+
+
+
+    bool1d get_tracer_adds_mass_array() const {
+      auto num_tracers      = get_num_tracers();
+      boolHost1d tracer_adds_mass_host("tracer_adds_mass",num_tracers);
+      for (int i=0; i < tracers.size(); i++) { tracer_adds_mass_host(i) = tracers[i].adds_mass; }
+      return tracer_adds_mass_host.createDeviceCopy();
+    }
+
+
+
+    void get_tracer_info_arrays( std::vector<std::string> tracer_name ,
+                                 std::vector<std::string> tracer_desc , 
+                                 bool1d                   tracer_pos  ,
+                                 bool1d                   tracer_adds_mass ) const {
+      auto num_tracers      = get_num_tracers();
+      tracer_name           = std::vector<std::string>(num_tracers);
+      tracer_desc           = std::vector<std::string>(num_tracers);
+      boolHost1d tracer_pos_host      ("tracer_pos"      ,num_tracers);
+      boolHost1d tracer_adds_mass_host("tracer_adds_mass",num_tracers);
+      for (int i=0; i < tracers.size(); i++) {
+        tracer_name          [i] = tracers[i].name;
+        tracer_desc          [i] = tracers[i].desc;
+        tracer_pos_host      (i) = tracers[i].positive;
+        tracer_adds_mass_host(i) = tracers[i].adds_mass;
+      }
+      tracer_pos       = tracer_pos_host      .createDeviceCopy();
+      tracer_adds_mass = tracer_adds_mass_host.createDeviceCopy();
+    }
+
+
     
     void get_tracer_info(std::string tracer_name , std::string &tracer_desc, bool &tracer_found ,
                          bool &positive , bool &adds_mass) const {
@@ -492,6 +539,15 @@ namespace pam {
         }
       }
       tracer_found = false;
+    }
+
+
+
+    int get_tracer_index(std::string tracer_name) const {
+      for (int i=0; i < tracers.size(); i++) {
+        if (tracer_name == tracers[i].name) return i;
+      }
+      return -1;
     }
 
 

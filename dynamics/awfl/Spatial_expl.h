@@ -40,11 +40,6 @@ public:
   bool                     weno_winds;       // Use WENO limiting for winds?
   int                      data_spec;        // How to initialize the data
   real                     dtInit;           // Initial time step (used throughout the simulation)
-  std::vector<std::string> tracer_name;      // Name of each tracer
-  std::vector<std::string> tracer_desc;      // Description of each tracer
-  bool1d                   tracer_pos;       // Whether each tracer is positive-definite
-  bool1d                   tracer_adds_mass; // Whether each tracer adds mass (otherwise it's passive)
-  int                      idWV;             // Tracer index for water vapor
   // Hydrostatic background data
   real hydrostasis_parameters_sum;  // Sum of the current parameters (to see if it's changed)
   real3d hyDensSten;                // A stencil around each cell of hydrostatic density
@@ -77,9 +72,7 @@ public:
 
 
   // When this class is created, initialize num_tracers to zero
-  Spatial_operator() {
-    idWV = -1;
-  }
+  Spatial_operator() { }
 
 
 
@@ -91,28 +84,26 @@ public:
     using yakl::c::SimpleBounds;
 
     auto &dm = coupler.get_data_manager_readwrite();
-
     real4d dm_dens_dry = dm.get<real,4>( "density_dry"      );
     real4d dm_uvel     = dm.get<real,4>( "uvel"             );
     real4d dm_vvel     = dm.get<real,4>( "vvel"             );
     real4d dm_wvel     = dm.get<real,4>( "wvel"             );
     real4d dm_temp     = dm.get<real,4>( "temp"             );
-
-    auto num_tracers = coupler.get_num_tracers();
-    auto nz          = coupler.get_nz     ();
-    auto ny          = coupler.get_ny     ();
-    auto nx          = coupler.get_nx     ();
-    auto nens        = coupler.get_nens   ();
-    auto Rd          = coupler.get_R_d    ();
-    auto Rv          = coupler.get_R_v    ();
-    auto cp          = coupler.get_cp_d   ();
-    auto p0          = coupler.get_p0     ();
-    auto gamma       = coupler.get_gamma_d();
-    auto kappa       = Rd/cp;
-    auto C0          = pow( Rd * pow( p0 , -kappa ) , gamma );
-
-    YAKL_SCOPE( tracer_adds_mass , this->tracer_adds_mass );
-    YAKL_SCOPE( idWV , this->idWV );
+    auto num_tracers      = coupler.get_num_tracers();
+    auto nz               = coupler.get_nz     ();
+    auto ny               = coupler.get_ny     ();
+    auto nx               = coupler.get_nx     ();
+    auto nens             = coupler.get_nens   ();
+    auto Rd               = coupler.get_R_d    ();
+    auto Rv               = coupler.get_R_v    ();
+    auto cp               = coupler.get_cp_d   ();
+    auto p0               = coupler.get_p0     ();
+    auto gamma            = coupler.get_gamma_d();
+    auto kappa            = Rd/cp;
+    auto C0               = pow( Rd * pow( p0 , -kappa ) , gamma );
+    auto tracer_name      = coupler.get_tracer_names();
+    auto tracer_adds_mass = coupler.get_tracer_adds_mass_array();
+    auto idWV             = coupler.get_tracer_index("water_vapor");
 
     pam::MultipleFields<max_tracers,real4d> dm_tracers;
     for (int tr = 0; tr < num_tracers; tr++) {
@@ -161,40 +152,38 @@ public:
 
     auto &dm = coupler.get_data_manager_readonly();
     auto hy_params = dm.get<real const,3>("hydrostasis_parameters");
-
-
-    auto num_tracers = coupler.get_num_tracers();
-    auto nz          = coupler.get_nz     ();
-    auto ny          = coupler.get_ny     ();
-    auto nx          = coupler.get_nx     ();
-    auto dz          = dm.get<real const,2>("vertical_cell_dz");
-    auto nens        = coupler.get_nens   ();
-    auto Rd          = coupler.get_R_d    ();
-    auto Rv          = coupler.get_R_v    ();
-    auto cp          = coupler.get_cp_d   ();
-    auto p0          = coupler.get_p0     ();
-    auto gamma       = coupler.get_gamma_d();
-    auto kappa       = Rd/cp;
-    auto C0          = pow( Rd * pow( p0 , -kappa ) , gamma );
-    auto grav        = coupler.get_grav   ();
+    auto num_tracers      = coupler.get_num_tracers();
+    auto nz               = coupler.get_nz     ();
+    auto ny               = coupler.get_ny     ();
+    auto nx               = coupler.get_nx     ();
+    auto dz               = dm.get<real const,2>("vertical_cell_dz");
+    auto nens             = coupler.get_nens   ();
+    auto Rd               = coupler.get_R_d    ();
+    auto Rv               = coupler.get_R_v    ();
+    auto cp               = coupler.get_cp_d   ();
+    auto p0               = coupler.get_p0     ();
+    auto gamma            = coupler.get_gamma_d();
+    auto kappa            = Rd/cp;
+    auto C0               = pow( Rd * pow( p0 , -kappa ) , gamma );
+    auto grav             = coupler.get_grav   ();
+    auto tracer_name      = coupler.get_tracer_names();
+    auto tracer_adds_mass = coupler.get_tracer_adds_mass_array();
+    auto idWV             = coupler.get_tracer_index("water_vapor");
+    auto dm_dens_dry = dm.get<real const,4>( "density_dry"      );
+    auto dm_uvel     = dm.get<real const,4>( "uvel"             );
+    auto dm_vvel     = dm.get<real const,4>( "vvel"             );
+    auto dm_wvel     = dm.get<real const,4>( "wvel"             );
+    auto dm_temp     = dm.get<real const,4>( "temp"             );
 
     YAKL_SCOPE( hyDensSten           , this->hyDensSten           );
     YAKL_SCOPE( hyDensThetaSten      , this->hyDensThetaSten      );
     YAKL_SCOPE( hyPressureGLL        , this->hyPressureGLL        );
     YAKL_SCOPE( hyDensGLL            , this->hyDensGLL            );
     YAKL_SCOPE( hyDensThetaGLL       , this->hyDensThetaGLL       );
-    YAKL_SCOPE( tracer_adds_mass     , this->tracer_adds_mass     );
     YAKL_SCOPE( gllPts_ngll          , this->gllPts_ngll          );
     YAKL_SCOPE( vert_interface       , this->vert_interface       );
-    YAKL_SCOPE( idWV                 , this->idWV                 );
     YAKL_SCOPE( vert_interface_ghost , this->vert_interface_ghost );
     YAKL_SCOPE( dz_ghost             , this->dz_ghost             );
-
-    auto dm_dens_dry = dm.get<real const,4>( "density_dry"      );
-    auto dm_uvel     = dm.get<real const,4>( "uvel"             );
-    auto dm_vvel     = dm.get<real const,4>( "vvel"             );
-    auto dm_wvel     = dm.get<real const,4>( "wvel"             );
-    auto dm_temp     = dm.get<real const,4>( "temp"             );
 
     pam::MultipleFields<max_tracers,realConst4d> dm_tracers;
     for (int tr = 0; tr < num_tracers; tr++) {
@@ -335,31 +324,9 @@ public:
     auto kappa = Rd/cp;
     auto C0 = pow( Rd * pow( p0 , -kappa ) , gamma );
 
-    // Allocate device arrays for whether tracers are positive-definite or add mass
-    tracer_pos       = bool1d("tracer_pos"      ,num_tracers);
-    tracer_adds_mass = bool1d("tracer_adds_mass",num_tracers);
-    boolHost1d tracer_pos_host      ("tracer_pos_host"      ,num_tracers);
-    boolHost1d tracer_adds_mass_host("tracer_adds_mass_host",num_tracers);
 
-    std::vector<std::string> tracer_names_loc = coupler.get_tracer_names();
-    bool water_vapor_found = false;
-    for (int tr=0; tr < num_tracers; tr++) {
-      bool found, positive, adds_mass;
-      std::string desc;
-      coupler.get_tracer_info( tracer_names_loc[tr] , desc , found , positive , adds_mass );
-      tracer_name.push_back(tracer_names_loc[tr]);
-      tracer_desc.push_back(desc);
-      tracer_pos_host      (tr) = positive ;
-      tracer_adds_mass_host(tr) = adds_mass;
-      if (tracer_names_loc[tr] == std::string("water_vapor")) {
-        idWV = tr;
-        water_vapor_found = true;
-      }
-    }
-    if (! water_vapor_found) endrun("ERROR: processed registered tracers, and water_vapor was not found");
+    if (! coupler.tracer_exists("water_vapor")) endrun("ERROR: processed registered tracers, and water_vapor was not found");
 
-    tracer_pos_host      .deep_copy_to(tracer_pos      );
-    tracer_adds_mass_host.deep_copy_to(tracer_adds_mass);
     fence();
 
     // Inialize time step to zero, and dimensional splitting switch
@@ -588,13 +555,13 @@ public:
     auto C0          = pow( Rd * pow( p0 , -kappa ) , gamma );
     auto xlen        = coupler.get_xlen();
     auto ylen        = coupler.get_ylen();
+    auto idWV        = coupler.get_tracer_index("water_vapor");
     auto sim2d = ny == 1;
 
     YAKL_SCOPE( gllPts_ord               , this->gllPts_ord              );
     YAKL_SCOPE( gllWts_ord               , this->gllWts_ord              );
     YAKL_SCOPE( data_spec                , this->data_spec               );
     YAKL_SCOPE( vert_interface           , this->vert_interface          );
-    YAKL_SCOPE( idWV                     , this->idWV                    );
 
     // If data's being specified by the driver externally, then there's nothing to do here
     if (data_spec == DATA_SPEC_EXTERNAL) return;
@@ -750,6 +717,7 @@ public:
     auto gamma       = coupler.get_gamma_d();
     auto kappa       = Rd/cp;
     auto C0          = pow( Rd * pow( p0 , -kappa ) , gamma );
+    auto tracer_pos  = coupler.get_tracer_positivity_array();
     auto sim2d = ny == 1;
 
     YAKL_SCOPE( weno_scalars            , this->weno_scalars           );
@@ -761,7 +729,6 @@ public:
     YAKL_SCOPE( idl                     , this->idl                    );
     YAKL_SCOPE( sigma                   , this->sigma                  );
     YAKL_SCOPE( derivMatrix             , this->derivMatrix            );
-    YAKL_SCOPE( tracer_pos              , this->tracer_pos             );
 
     real6d state_limits ("state_limits" ,num_state  ,2,nz,ny,nx+1,nens);
     real6d tracer_limits("tracer_limits",num_tracers,2,nz,ny,nx+1,nens);
@@ -884,17 +851,11 @@ public:
     real5d state_flux ("state_flux" ,num_state  ,nz,ny,nx+1,nens);
     real5d tracer_flux("tracer_flux",num_tracers,nz,ny,nx+1,nens);
 
-    //////////////////////////////////////////////////////////
-    // Compute the upwind fluxes
-    //////////////////////////////////////////////////////////
     awfl::riemann_rho_theta_full_x( coupler , state_limits , state_flux , tracer_limits , tracer_flux );
 
     state_limits  = real6d();
     tracer_limits = real6d();
 
-    //////////////////////////////////////////////////////////
-    // Limit the tracer fluxes for positivity
-    //////////////////////////////////////////////////////////
     awfl::fct_positivity_x( coupler , tracers , tracer_flux , tracer_pos , dt );
 
     //////////////////////////////////////////////////////////
@@ -947,6 +908,7 @@ public:
     auto gamma       = coupler.get_gamma_d();
     auto kappa       = Rd/cp;
     auto C0          = pow( Rd * pow( p0 , -kappa ) , gamma );
+    auto tracer_pos  = coupler.get_tracer_positivity_array();
     auto sim2d = ny == 1;
 
     if (sim2d) {
@@ -964,7 +926,6 @@ public:
     YAKL_SCOPE( idl                     , this->idl                    );
     YAKL_SCOPE( sigma                   , this->sigma                  );
     YAKL_SCOPE( derivMatrix             , this->derivMatrix            );
-    YAKL_SCOPE( tracer_pos              , this->tracer_pos             );
 
     real6d state_limits ("state_limits" ,num_state  ,2,nz,ny+1,nx,nens);
     real6d tracer_limits("tracer_limits",num_tracers,2,nz,ny+1,nx,nens);
@@ -1087,16 +1048,11 @@ public:
     real5d state_flux ("state_flux" ,num_state  ,nz,ny+1,nx,nens);
     real5d tracer_flux("tracer_flux",num_tracers,nz,ny+1,nx,nens);
 
-    //////////////////////////////////////////////////////////
-    // Compute the upwind fluxes
-    //////////////////////////////////////////////////////////
     awfl::riemann_rho_theta_full_y( coupler , state_limits , state_flux , tracer_limits , tracer_flux );
+
     state_limits  = real6d();
     tracer_limits = real6d();
 
-    //////////////////////////////////////////////////////////
-    // Limit the tracer fluxes for positivity
-    //////////////////////////////////////////////////////////
     awfl::fct_positivity_y( coupler, tracers, tracer_flux , tracer_pos, dt);
 
     //////////////////////////////////////////////////////////
@@ -1145,6 +1101,7 @@ public:
     auto gamma       = coupler.get_gamma_d();
     auto kappa       = Rd/cp;
     auto C0          = pow( Rd * pow( p0 , -kappa ) , gamma );
+    auto tracer_pos  = coupler.get_tracer_positivity_array();
     auto sim2d = ny == 1;
 
     YAKL_SCOPE( weno_scalars            , this->weno_scalars           );
@@ -1158,7 +1115,6 @@ public:
     YAKL_SCOPE( hyDensThetaGLL          , this->hyDensThetaGLL         );
     YAKL_SCOPE( hyPressureGLL           , this->hyPressureGLL          );
     YAKL_SCOPE( derivMatrix             , this->derivMatrix            );
-    YAKL_SCOPE( tracer_pos              , this->tracer_pos             );
     YAKL_SCOPE( gllWts_ngll             , this->gllWts_ngll            );
     YAKL_SCOPE( vert_sten_to_gll        , this->vert_sten_to_gll       );
     YAKL_SCOPE( vert_sten_to_coefs      , this->vert_sten_to_coefs     );
@@ -1344,17 +1300,11 @@ public:
     real5d state_flux ("state_flux" ,num_state  ,nz+1,ny,nx,nens);
     real5d tracer_flux("tracer_flux",num_tracers,nz+1,ny,nx,nens);
 
-    //////////////////////////////////////////////////////////
-    // Compute the upwind fluxes
-    //////////////////////////////////////////////////////////
     awfl::riemann_rho_theta_full_z(coupler, state_limits , state_flux , tracer_limits , tracer_flux );
 
     state_limits  = real6d();
     tracer_limits = real6d();
 
-    //////////////////////////////////////////////////////////
-    // Limit the tracer fluxes for positivity
-    //////////////////////////////////////////////////////////
     awfl::fct_positivity_z( coupler , tracers , tracer_flux , tracer_pos , dt );
 
     //////////////////////////////////////////////////////////
