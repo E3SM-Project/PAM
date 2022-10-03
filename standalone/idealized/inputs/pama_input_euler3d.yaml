@@ -3,8 +3,8 @@
 simTime  : 1000
 
 # Number of cells to use
-crm_nx       : 50
-crm_ny       : 50
+crm_nx       : 100
+crm_ny       : 1 
 
 # Vertical height coordinates file
 vcoords  : vcoords_equal_100_20km.nc
