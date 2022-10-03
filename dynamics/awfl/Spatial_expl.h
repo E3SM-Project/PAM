@@ -64,7 +64,6 @@ public:
   real2d vert_interface;
   real2d vert_interface_ghost;
   real3d vert_locs_normalized;
-  real2d dz;
   real2d dz_ghost;
   real4d vert_sten_to_gll;
   real4d vert_sten_to_coefs;
@@ -369,7 +368,7 @@ public:
     vert_interface        = real2d("vert_interface"      ,nz+1          ,nens);
     vert_interface_ghost  = real2d("vert_interface_ghost",nz+2*hs+1     ,nens);
     vert_locs_normalized  = real3d("vert_locs_normalized",nz,ord+1      ,nens);
-    dz                    = real2d("dz"                  ,nz            ,nens);
+    auto dz               = real2d("dz"                  ,nz            ,nens);
     dz_ghost              = real2d("dz_ghost"            ,nz+2*hs       ,nens);
     vert_sten_to_gll      = real4d("vert_sten_to_gll"     ,nz,ord,ngll,nens);
     vert_sten_to_coefs    = real4d("vert_sten_to_coefs"   ,nz,ord,ord ,nens);
@@ -378,7 +377,6 @@ public:
     YAKL_SCOPE( vert_interface        , this->vert_interface        );
     YAKL_SCOPE( vert_interface_ghost  , this->vert_interface_ghost  );
     YAKL_SCOPE( vert_locs_normalized  , this->vert_locs_normalized  );
-    YAKL_SCOPE( dz                    , this->dz                    );
     YAKL_SCOPE( dz_ghost              , this->dz_ghost              );
     YAKL_SCOPE( vert_sten_to_gll      , this->vert_sten_to_gll      );
     YAKL_SCOPE( vert_sten_to_coefs    , this->vert_sten_to_coefs    );
