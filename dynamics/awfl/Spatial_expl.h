@@ -26,14 +26,6 @@ public:
   int static constexpr num_state = 5;
   int static constexpr max_tracers = 50;
 
-  real Rd   ;
-  real cp   ;
-  real gamma;
-  real p0   ;
-  real C0   ;
-  real Rv   ;
-  real grav ;
-
   int idWV;  // Tracer index for water vapor (set in add_tracer by testing the tracer name against "water_vapor"
 
   real hydrostasis_parameters_sum;
@@ -90,12 +82,6 @@ public:
   int static constexpr DATA_SPEC_THERMAL       = 1;
   int static constexpr DATA_SPEC_SUPERCELL     = 2;
 
-  bool sim2d;  // Whether we're simulating in 2-D
-
-  // Grid spacing in each dimension
-  real dx;
-  real dy;
-
   // Initial time step (used throughout the simulation)
   real dtInit;
 
@@ -103,7 +89,6 @@ public:
   // For Strang splitting
   bool dimSwitch;
 
-  int num_tracers;  // Number of tracers
   std::vector<std::string> tracer_name;      // Name of each tracer
   std::vector<std::string> tracer_desc;      // Description of each tracer
   bool1d                   tracer_pos;       // Whether each tracer is positive-definite
@@ -112,15 +97,6 @@ public:
   //////////////////////////////////////
   // Values read from input file
   //////////////////////////////////////
-  // Number of ensembles to simulate at the same time
-  int         nens;
-  // Number of cells in each direction
-  int         nx;
-  int         ny;
-  int         nz;
-  // Length of the domain in each direction (m)
-  real        xlen;
-  real        ylen;
   real1d      zbot;
   real1d      ztop;
   // Whether to use WENO for scalars and also for winds
@@ -132,7 +108,6 @@ public:
 
   // When this class is created, initialize num_tracers to zero
   Spatial_operator() {
-    num_tracers = 0;
     idWV = -1;
   }
 
@@ -153,11 +128,19 @@ public:
     real4d dm_wvel     = dm.get<real,4>( "wvel"             );
     real4d dm_temp     = dm.get<real,4>( "temp"             );
 
-    YAKL_SCOPE( C0               , this->C0               );
-    YAKL_SCOPE( gamma            , this->gamma            );
-    YAKL_SCOPE( num_tracers      , this->num_tracers      );
-    YAKL_SCOPE( Rd               , this->Rd               );
-    YAKL_SCOPE( Rv               , this->Rv               );
+    auto num_tracers = coupler.get_num_tracers();
+    auto nz          = coupler.get_nz     ();
+    auto ny          = coupler.get_ny     ();
+    auto nx          = coupler.get_nx     ();
+    auto nens        = coupler.get_nens   ();
+    auto Rd          = coupler.get_R_d    ();
+    auto Rv          = coupler.get_R_v    ();
+    auto cp          = coupler.get_cp_d   ();
+    auto p0          = coupler.get_p0     ();
+    auto gamma       = coupler.get_gamma_d();
+    auto kappa       = Rd/cp;
+    auto C0          = pow( Rd * pow( p0 , -kappa ) , gamma );
+
     YAKL_SCOPE( tracer_adds_mass , this->tracer_adds_mass );
     YAKL_SCOPE( idWV , this->idWV );
 
@@ -209,24 +192,31 @@ public:
     auto &dm = coupler.get_data_manager_readonly();
     auto hy_params = dm.get<real const,3>("hydrostasis_parameters");
 
+
+    auto num_tracers = coupler.get_num_tracers();
+    auto nz          = coupler.get_nz     ();
+    auto ny          = coupler.get_ny     ();
+    auto nx          = coupler.get_nx     ();
+    auto dz          = dm.get<real const,2>("vertical_cell_dz");
+    auto nens        = coupler.get_nens   ();
+    auto Rd          = coupler.get_R_d    ();
+    auto Rv          = coupler.get_R_v    ();
+    auto cp          = coupler.get_cp_d   ();
+    auto p0          = coupler.get_p0     ();
+    auto gamma       = coupler.get_gamma_d();
+    auto kappa       = Rd/cp;
+    auto C0          = pow( Rd * pow( p0 , -kappa ) , gamma );
+    auto grav        = coupler.get_grav   ();
+
     YAKL_SCOPE( hyDensSten           , this->hyDensSten           );
     YAKL_SCOPE( hyDensThetaSten      , this->hyDensThetaSten      );
     YAKL_SCOPE( hyPressureGLL        , this->hyPressureGLL        );
     YAKL_SCOPE( hyDensGLL            , this->hyDensGLL            );
     YAKL_SCOPE( hyDensThetaGLL       , this->hyDensThetaGLL       );
-    YAKL_SCOPE( C0                   , this->C0                   );
-    YAKL_SCOPE( gamma                , this->gamma                );
-    YAKL_SCOPE( num_tracers          , this->num_tracers          );
-    YAKL_SCOPE( Rd                   , this->Rd                   );
-    YAKL_SCOPE( Rv                   , this->Rv                   );
     YAKL_SCOPE( tracer_adds_mass     , this->tracer_adds_mass     );
-    YAKL_SCOPE( zbot                 , this->zbot                 );
-    YAKL_SCOPE( ztop                 , this->ztop                 );
     YAKL_SCOPE( gllPts_ngll          , this->gllPts_ngll          );
-    YAKL_SCOPE( dz                   , this->dz                   );
     YAKL_SCOPE( vert_interface       , this->vert_interface       );
     YAKL_SCOPE( idWV                 , this->idWV                 );
-    YAKL_SCOPE( grav                 , this->grav                 );
     YAKL_SCOPE( vert_interface_ghost , this->vert_interface_ghost );
     YAKL_SCOPE( dz_ghost             , this->dz_ghost             );
 
@@ -301,19 +291,45 @@ public:
 
 
 
-  real5d createStateArr() const { return real5d("stateArr",num_state,nz+2*hs,ny+2*hs,nx+2*hs,nens); }
+  real5d createStateArr(pam::PamCoupler const &coupler) const {
+    auto nz   = coupler.get_nz  ();
+    auto ny   = coupler.get_ny  ();
+    auto nx   = coupler.get_nx  ();
+    auto nens = coupler.get_nens();
+    return real5d("stateArr",num_state,nz+2*hs,ny+2*hs,nx+2*hs,nens);
+  }
 
 
 
-  real5d createTracerArr() const { return real5d("tracerArr",num_tracers,nz+2*hs,ny+2*hs,nx+2*hs,nens); }
+  real5d createTracerArr(pam::PamCoupler const &coupler) const {
+    auto num_tracers = coupler.get_num_tracers();
+    auto nz          = coupler.get_nz  ();
+    auto ny          = coupler.get_ny  ();
+    auto nx          = coupler.get_nx  ();
+    auto nens        = coupler.get_nens();
+    return real5d("tracerArr",num_tracers,nz+2*hs,ny+2*hs,nx+2*hs,nens);
+  }
 
 
 
-  real5d createStateTendArr() const { return real5d("stateTendArr",num_state,nz,ny,nx,nens); }
+  real5d createStateTendArr(pam::PamCoupler const &coupler) const {
+    auto nz   = coupler.get_nz  ();
+    auto ny   = coupler.get_ny  ();
+    auto nx   = coupler.get_nx  ();
+    auto nens = coupler.get_nens();
+    return real5d("stateTendArr",num_state,nz,ny,nx,nens);
+  }
 
 
 
-  real5d createTracerTendArr() const { return real5d("tracerTendArr",num_tracers,nz,ny,nx,nens); }
+  real5d createTracerTendArr(pam::PamCoupler const &coupler) const {
+    auto num_tracers = coupler.get_num_tracers();
+    auto nz          = coupler.get_nz  ();
+    auto ny          = coupler.get_ny  ();
+    auto nx          = coupler.get_nx  ();
+    auto nens        = coupler.get_nens();
+    return real5d("tracerTendArr",coupler.get_num_tracers(),nz,ny,nx,nens);
+  }
 
 
 
@@ -331,23 +347,23 @@ public:
 
     using yakl::intrinsics::matmul_cr;
 
-    this->nens = coupler.get_nens();
-    this->nx   = coupler.get_nx();
-    this->ny   = coupler.get_ny();
-    this->xlen = coupler.get_xlen();
-    this->ylen = coupler.get_ylen();
-    this->num_tracers = coupler.get_num_tracers();
+    auto nens = coupler.get_nens();
+    auto nx   = coupler.get_nx();
+    auto ny   = coupler.get_ny();
+    auto xlen = coupler.get_xlen();
+    auto ylen = coupler.get_ylen();
+    auto num_tracers = coupler.get_num_tracers();
 
     this->hydrostasis_parameters_sum = 0;
 
-    this->Rd    = coupler.get_R_d ();
-    this->cp    = coupler.get_cp_d();
-    this->p0    = coupler.get_p0  ();
-    this->Rv    = coupler.get_R_v ();
-    this->grav  = coupler.get_grav();
-    this->gamma = cp / (cp-Rd);
-    real kappa = Rd/cp;
-    this->C0 = pow( Rd * pow( p0 , -kappa ) , gamma );
+    auto Rd    = coupler.get_R_d ();
+    auto cp    = coupler.get_cp_d();
+    auto p0    = coupler.get_p0  ();
+    auto Rv    = coupler.get_R_v ();
+    auto grav  = coupler.get_grav();
+    auto gamma = cp / (cp-Rd);
+    auto kappa = Rd/cp;
+    auto C0 = pow( Rd * pow( p0 , -kappa ) , gamma );
 
     // Allocate device arrays for whether tracers are positive-definite or add mass
     tracer_pos       = bool1d("tracer_pos"      ,num_tracers);
@@ -407,21 +423,17 @@ public:
       data_spec               = DATA_SPEC_EXTERNAL;
     }
 
-    // Determine whether this is a 2-D simulation
-    sim2d = ny == 1;
-
     // Store vertical cell interface heights in the data manager
     auto &dm = coupler.get_data_manager_readonly();
     auto zint = dm.get<real const,2>("vertical_interface_height");
 
-    nz = coupler.get_nz();
+    auto nz = coupler.get_nz();
 
     // Get the height of the z-dimension
     zbot = real1d("zbot",nens);
     ztop = real1d("ztop",nens);
     YAKL_SCOPE( zbot , this->zbot );
     YAKL_SCOPE( ztop , this->ztop );
-    YAKL_SCOPE( nz   , this->nz   );
     parallel_for( "Spatial.h init 1" , nens , YAKL_LAMBDA (int iens) {
       zbot(iens) = zint(0 ,iens);
       ztop(iens) = zint(nz,iens);
@@ -536,8 +548,8 @@ public:
     vert_locs_host.deep_copy_to(vert_locs_normalized );
 
     // Compute the grid spacing in each dimension
-    dx = xlen/nx;
-    dy = ylen/ny;
+    auto dx = xlen/nx;
+    auto dy = ylen/ny;
 
     // Store the WENO reconstruction matrices
     TransformMatrices::weno_lower_sten_to_coefs(this->weno_recon_lower);
@@ -598,36 +610,38 @@ public:
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
 
-    YAKL_SCOPE( nx                       , this->nx                      );
-    YAKL_SCOPE( ny                       , this->ny                      );
-    YAKL_SCOPE( nz                       , this->nz                      );
-    YAKL_SCOPE( dx                       , this->dx                      );
-    YAKL_SCOPE( dy                       , this->dy                      );
-    YAKL_SCOPE( dz                       , this->dz                      );
+
+    auto num_tracers = coupler.get_num_tracers();
+    auto nz          = coupler.get_nz     ();
+    auto ny          = coupler.get_ny     ();
+    auto nx          = coupler.get_nx     ();
+    auto dx          = coupler.get_dx     ();
+    auto dy          = coupler.get_dy     ();
+    auto dz          = coupler.get_data_manager_readonly().get<real const,2>("vertical_cell_dz");
+    auto nens        = coupler.get_nens   ();
+    auto Rd          = coupler.get_R_d    ();
+    auto Rv          = coupler.get_R_v    ();
+    auto cp          = coupler.get_cp_d   ();
+    auto p0          = coupler.get_p0     ();
+    auto gamma       = coupler.get_gamma_d();
+    auto grav        = coupler.get_grav   ();
+    auto kappa       = Rd/cp;
+    auto C0          = pow( Rd * pow( p0 , -kappa ) , gamma );
+    auto xlen        = coupler.get_xlen();
+    auto ylen        = coupler.get_ylen();
+    auto sim2d = ny == 1;
+
     YAKL_SCOPE( gllPts_ord               , this->gllPts_ord              );
     YAKL_SCOPE( gllWts_ord               , this->gllWts_ord              );
-    YAKL_SCOPE( gllPts_ngll              , this->gllPts_ngll             );
-    YAKL_SCOPE( gllWts_ngll              , this->gllWts_ngll             );
     YAKL_SCOPE( data_spec                , this->data_spec               );
-    YAKL_SCOPE( sim2d                    , this->sim2d                   );
-    YAKL_SCOPE( xlen                     , this->xlen                    );
-    YAKL_SCOPE( ylen                     , this->ylen                    );
-    YAKL_SCOPE( Rd                       , this->Rd                      );
-    YAKL_SCOPE( Rv                       , this->Rv                      );
-    YAKL_SCOPE( cp                       , this->cp                      );
-    YAKL_SCOPE( gamma                    , this->gamma                   );
-    YAKL_SCOPE( p0                       , this->p0                      );
-    YAKL_SCOPE( C0                       , this->C0                      );
     YAKL_SCOPE( vert_interface           , this->vert_interface          );
-    YAKL_SCOPE( num_tracers              , this->num_tracers             );
     YAKL_SCOPE( idWV                     , this->idWV                    );
-    YAKL_SCOPE( grav                     , this->grav                    );
 
     // If data's being specified by the driver externally, then there's nothing to do here
     if (data_spec == DATA_SPEC_EXTERNAL) return;
 
-    real5d state   = createStateArr();
-    real5d tracers = createTracerArr();
+    real5d state   = createStateArr (coupler);
+    real5d tracers = createTracerArr(coupler);
 
     // If the data_spec is thermal or ..., then initialize the domain with Exner pressure-based hydrostasis
     // This is mostly to make plotting potential temperature perturbation easier for publications
@@ -765,13 +779,12 @@ public:
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
 
-    auto num_state   = state_tend .extent(0);
-    auto num_tracers = tracer_tend.extent(0);
-    auto nz          = coupler.get_nz  ();
-    auto ny          = coupler.get_ny  ();
-    auto nx          = coupler.get_nx  ();
-    auto dx          = coupler.get_dx  ();
-    auto nens        = coupler.get_nens();
+    auto num_tracers = coupler.get_num_tracers();
+    auto nz          = coupler.get_nz     ();
+    auto ny          = coupler.get_ny     ();
+    auto nx          = coupler.get_nx     ();
+    auto dx          = coupler.get_dx     ();
+    auto nens        = coupler.get_nens   ();
     auto Rd          = coupler.get_R_d    ();
     auto cp          = coupler.get_cp_d   ();
     auto p0          = coupler.get_p0     ();
@@ -971,8 +984,7 @@ public:
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
 
-    auto num_state   = state_tend .extent(0);
-    auto num_tracers = tracer_tend.extent(0);
+    auto num_tracers = coupler.get_num_tracers();
     auto nz          = coupler.get_nz     ();
     auto ny          = coupler.get_ny     ();
     auto nx          = coupler.get_nx     ();
@@ -1179,8 +1191,7 @@ public:
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
 
-    auto num_state   = state_tend .extent(0);
-    auto num_tracers = tracer_tend.extent(0);
+    auto num_tracers = coupler.get_num_tracers();
     auto nz          = coupler.get_nz  ();
     auto ny          = coupler.get_ny  ();
     auto nx          = coupler.get_nx  ();
@@ -1365,7 +1376,7 @@ public:
             for (int kk=0; kk < ord; kk++) { stencil(kk) = tracers(tr ,wrapz(k,kk,nz),hs+j,hs+i,iens) /
                                                            state  (idR,wrapz(k,kk,nz),hs+j,hs+i,iens); }
             awfl::reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc , weno_recon_lower_loc ,
-                                    idl , sigma , weno_scalars );
+                                          idl , sigma , weno_scalars );
             for (int kk=0; kk < ngll; kk++) { gll(kk) *= r_DTs(0,kk); }
             if (tracer_pos(tr)) {
               for (int kk=0; kk < ngll; kk++) { gll(kk) = max( 0._fp , gll(kk) ); }

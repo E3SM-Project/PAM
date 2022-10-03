@@ -45,7 +45,7 @@ public:
     int nens = coupler.get_nens();
 
     int idR = Spatial::idR;
-    int num_tracers = space_op.num_tracers;
+    int num_tracers = coupler.get_num_tracers();
     auto dz = coupler.get_data_manager_readonly().get<real const,2>("vertical_cell_dz");
 
     std::vector<real> mass(num_tracers+1);
@@ -94,10 +94,10 @@ public:
 
     real dt = compute_time_step( coupler );
 
-    auto state       = space_op.createStateArr     ();
-    auto tracers     = space_op.createTracerArr    ();
-    auto state_tend  = space_op.createStateTendArr ();
-    auto tracer_tend = space_op.createTracerTendArr();
+    auto state       = space_op.createStateArr     (coupler);
+    auto tracers     = space_op.createTracerArr    (coupler);
+    auto state_tend  = space_op.createStateTendArr (coupler);
+    auto tracer_tend = space_op.createTracerTendArr(coupler);
 
     #ifdef PAM_DEBUG
       state   = 0._fp;
@@ -115,8 +115,6 @@ public:
     int ny          = coupler.get_ny();
     int nz          = coupler.get_nz();
     int nens        = coupler.get_nens();
-    int num_state   = space_op.num_state;
-    int num_tracers = space_op.num_tracers;
 
     int n_iter = ceil( dtphys / dt );
     dt = dtphys / n_iter;
