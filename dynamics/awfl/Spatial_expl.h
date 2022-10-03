@@ -17,13 +17,10 @@
 #include "fct_positivity.h"
 
 
-template <int nTimeDerivs, bool timeAvg, int nAder>
 class Spatial_operator {
 public:
-
-  static_assert(nTimeDerivs == 1 , "ERROR: This Spatial class isn't setup to use nTimeDerivs > 1");
-
-  int static constexpr num_state = 5;
+  int static constexpr nAder       = ngll;
+  int static constexpr num_state   = 5;
   int static constexpr max_tracers = 50;
   // For indexing into the state and state tendency arrays
   int static constexpr idR = 0;  // density perturbation
@@ -38,17 +35,16 @@ public:
   int static constexpr DATA_SPEC_EXTERNAL      = 0;
   int static constexpr DATA_SPEC_THERMAL       = 1;
   int static constexpr DATA_SPEC_SUPERCELL     = 2;
-
   
-  bool   weno_scalars;                       // Use WENO limiting for scalars?
-  bool   weno_winds;                         // Use WENO limiting for winds?
-  int    data_spec;                          // How to initialize the data
-  real dtInit;                               // Initial time step (used throughout the simulation)
+  bool                     weno_scalars;     // Use WENO limiting for scalars?
+  bool                     weno_winds;       // Use WENO limiting for winds?
+  int                      data_spec;        // How to initialize the data
+  real                     dtInit;           // Initial time step (used throughout the simulation)
   std::vector<std::string> tracer_name;      // Name of each tracer
   std::vector<std::string> tracer_desc;      // Description of each tracer
   bool1d                   tracer_pos;       // Whether each tracer is positive-definite
   bool1d                   tracer_adds_mass; // Whether each tracer adds mass (otherwise it's passive)
-  int idWV;                                  // Tracer index for water vapor
+  int                      idWV;             // Tracer index for water vapor
   // Hydrostatic background data
   real hydrostasis_parameters_sum;  // Sum of the current parameters (to see if it's changed)
   real3d hyDensSten;                // A stencil around each cell of hydrostatic density
@@ -829,18 +825,11 @@ public:
         }
 
         SArray<real,1,ngll> r_tavg, ru_tavg;
-        if (timeAvg) {
-          awfl::compute_timeAvg( r_DTs  , r_tavg  , dt );
-          awfl::compute_timeAvg( ru_DTs , ru_tavg , dt );
-          awfl::compute_timeAvg( rv_DTs           , dt );
-          awfl::compute_timeAvg( rw_DTs           , dt );
-          awfl::compute_timeAvg( rt_DTs           , dt );
-        } else {
-          for (int ii=0; ii < ngll; ii++) {
-            r_tavg (ii) = r_DTs (0,ii);
-            ru_tavg(ii) = ru_DTs(0,ii);
-          }
-        }
+        awfl::compute_timeAvg( r_DTs  , r_tavg  , dt );
+        awfl::compute_timeAvg( ru_DTs , ru_tavg , dt );
+        awfl::compute_timeAvg( rv_DTs           , dt );
+        awfl::compute_timeAvg( rw_DTs           , dt );
+        awfl::compute_timeAvg( rt_DTs           , dt );
 
         // Left interface
         state_limits(idR,1,k,j,i  ,iens) = r_tavg  (0     );
@@ -880,9 +869,7 @@ public:
             awfl::diffTransformTracer( r_DTs , ru_DTs , rt_DTs , rut_DTs , derivMatrix , dx );
           }
 
-          if (timeAvg) {
-            awfl::compute_timeAvg( rt_DTs  , dt );
-          }
+          awfl::compute_timeAvg( rt_DTs  , dt );
 
           if (tracer_pos(tr)) {
             for (int ii=0; ii < ngll; ii++) { rt_DTs(0,ii) = max( 0._fp , rt_DTs(0,ii) ); }
@@ -1041,18 +1028,11 @@ public:
         }
 
         SArray<real,1,ngll> r_tavg, rv_tavg;
-        if (timeAvg) {
-          awfl::compute_timeAvg( r_DTs  , r_tavg  , dt );
-          awfl::compute_timeAvg( ru_DTs           , dt );
-          awfl::compute_timeAvg( rv_DTs , rv_tavg , dt );
-          awfl::compute_timeAvg( rw_DTs           , dt );
-          awfl::compute_timeAvg( rt_DTs           , dt );
-        } else {
-          for (int jj=0; jj < ngll; jj++) {
-            r_tavg (jj) = r_DTs (0,jj);
-            rv_tavg(jj) = rv_DTs(0,jj);
-          }
-        }
+        awfl::compute_timeAvg( r_DTs  , r_tavg  , dt );
+        awfl::compute_timeAvg( ru_DTs           , dt );
+        awfl::compute_timeAvg( rv_DTs , rv_tavg , dt );
+        awfl::compute_timeAvg( rw_DTs           , dt );
+        awfl::compute_timeAvg( rt_DTs           , dt );
 
         // Left interface
         state_limits(idR,1,k,j  ,i,iens) = r_tavg  (0     );
@@ -1092,9 +1072,7 @@ public:
             awfl::diffTransformTracer( r_DTs , rv_DTs , rt_DTs , rvt_DTs , derivMatrix , dy );
           }
 
-          if (timeAvg) {
-            awfl::compute_timeAvg( rt_DTs  , dt );
-          }
+          awfl::compute_timeAvg( rt_DTs  , dt );
 
           if (tracer_pos(tr)) {
             for (int jj=0; jj < ngll; jj++) { rt_DTs(0,jj) = max( 0._fp , rt_DTs(0,jj) ); }
@@ -1291,18 +1269,11 @@ public:
         }
 
         SArray<real,1,ngll> r_tavg, rw_tavg;
-        if (timeAvg) {
-          awfl::compute_timeAvg( r_DTs  , r_tavg  , dt );
-          awfl::compute_timeAvg( ru_DTs           , dt );
-          awfl::compute_timeAvg( rv_DTs           , dt );
-          awfl::compute_timeAvg( rw_DTs , rw_tavg , dt );
-          awfl::compute_timeAvg( rt_DTs           , dt );
-        } else {
-          for (int ii=0; ii < ngll; ii++) {
-            r_tavg (ii) = r_DTs (0,ii);
-            rw_tavg(ii) = rw_DTs(0,ii);
-          }
-        }
+        awfl::compute_timeAvg( r_DTs  , r_tavg  , dt );
+        awfl::compute_timeAvg( ru_DTs           , dt );
+        awfl::compute_timeAvg( rv_DTs           , dt );
+        awfl::compute_timeAvg( rw_DTs , rw_tavg , dt );
+        awfl::compute_timeAvg( rt_DTs           , dt );
 
         // Left interface
         state_limits(idR,1,k  ,j,i,iens) = r_tavg  (0     );
@@ -1355,9 +1326,7 @@ public:
             awfl::diffTransformTracer( r_DTs , rw_DTs , rt_DTs , rwt_DTs , derivMatrix , dz(k,iens) );
           }
 
-          if (timeAvg) {
-            awfl::compute_timeAvg( rt_DTs  , dt );
-          }
+          awfl::compute_timeAvg( rt_DTs  , dt );
 
           if (tracer_pos(tr)) {
             for (int kk=0; kk < ngll; kk++) { rt_DTs(0,kk) = max( 0._fp , rt_DTs(0,kk) ); }

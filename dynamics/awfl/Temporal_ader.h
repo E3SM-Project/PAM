@@ -4,23 +4,14 @@
 #include "awfl_const.h"
 #include "pam_coupler.h"
 
-int  constexpr nTimeDerivs = 1;
-bool constexpr timeAvg     = true;
-int  constexpr nAder       = ngll;
-
 template <class Spatial> class Temporal_operator {
 public:
-  static_assert(nTimeDerivs <= ngll , "ERROR: nTimeDerivs must be <= ngll.");
 
   bool dim_switch;
-
   Spatial space_op;
-
-  real etime;
 
   void init(pam::PamCoupler &coupler) {
     space_op.init(coupler);
-    etime   = 0;
     dim_switch = true;
   }
 
@@ -181,8 +172,6 @@ public:
     }
 
     space_op.convert_dynamics_to_coupler_state( coupler , state , tracers );
-
-    etime += dtphys;
   }
 
 
