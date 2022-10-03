@@ -31,7 +31,7 @@ using yakl::ScalarLiveOut;
 
 
 int constexpr ord  = PAM_ORD;
-int static constexpr hs = (ord-1)/2;
+int constexpr hs = (ord-1)/2;
 int constexpr ngll = PAM_TORD;
 
 static_assert(ngll <= ord , "ERROR: ngll must be <= ord");
