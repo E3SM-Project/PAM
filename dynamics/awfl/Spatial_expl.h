@@ -1162,7 +1162,7 @@ public:
             }
           }
           awfl::reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc , weno_recon_lower_loc ,
-                                  idl , sigma , weno_scalars );
+                                        idl , sigma , weno_scalars );
           // Add hydrostasis back on
           for (int kk=0; kk < ngll; kk++) { r_DTs(0,kk) = gll(kk) + hyDensGLL(k,kk,iens); }
 
@@ -1170,14 +1170,14 @@ public:
           for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idU,wrapz(k,kk,nz),hs+j,hs+i,iens) /
                                                          state(idR,wrapz(k,kk,nz),hs+j,hs+i,iens); }
           awfl::reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc , weno_recon_lower_loc ,
-                                  idl , sigma , weno_winds );
+                                        idl , sigma , weno_winds );
           for (int kk=0; kk < ngll; kk++) { ru_DTs(0,kk) = gll(kk) * r_DTs(0,kk); }
 
           // v
           for (int kk=0; kk < ord; kk++) { stencil(kk) = state(idV,wrapz(k,kk,nz),hs+j,hs+i,iens) /
                                                          state(idR,wrapz(k,kk,nz),hs+j,hs+i,iens); }
           awfl::reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc , weno_recon_lower_loc ,
-                                  idl , sigma , weno_winds );
+                                        idl , sigma , weno_winds );
           for (int kk=0; kk < ngll; kk++) { rv_DTs(0,kk) = gll(kk) * r_DTs(0,kk); }
 
           // w
@@ -1187,7 +1187,7 @@ public:
             if (k+kk > hs+nz-1 || k+kk < hs) stencil(kk) = 0;
           }
           awfl::reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc , weno_recon_lower_loc ,
-                                  idl , sigma , weno_winds );
+                                        idl , sigma , weno_winds );
           if (k == nz-1) gll(ngll-1) = 0;
           if (k == 0   ) gll(0     ) = 0;
           for (int kk=0; kk < ngll; kk++) { rw_DTs(0,kk) = gll(kk) * r_DTs(0,kk); }
@@ -1201,7 +1201,7 @@ public:
             }
           }
           awfl::reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc , weno_recon_lower_loc ,
-                                  idl , sigma , weno_scalars );
+                                        idl , sigma , weno_scalars );
           // Add hydrostasis back on
           for (int kk=0; kk < ngll; kk++) { rt_DTs(0,kk) = gll(kk) + hyDensThetaGLL(k,kk,iens); }
         }
