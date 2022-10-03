@@ -11,7 +11,7 @@ namespace awfl {
   void fct_positivity_y( pam::PamCoupler const &coupler, realConst5d tracers, real5d const &tracer_flux ,
                          boolConst1d tracer_pos, real dt);
 
-  void fct_positivity_z( pam::PamCoupler const &coupler, realConst5d state, realConst5d tracers, real5d const &tracer_flux ,
+  void fct_positivity_z( pam::PamCoupler const &coupler, realConst5d tracers, real5d const &tracer_flux ,
                          boolConst1d tracer_pos, real dt);
 }
 

@@ -1212,13 +1212,6 @@ public:
     YAKL_SCOPE( vert_sten_to_coefs      , this->vert_sten_to_coefs     );
     YAKL_SCOPE( vert_weno_recon_lower   , this->vert_weno_recon_lower  );
 
-    // Pre-process the tracers by dividing by density inside the domain
-    // After this, we can reconstruct tracers only (not rho * tracer)
-    parallel_for( "Spatial.h Z tracer div dens" , SimpleBounds<5>(num_tracers,nz,ny,nx,nens) ,
-                  YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
-      tracers(tr,hs+k,hs+j,hs+i,iens) /= state(idR,hs+k,hs+j,hs+i,iens);
-    });
-
     real6d state_limits ("state_limits" ,num_state  ,2,nz+1,ny,nx,nens);
     real6d tracer_limits("tracer_limits",num_tracers,2,nz+1,ny,nx,nens);
 
@@ -1369,7 +1362,8 @@ public:
             SArray<real,1,ord>  stencil;
             SArray<real,1,ngll> gll;
 
-            for (int kk=0; kk < ord; kk++) { stencil(kk) = tracers(tr,wrapz(k,kk,nz),hs+j,hs+i,iens); }
+            for (int kk=0; kk < ord; kk++) { stencil(kk) = tracers(tr ,wrapz(k,kk,nz),hs+j,hs+i,iens) /
+                                                           state  (idR,wrapz(k,kk,nz),hs+j,hs+i,iens); }
             awfl::reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc , weno_recon_lower_loc ,
                                     idl , sigma , weno_scalars );
             for (int kk=0; kk < ngll; kk++) { gll(kk) *= r_DTs(0,kk); }
@@ -1418,7 +1412,7 @@ public:
     //////////////////////////////////////////////////////////
     // Limit the tracer fluxes for positivity
     //////////////////////////////////////////////////////////
-    awfl::fct_positivity_z( coupler , state , tracers , tracer_flux , tracer_pos , dt );
+    awfl::fct_positivity_z( coupler , tracers , tracer_flux , tracer_pos , dt );
 
     //////////////////////////////////////////////////////////
     // Compute the tendencies
@@ -1435,8 +1429,6 @@ public:
       for (int l=0; l < num_tracers; l++) {
         // Compute tracer tendency
         tracer_tend(l,k,j,i,iens) = - ( tracer_flux(l,k+1,j,i,iens) - tracer_flux(l,k,j,i,iens) ) / dz(k,iens);
-        // Multiply density back onto the tracers
-        tracers(l,hs+k,hs+j,hs+i,iens) *= state(idR,hs+k,hs+j,hs+i,iens);
       }
     });
   }
