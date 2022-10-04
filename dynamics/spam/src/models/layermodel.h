@@ -48,7 +48,8 @@ public:
     Diagnostic::initialize(pgeom, dgeom);
   }
 
-  void compute(real time, const FieldSet<nconstant> &const_vars,
+  void compute(real time, const ReferenceState &reference_state,
+               const FieldSet<nconstant> &const_vars,
                const FieldSet<nprognostic> &x) override {
 
     const auto &primal_topology = primal_geometry.topology;
@@ -78,7 +79,8 @@ public:
     Diagnostic::initialize(pgeom, dgeom);
   }
 
-  void compute(real time, const FieldSet<nconstant> &const_vars,
+  void compute(real time, const ReferenceState &reference_state,
+               const FieldSet<nconstant> &const_vars,
                const FieldSet<nprognostic> &x) override {
 
     const auto &dual_topology = dual_geometry.topology;
@@ -112,8 +114,10 @@ class ModelTendencies : public Tendencies {
 public:
   void initialize(PamCoupler &coupler, ModelParameters &params,
                   const Geometry<Straight> &primal_geom,
-                  const Geometry<Twisted> &dual_geom) {
-    Tendencies::initialize(params, primal_geom, dual_geom);
+                  const Geometry<Twisted> &dual_geom,
+                  ReferenceState &refstate) {
+
+    Tendencies::initialize(params, primal_geom, dual_geom, refstate);
     varset.initialize(coupler, params, thermo, this->primal_geometry,
                       this->dual_geometry);
     PVPE.initialize(varset);

@@ -110,6 +110,34 @@ public:
       B(1, k + ks, j + js, i + is, n) += fac * generalized_Exner;
     }
   }
+
+  template <ADD_MODE addmode = ADD_MODE::REPLACE>
+  void YAKL_INLINE compute_dHsdx(const real3d &B, const real3d &dens,
+                                 const real3d &geop, int ks, int k, int n,
+                                 real fac = 1._fp) const {
+
+    SArray<real, 1, 1> geop0;
+    compute_Iv<1, vert_diff_ord>(geop0, geop, this->primal_geometry,
+                                 this->dual_geometry, ks, k, n);
+
+    real alpha = varset.get_alpha(dens, k, ks, n);
+    real entropic_var = varset.get_entropic_var(dens, k, ks, n);
+
+    real U = thermo.compute_U(alpha, entropic_var, 0, 0, 0, 0);
+    real p = -thermo.compute_dUdalpha(alpha, entropic_var, 0, 0, 0, 0);
+    real generalized_Exner =
+        thermo.compute_dUdentropic_var(alpha, entropic_var, 0, 0, 0, 0);
+
+    if (addmode == ADD_MODE::REPLACE) {
+      B(0, k, n) =
+          fac * (geop0(0) + U + p * alpha - entropic_var * generalized_Exner);
+      B(1, k, n) = fac * generalized_Exner;
+    } else if (addmode == ADD_MODE::ADD) {
+      B(0, k, n) +=
+          fac * (geop0(0) + U + p * alpha - entropic_var * generalized_Exner);
+      B(1, k, n) += fac * generalized_Exner;
+    }
+  }
 };
 
 // SHOULD BE MERGABLE INTO A SINGLE CLASS WITH INDEXING FOR RHO/RHOD?

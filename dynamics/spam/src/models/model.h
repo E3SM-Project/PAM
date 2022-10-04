@@ -6,6 +6,13 @@
 #include "topology.h"
 #include "weno_func_recon.h" // needed to set TransformMatrices related stuff
 
+class ReferenceState {
+public:
+  bool is_initialized = false;
+  virtual void initialize(const Topology &primal_topology,
+                          const Topology &dual_topology) = 0;
+};
+
 class Diagnostic {
 public:
   std::string name;
@@ -19,7 +26,8 @@ public:
 
   Diagnostic() { this->is_initialized = false; }
 
-  virtual void compute(real time, const FieldSet<nconstant> &const_vars,
+  virtual void compute(real time, const ReferenceState &refstate,
+                       const FieldSet<nconstant> &const_vars,
                        const FieldSet<nprognostic> &x) = 0;
 
   virtual void initialize(const Geometry<Straight> &pgeom,
@@ -89,13 +97,6 @@ struct TracerGaussian : Tracer {
   }
 };
 
-class ReferenceState {
-public:
-  bool is_initialized = false;
-  virtual void initialize(const Topology &primal_topology,
-                          const Topology &dual_topology) = 0;
-};
-
 class TestCase {
 public:
   using TracerArr = yakl::Array<Tracer *, 1, yakl::memDevice, yakl::styleC>;
@@ -162,6 +163,7 @@ class Tendencies {
 public:
   Geometry<Straight> primal_geometry;
   Geometry<Twisted> dual_geometry;
+  ReferenceState *reference_state;
 
   SArray<real, 2, reconstruction_order, 2> primal_to_gll;
   SArray<real, 3, reconstruction_order, reconstruction_order,
@@ -190,9 +192,11 @@ public:
 
   void initialize(ModelParameters &params,
                   const Geometry<Straight> &primal_geom,
-                  const Geometry<Twisted> &dual_geom) {
+                  const Geometry<Twisted> &dual_geom,
+                  ReferenceState &refstate) {
     this->primal_geometry = primal_geom;
     this->dual_geometry = dual_geom;
+    this->reference_state = &refstate;
 
     TransformMatrices::coefs_to_gll_lower(primal_to_gll);
     TransformMatrices::weno_sten_to_coefs(primal_wenoRecon);
@@ -258,8 +262,9 @@ public:
 
   void initialize(ModelParameters &params,
                   const Geometry<Straight> &primal_geom,
-                  const Geometry<Twisted> &dual_geom) {
-    Tendencies::initialize(params, primal_geom, dual_geom);
+                  const Geometry<Twisted> &dual_geom,
+                  ReferenceState &refstate) {
+    Tendencies::initialize(params, primal_geom, dual_geom, refstate);
 
     TransformMatrices::coefs_to_gll_lower(primal_vert_to_gll);
     TransformMatrices::weno_sten_to_coefs(primal_vert_wenoRecon);

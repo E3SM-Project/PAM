@@ -45,6 +45,7 @@ public:
   Topology primal_topology;
   Topology dual_topology;
   ModelParameters params;
+  ModelReferenceState reference_state;
   Parallel par;
 #if _TIME_TYPE == 0
   RKSimpleTimeIntegrator tint;
@@ -53,7 +54,6 @@ public:
   SSPKKTimeIntegrator tint;
 #endif
 #if _TIME_TYPE == 2
-  ModelReferenceState reference_state;
   ModelLinearSystem linear_system;
   SITimeIntegrator<4> tint;
 #endif
@@ -87,6 +87,10 @@ public:
     dual_topology.initialize(par, false);
     dual_geometry.initialize(dual_topology, params);
     debug_print("finish init topo/geom", par.masterproc);
+
+    debug_print("start init reference state", par.masterproc);
+    reference_state.initialize(primal_topology, dual_topology);
+    debug_print("finish init reference state", par.masterproc);
 
     // Allocate the variables
     debug_print("start init field/exchange sets", par.masterproc);
@@ -127,13 +131,16 @@ public:
 
     // // Initialize the tendencies and diagnostics
     debug_print("start tendencies init", par.masterproc);
-    tendencies.initialize(coupler, params, primal_geometry, dual_geometry);
+    tendencies.initialize(coupler, params, primal_geometry, dual_geometry,
+                          reference_state);
     debug_print("end tendencies init", par.masterproc);
 
     // EVENTUALLY THIS NEEDS TO BE MORE CLEVER IE POSSIBLY DO NOTHING BASED ON
     // THE IC STRING?
     //  set the initial conditions and compute initial stats
     debug_print("start ic setting", par.masterproc);
+    testcase->set_reference_state(reference_state, primal_geometry,
+                                  dual_geometry);
     testcase->set_initial_conditions(prognostic_vars, constant_vars,
                                      primal_geometry, dual_geometry);
     prognostic_vars.exchange();
@@ -147,9 +154,6 @@ public:
     // // Initialize the time stepper
     debug_print("start ts init", par.masterproc);
 #if _TIME_TYPE == 2
-    reference_state.initialize(primal_topology, dual_topology);
-    testcase->set_reference_state(reference_state, primal_geometry,
-                                  dual_geometry);
     linear_system.initialize(params, primal_geometry, dual_geometry,
                              reference_state);
     linear_system.compute_coefficients(params.dtcrm);
@@ -168,7 +172,7 @@ public:
     // Output the initial model state
     debug_print("start initial io", par.masterproc);
     for (auto &diag : diagnostics) {
-      diag->compute(0, constant_vars, prognostic_vars);
+      diag->compute(0, reference_state, constant_vars, prognostic_vars);
     }
     stats.compute(prognostic_vars, constant_vars, 0);
     io.outputInit(etime);
@@ -204,7 +208,7 @@ public:
                          " time " + std::to_string(etime),
                      par.masterproc);
         for (auto &diag : diagnostics) {
-          diag->compute(etime, constant_vars, prognostic_vars);
+          diag->compute(etime, reference_state, constant_vars, prognostic_vars);
         }
         io.output(etime);
         io.outputStats(stats);
