@@ -234,6 +234,22 @@ void YAKL_INLINE upwind_recon(SArray<real, 2, ndofs, nd> &recon,
   }
 }
 
+template <uint ndofs, uint nd>
+void YAKL_INLINE
+tanh_upwind_recon(SArray<real, 2, ndofs, nd> &recon,
+                  SArray<real, 3, ndofs, nd, 2> const &edgerecon,
+                  SArray<real, 1, nd> const &flux) {
+
+  real upwind_param;
+  for (int l = 0; l < ndofs; l++) {
+    for (int d = 0; d < nd; d++) {
+      upwind_param = std::tanh(flux(d) * tanh_upwind_coeff);
+      recon(l, d) = 0.5_fp * (edgerecon(l, d, 1) * (1 - upwind_param) +
+                              edgerecon(l, d, 0) * (upwind_param + 1));
+    }
+  }
+}
+
 template <uint ndofs, RECONSTRUCTION_TYPE recontype>
 void YAKL_INLINE compute_twisted_recon(const real5d &reconvar,
                                        const real5d &edgereconvar,
@@ -271,12 +287,18 @@ void YAKL_INLINE compute_twisted_recon(const real5d &reconvar,
 
   if (recontype == RECONSTRUCTION_TYPE::CFV) {
     centered_recon<ndofs, ndims>(recon, edgerecon);
-  }
-  if (recontype == RECONSTRUCTION_TYPE::WENO) {
-    upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
-  }
-  if (recontype == RECONSTRUCTION_TYPE::WENOFUNC) {
-    upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+  } else if (recontype == RECONSTRUCTION_TYPE::WENO ||
+             recontype == RECONSTRUCTION_TYPE::WENOFUNC) {
+    if (dual_upwind_type == UPWIND_TYPE::HEAVISIDE) {
+      upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+    } else if (dual_upwind_type == UPWIND_TYPE::TANH) {
+#ifdef _EXTRUDED
+      uvar(0) / dgeom.dz;
+#else
+      uvar(0) / dgeom.dy;
+#endif
+      tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+    }
   }
 
   for (int d = 0; d < ndims; d++) {
@@ -306,13 +328,15 @@ void YAKL_INLINE compute_twisted_vert_recon(
   }
 
   if (recontype == RECONSTRUCTION_TYPE::CFV) {
-    centered_recon<ndofs, 1>(recon, edgerecon);
-  }
-  if (recontype == RECONSTRUCTION_TYPE::WENO) {
-    upwind_recon<ndofs, 1>(recon, edgerecon, uvar);
-  }
-  if (recontype == RECONSTRUCTION_TYPE::WENOFUNC) {
-    upwind_recon<ndofs, 1>(recon, edgerecon, uvar);
+    centered_recon<ndofs, ndims>(recon, edgerecon);
+  } else if (recontype == RECONSTRUCTION_TYPE::WENO ||
+             recontype == RECONSTRUCTION_TYPE::WENOFUNC) {
+    if (dual_vert_upwind_type == UPWIND_TYPE::HEAVISIDE) {
+      upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+    } else if (dual_vert_upwind_type == UPWIND_TYPE::TANH) {
+      uvar(0) /= dgeom.dx;
+      tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+    }
   }
 
   for (int l = 0; l < ndofs; l++) {
@@ -410,13 +434,15 @@ void YAKL_INLINE compute_straight_xz_recon(const real5d &reconvar,
   }
 
   if (recontype == RECONSTRUCTION_TYPE::CFV) {
-    centered_recon<ndofs, 1>(recon, edgerecon);
-  }
-  if (recontype == RECONSTRUCTION_TYPE::WENO) {
-    upwind_recon<ndofs, 1>(recon, edgerecon, uvar);
-  }
-  if (recontype == RECONSTRUCTION_TYPE::WENOFUNC) {
-    upwind_recon<ndofs, 1>(recon, edgerecon, uvar);
+    centered_recon<ndofs, ndims>(recon, edgerecon);
+  } else if (recontype == RECONSTRUCTION_TYPE::WENO ||
+             recontype == RECONSTRUCTION_TYPE::WENOFUNC) {
+    if (upwind_type == UPWIND_TYPE::HEAVISIDE) {
+      upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+    } else if (upwind_type == UPWIND_TYPE::TANH) {
+      uvar(0) /= dgeom.dz;
+      tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+    }
   }
 
   for (int l = 0; l < ndofs; l++) {
@@ -458,13 +484,15 @@ void YAKL_INLINE compute_straight_xz_vert_recon(
   }
 
   if (recontype == RECONSTRUCTION_TYPE::CFV) {
-    centered_recon<ndofs, 1>(recon, edgerecon);
-  }
-  if (recontype == RECONSTRUCTION_TYPE::WENO) {
-    upwind_recon<ndofs, 1>(recon, edgerecon, uvar);
-  }
-  if (recontype == RECONSTRUCTION_TYPE::WENOFUNC) {
-    upwind_recon<ndofs, 1>(recon, edgerecon, uvar);
+    centered_recon<ndofs, ndims>(recon, edgerecon);
+  } else if (recontype == RECONSTRUCTION_TYPE::WENO ||
+             recontype == RECONSTRUCTION_TYPE::WENOFUNC) {
+    if (vert_upwind_type == UPWIND_TYPE::HEAVISIDE) {
+      upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+    } else if (vert_upwind_type == UPWIND_TYPE::TANH) {
+      uvar(0) /= dgeom.dx;
+      tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+    }
   }
 
   for (int l = 0; l < ndofs; l++) {
