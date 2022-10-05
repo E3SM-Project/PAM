@@ -5,7 +5,7 @@
 
 namespace awfl {
 
-  YAKL_INLINE void reconstruct_gll_values( SArray<real,1,ord> const stencil                      ,
+  YAKL_INLINE void reconstruct_gll_values( SArray<real,1,ord> const &stencil                     ,
                                            SArray<real,1,ngll> &gll                              ,
                                            SArray<real,2,ord,ngll> const &coefs_to_gll           ,
                                            SArray<real,2,ord,ngll> const &sten_to_gll            ,

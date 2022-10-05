@@ -24,14 +24,13 @@ public:
   int static constexpr max_tracers = 50;
   // For indexing into the state and state tendency arrays
   int static constexpr idR = 0;  // density perturbation
-  int static constexpr idU = 1;  // u
-  int static constexpr idV = 2;  // v
-  int static constexpr idW = 3;  // w
-  int static constexpr idT = 4;  // potential temperature perturbation
+  int static constexpr idU = 1;  // rho*u
+  int static constexpr idV = 2;  // rho*v
+  int static constexpr idW = 3;  // rho*w
+  int static constexpr idT = 4;  // rho*potential temperature perturbation
   
   bool weno_scalars; // Use WENO limiting for scalars?
   bool weno_winds;   // Use WENO limiting for winds?
-  int  data_spec;    // How to initialize the data
   real dtInit;       // Initial time step (used throughout the simulation)
   // Hydrostatic background data
   real hydrostasis_parameters_sum;  // Sum of the current parameters (to see if it's changed)
@@ -48,10 +47,6 @@ public:
   real                          sigma;              // WENO sigma parameter (handicap high-order TV estimate)
   SArray<real,2,ngll,ngll>      derivMatrix;        // Transform matrix: ngll GLL pts -> ngll GLL derivs
   // Vertical grid and reconstruction matrix information
-  real2d vert_interface;
-  real2d vert_interface_ghost;
-  real3d vert_locs_normalized;
-  real2d dz_ghost;
   real4d vert_sten_to_gll;
   real4d vert_sten_to_coefs;
   real5d vert_weno_recon_lower;
@@ -160,6 +155,7 @@ public:
     auto dm_vvel     = dm.get<real const,4>( "vvel"             );
     auto dm_wvel     = dm.get<real const,4>( "wvel"             );
     auto dm_temp     = dm.get<real const,4>( "temp"             );
+    auto vert_interface = dm.get<real const,2>("vertical_interface_height");
 
     SArray<real,1,ngll> gllPts_ngll;
     TransformMatrices::get_gll_points (gllPts_ngll);
@@ -168,9 +164,6 @@ public:
     YAKL_SCOPE( hyDensThetaSten      , this->hyDensThetaSten      );
     YAKL_SCOPE( hyDensGLL            , this->hyDensGLL            );
     YAKL_SCOPE( hyDensThetaGLL       , this->hyDensThetaGLL       );
-    YAKL_SCOPE( vert_interface       , this->vert_interface       );
-    YAKL_SCOPE( vert_interface_ghost , this->vert_interface_ghost );
-    YAKL_SCOPE( dz_ghost             , this->dz_ghost             );
 
     pam::MultipleFields<max_tracers,realConst4d> dm_tracers;
     for (int tr = 0; tr < num_tracers; tr++) {
@@ -182,6 +175,22 @@ public:
     // hydrostatically balanced cells and GLL points for the dycore's time step
     real tmp = yakl::intrinsics::sum(hy_params);
     if (tmp != hydrostasis_parameters_sum) {
+      // Get dz for ghost cells
+      real2d dz_ghost("dz_ghost",nz+2*hs,nens);
+      parallel_for( "Spatial.h init 2" , SimpleBounds<2>(nz+2*hs,nens) , YAKL_LAMBDA (int k, int iens) {
+        if      (k >= hs && k < hs+nz) { dz_ghost(k,iens) = dz(k-hs,iens); }
+        else if (k < hs              ) { dz_ghost(k,iens) = dz(0   ,iens); }
+        else if (k >= hs+nz          ) { dz_ghost(k,iens) = dz(nz-1,iens); }
+      });
+      // Get vertical interfaces for ghost cells
+      real2d vert_interface_ghost("vert_interface_ghost",nz+2*hs+1,nens);
+      parallel_for( "Spatial.h init 3" , nens , YAKL_LAMBDA (int iens) {
+        vert_interface_ghost(0,iens) = vert_interface(0,iens) - hs*dz(0,iens);
+        for (int k=1; k < nz+2*hs+1; k++) {
+          vert_interface_ghost(k,iens) = vert_interface_ghost(k-1,iens) + dz_ghost(k-1,iens);
+        }
+      });
+
       SArray<real,1,9> gll_pts, gll_wts;
       TransformMatrices::get_gll_points ( gll_pts );
       TransformMatrices::get_gll_weights( gll_wts );
@@ -321,43 +330,19 @@ public:
 
     // Store vertical cell interface heights in the data manager
     auto &dm = coupler.get_data_manager_readonly();
-    auto zint = dm.get<real const,2>("vertical_interface_height");
+    auto vert_interface = dm.get<real const,2>("vertical_interface_height");
 
     auto nz = coupler.get_nz();
+    auto dz = coupler.get_data_manager_readonly().get<real const,2>("vertical_cell_dz");
 
-    vert_interface        = real2d("vert_interface"      ,nz+1          ,nens);
-    vert_interface_ghost  = real2d("vert_interface_ghost",nz+2*hs+1     ,nens);
-    vert_locs_normalized  = real3d("vert_locs_normalized",nz,ord+1      ,nens);
-    auto dz               = real2d("dz"                  ,nz            ,nens);
-    dz_ghost              = real2d("dz_ghost"            ,nz+2*hs       ,nens);
-    vert_sten_to_gll      = real4d("vert_sten_to_gll"     ,nz,ord,ngll,nens);
-    vert_sten_to_coefs    = real4d("vert_sten_to_coefs"   ,nz,ord,ord ,nens);
-    vert_weno_recon_lower = real5d("vert_weno_recon_lower",nz,hs+1,hs+1,hs+1,nens);
-
-    YAKL_SCOPE( vert_interface        , this->vert_interface        );
-    YAKL_SCOPE( vert_interface_ghost  , this->vert_interface_ghost  );
-    YAKL_SCOPE( vert_locs_normalized  , this->vert_locs_normalized  );
-    YAKL_SCOPE( dz_ghost              , this->dz_ghost              );
-    YAKL_SCOPE( vert_sten_to_gll      , this->vert_sten_to_gll      );
-    YAKL_SCOPE( vert_sten_to_coefs    , this->vert_sten_to_coefs    );
-    YAKL_SCOPE( vert_weno_recon_lower , this->vert_weno_recon_lower );
-
-    zint.deep_copy_to(vert_interface);
-
-    parallel_for( "Spatial.h init 1" , SimpleBounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
-      dz(k,iens) = vert_interface(k+1,iens) - vert_interface(k,iens);
-    });
-
+    real2d dz_ghost("dz_ghost",nz+2*hs,nens);
     parallel_for( "Spatial.h init 2" , SimpleBounds<2>(nz+2*hs,nens) , YAKL_LAMBDA (int k, int iens) {
-      if (k >= hs && k < hs+nz) {
-        dz_ghost(k,iens) = dz(k-hs,iens);
-      } else if (k < hs) {
-        dz_ghost(k,iens) = dz(0,iens);
-      } else if (k >= hs+nz) {
-        dz_ghost(k,iens) = dz(nz-1,iens);
-      }
+      if      (k >= hs && k < hs+nz) { dz_ghost(k,iens) = dz(k-hs,iens); }
+      else if (k < hs              ) { dz_ghost(k,iens) = dz(0   ,iens); }
+      else if (k >= hs+nz          ) { dz_ghost(k,iens) = dz(nz-1,iens); }
     });
 
+    real2d vert_interface_ghost("vert_interface_ghost",nz+2*hs+1,nens);
     parallel_for( "Spatial.h init 3" , nens , YAKL_LAMBDA (int iens) {
       vert_interface_ghost(0,iens) = vert_interface(0,iens) - hs*dz(0,iens);
       for (int k=1; k < nz+2*hs+1; k++) {
@@ -365,11 +350,18 @@ public:
       }
     });
 
+    vert_sten_to_gll      = real4d("vert_sten_to_gll"     ,nz,ord,ngll,nens);
+    vert_sten_to_coefs    = real4d("vert_sten_to_coefs"   ,nz,ord,ord ,nens);
+    vert_weno_recon_lower = real5d("vert_weno_recon_lower",nz,hs+1,hs+1,hs+1,nens);
+
+    YAKL_SCOPE( vert_sten_to_gll      , this->vert_sten_to_gll      );
+    YAKL_SCOPE( vert_sten_to_coefs    , this->vert_sten_to_coefs    );
+    YAKL_SCOPE( vert_weno_recon_lower , this->vert_weno_recon_lower );
+
     auto vint_host      = vert_interface_ghost .createHostCopy();
     auto vert_s2g_host  = vert_sten_to_gll     .createHostCopy();
     auto vert_s2c_host  = vert_sten_to_coefs   .createHostCopy();
     auto vert_weno_host = vert_weno_recon_lower.createHostCopy();
-    auto vert_locs_host = vert_locs_normalized .createHostCopy();
 
     SArray<real,2,ord,ngll> c2g;
     TransformMatrices::coefs_to_gll_lower(c2g);
@@ -387,7 +379,6 @@ public:
         double dzmid = locs(hs+1) - locs(hs);
         for (int kk=0; kk < ord+1; kk++) {
           locs(kk) = ( locs(kk) - zmid ) / dzmid;
-          vert_locs_host(k,kk,iens) = locs(kk);
         }
 
         // Compute reconstruction matrices
@@ -430,7 +421,6 @@ public:
     vert_s2g_host .deep_copy_to(vert_sten_to_gll     );
     vert_s2c_host .deep_copy_to(vert_sten_to_coefs   );
     vert_weno_host.deep_copy_to(vert_weno_recon_lower);
-    vert_locs_host.deep_copy_to(vert_locs_normalized );
 
     // Compute the grid spacing in each dimension
     auto dx = xlen/nx;
@@ -488,6 +478,8 @@ public:
     int constexpr DATA_SPEC_THERMAL       = 0;
     int constexpr DATA_SPEC_THERMAL_MOIST = 1;
 
+    int data_spec;
+
     if (coupler.option_exists("standalone_input_file")) {
       std::string inFile = coupler.get_option<std::string>( "standalone_input_file" );
       YAML::Node config = YAML::LoadFile(inFile);
@@ -497,33 +489,31 @@ public:
       else                                 { return; }
     } else { return; }
 
-    auto num_tracers = coupler.get_num_tracers();
-    auto nz          = coupler.get_nz     ();
-    auto ny          = coupler.get_ny     ();
-    auto nx          = coupler.get_nx     ();
-    auto dx          = coupler.get_dx     ();
-    auto dy          = coupler.get_dy     ();
-    auto dz          = coupler.get_data_manager_readonly().get<real const,2>("vertical_cell_dz");
-    auto nens        = coupler.get_nens   ();
-    auto Rd          = coupler.get_R_d    ();
-    auto Rv          = coupler.get_R_v    ();
-    auto cp          = coupler.get_cp_d   ();
-    auto p0          = coupler.get_p0     ();
-    auto gamma       = coupler.get_gamma_d();
-    auto grav        = coupler.get_grav   ();
-    auto kappa       = Rd/cp;
-    auto C0          = pow( Rd * pow( p0 , -kappa ) , gamma );
-    auto xlen        = coupler.get_xlen();
-    auto ylen        = coupler.get_ylen();
-    auto idWV        = coupler.get_tracer_index("water_vapor");
+    auto num_tracers    = coupler.get_num_tracers();
+    auto nz             = coupler.get_nz     ();
+    auto ny             = coupler.get_ny     ();
+    auto nx             = coupler.get_nx     ();
+    auto dx             = coupler.get_dx     ();
+    auto dy             = coupler.get_dy     ();
+    auto dz             = coupler.get_data_manager_readonly().get<real const,2>("vertical_cell_dz");
+    auto nens           = coupler.get_nens   ();
+    auto Rd             = coupler.get_R_d    ();
+    auto Rv             = coupler.get_R_v    ();
+    auto cp             = coupler.get_cp_d   ();
+    auto p0             = coupler.get_p0     ();
+    auto gamma          = coupler.get_gamma_d();
+    auto grav           = coupler.get_grav   ();
+    auto kappa          = Rd/cp;
+    auto C0             = pow( Rd * pow( p0 , -kappa ) , gamma );
+    auto xlen           = coupler.get_xlen();
+    auto ylen           = coupler.get_ylen();
+    auto idWV           = coupler.get_tracer_index("water_vapor");
+    auto vert_interface = coupler.get_data_manager_readonly().get<real const,2>("vertical_interface_height");
     auto sim2d = ny == 1;
 
     SArray<real,1,ord> gllWts_ord, gllPts_ord;
     TransformMatrices::get_gll_points (gllPts_ord);
     TransformMatrices::get_gll_weights(gllWts_ord);
-
-    YAKL_SCOPE( data_spec                , this->data_spec               );
-    YAKL_SCOPE( vert_interface           , this->vert_interface          );
 
     real5d state   = createStateArr (coupler);
     real5d tracers = createTracerArr(coupler);
