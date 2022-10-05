@@ -28,12 +28,6 @@ public:
   int static constexpr idV = 2;  // v
   int static constexpr idW = 3;  // w
   int static constexpr idT = 4;  // potential temperature perturbation
-  // The two boundary condition options for each direction
-  int static constexpr BC_PERIODIC = 0;
-  int static constexpr BC_WALL     = 1;
-  // Options for initializing the data
-  int static constexpr DATA_SPEC_THERMAL       = 0;
-  int static constexpr DATA_SPEC_THERMAL_MOIST = 1;
   
   bool weno_scalars; // Use WENO limiting for scalars?
   bool weno_winds;   // Use WENO limiting for winds?
@@ -44,7 +38,6 @@ public:
   real3d hyDensSten;                // A stencil around each cell of hydrostatic density
   real3d hyDensThetaSten;           // A stencil around each cell of hydrostatic density * potential temperature
   real3d hyDensGLL;                 // GLL point values of hydrostatic background density in each cell
-  real3d hyPressureGLL;             // GLL point values of hydrostatic background pressure in each cell
   real3d hyDensThetaGLL;            // GLL point values of hydrostatic background density*potential temperature
   // Transformation matrices for various degrees of freedom
   SArray<real,2,ord,ngll>       coefs_to_gll;
@@ -173,7 +166,6 @@ public:
 
     YAKL_SCOPE( hyDensSten           , this->hyDensSten           );
     YAKL_SCOPE( hyDensThetaSten      , this->hyDensThetaSten      );
-    YAKL_SCOPE( hyPressureGLL        , this->hyPressureGLL        );
     YAKL_SCOPE( hyDensGLL            , this->hyDensGLL            );
     YAKL_SCOPE( hyDensThetaGLL       , this->hyDensThetaGLL       );
     YAKL_SCOPE( vert_interface       , this->vert_interface       );
@@ -213,7 +205,6 @@ public:
       parallel_for( "Spatial.h new hydrostasis" , SimpleBounds<3>(nz,ngll,nens) , YAKL_LAMBDA (int k, int kk, int iens) {
         real zloc = vert_interface(k,iens) + 0.5_fp*dz(k,iens) + gllPts_ngll(kk)*dz(k,iens);
         real z0   = vert_interface(k,iens) + 0.5_fp*dz(k,iens);
-        hyPressureGLL (k,kk,iens) = pam::hydrostatic_pressure  (hy_params,zloc,z0,dz(k,iens),k,iens              );
         hyDensGLL     (k,kk,iens) = pam::hydrostatic_density   (hy_params,zloc,z0,dz(k,iens),k,iens         ,grav);
         hyDensThetaGLL(k,kk,iens) =      hydrostatic_dens_theta(hy_params,zloc,z0,dz(k,iens),k,iens,C0,gamma     );
       });
@@ -320,23 +311,9 @@ public:
     // If inFile is empty, then we aren't reading in an input file
     if (coupler.option_exists("standalone_input_file")) {
       std::string inFile = coupler.get_option<std::string>( "standalone_input_file" );
-
-      // Read the YAML input file
       YAML::Node config = YAML::LoadFile(inFile);
-
-      // Read whether we're doing WENO limiting on scalars and winds
-      weno_scalars = config["weno_scalars"].as<bool>();
-      weno_winds   = config["weno_winds"].as<bool>();
-
-      // Read the data initialization option
-      std::string dataStr = config["initData"].as<std::string>();
-      if        (dataStr == "thermal_moist") {
-        data_spec = DATA_SPEC_THERMAL_MOIST;
-      } else if (dataStr == "thermal") {
-        data_spec = DATA_SPEC_THERMAL;
-      } else {
-        endrun("ERROR: Invalid data_spec");
-      }
+      weno_scalars = config["weno_scalars"].as<bool>(true);
+      weno_winds   = config["weno_winds"  ].as<bool>(true);
     } else {
       weno_scalars            = true;
       weno_winds              = true;
@@ -495,7 +472,6 @@ public:
     hyDensSten      = real3d("hyDensSten       ",nz,ord,nens);
     hyDensThetaSten = real3d("hyDensThetaSten  ",nz,ord,nens);
     hyDensGLL       = real3d("hyDensGLL        ",nz,ngll,nens);
-    hyPressureGLL   = real3d("hyPressureGLL    ",nz,ngll,nens);
     hyDensThetaGLL  = real3d("hyDensThetaGLL   ",nz,ngll,nens);
 
     init_idealized_state_and_tracers( coupler );
@@ -508,6 +484,18 @@ public:
   void init_idealized_state_and_tracers( pam::PamCoupler &coupler ) {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
+
+    int constexpr DATA_SPEC_THERMAL       = 0;
+    int constexpr DATA_SPEC_THERMAL_MOIST = 1;
+
+    if (coupler.option_exists("standalone_input_file")) {
+      std::string inFile = coupler.get_option<std::string>( "standalone_input_file" );
+      YAML::Node config = YAML::LoadFile(inFile);
+      std::string dataStr = config["initData"].as<std::string>("unspecified");
+      if      (dataStr == "thermal_moist") { data_spec = DATA_SPEC_THERMAL_MOIST; }
+      else if (dataStr == "thermal"      ) { data_spec = DATA_SPEC_THERMAL      ; }
+      else                                 { return; }
+    } else { return; }
 
     auto num_tracers = coupler.get_num_tracers();
     auto nz          = coupler.get_nz     ();
@@ -530,8 +518,7 @@ public:
     auto idWV        = coupler.get_tracer_index("water_vapor");
     auto sim2d = ny == 1;
 
-    SArray<real,1,ord> gllWts_ord;
-    SArray<real,1,ord> gllPts_ord;
+    SArray<real,1,ord> gllWts_ord, gllPts_ord;
     TransformMatrices::get_gll_points (gllPts_ord);
     TransformMatrices::get_gll_weights(gllWts_ord);
 
@@ -541,8 +528,7 @@ public:
     real5d state   = createStateArr (coupler);
     real5d tracers = createTracerArr(coupler);
 
-    // If the data_spec is thermal or ..., then initialize the domain with Exner pressure-based hydrostasis
-    // This is mostly to make plotting potential temperature perturbation easier for publications
+    // Initialize constant theta profile-based test cases
     if ( data_spec == DATA_SPEC_THERMAL_MOIST ||
          data_spec == DATA_SPEC_THERMAL ) {
 
@@ -598,7 +584,7 @@ public:
         }
       });
 
-    } // if (data_spec == DATA_SPEC_THERMAL_MOIST)
+    }
 
     convert_dynamics_to_coupler_state( coupler , state , tracers );
   }
@@ -1034,8 +1020,7 @@ public:
     YAKL_SCOPE( vert_sten_to_coefs      , this->vert_sten_to_coefs     );
     YAKL_SCOPE( vert_weno_recon_lower   , this->vert_weno_recon_lower  );
 
-    SArray<real,1,ngll> gllWts_ngll;
-    SArray<real,1,ngll> gllPts_ngll;
+    SArray<real,1,ngll> gllWts_ngll, gllPts_ngll;
     TransformMatrices::get_gll_points (gllPts_ngll);
     TransformMatrices::get_gll_weights(gllWts_ngll);
 
