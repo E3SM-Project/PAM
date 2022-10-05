@@ -386,22 +386,45 @@ void YAKL_INLINE compute_straight_xz_recon(const real5d &reconvar,
   SArray<real, 1, 1> uvar;
   SArray<real, 3, ndofs, 1, 2> edgerecon;
 
-  SArray<real, 1, 1> f0, f1, f2, f3;
-  compute_Hext<1, diff_ord>(f0, V, pgeom, dgeom, is, js, ks, i, j, k, n);
-  compute_Hext<1, diff_ord>(f1, V, pgeom, dgeom, is, js, ks, i + 1, j, k, n);
-  compute_Hext<1, diff_ord>(f2, V, pgeom, dgeom, is, js, ks, i, j, k + 1, n);
-  compute_Hext<1, diff_ord>(f3, V, pgeom, dgeom, is, js, ks, i + 1, j, k + 1,
-                            n);
-
-  SArray<real, 1, 4> flux;
-  flux(0) = f0(0);
-  flux(1) = f1(0);
-  flux(2) = f2(0);
-  flux(3) = f3(0);
-
+  const auto &primal_topology = pgeom.topology;
   // this assumes that F and U signs are the same
-  // do we need to handle boundaries here ?
-  Wxz_w(uvar, flux);
+  if (k == 0) {
+    SArray<real, 1, 1> f0, f1;
+    compute_Hext<1, diff_ord>(f0, V, pgeom, dgeom, is, js, ks, i, j, k + 1, n);
+    compute_Hext<1, diff_ord>(f1, V, pgeom, dgeom, is, js, ks, i + 1, j, k + 1,
+                              n);
+
+    SArray<real, 1, 4> flux;
+    flux(0) = f0(0);
+    flux(1) = f1(0);
+
+    Wxz_w(uvar, flux);
+  } else if (k == primal_topology.nl - 1) {
+    SArray<real, 1, 1> f0, f1;
+    compute_Hext<1, diff_ord>(f0, V, pgeom, dgeom, is, js, ks, i, j, k, n);
+    compute_Hext<1, diff_ord>(f1, V, pgeom, dgeom, is, js, ks, i + 1, j, k, n);
+
+    SArray<real, 1, 2> flux;
+    flux(0) = f0(0);
+    flux(1) = f1(0);
+
+    Wxz_w_boundary(uvar, flux);
+  } else {
+    SArray<real, 1, 1> f0, f1, f2, f3;
+    compute_Hext<1, diff_ord>(f0, V, pgeom, dgeom, is, js, ks, i, j, k, n);
+    compute_Hext<1, diff_ord>(f1, V, pgeom, dgeom, is, js, ks, i + 1, j, k, n);
+    compute_Hext<1, diff_ord>(f2, V, pgeom, dgeom, is, js, ks, i, j, k + 1, n);
+    compute_Hext<1, diff_ord>(f3, V, pgeom, dgeom, is, js, ks, i + 1, j, k + 1,
+                              n);
+
+    SArray<real, 1, 2> flux;
+    flux(0) = f0(0);
+    flux(1) = f1(0);
+    flux(2) = f2(0);
+    flux(3) = f3(0);
+
+    Wxz_w_boundary(uvar, flux);
+  }
 
   for (int l = 0; l < ndofs; l++) {
     edgerecon(l, 0, 0) = edgereconvar(l + ndofs * 1, k + ks, j + js, i + is, n);
@@ -433,21 +456,43 @@ void YAKL_INLINE compute_straight_xz_vert_recon(
   SArray<real, 1, 1> uvar;
   SArray<real, 3, ndofs, 1, 2> edgerecon;
 
-  SArray<real, 1, 1> f0, f1, f2, f3;
-  compute_Hv<1, vert_diff_ord>(f0, W, pgeom, dgeom, is, js, ks, i, j, k, n);
-  compute_Hv<1, vert_diff_ord>(f1, W, pgeom, dgeom, is, js, ks, i - 1, j, k, n);
-  compute_Hv<1, vert_diff_ord>(f2, W, pgeom, dgeom, is, js, ks, i, j, k + 1, n);
-  compute_Hv<1, vert_diff_ord>(f3, W, pgeom, dgeom, is, js, ks, i - 1, j, k + 1,
-                               n);
-  SArray<real, 1, 4> flux;
-  flux(0) = f0(0);
-  flux(1) = f1(0);
-  flux(2) = f2(0);
-  flux(3) = f3(0);
-
+  const auto &primal_topology = pgeom.topology;
   // this assumes that FW and UW signs are the same
-  // do we need to handle boundaries here ?
-  Wxz_u(uvar, flux);
+  if (k == 0) {
+    SArray<real, 1, 1> f0, f1;
+    compute_Hv<1, vert_diff_ord>(f0, W, pgeom, dgeom, is, js, ks, i, j, k, n);
+    compute_Hv<1, vert_diff_ord>(f1, W, pgeom, dgeom, is, js, ks, i - 1, j, k,
+                                 n);
+    SArray<real, 1, 2> flux;
+    flux(0) = f0(0);
+    flux(1) = f1(0);
+    Wxz_u_boundary(uvar, flux);
+  } else if (k == primal_topology.ni - 1) {
+    SArray<real, 1, 1> f0, f1;
+    compute_Hv<1, vert_diff_ord>(f0, W, pgeom, dgeom, is, js, ks, i, j, k + 1,
+                                 n);
+    compute_Hv<1, vert_diff_ord>(f1, W, pgeom, dgeom, is, js, ks, i - 1, j,
+                                 k + 1, n);
+    SArray<real, 1, 2> flux;
+    flux(0) = f0(0);
+    flux(1) = f1(0);
+    Wxz_u_boundary(uvar, flux);
+  } else {
+    SArray<real, 1, 1> f0, f1, f2, f3;
+    compute_Hv<1, vert_diff_ord>(f0, W, pgeom, dgeom, is, js, ks, i, j, k, n);
+    compute_Hv<1, vert_diff_ord>(f1, W, pgeom, dgeom, is, js, ks, i - 1, j, k,
+                                 n);
+    compute_Hv<1, vert_diff_ord>(f2, W, pgeom, dgeom, is, js, ks, i, j, k + 1,
+                                 n);
+    compute_Hv<1, vert_diff_ord>(f3, W, pgeom, dgeom, is, js, ks, i - 1, j,
+                                 k + 1, n);
+    SArray<real, 1, 4> flux;
+    flux(0) = f0(0);
+    flux(1) = f1(0);
+    flux(2) = f2(0);
+    flux(3) = f3(0);
+    Wxz_u(uvar, flux);
+  }
   // Needs a "twist"
   uvar(0) *= -1;
 
