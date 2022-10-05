@@ -56,10 +56,6 @@ public:
   SArray<real,1,hs+2>           idl;                // Ideal weights for WENO
   real                          sigma;              // WENO sigma parameter (handicap high-order TV estimate)
   SArray<real,2,ngll,ngll>      derivMatrix;        // Transform matrix: ngll GLL pts -> ngll GLL derivs
-  SArray<real,1,ord >           gllWts_ord;
-  SArray<real,1,ord >           gllPts_ord;
-  SArray<real,1,ngll>           gllWts_ngll;
-  SArray<real,1,ngll>           gllPts_ngll;
   // Vertical grid and reconstruction matrix information
   real2d vert_interface;
   real2d vert_interface_ghost;
@@ -174,12 +170,14 @@ public:
     auto dm_wvel     = dm.get<real const,4>( "wvel"             );
     auto dm_temp     = dm.get<real const,4>( "temp"             );
 
+    SArray<real,1,ngll> gllPts_ngll;
+    TransformMatrices::get_gll_points (gllPts_ngll);
+
     YAKL_SCOPE( hyDensSten           , this->hyDensSten           );
     YAKL_SCOPE( hyDensThetaSten      , this->hyDensThetaSten      );
     YAKL_SCOPE( hyPressureGLL        , this->hyPressureGLL        );
     YAKL_SCOPE( hyDensGLL            , this->hyDensGLL            );
     YAKL_SCOPE( hyDensThetaGLL       , this->hyDensThetaGLL       );
-    YAKL_SCOPE( gllPts_ngll          , this->gllPts_ngll          );
     YAKL_SCOPE( vert_interface       , this->vert_interface       );
     YAKL_SCOPE( vert_interface_ghost , this->vert_interface_ghost );
     YAKL_SCOPE( dz_ghost             , this->dz_ghost             );
@@ -506,12 +504,6 @@ public:
 
       this->derivMatrix = matmul_cr( c2g , matmul_cr( c2d , g2c ) );
     }
-    // Store quadrature weights using ord GLL points
-    TransformMatrices::get_gll_points (this->gllPts_ord);
-    TransformMatrices::get_gll_weights(this->gllWts_ord);
-    // Store quadrature weights using ngll GLL points
-    TransformMatrices::get_gll_points (this->gllPts_ngll);
-    TransformMatrices::get_gll_weights(this->gllWts_ngll);
 
     // Store WENO ideal weights and sigma value
     weno::wenoSetIdealSigma<ord>(this->idl,this->sigma);
@@ -534,7 +526,6 @@ public:
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
 
-
     auto num_tracers = coupler.get_num_tracers();
     auto nz          = coupler.get_nz     ();
     auto ny          = coupler.get_ny     ();
@@ -556,8 +547,11 @@ public:
     auto idWV        = coupler.get_tracer_index("water_vapor");
     auto sim2d = ny == 1;
 
-    YAKL_SCOPE( gllPts_ord               , this->gllPts_ord              );
-    YAKL_SCOPE( gllWts_ord               , this->gllWts_ord              );
+    SArray<real,1,ord> gllWts_ord;
+    SArray<real,1,ord> gllPts_ord;
+    TransformMatrices::get_gll_points (gllPts_ord);
+    TransformMatrices::get_gll_weights(gllWts_ord);
+
     YAKL_SCOPE( data_spec                , this->data_spec               );
     YAKL_SCOPE( vert_interface           , this->vert_interface          );
 
@@ -1050,10 +1044,14 @@ public:
     YAKL_SCOPE( hyDensGLL               , this->hyDensGLL              );
     YAKL_SCOPE( hyDensThetaGLL          , this->hyDensThetaGLL         );
     YAKL_SCOPE( derivMatrix             , this->derivMatrix            );
-    YAKL_SCOPE( gllWts_ngll             , this->gllWts_ngll            );
     YAKL_SCOPE( vert_sten_to_gll        , this->vert_sten_to_gll       );
     YAKL_SCOPE( vert_sten_to_coefs      , this->vert_sten_to_coefs     );
     YAKL_SCOPE( vert_weno_recon_lower   , this->vert_weno_recon_lower  );
+
+    SArray<real,1,ngll> gllWts_ngll;
+    SArray<real,1,ngll> gllPts_ngll;
+    TransformMatrices::get_gll_points (gllPts_ngll);
+    TransformMatrices::get_gll_weights(gllWts_ngll);
 
     real6d state_limits ("state_limits" ,num_state  ,2,nz+1,ny,nx,nens);
     real6d tracer_limits("tracer_limits",num_tracers,2,nz+1,ny,nx,nens);
