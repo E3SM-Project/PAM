@@ -2435,44 +2435,6 @@ template <bool acoustic_balance> struct RisingBubble {
   add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics) {}
 };
 
-struct MoistRisingBubble : public RisingBubble<false> {
-
-  static real YAKL_INLINE rhov_f(real x, real z,
-                                 const ThermoPotential &thermo) {
-    real r = sqrt((x - xc) * (x - xc) + (z - bzc) * (z - bzc));
-    real rh = (r < rc) ? rh0 * (1._fp + cos(pi * r / rc)) : 0._fp;
-    real Th = isentropic_T(x, z, theta0, g, thermo);
-    real svp = saturation_vapor_pressure(Th);
-    real pv = svp * rh;
-    return pv / (thermo.cst.Rv * Th);
-  }
-
-  static real YAKL_INLINE rhod_f(real x, real z,
-                                 const ThermoPotential &thermo) {
-    real p = isentropic_p(x, z, theta0, g, thermo);
-    real T = isentropic_T(x, z, theta0, g, thermo);
-    real alpha = thermo.compute_alpha(p, T, 1, 0, 0, 0);
-    return 1._fp / alpha;
-  }
-
-  static real YAKL_INLINE rho_f(real x, real z, const ThermoPotential &thermo) {
-    real rhod = rhod_f(x, z, thermo);
-    real rhov = rhov_f(x, z, thermo);
-    return rhod + rhov;
-  }
-
-  static real YAKL_INLINE entropicdensity_f(real x, real z,
-                                            const ThermoPotential &thermo) {
-    real p = isentropic_p(x, z, theta0, g, thermo);
-    real T = isentropic_T(x, z, theta0, g, thermo);
-    real r = sqrt((x - xc) * (x - xc) + (z - bzc) * (z - bzc));
-    real dtheta = (r < rc) ? dss * 0.5_fp * (1. + cos(pi * r / rc)) : 0._fp;
-    real dT = dtheta * pow(p / thermo.cst.pr, thermo.cst.kappa_d);
-    real theta = thermo.compute_entropic_var(p, T + dT, 1, 0, 0, 0);
-    return theta * rho_f(x, z, thermo);
-  }
-};
-
 struct LargeRisingBubble {
   static real constexpr g = 9.80616_fp;
   static real constexpr Lx = 20000._fp;
@@ -2538,6 +2500,113 @@ struct LargeRisingBubble {
 
   static void
   add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics) {}
+};
+
+struct DensityCurrent {
+  static real constexpr g = 9.80616_fp;
+  static real constexpr Lx = 51.2e3;
+  static real constexpr Lz = 6400;
+  static real constexpr xc = 0;
+  static real constexpr zc = 0.5_fp * Lz;
+  static real constexpr theta0 = 300.0_fp;
+  static real constexpr bxc = 0;
+  static real constexpr bzc = 3000;
+  static real constexpr bxr = 4000;
+  static real constexpr bzr = 4000;
+  static real constexpr dss = -15;
+  static real constexpr T_ref = 300.0_fp;
+  static real constexpr N_ref = 0.0001;
+
+  static real YAKL_INLINE refnsq_f(real z, const ThermoPotential &thermo) {
+    return N_ref * N_ref;
+  }
+
+  static real YAKL_INLINE refp_f(real z, const ThermoPotential &thermo) {
+    return const_stability_p(z, N_ref, g, thermo.cst.pr, theta0, thermo);
+  }
+
+  static real YAKL_INLINE refT_f(real z, const ThermoPotential &thermo) {
+    return const_stability_T(z, N_ref, g, theta0, thermo);
+  }
+
+  static real YAKL_INLINE refrho_f(real z, const ThermoPotential &thermo) {
+    real p = refp_f(z, thermo);
+    real T = refT_f(z, thermo);
+    real alpha = thermo.compute_alpha(p, T, 1, 0, 0, 0);
+    return 1._fp / alpha;
+  }
+
+  static real YAKL_INLINE refentropicdensity_f(real z,
+                                               const ThermoPotential &thermo) {
+    real rho_ref = refrho_f(z, thermo);
+    real T_ref = refT_f(z, thermo);
+    real p_ref = refp_f(z, thermo);
+    return rho_ref * thermo.compute_entropic_var(p_ref, T_ref, 0, 0, 0, 0);
+  }
+
+  static real YAKL_INLINE rho_f(real x, real z, const ThermoPotential &thermo) {
+    real rho_b = isentropic_rho(x, z, theta0, g, thermo);
+    return rho_b;
+  }
+
+  static real YAKL_INLINE entropicvar_f(real x, real z,
+                                        const ThermoPotential &thermo) {
+    real p = isentropic_p(x, z, theta0, g, thermo);
+    real T = isentropic_T(x, z, theta0, g, thermo);
+    real r = sqrt((x - bxc) * (x - bxc) / (bxr * bxr) +
+                  (z - bzc) * (z - bzc) / (bzr * bzr));
+    real dtheta = (r < 1) ? dss * 0.5_fp * (1._fp + cos(pi * r)) : 0._fp;
+    real dT = dtheta * pow(p / thermo.cst.pr, thermo.cst.kappa_d);
+    return thermo.compute_entropic_var(p, T + dT, 0, 0, 0, 0);
+  }
+
+  static vecext<2> YAKL_INLINE v_f(real x, real y) {
+    vecext<2> vvec;
+    vvec.u = 0;
+    vvec.w = 0;
+    return vvec;
+  }
+
+  static void
+  add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics) {}
+};
+
+struct MoistRisingBubble : public RisingBubble<false> {
+
+  static real YAKL_INLINE rhov_f(real x, real z,
+                                 const ThermoPotential &thermo) {
+    real r = sqrt((x - xc) * (x - xc) + (z - bzc) * (z - bzc));
+    real rh = (r < rc) ? rh0 * (1._fp + cos(pi * r / rc)) : 0._fp;
+    real Th = isentropic_T(x, z, theta0, g, thermo);
+    real svp = saturation_vapor_pressure(Th);
+    real pv = svp * rh;
+    return pv / (thermo.cst.Rv * Th);
+  }
+
+  static real YAKL_INLINE rhod_f(real x, real z,
+                                 const ThermoPotential &thermo) {
+    real p = isentropic_p(x, z, theta0, g, thermo);
+    real T = isentropic_T(x, z, theta0, g, thermo);
+    real alpha = thermo.compute_alpha(p, T, 1, 0, 0, 0);
+    return 1._fp / alpha;
+  }
+
+  static real YAKL_INLINE rho_f(real x, real z, const ThermoPotential &thermo) {
+    real rhod = rhod_f(x, z, thermo);
+    real rhov = rhov_f(x, z, thermo);
+    return rhod + rhov;
+  }
+
+  static real YAKL_INLINE entropicdensity_f(real x, real z,
+                                            const ThermoPotential &thermo) {
+    real p = isentropic_p(x, z, theta0, g, thermo);
+    real T = isentropic_T(x, z, theta0, g, thermo);
+    real r = sqrt((x - xc) * (x - xc) + (z - bzc) * (z - bzc));
+    real dtheta = (r < rc) ? dss * 0.5_fp * (1. + cos(pi * r / rc)) : 0._fp;
+    real dT = dtheta * pow(p / thermo.cst.pr, thermo.cst.kappa_d);
+    real theta = thermo.compute_entropic_var(p, T + dT, 1, 0, 0, 0);
+    return theta * rho_f(x, z, thermo);
+  }
 };
 
 struct MoistLargeRisingBubble : LargeRisingBubble {
@@ -3045,6 +3114,8 @@ void testcase_from_string(std::unique_ptr<TestCase> &testcase, std::string name,
     } else {
       testcase = std::make_unique<EulerTestCase<RisingBubble<false>>>();
     }
+  } else if (name == "densitycurrent") {
+    testcase = std::make_unique<EulerTestCase<DensityCurrent>>();
   } else if (name == "moistrisingbubble") {
     testcase = std::make_unique<MoistEulerTestCase<MoistRisingBubble>>();
   } else if (name == "largerisingbubble") {
