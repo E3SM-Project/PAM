@@ -186,10 +186,8 @@ namespace awfl {
                                                    SArray<real,2,nAder,ngll> &rwt ,
                                                    SArray<real,2,nAder,ngll> &rt_gamma ,
                                                    SArray<real,2,ngll,ngll> const &deriv ,
-                                                   real3d const &hyDensGLL ,
-                                                   real3d const &hyPressureGLL ,
                                                    real C0, real gamma , real grav ,
-                                                   int k , real dz , int nz , int iens ) {
+                                                   int k , real dz , int nz ) {
     // zero out the non-linear DTs
     for (int kt=1; kt < nAder; kt++) {
       for (int ii=0; ii < ngll; ii++) {
@@ -214,15 +212,14 @@ namespace awfl {
           drw_dz    += deriv(s,ii) * rw(kt,s);
           drwu_dz   += deriv(s,ii) * rwu(kt,s);
           drwv_dz   += deriv(s,ii) * rwv(kt,s);
-          if (kt == 0) { drww_p_dz += deriv(s,ii) * ( rww(kt,s) + C0*rt_gamma(kt,s) - hyPressureGLL(k,s,iens) ); }
-          else         { drww_p_dz += deriv(s,ii) * ( rww(kt,s) + C0*rt_gamma(kt,s)/2                         ); }
+          if (kt == 0) { drww_p_dz += deriv(s,ii) * ( rww(kt,s) + C0*rt_gamma(kt,s)  ); }
+          else         { drww_p_dz += deriv(s,ii) * ( rww(kt,s) + C0*rt_gamma(kt,s)/2); }
           drwt_dz   += deriv(s,ii) * rwt(kt,s);
         }
         r (kt+1,ii) = -drw_dz   /dz/(kt+1);
         ru(kt+1,ii) = -drwu_dz  /dz/(kt+1);
         rv(kt+1,ii) = -drwv_dz  /dz/(kt+1);
-        if (kt == 0) { rw(kt+1,ii) = -drww_p_dz/dz/(kt+1) - (r(kt,ii)-hyDensGLL(k,ii,iens))*grav/(kt+1); }
-        else         { rw(kt+1,ii) = -drww_p_dz/dz/(kt+1) -  r(kt,ii)                      *grav/(kt+1); }
+        rw(kt+1,ii) = -drww_p_dz/dz/(kt+1) - r(kt,ii)*grav/(kt+1);
         rt(kt+1,ii) = -drwt_dz  /dz/(kt+1);
 
         if (k == nz-1) rw(kt+1,ngll-1) = 0;

@@ -579,6 +579,7 @@ public:
         state(idV,hs+k,hs+j,hs+i,iens) = 0;
         state(idW,hs+k,hs+j,hs+i,iens) = 0;
         state(idT,hs+k,hs+j,hs+i,iens) = 0;
+        for (int tr=0; tr < num_tracers; tr++) { tracers(tr,hs+k,hs+j,hs+i,iens) = 0; }
         for (int kk=0; kk<ord; kk++) {
           for (int jj=0; jj<ord; jj++) {
             for (int ii=0; ii<ord; ii++) {
@@ -593,90 +594,27 @@ public:
               real wt = gllWts_ord(kk) * gllWts_ord(jj) * gllWts_ord(ii);
               if        (data_spec == DATA_SPEC_THERMAL) {
                 // Compute constant theta hydrostatic background state
-                real th = 300;
-                real rh = profiles::initConstTheta_density(th,zloc,Rd,cp,gamma,p0,C0,grav);
-                real tp = profiles::ellipsoid_linear(xloc, yloc, zloc, xlen/2, ylen/2, 2000, 2000, 2000, 2000, 2 );
-                real t = th + tp;
-                real r = rh;
+                real th        = 300;
+                real rho_d     = profiles::initConstTheta_density(th,zloc,Rd,cp,gamma,p0,C0,grav);
+                real theta_d   = th + profiles::ellipsoid_linear(xloc, yloc, zloc, xlen/2, ylen/2, 2000, 2000, 2000, 2000, 2 );
+                real press_d   = C0*pow(rho_d*theta_d,gamma);
+                real temp      = press_d / (rho_d * Rd);
+                real svp       = profiles::saturation_vapor_pressure(temp); // Self-explanatory
+                real press_v   = svp * profiles::ellipsoid_linear(xloc,yloc,zloc  ,  xlen/2,ylen/2,2000  ,  2000,2000,2000  ,  0.8);
+                real rho_v     = press_v / (Rv*temp);
+                real press     = rho_d * Rd * temp + rho_v * Rv *temp;
+                real rho_theta = pow( press/C0 , 1._fp/gamma );
+                real rho       = rho_d + rho_v;
 
-                state(idR,hs+k,hs+j,hs+i,iens) += r   * wt;
-                state(idT,hs+k,hs+j,hs+i,iens) += r*t * wt;
+                state  (idR ,hs+k,hs+j,hs+i,iens) += rho       * wt;
+                state  (idU ,hs+k,hs+j,hs+i,iens) += 0         * wt;
+                state  (idV ,hs+k,hs+j,hs+i,iens) += 0         * wt;
+                state  (idW ,hs+k,hs+j,hs+i,iens) += 0         * wt;
+                state  (idT ,hs+k,hs+j,hs+i,iens) += rho_theta * wt;
+                tracers(idWV,hs+k,hs+j,hs+i,iens) += rho_v     * wt;
               }
             }
           }
-        }
-      });
-
-      parallel_for( "Spatial.h init_tracers" , SimpleBounds<4>(nz,ny,nx,nens) ,
-                    YAKL_LAMBDA (int k, int j, int i, int iens) {
-        for (int tr=0; tr < num_tracers; tr++) { tracers(tr,hs+k,hs+j,hs+i,iens) = 0; }
-        // Loop over quadrature points
-        for (int kk=0; kk<ord; kk++) {
-          for (int jj=0; jj<ord; jj++) {
-            for (int ii=0; ii<ord; ii++) {
-              // Get the location
-              real zloc = vert_interface(k,iens) + 0.5_fp*dz(k,iens) + gllPts_ord(kk)*dz(k,iens);
-              real yloc;
-              if (sim2d) {
-                yloc = ylen/2;
-              } else {
-                yloc = (j+0.5_fp)*dy + gllPts_ord(jj)*dy;
-              }
-              real xloc = (i+0.5_fp)*dx + gllPts_ord(ii)*dx;
-
-              // Get dry constants
-
-              // Compute constant theta hydrostatic background state
-              real th = 300;
-              real rh = profiles::initConstTheta_density(th,zloc,Rd,cp,gamma,p0,C0,grav);
-
-              // Initialize tracer mass based on dry state
-              // Vapor perturbation profile
-              real pert  = profiles::ellipsoid_linear(xloc,yloc,zloc  ,  xlen/2,ylen/2,2000  ,  2000,2000,2000  ,  0.8);
-              real press = C0*pow(rh*th,gamma);                       // Dry pressure
-              real temp  = press / Rd / rh;                           // Temperator (same for dry and moist)
-              real svp   = profiles::saturation_vapor_pressure(temp); // Self-explanatory
-              real p_v   = pert*svp;                                  // Multiply profile by saturation vapor pressure
-              real r_v   = p_v / (Rv*temp);                           // Compute vapor density
-
-              real wt = gllWts_ord(kk) * gllWts_ord(jj) * gllWts_ord(ii);
-              tracers(idWV,hs+k,hs+j,hs+i,iens) += r_v / (rh+r_v) * rh * wt;
-              for (int tr=0; tr < num_tracers; tr++) {
-                if (tr != idWV) tracers(tr,hs+k,hs+j,hs+i,iens) = 0;
-              }
-            }
-          }
-        }
-      });
-
-      parallel_for( "Spatial.h adjust_moisture" , SimpleBounds<4>(nz,ny,nx,nens) ,
-                    YAKL_LAMBDA (int k, int j, int i, int iens) {
-        // Add tracer density to dry density if it adds mass
-        real rho_dry = state(idR,hs+k,hs+j,hs+i,iens);
-        state(idR,hs+k,hs+j,hs+i,iens) += tracers(idWV,hs+k,hs+j,hs+i,iens);
-        real rho_moist = state(idR,hs+k,hs+j,hs+i,iens);
-
-        // Adjust momenta for moist density
-        state(idU,hs+k,hs+j,hs+i,iens) = state(idU,hs+k,hs+j,hs+i,iens) / rho_dry * rho_moist;
-        state(idV,hs+k,hs+j,hs+i,iens) = state(idV,hs+k,hs+j,hs+i,iens) / rho_dry * rho_moist;
-        state(idW,hs+k,hs+j,hs+i,iens) = state(idW,hs+k,hs+j,hs+i,iens) / rho_dry * rho_moist;
-
-        // Compute the dry temperature (same as the moist temperature)
-        real rho_theta_dry = state(idT,hs+k,hs+j,hs+i,iens);
-        real press = C0*pow(rho_theta_dry,gamma);  // Dry pressure
-        real temp  = press / Rd / rho_dry;         // Temp (same dry or moist)
-
-        // Compute moist theta
-        real rho_v = tracers(idWV,hs+k,hs+j,hs+i,iens);
-        real R_moist = Rd * (rho_dry / rho_moist) + Rv * (rho_v / rho_moist);
-        real press_moist = rho_moist * R_moist * temp;
-        real rho_theta_moist = pow( press_moist / C0 , 1._fp/gamma );
-
-        // Compute moist rho*theta
-        state(idT,hs+k,hs+j,hs+i,iens) = rho_theta_moist;
-
-        for (int tr = 0 ; tr < num_tracers ; tr++) {
-          tracers(tr,hs+k,hs+j,hs+i,iens) = tracers(tr,hs+k,hs+j,hs+i,iens) / rho_dry * rho_moist;
         }
       });
 
@@ -1111,7 +1049,6 @@ public:
     YAKL_SCOPE( hyDensThetaSten         , this->hyDensThetaSten        );
     YAKL_SCOPE( hyDensGLL               , this->hyDensGLL              );
     YAKL_SCOPE( hyDensThetaGLL          , this->hyDensThetaGLL         );
-    YAKL_SCOPE( hyPressureGLL           , this->hyPressureGLL          );
     YAKL_SCOPE( derivMatrix             , this->derivMatrix            );
     YAKL_SCOPE( gllWts_ngll             , this->gllWts_ngll            );
     YAKL_SCOPE( vert_sten_to_gll        , this->vert_sten_to_gll       );
@@ -1221,8 +1158,8 @@ public:
 
         if (nAder > 1) {
           awfl::diffTransformEulerConsZ( r_DTs , ru_DTs , rv_DTs , rw_DTs , rt_DTs , rwu_DTs , rwv_DTs , rww_DTs ,
-                                         rwt_DTs , rt_gamma_DTs , derivMatrix , hyDensGLL , hyPressureGLL , C0 , gamma ,
-                                         grav , k , dz(k,iens) , nz , iens );
+                                         rwt_DTs , rt_gamma_DTs , derivMatrix , C0 , gamma ,
+                                         grav , k , dz(k,iens) , nz );
         }
 
         SArray<real,1,ngll> r_tavg, rw_tavg;
