@@ -24,7 +24,7 @@ weno_winds   : true
 # 200km x 100km x 20km  for supercell
 # 20km  x 20km  x 10km  for thermal
 # Data to initialize: thermal, supercell
-initData : thermal
+initData : thermal_moist
 
 # Output filename
 out_prefix  : test

@@ -32,14 +32,13 @@ public:
   int static constexpr BC_PERIODIC = 0;
   int static constexpr BC_WALL     = 1;
   // Options for initializing the data
-  int static constexpr DATA_SPEC_EXTERNAL      = 0;
-  int static constexpr DATA_SPEC_THERMAL       = 1;
-  int static constexpr DATA_SPEC_SUPERCELL     = 2;
+  int static constexpr DATA_SPEC_THERMAL       = 0;
+  int static constexpr DATA_SPEC_THERMAL_MOIST = 1;
   
-  bool                     weno_scalars;     // Use WENO limiting for scalars?
-  bool                     weno_winds;       // Use WENO limiting for winds?
-  int                      data_spec;        // How to initialize the data
-  real                     dtInit;           // Initial time step (used throughout the simulation)
+  bool weno_scalars; // Use WENO limiting for scalars?
+  bool weno_winds;   // Use WENO limiting for winds?
+  int  data_spec;    // How to initialize the data
+  real dtInit;       // Initial time step (used throughout the simulation)
   // Hydrostatic background data
   real hydrostasis_parameters_sum;  // Sum of the current parameters (to see if it's changed)
   real3d hyDensSten;                // A stencil around each cell of hydrostatic density
@@ -49,7 +48,6 @@ public:
   real3d hyDensThetaGLL;            // GLL point values of hydrostatic background density*potential temperature
   // Transformation matrices for various degrees of freedom
   SArray<real,2,ord,ngll>       coefs_to_gll;
-  SArray<real,2,ord,ngll>       coefs_to_deriv_gll;
   SArray<real,2,ord,ngll>       sten_to_gll;
   SArray<real,2,ord,ord >       sten_to_coefs;
   SArray<real,3,hs+1,hs+1,hs+1> weno_recon_lower;   // WENO reconstruction matrices
@@ -312,16 +310,6 @@ public:
 
     this->hydrostasis_parameters_sum = 0;
 
-    auto Rd    = coupler.get_R_d ();
-    auto cp    = coupler.get_cp_d();
-    auto p0    = coupler.get_p0  ();
-    auto Rv    = coupler.get_R_v ();
-    auto grav  = coupler.get_grav();
-    auto gamma = cp / (cp-Rd);
-    auto kappa = Rd/cp;
-    auto C0 = pow( Rd * pow( p0 , -kappa ) , gamma );
-
-
     if (! coupler.tracer_exists("water_vapor")) endrun("ERROR: processed registered tracers, and water_vapor was not found");
 
     fence();
@@ -342,19 +330,16 @@ public:
 
       // Read the data initialization option
       std::string dataStr = config["initData"].as<std::string>();
-      if        (dataStr == "thermal") {
+      if        (dataStr == "thermal_moist") {
+        data_spec = DATA_SPEC_THERMAL_MOIST;
+      } else if (dataStr == "thermal") {
         data_spec = DATA_SPEC_THERMAL;
-      } else if (dataStr == "supercell") {
-        data_spec = DATA_SPEC_SUPERCELL;
-      } else if (dataStr == "external") {
-        data_spec = DATA_SPEC_EXTERNAL;
       } else {
         endrun("ERROR: Invalid data_spec");
       }
     } else {
       weno_scalars            = true;
       weno_winds              = true;
-      data_spec               = DATA_SPEC_EXTERNAL;
     }
 
     // Store vertical cell interface heights in the data manager
@@ -485,10 +470,8 @@ public:
 
       TransformMatrices::sten_to_coefs     (s2c      );
       TransformMatrices::coefs_to_gll_lower(c2g_lower);
-      TransformMatrices::coefs_to_deriv    (c2d      );
 
       this->coefs_to_gll       = c2g_lower;
-      this->coefs_to_deriv_gll = matmul_cr( c2g_lower , c2d );
       this->sten_to_coefs      = s2c;
       this->sten_to_gll        = matmul_cr( c2g_lower , s2c );
     }
@@ -555,15 +538,13 @@ public:
     YAKL_SCOPE( data_spec                , this->data_spec               );
     YAKL_SCOPE( vert_interface           , this->vert_interface          );
 
-    // If data's being specified by the driver externally, then there's nothing to do here
-    if (data_spec == DATA_SPEC_EXTERNAL) return;
-
     real5d state   = createStateArr (coupler);
     real5d tracers = createTracerArr(coupler);
 
     // If the data_spec is thermal or ..., then initialize the domain with Exner pressure-based hydrostasis
     // This is mostly to make plotting potential temperature perturbation easier for publications
-    if (data_spec == DATA_SPEC_THERMAL) {
+    if ( data_spec == DATA_SPEC_THERMAL_MOIST ||
+         data_spec == DATA_SPEC_THERMAL ) {
 
       // Compute the state
       parallel_for( "Spatial.h init_state 3" , SimpleBounds<4>(nz,ny,nx,nens) ,
@@ -586,7 +567,7 @@ public:
               }
               real xloc = (i+0.5_fp)*dx + gllPts_ord(ii)*dx;
               real wt = gllWts_ord(kk) * gllWts_ord(jj) * gllWts_ord(ii);
-              if        (data_spec == DATA_SPEC_THERMAL) {
+              if        (data_spec == DATA_SPEC_THERMAL_MOIST) {
                 // Compute constant theta hydrostatic background state
                 real th        = 300;
                 real rho_d     = profiles::initConstTheta_density(th,zloc,Rd,cp,gamma,p0,C0,grav);
@@ -601,18 +582,23 @@ public:
                 real rho       = rho_d + rho_v;
 
                 state  (idR ,hs+k,hs+j,hs+i,iens) += rho       * wt;
-                state  (idU ,hs+k,hs+j,hs+i,iens) += 0         * wt;
-                state  (idV ,hs+k,hs+j,hs+i,iens) += 0         * wt;
-                state  (idW ,hs+k,hs+j,hs+i,iens) += 0         * wt;
                 state  (idT ,hs+k,hs+j,hs+i,iens) += rho_theta * wt;
                 tracers(idWV,hs+k,hs+j,hs+i,iens) += rho_v     * wt;
+              } else if (data_spec == DATA_SPEC_THERMAL) {
+                // Compute constant theta hydrostatic background state
+                real th        = 300;
+                real rho       = profiles::initConstTheta_density(th,zloc,Rd,cp,gamma,p0,C0,grav);
+                real theta     = th + profiles::ellipsoid_linear(xloc, yloc, zloc, xlen/2, ylen/2, 2000, 2000, 2000, 2000, 2 );
+
+                state  (idR ,hs+k,hs+j,hs+i,iens) += rho       * wt;
+                state  (idT ,hs+k,hs+j,hs+i,iens) += rho*theta * wt;
               }
             }
           }
         }
       });
 
-    } // if (data_spec == DATA_SPEC_THERMAL)
+    } // if (data_spec == DATA_SPEC_THERMAL_MOIST)
 
     convert_dynamics_to_coupler_state( coupler , state , tracers );
   }
