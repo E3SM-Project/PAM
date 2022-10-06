@@ -28,16 +28,12 @@ public:
   int static constexpr idV = 2;  // rho*v
   int static constexpr idW = 3;  // rho*w
   int static constexpr idT = 4;  // rho*potential temperature perturbation
+
+  real dtInit;       // Initial time step (used throughout the simulation)
   
+  // Reconstruction data
   bool weno_scalars; // Use WENO limiting for scalars?
   bool weno_winds;   // Use WENO limiting for winds?
-  real dtInit;       // Initial time step (used throughout the simulation)
-  // Hydrostatic background data
-  real hydrostasis_parameters_sum;  // Sum of the current parameters (to see if it's changed)
-  real3d hyDensSten;                // A stencil around each cell of hydrostatic density
-  real3d hyDensThetaSten;           // A stencil around each cell of hydrostatic density * potential temperature
-  real3d hyDensGLL;                 // GLL point values of hydrostatic background density in each cell
-  real3d hyDensThetaGLL;            // GLL point values of hydrostatic background density*potential temperature
   // Transformation matrices for various degrees of freedom
   SArray<real,2,ord,ngll>       coefs_to_gll;
   SArray<real,2,ord,ngll>       sten_to_gll;
@@ -50,6 +46,13 @@ public:
   real4d vert_sten_to_gll;
   real4d vert_sten_to_coefs;
   real5d vert_weno_recon_lower;
+
+  // Hydrostasis data
+  real hydrostasis_parameters_sum;  // Sum of the current parameters (to see if it's changed)
+  real3d hyDensSten;                // A stencil around each cell of hydrostatic density
+  real3d hyDensThetaSten;           // A stencil around each cell of hydrostatic density * potential temperature
+  real3d hyDensGLL;                 // GLL point values of hydrostatic background density in each cell
+  real3d hyDensThetaGLL;            // GLL point values of hydrostatic background density*potential temperature
 
 
   // When this class is created, initialize num_tracers to zero
