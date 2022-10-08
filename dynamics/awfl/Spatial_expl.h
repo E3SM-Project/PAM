@@ -32,27 +32,35 @@ public:
   real dtInit;       // Initial time step (used throughout the simulation)
   
   // Reconstruction data
-  bool weno_scalars; // Use WENO limiting for scalars?
-  bool weno_winds;   // Use WENO limiting for winds?
-  // Transformation matrices for various degrees of freedom
-  SArray<real,2,ord,ngll>       coefs_to_gll;
-  SArray<real,2,ord,ngll>       sten_to_gll;
-  SArray<real,2,ord,ord >       sten_to_coefs;
-  SArray<real,3,hs+1,hs+1,hs+1> weno_recon_lower;   // WENO reconstruction matrices
-  SArray<real,1,hs+2>           idl;                // Ideal weights for WENO
-  real                          sigma;              // WENO sigma parameter (handicap high-order TV estimate)
-  SArray<real,2,ngll,ngll>      derivMatrix;        // Transform matrix: ngll GLL pts -> ngll GLL derivs
-  // Vertical grid and reconstruction matrix information
-  real4d vert_sten_to_gll;
-  real4d vert_sten_to_coefs;
-  real5d vert_weno_recon_lower;
+  struct Recon {
+    bool weno_scalars; // Use WENO limiting for scalars?
+    bool weno_winds;   // Use WENO limiting for winds?
+    // Transformation matrices for various degrees of freedom
+    SArray<real,2,ord,ngll>       coefs_to_gll;
+    SArray<real,2,ord,ngll>       sten_to_gll;
+    SArray<real,2,ord,ord >       sten_to_coefs;
+    SArray<real,3,hs+1,hs+1,hs+1> weno_recon_lower;   // WENO reconstruction matrices
+    SArray<real,1,hs+2>           idl;                // Ideal weights for WENO
+    real                          sigma;              // WENO sigma parameter (handicap high-order TV estimate)
+    SArray<real,2,ngll,ngll>      derivMatrix;        // Transform matrix: ngll GLL pts -> ngll GLL derivs
+    // Vertical grid and reconstruction matrix information
+    real4d vert_sten_to_gll;
+    real4d vert_sten_to_coefs;
+    real5d vert_weno_recon_lower;
+  };
+
+  Recon recon;
 
   // Hydrostasis data
-  real hydrostasis_parameters_sum;  // Sum of the current parameters (to see if it's changed)
-  real3d hyDensSten;                // A stencil around each cell of hydrostatic density
-  real3d hyDensThetaSten;           // A stencil around each cell of hydrostatic density * potential temperature
-  real3d hyDensGLL;                 // GLL point values of hydrostatic background density in each cell
-  real3d hyDensThetaGLL;            // GLL point values of hydrostatic background density*potential temperature
+  struct Hydrostasis {
+    real hydrostasis_parameters_sum;  // Sum of the current parameters (to see if it's changed)
+    real3d hyDensSten;                // A stencil around each cell of hydrostatic density
+    real3d hyDensThetaSten;           // A stencil around each cell of hydrostatic density * potential temperature
+    real3d hyDensGLL;                 // GLL point values of hydrostatic background density in each cell
+    real3d hyDensThetaGLL;            // GLL point values of hydrostatic background density*potential temperature
+  };
+
+  Hydrostasis hydrostasis;
 
 
   // When this class is created, initialize num_tracers to zero
@@ -163,10 +171,10 @@ public:
     SArray<real,1,ngll> gllPts_ngll;
     TransformMatrices::get_gll_points (gllPts_ngll);
 
-    YAKL_SCOPE( hyDensSten           , this->hyDensSten           );
-    YAKL_SCOPE( hyDensThetaSten      , this->hyDensThetaSten      );
-    YAKL_SCOPE( hyDensGLL            , this->hyDensGLL            );
-    YAKL_SCOPE( hyDensThetaGLL       , this->hyDensThetaGLL       );
+    YAKL_SCOPE( hyDensSten           , hydrostasis.hyDensSten           );
+    YAKL_SCOPE( hyDensThetaSten      , hydrostasis.hyDensThetaSten      );
+    YAKL_SCOPE( hyDensGLL            , hydrostasis.hyDensGLL            );
+    YAKL_SCOPE( hyDensThetaGLL       , hydrostasis.hyDensThetaGLL       );
 
     pam::MultipleFields<max_tracers,realConst4d> dm_tracers;
     for (int tr = 0; tr < num_tracers; tr++) {
@@ -177,7 +185,7 @@ public:
     // If hydrostasis in the coupler has changed, then we need to re-compute
     // hydrostatically balanced cells and GLL points for the dycore's time step
     real tmp = yakl::intrinsics::sum(hy_params);
-    if (tmp != hydrostasis_parameters_sum) {
+    if (tmp != hydrostasis.hydrostasis_parameters_sum) {
       // Get dz for ghost cells
       real2d dz_ghost("dz_ghost",nz+2*hs,nens);
       parallel_for( "Spatial.h init 2" , SimpleBounds<2>(nz+2*hs,nens) , YAKL_LAMBDA (int k, int iens) {
@@ -199,7 +207,7 @@ public:
       TransformMatrices::get_gll_weights( gll_wts );
 
       // Compute new cell averages and GLL point values for hydrostasis
-      hydrostasis_parameters_sum = tmp;
+      hydrostasis.hydrostasis_parameters_sum = tmp;
       parallel_for( "Spatial.h new hydrostasis" , SimpleBounds<3>(nz,ord,nens) , YAKL_LAMBDA (int k, int kk, int iens) {
         real r  = 0;
         real rt = 0;
@@ -311,7 +319,7 @@ public:
     auto ylen = coupler.get_ylen();
     auto num_tracers = coupler.get_num_tracers();
 
-    this->hydrostasis_parameters_sum = 0;
+    hydrostasis.hydrostasis_parameters_sum = 0;
 
     if (! coupler.tracer_exists("water_vapor")) endrun("ERROR: processed registered tracers, and water_vapor was not found");
 
@@ -324,11 +332,11 @@ public:
     if (coupler.option_exists("standalone_input_file")) {
       std::string inFile = coupler.get_option<std::string>( "standalone_input_file" );
       YAML::Node config = YAML::LoadFile(inFile);
-      weno_scalars = config["weno_scalars"].as<bool>(true);
-      weno_winds   = config["weno_winds"  ].as<bool>(true);
+      recon.weno_scalars = config["weno_scalars"].as<bool>(true);
+      recon.weno_winds   = config["weno_winds"  ].as<bool>(true);
     } else {
-      weno_scalars            = true;
-      weno_winds              = true;
+      recon.weno_scalars            = true;
+      recon.weno_winds              = true;
     }
 
     // Store vertical cell interface heights in the data manager
@@ -353,13 +361,13 @@ public:
       }
     });
 
-    vert_sten_to_gll      = real4d("vert_sten_to_gll"     ,nz,ord,ngll,nens);
-    vert_sten_to_coefs    = real4d("vert_sten_to_coefs"   ,nz,ord,ord ,nens);
-    vert_weno_recon_lower = real5d("vert_weno_recon_lower",nz,hs+1,hs+1,hs+1,nens);
+    recon.vert_sten_to_gll      = real4d("vert_sten_to_gll"     ,nz,ord,ngll,nens);
+    recon.vert_sten_to_coefs    = real4d("vert_sten_to_coefs"   ,nz,ord,ord ,nens);
+    recon.vert_weno_recon_lower = real5d("vert_weno_recon_lower",nz,hs+1,hs+1,hs+1,nens);
 
-    YAKL_SCOPE( vert_sten_to_gll      , this->vert_sten_to_gll      );
-    YAKL_SCOPE( vert_sten_to_coefs    , this->vert_sten_to_coefs    );
-    YAKL_SCOPE( vert_weno_recon_lower , this->vert_weno_recon_lower );
+    YAKL_SCOPE( vert_sten_to_gll      , recon.vert_sten_to_gll      );
+    YAKL_SCOPE( vert_sten_to_coefs    , recon.vert_sten_to_coefs    );
+    YAKL_SCOPE( vert_weno_recon_lower , recon.vert_weno_recon_lower );
 
     auto vint_host      = vert_interface_ghost .createHostCopy();
     auto vert_s2g_host  = vert_sten_to_gll     .createHostCopy();
@@ -430,7 +438,7 @@ public:
     auto dy = ylen/ny;
 
     // Store the WENO reconstruction matrices
-    TransformMatrices::weno_lower_sten_to_coefs(this->weno_recon_lower);
+    TransformMatrices::weno_lower_sten_to_coefs(recon.weno_recon_lower);
 
     // Block exists to avoid name mangling stufff
     {
@@ -441,9 +449,9 @@ public:
       TransformMatrices::sten_to_coefs     (s2c      );
       TransformMatrices::coefs_to_gll_lower(c2g_lower);
 
-      this->coefs_to_gll       = c2g_lower;
-      this->sten_to_coefs      = s2c;
-      this->sten_to_gll        = matmul_cr( c2g_lower , s2c );
+      recon.coefs_to_gll       = c2g_lower;
+      recon.sten_to_coefs      = s2c;
+      recon.sten_to_gll        = matmul_cr( c2g_lower , s2c );
     }
     // Store ader derivMatrix
     {
@@ -455,17 +463,17 @@ public:
       TransformMatrices::coefs_to_deriv(c2d);
       TransformMatrices::coefs_to_gll  (c2g);
 
-      this->derivMatrix = matmul_cr( c2g , matmul_cr( c2d , g2c ) );
+      recon.derivMatrix = matmul_cr( c2g , matmul_cr( c2d , g2c ) );
     }
 
     // Store WENO ideal weights and sigma value
-    weno::wenoSetIdealSigma<ord>(this->idl,this->sigma);
+    weno::wenoSetIdealSigma<ord>(recon.idl,recon.sigma);
 
     // Allocate data
-    hyDensSten      = real3d("hyDensSten       ",nz,ord,nens);
-    hyDensThetaSten = real3d("hyDensThetaSten  ",nz,ord,nens);
-    hyDensGLL       = real3d("hyDensGLL        ",nz,ngll,nens);
-    hyDensThetaGLL  = real3d("hyDensThetaGLL   ",nz,ngll,nens);
+    hydrostasis.hyDensSten      = real3d("hyDensSten       ",nz,ord,nens);
+    hydrostasis.hyDensThetaSten = real3d("hyDensThetaSten  ",nz,ord,nens);
+    hydrostasis.hyDensGLL       = real3d("hyDensGLL        ",nz,ngll,nens);
+    hydrostasis.hyDensThetaGLL  = real3d("hyDensThetaGLL   ",nz,ngll,nens);
 
     init_idealized_state_and_tracers( coupler );
 
@@ -596,7 +604,7 @@ public:
   void compute_tendencies_x( pam::PamCoupler const &coupler,
                              real5d const &state   , real5d const &state_tend  ,
                              real5d const &tracers , real5d const &tracer_tend ,
-                             real &dt ) const {
+                             Recon  const &recon   , real         &dt          ) const {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
 
@@ -615,15 +623,15 @@ public:
     auto tracer_pos  = coupler.get_tracer_positivity_array();
     auto sim2d = ny == 1;
 
-    YAKL_SCOPE( weno_scalars            , this->weno_scalars           );
-    YAKL_SCOPE( weno_winds              , this->weno_winds             );
-    YAKL_SCOPE( c2g                     , this->coefs_to_gll           );
-    YAKL_SCOPE( s2g                     , this->sten_to_gll            );
-    YAKL_SCOPE( s2c                     , this->sten_to_coefs          );
-    YAKL_SCOPE( weno_recon_lower        , this->weno_recon_lower       );
-    YAKL_SCOPE( idl                     , this->idl                    );
-    YAKL_SCOPE( sigma                   , this->sigma                  );
-    YAKL_SCOPE( derivMatrix             , this->derivMatrix            );
+    YAKL_SCOPE( weno_scalars            , recon.weno_scalars           );
+    YAKL_SCOPE( weno_winds              , recon.weno_winds             );
+    YAKL_SCOPE( c2g                     , recon.coefs_to_gll           );
+    YAKL_SCOPE( s2g                     , recon.sten_to_gll            );
+    YAKL_SCOPE( s2c                     , recon.sten_to_coefs          );
+    YAKL_SCOPE( weno_recon_lower        , recon.weno_recon_lower       );
+    YAKL_SCOPE( idl                     , recon.idl                    );
+    YAKL_SCOPE( sigma                   , recon.sigma                  );
+    YAKL_SCOPE( derivMatrix             , recon.derivMatrix            );
 
     real6d state_limits ("state_limits" ,num_state  ,2,nz,ny,nx+1,nens);
     real6d tracer_limits("tracer_limits",num_tracers,2,nz,ny,nx+1,nens);
@@ -786,7 +794,7 @@ public:
   void compute_tendencies_y( pam::PamCoupler const &coupler ,
                              real5d const &state   , real5d const &state_tend  ,
                              real5d const &tracers , real5d const &tracer_tend ,
-                             real &dt ) const {
+                             Recon  const &recon   , real         &dt          ) const {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
 
@@ -812,15 +820,15 @@ public:
       return;
     }
 
-    YAKL_SCOPE( weno_scalars            , this->weno_scalars           );
-    YAKL_SCOPE( weno_winds              , this->weno_winds             );
-    YAKL_SCOPE( c2g                     , this->coefs_to_gll           );
-    YAKL_SCOPE( s2g                     , this->sten_to_gll            );
-    YAKL_SCOPE( s2c                     , this->sten_to_coefs          );
-    YAKL_SCOPE( weno_recon_lower        , this->weno_recon_lower       );
-    YAKL_SCOPE( idl                     , this->idl                    );
-    YAKL_SCOPE( sigma                   , this->sigma                  );
-    YAKL_SCOPE( derivMatrix             , this->derivMatrix            );
+    YAKL_SCOPE( weno_scalars            , recon.weno_scalars           );
+    YAKL_SCOPE( weno_winds              , recon.weno_winds             );
+    YAKL_SCOPE( c2g                     , recon.coefs_to_gll           );
+    YAKL_SCOPE( s2g                     , recon.sten_to_gll            );
+    YAKL_SCOPE( s2c                     , recon.sten_to_coefs          );
+    YAKL_SCOPE( weno_recon_lower        , recon.weno_recon_lower       );
+    YAKL_SCOPE( idl                     , recon.idl                    );
+    YAKL_SCOPE( sigma                   , recon.sigma                  );
+    YAKL_SCOPE( derivMatrix             , recon.derivMatrix            );
 
     real6d state_limits ("state_limits" ,num_state  ,2,nz,ny+1,nx,nens);
     real6d tracer_limits("tracer_limits",num_tracers,2,nz,ny+1,nx,nens);
@@ -977,8 +985,9 @@ public:
 
 
   void compute_tendencies_z( pam::PamCoupler const &coupler ,
-                             real5d const &state   , real5d const &state_tend  ,
-                             real5d const &tracers , real5d const &tracer_tend ,
+                             real5d const &state   , real5d const &state_tend       ,
+                             real5d const &tracers , real5d const &tracer_tend      ,
+                             Recon const &recon    , Hydrostasis const &hydrostasis ,
                              real &dt ) const {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
@@ -999,19 +1008,19 @@ public:
     auto tracer_pos  = coupler.get_tracer_positivity_array();
     auto sim2d = ny == 1;
 
-    YAKL_SCOPE( weno_scalars            , this->weno_scalars           );
-    YAKL_SCOPE( weno_winds              , this->weno_winds             );
-    YAKL_SCOPE( c2g                     , this->coefs_to_gll           );
-    YAKL_SCOPE( idl                     , this->idl                    );
-    YAKL_SCOPE( sigma                   , this->sigma                  );
-    YAKL_SCOPE( hyDensSten              , this->hyDensSten             );
-    YAKL_SCOPE( hyDensThetaSten         , this->hyDensThetaSten        );
-    YAKL_SCOPE( hyDensGLL               , this->hyDensGLL              );
-    YAKL_SCOPE( hyDensThetaGLL          , this->hyDensThetaGLL         );
-    YAKL_SCOPE( derivMatrix             , this->derivMatrix            );
-    YAKL_SCOPE( vert_sten_to_gll        , this->vert_sten_to_gll       );
-    YAKL_SCOPE( vert_sten_to_coefs      , this->vert_sten_to_coefs     );
-    YAKL_SCOPE( vert_weno_recon_lower   , this->vert_weno_recon_lower  );
+    YAKL_SCOPE( weno_scalars            , recon.weno_scalars           );
+    YAKL_SCOPE( weno_winds              , recon.weno_winds             );
+    YAKL_SCOPE( c2g                     , recon.coefs_to_gll           );
+    YAKL_SCOPE( idl                     , recon.idl                    );
+    YAKL_SCOPE( sigma                   , recon.sigma                  );
+    YAKL_SCOPE( derivMatrix             , recon.derivMatrix            );
+    YAKL_SCOPE( vert_sten_to_gll        , recon.vert_sten_to_gll       );
+    YAKL_SCOPE( vert_sten_to_coefs      , recon.vert_sten_to_coefs     );
+    YAKL_SCOPE( vert_weno_recon_lower   , recon.vert_weno_recon_lower  );
+    YAKL_SCOPE( hyDensSten              , hydrostasis.hyDensSten       );
+    YAKL_SCOPE( hyDensThetaSten         , hydrostasis.hyDensThetaSten  );
+    YAKL_SCOPE( hyDensGLL               , hydrostasis.hyDensGLL        );
+    YAKL_SCOPE( hyDensThetaGLL          , hydrostasis.hyDensThetaGLL   );
 
     SArray<real,1,ngll> gllWts_ngll, gllPts_ngll;
     TransformMatrices::get_gll_points (gllPts_ngll);

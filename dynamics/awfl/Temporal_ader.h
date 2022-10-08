@@ -120,22 +120,22 @@ public:
       #endif
 
       if (dim_switch) {
-        space_op.compute_tendencies_x( coupler , state , state_tend , tracers , tracer_tend , dt );
+        space_op.compute_tendencies_x( coupler , state , state_tend , tracers , tracer_tend , space_op.recon , dt );
         apply_tendencies             ( state , state_tend , tracers , tracer_tend , dt );
 
-        space_op.compute_tendencies_y( coupler , state , state_tend , tracers , tracer_tend , dt );
+        space_op.compute_tendencies_y( coupler , state , state_tend , tracers , tracer_tend , space_op.recon , dt );
         apply_tendencies             ( state , state_tend , tracers , tracer_tend , dt );
 
-        space_op.compute_tendencies_z( coupler , state , state_tend , tracers , tracer_tend , dt );
+        space_op.compute_tendencies_z( coupler , state , state_tend , tracers , tracer_tend , space_op.recon , space_op.hydrostasis , dt );
         apply_tendencies             ( state , state_tend , tracers , tracer_tend , dt );
       } else {
-        space_op.compute_tendencies_z( coupler , state , state_tend , tracers , tracer_tend , dt );
+        space_op.compute_tendencies_z( coupler , state , state_tend , tracers , tracer_tend , space_op.recon , space_op.hydrostasis , dt );
         apply_tendencies             ( state , state_tend , tracers , tracer_tend , dt );
 
-        space_op.compute_tendencies_y( coupler , state , state_tend , tracers , tracer_tend , dt );
+        space_op.compute_tendencies_y( coupler , state , state_tend , tracers , tracer_tend , space_op.recon , dt );
         apply_tendencies             ( state , state_tend , tracers , tracer_tend , dt );
 
-        space_op.compute_tendencies_x( coupler , state , state_tend , tracers , tracer_tend , dt );
+        space_op.compute_tendencies_x( coupler , state , state_tend , tracers , tracer_tend , space_op.recon , dt );
         apply_tendencies             ( state , state_tend , tracers , tracer_tend , dt );
       }
       dim_switch = ! dim_switch;
