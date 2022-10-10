@@ -85,17 +85,17 @@ public:
 
     real dt = compute_time_step( coupler );
 
-    auto state       = space_op.createStateArr     (coupler);
-    auto tracers     = space_op.createTracerArr    (coupler);
-    auto state_tend  = space_op.createStateTendArr (coupler);
-    auto tracer_tend = space_op.createTracerTendArr(coupler);
+    auto state       = awfl::tendencies_rho_theta::createStateArr     (coupler);
+    auto tracers     = awfl::tendencies_rho_theta::createTracerArr    (coupler);
+    auto state_tend  = awfl::tendencies_rho_theta::createStateTendArr (coupler);
+    auto tracer_tend = awfl::tendencies_rho_theta::createTracerTendArr(coupler);
 
     #ifdef PAM_DEBUG
       state   = 0._fp;
       tracers = 0._fp;
     #endif
 
-    space_op.convert_coupler_state_to_dynamics( coupler , state , tracers );
+    awfl::tendencies_rho_theta::convert_coupler_state_to_dynamics( coupler , state , tracers , space_op.hydrostasis );
 
     int idR         = space_op.idR;
     int idU         = space_op.idU;
@@ -164,14 +164,14 @@ public:
       #endif
 
       if (coupler.get_num_dycore_functions() > 0) {
-        space_op.convert_dynamics_to_coupler_state( coupler , state , tracers );
+        awfl::tendencies_rho_theta::convert_dynamics_to_coupler_state( coupler , state , tracers );
         coupler.run_dycore_functions( dt );
-        space_op.convert_coupler_state_to_dynamics( coupler , state , tracers );
+        awfl::tendencies_rho_theta::convert_coupler_state_to_dynamics( coupler , state , tracers , space_op.hydrostasis );
       }
 
     }
 
-    space_op.convert_dynamics_to_coupler_state( coupler , state , tracers );
+    awfl::tendencies_rho_theta::convert_dynamics_to_coupler_state( coupler , state , tracers );
   }
 
 
