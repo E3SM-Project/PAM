@@ -14,6 +14,12 @@
 #include "variableset.h"
 #include "wedge.h"
 
+constexpr bool add_diffusion = true;
+constexpr real scalar_diffusion = 500;
+constexpr real velocity_diffusion = 500;
+constexpr int horz_diffusion_ord = 2;
+constexpr int vert_diffusion_ord = 2;
+
 // *******   Functionals/Hamiltonians   ***********//
 
 Functional_PVPE_extruded PVPE;
@@ -914,6 +920,268 @@ public:
                        auxiliary_vars.fields_arr[FWVAR].data,
                        auxiliary_vars.fields_arr[PHIVAR].data,
                        auxiliary_vars.fields_arr[PHIVERTVAR].data);
+
+    if (add_diffusion) {
+      const auto &denstendvar = xtend.fields_arr[DENSVAR].data;
+      const auto &Vtendvar = xtend.fields_arr[VVAR].data;
+      const auto &Wtendvar = xtend.fields_arr[WVAR].data;
+      const auto &densvar = x.fields_arr[DENSVAR].data;
+      const auto &Vvar = x.fields_arr[VVAR].data;
+      const auto &Wvar = x.fields_arr[WVAR].data;
+      const auto &dens0var = auxiliary_vars.fields_arr[DENS0VAR].data;
+      const auto &V2var = auxiliary_vars.fields_arr[VVAR2].data;
+      const auto &W2var = auxiliary_vars.fields_arr[WVAR2].data;
+      const auto &Fvar = auxiliary_vars.fields_arr[FVAR].data;
+      const auto &FWvar= auxiliary_vars.fields_arr[FWVAR].data;
+
+
+      const auto &primal_topology = primal_geometry.topology;
+
+      int pis = primal_topology.is;
+      int pjs = primal_topology.js;
+      int pks = primal_topology.ks;
+      
+      parallel_for(
+          "Compute s0",
+          SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                          primal_topology.n_cells_x, primal_topology.nens),
+          YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+            dens0var(0, k + pks, j + pjs, i + pis, n) = 
+              varset.get_entropic_var(densvar, k, j, i, pks, pjs, pis, n);
+          });
+      auxiliary_vars.exchange({DENS0VAR});
+      
+      parallel_for(
+          "Compute ds0 horz",
+          SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                          primal_topology.n_cells_x, primal_topology.nens),
+          YAKL_LAMBDA(int k, int j, int i, int n) {
+            SArray<real, 1, 1> c;
+            c(0) = scalar_diffusion;
+            compute_cwD1<1>(V2var, c, dens0var, pis, pjs, pks, i, j, k, n);
+          });
+      
+      parallel_for(
+          "Compute ds0 vert",
+          SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                          primal_topology.n_cells_x, primal_topology.nens),
+          YAKL_LAMBDA(int k, int j, int i, int n) {
+            SArray<real, 1, 1> c;
+            c(0) = scalar_diffusion;
+            compute_cwDv<1>(W2var, c, dens0var, pis, pjs, pks, i, j, k, n);
+          });
+      auxiliary_vars.exchange({VVAR2, WVAR2});
+      //auxiliary_vars.fields_arr[WVAR2].set_bnd(0.0);
+
+      parallel_for(
+          "Compute *ds0 horz",
+          SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                          dual_topology.n_cells_x, dual_topology.nens),
+          YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+            compute_Hext<1, horz_diffusion_ord>(Fvar, V2var, this->primal_geometry,
+                                      this->dual_geometry, dis, djs, dks, i, j, k,
+                                      n);
+          });
+
+      parallel_for(
+          "Compute *ds0 vert",
+          SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
+                          dual_topology.n_cells_x, dual_topology.nens),
+          YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+            compute_Hv<1, vert_diffusion_ord>(FWvar, W2var, this->primal_geometry,
+                                            this->dual_geometry, dis, djs, dks, i, j,
+                                             k + 1, n);
+          });
+      auxiliary_vars.exchange({FVAR, FWVAR});
+      auxiliary_vars.fields_arr[FWVAR].set_bnd(0.0);
+
+      parallel_for(
+          "Compute d*ds0",
+          SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                          dual_topology.n_cells_x, dual_topology.nens),
+          YAKL_LAMBDA(int k, int j, int i, int n) {
+            SArray<real, 1, ndensity> denstend;
+            compute_cwDbar2<ndensity>(denstend, 1, Fvar,
+                                         dis, djs, dks, i, j, k, n);
+            SArray<real, 1, ndensity> c;
+            c(0) = 1;
+            c(1) = 1;
+            compute_cwDvbar<ndensity, ADD_MODE::ADD>(
+                denstend, c, FWvar, dis, djs, dks,
+                i, j, k, n);
+
+            denstendvar(1, k + pks, j + pjs, i + pis, n) = denstend(1);
+      });
+      xtend.exchange({DENSVAR});
+      
+      parallel_for(
+          "Compute *d*ds0",
+          SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                          primal_topology.n_cells_x, primal_topology.nens),
+          YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+            SArray<real, 1, ndensity> dens0;
+            compute_Iext<ndensity, diff_ord, vert_diff_ord>(
+                dens0, denstendvar, this->primal_geometry,
+                this->dual_geometry, pis, pjs, pks, i, j, k, n);
+            dens0var(1, k + pks, j + pjs, i + pis, n) = dens0(1);
+          });
+      auxiliary_vars.exchange({DENS0VAR});
+
+
+      parallel_for(
+          "Compute Dens Tend",
+          SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                          dual_topology.n_cells_x, dual_topology.nens),
+          YAKL_LAMBDA(int k, int j, int i, int n) {
+            real rho = densvar(0, k + pks, j + pjs, i + pis, n);
+            denstendvar(1, k + pks, j + pjs, i + pis, n) += -rho * dens0var(1, k + dks, j + djs, i + dis, n);
+      });
+
+      // velocity
+      const auto &dVvar = auxiliary_vars.fields_arr[DVVAR].data;
+      const auto &vt0var = auxiliary_vars.fields_arr[VT0VAR].data;
+      const auto &vt2var = auxiliary_vars.fields_arr[VT2VAR].data;
+     
+      // "hard: path
+      parallel_for(
+          "Compute dv1",
+          SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                          primal_topology.n_cells_x, primal_topology.nens),
+          YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+            compute_Dxz<1>(
+                dVvar, Vvar, Wvar, pis, pjs, pks, i, j, k, n);
+          });
+      auxiliary_vars.exchange({DVVAR});
+      
+      parallel_for(
+          "Compute *dv1",
+          SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
+                          dual_topology.n_cells_x, dual_topology.nens),
+          YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+            real Igeom = dual_geometry.get_area_00entity(k + 1 + dks, j + djs, i + dis) /
+                         primal_geometry.get_area_11entity(k + pks, j + pjs, i + pis);
+            vt0var(0, k + 1 + dks, j + djs, i + dis, n) = Igeom * dVvar(0, k + dks, j + djs, i + dis, n);
+          });
+      auxiliary_vars.exchange({VT0VAR});
+      auxiliary_vars.fields_arr[VT0VAR].set_bnd(0.0);
+      
+      parallel_for(
+          "Compute d*dv1 horz",
+          SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                          dual_topology.n_cells_x, dual_topology.nens),
+          YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+            Fvar(0, k + dks, j + djs, i + dis, n) = vt0var(0, k + 1 + dks, j + djs, i + dis, n) -
+                                                    vt0var(0, k + dks, j + djs, i + dis, n);
+          });
+      
+      parallel_for(
+          "Compute d*dv1 vert",
+          SimpleBounds<4>(dual_topology.ni, dual_topology.n_cells_y,
+                          dual_topology.n_cells_x, dual_topology.nens),
+          YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+            FWvar(0, k + dks, j + djs, i + dis, n) = -vt0var(0, k + dks, j + djs, i + 1 + dis, n) +
+                                                      vt0var(0, k + dks, j + djs, i + dis, n);
+          });
+      
+      auxiliary_vars.exchange({FVAR, FWVAR});
+      //auxiliary_vars.fields_arr[FWVAR].set_bnd(0.0);
+      
+      parallel_for(
+          "Compute *d*dv1 horz",
+          SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                          primal_topology.n_cells_x, primal_topology.nens),
+          YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+            real Igeom = primal_geometry.get_area_10entity(k + pks, j + pjs, i + pis) /
+                         dual_geometry.get_area_01entity(k + dks, j + djs, i + dis);
+            Vtendvar(0, k + dks, j + djs, i + dis, n) += (-velocity_diffusion) * (
+                -Igeom * Fvar(0, k + dks, j + djs, i + dis, n));
+          });
+      
+      parallel_for(
+          "Compute *d*dv1 vert",
+          SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                          primal_topology.n_cells_x, primal_topology.nens),
+          YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+            real Igeom = primal_geometry.get_area_01entity(k + pks, j + pjs, i + pis) /
+                         dual_geometry.get_area_10entity(k + 1 + dks, j + djs, i + dis);
+            Wtendvar(0, k + dks, j + djs, i + dis, n) += (-velocity_diffusion) * (
+                -Igeom * FWvar(0, k + 1 + dks, j + djs, i + dis, n));
+          });
+
+      // "easy" path
+      parallel_for(
+          "Compute *v1 horz",
+          SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                          dual_topology.n_cells_x, dual_topology.nens),
+          YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+            compute_Hext<1, diff_ord>(Fvar, Vvar, this->primal_geometry,
+                                      this->dual_geometry, dis, djs, dks, i, j, k,
+                                      n);
+          });
+
+      parallel_for(
+          "Compute *v1 vert",
+          SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
+                          dual_topology.n_cells_x, dual_topology.nens),
+          YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+            compute_Hv<1, vert_diff_ord>(FWvar, Wvar, this->primal_geometry,
+                                         this->dual_geometry, dis, djs, dks, i, j,
+                                         k + 1, n);
+          });
+      
+      auxiliary_vars.exchange({FVAR, FWVAR});
+      auxiliary_vars.fields_arr[FWVAR].set_bnd(0.0);
+      
+      parallel_for(
+          "Compute d*v1",
+          SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                          dual_topology.n_cells_x, dual_topology.nens),
+          YAKL_LAMBDA(int k, int j, int i, int n) {
+            SArray<real, 1, 1> dens;
+            compute_cwDbar2<1>(dens, 1, Fvar,
+                                         dis, djs, dks, i, j, k, n);
+            SArray<real, 1, 1> c;
+            c(0) = 1;
+            compute_cwDvbar<1, ADD_MODE::ADD>(
+                dens, c, FWvar, dis, djs, dks,
+                i, j, k, n);
+
+            vt2var(0, k + pks, j + pjs, i + pis, n) = dens(0);
+      });
+      auxiliary_vars.exchange({VT2VAR});
+      
+      parallel_for(
+          "Compute *d*v1",
+          SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                          primal_topology.n_cells_x, primal_topology.nens),
+          YAKL_LAMBDA(int k, int j, int i, int n) {
+            compute_Iext<1, diff_ord, vert_diff_ord>(
+                vt0var, vt2var, this->primal_geometry, this->dual_geometry,
+                pis, pjs, pks, i, j, k, n);
+      });
+      auxiliary_vars.exchange({VT0VAR});
+      
+      parallel_for(
+          "Compute d*d*v1 horz",
+          SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                          primal_topology.n_cells_x, primal_topology.nens),
+          YAKL_LAMBDA(int k, int j, int i, int n) {
+            SArray<real, 1, 1> c;
+            c(0) = -velocity_diffusion;
+            compute_cwD1<1, ADD_MODE::ADD>(Vtendvar, c, vt0var, pis, pjs, pks, i, j, k, n);
+          });
+      
+      parallel_for(
+          "Compute d*d*v1 vert",
+          SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                          primal_topology.n_cells_x, primal_topology.nens),
+          YAKL_LAMBDA(int k, int j, int i, int n) {
+            SArray<real, 1, 1> c;
+            c(0) = -velocity_diffusion;
+            compute_cwDv<1, ADD_MODE::ADD>(Wtendvar, c, vt0var, pis, pjs, pks, i, j, k, n);
+          });
+      
+    }
   }
 };
 
@@ -1856,6 +2124,12 @@ void initialize_variables(
       "coriolisxzvertedgerecon", ptopo, ndims, 1,
       2 * 1}; // coriolisxzvertedgerecon lives on primal cells,
               // associated with F/v
+  
+  aux_desc_arr[VVAR2] = {"v2", ptopo, 1, 0, 1}; // v = straight (1,0)-form
+  aux_desc_arr[WVAR2] = {"w2", ptopo, 0, 1, 1}; // w = straight (0,1)-form
+  aux_desc_arr[DVVAR] = {"dv", ptopo, 1, 1, 1}; // straight (1,1) form
+  aux_desc_arr[VT0VAR] = {"vt0", dtopo, 0, 0, 1}; // twisted (0,0) form
+  aux_desc_arr[VT2VAR] = {"vt2", dtopo, 1, 1, 1}; // twisted (1,1) form
 
   // #if defined _AN || defined _MAN
   // aux_topo_arr[PVAR] = ptopo; //p = straight 0-form
@@ -2424,7 +2698,7 @@ template <bool acoustic_balance> struct RisingBubble {
     return thermo.compute_entropic_var(p, T + dT, 0, 0, 0, 0);
   }
 
-  static vecext<2> YAKL_INLINE v_f(real x, real y) {
+  static vecext<2> YAKL_INLINE v_f(real x, real z) {
     vecext<2> vvec;
     vvec.u = 0;
     vvec.w = 0;
