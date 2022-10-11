@@ -22,9 +22,6 @@ namespace compressible_explicit_ader {
     using awfl::tendencies_rho_theta::idV;  // rho*v
     using awfl::tendencies_rho_theta::idW;  // rho*w
     using awfl::tendencies_rho_theta::idT;  // rho*potential temperature perturbation
-    using awfl::tendencies_rho_theta::Hydrostasis;
-    using awfl::Recon;
-    using awfl::tendencies_rho_theta::Hydrostasis;
     int static constexpr nAder = ngll;
 
     auto wrapz = YAKL_LAMBDA (int k, int kk, int nz) {
