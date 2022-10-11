@@ -2,6 +2,7 @@
 #include "pam_const.h"
 #include <array>
 #include <iostream>
+#include "common.h"
 
 uint constexpr ndims = 2;
 uint constexpr nprognostic = 0;
@@ -10,7 +11,6 @@ uint constexpr nauxiliary = 0;
 uint constexpr ndiagnostic = 0;
 uint constexpr ntracers_dycore = 0;
 
-#include "common.h"
 
 struct ModelParameters : public Parameters {
   // std::string initdataStr;
@@ -165,19 +165,25 @@ real compute_I_error(int np, real (*ic_fun)(real, real)) {
   PeriodicUnitSquare square(np, np);
 
   // set up one twisted 2-form
-  Field tw2;
-  tw2.initialize(square.dual_topology, "twisted 2-form", ndims, 1, 1);
   Exchange tw2_exchng;
   tw2_exchng.initialize(square.dual_topology, ndims, 1, 1);
+
+  Field tw2;
+  tw2.initialize(square.dual_topology, &tw2_exchng, "twisted 2-form", ndims, 1,
+                 1);
   square.dual_geometry.set_2form_values(ic_fun, tw2, 0);
 
   // set up three straight 0-forms
   // result, expected, and error
+  Exchange st0_exchng;
+  st0_exchng.initialize(square.primal_topology, 0, 0, 1);
   Field st0, st0_expected, st0_err;
-  st0.initialize(square.primal_topology, "result straight 0-form", 0, 1, 1);
-  st0_expected.initialize(square.primal_topology, "expected straight 0-form", 0,
-                          1, 1);
-  st0_err.initialize(square.primal_topology, "error straight 0-form", 0, 1, 1);
+  st0.initialize(square.primal_topology, &st0_exchng, "result straight 0-form",
+                 0, 1, 1);
+  st0_expected.initialize(square.primal_topology, &st0_exchng,
+                          "expected straight 0-form", 0, 1, 1);
+  st0_err.initialize(square.primal_topology, &st0_exchng,
+                     "error straight 0-form", 0, 1, 1);
   square.primal_geometry.set_0form_values(ic_fun, st0_expected, 0);
 
   int pis = square.primal_topology.is;
@@ -189,7 +195,7 @@ real compute_I_error(int np, real (*ic_fun)(real, real)) {
   int dks = square.dual_topology.ks;
 
   {
-    tw2_exchng.exchange_field(tw2);
+    tw2.exchange();
 
     parallel_for(
         SimpleBounds<3>(square.primal_topology.nl,
@@ -267,20 +273,25 @@ real compute_H_error(int np, vec<2> (*ic_fun)(real, real)) {
   PeriodicUnitSquare square(np, np);
 
   // set up one straight 1-form
-  Field st1;
-  st1.initialize(square.primal_topology, "straight 1-form", 1, 1, 1);
   Exchange st1_exchng;
   st1_exchng.initialize(square.primal_topology, 1, 1, 1);
+  Field st1;
+  st1.initialize(square.primal_topology, &st1_exchng, "straight 1-form", 1, 1,
+                 1);
   square.primal_geometry.set_1form_values(ic_fun, st1, 0,
                                           LINE_INTEGRAL_TYPE::TANGENT);
 
   // set up three twisted 1-forms
   // result, expected, and error
+  Exchange tw1_exchng;
+  tw1_exchng.initialize(square.dual_topology, 1, 1, 1);
   Field tw1, tw1_expected, tw1_err;
-  tw1.initialize(square.dual_topology, "result twisted 1-form", 1, 1, 1);
-  tw1_expected.initialize(square.dual_topology, "expected twisted 1-form", 1, 1,
-                          1);
-  tw1_err.initialize(square.dual_topology, "error twisted 1-form", 1, 1, 1);
+  tw1.initialize(square.dual_topology, &tw1_exchng, "result twisted 1-form", 1,
+                 1, 1);
+  tw1_expected.initialize(square.dual_topology, &tw1_exchng,
+                          "expected twisted 1-form", 1, 1, 1);
+  tw1_err.initialize(square.dual_topology, &tw1_exchng, "error twisted 1-form",
+                     1, 1, 1);
   square.dual_geometry.set_1form_values(ic_fun, tw1_expected, 0,
                                         LINE_INTEGRAL_TYPE::NORMAL);
 
@@ -293,7 +304,7 @@ real compute_H_error(int np, vec<2> (*ic_fun)(real, real)) {
   int dks = square.dual_topology.ks;
 
   {
-    st1_exchng.exchange_field(st1);
+    st1.exchange();
 
     parallel_for(
         SimpleBounds<3>(square.dual_topology.nl, square.dual_topology.n_cells_y,
