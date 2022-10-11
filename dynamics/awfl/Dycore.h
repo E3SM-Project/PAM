@@ -65,20 +65,12 @@ public:
     using awfl::tendencies_rho_theta::compressible_explicit_ader::compute_tendencies_y;
     using awfl::tendencies_rho_theta::compressible_explicit_ader::compute_tendencies_z;
 
-    real dt = compute_time_step( coupler );
-
     auto state       = awfl::tendencies_rho_theta::createStateArr     (coupler);
     auto tracers     = awfl::tendencies_rho_theta::createTracerArr    (coupler);
-    auto state_tend  = awfl::tendencies_rho_theta::createStateTendArr (coupler);
-    auto tracer_tend = awfl::tendencies_rho_theta::createTracerTendArr(coupler);
-
-    #ifdef PAM_DEBUG
-      state   = 0._fp;
-      tracers = 0._fp;
-    #endif
 
     awfl::tendencies_rho_theta::convert_coupler_state_to_dynamics( coupler , state , tracers , hydrostasis );
 
+    real dt = compute_time_step( coupler );
     int n_iter = ceil( dtphys / dt );
     dt = dtphys / n_iter;
 
@@ -90,6 +82,8 @@ public:
         validate_array_inf_nan(tracers);
         std::vector<real> mass_init = compute_mass( coupler , state , tracers );
       #endif
+      auto state_tend  = awfl::tendencies_rho_theta::createStateTendArr (coupler);
+      auto tracer_tend = awfl::tendencies_rho_theta::createTracerTendArr(coupler);
 
       if (dim_switch) {
         compute_tendencies_x( coupler , state , state_tend , tracers , tracer_tend , recon , dt );
