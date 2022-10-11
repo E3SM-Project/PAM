@@ -1026,7 +1026,7 @@ public:
                           primal_topology.n_cells_x, primal_topology.nens),
           YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
             SArray<real, 1, 1> dens0;
-            compute_Iext<1, diff_ord, vert_diff_ord>(
+            compute_Iext<1, horz_diffusion_ord, vert_diffusion_ord>(
                 dens0, vt2var, this->primal_geometry,
                 this->dual_geometry, pis, pjs, pks, i, j, k, n);
             dens0var(1, k + pks, j + pjs, i + pis, n) = dens0(0);
@@ -1119,7 +1119,7 @@ public:
           SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                           dual_topology.n_cells_x, dual_topology.nens),
           YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-            compute_Hext<1, diff_ord>(Fvar, Vvar, this->primal_geometry,
+            compute_Hext<1, horz_diffusion_ord>(Fvar, Vvar, this->primal_geometry,
                                       this->dual_geometry, dis, djs, dks, i, j, k,
                                       n);
           });
@@ -1129,7 +1129,7 @@ public:
           SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
                           dual_topology.n_cells_x, dual_topology.nens),
           YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-            compute_Hv<1, vert_diff_ord>(FWvar, Wvar, this->primal_geometry,
+            compute_Hv<1, vert_diffusion_ord>(FWvar, Wvar, this->primal_geometry,
                                          this->dual_geometry, dis, djs, dks, i, j,
                                          k + 1, n);
           });
@@ -1160,7 +1160,7 @@ public:
           SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                           primal_topology.n_cells_x, primal_topology.nens),
           YAKL_LAMBDA(int k, int j, int i, int n) {
-            compute_Iext<1, diff_ord, vert_diff_ord>(
+            compute_Iext<1, horz_diffusion_ord, vert_diffusion_ord>(
                 vt0var, vt2var, this->primal_geometry, this->dual_geometry,
                 pis, pjs, pks, i, j, k, n);
       });
