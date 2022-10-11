@@ -15,8 +15,8 @@
 #include "wedge.h"
 
 constexpr bool add_diffusion = true;
-constexpr real scalar_diffusion = 500;
-constexpr real velocity_diffusion = 500;
+constexpr real scalar_diffusion = 75;
+constexpr real velocity_diffusion = 75;
 constexpr int horz_diffusion_ord = 2;
 constexpr int vert_diffusion_ord = 2;
 
@@ -933,6 +933,7 @@ public:
       const auto &W2var = auxiliary_vars.fields_arr[WVAR2].data;
       const auto &Fvar = auxiliary_vars.fields_arr[FVAR].data;
       const auto &FWvar= auxiliary_vars.fields_arr[FWVAR].data;
+      const auto &vt2var = auxiliary_vars.fields_arr[VT2VAR].data;
 
 
       const auto &primal_topology = primal_geometry.topology;
@@ -1010,20 +1011,20 @@ public:
                 denstend, c, FWvar, dis, djs, dks,
                 i, j, k, n);
 
-            denstendvar(1, k + pks, j + pjs, i + pis, n) = denstend(1);
+            vt2var(0, k + pks, j + pjs, i + pis, n) = denstend(1);
       });
-      xtend.exchange({DENSVAR});
+      auxiliary_vars.exchange({VT2VAR});
       
       parallel_for(
           "Compute *d*ds0",
           SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                           primal_topology.n_cells_x, primal_topology.nens),
           YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-            SArray<real, 1, ndensity> dens0;
-            compute_Iext<ndensity, diff_ord, vert_diff_ord>(
-                dens0, denstendvar, this->primal_geometry,
+            SArray<real, 1, 1> dens0;
+            compute_Iext<1, diff_ord, vert_diff_ord>(
+                dens0, vt2var, this->primal_geometry,
                 this->dual_geometry, pis, pjs, pks, i, j, k, n);
-            dens0var(1, k + pks, j + pjs, i + pis, n) = dens0(1);
+            dens0var(1, k + pks, j + pjs, i + pis, n) = dens0(0);
           });
       auxiliary_vars.exchange({DENS0VAR});
 
@@ -1040,7 +1041,6 @@ public:
       // velocity
       const auto &dVvar = auxiliary_vars.fields_arr[DVVAR].data;
       const auto &vt0var = auxiliary_vars.fields_arr[VT0VAR].data;
-      const auto &vt2var = auxiliary_vars.fields_arr[VT2VAR].data;
      
       // "hard: path
       parallel_for(
