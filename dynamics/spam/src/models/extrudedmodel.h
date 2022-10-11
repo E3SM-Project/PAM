@@ -945,7 +945,8 @@ public:
       int pis = primal_topology.is;
       int pjs = primal_topology.js;
       int pks = primal_topology.ks;
-      
+     
+      YAKL_SCOPE(varset, ::varset);
       parallel_for(
           "Compute s0",
           SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
