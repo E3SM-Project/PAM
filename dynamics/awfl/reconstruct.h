@@ -2,6 +2,9 @@
 #pragma once
 
 #include "awfl_const.h"
+#include "TransformMatrices.h"
+#include "TransformMatrices_variable.h"
+#include "WenoLimiter.h"
 
 namespace awfl {
 

@@ -3,6 +3,7 @@
 
 #include "awfl_const.h"
 #include "pam_coupler.h"
+#include "tendencies_rho_theta_compressible_explicit_ader.h"
 
 template <class Spatial> class Temporal_operator {
 public:
@@ -35,7 +36,7 @@ public:
     int nx   = coupler.get_nx();
     int nens = coupler.get_nens();
 
-    int idR = Spatial::idR;
+    using awfl::tendencies_rho_theta::idR;
     int num_tracers = coupler.get_num_tracers();
     auto dz = coupler.get_data_manager_readonly().get<real const,2>("vertical_cell_dz");
 
@@ -82,6 +83,11 @@ public:
   void timeStep( pam::PamCoupler &coupler , real dtphys ) {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
+    using awfl::tendencies_rho_theta::convert_coupler_state_to_dynamics;
+    using awfl::tendencies_rho_theta::convert_dynamics_to_coupler_state;
+    using awfl::tendencies_rho_theta::compressible_explicit_ader::compute_tendencies_x;
+    using awfl::tendencies_rho_theta::compressible_explicit_ader::compute_tendencies_y;
+    using awfl::tendencies_rho_theta::compressible_explicit_ader::compute_tendencies_z;
 
     real dt = compute_time_step( coupler );
 
@@ -95,13 +101,13 @@ public:
       tracers = 0._fp;
     #endif
 
-    awfl::tendencies_rho_theta::convert_coupler_state_to_dynamics( coupler , state , tracers , space_op.hydrostasis );
+    convert_coupler_state_to_dynamics( coupler , state , tracers , space_op.hydrostasis );
 
-    int idR         = space_op.idR;
-    int idU         = space_op.idU;
-    int idV         = space_op.idV;
-    int idW         = space_op.idW;
-    int idT         = space_op.idT;
+    using awfl::tendencies_rho_theta::idR;
+    using awfl::tendencies_rho_theta::idU;
+    using awfl::tendencies_rho_theta::idV;
+    using awfl::tendencies_rho_theta::idW;
+    using awfl::tendencies_rho_theta::idT;
     int nx          = coupler.get_nx();
     int ny          = coupler.get_ny();
     int nz          = coupler.get_nz();
@@ -120,23 +126,23 @@ public:
       #endif
 
       if (dim_switch) {
-        space_op.compute_tendencies_x( coupler , state , state_tend , tracers , tracer_tend , space_op.recon , dt );
-        apply_tendencies             ( state , state_tend , tracers , tracer_tend , dt );
+        compute_tendencies_x( coupler , state , state_tend , tracers , tracer_tend , space_op.recon , dt );
+        apply_tendencies    ( state , state_tend , tracers , tracer_tend , dt );
 
-        space_op.compute_tendencies_y( coupler , state , state_tend , tracers , tracer_tend , space_op.recon , dt );
-        apply_tendencies             ( state , state_tend , tracers , tracer_tend , dt );
+        compute_tendencies_y( coupler , state , state_tend , tracers , tracer_tend , space_op.recon , dt );
+        apply_tendencies    ( state , state_tend , tracers , tracer_tend , dt );
 
-        space_op.compute_tendencies_z( coupler , state , state_tend , tracers , tracer_tend , space_op.recon , space_op.hydrostasis , dt );
-        apply_tendencies             ( state , state_tend , tracers , tracer_tend , dt );
+        compute_tendencies_z( coupler , state , state_tend , tracers , tracer_tend , space_op.recon , space_op.hydrostasis , dt );
+        apply_tendencies    ( state , state_tend , tracers , tracer_tend , dt );
       } else {
-        space_op.compute_tendencies_z( coupler , state , state_tend , tracers , tracer_tend , space_op.recon , space_op.hydrostasis , dt );
-        apply_tendencies             ( state , state_tend , tracers , tracer_tend , dt );
+        compute_tendencies_z( coupler , state , state_tend , tracers , tracer_tend , space_op.recon , space_op.hydrostasis , dt );
+        apply_tendencies    ( state , state_tend , tracers , tracer_tend , dt );
 
-        space_op.compute_tendencies_y( coupler , state , state_tend , tracers , tracer_tend , space_op.recon , dt );
-        apply_tendencies             ( state , state_tend , tracers , tracer_tend , dt );
+        compute_tendencies_y( coupler , state , state_tend , tracers , tracer_tend , space_op.recon , dt );
+        apply_tendencies    ( state , state_tend , tracers , tracer_tend , dt );
 
-        space_op.compute_tendencies_x( coupler , state , state_tend , tracers , tracer_tend , space_op.recon , dt );
-        apply_tendencies             ( state , state_tend , tracers , tracer_tend , dt );
+        compute_tendencies_x( coupler , state , state_tend , tracers , tracer_tend , space_op.recon , dt );
+        apply_tendencies    ( state , state_tend , tracers , tracer_tend , dt );
       }
       dim_switch = ! dim_switch;
 
@@ -164,14 +170,14 @@ public:
       #endif
 
       if (coupler.get_num_dycore_functions() > 0) {
-        awfl::tendencies_rho_theta::convert_dynamics_to_coupler_state( coupler , state , tracers );
+        convert_dynamics_to_coupler_state( coupler , state , tracers );
         coupler.run_dycore_functions( dt );
-        awfl::tendencies_rho_theta::convert_coupler_state_to_dynamics( coupler , state , tracers , space_op.hydrostasis );
+        convert_coupler_state_to_dynamics( coupler , state , tracers , space_op.hydrostasis );
       }
 
     }
 
-    awfl::tendencies_rho_theta::convert_dynamics_to_coupler_state( coupler , state , tracers );
+    convert_dynamics_to_coupler_state( coupler , state , tracers );
   }
 
 
