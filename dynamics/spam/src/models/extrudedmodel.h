@@ -2786,7 +2786,7 @@ struct DensityCurrent {
   static real constexpr bxc = 0;
   static real constexpr bzc = 3000;
   static real constexpr bxr = 4000;
-  static real constexpr bzr = 4000;
+  static real constexpr bzr = 2000;
   static real constexpr dss = -15;
   static real constexpr T_ref = 300.0_fp;
   static real constexpr N_ref = 0.0001;
