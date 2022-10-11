@@ -717,7 +717,7 @@ public:
                                          j, k, n);
           }
 
-          if (k == -1 || k == (dual_topology.ni - 2)) {
+          if (k >= (dual_topology.ni - 2)) {
             uw_kp1(0) = 0;
           } else {
             compute_Hv<1, vert_diff_ord>(uw_kp1, Wvar, this->primal_geometry,
@@ -728,8 +728,12 @@ public:
           real K2 =
               0.5_fp * (Vvar(0, k + pks, j + pjs, i + pis, n) * u_ik(0) +
                         Vvar(0, k + pks, j + pjs, i + 1 + pis, n) * u_ip1(0));
-          K2 += 0.5_fp * (Wvar(0, k - 1 + pks, j + pjs, i + pis, n) * uw_ik(0) +
+
+          if (k < dual_topology.nl) {
+            K2 +=
+                0.5_fp * (Wvar(0, k - 1 + pks, j + pjs, i + pis, n) * uw_ik(0) +
                           Wvar(0, k + pks, j + pjs, i + pis, n) * uw_kp1(0));
+          }
 
           Kvar(0, k + pks, j + pjs, i + pis, n) = 0.5_fp * K2;
 
