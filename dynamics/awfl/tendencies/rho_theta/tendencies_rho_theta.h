@@ -10,7 +10,6 @@
 namespace awfl {
 namespace tendencies_rho_theta {
 
-
   int static constexpr num_state   = 5;
   int static constexpr max_tracers = 50;
   // For indexing into the state and state tendency arrays
@@ -83,6 +82,8 @@ namespace tendencies_rho_theta {
   real5d createTracerTendArr(pam::PamCoupler const &coupler);
 
 
+
+  std::vector<real> compute_mass( pam::PamCoupler const &coupler , realConst5d state , realConst5d tracers );
 
 }
 }
