@@ -1,5 +1,5 @@
-#include "common.h"
 #include "pam_const.h"
+#include "common.h"
 #include <array>
 #include <iostream>
 
@@ -89,28 +89,49 @@ struct PeriodicUnitSquare {
     field.initialize(dual_topology, &exchange, "test field", deg, 1, 1);
     return field;
   }
+
+  real compute_Linf_error(const Field &f1, const Field &f2) {
+    Field error;
+    error.initialize(f1, "error");
+
+    int is = error.topology.is;
+    int js = error.topology.js;
+    int ks = error.topology.ks;
+
+    SArray<real, 1, 2> scale;
+    real dx = primal_geometry.dx;
+    real dy = primal_geometry.dy;
+
+    if (f1.basedof == 0) {
+      scale(0);
+    }
+    if (f1.basedof == 1) {
+      if (f1.topology.primal) {
+        scale(0) = dx;
+        scale(1) = dy;
+      } else {
+        scale(0) = dy;
+        scale(1) = dx;
+      }
+    }
+    if (f1.basedof == 2) {
+      scale(0) = dx * dy;
+    }
+
+    error.set(0);
+    parallel_for(
+        SimpleBounds<4>(error.total_dofs, error.topology.nl,
+                        error.topology.n_cells_y, error.topology.n_cells_x),
+        YAKL_LAMBDA(int l, int k, int j, int i) {
+          error.data(l, ks + k, js + j, is + i, 0) = (
+              abs(f1.data(l, ks + k, js + j, is + i, 0) -
+                  f2.data(l, ks + k, js + j, is + i, 0))) / scale(l);
+        });
+
+    return yakl::intrinsics::maxval(error.data);
+  }
 };
 
-real compute_Linf_error(const Field &f1, const Field &f2) {
-  Field error;
-  error.initialize(f1, "error");
-
-  int is = error.topology.is;
-  int js = error.topology.js;
-  int ks = error.topology.ks;
-
-  error.set(0);
-  parallel_for(
-      SimpleBounds<4>(error.total_dofs, error.topology.nl,
-                      error.topology.n_cells_y, error.topology.n_cells_x),
-      YAKL_LAMBDA(int l, int k, int j, int i) {
-        error.data(l, ks + k, js + j, is + i, 0) =
-            abs(f1.data(l, ks + k, js + j, is + i, 0) -
-                f2.data(l, ks + k, js + j, is + i, 0));
-      });
-
-  return yakl::intrinsics::maxval(error.data);
-}
 
 template <int nlevels> struct ConvergenceTest {
   std::string name;
