@@ -13,7 +13,7 @@ if __name__ == "__main__":
     if(len(argv) > 1):
         rundir = argv[1]
     else:
-        rundir = "straka_convergence"
+        rundir = "dc_convergence"
     
     if(len(argv) > 2):
         base_dt = float(argv[2])
@@ -26,7 +26,7 @@ if __name__ == "__main__":
     timeend = 15 * 60
     outfreq = 1 * 60
 
-    L = 56.2e3
+    L = 51.2e3
     H = 6.4e3
 
     base_nz = 32
