@@ -41,7 +41,7 @@ vec<2> YAKL_INLINE vecfun_xy(real x, real y) {
 
 template <int diff_ord>
 real compute_I_error(int np, real (*ic_fun)(real, real)) {
-  PeriodicUnitSquare square(np, np);
+  PeriodicUnitSquare square(np, 2 * np);
 
   auto tw2 = square.create_twisted_form<2>();
   square.dual_geometry.set_2form_values(ic_fun, tw2, 0);
@@ -53,10 +53,6 @@ real compute_I_error(int np, real (*ic_fun)(real, real)) {
   int pis = square.primal_topology.is;
   int pjs = square.primal_topology.js;
   int pks = square.primal_topology.ks;
-
-  int dis = square.dual_topology.is;
-  int djs = square.dual_topology.js;
-  int dks = square.dual_topology.ks;
 
   {
     tw2.exchange();
@@ -122,7 +118,7 @@ void test_I_convergence() {
 
 template <int diff_ord>
 real compute_J_error(int np, real (*ic_fun)(real, real)) {
-  PeriodicUnitSquare square(np, np);
+  PeriodicUnitSquare square(np, 2 * np);
 
   auto st2 = square.create_straight_form<2>();
   square.primal_geometry.set_2form_values(ic_fun, st2, 0);
@@ -199,7 +195,7 @@ void test_J_convergence() {
 
 template <int diff_ord>
 real compute_H_error(int np, vec<2> (*ic_fun)(real, real)) {
-  PeriodicUnitSquare square(np, np);
+  PeriodicUnitSquare square(np, 2 * np);
 
   auto st1 = square.create_straight_form<1>();
   square.primal_geometry.set_1form_values(ic_fun, st1, 0,
@@ -209,10 +205,6 @@ real compute_H_error(int np, vec<2> (*ic_fun)(real, real)) {
   auto tw1_expected = square.create_twisted_form<1>();
   square.dual_geometry.set_1form_values(ic_fun, tw1_expected, 0,
                                         LINE_INTEGRAL_TYPE::NORMAL);
-
-  int pis = square.primal_topology.is;
-  int pjs = square.primal_topology.js;
-  int pks = square.primal_topology.ks;
 
   int dis = square.dual_topology.is;
   int djs = square.dual_topology.js;
