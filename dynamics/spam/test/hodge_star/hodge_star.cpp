@@ -1,31 +1,5 @@
-
-#include "pam_const.h"
-#include <array>
-#include <iostream>
-#include "common.h"
-
-uint constexpr ndims = 2;
-uint constexpr nprognostic = 0;
-uint constexpr nconstant = 0;
-uint constexpr nauxiliary = 0;
-uint constexpr ndiagnostic = 0;
-uint constexpr ntracers_dycore = 0;
-
-
-struct ModelParameters : public Parameters {
-  // std::string initdataStr;
-  std::string tracerdataStr[ntracers_dycore];
-  bool dycore_tracerpos[ntracers_dycore];
-  // bool acoustic_balance;
-};
-
-#include "exchange.h"
-#include "fields.h"
-#include "geometry.h"
 #include "hodge_star.h"
-#include "model.h"
-#include "params.h"
-#include "topology.h"
+#include "layer_common.h"
 
 real YAKL_INLINE fun_x(real x, real y) { return sin(2 * M_PI * x); }
 
@@ -65,125 +39,15 @@ vec<2> YAKL_INLINE vecfun_xy(real x, real y) {
   return vvec;
 }
 
-template <int nlevels> struct ConvergenceTest {
-  std::string name;
-  std::array<real, nlevels> errs;
-  std::array<real, nlevels - 1> rates;
-
-  template <typename F1, typename F2>
-  ConvergenceTest(const std::string &name, F1 error_fun, F2 ic_fun)
-      : name(name) {
-    for (int l = 0; l < nlevels; ++l) {
-      int np = 8 * std::pow(2, l - 1);
-      errs[l] = error_fun(np, ic_fun);
-    }
-
-    for (int l = 0; l < nlevels; ++l) {
-      if (l < nlevels - 1) {
-        rates[l] = std::log2(errs[l] / errs[l + 1]);
-      }
-    }
-  }
-
-  void print_errors_and_rates() const {
-    std::cout << "Errors" << std::endl;
-    for (int l = 0; l < nlevels; ++l) {
-      std::cout << l << " " << errs[l] << std::endl;
-    }
-    std::cout << "Rates" << std::endl;
-    for (int l = 0; l < nlevels - 1; ++l) {
-      std::cout << l << " " << rates[l] << std::endl;
-    }
-  }
-
-  void check_rate(real expected_rate, real atol) const {
-    auto rate = rates[nlevels - 2];
-    if (std::abs(rate - expected_rate) > atol) {
-      std::cout << "Failed convergence test: " << name << std::endl;
-      std::cout << "Achieved rate: " << rate << " "
-                << "Expected rate: " << expected_rate << std::endl;
-      print_errors_and_rates();
-      exit(-1);
-    }
-  }
-};
-
-Parallel parallel_stub(int nx, int ny) {
-  Parallel par;
-  par.nx_glob = par.nx = nx;
-  par.ny_glob = par.ny = ny;
-  par.nz = 1;
-
-  par.nprocx = par.nprocy = par.nranks = 1;
-  par.masterproc = par.myrank = par.px = par.py = 0;
-
-  par.i_beg = 0;
-  par.i_end = nx - 1;
-  par.j_beg = 0;
-  par.j_end = ny - 1;
-
-  par.halox = maxhalosize;
-  par.haloy = maxhalosize;
-  par.x_neigh(0) = par.x_neigh(1) = par.y_neigh(0) = par.y_neigh(1) = 0;
-  par.ll_neigh = par.ur_neigh = par.ul_neigh = par.lr_neigh = 0;
-
-  par.nens = 1;
-
-  return par;
-}
-
-struct PeriodicUnitSquare {
-  Topology primal_topology;
-  Topology dual_topology;
-
-  Geometry<Straight> primal_geometry;
-  Geometry<Twisted> dual_geometry;
-
-  PeriodicUnitSquare(int nx, int ny) {
-    ModelParameters params;
-
-    params.nx_glob = nx;
-    params.ny_glob = ny;
-    params.xlen = 1;
-    params.xc = 0;
-    params.ylen = 1;
-    params.yc = 0;
-
-    Parallel par = parallel_stub(nx, ny);
-
-    primal_topology.initialize(par, true);
-    dual_topology.initialize(par, false);
-
-    primal_geometry.initialize(primal_topology, params);
-
-    dual_geometry.initialize(dual_topology, params);
-  }
-};
-
 template <int diff_ord>
 real compute_I_error(int np, real (*ic_fun)(real, real)) {
   PeriodicUnitSquare square(np, np);
 
-  // set up one twisted 2-form
-  Exchange tw2_exchng;
-  tw2_exchng.initialize(square.dual_topology, ndims, 1, 1);
-
-  Field tw2;
-  tw2.initialize(square.dual_topology, &tw2_exchng, "twisted 2-form", ndims, 1,
-                 1);
+  auto tw2 = square.create_twisted_form<2>();
   square.dual_geometry.set_2form_values(ic_fun, tw2, 0);
 
-  // set up three straight 0-forms
-  // result, expected, and error
-  Exchange st0_exchng;
-  st0_exchng.initialize(square.primal_topology, 0, 0, 1);
-  Field st0, st0_expected, st0_err;
-  st0.initialize(square.primal_topology, &st0_exchng, "result straight 0-form",
-                 0, 1, 1);
-  st0_expected.initialize(square.primal_topology, &st0_exchng,
-                          "expected straight 0-form", 0, 1, 1);
-  st0_err.initialize(square.primal_topology, &st0_exchng,
-                     "error straight 0-form", 0, 1, 1);
+  auto st0 = square.create_straight_form<0>();
+  auto st0_expected = square.create_straight_form<0>();
   square.primal_geometry.set_0form_values(ic_fun, st0_expected, 0);
 
   int pis = square.primal_topology.is;
@@ -208,19 +72,7 @@ real compute_I_error(int np, real (*ic_fun)(real, real)) {
         });
   }
 
-  st0_err.set(0);
-  parallel_for(
-      SimpleBounds<3>(square.primal_topology.nl,
-                      square.primal_topology.n_cells_y,
-                      square.primal_topology.n_cells_x),
-      YAKL_LAMBDA(int k, int j, int i) {
-        st0_err.data(0, pks + k, pjs + j, pis + i, 0) =
-            abs(st0.data(0, pks + k, pjs + j, pis + i, 0) -
-                st0_expected.data(0, pks + k, pjs + j, pis + i, 0));
-      });
-
-  real errf = yakl::intrinsics::maxval(st0_err.data);
-
+  real errf = compute_Linf_error(st0_expected, st0);
   return errf;
 }
 
@@ -272,26 +124,12 @@ template <int diff_ord>
 real compute_H_error(int np, vec<2> (*ic_fun)(real, real)) {
   PeriodicUnitSquare square(np, np);
 
-  // set up one straight 1-form
-  Exchange st1_exchng;
-  st1_exchng.initialize(square.primal_topology, 1, 1, 1);
-  Field st1;
-  st1.initialize(square.primal_topology, &st1_exchng, "straight 1-form", 1, 1,
-                 1);
+  auto st1 = square.create_straight_form<1>();
   square.primal_geometry.set_1form_values(ic_fun, st1, 0,
                                           LINE_INTEGRAL_TYPE::TANGENT);
 
-  // set up three twisted 1-forms
-  // result, expected, and error
-  Exchange tw1_exchng;
-  tw1_exchng.initialize(square.dual_topology, 1, 1, 1);
-  Field tw1, tw1_expected, tw1_err;
-  tw1.initialize(square.dual_topology, &tw1_exchng, "result twisted 1-form", 1,
-                 1, 1);
-  tw1_expected.initialize(square.dual_topology, &tw1_exchng,
-                          "expected twisted 1-form", 1, 1, 1);
-  tw1_err.initialize(square.dual_topology, &tw1_exchng, "error twisted 1-form",
-                     1, 1, 1);
+  auto tw1 = square.create_twisted_form<1>();
+  auto tw1_expected = square.create_twisted_form<1>();
   square.dual_geometry.set_1form_values(ic_fun, tw1_expected, 0,
                                         LINE_INTEGRAL_TYPE::NORMAL);
 
@@ -316,21 +154,7 @@ real compute_H_error(int np, vec<2> (*ic_fun)(real, real)) {
         });
   }
 
-  tw1_err.set(0);
-  parallel_for(
-      SimpleBounds<3>(square.dual_topology.nl, square.dual_topology.n_cells_y,
-                      square.dual_topology.n_cells_x),
-      YAKL_LAMBDA(int k, int j, int i) {
-        tw1_err.data(0, pks + k, pjs + j, pis + i, 0) =
-            abs(tw1.data(0, pks + k, pjs + j, pis + i, 0) -
-                tw1_expected.data(0, pks + k, pjs + j, pis + i, 0));
-        tw1_err.data(1, pks + k, pjs + j, pis + i, 0) =
-            abs(tw1.data(1, pks + k, pjs + j, pis + i, 0) -
-                tw1_expected.data(1, pks + k, pjs + j, pis + i, 0));
-      });
-
-  real errf = yakl::intrinsics::maxval(tw1_err.data);
-
+  real errf = compute_Linf_error(tw1_expected, tw1);
   return errf;
 }
 
