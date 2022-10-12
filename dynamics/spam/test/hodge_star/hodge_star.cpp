@@ -1,5 +1,5 @@
-#include "hodge_star.h"
 #include "layer_common.h"
+#include "hodge_star.h"
 
 real YAKL_INLINE fun_x(real x, real y) { return sin(2 * M_PI * x); }
 
@@ -72,7 +72,7 @@ real compute_I_error(int np, real (*ic_fun)(real, real)) {
         });
   }
 
-  real errf = compute_Linf_error(st0_expected, st0);
+  real errf = square.compute_Linf_error(st0_expected, st0);
   return errf;
 }
 
@@ -84,23 +84,23 @@ void test_I_convergence() {
     const int diff_order = 2;
     auto conv_x =
         ConvergenceTest<nlevels>("I 2 x", compute_I_error<diff_order>, fun_x);
-    conv_x.check_rate(2, atol);
+    conv_x.check_rate(diff_order, atol);
     auto conv_y =
         ConvergenceTest<nlevels>("I 2 y", compute_I_error<diff_order>, fun_y);
-    conv_y.check_rate(2, atol);
+    conv_y.check_rate(diff_order, atol);
     auto conv_xy =
         ConvergenceTest<nlevels>("I 2 xy", compute_I_error<diff_order>, fun_xy);
-    conv_xy.check_rate(2, atol);
+    conv_xy.check_rate(diff_order, atol);
   }
 
   {
     const int diff_order = 4;
     auto conv_x =
         ConvergenceTest<nlevels>("I 4 x", compute_I_error<diff_order>, fun_x);
-    conv_x.check_rate(4, atol);
+    conv_x.check_rate(diff_order, atol);
     auto conv_y =
         ConvergenceTest<nlevels>("I 4 y", compute_I_error<diff_order>, fun_y);
-    conv_y.check_rate(4, atol);
+    conv_y.check_rate(diff_order, atol);
     auto conv_xy =
         ConvergenceTest<nlevels>("I 4 xy", compute_I_error<diff_order>, fun_xy);
     conv_xy.check_rate(4, atol);
@@ -110,12 +110,89 @@ void test_I_convergence() {
     const int diff_order = 6;
     auto conv_x =
         ConvergenceTest<nlevels>("I 6 x", compute_I_error<diff_order>, fun_x);
-    conv_x.check_rate(6, atol);
+    conv_x.check_rate(diff_order, atol);
     auto conv_y =
         ConvergenceTest<nlevels>("I 6 y", compute_I_error<diff_order>, fun_y);
-    conv_y.check_rate(6, atol);
+    conv_y.check_rate(diff_order, atol);
     auto conv_xy =
         ConvergenceTest<nlevels>("I 6 xy", compute_I_error<diff_order>, fun_xy);
+    conv_xy.check_rate(4, atol);
+  }
+}
+
+template <int diff_ord>
+real compute_J_error(int np, real (*ic_fun)(real, real)) {
+  PeriodicUnitSquare square(np, np);
+
+  auto st2 = square.create_straight_form<2>();
+  square.primal_geometry.set_2form_values(ic_fun, st2, 0);
+
+  auto tw0 = square.create_twisted_form<0>();
+  auto tw0_expected = square.create_twisted_form<0>();
+  square.dual_geometry.set_0form_values(ic_fun, tw0_expected, 0);
+
+  int dis = square.dual_topology.is;
+  int djs = square.dual_topology.js;
+  int dks = square.dual_topology.ks;
+
+  {
+    st2.exchange();
+
+    parallel_for(
+        SimpleBounds<3>(square.dual_topology.nl,
+                        square.dual_topology.n_cells_y,
+                        square.dual_topology.n_cells_x),
+        YAKL_LAMBDA(int k, int j, int i) {
+          compute_J<1, diff_ord>(tw0.data, st2.data, square.primal_geometry,
+                                 square.dual_geometry, dis, djs, dks, i, j, k,
+                                 0);
+        });
+  }
+
+  real errf = square.compute_Linf_error(tw0_expected, tw0);
+  return errf;
+}
+
+void test_J_convergence() {
+  const int nlevels = 5;
+  const real atol = 0.1;
+
+  {
+    const int diff_order = 2;
+    auto conv_x =
+        ConvergenceTest<nlevels>("I 2 x", compute_J_error<diff_order>, fun_x);
+    conv_x.check_rate(diff_order, atol);
+    auto conv_y =
+        ConvergenceTest<nlevels>("I 2 y", compute_J_error<diff_order>, fun_y);
+    conv_y.check_rate(diff_order, atol);
+    auto conv_xy =
+        ConvergenceTest<nlevels>("I 2 xy", compute_J_error<diff_order>, fun_xy);
+    conv_xy.check_rate(diff_order, atol);
+  }
+
+  {
+    const int diff_order = 4;
+    auto conv_x =
+        ConvergenceTest<nlevels>("I 4 x", compute_J_error<diff_order>, fun_x);
+    conv_x.check_rate(diff_order, atol);
+    auto conv_y =
+        ConvergenceTest<nlevels>("I 4 y", compute_J_error<diff_order>, fun_y);
+    conv_y.check_rate(diff_order, atol);
+    auto conv_xy =
+        ConvergenceTest<nlevels>("I 4 xy", compute_J_error<diff_order>, fun_xy);
+    conv_xy.check_rate(4, atol);
+  }
+
+  {
+    const int diff_order = 6;
+    auto conv_x =
+        ConvergenceTest<nlevels>("I 6 x", compute_J_error<diff_order>, fun_x);
+    conv_x.check_rate(diff_order, atol);
+    auto conv_y =
+        ConvergenceTest<nlevels>("I 6 y", compute_J_error<diff_order>, fun_y);
+    conv_y.check_rate(diff_order, atol);
+    auto conv_xy =
+        ConvergenceTest<nlevels>("I 6 xy", compute_J_error<diff_order>, fun_xy);
     conv_xy.check_rate(4, atol);
   }
 }
@@ -154,7 +231,7 @@ real compute_H_error(int np, vec<2> (*ic_fun)(real, real)) {
         });
   }
 
-  real errf = compute_Linf_error(tw1_expected, tw1);
+  real errf = square.compute_Linf_error(tw1_expected, tw1);
   return errf;
 }
 
@@ -166,39 +243,39 @@ void test_H_convergence() {
     const int diff_order = 2;
     auto conv_x = ConvergenceTest<nlevels>("H 2 x", compute_H_error<diff_order>,
                                            vecfun_x);
-    conv_x.check_rate(3, atol);
+    conv_x.check_rate(diff_order, atol);
     auto conv_y = ConvergenceTest<nlevels>("H 2 y", compute_H_error<diff_order>,
                                            vecfun_y);
-    conv_y.check_rate(3, atol);
+    conv_y.check_rate(diff_order, atol);
     auto conv_xy = ConvergenceTest<nlevels>(
         "H 2 xy", compute_H_error<diff_order>, vecfun_xy);
-    conv_xy.check_rate(3, atol);
+    conv_xy.check_rate(diff_order, atol);
   }
 
   {
     const int diff_order = 4;
     auto conv_x = ConvergenceTest<nlevels>("H 4 x", compute_H_error<diff_order>,
                                            vecfun_x);
-    conv_x.check_rate(5, atol);
+    conv_x.check_rate(diff_order, atol);
     auto conv_y = ConvergenceTest<nlevels>("H 4 y", compute_H_error<diff_order>,
                                            vecfun_y);
-    conv_y.check_rate(5, atol);
+    conv_y.check_rate(diff_order, atol);
     auto conv_xy = ConvergenceTest<nlevels>(
         "H 4 xy", compute_H_error<diff_order>, vecfun_xy);
-    conv_xy.check_rate(3, atol);
+    conv_xy.check_rate(2, atol);
   }
 
   {
     const int diff_order = 6;
     auto conv_x = ConvergenceTest<nlevels>("H 6 x", compute_H_error<diff_order>,
                                            vecfun_x);
-    conv_x.check_rate(7, atol);
+    conv_x.check_rate(diff_order, atol);
     auto conv_y = ConvergenceTest<nlevels>("H 6 y", compute_H_error<diff_order>,
                                            vecfun_y);
-    conv_y.check_rate(7, atol);
+    conv_y.check_rate(diff_order, atol);
     auto conv_xy = ConvergenceTest<nlevels>(
         "H 6 xy", compute_H_error<diff_order>, vecfun_xy);
-    conv_xy.check_rate(3, atol);
+    conv_xy.check_rate(2, atol);
   }
 }
 
@@ -206,6 +283,7 @@ int main() {
   yakl::init();
 
   test_I_convergence();
+  test_J_convergence();
   test_H_convergence();
 
   yakl::finalize();
