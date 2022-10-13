@@ -341,7 +341,7 @@ namespace tendencies_rho_theta {
 
 
 
-  std::vector<real> compute_mass( pam::PamCoupler const &coupler , realConst5d state , realConst5d tracers ) {
+  realHost1d compute_mass( pam::PamCoupler const &coupler , realConst5d state , realConst5d tracers ) {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
 
@@ -354,19 +354,19 @@ namespace tendencies_rho_theta {
     int num_tracers = coupler.get_num_tracers();
     auto dz = coupler.get_data_manager_readonly().get<real const,2>("vertical_cell_dz");
 
-    std::vector<real> mass(num_tracers+1);
+    realHost1d mass("mass",num_tracers+1);
     real4d tmp("tmp",nz,ny,nx,nens);
 
     parallel_for( "Temporal_ader.h state mass" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       tmp(k,j,i,iens) = state(idR,hs+k,hs+j,hs+i,iens) * dz(k,iens);
     });
-    mass[0] = yakl::intrinsics::sum(tmp);
+    mass(0) = yakl::intrinsics::sum(tmp);
 
     for (int l=0; l < num_tracers; l++) {
       parallel_for( "Temporal_ader.h tracer mass" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
         tmp(k,j,i,iens) = tracers(l,hs+k,hs+j,hs+i,iens) * dz(k,iens);
       });
-      mass[l+1] = yakl::intrinsics::sum(tmp);
+      mass(l+1) = yakl::intrinsics::sum(tmp);
     }
     return mass;
   }

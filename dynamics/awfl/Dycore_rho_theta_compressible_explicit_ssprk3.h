@@ -38,6 +38,14 @@ public:
   void timeStep( pam::PamCoupler &coupler , real dtphys ) {
     using awfl::tendencies_rho_theta::compressible_explicit_semidiscrete::compute_tendencies_xyz;
     using awfl::tendencies_rho_theta::compute_mass;
+    using yakl::intrinsics::sum;
+    using yakl::intrinsics::abs;
+    using yakl::intrinsics::maxval;
+    using yakl::componentwise::operator*;
+    using yakl::componentwise::operator+;
+    using yakl::componentwise::operator-;
+    using yakl::componentwise::operator/;
+    using awfl::tendencies_rho_theta::idR;
 
     auto state       = awfl::tendencies_rho_theta::createStateArr (coupler);
     auto tracers     = awfl::tendencies_rho_theta::createTracerArr(coupler);
@@ -61,7 +69,7 @@ public:
         validate_array_positive(tracers);
         validate_array_inf_nan(state);
         validate_array_inf_nan(tracers);
-        std::vector<real> mass_init = compute_mass( coupler , state , tracers );
+        auto mass_init = compute_mass( coupler , state , tracers );
       #endif
       auto state_tend  = awfl::tendencies_rho_theta::createStateTendArr (coupler);
       auto tracer_tend = awfl::tendencies_rho_theta::createTracerTendArr(coupler);
@@ -83,10 +91,19 @@ public:
         }
       });
 
+      #ifdef PAM_DEBUG
+        {
+          std::cout << "Stage 1: Density Tend sum: " << sum( state_tend.slice<4>(idR,0,0,0,0) ) << std::endl;
+          std::cout << "Stage 1: Tracers Tend sum: " << sum( tracer_tend ) << std::endl;
+          auto mass_rel_diff = abs(compute_mass( coupler , state_tmp , tracers_tmp ) - mass_init) / (mass_init + 1.e-20);
+          if (maxval(mass_rel_diff) > 1.e-12) { std::cout << mass_rel_diff; endrun("ERROR: Stage 1 mass not conserved"); }
+        }
+      #endif
+
       ///////////////////
       // Stage 2
       ///////////////////
-      compute_tendencies_xyz( coupler , state , state_tend , tracers , tracer_tend , recon , hydrostasis , dt );
+      compute_tendencies_xyz( coupler , state_tmp , state_tend , tracers_tmp , tracer_tend , recon , hydrostasis , dt/4._fp );
       parallel_for( "Temporal_ader.h apply tendencies" , SimpleBounds<4>(nz,ny,nx,nens) ,
                     YAKL_LAMBDA (int k, int j, int i, int iens) {
         for (int l=0; l < num_state; l++) {
@@ -102,10 +119,19 @@ public:
         }
       });
 
+      #ifdef PAM_DEBUG
+        {
+          std::cout << "Stage 2: Density Tend sum: " << sum( state_tend.slice<4>(idR,0,0,0,0) ) << std::endl;
+          std::cout << "Stage 2: Tracers Tend sum: " << sum( tracer_tend ) << std::endl;
+          auto mass_rel_diff = abs(compute_mass( coupler , state_tmp , tracers_tmp ) - mass_init) / (mass_init + 1.e-20);
+          if (maxval(mass_rel_diff) > 1.e-12) { std::cout << mass_rel_diff; endrun("ERROR: Stage 2 mass not conserved"); }
+        }
+      #endif
+
       ///////////////////
       // Stage 3
       ///////////////////
-      compute_tendencies_xyz( coupler , state , state_tend , tracers , tracer_tend , recon , hydrostasis , dt );
+      compute_tendencies_xyz( coupler , state_tmp , state_tend , tracers_tmp , tracer_tend , recon , hydrostasis , 2._fp*dt/3._fp );
       parallel_for( "Temporal_ader.h apply tendencies" , SimpleBounds<4>(nz,ny,nx,nens) ,
                     YAKL_LAMBDA (int k, int j, int i, int iens) {
         for (int l=0; l < num_state; l++) {
@@ -122,13 +148,11 @@ public:
       });
 
       #ifdef PAM_DEBUG
-        std::vector<real> mass_final = compute_mass( coupler , state , tracers );
-        for (int l=0; l < mass_final.size(); l++) {
-          real mass_diff;
-          if (mass_init[l] > 0) { mass_diff = abs(mass_final[l] - mass_init[l]) / abs(mass_init[l]); }
-          else                  { mass_diff = mass_final[l]; }
-          real tol = std::is_same<real,float>::value ? 1.e-5 : 1.e-12;
-          if (mass_diff > tol) { endrun("ERROR: mass not conserved by dycore"); }
+        {
+          std::cout << "Stage 3: Density Tend sum: " << sum( state_tend.slice<4>(idR,0,0,0,0) ) << std::endl;
+          std::cout << "Stage 3: Tracers Tend sum: " << sum( tracer_tend ) << std::endl;
+          auto mass_rel_diff = abs(compute_mass( coupler , state , tracers ) - mass_init) / (mass_init + 1.e-20);
+          if (maxval(mass_rel_diff) > 1.e-12) { std::cout << mass_rel_diff; endrun("ERROR: Stage 3 mass not conserved"); }
         }
         validate_array_positive(tracers);
         validate_array_inf_nan(state);

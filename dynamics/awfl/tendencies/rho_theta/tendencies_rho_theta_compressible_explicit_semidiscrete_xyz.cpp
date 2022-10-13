@@ -12,7 +12,7 @@ namespace compressible_explicit_semidiscrete {
                                real5d const &tracers , real5d const &tracer_tend      ,
                                awfl::Recon const &recon ,
                                awfl::tendencies_rho_theta::Hydrostasis const &hydrostasis ,
-                               real &dt ) {
+                               real dt ) {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
     using awfl::tendencies_rho_theta::num_state  ;

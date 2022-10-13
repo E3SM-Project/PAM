@@ -83,7 +83,7 @@ namespace tendencies_rho_theta {
 
 
 
-  std::vector<real> compute_mass( pam::PamCoupler const &coupler , realConst5d state , realConst5d tracers );
+  realHost1d compute_mass( pam::PamCoupler const &coupler , realConst5d state , realConst5d tracers );
 
 }
 }

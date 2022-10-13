@@ -115,6 +115,7 @@ namespace awfl {
     auto dx          = coupler.get_dx  ();
     auto dy          = coupler.get_dy  ();
     auto dz          = coupler.get_data_manager_readonly().get<real const,2>("vertical_cell_dz");
+    bool sim2d       = ny == 1;
     parallel_for( "Spatial.h Z FCT" , SimpleBounds<5>(num_tracers,nz,ny,nx,nens) ,
                   YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
       if (tracer_pos(tr)) {
@@ -138,14 +139,16 @@ namespace awfl {
             tracer_flux_x(tr,k,j,i  ,iens) *= my_mass / mass_out;
             if (i   == 0 ) tracer_flux_x(tr,k,j,nx,iens) = tracer_flux_x(tr,k,j,i  ,iens);
           }
-          // y-direction
-          if (tracer_flux_y(tr,k,j+1,i,iens) > 0) {
-            tracer_flux_y(tr,k,j+1,i,iens) *= my_mass / mass_out;
-            if (j+1 == ny) tracer_flux_y(tr,k,0 ,i,iens) = tracer_flux_y(tr,k,j+1,i,iens);
-          }
-          if (tracer_flux_y(tr,k,j  ,i,iens) < 0) {
-            tracer_flux_y(tr,k,j  ,i,iens) *= my_mass / mass_out;
-            if (j   == 0 ) tracer_flux_y(tr,k,ny,i,iens) = tracer_flux_y(tr,k,j  ,i,iens);
+          if (! sim2d) {
+            // y-direction
+            if (tracer_flux_y(tr,k,j+1,i,iens) > 0) {
+              tracer_flux_y(tr,k,j+1,i,iens) *= my_mass / mass_out;
+              if (j+1 == ny) tracer_flux_y(tr,k,0 ,i,iens) = tracer_flux_y(tr,k,j+1,i,iens);
+            }
+            if (tracer_flux_y(tr,k,j  ,i,iens) < 0) {
+              tracer_flux_y(tr,k,j  ,i,iens) *= my_mass / mass_out;
+              if (j   == 0 ) tracer_flux_y(tr,k,ny,i,iens) = tracer_flux_y(tr,k,j  ,i,iens);
+            }
           }
           // z-direction
           if (tracer_flux_z(tr,k+1,j,i,iens) > 0) tracer_flux_z(tr,k+1,j,i,iens) *= my_mass / mass_out;

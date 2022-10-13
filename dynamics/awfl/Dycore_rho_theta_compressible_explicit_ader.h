@@ -84,7 +84,7 @@ public:
         validate_array_positive(tracers);
         validate_array_inf_nan(state);
         validate_array_inf_nan(tracers);
-        std::vector<real> mass_init = compute_mass( coupler , state , tracers );
+        auto mass_init = compute_mass( coupler , state , tracers );
       #endif
       auto state_tend  = awfl::tendencies_rho_theta::createStateTendArr (coupler);
       auto tracer_tend = awfl::tendencies_rho_theta::createTracerTendArr(coupler);
@@ -111,13 +111,10 @@ public:
       dim_switch = ! dim_switch;
 
       #ifdef PAM_DEBUG
-        std::vector<real> mass_final = compute_mass( coupler , state , tracers );
-        for (int l=0; l < mass_final.size(); l++) {
-          real mass_diff;
-          if (mass_init[l] > 0) { mass_diff = abs(mass_final[l] - mass_init[l]) / abs(mass_init[l]); }
-          else                  { mass_diff = mass_final[l]; }
-          real tol = std::is_same<real,float>::value ? 1.e-5 : 1.e-12;
-          if (mass_diff > tol) { endrun("ERROR: mass not conserved by dycore"); }
+        auto mass_rel_diff = abs(compute_mass( coupler , state , tracers ) - mass_init) / (mass_init + 1.e-20);
+        if (maxval(mass_rel_diff) > 1.e-12) {
+          std::cout << "Mass diff: " << mass_rel_diff;
+          endrun("ERROR: Mass not conserved");
         }
         validate_array_positive(tracers);
         validate_array_inf_nan(state);
