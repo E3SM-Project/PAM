@@ -38,7 +38,7 @@ public:
 
 
   void apply_tendencies(real5d const &state   , realConst5d state_tend  ,
-                        real5d const &tracers , realConst5d tracer_tend , real dt ) {
+                        real5d const &tracers , realConst5d tracer_tend , real dt , boolConst1d tracer_pos ) {
     int num_state   = state_tend.extent(0);
     int nz          = state_tend.extent(1);
     int ny          = state_tend.extent(2);
@@ -53,7 +53,9 @@ public:
       }
       for (int l=0; l < num_tracers; l++) {
         tracers(l,hs+k,hs+j,hs+i,iens) += dt * tracer_tend(l,k,j,i,iens);
-        tracers(l,hs+k,hs+j,hs+i,iens) = std::max( 0._fp , tracers(l,hs+k,hs+j,hs+i,iens) );
+        if (tracer_pos(l)) {
+          tracers(l,hs+k,hs+j,hs+i,iens) = std::max( 0._fp , tracers(l,hs+k,hs+j,hs+i,iens) );
+        }
       }
     });
   }
@@ -64,9 +66,11 @@ public:
     using awfl::tendencies_rho_theta::compressible_explicit_ader::compute_tendencies_x;
     using awfl::tendencies_rho_theta::compressible_explicit_ader::compute_tendencies_y;
     using awfl::tendencies_rho_theta::compressible_explicit_ader::compute_tendencies_z;
+    using awfl::tendencies_rho_theta::compute_mass;
 
-    auto state       = awfl::tendencies_rho_theta::createStateArr     (coupler);
-    auto tracers     = awfl::tendencies_rho_theta::createTracerArr    (coupler);
+    auto state      = awfl::tendencies_rho_theta::createStateArr (coupler);
+    auto tracers    = awfl::tendencies_rho_theta::createTracerArr(coupler);
+    auto tracer_pos = coupler.get_tracer_positivity_array();
 
     awfl::tendencies_rho_theta::convert_coupler_state_to_dynamics( coupler , state , tracers , hydrostasis );
 
@@ -87,22 +91,22 @@ public:
 
       if (dim_switch) {
         compute_tendencies_x( coupler , state , state_tend , tracers , tracer_tend , recon , dt );
-        apply_tendencies    ( state , state_tend , tracers , tracer_tend , dt );
+        apply_tendencies    ( state , state_tend , tracers , tracer_tend , dt , tracer_pos );
 
         compute_tendencies_y( coupler , state , state_tend , tracers , tracer_tend , recon , dt );
-        apply_tendencies    ( state , state_tend , tracers , tracer_tend , dt );
+        apply_tendencies    ( state , state_tend , tracers , tracer_tend , dt , tracer_pos );
 
         compute_tendencies_z( coupler , state , state_tend , tracers , tracer_tend , recon , hydrostasis , dt );
-        apply_tendencies    ( state , state_tend , tracers , tracer_tend , dt );
+        apply_tendencies    ( state , state_tend , tracers , tracer_tend , dt , tracer_pos );
       } else {
         compute_tendencies_z( coupler , state , state_tend , tracers , tracer_tend , recon , hydrostasis , dt );
-        apply_tendencies    ( state , state_tend , tracers , tracer_tend , dt );
+        apply_tendencies    ( state , state_tend , tracers , tracer_tend , dt , tracer_pos );
 
         compute_tendencies_y( coupler , state , state_tend , tracers , tracer_tend , recon , dt );
-        apply_tendencies    ( state , state_tend , tracers , tracer_tend , dt );
+        apply_tendencies    ( state , state_tend , tracers , tracer_tend , dt , tracer_pos );
 
         compute_tendencies_x( coupler , state , state_tend , tracers , tracer_tend , recon , dt );
-        apply_tendencies    ( state , state_tend , tracers , tracer_tend , dt );
+        apply_tendencies    ( state , state_tend , tracers , tracer_tend , dt , tracer_pos );
       }
       dim_switch = ! dim_switch;
 

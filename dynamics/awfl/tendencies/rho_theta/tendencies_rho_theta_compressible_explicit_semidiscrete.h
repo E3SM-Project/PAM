@@ -12,7 +12,7 @@
 
 namespace awfl {
 namespace tendencies_rho_theta {
-namespace compressible_explicit_ader {
+namespace compressible_explicit_semidiscrete {
 
 
   void compute_tendencies_xyz( pam::PamCoupler const &coupler ,

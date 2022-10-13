@@ -283,7 +283,7 @@ namespace compressible_explicit_semidiscrete {
           state_tend(l,k,j,i,iens) = 0;
         } else {
           state_tend(l,k,j,i,iens)  = - ( state_flux_x(l,k,j,i+1,iens) - state_flux_x(l,k,j,i,iens) ) / dx;
-          state_tend(l,k,j,i,iens) += - ( state_flux_y(l,k,j+1,i,iens) - state_flux_y(l,k,j,i,iens) ) / dy;
+          if (! sim2d) state_tend(l,k,j,i,iens) += - ( state_flux_y(l,k,j+1,i,iens) - state_flux_y(l,k,j,i,iens) ) / dy;
           state_tend(l,k,j,i,iens) += - ( state_flux_z(l,k+1,j,i,iens) - state_flux_z(l,k,j,i,iens) ) / dz(k,iens);
         }
       }
@@ -291,7 +291,7 @@ namespace compressible_explicit_semidiscrete {
       for (int l = 0; l < num_tracers; l++) {
         // Compute tracer tendency
         tracer_tend(l,k,j,i,iens)  = - ( tracer_flux_x(l,k,j,i+1,iens) - tracer_flux_x(l,k,j,i,iens) ) / dx;
-        tracer_tend(l,k,j,i,iens) += - ( tracer_flux_y(l,k,j+1,i,iens) - tracer_flux_y(l,k,j,i,iens) ) / dy;
+        if (! sim2d) tracer_tend(l,k,j,i,iens) += - ( tracer_flux_y(l,k,j+1,i,iens) - tracer_flux_y(l,k,j,i,iens) ) / dy;
         tracer_tend(l,k,j,i,iens) += - ( tracer_flux_z(l,k+1,j,i,iens) - tracer_flux_z(l,k,j,i,iens) ) / dz(k,iens);
       }
     });
