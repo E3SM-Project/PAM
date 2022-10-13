@@ -8,8 +8,9 @@ namespace compressible_explicit_semidiscrete {
 
 
   void compute_tendencies_xyz( pam::PamCoupler const &coupler ,
-                               real5d const &state   , real5d const &state_tend       ,
-                               real5d const &tracers , real5d const &tracer_tend      ,
+                               realConst5d state   , real5d const &state_tend       ,
+                               realConst5d tracers , real5d const &tracer_tend      ,
+                               realConst5d tracers_start ,
                                awfl::Recon const &recon ,
                                awfl::tendencies_rho_theta::Hydrostasis const &hydrostasis ,
                                real dt ) {
@@ -273,7 +274,7 @@ namespace compressible_explicit_semidiscrete {
     state_limits_z  = real6d();
     tracer_limits_z = real6d();
 
-    awfl::fct_positivity_xyz( coupler , tracers , tracer_flux_x , tracer_flux_y , tracer_flux_z , tracer_pos , dt );
+    awfl::fct_positivity_xyz( coupler , tracers_start , tracer_flux_x , tracer_flux_y , tracer_flux_z , tracer_pos , dt );
 
     //////////////////////////////////////////////////////////
     // Compute the tendencies

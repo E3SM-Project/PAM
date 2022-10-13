@@ -76,7 +76,7 @@ public:
       ///////////////////
       // Stage 1
       ///////////////////
-      compute_tendencies_xyz( coupler , state , state_tend , tracers , tracer_tend , recon , hydrostasis , dt );
+      compute_tendencies_xyz( coupler , state , state_tend , tracers , tracer_tend , tracers , recon , hydrostasis , dt );
       parallel_for( "Temporal_ader.h apply tendencies" , SimpleBounds<4>(nz,ny,nx,nens) ,
                     YAKL_LAMBDA (int k, int j, int i, int iens) {
         for (int l=0; l < num_state; l++) {
@@ -91,7 +91,13 @@ public:
       ///////////////////
       // Stage 2
       ///////////////////
-      compute_tendencies_xyz( coupler , state_tmp , state_tend , tracers_tmp , tracer_tend , recon , hydrostasis , dt );
+      real5d tracers_start("tracers_start",num_tracers,nz+2*hs,ny+2*hs,nx+2*hs,nens);
+      parallel_for( "Temporal_ader.h apply tendencies" , SimpleBounds<5>(num_tracers,nz,ny,nx,nens) ,
+                    YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
+        tracers_start(tr,hs+k,hs+j,hs+i,iens) = 3._fp * tracers    (tr,hs+k,hs+j,hs+i,iens) / 4._fp +
+                                                        tracers_tmp(tr,hs+k,hs+j,hs+i,iens) / 4._fp;
+      });
+      compute_tendencies_xyz( coupler , state_tmp , state_tend , tracers_tmp , tracer_tend , tracers_start , recon , hydrostasis , dt/4._fp );
       parallel_for( "Temporal_ader.h apply tendencies" , SimpleBounds<4>(nz,ny,nx,nens) ,
                     YAKL_LAMBDA (int k, int j, int i, int iens) {
         for (int l=0; l < num_state; l++) {
@@ -100,9 +106,7 @@ public:
                                                 dt*state_tend(l,   k,   j,   i,iens)/4._fp;
         }
         for (int l=0; l < num_tracers; l++) {
-          tracers_tmp(l,hs+k,hs+j,hs+i,iens) = 3._fp*tracers    (l,hs+k,hs+j,hs+i,iens)/4._fp +
-                                                     tracers_tmp(l,hs+k,hs+j,hs+i,iens)/4._fp + 
-                                                  dt*tracer_tend(l,   k,   j,   i,iens)/4._fp;
+          tracers_tmp(l,hs+k,hs+j,hs+i,iens) = tracers_start(l,hs+k,hs+j,hs+i,iens) + dt*tracer_tend(l,k,j,i,iens)/4._fp;
           if (tracer_pos(l)) tracers_tmp(l,hs+k,hs+j,hs+i,iens) = std::max( 0._fp , tracers_tmp(l,hs+k,hs+j,hs+i,iens) );
         }
       });
@@ -110,7 +114,12 @@ public:
       ///////////////////
       // Stage 3
       ///////////////////
-      compute_tendencies_xyz( coupler , state_tmp , state_tend , tracers_tmp , tracer_tend , recon , hydrostasis , dt );
+      parallel_for( "Temporal_ader.h apply tendencies" , SimpleBounds<5>(num_tracers,nz,ny,nx,nens) ,
+                    YAKL_LAMBDA (int tr, int k, int j, int i, int iens) {
+        tracers_start(tr,hs+k,hs+j,hs+i,iens) =         tracers    (tr,hs+k,hs+j,hs+i,iens) / 3._fp +
+                                                2._fp * tracers_tmp(tr,hs+k,hs+j,hs+i,iens) / 3._fp;
+      });
+      compute_tendencies_xyz( coupler , state_tmp , state_tend , tracers_tmp , tracer_tend , tracers_start , recon , hydrostasis , 2._fp*dt/3._fp );
       parallel_for( "Temporal_ader.h apply tendencies" , SimpleBounds<4>(nz,ny,nx,nens) ,
                     YAKL_LAMBDA (int k, int j, int i, int iens) {
         for (int l=0; l < num_state; l++) {
@@ -119,9 +128,7 @@ public:
                                       2._fp*dt*state_tend(l,   k,   j,   i,iens)/3._fp;
         }
         for (int l=0; l < num_tracers; l++) {
-          tracers(l,hs+k,hs+j,hs+i,iens) =       tracers    (l,hs+k,hs+j,hs+i,iens)/3._fp +
-                                           2._fp*tracers_tmp(l,hs+k,hs+j,hs+i,iens)/3._fp + 
-                                        2._fp*dt*tracer_tend(l,   k,   j,   i,iens)/3._fp;
+          tracers(l,hs+k,hs+j,hs+i,iens) = tracers_start(l,hs+k,hs+j,hs+i,iens) + 2._fp*dt*tracer_tend(l,k,j,i,iens)/3._fp;
           if (tracer_pos(l)) tracers(l,hs+k,hs+j,hs+i,iens) = std::max( 0._fp , tracers(l,hs+k,hs+j,hs+i,iens) );
         }
       });
