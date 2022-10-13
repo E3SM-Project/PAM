@@ -203,6 +203,8 @@ namespace compressible_explicit_semidiscrete {
       reconstruct_gll_values( stencil , gll , c2g , s2g_loc , s2c_loc , weno_recon_lower_loc , idl , sigma , weno_winds );
       state_limits_z(idW,1,k  ,j,i,iens) = gll(0     ) * state_limits_z(idR,1,k  ,j,i,iens);
       state_limits_z(idW,0,k+1,j,i,iens) = gll(ngll-1) * state_limits_z(idR,0,k+1,j,i,iens);
+      if (k == 0   ) state_limits_z(idW,1,k  ,j,i,iens) = 0;
+      if (k == nz-1) state_limits_z(idW,0,k+1,j,i,iens) = 0;
 
       //////////////
       // theta

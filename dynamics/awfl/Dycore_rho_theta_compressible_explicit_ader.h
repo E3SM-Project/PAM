@@ -67,6 +67,11 @@ public:
     using awfl::tendencies_rho_theta::compressible_explicit_ader::compute_tendencies_y;
     using awfl::tendencies_rho_theta::compressible_explicit_ader::compute_tendencies_z;
     using awfl::tendencies_rho_theta::compute_mass;
+    using yakl::intrinsics::maxval;
+    using yakl::intrinsics::abs;
+    using yakl::componentwise::operator-;
+    using yakl::componentwise::operator+;
+    using yakl::componentwise::operator/;
 
     auto state      = awfl::tendencies_rho_theta::createStateArr (coupler);
     auto tracers    = awfl::tendencies_rho_theta::createTracerArr(coupler);
@@ -81,9 +86,6 @@ public:
     for (int iter = 0; iter < n_iter; iter++) {
 
       #ifdef PAM_DEBUG
-        validate_array_positive(tracers);
-        validate_array_inf_nan(state);
-        validate_array_inf_nan(tracers);
         auto mass_init = compute_mass( coupler , state , tracers );
       #endif
       auto state_tend  = awfl::tendencies_rho_theta::createStateTendArr (coupler);
@@ -112,13 +114,7 @@ public:
 
       #ifdef PAM_DEBUG
         auto mass_rel_diff = abs(compute_mass( coupler , state , tracers ) - mass_init) / (mass_init + 1.e-20);
-        if (maxval(mass_rel_diff) > 1.e-12) {
-          std::cout << "Mass diff: " << mass_rel_diff;
-          endrun("ERROR: Mass not conserved");
-        }
-        validate_array_positive(tracers);
-        validate_array_inf_nan(state);
-        validate_array_inf_nan(tracers);
+        if (maxval(mass_rel_diff) > 1.e-12) { std::cout << mass_rel_diff; endrun("ERROR: Mass not conserved"); }
       #endif
 
       if (coupler.get_num_dycore_functions() > 0) {

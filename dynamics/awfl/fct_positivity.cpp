@@ -123,9 +123,11 @@ namespace awfl {
         // x-direction
         real mass_out  = dt*(std::max(0._fp,tracer_flux_x(tr,k,j,i+1,iens)) -
                              std::min(0._fp,tracer_flux_x(tr,k,j,i  ,iens)))/dx;
-        // y-direction
-        mass_out += dt*(std::max(0._fp,tracer_flux_y(tr,k,j+1,i,iens)) -
-                        std::min(0._fp,tracer_flux_y(tr,k,j  ,i,iens)))/dy;
+        if (! sim2d) {
+          // y-direction
+          mass_out += dt*(std::max(0._fp,tracer_flux_y(tr,k,j+1,i,iens)) -
+                          std::min(0._fp,tracer_flux_y(tr,k,j  ,i,iens)))/dy;
+        }
         // z-direction
         mass_out += dt*(std::max(0._fp,tracer_flux_z(tr,k+1,j,i,iens)) -
                         std::min(0._fp,tracer_flux_z(tr,k  ,j,i,iens)))/dz(k,iens);

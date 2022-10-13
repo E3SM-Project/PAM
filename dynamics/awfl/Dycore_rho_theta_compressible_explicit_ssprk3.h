@@ -66,9 +66,6 @@ public:
     for (int iter = 0; iter < n_iter; iter++) {
 
       #ifdef PAM_DEBUG
-        validate_array_positive(tracers);
-        validate_array_inf_nan(state);
-        validate_array_inf_nan(tracers);
         auto mass_init = compute_mass( coupler , state , tracers );
       #endif
       auto state_tend  = awfl::tendencies_rho_theta::createStateTendArr (coupler);
@@ -91,19 +88,10 @@ public:
         }
       });
 
-      #ifdef PAM_DEBUG
-        {
-          std::cout << "Stage 1: Density Tend sum: " << sum( state_tend.slice<4>(idR,0,0,0,0) ) << std::endl;
-          std::cout << "Stage 1: Tracers Tend sum: " << sum( tracer_tend ) << std::endl;
-          auto mass_rel_diff = abs(compute_mass( coupler , state_tmp , tracers_tmp ) - mass_init) / (mass_init + 1.e-20);
-          if (maxval(mass_rel_diff) > 1.e-12) { std::cout << mass_rel_diff; endrun("ERROR: Stage 1 mass not conserved"); }
-        }
-      #endif
-
       ///////////////////
       // Stage 2
       ///////////////////
-      compute_tendencies_xyz( coupler , state_tmp , state_tend , tracers_tmp , tracer_tend , recon , hydrostasis , dt/4._fp );
+      compute_tendencies_xyz( coupler , state_tmp , state_tend , tracers_tmp , tracer_tend , recon , hydrostasis , dt );
       parallel_for( "Temporal_ader.h apply tendencies" , SimpleBounds<4>(nz,ny,nx,nens) ,
                     YAKL_LAMBDA (int k, int j, int i, int iens) {
         for (int l=0; l < num_state; l++) {
@@ -119,19 +107,10 @@ public:
         }
       });
 
-      #ifdef PAM_DEBUG
-        {
-          std::cout << "Stage 2: Density Tend sum: " << sum( state_tend.slice<4>(idR,0,0,0,0) ) << std::endl;
-          std::cout << "Stage 2: Tracers Tend sum: " << sum( tracer_tend ) << std::endl;
-          auto mass_rel_diff = abs(compute_mass( coupler , state_tmp , tracers_tmp ) - mass_init) / (mass_init + 1.e-20);
-          if (maxval(mass_rel_diff) > 1.e-12) { std::cout << mass_rel_diff; endrun("ERROR: Stage 2 mass not conserved"); }
-        }
-      #endif
-
       ///////////////////
       // Stage 3
       ///////////////////
-      compute_tendencies_xyz( coupler , state_tmp , state_tend , tracers_tmp , tracer_tend , recon , hydrostasis , 2._fp*dt/3._fp );
+      compute_tendencies_xyz( coupler , state_tmp , state_tend , tracers_tmp , tracer_tend , recon , hydrostasis , dt );
       parallel_for( "Temporal_ader.h apply tendencies" , SimpleBounds<4>(nz,ny,nx,nens) ,
                     YAKL_LAMBDA (int k, int j, int i, int iens) {
         for (int l=0; l < num_state; l++) {
@@ -149,14 +128,9 @@ public:
 
       #ifdef PAM_DEBUG
         {
-          std::cout << "Stage 3: Density Tend sum: " << sum( state_tend.slice<4>(idR,0,0,0,0) ) << std::endl;
-          std::cout << "Stage 3: Tracers Tend sum: " << sum( tracer_tend ) << std::endl;
           auto mass_rel_diff = abs(compute_mass( coupler , state , tracers ) - mass_init) / (mass_init + 1.e-20);
-          if (maxval(mass_rel_diff) > 1.e-12) { std::cout << mass_rel_diff; endrun("ERROR: Stage 3 mass not conserved"); }
+          if (maxval(mass_rel_diff) > 1.e-12) { std::cout << mass_rel_diff; endrun("ERROR: Mass not conserved"); }
         }
-        validate_array_positive(tracers);
-        validate_array_inf_nan(state);
-        validate_array_inf_nan(tracers);
       #endif
 
       if (coupler.get_num_dycore_functions() > 0) {
