@@ -1,7 +1,9 @@
+// clang-format off
 #include "pam_const.h"
 #include "common.h"
 #include <array>
 #include <iostream>
+// clang-format on
 
 uint constexpr ndims = 2;
 uint constexpr nprognostic = 0;

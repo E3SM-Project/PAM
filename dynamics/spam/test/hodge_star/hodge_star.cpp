@@ -1,5 +1,7 @@
+// clang-format off
 #include "layer_common.h"
 #include "hodge_star.h"
+// clang-format on
 
 real YAKL_INLINE fun_x(real x, real y) { return sin(2 * M_PI * x); }
 

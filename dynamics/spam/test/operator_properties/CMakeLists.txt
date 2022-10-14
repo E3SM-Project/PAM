@@ -4,3 +4,11 @@ yakl_process_target(exterior_derivative)
 target_link_libraries(exterior_derivative dycore pam_core ${PAM_LINK_FLAGS})
 
 add_test(NAME exterior_derivative_test COMMAND ./exterior_derivative)
+
+add_executable(exterior_derivative_extruded exterior_derivative_extruded.cpp)
+yakl_process_target(exterior_derivative_extruded)
+target_link_libraries(exterior_derivative_extruded dycore pam_core ${PAM_LINK_FLAGS})
+target_compile_definitions(exterior_derivative_extruded PUBLIC _EXTRUDED)
+
+add_test(NAME exterior_derivative_extruded_test COMMAND ./exterior_derivative_extruded)
+

@@ -1,5 +1,7 @@
+// clang-format off
 #include "layer_common.h"
 #include "ext_deriv.h"
+// clang-format on
 
 real YAKL_INLINE fun(real x, real y) {
   real sx = sin(2 * M_PI * x);
