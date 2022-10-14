@@ -135,8 +135,7 @@ real compute_J_error(int np, real (*ic_fun)(real, real)) {
     st2.exchange();
 
     parallel_for(
-        SimpleBounds<3>(square.dual_topology.nl,
-                        square.dual_topology.n_cells_y,
+        SimpleBounds<3>(square.dual_topology.nl, square.dual_topology.n_cells_y,
                         square.dual_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
           compute_J<1, diff_ord>(tw0.data, st2.data, square.primal_geometry,

@@ -3,7 +3,7 @@
 #include <array>
 #include <iostream>
 
-uint constexpr ndims = 2;
+uint constexpr ndims = 1;
 uint constexpr nprognostic = 0;
 uint constexpr nconstant = 0;
 uint constexpr nauxiliary = 0;
@@ -24,11 +24,13 @@ struct ModelParameters : public Parameters {
 #include "params.h"
 #include "topology.h"
 
-Parallel parallel_stub(int nx, int ny) {
+Parallel parallel_stub(int nx, int nz) {
+  int ny = 1;
   Parallel par;
   par.nx_glob = par.nx = nx;
   par.ny_glob = par.ny = ny;
-  par.nz = 1;
+
+  par.nz = nz;
 
   par.nprocx = par.nprocy = par.nranks = 1;
   par.masterproc = par.myrank = par.px = par.py = 0;
@@ -48,24 +50,26 @@ Parallel parallel_stub(int nx, int ny) {
   return par;
 }
 
-struct PeriodicUnitSquare {
+struct ExtrudedUnitSquare {
   Topology primal_topology;
   Topology dual_topology;
 
   Geometry<Straight> primal_geometry;
   Geometry<Twisted> dual_geometry;
 
-  PeriodicUnitSquare(int nx, int ny) {
+  ExtrudedUnitSquare(int nx, int nz) {
     ModelParameters params;
 
+    // int ny = 1;
     params.nx_glob = nx;
-    params.ny_glob = ny;
+    // params.ny_glob = ny;
     params.xlen = 1;
     params.xc = 0;
-    params.ylen = 1;
-    params.yc = 0;
+    params.nz_dual = nz;
+    params.zlen = 1;
+    params.zc = 0.5;
 
-    Parallel par = parallel_stub(nx, ny);
+    Parallel par = parallel_stub(nx, nz);
 
     primal_topology.initialize(par, true);
     dual_topology.initialize(par, false);
@@ -74,23 +78,24 @@ struct PeriodicUnitSquare {
     dual_geometry.initialize(dual_topology, params);
   }
 
-  template <int deg> Field create_straight_form() {
+  template <int deg, int edeg> Field create_straight_form() {
     static Exchange exchange;
-    exchange.initialize(primal_topology, deg, 1, 1);
+    exchange.initialize(primal_topology, deg, edeg, 1);
     Field field;
-    field.initialize(primal_topology, &exchange, "test field", deg, 1, 1);
+    field.initialize(primal_topology, &exchange, "test field", deg, edeg, 1);
     return field;
   }
 
-  template <int deg> Field create_twisted_form() {
+  template <int deg, int edeg> Field create_twisted_form() {
     static Exchange exchange;
-    exchange.initialize(dual_topology, deg, 1, 1);
+    exchange.initialize(dual_topology, deg, edeg, 1);
     Field field;
-    field.initialize(dual_topology, &exchange, "test field", deg, 1, 1);
+    field.initialize(dual_topology, &exchange, "test field", deg, edeg, 1);
     return field;
   }
 
-  real compute_Linf_error(const Field &f1, const Field &f2) {
+  real compute_Linf_error(const Field &f1, const Field &f2,
+                          bool compute_boundary_error = true) {
     Field error;
     error.initialize(f1, "error");
 
@@ -98,35 +103,35 @@ struct PeriodicUnitSquare {
     int js = error.topology.js;
     int ks = error.topology.ks;
 
-    SArray<real, 1, 2> scale;
+    real scale = 1;
     real dx = primal_geometry.dx;
-    real dy = primal_geometry.dy;
+    real dz = primal_geometry.dz;
 
-    if (f1.basedof == 0) {
-      scale(0);
-    }
     if (f1.basedof == 1) {
-      if (f1.topology.primal) {
-        scale(0) = dx;
-        scale(1) = dy;
-      } else {
-        scale(0) = dy;
-        scale(1) = dx;
-      }
+      scale *= dx;
     }
-    if (f1.basedof == 2) {
-      scale(0) = dx * dy;
+    if (f1.extdof == 1) {
+      scale *= dz;
     }
 
     error.set(0);
+
+    int nz, koff;
+    if (compute_boundary_error) {
+      nz = error._nz;
+      koff = 0;
+    } else {
+      nz = error._nz - 2;
+      koff = 1;
+    }
     parallel_for(
-        SimpleBounds<4>(error.total_dofs, error.topology.nl,
-                        error.topology.n_cells_y, error.topology.n_cells_x),
+        SimpleBounds<4>(error.total_dofs, nz, error.topology.n_cells_y,
+                        error.topology.n_cells_x),
         YAKL_LAMBDA(int l, int k, int j, int i) {
-          error.data(l, ks + k, js + j, is + i, 0) =
-              (abs(f1.data(l, ks + k, js + j, is + i, 0) -
-                   f2.data(l, ks + k, js + j, is + i, 0))) /
-              scale(l);
+          error.data(l, ks + k + koff, js + j, is + i, 0) =
+              (abs(f1.data(l, ks + k + koff, js + j, is + i, 0) -
+                   f2.data(l, ks + k + koff, js + j, is + i, 0))) /
+              scale;
         });
 
     return yakl::intrinsics::maxval(error.data);

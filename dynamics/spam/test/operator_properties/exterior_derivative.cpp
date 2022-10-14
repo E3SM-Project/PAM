@@ -61,7 +61,8 @@ void test_D1(int np, real atol) {
   real errf = square.compute_Linf_error(st1_expected, st1);
 
   if (errf > atol) {
-    std::cout << "Exactness of D1 failed, error = " << errf << " tol = " << atol << std::endl; 
+    std::cout << "Exactness of D1 failed, error = " << errf << " tol = " << atol
+              << std::endl;
     exit(-1);
   }
 }
@@ -92,9 +93,10 @@ void test_D2(int np, real atol) {
   }
 
   real errf = square.compute_Linf_error(st2_expected, st2);
-  
+
   if (errf > atol) {
-    std::cout << "Exactness of D2 failed, error = " << errf << " tol = " << atol << std::endl;
+    std::cout << "Exactness of D2 failed, error = " << errf << " tol = " << atol
+              << std::endl;
     exit(-1);
   }
 }
@@ -126,7 +128,8 @@ void test_Dbar2(int np, real atol) {
   real errf = square.compute_Linf_error(tw2_expected, tw2);
 
   if (errf > atol) {
-    std::cout << "Exactness of Dbar2 failed, error = " << errf << " tol = " << atol << std::endl;
+    std::cout << "Exactness of Dbar2 failed, error = " << errf
+              << " tol = " << atol << std::endl;
     exit(-1);
   }
 }
