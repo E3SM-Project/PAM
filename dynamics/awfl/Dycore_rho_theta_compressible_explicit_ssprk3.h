@@ -8,7 +8,7 @@
 #include "tendencies_rho_theta.h"
 #include "tendencies_rho_theta_compressible_explicit_semidiscrete.h"
 
-class Dycore_rho_theta_compressible_explicit_ader {
+class Dycore_rho_theta_compressible_explicit_ssprk3 {
 public:
   static_assert(ord%2 == 1,"ERROR: ord must be an odd integer");
 
