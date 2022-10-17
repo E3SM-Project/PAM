@@ -2442,6 +2442,96 @@ template <bool acoustic_balance> struct RisingBubble {
   add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics) {}
 };
 
+struct TwoBubbles {
+  static real constexpr g = 9.80616_fp;
+  static real constexpr Lx = 1000._fp;
+  static real constexpr Lz = 1000._fp;
+  static real constexpr xc = 0.5_fp * Lx;
+  static real constexpr zc = 0.5_fp * Lz;
+  static real constexpr theta0 = 303.15_fp;
+
+  static real constexpr A1 = 0.5_fp;
+  static real constexpr a1 = 150;
+  static real constexpr s1 = 50;
+  static real constexpr x1 = 500;
+  static real constexpr z1 = 300;
+
+  static real constexpr A2 = -0.15_fp;
+  static real constexpr a2 = 0;
+  static real constexpr s2 = 50;
+  static real constexpr x2 = 560;
+  static real constexpr z2 = 640;
+
+  static real constexpr T_ref = 303.15_fp;
+  static real constexpr N_ref = 0.0001;
+
+  static real YAKL_INLINE refnsq_f(real z, const ThermoPotential &thermo) {
+    return N_ref * N_ref;
+  }
+
+  static real YAKL_INLINE refp_f(real z, const ThermoPotential &thermo) {
+    return const_stability_p(z, N_ref, g, thermo.cst.pr, theta0, thermo);
+  }
+
+  static real YAKL_INLINE refT_f(real z, const ThermoPotential &thermo) {
+    return const_stability_T(z, N_ref, g, theta0, thermo);
+  }
+
+  static real YAKL_INLINE refrho_f(real z, const ThermoPotential &thermo) {
+    real p = refp_f(z, thermo);
+    real T = refT_f(z, thermo);
+    real alpha = thermo.compute_alpha(p, T, 1, 0, 0, 0);
+    return 1._fp / alpha;
+  }
+
+  static real YAKL_INLINE refentropicdensity_f(real z,
+                                               const ThermoPotential &thermo) {
+    real rho_ref = refrho_f(z, thermo);
+    real T_ref = refT_f(z, thermo);
+    real p_ref = refp_f(z, thermo);
+    return rho_ref * thermo.compute_entropic_var(p_ref, T_ref, 0, 0, 0, 0);
+  }
+
+  static real YAKL_INLINE rho_f(real x, real z, const ThermoPotential &thermo) {
+    return isentropic_rho(x, z, theta0, g, thermo);
+  }
+
+  static real YAKL_INLINE entropicvar_f(real x, real z,
+                                        const ThermoPotential &thermo) {
+    real p = isentropic_p(x, z, theta0, g, thermo);
+    real T = isentropic_T(x, z, theta0, g, thermo);
+
+    real dtheta = 0;
+
+    real r1 = sqrt((x - x1) * (x - x1) + (z - z1) * (z - z1));
+    if (r1 <= a1) {
+      dtheta += A1;
+    } else {
+      dtheta += A1 * exp(-(r1 - a1) * (r1 - a1) / (s1 * s1));
+    }
+
+    real r2 = sqrt((x - x2) * (x - x2) + (z - z2) * (z - z2));
+    if (r2 <= a2) {
+      dtheta += A2;
+    } else {
+      dtheta += A2 * exp(-(r2 - a2) * (r2 - a2) / (s2 * s2));
+    }
+
+    real dT = dtheta * pow(p / thermo.cst.pr, thermo.cst.kappa_d);
+    return thermo.compute_entropic_var(p, T + dT, 0, 0, 0, 0);
+  }
+
+  static vecext<2> YAKL_INLINE v_f(real x, real y) {
+    vecext<2> vvec;
+    vvec.u = 0;
+    vvec.w = 0;
+    return vvec;
+  }
+
+  static void
+  add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics) {}
+};
+
 struct MoistRisingBubble : public RisingBubble<false> {
 
   static real YAKL_INLINE rhov_f(real x, real z,
@@ -3046,6 +3136,8 @@ void testcase_from_string(std::unique_ptr<TestCase> &testcase, std::string name,
     testcase = std::make_unique<SWETestCase<DoubleVortex>>();
   } else if (name == "gravitywave") {
     testcase = std::make_unique<EulerTestCase<GravityWave<true>>>();
+  } else if (name == "twobubbles") {
+    testcase = std::make_unique<EulerTestCase<TwoBubbles>>();
   } else if (name == "risingbubble") {
     if (acoustic_balance) {
       testcase = std::make_unique<EulerTestCase<RisingBubble<true>>>();
