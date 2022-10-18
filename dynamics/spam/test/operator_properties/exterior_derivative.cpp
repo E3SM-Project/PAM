@@ -3,45 +3,57 @@
 #include "ext_deriv.h"
 // clang-format on
 
-real YAKL_INLINE fun(real x, real y) {
-  real sx = sin(2 * M_PI * x);
-  real sy = sin(2 * M_PI * y);
-  return sx * sy;
-}
-vec<2> YAKL_INLINE grad_fun(real x, real y) {
-  vec<2> vvec;
-  vvec.u = 2 * M_PI * cos(2 * M_PI * x) * sin(2 * M_PI * y);
-  vvec.v = 2 * M_PI * sin(2 * M_PI * x) * cos(2 * M_PI * y);
-  return vvec;
-}
+struct fun {
+  real YAKL_INLINE operator()(real x, real y) const {
+    real sx = sin(2 * M_PI * x);
+    real sy = sin(2 * M_PI * y);
+    return sx * sy;
+  }
+};
 
-vec<2> YAKL_INLINE vecfun(real x, real y) {
-  vec<2> vvec;
-  vvec.u = sin(2 * M_PI * x) * sin(2 * M_PI * y);
-  vvec.v = sin(2 * M_PI * x) * cos(2 * M_PI * y);
-  return vvec;
-}
-real YAKL_INLINE div_vecfun(real x, real y) {
-  return 2 * M_PI *
-         (cos(2 * M_PI * x) * sin(2 * M_PI * y) -
-          sin(2 * M_PI * x) * sin(2 * M_PI * y));
-}
+struct grad_fun {
+  vec<2> YAKL_INLINE operator()(real x, real y) const {
+    vec<2> vvec;
+    vvec.u = 2 * M_PI * cos(2 * M_PI * x) * sin(2 * M_PI * y);
+    vvec.v = 2 * M_PI * sin(2 * M_PI * x) * cos(2 * M_PI * y);
+    return vvec;
+  }
+};
 
-real YAKL_INLINE curl_vecfun(real x, real y) {
-  return 2 * M_PI *
-         (cos(2 * M_PI * x) * cos(2 * M_PI * y) -
-          sin(2 * M_PI * x) * cos(2 * M_PI * y));
-}
+struct vecfun {
+  vec<2> YAKL_INLINE operator()(real x, real y) const {
+    vec<2> vvec;
+    vvec.u = sin(2 * M_PI * x) * sin(2 * M_PI * y);
+    vvec.v = sin(2 * M_PI * x) * cos(2 * M_PI * y);
+    return vvec;
+  }
+};
+
+struct div_vecfun {
+  real YAKL_INLINE operator()(real x, real y) const {
+    return 2 * M_PI *
+           (cos(2 * M_PI * x) * sin(2 * M_PI * y) -
+            sin(2 * M_PI * x) * sin(2 * M_PI * y));
+  }
+};
+
+struct curl_vecfun {
+  real YAKL_INLINE operator()(real x, real y) const {
+    return 2 * M_PI *
+           (cos(2 * M_PI * x) * cos(2 * M_PI * y) -
+            sin(2 * M_PI * x) * cos(2 * M_PI * y));
+  }
+};
 
 void test_D1(int np, real atol) {
   PeriodicUnitSquare square(np, 2 * np);
 
   auto st0 = square.create_straight_form<0>();
-  square.primal_geometry.set_0form_values(fun, st0, 0);
+  square.primal_geometry.set_0form_values(fun{}, st0, 0);
 
   auto st1 = square.create_straight_form<1>();
   auto st1_expected = square.create_straight_form<1>();
-  square.primal_geometry.set_1form_values(grad_fun, st1_expected, 0,
+  square.primal_geometry.set_1form_values(grad_fun{}, st1_expected, 0,
                                           LINE_INTEGRAL_TYPE::TANGENT);
 
   int pis = square.primal_topology.is;
@@ -73,12 +85,12 @@ void test_D2(int np, real atol) {
   PeriodicUnitSquare square(np, 2 * np);
 
   auto st1 = square.create_straight_form<1>();
-  square.primal_geometry.set_1form_values(vecfun, st1, 0,
+  square.primal_geometry.set_1form_values(vecfun{}, st1, 0,
                                           LINE_INTEGRAL_TYPE::TANGENT);
 
   auto st2 = square.create_straight_form<2>();
   auto st2_expected = square.create_straight_form<2>();
-  square.primal_geometry.set_2form_values(curl_vecfun, st2_expected, 0);
+  square.primal_geometry.set_2form_values(curl_vecfun{}, st2_expected, 0);
 
   int pis = square.primal_topology.is;
   int pjs = square.primal_topology.js;
@@ -107,12 +119,12 @@ void test_Dbar2(int np, real atol) {
   PeriodicUnitSquare square(np, 2 * np);
 
   auto tw1 = square.create_twisted_form<1>();
-  square.dual_geometry.set_1form_values(vecfun, tw1, 0,
+  square.dual_geometry.set_1form_values(vecfun{}, tw1, 0,
                                         LINE_INTEGRAL_TYPE::NORMAL);
 
   auto tw2 = square.create_twisted_form<2>();
   auto tw2_expected = square.create_twisted_form<2>();
-  square.dual_geometry.set_2form_values(div_vecfun, tw2_expected, 0);
+  square.dual_geometry.set_2form_values(div_vecfun{}, tw2_expected, 0);
 
   int dis = square.dual_topology.is;
   int djs = square.dual_topology.js;

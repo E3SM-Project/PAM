@@ -3,46 +3,61 @@
 #include "hodge_star.h"
 // clang-format on
 
-real YAKL_INLINE fun_x(real x, real z) { return sin(2 * M_PI * x); }
+struct fun_x {
+  real YAKL_INLINE operator()(real x, real z) const {
+    return sin(2 * M_PI * x);
+  }
+};
 
-real YAKL_INLINE fun_z(real x, real z) { return sin(2 * M_PI * z); }
+struct fun_z {
+  real YAKL_INLINE operator()(real x, real z) const {
+    return sin(2 * M_PI * z);
+  }
+};
 
-real YAKL_INLINE fun_xz(real x, real z) {
-  real sx = sin(2 * M_PI * x);
-  real sz = sin(2 * M_PI * z);
-  return sx * sz;
-}
+struct fun_xz {
+  real YAKL_INLINE operator()(real x, real z) const {
+    real sx = sin(2 * M_PI * x);
+    real sz = sin(2 * M_PI * z);
+    return sx * sz;
+  }
+};
 
-vecext<2> YAKL_INLINE vecfun_x(real x, real z) {
-  real sx = sin(2 * M_PI * x);
+struct vecfun_x {
+  vecext<2> YAKL_INLINE operator()(real x, real z) const {
+    real sx = sin(2 * M_PI * x);
 
-  vecext<2> vvec;
-  vvec.u = sx;
-  vvec.w = 0;
-  return vvec;
-}
+    vecext<2> vvec;
+    vvec.u = sx;
+    vvec.w = 0;
+    return vvec;
+  }
+};
 
-vecext<2> YAKL_INLINE vecfun_z(real x, real z) {
-  real sz = sin(2 * M_PI * z);
+struct vecfun_z {
+  vecext<2> YAKL_INLINE operator()(real x, real z) const {
+    real sz = sin(2 * M_PI * z);
 
-  vecext<2> vvec;
-  vvec.u = 0;
-  vvec.w = sz;
-  return vvec;
-}
+    vecext<2> vvec;
+    vvec.u = 0;
+    vvec.w = sz;
+    return vvec;
+  }
+};
 
-vecext<2> YAKL_INLINE vecfun_xz(real x, real z) {
-  real sx = sin(2 * M_PI * x);
-  real sz = sin(2 * M_PI * z);
+struct vecfun_xz {
+  vecext<2> YAKL_INLINE operator()(real x, real z) const {
+    real sx = sin(2 * M_PI * x);
+    real sz = sin(2 * M_PI * z);
 
-  vecext<2> vvec;
-  vvec.u = sx * sz;
-  vvec.w = sx * sz * sz * sz;
-  return vvec;
-}
+    vecext<2> vvec;
+    vvec.u = sx * sz;
+    vvec.w = sx * sz * sz * sz;
+    return vvec;
+  }
+};
 
-template <int diff_ord>
-real compute_Iext_error(int np, real (*ic_fun)(real, real)) {
+template <int diff_ord, class F> real compute_Iext_error(int np, F ic_fun) {
   ExtrudedUnitSquare square(np, 2 * np);
 
   auto tw11 = square.create_twisted_form<1, 1>();
@@ -81,45 +96,44 @@ void test_Iext_convergence() {
   {
     const int diff_order = 2;
     auto conv_x = ConvergenceTest<nlevels>(
-        "Iext 2 x", compute_Iext_error<diff_order>, fun_x);
+        "Iext 2 x", compute_Iext_error<diff_order, fun_x>, fun_x{});
     conv_x.check_rate(diff_order, atol);
     auto conv_z = ConvergenceTest<nlevels>(
-        "Iext 2 z", compute_Iext_error<diff_order>, fun_z);
+        "Iext 2 z", compute_Iext_error<diff_order, fun_z>, fun_z{});
     conv_z.check_rate(1, atol);
     auto conv_xz = ConvergenceTest<nlevels>(
-        "Iext 2 xz", compute_Iext_error<diff_order>, fun_xz);
+        "Iext 2 xz", compute_Iext_error<diff_order, fun_xz>, fun_xz{});
     conv_xz.check_rate(1, atol);
   }
 
   {
     const int diff_order = 4;
     auto conv_x = ConvergenceTest<nlevels>(
-        "Iext 4 x", compute_Iext_error<diff_order>, fun_x);
+        "Iext 4 x", compute_Iext_error<diff_order, fun_x>, fun_x{});
     conv_x.check_rate(diff_order, atol);
     auto conv_z = ConvergenceTest<nlevels>(
-        "Iext 4 z", compute_Iext_error<diff_order>, fun_z);
+        "Iext 4 z", compute_Iext_error<diff_order, fun_z>, fun_z{});
     conv_z.check_rate(1, atol);
     auto conv_xz = ConvergenceTest<nlevels>(
-        "Iext 4 xz", compute_Iext_error<diff_order>, fun_xz);
+        "Iext 4 xz", compute_Iext_error<diff_order, fun_xz>, fun_xz{});
     conv_xz.check_rate(1, atol);
   }
 
   {
     const int diff_order = 6;
     auto conv_x = ConvergenceTest<nlevels>(
-        "Iext 6 x", compute_Iext_error<diff_order>, fun_x);
+        "Iext 6 x", compute_Iext_error<diff_order, fun_x>, fun_x{});
     conv_x.check_rate(diff_order, atol);
     auto conv_z = ConvergenceTest<nlevels>(
-        "Iext 6 z", compute_Iext_error<diff_order>, fun_z);
+        "Iext 6 z", compute_Iext_error<diff_order, fun_z>, fun_z{});
     conv_z.check_rate(1, atol);
     auto conv_xz = ConvergenceTest<nlevels>(
-        "Iext 6 xz", compute_Iext_error<diff_order>, fun_xz);
+        "Iext 6 xz", compute_Iext_error<diff_order, fun_xz>, fun_xz{});
     conv_xz.check_rate(1, atol);
   }
 }
 
-template <int diff_ord>
-real compute_Jext_error(int np, real (*ic_fun)(real, real)) {
+template <int diff_ord, class F> real compute_Jext_error(int np, F ic_fun) {
   ExtrudedUnitSquare square(np, 2 * np);
 
   auto st11 = square.create_straight_form<1, 1>();
@@ -158,45 +172,44 @@ void test_Jext_convergence() {
   {
     const int diff_order = 2;
     auto conv_x = ConvergenceTest<nlevels>(
-        "Jext 2 x", compute_Jext_error<diff_order>, fun_x);
+        "Jext 2 x", compute_Jext_error<diff_order, fun_x>, fun_x{});
     conv_x.check_rate(diff_order, atol);
     auto conv_z = ConvergenceTest<nlevels>(
-        "Jext 2 z", compute_Jext_error<diff_order>, fun_z);
+        "Jext 2 z", compute_Jext_error<diff_order, fun_z>, fun_z{});
     conv_z.check_rate(2, atol);
     auto conv_xz = ConvergenceTest<nlevels>(
-        "Jext 2 xz", compute_Jext_error<diff_order>, fun_xz);
+        "Jext 2 xz", compute_Jext_error<diff_order, fun_xz>, fun_xz{});
     conv_xz.check_rate(2, atol);
   }
 
   {
     const int diff_order = 4;
     auto conv_x = ConvergenceTest<nlevels>(
-        "Jext 4 x", compute_Jext_error<diff_order>, fun_x);
+        "Jext 4 x", compute_Jext_error<diff_order, fun_x>, fun_x{});
     conv_x.check_rate(diff_order, atol);
     auto conv_z = ConvergenceTest<nlevels>(
-        "Jext 4 z", compute_Jext_error<diff_order>, fun_z);
+        "Jext 4 z", compute_Jext_error<diff_order, fun_z>, fun_z{});
     conv_z.check_rate(2, atol);
     auto conv_xz = ConvergenceTest<nlevels>(
-        "Jext 4 xz", compute_Jext_error<diff_order>, fun_xz);
+        "Jext 4 xz", compute_Jext_error<diff_order, fun_xz>, fun_xz{});
     conv_xz.check_rate(2, atol);
   }
 
   {
     const int diff_order = 6;
     auto conv_x = ConvergenceTest<nlevels>(
-        "Jext 6 x", compute_Jext_error<diff_order>, fun_x);
+        "Jext 6 x", compute_Jext_error<diff_order, fun_x>, fun_x{});
     conv_x.check_rate(diff_order, atol);
     auto conv_z = ConvergenceTest<nlevels>(
-        "Jext 6 z", compute_Jext_error<diff_order>, fun_z);
+        "Jext 6 z", compute_Jext_error<diff_order, fun_z>, fun_z{});
     conv_z.check_rate(2, atol);
     auto conv_xz = ConvergenceTest<nlevels>(
-        "Jext 6 xz", compute_Jext_error<diff_order>, fun_xz);
+        "Jext 6 xz", compute_Jext_error<diff_order, fun_xz>, fun_xz{});
     conv_xz.check_rate(2, atol);
   }
 }
 
-template <int diff_ord>
-real compute_Hext_error(int np, vecext<2> (*ic_fun)(real, real)) {
+template <int diff_ord, class F> real compute_Hext_error(int np, F ic_fun) {
   ExtrudedUnitSquare square(np, 2 * np);
 
   auto st10 = square.create_straight_form<1, 0>();
@@ -236,10 +249,10 @@ void test_Hext_convergence() {
   {
     const int diff_order = 2;
     auto conv_x = ConvergenceTest<nlevels>(
-        "Hext 2 x", compute_Hext_error<diff_order>, vecfun_x);
+        "Hext 2 x", compute_Hext_error<diff_order, vecfun_x>, vecfun_x{});
     conv_x.check_rate(diff_order, atol);
     auto conv_xz = ConvergenceTest<nlevels>(
-        "Hext 2 xz", compute_Hext_error<diff_order>, vecfun_xz);
+        "Hext 2 xz", compute_Hext_error<diff_order, vecfun_xz>, vecfun_xz{});
     conv_xz.check_rate(1, atol);
   }
 
@@ -247,11 +260,11 @@ void test_Hext_convergence() {
     const int diff_order = 4;
 
     auto conv_x = ConvergenceTest<nlevels>(
-        "Hext 4 x", compute_Hext_error<diff_order>, vecfun_x);
+        "Hext 4 x", compute_Hext_error<diff_order, vecfun_x>, vecfun_x{});
     conv_x.check_rate(diff_order, atol);
 
     auto conv_xz = ConvergenceTest<nlevels>(
-        "Hext 4 xz", compute_Hext_error<diff_order>, vecfun_xz);
+        "Hext 4 xz", compute_Hext_error<diff_order, vecfun_xz>, vecfun_xz{});
     conv_xz.check_rate(1, atol);
   }
 
@@ -259,17 +272,16 @@ void test_Hext_convergence() {
     const int diff_order = 6;
 
     auto conv_x = ConvergenceTest<nlevels>(
-        "Hext 6 x", compute_Hext_error<diff_order>, vecfun_x);
+        "Hext 6 x", compute_Hext_error<diff_order, vecfun_x>, vecfun_x{});
     conv_x.check_rate(diff_order, atol);
 
     auto conv_xz = ConvergenceTest<nlevels>(
-        "Hext 6 xz", compute_Hext_error<diff_order>, vecfun_xz);
+        "Hext 6 xz", compute_Hext_error<diff_order, vecfun_xz>, vecfun_xz{});
     conv_xz.check_rate(1, atol);
   }
 }
 
-template <int vdiff_ord>
-real compute_Hv_error(int np, vecext<2> (*ic_fun)(real, real)) {
+template <int vdiff_ord, class F> real compute_Hv_error(int np, F ic_fun) {
   ExtrudedUnitSquare square(np, 2 * np);
 
   auto st01 = square.create_straight_form<0, 1>();
@@ -309,10 +321,10 @@ void test_Hv_convergence() {
 
   {
     auto conv_z = ConvergenceTest<nlevels>(
-        "Hv 2 z", compute_Hv_error<vert_diff_ord>, vecfun_z);
+        "Hv 2 z", compute_Hv_error<vert_diff_ord, vecfun_z>, vecfun_z{});
     conv_z.check_rate(vert_diff_ord, atol);
     auto conv_xz = ConvergenceTest<nlevels>(
-        "Hv 2 xz", compute_Hv_error<vert_diff_ord>, vecfun_xz);
+        "Hv 2 xz", compute_Hv_error<vert_diff_ord, vecfun_xz>, vecfun_xz{});
     conv_xz.check_rate(vert_diff_ord, atol);
   }
 }

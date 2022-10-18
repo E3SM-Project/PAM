@@ -105,7 +105,7 @@ struct PeriodicUnitSquare {
     real dy = primal_geometry.dy;
 
     if (f1.basedof == 0) {
-      scale(0);
+      scale(0) = 1;
     }
     if (f1.basedof == 1) {
       if (f1.topology.primal) {
