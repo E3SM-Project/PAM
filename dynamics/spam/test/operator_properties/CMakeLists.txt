@@ -1,6 +1,14 @@
 
-add_executable(field_test field_test.cpp)
-yakl_process_target(field_test)
-target_link_libraries(field_test dycore pam_core ${PAM_LINK_FLAGS})
+add_executable(exterior_derivative exterior_derivative.cpp)
+yakl_process_target(exterior_derivative)
+target_link_libraries(exterior_derivative dycore pam_core ${PAM_LINK_FLAGS})
 
-add_test(NAME run_field_test COMMAND ./field_test)
+add_test(NAME exterior_derivative_test COMMAND ./exterior_derivative)
+
+add_executable(exterior_derivative_extruded exterior_derivative_extruded.cpp)
+yakl_process_target(exterior_derivative_extruded)
+target_link_libraries(exterior_derivative_extruded dycore pam_core ${PAM_LINK_FLAGS})
+target_compile_definitions(exterior_derivative_extruded PUBLIC _EXTRUDED)
+
+add_test(NAME exterior_derivative_extruded_test COMMAND ./exterior_derivative_extruded)
+
