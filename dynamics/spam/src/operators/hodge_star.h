@@ -6,34 +6,38 @@
 
 void YAKL_INLINE H(SArray<real, 1, ndims> &var,
                    SArray<real, 2, ndims, 1> const &velocity,
-                   SArray<real, 2, ndims, 1> const &Hgeom) {
+                   SArray<real, 1, ndims> const &Hgeom) {
 
   for (int d = 0; d < ndims; d++) {
-    var(d) = Hgeom(d, 0) * velocity(d, 0);
+    var(d) = velocity(d, 0);
+    var(d) *= Hgeom(d);
   }
 }
 
 void YAKL_INLINE H(SArray<real, 1, ndims> &var,
                    SArray<real, 2, ndims, 3> const &velocity,
-                   SArray<real, 2, ndims, 3> const &Hgeom) {
+                   SArray<real, 1, ndims> const &Hgeom) {
 
   for (int d = 0; d < ndims; d++) {
-    var(d) = -1.0_fp / 24.0_fp * Hgeom(d, 0) * velocity(d, 0) +
-             26.0_fp / 24.0_fp * Hgeom(d, 1) * velocity(d, 1) -
-             1.0_fp / 24.0_fp * Hgeom(d, 2) * velocity(d, 2);
+    var(d) = -1.0_fp / 24.0_fp * velocity(d, 0) +
+             26.0_fp / 24.0_fp * velocity(d, 1) -
+             1.0_fp / 24.0_fp * velocity(d, 2);
+    var(d) *= Hgeom(d);
   }
 }
 
 void YAKL_INLINE H(SArray<real, 1, ndims> &var,
                    SArray<real, 2, ndims, 5> const &velocity,
-                   SArray<real, 2, ndims, 5> const &Hgeom) {
+                   SArray<real, 1, ndims> const &Hgeom) {
 
   for (int d = 0; d < ndims; d++) {
-    var(d) = 9.0_fp / 1920.0_fp * Hgeom(d, 0) * velocity(d, 0) -
-             116.0_fp / 1920.0_fp * Hgeom(d, 1) * velocity(d, 1) +
-             2134.0_fp / 1920.0_fp * Hgeom(d, 2) * velocity(d, 2) -
-             116.0_fp / 1920.0_fp * Hgeom(d, 3) * velocity(d, 3) +
-             9.0_fp / 1920.0_fp * Hgeom(d, 4) * velocity(d, 4);
+    var(d) = 9.0_fp / 1920.0_fp * velocity(d, 0) -
+             116.0_fp / 1920.0_fp * velocity(d, 1) +
+             2134.0_fp / 1920.0_fp * velocity(d, 2) -
+             116.0_fp / 1920.0_fp * velocity(d, 3) +
+             9.0_fp / 1920.0_fp * velocity(d, 4);
+
+    var(d) *= Hgeom(d);
   }
 }
 
@@ -43,22 +47,19 @@ void YAKL_INLINE compute_H(SArray<real, 1, ndims> &u, const real5d &vvar,
                            const Geometry<Twisted> &dgeom, int is, int js,
                            int ks, int i, int j, int k, int n) {
   SArray<real, 2, ndims, ord - 1> v;
-  SArray<real, 2, ndims, ord - 1> Hgeom;
+  SArray<real, 1, ndims> Hgeom;
+  for (int d = 0; d < ndims; d++) {
+    Hgeom(d) = dgeom.get_area_lform(ndims - 1, d, k + ks, j + js, i + is) /
+               pgeom.get_area_lform(1, d, k + ks, j + js, i + is);
+  }
+
   for (int p = 0; p < ord - 1; p++) {
     for (int d = 0; d < ndims; d++) {
       if (d == 0) {
         v(d, p) = vvar(d, k + ks, j + js, i + is + p - off, n);
-        Hgeom(d, p) =
-            dgeom.get_area_lform(ndims - 1, d, k + ks, j + js,
-                                 i + is + p - off) /
-            pgeom.get_area_lform(1, d, k + ks, j + js, i + is + p - off);
       }
       if (d == 1) {
         v(d, p) = vvar(d, k + ks, j + js + p - off, i + is, n);
-        Hgeom(d, p) =
-            dgeom.get_area_lform(ndims - 1, d, k + ks, j + js + p - off,
-                                 i + is) /
-            pgeom.get_area_lform(1, d, k + ks, j + js + p - off, i + is);
       }
     }
   }
@@ -199,20 +200,20 @@ void YAKL_INLINE compute_Hext(SArray<real, 1, ndims> &u, const real5d &vvar,
                               const Geometry<Twisted> &dgeom, int is, int js,
                               int ks, int i, int j, int k, int n) {
   SArray<real, 2, ndims, ord - 1> v;
-  SArray<real, 2, ndims, ord - 1> Hgeom;
+  SArray<real, 1, ndims> Hgeom;
+
+  for (int d = 0; d < ndims; d++) {
+    Hgeom(d) = dgeom.get_area_01entity(k + ks, j + js, i + is) /
+               pgeom.get_area_10entity(k + ks, j + js, i + is);
+  }
+
   for (int p = 0; p < ord - 1; p++) {
     for (int d = 0; d < ndims; d++) {
       if (d == 0) {
         v(d, p) = vvar(d, k + ks, j + js, i + is + p - off, n);
-        Hgeom(d, p) =
-            dgeom.get_area_01entity(k + ks, j + js, i + is + p - off) /
-            pgeom.get_area_10entity(k + ks, j + js, i + is + p - off);
       }
       if (d == 1) {
         v(d, p) = vvar(d, k + ks, j + js + p - off, i + is, n);
-        Hgeom(d, p) =
-            dgeom.get_area_01entity(k + ks, j + js + p - off, i + is) /
-            pgeom.get_area_10entity(k + ks, j + js + p - off, i + is);
       }
     }
   }
@@ -252,14 +253,8 @@ void YAKL_INLINE fourier_Hext(SArray<real, 1, ndims> &u,
   SArray<real, 2, ndims, off + 1> shift;
   SArray<real, 1, ndims> Hgeom;
   for (int d = 0; d < ndims; d++) {
-    if (d == 0) {
-      Hgeom(d) = dgeom.get_area_01entity(k + ks, j + js, i + is + 0 - off) /
-                 pgeom.get_area_10entity(k + ks, j + js, i + is + 0 - off);
-    }
-    if (d == 1) {
-      Hgeom(d) = dgeom.get_area_01entity(k + ks, j + js + 0 - off, i + is) /
-                 pgeom.get_area_10entity(k + ks, j + js + 0 - off, i + is);
-    }
+    Hgeom(d) = dgeom.get_area_01entity(k + ks, j + js, i + is) /
+               pgeom.get_area_10entity(k + ks, j + js, i + is);
   }
 
   for (int p = 0; p < off; p++) {
@@ -277,47 +272,41 @@ void YAKL_INLINE fourier_Hext(SArray<real, 1, ndims> &u,
 
 template <uint ndofs>
 void YAKL_INLINE I(SArray<real, 1, ndofs> &var,
-                   SArray<real, 3, ndofs, ndims, 1> const &dens,
-                   SArray<real, 2, ndims, 1> const &Igeom) {
+                   SArray<real, 3, ndofs, ndims, 1> const &dens, real Igeom) {
 
   for (int l = 0; l < ndofs; l++) {
-    var(l) = Igeom(0, 0) * dens(l, 0, 0);
+    var(l) = dens(l, 0, 0);
+    var(l) *= Igeom;
   }
 }
 
 template <uint ndofs>
 void YAKL_INLINE I(SArray<real, 1, ndofs> &var,
-                   SArray<real, 3, ndofs, ndims, 3> const &dens,
-                   SArray<real, 2, ndims, 3> const &Igeom) {
+                   SArray<real, 3, ndofs, ndims, 3> const &dens, real Igeom) {
   for (int l = 0; l < ndofs; l++) {
-    var(l) = Igeom(0, 1) * dens(l, 0, 1);
+    var(l) = dens(l, 0, 1);
     for (int d = 0; d < ndims; d++) {
-      // var(l) += -1.0_fp/48.0_fp* Igeom(d,0) * dens(l,d,0) + 2.0_fp/48.0_fp*
-      // Igeom(d,1) * dens(l,d,1) - 1.0_fp/48.0_fp* Igeom(d,2) * dens(l,d,2);
-      var(l) += -1.0_fp / 24.0_fp * Igeom(d, 0) * dens(l, d, 0) +
-                2.0_fp / 24.0_fp * Igeom(d, 1) * dens(l, d, 1) -
-                1.0_fp / 24.0_fp * Igeom(d, 2) * dens(l, d, 2);
+      var(l) += -1.0_fp / 24.0_fp * dens(l, d, 0) +
+                2.0_fp / 24.0_fp * dens(l, d, 1) -
+                1.0_fp / 24.0_fp * dens(l, d, 2);
     }
+    var(l) *= Igeom;
   }
 }
 
 template <uint ndofs>
 void YAKL_INLINE I(SArray<real, 1, ndofs> &var,
-                   SArray<real, 3, ndofs, ndims, 5> const &dens,
-                   SArray<real, 2, ndims, 5> const &Igeom) {
+                   SArray<real, 3, ndofs, ndims, 5> const &dens, real Igeom) {
   for (int l = 0; l < ndofs; l++) {
-    var(l) = Igeom(0, 2) * dens(l, 0, 2);
+    var(l) = dens(l, 0, 2);
     for (int d = 0; d < ndims; d++) {
-      // var(l) += 1.0_fp/576.0_fp*Igeom(d,0) * dens(l,d,0)
-      // - 16.0_fp/576.0_fp*Igeom(d,1) * dens(l,d,1) + 30.0_fp/576.0_fp*
-      // Igeom(d,2) * dens(l,d,2) - 16.0_fp/576.0_fp* Igeom(d,3) * dens(l,d,3)
-      // + 1.0_fp/576.0_fp* Igeom(d,4) * dens(l,d,4);
-      var(l) += 9.0_fp / 1920.0_fp * Igeom(d, 0) * dens(l, d, 0) -
-                116.0_fp / 1920.0_fp * Igeom(d, 1) * dens(l, d, 1) +
-                214.0_fp / 1920.0_fp * Igeom(d, 2) * dens(l, d, 2) -
-                116.0_fp / 1920.0_fp * Igeom(d, 3) * dens(l, d, 3) +
-                9.0_fp / 1920.0_fp * Igeom(d, 4) * dens(l, d, 4);
+      var(l) += 9.0_fp / 1920.0_fp * dens(l, d, 0) -
+                116.0_fp / 1920.0_fp * dens(l, d, 1) +
+                214.0_fp / 1920.0_fp * dens(l, d, 2) -
+                116.0_fp / 1920.0_fp * dens(l, d, 3) +
+                9.0_fp / 1920.0_fp * dens(l, d, 4);
     }
+    var(l) *= Igeom;
   }
 }
 
@@ -327,21 +316,17 @@ void YAKL_INLINE compute_I(SArray<real, 1, ndofs> &x0, const real5d &var,
                            const Geometry<Twisted> &dgeom, int is, int js,
                            int ks, int i, int j, int k, int n) {
   SArray<real, 3, ndofs, ndims, ord - 1> x;
-  SArray<real, 2, ndims, ord - 1> Igeom;
+  const real Igeom = pgeom.get_area_lform(0, 0, k + ks, j + js, i + is) /
+                     dgeom.get_area_lform(ndims, 0, k + ks, j + js, i + is);
+
   for (int p = 0; p < ord - 1; p++) {
     for (int l = 0; l < ndofs; l++) {
       for (int d = 0; d < ndims; d++) {
         if (d == 0) {
           x(l, d, p) = var(l, k + ks, j + js, i + is + p - off, n);
-          Igeom(d, p) =
-              pgeom.get_area_lform(0, 0, k + ks, j + js, i + is + p - off) /
-              dgeom.get_area_lform(ndims, 0, k + ks, j + js, i + is + p - off);
         }
         if (d == 1) {
           x(l, d, p) = var(l, k + ks, j + js + p - off, i + is, n);
-          Igeom(d, p) =
-              pgeom.get_area_lform(0, 0, k + ks, j + js + p - off, i + is) /
-              dgeom.get_area_lform(ndims, 0, k + ks, j + js + p - off, i + is);
         }
       }
     }
@@ -397,8 +382,8 @@ real YAKL_INLINE fourier_I(const Geometry<Straight> &pgeom,
   SArray<real, 2, ndims, off + 1> shift;
 
   // assuming these are constant
-  real Igeom = pgeom.get_area_lform(0, 0, k + ks, j + js, i + is) /
-               dgeom.get_area_lform(ndims, 0, k + ks, j + js, i + is);
+  const real Igeom = pgeom.get_area_lform(0, 0, k + ks, j + js, i + is) /
+                     dgeom.get_area_lform(ndims, 0, k + ks, j + js, i + is);
 
   for (int p = 0; p < off; p++) {
     for (int d = 0; d < ndims; d++) {
@@ -422,21 +407,16 @@ void YAKL_INLINE compute_Iext(SArray<real, 1, ndofs> &x0, const real5d &var,
                               const Geometry<Twisted> &dgeom, int is, int js,
                               int ks, int i, int j, int k, int n) {
   SArray<real, 3, ndofs, ndims, hord - 1> x;
-  SArray<real, 2, ndims, hord - 1> Igeom;
+  const real Igeom = pgeom.get_area_00entity(k + ks, j + js, i + is) /
+                     dgeom.get_area_11entity(k + ks, j + js, i + is);
   for (int p = 0; p < hord - 1; p++) {
     for (int l = 0; l < ndofs; l++) {
       for (int d = 0; d < ndims; d++) {
         if (d == 0) {
           x(l, d, p) = var(l, k + ks, j + js, i + is + p - hoff, n);
-          Igeom(d, p) =
-              pgeom.get_area_00entity(k + ks, j + js, i + is + p - hoff) /
-              dgeom.get_area_11entity(k + ks, j + js, i + is + p - hoff);
         }
         if (d == 1) {
           x(l, d, p) = var(l, k + ks, j + js + p - hoff, i + is, n);
-          Igeom(d, p) =
-              pgeom.get_area_00entity(k + ks, j + js + p - hoff, i + is) /
-              dgeom.get_area_11entity(k + ks, j + js + p - hoff, i + is);
         }
       }
     }
@@ -469,20 +449,15 @@ real YAKL_INLINE compute_Iext(F f, const real5d &var,
 
   SArray<real, 1, 1> x0;
   SArray<real, 3, 1, ndims, hord - 1> x;
-  SArray<real, 2, ndims, hord - 1> Igeom;
+  const real Igeom = pgeom.get_area_00entity(k + ks, j + js, i + is) /
+                     dgeom.get_area_11entity(k + ks, j + js, i + is);
   for (int p = 0; p < hord - 1; p++) {
     for (int d = 0; d < ndims; d++) {
       if (d == 0) {
         x(0, d, p) = f(var, k + ks, j + js, i + is + p - hoff, n);
-        Igeom(d, p) =
-            pgeom.get_area_00entity(k + ks, j + js, i + is + p - hoff) /
-            dgeom.get_area_11entity(k + ks, j + js, i + is + p - hoff);
       }
       if (d == 1) {
         x(0, d, p) = f(var, k + ks, j + js + p - hoff, i + is, n);
-        Igeom(d, p) =
-            pgeom.get_area_00entity(k + ks, j + js + p - hoff, i + is) /
-            dgeom.get_area_11entity(k + ks, j + js + p - hoff, i + is);
       }
     }
   }
@@ -501,21 +476,16 @@ void YAKL_INLINE compute_Iext(F f, SArray<real, 1, ndofs> &x0,
                               const Geometry<Twisted> &dgeom, int is, int js,
                               int ks, int i, int j, int k, int n) {
   SArray<real, 3, ndofs, ndims, hord - 1> x;
-  SArray<real, 2, ndims, hord - 1> Igeom;
+  const real Igeom = pgeom.get_area_00entity(k + ks, j + js, i + is) /
+                     dgeom.get_area_11entity(k + ks, j + js, i + is);
   for (int p = 0; p < hord - 1; p++) {
     for (int l = 0; l < ndofs; l++) {
       for (int d = 0; d < ndims; d++) {
         if (d == 0) {
           x(l, d, p) = f(var, l, k + ks, j + js, i + is + p - hoff, n);
-          Igeom(d, p) =
-              pgeom.get_area_00entity(k + ks, j + js, i + is + p - hoff) /
-              dgeom.get_area_11entity(k + ks, j + js, i + is + p - hoff);
         }
         if (d == 1) {
           x(l, d, p) = f(var, l, k + ks, j + js + p - hoff, i + is, n);
-          Igeom(d, p) =
-              pgeom.get_area_00entity(k + ks, j + js + p - hoff, i + is) /
-              dgeom.get_area_11entity(k + ks, j + js + p - hoff, i + is);
         }
       }
     }
@@ -580,8 +550,8 @@ real YAKL_INLINE fourier_Iext(const Geometry<Straight> &pgeom,
   SArray<real, 2, ndims, off + 1> shift;
 
   // assuming these are constant
-  real Igeom = pgeom.get_area_00entity(k + ks, j + js, i + is + 0 - off) /
-               dgeom.get_area_11entity(k + ks, j + js, i + is + 0 - off);
+  const real Igeom = pgeom.get_area_00entity(k + ks, j + js, i + is + 0 - off) /
+                     dgeom.get_area_11entity(k + ks, j + js, i + is + 0 - off);
 
   for (int p = 0; p < off; p++) {
     for (int d = 0; d < ndims; d++) {
@@ -598,47 +568,41 @@ real YAKL_INLINE fourier_Iext(const Geometry<Straight> &pgeom,
 
 template <uint ndofs>
 void YAKL_INLINE J(SArray<real, 1, ndofs> &var,
-                   SArray<real, 3, ndofs, ndims, 1> const &dens,
-                   SArray<real, 2, ndims, 1> const &Jgeom) {
+                   SArray<real, 3, ndofs, ndims, 1> const &dens, real Jgeom) {
 
   for (int l = 0; l < ndofs; l++) {
-    var(l) = Jgeom(0, 0) * dens(l, 0, 0);
+    var(l) = dens(l, 0, 0);
+    var(l) *= Jgeom;
   }
 }
 
 template <uint ndofs>
 void YAKL_INLINE J(SArray<real, 1, ndofs> &var,
-                   SArray<real, 3, ndofs, ndims, 3> const &dens,
-                   SArray<real, 2, ndims, 3> const &Jgeom) {
+                   SArray<real, 3, ndofs, ndims, 3> const &dens, real Jgeom) {
   for (int l = 0; l < ndofs; l++) {
-    var(l) = Jgeom(0, 1) * dens(l, 0, 1);
+    var(l) = dens(l, 0, 1);
     for (int d = 0; d < ndims; d++) {
-      // var(l) += -1.0_fp/48.0_fp* Jgeom(d,0) * dens(l,d,0) + 2.0_fp/48.0_fp*
-      // Jgeom(d,1) * dens(l,d,1) - 1.0_fp/48.0_fp* Jgeom(d,2) * dens(l,d,2);
-      var(l) += -1.0_fp / 24.0_fp * Jgeom(d, 0) * dens(l, d, 0) +
-                2.0_fp / 24.0_fp * Jgeom(d, 1) * dens(l, d, 1) -
-                1.0_fp / 24.0_fp * Jgeom(d, 2) * dens(l, d, 2);
+      var(l) += -1.0_fp / 24.0_fp * dens(l, d, 0) +
+                2.0_fp / 24.0_fp * dens(l, d, 1) -
+                1.0_fp / 24.0_fp * dens(l, d, 2);
     }
+    var(l) *= Jgeom;
   }
 }
 
 template <uint ndofs>
 void YAKL_INLINE J(SArray<real, 1, ndofs> &var,
-                   SArray<real, 3, ndofs, ndims, 5> const &dens,
-                   SArray<real, 2, ndims, 5> const &Jgeom) {
+                   SArray<real, 3, ndofs, ndims, 5> const &dens, real Jgeom) {
   for (int l = 0; l < ndofs; l++) {
-    var(l) = Jgeom(0, 2) * dens(l, 0, 2);
+    var(l) = dens(l, 0, 2);
     for (int d = 0; d < ndims; d++) {
-      // var(l) += 1.0_fp/576.0_fp*Jgeom(d,0) * dens(l,d,0)
-      // - 16.0_fp/576.0_fp*Jgeom(d,1) * dens(l,d,1) + 30.0_fp/576.0_fp*
-      // Jgeom(d,2) * dens(l,d,2) - 16.0_fp/576.0_fp* Jgeom(d,3) * dens(l,d,3)
-      // + 1.0_fp/576.0_fp* Jgeom(d,4) * dens(l,d,4);
-      var(l) += 9.0_fp / 1920.0_fp * Jgeom(d, 0) * dens(l, d, 0) -
-                116.0_fp / 1920.0_fp * Jgeom(d, 1) * dens(l, d, 1) +
-                214.0_fp / 1920.0_fp * Jgeom(d, 2) * dens(l, d, 2) -
-                116.0_fp / 1920.0_fp * Jgeom(d, 3) * dens(l, d, 3) +
-                9.0_fp / 1920.0_fp * Jgeom(d, 4) * dens(l, d, 4);
+      var(l) += 9.0_fp / 1920.0_fp * dens(l, d, 0) -
+                116.0_fp / 1920.0_fp * dens(l, d, 1) +
+                214.0_fp / 1920.0_fp * dens(l, d, 2) -
+                116.0_fp / 1920.0_fp * dens(l, d, 3) +
+                9.0_fp / 1920.0_fp * dens(l, d, 4);
     }
+    var(l) *= Jgeom;
   }
 }
 
@@ -648,21 +612,16 @@ void YAKL_INLINE compute_J(SArray<real, 1, ndofs> &x0, const real5d &var,
                            const Geometry<Twisted> &dgeom, int is, int js,
                            int ks, int i, int j, int k, int n) {
   SArray<real, 3, ndofs, ndims, ord - 1> x;
-  SArray<real, 2, ndims, ord - 1> Jgeom;
+  const real Jgeom = dgeom.get_area_lform(0, 0, k + ks, j + js, i + is) /
+                     pgeom.get_area_lform(ndims, 0, k + ks, j + js, i + is);
   for (int p = 0; p < ord - 1; p++) {
     for (int l = 0; l < ndofs; l++) {
       for (int d = 0; d < ndims; d++) {
         if (d == 0) {
           x(l, d, p) = var(l, k + ks, j + js, i + is + p - off, n);
-          Jgeom(d, p) =
-              dgeom.get_area_lform(0, 0, k + ks, j + js, i + is + p - off) /
-              pgeom.get_area_lform(ndims, 0, k + ks, j + js, i + is + p - off);
         }
         if (d == 1) {
           x(l, d, p) = var(l, k + ks, j + js + p - off, i + is, n);
-          Jgeom(d, p) =
-              dgeom.get_area_lform(0, 0, k + ks, j + js + p - off, i + is) /
-              pgeom.get_area_lform(ndims, 0, k + ks, j + js + p - off, i + is);
         }
       }
     }
@@ -699,21 +658,16 @@ void YAKL_INLINE compute_Jext(SArray<real, 1, ndofs> &x0, const real5d &var,
                               const Geometry<Twisted> &dgeom, int is, int js,
                               int ks, int i, int j, int k, int n) {
   SArray<real, 3, ndofs, ndims, hord - 1> x;
-  SArray<real, 2, ndims, hord - 1> Jgeom;
+  const real Jgeom = dgeom.get_area_00entity(k + ks, j + js, i + is) /
+                     pgeom.get_area_11entity(k + ks - 1, j + js, i + is);
   for (int p = 0; p < hord - 1; p++) {
     for (int l = 0; l < ndofs; l++) {
       for (int d = 0; d < ndims; d++) {
         if (d == 0) {
           x(l, d, p) = var(l, k + ks - 1, j + js, i + is + p - hoff, n);
-          Jgeom(d, p) =
-              dgeom.get_area_00entity(k + ks, j + js, i + is + p - hoff) /
-              pgeom.get_area_11entity(k + ks - 1, j + js, i + is + p - hoff);
         }
         if (d == 1) {
           x(l, d, p) = var(l, k + ks + 1, j + js + p - hoff, i + is, n);
-          Jgeom(d, p) =
-              dgeom.get_area_00entity(k + ks, j + js + p - hoff, i + is) /
-              pgeom.get_area_11entity(k + ks - 1, j + js + p - hoff, i + is);
         }
       }
     }
