@@ -293,9 +293,9 @@ void YAKL_INLINE compute_twisted_recon(const real5d &reconvar,
       upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
     } else if (dual_upwind_type == UPWIND_TYPE::TANH) {
 #ifdef _EXTRUDED
-      uvar(0) / dgeom.dz;
+      uvar(0) /= dgeom.dz;
 #else
-      uvar(0) / dgeom.dy;
+      uvar(0) /= dgeom.dy;
 #endif
       tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
     }
