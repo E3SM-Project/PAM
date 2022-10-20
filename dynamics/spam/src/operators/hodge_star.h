@@ -230,13 +230,11 @@ void YAKL_INLINE compute_Hext(const real5d &uvar, const real5d &vvar,
                               int ks, int i, int j, int k, int n) {
   SArray<real, 1, ndims> u;
   compute_Hext<ndofs, ord, off>(u, vvar, pgeom, dgeom, is, js, ks, i, j, k, n);
-  if (addmode == ADD_MODE::REPLACE) {
-    for (int d = 0; d < ndims; d++) {
+  for (int d = 0; d < ndims; d++) {
+    if (addmode == ADD_MODE::REPLACE) {
       uvar(d, k + ks, j + js, i + is, n) = u(d);
     }
-  }
-  if (addmode == ADD_MODE::ADD) {
-    for (int d = 0; d < ndims; d++) {
+    if (addmode == ADD_MODE::ADD) {
       uvar(d, k + ks, j + js, i + is, n) += u(d);
     }
   }
@@ -342,13 +340,11 @@ void YAKL_INLINE compute_I(const real5d &var0, const real5d &var,
                            int ks, int i, int j, int k, int n) {
   SArray<real, 1, ndofs> x0;
   compute_I<ndofs, ord, off>(x0, var, pgeom, dgeom, is, js, ks, i, j, k, n);
-  if (addmode == ADD_MODE::REPLACE) {
-    for (int l = 0; l < ndofs; l++) {
+  for (int l = 0; l < ndofs; l++) {
+    if (addmode == ADD_MODE::REPLACE) {
       var0(l, k + ks, j + js, i + is, n) = x0(l);
     }
-  }
-  if (addmode == ADD_MODE::ADD) {
-    for (int l = 0; l < ndofs; l++) {
+    if (addmode == ADD_MODE::ADD) {
       var0(l, k + ks, j + js, i + is, n) += x0(l);
     }
   }
@@ -470,13 +466,11 @@ void YAKL_INLINE compute_Iext(F f, const real5d &var0, const real5d &var,
   SArray<real, 1, ndofs> x0;
   compute_Iext<ndofs, hord, vord, hoff, voff>(f, x0, var, pgeom, dgeom, is, js,
                                               ks, i, j, k, n);
-  if (addmode == ADD_MODE::REPLACE) {
-    for (int l = 0; l < ndofs; l++) {
+  for (int l = 0; l < ndofs; l++) {
+    if (addmode == ADD_MODE::REPLACE) {
       var0(l, k + ks, j + js, i + is, n) = x0(l);
     }
-  }
-  if (addmode == ADD_MODE::ADD) {
-    for (int l = 0; l < ndofs; l++) {
+    if (addmode == ADD_MODE::ADD) {
       var0(l, k + ks, j + js, i + is, n) += x0(l);
     }
   }
@@ -588,13 +582,11 @@ void YAKL_INLINE compute_J(const real5d &var0, const real5d &var,
                            int ks, int i, int j, int k, int n) {
   SArray<real, 1, ndofs> x0;
   compute_J<ndofs, ord, off>(x0, var, pgeom, dgeom, is, js, ks, i, j, k, n);
-  if (addmode == ADD_MODE::REPLACE) {
-    for (int l = 0; l < ndofs; l++) {
+  for (int l = 0; l < ndofs; l++) {
+    if (addmode == ADD_MODE::REPLACE) {
       var0(l, k + ks, j + js, i + is, n) = x0(l);
     }
-  }
-  if (addmode == ADD_MODE::ADD) {
-    for (int l = 0; l < ndofs; l++) {
+    if (addmode == ADD_MODE::ADD) {
       var0(l, k + ks, j + js, i + is, n) += x0(l);
     }
   }
@@ -645,13 +637,12 @@ void YAKL_INLINE compute_Jext(const real5d &var0, const real5d &var,
   SArray<real, 1, ndofs> x0;
   compute_Jext<ndofs, hord, vord, hoff, voff>(x0, var, pgeom, dgeom, is, js, ks,
                                               i, j, k, n);
-  if (addmode == ADD_MODE::REPLACE) {
-    for (int l = 0; l < ndofs; l++) {
+
+  for (int l = 0; l < ndofs; l++) {
+    if (addmode == ADD_MODE::REPLACE) {
       var0(l, k + ks, j + js, i + is, n) = x0(l);
     }
-  }
-  if (addmode == ADD_MODE::ADD) {
-    for (int l = 0; l < ndofs; l++) {
+    if (addmode == ADD_MODE::ADD) {
       var0(l, k + ks, j + js, i + is, n) += x0(l);
     }
   }
