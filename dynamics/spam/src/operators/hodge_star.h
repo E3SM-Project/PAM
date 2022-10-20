@@ -398,6 +398,18 @@ real YAKL_INLINE fourier_I(const Geometry<Straight> &pgeom,
   return Ihat(Igeom, shift);
 }
 
+template <uint ndofs, uint vord, uint voff = vord / 2 - 1>
+void YAKL_INLINE compute_Iv(SArray<real, 1, ndofs> &x0, const real3d &var,
+                            const Geometry<Straight> &pgeom,
+                            const Geometry<Twisted> &dgeom, int ks, int k,
+                            int n) {
+  real Igeom = pgeom.get_area_00entity(k + ks, 0, 0) /
+               dgeom.get_area_11entity(k + ks, 0, 0);
+  for (int l = 0; l < ndofs; l++) {
+    x0(l) = var(l, k, n) * Igeom;
+  }
+}
+
 // BROKEN FOR 2D+1D EXT
 // JUST IN THE AREA FORM CALCS...
 template <uint ndofs, uint hord, uint vord, uint hoff = hord / 2 - 1,
@@ -424,48 +436,6 @@ void YAKL_INLINE compute_Iext(SArray<real, 1, ndofs> &x0, const real5d &var,
   I<ndofs>(x0, x, Igeom);
   // EVENTUALLY BE MORE CLEVER IN THE VERTICAL HERE
   //  BUT THIS IS 2nd ORDER RIGHT NOW!
-}
-
-template <uint ndofs, uint vord, uint voff = vord / 2 - 1>
-void YAKL_INLINE compute_Iv(SArray<real, 1, ndofs> &x0, const real3d &var,
-                            const Geometry<Straight> &pgeom,
-                            const Geometry<Twisted> &dgeom, int ks, int k,
-                            int n) {
-  real Igeom = pgeom.get_area_00entity(k + ks, 0, 0) /
-               dgeom.get_area_11entity(k + ks, 0, 0);
-  for (int l = 0; l < ndofs; l++) {
-    x0(l) = var(l, k, n) * Igeom;
-  }
-}
-
-// version of Iext that applies a transformation before computing x0
-// mainly used to apply Iext to total density
-template <uint hord, uint vord, uint hoff = hord / 2 - 1,
-          uint voff = vord / 2 - 1, class F>
-real YAKL_INLINE compute_Iext(F f, const real5d &var,
-                              const Geometry<Straight> &pgeom,
-                              const Geometry<Twisted> &dgeom, int is, int js,
-                              int ks, int i, int j, int k, int n) {
-
-  SArray<real, 1, 1> x0;
-  SArray<real, 3, 1, ndims, hord - 1> x;
-  const real Igeom = pgeom.get_area_00entity(k + ks, j + js, i + is) /
-                     dgeom.get_area_11entity(k + ks, j + js, i + is);
-  for (int p = 0; p < hord - 1; p++) {
-    for (int d = 0; d < ndims; d++) {
-      if (d == 0) {
-        x(0, d, p) = f(var, k + ks, j + js, i + is + p - hoff, n);
-      }
-      if (d == 1) {
-        x(0, d, p) = f(var, k + ks, j + js + p - hoff, i + is, n);
-      }
-    }
-  }
-  I<1>(x0, x, Igeom);
-  // EVENTUALLY BE MORE CLEVER IN THE VERTICAL HERE
-  //  BUT THIS IS 2nd ORDER RIGHT NOW!
-
-  return x0(0);
 }
 
 template <uint ndofs, uint hord, uint vord, uint hoff = hord / 2 - 1,
