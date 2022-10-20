@@ -233,6 +233,61 @@ void test_H1_convergence() {
   }
 }
 
+template <int diff_ord, class F> real compute_H1bar_error(int np, F ic_fun) {
+  PeriodicUnitSquare square(np, 2 * np);
+
+  auto tw1 = square.create_twisted_form<1>();
+  square.dual_geometry.set_1form_values(ic_fun, tw1, 0,
+                                        LINE_INTEGRAL_TYPE::NORMAL);
+
+  auto st1 = square.create_straight_form<1>();
+  auto st1_expected = square.create_straight_form<1>();
+  square.primal_geometry.set_1form_values(ic_fun, st1_expected, 0,
+                                          LINE_INTEGRAL_TYPE::TANGENT);
+
+  int pis = square.primal_topology.is;
+  int pjs = square.primal_topology.js;
+  int pks = square.primal_topology.ks;
+
+  {
+    st1.exchange();
+
+    parallel_for(
+        SimpleBounds<3>(square.primal_topology.nl,
+                        square.primal_topology.n_cells_y,
+                        square.primal_topology.n_cells_x),
+        YAKL_LAMBDA(int k, int j, int i) {
+          for (int d = 0; d < ndims; ++d) {
+            st1_expected.data(d, k + pks, j + pjs, i + pis, 0) *= -1;
+          }
+          compute_H1bar<1, diff_ord>(st1.data, tw1.data, square.primal_geometry,
+                                     square.dual_geometry, pis, pjs, pks, i, j,
+                                     k, 0);
+        });
+  }
+
+  real errf = square.compute_Linf_error(st1_expected, st1);
+  return errf;
+}
+
+void test_H1bar_convergence() {
+  const int nlevels = 5;
+  const real atol = 0.1;
+
+  {
+    const int diff_order = 2;
+    auto conv_x = ConvergenceTest<nlevels>(
+        "H1bar 2 x", compute_H1bar_error<diff_order, vecfun_x>, vecfun_x{});
+    conv_x.check_rate(diff_order, atol);
+    auto conv_y = ConvergenceTest<nlevels>(
+        "H1bar 2 y", compute_H1bar_error<diff_order, vecfun_y>, vecfun_y{});
+    conv_y.check_rate(diff_order, atol);
+    auto conv_xy = ConvergenceTest<nlevels>(
+        "H1bar 2 xy", compute_H1bar_error<diff_order, vecfun_xy>, vecfun_xy{});
+    conv_xy.check_rate(diff_order, atol);
+  }
+}
+
 template <int diff_ord, class F> real compute_H2_error(int np, F ic_fun) {
   PeriodicUnitSquare square(np, 2 * np);
 
@@ -391,6 +446,7 @@ int main() {
   test_H0bar_convergence();
 
   test_H1_convergence();
+  test_H1bar_convergence();
 
   test_H2_convergence();
   test_H2bar_convergence();
