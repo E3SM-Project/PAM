@@ -523,18 +523,18 @@ real YAKL_INLINE fourier_H2bar_ext(const Geometry<Straight> &pgeom,
 }
 
 template <uint ndofs>
-void YAKL_INLINE J(SArray<real, 1, ndofs> &var,
-                   SArray<real, 3, ndofs, ndims, 1> const &dens, real Jgeom) {
+void YAKL_INLINE H2(SArray<real, 1, ndofs> &var,
+                    SArray<real, 3, ndofs, ndims, 1> const &dens, real H2geom) {
 
   for (int l = 0; l < ndofs; l++) {
     var(l) = dens(l, 0, 0);
-    var(l) *= Jgeom;
+    var(l) *= H2geom;
   }
 }
 
 template <uint ndofs>
-void YAKL_INLINE J(SArray<real, 1, ndofs> &var,
-                   SArray<real, 3, ndofs, ndims, 3> const &dens, real Jgeom) {
+void YAKL_INLINE H2(SArray<real, 1, ndofs> &var,
+                    SArray<real, 3, ndofs, ndims, 3> const &dens, real H2geom) {
   for (int l = 0; l < ndofs; l++) {
     var(l) = dens(l, 0, 1);
     for (int d = 0; d < ndims; d++) {
@@ -542,13 +542,13 @@ void YAKL_INLINE J(SArray<real, 1, ndofs> &var,
                 2.0_fp / 24.0_fp * dens(l, d, 1) -
                 1.0_fp / 24.0_fp * dens(l, d, 2);
     }
-    var(l) *= Jgeom;
+    var(l) *= H2geom;
   }
 }
 
 template <uint ndofs>
-void YAKL_INLINE J(SArray<real, 1, ndofs> &var,
-                   SArray<real, 3, ndofs, ndims, 5> const &dens, real Jgeom) {
+void YAKL_INLINE H2(SArray<real, 1, ndofs> &var,
+                    SArray<real, 3, ndofs, ndims, 5> const &dens, real H2geom) {
   for (int l = 0; l < ndofs; l++) {
     var(l) = dens(l, 0, 2);
     for (int d = 0; d < ndims; d++) {
@@ -558,18 +558,18 @@ void YAKL_INLINE J(SArray<real, 1, ndofs> &var,
                 116.0_fp / 1920.0_fp * dens(l, d, 3) +
                 9.0_fp / 1920.0_fp * dens(l, d, 4);
     }
-    var(l) *= Jgeom;
+    var(l) *= H2geom;
   }
 }
 
 template <uint ndofs, uint ord, uint off = ord / 2 - 1>
-void YAKL_INLINE compute_J(SArray<real, 1, ndofs> &x0, const real5d &var,
-                           const Geometry<Straight> &pgeom,
-                           const Geometry<Twisted> &dgeom, int is, int js,
-                           int ks, int i, int j, int k, int n) {
+void YAKL_INLINE compute_H2(SArray<real, 1, ndofs> &x0, const real5d &var,
+                            const Geometry<Straight> &pgeom,
+                            const Geometry<Twisted> &dgeom, int is, int js,
+                            int ks, int i, int j, int k, int n) {
   SArray<real, 3, ndofs, ndims, ord - 1> x;
-  const real Jgeom = dgeom.get_area_lform(0, 0, k + ks, j + js, i + is) /
-                     pgeom.get_area_lform(ndims, 0, k + ks, j + js, i + is);
+  const real H2geom = dgeom.get_area_lform(0, 0, k + ks, j + js, i + is) /
+                      pgeom.get_area_lform(ndims, 0, k + ks, j + js, i + is);
   for (int p = 0; p < ord - 1; p++) {
     for (int l = 0; l < ndofs; l++) {
       for (int d = 0; d < ndims; d++) {
@@ -582,17 +582,17 @@ void YAKL_INLINE compute_J(SArray<real, 1, ndofs> &x0, const real5d &var,
       }
     }
   }
-  J<ndofs>(x0, x, Jgeom);
+  H2<ndofs>(x0, x, H2geom);
 }
 
 template <uint ndofs, uint ord, ADD_MODE addmode = ADD_MODE::REPLACE,
           uint off = ord / 2 - 1>
-void YAKL_INLINE compute_J(const real5d &var0, const real5d &var,
-                           const Geometry<Straight> &pgeom,
-                           const Geometry<Twisted> &dgeom, int is, int js,
-                           int ks, int i, int j, int k, int n) {
+void YAKL_INLINE compute_H2(const real5d &var0, const real5d &var,
+                            const Geometry<Straight> &pgeom,
+                            const Geometry<Twisted> &dgeom, int is, int js,
+                            int ks, int i, int j, int k, int n) {
   SArray<real, 1, ndofs> x0;
-  compute_J<ndofs, ord, off>(x0, var, pgeom, dgeom, is, js, ks, i, j, k, n);
+  compute_H2<ndofs, ord, off>(x0, var, pgeom, dgeom, is, js, ks, i, j, k, n);
   for (int l = 0; l < ndofs; l++) {
     if (addmode == ADD_MODE::REPLACE) {
       var0(l, k + ks, j + js, i + is, n) = x0(l);
@@ -607,13 +607,13 @@ void YAKL_INLINE compute_J(const real5d &var0, const real5d &var,
 // JUST IN THE AREA CALCS...
 template <uint ndofs, uint hord, uint vord, uint hoff = hord / 2 - 1,
           uint voff = vord / 2 - 1>
-void YAKL_INLINE compute_Jext(SArray<real, 1, ndofs> &x0, const real5d &var,
-                              const Geometry<Straight> &pgeom,
-                              const Geometry<Twisted> &dgeom, int is, int js,
-                              int ks, int i, int j, int k, int n) {
+void YAKL_INLINE compute_H2_ext(SArray<real, 1, ndofs> &x0, const real5d &var,
+                                const Geometry<Straight> &pgeom,
+                                const Geometry<Twisted> &dgeom, int is, int js,
+                                int ks, int i, int j, int k, int n) {
   SArray<real, 3, ndofs, ndims, hord - 1> x;
-  const real Jgeom = dgeom.get_area_00entity(k + ks, j + js, i + is) /
-                     pgeom.get_area_11entity(k + ks - 1, j + js, i + is);
+  const real H2geom = dgeom.get_area_00entity(k + ks, j + js, i + is) /
+                      pgeom.get_area_11entity(k + ks - 1, j + js, i + is);
   for (int p = 0; p < hord - 1; p++) {
     for (int l = 0; l < ndofs; l++) {
       for (int d = 0; d < ndims; d++) {
@@ -626,7 +626,7 @@ void YAKL_INLINE compute_Jext(SArray<real, 1, ndofs> &x0, const real5d &var,
       }
     }
   }
-  J<ndofs>(x0, x, Jgeom);
+  H2<ndofs>(x0, x, H2geom);
   // EVENTUALLY BE MORE CLEVER IN THE VERTICAL HERE
   //  BUT THIS IS 2nd ORDER RIGHT NOW!
 }
@@ -641,13 +641,13 @@ void YAKL_INLINE compute_Jext(SArray<real, 1, ndofs> &x0, const real5d &var,
 template <uint ndofs, uint hord, uint vord,
           ADD_MODE addmode = ADD_MODE::REPLACE, uint hoff = hord / 2 - 1,
           uint voff = vord / 2 - 1>
-void YAKL_INLINE compute_Jext(const real5d &var0, const real5d &var,
-                              const Geometry<Straight> &pgeom,
-                              const Geometry<Twisted> &dgeom, int is, int js,
-                              int ks, int i, int j, int k, int n) {
+void YAKL_INLINE compute_H2_ext(const real5d &var0, const real5d &var,
+                                const Geometry<Straight> &pgeom,
+                                const Geometry<Twisted> &dgeom, int is, int js,
+                                int ks, int i, int j, int k, int n) {
   SArray<real, 1, ndofs> x0;
-  compute_Jext<ndofs, hord, vord, hoff, voff>(x0, var, pgeom, dgeom, is, js, ks,
-                                              i, j, k, n);
+  compute_H2_ext<ndofs, hord, vord, hoff, voff>(x0, var, pgeom, dgeom, is, js,
+                                                ks, i, j, k, n);
 
   for (int l = 0; l < ndofs; l++) {
     if (addmode == ADD_MODE::REPLACE) {

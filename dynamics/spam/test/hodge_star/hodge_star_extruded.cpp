@@ -137,7 +137,7 @@ void test_H2bar_ext_convergence() {
   }
 }
 
-template <int diff_ord, class F> real compute_Jext_error(int np, F ic_fun) {
+template <int diff_ord, class F> real compute_H2_ext_error(int np, F ic_fun) {
   ExtrudedUnitSquare square(np, 2 * np);
 
   auto st11 = square.create_straight_form<1, 1>();
@@ -159,7 +159,7 @@ template <int diff_ord, class F> real compute_Jext_error(int np, F ic_fun) {
                         square.dual_topology.n_cells_y,
                         square.dual_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
-          compute_Jext<1, diff_ord, vert_diff_ord>(
+          compute_H2_ext<1, diff_ord, vert_diff_ord>(
               tw00.data, st11.data, square.primal_geometry,
               square.dual_geometry, dis, djs, dks, i, j, k + 1, 0);
         });
@@ -169,46 +169,46 @@ template <int diff_ord, class F> real compute_Jext_error(int np, F ic_fun) {
   return errf;
 }
 
-void test_Jext_convergence() {
+void test_H2_ext_convergence() {
   const int nlevels = 5;
   const real atol = 0.1;
 
   {
     const int diff_order = 2;
     auto conv_x = ConvergenceTest<nlevels>(
-        "Jext 2 x", compute_Jext_error<diff_order, fun_x>, fun_x{});
+        "H2_ext 2 x", compute_H2_ext_error<diff_order, fun_x>, fun_x{});
     conv_x.check_rate(diff_order, atol);
     auto conv_z = ConvergenceTest<nlevels>(
-        "Jext 2 z", compute_Jext_error<diff_order, fun_z>, fun_z{});
+        "H2_ext 2 z", compute_H2_ext_error<diff_order, fun_z>, fun_z{});
     conv_z.check_rate(2, atol);
     auto conv_xz = ConvergenceTest<nlevels>(
-        "Jext 2 xz", compute_Jext_error<diff_order, fun_xz>, fun_xz{});
+        "H2_ext 2 xz", compute_H2_ext_error<diff_order, fun_xz>, fun_xz{});
     conv_xz.check_rate(2, atol);
   }
 
   {
     const int diff_order = 4;
     auto conv_x = ConvergenceTest<nlevels>(
-        "Jext 4 x", compute_Jext_error<diff_order, fun_x>, fun_x{});
+        "H2_ext 4 x", compute_H2_ext_error<diff_order, fun_x>, fun_x{});
     conv_x.check_rate(diff_order, atol);
     auto conv_z = ConvergenceTest<nlevels>(
-        "Jext 4 z", compute_Jext_error<diff_order, fun_z>, fun_z{});
+        "H2_ext 4 z", compute_H2_ext_error<diff_order, fun_z>, fun_z{});
     conv_z.check_rate(2, atol);
     auto conv_xz = ConvergenceTest<nlevels>(
-        "Jext 4 xz", compute_Jext_error<diff_order, fun_xz>, fun_xz{});
+        "H2_ext 4 xz", compute_H2_ext_error<diff_order, fun_xz>, fun_xz{});
     conv_xz.check_rate(2, atol);
   }
 
   {
     const int diff_order = 6;
     auto conv_x = ConvergenceTest<nlevels>(
-        "Jext 6 x", compute_Jext_error<diff_order, fun_x>, fun_x{});
+        "H2_ext 6 x", compute_H2_ext_error<diff_order, fun_x>, fun_x{});
     conv_x.check_rate(diff_order, atol);
     auto conv_z = ConvergenceTest<nlevels>(
-        "Jext 6 z", compute_Jext_error<diff_order, fun_z>, fun_z{});
+        "H2_ext 6 z", compute_H2_ext_error<diff_order, fun_z>, fun_z{});
     conv_z.check_rate(2, atol);
     auto conv_xz = ConvergenceTest<nlevels>(
-        "Jext 6 xz", compute_Jext_error<diff_order, fun_xz>, fun_xz{});
+        "H2_ext 6 xz", compute_H2_ext_error<diff_order, fun_xz>, fun_xz{});
     conv_xz.check_rate(2, atol);
   }
 }
@@ -341,7 +341,7 @@ void test_H1_vert_convergence() {
 int main() {
   yakl::init();
   test_H2bar_ext_convergence();
-  test_Jext_convergence();
+  test_H2_ext_convergence();
   test_H1_ext_convergence();
   test_H1_vert_convergence();
   yakl::finalize();
