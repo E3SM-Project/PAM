@@ -117,8 +117,8 @@ public:
     SArray<real, 1, ndims> U, he;
     SArray<real, 2, ndims, 2> h0arr;
 
-    // compute U = H v
-    compute_H<1, diff_ord>(U, v, this->primal_geometry, this->dual_geometry, is,
+    // compute U = H1 v
+    compute_H1<1, diff_ord>(U, v, this->primal_geometry, this->dual_geometry, is,
                            js, ks, i, j, k, n);
 
     // Compute h0 = I h needed for phi calcs
@@ -424,7 +424,7 @@ public:
                                   int i, int j, int k, int n) const {
     real K2 = 0.;
     SArray<real, 1, 1> UW0;
-    compute_Hv<1, vert_diff_ord>(UW0, w, this->primal_geometry,
+    compute_H1vert<1, vert_diff_ord>(UW0, w, this->primal_geometry,
                                  this->dual_geometry, is, js, ks, i, j, k, n);
     real w0;
     // Have to subtract 1 from k here since UW has an extra dof compared to w
@@ -438,7 +438,7 @@ public:
                                      int i, int j, int k, int n) const {
     real K2 = 0.;
     SArray<real, 1, 1> UW1;
-    compute_Hv<1, vert_diff_ord>(UW1, w, this->primal_geometry,
+    compute_H1vert<1, vert_diff_ord>(UW1, w, this->primal_geometry,
                                  this->dual_geometry, is, js, ks, i, j, k + 1,
                                  n);
     real w1;
@@ -453,9 +453,9 @@ public:
                               int j, int k, int n) const {
     real K2 = 0.;
     SArray<real, 1, 1> UW0, UW1;
-    compute_Hv<1, vert_diff_ord>(UW0, w, this->primal_geometry,
+    compute_H1vert<1, vert_diff_ord>(UW0, w, this->primal_geometry,
                                  this->dual_geometry, is, js, ks, i, j, k, n);
-    compute_Hv<1, vert_diff_ord>(UW1, w, this->primal_geometry,
+    compute_H1vert<1, vert_diff_ord>(UW1, w, this->primal_geometry,
                                  this->dual_geometry, is, js, ks, i, j, k + 1,
                                  n);
     real w0, w1;
@@ -471,9 +471,9 @@ public:
                                int i, int j, int k, int n) const {
     real v0, v1;
     SArray<real, 1, ndims> U0, U1;
-    compute_Hext<1, diff_ord>(U0, v, this->primal_geometry, this->dual_geometry,
+    compute_H1ext<1, diff_ord>(U0, v, this->primal_geometry, this->dual_geometry,
                               is, js, ks, i, j, k, n);
-    compute_Hext<1, diff_ord>(U1, v, this->primal_geometry, this->dual_geometry,
+    compute_H1ext<1, diff_ord>(U1, v, this->primal_geometry, this->dual_geometry,
                               is, js, ks, i + 1, j, k, n);
     v0 = v(0, k + ks, j + js, i + is, n);
     v1 = v(0, k + ks, j + js, i + is + 1, n);
@@ -482,9 +482,9 @@ public:
     if (ndims == 2) {
       real v0, v1;
       SArray<real, 1, ndims> U0, U1;
-      compute_Hext<1, diff_ord>(U0, v, this->primal_geometry,
+      compute_H1ext<1, diff_ord>(U0, v, this->primal_geometry,
                                 this->dual_geometry, is, js, ks, i, j, k, n);
-      compute_Hext<1, diff_ord>(U1, v, this->primal_geometry,
+      compute_H1ext<1, diff_ord>(U1, v, this->primal_geometry,
                                 this->dual_geometry, is, js, ks, i, j + 1, k,
                                 n);
       v0 = v(1, k + ks, j + js, i + is, n);

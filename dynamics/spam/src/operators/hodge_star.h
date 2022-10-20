@@ -4,31 +4,31 @@
 #include "common.h"
 #include "geometry.h"
 
-void YAKL_INLINE H(SArray<real, 1, ndims> &var,
+void YAKL_INLINE H1(SArray<real, 1, ndims> &var,
                    SArray<real, 2, ndims, 1> const &velocity,
-                   SArray<real, 1, ndims> const &Hgeom) {
+                   SArray<real, 1, ndims> const &H1geom) {
 
   for (int d = 0; d < ndims; d++) {
     var(d) = velocity(d, 0);
-    var(d) *= Hgeom(d);
+    var(d) *= H1geom(d);
   }
 }
 
-void YAKL_INLINE H(SArray<real, 1, ndims> &var,
+void YAKL_INLINE H1(SArray<real, 1, ndims> &var,
                    SArray<real, 2, ndims, 3> const &velocity,
-                   SArray<real, 1, ndims> const &Hgeom) {
+                   SArray<real, 1, ndims> const &H1geom) {
 
   for (int d = 0; d < ndims; d++) {
     var(d) = -1.0_fp / 24.0_fp * velocity(d, 0) +
              26.0_fp / 24.0_fp * velocity(d, 1) -
              1.0_fp / 24.0_fp * velocity(d, 2);
-    var(d) *= Hgeom(d);
+    var(d) *= H1geom(d);
   }
 }
 
-void YAKL_INLINE H(SArray<real, 1, ndims> &var,
+void YAKL_INLINE H1(SArray<real, 1, ndims> &var,
                    SArray<real, 2, ndims, 5> const &velocity,
-                   SArray<real, 1, ndims> const &Hgeom) {
+                   SArray<real, 1, ndims> const &H1geom) {
 
   for (int d = 0; d < ndims; d++) {
     var(d) = 9.0_fp / 1920.0_fp * velocity(d, 0) -
@@ -37,19 +37,19 @@ void YAKL_INLINE H(SArray<real, 1, ndims> &var,
              116.0_fp / 1920.0_fp * velocity(d, 3) +
              9.0_fp / 1920.0_fp * velocity(d, 4);
 
-    var(d) *= Hgeom(d);
+    var(d) *= H1geom(d);
   }
 }
 
 template <uint ndofs, uint ord, uint off = ord / 2 - 1>
-void YAKL_INLINE compute_H(SArray<real, 1, ndims> &u, const real5d &vvar,
+void YAKL_INLINE compute_H1(SArray<real, 1, ndims> &u, const real5d &vvar,
                            const Geometry<Straight> &pgeom,
                            const Geometry<Twisted> &dgeom, int is, int js,
                            int ks, int i, int j, int k, int n) {
   SArray<real, 2, ndims, ord - 1> v;
-  SArray<real, 1, ndims> Hgeom;
+  SArray<real, 1, ndims> H1geom;
   for (int d = 0; d < ndims; d++) {
-    Hgeom(d) = dgeom.get_area_lform(ndims - 1, d, k + ks, j + js, i + is) /
+    H1geom(d) = dgeom.get_area_lform(ndims - 1, d, k + ks, j + js, i + is) /
                pgeom.get_area_lform(1, d, k + ks, j + js, i + is);
   }
 
@@ -63,17 +63,17 @@ void YAKL_INLINE compute_H(SArray<real, 1, ndims> &u, const real5d &vvar,
       }
     }
   }
-  H(u, v, Hgeom);
+  H1(u, v, H1geom);
 }
 
 template <uint ndofs, uint ord, ADD_MODE addmode = ADD_MODE::REPLACE,
           uint off = ord / 2 - 1>
-void YAKL_INLINE compute_H(const real5d &uvar, const real5d &vvar,
+void YAKL_INLINE compute_H1(const real5d &uvar, const real5d &vvar,
                            const Geometry<Straight> &pgeom,
                            const Geometry<Twisted> &dgeom, int is, int js,
                            int ks, int i, int j, int k, int n) {
   SArray<real, 1, ndims> u;
-  compute_H<ndofs, ord, off>(u, vvar, pgeom, dgeom, is, js, ks, i, j, k, n);
+  compute_H1<ndofs, ord, off>(u, vvar, pgeom, dgeom, is, js, ks, i, j, k, n);
   if (addmode == ADD_MODE::REPLACE) {
     for (int d = 0; d < ndims; d++) {
       uvar(d, k + ks, j + js, i + is, n) = u(d);
@@ -86,44 +86,44 @@ void YAKL_INLINE compute_H(const real5d &uvar, const real5d &vvar,
   }
 }
 
-void YAKL_INLINE Hhat(SArray<real, 1, ndims> &u,
-                      SArray<real, 1, ndims> const &Hgeom,
+void YAKL_INLINE H1hat(SArray<real, 1, ndims> &u,
+                      SArray<real, 1, ndims> const &H1geom,
                       SArray<real, 2, ndims, 1> const &shift) {
   for (int d = 0; d < ndims; d++) {
-    u(d) = Hgeom(d);
+    u(d) = H1geom(d);
   }
 }
 
-void YAKL_INLINE Hhat(SArray<real, 1, ndims> &u,
-                      SArray<real, 1, ndims> const &Hgeom,
+void YAKL_INLINE H1hat(SArray<real, 1, ndims> &u,
+                      SArray<real, 1, ndims> const &H1geom,
                       SArray<real, 2, ndims, 2> const &shift) {
   for (int d = 0; d < ndims; d++) {
     u(d) = -2.0_fp / 24.0_fp * cos(shift(d, 0)) + 26.0_fp / 24.0_fp;
-    u(d) *= Hgeom(d);
+    u(d) *= H1geom(d);
   }
 }
 
-void YAKL_INLINE Hhat(SArray<real, 1, ndims> &u,
-                      SArray<real, 1, ndims> const &Hgeom,
+void YAKL_INLINE H1hat(SArray<real, 1, ndims> &u,
+                      SArray<real, 1, ndims> const &H1geom,
                       SArray<real, 2, ndims, 3> const &shift) {
   for (int d = 0; d < ndims; d++) {
     u(d) = 18.0_fp / 1920.0_fp * cos(shift(d, 0)) -
            232.0_fp / 1920.0_fp * cos(shift(d, 1)) + 2134.0_fp / 1920.0_fp;
-    u(d) *= Hgeom(d);
+    u(d) *= H1geom(d);
   }
 }
 
 template <uint ord, int off = ord / 2 - 1>
-void YAKL_INLINE fourier_H(SArray<real, 1, ndims> &u,
+void YAKL_INLINE fourier_H1(SArray<real, 1, ndims> &u,
                            const Geometry<Straight> &pgeom,
                            const Geometry<Twisted> &dgeom, int is, int js,
                            int ks, int i, int j, int k, int n, int nx, int ny,
                            int nz) {
   // Adding 1 to off because GPUs don't like zero size structs
   SArray<real, 2, ndims, off + 1> shift;
-  SArray<real, 1, ndims> Hgeom;
+  SArray<real, 1, ndims> H1geom;
   for (int d = 0; d < ndims; d++) {
-    Hgeom(d) = dgeom.get_area_lform(ndims - 1, d, k + ks, j + js, i + is) /
+    H1geom(d) = dgeom.get_area_lform(ndims - 1, d, k + ks, j + js, i + is) /
                pgeom.get_area_lform(1, d, k + ks, j + js, i + is);
   }
 
@@ -137,11 +137,11 @@ void YAKL_INLINE fourier_H(SArray<real, 1, ndims> &u,
       }
     }
   }
-  Hhat(u, Hgeom, shift);
+  H1hat(u, H1geom, shift);
 }
 
 // Note the indexing here, this is key
-real YAKL_INLINE compute_Hv(const real5d &wvar, const Geometry<Straight> &pgeom,
+real YAKL_INLINE compute_H1vert(const real5d &wvar, const Geometry<Straight> &pgeom,
                             const Geometry<Twisted> &dgeom, int is, int js,
                             int ks, int i, int j, int k, int n) {
   // THIS IS 2ND ORDER AT BEST...
@@ -150,7 +150,7 @@ real YAKL_INLINE compute_Hv(const real5d &wvar, const Geometry<Straight> &pgeom,
          pgeom.get_area_01entity(k + ks - 1, j + js, i + is);
 }
 
-real YAKL_INLINE Hv_coeff(const Geometry<Straight> &pgeom,
+real YAKL_INLINE H1vert_coeff(const Geometry<Straight> &pgeom,
                           const Geometry<Twisted> &dgeom, int is, int js,
                           int ks, int i, int j, int k) {
   // THIS IS 2ND ORDER AT BEST...
@@ -165,11 +165,11 @@ real YAKL_INLINE Hv_coeff(const Geometry<Straight> &pgeom,
 // fluxes, which are set diagnostically (=0 for no-flux bcs)
 template <uint ndofs, uint ord, ADD_MODE addmode = ADD_MODE::REPLACE,
           uint off = ord / 2 - 1>
-void YAKL_INLINE compute_Hv(const real5d &uwvar, const real5d &wvar,
+void YAKL_INLINE compute_H1vert(const real5d &uwvar, const real5d &wvar,
                             const Geometry<Straight> &pgeom,
                             const Geometry<Twisted> &dgeom, int is, int js,
                             int ks, int i, int j, int k, int n) {
-  real uw = compute_Hv(wvar, pgeom, dgeom, is, js, ks, i, j, k, n);
+  real uw = compute_H1vert(wvar, pgeom, dgeom, is, js, ks, i, j, k, n);
   if (addmode == ADD_MODE::REPLACE) {
     uwvar(0, k + ks, j + js, i + is, n) = uw;
   }
@@ -179,11 +179,11 @@ void YAKL_INLINE compute_Hv(const real5d &uwvar, const real5d &wvar,
 }
 template <uint ndofs, uint ord, ADD_MODE addmode = ADD_MODE::REPLACE,
           uint off = ord / 2 - 1>
-void YAKL_INLINE compute_Hv(SArray<real, 1, 1> &uwvar, const real5d &wvar,
+void YAKL_INLINE compute_H1vert(SArray<real, 1, 1> &uwvar, const real5d &wvar,
                             const Geometry<Straight> &pgeom,
                             const Geometry<Twisted> &dgeom, int is, int js,
                             int ks, int i, int j, int k, int n) {
-  real uw = compute_Hv(wvar, pgeom, dgeom, is, js, ks, i, j, k, n);
+  real uw = compute_H1vert(wvar, pgeom, dgeom, is, js, ks, i, j, k, n);
   if (addmode == ADD_MODE::REPLACE) {
     uwvar(0) = uw;
   }
@@ -195,15 +195,15 @@ void YAKL_INLINE compute_Hv(SArray<real, 1, 1> &uwvar, const real5d &wvar,
 // BROKEN FOR 2D+1D EXT
 // MAINLY IN THE AREA CALCS...
 template <uint ndofs, uint ord, uint off = ord / 2 - 1>
-void YAKL_INLINE compute_Hext(SArray<real, 1, ndims> &u, const real5d &vvar,
+void YAKL_INLINE compute_H1ext(SArray<real, 1, ndims> &u, const real5d &vvar,
                               const Geometry<Straight> &pgeom,
                               const Geometry<Twisted> &dgeom, int is, int js,
                               int ks, int i, int j, int k, int n) {
   SArray<real, 2, ndims, ord - 1> v;
-  SArray<real, 1, ndims> Hgeom;
+  SArray<real, 1, ndims> H1geom;
 
   for (int d = 0; d < ndims; d++) {
-    Hgeom(d) = dgeom.get_area_01entity(k + ks, j + js, i + is) /
+    H1geom(d) = dgeom.get_area_01entity(k + ks, j + js, i + is) /
                pgeom.get_area_10entity(k + ks, j + js, i + is);
   }
 
@@ -217,19 +217,19 @@ void YAKL_INLINE compute_Hext(SArray<real, 1, ndims> &u, const real5d &vvar,
       }
     }
   }
-  H(u, v, Hgeom);
+  H1(u, v, H1geom);
 }
 
 // No indexing issues since we go from p10 to d01, and d01 has no "extended
 // boundary"
 template <uint ndofs, uint ord, ADD_MODE addmode = ADD_MODE::REPLACE,
           uint off = ord / 2 - 1>
-void YAKL_INLINE compute_Hext(const real5d &uvar, const real5d &vvar,
+void YAKL_INLINE compute_H1ext(const real5d &uvar, const real5d &vvar,
                               const Geometry<Straight> &pgeom,
                               const Geometry<Twisted> &dgeom, int is, int js,
                               int ks, int i, int j, int k, int n) {
   SArray<real, 1, ndims> u;
-  compute_Hext<ndofs, ord, off>(u, vvar, pgeom, dgeom, is, js, ks, i, j, k, n);
+  compute_H1ext<ndofs, ord, off>(u, vvar, pgeom, dgeom, is, js, ks, i, j, k, n);
   for (int d = 0; d < ndims; d++) {
     if (addmode == ADD_MODE::REPLACE) {
       uvar(d, k + ks, j + js, i + is, n) = u(d);
@@ -241,7 +241,7 @@ void YAKL_INLINE compute_Hext(const real5d &uvar, const real5d &vvar,
 }
 
 template <uint ord, int off = ord / 2 - 1>
-void YAKL_INLINE fourier_Hext(SArray<real, 1, ndims> &u,
+void YAKL_INLINE fourier_H1ext(SArray<real, 1, ndims> &u,
                               const Geometry<Straight> &pgeom,
                               const Geometry<Twisted> &dgeom, int is, int js,
                               int ks, int i, int j, int k, int n, int nx,
@@ -249,9 +249,9 @@ void YAKL_INLINE fourier_Hext(SArray<real, 1, ndims> &u,
 
   // Adding 1 to off because GPUs don't like zero size structs
   SArray<real, 2, ndims, off + 1> shift;
-  SArray<real, 1, ndims> Hgeom;
+  SArray<real, 1, ndims> H1geom;
   for (int d = 0; d < ndims; d++) {
-    Hgeom(d) = dgeom.get_area_01entity(k + ks, j + js, i + is) /
+    H1geom(d) = dgeom.get_area_01entity(k + ks, j + js, i + is) /
                pgeom.get_area_10entity(k + ks, j + js, i + is);
   }
 
@@ -265,7 +265,7 @@ void YAKL_INLINE fourier_Hext(SArray<real, 1, ndims> &u,
       }
     }
   }
-  Hhat(u, Hgeom, shift);
+  H1hat(u, H1geom, shift);
 }
 
 template <uint ndofs>

@@ -167,13 +167,13 @@ public:
     int djs = dual_topology.js;
     int dks = dual_topology.ks;
 
-    // compute U = H v
+    // compute U = H1 v
     parallel_for(
         "Compute U",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_H<1, diff_ord>(Uvar, Vvar, this->primal_geometry,
+          compute_H1<1, diff_ord>(Uvar, Vvar, this->primal_geometry,
                                  this->dual_geometry, dis, djs, dks, i, j, k,
                                  n);
         });
@@ -189,13 +189,13 @@ public:
     int dks = dual_topology.ks;
 
     YAKL_SCOPE(PVPE, ::PVPE);
-    // compute U Hv, q0, f0
+    // compute U H1v, q0, f0
     parallel_for(
         "Compute U, Q0, F0",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-          compute_H<1, diff_ord>(Uvar, Vvar, this->primal_geometry,
+          compute_H1<1, diff_ord>(Uvar, Vvar, this->primal_geometry,
                                  this->dual_geometry, dis, djs, dks, i, j, k,
                                  n);
           PVPE.compute_q0f0(Q0var, f0var, Vvar, densvar, coriolisvar, dis, djs,
@@ -679,7 +679,7 @@ public:
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_H<1, diff_ord>(U, v_rhs, this->primal_geometry,
+          compute_H1<1, diff_ord>(U, v_rhs, this->primal_geometry,
                                  this->dual_geometry, dis, djs, dks, i, j, k,
                                  n);
         });
@@ -722,16 +722,16 @@ public:
               fourier_I<diff_ord>(primal_geometry, dual_geometry, pis, pjs, pks,
                                   ik, jk, 0, 0, n_cells_x, n_cells_y, nl);
 
-          SArray<real, 1, ndims> cH;
-          fourier_H<diff_ord>(cH, primal_geometry, dual_geometry, pis, pjs, pks,
+          SArray<real, 1, ndims> cH1;
+          fourier_H1<diff_ord>(cH1, primal_geometry, dual_geometry, pis, pjs, pks,
                               ik, jk, 0, 0, n_cells_x, n_cells_y, nl);
 
           SArray<real, 1, ndims> cD1Dbar2;
           fourier_cwD1Dbar2(cD1Dbar2, grav * refstate.ref_height, ik, jk, 0,
                             n_cells_x, n_cells_y, nl);
 
-          real hd = (1._fp - 0.25_fp * dt * dt * cD1Dbar2(0) * cI * cH(0) -
-                     0.25_fp * dt * dt * cD1Dbar2(1) * cI * cH(1));
+          real hd = (1._fp - 0.25_fp * dt * dt * cD1Dbar2(0) * cI * cH1(0) -
+                     0.25_fp * dt * dt * cD1Dbar2(1) * cI * cH1(1));
 
           dens_transform(k, j, i, n) /= hd;
         });
