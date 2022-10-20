@@ -408,7 +408,7 @@ public:
     YAKL_SCOPE(varset, ::varset);
 
     const auto total_density_f =
-        YAKL_LAMBDA(const real5d &densvar, int k, int j, int i, int n) {
+        YAKL_LAMBDA(const real5d &densvar, int d, int k, int j, int i, int n) {
       return varset.get_total_density(densvar, k, j, i, 0, 0, 0, n);
     };
 
@@ -424,14 +424,16 @@ public:
               densreconvar, densedgereconvar, this->primal_geometry,
               this->dual_geometry, Vvar, dis, djs, dks, i, j, k, n);
 
-          real dens0_ik = compute_Iext<diff_ord, vert_diff_ord>(
-              total_density_f, densvar, this->primal_geometry,
+          SArray<real, 1, 1> dens0_ik;
+          compute_Iext<1, diff_ord, vert_diff_ord>(
+              total_density_f, dens0_ik, densvar, this->primal_geometry,
               this->dual_geometry, pis, pjs, pks, i, j, k, n);
-          real dens0_im1 = compute_Iext<diff_ord, vert_diff_ord>(
-              total_density_f, densvar, this->primal_geometry,
+          SArray<real, 1, 1> dens0_im1;
+          compute_Iext<1, diff_ord, vert_diff_ord>(
+              total_density_f, dens0_im1, densvar, this->primal_geometry,
               this->dual_geometry, pis, pjs, pks, i - 1, j, k, n);
 
-          real he = 0.5_fp * (dens0_ik + dens0_im1);
+          real he = 0.5_fp * (dens0_ik(0) + dens0_im1(0));
           // scale twisted recons and add reference state
           for (int d = 0; d < ndims; d++) {
             for (int l = 0; l < ndensity; l++) {
@@ -452,14 +454,16 @@ public:
               densvertreconvar, densvertedgereconvar, this->primal_geometry,
               this->dual_geometry, Wvar, dis, djs, dks, i, j, k + 1, n);
 
-          real dens0_kp1 = compute_Iext<diff_ord, vert_diff_ord>(
-              total_density_f, densvar, this->primal_geometry,
+          SArray<real, 1, 1> dens0_kp1;
+          compute_Iext<1, diff_ord, vert_diff_ord>(
+              total_density_f, dens0_kp1, densvar, this->primal_geometry,
               this->dual_geometry, pis, pjs, pks, i, j, k + 1, n);
-          real dens0_ik = compute_Iext<diff_ord, vert_diff_ord>(
-              total_density_f, densvar, this->primal_geometry,
+          SArray<real, 1, 1> dens0_ik;
+          compute_Iext<1, diff_ord, vert_diff_ord>(
+              total_density_f, dens0_ik, densvar, this->primal_geometry,
               this->dual_geometry, pis, pjs, pks, i, j, k, n);
 
-          real hew = 0.5_fp * (dens0_kp1 + dens0_ik);
+          real hew = 0.5_fp * (dens0_kp1(0) + dens0_ik(0));
           // scale twisted recons and add reference state
           for (int l = 0; l < ndensity; l++) {
             densvertreconvar(l, k + dks + 1, j + djs, i + dis, n) +=
@@ -678,7 +682,7 @@ public:
     YAKL_SCOPE(varset, ::varset);
 
     const auto total_density_f =
-        YAKL_LAMBDA(const real5d &densvar, int k, int j, int i, int n) {
+        YAKL_LAMBDA(const real5d &densvar, int d, int k, int j, int i, int n) {
       return varset.get_total_density(densvar, k, j, i, 0, 0, 0, n);
     };
 
@@ -687,14 +691,15 @@ public:
         SimpleBounds<4>(dual_topology.ni, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-          real dens0_ik = compute_Iext<diff_ord, vert_diff_ord>(
-              total_density_f, densvar, this->primal_geometry,
+          SArray<real, 1, 1> dens0_ik, dens0_im1, dens0_km1;
+          compute_Iext<1, diff_ord, vert_diff_ord>(
+              total_density_f, dens0_ik, densvar, this->primal_geometry,
               this->dual_geometry, pis, pjs, pks, i, j, k, n);
-          real dens0_im1 = compute_Iext<diff_ord, vert_diff_ord>(
-              total_density_f, densvar, this->primal_geometry,
+          compute_Iext<1, diff_ord, vert_diff_ord>(
+              total_density_f, dens0_im1, densvar, this->primal_geometry,
               this->dual_geometry, pis, pjs, pks, i - 1, j, k, n);
-          real dens0_km1 = compute_Iext<diff_ord, vert_diff_ord>(
-              total_density_f, densvar, this->primal_geometry,
+          compute_Iext<1, diff_ord, vert_diff_ord>(
+              total_density_f, dens0_km1, densvar, this->primal_geometry,
               this->dual_geometry, pis, pjs, pks, i, j, k - 1, n);
 
           SArray<real, 1, ndims> u_ik;
@@ -739,14 +744,14 @@ public:
 
           if (addmode == ADD_MODE::ADD) {
             Fvar(0, pks + k, pjs + j, pis + i, n) +=
-                fac * 0.5_fp * (dens0_ik + dens0_im1) * u_ik(0);
+                fac * 0.5_fp * (dens0_ik(0) + dens0_im1(0)) * u_ik(0);
             FWvar(0, pks + k, pjs + j, pis + i, n) +=
-                fac * 0.5_fp * (dens0_ik + dens0_km1) * uw_ik(0);
+                fac * 0.5_fp * (dens0_ik(0) + dens0_km1(0)) * uw_ik(0);
           } else if (addmode == ADD_MODE::REPLACE) {
             Fvar(0, pks + k, pjs + j, pis + i, n) =
-                fac * 0.5_fp * (dens0_ik + dens0_im1) * u_ik(0);
+                fac * 0.5_fp * (dens0_ik(0) + dens0_im1(0)) * u_ik(0);
             FWvar(0, pks + k, pjs + j, pis + i, n) =
-                fac * 0.5_fp * (dens0_ik + dens0_km1) * uw_ik(0);
+                fac * 0.5_fp * (dens0_ik(0) + dens0_km1(0)) * uw_ik(0);
           }
 
           if (addmode == ADD_MODE::ADD) {
