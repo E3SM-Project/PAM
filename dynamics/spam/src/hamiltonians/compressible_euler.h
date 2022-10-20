@@ -35,7 +35,7 @@ public:
                               int n) const {
     SArray<real, 1, 1> geop0;
 #ifdef _EXTRUDED
-    compute_H2barext<1, diff_ord, vert_diff_ord>(
+    compute_H2bar_ext<1, diff_ord, vert_diff_ord>(
         geop0, geop, this->primal_geometry, this->dual_geometry, is, js, ks, i,
         j, k, n);
 #else
@@ -70,7 +70,7 @@ public:
 
     SArray<real, 1, 1> geop0;
 #ifdef _EXTRUDED
-    compute_H2barext<1, diff_ord, vert_diff_ord>(
+    compute_H2bar_ext<1, diff_ord, vert_diff_ord>(
         geop0, geop, this->primal_geometry, this->dual_geometry, is, js, ks, i,
         j, k, n);
 #else
@@ -174,7 +174,7 @@ public:
     SArray<real, 1, 1> geop0;
 
 #ifdef _EXTRUDED
-    compute_H2barext<1, diff_ord, vert_diff_ord>(
+    compute_H2bar_ext<1, diff_ord, vert_diff_ord>(
         geop0, geop, this->primal_geometry, this->dual_geometry, is, js, ks, i,
         j, k, n);
 #else
@@ -222,7 +222,7 @@ public:
     SArray<real, 1, 1> geop0;
 
 #ifdef _EXTRUDED
-    compute_H2barext<1, diff_ord, vert_diff_ord>(
+    compute_H2bar_ext<1, diff_ord, vert_diff_ord>(
         geop0, geop, this->primal_geometry, this->dual_geometry, is, js, ks, i,
         j, k, n);
 #else
