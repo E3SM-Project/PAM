@@ -208,6 +208,55 @@ void test_H2_convergence() {
   }
 }
 
+template <int diff_ord, class F> real compute_H0_error(int np, F ic_fun) {
+  PeriodicUnitSquare square(np, 2 * np);
+
+  auto st0 = square.create_straight_form<0>();
+  square.primal_geometry.set_0form_values(ic_fun, st0, 0);
+
+  auto tw2 = square.create_twisted_form<2>();
+  auto tw2_expected = square.create_twisted_form<2>();
+  square.dual_geometry.set_2form_values(ic_fun, tw2_expected, 0);
+
+  int dis = square.dual_topology.is;
+  int djs = square.dual_topology.js;
+  int dks = square.dual_topology.ks;
+
+  {
+    st0.exchange();
+
+    parallel_for(
+        SimpleBounds<3>(square.dual_topology.nl, square.dual_topology.n_cells_y,
+                        square.dual_topology.n_cells_x),
+        YAKL_LAMBDA(int k, int j, int i) {
+          compute_H0<1, diff_ord>(tw2.data, st0.data, square.primal_geometry,
+                                  square.dual_geometry, dis, djs, dks, i, j, k,
+                                  0);
+        });
+  }
+
+  real errf = square.compute_Linf_error(tw2_expected, tw2);
+  return errf;
+}
+
+void test_H0_convergence() {
+  const int nlevels = 5;
+  const real atol = 0.1;
+
+  {
+    const int diff_order = 2;
+    auto conv_x = ConvergenceTest<nlevels>(
+        "H0 2 x", compute_H0_error<diff_order, fun_x>, fun_x{});
+    conv_x.check_rate(diff_order, atol);
+    auto conv_y = ConvergenceTest<nlevels>(
+        "H0 2 y", compute_H0_error<diff_order, fun_y>, fun_y{});
+    conv_y.check_rate(diff_order, atol);
+    auto conv_xy = ConvergenceTest<nlevels>(
+        "H0 2 xy", compute_H0_error<diff_order, fun_xy>, fun_xy{});
+    conv_xy.check_rate(diff_order, atol);
+  }
+}
+
 template <int diff_ord, class F> real compute_H1_error(int np, F ic_fun) {
   PeriodicUnitSquare square(np, 2 * np);
 
@@ -287,6 +336,8 @@ void test_H1_convergence() {
 
 int main() {
   yakl::init();
+
+  test_H0_convergence();
 
   test_H2bar_convergence();
   test_H2_convergence();

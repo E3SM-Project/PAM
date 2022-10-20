@@ -213,6 +213,55 @@ void test_H2_ext_convergence() {
   }
 }
 
+template <int diff_ord, class F> real compute_H0_ext_error(int np, F ic_fun) {
+  ExtrudedUnitSquare square(np, 2 * np);
+
+  auto st00 = square.create_straight_form<0, 0>();
+  square.primal_geometry.set_00form_values(ic_fun, st00, 0);
+
+  auto tw11 = square.create_twisted_form<1, 1>();
+  auto tw11_expected = square.create_twisted_form<1, 1>();
+  square.dual_geometry.set_11form_values(ic_fun, tw11_expected, 0);
+
+  int dis = square.dual_topology.is;
+  int djs = square.dual_topology.js;
+  int dks = square.dual_topology.ks;
+
+  {
+    st00.exchange();
+
+    parallel_for(
+        SimpleBounds<3>(square.dual_topology.nl, square.dual_topology.n_cells_y,
+                        square.dual_topology.n_cells_x),
+        YAKL_LAMBDA(int k, int j, int i) {
+          compute_H0_ext<1, diff_ord, vert_diff_ord>(
+              tw11.data, st00.data, square.primal_geometry,
+              square.dual_geometry, dis, djs, dks, i, j, k, 0);
+        });
+  }
+
+  real errf = square.compute_Linf_error(tw11_expected, tw11);
+  return errf;
+}
+
+void test_H0_ext_convergence() {
+  const int nlevels = 5;
+  const real atol = 0.1;
+
+  {
+    const int diff_order = 2;
+    auto conv_x = ConvergenceTest<nlevels>(
+        "H0_ext 2 x", compute_H0_ext_error<diff_order, fun_x>, fun_x{});
+    conv_x.check_rate(diff_order, atol);
+    auto conv_z = ConvergenceTest<nlevels>(
+        "H0_ext 2 z", compute_H0_ext_error<diff_order, fun_z>, fun_z{});
+    conv_z.check_rate(1, atol);
+    auto conv_xz = ConvergenceTest<nlevels>(
+        "H0_ext 2 xz", compute_H0_ext_error<diff_order, fun_xz>, fun_xz{});
+    conv_xz.check_rate(1, atol);
+  }
+}
+
 template <int diff_ord, class F> real compute_H1_ext_error(int np, F ic_fun) {
   ExtrudedUnitSquare square(np, 2 * np);
 
@@ -340,6 +389,7 @@ void test_H1_vert_convergence() {
 
 int main() {
   yakl::init();
+  test_H0_ext_convergence();
   test_H2bar_ext_convergence();
   test_H2_ext_convergence();
   test_H1_ext_convergence();

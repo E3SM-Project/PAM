@@ -658,3 +658,99 @@ void YAKL_INLINE compute_H2_ext(const real5d &var0, const real5d &var,
     }
   }
 }
+
+template <uint ndofs>
+void YAKL_INLINE H0(SArray<real, 1, ndofs> &var,
+                    SArray<real, 3, ndofs, ndims, 1> const &dens, real H0geom) {
+
+  for (int l = 0; l < ndofs; l++) {
+    var(l) = dens(l, 0, 0);
+    var(l) *= H0geom;
+  }
+}
+
+template <uint ndofs, uint ord, uint off = ord / 2 - 1>
+void YAKL_INLINE compute_H0(SArray<real, 1, ndofs> &x0, const real5d &var,
+                            const Geometry<Straight> &pgeom,
+                            const Geometry<Twisted> &dgeom, int is, int js,
+                            int ks, int i, int j, int k, int n) {
+  SArray<real, 3, ndofs, ndims, ord - 1> x;
+  const real H0geom = dgeom.get_area_lform(2, 0, k + ks, j + js, i + is) /
+                      pgeom.get_area_lform(0, 0, k + ks, j + js, i + is);
+  for (int p = 0; p < ord - 1; p++) {
+    for (int l = 0; l < ndofs; l++) {
+      for (int d = 0; d < ndims; d++) {
+        if (d == 0) {
+          x(l, d, p) = var(l, k + ks, j + js, i + is + p - off, n);
+        }
+        if (d == 1) {
+          x(l, d, p) = var(l, k + ks, j + js + p - off, i + is, n);
+        }
+      }
+    }
+  }
+  H0<ndofs>(x0, x, H0geom);
+}
+
+template <uint ndofs, uint ord, ADD_MODE addmode = ADD_MODE::REPLACE,
+          uint off = ord / 2 - 1>
+void YAKL_INLINE compute_H0(const real5d &var0, const real5d &var,
+                            const Geometry<Straight> &pgeom,
+                            const Geometry<Twisted> &dgeom, int is, int js,
+                            int ks, int i, int j, int k, int n) {
+  SArray<real, 1, ndofs> x0;
+  compute_H0<ndofs, ord, off>(x0, var, pgeom, dgeom, is, js, ks, i, j, k, n);
+  for (int l = 0; l < ndofs; l++) {
+    if (addmode == ADD_MODE::REPLACE) {
+      var0(l, k + ks, j + js, i + is, n) = x0(l);
+    }
+    if (addmode == ADD_MODE::ADD) {
+      var0(l, k + ks, j + js, i + is, n) += x0(l);
+    }
+  }
+}
+
+template <uint ndofs, uint hord, uint vord, uint hoff = hord / 2 - 1,
+          uint voff = vord / 2 - 1>
+void YAKL_INLINE compute_H0_ext(SArray<real, 1, ndofs> &x0, const real5d &var,
+                                const Geometry<Straight> &pgeom,
+                                const Geometry<Twisted> &dgeom, int is, int js,
+                                int ks, int i, int j, int k, int n) {
+  SArray<real, 3, ndofs, ndims, hord - 1> x;
+  const real H0geom = dgeom.get_area_11entity(k + ks, j + js, i + is) /
+                      pgeom.get_area_00entity(k + ks, j + js, i + is);
+  for (int p = 0; p < hord - 1; p++) {
+    for (int l = 0; l < ndofs; l++) {
+      for (int d = 0; d < ndims; d++) {
+        if (d == 0) {
+          x(l, d, p) = var(l, k + ks, j + js, i + is + p - hoff, n);
+        }
+        if (d == 1) {
+          x(l, d, p) = var(l, k + ks, j + js + p - hoff, i + is, n);
+        }
+      }
+    }
+  }
+  H0<ndofs>(x0, x, H0geom);
+}
+
+template <uint ndofs, uint hord, uint vord,
+          ADD_MODE addmode = ADD_MODE::REPLACE, uint hoff = hord / 2 - 1,
+          uint voff = vord / 2 - 1>
+void YAKL_INLINE compute_H0_ext(const real5d &var0, const real5d &var,
+                                const Geometry<Straight> &pgeom,
+                                const Geometry<Twisted> &dgeom, int is, int js,
+                                int ks, int i, int j, int k, int n) {
+  SArray<real, 1, ndofs> x0;
+  compute_H0_ext<ndofs, hord, vord, hoff, voff>(x0, var, pgeom, dgeom, is, js,
+                                                ks, i, j, k, n);
+
+  for (int l = 0; l < ndofs; l++) {
+    if (addmode == ADD_MODE::REPLACE) {
+      var0(l, k + ks, j + js, i + is, n) = x0(l);
+    }
+    if (addmode == ADD_MODE::ADD) {
+      var0(l, k + ks, j + js, i + is, n) += x0(l);
+    }
+  }
+}
