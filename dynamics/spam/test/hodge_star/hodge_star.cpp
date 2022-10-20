@@ -257,6 +257,56 @@ void test_H0_convergence() {
   }
 }
 
+template <int diff_ord, class F> real compute_H0bar_error(int np, F ic_fun) {
+  PeriodicUnitSquare square(np, 2 * np);
+
+  auto tw0 = square.create_twisted_form<0>();
+  square.dual_geometry.set_0form_values(ic_fun, tw0, 0);
+
+  auto st2 = square.create_straight_form<2>();
+  auto st2_expected = square.create_straight_form<2>();
+  square.primal_geometry.set_2form_values(ic_fun, st2_expected, 0);
+
+  int pis = square.primal_topology.is;
+  int pjs = square.primal_topology.js;
+  int pks = square.primal_topology.ks;
+
+  {
+    tw0.exchange();
+
+    parallel_for(
+        SimpleBounds<3>(square.primal_topology.nl,
+                        square.primal_topology.n_cells_y,
+                        square.primal_topology.n_cells_x),
+        YAKL_LAMBDA(int k, int j, int i) {
+          compute_H0bar<1, diff_ord>(st2.data, tw0.data, square.primal_geometry,
+                                     square.dual_geometry, pis, pjs, pks, i, j,
+                                     k, 0);
+        });
+  }
+
+  real errf = square.compute_Linf_error(st2_expected, st2);
+  return errf;
+}
+
+void test_H0bar_convergence() {
+  const int nlevels = 5;
+  const real atol = 0.1;
+
+  {
+    const int diff_order = 2;
+    auto conv_x = ConvergenceTest<nlevels>(
+        "H0bar 2 x", compute_H0bar_error<diff_order, fun_x>, fun_x{});
+    conv_x.check_rate(diff_order, atol);
+    auto conv_y = ConvergenceTest<nlevels>(
+        "H0bar 2 y", compute_H0bar_error<diff_order, fun_y>, fun_y{});
+    conv_y.check_rate(diff_order, atol);
+    auto conv_xy = ConvergenceTest<nlevels>(
+        "H0bar 2 xy", compute_H0bar_error<diff_order, fun_xy>, fun_xy{});
+    conv_xy.check_rate(diff_order, atol);
+  }
+}
+
 template <int diff_ord, class F> real compute_H1_error(int np, F ic_fun) {
   PeriodicUnitSquare square(np, 2 * np);
 
@@ -338,10 +388,12 @@ int main() {
   yakl::init();
 
   test_H0_convergence();
+  test_H0bar_convergence();
 
-  test_H2bar_convergence();
-  test_H2_convergence();
   test_H1_convergence();
+
+  test_H2_convergence();
+  test_H2bar_convergence();
 
   yakl::finalize();
 }
