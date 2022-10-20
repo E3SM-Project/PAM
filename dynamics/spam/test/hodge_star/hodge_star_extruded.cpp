@@ -57,7 +57,7 @@ struct vecfun_xz {
   }
 };
 
-template <int diff_ord, class F> real compute_Iext_error(int np, F ic_fun) {
+template <int diff_ord, class F> real compute_H2barext_error(int np, F ic_fun) {
   ExtrudedUnitSquare square(np, 2 * np);
 
   auto tw11 = square.create_twisted_form<1, 1>();
@@ -79,7 +79,7 @@ template <int diff_ord, class F> real compute_Iext_error(int np, F ic_fun) {
                         square.primal_topology.n_cells_y,
                         square.primal_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
-          compute_Iext<1, diff_ord, vert_diff_ord>(
+          compute_H2barext<1, diff_ord, vert_diff_ord>(
               st00.data, tw11.data, square.primal_geometry,
               square.dual_geometry, pis, pjs, pks, i, j, k, 0);
         });
@@ -89,46 +89,46 @@ template <int diff_ord, class F> real compute_Iext_error(int np, F ic_fun) {
   return errf;
 }
 
-void test_Iext_convergence() {
+void test_H2barext_convergence() {
   const int nlevels = 5;
   const real atol = 0.1;
 
   {
     const int diff_order = 2;
     auto conv_x = ConvergenceTest<nlevels>(
-        "Iext 2 x", compute_Iext_error<diff_order, fun_x>, fun_x{});
+        "H2barext 2 x", compute_H2barext_error<diff_order, fun_x>, fun_x{});
     conv_x.check_rate(diff_order, atol);
     auto conv_z = ConvergenceTest<nlevels>(
-        "Iext 2 z", compute_Iext_error<diff_order, fun_z>, fun_z{});
+        "H2barext 2 z", compute_H2barext_error<diff_order, fun_z>, fun_z{});
     conv_z.check_rate(1, atol);
     auto conv_xz = ConvergenceTest<nlevels>(
-        "Iext 2 xz", compute_Iext_error<diff_order, fun_xz>, fun_xz{});
+        "H2barext 2 xz", compute_H2barext_error<diff_order, fun_xz>, fun_xz{});
     conv_xz.check_rate(1, atol);
   }
 
   {
     const int diff_order = 4;
     auto conv_x = ConvergenceTest<nlevels>(
-        "Iext 4 x", compute_Iext_error<diff_order, fun_x>, fun_x{});
+        "H2barext 4 x", compute_H2barext_error<diff_order, fun_x>, fun_x{});
     conv_x.check_rate(diff_order, atol);
     auto conv_z = ConvergenceTest<nlevels>(
-        "Iext 4 z", compute_Iext_error<diff_order, fun_z>, fun_z{});
+        "H2barext 4 z", compute_H2barext_error<diff_order, fun_z>, fun_z{});
     conv_z.check_rate(1, atol);
     auto conv_xz = ConvergenceTest<nlevels>(
-        "Iext 4 xz", compute_Iext_error<diff_order, fun_xz>, fun_xz{});
+        "H2barext 4 xz", compute_H2barext_error<diff_order, fun_xz>, fun_xz{});
     conv_xz.check_rate(1, atol);
   }
 
   {
     const int diff_order = 6;
     auto conv_x = ConvergenceTest<nlevels>(
-        "Iext 6 x", compute_Iext_error<diff_order, fun_x>, fun_x{});
+        "H2barext 6 x", compute_H2barext_error<diff_order, fun_x>, fun_x{});
     conv_x.check_rate(diff_order, atol);
     auto conv_z = ConvergenceTest<nlevels>(
-        "Iext 6 z", compute_Iext_error<diff_order, fun_z>, fun_z{});
+        "H2barext 6 z", compute_H2barext_error<diff_order, fun_z>, fun_z{});
     conv_z.check_rate(1, atol);
     auto conv_xz = ConvergenceTest<nlevels>(
-        "Iext 6 xz", compute_Iext_error<diff_order, fun_xz>, fun_xz{});
+        "H2barext 6 xz", compute_H2barext_error<diff_order, fun_xz>, fun_xz{});
     conv_xz.check_rate(1, atol);
   }
 }
@@ -305,9 +305,9 @@ template <int vdiff_ord, class F> real compute_H1vert_error(int np, F ic_fun) {
                         square.dual_topology.n_cells_y,
                         square.dual_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
-          compute_H1vert<1, vdiff_ord>(tw10.data, st01.data, square.primal_geometry,
-                                   square.dual_geometry, dis, djs, dks, i, j,
-                                   k + 1, 0);
+          compute_H1vert<1, vdiff_ord>(
+              tw10.data, st01.data, square.primal_geometry,
+              square.dual_geometry, dis, djs, dks, i, j, k + 1, 0);
         });
   }
 
@@ -321,17 +321,19 @@ void test_H1vert_convergence() {
 
   {
     auto conv_z = ConvergenceTest<nlevels>(
-        "H1vert 2 z", compute_H1vert_error<vert_diff_ord, vecfun_z>, vecfun_z{});
+        "H1vert 2 z", compute_H1vert_error<vert_diff_ord, vecfun_z>,
+        vecfun_z{});
     conv_z.check_rate(vert_diff_ord, atol);
     auto conv_xz = ConvergenceTest<nlevels>(
-        "H1vert 2 xz", compute_H1vert_error<vert_diff_ord, vecfun_xz>, vecfun_xz{});
+        "H1vert 2 xz", compute_H1vert_error<vert_diff_ord, vecfun_xz>,
+        vecfun_xz{});
     conv_xz.check_rate(vert_diff_ord, atol);
   }
 }
 
 int main() {
   yakl::init();
-  test_Iext_convergence();
+  test_H2barext_convergence();
   test_Jext_convergence();
   test_H1ext_convergence();
   test_H1vert_convergence();

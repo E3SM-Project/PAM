@@ -318,7 +318,8 @@ void YAKL_INLINE compute_twisted_vert_recon(
   SArray<real, 1, 1> uvar;
   SArray<real, 3, ndofs, 1, 2> edgerecon;
 
-  compute_H1vert<1, vert_diff_ord>(uvar, W, pgeom, dgeom, is, js, ks, i, j, k, n);
+  compute_H1vert<1, vert_diff_ord>(uvar, W, pgeom, dgeom, is, js, ks, i, j, k,
+                                   n);
 
   for (int l = 0; l < ndofs; l++) {
     edgerecon(l, 0, 0) =
@@ -415,7 +416,7 @@ void YAKL_INLINE compute_straight_xz_recon(const real5d &reconvar,
   compute_H1ext<1, diff_ord>(f1, V, pgeom, dgeom, is, js, ks, i + 1, j, k, n);
   compute_H1ext<1, diff_ord>(f2, V, pgeom, dgeom, is, js, ks, i, j, k + 1, n);
   compute_H1ext<1, diff_ord>(f3, V, pgeom, dgeom, is, js, ks, i + 1, j, k + 1,
-                            n);
+                             n);
 
   SArray<real, 1, 4> flux;
   flux(0) = f0(0);
@@ -461,10 +462,12 @@ void YAKL_INLINE compute_straight_xz_vert_recon(
 
   SArray<real, 1, 1> f0, f1, f2, f3;
   compute_H1vert<1, vert_diff_ord>(f0, W, pgeom, dgeom, is, js, ks, i, j, k, n);
-  compute_H1vert<1, vert_diff_ord>(f1, W, pgeom, dgeom, is, js, ks, i - 1, j, k, n);
-  compute_H1vert<1, vert_diff_ord>(f2, W, pgeom, dgeom, is, js, ks, i, j, k + 1, n);
-  compute_H1vert<1, vert_diff_ord>(f3, W, pgeom, dgeom, is, js, ks, i - 1, j, k + 1,
-                               n);
+  compute_H1vert<1, vert_diff_ord>(f1, W, pgeom, dgeom, is, js, ks, i - 1, j, k,
+                                   n);
+  compute_H1vert<1, vert_diff_ord>(f2, W, pgeom, dgeom, is, js, ks, i, j, k + 1,
+                                   n);
+  compute_H1vert<1, vert_diff_ord>(f3, W, pgeom, dgeom, is, js, ks, i - 1, j,
+                                   k + 1, n);
   SArray<real, 1, 4> flux;
   flux(0) = f0(0);
   flux(1) = f1(0);

@@ -98,7 +98,7 @@ public:
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-          compute_Iext<ndensity, diff_ord, vert_diff_ord>(
+          compute_H2barext<ndensity, diff_ord, vert_diff_ord>(
               field.data, x.fields_arr[DENSVAR].data, this->primal_geometry,
               this->dual_geometry, pis, pjs, pks, i, j, k, n);
         });
@@ -221,7 +221,7 @@ public:
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-          compute_Iext<ndensity, diff_ord, vert_diff_ord>(
+          compute_H2barext<ndensity, diff_ord, vert_diff_ord>(
               subtract_refstate_f, dens0var, densvar, this->primal_geometry,
               this->dual_geometry, pis, pjs, pks, i, j, k, n);
         });
@@ -241,8 +241,8 @@ public:
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
           compute_H1ext<1, diff_ord>(Uvar, Vvar, this->primal_geometry,
-                                    this->dual_geometry, dis, djs, dks, i, j, k,
-                                    n);
+                                     this->dual_geometry, dis, djs, dks, i, j,
+                                     k, n);
         });
   }
 
@@ -260,8 +260,8 @@ public:
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
           compute_H1vert<1, vert_diff_ord>(UWvar, Wvar, this->primal_geometry,
-                                       this->dual_geometry, dis, djs, dks, i, j,
-                                       k + 1, n);
+                                           this->dual_geometry, dis, djs, dks,
+                                           i, j, k + 1, n);
         });
   }
 
@@ -425,11 +425,11 @@ public:
               this->dual_geometry, Vvar, dis, djs, dks, i, j, k, n);
 
           SArray<real, 1, 1> dens0_ik;
-          compute_Iext<1, diff_ord, vert_diff_ord>(
+          compute_H2barext<1, diff_ord, vert_diff_ord>(
               total_density_f, dens0_ik, densvar, this->primal_geometry,
               this->dual_geometry, pis, pjs, pks, i, j, k, n);
           SArray<real, 1, 1> dens0_im1;
-          compute_Iext<1, diff_ord, vert_diff_ord>(
+          compute_H2barext<1, diff_ord, vert_diff_ord>(
               total_density_f, dens0_im1, densvar, this->primal_geometry,
               this->dual_geometry, pis, pjs, pks, i - 1, j, k, n);
 
@@ -455,11 +455,11 @@ public:
               this->dual_geometry, Wvar, dis, djs, dks, i, j, k + 1, n);
 
           SArray<real, 1, 1> dens0_kp1;
-          compute_Iext<1, diff_ord, vert_diff_ord>(
+          compute_H2barext<1, diff_ord, vert_diff_ord>(
               total_density_f, dens0_kp1, densvar, this->primal_geometry,
               this->dual_geometry, pis, pjs, pks, i, j, k + 1, n);
           SArray<real, 1, 1> dens0_ik;
-          compute_Iext<1, diff_ord, vert_diff_ord>(
+          compute_H2barext<1, diff_ord, vert_diff_ord>(
               total_density_f, dens0_ik, densvar, this->primal_geometry,
               this->dual_geometry, pis, pjs, pks, i, j, k, n);
 
@@ -692,13 +692,13 @@ public:
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
           SArray<real, 1, 1> dens0_ik, dens0_im1, dens0_km1;
-          compute_Iext<1, diff_ord, vert_diff_ord>(
+          compute_H2barext<1, diff_ord, vert_diff_ord>(
               total_density_f, dens0_ik, densvar, this->primal_geometry,
               this->dual_geometry, pis, pjs, pks, i, j, k, n);
-          compute_Iext<1, diff_ord, vert_diff_ord>(
+          compute_H2barext<1, diff_ord, vert_diff_ord>(
               total_density_f, dens0_im1, densvar, this->primal_geometry,
               this->dual_geometry, pis, pjs, pks, i - 1, j, k, n);
-          compute_Iext<1, diff_ord, vert_diff_ord>(
+          compute_H2barext<1, diff_ord, vert_diff_ord>(
               total_density_f, dens0_km1, densvar, this->primal_geometry,
               this->dual_geometry, pis, pjs, pks, i, j, k - 1, n);
 
@@ -708,26 +708,26 @@ public:
           SArray<real, 1, 1> uw_kp1;
 
           compute_H1ext<1, diff_ord>(u_ik, Vvar, this->primal_geometry,
-                                    this->dual_geometry, pis, pjs, pks, i, j, k,
-                                    n);
+                                     this->dual_geometry, pis, pjs, pks, i, j,
+                                     k, n);
           compute_H1ext<1, diff_ord>(u_ip1, Vvar, this->primal_geometry,
-                                    this->dual_geometry, pis, pjs, pks, i + 1,
-                                    j, k, n);
+                                     this->dual_geometry, pis, pjs, pks, i + 1,
+                                     j, k, n);
 
           if (k == 0 || k == (dual_topology.ni - 1)) {
             uw_ik(0) = 0;
           } else {
             compute_H1vert<1, vert_diff_ord>(uw_ik, Wvar, this->primal_geometry,
-                                         this->dual_geometry, pis, pjs, pks, i,
-                                         j, k, n);
+                                             this->dual_geometry, pis, pjs, pks,
+                                             i, j, k, n);
           }
 
           if (k >= (dual_topology.ni - 2)) {
             uw_kp1(0) = 0;
           } else {
-            compute_H1vert<1, vert_diff_ord>(uw_kp1, Wvar, this->primal_geometry,
-                                         this->dual_geometry, pis, pjs, pks, i,
-                                         j, k + 1, n);
+            compute_H1vert<1, vert_diff_ord>(
+                uw_kp1, Wvar, this->primal_geometry, this->dual_geometry, pis,
+                pjs, pks, i, j, k + 1, n);
           }
 
           real K2 =
@@ -1028,13 +1028,13 @@ public:
           fourier_cwD1Dbar2(fD1Dbar, 1, i, j, k, dual_topology.n_cells_x,
                             dual_topology.n_cells_y, dual_topology.ni);
 
-          real fI = fourier_Iext<diff_ord>(primal_geometry, dual_geometry, pis,
-                                           pjs, pks, i, j, k, 0, n_cells_x,
-                                           n_cells_y, dual_topology.ni);
+          real fH2bar = fourier_H2barext<diff_ord>(
+              primal_geometry, dual_geometry, pis, pjs, pks, i, j, k, 0,
+              n_cells_x, n_cells_y, dual_topology.ni);
           SArray<real, 1, ndims> fH1;
           fourier_H1ext<diff_ord>(fH1, primal_geometry, dual_geometry, pis, pjs,
-                                 pks, i, j, k, 0, n_cells_x, n_cells_y,
-                                 dual_topology.ni);
+                                  pks, i, j, k, 0, n_cells_x, n_cells_y,
+                                  dual_topology.ni);
           SArray<complex, 1, ndims> fD1;
           fourier_cwD1(fD1, 1, i, j, k, dual_topology.n_cells_x,
                        dual_topology.n_cells_y, dual_topology.ni);
@@ -1044,7 +1044,7 @@ public:
           real c1 = 1;
           for (int d1 = 0; d1 < ndensity; ++d1) {
             for (int d2 = 0; d2 < ndensity; ++d2) {
-              c1 -= dtf2 * fI * fH1(0) * fD1Dbar(0) * he * q_pi(d1, k, n) *
+              c1 -= dtf2 * fH2bar * fH1(0) * fD1Dbar(0) * he * q_pi(d1, k, n) *
                     q_pi(d2, k, n) * refstate.Blin_coeff(d1, d2, k, n);
             }
           }
@@ -1053,7 +1053,7 @@ public:
           for (int d1 = 0; d1 < ndensity; ++d1) {
             complex cd1 = 0;
             for (int d2 = 0; d2 < ndensity; ++d2) {
-              cd1 += fD1(0) * dtf2 * fI * q_pi(d2, k, n) *
+              cd1 += fD1(0) * dtf2 * fH2bar * q_pi(d2, k, n) *
                      refstate.Blin_coeff(d2, d1, k, n);
             }
             complex_vcoeff(1 + d1, k, j, i, n) = cd1 / c1;
@@ -1065,22 +1065,22 @@ public:
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          real fI_k = fourier_Iext<diff_ord>(
+          real fH2bar_k = fourier_H2barext<diff_ord>(
               primal_geometry, dual_geometry, pis, pjs, pks, i, j, k, 0,
               n_cells_x, n_cells_y, dual_topology.ni);
-          real fI_kp1 = fourier_Iext<diff_ord>(
+          real fH2bar_kp1 = fourier_H2barext<diff_ord>(
               primal_geometry, dual_geometry, pis, pjs, pks, i, j, k + 1, 0,
               n_cells_x, n_cells_y, dual_topology.ni);
 
           real gamma_fac_kp2 =
               rho_di(0, k + 2, n) * H1vert_coeff(primal_geometry, dual_geometry,
-                                             pis, pjs, pks, i, j, k + 2);
+                                                 pis, pjs, pks, i, j, k + 2);
           real gamma_fac_kp1 =
               rho_di(0, k + 1, n) * H1vert_coeff(primal_geometry, dual_geometry,
-                                             pis, pjs, pks, i, j, k + 1);
+                                                 pis, pjs, pks, i, j, k + 1);
           real gamma_fac_k =
-              rho_di(0, k, n) *
-              H1vert_coeff(primal_geometry, dual_geometry, pis, pjs, pks, i, j, k);
+              rho_di(0, k, n) * H1vert_coeff(primal_geometry, dual_geometry,
+                                             pis, pjs, pks, i, j, k);
 
           tri_u(k, j, i, n) = 0;
           tri_d(k, j, i, n) = 1;
@@ -1090,8 +1090,9 @@ public:
             for (int d2 = 0; d2 < ndensity; ++d2) {
               real alpha_kp1 = q_di(d1, k + 1, n);
 
-              real beta_kp1 = fI_kp1 * refstate.Blin_coeff(d1, d2, k + 1, n);
-              real beta_k = fI_k * refstate.Blin_coeff(d1, d2, k, n);
+              real beta_kp1 =
+                  fH2bar_kp1 * refstate.Blin_coeff(d1, d2, k + 1, n);
+              real beta_k = fH2bar_k * refstate.Blin_coeff(d1, d2, k, n);
 
               real gamma_kp2 = gamma_fac_kp2 * q_di(d2, k + 2, n);
               real gamma_kp1 = gamma_fac_kp1 * q_di(d2, k + 1, n);
@@ -1110,31 +1111,31 @@ public:
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          real fI_k = fourier_Iext<diff_ord>(
+          real fH2bar_k = fourier_H2barext<diff_ord>(
               primal_geometry, dual_geometry, pis, pjs, pks, i, j, k, 0,
               n_cells_x, n_cells_y, dual_topology.ni);
-          real fI_kp1 = fourier_Iext<diff_ord>(
+          real fH2bar_kp1 = fourier_H2barext<diff_ord>(
               primal_geometry, dual_geometry, pis, pjs, pks, i, j, k + 1, 0,
               n_cells_x, n_cells_y, dual_topology.ni);
 
           real gamma_fac_kp2 =
               rho_di(0, k + 2, n) * H1vert_coeff(primal_geometry, dual_geometry,
-                                             pis, pjs, pks, i, j, k + 2);
+                                                 pis, pjs, pks, i, j, k + 2);
           real gamma_fac_kp1 =
               rho_di(0, k + 1, n) * H1vert_coeff(primal_geometry, dual_geometry,
-                                             pis, pjs, pks, i, j, k + 1);
+                                                 pis, pjs, pks, i, j, k + 1);
           real gamma_fac_k =
-              rho_di(0, k, n) *
-              H1vert_coeff(primal_geometry, dual_geometry, pis, pjs, pks, i, j, k);
+              rho_di(0, k, n) * H1vert_coeff(primal_geometry, dual_geometry,
+                                             pis, pjs, pks, i, j, k);
 
           SArray<real, 1, ndims> fH1_kp1_a;
           SArray<real, 1, ndims> fH1_k_a;
-          fourier_H1ext<diff_ord>(fH1_kp1_a, primal_geometry, dual_geometry, pis,
-                                 pjs, pks, i, j, k + 1, 0, n_cells_x, n_cells_y,
-                                 dual_topology.ni);
+          fourier_H1ext<diff_ord>(fH1_kp1_a, primal_geometry, dual_geometry,
+                                  pis, pjs, pks, i, j, k + 1, 0, n_cells_x,
+                                  n_cells_y, dual_topology.ni);
           fourier_H1ext<diff_ord>(fH1_k_a, primal_geometry, dual_geometry, pis,
-                                 pjs, pks, i, j, k, 0, n_cells_x, n_cells_y,
-                                 dual_topology.ni);
+                                  pjs, pks, i, j, k, 0, n_cells_x, n_cells_y,
+                                  dual_topology.ni);
           real fH1h_kp1 = fH1_kp1_a(0);
           real fH1h_k = fH1_k_a(0);
 
@@ -1152,9 +1153,9 @@ public:
 
                 real alpha_kp1 = dtf2 * q_di(d1, k + 1, n);
                 complex beta_kp1 =
-                    fI_kp1 * refstate.Blin_coeff(d1, d2, k + 1, n) *
+                    fH2bar_kp1 * refstate.Blin_coeff(d1, d2, k + 1, n) *
                     q_pi(d2, k + 1, n) * fDbar2_kp1 * he_kp1 * fH1h_kp1;
-                complex beta_k = fI_k * refstate.Blin_coeff(d1, d2, k, n) *
+                complex beta_k = fH2bar_k * refstate.Blin_coeff(d1, d2, k, n) *
                                  q_pi(d2, k, n) * fDbar2_k * he_k * fH1h_k;
 
                 real gamma_kp2 = gamma_fac_kp2 * q_di(d3, k + 2, n);
@@ -1230,7 +1231,7 @@ public:
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_Iext<ndensity, diff_ord, vert_diff_ord>(
+          compute_H2barext<ndensity, diff_ord, vert_diff_ord>(
               sol_dens, rhs_dens, this->primal_geometry, this->dual_geometry,
               pis, pjs, pks, i, j, k, n);
         });
@@ -1325,21 +1326,21 @@ public:
           complex vc0_k =
               complex_vcoeff(0, k, j, i, n) * complex_vrhs(k, j, i, n);
 
-          real fI_k = fourier_Iext<diff_ord>(
+          real fH2bar_k = fourier_H2barext<diff_ord>(
               primal_geometry, dual_geometry, pis, pjs, pks, i, j, k, 0,
               n_cells_x, n_cells_y, dual_topology.ni);
-          real fI_kp1 = fourier_Iext<diff_ord>(
+          real fH2bar_kp1 = fourier_H2barext<diff_ord>(
               primal_geometry, dual_geometry, pis, pjs, pks, i, j, k + 1, 0,
               n_cells_x, n_cells_y, dual_topology.ni);
 
           SArray<real, 1, ndims> fH1_kp1_a;
           SArray<real, 1, ndims> fH1_k_a;
-          fourier_H1ext<diff_ord>(fH1_kp1_a, primal_geometry, dual_geometry, pis,
-                                 pjs, pks, i, j, k + 1, 0, n_cells_x, n_cells_y,
-                                 dual_topology.ni);
+          fourier_H1ext<diff_ord>(fH1_kp1_a, primal_geometry, dual_geometry,
+                                  pis, pjs, pks, i, j, k + 1, 0, n_cells_x,
+                                  n_cells_y, dual_topology.ni);
           fourier_H1ext<diff_ord>(fH1_k_a, primal_geometry, dual_geometry, pis,
-                                 pjs, pks, i, j, k, 0, n_cells_x, n_cells_y,
-                                 dual_topology.ni);
+                                  pjs, pks, i, j, k, 0, n_cells_x, n_cells_y,
+                                  dual_topology.ni);
           real fH1h_kp1 = fH1_kp1_a(0);
           real fH1h_k = fH1_k_a(0);
 
@@ -1355,9 +1356,9 @@ public:
             for (int d2 = 0; d2 < ndensity; ++d2) {
               real alpha_kp1 = dtf2 * q_di(d1, k + 1, n);
               complex beta_kp1 =
-                  fI_kp1 * refstate.Blin_coeff(d1, d2, k + 1, n) *
+                  fH2bar_kp1 * refstate.Blin_coeff(d1, d2, k + 1, n) *
                   q_pi(d2, k + 1, n) * fDbar2_kp1 * he_kp1 * fH1h_kp1;
-              complex beta_k = fI_k * refstate.Blin_coeff(d1, d2, k, n) *
+              complex beta_k = fH2bar_k * refstate.Blin_coeff(d1, d2, k, n) *
                                q_pi(d2, k, n) * fDbar2_k * he_k * fH1h_k;
               complex_wrhs(k, j, i, n) +=
                   alpha_kp1 * (beta_kp1 * vc0_kp1 - beta_k * vc0_k);
@@ -1411,10 +1412,10 @@ public:
 
           real gamma_fac_kp1 =
               rho_di(0, k + 1, n) * H1vert_coeff(primal_geometry, dual_geometry,
-                                             pis, pjs, pks, i, j, k + 1);
+                                                 pis, pjs, pks, i, j, k + 1);
           real gamma_fac_k =
-              rho_di(0, k, n) *
-              H1vert_coeff(primal_geometry, dual_geometry, pis, pjs, pks, i, j, k);
+              rho_di(0, k, n) * H1vert_coeff(primal_geometry, dual_geometry,
+                                             pis, pjs, pks, i, j, k);
 
           complex_vrhs(k, j, i, n) *= complex_vcoeff(0, k, j, i, n);
           for (int d1 = 0; d1 < ndensity; ++d1) {
@@ -1475,8 +1476,8 @@ public:
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_H1ext<1, diff_ord>(uvar, sol_v, this->primal_geometry,
-                                    this->dual_geometry, dis, djs, dks, i, j, k,
-                                    n);
+                                     this->dual_geometry, dis, djs, dks, i, j,
+                                     k, n);
         });
 
     parallel_for(
@@ -1485,8 +1486,8 @@ public:
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_H1vert<1, vert_diff_ord>(uwvar, sol_w, this->primal_geometry,
-                                       this->dual_geometry, dis, djs, dks, i, j,
-                                       k + 1, n);
+                                           this->dual_geometry, dis, djs, dks,
+                                           i, j, k + 1, n);
         });
 
     auxiliary_vars.fields_arr[UWVAR].set_bnd(0.0);
@@ -2125,8 +2126,8 @@ public:
         SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
         YAKL_LAMBDA(int k, int n) {
           SArray<real, 1, 1> rho0;
-          compute_Iv<1, vert_diff_ord>(rho0, refstate.dens.data, primal_geom,
-                                       dual_geom, pks, k, n);
+          compute_H2bar_vert<1, vert_diff_ord>(
+              rho0, refstate.dens.data, primal_geom, dual_geom, pks, k, n);
           refstate.rho_pi.data(0, k, n) = rho0(0);
         });
 
