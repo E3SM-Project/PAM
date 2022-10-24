@@ -364,90 +364,74 @@ void YAKL_INLINE wDv(real &var, SArray<real, 1, ndofs> const &recon,
   }
 }
 
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_wDv_fct(const real5d &tendvar,
-                                 const real5d &vertreconvar,
+template <uint ndofs, bool fct, class R, class D>
+real YAKL_INLINE compute_wDv(const R &vertreconvar, const real5d &Phivertvar,
+                             const D &densvar, int is, int js, int ks, int i,
+                             int j, int k, int n) {
+  real tend;
+  SArray<real, 2, ndofs, 2> dens;
+  for (int l = 0; l < ndofs; l++) {
+    // full state dens
+    if constexpr (std::is_same_v<D, real5d>) {
+      dens(l, 1) = densvar(l, k + ks + 1, j + js, i + is, n);
+      dens(l, 0) = densvar(l, k + ks, j + js, i + is, n);
+    }
+    // reference state dens
+    if constexpr (std::is_same_v<D, real3d>) {
+      dens(l, 1) = densvar(l, k + 1, n);
+      dens(l, 0) = densvar(l, k, n);
+    }
+  }
+
+  // we have to load recon
+  if constexpr (std::is_same_v<R, real5d> || std::is_same_v<R, real3d>) {
+    SArray<real, 1, ndofs> recon;
+    for (int l = 0; l < ndofs; l++) {
+      // Need to add 1 to k here because UW has an extra dof at the bottom
+
+      // full state recon
+      if constexpr (std::is_same_v<R, real5d>) {
+        recon(l) = vertreconvar(l, k + ks + 1, j + js, i + is, n) *
+                   Phivertvar(l, k + ks + 1, j + js, i + is, n);
+      }
+
+      // reference state recon
+      if constexpr (std::is_same_v<R, real3d>) {
+        recon(l) = vertreconvar(l, k + 1, n);
+      }
+
+      if constexpr (fct) {
+        recon(l) *= Phivertvar(l, k + ks + 1, j + js, i + is, n);
+      }
+    }
+    wDv<ndofs>(tend, recon, dens);
+  } else {
+    wDv<ndofs>(tend, vertreconvar, dens);
+  }
+  return tend;
+}
+
+template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE, class R, class D>
+void YAKL_INLINE compute_wDv(const real5d &tendvar, const R &vertreconvar,
+                             const D &densvar, int is, int js, int ks, int i,
+                             int j, int k, int n) {
+  real tend = compute_wDv<ndofs, false>(vertreconvar, tendvar, densvar, is, js,
+                                        ks, i, j, k, n);
+  if (addmode == ADD_MODE::REPLACE) {
+    tendvar(0, k + ks, j + js, i + is, n) = tend;
+  }
+  if (addmode == ADD_MODE::ADD) {
+    tendvar(0, k + ks, j + js, i + is, n) += tend;
+  }
+}
+
+template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE, class R>
+void YAKL_INLINE compute_wDv_fct(const real5d &tendvar, const R &vertreconvar,
                                  const real5d &Phivertvar,
                                  const real5d &densvar, int is, int js, int ks,
                                  int i, int j, int k, int n) {
-  real tend;
-  SArray<real, 1, ndofs> recon;
-  SArray<real, 2, ndofs, 2> dens;
-  for (int l = 0; l < ndofs; l++) {
-    // Need to add 1 to k here because UW has an extra dof at the bottom
-    recon(l) = vertreconvar(l, k + ks + 1, j + js, i + is, n) *
-               Phivertvar(l, k + ks + 1, j + js, i + is, n);
-    dens(l, 1) = densvar(l, k + ks + 1, j + js, i + is, n);
-    dens(l, 0) = densvar(l, k + ks, j + js, i + is, n);
-  }
-  wDv<ndofs>(tend, recon, dens);
-  if (addmode == ADD_MODE::REPLACE) {
-    tendvar(0, k + ks, j + js, i + is, n) = tend;
-  }
-  if (addmode == ADD_MODE::ADD) {
-    tendvar(0, k + ks, j + js, i + is, n) += tend;
-  }
-}
-
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_wDv(const real5d &tendvar, const real5d &vertreconvar,
-                             const real5d &densvar, int is, int js, int ks,
-                             int i, int j, int k, int n) {
-  real tend;
-  SArray<real, 1, ndofs> recon;
-  SArray<real, 2, ndofs, 2> dens;
-  for (int l = 0; l < ndofs; l++) {
-    // Need to add 1 to k here because UW has an extra dof at the bottom
-    recon(l) = vertreconvar(l, k + ks + 1, j + js, i + is, n);
-    dens(l, 1) = densvar(l, k + ks + 1, j + js, i + is, n);
-    dens(l, 0) = densvar(l, k + ks, j + js, i + is, n);
-  }
-  wDv<ndofs>(tend, recon, dens);
-  if (addmode == ADD_MODE::REPLACE) {
-    tendvar(0, k + ks, j + js, i + is, n) = tend;
-  }
-  if (addmode == ADD_MODE::ADD) {
-    tendvar(0, k + ks, j + js, i + is, n) += tend;
-  }
-}
-
-// versiion that take a reference state
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_wDv(const real5d &tendvar, const real3d &vertreconvar,
-                             const real5d &densvar, int is, int js, int ks,
-                             int i, int j, int k, int n) {
-  real tend;
-  SArray<real, 1, ndofs> recon;
-  SArray<real, 2, ndofs, 2> dens;
-  for (int l = 0; l < ndofs; l++) {
-    // Need to add 1 to k here because UW has an extra dof at the bottom
-    recon(l) = vertreconvar(l, k + 1, n);
-    dens(l, 1) = densvar(l, k + ks + 1, j + js, i + is, n);
-    dens(l, 0) = densvar(l, k + ks, j + js, i + is, n);
-  }
-  wDv<ndofs>(tend, recon, dens);
-  if (addmode == ADD_MODE::REPLACE) {
-    tendvar(0, k + ks, j + js, i + is, n) = tend;
-  }
-  if (addmode == ADD_MODE::ADD) {
-    tendvar(0, k + ks, j + js, i + is, n) += tend;
-  }
-}
-
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_wDv(const real5d &tendvar, const real3d &vertreconvar,
-                             const real3d &densvar, int is, int js, int ks,
-                             int i, int j, int k, int n) {
-  real tend;
-  SArray<real, 1, ndofs> recon;
-  SArray<real, 2, ndofs, 2> dens;
-  for (int l = 0; l < ndofs; l++) {
-    // Need to add 1 to k here because UW has an extra dof at the bottom
-    recon(l) = vertreconvar(l, k + 1, n);
-    dens(l, 1) = densvar(l, k + 1, n);
-    dens(l, 0) = densvar(l, k, n);
-  }
-  wDv<ndofs>(tend, recon, dens);
+  real tend = compute_wDv<ndofs, true>(vertreconvar, Phivertvar, densvar, is,
+                                       js, ks, i, j, k, n);
   if (addmode == ADD_MODE::REPLACE) {
     tendvar(0, k + ks, j + js, i + is, n) = tend;
   }
