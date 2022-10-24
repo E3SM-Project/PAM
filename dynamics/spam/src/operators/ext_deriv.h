@@ -49,12 +49,10 @@ void YAKL_INLINE wDbar2(SArray<real, 1, ndofs> &var,
   }
 }
 
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-YAKL_INLINE void compute_wDbar2(const real5d &tendvar,
-                                const SArray<real, 3, ndofs, ndims, 2> &recon,
-                                const real5d &U, int is, int js, int ks, int i,
-                                int j, int k, int n) {
-  SArray<real, 1, ndofs> tend;
+template <uint ndofs, bool fct, class R>
+YAKL_INLINE void compute_wDbar2(SArray<real, 1, ndofs> &tend, const R &reconvar,
+                                const real5d &Phivar, const real5d &U, int is,
+                                int js, int ks, int i, int j, int k, int n) {
   SArray<real, 2, ndims, 2> flux;
 
   for (int d = 0; d < ndims; d++) {
@@ -68,7 +66,51 @@ YAKL_INLINE void compute_wDbar2(const real5d &tendvar,
     }
   }
 
-  wDbar2<ndofs>(tend, recon, flux);
+  // we need to load recon
+  if constexpr (std::is_same_v<R, real5d> || std::is_same_v<R, real3d>) {
+    SArray<real, 3, ndofs, ndims, 2> recon;
+    for (int d = 0; d < ndims; d++) {
+      for (int l = 0; l < ndofs; l++) {
+        for (int m = 0; m < 2; m++) {
+          // full state recon
+          if constexpr (std::is_same_v<R, real5d>) {
+            if (d == 0) {
+              recon(l, d, m) =
+                  reconvar(l + d * ndofs, k + ks, j + js, i + is + m, n);
+              if constexpr (fct) {
+                recon(l, d, m) *=
+                    Phivar(l + d * ndofs, k + ks, j + js, i + is + m, n);
+              }
+            }
+            if (d == 1) {
+              recon(l, d, m) =
+                  reconvar(l + d * ndofs, k + ks, j + js + m, i + is, n);
+              if constexpr (fct) {
+                recon(l, d, m) *=
+                    Phivar(l + d * ndofs, k + ks, j + js + m, i + is, n);
+              }
+            }
+          }
+          // reference state
+          if constexpr (std::is_same_v<R, real3d>) {
+            recon(l, d, m) = reconvar(l, k, n);
+          }
+        }
+      }
+    }
+    wDbar2<ndofs>(tend, recon, flux);
+  } else {
+    wDbar2<ndofs>(tend, reconvar, flux);
+  }
+}
+
+template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE, class R>
+YAKL_INLINE void compute_wDbar2(const real5d &tendvar, const R &reconvar,
+                                const real5d &U, int is, int js, int ks, int i,
+                                int j, int k, int n) {
+  SArray<real, 1, ndofs> tend;
+
+  compute_wDbar2<ndofs, false>(tend, reconvar, U, U, is, js, ks, i, j, k, n);
 
   if (addmode == ADD_MODE::REPLACE) {
     for (int l = 0; l < ndofs; l++) {
@@ -82,126 +124,15 @@ YAKL_INLINE void compute_wDbar2(const real5d &tendvar,
   }
 }
 
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-YAKL_INLINE void compute_wDbar2(const real5d &tendvar, const real5d &reconvar,
-                                const real5d &U, int is, int js, int ks, int i,
-                                int j, int k, int n) {
+template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE, class R>
+YAKL_INLINE void compute_wDbar2_fct(const real5d &tendvar, const R &reconvar,
+                                    const real5d &phivar, const real5d &U,
+                                    int is, int js, int ks, int i, int j, int k,
+                                    int n) {
   SArray<real, 1, ndofs> tend;
-  SArray<real, 3, ndofs, ndims, 2> recon;
-  SArray<real, 2, ndims, 2> flux;
 
-  for (int d = 0; d < ndims; d++) {
-    for (int m = 0; m < 2; m++) {
-      if (d == 0) {
-        flux(d, m) = U(d, k + ks, j + js, i + is + m, n);
-      }
-      if (d == 1) {
-        flux(d, m) = U(d, k + ks, j + js + m, i + is, n);
-      }
-      for (int l = 0; l < ndofs; l++) {
-        if (d == 0) {
-          recon(l, d, m) =
-              reconvar(l + d * ndofs, k + ks, j + js, i + is + m, n);
-        }
-        if (d == 1) {
-          recon(l, d, m) =
-              reconvar(l + d * ndofs, k + ks, j + js + m, i + is, n);
-        }
-      }
-    }
-  }
-
-  wDbar2<ndofs>(tend, recon, flux);
-
-  if (addmode == ADD_MODE::REPLACE) {
-    for (int l = 0; l < ndofs; l++) {
-      tendvar(l, k + ks, j + js, i + is, n) = tend(l);
-    }
-  }
-  if (addmode == ADD_MODE::ADD) {
-    for (int l = 0; l < ndofs; l++) {
-      tendvar(l, k + ks, j + js, i + is, n) += tend(l);
-    }
-  }
-}
-
-// version that take a reference state
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-YAKL_INLINE void compute_wDbar2(const real5d &tendvar, const real3d &reconvar,
-                                const real5d &U, int is, int js, int ks, int i,
-                                int j, int k, int n) {
-  SArray<real, 1, ndofs> tend;
-  SArray<real, 3, ndofs, ndims, 2> recon;
-  SArray<real, 2, ndims, 2> flux;
-
-  for (int d = 0; d < ndims; d++) {
-    for (int m = 0; m < 2; m++) {
-      if (d == 0) {
-        flux(d, m) = U(d, k + ks, j + js, i + is + m, n);
-      }
-      if (d == 1) {
-        flux(d, m) = U(d, k + ks, j + js + m, i + is, n);
-      }
-      for (int l = 0; l < ndofs; l++) {
-        recon(l, d, m) = reconvar(l, k, n);
-      }
-    }
-  }
-
-  wDbar2<ndofs>(tend, recon, flux);
-
-  for (int l = 0; l < ndofs; l++) {
-    tendvar(l, k + ks, j + js, i + is, n) = tend(l);
-  }
-
-  if (addmode == ADD_MODE::REPLACE) {
-    for (int l = 0; l < ndofs; l++) {
-      tendvar(l, k + ks, j + js, i + is, n) = tend(l);
-    }
-  }
-  if (addmode == ADD_MODE::ADD) {
-    for (int l = 0; l < ndofs; l++) {
-      tendvar(l, k + ks, j + js, i + is, n) += tend(l);
-    }
-  }
-}
-
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-YAKL_INLINE void
-compute_wDbar2_fct(const real5d &tendvar, const real5d &reconvar,
-                   const real5d &phivar, const real5d &U, int is, int js,
-                   int ks, int i, int j, int k, int n) {
-  SArray<real, 1, ndofs> tend;
-  SArray<real, 3, ndofs, ndims, 2> recon;
-  SArray<real, 2, ndims, 2> flux;
-
-  for (int d = 0; d < ndims; d++) {
-    for (int m = 0; m < 2; m++) {
-      if (d == 0) {
-        flux(d, m) = U(d, k + ks, j + js, i + is + m, n);
-      }
-      if (d == 1) {
-        flux(d, m) = U(d, k + ks, j + js + m, i + is, n);
-      }
-      // if (d==2) { flux(d,m) = U(d, k+ks+m, j+js, i+is);}
-      for (int l = 0; l < ndofs; l++) {
-        if (d == 0) {
-          recon(l, d, m) =
-              reconvar(l + d * ndofs, k + ks, j + js, i + is + m, n) *
-              phivar(l + d * ndofs, k + ks, j + js, i + is + m, n);
-        }
-        if (d == 1) {
-          recon(l, d, m) =
-              reconvar(l + d * ndofs, k + ks, j + js + m, i + is, n) *
-              phivar(l + d * ndofs, k + ks, j + js + m, i + is, n);
-        }
-        // if (d==2) { recon(l,d,m) = reconvar(l+d*ndofs, k+ks+m, j+js, i+is) *
-        // phivar(l+d*ndofs, k+ks+m, j+js, i+is);}
-      }
-    }
-  }
-
-  wDbar2<ndofs>(tend, recon, flux);
+  compute_wDbar2<ndofs, true>(tend, reconvar, phivar, U, is, js, ks, i, j, k,
+                              n);
 
   if (addmode == ADD_MODE::REPLACE) {
     for (int l = 0; l < ndofs; l++) {
