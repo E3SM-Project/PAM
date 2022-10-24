@@ -155,82 +155,69 @@ void YAKL_INLINE wDvbar(SArray<real, 1, ndofs> &var,
   }
 }
 
+template <uint ndofs, bool fct, class R>
+YAKL_INLINE void compute_wDvbar(SArray<real, 1, ndofs> &tend,
+                                const R &vertreconvar, const real5d &vertphivar,
+                                const real5d &UW, int is, int js, int ks, int i,
+                                int j, int k, int n) {
+
+  SArray<real, 1, 2> flux;
+  for (int m = 0; m < 2; m++) {
+    flux(m) = UW(0, k + ks + m, j + js, i + is, n);
+  }
+
+  if constexpr (std::is_same_v<R, real3d> || std::is_same_v<R, real5d>) {
+    SArray<real, 2, ndofs, 2> recon;
+    for (int m = 0; m < 2; m++) {
+      for (int l = 0; l < ndofs; l++) {
+        if constexpr (std::is_same_v<R, real5d>) {
+          recon(l, m) = vertreconvar(l, k + ks + m, j + js, i + is, n);
+        }
+
+        if constexpr (std::is_same_v<R, real3d>) {
+          recon(l, m) = vertreconvar(l, k + m, n);
+        }
+
+        if constexpr (fct) {
+          recon(l, m) *= vertphivar(l, k + ks + m, j + js, i + is, n);
+        }
+      }
+    }
+    wDvbar<ndofs>(tend, recon, flux);
+  } else {
+    wDvbar<ndofs>(tend, vertreconvar, flux);
+  }
+}
+
+template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE, class R>
+YAKL_INLINE void compute_wDvbar(const real5d &tendvar, const R &vertreconvar,
+                                const real5d &UW, int is, int js, int ks, int i,
+                                int j, int k, int n) {
+  SArray<real, 1, ndofs> tend;
+
+  compute_wDvbar<ndofs, false>(tend, vertreconvar, UW, UW, is, js, ks, i, j, k,
+                               n);
+
+  if (addmode == ADD_MODE::REPLACE) {
+    for (int l = 0; l < ndofs; l++) {
+      tendvar(l, k + ks, j + js, i + is, n) = tend(l);
+    }
+  }
+  if (addmode == ADD_MODE::ADD) {
+    for (int l = 0; l < ndofs; l++) {
+      tendvar(l, k + ks, j + js, i + is, n) += tend(l);
+    }
+  }
+}
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 YAKL_INLINE void
 compute_wDvbar_fct(const real5d &tendvar, const real5d &vertreconvar,
                    const real5d &vertphivar, const real5d &UW, int is, int js,
                    int ks, int i, int j, int k, int n) {
   SArray<real, 1, ndofs> tend;
-  SArray<real, 2, ndofs, 2> recon;
-  SArray<real, 1, 2> flux;
-  for (int m = 0; m < 2; m++) {
-    flux(m) = UW(0, k + ks + m, j + js, i + is, n);
-    for (int l = 0; l < ndofs; l++) {
-      recon(l, m) = vertreconvar(l, k + ks + m, j + js, i + is, n) *
-                    vertphivar(l, k + ks + m, j + js, i + is, n);
-    }
-  }
 
-  wDvbar<ndofs>(tend, recon, flux);
-
-  if (addmode == ADD_MODE::REPLACE) {
-    for (int l = 0; l < ndofs; l++) {
-      tendvar(l, k + ks, j + js, i + is, n) = tend(l);
-    }
-  }
-  if (addmode == ADD_MODE::ADD) {
-    for (int l = 0; l < ndofs; l++) {
-      tendvar(l, k + ks, j + js, i + is, n) += tend(l);
-    }
-  }
-}
-
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-YAKL_INLINE void compute_wDvbar(const real5d &tendvar,
-                                const real5d &vertreconvar, const real5d &UW,
-                                int is, int js, int ks, int i, int j, int k,
-                                int n) {
-  SArray<real, 1, ndofs> tend;
-  SArray<real, 2, ndofs, 2> recon;
-  SArray<real, 1, 2> flux;
-  for (int m = 0; m < 2; m++) {
-    flux(m) = UW(0, k + ks + m, j + js, i + is, n);
-    for (int l = 0; l < ndofs; l++) {
-      recon(l, m) = vertreconvar(l, k + ks + m, j + js, i + is, n);
-    }
-  }
-
-  wDvbar<ndofs>(tend, recon, flux);
-
-  if (addmode == ADD_MODE::REPLACE) {
-    for (int l = 0; l < ndofs; l++) {
-      tendvar(l, k + ks, j + js, i + is, n) = tend(l);
-    }
-  }
-  if (addmode == ADD_MODE::ADD) {
-    for (int l = 0; l < ndofs; l++) {
-      tendvar(l, k + ks, j + js, i + is, n) += tend(l);
-    }
-  }
-}
-
-// version that take a reference state
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-YAKL_INLINE void compute_wDvbar(const real5d &tendvar,
-                                const real3d &vertreconvar, const real5d &UW,
-                                int is, int js, int ks, int i, int j, int k,
-                                int n) {
-  SArray<real, 1, ndofs> tend;
-  SArray<real, 2, ndofs, 2> recon;
-  SArray<real, 1, 2> flux;
-  for (int m = 0; m < 2; m++) {
-    flux(m) = UW(0, k + ks + m, j + js, i + is, n);
-    for (int l = 0; l < ndofs; l++) {
-      recon(l, m) = vertreconvar(l, k + m, n);
-    }
-  }
-
-  wDvbar<ndofs>(tend, recon, flux);
+  compute_wDvbar<ndofs, true>(tend, vertreconvar, vertphivar, UW, is, js, ks, i,
+                              j, k, n);
 
   if (addmode == ADD_MODE::REPLACE) {
     for (int l = 0; l < ndofs; l++) {
@@ -391,8 +378,7 @@ real YAKL_INLINE compute_wDv(const R &vertreconvar, const real5d &Phivertvar,
 
       // full state recon
       if constexpr (std::is_same_v<R, real5d>) {
-        recon(l) = vertreconvar(l, k + ks + 1, j + js, i + is, n) *
-                   Phivertvar(l, k + ks + 1, j + js, i + is, n);
+        recon(l) = vertreconvar(l, k + ks + 1, j + js, i + is, n);
       }
 
       // reference state recon
