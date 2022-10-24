@@ -66,9 +66,9 @@ void test_D1(int np, real atol) {
                         square.primal_topology.n_cells_y,
                         square.primal_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
-          SArray<real, 1, 1> c;
-          c(0) = 1;
-          compute_cwD1<1>(st10.data, c, st00.data, pis, pjs, pks, i, j, k, 0);
+          SArray<real, 2, 1, ndims> c;
+          c(0, 0) = 1;
+          compute_wD1<1>(st10.data, c, st00.data, pis, pjs, pks, i, j, k, 0);
         });
   }
 
@@ -187,8 +187,13 @@ void test_Dbar2_and_Dvbar(int np, real atol) {
         SimpleBounds<3>(square.dual_topology.nl, square.dual_topology.n_cells_y,
                         square.dual_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
-          compute_cwDbar2<1>(tw11.data, 1, tw01.data, dis, djs, dks, i, j, k,
-                             0);
+          SArray<real, 3, 1, ndims, 2> c;
+          for (int d = 0; d < ndims; ++d) {
+            for (int n = 0; n < 2; ++n) {
+              c(0, d, n) = 1;
+            }
+          }
+          compute_wDbar2<1>(tw11.data, c, tw01.data, dis, djs, dks, i, j, k, 0);
           compute_wDvbar<1, ADD_MODE::ADD>(tw11.data, ones.data, tw10.data, dis,
                                            djs, dks, i, j, k, 0);
         });

@@ -2,55 +2,6 @@
 
 #include "common.h"
 
-template <uint ndofs>
-void YAKL_INLINE cwDbar2(SArray<real, 1, ndofs> &var, real c,
-                         SArray<real, 2, ndims, 2> const &flux) {
-
-  for (int l = 0; l < ndofs; l++) {
-    var(l) = 0.;
-    for (int d = 0; d < ndims; d++) {
-      var(l) += c * (flux(d, 1) - flux(d, 0));
-    }
-  }
-}
-
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-YAKL_INLINE void compute_cwDbar2(const real5d &tendvar, real c, const real5d &U,
-                                 int is, int js, int ks, int i, int j, int k,
-                                 int n) {
-  SArray<real, 1, ndofs> tend;
-  SArray<real, 3, ndofs, ndims, 2> recon;
-  SArray<real, 2, ndims, 2> flux;
-
-  for (int d = 0; d < ndims; d++) {
-    for (int m = 0; m < 2; m++) {
-      if (d == 0) {
-        flux(d, m) = U(d, k + ks, j + js, i + is + m, n);
-      }
-      if (d == 1) {
-        flux(d, m) = U(d, k + ks, j + js + m, i + is, n);
-      }
-    }
-  }
-
-  cwDbar2<ndofs>(tend, c, flux);
-
-  for (int l = 0; l < ndofs; l++) {
-    tendvar(l, k + ks, j + js, i + is, n) = tend(l);
-  }
-
-  if (addmode == ADD_MODE::REPLACE) {
-    for (int l = 0; l < ndofs; l++) {
-      tendvar(l, k + ks, j + js, i + is, n) = tend(l);
-    }
-  }
-  if (addmode == ADD_MODE::ADD) {
-    for (int l = 0; l < ndofs; l++) {
-      tendvar(l, k + ks, j + js, i + is, n) += tend(l);
-    }
-  }
-}
-
 complex YAKL_INLINE fourier_Dbar2(const real c, int i, int j, int k, int nx,
                                   int ny, int nz) {
   complex Dbar2hat;
@@ -94,6 +45,39 @@ void YAKL_INLINE wDbar2(SArray<real, 1, ndofs> &var,
     var(l) = 0.;
     for (int d = 0; d < ndims; d++) {
       var(l) += flux(d, 1) * recon(l, d, 1) - flux(d, 0) * recon(l, d, 0);
+    }
+  }
+}
+
+template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+YAKL_INLINE void compute_wDbar2(const real5d &tendvar,
+                                const SArray<real, 3, ndofs, ndims, 2> &recon,
+                                const real5d &U, int is, int js, int ks, int i,
+                                int j, int k, int n) {
+  SArray<real, 1, ndofs> tend;
+  SArray<real, 2, ndims, 2> flux;
+
+  for (int d = 0; d < ndims; d++) {
+    for (int m = 0; m < 2; m++) {
+      if (d == 0) {
+        flux(d, m) = U(d, k + ks, j + js, i + is + m, n);
+      }
+      if (d == 1) {
+        flux(d, m) = U(d, k + ks, j + js + m, i + is, n);
+      }
+    }
+  }
+
+  wDbar2<ndofs>(tend, recon, flux);
+
+  if (addmode == ADD_MODE::REPLACE) {
+    for (int l = 0; l < ndofs; l++) {
+      tendvar(l, k + ks, j + js, i + is, n) = tend(l);
+    }
+  }
+  if (addmode == ADD_MODE::ADD) {
+    for (int l = 0; l < ndofs; l++) {
+      tendvar(l, k + ks, j + js, i + is, n) += tend(l);
     }
   }
 }
@@ -329,18 +313,6 @@ YAKL_INLINE void compute_wDvbar(const real5d &tendvar,
   }
 }
 
-template <uint ndofs>
-void YAKL_INLINE cwD1(SArray<real, 1, ndims> &var, SArray<real, 1, ndofs> &c,
-                      SArray<real, 3, ndofs, ndims, 2> const &dens) {
-
-  for (int d = 0; d < ndims; d++) {
-    var(d) = 0.0;
-    for (int l = 0; l < ndofs; l++) {
-      var(d) += c(l) * (dens(l, d, 1) - dens(l, d, 0));
-    }
-  }
-}
-
 void YAKL_INLINE fourier_cwD1(const SArray<complex, 1, ndims> &D1hat,
                               const real c, int i, int j, int k, int nx, int ny,
                               int nz) {
@@ -358,12 +330,25 @@ void YAKL_INLINE fourier_cwD1(const SArray<complex, 1, ndims> &D1hat,
   }
 }
 
+template <uint ndofs>
+void YAKL_INLINE wD1(SArray<real, 1, ndims> &var,
+                     SArray<real, 2, ndofs, ndims> const &recon,
+                     SArray<real, 3, ndofs, ndims, 2> const &dens) {
+
+  for (int d = 0; d < ndims; d++) {
+    var(d) = 0.0;
+    for (int l = 0; l < ndofs; l++) {
+      var(d) += recon(l, d) * (dens(l, d, 1) - dens(l, d, 0));
+    }
+  }
+}
+
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_cwD1(const real5d &tendvar, SArray<real, 1, ndofs> &c,
-                              const real5d &densvar, int is, int js, int ks,
-                              int i, int j, int k, int n) {
+void YAKL_INLINE compute_wD1(const real5d &tendvar,
+                             const SArray<real, 2, ndofs, ndims> &recon,
+                             const real5d &densvar, int is, int js, int ks,
+                             int i, int j, int k, int n) {
   SArray<real, 1, ndims> tend;
-  SArray<real, 2, ndofs, ndims> recon;
   SArray<real, 3, ndofs, ndims, 2> dens;
   for (int l = 0; l < ndofs; l++) {
     for (int d = 0; d < ndims; d++) {
@@ -377,26 +362,13 @@ void YAKL_INLINE compute_cwD1(const real5d &tendvar, SArray<real, 1, ndofs> &c,
       // if (d==2) {dens(l,d,0) = densvar(l,k+ks-1,j+js,i+is);}
     }
   }
-  cwD1<ndofs>(tend, c, dens);
+  wD1<ndofs>(tend, recon, dens);
   for (int d = 0; d < ndims; d++) {
     if (addmode == ADD_MODE::REPLACE) {
       tendvar(d, k + ks, j + js, i + is, n) = tend(d);
     }
     if (addmode == ADD_MODE::ADD) {
       tendvar(d, k + ks, j + js, i + is, n) += tend(d);
-    }
-  }
-}
-
-template <uint ndofs>
-void YAKL_INLINE wD1(SArray<real, 1, ndims> &var,
-                     SArray<real, 2, ndofs, ndims> const &recon,
-                     SArray<real, 3, ndofs, ndims, 2> const &dens) {
-
-  for (int d = 0; d < ndims; d++) {
-    var(d) = 0.0;
-    for (int l = 0; l < ndofs; l++) {
-      var(d) += recon(l, d) * (dens(l, d, 1) - dens(l, d, 0));
     }
   }
 }

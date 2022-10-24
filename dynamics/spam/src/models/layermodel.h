@@ -659,17 +659,19 @@ public:
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          SArray<real, 1, ndensity_active> c;
+          SArray<real, 2, ndensity_active, ndims> c;
+          for (int d = 0; d < ndims; ++d) {
 #ifdef _SWE
-          c(0) = 0;
+            c(0, d) = 0;
 #elif _TSWE
-          c(0) = 0.25_fp * grav * dt;
+            c(0, d) = 0.25_fp * grav * dt;
 #endif
-          for (int dof = 1; dof < ndensity_active; ++dof) {
-            c(dof) = -0.25_fp * dt;
+            for (int dof = 1; dof < ndensity_active; ++dof) {
+              c(dof, d) = -0.25_fp * dt;
+            }
           }
-          compute_cwD1<ndensity_active, ADD_MODE::ADD>(v_rhs, c, dens0, pis,
-                                                       pjs, pks, i, j, k, n);
+          compute_wD1<ndensity_active, ADD_MODE::ADD>(v_rhs, c, dens0, pis, pjs,
+                                                      pks, i, j, k, n);
         });
 
     rhs.exchange({VVAR});
@@ -691,8 +693,13 @@ public:
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           real h = dens_rhs(0, dks + k, djs + j, dis + i, n);
-          compute_cwDbar2<1>(dens_rhs, refstate.ref_height, U, dis, djs, dks, i,
-                             j, k, n);
+          SArray<real, 3, 1, ndims, 2> c;
+          for (int d = 0; d < ndims; ++d) {
+            for (int n = 0; n < 2; ++n) {
+              c(0, d, n) = refstate.ref_height;
+            }
+          }
+          compute_wDbar2<1>(dens_rhs, c, U, dis, djs, dks, i, j, k, n);
           dens_rhs(0, dks + k, djs + j, dis + i, n) *= -0.5_fp * dt;
           dens_rhs(0, dks + k, djs + j, dis + i, n) += h;
         });
@@ -776,17 +783,19 @@ public:
         YAKL_LAMBDA(int k, int j, int i, int n) {
           real v0 = v_rhs(0, k + dks, j + djs, i + dis, n);
           real v1 = v_rhs(1, k + dks, j + djs, i + dis, n);
-          SArray<real, 1, ndensity_active> c;
+          SArray<real, 2, ndensity_active, ndims> c;
+          for (int d = 0; d < ndims; ++d) {
 #ifdef _SWE
-          c(0) = grav;
+            c(0, d) = grav;
 #elif _TSWE
-          c(0) = 0.5_fp * grav;
+            c(0, d) = 0.5_fp * grav;
 #endif
-          for (int dof = 1; dof < ndensity_active; ++dof) {
-            c(dof) = 0.5_fp;
+            for (int dof = 1; dof < ndensity_active; ++dof) {
+              c(dof, d) = 0.5_fp;
+            }
+            compute_wD1<ndensity_active>(v_sol, c, dens0, pis, pjs, pks, i, j,
+                                         k, n);
           }
-          compute_cwD1<ndensity_active>(v_sol, c, dens0, pis, pjs, pks, i, j, k,
-                                        n);
 
           v_sol(0, k + dks, j + djs, i + dis, n) *= -0.5_fp * dt;
           v_sol(1, k + dks, j + djs, i + dis, n) *= -0.5_fp * dt;
