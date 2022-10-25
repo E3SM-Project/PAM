@@ -79,6 +79,39 @@ void test_D0(int np, real atol) {
   }
 }
 
+void test_D0bar(int np, real atol) {
+  PeriodicUnitSquare square(np, 2 * np);
+
+  auto tw0 = square.create_twisted_form<0>();
+  square.dual_geometry.set_0form_values(fun{}, tw0, 0);
+
+  auto tw1 = square.create_twisted_form<1>();
+  auto tw1_expected = square.create_twisted_form<1>();
+  square.dual_geometry.set_1form_values(grad_fun{}, tw1_expected, 0,
+                                        LINE_INTEGRAL_TYPE::TANGENT);
+
+  int dis = square.primal_topology.is;
+  int djs = square.primal_topology.js;
+  int dks = square.primal_topology.ks;
+  {
+    tw0.exchange();
+    parallel_for(
+        SimpleBounds<3>(square.dual_topology.nl, square.dual_topology.n_cells_y,
+                        square.dual_topology.n_cells_x),
+        YAKL_LAMBDA(int k, int j, int i) {
+          compute_D0bar<1>(tw1.data, tw0.data, dis, djs, dks, i, j, k, 0);
+        });
+  }
+
+  real errf = square.compute_Linf_error(tw1_expected, tw1);
+
+  if (errf > atol) {
+    std::cout << "Exactness of D0bar failed, error = " << errf
+              << " tol = " << atol << std::endl;
+    exit(-1);
+  }
+}
+
 void test_D1(int np, real atol) {
   PeriodicUnitSquare square(np, 2 * np);
 
@@ -150,7 +183,8 @@ int main() {
   yakl::init();
   real atol = 500 * std::numeric_limits<real>::epsilon();
   test_D0(33, atol);
-  test_D1bar(33, atol);
+  test_D0bar(33, atol);
   test_D1(33, atol);
+  test_D1bar(33, atol);
   yakl::finalize();
 }

@@ -267,6 +267,59 @@ void YAKL_INLINE compute_wD0_vert_fct(const real5d &tendvar,
 }
 
 template <uint ndofs>
+void YAKL_INLINE D0bar(SArray<real, 1, ndims> &var,
+                       SArray<real, 3, ndofs, ndims, 2> const &dens) {
+
+  for (int d = 0; d < ndims; d++) {
+    var(d) = 0.0;
+    for (int l = 0; l < ndofs; l++) {
+      if (d == 0) {
+        var(d) += (dens(l, d, 1) - dens(l, d, 0));
+      }
+      if (d == 1) {
+        var(d) -= (dens(l, d, 1) - dens(l, d, 0));
+      }
+    }
+  }
+}
+
+template <uint ndofs>
+void YAKL_INLINE compute_D0bar(SArray<real, 1, ndims> &tend,
+                               const real5d &densvar, int is, int js, int ks,
+                               int i, int j, int k, int n) {
+  SArray<real, 3, ndofs, ndims, 2> dens;
+  for (int l = 0; l < ndofs; l++) {
+    for (int d = 0; d < ndims; d++) {
+      dens(l, d, 0) = densvar(l, k + ks, j + js, i + is, n);
+      if (d == 0) {
+        dens(l, d, 1) = densvar(l, k + ks, j + js + 1, i + is, n);
+      }
+      if (d == 1) {
+        dens(l, d, 1) = densvar(l, k + ks, j + js, i + is + 1, n);
+      }
+      // if (d==2) {dens(l,d,0) = densvar(l,k+ks-1,j+js,i+is);}
+    }
+  }
+  D0bar<ndofs>(tend, dens);
+}
+
+template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+void YAKL_INLINE compute_D0bar(const real5d &tendvar, const real5d &densvar,
+                               int is, int js, int ks, int i, int j, int k,
+                               int n) {
+  SArray<real, 1, ndims> tend;
+  compute_D0bar<ndofs>(tend, densvar, is, js, ks, i, j, k, n);
+  for (int d = 0; d < ndims; d++) {
+    if (addmode == ADD_MODE::REPLACE) {
+      tendvar(d, k + ks, j + js, i + is, n) = tend(d);
+    }
+    if (addmode == ADD_MODE::ADD) {
+      tendvar(d, k + ks, j + js, i + is, n) += tend(d);
+    }
+  }
+}
+
+template <uint ndofs>
 void YAKL_INLINE D1bar(SArray<real, 1, ndofs> &var,
                        SArray<real, 2, ndims, 2> const &flux) {
 
