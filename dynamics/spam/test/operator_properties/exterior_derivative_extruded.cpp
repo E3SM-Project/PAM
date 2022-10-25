@@ -67,8 +67,7 @@ void test_D0(int np, real atol) {
                         square.primal_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
           SArray<real, 2, 1, ndims> c;
-          c(0, 0) = 1;
-          compute_wD0<1>(st10.data, c, st00.data, pis, pjs, pks, i, j, k, 0);
+          compute_D0<1>(st10.data, st00.data, pis, pjs, pks, i, j, k, 0);
         });
   }
 
@@ -92,9 +91,6 @@ void test_D0_vert(int np, real atol) {
   square.primal_geometry.set_01form_values(grad_fun{}, st01_expected, 0,
                                            LINE_INTEGRAL_TYPE::TANGENT);
 
-  auto ones = square.create_twisted_form<1, 0>();
-  ones.set(1);
-
   int pis = square.primal_topology.is;
   int pjs = square.primal_topology.js;
   int pks = square.primal_topology.ks;
@@ -105,8 +101,7 @@ void test_D0_vert(int np, real atol) {
                         square.primal_topology.n_cells_y,
                         square.primal_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
-          compute_wD0_vert<1>(st01.data, ones.data, st00.data, pis, pjs, pks, i,
-                              j, k, 0);
+          compute_D0_vert<1>(st01.data, st00.data, pis, pjs, pks, i, j, k, 0);
         });
   }
 
@@ -174,9 +169,6 @@ void test_D1bar_and_D1bar_vert(int np, real atol) {
   auto tw11_expected = square.create_twisted_form<1, 1>();
   square.dual_geometry.set_11form_values(div_vecfun{}, tw11_expected, 0);
 
-  auto ones = square.create_twisted_form<1, 0>();
-  ones.set(1);
-
   int dis = square.dual_topology.is;
   int djs = square.dual_topology.js;
   int dks = square.dual_topology.ks;
@@ -187,15 +179,9 @@ void test_D1bar_and_D1bar_vert(int np, real atol) {
         SimpleBounds<3>(square.dual_topology.nl, square.dual_topology.n_cells_y,
                         square.dual_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
-          SArray<real, 3, 1, ndims, 2> c;
-          for (int d = 0; d < ndims; ++d) {
-            for (int n = 0; n < 2; ++n) {
-              c(0, d, n) = 1;
-            }
-          }
-          compute_wD1bar<1>(tw11.data, c, tw01.data, dis, djs, dks, i, j, k, 0);
-          compute_wD1bar_vert<1, ADD_MODE::ADD>(tw11.data, ones.data, tw10.data,
-                                                dis, djs, dks, i, j, k, 0);
+          compute_D1bar<1>(tw11.data, tw01.data, dis, djs, dks, i, j, k, 0);
+          compute_D1bar_vert<1, ADD_MODE::ADD>(tw11.data, tw10.data, dis, djs,
+                                               dks, i, j, k, 0);
         });
   }
 
