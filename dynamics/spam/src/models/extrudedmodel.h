@@ -528,12 +528,12 @@ public:
         SimpleBounds<4>(primal_topology.nl - 2, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wDv_fct<ndensity>(Wtendvar, densvertreconvar, Phivertvar,
-                                    Bvar, pis, pjs, pks, i, j, k + 1, n);
+          compute_wD0_vert_fct<ndensity>(Wtendvar, densvertreconvar, Phivertvar,
+                                         Bvar, pis, pjs, pks, i, j, k + 1, n);
           if (force_refstate_hydrostatic_balance) {
-            compute_wDv<ndensity, ADD_MODE::ADD>(Wtendvar, refstate.q_di.data,
-                                                 refstate.B.data, pis, pjs, pks,
-                                                 i, j, k + 1, n);
+            compute_wD0_vert<ndensity, ADD_MODE::ADD>(
+                Wtendvar, refstate.q_di.data, refstate.B.data, pis, pjs, pks, i,
+                j, k + 1, n);
           }
           if (qf_choice == QF_MODE::EC) {
             compute_Qxz_w_EC<1, ADD_MODE::ADD>(Wtendvar, qxzreconvar,
@@ -554,16 +554,16 @@ public:
         SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
                         primal_topology.nens),
         YAKL_CLASS_LAMBDA(int j, int i, int n) {
-          compute_wDv_fct<ndensity>(Wtendvar, densvertreconvar, Phivertvar,
-                                    Bvar, pis, pjs, pks, i, j, 0, n);
-          compute_wDv_fct<ndensity>(Wtendvar, densvertreconvar, Phivertvar,
-                                    Bvar, pis, pjs, pks, i, j,
-                                    primal_topology.nl - 1, n);
+          compute_wD0_vert_fct<ndensity>(Wtendvar, densvertreconvar, Phivertvar,
+                                         Bvar, pis, pjs, pks, i, j, 0, n);
+          compute_wD0_vert_fct<ndensity>(Wtendvar, densvertreconvar, Phivertvar,
+                                         Bvar, pis, pjs, pks, i, j,
+                                         primal_topology.nl - 1, n);
           if (force_refstate_hydrostatic_balance) {
-            compute_wDv<ndensity, ADD_MODE::ADD>(Wtendvar, refstate.q_di.data,
-                                                 refstate.B.data, pis, pjs, pks,
-                                                 i, j, 0, n);
-            compute_wDv<ndensity, ADD_MODE::ADD>(
+            compute_wD0_vert<ndensity, ADD_MODE::ADD>(
+                Wtendvar, refstate.q_di.data, refstate.B.data, pis, pjs, pks, i,
+                j, 0, n);
+            compute_wD0_vert<ndensity, ADD_MODE::ADD>(
                 Wtendvar, refstate.q_di.data, refstate.B.data, pis, pjs, pks, i,
                 j, primal_topology.nl - 1, n);
           }
@@ -595,7 +595,7 @@ public:
         SimpleBounds<4>(primal_topology.ni - 2, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wD1_fct<ndensity>(Vtendvar, densreconvar, Phivar, Bvar, pis,
+          compute_wD0_fct<ndensity>(Vtendvar, densreconvar, Phivar, Bvar, pis,
                                     pjs, pks, i, j, k + 1, n);
           if (qf_choice == QF_MODE::EC) {
             compute_Qxz_u_EC<1, ADD_MODE::ADD>(Vtendvar, qxzreconvar,
@@ -616,9 +616,9 @@ public:
         SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
                         primal_topology.nens),
         YAKL_CLASS_LAMBDA(int j, int i, int n) {
-          compute_wD1_fct<ndensity>(Vtendvar, densreconvar, Phivar, Bvar, pis,
+          compute_wD0_fct<ndensity>(Vtendvar, densreconvar, Phivar, Bvar, pis,
                                     pjs, pks, i, j, 0, n);
-          compute_wD1_fct<ndensity>(Vtendvar, densreconvar, Phivar, Bvar, pis,
+          compute_wD0_fct<ndensity>(Vtendvar, densreconvar, Phivar, Bvar, pis,
                                     pjs, pks, i, j, primal_topology.ni - 1, n);
           if (qf_choice == QF_MODE::EC) {
             compute_Qxz_u_EC_bottom<1, ADD_MODE::ADD>(
@@ -648,9 +648,9 @@ public:
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wDbar2_fct<ndensity>(denstendvar, densreconvar, Phivar, Fvar,
+          compute_wD1bar_fct<ndensity>(denstendvar, densreconvar, Phivar, Fvar,
                                        dis, djs, dks, i, j, k, n);
-          compute_wDvbar_fct<ndensity, ADD_MODE::ADD>(
+          compute_wD1bar_vert_fct<ndensity, ADD_MODE::ADD>(
               denstendvar, densvertreconvar, Phivertvar, FWvar, dis, djs, dks,
               i, j, k, n);
         });
@@ -1024,8 +1024,8 @@ public:
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          SArray<real, 1, ndims> fD1Dbar;
-          fourier_cwD1Dbar2(fD1Dbar, 1, i, j, k, dual_topology.n_cells_x,
+          SArray<real, 1, ndims> fD0Dbar;
+          fourier_cwD0D1bar(fD0Dbar, 1, i, j, k, dual_topology.n_cells_x,
                             dual_topology.n_cells_y, dual_topology.ni);
 
           real fH2bar = fourier_H2bar_ext<diff_ord>(
@@ -1035,8 +1035,8 @@ public:
           fourier_H1_ext<diff_ord>(fH1, primal_geometry, dual_geometry, pis,
                                    pjs, pks, i, j, k, 0, n_cells_x, n_cells_y,
                                    dual_topology.ni);
-          SArray<complex, 1, ndims> fD1;
-          fourier_cwD1(fD1, 1, i, j, k, dual_topology.n_cells_x,
+          SArray<complex, 1, ndims> fD0;
+          fourier_cwD0(fD0, 1, i, j, k, dual_topology.n_cells_x,
                        dual_topology.n_cells_y, dual_topology.ni);
 
           real he = rho_pi(0, k, n);
@@ -1044,7 +1044,7 @@ public:
           real c1 = 1;
           for (int d1 = 0; d1 < ndensity; ++d1) {
             for (int d2 = 0; d2 < ndensity; ++d2) {
-              c1 -= dtf2 * fH2bar * fH1(0) * fD1Dbar(0) * he * q_pi(d1, k, n) *
+              c1 -= dtf2 * fH2bar * fH1(0) * fD0Dbar(0) * he * q_pi(d1, k, n) *
                     q_pi(d2, k, n) * refstate.Blin_coeff(d1, d2, k, n);
             }
           }
@@ -1053,7 +1053,7 @@ public:
           for (int d1 = 0; d1 < ndensity; ++d1) {
             complex cd1 = 0;
             for (int d2 = 0; d2 < ndensity; ++d2) {
-              cd1 += fD1(0) * dtf2 * fH2bar * q_pi(d2, k, n) *
+              cd1 += fD0(0) * dtf2 * fH2bar * q_pi(d2, k, n) *
                      refstate.Blin_coeff(d2, d1, k, n);
             }
             complex_vcoeff(1 + d1, k, j, i, n) = cd1 / c1;
@@ -1139,10 +1139,10 @@ public:
           real fH1h_kp1 = fH1_kp1_a(0);
           real fH1h_k = fH1_k_a(0);
 
-          complex fDbar2_kp1 = fourier_Dbar2(1, i, j, k + 1, n_cells_x,
+          complex fD1bar_kp1 = fourier_D1bar(1, i, j, k + 1, n_cells_x,
                                              n_cells_y, dual_topology.ni);
-          complex fDbar2_k =
-              fourier_Dbar2(1, i, j, k, n_cells_x, n_cells_y, dual_topology.ni);
+          complex fD1bar_k =
+              fourier_D1bar(1, i, j, k, n_cells_x, n_cells_y, dual_topology.ni);
 
           real he_kp1 = rho_pi(0, k + 1, n);
           real he_k = rho_pi(0, k, n);
@@ -1154,9 +1154,9 @@ public:
                 real alpha_kp1 = dtf2 * q_di(d1, k + 1, n);
                 complex beta_kp1 =
                     fH2bar_kp1 * refstate.Blin_coeff(d1, d2, k + 1, n) *
-                    q_pi(d2, k + 1, n) * fDbar2_kp1 * he_kp1 * fH1h_kp1;
+                    q_pi(d2, k + 1, n) * fD1bar_kp1 * he_kp1 * fH1h_kp1;
                 complex beta_k = fH2bar_k * refstate.Blin_coeff(d1, d2, k, n) *
-                                 q_pi(d2, k, n) * fDbar2_k * he_k * fH1h_k;
+                                 q_pi(d2, k, n) * fD1bar_k * he_k * fH1h_k;
 
                 real gamma_kp2 = gamma_fac_kp2 * q_di(d3, k + 2, n);
                 real gamma_kp1 = gamma_fac_kp1 * q_di(d3, k + 1, n);
@@ -1254,18 +1254,19 @@ public:
     auxiliary_vars.exchange({BVAR});
 
     parallel_for(
-        "Prepare rhs 3 - wDv",
+        "Prepare rhs 3 - wD0_vert",
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wDv<ndensity>(sol_w, q_di, bvar, pis, pjs, pks, i, j, k, n);
+          compute_wD0_vert<ndensity>(sol_w, q_di, bvar, pis, pjs, pks, i, j, k,
+                                     n);
         });
     parallel_for(
-        "Prepare rhs 4 - wD1",
+        "Prepare rhs 4 - wD0",
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wD1<ndensity>(sol_v, q_pi, bvar, pis, pjs, pks, i, j, k, n);
+          compute_wD0<ndensity>(sol_v, q_pi, bvar, pis, pjs, pks, i, j, k, n);
         });
 
     parallel_for(
@@ -1344,10 +1345,10 @@ public:
           real fH1h_kp1 = fH1_kp1_a(0);
           real fH1h_k = fH1_k_a(0);
 
-          complex fDbar2_kp1 = fourier_Dbar2(1, i, j, k + 1, n_cells_x,
+          complex fD1bar_kp1 = fourier_D1bar(1, i, j, k + 1, n_cells_x,
                                              n_cells_y, dual_topology.ni);
-          complex fDbar2_k =
-              fourier_Dbar2(1, i, j, k, n_cells_x, n_cells_y, dual_topology.ni);
+          complex fD1bar_k =
+              fourier_D1bar(1, i, j, k, n_cells_x, n_cells_y, dual_topology.ni);
 
           real he_kp1 = rho_pi(0, k + 1, n);
           real he_k = rho_pi(0, k, n);
@@ -1357,9 +1358,9 @@ public:
               real alpha_kp1 = dtf2 * q_di(d1, k + 1, n);
               complex beta_kp1 =
                   fH2bar_kp1 * refstate.Blin_coeff(d1, d2, k + 1, n) *
-                  q_pi(d2, k + 1, n) * fDbar2_kp1 * he_kp1 * fH1h_kp1;
+                  q_pi(d2, k + 1, n) * fD1bar_kp1 * he_kp1 * fH1h_kp1;
               complex beta_k = fH2bar_k * refstate.Blin_coeff(d1, d2, k, n) *
-                               q_pi(d2, k, n) * fDbar2_k * he_k * fH1h_k;
+                               q_pi(d2, k, n) * fD1bar_k * he_k * fH1h_k;
               complex_wrhs(k, j, i, n) +=
                   alpha_kp1 * (beta_kp1 * vc0_kp1 - beta_k * vc0_k);
             }
@@ -1518,10 +1519,10 @@ public:
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wDbar2<ndensity>(sol_dens, q_pi, fvar, dis, djs, dks, i, j, k,
+          compute_wD1bar<ndensity>(sol_dens, q_pi, fvar, dis, djs, dks, i, j, k,
                                    n);
-          compute_wDvbar<ndensity, ADD_MODE::ADD>(sol_dens, q_di, fwvar, dis,
-                                                  djs, dks, i, j, k, n);
+          compute_wD1bar_vert<ndensity, ADD_MODE::ADD>(
+              sol_dens, q_di, fwvar, dis, djs, dks, i, j, k, n);
           for (int d = 0; d < ndensity; ++d) {
             sol_dens(d, k + dks, j + djs, i + dis, n) *= -dt / 2;
             sol_dens(d, k + dks, j + djs, i + dis, n) +=

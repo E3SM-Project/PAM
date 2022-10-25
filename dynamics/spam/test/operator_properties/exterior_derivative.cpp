@@ -45,7 +45,7 @@ struct curl_vecfun {
   }
 };
 
-void test_D1(int np, real atol) {
+void test_D0(int np, real atol) {
   PeriodicUnitSquare square(np, 2 * np);
 
   auto st0 = square.create_straight_form<0>();
@@ -69,20 +69,20 @@ void test_D1(int np, real atol) {
           SArray<real, 2, 1, ndims> c;
           c(0, 0) = 1;
           c(0, 1) = 1;
-          compute_wD1<1>(st1.data, c, st0.data, pis, pjs, pks, i, j, k, 0);
+          compute_wD0<1>(st1.data, c, st0.data, pis, pjs, pks, i, j, k, 0);
         });
   }
 
   real errf = square.compute_Linf_error(st1_expected, st1);
 
   if (errf > atol) {
-    std::cout << "Exactness of D1 failed, error = " << errf << " tol = " << atol
+    std::cout << "Exactness of D0 failed, error = " << errf << " tol = " << atol
               << std::endl;
     exit(-1);
   }
 }
 
-void test_D2(int np, real atol) {
+void test_D1(int np, real atol) {
   PeriodicUnitSquare square(np, 2 * np);
 
   auto st1 = square.create_straight_form<1>();
@@ -103,20 +103,20 @@ void test_D2(int np, real atol) {
                         square.primal_topology.n_cells_y,
                         square.primal_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
-          compute_D2<1>(st2.data, st1.data, pis, pjs, pks, i, j, k, 0);
+          compute_D1<1>(st2.data, st1.data, pis, pjs, pks, i, j, k, 0);
         });
   }
 
   real errf = square.compute_Linf_error(st2_expected, st2);
 
   if (errf > atol) {
-    std::cout << "Exactness of D2 failed, error = " << errf << " tol = " << atol
+    std::cout << "Exactness of D1 failed, error = " << errf << " tol = " << atol
               << std::endl;
     exit(-1);
   }
 }
 
-void test_Dbar2(int np, real atol) {
+void test_D1bar(int np, real atol) {
   PeriodicUnitSquare square(np, 2 * np);
 
   auto tw1 = square.create_twisted_form<1>();
@@ -142,14 +142,14 @@ void test_Dbar2(int np, real atol) {
               c(0, d, n) = 1;
             }
           }
-          compute_wDbar2<1>(tw2.data, c, tw1.data, dis, djs, dks, i, j, k, 0);
+          compute_wD1bar<1>(tw2.data, c, tw1.data, dis, djs, dks, i, j, k, 0);
         });
   }
 
   real errf = square.compute_Linf_error(tw2_expected, tw2);
 
   if (errf > atol) {
-    std::cout << "Exactness of Dbar2 failed, error = " << errf
+    std::cout << "Exactness of D1bar failed, error = " << errf
               << " tol = " << atol << std::endl;
     exit(-1);
   }
@@ -158,8 +158,8 @@ void test_Dbar2(int np, real atol) {
 int main() {
   yakl::init();
   real atol = 500 * std::numeric_limits<real>::epsilon();
+  test_D0(33, atol);
+  test_D1bar(33, atol);
   test_D1(33, atol);
-  test_Dbar2(33, atol);
-  test_D2(33, atol);
   yakl::finalize();
 }

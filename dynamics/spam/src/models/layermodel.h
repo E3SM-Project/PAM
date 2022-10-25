@@ -390,7 +390,7 @@ public:
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wD1_fct<ndensity>(Vtendvar, densreconvar, Phivar, Bvar, pis,
+          compute_wD0_fct<ndensity>(Vtendvar, densreconvar, Phivar, Bvar, pis,
                                     pjs, pks, i, j, k, n);
           if (qf_choice == QF_MODE::EC) {
             compute_Q_EC<1, ADD_MODE::ADD>(Vtendvar, Qreconvar, Fvar, pis, pjs,
@@ -409,7 +409,7 @@ public:
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wDbar2_fct<ndensity>(denstendvar, densreconvar, Phivar, Fvar,
+          compute_wD1bar_fct<ndensity>(denstendvar, densreconvar, Phivar, Fvar,
                                        dis, djs, dks, i, j, k, n);
         });
   }
@@ -670,7 +670,7 @@ public:
               c(dof, d) = -0.25_fp * dt;
             }
           }
-          compute_wD1<ndensity_active, ADD_MODE::ADD>(v_rhs, c, dens0, pis, pjs,
+          compute_wD0<ndensity_active, ADD_MODE::ADD>(v_rhs, c, dens0, pis, pjs,
                                                       pks, i, j, k, n);
         });
 
@@ -699,7 +699,7 @@ public:
               c(0, d, n) = refstate.ref_height;
             }
           }
-          compute_wDbar2<1>(dens_rhs, c, U, dis, djs, dks, i, j, k, n);
+          compute_wD1bar<1>(dens_rhs, c, U, dis, djs, dks, i, j, k, n);
           dens_rhs(0, dks + k, djs + j, dis + i, n) *= -0.5_fp * dt;
           dens_rhs(0, dks + k, djs + j, dis + i, n) += h;
         });
@@ -733,12 +733,12 @@ public:
           fourier_H1<diff_ord>(cH1, primal_geometry, dual_geometry, pis, pjs,
                                pks, ik, jk, 0, 0, n_cells_x, n_cells_y, nl);
 
-          SArray<real, 1, ndims> cD1Dbar2;
-          fourier_cwD1Dbar2(cD1Dbar2, grav * refstate.ref_height, ik, jk, 0,
+          SArray<real, 1, ndims> cD0D1bar;
+          fourier_cwD0D1bar(cD0D1bar, grav * refstate.ref_height, ik, jk, 0,
                             n_cells_x, n_cells_y, nl);
 
-          real hd = (1._fp - 0.25_fp * dt * dt * cD1Dbar2(0) * cH2bar * cH1(0) -
-                     0.25_fp * dt * dt * cD1Dbar2(1) * cH2bar * cH1(1));
+          real hd = (1._fp - 0.25_fp * dt * dt * cD0D1bar(0) * cH2bar * cH1(0) -
+                     0.25_fp * dt * dt * cD0D1bar(1) * cH2bar * cH1(1));
 
           dens_transform(k, j, i, n) /= hd;
         });
@@ -793,7 +793,7 @@ public:
             for (int dof = 1; dof < ndensity_active; ++dof) {
               c(dof, d) = 0.5_fp;
             }
-            compute_wD1<ndensity_active>(v_sol, c, dens0, pis, pjs, pks, i, j,
+            compute_wD0<ndensity_active>(v_sol, c, dens0, pis, pjs, pks, i, j,
                                          k, n);
           }
 

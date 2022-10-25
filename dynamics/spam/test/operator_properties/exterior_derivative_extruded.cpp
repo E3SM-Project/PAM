@@ -45,7 +45,7 @@ struct curl_vecfun {
   }
 };
 
-void test_D1(int np, real atol) {
+void test_D0(int np, real atol) {
   ExtrudedUnitSquare square(np, 2 * np);
 
   auto st00 = square.create_straight_form<0, 0>();
@@ -68,20 +68,20 @@ void test_D1(int np, real atol) {
         YAKL_LAMBDA(int k, int j, int i) {
           SArray<real, 2, 1, ndims> c;
           c(0, 0) = 1;
-          compute_wD1<1>(st10.data, c, st00.data, pis, pjs, pks, i, j, k, 0);
+          compute_wD0<1>(st10.data, c, st00.data, pis, pjs, pks, i, j, k, 0);
         });
   }
 
   real errf = square.compute_Linf_error(st10_expected, st10);
 
   if (errf > atol) {
-    std::cout << "Exactness of D1 failed, error = " << errf << " tol = " << atol
+    std::cout << "Exactness of D0 failed, error = " << errf << " tol = " << atol
               << std::endl;
     exit(-1);
   }
 }
 
-void test_Dv(int np, real atol) {
+void test_D0_vert(int np, real atol) {
   ExtrudedUnitSquare square(np, 2 * np);
 
   auto st00 = square.create_straight_form<0, 0>();
@@ -105,21 +105,21 @@ void test_Dv(int np, real atol) {
                         square.primal_topology.n_cells_y,
                         square.primal_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
-          compute_wDv<1>(st01.data, ones.data, st00.data, pis, pjs, pks, i, j,
-                         k, 0);
+          compute_wD0_vert<1>(st01.data, ones.data, st00.data, pis, pjs, pks, i,
+                              j, k, 0);
         });
   }
 
   real errf = square.compute_Linf_error(st01_expected, st01);
 
   if (errf > atol) {
-    std::cout << "Exactness of Dv failed, error = " << errf << " tol = " << atol
-              << std::endl;
+    std::cout << "Exactness of D0_vert failed, error = " << errf
+              << " tol = " << atol << std::endl;
     exit(-1);
   }
 }
 
-void test_Dxz(int np, real atol) {
+void test_D1_ext(int np, real atol) {
   ExtrudedUnitSquare square(np, 2 * np);
 
   auto st10 = square.create_straight_form<1, 0>();
@@ -145,21 +145,21 @@ void test_Dxz(int np, real atol) {
                         square.primal_topology.n_cells_y,
                         square.primal_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
-          compute_Dxz<1>(st11.data, st10.data, st01.data, pis, pjs, pks, i, j,
-                         k, 0);
+          compute_D1_ext<1>(st11.data, st10.data, st01.data, pis, pjs, pks, i,
+                            j, k, 0);
         });
   }
 
   real errf = square.compute_Linf_error(st11_expected, st11);
 
   if (errf > atol) {
-    std::cout << "Exactness of Dxz failed, error = " << errf
+    std::cout << "Exactness of D1_ext failed, error = " << errf
               << " tol = " << atol << std::endl;
     exit(-1);
   }
 }
 
-void test_Dbar2_and_Dvbar(int np, real atol) {
+void test_D1bar_and_D1bar_vert(int np, real atol) {
   ExtrudedUnitSquare square(np, 2 * np);
 
   auto tw01 = square.create_twisted_form<0, 1>();
@@ -193,16 +193,16 @@ void test_Dbar2_and_Dvbar(int np, real atol) {
               c(0, d, n) = 1;
             }
           }
-          compute_wDbar2<1>(tw11.data, c, tw01.data, dis, djs, dks, i, j, k, 0);
-          compute_wDvbar<1, ADD_MODE::ADD>(tw11.data, ones.data, tw10.data, dis,
-                                           djs, dks, i, j, k, 0);
+          compute_wD1bar<1>(tw11.data, c, tw01.data, dis, djs, dks, i, j, k, 0);
+          compute_wD1bar_vert<1, ADD_MODE::ADD>(tw11.data, ones.data, tw10.data,
+                                                dis, djs, dks, i, j, k, 0);
         });
   }
 
   real errf = square.compute_Linf_error(tw11_expected, tw11);
 
   if (errf > atol) {
-    std::cout << "Exactness of Dbar2 and Dvbar failed, error = " << errf
+    std::cout << "Exactness of D1bar and D1bar_vert failed, error = " << errf
               << " tol = " << atol << std::endl;
     exit(-1);
   }
@@ -211,9 +211,9 @@ void test_Dbar2_and_Dvbar(int np, real atol) {
 int main() {
   yakl::init();
   real atol = 500 * std::numeric_limits<real>::epsilon();
-  test_D1(33, atol);
-  test_Dv(33, atol);
-  test_Dbar2_and_Dvbar(33, atol);
-  test_Dxz(33, atol);
+  test_D0(33, atol);
+  test_D0_vert(33, atol);
+  test_D1bar_and_D1bar_vert(33, atol);
+  test_D1_ext(33, atol);
   yakl::finalize();
 }
