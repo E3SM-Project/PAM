@@ -66,7 +66,6 @@ void test_D0(int np, real atol) {
                         square.primal_topology.n_cells_y,
                         square.primal_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
-          SArray<real, 2, 1, ndims> c;
           compute_D0<1>(st10.data, st00.data, pis, pjs, pks, i, j, k, 0);
         });
   }
@@ -109,6 +108,73 @@ void test_D0_vert(int np, real atol) {
 
   if (errf > atol) {
     std::cout << "Exactness of D0_vert failed, error = " << errf
+              << " tol = " << atol << std::endl;
+    exit(-1);
+  }
+}
+
+void test_D0bar(int np, real atol) {
+  ExtrudedUnitSquare square(np, 2 * np);
+
+  auto tw00 = square.create_twisted_form<0, 0>();
+  square.dual_geometry.set_00form_values(fun{}, tw00, 0);
+
+  auto tw10 = square.create_twisted_form<1, 0>();
+  auto tw10_expected = square.create_twisted_form<1, 0>();
+  square.dual_geometry.set_10form_values(grad_fun{}, tw10_expected, 0,
+                                         LINE_INTEGRAL_TYPE::TANGENT);
+
+  int dis = square.dual_topology.is;
+  int djs = square.dual_topology.js;
+  int dks = square.dual_topology.ks;
+  {
+    tw00.exchange();
+    parallel_for(
+        SimpleBounds<3>(square.dual_topology.ni, square.dual_topology.n_cells_y,
+                        square.dual_topology.n_cells_x),
+        YAKL_LAMBDA(int k, int j, int i) {
+          compute_D0bar_ext<1>(tw10.data, tw00.data, dis, djs, dks, i, j, k, 0);
+        });
+  }
+
+  real errf = square.compute_Linf_error(tw10_expected, tw10);
+
+  if (errf > atol) {
+    std::cout << "Exactness of D0bar failed, error = " << errf
+              << " tol = " << atol << std::endl;
+    exit(-1);
+  }
+}
+
+void test_D0bar_vert(int np, real atol) {
+  ExtrudedUnitSquare square(np, 2 * np);
+
+  auto tw00 = square.create_twisted_form<0, 0>();
+  square.dual_geometry.set_00form_values(fun{}, tw00, 0);
+
+  auto tw01 = square.create_twisted_form<0, 1>();
+  auto tw01_expected = square.create_twisted_form<0, 1>();
+  square.dual_geometry.set_01form_values(grad_fun{}, tw01_expected, 0,
+                                         LINE_INTEGRAL_TYPE::TANGENT);
+
+  int dis = square.dual_topology.is;
+  int djs = square.dual_topology.js;
+  int dks = square.dual_topology.ks;
+  {
+    tw00.exchange();
+    parallel_for(
+        SimpleBounds<3>(square.dual_topology.nl, square.dual_topology.n_cells_y,
+                        square.dual_topology.n_cells_x),
+        YAKL_LAMBDA(int k, int j, int i) {
+          compute_D0bar_vert<1>(tw01.data, tw00.data, dis, djs, dks, i, j, k,
+                                0);
+        });
+  }
+
+  real errf = square.compute_Linf_error(tw01_expected, tw01);
+
+  if (errf > atol) {
+    std::cout << "Exactness of D0bar_vert failed, error = " << errf
               << " tol = " << atol << std::endl;
     exit(-1);
   }
@@ -199,6 +265,8 @@ int main() {
   real atol = 500 * std::numeric_limits<real>::epsilon();
   test_D0(33, atol);
   test_D0_vert(33, atol);
+  test_D0bar(33, atol);
+  test_D0bar_vert(33, atol);
   test_D1bar_and_D1bar_vert(33, atol);
   test_D1_ext(33, atol);
   yakl::finalize();

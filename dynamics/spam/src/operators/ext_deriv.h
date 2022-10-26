@@ -320,6 +320,73 @@ void YAKL_INLINE compute_D0bar(const real5d &tendvar, const real5d &densvar,
 }
 
 template <uint ndofs>
+void YAKL_INLINE compute_D0bar_ext(SArray<real, 1, ndims> &tend,
+                                   const real5d &densvar, int is, int js,
+                                   int ks, int i, int j, int k, int n) {
+  SArray<real, 3, ndofs, ndims, 2> dens;
+  for (int l = 0; l < ndofs; l++) {
+    for (int d = 0; d < ndims; d++) {
+      dens(l, d, 0) = densvar(l, k + ks, j + js, i + is, n);
+      if (d == 0) {
+        dens(l, d, 1) = densvar(l, k + ks, j + js, i + is + 1, n);
+      }
+    }
+  }
+  D0bar<ndofs>(tend, dens);
+}
+
+template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+void YAKL_INLINE compute_D0bar_ext(const real5d &tendvar, const real5d &densvar,
+                                   int is, int js, int ks, int i, int j, int k,
+                                   int n) {
+  SArray<real, 1, ndims> tend;
+  compute_D0bar_ext<ndofs>(tend, densvar, is, js, ks, i, j, k, n);
+  for (int d = 0; d < ndims; d++) {
+    if (addmode == ADD_MODE::REPLACE) {
+      tendvar(d, k + ks, j + js, i + is, n) = tend(d);
+    }
+    if (addmode == ADD_MODE::ADD) {
+      tendvar(d, k + ks, j + js, i + is, n) += tend(d);
+    }
+  }
+}
+template <uint ndofs>
+void YAKL_INLINE D0bar_vert(real &var, SArray<real, 2, ndofs, 2> const &dens) {
+
+  var = 0.0;
+  for (int l = 0; l < ndofs; l++) {
+    var -= (dens(l, 1) - dens(l, 0));
+  }
+}
+
+template <uint ndofs>
+real YAKL_INLINE compute_D0bar_vert(const real5d &densvar, int is, int js,
+                                    int ks, int i, int j, int k, int n) {
+  real tend;
+  SArray<real, 2, ndofs, 2> dens;
+  for (int l = 0; l < ndofs; l++) {
+    dens(l, 1) = densvar(l, k + ks + 1, j + js, i + is, n);
+    dens(l, 0) = densvar(l, k + ks, j + js, i + is, n);
+  }
+
+  D0bar_vert<ndofs>(tend, dens);
+  return tend;
+}
+
+template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+void YAKL_INLINE compute_D0bar_vert(const real5d &tendvar,
+                                    const real5d &densvar, int is, int js,
+                                    int ks, int i, int j, int k, int n) {
+  real tend = compute_D0bar_vert<ndofs>(densvar, is, js, ks, i, j, k, n);
+  if (addmode == ADD_MODE::REPLACE) {
+    tendvar(0, k + ks, j + js, i + is, n) = tend;
+  }
+  if (addmode == ADD_MODE::ADD) {
+    tendvar(0, k + ks, j + js, i + is, n) += tend;
+  }
+}
+
+template <uint ndofs>
 void YAKL_INLINE D1bar(SArray<real, 1, ndofs> &var,
                        SArray<real, 2, ndims, 2> const &flux) {
 
