@@ -168,6 +168,9 @@ void add_model_diagnostics(
 // *******   Tendencies   ***********//
 
 class ModelTendencies : public ExtrudedTendencies {
+  real entropicvar_diffusion_coeff;
+  real velocity_diffusion_coeff;
+
 public:
   void initialize(PamCoupler &coupler, ModelParameters &params,
                   const Geometry<Straight> &primal_geom,
@@ -180,6 +183,8 @@ public:
     PVPE.initialize(varset);
     Hk.initialize(varset, this->primal_geometry, this->dual_geometry);
     Hs.initialize(thermo, varset, this->primal_geometry, this->dual_geometry);
+    entropicvar_diffusion_coeff = params.entropicvar_diffusion_coeff;
+    velocity_diffusion_coeff = params.velocity_diffusion_coeff;
   }
 
   void
@@ -497,6 +502,264 @@ public:
               coriolisxzvertreconvar, coriolisxzvertedgereconvar,
               this->primal_geometry, this->dual_geometry, Wvar, pis, pjs, pks,
               i, j, k, n);
+        });
+  }
+
+  void add_entropicvar_diffusion(real entropicvar_coeff, real5d denstendvar,
+                                 const real5d densvar, const real5d dens0var,
+                                 const real5d Kvar, const real5d qxzfluxvar,
+                                 const real5d qxzvertfluxvar, const real5d Fvar,
+                                 const real5d FWvar,
+                                 FieldSet<nauxiliary> &auxiliary_vars) {
+
+    const auto &primal_topology = primal_geometry.topology;
+
+    int pis = primal_topology.is;
+    int pjs = primal_topology.js;
+    int pks = primal_topology.ks;
+
+    const auto &dual_topology = dual_geometry.topology;
+
+    int dis = dual_topology.is;
+    int djs = dual_topology.js;
+    int dks = dual_topology.ks;
+
+    YAKL_SCOPE(varset, ::varset);
+    parallel_for(
+        "Entropicvar diffusion 1",
+        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+          dens0var(0, k + pks, j + pjs, i + pis, n) =
+              varset.get_entropic_var(densvar, k, j, i, pks, pjs, pis, n);
+        });
+    auxiliary_vars.exchange({DENS0VAR});
+
+    parallel_for(
+        "Entropicvar diffusion 2",
+        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          compute_D0<1>(qxzvertfluxvar, dens0var, pis, pjs, pks, i, j, k, n);
+        });
+    auxiliary_vars.exchange({QXZVERTFLUXVAR});
+
+    parallel_for(
+        "Entropicvar diffusion 3",
+        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          compute_D0_vert<1>(qxzfluxvar, dens0var, pis, pjs, pks, i, j, k, n);
+        });
+    auxiliary_vars.exchange({QXZFLUXVAR});
+
+    parallel_for(
+        "Entropicvar diffusion 4",
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          compute_H1_ext<1, diffusion_diff_ord>(Fvar, qxzvertfluxvar,
+                                                primal_geometry, dual_geometry,
+                                                dis, djs, dks, i, j, k, n);
+        });
+    auxiliary_vars.exchange({FVAR});
+
+    parallel_for(
+        "Entropicvar diffusion 5",
+        SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          compute_H1_vert<1, diffusion_diff_ord>(FWvar, qxzfluxvar,
+                                                 primal_geometry, dual_geometry,
+                                                 dis, djs, dks, i, j, k + 1, 0);
+        });
+    auxiliary_vars.exchange({FWVAR});
+    auxiliary_vars.fields_arr[FWVAR].set_bnd(0.0);
+
+    parallel_for(
+        "Entropicvar diffusion 6",
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          compute_D1bar<1>(Kvar, Fvar, dis, djs, dks, i, j, k, n);
+          compute_D1bar_vert<1, ADD_MODE::ADD>(Kvar, FWvar, dis, djs, dks, i, j,
+                                               k, n);
+        });
+    auxiliary_vars.exchange({KVAR});
+
+    parallel_for(
+        "Entropicvar diffusion 7",
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          SArray<real, 1, 1> sdiff;
+          compute_H2bar_ext<1, diffusion_diff_ord, vert_diffusion_diff_ord>(
+              sdiff, Kvar, primal_geometry, dual_geometry, pis, pjs, pks, i, j,
+              k, n);
+          sdiff(0) *= entropicvar_coeff;
+
+          real rho = densvar(0, k + pks, j + pjs, i + pis, n);
+          denstendvar(1, k + pks, j + pjs, i + pis, n) += -rho * sdiff(0);
+        });
+  }
+
+  void add_velocity_diffusion(real velocity_coeff, real5d Vtendvar,
+                              real5d Wtendvar, const real5d Vvar,
+                              const real5d Wvar, const real5d qxzedgereconvar,
+                              const real5d qxz0var, const real5d dens0var,
+                              const real5d Kvar, const real5d Fvar,
+                              const real5d FWvar,
+                              FieldSet<nauxiliary> &auxiliary_vars) {
+
+    const auto &primal_topology = primal_geometry.topology;
+
+    int pis = primal_topology.is;
+    int pjs = primal_topology.js;
+    int pks = primal_topology.ks;
+
+    const auto &dual_topology = dual_geometry.topology;
+
+    int dis = dual_topology.is;
+    int djs = dual_topology.js;
+    int dks = dual_topology.ks;
+
+    // *d*d
+
+    parallel_for(
+        "Velocity diffusion 1",
+        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          compute_D1_ext<1>(qxzedgereconvar, Vvar, Wvar, pis, pjs, pks, i, j, k,
+                            n);
+        });
+    auxiliary_vars.exchange({QXZEDGERECONVAR});
+
+    parallel_for(
+        "Velocity diffusion 2",
+        SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          compute_H2_ext<1, diffusion_diff_ord, vert_diffusion_diff_ord>(
+              qxz0var, qxzedgereconvar, primal_geometry, dual_geometry, dis,
+              djs, dks, i, j, k + 1, n);
+        });
+    auxiliary_vars.exchange({QXZ0VAR});
+    auxiliary_vars.fields_arr[QXZ0VAR].set_bnd(0.0);
+
+    parallel_for(
+        "Velocity diffusion 3",
+        SimpleBounds<4>(dual_topology.ni, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          compute_D0bar_ext<1>(FWvar, qxz0var, dis, djs, dks, i, j, k, n);
+        });
+    auxiliary_vars.exchange({FWVAR});
+
+    parallel_for(
+        "Velocity diffusion 4",
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          compute_D0bar_vert<1>(Fvar, qxz0var, dis, djs, dks, i, j, k, n);
+        });
+    auxiliary_vars.exchange({FVAR});
+
+    parallel_for(
+        "Velocity diffusion 5",
+        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          SArray<real, 1, ndims> vdiff;
+          compute_H1bar_ext<1, diffusion_diff_ord>(vdiff, Fvar, primal_geometry,
+                                                   dual_geometry, pis, pjs, pks,
+                                                   i, j, k, n);
+          for (int d = 0; d < ndims; ++d) {
+            Vtendvar(d, k + pks, j + pjs, i + pis, n) -=
+                velocity_coeff * vdiff(d);
+          }
+        });
+
+    parallel_for(
+        "Velocity diffusion 6",
+        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          SArray<real, 1, ndims> wdiff;
+          compute_H1bar_vert<1, vert_diffusion_diff_ord>(
+              wdiff, FWvar, primal_geometry, dual_geometry, pis, pjs, pks, i, j,
+              k, n);
+          Wtendvar(0, k + pks, j + pjs, i + pis, n) -=
+              velocity_coeff * wdiff(0);
+        });
+
+    // d*d*
+
+    parallel_for(
+        "Velocity diffusion 7",
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          compute_H1_ext<1, diffusion_diff_ord>(Fvar, Vvar, primal_geometry,
+                                                dual_geometry, dis, djs, dks, i,
+                                                j, k, n);
+        });
+    auxiliary_vars.exchange({FVAR});
+
+    parallel_for(
+        "Velocity diffusion 8",
+        SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          compute_H1_vert<1, vert_diffusion_diff_ord>(
+              FWvar, Wvar, primal_geometry, dual_geometry, dis, djs, dks, i, j,
+              k + 1, n);
+        });
+    auxiliary_vars.exchange({FWVAR});
+    auxiliary_vars.fields_arr[FWVAR].set_bnd(0.0);
+
+    parallel_for(
+        "Velocity diffusion 9",
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          compute_D1bar<1>(Kvar, Fvar, dis, djs, dks, i, j, k, n);
+          compute_D1bar_vert<1, ADD_MODE::ADD>(Kvar, FWvar, dis, djs, dks, i, j,
+                                               k, n);
+        });
+    auxiliary_vars.exchange({KVAR});
+
+    parallel_for(
+        "Velocity diffusion 10",
+        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          compute_H2bar_ext<1, diffusion_diff_ord, vert_diffusion_diff_ord>(
+              dens0var, Kvar, primal_geometry, dual_geometry, pis, pjs, pks, i,
+              j, k, n);
+        });
+    auxiliary_vars.exchange({DENS0VAR});
+
+    parallel_for(
+        "Velocity diffusion 11",
+        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          SArray<real, 1, ndims> vdiff;
+          compute_D0<1>(vdiff, dens0var, pis, pjs, pks, i, j, k, n);
+          for (int d = 0; d < ndims; ++d) {
+            Vtendvar(d, pks + k, pjs + j, pis + i, n) -=
+                velocity_coeff * vdiff(d);
+          }
+        });
+
+    parallel_for(
+        "Velocity diffusion 12",
+        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          real wdiff = compute_D0_vert<1>(dens0var, pis, pjs, pks, i, j, k, n);
+          Wtendvar(0, pks + k, pjs + j, pis + i, n) -= velocity_coeff * wdiff;
         });
   }
 
@@ -1089,6 +1352,29 @@ public:
                        auxiliary_vars.fields_arr[FWVAR].data,
                        auxiliary_vars.fields_arr[PHIVAR].data,
                        auxiliary_vars.fields_arr[PHIVERTVAR].data);
+
+    if (entropicvar_diffusion_coeff > 0) {
+      add_entropicvar_diffusion(
+          entropicvar_diffusion_coeff, xtend.fields_arr[DENSVAR].data,
+          x.fields_arr[DENSVAR].data, auxiliary_vars.fields_arr[DENS0VAR].data,
+          auxiliary_vars.fields_arr[KVAR].data,
+          auxiliary_vars.fields_arr[QXZFLUXVAR].data,
+          auxiliary_vars.fields_arr[QXZVERTFLUXVAR].data,
+          auxiliary_vars.fields_arr[FVAR].data,
+          auxiliary_vars.fields_arr[FWVAR].data, auxiliary_vars);
+    }
+    if (velocity_diffusion_coeff > 0) {
+      add_velocity_diffusion(
+          velocity_diffusion_coeff, xtend.fields_arr[VVAR].data,
+          xtend.fields_arr[WVAR].data, x.fields_arr[VVAR].data,
+          x.fields_arr[WVAR].data,
+          auxiliary_vars.fields_arr[QXZEDGERECONVAR].data,
+          auxiliary_vars.fields_arr[QXZ0VAR].data,
+          auxiliary_vars.fields_arr[DENS0VAR].data,
+          auxiliary_vars.fields_arr[KVAR].data,
+          auxiliary_vars.fields_arr[FVAR].data,
+          auxiliary_vars.fields_arr[FWVAR].data, auxiliary_vars);
+    }
   }
 };
 
@@ -2056,6 +2342,12 @@ void readModelParamsFile(std::string inFile, ModelParameters &params,
 
   params.acoustic_balance = config["balance_initial_density"].as<bool>(false);
 
+  // Read diffusion coefficients
+  params.entropicvar_diffusion_coeff =
+      config["entropicvar_diffusion_coeff"].as<real>(0);
+  params.velocity_diffusion_coeff =
+      config["velocity_diffusion_coeff"].as<real>(0);
+
   // Read the data initialization options
   params.initdataStr = config["initData"].as<std::string>();
   testcase_from_string(testcase, params.initdataStr, params.acoustic_balance);
@@ -2063,6 +2355,12 @@ void readModelParamsFile(std::string inFile, ModelParameters &params,
   serial_print("IC: " + params.initdataStr, par.masterproc);
   serial_print("acoustically balanced: " +
                    std::to_string(params.acoustic_balance),
+               par.masterproc);
+  serial_print("entropicvar_diffusion_coeff: " +
+                   std::to_string(params.entropicvar_diffusion_coeff),
+               par.masterproc);
+  serial_print("velocity_diffusion_coeff: " +
+                   std::to_string(params.velocity_diffusion_coeff),
                par.masterproc);
 
   for (int i = 0; i < ntracers_dycore; i++) {
@@ -2705,6 +3003,75 @@ struct TwoBubbles {
   add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics) {}
 };
 
+struct DensityCurrent {
+  static real constexpr g = 9.80616_fp;
+  static real constexpr Lx = 51.2e3;
+  static real constexpr Lz = 6400;
+  static real constexpr xc = 0;
+  static real constexpr zc = 0.5_fp * Lz;
+  static real constexpr theta0 = 300.0_fp;
+  static real constexpr bxc = 0;
+  static real constexpr bzc = 3000;
+  static real constexpr bxr = 4000;
+  static real constexpr bzr = 2000;
+  static real constexpr dss = -15;
+  static real constexpr T_ref = 300.0_fp;
+  static real constexpr N_ref = 0.0001;
+
+  static real YAKL_INLINE refnsq_f(real z, const ThermoPotential &thermo) {
+    return N_ref * N_ref;
+  }
+
+  static real YAKL_INLINE refp_f(real z, const ThermoPotential &thermo) {
+    return const_stability_p(z, N_ref, g, thermo.cst.pr, theta0, thermo);
+  }
+
+  static real YAKL_INLINE refT_f(real z, const ThermoPotential &thermo) {
+    return const_stability_T(z, N_ref, g, theta0, thermo);
+  }
+
+  static real YAKL_INLINE refrho_f(real z, const ThermoPotential &thermo) {
+    real p = refp_f(z, thermo);
+    real T = refT_f(z, thermo);
+    real alpha = thermo.compute_alpha(p, T, 1, 0, 0, 0);
+    return 1._fp / alpha;
+  }
+
+  static real YAKL_INLINE refentropicdensity_f(real z,
+                                               const ThermoPotential &thermo) {
+    real rho_ref = refrho_f(z, thermo);
+    real T_ref = refT_f(z, thermo);
+    real p_ref = refp_f(z, thermo);
+    return rho_ref * thermo.compute_entropic_var(p_ref, T_ref, 0, 0, 0, 0);
+  }
+
+  static real YAKL_INLINE rho_f(real x, real z, const ThermoPotential &thermo) {
+    real rho_b = isentropic_rho(x, z, theta0, g, thermo);
+    return rho_b;
+  }
+
+  static real YAKL_INLINE entropicvar_f(real x, real z,
+                                        const ThermoPotential &thermo) {
+    real p = isentropic_p(x, z, theta0, g, thermo);
+    real T = isentropic_T(x, z, theta0, g, thermo);
+    real r = sqrt((x - bxc) * (x - bxc) / (bxr * bxr) +
+                  (z - bzc) * (z - bzc) / (bzr * bzr));
+    real dtheta = (r < 1) ? dss * 0.5_fp * (1._fp + cos(pi * r)) : 0._fp;
+    real dT = dtheta * pow(p / thermo.cst.pr, thermo.cst.kappa_d);
+    return thermo.compute_entropic_var(p, T + dT, 0, 0, 0, 0);
+  }
+
+  static vecext<2> YAKL_INLINE v_f(real x, real y) {
+    vecext<2> vvec;
+    vvec.u = 0;
+    vvec.w = 0;
+    return vvec;
+  }
+
+  static void
+  add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics) {}
+};
+
 struct MoistRisingBubble : public RisingBubble<false> {
 
   static real YAKL_INLINE rhov_f(real x, real z,
@@ -3317,6 +3684,8 @@ void testcase_from_string(std::unique_ptr<TestCase> &testcase, std::string name,
     } else {
       testcase = std::make_unique<EulerTestCase<RisingBubble<false>>>();
     }
+  } else if (name == "densitycurrent") {
+    testcase = std::make_unique<EulerTestCase<DensityCurrent>>();
   } else if (name == "moistrisingbubble") {
     testcase = std::make_unique<MoistEulerTestCase<MoistRisingBubble>>();
   } else if (name == "largerisingbubble") {

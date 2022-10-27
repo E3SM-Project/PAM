@@ -38,6 +38,10 @@ typedef yakl::Array<complex, 1, yakl::memDevice, yakl::styleC> complex1d;
 uint constexpr diff_ord = 2;
 uint constexpr vert_diff_ord = 2;
 
+// Hodge stars order for diffusion, for now only 2nd order is supported
+uint constexpr diffusion_diff_ord = 2;
+uint constexpr vert_diffusion_diff_ord = 2;
+
 // Reconstruction types and order
 enum class RECONSTRUCTION_TYPE { CFV, WENO, WENOFUNC };
 
