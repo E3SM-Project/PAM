@@ -160,6 +160,20 @@ template <int nlevels> struct ConvergenceTest {
     }
   }
 
+  template <typename F1>
+  ConvergenceTest(const std::string &name, F1 error_fun) : name(name) {
+    for (int l = 0; l < nlevels; ++l) {
+      int np = 8 * std::pow(2, l - 1);
+      errs[l] = error_fun(np);
+    }
+
+    for (int l = 0; l < nlevels; ++l) {
+      if (l < nlevels - 1) {
+        rates[l] = std::log2(errs[l] / errs[l + 1]);
+      }
+    }
+  }
+
   void print_errors_and_rates() const {
     std::cout << "Errors" << std::endl;
     for (int l = 0; l < nlevels; ++l) {
