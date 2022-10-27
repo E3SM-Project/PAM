@@ -967,6 +967,9 @@ public:
 
     v_transform = real4d("v transform", pni, nyf, nxf, nens);
     w_transform = real4d("w transform", pnl, nyf, nxf, nens);
+    yakl::memset(v_transform, 0);
+    yakl::memset(w_transform, 0);
+
     complex_vrhs = complex4d("complex vrhs", pni, ny, nx, nens);
     complex_wrhs = complex4d("complex wrhs", pnl, ny, nx, nens);
 

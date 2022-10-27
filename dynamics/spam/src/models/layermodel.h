@@ -602,6 +602,8 @@ public:
 
     dens_transform =
         real4d("dens transform", dual_topo.nl, nyf, nxf, dual_topo.nens);
+    yakl::memset(dens_transform, 0);
+
     fft_x.init(dens_transform, 2, nx);
     fft_y.init(dens_transform, 1, ny);
   }
