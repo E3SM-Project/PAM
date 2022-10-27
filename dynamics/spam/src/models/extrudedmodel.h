@@ -2127,7 +2127,7 @@ public:
         SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
         YAKL_LAMBDA(int k, int n) {
           SArray<real, 1, 1> rho0;
-          compute_H2bar_vert<1, vert_diff_ord>(
+          compute_H2bar_ext<1, vert_diff_ord>(
               rho0, refstate.dens.data, primal_geom, dual_geom, pks, k, n);
           refstate.rho_pi.data(0, k, n) = rho0(0);
         });

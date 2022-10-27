@@ -117,8 +117,8 @@ public:
                                  real fac = 1._fp) const {
 
     SArray<real, 1, 1> geop0;
-    compute_H2bar_vert<1, vert_diff_ord>(geop0, geop, this->primal_geometry,
-                                         this->dual_geometry, ks, k, n);
+    compute_H2bar_ext<1, vert_diff_ord>(geop0, geop, this->primal_geometry,
+                                        this->dual_geometry, ks, k, n);
 
     real alpha = varset.get_alpha(dens, k, ks, n);
     real entropic_var = varset.get_entropic_var(dens, k, ks, n);

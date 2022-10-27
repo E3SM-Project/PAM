@@ -403,11 +403,11 @@ real YAKL_INLINE fourier_H2bar(const Geometry<Straight> &pgeom,
 }
 
 template <uint ndofs, uint vord, uint voff = vord / 2 - 1>
-void YAKL_INLINE compute_H2bar_vert(SArray<real, 1, ndofs> &x0,
-                                    const real3d &var,
-                                    const Geometry<Straight> &pgeom,
-                                    const Geometry<Twisted> &dgeom, int ks,
-                                    int k, int n) {
+void YAKL_INLINE compute_H2bar_ext(SArray<real, 1, ndofs> &x0,
+                                   const real3d &var,
+                                   const Geometry<Straight> &pgeom,
+                                   const Geometry<Twisted> &dgeom, int ks,
+                                   int k, int n) {
   real H2bargeom = pgeom.get_area_00entity(k + ks, 0, 0) /
                    dgeom.get_area_11entity(k + ks, 0, 0);
   for (int l = 0; l < ndofs; l++) {
