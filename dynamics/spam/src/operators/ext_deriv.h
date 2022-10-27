@@ -726,7 +726,7 @@ void YAKL_INLINE compute_D1_ext(SArray<real, 1, ndofs> &tend, const real5d &v,
     flux(1) = v(l, k + ks + 1, j + js, i + is, n); // v1 -
     flux(2) = w(l, k + ks, j + js, i + is, n);     // w +
     flux(3) = w(l, k + ks, j + js, i + is - 1, n); // w -
-    tend(l) = (flux(0) - flux(1) + flux(2) - flux(3));
+    tend(l) = -(flux(0) - flux(1) + flux(2) - flux(3));
   }
 }
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>

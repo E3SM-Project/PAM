@@ -40,8 +40,8 @@ struct div_vecfun {
 struct curl_vecfun {
   real YAKL_INLINE operator()(real x, real z) const {
     return 2 * M_PI *
-           (cos(2 * M_PI * x) * cos(2 * M_PI * z) -
-            sin(2 * M_PI * x) * cos(2 * M_PI * z));
+           (sin(2 * M_PI * x) * cos(2 * M_PI * z) -
+            cos(2 * M_PI * x) * cos(2 * M_PI * z));
   }
 };
 
