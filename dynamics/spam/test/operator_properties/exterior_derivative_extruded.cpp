@@ -96,7 +96,7 @@ void test_D0_vert(int np, real atol) {
   {
     st00.exchange();
     parallel_for(
-        SimpleBounds<3>(square.primal_topology.ni,
+        SimpleBounds<3>(square.primal_topology.nl,
                         square.primal_topology.n_cells_y,
                         square.primal_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
