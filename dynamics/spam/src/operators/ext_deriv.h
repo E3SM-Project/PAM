@@ -326,9 +326,9 @@ void YAKL_INLINE compute_D0bar_ext(SArray<real, 1, ndims> &tend,
   SArray<real, 3, ndofs, ndims, 2> dens;
   for (int l = 0; l < ndofs; l++) {
     for (int d = 0; d < ndims; d++) {
-      dens(l, d, 0) = densvar(l, k + ks, j + js, i + is, n);
+      dens(l, d, 0) = densvar(l, k + ks, j + js, i + is + 1, n);
       if (d == 0) {
-        dens(l, d, 1) = densvar(l, k + ks, j + js, i + is + 1, n);
+        dens(l, d, 1) = densvar(l, k + ks, j + js, i + is, n);
       }
     }
   }
@@ -355,7 +355,7 @@ void YAKL_INLINE D0bar_vert(real &var, SArray<real, 2, ndofs, 2> const &dens) {
 
   var = 0.0;
   for (int l = 0; l < ndofs; l++) {
-    var -= (dens(l, 1) - dens(l, 0));
+    var += (dens(l, 1) - dens(l, 0));
   }
 }
 
@@ -726,7 +726,7 @@ void YAKL_INLINE compute_D1_ext(SArray<real, 1, ndofs> &tend, const real5d &v,
     flux(1) = v(l, k + ks + 1, j + js, i + is, n); // v1 -
     flux(2) = w(l, k + ks, j + js, i + is, n);     // w +
     flux(3) = w(l, k + ks, j + js, i + is - 1, n); // w -
-    tend(l) = -(flux(0) - flux(1) + flux(2) - flux(3));
+    tend(l) = (flux(0) - flux(1) + flux(2) - flux(3));
   }
 }
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>

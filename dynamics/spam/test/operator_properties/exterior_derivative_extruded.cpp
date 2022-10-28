@@ -134,6 +134,7 @@ void test_D0bar(int np, real atol) {
                         square.dual_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
           compute_D0bar_ext<1>(tw10.data, tw00.data, dis, djs, dks, i, j, k, 0);
+          tw10.data(0, k + dks, j + djs, i + dis, 0) *= -1;
         });
   }
 
@@ -168,6 +169,7 @@ void test_D0bar_vert(int np, real atol) {
         YAKL_LAMBDA(int k, int j, int i) {
           compute_D0bar_vert<1>(tw01.data, tw00.data, dis, djs, dks, i, j, k,
                                 0);
+          tw01.data(0, k + dks, j + djs, i + dis, 0) *= -1;
         });
   }
 
@@ -208,6 +210,7 @@ void test_D1_ext(int np, real atol) {
         YAKL_LAMBDA(int k, int j, int i) {
           compute_D1_ext<1>(st11.data, st10.data, st01.data, pis, pjs, pks, i,
                             j, k, 0);
+          st11.data(0, k + pks, j + pjs, i + pis, 0) *= -1;
         });
   }
 
