@@ -3,6 +3,7 @@
 
 #include "pam_coupler.h"
 #include "YAKL_netcdf.h"
+#include "mpi.h"
 
 inline void output( pam::PamCoupler const &coupler , std::string out_prefix , real etime ) {
   int nranks;

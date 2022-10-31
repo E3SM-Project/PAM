@@ -16,6 +16,6 @@ cmake      \
   -DCMAKE_CUDA_HOST_COMPILER="mpic++"                             \
   -DPAM_DYCORE="awfl"                                             \
   -DPAM_MICRO="p3"                                                \
-  -DPAM_SGS="shoc"                                                \
+  -DPAM_SGS="none"                                                \
   ..
 
