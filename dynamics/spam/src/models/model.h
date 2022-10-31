@@ -220,6 +220,12 @@ public:
       ADD_MODE addmode, real fac, real dt, FieldSet<nconstant> &const_vars,
       FieldSet<nprognostic> &x, FieldSet<nauxiliary> &auxiliary_vars) = 0;
 
+  virtual void compute_functional_derivatives_two_point(
+      real dt, FieldSet<nconstant> &const_vars, FieldSet<nprognostic> &x1,
+      FieldSet<nprognostic> &x2, FieldSet<nauxiliary> &auxiliary_vars) {
+    throw std::runtime_error("Not implemented");
+  }
+
   virtual void apply_symplectic(real dt, FieldSet<nconstant> &const_vars,
                                 FieldSet<nprognostic> &x,
                                 FieldSet<nauxiliary> &auxiliary_vars,

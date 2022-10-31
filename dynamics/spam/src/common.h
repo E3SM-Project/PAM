@@ -99,6 +99,13 @@ uint constexpr mirroringhalo =
 // 0 = RKSimple, 1=SSPRK, 2=SI
 #define _TIME_TYPE 1
 
+#if defined _EXTRUDED && defined _IDEAL_GAS_POTTEMP
+bool constexpr si_compute_functional_derivatives_quadrature = false;
+#else
+bool constexpr si_compute_functional_derivatives_quadrature = true;
+#endif
+uint constexpr si_quad_pts = 4;
+
 //////////////////////////////////////////////////////////////////////////////////////////////
 
 real constexpr pi =
