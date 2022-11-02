@@ -5,6 +5,20 @@
 #include "thermo.h"
 #include "variableset.h"
 
+real YAKL_INLINE gamma_avg(real a, real b, real gamma) {
+  const real f = (a - b) / (a + b);
+  const real v = f * f;
+  if (v < 1e-4_fp) {
+    const real c1 = 1._fp / 6._fp * (gamma - 1) * (gamma - 2);
+    const real c2 = 1._fp / 20._fp * (gamma - 3) * (gamma - 4);
+    const real c3 = 1._fp / 42._fp * (gamma - 5) * (gamma - 6);
+    const real x = std::pow(0.5_fp * (a + b), gamma - 1);
+    return x * (1 + c1 * v * (1 + c2 * v * (1 + c3 * v)));
+  } else {
+    return (std::pow(a, gamma) - std::pow(b, gamma)) / (gamma * (a - b));
+  }
+}
+
 // ADD p-variants
 
 class Hamiltonian_CE_Hs {
@@ -107,6 +121,61 @@ public:
     } else if (addmode == ADD_MODE::ADD) {
       B(0, k + ks, j + js, i + is, n) +=
           fac * (geop0(0) + U + p * alpha - entropic_var * generalized_Exner);
+      B(1, k + ks, j + js, i + is, n) += fac * generalized_Exner;
+    }
+  }
+
+  template <ADD_MODE addmode = ADD_MODE::REPLACE>
+  void YAKL_INLINE compute_dHsdx_two_point(const real5d &B, const real5d &dens1,
+                                           const real5d &dens2,
+                                           const real5d &geop, int is, int js,
+                                           int ks, int i, int j, int k, int n,
+                                           real fac = 1._fp) const {
+    // hacky way to prevent compilation errors for unimplemented thermo variants
+    if constexpr (!si_compute_functional_derivatives_quadrature) {
+      // dispatch based on thermo
+      compute_dHsdx_two_point<addmode>(thermo, B, dens1, dens2, geop, is, js,
+                                       ks, i, j, k, n, fac);
+    }
+  }
+
+  template <ADD_MODE addmode = ADD_MODE::REPLACE>
+  void YAKL_INLINE compute_dHsdx_two_point(IdealGas_Pottemp, const real5d &B,
+                                           const real5d &dens1,
+                                           const real5d &dens2,
+                                           const real5d &geop, int is, int js,
+                                           int ks, int i, int j, int k, int n,
+                                           real fac = 1._fp) const {
+
+    SArray<real, 1, 1> geop0;
+#ifdef _EXTRUDED
+    compute_H2bar_ext<1, diff_ord, vert_diff_ord>(
+        geop0, geop, this->primal_geometry, this->dual_geometry, is, js, ks, i,
+        j, k, n);
+#else
+    compute_H2bar<1, diff_ord>(geop0, geop, this->primal_geometry,
+                               this->dual_geometry, is, js, ks, i, j, k, n);
+#endif
+
+    real Cpd = thermo.cst.Cpd;
+    real Cvd = thermo.cst.Cvd;
+    real Rd = thermo.cst.Rd;
+    real pr = thermo.cst.pr;
+    real gamma_d = thermo.cst.gamma_d;
+
+    real Tht1 = dens1(1, k + ks, j + js, i + is, n) /
+                dual_geometry.get_area_11entity(k + ks, j + js, i + is);
+    real Tht2 = dens2(1, k + ks, j + js, i + is, n) /
+                dual_geometry.get_area_11entity(k + ks, j + js, i + is);
+
+    real generalized_Exner =
+        Cpd * std::pow(Rd / pr, gamma_d - 1) * gamma_avg(Tht1, Tht2, gamma_d);
+
+    if (addmode == ADD_MODE::REPLACE) {
+      B(0, k + ks, j + js, i + is, n) = fac * geop0(0);
+      B(1, k + ks, j + js, i + is, n) = fac * generalized_Exner;
+    } else if (addmode == ADD_MODE::ADD) {
+      B(0, k + ks, j + js, i + is, n) += fac * geop0(0);
       B(1, k + ks, j + js, i + is, n) += fac * generalized_Exner;
     }
   }

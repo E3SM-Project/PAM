@@ -55,7 +55,7 @@ public:
 #endif
 #if _TIME_TYPE == 2
   ModelLinearSystem linear_system;
-  SITimeIntegrator<4> tint;
+  SITimeIntegrator<si_quad_pts> tint;
 #endif
 
   int ierr;

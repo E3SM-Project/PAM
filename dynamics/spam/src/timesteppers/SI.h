@@ -111,20 +111,26 @@ template <uint nquad> void SITimeIntegrator<nquad>::stepForward(real dt) {
 
     this->xn.waxpy(1, this->dx, this->xn);
 
-    this->xm.waxpby(1 - this->quad_pts(0), this->quad_pts(0), *this->x,
-                    this->xn);
-    this->xm.exchange();
-    this->tendencies->compute_functional_derivatives(
-        ADD_MODE::REPLACE, this->quad_wts(0), dt, *this->const_vars, this->xm,
-        *this->auxiliary_vars);
-
-    for (int m = 1; m < nquad; ++m) {
-      this->xm.waxpby(1 - this->quad_pts(m), this->quad_pts(m), *this->x,
+    if (si_compute_functional_derivatives_quadrature) {
+      this->xm.waxpby(1 - this->quad_pts(0), this->quad_pts(0), *this->x,
                       this->xn);
       this->xm.exchange();
       this->tendencies->compute_functional_derivatives(
-          ADD_MODE::ADD, this->quad_wts(m), dt, *this->const_vars, this->xm,
+          ADD_MODE::REPLACE, this->quad_wts(0), dt, *this->const_vars, this->xm,
           *this->auxiliary_vars);
+
+      for (int m = 1; m < nquad; ++m) {
+        this->xm.waxpby(1 - this->quad_pts(m), this->quad_pts(m), *this->x,
+                        this->xn);
+        this->xm.exchange();
+        this->tendencies->compute_functional_derivatives(
+            ADD_MODE::ADD, this->quad_wts(m), dt, *this->const_vars, this->xm,
+            *this->auxiliary_vars);
+      }
+    } else {
+      this->xn.exchange();
+      this->tendencies->compute_functional_derivatives_two_point(
+          dt, *this->const_vars, *this->x, this->xn, *this->auxiliary_vars);
     }
 
     this->xm.waxpby(0.5_fp, 0.5_fp, *this->x, this->xn);
