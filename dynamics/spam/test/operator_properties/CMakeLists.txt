@@ -12,3 +12,15 @@ target_compile_definitions(exterior_derivative_extruded PUBLIC _EXTRUDED)
 
 add_test(NAME exterior_derivative_extruded_test COMMAND ./exterior_derivative_extruded)
 
+add_executable(laplacian laplacian.cpp)
+yakl_process_target(laplacian)
+target_link_libraries(laplacian dycore pam_core ${PAM_LINK_FLAGS})
+
+add_test(NAME laplacian_test COMMAND ./laplacian)
+
+add_executable(laplacian_extruded laplacian_extruded.cpp)
+yakl_process_target(laplacian_extruded)
+target_link_libraries(laplacian_extruded dycore pam_core ${PAM_LINK_FLAGS})
+target_compile_definitions(laplacian_extruded PUBLIC _EXTRUDED)
+
+add_test(NAME laplacian_extruded_test COMMAND ./laplacian_extruded)

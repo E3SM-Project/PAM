@@ -263,9 +263,9 @@ void YAKL_INLINE compute_twisted_recon(const real5d &reconvar,
   SArray<real, 3, ndofs, ndims, 2> edgerecon;
 
 #ifdef _EXTRUDED
-  compute_Hext<1, diff_ord>(uvar, V, pgeom, dgeom, is, js, ks, i, j, k, n);
+  compute_H1_ext<1, diff_ord>(uvar, V, pgeom, dgeom, is, js, ks, i, j, k, n);
 #else
-  compute_H<1, diff_ord>(uvar, V, pgeom, dgeom, is, js, ks, i, j, k, n);
+  compute_H1<1, diff_ord>(uvar, V, pgeom, dgeom, is, js, ks, i, j, k, n);
 #endif
 
   for (int d = 0; d < ndims; d++) {
@@ -318,7 +318,8 @@ void YAKL_INLINE compute_twisted_vert_recon(
   SArray<real, 1, 1> uvar;
   SArray<real, 3, ndofs, 1, 2> edgerecon;
 
-  compute_Hv<1, vert_diff_ord>(uvar, W, pgeom, dgeom, is, js, ks, i, j, k, n);
+  compute_H1_vert<1, vert_diff_ord>(uvar, W, pgeom, dgeom, is, js, ks, i, j, k,
+                                    n);
 
   for (int l = 0; l < ndofs; l++) {
     edgerecon(l, 0, 0) =
@@ -411,11 +412,11 @@ void YAKL_INLINE compute_straight_xz_recon(const real5d &reconvar,
   SArray<real, 3, ndofs, 1, 2> edgerecon;
 
   SArray<real, 1, 1> f0, f1, f2, f3;
-  compute_Hext<1, diff_ord>(f0, V, pgeom, dgeom, is, js, ks, i, j, k, n);
-  compute_Hext<1, diff_ord>(f1, V, pgeom, dgeom, is, js, ks, i + 1, j, k, n);
-  compute_Hext<1, diff_ord>(f2, V, pgeom, dgeom, is, js, ks, i, j, k + 1, n);
-  compute_Hext<1, diff_ord>(f3, V, pgeom, dgeom, is, js, ks, i + 1, j, k + 1,
-                            n);
+  compute_H1_ext<1, diff_ord>(f0, V, pgeom, dgeom, is, js, ks, i, j, k, n);
+  compute_H1_ext<1, diff_ord>(f1, V, pgeom, dgeom, is, js, ks, i + 1, j, k, n);
+  compute_H1_ext<1, diff_ord>(f2, V, pgeom, dgeom, is, js, ks, i, j, k + 1, n);
+  compute_H1_ext<1, diff_ord>(f3, V, pgeom, dgeom, is, js, ks, i + 1, j, k + 1,
+                              n);
 
   SArray<real, 1, 4> flux;
   flux(0) = f0(0);
@@ -460,11 +461,14 @@ void YAKL_INLINE compute_straight_xz_vert_recon(
   SArray<real, 3, ndofs, 1, 2> edgerecon;
 
   SArray<real, 1, 1> f0, f1, f2, f3;
-  compute_Hv<1, vert_diff_ord>(f0, W, pgeom, dgeom, is, js, ks, i, j, k, n);
-  compute_Hv<1, vert_diff_ord>(f1, W, pgeom, dgeom, is, js, ks, i - 1, j, k, n);
-  compute_Hv<1, vert_diff_ord>(f2, W, pgeom, dgeom, is, js, ks, i, j, k + 1, n);
-  compute_Hv<1, vert_diff_ord>(f3, W, pgeom, dgeom, is, js, ks, i - 1, j, k + 1,
-                               n);
+  compute_H1_vert<1, vert_diff_ord>(f0, W, pgeom, dgeom, is, js, ks, i, j, k,
+                                    n);
+  compute_H1_vert<1, vert_diff_ord>(f1, W, pgeom, dgeom, is, js, ks, i - 1, j,
+                                    k, n);
+  compute_H1_vert<1, vert_diff_ord>(f2, W, pgeom, dgeom, is, js, ks, i, j,
+                                    k + 1, n);
+  compute_H1_vert<1, vert_diff_ord>(f3, W, pgeom, dgeom, is, js, ks, i - 1, j,
+                                    k + 1, n);
   SArray<real, 1, 4> flux;
   flux(0) = f0(0);
   flux(1) = f1(0);
