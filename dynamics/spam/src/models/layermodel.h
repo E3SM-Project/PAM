@@ -554,8 +554,7 @@ public:
 
     // Don't do FCT for non-FCT vars
     for (int l = 0; l < ndensity; l++) {
-      // if (not varset.dens_pos(l))
-      if (!varset.dens_pos[l]) {
+      if (!varset.dens_pos(l)) {
         for (int d = 0; d < ndims; ++d) {
           auxiliary_vars.fields_arr[PHIVAR].set(l + d * ndensity, 1.0);
         }
