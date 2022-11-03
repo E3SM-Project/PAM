@@ -5,33 +5,40 @@
 template <uint ndofs>
 void YAKL_INLINE calculate_edgeflux(SArray<real, 2, ndofs, ndims> &edgeflux,
                                     SArray<real, 2, ndofs, ndims> const &recon,
-                                    SArray<real, 1, ndims> const &flux) {
+                                    SArray<real, 1, ndims> const &flux,
+                                    SArray<bool, 1, ndensity> const &dens_pos) {
   for (int l = 0; l < ndofs; l++) {
-    for (int d = 0; d < ndims; d++) {
-      edgeflux(l, d) = recon(l, d) * flux(d);
+    if (dens_pos(l)) {
+      for (int d = 0; d < ndims; d++) {
+        edgeflux(l, d) = recon(l, d) * flux(d);
+      }
     }
   }
 }
 
 template <uint ndofs>
-YAKL_INLINE void compute_edgefluxes(const real5d &edgefluxvar,
-                                    const real5d &reconvar, const real5d &U,
-                                    int is, int js, int ks, int i, int j, int k,
-                                    int n) {
+YAKL_INLINE void
+compute_edgefluxes(const real5d &edgefluxvar, const real5d &reconvar,
+                   const real5d &U, const SArray<bool, 1, ndensity> &dens_pos,
+                   int is, int js, int ks, int i, int j, int k, int n) {
   SArray<real, 2, ndofs, ndims> edgeflux;
   SArray<real, 2, ndofs, ndims> recon;
   SArray<real, 1, ndims> flux;
   for (int d = 0; d < ndims; d++) {
     flux(d) = U(d, k + ks, j + js, i + is, n);
     for (int l = 0; l < ndofs; l++) {
-      recon(l, d) = reconvar(l + d * ndofs, k + ks, j + js, i + is, n);
+      if (dens_pos(l)) {
+        recon(l, d) = reconvar(l + d * ndofs, k + ks, j + js, i + is, n);
+      }
     }
   }
-  calculate_edgeflux<ndofs>(edgeflux, recon, flux);
+  calculate_edgeflux<ndofs>(edgeflux, recon, flux, dens_pos);
 
   for (int d = 0; d < ndims; d++) {
     for (int l = 0; l < ndofs; l++) {
-      edgefluxvar(l + d * ndofs, k + ks, j + js, i + is, n) = edgeflux(l, d);
+      if (dens_pos(l)) {
+        edgefluxvar(l + d * ndofs, k + ks, j + js, i + is, n) = edgeflux(l, d);
+      }
     }
   }
 }
@@ -67,15 +74,18 @@ YAKL_INLINE void compute_vertedgefluxes(const real5d &vertedgefluxvar,
 template <uint ndofs>
 void YAKL_INLINE calculate_Mf(SArray<real, 1, ndofs> &Mf,
                               SArray<real, 3, ndofs, ndims, 2> const &edgeflux,
-                              real dt) {
+                              real dt,
+                              SArray<bool, 1, ndensity> const &dens_pos) {
   real eps = 1.0e-8_fp;
   for (int l = 0; l < ndofs; l++) {
-    Mf(l) = 0.;
-    for (int d = 0; d < ndims; d++) {
-      Mf(l) += mymax(edgeflux(l, d, 1), 0.0) - mymin(edgeflux(l, d, 0), 0.0);
+    if (dens_pos(l)) {
+      Mf(l) = 0.;
+      for (int d = 0; d < ndims; d++) {
+        Mf(l) += mymax(edgeflux(l, d, 1), 0.0) - mymin(edgeflux(l, d, 0), 0.0);
+      }
+      Mf(l) *= dt;
+      Mf(l) += eps;
     }
-    Mf(l) *= dt;
-    Mf(l) += eps;
   }
 }
 
@@ -98,27 +108,32 @@ calculate_Mfext(SArray<real, 1, ndofs> &Mf,
 
 template <uint ndofs>
 YAKL_INLINE void compute_Mf(const real5d &Mfvar, const real5d &edgefluxvar,
-                            real dt, int is, int js, int ks, int i, int j,
-                            int k, int n) {
+                            real dt, const SArray<bool, 1, ndensity> &dens_pos,
+                            int is, int js, int ks, int i, int j, int k,
+                            int n) {
   SArray<real, 1, ndofs> Mf;
   SArray<real, 3, ndofs, ndims, 2> edgeflux;
   for (int l = 0; l < ndofs; l++) {
-    for (int m = 0; m < 2; m++) {
-      for (int d = 0; d < ndims; d++) {
-        if (d == 0) {
-          edgeflux(l, d, m) =
-              edgefluxvar(l + d * ndofs, k + ks, j + js, i + is + m, n);
-        }
-        if (d == 1) {
-          edgeflux(l, d, m) =
-              edgefluxvar(l + d * ndofs, k + ks, j + js + m, i + is, n);
+    if (dens_pos(l)) {
+      for (int m = 0; m < 2; m++) {
+        for (int d = 0; d < ndims; d++) {
+          if (d == 0) {
+            edgeflux(l, d, m) =
+                edgefluxvar(l + d * ndofs, k + ks, j + js, i + is + m, n);
+          }
+          if (d == 1) {
+            edgeflux(l, d, m) =
+                edgefluxvar(l + d * ndofs, k + ks, j + js + m, i + is, n);
+          }
         }
       }
     }
   }
-  calculate_Mf<ndofs>(Mf, edgeflux, dt);
+  calculate_Mf<ndofs>(Mf, edgeflux, dt, dens_pos);
   for (int l = 0; l < ndofs; l++) {
-    Mfvar(l, k + ks, j + js, i + is, n) = Mf(l);
+    if (dens_pos(l)) {
+      Mfvar(l, k + ks, j + js, i + is, n) = Mf(l);
+    }
   }
 }
 
@@ -154,17 +169,20 @@ template <uint ndofs>
 void YAKL_INLINE calculate_phi(SArray<real, 2, ndofs, ndims> &Phi,
                                SArray<real, 3, ndofs, ndims, 2> const &q,
                                SArray<real, 3, ndofs, ndims, 2> const &Mf,
-                               SArray<real, 2, ndofs, ndims> const &edgeflux) {
+                               SArray<real, 2, ndofs, ndims> const &edgeflux,
+                               SArray<bool, 1, ndensity> const &dens_pos) {
 
   real upwind_param;
 
   for (int l = 0; l < ndofs; l++) {
-    for (int d = 0; d < ndims; d++) {
-      upwind_param = copysign(1.0, edgeflux(l, d));
-      upwind_param = 0.5_fp * (upwind_param + fabs(upwind_param));
-      Phi(l, d) =
-          mymin(1._fp, q(l, d, 1) / Mf(l, d, 1)) * (1._fp - upwind_param) +
-          mymin(1._fp, q(l, d, 0) / Mf(l, d, 0)) * upwind_param;
+    if (dens_pos(l)) {
+      for (int d = 0; d < ndims; d++) {
+        upwind_param = copysign(1.0, edgeflux(l, d));
+        upwind_param = 0.5_fp * (upwind_param + fabs(upwind_param));
+        Phi(l, d) =
+            mymin(1._fp, q(l, d, 1) / Mf(l, d, 1)) * (1._fp - upwind_param) +
+            mymin(1._fp, q(l, d, 0) / Mf(l, d, 0)) * upwind_param;
+      }
     }
   }
 }
@@ -184,9 +202,10 @@ void YAKL_INLINE calculate_phivert(SArray<real, 1, ndofs> &Phivert,
 }
 
 template <uint ndofs>
-YAKL_INLINE void compute_Phi(const real5d &Phivar, const real5d &edgefluxvar,
-                             const real5d &Mfvar, const real5d &qvar, int is,
-                             int js, int ks, int i, int j, int k, int n) {
+YAKL_INLINE void apply_Phi(const real5d &densvar, const real5d &edgefluxvar,
+                           const real5d &Mfvar, const real5d &qvar,
+                           const SArray<bool, 1, ndensity> &dens_pos, int is,
+                           int js, int ks, int i, int j, int k, int n) {
   SArray<real, 2, ndofs, ndims> Phi;
   SArray<real, 3, ndofs, ndims, 2> const q;
   SArray<real, 3, ndofs, ndims, 2> const Mf;
@@ -194,23 +213,27 @@ YAKL_INLINE void compute_Phi(const real5d &Phivar, const real5d &edgefluxvar,
 
   for (int d = 0; d < ndims; d++) {
     for (int l = 0; l < ndofs; l++) {
-      edgeflux(l, d) = edgefluxvar(l + d * ndofs, k + ks, j + js, i + is, n);
-      for (int m = 0; m < 2; m++) {
-        if (d == 0) {
-          Mf(l, d, m) = Mfvar(l, k + ks, j + js, i + is + m - 1, n);
-          q(l, d, m) = qvar(l, k + ks, j + js, i + is + m - 1, n);
-        }
-        if (d == 1) {
-          Mf(l, d, m) = Mfvar(l, k + ks, j + js + m - 1, i + is, n);
-          q(l, d, m) = qvar(l, k + ks, j + js + m - 1, i + is, n);
+      if (dens_pos(l)) {
+        edgeflux(l, d) = edgefluxvar(l + d * ndofs, k + ks, j + js, i + is, n);
+        for (int m = 0; m < 2; m++) {
+          if (d == 0) {
+            Mf(l, d, m) = Mfvar(l, k + ks, j + js, i + is + m - 1, n);
+            q(l, d, m) = qvar(l, k + ks, j + js, i + is + m - 1, n);
+          }
+          if (d == 1) {
+            Mf(l, d, m) = Mfvar(l, k + ks, j + js + m - 1, i + is, n);
+            q(l, d, m) = qvar(l, k + ks, j + js + m - 1, i + is, n);
+          }
         }
       }
     }
   }
-  calculate_phi<ndofs>(Phi, q, Mf, edgeflux);
+  calculate_phi<ndofs>(Phi, q, Mf, edgeflux, dens_pos);
   for (int d = 0; d < ndims; d++) {
     for (int l = 0; l < ndofs; l++) {
-      Phivar(l + d * ndofs, k + ks, j + js, i + is, n) = Phi(l, d);
+      if (dens_pos(l)) {
+        densvar(l + d * ndofs, k + ks, j + js, i + is, n) *= Phi(l, d);
+      }
     }
   }
 }
