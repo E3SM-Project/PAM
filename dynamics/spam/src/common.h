@@ -103,6 +103,18 @@ uint constexpr mirroringhalo =
 // 0 = RKSimple, 1=SSPRK, 2=SI
 #define _TIME_TYPE 1
 
+int constexpr si_monitor_convergence = 2;
+// 0 = do not monitor (does si_max_iters iterations)
+// 1 = computes initial and final residual but still does si_max_iter iterations
+// 2 = iterates until convergence or si_max_iter is reached
+
+int constexpr si_verbosity_level = si_monitor_convergence;
+// 0 = do not print
+// 1 = print initial and final
+// 2 = print every iteration
+
+int constexpr si_max_iters = si_monitor_convergence > 1 ? 50 : 5;
+
 #if defined _EXTRUDED && defined _IDEAL_GAS_POTTEMP
 bool constexpr si_compute_functional_derivatives_quadrature = false;
 #else

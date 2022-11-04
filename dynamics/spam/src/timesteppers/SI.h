@@ -7,8 +7,6 @@
 #include "topology.h"
 #include <sstream>
 
-constexpr int si_verbosity_level = 2;
-
 template <uint nquad> class SITimeIntegrator {
 
 public:
@@ -88,21 +86,27 @@ template <uint nquad> void SITimeIntegrator<nquad>::stepForward(real dt) {
   int iter = 0;
   int maxiters = 50;
 
-  real res_norm = norm(xm);
-  real initial_norm = res_norm;
+  real res_norm;
+  real initial_res_norm;
+  if (si_monitor_convergence > 0) {
+    res_norm = norm(xm);
+    initial_res_norm = res_norm;
+  }
+
   bool converged = false;
 
   if (si_verbosity_level > 0) {
     std::stringstream msg;
     msg << "Starting Newton iteration, step = " << step
-        << ", initial residual = " << res_norm;
+        << ", initial residual = " << initial_res_norm;
     std::cout << msg.str() << std::endl;
   }
   while (true) {
-    if (res_norm / initial_norm < this->tol) {
+    if (si_monitor_convergence > 1 && res_norm / initial_res_norm < this->tol) {
       converged = true;
       break;
-    } else if (iter > maxiters) {
+    }
+    if (iter >= si_max_iters) {
       break;
     }
 
@@ -142,7 +146,10 @@ template <uint nquad> void SITimeIntegrator<nquad>::stepForward(real dt) {
     // store residual in xm
     this->xm.waxpbypcz(-1, 1, -dt, this->xn, *this->x, this->dx);
     this->xm.exchange();
-    res_norm = norm(xm);
+
+    if (si_monitor_convergence > 1) {
+      res_norm = norm(xm);
+    }
 
     iter++;
 
@@ -159,6 +166,10 @@ template <uint nquad> void SITimeIntegrator<nquad>::stepForward(real dt) {
   this->avg_iters += iter;
   this->avg_iters /= step;
 
+  if (si_verbosity_level == 1) {
+    res_norm = norm(xm);
+  }
+
   if (si_verbosity_level > 0) {
     std::stringstream msg;
     if (converged) {
@@ -166,7 +177,7 @@ template <uint nquad> void SITimeIntegrator<nquad>::stepForward(real dt) {
     } else {
       msg << "!!! Newton solve failed to converge in " << iter << " iters.\n";
       msg << "!!! Solver tolerance: " << this->tol << "\n";
-      msg << "!!! Achieved tolerance: " << res_norm / initial_norm << "\n";
+      msg << "!!! Achieved tolerance: " << res_norm / initial_res_norm << "\n";
     }
     msg << "Iters avg: " << this->avg_iters;
     std::cout << msg.str() << std::endl;
