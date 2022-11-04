@@ -63,11 +63,10 @@ void YAKL_INLINE wD0(SArray<real, 1, ndims> &var,
   }
 }
 
-template <uint ndofs, bool fct, class R>
+template <uint ndofs, class R>
 void YAKL_INLINE compute_wD0(SArray<real, 1, ndims> &tend, const R &reconvar,
-                             const real5d &Phivar, const real5d &densvar,
-                             int is, int js, int ks, int i, int j, int k,
-                             int n) {
+                             const real5d &densvar, int is, int js, int ks,
+                             int i, int j, int k, int n) {
   SArray<real, 3, ndofs, ndims, 2> dens;
   for (int l = 0; l < ndofs; l++) {
     for (int d = 0; d < ndims; d++) {
@@ -95,11 +94,6 @@ void YAKL_INLINE compute_wD0(SArray<real, 1, ndims> &tend, const R &reconvar,
         if constexpr (std::is_same_v<R, real3d>) {
           recon(l, d) = reconvar(l + d * ndofs, k, n);
         }
-
-        // fct
-        if constexpr (fct) {
-          recon(l, d) *= Phivar(l + d * ndofs, k + ks, j + js, i + is, n);
-        }
       }
     }
     wD0<ndofs>(tend, recon, dens);
@@ -113,26 +107,7 @@ void YAKL_INLINE compute_wD0(const real5d &tendvar, const R &reconvar,
                              const real5d &densvar, int is, int js, int ks,
                              int i, int j, int k, int n) {
   SArray<real, 1, ndims> tend;
-  compute_wD0<ndofs, false>(tend, reconvar, densvar, densvar, is, js, ks, i, j,
-                            k, n);
-  for (int d = 0; d < ndims; d++) {
-    if (addmode == ADD_MODE::REPLACE) {
-      tendvar(d, k + ks, j + js, i + is, n) = tend(d);
-    }
-    if (addmode == ADD_MODE::ADD) {
-      tendvar(d, k + ks, j + js, i + is, n) += tend(d);
-    }
-  }
-}
-
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-void YAKL_INLINE compute_wD0_fct(const real5d &tendvar, const real5d &reconvar,
-                                 const real5d &Phivar, const real5d &densvar,
-                                 int is, int js, int ks, int i, int j, int k,
-                                 int n) {
-  SArray<real, 1, ndims> tend;
-  compute_wD0<ndofs, true>(tend, Phivar, reconvar, densvar, is, js, ks, i, j, k,
-                           n);
+  compute_wD0<ndofs>(tend, reconvar, densvar, is, js, ks, i, j, k, n);
   for (int d = 0; d < ndims; d++) {
     if (addmode == ADD_MODE::REPLACE) {
       tendvar(d, k + ks, j + js, i + is, n) = tend(d);
@@ -189,9 +164,8 @@ void YAKL_INLINE wD0_vert(real &var, SArray<real, 1, ndofs> const &recon,
   }
 }
 
-template <uint ndofs, bool fct, class R, class D>
-real YAKL_INLINE compute_wD0_vert(const R &vertreconvar,
-                                  const real5d &Phivertvar, const D &densvar,
+template <uint ndofs, class R, class D>
+real YAKL_INLINE compute_wD0_vert(const R &vertreconvar, const D &densvar,
                                   int is, int js, int ks, int i, int j, int k,
                                   int n) {
   real tend;
@@ -224,10 +198,6 @@ real YAKL_INLINE compute_wD0_vert(const R &vertreconvar,
       if constexpr (std::is_same_v<R, real3d>) {
         recon(l) = vertreconvar(l, k + 1, n);
       }
-
-      if constexpr (fct) {
-        recon(l) *= Phivertvar(l, k + ks + 1, j + js, i + is, n);
-      }
     }
     wD0_vert<ndofs>(tend, recon, dens);
   } else {
@@ -240,24 +210,8 @@ template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE, class R, class D>
 void YAKL_INLINE compute_wD0_vert(const real5d &tendvar, const R &vertreconvar,
                                   const D &densvar, int is, int js, int ks,
                                   int i, int j, int k, int n) {
-  real tend = compute_wD0_vert<ndofs, false>(vertreconvar, tendvar, densvar, is,
-                                             js, ks, i, j, k, n);
-  if (addmode == ADD_MODE::REPLACE) {
-    tendvar(0, k + ks, j + js, i + is, n) = tend;
-  }
-  if (addmode == ADD_MODE::ADD) {
-    tendvar(0, k + ks, j + js, i + is, n) += tend;
-  }
-}
-
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE, class R>
-void YAKL_INLINE compute_wD0_vert_fct(const real5d &tendvar,
-                                      const R &vertreconvar,
-                                      const real5d &Phivertvar,
-                                      const real5d &densvar, int is, int js,
-                                      int ks, int i, int j, int k, int n) {
-  real tend = compute_wD0_vert<ndofs, true>(vertreconvar, Phivertvar, densvar,
-                                            is, js, ks, i, j, k, n);
+  real tend =
+      compute_wD0_vert<ndofs>(vertreconvar, densvar, is, js, ks, i, j, k, n);
   if (addmode == ADD_MODE::REPLACE) {
     tendvar(0, k + ks, j + js, i + is, n) = tend;
   }
@@ -449,10 +403,10 @@ void YAKL_INLINE wD1bar(SArray<real, 1, ndofs> &var,
   }
 }
 
-template <uint ndofs, bool fct, class R>
+template <uint ndofs, class R>
 YAKL_INLINE void compute_wD1bar(SArray<real, 1, ndofs> &tend, const R &reconvar,
-                                const real5d &Phivar, const real5d &U, int is,
-                                int js, int ks, int i, int j, int k, int n) {
+                                const real5d &U, int is, int js, int ks, int i,
+                                int j, int k, int n) {
   SArray<real, 2, ndims, 2> flux;
 
   for (int d = 0; d < ndims; d++) {
@@ -477,18 +431,10 @@ YAKL_INLINE void compute_wD1bar(SArray<real, 1, ndofs> &tend, const R &reconvar,
             if (d == 0) {
               recon(l, d, m) =
                   reconvar(l + d * ndofs, k + ks, j + js, i + is + m, n);
-              if constexpr (fct) {
-                recon(l, d, m) *=
-                    Phivar(l + d * ndofs, k + ks, j + js, i + is + m, n);
-              }
             }
             if (d == 1) {
               recon(l, d, m) =
                   reconvar(l + d * ndofs, k + ks, j + js + m, i + is, n);
-              if constexpr (fct) {
-                recon(l, d, m) *=
-                    Phivar(l + d * ndofs, k + ks, j + js + m, i + is, n);
-              }
             }
           }
           // reference state
@@ -510,29 +456,7 @@ YAKL_INLINE void compute_wD1bar(const real5d &tendvar, const R &reconvar,
                                 int j, int k, int n) {
   SArray<real, 1, ndofs> tend;
 
-  compute_wD1bar<ndofs, false>(tend, reconvar, U, U, is, js, ks, i, j, k, n);
-
-  if (addmode == ADD_MODE::REPLACE) {
-    for (int l = 0; l < ndofs; l++) {
-      tendvar(l, k + ks, j + js, i + is, n) = tend(l);
-    }
-  }
-  if (addmode == ADD_MODE::ADD) {
-    for (int l = 0; l < ndofs; l++) {
-      tendvar(l, k + ks, j + js, i + is, n) += tend(l);
-    }
-  }
-}
-
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE, class R>
-YAKL_INLINE void compute_wD1bar_fct(const real5d &tendvar, const R &reconvar,
-                                    const real5d &phivar, const real5d &U,
-                                    int is, int js, int ks, int i, int j, int k,
-                                    int n) {
-  SArray<real, 1, ndofs> tend;
-
-  compute_wD1bar<ndofs, true>(tend, reconvar, phivar, U, is, js, ks, i, j, k,
-                              n);
+  compute_wD1bar<ndofs>(tend, reconvar, U, is, js, ks, i, j, k, n);
 
   if (addmode == ADD_MODE::REPLACE) {
     for (int l = 0; l < ndofs; l++) {
@@ -595,11 +519,11 @@ void YAKL_INLINE wD1bar_vert(SArray<real, 1, ndofs> &var,
   }
 }
 
-template <uint ndofs, bool fct, class R>
-YAKL_INLINE void
-compute_wD1bar_vert(SArray<real, 1, ndofs> &tend, const R &vertreconvar,
-                    const real5d &vertphivar, const real5d &UW, int is, int js,
-                    int ks, int i, int j, int k, int n) {
+template <uint ndofs, class R>
+YAKL_INLINE void compute_wD1bar_vert(SArray<real, 1, ndofs> &tend,
+                                     const R &vertreconvar, const real5d &UW,
+                                     int is, int js, int ks, int i, int j,
+                                     int k, int n) {
 
   SArray<real, 1, 2> flux;
   for (int m = 0; m < 2; m++) {
@@ -617,10 +541,6 @@ compute_wD1bar_vert(SArray<real, 1, ndofs> &tend, const R &vertreconvar,
         if constexpr (std::is_same_v<R, real3d>) {
           recon(l, m) = vertreconvar(l, k + m, n);
         }
-
-        if constexpr (fct) {
-          recon(l, m) *= vertphivar(l, k + ks + m, j + js, i + is, n);
-        }
       }
     }
     wD1bar_vert<ndofs>(tend, recon, flux);
@@ -636,29 +556,7 @@ YAKL_INLINE void compute_wD1bar_vert(const real5d &tendvar,
                                      int k, int n) {
   SArray<real, 1, ndofs> tend;
 
-  compute_wD1bar_vert<ndofs, false>(tend, vertreconvar, UW, UW, is, js, ks, i,
-                                    j, k, n);
-
-  if (addmode == ADD_MODE::REPLACE) {
-    for (int l = 0; l < ndofs; l++) {
-      tendvar(l, k + ks, j + js, i + is, n) = tend(l);
-    }
-  }
-  if (addmode == ADD_MODE::ADD) {
-    for (int l = 0; l < ndofs; l++) {
-      tendvar(l, k + ks, j + js, i + is, n) += tend(l);
-    }
-  }
-}
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
-YAKL_INLINE void
-compute_wD1bar_vert_fct(const real5d &tendvar, const real5d &vertreconvar,
-                        const real5d &vertphivar, const real5d &UW, int is,
-                        int js, int ks, int i, int j, int k, int n) {
-  SArray<real, 1, ndofs> tend;
-
-  compute_wD1bar_vert<ndofs, true>(tend, vertreconvar, vertphivar, UW, is, js,
-                                   ks, i, j, k, n);
+  compute_wD1bar_vert<ndofs>(tend, vertreconvar, UW, is, js, ks, i, j, k, n);
 
   if (addmode == ADD_MODE::REPLACE) {
     for (int l = 0; l < ndofs; l++) {
