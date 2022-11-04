@@ -1276,17 +1276,14 @@ public:
               auxiliary_vars.fields_arr[DENSRECONVAR].data,
               auxiliary_vars.fields_arr[FVAR].data, dens_pos, dis, djs, dks, i,
               j, k, n);
-        });
-    parallel_for(
-        "ComputeVertEdgeFlux",
-        SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_vertedgefluxes<ndensity>(
-              auxiliary_vars.fields_arr[VERTEDGEFLUXVAR].data,
-              auxiliary_vars.fields_arr[DENSVERTRECONVAR].data,
-              auxiliary_vars.fields_arr[FWVAR].data, dens_pos, dis, djs, dks, i,
-              j, k, n);
+
+          if (k < dual_topology.ni - 2) {
+            compute_vertedgefluxes<ndensity>(
+                auxiliary_vars.fields_arr[VERTEDGEFLUXVAR].data,
+                auxiliary_vars.fields_arr[DENSVERTRECONVAR].data,
+                auxiliary_vars.fields_arr[FWVAR].data, dens_pos, dis, djs, dks,
+                i, j, k, n);
+          }
         });
     auxiliary_vars.exchange({EDGEFLUXVAR, VERTEDGEFLUXVAR});
 
@@ -1305,17 +1302,6 @@ public:
     auxiliary_vars.exchange({MFVAR});
 
     parallel_for(
-        "Apply PhiVert",
-        SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          apply_Phivert<ndensity>(
-              auxiliary_vars.fields_arr[DENSVERTRECONVAR].data,
-              auxiliary_vars.fields_arr[VERTEDGEFLUXVAR].data,
-              auxiliary_vars.fields_arr[MFVAR].data, x.fields_arr[DENSVAR].data,
-              dens_pos, dis, djs, dks, i, j, k + 1, n);
-        });
-    parallel_for(
         "Apply Phi",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
@@ -1325,6 +1311,14 @@ public:
                               auxiliary_vars.fields_arr[MFVAR].data,
                               x.fields_arr[DENSVAR].data, dens_pos, dis, djs,
                               dks, i, j, k, n);
+          if (k < dual_topology.ni - 2) {
+            apply_Phivert<ndensity>(
+                auxiliary_vars.fields_arr[DENSVERTRECONVAR].data,
+                auxiliary_vars.fields_arr[VERTEDGEFLUXVAR].data,
+                auxiliary_vars.fields_arr[MFVAR].data,
+                x.fields_arr[DENSVAR].data, dens_pos, dis, djs, dks, i, j,
+                k + 1, n);
+          }
         });
 
     auxiliary_vars.exchange({DENSRECONVAR, DENSVERTRECONVAR});
