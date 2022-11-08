@@ -44,7 +44,10 @@ public:
                  const FieldSet<num_fields> &x, const FieldSet<num_fields> &y,
                  const FieldSet<num_fields> &z);
   void exchange();
-  void exchange(const std::initializer_list<int> &indices);
+
+  //void exchange(const std::initializer_list<int> &indices);
+  template <int num_exchanges>
+  void exchange(const int(&indices)[num_exchanges]);
 };
 
 template <uint num_fields> ExchangeSet<num_fields>::ExchangeSet() {
@@ -262,15 +265,141 @@ void FieldSet<num_fields>::waxpbypcz(real alpha, real beta, real gamma,
 }
 
 template <uint num_fields> void FieldSet<num_fields>::exchange() {
-  for (auto &f : fields_arr) {
-    f.exchange();
+  //for (auto &f : fields_arr) {
+  //  f.exchange();
+  //}
+  
+  const auto topology = fields_arr[0].topology;
+  const int is = topology.is;
+  const int js = topology.js;
+  const int ks = topology.ks;
+  
+  const int halosize_x = topology.halosize_x;
+  const int n_cells_x = topology.n_cells_x;
+  const int n_cells_y = topology.n_cells_y;
+
+  SArray<real5d, 1, num_fields> this_data;
+  SArray<int, 1, num_fields> ndofs;
+  SArray<int, 1, num_fields> nzs;
+  SArray<int, 1, num_fields> koffset;
+
+  int max_nz = 0;
+  for (int i = 0; i < num_fields; ++i) {
+    ndofs(i) = this->fields_arr[i].total_dofs;
+    max_nz = std::max(max_nz, fields_arr[i]._nz);
+    nzs(i) = fields_arr[i]._nz;
+    koffset(i) = fields_arr[i].extdof == 1 ? 0 : 1;
+    this_data(i) = this->fields_arr[i].data;
   }
+
+  parallel_for(
+      "Field Set exchange x",
+      SimpleBounds<4>(topology.halosize_x, max_nz,
+                      topology.n_cells_y, topology.nens),
+      YAKL_LAMBDA(int ii, int k, int j, int n) {
+        for (int f = 0; f < num_fields; ++f) {
+          for (int l = 0; l < ndofs(f); ++l) {
+            this_data(f)(l, k + ks, j + js, ii + is - halosize_x, n) =
+                this_data(f)(l, k + ks, j + js, ii + is + n_cells_x - halosize_x, n);
+            this_data(f)(l, k + ks, j + js, ii + is + n_cells_x, n) =
+                this_data(f)(l, k + ks, j + js, ii + is, n);
+          }
+        }
+   });
+  
+  //for (auto &f : fields_arr) {
+  //  f.exchange_direct();
+  //}
+  //for (auto &f : fields_arr) {
+  //  f.exchange_mirror();
+  //}
+
+    parallel_for(
+        "Field Set exchange mirror",
+        SimpleBounds<4>(topology.mirror_halo,
+                        topology.n_cells_x + 2 * halosize_x, topology.n_cells_y,
+                        topology.nens),
+        YAKL_LAMBDA(int kk, int i, int j, int n) {
+          for (int f = 0; f < num_fields; ++f) {
+            const int koff = koffset(f);
+            const int _nz = nzs(f);
+            for (int l = 0; l < ndofs(f); ++l) {
+              // Mirror Top
+              this_data(f)(l, _nz + ks + kk, j + js, i, n) =
+                  this_data(f)(l, _nz + ks - kk - 1 - koff, j + js, i, n);
+              // Mirror Bottom
+              this_data(f)(l, ks - kk - 1, j + js, i, n) =
+                  this_data(f)(l, ks + kk + koff, j + js, i, n);
+            }
+          }
+        });
 }
 
 // EVENTUALLY THIS SHOULD BE MORE CLEVER IE PACK ALL THE FIELDS AT ONCE, ETC.
 template <uint num_fields>
-void FieldSet<num_fields>::exchange(const std::initializer_list<int> &indices) {
-  for (int i : indices) {
-    fields_arr[i].exchange();
+template <int num_exchanges>
+//void FieldSet<num_fields>::exchange(const std::initializer_list<int> &indices) {
+void FieldSet<num_fields>::exchange(const int(&indices)[num_exchanges]) {
+  //for (int i : indices) {
+  //  fields_arr[i].exchange();
+  //}
+  
+  const auto topology = fields_arr[0].topology;
+  const int is = topology.is;
+  const int js = topology.js;
+  const int ks = topology.ks;
+  
+  const int halosize_x = topology.halosize_x;
+  const int n_cells_x = topology.n_cells_x;
+  const int n_cells_y = topology.n_cells_y;
+
+  SArray<real5d, 1, num_exchanges> this_data;
+  SArray<int, 1, num_exchanges> ndofs;
+  SArray<int, 1, num_exchanges> nzs;
+  SArray<int, 1, num_exchanges> koffset;
+
+  int max_nz = 0;
+  for (int i = 0; i < num_exchanges; ++i) {
+    const int j = indices[i];
+    ndofs(i) = this->fields_arr[j].total_dofs;
+    max_nz = std::max(max_nz, fields_arr[j]._nz);
+    nzs(i) = fields_arr[j]._nz;
+    koffset(i) = fields_arr[j].extdof == 1 ? 0 : 1;
+    this_data(i) = this->fields_arr[j].data;
   }
+
+  parallel_for(
+      "Field Set exchange x",
+      SimpleBounds<4>(topology.halosize_x, max_nz,
+                      topology.n_cells_y, topology.nens),
+      YAKL_LAMBDA(int ii, int k, int j, int n) {
+        for (int f = 0; f < num_exchanges; ++f) {
+          for (int l = 0; l < ndofs(f); ++l) {
+            this_data(f)(l, k + ks, j + js, ii + is - halosize_x, n) =
+                this_data(f)(l, k + ks, j + js, ii + is + n_cells_x - halosize_x, n);
+            this_data(f)(l, k + ks, j + js, ii + is + n_cells_x, n) =
+                this_data(f)(l, k + ks, j + js, ii + is, n);
+          }
+        }
+   });
+
+    parallel_for(
+        "Field Set exchange mirror",
+        SimpleBounds<4>(topology.mirror_halo,
+                        topology.n_cells_x + 2 * halosize_x, topology.n_cells_y,
+                        topology.nens),
+        YAKL_LAMBDA(int kk, int i, int j, int n) {
+          for (int f = 0; f < num_exchanges; ++f) {
+            const int koff = koffset(f);
+            const int _nz = nzs(f);
+            for (int l = 0; l < ndofs(f); ++l) {
+              // Mirror Top
+              this_data(f)(l, _nz + ks + kk, j + js, i, n) =
+                  this_data(f)(l, _nz + ks - kk - 1 - koff, j + js, i, n);
+              // Mirror Bottom
+              this_data(f)(l, ks - kk - 1, j + js, i, n) =
+                  this_data(f)(l, ks + kk + koff, j + js, i, n);
+            }
+          }
+        });
 }
