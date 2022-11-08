@@ -135,9 +135,41 @@ void FieldSet<num_fields>::copy(const FieldSet<num_fields> &vs) {
 template <uint num_fields>
 void FieldSet<num_fields>::waxpy(real alpha, const FieldSet<num_fields> &x,
                                  const FieldSet<num_fields> &y) {
-  for (int i = 0; i < num_fields; i++) {
-    this->fields_arr[i].waxpy(alpha, x.fields_arr[i], y.fields_arr[i]);
+  //for (int i = 0; i < num_fields; i++) {
+  //  this->fields_arr[i].waxpy(alpha, x.fields_arr[i], y.fields_arr[i]);
+  //}
+
+  const auto topology = fields_arr[0].topology;
+  const int is = topology.is;
+  const int js = topology.js;
+  const int ks = topology.ks;
+
+  SArray<real5d, 1, num_fields> this_data;
+  SArray<real5d, 1, num_fields> x_data;
+  SArray<real5d, 1, num_fields> y_data;
+  SArray<int, 1, num_fields> ndofs;
+
+  int max_nz = 0;
+  for (int i = 0; i < num_fields; ++i) {
+    ndofs(i) = this->fields_arr[i].total_dofs;
+    max_nz = std::max(max_nz, fields_arr[i]._nz);
+    this_data(i) = this->fields_arr[i].data;
+    x_data(i) = x.fields_arr[i].data;
+    y_data(i) = y.fields_arr[i].data;
   }
+
+  parallel_for(
+      "Field Set waxpy",
+      SimpleBounds<4>(max_nz, topology.n_cells_y,
+                      topology.n_cells_x, topology.nens),
+      YAKL_LAMBDA(int k, int j, int i, int n) {
+        for (int f = 0; f < num_fields; ++f) {
+          for (int l = 0; l < ndofs(f); ++l) {
+            this_data(f)(l, k + ks, j + js, i + is, n) =
+                alpha * x_data(f)(l, k + ks, j + js, i + is, n) + y_data(f)(l, k + ks, j + js, i + is, n);
+          }
+        }
+      });
 }
 
 // Computes w (self) = alpha x + beta y
@@ -145,21 +177,88 @@ template <uint num_fields>
 void FieldSet<num_fields>::waxpby(real alpha, real beta,
                                   const FieldSet<num_fields> &x,
                                   const FieldSet<num_fields> &y) {
-  for (int i = 0; i < num_fields; i++) {
-    this->fields_arr[i].waxpby(alpha, beta, x.fields_arr[i], y.fields_arr[i]);
+  //for (int i = 0; i < num_fields; i++) {
+  //  this->fields_arr[i].waxpby(alpha, beta, x.fields_arr[i], y.fields_arr[i]);
+  //}
+
+  const auto topology = fields_arr[0].topology;
+  const int is = topology.is;
+  const int js = topology.js;
+  const int ks = topology.ks;
+
+  SArray<real5d, 1, num_fields> this_data;
+  SArray<real5d, 1, num_fields> x_data;
+  SArray<real5d, 1, num_fields> y_data;
+  SArray<int, 1, num_fields> ndofs;
+
+  int max_nz = 0;
+  for (int i = 0; i < num_fields; ++i) {
+    ndofs(i) = this->fields_arr[i].total_dofs;
+    max_nz = std::max(max_nz, fields_arr[i]._nz);
+    this_data(i) = this->fields_arr[i].data;
+    x_data(i) = x.fields_arr[i].data;
+    y_data(i) = y.fields_arr[i].data;
   }
+
+  parallel_for(
+      "Field Set waxpby",
+      SimpleBounds<4>(max_nz, topology.n_cells_y,
+                      topology.n_cells_x, topology.nens),
+      YAKL_LAMBDA(int k, int j, int i, int n) {
+        for (int f = 0; f < num_fields; ++f) {
+          for (int l = 0; l < ndofs(f); ++l) {
+            this_data(f)(l, k + ks, j + js, i + is, n) =
+                alpha * x_data(f)(l, k + ks, j + js, i + is, n) + beta * y_data(f)(l, k + ks, j + js, i + is, n);
+          }
+        }
+      });
 }
 
-// Computes w (self) = alpha x + beta * y + gamma * z
 template <uint num_fields>
 void FieldSet<num_fields>::waxpbypcz(real alpha, real beta, real gamma,
                                      const FieldSet<num_fields> &x,
                                      const FieldSet<num_fields> &y,
                                      const FieldSet<num_fields> &z) {
-  for (int i = 0; i < num_fields; i++) {
-    this->fields_arr[i].waxpbypcz(alpha, beta, gamma, x.fields_arr[i],
-                                  y.fields_arr[i], z.fields_arr[i]);
+  //for (int i = 0; i < num_fields; i++) {
+  //  this->fields_arr[i].waxpbypcz(alpha, beta, gamma, x.fields_arr[i],
+  //                                y.fields_arr[i], z.fields_arr[i]);
+  //}
+
+  const auto topology = fields_arr[0].topology;
+  const int is = topology.is;
+  const int js = topology.js;
+  const int ks = topology.ks;
+
+  SArray<real5d, 1, num_fields> this_data;
+  SArray<real5d, 1, num_fields> x_data;
+  SArray<real5d, 1, num_fields> y_data;
+  SArray<real5d, 1, num_fields> z_data;
+  SArray<int, 1, num_fields> ndofs;
+
+  int max_nz = 0;
+  for (int i = 0; i < num_fields; ++i) {
+    ndofs(i) = this->fields_arr[i].total_dofs;
+    max_nz = std::max(max_nz, fields_arr[i]._nz);
+    this_data(i) = this->fields_arr[i].data;
+    x_data(i) = x.fields_arr[i].data;
+    y_data(i) = y.fields_arr[i].data;
+    z_data(i) = z.fields_arr[i].data;
   }
+
+  parallel_for(
+      "Field Set waxpbypcz",
+      SimpleBounds<4>(max_nz, topology.n_cells_y,
+                      topology.n_cells_x, topology.nens),
+      YAKL_LAMBDA(int k, int j, int i, int n) {
+        for (int f = 0; f < num_fields; ++f) {
+          for (int l = 0; l < ndofs(f); ++l) {
+            this_data(f)(l, k + ks, j + js, i + is, n) =
+                alpha * x_data(f)(l, k + ks, j + js, i + is, n) +
+                beta * y_data(f)(l, k + ks, j + js, i + is, n) +
+                gamma * z_data(f)(l, k + ks, j + js, i + is, n);
+          }
+        }
+      });
 }
 
 template <uint num_fields> void FieldSet<num_fields>::exchange() {
