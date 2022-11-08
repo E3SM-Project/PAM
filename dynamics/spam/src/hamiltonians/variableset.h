@@ -38,7 +38,8 @@ public:
   std::string dens_desc[ndensity]; // Description of each density
   // bool1d                   dens_pos;       // Whether each density is
   // positive-definite
-  bool dens_pos[ndensity]; // Whether each density is positive-definite
+  SArray<bool, 1, ndensity>
+      dens_pos; // Whether each density is positive-definite
   bool couple_wind;
 
   int dm_id_vap = -1;
@@ -78,7 +79,7 @@ public:
 
     for (int l = ndensity_dycore; l < ndensity_nophysics; l++) {
       // dens_pos_host(l) = params.dycore_tracerpos[l-ndensity_dycore];
-      varset.dens_pos[l] = params.dycore_tracerpos[l - ndensity_dycore];
+      varset.dens_pos(l) = params.dycore_tracerpos[l - ndensity_dycore];
     }
 
     std::vector<std::string> tracer_names_loc = coupler.get_tracer_names();
@@ -91,7 +92,7 @@ public:
       varset.dens_name[tr + ndensity_nophysics] = tracer_names_loc[tr];
       varset.dens_desc[tr + ndensity_nophysics] = desc;
       // dens_pos_host      (tr+ndensity_nophysics) = positive ;
-      varset.dens_pos[tr + ndensity_nophysics] = positive;
+      varset.dens_pos(tr + ndensity_nophysics) = positive;
       if (tracer_names_loc[tr] == std::string("water_vapor")) {
         varset.dm_id_vap = tr;
         water_vapor_found = true;
@@ -122,7 +123,7 @@ public:
     for (int i = 0; i < ndensity; i++) {
       serial_print("Density" + std::to_string(i) + " Name: " +
                        varset.dens_name[i] + " Desc: " + varset.dens_desc[i] +
-                       " Pos: " + std::to_string(varset.dens_pos[i]),
+                       " Pos: " + std::to_string(varset.dens_pos(i)),
                    params.masterproc);
     }
 
@@ -407,7 +408,7 @@ void VariableSetBase<VS_SWE>::initialize(PamCoupler &coupler,
                                          const Geometry<Twisted> &dual_geom) {
   dens_name[0] = "h";
   dens_desc[0] = "fluid height";
-  dens_pos[0] = false;
+  dens_pos(0) = false;
   VariableSetBase::initialize(*this, coupler, params, thermodynamics,
                               primal_geom, dual_geom);
 }
@@ -422,8 +423,8 @@ void VariableSetBase<VS_TSWE>::initialize(PamCoupler &coupler,
   dens_name[1] = "S";
   dens_desc[0] = "fluid height";
   dens_desc[1] = "bouyancy density";
-  dens_pos[0] = false;
-  dens_pos[1] = false;
+  dens_pos(0) = false;
+  dens_pos(1) = false;
   VariableSetBase::initialize(*this, coupler, params, thermodynamics,
                               primal_geom, dual_geom);
 }
@@ -438,8 +439,8 @@ void VariableSetBase<VS_CE>::initialize(PamCoupler &coupler,
   dens_name[1] = "S";
   dens_desc[0] = "fluid density";
   dens_desc[1] = "entropic variable density";
-  dens_pos[0] = false;
-  dens_pos[1] = false;
+  dens_pos(0) = false;
+  dens_pos(1) = false;
   VariableSetBase::initialize(*this, coupler, params, thermodynamics,
                               primal_geom, dual_geom);
 }
@@ -490,8 +491,8 @@ void VariableSetBase<VS_MCE_rho>::initialize(
   dens_name[1] = "S";
   dens_desc[0] = "fluid density";
   dens_desc[1] = "entropic variable density";
-  dens_pos[0] = false;
-  dens_pos[1] = false;
+  dens_pos(0) = false;
+  dens_pos(1) = false;
   VariableSetBase::initialize(*this, coupler, params, thermodynamics,
                               primal_geom, dual_geom);
 }
@@ -604,8 +605,8 @@ void VariableSetBase<VS_MCE_rhod>::initialize(
   dens_name[1] = "S";
   dens_desc[0] = "fluid dry density";
   dens_desc[1] = "entropic variable density";
-  dens_pos[0] = false;
-  dens_pos[1] = false;
+  dens_pos(0) = false;
+  dens_pos(1) = false;
   VariableSetBase::initialize(*this, coupler, params, thermodynamics,
                               primal_geom, dual_geom);
 }

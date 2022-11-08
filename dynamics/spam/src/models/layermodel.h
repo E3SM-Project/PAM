@@ -373,7 +373,7 @@ public:
   void compute_tendencies(real5d denstendvar, real5d Vtendvar,
                           const real5d densreconvar, const real5d Qreconvar,
                           const real5d Coriolisreconvar, const real5d Bvar,
-                          const real5d Fvar, const real5d Phivar) {
+                          const real5d Fvar) {
     const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
 
@@ -390,8 +390,8 @@ public:
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wD0_fct<ndensity>(Vtendvar, densreconvar, Phivar, Bvar, pis,
-                                    pjs, pks, i, j, k, n);
+          compute_wD0<ndensity>(Vtendvar, densreconvar, Bvar, pis, pjs, pks, i,
+                                j, k, n);
           if (qf_choice == QF_MODE::EC) {
             compute_Q_EC<1, ADD_MODE::ADD>(Vtendvar, Qreconvar, Fvar, pis, pjs,
                                            pks, i, j, k, n);
@@ -409,8 +409,8 @@ public:
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wD1bar_fct<ndensity>(denstendvar, densreconvar, Phivar, Fvar,
-                                       dis, djs, dks, i, j, k, n);
+          compute_wD1bar<ndensity>(denstendvar, densreconvar, Fvar, dis, djs,
+                                   dks, i, j, k, n);
         });
   }
 
@@ -515,6 +515,7 @@ public:
     int djs = dual_topology.js;
     int dks = dual_topology.ks;
 
+    YAKL_SCOPE(dens_pos, varset.dens_pos);
     parallel_for(
         "Compute edgefluxes",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
@@ -523,7 +524,8 @@ public:
           compute_edgefluxes<ndensity>(
               auxiliary_vars.fields_arr[EDGEFLUXVAR].data,
               auxiliary_vars.fields_arr[DENSRECONVAR].data,
-              auxiliary_vars.fields_arr[FVAR].data, dis, djs, dks, i, j, k, n);
+              auxiliary_vars.fields_arr[FVAR].data, dens_pos, dis, djs, dks, i,
+              j, k, n);
         });
 
     auxiliary_vars.exchange({EDGEFLUXVAR});
@@ -535,34 +537,24 @@ public:
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_Mf<ndensity>(auxiliary_vars.fields_arr[MFVAR].data,
                                auxiliary_vars.fields_arr[EDGEFLUXVAR].data, dt,
-                               dis, djs, dks, i, j, k, n);
+                               dens_pos, dis, djs, dks, i, j, k, n);
         });
 
     auxiliary_vars.exchange({MFVAR});
 
     parallel_for(
-        "Compute Phi",
+        "Apply Phi",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_Phi<ndensity>(auxiliary_vars.fields_arr[PHIVAR].data,
-                                auxiliary_vars.fields_arr[EDGEFLUXVAR].data,
-                                auxiliary_vars.fields_arr[MFVAR].data,
-                                x.fields_arr[DENSVAR].data, dis, djs, dks, i, j,
-                                k, n);
+          apply_Phi<ndensity>(auxiliary_vars.fields_arr[DENSRECONVAR].data,
+                              auxiliary_vars.fields_arr[EDGEFLUXVAR].data,
+                              auxiliary_vars.fields_arr[MFVAR].data,
+                              x.fields_arr[DENSVAR].data, dens_pos, dis, djs,
+                              dks, i, j, k, n);
         });
 
-    // Don't do FCT for non-FCT vars
-    for (int l = 0; l < ndensity; l++) {
-      // if (not varset.dens_pos(l))
-      if (!varset.dens_pos[l]) {
-        for (int d = 0; d < ndims; ++d) {
-          auxiliary_vars.fields_arr[PHIVAR].set(l + d * ndensity, 1.0);
-        }
-      }
-    }
-
-    auxiliary_vars.exchange({PHIVAR});
+    auxiliary_vars.exchange({DENSRECONVAR});
 
     // Compute tendencies
     compute_tendencies(xtend.fields_arr[DENSVAR].data,
@@ -571,8 +563,7 @@ public:
                        auxiliary_vars.fields_arr[QRECONVAR].data,
                        auxiliary_vars.fields_arr[CORIOLISRECONVAR].data,
                        auxiliary_vars.fields_arr[BVAR].data,
-                       auxiliary_vars.fields_arr[FVAR].data,
-                       auxiliary_vars.fields_arr[PHIVAR].data);
+                       auxiliary_vars.fields_arr[FVAR].data);
   }
 };
 
@@ -1052,8 +1043,7 @@ void initialize_variables(
       "coriolisrecon", ptopo, 1, 1,
       1}; // coriolisrecon lives on primal edges, associated with FT
 
-  // fct stuff- Phi, Mf, edgeflux
-  aux_desc_arr[PHIVAR] = {"Phi", dtopo, ndims - 1, 1, ndensity};
+  // fct stuff- Mf, edgeflux
   aux_desc_arr[MFVAR] = {"Mf", dtopo, ndims, 1, ndensity};
   aux_desc_arr[EDGEFLUXVAR] = {"edgeflux", dtopo, ndims - 1, 1, ndensity};
 }

@@ -769,8 +769,7 @@ public:
                      const real5d qxzreconvar, const real5d qxzvertreconvar,
                      const real5d coriolisxzreconvar,
                      const real5d coriolisxzvertreconvar, const real5d Bvar,
-                     const real5d Fvar, const real5d FWvar, const real5d Phivar,
-                     const real5d Phivertvar) {
+                     const real5d Fvar, const real5d FWvar) {
 
     const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
@@ -791,8 +790,8 @@ public:
         SimpleBounds<4>(primal_topology.nl - 2, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wD0_vert_fct<ndensity>(Wtendvar, densvertreconvar, Phivertvar,
-                                         Bvar, pis, pjs, pks, i, j, k + 1, n);
+          compute_wD0_vert<ndensity>(Wtendvar, densvertreconvar, Bvar, pis, pjs,
+                                     pks, i, j, k + 1, n);
           if (force_refstate_hydrostatic_balance) {
             compute_wD0_vert<ndensity, ADD_MODE::ADD>(
                 Wtendvar, refstate.q_di.data, refstate.B.data, pis, pjs, pks, i,
@@ -817,11 +816,10 @@ public:
         SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
                         primal_topology.nens),
         YAKL_CLASS_LAMBDA(int j, int i, int n) {
-          compute_wD0_vert_fct<ndensity>(Wtendvar, densvertreconvar, Phivertvar,
-                                         Bvar, pis, pjs, pks, i, j, 0, n);
-          compute_wD0_vert_fct<ndensity>(Wtendvar, densvertreconvar, Phivertvar,
-                                         Bvar, pis, pjs, pks, i, j,
-                                         primal_topology.nl - 1, n);
+          compute_wD0_vert<ndensity>(Wtendvar, densvertreconvar, Bvar, pis, pjs,
+                                     pks, i, j, 0, n);
+          compute_wD0_vert<ndensity>(Wtendvar, densvertreconvar, Bvar, pis, pjs,
+                                     pks, i, j, primal_topology.nl - 1, n);
           if (force_refstate_hydrostatic_balance) {
             compute_wD0_vert<ndensity, ADD_MODE::ADD>(
                 Wtendvar, refstate.q_di.data, refstate.B.data, pis, pjs, pks, i,
@@ -858,8 +856,8 @@ public:
         SimpleBounds<4>(primal_topology.ni - 2, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wD0_fct<ndensity>(Vtendvar, densreconvar, Phivar, Bvar, pis,
-                                    pjs, pks, i, j, k + 1, n);
+          compute_wD0<ndensity>(Vtendvar, densreconvar, Bvar, pis, pjs, pks, i,
+                                j, k + 1, n);
           if (qf_choice == QF_MODE::EC) {
             compute_Qxz_u_EC<1, ADD_MODE::ADD>(Vtendvar, qxzreconvar,
                                                qxzvertreconvar, FWvar, pis, pjs,
@@ -879,10 +877,10 @@ public:
         SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
                         primal_topology.nens),
         YAKL_CLASS_LAMBDA(int j, int i, int n) {
-          compute_wD0_fct<ndensity>(Vtendvar, densreconvar, Phivar, Bvar, pis,
-                                    pjs, pks, i, j, 0, n);
-          compute_wD0_fct<ndensity>(Vtendvar, densreconvar, Phivar, Bvar, pis,
-                                    pjs, pks, i, j, primal_topology.ni - 1, n);
+          compute_wD0<ndensity>(Vtendvar, densreconvar, Bvar, pis, pjs, pks, i,
+                                j, 0, n);
+          compute_wD0<ndensity>(Vtendvar, densreconvar, Bvar, pis, pjs, pks, i,
+                                j, primal_topology.ni - 1, n);
           if (qf_choice == QF_MODE::EC) {
             compute_Qxz_u_EC_bottom<1, ADD_MODE::ADD>(
                 Vtendvar, qxzreconvar, qxzvertreconvar, FWvar, pis, pjs, pks, i,
@@ -911,11 +909,10 @@ public:
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wD1bar_fct<ndensity>(denstendvar, densreconvar, Phivar, Fvar,
-                                       dis, djs, dks, i, j, k, n);
-          compute_wD1bar_vert_fct<ndensity, ADD_MODE::ADD>(
-              denstendvar, densvertreconvar, Phivertvar, FWvar, dis, djs, dks,
-              i, j, k, n);
+          compute_wD1bar<ndensity>(denstendvar, densreconvar, Fvar, dis, djs,
+                                   dks, i, j, k, n);
+          compute_wD1bar_vert<ndensity, ADD_MODE::ADD>(
+              denstendvar, densvertreconvar, FWvar, dis, djs, dks, i, j, k, n);
         });
   }
 
@@ -1268,6 +1265,7 @@ public:
     int djs = dual_topology.js;
     int dks = dual_topology.ks;
 
+    YAKL_SCOPE(dens_pos, varset.dens_pos);
     parallel_for(
         "ComputeEdgeFlux",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
@@ -1276,17 +1274,16 @@ public:
           compute_edgefluxes<ndensity>(
               auxiliary_vars.fields_arr[EDGEFLUXVAR].data,
               auxiliary_vars.fields_arr[DENSRECONVAR].data,
-              auxiliary_vars.fields_arr[FVAR].data, dis, djs, dks, i, j, k, n);
-        });
-    parallel_for(
-        "ComputeVertEdgeFlux",
-        SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_vertedgefluxes<ndensity>(
-              auxiliary_vars.fields_arr[VERTEDGEFLUXVAR].data,
-              auxiliary_vars.fields_arr[DENSVERTRECONVAR].data,
-              auxiliary_vars.fields_arr[FWVAR].data, dis, djs, dks, i, j, k, n);
+              auxiliary_vars.fields_arr[FVAR].data, dens_pos, dis, djs, dks, i,
+              j, k, n);
+
+          if (k < dual_topology.ni - 2) {
+            compute_vertedgefluxes<ndensity>(
+                auxiliary_vars.fields_arr[VERTEDGEFLUXVAR].data,
+                auxiliary_vars.fields_arr[DENSVERTRECONVAR].data,
+                auxiliary_vars.fields_arr[FWVAR].data, dens_pos, dis, djs, dks,
+                i, j, k, n);
+          }
         });
     auxiliary_vars.exchange({EDGEFLUXVAR, VERTEDGEFLUXVAR});
 
@@ -1298,45 +1295,33 @@ public:
           compute_Mfext<ndensity>(
               auxiliary_vars.fields_arr[MFVAR].data,
               auxiliary_vars.fields_arr[EDGEFLUXVAR].data,
-              auxiliary_vars.fields_arr[VERTEDGEFLUXVAR].data, dt, dis, djs,
-              dks, i, j, k, n);
+              auxiliary_vars.fields_arr[VERTEDGEFLUXVAR].data, dt, dens_pos,
+              dis, djs, dks, i, j, k, n);
         });
 
     auxiliary_vars.exchange({MFVAR});
 
     parallel_for(
-        "ComputePhiVert",
-        SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_Phivert<ndensity>(
-              auxiliary_vars.fields_arr[PHIVERTVAR].data,
-              auxiliary_vars.fields_arr[VERTEDGEFLUXVAR].data,
-              auxiliary_vars.fields_arr[MFVAR].data, x.fields_arr[DENSVAR].data,
-              dis, djs, dks, i, j, k + 1, n);
-        });
-    parallel_for(
-        "ComputePhi",
+        "Apply Phi",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_Phi<ndensity>(auxiliary_vars.fields_arr[PHIVAR].data,
-                                auxiliary_vars.fields_arr[EDGEFLUXVAR].data,
-                                auxiliary_vars.fields_arr[MFVAR].data,
-                                x.fields_arr[DENSVAR].data, dis, djs, dks, i, j,
-                                k, n);
+          apply_Phi<ndensity>(auxiliary_vars.fields_arr[DENSRECONVAR].data,
+                              auxiliary_vars.fields_arr[EDGEFLUXVAR].data,
+                              auxiliary_vars.fields_arr[MFVAR].data,
+                              x.fields_arr[DENSVAR].data, dens_pos, dis, djs,
+                              dks, i, j, k, n);
+          if (k < dual_topology.ni - 2) {
+            apply_Phivert<ndensity>(
+                auxiliary_vars.fields_arr[DENSVERTRECONVAR].data,
+                auxiliary_vars.fields_arr[VERTEDGEFLUXVAR].data,
+                auxiliary_vars.fields_arr[MFVAR].data,
+                x.fields_arr[DENSVAR].data, dens_pos, dis, djs, dks, i, j,
+                k + 1, n);
+          }
         });
 
-    // Don't do FCT for non-FCT vars
-    for (int l = 0; l < ndensity; l++) {
-      // if (not varset.dens_pos(l))
-      if (!varset.dens_pos[l]) {
-        auxiliary_vars.fields_arr[PHIVAR].set(l, 1.0);
-        auxiliary_vars.fields_arr[PHIVERTVAR].set(l, 1.0);
-      }
-    }
-
-    auxiliary_vars.exchange({PHIVAR, PHIVERTVAR});
+    auxiliary_vars.exchange({DENSRECONVAR, DENSVERTRECONVAR});
 
     // Compute tendencies
     compute_tendencies(xtend.fields_arr[DENSVAR].data,
@@ -1349,9 +1334,7 @@ public:
                        auxiliary_vars.fields_arr[CORIOLISXZVERTRECONVAR].data,
                        auxiliary_vars.fields_arr[BVAR].data,
                        auxiliary_vars.fields_arr[FVAR].data,
-                       auxiliary_vars.fields_arr[FWVAR].data,
-                       auxiliary_vars.fields_arr[PHIVAR].data,
-                       auxiliary_vars.fields_arr[PHIVERTVAR].data);
+                       auxiliary_vars.fields_arr[FWVAR].data);
 
     if (entropicvar_diffusion_coeff > 0) {
       add_entropicvar_diffusion(
@@ -2280,10 +2263,8 @@ void initialize_variables(
       ndensity}; // densvertrecon lives on vert dual edges, associated with Fw
 
   // fct stuff- Phi, Mf, edgeflux
-  aux_desc_arr[PHIVAR] = {"Phi", dtopo, ndims - 1, 1, ndensity};
   aux_desc_arr[MFVAR] = {"Mf", dtopo, ndims, 1, ndensity};
   aux_desc_arr[EDGEFLUXVAR] = {"edgeflux", dtopo, ndims - 1, 1, ndensity};
-  aux_desc_arr[PHIVERTVAR] = {"PhiVert", dtopo, ndims, 0, ndensity};
   aux_desc_arr[VERTEDGEFLUXVAR] = {"vertedgeflux", dtopo, ndims, 0, ndensity};
 
   // Q stuff

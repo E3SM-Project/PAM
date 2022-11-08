@@ -62,7 +62,7 @@ uint constexpr nconstant = 2;
 // primal grid reconstruction stuff- U, W, dens0, edgerecon, recon,
 // vertedgerecon, vertrecon fct stuff- Phi, Mf, edgeflux Q/W STUFF?
 
-uint constexpr nauxiliary = 28;
+uint constexpr nauxiliary = 26;
 
 #define FVAR 0
 #define BVAR 1
@@ -77,25 +77,23 @@ uint constexpr nauxiliary = 28;
 #define DENSVERTRECONVAR 9
 #define DENSVERTEDGERECONVAR 10
 
-#define PHIVAR 11
-#define PHIVERTVAR 12
-#define EDGEFLUXVAR 13
-#define VERTEDGEFLUXVAR 14
-#define MFVAR 15
+#define EDGEFLUXVAR 11
+#define VERTEDGEFLUXVAR 12
+#define MFVAR 13
 
-#define QXZ0VAR 16
-#define QXZRECONVAR 17
-#define QXZVERTRECONVAR 18
-#define QXZEDGERECONVAR 19
-#define QXZVERTEDGERECONVAR 20
-#define QXZFLUXVAR 21
-#define QXZVERTFLUXVAR 22
+#define QXZ0VAR 14
+#define QXZRECONVAR 15
+#define QXZVERTRECONVAR 16
+#define QXZEDGERECONVAR 17
+#define QXZVERTEDGERECONVAR 18
+#define QXZFLUXVAR 19
+#define QXZVERTFLUXVAR 20
 
-#define FXZ0VAR 23
-#define CORIOLISXZRECONVAR 24
-#define CORIOLISXZEDGERECONVAR 25
-#define CORIOLISXZVERTRECONVAR 26
-#define CORIOLISXZVERTEDGERECONVAR 27
+#define FXZ0VAR 21
+#define CORIOLISXZRECONVAR 22
+#define CORIOLISXZEDGERECONVAR 23
+#define CORIOLISXZVERTRECONVAR 24
+#define CORIOLISXZVERTEDGERECONVAR 25
 
 // track total densities, dens min/max, energy (total, K, P, I), PV, PE
 uint constexpr nstats = 6;
