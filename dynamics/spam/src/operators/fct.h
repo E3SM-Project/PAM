@@ -281,7 +281,7 @@ apply_Phivert(const real5d &Phivertvar, const real5d &vertedgefluxvar,
   calculate_phivert<ndofs>(Phivert, qvert, Mfvert, vertedgeflux, dens_pos);
   for (int l = 0; l < ndofs; l++) {
     if (dens_pos(l)) {
-      Phivertvar(l, k + ks, j + js, i + is, n) = Phivert(l);
+      Phivertvar(l, k + ks, j + js, i + is, n) *= Phivert(l);
     }
   }
 }
