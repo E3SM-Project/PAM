@@ -1662,25 +1662,19 @@ public:
     const auto &q_di = refstate.q_di.data;
 
     parallel_for(
-        "Prepare rhs 1 - I",
+        "Prepare rhs 1 - B",
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
+          SArray<real, 1, ndensity> rhs0;
           compute_H2bar_ext<ndensity, diff_ord, vert_diff_ord>(
-              sol_dens, rhs_dens, this->primal_geometry, this->dual_geometry,
-              pis, pjs, pks, i, j, k, n);
-        });
+              rhs0, rhs_dens, this->primal_geometry, this->dual_geometry, pis,
+              pjs, pks, i, j, k, n);
 
-    parallel_for(
-        "Prepare rhs 2 - B",
-        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
           for (int d1 = 0; d1 < ndensity; ++d1) {
             real b_d1 = 0;
             for (int d2 = 0; d2 < ndensity; ++d2) {
-              b_d1 -= dtf * refstate.Blin_coeff(d1, d2, k, n) *
-                      sol_dens(d2, pks + k, pjs + j, pis + i, n);
+              b_d1 -= dtf * refstate.Blin_coeff(d1, d2, k, n) * rhs0(d2);
             }
             bvar(d1, pks + k, pjs + j, pis + i, n) = b_d1;
           }
@@ -1689,37 +1683,20 @@ public:
     auxiliary_vars.exchange({BVAR});
 
     parallel_for(
-        "Prepare rhs 3 - wD0_vert",
-        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wD0_vert<ndensity>(sol_w, q_di, bvar, pis, pjs, pks, i, j, k,
-                                     n);
-        });
-    parallel_for(
-        "Prepare rhs 4 - wD0",
+        "Prepare rhs 2 - compute v/w transform",
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wD0<ndensity>(sol_v, q_pi, bvar, pis, pjs, pks, i, j, k, n);
-        });
-
-    parallel_for(
-        "Load v_transform",
-        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          v_transform(k, j, i, n) = rhs_v(0, k + pks, j + pjs, i + pis, n) +
-                                    sol_v(0, k + pks, j + pjs, i + pis, n);
-        });
-
-    parallel_for(
-        "Load w_transform",
-        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          w_transform(k, j, i, n) = rhs_w(0, k + pks, j + pjs, i + pis, n) +
-                                    sol_w(0, k + pks, j + pjs, i + pis, n);
+          SArray<real, 1, ndims> mod_v;
+          compute_wD0<ndensity>(mod_v, q_pi, bvar, pis, pjs, pks, i, j, k, n);
+          v_transform(k, j, i, n) =
+              rhs_v(0, k + pks, j + pjs, i + pis, n) + mod_v(0);
+          if (k < primal_topology.nl) {
+            real mod_w = compute_wD0_vert<ndensity>(q_di, bvar, pis, pjs, pks,
+                                                    i, j, k, n);
+            w_transform(k, j, i, n) =
+                rhs_w(0, k + pks, j + pjs, i + pis, n) + mod_w;
+          }
         });
 
     yakl::timer_start("fft fwd");
@@ -1730,23 +1707,18 @@ public:
     yakl::timer_stop("fft fwd");
 
     parallel_for(
-        "Compute complex vrhs",
+        "Transform result to complex",
         yakl::c::Bounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                            {0, nxf - 1, 2}, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           real v_real = v_transform(k, j, i, n);
           real v_imag = v_transform(k, j, i + 1, n);
           complex_vrhs(k, j, i / 2, n) = complex(v_real, v_imag);
-        });
-
-    parallel_for(
-        "Compute complex wrhs",
-        Bounds<4>(primal_topology.nl, primal_topology.n_cells_y,
-                  {0, nxf - 1, 2}, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          real w_real = w_transform(k, j, i, n);
-          real w_imag = w_transform(k, j, i + 1, n);
-          complex_wrhs(k, j, i / 2, n) = complex(w_real, w_imag);
+          if (k < primal_topology.nl) {
+            real w_real = w_transform(k, j, i, n);
+            real w_imag = w_transform(k, j, i + 1, n);
+            complex_wrhs(k, j, i / 2, n) = complex(w_real, w_imag);
+          }
         });
 
     parallel_for(
@@ -1863,21 +1835,16 @@ public:
         });
 
     parallel_for(
-        "Store complex vrhs",
+        "Complex solution to real",
         yakl::c::Bounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                            {0, nxf - 1, 2}, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           v_transform(k, j, i, n) = complex_vrhs(k, j, i / 2, n).real();
           v_transform(k, j, i + 1, n) = complex_vrhs(k, j, i / 2, n).imag();
-        });
-
-    parallel_for(
-        "Store complex wrhs",
-        yakl::c::Bounds<4>(primal_topology.nl, primal_topology.n_cells_y,
-                           {0, nxf - 1, 2}, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          w_transform(k, j, i, n) = complex_wrhs(k, j, i / 2, n).real();
-          w_transform(k, j, i + 1, n) = complex_wrhs(k, j, i / 2, n).imag();
+          if (k < primal_topology.nl) {
+            w_transform(k, j, i, n) = complex_wrhs(k, j, i / 2, n).real();
+            w_transform(k, j, i + 1, n) = complex_wrhs(k, j, i / 2, n).imag();
+          }
         });
 
     yakl::timer_start("fft bwd");
@@ -1888,69 +1855,47 @@ public:
     yakl::timer_stop("fft bwd");
 
     parallel_for(
-        "Store w",
-        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          sol_w(0, k + pks, j + pjs, i + pis, n) = w_transform(k, j, i, n);
-        });
-    parallel_for(
-        "Store v",
+        "Store v/w solution into array with halos",
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           sol_v(0, k + pks, j + pjs, i + pis, n) = v_transform(k, j, i, n);
+          if (k < primal_topology.nl) {
+            sol_w(0, k + pks, j + pjs, i + pis, n) = w_transform(k, j, i, n);
+          }
         });
 
     solution.exchange({VVAR, WVAR});
 
-    // back out densities
-
-    parallel_for(
-        "Revover densities 1 - Hext",
-        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_H1_ext<1, diff_ord>(uvar, sol_v, this->primal_geometry,
-                                      this->dual_geometry, dis, djs, dks, i, j,
-                                      k, n);
-        });
-
-    parallel_for(
-        "Recover densities 2 - Hv",
-        SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_H1_vert<1, vert_diff_ord>(uwvar, sol_w, this->primal_geometry,
-                                            this->dual_geometry, dis, djs, dks,
-                                            i, j, k + 1, n);
-        });
-
-    auxiliary_vars.fields_arr[UWVAR].set_bnd(0.0);
-    auxiliary_vars.exchange({UVAR, UWVAR});
+    // recover densities
 
     YAKL_SCOPE(Hk, ::Hk);
     parallel_for(
-        "Recover densities 3 - F",
+        "Recover densities 1 - F/Fw",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          Hk.compute_F(fvar, uvar, rho_pi, dis, djs, dks, i, j, k, n);
-        });
+          SArray<real, 1, ndims> u;
+          compute_H1_ext<1, diff_ord>(u, sol_v, this->primal_geometry,
+                                      this->dual_geometry, dis, djs, dks, i, j,
+                                      k, n);
 
-    parallel_for(
-        "Recover densities 4 - Fw",
-        SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          Hk.compute_Fw(fwvar, uwvar, rho_di, dis, djs, dks, i, j, k + 1, n);
+          fvar(0, k + dks, j + djs, i + dis, n) = u(0) * rho_pi(0, k, n);
+
+          if (k < dual_topology.ni - 2) {
+            const real uw = compute_H1_vert(sol_w, this->primal_geometry,
+                                            this->dual_geometry, dis, djs, dks,
+                                            i, j, k + 1, n);
+            fwvar(0, k + 1 + dks, j + djs, i + dis, n) =
+                uw * rho_di(0, k + 1, n);
+          }
         });
 
     auxiliary_vars.fields_arr[FWVAR].set_bnd(0.0);
     auxiliary_vars.exchange({FVAR, FWVAR});
 
     parallel_for(
-        "Recover densities 5 - finish",
+        "Recover densities 2 - D1bar",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
