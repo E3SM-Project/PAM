@@ -232,27 +232,6 @@ compute_weno_coefs(SArray<real, 3, ord, ord, ord> const &recon,
   apply_weno_weights(a, wts, aw);
 }
 
-template <uint ord, uint tord = 2, uint hs = (ord - 1) / 2>
-YAKL_INLINE void
-weno_recon_and_weights(SArray<real, 3, ord, ord, ord> const &recon,
-                       SArray<real, 1, ord> const &u,
-                       SArray<real, 1, hs + 2> const &idl, real const sigma,
-                       SArray<real, 1, hs + 2> &wts) {
-  SArray<real, 2, hs + 2, ord> a;
-  perform_weno_recon(recon, u, idl, a);
-  compute_weno_weights(a, idl, sigma, wts);
-}
-
-template <uint ord, uint tord = 2, uint hs = (ord - 1) / 2>
-YAKL_INLINE void weno_recon_and_apply(
-    SArray<real, 3, ord, ord, ord> const &recon, SArray<real, 1, ord> const &u,
-    SArray<real, 1, hs + 2> const &idl, SArray<real, 1, hs + 2> const &wts,
-    SArray<real, 1, ord> &aw) {
-  SArray<real, 2, hs + 2, ord> a;
-  perform_weno_recon(recon, u, idl, a);
-  apply_weno_weights(a, wts, aw);
-}
-
 // Transform ord stencil cell averages into tord GLL point values
 template <uint ord, uint tord = 2, uint hs = (ord - 1) / 2>
 YAKL_INLINE void
