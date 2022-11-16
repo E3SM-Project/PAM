@@ -129,4 +129,6 @@ public:
   bool acoustic_balance;
   real entropicvar_diffusion_coeff;
   real velocity_diffusion_coeff;
+
+  realConst2d zint;
 };
