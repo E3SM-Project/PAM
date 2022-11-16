@@ -349,16 +349,58 @@ public:
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+          SArray<real, 2, dual_vert_reconstruction_order, 2>
+              dual_vert_coefs_to_gll;
+          SArray<real, 2, dual_vert_reconstruction_order, 2>
+              dual_vert_sten_to_gll;
+          SArray<real, 2, dual_vert_reconstruction_order,
+                 dual_vert_reconstruction_order>
+              dual_vert_sten_to_coefs;
+          SArray<real, 3, (dual_vert_reconstruction_order - 1) / 2 + 1,
+                 (dual_vert_reconstruction_order - 1) / 2 + 1,
+                 (dual_vert_reconstruction_order - 1) / 2 + 1>
+              dual_vert_weno_recon_lower;
+
+          for (int h = 0; h < dual_vert_reconstruction_order; h++) {
+            for (int g = 0; g < 2; g++) {
+              dual_vert_coefs_to_gll(h, g) =
+                  dual_vert_coefs_to_gll_arr(k, h, g, n);
+              dual_vert_sten_to_gll(h, g) =
+                  dual_vert_sten_to_gll_arr(k, h, g, n);
+            }
+          }
+
+          for (int h1 = 0; h1 < dual_vert_reconstruction_order; h1++) {
+            for (int h2 = 0; h2 < dual_vert_reconstruction_order; h2++) {
+              dual_vert_sten_to_coefs(h1, h2) =
+                  dual_vert_sten_to_coefs_arr(k, h1, h2, n);
+            }
+          }
+
+          for (int h1 = 0; h1 < (dual_vert_reconstruction_order - 1) / 2 + 1;
+               h1++) {
+            for (int h2 = 0; h2 < (dual_vert_reconstruction_order - 1) / 2 + 1;
+                 h2++) {
+              for (int h3 = 0;
+                   h3 < (dual_vert_reconstruction_order - 1) / 2 + 1; h3++) {
+                dual_vert_weno_recon_lower(h1, h2, h3) =
+                    dual_vert_weno_recon_lower_arr(k, h1, h2, h3, n);
+              }
+            }
+          }
+
           compute_twisted_edge_recon<ndensity, dual_reconstruction_type,
                                      dual_reconstruction_order>(
               densedgereconvar, dens0var, dis, djs, dks, i, j, k, n,
               dual_wenoRecon, dual_to_gll, dual_wenoIdl, dual_wenoSigma);
+
           compute_twisted_vert_edge_recon<ndensity,
                                           dual_vert_reconstruction_type,
                                           dual_vert_reconstruction_order>(
               densvertedgereconvar, dens0var, dis, djs, dks, i, j, k, n,
-              dual_vert_wenoRecon, dual_vert_to_gll, dual_vert_wenoIdl,
-              dual_vert_wenoSigma);
+              dual_vert_coefs_to_gll, dual_vert_sten_to_gll,
+              dual_vert_sten_to_coefs, dual_vert_weno_recon_lower,
+              dual_vert_wenoIdl, dual_vert_wenoSigma);
         });
 
     parallel_for(
@@ -366,6 +408,96 @@ public:
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+          SArray<real, 2, vert_reconstruction_order, 2> primal_vert_to_gll;
+          SArray<real, 3, vert_reconstruction_order, vert_reconstruction_order,
+                 vert_reconstruction_order>
+              primal_vert_wenoRecon;
+
+          SArray<real, 2, coriolis_vert_reconstruction_order, 2>
+              coriolis_vert_to_gll;
+          SArray<real, 3, coriolis_vert_reconstruction_order,
+                 coriolis_vert_reconstruction_order,
+                 coriolis_vert_reconstruction_order>
+              coriolis_vert_wenoRecon;
+
+          SArray<real, 2, coriolis_vert_reconstruction_order, 2>
+              coriolis_vert_coefs_to_gll;
+          SArray<real, 2, coriolis_vert_reconstruction_order, 2>
+              coriolis_vert_sten_to_gll;
+          SArray<real, 2, coriolis_vert_reconstruction_order,
+                 coriolis_vert_reconstruction_order>
+              coriolis_vert_sten_to_coefs;
+          SArray<real, 3, (coriolis_vert_reconstruction_order - 1) / 2 + 1,
+                 (coriolis_vert_reconstruction_order - 1) / 2 + 1,
+                 (coriolis_vert_reconstruction_order - 1) / 2 + 1>
+              coriolis_vert_weno_recon_lower;
+
+          SArray<real, 2, vert_reconstruction_order, 2>
+              primal_vert_coefs_to_gll;
+          SArray<real, 2, vert_reconstruction_order, 2> primal_vert_sten_to_gll;
+          SArray<real, 2, vert_reconstruction_order, vert_reconstruction_order>
+              primal_vert_sten_to_coefs;
+          SArray<real, 3, (vert_reconstruction_order - 1) / 2 + 1,
+                 (vert_reconstruction_order - 1) / 2 + 1,
+                 (vert_reconstruction_order - 1) / 2 + 1>
+              primal_vert_weno_recon_lower;
+
+          for (int h = 0; h < vert_reconstruction_order; h++) {
+            for (int g = 0; g < 2; g++) {
+              primal_vert_coefs_to_gll(h, g) =
+                  primal_vert_coefs_to_gll_arr(k, h, g, n);
+              primal_vert_sten_to_gll(h, g) =
+                  primal_vert_sten_to_gll_arr(k, h, g, n);
+            }
+          }
+
+          for (int h1 = 0; h1 < vert_reconstruction_order; h1++) {
+            for (int h2 = 0; h2 < vert_reconstruction_order; h2++) {
+              primal_vert_sten_to_coefs(h1, h2) =
+                  primal_vert_sten_to_coefs_arr(k, h1, h2, n);
+            }
+          }
+
+          for (int h1 = 0; h1 < (vert_reconstruction_order - 1) / 2 + 1; h1++) {
+            for (int h2 = 0; h2 < (vert_reconstruction_order - 1) / 2 + 1;
+                 h2++) {
+              for (int h3 = 0; h3 < (vert_reconstruction_order - 1) / 2 + 1;
+                   h3++) {
+                primal_vert_weno_recon_lower(h1, h2, h3) =
+                    primal_vert_weno_recon_lower_arr(k, h1, h2, h3, n);
+              }
+            }
+          }
+
+          for (int h = 0; h < coriolis_vert_reconstruction_order; h++) {
+            for (int g = 0; g < 2; g++) {
+              coriolis_vert_coefs_to_gll(h, g) =
+                  coriolis_vert_coefs_to_gll_arr(k, h, g, n);
+              coriolis_vert_sten_to_gll(h, g) =
+                  coriolis_vert_sten_to_gll_arr(k, h, g, n);
+            }
+          }
+
+          for (int h1 = 0; h1 < coriolis_vert_reconstruction_order; h1++) {
+            for (int h2 = 0; h2 < coriolis_vert_reconstruction_order; h2++) {
+              coriolis_vert_sten_to_coefs(h1, h2) =
+                  coriolis_vert_sten_to_coefs_arr(k, h1, h2, n);
+            }
+          }
+
+          for (int h1 = 0;
+               h1 < (coriolis_vert_reconstruction_order - 1) / 2 + 1; h1++) {
+            for (int h2 = 0;
+                 h2 < (coriolis_vert_reconstruction_order - 1) / 2 + 1; h2++) {
+              for (int h3 = 0;
+                   h3 < (coriolis_vert_reconstruction_order - 1) / 2 + 1;
+                   h3++) {
+                coriolis_vert_weno_recon_lower(h1, h2, h3) =
+                    coriolis_vert_weno_recon_lower_arr(k, h1, h2, h3, n);
+              }
+            }
+          }
+
           compute_straight_xz_edge_recon<1, reconstruction_type,
                                          reconstruction_order>(
               qxzedgereconvar, qxz0var, pis, pjs, pks, i, j, k, n,
@@ -374,8 +506,9 @@ public:
           compute_straight_xz_vert_edge_recon<1, vert_reconstruction_type,
                                               vert_reconstruction_order>(
               qxzvertedgereconvar, qxz0var, pis, pjs, pks, i, j, k, n,
-              primal_vert_wenoRecon, primal_vert_to_gll, primal_vert_wenoIdl,
-              primal_vert_wenoSigma);
+              primal_vert_coefs_to_gll, primal_vert_sten_to_gll,
+              primal_vert_sten_to_coefs, primal_vert_weno_recon_lower,
+              primal_vert_wenoIdl, primal_vert_wenoSigma);
           compute_straight_xz_edge_recon<1, coriolis_reconstruction_type,
                                          coriolis_reconstruction_order>(
               coriolisxzedgereconvar, fxz0var, pis, pjs, pks, i, j, k, n,
@@ -385,7 +518,8 @@ public:
               1, coriolis_vert_reconstruction_type,
               coriolis_vert_reconstruction_order>(
               coriolisxzvertedgereconvar, fxz0var, pis, pjs, pks, i, j, k, n,
-              coriolis_vert_wenoRecon, coriolis_vert_to_gll,
+              coriolis_vert_coefs_to_gll, coriolis_vert_sten_to_gll,
+              coriolis_vert_sten_to_coefs, coriolis_vert_weno_recon_lower,
               coriolis_vert_wenoIdl, coriolis_vert_wenoSigma);
         });
   }
@@ -1533,13 +1667,13 @@ public:
 
           real gamma_fac_kp2 = rho_di(0, k + 2, n) *
                                H1_vert_coeff(primal_geometry, dual_geometry,
-                                             pis, pjs, pks, i, j, k + 2);
+                                             pis, pjs, pks, i, j, k + 2, n);
           real gamma_fac_kp1 = rho_di(0, k + 1, n) *
                                H1_vert_coeff(primal_geometry, dual_geometry,
-                                             pis, pjs, pks, i, j, k + 1);
+                                             pis, pjs, pks, i, j, k + 1, n);
           real gamma_fac_k =
               rho_di(0, k, n) * H1_vert_coeff(primal_geometry, dual_geometry,
-                                              pis, pjs, pks, i, j, k);
+                                              pis, pjs, pks, i, j, k, n);
 
           tri_u(k, j, i, n) = 0;
           tri_d(k, j, i, n) = 1;
@@ -1579,13 +1713,13 @@ public:
 
           real gamma_fac_kp2 = rho_di(0, k + 2, n) *
                                H1_vert_coeff(primal_geometry, dual_geometry,
-                                             pis, pjs, pks, i, j, k + 2);
+                                             pis, pjs, pks, i, j, k + 2, n);
           real gamma_fac_kp1 = rho_di(0, k + 1, n) *
                                H1_vert_coeff(primal_geometry, dual_geometry,
-                                             pis, pjs, pks, i, j, k + 1);
+                                             pis, pjs, pks, i, j, k + 1, n);
           real gamma_fac_k =
               rho_di(0, k, n) * H1_vert_coeff(primal_geometry, dual_geometry,
-                                              pis, pjs, pks, i, j, k);
+                                              pis, pjs, pks, i, j, k, n);
 
           SArray<real, 1, ndims> fH1_kp1_a;
           SArray<real, 1, ndims> fH1_k_a;
@@ -1845,10 +1979,10 @@ public:
 
           real gamma_fac_kp1 = rho_di(0, k + 1, n) *
                                H1_vert_coeff(primal_geometry, dual_geometry,
-                                             pis, pjs, pks, i, j, k + 1);
+                                             pis, pjs, pks, i, j, k + 1, n);
           real gamma_fac_k =
               rho_di(0, k, n) * H1_vert_coeff(primal_geometry, dual_geometry,
-                                              pis, pjs, pks, i, j, k);
+                                              pis, pjs, pks, i, j, k, n);
 
           complex_vrhs(k, j, i, n) *= complex_vcoeff(0, k, j, i, n);
           for (int d1 = 0; d1 < ndensity_dycore; ++d1) {
@@ -2286,11 +2420,13 @@ void testcase_from_string(std::unique_ptr<TestCase> &testcase, std::string name,
                           bool acoustic_balance);
 
 void readModelParamsFile(std::string inFile, ModelParameters &params,
-                         Parallel &par, int nz,
+                         Parallel &par, PamCoupler &coupler,
                          std::unique_ptr<TestCase> &testcase) {
 
   // Read config file
   YAML::Node config = YAML::LoadFile(inFile);
+
+  int nz = coupler.get_nz();
 
   params.acoustic_balance = config["balance_initial_density"].as<bool>(false);
 
@@ -2330,6 +2466,10 @@ void readModelParamsFile(std::string inFile, ModelParameters &params,
   params.ylen = 1.0;
   params.yc = 0.5;
   testcase->set_domain(params);
+
+  // Store vertical cell interface heights in the data manager
+  auto &dm = coupler.get_data_manager_readonly();
+  params.zint = dm.get<real const, 2>("vertical_interface_height");
 
   readParamsFile(inFile, params, par, nz);
 }
@@ -2393,65 +2533,67 @@ real YAKL_INLINE saturation_vapor_pressure(real temp) {
   return 610.94_fp * exp(17.625_fp * tc / (243.04_fp + tc));
 }
 
-template <class T> class SWETestCase : public TestCase, public T {
-public:
-  using T::g;
+// TODO: Restore this once there is an option to autogenerate a "uniform" grid
+// in the vertical
 
-  using T::Lx;
-  using T::Ly;
-  using T::xc;
-  using T::yc;
-
-  using T::h_f;
-#ifdef _TSWE
-  using T::S_f;
-#endif
-  using T::coriolis_f;
-  using T::v_f;
-
-  void set_domain(ModelParameters &params) override {
-    params.xlen = Lx;
-    params.zlen = Ly;
-    params.xc = xc;
-    params.zc = yc;
-  }
-
-  void set_initial_conditions(FieldSet<nprognostic> &progvars,
-                              FieldSet<nconstant> &constvars,
-                              const Geometry<Straight> &primal_geom,
-                              const Geometry<Twisted> &dual_geom) override {
-
-    dual_geom.set_11form_values(
-        YAKL_LAMBDA(real x, real y) { return h_f(x, y); },
-        progvars.fields_arr[DENSVAR], 0);
-#ifdef _TSWE
-    dual_geom.set_11form_values(
-        YAKL_LAMBDA(real x, real y) { return S_f(x, y); },
-        progvars.fields_arr[DENSVAR], 1);
-#endif
-    primal_geom.set_10form_values(
-        YAKL_LAMBDA(real x, real y) { return v_f(x, y); },
-        progvars.fields_arr[VVAR], 0, LINE_INTEGRAL_TYPE::TANGENT);
-    primal_geom.set_01form_values(
-        YAKL_LAMBDA(real x, real y) { return v_f(x, y); },
-        progvars.fields_arr[WVAR], 0, LINE_INTEGRAL_TYPE::TANGENT);
-
-    // RESTORE ONCE PRIMAL GRID CFV RECON IS FIXED IN PARALLEL
-    // primal_geom.set_11form_values(
-    //      YAKL_LAMBDA(real x, real y) { return coriolis_f(x, y); },
-    //      constvars.fields_arr[CORIOLISVAR], 0);
-
-    YAKL_SCOPE(tracer_f, this->tracer_f);
-    for (int i = 0; i < ntracers_dycore; i++) {
-      dual_geom.set_11form_values(
-          YAKL_LAMBDA(real x, real y) {
-            return h_f(x, y) * tracer_f(i)->compute(x, y, Lx, Ly, xc, yc);
-          },
-          progvars.fields_arr[DENSVAR], i + ndensity_dycore);
-    }
-    Hs.set_parameters(g);
-  }
-};
+// template <class T> class SWETestCase : public TestCase, public T {
+// public:
+//   using T::g;
+//
+//   using T::Lx;
+//   using T::Ly;
+//   using T::xc;
+//   using T::yc;
+//
+//   using T::h_f;
+// #ifdef _TSWE
+//   using T::S_f;
+// #endif
+//   using T::coriolis_f;
+//   using T::v_f;
+//
+//   void set_domain(ModelParameters &params) override {
+//     params.xlen = Lx;
+//     params.zlen = Ly;
+//     params.xc = xc;
+//   }
+//
+//   void set_initial_conditions(FieldSet<nprognostic> &progvars,
+//                               FieldSet<nconstant> &constvars,
+//                               const Geometry<Straight> &primal_geom,
+//                               const Geometry<Twisted> &dual_geom) override {
+//
+//     dual_geom.set_11form_values(
+//         YAKL_LAMBDA(real x, real y) { return h_f(x, y); },
+//         progvars.fields_arr[DENSVAR], 0);
+// #ifdef _TSWE
+//     dual_geom.set_11form_values(
+//         YAKL_LAMBDA(real x, real y) { return S_f(x, y); },
+//         progvars.fields_arr[DENSVAR], 1);
+// #endif
+//     primal_geom.set_10form_values(
+//         YAKL_LAMBDA(real x, real y) { return v_f(x, y); },
+//         progvars.fields_arr[VVAR], 0, LINE_INTEGRAL_TYPE::TANGENT);
+//     primal_geom.set_01form_values(
+//         YAKL_LAMBDA(real x, real y) { return v_f(x, y); },
+//         progvars.fields_arr[WVAR], 0, LINE_INTEGRAL_TYPE::TANGENT);
+//
+//     // RESTORE ONCE PRIMAL GRID CFV RECON IS FIXED IN PARALLEL
+//     // primal_geom.set_11form_values(
+//     //      YAKL_LAMBDA(real x, real y) { return coriolis_f(x, y); },
+//     //      constvars.fields_arr[CORIOLISVAR], 0);
+//
+//     YAKL_SCOPE(tracer_f, this->tracer_f);
+//     for (int i = 0; i < ntracers_dycore; i++) {
+//       dual_geom.set_11form_values(
+//           YAKL_LAMBDA(real x, real y) {
+//             return h_f(x, y) * tracer_f(i)->compute(x, y, Lx, Ly, xc, yc);
+//           },
+//           progvars.fields_arr[DENSVAR], i + ndensity_dycore);
+//     }
+//     Hs.set_parameters(g);
+//   }
+// };
 
 template <class T> class EulerTestCase : public TestCase, public T {
 public:
@@ -2473,7 +2615,6 @@ public:
     params.xlen = Lx;
     params.zlen = Lz;
     params.xc = xc;
-    params.zc = zc;
   }
 
   void add_diagnostics(
@@ -2605,7 +2746,7 @@ public:
         "Compute Blin_coeff",
         SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
         YAKL_LAMBDA(int k, int n) {
-          real z = k * primal_geom.dz;
+          real z = primal_geom.zint(k, n);
 
           real Rd = thermo.cst.Rd;
           real pr = thermo.cst.pr;
@@ -2678,7 +2819,6 @@ public:
     params.xlen = Lx;
     params.zlen = Lz;
     params.xc = xc;
-    params.zc = zc;
   }
 
   void set_initial_conditions(FieldSet<nprognostic> &progvars,
@@ -2862,89 +3002,96 @@ public:
   }
 };
 
-struct DoubleVortex {
-  static real constexpr g = 9.80616_fp;
-  static real constexpr Lx = 5000000._fp;
-  static real constexpr Ly = 5000000._fp;
-  static real constexpr coriolis = 0.00006147_fp;
-  static real constexpr H0 = 750.0_fp;
-  static real constexpr ox = 0.1_fp;
-  static real constexpr oy = 0.1_fp;
-  static real constexpr sigmax = 3._fp / 40._fp * Lx;
-  static real constexpr sigmay = 3._fp / 40._fp * Ly;
-  static real constexpr dh = 75.0_fp;
-  static real constexpr xc1 = (0.5_fp - ox) * Lx;
-  static real constexpr yc1 = (0.5_fp - oy) * Ly;
-  static real constexpr xc2 = (0.5_fp + ox) * Lx;
-  static real constexpr yc2 = (0.5_fp + oy) * Ly;
-  static real constexpr xc = 0.5_fp * Lx;
-  static real constexpr yc = 0.5_fp * Ly;
-  static real constexpr c = 0.05_fp;
-  static real constexpr a = 1.0_fp / 3.0_fp;
-  static real constexpr D = 0.5_fp * Lx;
-
-  static real YAKL_INLINE coriolis_f(real x, real y) { return coriolis; }
-
-  static real YAKL_INLINE h_f(real x, real y) {
-    real xprime1 = Lx / (pi * sigmax) * sin(pi / Lx * (x - xc1));
-    real yprime1 = Ly / (pi * sigmay) * sin(pi / Ly * (y - yc1));
-    real xprime2 = Lx / (pi * sigmax) * sin(pi / Lx * (x - xc2));
-    real yprime2 = Ly / (pi * sigmay) * sin(pi / Ly * (y - yc2));
-    real xprimeprime1 =
-        Lx / (2.0_fp * pi * sigmax) * sin(2.0_fp * pi / Lx * (x - xc1));
-    real yprimeprime1 =
-        Ly / (2.0_fp * pi * sigmay) * sin(2.0_fp * pi / Ly * (y - yc1));
-    real xprimeprime2 =
-        Lx / (2.0_fp * pi * sigmax) * sin(2.0_fp * pi / Lx * (x - xc2));
-    real yprimeprime2 =
-        Ly / (2.0_fp * pi * sigmay) * sin(2.0_fp * pi / Ly * (y - yc2));
-
-    return H0 - dh * (exp(-0.5_fp * (xprime1 * xprime1 + yprime1 * yprime1)) +
-                      exp(-0.5_fp * (xprime2 * xprime2 + yprime2 * yprime2)) -
-                      4._fp * pi * sigmax * sigmay / Lx / Ly);
-  }
-
-  static vecext<2> YAKL_INLINE v_f(real x, real y) {
-    vecext<2> vvec;
-
-    real xprime1 = Lx / (pi * sigmax) * sin(pi / Lx * (x - xc1));
-    real yprime1 = Ly / (pi * sigmay) * sin(pi / Ly * (y - yc1));
-    real xprime2 = Lx / (pi * sigmax) * sin(pi / Lx * (x - xc2));
-    real yprime2 = Ly / (pi * sigmay) * sin(pi / Ly * (y - yc2));
-    real xprimeprime1 =
-        Lx / (2.0_fp * pi * sigmax) * sin(2.0_fp * pi / Lx * (x - xc1));
-    real yprimeprime1 =
-        Ly / (2.0_fp * pi * sigmay) * sin(2.0_fp * pi / Ly * (y - yc1));
-    real xprimeprime2 =
-        Lx / (2.0_fp * pi * sigmax) * sin(2.0_fp * pi / Lx * (x - xc2));
-    real yprimeprime2 =
-        Ly / (2.0_fp * pi * sigmay) * sin(2.0_fp * pi / Ly * (y - yc2));
-
-    vvec.u =
-        -g * dh / coriolis / sigmay *
-        (yprimeprime1 * exp(-0.5_fp * (xprime1 * xprime1 + yprime1 * yprime1)) +
-         yprimeprime2 * exp(-0.5_fp * (xprime2 * xprime2 + yprime2 * yprime2)));
-    vvec.w =
-        g * dh / coriolis / sigmax *
-        (xprimeprime1 * exp(-0.5_fp * (xprime1 * xprime1 + yprime1 * yprime1)) +
-         xprimeprime2 * exp(-0.5_fp * (xprime2 * xprime2 + yprime2 * yprime2)));
-    return vvec;
-  }
-
-  static real YAKL_INLINE S_f(real x, real y) {
-    // real sval = g * (1. + c * sin(2. * M_PI / Lx * (x - xc)) * sin(2. * M_PI
-    // / Ly * (y - yc)) * exp(-((x-xc)*(x-xc) + (y-yc)*(y-yc))/(a*a*D*D)));
-    real sval =
-        g * (1._fp + c * exp(-((x - xc) * (x - xc) + (y - yc) * (y - yc)) /
-                             (a * a * D * D)));
-    // real sval = g * (1. + c * sin(2. * M_PI / Lx * (x- xc)));
-    // real sval = g;
-    // real sval = g * (1. + c * ((x > 0.35 * Lx && x < 0.65 * Lx && y > 0.35 *
-    // Ly
-    // && y < 0.65 * Ly ) ? 1. : 0.));
-    return sval * h_f(x, y);
-  }
-};
+// struct DoubleVortex {
+//   static real constexpr g = 9.80616_fp;
+//   static real constexpr Lx = 5000000._fp;
+//   static real constexpr Ly = 5000000._fp;
+//   static real constexpr coriolis = 0.00006147_fp;
+//   static real constexpr H0 = 750.0_fp;
+//   static real constexpr ox = 0.1_fp;
+//   static real constexpr oy = 0.1_fp;
+//   static real constexpr sigmax = 3._fp / 40._fp * Lx;
+//   static real constexpr sigmay = 3._fp / 40._fp * Ly;
+//   static real constexpr dh = 75.0_fp;
+//   static real constexpr xc1 = (0.5_fp - ox) * Lx;
+//   static real constexpr yc1 = (0.5_fp - oy) * Ly;
+//   static real constexpr xc2 = (0.5_fp + ox) * Lx;
+//   static real constexpr yc2 = (0.5_fp + oy) * Ly;
+//   static real constexpr xc = 0.5_fp * Lx;
+//   static real constexpr yc = 0.5_fp * Ly;
+//   static real constexpr c = 0.05_fp;
+//   static real constexpr a = 1.0_fp / 3.0_fp;
+//   static real constexpr D = 0.5_fp * Lx;
+//
+//   static real YAKL_INLINE coriolis_f(real x, real y) { return coriolis; }
+//
+//   static real YAKL_INLINE h_f(real x, real y) {
+//     real xprime1 = Lx / (pi * sigmax) * sin(pi / Lx * (x - xc1));
+//     real yprime1 = Ly / (pi * sigmay) * sin(pi / Ly * (y - yc1));
+//     real xprime2 = Lx / (pi * sigmax) * sin(pi / Lx * (x - xc2));
+//     real yprime2 = Ly / (pi * sigmay) * sin(pi / Ly * (y - yc2));
+//     real xprimeprime1 =
+//         Lx / (2.0_fp * pi * sigmax) * sin(2.0_fp * pi / Lx * (x - xc1));
+//     real yprimeprime1 =
+//         Ly / (2.0_fp * pi * sigmay) * sin(2.0_fp * pi / Ly * (y - yc1));
+//     real xprimeprime2 =
+//         Lx / (2.0_fp * pi * sigmax) * sin(2.0_fp * pi / Lx * (x - xc2));
+//     real yprimeprime2 =
+//         Ly / (2.0_fp * pi * sigmay) * sin(2.0_fp * pi / Ly * (y - yc2));
+//
+//     return H0 - dh * (exp(-0.5_fp * (xprime1 * xprime1 + yprime1 * yprime1))
+//     +
+//                       exp(-0.5_fp * (xprime2 * xprime2 + yprime2 * yprime2))
+//                       - 4._fp * pi * sigmax * sigmay / Lx / Ly);
+//   }
+//
+//   static vecext<2> YAKL_INLINE v_f(real x, real y) {
+//     vecext<2> vvec;
+//
+//     real xprime1 = Lx / (pi * sigmax) * sin(pi / Lx * (x - xc1));
+//     real yprime1 = Ly / (pi * sigmay) * sin(pi / Ly * (y - yc1));
+//     real xprime2 = Lx / (pi * sigmax) * sin(pi / Lx * (x - xc2));
+//     real yprime2 = Ly / (pi * sigmay) * sin(pi / Ly * (y - yc2));
+//     real xprimeprime1 =
+//         Lx / (2.0_fp * pi * sigmax) * sin(2.0_fp * pi / Lx * (x - xc1));
+//     real yprimeprime1 =
+//         Ly / (2.0_fp * pi * sigmay) * sin(2.0_fp * pi / Ly * (y - yc1));
+//     real xprimeprime2 =
+//         Lx / (2.0_fp * pi * sigmax) * sin(2.0_fp * pi / Lx * (x - xc2));
+//     real yprimeprime2 =
+//         Ly / (2.0_fp * pi * sigmay) * sin(2.0_fp * pi / Ly * (y - yc2));
+//
+//     vvec.u =
+//         -g * dh / coriolis / sigmay *
+//         (yprimeprime1 * exp(-0.5_fp * (xprime1 * xprime1 + yprime1 *
+//         yprime1)) +
+//          yprimeprime2 * exp(-0.5_fp * (xprime2 * xprime2 + yprime2 *
+//          yprime2)));
+//     vvec.w =
+//         g * dh / coriolis / sigmax *
+//         (xprimeprime1 * exp(-0.5_fp * (xprime1 * xprime1 + yprime1 *
+//         yprime1)) +
+//          xprimeprime2 * exp(-0.5_fp * (xprime2 * xprime2 + yprime2 *
+//          yprime2)));
+//     return vvec;
+//   }
+//
+//   static real YAKL_INLINE S_f(real x, real y) {
+//     // real sval = g * (1. + c * sin(2. * M_PI / Lx * (x - xc)) * sin(2. *
+//     M_PI
+//     // / Ly * (y - yc)) * exp(-((x-xc)*(x-xc) + (y-yc)*(y-yc))/(a*a*D*D)));
+//     real sval =
+//         g * (1._fp + c * exp(-((x - xc) * (x - xc) + (y - yc) * (y - yc)) /
+//                              (a * a * D * D)));
+//     // real sval = g * (1. + c * sin(2. * M_PI / Lx * (x- xc)));
+//     // real sval = g;
+//     // real sval = g * (1. + c * ((x > 0.35 * Lx && x < 0.65 * Lx && y > 0.35
+//     *
+//     // Ly
+//     // && y < 0.65 * Ly ) ? 1. : 0.));
+//     return sval * h_f(x, y);
+//   }
+// };
 
 template <bool acoustic_balance> struct RisingBubble {
   static real constexpr g = 9.80616_fp;
@@ -3786,9 +3933,7 @@ template <bool add_perturbation> struct GravityWave {
 
 void testcase_from_string(std::unique_ptr<TestCase> &testcase, std::string name,
                           bool acoustic_balance) {
-  if (name == "doublevortex") {
-    testcase = std::make_unique<SWETestCase<DoubleVortex>>();
-  } else if (name == "gravitywave") {
+  if (name == "gravitywave") {
     testcase = std::make_unique<EulerTestCase<GravityWave<true>>>();
   } else if (name == "twobubbles") {
     testcase = std::make_unique<EulerTestCase<TwoBubbles>>();
@@ -3806,7 +3951,11 @@ void testcase_from_string(std::unique_ptr<TestCase> &testcase, std::string name,
     testcase = std::make_unique<EulerTestCase<LargeRisingBubble>>();
   } else if (name == "moistlargerisingbubble") {
     testcase = std::make_unique<MoistEulerTestCase<MoistLargeRisingBubble>>();
-  } else {
+  }
+  // else if (name == "doublevortex") {
+  //  testcase = std::make_unique<SWETestCase<DoubleVortex>>();
+  //}
+  else {
     throw std::runtime_error("unknown test case");
   }
 }

@@ -1052,7 +1052,7 @@ void testcase_from_string(std::unique_ptr<TestCase> &testcase,
                           std::string name);
 
 void readModelParamsFile(std::string inFile, ModelParameters &params,
-                         Parallel &par, int nz,
+                         Parallel &par, PamCoupler &coupler,
                          std::unique_ptr<TestCase> &testcase) {
 
   // Read config file
@@ -1079,7 +1079,7 @@ void readModelParamsFile(std::string inFile, ModelParameters &params,
   params.zlen = 1.0;
   params.zc = 0.5;
   testcase->set_domain(params);
-
+  int nz = coupler.get_nz();
   readParamsFile(inFile, params, par, nz);
 }
 
