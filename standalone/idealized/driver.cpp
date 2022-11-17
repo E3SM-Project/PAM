@@ -10,15 +10,15 @@
 int main(int argc, char** argv) {
   int ierr = MPI_Init( &argc , &argv );
   yakl::init();
-  
+
   {
-    
+
     int myrank;
     bool masterproc;
     ierr = MPI_Comm_rank(MPI_COMM_WORLD,&myrank);
     // Determine if I'm the master process
     masterproc = myrank == 0;
-    
+
     using yakl::intrinsics::abs;
     using yakl::intrinsics::maxval;
     yakl::timer_start("main");
@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
     real        ylen         = config["ylen"    ].as<real>(-1.0_fp);
     real        zlen         = config["zlen"    ].as<real>(-1.0_fp);
     real        dtphys_in    = config["dtphys"  ].as<real>();
-    std::string vcoords_file = config["vcoords" ].as<std::string>("");
+    std::string vcoords_file = config["vcoords" ].as<std::string>();
     bool        use_coupler_hydrostasis = config["use_coupler_hydrostasis"].as<bool>(false);
     auto out_freq                = config["out_freq"   ].as<real>(0);
     auto out_prefix              = config["out_prefix" ].as<std::string>("test");
@@ -49,43 +49,31 @@ int main(int argc, char** argv) {
     // Read vertical coordinates
     real1d zint_in;
     //THIS IS BROKEN FOR PARALLEL IO CASE- maybe this is okay ie switch entirely to standard netcdf?
-    if (! vcoords_file.empty()) {
-      yakl::SimpleNetCDF nc;
-      nc.open(vcoords_file);
-      crm_nz = nc.getDimSize("num_interfaces") - 1;
-      zint_in = real1d("zint_in",crm_nz+1);
-      nc.read(zint_in,"vertical_interfaces");
-      nc.close();
-    }
-    
+    yakl::SimpleNetCDF nc;
+    nc.open(vcoords_file);
+    crm_nz = nc.getDimSize("num_interfaces") - 1;
+    zint_in = real1d("zint_in",crm_nz+1);
+    nc.read(zint_in,"vertical_interfaces");
+    nc.close();
+
     // Create the dycore and the microphysics
     Dycore       dycore;
     Microphysics micro;
     SGS          sgs;
-    
+
     //set xlen, ylen, zlen based on init cond if needed
     if (xlen < 0 or ylen < 0 or zlen < 0) { set_domain_sizes(config["initData"].as<std::string>(), crm_ny, crm_nz, xlen, ylen, zlen); }
-    
-    //This requires zlen, so it must happen after domain sizes are set
-    //We are using a uniform vertical grid with crm_nz levels; in this case zlen must be set
-    if (vcoords_file.empty()) {
-      zint_in = real1d("zint_in",crm_nz+1);
-      real dz = zlen/crm_nz;
-      parallel_for("set vertical levels", crm_nz+1, YAKL_LAMBDA(int i) {
-        zint_in(i) = i*dz;
-      });
-    }
-    
+
     //this partitions the domain if INNER_MPI is set, otherwise it does nothing
     if (inner_mpi)
     {partition_domain(inFile, crm_nx, crm_ny);}
-    
+
     // Use microphysics gas constants values in the coupler
     coupler.set_phys_constants( micro.R_d , micro.R_v , micro.cp_d , micro.cp_v , micro.grav , micro.p0 );
 
     // Allocate coupler state
     coupler.allocate_coupler_state( crm_nz , crm_ny , crm_nx , nens );
-    
+
     // Set the horizontal domain lengths and the vertical grid in the coupler
     coupler.set_grid( xlen , ylen , zint_in );
 
@@ -113,7 +101,7 @@ int main(int argc, char** argv) {
     real etime = 0;
     // There are two ways of time control- setting total simulation time (simTime) or setting number of physics time steps (simSteps)
     if (simTime == 0.0) {  simTime = simSteps * dtphys_in; }
-    
+
     int  num_out = 0;
     // Output the initial state
     yakl::timer_start("output");
@@ -144,7 +132,7 @@ int main(int argc, char** argv) {
       auto &dm = coupler.get_data_manager_readonly();
       real maxw = maxval(abs(dm.get_collapsed<real const>("wvel")));
       if (masterproc) {
-      std::cout << "Etime , dtphys, maxw: " << etime  << " , " 
+      std::cout << "Etime , dtphys, maxw: " << etime  << " , "
                                             << dtphys << " , "
                                             << std::setw(10) << maxw << "\n";
       }
@@ -165,7 +153,7 @@ int main(int argc, char** argv) {
 
     yakl::timer_stop("main");
   }
-  
+
   yakl::finalize();
 
   ierr = MPI_Finalize();

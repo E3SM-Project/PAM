@@ -77,9 +77,6 @@ public:
     debug_print("read parameters and partitioned domain/setting domain sizes",
                 par.masterproc);
 
-    // HOW DO WE HANDLE VERTICAL LEVELS STUFF?
-    // BASICALLY A NEW GEOMETRY, I THINK?
-
     // Initialize the grid
     debug_print("start init topo/geom", par.masterproc);
     primal_topology.initialize(par, true);

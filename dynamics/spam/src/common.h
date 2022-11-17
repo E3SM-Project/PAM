@@ -178,7 +178,7 @@ public:
   real si_tolerance = -1;
 
   real xlen, ylen, zlen;
-  real xc, yc, zc;
+  real xc, yc;
 
   int masterproc;
 };
