@@ -16,7 +16,7 @@ cmake      \
   -DPAM_LINK_FLAGS="${PAM_LINK_FLAGS}"                            \
   -DYAKL_ARCH="${YAKL_ARCH}"                                      \
   -DPAM_DYCORE="spam++"                                           \
-  -DPAM_MICRO="kessler"                                           \
+  -DPAM_MICRO="none"                                           \
   -DPAM_SGS="none"                                                \
   ${add_cmake_vars} \
   ..

@@ -119,6 +119,6 @@ public:
   real entropicvar_diffusion_coeff;
   real velocity_diffusion_coeff;
 
-  real2d zint;
+  realConst2d zint;
 
 };

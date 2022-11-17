@@ -8,10 +8,10 @@ velocity_diffusion_coeff: 75
 # Number of cells to use
 crm_nx       : 256
 crm_ny       : 1
-crm_nz       : 33
+#crm_nz       : 33
 
 # Vertical height coordinates file
-#vcoords  : vcoords_equal_100_20km.nc
+vcoords  : 'vcoords/vcoords_equal_33_6400.nc'
 
 # Data to initialize: doublevortex rb mrb
 initData : densitycurrent
@@ -19,7 +19,7 @@ initData : densitycurrent
 # Time steps
 dtphys: 2
 crm_per_phys: 1
- 
+
 # Output filename
 out_prefix  : test
 dycore_out_prefix  : test_dycore
@@ -40,4 +40,3 @@ nens : 1
 inner_mpi : true
 nprocx : 1
 nprocy : 1
-

@@ -68,13 +68,6 @@ void readParamsFile(std::string inFile, ModelParameters &params, Parallel &par,
 
   params.nz_dual = nz;
 
-  #ifdef _EXTRUDED
-
-  // Store vertical cell interface heights in the data manager
-  auto &dm = coupler.get_data_manager_readonly();
-  zint = dm.get<real const,2>("vertical_interface_height");
-
-  #endif
 
   params.dtphys = config["dtphys"].as<real>();
   params.crm_per_phys = config["crm_per_phys"].as<int>(0);

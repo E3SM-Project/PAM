@@ -243,41 +243,32 @@ public:
 
 class ExtrudedTendencies : public Tendencies {
 public:
-  //SArray<real, 2, vert_reconstruction_order, 2> primal_vert_to_gll;
-  //SArray<real, 3, vert_reconstruction_order, vert_reconstruction_order,
-  //       vert_reconstruction_order>
-  //    primal_vert_wenoRecon;
+
   SArray<real, 1, (vert_reconstruction_order - 1) / 2 + 2> primal_vert_wenoIdl;
   real primal_vert_wenoSigma;
-
   real4d primal_vert_to_gll_arr;
   real5d primal_vert_wenoRecon_arr;
 
-  // SArray<real, 2, dual_vert_reconstruction_order, 2> dual_vert_to_gll;
-  // SArray<real, 3, dual_vert_reconstruction_order,
-  //        dual_vert_reconstruction_order, dual_vert_reconstruction_order>
-  //     dual_vert_wenoRecon;
-  SArray<real, 1, (dual_vert_reconstruction_order - 1) / 2 + 2> dual_vert_wenoIdl;
-  real1d dual_vert_wenoSigma;
+  SArray<real, 1, (coriolis_vert_reconstruction_order - 1) / 2 + 2> coriolis_vert_wenoIdl;
+  real coriolis_vert_wenoSigma;
+  real4d coriolis_vert_to_gll_arr;
+  real5d coriolis_vert_wenoRecon_arr;
 
+  SArray<real, 1, (dual_vert_reconstruction_order - 1) / 2 + 2> dual_vert_wenoIdl;
+  real dual_vert_wenoSigma;
   real4d dual_vert_to_gll_arr;
   real5d dual_vert_wenoRecon_arr;
 
-  // SArray<real, 2, coriolis_vert_reconstruction_order, 2> coriolis_vert_to_gll;
-  // SArray<real, 3, coriolis_vert_reconstruction_order,
-  //        coriolis_vert_reconstruction_order, coriolis_vert_reconstruction_order>
-  //     coriolis_vert_wenoRecon;
-  SArray<real, 1, (coriolis_vert_reconstruction_order - 1) / 2 + 2> coriolis_vert_wenoIdl;
-  real coriolis_vert_wenoSigma;
 
-  real4d coriolis_vert_to_gll_arr;
-  real5d coriolis_vert_wenoRecon_arr;
 
   void initialize(ModelParameters &params,
                   const Geometry<Straight> &primal_geom,
                   const Geometry<Twisted> &dual_geom,
                   ReferenceState &refstate) {
     Tendencies::initialize(params, primal_geom, dual_geom, refstate);
+
+    const auto &primal_topology = primal_geom.topology;
+    const auto &dual_topology = dual_geom.topology;
 
 
     wenoSetIdealSigma<vert_reconstruction_order>(primal_vert_wenoIdl,primal_vert_wenoSigma);
@@ -287,66 +278,115 @@ public:
     wenoSetIdealSigma<coriolis_vert_reconstruction_order>(coriolis_vert_wenoIdl, coriolis_vert_wenoSigma);
 
 
-this->primal_vert_to_gll_arr = real4d("Primal Vert to GLL Array", primal_topology.nl * vert_reconstruction_order * 2 * primal_topology.nens ,
-                    primal_topology.nl,
-                    vert_reconstruction_order,
-                    2,
-                    primal_topology.nens);
+  this->primal_vert_to_gll_arr = real4d("Primal Vert to GLL Array",
+                      primal_topology.nl,
+                      vert_reconstruction_order,
+                      2,
+                      primal_topology.nens);
 
-this->primal_vert_wenoRecon_arr = real5d("Primal Vert wenoRecon Array", primal_topology.nl * vert_reconstruction_order * vert_reconstruction_order * vert_reconstruction_order * primal_topology.nens,
-                    primal_topology.nl,
-                    vert_reconstruction_order,
-                    vert_reconstruction_order,
-                    vert_reconstruction_order,
-                    primal_topology.nens);
+  this->primal_vert_wenoRecon_arr = real5d("Primal Vert wenoRecon Array",
+                      primal_topology.nl,
+                      vert_reconstruction_order,
+                      vert_reconstruction_order,
+                      vert_reconstruction_order,
+                      primal_topology.nens);
+
+  this->coriolis_vert_to_gll_arr = real4d("Coriolis Vert to GLL Array",
+                      dual_topology.nl,
+                      coriolis_vert_reconstruction_order,
+                      2,
+                      dual_topology.nens);
+
+  this->coriolis_vert_wenoRecon_arr = real5d("Coriolis Vert wenoRecon Array",
+                      dual_topology.nl,
+                      coriolis_vert_reconstruction_order,
+                      coriolis_vert_reconstruction_order,
+                      coriolis_vert_reconstruction_order,
+                      dual_topology.nens);
 
 parallel_for("Compute Vertically Variable WENO Func Arrays- Primal", SimpleBounds<2>(primal_topology.nl,primal_topology.nens),
-    YAKL_CLASS_LAMBDA(int k, int n) {
+    YAKL_LAMBDA(int k, int n) {
       //FIX THESE
+      SArray<real, 2, vert_reconstruction_order, 2> primal_vert_to_gll;
+      SArray<real, 3, vert_reconstruction_order, vert_reconstruction_order,
+             vert_reconstruction_order>
+          primal_vert_wenoRecon;
 
-      //coefs_to_sten_variable
-      //sten_to_coefs_variable
-      //weno_lower_sten_to_coefs
+      SArray<real, 2, coriolis_vert_reconstruction_order, 2> coriolis_vert_to_gll;
+      SArray<real, 3, coriolis_vert_reconstruction_order,
+              coriolis_vert_reconstruction_order, coriolis_vert_reconstruction_order>
+           coriolis_vert_wenoRecon;
 
-    //TransformMatrices_variable::coefs_to_gll_lower(primal_vert_to_gll_arr);
-    //TransformMatrices_variable::weno_lower_sten_to_coefs(primal_vert_wenoRecon_arr);
+
+//THIS BIT IS BROKEN!
+      TransformMatrices::coefs_to_gll_lower(primal_vert_to_gll);
+      TransformMatrices::weno_sten_to_coefs(primal_vert_wenoRecon);
+      TransformMatrices::coefs_to_gll_lower(coriolis_vert_to_gll);
+      TransformMatrices::weno_sten_to_coefs(coriolis_vert_wenoRecon);
+
+      for (int h=0;h<vert_reconstruction_order;h++){
+        for (int g=0;g<2;g++){
+          primal_vert_to_gll_arr(k,h,g,n) = primal_vert_to_gll(h,g);
+        }}
+
+      for (int h1=0;h1<vert_reconstruction_order;h1++){
+        for (int h2=0;h2<vert_reconstruction_order;h2++){
+          for (int h3=0;h3<vert_reconstruction_order;h3++){
+            primal_vert_wenoRecon_arr(k,h1,h2,h3,n) = primal_vert_wenoRecon(h1,h2,h3);
+          }}}
+
+      for (int h=0;h<coriolis_vert_reconstruction_order;h++){
+        for (int g=0;g<2;g++){
+          coriolis_vert_to_gll_arr(k,h,g,n) = coriolis_vert_to_gll(h,g);
+        }}
+
+      for (int h1=0;h1<coriolis_vert_reconstruction_order;h1++){
+        for (int h2=0;h2<coriolis_vert_reconstruction_order;h2++){
+          for (int h3=0;h3<coriolis_vert_reconstruction_order;h3++){
+            coriolis_vert_wenoRecon_arr(k,h1,h2,h3,n) = coriolis_vert_wenoRecon(h1,h2,h3);
+          }}}
+
   });
 
 
-  this->dual_vert_to_gll_arr = real4d("Dual Vert to GLL Array", dual_topology.nl * dual_vert_reconstruction_order * 2 * dual_topology.nens ,
+  this->dual_vert_to_gll_arr = real4d("Dual Vert to GLL Array",
                       dual_topology.nl,
                       dual_vert_reconstruction_order,
                       2,
                       dual_topology.nens);
 
-  this->dual_vert_wenoRecon_arr = real5d("Dual Vert wenoRecon Array", dual_topology.nl * dual_vert_reconstruction_order * dual_vert_reconstruction_order * dual_vert_reconstruction_order * dual_topology.nens,
+  this->dual_vert_wenoRecon_arr = real5d("Dual Vert wenoRecon Array",
                       dual_topology.nl,
                       dual_vert_reconstruction_order,
                       dual_vert_reconstruction_order,
                       dual_vert_reconstruction_order,
                       dual_topology.nens);
 
-  this->coriolis_vert_to_gll_arr = real4d("Coriolis Vert to GLL Array", dual_topology.nl * coriolis_vert_reconstruction_order * 2 * dual_topology.nens ,
-                      dual_topology.nl,
-                      coriolis_vert_reconstruction_order,
-                      2,
-                      dual_topology.nens);
 
-  this->coriolis_vert_wenoRecon_arr = real5d("Coriolis Vert wenoRecon Array", dual_topology.nl * coriolis_vert_reconstruction_order * coriolis_vert_reconstruction_order * coriolis_vert_reconstruction_order * dual_topology.nens,
-                      dual_topology.nl,
-                      coriolis_vert_reconstruction_order,
-                      coriolis_vert_reconstruction_order,
-                      coriolis_vert_reconstruction_order,
-                      dual_topology.nens);
 
   parallel_for("Compute Vertically Variable WENO Func Arrays- Dual", SimpleBounds<2>(dual_topology.nl,dual_topology.nens),
-      YAKL_CLASS_LAMBDA(int k, int n) {
+      YAKL_LAMBDA(int k, int n) {
 
-    //TransformMatrices_variable::coefs_to_gll_lower(dual_vert_to_gll_arr);
-    //TransformMatrices_variable::weno_sten_to_coefs(dual_vert_wenoRecon_arr);
+        SArray<real, 2, dual_vert_reconstruction_order, 2> dual_vert_to_gll;
+        SArray<real, 3, dual_vert_reconstruction_order,
+                dual_vert_reconstruction_order, dual_vert_reconstruction_order>
+             dual_vert_wenoRecon;
 
-    //TransformMatrices_variable::coefs_to_gll_lower(coriolis_vert_to_gll_arr);
-    //TransformMatrices_variable::weno_sten_to_coefs(coriolis_vert_wenoRecon_arr);
+      //THIS BIT IS BROKEN!
+      TransformMatrices::coefs_to_gll_lower(dual_vert_to_gll);
+      TransformMatrices::weno_sten_to_coefs(dual_vert_wenoRecon);
+
+      for (int h=0;h<dual_vert_reconstruction_order;h++){
+        for (int g=0;g<2;g++){
+          dual_vert_to_gll_arr(k,h,g,n) = dual_vert_to_gll(h,g);
+        }}
+
+
+      for (int h1=0;h1<dual_vert_reconstruction_order;h1++){
+        for (int h2=0;h2<dual_vert_reconstruction_order;h2++){
+          for (int h3=0;h3<dual_vert_reconstruction_order;h3++){
+            dual_vert_wenoRecon_arr(k,h1,h2,h3,n) = dual_vert_wenoRecon(h1,h2,h3);
+        }}}
 
   });
 

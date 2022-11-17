@@ -884,15 +884,15 @@ void Geometry<Twisted>::initialize(const Topology &topo,
   this->dx = params.xlen / params.nx_glob;
   this->dy = 1._fp;
 
-  this->dz = real2d("dz twisted",topo->nl,topo->nens);
-  this->zint = real2d("zint twisted",topo->ni,topo->nens);
+  this->dz = real2d("dz twisted",topo.nl,topo.nens);
+  this->zint = real2d("zint twisted",topo.ni,topo.nens);
 
 
-  parallel_for( "Set zint twisted" , SimpleBounds<2>(topo->ni,topo->nens) , YAKL_LAMBDA (int k, int n) {
+  parallel_for( "Set zint twisted" , SimpleBounds<2>(topo.ni,topo.nens) , YAKL_LAMBDA (int k, int n) {
     this->zint(k,n) = params.zint(k,n);
   });
 
-  parallel_for( "Set dz twisted" , SimpleBounds<2>(topo->nl,topo->nens) , YAKL_LAMBDA (int k, int n) {
+  parallel_for( "Set dz twisted" , SimpleBounds<2>(topo.nl,topo.nens) , YAKL_LAMBDA (int k, int n) {
     this->dz(k,n) = this->zint(k+1,n) - this->zint(k,n);
   });
 
@@ -967,7 +967,7 @@ void YAKL_INLINE Geometry<Twisted>::get_11form_quad_pts_wts(
         quad_pts_phys(nqx, nqz).x =
             ll_corner_x + this->x_quad_pts_ref(nqx) * this->dx;
         quad_pts_phys(nqx, nqz).z =
-            ll_corner_z + this->v_quad_pts_ref(nqz) * this->dz(k);
+            ll_corner_z + this->v_quad_pts_ref(nqz) * this->dz(k,n);
         quad_wts_phys(nqx, nqz) = this->x_quad_wts_ref(nqx) * this->dx *
                                   this->v_quad_wts_ref(nqz) * this->dz(k,n);
       }
@@ -986,7 +986,7 @@ void YAKL_INLINE Geometry<Twisted>::get_01form_quad_pts_wts(
 
   for (int nqz = 0; nqz < ic_quad_pts_z; nqz++) {
     v_quad_pts_phys(nqz).x = ll_corner_x;
-    v_quad_pts_phys(nqz).z = ll_corner_z + this->v_quad_pts_ref(nqz) * this->dz(k);
+    v_quad_pts_phys(nqz).z = ll_corner_z + this->v_quad_pts_ref(nqz) * this->dz(k,n);
     v_quad_wts_phys(nqz) = this->v_quad_wts_ref(nqz) * this->dz(k,n);
   }
 }
@@ -1023,20 +1023,18 @@ void Geometry<Straight>::initialize(const Topology &topo,
   this->dx = params.xlen / params.nx_glob;
   this->dy = 1._fp;
 
-  this->dz = real2d("dz straight",topo->nl,topo->nens);
-  this->zint = real2d("zint straight",topo->ni,topo->nens);
-
-  this->zint(0,n) = params.zint(k,n)
+  this->dz = real2d("dz straight",topo.nl,topo.nens);
+  this->zint = real2d("zint straight",topo.ni,topo.nens);
 
 //This code puts straight grid interfaces at the midpoint point between twisted grid interfaces (other than the top and bottom levels)
-  parallel_for( "Set zint straight" , SimpleBounds<2>(topo->ni,topo->nens) , YAKL_LAMBDA (int k, int n) {
-    if (k==0 || k==topo->ni-1)
+  parallel_for( "Set zint straight" , SimpleBounds<2>(topo.ni,topo.nens) , YAKL_LAMBDA (int k, int n) {
+    if (k==0 || k==topo.ni-1)
     {this->zint(k,n) = params.zint(k,n);}
     else
     {this->zint(k,n) = (params.zint(k,n) + params.zint(k+1,n))/2.0_fp;}
   });
 
-  parallel_for( "Set dz straight" , SimpleBounds<2>(topo->nl,topo->nens) , YAKL_LAMBDA (int k, int n) {
+  parallel_for( "Set dz straight" , SimpleBounds<2>(topo.nl,topo.nens) , YAKL_LAMBDA (int k, int n) {
     this->dz(k,n) = this->zint(k+1,n) - this->zint(k,n);
   });
 

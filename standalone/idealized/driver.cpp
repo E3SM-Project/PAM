@@ -34,7 +34,7 @@ int main(int argc, char** argv) {
     real        simSteps     = config["simSteps"].as<int>(0);
     int         crm_nx       = config["crm_nx"  ].as<int>();
     int         crm_ny       = config["crm_ny"  ].as<int>();
-    int         crm_nz       = config["crm_nz"  ].as<int>(0);
+    //int         crm_nz       = config["crm_nz"  ].as<int>(0);
     int         nens         = config["nens"    ].as<int>();
     real        xlen         = config["xlen"    ].as<real>(-1.0_fp);
     real        ylen         = config["ylen"    ].as<real>(-1.0_fp);
@@ -51,10 +51,16 @@ int main(int argc, char** argv) {
     //THIS IS BROKEN FOR PARALLEL IO CASE- maybe this is okay ie switch entirely to standard netcdf?
     yakl::SimpleNetCDF nc;
     nc.open(vcoords_file);
-    crm_nz = nc.getDimSize("num_interfaces") - 1;
+    int crm_nz = nc.getDimSize("num_interfaces") - 1;
     zint_in = real1d("zint_in",crm_nz+1);
     nc.read(zint_in,"vertical_interfaces");
     nc.close();
+    //TODO: Coupler needs to eventually support ensemble dependent vertical grids
+    //real2d zint_expanded = real2d("zint_expanded",crm_nz+1,nens);
+    //parallel_for( "Set zint expanded" , SimpleBounds<2>(crm_nz+1,nens) , YAKL_LAMBDA (int k, int n) {
+    //  zint_expanded(k,n) = zint_in(k);
+    //});
+
 
     // Create the dycore and the microphysics
     Dycore       dycore;

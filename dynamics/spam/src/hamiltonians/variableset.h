@@ -210,11 +210,11 @@ void VariableSetBase<T>::convert_dynamics_to_coupler_state(
             real uvel_l =
                 prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, i + pis,
                                                 n) /
-                primal_geometry.get_area_10entity(k + pks, j + pjs, i + pis);
+                primal_geometry.get_area_10entity(k + pks, j + pjs, i + pis, n);
             real uvel_r = prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs,
                                                           i + pis + 1, n) /
                           primal_geometry.get_area_10entity(k + pks, j + pjs,
-                                                            i + pis + 1);
+                                                            i + pis + 1, n);
             real wvel_d = 0.0_fp;
             real wvel_u = 0.0_fp;
             if (k == 0) {
@@ -222,7 +222,7 @@ void VariableSetBase<T>::convert_dynamics_to_coupler_state(
                   2.0_fp *
                   prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs, i + pis,
                                                   n) /
-                  primal_geometry.get_area_01entity(k + pks, j + pjs, i + pis);
+                  primal_geometry.get_area_01entity(k + pks, j + pjs, i + pis, n);
               wvel_d = 0.0_fp;
             } else if (k == (dual_topology.nl)) {
               wvel_u = 0.0_fp;
@@ -230,16 +230,16 @@ void VariableSetBase<T>::convert_dynamics_to_coupler_state(
                        prog_vars.fields_arr[WVAR].data(0, k + pks - 1, j + pjs,
                                                        i + pis, n) /
                        primal_geometry.get_area_01entity(k + pks - 1, j + pjs,
-                                                         i + pis);
+                                                         i + pis, n);
             } else {
               wvel_u =
                   prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs, i + pis,
                                                   n) /
-                  primal_geometry.get_area_01entity(k + pks, j + pjs, i + pis);
+                  primal_geometry.get_area_01entity(k + pks, j + pjs, i + pis, n);
               wvel_d = prog_vars.fields_arr[WVAR].data(0, k + pks - 1, j + pjs,
                                                        i + pis, n) /
                        primal_geometry.get_area_01entity(k + pks - 1, j + pjs,
-                                                         i + pis);
+                                                         i + pis, n);
             }
             // EVENTUALLY FIX THIS FOR 3D...
             real vvel = 0.0_fp;
@@ -280,13 +280,13 @@ void VariableSetBase<T>::convert_dynamics_to_coupler_state(
           dm_dens_dry(k, j, i, n) =
               get_dry_density(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks,
                               djs, dis, n) /
-              dual_geometry.get_area_11entity(k + dks, j + djs, i + dis);
+              dual_geometry.get_area_11entity(k + dks, j + djs, i + dis, n);
           dm_temp(k, j, i, n) = temp;
           for (int tr = ndensity_nophysics; tr < ndensity; tr++) {
             dm_tracers(tr - ndensity_nophysics, k, j, i, n) =
                 prog_vars.fields_arr[DENSVAR].data(tr, k + dks, j + djs,
                                                    i + dis, n) /
-                dual_geometry.get_area_11entity(k + dks, j + djs, i + dis);
+                dual_geometry.get_area_11entity(k + dks, j + djs, i + dis, n);
           }
         });
   }
@@ -352,20 +352,20 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_state(
               thermo.compute_entropic_var_from_T(alpha, temp, qd, qv, ql, qi);
 
           set_density(
-              dens * dual_geometry.get_area_11entity(k + dks, j + djs, i + dis),
+              dens * dual_geometry.get_area_11entity(k + dks, j + djs, i + dis, n),
               dens_dry *
-                  dual_geometry.get_area_11entity(k + dks, j + djs, i + dis),
+                  dual_geometry.get_area_11entity(k + dks, j + djs, i + dis, n),
               prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
           set_entropic_density(
               entropic_var * dens *
-                  dual_geometry.get_area_11entity(k + dks, j + djs, i + dis),
+                  dual_geometry.get_area_11entity(k + dks, j + djs, i + dis, n),
               prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
 
           for (int tr = ndensity_nophysics; tr < ndensity; tr++) {
             prog_vars.fields_arr[DENSVAR].data(tr, k + dks, j + djs, i + dis,
                                                n) =
                 dm_tracers(tr - ndensity_nophysics, k, j, i, n) *
-                dual_geometry.get_area_11entity(k + dks, j + djs, i + dis);
+                dual_geometry.get_area_11entity(k + dks, j + djs, i + dis, n);
           }
         });
 
@@ -382,7 +382,7 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_state(
             }
             prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, i + pis, n) =
                 (dm_uvel(k, j, il, n) + dm_uvel(k, j, i, n)) * 0.5_fp *
-                primal_geometry.get_area_10entity(k + pks, j + pjs, i + pis);
+                primal_geometry.get_area_10entity(k + pks, j + pjs, i + pis, n);
           });
 
       // EVENTUALLY THIS NEEDS TO HAVE A FLAG ON IT!
@@ -393,7 +393,7 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_state(
           YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
             prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs, i + pis, n) =
                 (dm_wvel(k, j, i, n) + dm_wvel(k + 1, j, i, n)) * 0.5_fp *
-                primal_geometry.get_area_01entity(k + pks, j + pjs, i + pis);
+                primal_geometry.get_area_01entity(k + pks, j + pjs, i + pis, n);
           });
     }
   }
@@ -470,13 +470,13 @@ template <>
 real YAKL_INLINE VariableSetBase<VS_CE>::get_alpha(const real5d &densvar, int k,
                                                    int j, int i, int ks, int js,
                                                    int is, int n) const {
-  return dual_geometry.get_area_11entity(k + ks, j + js, i + is) /
+  return dual_geometry.get_area_11entity(k + ks, j + js, i + is, n) /
          densvar(0, k + ks, j + js, i + is, n);
 }
 template <>
 real YAKL_INLINE VariableSetBase<VS_CE>::get_alpha(const real3d &densvar, int k,
                                                    int ks, int n) const {
-  return dual_geometry.get_area_11entity(k + ks, 0, 0) / densvar(0, k, n);
+  return dual_geometry.get_area_11entity(k + ks, 0, 0, n) / densvar(0, k, n);
 }
 
 // We rely on physics packages ie micro to provide water species- must at least
@@ -517,7 +517,7 @@ real YAKL_INLINE VariableSetBase<VS_MCE_rho>::get_alpha(const real5d &densvar,
                                                         int k, int j, int i,
                                                         int ks, int js, int is,
                                                         int n) const {
-  return dual_geometry.get_area_11entity(k + ks, j + js, i + is) /
+  return dual_geometry.get_area_11entity(k + ks, j + js, i + is, n) /
          densvar(0, k + ks, j + js, i + is, n);
 }
 
@@ -650,7 +650,7 @@ real YAKL_INLINE VariableSetBase<VS_MCE_rhod>::get_alpha(const real5d &densvar,
                                                          int k, int j, int i,
                                                          int ks, int js, int is,
                                                          int n) const {
-  return dual_geometry.get_area_11entity(k + ks, j + js, i + is) /
+  return dual_geometry.get_area_11entity(k + ks, j + js, i + is, n) /
          get_total_density(densvar, k, j, i, ks, js, is, n);
 }
 template <>

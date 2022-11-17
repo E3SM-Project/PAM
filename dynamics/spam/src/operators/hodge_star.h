@@ -153,7 +153,7 @@ real YAKL_INLINE compute_H1_vert(const real5d &wvar,
 
 real YAKL_INLINE H1_vert_coeff(const Geometry<Straight> &pgeom,
                                const Geometry<Twisted> &dgeom, int is, int js,
-                               int ks, int i, int j, int k) {
+                               int ks, int i, int j, int k, int n) {
   // THIS IS 2ND ORDER AT BEST...
   return dgeom.get_area_10entity(k + ks, j + js, i + is, n) /
          pgeom.get_area_01entity(k + ks - 1, j + js, i + is, n);
