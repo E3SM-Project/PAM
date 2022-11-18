@@ -1,6 +1,6 @@
 ---
 # Simulation time in number of physics time steps
-simSteps  : 360 #1280 11520
+simSteps  : 40 #1280 11520
 #11520 * 5 = 57600 * 0.015625  = 900s
 #1280 * 5 = 6400 = 100s
 #40 * 5 = 200 * 0.5 = 100s

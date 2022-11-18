@@ -350,34 +350,41 @@ public:
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
 
-          //THIS BIT IS BROKEN!
-          SArray<real, 2, dual_vert_reconstruction_order, 2> dual_vert_to_gll;
-          SArray<real, 3, dual_vert_reconstruction_order,
-                  dual_vert_reconstruction_order, dual_vert_reconstruction_order>
-               dual_vert_wenoRecon;
+          SArray<real,2,dual_vert_reconstruction_order,2> dual_vert_coefs_to_gll;
+          SArray<real,2,dual_vert_reconstruction_order,2> dual_vert_sten_to_gll;
+          SArray<real,2,dual_vert_reconstruction_order,dual_vert_reconstruction_order>  dual_vert_sten_to_coefs;
+          SArray<real,3,(dual_vert_reconstruction_order - 1) / 2+1,(dual_vert_reconstruction_order - 1) / 2+1,(dual_vert_reconstruction_order - 1) / 2+1> dual_vert_weno_recon_lower;
 
         for (int h=0;h<dual_vert_reconstruction_order;h++){
           for (int g=0;g<2;g++){
-            dual_vert_to_gll(h,g) = dual_vert_to_gll_arr(k,h,g,n);
+            dual_vert_coefs_to_gll(h,g) = dual_vert_coefs_to_gll_arr(k,h,g,n);
+            dual_vert_sten_to_gll(h,g) = dual_vert_sten_to_gll_arr(k,h,g,n);
           }}
-
 
         for (int h1=0;h1<dual_vert_reconstruction_order;h1++){
           for (int h2=0;h2<dual_vert_reconstruction_order;h2++){
-            for (int h3=0;h3<dual_vert_reconstruction_order;h3++){
-              dual_vert_wenoRecon(h1,h2,h3) = dual_vert_wenoRecon_arr(k,h1,h2,h3,n);
+            dual_vert_sten_to_coefs(h1,h2) = dual_vert_sten_to_coefs_arr(k,h1,h2,n);
+          }}
+
+
+        for (int h1=0;h1<(dual_vert_reconstruction_order - 1) / 2+1;h1++){
+          for (int h2=0;h2<(dual_vert_reconstruction_order - 1) / 2+1;h2++){
+            for (int h3=0;h3<(dual_vert_reconstruction_order - 1) / 2+1;h3++){
+              dual_vert_weno_recon_lower(h1,h2,h3) = dual_vert_weno_recon_lower_arr(k,h1,h2,h3,n);
           }}}
 
           compute_twisted_edge_recon<ndensity, dual_reconstruction_type,
                                      dual_reconstruction_order>(
               densedgereconvar, dens0var, dis, djs, dks, i, j, k, n,
               dual_wenoRecon, dual_to_gll, dual_wenoIdl, dual_wenoSigma);
+
           compute_twisted_vert_edge_recon<ndensity,
                                           dual_vert_reconstruction_type,
                                           dual_vert_reconstruction_order>(
               densvertedgereconvar, dens0var, dis, djs, dks, i, j, k, n,
-              dual_vert_wenoRecon, dual_vert_to_gll, dual_vert_wenoIdl,
-              dual_vert_wenoSigma);
+              dual_vert_coefs_to_gll, dual_vert_sten_to_gll,
+              dual_vert_sten_to_coefs, dual_vert_weno_recon_lower,
+              dual_vert_wenoIdl, dual_vert_wenoSigma);
         });
 
     parallel_for(
@@ -398,29 +405,53 @@ public:
                coriolis_vert_wenoRecon;
 
 
-    //THIS BIT IS BROKEN!
+         SArray<real,2,coriolis_vert_reconstruction_order,2> coriolis_vert_coefs_to_gll;
+         SArray<real,2,coriolis_vert_reconstruction_order,2> coriolis_vert_sten_to_gll;
+         SArray<real,2,coriolis_vert_reconstruction_order,coriolis_vert_reconstruction_order>  coriolis_vert_sten_to_coefs;
+         SArray<real,3,(coriolis_vert_reconstruction_order - 1) / 2+1,(coriolis_vert_reconstruction_order - 1) / 2+1,(coriolis_vert_reconstruction_order - 1) / 2+1> coriolis_vert_weno_recon_lower;
 
-          for (int h=0;h<vert_reconstruction_order;h++){
-            for (int g=0;g<2;g++){
-              primal_vert_to_gll(h,g) = primal_vert_to_gll_arr(k,h,g,n);
-            }}
+         SArray<real,2,vert_reconstruction_order,2> primal_vert_coefs_to_gll;
+         SArray<real,2,vert_reconstruction_order,2> primal_vert_sten_to_gll;
+         SArray<real,2,vert_reconstruction_order,vert_reconstruction_order>  primal_vert_sten_to_coefs;
+         SArray<real,3,(vert_reconstruction_order - 1) / 2+1,(vert_reconstruction_order - 1) / 2+1,(vert_reconstruction_order - 1) / 2+1> primal_vert_weno_recon_lower;
 
-          for (int h1=0;h1<vert_reconstruction_order;h1++){
-            for (int h2=0;h2<vert_reconstruction_order;h2++){
-              for (int h3=0;h3<vert_reconstruction_order;h3++){
-                primal_vert_wenoRecon(h1,h2,h3) = primal_vert_wenoRecon_arr(k,h1,h2,h3,n);
-              }}}
 
-          for (int h=0;h<coriolis_vert_reconstruction_order;h++){
-            for (int g=0;g<2;g++){
-              coriolis_vert_to_gll(h,g) = coriolis_vert_to_gll_arr(k,h,g,n);
-            }}
+    for (int h=0;h<vert_reconstruction_order;h++){
+      for (int g=0;g<2;g++){
+        primal_vert_coefs_to_gll(h,g) = primal_vert_coefs_to_gll_arr(k,h,g,n);
+        primal_vert_sten_to_gll(h,g) = primal_vert_sten_to_gll_arr(k,h,g,n);
+      }}
 
-          for (int h1=0;h1<coriolis_vert_reconstruction_order;h1++){
-            for (int h2=0;h2<coriolis_vert_reconstruction_order;h2++){
-              for (int h3=0;h3<coriolis_vert_reconstruction_order;h3++){
-                coriolis_vert_wenoRecon(h1,h2,h3) = coriolis_vert_wenoRecon_arr(k,h1,h2,h3,n);
-              }}}
+    for (int h1=0;h1<vert_reconstruction_order;h1++){
+      for (int h2=0;h2<vert_reconstruction_order;h2++){
+        primal_vert_sten_to_coefs(h1,h2) = primal_vert_sten_to_coefs_arr(k,h1,h2,n);
+      }}
+
+
+    for (int h1=0;h1<(vert_reconstruction_order - 1) / 2+1;h1++){
+      for (int h2=0;h2<(vert_reconstruction_order - 1) / 2+1;h2++){
+        for (int h3=0;h3<(vert_reconstruction_order - 1) / 2+1;h3++){
+          primal_vert_weno_recon_lower(h1,h2,h3) = primal_vert_weno_recon_lower_arr(k,h1,h2,h3,n);
+      }}}
+
+    for (int h=0;h<coriolis_vert_reconstruction_order;h++){
+      for (int g=0;g<2;g++){
+        coriolis_vert_coefs_to_gll(h,g) = coriolis_vert_coefs_to_gll_arr(k,h,g,n);
+        coriolis_vert_sten_to_gll(h,g) = coriolis_vert_sten_to_gll_arr(k,h,g,n);
+      }}
+
+    for (int h1=0;h1<coriolis_vert_reconstruction_order;h1++){
+      for (int h2=0;h2<coriolis_vert_reconstruction_order;h2++){
+        coriolis_vert_sten_to_coefs(h1,h2) = coriolis_vert_sten_to_coefs_arr(k,h1,h2,n);
+      }}
+
+
+    for (int h1=0;h1<(coriolis_vert_reconstruction_order - 1) / 2+1;h1++){
+      for (int h2=0;h2<(coriolis_vert_reconstruction_order - 1) / 2+1;h2++){
+        for (int h3=0;h3<(coriolis_vert_reconstruction_order - 1) / 2+1;h3++){
+          coriolis_vert_weno_recon_lower(h1,h2,h3) = coriolis_vert_weno_recon_lower_arr(k,h1,h2,h3,n);
+      }}}
+
 
           compute_straight_xz_edge_recon<1, reconstruction_type,
                                          reconstruction_order>(
@@ -430,8 +461,9 @@ public:
           compute_straight_xz_vert_edge_recon<1, vert_reconstruction_type,
                                               vert_reconstruction_order>(
               qxzvertedgereconvar, qxz0var, pis, pjs, pks, i, j, k, n,
-              primal_vert_wenoRecon, primal_vert_to_gll, primal_vert_wenoIdl,
-              primal_vert_wenoSigma);
+              primal_vert_coefs_to_gll, primal_vert_sten_to_gll,
+              primal_vert_sten_to_coefs, primal_vert_weno_recon_lower,
+              primal_vert_wenoIdl, primal_vert_wenoSigma);
           compute_straight_xz_edge_recon<1, coriolis_reconstruction_type,
                                          coriolis_reconstruction_order>(
               coriolisxzedgereconvar, fxz0var, pis, pjs, pks, i, j, k, n,
@@ -441,7 +473,8 @@ public:
               1, coriolis_vert_reconstruction_type,
               coriolis_vert_reconstruction_order>(
               coriolisxzvertedgereconvar, fxz0var, pis, pjs, pks, i, j, k, n,
-              coriolis_vert_wenoRecon, coriolis_vert_to_gll,
+              coriolis_vert_coefs_to_gll, coriolis_vert_sten_to_gll,
+              coriolis_vert_sten_to_coefs, coriolis_vert_weno_recon_lower,
               coriolis_vert_wenoIdl, coriolis_vert_wenoSigma);
         });
   }
