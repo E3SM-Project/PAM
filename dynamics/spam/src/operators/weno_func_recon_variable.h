@@ -2,7 +2,7 @@
 
 #include "common.h"
 #include "TransformMatrices.h"
-
+#include "TransformMatrices_variable.h"
 
 
 
@@ -160,14 +160,17 @@
      real4d sten_to_coefs_arr,
      real5d weno_recon_lower_arr,
    real &wenoSigma,
-   SArray<real, 1, hs+1> &wenoIdl,
-   const Geometry<T> &geom;
+   SArray<real, 1, hs+2> &wenoIdl,
+   const Geometry<T> &geom
    )
    {
+     using yakl::intrinsics::matmul_cr;
 
      const auto &topo = geom.topology;
 
      wenoSetIdealSigma<ord>(wenoIdl,wenoSigma);
+
+     int ks = topo.ks;
 
      parallel_for("Compute Vertically Variable WENO Func Arrays", SimpleBounds<2>(topo.nl,topo.nens),
          YAKL_LAMBDA(int k, int n) {

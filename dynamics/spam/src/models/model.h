@@ -5,6 +5,7 @@
 #include "geometry.h"
 #include "topology.h"
 #include "weno_func_recon.h" // needed to set TransformMatrices related stuff
+#include "weno_func_recon_variable.h" // needed to set TransformMatrices related stuff
 
 class ReferenceState {
 public:
@@ -357,16 +358,16 @@ public:
                       dual_topology.nens);
 
 create_variable_WENO<Twisted, dual_vert_reconstruction_order>(
-  dual_vert_coefs_to_gll_arr, dual_vert_sten_to_gll_arr, dual_vert_sten_to_coefs_arr, dual_vert_weno_recon_lower_arr
-  dual_vert_wenoSigma, dual_vert_wenoIdl, dgeom);
+  dual_vert_coefs_to_gll_arr, dual_vert_sten_to_gll_arr, dual_vert_sten_to_coefs_arr, dual_vert_weno_recon_lower_arr,
+  dual_vert_wenoSigma, dual_vert_wenoIdl, dual_geom);
 
 create_variable_WENO<Straight, vert_reconstruction_order>(
-  primal_vert_coefs_to_gll_arr, primal_vert_sten_to_gll_arr, primal_vert_sten_to_coefs_arr, primal_vert_weno_recon_lower_arr
-  primal_vert_wenoSigma, primal_vert_wenoIdl, pgeom);
+  primal_vert_coefs_to_gll_arr, primal_vert_sten_to_gll_arr, primal_vert_sten_to_coefs_arr, primal_vert_weno_recon_lower_arr,
+  primal_vert_wenoSigma, primal_vert_wenoIdl, primal_geom);
 
 create_variable_WENO<Straight, coriolis_vert_reconstruction_order>(
-  coriolis_vert_coefs_to_gll_arr, coriolis_vert_sten_to_gll_arr, coriolis_vert_sten_to_coefs_arr, coriolis_vert_weno_recon_lower_arr
-  coriolis_vert_wenoSigma, coriolis_vert_wenoIdl, pgeom);
+  coriolis_vert_coefs_to_gll_arr, coriolis_vert_sten_to_gll_arr, coriolis_vert_sten_to_coefs_arr, coriolis_vert_weno_recon_lower_arr,
+  coriolis_vert_wenoSigma, coriolis_vert_wenoIdl, primal_geom);
 
 
     this->is_initialized = true;
