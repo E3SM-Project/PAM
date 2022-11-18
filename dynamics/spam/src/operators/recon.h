@@ -293,7 +293,7 @@ void YAKL_INLINE compute_twisted_recon(const real5d &reconvar,
       upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
     } else if (dual_upwind_type == UPWIND_TYPE::TANH) {
 #ifdef _EXTRUDED
-      uvar(0) /= dgeom.dz(k,n);
+      uvar(0) /= dgeom.dz(k+ks,n);
 #else
       uvar(0) /= dgeom.dy;
 #endif
@@ -441,7 +441,7 @@ void YAKL_INLINE compute_straight_xz_recon(const real5d &reconvar,
     if (upwind_type == UPWIND_TYPE::HEAVISIDE) {
       upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
     } else if (upwind_type == UPWIND_TYPE::TANH) {
-      uvar(0) /= dgeom.dz(k,n);
+      uvar(0) /= dgeom.dz(k+ks,n);
       tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
     }
   }

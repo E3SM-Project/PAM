@@ -1,7 +1,10 @@
 ---
 # Simulation time in number of physics time steps
-simSteps  : 1280 #1280 11520
-#11520 * 5 = 57600
+simSteps  : 360 #1280 11520
+#11520 * 5 = 57600 * 0.015625  = 900s
+#1280 * 5 = 6400 = 100s
+#40 * 5 = 200 * 0.5 = 100s
+#360 * 5 = 1800 * 0.5 = 900s
 
 # Number of cells to use
 crm_nx       : 100
@@ -16,9 +19,10 @@ vcoords  : '../pam-c/vcoords/vcoords_equal_150_1500.nc'
 initData : risingbubble
 
 # Time steps
-dtphys: 0.078125
+dtphys: 2.5
 crm_per_phys: 5
-#0.015625 * 5 = 0.078125
+#0.015625 * 5 = 0.078125 for explicit
+# 0.5*5 for semi-implicit
 
 # Output filename
 out_prefix  : test
@@ -28,16 +32,17 @@ dycore_out_prefix  : test_dycore
 out_freq : 100.0
 
 # Output frequency in number of CRM time steps
-outSteps: 6400
+outSteps: 200
 statSteps: 1
-#6400
+#6400 = 100s for explicit
+#200 = 100s for semi-implicit
 
-tstype: kgrk4
+tstype: si
 
 # Number of ensembles
 nens : 1
 
 # Parallel decomposition
 inner_mpi : true
-nprocx : 10
+nprocx : 1
 nprocy : 1

@@ -46,24 +46,24 @@ uint constexpr vert_diffusion_diff_ord = 2;
 enum class RECONSTRUCTION_TYPE { CFV, WENO, WENOFUNC };
 
 RECONSTRUCTION_TYPE constexpr reconstruction_type =
-    RECONSTRUCTION_TYPE::CFV;
-uint constexpr reconstruction_order = 1;
+    RECONSTRUCTION_TYPE::WENOFUNC;
+uint constexpr reconstruction_order = 5;
 
 RECONSTRUCTION_TYPE constexpr dual_reconstruction_type =
-    RECONSTRUCTION_TYPE::CFV;
-uint constexpr dual_reconstruction_order = 1;
+    RECONSTRUCTION_TYPE::WENOFUNC;
+uint constexpr dual_reconstruction_order = 5;
 
 RECONSTRUCTION_TYPE constexpr coriolis_reconstruction_type =
     RECONSTRUCTION_TYPE::CFV;
 uint constexpr coriolis_reconstruction_order = 1;
 
 RECONSTRUCTION_TYPE constexpr vert_reconstruction_type =
-    RECONSTRUCTION_TYPE::CFV;
-uint constexpr vert_reconstruction_order = 1;
+    RECONSTRUCTION_TYPE::WENOFUNC;
+uint constexpr vert_reconstruction_order = 5;
 
 RECONSTRUCTION_TYPE constexpr dual_vert_reconstruction_type =
-    RECONSTRUCTION_TYPE::CFV;
-uint constexpr dual_vert_reconstruction_order = 1;
+    RECONSTRUCTION_TYPE::WENOFUNC;
+uint constexpr dual_vert_reconstruction_order = 5;
 
 RECONSTRUCTION_TYPE constexpr coriolis_vert_reconstruction_type =
     RECONSTRUCTION_TYPE::CFV;
@@ -78,11 +78,11 @@ uint constexpr max_vert_reconstruction_order =
               coriolis_vert_reconstruction_order});
 
 enum class UPWIND_TYPE { HEAVISIDE, TANH };
-constexpr real tanh_upwind_coeff = 50;
-UPWIND_TYPE constexpr upwind_type = UPWIND_TYPE::HEAVISIDE;
-UPWIND_TYPE constexpr dual_upwind_type = UPWIND_TYPE::HEAVISIDE;
-UPWIND_TYPE constexpr vert_upwind_type = UPWIND_TYPE::HEAVISIDE;
-UPWIND_TYPE constexpr dual_vert_upwind_type = UPWIND_TYPE::HEAVISIDE;
+constexpr real tanh_upwind_coeff = 250;
+UPWIND_TYPE constexpr upwind_type = UPWIND_TYPE::TANH;
+UPWIND_TYPE constexpr dual_upwind_type = UPWIND_TYPE::TANH;
+UPWIND_TYPE constexpr vert_upwind_type = UPWIND_TYPE::TANH;
+UPWIND_TYPE constexpr dual_vert_upwind_type = UPWIND_TYPE::TANH;
 
 // How to handle PV flux term
 // ADD AL81-TYPE SCHEME HERE EVENTUALLY AS WELL
@@ -101,7 +101,7 @@ uint constexpr mirroringhalo =
     std::max({(max_vert_reconstruction_order - 1) / 2, vert_diff_ord / 2});
 
 // 0 = RKSimple, 1=SSPRK, 2=SI
-#define _TIME_TYPE 0
+#define _TIME_TYPE 2
 
 int constexpr si_monitor_convergence = 2;
 // 0 = do not monitor (does si_max_iters iterations)

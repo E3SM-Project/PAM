@@ -884,21 +884,33 @@ void Geometry<Twisted>::initialize(const Topology &topo,
   this->dx = params.xlen / params.nx_glob;
   this->dy = 1._fp;
 
-  this->dz = real2d("dz twisted",topo.nl,topo.nens);
-  this->zint = real2d("zint twisted",topo.ni,topo.nens);
+  this->dz = real2d("dz twisted",topo.nl+ 2*topo.mirror_halo,topo.nens);
+  this->zint = real2d("zint twisted",topo.ni+ 2*topo.mirror_halo,topo.nens);
 
+  int ks = topo.ks;
 
   parallel_for( "Set zint twisted" , SimpleBounds<2>(topo.ni,topo.nens) , YAKL_LAMBDA (int k, int n) {
-    this->zint(k,n) = params.zint(k,n);
+    this->zint(k+topo.ks,n) = params.zint(k,n);
   });
 
-  parallel_for( "Set dz twisted" , SimpleBounds<2>(topo.nl,topo.nens) , YAKL_LAMBDA (int k, int n) {
+  parallel_for( "Set zint twisted halo" , SimpleBounds<2>(topo.mirror_halo,topo.nens) , YAKL_LAMBDA (int k, int n) {
+    this->zint(-(k+1) + ks,n) = -this->zint(k + 1 + ks,n);
+    this->zint( k + ks + topo.ni,n) = this->zint(ks + topo.ni -1,n)  + (this->zint(ks + topo.ni -1,n) - this->zint(-k + ks + topo.ni -2,n));
+  });
+
+  parallel_for( "Set dz twisted" , SimpleBounds<2>(topo.nl+2*topo.mirror_halo,topo.nens) , YAKL_LAMBDA (int k, int n) {
     this->dz(k,n) = this->zint(k+1,n) - this->zint(k,n);
   });
 
   this->straight = false;
 
   this->is_initialized = true;
+
+  //for (int k=0;k<topo.nl+2*topo.mirror_halo;k++)
+  //{ std::cout << "twisted dz at " << k-topo.ks << " = " << this->dz(k,0) << "\n";}
+
+  //for (int k=0;k<topo.ni+2*topo.mirror_halo;k++)
+  //{ std::cout << "twisted zint at " << k-topo.ks << " = " << this->zint(k,0) << "\n";}
 
 }
 
@@ -943,10 +955,13 @@ template <>
 void YAKL_INLINE Geometry<Twisted>::get_00form_quad_pts_wts(
     int i, int k, int n, SArray<coordsext<2>, 1, 1> &quad_pts_phys,
     SArray<real, 1, 1> &quad_wts_phys) const {
+
+  int ks = this->topology.ks;
+
   quad_pts_phys(0).x =
       (i + this->topology.i_beg) * this->dx + this->xc - this->Lx * 0.5_fp;
 
-  quad_pts_phys(0).z = this->zint(k,n) - this->dz(k,n) * 0.5_fp;
+  quad_pts_phys(0).z = this->zint(k+ks,n) - this->dz(k+ks,n) * 0.5_fp;
 
   quad_wts_phys(0) = 1.;
 }
@@ -956,10 +971,13 @@ void YAKL_INLINE Geometry<Twisted>::get_11form_quad_pts_wts(
     int i, int k, int n,
     SArray<coordsext<2>, 2, ic_quad_pts_x, ic_quad_pts_z> &quad_pts_phys,
     SArray<real, 2, ic_quad_pts_x, ic_quad_pts_z> &quad_wts_phys) const {
+
+  int ks = this->topology.ks;
+
   real ll_corner_x =
       (i + this->topology.i_beg) * this->dx + this->xc - this->Lx * 0.5_fp;
 
-  real ll_corner_z = this->zint(k,n) - this->dz(k,n) * 0.5_fp;
+  real ll_corner_z = this->zint(k+ks,n) - this->dz(k+ks,n) * 0.5_fp;
 
   for (int nqx = 0; nqx < ic_quad_pts_x; nqx++)
     for (int nqz = 0; nqz < ic_quad_pts_z; nqz++) {
@@ -967,9 +985,9 @@ void YAKL_INLINE Geometry<Twisted>::get_11form_quad_pts_wts(
         quad_pts_phys(nqx, nqz).x =
             ll_corner_x + this->x_quad_pts_ref(nqx) * this->dx;
         quad_pts_phys(nqx, nqz).z =
-            ll_corner_z + this->v_quad_pts_ref(nqz) * this->dz(k,n);
+            ll_corner_z + this->v_quad_pts_ref(nqz) * this->dz(k+ks,n);
         quad_wts_phys(nqx, nqz) = this->x_quad_wts_ref(nqx) * this->dx *
-                                  this->v_quad_wts_ref(nqz) * this->dz(k,n);
+                                  this->v_quad_wts_ref(nqz) * this->dz(k+ks,n);
       }
     }
 }
@@ -978,16 +996,19 @@ template <>
 void YAKL_INLINE Geometry<Twisted>::get_01form_quad_pts_wts(
     int i, int k, int n, SArray<coordsext<2>, 1, ic_quad_pts_z> &v_quad_pts_phys,
     SArray<real, 1, ic_quad_pts_z> &v_quad_wts_phys) const {
+
+  int ks = this->topology.ks;
+
   real ll_corner_x =
       (i + this->topology.i_beg) * this->dx + this->xc - this->Lx * 0.5_fp;
 
-  real ll_corner_z = this->zint(k,n) - this->dz(k,n) * 0.5_fp;
+  real ll_corner_z = this->zint(k+ks,n) - this->dz(k+ks,n) * 0.5_fp;
 
 
   for (int nqz = 0; nqz < ic_quad_pts_z; nqz++) {
     v_quad_pts_phys(nqz).x = ll_corner_x;
-    v_quad_pts_phys(nqz).z = ll_corner_z + this->v_quad_pts_ref(nqz) * this->dz(k,n);
-    v_quad_wts_phys(nqz) = this->v_quad_wts_ref(nqz) * this->dz(k,n);
+    v_quad_pts_phys(nqz).z = ll_corner_z + this->v_quad_pts_ref(nqz) * this->dz(k+ks,n);
+    v_quad_wts_phys(nqz) = this->v_quad_wts_ref(nqz) * this->dz(k+ks,n);
   }
 }
 
@@ -995,10 +1016,13 @@ template <>
 void YAKL_INLINE Geometry<Twisted>::get_10form_quad_pts_wts(
     int i, int k, int n, SArray<coordsext<2>, 1, ic_quad_pts_x> &x_quad_pts_phys,
     SArray<real, 1, ic_quad_pts_x> &x_quad_wts_phys) const {
+
+  int ks = this->topology.ks;
+
   real ll_corner_x =
       (i + this->topology.i_beg) * this->dx + this->xc - this->Lx * 0.5_fp;
 
-  real ll_corner_z = this->zint(k,n) - this->dz(k,n) * 0.5_fp;
+  real ll_corner_z = this->zint(k+ks,n) - this->dz(k+ks,n) * 0.5_fp;
 
   for (int nqx = 0; nqx < ic_quad_pts_x; nqx++) {
     x_quad_pts_phys(nqx).x = ll_corner_x + this->x_quad_pts_ref(nqx) * this->dx;
@@ -1023,20 +1047,35 @@ void Geometry<Straight>::initialize(const Topology &topo,
   this->dx = params.xlen / params.nx_glob;
   this->dy = 1._fp;
 
-  this->dz = real2d("dz straight",topo.nl,topo.nens);
-  this->zint = real2d("zint straight",topo.ni,topo.nens);
+  this->dz = real2d("dz straight",topo.nl + 2*topo.mirror_halo,topo.nens);
+  this->zint = real2d("zint straight",topo.ni + 2*topo.mirror_halo,topo.nens);
+
+  int ks = topo.ks;
 
 //This code puts straight grid interfaces at the midpoint point between twisted grid interfaces (other than the top and bottom levels)
   parallel_for( "Set zint straight" , SimpleBounds<2>(topo.ni,topo.nens) , YAKL_LAMBDA (int k, int n) {
-    if (k==0 || k==topo.ni-1)
-    {this->zint(k,n) = params.zint(k,n);}
+    if (k==0)
+    {this->zint(k+topo.ks,n) = params.zint(k,n);}
+    else if (k==topo.ni-1)
+    {this->zint(k+topo.ks,n) = params.zint(k+1,n);} //need to add 1 here due to indexing between straight and twisted grids
     else
-    {this->zint(k,n) = (params.zint(k,n) + params.zint(k+1,n))/2.0_fp;}
+    {this->zint(k+topo.ks,n) = (params.zint(k,n) + params.zint(k+1,n))/2.0_fp;}
   });
 
-  parallel_for( "Set dz straight" , SimpleBounds<2>(topo.nl,topo.nens) , YAKL_LAMBDA (int k, int n) {
+  parallel_for( "Set zint straight halo" , SimpleBounds<2>(topo.mirror_halo,topo.nens) , YAKL_LAMBDA (int k, int n) {
+    this->zint(-(k+1) + ks,n) = -this->zint(k + 1 + ks,n);
+    this->zint( k + ks + topo.ni,n) = this->zint(ks + topo.ni -1,n)  + (this->zint(ks + topo.ni -1,n) - this->zint(-k + ks + topo.ni -2,n));
+  });
+
+  parallel_for( "Set dz straight" , SimpleBounds<2>(topo.nl+2*topo.mirror_halo,topo.nens) , YAKL_LAMBDA (int k, int n) {
     this->dz(k,n) = this->zint(k+1,n) - this->zint(k,n);
   });
+
+  //for (int k=0;k<topo.nl+2*topo.mirror_halo;k++)
+  //{ std::cout << "straight dz at " << k-topo.ks << " = " << this->dz(k,0) << "\n";}
+
+  //for (int k=0;k<topo.ni+2*topo.mirror_halo;k++)
+  //{ std::cout << "straight zint at " << k-topo.ks << " = " << this->zint(k,0) << "\n";}
 
   this->straight = true;
 
@@ -1085,10 +1124,13 @@ template <>
 void YAKL_INLINE Geometry<Straight>::get_00form_quad_pts_wts(
     int i, int k, int n, SArray<coordsext<2>, 1, 1> &quad_pts_phys,
     SArray<real, 1, 1> &quad_wts_phys) const {
+
+  int ks = this->topology.ks;
+
   quad_pts_phys(0).x = (i + this->topology.i_beg) * this->dx + this->xc -
                        this->Lx * 0.5_fp + this->dx * 0.5_fp;
 
-  quad_pts_phys(0).z = this->zint(k,n);
+  quad_pts_phys(0).z = this->zint(k+ks,n);
   quad_wts_phys(0) = 1._fp;
 }
 
@@ -1097,19 +1139,23 @@ void YAKL_INLINE Geometry<Straight>::get_11form_quad_pts_wts(
     int i, int k, int n,
     SArray<coordsext<2>, 2, ic_quad_pts_x, ic_quad_pts_z> &quad_pts_phys,
     SArray<real, 2, ic_quad_pts_x, ic_quad_pts_z> &quad_wts_phys) const {
+
+  int ks = this->topology.ks;
+
   real ll_corner_x = (i + this->topology.i_beg) * this->dx + this->xc -
                      this->Lx * 0.5_fp - this->dx * 0.5_fp;
 
-  real ll_corner_z = this->zint(k,n);
+  real ll_corner_z = this->zint(k+ks,n);
+
   for (int nqx = 0; nqx < ic_quad_pts_x; nqx++)
     for (int nqz = 0; nqz < ic_quad_pts_z; nqz++) {
       {
         quad_pts_phys(nqx, nqz).x =
             ll_corner_x + this->x_quad_pts_ref(nqx) * this->dx;
         quad_pts_phys(nqx, nqz).z =
-            ll_corner_z + this->v_quad_pts_ref(nqz) * this->dz(k,n);
+            ll_corner_z + this->v_quad_pts_ref(nqz) * this->dz(k+ks,n);
         quad_wts_phys(nqx, nqz) = this->x_quad_wts_ref(nqx) * this->dx *
-                                  this->v_quad_wts_ref(nqz) * this->dz(k,n);
+                                  this->v_quad_wts_ref(nqz) * this->dz(k+ks,n);
       }
     }
 }
@@ -1118,16 +1164,20 @@ template <>
 void YAKL_INLINE Geometry<Straight>::get_01form_quad_pts_wts(
     int i, int k, int n, SArray<coordsext<2>, 1, ic_quad_pts_z> &v_quad_pts_phys,
     SArray<real, 1, ic_quad_pts_z> &v_quad_wts_phys) const {
+
+  int ks = this->topology.ks;
+
   // Careful because 01 edge actually starts at same point as 00 vertex
   // This is slightly different than 2D layer situation...
   real ll_corner_x = (i + this->topology.i_beg) * this->dx + this->xc -
                      this->Lx * 0.5_fp + this->dx * 0.5_fp;
 
-  real ll_corner_z = this->zint(k,n);
+  real ll_corner_z = this->zint(k+ks,n);
+
   for (int nqz = 0; nqz < ic_quad_pts_z; nqz++) {
     v_quad_pts_phys(nqz).x = ll_corner_x;
-    v_quad_pts_phys(nqz).z = ll_corner_z + this->v_quad_pts_ref(nqz) * this->dz(k,n);
-    v_quad_wts_phys(nqz) = this->v_quad_wts_ref(nqz) * this->dz(k,n);
+    v_quad_pts_phys(nqz).z = ll_corner_z + this->v_quad_pts_ref(nqz) * this->dz(k+ks,n);
+    v_quad_wts_phys(nqz) = this->v_quad_wts_ref(nqz) * this->dz(k+ks,n);
   }
 }
 
@@ -1135,10 +1185,14 @@ template <>
 void YAKL_INLINE Geometry<Straight>::get_10form_quad_pts_wts(
     int i, int k, int n, SArray<coordsext<2>, 1, ic_quad_pts_x> &x_quad_pts_phys,
     SArray<real, 1, ic_quad_pts_x> &x_quad_wts_phys) const {
+
+  int ks = this->topology.ks;
+
   real ll_corner_x = (i + this->topology.i_beg) * this->dx + this->xc -
                      this->Lx * 0.5_fp - this->dx * 0.5_fp;
 
-  real ll_corner_z = this->zint(k,n);
+  real ll_corner_z = this->zint(k+ks,n);
+
   for (int nqx = 0; nqx < ic_quad_pts_x; nqx++) {
     x_quad_pts_phys(nqx).x = ll_corner_x + this->x_quad_pts_ref(nqx) * this->dx;
     x_quad_pts_phys(nqx).z = ll_corner_z;

@@ -34,7 +34,6 @@ int main(int argc, char** argv) {
     real        simSteps     = config["simSteps"].as<int>(0);
     int         crm_nx       = config["crm_nx"  ].as<int>();
     int         crm_ny       = config["crm_ny"  ].as<int>();
-    //int         crm_nz       = config["crm_nz"  ].as<int>(0);
     int         nens         = config["nens"    ].as<int>();
     real        xlen         = config["xlen"    ].as<real>(-1.0_fp);
     real        ylen         = config["ylen"    ].as<real>(-1.0_fp);
