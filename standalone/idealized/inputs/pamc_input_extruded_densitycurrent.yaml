@@ -11,7 +11,7 @@ crm_ny       : 1
 #crm_nz       : 33
 
 # Vertical height coordinates file
-vcoords  : 'vcoords/vcoords_equal_33_6400.nc'
+vcoords  : '../pam-c/vcoords/vcoords_equal_33_6400.nc'
 
 # Data to initialize: doublevortex rb mrb
 initData : densitycurrent
@@ -31,7 +31,7 @@ out_freq : 100.0
 outSteps: 30
 statSteps: 1
 
-tstype: ssprk3
+tstype: si
 
 # Number of ensembles
 nens : 1

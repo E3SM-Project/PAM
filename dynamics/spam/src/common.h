@@ -46,28 +46,28 @@ uint constexpr vert_diffusion_diff_ord = 2;
 enum class RECONSTRUCTION_TYPE { CFV, WENO, WENOFUNC };
 
 RECONSTRUCTION_TYPE constexpr reconstruction_type =
-    RECONSTRUCTION_TYPE::WENOFUNC;
-uint constexpr reconstruction_order = 5;
+    RECONSTRUCTION_TYPE::CFV;
+uint constexpr reconstruction_order = 1;
 
 RECONSTRUCTION_TYPE constexpr dual_reconstruction_type =
-    RECONSTRUCTION_TYPE::WENOFUNC;
-uint constexpr dual_reconstruction_order = 5;
+    RECONSTRUCTION_TYPE::CFV;
+uint constexpr dual_reconstruction_order = 1;
 
 RECONSTRUCTION_TYPE constexpr coriolis_reconstruction_type =
     RECONSTRUCTION_TYPE::CFV;
-uint constexpr coriolis_reconstruction_order = 3;
+uint constexpr coriolis_reconstruction_order = 1;
 
 RECONSTRUCTION_TYPE constexpr vert_reconstruction_type =
-    RECONSTRUCTION_TYPE::WENOFUNC;
-uint constexpr vert_reconstruction_order = 5;
+    RECONSTRUCTION_TYPE::CFV;
+uint constexpr vert_reconstruction_order = 1;
 
 RECONSTRUCTION_TYPE constexpr dual_vert_reconstruction_type =
-    RECONSTRUCTION_TYPE::WENOFUNC;
-uint constexpr dual_vert_reconstruction_order = 5;
+    RECONSTRUCTION_TYPE::CFV;
+uint constexpr dual_vert_reconstruction_order = 1;
 
 RECONSTRUCTION_TYPE constexpr coriolis_vert_reconstruction_type =
     RECONSTRUCTION_TYPE::CFV;
-uint constexpr coriolis_vert_reconstruction_order = 3;
+uint constexpr coriolis_vert_reconstruction_order = 1;
 
 uint constexpr max_reconstruction_order =
     std::max({reconstruction_order, dual_reconstruction_order,
@@ -101,7 +101,7 @@ uint constexpr mirroringhalo =
     std::max({(max_vert_reconstruction_order - 1) / 2, vert_diff_ord / 2});
 
 // 0 = RKSimple, 1=SSPRK, 2=SI
-#define _TIME_TYPE 1
+#define _TIME_TYPE 0
 
 int constexpr si_monitor_convergence = 2;
 // 0 = do not monitor (does si_max_iters iterations)
