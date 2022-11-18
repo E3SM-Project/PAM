@@ -170,8 +170,6 @@
 
      wenoSetIdealSigma<ord>(wenoIdl,wenoSigma);
 
-     int ks = topo.ks;
-
      parallel_for("Compute Vertically Variable WENO Func Arrays", SimpleBounds<2>(topo.nl,topo.nens),
          YAKL_LAMBDA(int k, int n) {
 
@@ -185,8 +183,11 @@
          // Store stencil locations
          SArray<double,1,ord+1> locs;
          for (int kk=0; kk < ord+1; kk++) {
-           locs(kk) = geom.zint(k+kk+ks,n);
+           locs(kk) = geom.zint(k+kk,n);
          }
+
+        //std::cout << "locs at k = " << k << "\n";
+        //for (int kk=0; kk < ord+1; kk++) {std::cout << locs(kk) << "\n";}
 
            // Normalize stencil locations
            real zmid = ( locs(hs+1) + locs(hs) ) / 2;

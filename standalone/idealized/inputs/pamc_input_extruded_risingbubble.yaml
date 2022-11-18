@@ -22,7 +22,7 @@ initData : risingbubble
 dtphys: 2.5
 crm_per_phys: 5
 #0.015625 * 5 = 0.078125 for explicit
-# 0.5*5 for semi-implicit
+# 0.5*5 = 2.5 for semi-implicit
 
 # Output filename
 out_prefix  : test
@@ -38,6 +38,7 @@ statSteps: 1
 #200 = 100s for semi-implicit
 
 tstype: si
+#kgrk4 si
 
 # Number of ensembles
 nens : 1
