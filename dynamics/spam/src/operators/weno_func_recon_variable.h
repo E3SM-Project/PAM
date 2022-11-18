@@ -149,3 +149,81 @@
        edgerecon(l, 1) = gllPts(1);
      }
    }
+
+
+
+
+   template <class T, uint ord, uint hs=(ord-1)/2>
+   void create_variable_WENO(
+     real4d coefs_to_gll_arr,
+     real4d sten_to_gll_arr,
+     real4d sten_to_coefs_arr,
+     real5d weno_recon_lower_arr,
+   real &wenoSigma,
+   SArray<real, 1, hs+1> &wenoIdl,
+   const Geometry<T> &geom;
+   )
+   {
+
+     const auto &topo = geom.topology;
+
+     wenoSetIdealSigma<ord>(wenoIdl,wenoSigma);
+
+     parallel_for("Compute Vertically Variable WENO Func Arrays", SimpleBounds<2>(topo.nl,topo.nens),
+         YAKL_LAMBDA(int k, int n) {
+
+           SArray<real,2,ord,2> coefs_to_gll;
+           SArray<real,2,ord,2> sten_to_gll;
+           SArray<real,2,ord,ord> sten_to_coefs;
+           SArray<real,3,hs+1,hs+1,hs+1> weno_recon_lower;
+
+           TransformMatrices::coefs_to_gll_lower(coefs_to_gll);
+
+         // Store stencil locations
+         SArray<double,1,ord+1> locs;
+         for (int kk=0; kk < ord+1; kk++) {
+           locs(kk) = geom.zint(k+kk+ks,n);
+         }
+
+           // Normalize stencil locations
+           real zmid = ( locs(hs+1) + locs(hs) ) / 2;
+           real dzmid = locs(hs+1) - locs(hs);
+           for (int kk=0; kk < ord+1; kk++) {
+             locs(kk) = ( locs(kk) - zmid ) / dzmid;
+           }
+
+           // Compute reconstruction matrices
+           SArray<real,2,ord,ord> s2c_var_in;
+           SArray<real,3,hs+1,hs+1,hs+1> weno_recon_lower_var;
+           TransformMatrices_variable::sten_to_coefs_variable<ord>(locs,s2c_var_in);
+           TransformMatrices_variable::weno_lower_sten_to_coefs<ord>(locs,weno_recon_lower);
+           SArray<real,2,ord,ord> s2c_var;
+           for (int jj=0; jj < ord; jj++) {
+             for (int ii=0; ii < ord; ii++) {
+               sten_to_coefs(jj,ii) = s2c_var_in(jj,ii);
+             }
+           }
+           sten_to_gll = matmul_cr( coefs_to_gll , sten_to_coefs );
+
+
+     for (int h=0;h<ord;h++){
+       for (int g=0;g<2;g++){
+         coefs_to_gll_arr(k,h,g,n) = coefs_to_gll(h,g);
+         sten_to_gll_arr(k,h,g,n) = sten_to_gll(h,g);
+       }}
+
+     for (int h1=0;h1<ord;h1++){
+       for (int h2=0;h2<ord;h2++){
+         sten_to_coefs_arr(k,h1,h2,n) = sten_to_coefs(h1,h2);
+       }}
+
+
+     for (int h1=0;h1<hs+1;h1++){
+       for (int h2=0;h2<hs+1;h2++){
+         for (int h3=0;h3<hs+1;h3++){
+           weno_recon_lower_arr(k,h1,h2,h3,n) = weno_recon_lower(h1,h2,h3);
+       }}}
+
+       });
+
+   }

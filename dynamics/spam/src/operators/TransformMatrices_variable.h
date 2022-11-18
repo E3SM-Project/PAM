@@ -1,7 +1,6 @@
 
 #pragma once
 
-#include "awfl_const.h"
 #include <math.h>
 using yakl::SArray;
 
@@ -9,10 +8,10 @@ namespace TransformMatrices_variable {
 
 
   template <unsigned int ord>
-  inline void coefs_to_sten_variable(SArray<double,1,ord+1> const &locs ,
-                                     SArray<double,2,ord,ord> &rslt) {
+  inline void coefs_to_sten_variable(SArray<real,1,ord+1> const &locs ,
+                                     SArray<real,2,ord,ord> &rslt) {
     // Create the Vandermonde matrix
-    SArray<double,1,ord+1> locs_pwr;
+    SArray<real,1,ord+1> locs_pwr;
     // Initialize power of locations
     for (int i=0; i < ord+1; i++) {
       locs_pwr(i) = locs(i);
@@ -33,12 +32,12 @@ namespace TransformMatrices_variable {
 
 
   template <unsigned int ord>
-  inline void sten_to_coefs_variable(SArray<double,1,ord+1> const &locs ,
-                                     SArray<double,2,ord,ord> &rslt) {
+  inline void sten_to_coefs_variable(SArray<real,1,ord+1> const &locs ,
+                                     SArray<real,2,ord,ord> &rslt) {
     using yakl::intrinsics::matinv_ge;
 
     // Get coefs to stencil matrix
-    SArray<double,2,ord,ord> c2s;
+    SArray<real,2,ord,ord> c2s;
     coefs_to_sten_variable(locs , c2s);
 
     // Invert to get sten_to_coefs
@@ -46,13 +45,13 @@ namespace TransformMatrices_variable {
   }
 
 
-  template <unsigned int ord> 
-  inline void weno_lower_sten_to_coefs( SArray<double,1,ord+1> const &locs ,
-                                        SArray<double,3,(ord-1)/2+1,(ord-1)/2+1,(ord-1)/2+1> &weno_recon ) {
+  template <unsigned int ord>
+  inline void weno_lower_sten_to_coefs( SArray<real,1,ord+1> const &locs ,
+                                        SArray<real,3,(ord-1)/2+1,(ord-1)/2+1,(ord-1)/2+1> &weno_recon ) {
     int constexpr hs = (ord-1)/2;
 
-    SArray<double,2,hs+1,hs+1> recon_lo;
-    SArray<double,1,hs+2> locs_lo;
+    SArray<real,2,hs+1,hs+1> recon_lo;
+    SArray<real,1,hs+2> locs_lo;
 
     // Create low-order matrices
     for (int i = 0; i < hs+1; i++) {
@@ -70,5 +69,3 @@ namespace TransformMatrices_variable {
 
 
 }
-
-
