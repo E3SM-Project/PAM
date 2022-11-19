@@ -13,7 +13,7 @@ crm_ny       : 1
 
 # Vertical height coordinates file
 #vcoords  : vcoords_equal_100_20km.nc
-vcoords  : '../pam-c/vcoords/vcoords_equal_150_1500.nc'
+vcoords  : '../pam-c/vcoords/vcoords_exp_150_1500.nc'
 
 # Data to initialize: doublevortex rb mrb
 initData : risingbubble
