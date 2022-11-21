@@ -2,15 +2,16 @@
 
 #include "common.h"
 
-//THIS RELIES ON MIDPOINTS BEING EXACTLY HALF-WAY BETWEEN INTERFACES
-//THIS IS TRUE WITH HOW GRID IS CONSTRUCTED, AND ALSO REQUIRED FOR 2ND ORDER ACCURACY IN THE VERTICAL ANYWAYS...
+// THIS RELIES ON MIDPOINTS BEING EXACTLY HALF-WAY BETWEEN INTERFACES
+// THIS IS TRUE WITH HOW GRID IS CONSTRUCTED, AND ALSO REQUIRED FOR 2ND ORDER
+// ACCURACY IN THE VERTICAL ANYWAYS...
 // ALSO ONLY DEFINED FOR ORD=1
 template <uint ndofs, uint ord>
 void YAKL_INLINE cfv_vert(SArray<real, 2, ndofs, 2> &edgerecon,
-                     SArray<real, 2, ndofs, ord> const &dens) {
+                          SArray<real, 2, ndofs, ord> const &dens) {
   for (int l = 0; l < ndofs; l++) {
-      edgerecon(l, 0) = dens(l, 0);
-      edgerecon(l, 1) = dens(l, 0);
+    edgerecon(l, 0) = dens(l, 0);
+    edgerecon(l, 1) = dens(l, 0);
   }
 }
 

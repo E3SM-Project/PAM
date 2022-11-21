@@ -218,11 +218,11 @@ void VariableSetBase<T>::convert_dynamics_to_coupler_state(
             real wvel_d = 0.0_fp;
             real wvel_u = 0.0_fp;
             if (k == 0) {
-              wvel_u =
-                  2.0_fp *
-                  prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs, i + pis,
-                                                  n) /
-                  primal_geometry.get_area_01entity(k + pks, j + pjs, i + pis, n);
+              wvel_u = 2.0_fp *
+                       prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs,
+                                                       i + pis, n) /
+                       primal_geometry.get_area_01entity(k + pks, j + pjs,
+                                                         i + pis, n);
               wvel_d = 0.0_fp;
             } else if (k == (dual_topology.nl)) {
               wvel_u = 0.0_fp;
@@ -232,10 +232,10 @@ void VariableSetBase<T>::convert_dynamics_to_coupler_state(
                        primal_geometry.get_area_01entity(k + pks - 1, j + pjs,
                                                          i + pis, n);
             } else {
-              wvel_u =
-                  prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs, i + pis,
-                                                  n) /
-                  primal_geometry.get_area_01entity(k + pks, j + pjs, i + pis, n);
+              wvel_u = prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs,
+                                                       i + pis, n) /
+                       primal_geometry.get_area_01entity(k + pks, j + pjs,
+                                                         i + pis, n);
               wvel_d = prog_vars.fields_arr[WVAR].data(0, k + pks - 1, j + pjs,
                                                        i + pis, n) /
                        primal_geometry.get_area_01entity(k + pks - 1, j + pjs,
@@ -351,11 +351,12 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_state(
           real entropic_var =
               thermo.compute_entropic_var_from_T(alpha, temp, qd, qv, ql, qi);
 
-          set_density(
-              dens * dual_geometry.get_area_11entity(k + dks, j + djs, i + dis, n),
-              dens_dry *
-                  dual_geometry.get_area_11entity(k + dks, j + djs, i + dis, n),
-              prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
+          set_density(dens * dual_geometry.get_area_11entity(k + dks, j + djs,
+                                                             i + dis, n),
+                      dens_dry * dual_geometry.get_area_11entity(
+                                     k + dks, j + djs, i + dis, n),
+                      prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs,
+                      dis, n);
           set_entropic_density(
               entropic_var * dens *
                   dual_geometry.get_area_11entity(k + dks, j + djs, i + dis, n),

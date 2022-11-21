@@ -349,29 +349,45 @@ public:
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+          SArray<real, 2, dual_vert_reconstruction_order, 2>
+              dual_vert_coefs_to_gll;
+          SArray<real, 2, dual_vert_reconstruction_order, 2>
+              dual_vert_sten_to_gll;
+          SArray<real, 2, dual_vert_reconstruction_order,
+                 dual_vert_reconstruction_order>
+              dual_vert_sten_to_coefs;
+          SArray<real, 3, (dual_vert_reconstruction_order - 1) / 2 + 1,
+                 (dual_vert_reconstruction_order - 1) / 2 + 1,
+                 (dual_vert_reconstruction_order - 1) / 2 + 1>
+              dual_vert_weno_recon_lower;
 
-          SArray<real,2,dual_vert_reconstruction_order,2> dual_vert_coefs_to_gll;
-          SArray<real,2,dual_vert_reconstruction_order,2> dual_vert_sten_to_gll;
-          SArray<real,2,dual_vert_reconstruction_order,dual_vert_reconstruction_order>  dual_vert_sten_to_coefs;
-          SArray<real,3,(dual_vert_reconstruction_order - 1) / 2+1,(dual_vert_reconstruction_order - 1) / 2+1,(dual_vert_reconstruction_order - 1) / 2+1> dual_vert_weno_recon_lower;
+          for (int h = 0; h < dual_vert_reconstruction_order; h++) {
+            for (int g = 0; g < 2; g++) {
+              dual_vert_coefs_to_gll(h, g) =
+                  dual_vert_coefs_to_gll_arr(k, h, g, n);
+              dual_vert_sten_to_gll(h, g) =
+                  dual_vert_sten_to_gll_arr(k, h, g, n);
+            }
+          }
 
-        for (int h=0;h<dual_vert_reconstruction_order;h++){
-          for (int g=0;g<2;g++){
-            dual_vert_coefs_to_gll(h,g) = dual_vert_coefs_to_gll_arr(k,h,g,n);
-            dual_vert_sten_to_gll(h,g) = dual_vert_sten_to_gll_arr(k,h,g,n);
-          }}
+          for (int h1 = 0; h1 < dual_vert_reconstruction_order; h1++) {
+            for (int h2 = 0; h2 < dual_vert_reconstruction_order; h2++) {
+              dual_vert_sten_to_coefs(h1, h2) =
+                  dual_vert_sten_to_coefs_arr(k, h1, h2, n);
+            }
+          }
 
-        for (int h1=0;h1<dual_vert_reconstruction_order;h1++){
-          for (int h2=0;h2<dual_vert_reconstruction_order;h2++){
-            dual_vert_sten_to_coefs(h1,h2) = dual_vert_sten_to_coefs_arr(k,h1,h2,n);
-          }}
-
-
-        for (int h1=0;h1<(dual_vert_reconstruction_order - 1) / 2+1;h1++){
-          for (int h2=0;h2<(dual_vert_reconstruction_order - 1) / 2+1;h2++){
-            for (int h3=0;h3<(dual_vert_reconstruction_order - 1) / 2+1;h3++){
-              dual_vert_weno_recon_lower(h1,h2,h3) = dual_vert_weno_recon_lower_arr(k,h1,h2,h3,n);
-          }}}
+          for (int h1 = 0; h1 < (dual_vert_reconstruction_order - 1) / 2 + 1;
+               h1++) {
+            for (int h2 = 0; h2 < (dual_vert_reconstruction_order - 1) / 2 + 1;
+                 h2++) {
+              for (int h3 = 0;
+                   h3 < (dual_vert_reconstruction_order - 1) / 2 + 1; h3++) {
+                dual_vert_weno_recon_lower(h1, h2, h3) =
+                    dual_vert_weno_recon_lower_arr(k, h1, h2, h3, n);
+              }
+            }
+          }
 
           compute_twisted_edge_recon<ndensity, dual_reconstruction_type,
                                      dual_reconstruction_order>(
@@ -392,66 +408,95 @@ public:
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-
-
           SArray<real, 2, vert_reconstruction_order, 2> primal_vert_to_gll;
           SArray<real, 3, vert_reconstruction_order, vert_reconstruction_order,
                  vert_reconstruction_order>
               primal_vert_wenoRecon;
 
-          SArray<real, 2, coriolis_vert_reconstruction_order, 2> coriolis_vert_to_gll;
+          SArray<real, 2, coriolis_vert_reconstruction_order, 2>
+              coriolis_vert_to_gll;
           SArray<real, 3, coriolis_vert_reconstruction_order,
-                  coriolis_vert_reconstruction_order, coriolis_vert_reconstruction_order>
-               coriolis_vert_wenoRecon;
+                 coriolis_vert_reconstruction_order,
+                 coriolis_vert_reconstruction_order>
+              coriolis_vert_wenoRecon;
 
+          SArray<real, 2, coriolis_vert_reconstruction_order, 2>
+              coriolis_vert_coefs_to_gll;
+          SArray<real, 2, coriolis_vert_reconstruction_order, 2>
+              coriolis_vert_sten_to_gll;
+          SArray<real, 2, coriolis_vert_reconstruction_order,
+                 coriolis_vert_reconstruction_order>
+              coriolis_vert_sten_to_coefs;
+          SArray<real, 3, (coriolis_vert_reconstruction_order - 1) / 2 + 1,
+                 (coriolis_vert_reconstruction_order - 1) / 2 + 1,
+                 (coriolis_vert_reconstruction_order - 1) / 2 + 1>
+              coriolis_vert_weno_recon_lower;
 
-         SArray<real,2,coriolis_vert_reconstruction_order,2> coriolis_vert_coefs_to_gll;
-         SArray<real,2,coriolis_vert_reconstruction_order,2> coriolis_vert_sten_to_gll;
-         SArray<real,2,coriolis_vert_reconstruction_order,coriolis_vert_reconstruction_order>  coriolis_vert_sten_to_coefs;
-         SArray<real,3,(coriolis_vert_reconstruction_order - 1) / 2+1,(coriolis_vert_reconstruction_order - 1) / 2+1,(coriolis_vert_reconstruction_order - 1) / 2+1> coriolis_vert_weno_recon_lower;
+          SArray<real, 2, vert_reconstruction_order, 2>
+              primal_vert_coefs_to_gll;
+          SArray<real, 2, vert_reconstruction_order, 2> primal_vert_sten_to_gll;
+          SArray<real, 2, vert_reconstruction_order, vert_reconstruction_order>
+              primal_vert_sten_to_coefs;
+          SArray<real, 3, (vert_reconstruction_order - 1) / 2 + 1,
+                 (vert_reconstruction_order - 1) / 2 + 1,
+                 (vert_reconstruction_order - 1) / 2 + 1>
+              primal_vert_weno_recon_lower;
 
-         SArray<real,2,vert_reconstruction_order,2> primal_vert_coefs_to_gll;
-         SArray<real,2,vert_reconstruction_order,2> primal_vert_sten_to_gll;
-         SArray<real,2,vert_reconstruction_order,vert_reconstruction_order>  primal_vert_sten_to_coefs;
-         SArray<real,3,(vert_reconstruction_order - 1) / 2+1,(vert_reconstruction_order - 1) / 2+1,(vert_reconstruction_order - 1) / 2+1> primal_vert_weno_recon_lower;
+          for (int h = 0; h < vert_reconstruction_order; h++) {
+            for (int g = 0; g < 2; g++) {
+              primal_vert_coefs_to_gll(h, g) =
+                  primal_vert_coefs_to_gll_arr(k, h, g, n);
+              primal_vert_sten_to_gll(h, g) =
+                  primal_vert_sten_to_gll_arr(k, h, g, n);
+            }
+          }
 
+          for (int h1 = 0; h1 < vert_reconstruction_order; h1++) {
+            for (int h2 = 0; h2 < vert_reconstruction_order; h2++) {
+              primal_vert_sten_to_coefs(h1, h2) =
+                  primal_vert_sten_to_coefs_arr(k, h1, h2, n);
+            }
+          }
 
-    for (int h=0;h<vert_reconstruction_order;h++){
-      for (int g=0;g<2;g++){
-        primal_vert_coefs_to_gll(h,g) = primal_vert_coefs_to_gll_arr(k,h,g,n);
-        primal_vert_sten_to_gll(h,g) = primal_vert_sten_to_gll_arr(k,h,g,n);
-      }}
+          for (int h1 = 0; h1 < (vert_reconstruction_order - 1) / 2 + 1; h1++) {
+            for (int h2 = 0; h2 < (vert_reconstruction_order - 1) / 2 + 1;
+                 h2++) {
+              for (int h3 = 0; h3 < (vert_reconstruction_order - 1) / 2 + 1;
+                   h3++) {
+                primal_vert_weno_recon_lower(h1, h2, h3) =
+                    primal_vert_weno_recon_lower_arr(k, h1, h2, h3, n);
+              }
+            }
+          }
 
-    for (int h1=0;h1<vert_reconstruction_order;h1++){
-      for (int h2=0;h2<vert_reconstruction_order;h2++){
-        primal_vert_sten_to_coefs(h1,h2) = primal_vert_sten_to_coefs_arr(k,h1,h2,n);
-      }}
+          for (int h = 0; h < coriolis_vert_reconstruction_order; h++) {
+            for (int g = 0; g < 2; g++) {
+              coriolis_vert_coefs_to_gll(h, g) =
+                  coriolis_vert_coefs_to_gll_arr(k, h, g, n);
+              coriolis_vert_sten_to_gll(h, g) =
+                  coriolis_vert_sten_to_gll_arr(k, h, g, n);
+            }
+          }
 
+          for (int h1 = 0; h1 < coriolis_vert_reconstruction_order; h1++) {
+            for (int h2 = 0; h2 < coriolis_vert_reconstruction_order; h2++) {
+              coriolis_vert_sten_to_coefs(h1, h2) =
+                  coriolis_vert_sten_to_coefs_arr(k, h1, h2, n);
+            }
+          }
 
-    for (int h1=0;h1<(vert_reconstruction_order - 1) / 2+1;h1++){
-      for (int h2=0;h2<(vert_reconstruction_order - 1) / 2+1;h2++){
-        for (int h3=0;h3<(vert_reconstruction_order - 1) / 2+1;h3++){
-          primal_vert_weno_recon_lower(h1,h2,h3) = primal_vert_weno_recon_lower_arr(k,h1,h2,h3,n);
-      }}}
-
-    for (int h=0;h<coriolis_vert_reconstruction_order;h++){
-      for (int g=0;g<2;g++){
-        coriolis_vert_coefs_to_gll(h,g) = coriolis_vert_coefs_to_gll_arr(k,h,g,n);
-        coriolis_vert_sten_to_gll(h,g) = coriolis_vert_sten_to_gll_arr(k,h,g,n);
-      }}
-
-    for (int h1=0;h1<coriolis_vert_reconstruction_order;h1++){
-      for (int h2=0;h2<coriolis_vert_reconstruction_order;h2++){
-        coriolis_vert_sten_to_coefs(h1,h2) = coriolis_vert_sten_to_coefs_arr(k,h1,h2,n);
-      }}
-
-
-    for (int h1=0;h1<(coriolis_vert_reconstruction_order - 1) / 2+1;h1++){
-      for (int h2=0;h2<(coriolis_vert_reconstruction_order - 1) / 2+1;h2++){
-        for (int h3=0;h3<(coriolis_vert_reconstruction_order - 1) / 2+1;h3++){
-          coriolis_vert_weno_recon_lower(h1,h2,h3) = coriolis_vert_weno_recon_lower_arr(k,h1,h2,h3,n);
-      }}}
-
+          for (int h1 = 0;
+               h1 < (coriolis_vert_reconstruction_order - 1) / 2 + 1; h1++) {
+            for (int h2 = 0;
+                 h2 < (coriolis_vert_reconstruction_order - 1) / 2 + 1; h2++) {
+              for (int h3 = 0;
+                   h3 < (coriolis_vert_reconstruction_order - 1) / 2 + 1;
+                   h3++) {
+                coriolis_vert_weno_recon_lower(h1, h2, h3) =
+                    coriolis_vert_weno_recon_lower_arr(k, h1, h2, h3, n);
+              }
+            }
+          }
 
           compute_straight_xz_edge_recon<1, reconstruction_type,
                                          reconstruction_order>(
@@ -2407,9 +2452,6 @@ void readModelParamsFile(std::string inFile, ModelParameters &params,
                          Parallel &par, PamCoupler &coupler,
                          std::unique_ptr<TestCase> &testcase) {
 
-
-
-
   // Read config file
   YAML::Node config = YAML::LoadFile(inFile);
 
@@ -2456,7 +2498,7 @@ void readModelParamsFile(std::string inFile, ModelParameters &params,
 
   // Store vertical cell interface heights in the data manager
   auto &dm = coupler.get_data_manager_readonly();
-  params.zint = dm.get<real const,2>("vertical_interface_height");
+  params.zint = dm.get<real const, 2>("vertical_interface_height");
 
   readParamsFile(inFile, params, par, nz);
 }
@@ -2520,7 +2562,8 @@ real YAKL_INLINE saturation_vapor_pressure(real temp) {
   return 610.94_fp * exp(17.625_fp * tc / (243.04_fp + tc));
 }
 
-//TODO: Restore this once there is an option to autogenerate a "uniform" grid in the vertical
+// TODO: Restore this once there is an option to autogenerate a "uniform" grid
+// in the vertical
 
 // template <class T> class SWETestCase : public TestCase, public T {
 // public:
@@ -2732,7 +2775,7 @@ public:
         "Compute Blin_coeff",
         SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
         YAKL_LAMBDA(int k, int n) {
-          real z = primal_geom.zint(k,n);
+          real z = primal_geom.zint(k, n);
 
           real Rd = thermo.cst.Rd;
           real pr = thermo.cst.pr;
@@ -2872,9 +2915,10 @@ public:
 //     real yprimeprime2 =
 //         Ly / (2.0_fp * pi * sigmay) * sin(2.0_fp * pi / Ly * (y - yc2));
 //
-//     return H0 - dh * (exp(-0.5_fp * (xprime1 * xprime1 + yprime1 * yprime1)) +
-//                       exp(-0.5_fp * (xprime2 * xprime2 + yprime2 * yprime2)) -
-//                       4._fp * pi * sigmax * sigmay / Lx / Ly);
+//     return H0 - dh * (exp(-0.5_fp * (xprime1 * xprime1 + yprime1 * yprime1))
+//     +
+//                       exp(-0.5_fp * (xprime2 * xprime2 + yprime2 * yprime2))
+//                       - 4._fp * pi * sigmax * sigmay / Lx / Ly);
 //   }
 //
 //   static vecext<2> YAKL_INLINE v_f(real x, real y) {
@@ -2895,24 +2939,30 @@ public:
 //
 //     vvec.u =
 //         -g * dh / coriolis / sigmay *
-//         (yprimeprime1 * exp(-0.5_fp * (xprime1 * xprime1 + yprime1 * yprime1)) +
-//          yprimeprime2 * exp(-0.5_fp * (xprime2 * xprime2 + yprime2 * yprime2)));
+//         (yprimeprime1 * exp(-0.5_fp * (xprime1 * xprime1 + yprime1 *
+//         yprime1)) +
+//          yprimeprime2 * exp(-0.5_fp * (xprime2 * xprime2 + yprime2 *
+//          yprime2)));
 //     vvec.w =
 //         g * dh / coriolis / sigmax *
-//         (xprimeprime1 * exp(-0.5_fp * (xprime1 * xprime1 + yprime1 * yprime1)) +
-//          xprimeprime2 * exp(-0.5_fp * (xprime2 * xprime2 + yprime2 * yprime2)));
+//         (xprimeprime1 * exp(-0.5_fp * (xprime1 * xprime1 + yprime1 *
+//         yprime1)) +
+//          xprimeprime2 * exp(-0.5_fp * (xprime2 * xprime2 + yprime2 *
+//          yprime2)));
 //     return vvec;
 //   }
 //
 //   static real YAKL_INLINE S_f(real x, real y) {
-//     // real sval = g * (1. + c * sin(2. * M_PI / Lx * (x - xc)) * sin(2. * M_PI
+//     // real sval = g * (1. + c * sin(2. * M_PI / Lx * (x - xc)) * sin(2. *
+//     M_PI
 //     // / Ly * (y - yc)) * exp(-((x-xc)*(x-xc) + (y-yc)*(y-yc))/(a*a*D*D)));
 //     real sval =
 //         g * (1._fp + c * exp(-((x - xc) * (x - xc) + (y - yc) * (y - yc)) /
 //                              (a * a * D * D)));
 //     // real sval = g * (1. + c * sin(2. * M_PI / Lx * (x- xc)));
 //     // real sval = g;
-//     // real sval = g * (1. + c * ((x > 0.35 * Lx && x < 0.65 * Lx && y > 0.35 *
+//     // real sval = g * (1. + c * ((x > 0.35 * Lx && x < 0.65 * Lx && y > 0.35
+//     *
 //     // Ly
 //     // && y < 0.65 * Ly ) ? 1. : 0.));
 //     return sval * h_f(x, y);

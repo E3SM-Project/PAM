@@ -68,7 +68,6 @@ void readParamsFile(std::string inFile, ModelParameters &params, Parallel &par,
 
   params.nz_dual = nz;
 
-
   params.dtphys = config["dtphys"].as<real>();
   params.crm_per_phys = config["crm_per_phys"].as<int>(0);
   params.Nout = config["outSteps"].as<int>(0);

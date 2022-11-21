@@ -120,5 +120,4 @@ public:
   real velocity_diffusion_coeff;
 
   realConst2d zint;
-
 };
