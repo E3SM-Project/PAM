@@ -239,6 +239,8 @@ public:
                                    auxiliary_vars);
     apply_symplectic(dt, const_vars, x, auxiliary_vars, xtend);
   }
+
+  virtual void remove_negative_densities(FieldSet<nprognostic> &x) {}
 };
 
 class ExtrudedTendencies : public Tendencies {

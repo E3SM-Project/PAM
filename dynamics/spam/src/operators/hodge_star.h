@@ -415,6 +415,19 @@ void YAKL_INLINE compute_H2bar_ext(SArray<real, 1, ndofs> &x0,
   }
 }
 
+template <uint ndofs, uint vord, uint voff = vord / 2 - 1, class F>
+void YAKL_INLINE compute_H2bar_ext(F f, SArray<real, 1, ndofs> &x0,
+                                   const real3d &var,
+                                   const Geometry<Straight> &pgeom,
+                                   const Geometry<Twisted> &dgeom, int ks,
+                                   int k, int n) {
+  real H2bargeom = pgeom.get_area_00entity(k + ks, 0, 0) /
+                   dgeom.get_area_11entity(k + ks, 0, 0);
+  for (int l = 0; l < ndofs; l++) {
+    x0(l) = f(var, l, k, n) * H2bargeom;
+  }
+}
+
 // BROKEN FOR 2D+1D EXT
 // JUST IN THE AREA FORM CALCS...
 template <uint ndofs, uint hord, uint vord, uint hoff = hord / 2 - 1,

@@ -61,9 +61,9 @@ struct ModelReferenceState : ReferenceState {
     this->q_pi.initialize(primal_topology, "refq_pi", 0, 0, ndensity);
     this->rho_di.initialize(dual_topology, "refrho_di", 0, 0, 1);
     this->q_di.initialize(dual_topology, "refq_di", 0, 0, ndensity);
-    this->B.initialize(dual_topology, "ref B", 1, 1, ndensity);
+    this->B.initialize(dual_topology, "ref B", 1, 1, ndensity_B);
 
-    this->Blin_coeff = real4d("Blin coeff", ndensity, ndensity,
+    this->Blin_coeff = real4d("Blin coeff", ndensity_dycore, ndensity_dycore,
                               primal_topology.ni, primal_topology.nens);
 
     this->is_initialized = true;
@@ -790,10 +790,10 @@ public:
         SimpleBounds<4>(primal_topology.nl - 2, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wD0_vert<ndensity>(Wtendvar, densvertreconvar, Bvar, pis, pjs,
-                                     pks, i, j, k + 1, n);
+          compute_wD0_vert<ndensity_B>(Wtendvar, densvertreconvar, Bvar, pis,
+                                       pjs, pks, i, j, k + 1, n);
           if (force_refstate_hydrostatic_balance) {
-            compute_wD0_vert<ndensity, ADD_MODE::ADD>(
+            compute_wD0_vert<ndensity_B, ADD_MODE::ADD>(
                 Wtendvar, refstate.q_di.data, refstate.B.data, pis, pjs, pks, i,
                 j, k + 1, n);
           }
@@ -816,15 +816,16 @@ public:
         SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
                         primal_topology.nens),
         YAKL_CLASS_LAMBDA(int j, int i, int n) {
-          compute_wD0_vert<ndensity>(Wtendvar, densvertreconvar, Bvar, pis, pjs,
-                                     pks, i, j, 0, n);
-          compute_wD0_vert<ndensity>(Wtendvar, densvertreconvar, Bvar, pis, pjs,
-                                     pks, i, j, primal_topology.nl - 1, n);
+          compute_wD0_vert<ndensity_B>(Wtendvar, densvertreconvar, Bvar, pis,
+                                       pjs, pks, i, j, 0, n);
+          compute_wD0_vert<ndensity_B>(Wtendvar, densvertreconvar, Bvar, pis,
+                                       pjs, pks, i, j, primal_topology.nl - 1,
+                                       n);
           if (force_refstate_hydrostatic_balance) {
-            compute_wD0_vert<ndensity, ADD_MODE::ADD>(
+            compute_wD0_vert<ndensity_B, ADD_MODE::ADD>(
                 Wtendvar, refstate.q_di.data, refstate.B.data, pis, pjs, pks, i,
                 j, 0, n);
-            compute_wD0_vert<ndensity, ADD_MODE::ADD>(
+            compute_wD0_vert<ndensity_B, ADD_MODE::ADD>(
                 Wtendvar, refstate.q_di.data, refstate.B.data, pis, pjs, pks, i,
                 j, primal_topology.nl - 1, n);
           }
@@ -856,8 +857,8 @@ public:
         SimpleBounds<4>(primal_topology.ni - 2, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wD0<ndensity>(Vtendvar, densreconvar, Bvar, pis, pjs, pks, i,
-                                j, k + 1, n);
+          compute_wD0<ndensity_B>(Vtendvar, densreconvar, Bvar, pis, pjs, pks,
+                                  i, j, k + 1, n);
           if (qf_choice == QF_MODE::EC) {
             compute_Qxz_u_EC<1, ADD_MODE::ADD>(Vtendvar, qxzreconvar,
                                                qxzvertreconvar, FWvar, pis, pjs,
@@ -877,10 +878,10 @@ public:
         SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
                         primal_topology.nens),
         YAKL_CLASS_LAMBDA(int j, int i, int n) {
-          compute_wD0<ndensity>(Vtendvar, densreconvar, Bvar, pis, pjs, pks, i,
-                                j, 0, n);
-          compute_wD0<ndensity>(Vtendvar, densreconvar, Bvar, pis, pjs, pks, i,
-                                j, primal_topology.ni - 1, n);
+          compute_wD0<ndensity_B>(Vtendvar, densreconvar, Bvar, pis, pjs, pks,
+                                  i, j, 0, n);
+          compute_wD0<ndensity_B>(Vtendvar, densreconvar, Bvar, pis, pjs, pks,
+                                  i, j, primal_topology.ni - 1, n);
           if (qf_choice == QF_MODE::EC) {
             compute_Qxz_u_EC_bottom<1, ADD_MODE::ADD>(
                 Vtendvar, qxzreconvar, qxzvertreconvar, FWvar, pis, pjs, pks, i,
@@ -1359,6 +1360,29 @@ public:
           auxiliary_vars.fields_arr[FWVAR].data, auxiliary_vars);
     }
   }
+
+  void remove_negative_densities(FieldSet<nprognostic> &x) override {
+    const auto &dual_topology = dual_geometry.topology;
+
+    const auto densvar = x.fields_arr[DENSVAR].data;
+    const int dis = dual_topology.is;
+    const int djs = dual_topology.js;
+    const int dks = dual_topology.ks;
+
+    YAKL_SCOPE(dens_pos, varset.dens_pos);
+    parallel_for(
+        "Remove negatives",
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          for (int d = 0; d < ndensity; ++d) {
+            if (dens_pos(d)) {
+              densvar(d, k + dks, j + djs, i + dis, n) =
+                  std::max(0._fp, densvar(d, k + dks, j + djs, i + dis, n));
+            }
+          }
+        });
+  }
 };
 
 // *******   Linear system   ***********//
@@ -1419,7 +1443,7 @@ public:
     // fftw_y.init(w_transform, 1, ny);
 
     complex_vcoeff =
-        complex5d("complex vcoeff", 1 + ndensity, pni, ny, nx, nens);
+        complex5d("complex vcoeff", 1 + ndensity_dycore, pni, ny, nx, nens);
 
     tri_d = complex4d("tri d", pnl, ny, nx, nens);
     tri_l = complex4d("tri l", pnl, ny, nx, nens);
@@ -1477,17 +1501,17 @@ public:
           real he = rho_pi(0, k, n);
 
           real c1 = 1;
-          for (int d1 = 0; d1 < ndensity; ++d1) {
-            for (int d2 = 0; d2 < ndensity; ++d2) {
+          for (int d1 = 0; d1 < ndensity_dycore; ++d1) {
+            for (int d2 = 0; d2 < ndensity_dycore; ++d2) {
               c1 -= dtf2 * fH2bar * fH1(0) * fD0Dbar(0) * he * q_pi(d1, k, n) *
                     q_pi(d2, k, n) * refstate.Blin_coeff(d1, d2, k, n);
             }
           }
 
           complex_vcoeff(0, k, j, i, n) = 1 / c1;
-          for (int d1 = 0; d1 < ndensity; ++d1) {
+          for (int d1 = 0; d1 < ndensity_dycore; ++d1) {
             complex cd1 = 0;
-            for (int d2 = 0; d2 < ndensity; ++d2) {
+            for (int d2 = 0; d2 < ndensity_dycore; ++d2) {
               cd1 += fD0(0) * dtf2 * fH2bar * q_pi(d2, k, n) *
                      refstate.Blin_coeff(d2, d1, k, n);
             }
@@ -1521,8 +1545,8 @@ public:
           tri_d(k, j, i, n) = 1;
           tri_l(k, j, i, n) = 0;
 
-          for (int d1 = 0; d1 < ndensity; ++d1) {
-            for (int d2 = 0; d2 < ndensity; ++d2) {
+          for (int d1 = 0; d1 < ndensity_dycore; ++d1) {
+            for (int d2 = 0; d2 < ndensity_dycore; ++d2) {
               real alpha_kp1 = q_di(d1, k + 1, n);
 
               real beta_kp1 =
@@ -1582,9 +1606,9 @@ public:
           real he_kp1 = rho_pi(0, k + 1, n);
           real he_k = rho_pi(0, k, n);
 
-          for (int d1 = 0; d1 < ndensity; ++d1) {
-            for (int d2 = 0; d2 < ndensity; ++d2) {
-              for (int d3 = 0; d3 < ndensity; ++d3) {
+          for (int d1 = 0; d1 < ndensity_dycore; ++d1) {
+            for (int d2 = 0; d2 < ndensity_dycore; ++d2) {
+              for (int d3 = 0; d3 < ndensity_dycore; ++d3) {
 
                 real alpha_kp1 = dtf2 * q_di(d1, k + 1, n);
                 complex beta_kp1 =
@@ -1666,14 +1690,14 @@ public:
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          SArray<real, 1, ndensity> rhs0;
-          compute_H2bar_ext<ndensity, diff_ord, vert_diff_ord>(
+          SArray<real, 1, ndensity_dycore> rhs0;
+          compute_H2bar_ext<ndensity_dycore, diff_ord, vert_diff_ord>(
               rhs0, rhs_dens, this->primal_geometry, this->dual_geometry, pis,
               pjs, pks, i, j, k, n);
 
-          for (int d1 = 0; d1 < ndensity; ++d1) {
+          for (int d1 = 0; d1 < ndensity_dycore; ++d1) {
             real b_d1 = 0;
-            for (int d2 = 0; d2 < ndensity; ++d2) {
+            for (int d2 = 0; d2 < ndensity_dycore; ++d2) {
               b_d1 -= dtf * refstate.Blin_coeff(d1, d2, k, n) * rhs0(d2);
             }
             bvar(d1, pks + k, pjs + j, pis + i, n) = b_d1;
@@ -1688,12 +1712,13 @@ public:
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           SArray<real, 1, ndims> mod_v;
-          compute_wD0<ndensity>(mod_v, q_pi, bvar, pis, pjs, pks, i, j, k, n);
+          compute_wD0<ndensity_dycore>(mod_v, q_pi, bvar, pis, pjs, pks, i, j,
+                                       k, n);
           v_transform(k, j, i, n) =
               rhs_v(0, k + pks, j + pjs, i + pis, n) + mod_v(0);
           if (k < primal_topology.nl) {
-            real mod_w = compute_wD0_vert<ndensity>(q_di, bvar, pis, pjs, pks,
-                                                    i, j, k, n);
+            real mod_w = compute_wD0_vert<ndensity_dycore>(q_di, bvar, pis, pjs,
+                                                           pks, i, j, k, n);
             w_transform(k, j, i, n) =
                 rhs_w(0, k + pks, j + pjs, i + pis, n) + mod_w;
           }
@@ -1760,8 +1785,8 @@ public:
           real he_kp1 = rho_pi(0, k + 1, n);
           real he_k = rho_pi(0, k, n);
 
-          for (int d1 = 0; d1 < ndensity; ++d1) {
-            for (int d2 = 0; d2 < ndensity; ++d2) {
+          for (int d1 = 0; d1 < ndensity_dycore; ++d1) {
+            for (int d2 = 0; d2 < ndensity_dycore; ++d2) {
               real alpha_kp1 = dtf2 * q_di(d1, k + 1, n);
               complex beta_kp1 =
                   fH2bar_kp1 * refstate.Blin_coeff(d1, d2, k + 1, n) *
@@ -1826,7 +1851,7 @@ public:
                                               pis, pjs, pks, i, j, k);
 
           complex_vrhs(k, j, i, n) *= complex_vcoeff(0, k, j, i, n);
-          for (int d1 = 0; d1 < ndensity; ++d1) {
+          for (int d1 = 0; d1 < ndensity_dycore; ++d1) {
             complex_vrhs(k, j, i, n) +=
                 complex_vcoeff(1 + d1, k, j, i, n) *
                 (gamma_fac_kp1 * q_di(d1, k + 1, n) * w_kp1 -
@@ -2179,7 +2204,8 @@ void initialize_variables(
   aux_desc_arr[FVAR] = {"F", dtopo, ndims - 1, 1, 1}; // F = twisted
                                                       // (n-1,1)-form
 
-  aux_desc_arr[BVAR] = {"B", ptopo, 0, 0, ndensity}; // B = straight (0,0)-form
+  aux_desc_arr[BVAR] = {"B", ptopo, 0, 0,
+                        ndensity_B}; // B = straight (0,0)-form
 
   aux_desc_arr[KVAR] = {"K", dtopo, ndims, 1, 1}; // K = twisted (n,1)-form
 
@@ -2642,6 +2668,11 @@ public:
 #endif
   }
   using T::entropicdensity_f;
+  using T::entropicvar_f;
+  using T::refentropicdensity_f;
+  using T::refnsq_f;
+  using T::refrho_f;
+  using T::refrhov_f;
 
   void set_domain(ModelParameters &params) override {
     params.xlen = Lx;
@@ -2680,6 +2711,154 @@ public:
           },
           progvars.fields_arr[DENSVAR], i + ndensity_dycore);
     }
+  }
+
+  void set_reference_state(ReferenceState &reference_state,
+                           const Geometry<Straight> &primal_geom,
+                           const Geometry<Twisted> &dual_geom) override {
+    auto &refstate = static_cast<ModelReferenceState &>(reference_state);
+
+    const auto primal_topology = primal_geom.topology;
+    const auto dual_topology = dual_geom.topology;
+
+    const int pks = primal_topology.ks;
+
+    YAKL_SCOPE(thermo, ::thermo);
+    YAKL_SCOPE(Hs, ::Hs);
+
+    dual_geom.set_profile_11form_values(
+        YAKL_LAMBDA(real z) { return flat_geop(0, z, g); }, refstate.geop, 0);
+    dual_geom.set_profile_11form_values(
+        YAKL_LAMBDA(real z) { return refrho_f(z, thermo); }, refstate.dens, 0);
+    dual_geom.set_profile_11form_values(
+        YAKL_LAMBDA(real z) { return refentropicdensity_f(z, thermo); },
+        refstate.dens, 1);
+    dual_geom.set_profile_11form_values(
+        YAKL_LAMBDA(real z) { return refrhov_f(z, thermo); }, refstate.dens, 2);
+
+    const auto total_density_f =
+        YAKL_LAMBDA(const real3d &densvar, int d, int k, int n) {
+      return varset.get_total_density(densvar, k, 0, n);
+    };
+
+    parallel_for(
+        "compute rho_pi",
+        SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
+        YAKL_LAMBDA(int k, int n) {
+          SArray<real, 1, 1> rho0;
+          compute_H2bar_ext<1, vert_diff_ord>(total_density_f, rho0,
+                                              refstate.dens.data, primal_geom,
+                                              dual_geom, pks, k, n);
+          refstate.rho_pi.data(0, k, n) = rho0(0);
+        });
+
+    primal_geom.set_profile_00form_values(
+        YAKL_LAMBDA(real z) { return refrho_f(z, thermo); }, refstate.q_pi, 0);
+
+    primal_geom.set_profile_00form_values(
+        YAKL_LAMBDA(real z) { return refentropicdensity_f(z, thermo); },
+        refstate.q_pi, 1);
+
+    primal_geom.set_profile_00form_values(
+        YAKL_LAMBDA(real z) { return refrhov_f(z, thermo); }, refstate.q_pi, 2);
+
+    parallel_for(
+        "scale q_pi", SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
+        YAKL_LAMBDA(int k, int n) {
+          for (int l = 0; l < ndensity; ++l) {
+            refstate.q_pi.data(l, k, n) /= refstate.rho_pi.data(0, k, n);
+          }
+        });
+
+    parallel_for(
+        "compute rho_di", SimpleBounds<2>(dual_topology.ni, dual_topology.nens),
+        YAKL_LAMBDA(int k, int n) {
+          if (k == 0) {
+            refstate.rho_di.data(0, 0, n) = refstate.rho_pi.data(0, 0, n);
+          } else if (k == dual_topology.ni - 1) {
+            refstate.rho_di.data(0, dual_topology.ni - 1, n) =
+                refstate.rho_pi.data(0, primal_topology.ni - 1, n);
+          } else {
+            refstate.rho_di.data(0, k, n) =
+                0.5_fp * (refstate.rho_pi.data(0, k, n) +
+                          refstate.rho_pi.data(0, k - 1, n));
+          }
+        });
+
+    dual_geom.set_profile_00form_values(
+        YAKL_LAMBDA(real z) { return refrho_f(z, thermo); }, refstate.q_di, 0);
+
+    dual_geom.set_profile_00form_values(
+        YAKL_LAMBDA(real z) { return refentropicdensity_f(z, thermo); },
+        refstate.q_di, 1);
+
+    dual_geom.set_profile_00form_values(
+        YAKL_LAMBDA(real z) { return refrhov_f(z, thermo); }, refstate.q_di, 2);
+
+    parallel_for(
+        "scale q_di", SimpleBounds<2>(dual_topology.ni, dual_topology.nens),
+        YAKL_LAMBDA(int k, int n) {
+          for (int l = 0; l < ndensity; ++l) {
+            refstate.q_di.data(l, k, n) /= refstate.rho_di.data(0, k, n);
+          }
+        });
+
+    parallel_for(
+        "Compute refstate B",
+        SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
+        YAKL_LAMBDA(int k, int n) {
+          Hs.compute_dHsdx(refstate.B.data, refstate.dens.data,
+                           refstate.geop.data, pks, k, n, -1);
+        });
+
+    parallel_for(
+        "Compute Blin_coeff",
+        SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
+        YAKL_LAMBDA(int k, int n) {
+          real z = k * primal_geom.dz;
+
+          real Rd = thermo.cst.Rd;
+          real pr = thermo.cst.pr;
+          real gamma_d = thermo.cst.gamma_d;
+          real Cpd = thermo.cst.Cpd;
+          real Cvd = thermo.cst.Cvd;
+          real grav = g;
+          real grav2 = grav * grav;
+
+          real rho_ref = refrho_f(z, thermo);
+          real alpha_ref = 1 / rho_ref;
+          real S_ref = refentropicdensity_f(z, thermo);
+          real s_ref = S_ref / rho_ref;
+
+          real rho_ref2 = rho_ref * rho_ref;
+          real p_ref = thermo.solve_p(rho_ref, s_ref, 0, 0, 0, 0);
+
+          real dpds_ref =
+              thermo.compute_dpdentropic_var(alpha_ref, s_ref, 0, 0, 0, 0);
+          real dpds_ref2 = dpds_ref * dpds_ref;
+
+          real Nref2 = refnsq_f(z, thermo);
+          real cref = thermo.compute_soundspeed(alpha_ref, s_ref, 0, 0, 0, 0);
+          real cref2 = cref * cref;
+
+          real b0_rho = (cref2 * rho_ref - dpds_ref * s_ref) / rho_ref2;
+          real b0_s =
+              dpds_ref / rho_ref - dpds_ref2 * s_ref / (cref2 * rho_ref2) -
+              dpds_ref2 * grav2 * s_ref / (Nref2 * cref2 * cref2 * rho_ref2);
+          real b0_S = b0_s / rho_ref;
+          b0_rho -= s_ref / rho_ref * b0_s;
+
+          real b1_rho = dpds_ref / rho_ref2;
+          real b1_s = dpds_ref2 * (Nref2 * cref2 + grav2) /
+                      (Nref2 * cref2 * cref2 * rho_ref2);
+          real b1_S = b1_s / rho_ref;
+          b1_rho -= s_ref / rho_ref * b1_s;
+
+          refstate.Blin_coeff(0, 0, k, n) = b0_rho;
+          refstate.Blin_coeff(0, 1, k, n) = b0_S;
+          refstate.Blin_coeff(1, 0, k, n) = b1_rho;
+          refstate.Blin_coeff(1, 1, k, n) = b1_S;
+        });
   }
 };
 
@@ -2805,7 +2984,8 @@ template <bool acoustic_balance> struct RisingBubble {
     real rho_ref = refrho_f(z, thermo);
     real T_ref = refT_f(z, thermo);
     real p_ref = refp_f(z, thermo);
-    return rho_ref * thermo.compute_entropic_var(p_ref, T_ref, 0, 0, 0, 0);
+
+    return rho_ref * thermo.compute_entropic_var(p_ref, T_ref, 1, 0, 0, 0);
   }
 
   static real YAKL_INLINE rho_f(real x, real z, const ThermoPotential &thermo) {
@@ -3003,7 +3183,7 @@ struct MoistRisingBubble : public RisingBubble<false> {
   static real YAKL_INLINE rhov_f(real x, real z,
                                  const ThermoPotential &thermo) {
     real r = sqrt((x - xc) * (x - xc) + (z - bzc) * (z - bzc));
-    real rh = (r < rc) ? rh0 * (1._fp + cos(pi * r / rc)) : 0._fp;
+    real rh = (r < rc) ? rh0 * 0.5_fp * (1._fp + cos(pi * r / rc)) : 0._fp;
     real Th = isentropic_T(x, z, theta0, g, thermo);
     real svp = saturation_vapor_pressure(Th);
     real pv = svp * rh;
@@ -3022,6 +3202,10 @@ struct MoistRisingBubble : public RisingBubble<false> {
     real rhod = rhod_f(x, z, thermo);
     real rhov = rhov_f(x, z, thermo);
     return rhod + rhov;
+  }
+
+  static real YAKL_INLINE refrhov_f(real z, const ThermoPotential &thermo) {
+    return 0;
   }
 
   static real YAKL_INLINE entropicdensity_f(real x, real z,
@@ -3121,6 +3305,10 @@ struct MoistLargeRisingBubble : LargeRisingBubble {
     real svp = saturation_vapor_pressure(Th);
     real pv = svp * pert;
     return pv / (thermo.cst.Rv * Th);
+  }
+
+  static real YAKL_INLINE refrhov_f(real z, const ThermoPotential &thermo) {
+    return 0;
   }
 
   static real YAKL_INLINE rho_f(real x, real z, const ThermoPotential &thermo) {

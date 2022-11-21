@@ -3,6 +3,7 @@
 #include "common.h"
 #include "thermo.h"
 
+#ifdef _TSWE
 class Hamiltonian_TSWE_Hs {
 public:
   Geometry<Straight> primal_geometry;
@@ -121,7 +122,9 @@ public:
     }
   }
 };
+#endif
 
+#ifdef _SWE
 class Hamiltonian_SWE_Hs {
 public:
   Geometry<Straight> primal_geometry;
@@ -225,3 +228,4 @@ public:
     }
   }
 };
+#endif

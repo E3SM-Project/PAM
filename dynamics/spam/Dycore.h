@@ -221,6 +221,10 @@ public:
     }
     prevstep += params.crm_per_phys;
 
+    if (remove_negative_densities) {
+      tendencies.remove_negative_densities(prognostic_vars);
+    }
+
     // convert dynamics state to Coupler state
     tendencies.convert_dynamics_to_coupler_state(coupler, prognostic_vars,
                                                  constant_vars);

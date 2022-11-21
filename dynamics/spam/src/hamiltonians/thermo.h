@@ -382,22 +382,16 @@ public:
   }
 };
 
-// THE INTERNAL ENERGY HERE IS NOT BEING CONSERVED PROPERLY, IN THE SENSE THAT
-// IT'S VALUE OSCILLATIONS STRONGLY... POSSIBLY DUE TO LARGE VARIATIONS INDUCED
-// BY -cst.Cvd*(qd * cst.Rd + qv * cst.Rv)/cst.Rd*cst.Tr? not entirely sure
-// here, need to done more checking!
-
-// ALSO, FIX LATENT HEAT DEFS TO MATCH CHANGES IN PAPER
-
 class ConstantKappa_VirtualPottemp {
 public:
   thermo_constants cst;
   real YAKL_INLINE compute_U(real alpha, real entropic_var, real qd, real qv,
                              real ql, real qi) const {
+    const real Rstar = qd * cst.Rd + qv * cst.Rv;
     return cst.Cvd * pow(entropic_var, cst.gamma_d) *
-           pow(cst.Rd / (alpha * cst.pr), cst.delta_d);
-    //-cst.Cvd*(qd * cst.Rd + qv * cst.Rv)/cst.Rd*cst.Tr + qv*cst.Lvr -
-    // qv*cst.Rv*cst.Tr - qi*cst.Lfr;
+               pow(cst.Rd / (alpha * cst.pr), cst.delta_d) -
+           cst.Cvd * Rstar / cst.Rd * cst.Tr - qv * cst.Rv * cst.Tr +
+           qv * (cst.Lvr + cst.Lfr) + ql * cst.Lfr;
   };
 
   real YAKL_INLINE compute_dUdalpha(real alpha, real entropic_var, real qd,
@@ -413,32 +407,31 @@ public:
 
   real YAKL_INLINE compute_dUdqd(real alpha, real entropic_var, real qd,
                                  real qv, real ql, real qi) const {
-    return 0;
-    // return -cst.Cvd * cst.Tr;
+    return -cst.Cvd * cst.Tr;
   };
 
   real YAKL_INLINE compute_dUdqv(real alpha, real entropic_var, real qd,
                                  real qv, real ql, real qi) const {
-    return 0;
-    // return -cst.Cvd*cst.Rv/cst.Rd*cst.Tr + cst.Lvr - cst.Rv*cst.Tr;
+    return -cst.Cvd * cst.Rv / cst.Rd * cst.Tr + cst.Lvr + cst.Lfr -
+           cst.Rv * cst.Tr;
   };
 
   real YAKL_INLINE compute_dUdql(real alpha, real entropic_var, real qd,
                                  real qv, real ql, real qi) const {
-    return 0;
+    return cst.Lfr;
   };
 
   real YAKL_INLINE compute_dUdqi(real alpha, real entropic_var, real qd,
                                  real qv, real ql, real qi) const {
     return 0;
-    // return -cst.Lfr;
   };
 
   real YAKL_INLINE compute_H(real p, real entropic_var, real qd, real qv,
                              real ql, real qi) const {
+    const real Rstar = qd * cst.Rd + qv * cst.Rv;
     return cst.Cpd * entropic_var * pow(p / cst.pr, cst.kappa_d) -
-           cst.Cpd * (qd * cst.Rd + qv * cst.Rv) / cst.Rd * cst.Tr +
-           qv * cst.Lvr + qd * cst.Rd * cst.Tr - qi * cst.Lfr;
+           cst.Cpd * Rstar / cst.Rd * cst.Tr + qd * cst.Rd * cst.Tr +
+           qv * (cst.Lvr + cst.Lfr) + ql * cst.Lfr;
   };
 
   real YAKL_INLINE compute_dHdp(real p, real entropic_var, real qd, real qv,
@@ -453,22 +446,22 @@ public:
 
   real YAKL_INLINE compute_dHdqd(real p, real entropic_var, real qd, real qv,
                                  real ql, real qi) const {
-    return -cst.Cvd * cst.Tr;
+    return -cst.Cpd * cst.Tr + cst.Rd * cst.Tr;
   };
 
   real YAKL_INLINE compute_dHdqv(real p, real entropic_var, real qd, real qv,
                                  real ql, real qi) const {
-    return -cst.Cvd * cst.Rv / cst.Rd * cst.Tr + cst.Lvr - cst.Rv * cst.Tr;
+    return -cst.Cpd * cst.Rv / cst.Rd * cst.Tr + cst.Lvr + cst.Lfr;
   };
 
   real YAKL_INLINE compute_dHdql(real p, real entropic_var, real qd, real qv,
                                  real ql, real qi) const {
-    return 0;
+    return cst.Lfr;
   };
 
   real YAKL_INLINE compute_dHdqi(real p, real entropic_var, real qd, real qv,
                                  real ql, real qi) const {
-    return -cst.Lfr;
+    return 0;
   };
 
   real YAKL_INLINE compute_alpha(real p, real T, real qd, real qv, real ql,
@@ -502,6 +495,22 @@ public:
     real p = Rstar * T / alpha;
     return Rstar * T / cst.Rd * pow(cst.pr / p, cst.kappa_d);
   };
+
+  real YAKL_INLINE compute_dpdentropic_var(real alpha, real entropic_var,
+                                           real qd, real qv, real ql,
+                                           real qi) const {
+    real rho = 1 / alpha;
+    real p = solve_p(rho, entropic_var, qd, qv, ql, qi);
+    return cst.gamma_d * p / entropic_var;
+  }
+
+  real YAKL_INLINE compute_soundspeed(real alpha, real entropic_var, real qd,
+                                      real qv, real ql, real qi) const {
+
+    real rho = 1 / alpha;
+    real p = solve_p(rho, entropic_var, qd, qv, ql, qi);
+    return sqrt(cst.gamma_d * p * alpha);
+  }
 };
 
 class ConstantKappa_Entropy {

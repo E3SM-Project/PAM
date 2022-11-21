@@ -40,11 +40,22 @@ uint constexpr ntracers_physics = 0;
 uint constexpr ndensity_dycore = 2;
 uint constexpr ntracers_physics =
     Microphysics::get_num_tracers() + SGS::get_num_tracers();
+// the number of moist variables that PAM thermodynamic formulae assume
+// (qd, qv, qc, qi)
+uint constexpr nmoist = 4;
 #endif
 // ADD ANELASTIC + MOIST ANELASTIC
 
 uint constexpr ndensity_nophysics = ndensity_dycore + ntracers_dycore;
 uint constexpr ndensity = ndensity_dycore + ntracers_dycore + ntracers_physics;
+
+#if defined _MCErho && defined _CONST_KAPPA_VIRPOTTEMP
+bool constexpr tracers_decouple_from_dynamics = true;
+uint constexpr ndensity_B = ndensity_dycore;
+#else
+bool constexpr tracers_decouple_from_dynamics = false;
+uint constexpr ndensity_B = ndensity;
+#endif
 
 // Number of variables
 // v, w, dens, densfct
