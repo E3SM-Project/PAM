@@ -5,6 +5,22 @@ import numpy as np
 from sys import argv
 from netCDF4 import Dataset
 
+def create_vcoords(name, H, nz):
+    dz = H / (nz - 1)
+    zint = [k * dz + dz / 2 for k in range(0, nz - 1)]
+    zint = [0] + zint + [H]
+    
+    nc = Dataset(name, "w", format="NETCDF4")
+    nc.z0 = 0
+    nc.ztop = H
+    nc.nlev = len(zint)
+    nc.createDimension("num_interfaces", len(zint))
+    nc_zint = nc.createVariable("vertical_interfaces", "f8", ("num_interfaces",))
+    nc_zint[:] = zint
+
+    nc.close()
+
+
 def compute_Ediss_and_Edisp(a, b):
     cov_M = np.cov(np.vstack((np.reshape(a, np.size(a)), np.reshape(b, np.size(b)))))
     sigma_a = np.sqrt(cov_M[0, 0])
@@ -106,8 +122,17 @@ if __name__ == "__main__":
 
         ofname = f"output_{nx}_{nz}_"
 
+        vert_levels_script = "../../../../utils/generate_vertical_levels.py"
+        vert_func = "equal"
+
+        #subprocess.run(["python3", vert_levels_script, f"--nlev={nz-1}", f"--function={vert_func}",
+        #                f"--ztop={H}", f"--output=vcoords_{nz}.nc"],
+        #               capture_output=True, text=True)
+
+        create_vcoords(f"vcoords_{nz}.nc", H, nz)
+
         inputfile["crm_nx"] = nx
-        inputfile["crm_nz"] = nz
+        inputfile["vcoords"] = f"vcoords_{nz}.nc"
         inputfile["dtphys"] = dt
         inputfile["simSteps"] = steps
         inputfile["outSteps"] = outsteps
