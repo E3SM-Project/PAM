@@ -2746,7 +2746,7 @@ public:
         "Compute Blin_coeff",
         SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
         YAKL_LAMBDA(int k, int n) {
-          real z = primal_geom.zint(k, n);
+          real z = primal_geom.zint(k + primal_topology.ks, n);
 
           real Rd = thermo.cst.Rd;
           real pr = thermo.cst.pr;
@@ -2955,7 +2955,7 @@ public:
         "Compute Blin_coeff",
         SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
         YAKL_LAMBDA(int k, int n) {
-          real z = k * primal_geom.dz;
+          real z = primal_geom.zint(k + primal_topology.ks, n);
 
           real Rd = thermo.cst.Rd;
           real pr = thermo.cst.pr;

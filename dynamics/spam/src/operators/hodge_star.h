@@ -423,8 +423,8 @@ void YAKL_INLINE compute_H2bar_ext(F f, SArray<real, 1, ndofs> &x0,
                                    const Geometry<Straight> &pgeom,
                                    const Geometry<Twisted> &dgeom, int ks,
                                    int k, int n) {
-  real H2bargeom = pgeom.get_area_00entity(k + ks, 0, 0) /
-                   dgeom.get_area_11entity(k + ks, 0, 0);
+  real H2bargeom = pgeom.get_area_00entity(k + ks, 0, 0, n) /
+                   dgeom.get_area_11entity(k + ks, 0, 0, n);
   for (int l = 0; l < ndofs; l++) {
     x0(l) = f(var, l, k, n) * H2bargeom;
   }
