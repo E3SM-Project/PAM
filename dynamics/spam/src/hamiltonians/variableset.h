@@ -544,7 +544,7 @@ template <>
 real YAKL_INLINE VariableSetBase<VS_MCE_rho>::get_alpha(const real3d &densvar,
                                                         int k, int ks,
                                                         int n) const {
-  return dual_geometry.get_area_11entity(k + ks, 0, 0) / densvar(0, k, n);
+  return dual_geometry.get_area_11entity(k + ks, 0, 0, n) / densvar(0, k, n);
 }
 
 template <>
