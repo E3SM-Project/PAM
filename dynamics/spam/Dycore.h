@@ -73,12 +73,9 @@ public:
         par.masterproc);
     std::string inFile =
         coupler.get_option<std::string>("standalone_input_file");
-    readModelParamsFile(inFile, params, par, coupler.get_nz(), testcase);
+    readModelParamsFile(inFile, params, par, coupler, testcase);
     debug_print("read parameters and partitioned domain/setting domain sizes",
                 par.masterproc);
-
-    // HOW DO WE HANDLE VERTICAL LEVELS STUFF?
-    // BASICALLY A NEW GEOMETRY, I THINK?
 
     // Initialize the grid
     debug_print("start init topo/geom", par.masterproc);

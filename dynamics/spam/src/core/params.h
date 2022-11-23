@@ -65,6 +65,7 @@ void readParamsFile(std::string inFile, ModelParameters &params, Parallel &par,
   }
 
   params.nens = config["nens"].as<int>();
+
   params.nz_dual = nz;
 
   params.dtphys = config["dtphys"].as<real>();
@@ -175,6 +176,5 @@ void readParamsFile(std::string inFile, ModelParameters &params, Parallel &par,
     std::cout << "zlen:       " << params.zlen << "\n";
     std::cout << "xc:         " << params.xc << "\n";
     std::cout << "yc:         " << params.yc << "\n";
-    std::cout << "zc:         " << params.zc << "\n";
   }
 };
