@@ -978,7 +978,7 @@ void YAKL_INLINE Geometry<Twisted>::get_00form_quad_pts_wts(
   quad_pts_phys(0).x =
       (i + this->topology.i_beg) * this->dx + this->xc - this->Lx * 0.5_fp;
 
-  quad_pts_phys(0).z = this->zint(k + ks, n) - this->dz(k + ks, n) * 0.5_fp;
+  quad_pts_phys(0).z = this->zint(k + ks, n);
 
   quad_wts_phys(0) = 1.;
 }
@@ -994,7 +994,7 @@ void YAKL_INLINE Geometry<Twisted>::get_11form_quad_pts_wts(
   real ll_corner_x =
       (i + this->topology.i_beg) * this->dx + this->xc - this->Lx * 0.5_fp;
 
-  real ll_corner_z = this->zint(k + ks, n) - this->dz(k + ks, n) * 0.5_fp;
+  real ll_corner_z = this->zint(k + ks, n);
 
   for (int nqx = 0; nqx < ic_quad_pts_x; nqx++)
     for (int nqz = 0; nqz < ic_quad_pts_z; nqz++) {
@@ -1021,7 +1021,7 @@ void YAKL_INLINE Geometry<Twisted>::get_01form_quad_pts_wts(
   real ll_corner_x =
       (i + this->topology.i_beg) * this->dx + this->xc - this->Lx * 0.5_fp;
 
-  real ll_corner_z = this->zint(k + ks, n) - this->dz(k + ks, n) * 0.5_fp;
+  real ll_corner_z = this->zint(k + ks, n);
 
   for (int nqz = 0; nqz < ic_quad_pts_z; nqz++) {
     v_quad_pts_phys(nqz).x = ll_corner_x;
@@ -1042,7 +1042,7 @@ void YAKL_INLINE Geometry<Twisted>::get_10form_quad_pts_wts(
   real ll_corner_x =
       (i + this->topology.i_beg) * this->dx + this->xc - this->Lx * 0.5_fp;
 
-  real ll_corner_z = this->zint(k + ks, n) - this->dz(k + ks, n) * 0.5_fp;
+  real ll_corner_z = this->zint(k + ks, n);
 
   for (int nqx = 0; nqx < ic_quad_pts_x; nqx++) {
     x_quad_pts_phys(nqx).x = ll_corner_x + this->x_quad_pts_ref(nqx) * this->dx;
