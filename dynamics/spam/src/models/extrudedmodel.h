@@ -2827,6 +2827,7 @@ public:
                               const Geometry<Twisted> &dual_geom) override {
 
     YAKL_SCOPE(thermo, ::thermo);
+    YAKL_SCOPE(varset, ::varset);
 
     dual_geom.set_11form_values(
         YAKL_LAMBDA(real x, real z) { return rho_f(x, z, thermo); },
@@ -2865,6 +2866,7 @@ public:
 
     YAKL_SCOPE(thermo, ::thermo);
     YAKL_SCOPE(Hs, ::Hs);
+    YAKL_SCOPE(varset, ::varset);
 
     dual_geom.set_profile_11form_values(
         YAKL_LAMBDA(real z) { return flat_geop(0, z, g); }, refstate.geop, 0);

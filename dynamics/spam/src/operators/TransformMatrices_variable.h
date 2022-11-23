@@ -7,8 +7,8 @@ using yakl::SArray;
 namespace TransformMatrices_variable {
 
 template <unsigned int ord>
-inline void coefs_to_sten_variable(SArray<real, 1, ord + 1> const &locs,
-                                   SArray<real, 2, ord, ord> &rslt) {
+YAKL_INLINE void coefs_to_sten_variable(SArray<real, 1, ord + 1> const &locs,
+                                        SArray<real, 2, ord, ord> &rslt) {
   // Create the Vandermonde matrix
   SArray<real, 1, ord + 1> locs_pwr;
   // Initialize power of locations
@@ -31,8 +31,8 @@ inline void coefs_to_sten_variable(SArray<real, 1, ord + 1> const &locs,
 }
 
 template <unsigned int ord>
-inline void sten_to_coefs_variable(SArray<real, 1, ord + 1> const &locs,
-                                   SArray<real, 2, ord, ord> &rslt) {
+YAKL_INLINE void sten_to_coefs_variable(SArray<real, 1, ord + 1> const &locs,
+                                        SArray<real, 2, ord, ord> &rslt) {
   using yakl::intrinsics::matinv_ge;
 
   // Get coefs to stencil matrix
@@ -44,7 +44,7 @@ inline void sten_to_coefs_variable(SArray<real, 1, ord + 1> const &locs,
 }
 
 template <unsigned int ord>
-inline void
+YAKL_INLINE void
 weno_lower_sten_to_coefs(SArray<real, 1, ord + 1> const &locs,
                          SArray<real, 3, (ord - 1) / 2 + 1, (ord - 1) / 2 + 1,
                                 (ord - 1) / 2 + 1> &weno_recon) {
