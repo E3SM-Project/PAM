@@ -1,6 +1,7 @@
 
 add_library(dycore INTERFACE)
 target_include_directories(dycore INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_definitions(dycore INTERFACE -D_SPAM)
 
 
 #include_directories(dycore INTERFACE /home/celdred/parallel-netcdf-gnu/include)

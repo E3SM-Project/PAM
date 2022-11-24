@@ -142,6 +142,7 @@ public:
   }
 
   virtual void set_domain(ModelParameters &params) = 0;
+  virtual std::array<real, 3> get_domain() const = 0;
   virtual void set_initial_conditions(FieldSet<nprognostic> &progvars,
                                       FieldSet<nconstant> &constvars,
                                       const Geometry<Straight> &primal_geom,
@@ -247,6 +248,10 @@ public:
 class ExtrudedTendencies : public Tendencies {
 public:
   SArray<real, 1, (vert_reconstruction_order - 1) / 2 + 2> primal_vert_wenoIdl;
+  SArray<real, 2, vert_reconstruction_order, 2> primal_vert_to_gll;
+  SArray<real, 3, vert_reconstruction_order, vert_reconstruction_order,
+         vert_reconstruction_order>
+      primal_vert_wenoRecon;
   real primal_vert_wenoSigma;
   real4d primal_vert_coefs_to_gll_arr;
   real4d primal_vert_sten_to_gll_arr;
@@ -255,6 +260,10 @@ public:
 
   SArray<real, 1, (coriolis_vert_reconstruction_order - 1) / 2 + 2>
       coriolis_vert_wenoIdl;
+  SArray<real, 2, coriolis_vert_reconstruction_order, 2> coriolis_vert_to_gll;
+  SArray<real, 3, coriolis_vert_reconstruction_order,
+         coriolis_vert_reconstruction_order, coriolis_vert_reconstruction_order>
+      coriolis_vert_wenoRecon;
   real coriolis_vert_wenoSigma;
   real4d coriolis_vert_coefs_to_gll_arr;
   real4d coriolis_vert_sten_to_gll_arr;
@@ -263,6 +272,10 @@ public:
 
   SArray<real, 1, (dual_vert_reconstruction_order - 1) / 2 + 2>
       dual_vert_wenoIdl;
+  SArray<real, 3, dual_vert_reconstruction_order,
+         dual_vert_reconstruction_order, dual_vert_reconstruction_order>
+      dual_vert_wenoRecon;
+  SArray<real, 2, dual_vert_reconstruction_order, 2> dual_vert_to_gll;
   real dual_vert_wenoSigma;
   real4d dual_vert_coefs_to_gll_arr;
   real4d dual_vert_sten_to_gll_arr;
@@ -278,84 +291,95 @@ public:
     const auto &primal_topology = primal_geom.topology;
     const auto &dual_topology = dual_geom.topology;
 
-    // wenoSetIdealSigma<vert_reconstruction_order>(primal_vert_wenoIdl,primal_vert_wenoSigma);
+    if (primal_geom.uniform_vertical) {
+      TransformMatrices::coefs_to_gll_lower(primal_vert_to_gll);
+      TransformMatrices::weno_sten_to_coefs(primal_vert_wenoRecon);
+      wenoSetIdealSigma<vert_reconstruction_order>(primal_vert_wenoIdl,
+                                                   primal_vert_wenoSigma);
 
-    // wenoSetIdealSigma<dual_vert_reconstruction_order>(dual_vert_wenoIdl,dual_vert_wenoSigma);
+      TransformMatrices::coefs_to_gll_lower(dual_vert_to_gll);
+      TransformMatrices::weno_sten_to_coefs(dual_vert_wenoRecon);
+      wenoSetIdealSigma<dual_vert_reconstruction_order>(dual_vert_wenoIdl,
+                                                        dual_vert_wenoSigma);
 
-    // wenoSetIdealSigma<coriolis_vert_reconstruction_order>(coriolis_vert_wenoIdl,
-    // coriolis_vert_wenoSigma);
+      TransformMatrices::coefs_to_gll_lower(coriolis_vert_to_gll);
+      TransformMatrices::weno_sten_to_coefs(coriolis_vert_wenoRecon);
+      wenoSetIdealSigma<coriolis_vert_reconstruction_order>(
+          coriolis_vert_wenoIdl, coriolis_vert_wenoSigma);
+    } else {
+      this->primal_vert_coefs_to_gll_arr =
+          real4d("Primal Vert Coeffs to GLL Array", primal_topology.nl,
+                 vert_reconstruction_order, 2, primal_topology.nens);
 
-    this->primal_vert_coefs_to_gll_arr =
-        real4d("Primal Vert Coeffs to GLL Array", primal_topology.nl,
-               vert_reconstruction_order, 2, primal_topology.nens);
+      this->primal_vert_sten_to_gll_arr =
+          real4d("Primal Vert Sten to GLL Array", primal_topology.nl,
+                 vert_reconstruction_order, 2, primal_topology.nens);
 
-    this->primal_vert_sten_to_gll_arr =
-        real4d("Primal Vert Sten to GLL Array", primal_topology.nl,
-               vert_reconstruction_order, 2, primal_topology.nens);
+      this->primal_vert_sten_to_coefs_arr =
+          real4d("Primal Vert Sten to Coeffs Array", primal_topology.nl,
+                 vert_reconstruction_order, vert_reconstruction_order,
+                 primal_topology.nens);
 
-    this->primal_vert_sten_to_coefs_arr =
-        real4d("Primal Vert Sten to Coeffs Array", primal_topology.nl,
-               vert_reconstruction_order, vert_reconstruction_order,
-               primal_topology.nens);
+      this->primal_vert_weno_recon_lower_arr =
+          real5d("Primal Vert wenoReconLower Array", primal_topology.nl,
+                 (vert_reconstruction_order - 1) / 2 + 1,
+                 (vert_reconstruction_order - 1) / 2 + 1,
+                 (vert_reconstruction_order - 1) / 2 + 1, primal_topology.nens);
 
-    this->primal_vert_weno_recon_lower_arr =
-        real5d("Primal Vert wenoReconLower Array", primal_topology.nl,
-               (vert_reconstruction_order - 1) / 2 + 1,
-               (vert_reconstruction_order - 1) / 2 + 1,
-               (vert_reconstruction_order - 1) / 2 + 1, primal_topology.nens);
+      this->coriolis_vert_coefs_to_gll_arr =
+          real4d("Coriolis Vert Coeffs to GLL Array", primal_topology.nl,
+                 coriolis_vert_reconstruction_order, 2, primal_topology.nens);
 
-    this->coriolis_vert_coefs_to_gll_arr =
-        real4d("Coriolis Vert Coeffs to GLL Array", primal_topology.nl,
-               coriolis_vert_reconstruction_order, 2, primal_topology.nens);
+      this->coriolis_vert_sten_to_gll_arr =
+          real4d("Coriolis Vert Sten to GLL Array", primal_topology.nl,
+                 coriolis_vert_reconstruction_order, 2, primal_topology.nens);
 
-    this->coriolis_vert_sten_to_gll_arr =
-        real4d("Coriolis Vert Sten to GLL Array", primal_topology.nl,
-               coriolis_vert_reconstruction_order, 2, primal_topology.nens);
+      this->coriolis_vert_sten_to_coefs_arr =
+          real4d("Coriolis Vert Sten to Coeffs Array", primal_topology.nl,
+                 coriolis_vert_reconstruction_order,
+                 coriolis_vert_reconstruction_order, primal_topology.nens);
 
-    this->coriolis_vert_sten_to_coefs_arr =
-        real4d("Coriolis Vert Sten to Coeffs Array", primal_topology.nl,
-               coriolis_vert_reconstruction_order,
-               coriolis_vert_reconstruction_order, primal_topology.nens);
+      this->coriolis_vert_weno_recon_lower_arr =
+          real5d("Coriolis Vert wenoReconLower Array", primal_topology.nl,
+                 (coriolis_vert_reconstruction_order - 1) / 2 + 1,
+                 (coriolis_vert_reconstruction_order - 1) / 2 + 1,
+                 (coriolis_vert_reconstruction_order - 1) / 2 + 1,
+                 primal_topology.nens);
 
-    this->coriolis_vert_weno_recon_lower_arr = real5d(
-        "Coriolis Vert wenoReconLower Array", primal_topology.nl,
-        (coriolis_vert_reconstruction_order - 1) / 2 + 1,
-        (coriolis_vert_reconstruction_order - 1) / 2 + 1,
-        (coriolis_vert_reconstruction_order - 1) / 2 + 1, primal_topology.nens);
+      this->dual_vert_coefs_to_gll_arr =
+          real4d("Dual Vert Coeffs to GLL Array", dual_topology.nl,
+                 dual_vert_reconstruction_order, 2, dual_topology.nens);
 
-    this->dual_vert_coefs_to_gll_arr =
-        real4d("Dual Vert Coeffs to GLL Array", dual_topology.nl,
-               dual_vert_reconstruction_order, 2, dual_topology.nens);
+      this->dual_vert_sten_to_gll_arr =
+          real4d("Dual Vert Sten to GLL Array", dual_topology.nl,
+                 dual_vert_reconstruction_order, 2, dual_topology.nens);
 
-    this->dual_vert_sten_to_gll_arr =
-        real4d("Dual Vert Sten to GLL Array", dual_topology.nl,
-               dual_vert_reconstruction_order, 2, dual_topology.nens);
+      this->dual_vert_sten_to_coefs_arr =
+          real4d("Dual Vert Sten to Coeffs Array", dual_topology.nl,
+                 dual_vert_reconstruction_order, dual_vert_reconstruction_order,
+                 dual_topology.nens);
 
-    this->dual_vert_sten_to_coefs_arr =
-        real4d("Dual Vert Sten to Coeffs Array", dual_topology.nl,
-               dual_vert_reconstruction_order, dual_vert_reconstruction_order,
-               dual_topology.nens);
+      this->dual_vert_weno_recon_lower_arr = real5d(
+          "Dual Vert wenoReconLower Array", dual_topology.nl,
+          (dual_vert_reconstruction_order - 1) / 2 + 1,
+          (dual_vert_reconstruction_order - 1) / 2 + 1,
+          (dual_vert_reconstruction_order - 1) / 2 + 1, dual_topology.nens);
 
-    this->dual_vert_weno_recon_lower_arr = real5d(
-        "Dual Vert wenoReconLower Array", dual_topology.nl,
-        (dual_vert_reconstruction_order - 1) / 2 + 1,
-        (dual_vert_reconstruction_order - 1) / 2 + 1,
-        (dual_vert_reconstruction_order - 1) / 2 + 1, dual_topology.nens);
+      create_variable_WENO<Twisted, dual_vert_reconstruction_order>(
+          dual_vert_coefs_to_gll_arr, dual_vert_sten_to_gll_arr,
+          dual_vert_sten_to_coefs_arr, dual_vert_weno_recon_lower_arr,
+          dual_vert_wenoSigma, dual_vert_wenoIdl, dual_geom);
 
-    create_variable_WENO<Twisted, dual_vert_reconstruction_order>(
-        dual_vert_coefs_to_gll_arr, dual_vert_sten_to_gll_arr,
-        dual_vert_sten_to_coefs_arr, dual_vert_weno_recon_lower_arr,
-        dual_vert_wenoSigma, dual_vert_wenoIdl, dual_geom);
+      create_variable_WENO<Straight, vert_reconstruction_order>(
+          primal_vert_coefs_to_gll_arr, primal_vert_sten_to_gll_arr,
+          primal_vert_sten_to_coefs_arr, primal_vert_weno_recon_lower_arr,
+          primal_vert_wenoSigma, primal_vert_wenoIdl, primal_geom);
 
-    create_variable_WENO<Straight, vert_reconstruction_order>(
-        primal_vert_coefs_to_gll_arr, primal_vert_sten_to_gll_arr,
-        primal_vert_sten_to_coefs_arr, primal_vert_weno_recon_lower_arr,
-        primal_vert_wenoSigma, primal_vert_wenoIdl, primal_geom);
-
-    create_variable_WENO<Straight, coriolis_vert_reconstruction_order>(
-        coriolis_vert_coefs_to_gll_arr, coriolis_vert_sten_to_gll_arr,
-        coriolis_vert_sten_to_coefs_arr, coriolis_vert_weno_recon_lower_arr,
-        coriolis_vert_wenoSigma, coriolis_vert_wenoIdl, primal_geom);
+      create_variable_WENO<Straight, coriolis_vert_reconstruction_order>(
+          coriolis_vert_coefs_to_gll_arr, coriolis_vert_sten_to_gll_arr,
+          coriolis_vert_sten_to_coefs_arr, coriolis_vert_weno_recon_lower_arr,
+          coriolis_vert_wenoSigma, coriolis_vert_wenoIdl, primal_geom);
+    }
 
     this->is_initialized = true;
   }

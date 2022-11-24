@@ -585,6 +585,7 @@ public:
   Topology topology;
   bool is_initialized;
   bool straight;
+  bool uniform_vertical;
 
   Geometry();
 
@@ -923,6 +924,7 @@ void Geometry<Twisted>::initialize(const Topology &topo,
       });
 
   this->straight = false;
+  this->uniform_vertical = params.uniform_vertical;
 
   this->is_initialized = true;
 
@@ -942,6 +944,18 @@ template <> void Geometry<Twisted>::printinfo() const {
             << std::flush;
   std::cout << "xc " << this->xc << " yc " << this->yc << "\n" << std::flush;
   std::cout << "dx " << this->dx << " dy " << this->dy << "\n" << std::flush;
+  if (uniform_vertical) {
+    std::cout << "Uniform vertical grid" << std::endl;
+    const real max_dz = yakl::intrinsics::maxval(dz);
+    std::cout << "dz " << max_dz << std::endl;
+  } else {
+    const real min_dz = yakl::intrinsics::minval(dz);
+    const real max_dz = yakl::intrinsics::maxval(dz);
+    const real avg_dz = yakl::intrinsics::sum(dz) / dz.size();
+    std::cout << "Variable vertical grid" << std::endl;
+    std::cout << "min avg max dz " << min_dz << " " << avg_dz << " " << max_dz
+              << std::endl;
+  }
 }
 
 template <>
@@ -1116,6 +1130,7 @@ void Geometry<Straight>::initialize(const Topology &topo,
   //<< "\n";}
 
   this->straight = true;
+  this->uniform_vertical = params.uniform_vertical;
 
   this->is_initialized = true;
 }
@@ -1128,6 +1143,18 @@ template <> void Geometry<Straight>::printinfo() const {
             << std::flush;
   std::cout << "xc " << this->xc << " yc " << this->yc << "\n" << std::flush;
   std::cout << "dx " << this->dx << " dy " << this->dy << "\n" << std::flush;
+  if (uniform_vertical) {
+    std::cout << "Uniform vertical grid" << std::endl;
+    const real max_dz = yakl::intrinsics::maxval(dz);
+    std::cout << "dz " << max_dz << std::endl;
+  } else {
+    const real min_dz = yakl::intrinsics::minval(dz);
+    const real max_dz = yakl::intrinsics::maxval(dz);
+    const real avg_dz = yakl::intrinsics::sum(dz) / dz.size();
+    std::cout << "Variable vertical grid" << std::endl;
+    std::cout << "min avg max dz " << min_dz << " " << avg_dz << " " << max_dz
+              << std::endl;
+  }
 }
 
 template <>

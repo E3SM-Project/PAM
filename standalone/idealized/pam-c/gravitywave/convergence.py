@@ -122,17 +122,26 @@ if __name__ == "__main__":
 
         ofname = f"output_{nx}_{nz}_"
 
-        vert_levels_script = "../../../../utils/generate_vertical_levels.py"
-        vert_func = "equal"
+        vcoords = "uniform"
+        #vcoords = "uniform_variable"
+        #vcoords = "variable"
 
-        #subprocess.run(["python3", vert_levels_script, f"--nlev={nz-1}", f"--function={vert_func}",
-        #                f"--ztop={H}", f"--output=vcoords_{nz}.nc"],
-        #               capture_output=True, text=True)
+        if vcoords == "uniform_variable":
+            vcoords = f"vcoords_{nz}.nc"
+            create_vcoords(vcoords, H, nz)
+            
+        if vcoords == "variable":
+            vcoords = f"vcoords_{nz}.nc"
+            vert_levels_script = "../../../../utils/generate_vertical_levels.py"
+            vert_func = "exp"
+            subprocess.run(["python3", vert_levels_script, f"--nlev={nz-1}", f"--function={vert_func}",
+                            f"--ztop={H}", f"--output={vcoords}"],
+                           capture_output=True, text=True)
 
-        create_vcoords(f"vcoords_{nz}.nc", H, nz)
 
         inputfile["crm_nx"] = nx
-        inputfile["vcoords"] = f"vcoords_{nz}.nc"
+        inputfile["crm_nz"] = nz
+        inputfile["vcoords"] = vcoords
         inputfile["dtphys"] = dt
         inputfile["simSteps"] = steps
         inputfile["outSteps"] = outsteps
