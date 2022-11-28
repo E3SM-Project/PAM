@@ -11,6 +11,7 @@ crm_ny       : 1
 #crm_nz       : 33
 
 # Vertical height coordinates file
+# vcoords: uniform
 vcoords  : '../pam-c/vcoords/vcoords_equal_33_6400.nc'
 
 # Data to initialize: doublevortex rb mrb

@@ -327,11 +327,91 @@ public:
         });
   }
 
-  void compute_edge_reconstructions(
+  void compute_edge_reconstructions_uniform(
       real5d densedgereconvar, real5d densvertedgereconvar,
       real5d qxzedgereconvar, real5d qxzvertedgereconvar,
       real5d coriolisxzedgereconvar, real5d coriolisxzvertedgereconvar,
       const real5d dens0var, const real5d qxz0var, const real5d fxz0var) {
+
+    const auto &primal_topology = primal_geometry.topology;
+    const auto &dual_topology = dual_geometry.topology;
+
+    int dis = dual_topology.is;
+    int djs = dual_topology.js;
+    int dks = dual_topology.ks;
+
+    int pis = primal_topology.is;
+    int pjs = primal_topology.js;
+    int pks = primal_topology.ks;
+
+    parallel_for(
+        "ComputeDensEdgeRecon",
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+          compute_twisted_edge_recon<ndensity, dual_reconstruction_type,
+                                     dual_reconstruction_order>(
+              densedgereconvar, dens0var, dis, djs, dks, i, j, k, n,
+              dual_wenoRecon, dual_to_gll, dual_wenoIdl, dual_wenoSigma);
+          compute_twisted_vert_edge_recon_uniform<
+              ndensity, dual_vert_reconstruction_type,
+              dual_vert_reconstruction_order>(
+              densvertedgereconvar, dens0var, dis, djs, dks, i, j, k, n,
+              dual_vert_wenoRecon, dual_vert_to_gll, dual_vert_wenoIdl,
+              dual_vert_wenoSigma);
+        });
+
+    parallel_for(
+        "ComputeQEdgeRecon",
+        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+          compute_straight_xz_edge_recon<1, reconstruction_type,
+                                         reconstruction_order>(
+              qxzedgereconvar, qxz0var, pis, pjs, pks, i, j, k, n,
+              primal_wenoRecon, primal_to_gll, primal_wenoIdl,
+              primal_wenoSigma);
+          compute_straight_xz_vert_edge_recon_uniform<
+              1, vert_reconstruction_type, vert_reconstruction_order>(
+              qxzvertedgereconvar, qxz0var, pis, pjs, pks, i, j, k, n,
+              primal_vert_wenoRecon, primal_vert_to_gll, primal_vert_wenoIdl,
+              primal_vert_wenoSigma);
+          compute_straight_xz_edge_recon<1, coriolis_reconstruction_type,
+                                         coriolis_reconstruction_order>(
+              coriolisxzedgereconvar, fxz0var, pis, pjs, pks, i, j, k, n,
+              coriolis_wenoRecon, coriolis_to_gll, coriolis_wenoIdl,
+              coriolis_wenoSigma);
+          compute_straight_xz_vert_edge_recon_uniform<
+              1, coriolis_vert_reconstruction_type,
+              coriolis_vert_reconstruction_order>(
+              coriolisxzvertedgereconvar, fxz0var, pis, pjs, pks, i, j, k, n,
+              coriolis_vert_wenoRecon, coriolis_vert_to_gll,
+              coriolis_vert_wenoIdl, coriolis_vert_wenoSigma);
+        });
+  }
+
+  void compute_edge_reconstructions_variable(
+      real5d densedgereconvar, real5d densvertedgereconvar,
+      real5d qxzedgereconvar, real5d qxzvertedgereconvar,
+      real5d coriolisxzedgereconvar, real5d coriolisxzvertedgereconvar,
+      const real5d dens0var, const real5d qxz0var, const real5d fxz0var) {
+
+    if (vert_reconstruction_type == RECONSTRUCTION_TYPE::WENO ||
+        dual_vert_reconstruction_type == RECONSTRUCTION_TYPE::WENO ||
+        coriolis_vert_reconstruction_type == RECONSTRUCTION_TYPE::WENO) {
+      throw std::runtime_error("classical WENO not supported with vertically "
+                               "variable grid, you may want WENOFUNC");
+    }
+
+    if ((vert_reconstruction_type == RECONSTRUCTION_TYPE::CFV &&
+         vert_reconstruction_order > 1) ||
+        (dual_vert_reconstruction_type == RECONSTRUCTION_TYPE::CFV &&
+         dual_vert_reconstruction_order > 1) ||
+        (coriolis_vert_reconstruction_type == RECONSTRUCTION_TYPE::CFV &&
+         coriolis_vert_reconstruction_order > 1)) {
+      throw std::runtime_error("CFV reconstruction only supports order 1 with "
+                               "vertically variable grid");
+    }
 
     const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
@@ -394,9 +474,9 @@ public:
               densedgereconvar, dens0var, dis, djs, dks, i, j, k, n,
               dual_wenoRecon, dual_to_gll, dual_wenoIdl, dual_wenoSigma);
 
-          compute_twisted_vert_edge_recon<ndensity,
-                                          dual_vert_reconstruction_type,
-                                          dual_vert_reconstruction_order>(
+          compute_twisted_vert_edge_recon_variable<
+              ndensity, dual_vert_reconstruction_type,
+              dual_vert_reconstruction_order>(
               densvertedgereconvar, dens0var, dis, djs, dks, i, j, k, n,
               dual_vert_coefs_to_gll, dual_vert_sten_to_gll,
               dual_vert_sten_to_coefs, dual_vert_weno_recon_lower,
@@ -503,8 +583,8 @@ public:
               qxzedgereconvar, qxz0var, pis, pjs, pks, i, j, k, n,
               primal_wenoRecon, primal_to_gll, primal_wenoIdl,
               primal_wenoSigma);
-          compute_straight_xz_vert_edge_recon<1, vert_reconstruction_type,
-                                              vert_reconstruction_order>(
+          compute_straight_xz_vert_edge_recon_variable<
+              1, vert_reconstruction_type, vert_reconstruction_order>(
               qxzvertedgereconvar, qxz0var, pis, pjs, pks, i, j, k, n,
               primal_vert_coefs_to_gll, primal_vert_sten_to_gll,
               primal_vert_sten_to_coefs, primal_vert_weno_recon_lower,
@@ -514,7 +594,7 @@ public:
               coriolisxzedgereconvar, fxz0var, pis, pjs, pks, i, j, k, n,
               coriolis_wenoRecon, coriolis_to_gll, coriolis_wenoIdl,
               coriolis_wenoSigma);
-          compute_straight_xz_vert_edge_recon<
+          compute_straight_xz_vert_edge_recon_variable<
               1, coriolis_vert_reconstruction_type,
               coriolis_vert_reconstruction_order>(
               coriolisxzvertedgereconvar, fxz0var, pis, pjs, pks, i, j, k, n,
@@ -1360,16 +1440,29 @@ public:
     auxiliary_vars.exchange({QXZ0VAR, FXZ0VAR});
 
     // Compute densrecon, densvertrecon, qrecon and frecon
-    compute_edge_reconstructions(
-        auxiliary_vars.fields_arr[DENSEDGERECONVAR].data,
-        auxiliary_vars.fields_arr[DENSVERTEDGERECONVAR].data,
-        auxiliary_vars.fields_arr[QXZEDGERECONVAR].data,
-        auxiliary_vars.fields_arr[QXZVERTEDGERECONVAR].data,
-        auxiliary_vars.fields_arr[CORIOLISXZEDGERECONVAR].data,
-        auxiliary_vars.fields_arr[CORIOLISXZVERTEDGERECONVAR].data,
-        auxiliary_vars.fields_arr[DENS0VAR].data,
-        auxiliary_vars.fields_arr[QXZ0VAR].data,
-        auxiliary_vars.fields_arr[FXZ0VAR].data);
+    if (dual_geometry.uniform_vertical) {
+      compute_edge_reconstructions_uniform(
+          auxiliary_vars.fields_arr[DENSEDGERECONVAR].data,
+          auxiliary_vars.fields_arr[DENSVERTEDGERECONVAR].data,
+          auxiliary_vars.fields_arr[QXZEDGERECONVAR].data,
+          auxiliary_vars.fields_arr[QXZVERTEDGERECONVAR].data,
+          auxiliary_vars.fields_arr[CORIOLISXZEDGERECONVAR].data,
+          auxiliary_vars.fields_arr[CORIOLISXZVERTEDGERECONVAR].data,
+          auxiliary_vars.fields_arr[DENS0VAR].data,
+          auxiliary_vars.fields_arr[QXZ0VAR].data,
+          auxiliary_vars.fields_arr[FXZ0VAR].data);
+    } else {
+      compute_edge_reconstructions_variable(
+          auxiliary_vars.fields_arr[DENSEDGERECONVAR].data,
+          auxiliary_vars.fields_arr[DENSVERTEDGERECONVAR].data,
+          auxiliary_vars.fields_arr[QXZEDGERECONVAR].data,
+          auxiliary_vars.fields_arr[QXZVERTEDGERECONVAR].data,
+          auxiliary_vars.fields_arr[CORIOLISXZEDGERECONVAR].data,
+          auxiliary_vars.fields_arr[CORIOLISXZVERTEDGERECONVAR].data,
+          auxiliary_vars.fields_arr[DENS0VAR].data,
+          auxiliary_vars.fields_arr[QXZ0VAR].data,
+          auxiliary_vars.fields_arr[FXZ0VAR].data);
+    }
 
     auxiliary_vars.exchange({DENSEDGERECONVAR, DENSVERTEDGERECONVAR,
                              QXZEDGERECONVAR, QXZVERTEDGERECONVAR,
@@ -2429,6 +2522,7 @@ void readModelParamsFile(std::string inFile, ModelParameters &params,
   int nz = coupler.get_nz();
 
   params.acoustic_balance = config["balance_initial_density"].as<bool>(false);
+  params.uniform_vertical = (config["vcoords"].as<std::string>() == "uniform");
 
   // Read diffusion coefficients
   params.entropicvar_diffusion_coeff =
@@ -2610,6 +2704,8 @@ public:
   using T::refnsq_f;
   using T::refrho_f;
   using T::v_f;
+
+  std::array<real, 3> get_domain() const override { return {Lx, 1, Lz}; }
 
   void set_domain(ModelParameters &params) override {
     params.xlen = Lx;
@@ -2814,6 +2910,8 @@ public:
   using T::refnsq_f;
   using T::refrho_f;
   using T::refrhov_f;
+
+  std::array<real, 3> get_domain() const override { return {Lx, 1, Lz}; }
 
   void set_domain(ModelParameters &params) override {
     params.xlen = Lx;
@@ -3960,4 +4058,12 @@ void testcase_from_string(std::unique_ptr<TestCase> &testcase, std::string name,
   else {
     throw std::runtime_error("unknown test case");
   }
+}
+
+void testcase_from_config(std::unique_ptr<TestCase> &testcase,
+                          const YAML::Node &config) {
+  const std::string name = config["initData"].as<std::string>();
+  const bool acoustic_balance =
+      config["balance_initial_density"].as<bool>(false);
+  testcase_from_string(testcase, name, acoustic_balance);
 }

@@ -127,6 +127,7 @@ public:
   std::string tracerdataStr[ntracers_dycore];
   bool dycore_tracerpos[ntracers_dycore];
   bool acoustic_balance;
+  bool uniform_vertical;
   real entropicvar_diffusion_coeff;
   real velocity_diffusion_coeff;
 

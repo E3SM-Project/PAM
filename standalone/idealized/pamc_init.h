@@ -40,30 +40,14 @@ void partition_domain(std::string inFile, int &crm_nx, int &crm_ny)
   
 }
 
-void set_domain_sizes(std::string initData, int crm_ny, int crm_nz, real &xlen, real &ylen, real &zlen)
+void set_domain_sizes(const YAML::Node &config, real &xlen, real &ylen, real &zlen)
 {
-  ylen = 1.0_fp;
-  zlen = 1.0_fp;
-
-if (initData == "doublevortex")
-{
-  xlen = 5000000._fp;
-  if (crm_nz > 1) {zlen = 5000000._fp;}
-  if (crm_ny > 1) {ylen = 5000000._fp;}  
-}
-
-if (initData == "risingbubble" or initData == "moistrisingbubble")
-{
-  xlen = 1000._fp;
-  zlen = 1500._fp;
-  if (crm_ny > 1) {ylen = 1000._fp;}
-}
-
-if (initData == "largerisingbubble" or initData == "moistlargerisingbubble")
-{
-  xlen = 20000._fp;
-  zlen = 20000._fp;
-  if (crm_ny > 1) {ylen = 20000._fp;}
-}
-
+#ifdef _SPAM
+  std::unique_ptr<TestCase> testcase;
+  testcase_from_config(testcase, config);
+  const auto [Lx, Ly, Lz] = testcase->get_domain();
+  xlen = Lx;
+  ylen = Ly;
+  zlen = Lz;
+#endif
 }

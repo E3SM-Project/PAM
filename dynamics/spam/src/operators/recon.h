@@ -52,9 +52,44 @@ void YAKL_INLINE compute_twisted_edge_recon(
   }
 }
 
+template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord = 2,
+          uint hs = (ord - 1) / 2>
+void YAKL_INLINE compute_twisted_vert_edge_recon_uniform(
+    const real5d &vertedgereconvar, const real5d &var, int is, int js, int ks,
+    int i, int j, int k, int n, SArray<real, 3, ord, ord, ord> const &wenoRecon,
+    SArray<real, 2, ord, tord> const &to_gll,
+    SArray<real, 1, hs + 2> const &wenoIdl, real wenoSigma) {
+  SArray<real, 3, ndofs, 1, ord> stencil;
+  SArray<real, 3, ndofs, 1, 2> edgerecon;
+
+  for (int p = 0; p < ord; p++) {
+    for (int l = 0; l < ndofs; l++) {
+      stencil(l, 0, p) = var(l, k + ks + p - hs, j + js, i + is, n);
+    }
+  }
+
+  if (recontype == RECONSTRUCTION_TYPE::CFV) {
+    cfv<ndofs, 1>(edgerecon, stencil);
+  }
+  if (recontype == RECONSTRUCTION_TYPE::WENO) {
+    weno<ndofs, 1>(edgerecon, stencil);
+  }
+  if (recontype == RECONSTRUCTION_TYPE::WENOFUNC) {
+    weno_func<ndofs, 1, ord>(edgerecon, stencil, wenoRecon, to_gll, wenoIdl,
+                             wenoSigma);
+  }
+
+  for (int l = 0; l < ndofs; l++) {
+    for (int m = 0; m < 2; m++) {
+      vertedgereconvar(l + ndofs * m, k + ks, j + js, i + is, n) =
+          edgerecon(l, 0, m);
+    }
+  }
+}
+
 template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord,
           uint hs = (ord - 1) / 2>
-void YAKL_INLINE compute_twisted_vert_edge_recon(
+void YAKL_INLINE compute_twisted_vert_edge_recon_variable(
     const real5d &vertedgereconvar, const real5d &var, int is, int js, int ks,
     int i, int j, int k, int n, SArray<real, 2, ord, 2> const &coefs_to_gll,
     SArray<real, 2, ord, 2> const &sten_to_gll,
@@ -73,9 +108,6 @@ void YAKL_INLINE compute_twisted_vert_edge_recon(
   if (recontype == RECONSTRUCTION_TYPE::CFV) {
     cfv_vert<ndofs, ord>(edgerecon, stencil);
   }
-  // if (recontype == RECONSTRUCTION_TYPE::WENO) {
-  //  weno<ndofs, 1>(edgerecon, stencil);
-  //}
 
   if (recontype == RECONSTRUCTION_TYPE::WENOFUNC) {
     weno_func_vert<ndofs, ord>(edgerecon, stencil, coefs_to_gll, sten_to_gll,
@@ -174,9 +206,46 @@ void YAKL_INLINE compute_straight_xz_edge_recon(
   }
 }
 
+template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord = 2,
+          uint hs = (ord - 1) / 2>
+void YAKL_INLINE compute_straight_xz_vert_edge_recon_uniform(
+    const real5d &edgereconvar, const real5d &var, int is, int js, int ks,
+    int i, int j, int k, int n, SArray<real, 3, ord, ord, ord> const &wenoRecon,
+    SArray<real, 2, ord, tord> const &to_gll,
+    SArray<real, 1, hs + 2> const &wenoIdl, real wenoSigma) {
+  SArray<real, 3, ndofs, 1, ord> stencil;
+  SArray<real, 3, ndofs, 1, 2> edgerecon;
+
+  for (int p = 0; p < ord; p++) {
+    for (int l = 0; l < ndofs; l++) {
+      // The +1 in k here is required since twisted 0-forms have extra dofs at
+      // the top and bottom, and we are looping over straight cells!
+      stencil(l, 0, p) = var(l, k + ks + p - hs + 1, j + js, i + is, n);
+    }
+  }
+
+  if (recontype == RECONSTRUCTION_TYPE::CFV) {
+    cfv<ndofs, 1>(edgerecon, stencil);
+  }
+  if (recontype == RECONSTRUCTION_TYPE::WENO) {
+    weno<ndofs, 1>(edgerecon, stencil);
+  }
+  if (recontype == RECONSTRUCTION_TYPE::WENOFUNC) {
+    weno_func<ndofs, 1, ord>(edgerecon, stencil, wenoRecon, to_gll, wenoIdl,
+                             wenoSigma);
+  }
+
+  for (int l = 0; l < ndofs; l++) {
+    for (int m = 0; m < 2; m++) {
+      edgereconvar(l + ndofs * m, k + ks, j + js, i + is, n) =
+          edgerecon(l, 0, m);
+    }
+  }
+}
+
 template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord,
           uint hs = (ord - 1) / 2>
-void YAKL_INLINE compute_straight_xz_vert_edge_recon(
+void YAKL_INLINE compute_straight_xz_vert_edge_recon_variable(
     const real5d &edgereconvar, const real5d &var, int is, int js, int ks,
     int i, int j, int k, int n, SArray<real, 2, ord, 2> const &coefs_to_gll,
     SArray<real, 2, ord, 2> const &sten_to_gll,
@@ -195,11 +264,9 @@ void YAKL_INLINE compute_straight_xz_vert_edge_recon(
   }
 
   if (recontype == RECONSTRUCTION_TYPE::CFV) {
-    cfv_vert<ndofs>(edgerecon, stencil);
+    cfv_vert<ndofs, ord>(edgerecon, stencil);
   }
-  // if (recontype == RECONSTRUCTION_TYPE::WENO) {
-  //  weno<ndofs, 1>(edgerecon, stencil);
-  //}
+
   if (recontype == RECONSTRUCTION_TYPE::WENOFUNC) {
     weno_func_vert<ndofs, ord>(edgerecon, stencil, coefs_to_gll, sten_to_gll,
                                sten_to_coefs, weno_recon_lower, wenoIdl,

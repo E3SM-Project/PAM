@@ -1101,6 +1101,8 @@ public:
   using T::coriolis_f;
   using T::v_f;
 
+  std::array<real, 3> get_domain() const override { return {Lx, Ly, 1}; }
+
   void set_domain(ModelParameters &params) override {
     params.xlen = Lx;
     params.ylen = Ly;
@@ -1279,4 +1281,10 @@ void testcase_from_string(std::unique_ptr<TestCase> &testcase,
   } else {
     throw std::runtime_error("unknown test case");
   }
+}
+
+void testcase_from_config(std::unique_ptr<TestCase> &testcase,
+                          const YAML::Node &config) {
+  const std::string name = config["initData"].as<std::string>();
+  testcase_from_string(testcase, name);
 }

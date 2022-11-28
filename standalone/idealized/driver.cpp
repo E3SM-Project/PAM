@@ -45,29 +45,49 @@ int main(int argc, char** argv) {
     auto out_prefix              = config["out_prefix" ].as<std::string>("test");
     bool        inner_mpi = config["inner_mpi"].as<bool>(false);
 
-    // Read vertical coordinates
+    //set xlen, ylen, zlen based on init cond if needed
+    if (xlen < 0 || ylen < 0 || zlen < 0) { set_domain_sizes(config, xlen, ylen, zlen); }
+
+    int crm_nz = -1;
     real1d zint_in;
-    //THIS IS BROKEN FOR PARALLEL IO CASE- maybe this is okay ie switch entirely to standard netcdf?
-    yakl::SimpleNetCDF nc;
-    nc.open(vcoords_file);
-    int crm_nz = nc.getDimSize("num_interfaces") - 1;
-    zint_in = real1d("zint_in",crm_nz+1);
-    nc.read(zint_in,"vertical_interfaces");
-    nc.close();
-    //TODO: Coupler needs to eventually support ensemble dependent vertical grids
-    //real2d zint_expanded = real2d("zint_expanded",crm_nz+1,nens);
-    //parallel_for( "Set zint expanded" , SimpleBounds<2>(crm_nz+1,nens) , YAKL_LAMBDA (int k, int n) {
-    //  zint_expanded(k,n) = zint_in(k);
-    //});
+    if (vcoords_file == "uniform") {
+      if (config["crm_nz"]) {
+        crm_nz = config["crm_nz"].as<int>();
+      } else {
+        endrun("To use uniform vertical grid you need to specify crm_nz");
+      }
+      zint_in = real1d("zint_in",crm_nz+1);
+      const real dz = zlen / (crm_nz - 1);
+      parallel_for("uniform zint", crm_nz+1, YAKL_LAMBDA(int k) {
+          if (k == 0) {
+            zint_in(k) = 0;
+          } else if (k == crm_nz) {
+            zint_in(k) = zlen;
+          } else {
+            zint_in(k) = k * dz - dz / 2;
+          }
+      });
+    } else {
+      // Read vertical coordinates
+      //THIS IS BROKEN FOR PARALLEL IO CASE- maybe this is okay ie switch entirely to standard netcdf?
+      yakl::SimpleNetCDF nc;
+      nc.open(vcoords_file);
+      crm_nz = nc.getDimSize("num_interfaces") - 1;
+      zint_in = real1d("zint_in",crm_nz+1);
+      nc.read(zint_in,"vertical_interfaces");
+      nc.close();
+      //TODO: Coupler needs to eventually support ensemble dependent vertical grids
+      //real2d zint_expanded = real2d("zint_expanded",crm_nz+1,nens);
+      //parallel_for( "Set zint expanded" , SimpleBounds<2>(crm_nz+1,nens) , YAKL_LAMBDA (int k, int n) {
+      //  zint_expanded(k,n) = zint_in(k);
+      //});
+    }
 
-
-    // Create the dycore and the microphysics
+    //// Create the dycore and the microphysics
     Dycore       dycore;
     Microphysics micro;
     SGS          sgs;
 
-    //set xlen, ylen, zlen based on init cond if needed
-    if (xlen < 0 or ylen < 0 or zlen < 0) { set_domain_sizes(config["initData"].as<std::string>(), crm_ny, crm_nz, xlen, ylen, zlen); }
 
     //this partitions the domain if INNER_MPI is set, otherwise it does nothing
     if (inner_mpi)

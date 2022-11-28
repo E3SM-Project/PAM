@@ -10,6 +10,7 @@ crm_nz       : 100
 
 # Vertical height coordinates file
 #vcoords  : vcoords_equal_100_20km.nc
+vcoords: uniform
 
 # Data to initialize: doublevortex rb mrb
 initData : twobubbles
