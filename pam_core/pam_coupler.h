@@ -134,7 +134,7 @@ namespace pam {
       std::string                                   name;
       std::function< void ( PamCoupler & , real ) > func;
     };
-    std::vector< MMFFunction > mmf_functions;
+    std::vector< MMFFunction > pam_functions;
 
 
   public:
@@ -258,17 +258,17 @@ namespace pam {
     }
 
 
-    void add_mmf_function( std::string name , std::function< void ( PamCoupler & , real ) > func ) {
-      mmf_functions.push_back( { name , func } );
+    void add_pam_function( std::string name , std::function< void ( PamCoupler & , real ) > func ) {
+      pam_functions.push_back( { name , func } );
     }
 
 
-    int get_num_mmf_functions() const { return mmf_functions.size(); }
+    int get_num_pam_functions() const { return pam_functions.size(); }
 
 
-    std::vector<std::string> get_mmf_function_names() const {
+    std::vector<std::string> get_pam_function_names() const {
       std::vector<std::string> names;
-      for (auto & func : mmf_functions) {
+      for (auto & func : pam_functions) {
         names.push_back(func.name);
       }
       return names;
@@ -287,22 +287,22 @@ namespace pam {
     }
 
 
-    void run_mmf_function( std::string name , real dt_crm ) {
-      for (int i=0; i < mmf_functions.size(); i++) {
-        if (name == mmf_functions[i].name) {
+    void run_pam_function( std::string name , real dt_crm ) {
+      for (int i=0; i < pam_functions.size(); i++) {
+        if (name == pam_functions[i].name) {
           #ifdef PAM_FUNCTION_TRACE
             dm.clean_all_entries();
           #endif
           #ifdef PAM_FUNCTION_TIMERS
-            yakl::timer_start( mmf_functions[i].name.c_str() );
+            yakl::timer_start( pam_functions[i].name.c_str() );
           #endif
-          mmf_functions[i].func( *this , dt_crm );
+          pam_functions[i].func( *this , dt_crm );
           #ifdef PAM_FUNCTION_TIMERS
-            yakl::timer_stop ( mmf_functions[i].name.c_str() );
+            yakl::timer_stop ( pam_functions[i].name.c_str() );
           #endif
           #ifdef PAM_FUNCTION_TRACE
             auto dirty_entry_names = dm.get_dirty_entries();
-            std::cout << "MMF Function " << mmf_functions[i].name << " ran with a time step of "
+            std::cout << "MMF Function " << pam_functions[i].name << " ran with a time step of "
                       << dt_crm << " seconds and wrote to the following coupler entries: ";
             for (int e=0; e < dirty_entry_names.size(); e++) {
               std::cout << dirty_entry_names[e];
@@ -313,25 +313,25 @@ namespace pam {
           return;
         }
       }
-      endrun("ERROR: run_mmf_function called with invalid function name: " + name);
+      endrun("ERROR: run_pam_function called with invalid function name: " + name);
     }
 
 
-    void run_mmf_functions(real dt_crm) {
-      for (int i=0; i < mmf_functions.size(); i++) {
+    void run_pam_functions(real dt_crm) {
+      for (int i=0; i < pam_functions.size(); i++) {
         #ifdef PAM_FUNCTION_TRACE
           dm.clean_all_entries();
         #endif
         #ifdef PAM_FUNCTION_TIMERS
-          yakl::timer_start( mmf_functions[i].name.c_str() );
+          yakl::timer_start( pam_functions[i].name.c_str() );
         #endif
-        mmf_functions[i].func( *this , dt_crm );
+        pam_functions[i].func( *this , dt_crm );
         #ifdef PAM_FUNCTION_TIMERS
-          yakl::timer_stop ( mmf_functions[i].name.c_str() );
+          yakl::timer_stop ( pam_functions[i].name.c_str() );
         #endif
         #ifdef PAM_FUNCTION_TRACE
           auto dirty_entry_names = dm.get_dirty_entries();
-          std::cout << "MMF Function " << mmf_functions[i].name << " ran with a time step of "
+          std::cout << "MMF Function " << pam_functions[i].name << " ran with a time step of "
                     << dt_crm << " seconds and wrote to the following coupler entries: ";
           for (int e=0; e < dirty_entry_names.size(); e++) {
             std::cout << dirty_entry_names[e];
@@ -344,8 +344,8 @@ namespace pam {
 
 
     void run_dycore_function( std::string name , real dt_dycore ) {
-      for (int i=0; i < mmf_functions.size(); i++) {
-        if (name == mmf_functions[i].name) {
+      for (int i=0; i < pam_functions.size(); i++) {
+        if (name == pam_functions[i].name) {
           #ifdef PAM_FUNCTION_TRACE
             dm.clean_all_entries();
           #endif
