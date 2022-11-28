@@ -1,12 +1,6 @@
 [submodule "externals/YAKL"]
 	path = externals/YAKL
 	url = git@github.com:mrnorman/YAKL.git
-[submodule "externals/kokkos"]
-	path = externals/kokkos
-	url = git@github.com:kokkos/kokkos.git
 [submodule "externals/eigen"]
 	path = externals/eigen
 	url = https://gitlab.com/libeigen/eigen.git
-[submodule "externals/EKAT"]
-	path = externals/EKAT
-	url = git@github.com:E3SM-Project/EKAT.git
