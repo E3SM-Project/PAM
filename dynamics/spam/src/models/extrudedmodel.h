@@ -2532,7 +2532,7 @@ void readModelParamsFile(std::string inFile, ModelParameters &params,
 
   // Read the data initialization options
   params.initdataStr = config["initData"].as<std::string>();
-  testcase_from_string(testcase, params.initdataStr, params.acoustic_balance);
+  testcase_from_string(testcase, params.initdataStr, params.acoustic_balance, coupler);
 
   serial_print("IC: " + params.initdataStr, par.masterproc);
   serial_print("acoustically balanced: " +
@@ -2557,9 +2557,10 @@ void readModelParamsFile(std::string inFile, ModelParameters &params,
 
   testcase->set_tracers(params);
 
+//THIS IS VERY 2D SPECIFIC, NEEDS TO CHANGE FOR 3D
   params.ylen = 1.0;
   params.yc = 0.5;
-  testcase->set_domain(params);
+  testcase->set_domain(params, coupler);
 
   // Store vertical cell interface heights in the data manager
   auto &dm = coupler.get_data_manager_readonly();
@@ -2689,6 +2690,84 @@ real YAKL_INLINE saturation_vapor_pressure(real temp) {
 //   }
 // };
 
+class CouplerData : public TestCase
+{
+real g:
+real Lx;
+real xc;
+
+std::array<real, 3> get_domain() const { return {Lx, 1, -1.}; }
+
+void set_domain(ModelParameters &params) {
+
+  g = coupler.get_grav();
+  Lx = coupler.get_xlen();
+  xc = Lx/2.0_fp;
+
+  params.xlen = Lx;
+  params.xc = xc;
+}
+
+void add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics) override {};
+
+//ADD THESE
+void set_initial_conditions(FieldSet<nprognostic> &progvars,
+                            FieldSet<nconstant> &constvars,
+                            const Geometry<Straight> &primal_geom,
+                            const Geometry<Twisted> &dual_geom) override {
+//Just copies data from coupler state
+auto &dm = coupler.get_data_manager_readwrite();
+
+auto rho_d = dm.get<real,4>("density_dry");
+auto uvel  = dm.get<real,4>("uvel"       );
+auto vvel  = dm.get<real,4>("vvel"       );
+auto wvel  = dm.get<real,4>("wvel"       );
+auto temp  = dm.get<real,4>("temp"       );
+auto rho_v = dm.get<real,4>("water_vapor");
+
+
+parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+
+  //SHOULD SWITCH DEPENDING ON RHO VS RHOD VARIANT
+  progvars.fields_arr[DENSVAR](0,k+ks,j+js,i+is,n) = rho_d(k,j,i,n) + rho_v(k,j,i,n);
+
+  progvars.fields_arr[DENSVAR](1,k+ks,j+js,i+is,n) = rho_d(k,j,i,n);
+
+  progvars.fields_arr[DENSVAR](WVINDEX,k+ks,j+js,i+is,n) = COMPUTE ENTROPIC VAR
+temp (k,j,i,n)
+
+
+  uvel (k,j,i,n) = gcm_uvel (k,iens);
+  vvel (k,j,i,n) = gcm_vvel (k,iens);
+  wvel (k,j,i,n) = gcm_wvel (k,iens);
+});
+
+dual_geom.set_11form_values(YAKL_LAMBDA(real x, real z) { return flat_geop(x, z, g); }, constvars.fields_arr[HSVAR], 0);
+
+//ADD THESE
+void set_reference_state(ReferenceState &reference_state,
+                         const Geometry<Straight> &primal_geom,
+                         const Geometry<Twisted> &dual_geom) override {
+  auto &refstate = static_cast<ModelReferenceState &>(reference_state);
+
+//Needs the non-perturbed average coupler state
+
+// Get GCM state to base reference state on
+    auto &dm = coupler.get_data_manager_readwrite();
+
+    auto gcm_rho_d = dm.get<real,2>("gcm_density_dry");
+    auto gcm_uvel  = dm.get<real,2>("gcm_uvel"       );
+    auto gcm_vvel  = dm.get<real,2>("gcm_vvel"       );
+    auto gcm_wvel  = dm.get<real,2>("gcm_wvel"       );
+    auto gcm_temp  = dm.get<real,2>("gcm_temp"       );
+    auto gcm_rho_v = dm.get<real,2>("gcm_water_vapor");
+
+
+
+}
+
+};
+
 template <class T> class EulerTestCase : public TestCase, public T {
 public:
   using T::g;
@@ -2709,7 +2788,6 @@ public:
 
   void set_domain(ModelParameters &params) override {
     params.xlen = Lx;
-    params.zlen = Lz;
     params.xc = xc;
   }
 
@@ -2915,7 +2993,6 @@ public:
 
   void set_domain(ModelParameters &params) override {
     params.xlen = Lx;
-    params.zlen = Lz;
     params.xc = xc;
   }
 
@@ -3863,6 +3940,8 @@ template <bool add_perturbation> struct GravityWave {
     return sol;
   }
 
+// Diagnostics
+
   struct ExactDensityDiagnostic : public Diagnostic {
     void initialize(const Geometry<Straight> &pgeom,
                     const Geometry<Twisted> &dgeom) override {
@@ -4032,7 +4111,7 @@ template <bool add_perturbation> struct GravityWave {
 };
 
 void testcase_from_string(std::unique_ptr<TestCase> &testcase, std::string name,
-                          bool acoustic_balance) {
+                          bool acoustic_balance, PamCoupler &coupler) {
   if (name == "gravitywave") {
     testcase = std::make_unique<EulerTestCase<GravityWave<true>>>();
   } else if (name == "twobubbles") {
@@ -4052,6 +4131,9 @@ void testcase_from_string(std::unique_ptr<TestCase> &testcase, std::string name,
   } else if (name == "moistlargerisingbubble") {
     testcase = std::make_unique<MoistEulerTestCase<MoistLargeRisingBubble>>();
   }
+  else if (name == "coupler") {
+    testcase = std::make_unique<CouplerData>();
+  }
   // else if (name == "doublevortex") {
   //  testcase = std::make_unique<SWETestCase<DoubleVortex>>();
   //}
@@ -4060,10 +4142,11 @@ void testcase_from_string(std::unique_ptr<TestCase> &testcase, std::string name,
   }
 }
 
-void testcase_from_config(std::unique_ptr<TestCase> &testcase,
-                          const YAML::Node &config) {
-  const std::string name = config["initData"].as<std::string>();
-  const bool acoustic_balance =
-      config["balance_initial_density"].as<bool>(false);
-  testcase_from_string(testcase, name, acoustic_balance);
-}
+//I don't think gets used anywhere?
+//void testcase_from_config(std::unique_ptr<TestCase> &testcase,
+//                          const YAML::Node &config) {
+//  const std::string name = config["initData"].as<std::string>();
+//  const bool acoustic_balance =
+//      config["balance_initial_density"].as<bool>(false);
+//  testcase_from_string(testcase, name, acoustic_balance);
+//}

@@ -88,7 +88,6 @@ int main(int argc, char** argv) {
     Microphysics micro;
     SGS          sgs;
 
-
     //this partitions the domain if INNER_MPI is set, otherwise it does nothing
     if (inner_mpi)
     {partition_domain(inFile, crm_nx, crm_ny);}

@@ -14,8 +14,8 @@ cmake      \
   -DPAM_LINK_FLAGS="${PAM_LINK_FLAGS}"                            \
   -DYAKL_ARCH="${YAKL_ARCH}"                                      \
   -DCMAKE_CUDA_HOST_COMPILER="mpic++"                             \
-  -DPAM_DYCORE="awfl"                                             \
+  -DPAM_DYCORE="spam++"                                             \
   -DPAM_MICRO="p3"                                                \
   -DPAM_SGS="shoc"                                                \
+  ${add_cmake_vars} \
   ..
-

@@ -226,8 +226,6 @@ public:
     tendencies.convert_dynamics_to_coupler_state(coupler, prognostic_vars,
                                                  constant_vars);
 
-    // ADD COUPLER DYCORE FUNCTIONS HERE AS WELL
-
     debug_print("end time stepping loop", par.masterproc);
   };
 

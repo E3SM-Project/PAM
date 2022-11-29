@@ -178,22 +178,22 @@ namespace pam {
     void set_dt_gcm(real dt_gcm) { this->dt_gcm = dt_gcm; }
 
 
-    std::thread::id         get_thread_id                  () const { return this->thread_id    ; }    
-    real                    get_R_d                        () const { return this->R_d          ; }    
-    real                    get_R_v                        () const { return this->R_v          ; }    
-    real                    get_cp_d                       () const { return this->cp_d         ; }    
-    real                    get_cp_v                       () const { return this->cp_v         ; }    
-    real                    get_grav                       () const { return this->grav         ; }    
-    real                    get_p0                         () const { return this->p0           ; }    
-    real                    get_xlen                       () const { return this->xlen         ; }    
-    real                    get_ylen                       () const { return this->ylen         ; }    
-    real                    get_dx                         () const { return get_xlen()/get_nx(); }    
-    real                    get_dy                         () const { return get_ylen()/get_ny(); }    
-    real                    get_dt_gcm                     () const { return this->dt_gcm       ; }    
-    DataManager const &     get_data_manager_readonly      () const { return this->dm           ; }    
-    DataManager       &     get_data_manager_readwrite     ()       { return this->dm           ; }    
-    DataManagerHost const & get_data_manager_host_readonly () const { return this->dm_host      ; }    
-    DataManagerHost       & get_data_manager_host_readwrite()       { return this->dm_host      ; }    
+    std::thread::id         get_thread_id                  () const { return this->thread_id    ; }
+    real                    get_R_d                        () const { return this->R_d          ; }
+    real                    get_R_v                        () const { return this->R_v          ; }
+    real                    get_cp_d                       () const { return this->cp_d         ; }
+    real                    get_cp_v                       () const { return this->cp_v         ; }
+    real                    get_grav                       () const { return this->grav         ; }
+    real                    get_p0                         () const { return this->p0           ; }
+    real                    get_xlen                       () const { return this->xlen         ; }
+    real                    get_ylen                       () const { return this->ylen         ; }
+    real                    get_dx                         () const { return get_xlen()/get_nx(); }
+    real                    get_dy                         () const { return get_ylen()/get_ny(); }
+    real                    get_dt_gcm                     () const { return this->dt_gcm       ; }
+    DataManager const &     get_data_manager_readonly      () const { return this->dm           ; }
+    DataManager       &     get_data_manager_readwrite     ()       { return this->dm           ; }
+    DataManagerHost const & get_data_manager_host_readonly () const { return this->dm_host      ; }
+    DataManagerHost       & get_data_manager_host_readwrite()       { return this->dm_host      ; }
 
 
     int get_nx() const {
@@ -443,7 +443,7 @@ namespace pam {
     }
 
 
-    
+
     void add_tracer( std::string tracer_name , std::string tracer_desc , bool positive , bool adds_mass ) {
       int nz   = get_nz  ();
       int ny   = get_ny  ();
@@ -458,7 +458,7 @@ namespace pam {
     int get_num_tracers() const { return tracers.size(); }
 
 
-    
+
     std::vector<std::string> get_tracer_names() const {
       std::vector<std::string> ret;
       for (int i=0; i < tracers.size(); i++) { ret.push_back( tracers[i].name ); }
@@ -466,7 +466,7 @@ namespace pam {
     }
 
 
-    
+
     void get_tracer_info(std::string tracer_name , std::string &tracer_desc, bool &tracer_found ,
                          bool &positive , bool &adds_mass) const {
       std::vector<std::string> ret;
@@ -483,7 +483,7 @@ namespace pam {
     }
 
 
-    
+
     bool tracer_exists( std::string tracer_name ) const {
       for (int i=0; i < tracers.size(); i++) {
         if (tracer_name == tracers[i].name) return true;
@@ -652,5 +652,3 @@ namespace pam {
   };
 
 }
-
-

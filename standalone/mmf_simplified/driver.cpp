@@ -11,12 +11,14 @@
 #include "broadcast_initial_gcm_column.h"
 #include "output.h"
 #include "supercell_init.h"
+#include "pamc_init.h"
 
 
 int main(int argc, char** argv) {
   MPI_Init( &argc , &argv );
   yakl::init();
   {
+
     using yakl::intrinsics::abs;
     using yakl::intrinsics::maxval;
     yakl::timer_start("main");
@@ -25,7 +27,8 @@ int main(int argc, char** argv) {
     std::string inFile(argv[1]);
     YAML::Node config = YAML::LoadFile(inFile);
     if ( !config            ) { endrun("ERROR: Invalid YAML input file"); }
-    auto simTime        = config["simTime"    ].as<real>();
+    auto simTime        = config["simTime"    ].as<real>(0.0_fp);
+    auto simSteps       = config["simSteps"].as<int>(0);
     auto crm_nx         = config["crm_nx"     ].as<int>();
     auto crm_ny         = config["crm_ny"     ].as<int>();
     auto nens           = config["nens"       ].as<int>();
@@ -33,7 +36,7 @@ int main(int argc, char** argv) {
     auto ylen           = config["ylen"       ].as<real>();
     auto dt_gcm         = config["dt_gcm"     ].as<real>();
     auto dt_crm_phys    = config["dt_crm_phys"].as<real>();
-    auto out_freq       = config["out_freq"   ].as<real>();
+    auto out_freq       = config["out_freq"   ].as<real>(0);
     auto out_prefix     = config["out_prefix" ].as<std::string>();
 
     int nranks;
@@ -44,19 +47,50 @@ int main(int argc, char** argv) {
 
     auto &coupler = mmf_interface::get_coupler();
 
-    // Store vertical coordinates
-    std::string vcoords_file = config["vcoords"].as<std::string>();
-    yakl::SimpleNetCDF nc;
-    nc.open(vcoords_file);
-    int crm_nz = nc.getDimSize("num_interfaces") - 1;
+    //set xlen, ylen, zlen based on init cond if needed
+    if (xlen < 0 || ylen < 0 || zlen < 0) { set_domain_sizes(config, xlen, ylen, zlen); }
+
+    int crm_nz = -1;
     real1d zint_in;
-    nc.read(zint_in,"vertical_interfaces");
-    nc.close();
+    if (vcoords_file == "uniform") {
+      if (config["crm_nz"]) {
+        crm_nz = config["crm_nz"].as<int>();
+      } else {
+        endrun("To use uniform vertical grid you need to specify crm_nz");
+      }
+      zint_in = real1d("zint_in",crm_nz+1);
+      const real dz = zlen / (crm_nz - 1);
+      parallel_for("uniform zint", crm_nz+1, YAKL_LAMBDA(int k) {
+          if (k == 0) {
+            zint_in(k) = 0;
+          } else if (k == crm_nz) {
+            zint_in(k) = zlen;
+          } else {
+            zint_in(k) = k * dz - dz / 2;
+          }
+      });
+    } else {
+      // Read vertical coordinates
+      //THIS IS BROKEN FOR PARALLEL IO CASE- maybe this is okay ie switch entirely to standard netcdf?
+      yakl::SimpleNetCDF nc;
+      nc.open(vcoords_file);
+      crm_nz = nc.getDimSize("num_interfaces") - 1;
+      zint_in = real1d("zint_in",crm_nz+1);
+      nc.read(zint_in,"vertical_interfaces");
+      nc.close();
+      //TODO: Coupler needs to eventually support ensemble dependent vertical grids
+      //real2d zint_expanded = real2d("zint_expanded",crm_nz+1,nens);
+      //parallel_for( "Set zint expanded" , SimpleBounds<2>(crm_nz+1,nens) , YAKL_LAMBDA (int k, int n) {
+      //  zint_expanded(k,n) = zint_in(k);
+      //});
+    }
 
     // Allocates the coupler state (density_dry, uvel, vvel, wvel, temp, vert grid, hydro background) for thread 0
     coupler.allocate_coupler_state( crm_nz , crm_ny , crm_nx , nens );
 
-    // Compute a supercell initial column
+    if !(config["initData" ].as<std::string>() == 'coupler')
+    {endrun("mmf_simplified only supports setting the initial condition through the coupler\n");}
+
     real1d rho_d_col("rho_d_col",crm_nz);
     real1d uvel_col ("uvel_col" ,crm_nz);
     real1d vvel_col ("vvel_col" ,crm_nz);
@@ -64,10 +98,15 @@ int main(int argc, char** argv) {
     real1d temp_col ("temp_col" ,crm_nz);
     real1d rho_v_col("rho_v_col",crm_nz);
 
+    auto initCouplerData = config["initCouplerData" ].as<std::string>();
+
+    // Compute a supercell initial column
+    if (initCouplerData == "supercell") {
     supercell_init( zint_in, rho_d_col, uvel_col, vvel_col, wvel_col, temp_col, rho_v_col, coupler.get_R_d() ,
                     coupler.get_R_v(), coupler.get_grav() );
+    }
 
-    // Set the GCM column data for each ensemble to the supercell initial state
+    // Set the GCM column data for each ensemble to the initial state
     auto &dm = coupler.get_data_manager_readwrite();
 
     auto gcm_rho_d = dm.get<real,2>("gcm_density_dry");
@@ -86,7 +125,6 @@ int main(int argc, char** argv) {
       gcm_rho_v(k,iens) = rho_v_col(k);
     });
 
-    // NORMALLY THIS WOULD BE DONE INSIDE THE CRM, BUT WE'RE USING CONSTANTS DEFINED BY THE CRM MICRO SCHEME
     // Create the dycore and the microphysics
     Dycore       dycore;
     Microphysics micro;
@@ -120,6 +158,7 @@ int main(int argc, char** argv) {
     sgs   .init( coupler );
     dycore.init( coupler );
 
+
     // Initialize the CRM internal state from the initial GCM column and random temperature perturbations
     modules::broadcast_initial_gcm_column( coupler );
 
@@ -133,7 +172,6 @@ int main(int argc, char** argv) {
     coupler.add_mmf_function( "sgs"    , [&] (pam::PamCoupler &coupler, real dt) { sgs   .timeStep(coupler,dt); } );
     coupler.add_mmf_function( "micro"  , [&] (pam::PamCoupler &coupler, real dt) { micro .timeStep(coupler,dt); } );
     coupler.add_mmf_function( "sponge_layer"                 , modules::sponge_layer                 );
-    // coupler.add_dycore_function( "saturation_adjustment" , saturation_adjustment );
 
     real etime_gcm = 0;
     int  num_out = 0;
@@ -141,11 +179,17 @@ int main(int argc, char** argv) {
     // Output the initial state
     if (out_freq >= 0. ) output( coupler , out_prefix , etime_gcm );
 
+//FIX THIS BIT A LITTLE...
+    // There are two ways of time control- setting total simulation time (simTime) or setting number of physics time steps (simSteps)
+    if (simTime == 0.0) {  simTime = simSteps * dtphys_in; }
+
     yakl::timer_start("main_loop");
     while (etime_gcm < simTime) {
       if (etime_gcm + dt_gcm > simTime) { dt_gcm = simTime - etime_gcm; }
 
       modules::compute_gcm_forcing_tendencies( coupler , dt_gcm );
+
+//FIX HOW TIME STEPPING IS CALCULATED/DONE FOR PAM-C...
 
       real etime_crm = 0;
       real simTime_crm = dt_gcm;
@@ -168,7 +212,7 @@ int main(int argc, char** argv) {
           yakl::timer_stop("output");
           real maxw = maxval(abs(dm.get_collapsed<real const>("wvel")));
           if (mainproc) {
-            std::cout << "Etime , dtphys, maxw: " << etime_gcm << " , " 
+            std::cout << "Etime , dtphys, maxw: " << etime_gcm << " , "
                                                   << dt_crm    << " , "
                                                   << std::setw(10) << maxw << std::endl;
           }
@@ -191,10 +235,3 @@ int main(int argc, char** argv) {
   yakl::finalize();
   MPI_Finalize();
 }
-
-
-
-
-
-
-
