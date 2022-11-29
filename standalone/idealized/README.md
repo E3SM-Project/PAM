@@ -15,3 +15,8 @@ python3 ../../../utils/generate_vertical_levels.py --function=equal \
 * `make -j`
 * `./driver ../input/input_[option].sh`
 
+# Pam-C Specific
+
+* Modify configuration (layer vs extruded, choice of hamiltonian and thermodynamics, type of io)  in pam-c/set_pamc_cmakevars.sh
+* Build using `./cmakescript.sh pam-c/set_pamc_cmakevars.sh`
+* Some sample make/run scripts are in pam-c directory
