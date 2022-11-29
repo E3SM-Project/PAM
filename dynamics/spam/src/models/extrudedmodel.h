@@ -2710,39 +2710,17 @@ void set_domain(ModelParameters &params) {
 
 void add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics) override {};
 
-//ADD THESE
 void set_initial_conditions(FieldSet<nprognostic> &progvars,
                             FieldSet<nconstant> &constvars,
                             const Geometry<Straight> &primal_geom,
                             const Geometry<Twisted> &dual_geom) override {
-//Just copies data from coupler state
-auto &dm = coupler.get_data_manager_readwrite();
-
-auto rho_d = dm.get<real,4>("density_dry");
-auto uvel  = dm.get<real,4>("uvel"       );
-auto vvel  = dm.get<real,4>("vvel"       );
-auto wvel  = dm.get<real,4>("wvel"       );
-auto temp  = dm.get<real,4>("temp"       );
-auto rho_v = dm.get<real,4>("water_vapor");
-
-
-parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-
-  //SHOULD SWITCH DEPENDING ON RHO VS RHOD VARIANT
-  progvars.fields_arr[DENSVAR](0,k+ks,j+js,i+is,n) = rho_d(k,j,i,n) + rho_v(k,j,i,n);
-
-  progvars.fields_arr[DENSVAR](1,k+ks,j+js,i+is,n) = rho_d(k,j,i,n);
-
-  progvars.fields_arr[DENSVAR](WVINDEX,k+ks,j+js,i+is,n) = COMPUTE ENTROPIC VAR
-temp (k,j,i,n)
-
-
-  uvel (k,j,i,n) = gcm_uvel (k,iens);
-  vvel (k,j,i,n) = gcm_vvel (k,iens);
-  wvel (k,j,i,n) = gcm_wvel (k,iens);
-});
 
 dual_geom.set_11form_values(YAKL_LAMBDA(real x, real z) { return flat_geop(x, z, g); }, constvars.fields_arr[HSVAR], 0);
+
+//Just copies data from coupler state
+convert_coupler_to_dynamics_state(coupler, progvars,constvars);
+
+}
 
 //ADD THESE
 void set_reference_state(ReferenceState &reference_state,
@@ -2756,14 +2734,13 @@ void set_reference_state(ReferenceState &reference_state,
     auto &dm = coupler.get_data_manager_readwrite();
 
     auto gcm_rho_d = dm.get<real,2>("gcm_density_dry");
-    auto gcm_uvel  = dm.get<real,2>("gcm_uvel"       );
-    auto gcm_vvel  = dm.get<real,2>("gcm_vvel"       );
-    auto gcm_wvel  = dm.get<real,2>("gcm_wvel"       );
+    //auto gcm_uvel  = dm.get<real,2>("gcm_uvel"       );
+    //auto gcm_vvel  = dm.get<real,2>("gcm_vvel"       );
+    //auto gcm_wvel  = dm.get<real,2>("gcm_wvel"       );
     auto gcm_temp  = dm.get<real,2>("gcm_temp"       );
     auto gcm_rho_v = dm.get<real,2>("gcm_water_vapor");
 
-
-
+//LOTS TO ADD HERE
 }
 
 };
