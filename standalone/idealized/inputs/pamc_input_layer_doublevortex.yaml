@@ -1,12 +1,13 @@
 ---
 # Simulation time in number of physics time steps
-simSteps  : 1
+simSteps  : 200
 #200 *5 = 1000
 
 # Number of cells to use
 crm_nx       : 100
 crm_ny       : 100
 crm_nz       : 1
+vcoords: uniform
 
 # Data to initialize: doublevortex risingbubble moistrisingbubble
 initData : doublevortex
@@ -35,11 +36,11 @@ dycore_out_prefix  : test_dycore
 out_freq: 1000
 
 # Output frequency in number of CRM time steps
-outSteps: 5
+outSteps: 100
 statSteps: 1
 #100
 
-tstype: ssprk3
+tstype: si
 
 # Number of ensembles
 nens : 1

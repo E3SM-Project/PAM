@@ -6,11 +6,10 @@ simSteps  : 240 #1280 11520
 # Number of cells to use
 crm_nx       : 100
 crm_ny       : 1
-crm_nz       : 100
 
 # Vertical height coordinates file
 #vcoords  : vcoords_equal_100_20km.nc
-vcoords: uniform
+vcoords  : '../pam-c/vcoords/vcoords_equal_100_1000.nc'
 
 # Data to initialize: doublevortex rb mrb
 initData : twobubbles
@@ -32,7 +31,7 @@ outSteps: 12
 statSteps: 1
 #6400
 
-tstype: ssprk3
+tstype: si
 
 # Number of ensembles
 nens : 1
