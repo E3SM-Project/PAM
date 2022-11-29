@@ -354,6 +354,7 @@ public:
       YAKL_SCOPE( gamma                , this->gamma               );
       YAKL_SCOPE( Rd                   , this->Rd                  );
       YAKL_SCOPE( Rv                   , this->Rv                  );
+      YAKL_SCOPE( sim2d                , this->sim2d               );
 
       auto &dm = coupler.get_data_manager_readonly();
 

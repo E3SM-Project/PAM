@@ -214,7 +214,7 @@ namespace modules {
       //    we have available to work with.
       parallel_for( "Compute global positive and negative masses" , SimpleBounds<4>(nz,ny,nx,nens) , 
                     YAKL_LAMBDA (int k, int j, int i, int iens) {
-        if (k == 0) atomicAdd( rho_v_neg_mass(iens) , rho_v_neg_mass(j,i,iens) );
+        if (k == 0) atomicAdd( rho_v_neg_mass_glob(iens) , rho_v_neg_mass(j,i,iens) );
         atomicAdd( rho_v_pos_mass_glob(iens) , rho_v(k,j,i,iens) );
       });
 

@@ -3,7 +3,7 @@
 #include "Dycore.h"
 #include "Microphysics.h"
 #include "SGS.h"
-#include "mmf_interface.h"
+#include "pam_interface.h"
 #include "perturb_temperature.h"
 #include "gcm_forcing.h"
 #include "sponge_layer.h"
@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
     MPI_Comm_rank( MPI_COMM_WORLD , &myrank );
     bool mainproc = (myrank == 0);
 
-    auto &coupler = mmf_interface::get_coupler();
+    auto &coupler = pam_interface::get_coupler();
 
     // Store vertical coordinates
     std::string vcoords_file = config["vcoords"].as<std::string>();
@@ -128,11 +128,11 @@ int main(int argc, char** argv) {
 
     modules::perturb_temperature( coupler , 0 );
 
-    coupler.add_mmf_function( "apply_gcm_forcing_tendencies" , modules::apply_gcm_forcing_tendencies );
-    coupler.add_mmf_function( "dycore" , [&] (pam::PamCoupler &coupler, real dt) { dycore.timeStep(coupler,dt); } );
-    coupler.add_mmf_function( "sgs"    , [&] (pam::PamCoupler &coupler, real dt) { sgs   .timeStep(coupler,dt); } );
-    coupler.add_mmf_function( "micro"  , [&] (pam::PamCoupler &coupler, real dt) { micro .timeStep(coupler,dt); } );
-    coupler.add_mmf_function( "sponge_layer"                 , modules::sponge_layer                 );
+    coupler.add_pam_function( "apply_gcm_forcing_tendencies" , modules::apply_gcm_forcing_tendencies );
+    coupler.add_pam_function( "dycore" , [&] (pam::PamCoupler &coupler, real dt) { dycore.timeStep(coupler,dt); } );
+    coupler.add_pam_function( "sgs"    , [&] (pam::PamCoupler &coupler, real dt) { sgs   .timeStep(coupler,dt); } );
+    coupler.add_pam_function( "micro"  , [&] (pam::PamCoupler &coupler, real dt) { micro .timeStep(coupler,dt); } );
+    coupler.add_pam_function( "sponge_layer"                 , modules::sponge_layer                 );
     // coupler.add_dycore_function( "saturation_adjustment" , saturation_adjustment );
 
     real etime_gcm = 0;
@@ -154,11 +154,11 @@ int main(int argc, char** argv) {
         if (dt_crm == 0.) { dt_crm = dycore.compute_time_step(coupler); }
         if (etime_crm + dt_crm > simTime_crm) { dt_crm = simTime_crm - etime_crm; }
 
-        coupler.run_mmf_function( "apply_gcm_forcing_tendencies" , dt_crm );
-        coupler.run_mmf_function( "dycore"                       , dt_crm );
-        coupler.run_mmf_function( "sponge_layer"                 , dt_crm );
-        coupler.run_mmf_function( "sgs"                          , dt_crm );
-        coupler.run_mmf_function( "micro"                        , dt_crm );
+        coupler.run_pam_function( "apply_gcm_forcing_tendencies" , dt_crm );
+        coupler.run_pam_function( "dycore"                       , dt_crm );
+        coupler.run_pam_function( "sponge_layer"                 , dt_crm );
+        coupler.run_pam_function( "sgs"                          , dt_crm );
+        coupler.run_pam_function( "micro"                        , dt_crm );
 
         etime_crm += dt_crm;
         etime_gcm += dt_crm;
@@ -184,7 +184,7 @@ int main(int argc, char** argv) {
 
     dycore.finalize( coupler );
 
-    mmf_interface::finalize();
+    pam_interface::finalize();
 
     yakl::timer_stop("main");
   }
