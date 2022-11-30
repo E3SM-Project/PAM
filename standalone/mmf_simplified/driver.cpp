@@ -85,6 +85,11 @@ int main(int argc, char** argv) {
       gcm_temp (k,iens) = temp_col (k);
       gcm_rho_v(k,iens) = rho_v_col(k);
     });
+#define USE_CXX
+
+#ifdef USE_CXX
+    initialize_session();
+#endif
 
     // NORMALLY THIS WOULD BE DONE INSIDE THE CRM, BUT WE'RE USING CONSTANTS DEFINED BY THE CRM MICRO SCHEME
     // Create the dycore and the microphysics
@@ -188,6 +193,9 @@ int main(int argc, char** argv) {
 
     yakl::timer_stop("main");
   }
+#ifdef USE_CXX
+  finalize_session();
+#endif
   yakl::finalize();
   MPI_Finalize();
 }
