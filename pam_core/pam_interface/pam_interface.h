@@ -68,10 +68,25 @@ namespace pam_interface {
   }
 
 
+  // Allocate an array, and store its metadata in the host-side data manager "dm_host" for this thread's coupler
+  // THIS HAS FORTRAN BINDINGS
+  template <class T>
+  inline void register_existing_array(std::string name, std::string desc, std::vector<int> dims, T * ptr) {
+    get_coupler().get_data_manager_host_readwrite().register_existing<T>( name , desc , dims , ptr );
+  }
+
+
   // Deallocate an array, and erase its metadata from the host-side data manager "dm_host" for this thread's coupler
   // THIS HAS FORTRAN BINDINGS
   inline void unregister_and_deallocate(std::string name) {
     get_coupler().get_data_manager_host_readwrite().unregister_and_deallocate(name);
+  }
+
+
+  // Deallocate an array, and erase its metadata from the host-side data manager "dm_host" for this thread's coupler
+  // THIS HAS FORTRAN BINDINGS
+  inline void unregister(std::string name) {
+    get_coupler().get_data_manager_host_readwrite().unregister(name);
   }
 
 

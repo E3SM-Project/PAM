@@ -20,6 +20,7 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../physics  physics )
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../dynamics dynamics)
 
 add_executable(driver driver.cpp supercell_init.cpp supercell_init.F90)
+add_executable(fortran_test fortran_test.F90)
 
 set_source_files_properties(supercell_init.F90 PROPERTY COMPILE_FLAGS "${YAKL_F90_FLAGS}")
 
@@ -27,4 +28,5 @@ include(${YAKL_HOME}/yakl_utils.cmake)
 yakl_process_target(driver)
 
 target_link_libraries(driver dynamics physics pam_core ${PAM_LINK_FLAGS})
+target_link_libraries(fortran_test dynamics physics pam_core ${PAM_LINK_FLAGS})
 

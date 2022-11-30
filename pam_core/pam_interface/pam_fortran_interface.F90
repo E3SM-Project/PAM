@@ -1,7 +1,7 @@
 
 module pam_fortran_interface
   use iso_c_binding
-  implicit none
+  implicit none 
   integer, parameter :: maxlen = 256
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -13,6 +13,22 @@ module pam_fortran_interface
 
   interface pam_register_dimension
     module procedure pam_register_dimension
+  end interface
+
+  interface pam_option_exists
+    module procedure pam_option_exists
+  end interface
+
+  interface pam_remove_option
+    module procedure pam_remove_option
+  end interface
+
+  interface pam_destroy_array
+    module procedure pam_destroy_array
+  end interface
+
+  interface pam_array_exists
+    module procedure pam_array_exists
   end interface
 
   interface pam_set_option
@@ -29,14 +45,6 @@ module pam_fortran_interface
     module procedure pam_get_option_string
     module procedure pam_get_option_float
     module procedure pam_get_option_double
-  end interface
-
-  interface pam_option_exists
-    module procedure pam_option_exists
-  end interface
-
-  interface pam_remove_option
-    module procedure pam_remove_option
   end interface
 
   interface pam_get_array
@@ -70,12 +78,66 @@ module pam_fortran_interface
     module procedure pam_get_array_double_7d
   end interface
 
-  interface pam_destroy_array
-    module procedure pam_destroy_array
+  interface pam_mirror_array_readonly
+    module procedure pam_mirror_array_readonly_logical_1d
+    module procedure pam_mirror_array_readonly_logical_2d
+    module procedure pam_mirror_array_readonly_logical_3d
+    module procedure pam_mirror_array_readonly_logical_4d
+    module procedure pam_mirror_array_readonly_logical_5d
+    module procedure pam_mirror_array_readonly_logical_6d
+    module procedure pam_mirror_array_readonly_logical_7d
+    module procedure pam_mirror_array_readonly_integer_1d
+    module procedure pam_mirror_array_readonly_integer_2d
+    module procedure pam_mirror_array_readonly_integer_3d
+    module procedure pam_mirror_array_readonly_integer_4d
+    module procedure pam_mirror_array_readonly_integer_5d
+    module procedure pam_mirror_array_readonly_integer_6d
+    module procedure pam_mirror_array_readonly_integer_7d
+    module procedure pam_mirror_array_readonly_float_1d
+    module procedure pam_mirror_array_readonly_float_2d
+    module procedure pam_mirror_array_readonly_float_3d
+    module procedure pam_mirror_array_readonly_float_4d
+    module procedure pam_mirror_array_readonly_float_5d
+    module procedure pam_mirror_array_readonly_float_6d
+    module procedure pam_mirror_array_readonly_float_7d
+    module procedure pam_mirror_array_readonly_double_1d
+    module procedure pam_mirror_array_readonly_double_2d
+    module procedure pam_mirror_array_readonly_double_3d
+    module procedure pam_mirror_array_readonly_double_4d
+    module procedure pam_mirror_array_readonly_double_5d
+    module procedure pam_mirror_array_readonly_double_6d
+    module procedure pam_mirror_array_readonly_double_7d
   end interface
 
-  interface pam_array_exists
-    module procedure pam_array_exists
+  interface pam_mirror_array_readwrite
+    module procedure pam_mirror_array_readwrite_logical_1d
+    module procedure pam_mirror_array_readwrite_logical_2d
+    module procedure pam_mirror_array_readwrite_logical_3d
+    module procedure pam_mirror_array_readwrite_logical_4d
+    module procedure pam_mirror_array_readwrite_logical_5d
+    module procedure pam_mirror_array_readwrite_logical_6d
+    module procedure pam_mirror_array_readwrite_logical_7d
+    module procedure pam_mirror_array_readwrite_integer_1d
+    module procedure pam_mirror_array_readwrite_integer_2d
+    module procedure pam_mirror_array_readwrite_integer_3d
+    module procedure pam_mirror_array_readwrite_integer_4d
+    module procedure pam_mirror_array_readwrite_integer_5d
+    module procedure pam_mirror_array_readwrite_integer_6d
+    module procedure pam_mirror_array_readwrite_integer_7d
+    module procedure pam_mirror_array_readwrite_float_1d
+    module procedure pam_mirror_array_readwrite_float_2d
+    module procedure pam_mirror_array_readwrite_float_3d
+    module procedure pam_mirror_array_readwrite_float_4d
+    module procedure pam_mirror_array_readwrite_float_5d
+    module procedure pam_mirror_array_readwrite_float_6d
+    module procedure pam_mirror_array_readwrite_float_7d
+    module procedure pam_mirror_array_readwrite_double_1d
+    module procedure pam_mirror_array_readwrite_double_2d
+    module procedure pam_mirror_array_readwrite_double_3d
+    module procedure pam_mirror_array_readwrite_double_4d
+    module procedure pam_mirror_array_readwrite_double_5d
+    module procedure pam_mirror_array_readwrite_double_6d
+    module procedure pam_mirror_array_readwrite_double_7d
   end interface
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -213,7 +275,89 @@ module pam_fortran_interface
   end interface
 
   interface
-    subroutine pam_get_array_bool_c(label,ptr,dims,ndims) bind(C,name='pam_interface_get_array_bool')
+    subroutine pam_mirror_array_readonly_logical_c(key,desc,dims,ndims,arr) bind(C,name='pam_interface_mirror_array_readonly_bool')
+      use iso_c_binding
+      implicit none
+      character(kind=c_char) :: key(*), desc(*)
+      integer(c_int)         :: dims(*)
+      integer(c_int), value  :: ndims
+      logical(c_bool)        :: arr(*)
+    end subroutine
+  end interface
+  interface
+    subroutine pam_mirror_array_readonly_integer_c(key,desc,dims,ndims,arr) bind(C,name='pam_interface_mirror_array_readonly_int')
+      use iso_c_binding
+      implicit none
+      character(kind=c_char) :: key(*), desc(*)
+      integer(c_int)         :: dims(*)
+      integer(c_int), value  :: ndims
+      integer(c_int)         :: arr(*)
+    end subroutine
+  end interface
+  interface
+    subroutine pam_mirror_array_readonly_float_c(key,desc,dims,ndims,arr) bind(C,name='pam_interface_mirror_array_readonly_float')
+      use iso_c_binding
+      implicit none
+      character(kind=c_char) :: key(*), desc(*)
+      integer(c_int)         :: dims(*)
+      integer(c_int), value  :: ndims
+      real(c_float)          :: arr(*)
+    end subroutine
+  end interface
+  interface
+    subroutine pam_mirror_array_readonly_double_c(key,desc,dims,ndims,arr) bind(C,name='pam_interface_mirror_array_readonly_double')
+      use iso_c_binding
+      implicit none
+      character(kind=c_char) :: key(*), desc(*)
+      integer(c_int)         :: dims(*)
+      integer(c_int), value  :: ndims
+      real(c_double)         :: arr(*)
+    end subroutine
+  end interface
+
+  interface
+    subroutine pam_mirror_array_readwrite_logical_c(key,desc,dims,ndims,arr) bind(C,name='pam_interface_mirror_array_readwrite_bool')
+      use iso_c_binding
+      implicit none
+      character(kind=c_char) :: key(*), desc(*)
+      integer(c_int)         :: dims(*)
+      integer(c_int), value  :: ndims
+      logical(c_bool)        :: arr(*)
+    end subroutine
+  end interface
+  interface
+    subroutine pam_mirror_array_readwrite_integer_c(key,desc,dims,ndims,arr) bind(C,name='pam_interface_mirror_array_readwrite_int')
+      use iso_c_binding
+      implicit none
+      character(kind=c_char) :: key(*), desc(*)
+      integer(c_int)         :: dims(*)
+      integer(c_int), value  :: ndims
+      integer(c_int)         :: arr(*)
+    end subroutine
+  end interface
+  interface
+    subroutine pam_mirror_array_readwrite_float_c(key,desc,dims,ndims,arr) bind(C,name='pam_interface_mirror_array_readwrite_float')
+      use iso_c_binding
+      implicit none
+      character(kind=c_char) :: key(*), desc(*)
+      integer(c_int)         :: dims(*)
+      integer(c_int), value  :: ndims
+      real(c_float)          :: arr(*)
+    end subroutine
+  end interface
+  interface
+    subroutine pam_mirror_array_readwrite_double_c(key,desc,dims,ndims,arr) bind(C,name='pam_interface_mirror_array_readwrite_double')
+      use iso_c_binding
+      implicit none
+      character(kind=c_char) :: key(*), desc(*)
+      integer(c_int)         :: dims(*)
+      integer(c_int), value  :: ndims
+      real(c_double)         :: arr(*)
+    end subroutine
+  end interface
+
+  interface
+    subroutine pam_get_array_logical_c(label,ptr,dims,ndims) bind(C,name='pam_interface_get_array_bool')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: label(*)
@@ -313,6 +457,40 @@ contains
   end subroutine
 
 
+  subroutine pam_option_exists(key,exists)
+    implicit none
+    character(len=*), intent(in   ) :: key
+    logical         , intent(  out) :: exists
+    logical(c_bool) :: exists_c
+    call pam_option_exists_c( string_f2c(key,len_trim(key)) , exists_c )
+    exists = exists_c
+  end subroutine
+
+
+  subroutine pam_remove_option(key)
+    implicit none
+    character(len=*), intent(in   ) :: key
+    call pam_remove_option_c( string_f2c(key,len_trim(key)) )
+  end subroutine
+
+
+  subroutine pam_destroy_array(key)
+    implicit none
+    character(len=*), intent(in) :: key
+    call pam_destroy_array_c( string_f2c(key,len_trim(key)) )
+  end subroutine
+
+
+  subroutine pam_array_exists(key,exists)
+    implicit none
+    character(len=*), intent(in   ) :: key
+    logical         , intent(  out) :: exists
+    logical(c_bool) :: exists_c
+    call pam_array_exists_c( string_f2c(key,len_trim(key)) , exists_c )
+    exists = exists_c
+  end subroutine
+
+
   subroutine pam_set_option_logical(key,val)
     implicit none
     character(len=*), intent(in) :: key
@@ -391,80 +569,74 @@ contains
   end subroutine
 
 
-  subroutine pam_option_exists(key,exists)
-    implicit none
-    character(len=*), intent(in   ) :: key
-    logical         , intent(  out) :: exists
-    logical(c_bool) :: exists_c
-    call pam_option_exists_c( string_f2c(key,len_trim(key)) , exists_c )
-    exists = exists_c
-  end subroutine
 
-
-  subroutine pam_remove_option(key)
-    implicit none
-    character(len=*), intent(in   ) :: key
-    call pam_remove_option_c( string_f2c(key,len_trim(key)) )
-  end subroutine
-
-
-  subroutine pam_create_array_logical(key,desc,dims)
+  subroutine pam_create_array_logical(key,dims,desc_in)
     implicit none
     character(len=*), intent(in) :: key
-    character(len=*), intent(in) :: desc
     integer         , intent(in) :: dims(:)
+    character(len=*), intent(in), optional :: desc_in
     integer :: ndims
     integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
     ndims = size(dims)
     allocate(dims_c(ndims))
     dims_c = dims
     call pam_create_array_logical_c( string_f2c(key,len_trim(key)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims )
   end subroutine
-  subroutine pam_create_array_integer(key,desc,dims)
+  subroutine pam_create_array_integer(key,dims,desc_in)
     implicit none
     character(len=*), intent(in) :: key
-    character(len=*), intent(in) :: desc
     integer         , intent(in) :: dims(:)
+    character(len=*), intent(in), optional :: desc_in
     integer :: ndims
     integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
     ndims = size(dims)
     allocate(dims_c(ndims))
     dims_c = dims
     call pam_create_array_integer_c( string_f2c(key,len_trim(key)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims )
   end subroutine
-  subroutine pam_create_array_float(key,desc,dims)
+  subroutine pam_create_array_float(key,dims,desc_in)
     implicit none
     character(len=*), intent(in) :: key
-    character(len=*), intent(in) :: desc
     integer         , intent(in) :: dims(:)
+    character(len=*), intent(in), optional :: desc_in
     integer :: ndims
     integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
     ndims = size(dims)
     allocate(dims_c(ndims))
     dims_c = dims
     call pam_create_array_float_c( string_f2c(key,len_trim(key)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims )
   end subroutine
-  subroutine pam_create_array_double(key,desc,dims)
+  subroutine pam_create_array_double(key,dims,desc_in)
     implicit none
     character(len=*), intent(in) :: key
-    character(len=*), intent(in) :: desc
     integer         , intent(in) :: dims(:)
+    character(len=*), intent(in), optional :: desc_in
     integer :: ndims
     integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
     ndims = size(dims)
     allocate(dims_c(ndims))
     dims_c = dims
     call pam_create_array_double_c( string_f2c(key,len_trim(key)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims )
   end subroutine
-
-
   subroutine pam_get_array_logical_1d(label,ptr)
     implicit none
     character(len=*)                    , intent(in   ) :: label
     logical(c_bool), pointer, contiguous                :: ptr(:)
     integer(c_int) :: dims(1)
     type(c_ptr)    :: ptr_c
-    call pam_get_array_bool_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 1 )
+    call pam_get_array_logical_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 1 )
     call c_f_pointer( ptr_c , ptr , [dims(1)] )
   end subroutine
   subroutine pam_get_array_logical_2d(label,ptr)
@@ -473,8 +645,8 @@ contains
     logical(c_bool), pointer, contiguous                :: ptr(:,:)
     integer(c_int) :: dims(2)
     type(c_ptr)    :: ptr_c
-    call pam_get_array_bool_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 2 )
-    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2)] )
+    call pam_get_array_logical_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 2 )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(1)] )
   end subroutine
   subroutine pam_get_array_logical_3d(label,ptr)
     implicit none
@@ -482,8 +654,8 @@ contains
     logical(c_bool), pointer, contiguous                :: ptr(:,:,:)
     integer(c_int) :: dims(3)
     type(c_ptr)    :: ptr_c
-    call pam_get_array_bool_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 3 )
-    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3)] )
+    call pam_get_array_logical_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 3 )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(1),dims(2)] )
   end subroutine
   subroutine pam_get_array_logical_4d(label,ptr)
     implicit none
@@ -491,8 +663,8 @@ contains
     logical(c_bool), pointer, contiguous                :: ptr(:,:,:,:)
     integer(c_int) :: dims(4)
     type(c_ptr)    :: ptr_c
-    call pam_get_array_bool_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 4 )
-    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3),dims(4)] )
+    call pam_get_array_logical_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 4 )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(1),dims(2),dims(3)] )
   end subroutine
   subroutine pam_get_array_logical_5d(label,ptr)
     implicit none
@@ -500,8 +672,8 @@ contains
     logical(c_bool), pointer, contiguous                :: ptr(:,:,:,:,:)
     integer(c_int) :: dims(5)
     type(c_ptr)    :: ptr_c
-    call pam_get_array_bool_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 5 )
-    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3),dims(4),dims(5)] )
+    call pam_get_array_logical_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 5 )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(1),dims(2),dims(3),dims(4)] )
   end subroutine
   subroutine pam_get_array_logical_6d(label,ptr)
     implicit none
@@ -509,8 +681,8 @@ contains
     logical(c_bool), pointer, contiguous                :: ptr(:,:,:,:,:,:)
     integer(c_int) :: dims(6)
     type(c_ptr)    :: ptr_c
-    call pam_get_array_bool_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 6 )
-    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3),dims(4),dims(5),dims(6)] )
+    call pam_get_array_logical_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 6 )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(1),dims(2),dims(3),dims(4),dims(5)] )
   end subroutine
   subroutine pam_get_array_logical_7d(label,ptr)
     implicit none
@@ -518,13 +690,13 @@ contains
     logical(c_bool), pointer, contiguous                :: ptr(:,:,:,:,:,:,:)
     integer(c_int) :: dims(7)
     type(c_ptr)    :: ptr_c
-    call pam_get_array_bool_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 7 )
-    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3),dims(4),dims(5),dims(6),dims(7)] )
+    call pam_get_array_logical_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 7 )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(1),dims(2),dims(3),dims(4),dims(5),dims(6)] )
   end subroutine
   subroutine pam_get_array_integer_1d(label,ptr)
     implicit none
     character(len=*)                    , intent(in   ) :: label
-    integer(c_int) , pointer, contiguous                :: ptr(:)
+    integer(c_int), pointer, contiguous                :: ptr(:)
     integer(c_int) :: dims(1)
     type(c_ptr)    :: ptr_c
     call pam_get_array_integer_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 1 )
@@ -533,61 +705,61 @@ contains
   subroutine pam_get_array_integer_2d(label,ptr)
     implicit none
     character(len=*)                    , intent(in   ) :: label
-    integer(c_int) , pointer, contiguous                :: ptr(:,:)
+    integer(c_int), pointer, contiguous                :: ptr(:,:)
     integer(c_int) :: dims(2)
     type(c_ptr)    :: ptr_c
     call pam_get_array_integer_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 2 )
-    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2)] )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(1)] )
   end subroutine
   subroutine pam_get_array_integer_3d(label,ptr)
     implicit none
     character(len=*)                    , intent(in   ) :: label
-    integer(c_int) , pointer, contiguous                :: ptr(:,:,:)
+    integer(c_int), pointer, contiguous                :: ptr(:,:,:)
     integer(c_int) :: dims(3)
     type(c_ptr)    :: ptr_c
     call pam_get_array_integer_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 3 )
-    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3)] )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(1),dims(2)] )
   end subroutine
   subroutine pam_get_array_integer_4d(label,ptr)
     implicit none
     character(len=*)                    , intent(in   ) :: label
-    integer(c_int) , pointer, contiguous                :: ptr(:,:,:,:)
+    integer(c_int), pointer, contiguous                :: ptr(:,:,:,:)
     integer(c_int) :: dims(4)
     type(c_ptr)    :: ptr_c
     call pam_get_array_integer_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 4 )
-    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3),dims(4)] )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(1),dims(2),dims(3)] )
   end subroutine
   subroutine pam_get_array_integer_5d(label,ptr)
     implicit none
     character(len=*)                    , intent(in   ) :: label
-    integer(c_int) , pointer, contiguous                :: ptr(:,:,:,:,:)
+    integer(c_int), pointer, contiguous                :: ptr(:,:,:,:,:)
     integer(c_int) :: dims(5)
     type(c_ptr)    :: ptr_c
     call pam_get_array_integer_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 5 )
-    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3),dims(4),dims(5)] )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(1),dims(2),dims(3),dims(4)] )
   end subroutine
   subroutine pam_get_array_integer_6d(label,ptr)
     implicit none
     character(len=*)                    , intent(in   ) :: label
-    integer(c_int) , pointer, contiguous                :: ptr(:,:,:,:,:,:)
+    integer(c_int), pointer, contiguous                :: ptr(:,:,:,:,:,:)
     integer(c_int) :: dims(6)
     type(c_ptr)    :: ptr_c
     call pam_get_array_integer_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 6 )
-    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3),dims(4),dims(5),dims(6)] )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(1),dims(2),dims(3),dims(4),dims(5)] )
   end subroutine
   subroutine pam_get_array_integer_7d(label,ptr)
     implicit none
     character(len=*)                    , intent(in   ) :: label
-    integer(c_int) , pointer, contiguous                :: ptr(:,:,:,:,:,:,:)
+    integer(c_int), pointer, contiguous                :: ptr(:,:,:,:,:,:,:)
     integer(c_int) :: dims(7)
     type(c_ptr)    :: ptr_c
     call pam_get_array_integer_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 7 )
-    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3),dims(4),dims(5),dims(6),dims(7)] )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(1),dims(2),dims(3),dims(4),dims(5),dims(6)] )
   end subroutine
   subroutine pam_get_array_float_1d(label,ptr)
     implicit none
     character(len=*)                    , intent(in   ) :: label
-    real(c_float)  , pointer, contiguous                :: ptr(:)
+    real(c_float), pointer, contiguous                :: ptr(:)
     integer(c_int) :: dims(1)
     type(c_ptr)    :: ptr_c
     call pam_get_array_float_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 1 )
@@ -596,61 +768,61 @@ contains
   subroutine pam_get_array_float_2d(label,ptr)
     implicit none
     character(len=*)                    , intent(in   ) :: label
-    real(c_float)  , pointer, contiguous                :: ptr(:,:)
+    real(c_float), pointer, contiguous                :: ptr(:,:)
     integer(c_int) :: dims(2)
     type(c_ptr)    :: ptr_c
     call pam_get_array_float_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 2 )
-    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2)] )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(1)] )
   end subroutine
   subroutine pam_get_array_float_3d(label,ptr)
     implicit none
     character(len=*)                    , intent(in   ) :: label
-    real(c_float)  , pointer, contiguous                :: ptr(:,:,:)
+    real(c_float), pointer, contiguous                :: ptr(:,:,:)
     integer(c_int) :: dims(3)
     type(c_ptr)    :: ptr_c
     call pam_get_array_float_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 3 )
-    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3)] )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(1),dims(2)] )
   end subroutine
   subroutine pam_get_array_float_4d(label,ptr)
     implicit none
     character(len=*)                    , intent(in   ) :: label
-    real(c_float)  , pointer, contiguous                :: ptr(:,:,:,:)
+    real(c_float), pointer, contiguous                :: ptr(:,:,:,:)
     integer(c_int) :: dims(4)
     type(c_ptr)    :: ptr_c
     call pam_get_array_float_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 4 )
-    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3),dims(4)] )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(1),dims(2),dims(3)] )
   end subroutine
   subroutine pam_get_array_float_5d(label,ptr)
     implicit none
     character(len=*)                    , intent(in   ) :: label
-    real(c_float)  , pointer, contiguous                :: ptr(:,:,:,:,:)
+    real(c_float), pointer, contiguous                :: ptr(:,:,:,:,:)
     integer(c_int) :: dims(5)
     type(c_ptr)    :: ptr_c
     call pam_get_array_float_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 5 )
-    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3),dims(4),dims(5)] )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(1),dims(2),dims(3),dims(4)] )
   end subroutine
   subroutine pam_get_array_float_6d(label,ptr)
     implicit none
     character(len=*)                    , intent(in   ) :: label
-    real(c_float)  , pointer, contiguous                :: ptr(:,:,:,:,:,:)
+    real(c_float), pointer, contiguous                :: ptr(:,:,:,:,:,:)
     integer(c_int) :: dims(6)
     type(c_ptr)    :: ptr_c
     call pam_get_array_float_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 6 )
-    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3),dims(4),dims(5),dims(6)] )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(1),dims(2),dims(3),dims(4),dims(5)] )
   end subroutine
   subroutine pam_get_array_float_7d(label,ptr)
     implicit none
     character(len=*)                    , intent(in   ) :: label
-    real(c_float)  , pointer, contiguous                :: ptr(:,:,:,:,:,:,:)
+    real(c_float), pointer, contiguous                :: ptr(:,:,:,:,:,:,:)
     integer(c_int) :: dims(7)
     type(c_ptr)    :: ptr_c
     call pam_get_array_float_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 7 )
-    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3),dims(4),dims(5),dims(6),dims(7)] )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(1),dims(2),dims(3),dims(4),dims(5),dims(6)] )
   end subroutine
   subroutine pam_get_array_double_1d(label,ptr)
     implicit none
     character(len=*)                    , intent(in   ) :: label
-    real(c_double) , pointer, contiguous                :: ptr(:)
+    real(c_double), pointer, contiguous                :: ptr(:)
     integer(c_int) :: dims(1)
     type(c_ptr)    :: ptr_c
     call pam_get_array_double_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 1 )
@@ -659,74 +831,897 @@ contains
   subroutine pam_get_array_double_2d(label,ptr)
     implicit none
     character(len=*)                    , intent(in   ) :: label
-    real(c_double) , pointer, contiguous                :: ptr(:,:)
+    real(c_double), pointer, contiguous                :: ptr(:,:)
     integer(c_int) :: dims(2)
     type(c_ptr)    :: ptr_c
     call pam_get_array_double_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 2 )
-    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2)] )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(1)] )
   end subroutine
   subroutine pam_get_array_double_3d(label,ptr)
     implicit none
     character(len=*)                    , intent(in   ) :: label
-    real(c_double) , pointer, contiguous                :: ptr(:,:,:)
+    real(c_double), pointer, contiguous                :: ptr(:,:,:)
     integer(c_int) :: dims(3)
     type(c_ptr)    :: ptr_c
     call pam_get_array_double_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 3 )
-    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3)] )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(1),dims(2)] )
   end subroutine
   subroutine pam_get_array_double_4d(label,ptr)
     implicit none
     character(len=*)                    , intent(in   ) :: label
-    real(c_double) , pointer, contiguous                :: ptr(:,:,:,:)
+    real(c_double), pointer, contiguous                :: ptr(:,:,:,:)
     integer(c_int) :: dims(4)
     type(c_ptr)    :: ptr_c
     call pam_get_array_double_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 4 )
-    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3),dims(4)] )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(1),dims(2),dims(3)] )
   end subroutine
   subroutine pam_get_array_double_5d(label,ptr)
     implicit none
     character(len=*)                    , intent(in   ) :: label
-    real(c_double) , pointer, contiguous                :: ptr(:,:,:,:,:)
+    real(c_double), pointer, contiguous                :: ptr(:,:,:,:,:)
     integer(c_int) :: dims(5)
     type(c_ptr)    :: ptr_c
     call pam_get_array_double_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 5 )
-    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3),dims(4),dims(5)] )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(1),dims(2),dims(3),dims(4)] )
   end subroutine
   subroutine pam_get_array_double_6d(label,ptr)
     implicit none
     character(len=*)                    , intent(in   ) :: label
-    real(c_double) , pointer, contiguous                :: ptr(:,:,:,:,:,:)
+    real(c_double), pointer, contiguous                :: ptr(:,:,:,:,:,:)
     integer(c_int) :: dims(6)
     type(c_ptr)    :: ptr_c
     call pam_get_array_double_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 6 )
-    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3),dims(4),dims(5),dims(6)] )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(1),dims(2),dims(3),dims(4),dims(5)] )
   end subroutine
   subroutine pam_get_array_double_7d(label,ptr)
     implicit none
     character(len=*)                    , intent(in   ) :: label
-    real(c_double) , pointer, contiguous                :: ptr(:,:,:,:,:,:,:)
+    real(c_double), pointer, contiguous                :: ptr(:,:,:,:,:,:,:)
     integer(c_int) :: dims(7)
     type(c_ptr)    :: ptr_c
     call pam_get_array_double_c( string_f2c(label,len_trim(label)) , ptr_c , dims , 7 )
-    call c_f_pointer( ptr_c , ptr , [dims(1),dims(2),dims(3),dims(4),dims(5),dims(6),dims(7)] )
+    call c_f_pointer( ptr_c , ptr , [dims(1),dims(1),dims(2),dims(3),dims(4),dims(5),dims(6)] )
   end subroutine
-
-
-  subroutine pam_destroy_array(key)
+  subroutine pam_mirror_array_readonly_logical_1d(label,arr,desc_in)
     implicit none
-    character(len=*), intent(in) :: key
-    call pam_destroy_array_c( string_f2c(key,len_trim(key)) )
+    character(len=*), intent(in) :: label
+    logical(c_bool), intent(in) :: arr(:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 1
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readonly_logical_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
   end subroutine
-
-
-  subroutine pam_array_exists(key,exists)
+  subroutine pam_mirror_array_readonly_logical_2d(label,arr,desc_in)
     implicit none
-    character(len=*), intent(in   ) :: key
-    logical         , intent(  out) :: exists
-    logical(c_bool) :: exists_c
-    call pam_array_exists_c( string_f2c(key,len_trim(key)) , exists_c )
-    exists = exists_c
+    character(len=*), intent(in) :: label
+    logical(c_bool), intent(in) :: arr(:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 2
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readonly_logical_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readonly_logical_3d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    logical(c_bool), intent(in) :: arr(:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 3
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readonly_logical_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readonly_logical_4d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    logical(c_bool), intent(in) :: arr(:,:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 4
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readonly_logical_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readonly_logical_5d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    logical(c_bool), intent(in) :: arr(:,:,:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 5
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readonly_logical_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readonly_logical_6d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    logical(c_bool), intent(in) :: arr(:,:,:,:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 6
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readonly_logical_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readonly_logical_7d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    logical(c_bool), intent(in) :: arr(:,:,:,:,:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 7
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readonly_logical_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readonly_integer_1d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    integer(c_int), intent(in) :: arr(:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 1
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readonly_integer_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readonly_integer_2d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    integer(c_int), intent(in) :: arr(:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 2
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readonly_integer_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readonly_integer_3d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    integer(c_int), intent(in) :: arr(:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 3
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readonly_integer_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readonly_integer_4d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    integer(c_int), intent(in) :: arr(:,:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 4
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readonly_integer_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readonly_integer_5d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    integer(c_int), intent(in) :: arr(:,:,:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 5
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readonly_integer_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readonly_integer_6d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    integer(c_int), intent(in) :: arr(:,:,:,:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 6
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readonly_integer_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readonly_integer_7d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    integer(c_int), intent(in) :: arr(:,:,:,:,:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 7
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readonly_integer_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readonly_float_1d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    real(c_float), intent(in) :: arr(:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 1
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readonly_float_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readonly_float_2d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    real(c_float), intent(in) :: arr(:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 2
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readonly_float_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readonly_float_3d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    real(c_float), intent(in) :: arr(:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 3
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readonly_float_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readonly_float_4d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    real(c_float), intent(in) :: arr(:,:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 4
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readonly_float_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readonly_float_5d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    real(c_float), intent(in) :: arr(:,:,:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 5
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readonly_float_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readonly_float_6d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    real(c_float), intent(in) :: arr(:,:,:,:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 6
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readonly_float_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readonly_float_7d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    real(c_float), intent(in) :: arr(:,:,:,:,:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 7
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readonly_float_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readonly_double_1d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    real(c_double), intent(in) :: arr(:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 1
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readonly_double_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readonly_double_2d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    real(c_double), intent(in) :: arr(:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 2
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readonly_double_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readonly_double_3d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    real(c_double), intent(in) :: arr(:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 3
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readonly_double_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readonly_double_4d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    real(c_double), intent(in) :: arr(:,:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 4
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readonly_double_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readonly_double_5d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    real(c_double), intent(in) :: arr(:,:,:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 5
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readonly_double_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readonly_double_6d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    real(c_double), intent(in) :: arr(:,:,:,:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 6
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readonly_double_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readonly_double_7d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    real(c_double), intent(in) :: arr(:,:,:,:,:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 7
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readonly_double_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readwrite_logical_1d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    logical(c_bool), intent(in) :: arr(:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 1
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readwrite_logical_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readwrite_logical_2d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    logical(c_bool), intent(in) :: arr(:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 2
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readwrite_logical_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readwrite_logical_3d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    logical(c_bool), intent(in) :: arr(:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 3
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readwrite_logical_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readwrite_logical_4d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    logical(c_bool), intent(in) :: arr(:,:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 4
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readwrite_logical_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readwrite_logical_5d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    logical(c_bool), intent(in) :: arr(:,:,:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 5
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readwrite_logical_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readwrite_logical_6d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    logical(c_bool), intent(in) :: arr(:,:,:,:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 6
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readwrite_logical_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readwrite_logical_7d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    logical(c_bool), intent(in) :: arr(:,:,:,:,:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 7
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readwrite_logical_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readwrite_integer_1d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    integer(c_int), intent(in) :: arr(:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 1
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readwrite_integer_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readwrite_integer_2d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    integer(c_int), intent(in) :: arr(:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 2
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readwrite_integer_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readwrite_integer_3d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    integer(c_int), intent(in) :: arr(:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 3
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readwrite_integer_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readwrite_integer_4d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    integer(c_int), intent(in) :: arr(:,:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 4
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readwrite_integer_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readwrite_integer_5d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    integer(c_int), intent(in) :: arr(:,:,:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 5
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readwrite_integer_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readwrite_integer_6d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    integer(c_int), intent(in) :: arr(:,:,:,:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 6
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readwrite_integer_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readwrite_integer_7d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    integer(c_int), intent(in) :: arr(:,:,:,:,:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 7
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readwrite_integer_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readwrite_float_1d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    real(c_float), intent(in) :: arr(:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 1
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readwrite_float_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readwrite_float_2d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    real(c_float), intent(in) :: arr(:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 2
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readwrite_float_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readwrite_float_3d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    real(c_float), intent(in) :: arr(:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 3
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readwrite_float_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readwrite_float_4d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    real(c_float), intent(in) :: arr(:,:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 4
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readwrite_float_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readwrite_float_5d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    real(c_float), intent(in) :: arr(:,:,:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 5
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readwrite_float_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readwrite_float_6d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    real(c_float), intent(in) :: arr(:,:,:,:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 6
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readwrite_float_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readwrite_float_7d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    real(c_float), intent(in) :: arr(:,:,:,:,:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 7
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readwrite_float_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readwrite_double_1d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    real(c_double), intent(in) :: arr(:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 1
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readwrite_double_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readwrite_double_2d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    real(c_double), intent(in) :: arr(:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 2
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readwrite_double_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readwrite_double_3d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    real(c_double), intent(in) :: arr(:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 3
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readwrite_double_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readwrite_double_4d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    real(c_double), intent(in) :: arr(:,:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 4
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readwrite_double_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readwrite_double_5d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    real(c_double), intent(in) :: arr(:,:,:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 5
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readwrite_double_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readwrite_double_6d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    real(c_double), intent(in) :: arr(:,:,:,:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 6
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readwrite_double_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
+  end subroutine
+  subroutine pam_mirror_array_readwrite_double_7d(label,arr,desc_in)
+    implicit none
+    character(len=*), intent(in) :: label
+    real(c_double), intent(in) :: arr(:,:,:,:,:,:,:)
+    character(len=*), intent(in), optional :: desc_in
+    integer :: ndims = 7
+    integer(c_int), allocatable :: dims_c(:)
+    character(len=maxlen) :: desc
+    desc = ""
+    if (present(desc_in)) desc = trim(desc_in)
+    allocate(dims_c(ndims))
+    dims_c = shape(arr)
+    call pam_mirror_array_readwrite_double_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
+    
   end subroutine
 
-endmodule pam_fortran_interface
+end module pam_fortran_interface
 
