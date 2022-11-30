@@ -26,10 +26,10 @@ struct VS_CE_p {
   static constexpr bool couple = false;
 };
 struct VS_MCE_rhop {
-  static constexpr bool couple = false;
+  static constexpr bool couple = true;
 };
 struct VS_MCE_rhodp {
-  static constexpr bool couple = false;
+  static constexpr bool couple = true;
 };
 
 template <class T> class VariableSetBase {
@@ -172,6 +172,9 @@ public:
                                          const FieldSet<nconstant> &const_vars);
   void convert_coupler_to_dynamics_state(PamCoupler &coupler,
                                          FieldSet<nprognostic> &prog_vars,
+                                         const FieldSet<nconstant> &const_vars);
+  void convert_coupler_to_reference_state(PamCoupler &coupler,
+                                        ModelReferenceState &ref_state,
                                          const FieldSet<nconstant> &const_vars);
 };
 
