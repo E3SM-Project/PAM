@@ -25,6 +25,7 @@ namespace pam {
       bool                     positive;
       bool                     dirty;
       bool                     read_only;
+      bool                     managed;
     };
 
     struct Dimension {
@@ -146,6 +147,7 @@ namespace pam {
       loc.positive  = positive;
       loc.dirty     = false;
       loc.read_only = false;
+      loc.managed   = true;
 
       entries.push_back( loc );
     }
@@ -213,8 +215,14 @@ namespace pam {
       loc.positive  = positive;
       loc.dirty     = false;
       loc.read_only = std::is_const<T>::value ? true : false;
+      loc.managed   = false;
 
       entries.push_back( loc );
+    }
+
+
+    void make_readonly( std::string name ) {
+      entries[find_entry_or_error(name)].read_only = true;
     }
 
 
@@ -591,7 +599,7 @@ namespace pam {
     // Generally meat for internal use, but perhaps there are cases where the user might want to call this directly.
     void finalize() {
       for (int i=0; i < entries.size(); i++) {
-        deallocate( entries[i].ptr , entries[i].name.c_str() );
+        if (entries[i].managed) deallocate( entries[i].ptr , entries[i].name.c_str() );
       }
       entries    = std::vector<Entry>();
       dimensions = std::vector<Dimension>();

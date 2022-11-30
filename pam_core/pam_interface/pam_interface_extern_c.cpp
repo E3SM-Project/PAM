@@ -172,6 +172,11 @@ extern "C" void pam_interface_remove_option(char const *name ) {
 }
 
 
+extern "C" void pam_interface_make_readonly(char const *name) {
+  pam_interface::make_readonly( name );
+}
+
+
 extern "C" void pam_interface_create_array_bool(char const *name, char const *desc, int *dims, int ndims) {
   auto reg = [] (std::string name , std::string desc , std::vector<int> dims ) {
     pam_interface::register_and_allocate_array<bool>(name,desc,dims);

@@ -7,6 +7,7 @@ program fortran_test
   character(len=maxlen) :: str
   logical(c_bool), pointer, contiguous :: blah(:)
   real(c_double), pointer, contiguous :: blah2(:,:)
+  real(8) :: myarray(50,72,40)
   real(8) :: num
   logical :: exists
   call gator_init()
@@ -26,6 +27,9 @@ program fortran_test
   call pam_get_array("blah",blah)
   call pam_create_array_double("blah2",[10,12])
   call pam_get_array("blah2",blah2)
+  call pam_mirror_array_readonly("snuffulufagus",myarray)
+  call pam_mirror_array_readwrite("snuffulufagus2",myarray)
+  call pam_make_readonly("blah2")
   blah2 = 2.
   write(*,*) blah2
   call pam_finalize()

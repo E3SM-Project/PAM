@@ -125,6 +125,11 @@ namespace pam_interface {
   // Remove this option from this thread's coupler
   // THIS HAS FORTRAN BINDINGS
   inline void remove_option(std::string name) { get_coupler().delete_option(name); }
+
+
+  // Remove this option from this thread's coupler
+  // THIS HAS FORTRAN BINDINGS
+  inline void make_readonly(std::string name) { get_coupler().get_data_manager_host_readwrite().make_readonly(name); }
 }
 
 

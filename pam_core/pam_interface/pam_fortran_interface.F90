@@ -149,6 +149,14 @@ module pam_fortran_interface
   end interface
 
   interface
+    subroutine pam_make_readonly_c(key) bind(C,name='pam_interface_make_readonly')
+      use iso_c_binding
+      implicit none
+      character(kind=c_char) :: key(*)
+    end subroutine
+  end interface
+
+  interface
     subroutine pam_set_option_logical_c(key,val) bind(C,name='pam_interface_set_option_bool')
       use iso_c_binding
       implicit none
@@ -446,6 +454,13 @@ contains
 
   subroutine pam_finalize()
     call pam_finalize_c()
+  end subroutine
+
+
+  subroutine pam_make_readonly(key)
+    implicit none
+    character(len=*), intent(in) :: key
+    call pam_make_readonly_c( string_f2c(key,len_trim(key)) )
   end subroutine
 
 
