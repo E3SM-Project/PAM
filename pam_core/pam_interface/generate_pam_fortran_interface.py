@@ -1,9 +1,21 @@
 
+import os, stat
+
+if (os.path.isfile("pam_fortran_interface.F90")) :
+  os.chmod("pam_fortran_interface.F90", stat.S_IRUSR | stat.S_IWUSR)
+
+f = open("pam_fortran_interface.F90", "w")
+
 option_types = ["logical","integer","string","float","double"]
 array_types = ["logical","integer","float","double"]
 array_iso_c_map = {"logical":"logical(c_bool)" , "integer":"integer(c_int)" , "float":"real(c_float)" , "double":"real(c_double)"}
 
-print('''
+f.write('''
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!  WARNING: THIS FILE IS GENERATED. DO NOT EDIT DIRECTLY
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 module pam_fortran_interface
   use iso_c_binding
   implicit none 
@@ -36,44 +48,44 @@ module pam_fortran_interface
     module procedure pam_array_exists
   end interface
 
-  interface pam_set_option''')
+  interface pam_set_option\n''')
 
 for tp in option_types :
-  print(f"    module procedure pam_set_option_{tp}")
+  f.write(f"    module procedure pam_set_option_{tp}\n")
 
-print('''  end interface
+f.write('''  end interface
 
-  interface pam_get_option''')
+  interface pam_get_option\n''')
 
 for tp in option_types :
-  print(f"    module procedure pam_get_option_{tp}")
-print('''  end interface
+  f.write(f"    module procedure pam_get_option_{tp}\n")
+f.write('''  end interface
 
-  interface pam_get_array''')
-
-for tp in array_types :
-  for d in range(1,8) :
-    print(f"    module procedure pam_get_array_{tp}_{d}d")
-
-print('''  end interface
-
-  interface pam_mirror_array_readonly''')
+  interface pam_get_array\n''')
 
 for tp in array_types :
   for d in range(1,8) :
-    print(f"    module procedure pam_mirror_array_readonly_{tp}_{d}d")
+    f.write(f"    module procedure pam_get_array_{tp}_{d}d\n")
 
-print('''  end interface
+f.write('''  end interface
 
-  interface pam_mirror_array_readwrite''')
+  interface pam_mirror_array_readonly\n''')
 
 for tp in array_types :
   for d in range(1,8) :
-    print(f"    module procedure pam_mirror_array_readwrite_{tp}_{d}d")
+    f.write(f"    module procedure pam_mirror_array_readonly_{tp}_{d}d\n")
 
-print('''  end interface''')
+f.write('''  end interface
 
-print('''
+  interface pam_mirror_array_readwrite\n''')
+
+for tp in array_types :
+  for d in range(1,8) :
+    f.write(f"    module procedure pam_mirror_array_readwrite_{tp}_{d}d\n")
+
+f.write('''  end interface\n\n''')
+
+f.write('''
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !! Interfaces for extern "C" routines
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -165,6 +177,11 @@ print('''
 
   interface
     subroutine pam_remove_option_c(key) bind(C,name='pam_interface_remove_option')
+      use iso_c_binding
+      implicit none
+      character(kind=c_char) :: key(*)
+    end subroutine
+    subroutine pam_make_readonly_c(key) bind(C,name='pam_interface_make_readonly')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: key(*)
@@ -408,6 +425,13 @@ contains
   end subroutine
 
 
+  subroutine pam_make_readonly(key)
+    implicit none
+    character(len=*), intent(in   ) :: key
+    call pam_make_readonly_c( string_f2c(key,len_trim(key)) )
+  end subroutine
+
+
   subroutine pam_destroy_array(key)
     implicit none
     character(len=*), intent(in) :: key
@@ -500,87 +524,78 @@ contains
     real(c_double) :: val_c
     call pam_get_option_double_c( string_f2c(key,len_trim(key)) , val_c )
     val = val_c
-  end subroutine
-
-
-''')
+  end subroutine\n\n''')
 
 for tp in array_types :
-  print(f'''  subroutine pam_create_array_{tp}(key,dims,desc_in)
+  f.write(f'''  subroutine pam_create_array_{tp}(key,dims,desc_in)
     implicit none
     character(len=*), intent(in) :: key
     integer         , intent(in) :: dims(:)
     character(len=*), intent(in), optional :: desc_in
-    integer :: ndims
-    integer(c_int), allocatable :: dims_c(:)
-    character(len=maxlen) :: desc
-    desc = ""
+    integer(c_int) :: dims_c(size(dims))
+    character(len=maxlen) :: desc = ""
     if (present(desc_in)) desc = trim(desc_in)
-    ndims = size(dims)
-    allocate(dims_c(ndims))
     dims_c = dims
-    call pam_create_array_{tp}_c( string_f2c(key,len_trim(key)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims )
-  end subroutine''')
+    call pam_create_array_{tp}_c( string_f2c(key,len_trim(key)) , string_f2c(desc,len_trim(desc)) , dims_c , size(dims_c) )
+  end subroutine\n''')
+
+f.write("\n\n")
 
 for tp in array_types :
   iso_c  = array_iso_c_map[tp]
   for d in range(1,8) :
-    print(f'''  subroutine pam_get_array_{tp}_{d}d(label,ptr)
+    f.write(f'''  subroutine pam_get_array_{tp}_{d}d(label,ptr)
     implicit none
     character(len=*)                    , intent(in   ) :: label
-    {iso_c}, pointer, contiguous                :: ptr(:''',end="")
-    print(",:"*(d-1)+")")
-    print(f"    integer(c_int) :: dims({d})")
-    print("    type(c_ptr)    :: ptr_c")
-    print(f"    call pam_get_array_{tp}_c( string_f2c(label,len_trim(label)) , ptr_c , dims , {d} )")
-    print("    call c_f_pointer( ptr_c , ptr , [dims(1)",end="")
+    {iso_c}, pointer, contiguous                :: ptr(:{",:"*(d-1)})
+    integer(c_int) :: dims({d})
+    type(c_ptr)    :: ptr_c
+    call pam_get_array_{tp}_c( string_f2c(label,len_trim(label)) , ptr_c , dims , {d} )
+    call c_f_pointer( ptr_c , ptr , [dims(1)''')
     for i in range(d-1) :
-      print(f",dims({i+1})",end="")
-    print("] )")
-    print("  end subroutine")
+      f.write(f",dims({i+2})")
+    f.write('''] )
+  end subroutine\n''')
+
+f.write("\n\n")
 
 for tp in array_types :
   iso_c  = array_iso_c_map[tp]
   for d in range(1,8) :
-    print(f'''  subroutine pam_mirror_array_readonly_{tp}_{d}d(label,arr,desc_in)
+    f.write(f'''  subroutine pam_mirror_array_readonly_{tp}_{d}d(label,arr,desc_in)
     implicit none
     character(len=*), intent(in) :: label
-    {iso_c}, intent(in) :: arr(:''',end="")
-    print(",:"*(d-1)+")")
-    print("    character(len=*), intent(in), optional :: desc_in")
-    print(f'''    integer :: ndims = {d}
-    integer(c_int), allocatable :: dims_c(:)
-    character(len=maxlen) :: desc
-    desc = ""
+    {iso_c}, intent(in) :: arr(:{",:"*(d-1)})
+    character(len=*), intent(in), optional :: desc_in
+    integer(c_int) :: dims_c({d})
+    character(len=maxlen) :: desc = ""
     if (present(desc_in)) desc = trim(desc_in)
-    allocate(dims_c(ndims))
     dims_c = shape(arr)
-    call pam_mirror_array_readonly_{tp}_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
-    ''')
-    print("  end subroutine")
+    call pam_mirror_array_readonly_{tp}_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , {d} , arr )
+  end subroutine\n''')
+
+f.write("\n\n")
 
 for tp in array_types :
   iso_c  = array_iso_c_map[tp]
   for d in range(1,8) :
-    print(f'''  subroutine pam_mirror_array_readwrite_{tp}_{d}d(label,arr,desc_in)
+    f.write(f'''  subroutine pam_mirror_array_readwrite_{tp}_{d}d(label,arr,desc_in)
     implicit none
     character(len=*), intent(in) :: label
-    {iso_c}, intent(in) :: arr(:''',end="")
-    print(",:"*(d-1)+")")
-    print("    character(len=*), intent(in), optional :: desc_in")
-    print(f'''    integer :: ndims = {d}
-    integer(c_int), allocatable :: dims_c(:)
-    character(len=maxlen) :: desc
-    desc = ""
+    {iso_c}, intent(in) :: arr(:{",:"*(d-1)})
+    character(len=*), intent(in), optional :: desc_in
+    integer(c_int) :: dims_c({d})
+    character(len=maxlen) :: desc = ""
     if (present(desc_in)) desc = trim(desc_in)
-    allocate(dims_c(ndims))
     dims_c = shape(arr)
-    call pam_mirror_array_readwrite_{tp}_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , ndims , arr )
-    ''')
-    print("  end subroutine")
+    call pam_mirror_array_readwrite_{tp}_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , {d} , arr )
+  end subroutine\n''')
 
+f.write("\n\n")
 
-print('''
-end module pam_fortran_interface
-''')
+f.write('''\nend module pam_fortran_interface\n\n''')
+
+f.close()
+os.chmod("pam_fortran_interface.F90", stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
+
 

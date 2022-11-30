@@ -17,24 +17,6 @@ namespace pam_interface {
   extern std::vector<pam::PamCoupler> couplers;
 
 
-  // User provided function to perform initialization as called by the GCM
-  // This is called once at the beginning of the simulation, not every time step
-  // THIS HAS FORTRAN BINDINGS
-  extern std::function<void()> gcm_initialize;
-
-
-  // User provided function to perform a tendency calculation as called by the GCM
-  // This is called every time step
-  // THIS HAS FORTRAN BINDINGS
-  extern std::function<void()> gcm_tendency;
-
-
-  // User provided function to finalize as called by the GCM
-  // This is called once at the beginning of the simulation, not every time step
-  // THIS HAS FORTRAN BINDINGS
-  extern std::function<void()> gcm_finalize;
-
-
   // This is intended to be called at the end of the simulation, not at the end of every GCM time step
   // THIS HAS FORTRAN BINDINGS
   inline void finalize() { couplers.clear(); }
@@ -80,13 +62,6 @@ namespace pam_interface {
   // THIS HAS FORTRAN BINDINGS
   inline void unregister_and_deallocate(std::string name) {
     get_coupler().get_data_manager_host_readwrite().unregister_and_deallocate(name);
-  }
-
-
-  // Deallocate an array, and erase its metadata from the host-side data manager "dm_host" for this thread's coupler
-  // THIS HAS FORTRAN BINDINGS
-  inline void unregister(std::string name) {
-    get_coupler().get_data_manager_host_readwrite().unregister(name);
   }
 
 

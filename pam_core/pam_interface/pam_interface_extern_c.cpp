@@ -2,21 +2,6 @@
 #include "pam_interface.h"
 
 
-extern "C" void pam_interface_gcm_initialize() {
-  pam_interface::gcm_initialize();
-}
-
-
-extern "C" void pam_interface_gcm_tendency() {
-  pam_interface::gcm_tendency();
-}
-
-
-extern "C" void pam_interface_gcm_finalize() {
-  pam_interface::gcm_finalize();
-}
-
-
 extern "C" void pam_interface_finalize() {
   pam_interface::finalize();
 }
