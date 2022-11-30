@@ -5,6 +5,7 @@
 #include "ekat/kokkos/ekat_kokkos_utils.hpp"
 #include "ekat/ekat_pack_kokkos.hpp"
 #include "ekat/ekat_assert.hpp"
+#include "ekat/ekat_session.hpp"
 
 #include "pam_coupler.h"
 
@@ -12,6 +13,19 @@
 #if defined(DEBUG)
 #include "Cuda/Kokkos_Cuda_Instance.hpp"
 #endif
+
+// scream session initialize/finalize
+void initialize_session (bool print_config = true) {
+  ekat::initialize_ekat_session(print_config);
+
+  // Make sure scream only has its FPEs
+  ekat::disable_all_fpes();
+  ekat::enable_fpes(ekat::get_default_fpes());
+}
+
+void finalize_session () {
+  ekat::finalize_ekat_session();
+}
 
 // reshape an input array (nj, nk) to output array (nk, nj)
 template <typename Scalar>
