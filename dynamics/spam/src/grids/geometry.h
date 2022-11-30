@@ -112,6 +112,7 @@ public:
   Topology topology;
   bool is_initialized;
   bool straight;
+  bool uniform_vertical = true;
 
   Geometry();
 
@@ -166,6 +167,9 @@ public:
   real dx, dy;
   real Lx, Ly;
   real xc, yc;
+
+  real2d dz;
+  real2d zint;
 };
 
 template <class T> Geometry<T>::Geometry() { this->is_initialized = false; }

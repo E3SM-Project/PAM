@@ -1,2 +1,2 @@
-python3 ../../../utils/generate_vertical_levels.py --function=tanh --nlev=150 --ztop=1500 --output=vcoords_tanh_150_1500.nc
+python3 ../../../utils/generate_vertical_levels.py --function=equal --nlev=100 --ztop=1000 --output=vcoords_equal_100_1000.nc
 

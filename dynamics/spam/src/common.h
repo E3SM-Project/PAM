@@ -63,7 +63,7 @@ uint constexpr dual_vert_reconstruction_order = 5;
 
 RECONSTRUCTION_TYPE constexpr coriolis_reconstruction_type =
     RECONSTRUCTION_TYPE::CFV;
-uint constexpr coriolis_reconstruction_order = 1;
+uint constexpr coriolis_reconstruction_order = 3;
 
 RECONSTRUCTION_TYPE constexpr coriolis_vert_reconstruction_type =
     RECONSTRUCTION_TYPE::CFV;

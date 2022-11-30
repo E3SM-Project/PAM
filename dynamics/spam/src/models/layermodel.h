@@ -1076,8 +1076,6 @@ void readModelParamsFile(std::string inFile, ModelParameters &params,
 
   testcase->set_tracers(params);
 
-  params.zlen = 1.0;
-  params.zc = 0.5;
   testcase->set_domain(params);
   int nz = coupler.get_nz();
   readParamsFile(inFile, params, par, nz);
