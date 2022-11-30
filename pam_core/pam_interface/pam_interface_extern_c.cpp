@@ -2,24 +2,110 @@
 #include "pam_interface.h"
 
 
-extern "C" void pam_interface_gcm_initialize() {
-  pam_interface::gcm_initialize();
-}
-
-
-extern "C" void pam_interface_gcm_tendency() {
-  pam_interface::gcm_tendency();
-}
-
-
-extern "C" void pam_interface_gcm_finalize() {
-  pam_interface::gcm_finalize();
-}
-
-
 extern "C" void pam_interface_finalize() {
   pam_interface::finalize();
 }
+
+
+extern "C" void pam_interface_mirror_array_readonly_bool(char const *name, char const *desc, int *dims, int ndims, bool *ptr) {
+  auto reg = [] (std::string name , std::string desc , std::vector<int> dims , bool *ptr ) {
+    pam_interface::register_existing_array<bool const>(name,desc,dims,const_cast<bool const *>(ptr));
+  };
+  if (ndims == 1) reg(name,desc,{dims[0]},ptr);
+  if (ndims == 2) reg(name,desc,{dims[0],dims[1]},ptr);
+  if (ndims == 3) reg(name,desc,{dims[0],dims[1],dims[2]},ptr);
+  if (ndims == 4) reg(name,desc,{dims[0],dims[1],dims[2],dims[3]},ptr);
+  if (ndims == 5) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4]},ptr);
+  if (ndims == 6) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4],dims[5]},ptr);
+  if (ndims == 7) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4],dims[5],dims[6]},ptr);
+}
+extern "C" void pam_interface_mirror_array_readonly_int(char const *name, char const *desc, int *dims, int ndims, int *ptr) {
+  auto reg = [] (std::string name , std::string desc , std::vector<int> dims , int *ptr ) {
+    pam_interface::register_existing_array<int const>(name,desc,dims,const_cast<int const *>(ptr));
+  };
+  if (ndims == 1) reg(name,desc,{dims[0]},ptr);
+  if (ndims == 2) reg(name,desc,{dims[0],dims[1]},ptr);
+  if (ndims == 3) reg(name,desc,{dims[0],dims[1],dims[2]},ptr);
+  if (ndims == 4) reg(name,desc,{dims[0],dims[1],dims[2],dims[3]},ptr);
+  if (ndims == 5) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4]},ptr);
+  if (ndims == 6) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4],dims[5]},ptr);
+  if (ndims == 7) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4],dims[5],dims[6]},ptr);
+}
+extern "C" void pam_interface_mirror_array_readonly_float(char const *name, char const *desc, int *dims, int ndims, float *ptr) {
+  auto reg = [] (std::string name , std::string desc , std::vector<int> dims , float *ptr ) {
+    pam_interface::register_existing_array<float const>(name,desc,dims,const_cast<float const *>(ptr));
+  };
+  if (ndims == 1) reg(name,desc,{dims[0]},ptr);
+  if (ndims == 2) reg(name,desc,{dims[0],dims[1]},ptr);
+  if (ndims == 3) reg(name,desc,{dims[0],dims[1],dims[2]},ptr);
+  if (ndims == 4) reg(name,desc,{dims[0],dims[1],dims[2],dims[3]},ptr);
+  if (ndims == 5) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4]},ptr);
+  if (ndims == 6) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4],dims[5]},ptr);
+  if (ndims == 7) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4],dims[5],dims[6]},ptr);
+}
+extern "C" void pam_interface_mirror_array_readonly_double(char const *name, char const *desc, int *dims, int ndims, double *ptr) {
+  auto reg = [] (std::string name , std::string desc , std::vector<int> dims , double *ptr ) {
+    pam_interface::register_existing_array<double const>(name,desc,dims,const_cast<double const *>(ptr));
+  };
+  if (ndims == 1) reg(name,desc,{dims[0]},ptr);
+  if (ndims == 2) reg(name,desc,{dims[0],dims[1]},ptr);
+  if (ndims == 3) reg(name,desc,{dims[0],dims[1],dims[2]},ptr);
+  if (ndims == 4) reg(name,desc,{dims[0],dims[1],dims[2],dims[3]},ptr);
+  if (ndims == 5) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4]},ptr);
+  if (ndims == 6) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4],dims[5]},ptr);
+  if (ndims == 7) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4],dims[5],dims[6]},ptr);
+}
+
+
+extern "C" void pam_interface_mirror_array_readwrite_bool(char const *name, char const *desc, int *dims, int ndims, bool *ptr) {
+  auto reg = [] (std::string name , std::string desc , std::vector<int> dims , bool *ptr ) {
+    pam_interface::register_existing_array<bool>(name,desc,dims,ptr);
+  };
+  if (ndims == 1) reg(name,desc,{dims[0]},ptr);
+  if (ndims == 2) reg(name,desc,{dims[0],dims[1]},ptr);
+  if (ndims == 3) reg(name,desc,{dims[0],dims[1],dims[2]},ptr);
+  if (ndims == 4) reg(name,desc,{dims[0],dims[1],dims[2],dims[3]},ptr);
+  if (ndims == 5) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4]},ptr);
+  if (ndims == 6) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4],dims[5]},ptr);
+  if (ndims == 7) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4],dims[5],dims[6]},ptr);
+}
+extern "C" void pam_interface_mirror_array_readwrite_int(char const *name, char const *desc, int *dims, int ndims, int *ptr) {
+  auto reg = [] (std::string name , std::string desc , std::vector<int> dims , int *ptr ) {
+    pam_interface::register_existing_array<int>(name,desc,dims,ptr);
+  };
+  if (ndims == 1) reg(name,desc,{dims[0]},ptr);
+  if (ndims == 2) reg(name,desc,{dims[0],dims[1]},ptr);
+  if (ndims == 3) reg(name,desc,{dims[0],dims[1],dims[2]},ptr);
+  if (ndims == 4) reg(name,desc,{dims[0],dims[1],dims[2],dims[3]},ptr);
+  if (ndims == 5) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4]},ptr);
+  if (ndims == 6) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4],dims[5]},ptr);
+  if (ndims == 7) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4],dims[5],dims[6]},ptr);
+}
+extern "C" void pam_interface_mirror_array_readwrite_float(char const *name, char const *desc, int *dims, int ndims, float *ptr) {
+  auto reg = [] (std::string name , std::string desc , std::vector<int> dims , float *ptr ) {
+    pam_interface::register_existing_array<float>(name,desc,dims,ptr);
+  };
+  if (ndims == 1) reg(name,desc,{dims[0]},ptr);
+  if (ndims == 2) reg(name,desc,{dims[0],dims[1]},ptr);
+  if (ndims == 3) reg(name,desc,{dims[0],dims[1],dims[2]},ptr);
+  if (ndims == 4) reg(name,desc,{dims[0],dims[1],dims[2],dims[3]},ptr);
+  if (ndims == 5) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4]},ptr);
+  if (ndims == 6) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4],dims[5]},ptr);
+  if (ndims == 7) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4],dims[5],dims[6]},ptr);
+}
+extern "C" void pam_interface_mirror_array_readwrite_double(char const *name, char const *desc, int *dims, int ndims, double *ptr) {
+  auto reg = [] (std::string name , std::string desc , std::vector<int> dims , double *ptr ) {
+    pam_interface::register_existing_array<double>(name,desc,dims,ptr);
+  };
+  if (ndims == 1) reg(name,desc,{dims[0]},ptr);
+  if (ndims == 2) reg(name,desc,{dims[0],dims[1]},ptr);
+  if (ndims == 3) reg(name,desc,{dims[0],dims[1],dims[2]},ptr);
+  if (ndims == 4) reg(name,desc,{dims[0],dims[1],dims[2],dims[3]},ptr);
+  if (ndims == 5) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4]},ptr);
+  if (ndims == 6) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4],dims[5]},ptr);
+  if (ndims == 7) reg(name,desc,{dims[0],dims[1],dims[2],dims[3],dims[4],dims[5],dims[6]},ptr);
+}
+
 
 
 extern "C" void pam_interface_set_option_bool(char const *name , bool value ) {
@@ -68,6 +154,11 @@ extern "C" void pam_interface_option_exists(char const *name , bool &exists ) {
 
 extern "C" void pam_interface_remove_option(char const *name ) {
   pam_interface::remove_option( name );
+}
+
+
+extern "C" void pam_interface_make_readonly(char const *name) {
+  pam_interface::make_readonly( name );
 }
 
 

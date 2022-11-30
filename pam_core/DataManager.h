@@ -24,6 +24,8 @@ namespace pam {
       std::vector<std::string> dim_names;
       bool                     positive;
       bool                     dirty;
+      bool                     read_only;
+      bool                     managed;
     };
 
     struct Dimension {
@@ -144,15 +146,90 @@ namespace pam {
       loc.dim_names = dim_names;
       loc.positive  = positive;
       loc.dirty     = false;
+      loc.read_only = false;
+      loc.managed   = true;
 
       entries.push_back( loc );
+    }
+
+
+    // Register an existing allocation with the coupler. This is less safe, so use with care
+    template <class T>
+    void register_existing( std::string name ,
+                            std::string desc ,
+                            std::vector<int> dims ,
+                            T * ptr ,
+                            std::vector<std::string> dim_names = std::vector<std::string>() ,
+                            bool positive = false ) {
+      if (name == "") {
+        endrun("ERROR: You cannot register_and_allocate with an empty string");
+      }
+      // Make sure we don't have a duplicate entry
+      if ( find_entry(name) != -1) {
+        endrun("ERROR: Duplicate entry name");
+      }
+
+      if (dim_names.size() > 0) {
+        if (dims.size() != dim_names.size()) {
+          endrun("ERROR: Must have the same number of dims and dim_names");
+        }
+        // Make sure the dimensions are the same size as existing ones of the same name
+        for (int i=0; i < dim_names.size(); i++) {
+          int dimid = find_dimension(dim_names[i]);
+          if (dimid == -1) {
+            Dimension loc;
+            loc.name = dim_names[i];
+            loc.len  = dims     [i];
+            dimensions.push_back(loc);
+          } else {
+            if (dimensions[dimid].len != dims[i]) {
+              endrun("ERROR: Dimension already exists but has a different length");
+            }
+          }
+        }
+      } else {
+        // If dim_names was not passed, then let's try to find some. If we can't, then we'll have to create them
+        std::string loc_dim_name = "";
+        for (int i=0; i < dims.size(); i++) { // i is local var dims index
+          for (int ii=0; ii < this->dimensions.size(); ii++) { // ii is data manager dimensions index
+            if (dims[i] == this->dimensions[ii].len) loc_dim_name = this->dimensions[i].name;
+            break;
+          }
+          if (loc_dim_name == "") {
+            data_manager_mutex.lock();
+            loc_dim_name = std::string("assigned_dim_") + std::to_string(this->num_assigned_dims);
+            this->num_assigned_dims++;
+            data_manager_mutex.unlock();
+          }
+          dim_names.push_back(loc_dim_name);
+        }
+      }
+
+      Entry loc;
+      loc.name      = name;
+      loc.desc      = desc;
+      loc.type_hash = get_type_hash<T>();
+      loc.ptr       = const_cast<typename std::remove_cv<T>::type *>(ptr);
+      loc.dims      = dims;
+      loc.dim_names = dim_names;
+      loc.positive  = positive;
+      loc.dirty     = false;
+      loc.read_only = std::is_const<T>::value ? true : false;
+      loc.managed   = false;
+
+      entries.push_back( loc );
+    }
+
+
+    void make_readonly( std::string name ) {
+      entries[find_entry_or_error(name)].read_only = true;
     }
 
 
     // deallocate a named entry, and erase the entry from the list
     void unregister_and_deallocate( std::string name ) {
       int id = find_entry_or_error( name );
-      deallocate( entries[id].ptr , entries[id].name.c_str() );
+      if (entries[id].managed) deallocate( entries[id].ptr , entries[id].name.c_str() );
       entries.erase( entries.begin() + id );
     }
 
@@ -170,6 +247,9 @@ namespace pam {
       int id = find_entry_or_error( name );
       entries[id].dirty = false;
     }
+
+
+    bool is_read_only( std::string name ) { return entries[find_entry_or_error( name )].read_only; }
 
 
     // Get the dirty flag for a single entry
@@ -222,6 +302,7 @@ namespace pam {
     Array<T,N,memSpace,styleC> get( std::string name ) {
       // Make sure we have this name as an entry
       int id = find_entry_or_error( name );
+      if (entries[id].read_only) endrun("ERROR: Trying to get() a read-only arary without a const type");
       entries[id].dirty = true;
       // Make sure it's the right type and dimensionality
       validate_type<T>(id);
@@ -265,6 +346,7 @@ namespace pam {
       // Make sure we have this name as an entry
       int id = find_entry_or_error( name );
       entries[id].dirty = true;
+      if (entries[id].read_only) endrun("ERROR: Trying to get_lev_col() a read-only arary without a const type");
       // Make sure it's the right type
       validate_type<T>(id);
       validate_dims_lev_col(id);
@@ -308,6 +390,7 @@ namespace pam {
       // Make sure we have this name as an entry
       int id = find_entry_or_error( name );
       entries[id].dirty = true;
+      if (entries[id].read_only) endrun("ERROR: Trying to get_collapsed() a read-only arary without a const type");
       // Make sure it's the right type
       validate_type<T>(id);
       int ncells = entries[id].dims[0];
@@ -509,7 +592,7 @@ namespace pam {
     // Generally meat for internal use, but perhaps there are cases where the user might want to call this directly.
     void finalize() {
       for (int i=0; i < entries.size(); i++) {
-        deallocate( entries[i].ptr , entries[i].name.c_str() );
+        if (entries[i].managed) deallocate( entries[i].ptr , entries[i].name.c_str() );
       }
       entries    = std::vector<Entry>();
       dimensions = std::vector<Dimension>();

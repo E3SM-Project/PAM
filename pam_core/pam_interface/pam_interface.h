@@ -17,24 +17,6 @@ namespace pam_interface {
   extern std::vector<pam::PamCoupler> couplers;
 
 
-  // User provided function to perform initialization as called by the GCM
-  // This is called once at the beginning of the simulation, not every time step
-  // THIS HAS FORTRAN BINDINGS
-  extern std::function<void()> gcm_initialize;
-
-
-  // User provided function to perform a tendency calculation as called by the GCM
-  // This is called every time step
-  // THIS HAS FORTRAN BINDINGS
-  extern std::function<void()> gcm_tendency;
-
-
-  // User provided function to finalize as called by the GCM
-  // This is called once at the beginning of the simulation, not every time step
-  // THIS HAS FORTRAN BINDINGS
-  extern std::function<void()> gcm_finalize;
-
-
   // This is intended to be called at the end of the simulation, not at the end of every GCM time step
   // THIS HAS FORTRAN BINDINGS
   inline void finalize() { couplers.clear(); }
@@ -65,6 +47,14 @@ namespace pam_interface {
   template <class T>
   inline void register_and_allocate_array(std::string name, std::string desc, std::vector<int> dims) {
     get_coupler().get_data_manager_host_readwrite().register_and_allocate<T>( name , desc , dims );
+  }
+
+
+  // Allocate an array, and store its metadata in the host-side data manager "dm_host" for this thread's coupler
+  // THIS HAS FORTRAN BINDINGS
+  template <class T>
+  inline void register_existing_array(std::string name, std::string desc, std::vector<int> dims, T * ptr) {
+    get_coupler().get_data_manager_host_readwrite().register_existing<T>( name , desc , dims , ptr );
   }
 
 
@@ -110,6 +100,11 @@ namespace pam_interface {
   // Remove this option from this thread's coupler
   // THIS HAS FORTRAN BINDINGS
   inline void remove_option(std::string name) { get_coupler().delete_option(name); }
+
+
+  // Remove this option from this thread's coupler
+  // THIS HAS FORTRAN BINDINGS
+  inline void make_readonly(std::string name) { get_coupler().get_data_manager_host_readwrite().make_readonly(name); }
 }
 
 
