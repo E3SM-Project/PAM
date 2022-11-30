@@ -13,22 +13,6 @@
 using namespace scream;
 using namespace scream::p3;
 
-// reshape an input array (nj, nk) to output array (nk, nj)
-template <typename Scalar>
-void reshape(const Scalar* sv, Scalar* dv, Int nj, Int nk) {
-  parallel_for( SimpleBounds<2>(nj, nk) , YAKL_LAMBDA (int j, int k) {
-    dv[k*nj+j] = sv[j*nk+k];
-  });
-}
-
-// reshape and inverse an input array (nj, nk) to output array (nk, nj)
-template <typename Scalar>
-void reshape_and_inverse(const Scalar* sv, Scalar* dv, Int nj, Int nk) {
-  parallel_for( SimpleBounds<2>(nj, nk) , YAKL_LAMBDA (int j, int k) {
-    dv[k*nj+j] = 1./sv[j*nk+k];
-  });
-}
-
 //
 // main micro_p3 microproc
 //

@@ -13,6 +13,22 @@
 #include "Cuda/Kokkos_Cuda_Instance.hpp"
 #endif
 
+// reshape an input array (nj, nk) to output array (nk, nj)
+template <typename Scalar>
+void reshape(const Scalar* sv, Scalar* dv, int nj, int nk) {
+  parallel_for( SimpleBounds<2>(nj, nk) , YAKL_LAMBDA (int j, int k) {
+    dv[k*nj+j] = sv[j*nk+k];
+  });
+}
+
+// reshape and inverse an input array (nj, nk) to output array (nk, nj)
+template <typename Scalar>
+void reshape_and_inverse(const Scalar* sv, Scalar* dv, int nj, int nk) {
+  parallel_for( SimpleBounds<2>(nj, nk) , YAKL_LAMBDA (int j, int k) {
+    dv[k*nj+j] = 1./sv[j*nk+k];
+  });
+}
+
 // convert YAKL multidimensional array to Kokkos view on GPU
 template <typename SizeT, typename ViewT>
 void array_to_view(const typename ViewT::value_type::scalar* const data,
