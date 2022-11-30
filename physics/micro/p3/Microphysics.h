@@ -3,7 +3,11 @@
 
 #include "pam_coupler.h"
 
-#define P3_FORTRAN
+#define P3_CXX
+
+#ifdef P3_CXX
+#include "p3_main_cxx.h"
+#endif
 
 extern "C"
 void p3_main_fortran(double *qc , double *nc , double *qr , double *nr , double *th_atm , double *qv ,
@@ -86,14 +90,10 @@ public:
     sgs_shoc   = false;
   }
 
-
-
   // This must return the correct # of tracers **BEFORE** init(...) is called
   static int constexpr get_num_tracers() {
     return 9;
   }
-
-
 
   // Can do whatever you want, but mainly for registering tracers and allocating data
   void init(pam::PamCoupler &coupler) {
@@ -361,6 +361,8 @@ public:
     ite = ncol;
     kts = 1;
     kte = nz;
+
+#if defined(P3_FORTRAN)
     auto qc_host                 = qc                .createHostCopy();
     auto nc_host                 = nc                .createHostCopy();
     auto qr_host                 = qr                .createHostCopy();
@@ -458,7 +460,22 @@ public:
     qv_prev_host           .deep_copy_to( qv_prev            );
     t_prev_host            .deep_copy_to( t_prev             );
     col_location_host      .deep_copy_to( col_location       );
-    
+
+#elif defined(P3_CXX)
+    p3_main_cxx(qc.data() , nc.data() , qr.data() , nr.data() , theta.data() ,
+                qv.data() , dt , qi.data() , qm.data() , ni.data() , bm.data() ,
+                pressure.data() , dz.data() , nc_nuceat_tend.data() ,
+                nccn_prescribed.data() , ni_activated.data() , inv_qc_relvar.data() , it ,
+                precip_liq_surf.data() , precip_ice_surf.data() , its , ite , kts , kte ,
+                diag_eff_radius_qc.data() , diag_eff_radius_qi.data() , bulk_qi.data() ,
+                do_predict_nc, do_prescribed_CCN , dpres.data() , inv_exner.data() ,
+                qv2qi_depos_tend.data() , precip_total_tend.data() , nevapr.data() ,
+                qr_evap_tend.data() , precip_liq_flux.data() , precip_ice_flux.data() ,
+                cld_frac_r.data() , cld_frac_l.data() , cld_frac_i.data() ,
+                p3_tend_out.data() , mu_c.data() , lamc.data() , liq_ice_exchange.data() ,
+                vap_liq_exchange.data() , vap_ice_exchange.data() , qv_prev.data() ,
+                t_prev.data() , col_location.data() , &elapsed_s);
+#endif
                     
     ///////////////////////////////////////////////////////////////////////////////
     // Convert P3 outputs into dynamics coupler state and tracer masses

@@ -3,6 +3,11 @@
 
 #include "pam_coupler.h"
 
+#define SHOC_CXX
+
+#ifdef SHOC_CXX
+ #include "shoc_main_cxx.h"
+#endif
 
 extern "C"
 void shoc_init_fortran(int &nlev, double &gravit, double &rair, double &rh2o, double &cpair, double &zvir, double &latvap,
@@ -367,6 +372,7 @@ public:
 
     int nadv = 1;
 
+#if defined(SHOC_FORTRAN)
     auto shoc_host_dx_host     = shoc_host_dx    .createHostCopy();
     auto shoc_host_dy_host     = shoc_host_dy    .createHostCopy();
     auto shoc_zt_grid_host     = shoc_zt_grid    .createHostCopy();
@@ -478,6 +484,27 @@ public:
     shoc_wqls_sec_host   .deep_copy_to(shoc_wqls_sec   );
     shoc_brunt_host      .deep_copy_to(shoc_brunt      );
     shoc_isotropy_host   .deep_copy_to(shoc_isotropy   );
+#elif defined(SHOC_CXX)
+    int nzp1 = nz+1;
+    // IMPORTANT: SHOC appears to actually want 1/exner for the exner parameter
+    shoc_main_cxx( ncol, nz, nzp1, dt, nadv,
+                   shoc_host_dx.data(), shoc_host_dy.data(), shoc_thv.data(),
+                   shoc_zt_grid.data(), shoc_zi_grid.data(), shoc_pres.data(), shoc_presi.data(),
+                   shoc_pdel.data(),
+                   shoc_wthl_sfc.data(), shoc_wqw_sfc.data(), shoc_uw_sfc.data(), shoc_vw_sfc.data(),
+                   shoc_wtracer_sfc.data(), num_qtracers, shoc_w_field.data(),
+                   shoc_inv_exner.data(), shoc_phis.data(),
+                   shoc_host_dse.data(), shoc_tke.data(), shoc_thetal.data(), shoc_qw.data(),
+                   shoc_u_wind.data(), shoc_v_wind.data(), shoc_qtracers.data(),
+                   shoc_wthv_sec.data(), shoc_tkh.data(), shoc_tk.data(),
+                   shoc_ql.data(), shoc_cldfrac.data(),
+                   shoc_pblh.data(),
+                   shoc_mix.data(), shoc_isotropy.data(),
+                   shoc_w_sec.data(), shoc_thl_sec.data(), shoc_qw_sec.data(), shoc_qwthl_sec.data(),
+                   shoc_wthl_sec.data(), shoc_wqw_sec.data(), shoc_wtke_sec.data(),
+                   shoc_uw_sec.data(), shoc_vw_sec.data(), shoc_w3.data(),
+                   shoc_wqls_sec.data(), shoc_brunt.data(), shoc_ql2.data() );
+#endif
 
     // Process outputs from SHOC (reordering the vertical dimension)
     parallel_for( SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {

@@ -39,3 +39,8 @@ endif()
 target_link_libraries(physics INTERFACE micro sgs)
 target_link_libraries(physics INTERFACE yaml-cpp)
 
+if (${USE_SCREAM})
+  # cpp interface to kokkos version of scream
+  target_include_directories(physics INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/cpp_interface)
+endif()
+
