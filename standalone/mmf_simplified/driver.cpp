@@ -27,18 +27,19 @@ int main(int argc, char** argv) {
     std::string inFile(argv[1]);
     YAML::Node config = YAML::LoadFile(inFile);
     if ( !config            ) { endrun("ERROR: Invalid YAML input file"); }
-    auto simTime        = config["simTime"    ].as<real>(0.0_fp);
-    auto simSteps       = config["simSteps"].as<int>(0);
+//ADD VERTICAL GRID STUFF HERE
+    auto simTime        = config["simTime"    ].as<real>();
     auto crm_nx         = config["crm_nx"     ].as<int>();
     auto crm_ny         = config["crm_ny"     ].as<int>();
     auto nens           = config["nens"       ].as<int>();
     auto xlen           = config["xlen"       ].as<real>();
     auto ylen           = config["ylen"       ].as<real>();
-    auto dt_gcm         = config["dt_gcm"     ].as<real>();
-    auto dt_crm_phys    = config["dt_crm_phys"].as<real>();
-    auto out_freq       = config["out_freq"   ].as<real>(0);
+    auto gcm_physics_dt         = config["gcm_physics_dt"     ].as<real>();
+    auto crm_dt    = config["crm_dt"].as<real>();
+    auto out_freq       = config["out_freq"   ].as<real>();
     auto out_prefix     = config["out_prefix" ].as<std::string>();
-
+    real zlen;
+    
     int nranks;
     int myrank;
     MPI_Comm_size( MPI_COMM_WORLD , &nranks );
@@ -47,9 +48,10 @@ int main(int argc, char** argv) {
 
     auto &coupler = mmf_interface::get_coupler();
 
-    //set xlen, ylen, zlen based on init cond if needed
-    if (xlen < 0 || ylen < 0 || zlen < 0) { set_domain_sizes(config, xlen, ylen, zlen); }
+    //set xlen, ylen based on init cond if needed
+    if (xlen < 0 || ylen < 0) { set_domain_sizes(config, xlen, ylen, zlen); }
 
+//FIX UP A LITTLE
     int crm_nz = -1;
     real1d zint_in;
     if (vcoords_file == "uniform") {
@@ -179,11 +181,9 @@ int main(int argc, char** argv) {
     // Output the initial state
     if (out_freq >= 0. ) output( coupler , out_prefix , etime_gcm );
 
-//FIX THIS BIT A LITTLE...
-    // There are two ways of time control- setting total simulation time (simTime) or setting number of physics time steps (simSteps)
-    if (simTime == 0.0) {  simTime = simSteps * dtphys_in; }
-
     yakl::timer_start("main_loop");
+
+//REMOVE ONE LAYER OF LOOPING HERE
     while (etime_gcm < simTime) {
       if (etime_gcm + dt_gcm > simTime) { dt_gcm = simTime - etime_gcm; }
 

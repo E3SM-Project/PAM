@@ -60,7 +60,8 @@ public:
 
   int ierr;
   real etime = 0.0;
-  uint prevstep = 0;
+  real dt;
+  int niters;
 
   void init(PamCoupler &coupler) {
 
@@ -76,7 +77,8 @@ public:
     readModelParamsFile(inFile, params, par, coupler, testcase);
     debug_print("read parameters and partitioned domain/setting domain sizes",
                 par.masterproc);
-
+    set_timestepping_variables(inFile):
+    
     // Initialize the grid
     debug_print("start init topo/geom", par.masterproc);
     primal_topology.initialize(par, true);
@@ -132,10 +134,9 @@ public:
                           reference_state);
     debug_print("end tendencies init", par.masterproc);
 
-    // EVENTUALLY THIS NEEDS TO BE MORE CLEVER IE POSSIBLY DO NOTHING BASED ON
-    // THE IC STRING?
     //  set the initial conditions and compute initial stats
     debug_print("start ic setting", par.masterproc);
+//FIX THESE FOR COUPLERDATA
     testcase->set_reference_state(reference_state, primal_geometry,
                                   dual_geometry);
     testcase->set_initial_conditions(prognostic_vars, constant_vars,
@@ -181,12 +182,68 @@ public:
 
   // Given the model data and CFL value, compute the maximum stable time step
   real compute_time_step(PamCoupler const &coupler, real cfl_in = -1) {
+    
+//GET CFL FROM TIMESTEPPER!
+    real cfl = cfl_in;
+    if (cfl < 0) cfl = 0.75;
+
+    // If we've already computed the time step, then don't compute it again
+    if (dtInit <= 0) {
+
+//GET FROM THERMO/PARAMS/GEOM AS APPROPRIATE
+      YAKL_SCOPE( dx                   , this->dx                  );
+      YAKL_SCOPE( dy                   , this->dy                  );
+      YAKL_SCOPE( dz                   , this->dz                  );
+      YAKL_SCOPE( gamma                , this->gamma               );
+      YAKL_SCOPE( Rd                   , this->Rd                  );
+      YAKL_SCOPE( Rv                   , this->Rv                  );
+
+      auto &dm = coupler.get_data_manager_readonly();
+
+      // Convert data from DataManager to state and tracers array for convenience
+      auto dm_dens_dry = dm.get<real const,4>( "density_dry" );
+      auto dm_uvel     = dm.get<real const,4>( "uvel"        );
+      auto dm_vvel     = dm.get<real const,4>( "vvel"        );
+      auto dm_wvel     = dm.get<real const,4>( "wvel"        );
+      auto dm_temp     = dm.get<real const,4>( "temp"        );
+      auto dm_dens_vap = dm.get<real const,4>( "water_vapor" );
+
+      // Allocate a 3-D array for the max stable time steps (we'll use this for a reduction later)
+      real4d dt3d("dt3d",nz,ny,nx,nens);
+
+      // Loop through the cells, calculate the max stable time step for each cell
+      parallel_for( "Spatial.h compute_time_step" , SimpleBounds<4>(nz,ny,nx,nens) ,
+                    YAKL_LAMBDA (int k, int j, int i, int iens) {
+        real rho_d = dm_dens_dry(k,j,i,iens);
+        real u     = dm_uvel    (k,j,i,iens);
+        real v     = dm_vvel    (k,j,i,iens);
+        real w     = dm_wvel    (k,j,i,iens);
+        real temp  = dm_temp    (k,j,i,iens);
+        real rho_v = dm_dens_vap(k,j,i,iens);
+        real p = Rd * rho_d * temp + Rv * rho_v * temp;
+        // This neglects non-wv mass-adding tracers, but these are small, and their lack only increases cs
+        // Thus the resulting time step is conservative w/r to these missing masses, which is more stable
+        real cs = sqrt(gamma*p/(rho_v+rho_d));
+
+        // Compute the maximum stable time step in each direction
+        real udt = cfl * dx         / max( abs(u-cs) , abs(u+cs) );
+        real vdt = cfl * dy         / max( abs(v-cs) , abs(v+cs) );
+        if (sim2d) vdt = std::numeric_limits<real>::max();
+        real wdt = cfl * dz(k,iens) / max( abs(w-cs) , abs(w+cs) );
+
+        // Compute the min of the max stable time steps
+        dt3d(k,j,i,iens) = min( min(udt,vdt) , wdt );
+      });
+      // Store to dtInit so we don't have to compute this again
+      dtInit = yakl::intrinsics::minval( dt3d );
+    }
+
+    return dtInit;
+    
     return 0._fp;
   };
 
   void timeStep(PamCoupler &coupler, real dtphys) {
-
-    serial_print("taking a dycore dtphys step", par.masterproc);
 
     // convert Coupler state to dynamics state
     tendencies.convert_coupler_to_dynamics_state(coupler, prognostic_vars,
@@ -194,16 +251,35 @@ public:
 
     // Time stepping loop
     debug_print("start time stepping loop", par.masterproc);
-    for (uint nstep = 0; nstep < params.crm_per_phys; nstep++) {
+//SWAP THIS CAREFULLY
+//Actually this is fine -> either set crm_per_phys based on 
+
+real dt;
+if (dycore_per_phys_step > 0)
+{
+dt = compute_time_step( coupler );
+int n_iter = ceil( dtphys / dt );
+dt = dtphys / n_iter;
+}
+else
+{
+  dt = dtphys / dycore_per_phys_step;
+}
+
+//PRINT OUT ACTUAL DT USED
+serial_print("taking a crm_dt step", par.masterproc);
+
+    for (uint nstep = 0; nstep < n_iter; nstep++) {
       yakl::fence();
-      tint.stepForward(params.dtcrm);
+      tint.stepForward(dt);
       yakl::fence();
 
-      etime += params.dtcrm;
-      if ((nstep + prevstep) % params.Nout == 0) {
-        serial_print("dycore step " + std::to_string((nstep + prevstep)) +
-                         " time " + std::to_string(etime),
-                     par.masterproc);
+      etime += dt;
+
+//ADD NUM_OUT STUFF
+      if (dycore_out_freq >= 0. && etime / dycore_out_freq >= num_out+1) {
+        
+        serial_print("dycore ouput at " + std::to_string(etime),par.masterproc);
         for (auto &diag : diagnostics) {
           diag->compute(etime, reference_state, constant_vars, prognostic_vars);
         }
@@ -211,12 +287,13 @@ public:
         io.outputStats(stats);
       }
 
-      if ((nstep + prevstep) % params.Nstat == 0) {
+//ADD NUM_STAT STUFF
+      if (dycore_stat_freq >= 0. && etime / dycore_stat_freq >= num_stat+1) {
         stats.compute(prognostic_vars, constant_vars,
                       (nstep + prevstep) / params.Nstat);
+        //HOW DO WE HANDLE THIS LAST ARGUMENT?
       }
     }
-    prevstep += params.crm_per_phys;
 
     if (remove_negative_densities) {
       tendencies.remove_negative_densities(prognostic_vars);
@@ -229,6 +306,43 @@ public:
     debug_print("end time stepping loop", par.masterproc);
   };
 
+//CAN ACTUALLY MOSTLY MOVE THIS ALL BACK INTO THE PARAMS
+//IE ALL THAT REALLY MATTERS IS OUTPUT/STAT FREQUENCY!!!
+//AND dycore_per_phys, etc.
+void set_timestepping()
+{
+  
+  YAML::Node config = YAML::LoadFile(inFile);
+
+
+  //two types of time stepping control: total time based and step based
+  simSteps = config["simSteps"].as<int>(0);
+  simTime = config["simTime"].as<real>(0.0_fp);
+
+
+  std::cout << "dtcrm:         " << dtcrm << "\n";
+  std::cout << "dtphys:         " << dtphys << "\n";
+  std::cout << "Nsteps:     " << Nsteps << "\n";
+  std::cout << "simSteps:     " << simSteps << "\n";
+  std::cout << "crm per phys:     " << crm_per_phys << "\n";
+  std::cout << "Nout:       " << Nout << "\n";
+
+
+  dtphys = config["dtphys"].as<real>();
+  crm_per_phys = config["crm_per_phys"].as<int>(0);
+  Nout = config["outSteps"].as<int>(0);
+  Nstat = config["statSteps"].as<int>(0);
+  if (not(params.dtphys > 0.0_fp) or not(simSteps > 0) or
+      not(params.crm_per_phys > 0) or not(params.Nout > 0) or
+      not(params.Nstat > 0)) {
+    endrun("spam++ must use step-based time control logic ie set simSteps >0, "
+           "dtphys>0, crm_per_phys >0, outSteps >0, statSteps >0");
+  }
+
+//FIX THIS A LITTLE I THINK
+  params.dtcrm = params.dtphys / params.crm_per_phys;
+  params.Nsteps = simSteps * params.crm_per_phys;
+}
   void finalize(PamCoupler &coupler) { io.outputStats(stats); }
 
   const char *dycore_name() const { return "SPAM++"; }

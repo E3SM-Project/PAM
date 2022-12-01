@@ -1,10 +1,6 @@
 ---
-# Simulation time in number of physics time steps
-simSteps  : 360 #1280 11520
-#11520 * 5 = 57600 * 0.015625  = 900s
-#1280 * 5 = 6400 = 100s
-#40 * 5 = 200 * 0.5 = 100s
-#360 * 5 = 1800 * 0.5 = 900s
+# Simulation time
+gcm_physics_dt  : 900.
 
 # Number of cells to use
 crm_nx       : 100
@@ -20,8 +16,8 @@ vcoords  : '../pam-c/vcoords/vcoords_exp_150_1500.nc'
 initData : risingbubble
 
 # Time steps
-dtphys: 2.5
-crm_per_phys: 5
+crm_dt: 2.5
+dycore_per_phys_step: 5
 #0.015625 * 5 = 0.078125 for explicit
 # 0.5*5 = 2.5 for semi-implicit
 
@@ -32,11 +28,12 @@ dycore_out_prefix  : test_dycore
 #Coupler output frequency in actual time
 out_freq : 100.0
 
-# Output frequency in number of CRM time steps
-outSteps: 200
-statSteps: 1
-#6400 = 100s for explicit
-#200 = 100s for semi-implicit
+# Output and stat frequency for dycore
+dycore_out_freq: 100.0
+stat_out_freq: 0.5
+#0.015625 explicit
+# 0.5 semi-implicit
+
 
 tstype: si
 #kgrk4 si

@@ -2723,24 +2723,15 @@ convert_coupler_to_dynamics_state(coupler, progvars,constvars);
 }
 
 //ADD THESE
-void set_reference_state(ReferenceState &reference_state,
+void set_reference_state(ModelReferenceState &ref_state, PamCoupler &coupler, FieldSet<nconstant> &constvars,
                          const Geometry<Straight> &primal_geom,
                          const Geometry<Twisted> &dual_geom) override {
-  auto &refstate = static_cast<ModelReferenceState &>(reference_state);
+                           
 
+varset.convert_coupler_to_reference_state(coupler, ref_state, constvars);
+                                       const FieldSet<nconstant> &const_vars)
 //Needs the non-perturbed average coupler state
 
-// Get GCM state to base reference state on
-    auto &dm = coupler.get_data_manager_readwrite();
-
-    auto gcm_rho_d = dm.get<real,2>("gcm_density_dry");
-    //auto gcm_uvel  = dm.get<real,2>("gcm_uvel"       );
-    //auto gcm_vvel  = dm.get<real,2>("gcm_vvel"       );
-    //auto gcm_wvel  = dm.get<real,2>("gcm_wvel"       );
-    auto gcm_temp  = dm.get<real,2>("gcm_temp"       );
-    auto gcm_rho_v = dm.get<real,2>("gcm_water_vapor");
-
-//LOTS TO ADD HERE
 }
 
 };

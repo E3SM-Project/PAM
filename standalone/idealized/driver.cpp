@@ -30,24 +30,24 @@ int main(int argc, char** argv) {
     YAML::Node config = YAML::LoadFile(inFile);
     if ( !config            ) { endrun("ERROR: Invalid YAML input file"); }
 
-    real        simTime      = config["simTime" ].as<real>(0.0_fp);
-    real        simSteps     = config["simSteps"].as<int>(0);
+    real        gcm_physics_dt = config["gcm_physics_dt" ].as<real>();
     int         crm_nx       = config["crm_nx"  ].as<int>();
     int         crm_ny       = config["crm_ny"  ].as<int>();
+    int         crm_nz       = config["crm_nz"  ].as<int>(0);
     int         nens         = config["nens"    ].as<int>();
     real        xlen         = config["xlen"    ].as<real>(-1.0_fp);
     real        ylen         = config["ylen"    ].as<real>(-1.0_fp);
-    real        zlen         = config["zlen"    ].as<real>(-1.0_fp);
-    real        dtphys_in    = config["dtphys"  ].as<real>();
+    real        crm_dt_in    = config["crm_dt"  ].as<real>();
     std::string vcoords_file = config["vcoords" ].as<std::string>();
     bool        use_coupler_hydrostasis = config["use_coupler_hydrostasis"].as<bool>(false);
-    auto out_freq                = config["out_freq"   ].as<real>(0);
+    auto out_freq                = config["out_freq"   ].as<real>();
     auto out_prefix              = config["out_prefix" ].as<std::string>("test");
     bool        inner_mpi = config["inner_mpi"].as<bool>(false);
+    real zlen;
+    
+    if (xlen < 0 || ylen < 0) { set_domain_sizes(config, xlen, ylen, zlen); }
 
-    //set xlen, ylen, zlen based on init cond if needed
-    if (xlen < 0 || ylen < 0 || zlen < 0) { set_domain_sizes(config, xlen, ylen, zlen); }
-
+//FIX THIS UP A LITTLE I THINK?
     int crm_nz = -1;
     real1d zint_in;
     if (vcoords_file == "uniform") {
@@ -110,21 +110,17 @@ int main(int argc, char** argv) {
     dycore.init( coupler ); // Dycore should initialize its own state here
     yakl::timer_stop("dycore");
 
-    #ifdef PAM_STANDALONE
     if (masterproc) {
       std::cout << "Dycore: " << dycore.dycore_name() << std::endl;
       std::cout << "Micro : " << micro .micro_name () << std::endl;
       std::cout << "SGS   : " << sgs   .sgs_name   () << std::endl;
       std::cout << "\n";
     }
-    #endif
 
     // Now that we have an initial state, define hydrostasis for each ensemble member
     if (use_coupler_hydrostasis) coupler.update_hydrostasis( );
 
     real etime = 0;
-    // There are two ways of time control- setting total simulation time (simTime) or setting number of physics time steps (simSteps)
-    if (simTime == 0.0) {  simTime = simSteps * dtphys_in; }
 
     int  num_out = 0;
     // Output the initial state
@@ -132,26 +128,23 @@ int main(int argc, char** argv) {
     if (out_freq >= 0. ) output( coupler , out_prefix , etime );
     yakl::timer_stop("output");
 
-    real dtphys = dtphys_in;
-    while (etime < simTime) {
-      yakl::timer_start("dycore");
-      if (dtphys_in == 0.) { dtphys = dycore.compute_time_step(coupler); }
-      yakl::timer_stop("dycore");
-      if (etime + dtphys > simTime) { dtphys = simTime - etime; }
+    real crm_dt = crm_dt_in;
+    while (etime < gcm_physics_dt) {
+      if (etime + crm_dt > gcm_physics_dt) { crm_dt = gcm_physics_dt - etime; }
 
       yakl::timer_start("sgs");
-      sgs.timeStep( coupler , dtphys );
+      sgs.timeStep( coupler , crm_dt );
       yakl::timer_stop("sgs");
 
       yakl::timer_start("micro");
-      micro.timeStep( coupler , dtphys );
+      micro.timeStep( coupler , crm_dt );
       yakl::timer_stop("micro");
 
       yakl::timer_start("dycore");
-      dycore.timeStep( coupler , dtphys );
+      dycore.timeStep( coupler , crm_dt );
       yakl::timer_stop("dycore");
 
-      etime += dtphys;
+      etime += crm_dt;
 
       auto &dm = coupler.get_data_manager_readonly();
       real maxw = maxval(abs(dm.get_collapsed<real const>("wvel")));

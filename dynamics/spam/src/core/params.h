@@ -68,21 +68,6 @@ void readParamsFile(std::string inFile, ModelParameters &params, Parallel &par,
 
   params.nz_dual = nz;
 
-  params.dtphys = config["dtphys"].as<real>();
-  params.crm_per_phys = config["crm_per_phys"].as<int>(0);
-  params.Nout = config["outSteps"].as<int>(0);
-  params.Nstat = config["statSteps"].as<int>(0);
-  int simSteps = config["simSteps"].as<int>(0);
-  if (not(params.dtphys > 0.0_fp) or not(simSteps > 0) or
-      not(params.crm_per_phys > 0) or not(params.Nout > 0) or
-      not(params.Nstat > 0)) {
-    endrun("spam++ must use step-based time control logic ie set simSteps >0, "
-           "dtphys>0, crm_per_phys >0, outSteps >0, statSteps >0");
-  }
-
-  params.dtcrm = params.dtphys / params.crm_per_phys;
-  params.Nsteps = simSteps * params.crm_per_phys;
-
   params.tstype = config["tstype"].as<std::string>();
 
   params.si_tolerance = config["si_tolerance"].as<real>(1e-8);
@@ -159,22 +144,15 @@ void readParamsFile(std::string inFile, ModelParameters &params, Parallel &par,
     std::cout << "halox:      " << par.halox << "\n";
     std::cout << "haloy:      " << par.haloy << "\n";
 
-    std::cout << "dtcrm:         " << params.dtcrm << "\n";
-    std::cout << "dtphys:         " << params.dtphys << "\n";
-    std::cout << "Nsteps:     " << params.Nsteps << "\n";
-    std::cout << "simSteps:     " << simSteps << "\n";
-    std::cout << "crm per phys:     " << params.crm_per_phys << "\n";
-    std::cout << "Nout:       " << params.Nout << "\n";
-    std::cout << "outputName: " << params.outputName << "\n";
-
     std::cout << "nranks:     " << par.nranks << "\n";
     std::cout << "nprocx:     " << par.nprocx << "\n";
     std::cout << "nprocy:     " << par.nprocy << "\n";
 
     std::cout << "xlen:       " << params.xlen << "\n";
     std::cout << "ylen:       " << params.ylen << "\n";
-    std::cout << "zlen:       " << params.zlen << "\n";
     std::cout << "xc:         " << params.xc << "\n";
     std::cout << "yc:         " << params.yc << "\n";
+
+    std::cout << "outputName: " << params.outputName << "\n";
   }
 };

@@ -171,12 +171,6 @@ public:
   int nz_dual = -1;
   int nens = -1;
 
-  int Nsteps = -1;
-  int Nout = -1;
-  real dtcrm = -1.;
-  real dtphys = -1.;
-  int crm_per_phys = -1;
-  int Nstat = -1;
   std::string outputName;
   std::string tstype;
   real si_tolerance = -1;
