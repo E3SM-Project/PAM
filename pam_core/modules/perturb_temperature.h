@@ -11,13 +11,13 @@ namespace modules {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
 
-    int constexpr num_levels = 10;
-    real constexpr magnitude = 3.;
-
     int nz   = coupler.get_nz  ();
     int ny   = coupler.get_ny  ();
     int nx   = coupler.get_nx  ();
     int nens = coupler.get_nens();
+
+    int constexpr num_levels = nz/4;
+    real constexpr magnitude = 3.;
 
     size_t seed = static_cast<size_t>(id*nz*nx*ny*nens);
 
