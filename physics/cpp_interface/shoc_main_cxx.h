@@ -52,7 +52,7 @@ void shoc_main_cxx(int &shcol, int &nlev, int &nlevi, double &dtime, int &nadv, 
   real2d shoc_cldfrac_in("shoc_cldfrac", ncol, nlev);
   real2d thetal_in("thetal", ncol, nlev);
   real2d w_field_in("w_field", ncol, nlev);
-  real2d wtracer_sfc_in("wtracer_sfc", ncol, nlev);
+  real2d wtracer_sfc_in("wtracer_sfc", ncol, num_qtracers);
   real3d shoc_hwind_in("shoc_hwind", ncol, 2, nlev);
   real3d qtracers_in("qtracer", ncol, num_qtracers, nlev);
 
@@ -70,13 +70,23 @@ void shoc_main_cxx(int &shcol, int &nlev, int &nlevi, double &dtime, int &nadv, 
   // -------------------------------------------------
   // Set surface geopotential and fluxes
   // -------------------------------------------------
-  view_1d host_dx_1d(host_dx),
-          host_dy_1d(host_dy),
-          wthl_sfc_1d(wthl_sfc),  // Surface sensible heat flux [K m/s]
-          wqw_sfc_1d(wqw_sfc),    // Surface latent heat flux [kg/kg m/s]
-          uw_sfc_1d(uw_sfc),      // Surface momentum flux (u-direction) [m2/s2]
-          vw_sfc_1d(vw_sfc),      // Surface momentum flux (v-direction) [m2/s2]
-          phis_1d(phis_1d);       // Host model surface geopotential height
+  view_1d host_dx_1d("host_dx", ncol),
+          host_dy_1d("host_dy", ncol),
+          wthl_sfc_1d("wthl_sfc", ncol),  // Surface sensible heat flux [K m/s]
+          wqw_sfc_1d("wqw_sfc", ncol),    // Surface latent heat flux [kg/kg m/s]
+          uw_sfc_1d("uw_sfc", ncol),      // Surface momentum flux (u-direction) [m2/s2]
+          vw_sfc_1d("vw_sfc", ncol),      // Surface momentum flux (v-direction) [m2/s2]
+          phis_1d("phis_1d", ncol);       // Host model surface geopotential height
+
+  Kokkos::parallel_for("host grid", ncol, KOKKOS_LAMBDA (const int& i) {
+    host_dx_1d(i)  = host_dx[i];
+    host_dy_1d(i)  = host_dy[i];
+    wthl_sfc_1d(i) = wthl_sfc[i];
+    wqw_sfc_1d(i)  = wqw_sfc[i];
+    uw_sfc_1d(i)   = uw_sfc[i];
+    vw_sfc_1d(i)   = vw_sfc[i];
+    phis_1d(i)     = phis[i];
+  });
 
   reshape(zt_grid,     zt_g_in.data(),       ncol, nlev);
   reshape(zi_grid,     zi_g_in.data(),       ncol, nlevi);
@@ -86,7 +96,7 @@ void shoc_main_cxx(int &shcol, int &nlev, int &nlevi, double &dtime, int &nadv, 
   reshape(inv_exner,   inv_exner_in.data(),  ncol, nlev);
   reshape(thv,         thv_in.data(),        ncol, nlev);
   reshape(w_field,     w_field_in.data(),    ncol, nlev);
-  reshape(wtracer_sfc, wtracer_sfc_in.data(),ncol, nlev);
+  reshape(wtracer_sfc, wtracer_sfc_in.data(),ncol, num_qtracers);
 
   view_2d zt_grid_2d("zt_grid", ncol, npack),                 // heights, for thermo grid [m]
           zi_grid_2d("zi_grid", ncol, nipack),                // heights, for interface grid [m]
@@ -95,16 +105,18 @@ void shoc_main_cxx(int &shcol, int &nlev, int &nlevi, double &dtime, int &nadv, 
           pdel_2d("pdel", ncol, npack),                       // Differences in pressure levels [Pa]
           thv_2d("thv", ncol, npack),                         // virtual potential temperature [K]
           w_field_2d("w_field", ncol, npack),                 // large scale vertical velocity [m/s]
-          wtracer_sfc_2d("wtracer", ncol, npack),             // Surface flux for tracers [varies]
+          wtracer_sfc_2d("wtracer", ncol, num_qtracers),             // Surface flux for tracers [varies]
           inv_exner_2d("inv_exner", ncol, npack);
 
-  array_to_view(zt_g_in.data(),      ncol, nlev,  zt_grid_2d);
-  array_to_view(zi_g_in.data(),      ncol, nlevi, zi_grid_2d);
-  array_to_view(pres_in.data(),      ncol, nlev,  pres_2d);
-  array_to_view(presi_in.data(),     ncol, nlevi, presi_2d);
-  array_to_view(pdel_in.data(),      ncol, nlev,  pdel_2d);
-  array_to_view(inv_exner_in.data(), ncol, nlev,  inv_exner_2d);
-  array_to_view(thv_in.data(),       ncol, nlev,  thv_2d);
+  array_to_view(zt_g_in.data(),        ncol, nlev,  zt_grid_2d);
+  array_to_view(zi_g_in.data(),        ncol, nlevi, zi_grid_2d);
+  array_to_view(pres_in.data(),        ncol, nlev,  pres_2d);
+  array_to_view(presi_in.data(),       ncol, nlevi, presi_2d);
+  array_to_view(pdel_in.data(),        ncol, nlev,  pdel_2d);
+  array_to_view(inv_exner_in.data(),   ncol, nlev,  inv_exner_2d);
+  array_to_view(thv_in.data(),         ncol, nlev,  thv_2d);
+  array_to_view(wtracer_sfc_in.data(), ncol, nlev,  wtracer_sfc_2d);
+  array_to_view(w_field_in.data(),     ncol, nlev,  w_field_2d);
 
   SHOC::SHOCInput shoc_input{host_dx_1d, host_dy_1d, zt_grid_2d, zi_grid_2d,
                             pres_2d, presi_2d, pdel_2d, thv_2d,
@@ -118,8 +130,8 @@ void shoc_main_cxx(int &shcol, int &nlev, int &nlevi, double &dtime, int &nadv, 
   reshape(shoc_ql,      shoc_ql_in.data(),      ncol, nlev);
   reshape(wthv_sec,     wthv_sec_in.data(),     ncol, nlev);
   reshape(tk,           tk_in.data(),           ncol, nlev);
-  reshape(tkh,          tkh_in.data(),          ncol, nlev);
   reshape(shoc_cldfrac, shoc_cldfrac_in.data(), ncol, nlev);
+  reshape(tkh,          tkh_in.data(),          ncol, nlev);
 
   view_2d host_dse_2d("host_dse", ncol, npack);                 // dry static energy [J/kg] : dse = Cp*T + g*z + phis
   view_2d tke_2d("tke", ncol, npack);                           // turbulent kinetic energy [m2/s2]
@@ -135,12 +147,14 @@ void shoc_main_cxx(int &shcol, int &nlev, int &nlevi, double &dtime, int &nadv, 
 
   array_to_view(shoc_dse_in.data(),     ncol, nlev, host_dse_2d);
   array_to_view(tke_in.data(),          ncol, nlev, tke_2d);
+  array_to_view(thetal_in.data(),       ncol, nlev, thetal_2d);
   array_to_view(qw_in.data(),           ncol, nlev, qw_2d);
   array_to_view(shoc_ql_in.data(),      ncol, nlev, shoc_ql_2d);
   array_to_view(tk_in.data(),           ncol, nlev, tk_2d);
   array_to_view(tkh_in.data(),          ncol, nlev, tkh_2d);
   array_to_view(wthv_sec_in.data(),     ncol, nlev, wthv_sec_2d);
   array_to_view(shoc_cldfrac_in.data(), ncol, nlev, shoc_cldfrac_2d);
+  array_to_view(shoc_ql_in.data(),      ncol, nlev, shoc_ql_2d);
   array_to_view(shoc_hwind_in.data(),   ncol, 2, nlev, shoc_hwind_3d);
   array_to_view(qtracers_in.data(),     ncol, num_qtracers, nlev, qtracers_3d);
 
@@ -149,7 +163,7 @@ void shoc_main_cxx(int &shcol, int &nlev, int &nlevi, double &dtime, int &nadv, 
                                          tk_2d, shoc_cldfrac_2d, shoc_ql_2d};
 
   view_1d pblh_1d("pblh",ncol);
-  view_2d shoc_ql2_2d("shoc_ql2",ncol,npack);
+  view_2d shoc_ql2_2d("shoc_ql2",ncol, npack);
   SHOC::SHOCOutput shoc_output{pblh_1d, shoc_ql2_2d};
 
   view_2d shoc_mix_2d("shoc_mix", ncol, npack),     // Turbulent length scale [m]
@@ -174,9 +188,9 @@ void shoc_main_cxx(int &shcol, int &nlev, int &nlevi, double &dtime, int &nadv, 
   const int nwind = ekat::npack<Spack>(2)*Spack::n;
   const int ntrac = ekat::npack<Spack>(num_qtracers+3)*Spack::n;
   const auto policy = ekat::ExeSpaceUtils<SHOC::KT::ExeSpace>::get_default_team_policy(ncol, npack);
-  ekat::WorkspaceManager<Spack, SHOC::KT::Device> workspace_mgr(nipack, 128+(nwind+ntrac), policy);
+  ekat::WorkspaceManager<Spack, SHOC::KT::Device> workspace_mgr(nipack, 13+(nwind+ntrac), policy);
 
-  const auto elapsed_microsec = SHOC::shoc_main(ncol, nlev, nlevi, nlev, 1, num_qtracers, dtime, workspace_mgr,
+  const auto elapsed_microsec = SHOC::shoc_main(shcol, nlev, nlevi, nlev, nadv, num_qtracers, dtime, workspace_mgr,
                                                 shoc_input, shoc_input_output, shoc_output, shoc_history_output);
 
   // get SHOC output back to CRM 
