@@ -2712,6 +2712,7 @@ void add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics) over
 
 void set_initial_conditions(FieldSet<nprognostic> &progvars,
                             FieldSet<nconstant> &constvars,
+                            PamCoupler &coupler,
                             const Geometry<Straight> &primal_geom,
                             const Geometry<Twisted> &dual_geom) override {
 
@@ -2723,7 +2724,7 @@ convert_coupler_to_dynamics_state(coupler, progvars,constvars);
 }
 
 //ADD THESE
-void set_reference_state(ModelReferenceState &ref_state, PamCoupler &coupler, FieldSet<nconstant> &constvars,
+void set_reference_state(ModelReferenceState &ref_state, PamCoupler &coupler,
                          const Geometry<Straight> &primal_geom,
                          const Geometry<Twisted> &dual_geom) override {
                            
@@ -2766,6 +2767,7 @@ public:
 
   void set_initial_conditions(FieldSet<nprognostic> &progvars,
                               FieldSet<nconstant> &constvars,
+                              PamCoupler &coupler,
                               const Geometry<Straight> &primal_geom,
                               const Geometry<Twisted> &dual_geom) override {
 
@@ -2800,7 +2802,7 @@ public:
     }
   }
 
-  void set_reference_state(ReferenceState &reference_state,
+  void set_reference_state(ReferenceState &reference_state, PamCoupler &coupler,
                            const Geometry<Straight> &primal_geom,
                            const Geometry<Twisted> &dual_geom) override {
     auto &refstate = static_cast<ModelReferenceState &>(reference_state);
@@ -2966,6 +2968,7 @@ public:
 
   void set_initial_conditions(FieldSet<nprognostic> &progvars,
                               FieldSet<nconstant> &constvars,
+                              PamCoupler &coupler,
                               const Geometry<Straight> &primal_geom,
                               const Geometry<Twisted> &dual_geom) override {
 
@@ -2997,7 +3000,7 @@ public:
     }
   }
 
-  void set_reference_state(ReferenceState &reference_state,
+  void set_reference_state(ReferenceState &reference_state, PamCoupler &coupler,
                            const Geometry<Straight> &primal_geom,
                            const Geometry<Twisted> &dual_geom) override {
     auto &refstate = static_cast<ModelReferenceState &>(reference_state);

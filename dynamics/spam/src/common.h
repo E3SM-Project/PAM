@@ -178,6 +178,11 @@ public:
   real xlen, ylen;
   real xc, yc;
 
+  int dycore_per_phys;
+  real dycore_out_freq;
+  real dycore_stat_freq;
+
+
   int masterproc;
 };
 

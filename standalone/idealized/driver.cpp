@@ -114,6 +114,8 @@ int main(int argc, char** argv) {
       std::cout << "Dycore: " << dycore.dycore_name() << std::endl;
       std::cout << "Micro : " << micro .micro_name () << std::endl;
       std::cout << "SGS   : " << sgs   .sgs_name   () << std::endl;
+      std::cout << "crm_dt:         " << crm_dt << "\n";
+      std::cout << "gcm_physics_dt:         " << gcm_physics_dt << "\n";
       std::cout << "\n";
     }
 

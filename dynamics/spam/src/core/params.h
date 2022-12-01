@@ -72,6 +72,11 @@ void readParamsFile(std::string inFile, ModelParameters &params, Parallel &par,
 
   params.si_tolerance = config["si_tolerance"].as<real>(1e-8);
 
+  params.dycore_per_phys = config["dycore_per_phys"].as<int>(0);
+  
+  params.dycore_out_freq = config["dycore_out_freq"].as<real>(0.0_fp);
+  params.dycore_stat_freq config["dycore_stat_freq"].as<real>(0.0_fp);    
+  
   params.outputName = config["dycore_out_prefix"].as<std::string>("output");
 
   par.nz = params.nz_dual;
@@ -133,6 +138,7 @@ void readParamsFile(std::string inFile, ModelParameters &params, Parallel &par,
   ierr = MPI_Barrier(MPI_COMM_WORLD);
 #endif
 
+
   // Print out the values
   if (par.masterproc) {
     std::cout << "nx:         " << params.nx_glob << "\n";
@@ -153,6 +159,10 @@ void readParamsFile(std::string inFile, ModelParameters &params, Parallel &par,
     std::cout << "xc:         " << params.xc << "\n";
     std::cout << "yc:         " << params.yc << "\n";
 
+    std::cout << "dycore_per_phys:     " << dycore_per_phys << "\n";
+
+    std::cout << "dycore_out_freq:       " << dycore_out_freq << "\n";
+    std::cout << "dycore_stat_freq:       " << dycore_stat_freq << "\n";
     std::cout << "outputName: " << params.outputName << "\n";
   }
 };
