@@ -369,10 +369,14 @@ namespace pam {
       this->xlen = xlen;
       this->ylen = ylen;
       auto zint = dm.get<real,2>("vertical_interface_height");
+      auto dz   = dm.get<real,2>("vertical_cell_dz");
       auto zmid = dm.get<real,2>("vertical_midpoint_height" );
       parallel_for( "vert grid 1" , SimpleBounds<2>(nz+1,nens) , YAKL_LAMBDA (int k, int iens) {
         zint(k,iens) = zint_in(k,iens);
-        if (k < nz) zmid(k,iens) = 0.5_fp * (zint_in(k,iens) + zint_in(k+1,iens));
+        if (k < nz) {
+          zmid(k,iens) = 0.5_fp * (zint_in(k,iens) + zint_in(k+1,iens));
+          dz  (k,iens) = zint_in(k+1,iens) - zint_in(k,iens);
+        }
       });
     }
 
@@ -386,10 +390,14 @@ namespace pam {
       this->xlen = xlen;
       this->ylen = ylen;
       auto zint = dm.get<real,2>("vertical_interface_height");
+      auto dz   = dm.get<real,2>("vertical_cell_dz");
       auto zmid = dm.get<real,2>("vertical_midpoint_height" );
       parallel_for( "vert grid 2" , SimpleBounds<2>(nz+1,nens) , YAKL_LAMBDA (int k, int iens) {
         zint(k,iens) = zint_in(k);
-        if (k < nz) zmid(k,iens) = 0.5_fp * (zint_in(k) + zint_in(k+1));
+        if (k < nz) {
+          zmid(k,iens) = 0.5_fp * (zint_in(k) + zint_in(k+1));
+          dz  (k,iens) = zint_in(k+1) - zint_in(k);
+        }
       });
     }
 
@@ -454,6 +462,7 @@ namespace pam {
       dm.register_and_allocate<real>("wvel"                     ,"z-direction velocity"       ,{nz,ny,nx,nens},{"z","y","x","nens"});
       dm.register_and_allocate<real>("temp"                     ,"temperature"                ,{nz,ny,nx,nens},{"z","y","x","nens"});
       dm.register_and_allocate<real>("vertical_interface_height","vertical interface height"  ,{nz+1    ,nens},{"zp1"      ,"nens"});
+      dm.register_and_allocate<real>("vertical_cell_dz"         ,"vertical grid spacing"      ,{nz      ,nens},{"z"        ,"nens"});
       dm.register_and_allocate<real>("vertical_midpoint_height" ,"vertical midpoint height"   ,{nz      ,nens},{"z"        ,"nens"});
       dm.register_and_allocate<real>("hydrostasis_parameters"   ,"hydrostasis parameters"     ,{nz,5    ,nens},{"z","nhy"  ,"nens"});
       dm.register_and_allocate<real>("gcm_density_dry"          ,"GCM column dry density"     ,{nz      ,nens},{"z"        ,"nens"});
@@ -469,6 +478,7 @@ namespace pam {
       auto wvel         = dm.get_collapsed<real>("wvel"                     );
       auto temp         = dm.get_collapsed<real>("temp"                     );
       auto zint         = dm.get_collapsed<real>("vertical_interface_height");
+      auto dz           = dm.get_collapsed<real>("vertical_cell_dz"         );
       auto zmid         = dm.get_collapsed<real>("vertical_midpoint_height" );
       auto hy_params    = dm.get_collapsed<real>("hydrostasis_parameters"   );
       auto gcm_rho_d    = dm.get_collapsed<real>("gcm_density_dry"          );
@@ -487,6 +497,7 @@ namespace pam {
         if (i < (nz+1)*nens) zint(i) = 0;
         if (i < (nz  )*nens) {
           zmid     (i) = 0;
+          dz       (i) = 0;
           gcm_rho_d(i) = 0;
           gcm_uvel (i) = 0;
           gcm_vvel (i) = 0;
@@ -509,6 +520,7 @@ namespace pam {
 
       auto zint      = dm.get<real const,2>("vertical_interface_height");
       auto zmid      = dm.get<real const,2>("vertical_midpoint_height" );
+      auto dz        = dm.get<real const,2>("vertical_cell_dz");
       auto hy_params = dm.get<real,3>("hydrostasis_parameters"   );
 
       auto dens_dry = dm.get<real const,4>("density_dry");
@@ -544,8 +556,7 @@ namespace pam {
 
         SArray<double,1,npts> z;
         real z0 = zmid(kmid,iens);
-        real dz = zint(kmid+1,iens) - zint(kmid,iens);
-        for (int i=0; i < npts; i++) { z(i) = ( zmid(kbot+i,iens) - z0 ) / dz; }
+        for (int i=0; i < npts; i++) { z(i) = ( zmid(kbot+i,iens) - z0 ) / dz(k,iens); }
 
         SArray<double,2,npts,npts> vand;
         for (int j=0; j < npts; j++) {

@@ -123,6 +123,7 @@ namespace modules {
     int ny   = dm.get_dimension_size("y"   );
     int nx   = dm.get_dimension_size("x"   );
     int nens = dm.get_dimension_size("nens");
+    auto dz  = dm.get<real,2>("vertical_cell_dz");
 
     // Current CRM state
     auto rho_d = dm.get<real,4>( "density_dry" );
@@ -163,7 +164,7 @@ namespace modules {
       rho_v(k,j,i,iens) += gcm_forcing_tend_rho_v(k,iens) * dt;
       // Compute negative and positive mass for rho_v, and set negative masses to zero (essentially adding mass)
       if (rho_v(k,j,i,iens) < 0) {
-        atomicAdd( rho_v_neg_mass(k,iens) , -rho_v(k,j,i,iens) );
+        atomicAdd( rho_v_neg_mass(k,iens) , -rho_v(k,j,i,iens)*dz(k,iens) );
         rho_v(k,j,i,iens) = 0;
       }
     });
@@ -172,7 +173,7 @@ namespace modules {
     if (yakl::intrinsics::sum(rho_v_neg_mass) > 0) {
       // Calculate available positive mass for hole filling at each vertical level 
       parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-        if (rho_v(k,j,i,iens) > 0) atomicAdd( rho_v_pos_mass(k,iens) ,  rho_v(k,j,i,iens) );
+        if (rho_v(k,j,i,iens) > 0) atomicAdd( rho_v_pos_mass(k,iens) ,  rho_v(k,j,i,iens)*dz(k,iens) );
       });
 
       // The negative is too large if the mass added to fill in negative values is greater than the available mass at
@@ -186,8 +187,8 @@ namespace modules {
           if (rho_v_neg_mass(k,iens) > rho_v_pos_mass(k,iens)) neg_too_large = true;
         }
         // Subtract mass proportional to this cells' portion of the total mass at the vertical level
-        real factor = rho_v(k,j,i,iens) / rho_v_pos_mass(k,iens);
-        rho_v(k,j,i,iens) = max( 0._fp , rho_v(k,j,i,iens) - rho_v_neg_mass(k,iens) * factor );
+        real factor = rho_v(k,j,i,iens)*dz(k,iens) / rho_v_pos_mass(k,iens);
+        rho_v(k,j,i,iens) = max( 0._fp , rho_v(k,j,i,iens) - (rho_v_neg_mass(k,iens) * factor)/dz(k,iens) );
       });
 
       if (neg_too_large.hostRead()) {
@@ -206,13 +207,13 @@ namespace modules {
         //   we still have
         parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
           if (i == 0 && j == 0) atomicAdd( rho_v_neg_mass_glob(iens) , max(0._fp,rho_v_neg_mass(k,iens)-rho_v_pos_mass(k,iens)) );
-          atomicAdd( rho_v_pos_mass_glob(iens) , rho_v(k,j,i,iens) );
+          atomicAdd( rho_v_pos_mass_glob(iens) , rho_v(k,j,i,iens)*dz(k,iens) );
         });
 
         // Remove mass proportionally to the mass in a given cell
         parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-          real factor = rho_v(k,j,i,iens) / rho_v_pos_mass_glob(iens);
-          rho_v(k,j,i,iens) = max( 0._fp , rho_v(k,j,i,iens) - rho_v_neg_mass_glob(iens) * factor );
+          real factor = rho_v(k,j,i,iens)*dz(k,iens) / rho_v_pos_mass_glob(iens);
+          rho_v(k,j,i,iens) = max( 0._fp , rho_v(k,j,i,iens) - (rho_v_neg_mass_glob(iens) * factor)/dz(k,iens) );
         });
         
       } // if (neg_too_large.hostRead()) {
