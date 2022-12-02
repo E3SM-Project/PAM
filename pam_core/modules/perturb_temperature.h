@@ -7,7 +7,7 @@
 namespace modules {
 
   // It is best if id is globally unique for each batch of CRMs
-  inline void perturb_temperature( pam::PamCoupler &coupler , int id ) {
+  inline void perturb_temperature( pam::PamCoupler &coupler , int1d const &id ) {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
 
@@ -16,18 +16,19 @@ namespace modules {
     int nx   = coupler.get_nx  ();
     int nens = coupler.get_nens();
 
-    int constexpr num_levels = nz/4;
-    real constexpr magnitude = 3.;
+    if (id.size() != nens) endrun("ERROR: size of id array must be the same as nens");
 
-    size_t seed = static_cast<size_t>(id*nz*nx*ny*nens);
+    int constexpr num_levels = nz/4;
+    real constexpr magnitude = 1.;
 
     // ny*nx*nens can all be globbed together for this routine
     auto &dm = coupler.get_data_manager_readwrite();
-    auto temp = dm.get_lev_col<real>("temp");
-    int ncol = ny*nx*nens;
+    auto temp = dm.get<real,4>("temp");
 
-    parallel_for( "perturb temperature" , SimpleBounds<2>(num_levels,ncol) , YAKL_LAMBDA (int k, int i) {
-      yakl::Random prng(seed+k*ncol+i);  // seed + k*ncol + i  is a globally unique identifier
+    parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(num_levels,ny,nx,nens) ,
+                  YAKL_LAMBDA (int k, int j, int i, int iens) {
+      int seed = id(iens)*num_levels*ny*nx + k*ny*nx + j*nx + i;
+      yakl::Random prng(seed);
       real rand = prng.genFP<real>()*2._fp - 1._fp;  // Random number in [-1,1]
       real scaling = ( num_levels - static_cast<real>(k) ) / num_levels;  // Less effect at higher levels
       temp(k,i) += rand * magnitude * scaling;
