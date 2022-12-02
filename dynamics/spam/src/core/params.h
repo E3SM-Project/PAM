@@ -75,7 +75,7 @@ void readParamsFile(std::string inFile, ModelParameters &params, Parallel &par,
   params.dycore_per_phys = config["dycore_per_phys"].as<int>(0);
   
   params.dycore_out_freq = config["dycore_out_freq"].as<real>(0.0_fp);
-  params.dycore_stat_freq config["dycore_stat_freq"].as<real>(0.0_fp);    
+  params.dycore_stat_freq = config["dycore_stat_freq"].as<real>(0.0_fp);    
   
   params.outputName = config["dycore_out_prefix"].as<std::string>("output");
 
@@ -159,10 +159,10 @@ void readParamsFile(std::string inFile, ModelParameters &params, Parallel &par,
     std::cout << "xc:         " << params.xc << "\n";
     std::cout << "yc:         " << params.yc << "\n";
 
-    std::cout << "dycore_per_phys:     " << dycore_per_phys << "\n";
+    std::cout << "dycore_per_phys:     " << params.dycore_per_phys << "\n";
 
-    std::cout << "dycore_out_freq:       " << dycore_out_freq << "\n";
-    std::cout << "dycore_stat_freq:       " << dycore_stat_freq << "\n";
+    std::cout << "dycore_out_freq:       " << params.dycore_out_freq << "\n";
+    std::cout << "dycore_stat_freq:       " << params.dycore_stat_freq << "\n";
     std::cout << "outputName: " << params.outputName << "\n";
   }
 };

@@ -4,6 +4,8 @@
 #include "geometry.h"
 #include "parallel.h"
 #include "topology.h"
+#include "pam_coupler.h" //Has DataManager and pam_const
+using pam::PamCoupler;
 
 class Stat {
 public:
@@ -36,14 +38,22 @@ public:
   int nens;
   int statsize;
 
-  void initialize(ModelParameters &params, Parallel &par,
+  void initialize(PamCoupler &coupler, ModelParameters &params, Parallel &par,
                   const Geometry<Straight> &primal_geom,
                   const Geometry<Twisted> &dual_geom) {
+
+    std::string inFile = coupler.get_option<std::string>("standalone_input_file");
+    YAML::Node config = YAML::LoadFile(inFile);        
+    real simTime = config["simTime" ].as<real>(0.0_fp);
+    real gcm_physics_dt = config["gcm_physics_dt" ].as<real>();
+    real dycore_stat_freq = config["dycore_stat_freq" ].as<real>();
+    if (simTime <= 0) {simTime = gcm_physics_dt;}
+     
     this->primal_geometry = primal_geom;
     this->dual_geometry = dual_geom;
     this->nens = params.nens;
     this->masterproc = par.masterproc;
-    this->statsize = params.Nsteps / params.Nstat + 1;
+    this->statsize = simTime / dycore_stat_freq + 1;
   }
 
   virtual void compute(FieldSet<nprognostic> &progvars,

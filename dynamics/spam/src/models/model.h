@@ -6,6 +6,8 @@
 #include "topology.h"
 #include "weno_func_recon.h" // needed to set TransformMatrices related stuff
 #include "weno_func_recon_variable.h" // needed to set TransformMatrices related stuff
+#include "pam_coupler.h" //Has DataManager and pam_const
+using pam::PamCoupler;
 
 class ReferenceState {
 public:
@@ -141,13 +143,14 @@ public:
         });
   }
 
-  virtual void set_domain(ModelParameters &params) = 0;
+  virtual void set_domain(ModelParameters &params, PamCoupler &coupler) = 0;
   virtual std::array<real, 3> get_domain() const = 0;
   virtual void set_initial_conditions(FieldSet<nprognostic> &progvars,
                                       FieldSet<nconstant> &constvars,
+                                      PamCoupler &coupler,
                                       const Geometry<Straight> &primal_geom,
                                       const Geometry<Twisted> &dual_geom) = 0;
-  virtual void set_reference_state(ReferenceState &refstate,
+  virtual void set_reference_state(ReferenceState &refstate, FieldSet<nconstant> &constvars, PamCoupler &coupler,
                                    const Geometry<Straight> &primal_geom,
                                    const Geometry<Twisted> &dual_geom){};
   virtual ~TestCase() = default;

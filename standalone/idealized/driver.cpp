@@ -33,7 +33,6 @@ int main(int argc, char** argv) {
     real        gcm_physics_dt = config["gcm_physics_dt" ].as<real>();
     int         crm_nx       = config["crm_nx"  ].as<int>();
     int         crm_ny       = config["crm_ny"  ].as<int>();
-    int         crm_nz       = config["crm_nz"  ].as<int>(0);
     int         nens         = config["nens"    ].as<int>();
     real        xlen         = config["xlen"    ].as<real>(-1.0_fp);
     real        ylen         = config["ylen"    ].as<real>(-1.0_fp);
@@ -114,7 +113,7 @@ int main(int argc, char** argv) {
       std::cout << "Dycore: " << dycore.dycore_name() << std::endl;
       std::cout << "Micro : " << micro .micro_name () << std::endl;
       std::cout << "SGS   : " << sgs   .sgs_name   () << std::endl;
-      std::cout << "crm_dt:         " << crm_dt << "\n";
+      std::cout << "crm_dt_in:         " << crm_dt_in << "\n";
       std::cout << "gcm_physics_dt:         " << gcm_physics_dt << "\n";
       std::cout << "\n";
     }
@@ -151,8 +150,8 @@ int main(int argc, char** argv) {
       auto &dm = coupler.get_data_manager_readonly();
       real maxw = maxval(abs(dm.get_collapsed<real const>("wvel")));
       if (masterproc) {
-      std::cout << "Etime , dtphys, maxw: " << etime  << " , "
-                                            << dtphys << " , "
+      std::cout << "Etime , crm_dt, maxw: " << etime  << " , "
+                                            << crm_dt << " , "
                                             << std::setw(10) << maxw << "\n";
       }
         if (out_freq >= 0. && etime / out_freq >= num_out+1) {

@@ -174,7 +174,7 @@ public:
                                          FieldSet<nprognostic> &prog_vars,
                                          const FieldSet<nconstant> &const_vars);
   void convert_coupler_to_reference_state(PamCoupler &coupler,
-                                        ModelReferenceState &ref_state,
+                                      ReferenceState &ref_state,
                                          const FieldSet<nconstant> &const_vars);
 };
 
@@ -411,8 +411,8 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_state(
 
 
 template <class T>
-void VariableSetBase<T>::void convert_coupler_to_reference_state(PamCoupler &coupler,
-                                      ModelReferenceState &ref_state,
+void VariableSetBase<T>::convert_coupler_to_reference_state(PamCoupler &coupler,
+                                      ReferenceState &ref_state,
                                        const FieldSet<nconstant> &const_vars)
 {
   

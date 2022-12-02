@@ -25,6 +25,8 @@
 #include <memory>
 
 using pam::PamCoupler;
+using yakl::min;
+using yakl::max;
 
 class Dycore {
 public:
@@ -61,7 +63,7 @@ public:
   int ierr;
   real etime = 0.0_fp;
   real dt;
-  int niters;
+  int n_iter;
   int num_out = 0;
   int num_stat = 0;
   real max_dt = 0.0_fp;
@@ -79,7 +81,6 @@ public:
     readModelParamsFile(inFile, params, par, coupler, testcase);
     debug_print("read parameters and partitioned domain/setting domain sizes",
                 par.masterproc);
-    set_timestepping_variables(inFile):
 
     // Initialize the grid
     debug_print("start init topo/geom", par.masterproc);
@@ -121,7 +122,7 @@ public:
 
     // Initialize the statistics
     debug_print("start stats init", par.masterproc);
-    stats.initialize(params, par, primal_geometry, dual_geometry);
+    stats.initialize(coupler, params, par, primal_geometry, dual_geometry);
     debug_print("end stats init", par.masterproc);
 
     // Create the outputter
@@ -138,7 +139,7 @@ public:
 
     //  set the initial conditions and compute initial stats
     debug_print("start ic setting", par.masterproc);
-    testcase->set_reference_state(reference_state, coupler, primal_geometry, 
+    testcase->set_reference_state(reference_state, constant_vars, coupler, primal_geometry, 
                                   dual_geometry);
     testcase->set_initial_conditions(prognostic_vars, constant_vars, coupler,
                                      primal_geometry, dual_geometry);
@@ -178,12 +179,14 @@ public:
     io.outputStats(stats);
     debug_print("end initial io", par.masterproc);
 
-    prevstep = 1;
   };
 
   // Given the model data and CFL value, compute the maximum stable time step
   real compute_time_step(PamCoupler const &coupler, real cfl_in = -1) {
-        
+
+//THIS IS REALLY ONLY VALID FOR CE/MCE!
+//FAILS FOR SWE, TSWE, ANELASTIC
+//WHAT SHOULD WE DO IN THIS CASE?        
     // If we've already computed the time step, then don't compute it again
     if (max_dt <= 0) {
       
@@ -193,9 +196,9 @@ public:
       
       real dx = dual_geometry.dx;
       real dy = dual_geometry.dy;
-      real dz = dual_geometry.dz;
-      int nx = dual_topology.nx;
-      int ny = dual_topology.ny;
+      real2d dz = dual_geometry.dz;
+      int nx = dual_topology.n_cells_x;
+      int ny = dual_topology.n_cells_y;
       int nz = dual_topology.nl;
       int nens = dual_topology.nens;
       
@@ -233,15 +236,23 @@ public:
         // Compute the maximum stable time step in each direction
         real udt = cfl * dx         / max( abs(u-cs) , abs(u+cs) );
         real vdt = cfl * dy         / max( abs(v-cs) , abs(v+cs) );
-        if (sim2d) vdt = std::numeric_limits<real>::max();
+        if (ndims==1) vdt = std::numeric_limits<real>::max();
         real wdt = cfl * dz(k,iens) / max( abs(w-cs) , abs(w+cs) );
 
         // Compute the min of the max stable time steps
         dt3d(k,j,i,iens) = min( min(udt,vdt) , wdt );
       });
-      // Store to dtInit so we don't have to compute this again
-      max_dt = yakl::intrinsics::minval( dt3d );
+
+      real max_dt_local = yakl::intrinsics::minval( dt3d );
+      real max_dt_global;
+      MPI_Request Req;
+      MPI_Status Status;
+      this->ierr = MPI_Iallreduce(&max_dt_local, &max_dt_global, 1, REAL_MPI, MPI_MIN, MPI_COMM_WORLD, &Req);
+      this->ierr = MPI_Waitall(1, &Req, &Status);
+      max_dt = max_dt_global;
     }
+
+//THIS IS INVALID IN PARALLEL- each processor will compute a different MAX!
 
     return max_dt;
   
@@ -257,15 +268,15 @@ public:
     // Time stepping loop
     debug_print("start time stepping loop", par.masterproc);
 
-niter = params.dycore_per_phys_step;
-if (params.dycore_per_phys_step  == 0)
+n_iter = params.dycore_per_phys;
+if (params.dycore_per_phys  == 0)
 {
   dt = compute_time_step( coupler );
   n_iter = ceil( dtphys / dt );
 }
 dt = dtphys / n_iter;
 
-serial_print("taking a set of " + std::to_string(niter) + " crm_dt steps at " + std::to_string(dt), par.masterproc);
+serial_print("taking a set of " + std::to_string(n_iter) + " crm_dt steps at " + std::to_string(dt), par.masterproc);
 
     for (uint nstep = 0; nstep < n_iter; nstep++) {
       yakl::fence();

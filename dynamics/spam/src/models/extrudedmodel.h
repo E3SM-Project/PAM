@@ -2172,10 +2172,10 @@ class ModelStats : public Stats {
 public:
   real3d TEarr, KEarr, PEarr, IEarr, PVarr, PENSarr, trimmed_density;
 
-  void initialize(ModelParameters &params, Parallel &par,
+  void initialize(PamCoupler &coupler, ModelParameters &params, Parallel &par,
                   const Geometry<Straight> &primal_geom,
                   const Geometry<Twisted> &dual_geom) {
-    Stats::initialize(params, par, primal_geom, dual_geom);
+    Stats::initialize(coupler, params, par, primal_geom, dual_geom);
     this->stats_arr[DENSSTAT].initialize("mass", ndensity, this->statsize,
                                          this->nens, this->masterproc);
     this->stats_arr[DENSMAXSTAT].initialize("densmax", ndensity, this->statsize,
@@ -2532,7 +2532,7 @@ void readModelParamsFile(std::string inFile, ModelParameters &params,
 
   // Read the data initialization options
   params.initdataStr = config["initData"].as<std::string>();
-  testcase_from_string(testcase, params.initdataStr, params.acoustic_balance, coupler);
+  testcase_from_string(testcase, params.initdataStr, params.acoustic_balance);
 
   serial_print("IC: " + params.initdataStr, par.masterproc);
   serial_print("acoustically balanced: " +
@@ -2692,13 +2692,13 @@ real YAKL_INLINE saturation_vapor_pressure(real temp) {
 
 class CouplerData : public TestCase
 {
-real g:
+real g;
 real Lx;
 real xc;
 
 std::array<real, 3> get_domain() const { return {Lx, 1, -1.}; }
 
-void set_domain(ModelParameters &params) {
+void set_domain(ModelParameters &params, PamCoupler &coupler) {
 
   g = coupler.get_grav();
   Lx = coupler.get_xlen();
@@ -2719,19 +2719,16 @@ void set_initial_conditions(FieldSet<nprognostic> &progvars,
 dual_geom.set_11form_values(YAKL_LAMBDA(real x, real z) { return flat_geop(x, z, g); }, constvars.fields_arr[HSVAR], 0);
 
 //Just copies data from coupler state
-convert_coupler_to_dynamics_state(coupler, progvars,constvars);
+varset.convert_coupler_to_dynamics_state(coupler, progvars, constvars);
 
 }
 
-//ADD THESE
-void set_reference_state(ModelReferenceState &ref_state, PamCoupler &coupler,
+void set_reference_state(ReferenceState &ref_state, FieldSet<nconstant> &constvars, PamCoupler &coupler,
                          const Geometry<Straight> &primal_geom,
                          const Geometry<Twisted> &dual_geom) override {
                            
 
 varset.convert_coupler_to_reference_state(coupler, ref_state, constvars);
-                                       const FieldSet<nconstant> &const_vars)
-//Needs the non-perturbed average coupler state
 
 }
 
@@ -2755,7 +2752,7 @@ public:
 
   std::array<real, 3> get_domain() const override { return {Lx, 1, Lz}; }
 
-  void set_domain(ModelParameters &params) override {
+  void set_domain(ModelParameters &params, PamCoupler &coupler) override {
     params.xlen = Lx;
     params.xc = xc;
   }
@@ -2802,7 +2799,7 @@ public:
     }
   }
 
-  void set_reference_state(ReferenceState &reference_state, PamCoupler &coupler,
+  void set_reference_state(ReferenceState &reference_state, FieldSet<nconstant> &constvars, PamCoupler &coupler,
                            const Geometry<Straight> &primal_geom,
                            const Geometry<Twisted> &dual_geom) override {
     auto &refstate = static_cast<ModelReferenceState &>(reference_state);
@@ -2961,7 +2958,7 @@ public:
 
   std::array<real, 3> get_domain() const override { return {Lx, 1, Lz}; }
 
-  void set_domain(ModelParameters &params) override {
+  void set_domain(ModelParameters &params, PamCoupler &coupler) override {
     params.xlen = Lx;
     params.xc = xc;
   }
@@ -3000,7 +2997,7 @@ public:
     }
   }
 
-  void set_reference_state(ReferenceState &reference_state, PamCoupler &coupler,
+  void set_reference_state(ReferenceState &reference_state, FieldSet<nconstant> &constvars, PamCoupler &coupler,
                            const Geometry<Straight> &primal_geom,
                            const Geometry<Twisted> &dual_geom) override {
     auto &refstate = static_cast<ModelReferenceState &>(reference_state);
@@ -4082,7 +4079,7 @@ template <bool add_perturbation> struct GravityWave {
 };
 
 void testcase_from_string(std::unique_ptr<TestCase> &testcase, std::string name,
-                          bool acoustic_balance, PamCoupler &coupler) {
+                          bool acoustic_balance) {
   if (name == "gravitywave") {
     testcase = std::make_unique<EulerTestCase<GravityWave<true>>>();
   } else if (name == "twobubbles") {
@@ -4113,11 +4110,10 @@ void testcase_from_string(std::unique_ptr<TestCase> &testcase, std::string name,
   }
 }
 
-//I don't think gets used anywhere?
-//void testcase_from_config(std::unique_ptr<TestCase> &testcase,
-//                          const YAML::Node &config) {
-//  const std::string name = config["initData"].as<std::string>();
-//  const bool acoustic_balance =
-//      config["balance_initial_density"].as<bool>(false);
-//  testcase_from_string(testcase, name, acoustic_balance);
-//}
+void testcase_from_config(std::unique_ptr<TestCase> &testcase,
+                         const YAML::Node &config) {
+ const std::string name = config["initData"].as<std::string>();
+ const bool acoustic_balance =
+     config["balance_initial_density"].as<bool>(false);
+ testcase_from_string(testcase, name, acoustic_balance);
+}
