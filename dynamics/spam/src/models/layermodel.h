@@ -804,10 +804,10 @@ class ModelStats : public Stats {
 public:
   real3d TEarr, KEarr, PEarr, IEarr, PVarr, PENSarr, trimmed_density;
 
-  void initialize(ModelParameters &params, Parallel &par,
+  void initialize(PamCoupler &coupler, ModelParameters &params, Parallel &par,
                   const Geometry<Straight> &primal_geom,
                   const Geometry<Twisted> &dual_geom) {
-    Stats::initialize(params, par, primal_geom, dual_geom);
+    Stats::initialize(coupler, params, par, primal_geom, dual_geom);
     this->stats_arr[DENSSTAT].initialize("mass", ndensity, this->statsize,
                                          this->nens, this->masterproc);
     this->stats_arr[DENSMAXSTAT].initialize("densmax", ndensity, this->statsize,
@@ -1076,9 +1076,7 @@ void readModelParamsFile(std::string inFile, ModelParameters &params,
 
   testcase->set_tracers(params);
 
-  params.zlen = 1.0;
-  params.zc = 0.5;
-  testcase->set_domain(params);
+  testcase->set_domain(params, coupler);
   int nz = coupler.get_nz();
   readParamsFile(inFile, params, par, nz);
 }
@@ -1103,7 +1101,7 @@ public:
 
   std::array<real, 3> get_domain() const override { return {Lx, Ly, 1}; }
 
-  void set_domain(ModelParameters &params) override {
+  void set_domain(ModelParameters &params, PamCoupler &coupler) override {
     params.xlen = Lx;
     params.ylen = Ly;
     params.xc = xc;
@@ -1112,6 +1110,7 @@ public:
 
   void set_initial_conditions(FieldSet<nprognostic> &progvars,
                               FieldSet<nconstant> &constvars,
+                              PamCoupler &coupler,
                               const Geometry<Straight> &primal_geom,
                               const Geometry<Twisted> &dual_geom) override {
 
@@ -1141,7 +1140,7 @@ public:
     Hs.set_parameters(g);
   }
 
-  void set_reference_state(ReferenceState &reference_state,
+  void set_reference_state(ReferenceState &reference_state, FieldSet<nconstant> &constvars, PamCoupler &coupler,
                            const Geometry<Straight> &primal_geom,
                            const Geometry<Twisted> &dual_geom) override {
     auto &refstate = static_cast<ModelReferenceState &>(reference_state);

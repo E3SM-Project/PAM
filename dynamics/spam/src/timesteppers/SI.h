@@ -33,6 +33,10 @@ public:
                   FieldSet<nconstant> &consts,
                   FieldSet<nauxiliary> &auxiliarys);
   void stepForward(real dt);
+
+//THIS IS ACOUSTIC CFL, SO PROBABLY OKAY?
+  real get_max_cfl(ModelParameters &params) { return 15.; }
+
 };
 
 template <uint nquad> SITimeIntegrator<nquad>::SITimeIntegrator() {

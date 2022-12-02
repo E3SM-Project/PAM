@@ -30,6 +30,10 @@ public:
                   FieldSet<nauxiliary> &auxiliarys);
   void stepForward(real dt);
   void set_stage_coefficients(ModelParameters &params);
+
+  real get_max_cfl(ModelParameters &params) {
+    if (params.tstype == "kgrk4") {return 2.5;}
+  }
 };
 
 RKSimpleTimeIntegrator::RKSimpleTimeIntegrator() {

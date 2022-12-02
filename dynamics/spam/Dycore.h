@@ -67,7 +67,7 @@ public:
   int num_out = 0;
   int num_stat = 0;
   real max_dt = 0.0_fp;
-  
+
   void init(PamCoupler &coupler) {
 
     serial_print("setting up dycore", par.masterproc);
@@ -76,8 +76,9 @@ public:
     debug_print(
         "reading parameters and partitioning domain/setting domain sizes",
         par.masterproc);
-    std::string inFile =
-        coupler.get_option<std::string>("standalone_input_file");
+    std::string inFile = coupler.get_option<std::string>("standalone_input_file");
+    YAML::Node config = YAML::LoadFile(inFile);
+
     readModelParamsFile(inFile, params, par, coupler, testcase);
     debug_print("read parameters and partitioned domain/setting domain sizes",
                 par.masterproc);
@@ -139,7 +140,7 @@ public:
 
     //  set the initial conditions and compute initial stats
     debug_print("start ic setting", par.masterproc);
-    testcase->set_reference_state(reference_state, constant_vars, coupler, primal_geometry, 
+    testcase->set_reference_state(reference_state, constant_vars, coupler, primal_geometry,
                                   dual_geometry);
     testcase->set_initial_conditions(prognostic_vars, constant_vars, coupler,
                                      primal_geometry, dual_geometry);
@@ -151,12 +152,32 @@ public:
     stats.compute(prognostic_vars, constant_vars, 0);
     debug_print("end ic setting", par.masterproc);
 
-    // // Initialize the time stepper
+    // convert dynamics state to Coupler state
+if (!(config["initData"].as<std::string>() == "coupler"))
+{
+    tendencies.convert_dynamics_to_coupler_state(coupler, prognostic_vars, constant_vars);
+}
+
+    // Initialize the time stepper
     debug_print("start ts init", par.masterproc);
 #if _TIME_TYPE == 2
     linear_system.initialize(params, primal_geometry, dual_geometry,
                              reference_state);
-    linear_system.compute_coefficients(params.dtcrm);
+
+//THIS IS AN UGLY HACK THAT ASSUMES dycore_dt does't change
+//EVENTUALLY NEED TO MOVE DT STUFF INTO SOLVER, NOT COEFFICIENTS
+real crm_dt    = config["crm_dt"].as<real>();
+real dycore_dt;
+n_iter = params.dycore_per_phys;
+if (params.dycore_per_phys  == 0)
+{
+  dycore_dt = compute_time_step( coupler );
+  n_iter = ceil( crm_dt / dycore_dt );
+}
+dycore_dt = crm_dt / n_iter;
+
+
+    linear_system.compute_coefficients(dycore_dt);
     tint.initialize(params, tendencies, linear_system, prognostic_vars,
                     constant_vars, auxiliary_vars);
 #else
@@ -165,9 +186,6 @@ public:
 #endif
     debug_print("end ts init", par.masterproc);
 
-    // convert dynamics state to Coupler state
-    tendencies.convert_dynamics_to_coupler_state(coupler, prognostic_vars,
-                                                 constant_vars);
 
     // Output the initial model state
     debug_print("start initial io", par.masterproc);
@@ -184,16 +202,18 @@ public:
   // Given the model data and CFL value, compute the maximum stable time step
   real compute_time_step(PamCoupler const &coupler, real cfl_in = -1) {
 
-//THIS IS REALLY ONLY VALID FOR CE/MCE!
-//FAILS FOR SWE, TSWE, ANELASTIC
-//WHAT SHOULD WE DO IN THIS CASE?        
+
+# if (defined _SWE) || (defined _TSWE) || (defined _AN) || (defined _MAN) || (defined _CE) || (defined _CEp)
+endrun("Automatic computation of dycore time step is supported only for mce\n");
+# endif
+//REALLY THIS SHOULD BE VARSET SPECIFIC!
+
     // If we've already computed the time step, then don't compute it again
     if (max_dt <= 0) {
-      
-//GET CFL FROM TIMESTEPPER!
+
       real cfl = cfl_in;
-      if (cfl < 0) cfl = 0.75;
-      
+      if (cfl < 0) cfl = tint.get_max_cfl(params);
+
       real dx = dual_geometry.dx;
       real dy = dual_geometry.dy;
       real2d dz = dual_geometry.dz;
@@ -201,7 +221,7 @@ public:
       int ny = dual_topology.n_cells_y;
       int nz = dual_topology.nl;
       int nens = dual_topology.nens;
-      
+
       real Rd = thermo.cst.Rd;
       real Rv = thermo.cst.Rv;
       real gamma = thermo.cst.gamma_d;
@@ -244,18 +264,19 @@ public:
       });
 
       real max_dt_local = yakl::intrinsics::minval( dt3d );
+      serial_print("calculated max_dt_local as " + std::to_string(max_dt_local), par.masterproc);
+
       real max_dt_global;
       MPI_Request Req;
       MPI_Status Status;
       this->ierr = MPI_Iallreduce(&max_dt_local, &max_dt_global, 1, REAL_MPI, MPI_MIN, MPI_COMM_WORLD, &Req);
       this->ierr = MPI_Waitall(1, &Req, &Status);
       max_dt = max_dt_global;
+      serial_print("calculated max_dt_global as " + std::to_string(max_dt_global), par.masterproc);
     }
 
-//THIS IS INVALID IN PARALLEL- each processor will compute a different MAX!
-
     return max_dt;
-  
+
   };
 
 
@@ -276,7 +297,7 @@ if (params.dycore_per_phys  == 0)
 }
 dt = dtphys / n_iter;
 
-serial_print("taking a set of " + std::to_string(n_iter) + " crm_dt steps at " + std::to_string(dt), par.masterproc);
+serial_print("taking a set of " + std::to_string(n_iter) + " dycore steps at " + std::to_string(dt), par.masterproc);
 
     for (uint nstep = 0; nstep < n_iter; nstep++) {
       yakl::fence();
@@ -286,7 +307,7 @@ serial_print("taking a set of " + std::to_string(n_iter) + " crm_dt steps at " +
       etime += dt;
 
       if (params.dycore_out_freq >= 0. && etime / params.dycore_out_freq >= num_out+1) {
-        
+
         serial_print("dycore ouput at " + std::to_string(etime),par.masterproc);
         for (auto &diag : diagnostics) {
           diag->compute(etime, reference_state, constant_vars, prognostic_vars);
@@ -297,7 +318,7 @@ serial_print("taking a set of " + std::to_string(n_iter) + " crm_dt steps at " +
       }
 
       if (params.dycore_stat_freq >= 0. && etime / params.dycore_stat_freq >= num_stat+1) {
-        stats.compute(prognostic_vars, constant_vars,num_stat);
+        stats.compute(prognostic_vars, constant_vars,num_stat+1);
         num_stat++;
       }
     }

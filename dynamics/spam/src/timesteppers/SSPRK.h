@@ -28,6 +28,13 @@ public:
                   FieldSet<nprognostic> &xvars, FieldSet<nconstant> &consts,
                   FieldSet<nauxiliary> &auxiliarys);
   void stepForward(real dt);
+
+  real get_max_cfl(ModelParameters &params) {
+//THESE ARE PROBABLY TOO CONSERVATIVE
+    if (params.tstype == "ssprk2") {return 0.25;}
+    if (params.tstype == "ssprk3") {return 0.25;}
+  }
+
 };
 
 SSPKKTimeIntegrator::SSPKKTimeIntegrator() { this->is_initialized = false; }
