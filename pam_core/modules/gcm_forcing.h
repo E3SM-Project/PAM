@@ -15,12 +15,14 @@ namespace modules {
   //    state_crm_new = state_crm + (state_gcm-state_crm)  ===>  state_crm_new = state_gcm
   // Therefore, we are forcing the average CRM column state at the end of the MMF step to be the same as the input GCM
   //    state PLUS whatever internal CRM dynamics were produced along the way.
-  inline void compute_gcm_forcing_tendencies( pam::PamCoupler &coupler , real dt_gcm ) {
+  inline void compute_gcm_forcing_tendencies( pam::PamCoupler &coupler ) {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
     using yakl::atomicAdd;
 
     auto &dm = coupler.get_data_manager_readwrite();
+
+    auto dt_gcm = coupler.get_option<real>("gcm_physics_dt");
 
     // Get current state from coupler
     auto rho_d = dm.get<real const,4>( "density_dry" );
@@ -113,11 +115,13 @@ namespace modules {
   //    negative values and then removes that mass from other cells proportional to each cell's existing mass.
   // Multiplicative hole fillers do reduce gradients, but we expect the frequency / magnitude of negative values
   //    to be low.
-  inline void apply_gcm_forcing_tendencies( pam::PamCoupler &coupler , real dt ) {
+  inline void apply_gcm_forcing_tendencies( pam::PamCoupler &coupler ) {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
     using yakl::atomicAdd;
     auto &dm = coupler.get_data_manager_readwrite();
+
+    auto dt = coupler.get_option<real>("crm_dt");
 
     int nz   = dm.get_dimension_size("z"   );
     int ny   = dm.get_dimension_size("y"   );

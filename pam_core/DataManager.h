@@ -402,6 +402,9 @@ namespace pam {
     }
 
 
+    std::vector<int> get_shape( std::string name ) { return entries[find_entry_or_error(name)].dims; }
+
+
     // Validate all numerical entries. positive-definite entries are validated to ensure no negative values
     // All floating point values are checked for infinities. All entries are checked for NaNs.
     // This is EXPENSIVE. All arrays are copied to the host, and the checks are performed on the host

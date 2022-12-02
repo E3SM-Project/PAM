@@ -111,11 +111,12 @@ namespace modules {
   }
 
 
-  inline void saturation_adjustment( pam::PamCoupler &coupler , real dt ) {
+  inline void saturation_adjustment( pam::PamCoupler &coupler ) {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
     using yakl::intrinsics::size;
     auto &dm = coupler.get_data_manager_readwrite();
+    auto dt = coupler.get_option<real>("crm_dt");
     real1d rho_d = dm.get_collapsed<real>("density_dry");
     real1d temp  = dm.get_collapsed<real>("temp");
     real1d rho_v = dm.get_collapsed<real>("water_vapor");
