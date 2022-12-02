@@ -168,15 +168,19 @@ public:
     p3_init_fortran( dir.c_str() , dir_len , ver.c_str() , ver_len );
 
     coupler.set_option<std::string>("micro","p3");
+    coupler.set_option<real>("latvap",latvap);
+    coupler.set_option<real>("latice",latice);
 
     etime = 0;
   }
 
 
 
-  void timeStep( pam::PamCoupler &coupler , real dt ) {
+  void timeStep( pam::PamCoupler &coupler ) {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
+
+    real dt = coupler.get_option<real>("crm_dt");
 
     if (first_step) {
       if (coupler.get_option<std::string>("sgs") == "shoc") sgs_shoc = true;

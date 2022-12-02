@@ -76,9 +76,11 @@ public:
   }
 
 
-  void timeStep( pam::PamCoupler &coupler , real dtphys ) {
+  void timeStep( pam::PamCoupler &coupler ) {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
+
+    real dtphys = coupler.get_option<real>("crm_dt");
 
     YAKL_SCOPE( stateTend       , this->stateTend           );
     YAKL_SCOPE( tracerTend      , this->tracerTend          );
@@ -174,12 +176,6 @@ public:
       #endif
 
       space_op.switch_directions();
-
-      if (coupler.get_num_dycore_functions() > 0) {
-        space_op.convert_dynamics_to_coupler_state( coupler , state , tracers );
-        coupler.run_dycore_functions( dt );
-        space_op.convert_coupler_state_to_dynamics( coupler , state , tracers );
-      }
 
     }
 

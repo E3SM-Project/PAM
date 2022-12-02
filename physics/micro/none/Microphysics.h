@@ -66,7 +66,7 @@ public:
 
 
 
-  void timeStep( pam::PamCoupler &coupler , real dt ) {
+  void timeStep( pam::PamCoupler &coupler ) {
     // Do microphysicsy stuff to the coupler variables and the tracers
   }
 

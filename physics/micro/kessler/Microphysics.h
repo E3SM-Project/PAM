@@ -105,9 +105,11 @@ public:
 
 
 
-  void timeStep( pam::PamCoupler &coupler , real dt ) const {
+  void timeStep( pam::PamCoupler &coupler ) const {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
+
+    real dt = coupler.get_option<real>("crm_dt");
 
     auto &dm = coupler.get_data_manager_readwrite();
 

@@ -130,9 +130,11 @@ public:
 
 
 
-  void timeStep( pam::PamCoupler &coupler , real dt ) {
+  void timeStep( pam::PamCoupler &coupler ) {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
+
+    real dt = coupler.get_option<real>("crm_dt");
 
     // Get the dimensions sizes
     int nz   = coupler.get_nz();

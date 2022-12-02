@@ -126,14 +126,9 @@ int main(int argc, char** argv) {
     // Now that we have an initial state, define hydrostasis for each ensemble member
     coupler.update_hydrostasis();
 
-    modules::perturb_temperature( coupler , 0 );
-
-    coupler.add_pam_function( "apply_gcm_forcing_tendencies" , modules::apply_gcm_forcing_tendencies );
-    coupler.add_pam_function( "dycore" , [&] (pam::PamCoupler &coupler, real dt) { dycore.timeStep(coupler,dt); } );
-    coupler.add_pam_function( "sgs"    , [&] (pam::PamCoupler &coupler, real dt) { sgs   .timeStep(coupler,dt); } );
-    coupler.add_pam_function( "micro"  , [&] (pam::PamCoupler &coupler, real dt) { micro .timeStep(coupler,dt); } );
-    coupler.add_pam_function( "sponge_layer"                 , modules::sponge_layer                 );
-    // coupler.add_dycore_function( "saturation_adjustment" , saturation_adjustment );
+    int1d seeds("seeds",nens);
+    seeds = 0;
+    modules::perturb_temperature( coupler , seeds );
 
     real etime_gcm = 0;
     int  num_out = 0;
@@ -145,7 +140,7 @@ int main(int argc, char** argv) {
     while (etime_gcm < simTime) {
       if (etime_gcm + dt_gcm > simTime) { dt_gcm = simTime - etime_gcm; }
 
-      modules::compute_gcm_forcing_tendencies( coupler , dt_gcm );
+      modules::compute_gcm_forcing_tendencies( coupler );
 
       real etime_crm = 0;
       real simTime_crm = dt_gcm;
@@ -154,11 +149,11 @@ int main(int argc, char** argv) {
         if (dt_crm == 0.) { dt_crm = dycore.compute_time_step(coupler); }
         if (etime_crm + dt_crm > simTime_crm) { dt_crm = simTime_crm - etime_crm; }
 
-        coupler.run_pam_function( "apply_gcm_forcing_tendencies" , dt_crm );
-        coupler.run_pam_function( "dycore"                       , dt_crm );
-        coupler.run_pam_function( "sponge_layer"                 , dt_crm );
-        coupler.run_pam_function( "sgs"                          , dt_crm );
-        coupler.run_pam_function( "micro"                        , dt_crm );
+        coupler.run_module( "apply_gcm_forcing_tendencies" , modules::apply_gcm_forcing_tendencies                        );
+        coupler.run_module( "dycore"                       , [&] (pam::PamCoupler &coupler) { dycore.timeStep(coupler); } );
+        coupler.run_module( "sponge_layer"                 , modules::sponge_layer                                        );
+        coupler.run_module( "sgs"                          , [&] (pam::PamCoupler &coupler) { sgs   .timeStep(coupler); } );
+        coupler.run_module( "micro"                        , [&] (pam::PamCoupler &coupler) { micro .timeStep(coupler); } );
 
         etime_crm += dt_crm;
         etime_gcm += dt_crm;

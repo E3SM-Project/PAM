@@ -18,8 +18,8 @@ namespace modules {
 
     if (id.size() != nens) endrun("ERROR: size of id array must be the same as nens");
 
-    int constexpr num_levels = nz/4;
-    real constexpr magnitude = 1.;
+    int  num_levels = nz/4;
+    real magnitude = 1.;
 
     // ny*nx*nens can all be globbed together for this routine
     auto &dm = coupler.get_data_manager_readwrite();
@@ -31,7 +31,7 @@ namespace modules {
       yakl::Random prng(seed);
       real rand = prng.genFP<real>()*2._fp - 1._fp;  // Random number in [-1,1]
       real scaling = ( num_levels - static_cast<real>(k) ) / num_levels;  // Less effect at higher levels
-      temp(k,i) += rand * magnitude * scaling;
+      temp(k,j,i,iens) += rand * magnitude * scaling;
     });
   }
 
