@@ -247,6 +247,55 @@ public:
 
     return hv(0);
   }
+  
+  real YAKL_INLINE compute_hvxz(const real3d &dens, int is, int js, int ks,
+                                int i, int j, int k, int n) const {
+    SArray<real, 1, 1> hv;
+    SArray<real, 1, 4> Dv;
+
+    // compute hv = R h
+    // Uses linearity of R
+    Dv(0) = dens(0, k, n);
+    Dv(1) = dens(0, k, n);
+    Dv(2) = dens(0, k + 1, n);
+    Dv(3) = dens(0, k + 1, n);
+    R(hv, Dv);
+
+    return hv(0);
+  }
+
+  real YAKL_INLINE compute_hvxz_top(const real3d &dens, int is, int js, int ks,
+                                    int i, int j, int k, int n) const {
+    SArray<real, 1, 1> hv;
+    SArray<real, 1, 4> Dv;
+
+    // compute hv = R h
+    // Uses linearity of R
+    Dv(0) = dens(0, k , n);
+    Dv(1) = dens(0, k , n);
+    Dv(2) = dens(0, k  + 1, n);     // gets 1/2
+    Dv(3) = dens(0, k  + 1, n); // gets 1/2
+    Rbnd(hv, Dv);
+
+    return hv(0);
+  }
+
+  real YAKL_INLINE compute_hvxz_bottom(const real3d &dens, int is, int js,
+                                       int ks, int i, int j, int k,
+                                       int n) const {
+    SArray<real, 1, 1> hv;
+    SArray<real, 1, 4> Dv;
+
+    // compute hv = R h
+    // Uses linearity of R
+    Dv(0) = dens(0, k + 1, n);
+    Dv(1) = dens(0, k + 1, n);
+    Dv(2) = dens(0, k , n);     // gets 1/2
+    Dv(3) = dens(0, k , n); // gets 1/2
+    Rbnd(hv, Dv);
+
+    return hv(0);
+  }
 
   real YAKL_INLINE compute_zetaxz(const real5d &v, const real5d &w, int is,
                                   int js, int ks, int i, int j, int k,
@@ -336,6 +385,53 @@ public:
   void YAKL_INLINE compute_qxz0fxz0_bottom(const real5d &qxz0,
                                            const real5d &fxz0, const real5d &v,
                                            const real5d &w, const real5d &dens,
+                                           const real5d &coriolisxz, int is,
+                                           int js, int ks, int i, int j, int k,
+                                           int n) const {
+    // Need to subtract 1 here since d00(i,k) corresponds to p11(i,k)
+    real hv = compute_hvxz_bottom(dens, is, js, ks, i, j, k - 1, n);
+    real zeta = compute_zetaxz(v, w, is, js, ks, i, j, k - 1, n);
+    // compute q0 = zeta / hv and f0 = f / hv
+    qxz0(0, k + ks, j + js, i + is, n) = zeta / hv;
+    fxz0(0, k + ks, j + js, i + is, n) =
+        coriolisxz(0, k + ks, j + js, i + is, n) / hv;
+  }
+  
+  // This computes relative qxz
+  void YAKL_INLINE compute_qxz0fxz0(const real5d &qxz0, const real5d &fxz0,
+                                    const real5d &v, const real5d &w,
+                                    const real3d &dens,
+                                    const real5d &coriolisxz, int is, int js,
+                                    int ks, int i, int j, int k, int n) const {
+    // Need to subtract 1 here since d00(i,k) corresponds to p11(i,k)
+    real hv = compute_hvxz(dens, is, js, ks, i, j, k - 1, n);
+    real zeta = compute_zetaxz(v, w, is, js, ks, i, j, k - 1, n);
+    // compute q0 = zeta / hv and f0 = f / hv
+    qxz0(0, k + ks, j + js, i + is, n) = zeta / hv;
+    fxz0(0, k + ks, j + js, i + is, n) =
+        coriolisxz(0, k + ks, j + js, i + is, n) / hv;
+  }
+
+  // This computes relative qxz
+  void YAKL_INLINE compute_qxz0fxz0_top(const real5d &qxz0, const real5d &fxz0,
+                                        const real5d &v, const real5d &w,
+                                        const real3d &dens,
+                                        const real5d &coriolisxz, int is,
+                                        int js, int ks, int i, int j, int k,
+                                        int n) const {
+    // Need to subtract 1 here since d00(i,k) corresponds to p11(i,k)
+    real hv = compute_hvxz_top(dens, is, js, ks, i, j, k - 1, n);
+    real zeta = compute_zetaxz(v, w, is, js, ks, i, j, k - 1, n);
+    // compute q0 = zeta / hv and f0 = f / hv
+    qxz0(0, k + ks, j + js, i + is, n) = zeta / hv;
+    fxz0(0, k + ks, j + js, i + is, n) =
+        coriolisxz(0, k + ks, j + js, i + is, n) / hv;
+  }
+
+  // This computes relative qxz
+  void YAKL_INLINE compute_qxz0fxz0_bottom(const real5d &qxz0,
+                                           const real5d &fxz0, const real5d &v,
+                                           const real5d &w, const real3d &dens,
                                            const real5d &coriolisxz, int is,
                                            int js, int ks, int i, int j, int k,
                                            int n) const {

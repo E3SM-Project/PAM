@@ -21,7 +21,7 @@ real YAKL_INLINE gamma_avg(real a, real b, real gamma) {
 
 // ADD p-variants
 
-#ifdef _CE
+#if defined _CE || defined _ANE
 class Hamiltonian_CE_Hs {
 public:
   Geometry<Straight> primal_geometry;

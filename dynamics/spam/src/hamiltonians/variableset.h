@@ -31,6 +31,9 @@ struct VS_MCE_rhop {
 struct VS_MCE_rhodp {
   static constexpr bool couple = false;
 };
+struct VS_ANE {
+  static constexpr bool couple = false;
+};
 
 template <class T> class VariableSetBase {
 public:
@@ -486,6 +489,53 @@ real YAKL_INLINE VariableSetBase<VS_CE>::get_alpha(const real3d &densvar, int k,
   return dual_geometry.get_area_11entity(k + ks, 0, 0, n) / densvar(0, k, n);
 }
 
+template <>
+void VariableSetBase<VS_ANE>::initialize(PamCoupler &coupler,
+                                        ModelParameters &params,
+                                        const ThermoPotential &thermodynamics,
+                                        const Geometry<Straight> &primal_geom,
+                                        const Geometry<Twisted> &dual_geom) {
+  dens_name[0] = "S";
+  dens_desc[0] = "entropic variable density";
+  dens_pos(0) = false;
+  VariableSetBase::initialize(*this, coupler, params, thermodynamics,
+                              primal_geom, dual_geom);
+}
+
+//template <>
+//real YAKL_INLINE VariableSetBase<VS_CE>::get_total_density(
+//    const real5d &densvar, int k, int j, int i, int ks, int js, int is,
+//    int n) const {
+//  return densvar(0, k + ks, j + js, i + is, n);
+//}
+//
+//template <>
+//real YAKL_INLINE VariableSetBase<VS_CE>::get_entropic_var(const real5d &densvar,
+//                                                          int k, int j, int i,
+//                                                          int ks, int js,
+//                                                          int is, int n) const {
+//  return densvar(1, k + ks, j + js, i + is, n) /
+//         densvar(0, k + ks, j + js, i + is, n);
+//}
+//template <>
+//real YAKL_INLINE VariableSetBase<VS_CE>::get_entropic_var(const real3d &densvar,
+//                                                          int k, int ks,
+//                                                          int n) const {
+//  return densvar(1, k, n) / densvar(0, k, n);
+//}
+//template <>
+//real YAKL_INLINE VariableSetBase<VS_CE>::get_alpha(const real5d &densvar, int k,
+//                                                   int j, int i, int ks, int js,
+//                                                   int is, int n) const {
+//  return dual_geometry.get_area_11entity(k + ks, j + js, i + is, n) /
+//         densvar(0, k + ks, j + js, i + is, n);
+//}
+//template <>
+//real YAKL_INLINE VariableSetBase<VS_CE>::get_alpha(const real3d &densvar, int k,
+//                                                   int ks, int n) const {
+//  return dual_geometry.get_area_11entity(k + ks, 0, 0, n) / densvar(0, k, n);
+//}
+
 // We rely on physics packages ie micro to provide water species- must at least
 // have vapor and cloud liquid
 
@@ -762,6 +812,8 @@ using VariableSet = VariableSetBase<VS_SWE>;
 using VariableSet = VariableSetBase<VS_TSWE>;
 #elif _CE
 using VariableSet = VariableSetBase<VS_CE>;
+#elif _ANE
+using VariableSet = VariableSetBase<VS_ANE>;
 #elif _MCErho
 using VariableSet = VariableSetBase<VS_MCE_rho>;
 #elif _MCErhod

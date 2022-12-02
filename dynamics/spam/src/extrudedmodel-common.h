@@ -43,6 +43,9 @@ uint constexpr ntracers_physics =
 // the number of moist variables that PAM thermodynamic formulae assume
 // (qd, qv, qc, qi)
 uint constexpr nmoist = 4;
+#elif defined _ANE
+uint constexpr ndensity_dycore = 1;
+uint constexpr ntracers_physics = 0;
 #endif
 // ADD ANELASTIC + MOIST ANELASTIC
 
@@ -52,6 +55,9 @@ uint constexpr ndensity = ndensity_dycore + ntracers_dycore + ntracers_physics;
 #if defined _MCErho && defined _CONST_KAPPA_VIRPOTTEMP
 bool constexpr tracers_decouple_from_dynamics = true;
 uint constexpr ndensity_B = ndensity_dycore;
+#elif _ANE
+bool constexpr tracers_decouple_from_dynamics = false;
+uint constexpr ndensity_B = ndensity + 1;
 #else
 bool constexpr tracers_decouple_from_dynamics = false;
 uint constexpr ndensity_B = ndensity;
@@ -73,7 +79,7 @@ uint constexpr nconstant = 2;
 // primal grid reconstruction stuff- U, W, dens0, edgerecon, recon,
 // vertedgerecon, vertrecon fct stuff- Phi, Mf, edgeflux Q/W STUFF?
 
-uint constexpr nauxiliary = 26;
+uint constexpr nauxiliary = 28;
 
 #define FVAR 0
 #define BVAR 1
@@ -105,6 +111,9 @@ uint constexpr nauxiliary = 26;
 #define CORIOLISXZEDGERECONVAR 23
 #define CORIOLISXZVERTRECONVAR 24
 #define CORIOLISXZVERTEDGERECONVAR 25
+
+#define VVAR2 26
+#define WVAR2 27
 
 // track total densities, dens min/max, energy (total, K, P, I), PV, PE
 uint constexpr nstats = 6;

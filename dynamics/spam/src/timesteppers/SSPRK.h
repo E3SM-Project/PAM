@@ -59,6 +59,8 @@ void SSPKKTimeIntegrator::stepForward(real dt) {
                                 *this->auxiliary_vars, this->F1);
   this->x1.waxpy(-1. * dt, this->F1, *this->x);
   this->x1.exchange();
+  //this->x->copy(this->x1);
+
   this->tendencies->compute_rhs(dt, *this->const_vars, this->x1,
                                 *this->auxiliary_vars, this->F2);
 
