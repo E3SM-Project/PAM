@@ -29,21 +29,18 @@ out_prefix  : test
 dycore_out_prefix  : test_dycore
 
 # GCM time step
-dt_gcm: 900
+gcm_physics_dt: 900
 
 # CRM physics time step
-dt_crm_phys: 20.
-
-#FIX THIS
-dtphys: 2.5
-crm_per_phys: 5
+crm_dt: 20
+dycore_per_phys_step: 4
 
 # Output frequency in seconds
-out_freq: 0.
+out_freq: 3600.
 
-#FIX THIS
-outSteps: 200
-statSteps: 1
+# Output and stat frequency for dycore
+dycore_out_freq: 3600.0
+stat_out_freq: 5.0
 
 tstype: si
 #kgrk4 si

@@ -2,6 +2,8 @@
 
 #include "common.h"
 
+// A LOT OF THIS CAN/SHOULD BE MOVED TO EITHER TOPOLOGY AND/OR GEOMETRY
+
 class Parallel {
 public:
   int nx = -1;

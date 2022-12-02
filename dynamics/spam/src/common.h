@@ -182,7 +182,6 @@ public:
   real dycore_out_freq;
   real dycore_stat_freq;
 
-
   int masterproc;
 };
 

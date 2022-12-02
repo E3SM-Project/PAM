@@ -28,14 +28,15 @@ int main(int argc, char** argv) {
     YAML::Node config = YAML::LoadFile(inFile);
     if ( !config            ) { endrun("ERROR: Invalid YAML input file"); }
 //ADD VERTICAL GRID STUFF HERE
-    auto simTime        = config["simTime"    ].as<real>();
+    auto simTime = config["simTime" ].as<real>();
+    auto gcm_physics_dt = config["gcm_physics_dt" ].as<real>();
     auto crm_nx         = config["crm_nx"     ].as<int>();
     auto crm_ny         = config["crm_ny"     ].as<int>();
+    auto crm_nz         = config["crm_nz"  ].as<int>(0);
     auto nens           = config["nens"       ].as<int>();
-    auto xlen           = config["xlen"       ].as<real>();
-    auto ylen           = config["ylen"       ].as<real>();
-    auto gcm_physics_dt         = config["gcm_physics_dt"     ].as<real>();
-    auto crm_dt    = config["crm_dt"].as<real>();
+    auto xlen           = config["xlen"       ].as<real>(-1.0_fp);
+    auto ylen           = config["ylen"       ].as<real>(-1.0_fp);
+    auto crm_dt_in      = config["crm_dt"  ].as<real>();
     auto out_freq       = config["out_freq"   ].as<real>();
     auto out_prefix     = config["out_prefix" ].as<std::string>();
     real zlen;
@@ -160,7 +161,6 @@ int main(int argc, char** argv) {
     sgs   .init( coupler );
     dycore.init( coupler );
 
-
     // Initialize the CRM internal state from the initial GCM column and random temperature perturbations
     modules::broadcast_initial_gcm_column( coupler );
 
@@ -184,12 +184,14 @@ int main(int argc, char** argv) {
     yakl::timer_start("main_loop");
 
 //REMOVE ONE LAYER OF LOOPING HERE
+//ACTUALLY, NO, KEEP IT!
+//maybe rework this a little though?
+//etime_crm can probably be dropped? no, it is needed to clip time step at the end of a gcm step if needed
+
     while (etime_gcm < simTime) {
       if (etime_gcm + dt_gcm > simTime) { dt_gcm = simTime - etime_gcm; }
 
       modules::compute_gcm_forcing_tendencies( coupler , dt_gcm );
-
-//FIX HOW TIME STEPPING IS CALCULATED/DONE FOR PAM-C...
 
       real etime_crm = 0;
       real simTime_crm = dt_gcm;
