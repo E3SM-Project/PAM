@@ -108,7 +108,7 @@ int constexpr si_monitor_convergence = 2;
 // 1 = computes initial and final residual but still does si_max_iter iterations
 // 2 = iterates until convergence or si_max_iter is reached
 
-int constexpr si_verbosity_level = si_monitor_convergence;
+int constexpr si_verbosity_level = 0; //si_monitor_convergence;
 // 0 = do not print
 // 1 = print initial and final
 // 2 = print every iteration

@@ -38,7 +38,7 @@ dycore_out_prefix  : test_dycore
 # Output frequency
 out_freq: 20000.
 dycore_out_freq: 20000.0
-stat_out_freq: 200.
+dycore_stat_freq: 200.
 
 #200. * 100
 tstype: si

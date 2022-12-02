@@ -73,9 +73,9 @@ void readParamsFile(std::string inFile, ModelParameters &params, Parallel &par,
   params.si_tolerance = config["si_tolerance"].as<real>(1e-8);
 
   params.dycore_per_phys = config["dycore_per_phys"].as<int>(0);
-  
+
   params.dycore_out_freq = config["dycore_out_freq"].as<real>(0.0_fp);
-  params.dycore_stat_freq = config["dycore_stat_freq"].as<real>(0.0_fp);    
+  params.dycore_stat_freq = config["dycore_stat_freq"].as<real>(0.0_fp);
   
   params.outputName = config["dycore_out_prefix"].as<std::string>("output");
 

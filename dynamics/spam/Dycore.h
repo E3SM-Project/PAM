@@ -306,7 +306,7 @@ serial_print("taking a set of " + std::to_string(n_iter) + " dycore steps at " +
 
       etime += dt;
 
-      if (params.dycore_out_freq >= 0. && etime / params.dycore_out_freq >= num_out+1) {
+      if (params.dycore_out_freq > 0 && etime / params.dycore_out_freq >= num_out+1) {
 
         serial_print("dycore ouput at " + std::to_string(etime),par.masterproc);
         for (auto &diag : diagnostics) {
@@ -317,7 +317,8 @@ serial_print("taking a set of " + std::to_string(n_iter) + " dycore steps at " +
         num_out++;
       }
 
-      if (params.dycore_stat_freq >= 0. && etime / params.dycore_stat_freq >= num_stat+1) {
+      if (params.dycore_stat_freq > 0 && etime / params.dycore_stat_freq >= num_stat+1) {
+        debug_print("dycore stats at " + std::to_string(etime),par.masterproc);
         stats.compute(prognostic_vars, constant_vars,num_stat+1);
         num_stat++;
       }
