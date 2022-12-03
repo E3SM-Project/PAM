@@ -22,7 +22,7 @@ namespace modules {
     real magnitude = 1.;
 
     // ny*nx*nens can all be globbed together for this routine
-    auto &dm = coupler.get_data_manager_readwrite();
+    auto &dm = coupler.get_data_manager_device_readwrite();
     auto temp = dm.get<real,4>("temp");
 
     parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(num_levels,ny,nx,nens) ,

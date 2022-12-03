@@ -54,15 +54,8 @@ namespace pam {
 
     Options options;
 
-    real R_d;    // Dry air gas constant
-    real R_v;    // Water vapor gas constant
-    real cp_d;   // Dry air specific heat at constant pressure
-    real cp_v;   // Water vapor specific heat at constant pressure
-    real grav;   // Acceleration due to gravity (m s^-2): typically 9.81
-    real p0;     // Reference pressure (Pa): typically 10^5
     real xlen;   // Domain length in the x-direction in meters
     real ylen;   // Domain length in the y-direction in meters
-    real dt_gcm; // Time step of the GCM for this MMF invocation
 
     DataManager     dm;
     DataManagerHost dm_host;
@@ -79,15 +72,8 @@ namespace pam {
   public:
 
     PamCoupler() {
-      this->R_d    = 287 ;
-      this->R_v    = 461 ;
-      this->cp_d   = 1004;
-      this->cp_v   = 1859;
-      this->grav   = 9.81;
-      this->p0     = 1.e5;
       this->xlen   = -1;
       this->ylen   = -1;
-      this->dt_gcm = -1;
       this->thread_id = std::this_thread::get_id();
     }
 
@@ -102,37 +88,20 @@ namespace pam {
       dm.finalize();
       options.finalize();
       tracers = std::vector<Tracer>();
-      this->R_d    = 287 ;
-      this->R_v    = 461 ;
-      this->cp_d   = 1004;
-      this->cp_v   = 1859;
-      this->grav   = 9.81;
-      this->p0     = 1.e5;
       this->xlen   = -1;
       this->ylen   = -1;
-      this->dt_gcm = -1;
     }
 
 
-    void set_dt_gcm(real dt_gcm) { this->dt_gcm = dt_gcm; }
-
-
-    std::thread::id         get_thread_id                  () const { return this->thread_id    ; }
-    real                    get_R_d                        () const { return this->R_d          ; }
-    real                    get_R_v                        () const { return this->R_v          ; }
-    real                    get_cp_d                       () const { return this->cp_d         ; }
-    real                    get_cp_v                       () const { return this->cp_v         ; }
-    real                    get_grav                       () const { return this->grav         ; }
-    real                    get_p0                         () const { return this->p0           ; }
-    real                    get_xlen                       () const { return this->xlen         ; }
-    real                    get_ylen                       () const { return this->ylen         ; }
-    real                    get_dx                         () const { return get_xlen()/get_nx(); }
-    real                    get_dy                         () const { return get_ylen()/get_ny(); }
-    real                    get_dt_gcm                     () const { return this->dt_gcm       ; }
-    DataManager const &     get_data_manager_readonly      () const { return this->dm           ; }
-    DataManager       &     get_data_manager_readwrite     ()       { return this->dm           ; }
-    DataManagerHost const & get_data_manager_host_readonly () const { return this->dm_host      ; }
-    DataManagerHost       & get_data_manager_host_readwrite()       { return this->dm_host      ; }
+    std::thread::id         get_thread_id                    () const { return this->thread_id    ; }
+    real                    get_xlen                         () const { return this->xlen         ; }
+    real                    get_ylen                         () const { return this->ylen         ; }
+    real                    get_dx                           () const { return get_xlen()/get_nx(); }
+    real                    get_dy                           () const { return get_ylen()/get_ny(); }
+    DataManager const &     get_data_manager_device_readonly () const { return this->dm           ; }
+    DataManager       &     get_data_manager_device_readwrite()       { return this->dm           ; }
+    DataManagerHost const & get_data_manager_host_readonly   () const { return this->dm_host      ; }
+    DataManagerHost       & get_data_manager_host_readwrite  ()       { return this->dm_host      ; }
 
 
     int get_nx() const {
@@ -192,6 +161,11 @@ namespace pam {
     }
 
 
+    void make_option_readonly( std::string key ) {
+      options.make_readonly(key);
+    }
+
+
     template <class F>
     void run_module( std::string name , F const &f ) {
       #ifdef PAM_FUNCTION_TRACE
@@ -213,16 +187,6 @@ namespace pam {
         }
         std::cout << "\n\n";
       #endif
-    }
-
-
-    void set_phys_constants(real R_d, real R_v, real cp_d, real cp_v, real grav=9.81, real p0=1.e5) {
-      this->R_d  = R_d ;
-      this->R_v  = R_v ;
-      this->cp_d = cp_d;
-      this->cp_v = cp_v;
-      this->grav = grav;
-      this->p0   = p0  ;
     }
 
 
@@ -398,8 +362,8 @@ namespace pam {
       int nx   = get_nx();
       int nens = get_nens();
 
-      YAKL_SCOPE( R_d , this->R_d );
-      YAKL_SCOPE( R_v , this->R_v );
+      auto R_d = get_option<real>("R_d");
+      auto R_v = get_option<real>("R_v");
 
       // Compute average column of pressure for each ensemble
       real2d pressure_col("pressure_col",nz,nens);
@@ -462,8 +426,8 @@ namespace pam {
 
       real4d pressure("pressure",nz,ny,nx,nens);
 
-      YAKL_SCOPE( R_d , this->R_d );
-      YAKL_SCOPE( R_v , this->R_v );
+      auto R_d = get_option<real>("R_d");
+      auto R_v = get_option<real>("R_v");
 
       parallel_for( "coupler pressure" , SimpleBounds<4>(nz,ny,nx,nens) ,
                     YAKL_LAMBDA (int k, int j, int i, int iens) {

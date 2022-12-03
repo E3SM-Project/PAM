@@ -14,7 +14,7 @@ namespace modules {
     int nx   = coupler.get_nx  ();
     int nens = coupler.get_nens();
     
-    auto &dm = coupler.get_data_manager_readwrite();
+    auto &dm = coupler.get_data_manager_device_readwrite();
 
     auto dt = coupler.get_option<real>("crm_dt");
 

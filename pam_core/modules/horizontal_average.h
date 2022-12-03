@@ -30,7 +30,7 @@ namespace modules {
     int nz   = coupler.get_nz  ();
     int nens = coupler.get_nens();
 
-    auto &dm = coupler.get_data_manager_readwrite();
+    auto &dm = coupler.get_data_manager_device_readwrite();
 
     MultiField<real,3> fields_var;
     MultiField<real,2> fields_havg;

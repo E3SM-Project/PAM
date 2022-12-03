@@ -35,7 +35,7 @@ namespace modules {
       havg_fields.add_field( real2d(name,nz,nens) );
     }
 
-    auto &dm = coupler.get_data_manager_readwrite();
+    auto &dm = coupler.get_data_manager_device_readwrite();
 
     // Create MultiField of all state and tracer full variables, since we're doing the same operation on each
     pam::MultiField<real,4> full_fields;

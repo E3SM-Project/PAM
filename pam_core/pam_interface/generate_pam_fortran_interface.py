@@ -535,7 +535,7 @@ for tp in array_types :
     integer(c_int) :: dims_c(size(dims))
     character(len=maxlen) :: desc = ""
     if (present(desc_in)) desc = trim(desc_in)
-    dims_c = dims
+    dims_c = dims(ubound(dims,1):lbound(dims,1):-1)
     call pam_create_array_{tp}_c( string_f2c(key,len_trim(key)) , string_f2c(desc,len_trim(desc)) , dims_c , size(dims_c) )
   end subroutine\n''')
 
@@ -551,6 +551,7 @@ for tp in array_types :
     integer(c_int) :: dims({d})
     type(c_ptr)    :: ptr_c
     call pam_get_array_{tp}_c( string_f2c(label,len_trim(label)) , ptr_c , dims , {d} )
+    dims = dims(ubound(dims,1):lbound(dims,1):-1)
     call c_f_pointer( ptr_c , ptr , [dims(1)''')
     for i in range(d-1) :
       f.write(f",dims({i+2})")
@@ -571,6 +572,7 @@ for tp in array_types :
     character(len=maxlen) :: desc = ""
     if (present(desc_in)) desc = trim(desc_in)
     dims_c = shape(arr)
+    dims_c = dims_c(ubound(dims_c,1):lbound(dims_c,1):-1)
     call pam_mirror_array_readonly_{tp}_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , {d} , arr )
   end subroutine\n''')
 
@@ -588,6 +590,7 @@ for tp in array_types :
     character(len=maxlen) :: desc = ""
     if (present(desc_in)) desc = trim(desc_in)
     dims_c = shape(arr)
+    dims_c = dims_c(ubound(dims_c,1):lbound(dims_c,1):-1)
     call pam_mirror_array_readwrite_{tp}_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , {d} , arr )
   end subroutine\n''')
 

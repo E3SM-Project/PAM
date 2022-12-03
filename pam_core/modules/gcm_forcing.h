@@ -20,7 +20,7 @@ namespace modules {
     using yakl::c::SimpleBounds;
     using yakl::atomicAdd;
 
-    auto &dm = coupler.get_data_manager_readwrite();
+    auto &dm = coupler.get_data_manager_device_readwrite();
 
     auto dt_gcm = coupler.get_option<real>("gcm_physics_dt");
 
@@ -119,7 +119,7 @@ namespace modules {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
     using yakl::atomicAdd;
-    auto &dm = coupler.get_data_manager_readwrite();
+    auto &dm = coupler.get_data_manager_device_readwrite();
 
     auto dt = coupler.get_option<real>("crm_dt");
 

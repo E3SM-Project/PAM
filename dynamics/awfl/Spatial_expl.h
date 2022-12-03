@@ -145,7 +145,7 @@ public:
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
 
-    auto &dm = coupler.get_data_manager_readwrite();
+    auto &dm = coupler.get_data_manager_device_readwrite();
 
     real4d dm_dens_dry = dm.get<real,4>( "density_dry"      );
     real4d dm_uvel     = dm.get<real,4>( "uvel"             );
@@ -206,7 +206,7 @@ public:
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
 
-    auto &dm = coupler.get_data_manager_readonly();
+    auto &dm = coupler.get_data_manager_device_readonly();
     auto hy_params = dm.get<real const,3>("hydrostasis_parameters");
 
     YAKL_SCOPE( hyDensSten           , this->hyDensSten           );
@@ -356,7 +356,7 @@ public:
       YAKL_SCOPE( Rv                   , this->Rv                  );
       YAKL_SCOPE( sim2d                , this->sim2d               );
 
-      auto &dm = coupler.get_data_manager_readonly();
+      auto &dm = coupler.get_data_manager_device_readonly();
 
       // Convert data from DataManager to state and tracers array for convenience
       auto dm_dens_dry = dm.get<real const,4>( "density_dry" );
@@ -417,11 +417,11 @@ public:
 
     this->hydrostasis_parameters_sum = 0;
 
-    this->Rd    = coupler.get_R_d ();
-    this->cp    = coupler.get_cp_d();
-    this->p0    = coupler.get_p0  ();
-    this->Rv    = coupler.get_R_v ();
-    this->grav  = coupler.get_grav();
+    this->Rd    = coupler.get_option<real>("R_d" );
+    this->cp    = coupler.get_option<real>("cp_d");
+    this->p0    = coupler.get_option<real>("p0"  );
+    this->Rv    = coupler.get_option<real>("R_v" );
+    this->grav  = coupler.get_option<real>("grav");
     this->gamma = cp / (cp-Rd);
     real kappa = Rd/cp;
     this->C0 = pow( Rd * pow( p0 , -kappa ) , gamma );
@@ -489,7 +489,7 @@ public:
     sim2d = ny == 1;
 
     // Store vertical cell interface heights in the data manager
-    auto &dm = coupler.get_data_manager_readonly();
+    auto &dm = coupler.get_data_manager_device_readonly();
     auto zint = dm.get<real const,2>("vertical_interface_height");
 
     nz = coupler.get_nz();

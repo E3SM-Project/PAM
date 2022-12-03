@@ -16,7 +16,7 @@ inline void output( pam::PamCoupler const &coupler , std::string out_prefix , re
   auto ny = coupler.get_ny();
   auto nz = coupler.get_nz();
 
-  auto &dm = coupler.get_data_manager_readonly();
+  auto &dm = coupler.get_data_manager_device_readonly();
 
   MPI_Barrier(MPI_COMM_WORLD);
   for (int rr=0; rr < nranks; rr++) {

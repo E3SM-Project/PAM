@@ -12,6 +12,7 @@ namespace pam {
       std::string key;
       void *      data;
       size_t      type_hash;
+      bool        readonly;
     };
 
     std::vector<Option> options;
@@ -66,8 +67,9 @@ namespace pam {
       int id = find_option( key );
       if ( id == -1 ) {
         T * ptr = new T(value);
-        options.push_back({ key , (void *) ptr , get_type_hash<T>() });
+        options.push_back({ key , (void *) ptr , get_type_hash<T>() , false });
       } else {
+        if (options[id].readonly) endrun("ERROR: Trying to overwrite a readonly coupler option");
         *((T *) options[id].data) = value;
       }
     }
@@ -79,6 +81,9 @@ namespace pam {
       if ( key == "" ) return;
       add_option( key , value );
     }
+
+
+    void make_readonly( std::string key ) { options[find_option_or_die(key)].readonly = true; }
 
 
     template <class T>

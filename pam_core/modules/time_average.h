@@ -14,7 +14,7 @@ namespace modules {
     int nx   = coupler.get_nx  ();
     int nens = coupler.get_nens();
 
-    auto &dm = coupler.get_data_manager_readwrite();
+    auto &dm = coupler.get_data_manager_device_readwrite();
 
     MultiField<real,1> fields;
 
@@ -45,7 +45,7 @@ namespace modules {
     int nx   = coupler.get_nx  ();
     int nens = coupler.get_nens();
 
-    auto &dm = coupler.get_data_manager_readwrite();
+    auto &dm = coupler.get_data_manager_device_readwrite();
 
     auto crm_dt = coupler.get_option<real>("crm_dt");
     auto gcm_dt = coupler.get_option<real>("gcm_physics_dt");
