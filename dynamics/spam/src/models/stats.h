@@ -44,10 +44,8 @@ public:
 
     std::string inFile = coupler.get_option<std::string>("standalone_input_file");
     YAML::Node config = YAML::LoadFile(inFile);
-    real simTime = config["simTime"].as<real>(0.0_fp);
-    real gcm_physics_dt = config["gcm_physics_dt"].as<real>();
+    real simTime = config["simTime"].as<real>();
     real dycore_stat_freq = config["dycore_stat_freq"].as<real>();
-    if (simTime <= 0) {simTime = gcm_physics_dt;}
 
     this->primal_geometry = primal_geom;
     this->dual_geometry = dual_geom;

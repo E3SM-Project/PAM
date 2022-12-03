@@ -29,8 +29,8 @@ int main(int argc, char** argv) {
     std::string inFile(argv[1]);
     YAML::Node config = YAML::LoadFile(inFile);
     if ( !config            ) { endrun("ERROR: Invalid YAML input file"); }
-
-    real        gcm_physics_dt = config["gcm_physics_dt" ].as<real>();
+    real        simTime = config["simTime" ].as<real>();
+    real        gcm_physics_dt_in = config["gcm_physics_dt" ].as<real>();
     int         crm_nx       = config["crm_nx"  ].as<int>();
     int         crm_ny       = config["crm_ny"  ].as<int>();
     int         nens         = config["nens"    ].as<int>();
@@ -38,12 +38,19 @@ int main(int argc, char** argv) {
     real        ylen         = config["ylen"    ].as<real>(-1.0_fp);
     real        crm_dt_in    = config["crm_dt"  ].as<real>();
     std::string vcoords_file = config["vcoords" ].as<std::string>();
+
+//WHAT DOES THIS DO? IS IT EVEN NEEDED?
     bool        use_coupler_hydrostasis = config["use_coupler_hydrostasis"].as<bool>(false);
-    auto out_freq                = config["out_freq"   ].as<real>();
-    auto out_prefix              = config["out_prefix" ].as<std::string>("test");
+    std::string out_freq                = config["out_freq"   ].as<real>();
+    std::string out_prefix              = config["out_prefix" ].as<std::string>("test");
     bool        inner_mpi = config["inner_mpi"].as<bool>(false);
+
+//ELMINATE?
     real zlen;
-    
+
+//BROKEN FOR ENSEMBLES!
+//do we even really need zlen?
+//used ONLY for setting uniform vertical grids, which we will fix up anyways...
     if (xlen < 0 || ylen < 0) { set_domain_sizes(config, xlen, ylen, zlen); }
 
 //FIX THIS UP A LITTLE I THINK?
@@ -129,9 +136,21 @@ int main(int argc, char** argv) {
     if (out_freq >= 0. ) output( coupler , out_prefix , etime );
     yakl::timer_stop("output");
 
+    real gcm_dt = gcm_physics_dt_in;
     real crm_dt = crm_dt_in;
-    while (etime < gcm_physics_dt) {
-      if (etime + crm_dt > gcm_physics_dt) { crm_dt = gcm_physics_dt - etime; }
+    while (etime < simTime) {
+      if (etime + gcm_dt > simTime) { gcm_dt = simTime - gcm_dt; }
+
+      //      modules::compute_gcm_forcing_tendencies( coupler , dt_gcm );
+
+//ALL BROKEN TIME STEPPING CURRENTLY
+      real etime_crm = 0;
+      real simTime_crm = dt_gcm;
+      real dt_crm = dt_crm_phys;
+
+      while (etime_crm < simTime_crm) {
+        if (dt_crm == 0.) { dt_crm = dycore.compute_time_step(coupler); }
+        if (etime_crm + dt_crm > simTime_crm) { dt_crm = simTime_crm - etime_crm; }
 
       yakl::timer_start("sgs");
       sgs.timeStep( coupler , crm_dt );

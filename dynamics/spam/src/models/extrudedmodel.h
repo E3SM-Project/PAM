@@ -2723,13 +2723,163 @@ varset.convert_coupler_to_dynamics_state(coupler, progvars, constvars);
 
 }
 
-void set_reference_state(ReferenceState &ref_state, FieldSet<nconstant> &constvars, PamCoupler &coupler,
+void set_reference_state(ReferenceState &reference_state, FieldSet<nconstant> &constvars, PamCoupler &coupler,
                          const Geometry<Straight> &primal_geom,
                          const Geometry<Twisted> &dual_geom) override {
-                           
+  auto &refstate = static_cast<ModelReferenceState &>(reference_state);
 
-varset.convert_coupler_to_reference_state(coupler, ref_state, constvars);
+  const auto primal_topology = primal_geom.topology;
+  const auto dual_topology = dual_geom.topology;
 
+  const int pks = primal_topology.ks;
+
+  YAKL_SCOPE(thermo, ::thermo);
+  YAKL_SCOPE(Hs, ::Hs);
+  YAKL_SCOPE(varset, ::varset);
+
+  // Get GCM state to base reference state on
+      auto &dm = coupler.get_data_manager_readwrite();
+
+      auto gcm_rho_d = dm.get<real,2>("gcm_density_dry");
+      //auto gcm_uvel  = dm.get<real,2>("gcm_uvel"       );
+      //auto gcm_vvel  = dm.get<real,2>("gcm_vvel"       );
+      //auto gcm_wvel  = dm.get<real,2>("gcm_wvel"       );
+      auto gcm_temp  = dm.get<real,2>("gcm_temp"       );
+      auto gcm_rho_v = dm.get<real,2>("gcm_water_vapor");
+
+
+  dual_geom.set_profile_11form_values(YAKL_LAMBDA(real z) { return flat_geop(0, z, g); }, refstate.geop, 0);
+
+//FIX TO COMPUTE BASED ON COUPLER GCM COLUMN DATA
+
+  //dual_geom.set_profile_11form_values(YAKL_LAMBDA(real z) { return refrho_f(z, thermo); }, refstate.dens, 0);
+//ALSO HERE RHO_D VS. RHO IN 1st SLOT!
+  //dual_geom.set_profile_11form_values(YAKL_LAMBDA(real z) { return refentropicdensity_f(z, thermo); },refstate.dens, 1);
+//IS WATER VAPOR ALWAYS IN 2nd SLOT FOR DENSITIES? NO, DEPENDS ON THE MICROPHYSICS!
+//THIS IS UGLY BUT CAN'T REALLY BE CHANGED AT OUR LEVEL...
+//NOT SURE IF THIS IS A BUG
+  //dual_geom.set_profile_11form_values(YAKL_LAMBDA(real z) { return refrhov_f(z, thermo); }, refstate.dens, 2);
+
+  //primal_geom.set_profile_00form_values(YAKL_LAMBDA(real z) { return refrho_f(z, thermo); }, refstate.q_pi, 0);
+
+  //primal_geom.set_profile_00form_values(YAKL_LAMBDA(real z) { return refentropicdensity_f(z, thermo); },refstate.q_pi, 1);
+
+  //primal_geom.set_profile_00form_values(YAKL_LAMBDA(real z) { return refrhov_f(z, thermo); }, refstate.q_pi, 2);
+
+  //dual_geom.set_profile_00form_values(YAKL_LAMBDA(real z) { return refrho_f(z, thermo); }, refstate.q_di, 0);
+
+  //dual_geom.set_profile_00form_values(YAKL_LAMBDA(real z) { return refentropicdensity_f(z, thermo); }, refstate.q_di, 1);
+
+  //dual_geom.set_profile_00form_values(YAKL_LAMBDA(real z) { return refrhov_f(z, thermo); }, refstate.q_di, 2);
+
+//ARE COUPLER DENSITIES kg or kg/m^3??? they are kg/m^3 (see varset stuff!)
+
+////////////////////////////
+
+  const auto total_density_f = YAKL_LAMBDA(const real3d &densvar, int d, int k, int n) { return varset.get_total_density(densvar, k, 0, n);};
+
+  parallel_for(
+      "compute rho_pi",
+      SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
+      YAKL_LAMBDA(int k, int n) {
+        SArray<real, 1, 1> rho0;
+        compute_H2bar_ext<1, vert_diff_ord>(total_density_f, rho0,
+                                            refstate.dens.data, primal_geom,
+                                            dual_geom, pks, k, n);
+        refstate.rho_pi.data(0, k, n) = rho0(0);
+      });
+
+  parallel_for(
+      "scale q_pi", SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
+      YAKL_LAMBDA(int k, int n) {
+        for (int l = 0; l < ndensity; ++l) {
+          refstate.q_pi.data(l, k, n) /= refstate.rho_pi.data(0, k, n);
+        }
+      });
+
+  parallel_for(
+      "compute rho_di", SimpleBounds<2>(dual_topology.ni, dual_topology.nens),
+      YAKL_LAMBDA(int k, int n) {
+        if (k == 0) {
+          refstate.rho_di.data(0, 0, n) = refstate.rho_pi.data(0, 0, n);
+        } else if (k == dual_topology.ni - 1) {
+          refstate.rho_di.data(0, dual_topology.ni - 1, n) =
+              refstate.rho_pi.data(0, primal_topology.ni - 1, n);
+        } else {
+          refstate.rho_di.data(0, k, n) =
+              0.5_fp * (refstate.rho_pi.data(0, k, n) +
+                        refstate.rho_pi.data(0, k - 1, n));
+        }
+      });
+
+  parallel_for(
+      "scale q_di", SimpleBounds<2>(dual_topology.ni, dual_topology.nens),
+      YAKL_LAMBDA(int k, int n) {
+        for (int l = 0; l < ndensity; ++l) {
+          refstate.q_di.data(l, k, n) /= refstate.rho_di.data(0, k, n);
+        }
+      });
+
+  parallel_for(
+      "Compute refstate B",
+      SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
+      YAKL_LAMBDA(int k, int n) {
+        Hs.compute_dHsdx(refstate.B.data, refstate.dens.data,
+                         refstate.geop.data, pks, k, n, -1);
+      });
+
+//HERE WE ASSUME A DRY REFERENCE STATE- PROBABLY OKAY?
+  parallel_for(
+      "Compute Blin_coeff",
+      SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
+      YAKL_LAMBDA(int k, int n) {
+        real z = primal_geom.zint(k + primal_topology.ks, n);
+
+        real Rd = thermo.cst.Rd;
+        real pr = thermo.cst.pr;
+        real gamma_d = thermo.cst.gamma_d;
+        real Cpd = thermo.cst.Cpd;
+        real Cvd = thermo.cst.Cvd;
+        real grav = g;
+        real grav2 = grav * grav;
+
+//FIX- can this just use rho_pi?
+        real rho_ref = 0.; //refrho_f(z, thermo);
+        real alpha_ref = 1 / rho_ref;
+//FIX- can this just use rho_pi? rho_pi needs another variable but maybe that is fine?
+        real S_ref = 0.;//refentropicdensity_f(z, thermo);
+        real s_ref = S_ref / rho_ref;
+
+        real rho_ref2 = rho_ref * rho_ref;
+        real p_ref = thermo.solve_p(rho_ref, s_ref, 0, 0, 0, 0);
+
+        real dpds_ref =
+            thermo.compute_dpdentropic_var(alpha_ref, s_ref, 0, 0, 0, 0);
+        real dpds_ref2 = dpds_ref * dpds_ref;
+
+//FIX- WHAT IS EXPLICIT FORMULA HERE?
+        real Nref2 = 0.; //refnsq_f(z, thermo);
+        real cref = thermo.compute_soundspeed(alpha_ref, s_ref, 0, 0, 0, 0);
+        real cref2 = cref * cref;
+
+        real b0_rho = (cref2 * rho_ref - dpds_ref * s_ref) / rho_ref2;
+        real b0_s =
+            dpds_ref / rho_ref - dpds_ref2 * s_ref / (cref2 * rho_ref2) -
+            dpds_ref2 * grav2 * s_ref / (Nref2 * cref2 * cref2 * rho_ref2);
+        real b0_S = b0_s / rho_ref;
+        b0_rho -= s_ref / rho_ref * b0_s;
+
+        real b1_rho = dpds_ref / rho_ref2;
+        real b1_s = dpds_ref2 * (Nref2 * cref2 + grav2) /
+                    (Nref2 * cref2 * cref2 * rho_ref2);
+        real b1_S = b1_s / rho_ref;
+        b1_rho -= s_ref / rho_ref * b1_s;
+
+        refstate.Blin_coeff(0, 0, k, n) = b0_rho;
+        refstate.Blin_coeff(0, 1, k, n) = b0_S;
+        refstate.Blin_coeff(1, 0, k, n) = b1_rho;
+        refstate.Blin_coeff(1, 1, k, n) = b1_S;
+      });
 }
 
 };
@@ -3314,7 +3464,7 @@ template <bool acoustic_balance> struct RisingBubble {
 struct TwoBubbles {
   static real constexpr g = 9.80616_fp;
   static real constexpr Lx = 1000._fp;
-  static real constexpr Lz = 1000._fp;
+  static real constexpr Lz = 1500._fp;
   static real constexpr xc = 0.5_fp * Lx;
   static real constexpr zc = 0.5_fp * Lz;
   static real constexpr theta0 = 303.15_fp;

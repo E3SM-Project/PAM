@@ -10,10 +10,12 @@ crm_ny       : 1
 # Vertical height coordinates file
 #vcoords  : vcoords_equal_100_20km.nc
 #vcoords: uniform
-vcoords  : '../pam-c/vcoords/vcoords_equal_150_1500.nc'
+vcoords1  : '../pam-c/vcoords/vcoords_exp_150_1500.nc'
+vcoords2  : '../pam-c/vcoords/vcoords_exp_150_1500.nc'
 
 # Data to initialize: doublevortex rb mrb
-initData : moistrisingbubble
+initData1 : risingbubble
+initData2 : twobubbles
 
 # Time steps
 crm_dt: 2.5
@@ -39,7 +41,7 @@ tstype: si
 #kgrk4 si
 
 # Number of ensembles
-nens : 1
+nens : 2
 
 # Parallel decomposition
 inner_mpi : true
