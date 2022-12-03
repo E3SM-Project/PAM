@@ -54,7 +54,7 @@ public:
     //                 name              description            positive   adds mass
     coupler.add_tracer("water_vapor"  , "Water Vapor"   ,       true     , true);
 
-    auto &dm = coupler.get_data_manager_readwrite();
+    auto &dm = coupler.get_data_manager_device_readwrite();
 
     // Zero out the tracers
 
@@ -62,11 +62,17 @@ public:
     parallel_for("zero water vapor", nz*ny*nx*nens , YAKL_LAMBDA (int i) { rho_v(i) = 0; } );
 
     coupler.set_option<std::string>("micro","none");
+    coupler.set_option<real>("R_d" ,R_d  );
+    coupler.set_option<real>("R_v" ,R_v  );
+    coupler.set_option<real>("cp_d",cp_d );
+    coupler.set_option<real>("cp_v",cp_v );
+    coupler.set_option<real>("grav",grav );
+    coupler.set_option<real>("p0"  ,p0   );
   }
 
 
 
-  void timeStep( pam::PamCoupler &coupler , real dt ) {
+  void timeStep( pam::PamCoupler &coupler ) {
     // Do microphysicsy stuff to the coupler variables and the tracers
   }
 

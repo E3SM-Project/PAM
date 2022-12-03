@@ -23,7 +23,7 @@ public:
 
 
 
-  void timeStep( pam::PamCoupler &coupler , real dt ) {
+  void timeStep( pam::PamCoupler &coupler ) {
   }
 
 

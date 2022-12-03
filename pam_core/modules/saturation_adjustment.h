@@ -111,11 +111,12 @@ namespace modules {
   }
 
 
-  inline void saturation_adjustment( pam::PamCoupler &coupler , real dt ) {
+  inline void saturation_adjustment( pam::PamCoupler &coupler ) {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
     using yakl::intrinsics::size;
-    auto &dm = coupler.get_data_manager_readwrite();
+    auto &dm = coupler.get_data_manager_device_readwrite();
+    auto dt = coupler.get_option<real>("crm_dt");
     real1d rho_d = dm.get_collapsed<real>("density_dry");
     real1d temp  = dm.get_collapsed<real>("temp");
     real1d rho_v = dm.get_collapsed<real>("water_vapor");
@@ -132,9 +133,9 @@ namespace modules {
       coupler.get_tracer_info(tracer_names[tr],desc,found,positive,adds_mass);
       if (adds_mass) massy_tracers.add_field( dm.get_collapsed<real>(tracer_names[tr]) );
     }
-    real R_v  = coupler.get_R_v ();
-    real cp_d = coupler.get_cp_d();
-    real cp_v = coupler.get_cp_v();
+    real R_v  = coupler.get_option<real>("R_v" );
+    real cp_d = coupler.get_option<real>("cp_d");
+    real cp_v = coupler.get_option<real>("cp_v");
     real cp_l = 4188.0;
     parallel_for( SimpleBounds<1>(size(rho_d)) , YAKL_LAMBDA (int i) {
       real rho = rho_d(i);

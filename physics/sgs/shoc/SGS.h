@@ -100,7 +100,7 @@ public:
     //                 name    description                              positive   adds mass
     coupler.add_tracer("tke" , "Turbulent Kinetic Energy (m^2/s^2)"   , true     , false );
 
-    auto &dm = coupler.get_data_manager_readwrite();
+    auto &dm = coupler.get_data_manager_device_readwrite();
 
     // Register and allocation non-tracer quantities used by the microphysics
     dm.register_and_allocate<real>( "wthv_sec" , "Buoyancy flux [K m/s]"                , {nz,ny,nx,nens} , {"z","y","x","nens"} );
@@ -130,9 +130,11 @@ public:
 
 
 
-  void timeStep( pam::PamCoupler &coupler , real dt ) {
+  void timeStep( pam::PamCoupler &coupler ) {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
+
+    real dt = coupler.get_option<real>("crm_dt");
 
     // Get the dimensions sizes
     int nz   = coupler.get_nz();
@@ -141,7 +143,7 @@ public:
     int nens = coupler.get_nens();
     int ncol = ny*nx*nens;
 
-    auto &dm = coupler.get_data_manager_readwrite();
+    auto &dm = coupler.get_data_manager_device_readwrite();
 
     auto pres_mid_tmp = coupler.compute_pressure_array();
 

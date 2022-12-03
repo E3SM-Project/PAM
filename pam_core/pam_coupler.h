@@ -54,15 +54,8 @@ namespace pam {
 
     Options options;
 
-    real R_d;    // Dry air gas constant
-    real R_v;    // Water vapor gas constant
-    real cp_d;   // Dry air specific heat at constant pressure
-    real cp_v;   // Water vapor specific heat at constant pressure
-    real grav;   // Acceleration due to gravity (m s^-2): typically 9.81
-    real p0;     // Reference pressure (Pa): typically 10^5
     real xlen;   // Domain length in the x-direction in meters
     real ylen;   // Domain length in the y-direction in meters
-    real dt_gcm; // Time step of the GCM for this MMF invocation
 
     DataManager     dm;
     DataManagerHost dm_host;
@@ -75,31 +68,12 @@ namespace pam {
     };
     std::vector<Tracer> tracers;
 
-    struct DycoreFunction {
-      std::string                                   name;
-      std::function< void ( PamCoupler & , real ) > func;
-    };
-    std::vector< DycoreFunction > dycore_functions;
-
-    struct MMFFunction {
-      std::string                                   name;
-      std::function< void ( PamCoupler & , real ) > func;
-    };
-    std::vector< MMFFunction > pam_functions;
-
 
   public:
 
     PamCoupler() {
-      this->R_d    = 287 ;
-      this->R_v    = 461 ;
-      this->cp_d   = 1004;
-      this->cp_v   = 1859;
-      this->grav   = 9.81;
-      this->p0     = 1.e5;
       this->xlen   = -1;
       this->ylen   = -1;
-      this->dt_gcm = -1;
       this->thread_id = std::this_thread::get_id();
     }
 
@@ -114,37 +88,20 @@ namespace pam {
       dm.finalize();
       options.finalize();
       tracers = std::vector<Tracer>();
-      this->R_d    = 287 ;
-      this->R_v    = 461 ;
-      this->cp_d   = 1004;
-      this->cp_v   = 1859;
-      this->grav   = 9.81;
-      this->p0     = 1.e5;
       this->xlen   = -1;
       this->ylen   = -1;
-      this->dt_gcm = -1;
     }
 
 
-    void set_dt_gcm(real dt_gcm) { this->dt_gcm = dt_gcm; }
-
-
-    std::thread::id         get_thread_id                  () const { return this->thread_id    ; }
-    real                    get_R_d                        () const { return this->R_d          ; }
-    real                    get_R_v                        () const { return this->R_v          ; }
-    real                    get_cp_d                       () const { return this->cp_d         ; }
-    real                    get_cp_v                       () const { return this->cp_v         ; }
-    real                    get_grav                       () const { return this->grav         ; }
-    real                    get_p0                         () const { return this->p0           ; }
-    real                    get_xlen                       () const { return this->xlen         ; }
-    real                    get_ylen                       () const { return this->ylen         ; }
-    real                    get_dx                         () const { return get_xlen()/get_nx(); }
-    real                    get_dy                         () const { return get_ylen()/get_ny(); }
-    real                    get_dt_gcm                     () const { return this->dt_gcm       ; }
-    DataManager const &     get_data_manager_readonly      () const { return this->dm           ; }
-    DataManager       &     get_data_manager_readwrite     ()       { return this->dm           ; }
-    DataManagerHost const & get_data_manager_host_readonly () const { return this->dm_host      ; }
-    DataManagerHost       & get_data_manager_host_readwrite()       { return this->dm_host      ; }
+    std::thread::id         get_thread_id                    () const { return this->thread_id    ; }
+    real                    get_xlen                         () const { return this->xlen         ; }
+    real                    get_ylen                         () const { return this->ylen         ; }
+    real                    get_dx                           () const { return get_xlen()/get_nx(); }
+    real                    get_dy                           () const { return get_ylen()/get_ny(); }
+    DataManager const &     get_data_manager_device_readonly () const { return this->dm           ; }
+    DataManager       &     get_data_manager_device_readwrite()       { return this->dm           ; }
+    DataManagerHost const & get_data_manager_host_readonly   () const { return this->dm_host      ; }
+    DataManagerHost       & get_data_manager_host_readwrite  ()       { return this->dm_host      ; }
 
 
     int get_nx() const {
@@ -204,159 +161,32 @@ namespace pam {
     }
 
 
-    void add_dycore_function( std::string name , std::function< void ( PamCoupler & , real ) > func ) {
-      dycore_functions.push_back( { name , func } );
+    void make_option_readonly( std::string key ) {
+      options.make_readonly(key);
     }
 
 
-    void add_pam_function( std::string name , std::function< void ( PamCoupler & , real ) > func ) {
-      pam_functions.push_back( { name , func } );
-    }
-
-
-    int get_num_pam_functions() const { return pam_functions.size(); }
-
-
-    std::vector<std::string> get_pam_function_names() const {
-      std::vector<std::string> names;
-      for (auto & func : pam_functions) {
-        names.push_back(func.name);
-      }
-      return names;
-    }
-
-
-    int get_num_dycore_functions() const { return dycore_functions.size(); }
-
-
-    std::vector<std::string> get_dycore_function_names() const {
-      std::vector<std::string> names;
-      for (auto & func : dycore_functions) {
-        names.push_back(func.name);
-      }
-      return names;
-    }
-
-
-    void run_pam_function( std::string name , real dt_crm ) {
-      for (int i=0; i < pam_functions.size(); i++) {
-        if (name == pam_functions[i].name) {
-          #ifdef PAM_FUNCTION_TRACE
-            dm.clean_all_entries();
-          #endif
-          #ifdef PAM_FUNCTION_TIMERS
-            yakl::timer_start( pam_functions[i].name.c_str() );
-          #endif
-          pam_functions[i].func( *this , dt_crm );
-          #ifdef PAM_FUNCTION_TIMERS
-            yakl::timer_stop ( pam_functions[i].name.c_str() );
-          #endif
-          #ifdef PAM_FUNCTION_TRACE
-            auto dirty_entry_names = dm.get_dirty_entries();
-            std::cout << "MMF Function " << pam_functions[i].name << " ran with a time step of "
-                      << dt_crm << " seconds and wrote to the following coupler entries: ";
-            for (int e=0; e < dirty_entry_names.size(); e++) {
-              std::cout << dirty_entry_names[e];
-              if (e < dirty_entry_names.size()-1) std::cout << ", ";
-            }
-            std::cout << "\n\n";
-          #endif
-          return;
+    template <class F>
+    void run_module( std::string name , F const &f ) {
+      #ifdef PAM_FUNCTION_TRACE
+        dm.clean_all_entries();
+      #endif
+      #ifdef PAM_FUNCTION_TIMERS
+        yakl::timer_start( name.c_str() );
+      #endif
+      f( *this );
+      #ifdef PAM_FUNCTION_TIMERS
+        yakl::timer_stop ( name.c_str() );
+      #endif
+      #ifdef PAM_FUNCTION_TRACE
+        auto dirty_entry_names = dm.get_dirty_entries();
+        std::cout << "MMF Module " << name << " wrote to the following coupler entries: ";
+        for (int e=0; e < dirty_entry_names.size(); e++) {
+          std::cout << dirty_entry_names[e];
+          if (e < dirty_entry_names.size()-1) std::cout << ", ";
         }
-      }
-      endrun("ERROR: run_pam_function called with invalid function name: " + name);
-    }
-
-
-    void run_pam_functions(real dt_crm) {
-      for (int i=0; i < pam_functions.size(); i++) {
-        #ifdef PAM_FUNCTION_TRACE
-          dm.clean_all_entries();
-        #endif
-        #ifdef PAM_FUNCTION_TIMERS
-          yakl::timer_start( pam_functions[i].name.c_str() );
-        #endif
-        pam_functions[i].func( *this , dt_crm );
-        #ifdef PAM_FUNCTION_TIMERS
-          yakl::timer_stop ( pam_functions[i].name.c_str() );
-        #endif
-        #ifdef PAM_FUNCTION_TRACE
-          auto dirty_entry_names = dm.get_dirty_entries();
-          std::cout << "MMF Function " << pam_functions[i].name << " ran with a time step of "
-                    << dt_crm << " seconds and wrote to the following coupler entries: ";
-          for (int e=0; e < dirty_entry_names.size(); e++) {
-            std::cout << dirty_entry_names[e];
-            if (e < dirty_entry_names.size()-1) std::cout << ", ";
-          }
-          std::cout << "\n\n";
-        #endif
-      }
-    }
-
-
-    void run_dycore_function( std::string name , real dt_dycore ) {
-      for (int i=0; i < pam_functions.size(); i++) {
-        if (name == pam_functions[i].name) {
-          #ifdef PAM_FUNCTION_TRACE
-            dm.clean_all_entries();
-          #endif
-          #ifdef PAM_FUNCTION_TIMERS
-            yakl::timer_start( dycore_functions[i].name.c_str() );
-          #endif
-          dycore_functions[i].func( *this , dt_dycore );
-          #ifdef PAM_FUNCTION_TIMERS
-            yakl::timer_stop ( dycore_functions[i].name.c_str() );
-          #endif
-          #ifdef PAM_FUNCTION_TRACE
-            auto dirty_entry_names = dm.get_dirty_entries();
-            std::cout << "Dycore Function " << dycore_functions[i].name << " ran with a time step of "
-                      << dt_dycore << " seconds and wrote to the following coupler entries: ";
-            for (int e=0; e < dirty_entry_names.size(); e++) {
-              std::cout << dirty_entry_names[e];
-              if (e < dirty_entry_names.size()-1) std::cout << ", ";
-            }
-            std::cout << "\n\n";
-          #endif
-          return;
-        }
-      }
-      endrun("ERROR: run_dycore_function called with invalid function name: " + name);
-    }
-
-
-    void run_dycore_functions(real dt_dycore) {
-      for (int i=0; i < dycore_functions.size(); i++) {
-        #ifdef PAM_FUNCTION_TRACE
-          dm.clean_all_entries();
-        #endif
-        #ifdef PAM_FUNCTION_TIMERS
-          yakl::timer_start( dycore_functions[i].name.c_str() );
-        #endif
-        dycore_functions[i].func( *this , dt_dycore );
-        #ifdef PAM_FUNCTION_TIMERS
-          yakl::timer_stop ( dycore_functions[i].name.c_str() );
-        #endif
-        #ifdef PAM_FUNCTION_TRACE
-          auto dirty_entry_names = dm.get_dirty_entries();
-          std::cout << "Dycore Function " << dycore_functions[i].name << " ran with a time step of "
-                    << dt_dycore << " seconds and wrote to the following coupler entries: ";
-          for (int e=0; e < dirty_entry_names.size(); e++) {
-            std::cout << dirty_entry_names[e];
-            if (e < dirty_entry_names.size()-1) std::cout << ", ";
-          }
-          std::cout << "\n\n";
-        #endif
-      }
-    }
-
-
-    void set_phys_constants(real R_d, real R_v, real cp_d, real cp_v, real grav=9.81, real p0=1.e5) {
-      this->R_d  = R_d ;
-      this->R_v  = R_v ;
-      this->cp_d = cp_d;
-      this->cp_v = cp_v;
-      this->grav = grav;
-      this->p0   = p0  ;
+        std::cout << "\n\n";
+      #endif
     }
 
 
@@ -369,10 +199,14 @@ namespace pam {
       this->xlen = xlen;
       this->ylen = ylen;
       auto zint = dm.get<real,2>("vertical_interface_height");
+      auto dz   = dm.get<real,2>("vertical_cell_dz");
       auto zmid = dm.get<real,2>("vertical_midpoint_height" );
       parallel_for( "vert grid 1" , SimpleBounds<2>(nz+1,nens) , YAKL_LAMBDA (int k, int iens) {
         zint(k,iens) = zint_in(k,iens);
-        if (k < nz) zmid(k,iens) = 0.5_fp * (zint_in(k,iens) + zint_in(k+1,iens));
+        if (k < nz) {
+          zmid(k,iens) = 0.5_fp * (zint_in(k,iens) + zint_in(k+1,iens));
+          dz  (k,iens) = zint_in(k+1,iens) - zint_in(k,iens);
+        }
       });
     }
 
@@ -386,10 +220,14 @@ namespace pam {
       this->xlen = xlen;
       this->ylen = ylen;
       auto zint = dm.get<real,2>("vertical_interface_height");
+      auto dz   = dm.get<real,2>("vertical_cell_dz");
       auto zmid = dm.get<real,2>("vertical_midpoint_height" );
       parallel_for( "vert grid 2" , SimpleBounds<2>(nz+1,nens) , YAKL_LAMBDA (int k, int iens) {
         zint(k,iens) = zint_in(k);
-        if (k < nz) zmid(k,iens) = 0.5_fp * (zint_in(k) + zint_in(k+1));
+        if (k < nz) {
+          zmid(k,iens) = 0.5_fp * (zint_in(k) + zint_in(k+1));
+          dz  (k,iens) = zint_in(k+1) - zint_in(k);
+        }
       });
     }
 
@@ -454,6 +292,7 @@ namespace pam {
       dm.register_and_allocate<real>("wvel"                     ,"z-direction velocity"       ,{nz,ny,nx,nens},{"z","y","x","nens"});
       dm.register_and_allocate<real>("temp"                     ,"temperature"                ,{nz,ny,nx,nens},{"z","y","x","nens"});
       dm.register_and_allocate<real>("vertical_interface_height","vertical interface height"  ,{nz+1    ,nens},{"zp1"      ,"nens"});
+      dm.register_and_allocate<real>("vertical_cell_dz"         ,"vertical grid spacing"      ,{nz      ,nens},{"z"        ,"nens"});
       dm.register_and_allocate<real>("vertical_midpoint_height" ,"vertical midpoint height"   ,{nz      ,nens},{"z"        ,"nens"});
       dm.register_and_allocate<real>("hydrostasis_parameters"   ,"hydrostasis parameters"     ,{nz,5    ,nens},{"z","nhy"  ,"nens"});
       dm.register_and_allocate<real>("gcm_density_dry"          ,"GCM column dry density"     ,{nz      ,nens},{"z"        ,"nens"});
@@ -469,6 +308,7 @@ namespace pam {
       auto wvel         = dm.get_collapsed<real>("wvel"                     );
       auto temp         = dm.get_collapsed<real>("temp"                     );
       auto zint         = dm.get_collapsed<real>("vertical_interface_height");
+      auto dz           = dm.get_collapsed<real>("vertical_cell_dz"         );
       auto zmid         = dm.get_collapsed<real>("vertical_midpoint_height" );
       auto hy_params    = dm.get_collapsed<real>("hydrostasis_parameters"   );
       auto gcm_rho_d    = dm.get_collapsed<real>("gcm_density_dry"          );
@@ -487,6 +327,7 @@ namespace pam {
         if (i < (nz+1)*nens) zint(i) = 0;
         if (i < (nz  )*nens) {
           zmid     (i) = 0;
+          dz       (i) = 0;
           gcm_rho_d(i) = 0;
           gcm_uvel (i) = 0;
           gcm_vvel (i) = 0;
@@ -509,6 +350,7 @@ namespace pam {
 
       auto zint      = dm.get<real const,2>("vertical_interface_height");
       auto zmid      = dm.get<real const,2>("vertical_midpoint_height" );
+      auto dz        = dm.get<real const,2>("vertical_cell_dz");
       auto hy_params = dm.get<real,3>("hydrostasis_parameters"   );
 
       auto dens_dry = dm.get<real const,4>("density_dry");
@@ -520,8 +362,8 @@ namespace pam {
       int nx   = get_nx();
       int nens = get_nens();
 
-      YAKL_SCOPE( R_d , this->R_d );
-      YAKL_SCOPE( R_v , this->R_v );
+      auto R_d = get_option<real>("R_d");
+      auto R_v = get_option<real>("R_v");
 
       // Compute average column of pressure for each ensemble
       real2d pressure_col("pressure_col",nz,nens);
@@ -544,8 +386,7 @@ namespace pam {
 
         SArray<double,1,npts> z;
         real z0 = zmid(kmid,iens);
-        real dz = zint(kmid+1,iens) - zint(kmid,iens);
-        for (int i=0; i < npts; i++) { z(i) = ( zmid(kbot+i,iens) - z0 ) / dz; }
+        for (int i=0; i < npts; i++) { z(i) = ( zmid(kbot+i,iens) - z0 ) / dz(k,iens); }
 
         SArray<double,2,npts,npts> vand;
         for (int j=0; j < npts; j++) {
@@ -585,8 +426,8 @@ namespace pam {
 
       real4d pressure("pressure",nz,ny,nx,nens);
 
-      YAKL_SCOPE( R_d , this->R_d );
-      YAKL_SCOPE( R_v , this->R_v );
+      auto R_d = get_option<real>("R_d");
+      auto R_v = get_option<real>("R_v");
 
       parallel_for( "coupler pressure" , SimpleBounds<4>(nz,ny,nx,nens) ,
                     YAKL_LAMBDA (int k, int j, int i, int iens) {

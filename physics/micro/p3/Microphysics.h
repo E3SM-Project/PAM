@@ -117,7 +117,7 @@ public:
     coupler.add_tracer("ice_rime_vol"    , "Ice-Rime Volume"    , true     , false);
     coupler.add_tracer("water_vapor"     , "Water Vapor"        , true     , true );
 
-    auto &dm = coupler.get_data_manager_readwrite();
+    auto &dm = coupler.get_data_manager_device_readwrite();
 
     dm.register_and_allocate<real>("qv_prev","qv from prev step"         ,{nz,ny,nx,nens},{"z","y","x","nens"});
     dm.register_and_allocate<real>("t_prev" ,"Temperature from prev step",{nz,ny,nx,nens},{"z","y","x","nens"});
@@ -168,20 +168,30 @@ public:
     p3_init_fortran( dir.c_str() , dir_len , ver.c_str() , ver_len );
 
     coupler.set_option<std::string>("micro","p3");
+    coupler.set_option<real>("latvap",latvap);
+    coupler.set_option<real>("latice",latice);
+    coupler.set_option<real>("R_d" ,R_d  );
+    coupler.set_option<real>("R_v" ,R_v  );
+    coupler.set_option<real>("cp_d",cp_d );
+    coupler.set_option<real>("cp_v",cp_v );
+    coupler.set_option<real>("grav",grav );
+    coupler.set_option<real>("p0"  ,p0   );
 
     etime = 0;
   }
 
 
 
-  void timeStep( pam::PamCoupler &coupler , real dt ) {
+  void timeStep( pam::PamCoupler &coupler ) {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
+
+    real dt = coupler.get_option<real>("crm_dt");
 
     if (first_step) {
       if (coupler.get_option<std::string>("sgs") == "shoc") sgs_shoc = true;
     }
-    auto &dm = coupler.get_data_manager_readwrite();
+    auto &dm = coupler.get_data_manager_device_readwrite();
 
     // Get the dimensions sizes
     int nz   = coupler.get_nz  ();

@@ -154,7 +154,7 @@ int main(int argc, char** argv) {
 
       etime += dtphys;
 
-      auto &dm = coupler.get_data_manager_readonly();
+      auto &dm = coupler.get_data_manager_device_readonly();
       real maxw = maxval(abs(dm.get_collapsed<real const>("wvel")));
       if (masterproc) {
       std::cout << "Etime , dtphys, maxw: " << etime  << " , "

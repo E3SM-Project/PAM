@@ -6,7 +6,7 @@
 
 namespace modules {
 
-  inline void sponge_layer( pam::PamCoupler &coupler , real dt ) {
+  inline void sponge_layer( pam::PamCoupler &coupler ) {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
 
@@ -15,7 +15,7 @@ namespace modules {
     int nx   = coupler.get_nx  ();
     int nens = coupler.get_nens();
 
-    int num_layers = 10;  // Number of model top vertical layers that participate in the sponge relaxation
+    int num_layers = 5;  // Number of model top vertical layers that participate in the sponge relaxation
 
     int WFLD = 3; // fourth entry into "fields" is the "w velocity" field. Set the havg to zero for WFLD
 
@@ -35,7 +35,7 @@ namespace modules {
       havg_fields.add_field( real2d(name,nz,nens) );
     }
 
-    auto &dm = coupler.get_data_manager_readwrite();
+    auto &dm = coupler.get_data_manager_device_readwrite();
 
     // Create MultiField of all state and tracer full variables, since we're doing the same operation on each
     pam::MultiField<real,4> full_fields;
@@ -65,6 +65,8 @@ namespace modules {
 
     auto zint = dm.get<real const,2>("vertical_interface_height");
     auto zmid = dm.get<real const,2>("vertical_midpoint_height" );
+
+    auto dt = coupler.get_option<real>("crm_dt");
 
     real constexpr time_scale = 60;  // strength of each application is dt / time_scale  (same as SAM's tau_min)
     real time_factor = dt / time_scale;

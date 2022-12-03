@@ -61,7 +61,7 @@ public:
     coupler.add_tracer("cloud_liquid"  , "Cloud liquid"  , true     , true);
     coupler.add_tracer("precip_liquid" , "precip_liquid" , true     , true);
 
-    auto &dm = coupler.get_data_manager_readwrite();
+    auto &dm = coupler.get_data_manager_device_readwrite();
 
     // Register and allocation non-tracer quantities used by the microphysics
     dm.register_and_allocate<real>( "precl" , "precipitation rate" , {ny,nx,nens} , {"y","x","nens"} );
@@ -79,6 +79,12 @@ public:
     });
 
     coupler.set_option<std::string>("micro","kessler");
+    coupler.set_option<real>("R_d" ,R_d  );
+    coupler.set_option<real>("R_v" ,R_v  );
+    coupler.set_option<real>("cp_d",cp_d );
+    coupler.set_option<real>("cp_v",cp_v );
+    coupler.set_option<real>("grav",grav );
+    coupler.set_option<real>("p0"  ,p0   );
   }
 
 
@@ -105,11 +111,13 @@ public:
 
 
 
-  void timeStep( pam::PamCoupler &coupler , real dt ) const {
+  void timeStep( pam::PamCoupler &coupler ) const {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
 
-    auto &dm = coupler.get_data_manager_readwrite();
+    real dt = coupler.get_option<real>("crm_dt");
+
+    auto &dm = coupler.get_data_manager_device_readwrite();
 
     auto rho_v   = dm.get_lev_col<real      >("water_vapor");
     auto rho_c   = dm.get_lev_col<real      >("cloud_liquid");
