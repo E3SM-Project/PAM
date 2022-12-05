@@ -18,27 +18,8 @@
 
 Functional_PVPE_extruded PVPE;
 Hamiltonian_Hk_extruded Hk;
-
 VariableSet varset;
-#ifdef _SWE
-Hamiltonian_SWE_Hs Hs;
-#elif _TSWE
-Hamiltonian_TSWE_Hs Hs;
-#elif _CE
-Hamiltonian_CE_Hs Hs;
-#elif _MCErho
-Hamiltonian_MCE_Hs Hs;
-#elif _MCErhod
-Hamiltonian_MCE_Hs Hs;
-#elif _CEp
-Hamiltonian_CE_p_Hs Hs;
-#elif _MCErhop
-Hamiltonian_MCE_p_Hs Hs;
-#elif _MCErhodp
-Hamiltonian_MCE_p_Hs Hs;
-#endif
-// ADD ANELASTIC + MOIST ANELASTIC
-
+Hamiltonian Hs;
 ThermoPotential thermo;
 
 struct ModelReferenceState : ReferenceState {

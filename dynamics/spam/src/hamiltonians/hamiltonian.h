@@ -6,3 +6,21 @@
 #include "functionals.h"
 #include "kinetic_energy.h"
 #include "layer_models.h"
+
+#ifdef _SWE
+using Hamiltonian = Hamiltonian_SWE_Hs;
+#elif _TSWE
+using Hamiltonian = Hamiltonian_TSWE_Hs;
+#elif _CE
+using Hamiltonian = Hamiltonian_CE_Hs;
+#elif _MCErho
+using Hamiltonian = Hamiltonian_MCE_Hs;
+#elif _MCErhod
+using Hamiltonian = Hamiltonian_MCE_Hs;
+#elif _CEp
+using Hamiltonian = Hamiltonian_CE_p_Hs;
+#elif _MCErhop
+using Hamiltonian = Hamiltonian_MCE_p_Hs;
+#elif _MCErhodp
+using Hamiltonian = Hamiltonian_MCE_p_Hs;
+#endif

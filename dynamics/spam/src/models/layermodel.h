@@ -16,14 +16,8 @@
 
 Functional_PVPE PVPE;
 Hamiltonian_Hk Hk;
-
 VariableSet varset;
-#ifdef _SWE
-Hamiltonian_SWE_Hs Hs;
-#elif _TSWE
-Hamiltonian_TSWE_Hs Hs;
-#endif
-
+Hamiltonian Hs;
 ThermoPotential thermo;
 
 class ModelReferenceState : public ReferenceState {
