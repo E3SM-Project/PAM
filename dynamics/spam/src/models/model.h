@@ -2,8 +2,11 @@
 
 #include "common.h"
 #include "field_sets.h"
+#include "functionals.h"
 #include "geometry.h"
+#include "hamiltonian.h"
 #include "topology.h"
+#include "variableset.h"
 #include "weno_func_recon.h" // needed to set TransformMatrices related stuff
 #include "weno_func_recon_variable.h" // needed to set TransformMatrices related stuff
 
@@ -14,6 +17,36 @@ public:
                           const Topology &dual_topology) = 0;
 };
 
+class Equations {
+public:
+  Hamiltonian Hs;
+#ifdef _LAYER
+  Hamiltonian_Hk Hk;
+  Functional_PVPE PVPE;
+#elif _EXTRUDED
+  Hamiltonian_Hk_extruded Hk;
+  Functional_PVPE_extruded PVPE;
+#endif
+  VariableSet varset;
+  ThermoPotential thermo;
+  ReferenceState *reference_state;
+  bool is_initialized;
+
+  Equations() { this->is_initialized = false; }
+  void initialize(PamCoupler &coupler, ModelParameters &params,
+                  const Geometry<Straight> &primal_geom,
+                  const Geometry<Twisted> &dual_geom,
+                  ReferenceState &refstate) {
+
+    this->varset.initialize(coupler, params, thermo, primal_geom, dual_geom);
+    this->PVPE.initialize(varset);
+    this->Hk.initialize(varset, primal_geom, dual_geom);
+    this->Hs.initialize(thermo, varset, primal_geom, dual_geom);
+    reference_state = &refstate;
+    this->is_initialized = true;
+  }
+};
+
 class Diagnostic {
 public:
   std::string name;
@@ -21,20 +54,22 @@ public:
   Topology topology;
   Geometry<Straight> primal_geometry;
   Geometry<Twisted> dual_geometry;
+  Equations *equations;
   Field field;
 
   bool is_initialized;
 
   Diagnostic() { this->is_initialized = false; }
 
-  virtual void compute(real time, const ReferenceState &refstate,
-                       const FieldSet<nconstant> &const_vars,
+  virtual void compute(real time, const FieldSet<nconstant> &const_vars,
                        const FieldSet<nprognostic> &x) = 0;
 
   virtual void initialize(const Geometry<Straight> &pgeom,
-                          const Geometry<Twisted> &dgeom) {
+                          const Geometry<Twisted> &dgeom, Equations &eqs) {
+
     this->primal_geometry = pgeom;
     this->dual_geometry = dgeom;
+    this->equations = &eqs;
     field.initialize(topology, nullptr, name, dofs_arr[0], dofs_arr[1],
                      dofs_arr[2]);
     this->is_initialized = true;
@@ -102,8 +137,18 @@ class TestCase {
 public:
   using TracerArr = yakl::Array<Tracer *, 1, yakl::memDevice, yakl::styleC>;
   TracerArr tracer_f;
+  Equations *equations;
+  bool is_initialized;
 
-  TestCase() { this->tracer_f = TracerArr("tracer_f", ntracers_dycore); }
+  TestCase() {
+    this->is_initialized = false;
+    this->tracer_f = TracerArr("tracer_f", ntracers_dycore);
+  }
+
+  virtual void initialize(Equations &eqs) {
+    this->equations = &eqs;
+    this->is_initialized = true;
+  }
 
   virtual void
   add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics){};
@@ -147,8 +192,7 @@ public:
                                       FieldSet<nconstant> &constvars,
                                       const Geometry<Straight> &primal_geom,
                                       const Geometry<Twisted> &dual_geom) = 0;
-  virtual void set_reference_state(ReferenceState &refstate,
-                                   const Geometry<Straight> &primal_geom,
+  virtual void set_reference_state(const Geometry<Straight> &primal_geom,
                                    const Geometry<Twisted> &dual_geom){};
   virtual ~TestCase() = default;
 
@@ -165,7 +209,7 @@ class Tendencies {
 public:
   Geometry<Straight> primal_geometry;
   Geometry<Twisted> dual_geometry;
-  ReferenceState *reference_state;
+  Equations *equations;
 
   SArray<real, 2, reconstruction_order, 2> primal_to_gll;
   SArray<real, 3, reconstruction_order, reconstruction_order,
@@ -192,13 +236,12 @@ public:
 
   Tendencies() { this->is_initialized = false; }
 
-  void initialize(ModelParameters &params,
+  void initialize(ModelParameters &params, Equations &equations,
                   const Geometry<Straight> &primal_geom,
-                  const Geometry<Twisted> &dual_geom,
-                  ReferenceState &refstate) {
+                  const Geometry<Twisted> &dual_geom) {
+    this->equations = &equations;
     this->primal_geometry = primal_geom;
     this->dual_geometry = dual_geom;
-    this->reference_state = &refstate;
 
     TransformMatrices::coefs_to_gll_lower(primal_to_gll);
     TransformMatrices::weno_sten_to_coefs(primal_wenoRecon);
@@ -282,11 +325,11 @@ public:
   real4d dual_vert_sten_to_coefs_arr;
   real5d dual_vert_weno_recon_lower_arr;
 
-  void initialize(ModelParameters &params,
+  void initialize(ModelParameters &params, Equations &equations,
                   const Geometry<Straight> &primal_geom,
-                  const Geometry<Twisted> &dual_geom,
-                  ReferenceState &refstate) {
-    Tendencies::initialize(params, primal_geom, dual_geom, refstate);
+                  const Geometry<Twisted> &dual_geom) {
+
+    Tendencies::initialize(params, equations, primal_geom, dual_geom);
 
     const auto &primal_topology = primal_geom.topology;
     const auto &dual_topology = dual_geom.topology;
@@ -380,8 +423,6 @@ public:
           coriolis_vert_sten_to_coefs_arr, coriolis_vert_weno_recon_lower_arr,
           coriolis_vert_wenoSigma, coriolis_vert_wenoIdl, primal_geom);
     }
-
-    this->is_initialized = true;
   }
 };
 
@@ -389,16 +430,18 @@ class LinearSystem {
 public:
   Geometry<Straight> primal_geometry;
   Geometry<Twisted> dual_geometry;
+  Equations *equations;
 
   bool is_initialized = false;
 
   virtual void initialize(ModelParameters &params,
                           const Geometry<Straight> &primal_geom,
                           const Geometry<Twisted> &dual_geom,
-                          ReferenceState &reference_state) {
+                          Equations &equations) {
 
     this->primal_geometry = primal_geom;
     this->dual_geometry = dual_geom;
+    this->equations = &equations;
 
     this->is_initialized = true;
   }

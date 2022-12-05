@@ -3,6 +3,7 @@
 #include "DataManager.h"
 #include "MultipleFields.h"
 #include "common.h"
+#include "geometry.h"
 #include "pam_coupler.h" //Has DataManager and pam_const
 #include "thermo.h"
 using pam::PamCoupler;

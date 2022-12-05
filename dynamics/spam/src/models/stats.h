@@ -33,14 +33,16 @@ public:
   int masterproc;
   Geometry<Straight> primal_geometry;
   Geometry<Twisted> dual_geometry;
+  Equations *equations;
   int nens;
   int statsize;
 
   void initialize(ModelParameters &params, Parallel &par,
                   const Geometry<Straight> &primal_geom,
-                  const Geometry<Twisted> &dual_geom) {
+                  const Geometry<Twisted> &dual_geom, Equations &eqs) {
     this->primal_geometry = primal_geom;
     this->dual_geometry = dual_geom;
+    this->equations = &eqs;
     this->nens = params.nens;
     this->masterproc = par.masterproc;
     this->statsize = params.Nsteps / params.Nstat + 1;

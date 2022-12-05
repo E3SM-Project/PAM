@@ -31,6 +31,7 @@ public:
   Geometry<Straight> primal_geometry;
   Geometry<Twisted> dual_geometry;
 
+  Equations equations;
   std::unique_ptr<TestCase> testcase;
   ModelStats stats;
   FieldSet<nprognostic> prognostic_vars;
@@ -89,6 +90,15 @@ public:
     reference_state.initialize(primal_topology, dual_topology);
     debug_print("finish init reference state", par.masterproc);
 
+    debug_print("start init equations", par.masterproc);
+    equations.initialize(coupler, params, primal_geometry, dual_geometry,
+                         reference_state);
+    debug_print("finish init equations", par.masterproc);
+
+    debug_print("start init testcase", par.masterproc);
+    testcase->initialize(equations);
+    debug_print("finish init testcase", par.masterproc);
+
     // Allocate the variables
     debug_print("start init field/exchange sets", par.masterproc);
     // this gives basedof, extdof and ndofs
@@ -111,13 +121,13 @@ public:
     add_model_diagnostics(diagnostics);
     testcase->add_diagnostics(diagnostics);
     for (auto &diag : diagnostics) {
-      diag->initialize(primal_geometry, dual_geometry);
+      diag->initialize(primal_geometry, dual_geometry, equations);
     }
     debug_print("end diagnostics init", par.masterproc);
 
     // Initialize the statistics
     debug_print("start stats init", par.masterproc);
-    stats.initialize(params, par, primal_geometry, dual_geometry);
+    stats.initialize(params, par, primal_geometry, dual_geometry, equations);
     debug_print("end stats init", par.masterproc);
 
     // Create the outputter
@@ -128,16 +138,14 @@ public:
 
     // // Initialize the tendencies and diagnostics
     debug_print("start tendencies init", par.masterproc);
-    tendencies.initialize(coupler, params, primal_geometry, dual_geometry,
-                          reference_state);
+    tendencies.initialize(params, equations, primal_geometry, dual_geometry);
     debug_print("end tendencies init", par.masterproc);
 
     // EVENTUALLY THIS NEEDS TO BE MORE CLEVER IE POSSIBLY DO NOTHING BASED ON
     // THE IC STRING?
     //  set the initial conditions and compute initial stats
     debug_print("start ic setting", par.masterproc);
-    testcase->set_reference_state(reference_state, primal_geometry,
-                                  dual_geometry);
+    testcase->set_reference_state(primal_geometry, dual_geometry);
     testcase->set_initial_conditions(prognostic_vars, constant_vars,
                                      primal_geometry, dual_geometry);
     prognostic_vars.exchange();
@@ -151,8 +159,7 @@ public:
     // // Initialize the time stepper
     debug_print("start ts init", par.masterproc);
 #if _TIME_TYPE == 2
-    linear_system.initialize(params, primal_geometry, dual_geometry,
-                             reference_state);
+    linear_system.initialize(params, primal_geometry, dual_geometry, equations);
     linear_system.compute_coefficients(params.dtcrm);
     tint.initialize(params, tendencies, linear_system, prognostic_vars,
                     constant_vars, auxiliary_vars);
@@ -169,7 +176,7 @@ public:
     // Output the initial model state
     debug_print("start initial io", par.masterproc);
     for (auto &diag : diagnostics) {
-      diag->compute(0, reference_state, constant_vars, prognostic_vars);
+      diag->compute(0, constant_vars, prognostic_vars);
     }
     stats.compute(prognostic_vars, constant_vars, 0);
     io.outputInit(etime);
@@ -205,7 +212,7 @@ public:
                          " time " + std::to_string(etime),
                      par.masterproc);
         for (auto &diag : diagnostics) {
-          diag->compute(etime, reference_state, constant_vars, prognostic_vars);
+          diag->compute(etime, constant_vars, prognostic_vars);
         }
         io.output(etime);
         io.outputStats(stats);
