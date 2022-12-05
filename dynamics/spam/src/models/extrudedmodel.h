@@ -2562,7 +2562,7 @@ void readModelParamsFile(std::string inFile, ModelParameters &params,
   testcase->set_domain(params);
 
   // Store vertical cell interface heights in the data manager
-  auto &dm = coupler.get_data_manager_readonly();
+  auto &dm = coupler.get_data_manager_device_readonly();
   params.zint = dm.get<real const, 2>("vertical_interface_height");
 
   readParamsFile(inFile, params, par, nz);

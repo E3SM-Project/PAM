@@ -93,9 +93,6 @@ int main(int argc, char** argv) {
     if (inner_mpi)
     {partition_domain(inFile, crm_nx, crm_ny);}
 
-    // Use microphysics gas constants values in the coupler
-    coupler.set_phys_constants( micro.R_d , micro.R_v , micro.cp_d , micro.cp_v , micro.grav , micro.p0 );
-
     // Allocate coupler state
     coupler.allocate_coupler_state( crm_nz , crm_ny , crm_nx , nens );
 
@@ -141,11 +138,11 @@ int main(int argc, char** argv) {
       if (etime + dtphys > simTime) { dtphys = simTime - etime; }
 
       yakl::timer_start("sgs");
-      sgs.timeStep( coupler , dtphys );
+      sgs.timeStep( coupler);
       yakl::timer_stop("sgs");
 
       yakl::timer_start("micro");
-      micro.timeStep( coupler , dtphys );
+      micro.timeStep( coupler);
       yakl::timer_stop("micro");
 
       yakl::timer_start("dycore");
