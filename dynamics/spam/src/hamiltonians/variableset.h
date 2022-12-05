@@ -192,7 +192,7 @@ void VariableSetBase<T>::convert_dynamics_to_coupler_state(
     int pjs = primal_topology.js;
     int pks = primal_topology.ks;
 
-    auto &dm = coupler.get_data_manager_readwrite();
+    auto &dm = coupler.get_data_manager_device_readwrite();
 
     real4d dm_dens_dry = dm.get<real, 4>("density_dry");
     real4d dm_uvel = dm.get<real, 4>("uvel");
@@ -315,7 +315,7 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_state(
     int pjs = primal_topology.js;
     int pks = primal_topology.ks;
 
-    auto &dm = coupler.get_data_manager_readonly();
+    auto &dm = coupler.get_data_manager_device_readonly();
 
     auto dm_dens_dry = dm.get<real const, 4>("density_dry");
     auto dm_uvel = dm.get<real const, 4>("uvel");
