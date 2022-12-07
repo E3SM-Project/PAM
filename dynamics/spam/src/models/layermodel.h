@@ -2,6 +2,7 @@
 
 #include "common.h"
 #include "model.h"
+#include "refstate.h"
 #include "stats.h"
 
 #include "ext_deriv.h"
@@ -11,15 +12,6 @@
 #include "recon.h"
 #include "thermo.h"
 #include "wedge.h"
-
-class ModelReferenceState : public ReferenceState {
-public:
-  real ref_height;
-  void initialize(const Topology &primal_topology,
-                  const Topology &dual_topology) override {
-    this->is_initialized = true;
-  }
-};
 
 // *******   Diagnostics   ***********//
 
@@ -585,8 +577,7 @@ public:
 
     const auto &dual_topology = dual_geometry.topology;
     const auto &primal_topology = primal_geometry.topology;
-    const auto &refstate =
-        static_cast<ModelReferenceState &>(*this->equations->reference_state);
+    const auto &refstate = this->equations->reference_state;
 
     yakl::timer_start("Linear solve");
     auto grav = this->equations->Hs.g;
@@ -1121,8 +1112,7 @@ public:
 
   void set_reference_state(const Geometry<Straight> &primal_geom,
                            const Geometry<Twisted> &dual_geom) override {
-    auto &refstate =
-        static_cast<ModelReferenceState &>(*equations->reference_state);
+    auto &refstate = this->equations->reference_state;
     refstate.ref_height = T::ref_height;
   }
 };

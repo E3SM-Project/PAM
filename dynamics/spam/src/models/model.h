@@ -5,17 +5,11 @@
 #include "functionals.h"
 #include "geometry.h"
 #include "hamiltonian.h"
+#include "refstate.h"
 #include "topology.h"
 #include "variableset.h"
 #include "weno_func_recon.h" // needed to set TransformMatrices related stuff
 #include "weno_func_recon_variable.h" // needed to set TransformMatrices related stuff
-
-class ReferenceState {
-public:
-  bool is_initialized = false;
-  virtual void initialize(const Topology &primal_topology,
-                          const Topology &dual_topology) = 0;
-};
 
 class Equations {
 public:
@@ -29,20 +23,23 @@ public:
 #endif
   VariableSet varset;
   ThermoPotential thermo;
-  ReferenceState *reference_state;
+#if defined _SWE || defined _TSWE
+  ReferenceState_SWE reference_state;
+#else
+  ReferenceState_Euler reference_state;
+#endif
   bool is_initialized;
 
   Equations() { this->is_initialized = false; }
   void initialize(PamCoupler &coupler, ModelParameters &params,
                   const Geometry<Straight> &primal_geom,
-                  const Geometry<Twisted> &dual_geom,
-                  ReferenceState &refstate) {
+                  const Geometry<Twisted> &dual_geom) {
 
+    this->reference_state.initialize(primal_geom.topology, dual_geom.topology);
     this->varset.initialize(coupler, params, thermo, primal_geom, dual_geom);
     this->PVPE.initialize(varset);
     this->Hk.initialize(varset, primal_geom, dual_geom);
     this->Hs.initialize(thermo, varset, primal_geom, dual_geom);
-    reference_state = &refstate;
     this->is_initialized = true;
   }
 };

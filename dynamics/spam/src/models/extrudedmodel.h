@@ -3,6 +3,7 @@
 #include "common.h"
 #include "model.h"
 #include "profiles.h"
+#include "refstate.h"
 #include "stats.h"
 
 #include "ext_deriv.h"
@@ -13,34 +14,6 @@
 #include "thermo.h"
 #include "variableset.h"
 #include "wedge.h"
-
-// *******   Functionals/Hamiltonians   ***********//
-
-struct ModelReferenceState : ReferenceState {
-  Profile dens;
-  Profile geop;
-  Profile q_di;
-  Profile q_pi;
-  Profile rho_di;
-  Profile rho_pi;
-  Profile Nsq_pi;
-  Profile B;
-
-  void initialize(const Topology &primal_topology,
-                  const Topology &dual_topology) override {
-
-    this->dens.initialize(dual_topology, "ref dens", 1, 1, ndensity);
-    this->geop.initialize(dual_topology, "ref geop", 1, 1, 1);
-    this->rho_pi.initialize(primal_topology, "refrho_pi", 0, 0, 1);
-    this->q_pi.initialize(primal_topology, "refq_pi", 0, 0, ndensity);
-    this->rho_di.initialize(dual_topology, "refrho_di", 0, 0, 1);
-    this->q_di.initialize(dual_topology, "refq_di", 0, 0, ndensity);
-    this->Nsq_pi.initialize(primal_topology, "refNsq_pi", 0, 0, 1);
-    this->B.initialize(dual_topology, "ref B", 1, 1, ndensity_B);
-
-    this->is_initialized = true;
-  }
-};
 
 // *******   Diagnostics   ***********//
 
@@ -179,8 +152,7 @@ public:
     int pjs = primal_topology.js;
     int pks = primal_topology.ks;
 
-    const auto &refstate =
-        static_cast<ModelReferenceState &>(*this->equations->reference_state);
+    const auto &refstate = this->equations->reference_state;
 
     YAKL_SCOPE(refdens, refstate.dens.data);
     const auto subtract_refstate_f =
@@ -599,8 +571,7 @@ public:
       return varset.get_total_density(densvar, k, j, i, 0, 0, 0, n);
     };
 
-    const auto &refstate =
-        static_cast<ModelReferenceState &>(*this->equations->reference_state);
+    const auto &refstate = this->equations->reference_state;
 
     parallel_for(
         "ComputeDensRECON",
@@ -964,8 +935,7 @@ public:
     int djs = dual_topology.js;
     int dks = dual_topology.ks;
 
-    const auto &refstate =
-        static_cast<ModelReferenceState &>(*this->equations->reference_state);
+    const auto &refstate = this->equations->reference_state;
 
     parallel_for(
         "Compute Wtend",
@@ -1648,8 +1618,7 @@ public:
   }
 
   virtual void compute_coefficients(real dt) override {
-    const auto &refstate =
-        static_cast<ModelReferenceState &>(*this->equations->reference_state);
+    const auto &refstate = this->equations->reference_state;
 
     const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
@@ -1886,8 +1855,7 @@ public:
                      FieldSet<nauxiliary> &auxiliary_vars,
                      FieldSet<nprognostic> &solution) override {
 
-    const auto &refstate =
-        static_cast<ModelReferenceState &>(*this->equations->reference_state);
+    const auto &refstate = this->equations->reference_state;
 
     const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
@@ -2779,8 +2747,7 @@ public:
 
   void set_reference_state(const Geometry<Straight> &primal_geom,
                            const Geometry<Twisted> &dual_geom) override {
-    auto &refstate =
-        static_cast<ModelReferenceState &>(*equations->reference_state);
+    auto &refstate = this->equations->reference_state;
 
     const auto primal_topology = primal_geom.topology;
     const auto dual_topology = dual_geom.topology;
@@ -2934,8 +2901,7 @@ public:
 
   void set_reference_state(const Geometry<Straight> &primal_geom,
                            const Geometry<Twisted> &dual_geom) override {
-    auto &refstate =
-        static_cast<ModelReferenceState &>(*equations->reference_state);
+    auto &refstate = this->equations->reference_state;
 
     const auto primal_topology = primal_geom.topology;
     const auto dual_topology = dual_geom.topology;
@@ -3914,8 +3880,7 @@ template <bool add_perturbation> struct GravityWave {
       int pks = primal_topology.ks;
 
       const auto &densvar = x.fields_arr[DENSVAR].data;
-      const auto &refstate =
-          static_cast<ModelReferenceState &>(*equations->reference_state);
+      const auto &refstate = this->equations->reference_state;
       const auto &refdens = refstate.dens.data;
 
       YAKL_SCOPE(thermo, equations->thermo);
