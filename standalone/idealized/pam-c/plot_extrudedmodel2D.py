@@ -36,12 +36,22 @@ if model == 'ce':
     dens_stat_names = ['mass','entropic_var_density',]
     nprogdens = 2
 
+if model == 'an':
+    dens_names = ['Theta',]
+    dens_stat_names = ['entropic_var_density',]
+    nprogdens = 1
+
 #THIS IS A LITLTE BROKEN FOR RHOD VARIANTS...
 #probably ok, this is just a quick and dirty plotting script...
 if model == 'mce':
     dens_names = ['rho','Theta','rho_v', 'rho_l', 'rho_i']    
     dens_stat_names = ['mass','entropic_var_density','vapor', 'liquid', 'ice']    
     nprogdens = 5
+
+if model == 'man':
+    dens_names = ['Theta','rho_v', 'rho_l', 'rho_i']    
+    dens_stat_names = ['entropic_var_density','vapor', 'liquid', 'ice']    
+    nprogdens = 4
     
 for k in range(ndensity-nprogdens):
     dens_names.append('T'+str(k))
@@ -67,6 +77,7 @@ Nlist = np.arange(0,nt)
 v = DS.v
 w = DS.w
 dens = DS.dens
+total_dens = DS.total_dens
 QXZl = DS.QXZl
 densl = DS.densl
 hs = DS.hs
@@ -87,8 +98,7 @@ for n in range(nens):
         for l,name in zip(range(ndensity), dens_names):
             plotvar_scalar2D(name + '.' + str(n), dens.isel(t=i,dens_ndofs=l, dual_ncells_y=0,nens=n),i)
             plotvar_scalar2D(name+'l.'+ str(n), densl.isel(t=i,densl_ndofs=l, primal_ncells_y=0,nens=n),i)
-#THIS ASSUMES TOTAL DENSITY IS IN DENS(0)
-            plotvar_scalar2D(name+'c.'+ str(n), dens.isel(t=i,dens_ndofs=l, dual_ncells_y=0,nens=n) / dens.isel(t=i,dens_ndofs=0, dual_ncells_y=0,nens=n),i)
+            plotvar_scalar2D(name+'c.'+ str(n), dens.isel(t=i,dens_ndofs=l, dual_ncells_y=0,nens=n) / total_dens.isel(t=i,total_dens_ndofs=0, dual_ncells_y=0,nens=n),i)
     #if model in ['tswe','ce','mce']:
     #        plotvar_scalar2D('thetal', dens.isel(t=i,dens_ndofs=1, dual_ncells_y=0,nens=n) / dens.isel(t=i,dens_ndofs=0, dual_ncells_y=0,nens=n),i)
 

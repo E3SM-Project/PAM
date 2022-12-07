@@ -501,9 +501,14 @@ public:
 
     // Compute h0 = I h needed for phi calcs
     SArray<real, 1, 1> h0;
+
+    const auto total_density_f =
+        YAKL_LAMBDA(const real5d &densvar, int d, int k, int j, int i, int n) {
+      return varset.get_total_density(densvar, k, j, i, 0, 0, 0, n);
+    };
     compute_H2bar_ext<1, diff_ord, vert_diff_ord>(
-        h0, dens, this->primal_geometry, this->dual_geometry, is, js, ks, i, j,
-        k, n);
+        total_density_f, h0, dens, this->primal_geometry, this->dual_geometry,
+        is, js, ks, i, j, k, n);
 
     return h0(0) * K2;
   }
@@ -734,10 +739,10 @@ public:
                                                   this->dual_geometry, is, js,
                                                   ks, i, j, k, n);
     if (addmode == ADD_MODE::REPLACE) {
-      B(0, k + ks, j + js, i + is, n) = fac * K0(0);
+      B(MASSDENSINDX, k + ks, j + js, i + is, n) = fac * K0(0);
     }
     if (addmode == ADD_MODE::ADD) {
-      B(0, k + ks, j + js, i + is, n) += fac * K0(0);
+      B(MASSDENSINDX, k + ks, j + js, i + is, n) += fac * K0(0);
     }
   }
 };

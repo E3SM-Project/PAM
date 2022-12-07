@@ -207,10 +207,10 @@ public:
 
     // compute hv = R h
     // Uses linearity of R
-    Dv(0) = dens(0, k + ks, j + js, i + is, n);
-    Dv(1) = dens(0, k + ks, j + js, i + is - 1, n);
-    Dv(2) = dens(0, k + ks + 1, j + js, i + is, n);
-    Dv(3) = dens(0, k + ks + 1, j + js, i + is - 1, n);
+    Dv(0) = varset.get_total_density(dens, k, j, i, ks, js, is, n);
+    Dv(1) = varset.get_total_density(dens, k, j, i - 1, ks, js, is, n);
+    Dv(2) = varset.get_total_density(dens, k + 1, j, i, ks, js, is, n);
+    Dv(3) = varset.get_total_density(dens, k + 1, j, i - 1, ks, js, is, n);
     R(hv, Dv);
 
     return hv(0);
@@ -223,10 +223,12 @@ public:
 
     // compute hv = R h
     // Uses linearity of R
-    Dv(0) = dens(0, k + ks, j + js, i + is, n);
-    Dv(1) = dens(0, k + ks, j + js, i + is - 1, n);
-    Dv(2) = dens(0, k + ks + 1, j + js, i + is, n);     // gets 1/2
-    Dv(3) = dens(0, k + ks + 1, j + js, i + is - 1, n); // gets 1/2
+    Dv(0) = varset.get_total_density(dens, k, j, i, ks, js, is, n);
+    Dv(1) = varset.get_total_density(dens, k, j, i - 1, ks, js, is, n);
+    Dv(2) =
+        varset.get_total_density(dens, k + 1, j, i, ks, js, is, n); // gets 1/2
+    Dv(3) = varset.get_total_density(dens, k + 1, j, i - 1, ks, js, is,
+                                     n); // gets 1/2
     Rbnd(hv, Dv);
 
     return hv(0);
@@ -240,10 +242,11 @@ public:
 
     // compute hv = R h
     // Uses linearity of R
-    Dv(0) = dens(0, k + ks + 1, j + js, i + is, n);
-    Dv(1) = dens(0, k + ks + 1, j + js, i + is - 1, n);
-    Dv(2) = dens(0, k + ks, j + js, i + is, n);     // gets 1/2
-    Dv(3) = dens(0, k + ks, j + js, i + is - 1, n); // gets 1/2
+    Dv(0) = varset.get_total_density(dens, k + 1, j, i, ks, js, is, n);
+    Dv(1) = varset.get_total_density(dens, k + 1, j, i - 1, ks, js, is, n);
+    Dv(2) = varset.get_total_density(dens, k, j, i, ks, js, is, n); // gets 1/2
+    Dv(3) =
+        varset.get_total_density(dens, k, j, i - 1, ks, js, is, n); // gets 1/2
     Rbnd(hv, Dv);
 
     return hv(0);
