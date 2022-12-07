@@ -23,9 +23,8 @@ struct ModelReferenceState : ReferenceState {
   Profile q_pi;
   Profile rho_di;
   Profile rho_pi;
+  Profile Nsq_pi;
   Profile B;
-  // should it also be a profile ?
-  real4d Blin_coeff;
 
   void initialize(const Topology &primal_topology,
                   const Topology &dual_topology) override {
@@ -36,10 +35,8 @@ struct ModelReferenceState : ReferenceState {
     this->q_pi.initialize(primal_topology, "refq_pi", 0, 0, ndensity);
     this->rho_di.initialize(dual_topology, "refrho_di", 0, 0, 1);
     this->q_di.initialize(dual_topology, "refq_di", 0, 0, ndensity);
+    this->Nsq_pi.initialize(primal_topology, "refNsq_pi", 0, 0, 1);
     this->B.initialize(dual_topology, "ref B", 1, 1, ndensity_B);
-
-    this->Blin_coeff = real4d("Blin coeff", ndensity_dycore, ndensity_dycore,
-                              primal_topology.ni, primal_topology.nens);
 
     this->is_initialized = true;
   }
@@ -1593,6 +1590,7 @@ class ModelLinearSystem : public LinearSystem {
 
   int nxf, nyf;
 
+  real4d Blin_coeff;
   real4d v_transform;
   real4d w_transform;
   complex4d complex_vrhs;
@@ -1623,6 +1621,9 @@ public:
 
     this->nxf = nx + 2 - nx % 2;
     this->nyf = ny + 2 - ny % 2;
+
+    this->Blin_coeff =
+        real4d("Blin coeff", ndensity_dycore, ndensity_dycore, pni, nens);
 
     v_transform = real4d("v transform", pni, nyf, nxf, nens);
     w_transform = real4d("w transform", pnl, nyf, nxf, nens);
@@ -1673,6 +1674,57 @@ public:
     const auto &q_pi = refstate.q_pi.data;
     const auto &rho_di = refstate.rho_di.data;
     const auto &q_di = refstate.q_di.data;
+    const auto &Nsq_pi = refstate.Nsq_pi.data;
+
+    YAKL_SCOPE(thermo, this->equations->thermo);
+    YAKL_SCOPE(grav, this->equations->Hs.g);
+
+    parallel_for(
+        "Compute Blin_coeff",
+        SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
+        YAKL_LAMBDA(int k, int n) {
+          real z = primal_geometry.zint(k + primal_topology.ks, n);
+
+          real Rd = thermo.cst.Rd;
+          real pr = thermo.cst.pr;
+          real gamma_d = thermo.cst.gamma_d;
+          real Cpd = thermo.cst.Cpd;
+          real Cvd = thermo.cst.Cvd;
+          real grav2 = grav * grav;
+
+          real rho_ref = rho_pi(0, k, n);
+          real alpha_ref = 1 / rho_ref;
+          real s_ref = q_pi(1, k, n);
+
+          real rho_ref2 = rho_ref * rho_ref;
+          real p_ref = thermo.solve_p(rho_ref, s_ref, 0, 0, 0, 0);
+
+          real dpds_ref =
+              thermo.compute_dpdentropic_var(alpha_ref, s_ref, 0, 0, 0, 0);
+          real dpds_ref2 = dpds_ref * dpds_ref;
+
+          real Nref2 = Nsq_pi(0, k, n);
+          real cref = thermo.compute_soundspeed(alpha_ref, s_ref, 0, 0, 0, 0);
+          real cref2 = cref * cref;
+
+          real b0_rho = (cref2 * rho_ref - dpds_ref * s_ref) / rho_ref2;
+          real b0_s =
+              dpds_ref / rho_ref - dpds_ref2 * s_ref / (cref2 * rho_ref2) -
+              dpds_ref2 * grav2 * s_ref / (Nref2 * cref2 * cref2 * rho_ref2);
+          real b0_S = b0_s / rho_ref;
+          b0_rho -= s_ref / rho_ref * b0_s;
+
+          real b1_rho = dpds_ref / rho_ref2;
+          real b1_s = dpds_ref2 * (Nref2 * cref2 + grav2) /
+                      (Nref2 * cref2 * cref2 * rho_ref2);
+          real b1_S = b1_s / rho_ref;
+          b1_rho -= s_ref / rho_ref * b1_s;
+
+          Blin_coeff(0, 0, k, n) = b0_rho;
+          Blin_coeff(0, 1, k, n) = b0_S;
+          Blin_coeff(1, 0, k, n) = b1_rho;
+          Blin_coeff(1, 1, k, n) = b1_S;
+        });
 
     parallel_for(
         "compute vcoeff",
@@ -1700,7 +1752,7 @@ public:
           for (int d1 = 0; d1 < ndensity_dycore; ++d1) {
             for (int d2 = 0; d2 < ndensity_dycore; ++d2) {
               c1 -= dtf2 * fH2bar * fH1(0) * fD0Dbar(0) * he * q_pi(d1, k, n) *
-                    q_pi(d2, k, n) * refstate.Blin_coeff(d1, d2, k, n);
+                    q_pi(d2, k, n) * Blin_coeff(d1, d2, k, n);
             }
           }
 
@@ -1709,7 +1761,7 @@ public:
             complex cd1 = 0;
             for (int d2 = 0; d2 < ndensity_dycore; ++d2) {
               cd1 += fD0(0) * dtf2 * fH2bar * q_pi(d2, k, n) *
-                     refstate.Blin_coeff(d2, d1, k, n);
+                     Blin_coeff(d2, d1, k, n);
             }
             complex_vcoeff(1 + d1, k, j, i, n) = cd1 / c1;
           }
@@ -1745,9 +1797,8 @@ public:
             for (int d2 = 0; d2 < ndensity_dycore; ++d2) {
               real alpha_kp1 = q_di(d1, k + 1, n);
 
-              real beta_kp1 =
-                  fH2bar_kp1 * refstate.Blin_coeff(d1, d2, k + 1, n);
-              real beta_k = fH2bar_k * refstate.Blin_coeff(d1, d2, k, n);
+              real beta_kp1 = fH2bar_kp1 * Blin_coeff(d1, d2, k + 1, n);
+              real beta_k = fH2bar_k * Blin_coeff(d1, d2, k, n);
 
               real gamma_kp2 = gamma_fac_kp2 * q_di(d2, k + 2, n);
               real gamma_kp1 = gamma_fac_kp1 * q_di(d2, k + 1, n);
@@ -1807,10 +1858,10 @@ public:
               for (int d3 = 0; d3 < ndensity_dycore; ++d3) {
 
                 real alpha_kp1 = dtf2 * q_di(d1, k + 1, n);
-                complex beta_kp1 =
-                    fH2bar_kp1 * refstate.Blin_coeff(d1, d2, k + 1, n) *
-                    q_pi(d2, k + 1, n) * fD1bar_kp1 * he_kp1 * fH1h_kp1;
-                complex beta_k = fH2bar_k * refstate.Blin_coeff(d1, d2, k, n) *
+                complex beta_kp1 = fH2bar_kp1 * Blin_coeff(d1, d2, k + 1, n) *
+                                   q_pi(d2, k + 1, n) * fD1bar_kp1 * he_kp1 *
+                                   fH1h_kp1;
+                complex beta_k = fH2bar_k * Blin_coeff(d1, d2, k, n) *
                                  q_pi(d2, k, n) * fD1bar_k * he_k * fH1h_k;
 
                 real gamma_kp2 = gamma_fac_kp2 * q_di(d3, k + 2, n);
@@ -1895,7 +1946,7 @@ public:
           for (int d1 = 0; d1 < ndensity_dycore; ++d1) {
             real b_d1 = 0;
             for (int d2 = 0; d2 < ndensity_dycore; ++d2) {
-              b_d1 -= dtf * refstate.Blin_coeff(d1, d2, k, n) * rhs0(d2);
+              b_d1 -= dtf * Blin_coeff(d1, d2, k, n) * rhs0(d2);
             }
             bvar(d1, pks + k, pjs + j, pis + i, n) = b_d1;
           }
@@ -1985,10 +2036,10 @@ public:
           for (int d1 = 0; d1 < ndensity_dycore; ++d1) {
             for (int d2 = 0; d2 < ndensity_dycore; ++d2) {
               real alpha_kp1 = dtf2 * q_di(d1, k + 1, n);
-              complex beta_kp1 =
-                  fH2bar_kp1 * refstate.Blin_coeff(d1, d2, k + 1, n) *
-                  q_pi(d2, k + 1, n) * fD1bar_kp1 * he_kp1 * fH1h_kp1;
-              complex beta_k = fH2bar_k * refstate.Blin_coeff(d1, d2, k, n) *
+              complex beta_kp1 = fH2bar_kp1 * Blin_coeff(d1, d2, k + 1, n) *
+                                 q_pi(d2, k + 1, n) * fD1bar_kp1 * he_kp1 *
+                                 fH1h_kp1;
+              complex beta_k = fH2bar_k * Blin_coeff(d1, d2, k, n) *
                                q_pi(d2, k, n) * fD1bar_k * he_k * fH1h_k;
               complex_wrhs(k, j, i, n) +=
                   alpha_kp1 * (beta_kp1 * vc0_kp1 - beta_k * vc0_k);
@@ -2693,6 +2744,8 @@ public:
                               const Geometry<Straight> &primal_geom,
                               const Geometry<Twisted> &dual_geom) override {
 
+    equations->Hs.set_parameters(g);
+
     YAKL_SCOPE(thermo, equations->thermo);
     dual_geom.set_11form_values(
         YAKL_LAMBDA(real x, real z) { return rho_f(x, z, thermo); },
@@ -2762,6 +2815,10 @@ public:
         YAKL_LAMBDA(real z) { return refentropicdensity_f(z, thermo); },
         refstate.q_pi, 1);
 
+    primal_geom.set_profile_00form_values(
+        YAKL_LAMBDA(real z) { return refnsq_f(z, thermo); }, refstate.Nsq_pi,
+        0);
+
     parallel_for(
         "scale q_pi", SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
         YAKL_LAMBDA(int k, int n) {
@@ -2807,55 +2864,6 @@ public:
           Hs.compute_dHsdx(refstate.B.data, refstate.dens.data,
                            refstate.geop.data, pks, k, n, -1);
         });
-
-    parallel_for(
-        "Compute Blin_coeff",
-        SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
-        YAKL_LAMBDA(int k, int n) {
-          real z = primal_geom.zint(k + primal_topology.ks, n);
-
-          real Rd = thermo.cst.Rd;
-          real pr = thermo.cst.pr;
-          real gamma_d = thermo.cst.gamma_d;
-          real Cpd = thermo.cst.Cpd;
-          real Cvd = thermo.cst.Cvd;
-          real grav = g;
-          real grav2 = grav * grav;
-
-          real rho_ref = refrho_f(z, thermo);
-          real alpha_ref = 1 / rho_ref;
-          real S_ref = refentropicdensity_f(z, thermo);
-          real s_ref = S_ref / rho_ref;
-
-          real rho_ref2 = rho_ref * rho_ref;
-          real p_ref = thermo.solve_p(rho_ref, s_ref, 0, 0, 0, 0);
-
-          real dpds_ref =
-              thermo.compute_dpdentropic_var(alpha_ref, s_ref, 0, 0, 0, 0);
-          real dpds_ref2 = dpds_ref * dpds_ref;
-
-          real Nref2 = refnsq_f(z, thermo);
-          real cref = thermo.compute_soundspeed(alpha_ref, s_ref, 0, 0, 0, 0);
-          real cref2 = cref * cref;
-
-          real b0_rho = (cref2 * rho_ref - dpds_ref * s_ref) / rho_ref2;
-          real b0_s =
-              dpds_ref / rho_ref - dpds_ref2 * s_ref / (cref2 * rho_ref2) -
-              dpds_ref2 * grav2 * s_ref / (Nref2 * cref2 * cref2 * rho_ref2);
-          real b0_S = b0_s / rho_ref;
-          b0_rho -= s_ref / rho_ref * b0_s;
-
-          real b1_rho = dpds_ref / rho_ref2;
-          real b1_s = dpds_ref2 * (Nref2 * cref2 + grav2) /
-                      (Nref2 * cref2 * cref2 * rho_ref2);
-          real b1_S = b1_s / rho_ref;
-          b1_rho -= s_ref / rho_ref * b1_s;
-
-          refstate.Blin_coeff(0, 0, k, n) = b0_rho;
-          refstate.Blin_coeff(0, 1, k, n) = b0_S;
-          refstate.Blin_coeff(1, 0, k, n) = b1_rho;
-          refstate.Blin_coeff(1, 1, k, n) = b1_S;
-        });
   }
 };
 
@@ -2893,6 +2901,8 @@ public:
                               FieldSet<nconstant> &constvars,
                               const Geometry<Straight> &primal_geom,
                               const Geometry<Twisted> &dual_geom) override {
+
+    equations->Hs.set_parameters(g);
 
     YAKL_SCOPE(thermo, equations->thermo);
     YAKL_SCOPE(varset, equations->varset);
@@ -2972,6 +2982,10 @@ public:
     primal_geom.set_profile_00form_values(
         YAKL_LAMBDA(real z) { return refrhov_f(z, thermo); }, refstate.q_pi, 2);
 
+    primal_geom.set_profile_00form_values(
+        YAKL_LAMBDA(real z) { return refnsq_f(z, thermo); }, refstate.Nsq_pi,
+        0);
+
     parallel_for(
         "scale q_pi", SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
         YAKL_LAMBDA(int k, int n) {
@@ -3019,55 +3033,6 @@ public:
         YAKL_LAMBDA(int k, int n) {
           Hs.compute_dHsdx(refstate.B.data, refstate.dens.data,
                            refstate.geop.data, pks, k, n, -1);
-        });
-
-    parallel_for(
-        "Compute Blin_coeff",
-        SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
-        YAKL_LAMBDA(int k, int n) {
-          real z = primal_geom.zint(k + primal_topology.ks, n);
-
-          real Rd = thermo.cst.Rd;
-          real pr = thermo.cst.pr;
-          real gamma_d = thermo.cst.gamma_d;
-          real Cpd = thermo.cst.Cpd;
-          real Cvd = thermo.cst.Cvd;
-          real grav = g;
-          real grav2 = grav * grav;
-
-          real rho_ref = refrho_f(z, thermo);
-          real alpha_ref = 1 / rho_ref;
-          real S_ref = refentropicdensity_f(z, thermo);
-          real s_ref = S_ref / rho_ref;
-
-          real rho_ref2 = rho_ref * rho_ref;
-          real p_ref = thermo.solve_p(rho_ref, s_ref, 0, 0, 0, 0);
-
-          real dpds_ref =
-              thermo.compute_dpdentropic_var(alpha_ref, s_ref, 0, 0, 0, 0);
-          real dpds_ref2 = dpds_ref * dpds_ref;
-
-          real Nref2 = refnsq_f(z, thermo);
-          real cref = thermo.compute_soundspeed(alpha_ref, s_ref, 0, 0, 0, 0);
-          real cref2 = cref * cref;
-
-          real b0_rho = (cref2 * rho_ref - dpds_ref * s_ref) / rho_ref2;
-          real b0_s =
-              dpds_ref / rho_ref - dpds_ref2 * s_ref / (cref2 * rho_ref2) -
-              dpds_ref2 * grav2 * s_ref / (Nref2 * cref2 * cref2 * rho_ref2);
-          real b0_S = b0_s / rho_ref;
-          b0_rho -= s_ref / rho_ref * b0_s;
-
-          real b1_rho = dpds_ref / rho_ref2;
-          real b1_s = dpds_ref2 * (Nref2 * cref2 + grav2) /
-                      (Nref2 * cref2 * cref2 * rho_ref2);
-          real b1_S = b1_s / rho_ref;
-          b1_rho -= s_ref / rho_ref * b1_s;
-
-          refstate.Blin_coeff(0, 0, k, n) = b0_rho;
-          refstate.Blin_coeff(0, 1, k, n) = b0_S;
-          refstate.Blin_coeff(1, 0, k, n) = b1_rho;
-          refstate.Blin_coeff(1, 1, k, n) = b1_S;
         });
   }
 };
