@@ -12,20 +12,6 @@
 #include "thermo.h"
 #include "wedge.h"
 
-// *******   Functionals/Hamiltonians   ***********//
-
-Functional_PVPE PVPE;
-Hamiltonian_Hk Hk;
-
-VariableSet varset;
-#ifdef _SWE
-Hamiltonian_SWE_Hs Hs;
-#elif _TSWE
-Hamiltonian_TSWE_Hs Hs;
-#endif
-
-ThermoPotential thermo;
-
 class ModelReferenceState : public ReferenceState {
 public:
   real ref_height;
@@ -40,16 +26,16 @@ public:
 class Dens0Diagnostic : public Diagnostic {
 public:
   void initialize(const Geometry<Straight> &pgeom,
-                  const Geometry<Twisted> &dgeom) override {
+                  const Geometry<Twisted> &dgeom,
+                  Equations &equations) override {
     // concentration 0-forms for dens
     name = "densl";
     topology = pgeom.topology;
     dofs_arr = {0, 1, ndensity}; // densldiag = straight 0-form
-    Diagnostic::initialize(pgeom, dgeom);
+    Diagnostic::initialize(pgeom, dgeom, equations);
   }
 
-  void compute(real time, const ReferenceState &reference_state,
-               const FieldSet<nconstant> &const_vars,
+  void compute(real time, const FieldSet<nconstant> &const_vars,
                const FieldSet<nprognostic> &x) override {
 
     const auto &primal_topology = primal_geometry.topology;
@@ -72,15 +58,15 @@ public:
 class Q0Diagnostic : public Diagnostic {
 public:
   void initialize(const Geometry<Straight> &pgeom,
-                  const Geometry<Twisted> &dgeom) override {
+                  const Geometry<Twisted> &dgeom,
+                  Equations &equations) override {
     name = "q";
     topology = dgeom.topology;
     dofs_arr = {0, 1, 1}; // qdiag = twisted 0-form
-    Diagnostic::initialize(pgeom, dgeom);
+    Diagnostic::initialize(pgeom, dgeom, equations);
   }
 
-  void compute(real time, const ReferenceState &reference_state,
-               const FieldSet<nconstant> &const_vars,
+  void compute(real time, const FieldSet<nconstant> &const_vars,
                const FieldSet<nprognostic> &x) override {
 
     const auto &dual_topology = dual_geometry.topology;
@@ -88,7 +74,7 @@ public:
     int djs = dual_topology.js;
     int dks = dual_topology.ks;
 
-    YAKL_SCOPE(PVPE, ::PVPE);
+    YAKL_SCOPE(PVPE, equations->PVPE);
     parallel_for(
         "Compute Q0 Diag",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
@@ -112,30 +98,26 @@ void add_model_diagnostics(
 
 class ModelTendencies : public Tendencies {
 public:
-  void initialize(PamCoupler &coupler, ModelParameters &params,
+  void initialize(ModelParameters &params, Equations &equations,
                   const Geometry<Straight> &primal_geom,
-                  const Geometry<Twisted> &dual_geom,
-                  ReferenceState &refstate) {
+                  const Geometry<Twisted> &dual_geom) {
 
-    Tendencies::initialize(params, primal_geom, dual_geom, refstate);
-    varset.initialize(coupler, params, thermo, this->primal_geometry,
-                      this->dual_geometry);
-    PVPE.initialize(varset);
-    Hk.initialize(varset, this->primal_geometry, this->dual_geometry);
-    Hs.initialize(thermo, varset, this->primal_geometry, this->dual_geometry);
+    Tendencies::initialize(params, equations, primal_geom, dual_geom);
   }
 
   void
   convert_dynamics_to_coupler_state(PamCoupler &coupler,
                                     const FieldSet<nprognostic> &prog_vars,
                                     const FieldSet<nconstant> &const_vars) {
-    varset.convert_dynamics_to_coupler_state(coupler, prog_vars, const_vars);
+    this->equations->varset.convert_dynamics_to_coupler_state(
+        coupler, prog_vars, const_vars);
   }
   void
   convert_coupler_to_dynamics_state(PamCoupler &coupler,
                                     FieldSet<nprognostic> &prog_vars,
                                     const FieldSet<nconstant> &const_vars) {
-    varset.convert_coupler_to_dynamics_state(coupler, prog_vars, const_vars);
+    this->equations->varset.convert_coupler_to_dynamics_state(
+        coupler, prog_vars, const_vars);
   }
 
   void compute_constants(FieldSet<nconstant> &const_vars,
@@ -188,7 +170,7 @@ public:
     int djs = dual_topology.js;
     int dks = dual_topology.ks;
 
-    YAKL_SCOPE(PVPE, ::PVPE);
+    YAKL_SCOPE(PVPE, this->equations->PVPE);
     // compute U H1v, q0, f0
     parallel_for(
         "Compute U, Q0, F0",
@@ -212,7 +194,7 @@ public:
     int djs = dual_topology.js;
     int dks = dual_topology.ks;
 
-    YAKL_SCOPE(Hk, ::Hk);
+    YAKL_SCOPE(Hk, this->equations->Hk);
     parallel_for(
         "Compute F/K",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
@@ -231,7 +213,7 @@ public:
     int djs = dual_topology.js;
     int dks = dual_topology.ks;
 
-    YAKL_SCOPE(Hk, ::Hk);
+    YAKL_SCOPE(Hk, this->equations->Hk);
     parallel_for(
         "Compute F/he",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
@@ -251,8 +233,8 @@ public:
     int pjs = primal_topology.js;
     int pks = primal_topology.ks;
 
-    YAKL_SCOPE(Hk, ::Hk);
-    YAKL_SCOPE(Hs, ::Hs);
+    YAKL_SCOPE(Hk, this->equations->Hk);
+    YAKL_SCOPE(Hs, this->equations->Hs);
     parallel_for(
         "Compute B",
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
@@ -515,7 +497,7 @@ public:
     int djs = dual_topology.js;
     int dks = dual_topology.ks;
 
-    YAKL_SCOPE(dens_pos, varset.dens_pos);
+    YAKL_SCOPE(dens_pos, this->equations->varset.dens_pos);
     parallel_for(
         "Compute edgefluxes",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
@@ -571,7 +553,6 @@ public:
 class ModelLinearSystem : public LinearSystem {
 public:
   real4d dens_transform;
-  ModelReferenceState *reference_state;
   yakl::RealFFT1D<real> fft_y;
   yakl::RealFFT1D<real> fft_x;
   int nxf, nyf;
@@ -579,10 +560,8 @@ public:
   void initialize(ModelParameters &params,
                   const Geometry<Straight> &primal_geom,
                   const Geometry<Twisted> &dual_geom,
-                  ReferenceState &refstate) override {
-    LinearSystem::initialize(params, primal_geom, dual_geom, refstate);
-
-    this->reference_state = static_cast<ModelReferenceState *>(&refstate);
+                  Equations &equations) override {
+    LinearSystem::initialize(params, primal_geom, dual_geom, equations);
 
     const auto &dual_topo = dual_geom.topology;
 
@@ -606,10 +585,11 @@ public:
 
     const auto &dual_topology = dual_geometry.topology;
     const auto &primal_topology = primal_geometry.topology;
-    const auto &refstate = *reference_state;
+    const auto &refstate =
+        static_cast<ModelReferenceState &>(*this->equations->reference_state);
 
     yakl::timer_start("Linear solve");
-    auto grav = Hs.g;
+    auto grav = this->equations->Hs.g;
 
     auto n_cells_x = dual_topology.n_cells_x;
     auto n_cells_y = dual_topology.n_cells_y;
@@ -806,8 +786,8 @@ public:
 
   void initialize(ModelParameters &params, Parallel &par,
                   const Geometry<Straight> &primal_geom,
-                  const Geometry<Twisted> &dual_geom) {
-    Stats::initialize(params, par, primal_geom, dual_geom);
+                  const Geometry<Twisted> &dual_geom, Equations &equations) {
+    Stats::initialize(params, par, primal_geom, dual_geom, equations);
     this->stats_arr[DENSSTAT].initialize("mass", ndensity, this->statsize,
                                          this->nens, this->masterproc);
     this->stats_arr[DENSMAXSTAT].initialize("densmax", ndensity, this->statsize,
@@ -884,8 +864,8 @@ public:
       int djs = dual_topology.js;
       int dks = dual_topology.ks;
 
-      YAKL_SCOPE(Hs, ::Hs);
-      YAKL_SCOPE(Hk, ::Hk);
+      YAKL_SCOPE(Hs, equations->Hs);
+      YAKL_SCOPE(Hk, equations->Hk);
       parallel_for(
           "Compute energy stats",
           SimpleBounds<3>(dual_topology.nl, dual_topology.n_cells_y,
@@ -915,7 +895,7 @@ public:
       int pjs = primal_topology.js;
       int pks = primal_topology.ks;
 
-      YAKL_SCOPE(PVPE, ::PVPE);
+      YAKL_SCOPE(PVPE, equations->PVPE);
       parallel_for(
           "Compute pv/pens stats",
           SimpleBounds<3>(primal_topology.nl, primal_topology.n_cells_y,
@@ -1136,13 +1116,13 @@ public:
           },
           progvars.fields_arr[DENSVAR], i + ndensity_dycore);
     }
-    Hs.set_parameters(g);
+    equations->Hs.set_parameters(g);
   }
 
-  void set_reference_state(ReferenceState &reference_state,
-                           const Geometry<Straight> &primal_geom,
+  void set_reference_state(const Geometry<Straight> &primal_geom,
                            const Geometry<Twisted> &dual_geom) override {
-    auto &refstate = static_cast<ModelReferenceState &>(reference_state);
+    auto &refstate =
+        static_cast<ModelReferenceState &>(*equations->reference_state);
     refstate.ref_height = T::ref_height;
   }
 };

@@ -2,6 +2,7 @@
 #pragma once
 
 #include "common.h"
+#include "ext_deriv.h"
 #include "variableset.h"
 #include "wedge.h"
 

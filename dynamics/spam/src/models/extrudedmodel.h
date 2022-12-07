@@ -16,31 +16,6 @@
 
 // *******   Functionals/Hamiltonians   ***********//
 
-Functional_PVPE_extruded PVPE;
-Hamiltonian_Hk_extruded Hk;
-
-VariableSet varset;
-#ifdef _SWE
-Hamiltonian_SWE_Hs Hs;
-#elif _TSWE
-Hamiltonian_TSWE_Hs Hs;
-#elif _CE
-Hamiltonian_CE_Hs Hs;
-#elif _MCErho
-Hamiltonian_MCE_Hs Hs;
-#elif _MCErhod
-Hamiltonian_MCE_Hs Hs;
-#elif _CEp
-Hamiltonian_CE_p_Hs Hs;
-#elif _MCErhop
-Hamiltonian_MCE_p_Hs Hs;
-#elif _MCErhodp
-Hamiltonian_MCE_p_Hs Hs;
-#endif
-// ADD ANELASTIC + MOIST ANELASTIC
-
-ThermoPotential thermo;
-
 struct ModelReferenceState : ReferenceState {
   Profile dens;
   Profile geop;
@@ -75,16 +50,16 @@ struct ModelReferenceState : ReferenceState {
 class Dens0Diagnostic : public Diagnostic {
 public:
   void initialize(const Geometry<Straight> &pgeom,
-                  const Geometry<Twisted> &dgeom) override {
+                  const Geometry<Twisted> &dgeom,
+                  Equations &equations) override {
     // concentration 0-forms for dens
     name = "densl";
     topology = pgeom.topology;
     dofs_arr = {0, 0, ndensity}; // densldiag = straight (0,0)-form
-    Diagnostic::initialize(pgeom, dgeom);
+    Diagnostic::initialize(pgeom, dgeom, equations);
   }
 
-  void compute(real time, const ReferenceState &reference_state,
-               const FieldSet<nconstant> &const_vars,
+  void compute(real time, const FieldSet<nconstant> &const_vars,
                const FieldSet<nprognostic> &x) override {
 
     const auto &primal_topology = primal_geometry.topology;
@@ -108,15 +83,15 @@ public:
 class QXZ0Diagnostic : public Diagnostic {
 public:
   void initialize(const Geometry<Straight> &pgeom,
-                  const Geometry<Twisted> &dgeom) override {
+                  const Geometry<Twisted> &dgeom,
+                  Equations &equations) override {
     name = "QXZl";
     topology = dgeom.topology;
     dofs_arr = {0, 0, 1}; // // Qldiag = twisted (0,0)-form
-    Diagnostic::initialize(pgeom, dgeom);
+    Diagnostic::initialize(pgeom, dgeom, equations);
   }
 
-  void compute(real time, const ReferenceState &reference_state,
-               const FieldSet<nconstant> &const_vars,
+  void compute(real time, const FieldSet<nconstant> &const_vars,
                const FieldSet<nprognostic> &x) override {
 
     const auto &dual_topology = dual_geometry.topology;
@@ -125,7 +100,7 @@ public:
     int djs = dual_topology.js;
     int dks = dual_topology.ks;
 
-    YAKL_SCOPE(PVPE, ::PVPE);
+    YAKL_SCOPE(PVPE, equations->PVPE);
     parallel_for(
         "Compute Q0 DIAG",
         SimpleBounds<4>(dual_topology.ni - 3, dual_topology.n_cells_y,
@@ -172,17 +147,11 @@ class ModelTendencies : public ExtrudedTendencies {
   real velocity_diffusion_coeff;
 
 public:
-  void initialize(PamCoupler &coupler, ModelParameters &params,
+  void initialize(ModelParameters &params, Equations &equations,
                   const Geometry<Straight> &primal_geom,
-                  const Geometry<Twisted> &dual_geom,
-                  ReferenceState &refstate) {
+                  const Geometry<Twisted> &dual_geom) {
 
-    ExtrudedTendencies::initialize(params, primal_geom, dual_geom, refstate);
-    varset.initialize(coupler, params, thermo, this->primal_geometry,
-                      this->dual_geometry);
-    PVPE.initialize(varset);
-    Hk.initialize(varset, this->primal_geometry, this->dual_geometry);
-    Hs.initialize(thermo, varset, this->primal_geometry, this->dual_geometry);
+    ExtrudedTendencies::initialize(params, equations, primal_geom, dual_geom);
     entropicvar_diffusion_coeff = params.entropicvar_diffusion_coeff;
     velocity_diffusion_coeff = params.velocity_diffusion_coeff;
   }
@@ -191,13 +160,15 @@ public:
   convert_dynamics_to_coupler_state(PamCoupler &coupler,
                                     const FieldSet<nprognostic> &prog_vars,
                                     const FieldSet<nconstant> &const_vars) {
-    varset.convert_dynamics_to_coupler_state(coupler, prog_vars, const_vars);
+    equations->varset.convert_dynamics_to_coupler_state(coupler, prog_vars,
+                                                        const_vars);
   }
   void
   convert_coupler_to_dynamics_state(PamCoupler &coupler,
                                     FieldSet<nprognostic> &prog_vars,
                                     const FieldSet<nconstant> &const_vars) {
-    varset.convert_coupler_to_dynamics_state(coupler, prog_vars, const_vars);
+    equations->varset.convert_coupler_to_dynamics_state(coupler, prog_vars,
+                                                        const_vars);
   }
 
   void compute_constants(FieldSet<nconstant> &const_vars,
@@ -212,7 +183,7 @@ public:
     int pks = primal_topology.ks;
 
     const auto &refstate =
-        static_cast<ModelReferenceState &>(*this->reference_state);
+        static_cast<ModelReferenceState &>(*this->equations->reference_state);
 
     YAKL_SCOPE(refdens, refstate.dens.data);
     const auto subtract_refstate_f =
@@ -280,7 +251,7 @@ public:
     int djs = dual_topology.js;
     int dks = dual_topology.ks;
 
-    YAKL_SCOPE(PVPE, ::PVPE);
+    YAKL_SCOPE(PVPE, this->equations->PVPE);
     parallel_for(
         "Compute Q0, F0",
         SimpleBounds<4>(dual_topology.ni - 3, dual_topology.n_cells_y,
@@ -313,8 +284,8 @@ public:
     int pjs = primal_topology.js;
     int pks = primal_topology.ks;
 
-    YAKL_SCOPE(Hk, ::Hk);
-    YAKL_SCOPE(Hs, ::Hs);
+    YAKL_SCOPE(Hk, this->equations->Hk);
+    YAKL_SCOPE(Hs, this->equations->Hs);
     parallel_for(
         "Compute Bvar",
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
@@ -624,7 +595,7 @@ public:
     int pjs = primal_topology.js;
     int pks = primal_topology.ks;
 
-    YAKL_SCOPE(varset, ::varset);
+    YAKL_SCOPE(varset, this->equations->varset);
 
     const auto total_density_f =
         YAKL_LAMBDA(const real5d &densvar, int d, int k, int j, int i, int n) {
@@ -632,7 +603,7 @@ public:
     };
 
     const auto &refstate =
-        static_cast<ModelReferenceState &>(*this->reference_state);
+        static_cast<ModelReferenceState &>(*this->equations->reference_state);
 
     parallel_for(
         "ComputeDensRECON",
@@ -738,7 +709,7 @@ public:
     int djs = dual_topology.js;
     int dks = dual_topology.ks;
 
-    YAKL_SCOPE(varset, ::varset);
+    YAKL_SCOPE(varset, this->equations->varset);
     parallel_for(
         "Entropicvar diffusion 1",
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
@@ -997,7 +968,7 @@ public:
     int dks = dual_topology.ks;
 
     const auto &refstate =
-        static_cast<ModelReferenceState &>(*this->reference_state);
+        static_cast<ModelReferenceState &>(*this->equations->reference_state);
 
     parallel_for(
         "Compute Wtend",
@@ -1152,9 +1123,9 @@ public:
     const auto &Bvar = auxiliary_vars.fields_arr[BVAR].data;
     const auto &HSvar = const_vars.fields_arr[HSVAR].data;
 
-    YAKL_SCOPE(Hk, ::Hk);
-    YAKL_SCOPE(Hs, ::Hs);
-    YAKL_SCOPE(varset, ::varset);
+    YAKL_SCOPE(Hk, this->equations->Hk);
+    YAKL_SCOPE(Hs, this->equations->Hs);
+    YAKL_SCOPE(varset, this->equations->varset);
 
     const auto total_density_f =
         YAKL_LAMBDA(const real5d &densvar, int d, int k, int j, int i, int n) {
@@ -1277,9 +1248,9 @@ public:
     const auto &Bvar = auxiliary_vars.fields_arr[BVAR].data;
     const auto &HSvar = const_vars.fields_arr[HSVAR].data;
 
-    YAKL_SCOPE(Hk, ::Hk);
-    YAKL_SCOPE(Hs, ::Hs);
-    YAKL_SCOPE(varset, ::varset);
+    YAKL_SCOPE(Hk, this->equations->Hk);
+    YAKL_SCOPE(Hs, this->equations->Hs);
+    YAKL_SCOPE(varset, this->equations->varset);
 
     const auto total_density_f =
         YAKL_LAMBDA(const real5d &densvar, int d, int k, int j, int i, int n) {
@@ -1493,7 +1464,7 @@ public:
     int djs = dual_topology.js;
     int dks = dual_topology.ks;
 
-    YAKL_SCOPE(dens_pos, varset.dens_pos);
+    YAKL_SCOPE(dens_pos, equations->varset.dens_pos);
     parallel_for(
         "ComputeEdgeFlux",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
@@ -1596,7 +1567,7 @@ public:
     const int djs = dual_topology.js;
     const int dks = dual_topology.ks;
 
-    YAKL_SCOPE(dens_pos, varset.dens_pos);
+    YAKL_SCOPE(dens_pos, equations->varset.dens_pos);
     parallel_for(
         "Remove negatives",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
@@ -1614,7 +1585,6 @@ public:
 
 // *******   Linear system   ***********//
 class ModelLinearSystem : public LinearSystem {
-  ModelReferenceState *reference_state;
 
   yakl::RealFFT1D<real> fftv_x;
   yakl::RealFFT1D<real> fftw_x;
@@ -1639,11 +1609,9 @@ public:
   void initialize(ModelParameters &params,
                   const Geometry<Straight> &primal_geom,
                   const Geometry<Twisted> &dual_geom,
-                  ReferenceState &refstate) override {
+                  Equations &equations) override {
 
-    LinearSystem::initialize(params, primal_geom, dual_geom, refstate);
-
-    this->reference_state = static_cast<ModelReferenceState *>(&refstate);
+    LinearSystem::initialize(params, primal_geom, dual_geom, equations);
 
     const auto &primal_topology = primal_geom.topology;
 
@@ -1679,7 +1647,8 @@ public:
   }
 
   virtual void compute_coefficients(real dt) override {
-    auto &refstate = *this->reference_state;
+    const auto &refstate =
+        static_cast<ModelReferenceState &>(*this->equations->reference_state);
 
     const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
@@ -1866,7 +1835,8 @@ public:
                      FieldSet<nauxiliary> &auxiliary_vars,
                      FieldSet<nprognostic> &solution) override {
 
-    auto &refstate = *this->reference_state;
+    const auto &refstate =
+        static_cast<ModelReferenceState &>(*this->equations->reference_state);
 
     const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
@@ -2121,7 +2091,7 @@ public:
 
     // recover densities
 
-    YAKL_SCOPE(Hk, ::Hk);
+    YAKL_SCOPE(Hk, this->equations->Hk);
     parallel_for(
         "Recover densities 1 - F/Fw",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
@@ -2174,8 +2144,8 @@ public:
 
   void initialize(ModelParameters &params, Parallel &par,
                   const Geometry<Straight> &primal_geom,
-                  const Geometry<Twisted> &dual_geom) {
-    Stats::initialize(params, par, primal_geom, dual_geom);
+                  const Geometry<Twisted> &dual_geom, Equations &equations) {
+    Stats::initialize(params, par, primal_geom, dual_geom, equations);
     this->stats_arr[DENSSTAT].initialize("mass", ndensity, this->statsize,
                                          this->nens, this->masterproc);
     this->stats_arr[DENSMAXSTAT].initialize("densmax", ndensity, this->statsize,
@@ -2252,8 +2222,8 @@ public:
       int djs = dual_topology.js;
       int dks = dual_topology.ks;
 
-      YAKL_SCOPE(Hk, ::Hk);
-      YAKL_SCOPE(Hs, ::Hs);
+      YAKL_SCOPE(Hk, equations->Hk);
+      YAKL_SCOPE(Hs, equations->Hs);
       parallel_for(
           "Compute energetics stats",
           SimpleBounds<3>(dual_topology.nl - 2, dual_topology.n_cells_y,
@@ -2315,7 +2285,7 @@ public:
       int pjs = primal_topology.js;
       int pks = primal_topology.ks;
 
-      YAKL_SCOPE(PVPE, ::PVPE);
+      YAKL_SCOPE(PVPE, equations->PVPE);
       parallel_for(
           "Compute PV/PE stats",
           SimpleBounds<3>(primal_topology.nl - 2, primal_topology.n_cells_y,
@@ -2723,7 +2693,7 @@ public:
                               const Geometry<Straight> &primal_geom,
                               const Geometry<Twisted> &dual_geom) override {
 
-    YAKL_SCOPE(thermo, ::thermo);
+    YAKL_SCOPE(thermo, equations->thermo);
     dual_geom.set_11form_values(
         YAKL_LAMBDA(real x, real z) { return rho_f(x, z, thermo); },
         progvars.fields_arr[DENSVAR], 0);
@@ -2754,18 +2724,18 @@ public:
     }
   }
 
-  void set_reference_state(ReferenceState &reference_state,
-                           const Geometry<Straight> &primal_geom,
+  void set_reference_state(const Geometry<Straight> &primal_geom,
                            const Geometry<Twisted> &dual_geom) override {
-    auto &refstate = static_cast<ModelReferenceState &>(reference_state);
+    auto &refstate =
+        static_cast<ModelReferenceState &>(*equations->reference_state);
 
     const auto primal_topology = primal_geom.topology;
     const auto dual_topology = dual_geom.topology;
 
     const int pks = primal_topology.ks;
 
-    YAKL_SCOPE(thermo, ::thermo);
-    YAKL_SCOPE(Hs, ::Hs);
+    YAKL_SCOPE(thermo, equations->thermo);
+    YAKL_SCOPE(Hs, equations->Hs);
 
     dual_geom.set_profile_11form_values(
         YAKL_LAMBDA(real z) { return flat_geop(0, z, g); }, refstate.geop, 0);
@@ -2924,8 +2894,8 @@ public:
                               const Geometry<Straight> &primal_geom,
                               const Geometry<Twisted> &dual_geom) override {
 
-    YAKL_SCOPE(thermo, ::thermo);
-    YAKL_SCOPE(varset, ::varset);
+    YAKL_SCOPE(thermo, equations->thermo);
+    YAKL_SCOPE(varset, equations->varset);
 
     dual_geom.set_11form_values(
         YAKL_LAMBDA(real x, real z) { return rho_f(x, z, thermo); },
@@ -2952,19 +2922,19 @@ public:
     }
   }
 
-  void set_reference_state(ReferenceState &reference_state,
-                           const Geometry<Straight> &primal_geom,
+  void set_reference_state(const Geometry<Straight> &primal_geom,
                            const Geometry<Twisted> &dual_geom) override {
-    auto &refstate = static_cast<ModelReferenceState &>(reference_state);
+    auto &refstate =
+        static_cast<ModelReferenceState &>(*equations->reference_state);
 
     const auto primal_topology = primal_geom.topology;
     const auto dual_topology = dual_geom.topology;
 
     const int pks = primal_topology.ks;
 
-    YAKL_SCOPE(thermo, ::thermo);
-    YAKL_SCOPE(Hs, ::Hs);
-    YAKL_SCOPE(varset, ::varset);
+    YAKL_SCOPE(thermo, equations->thermo);
+    YAKL_SCOPE(Hs, equations->Hs);
+    YAKL_SCOPE(varset, equations->varset);
 
     dual_geom.set_profile_11form_values(
         YAKL_LAMBDA(real z) { return flat_geop(0, z, g); }, refstate.geop, 0);
@@ -3865,18 +3835,18 @@ template <bool add_perturbation> struct GravityWave {
 
   struct ExactDensityDiagnostic : public Diagnostic {
     void initialize(const Geometry<Straight> &pgeom,
-                    const Geometry<Twisted> &dgeom) override {
+                    const Geometry<Twisted> &dgeom,
+                    Equations &equations) override {
       name = "dense";
       topology = dgeom.topology;
       dofs_arr = {1, 1, 2};
-      Diagnostic::initialize(pgeom, dgeom);
+      Diagnostic::initialize(pgeom, dgeom, equations);
     }
 
-    void compute(real time, const ReferenceState &reference_state,
-                 const FieldSet<nconstant> &const_vars,
+    void compute(real time, const FieldSet<nconstant> &const_vars,
                  const FieldSet<nprognostic> &x) override {
 
-      YAKL_SCOPE(thermo, ::thermo);
+      YAKL_SCOPE(thermo, equations->thermo);
       dual_geometry.set_11form_values(
           YAKL_LAMBDA(real x, real z) {
             return rhoexact_f(x, z, time, thermo);
@@ -3893,18 +3863,18 @@ template <bool add_perturbation> struct GravityWave {
 
   struct ExactTemperatureDiagnostic : public Diagnostic {
     void initialize(const Geometry<Straight> &pgeom,
-                    const Geometry<Twisted> &dgeom) override {
+                    const Geometry<Twisted> &dgeom,
+                    Equations &equations) override {
       name = "Te";
       topology = pgeom.topology;
       dofs_arr = {0, 0, 1};
-      Diagnostic::initialize(pgeom, dgeom);
+      Diagnostic::initialize(pgeom, dgeom, equations);
     }
 
-    void compute(real time, const ReferenceState &reference_state,
-                 const FieldSet<nconstant> &const_vars,
+    void compute(real time, const FieldSet<nconstant> &const_vars,
                  const FieldSet<nprognostic> &x) override {
 
-      YAKL_SCOPE(thermo, ::thermo);
+      YAKL_SCOPE(thermo, equations->thermo);
       dual_geometry.set_00form_values(
           YAKL_LAMBDA(real x, real z) { return Texact_f(x, z, time, thermo); },
           field, 0);
@@ -3913,18 +3883,18 @@ template <bool add_perturbation> struct GravityWave {
 
   struct ExactWDiagnostic : public Diagnostic {
     void initialize(const Geometry<Straight> &pgeom,
-                    const Geometry<Twisted> &dgeom) override {
+                    const Geometry<Twisted> &dgeom,
+                    Equations &equations) override {
       name = "we";
       topology = pgeom.topology;
       dofs_arr = {0, 1, 1};
-      Diagnostic::initialize(pgeom, dgeom);
+      Diagnostic::initialize(pgeom, dgeom, equations);
     }
 
-    void compute(real time, const ReferenceState &reference_state,
-                 const FieldSet<nconstant> &const_vars,
+    void compute(real time, const FieldSet<nconstant> &const_vars,
                  const FieldSet<nprognostic> &x) override {
 
-      YAKL_SCOPE(thermo, ::thermo);
+      YAKL_SCOPE(thermo, equations->thermo);
       primal_geometry.set_01form_values(
           YAKL_LAMBDA(real x, real z) { return vexact_f(x, z, time, thermo); },
           field, 0, LINE_INTEGRAL_TYPE::TANGENT);
@@ -3934,18 +3904,18 @@ template <bool add_perturbation> struct GravityWave {
   struct BackgroundDensityDiagnostic : public Diagnostic {
 
     void initialize(const Geometry<Straight> &pgeom,
-                    const Geometry<Twisted> &dgeom) override {
+                    const Geometry<Twisted> &dgeom,
+                    Equations &equations) override {
       name = "densb";
       topology = dgeom.topology;
       dofs_arr = {1, 1, 2};
-      Diagnostic::initialize(pgeom, dgeom);
+      Diagnostic::initialize(pgeom, dgeom, equations);
     }
 
-    void compute(real time, const ReferenceState &reference_state,
-                 const FieldSet<nconstant> &const_vars,
+    void compute(real time, const FieldSet<nconstant> &const_vars,
                  const FieldSet<nprognostic> &x) override {
 
-      YAKL_SCOPE(thermo, ::thermo);
+      YAKL_SCOPE(thermo, equations->thermo);
       dual_geometry.set_11form_values(
           YAKL_LAMBDA(real x, real z) { return refrho_f(z, thermo); }, field,
           0);
@@ -3961,15 +3931,15 @@ template <bool add_perturbation> struct GravityWave {
   struct TemperatureDiagnostic : public Diagnostic {
     static constexpr bool linear_T = true;
     void initialize(const Geometry<Straight> &pgeom,
-                    const Geometry<Twisted> &dgeom) override {
+                    const Geometry<Twisted> &dgeom,
+                    Equations &equations) override {
       name = "T";
       topology = pgeom.topology;
       dofs_arr = {0, 0, 1};
-      Diagnostic::initialize(pgeom, dgeom);
+      Diagnostic::initialize(pgeom, dgeom, equations);
     }
 
-    void compute(real time, const ReferenceState &reference_state,
-                 const FieldSet<nconstant> &const_vars,
+    void compute(real time, const FieldSet<nconstant> &const_vars,
                  const FieldSet<nprognostic> &x) override {
 
       const auto &primal_topology = primal_geometry.topology;
@@ -3980,11 +3950,11 @@ template <bool add_perturbation> struct GravityWave {
 
       const auto &densvar = x.fields_arr[DENSVAR].data;
       const auto &refstate =
-          static_cast<const ModelReferenceState &>(reference_state);
+          static_cast<ModelReferenceState &>(*equations->reference_state);
       const auto &refdens = refstate.dens.data;
 
-      YAKL_SCOPE(thermo, ::thermo);
-      YAKL_SCOPE(varset, ::varset);
+      YAKL_SCOPE(thermo, equations->thermo);
+      YAKL_SCOPE(varset, equations->varset);
       parallel_for(
           "Compute T diagnostic",
           SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
