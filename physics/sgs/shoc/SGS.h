@@ -3,7 +3,7 @@
 
 #include "pam_coupler.h"
 
-#define SHOC_CXX
+#define SHOC_FORTRAN
 
 #ifdef SHOC_CXX
  #include "shoc_main_cxx.h"

@@ -3,7 +3,7 @@
 
 #include "pam_coupler.h"
 
-#define P3_CXX
+#define P3_FORTRAN
 
 #ifdef P3_CXX
 #include "p3_main_cxx.h"
