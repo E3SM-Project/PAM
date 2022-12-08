@@ -92,7 +92,7 @@ void YAKL_INLINE compute_wD0(SArray<real, 1, ndims> &tend, const R &reconvar,
         }
         // reference state
         if constexpr (std::is_same_v<R, real3d>) {
-          recon(l, d) = reconvar(l + d * ndofs, k, n);
+          recon(l, d) = reconvar(l + d * ndofs, k + ks, n);
         }
       }
     }
@@ -178,8 +178,8 @@ real YAKL_INLINE compute_wD0_vert(const R &vertreconvar, const D &densvar,
     }
     // reference state dens
     if constexpr (std::is_same_v<D, real3d>) {
-      dens(l, 1) = densvar(l, k + 1, n);
-      dens(l, 0) = densvar(l, k, n);
+      dens(l, 1) = densvar(l, k + ks + 1, n);
+      dens(l, 0) = densvar(l, k + ks, n);
     }
   }
 
@@ -196,7 +196,7 @@ real YAKL_INLINE compute_wD0_vert(const R &vertreconvar, const D &densvar,
 
       // reference state recon
       if constexpr (std::is_same_v<R, real3d>) {
-        recon(l) = vertreconvar(l, k + 1, n);
+        recon(l) = vertreconvar(l, k + ks + 1, n);
       }
     }
     wD0_vert<ndofs>(tend, recon, dens);
@@ -439,7 +439,7 @@ YAKL_INLINE void compute_wD1bar(SArray<real, 1, ndofs> &tend, const R &reconvar,
           }
           // reference state
           if constexpr (std::is_same_v<R, real3d>) {
-            recon(l, d, m) = reconvar(l, k, n);
+            recon(l, d, m) = reconvar(l, k + ks, n);
           }
         }
       }
@@ -539,7 +539,7 @@ YAKL_INLINE void compute_wD1bar_vert(SArray<real, 1, ndofs> &tend,
         }
 
         if constexpr (std::is_same_v<R, real3d>) {
-          recon(l, m) = vertreconvar(l, k + m, n);
+          recon(l, m) = vertreconvar(l, k + ks + m, n);
         }
       }
     }

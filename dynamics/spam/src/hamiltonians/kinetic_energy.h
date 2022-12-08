@@ -539,7 +539,7 @@ public:
   void YAKL_INLINE compute_Fw(const real5d &FW, const real5d &UW,
                               const real3d dens0, int is, int js, int ks, int i,
                               int j, int k, int n, real fac = 1._fp) const {
-    real hew = dens0(0, k, n);
+    real hew = dens0(0, k + ks, n);
     if (addmode == ADD_MODE::REPLACE) {
       FW(0, k + ks, j + js, i + is, n) =
           fac * UW(0, k + ks, j + js, i + is, n) * hew;
@@ -659,7 +659,7 @@ public:
                              const real3d dens0, int is, int js, int ks, int i,
                              int j, int k, int n, real fac = 1._fp) const {
     SArray<real, 2, ndims, 2> D0;
-    real he = dens0(0, k, n);
+    real he = dens0(0, k + ks, n);
 
     // compute F = he * U, set HE
     for (int d = 0; d < ndims; d++) {

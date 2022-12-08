@@ -472,7 +472,7 @@ template <>
 real YAKL_INLINE VariableSetBase<VS_CE>::get_entropic_var(const real3d &densvar,
                                                           int k, int ks,
                                                           int n) const {
-  return densvar(1, k, n) / densvar(0, k, n);
+  return densvar(1, k + ks, n) / densvar(0, k + ks, n);
 }
 template <>
 real YAKL_INLINE VariableSetBase<VS_CE>::get_alpha(const real5d &densvar, int k,
@@ -484,7 +484,8 @@ real YAKL_INLINE VariableSetBase<VS_CE>::get_alpha(const real5d &densvar, int k,
 template <>
 real YAKL_INLINE VariableSetBase<VS_CE>::get_alpha(const real3d &densvar, int k,
                                                    int ks, int n) const {
-  return dual_geometry.get_area_11entity(k + ks, 0, 0, n) / densvar(0, k, n);
+  return dual_geometry.get_area_11entity(k + ks, 0, 0, n) /
+         densvar(0, k + ks, n);
 }
 
 // We rely on physics packages ie micro to provide water species- must at least
@@ -515,7 +516,7 @@ real YAKL_INLINE VariableSetBase<VS_MCE_rho>::get_total_density(
 template <>
 real YAKL_INLINE VariableSetBase<VS_MCE_rho>::get_total_density(
     const real3d &densvar, int k, int ks, int n) const {
-  return densvar(0, k, n);
+  return densvar(0, k + ks, n);
 }
 
 template <>
@@ -529,7 +530,7 @@ real YAKL_INLINE VariableSetBase<VS_MCE_rho>::get_entropic_var(
 template <>
 real YAKL_INLINE VariableSetBase<VS_MCE_rho>::get_entropic_var(
     const real3d &densvar, int k, int ks, int n) const {
-  return densvar(1, k, n) / densvar(0, k, n);
+  return densvar(1, k + ks, n) / densvar(0, k + ks, n);
 }
 
 template <>
@@ -545,7 +546,8 @@ template <>
 real YAKL_INLINE VariableSetBase<VS_MCE_rho>::get_alpha(const real3d &densvar,
                                                         int k, int ks,
                                                         int n) const {
-  return dual_geometry.get_area_11entity(k + ks, 0, 0, n) / densvar(0, k, n);
+  return dual_geometry.get_area_11entity(k + ks, 0, 0, n) /
+         densvar(0, k + ks, n);
 }
 
 template <>
@@ -561,7 +563,8 @@ template <>
 real YAKL_INLINE VariableSetBase<VS_MCE_rho>::get_qv(const real3d &densvar,
                                                      int k, int ks,
                                                      int n) const {
-  return densvar(dm_id_vap + ndensity_nophysics, k, n) / densvar(0, k, n);
+  return densvar(dm_id_vap + ndensity_nophysics, k + ks, n) /
+         densvar(0, k + ks, n);
 }
 
 template <>
@@ -605,14 +608,14 @@ template <>
 real YAKL_INLINE VariableSetBase<VS_MCE_rho>::_water_dens(const real3d &densvar,
                                                           int k, int ks,
                                                           int n) const {
-  real vap_dens = densvar(dm_id_vap + ndensity_nophysics, k, n);
+  real vap_dens = densvar(dm_id_vap + ndensity_nophysics, k + ks, n);
   real liq_dens = 0.0_fp;
   real ice_dens = 0.0_fp;
   if (liquid_found) {
-    liq_dens = densvar(dm_id_liq + ndensity_nophysics, k, n);
+    liq_dens = densvar(dm_id_liq + ndensity_nophysics, k + ks, n);
   }
   if (ice_found) {
-    ice_dens = densvar(dm_id_ice + ndensity_nophysics, k, n);
+    ice_dens = densvar(dm_id_ice + ndensity_nophysics, k + ks, n);
   }
   return vap_dens + liq_dens + ice_dens;
 }
@@ -638,7 +641,8 @@ template <>
 real YAKL_INLINE VariableSetBase<VS_MCE_rho>::get_qd(const real3d &densvar,
                                                      int k, int ks,
                                                      int n) const {
-  return (densvar(0, k, n) - _water_dens(densvar, k, ks, n)) / densvar(0, k, n);
+  return (densvar(0, k + ks, n) - _water_dens(densvar, k, ks, n)) /
+         densvar(0, k + ks, n);
 }
 
 template <>

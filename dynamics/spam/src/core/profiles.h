@@ -58,9 +58,9 @@ void Profile::initialize(const Topology &topo, const std::string profName,
     this->total_dofs = 2 * this->ndofs;
   } // 2 edges per cell in 2D
 
-  this->data = real3d(this->name.c_str(), this->total_dofs,
-                      this->_nz, // + 2 * this->topology.mirror_halo,
-                      this->topology.nens);
+  this->data =
+      real3d(this->name.c_str(), this->total_dofs,
+             this->_nz + 2 * this->topology.mirror_halo, this->topology.nens);
 
   zero();
   this->is_initialized = true;
@@ -69,7 +69,9 @@ void Profile::initialize(const Topology &topo, const std::string profName,
 void Profile::zero() {
   parallel_for(
       "Profile zero",
-      SimpleBounds<3>(this->total_dofs, this->_nz, this->topology.nens),
+      SimpleBounds<3>(this->total_dofs,
+                      this->_nz + 2 * this->topology.mirror_halo,
+                      this->topology.nens),
       YAKL_CLASS_LAMBDA(int ndof, int k, int n) {
         this->data(ndof, k, n) = 0.0;
       });
@@ -77,6 +79,8 @@ void Profile::zero() {
 
 void Profile::zero(int ndof) {
   parallel_for(
-      "Profile zero ndof", SimpleBounds<2>(this->_nz, this->topology.nens),
+      "Profile zero ndof",
+      SimpleBounds<2>(this->_nz + 2 * this->topology.mirror_halo,
+                      this->topology.nens),
       YAKL_CLASS_LAMBDA(int k, int n) { this->data(ndof, k, n) = 0.0; });
 }

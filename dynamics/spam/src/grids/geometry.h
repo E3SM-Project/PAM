@@ -795,6 +795,7 @@ YAKL_INLINE void
 Geometry<T>::set_profile_00form_values(F initial_value_function, Profile &prof,
                                        int ndof) const {
 
+  int ks = this->topology.ks;
   parallel_for(
       "Set profile 00 form values",
       SimpleBounds<2>(this->topology.ni, this->topology.nens),
@@ -803,7 +804,7 @@ Geometry<T>::set_profile_00form_values(F initial_value_function, Profile &prof,
         SArray<real, 1, 1> quad_wts_phys;
         int i = 0; // doesn't matter
         get_00form_quad_pts_wts(i, k, n, quad_pts_phys, quad_wts_phys);
-        prof.data(ndof, k, n) =
+        prof.data(ndof, k + ks, n) =
             initial_value_function(quad_pts_phys(0).z) * quad_wts_phys(0);
       });
 }
@@ -815,6 +816,7 @@ YAKL_INLINE void
 Geometry<T>::set_profile_11form_values(F initial_value_function, Profile &prof,
                                        int ndof) const {
 
+  int ks = this->topology.ks;
   parallel_for(
       "Set profile 11 form values",
       SimpleBounds<2>(this->topology.nl, this->topology.nens),
@@ -834,7 +836,7 @@ Geometry<T>::set_profile_11form_values(F initial_value_function, Profile &prof,
           }
         }
 
-        prof.data(ndof, k, n) = tempval;
+        prof.data(ndof, k + ks, n) = tempval;
       });
 }
 
