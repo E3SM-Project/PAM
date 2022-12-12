@@ -29,6 +29,7 @@ public:
   bool is_initialized;
   ThermoPotential thermo;
   VariableSet varset;
+  real g;
 
   Hamiltonian_CE_Hs() { this->is_initialized = false; }
 
@@ -43,7 +44,7 @@ public:
     this->varset = variableset;
   }
 
-  void set_parameters(real gin) {}
+  void set_parameters(real gin) { this->g = gin; }
 
   real YAKL_INLINE compute_PE(const real5d &dens, const real5d &geop, int is,
                               int js, int ks, int i, int j, int k,
@@ -225,6 +226,7 @@ public:
   bool is_initialized;
   ThermoPotential thermo;
   VariableSet varset;
+  real g;
 
   Hamiltonian_MCE_Hs() { this->is_initialized = false; }
 
@@ -239,7 +241,7 @@ public:
     this->varset = variableset;
   }
 
-  void set_parameters(real gin) {}
+  void set_parameters(real gin) { this->g = gin; }
 
   real YAKL_INLINE compute_PE(const real5d &dens, const real5d &geop, int is,
                               int js, int ks, int i, int j, int k,

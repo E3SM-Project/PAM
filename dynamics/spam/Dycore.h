@@ -46,7 +46,6 @@ public:
   Topology primal_topology;
   Topology dual_topology;
   ModelParameters params;
-  ModelReferenceState reference_state;
   Parallel par;
 #if _TIME_TYPE == 0
   RKSimpleTimeIntegrator tint;
@@ -86,13 +85,8 @@ public:
     dual_geometry.initialize(dual_topology, params);
     debug_print("finish init topo/geom", par.masterproc);
 
-    debug_print("start init reference state", par.masterproc);
-    reference_state.initialize(primal_topology, dual_topology);
-    debug_print("finish init reference state", par.masterproc);
-
     debug_print("start init equations", par.masterproc);
-    equations.initialize(coupler, params, primal_geometry, dual_geometry,
-                         reference_state);
+    equations.initialize(coupler, params, primal_geometry, dual_geometry);
     debug_print("finish init equations", par.masterproc);
 
     debug_print("start init testcase", par.masterproc);
