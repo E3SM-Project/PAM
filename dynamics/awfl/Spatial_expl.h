@@ -459,6 +459,7 @@ public:
 
     // If inFile is empty, then we aren't reading in an input file
     if (coupler.option_exists("standalone_input_file")) {
+      #ifdef PAM_STANDALONE
       std::string inFile = coupler.get_option<std::string>( "standalone_input_file" );
 
       // Read the YAML input file
@@ -479,6 +480,7 @@ public:
       } else {
         endrun("ERROR: Invalid data_spec");
       }
+      #endif
     } else {
       weno_scalars            = true;
       weno_winds              = true;

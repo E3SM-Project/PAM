@@ -2,8 +2,10 @@
 #pragma once
 
 #include "YAKL.h"
-#include "yaml-cpp/yaml.h"
 #include <thread>
+#ifdef PAM_STANDALONE
+#include "yaml-cpp/yaml.h"
+#endif
 
 using yakl::SArray;
 using yakl::memDevice;
