@@ -17,12 +17,13 @@ struct ModelParameters : public Parameters {
   std::string tracerdataStr[ntracers_dycore];
   bool dycore_tracerpos[ntracers_dycore];
   // bool acoustic_balance;
+  bool uniform_vertical;
+  real2d zint;
 };
 
 #include "exchange.h"
 #include "fields.h"
 #include "geometry.h"
-#include "model.h"
 #include "params.h"
 #include "topology.h"
 
@@ -69,7 +70,19 @@ struct ExtrudedUnitSquare {
     params.xc = 0;
     params.nz_dual = nz;
     params.zlen = 1;
-    params.zc = 0.5;
+
+    params.zint = real2d("zint", nz + 1, 1);
+    const real dz = 1.0 / (nz - 1);
+    parallel_for(
+        "uniform zint", nz + 1, YAKL_LAMBDA(int k) {
+          if (k == 0) {
+            params.zint(k, 0) = 0;
+          } else if (k == nz) {
+            params.zint(k, 0) = 1;
+          } else {
+            params.zint(k, 0) = k * dz - dz / 2;
+          }
+        });
 
     Parallel par = parallel_stub(nx, nz);
 
@@ -107,7 +120,7 @@ struct ExtrudedUnitSquare {
 
     real scale = 1;
     real dx = primal_geometry.dx;
-    real dz = primal_geometry.dz;
+    real dz = yakl::intrinsics::minval(primal_geometry.dz);
 
     if (f1.basedof == 1) {
       scale *= dx;
