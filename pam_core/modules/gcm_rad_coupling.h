@@ -5,7 +5,7 @@
 
 namespace modules {
   
-  void apply_rad_tendencies( pam::PamCoupler &coupler ) {
+  inline void apply_rad_tendencies( pam::PamCoupler &coupler ) {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
     
