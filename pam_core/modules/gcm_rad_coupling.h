@@ -20,14 +20,14 @@ namespace modules {
 
     auto nx_rad = coupler.get_option<int>("nx_rad");
     auto ny_rad = coupler.get_option<int>("ny_rad");
-    auto cp_d   = coupler.get_cp_d();
+    auto cp_d   = coupler.get_option<real>("cp_d");
     auto rad_enthalpy_tend = dm.get<real const,4>("crm_rad_tend");
-    auto temp = dm.get<real,4>("temp");
+    auto temperature = dm.get<real,4>("temp");
 
     parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       int i_rad = i / (nx/nx_rad);
       int j_rad = j / (nx/ny_rad);
-      temp(k,j,i,iens) += rad_enthalpy_tend(k,j_rad,i_rad,iens) / cp_d * dt;
+      temperature(k,j,i,iens) += rad_enthalpy_tend(k,j_rad,i_rad,iens) / cp_d * dt;
     });
   }
 
