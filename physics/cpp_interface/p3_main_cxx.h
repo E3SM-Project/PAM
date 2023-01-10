@@ -13,21 +13,25 @@
 using namespace scream;
 using namespace scream::p3;
 
+using array1D = IRType<Real, 1>::type;
+using array2D = IRType<Real, 2>::type;
+using array3D = IRType<Real, 3>::type;
+
 //
 // main micro_p3 microproc
 //
-void p3_main_cxx(double *qc , double *nc , double *qr , double *nr , double *th_atm , double *qv ,
-                 double &dt , double *qi , double *qm , double *ni , double *bm , double *pres ,
-                 double *dz , double *nc_nuceat_tend , double *nccn_prescribed , double *ni_activated ,
-                 double *inv_qc_relvar , int &it , double *precip_liq_surf , double *precip_ice_surf ,
-                 int &its , int &ite , int &kts , int &kte , double *diag_eff_radius_qc ,
-                 double *diag_eff_radius_qi , double *rho_qi , bool &do_predict_nc ,
-                 bool &do_prescribed_CCN ,double *dpres , double *exner , double *qv2qi_depos_tend ,
-                 double *precip_total_tend , double *nevapr , double *qr_evap_tend ,
-                 double *precip_liq_flux , double *precip_ice_flux , double *cld_frac_r ,
-                 double *cld_frac_l , double *cld_frac_i , double *p3_tend_out , double *mu_c ,
-                 double *lamc , double *liq_ice_exchange , double *vap_liq_exchange ,
-                 double *vap_ice_exchange , double *qv_prev , double *t_prev , double *col_location ,
+void p3_main_cxx(array2D& qc, array2D& nc, array2D& qr, array2D& nr, array2D& th_atm, array2D&qv,
+                 double &dt, array2D& qi, array2D& qm, array2D& ni, array2D& bm, array2D& pres,
+                 array2D& dz, array2D& nc_nuceat_tend, array2D& nccn_prescribed, array2D& ni_activated,
+                 array2D& inv_qc_relvar, int &it, array1D& precip_liq_surf, array1D& precip_ice_surf,
+                 int &its, int &ite, int &kts, int &kte, array2D& diag_eff_radius_qc,
+                 array2D& diag_eff_radius_qi, array2D& rho_qi, bool &do_predict_nc,
+                 bool &do_prescribed_CCN, array2D& dpres, array2D& exner, array2D& qv2qi_depos_tend,
+                 array2D& precip_total_tend, array2D& nevapr, array2D& qr_evap_tend,
+                 array2D& precip_liq_flux, array2D& precip_ice_flux, array2D& cld_frac_r,
+                 array2D& cld_frac_l, array2D& cld_frac_i, array3D& p3_tend_out, array2D& mu_c,
+                 array2D& lamc, array2D& liq_ice_exchange, array2D& vap_liq_exchange,
+                 array2D& vap_ice_exchange, array2D& qv_prev, array2D& t_prev, array2D& col_location,
                  double *elapsed_s )
 {
   using P3F        = p3::Functions<Real, DefaultDevice>;
@@ -51,43 +55,16 @@ void p3_main_cxx(double *qc , double *nc , double *qr , double *nr , double *th_
   const int ncol  = ite-its+1;
   const int npack = ekat::npack<Spack>(nlev);
 
-  real2d qc_in("qc",ncol, nlev);
-  real2d nc_in("nc",ncol, nlev);
-  real2d qr_in("qr",ncol, nlev);
-  real2d nr_in("nr",ncol, nlev);
-  real2d qi_in("qi",ncol, nlev);
-  real2d qm_in("qm",ncol, nlev);
-  real2d ni_in("ni",ncol, nlev);
-  real2d bm_in("bm",ncol, nlev);
-  real2d qv_in("qv",ncol, nlev);
-  real2d th_in("th",ncol, nlev);
-
-  real2d nc_nuceat_tend_in("nuceat",ncol, nlev);
-  real2d nccn_in("nccn",ncol, nlev);
-  real2d ni_activated_in("ni_act",ncol, nlev);
-  real2d inv_qc_relvar_in("inv_qc",ncol, nlev); // relative cloud water variance - not needed - set to 1
-  real2d cld_frac_i_in("cld_frac_i",ncol, nlev);
-  real2d cld_frac_l_in("cld_frac_l",ncol, nlev);
-  real2d cld_frac_r_in("cld_frac_r",ncol, nlev);
-  real2d dz_in("dz", ncol, nlev);
-  real2d pres_in("pres", ncol, nlev);
-  real2d dpres_in("dpres",ncol, nlev);
-  real2d inv_exner_in("inv_exner",ncol, nlev);
-  real2d q_prev_in("q_prev",ncol, nlev);
-  real2d t_prev_in("t_prev",ncol, nlev);
-
-  real2d cloud_frac_in("cloud_frac_in",ncol, nlev);
-
-  reshape(qv,     qv_in.data(), nlev, ncol);
-  reshape(qc,     qc_in.data(), nlev, ncol);
-  reshape(nc,     nc_in.data(), nlev, ncol);
-  reshape(qr,     qr_in.data(), nlev, ncol);
-  reshape(nr,     nr_in.data(), nlev, ncol);
-  reshape(qi,     qi_in.data(), nlev, ncol);
-  reshape(qm,     qm_in.data(), nlev, ncol);
-  reshape(ni,     ni_in.data(), nlev, ncol);
-  reshape(bm,     bm_in.data(), nlev, ncol);
-  reshape(th_atm, th_in.data(), nlev, ncol);
+  auto qv_in = reshape(qv);
+  auto qc_in = reshape(qc);
+  auto nc_in = reshape(nc);
+  auto qr_in = reshape(qr);
+  auto nr_in = reshape(nr);
+  auto qi_in = reshape(qi);
+  auto qm_in = reshape(qm);
+  auto ni_in = reshape(ni);
+  auto bm_in = reshape(bm);
+  auto th_in = reshape(th_atm);
 
   view_2d qv_d("qv", ncol, npack),
           qc_d("qc", ncol, npack),
@@ -117,20 +94,20 @@ void p3_main_cxx(double *qc , double *nc , double *qr , double *nr , double *th_
   //----------------------------------------------------------------------------
   // Populate P3 diagnostic inputs
   //----------------------------------------------------------------------------
-  reshape(nc_nuceat_tend, nc_nuceat_tend_in.data(), nlev, ncol);
-  reshape(nccn_prescribed,nccn_in.data(),           nlev, ncol);
-  reshape(ni_activated,   ni_activated_in.data(),   nlev, ncol);
-  reshape(inv_qc_relvar,  inv_qc_relvar_in.data(),  nlev, ncol);
-  reshape(dz,             dz_in.data(),             nlev, ncol);
-  reshape(pres,           pres_in.data(),           nlev, ncol);
-  reshape(dpres,          dpres_in.data(),          nlev, ncol);
-  reshape(t_prev,         t_prev_in.data(),         nlev, ncol);
-  reshape(qv_prev,        q_prev_in.data(),         nlev, ncol);
-  reshape(cld_frac_i,     cld_frac_i_in.data(),     nlev, ncol);
-  reshape(cld_frac_l,     cld_frac_l_in.data(),     nlev, ncol);
-  reshape(cld_frac_r,     cld_frac_r_in.data(),     nlev, ncol);
+  auto nc_nuceat_tend_in = reshape(nc_nuceat_tend);
+  auto nccn_in           = reshape(nccn_prescribed);
+  auto ni_activated_in   = reshape(ni_activated);
+  auto inv_qc_relvar_in  = reshape(inv_qc_relvar);
+  auto dz_in             = reshape(dz);
+  auto pres_in           = reshape(pres);
+  auto dpres_in          = reshape(dpres);
+  auto t_prev_in         = reshape(t_prev);
+  auto q_prev_in         = reshape(qv_prev);
+  auto cld_frac_i_in     = reshape(cld_frac_i);
+  auto cld_frac_l_in     = reshape(cld_frac_l);
+  auto cld_frac_r_in     = reshape(cld_frac_r);
 
-  reshape_and_inverse(exner,inv_exner_in.data(), nlev, ncol);
+  auto inv_exner_in      = reshape_and_inverse(exner);
 
   view_2d nc_nuceat_tend_d("nc_nuceat_tend", ncol, npack),
           nccn_d("nccn", ncol, npack),
@@ -202,9 +179,9 @@ void p3_main_cxx(double *qc , double *nc , double *qr , double *nr , double *th_
   //----------------------------------------------------------------------------
   sview_2d col_location_d("col_location_d", ncol, 3);
   Kokkos::parallel_for("col_location", ncol, KOKKOS_LAMBDA (const int& i) {
-     col_location_d(i, 0) = col_location[i*3+0];
-     col_location_d(i, 1) = col_location[i*3+1];
-     col_location_d(i, 2) = col_location[i*3+2];
+     col_location_d(i, 0) = col_location.data()[i*3+0];
+     col_location_d(i, 1) = col_location.data()[i*3+1];
+     col_location_d(i, 2) = col_location.data()[i*3+2];
   });
 
   P3F::P3Infrastructure infrastructure{dt, it, 0, ite-its, 0, kte-kts,
@@ -253,40 +230,29 @@ void p3_main_cxx(double *qc , double *nc , double *qr , double *nr , double *th_
    
   // update microfield
   Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<3>>({0, 0, 0}, {ncol, npack, Spack::n}), KOKKOS_LAMBDA(int icol, int ilev, int s) {
-    int k    = ilev*Spack::n + s;
+    int k = ilev*Spack::n + s;
+    int offset = k*ncol + icol;
     if (k < nlev) {
-      qv_in(icol, ilev) = prog_state.qv(icol,ilev)[s] + prog_state.qc(icol,ilev)[s];
-      qc_in(icol, ilev) = prog_state.qc(icol,ilev)[s];
-      nc_in(icol, ilev) = prog_state.nc(icol,ilev)[s];
-      qr_in(icol, ilev) = prog_state.qr(icol,ilev)[s];
-      nr_in(icol, ilev) = prog_state.nr(icol,ilev)[s];
-      qi_in(icol, ilev) = prog_state.qi(icol,ilev)[s];
-      qm_in(icol, ilev) = prog_state.qm(icol,ilev)[s];
-      ni_in(icol, ilev) = prog_state.ni(icol,ilev)[s];
-      bm_in(icol, ilev) = prog_state.bm(icol,ilev)[s];
+      qv.data()[offset] = prog_state.qv(icol,ilev)[s] + prog_state.qc(icol,ilev)[s];
+      qc.data()[offset] = prog_state.qc(icol,ilev)[s];
+      nc.data()[offset] = prog_state.nc(icol,ilev)[s];
+      qr.data()[offset] = prog_state.qr(icol,ilev)[s];
+      nr.data()[offset] = prog_state.nr(icol,ilev)[s];
+      qi.data()[offset] = prog_state.qi(icol,ilev)[s];
+      qm.data()[offset] = prog_state.qm(icol,ilev)[s];
+      ni.data()[offset] = prog_state.ni(icol,ilev)[s];
+      bm.data()[offset] = prog_state.bm(icol,ilev)[s];
     }
   });
 
   // update LSE, temperature, and previous t/q
   Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<3>>({0, 0, 0}, {ncol, npack, Spack::n}), KOKKOS_LAMBDA(int icol, int ilev, int s) {
     int k    = ilev*Spack::n + s;
+    int offset = k*ncol + icol;
     if (k < nlev) {
-      t_prev_in(icol, ilev) = prog_state.th(icol,ilev)[s]/inv_exner_in(icol,ilev);
-      q_prev_in(icol, ilev) = qv_in(icol, ilev);
+      t_prev.data()[offset]  = prog_state.th(icol,ilev)[s]/inv_exner_d(icol,ilev)[s];
+      qv_prev.data()[offset] = qv.data()[icol, ilev];
     }
   });
-
-  reshape(qv_in.data(),     qv,     ncol, nlev);
-  reshape(qc_in.data(),     qc,     ncol, nlev);
-  reshape(nc_in.data(),     nc,     ncol, nlev);
-  reshape(qr_in.data(),     qr,     ncol, nlev);
-  reshape(nr_in.data(),     nr,     ncol, nlev);
-  reshape(qi_in.data(),     qi,     ncol, nlev);
-  reshape(qm_in.data(),     qm,     ncol, nlev);
-  reshape(ni_in.data(),     ni,     ncol, nlev);
-  reshape(bm_in.data(),     bm,     ncol, nlev);
-  reshape(t_prev_in.data(), t_prev, ncol, nlev);
-  reshape(q_prev_in.data(), qv,     ncol, nlev);
-
 }
 

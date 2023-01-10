@@ -6,13 +6,24 @@
 #include "ekat/ekat_pack_kokkos.hpp"
 #include "ekat/ekat_assert.hpp"
 #include "ekat/ekat_session.hpp"
-
-#include "pam_coupler.h"
+#include "ArrayIR.h"
 
 // for kokkos debuge only
 #if defined(DEBUG)
 #include "Cuda/Kokkos_Cuda_Instance.hpp"
 #endif
+
+// using arrayIR instead of carray from YAKL
+template<typename T, int N>
+struct IRType {
+  using type = typename ArrayIR::ArrayIR<T, N>;
+  using value = std::true_type;
+};
+
+template <typename T, int N>
+decltype(auto) MakeIRType(T * data, std::array<size_t,N> dimensions, int memory_type, char const* label="") {
+  return ArrayIR::ArrayIR<T, N>(data, dimensions, memory_type, label);
+};
 
 // scream session initialize/finalize
 void initialize_session (bool print_config = true) {
@@ -28,19 +39,29 @@ void finalize_session () {
 }
 
 // reshape an input array (nj, nk) to output array (nk, nj)
-template <typename Scalar>
-void reshape(const Scalar* sv, Scalar* dv, int nj, int nk) {
-  parallel_for( SimpleBounds<2>(nj, nk) , YAKL_LAMBDA (int j, int k) {
-    dv[k*nj+j] = sv[j*nk+k];
+template <typename Type>
+decltype(auto) reshape(const ArrayIR::ArrayIR<Type, 2>& sv) {
+  EKAT_ASSERT(sv.shape().size() == 2);
+  int nj = sv.extent(0);
+  int nk = sv.extent(1);
+  ArrayIR::ArrayIR<Type, 2> dv = MakeIRType<Type, 2>(sv.data(), {nk, nj}, sv.memory_type()); 
+  Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {nj, nk}), KOKKOS_LAMBDA(int j, int k) {
+    dv.data()[k*nj+j] = sv.data()[j*nk+k];
   });
+  return dv;
 }
 
 // reshape and inverse an input array (nj, nk) to output array (nk, nj)
-template <typename Scalar>
-void reshape_and_inverse(const Scalar* sv, Scalar* dv, int nj, int nk) {
-  parallel_for( SimpleBounds<2>(nj, nk) , YAKL_LAMBDA (int j, int k) {
-    dv[k*nj+j] = 1./sv[j*nk+k];
+template <typename Type>
+decltype(auto) reshape_and_inverse(const ArrayIR::ArrayIR<Type, 2>& sv) {
+  EKAT_ASSERT(sv.shape().size() == 2);
+  int nj = sv.extent(0);
+  int nk = sv.extent(1);
+  ArrayIR::ArrayIR<Type, 2> dv = MakeIRType<Type, 2>(sv.data(), {nk, nj}, sv.memory_type());
+  Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {nj, nk}), KOKKOS_LAMBDA(int j, int k) {
+    dv.data()[k*nj+j] = 1./sv.data()[j*nk+k];
   });
+  return dv;
 }
 
 // convert YAKL multidimensional array to Kokkos view on GPU
@@ -118,7 +139,7 @@ void view_to_array(const ViewT& view,
 {
   using PackT      = typename ViewT::value_type;
   using scalarType = typename ViewT::value_type::scalar;
-  using arrayType  = typename ArrayT::type;
+  using arrayType  = typename ArrayT::remove_cv_type;
 
   auto is_same_type = std::is_same<scalarType, arrayType>::value;
 
@@ -132,7 +153,7 @@ void view_to_array(const ViewT& view,
 #endif
   Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {npack, PackT::n}), KOKKOS_LAMBDA(int k, int s) {
       const size_t scalar_offset = k*PackT::n;
-      if (scalar_offset+s < size) array.myData[scalar_offset+s] = view(k)[s];
+      if (scalar_offset+s < size) array.data()[scalar_offset+s] = view(k)[s];
   });
 }
 
@@ -145,7 +166,7 @@ void view_to_array(const ViewT& view,
 {
   using PackT      = typename ViewT::value_type;
   using scalarType = typename ViewT::value_type::scalar;
-  using arrayType  = typename ArrayT::type;
+  using arrayType  = typename ArrayT::remove_cv_type;
  
   auto is_same_type = std::is_same<scalarType, arrayType>::value;
 
@@ -161,7 +182,7 @@ void view_to_array(const ViewT& view,
   Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<3>>({0, 0, 0}, {dim1_size, npack, pack_size}), KOKKOS_LAMBDA(int i, int k, int s) {
     const int num_scalars = k*pack_size;
     const int scalar_offset = i*dim2_size + num_scalars;
-    if (num_scalars+s<dim2_size)  array.myData[scalar_offset+s] = view(i,k)[s];
+    if (num_scalars+s<dim2_size)  array.data()[scalar_offset+s] = view(i,k)[s];
   });
 }
 
@@ -175,7 +196,7 @@ void view_to_array(const ViewT& view,
 {
   using PackT      = typename ViewT::value_type;
   using scalarType = typename ViewT::value_type::scalar;
-  using arrayType  = typename ArrayT::type;
+  using arrayType  = typename ArrayT::remove_cv_type;
 
   auto is_same_type = std::is_same<scalarType, arrayType>::value;
 
@@ -191,7 +212,7 @@ void view_to_array(const ViewT& view,
   Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<4>>({0, 0, 0, 0}, {dim1_size, dim2_size, npack, pack_size}), KOKKOS_LAMBDA(int i, int j, int k, int s) {
     const int num_scalars = k*pack_size;
     const int scalar_offset = (i*dim2_size+j)*dim3_size+num_scalars;
-    if (num_scalars+s<dim3_size)  array.myData[scalar_offset+s] = view(i,j,k)[s];
+    if (num_scalars+s<dim3_size)  array.data()[scalar_offset+s] = view(i,j,k)[s];
   });
 }
 

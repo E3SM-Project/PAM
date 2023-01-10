@@ -3,7 +3,7 @@
 
 #include "pam_coupler.h"
 
-#define P3_FORTRAN
+#define P3_CXX
 
 #ifdef P3_CXX
 #include "p3_main_cxx.h"
@@ -462,19 +462,63 @@ public:
     col_location_host      .deep_copy_to( col_location       );
 
 #elif defined(P3_CXX)
-    p3_main_cxx(qc.data() , nc.data() , qr.data() , nr.data() , theta.data() ,
-                qv.data() , dt , qi.data() , qm.data() , ni.data() , bm.data() ,
-                pressure.data() , dz.data() , nc_nuceat_tend.data() ,
-                nccn_prescribed.data() , ni_activated.data() , inv_qc_relvar.data() , it ,
-                precip_liq_surf.data() , precip_ice_surf.data() , its , ite , kts , kte ,
-                diag_eff_radius_qc.data() , diag_eff_radius_qi.data() , bulk_qi.data() ,
-                do_predict_nc, do_prescribed_CCN , dpres.data() , inv_exner.data() ,
-                qv2qi_depos_tend.data() , precip_total_tend.data() , nevapr.data() ,
-                qr_evap_tend.data() , precip_liq_flux.data() , precip_ice_flux.data() ,
-                cld_frac_r.data() , cld_frac_l.data() , cld_frac_i.data() ,
-                p3_tend_out.data() , mu_c.data() , lamc.data() , liq_ice_exchange.data() ,
-                vap_liq_exchange.data() , vap_ice_exchange.data() , qv_prev.data() ,
-                t_prev.data() , col_location.data() , &elapsed_s);
+    array2D qcir                 = MakeIRType<real, 2>(qc.data(), {nz, ncol}, qc.get_memory_space(), "qc");
+    array2D ncir                 = MakeIRType<real, 2>(nc.data(), {nz, ncol}, nc.get_memory_space(), "nc");
+    array2D qrir                 = MakeIRType<real, 2>(qr.data(), {nz, ncol}, qr.get_memory_space(), "qr");
+    array2D nrir                 = MakeIRType<real, 2>(nr.data(), {nz, ncol}, nr.get_memory_space(), "nr");
+    array2D qiir                 = MakeIRType<real, 2>(qi.data(), {nz, ncol}, qi.get_memory_space(), "qi");
+    array2D niir                 = MakeIRType<real, 2>(ni.data(), {nz, ncol}, ni.get_memory_space(), "ni");
+    array2D qmir                 = MakeIRType<real, 2>(qm.data(), {nz, ncol}, qm.get_memory_space(), "qm");
+    array2D bmir                 = MakeIRType<real, 2>(bm.data(), {nz, ncol}, bm.get_memory_space(), "bm");
+    array2D qvir                 = MakeIRType<real, 2>(qv.data(), {nz, ncol}, qv.get_memory_space(), "qv");
+    array2D dzir                 = MakeIRType<real, 2>(dz.data(), {nz, ncol}, dz.get_memory_space(), "dz");
+    array2D pressureir           = MakeIRType<real, 2>(pressure.data(), {nz, ncol}, pressure.get_memory_space(), "pressure");
+    array2D thetair              = MakeIRType<real, 2>(theta.data(),    {nz, ncol}, theta.get_memory_space(), "theta");
+    array2D exnerir              = MakeIRType<real, 2>(exner.data(),    {nz, ncol}, exner.get_memory_space(), "exner");
+    array2D inv_exnerir          = MakeIRType<real, 2>(inv_exner.data(),{nz, ncol}, inv_exner.get_memory_space(), "inv_exner");
+    array2D dpresir              = MakeIRType<real, 2>(dpres.data(),    {nz, ncol}, dpres.get_memory_space(), "dpres");
+    array2D nc_nuceat_tendir     = MakeIRType<real, 2>(nc_nuceat_tend.data(), {nz, ncol}, nc_nuceat_tend.get_memory_space(), "nc_nuceat_tend");
+    array2D nccn_prescribedir    = MakeIRType<real, 2>(nccn_prescribed.data(), {nz, ncol}, nccn_prescribed.get_memory_space(),  "nccn_prescribed");
+    array2D ni_activatedir       = MakeIRType<real, 2>(ni_activated.data(), {nz, ncol}, ni_activated.get_memory_space(), "ni_activated");
+    array2D cld_frac_iir         = MakeIRType<real, 2>(cld_frac_i.data(), {nz, ncol}, cld_frac_i.get_memory_space(), "cld_frac_i");
+    array2D cld_frac_lir         = MakeIRType<real, 2>(cld_frac_l.data(), {nz, ncol}, cld_frac_l.get_memory_space(), "cld_frac_l");
+    array2D cld_frac_rir         = MakeIRType<real, 2>(cld_frac_r.data(), {nz, ncol}, cld_frac_r.get_memory_space(), "cld_frac_r");
+    array2D inv_qc_relvarir      = MakeIRType<real, 2>(inv_qc_relvar.data(), {nz, ncol}, inv_qc_relvar.get_memory_space(), "inv_qc_relvar");
+    array2D col_locationir       = MakeIRType<real, 2>(col_location.data(), {3, ncol}, col_location.get_memory_space(),  "col_location");
+    array1D precip_liq_surfir    = MakeIRType<real, 1>(precip_liq_surf.data(), {ncol}, precip_liq_surf.get_memory_space(), "precip_liq_surf");
+    array1D precip_ice_surfir    = MakeIRType<real, 1>(precip_ice_surf.data(), {ncol}, precip_ice_surf.get_memory_space(),  "precip_ice_surf");
+    array2D diag_eff_radius_qcir = MakeIRType<real, 2>(diag_eff_radius_qc.data(), {nz, ncol}, diag_eff_radius_qc.get_memory_space(), "diag_eff_radius_qc");
+    array2D diag_eff_radius_qiir = MakeIRType<real, 2>(diag_eff_radius_qi.data(), {nz, ncol}, diag_eff_radius_qi.get_memory_space(),  "diag_eff_radius_qi");
+    array2D bulk_qiir            = MakeIRType<real, 2>(bulk_qi.data(), {nz, ncol}, bulk_qi.get_memory_space(),  "bulk_qi");
+    array2D mu_cir               = MakeIRType<real, 2>(mu_c.data(), {nz, ncol}, mu_c.get_memory_space(),  "mu_c");
+    array2D lamcir               = MakeIRType<real, 2>(lamc.data(), {nz, ncol}, lamc.get_memory_space(),  "lamc");
+    array2D qv2qi_depos_tendir   = MakeIRType<real, 2>(qv2qi_depos_tend.data(), {nz, ncol}, qv2qi_depos_tend.get_memory_space(), "qv2qi_depos_tend");
+    array2D precip_total_tendir  = MakeIRType<real, 2>(precip_total_tend.data(), {nz, ncol}, precip_total_tend.get_memory_space(),  "precip_total_tend");
+    array2D nevaprir             = MakeIRType<real, 2>(nevapr.data(), {nz, ncol}, nevapr.get_memory_space(),  "nevapr");
+    array2D qr_evap_tendir       = MakeIRType<real, 2>(qr_evap_tend.data(), {nz, ncol}, qr_evap_tend.get_memory_space(),  "qr_evap_tend");
+    array2D precip_liq_fluxir    = MakeIRType<real, 2>(precip_liq_flux.data(), {nz+1, ncol}, precip_liq_flux.get_memory_space(),  "precip_liq_flux");
+    array2D precip_ice_fluxir    = MakeIRType<real, 2>(precip_ice_flux.data(), {nz+1, ncol}, precip_ice_flux.get_memory_space(),  "precip_ice_flux");
+    array2D liq_ice_exchangeir   = MakeIRType<real, 2>(liq_ice_exchange.data(), {nz, ncol}, liq_ice_exchange.get_memory_space(), "liq_ice_exchange");
+    array2D vap_liq_exchangeir   = MakeIRType<real, 2>(vap_liq_exchange.data(), {nz, ncol}, vap_liq_exchange.get_memory_space(), "vap_liq_exchange");
+    array2D vap_ice_exchangeir   = MakeIRType<real, 2>(vap_ice_exchange.data(), {nz, ncol}, vap_ice_exchange.get_memory_space(), "vap_ice_exchange");
+    array3D p3_tend_outir        = MakeIRType<real, 3>(p3_tend_out.data(),      {p3_nout, nz, ncol}, p3_tend_out.get_memory_space(), "p3_tend_out");
+
+    array2D t_previr             = MakeIRType<real, 2>(t_prev.data(),    {nz, ncol}, t_prev.get_memory_space(), "t_prev");
+    array2D qv_previr            = MakeIRType<real, 2>(qv_prev.data(),   {nz, ncol}, qv_prev.get_memory_space(), "qv_prev");
+
+    p3_main_cxx(qcir, ncir, qrir, nrir, thetair,
+                qvir, dt, qiir, qmir, niir, bmir,
+                pressureir, dzir, nc_nuceat_tendir,
+                nccn_prescribedir, ni_activatedir, inv_qc_relvarir, it ,
+                precip_liq_surfir, precip_ice_surfir, its , ite , kts , kte ,
+                diag_eff_radius_qcir, diag_eff_radius_qiir, bulk_qiir,
+                do_predict_nc, do_prescribed_CCN, dpresir, inv_exnerir,
+                qv2qi_depos_tendir, precip_total_tendir, nevaprir,
+                qr_evap_tendir, precip_liq_fluxir, precip_ice_fluxir,
+                cld_frac_rir, cld_frac_lir, cld_frac_iir,
+                p3_tend_outir, mu_cir, lamcir, liq_ice_exchangeir,
+                vap_liq_exchangeir, vap_ice_exchangeir, qv_previr,
+                t_previr, col_locationir, &elapsed_s);
 #endif
                     
     ///////////////////////////////////////////////////////////////////////////////

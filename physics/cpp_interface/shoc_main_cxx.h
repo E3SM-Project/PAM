@@ -10,15 +10,19 @@
 using namespace scream;
 using namespace scream::shoc;
 
-void shoc_main_cxx(int &shcol, int &nlev, int &nlevi, double &dtime, int &nadv, double *host_dx, double *host_dy,
-                   double *thv, double *zt_grid, double *zi_grid, double *pres, double *presi, double *pdel,
-                   double *wthl_sfc, double *wqw_sfc, double *uw_sfc, double *vw_sfc, double *wtracer_sfc,
-                   int &num_qtracers, double *w_field, double *inv_exner, double *phis, double *host_dse, double *tke,
-                   double *thetal, double *qw, double *u_wind, double *v_wind, double *qtracers, double *wthv_sec,
-                   double *tkh, double *tk, double *shoc_ql, double *shoc_cldfrac, double *pblh, double *shoc_mix,
-                   double *isotropy, double *w_sec, double *thl_sec, double *qw_sec, double *qwthl_sec,
-                   double *wthl_sec, double *wqw_sec, double *wtke_sec, double *uw_sec, double *vw_sec, double *w3,
-                   double *wqls_sec, double *brunt, double *shoc_ql2 )
+using array1D = IRType<Real, 1>::type;
+using array2D = IRType<Real, 2>::type;
+using array3D = IRType<Real, 3>::type;
+
+void shoc_main_cxx(int &shcol, int &nlev, int &nlevi, double &dtime, int &nadv, array1D& host_dx, array1D& host_dy,
+                   array2D& thv, array2D& zt_grid, array2D& zi_grid, array2D& pres, array2D& presi, array2D& pdel,
+                   array1D& wthl_sfc, array1D& wqw_sfc, array1D& uw_sfc, array1D& vw_sfc, array2D& wtracer_sfc,
+                   int &num_qtracers, array2D& w_field, array2D& inv_exner, array1D& phis, array2D& host_dse, array2D& tke,
+                   array2D& thetal, array2D& qw, array2D& u_wind, array2D& v_wind, array3D& qtracers,array2D& wthv_sec,
+                   array2D& tkh, array2D& tk, array2D& shoc_ql, array2D& shoc_cldfrac, array1D& pblh, array2D& shoc_mix,
+                   array2D& isotropy, array2D& w_sec, array2D& thl_sec, array2D& qw_sec, array2D& qwthl_sec,
+                   array2D& wthl_sec, array2D& wqw_sec, array2D& wtke_sec, array2D& uw_sec, array2D& vw_sec, array2D& w3,
+                   array2D& wqls_sec, array2D& brunt, array2D& shoc_ql2 )
 
 {
   using SHOC       = shoc::Functions<Real, DefaultDevice>;
@@ -34,39 +38,6 @@ void shoc_main_cxx(int &shcol, int &nlev, int &nlevi, double &dtime, int &nadv, 
   const int npack  = ekat::npack<Spack>(nlev);
   const int nipack = ekat::npack<Spack>(nlevi);
 
-  real2d inv_exner_in("inv_exner", ncol, nlev);
-  real2d qw_in("qw", ncol, nlev); // total water (vapor + cloud liquid)
-  real2d shoc_ql_in("shoc_ql", ncol, nlev); // cloud liquid water
-  real2d thv_in("thv", ncol, nlev);
-  real2d zt_g_in("zt_g", ncol, nlev);
-  real2d zi_g_in("zi_g", ncol, nlevi);
-  real2d tke_in("tke", ncol, nlev);
-  real2d tk_in("tk", ncol, nlev);
-  real2d tkh_in("tkh", ncol, nlev);
-  real2d wthv_sec_in("wthv_sec", ncol, nlev);
-  real2d pres_in("pres", ncol, nlev);
-  real2d presi_in("presi", ncol, nlev);
-  real2d pdel_in("pdel", ncol, nlevi);
-  real2d host_dse_in("host_dse", ncol, nlev);
-  real2d shoc_dse_in("shoc_dse", ncol, nlev);
-  real2d shoc_cldfrac_in("shoc_cldfrac", ncol, nlev);
-  real2d thetal_in("thetal", ncol, nlev);
-  real2d w_field_in("w_field", ncol, nlev);
-  real2d wtracer_sfc_in("wtracer_sfc", ncol, num_qtracers);
-  real3d shoc_hwind_in("shoc_hwind", ncol, 2, nlev);
-  real3d qtracers_in("qtracer", ncol, num_qtracers, nlev);
-
-  Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {ncol, nlev}), KOKKOS_LAMBDA(int i, int k) {
-     const int offset = i*nlev+k;
-     shoc_hwind_in(i,0,k) = u_wind[offset];
-     shoc_hwind_in(i,1,k) = v_wind[offset];
-  });
-
-  Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<3>>({0, 0, 0}, {ncol, num_qtracers, nlev}), KOKKOS_LAMBDA(int i, int q, int k) {
-    const int offset = (i*nlev+k)*num_qtracers+q;
-    qtracers_in(i,q,k) = qtracers[offset];
-  });
-
   // -------------------------------------------------
   // Set surface geopotential and fluxes
   // -------------------------------------------------
@@ -79,24 +50,24 @@ void shoc_main_cxx(int &shcol, int &nlev, int &nlevi, double &dtime, int &nadv, 
           phis_1d("phis_1d", ncol);       // Host model surface geopotential height
 
   Kokkos::parallel_for("host grid", ncol, KOKKOS_LAMBDA (const int& i) {
-    host_dx_1d(i)  = host_dx[i];
-    host_dy_1d(i)  = host_dy[i];
-    wthl_sfc_1d(i) = wthl_sfc[i];
-    wqw_sfc_1d(i)  = wqw_sfc[i];
-    uw_sfc_1d(i)   = uw_sfc[i];
-    vw_sfc_1d(i)   = vw_sfc[i];
-    phis_1d(i)     = phis[i];
+    host_dx_1d(i)  = host_dx.data()[i];
+    host_dy_1d(i)  = host_dy.data()[i];
+    wthl_sfc_1d(i) = wthl_sfc.data()[i];
+    wqw_sfc_1d(i)  = wqw_sfc.data()[i];
+    uw_sfc_1d(i)   = uw_sfc.data()[i];
+    vw_sfc_1d(i)   = vw_sfc.data()[i];
+    phis_1d(i)     = phis.data()[i];
   });
 
-  reshape(zt_grid,     zt_g_in.data(),       ncol, nlev);
-  reshape(zi_grid,     zi_g_in.data(),       ncol, nlevi);
-  reshape(pres,        pres_in.data(),       ncol, nlev);
-  reshape(presi,       presi_in.data(),      ncol, nlevi);
-  reshape(pdel,        pdel_in.data(),       ncol, nlev);
-  reshape(inv_exner,   inv_exner_in.data(),  ncol, nlev);
-  reshape(thv,         thv_in.data(),        ncol, nlev);
-  reshape(w_field,     w_field_in.data(),    ncol, nlev);
-  reshape(wtracer_sfc, wtracer_sfc_in.data(),ncol, num_qtracers);
+  auto zt_g_in        = reshape(zt_grid);
+  auto zi_g_in        = reshape(zi_grid);
+  auto pres_in        = reshape(pres);
+  auto presi_in       = reshape(presi);
+  auto pdel_in        = reshape(pdel);
+  auto inv_exner_in   = reshape(inv_exner);
+  auto thv_in         = reshape(thv);
+  auto w_field_in     = reshape(w_field);
+  auto wtracer_sfc_in = reshape(wtracer_sfc);
 
   view_2d zt_grid_2d("zt_grid", ncol, npack),                 // heights, for thermo grid [m]
           zi_grid_2d("zi_grid", ncol, nipack),                // heights, for interface grid [m]
@@ -115,7 +86,7 @@ void shoc_main_cxx(int &shcol, int &nlev, int &nlevi, double &dtime, int &nadv, 
   array_to_view(pdel_in.data(),        ncol, nlev,  pdel_2d);
   array_to_view(inv_exner_in.data(),   ncol, nlev,  inv_exner_2d);
   array_to_view(thv_in.data(),         ncol, nlev,  thv_2d);
-  array_to_view(wtracer_sfc_in.data(), ncol, nlev,  wtracer_sfc_2d);
+  array_to_view(wtracer_sfc_in.data(), ncol, num_qtracers,  wtracer_sfc_2d);
   array_to_view(w_field_in.data(),     ncol, nlev,  w_field_2d);
 
   SHOC::SHOCInput shoc_input{host_dx_1d, host_dy_1d, zt_grid_2d, zi_grid_2d,
@@ -123,15 +94,15 @@ void shoc_main_cxx(int &shcol, int &nlev, int &nlevi, double &dtime, int &nadv, 
                             w_field_2d, wthl_sfc_1d, wqw_sfc_1d, uw_sfc_1d,
                             vw_sfc_1d, wtracer_sfc_2d, inv_exner_2d, phis_1d};
 
-  reshape(host_dse,     host_dse_in.data(),     ncol, nlev);
-  reshape(tke,          tke_in.data(),          ncol, nlev);
-  reshape(thetal,       thetal_in.data(),       ncol, nlev);
-  reshape(qw,           qw_in.data(),           ncol, nlev);
-  reshape(shoc_ql,      shoc_ql_in.data(),      ncol, nlev);
-  reshape(wthv_sec,     wthv_sec_in.data(),     ncol, nlev);
-  reshape(tk,           tk_in.data(),           ncol, nlev);
-  reshape(shoc_cldfrac, shoc_cldfrac_in.data(), ncol, nlev);
-  reshape(tkh,          tkh_in.data(),          ncol, nlev);
+  auto host_dse_in     = reshape(host_dse);
+  auto tke_in          = reshape(tke);
+  auto thetal_in       = reshape(thetal);
+  auto qw_in           = reshape(qw);
+  auto shoc_ql_in      = reshape(shoc_ql);
+  auto wthv_sec_in     = reshape(wthv_sec);
+  auto tk_in           = reshape(tk);
+  auto shoc_cldfrac_in = reshape(shoc_cldfrac);
+  auto tkh_in          = reshape(tkh);
 
   view_2d host_dse_2d("host_dse", ncol, npack);                 // dry static energy [J/kg] : dse = Cp*T + g*z + phis
   view_2d tke_2d("tke", ncol, npack);                           // turbulent kinetic energy [m2/s2]
@@ -145,7 +116,24 @@ void shoc_main_cxx(int &shcol, int &nlev, int &nlevi, double &dtime, int &nadv, 
   view_3d shoc_hwind_3d("shoc_hwind",ncol,2,npack);             // Cloud fraction [-]
   view_3d qtracers_3d("qtracers",ncol,num_qtracers,npack);       // cloud liquid mixing ratio [kg/kg]
 
-  array_to_view(shoc_dse_in.data(),     ncol, nlev, host_dse_2d);
+  Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<3>>({0, 0, 0}, {ncol, npack, Spack::n}), KOKKOS_LAMBDA(int icol, int ilev, int s) {
+    int k = ilev*Spack::n + s;
+    int offset = icol*nlev+k;
+    if (k < nlev) {
+     shoc_hwind_3d(icol,0,ilev)[s] = u_wind.data()[offset];
+     shoc_hwind_3d(icol,1,ilev)[s] = v_wind.data()[offset];
+    }
+  });
+
+  Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<4>>({0, 0, 0}, {ncol, num_qtracers, npack, Spack::n}), KOKKOS_LAMBDA(int icol, int q, int ilev, int s) {
+    int k = ilev*Spack::n + s;
+    const int offset = (icol*nlev+k)*num_qtracers+q;
+    if (k < nlev) {
+      qtracers_3d(icol,q,ilev)[s] = qtracers.data()[offset];
+    }
+  });
+
+  array_to_view(host_dse_in.data(),     ncol, nlev, host_dse_2d);
   array_to_view(tke_in.data(),          ncol, nlev, tke_2d);
   array_to_view(thetal_in.data(),       ncol, nlev, thetal_2d);
   array_to_view(qw_in.data(),           ncol, nlev, qw_2d);
@@ -155,8 +143,6 @@ void shoc_main_cxx(int &shcol, int &nlev, int &nlevi, double &dtime, int &nadv, 
   array_to_view(wthv_sec_in.data(),     ncol, nlev, wthv_sec_2d);
   array_to_view(shoc_cldfrac_in.data(), ncol, nlev, shoc_cldfrac_2d);
   array_to_view(shoc_ql_in.data(),      ncol, nlev, shoc_ql_2d);
-  array_to_view(shoc_hwind_in.data(),   ncol, 2, nlev, shoc_hwind_3d);
-  array_to_view(qtracers_in.data(),     ncol, num_qtracers, nlev, qtracers_3d);
 
   SHOC::SHOCInputOutput shoc_input_output{host_dse_2d, tke_2d, thetal_2d, qw_2d,
                                          shoc_hwind_3d, wthv_sec_2d, qtracers_3d,
@@ -193,30 +179,27 @@ void shoc_main_cxx(int &shcol, int &nlev, int &nlevi, double &dtime, int &nadv, 
   const auto elapsed_microsec = SHOC::shoc_main(shcol, nlev, nlevi, nlev, nadv, num_qtracers, dtime, workspace_mgr,
                                                 shoc_input, shoc_input_output, shoc_output, shoc_history_output);
 
-  // get SHOC output back to CRM 
-  view_to_array(shoc_input_output.tk,   ncol, nlev, tk_in);
-  //view_to_array(shoc_input_output.tkh,  ncol, nlev, tkh_in);
-  view_to_array(shoc_input_output.wthv_sec, ncol, nlev, wthv_sec_in);
-  // view_to_array(shoc_input_output.tke, ncol, nlev, tke);
-  view_to_array(shoc_input_output.shoc_cldfrac, ncol, nlev, shoc_cldfrac_in);
-  view_to_array(shoc_input_output.horiz_wind, ncol, 2, nlev, shoc_hwind_in);
-  view_to_array(shoc_input_output.host_dse, ncol, nlev, shoc_dse_in);
-  view_to_array(shoc_input_output.qtracers, ncol, num_qtracers, nlev, qtracers_in);
-
-  reshape(tk_in.data(),           tk,           ncol, nlev);
-  reshape(wthv_sec_in.data(),     wthv_sec,     ncol, nlev);
-  reshape(shoc_cldfrac_in.data(), shoc_cldfrac, ncol, nlev);
-  reshape(shoc_dse_in.data(),     host_dse,     ncol, nlev);
-
-  // update tracers and TKE
-  parallel_for( SimpleBounds<3>(ncol,num_qtracers,nlev) , YAKL_LAMBDA (int i, int q, int k) {
-    const int offset = (i*nlev+k)*num_qtracers+q;
-    qtracers[offset] = qtracers_in(i,q,k);
+  // update tk, tke, and other outputs
+  Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<3>>({0, 0, 0}, {ncol, npack, Spack::n}), KOKKOS_LAMBDA(int icol, int ilev, int s) {
+    int k = ilev*Spack::n + s;
+    int offset = icol*nlev+k;
+    if (k < nlev) {
+      tk.data()[offset]           = shoc_input_output.tk(icol,ilev)[s];
+      tke.data()[offset]          = shoc_input_output.tke(icol,ilev)[s];
+      wthv_sec.data()[offset]     = shoc_input_output.wthv_sec(icol,ilev)[s];
+      host_dse.data()[offset]     = shoc_input_output.host_dse(icol,ilev)[s];
+      shoc_cldfrac.data()[offset] = shoc_input_output.shoc_cldfrac(icol,ilev)[s];
+      u_wind.data()[offset]       = shoc_input_output.horiz_wind(icol,0,ilev)[s];
+      v_wind.data()[offset]       = shoc_input_output.horiz_wind(icol,1,ilev)[s];
+    }
   });
 
-  Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {ncol, nlev}), KOKKOS_LAMBDA(int i, int k) {
-     const int offset = i*nlev+k;
-     u_wind[offset] = shoc_hwind_in(i,0,k);
-     v_wind[offset] = shoc_hwind_in(i,1,k);
+  // update tracers
+  Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<4>>({0, 0, 0}, {ncol, num_qtracers, npack, Spack::n}), KOKKOS_LAMBDA(int icol, int q, int ilev, int s) {
+    int k = ilev*Spack::n + s;
+    const int offset = (icol*nlev+k)*num_qtracers+q;
+    if (k < nlev) {
+      qtracers.data()[offset] = shoc_input_output.qtracers(icol,q,ilev)[s];
+    }
   });
 }
