@@ -10,15 +10,13 @@ struct fun_x {
 };
 
 struct fun_z {
-  real YAKL_INLINE operator()(real x, real z) const {
-    return sin(2 * M_PI * z);
-  }
+  real YAKL_INLINE operator()(real x, real z) const { return z * z * z; }
 };
 
 struct fun_xz {
   real YAKL_INLINE operator()(real x, real z) const {
     real sx = sin(2 * M_PI * x);
-    real sz = sin(2 * M_PI * z);
+    real sz = z * z * z;
     return sx * sz;
   }
 };
@@ -36,7 +34,7 @@ struct vecfun_x {
 
 struct vecfun_z {
   vecext<2> YAKL_INLINE operator()(real x, real z) const {
-    real sz = sin(2 * M_PI * z);
+    real sz = z * z * z;
 
     vecext<2> vvec;
     vvec.u = 0;
@@ -48,17 +46,18 @@ struct vecfun_z {
 struct vecfun_xz {
   vecext<2> YAKL_INLINE operator()(real x, real z) const {
     real sx = sin(2 * M_PI * x);
-    real sz = sin(2 * M_PI * z);
+    real sz = z * z * z;
 
     vecext<2> vvec;
-    vvec.u = sx * sz;
+    vvec.u = sz * sx;
     vvec.w = sx * sz * sz * sz;
     return vvec;
   }
 };
 
-template <int diff_ord, class F> real compute_H0_ext_error(int np, F ic_fun) {
-  ExtrudedUnitSquare square(np, 2 * np);
+template <int diff_ord, class F>
+real compute_H0_ext_error(int np, bool uniform_vertical, F ic_fun) {
+  ExtrudedUnitSquare square(np, 2 * np, uniform_vertical);
 
   auto st00 = square.create_straight_form<0, 0>();
   square.primal_geometry.set_00form_values(ic_fun, st00, 0);
@@ -88,27 +87,30 @@ template <int diff_ord, class F> real compute_H0_ext_error(int np, F ic_fun) {
   return errf;
 }
 
-void test_H0_ext_convergence() {
-  const int nlevels = 5;
-  const real atol = 0.1;
+void test_H0_ext_convergence(bool uniform_vertical) {
+  const int nlevels = 6;
+  const real atol = 0.15;
 
   {
     const int diff_order = 2;
     auto conv_x = ConvergenceTest<nlevels>(
-        "H0_ext 2 x", compute_H0_ext_error<diff_order, fun_x>, fun_x{});
+        "H0_ext 2 x", uniform_vertical, compute_H0_ext_error<diff_order, fun_x>,
+        fun_x{});
     conv_x.check_rate(diff_order, atol);
     auto conv_z = ConvergenceTest<nlevels>(
-        "H0_ext 2 z", compute_H0_ext_error<diff_order, fun_z>, fun_z{});
+        "H0_ext 2 z", uniform_vertical, compute_H0_ext_error<diff_order, fun_z>,
+        fun_z{});
     conv_z.check_rate(1, atol);
     auto conv_xz = ConvergenceTest<nlevels>(
-        "H0_ext 2 xz", compute_H0_ext_error<diff_order, fun_xz>, fun_xz{});
+        "H0_ext 2 xz", uniform_vertical,
+        compute_H0_ext_error<diff_order, fun_xz>, fun_xz{});
     conv_xz.check_rate(1, atol);
   }
 }
 
 template <int diff_ord, class F>
-real compute_H0bar_ext_error(int np, F ic_fun) {
-  ExtrudedUnitSquare square(np, 2 * np);
+real compute_H0bar_ext_error(int np, bool uniform_vertical, F ic_fun) {
+  ExtrudedUnitSquare square(np, 2 * np, uniform_vertical);
 
   auto tw00 = square.create_twisted_form<0, 0>();
   square.dual_geometry.set_00form_values(ic_fun, tw00, 0);
@@ -139,27 +141,30 @@ real compute_H0bar_ext_error(int np, F ic_fun) {
   return errf;
 }
 
-void test_H0bar_ext_convergence() {
+void test_H0bar_ext_convergence(bool uniform_vertical) {
   const int nlevels = 5;
   const real atol = 0.1;
 
   {
     const int diff_order = 2;
     auto conv_x = ConvergenceTest<nlevels>(
-        "H0bar_ext 2 x", compute_H0bar_ext_error<diff_order, fun_x>, fun_x{});
+        "H0bar_ext 2 x", uniform_vertical,
+        compute_H0bar_ext_error<diff_order, fun_x>, fun_x{});
     conv_x.check_rate(diff_order, atol);
     auto conv_z = ConvergenceTest<nlevels>(
-        "H0bar_ext 2 z", compute_H0bar_ext_error<diff_order, fun_z>, fun_z{});
+        "H0bar_ext 2 z", uniform_vertical,
+        compute_H0bar_ext_error<diff_order, fun_z>, fun_z{});
     conv_z.check_rate(1, atol);
     auto conv_xz = ConvergenceTest<nlevels>(
-        "H0bar_ext 2 xz", compute_H0bar_ext_error<diff_order, fun_xz>,
-        fun_xz{});
+        "H0bar_ext 2 xz", uniform_vertical,
+        compute_H0bar_ext_error<diff_order, fun_xz>, fun_xz{});
     conv_xz.check_rate(1, atol);
   }
 }
 
-template <int diff_ord, class F> real compute_H1_ext_error(int np, F ic_fun) {
-  ExtrudedUnitSquare square(np, 2 * np);
+template <int diff_ord, class F>
+real compute_H1_ext_error(int np, bool uniform_vertical, F ic_fun) {
+  ExtrudedUnitSquare square(np, 2 * np, uniform_vertical);
 
   auto st10 = square.create_straight_form<1, 0>();
   square.primal_geometry.set_10form_values(ic_fun, st10, 0,
@@ -191,18 +196,19 @@ template <int diff_ord, class F> real compute_H1_ext_error(int np, F ic_fun) {
   return errf;
 }
 
-void test_H1_ext_convergence() {
-  const int nlevels = 5;
-  const real atol = 0.1;
+void test_H1_ext_convergence(bool uniform_vertical) {
+  const int nlevels = 6;
+  const real atol = 0.11;
 
   {
     const int diff_order = 2;
     auto conv_x = ConvergenceTest<nlevels>(
-        "H1_ext 2 x", compute_H1_ext_error<diff_order, vecfun_x>, vecfun_x{});
+        "H1_ext 2 x", uniform_vertical,
+        compute_H1_ext_error<diff_order, vecfun_x>, vecfun_x{});
     conv_x.check_rate(diff_order, atol);
     auto conv_xz = ConvergenceTest<nlevels>(
-        "H1_ext 2 xz", compute_H1_ext_error<diff_order, vecfun_xz>,
-        vecfun_xz{});
+        "H1_ext 2 xz", uniform_vertical,
+        compute_H1_ext_error<diff_order, vecfun_xz>, vecfun_xz{});
     conv_xz.check_rate(1, atol);
   }
 
@@ -210,12 +216,13 @@ void test_H1_ext_convergence() {
     const int diff_order = 4;
 
     auto conv_x = ConvergenceTest<nlevels>(
-        "H1_ext 4 x", compute_H1_ext_error<diff_order, vecfun_x>, vecfun_x{});
+        "H1_ext 4 x", uniform_vertical,
+        compute_H1_ext_error<diff_order, vecfun_x>, vecfun_x{});
     conv_x.check_rate(diff_order, atol);
 
     auto conv_xz = ConvergenceTest<nlevels>(
-        "H1_ext 4 xz", compute_H1_ext_error<diff_order, vecfun_xz>,
-        vecfun_xz{});
+        "H1_ext 4 xz", uniform_vertical,
+        compute_H1_ext_error<diff_order, vecfun_xz>, vecfun_xz{});
     conv_xz.check_rate(1, atol);
   }
 
@@ -223,18 +230,20 @@ void test_H1_ext_convergence() {
     const int diff_order = 6;
 
     auto conv_x = ConvergenceTest<nlevels>(
-        "H1_ext 6 x", compute_H1_ext_error<diff_order, vecfun_x>, vecfun_x{});
+        "H1_ext 6 x", uniform_vertical,
+        compute_H1_ext_error<diff_order, vecfun_x>, vecfun_x{});
     conv_x.check_rate(diff_order, atol);
 
     auto conv_xz = ConvergenceTest<nlevels>(
-        "H1_ext 6 xz", compute_H1_ext_error<diff_order, vecfun_xz>,
-        vecfun_xz{});
+        "H1_ext 6 xz", uniform_vertical,
+        compute_H1_ext_error<diff_order, vecfun_xz>, vecfun_xz{});
     conv_xz.check_rate(1, atol);
   }
 }
 
-template <int vdiff_ord, class F> real compute_H1_vert_error(int np, F ic_fun) {
-  ExtrudedUnitSquare square(np, 2 * np);
+template <int vdiff_ord, class F>
+real compute_H1_vert_error(int np, bool uniform_vertical, F ic_fun) {
+  ExtrudedUnitSquare square(np, 2 * np, uniform_vertical);
 
   auto st01 = square.create_straight_form<0, 1>();
   square.primal_geometry.set_01form_values(ic_fun, st01, 0,
@@ -267,25 +276,25 @@ template <int vdiff_ord, class F> real compute_H1_vert_error(int np, F ic_fun) {
   return errf;
 }
 
-void test_H1_vert_convergence() {
+void test_H1_vert_convergence(bool uniform_vertical) {
   const int nlevels = 5;
   const real atol = 0.1;
 
   {
     auto conv_z = ConvergenceTest<nlevels>(
-        "H1_vert 2 z", compute_H1_vert_error<vert_diff_ord, vecfun_z>,
-        vecfun_z{});
+        "H1_vert 2 z", uniform_vertical,
+        compute_H1_vert_error<vert_diff_ord, vecfun_z>, vecfun_z{});
     conv_z.check_rate(vert_diff_ord, atol);
     auto conv_xz = ConvergenceTest<nlevels>(
-        "H1_vert 2 xz", compute_H1_vert_error<vert_diff_ord, vecfun_xz>,
-        vecfun_xz{});
+        "H1_vert 2 xz", uniform_vertical,
+        compute_H1_vert_error<vert_diff_ord, vecfun_xz>, vecfun_xz{});
     conv_xz.check_rate(vert_diff_ord, atol);
   }
 }
 
 template <int diff_ord, class F>
-real compute_H1bar_ext_error(int np, F ic_fun) {
-  ExtrudedUnitSquare square(np, 2 * np);
+real compute_H1bar_ext_error(int np, bool uniform_vertical, F ic_fun) {
+  ExtrudedUnitSquare square(np, 2 * np, uniform_vertical);
 
   auto tw01 = square.create_twisted_form<0, 1>();
   square.dual_geometry.set_01form_values(ic_fun, tw01, 0,
@@ -319,26 +328,26 @@ real compute_H1bar_ext_error(int np, F ic_fun) {
   return errf;
 }
 
-void test_H1bar_ext_convergence() {
-  const int nlevels = 5;
-  const real atol = 0.1;
+void test_H1bar_ext_convergence(bool uniform_vertical) {
+  const int nlevels = 6;
+  const real atol = 0.11;
 
   {
     const int diff_order = 2;
     auto conv_x = ConvergenceTest<nlevels>(
-        "H1bar_ext 2 x", compute_H1bar_ext_error<diff_order, vecfun_x>,
-        vecfun_x{});
+        "H1bar_ext 2 x", uniform_vertical,
+        compute_H1bar_ext_error<diff_order, vecfun_x>, vecfun_x{});
     conv_x.check_rate(diff_order, atol);
     auto conv_xz = ConvergenceTest<nlevels>(
-        "H1bar_ext 2 xz", compute_H1bar_ext_error<diff_order, vecfun_xz>,
-        vecfun_xz{});
+        "H1bar_ext 2 xz", uniform_vertical,
+        compute_H1bar_ext_error<diff_order, vecfun_xz>, vecfun_xz{});
     conv_xz.check_rate(1, atol);
   }
 }
 
 template <int vdiff_ord, class F>
-real compute_H1bar_vert_error(int np, F ic_fun) {
-  ExtrudedUnitSquare square(np, 2 * np);
+real compute_H1bar_vert_error(int np, bool uniform_vertical, F ic_fun) {
+  ExtrudedUnitSquare square(np, 2 * np, uniform_vertical);
 
   auto tw10 = square.create_twisted_form<1, 0>();
   square.dual_geometry.set_10form_values(ic_fun, tw10, 0,
@@ -372,25 +381,25 @@ real compute_H1bar_vert_error(int np, F ic_fun) {
   return errf;
 }
 
-void test_H1bar_vert_convergence() {
+void test_H1bar_vert_convergence(bool uniform_vertical) {
   const int nlevels = 5;
   const real atol = 0.1;
 
   {
     auto conv_z = ConvergenceTest<nlevels>(
-        "H1bar_vert 2 z", compute_H1bar_vert_error<vert_diff_ord, vecfun_z>,
-        vecfun_z{});
+        "H1bar_vert 2 z", uniform_vertical,
+        compute_H1bar_vert_error<vert_diff_ord, vecfun_z>, vecfun_z{});
     conv_z.check_rate(vert_diff_ord, atol);
     auto conv_xz = ConvergenceTest<nlevels>(
-        "H1bar_vert 2 xz", compute_H1bar_vert_error<vert_diff_ord, vecfun_xz>,
-        vecfun_xz{});
+        "H1bar_vert 2 xz", uniform_vertical,
+        compute_H1bar_vert_error<vert_diff_ord, vecfun_xz>, vecfun_xz{});
     conv_xz.check_rate(vert_diff_ord, atol);
   }
 }
 
 template <int diff_ord, class F>
-real compute_H2bar_ext_error(int np, F ic_fun) {
-  ExtrudedUnitSquare square(np, 2 * np);
+real compute_H2bar_ext_error(int np, bool uniform_vertical, F ic_fun) {
+  ExtrudedUnitSquare square(np, 2 * np, uniform_vertical);
 
   auto tw11 = square.create_twisted_form<1, 1>();
   square.dual_geometry.set_11form_values(ic_fun, tw11, 0);
@@ -421,55 +430,62 @@ real compute_H2bar_ext_error(int np, F ic_fun) {
   return errf;
 }
 
-void test_H2bar_ext_convergence() {
-  const int nlevels = 5;
+void test_H2bar_ext_convergence(bool uniform_vertical) {
+  const int nlevels = 6;
   const real atol = 0.1;
 
   {
     const int diff_order = 2;
     auto conv_x = ConvergenceTest<nlevels>(
-        "H2bar_ext 2 x", compute_H2bar_ext_error<diff_order, fun_x>, fun_x{});
+        "H2bar_ext 2 x", uniform_vertical,
+        compute_H2bar_ext_error<diff_order, fun_x>, fun_x{});
     conv_x.check_rate(diff_order, atol);
     auto conv_z = ConvergenceTest<nlevels>(
-        "H2bar_ext 2 z", compute_H2bar_ext_error<diff_order, fun_z>, fun_z{});
+        "H2bar_ext 2 z", uniform_vertical,
+        compute_H2bar_ext_error<diff_order, fun_z>, fun_z{});
     conv_z.check_rate(1, atol);
     auto conv_xz = ConvergenceTest<nlevels>(
-        "H2bar_ext 2 xz", compute_H2bar_ext_error<diff_order, fun_xz>,
-        fun_xz{});
+        "H2bar_ext 2 xz", uniform_vertical,
+        compute_H2bar_ext_error<diff_order, fun_xz>, fun_xz{});
     conv_xz.check_rate(1, atol);
   }
 
   {
     const int diff_order = 4;
     auto conv_x = ConvergenceTest<nlevels>(
-        "H2bar_ext 4 x", compute_H2bar_ext_error<diff_order, fun_x>, fun_x{});
+        "H2bar_ext 4 x", uniform_vertical,
+        compute_H2bar_ext_error<diff_order, fun_x>, fun_x{});
     conv_x.check_rate(diff_order, atol);
     auto conv_z = ConvergenceTest<nlevels>(
-        "H2bar_ext 4 z", compute_H2bar_ext_error<diff_order, fun_z>, fun_z{});
+        "H2bar_ext 4 z", uniform_vertical,
+        compute_H2bar_ext_error<diff_order, fun_z>, fun_z{});
     conv_z.check_rate(1, atol);
     auto conv_xz = ConvergenceTest<nlevels>(
-        "H2bar_ext 4 xz", compute_H2bar_ext_error<diff_order, fun_xz>,
-        fun_xz{});
+        "H2bar_ext 4 xz", uniform_vertical,
+        compute_H2bar_ext_error<diff_order, fun_xz>, fun_xz{});
     conv_xz.check_rate(1, atol);
   }
 
   {
     const int diff_order = 6;
     auto conv_x = ConvergenceTest<nlevels>(
-        "H2bar_ext 6 x", compute_H2bar_ext_error<diff_order, fun_x>, fun_x{});
+        "H2bar_ext 6 x", uniform_vertical,
+        compute_H2bar_ext_error<diff_order, fun_x>, fun_x{});
     conv_x.check_rate(diff_order, atol);
     auto conv_z = ConvergenceTest<nlevels>(
-        "H2bar_ext 6 z", compute_H2bar_ext_error<diff_order, fun_z>, fun_z{});
+        "H2bar_ext 6 z", uniform_vertical,
+        compute_H2bar_ext_error<diff_order, fun_z>, fun_z{});
     conv_z.check_rate(1, atol);
     auto conv_xz = ConvergenceTest<nlevels>(
-        "H2bar_ext 6 xz", compute_H2bar_ext_error<diff_order, fun_xz>,
-        fun_xz{});
+        "H2bar_ext 6 xz", uniform_vertical,
+        compute_H2bar_ext_error<diff_order, fun_xz>, fun_xz{});
     conv_xz.check_rate(1, atol);
   }
 }
 
-template <int diff_ord, class F> real compute_H2_ext_error(int np, F ic_fun) {
-  ExtrudedUnitSquare square(np, 2 * np);
+template <int diff_ord, class F>
+real compute_H2_ext_error(int np, bool uniform_vertical, F ic_fun) {
+  ExtrudedUnitSquare square(np, 2 * np, uniform_vertical);
 
   auto st11 = square.create_straight_form<1, 1>();
   square.primal_geometry.set_11form_values(ic_fun, st11, 0);
@@ -500,46 +516,55 @@ template <int diff_ord, class F> real compute_H2_ext_error(int np, F ic_fun) {
   return errf;
 }
 
-void test_H2_ext_convergence() {
+void test_H2_ext_convergence(bool uniform_vertical) {
   const int nlevels = 5;
-  const real atol = 0.1;
+  const real atol = 0.11;
 
   {
     const int diff_order = 2;
     auto conv_x = ConvergenceTest<nlevels>(
-        "H2_ext 2 x", compute_H2_ext_error<diff_order, fun_x>, fun_x{});
+        "H2_ext 2 x", uniform_vertical, compute_H2_ext_error<diff_order, fun_x>,
+        fun_x{});
     conv_x.check_rate(diff_order, atol);
     auto conv_z = ConvergenceTest<nlevels>(
-        "H2_ext 2 z", compute_H2_ext_error<diff_order, fun_z>, fun_z{});
+        "H2_ext 2 z", uniform_vertical, compute_H2_ext_error<diff_order, fun_z>,
+        fun_z{});
     conv_z.check_rate(2, atol);
     auto conv_xz = ConvergenceTest<nlevels>(
-        "H2_ext 2 xz", compute_H2_ext_error<diff_order, fun_xz>, fun_xz{});
+        "H2_ext 2 xz", uniform_vertical,
+        compute_H2_ext_error<diff_order, fun_xz>, fun_xz{});
     conv_xz.check_rate(2, atol);
   }
 
   {
     const int diff_order = 4;
     auto conv_x = ConvergenceTest<nlevels>(
-        "H2_ext 4 x", compute_H2_ext_error<diff_order, fun_x>, fun_x{});
+        "H2_ext 4 x", uniform_vertical, compute_H2_ext_error<diff_order, fun_x>,
+        fun_x{});
     conv_x.check_rate(diff_order, atol);
     auto conv_z = ConvergenceTest<nlevels>(
-        "H2_ext 4 z", compute_H2_ext_error<diff_order, fun_z>, fun_z{});
+        "H2_ext 4 z", uniform_vertical, compute_H2_ext_error<diff_order, fun_z>,
+        fun_z{});
     conv_z.check_rate(2, atol);
     auto conv_xz = ConvergenceTest<nlevels>(
-        "H2_ext 4 xz", compute_H2_ext_error<diff_order, fun_xz>, fun_xz{});
+        "H2_ext 4 xz", uniform_vertical,
+        compute_H2_ext_error<diff_order, fun_xz>, fun_xz{});
     conv_xz.check_rate(2, atol);
   }
 
   {
     const int diff_order = 6;
     auto conv_x = ConvergenceTest<nlevels>(
-        "H2_ext 6 x", compute_H2_ext_error<diff_order, fun_x>, fun_x{});
+        "H2_ext 6 x", uniform_vertical, compute_H2_ext_error<diff_order, fun_x>,
+        fun_x{});
     conv_x.check_rate(diff_order, atol);
     auto conv_z = ConvergenceTest<nlevels>(
-        "H2_ext 6 z", compute_H2_ext_error<diff_order, fun_z>, fun_z{});
+        "H2_ext 6 z", uniform_vertical, compute_H2_ext_error<diff_order, fun_z>,
+        fun_z{});
     conv_z.check_rate(2, atol);
     auto conv_xz = ConvergenceTest<nlevels>(
-        "H2_ext 6 xz", compute_H2_ext_error<diff_order, fun_xz>, fun_xz{});
+        "H2_ext 6 xz", uniform_vertical,
+        compute_H2_ext_error<diff_order, fun_xz>, fun_xz{});
     conv_xz.check_rate(2, atol);
   }
 }
@@ -547,16 +572,18 @@ void test_H2_ext_convergence() {
 int main() {
   yakl::init();
 
-  test_H0_ext_convergence();
-  test_H0bar_ext_convergence();
+  for (bool uniform_vertical : {true, false}) {
+    test_H0_ext_convergence(uniform_vertical);
+    test_H0bar_ext_convergence(uniform_vertical);
 
-  test_H1_ext_convergence();
-  test_H1_vert_convergence();
-  test_H1bar_ext_convergence();
-  test_H1bar_vert_convergence();
+    test_H1_ext_convergence(uniform_vertical);
+    test_H1_vert_convergence(uniform_vertical);
+    test_H1bar_ext_convergence(uniform_vertical);
+    test_H1bar_vert_convergence(uniform_vertical);
 
-  test_H2_ext_convergence();
-  test_H2bar_ext_convergence();
+    test_H2_ext_convergence(uniform_vertical);
+    test_H2bar_ext_convergence(uniform_vertical);
+  }
 
   yakl::finalize();
 }

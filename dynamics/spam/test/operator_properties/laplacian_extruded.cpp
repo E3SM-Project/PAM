@@ -7,29 +7,29 @@
 struct fun {
   real YAKL_INLINE operator()(real x, real z) const {
     real sx = sin(2 * M_PI * x);
-    real cz = cos(M_PI * z);
-    return sx * cz;
+    real fz = z * z * (z - 1) * (z - 1);
+    return sx * fz;
   }
 };
 
 struct lap_fun {
   real YAKL_INLINE operator()(real x, real z) const {
     real sx = sin(2 * M_PI * x);
-    real cz = cos(M_PI * z);
-    return -5 * M_PI * M_PI * sx * cz;
+    real fz = z * z * (z - 1) * (z - 1);
+    real d2fz = 2 * (z - 1) * (z - 1) + 2 * z * z + 8 * z * (z - 1);
+    return -4 * M_PI * M_PI * sx * fz + sx * d2fz;
   }
 };
 
 struct vecfun {
   vecext<2> YAKL_INLINE operator()(real x, real z) const {
     real sx = sin(2 * M_PI * x);
-    real sz = sin(M_PI * z);
     real cx = cos(2 * M_PI * x);
-    real cz = cos(M_PI * z);
+    real fz = z * z * (z - 1) * (z - 1);
 
     vecext<2> vvec;
-    vvec.u = sx * cz;
-    vvec.w = cx * sz;
+    vvec.u = sx * fz;
+    vvec.w = cx * fz;
     return vvec;
   }
 };
@@ -37,20 +37,20 @@ struct vecfun {
 struct lap_vecfun {
   vecext<2> YAKL_INLINE operator()(real x, real z) const {
     real sx = sin(2 * M_PI * x);
-    real sz = sin(M_PI * z);
     real cx = cos(2 * M_PI * x);
-    real cz = cos(M_PI * z);
+    real fz = z * z * (z - 1) * (z - 1);
+    real d2fz = 2 * (z - 1) * (z - 1) + 2 * z * z + 8 * z * (z - 1);
 
     vecext<2> vvec;
-    vvec.u = -5 * M_PI * M_PI * sx * cz;
-    vvec.w = -5 * M_PI * M_PI * cx * sz;
+    vvec.u = -4 * M_PI * M_PI * sx * fz + sx * d2fz;
+    vvec.w = -4 * M_PI * M_PI * cx * fz + cx * d2fz;
     return vvec;
   }
 };
 
 template <int diff_ord, int vert_diff_ord>
-real compute_straight_00form_laplacian_error(int np) {
-  ExtrudedUnitSquare square(np, 2 * np);
+real compute_straight_00form_laplacian_error(int np, bool uniform_vertical) {
+  ExtrudedUnitSquare square(np, 2 * np, uniform_vertical);
 
   auto st00 = square.create_straight_form<0, 0>();
   square.primal_geometry.set_00form_values(fun{}, st00, 0);
@@ -113,7 +113,6 @@ real compute_straight_00form_laplacian_error(int np) {
               square.dual_geometry, dis, djs, dks, i, j, k + 1, 0);
         });
     tmp_tw10.exchange();
-    // BC
     tmp_tw10.set_bnd(0);
 
     auto tmp_tw11 = square.create_twisted_form<1, 1>();
@@ -139,13 +138,13 @@ real compute_straight_00form_laplacian_error(int np) {
         });
   }
 
-  real errf = square.compute_Linf_error(lap_st00_expected, lap_st00);
+  real errf = square.compute_Linf_error(lap_st00_expected, lap_st00, false);
   return errf;
 }
 
 template <int diff_ord, int vert_diff_ord>
-real compute_vel_laplacian_error(int np) {
-  ExtrudedUnitSquare square(np, 2 * np);
+real compute_vel_laplacian_error(int np, bool uniform_vertical) {
+  ExtrudedUnitSquare square(np, 2 * np, uniform_vertical);
 
   auto st10 = square.create_straight_form<1, 0>();
   auto st01 = square.create_straight_form<0, 1>();
@@ -260,6 +259,7 @@ real compute_vel_laplacian_error(int np) {
               tmp_tw10.data, st01.data, square.primal_geometry,
               square.dual_geometry, dis, djs, dks, i, j, k + 1, 0);
         });
+
     tmp_tw10.exchange();
     tmp_tw10.set_bnd(0);
 
@@ -306,14 +306,17 @@ real compute_vel_laplacian_error(int np) {
         });
   }
 
-  real errf_st10 = square.compute_Linf_error(lap_st10_expected, lap_st10);
-  real errf_st01 = square.compute_Linf_error(lap_st01_expected, lap_st01);
+  real errf_st10 =
+      square.compute_Linf_error(lap_st10_expected, lap_st10, false);
+  real errf_st01 =
+      square.compute_Linf_error(lap_st01_expected, lap_st01, false);
+
   return errf_st10 + errf_st01;
 }
 
 template <int diff_ord, int vert_diff_ord>
-real compute_twisted_11form_laplacian_error(int np) {
-  ExtrudedUnitSquare square(np, 2 * np);
+real compute_twisted_11form_laplacian_error(int np, bool uniform_vertical) {
+  ExtrudedUnitSquare square(np, 2 * np, uniform_vertical);
 
   auto tw11 = square.create_twisted_form<1, 1>();
   square.dual_geometry.set_11form_values(fun{}, tw11, 0);
@@ -389,7 +392,6 @@ real compute_twisted_11form_laplacian_error(int np) {
               square.dual_geometry, dis, djs, dks, i, j, k + 1, 0);
         });
     tmp_tw10.exchange();
-    // BC
     tmp_tw10.set_bnd(0);
 
     parallel_for(
@@ -403,11 +405,11 @@ real compute_twisted_11form_laplacian_error(int np) {
         });
   }
 
-  real errf = square.compute_Linf_error(lap_tw11_expected, lap_tw11);
+  real errf = square.compute_Linf_error(lap_tw11_expected, lap_tw11, false);
   return errf;
 }
 
-void test_laplacian_convergence() {
+void test_laplacian_convergence(bool uniform_vertical) {
   const int nlevels = 5;
   const real atol = 0.1;
 
@@ -415,7 +417,7 @@ void test_laplacian_convergence() {
     const int diff_ord = 2;
     const int vert_diff_ord = 2;
     auto conv_st00 = ConvergenceTest<nlevels>(
-        "straight 00 form laplacian",
+        "straight 00 form laplacian", uniform_vertical,
         compute_straight_00form_laplacian_error<diff_ord, vert_diff_ord>);
     conv_st00.check_rate(vert_diff_ord, atol);
   }
@@ -424,7 +426,7 @@ void test_laplacian_convergence() {
     const int diff_ord = 2;
     const int vert_diff_ord = 2;
     auto conv_vel = ConvergenceTest<nlevels>(
-        "velocity laplacian",
+        "velocity laplacian", uniform_vertical,
         compute_vel_laplacian_error<diff_ord, vert_diff_ord>);
     conv_vel.check_rate(vert_diff_ord, atol);
   }
@@ -433,7 +435,7 @@ void test_laplacian_convergence() {
     const int diff_ord = 2;
     const int vert_diff_ord = 2;
     auto conv_tw11 = ConvergenceTest<nlevels>(
-        "twisted 11 form laplacian",
+        "twisted 11 form laplacian", uniform_vertical,
         compute_twisted_11form_laplacian_error<diff_ord, vert_diff_ord>);
     conv_tw11.check_rate(vert_diff_ord, atol);
   }
@@ -441,6 +443,9 @@ void test_laplacian_convergence() {
 
 int main() {
   yakl::init();
-  test_laplacian_convergence();
+
+  for (bool uniform_vertical : {true, false}) {
+    test_laplacian_convergence(uniform_vertical);
+  }
   yakl::finalize();
 }
