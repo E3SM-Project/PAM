@@ -36,6 +36,13 @@ elseif ("${PAM_SGS}" STREQUAL "none")
   add_subdirectory(sgs/none ./sgs)
 endif()
 
-target_link_libraries(physics INTERFACE micro sgs)
+#Choose radiation
+if     ("${PAM_RAD}" STREQUAL "forced")
+  add_subdirectory(radiation/forced ./radiation)
+elseif ("${PAM_RAD}" STREQUAL "none")
+  add_subdirectory(radiation/none ./radiation)
+endif()
+
+target_link_libraries(physics INTERFACE micro sgs radiation)
 target_link_libraries(physics INTERFACE yaml-cpp)
 
