@@ -109,20 +109,31 @@ public:
     dm.register_and_allocate<real>( "cldfrac"  , "Cloud fraction [-]"                   , {nz,ny,nx,nens} , {"z","y","x","nens"} );
     dm.register_and_allocate<real>( "relvar"   , "Relative cloud water variance"        , {nz,ny,nx,nens} , {"z","y","x","nens"} );
 
-    auto tke      = dm.get<real,4>( "tke"      );
-    auto wthv_sec = dm.get<real,4>( "wthv_sec" );
-    auto tk       = dm.get<real,4>( "tk"       );
-    auto tkh      = dm.get<real,4>( "tkh"      );
-    auto cldfrac  = dm.get<real,4>( "cldfrac"  );
-    auto relvar   = dm.get<real,4>( "relvar"   );
+    // Store surface momentum fluxes in data manager to facilitate internal surface calculations
+    dm.register_and_allocate<real>( "sfc_mom_flx_u", "Surface flux of U-momentum"       , {ny,nx,nens} , {"y","x","nens"} );
+    dm.register_and_allocate<real>( "sfc_mom_flx_v", "Surface flux of V-momentum"       , {ny,nx,nens} , {"y","x","nens"} );
+
+    auto tke           = dm.get<real,4>( "tke"           );
+    auto wthv_sec      = dm.get<real,4>( "wthv_sec"      );
+    auto tk            = dm.get<real,4>( "tk"            );
+    auto tkh           = dm.get<real,4>( "tkh"           );
+    auto cldfrac       = dm.get<real,4>( "cldfrac"       );
+    auto relvar        = dm.get<real,4>( "relvar"        );
+    auto sfc_mom_flx_u = dm.get<real,3>( "sfc_mom_flx_u" );
+    auto sfc_mom_flx_v = dm.get<real,3>( "sfc_mom_flx_v" );
 
     parallel_for( "sgs zero" , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      tke     (k,j,i,iens) = 0;
-      wthv_sec(k,j,i,iens) = 0;
-      tk      (k,j,i,iens) = 0;
-      tkh     (k,j,i,iens) = 0;
-      cldfrac (k,j,i,iens) = 0;
-      relvar  (k,j,i,iens) = 0;
+      tke          (k,j,i,iens) = 0;
+      wthv_sec     (k,j,i,iens) = 0;
+      tk           (k,j,i,iens) = 0;
+      tkh          (k,j,i,iens) = 0;
+      cldfrac      (k,j,i,iens) = 0;
+      relvar       (k,j,i,iens) = 0;
+    });
+
+    parallel_for( "surface momentum flux zero" , SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int iens) {
+      sfc_mom_flx_u(j,i,iens)   = 0;
+      sfc_mom_flx_v(j,i,iens)   = 0;
     });
 
     coupler.set_option<std::string>("sgs","shoc");
@@ -198,12 +209,14 @@ public:
     #endif
 
     // Get saved SHOC-related variables
-    auto tke      = dm.get_lev_col<real>( "tke"      ); // PAM Tracer                 ; don't compute
-    auto wthv_sec = dm.get_lev_col<real>( "wthv_sec" ); // Reuse from last SHOC output; don't compute
-    auto tk       = dm.get_lev_col<real>( "tk"       ); // Reuse from last SHOC output; don't compute
-    auto tkh      = dm.get_lev_col<real>( "tkh"      ); // Reuse from last SHOC output; don't compute
-    auto cldfrac  = dm.get_lev_col<real>( "cldfrac"  ); // Reuse from last SHOC output; don't compute
-    auto relvar   = dm.get_lev_col<real>( "relvar"   ); // Computed on output for P3
+    auto tke          = dm.get_lev_col<real>( "tke"     ); // PAM Tracer                 ; don't compute
+    auto wthv_sec     = dm.get_lev_col<real>( "wthv_sec"); // Reuse from last SHOC output; don't compute
+    auto tk           = dm.get_lev_col<real>( "tk"      ); // Reuse from last SHOC output; don't compute
+    auto tkh          = dm.get_lev_col<real>( "tkh"     ); // Reuse from last SHOC output; don't compute
+    auto cldfrac      = dm.get_lev_col<real>( "cldfrac" ); // Reuse from last SHOC output; don't compute
+    auto relvar       = dm.get_lev_col<real>( "relvar"  ); // Computed on output for P3
+    auto sfc_mom_flx_u = dm.get_collapsed<real>( "sfc_mom_flx_u" ); // surface momentum flux - either zero or computed by surface_friction.h
+    auto sfc_mom_flx_v = dm.get_collapsed<real>( "sfc_mom_flx_v" ); // surface momentum flux - either zero or computed by surface_friction.h
     // Get coupler state
     auto rho_d        = dm.get_lev_col<real>( "density_dry"  );
     auto uvel         = dm.get_lev_col<real>( "uvel"         );
@@ -307,8 +320,8 @@ public:
         shoc_host_dy    (i) = crm_dy;
         shoc_wthl_sfc   (i) = 0;
         shoc_wqw_sfc    (i) = 0;
-        shoc_uw_sfc     (i) = 0;
-        shoc_vw_sfc     (i) = 0;
+        shoc_uw_sfc     (i) = sfc_mom_flx_u(i);
+        shoc_vw_sfc     (i) = sfc_mom_flx_v(i);
         shoc_phis       (i) = zint(0,i) * grav;
         for (int tr = 0; tr < num_qtracers; tr++) {
           shoc_wtracer_sfc(tr,i) = 0;
@@ -329,6 +342,7 @@ public:
         // https://glossary.ametsoc.org/wiki/Liquid_water_potential_temperature
         // According to update_host_dse, the simplified version is used here
         real theta_l = theta - (latvap/cp_d) * ql;
+
         // dry static energy = Cp*T + g*z + phis
         real dse     = cp_d * t + grav * z;
         shoc_ql       (k_shoc,i) = ql;
