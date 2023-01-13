@@ -53,7 +53,7 @@ namespace modules {
   }
 
 
-  inline void surface_friction_init( pam::PamCoupler &coupler, real1d &tau_in, real1d &bflx_in ) {
+  inline void surface_friction_init( pam::PamCoupler &coupler, realConst1d &tau_in, realConst1d &bflx_in ) {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
     using yakl::atomicAdd;
