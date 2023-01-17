@@ -17,12 +17,13 @@ struct ModelParameters : public Parameters {
   std::string tracerdataStr[ntracers_dycore];
   bool dycore_tracerpos[ntracers_dycore];
   // bool acoustic_balance;
+  bool uniform_vertical;
+  real2d zint;
 };
 
 #include "exchange.h"
 #include "fields.h"
 #include "geometry.h"
-#include "model.h"
 #include "params.h"
 #include "topology.h"
 
@@ -59,7 +60,7 @@ struct ExtrudedUnitSquare {
   Geometry<Straight> primal_geometry;
   Geometry<Twisted> dual_geometry;
 
-  ExtrudedUnitSquare(int nx, int nz) {
+  ExtrudedUnitSquare(int nx, int nz, bool uniform_vertical) {
     ModelParameters params;
 
     // int ny = 1;
@@ -69,7 +70,25 @@ struct ExtrudedUnitSquare {
     params.xc = 0;
     params.nz_dual = nz;
     params.zlen = 1;
-    params.zc = 0.5;
+    params.uniform_vertical = uniform_vertical;
+
+    params.zint = real2d("zint", nz + 1, 1);
+    const real dz = 1.0 / (nz - 1);
+    parallel_for(
+        "compute zint", nz + 1, YAKL_LAMBDA(int k) {
+          if (k == 0) {
+            params.zint(k, 0) = 0;
+          } else if (k == nz) {
+            params.zint(k, 0) = 1;
+          } else {
+            params.zint(k, 0) = k * dz - dz / 2;
+          }
+          if (!uniform_vertical) {
+            real z = params.zint(k, 0);
+            params.zint(k, 0) = (-std::tanh(-0.5) + std::tanh((z - 0.5_fp))) /
+                                (2 * std::tanh(0.5_fp));
+          }
+        });
 
     Parallel par = parallel_stub(nx, nz);
 
@@ -105,17 +124,6 @@ struct ExtrudedUnitSquare {
     int js = error.topology.js;
     int ks = error.topology.ks;
 
-    real scale = 1;
-    real dx = primal_geometry.dx;
-    real dz = primal_geometry.dz;
-
-    if (f1.basedof == 1) {
-      scale *= dx;
-    }
-    if (f1.extdof == 1) {
-      scale *= dz;
-    }
-
     error.set(0);
 
     int nz, koff;
@@ -126,14 +134,28 @@ struct ExtrudedUnitSquare {
       nz = error._nz - 2;
       koff = 1;
     }
+
     parallel_for(
         SimpleBounds<4>(error.total_dofs, nz, error.topology.n_cells_y,
                         error.topology.n_cells_x),
         YAKL_LAMBDA(int l, int k, int j, int i) {
+          real scale = 1;
+          real dx = primal_geometry.dx;
+
+          real dz = f1.topology.primal ? primal_geometry.dz(ks + ks + koff, 0)
+                                       : dual_geometry.dz(ks + ks + koff, 0);
+
+          if (f1.basedof == 1) {
+            scale *= dx;
+          }
+          if (f1.extdof == 1) {
+            scale *= dz;
+          }
           error.data(l, ks + k + koff, js + j, is + i, 0) =
               (abs(f1.data(l, ks + k + koff, js + j, is + i, 0) -
-                   f2.data(l, ks + k + koff, js + j, is + i, 0))) /
-              scale;
+                   f2.data(l, ks + k + koff, js + j, is + i, 0)));
+
+          error.data(l, ks + k + koff, js + j, is + i, 0) /= scale;
         });
 
     return yakl::intrinsics::maxval(error.data);
@@ -146,11 +168,12 @@ template <int nlevels> struct ConvergenceTest {
   std::array<real, nlevels - 1> rates;
 
   template <typename F1, typename F2>
-  ConvergenceTest(const std::string &name, F1 error_fun, F2 ic_fun)
+  ConvergenceTest(const std::string &name, bool uniform_vertical, F1 error_fun,
+                  F2 ic_fun)
       : name(name) {
     for (int l = 0; l < nlevels; ++l) {
       int np = 8 * std::pow(2, l - 1);
-      errs[l] = error_fun(np, ic_fun);
+      errs[l] = error_fun(np, uniform_vertical, ic_fun);
     }
 
     for (int l = 0; l < nlevels; ++l) {
@@ -161,10 +184,11 @@ template <int nlevels> struct ConvergenceTest {
   }
 
   template <typename F1>
-  ConvergenceTest(const std::string &name, F1 error_fun) : name(name) {
+  ConvergenceTest(const std::string &name, bool uniform_vertical, F1 error_fun)
+      : name(name) {
     for (int l = 0; l < nlevels; ++l) {
       int np = 8 * std::pow(2, l - 1);
-      errs[l] = error_fun(np);
+      errs[l] = error_fun(np, uniform_vertical);
     }
 
     for (int l = 0; l < nlevels; ++l) {
