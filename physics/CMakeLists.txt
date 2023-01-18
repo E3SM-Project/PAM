@@ -44,5 +44,8 @@ elseif ("${PAM_RAD}" STREQUAL "none")
 endif()
 
 target_link_libraries(physics INTERFACE micro sgs radiation)
-target_link_libraries(physics INTERFACE yaml-cpp)
+
+if (DEFINED PAM_STANDALONE)
+  target_link_libraries(physics INTERFACE yaml-cpp)
+endif()
 
