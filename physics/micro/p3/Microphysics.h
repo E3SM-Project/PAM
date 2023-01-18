@@ -164,7 +164,9 @@ public:
     micro_p3_utils_init_fortran( cp_d , R_d , R_v , rhoh2o , mwh2o , mwdry ,
                                  grav , latvap , latice, cp_l , tmelt , pi , iulog , masterproc );
 
-    std::string dir = "../../../physics/micro/p3";
+    // std::string dir = "../../../physics/micro/p3";
+    // std::string dir = "./p3_data";
+    std::string dir = coupler.get_option<std::string>("p3_lookup_data_path");
     std::string ver = "4.1.1";
     int dir_len = dir.length();
     int ver_len = ver.length();
@@ -672,7 +674,8 @@ public:
     });
   }
 
-
+  void finalize(pam::PamCoupler &coupler) {
+  }
 
   std::string micro_name() const {
     return "p3";
