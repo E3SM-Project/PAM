@@ -342,7 +342,6 @@ public:
         // https://glossary.ametsoc.org/wiki/Liquid_water_potential_temperature
         // According to update_host_dse, the simplified version is used here
         real theta_l = theta - (latvap/cp_d) * ql;
-
         // dry static energy = Cp*T + g*z + phis
         real dse     = cp_d * t + grav * z;
         shoc_ql       (k_shoc,i) = ql;
