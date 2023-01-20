@@ -16,10 +16,11 @@ namespace modules {
     int nens = coupler.get_nens();
 
     // Set number of model top vertical layers that participate in the sponge relaxation
+    int num_layers;
     if (coupler.option_exists("sponge_num_layers")) {
-      int num_layers = coupler.get_option<int>("sponge_num_layers");;
+      num_layers = coupler.get_option<int>("sponge_num_layers");;
     } else {
-      int num_layers = 5;
+      num_layers = 5;
     };
 
     int WFLD = 3; // fourth entry into "fields" is the "w velocity" field. Set the havg to zero for WFLD
