@@ -17,7 +17,7 @@ namespace modules {
 
     // Set number of model top vertical layers that participate in the sponge relaxation
     if (coupler.option_exists("sponge_num_layers")) {
-      int num_layers = coupler.get_option<std::string>("sponge_num_layers");;
+      int num_layers = coupler.get_option<int>("sponge_num_layers");;
     } else {
       int num_layers = 5;
     };
