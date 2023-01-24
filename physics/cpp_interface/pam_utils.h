@@ -12,17 +12,26 @@
 #if defined(DEBUG)
 #include "Cuda/Kokkos_Cuda_Instance.hpp"
 #endif
+//
+// plan data layout in the ArrayIR, take the nomenclature from dnn
+// batch N(1), channels C(2), depth D(3), height H(4), width W(5)
+// for example, offset_nchw(n, c, h, w) = n * CHW + c * HW + h * W + w
+//
+enum DataFormat {
+  NCHW = 0,
+  NCWH = 1,
+  NHWC = 2,
+  NWCH = 3,
+  NWHC = 4
+};
 
 // using arrayIR instead of carray from YAKL
 template<typename T, int N>
 struct IRType {
   using type = typename ArrayIR::ArrayIR<T, N>;
-  using value = std::true_type;
-};
-
-template <typename T, int N>
-decltype(auto) MakeIRType(T * data, std::array<size_t,N> dimensions, int memory_type, char const* label="") {
-  return ArrayIR::ArrayIR<T, N>(data, dimensions, memory_type, label);
+  static constexpr bool is_irtype = true;
+  // dimensions of the arrayIR
+  enum { Ndim = N };
 };
 
 // scream session initialize/finalize
@@ -38,35 +47,10 @@ void finalize_session () {
   ekat::finalize_ekat_session();
 }
 
-// reshape an input array (nj, nk) to output array (nk, nj)
-template <typename Type>
-decltype(auto) reshape(const ArrayIR::ArrayIR<Type, 2>& sv) {
-  EKAT_ASSERT(sv.shape().size() == 2);
-  int nj = sv.extent(0);
-  int nk = sv.extent(1);
-  ArrayIR::ArrayIR<Type, 2> dv = MakeIRType<Type, 2>(sv.data(), {nk, nj}, sv.memory_type()); 
-  Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {nj, nk}), KOKKOS_LAMBDA(int j, int k) {
-    dv.data()[k*nj+j] = sv.data()[j*nk+k];
-  });
-  return dv;
-}
-
-// reshape and inverse an input array (nj, nk) to output array (nk, nj)
-template <typename Type>
-decltype(auto) reshape_and_inverse(const ArrayIR::ArrayIR<Type, 2>& sv) {
-  EKAT_ASSERT(sv.shape().size() == 2);
-  int nj = sv.extent(0);
-  int nk = sv.extent(1);
-  ArrayIR::ArrayIR<Type, 2> dv = MakeIRType<Type, 2>(sv.data(), {nk, nj}, sv.memory_type());
-  Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {nj, nk}), KOKKOS_LAMBDA(int j, int k) {
-    dv.data()[k*nj+j] = 1./sv.data()[j*nk+k];
-  });
-  return dv;
-}
-
 // convert YAKL multidimensional array to Kokkos view on GPU
 template <typename SizeT, typename ViewT>
-void array_to_view(const typename ViewT::value_type::scalar* const data,
+void array_to_view(const typename ViewT::value_type::scalar* const data, 
+                   const DataFormat& format,
                    const SizeT& size,
                    ViewT& view)
 {
@@ -86,7 +70,8 @@ void array_to_view(const typename ViewT::value_type::scalar* const data,
 
 // 2D YAKL array to Kokkos view
 template <typename SizeT, typename ViewT>
-void array_to_view(const typename ViewT::value_type::scalar* const data,
+void array_to_view(const typename ViewT::value_type::scalar* const data, 
+                   const DataFormat& format,
                    const SizeT& dim1_size,
                    const SizeT& dim2_size,
                    ViewT& view)
@@ -100,16 +85,32 @@ void array_to_view(const typename ViewT::value_type::scalar* const data,
 #if defined(DEBUG)
   kokkos_impl_cuda_set_serial_execution(true);
 #endif
-  Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<3>>({0, 0, 0}, {dim1_size, npack, pack_size}), KOKKOS_LAMBDA(int i, int k, int s) {
-     const int num_scalars = k*pack_size;
-     const int scalar_offset = i*dim2_size+num_scalars;
-     if (num_scalars+s<dim2_size)  view(i,k)[s] = data[scalar_offset+s];
-  });
+ switch (format)
+ {
+  case DataFormat::NCHW:
+     Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<3>>({0, 0, 0}, {dim1_size, npack, pack_size}), KOKKOS_LAMBDA(int i, int k, int s) {
+       const int num_scalars = k*pack_size;
+       const int scalar_offset = i*dim2_size+num_scalars;
+       if (num_scalars+s<dim2_size)  view(i,k)[s] = data[scalar_offset+s];
+     });
+     break;
+  case DataFormat::NCWH:
+     Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<3>>({0, 0, 0}, {dim1_size, npack, pack_size}), KOKKOS_LAMBDA(int i, int k, int s) {
+       const int num_scalars   = k*pack_size+s;
+       const int scalar_offset = num_scalars*dim1_size+i;
+       if (num_scalars+s<dim2_size)  view(i,k)[s] = data[scalar_offset];
+     });
+     break;
+  default:
+     std::cout << "2D plan data format error!\n";
+     break;
+ }
 }
 
 // 3D YAKL to Kokkos views
 template <typename SizeT, typename ViewT>
 void array_to_view(const typename ViewT::value_type::scalar* const data,
+                   const DataFormat& format,
                    const SizeT& dim1_size,
                    const SizeT& dim2_size,
                    const SizeT& dim3_size,
@@ -124,17 +125,33 @@ void array_to_view(const typename ViewT::value_type::scalar* const data,
 #if defined(DEBUG)
   kokkos_impl_cuda_set_serial_execution(true);
 #endif
-  Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<4>>({0, 0, 0, 0}, {dim1_size, dim2_size, npack, pack_size}), KOKKOS_LAMBDA(int i, int j, int k, int s) {
-     const int num_scalars = k*pack_size;
-     const int scalar_offset = (i*dim2_size+j)*dim3_size+num_scalars;
-     if (num_scalars+s<dim3_size) view(i,j,k)[s] = data[scalar_offset+s];
-  });
+ switch (format)
+ {
+  case DataFormat::NCHW:
+    Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<4>>({0, 0, 0, 0}, {dim1_size, dim2_size, npack, pack_size}), KOKKOS_LAMBDA(int i, int j, int k, int s) {
+       const int num_scalars = k*pack_size;
+       const int scalar_offset = (i*dim2_size+j)*dim3_size+num_scalars;
+       if (num_scalars+s<dim3_size) view(i,j,k)[s] = data[scalar_offset+s];
+    });
+    break;
+  case DataFormat::NWCH:
+    Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<4>>({0, 0, 0, 0}, {dim1_size, dim2_size, npack, pack_size}), KOKKOS_LAMBDA(int i, int j, int k, int s) {
+       const int num_scalars   = k*pack_size+s;
+       const int scalar_offset = (j*dim3_size+num_scalars)*dim1_size+i;
+       if (num_scalars+s<dim3_size) view(i,j,k)[s] = data[scalar_offset];
+    });
+    break;
+  default:
+     std::cout << "3D plan data format error!\n";
+     break;
+ }
 }
 
 // 1D Kokkos view to YAKL array
 template <typename SizeT, typename ViewT, typename ArrayT>
 void view_to_array(const ViewT& view,
                    const SizeT& size,
+                   const DataFormat& format,
                    ArrayT& array)
 {
   using PackT      = typename ViewT::value_type;
@@ -162,6 +179,7 @@ template <typename SizeT, typename ViewT, typename ArrayT>
 void view_to_array(const ViewT& view,
                    const SizeT& dim1_size,
                    const SizeT& dim2_size,
+                   const DataFormat& format,
                    ArrayT& array)
 {
   using PackT      = typename ViewT::value_type;
@@ -179,11 +197,26 @@ void view_to_array(const ViewT& view,
 #if defined(DEBUG)
   kokkos_impl_cuda_set_serial_execution(true);
 #endif
-  Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<3>>({0, 0, 0}, {dim1_size, npack, pack_size}), KOKKOS_LAMBDA(int i, int k, int s) {
-    const int num_scalars = k*pack_size;
-    const int scalar_offset = i*dim2_size + num_scalars;
-    if (num_scalars+s<dim2_size)  array.data()[scalar_offset+s] = view(i,k)[s];
-  });
+ switch (format)
+ {
+  case DataFormat::NCHW:
+    Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<3>>({0, 0, 0}, {dim1_size, npack, pack_size}), KOKKOS_LAMBDA(int i, int k, int s) {
+      const int num_scalars = k*pack_size;
+      const int scalar_offset = i*dim2_size + num_scalars;
+      if (num_scalars+s<dim2_size)  array.data()[scalar_offset+s] = view(i,k)[s];
+    });
+    break;
+  case DataFormat::NCWH:
+    Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<3>>({0, 0, 0}, {dim1_size, npack, pack_size}), KOKKOS_LAMBDA(int i, int k, int s) {
+      const int num_scalars   = k*pack_size+s;
+      const int scalar_offset = num_scalars*dim1_size+i;
+      if (num_scalars+s<dim2_size)  array.data()[scalar_offset] = view(i,k)[s];
+    });
+    break;
+  default:
+    std::cout << "2D plain data layout error!\n";
+    break;
+ }
 }
 
 // 3D Kokkos view to YAKL array
@@ -192,6 +225,7 @@ void view_to_array(const ViewT& view,
                    const SizeT& dim1_size,
                    const SizeT& dim2_size,
                    const SizeT& dim3_size,
+                   const DataFormat& format,
                    ArrayT& array)
 {
   using PackT      = typename ViewT::value_type;
@@ -209,11 +243,26 @@ void view_to_array(const ViewT& view,
 #if defined(DEBUG)
   kokkos_impl_cuda_set_serial_execution(true);
 #endif
-  Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<4>>({0, 0, 0, 0}, {dim1_size, dim2_size, npack, pack_size}), KOKKOS_LAMBDA(int i, int j, int k, int s) {
-    const int num_scalars = k*pack_size;
-    const int scalar_offset = (i*dim2_size+j)*dim3_size+num_scalars;
-    if (num_scalars+s<dim3_size)  array.data()[scalar_offset+s] = view(i,j,k)[s];
-  });
+ switch (format)
+ {
+  case DataFormat::NCHW:
+    Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<4>>({0, 0, 0, 0}, {dim1_size, dim2_size, npack, pack_size}), KOKKOS_LAMBDA(int i, int j, int k, int s) {
+      const int num_scalars = k*pack_size;
+      const int scalar_offset = (i*dim2_size+j)*dim3_size+num_scalars;
+      if (num_scalars+s<dim3_size)  array.data()[scalar_offset+s] = view(i,j,k)[s];
+    });
+    break;
+  case DataFormat::NWCH:
+    Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<4>>({0, 0, 0, 0}, {dim1_size, dim2_size, npack, pack_size}), KOKKOS_LAMBDA(int i, int j, int k, int s) {
+       const int num_scalars   = k*pack_size+s;
+       const int scalar_offset = (j*dim3_size+num_scalars)*dim1_size+i;
+      if (num_scalars+s<dim3_size)  array.data()[scalar_offset] = view(i,j,k)[s];
+    });
+    break;
+  default:
+    std::cout << "3D plain data layout error!\n";
+    break;
+ }
 }
 
 // validation code 
@@ -221,6 +270,7 @@ template <typename SizeT, typename ViewT>
 void array_to_view_2d(typename ViewT::value_type::scalar* data,
                       const SizeT& dim1_sizes,
                       const SizeT& dim2_sizes,
+                      const DataFormat& format,
                       ViewT& view)
 {
   using PackT = typename ViewT::value_type;
@@ -234,10 +284,25 @@ void array_to_view_2d(typename ViewT::value_type::scalar* data,
 #if defined(DEBUG)
     kokkos_impl_cuda_set_serial_execution(true);
 #endif
+ switch (format)
+ {
+  case DataFormat::NCHW:
     Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<3>>({0, 0, 0}, {dim1_size, npack, pack_size}), KOKKOS_LAMBDA(int i, int k, int s) {
        const int num_scalars = k*pack_size;
        const int scalar_offset = i*dim2_size + num_scalars;
        if (num_scalars+s<dim2_size) view(i,k)[s] = data[scalar_offset+s];
+    });
+    break;
+  case DataFormat::NCWH:
+    Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<3>>({0, 0, 0}, {dim1_size, npack, pack_size}), KOKKOS_LAMBDA(int i, int k, int s) {
+       const int num_scalars   = k*pack_size+s;
+       const int scalar_offset = num_scalars*dim1_size+i;
+       if (num_scalars+s<dim2_size) view(i,k)[s] = data[scalar_offset];
    });
+   break;
+  default:
+    std::cout << "2D plain data layout error!\n";
+    break;
+ }
 }
 

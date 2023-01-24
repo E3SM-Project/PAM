@@ -47,7 +47,9 @@ void shoc_main_cxx(int &shcol, int &nlev, int &nlevi, double &dtime, int &nadv, 
           wqw_sfc_1d("wqw_sfc", ncol),    // Surface latent heat flux [kg/kg m/s]
           uw_sfc_1d("uw_sfc", ncol),      // Surface momentum flux (u-direction) [m2/s2]
           vw_sfc_1d("vw_sfc", ncol),      // Surface momentum flux (v-direction) [m2/s2]
-          phis_1d("phis_1d", ncol);       // Host model surface geopotential height
+          phis_1d("phis_1d", ncol),       // Host model surface geopotential height
+          pblh_1d("pblh", ncol);
+
 
   Kokkos::parallel_for("host grid", ncol, KOKKOS_LAMBDA (const int& i) {
     host_dx_1d(i)  = host_dx.data()[i];
@@ -57,17 +59,8 @@ void shoc_main_cxx(int &shcol, int &nlev, int &nlevi, double &dtime, int &nadv, 
     uw_sfc_1d(i)   = uw_sfc.data()[i];
     vw_sfc_1d(i)   = vw_sfc.data()[i];
     phis_1d(i)     = phis.data()[i];
+    pblh_1d(i)     = pblh.data()[i];
   });
-
-  auto zt_g_in        = reshape(zt_grid);
-  auto zi_g_in        = reshape(zi_grid);
-  auto pres_in        = reshape(pres);
-  auto presi_in       = reshape(presi);
-  auto pdel_in        = reshape(pdel);
-  auto inv_exner_in   = reshape(inv_exner);
-  auto thv_in         = reshape(thv);
-  auto w_field_in     = reshape(w_field);
-  auto wtracer_sfc_in = reshape(wtracer_sfc);
 
   view_2d zt_grid_2d("zt_grid", ncol, npack),                 // heights, for thermo grid [m]
           zi_grid_2d("zi_grid", ncol, nipack),                // heights, for interface grid [m]
@@ -79,30 +72,25 @@ void shoc_main_cxx(int &shcol, int &nlev, int &nlevi, double &dtime, int &nadv, 
           wtracer_sfc_2d("wtracer", ncol, num_qtracers),             // Surface flux for tracers [varies]
           inv_exner_2d("inv_exner", ncol, npack);
 
-  array_to_view(zt_g_in.data(),        ncol, nlev,  zt_grid_2d);
-  array_to_view(zi_g_in.data(),        ncol, nlevi, zi_grid_2d);
-  array_to_view(pres_in.data(),        ncol, nlev,  pres_2d);
-  array_to_view(presi_in.data(),       ncol, nlevi, presi_2d);
-  array_to_view(pdel_in.data(),        ncol, nlev,  pdel_2d);
-  array_to_view(inv_exner_in.data(),   ncol, nlev,  inv_exner_2d);
-  array_to_view(thv_in.data(),         ncol, nlev,  thv_2d);
-  array_to_view(wtracer_sfc_in.data(), ncol, num_qtracers,  wtracer_sfc_2d);
-  array_to_view(w_field_in.data(),     ncol, nlev,  w_field_2d);
+  array_to_view(zt_grid.data(),     DataFormat::NCWH, ncol, nlev,  zt_grid_2d);
+  array_to_view(zi_grid.data(),     DataFormat::NCWH, ncol, nlevi, zi_grid_2d);
+  array_to_view(pres.data(),        DataFormat::NCWH, ncol, nlev,  pres_2d);
+  array_to_view(presi.data(),       DataFormat::NCWH, ncol, nlevi, presi_2d);
+  array_to_view(pdel.data(),        DataFormat::NCWH, ncol, nlev,  pdel_2d);
+  array_to_view(inv_exner.data(),   DataFormat::NCWH, ncol, nlev,  inv_exner_2d);
+  array_to_view(thv.data(),         DataFormat::NCWH, ncol, nlev,  thv_2d);
+  array_to_view(wtracer_sfc.data(), DataFormat::NCWH, ncol, num_qtracers, wtracer_sfc_2d);
+  array_to_view(w_field.data(),     DataFormat::NCWH, ncol, nlev,  w_field_2d);
+
+//  Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<3>>({0, 0, 0}, {ncol, npack, Spack::n}), KOKKOS_LAMBDA(int icol, int ilev, int s) {
+//    int off = (ilev*Spack::n+s)*ncol+icol;
+//    printf("%d, %d, %13.6f, %13.6f\n",icol,ilev,zt_grid_2d(icol,ilev)[s],zt_grid.data()[off ]);
+//  });
 
   SHOC::SHOCInput shoc_input{host_dx_1d, host_dy_1d, zt_grid_2d, zi_grid_2d,
                             pres_2d, presi_2d, pdel_2d, thv_2d,
                             w_field_2d, wthl_sfc_1d, wqw_sfc_1d, uw_sfc_1d,
                             vw_sfc_1d, wtracer_sfc_2d, inv_exner_2d, phis_1d};
-
-  auto host_dse_in     = reshape(host_dse);
-  auto tke_in          = reshape(tke);
-  auto thetal_in       = reshape(thetal);
-  auto qw_in           = reshape(qw);
-  auto shoc_ql_in      = reshape(shoc_ql);
-  auto wthv_sec_in     = reshape(wthv_sec);
-  auto tk_in           = reshape(tk);
-  auto shoc_cldfrac_in = reshape(shoc_cldfrac);
-  auto tkh_in          = reshape(tkh);
 
   view_2d host_dse_2d("host_dse", ncol, npack);                 // dry static energy [J/kg] : dse = Cp*T + g*z + phis
   view_2d tke_2d("tke", ncol, npack);                           // turbulent kinetic energy [m2/s2]
@@ -113,43 +101,56 @@ void shoc_main_cxx(int &shcol, int &nlev, int &nlevi, double &dtime, int &nadv, 
   view_2d tk_2d("tk", ncol, npack);                             // tracers [varies]
   view_2d tkh_2d("tkh", ncol, npack);                           // eddy coefficient for momentum [m2/s]
   view_2d shoc_cldfrac_2d("shoc_cldfrac", ncol, npack);         // eddy heat conductivity
+  view_2d u_wind_2d("u_wind", ncol, npack);
+  view_2d v_wind_2d("v_wind", ncol, npack);
   view_3d shoc_hwind_3d("shoc_hwind",ncol,2,npack);             // Cloud fraction [-]
-  view_3d qtracers_3d("qtracers",ncol,num_qtracers,npack);       // cloud liquid mixing ratio [kg/kg]
+  view_3d qtracers_3d("qtracers",ncol,num_qtracers,npack);      // cloud liquid mixing ratio [kg/kg]
 
   Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<3>>({0, 0, 0}, {ncol, npack, Spack::n}), KOKKOS_LAMBDA(int icol, int ilev, int s) {
     int k = ilev*Spack::n + s;
-    int offset = icol*nlev+k;
+    int offset = k*ncol + icol;
     if (k < nlev) {
      shoc_hwind_3d(icol,0,ilev)[s] = u_wind.data()[offset];
      shoc_hwind_3d(icol,1,ilev)[s] = v_wind.data()[offset];
     }
   });
 
+#if 0
   Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<4>>({0, 0, 0}, {ncol, num_qtracers, npack, Spack::n}), KOKKOS_LAMBDA(int icol, int q, int ilev, int s) {
     int k = ilev*Spack::n + s;
-    const int offset = (icol*nlev+k)*num_qtracers+q;
+    const int offset = (q*nlev+k)*ncol+icol;
     if (k < nlev) {
       qtracers_3d(icol,q,ilev)[s] = qtracers.data()[offset];
     }
   });
+#endif
 
-  array_to_view(host_dse_in.data(),     ncol, nlev, host_dse_2d);
-  array_to_view(tke_in.data(),          ncol, nlev, tke_2d);
-  array_to_view(thetal_in.data(),       ncol, nlev, thetal_2d);
-  array_to_view(qw_in.data(),           ncol, nlev, qw_2d);
-  array_to_view(shoc_ql_in.data(),      ncol, nlev, shoc_ql_2d);
-  array_to_view(tk_in.data(),           ncol, nlev, tk_2d);
-  array_to_view(tkh_in.data(),          ncol, nlev, tkh_2d);
-  array_to_view(wthv_sec_in.data(),     ncol, nlev, wthv_sec_2d);
-  array_to_view(shoc_cldfrac_in.data(), ncol, nlev, shoc_cldfrac_2d);
-  array_to_view(shoc_ql_in.data(),      ncol, nlev, shoc_ql_2d);
+  array_to_view(host_dse.data(),     DataFormat::NCWH, ncol, nlev, host_dse_2d);
+  array_to_view(tke.data(),          DataFormat::NCWH, ncol, nlev, tke_2d);
+  array_to_view(thetal.data(),       DataFormat::NCWH, ncol, nlev, thetal_2d);
+  array_to_view(qw.data(),           DataFormat::NCWH, ncol, nlev, qw_2d);
+  array_to_view(shoc_ql.data(),      DataFormat::NCWH, ncol, nlev, shoc_ql_2d);
+  array_to_view(tk.data(),           DataFormat::NCWH, ncol, nlev, tk_2d);
+  array_to_view(tkh.data(),          DataFormat::NCWH, ncol, nlev, tkh_2d);
+  array_to_view(wthv_sec.data(),     DataFormat::NCWH, ncol, nlev, wthv_sec_2d);
+  array_to_view(shoc_cldfrac.data(), DataFormat::NCWH, ncol, nlev, shoc_cldfrac_2d);
+  array_to_view(shoc_ql.data(),      DataFormat::NCWH, ncol, nlev, shoc_ql_2d);
+  array_to_view(u_wind.data(),       DataFormat::NCWH, ncol, nlev, u_wind_2d);
+  array_to_view(v_wind.data(),       DataFormat::NCWH, ncol, nlev, v_wind_2d);
+  array_to_view(qtracers.data(),     DataFormat::NWCH, ncol, num_qtracers, nlev, qtracers_3d);
+
+  Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<3>>({0, 0, 0}, {ncol, npack, Spack::n}), KOKKOS_LAMBDA(int icol, int ilev, int s) {
+     shoc_hwind_3d(icol,0,ilev)[s] = u_wind_2d(icol, ilev)[s];
+     shoc_hwind_3d(icol,1,ilev)[s] = v_wind_2d(icol, ilev)[s];
+  });
 
   SHOC::SHOCInputOutput shoc_input_output{host_dse_2d, tke_2d, thetal_2d, qw_2d,
                                          shoc_hwind_3d, wthv_sec_2d, qtracers_3d,
                                          tk_2d, shoc_cldfrac_2d, shoc_ql_2d};
 
-  view_1d pblh_1d("pblh",ncol);
   view_2d shoc_ql2_2d("shoc_ql2",ncol, npack);
+  array_to_view(shoc_ql2.data(), DataFormat::NCWH, ncol, nlev, shoc_ql2_2d);
+
   SHOC::SHOCOutput shoc_output{pblh_1d, shoc_ql2_2d};
 
   view_2d shoc_mix_2d("shoc_mix", ncol, npack),     // Turbulent length scale [m]
@@ -167,6 +168,21 @@ void shoc_main_cxx(int &shcol, int &nlev, int &nlevi, double &dtime, int &nadv, 
           brunt_2d("brunt", ncol, npack),           // brunt vaisala frequency [s-1]
           isotropy_2d("isotropy", ncol, npack);     // return to isotropic timescale [s]
 
+  array_to_view(shoc_mix.data(),  DataFormat::NCWH, ncol, nlev, shoc_mix_2d);
+  array_to_view(w_sec.data(),     DataFormat::NCWH, ncol, nlev, w_sec_2d);
+  array_to_view(thl_sec.data(),   DataFormat::NCWH, ncol, nlevi, thl_sec_2d);
+  array_to_view(qw_sec.data(),    DataFormat::NCWH, ncol, nlevi, qw_sec_2d);
+  array_to_view(qwthl_sec.data(), DataFormat::NCWH, ncol, nlevi, qwthl_sec_2d);
+  array_to_view(wthl_sec.data(),  DataFormat::NCWH, ncol, nlevi, wthl_sec_2d);
+  array_to_view(wqw_sec.data(),   DataFormat::NCWH, ncol, nlevi, wqw_sec_2d);
+  array_to_view(wtke_sec.data(),  DataFormat::NCWH, ncol, nlevi, wtke_sec_2d);
+  array_to_view(uw_sec.data(),    DataFormat::NCWH, ncol, nlevi, uw_sec_2d);
+  array_to_view(vw_sec.data(),    DataFormat::NCWH, ncol, nlevi, vw_sec_2d);
+  array_to_view(w3.data(),        DataFormat::NCWH, ncol, nlevi, w3_2d);
+  array_to_view(wqls_sec.data(),  DataFormat::NCWH, ncol, nlev, wqls_sec_2d);
+  array_to_view(brunt.data(),     DataFormat::NCWH, ncol, nlev, brunt_2d);
+  array_to_view(isotropy.data(),  DataFormat::NCWH, ncol, nlev, isotropy_2d);
+
   SHOC::SHOCHistoryOutput shoc_history_output{shoc_mix_2d, w_sec_2d, thl_sec_2d, qw_sec_2d,
                                               qwthl_sec_2d, wthl_sec_2d, wqw_sec_2d, wtke_sec_2d,
                                               uw_sec_2d, vw_sec_2d, w3_2d, wqls_sec_2d, brunt_2d, isotropy_2d};
@@ -179,27 +195,16 @@ void shoc_main_cxx(int &shcol, int &nlev, int &nlevi, double &dtime, int &nadv, 
   const auto elapsed_microsec = SHOC::shoc_main(shcol, nlev, nlevi, nlev, nadv, num_qtracers, dtime, workspace_mgr,
                                                 shoc_input, shoc_input_output, shoc_output, shoc_history_output);
 
-  // update tk, tke, and other outputs
-  Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<3>>({0, 0, 0}, {ncol, npack, Spack::n}), KOKKOS_LAMBDA(int icol, int ilev, int s) {
-    int k = ilev*Spack::n + s;
-    int offset = icol*nlev+k;
-    if (k < nlev) {
-      tk.data()[offset]           = shoc_input_output.tk(icol,ilev)[s];
-      tke.data()[offset]          = shoc_input_output.tke(icol,ilev)[s];
-      wthv_sec.data()[offset]     = shoc_input_output.wthv_sec(icol,ilev)[s];
-      host_dse.data()[offset]     = shoc_input_output.host_dse(icol,ilev)[s];
-      shoc_cldfrac.data()[offset] = shoc_input_output.shoc_cldfrac(icol,ilev)[s];
-      u_wind.data()[offset]       = shoc_input_output.horiz_wind(icol,0,ilev)[s];
-      v_wind.data()[offset]       = shoc_input_output.horiz_wind(icol,1,ilev)[s];
-    }
-  });
-
-  // update tracers
-  Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<4>>({0, 0, 0}, {ncol, num_qtracers, npack, Spack::n}), KOKKOS_LAMBDA(int icol, int q, int ilev, int s) {
-    int k = ilev*Spack::n + s;
-    const int offset = (icol*nlev+k)*num_qtracers+q;
-    if (k < nlev) {
-      qtracers.data()[offset] = shoc_input_output.qtracers(icol,q,ilev)[s];
-    }
-  });
+  // get SHOC output back to CRM 
+  view_to_array(shoc_input_output.tk,           ncol, nlev, DataFormat::NCWH, tk);
+  view_to_array(shoc_input_output.wthv_sec,     ncol, nlev, DataFormat::NCWH, wthv_sec);
+  view_to_array(shoc_input_output.tke,          ncol, nlev, DataFormat::NCWH, tke);
+  view_to_array(shoc_input_output.shoc_cldfrac, ncol, nlev, DataFormat::NCWH, shoc_cldfrac);
+//  view_to_array(shoc_input_output.horiz_wind, ncol, 2, nlev, DataFormat::NCWH, shoc_hwind);
+  view_to_array(shoc_input_output.host_dse,     ncol, nlev, DataFormat::NCWH, host_dse);
+  view_to_array(shoc_input_output.qtracers,     ncol, num_qtracers, nlev, DataFormat::NWCH, qtracers);
+  view_to_array(shoc_input_output.qw,           ncol, nlev, DataFormat::NCWH, qw);
+  view_to_array(shoc_input_output.shoc_ql,      ncol, nlev, DataFormat::NCWH, shoc_ql);
+  view_to_array(shoc_input_output.thetal,       ncol, nlev, DataFormat::NCWH, thetal);
+  view_to_array(shoc_output.shoc_ql2,           ncol, nlev, DataFormat::NCWH, shoc_ql2);
 }

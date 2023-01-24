@@ -485,52 +485,51 @@ public:
     shoc_brunt_host      .deep_copy_to(shoc_brunt      );
     shoc_isotropy_host   .deep_copy_to(shoc_isotropy   );
 #elif defined(SHOC_CXX)
-    auto shoc_host_dx_ir = MakeIRType<real, 1>(shoc_host_dx.data(), {ncol}, shoc_host_dx.get_memory_space(), "shoc_host_dx");
-    auto shoc_host_dy_ir = MakeIRType<real, 1>(shoc_host_dy.data(), {ncol}, shoc_host_dy.get_memory_space(), "shoc_host_dy");
-    auto shoc_zt_grid_ir = MakeIRType<real, 2>(shoc_zt_grid.data(), {nz, ncol}, shoc_zt_grid.get_memory_space(), "shoc_zt_grid");
-    auto shoc_zi_grid_ir = MakeIRType<real, 2>(shoc_zi_grid.data(), {nz+1, ncol}, shoc_zi_grid.get_memory_space(), "shoc_zi_grid");
-    auto shoc_pres_ir    = MakeIRType<real, 2>(shoc_pres.data(),    {nz, ncol}, shoc_pres.get_memory_space(), "shoc_pres");
-    auto shoc_presi_ir   = MakeIRType<real, 2>(shoc_presi.data(),   {nz+1, ncol}, shoc_presi.get_memory_space(), "shoc_presi");
-    auto shoc_pdel_ir    = MakeIRType<real, 2>(shoc_pdel.data(),    {nz, ncol}, shoc_pdel.get_memory_space(), "shoc_pdel");
-    auto shoc_thv_ir     = MakeIRType<real, 2>(shoc_thv.data(),     {nz, ncol}, shoc_thv.get_memory_space(), "shoc_thv");
-    auto shoc_w_field_ir = MakeIRType<real, 2>(shoc_w_field.data(), {nz, ncol}, shoc_w_field.get_memory_space(), "shoc_w_field");
-    auto shoc_wthl_sfc_ir= MakeIRType<real, 1>(shoc_wthl_sfc.data(),{ncol}, shoc_wthl_sfc.get_memory_space(), "shoc_wthl_sfc");
-    auto shoc_wqw_sfc_ir = MakeIRType<real, 1>(shoc_wqw_sfc.data(), {ncol}, shoc_wqw_sfc.get_memory_space(), "shoc_wqw_sfc");
-    auto shoc_uw_sfc_ir  = MakeIRType<real, 1>(shoc_uw_sfc.data(),  {ncol}, shoc_uw_sfc.get_memory_space(), "shoc_uw_sfc");
-    auto shoc_vw_sfc_ir  = MakeIRType<real, 1>(shoc_vw_sfc.data(),  {ncol}, shoc_vw_sfc.get_memory_space(), "shoc_vw_sfc");
-
-    auto shoc_wtracer_sfc_ir = MakeIRType<real, 2>(shoc_wtracer_sfc.data(), {num_qtracers, ncol}, shoc_wtracer_sfc.get_memory_space(), "shoc_wtracer_sfc");
-    auto shoc_exner_ir       = MakeIRType<real, 2>(shoc_exner.data(), {nz, ncol}, shoc_exner.get_memory_space(), "shoc_exner");
-    auto shoc_inv_exner_ir   = MakeIRType<real, 2>(shoc_inv_exner.data(), {nz, ncol}, shoc_inv_exner.get_memory_space(), "shoc_inv_exner");
-    auto shoc_phis_ir        = MakeIRType<real, 1>(shoc_phis.data(), {ncol}, shoc_phis.get_memory_space(), "shoc_phis");
-    auto shoc_host_dse_ir    = MakeIRType<real, 2>(shoc_host_dse.data(), {nz, ncol}, shoc_host_dse.get_memory_space(), "shoc_host_dse");
-    auto shoc_tke_ir         = MakeIRType<real, 2>(shoc_tke.data(), {nz, ncol}, shoc_tke.get_memory_space(), "shoc_tke");
-    auto shoc_thetal_ir      = MakeIRType<real, 2>(shoc_thetal.data(), {nz, ncol}, shoc_thetal.get_memory_space(), "shoc_thetal");
-    auto shoc_qw_ir          = MakeIRType<real, 2>(shoc_qw.data(), {nz, ncol}, shoc_qw.get_memory_space(), "shoc_qw");
-    auto shoc_u_wind_ir      = MakeIRType<real, 2>(shoc_u_wind.data(), {nz, ncol}, shoc_u_wind.get_memory_space(), "shoc_u_wind");
-    auto shoc_v_wind_ir      = MakeIRType<real, 2>(shoc_v_wind.data(), {nz, ncol}, shoc_v_wind.get_memory_space(), "shoc_v_wind");
-    auto shoc_wthv_sec_ir    = MakeIRType<real, 2>(shoc_wthv_sec.data(), {nz, ncol}, shoc_wthv_sec.get_memory_space(), "shoc_wthv_sec");
-    auto shoc_qtracers_ir    = MakeIRType<real, 3>(shoc_qtracers.data(), {num_qtracers, nz, ncol}, shoc_qtracers.get_memory_space(), "shoc_qtracers");
-    auto shoc_tk_ir          = MakeIRType<real, 2>(shoc_tk.data(), {nz, ncol}, shoc_tk.get_memory_space(), "shoc_tk");
-    auto shoc_tkh_ir         = MakeIRType<real, 2>(shoc_tkh.data(), {nz, ncol}, shoc_tkh.get_memory_space(), "shoc_tkh");
-    auto shoc_cldfrac_ir     = MakeIRType<real, 2>(shoc_cldfrac.data(), {nz, ncol}, shoc_cldfrac.get_memory_space(), "shoc_cldfrac");
-    auto shoc_ql_ir          = MakeIRType<real, 2>(shoc_ql.data(), {nz, ncol}, shoc_ql.get_memory_space(), "shoc_ql");
-    auto shoc_pblh_ir        = MakeIRType<real, 1>(shoc_pblh.data(), {ncol}, shoc_pblh.get_memory_space(), "shoc_pblh");
-    auto shoc_ql2_ir         = MakeIRType<real, 2>(shoc_ql2.data(), {nz, ncol}, shoc_ql2.get_memory_space(), "shoc_ql2");
-    auto shoc_mix_ir         = MakeIRType<real, 2>(shoc_mix.data(), {nz, ncol}, shoc_mix.get_memory_space(), "shoc_mix");
-    auto shoc_w_sec_ir       = MakeIRType<real, 2>(shoc_w_sec.data(), {nz, ncol}, shoc_w_sec.get_memory_space(), "shoc_w_sec");
-    auto shoc_thl_sec_ir     = MakeIRType<real, 2>(shoc_thl_sec.data(), {nz+1, ncol}, shoc_thl_sec.get_memory_space(), "shoc_thl_sec");
-    auto shoc_qw_sec_ir      = MakeIRType<real, 2>(shoc_qw_sec.data(), {nz+1, ncol}, shoc_qw_sec.get_memory_space(), "shoc_qw_sec");
-    auto shoc_qwthl_sec_ir   = MakeIRType<real, 2>(shoc_qwthl_sec.data(), {nz+1, ncol}, shoc_qwthl_sec.get_memory_space(), "shoc_qwthl_sec");
-    auto shoc_wthl_sec_ir    = MakeIRType<real, 2>(shoc_wthl_sec.data(), {nz+1, ncol}, shoc_wthl_sec.get_memory_space(), "shoc_wthl_sec");
-    auto shoc_wqw_sec_ir     = MakeIRType<real, 2>(shoc_wqw_sec.data(), {nz+1, ncol}, shoc_wqw_sec.get_memory_space(), "shoc_wqw_sec");
-    auto shoc_wtke_sec_ir    = MakeIRType<real, 2>(shoc_wtke_sec.data(), {nz+1, ncol}, shoc_wtke_sec.get_memory_space(), "shoc_wtke_sec");
-    auto shoc_uw_sec_ir      = MakeIRType<real, 2>(shoc_uw_sec.data(), {nz+1, ncol}, shoc_uw_sec.get_memory_space(), "shoc_uw_sec");
-    auto shoc_vw_sec_ir      = MakeIRType<real, 2>(shoc_vw_sec.data(), {nz+1, ncol}, shoc_vw_sec.get_memory_space(), "shoc_vw_sec");
-    auto shoc_w3_ir          = MakeIRType<real, 2>(shoc_w3.data(), {nz+1, ncol}, shoc_w3.get_memory_space(), "shoc_w3");
-    auto shoc_wqls_sec_ir    = MakeIRType<real, 2>(shoc_wqls_sec.data(), {nz, ncol}, shoc_wqls_sec.get_memory_space(), "shoc_wqls_sec");
-    auto shoc_brunt_ir       = MakeIRType<real, 2>(shoc_brunt.data(), {nz, ncol}, shoc_brunt.get_memory_space(),  "shoc_brunt");
-    auto shoc_isotropy_ir    = MakeIRType<real, 2>(shoc_isotropy.data(), {nz, ncol}, shoc_isotropy.get_memory_space(), "shoc_isotropy");
+    auto shoc_host_dx_ir     = shoc_host_dx.create_ArrayIR();
+    auto shoc_host_dy_ir     = shoc_host_dy.create_ArrayIR();
+    auto shoc_zt_grid_ir     = shoc_zt_grid.create_ArrayIR();
+    auto shoc_zi_grid_ir     = shoc_zi_grid.create_ArrayIR();
+    auto shoc_pres_ir        = shoc_pres.create_ArrayIR();
+    auto shoc_presi_ir       = shoc_presi.create_ArrayIR();
+    auto shoc_pdel_ir        = shoc_pdel.create_ArrayIR();
+    auto shoc_thv_ir         = shoc_thv.create_ArrayIR();
+    auto shoc_w_field_ir     = shoc_w_field.create_ArrayIR();
+    auto shoc_wthl_sfc_ir    = shoc_wthl_sfc.create_ArrayIR();
+    auto shoc_wqw_sfc_ir     = shoc_wqw_sfc.create_ArrayIR();
+    auto shoc_uw_sfc_ir      = shoc_uw_sfc.create_ArrayIR();
+    auto shoc_vw_sfc_ir      = shoc_vw_sfc.create_ArrayIR();;
+    auto shoc_wtracer_sfc_ir = shoc_wtracer_sfc.create_ArrayIR();
+    auto shoc_exner_ir       = shoc_exner.create_ArrayIR();
+    auto shoc_inv_exner_ir   = shoc_inv_exner.create_ArrayIR();
+    auto shoc_phis_ir        = shoc_phis.create_ArrayIR();
+    auto shoc_host_dse_ir    = shoc_host_dse.create_ArrayIR();
+    auto shoc_tke_ir         = shoc_tke.create_ArrayIR();
+    auto shoc_thetal_ir      = shoc_thetal.create_ArrayIR();
+    auto shoc_qw_ir          = shoc_qw.create_ArrayIR();
+    auto shoc_u_wind_ir      = shoc_u_wind.create_ArrayIR();
+    auto shoc_v_wind_ir      = shoc_v_wind.create_ArrayIR();
+    auto shoc_wthv_sec_ir    = shoc_wthv_sec.create_ArrayIR();
+    auto shoc_qtracers_ir    = shoc_qtracers.create_ArrayIR();
+    auto shoc_tk_ir          = shoc_tk.create_ArrayIR();
+    auto shoc_tkh_ir         = shoc_tkh.create_ArrayIR();
+    auto shoc_cldfrac_ir     = shoc_cldfrac.create_ArrayIR();
+    auto shoc_ql_ir          = shoc_ql.create_ArrayIR();
+    auto shoc_pblh_ir        = shoc_pblh.create_ArrayIR();
+    auto shoc_ql2_ir         = shoc_ql2.create_ArrayIR();
+    auto shoc_mix_ir         = shoc_mix.create_ArrayIR();
+    auto shoc_w_sec_ir       = shoc_w_sec.create_ArrayIR();
+    auto shoc_thl_sec_ir     = shoc_thl_sec.create_ArrayIR();
+    auto shoc_qw_sec_ir      = shoc_qw_sec.create_ArrayIR();
+    auto shoc_qwthl_sec_ir   = shoc_qwthl_sec.create_ArrayIR();
+    auto shoc_wthl_sec_ir    = shoc_wthl_sec.create_ArrayIR();
+    auto shoc_wqw_sec_ir     = shoc_wqw_sec.create_ArrayIR();
+    auto shoc_wtke_sec_ir    = shoc_wtke_sec.create_ArrayIR();
+    auto shoc_uw_sec_ir      = shoc_uw_sec.create_ArrayIR();
+    auto shoc_vw_sec_ir      = shoc_vw_sec.create_ArrayIR();
+    auto shoc_w3_ir          = shoc_w3.create_ArrayIR();
+    auto shoc_wqls_sec_ir    = shoc_wqls_sec.create_ArrayIR(); 
+    auto shoc_brunt_ir       = shoc_brunt.create_ArrayIR();
+    auto shoc_isotropy_ir    = shoc_isotropy.create_ArrayIR();
 
     int nzp1 = nz+1;
     // IMPORTANT: SHOC appears to actually want 1/exner for the exner parameter
@@ -551,6 +550,20 @@ public:
                    shoc_wthl_sec_ir, shoc_wqw_sec_ir, shoc_wtke_sec_ir,
                    shoc_uw_sec_ir, shoc_vw_sec_ir, shoc_w3_ir,
                    shoc_wqls_sec_ir, shoc_brunt_ir, shoc_ql2_ir);
+
+    // only need update the output variables
+    real2d(shoc_qw_ir).deep_copy_to(shoc_qw);
+    real2d(shoc_ql_ir).deep_copy_to(shoc_ql);
+    real2d(shoc_thetal_ir).deep_copy_to(shoc_thetal);
+    real2d(shoc_u_wind_ir).deep_copy_to(shoc_u_wind);
+    real2d(shoc_v_wind_ir).deep_copy_to(shoc_v_wind);
+    real2d(shoc_tke_ir).deep_copy_to(shoc_tke);
+    real2d(shoc_wthv_sec_ir).deep_copy_to(shoc_wthv_sec);
+    real2d(shoc_tk_ir).deep_copy_to(shoc_tk);
+    real2d(shoc_tkh_ir).deep_copy_to(shoc_tkh);
+    real2d(shoc_cldfrac_ir).deep_copy_to(shoc_cldfrac);
+    real3d(shoc_qtracers).deep_copy_to(shoc_qtracers);
+    real2d(shoc_ql2_ir).deep_copy_to(shoc_ql2);
 #endif
 
     // Process outputs from SHOC (reordering the vertical dimension)
