@@ -299,7 +299,7 @@ public:
 
   real YAKL_INLINE compute_H(real p, real entropic_var, real qd, real qv,
                              real ql, real qi) const {
-    return cst.Cpd * cst.Tr * pow(p / cst.pr, -cst.kappa_d) *
+    return cst.Cpd * cst.Tr * pow(p / cst.pr, cst.kappa_d) *
            exp(entropic_var / cst.Cpd);
   };
 
