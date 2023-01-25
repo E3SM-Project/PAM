@@ -23,6 +23,14 @@ namespace modules {
       num_layers = 5;
     };
 
+    // set relaxation timescale
+    real time_scale;
+    if (coupler.option_exists("sponge_time_scale")) {
+      time_scale = coupler.get_option<int>("sponge_time_scale");
+    } else {
+      time_scale = 60;
+    };
+
     int WFLD = 3; // fourth entry into "fields" is the "w velocity" field. Set the havg to zero for WFLD
 
     // Get a list of tracer names for retrieval
@@ -74,7 +82,7 @@ namespace modules {
 
     auto dt = coupler.get_option<real>("crm_dt");
 
-    real constexpr time_scale = 60;  // strength of each application is dt / time_scale  (same as SAM's tau_min)
+    // strength of each application is dt / time_scale  (same as SAM's tau_min)
     real time_factor = dt / time_scale;
 
     // use a cosine relaxation in space:  ((cos(pi*rel_dist)+1)/2)^2
