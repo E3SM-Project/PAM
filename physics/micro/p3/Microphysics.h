@@ -3,7 +3,7 @@
 
 #include "pam_coupler.h"
 
-#define P3_FORTRAN
+#include "scream_cxx_interface_p3.h"
 
 extern "C"
 void p3_main_fortran(double *qc , double *nc , double *qr , double *nr , double *th_atm , double *qv ,
@@ -19,7 +19,6 @@ void p3_main_fortran(double *qc , double *nc , double *qr , double *nr , double 
                      double *lamc , double *liq_ice_exchange , double *vap_liq_exchange , 
                      double *vap_ice_exchange , double *qv_prev , double *t_prev , double *col_location ,
                      double *elapsed_s );
-
 
 
 extern "C"
@@ -379,103 +378,243 @@ public:
     ite = ncol;
     kts = 1;
     kte = nz;
-    auto qc_host                 = qc                .createHostCopy();
-    auto nc_host                 = nc                .createHostCopy();
-    auto qr_host                 = qr                .createHostCopy();
-    auto nr_host                 = nr                .createHostCopy();
-    auto theta_host              = theta             .createHostCopy();
-    auto qv_host                 = qv                .createHostCopy();
-    auto qi_host                 = qi                .createHostCopy();
-    auto qm_host                 = qm                .createHostCopy();
-    auto ni_host                 = ni                .createHostCopy();
-    auto bm_host                 = bm                .createHostCopy();
-    auto pressure_host           = pressure          .createHostCopy();
-    auto dz_host                 = dz                .createHostCopy();
-    auto nc_nuceat_tend_host     = nc_nuceat_tend    .createHostCopy();
-    auto nccn_prescribed_host    = nccn_prescribed   .createHostCopy();
-    auto ni_activated_host       = ni_activated      .createHostCopy();
-    auto inv_qc_relvar_host      = inv_qc_relvar     .createHostCopy();
-    auto precip_liq_surf_host    = precip_liq_surf   .createHostCopy();
-    auto precip_ice_surf_host    = precip_ice_surf   .createHostCopy();
-    auto diag_eff_radius_qc_host = diag_eff_radius_qc.createHostCopy();
-    auto diag_eff_radius_qi_host = diag_eff_radius_qi.createHostCopy();
-    auto bulk_qi_host            = bulk_qi           .createHostCopy();
-    auto dpres_host              = dpres             .createHostCopy();
-    auto inv_exner_host          = inv_exner         .createHostCopy();
-    auto qv2qi_depos_tend_host   = qv2qi_depos_tend  .createHostCopy();
-    auto precip_total_tend_host  = precip_total_tend .createHostCopy();
-    auto nevapr_host             = nevapr            .createHostCopy();
-    auto qr_evap_tend_host       = qr_evap_tend      .createHostCopy();
-    auto precip_liq_flux_host    = precip_liq_flux   .createHostCopy();
-    auto precip_ice_flux_host    = precip_ice_flux   .createHostCopy();
-    auto cld_frac_r_host         = cld_frac_r        .createHostCopy();
-    auto cld_frac_l_host         = cld_frac_l        .createHostCopy();
-    auto cld_frac_i_host         = cld_frac_i        .createHostCopy();
-    auto p3_tend_out_host        = p3_tend_out       .createHostCopy();
-    auto mu_c_host               = mu_c              .createHostCopy();
-    auto lamc_host               = lamc              .createHostCopy();
-    auto liq_ice_exchange_host   = liq_ice_exchange  .createHostCopy();
-    auto vap_liq_exchange_host   = vap_liq_exchange  .createHostCopy();
-    auto vap_ice_exchange_host   = vap_ice_exchange  .createHostCopy();
-    auto qv_prev_host            = qv_prev           .createHostCopy();
-    auto t_prev_host             = t_prev            .createHostCopy();
-    auto col_location_host       = col_location      .createHostCopy();
 
-    p3_main_fortran(qc_host.data() , nc_host.data() , qr_host.data() , nr_host.data() , theta_host.data() ,
-                    qv_host.data() , dt , qi_host.data() , qm_host.data() , ni_host.data() , bm_host.data() ,
-                    pressure_host.data() , dz_host.data() , nc_nuceat_tend_host.data() ,
-                    nccn_prescribed_host.data() , ni_activated_host.data() , inv_qc_relvar_host.data() , it ,
-                    precip_liq_surf_host.data() , precip_ice_surf_host.data() , its , ite , kts , kte ,
-                    diag_eff_radius_qc_host.data() , diag_eff_radius_qi_host.data() , bulk_qi_host.data() ,
-                    do_predict_nc , do_prescribed_CCN , dpres_host.data() , inv_exner_host.data() ,
-                    qv2qi_depos_tend_host.data() , precip_total_tend_host.data() , nevapr_host.data() ,
-                    qr_evap_tend_host.data() , precip_liq_flux_host.data() , precip_ice_flux_host.data() ,
-                    cld_frac_r_host.data() , cld_frac_l_host.data() , cld_frac_i_host.data() ,
-                    p3_tend_out_host.data() , mu_c_host.data() , lamc_host.data() , liq_ice_exchange_host.data() ,
-                    vap_liq_exchange_host.data() , vap_ice_exchange_host.data() , qv_prev_host.data() ,
-                    t_prev_host.data() , col_location_host.data() , &elapsed_s );
+    #ifdef P3_CXX
 
-    qc_host                .deep_copy_to( qc                 );
-    nc_host                .deep_copy_to( nc                 );
-    qr_host                .deep_copy_to( qr                 );
-    nr_host                .deep_copy_to( nr                 );
-    theta_host             .deep_copy_to( theta              );
-    qv_host                .deep_copy_to( qv                 );
-    qi_host                .deep_copy_to( qi                 );
-    qm_host                .deep_copy_to( qm                 );
-    ni_host                .deep_copy_to( ni                 );
-    bm_host                .deep_copy_to( bm                 );
-    pressure_host          .deep_copy_to( pressure           );
-    dz_host                .deep_copy_to( dz                 );
-    nc_nuceat_tend_host    .deep_copy_to( nc_nuceat_tend     );
-    nccn_prescribed_host   .deep_copy_to( nccn_prescribed    );
-    ni_activated_host      .deep_copy_to( ni_activated       );
-    inv_qc_relvar_host     .deep_copy_to( inv_qc_relvar      );
-    precip_liq_surf_host   .deep_copy_to( precip_liq_surf    );
-    precip_ice_surf_host   .deep_copy_to( precip_ice_surf    );
-    diag_eff_radius_qc_host.deep_copy_to( diag_eff_radius_qc );
-    diag_eff_radius_qi_host.deep_copy_to( diag_eff_radius_qi );
-    bulk_qi_host           .deep_copy_to( bulk_qi            );
-    dpres_host             .deep_copy_to( dpres              );
-    inv_exner_host         .deep_copy_to( inv_exner          );
-    qv2qi_depos_tend_host  .deep_copy_to( qv2qi_depos_tend   );
-    precip_total_tend_host .deep_copy_to( precip_total_tend  );
-    nevapr_host            .deep_copy_to( nevapr             );
-    qr_evap_tend_host      .deep_copy_to( qr_evap_tend       );
-    precip_liq_flux_host   .deep_copy_to( precip_liq_flux    );
-    precip_ice_flux_host   .deep_copy_to( precip_ice_flux    );
-    cld_frac_r_host        .deep_copy_to( cld_frac_r         );
-    cld_frac_l_host        .deep_copy_to( cld_frac_l         );
-    cld_frac_i_host        .deep_copy_to( cld_frac_i         );
-    p3_tend_out_host       .deep_copy_to( p3_tend_out        );
-    mu_c_host              .deep_copy_to( mu_c               );
-    lamc_host              .deep_copy_to( lamc               );
-    liq_ice_exchange_host  .deep_copy_to( liq_ice_exchange   );
-    vap_liq_exchange_host  .deep_copy_to( vap_liq_exchange   );
-    vap_ice_exchange_host  .deep_copy_to( vap_ice_exchange   );
-    qv_prev_host           .deep_copy_to( qv_prev            );
-    t_prev_host            .deep_copy_to( t_prev             );
-    col_location_host      .deep_copy_to( col_location       );
+      // Create room for transposed variables (only 2-D variables need to be transposed)
+      transposed_qc                 = qc                .createDeviceCopy().reshape<2>(qc                .extent(1),qc                .extent(0)); // inout
+      transposed_nc                 = nc                .createDeviceCopy().reshape<2>(nc                .extent(1),nc                .extent(0)); // inout
+      transposed_qr                 = qr                .createDeviceCopy().reshape<2>(qr                .extent(1),qr                .extent(0)); // inout
+      transposed_nr                 = nr                .createDeviceCopy().reshape<2>(nr                .extent(1),nr                .extent(0)); // inout
+      transposed_theta              = theta             .createDeviceCopy().reshape<2>(theta             .extent(1),theta             .extent(0)); // inout
+      transposed_qv                 = qv                .createDeviceCopy().reshape<2>(qv                .extent(1),qv                .extent(0)); // inout
+      transposed_qi                 = qi                .createDeviceCopy().reshape<2>(qi                .extent(1),qi                .extent(0)); // inout
+      transposed_qm                 = qm                .createDeviceCopy().reshape<2>(qm                .extent(1),qm                .extent(0)); // inout
+      transposed_ni                 = ni                .createDeviceCopy().reshape<2>(ni                .extent(1),ni                .extent(0)); // inout
+      transposed_bm                 = bm                .createDeviceCopy().reshape<2>(bm                .extent(1),bm                .extent(0)); // inout
+      transposed_pressure           = pressure          .createDeviceCopy().reshape<2>(pressure          .extent(1),pressure          .extent(0)); // in
+      transposed_dz                 = dz                .createDeviceCopy().reshape<2>(dz                .extent(1),dz                .extent(0)); // in
+      transposed_nc_nuceat_tend     = nc_nuceat_tend    .createDeviceCopy().reshape<2>(nc_nuceat_tend    .extent(1),nc_nuceat_tend    .extent(0)); // in
+      transposed_nccn_prescribed    = nccn_prescribed   .createDeviceCopy().reshape<2>(nccn_prescribed   .extent(1),nccn_prescribed   .extent(0)); // in
+      transposed_ni_activated       = ni_activated      .createDeviceCopy().reshape<2>(ni_activated      .extent(1),ni_activated      .extent(0)); // in
+      transposed_inv_qc_relvar      = inv_qc_relvar     .createDeviceCopy().reshape<2>(inv_qc_relvar     .extent(1),inv_qc_relvar     .extent(0)); // in
+      transposed_dpres              = dpres             .createDeviceCopy().reshape<2>(dpres             .extent(1),dpres             .extent(0)); // in
+      transposed_inv_exner          = inv_exner         .createDeviceCopy().reshape<2>(inv_exner         .extent(1),inv_exner         .extent(0)); // in
+      transposed_cld_frac_r         = cld_frac_r        .createDeviceCopy().reshape<2>(cld_frac_r        .extent(1),cld_frac_r        .extent(0)); // in
+      transposed_cld_frac_l         = cld_frac_l        .createDeviceCopy().reshape<2>(cld_frac_l        .extent(1),cld_frac_l        .extent(0)); // in
+      transposed_cld_frac_i         = cld_frac_i        .createDeviceCopy().reshape<2>(cld_frac_i        .extent(1),cld_frac_i        .extent(0)); // in
+      transposed_qv_prev            = qv_prev           .createDeviceCopy().reshape<2>(qv_prev           .extent(1),qv_prev           .extent(0)); // in
+      transposed_t_prev             = t_prev            .createDeviceCopy().reshape<2>(t_prev            .extent(1),t_prev            .extent(0)); // in
+      transposed_col_location       = col_location      .createDeviceCopy().reshape<2>(col_location      .extent(1),col_location      .extent(0)); // in
+      transposed_diag_eff_radius_qc = diag_eff_radius_qc.createDeviceCopy().reshape<2>(diag_eff_radius_qc.extent(1),diag_eff_radius_qc.extent(0)); //   out
+      transposed_diag_eff_radius_qi = diag_eff_radius_qi.createDeviceCopy().reshape<2>(diag_eff_radius_qi.extent(1),diag_eff_radius_qi.extent(0)); //   out
+      transposed_bulk_qi            = bulk_qi           .createDeviceCopy().reshape<2>(bulk_qi           .extent(1),bulk_qi           .extent(0)); //   out
+      transposed_qv2qi_depos_tend   = qv2qi_depos_tend  .createDeviceCopy().reshape<2>(qv2qi_depos_tend  .extent(1),qv2qi_depos_tend  .extent(0)); //   out
+      transposed_precip_liq_flux    = precip_liq_flux   .createDeviceCopy().reshape<2>(precip_liq_flux   .extent(1),precip_liq_flux   .extent(0)); //   out
+      transposed_precip_ice_flux    = precip_ice_flux   .createDeviceCopy().reshape<2>(precip_ice_flux   .extent(1),precip_ice_flux   .extent(0)); //   out
+      transposed_liq_ice_exchange   = liq_ice_exchange  .createDeviceCopy().reshape<2>(liq_ice_exchange  .extent(1),liq_ice_exchange  .extent(0)); //   out
+      transposed_vap_liq_exchange   = vap_liq_exchange  .createDeviceCopy().reshape<2>(vap_liq_exchange  .extent(1),vap_liq_exchange  .extent(0)); //   out
+      transposed_vap_ice_exchange   = vap_ice_exchange  .createDeviceCopy().reshape<2>(vap_ice_exchange  .extent(1),vap_ice_exchange  .extent(0)); //   out
+
+      // For in and inout variables, copy transposed data (One kernel for efficiency)
+      parallel_for( SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
+        transposed_qc             (i,k) = qc             (k,i); // inout
+        transposed_nc             (i,k) = nc             (k,i); // inout
+        transposed_qr             (i,k) = qr             (k,i); // inout
+        transposed_nr             (i,k) = nr             (k,i); // inout
+        transposed_theta          (i,k) = theta          (k,i); // inout
+        transposed_qv             (i,k) = qv             (k,i); // inout
+        transposed_qi             (i,k) = qi             (k,i); // inout
+        transposed_qm             (i,k) = qm             (k,i); // inout
+        transposed_ni             (i,k) = ni             (k,i); // inout
+        transposed_bm             (i,k) = bm             (k,i); // inout
+        transposed_pressure       (i,k) = pressure       (k,i); // in
+        transposed_dz             (i,k) = dz             (k,i); // in
+        transposed_nc_nuceat_tend (i,k) = nc_nuceat_tend (k,i); // in
+        transposed_nccn_prescribed(i,k) = nccn_prescribed(k,i); // in
+        transposed_ni_activated   (i,k) = ni_activated   (k,i); // in
+        transposed_inv_qc_relvar  (i,k) = inv_qc_relvar  (k,i); // in
+        transposed_dpres          (i,k) = dpres          (k,i); // in
+        transposed_inv_exner      (i,k) = inv_exner      (k,i); // in
+        transposed_cld_frac_r     (i,k) = cld_frac_r     (k,i); // in
+        transposed_cld_frac_l     (i,k) = cld_frac_l     (k,i); // in
+        transposed_cld_frac_i     (i,k) = cld_frac_i     (k,i); // in
+        transposed_qv_prev        (i,k) = qv_prev        (k,i); // in
+        transposed_t_prev         (i,k) = t_prev         (k,i); // in
+        if (i < 3) transposed_col_location(i,k) = col_location(k,i); // in
+      });
+
+      // This has fewer parameters than the Fortran call because they got rid of some in the c++ port of scream
+      p3_main_cxx( transposed_qc                .create_ArrayIR() , // inout
+                   transposed_nc                .create_ArrayIR() , // inout
+                   transposed_qr                .create_ArrayIR() , // inout
+                   transposed_nr                .create_ArrayIR() , // inout
+                   transposed_theta             .create_ArrayIR() , // inout
+                   transposed_qv                .create_ArrayIR() , // inout
+                   dt                                             , // inout
+                   transposed_qi                .create_ArrayIR() , // inout
+                   transposed_qm                .create_ArrayIR() , // inout
+                   transposed_ni                .create_ArrayIR() , // inout
+                   transposed_bm                .create_ArrayIR() , // inout
+                   transposed_pressure          .create_ArrayIR() , // in
+                   transposed_dz                .create_ArrayIR() , // in
+                   transposed_nc_nuceat_tend    .create_ArrayIR() , // in
+                   transposed_nccn_prescribed   .create_ArrayIR() , // in
+                   transposed_ni_activated      .create_ArrayIR() , // in
+                   transposed_inv_qc_relvar     .create_ArrayIR() , // in
+                   it                                             , // in
+                   precip_liq_surf              .create_ArrayIR() , //   out
+                   precip_ice_surf              .create_ArrayIR() , //   out
+                   its                                            , // in
+                   ite                                            , // in
+                   kts                                            , // in
+                   kte                                            , // in
+                   transposed_diag_eff_radius_qc.create_ArrayIR() , //   out
+                   transposed_diag_eff_radius_qi.create_ArrayIR() , //   out
+                   transposed_bulk_qi           .create_ArrayIR() , //   out
+                   do_predict_nc                                  , // in
+                   do_prescribed_CCN                              , // in
+                   transposed_dpres             .create_ArrayIR() , // in
+                   transposed_inv_exner         .create_ArrayIR() , // in
+                   transposed_qv2qi_depos_tend  .create_ArrayIR() , //   out
+                   transposed_precip_liq_flux   .create_ArrayIR() , //   out
+                   transposed_precip_ice_flux   .create_ArrayIR() , //   out
+                   transposed_cld_frac_r        .create_ArrayIR() , // in
+                   transposed_cld_frac_l        .create_ArrayIR() , // in
+                   transposed_cld_frac_i        .create_ArrayIR() , // in
+                   transposed_liq_ice_exchange  .create_ArrayIR() , //   out
+                   transposed_vap_liq_exchange  .create_ArrayIR() , //   out
+                   transposed_vap_ice_exchange  .create_ArrayIR() , //   out
+                   transposed_qv_prev           .create_ArrayIR() , // in
+                   transposed_t_prev            .create_ArrayIR() , // in
+                   transposed_col_location      .create_ArrayIR() , // in
+                  &elapsed_s                                      ) //   out {
+
+      // For inout and out variables, copy transposed data (One kernel for efficiency)
+      parallel_for( SimpleBounds<2>(nz+1,ncol) , YAKL_LAMBDA (int k, int i) {
+        precip_liq_flux   (k,i) = transposed_precip_liq_flux   (i,k); //   out
+        precip_ice_flux   (k,i) = transposed_precip_ice_flux   (i,k); //   out
+        if (k < nz) {
+          qc                (k,i) = transposed_qc                (i,k); // inout
+          nc                (k,i) = transposed_nc                (i,k); // inout
+          qr                (k,i) = transposed_qr                (i,k); // inout
+          nr                (k,i) = transposed_nr                (i,k); // inout
+          theta             (k,i) = transposed_theta             (i,k); // inout
+          qv                (k,i) = transposed_qv                (i,k); // inout
+          qi                (k,i) = transposed_qi                (i,k); // inout
+          qm                (k,i) = transposed_qm                (i,k); // inout
+          ni                (k,i) = transposed_ni                (i,k); // inout
+          bm                (k,i) = transposed_bm                (i,k); // inout
+          diag_eff_radius_qc(k,i) = transposed_diag_eff_radius_qc(i,k); //   out
+          diag_eff_radius_qi(k,i) = transposed_diag_eff_radius_qi(i,k); //   out
+          bulk_qi           (k,i) = transposed_bulk_qi           (i,k); //   out
+          qv2qi_depos_tend  (k,i) = transposed_qv2qi_depos_tend  (i,k); //   out
+          liq_ice_exchange  (k,i) = transposed_liq_ice_exchange  (i,k); //   out
+          vap_liq_exchange  (k,i) = transposed_vap_liq_exchange  (i,k); //   out
+          vap_ice_exchange  (k,i) = transposed_vap_ice_exchange  (i,k); //   out
+        }
+      });
+
+    #else
+
+      auto qc_host                 = qc                .createHostCopy();
+      auto nc_host                 = nc                .createHostCopy();
+      auto qr_host                 = qr                .createHostCopy();
+      auto nr_host                 = nr                .createHostCopy();
+      auto theta_host              = theta             .createHostCopy();
+      auto qv_host                 = qv                .createHostCopy();
+      auto qi_host                 = qi                .createHostCopy();
+      auto qm_host                 = qm                .createHostCopy();
+      auto ni_host                 = ni                .createHostCopy();
+      auto bm_host                 = bm                .createHostCopy();
+      auto pressure_host           = pressure          .createHostCopy();
+      auto dz_host                 = dz                .createHostCopy();
+      auto nc_nuceat_tend_host     = nc_nuceat_tend    .createHostCopy();
+      auto nccn_prescribed_host    = nccn_prescribed   .createHostCopy();
+      auto ni_activated_host       = ni_activated      .createHostCopy();
+      auto inv_qc_relvar_host      = inv_qc_relvar     .createHostCopy();
+      auto precip_liq_surf_host    = precip_liq_surf   .createHostCopy();
+      auto precip_ice_surf_host    = precip_ice_surf   .createHostCopy();
+      auto diag_eff_radius_qc_host = diag_eff_radius_qc.createHostCopy();
+      auto diag_eff_radius_qi_host = diag_eff_radius_qi.createHostCopy();
+      auto bulk_qi_host            = bulk_qi           .createHostCopy();
+      auto dpres_host              = dpres             .createHostCopy();
+      auto inv_exner_host          = inv_exner         .createHostCopy();
+      auto qv2qi_depos_tend_host   = qv2qi_depos_tend  .createHostCopy();
+      auto precip_total_tend_host  = precip_total_tend .createHostCopy();
+      auto nevapr_host             = nevapr            .createHostCopy();
+      auto qr_evap_tend_host       = qr_evap_tend      .createHostCopy();
+      auto precip_liq_flux_host    = precip_liq_flux   .createHostCopy();
+      auto precip_ice_flux_host    = precip_ice_flux   .createHostCopy();
+      auto cld_frac_r_host         = cld_frac_r        .createHostCopy();
+      auto cld_frac_l_host         = cld_frac_l        .createHostCopy();
+      auto cld_frac_i_host         = cld_frac_i        .createHostCopy();
+      auto p3_tend_out_host        = p3_tend_out       .createHostCopy();
+      auto mu_c_host               = mu_c              .createHostCopy();
+      auto lamc_host               = lamc              .createHostCopy();
+      auto liq_ice_exchange_host   = liq_ice_exchange  .createHostCopy();
+      auto vap_liq_exchange_host   = vap_liq_exchange  .createHostCopy();
+      auto vap_ice_exchange_host   = vap_ice_exchange  .createHostCopy();
+      auto qv_prev_host            = qv_prev           .createHostCopy();
+      auto t_prev_host             = t_prev            .createHostCopy();
+      auto col_location_host       = col_location      .createHostCopy();
+
+      p3_main_fortran(qc_host.data() , nc_host.data() , qr_host.data() , nr_host.data() , theta_host.data() ,
+                      qv_host.data() , dt , qi_host.data() , qm_host.data() , ni_host.data() , bm_host.data() ,
+                      pressure_host.data() , dz_host.data() , nc_nuceat_tend_host.data() ,
+                      nccn_prescribed_host.data() , ni_activated_host.data() , inv_qc_relvar_host.data() , it ,
+                      precip_liq_surf_host.data() , precip_ice_surf_host.data() , its , ite , kts , kte ,
+                      diag_eff_radius_qc_host.data() , diag_eff_radius_qi_host.data() , bulk_qi_host.data() ,
+                      do_predict_nc , do_prescribed_CCN , dpres_host.data() , inv_exner_host.data() ,
+                      qv2qi_depos_tend_host.data() , precip_total_tend_host.data() , nevapr_host.data() ,
+                      qr_evap_tend_host.data() , precip_liq_flux_host.data() , precip_ice_flux_host.data() ,
+                      cld_frac_r_host.data() , cld_frac_l_host.data() , cld_frac_i_host.data() ,
+                      p3_tend_out_host.data() , mu_c_host.data() , lamc_host.data() , liq_ice_exchange_host.data() ,
+                      vap_liq_exchange_host.data() , vap_ice_exchange_host.data() , qv_prev_host.data() ,
+                      t_prev_host.data() , col_location_host.data() , &elapsed_s );
+
+      qc_host                .deep_copy_to( qc                 );
+      nc_host                .deep_copy_to( nc                 );
+      qr_host                .deep_copy_to( qr                 );
+      nr_host                .deep_copy_to( nr                 );
+      theta_host             .deep_copy_to( theta              );
+      qv_host                .deep_copy_to( qv                 );
+      qi_host                .deep_copy_to( qi                 );
+      qm_host                .deep_copy_to( qm                 );
+      ni_host                .deep_copy_to( ni                 );
+      bm_host                .deep_copy_to( bm                 );
+      pressure_host          .deep_copy_to( pressure           );
+      dz_host                .deep_copy_to( dz                 );
+      nc_nuceat_tend_host    .deep_copy_to( nc_nuceat_tend     );
+      nccn_prescribed_host   .deep_copy_to( nccn_prescribed    );
+      ni_activated_host      .deep_copy_to( ni_activated       );
+      inv_qc_relvar_host     .deep_copy_to( inv_qc_relvar      );
+      precip_liq_surf_host   .deep_copy_to( precip_liq_surf    );
+      precip_ice_surf_host   .deep_copy_to( precip_ice_surf    );
+      diag_eff_radius_qc_host.deep_copy_to( diag_eff_radius_qc );
+      diag_eff_radius_qi_host.deep_copy_to( diag_eff_radius_qi );
+      bulk_qi_host           .deep_copy_to( bulk_qi            );
+      dpres_host             .deep_copy_to( dpres              );
+      inv_exner_host         .deep_copy_to( inv_exner          );
+      qv2qi_depos_tend_host  .deep_copy_to( qv2qi_depos_tend   );
+      precip_total_tend_host .deep_copy_to( precip_total_tend  );
+      nevapr_host            .deep_copy_to( nevapr             );
+      qr_evap_tend_host      .deep_copy_to( qr_evap_tend       );
+      precip_liq_flux_host   .deep_copy_to( precip_liq_flux    );
+      precip_ice_flux_host   .deep_copy_to( precip_ice_flux    );
+      cld_frac_r_host        .deep_copy_to( cld_frac_r         );
+      cld_frac_l_host        .deep_copy_to( cld_frac_l         );
+      cld_frac_i_host        .deep_copy_to( cld_frac_i         );
+      p3_tend_out_host       .deep_copy_to( p3_tend_out        );
+      mu_c_host              .deep_copy_to( mu_c               );
+      lamc_host              .deep_copy_to( lamc               );
+      liq_ice_exchange_host  .deep_copy_to( liq_ice_exchange   );
+      vap_liq_exchange_host  .deep_copy_to( vap_liq_exchange   );
+      vap_ice_exchange_host  .deep_copy_to( vap_ice_exchange   );
+      qv_prev_host           .deep_copy_to( qv_prev            );
+      t_prev_host            .deep_copy_to( t_prev             );
+      col_location_host      .deep_copy_to( col_location       );
+    #endif
     
                     
     ///////////////////////////////////////////////////////////////////////////////
