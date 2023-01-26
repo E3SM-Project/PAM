@@ -122,6 +122,9 @@ public:
     dm.register_and_allocate<real>("qv_prev","qv from prev step"         ,{nz,ny,nx,nens},{"z","y","x","nens"});
     dm.register_and_allocate<real>("t_prev" ,"Temperature from prev step",{nz,ny,nx,nens},{"z","y","x","nens"});
 
+    dm.register_and_allocate<real>("precip_liq_surf_out","liq surface precipitation rate",{ny,nx,nens},{"y","x","nens"});
+    dm.register_and_allocate<real>("precip_ice_surf_out","ice surface precipitation rate",{ny,nx,nens},{"y","x","nens"});
+
     auto cloud_water     = dm.get<real,4>( "cloud_water"     );
     auto cloud_water_num = dm.get<real,4>( "cloud_water_num" );
     auto rain            = dm.get<real,4>( "rain"            );
@@ -161,7 +164,12 @@ public:
     micro_p3_utils_init_fortran( cp_d , R_d , R_v , rhoh2o , mwh2o , mwdry ,
                                  grav , latvap , latice, cp_l , tmelt , pi , iulog , masterproc );
 
-    std::string dir = "../../../physics/micro/p3";
+    std::string dir;
+    if (coupler.option_exists("p3_lookup_data_path")) {
+      dir = coupler.get_option<std::string>("p3_lookup_data_path");
+    } else {
+      dir = "../../../physics/micro/p3"; // default for PAM standalone
+    };
     std::string ver = "4.1.1";
     int dir_len = dir.length();
     int ver_len = ver.length();
@@ -491,6 +499,15 @@ public:
       t_prev (k,i) = temp(k,i);
     });
 
+    // output precipitation rates to be aggregated
+    auto precip_liq_surf_out = dm.get<real,3>( "precip_liq_surf_out" );
+    auto precip_ice_surf_out = dm.get<real,3>( "precip_ice_surf_out" );
+    parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      int icol = j*nx*nens + i*nens + iens;
+      precip_liq_surf_out(j,i,iens) = precip_liq_surf(icol)*1000.;
+      precip_ice_surf_out(j,i,iens) = precip_ice_surf(icol)*1000.;
+    });
+
     #ifdef PAM_DEBUG
       real mass;
       {
@@ -660,7 +677,8 @@ public:
     });
   }
 
-
+  void finalize(pam::PamCoupler &coupler) {
+  }
 
   std::string micro_name() const {
     return "p3";

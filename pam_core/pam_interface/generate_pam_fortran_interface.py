@@ -90,36 +90,42 @@ f.write('''
   !! Interfaces for extern "C" routines
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   interface
-    subroutine pam_finalize_c() bind(C,name='pam_interface_finalize')
+    subroutine pam_finalize_c() &
+               bind(C,name='pam_interface_finalize')
     end subroutine
   end interface
 
   interface
-    subroutine pam_set_option_logical_c(key,val) bind(C,name='pam_interface_set_option_bool')
+    subroutine pam_set_option_logical_c(key,val) &
+               bind(C,name='pam_interface_set_option_bool')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: key(*)
       logical(c_bool), value :: val
     end subroutine
-    subroutine pam_set_option_integer_c(key,val) bind(C,name='pam_interface_set_option_int')
+    subroutine pam_set_option_integer_c(key,val) &
+               bind(C,name='pam_interface_set_option_int')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: key(*)
       integer(c_int), value  :: val
     end subroutine
-    subroutine pam_set_option_string_c(key,val) bind(C,name='pam_interface_set_option_string')
+    subroutine pam_set_option_string_c(key,val) &
+               bind(C,name='pam_interface_set_option_string')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: key(*)
       character(kind=c_char) :: val(*)
     end subroutine
-    subroutine pam_set_option_float_c(key,val) bind(C,name='pam_interface_set_option_float')
+    subroutine pam_set_option_float_c(key,val) &
+               bind(C,name='pam_interface_set_option_float')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: key(*)
       real(c_float), value   :: val
     end subroutine
-    subroutine pam_set_option_double_c(key,val) bind(C,name='pam_interface_set_option_double')
+    subroutine pam_set_option_double_c(key,val) &
+               bind(C,name='pam_interface_set_option_double')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: key(*)
@@ -128,37 +134,43 @@ f.write('''
   end interface
 
   interface
-    subroutine pam_get_option_logical_c(key,val) bind(C,name='pam_interface_get_option_bool')
+    subroutine pam_get_option_logical_c(key,val) &
+               bind(C,name='pam_interface_get_option_bool')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: key(*)
       logical(c_bool)        :: val
     end subroutine
-    subroutine pam_get_option_integer_c(key,val) bind(C,name='pam_interface_get_option_int')
+    subroutine pam_get_option_integer_c(key,val) &
+               bind(C,name='pam_interface_get_option_int')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: key(*)
       integer(c_int)         :: val
     end subroutine
-    subroutine pam_get_option_stringlen_c(key,len) bind(C,name='pam_interface_get_option_stringlen')
+    subroutine pam_get_option_stringlen_c(key,len) &
+               bind(C,name='pam_interface_get_option_stringlen')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: key(*)
       integer(c_int)         :: len
     end subroutine
-    subroutine pam_get_option_string_c(key,val) bind(C,name='pam_interface_get_option_string')
+    subroutine pam_get_option_string_c(key,val) &
+               bind(C,name='pam_interface_get_option_string')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: key(*)
       character(kind=c_char) :: val(*)
     end subroutine
-    subroutine pam_get_option_float_c(key,val) bind(C,name='pam_interface_get_option_float')
+    subroutine pam_get_option_float_c(key,val) &
+               bind(C,name='pam_interface_get_option_float')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: key(*)
       real(c_float)          :: val
     end subroutine
-    subroutine pam_get_option_double_c(key,val) bind(C,name='pam_interface_get_option_double')
+    subroutine pam_get_option_double_c(key,val) &
+               bind(C,name='pam_interface_get_option_double')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: key(*)
@@ -167,7 +179,8 @@ f.write('''
   end interface
 
   interface
-    subroutine pam_option_exists_c(key,exists) bind(C,name='pam_interface_option_exists')
+    subroutine pam_option_exists_c(key,exists) &
+               bind(C,name='pam_interface_option_exists')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: key(*)
@@ -176,12 +189,14 @@ f.write('''
   end interface
 
   interface
-    subroutine pam_remove_option_c(key) bind(C,name='pam_interface_remove_option')
+    subroutine pam_remove_option_c(key) &
+               bind(C,name='pam_interface_remove_option')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: key(*)
     end subroutine
-    subroutine pam_make_readonly_c(key) bind(C,name='pam_interface_make_readonly')
+    subroutine pam_make_readonly_c(key) &
+               bind(C,name='pam_interface_make_readonly')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: key(*)
@@ -189,7 +204,8 @@ f.write('''
   end interface
 
   interface
-    subroutine pam_create_array_logical_c(key,desc,dims,ndims) bind(C,name='pam_interface_create_array_bool')
+    subroutine pam_create_array_logical_c(key,desc,dims,ndims) &
+               bind(C,name='pam_interface_create_array_bool')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: key(*), desc(*)
@@ -198,7 +214,8 @@ f.write('''
     end subroutine
   end interface
   interface
-    subroutine pam_create_array_integer_c(key,desc,dims,ndims) bind(C,name='pam_interface_create_array_int')
+    subroutine pam_create_array_integer_c(key,desc,dims,ndims) &
+               bind(C,name='pam_interface_create_array_int')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: key(*), desc(*)
@@ -207,7 +224,8 @@ f.write('''
     end subroutine
   end interface
   interface
-    subroutine pam_create_array_float_c(key,desc,dims,ndims) bind(C,name='pam_interface_create_array_float')
+    subroutine pam_create_array_float_c(key,desc,dims,ndims) &
+               bind(C,name='pam_interface_create_array_float')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: key(*), desc(*)
@@ -216,7 +234,8 @@ f.write('''
     end subroutine
   end interface
   interface
-    subroutine pam_create_array_double_c(key,desc,dims,ndims) bind(C,name='pam_interface_create_array_double')
+    subroutine pam_create_array_double_c(key,desc,dims,ndims) &
+               bind(C,name='pam_interface_create_array_double')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: key(*), desc(*)
@@ -226,7 +245,8 @@ f.write('''
   end interface
 
   interface
-    subroutine pam_mirror_array_readonly_logical_c(key,desc,dims,ndims,arr) bind(C,name='pam_interface_mirror_array_readonly_bool')
+    subroutine pam_mirror_array_readonly_logical_c(key,desc,dims,ndims,arr) &
+               bind(C,name='pam_interface_mirror_array_readonly_bool')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: key(*), desc(*)
@@ -236,7 +256,8 @@ f.write('''
     end subroutine
   end interface
   interface
-    subroutine pam_mirror_array_readonly_integer_c(key,desc,dims,ndims,arr) bind(C,name='pam_interface_mirror_array_readonly_int')
+    subroutine pam_mirror_array_readonly_integer_c(key,desc,dims,ndims,arr) &
+               bind(C,name='pam_interface_mirror_array_readonly_int')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: key(*), desc(*)
@@ -246,7 +267,8 @@ f.write('''
     end subroutine
   end interface
   interface
-    subroutine pam_mirror_array_readonly_float_c(key,desc,dims,ndims,arr) bind(C,name='pam_interface_mirror_array_readonly_float')
+    subroutine pam_mirror_array_readonly_float_c(key,desc,dims,ndims,arr) &
+               bind(C,name='pam_interface_mirror_array_readonly_float')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: key(*), desc(*)
@@ -256,7 +278,8 @@ f.write('''
     end subroutine
   end interface
   interface
-    subroutine pam_mirror_array_readonly_double_c(key,desc,dims,ndims,arr) bind(C,name='pam_interface_mirror_array_readonly_double')
+    subroutine pam_mirror_array_readonly_double_c(key,desc,dims,ndims,arr) &
+               bind(C,name='pam_interface_mirror_array_readonly_double')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: key(*), desc(*)
@@ -267,7 +290,8 @@ f.write('''
   end interface
 
   interface
-    subroutine pam_mirror_array_readwrite_logical_c(key,desc,dims,ndims,arr) bind(C,name='pam_interface_mirror_array_readwrite_bool')
+    subroutine pam_mirror_array_readwrite_logical_c(key,desc,dims,ndims,arr) &
+               bind(C,name='pam_interface_mirror_array_readwrite_bool')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: key(*), desc(*)
@@ -277,7 +301,8 @@ f.write('''
     end subroutine
   end interface
   interface
-    subroutine pam_mirror_array_readwrite_integer_c(key,desc,dims,ndims,arr) bind(C,name='pam_interface_mirror_array_readwrite_int')
+    subroutine pam_mirror_array_readwrite_integer_c(key,desc,dims,ndims,arr) &
+               bind(C,name='pam_interface_mirror_array_readwrite_int')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: key(*), desc(*)
@@ -287,7 +312,8 @@ f.write('''
     end subroutine
   end interface
   interface
-    subroutine pam_mirror_array_readwrite_float_c(key,desc,dims,ndims,arr) bind(C,name='pam_interface_mirror_array_readwrite_float')
+    subroutine pam_mirror_array_readwrite_float_c(key,desc,dims,ndims,arr) &
+               bind(C,name='pam_interface_mirror_array_readwrite_float')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: key(*), desc(*)
@@ -297,7 +323,8 @@ f.write('''
     end subroutine
   end interface
   interface
-    subroutine pam_mirror_array_readwrite_double_c(key,desc,dims,ndims,arr) bind(C,name='pam_interface_mirror_array_readwrite_double')
+    subroutine pam_mirror_array_readwrite_double_c(key,desc,dims,ndims,arr) &
+               bind(C,name='pam_interface_mirror_array_readwrite_double')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: key(*), desc(*)
@@ -308,7 +335,8 @@ f.write('''
   end interface
 
   interface
-    subroutine pam_get_array_logical_c(label,ptr,dims,ndims) bind(C,name='pam_interface_get_array_bool')
+    subroutine pam_get_array_logical_c(label,ptr,dims,ndims) &
+               bind(C,name='pam_interface_get_array_bool')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: label(*)
@@ -316,7 +344,8 @@ f.write('''
       integer(c_int)         :: dims(*)
       integer(c_int), value  :: ndims
     end subroutine
-    subroutine pam_get_array_integer_c(label,ptr,dims,ndims) bind(C,name='pam_interface_get_array_int')
+    subroutine pam_get_array_integer_c(label,ptr,dims,ndims) &
+               bind(C,name='pam_interface_get_array_int')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: label(*)
@@ -324,7 +353,8 @@ f.write('''
       integer(c_int)         :: dims(*)
       integer(c_int), value  :: ndims
     end subroutine
-    subroutine pam_get_array_float_c(label,ptr,dims,ndims) bind(C,name='pam_interface_get_array_float')
+    subroutine pam_get_array_float_c(label,ptr,dims,ndims) &
+               bind(C,name='pam_interface_get_array_float')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: label(*)
@@ -332,7 +362,8 @@ f.write('''
       integer(c_int)         :: dims(*)
       integer(c_int), value  :: ndims
     end subroutine
-    subroutine pam_get_array_double_c(label,ptr,dims,ndims) bind(C,name='pam_interface_get_array_double')
+    subroutine pam_get_array_double_c(label,ptr,dims,ndims) &
+               bind(C,name='pam_interface_get_array_double')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: label(*)
@@ -343,7 +374,8 @@ f.write('''
   end interface
 
   interface
-    subroutine pam_destroy_array_c(key) bind(C,name='pam_interface_destroy_array')
+    subroutine pam_destroy_array_c(key) &
+               bind(C,name='pam_interface_destroy_array')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: key(*)
@@ -351,7 +383,8 @@ f.write('''
   end interface
 
   interface
-    subroutine pam_array_exists_c(key,exists) bind(C,name='pam_interface_array_exists')
+    subroutine pam_array_exists_c(key,exists) &
+               bind(C,name='pam_interface_array_exists')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: key(*)
@@ -360,7 +393,8 @@ f.write('''
   end interface
 
   interface
-    subroutine pam_register_dimension_c(key,len) bind(C,name='pam_interface_register_dimension')
+    subroutine pam_register_dimension_c(key,len) &
+               bind(C,name='pam_interface_register_dimension')
       use iso_c_binding
       implicit none
       character(kind=c_char) :: key(*)
@@ -536,7 +570,9 @@ for tp in array_types :
     character(len=maxlen) :: desc = ""
     if (present(desc_in)) desc = trim(desc_in)
     dims_c = dims(ubound(dims,1):lbound(dims,1):-1)
-    call pam_create_array_{tp}_c( string_f2c(key,len_trim(key)) , string_f2c(desc,len_trim(desc)) , dims_c , size(dims_c) )
+    call pam_create_array_{tp}_c( string_f2c(key,len_trim(key)) , &
+                                  string_f2c(desc,len_trim(desc)) , &
+                                  dims_c , size(dims_c) )
   end subroutine\n''')
 
 f.write("\n\n")
@@ -573,7 +609,8 @@ for tp in array_types :
     if (present(desc_in)) desc = trim(desc_in)
     dims_c = shape(arr)
     dims_c = dims_c(ubound(dims_c,1):lbound(dims_c,1):-1)
-    call pam_mirror_array_readonly_{tp}_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , {d} , arr )
+    call pam_mirror_array_readonly_{tp}_c( string_f2c(label,len_trim(label)) , &
+                                           string_f2c(desc,len_trim(desc)) , dims_c , {d} , arr )
   end subroutine\n''')
 
 f.write("\n\n")
@@ -591,7 +628,8 @@ for tp in array_types :
     if (present(desc_in)) desc = trim(desc_in)
     dims_c = shape(arr)
     dims_c = dims_c(ubound(dims_c,1):lbound(dims_c,1):-1)
-    call pam_mirror_array_readwrite_{tp}_c( string_f2c(label,len_trim(label)) , string_f2c(desc,len_trim(desc)) , dims_c , {d} , arr )
+    call pam_mirror_array_readwrite_{tp}_c( string_f2c(label,len_trim(label)) , &
+                                            string_f2c(desc,len_trim(desc)) , dims_c , {d} , arr )
   end subroutine\n''')
 
 f.write("\n\n")
