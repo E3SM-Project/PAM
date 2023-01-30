@@ -52,6 +52,8 @@ void shoc_main_cxx(int                         & shcol,        // in
                    array_ir::ArrayIR<double,2> & wqls_sec,     //   out
                    array_ir::ArrayIR<double,2> & brunt,        //   out
                    array_ir::ArrayIR<double,2> & shoc_ql2 ) {  //   out
+  using ScreamCXX::ArrayIR_to_View_of_Packs;
+  using ScreamCXX::ArrayIR_to_View;
   using namespace scream;
   using namespace scream::shoc;
   using SHOC       = shoc::Functions<Real, DefaultDevice>;
@@ -75,7 +77,7 @@ void shoc_main_cxx(int                         & shcol,        // in
   auto pdel_2d        = ArrayIR_to_View_of_Packs(pdel       );
   auto thv_2d         = ArrayIR_to_View_of_Packs(thv        );
   auto w_field_2d     = ArrayIR_to_View_of_Packs(w_field    );
-  auto wtracer_sfc_2d = ArrayIR_to_View         (wtracer_sfc);
+  auto wtracer_sfc_2d = ArrayIR_to_View_of_Packs(wtracer_sfc);
   auto inv_exner_2d   = ArrayIR_to_View_of_Packs(inv_exner  );
 
   SHOC::SHOCInput shoc_input{host_dx_1d, host_dy_1d, zt_grid_2d, zi_grid_2d,

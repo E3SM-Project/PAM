@@ -49,6 +49,8 @@ void p3_main_cxx(array_ir::ArrayIR<double,2> const & qc,                 // inou
                  array_ir::ArrayIR<double,2> const & t_prev,             // in
                  array_ir::ArrayIR<double,2> const & col_location,       // in
                  double                              *elapsed_s ) {      //   out
+  using ScreamCXX::ArrayIR_to_View_of_Packs;
+  using ScreamCXX::ArrayIR_to_View;
   using namespace scream;
   using namespace scream::p3;
   using P3F        = p3::Functions<Real, DefaultDevice>;
@@ -73,9 +75,6 @@ void p3_main_cxx(array_ir::ArrayIR<double,2> const & qc,                 // inou
   P3F::P3PrognosticState prog_state{qc_d, nc_d, qr_d, nr_d, qi_d, qm_d,
                                     ni_d, bm_d, qv_d, th_d};
 
-  //----------------------------------------------------------------------------
-  // Populate P3 diagnostic inputs
-  //----------------------------------------------------------------------------
   auto nc_nuceat_tend_d = ArrayIR_to_View_of_Packs(nc_nuceat_tend );
   auto nccn_d           = ArrayIR_to_View_of_Packs(nccn_prescribed);
   auto ni_activated_d   = ArrayIR_to_View_of_Packs(ni_activated   );
@@ -96,9 +95,6 @@ void p3_main_cxx(array_ir::ArrayIR<double,2> const & qc,                 // inou
                                       pres_d, dz_d, dpres_d, inv_exner_d, 
                                       q_prev_d, t_prev_d};
 
-  //----------------------------------------------------------------------------
-  // Populate P3 diagnostic outputs
-  //----------------------------------------------------------------------------
   auto qv2qi_depos_tend_d   = ArrayIR_to_View_of_Packs(qv2qi_depos_tend  );
   auto diag_eff_radius_qc_d = ArrayIR_to_View_of_Packs(diag_eff_radius_qc);
   auto diag_eff_radius_qi_d = ArrayIR_to_View_of_Packs(diag_eff_radius_qi);
@@ -110,34 +106,27 @@ void p3_main_cxx(array_ir::ArrayIR<double,2> const & qc,                 // inou
 
   Kokkos::parallel_for( Kokkos::MDRangePolicy<Kokkos::Rank<3>>({0, 0, 0}, {ncol, npack, Spack::n}),
                         KOKKOS_LAMBDA(int icol, int ilev, int s) {
-     qv2qi_depos_tend_d  (icol,ilev)[s] = 0.;
-     diag_eff_radius_qc_d(icol,ilev)[s] = 0.;
-     diag_eff_radius_qi_d(icol,ilev)[s] = 0.;
-     rho_qi_d            (icol,ilev)[s] = 0.;
-     precip_liq_flux_d   (icol,ilev)[s] = 0.;
-     precip_ice_flux_d   (icol,ilev)[s] = 0.;
-  });
-
-  Kokkos::parallel_for("precip", ncol, KOKKOS_LAMBDA (const int& icol) {
-    precip_liq_surf_d(icol) = 0.;
-    precip_ice_surf_d(icol) = 0.;
+    qv2qi_depos_tend_d  (icol,ilev)[s] = 0.;
+    diag_eff_radius_qc_d(icol,ilev)[s] = 0.;
+    diag_eff_radius_qi_d(icol,ilev)[s] = 0.;
+    rho_qi_d            (icol,ilev)[s] = 0.;
+    precip_liq_flux_d   (icol,ilev)[s] = 0.;
+    precip_ice_flux_d   (icol,ilev)[s] = 0.;
+    if (ilev == 0 && s == 0) {
+      precip_liq_surf_d(icol) = 0.;
+      precip_ice_surf_d(icol) = 0.;
+    }
   });
 
   P3F::P3DiagnosticOutputs diag_outputs {qv2qi_depos_tend_d, precip_liq_surf_d,
                                          precip_ice_surf_d, diag_eff_radius_qc_d, diag_eff_radius_qi_d,
                                          rho_qi_d,precip_liq_flux_d, precip_ice_flux_d};
 
-  //----------------------------------------------------------------------------
-  // Populate P3 infrastructure
-  //----------------------------------------------------------------------------
   auto col_location_d = ArrayIR_to_View(col_location);
 
   P3F::P3Infrastructure infrastructure{dt, it, 0, ite-its, 0, kte-kts,
                                        do_predict_nc, do_prescribed_CCN, col_location_d};
 
-  //----------------------------------------------------------------------------
-  // Populate P3 history output
-  //----------------------------------------------------------------------------
   auto liq_ice_exchange_d = ArrayIR_to_View_of_Packs(liq_ice_exchange);
   auto vap_liq_exchange_d = ArrayIR_to_View_of_Packs(vap_liq_exchange);
   auto vap_ice_exchange_d = ArrayIR_to_View_of_Packs(vap_ice_exchange);
@@ -151,9 +140,6 @@ void p3_main_cxx(array_ir::ArrayIR<double,2> const & qc,                 // inou
 
   P3F::P3HistoryOnly history_only {liq_ice_exchange_d, vap_liq_exchange_d, vap_ice_exchange_d};
 
-  //----------------------------------------------------------------------------
-  // load tables
-  //----------------------------------------------------------------------------
   P3F::view_1d_table      mu_r_table_vals;
   P3F::view_2d_table      vn_table_vals, vm_table_vals, revap_table_vals;
   P3F::view_ice_table     ice_table_vals;
@@ -165,9 +151,6 @@ void p3_main_cxx(array_ir::ArrayIR<double,2> const & qc,                 // inou
   P3F::P3LookupTables tables{mu_r_table_vals, vn_table_vals, vm_table_vals, revap_table_vals,
                              ice_table_vals, collect_table_vals, dnu_table_vals};
 
-  //----------------------------------------------------------------------------
-  // Call p3_main
-  //----------------------------------------------------------------------------
   const int nlev_pack = ekat::npack<Spack>(nlev);
   const auto policy = ekat::ExeSpaceUtils<KT::ExeSpace>::get_default_team_policy(ncol, nlev_pack);
   ekat::WorkspaceManager<Spack, KT::Device> workspace_mgr(nlev_pack, 59, policy);
