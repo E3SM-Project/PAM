@@ -201,13 +201,13 @@ public:
         thermo.compute_dUdentropic_var(alpha, entropic_var, 0, 0, 0, 0);
 
     if (addmode == ADD_MODE::REPLACE) {
-      B(0, k, n) =
+      B(0, k + ks, n) =
           fac * (geop0(0) + U + p * alpha - entropic_var * generalized_Exner);
-      B(1, k, n) = fac * generalized_Exner;
+      B(1, k + ks, n) = fac * generalized_Exner;
     } else if (addmode == ADD_MODE::ADD) {
-      B(0, k, n) +=
+      B(0, k + ks, n) +=
           fac * (geop0(0) + U + p * alpha - entropic_var * generalized_Exner);
-      B(1, k, n) += fac * generalized_Exner;
+      B(1, k + ks, n) += fac * generalized_Exner;
     }
   }
 };
@@ -455,9 +455,9 @@ public:
 
     for (int d = 0; d < ndensity_B; ++d) {
       if (addmode == ADD_MODE::REPLACE) {
-        B(d, k, n) = fac * l_B(d);
+        B(d, k + ks, n) = fac * l_B(d);
       } else if (addmode == ADD_MODE::ADD) {
-        B(d, k, n) += fac * l_B(d);
+        B(d, k + ks, n) += fac * l_B(d);
       }
     }
   }

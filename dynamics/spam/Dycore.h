@@ -130,8 +130,11 @@ public:
                   prognostic_vars, constant_vars, diagnostics, stats);
     debug_print("finish io init", par.masterproc);
 
-    // // Initialize the tendencies and diagnostics
+    // // Set the reference state and initialize the tendencies
     debug_print("start tendencies init", par.masterproc);
+    // the reference state has to be set before the tendencies are initialized
+    // for anelastic
+    testcase->set_reference_state(primal_geometry, dual_geometry);
     tendencies.initialize(params, equations, primal_geometry, dual_geometry);
     debug_print("end tendencies init", par.masterproc);
 
@@ -139,7 +142,6 @@ public:
     // THE IC STRING?
     //  set the initial conditions and compute initial stats
     debug_print("start ic setting", par.masterproc);
-    testcase->set_reference_state(primal_geometry, dual_geometry);
     testcase->set_initial_conditions(prognostic_vars, constant_vars,
                                      primal_geometry, dual_geometry);
     prognostic_vars.exchange();
