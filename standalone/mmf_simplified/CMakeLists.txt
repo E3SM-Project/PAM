@@ -14,6 +14,7 @@ add_subdirectory(${YAKL_HOME} ${YAKL_BIN})
 include_directories(${YAKL_BIN})
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../externals/eigen)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../physics/scream_cxx_interfaces)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../pam_core pam_core)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../physics  physics )
@@ -27,6 +28,6 @@ set_source_files_properties(supercell_init.F90 PROPERTY COMPILE_FLAGS "${YAKL_F9
 include(${YAKL_HOME}/yakl_utils.cmake)
 yakl_process_target(driver)
 
-target_link_libraries(driver dynamics physics pam_core ${PAM_LINK_FLAGS})
+target_link_libraries(driver dynamics physics pam_core "-L${CMAKE_CURRENT_BINARY_DIR} -lpam_scream_cxx_interfaces ${PAM_LINK_FLAGS}")
 target_link_libraries(fortran_test dynamics physics pam_core ${PAM_LINK_FLAGS})
 

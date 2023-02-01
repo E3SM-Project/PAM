@@ -386,40 +386,40 @@ public:
 
     #ifdef SHOC_CXX
 
-      transposed_shoc_thv         = shoc_thv        .createDeviceCopy().reshape<2>(shoc_thv        .extent(1),shoc_thv        .extent(2));
-      transposed_shoc_zt_grid     = shoc_zt_grid    .createDeviceCopy().reshape<2>(shoc_zt_grid    .extent(1),shoc_zt_grid    .extent(2));
-      transposed_shoc_zi_grid     = shoc_zi_grid    .createDeviceCopy().reshape<2>(shoc_zi_grid    .extent(1),shoc_zi_grid    .extent(2));
-      transposed_shoc_pres        = shoc_pres       .createDeviceCopy().reshape<2>(shoc_pres       .extent(1),shoc_pres       .extent(2));
-      transposed_shoc_presi       = shoc_presi      .createDeviceCopy().reshape<2>(shoc_presi      .extent(1),shoc_presi      .extent(2));
-      transposed_shoc_pdel        = shoc_pdel       .createDeviceCopy().reshape<2>(shoc_pdel       .extent(1),shoc_pdel       .extent(2));
-      transposed_shoc_wtracer_sfc = shoc_wtracer_sfc.createDeviceCopy().reshape<2>(shoc_wtracer_sfc.extent(1),shoc_wtracer_sfc.extent(2));
-      transposed_shoc_w_field     = shoc_w_field    .createDeviceCopy().reshape<2>(shoc_w_field    .extent(1),shoc_w_field    .extent(2));
-      transposed_shoc_inv_exner   = shoc_inv_exner  .createDeviceCopy().reshape<2>(shoc_inv_exner  .extent(1),shoc_inv_exner  .extent(2));
-      transposed_shoc_host_dse    = shoc_host_dse   .createDeviceCopy().reshape<2>(shoc_host_dse   .extent(1),shoc_host_dse   .extent(2));
-      transposed_shoc_tke         = shoc_tke        .createDeviceCopy().reshape<2>(shoc_tke        .extent(1),shoc_tke        .extent(2));
-      transposed_shoc_thetal      = shoc_thetal     .createDeviceCopy().reshape<2>(shoc_thetal     .extent(1),shoc_thetal     .extent(2));
-      transposed_shoc_qw          = shoc_qw         .createDeviceCopy().reshape<2>(shoc_qw         .extent(1),shoc_qw         .extent(2));
-      transposed_shoc_wthv_sec    = shoc_wthv_sec   .createDeviceCopy().reshape<2>(shoc_wthv_sec   .extent(1),shoc_wthv_sec   .extent(2));
-      transposed_shoc_tk          = shoc_tk         .createDeviceCopy().reshape<2>(shoc_tk         .extent(1),shoc_tk         .extent(2));
-      transposed_shoc_ql          = shoc_ql         .createDeviceCopy().reshape<2>(shoc_ql         .extent(1),shoc_ql         .extent(2));
-      transposed_shoc_cldfrac     = shoc_cldfrac    .createDeviceCopy().reshape<2>(shoc_cldfrac    .extent(1),shoc_cldfrac    .extent(2));
-      transposed_shoc_mix         = shoc_mix        .createDeviceCopy().reshape<2>(shoc_mix        .extent(1),shoc_mix        .extent(2));
-      transposed_shoc_isotropy    = shoc_isotropy   .createDeviceCopy().reshape<2>(shoc_isotropy   .extent(1),shoc_isotropy   .extent(2));
-      transposed_shoc_w_sec       = shoc_w_sec      .createDeviceCopy().reshape<2>(shoc_w_sec      .extent(1),shoc_w_sec      .extent(2));
-      transposed_shoc_thl_sec     = shoc_thl_sec    .createDeviceCopy().reshape<2>(shoc_thl_sec    .extent(1),shoc_thl_sec    .extent(2));
-      transposed_shoc_qw_sec      = shoc_qw_sec     .createDeviceCopy().reshape<2>(shoc_qw_sec     .extent(1),shoc_qw_sec     .extent(2));
-      transposed_shoc_qwthl_sec   = shoc_qwthl_sec  .createDeviceCopy().reshape<2>(shoc_qwthl_sec  .extent(1),shoc_qwthl_sec  .extent(2));
-      transposed_shoc_wthl_sec    = shoc_wthl_sec   .createDeviceCopy().reshape<2>(shoc_wthl_sec   .extent(1),shoc_wthl_sec   .extent(2));
-      transposed_shoc_wqw_sec     = shoc_wqw_sec    .createDeviceCopy().reshape<2>(shoc_wqw_sec    .extent(1),shoc_wqw_sec    .extent(2));
-      transposed_shoc_wtke_sec    = shoc_wtke_sec   .createDeviceCopy().reshape<2>(shoc_wtke_sec   .extent(1),shoc_wtke_sec   .extent(2));
-      transposed_shoc_uw_sec      = shoc_uw_sec     .createDeviceCopy().reshape<2>(shoc_uw_sec     .extent(1),shoc_uw_sec     .extent(2));
-      transposed_shoc_vw_sec      = shoc_vw_sec     .createDeviceCopy().reshape<2>(shoc_vw_sec     .extent(1),shoc_vw_sec     .extent(2));
-      transposed_shoc_w3          = shoc_w3         .createDeviceCopy().reshape<2>(shoc_w3         .extent(1),shoc_w3         .extent(2));
-      transposed_shoc_wqls_sec    = shoc_wqls_sec   .createDeviceCopy().reshape<2>(shoc_wqls_sec   .extent(1),shoc_wqls_sec   .extent(2));
-      transposed_shoc_brunt       = shoc_brunt      .createDeviceCopy().reshape<2>(shoc_brunt      .extent(1),shoc_brunt      .extent(2));
-      transposed_shoc_ql2         = shoc_ql2        .createDeviceCopy().reshape<2>(shoc_ql2        .extent(1),shoc_ql2        .extent(2));
-      transposed_shoc_qtracers = shoc_qtracers.createDeviceCopy().reshape<3>(shoc_qtracers.extent(2),shoc_qtracers.extent(0),shoc_qtracers.extent(1));
-      transposed_shoc_hwind    = real3d("transposed_shoc_hwind",shoc_u_wind.extent(1),2,shoc_u_wind.extent(0));
+      auto transposed_shoc_thv         = shoc_thv        .createDeviceCopy().reshape(shoc_thv        .extent(1),shoc_thv        .extent(2));
+      auto transposed_shoc_zt_grid     = shoc_zt_grid    .createDeviceCopy().reshape(shoc_zt_grid    .extent(1),shoc_zt_grid    .extent(2));
+      auto transposed_shoc_zi_grid     = shoc_zi_grid    .createDeviceCopy().reshape(shoc_zi_grid    .extent(1),shoc_zi_grid    .extent(2));
+      auto transposed_shoc_pres        = shoc_pres       .createDeviceCopy().reshape(shoc_pres       .extent(1),shoc_pres       .extent(2));
+      auto transposed_shoc_presi       = shoc_presi      .createDeviceCopy().reshape(shoc_presi      .extent(1),shoc_presi      .extent(2));
+      auto transposed_shoc_pdel        = shoc_pdel       .createDeviceCopy().reshape(shoc_pdel       .extent(1),shoc_pdel       .extent(2));
+      auto transposed_shoc_wtracer_sfc = shoc_wtracer_sfc.createDeviceCopy().reshape(shoc_wtracer_sfc.extent(1),shoc_wtracer_sfc.extent(2));
+      auto transposed_shoc_w_field     = shoc_w_field    .createDeviceCopy().reshape(shoc_w_field    .extent(1),shoc_w_field    .extent(2));
+      auto transposed_shoc_inv_exner   = shoc_inv_exner  .createDeviceCopy().reshape(shoc_inv_exner  .extent(1),shoc_inv_exner  .extent(2));
+      auto transposed_shoc_host_dse    = shoc_host_dse   .createDeviceCopy().reshape(shoc_host_dse   .extent(1),shoc_host_dse   .extent(2));
+      auto transposed_shoc_tke         = shoc_tke        .createDeviceCopy().reshape(shoc_tke        .extent(1),shoc_tke        .extent(2));
+      auto transposed_shoc_thetal      = shoc_thetal     .createDeviceCopy().reshape(shoc_thetal     .extent(1),shoc_thetal     .extent(2));
+      auto transposed_shoc_qw          = shoc_qw         .createDeviceCopy().reshape(shoc_qw         .extent(1),shoc_qw         .extent(2));
+      auto transposed_shoc_wthv_sec    = shoc_wthv_sec   .createDeviceCopy().reshape(shoc_wthv_sec   .extent(1),shoc_wthv_sec   .extent(2));
+      auto transposed_shoc_tk          = shoc_tk         .createDeviceCopy().reshape(shoc_tk         .extent(1),shoc_tk         .extent(2));
+      auto transposed_shoc_ql          = shoc_ql         .createDeviceCopy().reshape(shoc_ql         .extent(1),shoc_ql         .extent(2));
+      auto transposed_shoc_cldfrac     = shoc_cldfrac    .createDeviceCopy().reshape(shoc_cldfrac    .extent(1),shoc_cldfrac    .extent(2));
+      auto transposed_shoc_mix         = shoc_mix        .createDeviceCopy().reshape(shoc_mix        .extent(1),shoc_mix        .extent(2));
+      auto transposed_shoc_isotropy    = shoc_isotropy   .createDeviceCopy().reshape(shoc_isotropy   .extent(1),shoc_isotropy   .extent(2));
+      auto transposed_shoc_w_sec       = shoc_w_sec      .createDeviceCopy().reshape(shoc_w_sec      .extent(1),shoc_w_sec      .extent(2));
+      auto transposed_shoc_thl_sec     = shoc_thl_sec    .createDeviceCopy().reshape(shoc_thl_sec    .extent(1),shoc_thl_sec    .extent(2));
+      auto transposed_shoc_qw_sec      = shoc_qw_sec     .createDeviceCopy().reshape(shoc_qw_sec     .extent(1),shoc_qw_sec     .extent(2));
+      auto transposed_shoc_qwthl_sec   = shoc_qwthl_sec  .createDeviceCopy().reshape(shoc_qwthl_sec  .extent(1),shoc_qwthl_sec  .extent(2));
+      auto transposed_shoc_wthl_sec    = shoc_wthl_sec   .createDeviceCopy().reshape(shoc_wthl_sec   .extent(1),shoc_wthl_sec   .extent(2));
+      auto transposed_shoc_wqw_sec     = shoc_wqw_sec    .createDeviceCopy().reshape(shoc_wqw_sec    .extent(1),shoc_wqw_sec    .extent(2));
+      auto transposed_shoc_wtke_sec    = shoc_wtke_sec   .createDeviceCopy().reshape(shoc_wtke_sec   .extent(1),shoc_wtke_sec   .extent(2));
+      auto transposed_shoc_uw_sec      = shoc_uw_sec     .createDeviceCopy().reshape(shoc_uw_sec     .extent(1),shoc_uw_sec     .extent(2));
+      auto transposed_shoc_vw_sec      = shoc_vw_sec     .createDeviceCopy().reshape(shoc_vw_sec     .extent(1),shoc_vw_sec     .extent(2));
+      auto transposed_shoc_w3          = shoc_w3         .createDeviceCopy().reshape(shoc_w3         .extent(1),shoc_w3         .extent(2));
+      auto transposed_shoc_wqls_sec    = shoc_wqls_sec   .createDeviceCopy().reshape(shoc_wqls_sec   .extent(1),shoc_wqls_sec   .extent(2));
+      auto transposed_shoc_brunt       = shoc_brunt      .createDeviceCopy().reshape(shoc_brunt      .extent(1),shoc_brunt      .extent(2));
+      auto transposed_shoc_ql2         = shoc_ql2        .createDeviceCopy().reshape(shoc_ql2        .extent(1),shoc_ql2        .extent(2));
+      auto transposed_shoc_qtracers = shoc_qtracers.createDeviceCopy().reshape(shoc_qtracers.extent(2),shoc_qtracers.extent(0),shoc_qtracers.extent(1));
+      auto transposed_shoc_hwind    = real3d("transposed_shoc_hwind",shoc_u_wind.extent(1),2,shoc_u_wind.extent(0));
 
       // Load transposed inputs (one kernel for efficiency)
       parallel_for( SimpleBounds<2>(nz+1,ncol) , YAKL_LAMBDA (int k, int i) {
@@ -455,54 +455,54 @@ public:
 
 
       int nzp1 = nz+1;
-      shoc_main_cxx(int                         & ncol                               ,  // in
-                    int                         & nz                                 ,  // in
-                    int                         & nzp1                               ,  // in
-                    double                      & dt                                 ,  // in
-                    int                         & nadv                               ,  // in
-                    array_ir::ArrayIR<double,1> & shoc_host_dx    .create_Array_IR() ,  // in
-                    array_ir::ArrayIR<double,1> & shoc_host_dy    .create_Array_IR() ,  // in
-                    array_ir::ArrayIR<double,2> & shoc_thv        .create_Array_IR() ,  // in
-                    array_ir::ArrayIR<double,2> & shoc_zt_grid    .create_Array_IR() ,  // in
-                    array_ir::ArrayIR<double,2> & shoc_zi_grid    .create_Array_IR() ,  // in
-                    array_ir::ArrayIR<double,2> & shoc_pres       .create_Array_IR() ,  // in
-                    array_ir::ArrayIR<double,2> & shoc_presi      .create_Array_IR() ,  // in
-                    array_ir::ArrayIR<double,2> & shoc_pdel       .create_Array_IR() ,  // in
-                    array_ir::ArrayIR<double,1> & shoc_wthl_sfc   .create_Array_IR() ,  // in
-                    array_ir::ArrayIR<double,1> & shoc_wqw_sfc    .create_Array_IR() ,  // in
-                    array_ir::ArrayIR<double,1> & shoc_uw_sfc     .create_Array_IR() ,  // in
-                    array_ir::ArrayIR<double,1> & shoc_vw_sfc     .create_Array_IR() ,  // in
-                    array_ir::ArrayIR<double,2> & shoc_wtracer_sfc.create_Array_IR() ,  // in
-                    int                         & num_qtracers                       ,  // in
-                    array_ir::ArrayIR<double,2> & shoc_w_field    .create_Array_IR() ,  // in
-                    array_ir::ArrayIR<double,2> & shoc_inv_exner  .create_Array_IR() ,  // in
-                    array_ir::ArrayIR<double,1> & shoc_phis       .create_Array_IR() ,  // in
-                    array_ir::ArrayIR<double,2> & shoc_host_dse   .create_Array_IR() ,  // inout
-                    array_ir::ArrayIR<double,2> & shoc_tke        .create_Array_IR() ,  // inout
-                    array_ir::ArrayIR<double,2> & shoc_thetal     .create_Array_IR() ,  // inout
-                    array_ir::ArrayIR<double,2> & shoc_qw         .create_Array_IR() ,  // inout
-                    array_ir::ArrayIR<double,3> & shoc_hwind      .create_Array_IR() ,  // inout - (col,2,lev) - u is index zero - v is index one
-                    array_ir::ArrayIR<double,3> & shoc_qtracers   .create_Array_IR() ,  // inout - (col,qtr,lev)
-                    array_ir::ArrayIR<double,2> & shoc_wthv_sec   .create_Array_IR() ,  // inout
-                    array_ir::ArrayIR<double,2> & shoc_tk         .create_Array_IR() ,  // inout
-                    array_ir::ArrayIR<double,2> & shoc_ql         .create_Array_IR() ,  // inout
-                    array_ir::ArrayIR<double,2> & shoc_cldfrac    .create_Array_IR() ,  // inout
-                    array_ir::ArrayIR<double,1> & shoc_pblh       .create_Array_IR() ,  //   out
-                    array_ir::ArrayIR<double,2> & shoc_mix        .create_Array_IR() ,  //   out
-                    array_ir::ArrayIR<double,2> & shoc_isotropy   .create_Array_IR() ,  //   out
-                    array_ir::ArrayIR<double,2> & shoc_w_sec      .create_Array_IR() ,  //   out
-                    array_ir::ArrayIR<double,2> & shoc_thl_sec    .create_Array_IR() ,  //   out
-                    array_ir::ArrayIR<double,2> & shoc_qw_sec     .create_Array_IR() ,  //   out
-                    array_ir::ArrayIR<double,2> & shoc_qwthl_sec  .create_Array_IR() ,  //   out
-                    array_ir::ArrayIR<double,2> & shoc_wthl_sec   .create_Array_IR() ,  //   out
-                    array_ir::ArrayIR<double,2> & shoc_wqw_sec    .create_Array_IR() ,  //   out
-                    array_ir::ArrayIR<double,2> & shoc_wtke_sec   .create_Array_IR() ,  //   out
-                    array_ir::ArrayIR<double,2> & shoc_uw_sec     .create_Array_IR() ,  //   out
-                    array_ir::ArrayIR<double,2> & shoc_vw_sec     .create_Array_IR() ,  //   out
-                    array_ir::ArrayIR<double,2> & shoc_w3         .create_Array_IR() ,  //   out
-                    array_ir::ArrayIR<double,2> & shoc_wqls_sec   .create_Array_IR() ,  //   out
-                    array_ir::ArrayIR<double,2> & shoc_brunt      .create_Array_IR() ,  //   out
-                    array_ir::ArrayIR<double,2> & shoc_ql2        .create_Array_IR() ); //   out
+      shoc_main_cxx( ncol                                         ,  // in
+                     nz                                           ,  // in
+                     nzp1                                         ,  // in
+                     dt                                           ,  // in
+                     nadv                                         ,  // in
+                     shoc_host_dx               .create_ArrayIR() ,  // in
+                     shoc_host_dy               .create_ArrayIR() ,  // in
+                     transposed_shoc_thv        .create_ArrayIR() ,  // in
+                     transposed_shoc_zt_grid    .create_ArrayIR() ,  // in
+                     transposed_shoc_zi_grid    .create_ArrayIR() ,  // in
+                     transposed_shoc_pres       .create_ArrayIR() ,  // in
+                     transposed_shoc_presi      .create_ArrayIR() ,  // in
+                     transposed_shoc_pdel       .create_ArrayIR() ,  // in
+                     shoc_wthl_sfc              .create_ArrayIR() ,  // in
+                     shoc_wqw_sfc               .create_ArrayIR() ,  // in
+                     shoc_uw_sfc                .create_ArrayIR() ,  // in
+                     shoc_vw_sfc                .create_ArrayIR() ,  // in
+                     transposed_shoc_wtracer_sfc.create_ArrayIR() ,  // in
+                     num_qtracers                                 ,  // in
+                     transposed_shoc_w_field    .create_ArrayIR() ,  // in
+                     transposed_shoc_inv_exner  .create_ArrayIR() ,  // in
+                     shoc_phis                  .create_ArrayIR() ,  // in
+                     transposed_shoc_host_dse   .create_ArrayIR() ,  // inout
+                     transposed_shoc_tke        .create_ArrayIR() ,  // inout
+                     transposed_shoc_thetal     .create_ArrayIR() ,  // inout
+                     transposed_shoc_qw         .create_ArrayIR() ,  // inout
+                     transposed_shoc_hwind      .create_ArrayIR() ,  // inout - (col,2,lev) - u is index zero - v is index one
+                     transposed_shoc_qtracers   .create_ArrayIR() ,  // inout - (col,qtr,lev)
+                     transposed_shoc_wthv_sec   .create_ArrayIR() ,  // inout
+                     transposed_shoc_tk         .create_ArrayIR() ,  // inout
+                     transposed_shoc_ql         .create_ArrayIR() ,  // inout
+                     transposed_shoc_cldfrac    .create_ArrayIR() ,  // inout
+                     shoc_pblh                  .create_ArrayIR() ,  //   out
+                     transposed_shoc_mix        .create_ArrayIR() ,  //   out
+                     transposed_shoc_isotropy   .create_ArrayIR() ,  //   out
+                     transposed_shoc_w_sec      .create_ArrayIR() ,  //   out
+                     transposed_shoc_thl_sec    .create_ArrayIR() ,  //   out
+                     transposed_shoc_qw_sec     .create_ArrayIR() ,  //   out
+                     transposed_shoc_qwthl_sec  .create_ArrayIR() ,  //   out
+                     transposed_shoc_wthl_sec   .create_ArrayIR() ,  //   out
+                     transposed_shoc_wqw_sec    .create_ArrayIR() ,  //   out
+                     transposed_shoc_wtke_sec   .create_ArrayIR() ,  //   out
+                     transposed_shoc_uw_sec     .create_ArrayIR() ,  //   out
+                     transposed_shoc_vw_sec     .create_ArrayIR() ,  //   out
+                     transposed_shoc_w3         .create_ArrayIR() ,  //   out
+                     transposed_shoc_wqls_sec   .create_ArrayIR() ,  //   out
+                     transposed_shoc_brunt      .create_ArrayIR() ,  //   out
+                     transposed_shoc_ql2        .create_ArrayIR() ); //   out
 
       // Store transposed outputs (one kernel for efficiency)
       parallel_for( SimpleBounds<2>(nz+1,ncol) , YAKL_LAMBDA (int k, int i) {
