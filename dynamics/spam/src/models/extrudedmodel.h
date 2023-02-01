@@ -266,6 +266,18 @@ struct AnelasticPressureSolver {
   }
 };
 
+struct TotalDensityFunctor {
+  const VariableSet &varset;
+  YAKL_INLINE real operator()(const real5d &densvar, int d, int k, int j, int i,
+                              int n) const {
+    return varset.get_total_density(densvar, k, j, i, 0, 0, 0, n);
+  };
+  YAKL_INLINE real operator()(const real3d &densvar, int d, int k,
+                              int n) const {
+    return varset.get_total_density(densvar, k, 0, n);
+  };
+};
+
 // *******   Tendencies   ***********//
 
 class ModelTendencies : public ExtrudedTendencies {
@@ -740,11 +752,6 @@ public:
 
     YAKL_SCOPE(varset, this->equations->varset);
 
-    const auto total_density_f =
-        YAKL_LAMBDA(const real5d &densvar, int d, int k, int j, int i, int n) {
-      return varset.get_total_density(densvar, k, j, i, 0, 0, 0, n);
-    };
-
     const auto &refstate = this->equations->reference_state;
 
     parallel_for(
@@ -769,6 +776,7 @@ public:
                          n) = 1;
           }
 #else
+          const auto total_density_f = TotalDensityFunctor{varset};
           SArray<real, 1, 1> dens0_ik;
           compute_H2bar_ext<1, diff_ord, vert_diff_ord>(
               total_density_f, dens0_ik, densvar, this->primal_geometry,
@@ -809,6 +817,7 @@ public:
           }
           densvertreconvar(MASSDENSINDX, k + dks + 1, j + djs, i + dis, n) = 1;
 #else
+          const auto total_density_f = TotalDensityFunctor{varset};
           SArray<real, 1, 1> dens0_kp1;
           compute_H2bar_ext<1, diff_ord, vert_diff_ord>(
               total_density_f, dens0_kp1, densvar, this->primal_geometry,
@@ -1300,11 +1309,6 @@ public:
     YAKL_SCOPE(rho_pi, this->equations->reference_state.rho_pi.data);
     YAKL_SCOPE(rho_di, this->equations->reference_state.rho_di.data);
 
-    const auto total_density_f =
-        YAKL_LAMBDA(const real5d &densvar, int d, int k, int j, int i, int n) {
-      return varset.get_total_density(densvar, k, j, i, 0, 0, 0, n);
-    };
-
     parallel_for(
         "Functional derivatives",
         SimpleBounds<4>(dual_topology.ni, dual_topology.n_cells_y,
@@ -1317,6 +1321,7 @@ public:
 #else
           SArray<real, 1, 1> dens0_ik, dens0_im1, dens0_km1;
 
+          const auto total_density_f = TotalDensityFunctor{varset};
           compute_H2bar_ext<1, diff_ord, vert_diff_ord>(
               total_density_f, dens0_ik, densvar, this->primal_geometry,
               this->dual_geometry, pis, pjs, pks, i, j, k, n);
@@ -1454,16 +1459,12 @@ public:
     YAKL_SCOPE(Hs, this->equations->Hs);
     YAKL_SCOPE(varset, this->equations->varset);
 
-    const auto total_density_f =
-        YAKL_LAMBDA(const real5d &densvar, int d, int k, int j, int i, int n) {
-      return varset.get_total_density(densvar, k, j, i, 0, 0, 0, n);
-    };
-
     parallel_for(
         "Functional derivatives",
         SimpleBounds<4>(dual_topology.ni, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+          const auto total_density_f = TotalDensityFunctor{varset};
           SArray<real, 1, 1> dens0_ik_1, dens0_im1_1, dens0_km1_1;
           compute_H2bar_ext<1, diff_ord, vert_diff_ord>(
               total_density_f, dens0_ik_1, densvar1, this->primal_geometry,
@@ -3330,15 +3331,11 @@ public:
         YAKL_LAMBDA(real z) { return refrhov_f(z, thermo); }, refstate.dens,
         varset.dm_id_vap + ndensity_nophysics);
 
-    const auto total_density_f =
-        YAKL_LAMBDA(const real3d &densvar, int d, int k, int n) {
-      return varset.get_total_density(densvar, k, 0, n);
-    };
-
     parallel_for(
         "compute rho_pi",
         SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
         YAKL_LAMBDA(int k, int n) {
+          const auto total_density_f = TotalDensityFunctor{varset};
           SArray<real, 1, 1> rho0;
           compute_H2bar_ext<1, vert_diff_ord>(total_density_f, rho0,
                                               refstate.dens.data, primal_geom,
