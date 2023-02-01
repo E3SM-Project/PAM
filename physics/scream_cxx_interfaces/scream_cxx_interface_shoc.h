@@ -3,52 +3,52 @@
 
 #include "ArrayIR.h"
 
-void shoc_main_cxx(int                         & shcol,        // in
-                   int                         & nlev,         // in
-                   int                         & nlevi,        // in
-                   double                      & dtime,        // in
-                   int                         & nadv,         // in
-                   array_ir::ArrayIR<double,1> & host_dx,      // in
-                   array_ir::ArrayIR<double,1> & host_dy,      // in
-                   array_ir::ArrayIR<double,2> & thv,          // in
-                   array_ir::ArrayIR<double,2> & zt_grid,      // in
-                   array_ir::ArrayIR<double,2> & zi_grid,      // in
-                   array_ir::ArrayIR<double,2> & pres,         // in
-                   array_ir::ArrayIR<double,2> & presi,        // in
-                   array_ir::ArrayIR<double,2> & pdel,         // in
-                   array_ir::ArrayIR<double,1> & wthl_sfc,     // in
-                   array_ir::ArrayIR<double,1> & wqw_sfc,      // in
-                   array_ir::ArrayIR<double,1> & uw_sfc,       // in
-                   array_ir::ArrayIR<double,1> & vw_sfc,       // in
-                   array_ir::ArrayIR<double,2> & wtracer_sfc,  // in
-                   int                         & num_qtracers, // in
-                   array_ir::ArrayIR<double,2> & w_field,      // in
-                   array_ir::ArrayIR<double,2> & inv_exner,    // in
-                   array_ir::ArrayIR<double,1> & phis,         // in
-                   array_ir::ArrayIR<double,2> & host_dse,     // inout
-                   array_ir::ArrayIR<double,2> & tke,          // inout
-                   array_ir::ArrayIR<double,2> & thetal,       // inout
-                   array_ir::ArrayIR<double,2> & qw,           // inout
-                   array_ir::ArrayIR<double,3> & shoc_hwind,   // inout - (col,2,lev) - u is index zero - v is index one
-                   array_ir::ArrayIR<double,3> & qtracers,     // inout - (col,qtr,lev)
-                   array_ir::ArrayIR<double,2> & wthv_sec,     // inout
-                   array_ir::ArrayIR<double,2> & tk,           // inout
-                   array_ir::ArrayIR<double,2> & shoc_ql,      // inout
-                   array_ir::ArrayIR<double,2> & shoc_cldfrac, // inout
-                   array_ir::ArrayIR<double,1> & pblh,         //   out
-                   array_ir::ArrayIR<double,2> & shoc_mix,     //   out
-                   array_ir::ArrayIR<double,2> & isotropy,     //   out
-                   array_ir::ArrayIR<double,2> & w_sec,        //   out
-                   array_ir::ArrayIR<double,2> & thl_sec,      //   out
-                   array_ir::ArrayIR<double,2> & qw_sec,       //   out
-                   array_ir::ArrayIR<double,2> & qwthl_sec,    //   out
-                   array_ir::ArrayIR<double,2> & wthl_sec,     //   out
-                   array_ir::ArrayIR<double,2> & wqw_sec,      //   out
-                   array_ir::ArrayIR<double,2> & wtke_sec,     //   out
-                   array_ir::ArrayIR<double,2> & uw_sec,       //   out
-                   array_ir::ArrayIR<double,2> & vw_sec,       //   out
-                   array_ir::ArrayIR<double,2> & w3,           //   out
-                   array_ir::ArrayIR<double,2> & wqls_sec,     //   out
-                   array_ir::ArrayIR<double,2> & brunt,        //   out
-                   array_ir::ArrayIR<double,2> & shoc_ql2 );   //   out
+void shoc_main_cxx(int                         const & shcol,        // in
+                   int                         const & nlev,         // in
+                   int                         const & nlevi,        // in
+                   double                      const & dtime,        // in
+                   int                         const & nadv,         // in
+                   array_ir::ArrayIR<double,1> const & host_dx,      // in
+                   array_ir::ArrayIR<double,1> const & host_dy,      // in
+                   array_ir::ArrayIR<double,2> const & thv,          // in
+                   array_ir::ArrayIR<double,2> const & zt_grid,      // in
+                   array_ir::ArrayIR<double,2> const & zi_grid,      // in
+                   array_ir::ArrayIR<double,2> const & pres,         // in
+                   array_ir::ArrayIR<double,2> const & presi,        // in
+                   array_ir::ArrayIR<double,2> const & pdel,         // in
+                   array_ir::ArrayIR<double,1> const & wthl_sfc,     // in
+                   array_ir::ArrayIR<double,1> const & wqw_sfc,      // in
+                   array_ir::ArrayIR<double,1> const & uw_sfc,       // in
+                   array_ir::ArrayIR<double,1> const & vw_sfc,       // in
+                   array_ir::ArrayIR<double,2> const & wtracer_sfc,  // in
+                   int                         const & num_qtracers, // in
+                   array_ir::ArrayIR<double,2> const & w_field,      // in
+                   array_ir::ArrayIR<double,2> const & inv_exner,    // in
+                   array_ir::ArrayIR<double,1> const & phis,         // in
+                   array_ir::ArrayIR<double,2> const & host_dse,     // inout
+                   array_ir::ArrayIR<double,2> const & tke,          // inout
+                   array_ir::ArrayIR<double,2> const & thetal,       // inout
+                   array_ir::ArrayIR<double,2> const & qw,           // inout
+                   array_ir::ArrayIR<double,3> const & shoc_hwind,   // inout - (col,2,lev) - u is index zero - v is index one
+                   array_ir::ArrayIR<double,3> const & qtracers,     // inout - (col,qtr,lev)
+                   array_ir::ArrayIR<double,2> const & wthv_sec,     // inout
+                   array_ir::ArrayIR<double,2> const & tk,           // inout
+                   array_ir::ArrayIR<double,2> const & shoc_ql,      // inout
+                   array_ir::ArrayIR<double,2> const & shoc_cldfrac, // inout
+                   array_ir::ArrayIR<double,1> const & pblh,         //   out
+                   array_ir::ArrayIR<double,2> const & shoc_mix,     //   out
+                   array_ir::ArrayIR<double,2> const & isotropy,     //   out
+                   array_ir::ArrayIR<double,2> const & w_sec,        //   out
+                   array_ir::ArrayIR<double,2> const & thl_sec,      //   out
+                   array_ir::ArrayIR<double,2> const & qw_sec,       //   out
+                   array_ir::ArrayIR<double,2> const & qwthl_sec,    //   out
+                   array_ir::ArrayIR<double,2> const & wthl_sec,     //   out
+                   array_ir::ArrayIR<double,2> const & wqw_sec,      //   out
+                   array_ir::ArrayIR<double,2> const & wtke_sec,     //   out
+                   array_ir::ArrayIR<double,2> const & uw_sec,       //   out
+                   array_ir::ArrayIR<double,2> const & vw_sec,       //   out
+                   array_ir::ArrayIR<double,2> const & w3,           //   out
+                   array_ir::ArrayIR<double,2> const & wqls_sec,     //   out
+                   array_ir::ArrayIR<double,2> const & brunt,        //   out
+                   array_ir::ArrayIR<double,2> const & shoc_ql2 );   //   out
 

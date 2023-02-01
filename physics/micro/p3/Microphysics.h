@@ -382,39 +382,39 @@ public:
     #ifdef P3_CXX
 
       // Create room for transposed variables (only 2-D variables need to be transposed)
-      transposed_qc                 = qc                .createDeviceCopy().reshape<2>(qc                .extent(1),qc                .extent(0)); // inout
-      transposed_nc                 = nc                .createDeviceCopy().reshape<2>(nc                .extent(1),nc                .extent(0)); // inout
-      transposed_qr                 = qr                .createDeviceCopy().reshape<2>(qr                .extent(1),qr                .extent(0)); // inout
-      transposed_nr                 = nr                .createDeviceCopy().reshape<2>(nr                .extent(1),nr                .extent(0)); // inout
-      transposed_theta              = theta             .createDeviceCopy().reshape<2>(theta             .extent(1),theta             .extent(0)); // inout
-      transposed_qv                 = qv                .createDeviceCopy().reshape<2>(qv                .extent(1),qv                .extent(0)); // inout
-      transposed_qi                 = qi                .createDeviceCopy().reshape<2>(qi                .extent(1),qi                .extent(0)); // inout
-      transposed_qm                 = qm                .createDeviceCopy().reshape<2>(qm                .extent(1),qm                .extent(0)); // inout
-      transposed_ni                 = ni                .createDeviceCopy().reshape<2>(ni                .extent(1),ni                .extent(0)); // inout
-      transposed_bm                 = bm                .createDeviceCopy().reshape<2>(bm                .extent(1),bm                .extent(0)); // inout
-      transposed_pressure           = pressure          .createDeviceCopy().reshape<2>(pressure          .extent(1),pressure          .extent(0)); // in
-      transposed_dz                 = dz                .createDeviceCopy().reshape<2>(dz                .extent(1),dz                .extent(0)); // in
-      transposed_nc_nuceat_tend     = nc_nuceat_tend    .createDeviceCopy().reshape<2>(nc_nuceat_tend    .extent(1),nc_nuceat_tend    .extent(0)); // in
-      transposed_nccn_prescribed    = nccn_prescribed   .createDeviceCopy().reshape<2>(nccn_prescribed   .extent(1),nccn_prescribed   .extent(0)); // in
-      transposed_ni_activated       = ni_activated      .createDeviceCopy().reshape<2>(ni_activated      .extent(1),ni_activated      .extent(0)); // in
-      transposed_inv_qc_relvar      = inv_qc_relvar     .createDeviceCopy().reshape<2>(inv_qc_relvar     .extent(1),inv_qc_relvar     .extent(0)); // in
-      transposed_dpres              = dpres             .createDeviceCopy().reshape<2>(dpres             .extent(1),dpres             .extent(0)); // in
-      transposed_inv_exner          = inv_exner         .createDeviceCopy().reshape<2>(inv_exner         .extent(1),inv_exner         .extent(0)); // in
-      transposed_cld_frac_r         = cld_frac_r        .createDeviceCopy().reshape<2>(cld_frac_r        .extent(1),cld_frac_r        .extent(0)); // in
-      transposed_cld_frac_l         = cld_frac_l        .createDeviceCopy().reshape<2>(cld_frac_l        .extent(1),cld_frac_l        .extent(0)); // in
-      transposed_cld_frac_i         = cld_frac_i        .createDeviceCopy().reshape<2>(cld_frac_i        .extent(1),cld_frac_i        .extent(0)); // in
-      transposed_qv_prev            = qv_prev           .createDeviceCopy().reshape<2>(qv_prev           .extent(1),qv_prev           .extent(0)); // in
-      transposed_t_prev             = t_prev            .createDeviceCopy().reshape<2>(t_prev            .extent(1),t_prev            .extent(0)); // in
-      transposed_col_location       = col_location      .createDeviceCopy().reshape<2>(col_location      .extent(1),col_location      .extent(0)); // in
-      transposed_diag_eff_radius_qc = diag_eff_radius_qc.createDeviceCopy().reshape<2>(diag_eff_radius_qc.extent(1),diag_eff_radius_qc.extent(0)); //   out
-      transposed_diag_eff_radius_qi = diag_eff_radius_qi.createDeviceCopy().reshape<2>(diag_eff_radius_qi.extent(1),diag_eff_radius_qi.extent(0)); //   out
-      transposed_bulk_qi            = bulk_qi           .createDeviceCopy().reshape<2>(bulk_qi           .extent(1),bulk_qi           .extent(0)); //   out
-      transposed_qv2qi_depos_tend   = qv2qi_depos_tend  .createDeviceCopy().reshape<2>(qv2qi_depos_tend  .extent(1),qv2qi_depos_tend  .extent(0)); //   out
-      transposed_precip_liq_flux    = precip_liq_flux   .createDeviceCopy().reshape<2>(precip_liq_flux   .extent(1),precip_liq_flux   .extent(0)); //   out
-      transposed_precip_ice_flux    = precip_ice_flux   .createDeviceCopy().reshape<2>(precip_ice_flux   .extent(1),precip_ice_flux   .extent(0)); //   out
-      transposed_liq_ice_exchange   = liq_ice_exchange  .createDeviceCopy().reshape<2>(liq_ice_exchange  .extent(1),liq_ice_exchange  .extent(0)); //   out
-      transposed_vap_liq_exchange   = vap_liq_exchange  .createDeviceCopy().reshape<2>(vap_liq_exchange  .extent(1),vap_liq_exchange  .extent(0)); //   out
-      transposed_vap_ice_exchange   = vap_ice_exchange  .createDeviceCopy().reshape<2>(vap_ice_exchange  .extent(1),vap_ice_exchange  .extent(0)); //   out
+      auto transposed_qc                 = qc                .createDeviceCopy().reshape(qc                .extent(1),qc                .extent(0)); // inout
+      auto transposed_nc                 = nc                .createDeviceCopy().reshape(nc                .extent(1),nc                .extent(0)); // inout
+      auto transposed_qr                 = qr                .createDeviceCopy().reshape(qr                .extent(1),qr                .extent(0)); // inout
+      auto transposed_nr                 = nr                .createDeviceCopy().reshape(nr                .extent(1),nr                .extent(0)); // inout
+      auto transposed_theta              = theta             .createDeviceCopy().reshape(theta             .extent(1),theta             .extent(0)); // inout
+      auto transposed_qv                 = qv                .createDeviceCopy().reshape(qv                .extent(1),qv                .extent(0)); // inout
+      auto transposed_qi                 = qi                .createDeviceCopy().reshape(qi                .extent(1),qi                .extent(0)); // inout
+      auto transposed_qm                 = qm                .createDeviceCopy().reshape(qm                .extent(1),qm                .extent(0)); // inout
+      auto transposed_ni                 = ni                .createDeviceCopy().reshape(ni                .extent(1),ni                .extent(0)); // inout
+      auto transposed_bm                 = bm                .createDeviceCopy().reshape(bm                .extent(1),bm                .extent(0)); // inout
+      auto transposed_pressure           = pressure          .createDeviceCopy().reshape(pressure          .extent(1),pressure          .extent(0)); // in
+      auto transposed_dz                 = dz                .createDeviceCopy().reshape(dz                .extent(1),dz                .extent(0)); // in
+      auto transposed_nc_nuceat_tend     = nc_nuceat_tend    .createDeviceCopy().reshape(nc_nuceat_tend    .extent(1),nc_nuceat_tend    .extent(0)); // in
+      auto transposed_nccn_prescribed    = nccn_prescribed   .createDeviceCopy().reshape(nccn_prescribed   .extent(1),nccn_prescribed   .extent(0)); // in
+      auto transposed_ni_activated       = ni_activated      .createDeviceCopy().reshape(ni_activated      .extent(1),ni_activated      .extent(0)); // in
+      auto transposed_inv_qc_relvar      = inv_qc_relvar     .createDeviceCopy().reshape(inv_qc_relvar     .extent(1),inv_qc_relvar     .extent(0)); // in
+      auto transposed_dpres              = dpres             .createDeviceCopy().reshape(dpres             .extent(1),dpres             .extent(0)); // in
+      auto transposed_inv_exner          = inv_exner         .createDeviceCopy().reshape(inv_exner         .extent(1),inv_exner         .extent(0)); // in
+      auto transposed_cld_frac_r         = cld_frac_r        .createDeviceCopy().reshape(cld_frac_r        .extent(1),cld_frac_r        .extent(0)); // in
+      auto transposed_cld_frac_l         = cld_frac_l        .createDeviceCopy().reshape(cld_frac_l        .extent(1),cld_frac_l        .extent(0)); // in
+      auto transposed_cld_frac_i         = cld_frac_i        .createDeviceCopy().reshape(cld_frac_i        .extent(1),cld_frac_i        .extent(0)); // in
+      auto transposed_qv_prev            = qv_prev           .createDeviceCopy().reshape(qv_prev           .extent(1),qv_prev           .extent(0)); // in
+      auto transposed_t_prev             = t_prev            .createDeviceCopy().reshape(t_prev            .extent(1),t_prev            .extent(0)); // in
+      auto transposed_col_location       = col_location      .createDeviceCopy().reshape(col_location      .extent(1),col_location      .extent(0)); // in
+      auto transposed_diag_eff_radius_qc = diag_eff_radius_qc.createDeviceCopy().reshape(diag_eff_radius_qc.extent(1),diag_eff_radius_qc.extent(0)); //   out
+      auto transposed_diag_eff_radius_qi = diag_eff_radius_qi.createDeviceCopy().reshape(diag_eff_radius_qi.extent(1),diag_eff_radius_qi.extent(0)); //   out
+      auto transposed_bulk_qi            = bulk_qi           .createDeviceCopy().reshape(bulk_qi           .extent(1),bulk_qi           .extent(0)); //   out
+      auto transposed_qv2qi_depos_tend   = qv2qi_depos_tend  .createDeviceCopy().reshape(qv2qi_depos_tend  .extent(1),qv2qi_depos_tend  .extent(0)); //   out
+      auto transposed_precip_liq_flux    = precip_liq_flux   .createDeviceCopy().reshape(precip_liq_flux   .extent(1),precip_liq_flux   .extent(0)); //   out
+      auto transposed_precip_ice_flux    = precip_ice_flux   .createDeviceCopy().reshape(precip_ice_flux   .extent(1),precip_ice_flux   .extent(0)); //   out
+      auto transposed_liq_ice_exchange   = liq_ice_exchange  .createDeviceCopy().reshape(liq_ice_exchange  .extent(1),liq_ice_exchange  .extent(0)); //   out
+      auto transposed_vap_liq_exchange   = vap_liq_exchange  .createDeviceCopy().reshape(vap_liq_exchange  .extent(1),vap_liq_exchange  .extent(0)); //   out
+      auto transposed_vap_ice_exchange   = vap_ice_exchange  .createDeviceCopy().reshape(vap_ice_exchange  .extent(1),vap_ice_exchange  .extent(0)); //   out
 
       // For in and inout variables, copy transposed data (One kernel for efficiency)
       parallel_for( SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
@@ -488,7 +488,7 @@ public:
                    transposed_qv_prev           .create_ArrayIR() , // in
                    transposed_t_prev            .create_ArrayIR() , // in
                    transposed_col_location      .create_ArrayIR() , // in
-                  &elapsed_s                                      ) //   out {
+                  &elapsed_s                                      );//   out {
 
       // For inout and out variables, copy transposed data (One kernel for efficiency)
       parallel_for( SimpleBounds<2>(nz+1,ncol) , YAKL_LAMBDA (int k, int i) {
