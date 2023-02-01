@@ -2823,15 +2823,15 @@ void initialize_variables(
           ndensity}; // densedgerecon lives on dual cells, associated with F
   aux_desc_arr[DENSRECONVAR] = {
       "densrecon", dtopo, ndims - 1, 1,
-      std::max(ndensity, ndensity_B)}; // densrecon lives on horiz dual edges,
-                                       // associated with F
+      std::max<int>(ndensity, ndensity_B)}; // densrecon lives on horiz dual
+                                            // edges, associated with F
   aux_desc_arr[DENSVERTEDGERECONVAR] = {
       "densvertedgerecon", dtopo, ndims, 1,
       2 * ndensity}; // densedgerecon lives on dual cells, associated with Fw
   aux_desc_arr[DENSVERTRECONVAR] = {
       "densvertrecon", dtopo, ndims, 0,
-      std::max(ndensity, ndensity_B)}; // densvertrecon lives on vert dual
-                                       // edges, associated with Fw
+      std::max<int>(ndensity, ndensity_B)}; // densvertrecon lives on vert dual
+                                            // edges, associated with Fw
 
   // fct stuff- Phi, Mf, edgeflux
   aux_desc_arr[MFVAR] = {"Mf", dtopo, ndims, 1, ndensity};
