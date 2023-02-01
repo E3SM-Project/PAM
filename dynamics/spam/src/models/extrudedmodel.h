@@ -341,7 +341,7 @@ public:
         "Compute Dens0var",
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+        YAKL_LAMBDA(int k, int j, int i, int n) {
 #if defined _AN || defined _MAN
           for (int d = 0; d < ndensity; ++d) {
             dens0var(d, k + pks, j + pjs, i + pis, n) =
@@ -369,7 +369,7 @@ public:
         "Compute Uvar",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+        YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_H1_ext<1, diff_ord>(Uvar, Vvar, this->primal_geometry,
                                       this->dual_geometry, dis, djs, dks, i, j,
                                       k, n);
@@ -388,7 +388,7 @@ public:
         "Compute UWVar",
         SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+        YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_H1_vert<1, vert_diff_ord>(UWvar, Wvar, this->primal_geometry,
                                             this->dual_geometry, dis, djs, dks,
                                             i, j, k + 1, n);
@@ -418,7 +418,7 @@ public:
         "Compute Q0, F0 bnd",
         SimpleBounds<3>(dual_topology.n_cells_y, dual_topology.n_cells_x,
                         dual_topology.nens),
-        YAKL_CLASS_LAMBDA(int j, int i, int n) {
+        YAKL_LAMBDA(int j, int i, int n) {
           PVPE.compute_qxz0fxz0_bottom(qxz0var, fxz0var, Vvar, Wvar, densvar,
                                        coriolisxzvar, dis, djs, dks, i, j, 1,
                                        n);
@@ -474,7 +474,7 @@ public:
         "ComputeDensEdgeRecon",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+        YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_twisted_edge_recon<ndensity, dual_reconstruction_type,
                                      dual_reconstruction_order>(
               densedgereconvar, dens0var, dis, djs, dks, i, j, k, n,
@@ -491,7 +491,7 @@ public:
         "ComputeQEdgeRecon",
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+        YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_straight_xz_edge_recon<1, reconstruction_type,
                                          reconstruction_order>(
               qxzedgereconvar, qxz0var, pis, pjs, pks, i, j, k, n,
@@ -554,7 +554,7 @@ public:
         "ComputeDensEdgeRecon",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+        YAKL_LAMBDA(int k, int j, int i, int n) {
           SArray<real, 2, dual_vert_reconstruction_order, 2>
               dual_vert_coefs_to_gll;
           SArray<real, 2, dual_vert_reconstruction_order, 2>
@@ -613,7 +613,7 @@ public:
         "ComputeQEdgeRecon",
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+        YAKL_LAMBDA(int k, int j, int i, int n) {
           SArray<real, 2, vert_reconstruction_order, 2> primal_vert_to_gll;
           SArray<real, 3, vert_reconstruction_order, vert_reconstruction_order,
                  vert_reconstruction_order>
@@ -758,7 +758,7 @@ public:
         "ComputeDensRECON",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+        YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_twisted_recon<ndensity, dual_reconstruction_type>(
               densreconvar, densedgereconvar, this->primal_geometry,
               this->dual_geometry, Vvar, dis, djs, dks, i, j, k, n);
@@ -804,7 +804,7 @@ public:
         "ComputeDensVertRECON",
         SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+        YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_twisted_vert_recon<ndensity, dual_vert_reconstruction_type>(
               densvertreconvar, densvertedgereconvar, this->primal_geometry,
               this->dual_geometry, Wvar, dis, djs, dks, i, j, k + 1, n);
@@ -842,7 +842,7 @@ public:
         "ComputeQRECON",
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+        YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_straight_xz_recon<1, reconstruction_type>(
               qxzreconvar, qxzedgereconvar, this->primal_geometry,
               this->dual_geometry, Vvar, pis, pjs, pks, i, j, k, n);
@@ -854,7 +854,7 @@ public:
         "ComputeQVERTRECON",
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+        YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_straight_xz_vert_recon<1, vert_reconstruction_type>(
               qxzvertreconvar, qxzvertedgereconvar, this->primal_geometry,
               this->dual_geometry, Wvar, pis, pjs, pks, i, j, k, n);
@@ -889,7 +889,7 @@ public:
         "Entropicvar diffusion 1",
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+        YAKL_LAMBDA(int k, int j, int i, int n) {
           dens0var(0, k + pks, j + pjs, i + pis, n) =
               varset.get_entropic_var(densvar, k, j, i, pks, pjs, pis, n);
         });
@@ -1176,7 +1176,7 @@ public:
         "Compute Wtend Bnd",
         SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
                         primal_topology.nens),
-        YAKL_CLASS_LAMBDA(int j, int i, int n) {
+        YAKL_LAMBDA(int j, int i, int n) {
           compute_wD0_vert<ndensity_B>(Wtendvar, densvertreconvar, Bvar, pis,
                                        pjs, pks, i, j, 0, n);
           compute_wD0_vert<ndensity_B>(Wtendvar, densvertreconvar, Bvar, pis,
@@ -1238,7 +1238,7 @@ public:
         "Compute Vtend Bnd",
         SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
                         primal_topology.nens),
-        YAKL_CLASS_LAMBDA(int j, int i, int n) {
+        YAKL_LAMBDA(int j, int i, int n) {
           compute_wD0<ndensity_B>(Vtendvar, densreconvar, Bvar, pis, pjs, pks,
                                   i, j, 0, n);
           compute_wD0<ndensity_B>(Vtendvar, densreconvar, Bvar, pis, pjs, pks,
@@ -1313,7 +1313,7 @@ public:
         "Functional derivatives",
         SimpleBounds<4>(dual_topology.ni, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+        YAKL_LAMBDA(int k, int j, int i, int n) {
 
 #if defined _AN || defined _MAN
           real dens0_imh = rho_pi(0, k + pks, n);
@@ -1399,7 +1399,7 @@ public:
         "Add K to B",
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+        YAKL_LAMBDA(int k, int j, int i, int n) {
           Hk.compute_dKddens<ADD_MODE::ADD>(Bvar, Kvar, pis, pjs, pks, i, j, k,
                                             n, fac);
         });
@@ -1463,7 +1463,7 @@ public:
         "Functional derivatives",
         SimpleBounds<4>(dual_topology.ni, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+        YAKL_LAMBDA(int k, int j, int i, int n) {
           const auto total_density_f = TotalDensityFunctor{varset};
           SArray<real, 1, 1> dens0_ik_1, dens0_im1_1, dens0_km1_1;
           compute_H2bar_ext<1, diff_ord, vert_diff_ord>(
@@ -1583,7 +1583,7 @@ public:
         "Add K to B",
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+        YAKL_LAMBDA(int k, int j, int i, int n) {
           Hk.compute_dKddens<ADD_MODE::ADD>(Bvar, Kvar, pis, pjs, pks, i, j, k,
                                             n);
         });
