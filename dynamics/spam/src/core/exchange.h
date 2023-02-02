@@ -192,6 +192,7 @@ void Exchange::pack(const real5d &data) {
   int ks = this->topology.ks;
 
   YAKL_SCOPE(_nz, this->_nz);
+  YAKL_SCOPE(nens, this->nens);
   YAKL_SCOPE(n_cells_x, this->topology.n_cells_x);
   YAKL_SCOPE(n_cells_y, this->topology.n_cells_y);
   YAKL_SCOPE(halosize_x, this->topology.halosize_x);
@@ -266,6 +267,7 @@ void Exchange::unpack(real5d &data) {
   int ks = this->topology.ks;
 
   YAKL_SCOPE(_nz, this->_nz);
+  YAKL_SCOPE(nens, this->nens);
   YAKL_SCOPE(n_cells_x, this->topology.n_cells_x);
   YAKL_SCOPE(n_cells_y, this->topology.n_cells_y);
   YAKL_SCOPE(halosize_x, this->topology.halosize_x);

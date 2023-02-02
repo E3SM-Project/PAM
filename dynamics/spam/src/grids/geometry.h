@@ -906,28 +906,25 @@ void Geometry<Twisted>::initialize(const Topology &topo,
 
   int ks = topo.ks;
 
+  YAKL_SCOPE(zint, this->zint);
+  YAKL_SCOPE(dz, this->dz);
   parallel_for(
       "Set zint twisted", SimpleBounds<2>(topo.ni, topo.nens),
-      YAKL_LAMBDA(int k, int n) {
-        this->zint(k + topo.ks, n) = params.zint(k, n);
-      });
+      YAKL_LAMBDA(int k, int n) { zint(k + topo.ks, n) = params.zint(k, n); });
 
   parallel_for(
       "Set zint twisted halo", SimpleBounds<2>(topo.mirror_halo, topo.nens),
       YAKL_LAMBDA(int k, int n) {
-        this->zint(-(k + 1) + ks, n) = -this->zint(k + 1 + ks, n);
-        this->zint(k + ks + topo.ni, n) =
-            this->zint(ks + topo.ni - 1, n) +
-            (this->zint(ks + topo.ni - 1, n) -
-             this->zint(-k + ks + topo.ni - 2, n));
+        zint(-(k + 1) + ks, n) = -zint(k + 1 + ks, n);
+        zint(k + ks + topo.ni, n) =
+            zint(ks + topo.ni - 1, n) +
+            (zint(ks + topo.ni - 1, n) - zint(-k + ks + topo.ni - 2, n));
       });
 
   parallel_for(
       "Set dz twisted",
       SimpleBounds<2>(topo.nl + 2 * topo.mirror_halo, topo.nens),
-      YAKL_LAMBDA(int k, int n) {
-        this->dz(k, n) = this->zint(k + 1, n) - this->zint(k, n);
-      });
+      YAKL_LAMBDA(int k, int n) { dz(k, n) = zint(k + 1, n) - zint(k, n); });
 
   this->straight = false;
   this->uniform_vertical = params.uniform_vertical;
@@ -1093,19 +1090,21 @@ void Geometry<Straight>::initialize(const Topology &topo,
 
   int ks = topo.ks;
 
+  YAKL_SCOPE(zint, this->zint);
+  YAKL_SCOPE(dz, this->dz);
   // This code puts straight grid interfaces at the midpoint point between
   // twisted grid interfaces (other than the top and bottom levels)
   parallel_for(
       "Set zint straight", SimpleBounds<2>(topo.ni, topo.nens),
       YAKL_LAMBDA(int k, int n) {
         if (k == 0) {
-          this->zint(k + topo.ks, n) = params.zint(k, n);
+          zint(k + topo.ks, n) = params.zint(k, n);
         } else if (k == topo.ni - 1) {
-          this->zint(k + topo.ks, n) = params.zint(k + 1, n);
+          zint(k + topo.ks, n) = params.zint(k + 1, n);
         } // need to add 1 here due to indexing between straight and twisted
           // grids
         else {
-          this->zint(k + topo.ks, n) =
+          zint(k + topo.ks, n) =
               (params.zint(k, n) + params.zint(k + 1, n)) / 2.0_fp;
         }
       });
@@ -1113,19 +1112,16 @@ void Geometry<Straight>::initialize(const Topology &topo,
   parallel_for(
       "Set zint straight halo", SimpleBounds<2>(topo.mirror_halo, topo.nens),
       YAKL_LAMBDA(int k, int n) {
-        this->zint(-(k + 1) + ks, n) = -this->zint(k + 1 + ks, n);
-        this->zint(k + ks + topo.ni, n) =
-            this->zint(ks + topo.ni - 1, n) +
-            (this->zint(ks + topo.ni - 1, n) -
-             this->zint(-k + ks + topo.ni - 2, n));
+        zint(-(k + 1) + ks, n) = -zint(k + 1 + ks, n);
+        zint(k + ks + topo.ni, n) =
+            zint(ks + topo.ni - 1, n) +
+            (zint(ks + topo.ni - 1, n) - zint(-k + ks + topo.ni - 2, n));
       });
 
   parallel_for(
       "Set dz straight",
       SimpleBounds<2>(topo.nl + 2 * topo.mirror_halo, topo.nens),
-      YAKL_LAMBDA(int k, int n) {
-        this->dz(k, n) = this->zint(k + 1, n) - this->zint(k, n);
-      });
+      YAKL_LAMBDA(int k, int n) { dz(k, n) = zint(k + 1, n) - zint(k, n); });
 
   // for (int k=0;k<topo.nl+2*topo.mirror_halo;k++)
   //{ std::cout << "straight dz at " << k-topo.ks << " = " << this->dz(k,0) <<
