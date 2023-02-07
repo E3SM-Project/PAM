@@ -284,7 +284,7 @@ void VariableSetBase<T>::convert_dynamics_to_coupler_state(
 
           real ql = 0.0_fp;
           if (liquid_found) {
-            ql = get_qv(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs,
+            ql = get_ql(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs,
                         dis, n);
           }
 
