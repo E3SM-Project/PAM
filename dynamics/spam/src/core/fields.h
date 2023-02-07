@@ -141,7 +141,8 @@ void Field::set_top_bnd(real val) {
                       this->topology.n_cells_x + 2 * this->topology.halosize_x,
                       this->topology.nens),
       YAKL_CLASS_LAMBDA(int ndof, int j, int i, int n) {
-        this->data(ndof, this->_nz + this->topology.mirror_halo, j, i, n) = val;
+        this->data(ndof, this->_nz - 1 + this->topology.mirror_halo, j, i, n) =
+            val;
       });
 }
 
@@ -152,7 +153,8 @@ void Field::set_top_bnd(int ndof, real val) {
                       this->topology.n_cells_x + 2 * this->topology.halosize_x,
                       this->topology.nens),
       YAKL_CLASS_LAMBDA(int j, int i, int n) {
-        this->data(ndof, this->_nz + this->topology.mirror_halo, j, i, n) = val;
+        this->data(ndof, this->_nz - 1 + this->topology.mirror_halo, j, i, n) =
+            val;
       });
 }
 

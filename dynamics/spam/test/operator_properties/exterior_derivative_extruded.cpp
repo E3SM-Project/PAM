@@ -45,8 +45,8 @@ struct curl_vecfun {
   }
 };
 
-void test_D0(int np, real atol) {
-  ExtrudedUnitSquare square(np, 2 * np);
+void test_D0(int np, bool uniform_vertical, real atol) {
+  ExtrudedUnitSquare square(np, 2 * np, uniform_vertical);
 
   auto st00 = square.create_straight_form<0, 0>();
   square.primal_geometry.set_00form_values(fun{}, st00, 0);
@@ -79,8 +79,8 @@ void test_D0(int np, real atol) {
   }
 }
 
-void test_D0_vert(int np, real atol) {
-  ExtrudedUnitSquare square(np, 2 * np);
+void test_D0_vert(int np, bool uniform_vertical, real atol) {
+  ExtrudedUnitSquare square(np, 2 * np, uniform_vertical);
 
   auto st00 = square.create_straight_form<0, 0>();
   square.primal_geometry.set_00form_values(fun{}, st00, 0);
@@ -113,8 +113,8 @@ void test_D0_vert(int np, real atol) {
   }
 }
 
-void test_D0bar(int np, real atol) {
-  ExtrudedUnitSquare square(np, 2 * np);
+void test_D0bar(int np, bool uniform_vertical, real atol) {
+  ExtrudedUnitSquare square(np, 2 * np, uniform_vertical);
 
   auto tw00 = square.create_twisted_form<0, 0>();
   square.dual_geometry.set_00form_values(fun{}, tw00, 0);
@@ -147,8 +147,8 @@ void test_D0bar(int np, real atol) {
   }
 }
 
-void test_D0bar_vert(int np, real atol) {
-  ExtrudedUnitSquare square(np, 2 * np);
+void test_D0bar_vert(int np, bool uniform_vertical, real atol) {
+  ExtrudedUnitSquare square(np, 2 * np, uniform_vertical);
 
   auto tw00 = square.create_twisted_form<0, 0>();
   square.dual_geometry.set_00form_values(fun{}, tw00, 0);
@@ -182,8 +182,8 @@ void test_D0bar_vert(int np, real atol) {
   }
 }
 
-void test_D1_ext(int np, real atol) {
-  ExtrudedUnitSquare square(np, 2 * np);
+void test_D1_ext(int np, bool uniform_vertical, real atol) {
+  ExtrudedUnitSquare square(np, 2 * np, uniform_vertical);
 
   auto st10 = square.create_straight_form<1, 0>();
   square.primal_geometry.set_10form_values(vecfun{}, st10, 0,
@@ -223,8 +223,8 @@ void test_D1_ext(int np, real atol) {
   }
 }
 
-void test_D1bar_and_D1bar_vert(int np, real atol) {
-  ExtrudedUnitSquare square(np, 2 * np);
+void test_D1bar_and_D1bar_vert(int np, bool uniform_vertical, real atol) {
+  ExtrudedUnitSquare square(np, 2 * np, uniform_vertical);
 
   auto tw01 = square.create_twisted_form<0, 1>();
   square.dual_geometry.set_01form_values(vecfun{}, tw01, 0,
@@ -266,11 +266,14 @@ void test_D1bar_and_D1bar_vert(int np, real atol) {
 int main() {
   yakl::init();
   real atol = 500 * std::numeric_limits<real>::epsilon();
-  test_D0(33, atol);
-  test_D0_vert(33, atol);
-  test_D0bar(33, atol);
-  test_D0bar_vert(33, atol);
-  test_D1bar_and_D1bar_vert(33, atol);
-  test_D1_ext(33, atol);
+
+  for (bool uniform_vertical : {true, false}) {
+    test_D0(33, uniform_vertical, atol);
+    test_D0_vert(33, uniform_vertical, atol);
+    test_D0bar(33, uniform_vertical, atol);
+    test_D0bar_vert(33, uniform_vertical, atol);
+    test_D1bar_and_D1bar_vert(33, uniform_vertical, atol);
+    test_D1_ext(33, uniform_vertical, atol);
+  }
   yakl::finalize();
 }

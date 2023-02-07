@@ -13,6 +13,10 @@ using Hamiltonian = Hamiltonian_SWE_Hs;
 using Hamiltonian = Hamiltonian_TSWE_Hs;
 #elif _CE
 using Hamiltonian = Hamiltonian_CE_Hs;
+#elif _AN
+using Hamiltonian = Hamiltonian_AN_Hs;
+#elif _MAN
+using Hamiltonian = Hamiltonian_MAN_Hs;
 #elif _MCErho
 using Hamiltonian = Hamiltonian_MCE_Hs;
 #elif _MCErhod

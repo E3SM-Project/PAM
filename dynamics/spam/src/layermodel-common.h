@@ -42,6 +42,8 @@ uint constexpr nconstant = 2;
 #define HSVAR 0
 #define CORIOLISVAR 1
 
+#define MASSDENSINDX 0
+
 // functional derivatives = F, B, K, he
 // dual grid reconstruction stuff- q0, f0, FT, qedgerecon, qrecon,
 // coriolisedgercon, coriolisrecon primal grid reconstruction stuff- U, dens0,

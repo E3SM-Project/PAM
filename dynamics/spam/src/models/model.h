@@ -23,11 +23,7 @@ public:
 #endif
   VariableSet varset;
   ThermoPotential thermo;
-#if defined _SWE || defined _TSWE
-  ReferenceState_SWE reference_state;
-#else
-  ReferenceState_Euler reference_state;
-#endif
+  ReferenceState reference_state;
   bool is_initialized;
 
   Equations() { this->is_initialized = false; }
@@ -36,7 +32,8 @@ public:
                   const Geometry<Twisted> &dual_geom) {
 
     this->reference_state.initialize(primal_geom.topology, dual_geom.topology);
-    this->varset.initialize(coupler, params, thermo, primal_geom, dual_geom);
+    this->varset.initialize(coupler, params, thermo, reference_state,
+                            primal_geom, dual_geom);
     this->PVPE.initialize(varset);
     this->Hk.initialize(varset, primal_geom, dual_geom);
     this->Hs.initialize(thermo, varset, primal_geom, dual_geom);
@@ -273,6 +270,12 @@ public:
                                 FieldSet<nauxiliary> &auxiliary_vars,
                                 FieldSet<nprognostic> &xtend) = 0;
 
+  virtual void add_pressure_perturbation(real dt,
+                                         FieldSet<nconstant> &const_vars,
+                                         FieldSet<nprognostic> &x,
+                                         FieldSet<nauxiliary> &auxiliary_vars,
+                                         FieldSet<nprognostic> &xtend) {}
+
   virtual void compute_rhs(real dt, FieldSet<nconstant> &const_vars,
                            FieldSet<nprognostic> &x,
                            FieldSet<nauxiliary> &auxiliary_vars,
@@ -280,6 +283,7 @@ public:
     compute_functional_derivatives(ADD_MODE::REPLACE, 1._fp, dt, const_vars, x,
                                    auxiliary_vars);
     apply_symplectic(dt, const_vars, x, auxiliary_vars, xtend);
+    add_pressure_perturbation(dt, const_vars, x, auxiliary_vars, xtend);
   }
 
   virtual void remove_negative_densities(FieldSet<nprognostic> &x) {}
