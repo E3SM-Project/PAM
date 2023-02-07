@@ -22,8 +22,7 @@ struct VS_AN {
   static constexpr bool couple = false;
 };
 struct VS_MAN {
-  // static constexpr bool couple = true; TODO
-  static constexpr bool couple = false;
+  static constexpr bool couple = true;
 };
 struct VS_MCE_rho {
   static constexpr bool couple = true;
@@ -285,7 +284,7 @@ void VariableSetBase<T>::convert_dynamics_to_coupler_state(
 
           real ql = 0.0_fp;
           if (liquid_found) {
-            ql = get_qv(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs,
+            ql = get_ql(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs,
                         dis, n);
           }
 

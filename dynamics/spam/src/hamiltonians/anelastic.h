@@ -285,8 +285,8 @@ public:
     l_q(3) = varset.get_qv(dens, k, j, i, ks, js, is, n);
     l_q(4) = varset.liquid_found ? varset.get_ql(dens, k, j, i, ks, js, is, n)
                                  : 0.0_fp;
-    l_q(5) = varset.liquid_found ? varset.get_qi(dens, k, j, i, ks, js, is, n)
-                                 : 0.0_fp;
+    l_q(5) =
+        varset.ice_found ? varset.get_qi(dens, k, j, i, ks, js, is, n) : 0.0_fp;
 
     compute_dHsdx(l_B, l_q, geop0(0));
 

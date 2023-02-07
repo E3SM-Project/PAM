@@ -82,7 +82,7 @@ uint constexpr ndensity_B = ndensity + 1;
 uint constexpr ndensity_refstate = ndensity_B;
 #elif _MAN
 bool constexpr tracers_decouple_from_dynamics = false;
-uint constexpr ndensity_B = ndensity + 1 + ntracers_physics;
+uint constexpr ndensity_B = ndensity_dycore + 1 + ntracers_physics;
 uint constexpr ndensity_refstate = ndensity_B;
 #else
 bool constexpr tracers_decouple_from_dynamics = false;

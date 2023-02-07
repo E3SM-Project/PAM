@@ -3285,11 +3285,12 @@ public:
         });
 
     primal_geom.set_profile_00form_values(
-        YAKL_LAMBDA(real z) { return refrho_f(z, thermo); }, refstate.q_pi, 0);
+        YAKL_LAMBDA(real z) { return refrho_f(z, thermo); }, refstate.q_pi,
+        MASSDENSINDX);
 
     primal_geom.set_profile_00form_values(
         YAKL_LAMBDA(real z) { return refentropicdensity_f(z, thermo); },
-        refstate.q_pi, 1);
+        refstate.q_pi, ENTROPICDENSINDX);
 
     primal_geom.set_profile_00form_values(
         YAKL_LAMBDA(real z) { return refnsq_f(z, thermo); }, refstate.Nsq_pi,
@@ -3320,11 +3321,12 @@ public:
         });
 
     dual_geom.set_profile_00form_values(
-        YAKL_LAMBDA(real z) { return refrho_f(z, thermo); }, refstate.q_di, 0);
+        YAKL_LAMBDA(real z) { return refrho_f(z, thermo); }, refstate.q_di,
+        MASSDENSINDX);
 
     dual_geom.set_profile_00form_values(
         YAKL_LAMBDA(real z) { return refentropicdensity_f(z, thermo); },
-        refstate.q_di, 1);
+        refstate.q_di, ENTROPICDENSINDX);
 
     parallel_for(
         "scale q_di", SimpleBounds<2>(dual_topology.ni, dual_topology.nens),
@@ -3457,11 +3459,12 @@ public:
         });
 
     primal_geom.set_profile_00form_values(
-        YAKL_LAMBDA(real z) { return refrho_f(z, thermo); }, refstate.q_pi, 0);
+        YAKL_LAMBDA(real z) { return refrho_f(z, thermo); }, refstate.q_pi,
+        MASSDENSINDX);
 
     primal_geom.set_profile_00form_values(
         YAKL_LAMBDA(real z) { return refentropicdensity_f(z, thermo); },
-        refstate.q_pi, 1);
+        refstate.q_pi, ENTROPICDENSINDX);
 
     primal_geom.set_profile_00form_values(
         YAKL_LAMBDA(real z) { return refrhov_f(z, thermo); }, refstate.q_pi,
@@ -3496,11 +3499,12 @@ public:
         });
 
     dual_geom.set_profile_00form_values(
-        YAKL_LAMBDA(real z) { return refrho_f(z, thermo); }, refstate.q_di, 0);
+        YAKL_LAMBDA(real z) { return refrho_f(z, thermo); }, refstate.q_di,
+        MASSDENSINDX);
 
     dual_geom.set_profile_00form_values(
         YAKL_LAMBDA(real z) { return refentropicdensity_f(z, thermo); },
-        refstate.q_di, 1);
+        refstate.q_di, ENTROPICDENSINDX);
 
     dual_geom.set_profile_00form_values(
         YAKL_LAMBDA(real z) { return refrhov_f(z, thermo); }, refstate.q_di,
