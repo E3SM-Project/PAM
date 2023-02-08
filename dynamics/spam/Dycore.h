@@ -22,6 +22,7 @@
 #include "RKSimple.h"
 #include "SI.h"
 #include "SSPRK.h"
+#include "time_integrator.h"
 #include <memory>
 
 using pam::PamCoupler;
@@ -47,20 +48,25 @@ public:
   Topology dual_topology;
   ModelParameters params;
   Parallel par;
-#if _TIME_TYPE == 0
-  RKSimpleTimeIntegrator tint;
-#endif
-#if _TIME_TYPE == 1
-  SSPKKTimeIntegrator tint;
-#endif
-#if _TIME_TYPE == 2
   ModelLinearSystem linear_system;
-  SITimeIntegrator<si_quad_pts> tint;
-#endif
+  std::unique_ptr<TimeIntegrator> time_integrator;
 
   int ierr;
   real etime = 0.0;
   uint prevstep = 0;
+
+  std::unique_ptr<TimeIntegrator>
+  choose_time_integrator(const std::string &tstype) {
+    if (tstype.substr(0, 5) == "ssprk") {
+      return std::make_unique<SSPKKTimeIntegrator>(tstype);
+    } else if (tstype.substr(0, 2) == "si") {
+      return std::make_unique<SITimeIntegrator<si_quad_pts>>(tstype);
+    } else if (tstype.substr(0, 4) == "kgrk") {
+      return std::make_unique<RKSimpleTimeIntegrator>(tstype);
+    } else {
+      throw std::runtime_error("unknown time integrator type");
+    }
+  }
 
   void init(PamCoupler &coupler) {
     serial_print("setting up dycore", par.masterproc);
@@ -87,6 +93,8 @@ public:
 
     debug_print("read parameters and partitioned domain/setting domain sizes",
                 par.masterproc);
+
+    time_integrator = choose_time_integrator(params.tstype);
 
     // Initialize the grid
     debug_print("start init topo/geom", par.masterproc);
@@ -164,17 +172,15 @@ public:
     constant_vars.exchange();
     debug_print("end ic setting", par.masterproc);
 
-    // // Initialize the time stepper
+    // // Initialize the time integrator
     debug_print("start ts init", par.masterproc);
-#if _TIME_TYPE == 2
-    linear_system.initialize(params, primal_geometry, dual_geometry, equations);
-    linear_system.compute_coefficients(params.dtcrm);
-    tint.initialize(params, tendencies, linear_system, prognostic_vars,
-                    constant_vars, auxiliary_vars);
-#else
-    tint.initialize(params, tendencies, prognostic_vars, constant_vars,
-                    auxiliary_vars);
-#endif
+    time_integrator->initialize(params, tendencies, linear_system,
+                                prognostic_vars, constant_vars, auxiliary_vars);
+    if (time_integrator->is_semi_implicit) {
+      linear_system.initialize(params, primal_geometry, dual_geometry,
+                               equations);
+      linear_system.compute_coefficients(params.dtcrm);
+    }
     debug_print("end ts init", par.masterproc);
 
     // convert dynamics state to Coupler state
@@ -212,7 +218,7 @@ public:
     debug_print("start time stepping loop", par.masterproc);
     for (uint nstep = 0; nstep < params.crm_per_phys; nstep++) {
       yakl::fence();
-      tint.stepForward(params.dtcrm);
+      time_integrator->stepForward(params.dtcrm);
 
 #ifdef CHECK_ANELASTIC_CONSTRAINT
       real max_div = tendencies.compute_max_anelastic_constraint(
@@ -243,7 +249,7 @@ public:
     }
     prevstep += params.crm_per_phys;
 
-    if (remove_negative_densities) {
+    if (!time_integrator->is_ssp) {
       tendencies.remove_negative_densities(prognostic_vars);
     }
 
