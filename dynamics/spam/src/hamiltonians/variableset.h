@@ -370,12 +370,14 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_state(
           real entropic_var =
               thermo.compute_entropic_var_from_T(alpha, temp, qd, qv, ql, qi);
 
+#if !defined _AN && !defined _MAN
           set_density(dens * dual_geometry.get_area_11entity(k + dks, j + djs,
                                                              i + dis, n),
                       dens_dry * dual_geometry.get_area_11entity(
                                      k + dks, j + djs, i + dis, n),
                       prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs,
                       dis, n);
+#endif
           set_entropic_density(
               entropic_var * dens *
                   dual_geometry.get_area_11entity(k + dks, j + djs, i + dis, n),
