@@ -66,13 +66,21 @@ public:
     serial_print("setting up dycore", par.masterproc);
 
     // Set parameters
-
     debug_print(
         "reading parameters and partitioning domain/setting domain sizes",
         par.masterproc);
     std::string inFile =
         coupler.get_option<std::string>("standalone_input_file");
+
     readModelParamsFile(inFile, params, par, coupler, testcase);
+
+    finalize_parallel(params, par);
+
+    check_and_print_model_parameters(params, par);
+
+    testcase->set_tracers(params);
+    testcase->set_domain(params);
+
     debug_print("read parameters and partitioned domain/setting domain sizes",
                 par.masterproc);
 

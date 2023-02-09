@@ -3002,23 +3002,44 @@ void readModelParamsFile(std::string inFile, ModelParameters &params,
                          Parallel &par, PamCoupler &coupler,
                          std::unique_ptr<TestCase> &testcase) {
 
+  // Read common parameters
+  int nz = coupler.get_nz();
+  readParamsFile(inFile, params, par, nz);
+
   // Read config file
   YAML::Node config = YAML::LoadFile(inFile);
 
-  int nz = coupler.get_nz();
-
   params.acoustic_balance = config["balance_initial_density"].as<bool>(false);
   params.uniform_vertical = (config["vcoords"].as<std::string>() == "uniform");
-
   // Read diffusion coefficients
   params.entropicvar_diffusion_coeff =
       config["entropicvar_diffusion_coeff"].as<real>(0);
   params.velocity_diffusion_coeff =
       config["velocity_diffusion_coeff"].as<real>(0);
-
   // Read the data initialization options
   params.initdataStr = config["initData"].as<std::string>();
+
+  for (int i = 0; i < ntracers_dycore; i++) {
+    params.tracerdataStr[i] =
+        config["initTracer" + std::to_string(i)].as<std::string>();
+    params.dycore_tracerpos[i] =
+        config["initTracerPos" + std::to_string(i)].as<bool>();
+  }
+
+  // Store vertical cell interface heights in the data manager
+  auto &dm = coupler.get_data_manager_device_readonly();
+  params.zint = dm.get<real const, 2>("vertical_interface_height");
+
+  params.ylen = 1.0;
+  params.yc = 0.5;
+
   testcase_from_string(testcase, params.initdataStr, params.acoustic_balance);
+}
+
+void check_and_print_model_parameters(const ModelParameters &params,
+                                      const Parallel &par) {
+
+  check_and_print_parameters(params, par);
 
   serial_print("IC: " + params.initdataStr, par.masterproc);
   serial_print("acoustically balanced: " +
@@ -3032,26 +3053,10 @@ void readModelParamsFile(std::string inFile, ModelParameters &params,
                par.masterproc);
 
   for (int i = 0; i < ntracers_dycore; i++) {
-    params.tracerdataStr[i] =
-        config["initTracer" + std::to_string(i)].as<std::string>();
-    params.dycore_tracerpos[i] =
-        config["initTracerPos" + std::to_string(i)].as<bool>();
     serial_print("Dycore Tracer" + std::to_string(i) +
                      " IC: " + params.tracerdataStr[i],
                  par.masterproc);
   }
-
-  testcase->set_tracers(params);
-
-  params.ylen = 1.0;
-  params.yc = 0.5;
-  testcase->set_domain(params);
-
-  // Store vertical cell interface heights in the data manager
-  auto &dm = coupler.get_data_manager_device_readonly();
-  params.zint = dm.get<real const, 2>("vertical_interface_height");
-
-  readParamsFile(inFile, params, par, nz);
 }
 
 //***************** Test Cases ***************************//
