@@ -148,7 +148,7 @@ int main(int argc, char** argv) {
       yakl::timer_stop("micro");
 
       yakl::timer_start("dycore");
-      dycore.timeStep( coupler , dtphys );
+      dycore.timeStep( coupler);
       yakl::timer_stop("dycore");
 
       etime += dtphys;

@@ -63,7 +63,6 @@ public:
   uint prevstep = 0;
 
   void init(PamCoupler &coupler) {
-
     serial_print("setting up dycore", par.masterproc);
 
     // Set parameters
@@ -187,7 +186,7 @@ public:
     return 0._fp;
   };
 
-  void timeStep(PamCoupler &coupler, real dtphys) {
+  void timeStep(PamCoupler &coupler) {
 
     serial_print("taking a dycore dtphys step", par.masterproc);
 
