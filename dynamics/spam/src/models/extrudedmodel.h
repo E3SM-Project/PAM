@@ -3230,7 +3230,6 @@ public:
 
   void set_domain(ModelParameters &params) override {
     params.xlen = Lx;
-    params.zlen = Lz;
     params.xc = xc;
   }
 
@@ -3404,7 +3403,6 @@ public:
 
   void set_domain(ModelParameters &params) override {
     params.xlen = Lx;
-    params.zlen = Lz;
     params.xc = xc;
   }
 
@@ -3572,7 +3570,6 @@ public:
 
   void set_domain(ModelParameters &params) override {
     params.xlen = 0;
-    params.zlen = 0;
     params.xc = 0;
   }
 

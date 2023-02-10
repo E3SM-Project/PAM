@@ -21,7 +21,7 @@ public:
   std::string tstype;
   real si_tolerance = -1;
 
-  real xlen, ylen, zlen;
+  real xlen, ylen;
   real xc, yc;
 
   int masterproc;

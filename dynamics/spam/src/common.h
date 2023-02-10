@@ -309,7 +309,6 @@ void check_and_print_parameters(const Parameters &params, const Parallel &par) {
 
     std::cout << "xlen:       " << params.xlen << "\n";
     std::cout << "ylen:       " << params.ylen << "\n";
-    std::cout << "zlen:       " << params.zlen << "\n";
     std::cout << "xc:         " << params.xc << "\n";
     std::cout << "yc:         " << params.yc << "\n";
   }
