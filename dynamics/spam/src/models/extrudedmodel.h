@@ -2994,7 +2994,7 @@ void initialize_variables(
   // set_dofs_arr(aux_ndofs_arr, PVAR, 0, 1, 1);  //p = straight 0-form
   // #endif
 }
-
+std::unique_ptr<TestCase> make_coupled_test_case();
 void testcase_from_string(std::unique_ptr<TestCase> &testcase, std::string name,
                           bool acoustic_balance);
 
@@ -3055,7 +3055,8 @@ void read_model_params_coupler(ModelParameters &params, Parallel &par,
 
   params.ylen = 1.0;
   params.yc = 0.5;
-  // testcase = std::make_unique<CouplerTestCase>();
+
+  testcase = make_coupled_test_case();
 }
 
 void check_and_print_model_parameters(const ModelParameters &params,
@@ -3561,6 +3562,176 @@ public:
       std::vector<std::unique_ptr<Diagnostic>> &diagnostics) override {
     T::add_diagnostics(diagnostics);
   }
+};
+
+class CoupledTestCase : public TestCase {
+public:
+  PamCoupler &coupler;
+
+  std::array<real, 3> get_domain() const override { return {0, 1, 0}; }
+
+  void set_domain(ModelParameters &params) override {
+    params.xlen = 0;
+    params.zlen = 0;
+    params.xc = 0;
+  }
+
+  void set_initial_conditions(FieldSet<nprognostic> &progvars,
+                              FieldSet<nconstant> &constvars,
+                              const Geometry<Straight> &primal_geom,
+                              const Geometry<Twisted> &dual_geom) override {
+
+    //    equations->Hs.set_parameters(g);
+    //
+    //    YAKL_SCOPE(thermo, equations->thermo);
+    //    YAKL_SCOPE(varset, equations->varset);
+    //
+    //#ifndef _MAN
+    //    dual_geom.set_11form_values(
+    //        YAKL_LAMBDA(real x, real z) { return rho_f(x, z, thermo); },
+    //        progvars.fields_arr[DENSVAR], MASSDENSINDX);
+    //#endif
+    //    dual_geom.set_11form_values(
+    //        YAKL_LAMBDA(real x, real z) {
+    //          return rho_f(x, z, thermo) * entropicvar_f(x, z, thermo);
+    //        },
+    //        progvars.fields_arr[DENSVAR], ENTROPICDENSINDX);
+    //
+    //    dual_geom.set_11form_values(
+    //        YAKL_LAMBDA(real x, real z) { return flat_geop(x, z, g); },
+    //        constvars.fields_arr[HSVAR], 0);
+    //
+    //    dual_geom.set_11form_values(
+    //        YAKL_LAMBDA(real x, real z) { return T::rhov_f(x, z, thermo); },
+    //        progvars.fields_arr[DENSVAR], varset.dm_id_vap +
+    //        ndensity_nophysics);
+    //
+    //    YAKL_SCOPE(tracer_f, this->tracer_f);
+    //    for (int i = 0; i < ntracers_dycore; i++) {
+    //      dual_geom.set_11form_values(
+    //          YAKL_LAMBDA(real x, real z) {
+    //            return rho_f(x, z, thermo) *
+    //                   tracer_f(i)->compute(x, z, Lx, Lz, xc, zc);
+    //          },
+    //          progvars.fields_arr[DENSVAR], i + ndensity_dycore);
+    //    }
+  }
+
+  void set_reference_state(const Geometry<Straight> &primal_geom,
+                           const Geometry<Twisted> &dual_geom) override {
+    //    auto &refstate = this->equations->reference_state;
+    //
+    //    const auto primal_topology = primal_geom.topology;
+    //    const auto dual_topology = dual_geom.topology;
+    //
+    //    const int pks = primal_topology.ks;
+    //    const int dks = dual_topology.ks;
+    //
+    //    YAKL_SCOPE(thermo, equations->thermo);
+    //    YAKL_SCOPE(Hs, equations->Hs);
+    //    YAKL_SCOPE(varset, equations->varset);
+    //
+    //    dual_geom.set_profile_11form_values(
+    //        YAKL_LAMBDA(real z) { return flat_geop(0, z, g); }, refstate.geop,
+    //        0);
+    //    dual_geom.set_profile_11form_values(
+    //        YAKL_LAMBDA(real z) { return refrho_f(z, thermo); },
+    //        refstate.dens, MASSDENSINDX);
+    //    dual_geom.set_profile_11form_values(
+    //        YAKL_LAMBDA(real z) { return refentropicdensity_f(z, thermo); },
+    //        refstate.dens, ENTROPICDENSINDX);
+    //    dual_geom.set_profile_11form_values(
+    //        YAKL_LAMBDA(real z) { return refrhov_f(z, thermo); },
+    //        refstate.dens, varset.dm_id_vap + ndensity_nophysics);
+    //
+    //    parallel_for(
+    //        "compute rho_pi",
+    //        SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
+    //        YAKL_LAMBDA(int k, int n) {
+    //          const auto total_density_f = TotalDensityFunctor{varset};
+    //          SArray<real, 1, 1> rho0;
+    //          compute_H2bar_ext<1, vert_diff_ord>(total_density_f, rho0,
+    //                                              refstate.dens.data,
+    //                                              primal_geom, dual_geom, pks,
+    //                                              k, n);
+    //          refstate.rho_pi.data(0, k + pks, n) = rho0(0);
+    //        });
+    //
+    //    primal_geom.set_profile_00form_values(
+    //        YAKL_LAMBDA(real z) { return refrho_f(z, thermo); },
+    //        refstate.q_pi, MASSDENSINDX);
+    //
+    //    primal_geom.set_profile_00form_values(
+    //        YAKL_LAMBDA(real z) { return refentropicdensity_f(z, thermo); },
+    //        refstate.q_pi, ENTROPICDENSINDX);
+    //
+    //    primal_geom.set_profile_00form_values(
+    //        YAKL_LAMBDA(real z) { return refrhov_f(z, thermo); },
+    //        refstate.q_pi, varset.dm_id_vap + ndensity_nophysics);
+    //
+    //    primal_geom.set_profile_00form_values(
+    //        YAKL_LAMBDA(real z) { return refnsq_f(z, thermo); },
+    //        refstate.Nsq_pi, 0);
+    //
+    //    parallel_for(
+    //        "scale q_pi", SimpleBounds<2>(primal_topology.ni,
+    //        primal_topology.nens), YAKL_LAMBDA(int k, int n) {
+    //          for (int l = 0; l < ndensity; ++l) {
+    //            refstate.q_pi.data(l, k + pks, n) /=
+    //                refstate.rho_pi.data(0, k + pks, n);
+    //          }
+    //        });
+    //
+    //    parallel_for(
+    //        "compute rho_di", SimpleBounds<2>(dual_topology.ni,
+    //        dual_topology.nens), YAKL_LAMBDA(int k, int n) {
+    //          if (k == 0) {
+    //            refstate.rho_di.data(0, dks, n) = refstate.rho_pi.data(0, pks,
+    //            n);
+    //          } else if (k == dual_topology.ni - 1) {
+    //            refstate.rho_di.data(0, dual_topology.ni - 1 + dks, n) =
+    //                refstate.rho_pi.data(0, primal_topology.ni - 1 + pks, n);
+    //          } else {
+    //            refstate.rho_di.data(0, k + dks, n) =
+    //                0.5_fp * (refstate.rho_pi.data(0, k + pks, n) +
+    //                          refstate.rho_pi.data(0, k - 1 + pks, n));
+    //          }
+    //        });
+    //
+    //    dual_geom.set_profile_00form_values(
+    //        YAKL_LAMBDA(real z) { return refrho_f(z, thermo); },
+    //        refstate.q_di, MASSDENSINDX);
+    //
+    //    dual_geom.set_profile_00form_values(
+    //        YAKL_LAMBDA(real z) { return refentropicdensity_f(z, thermo); },
+    //        refstate.q_di, ENTROPICDENSINDX);
+    //
+    //    dual_geom.set_profile_00form_values(
+    //        YAKL_LAMBDA(real z) { return refrhov_f(z, thermo); },
+    //        refstate.q_di, varset.dm_id_vap + ndensity_nophysics);
+    //
+    //    parallel_for(
+    //        "scale q_di", SimpleBounds<2>(dual_topology.ni,
+    //        dual_topology.nens), YAKL_LAMBDA(int k, int n) {
+    //          for (int l = 0; l < ndensity; ++l) {
+    //            refstate.q_di.data(l, k + dks, n) /=
+    //                refstate.rho_di.data(0, k + dks, n);
+    //          }
+    //        });
+    //
+    //#ifdef FORCE_REFSTATE_HYDROSTATIC_BALANCE
+    //    parallel_for(
+    //        "Compute refstate B",
+    //        SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
+    //        YAKL_LAMBDA(int k, int n) {
+    //          Hs.compute_dHsdx(refstate.B.data, refstate.dens.data,
+    //                           refstate.geop.data, pks, k, n, -1);
+    //        });
+    //#endif
+  }
+
+  void add_diagnostics(
+      std::vector<std::unique_ptr<Diagnostic>> &diagnostics) override {}
 };
 
 // struct DoubleVortex {
@@ -4513,4 +4684,8 @@ void testcase_from_config(std::unique_ptr<TestCase> &testcase,
   const bool acoustic_balance =
       config["balance_initial_density"].as<bool>(false);
   testcase_from_string(testcase, name, acoustic_balance);
+}
+
+std::unique_ptr<TestCase> make_coupled_test_case() {
+  return std::make_unique<CoupledTestCase>();
 }
