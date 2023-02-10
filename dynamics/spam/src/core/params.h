@@ -52,3 +52,27 @@ void readParamsFile(std::string inFile, Parameters &params, Parallel &par,
 
   params.dtcrm = params.dtphys / params.crm_per_phys;
 }
+
+void read_params_coupler(Parameters &params, Parallel &par,
+                         pam::PamCoupler &coupler) {
+
+  params.inner_mpi = false;
+  params.nx_glob = coupler.get_option<int>("crm_nx");
+  params.ny_glob = coupler.get_option<int>("crm_ny");
+  par.nprocx = 1;
+  par.nprocy = 1;
+  params.nens = coupler.get_option<int>("ncrms");
+  params.dtphys = coupler.get_option<real>("crm_dt");
+  params.crm_per_phys = 1;
+
+  params.Nout = 0;
+  params.Nstat = 0;
+  params.simSteps = 0;
+  params.tstype = "ssprk2";
+  params.si_tolerance = 1e-8;
+  params.outputName = "output";
+  params.nz_dual = coupler.get_option<int>("crm_nz");
+  params.Nsteps = params.simSteps * params.crm_per_phys;
+
+  params.dtcrm = params.dtphys / params.crm_per_phys;
+}

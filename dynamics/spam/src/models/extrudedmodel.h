@@ -2998,9 +2998,9 @@ void initialize_variables(
 void testcase_from_string(std::unique_ptr<TestCase> &testcase, std::string name,
                           bool acoustic_balance);
 
-void readModelParamsFile(std::string inFile, ModelParameters &params,
-                         Parallel &par, PamCoupler &coupler,
-                         std::unique_ptr<TestCase> &testcase) {
+void read_model_params_file(std::string inFile, ModelParameters &params,
+                            Parallel &par, PamCoupler &coupler,
+                            std::unique_ptr<TestCase> &testcase) {
 
   // Read common parameters
   int nz = coupler.get_nz();
@@ -3034,6 +3034,28 @@ void readModelParamsFile(std::string inFile, ModelParameters &params,
   params.yc = 0.5;
 
   testcase_from_string(testcase, params.initdataStr, params.acoustic_balance);
+}
+
+void read_model_params_coupler(ModelParameters &params, Parallel &par,
+                               PamCoupler &coupler,
+                               std::unique_ptr<TestCase> &testcase) {
+
+  // Read common parameters
+  read_params_coupler(params, par, coupler);
+
+  params.acoustic_balance = false;
+  params.uniform_vertical = false;
+  params.entropicvar_diffusion_coeff = 0;
+  params.velocity_diffusion_coeff = 0;
+  params.initdataStr = "coupler";
+
+  // Store vertical cell interface heights in the data manager
+  auto &dm = coupler.get_data_manager_device_readonly();
+  params.zint = dm.get<real const, 2>("vertical_interface_height");
+
+  params.ylen = 1.0;
+  params.yc = 0.5;
+  // testcase = std::make_unique<CouplerTestCase>();
 }
 
 void check_and_print_model_parameters(const ModelParameters &params,

@@ -69,10 +69,14 @@ public:
     debug_print(
         "reading parameters and partitioning domain/setting domain sizes",
         par.masterproc);
-    std::string inFile =
-        coupler.get_option<std::string>("standalone_input_file");
 
-    readModelParamsFile(inFile, params, par, coupler, testcase);
+    if (coupler.option_exists("standalone_input_file")) {
+      std::string inFile =
+          coupler.get_option<std::string>("standalone_input_file");
+      read_model_params_file(inFile, params, par, coupler, testcase);
+    } else {
+      read_model_params_coupler(params, par, coupler, testcase);
+    }
 
     finalize_parallel(params, par);
 

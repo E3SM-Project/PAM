@@ -1022,9 +1022,9 @@ void initialize_variables(
 void testcase_from_string(std::unique_ptr<TestCase> &testcase,
                           std::string name);
 
-void readModelParamsFile(std::string inFile, ModelParameters &params,
-                         Parallel &par, PamCoupler &coupler,
-                         std::unique_ptr<TestCase> &testcase) {
+void read_model_params_file(std::string inFile, ModelParameters &params,
+                            Parallel &par, PamCoupler &coupler,
+                            std::unique_ptr<TestCase> &testcase) {
 
   // Read common parameters
   int nz = coupler.get_nz();
@@ -1044,6 +1044,10 @@ void readModelParamsFile(std::string inFile, ModelParameters &params,
         config["initTracerPos" + std::to_string(i)].as<bool>();
   }
 }
+
+void read_model_params_coupler(ModelParameters &params, Parallel &par,
+                               PamCoupler &coupler,
+                               std::unique_ptr<TestCase> &testcase) {}
 
 void check_and_print_model_parameters(const ModelParameters &params,
                                       const Parallel &par) {
