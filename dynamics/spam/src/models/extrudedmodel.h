@@ -2994,7 +2994,7 @@ void initialize_variables(
   // set_dofs_arr(aux_ndofs_arr, PVAR, 0, 1, 1);  //p = straight 0-form
   // #endif
 }
-std::unique_ptr<TestCase> make_coupled_test_case();
+std::unique_ptr<TestCase> make_coupled_test_case(const PamCoupler &coupler);
 void testcase_from_string(std::unique_ptr<TestCase> &testcase, std::string name,
                           bool acoustic_balance);
 
@@ -3056,7 +3056,7 @@ void read_model_params_coupler(ModelParameters &params, Parallel &par,
   params.ylen = 1.0;
   params.yc = 0.5;
 
-  testcase = make_coupled_test_case();
+  testcase = make_coupled_test_case(coupler);
 }
 
 void check_and_print_model_parameters(const ModelParameters &params,
@@ -3564,7 +3564,9 @@ public:
 
 class CoupledTestCase : public TestCase {
 public:
-  PamCoupler &coupler;
+  const PamCoupler &coupler;
+
+  CoupledTestCase(const PamCoupler &coupler) : coupler(coupler) {}
 
   std::array<real, 3> get_domain() const override { return {0, 1, 0}; }
 
@@ -4683,6 +4685,6 @@ void testcase_from_config(std::unique_ptr<TestCase> &testcase,
   testcase_from_string(testcase, name, acoustic_balance);
 }
 
-std::unique_ptr<TestCase> make_coupled_test_case() {
-  return std::make_unique<CoupledTestCase>();
+std::unique_ptr<TestCase> make_coupled_test_case(const PamCoupler &coupler) {
+  return std::make_unique<CoupledTestCase>(coupler);
 }
