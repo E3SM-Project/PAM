@@ -140,7 +140,9 @@ public:
     io.initialize(params.outputName, primal_topology, dual_topology, par,
                   prognostic_vars, constant_vars, diagnostics, stats);
     debug_print("finish io init", par.masterproc);
+  };
 
+  void pre_time_loop(PamCoupler &coupler) {
     // // Set the reference state and initialize the tendencies
     debug_print("start tendencies init", par.masterproc);
     // the reference state has to be set before the tendencies are initialized
@@ -191,7 +193,7 @@ public:
     debug_print("end initial io", par.masterproc);
 
     prevstep = 1;
-  };
+  }
 
   // Given the model data and CFL value, compute the maximum stable time step
   real compute_time_step(PamCoupler const &coupler, real cfl_in = -1) {

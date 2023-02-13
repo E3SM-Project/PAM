@@ -3592,43 +3592,6 @@ public:
     varset.couple_wind = true;
     varset.convert_coupler_to_dynamics_state(coupler, progvars, constvars);
     varset.couple_wind = org_couple_wind;
-
-    progvars.exchange();
-    constvars.exchange();
-
-    //
-    //    YAKL_SCOPE(thermo, equations->thermo);
-    //    YAKL_SCOPE(varset, equations->varset);
-    //
-    //#ifndef _MAN
-    //    dual_geom.set_11form_values(
-    //        YAKL_LAMBDA(real x, real z) { return rho_f(x, z, thermo); },
-    //        progvars.fields_arr[DENSVAR], MASSDENSINDX);
-    //#endif
-    //    dual_geom.set_11form_values(
-    //        YAKL_LAMBDA(real x, real z) {
-    //          return rho_f(x, z, thermo) * entropicvar_f(x, z, thermo);
-    //        },
-    //        progvars.fields_arr[DENSVAR], ENTROPICDENSINDX);
-    //
-    //    dual_geom.set_11form_values(
-    //        YAKL_LAMBDA(real x, real z) { return flat_geop(x, z, g); },
-    //        constvars.fields_arr[HSVAR], 0);
-    //
-    //    dual_geom.set_11form_values(
-    //        YAKL_LAMBDA(real x, real z) { return T::rhov_f(x, z, thermo); },
-    //        progvars.fields_arr[DENSVAR], varset.dm_id_vap +
-    //        ndensity_nophysics);
-    //
-    //    YAKL_SCOPE(tracer_f, this->tracer_f);
-    //    for (int i = 0; i < ntracers_dycore; i++) {
-    //      dual_geom.set_11form_values(
-    //          YAKL_LAMBDA(real x, real z) {
-    //            return rho_f(x, z, thermo) *
-    //                   tracer_f(i)->compute(x, z, Lx, Lz, xc, zc);
-    //          },
-    //          progvars.fields_arr[DENSVAR], i + ndensity_dycore);
-    //    }
   }
 
   void set_reference_state(const Geometry<Straight> &primal_geom,
@@ -3656,10 +3619,6 @@ public:
     auto dm_gcm_vvel = dm.get<real const, 2>("gcm_vvel");
     auto dm_gcm_wvel = dm.get<real const, 2>("gcm_wvel");
     auto dm_gcm_temp = dm.get<real const, 2>("gcm_temp");
-
-    refstate.dens.zero();
-    refstate.q_pi.zero();
-    refstate.q_di.zero();
 
     // sets dens and unscaled q_pi
     parallel_for(
