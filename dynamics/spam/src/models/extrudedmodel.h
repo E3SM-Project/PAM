@@ -3593,6 +3593,9 @@ public:
     varset.convert_coupler_to_dynamics_state(coupler, progvars, constvars);
     varset.couple_wind = org_couple_wind;
 
+    progvars.exchange();
+    constvars.exchange();
+
     //
     //    YAKL_SCOPE(thermo, equations->thermo);
     //    YAKL_SCOPE(varset, equations->varset);
@@ -3636,7 +3639,6 @@ public:
     const auto &thermo = this->equations->thermo;
     const auto &primal_topology = primal_geom.topology;
     const auto &dual_topology = dual_geom.topology;
-    // varset.convert_coupler_to_reference_state(coupler);
 
     const int dis = dual_topology.is;
     const int djs = dual_topology.js;
@@ -3654,6 +3656,10 @@ public:
     auto dm_gcm_vvel = dm.get<real const, 2>("gcm_vvel");
     auto dm_gcm_wvel = dm.get<real const, 2>("gcm_wvel");
     auto dm_gcm_temp = dm.get<real const, 2>("gcm_temp");
+
+    refstate.dens.zero();
+    refstate.q_pi.zero();
+    refstate.q_di.zero();
 
     // sets dens and unscaled q_pi
     parallel_for(
@@ -3695,7 +3701,7 @@ public:
         "compute unscaled q_di",
         SimpleBounds<2>(dual_topology.ni, dual_topology.nens),
         YAKL_LAMBDA(int k, int n) {
-          for (int d = 0; d < ndensity; ++d) {
+          for (int d = 0; d < ndensity_refstate; ++d) {
             if (k == 0) {
               refstate.q_di.data(d, dks, n) = refstate.q_pi.data(d, pks, n);
             } else if (k == dual_topology.ni - 1) {
@@ -3724,7 +3730,7 @@ public:
     parallel_for(
         "scale q_pi", SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
         YAKL_LAMBDA(int k, int n) {
-          for (int l = 0; l < ndensity; ++l) {
+          for (int l = 0; l < ndensity_refstate; ++l) {
             refstate.q_pi.data(l, k + pks, n) /=
                 refstate.rho_pi.data(0, k + pks, n);
           }
@@ -3747,7 +3753,7 @@ public:
     parallel_for(
         "scale q_di", SimpleBounds<2>(dual_topology.ni, dual_topology.nens),
         YAKL_LAMBDA(int k, int n) {
-          for (int l = 0; l < ndensity; ++l) {
+          for (int l = 0; l < ndensity_refstate; ++l) {
             refstate.q_di.data(l, k + dks, n) /=
                 refstate.rho_di.data(0, k + dks, n);
           }
