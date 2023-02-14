@@ -101,6 +101,8 @@ int main(int argc, char** argv) {
 
     // This is for the dycore to pull out to determine how to do idealized test cases
     coupler.set_option<std::string>( "standalone_input_file" , inFile );
+    
+    coupler.set_option<real>("crm_dt", dtphys_in);
 
     micro .init( coupler );
     sgs   .init( coupler );

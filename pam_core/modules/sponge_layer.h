@@ -15,7 +15,21 @@ namespace modules {
     int nx   = coupler.get_nx  ();
     int nens = coupler.get_nens();
 
-    int num_layers = 5;  // Number of model top vertical layers that participate in the sponge relaxation
+    // Set number of model top vertical layers that participate in the sponge relaxation
+    int num_layers;
+    if (coupler.option_exists("sponge_num_layers")) {
+      num_layers = coupler.get_option<int>("sponge_num_layers");
+    } else {
+      num_layers = 5;
+    };
+
+    // set relaxation timescale
+    real time_scale;
+    if (coupler.option_exists("sponge_time_scale")) {
+      time_scale = coupler.get_option<real>("sponge_time_scale");
+    } else {
+      time_scale = 60;
+    };
 
     int WFLD = 3; // fourth entry into "fields" is the "w velocity" field. Set the havg to zero for WFLD
 
@@ -68,7 +82,7 @@ namespace modules {
 
     auto dt = coupler.get_option<real>("crm_dt");
 
-    real constexpr time_scale = 60;  // strength of each application is dt / time_scale  (same as SAM's tau_min)
+    // strength of each application is dt / time_scale  (same as SAM's tau_min)
     real time_factor = dt / time_scale;
 
     // use a cosine relaxation in space:  ((cos(pi*rel_dist)+1)/2)^2

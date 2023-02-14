@@ -209,12 +209,12 @@ public:
     #endif
 
     // Get saved SHOC-related variables
-    auto tke          = dm.get_lev_col<real>( "tke"     ); // PAM Tracer                 ; don't compute
-    auto wthv_sec     = dm.get_lev_col<real>( "wthv_sec"); // Reuse from last SHOC output; don't compute
-    auto tk           = dm.get_lev_col<real>( "tk"      ); // Reuse from last SHOC output; don't compute
-    auto tkh          = dm.get_lev_col<real>( "tkh"     ); // Reuse from last SHOC output; don't compute
-    auto cldfrac      = dm.get_lev_col<real>( "cldfrac" ); // Reuse from last SHOC output; don't compute
-    auto relvar       = dm.get_lev_col<real>( "relvar"  ); // Computed on output for P3
+    auto tke           = dm.get_lev_col<real>( "tke"     ); // PAM Tracer                 ; don't compute
+    auto wthv_sec      = dm.get_lev_col<real>( "wthv_sec"); // Reuse from last SHOC output; don't compute
+    auto tk            = dm.get_lev_col<real>( "tk"      ); // Reuse from last SHOC output; don't compute
+    auto tkh           = dm.get_lev_col<real>( "tkh"     ); // Reuse from last SHOC output; don't compute
+    auto cldfrac       = dm.get_lev_col<real>( "cldfrac" ); // Reuse from last SHOC output; don't compute
+    auto relvar        = dm.get_lev_col<real>( "relvar"  ); // Computed on output for P3
     auto sfc_mom_flx_u = dm.get_collapsed<real>( "sfc_mom_flx_u" ); // surface momentum flux - either zero or computed by surface_friction.h
     auto sfc_mom_flx_v = dm.get_collapsed<real>( "sfc_mom_flx_v" ); // surface momentum flux - either zero or computed by surface_friction.h
     // Get coupler state
@@ -342,7 +342,6 @@ public:
         // https://glossary.ametsoc.org/wiki/Liquid_water_potential_temperature
         // According to update_host_dse, the simplified version is used here
         real theta_l = theta - (latvap/cp_d) * ql;
-
         // dry static energy = Cp*T + g*z + phis
         real dse     = cp_d * t + grav * z;
         shoc_ql       (k_shoc,i) = ql;

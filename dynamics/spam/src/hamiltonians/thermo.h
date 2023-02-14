@@ -49,9 +49,9 @@ struct thermo_constants {
 
   real pr = 1000.0 * 100.;
   real Tr = 273.15; // 0 C
-  real Lv0 = 3.1285 * pow(10., 6);
+  real Lv0 = 3.1285 * pow(10., 6.);
   real Lvr = Lv0 + (Cpv - Cl) * Tr; // latent heat at Tr,pr
-  real Lfr = 333.55 * pow(10., 6);  // NOT SURE ABOUT THIS VALUE...
+  real Lfr = 333.55 * pow(10., 6.); // NOT SURE ABOUT THIS VALUE...
   real gamma_d = Cpd / Cvd;
   real kappa_d = Rd / Cpd;
   real delta_d = Rd / Cvd;
@@ -299,7 +299,7 @@ public:
 
   real YAKL_INLINE compute_H(real p, real entropic_var, real qd, real qv,
                              real ql, real qi) const {
-    return cst.Cpd * cst.Tr * pow(p / cst.pr, -cst.kappa_d) *
+    return cst.Cpd * cst.Tr * pow(p / cst.pr, cst.kappa_d) *
            exp(entropic_var / cst.Cpd);
   };
 

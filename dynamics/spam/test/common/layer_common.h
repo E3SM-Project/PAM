@@ -22,7 +22,6 @@ struct ModelParameters : public Parameters {
 #include "exchange.h"
 #include "fields.h"
 #include "geometry.h"
-#include "model.h"
 #include "params.h"
 #include "topology.h"
 

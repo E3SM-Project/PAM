@@ -101,7 +101,7 @@ uint constexpr mirroringhalo =
     std::max({(max_vert_reconstruction_order - 1) / 2, vert_diff_ord / 2});
 
 // 0 = RKSimple, 1=SSPRK, 2=SI
-#define _TIME_TYPE 2
+#define _TIME_TYPE 1
 
 int constexpr si_monitor_convergence = 2;
 // 0 = do not monitor (does si_max_iters iterations)
@@ -115,7 +115,7 @@ int constexpr si_verbosity_level = si_monitor_convergence;
 
 int constexpr si_max_iters = si_monitor_convergence > 1 ? 50 : 5;
 
-#if defined _EXTRUDED &&                                                       \
+#if defined _EXTRUDED && !defined _AN && !defined _MAN &&                      \
     (defined _IDEAL_GAS_POTTEMP || defined _CONST_KAPPA_VIRPOTTEMP)
 bool constexpr si_compute_functional_derivatives_quadrature = false;
 #else

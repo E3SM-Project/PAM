@@ -119,7 +119,6 @@ namespace modules {
       atomicAdd( rho_horz_mean(iens), ( rho_d(0,j,i,iens) + rho_v(0,j,i,iens) ) * r_nx_ny );
     });
 
-    bool sim2d = ny==1;
     parallel_for( "surface momentum flux zero" , SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int iens) {
       real wnd_spd = max( 1.0, sqrt( uvel(0,j,i,iens)*uvel(0,j,i,iens) + vvel(0,j,i,iens)*vvel(0,j,i,iens) ) );
       real ustar = diag_ustar( zmid(0,iens), sfc_bflx(iens), wnd_spd, z0(iens)); 

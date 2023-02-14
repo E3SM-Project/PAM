@@ -7,14 +7,14 @@
 namespace modules {
 
   // It is best if id is globally unique for each batch of CRMs
-  inline void perturb_temperature( pam::PamCoupler &coupler , intConst1d &id ) {
+  inline void perturb_temperature( pam::PamCoupler &coupler , intConst1d id ) {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
 
-    auto nz   = coupler.get_option<int>("crm_nz");
-    auto nx   = coupler.get_option<int>("crm_nx");
-    auto ny   = coupler.get_option<int>("crm_ny");
-    auto nens = coupler.get_option<int>("ncrms");
+    int nz   = coupler.get_nz  ();
+    int ny   = coupler.get_ny  ();
+    int nx   = coupler.get_nx  ();
+    int nens = coupler.get_nens();
 
     if (id.size() != nens) endrun("ERROR: size of id array must be the same as nens");
 
