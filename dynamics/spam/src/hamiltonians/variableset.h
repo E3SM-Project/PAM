@@ -81,7 +81,8 @@ public:
 
     // If more physics parameterizations are added this logic might need to
     // change
-    varset.couple_wind = !(coupler.get_option<std::string>("sgs") == "none");
+    // varset.couple_wind = !(coupler.get_option<std::string>("sgs") == "none");
+    varset.couple_wind = true;
 
     // dens_pos IS NOT BEING PROPERLY DEALLOCATED AT THE END OF THE RUN IE WHEN
     // THE POOL IS DESTROYED THIS IS REALLY WEIRD
@@ -268,6 +269,8 @@ void VariableSetBase<T>::convert_dynamics_to_coupler_state(
             dm_wvel(k, j, i, n) = (wvel_u + wvel_d) * 0.5_fp;
           });
     }
+
+    // std::cout << "Coupler state" << std::endl;
     parallel_for(
         "Dynamics to Coupler State densities",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
@@ -307,6 +310,15 @@ void VariableSetBase<T>::convert_dynamics_to_coupler_state(
                                                    i + dis, n) /
                 dual_geometry.get_area_11entity(k + dks, j + djs, i + dis, n);
           }
+
+          // if (i == 0) {
+          //   std::cout << dm_dens_dry(k, j, i, n) << " " << dm_temp(k, j, i,
+          //   n); for (int tr = ndensity_nophysics; tr < ndensity; tr++) {
+          //     std::cout << " "
+          //               << dm_tracers(tr - ndensity_nophysics, k, j, i, n);
+          //   }
+          //   std::cout << std::endl;
+          // }
         });
   }
 }
@@ -392,30 +404,77 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_state(
         });
 
     if (couple_wind) {
+      // parallel_for(
+      //     "Coupler to Dynamics State Primal U",
+      //     SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+      //                     primal_topology.n_cells_x, primal_topology.nens),
+      //     YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+      //       // periodic wrapping
+      //       int il = i - 1;
+      //       if (i == 0) {
+      //         il = primal_topology.n_cells_x - 1;
+      //       }
+      //       prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, i + pis, n)
+      //       =
+      //           (dm_uvel(k, j, il, n) + dm_uvel(k, j, i, n)) * 0.5_fp *
+      //           primal_geometry.get_area_10entity(k + pks, j + pjs, i + pis,
+      //           n);
+      //     });
       parallel_for(
           "Coupler to Dynamics State Primal U",
-          SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
-                          primal_topology.n_cells_x, primal_topology.nens),
-          YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-            // periodic wrapping
-            int il = i - 1;
-            if (i == 0) {
-              il = primal_topology.n_cells_x - 1;
+          SimpleBounds<3>(primal_topology.ni, primal_topology.n_cells_y,
+                          primal_topology.nens),
+          YAKL_CLASS_LAMBDA(int k, int j, int n) {
+            real x0 = 0;
+            for (int i = 0; i < primal_topology.n_cells_x; ++i) {
+              x0 += (i % 2 == 0 ? 1 : -1) * dm_uvel(k, j, i, n);
             }
-            prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, i + pis, n) =
-                (dm_uvel(k, j, il, n) + dm_uvel(k, j, i, n)) * 0.5_fp *
-                primal_geometry.get_area_10entity(k + pks, j + pjs, i + pis, n);
+            prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, pis, n) = x0;
+            prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, pis, n) *=
+                primal_geometry.get_area_10entity(k + pks, j + pjs, pis, n);
+
+            for (int i = 1; i < primal_topology.n_cells_x; ++i) {
+              x0 = 2 * dm_uvel(k, j, i - 1, n) - x0;
+              prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, i + pis, n) =
+                  x0;
+              prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, i + pis,
+                                              n) *=
+                  primal_geometry.get_area_10entity(k + pks, j + pjs, i + pis,
+                                                    n);
+            }
           });
 
       // EVENTUALLY THIS NEEDS TO HAVE A FLAG ON IT!
+      // parallel_for(
+      //    "Coupler to Dynamics State Primal W",
+      //    SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+      //                    primal_topology.n_cells_x, primal_topology.nens),
+      //    YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+      //      prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs, i + pis, n) =
+      //          (dm_wvel(k, j, i, n) + dm_wvel(k + 1, j, i, n)) * 0.5_fp *
+      //          primal_geometry.get_area_01entity(k + pks, j + pjs, i + pis,
+      //          n);
+      //    });
+
       parallel_for(
           "Coupler to Dynamics State Primal W",
-          SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
-                          primal_topology.n_cells_x, primal_topology.nens),
-          YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-            prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs, i + pis, n) =
-                (dm_wvel(k, j, i, n) + dm_wvel(k + 1, j, i, n)) * 0.5_fp *
-                primal_geometry.get_area_01entity(k + pks, j + pjs, i + pis, n);
+          SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
+                          primal_topology.nens),
+          YAKL_CLASS_LAMBDA(int j, int i, int n) {
+            real x0 = dm_wvel(0, j, i, n);
+            prog_vars.fields_arr[WVAR].data(0, pks, j + pjs, i + pis, n) = x0;
+            prog_vars.fields_arr[WVAR].data(0, pks, j + pjs, i + pis, n) *=
+                primal_geometry.get_area_01entity(pks, j + pjs, i + pis, n);
+
+            for (int k = 1; k < primal_topology.nl; ++k) {
+              x0 = 2 * dm_wvel(k, j, i, n) - x0;
+              prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs, i + pis, n) =
+                  x0;
+              prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs, i + pis,
+                                              n) *=
+                  primal_geometry.get_area_01entity(k + pks, j + pjs, i + pis,
+                                                    n);
+            }
           });
     }
   }
