@@ -131,6 +131,10 @@ int main(int argc, char** argv) {
     int1d seeds("seeds",nens);
     seeds = 0;
     modules::perturb_temperature( coupler , seeds );
+    
+#ifdef _SPAM
+    dycore.pre_time_loop(coupler);
+#endif
 
     real etime_gcm = 0;
     int  num_out = 0;
