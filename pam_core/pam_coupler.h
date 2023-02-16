@@ -300,7 +300,9 @@ namespace pam {
       dm.register_and_allocate<real>("gcm_vvel"                 ,"GCM column v-velocity"      ,{nz      ,nens},{"z"        ,"nens"});
       dm.register_and_allocate<real>("gcm_wvel"                 ,"GCM column w-velocity"      ,{nz      ,nens},{"z"        ,"nens"});
       dm.register_and_allocate<real>("gcm_temp"                 ,"GCM column temperature"     ,{nz      ,nens},{"z"        ,"nens"});
-      dm.register_and_allocate<real>("gcm_water_vapor"          ,"GCM column water vapor mass",{nz      ,nens},{"z"        ,"nens"});
+      dm.register_and_allocate<real>("gcm_water_vapor"          ,"GCM column water vapor density",{nz      ,nens},{"z"        ,"nens"});
+      dm.register_and_allocate<real>("gcm_cloud_water"          ,"GCM column cloud water density",{nz      ,nens},{"z"        ,"nens"});
+      dm.register_and_allocate<real>("gcm_cloud_ice"            ,"GCM column cloud ice density"  ,{nz      ,nens},{"z"        ,"nens"});
 
       auto density_dry  = dm.get_collapsed<real>("density_dry"              );
       auto uvel         = dm.get_collapsed<real>("uvel"                     );
@@ -317,6 +319,8 @@ namespace pam {
       auto gcm_wvel     = dm.get_collapsed<real>("gcm_wvel"                 );
       auto gcm_temp     = dm.get_collapsed<real>("gcm_temp"                 );
       auto gcm_rho_v    = dm.get_collapsed<real>("gcm_water_vapor"          );
+      auto gcm_rho_l    = dm.get_collapsed<real>("gcm_cloud_water"          );
+      auto gcm_rho_i    = dm.get_collapsed<real>("gcm_cloud_ice"            );
 
       parallel_for( "coupler zero" , SimpleBounds<1>(nz*ny*nx*nens) , YAKL_LAMBDA (int i) {
         density_dry (i) = 0;
@@ -334,6 +338,8 @@ namespace pam {
           gcm_wvel (i) = 0;
           gcm_temp (i) = 0;
           gcm_rho_v(i) = 0;
+          gcm_rho_l(i) = 0;
+          gcm_rho_i(i) = 0;
         }
         if (i < nz*3  *nens) hy_params(i) = 0;
       });
