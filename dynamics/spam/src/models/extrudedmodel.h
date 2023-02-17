@@ -3775,8 +3775,8 @@ public:
                   refstate.q_pi.data(d, primal_topology.ni - 1 + pks, n);
             } else {
               refstate.q_di.data(d, k + dks, n) =
-                  0.5_fp * (refstate.q_pi.data(d, k + pks, n) +
-                            refstate.q_pi.data(d, k - 1 + pks, n));
+                  0.5_fp * (refstate.q_pi.data(d, k + 1 + pks, n) +
+                            refstate.q_pi.data(d, k + pks, n));
             }
           }
         });
@@ -3812,8 +3812,8 @@ public:
                 refstate.rho_pi.data(0, primal_topology.ni - 1 + pks, n);
           } else {
             refstate.rho_di.data(0, k + dks, n) =
-                0.5_fp * (refstate.rho_pi.data(0, k + pks, n) +
-                          refstate.rho_pi.data(0, k - 1 + pks, n));
+                0.5_fp * (refstate.rho_pi.data(0, k + 1 + pks, n) +
+                          refstate.rho_pi.data(0, k + pks, n));
           }
         });
     parallel_for(
