@@ -21,6 +21,10 @@ uint constexpr ntracers_active =
 // for debugging anelastic
 constexpr bool check_anelastic_constraint = true;
 
+// solve a system to exactly invert the velocity averaging done
+// during conversion to coupler state when coupling winds
+constexpr bool couple_wind_exact_inverse = true;
+
 // Number of Dimensions
 uint constexpr ndims = 1;
 
