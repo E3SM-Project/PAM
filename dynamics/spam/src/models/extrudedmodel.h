@@ -314,12 +314,17 @@ public:
     equations->varset.convert_dynamics_to_coupler_state(coupler, prog_vars,
                                                         const_vars);
   }
-  void
-  convert_coupler_to_dynamics_state(PamCoupler &coupler,
-                                    FieldSet<nprognostic> &prog_vars,
-                                    const FieldSet<nconstant> &const_vars) {
+  void convert_coupler_to_dynamics_state(PamCoupler &coupler,
+                                         FieldSet<nprognostic> &prog_vars,
+                                         FieldSet<nauxiliary> &auxiliary_vars,
+                                         FieldSet<nconstant> &const_vars) {
     equations->varset.convert_coupler_to_dynamics_state(coupler, prog_vars,
                                                         const_vars);
+#if defined(_AN) || defined(_MAN)
+    if (equations->varset.couple_wind) {
+      project_to_anelastic(const_vars, prog_vars, auxiliary_vars);
+    }
+#endif
   }
 
   void compute_constants(FieldSet<nconstant> &const_vars,
@@ -1951,6 +1956,13 @@ public:
   }
 
 #if defined _AN || defined _MAN
+  void project_to_anelastic(FieldSet<nconstant> &const_vars,
+                            FieldSet<nprognostic> &x,
+                            FieldSet<nauxiliary> &auxiliary_vars) override {
+    // this happens to do what we want, note x used for xtend
+    add_pressure_perturbation(1, const_vars, x, auxiliary_vars, x);
+  }
+
   void add_pressure_perturbation(real dt, FieldSet<nconstant> &const_vars,
                                  FieldSet<nprognostic> &x,
                                  FieldSet<nauxiliary> &auxiliary_vars,

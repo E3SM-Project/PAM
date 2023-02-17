@@ -270,6 +270,10 @@ public:
                                 FieldSet<nauxiliary> &auxiliary_vars,
                                 FieldSet<nprognostic> &xtend) = 0;
 
+  virtual void project_to_anelastic(FieldSet<nconstant> &const_vars,
+                                    FieldSet<nprognostic> &x,
+                                    FieldSet<nauxiliary> &auxiliary_vars) {}
+
   virtual void add_pressure_perturbation(real dt,
                                          FieldSet<nconstant> &const_vars,
                                          FieldSet<nprognostic> &x,

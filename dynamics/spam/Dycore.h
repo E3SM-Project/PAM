@@ -206,7 +206,7 @@ public:
 
     // convert Coupler state to dynamics state
     tendencies.convert_coupler_to_dynamics_state(coupler, prognostic_vars,
-                                                 constant_vars);
+                                                 auxiliary_vars, constant_vars);
 
     // Time stepping loop
     debug_print("start time stepping loop", par.masterproc);
