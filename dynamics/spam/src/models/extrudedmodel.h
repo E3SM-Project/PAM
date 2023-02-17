@@ -3706,9 +3706,24 @@ public:
 
     auto &refstate = this->equations->reference_state;
     const auto &varset = this->equations->varset;
-    const auto &thermo = this->equations->thermo;
+    auto &thermo = this->equations->thermo;
     const auto &primal_topology = primal_geom.topology;
     const auto &dual_topology = dual_geom.topology;
+
+
+    thermo.cst.Rd = coupler.get_option<real>("R_d");
+    thermo.cst.Rv = coupler.get_option<real>("R_v");
+    thermo.cst.pr = coupler.get_option<real>("p0");
+    thermo.cst.Cpd = coupler.get_option<real>("cp_d");
+    thermo.cst.Cvd = thermo.cst.Cpd - thermo.cst.Rd;
+    thermo.cst.Cpv = coupler.get_option<real>("cp_v");
+
+    //thermo.cst.Lvr = coupler.get_option<real>("latvap");
+    //thermo.cst.Lfi = coupler.get_option<real>("latice");
+
+    thermo.cst.gamma_d = thermo.cst.Cpd / thermo.cst.Cvd;
+    thermo.cst.kappa_d = thermo.cst.Rd / thermo.cst.Cpd;
+    thermo.cst.delta_d = thermo.cst.Rd / thermo.cst.Cvd;
 
     const int dis = dual_topology.is;
     const int djs = dual_topology.js;
