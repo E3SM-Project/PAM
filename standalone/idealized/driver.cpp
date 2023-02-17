@@ -119,6 +119,11 @@ int main(int argc, char** argv) {
     }
     #endif
 
+    yakl::timer_start("dycore");
+    // this sets up initial conditons and reference state 
+    dycore.pre_time_loop(coupler);
+    yakl::timer_stop("dycore");
+
     // Now that we have an initial state, define hydrostasis for each ensemble member
     if (use_coupler_hydrostasis) coupler.update_hydrostasis( );
 
