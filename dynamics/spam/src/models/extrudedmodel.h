@@ -3742,6 +3742,11 @@ public:
     auto dm_gcm_wvel = dm.get<real const, 2>("gcm_wvel");
     auto dm_gcm_temp = dm.get<real const, 2>("gcm_temp");
 
+
+    const real grav = coupler.get_option<real>("grav");
+    dual_geom.set_profile_11form_values(
+        YAKL_LAMBDA(real z) { return flat_geop(0, z, grav); }, refstate.geop, 0);
+
     // sets dens and unscaled q_pi
     parallel_for(
         "Coupled reference state 1",
@@ -3840,7 +3845,18 @@ public:
           }
         });
 
-    // TODO reference N and B
+    YAKL_SCOPE(Hs, equations->Hs);
+
+#ifdef FORCE_REFSTATE_HYDROSTATIC_BALANCE
+    parallel_for(
+        "Compute refstate B",
+        SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
+        YAKL_LAMBDA(int k, int n) {
+          Hs.compute_dHsdx(refstate.B.data, refstate.dens.data,
+                           refstate.geop.data, pks, k, n, -1);
+        });
+#endif
+    // TODO reference N
   }
 
   void add_diagnostics(
