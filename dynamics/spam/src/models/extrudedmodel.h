@@ -1370,6 +1370,118 @@ public:
         });
   }
 
+  real compute_max_anelastic_constraint(FieldSet<nprognostic> &x,
+                                        FieldSet<nauxiliary> &auxiliary_vars,
+                                        bool has_f_and_fw = false) override {
+
+    const auto &primal_topology = primal_geometry.topology;
+    const auto &dual_topology = dual_geometry.topology;
+
+    const int pis = primal_topology.is;
+    const int pjs = primal_topology.js;
+    const int pks = primal_topology.ks;
+
+    const int dis = dual_topology.is;
+    const int djs = dual_topology.js;
+    const int dks = dual_topology.ks;
+
+    const auto mfvar = auxiliary_vars.fields_arr[MFVAR].data;
+
+    const auto &densvar = x.fields_arr[DENSVAR].data;
+    const auto &Vvar = x.fields_arr[VVAR].data;
+    const auto &Wvar = x.fields_arr[WVAR].data;
+
+    const auto &Fvar = auxiliary_vars.fields_arr[FVAR].data;
+    const auto &FWvar = auxiliary_vars.fields_arr[FWVAR].data;
+
+    YAKL_SCOPE(varset, this->equations->varset);
+    YAKL_SCOPE(rho_pi, this->equations->reference_state.rho_pi.data);
+    YAKL_SCOPE(rho_di, this->equations->reference_state.rho_di.data);
+    YAKL_SCOPE(primal_geometry, this->primal_geometry);
+    YAKL_SCOPE(dual_geometry, this->dual_geometry);
+
+    if (!has_f_and_fw) {
+      parallel_for(
+          "Compute F and Fw",
+          SimpleBounds<4>(dual_topology.ni, dual_topology.n_cells_y,
+                          dual_topology.n_cells_x, dual_topology.nens),
+          YAKL_LAMBDA(int k, int j, int i, int n) {
+
+#if defined _AN || defined _MAN
+            real dens0_imh = rho_pi(0, k + pks, n);
+            real dens0_kmh = rho_di(0, k + dks, n);
+#else
+            SArray<real, 1, 1> dens0_ik, dens0_im1, dens0_km1;
+
+            const auto total_density_f = TotalDensityFunctor{varset};
+            compute_H2bar_ext<1, diff_ord, vert_diff_ord>(
+                total_density_f, dens0_ik, densvar, primal_geometry,
+                dual_geometry, pis, pjs, pks, i, j, k, n);
+            compute_H2bar_ext<1, diff_ord, vert_diff_ord>(
+                total_density_f, dens0_im1, densvar, primal_geometry,
+                dual_geometry, pis, pjs, pks, i - 1, j, k, n);
+            compute_H2bar_ext<1, diff_ord, vert_diff_ord>(
+                total_density_f, dens0_km1, densvar, primal_geometry,
+                dual_geometry, pis, pjs, pks, i, j, k - 1, n);
+
+            real dens0_imh = 0.5_fp * (dens0_ik(0) + dens0_im1(0));
+            real dens0_kmh = 0.5_fp * (dens0_ik(0) + dens0_km1(0));
+#endif
+
+            SArray<real, 1, ndims> u_ik;
+            SArray<real, 1, 1> uw_ik;
+            SArray<real, 1, ndims> u_ip1;
+            SArray<real, 1, 1> uw_kp1;
+
+            compute_H1_ext<1, diff_ord>(u_ik, Vvar, primal_geometry,
+                                        dual_geometry, pis, pjs, pks, i, j, k,
+                                        n);
+            compute_H1_ext<1, diff_ord>(u_ip1, Vvar, primal_geometry,
+                                        dual_geometry, pis, pjs, pks, i + 1, j,
+                                        k, n);
+
+            if (k == 0 || k == (dual_topology.ni - 1)) {
+              uw_ik(0) = 0;
+            } else {
+              compute_H1_vert<1, vert_diff_ord>(uw_ik, Wvar, primal_geometry,
+                                                dual_geometry, pis, pjs, pks, i,
+                                                j, k, n);
+            }
+
+            if (k >= (dual_topology.ni - 2)) {
+              uw_kp1(0) = 0;
+            } else {
+              compute_H1_vert<1, vert_diff_ord>(uw_kp1, Wvar, primal_geometry,
+                                                dual_geometry, pis, pjs, pks, i,
+                                                j, k + 1, n);
+            }
+
+            Fvar(0, pks + k, pjs + j, pis + i, n) = dens0_imh * u_ik(0);
+            FWvar(0, pks + k, pjs + j, pis + i, n) = dens0_kmh * uw_ik(0);
+          });
+      auxiliary_vars.exchange({FVAR, FWVAR});
+    } else {
+    }
+    parallel_for(
+        "Compute anelastic constraint",
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          compute_D1bar<1>(mfvar, Fvar, dis, djs, dks, i, j, k, n);
+          compute_D1bar_vert<1, ADD_MODE::ADD>(mfvar, FWvar, dis, djs, dks, i,
+                                               j, k, n);
+          const real total_dens =
+              varset.get_total_density(densvar, k, j, i, dks, djs, dis, n);
+          mfvar(0, k + dks, j + djs, i + dis, n) /= total_dens;
+        });
+
+    auxiliary_vars.exchange({MFVAR});
+    const auto divvar = auxiliary_vars.fields_arr[MFVAR].data.slice<4>(
+        0, yakl::COLON, yakl::COLON, yakl::COLON, yakl::COLON);
+
+    return yakl::intrinsics::maxval(yakl::intrinsics::abs(divvar));
+  }
+
   void compute_functional_derivatives(
       ADD_MODE addmode, real fac, real dt, FieldSet<nconstant> &const_vars,
       FieldSet<nprognostic> &x, FieldSet<nauxiliary> &auxiliary_vars) override {
@@ -1499,27 +1611,10 @@ public:
 
     auxiliary_vars.exchange({BVAR, FVAR, FWVAR});
 
-    if (check_anelastic_constraint) {
-      const auto mfvar = auxiliary_vars.fields_arr[MFVAR].data;
-      parallel_for(
-          "Check anelastic constraint",
-          SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-                          dual_topology.n_cells_x, dual_topology.nens),
-          YAKL_LAMBDA(int k, int j, int i, int n) {
-            compute_D1bar<1>(mfvar, Fvar, dis, djs, dks, i, j, k, n);
-            compute_D1bar_vert<1, ADD_MODE::ADD>(mfvar, FWvar, dis, djs, dks, i,
-                                                 j, k, n);
-            const real total_dens =
-                varset.get_total_density(densvar, k, j, i, dks, djs, dis, n);
-            mfvar(0, k + dks, j + djs, i + dis, n) /= total_dens;
-          });
-      auxiliary_vars.exchange({MFVAR});
-      const auto divvar = auxiliary_vars.fields_arr[MFVAR].data.slice<4>(
-          0, yakl::COLON, yakl::COLON, yakl::COLON, yakl::COLON);
-      std::cout << "Anelastic constraint: "
-                << yakl::intrinsics::maxval(yakl::intrinsics::abs(divvar))
-                << std::endl;
-    }
+#ifdef CHECK_ANELASTIC_CONSTRAINT
+    real max_div = compute_max_anelastic_constraint(x, auxiliary_vars, true);
+    std::cout << "Anelastic constraint: " << max_div << std::endl;
+#endif
   }
 
   void compute_functional_derivatives_two_point(

@@ -213,6 +213,13 @@ public:
     for (uint nstep = 0; nstep < params.crm_per_phys; nstep++) {
       yakl::fence();
       tint.stepForward(params.dtcrm);
+
+#ifdef CHECK_ANELASTIC_CONSTRAINT
+      real max_div = tendencies.compute_max_anelastic_constraint(
+          prognostic_vars, auxiliary_vars);
+      std::cout << "Anelastic constraint: " << max_div << std::endl;
+#endif
+
       yakl::fence();
 
       etime += params.dtcrm;

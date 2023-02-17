@@ -425,6 +425,11 @@ public:
           coriolis_vert_wenoSigma, coriolis_vert_wenoIdl, primal_geom);
     }
   }
+
+  virtual real
+  compute_max_anelastic_constraint(FieldSet<nprognostic> &x,
+                                   FieldSet<nauxiliary> &auxiliary_vars,
+                                   bool has_f_and_fw = false) = 0;
 };
 
 class LinearSystem {

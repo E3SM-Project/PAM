@@ -9,6 +9,10 @@
 #include "thermo.h"
 using pam::PamCoupler;
 
+// solve a system to exactly invert the velocity averaging done
+// during conversion to coupler state when coupling winds
+constexpr bool couple_wind_exact_inverse = true;
+
 struct VS_SWE {
   static constexpr bool couple = false;
 };
