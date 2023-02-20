@@ -162,7 +162,6 @@ public:
 
     tendencies.compute_constants(constant_vars, prognostic_vars);
     constant_vars.exchange();
-    stats.compute(prognostic_vars, constant_vars, 0);
     debug_print("end ic setting", par.masterproc);
 
     // // Initialize the time stepper
@@ -183,6 +182,7 @@ public:
                                                  constant_vars);
 
     // Output the initial model state
+#ifndef _NOIO
     debug_print("start initial io", par.masterproc);
     for (auto &diag : diagnostics) {
       diag->compute(0, constant_vars, prognostic_vars);
@@ -191,7 +191,7 @@ public:
     io.outputInit(etime);
     io.outputStats(stats);
     debug_print("end initial io", par.masterproc);
-
+#endif
     prevstep = 1;
   }
 
@@ -223,6 +223,7 @@ public:
       yakl::fence();
 
       etime += params.dtcrm;
+#ifndef _NOIO
       if ((nstep + prevstep) % params.Nout == 0) {
         serial_print("dycore step " + std::to_string((nstep + prevstep)) +
                          " time " + std::to_string(etime),
@@ -238,6 +239,7 @@ public:
         stats.compute(prognostic_vars, constant_vars,
                       (nstep + prevstep) / params.Nstat);
       }
+#endif
     }
     prevstep += params.crm_per_phys;
 

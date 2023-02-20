@@ -65,12 +65,12 @@ void read_params_coupler(Parameters &params, Parallel &par,
   params.dtphys = coupler.get_option<real>("crm_dt");
   params.crm_per_phys = 1;
 
-  params.Nout = 100000000;
-  params.Nstat = 10000000;
-  params.simSteps = 10000000000;
-  params.tstype = "ssprk2";
+  params.Nout = 1;
+  params.Nstat = 1;
+  params.simSteps = 1;
+  params.tstype = "ssprk3";
   params.si_tolerance = 1e-8;
-  params.outputName = "output";
+  params.outputName = "pamc_output";
   params.nz_dual = coupler.get_nz();
   params.Nsteps = params.simSteps * params.crm_per_phys;
 
