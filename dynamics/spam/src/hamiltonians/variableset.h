@@ -239,38 +239,39 @@ void VariableSetBase<T>::convert_dynamics_to_coupler_state(
                                                           i + pis + 1, n) /
                           primal_geometry.get_area_10entity(k + pks, j + pjs,
                                                             i + pis + 1, n);
-            real wvel_d = 0.0_fp;
-            real wvel_u = 0.0_fp;
+            real wvel_mid;
             if (k == 0) {
-              wvel_u = 2.0_fp *
-                       prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs,
-                                                       i + pis, n) /
-                       primal_geometry.get_area_01entity(k + pks, j + pjs,
-                                                         i + pis, n);
-              wvel_d = 0.0_fp;
+              wvel_mid = prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs,
+                                                         i + pis, n) /
+                         primal_geometry.get_area_01entity(k + pks, j + pjs,
+                                                           i + pis, n);
             } else if (k == (dual_topology.nl)) {
-              wvel_u = 0.0_fp;
-              wvel_d = 2.0_fp *
-                       prog_vars.fields_arr[WVAR].data(0, k + pks - 1, j + pjs,
-                                                       i + pis, n) /
-                       primal_geometry.get_area_01entity(k + pks - 1, j + pjs,
-                                                         i + pis, n);
+              wvel_mid = prog_vars.fields_arr[WVAR].data(0, k + pks - 1,
+                                                         j + pjs, i + pis, n) /
+                         primal_geometry.get_area_01entity(k + pks - 1, j + pjs,
+                                                           i + pis, n);
             } else {
-              wvel_u = prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs,
-                                                       i + pis, n) /
-                       primal_geometry.get_area_01entity(k + pks, j + pjs,
-                                                         i + pis, n);
-              wvel_d = prog_vars.fields_arr[WVAR].data(0, k + pks - 1, j + pjs,
-                                                       i + pis, n) /
-                       primal_geometry.get_area_01entity(k + pks - 1, j + pjs,
-                                                         i + pis, n);
+
+              real e_u = primal_geometry.get_area_01entity(k + pks, j + pjs,
+                                                           i + pis, n);
+              real e_d = primal_geometry.get_area_01entity(k - 1 + pks, j + pjs,
+                                                           i + pis, n);
+
+              real wvel_u = prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs,
+                                                            i + pis, n) /
+                            e_u;
+              real wvel_d = prog_vars.fields_arr[WVAR].data(
+                                0, k + pks - 1, j + pjs, i + pis, n) /
+                            e_d;
+
+              wvel_mid = wvel_d + (wvel_u - wvel_d) * e_d / (e_u + e_d);
             }
             // EVENTUALLY FIX THIS FOR 3D...
             real vvel = 0.0_fp;
 
             dm_uvel(k, j, i, n) = (uvel_l + uvel_r) * 0.5_fp;
             dm_vvel(k, j, i, n) = vvel;
-            dm_wvel(k, j, i, n) = (wvel_u + wvel_d) * 0.5_fp;
+            dm_wvel(k, j, i, n) = wvel_mid;
           });
     }
 
@@ -434,13 +435,16 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_state(
                   primal_geometry.get_area_01entity(pks, j + pjs, i + pis, n);
 
               for (int k = 1; k < primal_topology.nl; ++k) {
-                x0 = 2 * dm_wvel(k, j, i, n) - x0;
+
+                real ek = primal_geometry.get_area_01entity(k + pks, j + pjs,
+                                                            i + pis, n);
+                real ekm1 = primal_geometry.get_area_01entity(
+                    k - 1 + pks, j + pjs, i + pis, n);
+                x0 = (ek + ekm1) / ekm1 * dm_wvel(k, j, i, n) - x0 * ek / ekm1;
                 prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs, i + pis,
                                                 n) = x0;
                 prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs, i + pis,
-                                                n) *=
-                    primal_geometry.get_area_01entity(k + pks, j + pjs, i + pis,
-                                                      n);
+                                                n) *= ek;
               }
             });
       } else {
