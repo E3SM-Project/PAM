@@ -19,7 +19,9 @@ uint constexpr ntracers_active =
 #endif
 
 // for debugging anelastic
+#if defined _AN || defined _MAN
 #define CHECK_ANELASTIC_CONSTRAINT
+#endif
 
 // Number of Dimensions
 uint constexpr ndims = 1;
