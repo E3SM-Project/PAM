@@ -27,6 +27,8 @@ namespace modules {
   // Compute an instantaneous adjustment of sub or super saturation
   YAKL_INLINE static void compute_adjusted_state(real rho, real rho_d , real &rho_v , real &rho_c , real &temp,
                                                  real R_v , real cp_d , real cp_v , real cp_l) {
+    using yakl::max;
+
     // Define a tolerance for convergence
     real tol = 1.e-6;
 

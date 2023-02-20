@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include "mpi.h"
 #include "pam_coupler.h"
 #include "YAKL_netcdf.h"
 
