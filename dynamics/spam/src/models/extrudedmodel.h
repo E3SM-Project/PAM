@@ -3710,7 +3710,10 @@ public:
     const auto &primal_topology = primal_geom.topology;
     const auto &dual_topology = dual_geom.topology;
 
-
+    // Set thermo constants based on coupler values
+    // Need a better way to separate fundamental vs derived constants
+    // Also I think only P3 defines all of these
+    
     thermo.cst.Rd = coupler.get_option<real>("R_d");
     thermo.cst.Rv = coupler.get_option<real>("R_v");
     thermo.cst.pr = coupler.get_option<real>("p0");
@@ -3718,8 +3721,8 @@ public:
     thermo.cst.Cvd = thermo.cst.Cpd - thermo.cst.Rd;
     thermo.cst.Cpv = coupler.get_option<real>("cp_v");
 
-    //thermo.cst.Lvr = coupler.get_option<real>("latvap");
-    //thermo.cst.Lfi = coupler.get_option<real>("latice");
+    thermo.cst.Lvr = coupler.get_option<real>("latvap");
+    thermo.cst.Lfr = coupler.get_option<real>("latice");
 
     thermo.cst.gamma_d = thermo.cst.Cpd / thermo.cst.Cvd;
     thermo.cst.kappa_d = thermo.cst.Rd / thermo.cst.Cpd;
@@ -3742,10 +3745,10 @@ public:
     auto dm_gcm_wvel = dm.get<real const, 2>("gcm_wvel");
     auto dm_gcm_temp = dm.get<real const, 2>("gcm_temp");
 
-
     const real grav = coupler.get_option<real>("grav");
     dual_geom.set_profile_11form_values(
-        YAKL_LAMBDA(real z) { return flat_geop(0, z, grav); }, refstate.geop, 0);
+        YAKL_LAMBDA(real z) { return flat_geop(0, z, grav); }, refstate.geop,
+        0);
 
     // sets dens and unscaled q_pi
     parallel_for(
