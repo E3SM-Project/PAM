@@ -85,8 +85,8 @@ public:
 
     // If more physics parameterizations are added this logic might need to
     // change
-    // varset.couple_wind = !(coupler.get_option<std::string>("sgs") == "none");
-    varset.couple_wind = true;
+    varset.couple_wind = !(coupler.get_option<std::string>("sgs") == "none") ||
+                         !(coupler.option_exists("standalone_input_file"));
 
     // dens_pos IS NOT BEING PROPERLY DEALLOCATED AT THE END OF THE RUN IE WHEN
     // THE POOL IS DESTROYED THIS IS REALLY WEIRD
