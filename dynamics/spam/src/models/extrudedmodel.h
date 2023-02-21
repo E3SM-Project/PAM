@@ -3713,7 +3713,7 @@ public:
     // Set thermo constants based on coupler values
     // Need a better way to separate fundamental vs derived constants
     // Also I think only P3 defines all of these
-    
+
     thermo.cst.Rd = coupler.get_option<real>("R_d");
     thermo.cst.Rv = coupler.get_option<real>("R_v");
     thermo.cst.pr = coupler.get_option<real>("p0");
@@ -3797,9 +3797,14 @@ public:
               refstate.q_di.data(d, dual_topology.ni - 1 + dks, n) =
                   refstate.q_pi.data(d, primal_topology.ni - 1 + pks, n);
             } else {
+              real q_km1 = refstate.q_pi.data(d, k - 1 + pks, n);
+              real q_k = refstate.q_pi.data(d, k + pks, n);
+
               refstate.q_di.data(d, k + dks, n) =
-                  0.5_fp * (refstate.q_pi.data(d, k + 1 + pks, n) +
-                            refstate.q_pi.data(d, k + pks, n));
+                  q_km1 + (q_k - q_km1) *
+                              (dual_geom.zint(k + pks, n) -
+                               primal_geom.zint(k - 1 + pks, n)) /
+                              primal_geom.dz(k - 1 + pks, n);
             }
           }
         });
@@ -3834,9 +3839,14 @@ public:
             refstate.rho_di.data(0, dual_topology.ni - 1 + dks, n) =
                 refstate.rho_pi.data(0, primal_topology.ni - 1 + pks, n);
           } else {
+            real rho_k = refstate.rho_pi.data(0, k + pks, n);
+            real rho_km1 = refstate.rho_pi.data(0, k - 1 + pks, n);
+
             refstate.rho_di.data(0, k + dks, n) =
-                0.5_fp * (refstate.rho_pi.data(0, k + 1 + pks, n) +
-                          refstate.rho_pi.data(0, k + pks, n));
+                rho_km1 + (rho_k - rho_km1) *
+                              (dual_geom.zint(k + pks, n) -
+                               primal_geom.zint(k - 1 + pks, n)) /
+                              primal_geom.dz(k - 1 + pks, n);
           }
         });
     parallel_for(
