@@ -57,6 +57,8 @@ void p3_main_cxx(array_ir::ArrayIR<double,2> const & qc,                 // inou
   using KT         = typename P3F::KT;
   using Spack      = typename P3F::Spack;
 
+  if (! Kokkos::is_initialized()) { Kokkos::initialize(); }
+
   const int nlev  = kte-kts+1;
   const int ncol  = ite-its+1;
   const int npack = ekat::npack<Spack>(nlev);

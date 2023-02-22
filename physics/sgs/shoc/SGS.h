@@ -180,8 +180,8 @@ public:
 
       kbot = nz;
       ktop = 1;
-      shoc_init_fortran( nz , grav , R_d , R_v , cp_d , zvir , latvap , latice , karman ,
-                         pref_shoc.createHostCopy().data() , kbot , ktop );
+      // shoc_init_fortran( nz , grav , R_d , R_v , cp_d , zvir , latvap , latice , karman ,
+      //                    pref_shoc.createHostCopy().data() , kbot , ktop );
 
       // This check is here instead of init because it's not guaranteed the micro has called init before sgs
       if (! coupler.option_exists("micro")) {
@@ -386,38 +386,38 @@ public:
 
     #ifdef SHOC_CXX
 
-      auto transposed_shoc_thv         = shoc_thv        .createDeviceCopy().reshape(shoc_thv        .extent(1),shoc_thv        .extent(2));
-      auto transposed_shoc_zt_grid     = shoc_zt_grid    .createDeviceCopy().reshape(shoc_zt_grid    .extent(1),shoc_zt_grid    .extent(2));
-      auto transposed_shoc_zi_grid     = shoc_zi_grid    .createDeviceCopy().reshape(shoc_zi_grid    .extent(1),shoc_zi_grid    .extent(2));
-      auto transposed_shoc_pres        = shoc_pres       .createDeviceCopy().reshape(shoc_pres       .extent(1),shoc_pres       .extent(2));
-      auto transposed_shoc_presi       = shoc_presi      .createDeviceCopy().reshape(shoc_presi      .extent(1),shoc_presi      .extent(2));
-      auto transposed_shoc_pdel        = shoc_pdel       .createDeviceCopy().reshape(shoc_pdel       .extent(1),shoc_pdel       .extent(2));
-      auto transposed_shoc_wtracer_sfc = shoc_wtracer_sfc.createDeviceCopy().reshape(shoc_wtracer_sfc.extent(1),shoc_wtracer_sfc.extent(2));
-      auto transposed_shoc_w_field     = shoc_w_field    .createDeviceCopy().reshape(shoc_w_field    .extent(1),shoc_w_field    .extent(2));
-      auto transposed_shoc_inv_exner   = shoc_inv_exner  .createDeviceCopy().reshape(shoc_inv_exner  .extent(1),shoc_inv_exner  .extent(2));
-      auto transposed_shoc_host_dse    = shoc_host_dse   .createDeviceCopy().reshape(shoc_host_dse   .extent(1),shoc_host_dse   .extent(2));
-      auto transposed_shoc_tke         = shoc_tke        .createDeviceCopy().reshape(shoc_tke        .extent(1),shoc_tke        .extent(2));
-      auto transposed_shoc_thetal      = shoc_thetal     .createDeviceCopy().reshape(shoc_thetal     .extent(1),shoc_thetal     .extent(2));
-      auto transposed_shoc_qw          = shoc_qw         .createDeviceCopy().reshape(shoc_qw         .extent(1),shoc_qw         .extent(2));
-      auto transposed_shoc_wthv_sec    = shoc_wthv_sec   .createDeviceCopy().reshape(shoc_wthv_sec   .extent(1),shoc_wthv_sec   .extent(2));
-      auto transposed_shoc_tk          = shoc_tk         .createDeviceCopy().reshape(shoc_tk         .extent(1),shoc_tk         .extent(2));
-      auto transposed_shoc_ql          = shoc_ql         .createDeviceCopy().reshape(shoc_ql         .extent(1),shoc_ql         .extent(2));
-      auto transposed_shoc_cldfrac     = shoc_cldfrac    .createDeviceCopy().reshape(shoc_cldfrac    .extent(1),shoc_cldfrac    .extent(2));
-      auto transposed_shoc_mix         = shoc_mix        .createDeviceCopy().reshape(shoc_mix        .extent(1),shoc_mix        .extent(2));
-      auto transposed_shoc_isotropy    = shoc_isotropy   .createDeviceCopy().reshape(shoc_isotropy   .extent(1),shoc_isotropy   .extent(2));
-      auto transposed_shoc_w_sec       = shoc_w_sec      .createDeviceCopy().reshape(shoc_w_sec      .extent(1),shoc_w_sec      .extent(2));
-      auto transposed_shoc_thl_sec     = shoc_thl_sec    .createDeviceCopy().reshape(shoc_thl_sec    .extent(1),shoc_thl_sec    .extent(2));
-      auto transposed_shoc_qw_sec      = shoc_qw_sec     .createDeviceCopy().reshape(shoc_qw_sec     .extent(1),shoc_qw_sec     .extent(2));
-      auto transposed_shoc_qwthl_sec   = shoc_qwthl_sec  .createDeviceCopy().reshape(shoc_qwthl_sec  .extent(1),shoc_qwthl_sec  .extent(2));
-      auto transposed_shoc_wthl_sec    = shoc_wthl_sec   .createDeviceCopy().reshape(shoc_wthl_sec   .extent(1),shoc_wthl_sec   .extent(2));
-      auto transposed_shoc_wqw_sec     = shoc_wqw_sec    .createDeviceCopy().reshape(shoc_wqw_sec    .extent(1),shoc_wqw_sec    .extent(2));
-      auto transposed_shoc_wtke_sec    = shoc_wtke_sec   .createDeviceCopy().reshape(shoc_wtke_sec   .extent(1),shoc_wtke_sec   .extent(2));
-      auto transposed_shoc_uw_sec      = shoc_uw_sec     .createDeviceCopy().reshape(shoc_uw_sec     .extent(1),shoc_uw_sec     .extent(2));
-      auto transposed_shoc_vw_sec      = shoc_vw_sec     .createDeviceCopy().reshape(shoc_vw_sec     .extent(1),shoc_vw_sec     .extent(2));
-      auto transposed_shoc_w3          = shoc_w3         .createDeviceCopy().reshape(shoc_w3         .extent(1),shoc_w3         .extent(2));
-      auto transposed_shoc_wqls_sec    = shoc_wqls_sec   .createDeviceCopy().reshape(shoc_wqls_sec   .extent(1),shoc_wqls_sec   .extent(2));
-      auto transposed_shoc_brunt       = shoc_brunt      .createDeviceCopy().reshape(shoc_brunt      .extent(1),shoc_brunt      .extent(2));
-      auto transposed_shoc_ql2         = shoc_ql2        .createDeviceCopy().reshape(shoc_ql2        .extent(1),shoc_ql2        .extent(2));
+      auto transposed_shoc_thv         = shoc_thv        .createDeviceCopy().reshape(shoc_thv        .extent(1),shoc_thv        .extent(0));
+      auto transposed_shoc_zt_grid     = shoc_zt_grid    .createDeviceCopy().reshape(shoc_zt_grid    .extent(1),shoc_zt_grid    .extent(0));
+      auto transposed_shoc_zi_grid     = shoc_zi_grid    .createDeviceCopy().reshape(shoc_zi_grid    .extent(1),shoc_zi_grid    .extent(0));
+      auto transposed_shoc_pres        = shoc_pres       .createDeviceCopy().reshape(shoc_pres       .extent(1),shoc_pres       .extent(0));
+      auto transposed_shoc_presi       = shoc_presi      .createDeviceCopy().reshape(shoc_presi      .extent(1),shoc_presi      .extent(0));
+      auto transposed_shoc_pdel        = shoc_pdel       .createDeviceCopy().reshape(shoc_pdel       .extent(1),shoc_pdel       .extent(0));
+      auto transposed_shoc_wtracer_sfc = shoc_wtracer_sfc.createDeviceCopy().reshape(shoc_wtracer_sfc.extent(1),shoc_wtracer_sfc.extent(0));
+      auto transposed_shoc_w_field     = shoc_w_field    .createDeviceCopy().reshape(shoc_w_field    .extent(1),shoc_w_field    .extent(0));
+      auto transposed_shoc_inv_exner   = shoc_inv_exner  .createDeviceCopy().reshape(shoc_inv_exner  .extent(1),shoc_inv_exner  .extent(0));
+      auto transposed_shoc_host_dse    = shoc_host_dse   .createDeviceCopy().reshape(shoc_host_dse   .extent(1),shoc_host_dse   .extent(0));
+      auto transposed_shoc_tke         = shoc_tke        .createDeviceCopy().reshape(shoc_tke        .extent(1),shoc_tke        .extent(0));
+      auto transposed_shoc_thetal      = shoc_thetal     .createDeviceCopy().reshape(shoc_thetal     .extent(1),shoc_thetal     .extent(0));
+      auto transposed_shoc_qw          = shoc_qw         .createDeviceCopy().reshape(shoc_qw         .extent(1),shoc_qw         .extent(0));
+      auto transposed_shoc_wthv_sec    = shoc_wthv_sec   .createDeviceCopy().reshape(shoc_wthv_sec   .extent(1),shoc_wthv_sec   .extent(0));
+      auto transposed_shoc_tk          = shoc_tk         .createDeviceCopy().reshape(shoc_tk         .extent(1),shoc_tk         .extent(0));
+      auto transposed_shoc_ql          = shoc_ql         .createDeviceCopy().reshape(shoc_ql         .extent(1),shoc_ql         .extent(0));
+      auto transposed_shoc_cldfrac     = shoc_cldfrac    .createDeviceCopy().reshape(shoc_cldfrac    .extent(1),shoc_cldfrac    .extent(0));
+      auto transposed_shoc_mix         = shoc_mix        .createDeviceCopy().reshape(shoc_mix        .extent(1),shoc_mix        .extent(0));
+      auto transposed_shoc_isotropy    = shoc_isotropy   .createDeviceCopy().reshape(shoc_isotropy   .extent(1),shoc_isotropy   .extent(0));
+      auto transposed_shoc_w_sec       = shoc_w_sec      .createDeviceCopy().reshape(shoc_w_sec      .extent(1),shoc_w_sec      .extent(0));
+      auto transposed_shoc_thl_sec     = shoc_thl_sec    .createDeviceCopy().reshape(shoc_thl_sec    .extent(1),shoc_thl_sec    .extent(0));
+      auto transposed_shoc_qw_sec      = shoc_qw_sec     .createDeviceCopy().reshape(shoc_qw_sec     .extent(1),shoc_qw_sec     .extent(0));
+      auto transposed_shoc_qwthl_sec   = shoc_qwthl_sec  .createDeviceCopy().reshape(shoc_qwthl_sec  .extent(1),shoc_qwthl_sec  .extent(0));
+      auto transposed_shoc_wthl_sec    = shoc_wthl_sec   .createDeviceCopy().reshape(shoc_wthl_sec   .extent(1),shoc_wthl_sec   .extent(0));
+      auto transposed_shoc_wqw_sec     = shoc_wqw_sec    .createDeviceCopy().reshape(shoc_wqw_sec    .extent(1),shoc_wqw_sec    .extent(0));
+      auto transposed_shoc_wtke_sec    = shoc_wtke_sec   .createDeviceCopy().reshape(shoc_wtke_sec   .extent(1),shoc_wtke_sec   .extent(0));
+      auto transposed_shoc_uw_sec      = shoc_uw_sec     .createDeviceCopy().reshape(shoc_uw_sec     .extent(1),shoc_uw_sec     .extent(0));
+      auto transposed_shoc_vw_sec      = shoc_vw_sec     .createDeviceCopy().reshape(shoc_vw_sec     .extent(1),shoc_vw_sec     .extent(0));
+      auto transposed_shoc_w3          = shoc_w3         .createDeviceCopy().reshape(shoc_w3         .extent(1),shoc_w3         .extent(0));
+      auto transposed_shoc_wqls_sec    = shoc_wqls_sec   .createDeviceCopy().reshape(shoc_wqls_sec   .extent(1),shoc_wqls_sec   .extent(0));
+      auto transposed_shoc_brunt       = shoc_brunt      .createDeviceCopy().reshape(shoc_brunt      .extent(1),shoc_brunt      .extent(0));
+      auto transposed_shoc_ql2         = shoc_ql2        .createDeviceCopy().reshape(shoc_ql2        .extent(1),shoc_ql2        .extent(0));
       auto transposed_shoc_qtracers = shoc_qtracers.createDeviceCopy().reshape(shoc_qtracers.extent(2),shoc_qtracers.extent(0),shoc_qtracers.extent(1));
       auto transposed_shoc_hwind    = real3d("transposed_shoc_hwind",shoc_u_wind.extent(1),2,shoc_u_wind.extent(0));
 

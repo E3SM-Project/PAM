@@ -19,5 +19,6 @@ cmake      \
   -DPAM_RAD="none"                                                \
   -DPAM_SGS="shoc"                                                \
   -DPAM_RAD="none"                                                \
+  -DSCREAM_CXX_LIBS_DIR=${SCREAM_CXX_LIBS_DIR}                    \
   ..
 
