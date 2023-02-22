@@ -3,14 +3,16 @@
 add_library(physics INTERFACE)
 
 # Add scream common if it's needed
-# if ("${PAM_MICRO}" STREQUAL "p3" OR "${PAM_SGS}" STREQUAL "shoc")
-#   set(USE_SCREAM TRUE)
-# endif()
-# 
-# if (${USE_SCREAM})
-#   add_subdirectory(scream_common ./scream_common)
-#   include_directories(${CMAKE_CURRENT_BINARY_DIR}/scream_common)
-# endif()
+if ("${PAM_MICRO}" STREQUAL "p3" OR "${PAM_SGS}" STREQUAL "shoc")
+  set(USE_SCREAM TRUE)
+endif()
+
+if (${USE_SCREAM})
+  if (NOT ${PAM_SCREAM_USE_CXX})
+    add_subdirectory(scream_common ./scream_common)
+    include_directories(${CMAKE_CURRENT_BINARY_DIR}/scream_common)
+  endif()
+endif()
 
 #Choose microphysics
 if     ("${PAM_MICRO}" STREQUAL "kessler")

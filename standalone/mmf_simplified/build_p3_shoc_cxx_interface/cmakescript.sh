@@ -9,5 +9,6 @@ cmake      \
   -DSCREAM_HOME="${SCREAM_HOME}"                                  \
   -DSCREAM_DOUBLE_PRECISION=ON                                    \
   -DCMAKE_CUDA_HOST_COMPILER="mpic++"                             \
+  -DPAM_NLEV=${PAM_NLEV}                                          \
   ../../../physics/scream_cxx_interfaces
 

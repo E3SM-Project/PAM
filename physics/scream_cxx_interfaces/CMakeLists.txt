@@ -15,10 +15,10 @@ set(Kokkos_ENABLE_SERIAL  ON CACHE BOOL "" FORCE)
 # set(Kokkos_ENABLE_THREADS ON CACHE BOOL "" FORCE)
 # set(Kokkos_ENABLE_HIP     ON CACHE BOOL "" FORCE)
 
-set(SCREAM_POSSIBLY_NO_PACK_SIZE   FALSE CACHE BOOL "" FORCE)
-set(SCREAM_PACK_SIZE               1     CACHE BOOL "" FORCE)
-set(SCREAM_SMALL_PACK_SIZE         1     CACHE BOOL "" FORCE)
-set(SCREAM_NUM_VERTICAL_LEV        50    CACHE BOOL "" FORCE)
+set(SCREAM_POSSIBLY_NO_PACK_SIZE   FALSE       CACHE BOOL "" FORCE)
+set(SCREAM_PACK_SIZE               1           CACHE BOOL "" FORCE)
+set(SCREAM_SMALL_PACK_SIZE         1           CACHE BOOL "" FORCE)
+set(SCREAM_NUM_VERTICAL_LEV        ${PAM_NLEV} CACHE BOOL "" FORCE)
 
 include(EkatUtils)
 EkatConfigFile(${SCREAM_HOME}/components/eamxx/src/scream_config.h.in
