@@ -28,6 +28,6 @@ set_source_files_properties(supercell_init.F90 PROPERTY COMPILE_FLAGS "${YAKL_F9
 include(${YAKL_HOME}/yakl_utils.cmake)
 yakl_process_target(driver)
 
-target_link_libraries(driver dynamics physics pam_core "-L${CMAKE_CURRENT_BINARY_DIR} -lpam_scream_cxx_interfaces ${PAM_LINK_FLAGS}")
+target_link_libraries(driver dynamics physics pam_core "-L${CMAKE_CURRENT_BINARY_DIR}/../build_p3_shoc_cxx_interface -lpam_scream_cxx_interfaces -L${SCREAM_CXX_LIBS_DIR}/p3 -lp3 -L${SCREAM_CXX_LIBS_DIR}/shoc -lshoc -L${SCREAM_CXX_LIBS_DIR}/physics_share -lphysics_share -L${SCREAM_CXX_LIBS_DIR}/scream_share -lscream_share -L${SCREAM_CXX_LIBS_DIR}/ekat/src/ekat -lekat -L${SCREAM_CXX_LIBS_DIR}/externals/kokkos/containers/src -lkokkoscontainers -L${SCREAM_CXX_LIBS_DIR}/externals/kokkos/core/src -lkokkoscore ${PAM_LINK_FLAGS} -ldl")
 target_link_libraries(fortran_test dynamics physics pam_core ${PAM_LINK_FLAGS})
 

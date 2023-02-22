@@ -160,19 +160,19 @@ public:
     real pi     = 3.14159265;
     int  iulog  = 1;
     bool masterproc = true;
-    micro_p3_utils_init_fortran( cp_d , R_d , R_v , rhoh2o , mwh2o , mwdry ,
-                                 grav , latvap , latice, cp_l , tmelt , pi , iulog , masterproc );
+    // micro_p3_utils_init_fortran( cp_d , R_d , R_v , rhoh2o , mwh2o , mwdry ,
+    //                              grav , latvap , latice, cp_l , tmelt , pi , iulog , masterproc );
 
-    std::string dir;
-    if (coupler.option_exists("p3_lookup_data_path")) {
-      dir = coupler.get_option<std::string>("p3_lookup_data_path");
-    } else {
-      dir = "../../../physics/micro/p3"; // default for PAM standalone
-    };
-    std::string ver = "4.1.1";
-    int dir_len = dir.length();
-    int ver_len = ver.length();
-    p3_init_fortran( dir.c_str() , dir_len , ver.c_str() , ver_len );
+    // std::string dir;
+    // if (coupler.option_exists("p3_lookup_data_path")) {
+    //   dir = coupler.get_option<std::string>("p3_lookup_data_path");
+    // } else {
+    //   dir = "../../../physics/micro/p3"; // default for PAM standalone
+    // };
+    // std::string ver = "4.1.1";
+    // int dir_len = dir.length();
+    // int ver_len = ver.length();
+    // p3_init_fortran( dir.c_str() , dir_len , ver.c_str() , ver_len );
 
     coupler.set_option<std::string>("micro","p3");
     coupler.set_option<real>("latvap",latvap);
@@ -441,7 +441,7 @@ public:
         transposed_cld_frac_i     (i,k) = cld_frac_i     (k,i); // in
         transposed_qv_prev        (i,k) = qv_prev        (k,i); // in
         transposed_t_prev         (i,k) = t_prev         (k,i); // in
-        if (i < 3) transposed_col_location(i,k) = col_location(k,i); // in
+        if (k < 3) transposed_col_location(i,k) = col_location(k,i); // in
       });
 
       // This has fewer parameters than the Fortran call because they got rid of some in the c++ port of scream

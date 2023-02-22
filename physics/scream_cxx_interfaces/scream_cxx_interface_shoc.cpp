@@ -59,6 +59,8 @@ void shoc_main_cxx(int                         const & shcol,        // in
   using SHOC       = shoc::Functions<Real, DefaultDevice>;
   using Spack      = typename SHOC::Spack;
 
+  if (! Kokkos::is_initialized()) { Kokkos::initialize(); }
+
   const int ncol   = shcol;
   const int npack  = ekat::npack<Spack>(nlev);
   const int nipack = ekat::npack<Spack>(nlevi);

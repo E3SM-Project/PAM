@@ -29,9 +29,11 @@ namespace ScreamCXX {
 
   template <typename MemorySpace>
   inline void check_memory_spaces( bool valid_on_host , bool valid_on_device ) {
-    if ( std::is_same<MemorySpace,Kokkos::HostSpace>::value ) {
-      if (! valid_on_host  ) die("View is only valid on the host, but ArrayIR not valid on the host");
-    }
+    #if defined(KOKKOS_ENABLE_CUDA) || defined(KOKKOS_ENABLE_HIP)
+      if ( std::is_same<MemorySpace,Kokkos::HostSpace>::value ) {
+        if (! valid_on_host  ) die("View is only valid on the host, but ArrayIR not valid on the host");
+      }
+    #endif
     #ifdef KOKKOS_ENABLE_CUDA
       if ( std::is_same<MemorySpace,Kokkos::CudaSpace>::value ) {
         if (! valid_on_device) die("View is only valid on the device, but ArrayIR not valid on the device");
