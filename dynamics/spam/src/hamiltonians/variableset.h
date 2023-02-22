@@ -9,6 +9,10 @@
 #include "thermo.h"
 using pam::PamCoupler;
 
+// solve a system to exactly invert the velocity averaging done
+// during conversion to coupler state when coupling winds
+constexpr bool couple_wind_exact_inverse = true;
+
 struct VS_SWE {
   static constexpr bool couple = false;
 };
@@ -81,7 +85,8 @@ public:
 
     // If more physics parameterizations are added this logic might need to
     // change
-    varset.couple_wind = !(coupler.get_option<std::string>("sgs") == "none");
+    varset.couple_wind = !(coupler.get_option<std::string>("sgs") == "none") ||
+                         !(coupler.option_exists("standalone_input_file"));
 
     // dens_pos IS NOT BEING PROPERLY DEALLOCATED AT THE END OF THE RUN IE WHEN
     // THE POOL IS DESTROYED THIS IS REALLY WEIRD
@@ -234,40 +239,43 @@ void VariableSetBase<T>::convert_dynamics_to_coupler_state(
                                                           i + pis + 1, n) /
                           primal_geometry.get_area_10entity(k + pks, j + pjs,
                                                             i + pis + 1, n);
-            real wvel_d = 0.0_fp;
-            real wvel_u = 0.0_fp;
+            real wvel_mid;
             if (k == 0) {
-              wvel_u = 2.0_fp *
-                       prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs,
-                                                       i + pis, n) /
-                       primal_geometry.get_area_01entity(k + pks, j + pjs,
-                                                         i + pis, n);
-              wvel_d = 0.0_fp;
+              wvel_mid = prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs,
+                                                         i + pis, n) /
+                         primal_geometry.get_area_01entity(k + pks, j + pjs,
+                                                           i + pis, n);
             } else if (k == (dual_topology.nl)) {
-              wvel_u = 0.0_fp;
-              wvel_d = 2.0_fp *
-                       prog_vars.fields_arr[WVAR].data(0, k + pks - 1, j + pjs,
-                                                       i + pis, n) /
-                       primal_geometry.get_area_01entity(k + pks - 1, j + pjs,
-                                                         i + pis, n);
+              wvel_mid = prog_vars.fields_arr[WVAR].data(0, k + pks - 1,
+                                                         j + pjs, i + pis, n) /
+                         primal_geometry.get_area_01entity(k + pks - 1, j + pjs,
+                                                           i + pis, n);
             } else {
-              wvel_u = prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs,
-                                                       i + pis, n) /
-                       primal_geometry.get_area_01entity(k + pks, j + pjs,
-                                                         i + pis, n);
-              wvel_d = prog_vars.fields_arr[WVAR].data(0, k + pks - 1, j + pjs,
-                                                       i + pis, n) /
-                       primal_geometry.get_area_01entity(k + pks - 1, j + pjs,
-                                                         i + pis, n);
+
+              real e_u = primal_geometry.get_area_01entity(k + pks, j + pjs,
+                                                           i + pis, n);
+              real e_d = primal_geometry.get_area_01entity(k - 1 + pks, j + pjs,
+                                                           i + pis, n);
+
+              real wvel_u = prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs,
+                                                            i + pis, n) /
+                            e_u;
+              real wvel_d = prog_vars.fields_arr[WVAR].data(
+                                0, k + pks - 1, j + pjs, i + pis, n) /
+                            e_d;
+
+              wvel_mid = wvel_d + (wvel_u - wvel_d) * e_d / (e_u + e_d);
             }
             // EVENTUALLY FIX THIS FOR 3D...
             real vvel = 0.0_fp;
 
             dm_uvel(k, j, i, n) = (uvel_l + uvel_r) * 0.5_fp;
             dm_vvel(k, j, i, n) = vvel;
-            dm_wvel(k, j, i, n) = (wvel_u + wvel_d) * 0.5_fp;
+            dm_wvel(k, j, i, n) = wvel_mid;
           });
     }
+
+    // std::cout << "Coupler state" << std::endl;
     parallel_for(
         "Dynamics to Coupler State densities",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
@@ -370,12 +378,14 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_state(
           real entropic_var =
               thermo.compute_entropic_var_from_T(alpha, temp, qd, qv, ql, qi);
 
+#if !defined _AN && !defined _MAN
           set_density(dens * dual_geometry.get_area_11entity(k + dks, j + djs,
                                                              i + dis, n),
                       dens_dry * dual_geometry.get_area_11entity(
                                      k + dks, j + djs, i + dis, n),
                       prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs,
                       dis, n);
+#endif
           set_entropic_density(
               entropic_var * dens *
                   dual_geometry.get_area_11entity(k + dks, j + djs, i + dis, n),
@@ -390,31 +400,82 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_state(
         });
 
     if (couple_wind) {
-      parallel_for(
-          "Coupler to Dynamics State Primal U",
-          SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
-                          primal_topology.n_cells_x, primal_topology.nens),
-          YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-            // periodic wrapping
-            int il = i - 1;
-            if (i == 0) {
-              il = primal_topology.n_cells_x - 1;
-            }
-            prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, i + pis, n) =
-                (dm_uvel(k, j, il, n) + dm_uvel(k, j, i, n)) * 0.5_fp *
-                primal_geometry.get_area_10entity(k + pks, j + pjs, i + pis, n);
-          });
+      if (couple_wind_exact_inverse) {
+        parallel_for(
+            "Coupler to Dynamics State Primal U",
+            SimpleBounds<3>(primal_topology.ni, primal_topology.n_cells_y,
+                            primal_topology.nens),
+            YAKL_CLASS_LAMBDA(int k, int j, int n) {
+              real x0 = 0;
+              for (int i = 0; i < primal_topology.n_cells_x; ++i) {
+                x0 += (i % 2 == 0 ? 1 : -1) * dm_uvel(k, j, i, n);
+              }
+              prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, pis, n) = x0;
+              prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, pis, n) *=
+                  primal_geometry.get_area_10entity(k + pks, j + pjs, pis, n);
 
-      // EVENTUALLY THIS NEEDS TO HAVE A FLAG ON IT!
-      parallel_for(
-          "Coupler to Dynamics State Primal W",
-          SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
-                          primal_topology.n_cells_x, primal_topology.nens),
-          YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-            prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs, i + pis, n) =
-                (dm_wvel(k, j, i, n) + dm_wvel(k + 1, j, i, n)) * 0.5_fp *
-                primal_geometry.get_area_01entity(k + pks, j + pjs, i + pis, n);
-          });
+              for (int i = 1; i < primal_topology.n_cells_x; ++i) {
+                x0 = 2 * dm_uvel(k, j, i - 1, n) - x0;
+                prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, i + pis,
+                                                n) = x0;
+                prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, i + pis,
+                                                n) *=
+                    primal_geometry.get_area_10entity(k + pks, j + pjs, i + pis,
+                                                      n);
+              }
+            });
+        parallel_for(
+            "Coupler to Dynamics State Primal W",
+            SimpleBounds<3>(primal_topology.n_cells_y,
+                            primal_topology.n_cells_x, primal_topology.nens),
+            YAKL_CLASS_LAMBDA(int j, int i, int n) {
+              real x0 = dm_wvel(0, j, i, n);
+              prog_vars.fields_arr[WVAR].data(0, pks, j + pjs, i + pis, n) = x0;
+              prog_vars.fields_arr[WVAR].data(0, pks, j + pjs, i + pis, n) *=
+                  primal_geometry.get_area_01entity(pks, j + pjs, i + pis, n);
+
+              for (int k = 1; k < primal_topology.nl; ++k) {
+
+                real ek = primal_geometry.get_area_01entity(k + pks, j + pjs,
+                                                            i + pis, n);
+                real ekm1 = primal_geometry.get_area_01entity(
+                    k - 1 + pks, j + pjs, i + pis, n);
+                x0 = (ek + ekm1) / ekm1 * dm_wvel(k, j, i, n) - x0 * ek / ekm1;
+                prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs, i + pis,
+                                                n) = x0;
+                prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs, i + pis,
+                                                n) *= ek;
+              }
+            });
+      } else {
+        parallel_for(
+            "Coupler to Dynamics State Primal U",
+            SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                            primal_topology.n_cells_x, primal_topology.nens),
+            YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+              // periodic wrapping
+              int il = i - 1;
+              if (i == 0) {
+                il = primal_topology.n_cells_x - 1;
+              }
+              prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, i + pis, n) =
+                  (dm_uvel(k, j, il, n) + dm_uvel(k, j, i, n)) * 0.5_fp *
+                  primal_geometry.get_area_10entity(k + pks, j + pjs, i + pis,
+                                                    n);
+            });
+
+        // EVENTUALLY THIS NEEDS TO HAVE A FLAG ON IT!
+        parallel_for(
+            "Coupler to Dynamics State Primal W",
+            SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                            primal_topology.n_cells_x, primal_topology.nens),
+            YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+              prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs, i + pis, n) =
+                  (dm_wvel(k, j, i, n) + dm_wvel(k + 1, j, i, n)) * 0.5_fp *
+                  primal_geometry.get_area_01entity(k + pks, j + pjs, i + pis,
+                                                    n);
+            });
+      }
     }
   }
 }

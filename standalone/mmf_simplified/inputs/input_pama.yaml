@@ -2,12 +2,12 @@
 # Simulation time in seconds
 # simTime  : 28800    # 8 hours
 # simTime  : 86400    # 1 day
-simTime  : 432000   # 5 days
-# simTime  : 3600   # 30 min
+# simTime  : 432000   # 5 days
+simTime  : 3600   # 30 min
 # simTime : 7200
 
 # Number of cells to use in the CRMs
-crm_nx   : 64
+crm_nx   : 65
 crm_ny   : 1
 
 # Number of CRMs
@@ -27,7 +27,7 @@ weno_winds   : true
 initData : supercell
 
 # Output filename
-out_prefix  : test
+out_prefix  : test_pama
 
 # GCM time step
 dt_gcm: 900
@@ -36,6 +36,6 @@ dt_gcm: 900
 dt_crm_phys: 20.
 
 # Output frequency in seconds
-out_freq: 0.
+out_freq: 200.
 
 

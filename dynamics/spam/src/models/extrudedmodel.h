@@ -314,12 +314,17 @@ public:
     equations->varset.convert_dynamics_to_coupler_state(coupler, prog_vars,
                                                         const_vars);
   }
-  void
-  convert_coupler_to_dynamics_state(PamCoupler &coupler,
-                                    FieldSet<nprognostic> &prog_vars,
-                                    const FieldSet<nconstant> &const_vars) {
+  void convert_coupler_to_dynamics_state(PamCoupler &coupler,
+                                         FieldSet<nprognostic> &prog_vars,
+                                         FieldSet<nauxiliary> &auxiliary_vars,
+                                         FieldSet<nconstant> &const_vars) {
     equations->varset.convert_coupler_to_dynamics_state(coupler, prog_vars,
                                                         const_vars);
+#if defined(_AN) || defined(_MAN)
+    if (equations->varset.couple_wind) {
+      project_to_anelastic(const_vars, prog_vars, auxiliary_vars);
+    }
+#endif
   }
 
   void compute_constants(FieldSet<nconstant> &const_vars,
@@ -1370,6 +1375,118 @@ public:
         });
   }
 
+  real compute_max_anelastic_constraint(FieldSet<nprognostic> &x,
+                                        FieldSet<nauxiliary> &auxiliary_vars,
+                                        bool has_f_and_fw = false) override {
+
+    const auto &primal_topology = primal_geometry.topology;
+    const auto &dual_topology = dual_geometry.topology;
+
+    const int pis = primal_topology.is;
+    const int pjs = primal_topology.js;
+    const int pks = primal_topology.ks;
+
+    const int dis = dual_topology.is;
+    const int djs = dual_topology.js;
+    const int dks = dual_topology.ks;
+
+    const auto mfvar = auxiliary_vars.fields_arr[MFVAR].data;
+
+    const auto &densvar = x.fields_arr[DENSVAR].data;
+    const auto &Vvar = x.fields_arr[VVAR].data;
+    const auto &Wvar = x.fields_arr[WVAR].data;
+
+    const auto &Fvar = auxiliary_vars.fields_arr[FVAR].data;
+    const auto &FWvar = auxiliary_vars.fields_arr[FWVAR].data;
+
+    YAKL_SCOPE(varset, this->equations->varset);
+    YAKL_SCOPE(rho_pi, this->equations->reference_state.rho_pi.data);
+    YAKL_SCOPE(rho_di, this->equations->reference_state.rho_di.data);
+    YAKL_SCOPE(primal_geometry, this->primal_geometry);
+    YAKL_SCOPE(dual_geometry, this->dual_geometry);
+
+    if (!has_f_and_fw) {
+      parallel_for(
+          "Compute F and Fw",
+          SimpleBounds<4>(dual_topology.ni, dual_topology.n_cells_y,
+                          dual_topology.n_cells_x, dual_topology.nens),
+          YAKL_LAMBDA(int k, int j, int i, int n) {
+
+#if defined _AN || defined _MAN
+            real dens0_imh = rho_pi(0, k + pks, n);
+            real dens0_kmh = rho_di(0, k + dks, n);
+#else
+            SArray<real, 1, 1> dens0_ik, dens0_im1, dens0_km1;
+
+            const auto total_density_f = TotalDensityFunctor{varset};
+            compute_H2bar_ext<1, diff_ord, vert_diff_ord>(
+                total_density_f, dens0_ik, densvar, primal_geometry,
+                dual_geometry, pis, pjs, pks, i, j, k, n);
+            compute_H2bar_ext<1, diff_ord, vert_diff_ord>(
+                total_density_f, dens0_im1, densvar, primal_geometry,
+                dual_geometry, pis, pjs, pks, i - 1, j, k, n);
+            compute_H2bar_ext<1, diff_ord, vert_diff_ord>(
+                total_density_f, dens0_km1, densvar, primal_geometry,
+                dual_geometry, pis, pjs, pks, i, j, k - 1, n);
+
+            real dens0_imh = 0.5_fp * (dens0_ik(0) + dens0_im1(0));
+            real dens0_kmh = 0.5_fp * (dens0_ik(0) + dens0_km1(0));
+#endif
+
+            SArray<real, 1, ndims> u_ik;
+            SArray<real, 1, 1> uw_ik;
+            SArray<real, 1, ndims> u_ip1;
+            SArray<real, 1, 1> uw_kp1;
+
+            compute_H1_ext<1, diff_ord>(u_ik, Vvar, primal_geometry,
+                                        dual_geometry, pis, pjs, pks, i, j, k,
+                                        n);
+            compute_H1_ext<1, diff_ord>(u_ip1, Vvar, primal_geometry,
+                                        dual_geometry, pis, pjs, pks, i + 1, j,
+                                        k, n);
+
+            if (k == 0 || k == (dual_topology.ni - 1)) {
+              uw_ik(0) = 0;
+            } else {
+              compute_H1_vert<1, vert_diff_ord>(uw_ik, Wvar, primal_geometry,
+                                                dual_geometry, pis, pjs, pks, i,
+                                                j, k, n);
+            }
+
+            if (k >= (dual_topology.ni - 2)) {
+              uw_kp1(0) = 0;
+            } else {
+              compute_H1_vert<1, vert_diff_ord>(uw_kp1, Wvar, primal_geometry,
+                                                dual_geometry, pis, pjs, pks, i,
+                                                j, k + 1, n);
+            }
+
+            Fvar(0, pks + k, pjs + j, pis + i, n) = dens0_imh * u_ik(0);
+            FWvar(0, pks + k, pjs + j, pis + i, n) = dens0_kmh * uw_ik(0);
+          });
+      auxiliary_vars.exchange({FVAR, FWVAR});
+    } else {
+    }
+    parallel_for(
+        "Compute anelastic constraint",
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          compute_D1bar<1>(mfvar, Fvar, dis, djs, dks, i, j, k, n);
+          compute_D1bar_vert<1, ADD_MODE::ADD>(mfvar, FWvar, dis, djs, dks, i,
+                                               j, k, n);
+          const real total_dens =
+              varset.get_total_density(densvar, k, j, i, dks, djs, dis, n);
+          mfvar(0, k + dks, j + djs, i + dis, n) /= total_dens;
+        });
+
+    auxiliary_vars.exchange({MFVAR});
+    const auto divvar = auxiliary_vars.fields_arr[MFVAR].data.slice<4>(
+        0, yakl::COLON, yakl::COLON, yakl::COLON, yakl::COLON);
+
+    return yakl::intrinsics::maxval(yakl::intrinsics::abs(divvar));
+  }
+
   void compute_functional_derivatives(
       ADD_MODE addmode, real fac, real dt, FieldSet<nconstant> &const_vars,
       FieldSet<nprognostic> &x, FieldSet<nauxiliary> &auxiliary_vars) override {
@@ -1499,27 +1616,10 @@ public:
 
     auxiliary_vars.exchange({BVAR, FVAR, FWVAR});
 
-    if (check_anelastic_constraint) {
-      const auto mfvar = auxiliary_vars.fields_arr[MFVAR].data;
-      parallel_for(
-          "Check anelastic constraint",
-          SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-                          dual_topology.n_cells_x, dual_topology.nens),
-          YAKL_LAMBDA(int k, int j, int i, int n) {
-            compute_D1bar<1>(mfvar, Fvar, dis, djs, dks, i, j, k, n);
-            compute_D1bar_vert<1, ADD_MODE::ADD>(mfvar, FWvar, dis, djs, dks, i,
-                                                 j, k, n);
-            const real total_dens =
-                varset.get_total_density(densvar, k, j, i, dks, djs, dis, n);
-            mfvar(0, k + dks, j + djs, i + dis, n) /= total_dens;
-          });
-      auxiliary_vars.exchange({MFVAR});
-      const auto divvar = auxiliary_vars.fields_arr[MFVAR].data.slice<4>(
-          0, yakl::COLON, yakl::COLON, yakl::COLON, yakl::COLON);
-      std::cout << "Anelastic constraint: "
-                << yakl::intrinsics::maxval(yakl::intrinsics::abs(divvar))
-                << std::endl;
-    }
+#ifdef CHECK_ANELASTIC_CONSTRAINT
+    real max_div = compute_max_anelastic_constraint(x, auxiliary_vars, true);
+    std::cout << "Anelastic constraint: " << max_div << std::endl;
+#endif
   }
 
   void compute_functional_derivatives_two_point(
@@ -1856,6 +1956,13 @@ public:
   }
 
 #if defined _AN || defined _MAN
+  void project_to_anelastic(FieldSet<nconstant> &const_vars,
+                            FieldSet<nprognostic> &x,
+                            FieldSet<nauxiliary> &auxiliary_vars) override {
+    // this happens to do what we want, note x used for xtend
+    add_pressure_perturbation(1, const_vars, x, auxiliary_vars, x);
+  }
+
   void add_pressure_perturbation(real dt, FieldSet<nconstant> &const_vars,
                                  FieldSet<nprognostic> &x,
                                  FieldSet<nauxiliary> &auxiliary_vars,
@@ -2994,31 +3101,75 @@ void initialize_variables(
   // set_dofs_arr(aux_ndofs_arr, PVAR, 0, 1, 1);  //p = straight 0-form
   // #endif
 }
-
+std::unique_ptr<TestCase> make_coupled_test_case(PamCoupler &coupler);
 void testcase_from_string(std::unique_ptr<TestCase> &testcase, std::string name,
                           bool acoustic_balance);
 
-void readModelParamsFile(std::string inFile, ModelParameters &params,
-                         Parallel &par, PamCoupler &coupler,
-                         std::unique_ptr<TestCase> &testcase) {
+void read_model_params_file(std::string inFile, ModelParameters &params,
+                            Parallel &par, PamCoupler &coupler,
+                            std::unique_ptr<TestCase> &testcase) {
+
+  // Read common parameters
+  int nz = coupler.get_nz();
+  readParamsFile(inFile, params, par, nz);
 
   // Read config file
   YAML::Node config = YAML::LoadFile(inFile);
 
-  int nz = coupler.get_nz();
-
   params.acoustic_balance = config["balance_initial_density"].as<bool>(false);
   params.uniform_vertical = (config["vcoords"].as<std::string>() == "uniform");
-
   // Read diffusion coefficients
   params.entropicvar_diffusion_coeff =
       config["entropicvar_diffusion_coeff"].as<real>(0);
   params.velocity_diffusion_coeff =
       config["velocity_diffusion_coeff"].as<real>(0);
-
   // Read the data initialization options
   params.initdataStr = config["initData"].as<std::string>();
+
+  for (int i = 0; i < ntracers_dycore; i++) {
+    params.tracerdataStr[i] =
+        config["initTracer" + std::to_string(i)].as<std::string>();
+    params.dycore_tracerpos[i] =
+        config["initTracerPos" + std::to_string(i)].as<bool>();
+  }
+
+  // Store vertical cell interface heights in the data manager
+  auto &dm = coupler.get_data_manager_device_readonly();
+  params.zint = dm.get<real const, 2>("vertical_interface_height");
+
+  params.ylen = 1.0;
+  params.yc = 0.5;
+
   testcase_from_string(testcase, params.initdataStr, params.acoustic_balance);
+}
+
+void read_model_params_coupler(ModelParameters &params, Parallel &par,
+                               PamCoupler &coupler,
+                               std::unique_ptr<TestCase> &testcase) {
+
+  // Read common parameters
+  read_params_coupler(params, par, coupler);
+
+  params.acoustic_balance = false;
+  params.uniform_vertical = false;
+  params.entropicvar_diffusion_coeff = 0;
+  params.velocity_diffusion_coeff = 0;
+  params.initdataStr = "coupler";
+
+  // Store vertical cell interface heights in the data manager
+  auto &dm = coupler.get_data_manager_device_readonly();
+  params.zint = dm.get<real const, 2>("vertical_interface_height");
+
+  params.ylen = 1.0;
+  params.yc = 0.5;
+
+  testcase = make_coupled_test_case(coupler);
+}
+
+void check_and_print_model_parameters(const ModelParameters &params,
+                                      const Parallel &par) {
+
+  check_and_print_parameters(params, par);
 
   serial_print("IC: " + params.initdataStr, par.masterproc);
   serial_print("acoustically balanced: " +
@@ -3032,26 +3183,10 @@ void readModelParamsFile(std::string inFile, ModelParameters &params,
                par.masterproc);
 
   for (int i = 0; i < ntracers_dycore; i++) {
-    params.tracerdataStr[i] =
-        config["initTracer" + std::to_string(i)].as<std::string>();
-    params.dycore_tracerpos[i] =
-        config["initTracerPos" + std::to_string(i)].as<bool>();
     serial_print("Dycore Tracer" + std::to_string(i) +
                      " IC: " + params.tracerdataStr[i],
                  par.masterproc);
   }
-
-  testcase->set_tracers(params);
-
-  params.ylen = 1.0;
-  params.yc = 0.5;
-  testcase->set_domain(params);
-
-  // Store vertical cell interface heights in the data manager
-  auto &dm = coupler.get_data_manager_device_readonly();
-  params.zint = dm.get<real const, 2>("vertical_interface_height");
-
-  readParamsFile(inFile, params, par, nz);
 }
 
 //***************** Test Cases ***************************//
@@ -3202,7 +3337,6 @@ public:
 
   void set_domain(ModelParameters &params) override {
     params.xlen = Lx;
-    params.zlen = Lz;
     params.xc = xc;
   }
 
@@ -3376,7 +3510,6 @@ public:
 
   void set_domain(ModelParameters &params) override {
     params.xlen = Lx;
-    params.zlen = Lz;
     params.xc = xc;
   }
 
@@ -3534,6 +3667,213 @@ public:
       std::vector<std::unique_ptr<Diagnostic>> &diagnostics) override {
     T::add_diagnostics(diagnostics);
   }
+};
+
+class CoupledTestCase : public TestCase {
+public:
+  PamCoupler &coupler;
+
+  CoupledTestCase(PamCoupler &coupler) : coupler(coupler) {}
+
+  std::array<real, 3> get_domain() const override { return {0, 1, 0}; }
+
+  void set_domain(ModelParameters &params) override {
+    params.xlen = coupler.get_xlen();
+    params.xc = 0;
+  }
+
+  void set_initial_conditions(FieldSet<nprognostic> &progvars,
+                              FieldSet<nconstant> &constvars,
+                              const Geometry<Straight> &primal_geom,
+                              const Geometry<Twisted> &dual_geom) override {
+
+    const real g = coupler.get_option<real>("grav");
+    equations->Hs.set_parameters(g);
+    auto &varset = this->equations->varset;
+    dual_geom.set_11form_values(
+        YAKL_LAMBDA(real x, real z) { return flat_geop(x, z, g); },
+        constvars.fields_arr[HSVAR], 0);
+
+    // hack to set winds
+    bool org_couple_wind = varset.couple_wind;
+    varset.couple_wind = true;
+    varset.convert_coupler_to_dynamics_state(coupler, progvars, constvars);
+    varset.couple_wind = org_couple_wind;
+  }
+
+  void set_reference_state(const Geometry<Straight> &primal_geom,
+                           const Geometry<Twisted> &dual_geom) override {
+
+    auto &refstate = this->equations->reference_state;
+    const auto &varset = this->equations->varset;
+    auto &thermo = this->equations->thermo;
+    const auto &primal_topology = primal_geom.topology;
+    const auto &dual_topology = dual_geom.topology;
+
+    // Set thermo constants based on coupler values
+    // Need a better way to separate fundamental vs derived constants
+    // Also I think only P3 defines all of these
+
+    thermo.cst.Rd = coupler.get_option<real>("R_d");
+    thermo.cst.Rv = coupler.get_option<real>("R_v");
+    thermo.cst.pr = coupler.get_option<real>("p0");
+    thermo.cst.Cpd = coupler.get_option<real>("cp_d");
+    thermo.cst.Cvd = thermo.cst.Cpd - thermo.cst.Rd;
+    thermo.cst.Cpv = coupler.get_option<real>("cp_v");
+
+    thermo.cst.Lvr = coupler.get_option<real>("latvap");
+    thermo.cst.Lfr = coupler.get_option<real>("latice");
+
+    thermo.cst.gamma_d = thermo.cst.Cpd / thermo.cst.Cvd;
+    thermo.cst.kappa_d = thermo.cst.Rd / thermo.cst.Cpd;
+    thermo.cst.delta_d = thermo.cst.Rd / thermo.cst.Cvd;
+
+    const int dis = dual_topology.is;
+    const int djs = dual_topology.js;
+    const int dks = dual_topology.ks;
+
+    const int pis = primal_topology.is;
+    const int pjs = primal_topology.js;
+    const int pks = primal_topology.ks;
+
+    auto &dm = coupler.get_data_manager_device_readonly();
+
+    auto dm_gcm_dens_dry = dm.get<real const, 2>("gcm_density_dry");
+    auto dm_gcm_dens_vap = dm.get<real const, 2>("gcm_water_vapor");
+    auto dm_gcm_uvel = dm.get<real const, 2>("gcm_uvel");
+    auto dm_gcm_vvel = dm.get<real const, 2>("gcm_vvel");
+    auto dm_gcm_wvel = dm.get<real const, 2>("gcm_wvel");
+    auto dm_gcm_temp = dm.get<real const, 2>("gcm_temp");
+
+    const real grav = coupler.get_option<real>("grav");
+    dual_geom.set_profile_11form_values(
+        YAKL_LAMBDA(real z) { return flat_geop(0, z, grav); }, refstate.geop,
+        0);
+
+    // sets dens and unscaled q_pi
+    parallel_for(
+        "Coupled reference state 1",
+        SimpleBounds<2>(dual_topology.nl, dual_topology.nens),
+        YAKL_CLASS_LAMBDA(int k, int n) {
+          const real temp = dm_gcm_temp(k, n);
+          const real dens_dry = dm_gcm_dens_dry(k, n);
+          const real dens_vap = dm_gcm_dens_vap(k, n);
+          const real dens_liq = 0.0_fp;
+          const real dens_ice = 0.0_fp;
+          const real dens = dens_dry + dens_ice + dens_liq + dens_vap;
+
+          const real qd = dens_dry / dens;
+          const real qv = dens_vap / dens;
+          const real ql = dens_liq / dens;
+          const real qi = dens_ice / dens;
+
+          const real alpha = 1.0_fp / dens;
+          const real entropic_var =
+              thermo.compute_entropic_var_from_T(alpha, temp, qd, qv, ql, qi);
+
+          const real dual_volume =
+              dual_geom.get_area_11entity(k + dks, djs, dis, n);
+          refstate.dens.data(MASSDENSINDX, k + dks, n) = dens * dual_volume;
+          refstate.dens.data(ENTROPICDENSINDX, k + dks, n) =
+              entropic_var * dens * dual_volume;
+          refstate.dens.data(varset.dm_id_vap + ndensity_nophysics, k + dks,
+                             n) = dens_vap * dual_volume;
+
+          refstate.q_pi.data(MASSDENSINDX, k + dks, n) = dens;
+          refstate.q_pi.data(ENTROPICDENSINDX, k + dks, n) =
+              dens * entropic_var;
+          refstate.q_pi.data(varset.dm_id_vap + ndensity_nophysics, k + dks,
+                             n) = dens_vap;
+        });
+
+    parallel_for(
+        "compute unscaled q_di",
+        SimpleBounds<2>(dual_topology.ni, dual_topology.nens),
+        YAKL_LAMBDA(int k, int n) {
+          for (int d = 0; d < ndensity_refstate; ++d) {
+            if (k == 0) {
+              refstate.q_di.data(d, dks, n) = refstate.q_pi.data(d, pks, n);
+            } else if (k == dual_topology.ni - 1) {
+              refstate.q_di.data(d, dual_topology.ni - 1 + dks, n) =
+                  refstate.q_pi.data(d, primal_topology.ni - 1 + pks, n);
+            } else {
+              real q_km1 = refstate.q_pi.data(d, k - 1 + pks, n);
+              real q_k = refstate.q_pi.data(d, k + pks, n);
+
+              refstate.q_di.data(d, k + dks, n) =
+                  q_km1 + (q_k - q_km1) *
+                              (dual_geom.zint(k + pks, n) -
+                               primal_geom.zint(k - 1 + pks, n)) /
+                              primal_geom.dz(k - 1 + pks, n);
+            }
+          }
+        });
+
+    parallel_for(
+        "compute rho_pi",
+        SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
+        YAKL_LAMBDA(int k, int n) {
+          const auto total_density_f = TotalDensityFunctor{varset};
+          SArray<real, 1, 1> rho0;
+          compute_H2bar_ext<1, vert_diff_ord>(total_density_f, rho0,
+                                              refstate.dens.data, primal_geom,
+                                              dual_geom, pks, k, n);
+          refstate.rho_pi.data(0, k + pks, n) = rho0(0);
+        });
+
+    parallel_for(
+        "scale q_pi", SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
+        YAKL_LAMBDA(int k, int n) {
+          for (int l = 0; l < ndensity_refstate; ++l) {
+            refstate.q_pi.data(l, k + pks, n) /=
+                refstate.rho_pi.data(0, k + pks, n);
+          }
+        });
+
+    parallel_for(
+        "compute rho_di", SimpleBounds<2>(dual_topology.ni, dual_topology.nens),
+        YAKL_LAMBDA(int k, int n) {
+          if (k == 0) {
+            refstate.rho_di.data(0, dks, n) = refstate.rho_pi.data(0, pks, n);
+          } else if (k == dual_topology.ni - 1) {
+            refstate.rho_di.data(0, dual_topology.ni - 1 + dks, n) =
+                refstate.rho_pi.data(0, primal_topology.ni - 1 + pks, n);
+          } else {
+            real rho_k = refstate.rho_pi.data(0, k + pks, n);
+            real rho_km1 = refstate.rho_pi.data(0, k - 1 + pks, n);
+
+            refstate.rho_di.data(0, k + dks, n) =
+                rho_km1 + (rho_k - rho_km1) *
+                              (dual_geom.zint(k + pks, n) -
+                               primal_geom.zint(k - 1 + pks, n)) /
+                              primal_geom.dz(k - 1 + pks, n);
+          }
+        });
+    parallel_for(
+        "scale q_di", SimpleBounds<2>(dual_topology.ni, dual_topology.nens),
+        YAKL_LAMBDA(int k, int n) {
+          for (int l = 0; l < ndensity_refstate; ++l) {
+            refstate.q_di.data(l, k + dks, n) /=
+                refstate.rho_di.data(0, k + dks, n);
+          }
+        });
+
+    YAKL_SCOPE(Hs, equations->Hs);
+
+#ifdef FORCE_REFSTATE_HYDROSTATIC_BALANCE
+    parallel_for(
+        "Compute refstate B",
+        SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
+        YAKL_LAMBDA(int k, int n) {
+          Hs.compute_dHsdx(refstate.B.data, refstate.dens.data,
+                           refstate.geop.data, pks, k, n, -1);
+        });
+#endif
+    // TODO reference N
+  }
+
+  void add_diagnostics(
+      std::vector<std::unique_ptr<Diagnostic>> &diagnostics) override {}
 };
 
 // struct DoubleVortex {
@@ -4486,4 +4826,8 @@ void testcase_from_config(std::unique_ptr<TestCase> &testcase,
   const bool acoustic_balance =
       config["balance_initial_density"].as<bool>(false);
   testcase_from_string(testcase, name, acoustic_balance);
+}
+
+std::unique_ptr<TestCase> make_coupled_test_case(PamCoupler &coupler) {
+  return std::make_unique<CoupledTestCase>(coupler);
 }

@@ -11,6 +11,7 @@
 #include "broadcast_initial_gcm_column.h"
 #include "output.h"
 #include "supercell_init.h"
+#include <iostream>
 
 
 int main(int argc, char** argv) {
@@ -42,6 +43,11 @@ int main(int argc, char** argv) {
     MPI_Comm_rank( MPI_COMM_WORLD , &myrank );
     bool mainproc = (myrank == 0);
 
+    const int nsteps_gcm = std::ceil(simTime / dt_gcm);
+    dt_gcm = simTime / nsteps_gcm;
+    const int nsteps_crm_phys = std::ceil(dt_gcm / dt_crm_phys);
+    dt_crm_phys = dt_gcm / nsteps_crm_phys;
+    
     auto &coupler = pam_interface::get_coupler();
 
     coupler.set_option<real>("gcm_physics_dt",dt_gcm);
@@ -131,6 +137,10 @@ int main(int argc, char** argv) {
     int1d seeds("seeds",nens);
     seeds = 0;
     modules::perturb_temperature( coupler , seeds );
+    
+#ifdef _SPAM
+    dycore.pre_time_loop(coupler);
+#endif
 
     real etime_gcm = 0;
     int  num_out = 0;
@@ -139,34 +149,28 @@ int main(int argc, char** argv) {
     if (out_freq >= 0. ) output( coupler , out_prefix , etime_gcm );
 
     yakl::timer_start("main_loop");
-    while (etime_gcm < simTime) {
-      if (etime_gcm + dt_gcm > simTime) { dt_gcm = simTime - etime_gcm; }
+    for (int step_gcm = 0; step_gcm < nsteps_gcm; ++step_gcm) {
 
       modules::compute_gcm_forcing_tendencies( coupler );
 
-      real etime_crm = 0;
-      real simTime_crm = dt_gcm;
-      real dt_crm = dt_crm_phys;
-      while (etime_crm < simTime_crm) {
-        if (dt_crm == 0.) { dt_crm = dycore.compute_time_step(coupler); }
-        if (etime_crm + dt_crm > simTime_crm) { dt_crm = simTime_crm - etime_crm; }
+      for (int step_crm_phys = 0; step_crm_phys < nsteps_crm_phys; ++step_crm_phys) {
 
         coupler.run_module( "apply_gcm_forcing_tendencies" , modules::apply_gcm_forcing_tendencies                        );
         coupler.run_module( "dycore"                       , [&] (pam::PamCoupler &coupler) { dycore.timeStep(coupler); } );
         coupler.run_module( "sponge_layer"                 , modules::sponge_layer                                        );
         coupler.run_module( "sgs"                          , [&] (pam::PamCoupler &coupler) { sgs   .timeStep(coupler); } );
         coupler.run_module( "micro"                        , [&] (pam::PamCoupler &coupler) { micro .timeStep(coupler); } );
+        
+        etime_gcm = step_gcm * dt_gcm + (step_crm_phys + 1) * dt_crm_phys;  
 
-        etime_crm += dt_crm;
-        etime_gcm += dt_crm;
         if (out_freq >= 0. && etime_gcm / out_freq >= num_out+1) {
           yakl::timer_start("output");
-          output( coupler , out_prefix , etime_gcm );
+          output( coupler , out_prefix , etime_gcm);
           yakl::timer_stop("output");
           real maxw = maxval(abs(dm.get_collapsed<real const>("wvel")));
           if (mainproc) {
             std::cout << "Etime , dtphys, maxw: " << etime_gcm << " , " 
-                                                  << dt_crm    << " , "
+                                                  << dt_crm_phys    << " , "
                                                   << std::setw(10) << maxw << std::endl;
           }
           num_out++;

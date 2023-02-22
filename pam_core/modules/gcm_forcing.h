@@ -119,6 +119,8 @@ namespace modules {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
     using yakl::atomicAdd;
+    using yakl::ScalarLiveOut;
+    using yakl::max;
     auto &dm = coupler.get_data_manager_device_readwrite();
 
     auto dt = coupler.get_option<real>("crm_dt");

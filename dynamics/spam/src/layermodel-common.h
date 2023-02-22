@@ -1,5 +1,7 @@
 #pragma once
 
+#include "params.h"
+
 uint constexpr ntracers_dycore = 6;
 uint constexpr ntracers_active =
     6; // applies only for swe/tswe, determines how many of the tracers are
@@ -25,6 +27,7 @@ uint constexpr ndensity_nophysics = ndensity_dycore + ntracers_dycore;
 uint constexpr ndensity = ndensity_dycore + ntracers_dycore;
 uint constexpr ndensity_active = ndensity_dycore + ntracers_active;
 uint constexpr ndensity_B = ndensity;
+uint constexpr ndensity_refstate = 0;
 
 // Number of variables
 // v, dens
