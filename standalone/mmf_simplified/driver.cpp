@@ -72,6 +72,10 @@ int main(int argc, char** argv) {
     sgs   .init( coupler );
     dycore.init( coupler );
 
+    if ( (micro.micro_name() == "p3" || sgs.sgs_name() == "shoc") && crm_nz != PAM_NLEV ) {
+      endrun("ERROR: Running with a different number of vertical levels than compiled for");
+    }
+
     // Compute a supercell initial column
     real1d rho_d_col("rho_d_col",crm_nz);
     real1d uvel_col ("uvel_col" ,crm_nz);

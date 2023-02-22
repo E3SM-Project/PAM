@@ -19,7 +19,7 @@ namespace modules {
     if (id.size() != nens) endrun("ERROR: size of id array must be the same as nens");
 
     int  num_levels = nz/4;
-    real magnitude = 1.;
+    real magnitude = 5.;
 
     // ny*nx*nens can all be globbed together for this routine
     auto &dm = coupler.get_data_manager_device_readwrite();

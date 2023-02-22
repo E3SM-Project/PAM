@@ -160,19 +160,23 @@ public:
     real pi     = 3.14159265;
     int  iulog  = 1;
     bool masterproc = true;
-    // micro_p3_utils_init_fortran( cp_d , R_d , R_v , rhoh2o , mwh2o , mwdry ,
-    //                              grav , latvap , latice, cp_l , tmelt , pi , iulog , masterproc );
+    #ifndef P3_CXX
+      micro_p3_utils_init_fortran( cp_d , R_d , R_v , rhoh2o , mwh2o , mwdry ,
+                                   grav , latvap , latice, cp_l , tmelt , pi , iulog , masterproc );
+    #endif
 
-    // std::string dir;
-    // if (coupler.option_exists("p3_lookup_data_path")) {
-    //   dir = coupler.get_option<std::string>("p3_lookup_data_path");
-    // } else {
-    //   dir = "../../../physics/micro/p3"; // default for PAM standalone
-    // };
-    // std::string ver = "4.1.1";
-    // int dir_len = dir.length();
-    // int ver_len = ver.length();
-    // p3_init_fortran( dir.c_str() , dir_len , ver.c_str() , ver_len );
+    std::string dir;
+    if (coupler.option_exists("p3_lookup_data_path")) {
+      dir = coupler.get_option<std::string>("p3_lookup_data_path");
+    } else {
+      dir = "../../../physics/micro/p3/tables"; // default for PAM standalone
+    };
+    std::string ver = "4.1.1";
+    int dir_len = dir.length();
+    int ver_len = ver.length();
+    #ifndef P3_CXX
+      p3_init_fortran( dir.c_str() , dir_len , ver.c_str() , ver_len );
+    #endif
 
     coupler.set_option<std::string>("micro","p3");
     coupler.set_option<real>("latvap",latvap);
@@ -445,50 +449,50 @@ public:
       });
 
       // This has fewer parameters than the Fortran call because they got rid of some in the c++ port of scream
-      p3_main_cxx( transposed_qc                .create_ArrayIR() , // inout
-                   transposed_nc                .create_ArrayIR() , // inout
-                   transposed_qr                .create_ArrayIR() , // inout
-                   transposed_nr                .create_ArrayIR() , // inout
-                   transposed_theta             .create_ArrayIR() , // inout
-                   transposed_qv                .create_ArrayIR() , // inout
-                   dt                                             , // inout
-                   transposed_qi                .create_ArrayIR() , // inout
-                   transposed_qm                .create_ArrayIR() , // inout
-                   transposed_ni                .create_ArrayIR() , // inout
-                   transposed_bm                .create_ArrayIR() , // inout
-                   transposed_pressure          .create_ArrayIR() , // in
-                   transposed_dz                .create_ArrayIR() , // in
-                   transposed_nc_nuceat_tend    .create_ArrayIR() , // in
-                   transposed_nccn_prescribed   .create_ArrayIR() , // in
-                   transposed_ni_activated      .create_ArrayIR() , // in
-                   transposed_inv_qc_relvar     .create_ArrayIR() , // in
-                   it                                             , // in
-                   precip_liq_surf              .create_ArrayIR() , //   out
-                   precip_ice_surf              .create_ArrayIR() , //   out
-                   its                                            , // in
-                   ite                                            , // in
-                   kts                                            , // in
-                   kte                                            , // in
-                   transposed_diag_eff_radius_qc.create_ArrayIR() , //   out
-                   transposed_diag_eff_radius_qi.create_ArrayIR() , //   out
-                   transposed_bulk_qi           .create_ArrayIR() , //   out
-                   do_predict_nc                                  , // in
-                   do_prescribed_CCN                              , // in
-                   transposed_dpres             .create_ArrayIR() , // in
-                   transposed_inv_exner         .create_ArrayIR() , // in
-                   transposed_qv2qi_depos_tend  .create_ArrayIR() , //   out
-                   transposed_precip_liq_flux   .create_ArrayIR() , //   out
-                   transposed_precip_ice_flux   .create_ArrayIR() , //   out
-                   transposed_cld_frac_r        .create_ArrayIR() , // in
-                   transposed_cld_frac_l        .create_ArrayIR() , // in
-                   transposed_cld_frac_i        .create_ArrayIR() , // in
-                   transposed_liq_ice_exchange  .create_ArrayIR() , //   out
-                   transposed_vap_liq_exchange  .create_ArrayIR() , //   out
-                   transposed_vap_ice_exchange  .create_ArrayIR() , //   out
-                   transposed_qv_prev           .create_ArrayIR() , // in
-                   transposed_t_prev            .create_ArrayIR() , // in
-                   transposed_col_location      .create_ArrayIR() , // in
-                  &elapsed_s                                      );//   out {
+      pam::p3_main_cxx( transposed_qc                .create_ArrayIR() , // inout
+                        transposed_nc                .create_ArrayIR() , // inout
+                        transposed_qr                .create_ArrayIR() , // inout
+                        transposed_nr                .create_ArrayIR() , // inout
+                        transposed_theta             .create_ArrayIR() , // inout
+                        transposed_qv                .create_ArrayIR() , // inout
+                        dt                                             , // inout
+                        transposed_qi                .create_ArrayIR() , // inout
+                        transposed_qm                .create_ArrayIR() , // inout
+                        transposed_ni                .create_ArrayIR() , // inout
+                        transposed_bm                .create_ArrayIR() , // inout
+                        transposed_pressure          .create_ArrayIR() , // in
+                        transposed_dz                .create_ArrayIR() , // in
+                        transposed_nc_nuceat_tend    .create_ArrayIR() , // in
+                        transposed_nccn_prescribed   .create_ArrayIR() , // in
+                        transposed_ni_activated      .create_ArrayIR() , // in
+                        transposed_inv_qc_relvar     .create_ArrayIR() , // in
+                        it                                             , // in
+                        precip_liq_surf              .create_ArrayIR() , //   out
+                        precip_ice_surf              .create_ArrayIR() , //   out
+                        its                                            , // in
+                        ite                                            , // in
+                        kts                                            , // in
+                        kte                                            , // in
+                        transposed_diag_eff_radius_qc.create_ArrayIR() , //   out
+                        transposed_diag_eff_radius_qi.create_ArrayIR() , //   out
+                        transposed_bulk_qi           .create_ArrayIR() , //   out
+                        do_predict_nc                                  , // in
+                        do_prescribed_CCN                              , // in
+                        transposed_dpres             .create_ArrayIR() , // in
+                        transposed_inv_exner         .create_ArrayIR() , // in
+                        transposed_qv2qi_depos_tend  .create_ArrayIR() , //   out
+                        transposed_precip_liq_flux   .create_ArrayIR() , //   out
+                        transposed_precip_ice_flux   .create_ArrayIR() , //   out
+                        transposed_cld_frac_r        .create_ArrayIR() , // in
+                        transposed_cld_frac_l        .create_ArrayIR() , // in
+                        transposed_cld_frac_i        .create_ArrayIR() , // in
+                        transposed_liq_ice_exchange  .create_ArrayIR() , //   out
+                        transposed_vap_liq_exchange  .create_ArrayIR() , //   out
+                        transposed_vap_ice_exchange  .create_ArrayIR() , //   out
+                        transposed_qv_prev           .create_ArrayIR() , // in
+                        transposed_t_prev            .create_ArrayIR() , // in
+                        transposed_col_location      .create_ArrayIR() , // in
+                       &elapsed_s                                      );//   out {
 
       // For inout and out variables, copy transposed data (One kernel for efficiency)
       parallel_for( SimpleBounds<2>(nz+1,ncol) , YAKL_LAMBDA (int k, int i) {

@@ -180,8 +180,10 @@ public:
 
       kbot = nz;
       ktop = 1;
-      // shoc_init_fortran( nz , grav , R_d , R_v , cp_d , zvir , latvap , latice , karman ,
-      //                    pref_shoc.createHostCopy().data() , kbot , ktop );
+      #ifndef SHOC_CXX
+        shoc_init_fortran( nz , grav , R_d , R_v , cp_d , zvir , latvap , latice , karman ,
+                           pref_shoc.createHostCopy().data() , kbot , ktop );
+      #endif
 
       // This check is here instead of init because it's not guaranteed the micro has called init before sgs
       if (! coupler.option_exists("micro")) {
@@ -455,54 +457,54 @@ public:
 
 
       int nzp1 = nz+1;
-      shoc_main_cxx( ncol                                         ,  // in
-                     nz                                           ,  // in
-                     nzp1                                         ,  // in
-                     dt                                           ,  // in
-                     nadv                                         ,  // in
-                     shoc_host_dx               .create_ArrayIR() ,  // in
-                     shoc_host_dy               .create_ArrayIR() ,  // in
-                     transposed_shoc_thv        .create_ArrayIR() ,  // in
-                     transposed_shoc_zt_grid    .create_ArrayIR() ,  // in
-                     transposed_shoc_zi_grid    .create_ArrayIR() ,  // in
-                     transposed_shoc_pres       .create_ArrayIR() ,  // in
-                     transposed_shoc_presi      .create_ArrayIR() ,  // in
-                     transposed_shoc_pdel       .create_ArrayIR() ,  // in
-                     shoc_wthl_sfc              .create_ArrayIR() ,  // in
-                     shoc_wqw_sfc               .create_ArrayIR() ,  // in
-                     shoc_uw_sfc                .create_ArrayIR() ,  // in
-                     shoc_vw_sfc                .create_ArrayIR() ,  // in
-                     transposed_shoc_wtracer_sfc.create_ArrayIR() ,  // in
-                     num_qtracers                                 ,  // in
-                     transposed_shoc_w_field    .create_ArrayIR() ,  // in
-                     transposed_shoc_inv_exner  .create_ArrayIR() ,  // in
-                     shoc_phis                  .create_ArrayIR() ,  // in
-                     transposed_shoc_host_dse   .create_ArrayIR() ,  // inout
-                     transposed_shoc_tke        .create_ArrayIR() ,  // inout
-                     transposed_shoc_thetal     .create_ArrayIR() ,  // inout
-                     transposed_shoc_qw         .create_ArrayIR() ,  // inout
-                     transposed_shoc_hwind      .create_ArrayIR() ,  // inout - (col,2,lev) - u is index zero - v is index one
-                     transposed_shoc_qtracers   .create_ArrayIR() ,  // inout - (col,qtr,lev)
-                     transposed_shoc_wthv_sec   .create_ArrayIR() ,  // inout
-                     transposed_shoc_tk         .create_ArrayIR() ,  // inout
-                     transposed_shoc_ql         .create_ArrayIR() ,  // inout
-                     transposed_shoc_cldfrac    .create_ArrayIR() ,  // inout
-                     shoc_pblh                  .create_ArrayIR() ,  //   out
-                     transposed_shoc_mix        .create_ArrayIR() ,  //   out
-                     transposed_shoc_isotropy   .create_ArrayIR() ,  //   out
-                     transposed_shoc_w_sec      .create_ArrayIR() ,  //   out
-                     transposed_shoc_thl_sec    .create_ArrayIR() ,  //   out
-                     transposed_shoc_qw_sec     .create_ArrayIR() ,  //   out
-                     transposed_shoc_qwthl_sec  .create_ArrayIR() ,  //   out
-                     transposed_shoc_wthl_sec   .create_ArrayIR() ,  //   out
-                     transposed_shoc_wqw_sec    .create_ArrayIR() ,  //   out
-                     transposed_shoc_wtke_sec   .create_ArrayIR() ,  //   out
-                     transposed_shoc_uw_sec     .create_ArrayIR() ,  //   out
-                     transposed_shoc_vw_sec     .create_ArrayIR() ,  //   out
-                     transposed_shoc_w3         .create_ArrayIR() ,  //   out
-                     transposed_shoc_wqls_sec   .create_ArrayIR() ,  //   out
-                     transposed_shoc_brunt      .create_ArrayIR() ,  //   out
-                     transposed_shoc_ql2        .create_ArrayIR() ); //   out
+      pam::shoc_main_cxx( ncol                                         ,  // in
+                          nz                                           ,  // in
+                          nzp1                                         ,  // in
+                          dt                                           ,  // in
+                          nadv                                         ,  // in
+                          shoc_host_dx               .create_ArrayIR() ,  // in
+                          shoc_host_dy               .create_ArrayIR() ,  // in
+                          transposed_shoc_thv        .create_ArrayIR() ,  // in
+                          transposed_shoc_zt_grid    .create_ArrayIR() ,  // in
+                          transposed_shoc_zi_grid    .create_ArrayIR() ,  // in
+                          transposed_shoc_pres       .create_ArrayIR() ,  // in
+                          transposed_shoc_presi      .create_ArrayIR() ,  // in
+                          transposed_shoc_pdel       .create_ArrayIR() ,  // in
+                          shoc_wthl_sfc              .create_ArrayIR() ,  // in
+                          shoc_wqw_sfc               .create_ArrayIR() ,  // in
+                          shoc_uw_sfc                .create_ArrayIR() ,  // in
+                          shoc_vw_sfc                .create_ArrayIR() ,  // in
+                          transposed_shoc_wtracer_sfc.create_ArrayIR() ,  // in
+                          num_qtracers                                 ,  // in
+                          transposed_shoc_w_field    .create_ArrayIR() ,  // in
+                          transposed_shoc_inv_exner  .create_ArrayIR() ,  // in
+                          shoc_phis                  .create_ArrayIR() ,  // in
+                          transposed_shoc_host_dse   .create_ArrayIR() ,  // inout
+                          transposed_shoc_tke        .create_ArrayIR() ,  // inout
+                          transposed_shoc_thetal     .create_ArrayIR() ,  // inout
+                          transposed_shoc_qw         .create_ArrayIR() ,  // inout
+                          transposed_shoc_hwind      .create_ArrayIR() ,  // inout - (col,2,lev) - u is index zero - v is index one
+                          transposed_shoc_qtracers   .create_ArrayIR() ,  // inout - (col,qtr,lev)
+                          transposed_shoc_wthv_sec   .create_ArrayIR() ,  // inout
+                          transposed_shoc_tk         .create_ArrayIR() ,  // inout
+                          transposed_shoc_ql         .create_ArrayIR() ,  // inout
+                          transposed_shoc_cldfrac    .create_ArrayIR() ,  // inout
+                          shoc_pblh                  .create_ArrayIR() ,  //   out
+                          transposed_shoc_mix        .create_ArrayIR() ,  //   out
+                          transposed_shoc_isotropy   .create_ArrayIR() ,  //   out
+                          transposed_shoc_w_sec      .create_ArrayIR() ,  //   out
+                          transposed_shoc_thl_sec    .create_ArrayIR() ,  //   out
+                          transposed_shoc_qw_sec     .create_ArrayIR() ,  //   out
+                          transposed_shoc_qwthl_sec  .create_ArrayIR() ,  //   out
+                          transposed_shoc_wthl_sec   .create_ArrayIR() ,  //   out
+                          transposed_shoc_wqw_sec    .create_ArrayIR() ,  //   out
+                          transposed_shoc_wtke_sec   .create_ArrayIR() ,  //   out
+                          transposed_shoc_uw_sec     .create_ArrayIR() ,  //   out
+                          transposed_shoc_vw_sec     .create_ArrayIR() ,  //   out
+                          transposed_shoc_w3         .create_ArrayIR() ,  //   out
+                          transposed_shoc_wqls_sec   .create_ArrayIR() ,  //   out
+                          transposed_shoc_brunt      .create_ArrayIR() ,  //   out
+                          transposed_shoc_ql2        .create_ArrayIR() ); //   out
 
       // Store transposed outputs (one kernel for efficiency)
       parallel_for( SimpleBounds<2>(nz+1,ncol) , YAKL_LAMBDA (int k, int i) {
