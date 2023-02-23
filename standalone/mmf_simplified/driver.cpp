@@ -12,6 +12,7 @@
 #include "output.h"
 #include "supercell_init.h"
 #include <iostream>
+#include "scream_cxx_interface_finalize.h"
 
 
 int main(int argc, char** argv) {
@@ -193,6 +194,8 @@ int main(int argc, char** argv) {
 
     yakl::timer_stop("main");
   }
+  pam::deallocate_scream_cxx_globals();
+  pam::call_kokkos_finalize();
   yakl::finalize();
   MPI_Finalize();
 }
