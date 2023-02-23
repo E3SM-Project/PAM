@@ -190,8 +190,10 @@ int main(int argc, char** argv) {
 
     yakl::timer_stop("main");
   }
-  pam::deallocate_scream_cxx_globals();
-  pam::call_kokkos_finalize();
+  #if defined(P3_CXX) || defined(SHOC_CXX)
+    pam::deallocate_scream_cxx_globals();
+    pam::call_kokkos_finalize();
+  #endif
   yakl::finalize();
   MPI_Finalize();
 }
