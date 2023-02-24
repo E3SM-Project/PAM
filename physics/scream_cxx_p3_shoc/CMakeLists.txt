@@ -48,12 +48,14 @@ EkatConfigFile(${SCREAM_HOME}/components/eamxx/src/scream_config.h.in
                ${SCREAM_HOME}/components/eamxx/src/scream_config.h
                ${SCREAM_HOME}/components/eamxx/src/scream_config.f)
 
-include_directories(${SCREAM_HOME}/components/eamxx/src/physics/shoc )
-include_directories(${SCREAM_HOME}/components/eamxx/src/physics/p3   )
-include_directories(${SCREAM_HOME}/components/eamxx/src/physics/share)
-include_directories(${SCREAM_HOME}/components/eamxx/src              )
-include_directories(${SCREAM_HOME}/share/timing                      )
-include_directories(${YAKL_HOME}/external                            )
+include_directories(${SCREAM_HOME}/components/eamxx/src/physics/shoc     )
+include_directories(${SCREAM_HOME}/components/eamxx/src/physics/shoc/impl)
+include_directories(${SCREAM_HOME}/components/eamxx/src/physics/p3       )
+include_directories(${SCREAM_HOME}/components/eamxx/src/physics/p3/impl  )
+include_directories(${SCREAM_HOME}/components/eamxx/src/physics/share    )
+include_directories(${SCREAM_HOME}/components/eamxx/src                  )
+include_directories(${SCREAM_HOME}/share/timing                          )
+include_directories(${YAKL_HOME}/external                                )
 
 add_definitions(-DSCREAM_CONFIG_IS_CMAKE)
 

@@ -13,12 +13,11 @@ set(YAKL_BIN  ${CMAKE_CURRENT_BINARY_DIR}/yakl)
 add_subdirectory(${YAKL_HOME} ${YAKL_BIN})
 include_directories(${YAKL_BIN})
 
-if (NOT ${PAM_SCREAM_USE_CXX})
-  set(YAML_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../externals/yaml-cpp ${CMAKE_CURRENT_BINARY_DIR}/yaml-cpp)
-endif()
+set(YAML_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../externals/yaml-cpp ${CMAKE_CURRENT_BINARY_DIR}/yaml-cpp)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../externals/eigen)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../externals/yaml-cpp/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../physics/scream_cxx_interfaces)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../pam_core pam_core)
