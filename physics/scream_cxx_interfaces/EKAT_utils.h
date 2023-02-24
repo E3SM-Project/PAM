@@ -40,7 +40,7 @@ namespace ScreamCXX {
       }
     #endif
     #ifdef KOKKOS_ENABLE_HIP
-      if ( std::is_same<MemorySpace,Kokkos::HIPSpace>::value ) {
+      if ( std::is_same<MemorySpace,Kokkos::Experimental::HIP>::value ) {
         if (! valid_on_device) die("View is only valid on the device, but ArrayIR not valid on the device");
       }
     #endif

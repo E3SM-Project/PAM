@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.8)
 project(scream_cxx_interfaces CXX Fortran C)
 
-set(MYSOURCES scream_cxx_interface_p3.cpp scream_cxx_interface_shoc.cpp)
+set(MYSOURCES scream_cxx_interface_p3.cpp
+              scream_cxx_interface_shoc.cpp)
+
 
 set(SCREAM_LIB_ONLY ON CACHE BOOL "" FORCE)
 set(CMAKE_MODULE_PATH ${SCREAM_HOME}/components/eamxx/cmake;${SCREAM_HOME}/externals/ekat/cmake)
@@ -18,7 +20,10 @@ if ("${YAKL_ARCH}" STREQUAL "CUDA")
   set(Kokkos_ENABLE_CUDA_LAMBDA    ON CACHE BOOL "" FORCE)
   set(Kokkos_ENABLE_CUDA           ON CACHE BOOL "" FORCE)
 elseif ("${YAKL_ARCH}" STREQUAL "HIP")
+  add_definitions(-DEAMXX_ENABLE_GPU)
   set(Kokkos_ENABLE_HIP     ON CACHE BOOL "" FORCE)
+  set($ENV{Kokkos_ARCH_HIP} ON CACHE BOOL "" FORCE)
+  set(CMAKE_CXX_STANDARD 14)
 endif()
 
 add_definitions(-DSCREAM_CIME_BUILD -DHAVE_MPI)
@@ -42,8 +47,6 @@ macro (EkatConfigFile CONFIG_FILE_IN CONFIG_FILE_C EKAT_CONFIGURE_FILE_F90_FILE)
   #                 ECHO_OUTPUT_VARIABLE ${TMP} )
 endmacro (EkatConfigFile)
 
-
-# include(EkatUtils)
 EkatConfigFile(${SCREAM_HOME}/components/eamxx/src/scream_config.h.in
                ${SCREAM_HOME}/components/eamxx/src/scream_config.h
                ${SCREAM_HOME}/components/eamxx/src/scream_config.f)
