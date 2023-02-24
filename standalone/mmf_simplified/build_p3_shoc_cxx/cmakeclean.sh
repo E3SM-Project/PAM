@@ -15,4 +15,5 @@ rm -rf physics_share
 rm -rf scream_share
 rm -rf shoc
 rm -rf spdlog.pc
+rm -rf libgptl.a
 

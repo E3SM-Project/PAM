@@ -8,13 +8,20 @@ set(CMAKE_MODULE_PATH ${SCREAM_HOME}/components/eamxx/cmake;${SCREAM_HOME}/exter
 set(SCREAM_CIME_BUILD ON)
 set(SCREAM_BASE_DIR ${SCREAM_HOME}/components/eamxx})
 set(EKAT_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/ekat)
-set(EKAT_DISABLE_TPL_WARNINGS ON)
-set(EKAT_ENABLE_TESTS OFF)
-set(Kokkos_ENABLE_SERIAL  ON CACHE BOOL "" FORCE)
+option(EKAT_DISABLE_TPL_WARNINGS "Whether we should suppress warnings when compiling TPLs." ON)
+option(EKAT_ENABLE_TESTS "Whether tests should be built." OFF)
 set(EKAT_CONFIGURE_FILE_F90_FILE ON)
-# set(Kokkos_ENABLE_CUDA    ON CACHE BOOL "" FORCE)
-# set(Kokkos_ENABLE_THREADS ON CACHE BOOL "" FORCE)
-# set(Kokkos_ENABLE_HIP     ON CACHE BOOL "" FORCE)
+set(Kokkos_ENABLE_SERIAL  ON CACHE BOOL "" FORCE)
+if ("${YAKL_ARCH}" STREQUAL "CUDA")
+  add_definitions(-DEAMXX_ENABLE_GPU)
+  set(Kokkos_ENABLE_CUDA_CONSTEXPR ON CACHE BOOL "" FORCE)
+  set(Kokkos_ENABLE_CUDA_LAMBDA    ON CACHE BOOL "" FORCE)
+  set(Kokkos_ENABLE_CUDA           ON CACHE BOOL "" FORCE)
+elseif ("${YAKL_ARCH}" STREQUAL "HIP")
+  set(Kokkos_ENABLE_HIP     ON CACHE BOOL "" FORCE)
+endif()
+
+add_definitions(-DSCREAM_CIME_BUILD -DHAVE_MPI)
 
 set(SCREAM_POSSIBLY_NO_PACK_SIZE   FALSE       CACHE BOOL "" FORCE)
 set(SCREAM_PACK_SIZE               1           CACHE BOOL "" FORCE)
@@ -55,6 +62,13 @@ add_subdirectory(scream_share                                      ${CMAKE_CURRE
 add_subdirectory(${SCREAM_HOME}/components/eamxx/src/physics/share ${CMAKE_CURRENT_BINARY_DIR}/physics_share)
 add_subdirectory(${SCREAM_HOME}/components/eamxx/src/physics/p3    ${CMAKE_CURRENT_BINARY_DIR}/p3           )
 add_subdirectory(${SCREAM_HOME}/components/eamxx/src/physics/shoc  ${CMAKE_CURRENT_BINARY_DIR}/shoc         )
+add_library(gptl  ${SCREAM_HOME}/externals/scorpio/src/gptl/GPTLget_memusage.c
+                  ${SCREAM_HOME}/externals/scorpio/src/gptl/GPTLprint_memusage.c
+                  ${SCREAM_HOME}/externals/scorpio/src/gptl/GPTLutil.c
+                  ${SCREAM_HOME}/externals/scorpio/src/gptl/f_wrappers.c
+                  ${SCREAM_HOME}/externals/scorpio/src/gptl/gptl.c
+                  ${SCREAM_HOME}/externals/scorpio/src/gptl/gptl_papi.c)
+
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
   set_target_properties(scream_share PROPERTIES COMPILE_FLAGS "-fpermissive -Wno-enum-compare")

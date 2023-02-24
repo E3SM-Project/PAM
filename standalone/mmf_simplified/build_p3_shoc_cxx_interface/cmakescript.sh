@@ -2,13 +2,13 @@
 
 ./cmakeclean.sh
 
-cmake      \
-  -DPAM_SCREAM_CXX_LINK_FLAGS="${PAM_SCREAM_CXX_LINK_FLAGS}"      \
+cmake    \
   -DPAM_SCREAM_CXX_FLAGS="${PAM_SCREAM_CXX_FLAGS}"                \
+  -DYAKL_ARCH="${YAKL_ARCH}"                                      \
   -DYAKL_HOME="${YAKL_HOME}"                                      \
   -DSCREAM_HOME="${SCREAM_HOME}"                                  \
   -DSCREAM_DOUBLE_PRECISION=ON                                    \
-  -DCMAKE_CUDA_HOST_COMPILER="mpic++"                             \
+  -DCMAKE_CUDA_HOST_COMPILER="`which mpic++`"                     \
   -DPAM_NLEV=${PAM_NLEV}                                          \
   ../../../physics/scream_cxx_interfaces
 
