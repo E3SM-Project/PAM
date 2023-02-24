@@ -2,7 +2,9 @@
 
 ./cmakeclean.sh
 
-# sed -i  's/GPTLpr_summary_file (comm.mpi_comm(),fname.c_str());/GPTLpr_summary_file ((int)comm.mpi_comm(),fname.c_str());/' ${SCREAM_HOME}/components/eamxx/src/share/util/scream_timing.cpp
+if [[ "${YAKL_ARCH}" == "HIP" ]]; then
+  sed -i 's/+bfb_erf/+ bfb_erf/' ${SCREAM_HOME}/components/eam/src/physics/cam/shoc.F90
+fi
 
 cmake      \
   -DYAKL_ARCH="${YAKL_ARCH}"                                      \
