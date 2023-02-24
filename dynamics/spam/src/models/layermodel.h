@@ -104,10 +104,10 @@ public:
     this->equations->varset.convert_dynamics_to_coupler_state(
         coupler, prog_vars, const_vars);
   }
-  void
-  convert_coupler_to_dynamics_state(PamCoupler &coupler,
-                                    FieldSet<nprognostic> &prog_vars,
-                                    const FieldSet<nconstant> &const_vars) {
+  void convert_coupler_to_dynamics_state(PamCoupler &coupler,
+                                         FieldSet<nprognostic> &prog_vars,
+                                         FieldSet<nauxiliary> &auxiliary_vars,
+                                         FieldSet<nconstant> &const_vars) {
     this->equations->varset.convert_coupler_to_dynamics_state(
         coupler, prog_vars, const_vars);
   }
