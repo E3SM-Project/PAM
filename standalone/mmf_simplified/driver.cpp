@@ -12,6 +12,7 @@
 #include "output.h"
 #include "supercell_init.h"
 #include <iostream>
+#include "scream_cxx_interface_finalize.h"
 
 
 int main(int argc, char** argv) {
@@ -77,6 +78,10 @@ int main(int argc, char** argv) {
     micro .init( coupler );
     sgs   .init( coupler );
     dycore.init( coupler );
+
+    if ( (micro.micro_name() == "p3" || sgs.sgs_name() == "shoc") && crm_nz != PAM_NLEV ) {
+      endrun("ERROR: Running with a different number of vertical levels than compiled for");
+    }
 
     // Compute a supercell initial column
     real1d rho_d_col("rho_d_col",crm_nz);
@@ -189,6 +194,10 @@ int main(int argc, char** argv) {
 
     yakl::timer_stop("main");
   }
+  #if defined(P3_CXX) || defined(SHOC_CXX)
+    pam::deallocate_scream_cxx_globals();
+    pam::call_kokkos_finalize();
+  #endif
   yakl::finalize();
   MPI_Finalize();
 }
