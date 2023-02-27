@@ -59,7 +59,7 @@ public:
   std::unique_ptr<TimeIntegrator>
   choose_time_integrator(const std::string &tstype) {
     if (tstype.substr(0, 5) == "ssprk") {
-      return std::make_unique<SSPKKTimeIntegrator>(tstype);
+      return std::make_unique<SSPRKTimeIntegrator>(tstype);
     } else if (tstype.substr(0, 4) == "lsrk") {
       return std::make_unique<LSRKTimeIntegrator>(tstype);
     } else if (tstype.substr(0, 2) == "si") {

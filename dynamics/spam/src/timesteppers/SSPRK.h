@@ -6,7 +6,7 @@
 #include "time_integrator.h"
 #include "topology.h"
 
-class SSPKKTimeIntegrator : public TimeIntegrator {
+class SSPRKTimeIntegrator : public TimeIntegrator {
 
 public:
   using TimeIntegrator::TimeIntegrator;
