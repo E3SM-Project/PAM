@@ -256,8 +256,9 @@ public:
                                  FieldSet<nprognostic> &x) = 0;
 
   virtual void compute_functional_derivatives(
-      ADD_MODE addmode, real fac, real dt, FieldSet<nconstant> &const_vars,
-      FieldSet<nprognostic> &x, FieldSet<nauxiliary> &auxiliary_vars) = 0;
+      real dt, FieldSet<nconstant> &const_vars, FieldSet<nprognostic> &x,
+      FieldSet<nauxiliary> &auxiliary_vars, real fac = 1,
+      ADD_MODE addmode = ADD_MODE::REPLACE) = 0;
 
   virtual void compute_functional_derivatives_two_point(
       real dt, FieldSet<nconstant> &const_vars, FieldSet<nprognostic> &x1,
@@ -286,8 +287,7 @@ public:
                            FieldSet<nauxiliary> &auxiliary_vars,
                            FieldSet<nprognostic> &xtend,
                            ADD_MODE addmode = ADD_MODE::REPLACE) {
-    compute_functional_derivatives(ADD_MODE::REPLACE, 1._fp, dt, const_vars, x,
-                                   auxiliary_vars);
+    compute_functional_derivatives(dt, const_vars, x, auxiliary_vars);
     apply_symplectic(dt, const_vars, x, auxiliary_vars, xtend, addmode);
     add_pressure_perturbation(dt, const_vars, x, auxiliary_vars, xtend);
   }

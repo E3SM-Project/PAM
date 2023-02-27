@@ -390,8 +390,9 @@ public:
   }
 
   void compute_functional_derivatives(
-      ADD_MODE addmode, real fac, real dt, FieldSet<nconstant> &const_vars,
-      FieldSet<nprognostic> &x, FieldSet<nauxiliary> &auxiliary_vars) override {
+      real dt, FieldSet<nconstant> &const_vars, FieldSet<nprognostic> &x,
+      FieldSet<nauxiliary> &auxiliary_vars, real fac = 1,
+      ADD_MODE addmode = ADD_MODE::REPLACE) override {
     const auto &dual_topology = dual_geometry.topology;
 
     compute_dens0(auxiliary_vars.fields_arr[DENS0VAR].data,

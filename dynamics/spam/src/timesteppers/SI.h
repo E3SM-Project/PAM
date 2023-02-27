@@ -107,16 +107,16 @@ public:
                         this->xn);
         this->xm.exchange();
         this->tendencies->compute_functional_derivatives(
-            ADD_MODE::REPLACE, this->quad_wts(0), dt, *this->const_vars,
-            this->xm, *this->auxiliary_vars);
+            dt, *this->const_vars, this->xm, *this->auxiliary_vars,
+            this->quad_wts(0), ADD_MODE::REPLACE);
 
         for (int m = 1; m < nquad; ++m) {
           this->xm.waxpby(1 - this->quad_pts(m), this->quad_pts(m), *this->x,
                           this->xn);
           this->xm.exchange();
           this->tendencies->compute_functional_derivatives(
-              ADD_MODE::ADD, this->quad_wts(m), dt, *this->const_vars, this->xm,
-              *this->auxiliary_vars);
+              dt, *this->const_vars, this->xm, *this->auxiliary_vars,
+              this->quad_wts(m), ADD_MODE::ADD);
         }
       } else {
         this->xn.exchange();
