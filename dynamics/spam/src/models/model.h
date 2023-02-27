@@ -268,7 +268,8 @@ public:
   virtual void apply_symplectic(real dt, FieldSet<nconstant> &const_vars,
                                 FieldSet<nprognostic> &x,
                                 FieldSet<nauxiliary> &auxiliary_vars,
-                                FieldSet<nprognostic> &xtend) = 0;
+                                FieldSet<nprognostic> &xtend,
+                                ADD_MODE addmode = ADD_MODE::REPLACE) = 0;
 
   virtual void project_to_anelastic(FieldSet<nconstant> &const_vars,
                                     FieldSet<nprognostic> &x,
@@ -283,10 +284,11 @@ public:
   virtual void compute_rhs(real dt, FieldSet<nconstant> &const_vars,
                            FieldSet<nprognostic> &x,
                            FieldSet<nauxiliary> &auxiliary_vars,
-                           FieldSet<nprognostic> &xtend) {
+                           FieldSet<nprognostic> &xtend,
+                           ADD_MODE addmode = ADD_MODE::REPLACE) {
     compute_functional_derivatives(ADD_MODE::REPLACE, 1._fp, dt, const_vars, x,
                                    auxiliary_vars);
-    apply_symplectic(dt, const_vars, x, auxiliary_vars, xtend);
+    apply_symplectic(dt, const_vars, x, auxiliary_vars, xtend, addmode);
     add_pressure_perturbation(dt, const_vars, x, auxiliary_vars, xtend);
   }
 
