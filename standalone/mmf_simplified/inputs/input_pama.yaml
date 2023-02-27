@@ -1,10 +1,10 @@
 ---
 # Simulation time in seconds
 # simTime  : 28800    # 8 hours
-# simTime  : 86400    # 1 day
+simTime  : 86400    # 1 day
 # simTime  : 432000   # 5 days
 # simTime  : 3600   # 30 min
-simTime : 7200
+# simTime : 7200
 
 # Number of cells to use in the CRMs
 crm_nx   : 65

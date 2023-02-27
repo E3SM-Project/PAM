@@ -6,7 +6,7 @@
 
 namespace modules {
 
-  inline void sponge_layer( pam::PamCoupler &coupler ) {
+  inline void sponge_layer( pam::PamCoupler &coupler , bool nudge_to_gcm = false ) {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
 
@@ -76,6 +76,23 @@ namespace modules {
       int k = nz - 1 - kloc;
       if (ifld != WFLD) yakl::atomicAdd( havg_fields(ifld,k,iens) , full_fields(ifld,k,j,i,iens) * r_nx_ny );
     });
+
+    if ( nudge_to_gcm ) {
+      auto rho_d_gcm = dm.get<real const,2> ( "gcm_density_dry" );
+      auto uvel_gcm  = dm.get<real const,2> ( "gcm_uvel"        );
+      auto vvel_gcm  = dm.get<real const,2> ( "gcm_vvel"        );
+      auto temp_gcm  = dm.get<real const,2> ( "gcm_temp"        );
+      auto rho_v_gcm = dm.get<real const,2> ( "gcm_water_vapor" );
+      int idWV = 0;
+      for (int tr=0; tr < num_tracers; tr++) { if (tracer_names[tr] == "water_vapor") idWV = tr; }
+      parallel_for( Bounds<3>(num_fields,nz,nens) , YAKL_LAMBDA (int ifld, int k, int iens) {
+        havg_fields(0     ,k,iens) = rho_d_gcm(k,iens);
+        havg_fields(1     ,k,iens) = uvel_gcm (k,iens);
+        havg_fields(2     ,k,iens) = vvel_gcm (k,iens);
+        havg_fields(4     ,k,iens) = temp_gcm (k,iens);
+        havg_fields(5+idWV,k,iens) = rho_v_gcm(k,iens);
+      });
+    }
 
     auto zint = dm.get<real const,2>("vertical_interface_height");
     auto zmid = dm.get<real const,2>("vertical_midpoint_height" );

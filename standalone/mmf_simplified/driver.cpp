@@ -141,7 +141,7 @@ int main(int argc, char** argv) {
 
     int1d seeds("seeds",nens);
     seeds = 0;
-    modules::perturb_temperature( coupler , seeds );
+    modules::perturb_temperature( coupler , seeds , 5. );
     
 #ifdef _SPAM
     dycore.pre_time_loop(coupler);
@@ -162,7 +162,7 @@ int main(int argc, char** argv) {
 
         coupler.run_module( "apply_gcm_forcing_tendencies" , modules::apply_gcm_forcing_tendencies                        );
         coupler.run_module( "dycore"                       , [&] (pam::PamCoupler &coupler) { dycore.timeStep(coupler); } );
-        coupler.run_module( "sponge_layer"                 , modules::sponge_layer                                        );
+        coupler.run_module( "sponge_layer"                 , [&] (pam::PamCoupler &coupler) { modules::sponge_layer(coupler,true); } );
         coupler.run_module( "sgs"                          , [&] (pam::PamCoupler &coupler) { sgs   .timeStep(coupler); } );
         coupler.run_module( "micro"                        , [&] (pam::PamCoupler &coupler) { micro .timeStep(coupler); } );
         
