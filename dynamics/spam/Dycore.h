@@ -218,7 +218,7 @@ public:
     debug_print("start time stepping loop", par.masterproc);
     for (uint nstep = 0; nstep < params.crm_per_phys; nstep++) {
       yakl::fence();
-      time_integrator->stepForward(params.dtcrm);
+      time_integrator->step_forward(params.dtcrm);
 
 #ifdef CHECK_ANELASTIC_CONSTRAINT
       real max_div = tendencies.compute_max_anelastic_constraint(

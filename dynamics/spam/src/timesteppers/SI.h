@@ -60,7 +60,7 @@ public:
     this->is_initialized = true;
   }
 
-  void stepForward(real dt) override {
+  void step_forward(real dt) override {
 
     this->tendencies->compute_rhs(dt, *this->const_vars, *this->x,
                                   *this->auxiliary_vars, this->dx);
