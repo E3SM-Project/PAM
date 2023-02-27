@@ -19,6 +19,7 @@
 #elif defined _ADVECTION && defined _EXTRUDED
 #include "extrudedadvection.h"
 #endif
+#include "LSRK.h"
 #include "RKSimple.h"
 #include "SI.h"
 #include "SSPRK.h"
@@ -59,6 +60,8 @@ public:
   choose_time_integrator(const std::string &tstype) {
     if (tstype.substr(0, 5) == "ssprk") {
       return std::make_unique<SSPKKTimeIntegrator>(tstype);
+    } else if (tstype.substr(0, 4) == "lsrk") {
+      return std::make_unique<LSRKTimeIntegrator>(tstype);
     } else if (tstype.substr(0, 2) == "si") {
       return std::make_unique<SITimeIntegrator<si_quad_pts>>(tstype);
     } else if (tstype.substr(0, 4) == "kgrk") {
