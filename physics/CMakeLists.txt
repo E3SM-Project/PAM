@@ -8,8 +8,10 @@ if ("${PAM_MICRO}" STREQUAL "p3" OR "${PAM_SGS}" STREQUAL "shoc")
 endif()
 
 if (${USE_SCREAM})
-  add_subdirectory(scream_common ./scream_common)
-  include_directories(${CMAKE_CURRENT_BINARY_DIR}/scream_common)
+  if (NOT ${PAM_SCREAM_USE_CXX})
+    add_subdirectory(scream_common ./scream_common)
+    include_directories(${CMAKE_CURRENT_BINARY_DIR}/scream_common)
+  endif()
 endif()
 
 #Choose microphysics

@@ -2,6 +2,7 @@
 
 #include "Microphysics.h"
 #include "SGS.h"
+#include "params.h"
 
 uint constexpr ntracers_dycore = 0;
 uint constexpr ntracers_active =
@@ -18,7 +19,9 @@ uint constexpr ntracers_active =
 #endif
 
 // for debugging anelastic
-constexpr bool check_anelastic_constraint = false;
+#if defined _AN || defined _MAN
+#define CHECK_ANELASTIC_CONSTRAINT
+#endif
 
 // Number of Dimensions
 uint constexpr ndims = 1;

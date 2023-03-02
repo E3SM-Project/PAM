@@ -7,7 +7,7 @@
 namespace modules {
 
   // It is best if id is globally unique for each batch of CRMs
-  inline void perturb_temperature( pam::PamCoupler &coupler , intConst1d id ) {
+  inline void perturb_temperature( pam::PamCoupler &coupler , intConst1d id , real magnitude = 1. ) {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
 
@@ -19,7 +19,6 @@ namespace modules {
     if (id.size() != nens) endrun("ERROR: size of id array must be the same as nens");
 
     int  num_levels = nz/4;
-    real magnitude = 1.;
 
     // ny*nx*nens can all be globbed together for this routine
     auto &dm = coupler.get_data_manager_device_readwrite();

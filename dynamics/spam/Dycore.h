@@ -63,17 +63,28 @@ public:
   uint prevstep = 0;
 
   void init(PamCoupler &coupler) {
-
     serial_print("setting up dycore", par.masterproc);
 
     // Set parameters
-
     debug_print(
         "reading parameters and partitioning domain/setting domain sizes",
         par.masterproc);
-    std::string inFile =
-        coupler.get_option<std::string>("standalone_input_file");
-    readModelParamsFile(inFile, params, par, coupler, testcase);
+
+    if (coupler.option_exists("standalone_input_file")) {
+      std::string inFile =
+          coupler.get_option<std::string>("standalone_input_file");
+      read_model_params_file(inFile, params, par, coupler, testcase);
+    } else {
+      read_model_params_coupler(params, par, coupler, testcase);
+    }
+
+    finalize_parallel(params, par);
+
+    check_and_print_model_parameters(params, par);
+
+    testcase->set_tracers(params);
+    testcase->set_domain(params);
+
     debug_print("read parameters and partitioned domain/setting domain sizes",
                 par.masterproc);
 
@@ -129,7 +140,9 @@ public:
     io.initialize(params.outputName, primal_topology, dual_topology, par,
                   prognostic_vars, constant_vars, diagnostics, stats);
     debug_print("finish io init", par.masterproc);
+  };
 
+  void pre_time_loop(PamCoupler &coupler) {
     // // Set the reference state and initialize the tendencies
     debug_print("start tendencies init", par.masterproc);
     // the reference state has to be set before the tendencies are initialized
@@ -149,7 +162,6 @@ public:
 
     tendencies.compute_constants(constant_vars, prognostic_vars);
     constant_vars.exchange();
-    stats.compute(prognostic_vars, constant_vars, 0);
     debug_print("end ic setting", par.masterproc);
 
     // // Initialize the time stepper
@@ -170,6 +182,7 @@ public:
                                                  constant_vars);
 
     // Output the initial model state
+#ifndef _NOIO
     debug_print("start initial io", par.masterproc);
     for (auto &diag : diagnostics) {
       diag->compute(0, constant_vars, prognostic_vars);
@@ -178,31 +191,39 @@ public:
     io.outputInit(etime);
     io.outputStats(stats);
     debug_print("end initial io", par.masterproc);
-
+#endif
     prevstep = 1;
-  };
+  }
 
   // Given the model data and CFL value, compute the maximum stable time step
   real compute_time_step(PamCoupler const &coupler, real cfl_in = -1) {
     return 0._fp;
   };
 
-  void timeStep(PamCoupler &coupler, real dtphys) {
+  void timeStep(PamCoupler &coupler) {
 
     serial_print("taking a dycore dtphys step", par.masterproc);
 
     // convert Coupler state to dynamics state
     tendencies.convert_coupler_to_dynamics_state(coupler, prognostic_vars,
-                                                 constant_vars);
+                                                 auxiliary_vars, constant_vars);
 
     // Time stepping loop
     debug_print("start time stepping loop", par.masterproc);
     for (uint nstep = 0; nstep < params.crm_per_phys; nstep++) {
       yakl::fence();
       tint.stepForward(params.dtcrm);
+
+#ifdef CHECK_ANELASTIC_CONSTRAINT
+      real max_div = tendencies.compute_max_anelastic_constraint(
+          prognostic_vars, auxiliary_vars);
+      std::cout << "Anelastic constraint: " << max_div << std::endl;
+#endif
+
       yakl::fence();
 
       etime += params.dtcrm;
+#ifndef _NOIO
       if ((nstep + prevstep) % params.Nout == 0) {
         serial_print("dycore step " + std::to_string((nstep + prevstep)) +
                          " time " + std::to_string(etime),
@@ -218,6 +239,7 @@ public:
         stats.compute(prognostic_vars, constant_vars,
                       (nstep + prevstep) / params.Nstat);
       }
+#endif
     }
     prevstep += params.crm_per_phys;
 
