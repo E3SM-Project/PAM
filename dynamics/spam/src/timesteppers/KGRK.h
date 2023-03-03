@@ -9,7 +9,7 @@
 
 #define NSTAGESMAX 10
 
-class RKSimpleTimeIntegrator : public TimeIntegrator {
+class KGRKTimeIntegrator : public TimeIntegrator {
 
 public:
   using TimeIntegrator::TimeIntegrator;
@@ -59,7 +59,7 @@ public:
   }
 };
 
-void RKSimpleTimeIntegrator::set_stage_coefficients(ModelParameters &params) {
+void KGRKTimeIntegrator::set_stage_coefficients(ModelParameters &params) {
   if (params.tstype == "kgrk2") {
     this->nstages = 2;
     this->stage_coeffs(0) = 1. / 2.;

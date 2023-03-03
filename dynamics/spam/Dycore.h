@@ -19,8 +19,8 @@
 #elif defined _ADVECTION && defined _EXTRUDED
 #include "extrudedadvection.h"
 #endif
+#include "KGRK.h"
 #include "LSRK.h"
-#include "RKSimple.h"
 #include "SI.h"
 #include "SSPRK.h"
 #include "time_integrator.h"
@@ -65,7 +65,7 @@ public:
     } else if (tstype.substr(0, 2) == "si") {
       return std::make_unique<SITimeIntegrator<si_quad_pts>>(tstype);
     } else if (tstype.substr(0, 4) == "kgrk") {
-      return std::make_unique<RKSimpleTimeIntegrator>(tstype);
+      return std::make_unique<KGRKTimeIntegrator>(tstype);
     } else {
       throw std::runtime_error("unknown time integrator type");
     }
