@@ -11,13 +11,11 @@ class SSPRKTimeIntegrator : public TimeIntegrator {
 public:
   using TimeIntegrator::TimeIntegrator;
 
-  FieldSet<nprognostic> F1;
-  FieldSet<nprognostic> x1;
-  FieldSet<nprognostic> F2;
-  FieldSet<nprognostic> x2;
-  FieldSet<nprognostic> x3;
-  FieldSet<nprognostic> F3;
+  int nstages;
+
   FieldSet<nprognostic> *x;
+  FieldSet<nprognostic> F;
+  std::vector<FieldSet<nprognostic>> xstage;
   Tendencies *tendencies;
   FieldSet<nconstant> *const_vars;
   FieldSet<nauxiliary> *auxiliary_vars;
@@ -26,14 +24,21 @@ public:
                   LinearSystem &linsys, FieldSet<nprognostic> &xvars,
                   FieldSet<nconstant> &consts,
                   FieldSet<nauxiliary> &auxiliarys) override {
-    this->x1.initialize(xvars, "x1");
-    this->F1.initialize(xvars, "F1");
-    this->x2.initialize(xvars, "x2");
-    this->F2.initialize(xvars, "F2");
-    if (tstype == "ssprk3") {
-      this->x3.initialize(xvars, "x3");
-      this->F3.initialize(xvars, "F3");
+
+    if (tstype == "ssprk2") {
+      this->nstages = 2;
+    } else if (tstype == "ssprk3") {
+      this->nstages = 3;
+    } else if (tstype == "ssprk34") {
+      this->nstages = 4;
     }
+    this->xstage.resize(nstages);
+
+    for (int stage = 0; stage < nstages; ++stage) {
+      this->xstage[stage].initialize(xvars, "x" + std::to_string(stage));
+    }
+    this->F.initialize(xvars, "F");
+
     this->x = &xvars;
     this->tendencies = &tend;
     this->const_vars = &consts;
@@ -44,26 +49,63 @@ public:
 
   void step_forward(real dt) override {
 
-    this->tendencies->compute_rhs(dt, *this->const_vars, *this->x,
-                                  *this->auxiliary_vars, this->F1);
-    this->x1.waxpy(-1. * dt, this->F1, *this->x);
-    this->x1.exchange();
-    this->tendencies->compute_rhs(dt, *this->const_vars, this->x1,
-                                  *this->auxiliary_vars, this->F2);
-
     if (tstype == "ssprk2") {
-      this->x2.waxpbypcz(0.5, 0.5, -0.5 * dt, *this->x, this->x1, this->F2);
-      this->x->copy(this->x2);
+      this->tendencies->compute_rhs(dt, *this->const_vars, *this->x,
+                                    *this->auxiliary_vars, this->F);
+      this->xstage[0].waxpy(-1. * dt, this->F, *this->x);
+      this->xstage[0].exchange();
+
+      this->tendencies->compute_rhs(dt, *this->const_vars, this->xstage[0],
+                                    *this->auxiliary_vars, this->F);
+
+      this->xstage[1].waxpbypcz(0.5, 0.5, -0.5 * dt, *this->x, this->xstage[0],
+                                this->F);
+      this->x->copy(this->xstage[1]);
     }
 
     if (tstype == "ssprk3") {
-      this->x2.waxpbypcz(0.75, 0.25, -0.25 * dt, *this->x, this->x1, this->F2);
-      this->x2.exchange();
-      this->tendencies->compute_rhs(dt, *this->const_vars, this->x2,
-                                    *this->auxiliary_vars, this->F3);
-      this->x3.waxpbypcz(1. / 3., 2. / 3., -2. / 3. * dt, *this->x, this->x2,
-                         this->F3);
-      this->x->copy(this->x3);
+      this->tendencies->compute_rhs(dt, *this->const_vars, *this->x,
+                                    *this->auxiliary_vars, this->F);
+      this->xstage[0].waxpy(-1. * dt, this->F, *this->x);
+      this->xstage[0].exchange();
+
+      this->tendencies->compute_rhs(dt, *this->const_vars, this->xstage[0],
+                                    *this->auxiliary_vars, this->F);
+
+      this->xstage[1].waxpbypcz(0.75, 0.25, -0.25 * dt, *this->x,
+                                this->xstage[0], this->F);
+      this->xstage[1].exchange();
+      this->tendencies->compute_rhs(dt, *this->const_vars, this->xstage[1],
+                                    *this->auxiliary_vars, this->F);
+      this->xstage[2].waxpbypcz(1. / 3., 2. / 3., -2. / 3. * dt, *this->x,
+                                this->xstage[1], this->F);
+      this->x->copy(this->xstage[2]);
+    }
+
+    if (tstype == "ssprk34") {
+      this->tendencies->compute_rhs(dt, *this->const_vars, *this->x,
+                                    *this->auxiliary_vars, this->F);
+
+      this->xstage[0].waxpy(1. / 2. * dt, this->F, *this->x);
+      this->xstage[0].exchange();
+      this->tendencies->compute_rhs(dt, *this->const_vars, this->xstage[0],
+                                    *this->auxiliary_vars, this->F);
+
+      this->xstage[1].waxpy(-1. / 2. * dt, this->F, this->xstage[0]);
+      this->xstage[1].exchange();
+      this->tendencies->compute_rhs(dt, *this->const_vars, this->xstage[1],
+                                    *this->auxiliary_vars, this->F);
+
+      this->xstage[2].waxpbypcz(2. / 3., 1. / 3., -1. / 6. * dt, *this->x,
+                                this->xstage[1], this->F);
+      this->xstage[2].exchange();
+      this->tendencies->compute_rhs(dt, *this->const_vars, this->xstage[2],
+                                    *this->auxiliary_vars, this->F);
+
+      this->xstage[3].waxpy(-1. / 2. * dt, this->F, this->xstage[2]);
+      this->xstage[3].exchange();
+
+      this->x->copy(this->xstage[3]);
     }
 
     this->x->exchange();
