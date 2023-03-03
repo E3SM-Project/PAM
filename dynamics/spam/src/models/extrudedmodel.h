@@ -1877,7 +1877,7 @@ public:
                 auxiliary_vars.fields_arr[VERTEDGEFLUXVAR].data,
                 auxiliary_vars.fields_arr[DENSVERTRECONVAR].data,
                 auxiliary_vars.fields_arr[FWVAR].data, dens_pos, dis, djs, dks,
-                i, j, k, n);
+                i, j, k + 1, n);
           }
         });
     auxiliary_vars.exchange({EDGEFLUXVAR, VERTEDGEFLUXVAR});
