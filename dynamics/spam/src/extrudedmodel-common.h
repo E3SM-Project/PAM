@@ -5,9 +5,6 @@
 #include "params.h"
 
 uint constexpr ntracers_dycore = 0;
-uint constexpr ntracers_active =
-    0; // applies only for swe/tswe, determines how many of the tracers are
-       // dynamically active
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -25,73 +22,6 @@ uint constexpr ntracers_active =
 
 // Number of Dimensions
 uint constexpr ndims = 1;
-
-// Set dens sizes
-// uint constexpr ntracers = ntracers_dycore + ntracers_physics;
-// Tracers are stored as dycore_tracers, physics_tracers
-// Dycore tracers never add mass
-
-#ifdef _SWE
-uint constexpr ndensity_dycore = 1;
-uint constexpr ntracers_physics = 0;
-#elif _TSWE
-uint constexpr ndensity_dycore = 2;
-uint constexpr ntracers_physics = 0;
-#elif defined _CE || defined _CEp
-uint constexpr ndensity_dycore = 2;
-uint constexpr ntracers_physics = 0;
-#elif _AN
-uint constexpr ndensity_dycore = 1;
-uint constexpr ntracers_physics = 0;
-// Here we have assumed that the micro has at least defined the 3 key tracers:
-// mass of (cloud) vapor/liquid/ice (the last might be zero, depending on the
-// microphysics)
-#elif _MAN
-uint constexpr ndensity_dycore = 1;
-uint constexpr ntracers_physics =
-    Microphysics::get_num_tracers() + SGS::get_num_tracers();
-// the number of moist variables that PAM thermodynamic formulae assume
-// (qd, qv, qc, qi)
-uint constexpr nmoist = 4;
-#elif defined _MCErho || defined _MCErhop || defined _MCErhod ||               \
-    defined _MCErhodp
-uint constexpr ndensity_dycore = 2;
-uint constexpr ntracers_physics =
-    Microphysics::get_num_tracers() + SGS::get_num_tracers();
-// the number of moist variables that PAM thermodynamic formulae assume
-// (qd, qv, qc, qi)
-uint constexpr nmoist = 4;
-#endif
-// ADD ANELASTIC + MOIST ANELASTIC
-
-uint constexpr ndensity_nophysics = ndensity_dycore + ntracers_dycore;
-uint constexpr ndensity = ndensity_dycore + ntracers_dycore + ntracers_physics;
-
-#if defined _AN || defined _MAN
-uint constexpr MASSDENSINDX = ndensity;
-uint constexpr ENTROPICDENSINDX = 0;
-#else
-uint constexpr MASSDENSINDX = 0;
-uint constexpr ENTROPICDENSINDX = 1;
-#endif
-
-#if defined _MCErho && defined _CONST_KAPPA_VIRPOTTEMP
-bool constexpr tracers_decouple_from_dynamics = true;
-uint constexpr ndensity_B = ndensity_dycore;
-uint constexpr ndensity_refstate = ndensity;
-#elif _AN
-bool constexpr tracers_decouple_from_dynamics = false;
-uint constexpr ndensity_B = ndensity + 1;
-uint constexpr ndensity_refstate = ndensity_B;
-#elif _MAN
-bool constexpr tracers_decouple_from_dynamics = false;
-uint constexpr ndensity_B = ndensity_dycore + 1 + ntracers_physics;
-uint constexpr ndensity_refstate = ndensity_B;
-#else
-bool constexpr tracers_decouple_from_dynamics = false;
-uint constexpr ndensity_B = ndensity;
-uint constexpr ndensity_refstate = ndensity;
-#endif
 
 // Number of variables
 // v, w, dens, densfct

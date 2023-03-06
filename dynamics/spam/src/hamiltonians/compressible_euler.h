@@ -59,7 +59,7 @@ public:
                                this->dual_geometry, is, js, ks, i, j, k, n);
 #endif
 
-    return dens(0, k + ks, j + js, i + is, n) * geop0(0);
+    return dens(varset.dens_id_mass, k + ks, j + js, i + is, n) * geop0(0);
   }
 
   real YAKL_INLINE compute_IE(const real5d &dens, int is, int js, int ks, int i,
@@ -74,7 +74,7 @@ public:
 
     real alpha = varset.get_alpha(dens, k, j, i, ks, js, is, n);
     real entropic_var = varset.get_entropic_var(dens, k, j, i, ks, js, is, n);
-    return dens(0, k + ks, j + js, i + is, n) *
+    return dens(varset.dens_id_mass, k + ks, j + js, i + is, n) *
            thermo.compute_U(alpha, entropic_var, 0._fp, 0._fp, 0._fp, 0._fp);
   }
 
@@ -117,13 +117,15 @@ public:
         thermo.compute_dUdentropic_var(alpha, entropic_var, 0, 0, 0, 0);
 
     if (addmode == ADD_MODE::REPLACE) {
-      B(0, k + ks, j + js, i + is, n) =
+      B(varset.active_id_mass, k + ks, j + js, i + is, n) =
           fac * (geop0(0) + U + p * alpha - entropic_var * generalized_Exner);
-      B(1, k + ks, j + js, i + is, n) = fac * generalized_Exner;
+      B(varset.active_id_entr, k + ks, j + js, i + is, n) =
+          fac * generalized_Exner;
     } else if (addmode == ADD_MODE::ADD) {
-      B(0, k + ks, j + js, i + is, n) +=
+      B(varset.active_id_mass, k + ks, j + js, i + is, n) +=
           fac * (geop0(0) + U + p * alpha - entropic_var * generalized_Exner);
-      B(1, k + ks, j + js, i + is, n) += fac * generalized_Exner;
+      B(varset.active_id_entr, k + ks, j + js, i + is, n) +=
+          fac * generalized_Exner;
     }
   }
 
@@ -165,20 +167,22 @@ public:
     real pr = thermo.cst.pr;
     real gamma_d = thermo.cst.gamma_d;
 
-    real Tht1 = dens1(1, k + ks, j + js, i + is, n) /
+    real Tht1 = dens1(varset.dens_id_entr, k + ks, j + js, i + is, n) /
                 dual_geometry.get_area_11entity(k + ks, j + js, i + is, n);
-    real Tht2 = dens2(1, k + ks, j + js, i + is, n) /
+    real Tht2 = dens2(varset.dens_id_entr, k + ks, j + js, i + is, n) /
                 dual_geometry.get_area_11entity(k + ks, j + js, i + is, n);
 
     real generalized_Exner =
         Cpd * std::pow(Rd / pr, gamma_d - 1) * gamma_avg(Tht1, Tht2, gamma_d);
 
     if (addmode == ADD_MODE::REPLACE) {
-      B(0, k + ks, j + js, i + is, n) = fac * geop0(0);
-      B(1, k + ks, j + js, i + is, n) = fac * generalized_Exner;
+      B(varset.dens_id_mass, k + ks, j + js, i + is, n) = fac * geop0(0);
+      B(varset.dens_id_entr, k + ks, j + js, i + is, n) =
+          fac * generalized_Exner;
     } else if (addmode == ADD_MODE::ADD) {
-      B(0, k + ks, j + js, i + is, n) += fac * geop0(0);
-      B(1, k + ks, j + js, i + is, n) += fac * generalized_Exner;
+      B(varset.dens_id_mass, k + ks, j + js, i + is, n) += fac * geop0(0);
+      B(varset.dens_id_entr, k + ks, j + js, i + is, n) +=
+          fac * generalized_Exner;
     }
   }
 
@@ -201,13 +205,13 @@ public:
         thermo.compute_dUdentropic_var(alpha, entropic_var, 0, 0, 0, 0);
 
     if (addmode == ADD_MODE::REPLACE) {
-      B(0, k + ks, n) =
+      B(varset.active_id_mass, k + ks, n) =
           fac * (geop0(0) + U + p * alpha - entropic_var * generalized_Exner);
-      B(1, k + ks, n) = fac * generalized_Exner;
+      B(varset.active_id_entr, k + ks, n) = fac * generalized_Exner;
     } else if (addmode == ADD_MODE::ADD) {
-      B(0, k + ks, n) +=
+      B(varset.active_id_mass, k + ks, n) +=
           fac * (geop0(0) + U + p * alpha - entropic_var * generalized_Exner);
-      B(1, k + ks, n) += fac * generalized_Exner;
+      B(varset.active_id_entr, k + ks, n) += fac * generalized_Exner;
     }
   }
 };
@@ -227,6 +231,8 @@ public:
   ThermoPotential thermo;
   VariableSet varset;
   real g;
+
+  using VS = VariableSet;
 
   Hamiltonian_MCE_Hs() { this->is_initialized = false; }
 
@@ -257,7 +263,7 @@ public:
                                this->dual_geometry, is, js, ks, i, j, k, n);
 #endif
 
-    return dens(0, k + ks, j + js, i + is, n) * geop0(0);
+    return dens(varset.dens_id_mass, k + ks, j + js, i + is, n) * geop0(0);
   }
 
   real YAKL_INLINE compute_IE(const real5d &dens, int is, int js, int ks, int i,
@@ -325,29 +331,32 @@ public:
     real pr = thermo.cst.pr;
     real gamma_d = thermo.cst.gamma_d;
 
-    real Tht1 = dens1(1, k + ks, j + js, i + is, n) /
+    real Tht1 = dens1(varset.dens_id_entr, k + ks, j + js, i + is, n) /
                 dual_geometry.get_area_11entity(k + ks, j + js, i + is, n);
-    real Tht2 = dens2(1, k + ks, j + js, i + is, n) /
+    real Tht2 = dens2(varset.dens_id_entr, k + ks, j + js, i + is, n) /
                 dual_geometry.get_area_11entity(k + ks, j + js, i + is, n);
 
     real generalized_Exner =
         Cpd * std::pow(Rd / pr, gamma_d - 1) * gamma_avg(Tht1, Tht2, gamma_d);
 
     if (addmode == ADD_MODE::REPLACE) {
-      B(0, k + ks, j + js, i + is, n) = fac * geop0(0);
-      B(1, k + ks, j + js, i + is, n) = fac * generalized_Exner;
+      B(varset.active_id_mass, k + ks, j + js, i + is, n) = fac * geop0(0);
+      B(varset.active_id_entr, k + ks, j + js, i + is, n) =
+          fac * generalized_Exner;
     } else if (addmode == ADD_MODE::ADD) {
-      B(0, k + ks, j + js, i + is, n) += fac * geop0(0);
-      B(1, k + ks, j + js, i + is, n) += fac * generalized_Exner;
+      B(varset.active_id_mass, k + ks, j + js, i + is, n) += fac * geop0(0);
+      B(varset.active_id_entr, k + ks, j + js, i + is, n) +=
+          fac * generalized_Exner;
     }
 
     // assumes that tracers_decouple_from_dynamics == true !
     // TODO: how to statically assert this ?
   }
 
-  void YAKL_INLINE compute_dHsdx(
-      SArray<real, 1, ndensity_B> &B,
-      const SArray<real, 1, ndensity_dycore + nmoist> &q, real geop) const {
+  void YAKL_INLINE
+  compute_dHsdx(SArray<real, 1, VS::ndensity_active> &B,
+                const SArray<real, 1, VS::ndensity_dycore + VS::nmoist> &q,
+                real geop) const {
     const real alpha = q(0);
     const real entropic_var = q(1);
     const real qd = q(2);
@@ -368,24 +377,25 @@ public:
     real generalized_chemical_potential_i =
         thermo.compute_dUdqi(alpha, entropic_var, qd, qv, ql, qi);
 
-    B(0) = geop + U + p * alpha - entropic_var * generalized_Exner +
-           qv * (generalized_chemical_potential_d -
-                 generalized_chemical_potential_v) +
-           ql * (generalized_chemical_potential_d -
-                 generalized_chemical_potential_l) +
-           qi * (generalized_chemical_potential_d -
-                 generalized_chemical_potential_i);
-    B(1) = generalized_Exner;
+    B(varset.active_id_mass) = geop + U + p * alpha -
+                               entropic_var * generalized_Exner +
+                               qv * (generalized_chemical_potential_d -
+                                     generalized_chemical_potential_v) +
+                               ql * (generalized_chemical_potential_d -
+                                     generalized_chemical_potential_l) +
+                               qi * (generalized_chemical_potential_d -
+                                     generalized_chemical_potential_i);
+    B(varset.active_id_entr) = generalized_Exner;
 
-    if (!tracers_decouple_from_dynamics) {
-      B(varset.dm_id_vap + ndensity_nophysics) =
+    if (!ThermoPotential::tracers_decouple_from_dynamics) {
+      B(varset.active_id_vap) =
           generalized_chemical_potential_v - generalized_chemical_potential_d;
       if (varset.liquid_found) {
-        B(varset.dm_id_liq + ndensity_nophysics) =
+        B(varset.active_id_liq) =
             generalized_chemical_potential_l - generalized_chemical_potential_d;
       }
       if (varset.ice_found) {
-        B(varset.dm_id_ice + ndensity_nophysics) =
+        B(varset.active_id_ice) =
             generalized_chemical_potential_i - generalized_chemical_potential_d;
       }
     }
@@ -408,8 +418,8 @@ public:
                                this->dual_geometry, is, js, ks, i, j, k, n);
 #endif
 
-    SArray<real, 1, ndensity_B> l_B;
-    SArray<real, 1, ndensity_dycore + nmoist> l_q;
+    SArray<real, 1, VS::ndensity_active> l_B;
+    SArray<real, 1, VS::ndensity_dycore + VS::nmoist> l_q;
 
     l_q(0) = varset.get_alpha(dens, k, j, i, ks, js, is, n);
     l_q(1) = varset.get_entropic_var(dens, k, j, i, ks, js, is, n);
@@ -422,7 +432,7 @@ public:
 
     compute_dHsdx(l_B, l_q, geop0(0));
 
-    for (int d = 0; d < ndensity_B; ++d) {
+    for (int d = 0; d < VS::ndensity_active; ++d) {
       if (addmode == ADD_MODE::REPLACE) {
         B(d, k + ks, j + js, i + is, n) = fac * l_B(d);
       } else if (addmode == ADD_MODE::ADD) {
@@ -441,8 +451,8 @@ public:
     compute_H2bar_ext<1, vert_diff_ord>(geop0, geop, this->primal_geometry,
                                         this->dual_geometry, ks, k, n);
 
-    SArray<real, 1, ndensity_B> l_B;
-    SArray<real, 1, ndensity_dycore + nmoist> l_q;
+    SArray<real, 1, VS::ndensity_active> l_B;
+    SArray<real, 1, VS::ndensity_dycore + VS::nmoist> l_q;
 
     l_q(0) = varset.get_alpha(dens, k, ks, n);
     l_q(1) = varset.get_entropic_var(dens, k, ks, n);
@@ -453,7 +463,7 @@ public:
 
     compute_dHsdx(l_B, l_q, geop0(0));
 
-    for (int d = 0; d < ndensity_B; ++d) {
+    for (int d = 0; d < VS::ndensity_active; ++d) {
       if (addmode == ADD_MODE::REPLACE) {
         B(d, k + ks, n) = fac * l_B(d);
       } else if (addmode == ADD_MODE::ADD) {

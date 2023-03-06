@@ -244,7 +244,7 @@ public:
     SArray<real, 1, 1> K0;
     compute_H2bar<1, diff_ord>(K0, K, this->primal_geometry,
                                this->dual_geometry, is, js, ks, i, j, k, n);
-    B(0, k + ks, j + js, i + is, n) += fac * K0(0);
+    B(varset.active_id_mass, k + ks, j + js, i + is, n) += fac * K0(0);
   }
 };
 
@@ -739,10 +739,10 @@ public:
                                                   this->dual_geometry, is, js,
                                                   ks, i, j, k, n);
     if (addmode == ADD_MODE::REPLACE) {
-      B(MASSDENSINDX, k + ks, j + js, i + is, n) = fac * K0(0);
+      B(varset.active_id_mass, k + ks, j + js, i + is, n) = fac * K0(0);
     }
     if (addmode == ADD_MODE::ADD) {
-      B(MASSDENSINDX, k + ks, j + js, i + is, n) += fac * K0(0);
+      B(varset.active_id_mass, k + ks, j + js, i + is, n) += fac * K0(0);
     }
   }
 };
