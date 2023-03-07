@@ -36,6 +36,7 @@ public:
                   ExchangeSet<num_fields> &exchange_set);
   void initialize(const FieldSet<num_fields> &vs, const std::string name);
   void copy(const FieldSet<num_fields> &vs);
+  void wscal(real alpha, const FieldSet<num_fields> &x);
   void waxpy(real alpha, const FieldSet<num_fields> &x,
              const FieldSet<num_fields> &y);
   void waxpby(real alpha, real beta, const FieldSet<num_fields> &x,
@@ -128,6 +129,14 @@ template <uint num_fields>
 void FieldSet<num_fields>::copy(const FieldSet<num_fields> &vs) {
   for (int i = 0; i < num_fields; i++) {
     this->fields_arr[i].copy(vs.fields_arr[i]);
+  }
+}
+
+// Computes w (self) = alpha x
+template <uint num_fields>
+void FieldSet<num_fields>::wscal(real alpha, const FieldSet<num_fields> &x) {
+  for (int i = 0; i < num_fields; i++) {
+    this->fields_arr[i].wscal(alpha, x.fields_arr[i]);
   }
 }
 

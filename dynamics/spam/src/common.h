@@ -100,9 +100,6 @@ uint constexpr maxhalosize =
 uint constexpr mirroringhalo =
     std::max({(max_vert_reconstruction_order - 1) / 2, vert_diff_ord / 2});
 
-// 0 = RKSimple, 1=SSPRK, 2=SI
-#define _TIME_TYPE 1
-
 int constexpr si_monitor_convergence = 2;
 // 0 = do not monitor (does si_max_iters iterations)
 // 1 = computes initial and final residual but still does si_max_iter iterations
@@ -127,9 +124,6 @@ uint constexpr si_quad_pts = 4;
 
 real constexpr pi =
     3.141592653589793238462643383279502884197169399375105820974944_fp;
-
-// SI time stepper is not SSP so we need this for now
-bool constexpr remove_negative_densities = (_TIME_TYPE == 2);
 
 //#define PNETCDF_PUT_VAR ncmpi_put_vara_double
 //#define PNETCDF_PUT_VAR_ALL ncmpi_put_vara_double_all

@@ -344,6 +344,7 @@ public:
         });
   }
 
+  template <ADD_MODE addmode = ADD_MODE::REPLACE>
   void compute_tendencies(real5d denstendvar, real5d Vtendvar,
                           const real5d densreconvar, const real5d Qreconvar,
                           const real5d Coriolisreconvar, const real5d Bvar,
@@ -364,8 +365,8 @@ public:
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wD0<ndensity>(Vtendvar, densreconvar, Bvar, pis, pjs, pks, i,
-                                j, k, n);
+          compute_wD0<ndensity, addmode>(Vtendvar, densreconvar, Bvar, pis, pjs,
+                                         pks, i, j, k, n);
           if (qf_choice == QF_MODE::EC) {
             compute_Q_EC<1, ADD_MODE::ADD>(Vtendvar, Qreconvar, Fvar, pis, pjs,
                                            pks, i, j, k, n);
@@ -383,14 +384,15 @@ public:
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wD1bar<ndensity>(denstendvar, densreconvar, Fvar, dis, djs,
-                                   dks, i, j, k, n);
+          compute_wD1bar<ndensity, addmode>(denstendvar, densreconvar, Fvar,
+                                            dis, djs, dks, i, j, k, n);
         });
   }
 
   void compute_functional_derivatives(
-      ADD_MODE addmode, real fac, real dt, FieldSet<nconstant> &const_vars,
-      FieldSet<nprognostic> &x, FieldSet<nauxiliary> &auxiliary_vars) override {
+      real dt, FieldSet<nconstant> &const_vars, FieldSet<nprognostic> &x,
+      FieldSet<nauxiliary> &auxiliary_vars, real fac = 1,
+      ADD_MODE addmode = ADD_MODE::REPLACE) override {
     const auto &dual_topology = dual_geometry.topology;
 
     compute_dens0(auxiliary_vars.fields_arr[DENS0VAR].data,
@@ -434,7 +436,8 @@ public:
   void apply_symplectic(real dt, FieldSet<nconstant> &const_vars,
                         FieldSet<nprognostic> &x,
                         FieldSet<nauxiliary> &auxiliary_vars,
-                        FieldSet<nprognostic> &xtend) override {
+                        FieldSet<nprognostic> &xtend,
+                        ADD_MODE addmode = ADD_MODE::REPLACE) override {
     const auto &dual_topology = dual_geometry.topology;
 
     compute_dens0(auxiliary_vars.fields_arr[DENS0VAR].data,
@@ -531,13 +534,24 @@ public:
     auxiliary_vars.exchange({DENSRECONVAR});
 
     // Compute tendencies
-    compute_tendencies(xtend.fields_arr[DENSVAR].data,
-                       xtend.fields_arr[VVAR].data,
-                       auxiliary_vars.fields_arr[DENSRECONVAR].data,
-                       auxiliary_vars.fields_arr[QRECONVAR].data,
-                       auxiliary_vars.fields_arr[CORIOLISRECONVAR].data,
-                       auxiliary_vars.fields_arr[BVAR].data,
-                       auxiliary_vars.fields_arr[FVAR].data);
+    if (addmode == ADD_MODE::REPLACE) {
+      compute_tendencies<ADD_MODE::REPLACE>(
+          xtend.fields_arr[DENSVAR].data, xtend.fields_arr[VVAR].data,
+          auxiliary_vars.fields_arr[DENSRECONVAR].data,
+          auxiliary_vars.fields_arr[QRECONVAR].data,
+          auxiliary_vars.fields_arr[CORIOLISRECONVAR].data,
+          auxiliary_vars.fields_arr[BVAR].data,
+          auxiliary_vars.fields_arr[FVAR].data);
+    }
+    if (addmode == ADD_MODE::ADD) {
+      compute_tendencies<ADD_MODE::ADD>(
+          xtend.fields_arr[DENSVAR].data, xtend.fields_arr[VVAR].data,
+          auxiliary_vars.fields_arr[DENSRECONVAR].data,
+          auxiliary_vars.fields_arr[QRECONVAR].data,
+          auxiliary_vars.fields_arr[CORIOLISRECONVAR].data,
+          auxiliary_vars.fields_arr[BVAR].data,
+          auxiliary_vars.fields_arr[FVAR].data);
+    }
   }
 };
 

@@ -32,6 +32,7 @@ public:
   void initialize(const Topology &topo, Exchange *exchng,
                   const std::string fieldName, int bdof, int edof, int nd);
   void copy(const Field &f);
+  void wscal(real alpha, const Field &x);
   void waxpy(real alpha, const Field &x, const Field &y);
   void waxpby(real alpha, real beta, const Field &x, const Field &y);
   void waxpbypcz(real alpha, real beta, real gamma, const Field &x,
@@ -229,6 +230,22 @@ void Field::copy(const Field &f) {
       YAKL_CLASS_LAMBDA(int ndof, int k, int j, int i, int n) {
         this->data(ndof, k + ks, j + js, i + is, n) =
             f.data(ndof, k + ks, j + js, i + is, n);
+      });
+}
+
+// Computes w (self) = alpha x
+void Field::wscal(real alpha, const Field &x) {
+
+  int is = this->topology.is;
+  int js = this->topology.js;
+  int ks = this->topology.ks;
+  parallel_for(
+      "Field wscal",
+      SimpleBounds<5>(this->total_dofs, this->_nz, this->topology.n_cells_y,
+                      this->topology.n_cells_x, this->topology.nens),
+      YAKL_CLASS_LAMBDA(int ndof, int k, int j, int i, int n) {
+        this->data(ndof, k + ks, j + js, i + is, n) =
+            alpha * x.data(ndof, k + ks, j + js, i + is, n);
       });
 }
 
