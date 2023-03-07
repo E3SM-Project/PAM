@@ -15,7 +15,7 @@ namespace modules {
   YAKL_INLINE void z0_est(real z, real bflx, real wnd, real ustar, real &z0) {
     real c1 = pi/2.0 - 3.0*log(2.0);
     real rlmo = -bflx*vonk/(ustar*ustar*ustar+eps);
-    real zeta = min(1.0,z*rlmo);
+    real zeta = std::min(1.0,z*rlmo);
     real x;
     real psi1;
     if(zeta >= 0.0) {
@@ -25,7 +25,7 @@ namespace modules {
       x = sqrt(sqrt(1.0-bm*zeta));
       psi1 = 2.0*log(1.0+x) + log(1.0+x*x) -2.0*atan(x) + c1;
     }
-    real lnz = max(0.0, vonk*wnd/(ustar+eps) +psi1);
+    real lnz = std::max(0.0, vonk*wnd/(ustar+eps) +psi1);
     z0 = z*exp(-lnz);
   }
 
@@ -39,7 +39,7 @@ namespace modules {
     if (bflx != 0.0) {
       for (int iterate = 0; iterate < 8; iterate++) {
         real rlmo = -bflx * vonk/(ustar*ustar*ustar + eps);
-        real zeta = min(1.0,z*rlmo);
+        real zeta = std::min(1.0,z*rlmo);
         if (zeta>0.0) {
           ustar = vonk*wnd / (lnz+am*zeta);
         } else {
@@ -80,11 +80,11 @@ namespace modules {
 
     parallel_for( nens , YAKL_LAMBDA (int iens) {
       sfc_bflx(iens) = bflx_in(iens);
-      real wnd_spd = max( 1.0, sqrt( gcm_uvel(0,iens)*gcm_uvel(0,iens) 
+      real wnd_spd = std::max( 1.0, sqrt( gcm_uvel(0,iens)*gcm_uvel(0,iens) 
                                     +gcm_vvel(0,iens)*gcm_vvel(0,iens) ) );
       real ustar = sqrt( tau_in(iens) / rho_horz_mean(iens) );
       z0_est( zmid(0,iens), sfc_bflx(iens), wnd_spd, ustar, z0(iens));
-      z0(iens) = max(0.00001,min(1.0,z0(iens)));
+      z0(iens) = std::max(0.00001,std::min(1.0,z0(iens)));
     });
   }
 
@@ -120,7 +120,7 @@ namespace modules {
     });
 
     parallel_for( "surface momentum flux zero" , SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int iens) {
-      real wnd_spd = max( 1.0, sqrt( uvel(0,j,i,iens)*uvel(0,j,i,iens) + vvel(0,j,i,iens)*vvel(0,j,i,iens) ) );
+      real wnd_spd = std::max( 1.0, sqrt( uvel(0,j,i,iens)*uvel(0,j,i,iens) + vvel(0,j,i,iens)*vvel(0,j,i,iens) ) );
       real ustar = diag_ustar( zmid(0,iens), sfc_bflx(iens), wnd_spd, z0(iens)); 
       real tau00 = rho_horz_mean(iens) * ustar * ustar;
       sfc_mom_flx_u(j,i,iens) = -( uvel(0,j,i,iens) - u_horz_mean(iens) ) / wnd_spd * tau00;
