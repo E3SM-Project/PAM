@@ -30,12 +30,16 @@ namespace modules {
     auto vvel  = dm.get<real const,4>( "vvel"        );
     auto temp  = dm.get<real const,4>( "temp"        );
     auto rho_v = dm.get<real const,4>( "water_vapor" );
+    auto rho_l = dm.get<real const,4>( "cloud_water" );
+    auto rho_i = dm.get<real const,4>( "ice"         );
 
     auto rho_d_gcm = dm.get<real const,2> ( "gcm_density_dry" );
     auto uvel_gcm  = dm.get<real const,2> ( "gcm_uvel"        );
     auto vvel_gcm  = dm.get<real const,2> ( "gcm_vvel"        );
     auto temp_gcm  = dm.get<real const,2> ( "gcm_temp"        );
     auto rho_v_gcm = dm.get<real const,2> ( "gcm_water_vapor" );
+    auto rho_l_gcm = dm.get<real const,2> ( "gcm_cloud_water" );
+    auto rho_i_gcm = dm.get<real const,2> ( "gcm_cloud_ice"   );
 
     int nz   = dm.get_dimension_size("z"   );
     int ny   = dm.get_dimension_size("y"   );
@@ -48,6 +52,8 @@ namespace modules {
     real2d colavg_vvel ("colavg_vvel" ,nz,nens);
     real2d colavg_temp ("colavg_temp" ,nz,nens);
     real2d colavg_rho_v("colavg_rho_v",nz,nens);
+    real2d colavg_rho_l("colavg_rho_l",nz,nens);
+    real2d colavg_rho_i("colavg_rho_i",nz,nens);
 
     // We will be essentially reducing a summation to these variables, so initialize them to zero
     parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
@@ -56,6 +62,8 @@ namespace modules {
       colavg_vvel (k,iens) = 0;
       colavg_temp (k,iens) = 0;
       colavg_rho_v(k,iens) = 0;
+      colavg_rho_l(k,iens) = 0;
+      colavg_rho_i(k,iens) = 0;
     });
 
     real r_nx_ny  = 1._fp / (nx*ny);  // precompute reciprocal to avoid costly divisions
@@ -66,21 +74,20 @@ namespace modules {
       atomicAdd( colavg_vvel (k,iens) , vvel (k,j,i,iens) * r_nx_ny );
       atomicAdd( colavg_temp (k,iens) , temp (k,j,i,iens) * r_nx_ny );
       atomicAdd( colavg_rho_v(k,iens) , rho_v(k,j,i,iens) * r_nx_ny );
+      atomicAdd( colavg_rho_l(k,iens) , rho_l(k,j,i,iens) * r_nx_ny );
+      atomicAdd( colavg_rho_i(k,iens) , rho_i(k,j,i,iens) * r_nx_ny );
     });
 
     // We need the GCM forcing tendencies later, so store these in the coupler's data manager
     // If they've already been registered, the do not register them again
     if (! dm.entry_exists("gcm_forcing_tend_uvel")) {
-      dm.register_and_allocate<real>( "gcm_forcing_tend_rho_d" , "GCM forcing tendency for dry density"         ,
-                                      {nz,nens} , {"z","nens"} );
-      dm.register_and_allocate<real>( "gcm_forcing_tend_uvel"  , "GCM forcing tendency for u-velocity"          ,
-                                      {nz,nens} , {"z","nens"} );
-      dm.register_and_allocate<real>( "gcm_forcing_tend_vvel"  , "GCM forcing tendency for v-velocity"          ,
-                                      {nz,nens} , {"z","nens"} );
-      dm.register_and_allocate<real>( "gcm_forcing_tend_temp"  , "GCM forcing tendency for temperature"         ,
-                                      {nz,nens} , {"z","nens"} );
-      dm.register_and_allocate<real>( "gcm_forcing_tend_rho_v" , "GCM forcing tendency for water vapor density" ,
-                                      {nz,nens} , {"z","nens"} );
+      dm.register_and_allocate<real>( "gcm_forcing_tend_rho_d" , "GCM forcing for dry density"        ,{nz,nens},{"z","nens"});
+      dm.register_and_allocate<real>( "gcm_forcing_tend_uvel"  , "GCM forcing for u-velocity"         ,{nz,nens},{"z","nens"});
+      dm.register_and_allocate<real>( "gcm_forcing_tend_vvel"  , "GCM forcing for v-velocity"         ,{nz,nens},{"z","nens"});
+      dm.register_and_allocate<real>( "gcm_forcing_tend_temp"  , "GCM forcing for temperature"        ,{nz,nens},{"z","nens"});
+      dm.register_and_allocate<real>( "gcm_forcing_tend_rho_v" , "GCM forcing for water vapor density",{nz,nens},{"z","nens"});
+      dm.register_and_allocate<real>( "gcm_forcing_tend_rho_l" , "GCM forcing for cloud water density",{nz,nens},{"z","nens"});
+      dm.register_and_allocate<real>( "gcm_forcing_tend_rho_i" , "GCM forcing for cloud ice density",  {nz,nens},{"z","nens"});
     }
 
     // Retrieve the GCM forcing tendency arrays so we can set them with the time tencencies
@@ -89,6 +96,8 @@ namespace modules {
     auto gcm_forcing_tend_vvel  = dm.get<real,2>("gcm_forcing_tend_vvel" );
     auto gcm_forcing_tend_temp  = dm.get<real,2>("gcm_forcing_tend_temp" );
     auto gcm_forcing_tend_rho_v = dm.get<real,2>("gcm_forcing_tend_rho_v");
+    auto gcm_forcing_tend_rho_l = dm.get<real,2>("gcm_forcing_tend_rho_l");
+    auto gcm_forcing_tend_rho_i = dm.get<real,2>("gcm_forcing_tend_rho_i");
 
     real r_dt_gcm = 1._fp / dt_gcm;  // precompute reciprocal to avoid costly divisions
     // The forcing is the difference between the input GCM state and the current colavg'd CRM state divided by the
@@ -99,6 +108,8 @@ namespace modules {
       gcm_forcing_tend_vvel (k,iens) = ( vvel_gcm (k,iens) - colavg_vvel (k,iens) ) * r_dt_gcm;
       gcm_forcing_tend_temp (k,iens) = ( temp_gcm (k,iens) - colavg_temp (k,iens) ) * r_dt_gcm;
       gcm_forcing_tend_rho_v(k,iens) = ( rho_v_gcm(k,iens) - colavg_rho_v(k,iens) ) * r_dt_gcm;
+      gcm_forcing_tend_rho_l(k,iens) = ( rho_l_gcm(k,iens) - colavg_rho_l(k,iens) ) * r_dt_gcm;
+      gcm_forcing_tend_rho_i(k,iens) = ( rho_i_gcm(k,iens) - colavg_rho_i(k,iens) ) * r_dt_gcm;
     });
   }
 
@@ -119,8 +130,6 @@ namespace modules {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
     using yakl::atomicAdd;
-    using yakl::ScalarLiveOut;
-    using yakl::max;
     auto &dm = coupler.get_data_manager_device_readwrite();
 
     auto dt = coupler.get_option<real>("crm_dt");
@@ -137,6 +146,8 @@ namespace modules {
     auto vvel  = dm.get<real,4>( "vvel"        );
     auto temp  = dm.get<real,4>( "temp"        );
     auto rho_v = dm.get<real,4>( "water_vapor" );
+    auto rho_l = dm.get<real,4>( "cloud_water" );
+    auto rho_i = dm.get<real,4>( "ice"         );
 
     // GCM forcing tendencies for the average CRM column state
     auto gcm_forcing_tend_rho_d = dm.get<real const,2>("gcm_forcing_tend_rho_d");
@@ -144,6 +155,8 @@ namespace modules {
     auto gcm_forcing_tend_vvel  = dm.get<real const,2>("gcm_forcing_tend_vvel" );
     auto gcm_forcing_tend_temp  = dm.get<real const,2>("gcm_forcing_tend_temp" );
     auto gcm_forcing_tend_rho_v = dm.get<real const,2>("gcm_forcing_tend_rho_v");
+    auto gcm_forcing_tend_rho_l = dm.get<real const,2>("gcm_forcing_tend_rho_l");
+    auto gcm_forcing_tend_rho_i = dm.get<real const,2>("gcm_forcing_tend_rho_i");
 
     // We need these arrays for multiplicative hole filling
     // Holes are only filled inside vertical columns at first because it leads to a very infrequent collision
@@ -151,10 +164,20 @@ namespace modules {
     real2d rho_v_neg_mass("rho_v_neg_mass",nz,nens);
     real2d rho_v_pos_mass("rho_v_pos_mass",nz,nens);
 
+    real2d rho_l_neg_mass("rho_l_neg_mass",nz,nens);
+    real2d rho_l_pos_mass("rho_l_pos_mass",nz,nens);
+
+    real2d rho_i_neg_mass("rho_i_neg_mass",nz,nens);
+    real2d rho_i_pos_mass("rho_i_pos_mass",nz,nens);
+
     // These are essentially reductions, so initialize to zero
     parallel_for( YAKL_AUTO_LABEL() , Bounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
       rho_v_neg_mass(k,iens) = 0;
       rho_v_pos_mass(k,iens) = 0;
+      rho_l_neg_mass(k,iens) = 0;
+      rho_l_pos_mass(k,iens) = 0;
+      rho_i_neg_mass(k,iens) = 0;
+      rho_i_pos_mass(k,iens) = 0;
     });
 
     // Apply the GCM forcing, and keep track of negative mass we had to fill and available positive mass
@@ -168,10 +191,20 @@ namespace modules {
       vvel (k,j,i,iens) += gcm_forcing_tend_vvel (k,iens) * dt;
       temp (k,j,i,iens) += gcm_forcing_tend_temp (k,iens) * dt;
       rho_v(k,j,i,iens) += gcm_forcing_tend_rho_v(k,iens) * dt;
+      rho_l(k,j,i,iens) += gcm_forcing_tend_rho_l(k,iens) * dt;
+      rho_i(k,j,i,iens) += gcm_forcing_tend_rho_i(k,iens) * dt;
       // Compute negative and positive mass for rho_v, and set negative masses to zero (essentially adding mass)
       if (rho_v(k,j,i,iens) < 0) {
         atomicAdd( rho_v_neg_mass(k,iens) , -rho_v(k,j,i,iens)*dz(k,iens) );
         rho_v(k,j,i,iens) = 0;
+      }
+      if (rho_l(k,j,i,iens) < 0) {
+        atomicAdd( rho_l_neg_mass(k,iens) , -rho_l(k,j,i,iens)*dz(k,iens) );
+        rho_l(k,j,i,iens) = 0;
+      }
+      if (rho_i(k,j,i,iens) < 0) {
+        atomicAdd( rho_i_neg_mass(k,iens) , -rho_i(k,j,i,iens)*dz(k,iens) );
+        rho_i(k,j,i,iens) = 0;
       }
     });
 
@@ -180,6 +213,12 @@ namespace modules {
       // Calculate available positive mass for hole filling at each vertical level 
       parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
         if (rho_v(k,j,i,iens) > 0) atomicAdd( rho_v_pos_mass(k,iens) ,  rho_v(k,j,i,iens)*dz(k,iens) );
+      });
+      parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+        if (rho_l(k,j,i,iens) > 0) atomicAdd( rho_l_pos_mass(k,iens) ,  rho_l(k,j,i,iens)*dz(k,iens) );
+      });
+      parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+        if (rho_i(k,j,i,iens) > 0) atomicAdd( rho_i_pos_mass(k,iens) ,  rho_i(k,j,i,iens)*dz(k,iens) );
       });
 
       // The negative is too large if the mass added to fill in negative values is greater than the available mass at
@@ -192,9 +231,19 @@ namespace modules {
         if (i == 0 && j == 0) {
           if (rho_v_neg_mass(k,iens) > rho_v_pos_mass(k,iens)) neg_too_large = true;
         }
+        if (i == 0 && j == 0) {
+          if (rho_l_neg_mass(k,iens) > rho_l_pos_mass(k,iens)) neg_too_large = true;
+        }
+        if (i == 0 && j == 0) {
+          if (rho_i_neg_mass(k,iens) > rho_i_pos_mass(k,iens)) neg_too_large = true;
+        }
         // Subtract mass proportional to this cells' portion of the total mass at the vertical level
         real factor = rho_v(k,j,i,iens)*dz(k,iens) / rho_v_pos_mass(k,iens);
         rho_v(k,j,i,iens) = max( 0._fp , rho_v(k,j,i,iens) - (rho_v_neg_mass(k,iens) * factor)/dz(k,iens) );
+        factor = rho_l(k,j,i,iens)*dz(k,iens) / rho_l_pos_mass(k,iens);
+        rho_l(k,j,i,iens) = max( 0._fp , rho_l(k,j,i,iens) - (rho_l_neg_mass(k,iens) * factor)/dz(k,iens) );
+        factor = rho_i(k,j,i,iens)*dz(k,iens) / rho_l_pos_mass(k,iens);
+        rho_i(k,j,i,iens) = max( 0._fp , rho_i(k,j,i,iens) - (rho_i_neg_mass(k,iens) * factor)/dz(k,iens) );
       });
 
       if (neg_too_large.hostRead()) {
@@ -202,11 +251,19 @@ namespace modules {
         // This will have a large contention rate for atomicAdd() and will be less efficient than before
         real1d rho_v_neg_mass_glob("rho_v_neg_mass_glob",nens);
         real1d rho_v_pos_mass_glob("rho_v_pos_mass_glob",nens);
+        real1d rho_l_neg_mass_glob("rho_l_neg_mass_glob",nens);
+        real1d rho_l_pos_mass_glob("rho_l_pos_mass_glob",nens);
+        real1d rho_i_neg_mass_glob("rho_i_neg_mass_glob",nens);
+        real1d rho_i_pos_mass_glob("rho_i_pos_mass_glob",nens);
 
         // These are essentially reductions, so initialize to zero
         parallel_for( YAKL_AUTO_LABEL() , nens , YAKL_LAMBDA (int iens) {
           rho_v_neg_mass_glob(iens) = 0;
           rho_v_pos_mass_glob(iens) = 0;
+          rho_l_neg_mass_glob(iens) = 0;
+          rho_l_pos_mass_glob(iens) = 0;
+          rho_i_neg_mass_glob(iens) = 0;
+          rho_i_pos_mass_glob(iens) = 0;
         });
 
         // Compute the amount of negative mass we still need to compensate for as well as how much positive mass
@@ -214,12 +271,21 @@ namespace modules {
         parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
           if (i == 0 && j == 0) atomicAdd( rho_v_neg_mass_glob(iens) , max(0._fp,rho_v_neg_mass(k,iens)-rho_v_pos_mass(k,iens)) );
           atomicAdd( rho_v_pos_mass_glob(iens) , rho_v(k,j,i,iens)*dz(k,iens) );
+          if (i == 0 && j == 0) atomicAdd( rho_l_neg_mass_glob(iens) , max(0._fp,rho_l_neg_mass(k,iens)-rho_l_pos_mass(k,iens)) );
+          atomicAdd( rho_l_pos_mass_glob(iens) , rho_l(k,j,i,iens)*dz(k,iens) );
+          if (i == 0 && j == 0) atomicAdd( rho_i_neg_mass_glob(iens) , max(0._fp,rho_i_neg_mass(k,iens)-rho_i_pos_mass(k,iens)) );
+          atomicAdd( rho_i_pos_mass_glob(iens) , rho_i(k,j,i,iens)*dz(k,iens) );
         });
 
         // Remove mass proportionally to the mass in a given cell
         parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-          real factor = rho_v(k,j,i,iens)*dz(k,iens) / rho_v_pos_mass_glob(iens);
+          real factor;
+          factor = rho_v(k,j,i,iens)*dz(k,iens) / rho_v_pos_mass_glob(iens);
           rho_v(k,j,i,iens) = max( 0._fp , rho_v(k,j,i,iens) - (rho_v_neg_mass_glob(iens) * factor)/dz(k,iens) );
+          factor = rho_l(k,j,i,iens)*dz(k,iens) / rho_l_pos_mass_glob(iens);
+          rho_l(k,j,i,iens) = max( 0._fp , rho_l(k,j,i,iens) - (rho_l_neg_mass_glob(iens) * factor)/dz(k,iens) );
+          factor = rho_i(k,j,i,iens)*dz(k,iens) / rho_i_pos_mass_glob(iens);
+          rho_i(k,j,i,iens) = max( 0._fp , rho_i(k,j,i,iens) - (rho_i_neg_mass_glob(iens) * factor)/dz(k,iens) );
         });
         
       } // if (neg_too_large.hostRead()) {
@@ -227,5 +293,3 @@ namespace modules {
   } // apply_gcm_forcing_tendencies
 
 }
-
-
