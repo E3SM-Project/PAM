@@ -184,7 +184,9 @@ namespace modules {
     //    enough mass available to fill the negatives. Then it is done globally
     parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       // Apply forcing
+      #ifdef MMF_PAM_DYCOR_AWFL
       rho_d(k,j,i,iens) += gcm_forcing_tend_rho_d(k,iens) * dt;
+      #endif
       uvel (k,j,i,iens) += gcm_forcing_tend_uvel (k,iens) * dt;
       vvel (k,j,i,iens) += gcm_forcing_tend_vvel (k,iens) * dt;
       temp (k,j,i,iens) += gcm_forcing_tend_temp (k,iens) * dt;
