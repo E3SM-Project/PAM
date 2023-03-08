@@ -1222,6 +1222,7 @@ public:
         });
   }
 
+  template <ADD_MODE addmode = ADD_MODE::REPLACE>
   void
   compute_tendencies(real5d denstendvar, real5d Vtendvar, real5d Wtendvar,
                      const real5d densreconvar, const real5d densvertreconvar,
@@ -1248,8 +1249,8 @@ public:
         SimpleBounds<4>(primal_topology.nl - 2, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wD0_vert<ndensity_B>(Wtendvar, densvertreconvar, Bvar, pis,
-                                       pjs, pks, i, j, k + 1, n);
+          compute_wD0_vert<ndensity_B, addmode>(
+              Wtendvar, densvertreconvar, Bvar, pis, pjs, pks, i, j, k + 1, n);
 #ifdef FORCE_REFSTATE_HYDROSTATIC_BALANCE
           compute_wD0_vert<ndensity_B, ADD_MODE::ADD>(
               Wtendvar, refstate.q_di.data, refstate.B.data, pis, pjs, pks, i,
@@ -1274,11 +1275,11 @@ public:
         SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
                         primal_topology.nens),
         YAKL_LAMBDA(int j, int i, int n) {
-          compute_wD0_vert<ndensity_B>(Wtendvar, densvertreconvar, Bvar, pis,
-                                       pjs, pks, i, j, 0, n);
-          compute_wD0_vert<ndensity_B>(Wtendvar, densvertreconvar, Bvar, pis,
-                                       pjs, pks, i, j, primal_topology.nl - 1,
-                                       n);
+          compute_wD0_vert<ndensity_B, addmode>(
+              Wtendvar, densvertreconvar, Bvar, pis, pjs, pks, i, j, 0, n);
+          compute_wD0_vert<ndensity_B, addmode>(Wtendvar, densvertreconvar,
+                                                Bvar, pis, pjs, pks, i, j,
+                                                primal_topology.nl - 1, n);
 #ifdef FORCE_REFSTATE_HYDROSTATIC_BALANCE
           compute_wD0_vert<ndensity_B, ADD_MODE::ADD>(
               Wtendvar, refstate.q_di.data, refstate.B.data, pis, pjs, pks, i,
@@ -1315,8 +1316,8 @@ public:
         SimpleBounds<4>(primal_topology.ni - 2, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wD0<ndensity_B>(Vtendvar, densreconvar, Bvar, pis, pjs, pks,
-                                  i, j, k + 1, n);
+          compute_wD0<ndensity_B, addmode>(Vtendvar, densreconvar, Bvar, pis,
+                                           pjs, pks, i, j, k + 1, n);
           if (qf_choice == QF_MODE::EC) {
             compute_Qxz_u_EC<1, ADD_MODE::ADD>(Vtendvar, qxzreconvar,
                                                qxzvertreconvar, FWvar, pis, pjs,
@@ -1336,10 +1337,11 @@ public:
         SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
                         primal_topology.nens),
         YAKL_LAMBDA(int j, int i, int n) {
-          compute_wD0<ndensity_B>(Vtendvar, densreconvar, Bvar, pis, pjs, pks,
-                                  i, j, 0, n);
-          compute_wD0<ndensity_B>(Vtendvar, densreconvar, Bvar, pis, pjs, pks,
-                                  i, j, primal_topology.ni - 1, n);
+          compute_wD0<ndensity_B, addmode>(Vtendvar, densreconvar, Bvar, pis,
+                                           pjs, pks, i, j, 0, n);
+          compute_wD0<ndensity_B, addmode>(Vtendvar, densreconvar, Bvar, pis,
+                                           pjs, pks, i, j,
+                                           primal_topology.ni - 1, n);
           if (qf_choice == QF_MODE::EC) {
             compute_Qxz_u_EC_bottom<1, ADD_MODE::ADD>(
                 Vtendvar, qxzreconvar, qxzvertreconvar, FWvar, pis, pjs, pks, i,
@@ -1368,8 +1370,8 @@ public:
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wD1bar<ndensity>(denstendvar, densreconvar, Fvar, dis, djs,
-                                   dks, i, j, k, n);
+          compute_wD1bar<ndensity, addmode>(denstendvar, densreconvar, Fvar,
+                                            dis, djs, dks, i, j, k, n);
           compute_wD1bar_vert<ndensity, ADD_MODE::ADD>(
               denstendvar, densvertreconvar, FWvar, dis, djs, dks, i, j, k, n);
         });
@@ -1488,8 +1490,9 @@ public:
   }
 
   void compute_functional_derivatives(
-      ADD_MODE addmode, real fac, real dt, FieldSet<nconstant> &const_vars,
-      FieldSet<nprognostic> &x, FieldSet<nauxiliary> &auxiliary_vars) override {
+      real dt, FieldSet<nconstant> &const_vars, FieldSet<nprognostic> &x,
+      FieldSet<nauxiliary> &auxiliary_vars, real fac = 1,
+      ADD_MODE addmode = ADD_MODE::REPLACE) override {
 
     const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
@@ -1787,7 +1790,8 @@ public:
   void apply_symplectic(real dt, FieldSet<nconstant> &const_vars,
                         FieldSet<nprognostic> &x,
                         FieldSet<nauxiliary> &auxiliary_vars,
-                        FieldSet<nprognostic> &xtend) override {
+                        FieldSet<nprognostic> &xtend,
+                        ADD_MODE addmode = ADD_MODE::REPLACE) override {
 
     const auto &dual_topology = dual_geometry.topology;
 
@@ -1877,7 +1881,7 @@ public:
                 auxiliary_vars.fields_arr[VERTEDGEFLUXVAR].data,
                 auxiliary_vars.fields_arr[DENSVERTRECONVAR].data,
                 auxiliary_vars.fields_arr[FWVAR].data, dens_pos, dis, djs, dks,
-                i, j, k, n);
+                i, j, k + 1, n);
           }
         });
     auxiliary_vars.exchange({EDGEFLUXVAR, VERTEDGEFLUXVAR});
@@ -1919,17 +1923,34 @@ public:
     auxiliary_vars.exchange({DENSRECONVAR, DENSVERTRECONVAR});
 
     // Compute tendencies
-    compute_tendencies(xtend.fields_arr[DENSVAR].data,
-                       xtend.fields_arr[VVAR].data, xtend.fields_arr[WVAR].data,
-                       auxiliary_vars.fields_arr[DENSRECONVAR].data,
-                       auxiliary_vars.fields_arr[DENSVERTRECONVAR].data,
-                       auxiliary_vars.fields_arr[QXZRECONVAR].data,
-                       auxiliary_vars.fields_arr[QXZVERTRECONVAR].data,
-                       auxiliary_vars.fields_arr[CORIOLISXZRECONVAR].data,
-                       auxiliary_vars.fields_arr[CORIOLISXZVERTRECONVAR].data,
-                       auxiliary_vars.fields_arr[BVAR].data,
-                       auxiliary_vars.fields_arr[FVAR].data,
-                       auxiliary_vars.fields_arr[FWVAR].data);
+    if (addmode == ADD_MODE::REPLACE) {
+      compute_tendencies<ADD_MODE::REPLACE>(
+          xtend.fields_arr[DENSVAR].data, xtend.fields_arr[VVAR].data,
+          xtend.fields_arr[WVAR].data,
+          auxiliary_vars.fields_arr[DENSRECONVAR].data,
+          auxiliary_vars.fields_arr[DENSVERTRECONVAR].data,
+          auxiliary_vars.fields_arr[QXZRECONVAR].data,
+          auxiliary_vars.fields_arr[QXZVERTRECONVAR].data,
+          auxiliary_vars.fields_arr[CORIOLISXZRECONVAR].data,
+          auxiliary_vars.fields_arr[CORIOLISXZVERTRECONVAR].data,
+          auxiliary_vars.fields_arr[BVAR].data,
+          auxiliary_vars.fields_arr[FVAR].data,
+          auxiliary_vars.fields_arr[FWVAR].data);
+    }
+    if (addmode == ADD_MODE::ADD) {
+      compute_tendencies<ADD_MODE::ADD>(
+          xtend.fields_arr[DENSVAR].data, xtend.fields_arr[VVAR].data,
+          xtend.fields_arr[WVAR].data,
+          auxiliary_vars.fields_arr[DENSRECONVAR].data,
+          auxiliary_vars.fields_arr[DENSVERTRECONVAR].data,
+          auxiliary_vars.fields_arr[QXZRECONVAR].data,
+          auxiliary_vars.fields_arr[QXZVERTRECONVAR].data,
+          auxiliary_vars.fields_arr[CORIOLISXZRECONVAR].data,
+          auxiliary_vars.fields_arr[CORIOLISXZVERTRECONVAR].data,
+          auxiliary_vars.fields_arr[BVAR].data,
+          auxiliary_vars.fields_arr[FVAR].data,
+          auxiliary_vars.fields_arr[FWVAR].data);
+    }
 
     if (entropicvar_diffusion_coeff > 0) {
       add_entropicvar_diffusion(
