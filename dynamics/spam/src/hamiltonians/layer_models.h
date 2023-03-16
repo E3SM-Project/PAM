@@ -6,8 +6,11 @@
 #ifdef _TSWE
 class Hamiltonian_TSWE_Hs {
 public:
+  using VS = VariableSet;
+
   Geometry<Straight> primal_geometry;
   Geometry<Twisted> dual_geometry;
+  VariableSet varset;
   bool is_initialized;
   real g;
 
@@ -18,6 +21,7 @@ public:
                   const Geometry<Twisted> &dual_geom) {
     this->primal_geometry = primal_geom;
     this->dual_geometry = dual_geom;
+    this->varset = variableset;
     this->is_initialized = true;
   }
 
@@ -40,7 +44,7 @@ public:
 #endif
     real PE = hs(0, k + ks, j + js, i + is, n) * dens0(1) +
               0.5_fp * dens0(0) * dens(1, k + ks, j + js, i + is, n);
-    for (int l = 2; l < ntracers_active + 2; l++) {
+    for (int l = 2; l < VS::ntracers_dycore_active + 2; l++) {
       PE += 0.5_fp * dens0(0) * dens(l, k + ks, j + js, i + is, n);
     }
     return PE;
@@ -83,37 +87,42 @@ public:
     // COMPUTE ONCE?...
 
     // compute I dens
-    SArray<real, 1, ndensity> dens0;
+    SArray<real, 1, VS::ndensity> dens0;
 #ifdef _EXTRUDED
-    compute_H2bar_ext<ndensity, diff_ord, vert_diff_ord>(
+    compute_H2bar_ext<VS::ndensity, diff_ord, vert_diff_ord>(
         dens0, dens, this->primal_geometry, this->dual_geometry, is, js, ks, i,
         j, k, n);
 #else
-    compute_H2bar<ndensity, diff_ord>(dens0, dens, this->primal_geometry,
-                                      this->dual_geometry, is, js, ks, i, j, k,
-                                      n);
+    compute_H2bar<VS::ndensity, diff_ord>(dens0, dens, this->primal_geometry,
+                                          this->dual_geometry, is, js, ks, i, j,
+                                          k, n);
 #endif
 
     // Compute dHdh = 1/2 S + sum_nt 1/2 t
     if (addmode == ADD_MODE::REPLACE) {
-      B(0, k + ks, j + js, i + is, n) = fac * dens0(1) * 0.5_fp;
+      B(varset.active_id_mass, k + ks, j + js, i + is, n) =
+          fac * dens0(1) * 0.5_fp;
     } else if (addmode == ADD_MODE::ADD) {
-      B(0, k + ks, j + js, i + is, n) += fac * dens0(1) * 0.5_fp;
+      B(varset.active_id_mass, k + ks, j + js, i + is, n) +=
+          fac * dens0(1) * 0.5_fp;
     }
 
-    for (int l = 2; l < ntracers_active + 2; l++) {
-      B(0, k + ks, j + js, i + is, n) += fac * dens0(l) * 0.5_fp;
+    for (int l = 2; l < VS::ntracers_dycore_active + 2; l++) {
+      B(varset.active_id_mass, k + ks, j + js, i + is, n) +=
+          fac * dens0(l) * 0.5_fp;
     }
 
     // Compute dHdS = 1/2 h + hs
     if (addmode == ADD_MODE::REPLACE) {
-      B(1, k + ks, j + js, i + is, n) = fac * (hs0(0) + dens0(0) * 0.5_fp);
+      B(varset.active_id_entr, k + ks, j + js, i + is, n) =
+          fac * (hs0(0) + dens0(0) * 0.5_fp);
     } else if (addmode == ADD_MODE::ADD) {
-      B(1, k + ks, j + js, i + is, n) += fac * (hs0(0) + dens0(0) * 0.5_fp);
+      B(varset.active_id_entr, k + ks, j + js, i + is, n) +=
+          fac * (hs0(0) + dens0(0) * 0.5_fp);
     }
 
     // Compute dHdt = 1/2 h for active tracers
-    for (int l = 2; l < ntracers_active + 2; l++) {
+    for (int l = 2; l < VS::ntracers_dycore_active + 2; l++) {
       if (addmode == ADD_MODE::REPLACE) {
         B(l, k + ks, j + js, i + is, n) = fac * dens0(0) * 0.5_fp;
       } else if (addmode == ADD_MODE::ADD) {
@@ -127,8 +136,11 @@ public:
 #ifdef _SWE
 class Hamiltonian_SWE_Hs {
 public:
+  using VS = VariableSet;
+
   Geometry<Straight> primal_geometry;
   Geometry<Twisted> dual_geometry;
+  VariableSet varset;
   bool is_initialized;
   real g;
 
@@ -139,6 +151,7 @@ public:
                   const Geometry<Twisted> &dual_geom) {
     this->primal_geometry = primal_geom;
     this->dual_geometry = dual_geom;
+    this->varset = variableset;
     this->is_initialized = true;
   }
 
@@ -165,7 +178,7 @@ public:
 
     real PE = g * hs(0, k + ks, j + js, i + is, n) * h0(0) +
               0.5_fp * g * h0(0) * dens(0, k + ks, j + js, i + is, n);
-    for (int l = 1; l < ntracers_active + 1; l++) {
+    for (int l = 1; l < VS::ntracers_dycore_active + 1; l++) {
       PE += 0.5_fp * h0(0) * dens(l, k + ks, j + js, i + is, n);
     }
     return PE;
@@ -197,29 +210,32 @@ public:
 #endif
 
     // compute I dens
-    SArray<real, 1, ndensity> dens0;
+    SArray<real, 1, VS::ndensity> dens0;
 #ifdef _EXTRUDED
-    compute_H2bar_ext<ndensity, diff_ord, vert_diff_ord>(
+    compute_H2bar_ext<VS::ndensity, diff_ord, vert_diff_ord>(
         dens0, dens, this->primal_geometry, this->dual_geometry, is, js, ks, i,
         j, k, n);
 #else
-    compute_H2bar<ndensity, diff_ord>(dens0, dens, this->primal_geometry,
-                                      this->dual_geometry, is, js, ks, i, j, k,
-                                      n);
+    compute_H2bar<VS::ndensity, diff_ord>(dens0, dens, this->primal_geometry,
+                                          this->dual_geometry, is, js, ks, i, j,
+                                          k, n);
 #endif
 
     // Compute dHdh = g h + g hs + sum_nt 1/2 t + sum_nt 1/2 tfct
     if (addmode == ADD_MODE::REPLACE) {
-      B(0, k + ks, j + js, i + is, n) = fac * (g * hs0(0) + g * dens0(0));
+      B(varset.active_id_mass, k + ks, j + js, i + is, n) =
+          fac * (g * hs0(0) + g * dens0(0));
     } else if (addmode == ADD_MODE::ADD) {
-      B(0, k + ks, j + js, i + is, n) += fac * (g * hs0(0) + g * dens0(0));
+      B(varset.active_id_mass, k + ks, j + js, i + is, n) +=
+          fac * (g * hs0(0) + g * dens0(0));
     }
-    for (int l = 1; l < ntracers_active + 1; l++) {
-      B(0, k + ks, j + js, i + is, n) += fac * dens0(l) * 0.5_fp;
+    for (int l = 1; l < VS::ntracers_dycore_active + 1; l++) {
+      B(varset.active_id_mass, k + ks, j + js, i + is, n) +=
+          fac * dens0(l) * 0.5_fp;
     }
 
     // Compute dHdt = 1/2 h
-    for (int l = 1; l < ntracers_active + 1; l++) {
+    for (int l = 1; l < VS::ntracers_dycore_active + 1; l++) {
       if (addmode == ADD_MODE::REPLACE) {
         B(l, k + ks, j + js, i + is, n) = fac * dens0(0) * 0.5_fp;
       } else if (addmode == ADD_MODE::ADD) {

@@ -377,7 +377,7 @@ void YAKL_INLINE compute_twisted_recon(const real5d &reconvar,
 
   for (int d = 0; d < ndims; d++) {
     for (int l = 0; l < ndofs; l++) {
-      reconvar(l + d * ndofs, k + ks, j + js, i + is, n) = recon(l, d);
+      reconvar(d + l * ndims, k + ks, j + js, i + is, n) = recon(l, d);
     }
   }
 }

@@ -88,11 +88,52 @@ void YAKL_INLINE compute_wD0(SArray<real, 1, ndims> &tend, const R &reconvar,
       for (int d = 0; d < ndims; d++) {
         // full state recon
         if constexpr (std::is_same_v<R, real5d>) {
-          recon(l, d) = reconvar(l + d * ndofs, k + ks, j + js, i + is, n);
+          recon(l, d) = reconvar(d + l * ndims, k + ks, j + js, i + is, n);
         }
         // reference state
         if constexpr (std::is_same_v<R, real3d>) {
-          recon(l, d) = reconvar(l + d * ndofs, k + ks, n);
+          recon(l, d) = reconvar(d + l * ndims, k + ks, n);
+        }
+      }
+    }
+    wD0<ndofs>(tend, recon, dens);
+  } else {
+    wD0<ndofs>(tend, reconvar, dens);
+  }
+}
+
+template <uint ndofs, class R>
+void YAKL_INLINE compute_wD0(SArray<real, 1, ndims> &tend, const R &reconvar,
+                             const SArray<int, 1, ndofs> &active_dens_ids,
+                             const real5d &densvar, int is, int js, int ks,
+                             int i, int j, int k, int n) {
+  SArray<real, 3, ndofs, ndims, 2> dens;
+  for (int l = 0; l < ndofs; l++) {
+    for (int d = 0; d < ndims; d++) {
+      dens(l, d, 1) = densvar(l, k + ks, j + js, i + is, n);
+      if (d == 0) {
+        dens(l, d, 0) = densvar(l, k + ks, j + js, i + is - 1, n);
+      }
+      if (d == 1) {
+        dens(l, d, 0) = densvar(l, k + ks, j + js - 1, i + is, n);
+      }
+      // if (d==2) {dens(l,d,0) = densvar(l,k+ks-1,j+js,i+is);}
+    }
+  }
+
+  // we need to load recon
+  if constexpr (std::is_same_v<R, real5d> || std::is_same_v<R, real3d>) {
+    SArray<real, 2, ndofs, ndims> recon;
+    for (int l = 0; l < ndofs; l++) {
+      int al = active_dens_ids(l);
+      for (int d = 0; d < ndims; d++) {
+        // full state recon
+        if constexpr (std::is_same_v<R, real5d>) {
+          recon(l, d) = reconvar(d + al * ndims, k + ks, j + js, i + is, n);
+        }
+        // reference state
+        if constexpr (std::is_same_v<R, real3d>) {
+          recon(l, d) = reconvar(d + al * ndims, k + ks, n);
         }
       }
     }
@@ -108,6 +149,24 @@ void YAKL_INLINE compute_wD0(const real5d &tendvar, const R &reconvar,
                              int i, int j, int k, int n) {
   SArray<real, 1, ndims> tend;
   compute_wD0<ndofs>(tend, reconvar, densvar, is, js, ks, i, j, k, n);
+  for (int d = 0; d < ndims; d++) {
+    if (addmode == ADD_MODE::REPLACE) {
+      tendvar(d, k + ks, j + js, i + is, n) = tend(d);
+    }
+    if (addmode == ADD_MODE::ADD) {
+      tendvar(d, k + ks, j + js, i + is, n) += tend(d);
+    }
+  }
+}
+
+template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE, class R>
+void YAKL_INLINE compute_wD0(const real5d &tendvar, const R &reconvar,
+                             const SArray<int, 1, ndofs> &active_dens_ids,
+                             const real5d &densvar, int is, int js, int ks,
+                             int i, int j, int k, int n) {
+  SArray<real, 1, ndims> tend;
+  compute_wD0<ndofs>(tend, reconvar, active_dens_ids, densvar, is, js, ks, i, j,
+                     k, n);
   for (int d = 0; d < ndims; d++) {
     if (addmode == ADD_MODE::REPLACE) {
       tendvar(d, k + ks, j + js, i + is, n) = tend(d);
@@ -212,6 +271,65 @@ void YAKL_INLINE compute_wD0_vert(const real5d &tendvar, const R &vertreconvar,
                                   int i, int j, int k, int n) {
   real tend =
       compute_wD0_vert<ndofs>(vertreconvar, densvar, is, js, ks, i, j, k, n);
+  if (addmode == ADD_MODE::REPLACE) {
+    tendvar(0, k + ks, j + js, i + is, n) = tend;
+  }
+  if (addmode == ADD_MODE::ADD) {
+    tendvar(0, k + ks, j + js, i + is, n) += tend;
+  }
+}
+
+template <uint ndofs, class R, class D>
+real YAKL_INLINE compute_wD0_vert(const R &vertreconvar,
+                                  const SArray<int, 1, ndofs> &active_dens_ids,
+                                  const D &densvar, int is, int js, int ks,
+                                  int i, int j, int k, int n) {
+  real tend;
+  SArray<real, 2, ndofs, 2> dens;
+  for (int l = 0; l < ndofs; l++) {
+    // full state dens
+    if constexpr (std::is_same_v<D, real5d>) {
+      dens(l, 1) = densvar(l, k + ks + 1, j + js, i + is, n);
+      dens(l, 0) = densvar(l, k + ks, j + js, i + is, n);
+    }
+    // reference state dens
+    if constexpr (std::is_same_v<D, real3d>) {
+      dens(l, 1) = densvar(l, k + ks + 1, n);
+      dens(l, 0) = densvar(l, k + ks, n);
+    }
+  }
+
+  // we have to load recon
+  if constexpr (std::is_same_v<R, real5d> || std::is_same_v<R, real3d>) {
+    SArray<real, 1, ndofs> recon;
+    for (int l = 0; l < ndofs; l++) {
+      int al = active_dens_ids(l);
+      // Need to add 1 to k here because UW has an extra dof at the bottom
+
+      // full state recon
+      if constexpr (std::is_same_v<R, real5d>) {
+        recon(l) = vertreconvar(al, k + ks + 1, j + js, i + is, n);
+      }
+
+      // reference state recon
+      if constexpr (std::is_same_v<R, real3d>) {
+        recon(l) = vertreconvar(al, k + ks + 1, n);
+      }
+    }
+    wD0_vert<ndofs>(tend, recon, dens);
+  } else {
+    wD0_vert<ndofs>(tend, vertreconvar, dens);
+  }
+  return tend;
+}
+
+template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE, class R, class D>
+void YAKL_INLINE compute_wD0_vert(const real5d &tendvar, const R &vertreconvar,
+                                  const SArray<int, 1, ndofs> &active_dens_ids,
+                                  const D &densvar, int is, int js, int ks,
+                                  int i, int j, int k, int n) {
+  real tend = compute_wD0_vert<ndofs, R, D>(vertreconvar, active_dens_ids,
+                                            densvar, is, js, ks, i, j, k, n);
   if (addmode == ADD_MODE::REPLACE) {
     tendvar(0, k + ks, j + js, i + is, n) = tend;
   }
@@ -430,11 +548,11 @@ YAKL_INLINE void compute_wD1bar(SArray<real, 1, ndofs> &tend, const R &reconvar,
           if constexpr (std::is_same_v<R, real5d>) {
             if (d == 0) {
               recon(l, d, m) =
-                  reconvar(l + d * ndofs, k + ks, j + js, i + is + m, n);
+                  reconvar(d + l * ndims, k + ks, j + js, i + is + m, n);
             }
             if (d == 1) {
               recon(l, d, m) =
-                  reconvar(l + d * ndofs, k + ks, j + js + m, i + is, n);
+                  reconvar(d + l * ndims, k + ks, j + js + m, i + is, n);
             }
           }
           // reference state

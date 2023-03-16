@@ -31,7 +31,8 @@ public:
                   const Geometry<Straight> &primal_geom,
                   const Geometry<Twisted> &dual_geom) {
 
-    this->reference_state.initialize(primal_geom.topology, dual_geom.topology);
+    this->reference_state.initialize<VariableSet>(primal_geom.topology,
+                                                  dual_geom.topology);
     this->varset.initialize(coupler, params, thermo, reference_state,
                             primal_geom, dual_geom);
     this->PVPE.initialize(varset);

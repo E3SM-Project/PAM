@@ -91,7 +91,7 @@ public:
 
     testcase->set_tracers(params);
     testcase->set_domain(params);
-    
+
     check_and_print_model_parameters(params, par);
 
     debug_print("read parameters and partitioned domain/setting domain sizes",
