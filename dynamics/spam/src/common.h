@@ -128,6 +128,14 @@ real constexpr pi =
 //#define PNETCDF_PUT_VAR ncmpi_put_vara_double
 //#define PNETCDF_PUT_VAR_ALL ncmpi_put_vara_double_all
 
+// GPU compilers sometimes have issues with zero-sized arrays than can occur
+// for some parameter choices. For this reason we sometimes have to pad arrays
+#if defined YAKL_ARCH_CUDA || defined YAKL_ARCH_HIP || defined YAKL_ARCH_SYCL
+#define GPU_PAD 1
+#else
+#define GPU_PAD 0
+#endif
+
 // Specifying templated min and max functions
 template <class T> YAKL_INLINE T mymin(T const v1, T const v2) {
   if (v1 < v2) {
