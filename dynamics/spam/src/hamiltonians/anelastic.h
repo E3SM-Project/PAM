@@ -242,7 +242,7 @@ public:
                                      generalized_chemical_potential_i);
     B(varset.active_id_entr) = generalized_Exner;
 
-    if (!ThermoPotential::tracers_decouple_from_dynamics) {
+    if (!ThermoPotential::moist_species_decouple_from_dynamics) {
       B(varset.active_id_vap) =
           generalized_chemical_potential_v - generalized_chemical_potential_d;
       if (varset.liquid_found) {

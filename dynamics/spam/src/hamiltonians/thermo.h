@@ -60,7 +60,7 @@ struct thermo_constants {
 class ThermoNone {
 
 public:
-  static constexpr bool tracers_decouple_from_dynamics = true;
+  static constexpr bool moist_species_decouple_from_dynamics = true;
   thermo_constants cst;
 
   real YAKL_INLINE compute_U(real alpha, real entropic_var, real qd, real qv,
@@ -132,7 +132,7 @@ public:
 // This ignores any q arguments, as expected
 class IdealGas_Pottemp {
 public:
-  static constexpr bool tracers_decouple_from_dynamics = true;
+  static constexpr bool moist_species_decouple_from_dynamics = true;
   thermo_constants cst;
 
   real YAKL_INLINE compute_U(real alpha, real entropic_var, real qd, real qv,
@@ -256,7 +256,7 @@ public:
 // This ignores any q arguments, as expected
 class IdealGas_Entropy {
 public:
-  static constexpr bool tracers_decouple_from_dynamics = true;
+  static constexpr bool moist_species_decouple_from_dynamics = true;
   thermo_constants cst;
 
   real YAKL_INLINE compute_U(real alpha, real entropic_var, real qd, real qv,
@@ -387,7 +387,7 @@ public:
 
 class ConstantKappa_VirtualPottemp {
 public:
-  static constexpr bool tracers_decouple_from_dynamics = true;
+  static constexpr bool moist_species_decouple_from_dynamics = true;
 
   thermo_constants cst;
   real YAKL_INLINE compute_U(real alpha, real entropic_var, real qd, real qv,
@@ -520,7 +520,7 @@ public:
 
 class ConstantKappa_Entropy {
 public:
-  static constexpr bool tracers_decouple_from_dynamics = false;
+  static constexpr bool moist_species_decouple_from_dynamics = false;
   thermo_constants cst;
   real YAKL_INLINE compute_U(real alpha, real entropic_var, real qd, real qv,
                              real ql, real qi) const {};
@@ -577,7 +577,7 @@ public:
 
 class Unapprox_Pottemp {
 public:
-  static constexpr bool tracers_decouple_from_dynamics = false;
+  static constexpr bool moist_species_decouple_from_dynamics = false;
   thermo_constants cst;
   real YAKL_INLINE compute_U(real alpha, real entropic_var, real qd, real qv,
                              real ql, real qi) const {};
@@ -634,7 +634,7 @@ public:
 
 class Unapprox_Entropy {
 public:
-  static constexpr bool tracers_decouple_from_dynamics = false;
+  static constexpr bool moist_species_decouple_from_dynamics = false;
   thermo_constants cst;
   real YAKL_INLINE compute_U(real alpha, real entropic_var, real qd, real qv,
                              real ql, real qi) const {};

@@ -81,7 +81,7 @@ struct VS_MAN {
   static constexpr uint ntracers_physics =
       Microphysics::get_num_tracers() + SGS::get_num_tracers();
   static constexpr uint ntracers_physics_active =
-      ThermoPotential::tracers_decouple_from_dynamics
+      ThermoPotential::moist_species_decouple_from_dynamics
           ? 0
           : std::min<uint>(3, Microphysics::get_num_tracers());
 };
@@ -100,7 +100,7 @@ struct VS_MCE_rho {
   static constexpr uint ntracers_physics =
       Microphysics::get_num_tracers() + SGS::get_num_tracers();
   static constexpr uint ntracers_physics_active =
-      ThermoPotential::tracers_decouple_from_dynamics
+      ThermoPotential::moist_species_decouple_from_dynamics
           ? 0
           : std::min<uint>(3, Microphysics::get_num_tracers());
 };
@@ -228,7 +228,7 @@ public:
         varset.dm_id_vap = tr;
         varset.dens_id_vap = ndensity_nophysics + tr;
         water_vapor_found = true;
-        if (!::ThermoPotential::tracers_decouple_from_dynamics) {
+        if (!::ThermoPotential::moist_species_decouple_from_dynamics) {
           varset.dens_active(tr + ndensity_nophysics) = true;
         }
       }
@@ -237,7 +237,7 @@ public:
         varset.dm_id_liq = tr;
         varset.dens_id_liq = ndensity_nophysics + tr;
         varset.liquid_found = true;
-        if (!::ThermoPotential::tracers_decouple_from_dynamics) {
+        if (!::ThermoPotential::moist_species_decouple_from_dynamics) {
           varset.dens_active(tr + ndensity_nophysics) = true;
         }
       }
@@ -245,7 +245,7 @@ public:
         varset.dm_id_ice = tr;
         varset.dens_id_ice = ndensity_nophysics + tr;
         varset.ice_found = true;
-        if (!::ThermoPotential::tracers_decouple_from_dynamics) {
+        if (!::ThermoPotential::moist_species_decouple_from_dynamics) {
           varset.dens_active(tr + ndensity_nophysics) = true;
         }
       }
