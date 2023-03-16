@@ -78,6 +78,13 @@ public:
                          const Geometry<Straight> &primal_geom,
                          const Geometry<Twisted> &dual_geom) {
 
+    if (T::couple && couple_wind_exact_inverse) {
+      if (primal_geom.topology.n_cells_x % 2 == 0) {
+        throw std::runtime_error(
+            "The number of crm cells in the horizontal "
+            "has to be odd when using the couple_wind_exact_inverse option");
+      }
+    }
     varset.thermo = thermodynamics;
     varset.reference_state = refstate;
     varset.primal_geometry = primal_geom;
