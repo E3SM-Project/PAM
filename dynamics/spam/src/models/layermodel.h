@@ -144,15 +144,17 @@ public:
     int djs = dual_topology.js;
     int dks = dual_topology.ks;
 
+    YAKL_SCOPE(primal_geometry, this->primal_geometry);
+    YAKL_SCOPE(dual_geometry, this->dual_geometry);
+
     // compute U = H1 v
     parallel_for(
         "Compute U",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_H1<1, diff_ord>(Uvar, Vvar, this->primal_geometry,
-                                  this->dual_geometry, dis, djs, dks, i, j, k,
-                                  n);
+          compute_H1<1, diff_ord>(Uvar, Vvar, primal_geometry, dual_geometry,
+                                  dis, djs, dks, i, j, k, n);
         });
   }
 
@@ -629,14 +631,18 @@ public:
     auto U = auxiliary_vars.fields_arr[UVAR].data;
     auto dens0 = auxiliary_vars.fields_arr[DENS0VAR].data;
 
+    YAKL_SCOPE(primal_geometry, this->primal_geometry);
+    YAKL_SCOPE(dual_geometry, this->dual_geometry);
+    YAKL_SCOPE(dens_transform, this->dens_transform);
+
     parallel_for(
         "compute dens0",
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_H2bar<VS::ndensity_active, diff_ord>(
-              dens0, dens_sol, this->primal_geometry, this->dual_geometry, pis,
-              pjs, pks, i, j, k, n);
+              dens0, dens_sol, primal_geometry, dual_geometry, pis, pjs, pks, i,
+              j, k, n);
         });
 
     auxiliary_vars.exchange({DENS0VAR});
@@ -668,9 +674,8 @@ public:
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_H1<1, diff_ord>(U, v_rhs, this->primal_geometry,
-                                  this->dual_geometry, dis, djs, dks, i, j, k,
-                                  n);
+          compute_H1<1, diff_ord>(U, v_rhs, primal_geometry, dual_geometry, dis,
+                                  djs, dks, i, j, k, n);
         });
     auxiliary_vars.exchange({UVAR});
 
@@ -756,9 +761,8 @@ public:
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_H2bar<1, diff_ord>(dens0, dens_sol, this->primal_geometry,
-                                     this->dual_geometry, pis, pjs, pks, i, j,
-                                     k, n);
+          compute_H2bar<1, diff_ord>(dens0, dens_sol, primal_geometry,
+                                     dual_geometry, pis, pjs, pks, i, j, k, n);
         });
 
     auxiliary_vars.exchange({DENS0VAR});
