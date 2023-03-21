@@ -117,6 +117,44 @@ public:
     }
   }
 
+  // reference state version
+  template <ADD_MODE addmode = ADD_MODE::REPLACE>
+  void YAKL_INLINE compute_dHsdx(const real3d &B, const real3d &dens,
+                                 const real3d &geop, int ks, int k, int n,
+                                 real fac = 1._fp) const {
+
+    SArray<real, 1, 1> geop0;
+#ifdef _EXTRUDED
+    compute_H2bar_ext<1, diff_ord, vert_diff_ord>(
+        geop0, geop, this->primal_geometry, this->dual_geometry, ks, k, n);
+#else
+    compute_H2bar<1, diff_ord>(geop0, geop, this->primal_geometry,
+                               this->dual_geometry, ks, k, n);
+#endif
+
+    real refrho =
+        1.0_fp / varset.get_alpha(varset.reference_state.dens.data, k, ks, n);
+    real refentropic_var =
+        varset.get_entropic_var(varset.reference_state.dens.data, k, ks, n);
+    real refp = thermo.solve_p(refrho, refentropic_var, 0, 0, 0, 0);
+
+    real entropic_var = varset.get_entropic_var(dens, k, ks, n);
+
+    real H = thermo.compute_H(refp, entropic_var, 0, 0, 0, 0);
+    real generalized_Exner =
+        thermo.compute_dHdentropic_var(refp, entropic_var, 0, 0, 0, 0);
+
+    if (addmode == ADD_MODE::REPLACE) {
+      B(varset.active_id_mass, k + ks, n) =
+          fac * (geop0(0) + H - entropic_var * generalized_Exner);
+      B(varset.active_id_entr, k + ks, n) = fac * generalized_Exner;
+    } else if (addmode == ADD_MODE::ADD) {
+      B(varset.active_id_mass, k + ks, n) +=
+          fac * (geop0(0) + H - entropic_var * generalized_Exner);
+      B(varset.active_id_entr, k + ks, n) += fac * generalized_Exner;
+    }
+  }
+
   template <ADD_MODE addmode = ADD_MODE::REPLACE>
   void YAKL_INLINE compute_dHsdx_two_point(const real5d &B, const real5d &dens1,
                                            const real5d &dens2,
@@ -300,6 +338,51 @@ public:
         B(d, k + ks, j + js, i + is, n) = fac * l_B(d);
       } else if (addmode == ADD_MODE::ADD) {
         B(d, k + ks, j + js, i + is, n) += fac * l_B(d);
+      }
+    }
+  }
+
+  // reference state version
+  template <ADD_MODE addmode = ADD_MODE::REPLACE>
+  void YAKL_INLINE compute_dHsdx(const real3d &B, const real3d &dens,
+                                 const real3d &geop, int ks, int k, int n,
+                                 real fac = 1._fp) const {
+
+    SArray<real, 1, 1> geop0;
+#ifdef _EXTRUDED
+    compute_H2bar_ext<1, diff_ord, vert_diff_ord>(
+        geop0, geop, this->primal_geometry, this->dual_geometry, ks, k, n);
+#else
+    compute_H2bar<1, diff_ord>(geop0, geop, this->primal_geometry,
+                               this->dual_geometry, ks, k, n);
+#endif
+
+    const real refrho =
+        1.0_fp / varset.get_alpha(varset.reference_state.dens.data, k, ks, n);
+    const real refentropic_var =
+        varset.get_entropic_var(varset.reference_state.dens.data, k, ks, n);
+    const real refqv =
+        varset.get_qv(varset.reference_state.dens.data, k, ks, n);
+    const real refp =
+        thermo.solve_p(refrho, refentropic_var, 1 - refqv, refqv, 0, 0);
+
+    SArray<real, 1, VS::ndensity_active> l_B;
+    SArray<real, 1, VS::ndensity_dycore + VS::nmoist> l_q;
+
+    l_q(0) = refp;
+    l_q(1) = varset.get_entropic_var(dens, k, ks, n);
+    l_q(2) = varset.get_qd(dens, k, ks, n);
+    l_q(3) = varset.get_qv(dens, k, ks, n);
+    l_q(4) = 0.0_fp;
+    l_q(5) = 0.0_fp;
+
+    compute_dHsdx(l_B, l_q, geop0(0));
+
+    for (int d = 0; d < VS::ndensity_active; ++d) {
+      if (addmode == ADD_MODE::REPLACE) {
+        B(d, k + ks, n) = fac * l_B(d);
+      } else if (addmode == ADD_MODE::ADD) {
+        B(d, k + ks, n) += fac * l_B(d);
       }
     }
   }

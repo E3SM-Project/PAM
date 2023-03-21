@@ -8,12 +8,10 @@ uint constexpr ntracers_dycore = 0;
 
 //////////////////////////////////////////////////////////////////////////////
 
-#if !defined _AN && !defined _MAN
 // forces reference state to be in perfect hydrostatic balance by subtracting
 // the hydrostatic balance equation evaluated at the reference state in
 // the velocity tendency
 #define FORCE_REFSTATE_HYDROSTATIC_BALANCE
-#endif
 
 // for debugging anelastic
 #if defined _AN || defined _MAN
