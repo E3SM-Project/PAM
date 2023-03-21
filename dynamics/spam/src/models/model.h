@@ -110,7 +110,7 @@ struct TracerFunctor {
 
 class TestCase {
 public:
-  SArray<TRACER_TAG, 1, ntracers_dycore> tracers;
+  SArray<TRACER_TAG, 1, ntracers_dycore + GPU_PAD> tracers;
   Equations *equations;
   bool is_initialized;
 
