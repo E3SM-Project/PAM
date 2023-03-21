@@ -3490,6 +3490,9 @@ public:
             refstate.q_pi.data(l, k + pks, n) /=
                 refstate.rho_pi.data(0, k + pks, n);
           }
+#if defined(_AN) || defined(_MAN)
+          refstate.q_pi.data(varset.dens_id_mass, k + pks, n) = 1;
+#endif
         });
 
     parallel_for(
@@ -3522,6 +3525,9 @@ public:
             refstate.q_di.data(l, k + dks, n) /=
                 refstate.rho_di.data(0, k + dks, n);
           }
+#if defined(_AN) || defined(_MAN)
+          refstate.q_di.data(varset.dens_id_mass, k + pks, n) = 1;
+#endif
         });
 
 #ifdef FORCE_REFSTATE_HYDROSTATIC_BALANCE
@@ -3669,6 +3675,9 @@ public:
             refstate.q_pi.data(l, k + pks, n) /=
                 refstate.rho_pi.data(0, k + pks, n);
           }
+#if defined(_AN) || defined(_MAN)
+          refstate.q_pi.data(varset.dens_id_mass, k + pks, n) = 1;
+#endif
         });
 
     parallel_for(
@@ -3705,6 +3714,9 @@ public:
             refstate.q_di.data(l, k + dks, n) /=
                 refstate.rho_di.data(0, k + dks, n);
           }
+#if defined(_AN) || defined(_MAN)
+          refstate.q_di.data(varset.dens_id_mass, k + pks, n) = 1;
+#endif
         });
 
 #ifdef FORCE_REFSTATE_HYDROSTATIC_BALANCE
@@ -3885,6 +3897,9 @@ public:
             refstate.q_pi.data(l, k + pks, n) /=
                 refstate.rho_pi.data(0, k + pks, n);
           }
+#if defined(_AN) || defined(_MAN)
+          refstate.q_pi.data(varset.dens_id_mass, k + pks, n) = 1;
+#endif
         });
 
     parallel_for(
@@ -3913,6 +3928,9 @@ public:
             refstate.q_di.data(l, k + dks, n) /=
                 refstate.rho_di.data(0, k + dks, n);
           }
+#if defined(_AN) || defined(_MAN)
+          refstate.q_di.data(varset.dens_id_mass, k + pks, n) = 1;
+#endif
         });
 
     YAKL_SCOPE(Hs, equations->Hs);
