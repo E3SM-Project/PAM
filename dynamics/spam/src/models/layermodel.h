@@ -1147,11 +1147,12 @@ public:
         YAKL_LAMBDA(real x, real y) { return coriolis_f(x, y); },
         constvars.fields_arr[CORIOLISVAR], 0);
 
-    YAKL_SCOPE(tracer_f, this->tracer_f);
+    YAKL_SCOPE(tracers, this->tracers);
     for (int i = 0; i < ntracers_dycore; i++) {
       dual_geom.set_2form_values(
           YAKL_LAMBDA(real x, real y) {
-            return h_f(x, y) * tracer_f(i)->compute(x, y, Lx, Ly, xc, yc);
+            return h_f(x, y) *
+                   TracerFunctor{}(tracers(i), x, y, Lx, Ly, xc, yc);
           },
           progvars.fields_arr[DENSVAR],
           i + VariableSet::ndensity_dycore_prognostic);

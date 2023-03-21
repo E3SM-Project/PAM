@@ -3427,12 +3427,12 @@ public:
         YAKL_LAMBDA(real x, real y) { return v_f(x, y); },
         progvars.fields_arr[WVAR], 0, LINE_INTEGRAL_TYPE::TANGENT);
 
-    YAKL_SCOPE(tracer_f, this->tracer_f);
+    YAKL_SCOPE(tracers, this->tracers);
     for (int i = 0; i < ntracers_dycore; i++) {
       dual_geom.set_11form_values(
           YAKL_LAMBDA(real x, real z) {
             return rho_f(x, z, thermo) *
-                   tracer_f(i)->compute(x, z, Lx, Lz, xc, zc);
+                   TracerFunctor{}(tracers(i), x, z, Lx, Lz, xc, zc);
           },
           progvars.fields_arr[DENSVAR], i + VS::ndensity_dycore_prognostic);
     }
@@ -3603,12 +3603,12 @@ public:
         YAKL_LAMBDA(real x, real z) { return T::rhov_f(x, z, thermo); },
         progvars.fields_arr[DENSVAR], varset.dens_id_vap);
 
-    YAKL_SCOPE(tracer_f, this->tracer_f);
+    YAKL_SCOPE(tracers, this->tracers);
     for (int i = 0; i < ntracers_dycore; i++) {
       dual_geom.set_11form_values(
           YAKL_LAMBDA(real x, real z) {
             return rho_f(x, z, thermo) *
-                   tracer_f(i)->compute(x, z, Lx, Lz, xc, zc);
+                   TracerFunctor{}(tracers(i), x, z, Lx, Lz, xc, zc);
           },
           progvars.fields_arr[DENSVAR], i + VS::ndensity_dycore_prognostic);
     }
