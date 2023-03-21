@@ -3177,9 +3177,9 @@ void read_model_params_file(std::string inFile, ModelParameters &params,
 
   for (int i = 0; i < ntracers_dycore; i++) {
     params.tracerdataStr[i] =
-        config["initTracer" + std::to_string(i)].as<std::string>();
+        config["initTracer" + std::to_string(i)].as<std::string>("constant");
     params.dycore_tracerpos[i] =
-        config["initTracerPos" + std::to_string(i)].as<bool>();
+        config["initTracerPos" + std::to_string(i)].as<bool>(false);
   }
 
   // Store vertical cell interface heights in the data manager

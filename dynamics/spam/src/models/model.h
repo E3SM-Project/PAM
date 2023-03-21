@@ -132,8 +132,7 @@ public:
         tracers(i) = TRACER_TAG::SQUARE;
       } else if (params.tracerdataStr[i] == "doublesquare") {
         tracers(i) = TRACER_TAG::DOUBLESQUARE;
-      } else {
-        // by default set tracers to constant
+      } else if (params.tracerdataStr[i] == "constant") {
         tracers(i) = TRACER_TAG::CONSTANT;
       }
     }
