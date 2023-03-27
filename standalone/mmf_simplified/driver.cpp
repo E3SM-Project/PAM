@@ -12,6 +12,7 @@
 #include "output.h"
 #include "supercell_init.h"
 #include <iostream>
+#include <chrono>
 #include "scream_cxx_interface_finalize.h"
 
 
@@ -153,6 +154,8 @@ int main(int argc, char** argv) {
     // Output the initial state
     if (out_freq >= 0. ) output( coupler , out_prefix , etime_gcm );
 
+    yakl::fence();
+    auto ts = std::chrono::steady_clock::now();
     yakl::timer_start("main_loop");
     for (int step_gcm = 0; step_gcm < nsteps_gcm; ++step_gcm) {
 
@@ -182,10 +185,16 @@ int main(int argc, char** argv) {
         }
       }
     }
+
     yakl::timer_stop("main_loop");
+    yakl::fence();
+    auto te = std::chrono::steady_clock::now();
+
+    auto runtime = std::chrono::duration<double>(te - ts).count();
 
     if (mainproc) {
-      std::cout << "Elapsed Time: " << etime_gcm << "\n";
+      std::cout << "Simulation Time: " << etime_gcm << "\n";
+      std::cout << "Run Time: " << runtime << "\n";
     }
 
     dycore.finalize( coupler );
