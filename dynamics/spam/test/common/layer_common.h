@@ -12,6 +12,8 @@ uint constexpr nauxiliary = 0;
 uint constexpr ndiagnostic = 0;
 uint constexpr ntracers_dycore = 0;
 
+#include "params.h"
+
 struct ModelParameters : public Parameters {
   // std::string initdataStr;
   std::string tracerdataStr[ntracers_dycore];

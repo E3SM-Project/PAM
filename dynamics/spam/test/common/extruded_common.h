@@ -12,6 +12,8 @@ uint constexpr nauxiliary = 0;
 uint constexpr ndiagnostic = 0;
 uint constexpr ntracers_dycore = 0;
 
+#include "params.h"
+
 struct ModelParameters : public Parameters {
   // std::string initdataStr;
   std::string tracerdataStr[ntracers_dycore];
@@ -69,7 +71,6 @@ struct ExtrudedUnitSquare {
     params.xlen = 1;
     params.xc = 0;
     params.nz_dual = nz;
-    params.zlen = 1;
     params.uniform_vertical = uniform_vertical;
 
     params.zint = real2d("zint", nz + 1, 1);
