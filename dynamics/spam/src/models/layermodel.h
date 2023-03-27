@@ -125,15 +125,17 @@ public:
     int pjs = primal_topology.js;
     int pks = primal_topology.ks;
 
+    YAKL_SCOPE(primal_geometry, this->primal_geometry);
+    YAKL_SCOPE(dual_geometry, this->dual_geometry);
     // compute dens0var = I densvar
     parallel_for(
         "Compute Dens0",
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+        YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_H2bar<VS::ndensity_prognostic, diff_ord>(
-              dens0var, densvar, this->primal_geometry, this->dual_geometry,
-              pis, pjs, pks, i, j, k, n);
+              dens0var, densvar, primal_geometry, dual_geometry, pis, pjs, pks,
+              i, j, k, n);
         });
   }
 
@@ -168,15 +170,16 @@ public:
     int dks = dual_topology.ks;
 
     YAKL_SCOPE(PVPE, this->equations->PVPE);
+    YAKL_SCOPE(primal_geometry, this->primal_geometry);
+    YAKL_SCOPE(dual_geometry, this->dual_geometry);
     // compute U H1v, q0, f0
     parallel_for(
         "Compute U, Q0, F0",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-          compute_H1<1, diff_ord>(Uvar, Vvar, this->primal_geometry,
-                                  this->dual_geometry, dis, djs, dks, i, j, k,
-                                  n);
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          compute_H1<1, diff_ord>(Uvar, Vvar, primal_geometry, dual_geometry,
+                                  dis, djs, dks, i, j, k, n);
           PVPE.compute_q0f0(Q0var, f0var, Vvar, densvar, coriolisvar, dis, djs,
                             dks, i, j, k, n);
         });
@@ -274,11 +277,21 @@ public:
     int djs = dual_topology.js;
     int dks = dual_topology.ks;
 
+    YAKL_SCOPE(primal_wenoRecon, this->primal_wenoRecon);
+    YAKL_SCOPE(primal_to_gll, this->primal_to_gll);
+    YAKL_SCOPE(primal_wenoIdl, this->primal_wenoIdl);
+    YAKL_SCOPE(primal_wenoSigma, this->primal_wenoSigma);
+
+    YAKL_SCOPE(coriolis_wenoRecon, this->coriolis_wenoRecon);
+    YAKL_SCOPE(coriolis_to_gll, this->coriolis_to_gll);
+    YAKL_SCOPE(coriolis_wenoIdl, this->coriolis_wenoIdl);
+    YAKL_SCOPE(coriolis_wenoSigma, this->coriolis_wenoSigma);
+
     parallel_for(
         "Compute straight edge recons",
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+        YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_straight_edge_recon<1, reconstruction_type,
                                       reconstruction_order>(
               Qedgereconvar, Q0var, pis, pjs, pks, i, j, k, n, primal_wenoRecon,
@@ -290,11 +303,16 @@ public:
               coriolis_wenoSigma);
         });
 
+    YAKL_SCOPE(dual_wenoRecon, this->dual_wenoRecon);
+    YAKL_SCOPE(dual_to_gll, this->dual_to_gll);
+    YAKL_SCOPE(dual_wenoIdl, this->dual_wenoIdl);
+    YAKL_SCOPE(dual_wenoSigma, this->dual_wenoSigma);
+
     parallel_for(
         "Compute twisted edge recons",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+        YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_twisted_edge_recon<VS::ndensity_prognostic,
                                      dual_reconstruction_type,
                                      dual_reconstruction_order>(
@@ -319,6 +337,9 @@ public:
     int djs = dual_topology.js;
     int dks = dual_topology.ks;
 
+    YAKL_SCOPE(primal_geometry, this->primal_geometry);
+    YAKL_SCOPE(dual_geometry, this->dual_geometry);
+
     parallel_for(
         "Compute straight recons",
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
@@ -335,11 +356,11 @@ public:
         "Compute twisted recons",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+        YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_twisted_recon<VS::ndensity_prognostic,
                                 dual_reconstruction_type>(
-              densreconvar, densedgereconvar, this->primal_geometry,
-              this->dual_geometry, Vvar, dis, djs, dks, i, j, k, n);
+              densreconvar, densedgereconvar, primal_geometry, dual_geometry,
+              Vvar, dis, djs, dks, i, j, k, n);
           // scale primal recons
           for (int d = 0; d < ndims; d++) {
             for (int l = 0; l < VS::ndensity_prognostic; l++) {
