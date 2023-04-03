@@ -43,5 +43,5 @@ else()
   target_link_libraries(driver dynamics physics pam_core yaml-cpp ${PAM_LINK_FLAGS})
 endif()
 
-target_link_libraries(fortran_test dynamics physics pam_core ${PAM_LINK_FLAGS})
+target_link_libraries(fortran_test dynamics physics pam_core ${PAM_LINK_FLAGS} ${YAKL_FORTRAN_INTERFACE_TARGET})
 
