@@ -74,6 +74,6 @@ uint constexpr nstats = 6;
 class ModelParameters : public Parameters {
 public:
   std::string initdataStr;
-  std::string tracerdataStr[ntracers_dycore];
-  bool dycore_tracerpos[ntracers_dycore];
+  std::string tracerdataStr[ntracers_dycore + GPU_PAD];
+  bool dycore_tracerpos[ntracers_dycore + GPU_PAD];
 };

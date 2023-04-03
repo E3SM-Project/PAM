@@ -126,6 +126,7 @@ public:
   using T::ndensity_dycore_prognostic;
 
   using T::ntracers_dycore_active;
+  static_assert(ntracers_dycore_active <= ntracers_dycore);
 
   using T::ntracers_physics;
   using T::ntracers_physics_active;

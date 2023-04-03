@@ -230,8 +230,8 @@ apply_Phi(const real5d &densvar, const real5d &edgefluxvar, const real5d &Mfvar,
           const SArray<bool, 1, VariableSet::ndensity_prognostic> &dens_pos,
           int is, int js, int ks, int i, int j, int k, int n) {
   SArray<real, 2, ndofs, ndims> Phi;
-  SArray<real, 3, ndofs, ndims, 2> const q;
-  SArray<real, 3, ndofs, ndims, 2> const Mf;
+  SArray<real, 3, ndofs, ndims, 2> q;
+  SArray<real, 3, ndofs, ndims, 2> Mf;
   SArray<real, 2, ndofs, ndims> edgeflux;
 
   for (int d = 0; d < ndims; d++) {
@@ -268,8 +268,8 @@ apply_Phivert(const real5d &Phivertvar, const real5d &vertedgefluxvar,
               const SArray<bool, 1, VariableSet::ndensity_prognostic> &dens_pos,
               int is, int js, int ks, int i, int j, int k, int n) {
   SArray<real, 1, ndofs> Phivert;
-  SArray<real, 2, ndofs, 2> const qvert;
-  SArray<real, 2, ndofs, 2> const Mfvert;
+  SArray<real, 2, ndofs, 2> qvert;
+  SArray<real, 2, ndofs, 2> Mfvert;
   SArray<real, 1, ndofs> vertedgeflux;
 
   for (int l = 0; l < ndofs; l++) {
