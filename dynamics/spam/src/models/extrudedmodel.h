@@ -3476,7 +3476,7 @@ public:
         varset.dens_id_mass);
 
     primal_geom.set_profile_00form_values(
-        YAKL_LAMBDA(real z) { return refentropicdensity_f(z, thermo); },
+        YAKL_LAMBDA(real z) { return refentropicdensity_f(z, thermo) / refrho_f(z, thermo); },
         refstate.q_pi, varset.dens_id_entr);
 
     primal_geom.set_profile_00form_values(
@@ -3486,13 +3486,13 @@ public:
     parallel_for(
         "scale q_pi", SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
         YAKL_LAMBDA(int k, int n) {
-          for (int l = 0; l < VS::ndensity; ++l) {
-            refstate.q_pi.data(l, k + pks, n) /=
-                refstate.rho_pi.data(0, k + pks, n);
-          }
-#if defined(_AN) || defined(_MAN)
+          //for (int l = 0; l < VS::ndensity; ++l) {
+          //  refstate.q_pi.data(l, k + pks, n) /=
+          //      refstate.rho_pi.data(0, k + pks, n);
+          //}
+//#if defined(_AN) || defined(_MAN)
           refstate.q_pi.data(varset.dens_id_mass, k + pks, n) = 1;
-#endif
+//#endif
         });
 
     parallel_for(
@@ -3515,19 +3515,19 @@ public:
         varset.dens_id_mass);
 
     dual_geom.set_profile_00form_values(
-        YAKL_LAMBDA(real z) { return refentropicdensity_f(z, thermo); },
+        YAKL_LAMBDA(real z) { return refentropicdensity_f(z, thermo) / refrho_f(z, thermo); },
         refstate.q_di, varset.dens_id_entr);
 
     parallel_for(
         "scale q_di", SimpleBounds<2>(dual_topology.ni, dual_topology.nens),
         YAKL_LAMBDA(int k, int n) {
-          for (int l = 0; l < VS::ndensity; ++l) {
-            refstate.q_di.data(l, k + dks, n) /=
-                refstate.rho_di.data(0, k + dks, n);
-          }
-#if defined(_AN) || defined(_MAN)
+          //for (int l = 0; l < VS::ndensity; ++l) {
+          //  refstate.q_di.data(l, k + dks, n) /=
+          //      refstate.rho_di.data(0, k + dks, n);
+          //}
+//#if defined(_AN) || defined(_MAN)
           refstate.q_di.data(varset.dens_id_mass, k + pks, n) = 1;
-#endif
+//#endif
         });
 
 #ifdef FORCE_REFSTATE_HYDROSTATIC_BALANCE
