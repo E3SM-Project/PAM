@@ -1613,12 +1613,14 @@ public:
             FWvar(0, pks + k, pjs + j, pis + i, n) = fac * dens0_kmh * uw_ik(0);
           }
 
-          if (addmode == ADD_MODE::ADD) {
-            Hs.compute_dHsdx<ADD_MODE::ADD>(Bvar, densvar, HSvar, pis, pjs, pks,
-                                            i, j, k, n, fac);
-          } else if (addmode == ADD_MODE::REPLACE) {
-            Hs.compute_dHsdx<ADD_MODE::REPLACE>(Bvar, densvar, HSvar, pis, pjs,
-                                                pks, i, j, k, n, fac);
+          if (k < primal_topology.ni) {
+            if (addmode == ADD_MODE::ADD) {
+              Hs.compute_dHsdx<ADD_MODE::ADD>(Bvar, densvar, HSvar, pis, pjs, pks,
+                                              i, j, k, n, fac);
+            } else if (addmode == ADD_MODE::REPLACE) {
+              Hs.compute_dHsdx<ADD_MODE::REPLACE>(Bvar, densvar, HSvar, pis, pjs,
+                                                  pks, i, j, k, n, fac);
+            }
           }
         });
     auxiliary_vars.exchange({KVAR});
