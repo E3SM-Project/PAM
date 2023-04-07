@@ -3,6 +3,8 @@
 
 #include "pam_coupler.h"
 
+#define MMF_PAM_FORCE_ALL_WATER_SPECIES
+
 namespace modules {
 
   // This routine is only called once at the beginning of an MMF calculation (at the beginning of a GCM time step)
