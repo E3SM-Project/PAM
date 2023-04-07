@@ -211,7 +211,7 @@ public:
 
   void timeStep(PamCoupler &coupler) {
 
-    serial_print("taking a dycore dtphys step", par.masterproc);
+    // serial_print("taking a dycore dtphys step", par.masterproc);
 
     // convert Coupler state to dynamics state
     tendencies.convert_coupler_to_dynamics_state(coupler, prognostic_vars,
