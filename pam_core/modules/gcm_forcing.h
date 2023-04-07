@@ -146,8 +146,8 @@ namespace modules {
     auto vvel  = dm.get<real,4>( "vvel"        );
     auto temp  = dm.get<real,4>( "temp"        );
     auto rho_v = dm.get<real,4>( "water_vapor" );
-    // auto rho_l = dm.get<real,4>( "cloud_water" );
-    // auto rho_i = dm.get<real,4>( "ice"         );
+    auto rho_l = dm.get<real,4>( "cloud_water" );
+    auto rho_i = dm.get<real,4>( "ice"         );
 
     // GCM forcing tendencies for the average CRM column state
     auto gcm_forcing_tend_rho_d = dm.get<real const,2>("gcm_forcing_tend_rho_d");
@@ -155,27 +155,27 @@ namespace modules {
     auto gcm_forcing_tend_vvel  = dm.get<real const,2>("gcm_forcing_tend_vvel" );
     auto gcm_forcing_tend_temp  = dm.get<real const,2>("gcm_forcing_tend_temp" );
     auto gcm_forcing_tend_rho_v = dm.get<real const,2>("gcm_forcing_tend_rho_v");
-    // auto gcm_forcing_tend_rho_l = dm.get<real const,2>("gcm_forcing_tend_rho_l");
-    // auto gcm_forcing_tend_rho_i = dm.get<real const,2>("gcm_forcing_tend_rho_i");
+    auto gcm_forcing_tend_rho_l = dm.get<real const,2>("gcm_forcing_tend_rho_l");
+    auto gcm_forcing_tend_rho_i = dm.get<real const,2>("gcm_forcing_tend_rho_i");
 
     // We need these arrays for multiplicative hole filling
     // Holes are only filled inside vertical columns at first because it leads to a very infrequent collision
     //    rate for atomidAdd() operations, reducing the runtime of the operations.
     real2d rho_v_neg_mass("rho_v_neg_mass",nz,nens);
     real2d rho_v_pos_mass("rho_v_pos_mass",nz,nens);
-    // real2d rho_l_neg_mass("rho_l_neg_mass",nz,nens);
-    // real2d rho_l_pos_mass("rho_l_pos_mass",nz,nens);
-    // real2d rho_i_neg_mass("rho_i_neg_mass",nz,nens);
-    // real2d rho_i_pos_mass("rho_i_pos_mass",nz,nens);
+    real2d rho_l_neg_mass("rho_l_neg_mass",nz,nens);
+    real2d rho_l_pos_mass("rho_l_pos_mass",nz,nens);
+    real2d rho_i_neg_mass("rho_i_neg_mass",nz,nens);
+    real2d rho_i_pos_mass("rho_i_pos_mass",nz,nens);
 
     // These are essentially reductions, so initialize to zero
     parallel_for( YAKL_AUTO_LABEL() , Bounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
       rho_v_neg_mass(k,iens) = 0;
       rho_v_pos_mass(k,iens) = 0;
-      // rho_l_neg_mass(k,iens) = 0;
-      // rho_l_pos_mass(k,iens) = 0;
-      // rho_i_neg_mass(k,iens) = 0;
-      // rho_i_pos_mass(k,iens) = 0;
+      rho_l_neg_mass(k,iens) = 0;
+      rho_l_pos_mass(k,iens) = 0;
+      rho_i_neg_mass(k,iens) = 0;
+      rho_i_pos_mass(k,iens) = 0;
     });
 
     // Apply the GCM forcing, and keep track of negative mass we had to fill and available positive mass
@@ -191,21 +191,25 @@ namespace modules {
       vvel (k,j,i,iens) += gcm_forcing_tend_vvel (k,iens) * dt;
       temp (k,j,i,iens) += gcm_forcing_tend_temp (k,iens) * dt;
       rho_v(k,j,i,iens) += gcm_forcing_tend_rho_v(k,iens) * dt;
-      // rho_l(k,j,i,iens) += gcm_forcing_tend_rho_l(k,iens) * dt; // Disable for now
-      // rho_i(k,j,i,iens) += gcm_forcing_tend_rho_i(k,iens) * dt; // Disable for now
+      #ifdef MMF_PAM_FORCE_ALL_WATER_SPECIES
+      rho_l(k,j,i,iens) += gcm_forcing_tend_rho_l(k,iens) * dt; // Disable for now
+      rho_i(k,j,i,iens) += gcm_forcing_tend_rho_i(k,iens) * dt; // Disable for now
+      #endif
       // Compute negative and positive mass for rho_v, and set negative masses to zero (essentially adding mass)
       if (rho_v(k,j,i,iens) < 0) {
         atomicAdd( rho_v_neg_mass(k,iens) , -rho_v(k,j,i,iens)*dz(k,iens) );
         rho_v(k,j,i,iens) = 0;
       }
-      // if (rho_l(k,j,i,iens) < 0) {
-      //   atomicAdd( rho_l_neg_mass(k,iens) , -rho_l(k,j,i,iens)*dz(k,iens) );
-      //   rho_l(k,j,i,iens) = 0;
-      // }
-      // if (rho_i(k,j,i,iens) < 0) {
-      //   atomicAdd( rho_i_neg_mass(k,iens) , -rho_i(k,j,i,iens)*dz(k,iens) );
-      //   rho_i(k,j,i,iens) = 0;
-      // }
+      #ifdef MMF_PAM_FORCE_ALL_WATER_SPECIES
+      if (rho_l(k,j,i,iens) < 0) {
+        atomicAdd( rho_l_neg_mass(k,iens) , -rho_l(k,j,i,iens)*dz(k,iens) );
+        rho_l(k,j,i,iens) = 0;
+      }
+      if (rho_i(k,j,i,iens) < 0) {
+        atomicAdd( rho_i_neg_mass(k,iens) , -rho_i(k,j,i,iens)*dz(k,iens) );
+        rho_i(k,j,i,iens) = 0;
+      }
+      #endif
     });
 
     // Only do the hole filing if there's negative mass
@@ -213,8 +217,10 @@ namespace modules {
       // Calculate available positive mass for hole filling at each vertical level 
       parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
         if (rho_v(k,j,i,iens) > 0) atomicAdd( rho_v_pos_mass(k,iens) ,  rho_v(k,j,i,iens)*dz(k,iens) );
-        // if (rho_l(k,j,i,iens) > 0) atomicAdd( rho_l_pos_mass(k,iens) ,  rho_l(k,j,i,iens)*dz(k,iens) );
-        // if (rho_i(k,j,i,iens) > 0) atomicAdd( rho_i_pos_mass(k,iens) ,  rho_i(k,j,i,iens)*dz(k,iens) );
+        #ifdef MMF_PAM_FORCE_ALL_WATER_SPECIES
+        if (rho_l(k,j,i,iens) > 0) atomicAdd( rho_l_pos_mass(k,iens) ,  rho_l(k,j,i,iens)*dz(k,iens) );
+        if (rho_i(k,j,i,iens) > 0) atomicAdd( rho_i_pos_mass(k,iens) ,  rho_i(k,j,i,iens)*dz(k,iens) );
+        #endif
       });
 
       // The negative is too large if the mass added to fill in negative values is greater than the available mass at
@@ -225,15 +231,19 @@ namespace modules {
       parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
         // Determine if mass added to negatives is too large to compensate for in this vertical level
         if (i==0 && j==0){ if (rho_v_neg_mass(k,iens) > rho_v_pos_mass(k,iens)) neg_too_large = true; }
-        // if (i==0 && j==0){ if (rho_l_neg_mass(k,iens) > rho_l_pos_mass(k,iens)) neg_too_large = true; }
-        // if (i==0 && j==0){ if (rho_i_neg_mass(k,iens) > rho_i_pos_mass(k,iens)) neg_too_large = true; }
+        #ifdef MMF_PAM_FORCE_ALL_WATER_SPECIES
+        if (i==0 && j==0){ if (rho_l_neg_mass(k,iens) > rho_l_pos_mass(k,iens)) neg_too_large = true; }
+        if (i==0 && j==0){ if (rho_i_neg_mass(k,iens) > rho_i_pos_mass(k,iens)) neg_too_large = true; }
+        #endif
         // Subtract mass proportional to this cells' portion of the total mass at the vertical level
         real factor = rho_v(k,j,i,iens)*dz(k,iens) / rho_v_pos_mass(k,iens);
         rho_v(k,j,i,iens) = std::max( 0._fp , rho_v(k,j,i,iens) - (rho_v_neg_mass(k,iens) * factor)/dz(k,iens) );
-        // factor = rho_l(k,j,i,iens)*dz(k,iens) / rho_l_pos_mass(k,iens);
-        // rho_l(k,j,i,iens) = std::max( 0._fp , rho_l(k,j,i,iens) - (rho_l_neg_mass(k,iens) * factor)/dz(k,iens) );
-        // factor = rho_i(k,j,i,iens)*dz(k,iens) / rho_l_pos_mass(k,iens);
-        // rho_i(k,j,i,iens) = std::max( 0._fp , rho_i(k,j,i,iens) - (rho_i_neg_mass(k,iens) * factor)/dz(k,iens) );
+        #ifdef MMF_PAM_FORCE_ALL_WATER_SPECIES
+        factor = rho_l(k,j,i,iens)*dz(k,iens) / rho_l_pos_mass(k,iens);
+        rho_l(k,j,i,iens) = std::max( 0._fp , rho_l(k,j,i,iens) - (rho_l_neg_mass(k,iens) * factor)/dz(k,iens) );
+        factor = rho_i(k,j,i,iens)*dz(k,iens) / rho_l_pos_mass(k,iens);
+        rho_i(k,j,i,iens) = std::max( 0._fp , rho_i(k,j,i,iens) - (rho_i_neg_mass(k,iens) * factor)/dz(k,iens) );
+        #endif
       });
 
       if (neg_too_large.hostRead()) {
@@ -241,19 +251,23 @@ namespace modules {
         // This will have a large contention rate for atomicAdd() and will be less efficient than before
         real1d rho_v_neg_mass_glob("rho_v_neg_mass_glob",nens);
         real1d rho_v_pos_mass_glob("rho_v_pos_mass_glob",nens);
-        // real1d rho_l_neg_mass_glob("rho_l_neg_mass_glob",nens);
-        // real1d rho_l_pos_mass_glob("rho_l_pos_mass_glob",nens);
-        // real1d rho_i_neg_mass_glob("rho_i_neg_mass_glob",nens);
-        // real1d rho_i_pos_mass_glob("rho_i_pos_mass_glob",nens);
+        #ifdef MMF_PAM_FORCE_ALL_WATER_SPECIES
+        real1d rho_l_neg_mass_glob("rho_l_neg_mass_glob",nens);
+        real1d rho_l_pos_mass_glob("rho_l_pos_mass_glob",nens);
+        real1d rho_i_neg_mass_glob("rho_i_neg_mass_glob",nens);
+        real1d rho_i_pos_mass_glob("rho_i_pos_mass_glob",nens);
+        #endif
 
         // These are essentially reductions, so initialize to zero
         parallel_for( YAKL_AUTO_LABEL() , nens , YAKL_LAMBDA (int iens) {
           rho_v_neg_mass_glob(iens) = 0;
           rho_v_pos_mass_glob(iens) = 0;
-          // rho_l_neg_mass_glob(iens) = 0;
-          // rho_l_pos_mass_glob(iens) = 0;
-          // rho_i_neg_mass_glob(iens) = 0;
-          // rho_i_pos_mass_glob(iens) = 0;
+          #ifdef MMF_PAM_FORCE_ALL_WATER_SPECIES
+          rho_l_neg_mass_glob(iens) = 0;
+          rho_l_pos_mass_glob(iens) = 0;
+          rho_i_neg_mass_glob(iens) = 0;
+          rho_i_pos_mass_glob(iens) = 0;
+          #endif
         });
 
         // Compute the amount of negative mass we still need to compensate for as well as how much positive mass
@@ -261,10 +275,12 @@ namespace modules {
         parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
           if (i == 0 && j == 0) atomicAdd( rho_v_neg_mass_glob(iens) , std::max(0._fp,rho_v_neg_mass(k,iens)-rho_v_pos_mass(k,iens)) );
           atomicAdd( rho_v_pos_mass_glob(iens) , rho_v(k,j,i,iens)*dz(k,iens) );
-          // if (i == 0 && j == 0) atomicAdd( rho_l_neg_mass_glob(iens) , std::max(0._fp,rho_l_neg_mass(k,iens)-rho_l_pos_mass(k,iens)) );
-          // atomicAdd( rho_l_pos_mass_glob(iens) , rho_l(k,j,i,iens)*dz(k,iens) );
-          // if (i == 0 && j == 0) atomicAdd( rho_i_neg_mass_glob(iens) , std::max(0._fp,rho_i_neg_mass(k,iens)-rho_i_pos_mass(k,iens)) );
-          // atomicAdd( rho_i_pos_mass_glob(iens) , rho_i(k,j,i,iens)*dz(k,iens) );
+          #ifdef MMF_PAM_FORCE_ALL_WATER_SPECIES
+          if (i == 0 && j == 0) atomicAdd( rho_l_neg_mass_glob(iens) , std::max(0._fp,rho_l_neg_mass(k,iens)-rho_l_pos_mass(k,iens)) );
+          atomicAdd( rho_l_pos_mass_glob(iens) , rho_l(k,j,i,iens)*dz(k,iens) );
+          if (i == 0 && j == 0) atomicAdd( rho_i_neg_mass_glob(iens) , std::max(0._fp,rho_i_neg_mass(k,iens)-rho_i_pos_mass(k,iens)) );
+          atomicAdd( rho_i_pos_mass_glob(iens) , rho_i(k,j,i,iens)*dz(k,iens) );
+          #endif
         });
 
         // Remove mass proportionally to the mass in a given cell
@@ -272,10 +288,12 @@ namespace modules {
           real factor;
           factor = rho_v(k,j,i,iens)*dz(k,iens) / rho_v_pos_mass_glob(iens);
           rho_v(k,j,i,iens) = std::max( 0._fp , rho_v(k,j,i,iens) - (rho_v_neg_mass_glob(iens) * factor)/dz(k,iens) );
-          // factor = rho_l(k,j,i,iens)*dz(k,iens) / rho_l_pos_mass_glob(iens);
-          // rho_l(k,j,i,iens) = std::max( 0._fp , rho_l(k,j,i,iens) - (rho_l_neg_mass_glob(iens) * factor)/dz(k,iens) );
-          // factor = rho_i(k,j,i,iens)*dz(k,iens) / rho_i_pos_mass_glob(iens);
-          // rho_i(k,j,i,iens) = std::max( 0._fp , rho_i(k,j,i,iens) - (rho_i_neg_mass_glob(iens) * factor)/dz(k,iens) );
+          #ifdef MMF_PAM_FORCE_ALL_WATER_SPECIES
+          factor = rho_l(k,j,i,iens)*dz(k,iens) / rho_l_pos_mass_glob(iens);
+          rho_l(k,j,i,iens) = std::max( 0._fp , rho_l(k,j,i,iens) - (rho_l_neg_mass_glob(iens) * factor)/dz(k,iens) );
+          factor = rho_i(k,j,i,iens)*dz(k,iens) / rho_i_pos_mass_glob(iens);
+          rho_i(k,j,i,iens) = std::max( 0._fp , rho_i(k,j,i,iens) - (rho_i_neg_mass_glob(iens) * factor)/dz(k,iens) );
+          #endif
         });
         
       } // if (neg_too_large.hostRead()) {
