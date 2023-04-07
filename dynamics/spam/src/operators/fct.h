@@ -3,10 +3,11 @@
 #include "common.h"
 
 template <uint ndofs>
-void YAKL_INLINE calculate_edgeflux(SArray<real, 2, ndofs, ndims> &edgeflux,
-                                    SArray<real, 2, ndofs, ndims> const &recon,
-                                    SArray<real, 1, ndims> const &flux,
-                                    SArray<bool, 1, ndensity> const &dens_pos) {
+void YAKL_INLINE calculate_edgeflux(
+    SArray<real, 2, ndofs, ndims> &edgeflux,
+    SArray<real, 2, ndofs, ndims> const &recon,
+    SArray<real, 1, ndims> const &flux,
+    SArray<bool, 1, VariableSet::ndensity_prognostic> const &dens_pos) {
   for (int l = 0; l < ndofs; l++) {
     if (dens_pos(l)) {
       for (int d = 0; d < ndims; d++) {
@@ -17,10 +18,10 @@ void YAKL_INLINE calculate_edgeflux(SArray<real, 2, ndofs, ndims> &edgeflux,
 }
 
 template <uint ndofs>
-YAKL_INLINE void
-compute_edgefluxes(const real5d &edgefluxvar, const real5d &reconvar,
-                   const real5d &U, const SArray<bool, 1, ndensity> &dens_pos,
-                   int is, int js, int ks, int i, int j, int k, int n) {
+YAKL_INLINE void compute_edgefluxes(
+    const real5d &edgefluxvar, const real5d &reconvar, const real5d &U,
+    const SArray<bool, 1, VariableSet::ndensity_prognostic> &dens_pos, int is,
+    int js, int ks, int i, int j, int k, int n) {
   SArray<real, 2, ndofs, ndims> edgeflux;
   SArray<real, 2, ndofs, ndims> recon;
   SArray<real, 1, ndims> flux;
@@ -28,7 +29,7 @@ compute_edgefluxes(const real5d &edgefluxvar, const real5d &reconvar,
     flux(d) = U(d, k + ks, j + js, i + is, n);
     for (int l = 0; l < ndofs; l++) {
       if (dens_pos(l)) {
-        recon(l, d) = reconvar(l + d * ndofs, k + ks, j + js, i + is, n);
+        recon(l, d) = reconvar(d + l * ndims, k + ks, j + js, i + is, n);
       }
     }
   }
@@ -46,7 +47,8 @@ compute_edgefluxes(const real5d &edgefluxvar, const real5d &reconvar,
 template <uint ndofs>
 void YAKL_INLINE calculate_vertedgeflux(
     SArray<real, 1, ndofs> &edgeflux, SArray<real, 1, ndofs> const &recon,
-    real const &flux, SArray<bool, 1, ndensity> const &dens_pos) {
+    real const &flux,
+    SArray<bool, 1, VariableSet::ndensity_prognostic> const &dens_pos) {
   for (int l = 0; l < ndofs; l++) {
     if (dens_pos(l)) {
       edgeflux(l) = recon(l) * flux;
@@ -55,11 +57,10 @@ void YAKL_INLINE calculate_vertedgeflux(
 }
 
 template <uint ndofs>
-YAKL_INLINE void
-compute_vertedgefluxes(const real5d &vertedgefluxvar,
-                       const real5d &vertreconvar, const real5d &UW,
-                       const SArray<bool, 1, ndensity> &dens_pos, int is,
-                       int js, int ks, int i, int j, int k, int n) {
+YAKL_INLINE void compute_vertedgefluxes(
+    const real5d &vertedgefluxvar, const real5d &vertreconvar, const real5d &UW,
+    const SArray<bool, 1, VariableSet::ndensity_prognostic> &dens_pos, int is,
+    int js, int ks, int i, int j, int k, int n) {
   SArray<real, 1, ndofs> edgeflux;
   SArray<real, 1, ndofs> recon;
   real flux;
@@ -79,10 +80,10 @@ compute_vertedgefluxes(const real5d &vertedgefluxvar,
 }
 
 template <uint ndofs>
-void YAKL_INLINE calculate_Mf(SArray<real, 1, ndofs> &Mf,
-                              SArray<real, 3, ndofs, ndims, 2> const &edgeflux,
-                              real dt,
-                              SArray<bool, 1, ndensity> const &dens_pos) {
+void YAKL_INLINE calculate_Mf(
+    SArray<real, 1, ndofs> &Mf,
+    SArray<real, 3, ndofs, ndims, 2> const &edgeflux, real dt,
+    SArray<bool, 1, VariableSet::ndensity_prognostic> const &dens_pos) {
   real eps = 1.0e-8_fp;
   for (int l = 0; l < ndofs; l++) {
     if (dens_pos(l)) {
@@ -97,11 +98,11 @@ void YAKL_INLINE calculate_Mf(SArray<real, 1, ndofs> &Mf,
 }
 
 template <uint ndofs>
-void YAKL_INLINE
-calculate_Mfext(SArray<real, 1, ndofs> &Mf,
-                SArray<real, 3, ndofs, ndims, 2> const &edgeflux,
-                SArray<real, 2, ndofs, 2> const &vertedgeflux, real dt,
-                SArray<bool, 1, ndensity> const &dens_pos) {
+void YAKL_INLINE calculate_Mfext(
+    SArray<real, 1, ndofs> &Mf,
+    SArray<real, 3, ndofs, ndims, 2> const &edgeflux,
+    SArray<real, 2, ndofs, 2> const &vertedgeflux, real dt,
+    SArray<bool, 1, VariableSet::ndensity_prognostic> const &dens_pos) {
 
   real eps = 1.0e-8_fp;
   for (int l = 0; l < ndofs; l++) {
@@ -118,10 +119,10 @@ calculate_Mfext(SArray<real, 1, ndofs> &Mf,
 }
 
 template <uint ndofs>
-YAKL_INLINE void compute_Mf(const real5d &Mfvar, const real5d &edgefluxvar,
-                            real dt, const SArray<bool, 1, ndensity> &dens_pos,
-                            int is, int js, int ks, int i, int j, int k,
-                            int n) {
+YAKL_INLINE void
+compute_Mf(const real5d &Mfvar, const real5d &edgefluxvar, real dt,
+           const SArray<bool, 1, VariableSet::ndensity_prognostic> &dens_pos,
+           int is, int js, int ks, int i, int j, int k, int n) {
   SArray<real, 1, ndofs> Mf;
   SArray<real, 3, ndofs, ndims, 2> edgeflux;
   for (int l = 0; l < ndofs; l++) {
@@ -149,11 +150,11 @@ YAKL_INLINE void compute_Mf(const real5d &Mfvar, const real5d &edgefluxvar,
 }
 
 template <uint ndofs>
-YAKL_INLINE void compute_Mfext(const real5d &Mfvar, const real5d &edgefluxvar,
-                               const real5d &vertedgefluxvar, real dt,
-                               const SArray<bool, 1, ndensity> &dens_pos,
-                               int is, int js, int ks, int i, int j, int k,
-                               int n) {
+YAKL_INLINE void
+compute_Mfext(const real5d &Mfvar, const real5d &edgefluxvar,
+              const real5d &vertedgefluxvar, real dt,
+              const SArray<bool, 1, VariableSet::ndensity_prognostic> &dens_pos,
+              int is, int js, int ks, int i, int j, int k, int n) {
   SArray<real, 1, ndofs> Mf;
   SArray<real, 3, ndofs, ndims, 2> edgeflux;
   SArray<real, 2, ndofs, 2> vertedgeflux;
@@ -183,11 +184,12 @@ YAKL_INLINE void compute_Mfext(const real5d &Mfvar, const real5d &edgefluxvar,
 }
 
 template <uint ndofs>
-void YAKL_INLINE calculate_phi(SArray<real, 2, ndofs, ndims> &Phi,
-                               SArray<real, 3, ndofs, ndims, 2> const &q,
-                               SArray<real, 3, ndofs, ndims, 2> const &Mf,
-                               SArray<real, 2, ndofs, ndims> const &edgeflux,
-                               SArray<bool, 1, ndensity> const &dens_pos) {
+void YAKL_INLINE calculate_phi(
+    SArray<real, 2, ndofs, ndims> &Phi,
+    SArray<real, 3, ndofs, ndims, 2> const &q,
+    SArray<real, 3, ndofs, ndims, 2> const &Mf,
+    SArray<real, 2, ndofs, ndims> const &edgeflux,
+    SArray<bool, 1, VariableSet::ndensity_prognostic> const &dens_pos) {
 
   real upwind_param;
 
@@ -205,11 +207,11 @@ void YAKL_INLINE calculate_phi(SArray<real, 2, ndofs, ndims> &Phi,
 }
 
 template <uint ndofs>
-void YAKL_INLINE calculate_phivert(SArray<real, 1, ndofs> &Phivert,
-                                   SArray<real, 2, ndofs, 2> const &q,
-                                   SArray<real, 2, ndofs, 2> const &Mf,
-                                   SArray<real, 1, ndofs> const &vertedgeflux,
-                                   SArray<bool, 1, ndensity> const &dens_pos) {
+void YAKL_INLINE calculate_phivert(
+    SArray<real, 1, ndofs> &Phivert, SArray<real, 2, ndofs, 2> const &q,
+    SArray<real, 2, ndofs, 2> const &Mf,
+    SArray<real, 1, ndofs> const &vertedgeflux,
+    SArray<bool, 1, VariableSet::ndensity_prognostic> const &dens_pos) {
   real upwind_param;
   for (int l = 0; l < ndofs; l++) {
     if (dens_pos(l)) {
@@ -222,10 +224,11 @@ void YAKL_INLINE calculate_phivert(SArray<real, 1, ndofs> &Phivert,
 }
 
 template <uint ndofs>
-YAKL_INLINE void apply_Phi(const real5d &densvar, const real5d &edgefluxvar,
-                           const real5d &Mfvar, const real5d &qvar,
-                           const SArray<bool, 1, ndensity> &dens_pos, int is,
-                           int js, int ks, int i, int j, int k, int n) {
+YAKL_INLINE void
+apply_Phi(const real5d &densvar, const real5d &edgefluxvar, const real5d &Mfvar,
+          const real5d &qvar,
+          const SArray<bool, 1, VariableSet::ndensity_prognostic> &dens_pos,
+          int is, int js, int ks, int i, int j, int k, int n) {
   SArray<real, 2, ndofs, ndims> Phi;
   SArray<real, 3, ndofs, ndims, 2> q;
   SArray<real, 3, ndofs, ndims, 2> Mf;
@@ -252,7 +255,7 @@ YAKL_INLINE void apply_Phi(const real5d &densvar, const real5d &edgefluxvar,
   for (int d = 0; d < ndims; d++) {
     for (int l = 0; l < ndofs; l++) {
       if (dens_pos(l)) {
-        densvar(l + d * ndofs, k + ks, j + js, i + is, n) *= Phi(l, d);
+        densvar(d + l * ndims, k + ks, j + js, i + is, n) *= Phi(l, d);
       }
     }
   }
@@ -262,8 +265,8 @@ template <uint ndofs>
 YAKL_INLINE void
 apply_Phivert(const real5d &Phivertvar, const real5d &vertedgefluxvar,
               const real5d &Mfvar, const real5d &qvar,
-              const SArray<bool, 1, ndensity> &dens_pos, int is, int js, int ks,
-              int i, int j, int k, int n) {
+              const SArray<bool, 1, VariableSet::ndensity_prognostic> &dens_pos,
+              int is, int js, int ks, int i, int j, int k, int n) {
   SArray<real, 1, ndofs> Phivert;
   SArray<real, 2, ndofs, 2> qvert;
   SArray<real, 2, ndofs, 2> Mfvert;

@@ -88,7 +88,7 @@ void YAKL_INLINE compute_H1(const real5d &uvar, const real5d &vvar,
 
 void YAKL_INLINE H1hat(SArray<real, 1, ndims> &u,
                        SArray<real, 1, ndims> const &H1geom,
-                       SArray<real, 2, ndims, 1> const &shift) {
+                       SArray<real, 2, ndims, GPU_PAD> const &shift) {
   for (int d = 0; d < ndims; d++) {
     u(d) = H1geom(d);
   }
@@ -96,7 +96,7 @@ void YAKL_INLINE H1hat(SArray<real, 1, ndims> &u,
 
 void YAKL_INLINE H1hat(SArray<real, 1, ndims> &u,
                        SArray<real, 1, ndims> const &H1geom,
-                       SArray<real, 2, ndims, 2> const &shift) {
+                       SArray<real, 2, ndims, 1 + GPU_PAD> const &shift) {
   for (int d = 0; d < ndims; d++) {
     u(d) = -2.0_fp / 24.0_fp * cos(shift(d, 0)) + 26.0_fp / 24.0_fp;
     u(d) *= H1geom(d);
@@ -105,7 +105,7 @@ void YAKL_INLINE H1hat(SArray<real, 1, ndims> &u,
 
 void YAKL_INLINE H1hat(SArray<real, 1, ndims> &u,
                        SArray<real, 1, ndims> const &H1geom,
-                       SArray<real, 2, ndims, 3> const &shift) {
+                       SArray<real, 2, ndims, 2 + GPU_PAD> const &shift) {
   for (int d = 0; d < ndims; d++) {
     u(d) = 18.0_fp / 1920.0_fp * cos(shift(d, 0)) -
            232.0_fp / 1920.0_fp * cos(shift(d, 1)) + 2134.0_fp / 1920.0_fp;
@@ -119,8 +119,7 @@ void YAKL_INLINE fourier_H1(SArray<real, 1, ndims> &u,
                             const Geometry<Twisted> &dgeom, int is, int js,
                             int ks, int i, int j, int k, int n, int nx, int ny,
                             int nz) {
-  // Adding 1 to off because GPUs don't like zero size structs
-  SArray<real, 2, ndims, off + 1> shift;
+  SArray<real, 2, ndims, off + GPU_PAD> shift;
   SArray<real, 1, ndims> H1geom;
   for (int d = 0; d < ndims; d++) {
     H1geom(d) = dgeom.get_area_lform(ndims - 1, d, k + ks, j + js, i + is, n) /
@@ -249,8 +248,7 @@ void YAKL_INLINE fourier_H1_ext(SArray<real, 1, ndims> &u,
                                 int ks, int i, int j, int k, int n, int nx,
                                 int ny, int nz) {
 
-  // Adding 1 to off because GPUs don't like zero size structs
-  SArray<real, 2, ndims, off + 1> shift;
+  SArray<real, 2, ndims, off + GPU_PAD> shift;
   SArray<real, 1, ndims> H1geom;
   for (int d = 0; d < ndims; d++) {
     H1geom(d) = dgeom.get_area_01entity(k + ks, j + js, i + is, n) /
@@ -357,11 +355,11 @@ void YAKL_INLINE compute_H2bar(const real5d &var0, const real5d &var,
 }
 
 real YAKL_INLINE H2barhat(real H2bargeom,
-                          const SArray<real, 2, ndims, 1> &shift) {
+                          const SArray<real, 2, ndims, GPU_PAD> &shift) {
   return H2bargeom;
 }
 real YAKL_INLINE H2barhat(real &H2bargeom,
-                          const SArray<real, 2, ndims, 2> &shift) {
+                          const SArray<real, 2, ndims, 1 + GPU_PAD> &shift) {
   real res = 1.0_fp;
   for (int d = 0; d < ndims; d++) {
     res += -2.0_fp / 24.0_fp * cos(shift(d, 0)) + 2.0_fp / 24.0_fp;
@@ -369,7 +367,7 @@ real YAKL_INLINE H2barhat(real &H2bargeom,
   return H2bargeom * res;
 }
 real YAKL_INLINE H2barhat(real H2bargeom,
-                          const SArray<real, 2, ndims, 3> &shift) {
+                          const SArray<real, 2, ndims, 2 + GPU_PAD> &shift) {
   real res = 1.0_fp;
   for (int d = 0; d < ndims; d++) {
     res += 18.0_fp / 1920.0_fp * cos(shift(d, 0)) -
@@ -383,8 +381,7 @@ real YAKL_INLINE fourier_H2bar(const Geometry<Straight> &pgeom,
                                const Geometry<Twisted> &dgeom, int is, int js,
                                int ks, int i, int j, int k, int n, int nx,
                                int ny, int nz) {
-  // Adding 1 to off because GPUs don't like zero size structs
-  SArray<real, 2, ndims, off + 1> shift;
+  SArray<real, 2, ndims, off + GPU_PAD> shift;
 
   // assuming these are constant
   const real H2bargeom =
@@ -516,8 +513,7 @@ real YAKL_INLINE fourier_H2bar_ext(const Geometry<Straight> &pgeom,
                                    const Geometry<Twisted> &dgeom, int is,
                                    int js, int ks, int i, int j, int k, int n,
                                    int nx, int ny, int nz) {
-  // Adding 1 to off because GPUs don't like zero size structs
-  SArray<real, 2, ndims, off + 1> shift;
+  SArray<real, 2, ndims, off + GPU_PAD> shift;
 
   // assuming these are constant
   const real H2bargeom =
