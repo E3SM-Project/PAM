@@ -650,8 +650,8 @@ public:
     auto precip_ice_surf_out = dm.get<real,3>( "precip_ice_surf_out" );
     parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       int icol = j*nx*nens + i*nens + iens;
-      precip_liq_surf_out(j,i,iens) = precip_liq_surf(icol);
-      precip_ice_surf_out(j,i,iens) = precip_ice_surf(icol);
+      precip_liq_surf_out(j,i,iens) = precip_liq_surf(icol)*1000.;
+      precip_ice_surf_out(j,i,iens) = precip_ice_surf(icol)*1000.;
     });
 
     #ifdef PAM_DEBUG
@@ -667,7 +667,7 @@ public:
           int icol = j*nx*nens + i*nens + iens;
           mass4d(k,j,i,iens) = (rho_v(k,j,i,iens) + rho_c(k,j,i,iens) + rho_r(k,j,i,iens) + rho_i(k,j,i,iens)) *
                                crm_dx * crm_dy * (zint_in(k+1,iens) - zint_in(k,iens));
-          sfc_precip_mass3d(j,i,iens) = dt*crm_dx*crm_dy*( precip_liq_surf(icol) + precip_ice_surf(icol) );
+          sfc_precip_mass3d(j,i,iens) = dt*crm_dx*crm_dy*( precip_liq_surf(icol)*1000. + precip_ice_surf(icol)*1000. );
         });
         mass = yakl::intrinsics::sum(mass4d) + yakl::intrinsics::sum(sfc_precip_mass3d);
       }
