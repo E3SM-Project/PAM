@@ -422,29 +422,30 @@ public:
 
       // For in and inout variables, copy transposed data (One kernel for efficiency)
       parallel_for( SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
-        transposed_qc             (i,k) = qc             (k,i); // inout
-        transposed_nc             (i,k) = nc             (k,i); // inout
-        transposed_qr             (i,k) = qr             (k,i); // inout
-        transposed_nr             (i,k) = nr             (k,i); // inout
-        transposed_theta          (i,k) = theta          (k,i); // inout
-        transposed_qv             (i,k) = qv             (k,i); // inout
-        transposed_qi             (i,k) = qi             (k,i); // inout
-        transposed_qm             (i,k) = qm             (k,i); // inout
-        transposed_ni             (i,k) = ni             (k,i); // inout
-        transposed_bm             (i,k) = bm             (k,i); // inout
-        transposed_pressure       (i,k) = pressure       (k,i); // in
-        transposed_dz             (i,k) = dz             (k,i); // in
-        transposed_nc_nuceat_tend (i,k) = nc_nuceat_tend (k,i); // in
-        transposed_nccn_prescribed(i,k) = nccn_prescribed(k,i); // in
-        transposed_ni_activated   (i,k) = ni_activated   (k,i); // in
-        transposed_inv_qc_relvar  (i,k) = inv_qc_relvar  (k,i); // in
-        transposed_dpres          (i,k) = dpres          (k,i); // in
-        transposed_inv_exner      (i,k) = inv_exner      (k,i); // in
-        transposed_cld_frac_r     (i,k) = cld_frac_r     (k,i); // in
-        transposed_cld_frac_l     (i,k) = cld_frac_l     (k,i); // in
-        transposed_cld_frac_i     (i,k) = cld_frac_i     (k,i); // in
-        transposed_qv_prev        (i,k) = qv_prev        (k,i); // in
-        transposed_t_prev         (i,k) = t_prev         (k,i); // in
+        int k_p3 = nz-1-k;
+        transposed_qc             (i,k_p3) = qc             (k,i); // inout
+        transposed_nc             (i,k_p3) = nc             (k,i); // inout
+        transposed_qr             (i,k_p3) = qr             (k,i); // inout
+        transposed_nr             (i,k_p3) = nr             (k,i); // inout
+        transposed_theta          (i,k_p3) = theta          (k,i); // inout
+        transposed_qv             (i,k_p3) = qv             (k,i); // inout
+        transposed_qi             (i,k_p3) = qi             (k,i); // inout
+        transposed_qm             (i,k_p3) = qm             (k,i); // inout
+        transposed_ni             (i,k_p3) = ni             (k,i); // inout
+        transposed_bm             (i,k_p3) = bm             (k,i); // inout
+        transposed_pressure       (i,k_p3) = pressure       (k,i); // in
+        transposed_dz             (i,k_p3) = dz             (k,i); // in
+        transposed_nc_nuceat_tend (i,k_p3) = nc_nuceat_tend (k,i); // in
+        transposed_nccn_prescribed(i,k_p3) = nccn_prescribed(k,i); // in
+        transposed_ni_activated   (i,k_p3) = ni_activated   (k,i); // in
+        transposed_inv_qc_relvar  (i,k_p3) = inv_qc_relvar  (k,i); // in
+        transposed_dpres          (i,k_p3) = dpres          (k,i); // in
+        transposed_inv_exner      (i,k_p3) = inv_exner      (k,i); // in
+        transposed_cld_frac_r     (i,k_p3) = cld_frac_r     (k,i); // in
+        transposed_cld_frac_l     (i,k_p3) = cld_frac_l     (k,i); // in
+        transposed_cld_frac_i     (i,k_p3) = cld_frac_i     (k,i); // in
+        transposed_qv_prev        (i,k_p3) = qv_prev        (k,i); // in
+        transposed_t_prev         (i,k_p3) = t_prev         (k,i); // in
         if (k < 3) transposed_col_location(i,k) = col_location(k,i); // in
       });
 
@@ -496,26 +497,28 @@ public:
 
       // For inout and out variables, copy transposed data (One kernel for efficiency)
       parallel_for( SimpleBounds<2>(nz+1,ncol) , YAKL_LAMBDA (int k, int i) {
-        precip_liq_flux   (k,i) = transposed_precip_liq_flux   (i,k); //   out
-        precip_ice_flux   (k,i) = transposed_precip_ice_flux   (i,k); //   out
+        int k_p3 = (nz+1)-1-k;
+        precip_liq_flux   (k,i) = transposed_precip_liq_flux   (i,k_p3); //   out
+        precip_ice_flux   (k,i) = transposed_precip_ice_flux   (i,k_p3); //   out
         if (k < nz) {
-          qc                (k,i) = transposed_qc                (i,k); // inout
-          nc                (k,i) = transposed_nc                (i,k); // inout
-          qr                (k,i) = transposed_qr                (i,k); // inout
-          nr                (k,i) = transposed_nr                (i,k); // inout
-          theta             (k,i) = transposed_theta             (i,k); // inout
-          qv                (k,i) = transposed_qv                (i,k); // inout
-          qi                (k,i) = transposed_qi                (i,k); // inout
-          qm                (k,i) = transposed_qm                (i,k); // inout
-          ni                (k,i) = transposed_ni                (i,k); // inout
-          bm                (k,i) = transposed_bm                (i,k); // inout
-          diag_eff_radius_qc(k,i) = transposed_diag_eff_radius_qc(i,k); //   out
-          diag_eff_radius_qi(k,i) = transposed_diag_eff_radius_qi(i,k); //   out
-          bulk_qi           (k,i) = transposed_bulk_qi           (i,k); //   out
-          qv2qi_depos_tend  (k,i) = transposed_qv2qi_depos_tend  (i,k); //   out
-          liq_ice_exchange  (k,i) = transposed_liq_ice_exchange  (i,k); //   out
-          vap_liq_exchange  (k,i) = transposed_vap_liq_exchange  (i,k); //   out
-          vap_ice_exchange  (k,i) = transposed_vap_ice_exchange  (i,k); //   out
+          k_p3 = nz-1-k;
+          qc                (k,i) = transposed_qc                (i,k_p3); // inout
+          nc                (k,i) = transposed_nc                (i,k_p3); // inout
+          qr                (k,i) = transposed_qr                (i,k_p3); // inout
+          nr                (k,i) = transposed_nr                (i,k_p3); // inout
+          theta             (k,i) = transposed_theta             (i,k_p3); // inout
+          qv                (k,i) = transposed_qv                (i,k_p3); // inout
+          qi                (k,i) = transposed_qi                (i,k_p3); // inout
+          qm                (k,i) = transposed_qm                (i,k_p3); // inout
+          ni                (k,i) = transposed_ni                (i,k_p3); // inout
+          bm                (k,i) = transposed_bm                (i,k_p3); // inout
+          diag_eff_radius_qc(k,i) = transposed_diag_eff_radius_qc(i,k_p3); //   out
+          diag_eff_radius_qi(k,i) = transposed_diag_eff_radius_qi(i,k_p3); //   out
+          bulk_qi           (k,i) = transposed_bulk_qi           (i,k_p3); //   out
+          qv2qi_depos_tend  (k,i) = transposed_qv2qi_depos_tend  (i,k_p3); //   out
+          liq_ice_exchange  (k,i) = transposed_liq_ice_exchange  (i,k_p3); //   out
+          vap_liq_exchange  (k,i) = transposed_vap_liq_exchange  (i,k_p3); //   out
+          vap_ice_exchange  (k,i) = transposed_vap_ice_exchange  (i,k_p3); //   out
         }
       });
 
