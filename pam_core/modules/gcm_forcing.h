@@ -3,7 +3,7 @@
 
 #include "pam_coupler.h"
 
-#define MMF_PAM_FORCE_ALL_WATER_SPECIES
+// #define MMF_PAM_FORCE_ALL_WATER_SPECIES
 
 namespace modules {
 
