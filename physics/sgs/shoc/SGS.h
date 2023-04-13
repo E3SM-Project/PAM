@@ -105,11 +105,11 @@ public:
     auto &dm = coupler.get_data_manager_device_readwrite();
 
     // Register and allocation non-tracer quantities used by the microphysics
-    dm.register_and_allocate<real>( "wthv_sec" , "Buoyancy flux [K m/s]"                , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    dm.register_and_allocate<real>( "tk"       , "Eddy coefficient for momentum [m2/s]" , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    dm.register_and_allocate<real>( "tkh"      , "Eddy coefficent for heat [m2/s]"      , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    dm.register_and_allocate<real>( "cldfrac"  , "Cloud fraction [-]"                   , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    dm.register_and_allocate<real>( "relvar"   , "Relative cloud water variance"        , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    dm.register_and_allocate<real>( "wthv_sec"     , "Buoyancy flux [K m/s]"                , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    dm.register_and_allocate<real>( "tk"           , "Eddy coefficient for momentum [m2/s]" , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    dm.register_and_allocate<real>( "tkh"          , "Eddy coefficent for heat [m2/s]"      , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    dm.register_and_allocate<real>( "cldfrac"      , "Cloud fraction [-]"                   , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    dm.register_and_allocate<real>( "inv_qc_relvar", "Inverse relative cloud water variance", {nz,ny,nx,nens} , {"z","y","x","nens"} );
 
     // Store surface momentum fluxes in data manager to facilitate internal surface calculations
     dm.register_and_allocate<real>( "sfc_mom_flx_u", "Surface flux of U-momentum"       , {ny,nx,nens} , {"y","x","nens"} );
@@ -120,7 +120,7 @@ public:
     auto tk            = dm.get<real,4>( "tk"            );
     auto tkh           = dm.get<real,4>( "tkh"           );
     auto cldfrac       = dm.get<real,4>( "cldfrac"       );
-    auto relvar        = dm.get<real,4>( "relvar"        );
+    auto inv_qc_relvar = dm.get<real,4>( "inv_qc_relvar" );
     auto sfc_mom_flx_u = dm.get<real,3>( "sfc_mom_flx_u" );
     auto sfc_mom_flx_v = dm.get<real,3>( "sfc_mom_flx_v" );
 
@@ -130,7 +130,7 @@ public:
       tk           (k,j,i,iens) = 0;
       tkh          (k,j,i,iens) = 0;
       cldfrac      (k,j,i,iens) = 0;
-      relvar       (k,j,i,iens) = 0;
+      inv_qc_relvar(k,j,i,iens) = 0;
     });
 
     parallel_for( "surface momentum flux zero" , SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int iens) {
@@ -213,12 +213,12 @@ public:
     #endif
 
     // Get saved SHOC-related variables
-    auto tke           = dm.get_lev_col<real>( "tke"     ); // PAM Tracer                 ; don't compute
-    auto wthv_sec      = dm.get_lev_col<real>( "wthv_sec"); // Reuse from last SHOC output; don't compute
-    auto tk            = dm.get_lev_col<real>( "tk"      ); // Reuse from last SHOC output; don't compute
-    auto tkh           = dm.get_lev_col<real>( "tkh"     ); // Reuse from last SHOC output; don't compute
-    auto cldfrac       = dm.get_lev_col<real>( "cldfrac" ); // Reuse from last SHOC output; don't compute
-    auto relvar        = dm.get_lev_col<real>( "relvar"  ); // Computed on output for P3
+    auto tke           = dm.get_lev_col<real>(   "tke"           ); // PAM Tracer                 ; don't compute
+    auto wthv_sec      = dm.get_lev_col<real>(   "wthv_sec"      ); // Reuse from last SHOC output; don't compute
+    auto tk            = dm.get_lev_col<real>(   "tk"            ); // Reuse from last SHOC output; don't compute
+    auto tkh           = dm.get_lev_col<real>(   "tkh"           ); // Reuse from last SHOC output; don't compute
+    auto cldfrac       = dm.get_lev_col<real>(   "cldfrac"       ); // Reuse from last SHOC output; don't compute
+    auto inv_qc_relvar = dm.get_lev_col<real>(   "inv_qc_relvar" ); // Computed on output for P3
     auto sfc_mom_flx_u = dm.get_collapsed<real>( "sfc_mom_flx_u" ); // surface momentum flux - either zero or computed by surface_friction.h
     auto sfc_mom_flx_v = dm.get_collapsed<real>( "sfc_mom_flx_v" ); // surface momentum flux - either zero or computed by surface_friction.h
     // Get coupler state
@@ -681,9 +681,9 @@ public:
       real rcm  = shoc_ql (k_shoc,i);
       real rcm2 = shoc_ql2(k_shoc,i);
       if ( rcm != 0 && rcm2 != 0 ) {
-        relvar(k,i) = std::min( 10._fp , std::max( 0.001_fp , rcm*rcm / rcm2 ) );
+        inv_qc_relvar(k,i) = std::min( 10._fp , std::max( 0.001_fp , rcm*rcm / rcm2 ) );
       } else {
-        relvar(k,i) = 1;
+        inv_qc_relvar(k,i) = 1;
       }
     });
 
