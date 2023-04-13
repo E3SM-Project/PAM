@@ -333,12 +333,13 @@ public:
       }
       if (k < nz) {
         int k_shoc = nz-1-k;
+        real rho_total = rho_d(k,i)+rho_v(k,i);
         real z       = zmid    (k,i);
         real dz      = zint(k+1,i) - zint(k,i);
         real press   = pres_mid(k,i);
         real t       = temp    (k,i);
-        real qv      = rho_v   (k,i) / rho_d(k,i);
-        real ql      = rho_c   (k,i) / rho_d(k,i);
+        real qv      = rho_v   (k,i) / rho_total;
+        real ql      = rho_c   (k,i) / rho_total;
         real exner   = pow( press / p0 , R_d / cp_d );
         real theta   = t / exner;
         // https://glossary.ametsoc.org/wiki/Virtual_potential_temperature
@@ -352,20 +353,20 @@ public:
         shoc_qw       (k_shoc,i) = qv + ql;
         shoc_zt_grid  (k_shoc,i) = z;
         shoc_pres     (k_shoc,i) = press;
-        shoc_pdel     (k_shoc,i) = grav * rho_d(k,i) * dz;
+        shoc_pdel     (k_shoc,i) = grav * rho_total * dz;
         shoc_thv      (k_shoc,i) = theta_v;
         shoc_w_field  (k_shoc,i) = wvel(k,i);
         shoc_exner    (k_shoc,i) = exner;
         shoc_inv_exner(k_shoc,i) = 1._fp / exner;
         shoc_host_dse (k_shoc,i) = dse;
         // TKE is a tracer, so it's stored as mass-weighted. SHOC doesn't want mass-weighted
-        shoc_tke      (k_shoc,i) = tke(k,i) / rho_d(k,i);  
+        shoc_tke      (k_shoc,i) = tke(k,i) / rho_total;
         shoc_thetal   (k_shoc,i) = theta_l;
         shoc_u_wind   (k_shoc,i) = uvel(k,i);
         shoc_v_wind   (k_shoc,i) = vvel(k,i);
         shoc_wthv_sec (k_shoc,i) = wthv_sec(k,i);
         for (int tr=0; tr < num_qtracers; tr++) {
-          shoc_qtracers(tr,k_shoc,i) = qtracers_pam(tr,k,i) / rho_d(k,i);
+          shoc_qtracers(tr,k_shoc,i) = qtracers_pam(tr,k,i) / rho_total;
         }
         shoc_tk     (k_shoc,i) = tk     (k,i);
         shoc_tkh    (k_shoc,i) = tkh    (k,i);
@@ -375,12 +376,13 @@ public:
       shoc_zi_grid(k_shoc,i) = zint    (k,i);
       real pres_int;
       if      (k == 0 ) {
-        pres_int = pres_mid(k  ,i) + grav*rho_d(k  ,i)*(zint(k+1,i)-zint(k  ,i))/2;
+        pres_int = pres_mid(k  ,i) + grav*(rho_d(k  ,i)+rho_v(k  ,i))*(zint(k+1,i)-zint(k  ,i))/2;
       } else if (k == nz) {
-        pres_int = pres_mid(k-1,i) - grav*rho_d(k-1,i)*(zint(k  ,i)-zint(k-1,i))/2;
+        pres_int = pres_mid(k-1,i) - grav*(rho_d(k-1,i)+rho_v(k-1,i))*(zint(k  ,i)-zint(k-1,i))/2;
       } else {
-        pres_int = 0.5_fp * ( pres_mid(k-1,i) - grav*rho_d(k-1,i)*(zint(k  ,i)-zint(k-1,i))/2 +
-                              pres_mid(k  ,i) + grav*rho_d(k  ,i)*(zint(k+1,i)-zint(k  ,i))/2 ); }
+        pres_int = 0.5_fp * ( pres_mid(k-1,i) - grav*(rho_d(k-1,i)+rho_v(k-1,i))*(zint(k  ,i)-zint(k-1,i))/2 +
+                              pres_mid(k  ,i) + grav*(rho_d(k  ,i)+rho_v(k  ,i))*(zint(k+1,i)-zint(k  ,i))/2 );
+      }
       shoc_presi  (k_shoc,i) = pres_int;
     });
 
@@ -662,18 +664,19 @@ public:
       real qw = shoc_qw(k_shoc,i);
       real ql = shoc_ql(k_shoc,i);
       real qv = qw - ql;
+      real rho_total = rho_d(k,i)+rho_v(k,i);
       temp    (k,i) = (shoc_thetal(k_shoc,i) + (latvap/cp_d) * shoc_ql(k_shoc,i)) / shoc_inv_exner(k_shoc,i);
-      rho_v   (k,i) = qv * rho_d(k,i);
-      rho_c   (k,i) = ql * rho_d(k,i);
+      rho_v   (k,i) = qv * rho_total;
+      rho_c   (k,i) = ql * rho_total;
       uvel    (k,i) = shoc_u_wind(k_shoc,i);
       vvel    (k,i) = shoc_v_wind(k_shoc,i);
-      tke     (k,i) = shoc_tke     (k_shoc,i) * rho_d(k,i);
+      tke     (k,i) = shoc_tke     (k_shoc,i) * rho_total;
       wthv_sec(k,i) = shoc_wthv_sec(k_shoc,i);
       tk      (k,i) = shoc_tk      (k_shoc,i);
       tkh     (k,i) = shoc_tkh     (k_shoc,i);
       cldfrac (k,i) = std::min(1._fp , shoc_cldfrac (k_shoc,i) );
       for (int tr=0; tr < num_qtracers; tr++) {
-        qtracers_pam(tr,k,i) = shoc_qtracers(tr,k_shoc,i) * rho_d(k,i);
+        qtracers_pam(tr,k,i) = shoc_qtracers(tr,k_shoc,i) * rho_total;
       }
       real rcm  = shoc_ql (k_shoc,i);
       real rcm2 = shoc_ql2(k_shoc,i);
