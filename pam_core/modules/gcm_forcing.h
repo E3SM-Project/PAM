@@ -3,8 +3,6 @@
 
 #include "pam_coupler.h"
 
-// #define MMF_PAM_FORCE_ALL_WATER_SPECIES
-
 namespace modules {
 
   // This routine is only called once at the beginning of an MMF calculation (at the beginning of a GCM time step)
@@ -115,7 +113,80 @@ namespace modules {
     });
   }
 
+  // generalized hole filling routine to simplify apply_gcm_forcing_tendencies()
+  inline void fill_holes( pam::PamCoupler &coupler, real2d &rho_x_neg_mass, std::string tracer_name ) {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+    using yakl::atomicAdd;
+    using yakl::ScalarLiveOut;
+    using yakl::max;
+    auto &dm = coupler.get_data_manager_device_readwrite();
+    auto dt = coupler.get_option<real>("crm_dt");
+    int nz   = dm.get_dimension_size("z"   );
+    int ny   = dm.get_dimension_size("y"   );
+    int nx   = dm.get_dimension_size("x"   );
+    int nens = dm.get_dimension_size("nens");
+    auto dz  = dm.get<real,2>("vertical_cell_dz");
 
+    auto rho_x = dm.get<real,4>( tracer_name );
+
+    // We need these arrays for multiplicative hole filling. Holes are only filled 
+    // inside vertical columns at first because it leads to a very infrequent 
+    // collision rate for atomidAdd() operations, reducing the runtime.
+    real2d rho_x_pos_mass("rho_v_pos_mass",nz,nens);
+
+    // initialize rho_x_pos_mass to zero
+    parallel_for( YAKL_AUTO_LABEL() , Bounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
+      rho_x_pos_mass(k,iens) = 0;
+    });
+
+    // Calculate available positive mass for hole filling at each vertical level 
+    parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      if (rho_x(k,j,i,iens) > 0) atomicAdd( rho_x_pos_mass(k,iens) ,  rho_x(k,j,i,iens)*dz(k,iens) );
+    });
+
+    // The negative is too large if the mass added to fill in negative values is greater than the available mass
+    ScalarLiveOut<bool> neg_too_large(false);
+
+    // Correct for added mass by taking away mass from positive-valued cells proportional to the mass in that cell
+    parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      // Determine if mass added to negatives is too large to compensate for in this vertical level
+      if (i == 0 && j == 0) {
+        if (rho_x_neg_mass(k,iens) > rho_x_pos_mass(k,iens)) neg_too_large = true;
+      }
+      // Subtract mass proportional to this cells' portion of the total mass at the vertical level
+      real factor = rho_x(k,j,i,iens)*dz(k,iens) / rho_x_pos_mass(k,iens);
+      rho_x(k,j,i,iens) = max( 0._fp , rho_x(k,j,i,iens) - (rho_x_neg_mass(k,iens) * factor)/dz(k,iens) );
+    });
+
+    if (neg_too_large.hostRead()) {
+      // If negative mass was too large, let's expand the domain of hole filling to the entire CRM
+      // This will have a large contention rate for atomicAdd() and will be less efficient than before
+      real1d rho_x_neg_mass_glob("rho_x_neg_mass_glob",nens);
+      real1d rho_x_pos_mass_glob("rho_x_pos_mass_glob",nens);
+
+      // These are essentially reductions, so initialize to zero
+      parallel_for( YAKL_AUTO_LABEL() , nens , YAKL_LAMBDA (int iens) {
+        rho_x_neg_mass_glob(iens) = 0;
+        rho_x_pos_mass_glob(iens) = 0;
+      });
+
+      // Compute the amount of negative mass we need to compensate for 
+      // as well as how much positive mass we still have
+      parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+        if (i == 0 && j == 0) atomicAdd( rho_x_neg_mass_glob(iens) , max(0._fp,rho_x_neg_mass(k,iens)-rho_x_pos_mass(k,iens)) );
+        atomicAdd( rho_x_pos_mass_glob(iens) , rho_x(k,j,i,iens)*dz(k,iens) );
+      });
+
+      // Remove mass proportionally to the mass in a given cell
+      parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+        real factor = rho_x(k,j,i,iens)*dz(k,iens) / rho_x_pos_mass_glob(iens);
+        rho_x(k,j,i,iens) = max( 0._fp , rho_x(k,j,i,iens) - (rho_x_neg_mass_glob(iens) * factor)/dz(k,iens) );
+      });
+      
+    } // if (neg_too_large.hostRead()) {
+
+  }
 
 
   // This routine is intended to be called frequently throughout the MMF calculation
@@ -194,8 +265,8 @@ namespace modules {
       temp (k,j,i,iens) += gcm_forcing_tend_temp (k,iens) * dt;
       rho_v(k,j,i,iens) += gcm_forcing_tend_rho_v(k,iens) * dt;
       #ifdef MMF_PAM_FORCE_ALL_WATER_SPECIES
-      rho_l(k,j,i,iens) += gcm_forcing_tend_rho_l(k,iens) * dt; // Disable for now
-      rho_i(k,j,i,iens) += gcm_forcing_tend_rho_i(k,iens) * dt; // Disable for now
+      rho_l(k,j,i,iens) += gcm_forcing_tend_rho_l(k,iens) * dt;
+      rho_i(k,j,i,iens) += gcm_forcing_tend_rho_i(k,iens) * dt;
       #endif
       // Compute negative and positive mass for rho_v, and set negative masses to zero (essentially adding mass)
       if (rho_v(k,j,i,iens) < 0) {
@@ -215,91 +286,12 @@ namespace modules {
     });
 
     // Only do the hole filing if there's negative mass
-    if (yakl::intrinsics::sum(rho_v_neg_mass) > 0) {
-      // Calculate available positive mass for hole filling at each vertical level 
-      parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-        if (rho_v(k,j,i,iens) > 0) atomicAdd( rho_v_pos_mass(k,iens) ,  rho_v(k,j,i,iens)*dz(k,iens) );
-        #ifdef MMF_PAM_FORCE_ALL_WATER_SPECIES
-        if (rho_l(k,j,i,iens) > 0) atomicAdd( rho_l_pos_mass(k,iens) ,  rho_l(k,j,i,iens)*dz(k,iens) );
-        if (rho_i(k,j,i,iens) > 0) atomicAdd( rho_i_pos_mass(k,iens) ,  rho_i(k,j,i,iens)*dz(k,iens) );
-        #endif
-      });
+    if (yakl::intrinsics::sum(rho_v_neg_mass) > 0) { fill_holes(coupler, rho_v_neg_mass,"water_vapor"); }
+    #ifdef MMF_PAM_FORCE_ALL_WATER_SPECIES
+    if (yakl::intrinsics::sum(rho_l_neg_mass) > 0) { fill_holes(coupler, rho_l_neg_mass, "cloud_water"); }
+    if (yakl::intrinsics::sum(rho_i_neg_mass) > 0) { fill_holes(coupler, rho_i_neg_mass, "ice");         }
+    #endif
 
-      // The negative is too large if the mass added to fill in negative values is greater than the available mass at
-      //   a vertical level. 
-      yakl::ScalarLiveOut<bool> neg_too_large(false);
-
-      // Correct for added mass by taking away mass from positive-valued cells proportional to the mass in that cell
-      parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-        // Determine if mass added to negatives is too large to compensate for in this vertical level
-        if (i==0 && j==0){ if (rho_v_neg_mass(k,iens) > rho_v_pos_mass(k,iens)) neg_too_large = true; }
-        #ifdef MMF_PAM_FORCE_ALL_WATER_SPECIES
-        if (i==0 && j==0){ if (rho_l_neg_mass(k,iens) > rho_l_pos_mass(k,iens)) neg_too_large = true; }
-        if (i==0 && j==0){ if (rho_i_neg_mass(k,iens) > rho_i_pos_mass(k,iens)) neg_too_large = true; }
-        #endif
-        // Subtract mass proportional to this cells' portion of the total mass at the vertical level
-        real factor = rho_v(k,j,i,iens)*dz(k,iens) / rho_v_pos_mass(k,iens);
-        rho_v(k,j,i,iens) = std::max( 0._fp , rho_v(k,j,i,iens) - (rho_v_neg_mass(k,iens) * factor)/dz(k,iens) );
-        #ifdef MMF_PAM_FORCE_ALL_WATER_SPECIES
-        factor = rho_l(k,j,i,iens)*dz(k,iens) / rho_l_pos_mass(k,iens);
-        rho_l(k,j,i,iens) = std::max( 0._fp , rho_l(k,j,i,iens) - (rho_l_neg_mass(k,iens) * factor)/dz(k,iens) );
-        factor = rho_i(k,j,i,iens)*dz(k,iens) / rho_l_pos_mass(k,iens);
-        rho_i(k,j,i,iens) = std::max( 0._fp , rho_i(k,j,i,iens) - (rho_i_neg_mass(k,iens) * factor)/dz(k,iens) );
-        #endif
-      });
-
-      if (neg_too_large.hostRead()) {
-        // If negative mass was too large, let's expand the domain of hole filling to the entire CRM
-        // This will have a large contention rate for atomicAdd() and will be less efficient than before
-        real1d rho_v_neg_mass_glob("rho_v_neg_mass_glob",nens);
-        real1d rho_v_pos_mass_glob("rho_v_pos_mass_glob",nens);
-        #ifdef MMF_PAM_FORCE_ALL_WATER_SPECIES
-        real1d rho_l_neg_mass_glob("rho_l_neg_mass_glob",nens);
-        real1d rho_l_pos_mass_glob("rho_l_pos_mass_glob",nens);
-        real1d rho_i_neg_mass_glob("rho_i_neg_mass_glob",nens);
-        real1d rho_i_pos_mass_glob("rho_i_pos_mass_glob",nens);
-        #endif
-
-        // These are essentially reductions, so initialize to zero
-        parallel_for( YAKL_AUTO_LABEL() , nens , YAKL_LAMBDA (int iens) {
-          rho_v_neg_mass_glob(iens) = 0;
-          rho_v_pos_mass_glob(iens) = 0;
-          #ifdef MMF_PAM_FORCE_ALL_WATER_SPECIES
-          rho_l_neg_mass_glob(iens) = 0;
-          rho_l_pos_mass_glob(iens) = 0;
-          rho_i_neg_mass_glob(iens) = 0;
-          rho_i_pos_mass_glob(iens) = 0;
-          #endif
-        });
-
-        // Compute the amount of negative mass we still need to compensate for as well as how much positive mass
-        //   we still have
-        parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-          if (i == 0 && j == 0) atomicAdd( rho_v_neg_mass_glob(iens) , std::max(0._fp,rho_v_neg_mass(k,iens)-rho_v_pos_mass(k,iens)) );
-          atomicAdd( rho_v_pos_mass_glob(iens) , rho_v(k,j,i,iens)*dz(k,iens) );
-          #ifdef MMF_PAM_FORCE_ALL_WATER_SPECIES
-          if (i == 0 && j == 0) atomicAdd( rho_l_neg_mass_glob(iens) , std::max(0._fp,rho_l_neg_mass(k,iens)-rho_l_pos_mass(k,iens)) );
-          atomicAdd( rho_l_pos_mass_glob(iens) , rho_l(k,j,i,iens)*dz(k,iens) );
-          if (i == 0 && j == 0) atomicAdd( rho_i_neg_mass_glob(iens) , std::max(0._fp,rho_i_neg_mass(k,iens)-rho_i_pos_mass(k,iens)) );
-          atomicAdd( rho_i_pos_mass_glob(iens) , rho_i(k,j,i,iens)*dz(k,iens) );
-          #endif
-        });
-
-        // Remove mass proportionally to the mass in a given cell
-        parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-          real factor;
-          factor = rho_v(k,j,i,iens)*dz(k,iens) / rho_v_pos_mass_glob(iens);
-          rho_v(k,j,i,iens) = std::max( 0._fp , rho_v(k,j,i,iens) - (rho_v_neg_mass_glob(iens) * factor)/dz(k,iens) );
-          #ifdef MMF_PAM_FORCE_ALL_WATER_SPECIES
-          factor = rho_l(k,j,i,iens)*dz(k,iens) / rho_l_pos_mass_glob(iens);
-          rho_l(k,j,i,iens) = std::max( 0._fp , rho_l(k,j,i,iens) - (rho_l_neg_mass_glob(iens) * factor)/dz(k,iens) );
-          factor = rho_i(k,j,i,iens)*dz(k,iens) / rho_i_pos_mass_glob(iens);
-          rho_i(k,j,i,iens) = std::max( 0._fp , rho_i(k,j,i,iens) - (rho_i_neg_mass_glob(iens) * factor)/dz(k,iens) );
-          #endif
-        });
-        
-      } // if (neg_too_large.hostRead()) {
-    } // if (yakl::intrinsics::sum(rho_v_neg_mass) > 0) {
   } // apply_gcm_forcing_tendencies
 
 }
