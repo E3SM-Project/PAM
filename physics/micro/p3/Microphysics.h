@@ -298,7 +298,9 @@ public:
     real2d liq_ice_exchange  ( "liq_ice_exchange"   ,           nz   , ncol );
     real2d vap_liq_exchange  ( "vap_liq_exchange"   ,           nz   , ncol );
     real2d vap_ice_exchange  ( "vap_ice_exchange"   ,           nz   , ncol );
+    #ifndef P3_CXX
     real3d p3_tend_out       ( "p3_tend_out"        , p3_nout , nz   , ncol );
+    #endif
 
     //////////////////////////////////////////////////////////////////////////////
     // Compute quantities needed for inputs to P3
