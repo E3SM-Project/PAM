@@ -11,7 +11,7 @@ void YAKL_INLINE compute_H0_ext(SArray<real, 1, ndofs> &x0, const real5d &var,
                                 const Geometry<Twisted> &dgeom, int is, int js,
                                 int ks, int i, int j, int k, int n) {
   SArray<real, 3, ndofs, ndims, hord - 1> x;
-  const real H0geom = dgeom.get_area_11entity(k + ks, j + js, i + is, n) /
+  const real H0geom = dgeom.get_area_n1entity(k + ks, j + js, i + is, n) /
                       pgeom.get_area_00entity(k + ks, j + js, i + is, n);
   for (int p = 0; p < hord - 1; p++) {
     for (int l = 0; l < ndofs; l++) {
@@ -57,7 +57,7 @@ void YAKL_INLINE compute_H0bar_ext(SArray<real, 1, ndofs> &x0,
                                    const Geometry<Twisted> &dgeom, int is,
                                    int js, int ks, int i, int j, int k, int n) {
   SArray<real, 3, ndofs, ndims, hord - 1> x;
-  const real H0bargeom = pgeom.get_area_11entity(k + ks, j + js, i + is, n) /
+  const real H0bargeom = pgeom.get_area_n1entity(k + ks, j + js, i + is, n) /
                          dgeom.get_area_00entity(k + ks, j + js, i + is, n);
   for (int p = 0; p < hord - 1; p++) {
     for (int l = 0; l < ndofs; l++) {
@@ -106,8 +106,8 @@ void YAKL_INLINE compute_H1_ext(SArray<real, 1, ndims> &u, const real5d &vvar,
   SArray<real, 1, ndims> H1geom;
 
   for (int d = 0; d < ndims; d++) {
-    H1geom(d) = dgeom.get_area_01entity(k + ks, j + js, i + is, n) /
-                pgeom.get_area_10entity(k + ks, j + js, i + is, n);
+    H1geom(d) = dgeom.get_area_nm11entity(d, k + ks, j + js, i + is, n) /
+                pgeom.get_area_10entity(d, k + ks, j + js, i + is, n);
   }
 
   for (int p = 0; p < ord - 1; p++) {
@@ -154,8 +154,8 @@ void YAKL_INLINE fourier_H1_ext(SArray<real, 1, ndims> &u,
   SArray<real, 2, ndims, off + GPU_PAD> shift;
   SArray<real, 1, ndims> H1geom;
   for (int d = 0; d < ndims; d++) {
-    H1geom(d) = dgeom.get_area_01entity(k + ks, j + js, i + is, n) /
-                pgeom.get_area_10entity(k + ks, j + js, i + is, n);
+    H1geom(d) = dgeom.get_area_nm11entity(d, k + ks, j + js, i + is, n) /
+                pgeom.get_area_10entity(d, k + ks, j + js, i + is, n);
   }
 
   for (int p = 0; p < off; p++) {
@@ -178,7 +178,7 @@ real YAKL_INLINE compute_H1_vert(const real5d &wvar,
                                  int ks, int i, int j, int k, int n) {
   // THIS IS 2ND ORDER AT BEST...
   return wvar(0, k + ks - 1, j + js, i + is, n) *
-         dgeom.get_area_10entity(k + ks, j + js, i + is, n) /
+         dgeom.get_area_n0entity(k + ks, j + js, i + is, n) /
          pgeom.get_area_01entity(k + ks - 1, j + js, i + is, n);
 }
 
@@ -186,7 +186,7 @@ real YAKL_INLINE H1_vert_coeff(const Geometry<Straight> &pgeom,
                                const Geometry<Twisted> &dgeom, int is, int js,
                                int ks, int i, int j, int k, int n) {
   // THIS IS 2ND ORDER AT BEST...
-  return dgeom.get_area_10entity(k + ks, j + js, i + is, n) /
+  return dgeom.get_area_n0entity(k + ks, j + js, i + is, n) /
          pgeom.get_area_01entity(k + ks - 1, j + js, i + is, n);
 }
 
@@ -235,8 +235,8 @@ void YAKL_INLINE compute_H1bar_ext(SArray<real, 1, ndims> &u,
   SArray<real, 1, ndims> H1bargeom;
 
   for (int d = 0; d < ndims; d++) {
-    H1bargeom(d) = pgeom.get_area_10entity(k + ks, j + js, i + is, n) /
-                   dgeom.get_area_01entity(k + ks, j + js, i + is, n);
+    H1bargeom(d) = pgeom.get_area_10entity(d, k + ks, j + js, i + is, n) /
+                   dgeom.get_area_nm11entity(d, k + ks, j + js, i + is, n);
   }
 
   for (int p = 0; p < ord - 1; p++) {
@@ -278,7 +278,7 @@ real YAKL_INLINE compute_H1bar_vert(const real5d &wvar,
                                     int n) {
   return -wvar(0, k + ks + 1, j + js, i + is, n) *
          pgeom.get_area_01entity(k + ks, j + js, i + is, n) /
-         dgeom.get_area_10entity(k + ks + 1, j + js, i + is, n);
+         dgeom.get_area_n0entity(k + ks + 1, j + js, i + is, n);
 }
 
 template <uint ndofs, uint ord, ADD_MODE addmode = ADD_MODE::REPLACE,
@@ -324,7 +324,7 @@ void YAKL_INLINE compute_H2_ext(SArray<real, 1, ndofs> &x0, const real5d &var,
                                 int ks, int i, int j, int k, int n) {
   SArray<real, 3, ndofs, ndims, hord - 1> x;
   const real H2geom = dgeom.get_area_00entity(k + ks, j + js, i + is, n) /
-                      pgeom.get_area_11entity(k + ks - 1, j + js, i + is, n);
+                      pgeom.get_area_n1entity(k + ks - 1, j + js, i + is, n);
   for (int p = 0; p < hord - 1; p++) {
     for (int l = 0; l < ndofs; l++) {
       for (int d = 0; d < ndims; d++) {
@@ -377,7 +377,7 @@ void YAKL_INLINE compute_H2bar_ext(SArray<real, 1, ndofs> &x0,
                                    const Geometry<Twisted> &dgeom, int ks,
                                    int k, int n) {
   real H2bargeom = pgeom.get_area_00entity(k + ks, 0, 0, n) /
-                   dgeom.get_area_11entity(k + ks, 0, 0, n);
+                   dgeom.get_area_n1entity(k + ks, 0, 0, n);
   for (int l = 0; l < ndofs; l++) {
     x0(l) = var(l, k + ks, n) * H2bargeom;
   }
@@ -390,7 +390,7 @@ void YAKL_INLINE compute_H2bar_ext(F f, SArray<real, 1, ndofs> &x0,
                                    const Geometry<Twisted> &dgeom, int ks,
                                    int k, int n) {
   real H2bargeom = pgeom.get_area_00entity(k + ks, 0, 0, n) /
-                   dgeom.get_area_11entity(k + ks, 0, 0, n);
+                   dgeom.get_area_n1entity(k + ks, 0, 0, n);
   for (int l = 0; l < ndofs; l++) {
     x0(l) = f(var, l, k + ks, n) * H2bargeom;
   }
@@ -407,7 +407,7 @@ void YAKL_INLINE compute_H2bar_ext(F f, SArray<real, 1, ndofs> &x0,
                                    int js, int ks, int i, int j, int k, int n) {
   SArray<real, 3, ndofs, ndims, hord - 1> x;
   const real H2bargeom = pgeom.get_area_00entity(k + ks, j + js, i + is, n) /
-                         dgeom.get_area_11entity(k + ks, j + js, i + is, n);
+                         dgeom.get_area_n1entity(k + ks, j + js, i + is, n);
   for (int p = 0; p < hord - 1; p++) {
     for (int l = 0; l < ndofs; l++) {
       for (int d = 0; d < ndims; d++) {
@@ -487,7 +487,7 @@ real YAKL_INLINE fourier_H2bar_ext(const Geometry<Straight> &pgeom,
   // assuming these are constant
   const real H2bargeom =
       pgeom.get_area_00entity(k + ks, j + js, i + is + 0 - off, n) /
-      dgeom.get_area_11entity(k + ks, j + js, i + is + 0 - off, n);
+      dgeom.get_area_n1entity(k + ks, j + js, i + is + 0 - off, n);
 
   for (int p = 0; p < off; p++) {
     for (int d = 0; d < ndims; d++) {

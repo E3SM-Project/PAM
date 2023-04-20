@@ -202,6 +202,10 @@ public:
                          int nz) const;
 
   template <class F>
+  void set_01form_values(F initial_value_function, Field &field,
+                         int ndof) const;
+
+  template <class F>
   void set_nm11form_values(F initial_value_function, Field &field,
                            int ndof) const;
 
@@ -214,8 +218,12 @@ public:
                          int ndof) const;
 
   template <class F>
-  void set_01form_values(F initial_value_function, Field &field,
-                         int ndof) const;
+  void set_profile_00form_values(F initial_value_function, Profile &prof,
+                                 int ndof) const;
+  template <class F>
+  void set_profile_n1form_values(F initial_value_function, Profile &prof,
+                                 int ndof) const;
+
   template <class F>
   void set_0form_values(F initial_value_function, Field &field, int ndof) const;
   template <class F>
@@ -1068,6 +1076,61 @@ void Geometry<T>::set_n1form_values(F initial_value_function, Field &field,
         }
 
         field.data(ndof, k + ks, j + js, i + is, n) = tempval;
+      });
+}
+
+template <class T>
+template <class F>
+void Geometry<T>::set_profile_00form_values(F initial_value_function,
+                                            Profile &prof, int ndof) const {
+  int ks = this->topology.ks;
+
+  parallel_for(
+      "Set profile 00 form values",
+      SimpleBounds<2>(this->topology.ni, this->topology.nens),
+      YAKL_CLASS_LAMBDA(int k, int n) {
+        int i = 0;
+        int j = 0;
+        SArray<CoordsXYZ, 1, 1> quad_pts_phys;
+        SArray<real, 1, 1> quad_wts_phys;
+        get_00form_quad_pts_wts(k, j, i, n, quad_pts_phys, quad_wts_phys);
+        prof.data(ndof, k + ks, n) =
+            initial_value_function(quad_pts_phys(0).z) * quad_wts_phys(0);
+      });
+}
+
+template <class T>
+template <class F>
+void Geometry<T>::set_profile_n1form_values(F initial_value_function,
+                                            Profile &prof, int ndof) const {
+
+  int ks = this->topology.ks;
+
+  parallel_for(
+      "Set profile n1 form values",
+      SimpleBounds<2>(this->topology.nl, this->topology.nens),
+      YAKL_CLASS_LAMBDA(int k, int n) {
+        SArray<CoordsXYZ, 3, ic_quad_pts_x, ic_quad_pts_y, ic_quad_pts_z>
+            quad_pts_phys;
+        SArray<real, 3, ic_quad_pts_x, ic_quad_pts_y, ic_quad_pts_z>
+            quad_wts_phys;
+
+        int i = 0;
+        int j = 0;
+        get_21form_quad_pts_wts(k, j, i, n, quad_pts_phys, quad_wts_phys);
+
+        real tempval = 0.0_fp;
+        for (int nqx = 0; nqx < ic_quad_pts_x; nqx++) {
+          for (int nqy = 0; nqy < ic_quad_pts_y; nqy++) {
+            for (int nqz = 0; nqz < ic_quad_pts_z; nqz++) {
+              tempval +=
+                  initial_value_function(quad_pts_phys(nqx, nqy, nqz).z) *
+                  quad_wts_phys(nqx, nqy, nqz);
+            }
+          }
+        }
+
+        prof.data(ndof, k + ks, n) = tempval;
       });
 }
 

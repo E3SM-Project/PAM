@@ -168,9 +168,9 @@ public:
     real gamma_d = thermo.cst.gamma_d;
 
     real Tht1 = dens1(varset.dens_id_entr, k + ks, j + js, i + is, n) /
-                dual_geometry.get_area_11entity(k + ks, j + js, i + is, n);
+                dual_geometry.get_area_n1entity(k + ks, j + js, i + is, n);
     real Tht2 = dens2(varset.dens_id_entr, k + ks, j + js, i + is, n) /
-                dual_geometry.get_area_11entity(k + ks, j + js, i + is, n);
+                dual_geometry.get_area_n1entity(k + ks, j + js, i + is, n);
 
     real generalized_Exner =
         Cpd * std::pow(Rd / pr, gamma_d - 1) * gamma_avg(Tht1, Tht2, gamma_d);
@@ -332,9 +332,9 @@ public:
     real gamma_d = thermo.cst.gamma_d;
 
     real Tht1 = dens1(varset.dens_id_entr, k + ks, j + js, i + is, n) /
-                dual_geometry.get_area_11entity(k + ks, j + js, i + is, n);
+                dual_geometry.get_area_n1entity(k + ks, j + js, i + is, n);
     real Tht2 = dens2(varset.dens_id_entr, k + ks, j + js, i + is, n) /
-                dual_geometry.get_area_11entity(k + ks, j + js, i + is, n);
+                dual_geometry.get_area_n1entity(k + ks, j + js, i + is, n);
 
     real generalized_Exner =
         Cpd * std::pow(Rd / pr, gamma_d - 1) * gamma_avg(Tht1, Tht2, gamma_d);
