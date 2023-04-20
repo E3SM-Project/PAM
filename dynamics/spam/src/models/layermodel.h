@@ -1231,8 +1231,8 @@ struct DoubleVortex {
                       4._fp * pi * sigmax * sigmay / Lx / Ly);
   }
 
-  static vec<2> YAKL_INLINE v_f(real x, real y) {
-    vec<2> vvec;
+  static VecXY YAKL_INLINE v_f(real x, real y) {
+    VecXY vvec;
 
     real xprime1 = Lx / (pi * sigmax) * sin(pi / Lx * (x - xc1));
     real yprime1 = Ly / (pi * sigmay) * sin(pi / Ly * (y - yc1));
@@ -1293,8 +1293,8 @@ struct BickleyJet {
 
   static real YAKL_INLINE h_f(real x, real y) { return 1; }
 
-  static vec<2> YAKL_INLINE v_f(real x, real y) {
-    vec<2> vvec;
+  static VecXY YAKL_INLINE v_f(real x, real y) {
+    VecXY vvec;
     real U = std::pow(std::cosh(y), -2);
     real psi = std::exp(-std::pow(y + l / 10, 2) / (2 * l * l)) *
                std::cos(k * x) * std::cos(k * y);

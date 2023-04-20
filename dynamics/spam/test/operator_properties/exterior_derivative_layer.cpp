@@ -12,8 +12,8 @@ struct fun {
 };
 
 struct grad_fun {
-  vec<2> YAKL_INLINE operator()(real x, real y) const {
-    vec<2> vvec;
+  VecXY YAKL_INLINE operator()(real x, real y) const {
+    VecXY vvec;
     vvec.u = 2 * M_PI * cos(2 * M_PI * x) * sin(2 * M_PI * y);
     vvec.v = 2 * M_PI * sin(2 * M_PI * x) * cos(2 * M_PI * y);
     return vvec;
@@ -21,8 +21,8 @@ struct grad_fun {
 };
 
 struct vecfun {
-  vec<2> YAKL_INLINE operator()(real x, real y) const {
-    vec<2> vvec;
+  VecXY YAKL_INLINE operator()(real x, real y) const {
+    VecXY vvec;
     vvec.u = sin(2 * M_PI * x) * sin(2 * M_PI * y);
     vvec.v = sin(2 * M_PI * x) * cos(2 * M_PI * y);
     return vvec;

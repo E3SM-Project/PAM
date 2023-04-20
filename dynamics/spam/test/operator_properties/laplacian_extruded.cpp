@@ -5,7 +5,7 @@
 // clang-format on
 
 struct fun {
-  real YAKL_INLINE operator()(real x, real z) const {
+  real YAKL_INLINE operator()(real x, real y, real z) const {
     real sx = sin(2 * M_PI * x);
     real fz = z * z * (z - 1) * (z - 1);
     return sx * fz;
@@ -13,7 +13,7 @@ struct fun {
 };
 
 struct lap_fun {
-  real YAKL_INLINE operator()(real x, real z) const {
+  real YAKL_INLINE operator()(real x, real y, real z) const {
     real sx = sin(2 * M_PI * x);
     real fz = z * z * (z - 1) * (z - 1);
     real d2fz = 2 * (z - 1) * (z - 1) + 2 * z * z + 8 * z * (z - 1);
@@ -22,12 +22,12 @@ struct lap_fun {
 };
 
 struct vecfun {
-  vecext<2> YAKL_INLINE operator()(real x, real z) const {
+  VecXYZ YAKL_INLINE operator()(real x, real y, real z) const {
     real sx = sin(2 * M_PI * x);
     real cx = cos(2 * M_PI * x);
     real fz = z * z * (z - 1) * (z - 1);
 
-    vecext<2> vvec;
+    VecXYZ vvec;
     vvec.u = sx * fz;
     vvec.w = cx * fz;
     return vvec;
@@ -35,13 +35,13 @@ struct vecfun {
 };
 
 struct lap_vecfun {
-  vecext<2> YAKL_INLINE operator()(real x, real z) const {
+  VecXYZ YAKL_INLINE operator()(real x, real y, real z) const {
     real sx = sin(2 * M_PI * x);
     real cx = cos(2 * M_PI * x);
     real fz = z * z * (z - 1) * (z - 1);
     real d2fz = 2 * (z - 1) * (z - 1) + 2 * z * z + 8 * z * (z - 1);
 
-    vecext<2> vvec;
+    VecXYZ vvec;
     vvec.u = -4 * M_PI * M_PI * sx * fz + sx * d2fz;
     vvec.w = -4 * M_PI * M_PI * cx * fz + cx * d2fz;
     return vvec;
@@ -148,19 +148,15 @@ real compute_vel_laplacian_error(int np, bool uniform_vertical) {
 
   auto st10 = square.create_straight_form<1, 0>();
   auto st01 = square.create_straight_form<0, 1>();
-  square.primal_geometry.set_10form_values(vecfun{}, st10, 0,
-                                           LINE_INTEGRAL_TYPE::TANGENT);
-  square.primal_geometry.set_01form_values(vecfun{}, st01, 0,
-                                           LINE_INTEGRAL_TYPE::TANGENT);
+  square.primal_geometry.set_10form_values(vecfun{}, st10, 0);
+  square.primal_geometry.set_01form_values(vecfun{}, st01, 0);
 
   auto lap_st10 = square.create_straight_form<1, 0>();
   auto lap_st01 = square.create_straight_form<0, 1>();
   auto lap_st10_expected = square.create_straight_form<1, 0>();
   auto lap_st01_expected = square.create_straight_form<0, 1>();
-  square.primal_geometry.set_10form_values(lap_vecfun{}, lap_st10_expected, 0,
-                                           LINE_INTEGRAL_TYPE::TANGENT);
-  square.primal_geometry.set_01form_values(lap_vecfun{}, lap_st01_expected, 0,
-                                           LINE_INTEGRAL_TYPE::TANGENT);
+  square.primal_geometry.set_10form_values(lap_vecfun{}, lap_st10_expected, 0);
+  square.primal_geometry.set_01form_values(lap_vecfun{}, lap_st01_expected, 0);
 
   int pis = square.primal_topology.is;
   int pjs = square.primal_topology.js;
@@ -319,11 +315,11 @@ real compute_twisted_11form_laplacian_error(int np, bool uniform_vertical) {
   ExtrudedUnitSquare square(np, 2 * np, uniform_vertical);
 
   auto tw11 = square.create_twisted_form<1, 1>();
-  square.dual_geometry.set_11form_values(fun{}, tw11, 0);
+  square.dual_geometry.set_n1form_values(fun{}, tw11, 0);
 
   auto lap_tw11 = square.create_twisted_form<1, 1>();
   auto lap_tw11_expected = square.create_twisted_form<1, 1>();
-  square.dual_geometry.set_11form_values(lap_fun{}, lap_tw11_expected, 0);
+  square.dual_geometry.set_n1form_values(lap_fun{}, lap_tw11_expected, 0);
 
   int pis = square.primal_topology.is;
   int pjs = square.primal_topology.js;

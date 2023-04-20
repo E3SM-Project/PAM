@@ -4,7 +4,7 @@
 // clang-format on
 
 struct fun {
-  real YAKL_INLINE operator()(real x, real z) const {
+  real YAKL_INLINE operator()(real x, real y, real z) const {
     real sx = sin(2 * M_PI * x);
     real sz = sin(2 * M_PI * z);
     return sx * sz;
@@ -12,8 +12,8 @@ struct fun {
 };
 
 struct grad_fun {
-  vecext<2> YAKL_INLINE operator()(real x, real z) const {
-    vecext<2> vvec;
+  VecXYZ YAKL_INLINE operator()(real x, real y, real z) const {
+    VecXYZ vvec;
     vvec.u = 2 * M_PI * cos(2 * M_PI * x) * sin(2 * M_PI * z);
     vvec.w = 2 * M_PI * sin(2 * M_PI * x) * cos(2 * M_PI * z);
     return vvec;
@@ -21,8 +21,8 @@ struct grad_fun {
 };
 
 struct vecfun {
-  vecext<2> YAKL_INLINE operator()(real x, real z) const {
-    vecext<2> vvec;
+  VecXYZ YAKL_INLINE operator()(real x, real y, real z) const {
+    VecXYZ vvec;
     vvec.u = sin(2 * M_PI * x) * sin(2 * M_PI * z);
     vvec.w = sin(2 * M_PI * x) * cos(2 * M_PI * z);
     return vvec;
@@ -30,7 +30,7 @@ struct vecfun {
 };
 
 struct div_vecfun {
-  real YAKL_INLINE operator()(real x, real z) const {
+  real YAKL_INLINE operator()(real x, real y, real z) const {
     return 2 * M_PI *
            (cos(2 * M_PI * x) * sin(2 * M_PI * z) -
             sin(2 * M_PI * x) * sin(2 * M_PI * z));
@@ -38,7 +38,7 @@ struct div_vecfun {
 };
 
 struct curl_vecfun {
-  real YAKL_INLINE operator()(real x, real z) const {
+  real YAKL_INLINE operator()(real x, real y, real z) const {
     return 2 * M_PI *
            (sin(2 * M_PI * x) * cos(2 * M_PI * z) -
             cos(2 * M_PI * x) * cos(2 * M_PI * z));
@@ -53,8 +53,7 @@ void test_D0(int np, bool uniform_vertical, real atol) {
 
   auto st10 = square.create_straight_form<1, 0>();
   auto st10_expected = square.create_straight_form<1, 0>();
-  square.primal_geometry.set_10form_values(grad_fun{}, st10_expected, 0,
-                                           LINE_INTEGRAL_TYPE::TANGENT);
+  square.primal_geometry.set_10form_values(grad_fun{}, st10_expected, 0);
 
   int pis = square.primal_topology.is;
   int pjs = square.primal_topology.js;
@@ -87,8 +86,7 @@ void test_D0_vert(int np, bool uniform_vertical, real atol) {
 
   auto st01 = square.create_straight_form<0, 1>();
   auto st01_expected = square.create_straight_form<0, 1>();
-  square.primal_geometry.set_01form_values(grad_fun{}, st01_expected, 0,
-                                           LINE_INTEGRAL_TYPE::TANGENT);
+  square.primal_geometry.set_01form_values(grad_fun{}, st01_expected, 0);
 
   int pis = square.primal_topology.is;
   int pjs = square.primal_topology.js;
@@ -121,8 +119,7 @@ void test_D0bar(int np, bool uniform_vertical, real atol) {
 
   auto tw10 = square.create_twisted_form<1, 0>();
   auto tw10_expected = square.create_twisted_form<1, 0>();
-  square.dual_geometry.set_10form_values(grad_fun{}, tw10_expected, 0,
-                                         LINE_INTEGRAL_TYPE::TANGENT);
+  square.dual_geometry.set_10form_values(grad_fun{}, tw10_expected, 0);
 
   int dis = square.dual_topology.is;
   int djs = square.dual_topology.js;
@@ -155,8 +152,7 @@ void test_D0bar_vert(int np, bool uniform_vertical, real atol) {
 
   auto tw01 = square.create_twisted_form<0, 1>();
   auto tw01_expected = square.create_twisted_form<0, 1>();
-  square.dual_geometry.set_01form_values(grad_fun{}, tw01_expected, 0,
-                                         LINE_INTEGRAL_TYPE::TANGENT);
+  square.dual_geometry.set_01form_values(grad_fun{}, tw01_expected, 0);
 
   int dis = square.dual_topology.is;
   int djs = square.dual_topology.js;
@@ -186,16 +182,14 @@ void test_D1_ext(int np, bool uniform_vertical, real atol) {
   ExtrudedUnitSquare square(np, 2 * np, uniform_vertical);
 
   auto st10 = square.create_straight_form<1, 0>();
-  square.primal_geometry.set_10form_values(vecfun{}, st10, 0,
-                                           LINE_INTEGRAL_TYPE::TANGENT);
+  square.primal_geometry.set_10form_values(vecfun{}, st10, 0);
 
   auto st01 = square.create_straight_form<0, 1>();
-  square.primal_geometry.set_01form_values(vecfun{}, st01, 0,
-                                           LINE_INTEGRAL_TYPE::TANGENT);
+  square.primal_geometry.set_01form_values(vecfun{}, st01, 0);
 
   auto st11 = square.create_straight_form<1, 1>();
   auto st11_expected = square.create_straight_form<1, 1>();
-  square.primal_geometry.set_11form_values(curl_vecfun{}, st11_expected, 0);
+  square.primal_geometry.set_n1form_values(curl_vecfun{}, st11_expected, 0);
 
   int pis = square.primal_topology.is;
   int pjs = square.primal_topology.js;
@@ -227,16 +221,14 @@ void test_D1bar_and_D1bar_vert(int np, bool uniform_vertical, real atol) {
   ExtrudedUnitSquare square(np, 2 * np, uniform_vertical);
 
   auto tw01 = square.create_twisted_form<0, 1>();
-  square.dual_geometry.set_01form_values(vecfun{}, tw01, 0,
-                                         LINE_INTEGRAL_TYPE::NORMAL);
+  square.dual_geometry.set_nm11form_values(vecfun{}, tw01, 0);
 
   auto tw10 = square.create_twisted_form<1, 0>();
-  square.dual_geometry.set_10form_values(vecfun{}, tw10, 0,
-                                         LINE_INTEGRAL_TYPE::NORMAL);
+  square.dual_geometry.set_n0form_values(vecfun{}, tw10, 0);
 
   auto tw11 = square.create_twisted_form<1, 1>();
   auto tw11_expected = square.create_twisted_form<1, 1>();
-  square.dual_geometry.set_11form_values(div_vecfun{}, tw11_expected, 0);
+  square.dual_geometry.set_n1form_values(div_vecfun{}, tw11_expected, 0);
 
   int dis = square.dual_topology.is;
   int djs = square.dual_topology.js;

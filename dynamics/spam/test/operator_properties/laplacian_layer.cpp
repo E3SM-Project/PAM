@@ -21,13 +21,13 @@ struct lap_fun {
 };
 
 struct vecfun {
-  vec<2> YAKL_INLINE operator()(real x, real y) const {
+  VecXY YAKL_INLINE operator()(real x, real y) const {
     real sx = sin(2 * M_PI * x);
     real sy = sin(2 * M_PI * y);
     real cx = cos(2 * M_PI * x);
     real cy = cos(2 * M_PI * y);
 
-    vec<2> vvec;
+    VecXY vvec;
     vvec.u = sx * sy;
     vvec.v = cx * cy;
     return vvec;
@@ -35,13 +35,13 @@ struct vecfun {
 };
 
 struct lap_vecfun {
-  vec<2> YAKL_INLINE operator()(real x, real y) const {
+  VecXY YAKL_INLINE operator()(real x, real y) const {
     real sx = sin(2 * M_PI * x);
     real sy = sin(2 * M_PI * y);
     real cx = cos(2 * M_PI * x);
     real cy = cos(2 * M_PI * y);
 
-    vec<2> vvec;
+    VecXY vvec;
     vvec.u = -8 * M_PI * M_PI * sx * sy;
     vvec.v = -8 * M_PI * M_PI * cx * cy;
     return vvec;
