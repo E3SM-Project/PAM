@@ -1,4 +1,5 @@
 // clang-format off
+unsigned constexpr ndims = 1;
 #include "extruded_common.h"
 #include "hodge_star.h"
 #include "ext_deriv.h"

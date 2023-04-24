@@ -5,7 +5,6 @@
 #include <iostream>
 // clang-format on
 
-uint constexpr ndims = 1;
 uint constexpr nprognostic = 0;
 uint constexpr nconstant = 0;
 uint constexpr nauxiliary = 0;
@@ -29,8 +28,7 @@ struct ModelParameters : public Parameters {
 #include "params.h"
 #include "topology.h"
 
-Parallel parallel_stub(int nx, int nz) {
-  int ny = 1;
+Parallel parallel_stub(int nx, int ny, int nz) {
   Parallel par;
   par.nx_glob = par.nx = nx;
   par.ny_glob = par.ny = ny;
@@ -62,14 +60,15 @@ struct ExtrudedUnitSquare {
   Geometry<Straight> primal_geometry;
   Geometry<Twisted> dual_geometry;
 
-  ExtrudedUnitSquare(int nx, int nz, bool uniform_vertical) {
+  ExtrudedUnitSquare(int nx, int ny, int nz, bool uniform_vertical) {
     ModelParameters params;
 
-    // int ny = 1;
     params.nx_glob = nx;
-    // params.ny_glob = ny;
+    params.ny_glob = ny;
     params.xlen = 1;
+    params.ylen = 1;
     params.xc = 0;
+    params.yc = 0;
     params.nz_dual = nz;
     params.uniform_vertical = uniform_vertical;
 
@@ -91,7 +90,7 @@ struct ExtrudedUnitSquare {
           }
         });
 
-    Parallel par = parallel_stub(nx, nz);
+    Parallel par = parallel_stub(nx, ny, nz);
 
     primal_topology.initialize(par, true);
     dual_topology.initialize(par, false);
@@ -99,6 +98,9 @@ struct ExtrudedUnitSquare {
     primal_geometry.initialize(primal_topology, params);
     dual_geometry.initialize(dual_topology, params);
   }
+
+  ExtrudedUnitSquare(int nx, int nz, bool uniform_vertical)
+      : ExtrudedUnitSquare(nx, 1, nz, uniform_vertical) {}
 
   template <int deg, int edeg> Field create_straight_form() {
     static Exchange exchange;
@@ -142,12 +144,16 @@ struct ExtrudedUnitSquare {
         YAKL_LAMBDA(int l, int k, int j, int i) {
           real scale = 1;
           real dx = primal_geometry.dx;
+          real dy = primal_geometry.dy;
 
           real dz = f1.topology.primal ? primal_geometry.dz(ks + ks + koff, 0)
                                        : dual_geometry.dz(ks + ks + koff, 0);
 
-          if (f1.basedof == 1) {
+          if (f1.basedof >= 1) {
             scale *= dx;
+          }
+          if (f1.basedof >= 2) {
+            scale *= dy;
           }
           if (f1.extdof == 1) {
             scale *= dz;
