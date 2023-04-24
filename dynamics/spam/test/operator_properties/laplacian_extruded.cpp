@@ -96,9 +96,9 @@ real compute_straight_00form_laplacian_error(int np, bool uniform_vertical) {
         SimpleBounds<3>(square.dual_topology.nl, square.dual_topology.n_cells_y,
                         square.dual_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
-          compute_H1_ext<1, diff_ord>(
-              tmp_tw01.data, tmp_st10.data, square.primal_geometry,
-              square.dual_geometry, dis, djs, dks, i, j, k, 0);
+          compute_H10<1, diff_ord>(tmp_tw01.data, tmp_st10.data,
+                                   square.primal_geometry, square.dual_geometry,
+                                   dis, djs, dks, i, j, k, 0);
         });
     tmp_tw01.exchange();
 
@@ -108,9 +108,9 @@ real compute_straight_00form_laplacian_error(int np, bool uniform_vertical) {
                         square.dual_topology.n_cells_y,
                         square.dual_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
-          compute_H1_vert<1, diff_ord>(
-              tmp_tw10.data, tmp_st01.data, square.primal_geometry,
-              square.dual_geometry, dis, djs, dks, i, j, k + 1, 0);
+          compute_H01<1, diff_ord>(tmp_tw10.data, tmp_st01.data,
+                                   square.primal_geometry, square.dual_geometry,
+                                   dis, djs, dks, i, j, k + 1, 0);
         });
     tmp_tw10.exchange();
     tmp_tw10.set_bnd(0);
@@ -132,7 +132,7 @@ real compute_straight_00form_laplacian_error(int np, bool uniform_vertical) {
                         square.primal_topology.n_cells_y,
                         square.primal_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
-          compute_H2bar_ext<1, diff_ord, vert_diff_ord>(
+          compute_Hn1bar<1, diff_ord, vert_diff_ord>(
               lap_st00.data, tmp_tw11.data, square.primal_geometry,
               square.dual_geometry, pis, pjs, pks, i, j, k, 0);
         });
@@ -188,7 +188,7 @@ real compute_vel_laplacian_error(int np, bool uniform_vertical) {
                         square.dual_topology.n_cells_y,
                         square.dual_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
-          compute_H2_ext<1, diff_ord, vert_diff_ord>(
+          compute_Hn1<1, diff_ord, vert_diff_ord>(
               tmp_tw00.data, tmp_st11.data, square.primal_geometry,
               square.dual_geometry, dis, djs, dks, i, j, k + 1, 0);
         });
@@ -220,7 +220,7 @@ real compute_vel_laplacian_error(int np, bool uniform_vertical) {
                         square.primal_topology.n_cells_y,
                         square.primal_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
-          compute_H1bar_ext<1, diff_ord>(
+          compute_Hnm11bar<1, diff_ord>(
               lap_st10.data, tmp_tw01.data, square.primal_geometry,
               square.dual_geometry, pis, pjs, pks, i, j, k, 0);
         });
@@ -230,7 +230,7 @@ real compute_vel_laplacian_error(int np, bool uniform_vertical) {
                         square.primal_topology.n_cells_y,
                         square.primal_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
-          compute_H1bar_vert<1, vert_diff_ord>(
+          compute_Hn0bar<1, vert_diff_ord>(
               lap_st01.data, tmp_tw10.data, square.primal_geometry,
               square.dual_geometry, pis, pjs, pks, i, j, k, 0);
         });
@@ -240,9 +240,9 @@ real compute_vel_laplacian_error(int np, bool uniform_vertical) {
         SimpleBounds<3>(square.dual_topology.nl, square.dual_topology.n_cells_y,
                         square.dual_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
-          compute_H1_ext<1, diff_ord>(
-              tmp_tw01.data, st10.data, square.primal_geometry,
-              square.dual_geometry, dis, djs, dks, i, j, k, 0);
+          compute_H10<1, diff_ord>(tmp_tw01.data, st10.data,
+                                   square.primal_geometry, square.dual_geometry,
+                                   dis, djs, dks, i, j, k, 0);
         });
     tmp_tw01.exchange();
 
@@ -251,7 +251,7 @@ real compute_vel_laplacian_error(int np, bool uniform_vertical) {
                         square.dual_topology.n_cells_y,
                         square.dual_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
-          compute_H1_vert<1, vert_diff_ord>(
+          compute_H01<1, vert_diff_ord>(
               tmp_tw10.data, st01.data, square.primal_geometry,
               square.dual_geometry, dis, djs, dks, i, j, k + 1, 0);
         });
@@ -277,7 +277,7 @@ real compute_vel_laplacian_error(int np, bool uniform_vertical) {
                         square.primal_topology.n_cells_y,
                         square.primal_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
-          compute_H2bar_ext<1, diff_ord, vert_diff_ord>(
+          compute_Hn1bar<1, diff_ord, vert_diff_ord>(
               tmp_st00.data, tmp_tw11.data, square.primal_geometry,
               square.dual_geometry, pis, pjs, pks, i, j, k, 0);
         });
@@ -338,7 +338,7 @@ real compute_twisted_11form_laplacian_error(int np, bool uniform_vertical) {
                         square.primal_topology.n_cells_y,
                         square.primal_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
-          compute_H2bar_ext<1, diff_ord, vert_diff_ord>(
+          compute_Hn1bar<1, diff_ord, vert_diff_ord>(
               tmp_st00.data, tw11.data, square.primal_geometry,
               square.dual_geometry, pis, pjs, pks, i, j, k, 0);
         });
@@ -371,9 +371,9 @@ real compute_twisted_11form_laplacian_error(int np, bool uniform_vertical) {
         SimpleBounds<3>(square.dual_topology.nl, square.dual_topology.n_cells_y,
                         square.dual_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
-          compute_H1_ext<1, diff_ord>(
-              tmp_tw01.data, tmp_st10.data, square.primal_geometry,
-              square.dual_geometry, dis, djs, dks, i, j, k, 0);
+          compute_H10<1, diff_ord>(tmp_tw01.data, tmp_st10.data,
+                                   square.primal_geometry, square.dual_geometry,
+                                   dis, djs, dks, i, j, k, 0);
         });
     tmp_tw01.exchange();
 
@@ -383,9 +383,9 @@ real compute_twisted_11form_laplacian_error(int np, bool uniform_vertical) {
                         square.dual_topology.n_cells_y,
                         square.dual_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
-          compute_H1_vert<1, diff_ord>(
-              tmp_tw10.data, tmp_st01.data, square.primal_geometry,
-              square.dual_geometry, dis, djs, dks, i, j, k + 1, 0);
+          compute_H01<1, diff_ord>(tmp_tw10.data, tmp_st01.data,
+                                   square.primal_geometry, square.dual_geometry,
+                                   dis, djs, dks, i, j, k + 1, 0);
         });
     tmp_tw10.exchange();
     tmp_tw10.set_bnd(0);
