@@ -415,7 +415,7 @@ public:
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wD1bar<VS::ndensity_prognostic, addmode>(
+          compute_wDnm1bar<VS::ndensity_prognostic, addmode>(
               denstendvar, densreconvar, Fvar, dis, djs, dks, i, j, k, n);
         });
   }
@@ -712,7 +712,7 @@ public:
               c(0, d, n) = refstate.ref_height;
             }
           }
-          compute_wD1bar<1>(dens_rhs, c, U, dis, djs, dks, i, j, k, n);
+          compute_wDnm1bar<1>(dens_rhs, c, U, dis, djs, dks, i, j, k, n);
           dens_rhs(0, dks + k, djs + j, dis + i, n) *= -0.5_fp * dt;
           dens_rhs(0, dks + k, djs + j, dis + i, n) += h;
         });
@@ -746,12 +746,13 @@ public:
           fourier_H1<diff_ord>(cH1, primal_geometry, dual_geometry, pis, pjs,
                                pks, ik, jk, 0, 0, n_cells_x, n_cells_y, nl);
 
-          SArray<real, 1, ndims> cD0D1bar;
-          fourier_cwD0D1bar(cD0D1bar, grav * refstate.ref_height, ik, jk, 0,
-                            n_cells_x, n_cells_y, nl);
+          SArray<real, 1, ndims> cD0Dnm1bar;
+          fourier_cwD0Dnm1bar(cD0Dnm1bar, grav * refstate.ref_height, ik, jk, 0,
+                              n_cells_x, n_cells_y, nl);
 
-          real hd = (1._fp - 0.25_fp * dt * dt * cD0D1bar(0) * cH2bar * cH1(0) -
-                     0.25_fp * dt * dt * cD0D1bar(1) * cH2bar * cH1(1));
+          real hd =
+              (1._fp - 0.25_fp * dt * dt * cD0Dnm1bar(0) * cH2bar * cH1(0) -
+               0.25_fp * dt * dt * cD0Dnm1bar(1) * cH2bar * cH1(1));
 
           dens_transform(k, j, i, n) /= hd;
         });

@@ -120,10 +120,10 @@ real compute_straight_00form_laplacian_error(int np, bool uniform_vertical) {
         SimpleBounds<3>(square.dual_topology.nl, square.dual_topology.n_cells_y,
                         square.dual_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
-          compute_D1bar<1>(tmp_tw11.data, tmp_tw01.data, dis, djs, dks, i, j, k,
-                           0);
-          compute_D1bar_vert<1, ADD_MODE::ADD>(tmp_tw11.data, tmp_tw10.data,
-                                               dis, djs, dks, i, j, k, 0);
+          compute_Dnm1bar<1>(tmp_tw11.data, tmp_tw01.data, dis, djs, dks, i, j,
+                             k, 0);
+          compute_Dnm1bar_vert<1, ADD_MODE::ADD>(tmp_tw11.data, tmp_tw10.data,
+                                                 dis, djs, dks, i, j, k, 0);
         });
     tmp_tw11.exchange();
 
@@ -264,10 +264,10 @@ real compute_vel_laplacian_error(int np, bool uniform_vertical) {
         SimpleBounds<3>(square.dual_topology.nl, square.dual_topology.n_cells_y,
                         square.dual_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
-          compute_D1bar<1>(tmp_tw11.data, tmp_tw01.data, dis, djs, dks, i, j, k,
-                           0);
-          compute_D1bar_vert<1, ADD_MODE::ADD>(tmp_tw11.data, tmp_tw10.data,
-                                               dis, djs, dks, i, j, k, 0);
+          compute_Dnm1bar<1>(tmp_tw11.data, tmp_tw01.data, dis, djs, dks, i, j,
+                             k, 0);
+          compute_Dnm1bar_vert<1, ADD_MODE::ADD>(tmp_tw11.data, tmp_tw10.data,
+                                                 dis, djs, dks, i, j, k, 0);
         });
     tmp_tw11.exchange();
 
@@ -394,10 +394,10 @@ real compute_twisted_11form_laplacian_error(int np, bool uniform_vertical) {
         SimpleBounds<3>(square.dual_topology.nl, square.dual_topology.n_cells_y,
                         square.dual_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
-          compute_D1bar<1>(lap_tw11.data, tmp_tw01.data, dis, djs, dks, i, j, k,
-                           0);
-          compute_D1bar_vert<1, ADD_MODE::ADD>(lap_tw11.data, tmp_tw10.data,
-                                               dis, djs, dks, i, j, k, 0);
+          compute_Dnm1bar<1>(lap_tw11.data, tmp_tw01.data, dis, djs, dks, i, j,
+                             k, 0);
+          compute_Dnm1bar_vert<1, ADD_MODE::ADD>(lap_tw11.data, tmp_tw10.data,
+                                                 dis, djs, dks, i, j, k, 0);
         });
   }
 
