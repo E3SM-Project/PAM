@@ -1,2 +1,3 @@
 add_pamc_test(hodge_star_layer _LAYER)
 add_pamc_test(hodge_star_extruded _EXTRUDED)
+add_pamc_test(hodge_star_extruded_3d _EXTRUDED)
