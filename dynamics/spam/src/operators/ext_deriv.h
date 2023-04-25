@@ -704,7 +704,6 @@ void YAKL_INLINE D1(SArray<real, 1, ndofs> &var,
                     SArray<real, 2, ndofs, 4> const &flux) {
 
   for (int l = 0; l < ndofs; l++) {
-
     var(l) = (flux(l, 0) - flux(l, 1) - flux(l, 2) + flux(l, 3));
   }
 }
@@ -744,42 +743,57 @@ void YAKL_INLINE compute_D1(const real5d &tendvar, const real5d &fluxvar,
 }
 
 template <uint ndofs>
-void YAKL_INLINE compute_D1_ext(SArray<real, 1, ndims * ndofs> &tend,
-                                const real5d &v, const real5d &w, int is,
-                                int js, int ks, int i, int j, int k, int n) {
-  SArray<real, 1, 4> flux;
-  if (ndims == 1) {
-    flux(0) = v(0, k + ks, j + js, i + is, n);     // v1 +
-    flux(1) = v(0, k + ks + 1, j + js, i + is, n); // v1 -
-    flux(2) = w(0, k + ks, j + js, i + is, n);     // w +
-    flux(3) = w(0, k + ks, j + js, i + is - 1, n); // w -
-    tend(0) = (flux(0) - flux(1) + flux(2) - flux(3));
-  } else {
-    flux(0) = v(0, k + ks, j + js, i + is, n);
-    flux(1) = v(0, k + ks + 1, j + js, i + is, n);
-    flux(2) = w(0, k + ks, j + js, i + is, n);
-    flux(3) = w(0, k + ks, j + js, i + is - 1, n);
-    tend(0) = -(flux(0) - flux(1) + flux(2) - flux(3));
-
-    flux(0) = w(0, k + ks, j + js, i + is, n);
-    flux(1) = w(0, k + ks, j + js - 1, i + is, n);
-    flux(2) = v(1, k + ks, j + js, i + is, n);
-    flux(3) = v(1, k + ks + 1, j + js, i + is, n);
-    tend(1) = -(flux(0) - flux(1) + flux(2) - flux(3));
+void YAKL_INLINE D1_ext(SArray<real, 2, ndofs, ndims> &var,
+                        SArray<real, 3, ndofs, ndims, 4> const &flux) {
+  for (int l = 0; l < ndofs; l++) {
+    for (int d = 0; d < ndims; d++) {
+      var(l, d) =
+          -(flux(l, d, 0) - flux(l, d, 1) + flux(l, d, 2) - flux(l, d, 3));
+      if (ndims == 1) {
+        var(l, d) *= -1;
+      }
+    }
   }
 }
+
+template <uint ndofs>
+void YAKL_INLINE compute_D1_ext(SArray<real, 2, ndofs, ndims> &tend,
+                                const real5d &v, const real5d &w, int is,
+                                int js, int ks, int i, int j, int k, int n) {
+  SArray<real, 3, ndofs, ndims, 4> flux;
+  for (int l = 0; l < ndofs; l++) {
+    for (int d = 0; d < ndims; d++) {
+      if (d == 0) {
+        flux(l, d, 0) = v(0, k + ks, j + js, i + is, n);     // v1 +
+        flux(l, d, 1) = v(0, k + ks + 1, j + js, i + is, n); // v1 -
+        flux(l, d, 2) = w(0, k + ks, j + js, i + is, n);     // w +
+        flux(l, d, 3) = w(0, k + ks, j + js, i + is - 1, n); // w -
+      }
+      if (d == 1) {
+        flux(l, d, 0) = w(0, k + ks, j + js, i + is, n);
+        flux(l, d, 1) = w(0, k + ks, j + js - 1, i + is, n);
+        flux(l, d, 2) = v(1, k + ks, j + js, i + is, n);
+        flux(l, d, 3) = v(1, k + ks + 1, j + js, i + is, n);
+      }
+    }
+  }
+  D1_ext(tend, flux);
+}
+
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_D1_ext(const real5d &tendvar, const real5d &v,
                                 const real5d &w, int is, int js, int ks, int i,
                                 int j, int k, int n) {
-  SArray<real, 1, ndims> tend;
+  SArray<real, 2, ndofs, ndims> tend;
   compute_D1_ext<ndofs>(tend, v, w, is, js, ks, i, j, k, n);
-  for (int d = 0; d < ndims; d++) {
-    if (addmode == ADD_MODE::REPLACE) {
-      tendvar(d, k + ks, j + js, i + is, n) = tend(d);
-    }
-    if (addmode == ADD_MODE::ADD) {
-      tendvar(d, k + ks, j + js, i + is, n) += tend(d);
+  for (int l = 0; l < ndofs; l++) {
+    for (int d = 0; d < ndims; d++) {
+      if (addmode == ADD_MODE::REPLACE) {
+        tendvar(l + d * ndofs, k + ks, j + js, i + is, n) = tend(l, d);
+      }
+      if (addmode == ADD_MODE::ADD) {
+        tendvar(l + d * ndofs, k + ks, j + js, i + is, n) += tend(l, d);
+      }
     }
   }
 }
