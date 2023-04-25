@@ -45,6 +45,7 @@ struct vecfun {
     vvec.u = sx * sy * sz;
     vvec.v = sx * cy * sz;
     vvec.w = sx * cy * cz;
+
     return vvec;
   }
 };
@@ -80,7 +81,8 @@ struct curl_vecfun {
 
     vvec.u = 2 * M_PI * (-sx * sy * cz - sx * cy * cz);
     vvec.v = 2 * M_PI * (sx * sy * cz - cx * cy * cz);
-    vvec.w = 2 * M_PI * (-sx * sy * sz - sx * cy * sz);
+    vvec.w = 2 * M_PI * (cx * cy * sz - sx * cy * sz);
+
     return vvec;
   }
 };
@@ -292,6 +294,39 @@ void test_D1_ext(int np, bool uniform_vertical, real atol) {
   }
 }
 
+void test_D1_vert(int np, bool uniform_vertical, real atol) {
+  ExtrudedUnitSquare square(np, 7 * np / 8, 9 * np / 8, uniform_vertical);
+
+  auto st10 = square.create_straight_form<1, 0>();
+  square.primal_geometry.set_10form_values(vecfun{}, st10, 0);
+
+  auto st20 = square.create_straight_form<2, 0>();
+  auto st20_expected = square.create_straight_form<2, 0>();
+  square.primal_geometry.set_n0form_values(curl_vecfun{}, st20_expected, 0);
+
+  int pis = square.primal_topology.is;
+  int pjs = square.primal_topology.js;
+  int pks = square.primal_topology.ks;
+  {
+    st10.exchange();
+    parallel_for(
+        SimpleBounds<3>(square.primal_topology.ni,
+                        square.primal_topology.n_cells_y,
+                        square.primal_topology.n_cells_x),
+        YAKL_LAMBDA(int k, int j, int i) {
+          compute_D1<1>(st20.data, st10.data, pis, pjs, pks, i, j, k, 0);
+        });
+  }
+
+  real errf = square.compute_Linf_error(st20_expected, st20);
+
+  if (errf > atol) {
+    std::cout << "Exactness of D1_vert failed, error = " << errf
+              << " tol = " << atol << std::endl;
+    exit(-1);
+  }
+}
+
 int main() {
   yakl::init();
   real atol = 500 * std::numeric_limits<real>::epsilon();
@@ -303,6 +338,7 @@ int main() {
     test_D0bar_vert(33, uniform_vertical, atol);
     test_Dnm1bar_and_Dnm1bar_vert(33, uniform_vertical, atol);
     test_D1_ext(33, uniform_vertical, atol);
+    test_D1_vert(33, uniform_vertical, atol);
   }
   yakl::finalize();
 }
