@@ -325,7 +325,7 @@ void YAKL_INLINE compute_Hn1(SArray<real, 1, ndofs> &x0, const real5d &var,
           x(l, d, p) = var(l, k + ks - 1, j + js, i + is + p - hoff, n);
         }
         if (d == 1) {
-          x(l, d, p) = var(l, k + ks + 1, j + js + p - hoff, i + is, n);
+          x(l, d, p) = var(l, k + ks - 1, j + js + p - hoff, i + is, n);
         }
       }
     }
