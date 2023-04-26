@@ -224,6 +224,89 @@ void YAKL_INLINE compute_H01(SArray<real, 1, 1> &uwvar, const real5d &wvar,
 }
 
 template <uint ndofs, uint ord, uint off = ord / 2 - 1>
+void YAKL_INLINE compute_Hnm11(SArray<real, 1, ndims> &u, const real5d &vvar,
+                               const Geometry<Straight> &pgeom,
+                               const Geometry<Twisted> &dgeom, int is, int js,
+                               int ks, int i, int j, int k, int n) {
+  SArray<real, 2, ndims, ord - 1> v;
+  SArray<real, 1, ndims> Hnm11geom;
+
+  for (int d = 0; d < ndims; d++) {
+    Hnm11geom(d) = dgeom.get_area_10entity(d, k + ks, j + js, i + is, n) /
+                   pgeom.get_area_nm11entity(d, k - 1 + ks, j + js, i + is, n);
+  }
+
+  for (int p = 0; p < ord - 1; p++) {
+    for (int d = 0; d < ndims; d++) {
+      if (d == 0) {
+        v(d, p) = vvar(d, k - 1 + ks, j + js, i + is + p - off, n);
+      }
+      if (d == 1) {
+        v(d, p) = vvar(d, k - 1 + ks, j + js + p - off, i + is, n);
+      }
+    }
+  }
+  H1bar(u, v, Hnm11geom);
+}
+
+template <uint ndofs, uint ord, ADD_MODE addmode = ADD_MODE::REPLACE,
+          uint off = ord / 2 - 1>
+void YAKL_INLINE compute_Hnm11(const real5d &uvar, const real5d &vvar,
+                               const Geometry<Straight> &pgeom,
+                               const Geometry<Twisted> &dgeom, int is, int js,
+                               int ks, int i, int j, int k, int n) {
+  SArray<real, 1, ndims> u;
+  compute_Hnm11<ndofs, ord, off>(u, vvar, pgeom, dgeom, is, js, ks, i, j, k, n);
+  for (int d = 0; d < ndims; d++) {
+    if (addmode == ADD_MODE::REPLACE) {
+      uvar(d, k + ks, j + js, i + is, n) = u(d);
+    }
+    if (addmode == ADD_MODE::ADD) {
+      uvar(d, k + ks, j + js, i + is, n) += u(d);
+    }
+  }
+}
+
+real YAKL_INLINE compute_Hn0(const real5d &wvar,
+                             const Geometry<Straight> &pgeom,
+                             const Geometry<Twisted> &dgeom, int is, int js,
+                             int ks, int i, int j, int k, int n) {
+  return -wvar(0, k + ks, j + js, i + is, n) *
+         dgeom.get_area_01entity(k + ks, j + js, i + is, n) /
+         pgeom.get_area_n0entity(k + ks, j + js, i + is, n);
+}
+
+template <uint ndofs, uint ord, ADD_MODE addmode = ADD_MODE::REPLACE,
+          uint off = ord / 2 - 1>
+void YAKL_INLINE compute_Hn0(const real5d &uwvar, const real5d &wvar,
+                             const Geometry<Straight> &pgeom,
+                             const Geometry<Twisted> &dgeom, int is, int js,
+                             int ks, int i, int j, int k, int n) {
+  real uw = compute_Hn0(wvar, pgeom, dgeom, is, js, ks, i, j, k, n);
+  if (addmode == ADD_MODE::REPLACE) {
+    uwvar(0, k + ks, j + js, i + is, n) = uw;
+  }
+  if (addmode == ADD_MODE::ADD) {
+    uwvar(0, k + ks, j + js, i + is, n) += uw;
+  }
+}
+
+template <uint ndofs, uint ord, ADD_MODE addmode = ADD_MODE::REPLACE,
+          uint off = ord / 2 - 1>
+void YAKL_INLINE compute_Hn0(SArray<real, 1, 1> &uwvar, const real5d &wvar,
+                             const Geometry<Straight> &pgeom,
+                             const Geometry<Twisted> &dgeom, int is, int js,
+                             int ks, int i, int j, int k, int n) {
+  real uw = compute_Hn0(wvar, pgeom, dgeom, is, js, ks, i, j, k, n);
+  if (addmode == ADD_MODE::REPLACE) {
+    uwvar(0) = uw;
+  }
+  if (addmode == ADD_MODE::ADD) {
+    uwvar(0) += uw;
+  }
+}
+
+template <uint ndofs, uint ord, uint off = ord / 2 - 1>
 void YAKL_INLINE compute_Hnm11bar(SArray<real, 1, ndims> &u, const real5d &vvar,
                                   const Geometry<Straight> &pgeom,
                                   const Geometry<Twisted> &dgeom, int is,

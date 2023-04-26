@@ -298,6 +298,108 @@ void test_H01_convergence(bool uniform_vertical) {
 }
 
 template <int diff_ord, class F>
+real compute_Hnm11_error(int np, bool uniform_vertical, F ic_fun) {
+  ExtrudedUnitSquare square(np, 7 * np / 8, 9 * np / 8, uniform_vertical);
+
+  auto st11 = square.create_straight_form<1, 1>();
+  square.primal_geometry.set_nm11form_values(ic_fun, st11, 0);
+
+  auto tw10 = square.create_twisted_form<1, 0>();
+  auto tw10_expected = square.create_twisted_form<1, 0>();
+  square.dual_geometry.set_10form_values(ic_fun, tw10_expected, 0);
+
+  int dis = square.primal_topology.is;
+  int djs = square.primal_topology.js;
+  int dks = square.primal_topology.ks;
+
+  {
+    st11.exchange();
+
+    parallel_for(
+        SimpleBounds<3>(square.dual_topology.ni - 2,
+                        square.dual_topology.n_cells_y,
+                        square.dual_topology.n_cells_x),
+        YAKL_LAMBDA(int k, int j, int i) {
+          for (int d = 0; d < ndims; ++d) {
+            tw10_expected.data(d, k + 1 + dks, j + djs, i + dis, 0) *= -1;
+          }
+          compute_Hnm11<1, diff_ord>(
+              tw10.data, st11.data, square.primal_geometry,
+              square.dual_geometry, dis, djs, dks, i, j, k + 1, 0);
+        });
+  }
+
+  real errf = square.compute_Linf_error(tw10_expected, tw10, false);
+  return errf;
+}
+
+void test_Hnm11_convergence(bool uniform_vertical) {
+  const int nlevels = 5;
+  const real atol = 0.11;
+
+  {
+    const int diff_order = 2;
+    auto conv_xy = ConvergenceTest<nlevels>(
+        "Hnm11 2 xy", uniform_vertical,
+        compute_Hnm11_error<diff_order, vecfun_xy>, vecfun_xy{});
+    conv_xy.check_rate(diff_order, atol);
+    auto conv_xyz = ConvergenceTest<nlevels>(
+        "Hnm11 2 xyz", uniform_vertical,
+        compute_Hnm11_error<diff_order, vecfun_xyz>, vecfun_xyz{});
+    conv_xyz.check_rate(2, atol);
+  }
+}
+
+template <int vdiff_ord, class F>
+real compute_Hn0_error(int np, bool uniform_vertical, F ic_fun) {
+  ExtrudedUnitSquare square(np, 7 * np / 8, 9 * np / 8, uniform_vertical);
+
+  auto st20 = square.create_straight_form<2, 0>();
+  square.primal_geometry.set_n0form_values(ic_fun, st20, 0);
+
+  auto tw01 = square.create_twisted_form<0, 1>();
+  auto tw01_expected = square.create_twisted_form<0, 1>();
+  square.dual_geometry.set_01form_values(ic_fun, tw01_expected, 0);
+
+  int dis = square.dual_topology.is;
+  int djs = square.dual_topology.js;
+  int dks = square.dual_topology.ks;
+
+  {
+    st20.exchange();
+
+    parallel_for(
+        SimpleBounds<3>(square.dual_topology.nl, square.dual_topology.n_cells_y,
+                        square.dual_topology.n_cells_x),
+        YAKL_LAMBDA(int k, int j, int i) {
+          tw01_expected.data(0, k + dks, j + djs, i + dis, 0) *= -1;
+          compute_Hn0<1, vdiff_ord>(
+              tw01.data, st20.data, square.primal_geometry,
+              square.dual_geometry, dis, djs, dks, i, j, k, 0);
+        });
+  }
+
+  real errf = square.compute_Linf_error(tw01_expected, tw01, false);
+  return errf;
+}
+
+void test_Hn0_convergence(bool uniform_vertical) {
+  const int nlevels = 5;
+  const real atol = 0.14;
+
+  {
+    auto conv_z = ConvergenceTest<nlevels>(
+        "Hn0 2 z", uniform_vertical, compute_Hn0_error<vert_diff_ord, vecfun_z>,
+        vecfun_z{});
+    conv_z.check_rate(vert_diff_ord, atol);
+    auto conv_xyz = ConvergenceTest<nlevels>(
+        "Hn0 2 xyz", uniform_vertical,
+        compute_Hn0_error<vert_diff_ord, vecfun_xyz>, vecfun_xyz{});
+    conv_xyz.check_rate(vert_diff_ord, atol);
+  }
+}
+
+template <int diff_ord, class F>
 real compute_Hnm11bar_error(int np, bool uniform_vertical, F ic_fun) {
   ExtrudedUnitSquare square(np, 7 * np / 8, 9 * np / 8, uniform_vertical);
 
@@ -581,6 +683,10 @@ int main() {
 
     test_H10_convergence(uniform_vertical);
     test_H01_convergence(uniform_vertical);
+
+    test_Hnm11_convergence(uniform_vertical);
+    test_Hn0_convergence(uniform_vertical);
+
     test_Hnm11bar_convergence(uniform_vertical);
     test_Hn0bar_convergence(uniform_vertical);
 
