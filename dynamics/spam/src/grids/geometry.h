@@ -475,7 +475,7 @@ void YAKL_INLINE Geometry<T>::get_11face_normals(
 
     for (int nqy = 0; nqy < ic_quad_pts_y; nqy++) {
       for (int nqz = 0; nqz < ic_quad_pts_z; nqz++) {
-        yz_normals(nqy, nqz).u = -1;
+        yz_normals(nqy, nqz).u = 1;
         yz_normals(nqy, nqz).v = 0;
         yz_normals(nqy, nqz).w = 0;
       }

@@ -747,10 +747,18 @@ void YAKL_INLINE D1_ext(SArray<real, 2, ndofs, ndims> &var,
                         SArray<real, 3, ndofs, ndims, 4> const &flux) {
   for (int l = 0; l < ndofs; l++) {
     for (int d = 0; d < ndims; d++) {
-      var(l, d) =
-          -(flux(l, d, 0) - flux(l, d, 1) + flux(l, d, 2) - flux(l, d, 3));
       if (ndims == 1) {
-        var(l, d) *= -1;
+        var(l, d) =
+            (flux(l, d, 0) - flux(l, d, 1) + flux(l, d, 2) - flux(l, d, 3));
+      } else {
+        if (d == 0) {
+          var(l, d) =
+              -(flux(l, d, 0) - flux(l, d, 1) + flux(l, d, 2) - flux(l, d, 3));
+        }
+        if (d == 1) {
+          var(l, d) =
+              (flux(l, d, 0) - flux(l, d, 1) + flux(l, d, 2) - flux(l, d, 3));
+        }
       }
     }
   }
