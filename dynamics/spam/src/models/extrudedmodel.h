@@ -3807,12 +3807,11 @@ public:
 
     auto &dm = coupler.get_data_manager_device_readonly();
 
-    auto dm_gcm_dens_dry = dm.get<real const, 2>("gcm_density_dry");
-    auto dm_gcm_dens_vap = dm.get<real const, 2>("gcm_water_vapor");
-    auto dm_gcm_uvel = dm.get<real const, 2>("gcm_uvel");
-    auto dm_gcm_vvel = dm.get<real const, 2>("gcm_vvel");
-    auto dm_gcm_wvel = dm.get<real const, 2>("gcm_wvel");
-    auto dm_gcm_temp = dm.get<real const, 2>("gcm_temp");
+    auto dm_ref_dens_dry = dm.get<real const, 2>("ref_density_dry");
+    auto dm_ref_dens_vap = dm.get<real const, 2>("ref_density_vapor");
+    auto dm_ref_dens_liq = dm.get<real const, 2>("ref_density_liq");
+    auto dm_ref_dens_ice = dm.get<real const, 2>("ref_density_ice");
+    auto dm_ref_temp     = dm.get<real const, 2>("ref_temp");
 
     const real grav = coupler.get_option<real>("grav");
     dual_geom.set_profile_11form_values(
@@ -3824,11 +3823,11 @@ public:
         "Coupled reference state 1",
         SimpleBounds<2>(dual_topology.nl, dual_topology.nens),
         YAKL_CLASS_LAMBDA(int k, int n) {
-          const real temp = dm_gcm_temp(k, n);
-          const real dens_dry = dm_gcm_dens_dry(k, n);
-          const real dens_vap = dm_gcm_dens_vap(k, n);
-          const real dens_liq = 0.0_fp;
-          const real dens_ice = 0.0_fp;
+          const real temp     = dm_ref_temp(k, n);
+          const real dens_dry = dm_ref_dens_dry(k,n);
+          const real dens_vap = dm_ref_dens_vap(k,n);
+          const real dens_liq = dm_ref_dens_liq(k,n);
+          const real dens_ice = dm_ref_dens_ice(k,n);
           const real dens = dens_dry + dens_ice + dens_liq + dens_vap;
 
           const real qd = dens_dry / dens;
@@ -3837,22 +3836,16 @@ public:
           const real qi = dens_ice / dens;
 
           const real alpha = 1.0_fp / dens;
-          const real entropic_var =
-              thermo.compute_entropic_var_from_T(alpha, temp, qd, qv, ql, qi);
+          const real entropic_var = thermo.compute_entropic_var_from_T(alpha, temp, qd, qv, ql, qi);
 
-          const real dual_volume =
-              dual_geom.get_area_11entity(k + dks, djs, dis, n);
-          refstate.dens.data(varset.dens_id_mass, k + dks, n) =
-              dens * dual_volume;
-          refstate.dens.data(varset.dens_id_entr, k + dks, n) =
-              entropic_var * dens * dual_volume;
-          refstate.dens.data(varset.dens_id_vap, k + dks, n) =
-              dens_vap * dual_volume;
+          const real dual_volume = dual_geom.get_area_11entity(k + dks, djs, dis, n);
+          refstate.dens.data(varset.dens_id_mass, k + dks, n) = dens * dual_volume;
+          refstate.dens.data(varset.dens_id_entr, k + dks, n) = entropic_var * dens * dual_volume;
+          refstate.dens.data(varset.dens_id_vap,  k + dks, n) = dens_vap * dual_volume;
 
           refstate.q_pi.data(varset.dens_id_mass, k + dks, n) = dens;
-          refstate.q_pi.data(varset.dens_id_entr, k + dks, n) =
-              dens * entropic_var;
-          refstate.q_pi.data(varset.dens_id_vap, k + dks, n) = dens_vap;
+          refstate.q_pi.data(varset.dens_id_entr, k + dks, n) = dens * entropic_var;
+          refstate.q_pi.data(varset.dens_id_vap,  k + dks, n) = dens_vap;
         });
 
     parallel_for(
