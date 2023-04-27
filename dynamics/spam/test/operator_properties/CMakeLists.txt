@@ -4,3 +4,4 @@ add_pamc_test(exterior_derivative_extruded_3d _EXTRUDED)
 
 add_pamc_test(laplacian_layer _LAYER)
 add_pamc_test(laplacian_extruded _EXTRUDED)
+add_pamc_test(laplacian_extruded_3d _EXTRUDED)
