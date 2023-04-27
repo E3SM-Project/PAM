@@ -108,8 +108,13 @@ namespace modules {
       gcm_forcing_tend_vvel (k,iens) = ( vvel_gcm (k,iens) - colavg_vvel (k,iens) ) * r_dt_gcm;
       gcm_forcing_tend_temp (k,iens) = ( temp_gcm (k,iens) - colavg_temp (k,iens) ) * r_dt_gcm;
       gcm_forcing_tend_rho_v(k,iens) = ( rho_v_gcm(k,iens) - colavg_rho_v(k,iens) ) * r_dt_gcm;
+      #ifdef MMF_PAM_FORCE_ALL_WATER_SPECIES
       gcm_forcing_tend_rho_l(k,iens) = ( rho_l_gcm(k,iens) - colavg_rho_l(k,iens) ) * r_dt_gcm;
       gcm_forcing_tend_rho_i(k,iens) = ( rho_i_gcm(k,iens) - colavg_rho_i(k,iens) ) * r_dt_gcm;
+      #else
+      gcm_forcing_tend_rho_l(k,iens) = 0;
+      gcm_forcing_tend_rho_i(k,iens) = 0;
+      #endif
     });
   }
 
@@ -257,9 +262,7 @@ namespace modules {
     //    enough mass available to fill the negatives. Then it is done globally
     parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       // Apply forcing
-      #ifdef MMF_PAM_DYCOR_AWFL
       rho_d(k,j,i,iens) += gcm_forcing_tend_rho_d(k,iens) * dt;
-      #endif
       uvel (k,j,i,iens) += gcm_forcing_tend_uvel (k,iens) * dt;
       vvel (k,j,i,iens) += gcm_forcing_tend_vvel (k,iens) * dt;
       temp (k,j,i,iens) += gcm_forcing_tend_temp (k,iens) * dt;
