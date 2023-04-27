@@ -743,6 +743,49 @@ void YAKL_INLINE compute_D1(const real5d &tendvar, const real5d &fluxvar,
 }
 
 template <uint ndofs>
+void YAKL_INLINE D1bar(SArray<real, 1, ndofs> &var,
+                       SArray<real, 2, ndofs, 4> const &flux) {
+
+  for (int l = 0; l < ndofs; l++) {
+    var(l) = (flux(l, 0) - flux(l, 1) - flux(l, 2) + flux(l, 3));
+  }
+}
+
+template <uint ndofs>
+void YAKL_INLINE compute_D1bar(SArray<real, 1, ndofs> &tend,
+                               const real5d &fluxvar, int is, int js, int ks,
+                               int i, int j, int k, int n) {
+  SArray<real, 2, ndofs, 4> flux;
+
+  for (int l = 0; l < ndofs; l++) {
+    flux(l, 0) = fluxvar(l + 0 * ndofs, k + ks, j + js, i + is + 1, n);
+    flux(l, 1) = fluxvar(l + 1 * ndofs, k + ks, j + js + 1, i + is, n);
+    flux(l, 2) = fluxvar(l + 0 * ndofs, k + ks, j + js, i + is, n);
+    flux(l, 3) = fluxvar(l + 1 * ndofs, k + ks, j + js, i + is, n);
+  }
+
+  D1bar<ndofs>(tend, flux);
+}
+
+template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+void YAKL_INLINE compute_D1bar(const real5d &tendvar, const real5d &fluxvar,
+                               int is, int js, int ks, int i, int j, int k,
+                               int n) {
+  SArray<real, 1, ndofs> tend;
+  compute_D1bar<ndofs>(tend, fluxvar, is, js, ks, i, j, k, n);
+  if (addmode == ADD_MODE::REPLACE) {
+    for (int l = 0; l < ndofs; l++) {
+      tendvar(l, k + ks, j + js, i + is, n) = tend(l);
+    }
+  }
+  if (addmode == ADD_MODE::ADD) {
+    for (int l = 0; l < ndofs; l++) {
+      tendvar(l, k + ks, j + js, i + is, n) += tend(l);
+    }
+  }
+}
+
+template <uint ndofs>
 void YAKL_INLINE D1_ext(SArray<real, 2, ndofs, ndims> &var,
                         SArray<real, 3, ndofs, ndims, 4> const &flux) {
   for (int l = 0; l < ndofs; l++) {
@@ -794,6 +837,70 @@ void YAKL_INLINE compute_D1_ext(const real5d &tendvar, const real5d &v,
                                 int j, int k, int n) {
   SArray<real, 2, ndofs, ndims> tend;
   compute_D1_ext<ndofs>(tend, v, w, is, js, ks, i, j, k, n);
+  for (int l = 0; l < ndofs; l++) {
+    for (int d = 0; d < ndims; d++) {
+      if (addmode == ADD_MODE::REPLACE) {
+        tendvar(l + d * ndofs, k + ks, j + js, i + is, n) = tend(l, d);
+      }
+      if (addmode == ADD_MODE::ADD) {
+        tendvar(l + d * ndofs, k + ks, j + js, i + is, n) += tend(l, d);
+      }
+    }
+  }
+}
+
+template <uint ndofs>
+void YAKL_INLINE D1bar_ext(SArray<real, 2, ndofs, ndims> &var,
+                           SArray<real, 3, ndofs, ndims, 4> const &flux) {
+  for (int l = 0; l < ndofs; l++) {
+    for (int d = 0; d < ndims; d++) {
+      if (ndims == 1) {
+        var(l, d) =
+            (flux(l, d, 0) - flux(l, d, 1) + flux(l, d, 2) - flux(l, d, 3));
+      } else {
+        if (d == 0) {
+          var(l, d) =
+              (flux(l, d, 0) - flux(l, d, 1) + flux(l, d, 2) - flux(l, d, 3));
+        }
+        if (d == 1) {
+          var(l, d) =
+              -(flux(l, d, 0) - flux(l, d, 1) + flux(l, d, 2) - flux(l, d, 3));
+        }
+      }
+    }
+  }
+}
+
+template <uint ndofs>
+void YAKL_INLINE compute_D1bar_ext(SArray<real, 2, ndofs, ndims> &tend,
+                                   const real5d &v, const real5d &w, int is,
+                                   int js, int ks, int i, int j, int k, int n) {
+  SArray<real, 3, ndofs, ndims, 4> flux;
+  for (int l = 0; l < ndofs; l++) {
+    for (int d = 0; d < ndims; d++) {
+      if (d == 0) {
+        flux(l, d, 0) = w(0, k + ks, j + js + 1, i + is, n);
+        flux(l, d, 1) = w(0, k + ks, j + js, i + is, n);
+        flux(l, d, 2) = v(0, k + ks, j + js, i + is, n);
+        flux(l, d, 3) = v(0, k + ks + 1, j + js, i + is, n);
+      }
+      if (d == 1) {
+        flux(l, d, 0) = v(1, k + ks, j + js, i + is, n);
+        flux(l, d, 1) = v(1, k + ks + 1, j + js, i + is, n);
+        flux(l, d, 2) = w(0, k + ks, j + js, i + is + 1, n);
+        flux(l, d, 3) = w(0, k + ks, j + js, i + is, n);
+      }
+    }
+  }
+  D1bar_ext(tend, flux);
+}
+
+template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+void YAKL_INLINE compute_D1bar_ext(const real5d &tendvar, const real5d &v,
+                                   const real5d &w, int is, int js, int ks,
+                                   int i, int j, int k, int n) {
+  SArray<real, 2, ndofs, ndims> tend;
+  compute_D1bar_ext<ndofs>(tend, v, w, is, js, ks, i, j, k, n);
   for (int l = 0; l < ndofs; l++) {
     for (int d = 0; d < ndims; d++) {
       if (addmode == ADD_MODE::REPLACE) {
