@@ -295,14 +295,21 @@ namespace pam {
       dm.register_and_allocate<real>("vertical_cell_dz"         ,"vertical grid spacing"      ,{nz      ,nens},{"z"        ,"nens"});
       dm.register_and_allocate<real>("vertical_midpoint_height" ,"vertical midpoint height"   ,{nz      ,nens},{"z"        ,"nens"});
       dm.register_and_allocate<real>("hydrostasis_parameters"   ,"hydrostasis parameters"     ,{nz,5    ,nens},{"z","nhy"  ,"nens"});
-      dm.register_and_allocate<real>("gcm_density_dry"          ,"GCM column dry density"     ,{nz      ,nens},{"z"        ,"nens"});
-      dm.register_and_allocate<real>("gcm_uvel"                 ,"GCM column u-velocity"      ,{nz      ,nens},{"z"        ,"nens"});
-      dm.register_and_allocate<real>("gcm_vvel"                 ,"GCM column v-velocity"      ,{nz      ,nens},{"z"        ,"nens"});
-      dm.register_and_allocate<real>("gcm_wvel"                 ,"GCM column w-velocity"      ,{nz      ,nens},{"z"        ,"nens"});
-      dm.register_and_allocate<real>("gcm_temp"                 ,"GCM column temperature"     ,{nz      ,nens},{"z"        ,"nens"});
-      dm.register_and_allocate<real>("gcm_water_vapor"          ,"GCM column water vapor density",{nz      ,nens},{"z"        ,"nens"});
-      dm.register_and_allocate<real>("gcm_cloud_water"          ,"GCM column cloud water density",{nz      ,nens},{"z"        ,"nens"});
-      dm.register_and_allocate<real>("gcm_cloud_ice"            ,"GCM column cloud ice density"  ,{nz      ,nens},{"z"        ,"nens"});
+
+      dm.register_and_allocate<real>("gcm_density_dry","GCM column dry density"                    ,{nz,nens},{"z","nens"});
+      dm.register_and_allocate<real>("gcm_uvel"       ,"GCM column u-velocity"                     ,{nz,nens},{"z","nens"});
+      dm.register_and_allocate<real>("gcm_vvel"       ,"GCM column v-velocity"                     ,{nz,nens},{"z","nens"});
+      dm.register_and_allocate<real>("gcm_wvel"       ,"GCM column w-velocity"                     ,{nz,nens},{"z","nens"});
+      dm.register_and_allocate<real>("gcm_temp"       ,"GCM column temperature"                    ,{nz,nens},{"z","nens"});
+      dm.register_and_allocate<real>("gcm_water_vapor","GCM column water vapor density"            ,{nz,nens},{"z","nens"});
+      dm.register_and_allocate<real>("gcm_cloud_water","GCM column cloud water density"            ,{nz,nens},{"z","nens"});
+      dm.register_and_allocate<real>("gcm_cloud_ice"  ,"GCM column cloud ice density"              ,{nz,nens},{"z","nens"});
+
+      dm.register_and_allocate<real>("ref_density_dry"  ,"Reference state column dry density"        ,{nz,nens},{"z","nens"});
+      dm.register_and_allocate<real>("ref_density_vapor","Reference state column water vapor density",{nz,nens},{"z","nens"});
+      dm.register_and_allocate<real>("ref_density_liq"  ,"Reference state column water liq density"  ,{nz,nens},{"z","nens"});
+      dm.register_and_allocate<real>("ref_density_ice"  ,"Reference state column water ice density"  ,{nz,nens},{"z","nens"});
+      dm.register_and_allocate<real>("ref_temp"         ,"Reference state column temperature"        ,{nz,nens},{"z","nens"});
 
       auto density_dry  = dm.get_collapsed<real>("density_dry"              );
       auto uvel         = dm.get_collapsed<real>("uvel"                     );
