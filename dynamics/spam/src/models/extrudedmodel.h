@@ -449,31 +449,6 @@ public:
         });
   }
 
-  template <ADD_MODE addmode = ADD_MODE::REPLACE>
-  void compute_B(real fac, real5d Bvar, const real5d Kvar, const real5d densvar,
-                 const real5d HSvar) {
-
-    const auto &primal_topology = primal_geometry.topology;
-
-    int pis = primal_topology.is;
-    int pjs = primal_topology.js;
-    int pks = primal_topology.ks;
-
-    YAKL_SCOPE(Hk, this->equations->Hk);
-    YAKL_SCOPE(Hs, this->equations->Hs);
-
-    parallel_for(
-        "Compute Bvar",
-        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          Hs.compute_dHsdx<addmode>(Bvar, densvar, HSvar, pis, pjs, pks, i, j,
-                                    k, n, fac);
-          Hk.compute_dKddens<ADD_MODE::ADD>(Bvar, Kvar, pis, pjs, pks, i, j, k,
-                                            n, fac);
-        });
-  }
-
   void compute_edge_reconstructions_uniform(
       real5d densedgereconvar, real5d densvertedgereconvar,
       real5d qxzedgereconvar, real5d qxzvertedgereconvar,
