@@ -333,34 +333,40 @@ public:
       }
       if (k < nz) {
         int k_shoc = nz-1-k;
-        real rho_total = rho_d(k,i)+rho_v(k,i);
+        real rho_total = rho_d(k,i);//+rho_v(k,i);
+        // real rho_total = rho_d(k,i)+rho_v(k,i);
         real z       = zmid    (k,i);
         real dz      = zint(k+1,i) - zint(k,i);
         real press   = pres_mid(k,i);
         real t       = temp    (k,i);
-        real qv      = rho_v   (k,i) / rho_total;
-        real ql      = rho_c   (k,i) / rho_total;
+        real qv      = std::max(0.0,rho_v(k,i)) / rho_total;
+        real ql      = std::max(0.0,rho_c(k,i)) / rho_total;
         real exner   = pow( press / p0 , R_d / cp_d );
         real theta   = t / exner;
+
         // https://glossary.ametsoc.org/wiki/Virtual_potential_temperature
-        real theta_v = theta * (1 + 0.61_fp * qv);
+        real theta_v = theta * (1 + 0.61_fp * qv - ql);
         // https://glossary.ametsoc.org/wiki/Liquid_water_potential_temperature
         // According to update_host_dse, the simplified version is used here
+
         real theta_l = theta - (latvap/cp_d) * ql;
+        // real theta_l = theta - (1/exner)*(latvap/cp_d) * ql;
+        // real theta_l = theta - (theta/t)*(latvap/cp_d) * ql;
+
         // dry static energy = Cp*T + g*z + phis
         real dse     = cp_d * t + grav * z;
         shoc_ql       (k_shoc,i) = ql;
         shoc_qw       (k_shoc,i) = qv + ql;
         shoc_zt_grid  (k_shoc,i) = z;
         shoc_pres     (k_shoc,i) = press;
-        shoc_pdel     (k_shoc,i) = grav * rho_total * dz;
+        shoc_pdel     (k_shoc,i) = grav * (rho_d(k,i)+rho_v(k,i)) * dz;
         shoc_thv      (k_shoc,i) = theta_v;
         shoc_w_field  (k_shoc,i) = wvel(k,i);
         shoc_exner    (k_shoc,i) = exner;
         shoc_inv_exner(k_shoc,i) = 1._fp / exner;
         shoc_host_dse (k_shoc,i) = dse;
         // TKE is a tracer, so it's stored as mass-weighted. SHOC doesn't want mass-weighted
-        shoc_tke      (k_shoc,i) = tke(k,i) / rho_total;
+        shoc_tke      (k_shoc,i) = std::max(0.004,tke(k,i)) / rho_total; // min TKE value taken from SCREAM interface
         shoc_thetal   (k_shoc,i) = theta_l;
         shoc_u_wind   (k_shoc,i) = uvel(k,i);
         shoc_v_wind   (k_shoc,i) = vvel(k,i);
@@ -664,9 +670,23 @@ public:
       real qw = shoc_qw(k_shoc,i);
       real ql = shoc_ql(k_shoc,i);
       real qv = qw - ql;
+
+      // real theta_l = theta - (latvap/cp_d) * ql;
+      temp    (k,i) = (shoc_thetal(k_shoc,i) + (latvap/cp_d) * shoc_ql(k_shoc,i)) * shoc_exner(k_shoc,i);
+
+      // real theta_l = theta - (1/exner)*(latvap/cp_d) * ql;
+      // temp    (k,i) = (shoc_thetal(k_shoc,i) + shoc_inv_exner(k_shoc,i)*(latvap/cp_d) * shoc_ql(k_shoc,i)) * shoc_exner(k_shoc,i);
+
+      // real theta_l = theta - (theta/t)*(latvap/cp_d) * ql;
+      // temp(k,i) = (shoc_thetal(k_shoc,i) + *(latvap/cp_d) * shoc_ql(k_shoc,i)) * shoc_exner(k_shoc,i);
+
+
+      rho_v(k,i) = qv * rho_d(k,i) / ( 1 - qv );
       real rho_total = rho_d(k,i)+rho_v(k,i);
-      temp    (k,i) = (shoc_thetal(k_shoc,i) + (latvap/cp_d) * shoc_ql(k_shoc,i)) / shoc_inv_exner(k_shoc,i);
-      rho_v   (k,i) = qv * rho_total;
+
+      // real rho_total = rho_d(k,i);//+rho_v(k,i);
+      // rho_v   (k,i) = qv * rho_total;
+
       rho_c   (k,i) = ql * rho_total;
       uvel    (k,i) = shoc_u_wind(k_shoc,i);
       vvel    (k,i) = shoc_v_wind(k_shoc,i);
