@@ -271,6 +271,97 @@ public:
     return h0(0) * K2;
   }
 
+  YAKL_INLINE void compute_he_U_and_K(SArray<real, 1, ndims> &he, real &hew,
+                                      SArray<real, 1, ndims> &U, real &UW,
+                                      real &K2, real5d densvar, real5d Vvar,
+                                      real5d Wvar, int is, int js, int ks,
+                                      int i, int j, int k, int n) const {
+
+#if defined _AN || defined _MAN
+    auto &rho_pi = varset.reference_state.rho_pi.data;
+    auto &rho_di = varset.reference_state.rho_di.data;
+    for (int d = 0; d < ndims; ++d) {
+      he(d) = rho_pi(0, k + ks, n);
+    }
+    hew = rho_di(0, k + ks, n);
+#else
+    SArray<real, 1, 1> dens0_ijk, dens0_im1, dens0_jm1, dens0_km1;
+
+    const auto total_density_f =
+        YAKL_LAMBDA(const real5d &densvar, int d, int k, int j, int i, int n) {
+      return varset.get_total_density(densvar, k, j, i, 0, 0, 0, n);
+    };
+
+    compute_Hn1bar<1, diff_ord, vert_diff_ord>(
+        total_density_f, dens0_ijk, densvar, primal_geometry, dual_geometry, is,
+        js, ks, i, j, k, n);
+    compute_Hn1bar<1, diff_ord, vert_diff_ord>(
+        total_density_f, dens0_im1, densvar, primal_geometry, dual_geometry, is,
+        js, ks, i - 1, j, k, n);
+    if (ndims > 1) {
+      compute_Hn1bar<1, diff_ord, vert_diff_ord>(
+          total_density_f, dens0_jm1, densvar, primal_geometry, dual_geometry,
+          is, js, ks, i, j - 1, k, n);
+    }
+    compute_Hn1bar<1, diff_ord, vert_diff_ord>(
+        total_density_f, dens0_km1, densvar, primal_geometry, dual_geometry, is,
+        js, ks, i, j, k - 1, n);
+
+    he(0) = 0.5_fp * (dens0_ijk(0) + dens0_im1(0));
+    if (ndims > 1) {
+      he(1) = 0.5_fp * (dens0_ijk(0) + dens0_jm1(0));
+    }
+    hew = 0.5_fp * (dens0_ijk(0) + dens0_km1(0));
+#endif
+
+    SArray<real, 1, ndims> u_ijk, u_ip1, u_jp1;
+    SArray<real, 1, 1> uw_ijk, uw_kp1;
+
+    compute_H10<1, diff_ord>(u_ijk, Vvar, primal_geometry, dual_geometry, is,
+                             js, ks, i, j, k, n);
+    compute_H10<1, diff_ord>(u_ip1, Vvar, primal_geometry, dual_geometry, is,
+                             js, ks, i + 1, j, k, n);
+    if (ndims > 1) {
+      compute_H10<1, diff_ord>(u_jp1, Vvar, primal_geometry, dual_geometry, is,
+                               js, ks, i, j + 1, k, n);
+    }
+
+    const int dni = dual_geometry.topology.ni;
+    const int dnl = dual_geometry.topology.nl;
+
+    if (k == 0 || k == (dni - 1)) {
+      uw_ijk(0) = 0;
+    } else {
+      compute_H01<1, vert_diff_ord>(uw_ijk, Wvar, primal_geometry,
+                                    dual_geometry, is, js, ks, i, j, k, n);
+    }
+
+    if (k >= (dni - 2)) {
+      uw_kp1(0) = 0;
+    } else {
+      compute_H01<1, vert_diff_ord>(uw_kp1, Wvar, primal_geometry,
+                                    dual_geometry, is, js, ks, i, j, k + 1, n);
+    }
+
+    for (int d = 0; d < ndims; ++d) {
+      U(d) = u_ijk(d);
+    }
+    UW = uw_ijk(0);
+
+    K2 = 0.5_fp * (Vvar(0, k + ks, j + js, i + is, n) * u_ijk(0) +
+                   Vvar(0, k + ks, j + js, i + 1 + is, n) * u_ip1(0));
+    if (ndims > 1) {
+      K2 += 0.5_fp * (Vvar(1, k + ks, j + js, i + is, n) * u_ijk(0) +
+                      Vvar(1, k + ks, j + 1 + js, i + is, n) * u_jp1(0));
+    }
+    if (k < dnl) {
+      K2 += 0.5_fp * (Wvar(0, k - 1 + ks, j + js, i + is, n) * uw_ijk(0) +
+                      Wvar(0, k + ks, j + js, i + is, n) * uw_kp1(0));
+    }
+
+    K2 *= 0.5;
+  }
+
   template <ADD_MODE addmode = ADD_MODE::REPLACE>
   void YAKL_INLINE compute_dKddens(const real5d &B, const real5d &K, int is,
                                    int js, int ks, int i, int j, int k, int n,
