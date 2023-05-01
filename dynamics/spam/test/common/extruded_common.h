@@ -60,7 +60,9 @@ struct ExtrudedUnitSquare {
   Geometry<Straight> primal_geometry;
   Geometry<Twisted> dual_geometry;
 
-  ExtrudedUnitSquare(int nx, int ny, int nz, bool uniform_vertical) {
+  bool is_initialized = false;
+
+  void initialize(int nx, int ny, int nz, bool uniform_vertical) {
     ModelParameters params;
 
     params.nx_glob = nx;
@@ -97,6 +99,12 @@ struct ExtrudedUnitSquare {
 
     primal_geometry.initialize(primal_topology, params);
     dual_geometry.initialize(dual_topology, params);
+
+    is_initialized = true;
+  }
+
+  ExtrudedUnitSquare(int nx, int ny, int nz, bool uniform_vertical) {
+    initialize(nx, ny, nz, uniform_vertical);
   }
 
   ExtrudedUnitSquare(int nx, int nz, bool uniform_vertical)
