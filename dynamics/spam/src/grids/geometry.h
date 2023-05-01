@@ -118,9 +118,10 @@ public:
   void initialize(const Topology &topo, const ModelParameters &params);
   void printinfo() const;
 
-  void get_ll_corner(CoordsXYZ &llc, int k, int j, int i, int n) const;
-  real get_zint(int k, int n) const;
-  real get_dz(int k, int n) const;
+  void YAKL_INLINE get_ll_corner(CoordsXYZ &llc, int k, int j, int i,
+                                 int n) const;
+  real YAKL_INLINE get_zint(int k, int n) const;
+  real YAKL_INLINE get_dz(int k, int n) const;
 
   void YAKL_INLINE get_11face_normals(
       int k, int j, int i, int n,
@@ -715,8 +716,6 @@ void YAKL_INLINE Geometry<T>::get_20form_quad_pts_wts(
     int k, int j, int i, int n,
     SArray<CoordsXYZ, 2, ic_quad_pts_x, ic_quad_pts_y> &xy_quad_pts_phys,
     SArray<real, 2, ic_quad_pts_x, ic_quad_pts_y> &xy_quad_wts_phys) const {
-
-  int ks = this->topology.ks;
 
   CoordsXYZ ll_corner;
   get_ll_corner(ll_corner, k, j, i, n);
