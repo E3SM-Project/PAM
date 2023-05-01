@@ -328,6 +328,11 @@ namespace pam {
       auto gcm_rho_v    = dm.get_collapsed<real>("gcm_water_vapor"          );
       auto gcm_rho_l    = dm.get_collapsed<real>("gcm_cloud_water"          );
       auto gcm_rho_i    = dm.get_collapsed<real>("gcm_cloud_ice"            );
+      auto ref_rho_d    = dm.get_collapsed<real>("ref_density_dry"          );
+      auto ref_rho_v    = dm.get_collapsed<real>("ref_density_vapor"        );
+      auto ref_rho_l    = dm.get_collapsed<real>("ref_density_liq"          );
+      auto ref_rho_i    = dm.get_collapsed<real>("ref_density_ice"          );
+      auto ref_temp     = dm.get_collapsed<real>("ref_temp"                 );
 
       parallel_for( "coupler zero" , SimpleBounds<1>(nz*ny*nx*nens) , YAKL_LAMBDA (int i) {
         density_dry (i) = 0;
@@ -347,6 +352,11 @@ namespace pam {
           gcm_rho_v(i) = 0;
           gcm_rho_l(i) = 0;
           gcm_rho_i(i) = 0;
+          ref_rho_d(i) = 0;
+          ref_rho_v(i) = 0;
+          ref_rho_l(i) = 0;
+          ref_rho_i(i) = 0;
+          ref_temp(i)  = 0;
         }
         if (i < nz*3  *nens) hy_params(i) = 0;
       });
