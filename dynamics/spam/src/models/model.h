@@ -31,7 +31,8 @@ public:
                   const Geometry<Straight> &primal_geom,
                   const Geometry<Twisted> &dual_geom) {
 
-    this->reference_state.initialize(primal_geom.topology, dual_geom.topology);
+    this->reference_state.initialize<VariableSet>(primal_geom.topology,
+                                                  dual_geom.topology);
     this->varset.initialize(coupler, params, thermo, reference_state,
                             primal_geom, dual_geom);
     this->PVPE.initialize(varset);
@@ -72,72 +73,48 @@ public:
 };
 
 enum class TRACER_TAG { CONSTANT, SQUARE, DOUBLESQUARE, GAUSSIAN };
-struct Tracer {
-  YAKL_INLINE virtual real compute(real x, real y, real Lx, real Ly, real xc,
-                                   real yc) = 0;
-};
 
-struct TracerConstant : Tracer {
-  YAKL_INLINE real compute(real x, real y, real Lx, real Ly, real xc,
-                           real yc) override {
-    return 1000;
-  }
-};
+struct TracerFunctor {
+  YAKL_INLINE real operator()(TRACER_TAG tracer_tag, real x, real y, real Lx,
+                              real Ly, real xc, real yc) {
+    real tracer = -1;
 
-struct TracerSquare : Tracer {
-  YAKL_INLINE real compute(real x, real y, real Lx, real Ly, real xc,
-                           real yc) override {
-    return (x > 0.35_fp * Lx && x < 0.65_fp * Lx && y > 0.35_fp * Ly &&
-            y < 0.65_fp * Ly)
-               ? 0.005_fp
-               : 0.;
-  }
-};
+    if (tracer_tag == TRACER_TAG::CONSTANT) {
+      tracer = 1000;
+    } else if (tracer_tag == TRACER_TAG::SQUARE) {
+      tracer = (x > 0.35_fp * Lx && x < 0.65_fp * Lx && y > 0.35_fp * Ly &&
+                y < 0.65_fp * Ly)
+                   ? 0.005_fp
+                   : 0.;
+    } else if (tracer_tag == TRACER_TAG::DOUBLESQUARE) {
+      const real ur = (x > 0.6_fp * Lx && x < 0.9_fp * Lx && y > 0.6_fp * Ly &&
+                       y < 0.9_fp * Ly)
+                          ? 0.005_fp
+                          : 0.;
+      const real ll = (x > 0.1_fp * Lx && x < 0.4_fp * Lx && y > 0.1_fp * Ly &&
+                       y < 0.4_fp * Ly)
+                          ? 0.005_fp
+                          : 0.;
 
-struct TracerDoubleSquare : Tracer {
-  real YAKL_INLINE tracer_square_ur(real x, real y, real Lx, real Ly, real xc,
-                                    real yc) {
-    return (x > 0.6_fp * Lx && x < 0.9_fp * Lx && y > 0.6_fp * Ly &&
-            y < 0.9_fp * Ly)
-               ? 0.005_fp
-               : 0.;
-  }
-  real YAKL_INLINE tracer_square_ll(real x, real y, real Lx, real Ly, real xc,
-                                    real yc) {
-    return (x > 0.1_fp * Lx && x < 0.4_fp * Lx && y > 0.1_fp * Ly &&
-            y < 0.4_fp * Ly)
-               ? 0.005_fp
-               : 0.;
-  }
-  YAKL_INLINE real compute(real x, real y, real Lx, real Ly, real xc,
-                           real yc) override {
+      tracer = ur + ll;
+    } else if (tracer_tag == TRACER_TAG::GAUSSIAN) {
+      const real a = 1.0_fp / 3.0_fp;
+      const real D = 0.5_fp * Lx;
+      tracer = 0.005_fp * exp(-((x - xc) * (x - xc) + (y - yc) * (y - yc)) /
+                              (a * a * D * D));
+    }
 
-    return tracer_square_ur(x, y, Lx, Ly, xc, yc) +
-           tracer_square_ll(x, y, Lx, Ly, xc, yc);
-  }
-};
-
-struct TracerGaussian : Tracer {
-  YAKL_INLINE real compute(real x, real y, real Lx, real Ly, real xc,
-                           real yc) override {
-    real const a = 1.0_fp / 3.0_fp;
-    real const D = 0.5_fp * Lx;
-    return 0.005_fp *
-           exp(-((x - xc) * (x - xc) + (y - yc) * (y - yc)) / (a * a * D * D));
+    return tracer;
   }
 };
 
 class TestCase {
 public:
-  using TracerArr = yakl::Array<Tracer *, 1, yakl::memDevice, yakl::styleC>;
-  TracerArr tracer_f;
+  SArray<TRACER_TAG, 1, ntracers_dycore + GPU_PAD> tracers;
   Equations *equations;
   bool is_initialized;
 
-  TestCase() {
-    this->is_initialized = false;
-    this->tracer_f = TracerArr("tracer_f", ntracers_dycore);
-  }
+  TestCase() { this->is_initialized = false; }
 
   virtual void initialize(Equations &eqs) {
     this->equations = &eqs;
@@ -148,36 +125,17 @@ public:
   add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics){};
 
   void set_tracers(ModelParameters &params) {
-    SArray<TRACER_TAG, 1, ntracers_dycore> tracer_tag;
     for (int i = 0; i < ntracers_dycore; i++) {
       if (params.tracerdataStr[i] == "gaussian") {
-        tracer_tag(i) = TRACER_TAG::GAUSSIAN;
+        tracers(i) = TRACER_TAG::GAUSSIAN;
       } else if (params.tracerdataStr[i] == "square") {
-        tracer_tag(i) = TRACER_TAG::SQUARE;
+        tracers(i) = TRACER_TAG::SQUARE;
       } else if (params.tracerdataStr[i] == "doublesquare") {
-        tracer_tag(i) = TRACER_TAG::DOUBLESQUARE;
-      } else {
-        // by default set tracers to constant
-        tracer_tag(i) = TRACER_TAG::CONSTANT;
+        tracers(i) = TRACER_TAG::DOUBLESQUARE;
+      } else if (params.tracerdataStr[i] == "constant") {
+        tracers(i) = TRACER_TAG::CONSTANT;
       }
     }
-
-    YAKL_SCOPE(tracer_f, this->tracer_f);
-    parallel_for(
-        ntracers_dycore, YAKL_LAMBDA(int i) {
-          if (tracer_tag(i) == TRACER_TAG::GAUSSIAN) {
-            tracer_f(i) = new TracerGaussian();
-          }
-          if (tracer_tag(i) == TRACER_TAG::SQUARE) {
-            tracer_f(i) = new TracerSquare();
-          }
-          if (tracer_tag(i) == TRACER_TAG::DOUBLESQUARE) {
-            tracer_f(i) = new TracerDoubleSquare();
-          }
-          if (tracer_tag(i) == TRACER_TAG::CONSTANT) {
-            tracer_f(i) = new TracerConstant();
-          }
-        });
   }
 
   virtual void set_domain(ModelParameters &params) = 0;
@@ -189,14 +147,6 @@ public:
   virtual void set_reference_state(const Geometry<Straight> &primal_geom,
                                    const Geometry<Twisted> &dual_geom){};
   virtual ~TestCase() = default;
-
-  // why doesn't this work ? Tracers need to be deallocated !
-  // virtual ~TestCase() {
-  //   YAKL_SCOPE(tracer_f, this->tracer_f);
-  //   parallel_for(ntracers_dycore, YAKL_LAMBDA(int i) {
-  //     delete tracer_f(i);
-  //   });
-  // }
 };
 
 class Tendencies {
@@ -256,8 +206,9 @@ public:
                                  FieldSet<nprognostic> &x) = 0;
 
   virtual void compute_functional_derivatives(
-      ADD_MODE addmode, real fac, real dt, FieldSet<nconstant> &const_vars,
-      FieldSet<nprognostic> &x, FieldSet<nauxiliary> &auxiliary_vars) = 0;
+      real dt, FieldSet<nconstant> &const_vars, FieldSet<nprognostic> &x,
+      FieldSet<nauxiliary> &auxiliary_vars, real fac = 1,
+      ADD_MODE addmode = ADD_MODE::REPLACE) = 0;
 
   virtual void compute_functional_derivatives_two_point(
       real dt, FieldSet<nconstant> &const_vars, FieldSet<nprognostic> &x1,
@@ -268,7 +219,12 @@ public:
   virtual void apply_symplectic(real dt, FieldSet<nconstant> &const_vars,
                                 FieldSet<nprognostic> &x,
                                 FieldSet<nauxiliary> &auxiliary_vars,
-                                FieldSet<nprognostic> &xtend) = 0;
+                                FieldSet<nprognostic> &xtend,
+                                ADD_MODE addmode = ADD_MODE::REPLACE) = 0;
+
+  virtual void project_to_anelastic(FieldSet<nconstant> &const_vars,
+                                    FieldSet<nprognostic> &x,
+                                    FieldSet<nauxiliary> &auxiliary_vars) {}
 
   virtual void add_pressure_perturbation(real dt,
                                          FieldSet<nconstant> &const_vars,
@@ -279,10 +235,10 @@ public:
   virtual void compute_rhs(real dt, FieldSet<nconstant> &const_vars,
                            FieldSet<nprognostic> &x,
                            FieldSet<nauxiliary> &auxiliary_vars,
-                           FieldSet<nprognostic> &xtend) {
-    compute_functional_derivatives(ADD_MODE::REPLACE, 1._fp, dt, const_vars, x,
-                                   auxiliary_vars);
-    apply_symplectic(dt, const_vars, x, auxiliary_vars, xtend);
+                           FieldSet<nprognostic> &xtend,
+                           ADD_MODE addmode = ADD_MODE::REPLACE) {
+    compute_functional_derivatives(dt, const_vars, x, auxiliary_vars);
+    apply_symplectic(dt, const_vars, x, auxiliary_vars, xtend, addmode);
     add_pressure_perturbation(dt, const_vars, x, auxiliary_vars, xtend);
   }
 
@@ -425,6 +381,11 @@ public:
           coriolis_vert_wenoSigma, coriolis_vert_wenoIdl, primal_geom);
     }
   }
+
+  virtual real
+  compute_max_anelastic_constraint(FieldSet<nprognostic> &x,
+                                   FieldSet<nauxiliary> &auxiliary_vars,
+                                   bool has_f_and_fw = false) = 0;
 };
 
 class LinearSystem {

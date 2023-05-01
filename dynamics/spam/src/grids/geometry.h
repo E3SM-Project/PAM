@@ -669,7 +669,7 @@ public:
                                              Profile &prof, int ndof) const;
 
   real dx, dy;
-  real Lx, Ly, Lz;
+  real Lx, Ly;
   real xc, yc;
 
   real2d dz;
@@ -892,7 +892,6 @@ void Geometry<Twisted>::initialize(const Topology &topo,
 
   this->Lx = params.xlen;
   this->Ly = 1._fp;
-  this->Lz = params.zlen;
 
   this->xc = params.xc;
   this->yc = 0.5_fp;
@@ -942,9 +941,7 @@ void Geometry<Twisted>::initialize(const Topology &topo,
 
 template <> void Geometry<Twisted>::printinfo() const {
   std::cout << "uniform rectangular geometry 2D info: twisted \n" << std::flush;
-  std::cout << "Lx " << this->Lx << " Ly " << this->Ly << " Lz " << this->Lz
-            << "\n"
-            << std::flush;
+  std::cout << "Lx " << this->Lx << " Ly " << this->Ly << "\n" << std::flush;
   std::cout << "xc " << this->xc << " yc " << this->yc << "\n" << std::flush;
   std::cout << "dx " << this->dx << " dy " << this->dy << "\n" << std::flush;
   if (uniform_vertical) {
@@ -1076,7 +1073,6 @@ void Geometry<Straight>::initialize(const Topology &topo,
 
   this->Lx = params.xlen;
   this->Ly = 1._fp;
-  this->Lz = params.zlen;
 
   this->xc = params.xc;
   this->yc = 0.5_fp;
@@ -1140,9 +1136,7 @@ void Geometry<Straight>::initialize(const Topology &topo,
 template <> void Geometry<Straight>::printinfo() const {
   std::cout << "uniform rectangular geometry 2D info: straight \n"
             << std::flush;
-  std::cout << "Lx " << this->Lx << " Ly " << this->Ly << " Lz " << this->Lz
-            << "\n"
-            << std::flush;
+  std::cout << "Lx " << this->Lx << " Ly " << this->Ly << "\n" << std::flush;
   std::cout << "xc " << this->xc << " yc " << this->yc << "\n" << std::flush;
   std::cout << "dx " << this->dx << " dy " << this->dy << "\n" << std::flush;
   if (uniform_vertical) {

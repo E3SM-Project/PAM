@@ -1,6 +1,19 @@
 #pragma once
 
 #include "common.h"
+#include "params.h"
+
+int ij_to_l(int i, int j, int nx) { return j * nx + i; }
+
+int wrap(int i, int nx) {
+  if (i < 0) {
+    return i + nx;
+  } else if (i > nx - 1) {
+    return i - nx;
+  } else {
+    return i;
+  }
+}
 
 class Parallel {
 public:

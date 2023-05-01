@@ -19,9 +19,11 @@
 #elif defined _ADVECTION && defined _EXTRUDED
 #include "extrudedadvection.h"
 #endif
-#include "RKSimple.h"
+#include "KGRK.h"
+#include "LSRK.h"
 #include "SI.h"
 #include "SSPRK.h"
+#include "time_integrator.h"
 #include <memory>
 
 using pam::PamCoupler;
@@ -47,35 +49,55 @@ public:
   Topology dual_topology;
   ModelParameters params;
   Parallel par;
-#if _TIME_TYPE == 0
-  RKSimpleTimeIntegrator tint;
-#endif
-#if _TIME_TYPE == 1
-  SSPKKTimeIntegrator tint;
-#endif
-#if _TIME_TYPE == 2
   ModelLinearSystem linear_system;
-  SITimeIntegrator<si_quad_pts> tint;
-#endif
+  std::unique_ptr<TimeIntegrator> time_integrator;
 
   int ierr;
   real etime = 0.0;
   uint prevstep = 0;
 
-  void init(PamCoupler &coupler) {
+  std::unique_ptr<TimeIntegrator>
+  choose_time_integrator(const std::string &tstype) {
+    if (tstype.substr(0, 5) == "ssprk") {
+      return std::make_unique<SSPRKTimeIntegrator>(tstype);
+    } else if (tstype.substr(0, 4) == "lsrk") {
+      return std::make_unique<LSRKTimeIntegrator>(tstype);
+    } else if (tstype.substr(0, 2) == "si") {
+      return std::make_unique<SITimeIntegrator<si_quad_pts>>(tstype);
+    } else if (tstype.substr(0, 4) == "kgrk") {
+      return std::make_unique<KGRKTimeIntegrator>(tstype);
+    } else {
+      throw std::runtime_error("unknown time integrator type");
+    }
+  }
 
+  void init(PamCoupler &coupler) {
     serial_print("setting up dycore", par.masterproc);
 
     // Set parameters
-
     debug_print(
         "reading parameters and partitioning domain/setting domain sizes",
         par.masterproc);
-    std::string inFile =
-        coupler.get_option<std::string>("standalone_input_file");
-    readModelParamsFile(inFile, params, par, coupler, testcase);
+
+    if (coupler.option_exists("standalone_input_file")) {
+      std::string inFile =
+          coupler.get_option<std::string>("standalone_input_file");
+      read_model_params_file(inFile, params, par, coupler, testcase);
+    } else {
+      read_model_params_coupler(params, par, coupler, testcase);
+    }
+
+    finalize_parallel(params, par);
+
+    testcase->set_tracers(params);
+    testcase->set_domain(params);
+
+    check_and_print_model_parameters(params, par);
+
     debug_print("read parameters and partitioned domain/setting domain sizes",
                 par.masterproc);
+
+    time_integrator = choose_time_integrator(params.tstype);
 
     // Initialize the grid
     debug_print("start init topo/geom", par.masterproc);
@@ -129,7 +151,9 @@ public:
     io.initialize(params.outputName, primal_topology, dual_topology, par,
                   prognostic_vars, constant_vars, diagnostics, stats);
     debug_print("finish io init", par.masterproc);
+  };
 
+  void pre_time_loop(PamCoupler &coupler) {
     // // Set the reference state and initialize the tendencies
     debug_print("start tendencies init", par.masterproc);
     // the reference state has to be set before the tendencies are initialized
@@ -149,20 +173,17 @@ public:
 
     tendencies.compute_constants(constant_vars, prognostic_vars);
     constant_vars.exchange();
-    stats.compute(prognostic_vars, constant_vars, 0);
     debug_print("end ic setting", par.masterproc);
 
-    // // Initialize the time stepper
+    // // Initialize the time integrator
     debug_print("start ts init", par.masterproc);
-#if _TIME_TYPE == 2
-    linear_system.initialize(params, primal_geometry, dual_geometry, equations);
-    linear_system.compute_coefficients(params.dtcrm);
-    tint.initialize(params, tendencies, linear_system, prognostic_vars,
-                    constant_vars, auxiliary_vars);
-#else
-    tint.initialize(params, tendencies, prognostic_vars, constant_vars,
-                    auxiliary_vars);
-#endif
+    time_integrator->initialize(params, tendencies, linear_system,
+                                prognostic_vars, constant_vars, auxiliary_vars);
+    if (time_integrator->is_semi_implicit) {
+      linear_system.initialize(params, primal_geometry, dual_geometry,
+                               equations);
+      linear_system.compute_coefficients(params.dtcrm);
+    }
     debug_print("end ts init", par.masterproc);
 
     // convert dynamics state to Coupler state
@@ -170,6 +191,7 @@ public:
                                                  constant_vars);
 
     // Output the initial model state
+#ifndef _NOIO
     debug_print("start initial io", par.masterproc);
     for (auto &diag : diagnostics) {
       diag->compute(0, constant_vars, prognostic_vars);
@@ -178,31 +200,39 @@ public:
     io.outputInit(etime);
     io.outputStats(stats);
     debug_print("end initial io", par.masterproc);
-
+#endif
     prevstep = 1;
-  };
+  }
 
   // Given the model data and CFL value, compute the maximum stable time step
   real compute_time_step(PamCoupler const &coupler, real cfl_in = -1) {
     return 0._fp;
   };
 
-  void timeStep(PamCoupler &coupler, real dtphys) {
+  void timeStep(PamCoupler &coupler) {
 
     serial_print("taking a dycore dtphys step", par.masterproc);
 
     // convert Coupler state to dynamics state
     tendencies.convert_coupler_to_dynamics_state(coupler, prognostic_vars,
-                                                 constant_vars);
+                                                 auxiliary_vars, constant_vars);
 
     // Time stepping loop
     debug_print("start time stepping loop", par.masterproc);
     for (uint nstep = 0; nstep < params.crm_per_phys; nstep++) {
       yakl::fence();
-      tint.stepForward(params.dtcrm);
+      time_integrator->step_forward(params.dtcrm);
+
+#ifdef CHECK_ANELASTIC_CONSTRAINT
+      real max_div = tendencies.compute_max_anelastic_constraint(
+          prognostic_vars, auxiliary_vars);
+      std::cout << "Anelastic constraint: " << max_div << std::endl;
+#endif
+
       yakl::fence();
 
       etime += params.dtcrm;
+#ifndef _NOIO
       if ((nstep + prevstep) % params.Nout == 0) {
         serial_print("dycore step " + std::to_string((nstep + prevstep)) +
                          " time " + std::to_string(etime),
@@ -218,10 +248,11 @@ public:
         stats.compute(prognostic_vars, constant_vars,
                       (nstep + prevstep) / params.Nstat);
       }
+#endif
     }
     prevstep += params.crm_per_phys;
 
-    if (remove_negative_densities) {
+    if (!time_integrator->is_ssp) {
       tendencies.remove_negative_densities(prognostic_vars);
     }
 

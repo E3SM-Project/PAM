@@ -6,6 +6,7 @@
 #include "mpi.h"
 #include "output.h"
 #include "pamc_init.h"
+#include <chrono>
 
 int main(int argc, char** argv) {
   int ierr = MPI_Init( &argc , &argv );
@@ -119,6 +120,11 @@ int main(int argc, char** argv) {
     }
     #endif
 
+    yakl::timer_start("dycore");
+    // this sets up initial conditons and reference state 
+    dycore.pre_time_loop(coupler);
+    yakl::timer_stop("dycore");
+
     // Now that we have an initial state, define hydrostasis for each ensemble member
     if (use_coupler_hydrostasis) coupler.update_hydrostasis( );
 
@@ -133,6 +139,9 @@ int main(int argc, char** argv) {
     yakl::timer_stop("output");
 
     real dtphys = dtphys_in;
+
+    yakl::fence();
+    auto ts = std::chrono::steady_clock::now();
     while (etime < simTime) {
       yakl::timer_start("dycore");
       if (dtphys_in == 0.) { dtphys = dycore.compute_time_step(coupler); }
@@ -148,7 +157,7 @@ int main(int argc, char** argv) {
       yakl::timer_stop("micro");
 
       yakl::timer_start("dycore");
-      dycore.timeStep( coupler , dtphys );
+      dycore.timeStep( coupler);
       yakl::timer_stop("dycore");
 
       etime += dtphys;
@@ -168,8 +177,14 @@ int main(int argc, char** argv) {
         }
 
     }
+    yakl::fence();
+    auto te = std::chrono::steady_clock::now();
+    auto runtime = std::chrono::duration<double>(te - ts).count();
 
-    if (masterproc) {std::cout << "Elapsed Time: " << etime << "\n";}
+    if (masterproc) {
+      std::cout << "Simulation Time: " << etime << "\n";
+      std::cout << "Run Time: " <<  runtime << "\n";
+    }
 
     yakl::timer_start("dycore");
     dycore.finalize( coupler );

@@ -4,3 +4,6 @@
 [submodule "externals/eigen"]
 	path = externals/eigen
 	url = https://gitlab.com/libeigen/eigen.git
+[submodule "externals/yaml-cpp"]
+	path = externals/yaml-cpp
+	url = git@github.com:jbeder/yaml-cpp.git
