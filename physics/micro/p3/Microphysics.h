@@ -269,7 +269,7 @@ public:
     real2d qm                ( "qm"                 ,           nz   , ncol );
     real2d bm                ( "bm"                 ,           nz   , ncol );
     real2d qv                ( "qv"                 ,           nz   , ncol );
-    real2d pressure          ( "pressure"           ,           nz   , ncol );
+    real2d pressure_dry      ( "pressure_dry"       ,           nz   , ncol );
     real2d theta             ( "theta"              ,           nz   , ncol );
     real2d exner             ( "exner"              ,           nz   , ncol );
     real2d inv_exner         ( "inv_exner"          ,           nz   , ncol );
@@ -298,7 +298,9 @@ public:
     real2d liq_ice_exchange  ( "liq_ice_exchange"   ,           nz   , ncol );
     real2d vap_liq_exchange  ( "vap_liq_exchange"   ,           nz   , ncol );
     real2d vap_ice_exchange  ( "vap_ice_exchange"   ,           nz   , ncol );
+    #ifndef P3_CXX
     real3d p3_tend_out       ( "p3_tend_out"        , p3_nout , nz   , ncol );
+    #endif
 
     //////////////////////////////////////////////////////////////////////////////
     // Compute quantities needed for inputs to P3
@@ -317,30 +319,30 @@ public:
 
     // Save initial state, and compute inputs for p3(...)
     parallel_for( "micro adjust preprocess" , SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
-      // Compute total density
-      real rho = rho_dry(k,i) + rho_c(k,i) + rho_r(k,i) + rho_i(k,i) + rho_v(k,i);
 
       // P3 doesn't do saturation adjustment, so we need to do that ahead of time
       // If we're using SHOC, then it does saturation adjustment, so no need to do it here
       if (! sgs_shoc) {
+        // Compute total density
+        real rho = rho_dry(k,i) + rho_c(k,i) + rho_r(k,i) + rho_i(k,i) + rho_v(k,i);
         compute_adjusted_state(rho, rho_dry(k,i) , rho_v(k,i) , rho_c(k,i) , temp(k,i),
                                R_v , cp_d , cp_v , cp_l);
       }
 
       // Compute quantities for P3
-      qc       (k,i) = rho_c (k,i) / rho_dry(k,i);
-      nc       (k,i) = rho_nc(k,i) / rho_dry(k,i);
-      qr       (k,i) = rho_r (k,i) / rho_dry(k,i);
-      nr       (k,i) = rho_nr(k,i) / rho_dry(k,i);
-      qi       (k,i) = rho_i (k,i) / rho_dry(k,i);
-      ni       (k,i) = rho_ni(k,i) / rho_dry(k,i);
-      qm       (k,i) = rho_m (k,i) / rho_dry(k,i);
-      bm       (k,i) = rho_bm(k,i) / rho_dry(k,i);
-      qv       (k,i) = rho_v (k,i) / rho_dry(k,i);
-      pressure (k,i) = R_d * rho_dry(k,i) * temp(k,i) + R_v * rho_v(k,i) * temp(k,i);
-      exner    (k,i) = pow( pressure(k,i) / p0 , R_d / cp_d );
-      inv_exner(k,i) = 1. / exner(k,i);
-      theta    (k,i) = temp(k,i) / exner(k,i);
+      qc          (k,i) = rho_c (k,i) / rho_dry(k,i);
+      nc          (k,i) = rho_nc(k,i) / rho_dry(k,i);
+      qr          (k,i) = rho_r (k,i) / rho_dry(k,i);
+      nr          (k,i) = rho_nr(k,i) / rho_dry(k,i);
+      qi          (k,i) = rho_i (k,i) / rho_dry(k,i);
+      ni          (k,i) = rho_ni(k,i) / rho_dry(k,i);
+      qm          (k,i) = rho_m (k,i) / rho_dry(k,i);
+      bm          (k,i) = rho_bm(k,i) / rho_dry(k,i);
+      qv          (k,i) = rho_v (k,i) / rho_dry(k,i);
+      pressure_dry(k,i) = R_d * rho_dry(k,i) * temp(k,i);
+      exner       (k,i) = pow( pressure_dry(k,i) / p0 , R_d / cp_d );
+      inv_exner   (k,i) = 1. / exner(k,i);
+      theta       (k,i) = temp(k,i) / exner(k,i);
       // P3 uses dpres to calculate density via the hydrostatic assumption.
       // So we just reverse this to compute dpres to give true density
       dpres(k,i) = rho_dry(k,i) * grav * dz(k,i);
@@ -358,9 +360,9 @@ public:
     });
 
     if (sgs_shoc) {
-      auto ast      = dm.get_lev_col<real>("cldfrac");
-      inv_qc_relvar = dm.get_lev_col<real>("relvar" );
-      get_cloud_fraction( ast , qc , qr , qi , cld_frac_i , cld_frac_l , cld_frac_r );
+      inv_qc_relvar = dm.get_lev_col<real>("inv_qc_relvar");
+      auto cld_frac = dm.get_lev_col<real>("cldfrac");
+      get_cloud_fraction( cld_frac , qc , qr , qi , cld_frac_i , cld_frac_l , cld_frac_r );
     } else {
       parallel_for( SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
         // Assume cloud fracton is always 1
@@ -372,18 +374,17 @@ public:
       });
     }
     double elapsed_s;
-    int its, ite, kts, kte;
-    int it = 1;
+    int it, its, ite, kts, kte;
     bool do_predict_nc = false;
     bool do_prescribed_CCN = false;
 
-
-    its = 1;
-    ite = ncol;
-    kts = 1;
-    kte = nz;
-
     #ifdef P3_CXX
+
+      it  = 0;
+      its = 0;
+      ite = ncol-1;
+      kts = 0;
+      kte = nz-1;
 
       // Create room for transposed variables (only 2-D variables need to be transposed)
       auto transposed_qc                 = qc                .createDeviceCopy().reshape(qc                .extent(1),qc                .extent(0)); // inout
@@ -396,7 +397,7 @@ public:
       auto transposed_qm                 = qm                .createDeviceCopy().reshape(qm                .extent(1),qm                .extent(0)); // inout
       auto transposed_ni                 = ni                .createDeviceCopy().reshape(ni                .extent(1),ni                .extent(0)); // inout
       auto transposed_bm                 = bm                .createDeviceCopy().reshape(bm                .extent(1),bm                .extent(0)); // inout
-      auto transposed_pressure           = pressure          .createDeviceCopy().reshape(pressure          .extent(1),pressure          .extent(0)); // in
+      auto transposed_pressure_dry       = pressure_dry      .createDeviceCopy().reshape(pressure_dry      .extent(1),pressure_dry      .extent(0)); // in
       auto transposed_dz                 = dz                .createDeviceCopy().reshape(dz                .extent(1),dz                .extent(0)); // in
       auto transposed_nc_nuceat_tend     = nc_nuceat_tend    .createDeviceCopy().reshape(nc_nuceat_tend    .extent(1),nc_nuceat_tend    .extent(0)); // in
       auto transposed_nccn_prescribed    = nccn_prescribed   .createDeviceCopy().reshape(nccn_prescribed   .extent(1),nccn_prescribed   .extent(0)); // in
@@ -422,29 +423,30 @@ public:
 
       // For in and inout variables, copy transposed data (One kernel for efficiency)
       parallel_for( SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
-        transposed_qc             (i,k) = qc             (k,i); // inout
-        transposed_nc             (i,k) = nc             (k,i); // inout
-        transposed_qr             (i,k) = qr             (k,i); // inout
-        transposed_nr             (i,k) = nr             (k,i); // inout
-        transposed_theta          (i,k) = theta          (k,i); // inout
-        transposed_qv             (i,k) = qv             (k,i); // inout
-        transposed_qi             (i,k) = qi             (k,i); // inout
-        transposed_qm             (i,k) = qm             (k,i); // inout
-        transposed_ni             (i,k) = ni             (k,i); // inout
-        transposed_bm             (i,k) = bm             (k,i); // inout
-        transposed_pressure       (i,k) = pressure       (k,i); // in
-        transposed_dz             (i,k) = dz             (k,i); // in
-        transposed_nc_nuceat_tend (i,k) = nc_nuceat_tend (k,i); // in
-        transposed_nccn_prescribed(i,k) = nccn_prescribed(k,i); // in
-        transposed_ni_activated   (i,k) = ni_activated   (k,i); // in
-        transposed_inv_qc_relvar  (i,k) = inv_qc_relvar  (k,i); // in
-        transposed_dpres          (i,k) = dpres          (k,i); // in
-        transposed_inv_exner      (i,k) = inv_exner      (k,i); // in
-        transposed_cld_frac_r     (i,k) = cld_frac_r     (k,i); // in
-        transposed_cld_frac_l     (i,k) = cld_frac_l     (k,i); // in
-        transposed_cld_frac_i     (i,k) = cld_frac_i     (k,i); // in
-        transposed_qv_prev        (i,k) = qv_prev        (k,i); // in
-        transposed_t_prev         (i,k) = t_prev         (k,i); // in
+        int k_p3 = nz-1-k;
+        transposed_qc             (i,k_p3) = qc             (k,i); // inout
+        transposed_nc             (i,k_p3) = nc             (k,i); // inout
+        transposed_qr             (i,k_p3) = qr             (k,i); // inout
+        transposed_nr             (i,k_p3) = nr             (k,i); // inout
+        transposed_theta          (i,k_p3) = theta          (k,i); // inout
+        transposed_qv             (i,k_p3) = qv             (k,i); // inout
+        transposed_qi             (i,k_p3) = qi             (k,i); // inout
+        transposed_qm             (i,k_p3) = qm             (k,i); // inout
+        transposed_ni             (i,k_p3) = ni             (k,i); // inout
+        transposed_bm             (i,k_p3) = bm             (k,i); // inout
+        transposed_pressure_dry   (i,k_p3) = pressure_dry   (k,i); // in
+        transposed_dz             (i,k_p3) = dz             (k,i); // in
+        transposed_nc_nuceat_tend (i,k_p3) = nc_nuceat_tend (k,i); // in
+        transposed_nccn_prescribed(i,k_p3) = nccn_prescribed(k,i); // in
+        transposed_ni_activated   (i,k_p3) = ni_activated   (k,i); // in
+        transposed_inv_qc_relvar  (i,k_p3) = inv_qc_relvar  (k,i); // in
+        transposed_dpres          (i,k_p3) = dpres          (k,i); // in
+        transposed_inv_exner      (i,k_p3) = inv_exner      (k,i); // in
+        transposed_cld_frac_r     (i,k_p3) = cld_frac_r     (k,i); // in
+        transposed_cld_frac_l     (i,k_p3) = cld_frac_l     (k,i); // in
+        transposed_cld_frac_i     (i,k_p3) = cld_frac_i     (k,i); // in
+        transposed_qv_prev        (i,k_p3) = qv_prev        (k,i); // in
+        transposed_t_prev         (i,k_p3) = t_prev         (k,i); // in
         if (k < 3) transposed_col_location(i,k) = col_location(k,i); // in
       });
 
@@ -460,7 +462,7 @@ public:
                         transposed_qm                .create_ArrayIR() , // inout
                         transposed_ni                .create_ArrayIR() , // inout
                         transposed_bm                .create_ArrayIR() , // inout
-                        transposed_pressure          .create_ArrayIR() , // in
+                        transposed_pressure_dry      .create_ArrayIR() , // in
                         transposed_dz                .create_ArrayIR() , // in
                         transposed_nc_nuceat_tend    .create_ArrayIR() , // in
                         transposed_nccn_prescribed   .create_ArrayIR() , // in
@@ -496,30 +498,38 @@ public:
 
       // For inout and out variables, copy transposed data (One kernel for efficiency)
       parallel_for( SimpleBounds<2>(nz+1,ncol) , YAKL_LAMBDA (int k, int i) {
-        precip_liq_flux   (k,i) = transposed_precip_liq_flux   (i,k); //   out
-        precip_ice_flux   (k,i) = transposed_precip_ice_flux   (i,k); //   out
+        int k_p3 = (nz+1)-1-k;
+        precip_liq_flux   (k,i) = transposed_precip_liq_flux   (i,k_p3); //   out
+        precip_ice_flux   (k,i) = transposed_precip_ice_flux   (i,k_p3); //   out
         if (k < nz) {
-          qc                (k,i) = transposed_qc                (i,k); // inout
-          nc                (k,i) = transposed_nc                (i,k); // inout
-          qr                (k,i) = transposed_qr                (i,k); // inout
-          nr                (k,i) = transposed_nr                (i,k); // inout
-          theta             (k,i) = transposed_theta             (i,k); // inout
-          qv                (k,i) = transposed_qv                (i,k); // inout
-          qi                (k,i) = transposed_qi                (i,k); // inout
-          qm                (k,i) = transposed_qm                (i,k); // inout
-          ni                (k,i) = transposed_ni                (i,k); // inout
-          bm                (k,i) = transposed_bm                (i,k); // inout
-          diag_eff_radius_qc(k,i) = transposed_diag_eff_radius_qc(i,k); //   out
-          diag_eff_radius_qi(k,i) = transposed_diag_eff_radius_qi(i,k); //   out
-          bulk_qi           (k,i) = transposed_bulk_qi           (i,k); //   out
-          qv2qi_depos_tend  (k,i) = transposed_qv2qi_depos_tend  (i,k); //   out
-          liq_ice_exchange  (k,i) = transposed_liq_ice_exchange  (i,k); //   out
-          vap_liq_exchange  (k,i) = transposed_vap_liq_exchange  (i,k); //   out
-          vap_ice_exchange  (k,i) = transposed_vap_ice_exchange  (i,k); //   out
+          k_p3 = nz-1-k;
+          qc                (k,i) = transposed_qc                (i,k_p3); // inout
+          nc                (k,i) = transposed_nc                (i,k_p3); // inout
+          qr                (k,i) = transposed_qr                (i,k_p3); // inout
+          nr                (k,i) = transposed_nr                (i,k_p3); // inout
+          theta             (k,i) = transposed_theta             (i,k_p3); // inout
+          qv                (k,i) = transposed_qv                (i,k_p3); // inout
+          qi                (k,i) = transposed_qi                (i,k_p3); // inout
+          qm                (k,i) = transposed_qm                (i,k_p3); // inout
+          ni                (k,i) = transposed_ni                (i,k_p3); // inout
+          bm                (k,i) = transposed_bm                (i,k_p3); // inout
+          diag_eff_radius_qc(k,i) = transposed_diag_eff_radius_qc(i,k_p3); //   out
+          diag_eff_radius_qi(k,i) = transposed_diag_eff_radius_qi(i,k_p3); //   out
+          bulk_qi           (k,i) = transposed_bulk_qi           (i,k_p3); //   out
+          qv2qi_depos_tend  (k,i) = transposed_qv2qi_depos_tend  (i,k_p3); //   out
+          liq_ice_exchange  (k,i) = transposed_liq_ice_exchange  (i,k_p3); //   out
+          vap_liq_exchange  (k,i) = transposed_vap_liq_exchange  (i,k_p3); //   out
+          vap_ice_exchange  (k,i) = transposed_vap_ice_exchange  (i,k_p3); //   out
         }
       });
 
     #else
+
+      it  = 1;
+      its = 1;
+      ite = ncol;
+      kts = 1;
+      kte = nz;
 
       auto qc_host                 = qc                .createHostCopy();
       auto nc_host                 = nc                .createHostCopy();
@@ -531,7 +541,7 @@ public:
       auto qm_host                 = qm                .createHostCopy();
       auto ni_host                 = ni                .createHostCopy();
       auto bm_host                 = bm                .createHostCopy();
-      auto pressure_host           = pressure          .createHostCopy();
+      auto pressure_dry_host       = pressure_dry      .createHostCopy();
       auto dz_host                 = dz                .createHostCopy();
       auto nc_nuceat_tend_host     = nc_nuceat_tend    .createHostCopy();
       auto nccn_prescribed_host    = nccn_prescribed   .createHostCopy();
@@ -565,7 +575,7 @@ public:
 
       p3_main_fortran(qc_host.data() , nc_host.data() , qr_host.data() , nr_host.data() , theta_host.data() ,
                       qv_host.data() , dt , qi_host.data() , qm_host.data() , ni_host.data() , bm_host.data() ,
-                      pressure_host.data() , dz_host.data() , nc_nuceat_tend_host.data() ,
+                      pressure_dry_host.data() , dz_host.data() , nc_nuceat_tend_host.data() ,
                       nccn_prescribed_host.data() , ni_activated_host.data() , inv_qc_relvar_host.data() , it ,
                       precip_liq_surf_host.data() , precip_ice_surf_host.data() , its , ite , kts , kte ,
                       diag_eff_radius_qc_host.data() , diag_eff_radius_qi_host.data() , bulk_qi_host.data() ,
@@ -587,7 +597,7 @@ public:
       qm_host                .deep_copy_to( qm                 );
       ni_host                .deep_copy_to( ni                 );
       bm_host                .deep_copy_to( bm                 );
-      pressure_host          .deep_copy_to( pressure           );
+      pressure_dry_host      .deep_copy_to( pressure_dry       );
       dz_host                .deep_copy_to( dz                 );
       nc_nuceat_tend_host    .deep_copy_to( nc_nuceat_tend     );
       nccn_prescribed_host   .deep_copy_to( nccn_prescribed    );
@@ -647,8 +657,8 @@ public:
     auto precip_ice_surf_out = dm.get<real,3>( "precip_ice_surf_out" );
     parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       int icol = j*nx*nens + i*nens + iens;
-      precip_liq_surf_out(j,i,iens) = precip_liq_surf(icol)*1000.;
-      precip_ice_surf_out(j,i,iens) = precip_ice_surf(icol)*1000.;
+      precip_liq_surf_out(j,i,iens) = precip_liq_surf(icol);
+      precip_ice_surf_out(j,i,iens) = precip_ice_surf(icol);
     });
 
     #ifdef PAM_DEBUG
@@ -664,7 +674,7 @@ public:
           int icol = j*nx*nens + i*nens + iens;
           mass4d(k,j,i,iens) = (rho_v(k,j,i,iens) + rho_c(k,j,i,iens) + rho_r(k,j,i,iens) + rho_i(k,j,i,iens)) *
                                crm_dx * crm_dy * (zint_in(k+1,iens) - zint_in(k,iens));
-          sfc_precip_mass3d(j,i,iens) = dt*crm_dx*crm_dy*( precip_liq_surf(icol)*1000. + precip_ice_surf(icol)*1000. );
+          sfc_precip_mass3d(j,i,iens) = dt*crm_dx*crm_dy*( precip_liq_surf(icol) + precip_ice_surf(icol) );
         });
         mass = yakl::intrinsics::sum(mass4d) + yakl::intrinsics::sum(sfc_precip_mass3d);
       }
@@ -788,20 +798,20 @@ public:
 
 
 
-  void get_cloud_fraction( realConst2d ast , realConst2d qc , realConst2d qr , realConst2d qi ,
+  void get_cloud_fraction( realConst2d cld_frac_in , realConst2d qc , realConst2d qr , realConst2d qi ,
                            real2d const &cld_frac_i , real2d const &cld_frac_l , real2d const &cld_frac_r ) {
     using yakl::c::SimpleBounds;
 
-    int nz   = ast.dimension[0];
-    int ncol = ast.dimension[1];
+    int nz   = cld_frac_in.dimension[0];
+    int ncol = cld_frac_in.dimension[1];
 
     real constexpr mincld = 0.0001;
     real constexpr qsmall = 1.e-14;
 
     parallel_for( SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
-      cld_frac_i(k,i) = std::max(ast(k,i), mincld);
-      cld_frac_l(k,i) = std::max(ast(k,i), mincld);
-      cld_frac_r(k,i) = std::max(ast(k,i), mincld);
+      cld_frac_i(k,i) = std::max(cld_frac_in(k,i), mincld);
+      cld_frac_l(k,i) = std::max(cld_frac_in(k,i), mincld);
+      cld_frac_r(k,i) = std::max(cld_frac_in(k,i), mincld);
     });
 
     // precipitation fraction 

@@ -13,10 +13,10 @@ uint constexpr ntracers_dycore = 0;
 // the velocity tendency
 #define FORCE_REFSTATE_HYDROSTATIC_BALANCE
 
-// for debugging anelastic
-#if defined _AN || defined _MAN
-#define CHECK_ANELASTIC_CONSTRAINT
-#endif
+// // for debugging anelastic
+// #if defined _AN || defined _MAN
+// #define CHECK_ANELASTIC_CONSTRAINT
+// #endif
 
 // Number of Dimensions
 uint constexpr ndims = 1;

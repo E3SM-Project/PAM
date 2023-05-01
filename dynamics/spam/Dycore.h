@@ -153,12 +153,14 @@ public:
     debug_print("finish io init", par.masterproc);
   };
 
+  void update_reference_state(PamCoupler &coupler) {
+    testcase->set_reference_state(primal_geometry, dual_geometry);
+  }
+
   void pre_time_loop(PamCoupler &coupler) {
     // // Set the reference state and initialize the tendencies
     debug_print("start tendencies init", par.masterproc);
-    // the reference state has to be set before the tendencies are initialized
-    // for anelastic
-    testcase->set_reference_state(primal_geometry, dual_geometry);
+    // Note: the anelastic ref state must be set before tendency initialization
     tendencies.initialize(params, equations, primal_geometry, dual_geometry);
     debug_print("end tendencies init", par.masterproc);
 
@@ -211,7 +213,7 @@ public:
 
   void timeStep(PamCoupler &coupler) {
 
-    serial_print("taking a dycore dtphys step", par.masterproc);
+    // serial_print("taking a dycore dtphys step", par.masterproc);
 
     // convert Coupler state to dynamics state
     tendencies.convert_coupler_to_dynamics_state(coupler, prognostic_vars,
