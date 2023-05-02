@@ -270,10 +270,11 @@ public:
     real2d bm                ( "bm"                 ,           nz   , ncol );
     real2d qv                ( "qv"                 ,           nz   , ncol );
     real2d pressure_dry      ( "pressure_dry"       ,           nz   , ncol );
+    real2d pressure          ( "pressure"           ,           nz   , ncol );
     real2d theta             ( "theta"              ,           nz   , ncol );
     real2d exner             ( "exner"              ,           nz   , ncol );
     real2d inv_exner         ( "inv_exner"          ,           nz   , ncol );
-    real2d dpres             ( "dpres"              ,           nz   , ncol );
+    real2d dpres_dry         ( "dpres_dry"          ,           nz   , ncol );
     real2d nc_nuceat_tend    ( "nc_nuceat_tend"     ,           nz   , ncol );
     real2d nccn_prescribed   ( "nccn_prescribed"    ,           nz   , ncol );
     real2d ni_activated      ( "ni_activated"       ,           nz   , ncol );
@@ -339,17 +340,18 @@ public:
       qm          (k,i) = rho_m (k,i) / rho_dry(k,i);
       bm          (k,i) = rho_bm(k,i) / rho_dry(k,i);
       qv          (k,i) = rho_v (k,i) / rho_dry(k,i);
-      pressure_dry(k,i) = R_d * rho_dry(k,i) * temp(k,i);
-      exner       (k,i) = pow( pressure_dry(k,i) / p0 , R_d / cp_d );
+      pressure_dry(k,i) = R_d*rho_dry(k,i)*temp(k,i);
+      pressure    (k,i) = R_d*rho_dry(k,i)*temp(k,i) + R_v*rho_v(k,i)*temp(k,i);
+      exner       (k,i) = pow( pressure(k,i) / p0 , R_d / cp_d );
       inv_exner   (k,i) = 1. / exner(k,i);
       theta       (k,i) = temp(k,i) / exner(k,i);
       // P3 uses dpres to calculate density via the hydrostatic assumption.
       // So we just reverse this to compute dpres to give true density
-      dpres(k,i) = rho_dry(k,i) * grav * dz(k,i);
+      dpres_dry(k,i) = rho_dry(k,i) * grav * dz(k,i);
       // nc_nuceat_tend, nccn_prescribed, and ni_activated are not used
-      nc_nuceat_tend (k,i) = 0;
-      nccn_prescribed(k,i) = 0;
-      ni_activated   (k,i) = 0;
+      nccn_prescribed(k,i) = 1e3;
+      nc_nuceat_tend (k,i) = 1.0;
+      ni_activated   (k,i) = 1.0;
       // col_location is for debugging only, and it will be ignored for now
       if (k < 3) { col_location(k,i) = 1; }
 
@@ -403,7 +405,7 @@ public:
       auto transposed_nccn_prescribed    = nccn_prescribed   .createDeviceCopy().reshape(nccn_prescribed   .extent(1),nccn_prescribed   .extent(0)); // in
       auto transposed_ni_activated       = ni_activated      .createDeviceCopy().reshape(ni_activated      .extent(1),ni_activated      .extent(0)); // in
       auto transposed_inv_qc_relvar      = inv_qc_relvar     .createDeviceCopy().reshape(inv_qc_relvar     .extent(1),inv_qc_relvar     .extent(0)); // in
-      auto transposed_dpres              = dpres             .createDeviceCopy().reshape(dpres             .extent(1),dpres             .extent(0)); // in
+      auto transposed_dpres_dry          = dpres_dry         .createDeviceCopy().reshape(dpres_dry         .extent(1),dpres_dry         .extent(0)); // in
       auto transposed_inv_exner          = inv_exner         .createDeviceCopy().reshape(inv_exner         .extent(1),inv_exner         .extent(0)); // in
       auto transposed_cld_frac_r         = cld_frac_r        .createDeviceCopy().reshape(cld_frac_r        .extent(1),cld_frac_r        .extent(0)); // in
       auto transposed_cld_frac_l         = cld_frac_l        .createDeviceCopy().reshape(cld_frac_l        .extent(1),cld_frac_l        .extent(0)); // in
@@ -440,7 +442,7 @@ public:
         transposed_nccn_prescribed(i,k_p3) = nccn_prescribed(k,i); // in
         transposed_ni_activated   (i,k_p3) = ni_activated   (k,i); // in
         transposed_inv_qc_relvar  (i,k_p3) = inv_qc_relvar  (k,i); // in
-        transposed_dpres          (i,k_p3) = dpres          (k,i); // in
+        transposed_dpres_dry      (i,k_p3) = dpres_dry      (k,i); // in
         transposed_inv_exner      (i,k_p3) = inv_exner      (k,i); // in
         transposed_cld_frac_r     (i,k_p3) = cld_frac_r     (k,i); // in
         transposed_cld_frac_l     (i,k_p3) = cld_frac_l     (k,i); // in
@@ -480,7 +482,7 @@ public:
                         transposed_bulk_qi           .create_ArrayIR() , //   out
                         do_predict_nc                                  , // in
                         do_prescribed_CCN                              , // in
-                        transposed_dpres             .create_ArrayIR() , // in
+                        transposed_dpres_dry         .create_ArrayIR() , // in
                         transposed_inv_exner         .create_ArrayIR() , // in
                         transposed_qv2qi_depos_tend  .create_ArrayIR() , //   out
                         transposed_precip_liq_flux   .create_ArrayIR() , //   out
@@ -552,7 +554,7 @@ public:
       auto diag_eff_radius_qc_host = diag_eff_radius_qc.createHostCopy();
       auto diag_eff_radius_qi_host = diag_eff_radius_qi.createHostCopy();
       auto bulk_qi_host            = bulk_qi           .createHostCopy();
-      auto dpres_host              = dpres             .createHostCopy();
+      auto dpres_dry_host          = dpres_dry         .createHostCopy();
       auto inv_exner_host          = inv_exner         .createHostCopy();
       auto qv2qi_depos_tend_host   = qv2qi_depos_tend  .createHostCopy();
       auto precip_total_tend_host  = precip_total_tend .createHostCopy();
@@ -579,7 +581,7 @@ public:
                       nccn_prescribed_host.data() , ni_activated_host.data() , inv_qc_relvar_host.data() , it ,
                       precip_liq_surf_host.data() , precip_ice_surf_host.data() , its , ite , kts , kte ,
                       diag_eff_radius_qc_host.data() , diag_eff_radius_qi_host.data() , bulk_qi_host.data() ,
-                      do_predict_nc , do_prescribed_CCN , dpres_host.data() , inv_exner_host.data() ,
+                      do_predict_nc , do_prescribed_CCN , dpres_dry_host.data() , inv_exner_host.data() ,
                       qv2qi_depos_tend_host.data() , precip_total_tend_host.data() , nevapr_host.data() ,
                       qr_evap_tend_host.data() , precip_liq_flux_host.data() , precip_ice_flux_host.data() ,
                       cld_frac_r_host.data() , cld_frac_l_host.data() , cld_frac_i_host.data() ,
@@ -608,7 +610,7 @@ public:
       diag_eff_radius_qc_host.deep_copy_to( diag_eff_radius_qc );
       diag_eff_radius_qi_host.deep_copy_to( diag_eff_radius_qi );
       bulk_qi_host           .deep_copy_to( bulk_qi            );
-      dpres_host             .deep_copy_to( dpres              );
+      dpres_dry_host         .deep_copy_to( dpres_dry          );
       inv_exner_host         .deep_copy_to( inv_exner          );
       qv2qi_depos_tend_host  .deep_copy_to( qv2qi_depos_tend   );
       precip_total_tend_host .deep_copy_to( precip_total_tend  );
