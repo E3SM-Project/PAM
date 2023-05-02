@@ -21,13 +21,13 @@ struct lap_fun {
 };
 
 struct vecfun {
-  vec<2> YAKL_INLINE operator()(real x, real y) const {
+  VecXY YAKL_INLINE operator()(real x, real y) const {
     real sx = sin(2 * M_PI * x);
     real sy = sin(2 * M_PI * y);
     real cx = cos(2 * M_PI * x);
     real cy = cos(2 * M_PI * y);
 
-    vec<2> vvec;
+    VecXY vvec;
     vvec.u = sx * sy;
     vvec.v = cx * cy;
     return vvec;
@@ -35,13 +35,13 @@ struct vecfun {
 };
 
 struct lap_vecfun {
-  vec<2> YAKL_INLINE operator()(real x, real y) const {
+  VecXY YAKL_INLINE operator()(real x, real y) const {
     real sx = sin(2 * M_PI * x);
     real sy = sin(2 * M_PI * y);
     real cx = cos(2 * M_PI * x);
     real cy = cos(2 * M_PI * y);
 
-    vec<2> vvec;
+    VecXY vvec;
     vvec.u = -8 * M_PI * M_PI * sx * sy;
     vvec.v = -8 * M_PI * M_PI * cx * cy;
     return vvec;
@@ -95,8 +95,8 @@ template <int diff_ord> real compute_straight_0form_laplacian_error(int np) {
         SimpleBounds<3>(square.dual_topology.nl, square.dual_topology.n_cells_y,
                         square.dual_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
-          compute_D1bar<1>(tmp_tw2.data, tmp_tw1.data, dis, djs, dks, i, j, k,
-                           0);
+          compute_Dnm1bar<1>(tmp_tw2.data, tmp_tw1.data, dis, djs, dks, i, j, k,
+                             0);
         });
     tmp_tw2.exchange();
 
@@ -197,8 +197,8 @@ template <int diff_ord> real compute_straight_1form_laplacian_error(int np) {
         SimpleBounds<3>(square.dual_topology.nl, square.dual_topology.n_cells_y,
                         square.dual_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
-          compute_D1bar<1>(tmp_tw2.data, tmp_tw1.data, dis, djs, dks, i, j, k,
-                           0);
+          compute_Dnm1bar<1>(tmp_tw2.data, tmp_tw1.data, dis, djs, dks, i, j, k,
+                             0);
         });
     tmp_tw2.exchange();
 
@@ -285,8 +285,8 @@ template <int diff_ord> real compute_twisted_2form_laplacian_error(int np) {
         SimpleBounds<3>(square.dual_topology.nl, square.dual_topology.n_cells_y,
                         square.dual_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
-          compute_D1bar<1>(lap_tw2.data, tmp_tw1.data, dis, djs, dks, i, j, k,
-                           0);
+          compute_Dnm1bar<1>(lap_tw2.data, tmp_tw1.data, dis, djs, dks, i, j, k,
+                             0);
         });
   }
 

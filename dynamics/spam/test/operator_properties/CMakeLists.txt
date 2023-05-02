@@ -1,26 +1,7 @@
+add_pamc_test(exterior_derivative_layer _LAYER)
+add_pamc_test(exterior_derivative_extruded _EXTRUDED)
+add_pamc_test(exterior_derivative_extruded_3d _EXTRUDED)
 
-add_executable(exterior_derivative exterior_derivative.cpp)
-yakl_process_target(exterior_derivative)
-target_link_libraries(exterior_derivative dycore pam_core ${PAM_LINK_FLAGS})
-
-add_test(NAME exterior_derivative_test COMMAND ./exterior_derivative)
-
-add_executable(exterior_derivative_extruded exterior_derivative_extruded.cpp)
-yakl_process_target(exterior_derivative_extruded)
-target_link_libraries(exterior_derivative_extruded dycore pam_core ${PAM_LINK_FLAGS})
-target_compile_definitions(exterior_derivative_extruded PUBLIC _EXTRUDED)
-
-add_test(NAME exterior_derivative_extruded_test COMMAND ./exterior_derivative_extruded)
-
-add_executable(laplacian laplacian.cpp)
-yakl_process_target(laplacian)
-target_link_libraries(laplacian dycore pam_core ${PAM_LINK_FLAGS})
-
-add_test(NAME laplacian_test COMMAND ./laplacian)
-
-add_executable(laplacian_extruded laplacian_extruded.cpp)
-yakl_process_target(laplacian_extruded)
-target_link_libraries(laplacian_extruded dycore pam_core ${PAM_LINK_FLAGS})
-target_compile_definitions(laplacian_extruded PUBLIC _EXTRUDED)
-
-add_test(NAME laplacian_extruded_test COMMAND ./laplacian_extruded)
+add_pamc_test(laplacian_layer _LAYER)
+add_pamc_test(laplacian_extruded _EXTRUDED)
+add_pamc_test(laplacian_extruded_3d _EXTRUDED)

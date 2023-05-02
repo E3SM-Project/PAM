@@ -426,9 +426,8 @@ public:
                                   int i, int j, int k, int n) const {
     real K2 = 0.;
     SArray<real, 1, 1> UW0;
-    compute_H1_vert<1, vert_diff_ord>(UW0, w, this->primal_geometry,
-                                      this->dual_geometry, is, js, ks, i, j, k,
-                                      n);
+    compute_H01<1, vert_diff_ord>(UW0, w, this->primal_geometry,
+                                  this->dual_geometry, is, js, ks, i, j, k, n);
     real w0;
     // Have to subtract 1 from k here since UW has an extra dof compared to w
     w0 = w(0, k + ks - 1, j + js, i + is, n);
@@ -441,9 +440,9 @@ public:
                                      int i, int j, int k, int n) const {
     real K2 = 0.;
     SArray<real, 1, 1> UW1;
-    compute_H1_vert<1, vert_diff_ord>(UW1, w, this->primal_geometry,
-                                      this->dual_geometry, is, js, ks, i, j,
-                                      k + 1, n);
+    compute_H01<1, vert_diff_ord>(UW1, w, this->primal_geometry,
+                                  this->dual_geometry, is, js, ks, i, j, k + 1,
+                                  n);
     real w1;
     // Have to subtract 1 from k here since UW has an extra dof compared to w
     w1 = w(0, k + ks, j + js, i + is, n);
@@ -456,12 +455,11 @@ public:
                               int j, int k, int n) const {
     real K2 = 0.;
     SArray<real, 1, 1> UW0, UW1;
-    compute_H1_vert<1, vert_diff_ord>(UW0, w, this->primal_geometry,
-                                      this->dual_geometry, is, js, ks, i, j, k,
-                                      n);
-    compute_H1_vert<1, vert_diff_ord>(UW1, w, this->primal_geometry,
-                                      this->dual_geometry, is, js, ks, i, j,
-                                      k + 1, n);
+    compute_H01<1, vert_diff_ord>(UW0, w, this->primal_geometry,
+                                  this->dual_geometry, is, js, ks, i, j, k, n);
+    compute_H01<1, vert_diff_ord>(UW1, w, this->primal_geometry,
+                                  this->dual_geometry, is, js, ks, i, j, k + 1,
+                                  n);
     real w0, w1;
     // Have to subtract 1 from k here since UW has an extra dof compared to w
     w0 = w(0, k + ks - 1, j + js, i + is, n);
@@ -475,11 +473,10 @@ public:
                                int i, int j, int k, int n) const {
     real v0, v1;
     SArray<real, 1, ndims> U0, U1;
-    compute_H1_ext<1, diff_ord>(U0, v, this->primal_geometry,
-                                this->dual_geometry, is, js, ks, i, j, k, n);
-    compute_H1_ext<1, diff_ord>(U1, v, this->primal_geometry,
-                                this->dual_geometry, is, js, ks, i + 1, j, k,
-                                n);
+    compute_H10<1, diff_ord>(U0, v, this->primal_geometry, this->dual_geometry,
+                             is, js, ks, i, j, k, n);
+    compute_H10<1, diff_ord>(U1, v, this->primal_geometry, this->dual_geometry,
+                             is, js, ks, i + 1, j, k, n);
     v0 = v(0, k + ks, j + js, i + is, n);
     v1 = v(0, k + ks, j + js, i + is + 1, n);
     K2 += 0.5 * (v0 * U0(0) + v1 * U1(0));
@@ -487,11 +484,10 @@ public:
     if (ndims == 2) {
       real v0, v1;
       SArray<real, 1, ndims> U0, U1;
-      compute_H1_ext<1, diff_ord>(U0, v, this->primal_geometry,
-                                  this->dual_geometry, is, js, ks, i, j, k, n);
-      compute_H1_ext<1, diff_ord>(U1, v, this->primal_geometry,
-                                  this->dual_geometry, is, js, ks, i, j + 1, k,
-                                  n);
+      compute_H10<1, diff_ord>(U0, v, this->primal_geometry,
+                               this->dual_geometry, is, js, ks, i, j, k, n);
+      compute_H10<1, diff_ord>(U1, v, this->primal_geometry,
+                               this->dual_geometry, is, js, ks, i, j + 1, k, n);
       v0 = v(1, k + ks, j + js, i + is, n);
       v1 = v(1, k + ks, j + js + 1, i + is, n);
       K2 += 0.5 * (v0 * U0(1) + v1 * U1(1));
@@ -506,7 +502,7 @@ public:
         YAKL_LAMBDA(const real5d &densvar, int d, int k, int j, int i, int n) {
       return varset.get_total_density(densvar, k, j, i, 0, 0, 0, n);
     };
-    compute_H2bar_ext<1, diff_ord, vert_diff_ord>(
+    compute_Hn1bar<1, diff_ord, vert_diff_ord>(
         total_density_f, h0, dens, this->primal_geometry, this->dual_geometry,
         is, js, ks, i, j, k, n);
 
@@ -735,9 +731,9 @@ public:
                                    int js, int ks, int i, int j, int k, int n,
                                    real fac = 1._fp) const {
     SArray<real, 1, 1> K0;
-    compute_H2bar_ext<1, diff_ord, vert_diff_ord>(K0, K, this->primal_geometry,
-                                                  this->dual_geometry, is, js,
-                                                  ks, i, j, k, n);
+    compute_Hn1bar<1, diff_ord, vert_diff_ord>(K0, K, this->primal_geometry,
+                                               this->dual_geometry, is, js, ks,
+                                               i, j, k, n);
     if (addmode == ADD_MODE::REPLACE) {
       B(varset.active_id_mass, k + ks, j + js, i + is, n) = fac * K0(0);
     }

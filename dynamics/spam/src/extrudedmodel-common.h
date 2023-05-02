@@ -2,7 +2,6 @@
 
 #include "Microphysics.h"
 #include "SGS.h"
-#include "params.h"
 
 uint constexpr ntracers_dycore = 0;
 
@@ -20,6 +19,8 @@ uint constexpr ntracers_dycore = 0;
 
 // Number of Dimensions
 uint constexpr ndims = 1;
+
+#include "params.h"
 
 // Number of variables
 // v, w, dens, densfct

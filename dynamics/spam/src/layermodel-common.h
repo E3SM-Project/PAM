@@ -1,13 +1,13 @@
 #pragma once
 
-#include "params.h"
-
 uint constexpr ntracers_dycore = 6;
 
 //////////////////////////////////////////////////////////////////////////////
 
 // Number of Dimensions
 uint constexpr ndims = 2;
+
+#include "params.h"
 
 // Number of variables
 // v, dens

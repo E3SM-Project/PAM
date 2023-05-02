@@ -24,10 +24,10 @@ struct fun_xy {
 };
 
 struct vecfun_x {
-  vec<2> YAKL_INLINE operator()(real x, real y) const {
+  VecXY YAKL_INLINE operator()(real x, real y) const {
     real sx = sin(2 * M_PI * x);
 
-    vec<2> vvec;
+    VecXY vvec;
     vvec.u = sx;
     vvec.v = 0;
     return vvec;
@@ -35,10 +35,10 @@ struct vecfun_x {
 };
 
 struct vecfun_y {
-  vec<2> YAKL_INLINE operator()(real x, real y) const {
+  VecXY YAKL_INLINE operator()(real x, real y) const {
     real sy = sin(2 * M_PI * y);
 
-    vec<2> vvec;
+    VecXY vvec;
     vvec.u = 0;
     vvec.v = sy;
     return vvec;
@@ -46,11 +46,11 @@ struct vecfun_y {
 };
 
 struct vecfun_xy {
-  vec<2> YAKL_INLINE operator()(real x, real y) const {
+  VecXY YAKL_INLINE operator()(real x, real y) const {
     real sx = sin(2 * M_PI * x);
     real sy = sin(2 * M_PI * y);
 
-    vec<2> vvec;
+    VecXY vvec;
     vvec.u = sx * sy;
     vvec.v = sx * sy * sx * sy;
     return vvec;
