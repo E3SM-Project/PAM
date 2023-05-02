@@ -3216,11 +3216,21 @@ public:
 #endif
   }
 
-  std::array<real, 3> get_domain() const override { return {Lx, 1, Lz}; }
+  std::array<real, 3> get_domain() const override {
+    real Ly = 1;
+    if constexpr (T::max_ndims > 1) {
+      Ly = T::Ly;
+    }
+    return {Lx, Ly, Lz};
+  }
 
   void set_domain(ModelParameters &params) override {
     params.xlen = Lx;
     params.xc = xc;
+    if constexpr (T::max_ndims > 1) {
+      params.ylen = T::Ly;
+      params.yc = T::yc;
+    }
   }
 
   void add_diagnostics(
@@ -3400,11 +3410,21 @@ public:
   using T::refrho_f;
   using T::refrhov_f;
 
-  std::array<real, 3> get_domain() const override { return {Lx, 1, Lz}; }
+  std::array<real, 3> get_domain() const override {
+    real Ly = 1;
+    if constexpr (T::max_ndims > 1) {
+      Ly = T::Ly;
+    }
+    return {Lx, Ly, Lz};
+  }
 
   void set_domain(ModelParameters &params) override {
     params.xlen = Lx;
     params.xc = xc;
+    if constexpr (T::max_ndims > 1) {
+      params.ylen = T::Ly;
+      params.yc = T::yc;
+    }
   }
 
   void set_initial_conditions(FieldSet<nprognostic> &progvars,
@@ -3877,6 +3897,7 @@ public:
 // };
 
 template <bool acoustic_balance> struct RisingBubble {
+  static int constexpr max_ndims = 1;
   static real constexpr g = 9.80616_fp;
   static real constexpr Lx = 1000._fp;
   static real constexpr Lz = 1500._fp;
@@ -3951,6 +3972,7 @@ template <bool acoustic_balance> struct RisingBubble {
 };
 
 struct TwoBubbles {
+  static int constexpr max_ndims = 1;
   static real constexpr g = 9.80616_fp;
   static real constexpr Lx = 1000._fp;
   static real constexpr Lz = 1000._fp;
@@ -4042,6 +4064,7 @@ struct TwoBubbles {
 };
 
 struct DensityCurrent {
+  static int constexpr max_ndims = 1;
   static real constexpr g = 9.80616_fp;
   static real constexpr Lx = 51.2e3;
   static real constexpr Lz = 6400;
@@ -4147,6 +4170,7 @@ struct MoistRisingBubble : public RisingBubble<false> {
 };
 
 struct LargeRisingBubble {
+  static int constexpr max_ndims = 1;
   static real constexpr g = 9.80616_fp;
   static real constexpr Lx = 20000._fp;
   static real constexpr Lz = 20000._fp;
@@ -4257,6 +4281,7 @@ struct MoistLargeRisingBubble : LargeRisingBubble {
 };
 
 template <bool add_perturbation> struct GravityWave {
+  static int constexpr max_ndims = 1;
   static real constexpr g = 9.80616_fp;
   static real constexpr Lx = 300e3_fp;
   static real constexpr Lz = 10e3_fp;
