@@ -155,6 +155,9 @@ public:
 
   void update_reference_state(PamCoupler &coupler) {
     testcase->set_reference_state(primal_geometry, dual_geometry);
+#if defined _AN || defined _MAN
+    tendencies.pressure_solver.compute_coefficients();
+#endif
   }
 
   void pre_time_loop(PamCoupler &coupler) {
