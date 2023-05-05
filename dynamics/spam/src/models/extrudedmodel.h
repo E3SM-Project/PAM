@@ -292,13 +292,15 @@ struct TotalDensityFunctor {
 class ModelTendencies : public ExtrudedTendencies {
   real entropicvar_diffusion_coeff;
   real velocity_diffusion_coeff;
-#if defined _AN || defined _MAN
-  AnelasticPressureSolver pressure_solver;
-#endif
 
   using VS = VariableSet;
 
 public:
+
+#if defined _AN || defined _MAN
+  AnelasticPressureSolver pressure_solver;
+#endif
+
   void initialize(ModelParameters &params, Equations &equations,
                   const Geometry<Straight> &primal_geom,
                   const Geometry<Twisted> &dual_geom) {
