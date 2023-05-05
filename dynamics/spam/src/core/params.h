@@ -69,7 +69,11 @@ void read_params_coupler(Parameters &params, Parallel &par,
   params.Nout = 1;
   params.Nstat = 1;
   params.simSteps = 1;
+#ifdef _MAN
   params.tstype = "ssprk3";
+#else
+  params.tstype = "si";
+#endif
   params.si_tolerance = 1e-8;
   params.outputName = "pamc_output";
   params.nz_dual = coupler.get_nz();

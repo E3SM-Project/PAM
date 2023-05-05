@@ -3948,7 +3948,67 @@ public:
                            refstate.geop.data, pks, k, n, -1);
         });
 #endif
-    // TODO reference N
+
+    parallel_for(
+        "compute Nsq",
+        SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
+        YAKL_LAMBDA(int k, int n) {
+          const real Rd = thermo.cst.Rd;
+          const real Rv = thermo.cst.Rv;
+          const real Cpd = thermo.cst.Cpd;
+          const real Lvr = thermo.cst.Lvr;
+          const real eta = Rv / Rd;
+
+          real T_kp, T_km, T;
+          real rv_kp, rv_km, rv;
+          real dz;
+
+          if (k == 0) {
+            T_km = dm_gcm_temp(k, n);
+            T_kp = dm_gcm_temp(k + 1, n);
+            T = T_km;
+
+            rv_kp = dm_gcm_dens_vap(k + 1, n) / dm_gcm_dens_dry(k + 1, n);
+            rv_km = dm_gcm_dens_vap(k, n) / dm_gcm_dens_dry(k, n);
+            rv = rv_km;
+
+            dz = primal_geom.dz(k + pks, n);
+          } else if (k == primal_topology.ni - 1) {
+            T_km = dm_gcm_temp(k - 1, n);
+            T_kp = dm_gcm_temp(k, n);
+            T = dm_gcm_temp(k, n);
+
+            rv_kp = dm_gcm_dens_vap(k, n) / dm_gcm_dens_dry(k, n);
+            rv_km = dm_gcm_dens_vap(k - 1, n) / dm_gcm_dens_dry(k - 1, n);
+            rv = rv_kp;
+
+            dz = primal_geom.dz(k - 1 + pks, n);
+          } else {
+            T = dm_gcm_temp(k, n);
+            T_km = dm_gcm_temp(k - 1, n);
+            T_kp = dm_gcm_temp(k + 1, n);
+
+            rv_km = dm_gcm_dens_vap(k - 1, n) / dm_gcm_dens_dry(k - 1, n);
+            rv_kp = dm_gcm_dens_vap(k + 1, n) / dm_gcm_dens_dry(k + 1, n);
+            rv = dm_gcm_dens_vap(k, n) / dm_gcm_dens_dry(k, n);
+
+            dz = primal_geom.dz(k + pks, n) + primal_geom.dz(k - 1 + pks, n);
+          }
+          real dTdz = (T_kp - T_km) / dz;
+          real drvdz = (rv_kp - rv_km) / dz;
+
+          real Tv = T * (1 + eta * rv) / (1 + rv);
+          real es = saturation_vapor_pressure(T);
+          real rsw = (es / (Rd * T) - 1) * Rd / Rv;
+          real qsw = rsw / (1 + rsw);
+
+          real D1w = 1 + (1 + eta * rsw) * Lvr * qsw / (Rd * Tv);
+          real D2w = 1 + (1 + eta * rsw) * Lvr * Lvr * qsw / (Cpd * Rv * T * T);
+          real gamma_m = grav / Cpd * D1w / D2w;
+
+          refstate.Nsq_pi.data(0, k + pks, n) =
+              grav / T * D1w * (dTdz + gamma_m) - grav / (1 + rv) * drvdz;
+        });
   }
 
   void add_diagnostics(
