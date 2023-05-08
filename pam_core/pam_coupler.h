@@ -318,24 +318,22 @@ namespace pam {
       auto gcm_temp     = dm.get_collapsed<real>("gcm_temp"                 );
       auto gcm_rho_v    = dm.get_collapsed<real>("gcm_water_vapor"          );
 
-      parallel_for( "coupler zero" , SimpleBounds<1>(nz*ny*nx*nens) , YAKL_LAMBDA (int i) {
-        density_dry (i) = 0;
-        uvel        (i) = 0;
-        vvel        (i) = 0;
-        wvel        (i) = 0;
-        temp        (i) = 0;
-        if (i < (nz+1)*nens) zint(i) = 0;
-        if (i < (nz  )*nens) {
-          zmid     (i) = 0;
-          dz       (i) = 0;
-          gcm_rho_d(i) = 0;
-          gcm_uvel (i) = 0;
-          gcm_vvel (i) = 0;
-          gcm_wvel (i) = 0;
-          gcm_temp (i) = 0;
-          gcm_rho_v(i) = 0;
-        }
-        if (i < nz*3  *nens) hy_params(i) = 0;
+      parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<1>(nz*ny*nx*nens) , YAKL_LAMBDA (int i) {
+        if (i < density_dry.size()) density_dry(i) = 0;
+        if (i < uvel       .size()) uvel       (i) = 0;
+        if (i < vvel       .size()) vvel       (i) = 0;
+        if (i < wvel       .size()) wvel       (i) = 0;
+        if (i < temp       .size()) temp       (i) = 0;
+        if (i < zint       .size()) zint       (i) = 0;
+        if (i < zmid       .size()) zmid       (i) = 0;
+        if (i < dz         .size()) dz         (i) = 0;
+        if (i < gcm_rho_d  .size()) gcm_rho_d  (i) = 0;
+        if (i < gcm_uvel   .size()) gcm_uvel   (i) = 0;
+        if (i < gcm_vvel   .size()) gcm_vvel   (i) = 0;
+        if (i < gcm_wvel   .size()) gcm_wvel   (i) = 0;
+        if (i < gcm_temp   .size()) gcm_temp   (i) = 0;
+        if (i < gcm_rho_v  .size()) gcm_rho_v  (i) = 0;
+        if (i < hy_params  .size()) hy_params  (i) = 0;
       });
     }
 
