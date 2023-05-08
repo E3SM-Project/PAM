@@ -153,8 +153,11 @@ public:
     debug_print("finish io init", par.masterproc);
   };
 
-  void update_reference_state(PamCoupler &coupler) {
+  void update_reference_state() {
     testcase->set_reference_state(primal_geometry, dual_geometry);
+  }
+
+  void update_pressure_solver() {
 #if defined _AN || defined _MAN
     tendencies.pressure_solver.compute_coefficients();
 #endif
