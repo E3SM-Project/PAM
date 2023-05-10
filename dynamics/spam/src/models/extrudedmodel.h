@@ -362,9 +362,12 @@ public:
         YAKL_LAMBDA(int k, int j, int i, int n) {
 #if defined _AN || defined _MAN
           for (int d = 0; d < VS::ndensity_prognostic; ++d) {
+            //dens0var(d, k + pks, j + pjs, i + pis, n) =
+            //    (densvar(d, k + pks, j + pjs, i + pis, n) -
+            //     refdens(d, k + pks, n)) /
+            //    varset.get_total_density(densvar, k, j, i, pks, pjs, pis, n);
             dens0var(d, k + pks, j + pjs, i + pis, n) =
-                (densvar(d, k + pks, j + pjs, i + pis, n) -
-                 refdens(d, k + pks, n)) /
+                densvar(d, k + pks, j + pjs, i + pis, n) /
                 varset.get_total_density(densvar, k, j, i, pks, pjs, pis, n);
           }
 #else
@@ -865,12 +868,12 @@ public:
 
 #if defined _AN || defined _MAN
           // add reference state
-          for (int d = 0; d < ndims; d++) {
-            for (int l = 0; l < VS::ndensity_prognostic; l++) {
-              densreconvar(d + l * ndims, k + dks, j + djs, i + dis, n) +=
-                  refstate.q_pi.data(l, k + pks, n);
-            }
-          }
+          //for (int d = 0; d < ndims; d++) {
+          //  for (int l = 0; l < VS::ndensity_prognostic; l++) {
+          //    densreconvar(d + l * ndims, k + dks, j + djs, i + dis, n) +=
+          //        refstate.q_pi.data(l, k + pks, n);
+          //  }
+          //}
           for (int d = 0; d < ndims; d++) {
             densreconvar(d + varset.dens_id_mass * ndims, k + dks, j + djs,
                          i + dis, n) = 1;
@@ -911,10 +914,10 @@ public:
 
 #if defined _AN || defined _MAN
           // add reference state
-          for (int l = 0; l < VS::ndensity_prognostic; l++) {
-            densvertreconvar(l, k + dks + 1, j + djs, i + dis, n) +=
-                refstate.q_di.data(l, k + dks + 1, n);
-          }
+          //for (int l = 0; l < VS::ndensity_prognostic; l++) {
+          //  densvertreconvar(l, k + dks + 1, j + djs, i + dis, n) +=
+          //      refstate.q_di.data(l, k + dks + 1, n);
+          //}
           densvertreconvar(varset.dens_id_mass, k + dks + 1, j + djs, i + dis,
                            n) = 1;
 #else
