@@ -255,10 +255,10 @@ public:
   real YAKL_INLINE compute_zetaxz(const real5d &v, const real5d &w, int is,
                                   int js, int ks, int i, int j, int k,
                                   int n) const {
-    SArray<real, 1, 1> zeta;
+    SArray<real, 2, 1, ndims> zeta;
     // compute zeta = D1_ext "v"
     compute_D1_ext<1>(zeta, v, w, is, js, ks, i, j, k, n);
-    return zeta(0);
+    return zeta(0, 0);
   }
 
   real YAKL_INLINE compute_etaxz(const real5d &v, const real5d &w,

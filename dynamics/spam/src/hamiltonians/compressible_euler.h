@@ -51,7 +51,7 @@ public:
                               int n) const {
     SArray<real, 1, 1> geop0;
 #ifdef _EXTRUDED
-    compute_H2bar_ext<1, diff_ord, vert_diff_ord>(
+    compute_Hn1bar<1, diff_ord, vert_diff_ord>(
         geop0, geop, this->primal_geometry, this->dual_geometry, is, js, ks, i,
         j, k, n);
 #else
@@ -86,7 +86,7 @@ public:
 
     SArray<real, 1, 1> geop0;
 #ifdef _EXTRUDED
-    compute_H2bar_ext<1, diff_ord, vert_diff_ord>(
+    compute_Hn1bar<1, diff_ord, vert_diff_ord>(
         geop0, geop, this->primal_geometry, this->dual_geometry, is, js, ks, i,
         j, k, n);
 #else
@@ -153,7 +153,7 @@ public:
 
     SArray<real, 1, 1> geop0;
 #ifdef _EXTRUDED
-    compute_H2bar_ext<1, diff_ord, vert_diff_ord>(
+    compute_Hn1bar<1, diff_ord, vert_diff_ord>(
         geop0, geop, this->primal_geometry, this->dual_geometry, is, js, ks, i,
         j, k, n);
 #else
@@ -168,9 +168,9 @@ public:
     real gamma_d = thermo.cst.gamma_d;
 
     real Tht1 = dens1(varset.dens_id_entr, k + ks, j + js, i + is, n) /
-                dual_geometry.get_area_11entity(k + ks, j + js, i + is, n);
+                dual_geometry.get_area_n1entity(k + ks, j + js, i + is, n);
     real Tht2 = dens2(varset.dens_id_entr, k + ks, j + js, i + is, n) /
-                dual_geometry.get_area_11entity(k + ks, j + js, i + is, n);
+                dual_geometry.get_area_n1entity(k + ks, j + js, i + is, n);
 
     real generalized_Exner =
         Cpd * std::pow(Rd / pr, gamma_d - 1) * gamma_avg(Tht1, Tht2, gamma_d);
@@ -193,8 +193,8 @@ public:
                                  real fac = 1._fp) const {
 
     SArray<real, 1, 1> geop0;
-    compute_H2bar_ext<1, vert_diff_ord>(geop0, geop, this->primal_geometry,
-                                        this->dual_geometry, ks, k, n);
+    compute_Hn1bar<1, vert_diff_ord>(geop0, geop, this->primal_geometry,
+                                     this->dual_geometry, ks, k, n);
 
     real alpha = varset.get_alpha(dens, k, ks, n);
     real entropic_var = varset.get_entropic_var(dens, k, ks, n);
@@ -255,7 +255,7 @@ public:
     SArray<real, 1, 1> geop0;
 
 #ifdef _EXTRUDED
-    compute_H2bar_ext<1, diff_ord, vert_diff_ord>(
+    compute_Hn1bar<1, diff_ord, vert_diff_ord>(
         geop0, geop, this->primal_geometry, this->dual_geometry, is, js, ks, i,
         j, k, n);
 #else
@@ -317,7 +317,7 @@ public:
 
     SArray<real, 1, 1> geop0;
 #ifdef _EXTRUDED
-    compute_H2bar_ext<1, diff_ord, vert_diff_ord>(
+    compute_Hn1bar<1, diff_ord, vert_diff_ord>(
         geop0, geop, this->primal_geometry, this->dual_geometry, is, js, ks, i,
         j, k, n);
 #else
@@ -332,9 +332,9 @@ public:
     real gamma_d = thermo.cst.gamma_d;
 
     real Tht1 = dens1(varset.dens_id_entr, k + ks, j + js, i + is, n) /
-                dual_geometry.get_area_11entity(k + ks, j + js, i + is, n);
+                dual_geometry.get_area_n1entity(k + ks, j + js, i + is, n);
     real Tht2 = dens2(varset.dens_id_entr, k + ks, j + js, i + is, n) /
-                dual_geometry.get_area_11entity(k + ks, j + js, i + is, n);
+                dual_geometry.get_area_n1entity(k + ks, j + js, i + is, n);
 
     real generalized_Exner =
         Cpd * std::pow(Rd / pr, gamma_d - 1) * gamma_avg(Tht1, Tht2, gamma_d);
@@ -410,7 +410,7 @@ public:
     SArray<real, 1, 1> geop0;
 
 #ifdef _EXTRUDED
-    compute_H2bar_ext<1, diff_ord, vert_diff_ord>(
+    compute_Hn1bar<1, diff_ord, vert_diff_ord>(
         geop0, geop, this->primal_geometry, this->dual_geometry, is, js, ks, i,
         j, k, n);
 #else
@@ -448,8 +448,8 @@ public:
                                  real fac = 1._fp) const {
 
     SArray<real, 1, 1> geop0;
-    compute_H2bar_ext<1, vert_diff_ord>(geop0, geop, this->primal_geometry,
-                                        this->dual_geometry, ks, k, n);
+    compute_Hn1bar<1, vert_diff_ord>(geop0, geop, this->primal_geometry,
+                                     this->dual_geometry, ks, k, n);
 
     SArray<real, 1, VS::ndensity_active> l_B;
     SArray<real, 1, VS::ndensity_dycore + VS::nmoist> l_q;

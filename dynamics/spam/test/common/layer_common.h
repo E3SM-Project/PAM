@@ -12,6 +12,8 @@ uint constexpr nauxiliary = 0;
 uint constexpr ndiagnostic = 0;
 uint constexpr ntracers_dycore = 0;
 
+#include "params.h"
+
 struct ModelParameters : public Parameters {
   // std::string initdataStr;
   std::string tracerdataStr[ntracers_dycore];
@@ -56,7 +58,9 @@ struct PeriodicUnitSquare {
   Geometry<Straight> primal_geometry;
   Geometry<Twisted> dual_geometry;
 
-  PeriodicUnitSquare(int nx, int ny) {
+  bool is_initialized = false;
+
+  void initialize(int nx, int ny) {
     ModelParameters params;
 
     params.nx_glob = nx;
@@ -73,7 +77,11 @@ struct PeriodicUnitSquare {
 
     primal_geometry.initialize(primal_topology, params);
     dual_geometry.initialize(dual_topology, params);
+
+    is_initialized = true;
   }
+
+  PeriodicUnitSquare(int nx, int ny) { initialize(nx, ny); }
 
   template <int deg> Field create_straight_form() {
     static Exchange exchange;

@@ -12,8 +12,8 @@ struct fun {
 };
 
 struct grad_fun {
-  vec<2> YAKL_INLINE operator()(real x, real y) const {
-    vec<2> vvec;
+  VecXY YAKL_INLINE operator()(real x, real y) const {
+    VecXY vvec;
     vvec.u = 2 * M_PI * cos(2 * M_PI * x) * sin(2 * M_PI * y);
     vvec.v = 2 * M_PI * sin(2 * M_PI * x) * cos(2 * M_PI * y);
     return vvec;
@@ -21,8 +21,8 @@ struct grad_fun {
 };
 
 struct vecfun {
-  vec<2> YAKL_INLINE operator()(real x, real y) const {
-    vec<2> vvec;
+  VecXY YAKL_INLINE operator()(real x, real y) const {
+    VecXY vvec;
     vvec.u = sin(2 * M_PI * x) * sin(2 * M_PI * y);
     vvec.v = sin(2 * M_PI * x) * cos(2 * M_PI * y);
     return vvec;
@@ -146,7 +146,7 @@ void test_D1(int np, real atol) {
   }
 }
 
-void test_D1bar(int np, real atol) {
+void test_Dnm1bar(int np, real atol) {
   PeriodicUnitSquare square(np, 2 * np);
 
   auto tw1 = square.create_twisted_form<1>();
@@ -166,14 +166,14 @@ void test_D1bar(int np, real atol) {
         SimpleBounds<3>(square.dual_topology.nl, square.dual_topology.n_cells_y,
                         square.dual_topology.n_cells_x),
         YAKL_LAMBDA(int k, int j, int i) {
-          compute_D1bar<1>(tw2.data, tw1.data, dis, djs, dks, i, j, k, 0);
+          compute_Dnm1bar<1>(tw2.data, tw1.data, dis, djs, dks, i, j, k, 0);
         });
   }
 
   real errf = square.compute_Linf_error(tw2_expected, tw2);
 
   if (errf > atol) {
-    std::cout << "Exactness of D1bar failed, error = " << errf
+    std::cout << "Exactness of Dnm1bar failed, error = " << errf
               << " tol = " << atol << std::endl;
     exit(-1);
   }
@@ -185,6 +185,6 @@ int main() {
   test_D0(33, atol);
   test_D0bar(33, atol);
   test_D1(33, atol);
-  test_D1bar(33, atol);
+  test_Dnm1bar(33, atol);
   yakl::finalize();
 }
