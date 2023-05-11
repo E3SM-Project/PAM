@@ -2,6 +2,7 @@
 #pragma once
 
 #include "pam_coupler.h"
+// #include <stdio.h>
 
 #include "scream_cxx_interface_p3.h"
 
@@ -270,7 +271,6 @@ public:
     real2d bm                ( "bm"                 ,           nz   , ncol );
     real2d qv                ( "qv"                 ,           nz   , ncol );
     real2d pressure_dry      ( "pressure_dry"       ,           nz   , ncol );
-    real2d pressure          ( "pressure"           ,           nz   , ncol );
     real2d theta             ( "theta"              ,           nz   , ncol );
     real2d exner             ( "exner"              ,           nz   , ncol );
     real2d inv_exner         ( "inv_exner"          ,           nz   , ncol );
@@ -340,9 +340,9 @@ public:
       qm          (k,i) = rho_m (k,i) / rho_dry(k,i);
       bm          (k,i) = rho_bm(k,i) / rho_dry(k,i);
       qv          (k,i) = rho_v (k,i) / rho_dry(k,i);
+      real pressure     = R_d*rho_dry(k,i)*temp(k,i) + R_v*rho_v(k,i)*temp(k,i);
       pressure_dry(k,i) = R_d*rho_dry(k,i)*temp(k,i);
-      pressure    (k,i) = R_d*rho_dry(k,i)*temp(k,i) + R_v*rho_v(k,i)*temp(k,i);
-      exner       (k,i) = pow( pressure(k,i) / p0 , R_d / cp_d );
+      exner       (k,i) = pow( pressure / p0 , R_d / cp_d );
       inv_exner   (k,i) = 1. / exner(k,i);
       theta       (k,i) = temp(k,i) / exner(k,i);
       // P3 uses dpres to calculate density via the hydrostatic assumption.
@@ -352,6 +352,9 @@ public:
       nccn_prescribed(k,i) = 1e3;
       nc_nuceat_tend (k,i) = 1.0;
       ni_activated   (k,i) = 1.0;
+      // nccn_prescribed(k,i) = 0;
+      // nc_nuceat_tend (k,i) = 0;
+      // ni_activated   (k,i) = 0;
       // col_location is for debugging only, and it will be ignored for now
       if (k < 3) { col_location(k,i) = 1; }
 
@@ -599,7 +602,6 @@ public:
       qm_host                .deep_copy_to( qm                 );
       ni_host                .deep_copy_to( ni                 );
       bm_host                .deep_copy_to( bm                 );
-      pressure_dry_host      .deep_copy_to( pressure_dry       );
       dz_host                .deep_copy_to( dz                 );
       nc_nuceat_tend_host    .deep_copy_to( nc_nuceat_tend     );
       nccn_prescribed_host   .deep_copy_to( nccn_prescribed    );

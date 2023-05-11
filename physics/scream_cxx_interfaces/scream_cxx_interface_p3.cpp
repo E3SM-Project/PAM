@@ -27,7 +27,7 @@ namespace pam {
                    array_ir::ArrayIR<double,2> const & qm,                 // inout
                    array_ir::ArrayIR<double,2> const & ni,                 // inout
                    array_ir::ArrayIR<double,2> const & bm,                 // inout
-                   array_ir::ArrayIR<double,2> const & pres,               // in
+                   array_ir::ArrayIR<double,2> const & pressure_dry,       // in
                    array_ir::ArrayIR<double,2> const & dz,                 // in
                    array_ir::ArrayIR<double,2> const & nc_nuceat_tend,     // in
                    array_ir::ArrayIR<double,2> const & nccn_prescribed,    // in
@@ -108,7 +108,7 @@ namespace pam {
     auto ni_activated_d   = ArrayIR_to_View_of_Packs(ni_activated   );
     auto inv_qc_relvar_d  = ArrayIR_to_View_of_Packs(inv_qc_relvar  );
     auto dz_d             = ArrayIR_to_View_of_Packs(dz             );
-    auto pres_d           = ArrayIR_to_View_of_Packs(pres           );
+    auto pressure_dry_d   = ArrayIR_to_View_of_Packs(pressure_dry   );
     auto dpres_d          = ArrayIR_to_View_of_Packs(dpres          );
     auto inv_exner_d      = ArrayIR_to_View_of_Packs(inv_exner      );
     auto t_prev_d         = ArrayIR_to_View_of_Packs(t_prev         );
@@ -122,7 +122,7 @@ namespace pam {
     diag_inputs.nccn            = nccn_d;
     diag_inputs.ni_activated    = ni_activated_d;
     diag_inputs.inv_qc_relvar   = inv_qc_relvar_d;
-    diag_inputs.pres            = pres_d;
+    diag_inputs.pres            = pressure_dry_d;
     diag_inputs.dpres           = dpres_d;
     diag_inputs.qv_prev         = q_prev_d;
     diag_inputs.t_prev          = t_prev_d;
