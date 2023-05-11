@@ -229,11 +229,7 @@ public:
     auto temp         = dm.get_lev_col<real>( "temp"         );
     auto rho_v        = dm.get_lev_col<real>( "water_vapor"  ); // Water vapor mass
 
-    // TODO: What do we do about rho_dry and wvel ???
-
-    // Grab cloud liquid tracer, and determine what other tracers to diffuse in SHOC
-    // TODO: If we add new MMF modules that add other tracers that need to be diffused, then this situation
-    //       must be handled
+    // Grab cloud liquid tracer, and other tracers that need to be modified by SHOC
     pam::MultiField<real,2> qtracers_pam;  // Extra tracers for SHOC to diffuse
     real2d rho_c;                     // Cloud liquid mass (name differs for different micro schemes)
     if        (micro_kessler) {
@@ -335,46 +331,48 @@ public:
         int k_shoc = nz-1-k;
 
         real rho_total = rho_d(k,i)+rho_v(k,i);
-        real z       = zmid    (k,i);
+        real z       = zmid(k,i);
         real dz      = zint(k+1,i) - zint(k,i);
         real press   = pres_mid(k,i);
-        real t       = temp    (k,i);
-        real qv      = std::max(0.0,rho_v(k,i)) / rho_total;
-        real ql      = std::max(0.0,rho_c(k,i)) / rho_total;
+        real t       = temp(k,i);
+        real qv      = std::max(0._fp,rho_v(k,i)) / rho_total;
+        real ql      = std::max(0._fp,rho_c(k,i)) / rho_total;
         real exner   = pow( press / p0 , R_d / cp_d );
         real theta   = t / exner;
 
         // https://glossary.ametsoc.org/wiki/Virtual_potential_temperature
         real theta_v = theta * (1 + 0.61_fp * qv - ql);
         // https://glossary.ametsoc.org/wiki/Liquid_water_potential_temperature
-        // According to update_host_dse, the simplified version is used here
-        real theta_l = theta - (latvap/cp_d) * ql;
+        real theta_l = theta - (1/exner)*(latvap/cp_d) * ql;
 
         shoc_ql       (k_shoc,i) = ql;
         shoc_qw       (k_shoc,i) = qv + ql;
-        shoc_zt_grid  (k_shoc,i) = z;
+        shoc_zt_grid  (k_shoc,i) = z - zint(0,i); // SHOC assumes that height starts at zero
         shoc_pres     (k_shoc,i) = press;
-        shoc_pdel     (k_shoc,i) = grav * (rho_d(k,i)+rho_v(k,i)) * dz;
+        shoc_pdel     (k_shoc,i) = grav * rho_total * dz;
         shoc_thv      (k_shoc,i) = theta_v;
         shoc_w_field  (k_shoc,i) = wvel(k,i);
         shoc_exner    (k_shoc,i) = exner;
         shoc_inv_exner(k_shoc,i) = 1._fp / exner;
-        shoc_host_dse (k_shoc,i) = cp_d * t + grav * z;
-        // TKE is a tracer, so it's stored as mass-weighted. SHOC doesn't want mass-weighted
-        shoc_tke      (k_shoc,i) = std::max(0.004,tke(k,i)) / rho_total; // min TKE value taken from SCREAM interface
+        // shoc_host_dse (k_shoc,i) = cp_d * t + grav * z;
+        shoc_host_dse (k_shoc,i) = cp_d*t + grav*shoc_zt_grid(k_shoc,i) + shoc_phis(i);
         shoc_thetal   (k_shoc,i) = theta_l;
         shoc_u_wind   (k_shoc,i) = uvel(k,i);
         shoc_v_wind   (k_shoc,i) = vvel(k,i);
         shoc_wthv_sec (k_shoc,i) = wthv_sec(k,i);
+        // TKE is stored as a mass-weighted tracer, but SHOC doesn't want mass-weighted
+        // We also enfore a minimum of 0.004 taken from the SCREAM interface
+        shoc_tke      (k_shoc,i) = std::max( 0.004, tke(k,i)/rho_total );
+        shoc_tk       (k_shoc,i) = tk     (k,i);
+        shoc_tkh      (k_shoc,i) = tkh    (k,i);
+        shoc_cldfrac  (k_shoc,i) = cldfrac(k,i);
         for (int tr=0; tr < num_qtracers; tr++) {
           shoc_qtracers(tr,k_shoc,i) = qtracers_pam(tr,k,i) / rho_total;
+          shoc_qtracers(tr,k_shoc,i) = std::max( 0._fp, shoc_qtracers(tr,k_shoc,i) );
         }
-        shoc_tk     (k_shoc,i) = tk     (k,i);
-        shoc_tkh    (k_shoc,i) = tkh    (k,i);
-        shoc_cldfrac(k_shoc,i) = cldfrac(k,i);
       }
       int k_shoc = nz-k;
-      shoc_zi_grid(k_shoc,i) = zint    (k,i);
+      shoc_zi_grid(k_shoc,i) = zint(k,i) - zint(0,i); // SHOC needs height values to start at zero
       real pres_int;
       if      (k == 0 ) {
         pres_int = pres_mid(k  ,i) + grav*(rho_d(k  ,i)+rho_v(k  ,i))*(zint(k+1,i)-zint(k  ,i))/2;
@@ -666,19 +664,37 @@ public:
       real ql = shoc_ql(k_shoc,i);
       real qv = qw - ql;
 
-      temp    (k,i) = (shoc_thetal(k_shoc,i) + (latvap/cp_d) * shoc_ql(k_shoc,i)) * shoc_exner(k_shoc,i);
+      //------------------------------------------------------------------------
+      // real temp_in  = temp(k,i);
+      // real temp_thl = shoc_thetal(k_shoc,i)*shoc_exner(k_shoc,i) + (latvap/cp_d)*shoc_ql(k_shoc,i) ;
+      // real temp_dse = ( shoc_host_dse(k_shoc,i) - grav*shoc_zt_grid(k_shoc,i) - shoc_phis(i) )/cp_d;
+      // real temp_diff = temp_dse - temp_thl;
+      // printf("WHDEBUG - post SHOC - k:%d  i:%d  temp_in: %g  temp_dse: %g  temp_thl: %g  temp_diff: %g \n",k,i,temp_in,temp_dse,temp_thl,temp_diff );
+      //------------------------------------------------------------------------
+
+      // invert liquid potential temperature to obtain updated temperature
+      temp(k,i) = shoc_thetal(k_shoc,i)*shoc_exner(k_shoc,i) + (latvap/cp_d)*shoc_ql(k_shoc,i);
+
+      // invert DSE to obtain updated temperature - this seems problematic?
+      // temp(k,i) = ( shoc_host_dse(k_shoc,i) - grav*shoc_zt_grid(k_shoc,i) - shoc_phis(i) )/cp_d;
+
       rho_v(k,i) = qv * rho_d(k,i) / ( 1 - qv );
+      rho_v(k,i) = std::max( 0._fp, rho_v(k,i) );
       real rho_total = rho_d(k,i)+rho_v(k,i);
       rho_c   (k,i) = ql * rho_total;
-      uvel    (k,i) = shoc_u_wind(k_shoc,i);
-      vvel    (k,i) = shoc_v_wind(k_shoc,i);
+      rho_c(k,i) = std::max( 0._fp, rho_c(k,i) );
+      uvel    (k,i) = shoc_u_wind  (k_shoc,i);
+      vvel    (k,i) = shoc_v_wind  (k_shoc,i);
       tke     (k,i) = shoc_tke     (k_shoc,i) * rho_total;
       wthv_sec(k,i) = shoc_wthv_sec(k_shoc,i);
       tk      (k,i) = shoc_tk      (k_shoc,i);
       tkh     (k,i) = shoc_tkh     (k_shoc,i);
-      cldfrac (k,i) = std::min(1._fp , shoc_cldfrac (k_shoc,i) );
+      cldfrac (k,i) = shoc_cldfrac (k_shoc,i);
+      cldfrac (k,i) = std::min( 1._fp, cldfrac(k,i) );
+      cldfrac (k,i) = std::max( 0._fp, cldfrac(k,i) );
       for (int tr=0; tr < num_qtracers; tr++) {
         qtracers_pam(tr,k,i) = shoc_qtracers(tr,k_shoc,i) * rho_total;
+        qtracers_pam(tr,k,i) = std::max( 0._fp, qtracers_pam(tr,k,i) );
       }
       real rcm  = shoc_ql (k_shoc,i);
       real rcm2 = shoc_ql2(k_shoc,i);
