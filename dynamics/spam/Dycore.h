@@ -153,20 +153,11 @@ public:
     debug_print("finish io init", par.masterproc);
   };
 
-  void update_reference_state() {
-    testcase->set_reference_state(primal_geometry, dual_geometry);
-  }
-
-  void update_pressure_solver() {
-#if defined _AN || defined _MAN
-    tendencies.pressure_solver.compute_coefficients();
-#endif
-  }
-
   void pre_time_loop(PamCoupler &coupler) {
     // // Set the reference state and initialize the tendencies
     debug_print("start tendencies init", par.masterproc);
-    // Note: the anelastic ref state must be set before tendency initialization
+    // The anelastic ref state must be set before tendency initialization
+    testcase->set_reference_state(primal_geometry, dual_geometry);
     tendencies.initialize(params, equations, primal_geometry, dual_geometry);
     debug_print("end tendencies init", par.masterproc);
 
@@ -194,9 +185,10 @@ public:
     }
     debug_print("end ts init", par.masterproc);
 
-    // convert dynamics state to Coupler state
-    tendencies.convert_dynamics_to_coupler_state(coupler, prognostic_vars,
-                                                 constant_vars);
+    // TODO: add logic here to only include this for standlone configurations
+    // // convert dynamics state to Coupler state
+    // tendencies.convert_dynamics_to_coupler_state(coupler, prognostic_vars,
+    //                                              constant_vars);
 
     // Output the initial model state
 #ifndef _NOIO
