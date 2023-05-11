@@ -3967,33 +3967,33 @@ public:
           real dz;
 
           if (k == 0) {
-            T_km = dm_gcm_temp(k, n);
-            T_kp = dm_gcm_temp(k + 1, n);
+            T_km = dm_ref_temp(k, n);
+            T_kp = dm_ref_temp(k + 1, n);
             T = T_km;
 
-            rv_kp = dm_gcm_dens_vap(k + 1, n) / dm_gcm_dens_dry(k + 1, n);
-            rv_km = dm_gcm_dens_vap(k, n) / dm_gcm_dens_dry(k, n);
+            rv_kp = dm_ref_dens_vap(k + 1, n) / dm_ref_dens_dry(k + 1, n);
+            rv_km = dm_ref_dens_vap(k, n) / dm_ref_dens_dry(k, n);
             rv = rv_km;
 
             dz = primal_geom.dz(k + pks, n);
           } else if (k == primal_topology.ni - 1) {
-            T_km = dm_gcm_temp(k - 1, n);
-            T_kp = dm_gcm_temp(k, n);
-            T = dm_gcm_temp(k, n);
+            T_km = dm_ref_temp(k - 1, n);
+            T_kp = dm_ref_temp(k, n);
+            T = dm_ref_temp(k, n);
 
-            rv_kp = dm_gcm_dens_vap(k, n) / dm_gcm_dens_dry(k, n);
-            rv_km = dm_gcm_dens_vap(k - 1, n) / dm_gcm_dens_dry(k - 1, n);
+            rv_kp = dm_ref_dens_vap(k, n) / dm_ref_dens_dry(k, n);
+            rv_km = dm_ref_dens_vap(k - 1, n) / dm_ref_dens_dry(k - 1, n);
             rv = rv_kp;
 
             dz = primal_geom.dz(k - 1 + pks, n);
           } else {
-            T = dm_gcm_temp(k, n);
-            T_km = dm_gcm_temp(k - 1, n);
-            T_kp = dm_gcm_temp(k + 1, n);
+            T = dm_ref_temp(k, n);
+            T_km = dm_ref_temp(k - 1, n);
+            T_kp = dm_ref_temp(k + 1, n);
 
-            rv_km = dm_gcm_dens_vap(k - 1, n) / dm_gcm_dens_dry(k - 1, n);
-            rv_kp = dm_gcm_dens_vap(k + 1, n) / dm_gcm_dens_dry(k + 1, n);
-            rv = dm_gcm_dens_vap(k, n) / dm_gcm_dens_dry(k, n);
+            rv_km = dm_ref_dens_vap(k - 1, n) / dm_ref_dens_dry(k - 1, n);
+            rv_kp = dm_ref_dens_vap(k + 1, n) / dm_ref_dens_dry(k + 1, n);
+            rv = dm_ref_dens_vap(k, n) / dm_ref_dens_dry(k, n);
 
             dz = primal_geom.dz(k + pks, n) + primal_geom.dz(k - 1 + pks, n);
           }
