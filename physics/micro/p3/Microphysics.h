@@ -125,6 +125,10 @@ public:
     dm.register_and_allocate<real>("precip_liq_surf_out","liq surface precipitation rate",{ny,nx,nens},{"y","x","nens"});
     dm.register_and_allocate<real>("precip_ice_surf_out","ice surface precipitation rate",{ny,nx,nens},{"y","x","nens"});
 
+    dm.register_and_allocate<real>("liq_ice_exchange_out","p3 liq to ice phase change tendency",{nz,ny,nx,nens},{"z","y","x","nens"});
+    dm.register_and_allocate<real>("vap_liq_exchange_out","p3 vap to liq phase change tendency",{nz,ny,nx,nens},{"z","y","x","nens"});
+    dm.register_and_allocate<real>("vap_ice_exchange_out","p3 vap to ice phase change tendency",{nz,ny,nx,nens},{"z","y","x","nens"});
+
     auto cloud_water     = dm.get<real,4>( "cloud_water"     );
     auto cloud_water_num = dm.get<real,4>( "cloud_water_num" );
     auto rain            = dm.get<real,4>( "rain"            );
@@ -635,10 +639,14 @@ public:
     #endif
     
                     
-    ///////////////////////////////////////////////////////////////////////////////
-    // Convert P3 outputs into dynamics coupler state and tracer masses
-    ///////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
+    // P3 postprocessing
+    ////////////////////////////////////////////////////////////////////////////
+    auto liq_ice_exchange_out = dm.get_lev_col<real>("liq_ice_exchange_out");
+    auto vap_liq_exchange_out = dm.get_lev_col<real>("vap_liq_exchange_out");
+    auto vap_ice_exchange_out = dm.get_lev_col<real>("vap_ice_exchange_out");
     parallel_for( "micro post process" , SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
+      // Convert P3 outputs into dynamics coupler state and tracer masses
       rho_c  (k,i) = std::max( qc(k,i)*rho_dry(k,i) , 0._fp );
       rho_nc (k,i) = std::max( nc(k,i)*rho_dry(k,i) , 0._fp );
       rho_r  (k,i) = std::max( qr(k,i)*rho_dry(k,i) , 0._fp );
@@ -654,6 +662,10 @@ public:
       // Save qv and temperature for the next call to p3_main
       qv_prev(k,i) = std::max( qv(k,i) , 0._fp );
       t_prev (k,i) = temp(k,i);
+      // copy diagnostic quantities to data manager
+      liq_ice_exchange_out(k,i) = liq_ice_exchange(k,i);
+      vap_liq_exchange_out(k,i) = vap_liq_exchange(k,i);
+      vap_ice_exchange_out(k,i) = vap_ice_exchange(k,i);
     });
 
     // output precipitation rates to be aggregated
@@ -810,7 +822,6 @@ public:
     int ncol = cld_frac_in.dimension[1];
 
     real constexpr mincld = 0.0001;
-    real constexpr qsmall = 1.e-14;
 
     parallel_for( SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
       cld_frac_i(k,i) = std::max(cld_frac_in(k,i), mincld);
@@ -820,16 +831,14 @@ public:
 
     // precipitation fraction 
     // max overlap is the max cloud fraction in all layers above which are
-    // connected to this one by a continuous band of precip mass. If
+    // connected to a given layer by a continuous band of precip mass. If
     // there's no precip mass falling into a cell, it's precip frac is equal
     // to the cloud frac, which is probably ~zero.
-    // IF rain or ice mix ratios are smaller than threshold,
-    // then leave cld_frac_r as cloud fraction at current level
+    // Cycle through the layers from top to bottom and determine if the rain 
+    // fraction needs to be updated to match cloud fraction in the layer above.
     parallel_for( ncol , YAKL_LAMBDA (int i) {
       for (int k=nz-2; k >= 0; k--) {
-        if ( qr(k+1,i) >= qsmall || qi(k+1,i) >= qsmall ) {
-          cld_frac_r(k,i) = std::max( cld_frac_r(k+1,i) , cld_frac_r(k,i) );
-        }
+        cld_frac_r(k,i) = std::max( cld_frac_in(k+1,i) , cld_frac_r(k,i) );
       }
     });
   }
