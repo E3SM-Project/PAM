@@ -18,7 +18,7 @@ uint constexpr ntracers_dycore = 0;
 #endif
 
 // Number of Dimensions
-uint constexpr ndims = 1;
+uint constexpr ndims = 2;
 
 #include "params.h"
 
@@ -38,7 +38,7 @@ uint constexpr nconstant = 2;
 // primal grid reconstruction stuff- U, W, dens0, edgerecon, recon,
 // vertedgerecon, vertrecon fct stuff- Phi, Mf, edgeflux Q/W STUFF?
 
-uint constexpr nauxiliary = 26;
+uint constexpr nauxiliary = 29;
 
 #define FVAR 0
 #define BVAR 1
@@ -70,6 +70,10 @@ uint constexpr nauxiliary = 26;
 #define CORIOLISXZEDGERECONVAR 23
 #define CORIOLISXZVERTRECONVAR 24
 #define CORIOLISXZVERTEDGERECONVAR 25
+
+#define QXY0VAR 26
+#define QXYEDGERECONVAR 27
+#define QXYRECONVAR 28
 
 // track total densities, dens min/max, energy (total, K, P, I), PV, PE
 uint constexpr nstats = 6;

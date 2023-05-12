@@ -45,28 +45,27 @@ uint constexpr vert_diffusion_diff_ord = 2;
 // Reconstruction types and order
 enum class RECONSTRUCTION_TYPE { CFV, WENO, WENOFUNC };
 
-RECONSTRUCTION_TYPE constexpr reconstruction_type =
-    RECONSTRUCTION_TYPE::WENOFUNC;
-uint constexpr reconstruction_order = 5;
+RECONSTRUCTION_TYPE constexpr reconstruction_type = RECONSTRUCTION_TYPE::WENO;
+uint constexpr reconstruction_order = 9;
 
 RECONSTRUCTION_TYPE constexpr dual_reconstruction_type =
-    RECONSTRUCTION_TYPE::WENOFUNC;
+    RECONSTRUCTION_TYPE::WENO;
 uint constexpr dual_reconstruction_order = 5;
 
 RECONSTRUCTION_TYPE constexpr vert_reconstruction_type =
-    RECONSTRUCTION_TYPE::WENOFUNC;
+    RECONSTRUCTION_TYPE::WENO;
 uint constexpr vert_reconstruction_order = 5;
 
 RECONSTRUCTION_TYPE constexpr dual_vert_reconstruction_type =
-    RECONSTRUCTION_TYPE::WENOFUNC;
+    RECONSTRUCTION_TYPE::WENO;
 uint constexpr dual_vert_reconstruction_order = 5;
 
 RECONSTRUCTION_TYPE constexpr coriolis_reconstruction_type =
-    RECONSTRUCTION_TYPE::CFV;
+    RECONSTRUCTION_TYPE::WENO;
 uint constexpr coriolis_reconstruction_order = 3;
 
 RECONSTRUCTION_TYPE constexpr coriolis_vert_reconstruction_type =
-    RECONSTRUCTION_TYPE::CFV;
+    RECONSTRUCTION_TYPE::WENO;
 uint constexpr coriolis_vert_reconstruction_order = 1;
 
 uint constexpr max_reconstruction_order =

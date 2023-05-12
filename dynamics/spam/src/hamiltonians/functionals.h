@@ -200,6 +200,22 @@ public:
     this->varset = variableset;
   }
 
+  real YAKL_INLINE compute_hvxy(const real5d &dens, int is, int js, int ks,
+                                int i, int j, int k, int n) const {
+    SArray<real, 1, 1> hv;
+    SArray<real, 1, 4> Dv;
+
+    // compute hv = R h
+    // Uses linearity of R
+    Dv(0) = varset.get_total_density(dens, k, j, i, ks, js, is, n);
+    Dv(1) = varset.get_total_density(dens, k, j, i - 1, ks, js, is, n);
+    Dv(2) = varset.get_total_density(dens, k, j - 1, i, ks, js, is, n);
+    Dv(3) = varset.get_total_density(dens, k, j - 1, i - 1, ks, js, is, n);
+    R(hv, Dv);
+
+    return hv(0);
+  }
+
   real YAKL_INLINE compute_hvxz(const real5d &dens, int is, int js, int ks,
                                 int i, int j, int k, int n) const {
     SArray<real, 1, 1> hv;
@@ -211,6 +227,22 @@ public:
     Dv(1) = varset.get_total_density(dens, k, j, i - 1, ks, js, is, n);
     Dv(2) = varset.get_total_density(dens, k + 1, j, i, ks, js, is, n);
     Dv(3) = varset.get_total_density(dens, k + 1, j, i - 1, ks, js, is, n);
+    R(hv, Dv);
+
+    return hv(0);
+  }
+
+  real YAKL_INLINE compute_hvyz(const real5d &dens, int is, int js, int ks,
+                                int i, int j, int k, int n) const {
+    SArray<real, 1, 1> hv;
+    SArray<real, 1, 4> Dv;
+
+    // compute hv = R h
+    // Uses linearity of R
+    Dv(0) = varset.get_total_density(dens, k, j, i, ks, js, is, n);
+    Dv(1) = varset.get_total_density(dens, k, j - 1, i, ks, js, is, n);
+    Dv(2) = varset.get_total_density(dens, k + 1, j, i, ks, js, is, n);
+    Dv(3) = varset.get_total_density(dens, k + 1, j - 1, i, ks, js, is, n);
     R(hv, Dv);
 
     return hv(0);
@@ -228,6 +260,24 @@ public:
     Dv(2) =
         varset.get_total_density(dens, k + 1, j, i, ks, js, is, n); // gets 1/2
     Dv(3) = varset.get_total_density(dens, k + 1, j, i - 1, ks, js, is,
+                                     n); // gets 1/2
+    Rbnd(hv, Dv);
+
+    return hv(0);
+  }
+
+  real YAKL_INLINE compute_hvyz_top(const real5d &dens, int is, int js, int ks,
+                                    int i, int j, int k, int n) const {
+    SArray<real, 1, 1> hv;
+    SArray<real, 1, 4> Dv;
+
+    // compute hv = R h
+    // Uses linearity of R
+    Dv(0) = varset.get_total_density(dens, k, j, i, ks, js, is, n);
+    Dv(1) = varset.get_total_density(dens, k, j - 1, i, ks, js, is, n);
+    Dv(2) =
+        varset.get_total_density(dens, k + 1, j, i, ks, js, is, n); // gets 1/2
+    Dv(3) = varset.get_total_density(dens, k + 1, j - 1, i, ks, js, is,
                                      n); // gets 1/2
     Rbnd(hv, Dv);
 
@@ -252,20 +302,42 @@ public:
     return hv(0);
   }
 
-  real YAKL_INLINE compute_zetaxz(const real5d &v, const real5d &w, int is,
-                                  int js, int ks, int i, int j, int k,
-                                  int n) const {
-    SArray<real, 2, 1, ndims> zeta;
+  real YAKL_INLINE compute_hvyz_bottom(const real5d &dens, int is, int js,
+                                       int ks, int i, int j, int k,
+                                       int n) const {
+    SArray<real, 1, 1> hv;
+    SArray<real, 1, 4> Dv;
+
+    // compute hv = R h
+    // Uses linearity of R
+    Dv(0) = varset.get_total_density(dens, k + 1, j, i, ks, js, is, n);
+    Dv(1) = varset.get_total_density(dens, k + 1, j - 1, i, ks, js, is, n);
+    Dv(2) = varset.get_total_density(dens, k, j, i, ks, js, is, n); // gets 1/2
+    Dv(3) =
+        varset.get_total_density(dens, k, j - 1, i, ks, js, is, n); // gets 1/2
+    Rbnd(hv, Dv);
+
+    return hv(0);
+  }
+
+  YAKL_INLINE void compute_zeta(SArray<real, 1, ndims> &zeta, const real5d &v,
+                                const real5d &w, int is, int js, int ks, int i,
+                                int j, int k, int n) const {
+    SArray<real, 2, 1, ndims> zeta_;
     // compute zeta = D1_ext "v"
-    compute_D1_ext<1>(zeta, v, w, is, js, ks, i, j, k, n);
-    return zeta(0, 0);
+    compute_D1_ext<1>(zeta_, v, w, is, js, ks, i, j, k, n);
+    for (int d = 0; d < ndims; ++d) {
+      zeta(d) = zeta_(0, d);
+    }
   }
 
   real YAKL_INLINE compute_etaxz(const real5d &v, const real5d &w,
                                  const real5d &coriolisxz, int is, int js,
                                  int ks, int i, int j, int k, int n) const {
-    real zeta = compute_zetaxz(v, w, is, js, ks, i, j, k, n);
-    return zeta + coriolisxz(0, k + ks, j + js, i + is, n);
+    SArray<real, 1, ndims> zeta;
+    compute_zeta(zeta, v, w, is, js, ks, i, j, k - 1, n);
+
+    return zeta(0) + coriolisxz(0, k + ks, j + js, i + is, n);
   }
 
   // This computes true qxz
@@ -312,12 +384,31 @@ public:
                                     const real5d &coriolisxz, int is, int js,
                                     int ks, int i, int j, int k, int n) const {
     // Need to subtract 1 here since d00(i,k) corresponds to p11(i,k)
-    real hv = compute_hvxz(dens, is, js, ks, i, j, k - 1, n);
-    real zeta = compute_zetaxz(v, w, is, js, ks, i, j, k - 1, n);
+    real hvxz = compute_hvxz(dens, is, js, ks, i, j, k - 1, n);
+
+    SArray<real, 1, ndims> zeta;
+    compute_zeta(zeta, v, w, is, js, ks, i, j, k - 1, n);
+
     // compute q0 = zeta / hv and f0 = f / hv
-    qxz0(0, k + ks, j + js, i + is, n) = zeta / hv;
+    qxz0(0, k + ks, j + js, i + is, n) = zeta(0) / hvxz;
     fxz0(0, k + ks, j + js, i + is, n) =
-        coriolisxz(0, k + ks, j + js, i + is, n) / hv;
+        coriolisxz(0, k + ks, j + js, i + is, n) / hvxz;
+    if (ndims > 1) {
+      real hvyz = compute_hvyz(dens, is, js, ks, i, j, k - 1, n);
+      qxz0(1, k + ks, j + js, i + is, n) = zeta(1) / hvyz;
+    }
+  }
+
+  void YAKL_INLINE compute_qxy0fxy0(const real5d &qxy0, const real5d &fxy0,
+                                    const real5d &v, const real5d &w,
+                                    const real5d &dens,
+                                    const real5d &coriolisxy, int is, int js,
+                                    int ks, int i, int j, int k, int n) const {
+    real hvxy = compute_hvxy(dens, is, js, ks, i, j, k, n);
+
+    SArray<real, 1, 1> zeta;
+    compute_D1<1>(zeta, v, is, js, ks, i, j, k, n);
+    qxy0(0, k + ks, j + js, i + is, n) = zeta(0) / hvxy;
   }
 
   // This computes relative qxz
@@ -328,12 +419,19 @@ public:
                                         int js, int ks, int i, int j, int k,
                                         int n) const {
     // Need to subtract 1 here since d00(i,k) corresponds to p11(i,k)
-    real hv = compute_hvxz_top(dens, is, js, ks, i, j, k - 1, n);
-    real zeta = compute_zetaxz(v, w, is, js, ks, i, j, k - 1, n);
+    real hvxz = compute_hvxz_top(dens, is, js, ks, i, j, k - 1, n);
+
+    SArray<real, 1, ndims> zeta;
+    compute_zeta(zeta, v, w, is, js, ks, i, j, k - 1, n);
+
     // compute q0 = zeta / hv and f0 = f / hv
-    qxz0(0, k + ks, j + js, i + is, n) = zeta / hv;
+    qxz0(0, k + ks, j + js, i + is, n) = zeta(0) / hvxz;
     fxz0(0, k + ks, j + js, i + is, n) =
-        coriolisxz(0, k + ks, j + js, i + is, n) / hv;
+        coriolisxz(0, k + ks, j + js, i + is, n) / hvxz;
+    if (ndims > 1) {
+      real hvyz = compute_hvyz_top(dens, is, js, ks, i, j, k - 1, n);
+      qxz0(1, k + ks, j + js, i + is, n) = zeta(1) / hvyz;
+    }
   }
 
   // This computes relative qxz
@@ -344,12 +442,20 @@ public:
                                            int js, int ks, int i, int j, int k,
                                            int n) const {
     // Need to subtract 1 here since d00(i,k) corresponds to p11(i,k)
-    real hv = compute_hvxz_bottom(dens, is, js, ks, i, j, k - 1, n);
-    real zeta = compute_zetaxz(v, w, is, js, ks, i, j, k - 1, n);
+    real hvxz = compute_hvxz_bottom(dens, is, js, ks, i, j, k - 1, n);
+
+    SArray<real, 1, ndims> zeta;
+    compute_zeta(zeta, v, w, is, js, ks, i, j, k - 1, n);
+
     // compute q0 = zeta / hv and f0 = f / hv
-    qxz0(0, k + ks, j + js, i + is, n) = zeta / hv;
+    qxz0(0, k + ks, j + js, i + is, n) = zeta(0) / hvxz;
     fxz0(0, k + ks, j + js, i + is, n) =
-        coriolisxz(0, k + ks, j + js, i + is, n) / hv;
+        coriolisxz(0, k + ks, j + js, i + is, n) / hvxz;
+
+    if (ndims > 1) {
+      real hvyz = compute_hvyz_bottom(dens, is, js, ks, i, j, k - 1, n);
+      qxz0(1, k + ks, j + js, i + is, n) = zeta(1) / hvyz;
+    }
   }
 
   pvpe YAKL_INLINE compute_PVPE(const real5d &v, const real5d &w,

@@ -224,10 +224,10 @@ public:
       time_integrator->step_forward(params.dtcrm);
 
 #ifdef CHECK_ANELASTIC_CONSTRAINT
-      real max_div = tendencies.compute_max_anelastic_constraint(
-          prognostic_vars, auxiliary_vars);
-      std::cout << "Anelastic constraint: " << max_div << std::endl;
-#endif
+      //real max_div = tendencies.compute_max_anelastic_constraint(
+      //    prognostic_vars, auxiliary_vars);
+      //std::cout << "Anelastic constraint: " << max_div << std::endl;
+#endif//
 
       yakl::fence();
 

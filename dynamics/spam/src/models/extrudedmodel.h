@@ -158,6 +158,7 @@ struct AnelasticPressureSolver {
   bool is_initialized = false;
 
   yakl::RealFFT1D<real> fftp_x;
+  yakl::RealFFT1D<real> fftp_y;
 
   int nxf, nyf;
 
@@ -190,7 +191,9 @@ struct AnelasticPressureSolver {
     yakl::memset(p_transform, 0);
 
     fftp_x.init(p_transform, 2, nx);
-    // fftp_y.init(p_transform, 1, ny);
+    if (ndims > 1) {
+     fftp_y.init(p_transform, 1, ny);
+    }
 
     tri_d = real4d("tri d", pni, nyf, nxf, nens);
     tri_l = real4d("tri l", pni, nyf, nxf, nens);
@@ -239,18 +242,22 @@ struct AnelasticPressureSolver {
         SimpleBounds<4>(primal_topology.ni, nyf, nxf, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           int ik = i / 2;
+          int jk = j / 2;
 
           SArray<real, 1, ndims> fH1;
           fourier_H10<diff_ord>(fH1, primal_geometry, dual_geometry, pis, pjs,
-                                pks, ik, j, k, 0, dual_topology.n_cells_x,
+                                pks, ik, jk, k, 0, dual_topology.n_cells_x,
                                 dual_topology.n_cells_y, dual_topology.ni);
 
           SArray<real, 1, ndims> fD0Dbar;
-          fourier_cwD0Dnm1bar(fD0Dbar, 1, ik, j, k, dual_topology.n_cells_x,
+          fourier_cwD0Dnm1bar(fD0Dbar, 1, ik, jk, k, dual_topology.n_cells_x,
                               dual_topology.n_cells_y, dual_topology.ni);
 
           tri_l(k, j, i, n) = 0;
-          tri_d(k, j, i, n) = fH1(0) * fD0Dbar(0) * rho_pi(0, k + pks, n);
+          tri_d(k, j, i, n) = 0;
+          for (int d = 0; d < ndims; ++d) {
+              tri_d(k, j, i, n) += fH1(d) * fD0Dbar(d) * rho_pi(0, k + pks, n);
+          }
           tri_u(k, j, i, n) = 0;
 
           const real h_k =
@@ -416,9 +423,9 @@ public:
         });
   }
 
-  void compute_q0f0(real5d qxz0var, real5d fxz0var, const real5d Vvar,
-                    const real5d Wvar, const real5d densvar,
-                    const real5d coriolisxzvar) {
+  void compute_q0f0(real5d qxz0var, real5d fxz0var, real5d qxy0var,
+                    real5d fxy0var, const real5d Vvar, const real5d Wvar,
+                    const real5d densvar, const real5d coriolisxzvar) {
 
     const auto &dual_topology = dual_geometry.topology;
 
@@ -427,6 +434,16 @@ public:
     int dks = dual_topology.ks;
 
     YAKL_SCOPE(PVPE, this->equations->PVPE);
+
+    parallel_for(
+        "Compute Q0, F0",
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          PVPE.compute_qxy0fxy0(qxy0var, fxy0var, Vvar, Wvar, densvar,
+                                coriolisxzvar, dis, djs, dks, i, j, k, n);
+        });
+
     parallel_for(
         "Compute Q0, F0",
         SimpleBounds<4>(dual_topology.ni - 3, dual_topology.n_cells_y,
@@ -447,13 +464,98 @@ public:
                                     coriolisxzvar, dis, djs, dks, i, j,
                                     dual_topology.ni - 2, n);
         });
+
+    //parallel_for(
+    //    "TEST 1",
+    //    SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
+    //                    dual_topology.n_cells_x, dual_topology.nens),
+    //    YAKL_LAMBDA(int k, int j, int i, int n) {
+    //      real dx = primal_geometry.dx;
+    //      real dy = primal_geometry.dy;
+    //      real dz = dual_geometry.get_dz(k + 1 + dual_topology.ks, n);
+
+    //      CoordsXYZ coord;
+    //      // dual_geometry.get_ll_corner(coord, k + 1, j, i, n);
+    //      primal_geometry.get_ll_corner(coord, k, j, i, n);
+
+    //      real u, v, w;
+    //      {
+    //        // real x = coord.x;
+    //        // real y = coord.y + dy / 2;
+    //        // real z = coord.z;
+
+    //        real x = coord.x + dx / 2;
+    //        real y = coord.y + dy;
+    //        real z = coord.z + dz / 2;
+
+    //        real sx = sin(2 * M_PI * x);
+    //        real sy = sin(2 * M_PI * y);
+    //        real sz = sin(2 * M_PI * z);
+
+    //        real cx = cos(2 * M_PI * x);
+    //        real cy = cos(2 * M_PI * y);
+    //        real cz = cos(2 * M_PI * z);
+
+    //        u = 2 * M_PI * (sx * sy * cz - cx * cy * cz);
+    //        // u = z * sx * sy - 2 * pi * cx * sy * z;
+    //      }
+
+    //      {
+    //        // real x = coord.x + dx / 2;
+    //        // real y = coord.y;
+    //        // real z = coord.z;
+
+    //        real x = coord.x + dx;
+    //        real y = coord.y + dy / 2;
+    //        real z = coord.z + dz / 2;
+
+    //        real sx = sin(2 * M_PI * x);
+    //        real sy = sin(2 * M_PI * y);
+    //        real sz = sin(2 * M_PI * z);
+
+    //        real cx = cos(2 * M_PI * x);
+    //        real cy = cos(2 * M_PI * y);
+    //        real cz = cos(2 * M_PI * z);
+
+    //        v = 2 * M_PI * (-sx * sy * cz - sx * cy * cz);
+    //        // v = 2 * pi * sx * cy * z - z * sx * sy;
+    //      }
+
+    //      {
+    //        real x = coord.x + dx / 2;
+    //        real y = coord.y + dy / 2;
+    //        real z = coord.z;
+
+    //        real sx = sin(2 * M_PI * x);
+    //        real sy = sin(2 * M_PI * y);
+    //        real sz = sin(2 * M_PI * z);
+
+    //        real cx = cos(2 * M_PI * x);
+    //        real cy = cos(2 * M_PI * y);
+    //        real cz = cos(2 * M_PI * z);
+
+    //        w = 2 * M_PI * (cx * cy * sz - sx * cy * sz);
+    //      }
+
+    //      // real u = -2 * pi * cos(2 * pi * x) * sin(2 * pi * (y + dy / 2));
+    //      // real v = 2 * pi * sin(2 * pi * (x + dx / 2)) * cos(2 * pi * y);
+
+    //      //std::cout << "TEST QXY0" << i << " " << j << " " << k << " " << u
+    //      //          << " " << qxz0var(0, k + 1 + dks, j + djs, i + dis, n) * dy
+    //      //          << " " << v << " "
+    //      //          << qxz0var(1, k + 1 + dks, j + djs, i + dis, n) * dx
+    //      //          //<< " " << w << " " << qxy0var(0, k + dks, j + djs, i +
+    //      //          //dis, n) * dz
+    //      //          << std::endl;
+    //    });
   }
 
   void compute_edge_reconstructions_uniform(
       real5d densedgereconvar, real5d densvertedgereconvar,
-      real5d qxzedgereconvar, real5d qxzvertedgereconvar,
-      real5d coriolisxzedgereconvar, real5d coriolisxzvertedgereconvar,
-      const real5d dens0var, const real5d qxz0var, const real5d fxz0var) {
+      real5d qxzedgereconvar, real5d qxyedgereconvar,
+      real5d qxzvertedgereconvar, real5d coriolisxzedgereconvar,
+      real5d coriolisxzvertedgereconvar, const real5d dens0var,
+      const real5d qxz0var, const real5d qxy0var, const real5d fxz0var) {
 
     const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
@@ -529,18 +631,231 @@ public:
               qxzvertedgereconvar, qxz0var, pis, pjs, pks, i, j, k, n,
               primal_vert_wenoRecon, primal_vert_to_gll, primal_vert_wenoIdl,
               primal_vert_wenoSigma);
-          compute_straight_xz_edge_recon<1, coriolis_reconstruction_type,
-                                         coriolis_reconstruction_order>(
-              coriolisxzedgereconvar, fxz0var, pis, pjs, pks, i, j, k, n,
-              coriolis_wenoRecon, coriolis_to_gll, coriolis_wenoIdl,
-              coriolis_wenoSigma);
-          compute_straight_xz_vert_edge_recon_uniform<
-              1, coriolis_vert_reconstruction_type,
-              coriolis_vert_reconstruction_order>(
-              coriolisxzvertedgereconvar, fxz0var, pis, pjs, pks, i, j, k, n,
-              coriolis_vert_wenoRecon, coriolis_vert_to_gll,
-              coriolis_vert_wenoIdl, coriolis_vert_wenoSigma);
+          // compute_straight_xz_edge_recon<1, coriolis_reconstruction_type,
+          //                                coriolis_reconstruction_order>(
+          //     coriolisxzedgereconvar, fxz0var, pis, pjs, pks, i, j, k, n,
+          //     coriolis_wenoRecon, coriolis_to_gll, coriolis_wenoIdl,
+          //     coriolis_wenoSigma);
+          // compute_straight_xz_vert_edge_recon_uniform<
+          //     1, coriolis_vert_reconstruction_type,
+          //     coriolis_vert_reconstruction_order>(
+          //     coriolisxzvertedgereconvar, fxz0var, pis, pjs, pks, i, j, k, n,
+          //     coriolis_vert_wenoRecon, coriolis_vert_to_gll,
+          //     coriolis_vert_wenoIdl, coriolis_vert_wenoSigma);
         });
+
+    parallel_for(
+        "ComputeQXYEdgeRecon",
+        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          compute_straight_edge_recon<1, reconstruction_type,
+                                      reconstruction_order>(
+              qxyedgereconvar, qxy0var, pis, pjs, pks, i, j, k, n,
+              primal_wenoRecon, primal_to_gll, primal_wenoIdl,
+              primal_wenoSigma);
+        });
+
+    //parallel_for(
+    //    "TEST 2",
+    //    SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+    //                    primal_topology.n_cells_x, primal_topology.nens),
+    //    YAKL_LAMBDA(int k, int j, int i, int n) {
+    //      real dx = primal_geometry.dx;
+    //      real dy = primal_geometry.dy;
+    //      real dz = dual_geometry.get_dz(k + pks, n);
+
+    //      CoordsXYZ coord;
+    //      primal_geometry.get_ll_corner(coord, k, j, i, n);
+
+    //      real um, up, vm, vp;
+    //      {
+    //        // center
+    //        real x = coord.x + dx / 2;
+    //        real y = coord.y + dy;
+    //        real z = coord.z + dz / 2;
+
+    //        // xm
+    //        x = coord.x;
+    //        // zm
+    //        // z = coord.z;
+
+    //        real sx = sin(2 * M_PI * x);
+    //        real sy = sin(2 * M_PI * y);
+    //        real sz = sin(2 * M_PI * z);
+
+    //        real cx = cos(2 * M_PI * x);
+    //        real cy = cos(2 * M_PI * y);
+    //        real cz = cos(2 * M_PI * z);
+
+    //        um = 2 * M_PI * (sx * sy * cz - cx * cy * cz);
+    //      }
+
+    //      {
+    //        // center
+    //        real x = coord.x + dx / 2;
+    //        real y = coord.y + dy;
+    //        real z = coord.z + dz / 2;
+
+    //        // xp
+    //        x = coord.x + dx;
+
+    //        // zp
+    //        // z = coord.z + dz;
+
+    //        real sx = sin(2 * M_PI * x);
+    //        real sy = sin(2 * M_PI * y);
+    //        real sz = sin(2 * M_PI * z);
+
+    //        real cx = cos(2 * M_PI * x);
+    //        real cy = cos(2 * M_PI * y);
+    //        real cz = cos(2 * M_PI * z);
+
+    //        up = 2 * M_PI * (sx * sy * cz - cx * cy * cz);
+    //      }
+
+    //      {
+    //        real y = coord.y + dy / 2;
+    //        real x = coord.x + dx;
+    //        real z = coord.z + dz / 2;
+
+    //        // ym
+    //        y = coord.y;
+
+    //        // zm
+    //        //z = coord.z;
+
+    //        real sx = sin(2 * M_PI * x);
+    //        real sy = sin(2 * M_PI * y);
+    //        real sz = sin(2 * M_PI * z);
+
+    //        real cx = cos(2 * M_PI * x);
+    //        real cy = cos(2 * M_PI * y);
+    //        real cz = cos(2 * M_PI * z);
+
+    //        vm = 2 * M_PI * (-sx * sy * cz - sx * cy * cz);
+    //      }
+
+    //      {
+    //        // center
+    //        real y = coord.y + dy / 2;
+    //        real x = coord.x + dx;
+    //        real z = coord.z + dz / 2;
+
+    //        // yp
+    //        y = coord.y + dy;
+
+    //        // zp
+    //        //z = coord.z + dz;
+
+    //        real sx = sin(2 * M_PI * x);
+    //        real sy = sin(2 * M_PI * y);
+    //        real sz = sin(2 * M_PI * z);
+
+    //        real cx = cos(2 * M_PI * x);
+    //        real cy = cos(2 * M_PI * y);
+    //        real cz = cos(2 * M_PI * z);
+
+    //        vp = 2 * M_PI * (-sx * sy * cz - sx * cy * cz);
+    //      }
+
+    //      real wmx, wpx, wmy, wpy;
+    //      {
+    //        // center
+    //        real y = coord.y + dy / 2;
+    //        real x = coord.x + dx / 2;
+    //        real z = coord.z;
+
+    //        // wmx
+    //        x = coord.x;
+
+    //        real sx = sin(2 * M_PI * x);
+    //        real sy = sin(2 * M_PI * y);
+    //        real sz = sin(2 * M_PI * z);
+
+    //        real cx = cos(2 * M_PI * x);
+    //        real cy = cos(2 * M_PI * y);
+    //        real cz = cos(2 * M_PI * z);
+
+    //        wmx = 2 * M_PI * (cx * cy * sz - sx * cy * sz);
+    //      }
+
+    //      {
+    //        // center
+    //        real y = coord.y + dy / 2;
+    //        real x = coord.x + dx / 2;
+    //        real z = coord.z;
+
+    //        // wpx
+    //        x = coord.x + dx;
+
+    //        real sx = sin(2 * M_PI * x);
+    //        real sy = sin(2 * M_PI * y);
+    //        real sz = sin(2 * M_PI * z);
+
+    //        real cx = cos(2 * M_PI * x);
+    //        real cy = cos(2 * M_PI * y);
+    //        real cz = cos(2 * M_PI * z);
+
+    //        wpx = 2 * M_PI * (cx * cy * sz - sx * cy * sz);
+    //      }
+
+    //      {
+    //        // center
+    //        real y = coord.y + dy / 2;
+    //        real x = coord.x + dx / 2;
+    //        real z = coord.z;
+
+    //        // wmy
+    //        y = coord.y;
+
+    //        real sx = sin(2 * M_PI * x);
+    //        real sy = sin(2 * M_PI * y);
+    //        real sz = sin(2 * M_PI * z);
+
+    //        real cx = cos(2 * M_PI * x);
+    //        real cy = cos(2 * M_PI * y);
+    //        real cz = cos(2 * M_PI * z);
+
+    //        wmy = 2 * M_PI * (cx * cy * sz - sx * cy * sz);
+    //      }
+
+    //      {
+    //        // center
+    //        real y = coord.y + dy / 2;
+    //        real x = coord.x + dx / 2;
+    //        real z = coord.z;
+
+    //        // wpy
+    //        y = coord.y + dy;
+
+    //        real sx = sin(2 * M_PI * x);
+    //        real sy = sin(2 * M_PI * y);
+    //        real sz = sin(2 * M_PI * z);
+
+    //        real cx = cos(2 * M_PI * x);
+    //        real cy = cos(2 * M_PI * y);
+    //        real cz = cos(2 * M_PI * z);
+
+    //        wpy = 2 * M_PI * (cx * cy * sz - sx * cy * sz);
+    //      }
+
+    //       //std::cout << "TEST QEDGE" << i << " " << j << " " << k
+    //       //          << " " <<  um << " " << qxzedgereconvar(0 + 0 * ndims, k  + pks, j + pjs, i + pis, n) * dx
+    //       //          << " " <<  up << " " << qxzedgereconvar(0 + 1 * ndims, k + pks, j + pjs, i + pis, n) * dx
+    //       //          << " " <<  vm << " " << qxzedgereconvar(1 + 0 * ndims, k + pks, j + pjs, i + pis, n) * dx
+    //       //          << " " <<  vp << " " << qxzedgereconvar(1 + 1 * ndims, k + pks, j + pjs, i + pis, n) * dx
+    //       //          //<< " " <<  um << " " << qxzvertedgereconvar(0 + 0 * ndims, k + pks, j + pjs, i + pis, n) * dx
+    //       //          //<< " " <<  up << " " << qxzvertedgereconvar(0 + 1 * ndims, k + pks, j + pjs, i + pis, n) * dx
+    //       //          //<< " " <<  vm << " " << qxzvertedgereconvar(1 + 0 * ndims, k + pks, j + pjs, i + pis, n) * dx
+    //       //          //<< " " <<  vp << " " << qxzvertedgereconvar(1 + 1 * ndims, k + pks, j + pjs, i + pis, n) * dx
+    //       //          //<< " " <<  wmx << " " << qxyedgereconvar(1 + 0 * ndims, k + pks, j + pjs, i + pis, n) * dz
+    //       //          //<< " " <<  wpx << " " << qxyedgereconvar(1 + 1 * ndims, k + pks, j + pjs, i + pis, n) * dz
+    //       //          //<< " " <<  wmy << " " << qxyedgereconvar(0 + 0 * ndims, k + pks, j + pjs, i + pis, n) * dz
+    //       //          //<< " " <<  wpy << " " << qxyedgereconvar(0 + 1 * ndims, k + pks, j + pjs, i + pis, n) * dz
+    //       //          << std::endl;
+    //       //    //qxzedgereconvar(0 + 1 * ndims, k + pks, j + pjs, i + pis, n)
+    //    });
   }
 
   void compute_edge_reconstructions_variable(
@@ -804,10 +1119,11 @@ public:
 
   void compute_recons(
       real5d densreconvar, real5d densvertreconvar, real5d qxzreconvar,
-      real5d qxzvertreconvar, real5d coriolisxzreconvar,
+      real5d qxzvertreconvar, real5d qxyreconvar, real5d coriolisxzreconvar,
       real5d coriolisxzvertreconvar, const real5d densedgereconvar,
       const real5d densvertedgereconvar, const real5d qxzedgereconvar,
-      const real5d qxzvertedgereconvar, const real5d coriolisxzedgereconvar,
+      const real5d qxzvertedgereconvar, const real5d qxyedgereconvar,
+      const real5d coriolisxzedgereconvar,
       const real5d coriolisxzvertedgereconvar, const real5d densvar,
       const real5d Vvar, const real5d Wvar) {
 
@@ -922,9 +1238,9 @@ public:
           compute_straight_xz_recon<1, reconstruction_type>(
               qxzreconvar, qxzedgereconvar, primal_geometry, dual_geometry,
               Vvar, pis, pjs, pks, i, j, k, n);
-          compute_straight_xz_recon<1, coriolis_reconstruction_type>(
-              coriolisxzreconvar, coriolisxzedgereconvar, primal_geometry,
-              dual_geometry, Vvar, pis, pjs, pks, i, j, k, n);
+          //compute_straight_xz_recon<1, coriolis_reconstruction_type>(
+          //    coriolisxzreconvar, coriolisxzedgereconvar, primal_geometry,
+          //    dual_geometry, Vvar, pis, pjs, pks, i, j, k, n);
         });
     parallel_for(
         "ComputeQVERTRECON",
@@ -934,10 +1250,119 @@ public:
           compute_straight_xz_vert_recon<1, vert_reconstruction_type>(
               qxzvertreconvar, qxzvertedgereconvar, primal_geometry,
               dual_geometry, Wvar, pis, pjs, pks, i, j, k, n);
-          compute_straight_xz_vert_recon<1, coriolis_vert_reconstruction_type>(
-              coriolisxzvertreconvar, coriolisxzvertedgereconvar,
-              primal_geometry, dual_geometry, Wvar, pis, pjs, pks, i, j, k, n);
+          //compute_straight_xz_vert_recon<1, coriolis_vert_reconstruction_type>(
+          //    coriolisxzvertreconvar, coriolisxzvertedgereconvar,
+          //    primal_geometry, dual_geometry, Wvar, pis, pjs, pks, i, j, k, n);
         });
+
+    if (ndims > 1) {
+      parallel_for(
+          "ComputeQRECON",
+          SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                          primal_topology.n_cells_x, primal_topology.nens),
+          YAKL_LAMBDA(int k, int j, int i, int n) {
+            compute_straight_recon<1, reconstruction_type>(
+                qxyreconvar, qxyedgereconvar, Vvar, pis, pjs, pks, i, j, k, n);
+          });
+    }
+
+    //parallel_for(
+    //    "TEST QRECON",
+    //    SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+    //                    primal_topology.n_cells_x, primal_topology.nens),
+    //    YAKL_LAMBDA(int k, int j, int i, int n) {
+    //      real dx = primal_geometry.dx;
+    //      real dy = primal_geometry.dy;
+    //      real dz = primal_geometry.get_dz(k + pks, n);
+
+    //      CoordsXYZ coord;
+    //      primal_geometry.get_ll_corner(coord, k, j, i, n);
+
+    //      real u, v;
+    //      {
+    //        real x = coord.x + dx;
+    //        real y = coord.y + dy;
+    //        real z = coord.z + dz / 2;
+
+    //        // vert
+    //        // real x = coord.x + dx / 2;
+    //        // real y = coord.y + dy;
+    //        // real z = coord.z;
+
+    //        real sx = sin(2 * M_PI * x);
+    //        real sy = sin(2 * M_PI * y);
+    //        real sz = sin(2 * M_PI * z);
+
+    //        real cx = cos(2 * M_PI * x);
+    //        real cy = cos(2 * M_PI * y);
+    //        real cz = cos(2 * M_PI * z);
+
+    //        u = 2 * M_PI * (sx * sy * cz - cx * cy * cz);
+    //      }
+
+    //      {
+    //        real x = coord.x + dx;
+    //        real y = coord.y + dy;
+    //        real z = coord.z + dz / 2;
+
+    //        // vert
+    //        // real x = coord.x + dx;
+    //        // real y = coord.y + dy / 2;
+    //        // real z = coord.z;
+
+    //        real sx = sin(2 * M_PI * x);
+    //        real sy = sin(2 * M_PI * y);
+    //        real sz = sin(2 * M_PI * z);
+
+    //        real cx = cos(2 * M_PI * x);
+    //        real cy = cos(2 * M_PI * y);
+    //        real cz = cos(2 * M_PI * z);
+
+    //        v = 2 * M_PI * (-sx * sy * cz - sx * cy * cz);
+    //      }
+
+    //      real wx, wy;
+    //      {
+    //        real x = coord.x + dx / 2;
+    //        real y = coord.y + dy;
+    //        real z = coord.z;
+
+    //        real sx = sin(2 * M_PI * x);
+    //        real sy = sin(2 * M_PI * y);
+    //        real sz = sin(2 * M_PI * z);
+
+    //        real cx = cos(2 * M_PI * x);
+    //        real cy = cos(2 * M_PI * y);
+    //        real cz = cos(2 * M_PI * z);
+
+    //        wx = 2 * M_PI * (cx * cy * sz - sx * cy * sz);
+    //      }
+
+    //      {
+    //        real x = coord.x + dx;
+    //        real y = coord.y + dy / 2;
+    //        real z = coord.z;
+
+    //        real sx = sin(2 * M_PI * x);
+    //        real sy = sin(2 * M_PI * y);
+    //        real sz = sin(2 * M_PI * z);
+
+    //        real cx = cos(2 * M_PI * x);
+    //        real cy = cos(2 * M_PI * y);
+    //        real cz = cos(2 * M_PI * z);
+
+    //        wy = 2 * M_PI * (cx * cy * sz - sx * cy * sz);
+    //      }
+
+    //       //std::cout << "TEST QRECON " << i << " " << j << " " << k
+    //       //          << " " <<  u << " " << qxzreconvar(0, k + pks, j + pjs, i + pis, n) * dx
+    //       //          << " " <<  v << " " << qxzreconvar(1, k + pks, j + pjs, i + pis, n) * dx
+    //       //          //<< " " <<  wx << " " << qxyreconvar(0, k + pks, j +
+    //       //          //pjs, i + pis, n) * dz
+    //       //          //<< " " <<  wy << " " << qxyreconvar(1, k + pks, j +
+    //       //          //pjs, i + pis, n) * dz
+    //       //          << std::endl;
+    //    });
   }
 
   void add_entropicvar_diffusion(real entropicvar_coeff, real5d denstendvar,
@@ -1051,159 +1476,164 @@ public:
                               const real5d FWvar,
                               FieldSet<nauxiliary> &auxiliary_vars) {
 
-    const auto &primal_topology = primal_geometry.topology;
-
-    int pis = primal_topology.is;
-    int pjs = primal_topology.js;
-    int pks = primal_topology.ks;
-
-    const auto &dual_topology = dual_geometry.topology;
-
-    int dis = dual_topology.is;
-    int djs = dual_topology.js;
-    int dks = dual_topology.ks;
-
-    YAKL_SCOPE(primal_geometry, this->primal_geometry);
-    YAKL_SCOPE(dual_geometry, this->dual_geometry);
-
-    // *d*d
-
-    parallel_for(
-        "Velocity diffusion 1",
-        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_D1_ext<1>(qxzedgereconvar, Vvar, Wvar, pis, pjs, pks, i, j, k,
-                            n);
-        });
-    auxiliary_vars.exchange({QXZEDGERECONVAR});
-
-    parallel_for(
-        "Velocity diffusion 2",
-        SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_Hn1<1, diffusion_diff_ord, vert_diffusion_diff_ord>(
-              qxz0var, qxzedgereconvar, primal_geometry, dual_geometry, dis,
-              djs, dks, i, j, k + 1, n);
-        });
-    auxiliary_vars.exchange({QXZ0VAR});
-    auxiliary_vars.fields_arr[QXZ0VAR].set_bnd(0.0);
-
-    parallel_for(
-        "Velocity diffusion 3",
-        SimpleBounds<4>(dual_topology.ni, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_D0bar_ext<1>(FWvar, qxz0var, dis, djs, dks, i, j, k, n);
-        });
-    auxiliary_vars.exchange({FWVAR});
-
-    parallel_for(
-        "Velocity diffusion 4",
-        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_D0bar_vert<1>(Fvar, qxz0var, dis, djs, dks, i, j, k, n);
-        });
-    auxiliary_vars.exchange({FVAR});
-
-    parallel_for(
-        "Velocity diffusion 5",
-        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          SArray<real, 1, ndims> vdiff;
-          compute_Hnm11bar<1, diffusion_diff_ord>(vdiff, Fvar, primal_geometry,
-                                                  dual_geometry, pis, pjs, pks,
-                                                  i, j, k, n);
-          for (int d = 0; d < ndims; ++d) {
-            Vtendvar(d, k + pks, j + pjs, i + pis, n) -=
-                velocity_coeff * vdiff(d);
-          }
-        });
-
-    parallel_for(
-        "Velocity diffusion 6",
-        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          SArray<real, 1, ndims> wdiff;
-          compute_Hn0bar<1, vert_diffusion_diff_ord>(
-              wdiff, FWvar, primal_geometry, dual_geometry, pis, pjs, pks, i, j,
-              k, n);
-          Wtendvar(0, k + pks, j + pjs, i + pis, n) -=
-              velocity_coeff * wdiff(0);
-        });
-
-    // d*d*
-
-    parallel_for(
-        "Velocity diffusion 7",
-        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_H10<1, diffusion_diff_ord>(Fvar, Vvar, primal_geometry,
-                                             dual_geometry, dis, djs, dks, i, j,
-                                             k, n);
-        });
-    auxiliary_vars.exchange({FVAR});
-
-    parallel_for(
-        "Velocity diffusion 8",
-        SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_H01<1, vert_diffusion_diff_ord>(FWvar, Wvar, primal_geometry,
-                                                  dual_geometry, dis, djs, dks,
-                                                  i, j, k + 1, n);
-        });
-    auxiliary_vars.exchange({FWVAR});
-    auxiliary_vars.fields_arr[FWVAR].set_bnd(0.0);
-
-    parallel_for(
-        "Velocity diffusion 9",
-        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_Dnm1bar<1>(Kvar, Fvar, dis, djs, dks, i, j, k, n);
-          compute_Dnm1bar_vert<1, ADD_MODE::ADD>(Kvar, FWvar, dis, djs, dks, i,
-                                                 j, k, n);
-        });
-    auxiliary_vars.exchange({KVAR});
-
-    parallel_for(
-        "Velocity diffusion 10",
-        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_Hn1bar<1, diffusion_diff_ord, vert_diffusion_diff_ord>(
-              dens0var, Kvar, primal_geometry, dual_geometry, pis, pjs, pks, i,
-              j, k, n);
-        });
-    auxiliary_vars.exchange({DENS0VAR});
-
-    parallel_for(
-        "Velocity diffusion 11",
-        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          SArray<real, 1, ndims> vdiff;
-          compute_D0<1>(vdiff, dens0var, pis, pjs, pks, i, j, k, n);
-          for (int d = 0; d < ndims; ++d) {
-            Vtendvar(d, pks + k, pjs + j, pis + i, n) -=
-                velocity_coeff * vdiff(d);
-          }
-        });
-
-    parallel_for(
-        "Velocity diffusion 12",
-        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          real wdiff = compute_D0_vert<1>(dens0var, pis, pjs, pks, i, j, k, n);
-          Wtendvar(0, pks + k, pjs + j, pis + i, n) -= velocity_coeff * wdiff;
-        });
+    //    const auto &primal_topology = primal_geometry.topology;
+    //
+    //    int pis = primal_topology.is;
+    //    int pjs = primal_topology.js;
+    //    int pks = primal_topology.ks;
+    //
+    //    const auto &dual_topology = dual_geometry.topology;
+    //
+    //    int dis = dual_topology.is;
+    //    int djs = dual_topology.js;
+    //    int dks = dual_topology.ks;
+    //
+    //    YAKL_SCOPE(primal_geometry, this->primal_geometry);
+    //    YAKL_SCOPE(dual_geometry, this->dual_geometry);
+    //
+    //    // *d*d
+    //
+    //    parallel_for(
+    //        "Velocity diffusion 1",
+    //        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+    //                        primal_topology.n_cells_x, primal_topology.nens),
+    //        YAKL_LAMBDA(int k, int j, int i, int n) {
+    //          compute_D1_ext<1>(qxzedgereconvar, Vvar, Wvar, pis, pjs, pks, i,
+    //          j, k,
+    //                            n);
+    //        });
+    //    auxiliary_vars.exchange({QXZEDGERECONVAR});
+    //
+    //    parallel_for(
+    //        "Velocity diffusion 2",
+    //        SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
+    //                        dual_topology.n_cells_x, dual_topology.nens),
+    //        YAKL_LAMBDA(int k, int j, int i, int n) {
+    //          compute_Hn1<1, diffusion_diff_ord, vert_diffusion_diff_ord>(
+    //              qxz0var, qxzedgereconvar, primal_geometry, dual_geometry,
+    //              dis, djs, dks, i, j, k + 1, n);
+    //        });
+    //    auxiliary_vars.exchange({QXZ0VAR});
+    //    auxiliary_vars.fields_arr[QXZ0VAR].set_bnd(0.0);
+    //
+    //    parallel_for(
+    //        "Velocity diffusion 3",
+    //        SimpleBounds<4>(dual_topology.ni, dual_topology.n_cells_y,
+    //                        dual_topology.n_cells_x, dual_topology.nens),
+    //        YAKL_LAMBDA(int k, int j, int i, int n) {
+    //          compute_D0bar_ext<1>(FWvar, qxz0var, dis, djs, dks, i, j, k, n);
+    //        });
+    //    auxiliary_vars.exchange({FWVAR});
+    //
+    //    parallel_for(
+    //        "Velocity diffusion 4",
+    //        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+    //                        dual_topology.n_cells_x, dual_topology.nens),
+    //        YAKL_LAMBDA(int k, int j, int i, int n) {
+    //          compute_D0bar_vert<1>(Fvar, qxz0var, dis, djs, dks, i, j, k, n);
+    //        });
+    //    auxiliary_vars.exchange({FVAR});
+    //
+    //    parallel_for(
+    //        "Velocity diffusion 5",
+    //        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+    //                        primal_topology.n_cells_x, primal_topology.nens),
+    //        YAKL_LAMBDA(int k, int j, int i, int n) {
+    //          SArray<real, 1, ndims> vdiff;
+    //          compute_Hnm11bar<1, diffusion_diff_ord>(vdiff, Fvar,
+    //          primal_geometry,
+    //                                                  dual_geometry, pis, pjs,
+    //                                                  pks, i, j, k, n);
+    //          for (int d = 0; d < ndims; ++d) {
+    //            Vtendvar(d, k + pks, j + pjs, i + pis, n) -=
+    //                velocity_coeff * vdiff(d);
+    //          }
+    //        });
+    //
+    //    parallel_for(
+    //        "Velocity diffusion 6",
+    //        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+    //                        primal_topology.n_cells_x, primal_topology.nens),
+    //        YAKL_LAMBDA(int k, int j, int i, int n) {
+    //          SArray<real, 1, ndims> wdiff;
+    //          compute_Hn0bar<1, vert_diffusion_diff_ord>(
+    //              wdiff, FWvar, primal_geometry, dual_geometry, pis, pjs, pks,
+    //              i, j, k, n);
+    //          Wtendvar(0, k + pks, j + pjs, i + pis, n) -=
+    //              velocity_coeff * wdiff(0);
+    //        });
+    //
+    //    // d*d*
+    //
+    //    parallel_for(
+    //        "Velocity diffusion 7",
+    //        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+    //                        dual_topology.n_cells_x, dual_topology.nens),
+    //        YAKL_LAMBDA(int k, int j, int i, int n) {
+    //          compute_H10<1, diffusion_diff_ord>(Fvar, Vvar, primal_geometry,
+    //                                             dual_geometry, dis, djs, dks,
+    //                                             i, j, k, n);
+    //        });
+    //    auxiliary_vars.exchange({FVAR});
+    //
+    //    parallel_for(
+    //        "Velocity diffusion 8",
+    //        SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
+    //                        dual_topology.n_cells_x, dual_topology.nens),
+    //        YAKL_LAMBDA(int k, int j, int i, int n) {
+    //          compute_H01<1, vert_diffusion_diff_ord>(FWvar, Wvar,
+    //          primal_geometry,
+    //                                                  dual_geometry, dis, djs,
+    //                                                  dks, i, j, k + 1, n);
+    //        });
+    //    auxiliary_vars.exchange({FWVAR});
+    //    auxiliary_vars.fields_arr[FWVAR].set_bnd(0.0);
+    //
+    //    parallel_for(
+    //        "Velocity diffusion 9",
+    //        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+    //                        dual_topology.n_cells_x, dual_topology.nens),
+    //        YAKL_LAMBDA(int k, int j, int i, int n) {
+    //          compute_Dnm1bar<1>(Kvar, Fvar, dis, djs, dks, i, j, k, n);
+    //          compute_Dnm1bar_vert<1, ADD_MODE::ADD>(Kvar, FWvar, dis, djs,
+    //          dks, i,
+    //                                                 j, k, n);
+    //        });
+    //    auxiliary_vars.exchange({KVAR});
+    //
+    //    parallel_for(
+    //        "Velocity diffusion 10",
+    //        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+    //                        primal_topology.n_cells_x, primal_topology.nens),
+    //        YAKL_LAMBDA(int k, int j, int i, int n) {
+    //          compute_Hn1bar<1, diffusion_diff_ord, vert_diffusion_diff_ord>(
+    //              dens0var, Kvar, primal_geometry, dual_geometry, pis, pjs,
+    //              pks, i, j, k, n);
+    //        });
+    //    auxiliary_vars.exchange({DENS0VAR});
+    //
+    //    parallel_for(
+    //        "Velocity diffusion 11",
+    //        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+    //                        primal_topology.n_cells_x, primal_topology.nens),
+    //        YAKL_LAMBDA(int k, int j, int i, int n) {
+    //          SArray<real, 1, ndims> vdiff;
+    //          compute_D0<1>(vdiff, dens0var, pis, pjs, pks, i, j, k, n);
+    //          for (int d = 0; d < ndims; ++d) {
+    //            Vtendvar(d, pks + k, pjs + j, pis + i, n) -=
+    //                velocity_coeff * vdiff(d);
+    //          }
+    //        });
+    //
+    //    parallel_for(
+    //        "Velocity diffusion 12",
+    //        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+    //                        primal_topology.n_cells_x, primal_topology.nens),
+    //        YAKL_LAMBDA(int k, int j, int i, int n) {
+    //          real wdiff = compute_D0_vert<1>(dens0var, pis, pjs, pks, i, j,
+    //          k, n); Wtendvar(0, pks + k, pjs + j, pis + i, n) -=
+    //          velocity_coeff * wdiff;
+    //        });
   }
 
   template <ADD_MODE addmode = ADD_MODE::REPLACE>
@@ -1211,7 +1641,7 @@ public:
   compute_tendencies(real5d denstendvar, real5d Vtendvar, real5d Wtendvar,
                      const real5d densreconvar, const real5d densvertreconvar,
                      const real5d qxzreconvar, const real5d qxzvertreconvar,
-                     const real5d coriolisxzreconvar,
+                     const real5d qxyreconvar, const real5d coriolisxzreconvar,
                      const real5d coriolisxzvertreconvar, const real5d Bvar,
                      const real5d Fvar, const real5d FWvar) {
 
@@ -1251,9 +1681,9 @@ public:
             compute_Qxz_w_nonEC<1, ADD_MODE::ADD>(
                 Wtendvar, qxzreconvar, Fvar, pis, pjs, pks, i, j, k + 1, n);
           }
-          compute_Qxz_w_EC<1, ADD_MODE::ADD>(Wtendvar, coriolisxzreconvar,
-                                             coriolisxzvertreconvar, Fvar, pis,
-                                             pjs, pks, i, j, k + 1, n);
+          //compute_Qxz_w_EC<1, ADD_MODE::ADD>(Wtendvar, coriolisxzreconvar,
+          //                                   coriolisxzvertreconvar, Fvar, pis,
+          //                                   pjs, pks, i, j, k + 1, n);
         });
 
     parallel_for(
@@ -1283,19 +1713,19 @@ public:
                 Wtendvar, qxzreconvar, qxzvertreconvar, Fvar, pis, pjs, pks, i,
                 j, primal_topology.nl - 1, n);
           }
-          if (qf_choice == QF_MODE::NOEC) {
-            compute_Qxz_w_nonEC_bottom<1, ADD_MODE::ADD>(
-                Wtendvar, qxzreconvar, Fvar, pis, pjs, pks, i, j, 0, n);
-            compute_Qxz_w_nonEC_top<1, ADD_MODE::ADD>(
-                Wtendvar, qxzreconvar, Fvar, pis, pjs, pks, i, j,
-                primal_topology.nl - 1, n);
-          }
-          compute_Qxz_w_EC_bottom<1, ADD_MODE::ADD>(
-              Wtendvar, coriolisxzreconvar, coriolisxzvertreconvar, Fvar, pis,
-              pjs, pks, i, j, 0, n);
-          compute_Qxz_w_EC_top<1, ADD_MODE::ADD>(
-              Wtendvar, coriolisxzreconvar, coriolisxzvertreconvar, Fvar, pis,
-              pjs, pks, i, j, primal_topology.nl - 1, n);
+          //if (qf_choice == QF_MODE::NOEC) {
+          //  compute_Qxz_w_nonEC_bottom<1, ADD_MODE::ADD>(
+          //      Wtendvar, qxzreconvar, Fvar, pis, pjs, pks, i, j, 0, n);
+          //  compute_Qxz_w_nonEC_top<1, ADD_MODE::ADD>(
+          //      Wtendvar, qxzreconvar, Fvar, pis, pjs, pks, i, j,
+          //      primal_topology.nl - 1, n);
+          //}
+          //compute_Qxz_w_EC_bottom<1, ADD_MODE::ADD>(
+          //    Wtendvar, coriolisxzreconvar, coriolisxzvertreconvar, Fvar, pis,
+          //    pjs, pks, i, j, 0, n);
+          //compute_Qxz_w_EC_top<1, ADD_MODE::ADD>(
+          //    Wtendvar, coriolisxzreconvar, coriolisxzvertreconvar, Fvar, pis,
+          //    pjs, pks, i, j, primal_topology.nl - 1, n);
         });
 
     parallel_for(
@@ -1303,55 +1733,91 @@ public:
         SimpleBounds<4>(primal_topology.ni - 2, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wD0<VS::ndensity_active, addmode>(Vtendvar, densreconvar,
-                                                    active_dens_ids, Bvar, pis,
-                                                    pjs, pks, i, j, k + 1, n);
+           compute_wD0<VS::ndensity_active, addmode>(Vtendvar, densreconvar,
+                                                     active_dens_ids, Bvar,
+                                                     pis, pjs, pks, i, j, k +
+                                                     1, n);
           if (qf_choice == QF_MODE::EC) {
-            compute_Qxz_u_EC<1, ADD_MODE::ADD>(Vtendvar, qxzreconvar,
-                                               qxzvertreconvar, FWvar, pis, pjs,
-                                               pks, i, j, k + 1, n);
+            compute_Qxz_u_EC<0, 1, ADD_MODE::ADD>(Vtendvar, qxzreconvar,
+                                                  qxzvertreconvar, FWvar, pis,
+                                                  pjs, pks, i, j, k + 1, n);
+            if (ndims > 1) {
+               compute_Q_EC<1, ADD_MODE::ADD>(Vtendvar, qxyreconvar, Fvar,
+               pis, pjs,
+                                              pks, i, j, k + 1, n);
+              compute_Qxz_u_EC<1, 1, ADD_MODE::ADD>(Vtendvar, qxzreconvar,
+                                                    qxzvertreconvar, FWvar, pis,
+                                                    pjs, pks, i, j, k + 1, n);
+            }
           }
           if (qf_choice == QF_MODE::NOEC) {
             compute_Qxz_u_nonEC<1, ADD_MODE::ADD>(Vtendvar, qxzvertreconvar,
                                                   FWvar, pis, pjs, pks, i, j,
                                                   k + 1, n);
+            if (ndims > 1) {
+              compute_Q_nonEC<1, ADD_MODE::ADD>(Vtendvar, qxyreconvar, Fvar,
+                                                pis, pjs, pks, i, j, k + 1, n);
+            }
           }
-          compute_Qxz_u_EC<1, ADD_MODE::ADD>(Vtendvar, coriolisxzreconvar,
-                                             coriolisxzvertreconvar, FWvar, pis,
-                                             pjs, pks, i, j, k + 1, n);
+          // compute_Qxz_u_EC<1, ADD_MODE::ADD>(Vtendvar, coriolisxzreconvar,
+          //                                    coriolisxzvertreconvar, FWvar,
+          //                                    pis, pjs, pks, i, j, k + 1, n);
         });
     parallel_for(
         "Compute Vtend Bnd",
         SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
                         primal_topology.nens),
         YAKL_LAMBDA(int j, int i, int n) {
-          compute_wD0<VS::ndensity_active, addmode>(Vtendvar, densreconvar,
-                                                    active_dens_ids, Bvar, pis,
-                                                    pjs, pks, i, j, 0, n);
-          compute_wD0<VS::ndensity_active, addmode>(
-              Vtendvar, densreconvar, active_dens_ids, Bvar, pis, pjs, pks, i,
-              j, primal_topology.ni - 1, n);
+           compute_wD0<VS::ndensity_active, addmode>(Vtendvar, densreconvar,
+                                                     active_dens_ids, Bvar,
+                                                     pis, pjs, pks, i, j, 0,
+                                                     n);
+           compute_wD0<VS::ndensity_active, addmode>(
+               Vtendvar, densreconvar, active_dens_ids, Bvar, pis, pjs, pks,
+               i, j, primal_topology.ni - 1, n);
           if (qf_choice == QF_MODE::EC) {
-            compute_Qxz_u_EC_bottom<1, ADD_MODE::ADD>(
+            compute_Qxz_u_EC_bottom<0, 1, ADD_MODE::ADD>(
                 Vtendvar, qxzreconvar, qxzvertreconvar, FWvar, pis, pjs, pks, i,
                 j, 0, n);
-            compute_Qxz_u_EC_top<1, ADD_MODE::ADD>(
+            compute_Qxz_u_EC_top<0, 1, ADD_MODE::ADD>(
                 Vtendvar, qxzreconvar, qxzvertreconvar, FWvar, pis, pjs, pks, i,
                 j, primal_topology.ni - 1, n);
+
+            if (ndims > 1) {
+              compute_Q_EC<1, ADD_MODE::ADD>(Vtendvar, qxyreconvar, Fvar, pis,
+                                             pjs, pks, i, j, 0, n);
+              compute_Q_EC<1, ADD_MODE::ADD>(Vtendvar, qxyreconvar, Fvar, pis,
+                                             pjs, pks, i, j,
+                                             primal_topology.ni - 1, n);
+              compute_Qxz_u_EC_bottom<1, 1, ADD_MODE::ADD>(
+                  Vtendvar, qxzreconvar, qxzvertreconvar, FWvar, pis, pjs, pks, i,
+                  j, 0, n);
+              compute_Qxz_u_EC_top<1, 1, ADD_MODE::ADD>(
+                  Vtendvar, qxzreconvar, qxzvertreconvar, FWvar, pis, pjs, pks, i,
+                  j, primal_topology.ni - 1, n);
+            }
           }
-          if (qf_choice == QF_MODE::NOEC) {
-            compute_Qxz_u_nonEC_bottom<1, ADD_MODE::ADD>(
-                Vtendvar, qxzvertreconvar, FWvar, pis, pjs, pks, i, j, 0, n);
-            compute_Qxz_u_nonEC_top<1, ADD_MODE::ADD>(
-                Vtendvar, qxzvertreconvar, FWvar, pis, pjs, pks, i, j,
-                primal_topology.ni - 1, n);
-          }
-          compute_Qxz_u_EC_bottom<1, ADD_MODE::ADD>(
-              Vtendvar, coriolisxzreconvar, coriolisxzvertreconvar, FWvar, pis,
-              pjs, pks, i, j, 0, n);
-          compute_Qxz_u_EC_top<1, ADD_MODE::ADD>(
-              Vtendvar, coriolisxzreconvar, coriolisxzvertreconvar, FWvar, pis,
-              pjs, pks, i, j, primal_topology.ni - 1, n);
+          //if (qf_choice == QF_MODE::NOEC) {
+          //  compute_Qxz_u_nonEC_bottom<1, ADD_MODE::ADD>(
+          //      Vtendvar, qxzvertreconvar, FWvar, pis, pjs, pks, i, j, 0, n);
+          //  compute_Qxz_u_nonEC_top<1, ADD_MODE::ADD>(
+          //      Vtendvar, qxzvertreconvar, FWvar, pis, pjs, pks, i, j,
+          //      primal_topology.ni - 1, n);
+
+          //  if (ndims > 1) {
+          //    compute_Q_nonEC<1, ADD_MODE::ADD>(Vtendvar, qxyreconvar, Fvar,
+          //                                      pis, pjs, pks, i, j, 0, n);
+          //    compute_Q_nonEC<1, ADD_MODE::ADD>(Vtendvar, qxyreconvar, Fvar,
+          //                                      pis, pjs, pks, i, j,
+          //                                      primal_topology.ni - 1, n);
+          //  }
+          //}
+          //compute_Qxz_u_EC_bottom<1, ADD_MODE::ADD>(
+          //    Vtendvar, coriolisxzreconvar, coriolisxzvertreconvar, FWvar, pis,
+          //    pjs, pks, i, j, 0, n);
+          //compute_Qxz_u_EC_top<1, ADD_MODE::ADD>(
+          //    Vtendvar, coriolisxzreconvar, coriolisxzvertreconvar, FWvar, pis,
+          //    pjs, pks, i, j, primal_topology.ni - 1, n);
         });
 
     parallel_for(
@@ -1364,6 +1830,142 @@ public:
           compute_wDnm1bar_vert<VS::ndensity_prognostic, ADD_MODE::ADD>(
               denstendvar, densvertreconvar, FWvar, dis, djs, dks, i, j, k, n);
         });
+
+    //parallel_for(
+    //    "TEST Vtend",
+    //    SimpleBounds<4>(primal_topology.ni - 2, primal_topology.n_cells_y,
+    //                    primal_topology.n_cells_x, primal_topology.nens),
+    //    YAKL_LAMBDA(int k, int j, int i, int n) {
+    //      CoordsXYZ coord;
+    //      primal_geometry.get_ll_corner(coord, k + 1, j, i, n);
+
+    //      real dx = primal_geometry.dx;
+    //      real dy = primal_geometry.dy;
+    //      real dz = primal_geometry.get_dz(k + 1 + pks, n);
+
+    //      real Vtend0_expected, Vtend1_expected;
+    //      {
+
+    //        real x = coord.x + dx / 2;
+    //        real y = coord.y + dy;
+    //        real z = coord.z;
+
+    //        real sx = sin(2 * M_PI * x);
+    //        real sy = sin(2 * M_PI * y);
+    //        real sz = sin(2 * M_PI * z);
+
+    //        real cx = cos(2 * M_PI * x);
+    //        real cy = cos(2 * M_PI * y);
+    //        real cz = cos(2 * M_PI * z);
+
+    //        real Fx = sx * sy * sz;
+    //        real Fy = sx * cy * sz;
+    //        real Fz = sx * cy * cz;
+
+    //        real qx = 2 * M_PI * (-sx * sy * cz - sx * cy * cz);
+    //        real qy = 2 * M_PI * (sx * sy * cz - cx * cy * cz);
+    //        real qz = 2 * M_PI * (cx * cy * sz - sx * cy * sz);
+
+    //        Vtend0_expected = (qy * Fz - qz * Fy) * dx;
+    //        //Vtend0_expected = (qy * Fz) * dx;
+    //      }
+
+    //      {
+
+    //        real x = coord.x + dx;
+    //        real y = coord.y + dy / 2;
+    //        real z = coord.z;
+
+    //        real sx = sin(2 * M_PI * x);
+    //        real sy = sin(2 * M_PI * y);
+    //        real sz = sin(2 * M_PI * z);
+
+    //        real cx = cos(2 * M_PI * x);
+    //        real cy = cos(2 * M_PI * y);
+    //        real cz = cos(2 * M_PI * z);
+
+    //        real Fx = sx * sy * sz;
+    //        real Fy = sx * cy * sz;
+    //        real Fz = sx * cy * cz;
+
+    //        real qx = 2 * M_PI * (-sx * sy * cz - sx * cy * cz);
+    //        real qy = 2 * M_PI * (sx * sy * cz - cx * cy * cz);
+    //        real qz = 2 * M_PI * (cx * cy * sz - sx * cy * sz);
+
+    //        Vtend1_expected = (qz * Fx - qx * Fz) * dy;
+    //        //Vtend1_expected = (-qx * Fz) * dy;
+    //      }
+
+    //       //std::cout << "TEST vtend " << i << " " << j << " " << k + 1
+    //       //  << " " << Vtendvar(0, k + 1 + pks, j + pjs, i + pis, n) << " " <<
+    //       //  Vtend0_expected
+    //       //  << " " << Vtendvar(1, k + 1 + pks, j + pjs, i + pis, n) << " " <<
+    //       //  Vtend1_expected
+    //       //  << std::endl;
+    //    });
+    //
+    //parallel_for(
+    //    "TEST Wtend",
+    //    SimpleBounds<4>(primal_topology.nl - 2, primal_topology.n_cells_y,
+    //                    primal_topology.n_cells_x, primal_topology.nens),
+    //    YAKL_LAMBDA(int k, int j, int i, int n) {
+    //      CoordsXYZ coord;
+    //      primal_geometry.get_ll_corner(coord, k + 1, j, i, n);
+
+    //      real dx = primal_geometry.dx;
+    //      real dy = primal_geometry.dy;
+    //      real dz = primal_geometry.get_dz(k + 1 + pks, n);
+
+    //      real Wtend0_expected;
+    //      {
+
+    //        real x = coord.x + dx;
+    //        real y = coord.y + dy;
+    //        real z = coord.z + dz / 2;
+
+    //        real sx = sin(2 * M_PI * x);
+    //        real sy = sin(2 * M_PI * y);
+    //        real sz = sin(2 * M_PI * z);
+
+    //        real cx = cos(2 * M_PI * x);
+    //        real cy = cos(2 * M_PI * y);
+    //        real cz = cos(2 * M_PI * z);
+
+    //        real Fx = sx * sy * sz;
+    //        real Fy = sx * cy * sz;
+    //        real Fz = sx * cy * cz;
+
+    //        real qx = 2 * M_PI * (-sx * sy * cz - sx * cy * cz);
+    //        real qy = 2 * M_PI * (sx * sy * cz - cx * cy * cz);
+    //        real qz = 2 * M_PI * (cx * cy * sz - sx * cy * sz);
+
+    //        Wtend0_expected = (qx * Fy - qy * Fx) * dz;
+    //      }
+
+    //       ///std::cout << "TEST Wtend " << i << " " << j << " " << k + 1
+    //       ///  << " " << Wtendvar(0, k + 1 + pks, j + pjs, i + pis, n) << " " <<
+    //       ///  Wtend0_expected
+    //       ///  << std::endl;
+    //    });
+
+    //exit(1);
+    std::cout << "TEST denstend:"
+              << " " << yakl::intrinsics::minval(denstendvar)
+              << " " << yakl::intrinsics::maxval(denstendvar)
+              << " " << yakl::intrinsics::sum(denstendvar)
+              << std::endl;
+    
+    std::cout << "TEST Vtend:"
+              << " " << yakl::intrinsics::minval(Vtendvar)
+              << " " << yakl::intrinsics::maxval(Vtendvar)
+              << " " << yakl::intrinsics::sum(Vtendvar)
+              << std::endl;
+    
+    std::cout << "TEST Wtend:"
+              << " " << yakl::intrinsics::minval(Wtendvar)
+              << " " << yakl::intrinsics::maxval(Wtendvar)
+              << " " << yakl::intrinsics::sum(Wtendvar)
+              << std::endl;
   }
 
   real compute_max_anelastic_constraint(FieldSet<nprognostic> &x,
@@ -1510,6 +2112,25 @@ public:
     YAKL_SCOPE(primal_geometry, this->primal_geometry);
     YAKL_SCOPE(dual_geometry, this->dual_geometry);
 
+
+    std::cout << "TEST dens:"
+              << " " << yakl::intrinsics::minval(densvar)
+              << " " << yakl::intrinsics::maxval(densvar)
+              << " " << yakl::intrinsics::sum(densvar)
+              << std::endl;
+    
+    std::cout << "TEST V:"
+              << " " << yakl::intrinsics::minval(Vvar)
+              << " " << yakl::intrinsics::maxval(Vvar)
+              << " " << yakl::intrinsics::sum(Vvar)
+              << std::endl;
+    
+    std::cout << "TEST W:"
+              << " " << yakl::intrinsics::minval(Wvar)
+              << " " << yakl::intrinsics::maxval(Wvar)
+              << " " << yakl::intrinsics::sum(Wvar)
+              << std::endl;
+
     parallel_for(
         "Functional derivatives",
         SimpleBounds<4>(dual_topology.ni, dual_topology.n_cells_y,
@@ -1648,13 +2269,15 @@ public:
 
     compute_q0f0(auxiliary_vars.fields_arr[QXZ0VAR].data,
                  auxiliary_vars.fields_arr[FXZ0VAR].data,
+                 auxiliary_vars.fields_arr[QXY0VAR].data,
+                 auxiliary_vars.fields_arr[FXZ0VAR].data,
                  x.fields_arr[VVAR].data, x.fields_arr[WVAR].data,
                  x.fields_arr[DENSVAR].data,
                  const_vars.fields_arr[CORIOLISXZVAR].data);
 
     auxiliary_vars.fields_arr[QXZ0VAR].set_bnd(0.0);
     auxiliary_vars.fields_arr[FXZ0VAR].set_bnd(0.0);
-    auxiliary_vars.exchange({QXZ0VAR, FXZ0VAR});
+    auxiliary_vars.exchange({QXZ0VAR, QXY0VAR, FXZ0VAR});
 
     // Compute densrecon, densvertrecon, qrecon and frecon
     if (dual_geometry.uniform_vertical) {
@@ -1662,11 +2285,13 @@ public:
           auxiliary_vars.fields_arr[DENSEDGERECONVAR].data,
           auxiliary_vars.fields_arr[DENSVERTEDGERECONVAR].data,
           auxiliary_vars.fields_arr[QXZEDGERECONVAR].data,
+          auxiliary_vars.fields_arr[QXYEDGERECONVAR].data,
           auxiliary_vars.fields_arr[QXZVERTEDGERECONVAR].data,
           auxiliary_vars.fields_arr[CORIOLISXZEDGERECONVAR].data,
           auxiliary_vars.fields_arr[CORIOLISXZVERTEDGERECONVAR].data,
           auxiliary_vars.fields_arr[DENS0VAR].data,
           auxiliary_vars.fields_arr[QXZ0VAR].data,
+          auxiliary_vars.fields_arr[QXY0VAR].data,
           auxiliary_vars.fields_arr[FXZ0VAR].data);
     } else {
       compute_edge_reconstructions_variable(
@@ -1683,26 +2308,28 @@ public:
 
     auxiliary_vars.exchange({DENSEDGERECONVAR, DENSVERTEDGERECONVAR,
                              QXZEDGERECONVAR, QXZVERTEDGERECONVAR,
-                             CORIOLISXZEDGERECONVAR,
+                             QXYEDGERECONVAR, CORIOLISXZEDGERECONVAR,
                              CORIOLISXZVERTEDGERECONVAR});
 
     compute_recons(auxiliary_vars.fields_arr[DENSRECONVAR].data,
                    auxiliary_vars.fields_arr[DENSVERTRECONVAR].data,
                    auxiliary_vars.fields_arr[QXZRECONVAR].data,
                    auxiliary_vars.fields_arr[QXZVERTRECONVAR].data,
+                   auxiliary_vars.fields_arr[QXYRECONVAR].data,
                    auxiliary_vars.fields_arr[CORIOLISXZRECONVAR].data,
                    auxiliary_vars.fields_arr[CORIOLISXZVERTRECONVAR].data,
                    auxiliary_vars.fields_arr[DENSEDGERECONVAR].data,
                    auxiliary_vars.fields_arr[DENSVERTEDGERECONVAR].data,
                    auxiliary_vars.fields_arr[QXZEDGERECONVAR].data,
                    auxiliary_vars.fields_arr[QXZVERTEDGERECONVAR].data,
+                   auxiliary_vars.fields_arr[QXYEDGERECONVAR].data,
                    auxiliary_vars.fields_arr[CORIOLISXZEDGERECONVAR].data,
                    auxiliary_vars.fields_arr[CORIOLISXZVERTEDGERECONVAR].data,
                    x.fields_arr[DENSVAR].data, x.fields_arr[VVAR].data,
                    x.fields_arr[WVAR].data);
 
     auxiliary_vars.exchange({DENSRECONVAR, DENSVERTRECONVAR, QXZRECONVAR,
-                             QXZVERTRECONVAR, CORIOLISXZRECONVAR,
+                             QXZVERTRECONVAR, QXYRECONVAR, CORIOLISXZRECONVAR,
                              CORIOLISXZVERTRECONVAR});
 
     // Compute fct
@@ -1777,6 +2404,7 @@ public:
           auxiliary_vars.fields_arr[DENSVERTRECONVAR].data,
           auxiliary_vars.fields_arr[QXZRECONVAR].data,
           auxiliary_vars.fields_arr[QXZVERTRECONVAR].data,
+          auxiliary_vars.fields_arr[QXYRECONVAR].data,
           auxiliary_vars.fields_arr[CORIOLISXZRECONVAR].data,
           auxiliary_vars.fields_arr[CORIOLISXZVERTRECONVAR].data,
           auxiliary_vars.fields_arr[BVAR].data,
@@ -1791,6 +2419,7 @@ public:
           auxiliary_vars.fields_arr[DENSVERTRECONVAR].data,
           auxiliary_vars.fields_arr[QXZRECONVAR].data,
           auxiliary_vars.fields_arr[QXZVERTRECONVAR].data,
+          auxiliary_vars.fields_arr[QXYRECONVAR].data,
           auxiliary_vars.fields_arr[CORIOLISXZRECONVAR].data,
           auxiliary_vars.fields_arr[CORIOLISXZVERTRECONVAR].data,
           auxiliary_vars.fields_arr[BVAR].data,
@@ -1858,6 +2487,7 @@ public:
     const auto &rho_di = refstate.rho_di.data;
 
     auto &fftp_x = pressure_solver.fftp_x;
+    auto &fftp_y = pressure_solver.fftp_y;
     const auto &tri_l = pressure_solver.tri_l;
     const auto &tri_u = pressure_solver.tri_u;
     const auto &tri_d = pressure_solver.tri_d;
@@ -1880,7 +2510,9 @@ public:
           SArray<real, 1, ndims> u;
           compute_H10<1, diff_ord>(u, Vtendvar, primal_geometry, dual_geometry,
                                    dis, djs, dks, i, j, k, n);
-          Fvar(0, k + dks, j + djs, i + dis, n) = u(0) * rho_pi(0, k + pks, n);
+          for (int d = 0; d < ndims; ++d) {
+            Fvar(d, k + dks, j + djs, i + dis, n) = u(d) * rho_pi(0, k + pks, n);
+          }
 
           if (k < dual_topology.ni - 2) {
             const real uw =
@@ -1912,6 +2544,9 @@ public:
         });
 
     fftp_x.forward_real(p_transform);
+    if (ndims > 1) {
+      fftp_y.forward_real(p_transform);
+    }
     parallel_for(
         "Anelastic tri_c",
         SimpleBounds<4>(primal_topology.ni, nyf, nxf, primal_topology.nens),
@@ -1944,6 +2579,9 @@ public:
         });
 
     fftp_x.inverse_real(p_transform);
+    if (ndims > 1) {
+      fftp_y.inverse_real(p_transform);
+    }
 
     parallel_for(
         "Anelastic - store p",
@@ -2939,18 +3577,19 @@ void initialize_variables(
                                    VS::ndensity_prognostic};
 
   // Q stuff
-  aux_desc_arr[QXZ0VAR] = {"QXZ0", dtopo, 0, 0, 1}; // Q0 = twisted (0,0)-form
+  aux_desc_arr[QXZ0VAR] = {"QXZ0", dtopo, ndims - 1, 0,
+                           1}; // QXZ0 = twisted (n-1,0)-form
   aux_desc_arr[QXZRECONVAR] = {
       "qxzrecon", ptopo, 0, 1,
-      1}; // qxzrecon lives on vert primal edges, associated with w
+      ndims * 1}; // qxzrecon lives on vert primal edges, associated with w
   aux_desc_arr[QXZEDGERECONVAR] = {
-      "qxzedgerecon", ptopo, ndims, 1,
+      "qxzedgerecon", ptopo, 1, 1,
       2 * 1}; // qxzedgerecon lives on primal cells, associated with Fw/w
   aux_desc_arr[QXZVERTRECONVAR] = {
       "qxzvertrecon", ptopo, 1, 0,
       1}; // qxzsvertrecon lives on horiz primal edges, associated with v
   aux_desc_arr[QXZVERTEDGERECONVAR] = {
-      "qxzvertedgerecon", ptopo, ndims, 1,
+      "qxzvertedgerecon", ptopo, 1, 1,
       2 * 1}; // qxzvertedgerecon lives on primal cells, associated with F/v
   aux_desc_arr[QXZFLUXVAR] = {
       "qxzflux", ptopo, 0, 1,
@@ -2974,6 +3613,14 @@ void initialize_variables(
       "coriolisxzvertedgerecon", ptopo, ndims, 1,
       2 * 1}; // coriolisxzvertedgerecon lives on primal cells,
               // associated with F/v
+
+  // 3D stuff
+  aux_desc_arr[QXY0VAR] = {"QXY0", dtopo, 0, ndims - 1,
+                           1}; // QXY0 = twisted (0,n-1)-form
+  aux_desc_arr[QXYEDGERECONVAR] = {
+      "qxyedgerecon", ptopo, 2, 0,
+      4}; // qxyedgerecon lives on primal xy faces in 3d
+  aux_desc_arr[QXYRECONVAR] = {"qxyrecon", ptopo, 1, 0, 2};
 
   // #if defined _AN || defined _MAN
   // aux_topo_arr[PVAR] = ptopo; //p = straight 0-form
@@ -3897,11 +4544,13 @@ public:
 // };
 
 template <bool acoustic_balance> struct RisingBubble {
-  static int constexpr max_ndims = 1;
+  static int constexpr max_ndims = 2;
   static real constexpr g = 9.80616_fp;
   static real constexpr Lx = 1000._fp;
+  static real constexpr Ly = 1000._fp;
   static real constexpr Lz = 1500._fp;
   static real constexpr xc = 0.5_fp * Lx;
+  static real constexpr yc = 0.5_fp * Ly;
   static real constexpr zc = 0.5_fp * Lz;
   static real constexpr theta0 = 300.0_fp;
   static real constexpr bzc = 350._fp;
@@ -3954,7 +4603,12 @@ template <bool acoustic_balance> struct RisingBubble {
                                         const ThermoPotential &thermo) {
     real p = isentropic_p(z, theta0, g, thermo);
     real T = isentropic_T(z, theta0, g, thermo);
-    real r = sqrt((x - xc) * (x - xc) + (z - bzc) * (z - bzc));
+    real r;
+    if (ndims == 1) {
+      r = sqrt((x - xc) * (x - xc) + (z - bzc) * (z - bzc));
+    } else {
+      r = sqrt((x - xc) * (x - xc) + (y - yc) * (y - yc) + (z - bzc) * (z - bzc));
+    }
     real dtheta = (r < rc) ? dss * 0.5_fp * (1._fp + cos(pi * r / rc)) : 0._fp;
     real dT = dtheta * pow(p / thermo.cst.pr, thermo.cst.kappa_d);
     return thermo.compute_entropic_var(p, T + dT, 1, 0, 0, 0);
@@ -4736,6 +5390,64 @@ template <bool add_perturbation> struct GravityWave {
   }
 };
 
+struct TestProblem {
+  static int constexpr max_ndims = 2;
+  static real constexpr g = 0;
+  static real constexpr Lx = 1;
+  static real constexpr Ly = 1;
+  static real constexpr Lz = 1;
+  static real constexpr xc = 0.5_fp * Lx;
+  static real constexpr yc = 0.5_fp * Ly;
+  static real constexpr zc = 0.5_fp * Lz;
+
+  static real YAKL_INLINE refnsq_f(real z, const ThermoPotential &thermo) {
+    return 0.01;
+  }
+
+  static real YAKL_INLINE refrho_f(real z, const ThermoPotential &thermo) {
+    return 1;
+  }
+
+  static real YAKL_INLINE refentropicdensity_f(real z,
+                                               const ThermoPotential &thermo) {
+    return 300;
+  }
+
+  static real YAKL_INLINE rho_f(real x, real y, real z,
+                                const ThermoPotential &thermo) {
+    return 1;
+  }
+
+  static real YAKL_INLINE entropicvar_f(real x, real y, real z,
+                                        const ThermoPotential &thermo) {
+    return 300;
+  }
+
+  static VecXYZ YAKL_INLINE v_f(real x, real y, real z) {
+    real sx = sin(2 * pi * x);
+    real sy = sin(2 * pi * y);
+    real sz = sin(2 * pi * z);
+
+    real cx = cos(2 * pi * x);
+    real cy = cos(2 * pi * y);
+    real cz = cos(2 * pi * z);
+
+    VecXYZ vvec;
+    vvec.u = sx * sy * sz;
+    vvec.v = sx * cy * sz;
+    vvec.w = sx * cy * cz;
+
+    // vvec.u = z * z / 2 * sx * sy;
+    // vvec.v = z * z / 2 * sx * sy;
+    // vvec.w = sx * sy * z;
+
+    return vvec;
+  }
+
+  static void
+  add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics) {}
+};
+
 void testcase_from_string(std::unique_ptr<TestCase> &testcase, std::string name,
                           bool acoustic_balance) {
   if (name == "gravitywave") {
@@ -4750,6 +5462,8 @@ void testcase_from_string(std::unique_ptr<TestCase> &testcase, std::string name,
     }
   } else if (name == "densitycurrent") {
     testcase = std::make_unique<EulerTestCase<DensityCurrent>>();
+  } else if (name == "testproblem") {
+    testcase = std::make_unique<EulerTestCase<TestProblem>>();
   } else if (name == "moistrisingbubble") {
     testcase = std::make_unique<MoistEulerTestCase<MoistRisingBubble>>();
   } else if (name == "largerisingbubble") {
