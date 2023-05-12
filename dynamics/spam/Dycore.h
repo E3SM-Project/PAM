@@ -187,8 +187,8 @@ public:
 
     // TODO: add logic here to only include this for standlone configurations
     // // convert dynamics state to Coupler state
-    // tendencies.convert_dynamics_to_coupler_state(coupler, prognostic_vars,
-    //                                              constant_vars);
+    if (testcase->set_coupler_state)
+     { tendencies.convert_dynamics_to_coupler_state(coupler, prognostic_vars, constant_vars); }
 
     // Output the initial model state
 #ifndef _NOIO

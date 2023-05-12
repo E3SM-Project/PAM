@@ -113,6 +113,7 @@ public:
   SArray<TRACER_TAG, 1, ntracers_dycore + GPU_PAD> tracers;
   Equations *equations;
   bool is_initialized;
+  bool set_coupler_state = true;
 
   TestCase() { this->is_initialized = false; }
 

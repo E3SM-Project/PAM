@@ -1,6 +1,7 @@
 ---
 # Simulation time in number of physics time steps
-simSteps  :  450
+simSteps  :  900
+#450
 
 entropicvar_diffusion_coeff: 75
 velocity_diffusion_coeff: 75
@@ -18,8 +19,9 @@ vcoords  : '../pam-c/vcoords/vcoords_equal_33_6400.nc'
 initData : densitycurrent
 
 # Time steps
-dtphys: 2
+dtphys: 1.0
 crm_per_phys: 1
+# 2
 
 # Output filename
 out_prefix  : test
@@ -29,10 +31,11 @@ dycore_out_prefix  : test_dycore
 out_freq : 100.0
 
 # Output frequency in number of CRM time steps
-outSteps: 30
+outSteps: 100
 statSteps: 1
+#30
 
-tstype: si
+tstype: ssprk3
 
 # Number of ensembles
 nens : 1
