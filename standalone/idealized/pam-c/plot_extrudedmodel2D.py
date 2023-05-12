@@ -11,6 +11,11 @@ nt = DS.dims['t']
 model = sys.argv[1]
 nens = DS.dims['nens']
 
+plane = 'xz'
+if len(sys.argv) > 2:
+    plane = sys.argv[2]
+print(f"plane = {plane}")
+
 mass = DS.mass
 energy = DS.energy
 pens = DS.pens
@@ -19,7 +24,11 @@ pv = DS.pv
 densmax = DS.densmax
 densmin = DS.densmin
 
-
+plane_idx = DS.dims['dual_ncells_y'] // 2
+ndims = DS.dims['v_ndofs']
+print(f"plane_idx = {plane_idx}")
+if len(sys.argv) > 3:
+    plane_idx = int(sys.argv[3])
 
 
 if model == 'swe':
@@ -85,22 +94,42 @@ coriolisxz = DS.coriolisxz
 
 for n in range(nens):
 
-    plotvar_scalar2D('hs.'+ str(n), hs.isel(hs_ndofs=0, dual_ncells_y=0,nens=n),0)
-    plotvar_scalar2D('coriolisxz.'+ str(n), coriolisxz.isel(coriolisxz_ndofs=0, primal_ncells_y=0,nens=n),0)
+    if plane == 'xz':
+        plotvar_scalar2D('.'.join(['hs', plane, str(n)]), hs.isel(hs_ndofs=0, dual_ncells_y=plane_idx,nens=n),0)
+        plotvar_scalar2D('.'.join(['coriolisxz', plane, str(n)]), coriolisxz.isel(coriolisxz_ndofs=0, primal_ncells_y=plane_idx,nens=n),0)
+    if plane == 'yz':
+        plotvar_scalar2D('.'.join(['hs', plane, str(n)]), hs.isel(hs_ndofs=0, dual_ncells_x=plane_idx,nens=n),0)
+        plotvar_scalar2D('.'.join(['coriolisxz', plane, str(n)]), coriolisxz.isel(coriolisxz_ndofs=0, primal_ncells_x=plane_idx,nens=n),0)
 
     for i in Nlist:
-        plotvar_scalar2D('qxz.'+ str(n), QXZl.isel(t=i,QXZl_ndofs=0, dual_ncells_y=0,nens=n),i)
-
-        plotvar_scalar2D('v.'+ str(n), v.isel(t=i,v_ndofs=0, primal_ncells_y=0,nens=n),i)
-        plotvar_scalar2D('w.'+ str(n), w.isel(t=i,w_ndofs=0, primal_ncells_y=0,nens=n),i)
+        if plane == 'xz':
+            plotvar_scalar2D('.'.join(['qxz', plane, str(n)]), QXZl.isel(t=i,QXZl_ndofs=0, dual_ncells_y=plane_idx,nens=n),i)
+            #if ndims > 1:
+            #    plotvar_scalar2D('.'.join(['qyz', plane, str(n)]), QXZl.isel(t=i,QXZl_ndofs=1, dual_ncells_y=plane_idx,nens=n),i)
+            plotvar_scalar2D('.'.join(['vx', plane, str(n)]), v.isel(t=i,v_ndofs=0, primal_ncells_y=plane_idx,nens=n),i)
+            if ndims > 1:
+                plotvar_scalar2D('.'.join(['vy', plane, str(n)]), v.isel(t=i,v_ndofs=1, primal_ncells_y=plane_idx,nens=n),i)
+            plotvar_scalar2D('.'.join(['w', plane, str(n)]), w.isel(t=i,w_ndofs=0, primal_ncells_y=plane_idx,nens=n),i)
+        if plane == 'yz':
+            plotvar_scalar2D('.'.join(['qxz', plane, str(n)]), QXZl.isel(t=i,QXZl_ndofs=0, dual_ncells_x=plane_idx,nens=n),i)
+            #if ndims > 1:
+            #    plotvar_scalar2D('.'.join(['qyz', plane, str(n)]), QXZl.isel(t=i,QXZl_ndofs=1, dual_ncells_x=plane_idx,nens=n),i)
+            plotvar_scalar2D('.'.join(['vx', plane, str(n)]), v.isel(t=i,v_ndofs=0, primal_ncells_x=plane_idx,nens=n),i)
+            if ndims > 1:
+                plotvar_scalar2D('.'.join(['vy', plane, str(n)]), v.isel(t=i,v_ndofs=1, primal_ncells_x=plane_idx,nens=n),i)
+            plotvar_scalar2D('.'.join(['w', plane, str(n)]), w.isel(t=i,w_ndofs=0, primal_ncells_x=plane_idx,nens=n),i)
 
 
         for l,name in zip(range(ndensity), dens_names):
-            plotvar_scalar2D(name + '.' + str(n), dens.isel(t=i,dens_ndofs=l, dual_ncells_y=0,nens=n),i)
-            plotvar_scalar2D(name+'l.'+ str(n), densl.isel(t=i,densl_ndofs=l, primal_ncells_y=0,nens=n),i)
-            plotvar_scalar2D(name+'c.'+ str(n), dens.isel(t=i,dens_ndofs=l, dual_ncells_y=0,nens=n) / total_dens.isel(t=i,total_dens_ndofs=0, dual_ncells_y=0,nens=n),i)
-    #if model in ['tswe','ce','mce']:
-    #        plotvar_scalar2D('thetal', dens.isel(t=i,dens_ndofs=1, dual_ncells_y=0,nens=n) / dens.isel(t=i,dens_ndofs=0, dual_ncells_y=0,nens=n),i)
+            if plane == 'xz':
+                plotvar_scalar2D('.'.join([name, plane, str(n)]), dens.isel(t=i,dens_ndofs=l, dual_ncells_y=plane_idx,nens=n),i)
+                plotvar_scalar2D('.'.join([name, 'l', plane, str(n)]), densl.isel(t=i,densl_ndofs=l, primal_ncells_y=plane_idx,nens=n),i)
+                plotvar_scalar2D('.'.join([name, 'c', plane, str(n)]), dens.isel(t=i,dens_ndofs=l, dual_ncells_y=plane_idx,nens=n) / total_dens.isel(t=i,total_dens_ndofs=0, dual_ncells_y=plane_idx,nens=n),i)
+
+            if plane == 'yz':
+                plotvar_scalar2D('.'.join([name, plane, str(n)]), dens.isel(t=i,dens_ndofs=l, dual_ncells_x=plane_idx,nens=n),i)
+                plotvar_scalar2D('.'.join([name, 'l', plane, str(n)]), densl.isel(t=i,densl_ndofs=l, primal_ncells_x=plane_idx,nens=n),i)
+                plotvar_scalar2D('.'.join([name, 'c', plane, str(n)]), dens.isel(t=i,dens_ndofs=l, dual_ncells_x=plane_idx,nens=n) / total_dens.isel(t=i,total_dens_ndofs=0, dual_ncells_x=plane_idx,nens=n),i)
 
 
 
