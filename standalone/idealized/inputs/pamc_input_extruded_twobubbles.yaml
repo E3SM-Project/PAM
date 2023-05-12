@@ -16,22 +16,22 @@ initData : twobubbles
 
 # Time steps
 dtphys: 2.5
-crm_per_phys: 1
+crm_per_phys: 5
 #0.015625 * 5 = 0.078125
- 
+
 # Output filename
 out_prefix  : test
 dycore_out_prefix  : test_dycore
 
 #Coupler output frequency in actual time
-out_freq : 100.0
+out_freq : 50.0
 
 # Output frequency in number of CRM time steps
-outSteps: 12
+outSteps: 100
 statSteps: 1
 #6400
 
-tstype: si
+tstype: ssprk3
 
 # Number of ensembles
 nens : 1
@@ -40,4 +40,3 @@ nens : 1
 inner_mpi : true
 nprocx : 1
 nprocy : 1
-

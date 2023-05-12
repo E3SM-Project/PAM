@@ -38,8 +38,8 @@ statSteps: 1
 #6400 = 100s for explicit
 #200 = 100s for semi-implicit
 
-tstype: si
-#kgrk4 si
+tstype: ssprk3
+#kgrk4 si ssprk3
 
 # Number of ensembles
 nens : 1

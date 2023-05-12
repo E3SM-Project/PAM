@@ -13,7 +13,7 @@ using pam::PamCoupler;
 
 // solve a system to exactly invert the velocity averaging done
 // during conversion to coupler state when coupling winds
-constexpr bool couple_wind_exact_inverse = true;
+constexpr bool couple_wind_exact_inverse = false;
 
 struct VS_SWE {
   static constexpr bool couple = false;
@@ -338,6 +338,12 @@ public:
   real YAKL_INLINE _water_dens(const real3d &densvar, int k, int ks,
                                int n) const {};
 
+  real YAKL_INLINE get_pres(const real5d &densvar, int k,
+                                                   int j, int i, int ks, int js,
+                                                   int is, int n) const {};
+  real YAKL_INLINE get_pres(int k, int ks, int n) const {};
+  real YAKL_INLINE get_ref_dens(int k, int ks, int n) const {};
+
   void convert_dynamics_to_coupler_state(PamCoupler &coupler,
                                          const FieldSet<nprognostic> &prog_vars,
                                          const FieldSet<nconstant> &const_vars);
@@ -441,12 +447,13 @@ void VariableSetBase<T>::convert_dynamics_to_coupler_state(
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-          real qd = get_qd(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks,
-                           djs, dis, n);
+
+
+          //real qd = get_qd(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks,
+          //                 djs, dis, n);
           real qv = get_qv(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks,
                            djs, dis, n);
-          real alpha = get_alpha(prog_vars.fields_arr[DENSVAR].data, k, j, i,
-                                 dks, djs, dis, n);
+
           real entropic_var = get_entropic_var(
               prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
 
@@ -462,8 +469,30 @@ void VariableSetBase<T>::convert_dynamics_to_coupler_state(
                         dis, n);
           }
 
-          real temp = thermo.compute_T(alpha, entropic_var, qd, qv, ql, qi);
+          real qd = 1.0_fp - qv - ql - qi;
 
+
+//THIS LOGIC SHOULD PROBABLY LIVE IN VARIABLE SET, BUT IT IS NOT CLEAR HOW TO CLEANLY INTEGRATE IT YET
+//Something like:
+//set_dry_dens(dm_dry_dens,DENSARR,k,j,i,dks,djs,dis,n)
+//compute_temp(DENSARR,k,j,i,dks,djs,dis,n, entropic_var, qd, qv, ql, qi) or compute_temp(total_dens, entropic_var, qd, qv, ql, qi) and get_total_dens(DENSARR,...)
+
+#if defined(_CE) || defined(_MCErho) || defined(_MCErhod) || defined(_CEp) || defined(_MCErhop) || defined(_MCErhodp)
+          dm_dens_dry(k, j, i, n) =
+              get_dry_density(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks,
+                              djs, dis, n) /
+              dual_geometry.get_area_n1entity(k + dks, j + djs, i + dis, n);
+#endif
+
+#if defined(_CE) || defined(_MCErho) || defined(_MCErhod)
+          real alpha = get_alpha(prog_vars.fields_arr[DENSVAR].data, k, j, i,
+                                 dks, djs, dis, n);
+          real temp = thermo.compute_T_from_alpha(alpha, entropic_var, qd, qv, ql, qi);
+#elif defined(_CEp) || defined(_MCErhop) || defined(_MCErhodp) || defined(_AN) || defined(_MAN)
+          real p = get_pres(prog_vars.fields_arr[DENSVAR].data, k, j, i,
+                                 dks, djs, dis, n);
+          real temp = thermo.compute_T_from_p(p, entropic_var, qd, qv, ql, qi);
+#endif
           // if ( isnan(temp) || entropic_var<0 ) {
           // // if ( entropic_var<0 && !nan_found.hostRead() ) {
           //   // printf("WHDEBUG - cpl_to_dyn - neg value found for entropic_var! => k:%d  j:%d  i:%d  n:%d \n",k,j,i,n);
@@ -504,11 +533,9 @@ void VariableSetBase<T>::convert_dynamics_to_coupler_state(
           // if ( isnan(qi          ) ) { printf("WHDEBUG - dyn_to_cpl - NaN value in qi - k:%d  j:%d  i:%d  n:%d :: %g \n",k,j,i,n,qi); }
           // if ( isnan(temp        ) ) { printf("WHDEBUG - dyn_to_cpl - NaN value in temp - k:%d  j:%d  i:%d  n:%d :: %g \n",k,j,i,n,temp); }
 
-          dm_dens_dry(k, j, i, n) =
-              get_dry_density(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks,
-                              djs, dis, n) /
-              dual_geometry.get_area_n1entity(k + dks, j + djs, i + dis, n);
+
           dm_temp(k, j, i, n) = temp;
+
           for (int tr = ndensity_nophysics; tr < ndensity_prognostic; tr++) {
             dm_tracers(tr - ndensity_nophysics, k, j, i, n) =
                 prog_vars.fields_arr[DENSVAR].data(tr, k + dks, j + djs,
@@ -517,7 +544,7 @@ void VariableSetBase<T>::convert_dynamics_to_coupler_state(
           }
 
         });
-  
+
         //----------------------------------------------------------------------
         //----------------------------------------------------------------------
         // if ( nan_found.hostRead() ) {
@@ -576,9 +603,10 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_state(
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+
+
           real temp = dm_temp(k, j, i, n);
 
-          real dens_dry = dm_dens_dry(k, j, i, n);
           real dens_vap = dm_tracers(dm_id_vap, k, j, i, n);
           real dens_liq = 0.0_fp;
           real dens_ice = 0.0_fp;
@@ -588,16 +616,38 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_state(
           if (ice_found) {
             dens_ice = dm_tracers(dm_id_ice, k, j, i, n);
           }
+
+//AGAIN, THIS LOGIC SHOULD REALLY LIVE IN VARIABLE SET
+//Something like:
+//get_total_dens(dens,dry_dens)
+//get_qs(dens,dry_dens,dens_s)
+//compute_entropic_var(dens,dry_dens,temp,qs)
+
+#if defined(_CE) || defined(_MCErho) || defined(_MCE_rhod) || defined(_CEp)  || defined(_MCErhop) || defined(_MCErhodp)
+
+          real dens_dry = dm_dens_dry(k, j, i, n);
           real dens = dens_dry + dens_ice + dens_liq + dens_vap;
 
-          real qd = dens_dry / dens;
+          set_density(dens * dual_geometry.get_area_n1entity(k + dks, j + djs,
+                                                             i + dis, n),
+                      dens_dry * dual_geometry.get_area_n1entity(
+                                     k + dks, j + djs, i + dis, n),
+                      prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs,
+                      dis, n);
+
           real qv = dens_vap / dens;
           real ql = dens_liq / dens;
           real qi = dens_ice / dens;
-
           real alpha = 1.0_fp / dens;
-          real entropic_var =
-              thermo.compute_entropic_var_from_T(alpha, temp, qd, qv, ql, qi);
+
+#elif defined(_AN) || defined(_MAN)
+          real dens = get_ref_dens(k, dks, n) / dual_geometry.get_area_n1entity(k + dks, j + djs, i + dis, n);
+#endif
+
+          real qv = dens_vap / dens;
+          real ql = dens_liq / dens;
+          real qi = dens_ice / dens;
+          real qd = 1.0_fp - qv - ql - qi;
 
           // if (entropic_var<0) {
           //   printf("WHDEBUG - cpl_to_dyn - neg value found for entropic_var! => k:%d  j:%d  i:%d  n:%d \n",k,j,i,n);
@@ -613,14 +663,25 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_state(
           //   printf("WHDEBUG - cpl_to_dyn - k:%d  j:%d  i:%d  n:%d alpha  :: %g \n",k,j,i,n,alpha);
           // }
 
-#if !defined _AN && !defined _MAN
-          set_density(dens * dual_geometry.get_area_n1entity(k + dks, j + djs,
-                                                             i + dis, n),
-                      dens_dry * dual_geometry.get_area_n1entity(
-                                     k + dks, j + djs, i + dis, n),
-                      prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs,
-                      dis, n);
+
+#if defined(_CE) || defined(_MCErho) || defined(_MCE_rhod)
+          real entropic_var =
+              thermo.compute_entropic_var_from_T_alpha(alpha, temp, qd, qv, ql, qi);
+#elif defined(_CEp)  || defined(_MCErhop) || defined(_MCErhodp)
+          real p = get_pres(alpha, temp, qd, qv, ql, qi);
+          real entropic_var =
+              thermo.compute_entropic_var_from_T_p(p, temp, qd, qv, ql, qi);
+#elif defined(_AN) || defined(_MAN)
+          real p = get_pres(k, dks, n);
+          real entropic_var =
+              thermo.compute_entropic_var_from_T_p(p, temp, qd, qv, ql, qi);
 #endif
+
+          set_entropic_density(
+              entropic_var * dens *
+                  dual_geometry.get_area_n1entity(k + dks, j + djs, i + dis, n),
+              prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
+
 
           // real area = dual_geometry.get_area_11entity(k + dks, j + djs, i + dis, n);
           // real entropic_density_tmp = entropic_var * dens * area;
@@ -644,10 +705,7 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_state(
           //   printf("WHDEBUG - cpl_to_dyn - k:%d  j:%d  i:%d  n:%d alpha    :: %g \n",k,j,i,n,alpha);
           // }
 
-          set_entropic_density(
-              entropic_var * dens *
-                  dual_geometry.get_area_n1entity(k + dks, j + djs, i + dis, n),
-              prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
+
 
           for (int tr = ndensity_nophysics; tr < ndensity_prognostic; tr++) {
             prog_vars.fields_arr[DENSVAR].data(tr, k + dks, j + djs, i + dis,
@@ -888,6 +946,7 @@ real YAKL_INLINE VariableSetBase<VS_AN>::get_total_density(
     int n) const {
   return reference_state.dens.data(dens_id_mass, k + ks, n);
 }
+
 template <>
 real YAKL_INLINE VariableSetBase<VS_AN>::get_total_density(
     const real3d &densvar, int k, int ks, int n) const {
@@ -902,12 +961,14 @@ real YAKL_INLINE VariableSetBase<VS_AN>::get_entropic_var(const real5d &densvar,
   return densvar(dens_id_entr, k + ks, j + js, i + is, n) /
          reference_state.dens.data(dens_id_mass, k + ks, n);
 }
+
 template <>
 real YAKL_INLINE VariableSetBase<VS_AN>::get_entropic_var(const real3d &densvar,
                                                           int k, int ks,
                                                           int n) const {
   return densvar(dens_id_entr, k + ks, n) / densvar(dens_id_mass, k + ks, n);
 }
+
 template <>
 real YAKL_INLINE VariableSetBase<VS_AN>::get_alpha(const real5d &densvar, int k,
                                                    int j, int i, int ks, int js,
@@ -915,12 +976,37 @@ real YAKL_INLINE VariableSetBase<VS_AN>::get_alpha(const real5d &densvar, int k,
   return dual_geometry.get_area_n1entity(k + ks, j + js, i + is, n) /
          reference_state.dens.data(dens_id_mass, k + ks, n);
 }
+
 template <>
 real YAKL_INLINE VariableSetBase<VS_AN>::get_alpha(const real3d &densvar, int k,
                                                    int ks, int n) const {
   return dual_geometry.get_area_n1entity(k + ks, 0, 0, n) /
          densvar(dens_id_mass, k + ks, n);
 }
+
+template <>
+real YAKL_INLINE VariableSetBase<VS_AN>::get_pres(const real5d &densvar, int k,
+                                                   int j, int i, int ks, int js,
+                                                   int is, int n) const {
+    const real refrho = 1.0_fp / get_alpha(reference_state.dens.data, k, ks, n);
+    const real refentropic_var = get_entropic_var(reference_state.dens.data, k, ks, n);
+    const real refp =  thermo.solve_p(refrho, refentropic_var, 0, 0, 0, 0);
+    return refp;
+}
+
+template <>
+real YAKL_INLINE VariableSetBase<VS_AN>::get_pres(int k, int ks, int n) const {
+    const real refrho = 1.0_fp / get_alpha(reference_state.dens.data, k, ks, n);
+    const real refentropic_var = get_entropic_var(reference_state.dens.data, k, ks, n);
+    const real refp =  thermo.solve_p(refrho, refentropic_var, 0, 0 , 0, 0);
+    return refp;
+}
+
+template <>
+real YAKL_INLINE VariableSetBase<VS_AN>::get_ref_dens(int k, int ks, int n) const {
+    return reference_state.dens.data(dens_id_mass, k + ks, n);
+}
+
 #endif
 
 // We rely on physics packages ie micro to provide water species- must at least
@@ -1000,6 +1086,11 @@ real YAKL_INLINE VariableSetBase<VS_MAN>::get_alpha(const real3d &densvar,
 }
 
 template <>
+real YAKL_INLINE VariableSetBase<VS_MAN>::get_ref_dens(int k, int ks, int n) const {
+    return reference_state.dens.data(dens_id_mass, k + ks, n);
+}
+
+template <>
 real YAKL_INLINE VariableSetBase<VS_MAN>::get_qv(const real5d &densvar, int k,
                                                  int j, int i, int ks, int js,
                                                  int is, int n) const {
@@ -1027,6 +1118,26 @@ real YAKL_INLINE VariableSetBase<VS_MAN>::get_qi(const real5d &densvar, int k,
                                                  int is, int n) const {
   return densvar(dens_id_ice, k + ks, j + js, i + is, n) /
          reference_state.dens.data(dens_id_mass, k + ks, n);
+}
+
+template <>
+real YAKL_INLINE VariableSetBase<VS_MAN>::get_pres(const real5d &densvar, int k,
+                                                   int j, int i, int ks, int js,
+                                                   int is, int n) const {
+    const real refrho = 1.0_fp / get_alpha(reference_state.dens.data, k, ks, n);
+    const real refentropic_var = get_entropic_var(reference_state.dens.data, k, ks, n);
+    const real refqv = get_qv(reference_state.dens.data, k, ks, n);
+    const real refp =  thermo.solve_p(refrho, refentropic_var, 1 - refqv, refqv, 0, 0);
+    return refp;
+}
+
+template <>
+real YAKL_INLINE VariableSetBase<VS_MAN>::get_pres(int k, int ks, int n) const {
+    const real refrho = 1.0_fp / get_alpha(reference_state.dens.data, k, ks, n);
+    const real refentropic_var = get_entropic_var(reference_state.dens.data, k, ks, n);
+    const real refqv = get_qv(reference_state.dens.data, k, ks, n);
+    const real refp =  thermo.solve_p(refrho, refentropic_var, 1 - refqv, refqv, 0, 0);
+    return refp;
 }
 
 template <>

@@ -3751,6 +3751,7 @@ class CoupledTestCase : public TestCase {
 
 public:
   PamCoupler &coupler;
+  bool set_coupler_state = false;
 
   CoupledTestCase(PamCoupler &coupler) : coupler(coupler) {}
 
@@ -3846,7 +3847,7 @@ public:
 
           const real alpha = 1.0_fp / dens;
           const real entropic_var =
-              thermo.compute_entropic_var_from_T(alpha, temp, qd, qv, ql, qi);
+              thermo.compute_entropic_var_from_T_alpha(alpha, temp, qd, qv, ql, qi);
 
           const real dual_volume =
               dual_geom.get_area_n1entity(k + dks, djs, dis, n);
@@ -4148,7 +4149,7 @@ template <bool acoustic_balance> struct RisingBubble {
     real T_ref = refT_f(z, thermo);
     real p_ref = refp_f(z, thermo);
 
-    return rho_ref * thermo.compute_entropic_var(p_ref, T_ref, 1, 0, 0, 0);
+    return rho_ref * thermo.compute_entropic_var_from_T_p(p_ref, T_ref, 1, 0, 0, 0);
   }
 
   static real YAKL_INLINE rho_f(real x, real y, real z,
@@ -4169,7 +4170,7 @@ template <bool acoustic_balance> struct RisingBubble {
     real r = sqrt((x - xc) * (x - xc) + (z - bzc) * (z - bzc));
     real dtheta = (r < rc) ? dss * 0.5_fp * (1._fp + cos(pi * r / rc)) : 0._fp;
     real dT = dtheta * pow(p / thermo.cst.pr, thermo.cst.kappa_d);
-    return thermo.compute_entropic_var(p, T + dT, 1, 0, 0, 0);
+    return thermo.compute_entropic_var_from_T_p(p, T + dT, 1, 0, 0, 0);
   }
 
   static VecXYZ YAKL_INLINE v_f(real x, real y, real z) {
@@ -4230,7 +4231,7 @@ struct TwoBubbles {
     real rho_ref = refrho_f(z, thermo);
     real T_ref = refT_f(z, thermo);
     real p_ref = refp_f(z, thermo);
-    return rho_ref * thermo.compute_entropic_var(p_ref, T_ref, 1, 0, 0, 0);
+    return rho_ref * thermo.compute_entropic_var_from_T_p(p_ref, T_ref, 1, 0, 0, 0);
   }
 
   static real YAKL_INLINE rho_f(real x, real y, real z,
@@ -4260,7 +4261,7 @@ struct TwoBubbles {
     }
 
     real dT = dtheta * pow(p / thermo.cst.pr, thermo.cst.kappa_d);
-    return thermo.compute_entropic_var(p, T + dT, 1, 0, 0, 0);
+    return thermo.compute_entropic_var_from_T_p(p, T + dT, 1, 0, 0, 0);
   }
 
   static VecXYZ YAKL_INLINE v_f(real x, real y, real z) {
@@ -4313,7 +4314,7 @@ struct DensityCurrent {
     real rho_ref = refrho_f(z, thermo);
     real T_ref = refT_f(z, thermo);
     real p_ref = refp_f(z, thermo);
-    return rho_ref * thermo.compute_entropic_var(p_ref, T_ref, 1, 0, 0, 0);
+    return rho_ref * thermo.compute_entropic_var_from_T_p(p_ref, T_ref, 1, 0, 0, 0);
   }
 
   static real YAKL_INLINE rho_f(real x, real y, real z,
@@ -4330,7 +4331,7 @@ struct DensityCurrent {
                   (z - bzc) * (z - bzc) / (bzr * bzr));
     real dtheta = (r < 1) ? dss * 0.5_fp * (1._fp + cos(pi * r)) : 0._fp;
     real dT = dtheta * pow(p / thermo.cst.pr, thermo.cst.kappa_d);
-    return thermo.compute_entropic_var(p, T + dT, 1, 0, 0, 0);
+    return thermo.compute_entropic_var_from_T_p(p, T + dT, 1, 0, 0, 0);
   }
 
   static VecXYZ YAKL_INLINE v_f(real x, real y, real z) {
@@ -4419,7 +4420,7 @@ struct LargeRisingBubble {
     real rho_ref = refrho_f(z, thermo);
     real T_ref = refT_f(z, thermo);
     real p_ref = refp_f(z, thermo);
-    return rho_ref * thermo.compute_entropic_var(p_ref, T_ref, 1, 0, 0, 0);
+    return rho_ref * thermo.compute_entropic_var_from_T_p(p_ref, T_ref, 1, 0, 0, 0);
   }
 
   static real YAKL_INLINE rho_f(real x, real y, real z,
@@ -4433,7 +4434,7 @@ struct LargeRisingBubble {
     real T0 = isentropic_T(z, theta0, g, thermo);
     real dtheta = linear_ellipsoid(x, z, xc, bzc, xrad, zrad, amp_theta);
     real dT = dtheta * pow(p / thermo.cst.pr, thermo.cst.kappa_d);
-    return thermo.compute_entropic_var(p, T0 + dT, 1, 0, 0, 0);
+    return thermo.compute_entropic_var_from_T_p(p, T0 + dT, 1, 0, 0, 0);
   }
 
   static VecXYZ YAKL_INLINE v_f(real x, real y, real z) {
@@ -4485,7 +4486,7 @@ struct MoistLargeRisingBubble : LargeRisingBubble {
     real T0 = isentropic_T(z, theta0, g, thermo);
     real dtheta = linear_ellipsoid(x, z, xc, bzc, xrad, zrad, amp_theta);
     real dT = dtheta * pow(p / thermo.cst.pr, thermo.cst.kappa_d);
-    return thermo.compute_entropic_var(p, T0 + dT, 1, 0, 0, 0);
+    return thermo.compute_entropic_var_from_T_p(p, T0 + dT, 1, 0, 0, 0);
   }
 };
 
@@ -4527,7 +4528,7 @@ template <bool add_perturbation> struct GravityWave {
                                                const ThermoPotential &thermo) {
     real rho_ref = refrho_f(z, thermo);
     real p_ref = refp_f(z, thermo);
-    return rho_ref * thermo.compute_entropic_var(p_ref, T_ref, 1, 0, 0, 0);
+    return rho_ref * thermo.compute_entropic_var_from_T_p(p_ref, T_ref, 1, 0, 0, 0);
   }
 
   static real YAKL_INLINE rho_f(real x, real y, real z,
@@ -4587,7 +4588,7 @@ template <bool add_perturbation> struct GravityWave {
       p += dp;
     }
 
-    return thermo.compute_entropic_var(p, T, 1, 0, 0, 0);
+    return thermo.compute_entropic_var_from_T_p(p, T, 1, 0, 0, 0);
   }
 
   static real YAKL_INLINE entropicdensity_f(real x, real y, real z,
@@ -4629,7 +4630,7 @@ template <bool add_perturbation> struct GravityWave {
       T += sol.dT;
     }
 
-    return rho * thermo.compute_entropic_var(p, T, 1, 0, 0, 0);
+    return rho * thermo.compute_entropic_var_from_T_p(p, T, 1, 0, 0, 0);
   }
 
   static real YAKL_INLINE Texact_f(real x, real y, real z, real t,
@@ -4909,7 +4910,7 @@ template <bool add_perturbation> struct GravityWave {
 
             real T;
             if (!linear_T) {
-              T = thermo.compute_T(alpha, entropic_var, 1, 0, 0, 0);
+              T = thermo.compute_T_from_alpha(alpha, entropic_var, 1, 0, 0, 0);
             } else {
               real Rd = thermo.cst.Rd;
               real refalpha = varset.get_alpha(refdens, k, pks, n);
