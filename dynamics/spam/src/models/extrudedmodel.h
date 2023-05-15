@@ -1390,6 +1390,7 @@ public:
     const auto &Fvar = auxiliary_vars.fields_arr[FVAR].data;
     const auto &FWvar = auxiliary_vars.fields_arr[FWVAR].data;
 
+    YAKL_SCOPE(Hk, this->equations->Hk);
     YAKL_SCOPE(varset, this->equations->varset);
     YAKL_SCOPE(rho_pi, this->equations->reference_state.rho_pi.data);
     YAKL_SCOPE(rho_di, this->equations->reference_state.rho_di.data);
@@ -1402,57 +1403,18 @@ public:
           SimpleBounds<4>(dual_topology.ni, dual_topology.n_cells_y,
                           dual_topology.n_cells_x, dual_topology.nens),
           YAKL_LAMBDA(int k, int j, int i, int n) {
+            SArray<real, 1, ndims> he, u;
 
-#if defined _AN || defined _MAN
-            real dens0_imh = rho_pi(0, k + pks, n);
-            real dens0_kmh = rho_di(0, k + dks, n);
-#else
-            SArray<real, 1, 1> dens0_ik, dens0_im1, dens0_km1;
+            // no need to compute K2 here but this is only for diagnostic and
+            // maybe compiler can optimize it away ?
+            real hew, uw, K2;
+            Hk.compute_he_U_and_K(he, hew, u, uw, K2, densvar, Vvar, Wvar, pis,
+                                  pjs, pks, i, j, k, n);
 
-            const auto total_density_f = TotalDensityFunctor{varset};
-            compute_Hn1bar<1, diff_ord, vert_diff_ord>(
-                total_density_f, dens0_ik, densvar, primal_geometry,
-                dual_geometry, pis, pjs, pks, i, j, k, n);
-            compute_Hn1bar<1, diff_ord, vert_diff_ord>(
-                total_density_f, dens0_im1, densvar, primal_geometry,
-                dual_geometry, pis, pjs, pks, i - 1, j, k, n);
-            compute_Hn1bar<1, diff_ord, vert_diff_ord>(
-                total_density_f, dens0_km1, densvar, primal_geometry,
-                dual_geometry, pis, pjs, pks, i, j, k - 1, n);
-
-            real dens0_imh = 0.5_fp * (dens0_ik(0) + dens0_im1(0));
-            real dens0_kmh = 0.5_fp * (dens0_ik(0) + dens0_km1(0));
-#endif
-
-            SArray<real, 1, ndims> u_ik;
-            SArray<real, 1, 1> uw_ik;
-            SArray<real, 1, ndims> u_ip1;
-            SArray<real, 1, 1> uw_kp1;
-
-            compute_H10<1, diff_ord>(u_ik, Vvar, primal_geometry, dual_geometry,
-                                     pis, pjs, pks, i, j, k, n);
-            compute_H10<1, diff_ord>(u_ip1, Vvar, primal_geometry,
-                                     dual_geometry, pis, pjs, pks, i + 1, j, k,
-                                     n);
-
-            if (k == 0 || k == (dual_topology.ni - 1)) {
-              uw_ik(0) = 0;
-            } else {
-              compute_H01<1, vert_diff_ord>(uw_ik, Wvar, primal_geometry,
-                                            dual_geometry, pis, pjs, pks, i, j,
-                                            k, n);
+            for (int d = 0; d < ndims; ++d) {
+              Fvar(d, pks + k, pjs + j, pis + i, n) = he(d) * u(d);
             }
-
-            if (k >= (dual_topology.ni - 2)) {
-              uw_kp1(0) = 0;
-            } else {
-              compute_H01<1, vert_diff_ord>(uw_kp1, Wvar, primal_geometry,
-                                            dual_geometry, pis, pjs, pks, i, j,
-                                            k + 1, n);
-            }
-
-            Fvar(0, pks + k, pjs + j, pis + i, n) = dens0_imh * u_ik(0);
-            FWvar(0, pks + k, pjs + j, pis + i, n) = dens0_kmh * uw_ik(0);
+            FWvar(0, pks + k, pjs + j, pis + i, n) = hew * uw;
           });
       auxiliary_vars.exchange({FVAR, FWVAR});
     } else {
