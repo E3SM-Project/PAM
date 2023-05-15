@@ -269,86 +269,86 @@ public:
   }
 
   // This computes true qxz
-  void YAKL_INLINE compute_qxz0(const real5d &qxz0, const real5d &v,
-                                const real5d &w, const real5d &dens,
-                                const real5d &coriolisxz, int is, int js,
-                                int ks, int i, int j, int k, int n) const {
+  void YAKL_INLINE compute_qhz(const real5d &qhz, const real5d &v,
+                               const real5d &w, const real5d &dens,
+                               const real5d &coriolisxz, int is, int js, int ks,
+                               int i, int j, int k, int n) const {
     // Need to subtract 1 here since d00(i,k) corresponds to p11(i,k)
     real hv = compute_hvxz(dens, is, js, ks, i, j, k - 1, n);
     real eta = compute_etaxz(v, w, coriolisxz, is, js, ks, i, j, k - 1, n);
     // compute q0 = zeta / hv and f0 = f / hv
-    qxz0(0, k + ks, j + js, i + is, n) = eta / hv;
+    qhz(0, k + ks, j + js, i + is, n) = eta / hv;
   }
 
   // This computes true qxz
-  void YAKL_INLINE compute_qxz0_top(const real5d &qxz0, const real5d &v,
-                                    const real5d &w, const real5d &dens,
-                                    const real5d &coriolisxz, int is, int js,
-                                    int ks, int i, int j, int k, int n) const {
+  void YAKL_INLINE compute_qhz_top(const real5d &qhz, const real5d &v,
+                                   const real5d &w, const real5d &dens,
+                                   const real5d &coriolisxz, int is, int js,
+                                   int ks, int i, int j, int k, int n) const {
     // Need to subtract 1 here since d00(i,k) corresponds to p11(i,k)
     real hv = compute_hvxz_top(dens, is, js, ks, i, j, k - 1, n);
     real eta = compute_etaxz(v, w, coriolisxz, is, js, ks, i, j, k - 1, n);
     // compute q0 = zeta / hv and f0 = f / hv
-    qxz0(0, k + ks, j + js, i + is, n) = eta / hv;
+    qhz(0, k + ks, j + js, i + is, n) = eta / hv;
   }
 
   // This computes true qxz
-  void YAKL_INLINE compute_qxz0_bottom(const real5d &qxz0, const real5d &v,
-                                       const real5d &w, const real5d &dens,
-                                       const real5d &coriolisxz, int is, int js,
-                                       int ks, int i, int j, int k,
-                                       int n) const {
+  void YAKL_INLINE compute_qhz_bottom(const real5d &qhz, const real5d &v,
+                                      const real5d &w, const real5d &dens,
+                                      const real5d &coriolisxz, int is, int js,
+                                      int ks, int i, int j, int k,
+                                      int n) const {
     // Need to subtract 1 here since d00(i,k) corresponds to p11(i,k)
     real hv = compute_hvxz_bottom(dens, is, js, ks, i, j, k - 1, n);
     real eta = compute_etaxz(v, w, coriolisxz, is, js, ks, i, j, k - 1, n);
     // compute q0 = zeta / hv and f0 = f / hv
-    qxz0(0, k + ks, j + js, i + is, n) = eta / hv;
+    qhz(0, k + ks, j + js, i + is, n) = eta / hv;
   }
 
   // This computes relative qxz
-  void YAKL_INLINE compute_qxz0fxz0(const real5d &qxz0, const real5d &fxz0,
-                                    const real5d &v, const real5d &w,
-                                    const real5d &dens,
-                                    const real5d &coriolisxz, int is, int js,
-                                    int ks, int i, int j, int k, int n) const {
+  void YAKL_INLINE compute_qhzfhz(const real5d &qhz, const real5d &fhz,
+                                  const real5d &v, const real5d &w,
+                                  const real5d &dens, const real5d &coriolisxz,
+                                  int is, int js, int ks, int i, int j, int k,
+                                  int n) const {
     // Need to subtract 1 here since d00(i,k) corresponds to p11(i,k)
     real hv = compute_hvxz(dens, is, js, ks, i, j, k - 1, n);
     real zeta = compute_zetaxz(v, w, is, js, ks, i, j, k - 1, n);
     // compute q0 = zeta / hv and f0 = f / hv
-    qxz0(0, k + ks, j + js, i + is, n) = zeta / hv;
-    fxz0(0, k + ks, j + js, i + is, n) =
+    qhz(0, k + ks, j + js, i + is, n) = zeta / hv;
+    fhz(0, k + ks, j + js, i + is, n) =
         coriolisxz(0, k + ks, j + js, i + is, n) / hv;
   }
 
   // This computes relative qxz
-  void YAKL_INLINE compute_qxz0fxz0_top(const real5d &qxz0, const real5d &fxz0,
-                                        const real5d &v, const real5d &w,
-                                        const real5d &dens,
-                                        const real5d &coriolisxz, int is,
-                                        int js, int ks, int i, int j, int k,
-                                        int n) const {
+  void YAKL_INLINE compute_qhzfhz_top(const real5d &qhz, const real5d &fhz,
+                                      const real5d &v, const real5d &w,
+                                      const real5d &dens,
+                                      const real5d &coriolisxz, int is, int js,
+                                      int ks, int i, int j, int k,
+                                      int n) const {
     // Need to subtract 1 here since d00(i,k) corresponds to p11(i,k)
     real hv = compute_hvxz_top(dens, is, js, ks, i, j, k - 1, n);
     real zeta = compute_zetaxz(v, w, is, js, ks, i, j, k - 1, n);
     // compute q0 = zeta / hv and f0 = f / hv
-    qxz0(0, k + ks, j + js, i + is, n) = zeta / hv;
-    fxz0(0, k + ks, j + js, i + is, n) =
+    qhz(0, k + ks, j + js, i + is, n) = zeta / hv;
+    fhz(0, k + ks, j + js, i + is, n) =
         coriolisxz(0, k + ks, j + js, i + is, n) / hv;
   }
 
   // This computes relative qxz
-  void YAKL_INLINE compute_qxz0fxz0_bottom(const real5d &qxz0,
-                                           const real5d &fxz0, const real5d &v,
-                                           const real5d &w, const real5d &dens,
-                                           const real5d &coriolisxz, int is,
-                                           int js, int ks, int i, int j, int k,
-                                           int n) const {
+  void YAKL_INLINE compute_qhzfhz_bottom(const real5d &qhz, const real5d &fhz,
+                                         const real5d &v, const real5d &w,
+                                         const real5d &dens,
+                                         const real5d &coriolisxz, int is,
+                                         int js, int ks, int i, int j, int k,
+                                         int n) const {
     // Need to subtract 1 here since d00(i,k) corresponds to p11(i,k)
     real hv = compute_hvxz_bottom(dens, is, js, ks, i, j, k - 1, n);
     real zeta = compute_zetaxz(v, w, is, js, ks, i, j, k - 1, n);
     // compute q0 = zeta / hv and f0 = f / hv
-    qxz0(0, k + ks, j + js, i + is, n) = zeta / hv;
-    fxz0(0, k + ks, j + js, i + is, n) =
+    qhz(0, k + ks, j + js, i + is, n) = zeta / hv;
+    fhz(0, k + ks, j + js, i + is, n) =
         coriolisxz(0, k + ks, j + js, i + is, n) / hv;
   }
 

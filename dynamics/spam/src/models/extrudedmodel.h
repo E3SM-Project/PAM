@@ -88,12 +88,12 @@ public:
   }
 };
 
-class QXZ0Diagnostic : public Diagnostic {
+class QHZDiagnostic : public Diagnostic {
 public:
   void initialize(const Geometry<Straight> &pgeom,
                   const Geometry<Twisted> &dgeom,
                   Equations &equations) override {
-    name = "QXZl";
+    name = "QHZl";
     topology = dgeom.topology;
     dofs_arr = {0, 0, 1}; // // Qldiag = twisted (0,0)-form
     Diagnostic::initialize(pgeom, dgeom, equations);
@@ -114,10 +114,10 @@ public:
         SimpleBounds<4>(dual_topology.ni - 3, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-          PVPE.compute_qxz0(field.data, x.fields_arr[VVAR].data,
-                            x.fields_arr[WVAR].data, x.fields_arr[DENSVAR].data,
-                            const_vars.fields_arr[CORIOLISXZVAR].data, dis, djs,
-                            dks, i, j, k + 2, n);
+          PVPE.compute_qhz(field.data, x.fields_arr[VVAR].data,
+                           x.fields_arr[WVAR].data, x.fields_arr[DENSVAR].data,
+                           const_vars.fields_arr[CORIOLISXZVAR].data, dis, djs,
+                           dks, i, j, k + 2, n);
         });
 
     // Bottom is k=1 and top is k=dual_topology.ni-2
@@ -126,16 +126,16 @@ public:
         SimpleBounds<3>(dual_topology.n_cells_y, dual_topology.n_cells_x,
                         dual_topology.nens),
         YAKL_CLASS_LAMBDA(int j, int i, int n) {
-          PVPE.compute_qxz0_bottom(field.data, x.fields_arr[VVAR].data,
-                                   x.fields_arr[WVAR].data,
-                                   x.fields_arr[DENSVAR].data,
-                                   const_vars.fields_arr[CORIOLISXZVAR].data,
-                                   dis, djs, dks, i, j, 1, n);
-          PVPE.compute_qxz0_top(field.data, x.fields_arr[VVAR].data,
-                                x.fields_arr[WVAR].data,
-                                x.fields_arr[DENSVAR].data,
-                                const_vars.fields_arr[CORIOLISXZVAR].data, dis,
-                                djs, dks, i, j, dual_topology.ni - 2, n);
+          PVPE.compute_qhz_bottom(field.data, x.fields_arr[VVAR].data,
+                                  x.fields_arr[WVAR].data,
+                                  x.fields_arr[DENSVAR].data,
+                                  const_vars.fields_arr[CORIOLISXZVAR].data,
+                                  dis, djs, dks, i, j, 1, n);
+          PVPE.compute_qhz_top(field.data, x.fields_arr[VVAR].data,
+                               x.fields_arr[WVAR].data,
+                               x.fields_arr[DENSVAR].data,
+                               const_vars.fields_arr[CORIOLISXZVAR].data, dis,
+                               djs, dks, i, j, dual_topology.ni - 2, n);
         });
 
     field.set_bnd(0.0);
@@ -145,7 +145,7 @@ public:
 void add_model_diagnostics(
     std::vector<std::unique_ptr<Diagnostic>> &diagnostics) {
   diagnostics.emplace_back(std::make_unique<Dens0Diagnostic>());
-  diagnostics.emplace_back(std::make_unique<QXZ0Diagnostic>());
+  diagnostics.emplace_back(std::make_unique<QHZDiagnostic>());
   diagnostics.emplace_back(std::make_unique<TotalDensityDiagnostic>());
 }
 
@@ -416,7 +416,7 @@ public:
         });
   }
 
-  void compute_q0f0(real5d qxz0var, real5d fxz0var, const real5d Vvar,
+  void compute_q0f0(real5d qhzvar, real5d fhzvar, const real5d Vvar,
                     const real5d Wvar, const real5d densvar,
                     const real5d coriolisxzvar) {
 
@@ -432,28 +432,27 @@ public:
         SimpleBounds<4>(dual_topology.ni - 3, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          PVPE.compute_qxz0fxz0(qxz0var, fxz0var, Vvar, Wvar, densvar,
-                                coriolisxzvar, dis, djs, dks, i, j, k + 2, n);
+          PVPE.compute_qhzfhz(qhzvar, fhzvar, Vvar, Wvar, densvar,
+                              coriolisxzvar, dis, djs, dks, i, j, k + 2, n);
         });
     parallel_for(
         "Compute Q0, F0 bnd",
         SimpleBounds<3>(dual_topology.n_cells_y, dual_topology.n_cells_x,
                         dual_topology.nens),
         YAKL_LAMBDA(int j, int i, int n) {
-          PVPE.compute_qxz0fxz0_bottom(qxz0var, fxz0var, Vvar, Wvar, densvar,
-                                       coriolisxzvar, dis, djs, dks, i, j, 1,
-                                       n);
-          PVPE.compute_qxz0fxz0_top(qxz0var, fxz0var, Vvar, Wvar, densvar,
-                                    coriolisxzvar, dis, djs, dks, i, j,
-                                    dual_topology.ni - 2, n);
+          PVPE.compute_qhzfhz_bottom(qhzvar, fhzvar, Vvar, Wvar, densvar,
+                                     coriolisxzvar, dis, djs, dks, i, j, 1, n);
+          PVPE.compute_qhzfhz_top(qhzvar, fhzvar, Vvar, Wvar, densvar,
+                                  coriolisxzvar, dis, djs, dks, i, j,
+                                  dual_topology.ni - 2, n);
         });
   }
 
   void compute_edge_reconstructions_uniform(
       real5d densedgereconvar, real5d densvertedgereconvar,
-      real5d qxzedgereconvar, real5d qxzvertedgereconvar,
-      real5d coriolisxzedgereconvar, real5d coriolisxzvertedgereconvar,
-      const real5d dens0var, const real5d qxz0var, const real5d fxz0var) {
+      real5d qhzedgereconvar, real5d qhzvertedgereconvar,
+      real5d coriolishzedgereconvar, real5d coriolishzvertedgereconvar,
+      const real5d dens0var, const real5d qhzvar, const real5d fhzvar) {
 
     const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
@@ -521,23 +520,23 @@ public:
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_straight_xz_edge_recon<1, reconstruction_type,
                                          reconstruction_order>(
-              qxzedgereconvar, qxz0var, pis, pjs, pks, i, j, k, n,
+              qhzedgereconvar, qhzvar, pis, pjs, pks, i, j, k, n,
               primal_wenoRecon, primal_to_gll, primal_wenoIdl,
               primal_wenoSigma);
           compute_straight_xz_vert_edge_recon_uniform<
               1, vert_reconstruction_type, vert_reconstruction_order>(
-              qxzvertedgereconvar, qxz0var, pis, pjs, pks, i, j, k, n,
+              qhzvertedgereconvar, qhzvar, pis, pjs, pks, i, j, k, n,
               primal_vert_wenoRecon, primal_vert_to_gll, primal_vert_wenoIdl,
               primal_vert_wenoSigma);
           compute_straight_xz_edge_recon<1, coriolis_reconstruction_type,
                                          coriolis_reconstruction_order>(
-              coriolisxzedgereconvar, fxz0var, pis, pjs, pks, i, j, k, n,
+              coriolishzedgereconvar, fhzvar, pis, pjs, pks, i, j, k, n,
               coriolis_wenoRecon, coriolis_to_gll, coriolis_wenoIdl,
               coriolis_wenoSigma);
           compute_straight_xz_vert_edge_recon_uniform<
               1, coriolis_vert_reconstruction_type,
               coriolis_vert_reconstruction_order>(
-              coriolisxzvertedgereconvar, fxz0var, pis, pjs, pks, i, j, k, n,
+              coriolishzvertedgereconvar, fhzvar, pis, pjs, pks, i, j, k, n,
               coriolis_vert_wenoRecon, coriolis_vert_to_gll,
               coriolis_vert_wenoIdl, coriolis_vert_wenoSigma);
         });
@@ -545,9 +544,9 @@ public:
 
   void compute_edge_reconstructions_variable(
       real5d densedgereconvar, real5d densvertedgereconvar,
-      real5d qxzedgereconvar, real5d qxzvertedgereconvar,
-      real5d coriolisxzedgereconvar, real5d coriolisxzvertedgereconvar,
-      const real5d dens0var, const real5d qxz0var, const real5d fxz0var) {
+      real5d qhzedgereconvar, real5d qhzvertedgereconvar,
+      real5d coriolishzedgereconvar, real5d coriolishzvertedgereconvar,
+      const real5d dens0var, const real5d qhzvar, const real5d fhzvar) {
 
     if (vert_reconstruction_type == RECONSTRUCTION_TYPE::WENO ||
         dual_vert_reconstruction_type == RECONSTRUCTION_TYPE::WENO ||
@@ -778,24 +777,24 @@ public:
 
           compute_straight_xz_edge_recon<1, reconstruction_type,
                                          reconstruction_order>(
-              qxzedgereconvar, qxz0var, pis, pjs, pks, i, j, k, n,
+              qhzedgereconvar, qhzvar, pis, pjs, pks, i, j, k, n,
               primal_wenoRecon, primal_to_gll, primal_wenoIdl,
               primal_wenoSigma);
           compute_straight_xz_vert_edge_recon_variable<
               1, vert_reconstruction_type, vert_reconstruction_order>(
-              qxzvertedgereconvar, qxz0var, pis, pjs, pks, i, j, k, n,
+              qhzvertedgereconvar, qhzvar, pis, pjs, pks, i, j, k, n,
               primal_vert_coefs_to_gll, primal_vert_sten_to_gll,
               primal_vert_sten_to_coefs, primal_vert_weno_recon_lower,
               primal_vert_wenoIdl, primal_vert_wenoSigma);
           compute_straight_xz_edge_recon<1, coriolis_reconstruction_type,
                                          coriolis_reconstruction_order>(
-              coriolisxzedgereconvar, fxz0var, pis, pjs, pks, i, j, k, n,
+              coriolishzedgereconvar, fhzvar, pis, pjs, pks, i, j, k, n,
               coriolis_wenoRecon, coriolis_to_gll, coriolis_wenoIdl,
               coriolis_wenoSigma);
           compute_straight_xz_vert_edge_recon_variable<
               1, coriolis_vert_reconstruction_type,
               coriolis_vert_reconstruction_order>(
-              coriolisxzvertedgereconvar, fxz0var, pis, pjs, pks, i, j, k, n,
+              coriolishzvertedgereconvar, fhzvar, pis, pjs, pks, i, j, k, n,
               coriolis_vert_coefs_to_gll, coriolis_vert_sten_to_gll,
               coriolis_vert_sten_to_coefs, coriolis_vert_weno_recon_lower,
               coriolis_vert_wenoIdl, coriolis_vert_wenoSigma);
@@ -803,12 +802,12 @@ public:
   }
 
   void compute_recons(
-      real5d densreconvar, real5d densvertreconvar, real5d qxzreconvar,
-      real5d qxzvertreconvar, real5d coriolisxzreconvar,
-      real5d coriolisxzvertreconvar, const real5d densedgereconvar,
-      const real5d densvertedgereconvar, const real5d qxzedgereconvar,
-      const real5d qxzvertedgereconvar, const real5d coriolisxzedgereconvar,
-      const real5d coriolisxzvertedgereconvar, const real5d densvar,
+      real5d densreconvar, real5d densvertreconvar, real5d qhzreconvar,
+      real5d qhzvertreconvar, real5d coriolishzreconvar,
+      real5d coriolishzvertreconvar, const real5d densedgereconvar,
+      const real5d densvertedgereconvar, const real5d qhzedgereconvar,
+      const real5d qhzvertedgereconvar, const real5d coriolishzedgereconvar,
+      const real5d coriolishzvertedgereconvar, const real5d densvar,
       const real5d Vvar, const real5d Wvar) {
 
     const auto &primal_topology = primal_geometry.topology;
@@ -920,10 +919,10 @@ public:
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_straight_xz_recon<1, reconstruction_type>(
-              qxzreconvar, qxzedgereconvar, primal_geometry, dual_geometry,
+              qhzreconvar, qhzedgereconvar, primal_geometry, dual_geometry,
               Vvar, pis, pjs, pks, i, j, k, n);
           compute_straight_xz_recon<1, coriolis_reconstruction_type>(
-              coriolisxzreconvar, coriolisxzedgereconvar, primal_geometry,
+              coriolishzreconvar, coriolishzedgereconvar, primal_geometry,
               dual_geometry, Vvar, pis, pjs, pks, i, j, k, n);
         });
     parallel_for(
@@ -932,10 +931,10 @@ public:
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_straight_xz_vert_recon<1, vert_reconstruction_type>(
-              qxzvertreconvar, qxzvertedgereconvar, primal_geometry,
+              qhzvertreconvar, qhzvertedgereconvar, primal_geometry,
               dual_geometry, Wvar, pis, pjs, pks, i, j, k, n);
           compute_straight_xz_vert_recon<1, coriolis_vert_reconstruction_type>(
-              coriolisxzvertreconvar, coriolisxzvertedgereconvar,
+              coriolishzvertreconvar, coriolishzvertedgereconvar,
               primal_geometry, dual_geometry, Wvar, pis, pjs, pks, i, j, k, n);
         });
   }
@@ -980,7 +979,7 @@ public:
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_D0<1>(qxzvertfluxvar, dens0var, pis, pjs, pks, i, j, k, n);
         });
-    auxiliary_vars.exchange({QXZVERTFLUXVAR});
+    auxiliary_vars.exchange({QHZVERTFLUXVAR});
 
     parallel_for(
         "Entropicvar diffusion 3",
@@ -989,7 +988,7 @@ public:
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_D0_vert<1>(qxzfluxvar, dens0var, pis, pjs, pks, i, j, k, n);
         });
-    auxiliary_vars.exchange({QXZFLUXVAR});
+    auxiliary_vars.exchange({QHZFLUXVAR});
 
     parallel_for(
         "Entropicvar diffusion 4",
@@ -1045,8 +1044,8 @@ public:
 
   void add_velocity_diffusion(real velocity_coeff, real5d Vtendvar,
                               real5d Wtendvar, const real5d Vvar,
-                              const real5d Wvar, const real5d qxzedgereconvar,
-                              const real5d qxz0var, const real5d dens0var,
+                              const real5d Wvar, const real5d qhzedgereconvar,
+                              const real5d qhzvar, const real5d dens0var,
                               const real5d Kvar, const real5d Fvar,
                               const real5d FWvar,
                               FieldSet<nauxiliary> &auxiliary_vars) {
@@ -1073,10 +1072,10 @@ public:
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_D1_ext<1>(qxzedgereconvar, Vvar, Wvar, pis, pjs, pks, i, j, k,
+          compute_D1_ext<1>(qhzedgereconvar, Vvar, Wvar, pis, pjs, pks, i, j, k,
                             n);
         });
-    auxiliary_vars.exchange({QXZEDGERECONVAR});
+    auxiliary_vars.exchange({QHZEDGERECONVAR});
 
     parallel_for(
         "Velocity diffusion 2",
@@ -1084,18 +1083,18 @@ public:
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_Hn1<1, diffusion_diff_ord, vert_diffusion_diff_ord>(
-              qxz0var, qxzedgereconvar, primal_geometry, dual_geometry, dis,
-              djs, dks, i, j, k + 1, n);
+              qhzvar, qhzedgereconvar, primal_geometry, dual_geometry, dis, djs,
+              dks, i, j, k + 1, n);
         });
-    auxiliary_vars.exchange({QXZ0VAR});
-    auxiliary_vars.fields_arr[QXZ0VAR].set_bnd(0.0);
+    auxiliary_vars.exchange({QHZVAR});
+    auxiliary_vars.fields_arr[QHZVAR].set_bnd(0.0);
 
     parallel_for(
         "Velocity diffusion 3",
         SimpleBounds<4>(dual_topology.ni, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_D0bar_ext<1>(FWvar, qxz0var, dis, djs, dks, i, j, k, n);
+          compute_D0bar_ext<1>(FWvar, qhzvar, dis, djs, dks, i, j, k, n);
         });
     auxiliary_vars.exchange({FWVAR});
 
@@ -1104,7 +1103,7 @@ public:
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_D0bar_vert<1>(Fvar, qxz0var, dis, djs, dks, i, j, k, n);
+          compute_D0bar_vert<1>(Fvar, qhzvar, dis, djs, dks, i, j, k, n);
         });
     auxiliary_vars.exchange({FVAR});
 
@@ -1210,9 +1209,9 @@ public:
   void
   compute_tendencies(real5d denstendvar, real5d Vtendvar, real5d Wtendvar,
                      const real5d densreconvar, const real5d densvertreconvar,
-                     const real5d qxzreconvar, const real5d qxzvertreconvar,
-                     const real5d coriolisxzreconvar,
-                     const real5d coriolisxzvertreconvar, const real5d Bvar,
+                     const real5d qhzreconvar, const real5d qhzvertreconvar,
+                     const real5d coriolishzreconvar,
+                     const real5d coriolishzvertreconvar, const real5d Bvar,
                      const real5d Fvar, const real5d FWvar) {
 
     const auto &primal_topology = primal_geometry.topology;
@@ -1243,16 +1242,16 @@ public:
               pis, pjs, pks, i, j, k + 1, n);
 #endif
           if (qf_choice == QF_MODE::EC) {
-            compute_Qxz_w_EC<1, ADD_MODE::ADD>(Wtendvar, qxzreconvar,
-                                               qxzvertreconvar, Fvar, pis, pjs,
+            compute_Qxz_w_EC<1, ADD_MODE::ADD>(Wtendvar, qhzreconvar,
+                                               qhzvertreconvar, Fvar, pis, pjs,
                                                pks, i, j, k + 1, n);
           }
           if (qf_choice == QF_MODE::NOEC) {
             compute_Qxz_w_nonEC<1, ADD_MODE::ADD>(
-                Wtendvar, qxzreconvar, Fvar, pis, pjs, pks, i, j, k + 1, n);
+                Wtendvar, qhzreconvar, Fvar, pis, pjs, pks, i, j, k + 1, n);
           }
-          compute_Qxz_w_EC<1, ADD_MODE::ADD>(Wtendvar, coriolisxzreconvar,
-                                             coriolisxzvertreconvar, Fvar, pis,
+          compute_Qxz_w_EC<1, ADD_MODE::ADD>(Wtendvar, coriolishzreconvar,
+                                             coriolishzvertreconvar, Fvar, pis,
                                              pjs, pks, i, j, k + 1, n);
         });
 
@@ -1277,24 +1276,24 @@ public:
 #endif
           if (qf_choice == QF_MODE::EC) {
             compute_Qxz_w_EC_bottom<1, ADD_MODE::ADD>(
-                Wtendvar, qxzreconvar, qxzvertreconvar, Fvar, pis, pjs, pks, i,
+                Wtendvar, qhzreconvar, qhzvertreconvar, Fvar, pis, pjs, pks, i,
                 j, 0, n);
             compute_Qxz_w_EC_top<1, ADD_MODE::ADD>(
-                Wtendvar, qxzreconvar, qxzvertreconvar, Fvar, pis, pjs, pks, i,
+                Wtendvar, qhzreconvar, qhzvertreconvar, Fvar, pis, pjs, pks, i,
                 j, primal_topology.nl - 1, n);
           }
           if (qf_choice == QF_MODE::NOEC) {
             compute_Qxz_w_nonEC_bottom<1, ADD_MODE::ADD>(
-                Wtendvar, qxzreconvar, Fvar, pis, pjs, pks, i, j, 0, n);
+                Wtendvar, qhzreconvar, Fvar, pis, pjs, pks, i, j, 0, n);
             compute_Qxz_w_nonEC_top<1, ADD_MODE::ADD>(
-                Wtendvar, qxzreconvar, Fvar, pis, pjs, pks, i, j,
+                Wtendvar, qhzreconvar, Fvar, pis, pjs, pks, i, j,
                 primal_topology.nl - 1, n);
           }
           compute_Qxz_w_EC_bottom<1, ADD_MODE::ADD>(
-              Wtendvar, coriolisxzreconvar, coriolisxzvertreconvar, Fvar, pis,
+              Wtendvar, coriolishzreconvar, coriolishzvertreconvar, Fvar, pis,
               pjs, pks, i, j, 0, n);
           compute_Qxz_w_EC_top<1, ADD_MODE::ADD>(
-              Wtendvar, coriolisxzreconvar, coriolisxzvertreconvar, Fvar, pis,
+              Wtendvar, coriolishzreconvar, coriolishzvertreconvar, Fvar, pis,
               pjs, pks, i, j, primal_topology.nl - 1, n);
         });
 
@@ -1307,17 +1306,17 @@ public:
                                                     active_dens_ids, Bvar, pis,
                                                     pjs, pks, i, j, k + 1, n);
           if (qf_choice == QF_MODE::EC) {
-            compute_Qxz_u_EC<1, ADD_MODE::ADD>(Vtendvar, qxzreconvar,
-                                               qxzvertreconvar, FWvar, pis, pjs,
+            compute_Qxz_u_EC<1, ADD_MODE::ADD>(Vtendvar, qhzreconvar,
+                                               qhzvertreconvar, FWvar, pis, pjs,
                                                pks, i, j, k + 1, n);
           }
           if (qf_choice == QF_MODE::NOEC) {
-            compute_Qxz_u_nonEC<1, ADD_MODE::ADD>(Vtendvar, qxzvertreconvar,
+            compute_Qxz_u_nonEC<1, ADD_MODE::ADD>(Vtendvar, qhzvertreconvar,
                                                   FWvar, pis, pjs, pks, i, j,
                                                   k + 1, n);
           }
-          compute_Qxz_u_EC<1, ADD_MODE::ADD>(Vtendvar, coriolisxzreconvar,
-                                             coriolisxzvertreconvar, FWvar, pis,
+          compute_Qxz_u_EC<1, ADD_MODE::ADD>(Vtendvar, coriolishzreconvar,
+                                             coriolishzvertreconvar, FWvar, pis,
                                              pjs, pks, i, j, k + 1, n);
         });
     parallel_for(
@@ -1333,24 +1332,24 @@ public:
               j, primal_topology.ni - 1, n);
           if (qf_choice == QF_MODE::EC) {
             compute_Qxz_u_EC_bottom<1, ADD_MODE::ADD>(
-                Vtendvar, qxzreconvar, qxzvertreconvar, FWvar, pis, pjs, pks, i,
+                Vtendvar, qhzreconvar, qhzvertreconvar, FWvar, pis, pjs, pks, i,
                 j, 0, n);
             compute_Qxz_u_EC_top<1, ADD_MODE::ADD>(
-                Vtendvar, qxzreconvar, qxzvertreconvar, FWvar, pis, pjs, pks, i,
+                Vtendvar, qhzreconvar, qhzvertreconvar, FWvar, pis, pjs, pks, i,
                 j, primal_topology.ni - 1, n);
           }
           if (qf_choice == QF_MODE::NOEC) {
             compute_Qxz_u_nonEC_bottom<1, ADD_MODE::ADD>(
-                Vtendvar, qxzvertreconvar, FWvar, pis, pjs, pks, i, j, 0, n);
+                Vtendvar, qhzvertreconvar, FWvar, pis, pjs, pks, i, j, 0, n);
             compute_Qxz_u_nonEC_top<1, ADD_MODE::ADD>(
-                Vtendvar, qxzvertreconvar, FWvar, pis, pjs, pks, i, j,
+                Vtendvar, qhzvertreconvar, FWvar, pis, pjs, pks, i, j,
                 primal_topology.ni - 1, n);
           }
           compute_Qxz_u_EC_bottom<1, ADD_MODE::ADD>(
-              Vtendvar, coriolisxzreconvar, coriolisxzvertreconvar, FWvar, pis,
+              Vtendvar, coriolishzreconvar, coriolishzvertreconvar, FWvar, pis,
               pjs, pks, i, j, 0, n);
           compute_Qxz_u_EC_top<1, ADD_MODE::ADD>(
-              Vtendvar, coriolisxzreconvar, coriolisxzvertreconvar, FWvar, pis,
+              Vtendvar, coriolishzreconvar, coriolishzvertreconvar, FWvar, pis,
               pjs, pks, i, j, primal_topology.ni - 1, n);
         });
 
@@ -1612,64 +1611,64 @@ public:
 
     auxiliary_vars.exchange({DENS0VAR});
 
-    compute_q0f0(auxiliary_vars.fields_arr[QXZ0VAR].data,
-                 auxiliary_vars.fields_arr[FXZ0VAR].data,
+    compute_q0f0(auxiliary_vars.fields_arr[QHZVAR].data,
+                 auxiliary_vars.fields_arr[FHZVAR].data,
                  x.fields_arr[VVAR].data, x.fields_arr[WVAR].data,
                  x.fields_arr[DENSVAR].data,
                  const_vars.fields_arr[CORIOLISXZVAR].data);
 
-    auxiliary_vars.fields_arr[QXZ0VAR].set_bnd(0.0);
-    auxiliary_vars.fields_arr[FXZ0VAR].set_bnd(0.0);
-    auxiliary_vars.exchange({QXZ0VAR, FXZ0VAR});
+    auxiliary_vars.fields_arr[QHZVAR].set_bnd(0.0);
+    auxiliary_vars.fields_arr[FHZVAR].set_bnd(0.0);
+    auxiliary_vars.exchange({QHZVAR, FHZVAR});
 
     // Compute densrecon, densvertrecon, qrecon and frecon
     if (dual_geometry.uniform_vertical) {
       compute_edge_reconstructions_uniform(
           auxiliary_vars.fields_arr[DENSEDGERECONVAR].data,
           auxiliary_vars.fields_arr[DENSVERTEDGERECONVAR].data,
-          auxiliary_vars.fields_arr[QXZEDGERECONVAR].data,
-          auxiliary_vars.fields_arr[QXZVERTEDGERECONVAR].data,
-          auxiliary_vars.fields_arr[CORIOLISXZEDGERECONVAR].data,
-          auxiliary_vars.fields_arr[CORIOLISXZVERTEDGERECONVAR].data,
+          auxiliary_vars.fields_arr[QHZEDGERECONVAR].data,
+          auxiliary_vars.fields_arr[QHZVERTEDGERECONVAR].data,
+          auxiliary_vars.fields_arr[CORIOLISHZEDGERECONVAR].data,
+          auxiliary_vars.fields_arr[CORIOLISHZVERTEDGERECONVAR].data,
           auxiliary_vars.fields_arr[DENS0VAR].data,
-          auxiliary_vars.fields_arr[QXZ0VAR].data,
-          auxiliary_vars.fields_arr[FXZ0VAR].data);
+          auxiliary_vars.fields_arr[QHZVAR].data,
+          auxiliary_vars.fields_arr[FHZVAR].data);
     } else {
       compute_edge_reconstructions_variable(
           auxiliary_vars.fields_arr[DENSEDGERECONVAR].data,
           auxiliary_vars.fields_arr[DENSVERTEDGERECONVAR].data,
-          auxiliary_vars.fields_arr[QXZEDGERECONVAR].data,
-          auxiliary_vars.fields_arr[QXZVERTEDGERECONVAR].data,
-          auxiliary_vars.fields_arr[CORIOLISXZEDGERECONVAR].data,
-          auxiliary_vars.fields_arr[CORIOLISXZVERTEDGERECONVAR].data,
+          auxiliary_vars.fields_arr[QHZEDGERECONVAR].data,
+          auxiliary_vars.fields_arr[QHZVERTEDGERECONVAR].data,
+          auxiliary_vars.fields_arr[CORIOLISHZEDGERECONVAR].data,
+          auxiliary_vars.fields_arr[CORIOLISHZVERTEDGERECONVAR].data,
           auxiliary_vars.fields_arr[DENS0VAR].data,
-          auxiliary_vars.fields_arr[QXZ0VAR].data,
-          auxiliary_vars.fields_arr[FXZ0VAR].data);
+          auxiliary_vars.fields_arr[QHZVAR].data,
+          auxiliary_vars.fields_arr[FHZVAR].data);
     }
 
     auxiliary_vars.exchange({DENSEDGERECONVAR, DENSVERTEDGERECONVAR,
-                             QXZEDGERECONVAR, QXZVERTEDGERECONVAR,
-                             CORIOLISXZEDGERECONVAR,
-                             CORIOLISXZVERTEDGERECONVAR});
+                             QHZEDGERECONVAR, QHZVERTEDGERECONVAR,
+                             CORIOLISHZEDGERECONVAR,
+                             CORIOLISHZVERTEDGERECONVAR});
 
     compute_recons(auxiliary_vars.fields_arr[DENSRECONVAR].data,
                    auxiliary_vars.fields_arr[DENSVERTRECONVAR].data,
-                   auxiliary_vars.fields_arr[QXZRECONVAR].data,
-                   auxiliary_vars.fields_arr[QXZVERTRECONVAR].data,
-                   auxiliary_vars.fields_arr[CORIOLISXZRECONVAR].data,
-                   auxiliary_vars.fields_arr[CORIOLISXZVERTRECONVAR].data,
+                   auxiliary_vars.fields_arr[QHZRECONVAR].data,
+                   auxiliary_vars.fields_arr[QHZVERTRECONVAR].data,
+                   auxiliary_vars.fields_arr[CORIOLISHZRECONVAR].data,
+                   auxiliary_vars.fields_arr[CORIOLISHZVERTRECONVAR].data,
                    auxiliary_vars.fields_arr[DENSEDGERECONVAR].data,
                    auxiliary_vars.fields_arr[DENSVERTEDGERECONVAR].data,
-                   auxiliary_vars.fields_arr[QXZEDGERECONVAR].data,
-                   auxiliary_vars.fields_arr[QXZVERTEDGERECONVAR].data,
-                   auxiliary_vars.fields_arr[CORIOLISXZEDGERECONVAR].data,
-                   auxiliary_vars.fields_arr[CORIOLISXZVERTEDGERECONVAR].data,
+                   auxiliary_vars.fields_arr[QHZEDGERECONVAR].data,
+                   auxiliary_vars.fields_arr[QHZVERTEDGERECONVAR].data,
+                   auxiliary_vars.fields_arr[CORIOLISHZEDGERECONVAR].data,
+                   auxiliary_vars.fields_arr[CORIOLISHZVERTEDGERECONVAR].data,
                    x.fields_arr[DENSVAR].data, x.fields_arr[VVAR].data,
                    x.fields_arr[WVAR].data);
 
-    auxiliary_vars.exchange({DENSRECONVAR, DENSVERTRECONVAR, QXZRECONVAR,
-                             QXZVERTRECONVAR, CORIOLISXZRECONVAR,
-                             CORIOLISXZVERTRECONVAR});
+    auxiliary_vars.exchange({DENSRECONVAR, DENSVERTRECONVAR, QHZRECONVAR,
+                             QHZVERTRECONVAR, CORIOLISHZRECONVAR,
+                             CORIOLISHZVERTRECONVAR});
 
     // Compute fct
     int dis = dual_topology.is;
@@ -1741,10 +1740,10 @@ public:
           xtend.fields_arr[WVAR].data,
           auxiliary_vars.fields_arr[DENSRECONVAR].data,
           auxiliary_vars.fields_arr[DENSVERTRECONVAR].data,
-          auxiliary_vars.fields_arr[QXZRECONVAR].data,
-          auxiliary_vars.fields_arr[QXZVERTRECONVAR].data,
-          auxiliary_vars.fields_arr[CORIOLISXZRECONVAR].data,
-          auxiliary_vars.fields_arr[CORIOLISXZVERTRECONVAR].data,
+          auxiliary_vars.fields_arr[QHZRECONVAR].data,
+          auxiliary_vars.fields_arr[QHZVERTRECONVAR].data,
+          auxiliary_vars.fields_arr[CORIOLISHZRECONVAR].data,
+          auxiliary_vars.fields_arr[CORIOLISHZVERTRECONVAR].data,
           auxiliary_vars.fields_arr[BVAR].data,
           auxiliary_vars.fields_arr[FVAR].data,
           auxiliary_vars.fields_arr[FWVAR].data);
@@ -1755,10 +1754,10 @@ public:
           xtend.fields_arr[WVAR].data,
           auxiliary_vars.fields_arr[DENSRECONVAR].data,
           auxiliary_vars.fields_arr[DENSVERTRECONVAR].data,
-          auxiliary_vars.fields_arr[QXZRECONVAR].data,
-          auxiliary_vars.fields_arr[QXZVERTRECONVAR].data,
-          auxiliary_vars.fields_arr[CORIOLISXZRECONVAR].data,
-          auxiliary_vars.fields_arr[CORIOLISXZVERTRECONVAR].data,
+          auxiliary_vars.fields_arr[QHZRECONVAR].data,
+          auxiliary_vars.fields_arr[QHZVERTRECONVAR].data,
+          auxiliary_vars.fields_arr[CORIOLISHZRECONVAR].data,
+          auxiliary_vars.fields_arr[CORIOLISHZVERTRECONVAR].data,
           auxiliary_vars.fields_arr[BVAR].data,
           auxiliary_vars.fields_arr[FVAR].data,
           auxiliary_vars.fields_arr[FWVAR].data);
@@ -1769,8 +1768,8 @@ public:
           entropicvar_diffusion_coeff, xtend.fields_arr[DENSVAR].data,
           x.fields_arr[DENSVAR].data, auxiliary_vars.fields_arr[DENS0VAR].data,
           auxiliary_vars.fields_arr[KVAR].data,
-          auxiliary_vars.fields_arr[QXZFLUXVAR].data,
-          auxiliary_vars.fields_arr[QXZVERTFLUXVAR].data,
+          auxiliary_vars.fields_arr[QHZFLUXVAR].data,
+          auxiliary_vars.fields_arr[QHZVERTFLUXVAR].data,
           auxiliary_vars.fields_arr[FVAR].data,
           auxiliary_vars.fields_arr[FWVAR].data, auxiliary_vars);
     }
@@ -1779,8 +1778,8 @@ public:
           velocity_diffusion_coeff, xtend.fields_arr[VVAR].data,
           xtend.fields_arr[WVAR].data, x.fields_arr[VVAR].data,
           x.fields_arr[WVAR].data,
-          auxiliary_vars.fields_arr[QXZEDGERECONVAR].data,
-          auxiliary_vars.fields_arr[QXZ0VAR].data,
+          auxiliary_vars.fields_arr[QHZEDGERECONVAR].data,
+          auxiliary_vars.fields_arr[QHZVAR].data,
           auxiliary_vars.fields_arr[DENS0VAR].data,
           auxiliary_vars.fields_arr[KVAR].data,
           auxiliary_vars.fields_arr[FVAR].data,
@@ -2905,41 +2904,67 @@ void initialize_variables(
                                    VS::ndensity_prognostic};
 
   // Q stuff
-  aux_desc_arr[QXZ0VAR] = {"QXZ0", dtopo, 0, 0, 1}; // Q0 = twisted (0,0)-form
-  aux_desc_arr[QXZRECONVAR] = {
-      "qxzrecon", ptopo, 0, 1,
-      1}; // qxzrecon lives on vert primal edges, associated with w
-  aux_desc_arr[QXZEDGERECONVAR] = {
-      "qxzedgerecon", ptopo, ndims, 1,
-      2 * 1}; // qxzedgerecon lives on primal cells, associated with Fw/w
-  aux_desc_arr[QXZVERTRECONVAR] = {
-      "qxzvertrecon", ptopo, 1, 0,
-      1}; // qxzsvertrecon lives on horiz primal edges, associated with v
-  aux_desc_arr[QXZVERTEDGERECONVAR] = {
-      "qxzvertedgerecon", ptopo, ndims, 1,
-      2 * 1}; // qxzvertedgerecon lives on primal cells, associated with F/v
-  aux_desc_arr[QXZFLUXVAR] = {
-      "qxzflux", ptopo, 0, 1,
-      1}; // qxzflux lives on vert primal edges, associated with w
-  aux_desc_arr[QXZVERTFLUXVAR] = {
-      "qxzvertflux", ptopo, 1, 0,
-      1}; // qxzvertflux lives on horiz primal edges, associated with v
+  aux_desc_arr[QHZVAR] = {"QHZ", dtopo, ndims - 1, 0,
+                          1}; // in 2d QHZ=QXZ00 = twisted (0,0)-form,
+                              // in 3d QHZ=(QXZ10,QYZ10) lives on twisted edges
+  aux_desc_arr[QHZRECONVAR] = {
+      "qhzrecon", ptopo, 0, 1,
+      ndims}; // qhzrecon lives on vert primal edges, associated with w
+  aux_desc_arr[QHZEDGERECONVAR] = {
+      "qhzedgerecon", ptopo, 1, 1,
+      2 * 1}; // qhzedgerecon lives on primal cells in 2d or primal faces in 3d,
+              // associated with Fw/w
+  aux_desc_arr[QHZVERTRECONVAR] = {
+      "qhzvertrecon", ptopo, 1, 0,
+      1}; // qhzsvertrecon lives on horiz primal edges, associated with v
+  aux_desc_arr[QHZVERTEDGERECONVAR] = {
+      "qhzvertedgerecon", ptopo, 1, 1,
+      2 * 1}; // qhzvertedgerecon lives on primal cells 2d or primal faces in
+              // 3d, associated with F/v
+  aux_desc_arr[QHZFLUXVAR] = {
+      "qhzflux", ptopo, 0, 1,
+      1}; // qhzflux lives on vert primal edges, associated with w
+  aux_desc_arr[QHZVERTFLUXVAR] = {
+      "qhzvertflux", ptopo, 1, 0,
+      1}; // qhzvertflux lives on horiz primal edges, associated with v
 
-  aux_desc_arr[FXZ0VAR] = {"fxz0", dtopo, 0, 0,
-                           1}; // fxz0 is a twisted 0,0 form
-  aux_desc_arr[CORIOLISXZRECONVAR] = {
-      "coriolisxzrecon", ptopo, 0, 1,
-      1}; // coriolisxzrecon lives on vert primal edges, associated with w
-  aux_desc_arr[CORIOLISXZEDGERECONVAR] = {
-      "coriolisxzedgerecon", ptopo, ndims, 1,
-      2 * 1}; // coriolisxzedgerecon lives on primal cells, associated with Fw/w
-  aux_desc_arr[CORIOLISXZVERTRECONVAR] = {
-      "coriolisxzvertrecon", ptopo, 1, 0,
-      1}; // coriolisxzsvertrecon lives on horiz primal edges, associated with v
-  aux_desc_arr[CORIOLISXZVERTEDGERECONVAR] = {
-      "coriolisxzvertedgerecon", ptopo, ndims, 1,
-      2 * 1}; // coriolisxzvertedgerecon lives on primal cells,
-              // associated with F/v
+  aux_desc_arr[FHZVAR] = {"fhz", dtopo, ndims - 1, 0,
+                          1}; // in 2d fhz=fxz00 is a twisted 0,0 form
+                              // in 3d fhz=(fxz10,fyz10) lives on twisted edges
+  aux_desc_arr[CORIOLISHZRECONVAR] = {
+      "coriolishzrecon", ptopo, 0, 1,
+      ndims}; // coriolishzrecon lives on vert primal edges, associated with w
+  aux_desc_arr[CORIOLISHZEDGERECONVAR] = {
+      "coriolishzedgerecon", ptopo, 1, 1,
+      2 * 1}; // coriolishzedgerecon lives on primal cells in 2d or primal faces
+              // in 3d, associated with Fw/w
+  aux_desc_arr[CORIOLISHZVERTRECONVAR] = {
+      "coriolishzvertrecon", ptopo, 1, 0,
+      1}; // coriolishzsvertrecon lives on horiz primal edges, associated with v
+  aux_desc_arr[CORIOLISHZVERTEDGERECONVAR] = {
+      "coriolishzvertedgerecon", ptopo, 1, 1,
+      2 * 1}; // coriolishzvertedgerecon lives on primal cells in 2d or primal
+              // faces in 3d, associated with F/v
+
+  // additonal Q and coriolis variables for 3d
+  if (ndims > 1) {
+    aux_desc_arr[QXYVAR] = {"QXY", dtopo, 0, ndims - 1,
+                            1}; // QXY lives on twisted edges
+    aux_desc_arr[QXYRECONVAR] = {"qxyrecon", ptopo, 1, 0,
+                                 2}; // qxyrecon lives on primal edges
+    aux_desc_arr[QXYEDGERECONVAR] = {
+        "qxyedgerecon", ptopo, 2, 0,
+        4}; // qxyedgerecon lives on primal vertical faces
+
+    aux_desc_arr[FXYVAR] = {"FXY", dtopo, 0, ndims - 1,
+                            1}; // FXY lives on twisted edges
+    aux_desc_arr[CORIOLISXYRECONVAR] = {
+        "coriolisxyrecon", ptopo, 1, 0,
+        2}; // coriolisxyrecon lives on primal edges
+    aux_desc_arr[CORIOLISXYEDGERECONVAR] = {
+        "corliolisxyedgerecon", ptopo, 2, 0,
+        4}; // coriolisxyedgerecon lives on primal vertical faces
+  }
 
   // #if defined _AN || defined _MAN
   // aux_topo_arr[PVAR] = ptopo; //p = straight 0-form
