@@ -383,16 +383,16 @@ public:
     }
   }
 
-  void YAKL_INLINE compute_qxy0fxy0(const real5d &qxy0, const real5d &fxy0,
-                                    const real5d &v, const real5d &w,
-                                    const real5d &dens,
-                                    const real5d &coriolisxy, int is, int js,
-                                    int ks, int i, int j, int k, int n) const {
+  void YAKL_INLINE compute_qxyfxy(const real5d &qxy, const real5d &fxy,
+                                  const real5d &v, const real5d &w,
+                                  const real5d &dens, const real5d &coriolisxy,
+                                  int is, int js, int ks, int i, int j, int k,
+                                  int n) const {
     real hvxy = compute_hvxy(dens, is, js, ks, i, j, k, n);
 
     SArray<real, 1, 1> zeta;
     compute_D1<1>(zeta, v, is, js, ks, i, j, k, n);
-    qxy0(0, k + ks, j + js, i + is, n) = zeta(0) / hvxy;
+    qxy(0, k + ks, j + js, i + is, n) = zeta(0) / hvxy;
   }
 
   pvpe YAKL_INLINE compute_PVPE(const real5d &v, const real5d &w,
