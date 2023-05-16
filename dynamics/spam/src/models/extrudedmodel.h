@@ -518,22 +518,22 @@ public:
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_straight_xz_edge_recon<1, reconstruction_type,
+          compute_straight_hz_edge_recon<1, reconstruction_type,
                                          reconstruction_order>(
               qhzedgereconvar, qhzvar, pis, pjs, pks, i, j, k, n,
               primal_wenoRecon, primal_to_gll, primal_wenoIdl,
               primal_wenoSigma);
-          compute_straight_xz_vert_edge_recon_uniform<
+          compute_straight_hz_vert_edge_recon_uniform<
               1, vert_reconstruction_type, vert_reconstruction_order>(
               qhzvertedgereconvar, qhzvar, pis, pjs, pks, i, j, k, n,
               primal_vert_wenoRecon, primal_vert_to_gll, primal_vert_wenoIdl,
               primal_vert_wenoSigma);
-          compute_straight_xz_edge_recon<1, coriolis_reconstruction_type,
+          compute_straight_hz_edge_recon<1, coriolis_reconstruction_type,
                                          coriolis_reconstruction_order>(
               coriolishzedgereconvar, fhzvar, pis, pjs, pks, i, j, k, n,
               coriolis_wenoRecon, coriolis_to_gll, coriolis_wenoIdl,
               coriolis_wenoSigma);
-          compute_straight_xz_vert_edge_recon_uniform<
+          compute_straight_hz_vert_edge_recon_uniform<
               1, coriolis_vert_reconstruction_type,
               coriolis_vert_reconstruction_order>(
               coriolishzvertedgereconvar, fhzvar, pis, pjs, pks, i, j, k, n,
@@ -775,23 +775,23 @@ public:
             }
           }
 
-          compute_straight_xz_edge_recon<1, reconstruction_type,
+          compute_straight_hz_edge_recon<1, reconstruction_type,
                                          reconstruction_order>(
               qhzedgereconvar, qhzvar, pis, pjs, pks, i, j, k, n,
               primal_wenoRecon, primal_to_gll, primal_wenoIdl,
               primal_wenoSigma);
-          compute_straight_xz_vert_edge_recon_variable<
+          compute_straight_hz_vert_edge_recon_variable<
               1, vert_reconstruction_type, vert_reconstruction_order>(
               qhzvertedgereconvar, qhzvar, pis, pjs, pks, i, j, k, n,
               primal_vert_coefs_to_gll, primal_vert_sten_to_gll,
               primal_vert_sten_to_coefs, primal_vert_weno_recon_lower,
               primal_vert_wenoIdl, primal_vert_wenoSigma);
-          compute_straight_xz_edge_recon<1, coriolis_reconstruction_type,
+          compute_straight_hz_edge_recon<1, coriolis_reconstruction_type,
                                          coriolis_reconstruction_order>(
               coriolishzedgereconvar, fhzvar, pis, pjs, pks, i, j, k, n,
               coriolis_wenoRecon, coriolis_to_gll, coriolis_wenoIdl,
               coriolis_wenoSigma);
-          compute_straight_xz_vert_edge_recon_variable<
+          compute_straight_hz_vert_edge_recon_variable<
               1, coriolis_vert_reconstruction_type,
               coriolis_vert_reconstruction_order>(
               coriolishzvertedgereconvar, fhzvar, pis, pjs, pks, i, j, k, n,
@@ -918,10 +918,10 @@ public:
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_straight_xz_recon<1, reconstruction_type>(
+          compute_straight_hz_recon<1, reconstruction_type>(
               qhzreconvar, qhzedgereconvar, primal_geometry, dual_geometry,
               Vvar, pis, pjs, pks, i, j, k, n);
-          compute_straight_xz_recon<1, coriolis_reconstruction_type>(
+          compute_straight_hz_recon<1, coriolis_reconstruction_type>(
               coriolishzreconvar, coriolishzedgereconvar, primal_geometry,
               dual_geometry, Vvar, pis, pjs, pks, i, j, k, n);
         });
@@ -930,10 +930,10 @@ public:
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_straight_xz_vert_recon<1, vert_reconstruction_type>(
+          compute_straight_hz_vert_recon<1, vert_reconstruction_type>(
               qhzvertreconvar, qhzvertedgereconvar, primal_geometry,
               dual_geometry, Wvar, pis, pjs, pks, i, j, k, n);
-          compute_straight_xz_vert_recon<1, coriolis_vert_reconstruction_type>(
+          compute_straight_hz_vert_recon<1, coriolis_vert_reconstruction_type>(
               coriolishzvertreconvar, coriolishzvertedgereconvar,
               primal_geometry, dual_geometry, Wvar, pis, pjs, pks, i, j, k, n);
         });
