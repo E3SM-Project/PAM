@@ -979,11 +979,10 @@ public:
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_straight_hz_vert_recon<ndims, vert_reconstruction_type>(
+          compute_straight_hz_vert_recon<1, vert_reconstruction_type>(
               qhzvertreconvar, qhzvertedgereconvar, primal_geometry,
               dual_geometry, Wvar, pis, pjs, pks, i, j, k, n);
-          compute_straight_hz_vert_recon<ndims,
-                                         coriolis_vert_reconstruction_type>(
+          compute_straight_hz_vert_recon<1, coriolis_vert_reconstruction_type>(
               coriolishzvertreconvar, coriolishzvertedgereconvar,
               primal_geometry, dual_geometry, Wvar, pis, pjs, pks, i, j, k, n);
         });

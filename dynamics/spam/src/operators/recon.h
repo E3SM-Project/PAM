@@ -492,25 +492,7 @@ void YAKL_INLINE compute_straight_hz_recon(const real5d &reconvar,
                                            const real5d &V, int is, int js,
                                            int ks, int i, int j, int k, int n) {
   SArray<real, 2, ndofs, ndims> recon;
-  // SArray<real, 1, ndims> uvar;
   SArray<real, 3, ndofs, ndims, 2> edgerecon;
-
-  // SArray<real, 1, 1> f0, f1, f2, f3;
-  // compute_H10<1, diff_ord>(f0, V, pgeom, dgeom, is, js, ks, i, j, k, n);
-  // compute_H10<1, diff_ord>(f1, V, pgeom, dgeom, is, js, ks, i + 1, j, k, n);
-  // compute_H10<1, diff_ord>(f2, V, pgeom, dgeom, is, js, ks, i, j, k + 1, n);
-  // compute_H10<1, diff_ord>(f3, V, pgeom, dgeom, is, js, ks, i + 1, j, k + 1,
-  // n);
-
-  // SArray<real, 1, 4> flux;
-  // flux(0) = f0(0);
-  // flux(1) = f1(0);
-  // flux(2) = f2(0);
-  // flux(3) = f3(0);
-
-  //// this assumes that F and U signs are the same
-  //// do we need to handle boundaries here ?
-  // Wxz_w(uvar, flux);
 
   for (int d = 0; d < ndims; d++) {
     for (int l = 0; l < ndofs; l++) {
@@ -529,17 +511,54 @@ void YAKL_INLINE compute_straight_hz_recon(const real5d &reconvar,
     }
   }
 
-  // if (recontype == RECONSTRUCTION_TYPE::CFV) {
-  centered_recon<ndofs, ndims>(recon, edgerecon);
-  //} else if (recontype == RECONSTRUCTION_TYPE::WENO ||
-  //           recontype == RECONSTRUCTION_TYPE::WENOFUNC) {
-  //  if (upwind_type == UPWIND_TYPE::HEAVISIDE) {
-  //    upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
-  //  } else if (upwind_type == UPWIND_TYPE::TANH) {
-  //    uvar(0) /= dgeom.dz(k + ks, n);
-  //    tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
-  //  }
-  //}
+  if (recontype == RECONSTRUCTION_TYPE::CFV) {
+    centered_recon<ndofs, ndims>(recon, edgerecon);
+  } else if (recontype == RECONSTRUCTION_TYPE::WENO ||
+             recontype == RECONSTRUCTION_TYPE::WENOFUNC) {
+
+    SArray<real, 1, ndims> uvar;
+    for (int d = 0; d < ndims; ++d) {
+      SArray<real, 1, ndims> f0, f1, f2, f3;
+      if (d == 0) {
+        compute_H10<1, diff_ord>(f0, V, pgeom, dgeom, is, js, ks, i, j, k, n);
+        compute_H10<1, diff_ord>(f1, V, pgeom, dgeom, is, js, ks, i + 1, j, k,
+                                 n);
+        compute_H10<1, diff_ord>(f2, V, pgeom, dgeom, is, js, ks, i, j, k + 1,
+                                 n);
+        compute_H10<1, diff_ord>(f3, V, pgeom, dgeom, is, js, ks, i + 1, j,
+                                 k + 1, n);
+      }
+
+      if (d == 1) {
+        compute_H10<1, diff_ord>(f0, V, pgeom, dgeom, is, js, ks, i, j, k, n);
+        compute_H10<1, diff_ord>(f1, V, pgeom, dgeom, is, js, ks, i, j + 1, k,
+                                 n);
+        compute_H10<1, diff_ord>(f2, V, pgeom, dgeom, is, js, ks, i, j, k + 1,
+                                 n);
+        compute_H10<1, diff_ord>(f3, V, pgeom, dgeom, is, js, ks, i, j + 1,
+                                 k + 1, n);
+      }
+
+      SArray<real, 1, 4> flux;
+      flux(0) = f0(d);
+      flux(1) = f1(d);
+      flux(2) = f2(d);
+      flux(3) = f3(d);
+
+      // this assumes that F and U signs are the same
+      // do we need to handle boundaries here ?
+      SArray<real, 1, 1> Wf;
+      Wxz_w(Wf, flux);
+      uvar(d) = Wf(0);
+    }
+
+    if (upwind_type == UPWIND_TYPE::HEAVISIDE) {
+      upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+    } else if (upwind_type == UPWIND_TYPE::TANH) {
+      uvar(0) /= dgeom.dz(k + ks, n);
+      tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+    }
+  }
 
   for (int d = 0; d < ndims; d++) {
     for (int l = 0; l < ndofs; l++) {
@@ -553,50 +572,75 @@ void YAKL_INLINE compute_straight_hz_vert_recon(
     const real5d &reconvar, const real5d &edgereconvar,
     const Geometry<Straight> &pgeom, const Geometry<Twisted> &dgeom,
     const real5d &W, int is, int js, int ks, int i, int j, int k, int n) {
-  SArray<real, 2, ndofs, 1> recon;
-  // SArray<real, 1, 1> uvar;
-  SArray<real, 3, ndofs, 1, 2> edgerecon;
+  SArray<real, 2, ndofs, ndims> recon;
+  SArray<real, 3, ndofs, ndims, 2> edgerecon;
 
-  // SArray<real, 1, 1> f0, f1, f2, f3;
-  // compute_H01<1, vert_diff_ord>(f0, W, pgeom, dgeom, is, js, ks, i, j, k, n);
-  // compute_H01<1, vert_diff_ord>(f1, W, pgeom, dgeom, is, js, ks, i - 1, j, k,
-  //                               n);
-  // compute_H01<1, vert_diff_ord>(f2, W, pgeom, dgeom, is, js, ks, i, j, k + 1,
-  //                               n);
-  // compute_H01<1, vert_diff_ord>(f3, W, pgeom, dgeom, is, js, ks, i - 1, j,
-  //                               k + 1, n);
-  // SArray<real, 1, 4> flux;
-  // flux(0) = f0(0);
-  // flux(1) = f1(0);
-  // flux(2) = f2(0);
-  // flux(3) = f3(0);
-
-  // this assumes that FW and UW signs are the same
-  // do we need to handle boundaries here ?
-  // Wxz_u(uvar, flux);
-  //// Needs a "twist"
-  // uvar(0) *= -1;
-
-  for (int l = 0; l < ndofs; l++) {
-    edgerecon(l, 0, 0) =
-        edgereconvar(l + ndofs * 1, k + ks - 1, j + js, i + is, n);
-    edgerecon(l, 0, 1) = edgereconvar(l + ndofs * 0, k + ks, j + js, i + is, n);
+  for (int d = 0; d < ndims; d++) {
+    for (int l = 0; l < ndofs; l++) {
+      edgerecon(l, d, 0) = edgereconvar(l + ndofs * d + ndofs * ndims * 1,
+                                        k + ks - 1, j + js, i + is, n);
+      edgerecon(l, d, 1) = edgereconvar(l + ndofs * d + ndofs * ndims * 0,
+                                        k + ks, j + js, i + is, n);
+    }
   }
 
-  // if (recontype == RECONSTRUCTION_TYPE::CFV) {
-  centered_recon<ndofs, 1>(recon, edgerecon);
-  ///} else if (recontype == RECONSTRUCTION_TYPE::WENO ||
-  ///           recontype == RECONSTRUCTION_TYPE::WENOFUNC) {
-  ///  if (vert_upwind_type == UPWIND_TYPE::HEAVISIDE) {
-  ///    upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
-  ///  } else if (vert_upwind_type == UPWIND_TYPE::TANH) {
-  ///    uvar(0) /= dgeom.dx;
-  ///    tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
-  ///  }
-  ///}
+  if (recontype == RECONSTRUCTION_TYPE::CFV) {
+    centered_recon<ndofs, ndims>(recon, edgerecon);
+  } else if (recontype == RECONSTRUCTION_TYPE::WENO ||
+             recontype == RECONSTRUCTION_TYPE::WENOFUNC) {
 
-  for (int l = 0; l < ndofs; l++) {
-    reconvar(l, k + ks, j + js, i + is, n) = recon(l, 0);
+    SArray<real, 1, ndims> uvar;
+
+    for (int d = 0; d < ndims; ++d) {
+      SArray<real, 1, 1> f0, f1, f2, f3;
+
+      if (d == 0) {
+        compute_H01<1, vert_diff_ord>(f0, W, pgeom, dgeom, is, js, ks, i, j, k,
+                                      n);
+        compute_H01<1, vert_diff_ord>(f1, W, pgeom, dgeom, is, js, ks, i - 1, j,
+                                      k, n);
+        compute_H01<1, vert_diff_ord>(f2, W, pgeom, dgeom, is, js, ks, i, j,
+                                      k + 1, n);
+        compute_H01<1, vert_diff_ord>(f3, W, pgeom, dgeom, is, js, ks, i - 1, j,
+                                      k + 1, n);
+      }
+      if (d == 1) {
+        compute_H01<1, vert_diff_ord>(f0, W, pgeom, dgeom, is, js, ks, i, j, k,
+                                      n);
+        compute_H01<1, vert_diff_ord>(f1, W, pgeom, dgeom, is, js, ks, i, j - 1,
+                                      k, n);
+        compute_H01<1, vert_diff_ord>(f2, W, pgeom, dgeom, is, js, ks, i, j,
+                                      k + 1, n);
+        compute_H01<1, vert_diff_ord>(f3, W, pgeom, dgeom, is, js, ks, i, j - 1,
+                                      k + 1, n);
+      }
+      SArray<real, 1, 4> flux;
+      flux(0) = f0(0);
+      flux(1) = f1(0);
+      flux(2) = f2(0);
+      flux(3) = f3(0);
+
+      // this assumes that FW and UW signs are the same
+      // do we need to handle boundaries here ?
+      SArray<real, 1, 1> Wf;
+      Wxz_u(Wf, flux);
+
+      // Needs a "twist"
+      uvar(d) = -Wf(0);
+    }
+
+    if (vert_upwind_type == UPWIND_TYPE::HEAVISIDE) {
+      upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+    } else if (vert_upwind_type == UPWIND_TYPE::TANH) {
+      uvar(0) /= dgeom.dx;
+      tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+    }
+  }
+
+  for (int d = 0; d < ndims; ++d) {
+    for (int l = 0; l < ndofs; l++) {
+      reconvar(l + ndofs * d, k + ks, j + js, i + is, n) = recon(l, d);
+    }
   }
 }
 #endif
