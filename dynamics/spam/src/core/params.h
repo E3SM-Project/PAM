@@ -177,7 +177,7 @@ void finalize_parallel(Parameters &params, Parallel &par) {
 #endif
 }
 
-void check_and_print_parameters(const Parameters &params, const Parallel &par) {
+void check_and_print_parameters(const Parameters &params, const Parallel &par, bool verbose=false) {
   // Check time stepping params
   if (not(params.dtphys > 0.0_fp) or not(params.simSteps > 0) or
       not(params.crm_per_phys > 0) or not(params.Nout > 0) or
@@ -187,7 +187,7 @@ void check_and_print_parameters(const Parameters &params, const Parallel &par) {
   }
 
   // Print out the values
-  if (par.masterproc) {
+  if (par.masterproc and verbose) {
     std::cout << "nx:         " << params.nx_glob << "\n";
     std::cout << "ny:         " << params.ny_glob << "\n";
     std::cout << "nl dual:         " << params.nz_dual << "\n";

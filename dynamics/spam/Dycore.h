@@ -71,8 +71,8 @@ public:
     }
   }
 
-  void init(PamCoupler &coupler) {
-    serial_print("setting up dycore", par.masterproc);
+  void init(PamCoupler &coupler, bool verbose=false) {
+    if (verbose) { serial_print("setting up dycore", par.masterproc); }
 
     // Set parameters
     debug_print(
@@ -92,7 +92,7 @@ public:
     testcase->set_tracers(params);
     testcase->set_domain(params);
 
-    check_and_print_model_parameters(params, par);
+    check_and_print_model_parameters(params, par, verbose);
 
     debug_print("read parameters and partitioned domain/setting domain sizes",
                 par.masterproc);
@@ -108,7 +108,7 @@ public:
     debug_print("finish init topo/geom", par.masterproc);
 
     debug_print("start init equations", par.masterproc);
-    equations.initialize(coupler, params, primal_geometry, dual_geometry);
+    equations.initialize(coupler, params, primal_geometry, dual_geometry, verbose);
     debug_print("finish init equations", par.masterproc);
 
     debug_print("start init testcase", par.masterproc);

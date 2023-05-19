@@ -179,13 +179,15 @@ public:
                   const ThermoPotential &thermodynamics,
                   const ReferenceState &refstate,
                   const Geometry<Straight> &primal_geom,
-                  const Geometry<Twisted> &dual_geom);
+                  const Geometry<Twisted> &dual_geom,
+                  bool verbose=false);
   static void initialize(VariableSetBase &varset, PamCoupler &coupler,
                          ModelParameters &params,
                          const ThermoPotential &thermodynamics,
                          const ReferenceState &refstate,
                          const Geometry<Straight> &primal_geom,
-                         const Geometry<Twisted> &dual_geom) {
+                         const Geometry<Twisted> &dual_geom,
+                         bool verbose=false) {
 
     if (T::couple && couple_wind_exact_inverse) {
       if (primal_geom.topology.n_cells_x % 2 == 0) {
@@ -283,20 +285,22 @@ public:
           "Dycore Tracer" + std::to_string(i - ndensity_dycore_prognostic);
     }
 
-    serial_print("PAM-C densities", params.masterproc);
-    for (int i = 0; i < ndensity; i++) {
-      std::stringstream ss;
-      ss << std::left;
-      ss << std::setw(4) << i;
-      ss << std::setw(21) << varset.dens_name[i].substr(0, 19);
-      ss << std::setw(29) << varset.dens_desc[i].substr(0, 27);
-      ss << std::setw(12) << (varset.dens_prognostic(i) ? "prognostic" : "");
-      ss << std::setw(8) << (varset.dens_active(i) ? "active" : "");
-      ss << std::setw(10)
-         << ((varset.dens_prognostic(i) && varset.dens_pos(i)) ? "positive"
-                                                               : "");
+    if (verbose) {
+      serial_print("PAM-C densities", params.masterproc);
+      for (int i = 0; i < ndensity; i++) {
+        std::stringstream ss;
+        ss << std::left;
+        ss << std::setw(4) << i;
+        ss << std::setw(21) << varset.dens_name[i].substr(0, 19);
+        ss << std::setw(29) << varset.dens_desc[i].substr(0, 27);
+        ss << std::setw(12) << (varset.dens_prognostic(i) ? "prognostic" : "");
+        ss << std::setw(8) << (varset.dens_active(i) ? "active" : "");
+        ss << std::setw(10)
+           << ((varset.dens_prognostic(i) && varset.dens_pos(i)) ? "positive"
+                                                                 : "");
 
-      serial_print(ss.str(), params.masterproc);
+        serial_print(ss.str(), params.masterproc);
+      }
     }
 
     yakl::fence();
@@ -804,7 +808,8 @@ void VariableSetBase<VS_SWE>::initialize(PamCoupler &coupler,
                                          const ThermoPotential &thermodynamics,
                                          const ReferenceState &refstate,
                                          const Geometry<Straight> &primal_geom,
-                                         const Geometry<Twisted> &dual_geom) {
+                                         const Geometry<Twisted> &dual_geom,
+                                         bool verbose) {
   dens_id_mass = 0;
   active_id_mass = 0;
   dens_name[dens_id_mass] = "h";
@@ -813,7 +818,7 @@ void VariableSetBase<VS_SWE>::initialize(PamCoupler &coupler,
   dens_active(dens_id_mass) = true;
 
   VariableSetBase::initialize(*this, coupler, params, thermodynamics, refstate,
-                              primal_geom, dual_geom);
+                              primal_geom, dual_geom, verbose);
 }
 #endif
 
@@ -824,7 +829,8 @@ void VariableSetBase<VS_TSWE>::initialize(PamCoupler &coupler,
                                           const ThermoPotential &thermodynamics,
                                           const ReferenceState &refstate,
                                           const Geometry<Straight> &primal_geom,
-                                          const Geometry<Twisted> &dual_geom) {
+                                          const Geometry<Twisted> &dual_geom,
+                                          bool verbose) {
   dens_id_mass = 0;
   active_id_mass = 0;
   dens_name[dens_id_mass] = "h";
@@ -842,7 +848,7 @@ void VariableSetBase<VS_TSWE>::initialize(PamCoupler &coupler,
   dens_pos(dens_id_entr) = false;
 
   VariableSetBase::initialize(*this, coupler, params, thermodynamics, refstate,
-                              primal_geom, dual_geom);
+                              primal_geom, dual_geom, verbose);
 }
 #endif
 
@@ -853,7 +859,8 @@ void VariableSetBase<VS_CE>::initialize(PamCoupler &coupler,
                                         const ThermoPotential &thermodynamics,
                                         const ReferenceState &refstate,
                                         const Geometry<Straight> &primal_geom,
-                                        const Geometry<Twisted> &dual_geom) {
+                                        const Geometry<Twisted> &dual_geom,
+                                        bool verbose) {
 
   dens_id_mass = 0;
   active_id_mass = 0;
@@ -872,7 +879,7 @@ void VariableSetBase<VS_CE>::initialize(PamCoupler &coupler,
   dens_pos(dens_id_entr) = false;
 
   VariableSetBase::initialize(*this, coupler, params, thermodynamics, refstate,
-                              primal_geom, dual_geom);
+                              primal_geom, dual_geom, verbose);
 }
 
 template <>
@@ -918,7 +925,8 @@ void VariableSetBase<VS_AN>::initialize(PamCoupler &coupler,
                                         const ThermoPotential &thermodynamics,
                                         const ReferenceState &refstate,
                                         const Geometry<Straight> &primal_geom,
-                                        const Geometry<Twisted> &dual_geom) {
+                                        const Geometry<Twisted> &dual_geom,
+                                        bool verbose) {
   dens_id_entr = 0;
   active_id_entr = 0;
   dens_name[dens_id_entr] = "S";
@@ -937,7 +945,7 @@ void VariableSetBase<VS_AN>::initialize(PamCoupler &coupler,
   dens_active(dens_id_mass) = true;
 
   VariableSetBase::initialize(*this, coupler, params, thermodynamics, refstate,
-                              primal_geom, dual_geom);
+                              primal_geom, dual_geom, verbose);
 }
 
 template <>
@@ -1018,7 +1026,8 @@ void VariableSetBase<VS_MAN>::initialize(PamCoupler &coupler,
                                          const ThermoPotential &thermodynamics,
                                          const ReferenceState &refstate,
                                          const Geometry<Straight> &primal_geom,
-                                         const Geometry<Twisted> &dual_geom) {
+                                         const Geometry<Twisted> &dual_geom,
+                                         bool verbose) {
   dens_id_entr = 0;
   active_id_entr = 0;
   dens_name[dens_id_entr] = "S";
@@ -1037,7 +1046,7 @@ void VariableSetBase<VS_MAN>::initialize(PamCoupler &coupler,
   dens_active(dens_id_mass) = true;
 
   VariableSetBase::initialize(*this, coupler, params, thermodynamics, refstate,
-                              primal_geom, dual_geom);
+                              primal_geom, dual_geom, verbose);
 }
 
 template <>
@@ -1219,7 +1228,8 @@ template <>
 void VariableSetBase<VS_MCE_rho>::initialize(
     PamCoupler &coupler, ModelParameters &params,
     const ThermoPotential &thermodynamics, const ReferenceState &refstate,
-    const Geometry<Straight> &primal_geom, const Geometry<Twisted> &dual_geom) {
+    const Geometry<Straight> &primal_geom, const Geometry<Twisted> &dual_geom,
+    bool verbose) {
   dens_id_mass = 0;
   active_id_mass = 0;
   dens_name[dens_id_mass] = "rho";
@@ -1237,7 +1247,7 @@ void VariableSetBase<VS_MCE_rho>::initialize(
   dens_pos(dens_id_entr) = false;
 
   VariableSetBase::initialize(*this, coupler, params, thermodynamics, refstate,
-                              primal_geom, dual_geom);
+                              primal_geom, dual_geom, verbose);
 }
 
 template <>
@@ -1394,7 +1404,8 @@ template <>
 void VariableSetBase<VS_MCE_rhod>::initialize(
     PamCoupler &coupler, ModelParameters &params,
     const ThermoPotential &thermodynamics, const ReferenceState &refstate,
-    const Geometry<Straight> &primal_geom, const Geometry<Twisted> &dual_geom) {
+    const Geometry<Straight> &primal_geom, const Geometry<Twisted> &dual_geom,
+    bool verbose) {
   dens_id_mass = 0;
   active_id_mass = 0;
   dens_name[dens_id_mass] = "rho_d";
@@ -1412,7 +1423,7 @@ void VariableSetBase<VS_MCE_rhod>::initialize(
   dens_pos(dens_id_entr) = false;
 
   VariableSetBase::initialize(*this, coupler, params, thermodynamics, refstate,
-                              primal_geom, dual_geom);
+                              primal_geom, dual_geom, verbose);
 }
 
 template <>
