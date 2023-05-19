@@ -207,13 +207,12 @@ namespace pam {
 
     p3_main_cxx_mutex.lock();
 
-    if (! ice_table_vals.is_allocated()) {
-      P3F::init_kokkos_ice_lookup_tables(ice_table_vals, collect_table_vals);
-      P3F::init_kokkos_tables(vn_table_vals, vm_table_vals, revap_table_vals, mu_r_table_vals, dnu_table_vals);
-    }
-
-    P3F::P3LookupTables tables{mu_r_table_vals, vn_table_vals, vm_table_vals, revap_table_vals,
-                               ice_table_vals, collect_table_vals, dnu_table_vals};
+    // Load P3 lookup table data
+    P3F::P3LookupTables lookup_tables;
+    P3F::init_kokkos_ice_lookup_tables(lookup_tables.ice_table_vals, lookup_tables.collect_table_vals);
+    P3F::init_kokkos_tables(lookup_tables.vn_table_vals, lookup_tables.vm_table_vals,
+                            lookup_tables.revap_table_vals, lookup_tables.mu_r_table_vals,
+                            lookup_tables.dnu_table_vals);
 
     p3_main_cxx_mutex.unlock();
 
@@ -222,7 +221,7 @@ namespace pam {
     ekat::WorkspaceManager<Spack, KT::Device> workspace_mgr(nlev_pack, 59, policy);
 
     auto elapsed_time = P3F::p3_main(prog_state, diag_inputs, diag_outputs, infrastructure,
-                                     history_only, tables, workspace_mgr, ncol, nlev);
+                                     history_only, lookup_tables, workspace_mgr, ncol, nlev);
   }
 
 }
