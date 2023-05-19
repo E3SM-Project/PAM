@@ -38,7 +38,7 @@ uint constexpr nconstant = 2;
 // primal grid reconstruction stuff- U, W, dens0, edgerecon, recon,
 // vertedgerecon, vertrecon fct stuff- Phi, Mf, edgeflux Q/W STUFF?
 
-uint constexpr nauxiliary = ndims > 1 ? 32 : 26;
+uint constexpr nauxiliary = ndims > 1 ? 37 : 30;
 
 #define FVAR 0
 #define BVAR 1
@@ -71,13 +71,19 @@ uint constexpr nauxiliary = ndims > 1 ? 32 : 26;
 #define CORIOLISHZVERTRECONVAR 24
 #define CORIOLISHZVERTEDGERECONVAR 25
 
+#define F2VAR 26
+#define FW2VAR 27
+#define FTVAR 28
+#define FTWVAR 29
+
 // 3d auxiliary variables
-#define QXYVAR 26
-#define QXYRECONVAR 27
-#define QXYEDGERECONVAR 28
-#define FXYVAR 29
-#define CORIOLISXYRECONVAR 30
-#define CORIOLISXYEDGERECONVAR 31
+#define QXYVAR 30
+#define QXYRECONVAR 31
+#define QXYEDGERECONVAR 32
+#define FXYVAR 33
+#define CORIOLISXYRECONVAR 34
+#define CORIOLISXYEDGERECONVAR 35
+#define FTXYVAR 36
 
 // track total densities, dens min/max, energy (total, K, P, I), PV, PE
 uint constexpr nstats = 6;

@@ -421,6 +421,123 @@ public:
         });
   }
 
+  void compute_F_and_FW(real5d Fvar, real5d FWvar, real5d densvar, real5d Vvar,
+                        real5d Wvar) {
+
+    const auto &dual_topology = dual_geometry.topology;
+    const auto &primal_topology = primal_geometry.topology;
+
+    int pis = primal_topology.is;
+    int pjs = primal_topology.js;
+    int pks = primal_topology.ks;
+
+    YAKL_SCOPE(primal_geometry, this->primal_geometry);
+    YAKL_SCOPE(dual_geometry, this->dual_geometry);
+    YAKL_SCOPE(Hk, this->equations->Hk);
+    parallel_for(
+        "Compute F and Fw",
+        SimpleBounds<4>(dual_topology.ni, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          SArray<real, 1, ndims> he, u;
+          real hew, uw, K2;
+          Hk.compute_he_U_and_K(he, hew, u, uw, K2, densvar, Vvar, Wvar, pis,
+                                pjs, pks, i, j, k, n);
+
+          for (int d = 0; d < ndims; ++d) {
+            Fvar(d, pks + k, pjs + j, pis + i, n) = he(d) * u(d);
+          }
+          FWvar(0, pks + k, pjs + j, pis + i, n) = hew * uw;
+        });
+  }
+
+  void compute_FT_and_FTW(real5d FTvar, real5d FTWvar, real5d Fvar,
+                          real5d FWvar, optional_real5d opt_FTxyvar) {
+
+    const auto &primal_topology = primal_geometry.topology;
+    int pis = primal_topology.is;
+    int pjs = primal_topology.js;
+    int pks = primal_topology.ks;
+
+    parallel_for(
+        "Compute FTvar",
+        SimpleBounds<4>(primal_topology.ni - 2, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          compute_Wxz_u(FTvar, FWvar, pis, pjs, pks, i, j, k + 1, n);
+        });
+    parallel_for(
+        "Compute FTvar bnd",
+        SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
+                        primal_topology.nens),
+        YAKL_CLASS_LAMBDA(int j, int i, int n) {
+          compute_Wxz_u_bottom(FTvar, FWvar, pis, pjs, pks, i, j, 0, n);
+          compute_Wxz_u_top(FTvar, FWvar, pis, pjs, pks, i, j,
+                            primal_topology.ni - 1, n);
+        });
+    parallel_for(
+        "Compute FTWvar",
+        SimpleBounds<4>(primal_topology.nl - 2, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          compute_Wxz_w(FTWvar, Fvar, pis, pjs, pks, i, j, k + 1, n);
+        });
+    parallel_for(
+        "Compute FTWvar bnd",
+        SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
+                        primal_topology.nens),
+        YAKL_CLASS_LAMBDA(int j, int i, int n) {
+          compute_Wxz_w_bottom(FTWvar, Fvar, pis, pjs, pks, i, j, 0, n);
+          compute_Wxz_w_top(FTWvar, Fvar, pis, pjs, pks, i, j,
+                            primal_topology.nl - 1, n);
+        });
+
+    if (ndims > 1) {
+      auto FTxyvar = opt_FTxyvar.value();
+      parallel_for(
+          "Compute FTvar",
+          SimpleBounds<4>(primal_topology.ni - 2, primal_topology.n_cells_y,
+                          primal_topology.n_cells_x, primal_topology.nens),
+          YAKL_LAMBDA(int k, int j, int i, int n) {
+            compute_Wyz_u(FTvar, FWvar, pis, pjs, pks, i, j, k + 1, n);
+          });
+      parallel_for(
+          "Compute FTvar bnd",
+          SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
+                          primal_topology.nens),
+          YAKL_CLASS_LAMBDA(int j, int i, int n) {
+            compute_Wyz_u_bottom(FTvar, FWvar, pis, pjs, pks, i, j, 0, n);
+            compute_Wyz_u_top(FTvar, FWvar, pis, pjs, pks, i, j,
+                              primal_topology.ni - 1, n);
+          });
+
+      parallel_for(
+          "Compute FTWvar",
+          SimpleBounds<4>(primal_topology.nl - 2, primal_topology.n_cells_y,
+                          primal_topology.n_cells_x, primal_topology.nens),
+          YAKL_LAMBDA(int k, int j, int i, int n) {
+            compute_Wyz_w(FTWvar, Fvar, pis, pjs, pks, i, j, k + 1, n);
+          });
+      parallel_for(
+          "Compute FTWvar bnd",
+          SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
+                          primal_topology.nens),
+          YAKL_CLASS_LAMBDA(int j, int i, int n) {
+            compute_Wyz_w_bottom(FTWvar, Fvar, pis, pjs, pks, i, j, 0, n);
+            compute_Wyz_w_top(FTWvar, Fvar, pis, pjs, pks, i, j,
+                              primal_topology.nl - 1, n);
+          });
+
+      parallel_for(
+          "Compute FTXY",
+          SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                          primal_topology.n_cells_x, primal_topology.nens),
+          YAKL_LAMBDA(int k, int j, int i, int n) {
+            compute_W(FTxyvar, Fvar, pis, pjs, pks, i, j, k, n);
+          });
+    }
+  }
+
   void compute_q_and_f(real5d qhzvar, real5d fhzvar, const real5d Vvar,
                        const real5d Wvar, const real5d densvar,
                        const real5d coriolisxzvar, optional_real5d opt_qxyvar,
@@ -854,10 +971,11 @@ public:
       const real5d densvertedgereconvar, const real5d qhzedgereconvar,
       const real5d qhzvertedgereconvar, const real5d coriolishzedgereconvar,
       const real5d coriolishzvertedgereconvar, const real5d densvar,
-      const real5d Vvar, const real5d Wvar, optional_real5d opt_qxyreconvar,
-      optional_real5d opt_qxyedgereconvar,
+      const real5d Vvar, const real5d Wvar, const real5d Fvar,
+      const real5d FWvar, const real5d FTvar, const real5d FTWvar,
+      optional_real5d opt_qxyreconvar, optional_real5d opt_qxyedgereconvar,
       optional_real5d opt_coriolisxyreconvar,
-      optional_real5d opt_coriolisxyedgereconvar) {
+      optional_real5d opt_coriolisxyedgereconvar, optional_real5d opt_FTxyvar) {
 
     const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
@@ -968,11 +1086,10 @@ public:
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_straight_hz_recon<1, reconstruction_type>(
-              qhzreconvar, qhzedgereconvar, primal_geometry, dual_geometry,
-              Vvar, pis, pjs, pks, i, j, k, n);
+              qhzreconvar, qhzedgereconvar, FTWvar, pis, pjs, pks, i, j, k, n);
           compute_straight_hz_recon<1, coriolis_reconstruction_type>(
-              coriolishzreconvar, coriolishzedgereconvar, primal_geometry,
-              dual_geometry, Vvar, pis, pjs, pks, i, j, k, n);
+              coriolishzreconvar, coriolishzedgereconvar, FTWvar, pis, pjs, pks,
+              i, j, k, n);
         });
     parallel_for(
         "ComputeQhzVERTRECON",
@@ -980,11 +1097,11 @@ public:
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_straight_hz_vert_recon<1, vert_reconstruction_type>(
-              qhzvertreconvar, qhzvertedgereconvar, primal_geometry,
-              dual_geometry, Wvar, pis, pjs, pks, i, j, k, n);
+              qhzvertreconvar, qhzvertedgereconvar, FTvar, pis, pjs, pks, i, j,
+              k, n);
           compute_straight_hz_vert_recon<1, coriolis_vert_reconstruction_type>(
-              coriolishzvertreconvar, coriolishzvertedgereconvar,
-              primal_geometry, dual_geometry, Wvar, pis, pjs, pks, i, j, k, n);
+              coriolishzvertreconvar, coriolishzvertedgereconvar, FTvar, pis,
+              pjs, pks, i, j, k, n);
         });
 
     if (ndims > 1) {
@@ -992,16 +1109,18 @@ public:
       auto qxyreconvar = opt_qxyreconvar.value();
       auto coriolisxyedgereconvar = opt_coriolisxyedgereconvar.value();
       auto coriolisxyreconvar = opt_coriolisxyreconvar.value();
+      auto FTxyvar = opt_FTxyvar.value();
       parallel_for(
           "ComputeQxyRECON",
           SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                           primal_topology.n_cells_x, primal_topology.nens),
           YAKL_LAMBDA(int k, int j, int i, int n) {
             compute_straight_recon<1, reconstruction_type>(
-                qxyreconvar, qxyedgereconvar, Vvar, pis, pjs, pks, i, j, k, n);
+                qxyreconvar, qxyedgereconvar, FTxyvar, pis, pjs, pks, i, j, k,
+                n);
             compute_straight_recon<1, coriolis_reconstruction_type>(
-                coriolisxyreconvar, coriolisxyedgereconvar, Vvar, pis, pjs, pks,
-                i, j, k, n);
+                coriolisxyreconvar, coriolisxyedgereconvar, FTxyvar, pis, pjs,
+                pks, i, j, k, n);
           });
     }
   }
@@ -1784,6 +1903,26 @@ public:
 
     auxiliary_vars.exchange({DENS0VAR});
 
+    compute_F_and_FW(auxiliary_vars.fields_arr[F2VAR].data,
+                     auxiliary_vars.fields_arr[FW2VAR].data,
+                     x.fields_arr[DENSVAR].data, x.fields_arr[VVAR].data,
+                     x.fields_arr[WVAR].data);
+
+    auxiliary_vars.exchange({F2VAR, FW2VAR});
+
+    compute_FT_and_FTW(
+        auxiliary_vars.fields_arr[FTVAR].data,
+        auxiliary_vars.fields_arr[FTWVAR].data,
+        auxiliary_vars.fields_arr[F2VAR].data,
+        auxiliary_vars.fields_arr[FW2VAR].data,
+        ndims > 1 ? optional_real5d{auxiliary_vars.fields_arr[FTXYVAR].data}
+                  : std::nullopt);
+
+    auxiliary_vars.exchange({FTVAR, FTWVAR});
+    if (ndims > 1) {
+      auxiliary_vars.exchange({FTXYVAR});
+    }
+
     compute_q_and_f(
         auxiliary_vars.fields_arr[QHZVAR].data,
         auxiliary_vars.fields_arr[FHZVAR].data, x.fields_arr[VVAR].data,
@@ -1858,7 +1997,10 @@ public:
         auxiliary_vars.fields_arr[CORIOLISHZEDGERECONVAR].data,
         auxiliary_vars.fields_arr[CORIOLISHZVERTEDGERECONVAR].data,
         x.fields_arr[DENSVAR].data, x.fields_arr[VVAR].data,
-        x.fields_arr[WVAR].data,
+        x.fields_arr[WVAR].data, auxiliary_vars.fields_arr[FVAR].data,
+        auxiliary_vars.fields_arr[FWVAR].data,
+        auxiliary_vars.fields_arr[FTVAR].data,
+        auxiliary_vars.fields_arr[FTWVAR].data,
         ndims > 1 ? optional_real5d{auxiliary_vars.fields_arr[QXYRECONVAR].data}
                   : std::nullopt,
         ndims > 1
@@ -1871,7 +2013,9 @@ public:
         ndims > 1
             ? optional_real5d{auxiliary_vars.fields_arr[CORIOLISXYEDGERECONVAR]
                                   .data}
-            : std::nullopt);
+            : std::nullopt,
+        ndims > 1 ? optional_real5d{auxiliary_vars.fields_arr[FTXYVAR].data}
+                  : std::nullopt);
 
     auxiliary_vars.exchange({DENSRECONVAR, DENSVERTRECONVAR, QHZRECONVAR,
                              QHZVERTRECONVAR, CORIOLISHZRECONVAR,
@@ -3111,6 +3255,17 @@ void initialize_variables(
 
   aux_desc_arr[UWVAR] = {"Uw", dtopo, ndims, 0, 1}; // Uw = twisted (n,0)-form
 
+  // second copy on F/Fw, needed for the semi-implicit solver because
+  // the symplecitic operator gets evaluated at a different state
+  // and needs its own F and Fw
+  aux_desc_arr[F2VAR] = {"F2", dtopo, ndims - 1, 1, 1}; // F2 = twisted
+                                                        // (n-1,1)-form
+  aux_desc_arr[FW2VAR] = {"Fw2", dtopo, ndims, 0,
+                          1}; // Fw2 = twisted (n,0)-form
+
+  aux_desc_arr[FTVAR] = {"FT", ptopo, 0, 1, ndims}; // FT
+  aux_desc_arr[FTWVAR] = {"FTW", ptopo, 1, 0, 1};   // FTW
+
   // dens primal grid reconstruction stuff- dens0, edgerecon, recon
   aux_desc_arr[DENS0VAR] = {
       "dens0", ptopo, 0, 0,
@@ -3199,6 +3354,8 @@ void initialize_variables(
     aux_desc_arr[CORIOLISXYEDGERECONVAR] = {
         "corliolisxyedgerecon", ptopo, 2, 0,
         4}; // coriolisxyedgerecon lives on primal vertical faces
+
+    aux_desc_arr[FTXYVAR] = {"FTXY", ptopo, 1, 0, 1}; // FTXY
   }
 
   // #if defined _AN || defined _MAN
@@ -4243,12 +4400,12 @@ template <bool acoustic_balance> struct RisingBubble {
     real p = isentropic_p(z, theta0, g, thermo);
     real T = isentropic_T(z, theta0, g, thermo);
     real r;
-    if (ndims == 1) {
-      r = sqrt((x - xc) * (x - xc) + (z - bzc) * (z - bzc));
-    } else {
-      r = sqrt((x - xc) * (x - xc) + (y - yc) * (y - yc) +
-               (z - bzc) * (z - bzc));
-    }
+    // if (ndims == 1) {
+    r = sqrt((x - xc) * (x - xc) + (z - bzc) * (z - bzc));
+    //} else {
+    //  r = sqrt((x - xc) * (x - xc) + (y - yc) * (y - yc) +
+    //           (z - bzc) * (z - bzc));
+    //}
     real dtheta = (r < rc) ? dss * 0.5_fp * (1._fp + cos(pi * r / rc)) : 0._fp;
     real dT = dtheta * pow(p / thermo.cst.pr, thermo.cst.kappa_d);
     return thermo.compute_entropic_var(p, T + dT, 1, 0, 0, 0);

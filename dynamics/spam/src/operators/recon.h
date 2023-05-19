@@ -487,9 +487,7 @@ void YAKL_INLINE compute_straight_recon(const real5d &reconvar,
 template <uint ndofs, RECONSTRUCTION_TYPE recontype>
 void YAKL_INLINE compute_straight_hz_recon(const real5d &reconvar,
                                            const real5d &edgereconvar,
-                                           const Geometry<Straight> &pgeom,
-                                           const Geometry<Twisted> &dgeom,
-                                           const real5d &V, int is, int js,
+                                           const real5d &FTWvar, int is, int js,
                                            int ks, int i, int j, int k, int n) {
   SArray<real, 2, ndofs, ndims> recon;
   SArray<real, 3, ndofs, ndims, 2> edgerecon;
@@ -518,46 +516,15 @@ void YAKL_INLINE compute_straight_hz_recon(const real5d &reconvar,
 
     SArray<real, 1, ndims> uvar;
     for (int d = 0; d < ndims; ++d) {
-      SArray<real, 1, ndims> f0, f1, f2, f3;
-      if (d == 0) {
-        compute_H10<1, diff_ord>(f0, V, pgeom, dgeom, is, js, ks, i, j, k, n);
-        compute_H10<1, diff_ord>(f1, V, pgeom, dgeom, is, js, ks, i + 1, j, k,
-                                 n);
-        compute_H10<1, diff_ord>(f2, V, pgeom, dgeom, is, js, ks, i, j, k + 1,
-                                 n);
-        compute_H10<1, diff_ord>(f3, V, pgeom, dgeom, is, js, ks, i + 1, j,
-                                 k + 1, n);
-      }
-
-      if (d == 1) {
-        compute_H10<1, diff_ord>(f0, V, pgeom, dgeom, is, js, ks, i, j, k, n);
-        compute_H10<1, diff_ord>(f1, V, pgeom, dgeom, is, js, ks, i, j + 1, k,
-                                 n);
-        compute_H10<1, diff_ord>(f2, V, pgeom, dgeom, is, js, ks, i, j, k + 1,
-                                 n);
-        compute_H10<1, diff_ord>(f3, V, pgeom, dgeom, is, js, ks, i, j + 1,
-                                 k + 1, n);
-      }
-
-      SArray<real, 1, 4> flux;
-      flux(0) = f0(d);
-      flux(1) = f1(d);
-      flux(2) = f2(d);
-      flux(3) = f3(d);
-
-      // this assumes that F and U signs are the same
-      // do we need to handle boundaries here ?
-      SArray<real, 1, 1> Wf;
-      Wxz_w(Wf, flux);
-      uvar(d) = Wf(0);
+      uvar(d) = FTWvar(d, k + ks, j + js, i + is, n);
     }
 
-    if (upwind_type == UPWIND_TYPE::HEAVISIDE) {
-      upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
-    } else if (upwind_type == UPWIND_TYPE::TANH) {
-      uvar(0) /= dgeom.dz(k + ks, n);
-      tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
-    }
+    // if (upwind_type == UPWIND_TYPE::HEAVISIDE) {
+    upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+    //} else if (upwind_type == UPWIND_TYPE::TANH) {
+    //  uvar(0) /= dgeom.dz(k + ks, n);
+    //  tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+    //}
   }
 
   for (int d = 0; d < ndims; d++) {
@@ -568,10 +535,11 @@ void YAKL_INLINE compute_straight_hz_recon(const real5d &reconvar,
 }
 
 template <uint ndofs, RECONSTRUCTION_TYPE recontype>
-void YAKL_INLINE compute_straight_hz_vert_recon(
-    const real5d &reconvar, const real5d &edgereconvar,
-    const Geometry<Straight> &pgeom, const Geometry<Twisted> &dgeom,
-    const real5d &W, int is, int js, int ks, int i, int j, int k, int n) {
+void YAKL_INLINE compute_straight_hz_vert_recon(const real5d &reconvar,
+                                                const real5d &edgereconvar,
+                                                const real5d &FTvar, int is,
+                                                int js, int ks, int i, int j,
+                                                int k, int n) {
   SArray<real, 2, ndofs, ndims> recon;
   SArray<real, 3, ndofs, ndims, 2> edgerecon;
 
@@ -590,51 +558,19 @@ void YAKL_INLINE compute_straight_hz_vert_recon(
              recontype == RECONSTRUCTION_TYPE::WENOFUNC) {
 
     SArray<real, 1, ndims> uvar;
-
     for (int d = 0; d < ndims; ++d) {
-      SArray<real, 1, 1> f0, f1, f2, f3;
-
+      uvar(d) = FTvar(d, k + ks, j + js, i + is, n);
       if (d == 0) {
-        compute_H01<1, vert_diff_ord>(f0, W, pgeom, dgeom, is, js, ks, i, j, k,
-                                      n);
-        compute_H01<1, vert_diff_ord>(f1, W, pgeom, dgeom, is, js, ks, i - 1, j,
-                                      k, n);
-        compute_H01<1, vert_diff_ord>(f2, W, pgeom, dgeom, is, js, ks, i, j,
-                                      k + 1, n);
-        compute_H01<1, vert_diff_ord>(f3, W, pgeom, dgeom, is, js, ks, i - 1, j,
-                                      k + 1, n);
+        uvar(d) *= -1; // needs a "twist"
       }
-      if (d == 1) {
-        compute_H01<1, vert_diff_ord>(f0, W, pgeom, dgeom, is, js, ks, i, j, k,
-                                      n);
-        compute_H01<1, vert_diff_ord>(f1, W, pgeom, dgeom, is, js, ks, i, j - 1,
-                                      k, n);
-        compute_H01<1, vert_diff_ord>(f2, W, pgeom, dgeom, is, js, ks, i, j,
-                                      k + 1, n);
-        compute_H01<1, vert_diff_ord>(f3, W, pgeom, dgeom, is, js, ks, i, j - 1,
-                                      k + 1, n);
-      }
-      SArray<real, 1, 4> flux;
-      flux(0) = f0(0);
-      flux(1) = f1(0);
-      flux(2) = f2(0);
-      flux(3) = f3(0);
-
-      // this assumes that FW and UW signs are the same
-      // do we need to handle boundaries here ?
-      SArray<real, 1, 1> Wf;
-      Wxz_u(Wf, flux);
-
-      // Needs a "twist"
-      uvar(d) = -Wf(0);
     }
 
-    if (vert_upwind_type == UPWIND_TYPE::HEAVISIDE) {
-      upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
-    } else if (vert_upwind_type == UPWIND_TYPE::TANH) {
-      uvar(0) /= dgeom.dx;
-      tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
-    }
+    // if (vert_upwind_type == UPWIND_TYPE::HEAVISIDE) {
+    upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+    //} else if (vert_upwind_type == UPWIND_TYPE::TANH) {
+    //  uvar(0) /= dgeom.dx;
+    //  tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+    //}
   }
 
   for (int d = 0; d < ndims; ++d) {
