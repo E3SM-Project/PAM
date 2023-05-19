@@ -971,9 +971,9 @@ public:
       const real5d densvertedgereconvar, const real5d qhzedgereconvar,
       const real5d qhzvertedgereconvar, const real5d coriolishzedgereconvar,
       const real5d coriolishzvertedgereconvar, const real5d densvar,
-      const real5d Vvar, const real5d Wvar, const real5d Fvar,
-      const real5d FWvar, const real5d FTvar, const real5d FTWvar,
-      optional_real5d opt_qxyreconvar, optional_real5d opt_qxyedgereconvar,
+      const real5d Fvar, const real5d FWvar, const real5d FTvar,
+      const real5d FTWvar, optional_real5d opt_qxyreconvar,
+      optional_real5d opt_qxyedgereconvar,
       optional_real5d opt_coriolisxyreconvar,
       optional_real5d opt_coriolisxyedgereconvar, optional_real5d opt_FTxyvar) {
 
@@ -1001,8 +1001,7 @@ public:
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_twisted_recon<VS::ndensity_prognostic,
                                 dual_reconstruction_type>(
-              densreconvar, densedgereconvar, primal_geometry, dual_geometry,
-              Vvar, dis, djs, dks, i, j, k, n);
+              densreconvar, densedgereconvar, Fvar, dis, djs, dks, i, j, k, n);
 
 #if defined _AN || defined _MAN
           // add reference state
@@ -1047,8 +1046,8 @@ public:
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_twisted_vert_recon<VS::ndensity_prognostic,
                                      dual_vert_reconstruction_type>(
-              densvertreconvar, densvertedgereconvar, primal_geometry,
-              dual_geometry, Wvar, dis, djs, dks, i, j, k + 1, n);
+              densvertreconvar, densvertedgereconvar, FWvar, dis, djs, dks, i,
+              j, k + 1, n);
 
 #if defined _AN || defined _MAN
           // add reference state
@@ -1996,8 +1995,7 @@ public:
         auxiliary_vars.fields_arr[QHZVERTEDGERECONVAR].data,
         auxiliary_vars.fields_arr[CORIOLISHZEDGERECONVAR].data,
         auxiliary_vars.fields_arr[CORIOLISHZVERTEDGERECONVAR].data,
-        x.fields_arr[DENSVAR].data, x.fields_arr[VVAR].data,
-        x.fields_arr[WVAR].data, auxiliary_vars.fields_arr[FVAR].data,
+        x.fields_arr[DENSVAR].data, auxiliary_vars.fields_arr[FVAR].data,
         auxiliary_vars.fields_arr[FWVAR].data,
         auxiliary_vars.fields_arr[FTVAR].data,
         auxiliary_vars.fields_arr[FTWVAR].data,

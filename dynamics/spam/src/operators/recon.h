@@ -338,20 +338,12 @@ tanh_upwind_recon(SArray<real, 2, ndofs, nd> &recon,
 template <uint ndofs, RECONSTRUCTION_TYPE recontype>
 void YAKL_INLINE compute_twisted_recon(const real5d &reconvar,
                                        const real5d &edgereconvar,
-                                       const Geometry<Straight> &pgeom,
-                                       const Geometry<Twisted> &dgeom,
-                                       const real5d &V, int is, int js, int ks,
-                                       int i, int j, int k, int n) {
+                                       const real5d &Fvar, int is, int js,
+                                       int ks, int i, int j, int k, int n) {
 
   SArray<real, 2, ndofs, ndims> recon;
   SArray<real, 1, ndims> uvar;
   SArray<real, 3, ndofs, ndims, 2> edgerecon;
-
-#ifdef _EXTRUDED
-  compute_H10<1, diff_ord>(uvar, V, pgeom, dgeom, is, js, ks, i, j, k, n);
-#else
-  compute_H1<1, diff_ord>(uvar, V, pgeom, dgeom, is, js, ks, i, j, k, n);
-#endif
 
   for (int d = 0; d < ndims; d++) {
     for (int l = 0; l < ndofs; l++) {
@@ -374,16 +366,21 @@ void YAKL_INLINE compute_twisted_recon(const real5d &reconvar,
     centered_recon<ndofs, ndims>(recon, edgerecon);
   } else if (recontype == RECONSTRUCTION_TYPE::WENO ||
              recontype == RECONSTRUCTION_TYPE::WENOFUNC) {
-    if (dual_upwind_type == UPWIND_TYPE::HEAVISIDE) {
-      upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
-    } else if (dual_upwind_type == UPWIND_TYPE::TANH) {
-#ifdef _EXTRUDED
-      uvar(0) /= dgeom.dz(k + ks, n);
-#else
-      uvar(0) /= dgeom.dy;
-#endif
-      tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+
+    for (int d = 0; d < ndims; ++d) {
+      uvar(d) = Fvar(d, k + ks, j + js, i + is, n);
     }
+
+    // if (dual_upwind_type == UPWIND_TYPE::HEAVISIDE) {
+    upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+    //    } else if (dual_upwind_type == UPWIND_TYPE::TANH) {
+    //#ifdef _EXTRUDED
+    //      uvar(0) /= dgeom.dz(k + ks, n);
+    //#else
+    //      uvar(0) /= dgeom.dy;
+    //#endif
+    //      tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+    //    }
   }
 
   for (int d = 0; d < ndims; d++) {
@@ -394,16 +391,15 @@ void YAKL_INLINE compute_twisted_recon(const real5d &reconvar,
 }
 
 template <uint ndofs, RECONSTRUCTION_TYPE recontype>
-void YAKL_INLINE compute_twisted_vert_recon(
-    const real5d &vertreconvar, const real5d &vertedgereconvar,
-    const Geometry<Straight> &pgeom, const Geometry<Twisted> &dgeom,
-    const real5d &W, int is, int js, int ks, int i, int j, int k, int n) {
+void YAKL_INLINE compute_twisted_vert_recon(const real5d &vertreconvar,
+                                            const real5d &vertedgereconvar,
+                                            const real5d &FWvar, int is, int js,
+                                            int ks, int i, int j, int k,
+                                            int n) {
 
   SArray<real, 2, ndofs, 1> recon;
   SArray<real, 1, 1> uvar;
   SArray<real, 3, ndofs, 1, 2> edgerecon;
-
-  compute_H01<1, vert_diff_ord>(uvar, W, pgeom, dgeom, is, js, ks, i, j, k, n);
 
   for (int l = 0; l < ndofs; l++) {
     edgerecon(l, 0, 0) =
@@ -416,12 +412,15 @@ void YAKL_INLINE compute_twisted_vert_recon(
     centered_recon<ndofs, 1>(recon, edgerecon);
   } else if (recontype == RECONSTRUCTION_TYPE::WENO ||
              recontype == RECONSTRUCTION_TYPE::WENOFUNC) {
-    if (dual_vert_upwind_type == UPWIND_TYPE::HEAVISIDE) {
-      upwind_recon<ndofs, 1>(recon, edgerecon, uvar);
-    } else if (dual_vert_upwind_type == UPWIND_TYPE::TANH) {
-      uvar(0) /= dgeom.dx;
-      tanh_upwind_recon<ndofs, 1>(recon, edgerecon, uvar);
-    }
+
+    uvar(0) = FWvar(0, k + ks, j + js, i + is, n);
+
+    //    if (dual_vert_upwind_type == UPWIND_TYPE::HEAVISIDE) {
+    upwind_recon<ndofs, 1>(recon, edgerecon, uvar);
+    //    } else if (dual_vert_upwind_type == UPWIND_TYPE::TANH) {
+    //      uvar(0) /= dgeom.dx;
+    //      tanh_upwind_recon<ndofs, 1>(recon, edgerecon, uvar);
+    //    }
   }
 
   for (int l = 0; l < ndofs; l++) {
