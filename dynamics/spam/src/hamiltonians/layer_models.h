@@ -243,5 +243,12 @@ public:
       }
     }
   }
+
+  template <ADD_MODE addmode = ADD_MODE::REPLACE>
+  void YAKL_INLINE compute_dHsdx_two_point(const real5d &B, const real5d &dens1,
+                                           const real5d &dens2,
+                                           const real5d &geop, int is, int js,
+                                           int ks, int i, int j, int k, int n,
+                                           real fac = 1._fp) const {}
 };
 #endif

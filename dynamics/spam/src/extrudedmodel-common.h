@@ -10,7 +10,9 @@ uint constexpr ntracers_dycore = 0;
 // forces reference state to be in perfect hydrostatic balance by subtracting
 // the hydrostatic balance equation evaluated at the reference state in
 // the velocity tendency
+#if !defined(_SWE) && !defined(_TSWE)
 #define FORCE_REFSTATE_HYDROSTATIC_BALANCE
+#endif
 
 // for debugging anelastic
 #if defined _AN || defined _MAN
@@ -30,9 +32,10 @@ uint constexpr nprognostic = 3;
 #define DENSVAR 2
 
 // hs, coriolis
-uint constexpr nconstant = 2;
+uint constexpr nconstant = ndims > 1 ? 3 : 2;
 #define HSVAR 0
-#define CORIOLISXZVAR 1
+#define CORIOLISHZVAR 1
+#define CORIOLISXYVAR 2
 
 // functional derivatives = F, FW, B, K, he, hew
 // primal grid reconstruction stuff- U, W, dens0, edgerecon, recon,

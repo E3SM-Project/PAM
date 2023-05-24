@@ -22,7 +22,7 @@ struct VS_SWE {
   static constexpr uint ndensity_dycore_prognostic = ndensity_dycore;
   static constexpr uint ndensity_dycore_active = ndensity_dycore;
 
-  static constexpr uint ntracers_dycore_active = 3;
+  static constexpr uint ntracers_dycore_active = 0;
 
   static constexpr uint ntracers_physics = 0;
   static constexpr uint ntracers_physics_active = 0;
@@ -650,6 +650,13 @@ void VariableSetBase<VS_SWE>::initialize(PamCoupler &coupler,
 
   VariableSetBase::initialize(*this, coupler, params, thermodynamics, refstate,
                               primal_geom, dual_geom);
+}
+
+template <>
+real YAKL_INLINE VariableSetBase<VS_SWE>::get_total_density(
+    const real5d &densvar, int k, int j, int i, int ks, int js, int is,
+    int n) const {
+  return densvar(dens_id_mass, k + ks, j + js, i + is, n);
 }
 #endif
 

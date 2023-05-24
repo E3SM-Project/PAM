@@ -351,8 +351,8 @@ public:
     K2 = 0.5_fp * (Vvar(0, k + ks, j + js, i + is, n) * u_ijk(0) +
                    Vvar(0, k + ks, j + js, i + 1 + is, n) * u_ip1(0));
     if (ndims > 1) {
-      K2 += 0.5_fp * (Vvar(1, k + ks, j + js, i + is, n) * u_ijk(0) +
-                      Vvar(1, k + ks, j + 1 + js, i + is, n) * u_jp1(0));
+      K2 += 0.5_fp * (Vvar(1, k + ks, j + js, i + is, n) * u_ijk(1) +
+                      Vvar(1, k + ks, j + 1 + js, i + is, n) * u_jp1(1));
     }
     if (k < dnl) {
       K2 += 0.5_fp * (Wvar(0, k - 1 + ks, j + js, i + is, n) * uw_ijk(0) +

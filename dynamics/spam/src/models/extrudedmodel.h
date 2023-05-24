@@ -95,7 +95,7 @@ public:
                   Equations &equations) override {
     name = "QHZl";
     topology = dgeom.topology;
-    dofs_arr = {0, 0, 1}; // // Qldiag = twisted (0,0)-form
+    dofs_arr = {ndims - 1, 0, 1}; // // Qldiag = twisted (n-1,0)-form
     Diagnostic::initialize(pgeom, dgeom, equations);
   }
 
@@ -116,7 +116,7 @@ public:
         YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
           PVPE.compute_qhz(field.data, x.fields_arr[VVAR].data,
                            x.fields_arr[WVAR].data, x.fields_arr[DENSVAR].data,
-                           const_vars.fields_arr[CORIOLISXZVAR].data, dis, djs,
+                           const_vars.fields_arr[CORIOLISHZVAR].data, dis, djs,
                            dks, i, j, k + 2, n);
         });
 
@@ -129,12 +129,12 @@ public:
           PVPE.compute_qhz_bottom(field.data, x.fields_arr[VVAR].data,
                                   x.fields_arr[WVAR].data,
                                   x.fields_arr[DENSVAR].data,
-                                  const_vars.fields_arr[CORIOLISXZVAR].data,
+                                  const_vars.fields_arr[CORIOLISHZVAR].data,
                                   dis, djs, dks, i, j, 1, n);
           PVPE.compute_qhz_top(field.data, x.fields_arr[VVAR].data,
                                x.fields_arr[WVAR].data,
                                x.fields_arr[DENSVAR].data,
-                               const_vars.fields_arr[CORIOLISXZVAR].data, dis,
+                               const_vars.fields_arr[CORIOLISHZVAR].data, dis,
                                djs, dks, i, j, dual_topology.ni - 2, n);
         });
 
@@ -142,10 +142,49 @@ public:
   }
 };
 
+class QXYDiagnostic : public Diagnostic {
+public:
+  void initialize(const Geometry<Straight> &pgeom,
+                  const Geometry<Twisted> &dgeom,
+                  Equations &equations) override {
+    name = "QXYl";
+    topology = dgeom.topology;
+    dofs_arr = {0, 1, 1}; // // Qxydiag = twisted (0,1)-form
+    Diagnostic::initialize(pgeom, dgeom, equations);
+  }
+
+  void compute(real time, const FieldSet<nconstant> &const_vars,
+               const FieldSet<nprognostic> &x) override {
+
+    const auto &dual_topology = dual_geometry.topology;
+
+    int dis = dual_topology.is;
+    int djs = dual_topology.js;
+    int dks = dual_topology.ks;
+
+    YAKL_SCOPE(PVPE, equations->PVPE);
+    parallel_for(
+        "Compute QXYl DIAG",
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+          PVPE.compute_qxy(field.data, x.fields_arr[VVAR].data,
+                           x.fields_arr[DENSVAR].data,
+                           const_vars.fields_arr[CORIOLISXYVAR].data, dis, djs,
+                           dks, i, j, k, n);
+          real dz = dual_geometry.get_dz(k + dks, n);
+          field.data(0, k + dks, j + djs, i + dis, n) *= dz;
+        });
+  }
+};
+
 void add_model_diagnostics(
     std::vector<std::unique_ptr<Diagnostic>> &diagnostics) {
   diagnostics.emplace_back(std::make_unique<Dens0Diagnostic>());
   diagnostics.emplace_back(std::make_unique<QHZDiagnostic>());
+  if (ndims > 1) {
+    diagnostics.emplace_back(std::make_unique<QXYDiagnostic>());
+  }
   diagnostics.emplace_back(std::make_unique<TotalDensityDiagnostic>());
 }
 
@@ -540,8 +579,9 @@ public:
 
   void compute_q_and_f(real5d qhzvar, real5d fhzvar, const real5d Vvar,
                        const real5d Wvar, const real5d densvar,
-                       const real5d coriolisxzvar, optional_real5d opt_qxyvar,
-                       optional_real5d opt_fxyvar) {
+                       const real5d coriolishzvar, optional_real5d opt_qxyvar,
+                       optional_real5d opt_fxyvar,
+                       optional_real5d opt_coriolisxyvar) {
 
     const auto &dual_topology = dual_geometry.topology;
 
@@ -556,7 +596,7 @@ public:
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           PVPE.compute_qhzfhz(qhzvar, fhzvar, Vvar, Wvar, densvar,
-                              coriolisxzvar, dis, djs, dks, i, j, k + 2, n);
+                              coriolishzvar, dis, djs, dks, i, j, k + 2, n);
         });
     parallel_for(
         "Compute Qhz, Fhz bnd",
@@ -564,22 +604,23 @@ public:
                         dual_topology.nens),
         YAKL_LAMBDA(int j, int i, int n) {
           PVPE.compute_qhzfhz_bottom(qhzvar, fhzvar, Vvar, Wvar, densvar,
-                                     coriolisxzvar, dis, djs, dks, i, j, 1, n);
+                                     coriolishzvar, dis, djs, dks, i, j, 1, n);
           PVPE.compute_qhzfhz_top(qhzvar, fhzvar, Vvar, Wvar, densvar,
-                                  coriolisxzvar, dis, djs, dks, i, j,
+                                  coriolishzvar, dis, djs, dks, i, j,
                                   dual_topology.ni - 2, n);
         });
 
     if (ndims > 1) {
       auto qxyvar = opt_qxyvar.value();
       auto fxyvar = opt_fxyvar.value();
+      auto coriolisxyvar = opt_coriolisxyvar.value();
       parallel_for(
           "Compute Qxy, Fxy",
           SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                           dual_topology.n_cells_x, dual_topology.nens),
           YAKL_LAMBDA(int k, int j, int i, int n) {
             PVPE.compute_qxyfxy(qxyvar, fxyvar, Vvar, Wvar, densvar,
-                                coriolisxzvar, dis, djs, dks, i, j, k, n);
+                                coriolisxyvar, dis, djs, dks, i, j, k, n);
           });
     }
   }
@@ -695,7 +736,6 @@ public:
                 qxyedgereconvar, qxyvar, pis, pjs, pks, i, j, k, n,
                 primal_wenoRecon, primal_to_gll, primal_wenoIdl,
                 primal_wenoSigma);
-
             compute_straight_edge_recon<1, coriolis_reconstruction_type,
                                         coriolis_reconstruction_order>(
                 coriolisxyedgereconvar, fxyvar, pis, pjs, pks, i, j, k, n,
@@ -1017,23 +1057,34 @@ public:
           }
 #else
           const auto total_density_f = TotalDensityFunctor{varset};
+
+          SArray<real, 1, ndims> he;
           SArray<real, 1, 1> dens0_ik;
           compute_Hn1bar<1, diff_ord, vert_diff_ord>(
               total_density_f, dens0_ik, densvar, primal_geometry,
               dual_geometry, pis, pjs, pks, i, j, k, n);
+
           SArray<real, 1, 1> dens0_im1;
           compute_Hn1bar<1, diff_ord, vert_diff_ord>(
               total_density_f, dens0_im1, densvar, primal_geometry,
               dual_geometry, pis, pjs, pks, i - 1, j, k, n);
 
-          real he = 0.5_fp * (dens0_ik(0) + dens0_im1(0));
+          he(0) = 0.5_fp * (dens0_ik(0) + dens0_im1(0));
+          if (ndims > 1) {
+            SArray<real, 1, 1> dens0_jm1;
+            compute_Hn1bar<1, diff_ord, vert_diff_ord>(
+                total_density_f, dens0_jm1, densvar, primal_geometry,
+                dual_geometry, pis, pjs, pks, i, j - 1, k, n);
+            he(1) = 0.5_fp * (dens0_ik(0) + dens0_jm1(0));
+          }
           // scale twisted recons and add reference state
           for (int d = 0; d < ndims; d++) {
             for (int l = 0; l < VS::ndensity_prognostic; l++) {
               densreconvar(d + l * ndims, k + dks, j + djs, i + dis, n) +=
                   refstate.rho_pi.data(0, k + pks, n) *
                   refstate.q_pi.data(l, k + pks, n);
-              densreconvar(d + l * ndims, k + dks, j + djs, i + dis, n) /= he;
+              densreconvar(d + l * ndims, k + dks, j + djs, i + dis, n) /=
+                  he(d);
             }
           }
 #endif
@@ -1111,7 +1162,7 @@ public:
       auto FTxyvar = opt_FTxyvar.value();
       parallel_for(
           "ComputeQxyRECON",
-          SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+          SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                           primal_topology.n_cells_x, primal_topology.nens),
           YAKL_LAMBDA(int k, int j, int i, int n) {
             compute_straight_recon<1, reconstruction_type>(
@@ -1442,10 +1493,11 @@ public:
                                                qhzvertreconvar, Fvar, pis, pjs,
                                                pks, i, j, k + 1, n);
           }
-          if (qf_choice == QF_MODE::NOEC) {
-            compute_Qxz_w_nonEC<1, ADD_MODE::ADD>(
-                Wtendvar, qhzreconvar, Fvar, pis, pjs, pks, i, j, k + 1, n);
-          }
+          // if (qf_choice == QF_MODE::NOEC) {
+          //   compute_Qxz_w_nonEC<1, ADD_MODE::ADD>(
+          //       Wtendvar, qhzreconvar, Fvar, pis, pjs, pks, i, j, k + 1, n);
+          // }
+
           compute_Qxz_w_EC<1, ADD_MODE::ADD>(Wtendvar, coriolishzreconvar,
                                              coriolishzvertreconvar, Fvar, pis,
                                              pjs, pks, i, j, k + 1, n);
@@ -1460,6 +1512,7 @@ public:
             //       Wtendvar, qhzreconvar, Fvar, pis, pjs, pks, i, j, k + 1,
             //       n);
             // }
+
             compute_Qyz_w_EC<1, ADD_MODE::ADD>(Wtendvar, coriolishzreconvar,
                                                coriolishzvertreconvar, Fvar,
                                                pis, pjs, pks, i, j, k + 1, n);
@@ -1493,13 +1546,14 @@ public:
                 Wtendvar, qhzreconvar, qhzvertreconvar, Fvar, pis, pjs, pks, i,
                 j, primal_topology.nl - 1, n);
           }
-          if (qf_choice == QF_MODE::NOEC) {
-            compute_Qxz_w_nonEC_bottom<1, ADD_MODE::ADD>(
-                Wtendvar, qhzreconvar, Fvar, pis, pjs, pks, i, j, 0, n);
-            compute_Qxz_w_nonEC_top<1, ADD_MODE::ADD>(
-                Wtendvar, qhzreconvar, Fvar, pis, pjs, pks, i, j,
-                primal_topology.nl - 1, n);
-          }
+          // if (qf_choice == QF_MODE::NOEC) {
+          //   compute_Qxz_w_nonEC_bottom<1, ADD_MODE::ADD>(
+          //       Wtendvar, qhzreconvar, Fvar, pis, pjs, pks, i, j, 0, n);
+          //   compute_Qxz_w_nonEC_top<1, ADD_MODE::ADD>(
+          //       Wtendvar, qhzreconvar, Fvar, pis, pjs, pks, i, j,
+          //       primal_topology.nl - 1, n);
+          // }
+
           compute_Qxz_w_EC_bottom<1, ADD_MODE::ADD>(
               Wtendvar, coriolishzreconvar, coriolishzvertreconvar, Fvar, pis,
               pjs, pks, i, j, 0, n);
@@ -1523,6 +1577,7 @@ public:
             //       Wtendvar, qhzreconvar, Fvar, pis, pjs, pks, i, j,
             //       primal_topology.nl - 1, n);
             // }
+
             compute_Qyz_w_EC_bottom<1, ADD_MODE::ADD>(
                 Wtendvar, coriolishzreconvar, coriolishzvertreconvar, Fvar, pis,
                 pjs, pks, i, j, 0, n);
@@ -1545,11 +1600,12 @@ public:
                                                qhzvertreconvar, FWvar, pis, pjs,
                                                pks, i, j, k + 1, n);
           }
-          if (qf_choice == QF_MODE::NOEC) {
-            compute_Qxz_u_nonEC<1, ADD_MODE::ADD>(Vtendvar, qhzvertreconvar,
-                                                  FWvar, pis, pjs, pks, i, j,
-                                                  k + 1, n);
-          }
+          // if (qf_choice == QF_MODE::NOEC) {
+          //   compute_Qxz_u_nonEC<1, ADD_MODE::ADD>(Vtendvar, qhzvertreconvar,
+          //                                         FWvar, pis, pjs, pks, i, j,
+          //                                         k + 1, n);
+          // }
+
           compute_Qxz_u_EC<1, ADD_MODE::ADD>(Vtendvar, coriolishzreconvar,
                                              coriolishzvertreconvar, FWvar, pis,
                                              pjs, pks, i, j, k + 1, n);
@@ -1568,6 +1624,7 @@ public:
             //                                         FWvar, pis, pjs, pks, i,
             //                                         j, k + 1, n);
             // }
+
             compute_Qyz_v_EC<1, ADD_MODE::ADD>(Vtendvar, coriolishzreconvar,
                                                coriolishzvertreconvar, FWvar,
                                                pis, pjs, pks, i, j, k + 1, n);
@@ -1586,6 +1643,7 @@ public:
           compute_wD0<VS::ndensity_active, addmode>(
               Vtendvar, densreconvar, active_dens_ids, Bvar, pis, pjs, pks, i,
               j, primal_topology.ni - 1, n);
+
           if (qf_choice == QF_MODE::EC) {
             compute_Qxz_u_EC_bottom<1, ADD_MODE::ADD>(
                 Vtendvar, qhzreconvar, qhzvertreconvar, FWvar, pis, pjs, pks, i,
@@ -1594,13 +1652,14 @@ public:
                 Vtendvar, qhzreconvar, qhzvertreconvar, FWvar, pis, pjs, pks, i,
                 j, primal_topology.ni - 1, n);
           }
-          if (qf_choice == QF_MODE::NOEC) {
-            compute_Qxz_u_nonEC_bottom<1, ADD_MODE::ADD>(
-                Vtendvar, qhzvertreconvar, FWvar, pis, pjs, pks, i, j, 0, n);
-            compute_Qxz_u_nonEC_top<1, ADD_MODE::ADD>(
-                Vtendvar, qhzvertreconvar, FWvar, pis, pjs, pks, i, j,
-                primal_topology.ni - 1, n);
-          }
+          // if (qf_choice == QF_MODE::NOEC) {
+          //   compute_Qxz_u_nonEC_bottom<1, ADD_MODE::ADD>(
+          //       Vtendvar, qhzvertreconvar, FWvar, pis, pjs, pks, i, j, 0, n);
+          //   compute_Qxz_u_nonEC_top<1, ADD_MODE::ADD>(
+          //       Vtendvar, qhzvertreconvar, FWvar, pis, pjs, pks, i, j,
+          //       primal_topology.ni - 1, n);
+          // }
+
           compute_Qxz_u_EC_bottom<1, ADD_MODE::ADD>(
               Vtendvar, coriolishzreconvar, coriolishzvertreconvar, FWvar, pis,
               pjs, pks, i, j, 0, n);
@@ -1630,6 +1689,7 @@ public:
             //       Vtendvar, qhzvertreconvar, FWvar, pis, pjs, pks, i, j,
             //       primal_topology.ni - 1, n);
             // }
+
             compute_Qyz_v_EC_bottom<1, ADD_MODE::ADD>(
                 Vtendvar, coriolishzreconvar, coriolishzvertreconvar, FWvar,
                 pis, pjs, pks, i, j, 0, n);
@@ -1908,6 +1968,7 @@ public:
                      x.fields_arr[WVAR].data);
 
     auxiliary_vars.exchange({F2VAR, FW2VAR});
+    auxiliary_vars.fields_arr[FW2VAR].set_bnd(0.0);
 
     compute_FT_and_FTW(
         auxiliary_vars.fields_arr[FTVAR].data,
@@ -1926,10 +1987,12 @@ public:
         auxiliary_vars.fields_arr[QHZVAR].data,
         auxiliary_vars.fields_arr[FHZVAR].data, x.fields_arr[VVAR].data,
         x.fields_arr[WVAR].data, x.fields_arr[DENSVAR].data,
-        const_vars.fields_arr[CORIOLISXZVAR].data,
+        const_vars.fields_arr[CORIOLISHZVAR].data,
         ndims > 1 ? optional_real5d{auxiliary_vars.fields_arr[QXYVAR].data}
                   : std::nullopt,
         ndims > 1 ? optional_real5d{auxiliary_vars.fields_arr[FXYVAR].data}
+                  : std::nullopt,
+        ndims > 1 ? optional_real5d{const_vars.fields_arr[CORIOLISXYVAR].data}
                   : std::nullopt);
 
     auxiliary_vars.fields_arr[QHZVAR].set_bnd(0.0);
@@ -2018,6 +2081,7 @@ public:
     auxiliary_vars.exchange({DENSRECONVAR, DENSVERTRECONVAR, QHZRECONVAR,
                              QHZVERTRECONVAR, CORIOLISHZRECONVAR,
                              CORIOLISHZVERTRECONVAR});
+
     if (ndims > 1) {
       auxiliary_vars.exchange({QXYRECONVAR, CORIOLISXYRECONVAR});
     }
@@ -3132,7 +3196,8 @@ public:
             vals_pvpe = PVPE.compute_PVPE(
                 progvars.fields_arr[VVAR].data, progvars.fields_arr[WVAR].data,
                 progvars.fields_arr[DENSVAR].data,
-                constvars.fields_arr[CORIOLISXZVAR].data, pis, pjs, pks, i, j,
+                constvars.fields_arr[CORIOLISHZVAR].data,
+                constvars.fields_arr[CORIOLISXYVAR].data, pis, pjs, pks, i, j,
                 k + 1, n);
             PVarr(k + 1, j, i) = vals_pvpe.pv;
             PENSarr(k + 1, j, i) = vals_pvpe.pe;
@@ -3145,14 +3210,16 @@ public:
             vals_pvpe = PVPE.compute_PVPE_bottom(
                 progvars.fields_arr[VVAR].data, progvars.fields_arr[WVAR].data,
                 progvars.fields_arr[DENSVAR].data,
-                constvars.fields_arr[CORIOLISXZVAR].data, pis, pjs, pks, i, j,
+                constvars.fields_arr[CORIOLISHZVAR].data,
+                constvars.fields_arr[CORIOLISXYVAR].data, pis, pjs, pks, i, j,
                 0, n);
             PVarr(0, j, i) = vals_pvpe.pv;
             PENSarr(0, j, i) = vals_pvpe.pe;
             vals_pvpe = PVPE.compute_PVPE_top(
                 progvars.fields_arr[VVAR].data, progvars.fields_arr[WVAR].data,
                 progvars.fields_arr[DENSVAR].data,
-                constvars.fields_arr[CORIOLISXZVAR].data, pis, pjs, pks, i, j,
+                constvars.fields_arr[CORIOLISHZVAR].data,
+                constvars.fields_arr[CORIOLISXYVAR].data, pis, pjs, pks, i, j,
                 primal_topology.nl - 1, n);
             PVarr(primal_topology.nl - 1, j, i) = vals_pvpe.pv;
             PENSarr(primal_topology.nl - 1, j, i) = vals_pvpe.pe;
@@ -3234,7 +3301,7 @@ void initialize_variables(
 
   // hs
   const_desc_arr[HSVAR] = {"hs", dtopo, ndims, 1, 1}; // hs = twisted (n,1)-form
-  const_desc_arr[CORIOLISXZVAR] = {"coriolisxz", ptopo, 1, 1,
+  const_desc_arr[CORIOLISHZVAR] = {"coriolishz", ptopo, 1, 1,
                                    1}; // f = straight (1,1)-form
 
   // functional derivatives = F, B, K, he, U
@@ -3354,6 +3421,7 @@ void initialize_variables(
         4}; // coriolisxyedgerecon lives on primal vertical faces
 
     aux_desc_arr[FTXYVAR] = {"FTXY", ptopo, 1, 0, 1}; // FTXY
+    const_desc_arr[CORIOLISXYVAR] = {"coriolisxy", ptopo, 2, 0, 1};
   }
 
   // #if defined _AN || defined _MAN
@@ -3509,67 +3577,110 @@ real YAKL_INLINE saturation_vapor_pressure(real temp) {
   return 610.94_fp * exp(17.625_fp * tc / (243.04_fp + tc));
 }
 
-// TODO: Restore this once there is an option to autogenerate a "uniform" grid
-// in the vertical
+template <class T> class SWETestCase : public TestCase, public T {
+public:
+  using T::g;
 
-// template <class T> class SWETestCase : public TestCase, public T {
-// public:
-//   using T::g;
-//
-//   using T::Lx;
-//   using T::Ly;
-//   using T::xc;
-//   using T::yc;
-//
-//   using T::h_f;
-// #ifdef _TSWE
-//   using T::S_f;
-// #endif
-//   using T::coriolis_f;
-//   using T::v_f;
-//
-//   void set_domain(ModelParameters &params) override {
-//     params.xlen = Lx;
-//     params.zlen = Ly;
-//     params.xc = xc;
-//   }
-//
-//   void set_initial_conditions(FieldSet<nprognostic> &progvars,
-//                               FieldSet<nconstant> &constvars,
-//                               const Geometry<Straight> &primal_geom,
-//                               const Geometry<Twisted> &dual_geom) override {
-//
-//     dual_geom.set_11form_values(
-//         YAKL_LAMBDA(real x, real y) { return h_f(x, y); },
-//         progvars.fields_arr[DENSVAR], 0);
-// #ifdef _TSWE
-//     dual_geom.set_11form_values(
-//         YAKL_LAMBDA(real x, real y) { return S_f(x, y); },
-//         progvars.fields_arr[DENSVAR], 1);
-// #endif
-//     primal_geom.set_10form_values(
-//         YAKL_LAMBDA(real x, real y) { return v_f(x, y); },
-//         progvars.fields_arr[VVAR], 0, LINE_INTEGRAL_TYPE::TANGENT);
-//     primal_geom.set_01form_values(
-//         YAKL_LAMBDA(real x, real y) { return v_f(x, y); },
-//         progvars.fields_arr[WVAR], 0, LINE_INTEGRAL_TYPE::TANGENT);
-//
-//     // RESTORE ONCE PRIMAL GRID CFV RECON IS FIXED IN PARALLEL
-//     // primal_geom.set_11form_values(
-//     //      YAKL_LAMBDA(real x, real y) { return coriolis_f(x, y); },
-//     //      constvars.fields_arr[CORIOLISVAR], 0);
-//
-//     YAKL_SCOPE(tracer_f, this->tracer_f);
-//     for (int i = 0; i < ntracers_dycore; i++) {
-//       dual_geom.set_11form_values(
-//           YAKL_LAMBDA(real x, real y) {
-//             return h_f(x, y) * tracer_f(i)->compute(x, y, Lx, Ly, xc, yc);
-//           },
-//           progvars.fields_arr[DENSVAR], i + ndensity_dycore);
-//     }
-//     Hs.set_parameters(g);
-//   }
-// };
+  using T::Lx;
+  using T::Ly;
+  using T::Lz;
+  using T::xc;
+  using T::yc;
+
+  using T::h_f;
+#ifdef _TSWE
+  using T::S_f;
+#endif
+  using T::coriolis_f;
+  using T::v_f;
+
+  void set_domain(ModelParameters &params) override {
+    params.xlen = Lx;
+    params.xc = xc;
+    params.ylen = T::Ly;
+    params.yc = T::yc;
+  }
+
+  std::array<real, 3> get_domain() const override { return {Lx, Ly, Lz}; }
+
+  void set_initial_conditions(FieldSet<nprognostic> &progvars,
+                              FieldSet<nconstant> &constvars,
+                              const Geometry<Straight> &primal_geom,
+                              const Geometry<Twisted> &dual_geom) override {
+
+    dual_geom.set_n1form_values(
+        YAKL_LAMBDA(real x, real y, real z) { return h_f(x, y, z); },
+        progvars.fields_arr[DENSVAR], 0);
+#ifdef _TSWE
+    dual_geom.set_n1form_values(
+        YAKL_LAMBDA(real x, real y, real z) { return S_f(x, y, z); },
+        progvars.fields_arr[DENSVAR], 1);
+#endif
+    primal_geom.set_10form_values(
+        YAKL_LAMBDA(real x, real y, real z) { return v_f(x, y, z); },
+        progvars.fields_arr[VVAR], 0);
+    primal_geom.set_01form_values(
+        YAKL_LAMBDA(real x, real y, real z) { return v_f(x, y, z); },
+        progvars.fields_arr[WVAR], 0);
+
+    // primal_geom.set_n1form_values(
+    //      YAKL_LAMBDA(real x, real y, real z) { return coriolis_f(x, y, z); },
+    //      constvars.fields_arr[CORIOLISHZVAR], 0);
+    primal_geom.set_nm11form_values(
+        YAKL_LAMBDA(real x, real y, real z) { return coriolis_f(x, y, z); },
+        constvars.fields_arr[CORIOLISHZVAR], 0);
+    if (ndims > 1) {
+      primal_geom.set_n0form_values(
+          YAKL_LAMBDA(real x, real y, real z) { return coriolis_f(x, y, z); },
+          constvars.fields_arr[CORIOLISXYVAR], 0);
+    }
+
+    // YAKL_SCOPE(tracer_f, this->tracer_f);
+    // for (int i = 0; i < ntracers_dycore; i++) {
+    //   dual_geom.set_11form_values(
+    //       YAKL_LAMBDA(real x, real y) {
+    //         return h_f(x, y) * tracer_f(i)->compute(x, y, Lx, Ly, xc, yc);
+    //       },
+    //       progvars.fields_arr[DENSVAR], i + ndensity_dycore);
+    // }
+    this->equations->Hs.set_parameters(g);
+  }
+
+  void set_reference_state(const Geometry<Straight> &primal_geom,
+                           const Geometry<Twisted> &dual_geom) override {
+    auto &refstate = this->equations->reference_state;
+
+    const auto primal_topology = primal_geom.topology;
+    const auto dual_topology = dual_geom.topology;
+
+    const int pks = primal_topology.ks;
+    const int dks = dual_topology.ks;
+
+    YAKL_SCOPE(varset, equations->varset);
+    YAKL_SCOPE(Hs, equations->Hs);
+
+    // real href = T::H0;
+    real href = 0;
+
+    dual_geom.set_profile_n1form_values(
+        YAKL_LAMBDA(real z) { return 0; }, refstate.geop, 0);
+    dual_geom.set_profile_n1form_values(
+        YAKL_LAMBDA(real z) { return href; }, refstate.dens,
+        varset.dens_id_mass);
+
+    primal_geom.set_profile_00form_values(
+        YAKL_LAMBDA(real z) { return href; }, refstate.rho_pi,
+        varset.dens_id_mass);
+    primal_geom.set_profile_00form_values(
+        YAKL_LAMBDA(real z) { return 1; }, refstate.q_pi, varset.dens_id_mass);
+
+    dual_geom.set_profile_00form_values(
+        YAKL_LAMBDA(real z) { return href; }, refstate.rho_di,
+        varset.dens_id_mass);
+    dual_geom.set_profile_00form_values(
+        YAKL_LAMBDA(real z) { return 1; }, refstate.q_di, varset.dens_id_mass);
+  }
+};
 
 template <class T> class EulerTestCase : public TestCase, public T {
   using VS = VariableSet;
@@ -4246,96 +4357,98 @@ public:
       std::vector<std::unique_ptr<Diagnostic>> &diagnostics) override {}
 };
 
-// struct DoubleVortex {
-//   static real constexpr g = 9.80616_fp;
-//   static real constexpr Lx = 5000000._fp;
-//   static real constexpr Ly = 5000000._fp;
-//   static real constexpr coriolis = 0.00006147_fp;
-//   static real constexpr H0 = 750.0_fp;
-//   static real constexpr ox = 0.1_fp;
-//   static real constexpr oy = 0.1_fp;
-//   static real constexpr sigmax = 3._fp / 40._fp * Lx;
-//   static real constexpr sigmay = 3._fp / 40._fp * Ly;
-//   static real constexpr dh = 75.0_fp;
-//   static real constexpr xc1 = (0.5_fp - ox) * Lx;
-//   static real constexpr yc1 = (0.5_fp - oy) * Ly;
-//   static real constexpr xc2 = (0.5_fp + ox) * Lx;
-//   static real constexpr yc2 = (0.5_fp + oy) * Ly;
-//   static real constexpr xc = 0.5_fp * Lx;
-//   static real constexpr yc = 0.5_fp * Ly;
-//   static real constexpr c = 0.05_fp;
-//   static real constexpr a = 1.0_fp / 3.0_fp;
-//   static real constexpr D = 0.5_fp * Lx;
-//
-//   static real YAKL_INLINE coriolis_f(real x, real y) { return coriolis; }
-//
-//   static real YAKL_INLINE h_f(real x, real y) {
-//     real xprime1 = Lx / (pi * sigmax) * sin(pi / Lx * (x - xc1));
-//     real yprime1 = Ly / (pi * sigmay) * sin(pi / Ly * (y - yc1));
-//     real xprime2 = Lx / (pi * sigmax) * sin(pi / Lx * (x - xc2));
-//     real yprime2 = Ly / (pi * sigmay) * sin(pi / Ly * (y - yc2));
-//     real xprimeprime1 =
-//         Lx / (2.0_fp * pi * sigmax) * sin(2.0_fp * pi / Lx * (x - xc1));
-//     real yprimeprime1 =
-//         Ly / (2.0_fp * pi * sigmay) * sin(2.0_fp * pi / Ly * (y - yc1));
-//     real xprimeprime2 =
-//         Lx / (2.0_fp * pi * sigmax) * sin(2.0_fp * pi / Lx * (x - xc2));
-//     real yprimeprime2 =
-//         Ly / (2.0_fp * pi * sigmay) * sin(2.0_fp * pi / Ly * (y - yc2));
-//
-//     return H0 - dh * (exp(-0.5_fp * (xprime1 * xprime1 + yprime1 * yprime1))
-//     +
-//                       exp(-0.5_fp * (xprime2 * xprime2 + yprime2 * yprime2))
-//                       - 4._fp * pi * sigmax * sigmay / Lx / Ly);
-//   }
-//
-//   static VecXYZ YAKL_INLINE v_f(real x, real y) {
-//     VecXYZ vvec;
-//
-//     real xprime1 = Lx / (pi * sigmax) * sin(pi / Lx * (x - xc1));
-//     real yprime1 = Ly / (pi * sigmay) * sin(pi / Ly * (y - yc1));
-//     real xprime2 = Lx / (pi * sigmax) * sin(pi / Lx * (x - xc2));
-//     real yprime2 = Ly / (pi * sigmay) * sin(pi / Ly * (y - yc2));
-//     real xprimeprime1 =
-//         Lx / (2.0_fp * pi * sigmax) * sin(2.0_fp * pi / Lx * (x - xc1));
-//     real yprimeprime1 =
-//         Ly / (2.0_fp * pi * sigmay) * sin(2.0_fp * pi / Ly * (y - yc1));
-//     real xprimeprime2 =
-//         Lx / (2.0_fp * pi * sigmax) * sin(2.0_fp * pi / Lx * (x - xc2));
-//     real yprimeprime2 =
-//         Ly / (2.0_fp * pi * sigmay) * sin(2.0_fp * pi / Ly * (y - yc2));
-//
-//     vvec.u =
-//         -g * dh / coriolis / sigmay *
-//         (yprimeprime1 * exp(-0.5_fp * (xprime1 * xprime1 + yprime1 *
-//         yprime1)) +
-//          yprimeprime2 * exp(-0.5_fp * (xprime2 * xprime2 + yprime2 *
-//          yprime2)));
-//     vvec.w =
-//         g * dh / coriolis / sigmax *
-//         (xprimeprime1 * exp(-0.5_fp * (xprime1 * xprime1 + yprime1 *
-//         yprime1)) +
-//          xprimeprime2 * exp(-0.5_fp * (xprime2 * xprime2 + yprime2 *
-//          yprime2)));
-//     return vvec;
-//   }
-//
-//   static real YAKL_INLINE S_f(real x, real y) {
-//     // real sval = g * (1. + c * sin(2. * M_PI / Lx * (x - xc)) * sin(2. *
-//     M_PI
-//     // / Ly * (y - yc)) * exp(-((x-xc)*(x-xc) + (y-yc)*(y-yc))/(a*a*D*D)));
-//     real sval =
-//         g * (1._fp + c * exp(-((x - xc) * (x - xc) + (y - yc) * (y - yc)) /
-//                              (a * a * D * D)));
-//     // real sval = g * (1. + c * sin(2. * M_PI / Lx * (x- xc)));
-//     // real sval = g;
-//     // real sval = g * (1. + c * ((x > 0.35 * Lx && x < 0.65 * Lx && y > 0.35
-//     *
-//     // Ly
-//     // && y < 0.65 * Ly ) ? 1. : 0.));
-//     return sval * h_f(x, y);
-//   }
-// };
+struct DoubleVortex {
+  static real constexpr g = 9.80616_fp;
+  static real constexpr Lx = 5000000._fp;
+  static real constexpr Ly = 5000000._fp;
+  static real constexpr Lz = 5000000._fp;
+  static real constexpr coriolis = 0.00006147_fp;
+  static real constexpr H0 = 750.0_fp;
+  static real constexpr ox = 0.1_fp;
+  static real constexpr oy = 0.1_fp;
+  static real constexpr sigmax = 3._fp / 40._fp * Lx;
+  static real constexpr sigmay = 3._fp / 40._fp * Ly;
+  static real constexpr dh = 75.0_fp;
+  static real constexpr xc1 = (0.5_fp - ox) * Lx;
+  static real constexpr yc1 = (0.5_fp - oy) * Ly;
+  static real constexpr xc2 = (0.5_fp + ox) * Lx;
+  static real constexpr yc2 = (0.5_fp + oy) * Ly;
+  static real constexpr xc = 0.5_fp * Lx;
+  static real constexpr yc = 0.5_fp * Ly;
+  static real constexpr zc = 0.5_fp * Lz;
+  static real constexpr c = 0.05_fp;
+  static real constexpr a = 1.0_fp / 3.0_fp;
+  static real constexpr D = 0.5_fp * Lx;
+
+  static VecXYZ YAKL_INLINE coriolis_f(real x, real y, real z) {
+    // static real YAKL_INLINE coriolis_f(real x, real y, real z) {
+    VecXYZ v;
+    v.u = 0;
+    v.v = 0;
+    v.w = 0;
+    // return v;
+    // return coriolis;
+    return v;
+  }
+
+  static real YAKL_INLINE h_f(real xx, real yy, real zz) {
+    real x = xx;
+    real y = zz;
+
+    real xprime1 = Lx / (pi * sigmax) * sin(pi / Lx * (x - xc1));
+    real yprime1 = Ly / (pi * sigmay) * sin(pi / Ly * (y - yc1));
+    real xprime2 = Lx / (pi * sigmax) * sin(pi / Lx * (x - xc2));
+    real yprime2 = Ly / (pi * sigmay) * sin(pi / Ly * (y - yc2));
+    real xprimeprime1 =
+        Lx / (2.0_fp * pi * sigmax) * sin(2.0_fp * pi / Lx * (x - xc1));
+    real yprimeprime1 =
+        Ly / (2.0_fp * pi * sigmay) * sin(2.0_fp * pi / Ly * (y - yc1));
+    real xprimeprime2 =
+        Lx / (2.0_fp * pi * sigmax) * sin(2.0_fp * pi / Lx * (x - xc2));
+    real yprimeprime2 =
+        Ly / (2.0_fp * pi * sigmay) * sin(2.0_fp * pi / Ly * (y - yc2));
+
+    return H0 - dh * (exp(-0.5_fp * (xprime1 * xprime1 + yprime1 * yprime1)) +
+                      exp(-0.5_fp * (xprime2 * xprime2 + yprime2 * yprime2)) -
+                      4._fp * pi * sigmax * sigmay / Lx / Ly);
+  }
+
+  static VecXYZ YAKL_INLINE v_f(real xx, real yy, real zz) {
+    real x = xx;
+    real y = zz;
+    VecXYZ vvec;
+
+    real xprime1 = Lx / (pi * sigmax) * sin(pi / Lx * (x - xc1));
+    real yprime1 = Ly / (pi * sigmay) * sin(pi / Ly * (y - yc1));
+    real xprime2 = Lx / (pi * sigmax) * sin(pi / Lx * (x - xc2));
+    real yprime2 = Ly / (pi * sigmay) * sin(pi / Ly * (y - yc2));
+    real xprimeprime1 =
+        Lx / (2.0_fp * pi * sigmax) * sin(2.0_fp * pi / Lx * (x - xc1));
+    real yprimeprime1 =
+        Ly / (2.0_fp * pi * sigmay) * sin(2.0_fp * pi / Ly * (y - yc1));
+    real xprimeprime2 =
+        Lx / (2.0_fp * pi * sigmax) * sin(2.0_fp * pi / Lx * (x - xc2));
+    real yprimeprime2 =
+        Ly / (2.0_fp * pi * sigmay) * sin(2.0_fp * pi / Ly * (y - yc2));
+
+    vvec.u =
+        -g * dh / coriolis / sigmay *
+        (yprimeprime1 * exp(-0.5_fp * (xprime1 * xprime1 + yprime1 * yprime1)) +
+         yprimeprime2 * exp(-0.5_fp * (xprime2 * xprime2 + yprime2 * yprime2)));
+    vvec.w =
+        g * dh / coriolis / sigmax *
+        (xprimeprime1 * exp(-0.5_fp * (xprime1 * xprime1 + yprime1 * yprime1)) +
+         xprimeprime2 * exp(-0.5_fp * (xprime2 * xprime2 + yprime2 * yprime2)));
+    return vvec;
+  }
+
+  static real YAKL_INLINE S_f(real x, real y, real z) {
+    real sval =
+        g * (1._fp + c * exp(-((x - xc) * (x - xc) + (y - yc) * (y - yc)) /
+                             (a * a * D * D)));
+    return sval * h_f(x, y, z);
+  }
+};
 
 template <bool acoustic_balance> struct RisingBubble {
   static int constexpr max_ndims = 2;
@@ -5206,11 +5319,9 @@ void testcase_from_string(std::unique_ptr<TestCase> &testcase, std::string name,
     testcase = std::make_unique<EulerTestCase<LargeRisingBubble>>();
   } else if (name == "moistlargerisingbubble") {
     testcase = std::make_unique<MoistEulerTestCase<MoistLargeRisingBubble>>();
-  }
-  // else if (name == "doublevortex") {
-  //  testcase = std::make_unique<SWETestCase<DoubleVortex>>();
-  //}
-  else {
+  } else if (name == "doublevortex") {
+    testcase = std::make_unique<SWETestCase<DoubleVortex>>();
+  } else {
     throw std::runtime_error("unknown test case");
   }
 }

@@ -250,6 +250,20 @@ public:
     }
   }
 
+  real YAKL_INLINE compute_zetaxy(const real5d &v, int is, int js, int ks,
+                                  int i, int j, int k, int n) const {
+    SArray<real, 1, 1> zeta;
+    compute_D1<1>(zeta, v, is, js, ks, i, j, k, n);
+    return zeta(0);
+  }
+
+  real YAKL_INLINE compute_etaxy(const real5d &v, const real5d &coriolisxy,
+                                 int is, int js, int ks, int i, int j, int k,
+                                 int n) const {
+    return compute_zetaxy(v, is, js, ks, i, j, k, n) +
+           coriolisxy(0, k + ks, j + js, i + is, n);
+  }
+
   // This computes true qhz
   void YAKL_INLINE compute_qhz(const real5d &qhz, const real5d &v,
                                const real5d &w, const real5d &dens,
@@ -383,42 +397,64 @@ public:
     }
   }
 
+  void YAKL_INLINE compute_qxy(const real5d &qxy, const real5d &v,
+                               const real5d &dens, const real5d &coriolisxy,
+                               int is, int js, int ks, int i, int j, int k,
+                               int n) const {
+    real hvxy = compute_hvxy(dens, is, js, ks, i, j, k, n);
+    real etaxy = compute_etaxy(v, coriolisxy, is, js, ks, i, j, k, n);
+    qxy(0, k + ks, j + js, i + is, n) = etaxy / hvxy;
+  }
+
   void YAKL_INLINE compute_qxyfxy(const real5d &qxy, const real5d &fxy,
                                   const real5d &v, const real5d &w,
                                   const real5d &dens, const real5d &coriolisxy,
                                   int is, int js, int ks, int i, int j, int k,
                                   int n) const {
     real hvxy = compute_hvxy(dens, is, js, ks, i, j, k, n);
-
-    SArray<real, 1, 1> zeta;
-    compute_D1<1>(zeta, v, is, js, ks, i, j, k, n);
-    qxy(0, k + ks, j + js, i + is, n) = zeta(0) / hvxy;
+    real zetaxy = compute_zetaxy(v, is, js, ks, i, j, k, n);
+    qxy(0, k + ks, j + js, i + is, n) = zetaxy / hvxy;
+    fxy(0, k + ks, j + js, i + is, n) =
+        coriolisxy(0, k + ks, j + js, i + is, n) / hvxy;
   }
 
   pvpe YAKL_INLINE compute_PVPE(const real5d &v, const real5d &w,
                                 const real5d &dens, const real5d &coriolishz,
-                                int is, int js, int ks, int i, int j, int k,
-                                int n) const {
+                                const real5d &coriolisxy, int is, int js,
+                                int ks, int i, int j, int k, int n) const {
     pvpe vals;
     // No subtraction here since this is called on primal cells p11
     SArray<real, 1, ndims> etahz;
     compute_etahz(etahz, v, w, coriolishz, is, js, ks, i, j, k, n);
     real hv = compute_hvxz(dens, is, js, ks, i, j, k, n);
+
     real q0 = etahz(0) / hv;
     vals.pv = etahz(0);
     vals.pe = 0.5_fp * etahz(0) * q0;
+
+    // real etaxy = compute_etaxy(v, coriolisxy, is, js, ks, i, j, k, n);
+    // real hv = compute_hvxy(dens, is, js, ks, i, j, k, n);
+    //
+    // real q0 = etaxy / hv;
+    // vals.pv = etaxy;
+    // vals.pe = 0.5_fp * etaxy * q0;
     return vals;
   }
 
   pvpe YAKL_INLINE compute_PVPE_top(const real5d &v, const real5d &w,
                                     const real5d &dens,
-                                    const real5d &coriolishz, int is, int js,
+                                    const real5d &coriolishz,
+                                    const real5d &coriolisxy, int is, int js,
                                     int ks, int i, int j, int k, int n) const {
     pvpe vals;
     // No subtraction here since this is called on primal cells p11
     SArray<real, 1, ndims> etahz;
     compute_etahz(etahz, v, w, coriolishz, is, js, ks, i, j, k, n);
     real hv = compute_hvxz_top(dens, is, js, ks, i, j, k, n);
+
+    // real etaxy = compute_etaxy(v, coriolisxy, is, js, ks, i, j, k, n);
+    // real hv = compute_hvxy(dens, is, js, ks, i, j, k, n);
+
     real q0 = etahz(0) / hv;
     vals.pv = etahz(0);
     vals.pe = 0.5_fp * etahz(0) * q0;
@@ -427,7 +463,8 @@ public:
 
   pvpe YAKL_INLINE compute_PVPE_bottom(const real5d &v, const real5d &w,
                                        const real5d &dens,
-                                       const real5d &coriolishz, int is, int js,
+                                       const real5d &coriolishz,
+                                       const real5d &coriolisxy, int is, int js,
                                        int ks, int i, int j, int k,
                                        int n) const {
     pvpe vals;
@@ -435,6 +472,10 @@ public:
     SArray<real, 1, ndims> etahz;
     compute_etahz(etahz, v, w, coriolishz, is, js, ks, i, j, k, n);
     real hv = compute_hvxz_bottom(dens, is, js, ks, i, j, k, n);
+
+    // real etaxy = compute_etaxy(v, coriolisxy, is, js, ks, i, j, k, n);
+    // real hv = compute_hvxy(dens, is, js, ks, i, j, k, n);
+
     real q0 = etahz(0) / hv;
     vals.pv = etahz(0);
     vals.pe = 0.5_fp * etahz(0) * q0;
