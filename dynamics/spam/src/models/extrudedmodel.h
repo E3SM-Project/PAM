@@ -4377,6 +4377,9 @@ public:
 };
 
 struct DoubleVortex {
+  enum class PLANE { XZ, YZ, XY };
+
+  static PLANE constexpr plane = PLANE::XZ;
   static real constexpr g = 9.80616_fp;
   static real constexpr Lx = 5000000._fp;
   static real constexpr Ly = 5000000._fp;
@@ -4399,21 +4402,35 @@ struct DoubleVortex {
   static real constexpr a = 1.0_fp / 3.0_fp;
   static real constexpr D = 0.5_fp * Lx;
 
+  static std::pair<real, real> get_plane_coords(real x, real y, real z) {
+    if (plane == PLANE::XY) {
+      return {x, y};
+    }
+    if (plane == PLANE::XZ) {
+      return {x, z};
+    }
+    if (plane == PLANE::YZ) {
+      return {y, z};
+    }
+  }
+
   static VecXYZ YAKL_INLINE coriolis_f(real x, real y, real z) {
-    // static real YAKL_INLINE coriolis_f(real x, real y, real z) {
-    VecXYZ v;
-    v.u = 0;
-    v.v = -coriolis;
-    // v.v = 0;
-    v.w = 0;
-    // return v;
-    // return coriolis;
+    VecXYZ v = {0, 0, 0};
+    if (plane == PLANE::XY) {
+      v.w = coriolis;
+    }
+    if (plane == PLANE::XZ) {
+      v.v = ndims > 1 ? -coriolis : coriolis;
+    }
+    if (plane == PLANE::YZ) {
+      v.u = coriolis;
+    }
+
     return v;
   }
 
   static real YAKL_INLINE h_f(real xx, real yy, real zz) {
-    real x = xx;
-    real y = zz;
+    auto [x, y] = get_plane_coords(xx, yy, zz);
 
     real xprime1 = Lx / (pi * sigmax) * sin(pi / Lx * (x - xc1));
     real yprime1 = Ly / (pi * sigmay) * sin(pi / Ly * (y - yc1));
@@ -4434,9 +4451,7 @@ struct DoubleVortex {
   }
 
   static VecXYZ YAKL_INLINE v_f(real xx, real yy, real zz) {
-    real x = xx;
-    real y = zz;
-    VecXYZ vvec;
+    auto [x, y] = get_plane_coords(xx, yy, zz);
 
     real xprime1 = Lx / (pi * sigmax) * sin(pi / Lx * (x - xc1));
     real yprime1 = Ly / (pi * sigmay) * sin(pi / Ly * (y - yc1));
@@ -4451,22 +4466,38 @@ struct DoubleVortex {
     real yprimeprime2 =
         Ly / (2.0_fp * pi * sigmay) * sin(2.0_fp * pi / Ly * (y - yc2));
 
-    vvec.u =
+    real u1 =
         -g * dh / coriolis / sigmay *
         (yprimeprime1 * exp(-0.5_fp * (xprime1 * xprime1 + yprime1 * yprime1)) +
          yprimeprime2 * exp(-0.5_fp * (xprime2 * xprime2 + yprime2 * yprime2)));
-    vvec.w =
+    real u2 =
         g * dh / coriolis / sigmax *
         (xprimeprime1 * exp(-0.5_fp * (xprime1 * xprime1 + yprime1 * yprime1)) +
          xprimeprime2 * exp(-0.5_fp * (xprime2 * xprime2 + yprime2 * yprime2)));
+
+    VecXYZ vvec = {0, 0, 0};
+
+    if (plane == PLANE::XY) {
+      vvec.u = u1;
+      vvec.v = u2;
+    }
+    if (plane == PLANE::XZ) {
+      vvec.u = u1;
+      vvec.w = u2;
+    }
+    if (plane == PLANE::YZ) {
+      vvec.v = u1;
+      vvec.w = u2;
+    }
     return vvec;
   }
 
-  static real YAKL_INLINE S_f(real x, real y, real z) {
+  static real YAKL_INLINE S_f(real xx, real yy, real zz) {
+    auto [x, y] = get_plane_coords(xx, yy, zz);
     real sval =
         g * (1._fp + c * exp(-((x - xc) * (x - xc) + (y - yc) * (y - yc)) /
                              (a * a * D * D)));
-    return sval * h_f(x, y, z);
+    return sval * h_f(xx, yy, zz);
   }
 };
 
