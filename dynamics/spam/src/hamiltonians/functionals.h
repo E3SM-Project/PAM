@@ -94,6 +94,11 @@ public:
   }
 };
 
+struct pvpe_extruded {
+  SArray<real, 1, (ndims > 1 ? 3 : 1)> pv;
+  real pe = 0;
+};
+
 class Functional_PVPE_extruded {
 
 public:
@@ -418,67 +423,77 @@ public:
         coriolisxy(0, k + ks, j + js, i + is, n) / hvxy;
   }
 
-  pvpe YAKL_INLINE compute_PVPE(const real5d &v, const real5d &w,
-                                const real5d &dens, const real5d &coriolishz,
-                                const real5d &coriolisxy, int is, int js,
-                                int ks, int i, int j, int k, int n) const {
-    pvpe vals;
+  pvpe_extruded YAKL_INLINE compute_PVPE(const real5d &v, const real5d &w,
+                                         const real5d &dens,
+                                         const real5d &coriolishz,
+                                         const real5d &coriolisxy, int is,
+                                         int js, int ks, int i, int j, int k,
+                                         int n) const {
+    pvpe_extruded vals;
     // No subtraction here since this is called on primal cells p11
     SArray<real, 1, ndims> etahz;
     compute_etahz(etahz, v, w, coriolishz, is, js, ks, i, j, k, n);
-    real hv = compute_hvxz(dens, is, js, ks, i, j, k, n);
+    real hvxz = compute_hvxz(dens, is, js, ks, i, j, k, n);
 
-    real q0 = etahz(0) / hv;
-    vals.pv = etahz(0);
-    vals.pe = 0.5_fp * etahz(0) * q0;
+    real qxz = etahz(0) / hvxz;
+    vals.pv(0) = etahz(0);
+    // TODO: figure out how to properly compute this in 3d
+    vals.pe = 0.5_fp * etahz(0) * qxz;
 
-    // real etaxy = compute_etaxy(v, coriolisxy, is, js, ks, i, j, k, n);
-    // real hv = compute_hvxy(dens, is, js, ks, i, j, k, n);
-    //
-    // real q0 = etaxy / hv;
-    // vals.pv = etaxy;
-    // vals.pe = 0.5_fp * etaxy * q0;
+    if (ndims > 1) {
+      vals.pv(1) = etahz(1);
+      real etaxy = compute_etaxy(v, coriolisxy, is, js, ks, i, j, k, n);
+      vals.pv(2) = etaxy;
+    }
     return vals;
   }
 
-  pvpe YAKL_INLINE compute_PVPE_top(const real5d &v, const real5d &w,
-                                    const real5d &dens,
-                                    const real5d &coriolishz,
-                                    const real5d &coriolisxy, int is, int js,
-                                    int ks, int i, int j, int k, int n) const {
-    pvpe vals;
+  pvpe_extruded YAKL_INLINE compute_PVPE_top(const real5d &v, const real5d &w,
+                                             const real5d &dens,
+                                             const real5d &coriolishz,
+                                             const real5d &coriolisxy, int is,
+                                             int js, int ks, int i, int j,
+                                             int k, int n) const {
+    pvpe_extruded vals;
     // No subtraction here since this is called on primal cells p11
     SArray<real, 1, ndims> etahz;
     compute_etahz(etahz, v, w, coriolishz, is, js, ks, i, j, k, n);
-    real hv = compute_hvxz_top(dens, is, js, ks, i, j, k, n);
+    real hvxz = compute_hvxz_top(dens, is, js, ks, i, j, k, n);
 
-    // real etaxy = compute_etaxy(v, coriolisxy, is, js, ks, i, j, k, n);
-    // real hv = compute_hvxy(dens, is, js, ks, i, j, k, n);
+    real qxz = etahz(0) / hvxz;
+    vals.pv(0) = etahz(0);
+    // TODO: figure out how to properly compute this in 3d
+    vals.pe = 0.5_fp * etahz(0) * qxz;
 
-    real q0 = etahz(0) / hv;
-    vals.pv = etahz(0);
-    vals.pe = 0.5_fp * etahz(0) * q0;
+    if (ndims > 1) {
+      vals.pv(1) = etahz(1);
+      real etaxy = compute_etaxy(v, coriolisxy, is, js, ks, i, j, k, n);
+      vals.pv(2) = etaxy;
+    }
     return vals;
   }
 
-  pvpe YAKL_INLINE compute_PVPE_bottom(const real5d &v, const real5d &w,
-                                       const real5d &dens,
-                                       const real5d &coriolishz,
-                                       const real5d &coriolisxy, int is, int js,
-                                       int ks, int i, int j, int k,
-                                       int n) const {
-    pvpe vals;
+  pvpe_extruded YAKL_INLINE compute_PVPE_bottom(
+      const real5d &v, const real5d &w, const real5d &dens,
+      const real5d &coriolishz, const real5d &coriolisxy, int is, int js,
+      int ks, int i, int j, int k, int n) const {
+    pvpe_extruded vals;
     // No subtraction here since this is called on primal cells p11
     SArray<real, 1, ndims> etahz;
     compute_etahz(etahz, v, w, coriolishz, is, js, ks, i, j, k, n);
-    real hv = compute_hvxz_bottom(dens, is, js, ks, i, j, k, n);
+    real hvxz = compute_hvxz_bottom(dens, is, js, ks, i, j, k, n);
 
-    // real etaxy = compute_etaxy(v, coriolisxy, is, js, ks, i, j, k, n);
-    // real hv = compute_hvxy(dens, is, js, ks, i, j, k, n);
+    real qxz = etahz(0) / hvxz;
+    vals.pv(0) = etahz(0);
+    // TODO: figure out how to properly compute this in 3d
+    vals.pe = 0.5_fp * etahz(0) * qxz;
 
-    real q0 = etahz(0) / hv;
-    vals.pv = etahz(0);
-    vals.pe = 0.5_fp * etahz(0) * q0;
+    if (ndims > 1) {
+      vals.pv(1) = etahz(1);
+      real etaxy = compute_etaxy(v, coriolisxy, is, js, ks, i, j, k, n);
+      vals.pv(2) = etaxy;
+    }
+
     return vals;
   }
 };

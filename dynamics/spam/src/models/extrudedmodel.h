@@ -3038,7 +3038,8 @@ class ModelStats : public Stats {
   using VS = VariableSet;
 
 public:
-  real3d TEarr, KEarr, PEarr, IEarr, PVarr, PENSarr, trimmed_density;
+  real3d TEarr, KEarr, PEarr, IEarr, PENSarr, trimmed_density;
+  real4d PVarr;
 
   void initialize(ModelParameters &params, Parallel &par,
                   const Geometry<Straight> &primal_geom,
@@ -3055,8 +3056,8 @@ public:
                                             this->masterproc);
     this->stats_arr[ESTAT].initialize("energy", 4, this->statsize, this->nens,
                                       this->masterproc);
-    this->stats_arr[PVSTAT].initialize("pv", 1, this->statsize, this->nens,
-                                       this->masterproc);
+    this->stats_arr[PVSTAT].initialize("pv", ndims > 1 ? 3 : 1, this->statsize,
+                                       this->nens, this->masterproc);
     this->stats_arr[PESTAT].initialize("pens", 1, this->statsize, this->nens,
                                        this->masterproc);
 
@@ -3071,8 +3072,8 @@ public:
                    dual_topology.n_cells_x);
     PEarr = real3d("PE", dual_topology.nl, dual_topology.n_cells_y,
                    dual_topology.n_cells_x);
-    PVarr = real3d("PV", primal_topology.nl, primal_topology.n_cells_y,
-                   primal_topology.n_cells_x);
+    PVarr = real4d("PV", ndims > 1 ? 3 : 1, primal_topology.nl,
+                   primal_topology.n_cells_y, primal_topology.n_cells_x);
     PENSarr = real3d("PENS", primal_topology.nl, primal_topology.n_cells_y,
                      primal_topology.n_cells_x);
     trimmed_density = real3d("trimmed_density", dual_topology.nl,
@@ -3090,7 +3091,7 @@ public:
       SArray<real, 1, VS::ndensity_prognostic> masslocal, massglobal;
       SArray<real, 1, VS::ndensity_prognostic> densmaxlocal, densmaxglobal;
       SArray<real, 1, VS::ndensity_prognostic> densminlocal, densminglobal;
-      SArray<real, 1, 1> pvlocal, pvglobal;
+      SArray<real, 1, (ndims > 1 ? 3 : 1)> pvlocal, pvglobal;
       SArray<real, 1, 4> elocal, eglobal;
       SArray<real, 1, 1> pelocal, peglobal;
 
@@ -3192,28 +3193,33 @@ public:
           SimpleBounds<3>(primal_topology.nl - 2, primal_topology.n_cells_y,
                           primal_topology.n_cells_x),
           YAKL_CLASS_LAMBDA(int k, int j, int i) {
-            pvpe vals_pvpe;
+            pvpe_extruded vals_pvpe;
             vals_pvpe = PVPE.compute_PVPE(
                 progvars.fields_arr[VVAR].data, progvars.fields_arr[WVAR].data,
                 progvars.fields_arr[DENSVAR].data,
                 constvars.fields_arr[CORIOLISHZVAR].data,
                 constvars.fields_arr[CORIOLISXYVAR].data, pis, pjs, pks, i, j,
                 k + 1, n);
-            PVarr(k + 1, j, i) = vals_pvpe.pv;
+
+            for (int d = 0; d < (ndims > 1 ? 3 : 1); ++d) {
+              PVarr(d, k + 1, j, i) = vals_pvpe.pv(d);
+            }
             PENSarr(k + 1, j, i) = vals_pvpe.pe;
           });
       parallel_for(
           "Compute PV/PE stats bnd",
           SimpleBounds<2>(primal_topology.n_cells_y, primal_topology.n_cells_x),
           YAKL_CLASS_LAMBDA(int j, int i) {
-            pvpe vals_pvpe;
+            pvpe_extruded vals_pvpe;
             vals_pvpe = PVPE.compute_PVPE_bottom(
                 progvars.fields_arr[VVAR].data, progvars.fields_arr[WVAR].data,
                 progvars.fields_arr[DENSVAR].data,
                 constvars.fields_arr[CORIOLISHZVAR].data,
                 constvars.fields_arr[CORIOLISXYVAR].data, pis, pjs, pks, i, j,
                 0, n);
-            PVarr(0, j, i) = vals_pvpe.pv;
+            for (int d = 0; d < (ndims > 1 ? 3 : 1); ++d) {
+              PVarr(d, 0, j, i) = vals_pvpe.pv(d);
+            }
             PENSarr(0, j, i) = vals_pvpe.pe;
             vals_pvpe = PVPE.compute_PVPE_top(
                 progvars.fields_arr[VVAR].data, progvars.fields_arr[WVAR].data,
@@ -3221,11 +3227,20 @@ public:
                 constvars.fields_arr[CORIOLISHZVAR].data,
                 constvars.fields_arr[CORIOLISXYVAR].data, pis, pjs, pks, i, j,
                 primal_topology.nl - 1, n);
-            PVarr(primal_topology.nl - 1, j, i) = vals_pvpe.pv;
+            for (int d = 0; d < (ndims > 1 ? 3 : 1); ++d) {
+              PVarr(d, primal_topology.nl - 1, j, i) = vals_pvpe.pv(d);
+            }
             PENSarr(primal_topology.nl - 1, j, i) = vals_pvpe.pe;
           });
 
-      pvlocal(0) = yakl::intrinsics::sum(PVarr);
+      pvlocal(0) = yakl::intrinsics::sum(
+          PVarr.slice<3>(0, yakl::COLON, yakl::COLON, yakl::COLON));
+      if (ndims > 1) {
+        pvlocal(1) = yakl::intrinsics::sum(
+            PVarr.slice<3>(1, yakl::COLON, yakl::COLON, yakl::COLON));
+        pvlocal(2) = yakl::intrinsics::sum(
+            PVarr.slice<3>(2, yakl::COLON, yakl::COLON, yakl::COLON));
+      }
       pelocal(0) = yakl::intrinsics::sum(PENSarr);
 
       for (int l = 0; l < VS::ndensity_prognostic; l++) {
@@ -3253,8 +3268,8 @@ public:
       this->ierr = MPI_Ireduce(&densminlocal, &densminglobal,
                                VS::ndensity_prognostic, REAL_MPI, MPI_MIN, 0,
                                MPI_COMM_WORLD, &this->Req[DENSMINSTAT]);
-      this->ierr = MPI_Ireduce(&pvlocal, &pvglobal, 1, REAL_MPI, MPI_SUM, 0,
-                               MPI_COMM_WORLD, &this->Req[PVSTAT]);
+      this->ierr = MPI_Ireduce(&pvlocal, &pvglobal, ndims > 1 ? 3 : 1, REAL_MPI,
+                               MPI_SUM, 0, MPI_COMM_WORLD, &this->Req[PVSTAT]);
       this->ierr = MPI_Ireduce(&pelocal, &peglobal, 1, REAL_MPI, MPI_SUM, 0,
                                MPI_COMM_WORLD, &this->Req[PESTAT]);
       this->ierr = MPI_Ireduce(&elocal, &eglobal, 4, REAL_MPI, MPI_SUM, 0,
@@ -3273,7 +3288,9 @@ public:
         this->stats_arr[ESTAT].data(1, tind, n) = eglobal(1);
         this->stats_arr[ESTAT].data(2, tind, n) = eglobal(2);
         this->stats_arr[ESTAT].data(3, tind, n) = eglobal(3);
-        this->stats_arr[PVSTAT].data(0, tind, n) = pvglobal(0);
+        for (int d = 0; d < (ndims > 1 ? 3 : 1); ++d) {
+          this->stats_arr[PVSTAT].data(d, tind, n) = pvglobal(d);
+        }
         this->stats_arr[PESTAT].data(0, tind, n) = peglobal(0);
       }
     }
@@ -3623,13 +3640,15 @@ public:
         YAKL_LAMBDA(real x, real y, real z) { return v_f(x, y, z); },
         progvars.fields_arr[WVAR], 0);
 
-    // primal_geom.set_n1form_values(
-    //      YAKL_LAMBDA(real x, real y, real z) { return coriolis_f(x, y, z); },
-    //      constvars.fields_arr[CORIOLISHZVAR], 0);
-    primal_geom.set_nm11form_values(
-        YAKL_LAMBDA(real x, real y, real z) { return coriolis_f(x, y, z); },
-        constvars.fields_arr[CORIOLISHZVAR], 0);
-    if (ndims > 1) {
+    if (ndims == 1) {
+      primal_geom.set_n1form_values(
+          YAKL_LAMBDA(real x, real y, real z) { return coriolis_f(x, y, z).v; },
+          constvars.fields_arr[CORIOLISHZVAR], 0);
+    } else {
+      primal_geom.set_nm11form_values(
+          YAKL_LAMBDA(real x, real y, real z) { return coriolis_f(x, y, z); },
+          constvars.fields_arr[CORIOLISHZVAR], 0);
+
       primal_geom.set_n0form_values(
           YAKL_LAMBDA(real x, real y, real z) { return coriolis_f(x, y, z); },
           constvars.fields_arr[CORIOLISXYVAR], 0);
@@ -4384,7 +4403,8 @@ struct DoubleVortex {
     // static real YAKL_INLINE coriolis_f(real x, real y, real z) {
     VecXYZ v;
     v.u = 0;
-    v.v = 0;
+    v.v = -coriolis;
+    // v.v = 0;
     v.w = 0;
     // return v;
     // return coriolis;
