@@ -1,0 +1,48 @@
+# Simulation time in number of physics time steps
+simSteps  : 1440
+#11520 * 5 = 57600 * 0.015625  = 900s
+#1280 * 5 = 6400 = 100s
+#40 * 5 = 200 * 0.5 = 100s
+#360 * 5 = 1800 * 0.5 = 900s
+
+# Number of cells to use
+crm_nx       : 43
+crm_ny       : 43
+crm_nz       : 41
+
+# Vertical height coordinates file
+#vcoords  : vcoords_equal_100_20km.nc
+vcoords: uniform
+
+# Data to initialize: doublevortex rb mrb
+initData : supercell
+
+# Time steps
+dtphys: 5.0
+crm_per_phys: 1
+#0.015625 * 5 = 0.078125 for explicit
+# 0.5*5 = 2.5 for semi-implicit
+
+# Output filename
+out_prefix  : test
+dycore_out_prefix  : test_dycore
+
+#Coupler output frequency in actual time
+out_freq : 100.0
+
+# Output frequency in number of CRM time steps
+outSteps: 72
+statSteps: 1
+#6400 = 100s for explicit
+#200 = 100s for semi-implicit
+
+tstype: ssprk3
+#kgrk4 si
+
+# Number of ensembles
+nens : 1
+
+# Parallel decomposition
+inner_mpi : true
+nprocx : 1
+nprocy : 1
