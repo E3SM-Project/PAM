@@ -216,7 +216,7 @@ public:
     // convert Coupler state to dynamics state
     tendencies.convert_coupler_to_dynamics_state(coupler, prognostic_vars,
                                                  auxiliary_vars, constant_vars);
-#ifndef MMF_PAM_DISABLE_DYCOR_RUN
+
     // Time stepping loop
     debug_print("start time stepping loop", par.masterproc);
     for (uint nstep = 0; nstep < params.crm_per_phys; nstep++) {
@@ -255,7 +255,7 @@ public:
     if (!time_integrator->is_ssp) {
       tendencies.remove_negative_densities(prognostic_vars);
     }
-#endif /* MMF_PAM_DISABLE_DYCOR_RUN */
+
     // convert dynamics state to Coupler state
     tendencies.convert_dynamics_to_coupler_state(coupler, prognostic_vars,
                                                  constant_vars);
