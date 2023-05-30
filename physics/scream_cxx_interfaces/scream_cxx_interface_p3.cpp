@@ -16,6 +16,15 @@ namespace pam {
 
   std::mutex p3_main_cxx_mutex;
 
+  void p3_init_lookup_tables() {
+    if (! Kokkos::is_initialized()) { Kokkos::initialize(); }
+    using namespace scream;
+    using namespace scream::p3;
+    using P3F = p3::Functions<Real, DefaultDevice>;
+    P3F::init_kokkos_ice_lookup_tables(ice_table_vals, collect_table_vals);
+    P3F::init_kokkos_tables(vn_table_vals, vm_table_vals, revap_table_vals, mu_r_table_vals, dnu_table_vals);
+  }
+
   void p3_main_cxx(array_ir::ArrayIR<double,2> const & qc,                 // inout
                    array_ir::ArrayIR<double,2> const & nc,                 // inout
                    array_ir::ArrayIR<double,2> const & qr,                 // inout
@@ -209,10 +218,13 @@ namespace pam {
 
     // Load P3 lookup table data
     P3F::P3LookupTables lookup_tables;
-    P3F::init_kokkos_ice_lookup_tables(lookup_tables.ice_table_vals, lookup_tables.collect_table_vals);
-    P3F::init_kokkos_tables(lookup_tables.vn_table_vals, lookup_tables.vm_table_vals,
-                            lookup_tables.revap_table_vals, lookup_tables.mu_r_table_vals,
-                            lookup_tables.dnu_table_vals);
+    lookup_tables.mu_r_table_vals    = mu_r_table_vals;
+    lookup_tables.vn_table_vals      = vn_table_vals;
+    lookup_tables.vm_table_vals      = vm_table_vals;
+    lookup_tables.revap_table_vals   = revap_table_vals;
+    lookup_tables.ice_table_vals     = ice_table_vals;
+    lookup_tables.collect_table_vals = collect_table_vals;
+    lookup_tables.dnu_table_vals     = dnu_table_vals;
 
     p3_main_cxx_mutex.unlock();
 

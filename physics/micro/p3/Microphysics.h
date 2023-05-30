@@ -164,22 +164,22 @@ public:
     real tmelt  = 273.15;
     real pi     = 3.14159265;
     int  iulog  = 1;
-    bool masterproc = true;
     #ifndef P3_CXX
+      bool masterproc = true;
       micro_p3_utils_init_fortran( cp_d , R_d , R_v , rhoh2o , mwh2o , mwdry ,
                                    grav , latvap , latice, cp_l , tmelt , pi , iulog , masterproc );
     #endif
 
-    std::string dir;
-    if (coupler.option_exists("p3_lookup_data_path")) {
-      dir = coupler.get_option<std::string>("p3_lookup_data_path");
-    } else {
-      dir = "../../../physics/micro/p3/tables"; // default for PAM standalone
-    };
-    std::string ver = "4.1.1";
-    int dir_len = dir.length();
-    int ver_len = ver.length();
     #ifndef P3_CXX
+      std::string dir;
+      if (coupler.option_exists("p3_lookup_data_path")) {
+        dir = coupler.get_option<std::string>("p3_lookup_data_path");
+      } else {
+        dir = "../../../physics/micro/p3/tables"; // default for PAM standalone
+      };
+      std::string ver = "4.1.1";
+      int dir_len = dir.length();
+      int ver_len = ver.length();
       p3_init_fortran( dir.c_str() , dir_len , ver.c_str() , ver_len );
     #endif
 
@@ -264,7 +264,6 @@ public:
     auto t_prev  = dm.get_lev_col<real>("t_prev" );
 
     // Allocates inputs and outputs
-    int p3_nout = 49;
     real2d qc                ( "qc"                 ,           nz   , ncol );
     real2d nc                ( "nc"                 ,           nz   , ncol );
     real2d qr                ( "qr"                 ,           nz   , ncol );
@@ -304,6 +303,7 @@ public:
     real2d vap_liq_exchange  ( "vap_liq_exchange"   ,           nz   , ncol );
     real2d vap_ice_exchange  ( "vap_ice_exchange"   ,           nz   , ncol );
     #ifndef P3_CXX
+    int p3_nout = 49;
     real3d p3_tend_out       ( "p3_tend_out"        , p3_nout , nz   , ncol );
     #endif
 
@@ -356,9 +356,6 @@ public:
       nccn_prescribed(k,i) = 1e3;
       nc_nuceat_tend (k,i) = 1.0;
       ni_activated   (k,i) = 1.0;
-      // nccn_prescribed(k,i) = 0;
-      // nc_nuceat_tend (k,i) = 0;
-      // ni_activated   (k,i) = 0;
       // col_location is for debugging only, and it will be ignored for now
       if (k < 3) { col_location(k,i) = 1; }
 
@@ -372,6 +369,11 @@ public:
       inv_qc_relvar = dm.get_lev_col<real>("inv_qc_relvar");
       auto cld_frac = dm.get_lev_col<real>("cldfrac");
       get_cloud_fraction( cld_frac , qc , qr , qi , cld_frac_i , cld_frac_l , cld_frac_r );
+      // parallel_for( SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
+      //   cld_frac_l(k,i) = 1;
+      //   cld_frac_i(k,i) = 1;
+      //   cld_frac_r(k,i) = 1;
+      // });
     } else {
       parallel_for( SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
         // Assume cloud fracton is always 1

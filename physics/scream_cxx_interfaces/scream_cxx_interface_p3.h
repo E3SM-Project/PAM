@@ -5,6 +5,8 @@
 
 namespace pam {
 
+  void p3_init_lookup_tables();
+
   void p3_main_cxx(array_ir::ArrayIR<double,2> const & qc,                 // inout
                    array_ir::ArrayIR<double,2> const & nc,                 // inout
                    array_ir::ArrayIR<double,2> const & qr,                 // inout
