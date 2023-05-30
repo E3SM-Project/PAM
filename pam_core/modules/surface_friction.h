@@ -103,11 +103,12 @@ namespace modules {
     auto sfc_bflx      = dm.get<real,1>("sfc_bflx");       // surface buoyancy flux
     auto sfc_mom_flx_u = dm.get<real,3>("sfc_mom_flx_u" ); // momentum fluxes applied in SGS scheme
     auto sfc_mom_flx_v = dm.get<real,3>("sfc_mom_flx_v" ); // momentum fluxes applied in SGS scheme
-    auto zmid          = dm.get<real,2>("vertical_midpoint_height" );
-    auto rho_d         = dm.get<real,4>("density_dry");
-    auto rho_v         = dm.get<real,4>("water_vapor");
-    auto uvel          = dm.get<real,4>("uvel");
-    auto vvel          = dm.get<real,4>("vvel");
+    auto zmid          = dm.get<real const,2>("vertical_midpoint_height" );
+    auto zint          = dm.get<real const,2>("vertical_interface_height");
+    auto rho_d         = dm.get<real const,4>("density_dry");
+    auto rho_v         = dm.get<real const,4>("water_vapor");
+    auto uvel          = dm.get<real const,4>("uvel");
+    auto vvel          = dm.get<real const,4>("vvel");
 
     real1d u_horz_mean("u_horz_mean",nens);
     real1d v_horz_mean("v_horz_mean",nens);
@@ -119,12 +120,20 @@ namespace modules {
       atomicAdd( rho_horz_mean(iens), ( rho_d(0,j,i,iens) + rho_v(0,j,i,iens) ) * r_nx_ny );
     });
 
-    parallel_for( "surface momentum flux zero" , SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int iens) {
+    parallel_for( "surface momentum flux" , SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int iens) {
+      // calculate surface momentum flux identical to SAM with units = [kg m/s2]
       real wnd_spd = std::max( 1.0, sqrt( uvel(0,j,i,iens)*uvel(0,j,i,iens) + vvel(0,j,i,iens)*vvel(0,j,i,iens) ) );
       real ustar = diag_ustar( zmid(0,iens), sfc_bflx(iens), wnd_spd, z0(iens)); 
       real tau00 = rho_horz_mean(iens) * ustar * ustar;
       sfc_mom_flx_u(j,i,iens) = -( uvel(0,j,i,iens) - u_horz_mean(iens) ) / wnd_spd * tau00;
       sfc_mom_flx_v(j,i,iens) = -( vvel(0,j,i,iens) - v_horz_mean(iens) ) / wnd_spd * tau00;
+      // convert units to [m2/s2] for SHOC - interpolate to get density at surface
+      real rho0 = rho_d(0,j,i,iens) + rho_v(0,j,i,iens);
+      real rho1 = rho_d(1,j,i,iens) + rho_v(1,j,i,iens);
+      real rho_sfc = 2.0*rho0 - rho1;
+      real dz = zint(1,iens) - zint(0,iens);
+      sfc_mom_flx_u(j,i,iens) = sfc_mom_flx_u(j,i,iens) * rho_sfc / dz ;
+      sfc_mom_flx_v(j,i,iens) = sfc_mom_flx_v(j,i,iens) * rho_sfc / dz ;
     });
   }
 
