@@ -374,7 +374,7 @@ public:
       int k_shoc = nz-k;
       shoc_zi_grid(k_shoc,i) = zint(k,i) - zint(0,i); // SHOC needs height values to start at zero
       real pres_int;
-      if      (k == 0 ) {
+      if (k == 0 ) {
         pres_int = pres_mid(k  ,i) + grav*(rho_d(k  ,i)+rho_v(k  ,i))*(zint(k+1,i)-zint(k  ,i))/2;
       } else if (k == nz) {
         pres_int = pres_mid(k-1,i) - grav*(rho_d(k-1,i)+rho_v(k-1,i))*(zint(k  ,i)-zint(k-1,i))/2;
@@ -663,14 +663,6 @@ public:
       real qw = shoc_qw(k_shoc,i);
       real ql = shoc_ql(k_shoc,i);
       real qv = qw - ql;
-
-      //------------------------------------------------------------------------
-      // real temp_in  = temp(k,i);
-      // real temp_thl = shoc_thetal(k_shoc,i)*shoc_exner(k_shoc,i) + (latvap/cp_d)*shoc_ql(k_shoc,i) ;
-      // real temp_dse = ( shoc_host_dse(k_shoc,i) - grav*shoc_zt_grid(k_shoc,i) - shoc_phis(i) )/cp_d;
-      // real temp_diff = temp_dse - temp_thl;
-      // printf("WHDEBUG - post SHOC - k:%d  i:%d  temp_in: %g  temp_dse: %g  temp_thl: %g  temp_diff: %g \n",k,i,temp_in,temp_dse,temp_thl,temp_diff );
-      //------------------------------------------------------------------------
 
       // invert liquid potential temperature to obtain updated temperature
       temp(k,i) = shoc_thetal(k_shoc,i)*shoc_exner(k_shoc,i) + (latvap/cp_d)*shoc_ql(k_shoc,i);
