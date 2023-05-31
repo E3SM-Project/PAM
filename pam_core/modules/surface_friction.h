@@ -64,18 +64,23 @@ namespace modules {
     auto &dm = coupler.get_data_manager_device_readwrite();
     dm.register_and_allocate<real>( "z0"      , "Momentum roughness height [m]",     {nens},{"nens"} );
     dm.register_and_allocate<real>( "sfc_bflx", "large-scale sfc buoyancy flux [K m/s]", {nens},{"nens"} );
-    auto z0       = dm.get<real,1>("z0");
-    auto rho_d    = dm.get<real,4>("density_dry");
-    auto rho_v    = dm.get<real,4>("water_vapor");
-    auto zmid     = dm.get<real,2>("vertical_midpoint_height" );
-    auto sfc_bflx = dm.get<real,1>("sfc_bflx");
-    auto gcm_uvel = dm.get<real,2>("gcm_uvel");
-    auto gcm_vvel = dm.get<real,2>("gcm_vvel");
+    auto z0            = dm.get<real,1>("z0");
+    auto rho_d         = dm.get<real,4>("density_dry");
+    auto rho_v         = dm.get<real,4>("water_vapor");
+    auto zmid          = dm.get<real,2>("vertical_midpoint_height" );
+    auto sfc_bflx      = dm.get<real,1>("sfc_bflx");
+    auto gcm_uvel      = dm.get<real,2>("gcm_uvel");
+    auto gcm_vvel      = dm.get<real,2>("gcm_vvel");
+    auto sfc_mom_flx_u = dm.get<real,3>("sfc_mom_flx_u" ); // momentum fluxes applied in SGS scheme
+    auto sfc_mom_flx_v = dm.get<real,3>("sfc_mom_flx_v" ); // momentum fluxes applied in SGS scheme
 
+    // compute horizontal mean density and initialize momentum fluxes
     real1d rho_horz_mean("rho_horz_mean",nens);
     real r_nx_ny  = 1._fp / (nx*ny);  // precompute reciprocal to avoid costly divisions
     parallel_for("compute horz mean wind", SimpleBounds<3>(ny,nx,nens), YAKL_LAMBDA (int j, int i, int iens) {
       atomicAdd( rho_horz_mean(iens), ( rho_d(0,j,i,iens) + rho_v(0,j,i,iens) ) * r_nx_ny );
+      sfc_mom_flx_u(j,i,iens) = 0;
+      sfc_mom_flx_v(j,i,iens) = 0;
     });
 
     parallel_for( nens , YAKL_LAMBDA (int iens) {
