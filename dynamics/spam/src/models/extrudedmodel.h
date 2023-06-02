@@ -1664,10 +1664,10 @@ public:
                                                qhzvertreconvar, Fvar, pis, pjs,
                                                pks, i, j, k + 1, n);
           }
-          // if (qf_choice == QF_MODE::NOEC) {
-          //   compute_Qxz_w_nonEC<1, ADD_MODE::ADD>(
-          //       Wtendvar, qhzreconvar, Fvar, pis, pjs, pks, i, j, k + 1, n);
-          // }
+          if (qf_choice == QF_MODE::NOEC) {
+            compute_Qxz_w_nonEC<1, ADD_MODE::ADD>(
+                Wtendvar, qhzreconvar, Fvar, pis, pjs, pks, i, j, k + 1, n);
+          }
 
           compute_Qxz_w_EC<1, ADD_MODE::ADD>(Wtendvar, coriolishzreconvar,
                                              coriolishzvertreconvar, Fvar, pis,
@@ -1678,11 +1678,10 @@ public:
                                                  qhzvertreconvar, Fvar, pis,
                                                  pjs, pks, i, j, k + 1, n);
             }
-            // if (qf_choice == QF_MODE::NOEC) {
-            //   compute_Qyz_w_nonEC<1, ADD_MODE::ADD>(
-            //       Wtendvar, qhzreconvar, Fvar, pis, pjs, pks, i, j, k + 1,
-            //       n);
-            // }
+            if (qf_choice == QF_MODE::NOEC) {
+              compute_Qyz_w_nonEC<1, ADD_MODE::ADD>(
+                  Wtendvar, qhzreconvar, Fvar, pis, pjs, pks, i, j, k + 1, n);
+            }
 
             compute_Qyz_w_EC<1, ADD_MODE::ADD>(Wtendvar, coriolishzreconvar,
                                                coriolishzvertreconvar, Fvar,
@@ -1717,13 +1716,13 @@ public:
                 Wtendvar, qhzreconvar, qhzvertreconvar, Fvar, pis, pjs, pks, i,
                 j, primal_topology.nl - 1, n);
           }
-          // if (qf_choice == QF_MODE::NOEC) {
-          //   compute_Qxz_w_nonEC_bottom<1, ADD_MODE::ADD>(
-          //       Wtendvar, qhzreconvar, Fvar, pis, pjs, pks, i, j, 0, n);
-          //   compute_Qxz_w_nonEC_top<1, ADD_MODE::ADD>(
-          //       Wtendvar, qhzreconvar, Fvar, pis, pjs, pks, i, j,
-          //       primal_topology.nl - 1, n);
-          // }
+          if (qf_choice == QF_MODE::NOEC) {
+            compute_Qxz_w_nonEC_bottom<1, ADD_MODE::ADD>(
+                Wtendvar, qhzreconvar, Fvar, pis, pjs, pks, i, j, 0, n);
+            compute_Qxz_w_nonEC_top<1, ADD_MODE::ADD>(
+                Wtendvar, qhzreconvar, Fvar, pis, pjs, pks, i, j,
+                primal_topology.nl - 1, n);
+          }
 
           compute_Qxz_w_EC_bottom<1, ADD_MODE::ADD>(
               Wtendvar, coriolishzreconvar, coriolishzvertreconvar, Fvar, pis,
@@ -1741,13 +1740,13 @@ public:
                   Wtendvar, qhzreconvar, qhzvertreconvar, Fvar, pis, pjs, pks,
                   i, j, primal_topology.nl - 1, n);
             }
-            // if (qf_choice == QF_MODE::NOEC) {
-            //   compute_Qyz_w_nonEC_bottom<1, ADD_MODE::ADD>(
-            //       Wtendvar, qhzreconvar, Fvar, pis, pjs, pks, i, j, 0, n);
-            //   compute_Qyz_w_nonEC_top<1, ADD_MODE::ADD>(
-            //       Wtendvar, qhzreconvar, Fvar, pis, pjs, pks, i, j,
-            //       primal_topology.nl - 1, n);
-            // }
+            if (qf_choice == QF_MODE::NOEC) {
+              compute_Qyz_w_nonEC_bottom<1, ADD_MODE::ADD>(
+                  Wtendvar, qhzreconvar, Fvar, pis, pjs, pks, i, j, 0, n);
+              compute_Qyz_w_nonEC_top<1, ADD_MODE::ADD>(
+                  Wtendvar, qhzreconvar, Fvar, pis, pjs, pks, i, j,
+                  primal_topology.nl - 1, n);
+            }
 
             compute_Qyz_w_EC_bottom<1, ADD_MODE::ADD>(
                 Wtendvar, coriolishzreconvar, coriolishzvertreconvar, Fvar, pis,
@@ -1771,11 +1770,11 @@ public:
                                                qhzvertreconvar, FWvar, pis, pjs,
                                                pks, i, j, k + 1, n);
           }
-          // if (qf_choice == QF_MODE::NOEC) {
-          //   compute_Qxz_u_nonEC<1, ADD_MODE::ADD>(Vtendvar, qhzvertreconvar,
-          //                                         FWvar, pis, pjs, pks, i, j,
-          //                                         k + 1, n);
-          // }
+          if (qf_choice == QF_MODE::NOEC) {
+            compute_Qxz_u_nonEC<1, ADD_MODE::ADD>(Vtendvar, qhzvertreconvar,
+                                                  FWvar, pis, pjs, pks, i, j,
+                                                  k + 1, n);
+          }
 
           compute_Qxz_u_EC<1, ADD_MODE::ADD>(Vtendvar, coriolishzreconvar,
                                              coriolishzvertreconvar, FWvar, pis,
@@ -1789,12 +1788,13 @@ public:
               compute_Q_EC<1, ADD_MODE::ADD>(Vtendvar, qxyreconvar, Fvar, pis,
                                              pjs, pks, i, j, k + 1, n);
             }
-            // if (qf_choice == QF_MODE::NOEC) {
-            //   compute_Qyz_v_nonEC<1, ADD_MODE::ADD>(Vtendvar,
-            //   qhzvertreconvar,
-            //                                         FWvar, pis, pjs, pks, i,
-            //                                         j, k + 1, n);
-            // }
+            if (qf_choice == QF_MODE::NOEC) {
+              compute_Qyz_v_nonEC<1, ADD_MODE::ADD>(Vtendvar, qhzvertreconvar,
+                                                    FWvar, pis, pjs, pks, i, j,
+                                                    k + 1, n);
+              compute_Q_nonEC<1, ADD_MODE::ADD>(Vtendvar, qxyreconvar, Fvar,
+                                                pis, pjs, pks, i, j, k + 1, n);
+            }
 
             compute_Qyz_v_EC<1, ADD_MODE::ADD>(Vtendvar, coriolishzreconvar,
                                                coriolishzvertreconvar, FWvar,
@@ -1823,13 +1823,13 @@ public:
                 Vtendvar, qhzreconvar, qhzvertreconvar, FWvar, pis, pjs, pks, i,
                 j, primal_topology.ni - 1, n);
           }
-          // if (qf_choice == QF_MODE::NOEC) {
-          //   compute_Qxz_u_nonEC_bottom<1, ADD_MODE::ADD>(
-          //       Vtendvar, qhzvertreconvar, FWvar, pis, pjs, pks, i, j, 0, n);
-          //   compute_Qxz_u_nonEC_top<1, ADD_MODE::ADD>(
-          //       Vtendvar, qhzvertreconvar, FWvar, pis, pjs, pks, i, j,
-          //       primal_topology.ni - 1, n);
-          // }
+          if (qf_choice == QF_MODE::NOEC) {
+            compute_Qxz_u_nonEC_bottom<1, ADD_MODE::ADD>(
+                Vtendvar, qhzvertreconvar, FWvar, pis, pjs, pks, i, j, 0, n);
+            compute_Qxz_u_nonEC_top<1, ADD_MODE::ADD>(
+                Vtendvar, qhzvertreconvar, FWvar, pis, pjs, pks, i, j,
+                primal_topology.ni - 1, n);
+          }
 
           compute_Qxz_u_EC_bottom<1, ADD_MODE::ADD>(
               Vtendvar, coriolishzreconvar, coriolishzvertreconvar, FWvar, pis,
@@ -1852,14 +1852,18 @@ public:
                                              pjs, pks, i, j,
                                              primal_topology.ni - 1, n);
             }
-            // if (qf_choice == QF_MODE::NOEC) {
-            //   compute_Qyz_v_nonEC_bottom<1, ADD_MODE::ADD>(
-            //       Vtendvar, qhzvertreconvar, FWvar, pis, pjs, pks, i, j, 0,
-            //       n);
-            //   compute_Qyz_v_nonEC_top<1, ADD_MODE::ADD>(
-            //       Vtendvar, qhzvertreconvar, FWvar, pis, pjs, pks, i, j,
-            //       primal_topology.ni - 1, n);
-            // }
+            if (qf_choice == QF_MODE::NOEC) {
+              compute_Qyz_v_nonEC_bottom<1, ADD_MODE::ADD>(
+                  Vtendvar, qhzvertreconvar, FWvar, pis, pjs, pks, i, j, 0, n);
+              compute_Qyz_v_nonEC_top<1, ADD_MODE::ADD>(
+                  Vtendvar, qhzvertreconvar, FWvar, pis, pjs, pks, i, j,
+                  primal_topology.ni - 1, n);
+              compute_Q_nonEC<1, ADD_MODE::ADD>(Vtendvar, qxyreconvar, Fvar,
+                                                pis, pjs, pks, i, j, 0, n);
+              compute_Q_nonEC<1, ADD_MODE::ADD>(Vtendvar, qxyreconvar, Fvar,
+                                                pis, pjs, pks, i, j,
+                                                primal_topology.ni - 1, n);
+            }
 
             compute_Qyz_v_EC_bottom<1, ADD_MODE::ADD>(
                 Vtendvar, coriolishzreconvar, coriolishzvertreconvar, FWvar,
@@ -4748,12 +4752,12 @@ template <bool acoustic_balance> struct RisingBubble {
     real p = isentropic_p(z, theta0, g, thermo);
     real T = isentropic_T(z, theta0, g, thermo);
     real r;
-    // if (ndims == 1) {
-    r = sqrt((x - xc) * (x - xc) + (z - bzc) * (z - bzc));
-    //} else {
-    //  r = sqrt((x - xc) * (x - xc) + (y - yc) * (y - yc) +
-    //           (z - bzc) * (z - bzc));
-    //}
+    if (ndims == 1) {
+      r = sqrt((x - xc) * (x - xc) + (z - bzc) * (z - bzc));
+    } else {
+      r = sqrt((x - xc) * (x - xc) + (y - yc) * (y - yc) +
+               (z - bzc) * (z - bzc));
+    }
     real dtheta = (r < rc) ? dss * 0.5_fp * (1._fp + cos(pi * r / rc)) : 0._fp;
     real dT = dtheta * pow(p / thermo.cst.pr, thermo.cst.kappa_d);
     return thermo.compute_entropic_var(p, T + dT, 1, 0, 0, 0);

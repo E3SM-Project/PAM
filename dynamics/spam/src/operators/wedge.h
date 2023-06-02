@@ -233,17 +233,20 @@ void YAKL_INLINE compute_Qxz_w_nonEC(const real5d &qflux,
   flux(1) = Uvar(0, k + ks, j + js, i + is + 1, n);
   flux(2) = Uvar(0, k + ks + 1, j + js, i + is, n);
   flux(3) = Uvar(0, k + ks + 1, j + js, i + is + 1, n);
+
+  const int sgn = ndims > 1 ? -1 : 1;
+
   if (addmode == ADD_MODE::REPLACE) {
     for (int l = 0; l < ndofs; l++) {
       qflux(l, k + ks, j + js, i + is, n) =
-          0.25_fp * (flux(0) + flux(1) + flux(2) + flux(3)) *
+          sgn * 0.25_fp * (flux(0) + flux(1) + flux(2) + flux(3)) *
           reconvar(l, k + ks, j + js, i + is, n);
     }
   }
   if (addmode == ADD_MODE::ADD) {
     for (int l = 0; l < ndofs; l++) {
       qflux(l, k + ks, j + js, i + is, n) +=
-          0.25_fp * (flux(0) + flux(1) + flux(2) + flux(3)) *
+          sgn * 0.25_fp * (flux(0) + flux(1) + flux(2) + flux(3)) *
           reconvar(l, k + ks, j + js, i + is, n);
     }
   }
@@ -257,17 +260,20 @@ void YAKL_INLINE compute_Qxz_w_nonEC_top(const real5d &qflux,
   SArray<real, 1, 2> flux;
   flux(0) = Uvar(0, k + ks, j + js, i + is, n);
   flux(1) = Uvar(0, k + ks, j + js, i + is + 1, n);
+
+  const int sgn = ndims > 1 ? -1 : 1;
+
   if (addmode == ADD_MODE::REPLACE) {
     for (int l = 0; l < ndofs; l++) {
       qflux(l, k + ks, j + js, i + is, n) =
-          0.25_fp * (flux(0) + flux(1)) *
+          sgn * 0.25_fp * (flux(0) + flux(1)) *
           reconvar(l, k + ks, j + js, i + is, n);
     }
   }
   if (addmode == ADD_MODE::ADD) {
     for (int l = 0; l < ndofs; l++) {
       qflux(l, k + ks, j + js, i + is, n) +=
-          0.25_fp * (flux(0) + flux(1)) *
+          sgn * 0.25_fp * (flux(0) + flux(1)) *
           reconvar(l, k + ks, j + js, i + is, n);
     }
   }
@@ -282,17 +288,20 @@ void YAKL_INLINE compute_Qxz_w_nonEC_bottom(const real5d &qflux,
   SArray<real, 1, 2> flux;
   flux(0) = Uvar(0, k + ks + 1, j + js, i + is, n);
   flux(1) = Uvar(0, k + ks + 1, j + js, i + is + 1, n);
+
+  const int sgn = ndims > 1 ? -1 : 1;
+
   if (addmode == ADD_MODE::REPLACE) {
     for (int l = 0; l < ndofs; l++) {
       qflux(l, k + ks, j + js, i + is, n) =
-          0.25_fp * (flux(0) + flux(1)) *
+          sgn * 0.25_fp * (flux(0) + flux(1)) *
           reconvar(l, k + ks, j + js, i + is, n);
     }
   }
   if (addmode == ADD_MODE::ADD) {
     for (int l = 0; l < ndofs; l++) {
       qflux(l, k + ks, j + js, i + is, n) +=
-          0.25_fp * (flux(0) + flux(1)) *
+          sgn * 0.25_fp * (flux(0) + flux(1)) *
           reconvar(l, k + ks, j + js, i + is, n);
     }
   }
@@ -394,6 +403,76 @@ void YAKL_INLINE compute_Qyz_w_EC_bottom(const real5d &qflux,
 }
 
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+void YAKL_INLINE compute_Qyz_w_nonEC(const real5d &qflux,
+                                     const real5d &reconvar, const real5d &Uvar,
+                                     int is, int js, int ks, int i, int j,
+                                     int k, int n) {
+  SArray<real, 1, 4> flux;
+  flux(0) = Uvar(1, k + ks, j + js, i + is, n);
+  flux(1) = Uvar(1, k + ks, j + js + 1, i + is, n);
+  flux(2) = Uvar(1, k + ks + 1, j + js, i + is, n);
+  flux(3) = Uvar(1, k + ks + 1, j + js + 1, i + is, n);
+
+  for (int l = 0; l < ndofs; l++) {
+    if (addmode == ADD_MODE::REPLACE) {
+      qflux(l, k + ks, j + js, i + is, n) =
+          0.25_fp * (flux(0) + flux(1) + flux(2) + flux(3)) *
+          reconvar(l + ndofs * 1, k + ks, j + js, i + is, n);
+    }
+    if (addmode == ADD_MODE::ADD) {
+      qflux(l, k + ks, j + js, i + is, n) +=
+          0.25_fp * (flux(0) + flux(1) + flux(2) + flux(3)) *
+          reconvar(l + ndofs * 1, k + ks, j + js, i + is, n);
+    }
+  }
+}
+
+template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+void YAKL_INLINE compute_Qyz_w_nonEC_top(const real5d &qflux,
+                                         const real5d &reconvar,
+                                         const real5d &Uvar, int is, int js,
+                                         int ks, int i, int j, int k, int n) {
+  SArray<real, 1, 2> flux;
+  flux(0) = Uvar(1, k + ks, j + js, i + is, n);
+  flux(1) = Uvar(1, k + ks, j + js + 1, i + is, n);
+  for (int l = 0; l < ndofs; l++) {
+    if (addmode == ADD_MODE::REPLACE) {
+      qflux(l, k + ks, j + js, i + is, n) =
+          0.25_fp * (flux(0) * flux(1)) *
+          reconvar(l + 1 * ndofs, k + ks, j + js, i + is, n);
+    }
+    if (addmode == ADD_MODE::ADD) {
+      qflux(l, k + ks, j + js, i + is, n) +=
+          0.25_fp * (flux(0) * flux(1)) *
+          reconvar(l + 1 * ndofs, k + ks, j + js, i + is, n);
+    }
+  }
+}
+
+template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+void YAKL_INLINE compute_Qyz_w_nonEC_bottom(const real5d &qflux,
+                                            const real5d &reconvar,
+                                            const real5d &Uvar, int is, int js,
+                                            int ks, int i, int j, int k,
+                                            int n) {
+  SArray<real, 1, 2> flux;
+  flux(0) = Uvar(1, k + ks + 1, j + js, i + is, n);
+  flux(1) = Uvar(1, k + ks + 1, j + js + 1, i + is, n);
+  for (int l = 0; l < ndofs; l++) {
+    if (addmode == ADD_MODE::REPLACE) {
+      qflux(l, k + ks, j + js, i + is, n) =
+          0.25_fp * (flux(0) + flux(1)) *
+          reconvar(l + 1 * ndofs, k + ks, j + js, i + is, n);
+    }
+    if (addmode == ADD_MODE::ADD) {
+      qflux(l, k + ks, j + js, i + is, n) +=
+          0.25_fp * (flux(0) + flux(1)) *
+          reconvar(l + 1 * ndofs, k + ks, j + js, i + is, n);
+    }
+  }
+}
+
+template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_Qxz_u_EC(const real5d &qvertflux,
                                   const real5d &reconvar,
                                   const real5d &vertreconvar,
@@ -488,7 +567,6 @@ void YAKL_INLINE compute_Qxz_u_bottom(const real5d &qvertflux,
     }
   }
 }
-
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_Qxz_u_nonEC(const real5d &qvertflux,
                                      const real5d &vertreconvar,
@@ -499,18 +577,17 @@ void YAKL_INLINE compute_Qxz_u_nonEC(const real5d &qvertflux,
   flux(1) = UWvar(0, k + ks, j + js, i + is - 1, n);
   flux(2) = UWvar(0, k + ks + 1, j + js, i + is, n);
   flux(3) = UWvar(0, k + ks + 1, j + js, i + is - 1, n);
-  // Added the minus sign here
-  if (addmode == ADD_MODE::REPLACE) {
-    for (int l = 0; l < ndofs; l++) {
+  for (int l = 0; l < ndofs; l++) {
+    // Added the minus sign here
+    const int sgn = ndims > 1 ? 1 : -1;
+    if (addmode == ADD_MODE::REPLACE) {
       qvertflux(l, k + ks, j + js, i + is, n) =
-          -0.25_fp * (flux(0) + flux(1) + flux(2) + flux(3)) *
+          sgn * 0.25_fp * (flux(0) + flux(1) + flux(2) + flux(3)) *
           vertreconvar(l, k + ks, j + js, i + is, n);
     }
-  }
-  if (addmode == ADD_MODE::ADD) {
-    for (int l = 0; l < ndofs; l++) {
+    if (addmode == ADD_MODE::ADD) {
       qvertflux(l, k + ks, j + js, i + is, n) +=
-          -0.25_fp * (flux(0) + flux(1) + flux(2) + flux(3)) *
+          sgn * 0.25_fp * (flux(0) + flux(1) + flux(2) + flux(3)) *
           vertreconvar(l, k + ks, j + js, i + is, n);
     }
   }
@@ -639,7 +716,6 @@ void YAKL_INLINE compute_Qyz_v_bottom(const real5d &qvertflux,
     }
   }
 }
-
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_Qyz_v_nonEC(const real5d &qvertflux,
                                      const real5d &vertreconvar,
@@ -647,22 +723,19 @@ void YAKL_INLINE compute_Qyz_v_nonEC(const real5d &qvertflux,
                                      int ks, int i, int j, int k, int n) {
   SArray<real, 1, 4> flux;
   flux(0) = UWvar(0, k + ks, j + js, i + is, n);
-  flux(1) = UWvar(0, k + ks, j + js, i + is - 1, n);
+  flux(1) = UWvar(0, k + ks, j + js - 1, i + is, n);
   flux(2) = UWvar(0, k + ks + 1, j + js, i + is, n);
-  flux(3) = UWvar(0, k + ks + 1, j + js, i + is - 1, n);
-  // Added the minus sign here
-  if (addmode == ADD_MODE::REPLACE) {
-    for (int l = 0; l < ndofs; l++) {
-      qvertflux(l, k + ks, j + js, i + is, n) =
+  flux(3) = UWvar(0, k + ks + 1, j + js - 1, i + is, n);
+  for (int l = 0; l < ndofs; l++) {
+    if (addmode == ADD_MODE::REPLACE) {
+      qvertflux(l + ndofs * 1, k + ks, j + js, i + is, n) =
           -0.25_fp * (flux(0) + flux(1) + flux(2) + flux(3)) *
-          vertreconvar(l, k + ks, j + js, i + is, n);
+          vertreconvar(l + ndofs * 1, k + ks, j + js, i + is, n);
     }
-  }
-  if (addmode == ADD_MODE::ADD) {
-    for (int l = 0; l < ndofs; l++) {
-      qvertflux(l, k + ks, j + js, i + is, n) +=
+    if (addmode == ADD_MODE::ADD) {
+      qvertflux(l + ndofs * 1, k + ks, j + js, i + is, n) +=
           -0.25_fp * (flux(0) + flux(1) + flux(2) + flux(3)) *
-          vertreconvar(l, k + ks, j + js, i + is, n);
+          vertreconvar(l + ndofs * 1, k + ks, j + js, i + is, n);
     }
   }
 }
