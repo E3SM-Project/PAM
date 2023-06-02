@@ -346,10 +346,11 @@ public:
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_straight_recon<1, reconstruction_type>(
-              Qreconvar, Qedgereconvar, FTvar, pis, pjs, pks, i, j, k, n);
+              Qreconvar, Qedgereconvar, primal_geometry, FTvar, pis, pjs, pks,
+              i, j, k, n);
           compute_straight_recon<1, coriolis_reconstruction_type>(
-              Coriolisreconvar, fedgereconvar, FTvar, pis, pjs, pks, i, j, k,
-              n);
+              Coriolisreconvar, fedgereconvar, primal_geometry, FTvar, pis, pjs,
+              pks, i, j, k, n);
         });
 
     parallel_for(
@@ -359,8 +360,8 @@ public:
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_twisted_recon<VS::ndensity_prognostic,
                                 dual_reconstruction_type>(
-              densreconvar, densedgereconvar, primal_geometry, dual_geometry,
-              Vvar, dis, djs, dks, i, j, k, n);
+              densreconvar, densedgereconvar, dual_geometry, Vvar, dis, djs,
+              dks, i, j, k, n);
           // scale primal recons
           for (int d = 0; d < ndims; d++) {
             for (int l = 0; l < VS::ndensity_prognostic; l++) {

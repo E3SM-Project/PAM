@@ -338,6 +338,7 @@ tanh_upwind_recon(SArray<real, 2, ndofs, nd> &recon,
 template <uint ndofs, RECONSTRUCTION_TYPE recontype>
 void YAKL_INLINE compute_twisted_recon(const real5d &reconvar,
                                        const real5d &edgereconvar,
+                                       const Geometry<Twisted> &dgeom,
                                        const real5d &Fvar, int is, int js,
                                        int ks, int i, int j, int k, int n) {
 
@@ -371,16 +372,14 @@ void YAKL_INLINE compute_twisted_recon(const real5d &reconvar,
       uvar(d) = Fvar(d, k + ks, j + js, i + is, n);
     }
 
-    // if (dual_upwind_type == UPWIND_TYPE::HEAVISIDE) {
-    upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
-    //    } else if (dual_upwind_type == UPWIND_TYPE::TANH) {
-    //#ifdef _EXTRUDED
-    //      uvar(0) /= dgeom.dz(k + ks, n);
-    //#else
-    //      uvar(0) /= dgeom.dy;
-    //#endif
-    //      tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
-    //    }
+    if (dual_upwind_type == UPWIND_TYPE::HEAVISIDE) {
+      upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+    } else if (dual_upwind_type == UPWIND_TYPE::TANH) {
+      for (int d = 0; d < ndims; ++d) {
+        uvar(d) /= dgeom.get_area_nm11entity(d, k + ks, j + js, i + is, n);
+      }
+      tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+    }
   }
 
   for (int d = 0; d < ndims; d++) {
@@ -393,6 +392,7 @@ void YAKL_INLINE compute_twisted_recon(const real5d &reconvar,
 template <uint ndofs, RECONSTRUCTION_TYPE recontype>
 void YAKL_INLINE compute_twisted_vert_recon(const real5d &vertreconvar,
                                             const real5d &vertedgereconvar,
+                                            const Geometry<Twisted> &dgeom,
                                             const real5d &FWvar, int is, int js,
                                             int ks, int i, int j, int k,
                                             int n) {
@@ -415,12 +415,12 @@ void YAKL_INLINE compute_twisted_vert_recon(const real5d &vertreconvar,
 
     uvar(0) = FWvar(0, k + ks, j + js, i + is, n);
 
-    //    if (dual_vert_upwind_type == UPWIND_TYPE::HEAVISIDE) {
-    upwind_recon<ndofs, 1>(recon, edgerecon, uvar);
-    //    } else if (dual_vert_upwind_type == UPWIND_TYPE::TANH) {
-    //      uvar(0) /= dgeom.dx;
-    //      tanh_upwind_recon<ndofs, 1>(recon, edgerecon, uvar);
-    //    }
+    if (dual_vert_upwind_type == UPWIND_TYPE::HEAVISIDE) {
+      upwind_recon<ndofs, 1>(recon, edgerecon, uvar);
+    } else if (dual_vert_upwind_type == UPWIND_TYPE::TANH) {
+      uvar(0) /= dgeom.get_area_n0entity(k + ks, j + js, i + is, n);
+      tanh_upwind_recon<ndofs, 1>(recon, edgerecon, uvar);
+    }
   }
 
   for (int l = 0; l < ndofs; l++) {
@@ -431,6 +431,7 @@ void YAKL_INLINE compute_twisted_vert_recon(const real5d &vertreconvar,
 template <uint ndofs, RECONSTRUCTION_TYPE recontype>
 void YAKL_INLINE compute_straight_recon(const real5d &reconvar,
                                         const real5d &edgereconvar,
+                                        const Geometry<Straight> &pgeom,
                                         const real5d &UT, int is, int js,
                                         int ks, int i, int j, int k, int n) {
   SArray<real, 2, ndofs, ndims> recon;
@@ -467,12 +468,16 @@ void YAKL_INLINE compute_straight_recon(const real5d &reconvar,
 
   if (recontype == RECONSTRUCTION_TYPE::CFV) {
     centered_recon<ndofs, ndims>(recon, edgerecon);
-  }
-  if (recontype == RECONSTRUCTION_TYPE::WENO) {
-    upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
-  }
-  if (recontype == RECONSTRUCTION_TYPE::WENOFUNC) {
-    upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+  } else if (recontype == RECONSTRUCTION_TYPE::WENO ||
+             recontype == RECONSTRUCTION_TYPE::WENOFUNC) {
+    if (upwind_type == UPWIND_TYPE::HEAVISIDE) {
+      upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+    } else {
+      for (int d = 0; d < ndims; ++d) {
+        uvar(d) /= pgeom.get_area_nm11entity(d, k + ks, j + js, is, n);
+      }
+      tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+    }
   }
 
   for (int d = ndims - 1; d >= 0; d--) {
@@ -486,6 +491,7 @@ void YAKL_INLINE compute_straight_recon(const real5d &reconvar,
 template <uint ndofs, RECONSTRUCTION_TYPE recontype>
 void YAKL_INLINE compute_straight_hz_recon(const real5d &reconvar,
                                            const real5d &edgereconvar,
+                                           const Geometry<Straight> &pgeom,
                                            const real5d &FTWvar, int is, int js,
                                            int ks, int i, int j, int k, int n) {
   SArray<real, 2, ndofs, ndims> recon;
@@ -518,12 +524,14 @@ void YAKL_INLINE compute_straight_hz_recon(const real5d &reconvar,
       uvar(d) = FTWvar(d, k + ks, j + js, i + is, n);
     }
 
-    // if (upwind_type == UPWIND_TYPE::HEAVISIDE) {
-    upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
-    //} else if (upwind_type == UPWIND_TYPE::TANH) {
-    //  uvar(0) /= dgeom.dz(k + ks, n);
-    //  tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
-    //}
+    if (upwind_type == UPWIND_TYPE::HEAVISIDE) {
+      upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+    } else if (upwind_type == UPWIND_TYPE::TANH) {
+      for (int d = 0; d < ndims; ++d) {
+        uvar(d) /= pgeom.get_area_nm11entity(d, k + ks, j + js, is, n);
+      }
+      tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+    }
   }
 
   for (int d = 0; d < ndims; d++) {
@@ -536,6 +544,7 @@ void YAKL_INLINE compute_straight_hz_recon(const real5d &reconvar,
 template <uint ndofs, RECONSTRUCTION_TYPE recontype>
 void YAKL_INLINE compute_straight_hz_vert_recon(const real5d &reconvar,
                                                 const real5d &edgereconvar,
+                                                const Geometry<Straight> &pgeom,
                                                 const real5d &FTvar, int is,
                                                 int js, int ks, int i, int j,
                                                 int k, int n) {
@@ -564,12 +573,12 @@ void YAKL_INLINE compute_straight_hz_vert_recon(const real5d &reconvar,
       }
     }
 
-    // if (vert_upwind_type == UPWIND_TYPE::HEAVISIDE) {
-    upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
-    //} else if (vert_upwind_type == UPWIND_TYPE::TANH) {
-    //  uvar(0) /= dgeom.dx;
-    //  tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
-    //}
+    if (vert_upwind_type == UPWIND_TYPE::HEAVISIDE) {
+      upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+    } else if (vert_upwind_type == UPWIND_TYPE::TANH) {
+      uvar(0) /= pgeom.get_area_n0entity(k + ks, j + js, i + is, n);
+      tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+    }
   }
 
   for (int d = 0; d < ndims; ++d) {

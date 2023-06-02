@@ -1041,7 +1041,8 @@ public:
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_twisted_recon<VS::ndensity_prognostic,
                                 dual_reconstruction_type>(
-              densreconvar, densedgereconvar, Fvar, dis, djs, dks, i, j, k, n);
+              densreconvar, densedgereconvar, dual_geometry, Fvar, dis, djs,
+              dks, i, j, k, n);
 
 #if defined _AN || defined _MAN
           // add reference state
@@ -1097,8 +1098,8 @@ public:
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_twisted_vert_recon<VS::ndensity_prognostic,
                                      dual_vert_reconstruction_type>(
-              densvertreconvar, densvertedgereconvar, FWvar, dis, djs, dks, i,
-              j, k + 1, n);
+              densvertreconvar, densvertedgereconvar, dual_geometry, FWvar, dis,
+              djs, dks, i, j, k + 1, n);
 
 #if defined _AN || defined _MAN
           // add reference state
@@ -1136,10 +1137,11 @@ public:
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_straight_hz_recon<1, reconstruction_type>(
-              qhzreconvar, qhzedgereconvar, FTWvar, pis, pjs, pks, i, j, k, n);
+              qhzreconvar, qhzedgereconvar, primal_geometry, FTWvar, pis, pjs,
+              pks, i, j, k, n);
           compute_straight_hz_recon<1, coriolis_reconstruction_type>(
-              coriolishzreconvar, coriolishzedgereconvar, FTWvar, pis, pjs, pks,
-              i, j, k, n);
+              coriolishzreconvar, coriolishzedgereconvar, primal_geometry,
+              FTWvar, pis, pjs, pks, i, j, k, n);
         });
     parallel_for(
         "ComputeQhzVERTRECON",
@@ -1147,11 +1149,11 @@ public:
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_straight_hz_vert_recon<1, vert_reconstruction_type>(
-              qhzvertreconvar, qhzvertedgereconvar, FTvar, pis, pjs, pks, i, j,
-              k, n);
-          compute_straight_hz_vert_recon<1, coriolis_vert_reconstruction_type>(
-              coriolishzvertreconvar, coriolishzvertedgereconvar, FTvar, pis,
+              qhzvertreconvar, qhzvertedgereconvar, primal_geometry, FTvar, pis,
               pjs, pks, i, j, k, n);
+          compute_straight_hz_vert_recon<1, coriolis_vert_reconstruction_type>(
+              coriolishzvertreconvar, coriolishzvertedgereconvar,
+              primal_geometry, FTvar, pis, pjs, pks, i, j, k, n);
         });
 
     if (ndims > 1) {
@@ -1166,11 +1168,11 @@ public:
                           primal_topology.n_cells_x, primal_topology.nens),
           YAKL_LAMBDA(int k, int j, int i, int n) {
             compute_straight_recon<1, reconstruction_type>(
-                qxyreconvar, qxyedgereconvar, FTxyvar, pis, pjs, pks, i, j, k,
-                n);
+                qxyreconvar, qxyedgereconvar, primal_geometry, FTxyvar, pis,
+                pjs, pks, i, j, k, n);
             compute_straight_recon<1, coriolis_reconstruction_type>(
-                coriolisxyreconvar, coriolisxyedgereconvar, FTxyvar, pis, pjs,
-                pks, i, j, k, n);
+                coriolisxyreconvar, coriolisxyedgereconvar, primal_geometry,
+                FTxyvar, pis, pjs, pks, i, j, k, n);
           });
     }
   }
