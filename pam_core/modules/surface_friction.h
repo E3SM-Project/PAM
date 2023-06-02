@@ -6,12 +6,13 @@
 namespace modules {
 
   real constexpr vonk = 0.4;
-  real constexpr eps = 1.0e-10;
-  real constexpr am = 4.8;
-  real constexpr bm = 19.3;
-  real constexpr pi = 3.14159;
+  real constexpr eps  = 1.0e-10;
+  real constexpr am   = 4.8;
+  real constexpr bm   = 19.3;
+  real constexpr pi   = 3.14159;
 
   // estimate roughness height for momentum
+  // original fortran code written by Marat Khairoutdinov (2004)
   YAKL_INLINE void z0_est(real z, real bflx, real wnd, real ustar, real &z0) {
     real c1 = pi/2.0 - 3.0*log(2.0);
     real rlmo = -bflx*vonk/(ustar*ustar*ustar+eps);
@@ -31,6 +32,15 @@ namespace modules {
 
 
   // calculate friction speed (sqrt of momentum flux) [m/s]
+  // returns value of ustar using the below
+  // similarity functions and a specified buoyancy flux (bflx) given in
+  // kinematic units
+  //   phi_m (zeta > 0) =  (1 + am * zeta)
+  //   phi_m (zeta < 0) =  (1 - bm * zeta)^(-1/4)
+  // where zeta = z/lmo and lmo = (theta_rev/g*vonk) * (ustar^2/tstar)
+  // Ref: Businger, 1973, Turbulent Transfer in the Atmospheric Surface
+  // Layer, in Workshop on Micormeteorology, pages 67-100.
+  // Original fortran code written by Bjorn Stevens (March, 1999)
   YAKL_INLINE real diag_ustar(real z, real bflx, real wnd, real z0) {
     real lnz = log(z/z0);
     real klnz = vonk/lnz;
@@ -61,8 +71,8 @@ namespace modules {
     auto ny   = coupler.get_ny  ();
     auto nx   = coupler.get_nx  ();
     auto nens = coupler.get_nens();
-    auto &dm = coupler.get_data_manager_device_readwrite();
-    dm.register_and_allocate<real>( "z0"      , "Momentum roughness height [m]",     {nens},{"nens"} );
+    auto &dm  = coupler.get_data_manager_device_readwrite();
+    dm.register_and_allocate<real>( "z0"      , "Momentum roughness height [m]",         {nens},{"nens"} );
     dm.register_and_allocate<real>( "sfc_bflx", "large-scale sfc buoyancy flux [K m/s]", {nens},{"nens"} );
     auto z0            = dm.get<real,1>("z0");
     auto rho_d         = dm.get<real,4>("density_dry");
@@ -86,7 +96,7 @@ namespace modules {
     parallel_for( nens , YAKL_LAMBDA (int iens) {
       sfc_bflx(iens) = bflx_in(iens);
       real wnd_spd = std::max( 1.0, sqrt( gcm_uvel(0,iens)*gcm_uvel(0,iens) 
-                                    +gcm_vvel(0,iens)*gcm_vvel(0,iens) ) );
+                                         +gcm_vvel(0,iens)*gcm_vvel(0,iens) ) );
       real ustar = sqrt( tau_in(iens) / rho_horz_mean(iens) );
       z0_est( zmid(0,iens), sfc_bflx(iens), wnd_spd, ustar, z0(iens));
       z0(iens) = std::max(0.00001,std::min(1.0,z0(iens)));
@@ -118,6 +128,15 @@ namespace modules {
     real1d u_horz_mean("u_horz_mean",nens);
     real1d v_horz_mean("v_horz_mean",nens);
     real1d rho_horz_mean("rho_horz_mean",nens);
+    
+    // initialize horizontal means
+    parallel_for("compute horz mean wind", SimpleBounds<3>(ny,nx,nens), YAKL_LAMBDA (int j, int i, int iens) {
+      u_horz_mean(iens)   = 0;
+      v_horz_mean(iens)   = 0;
+      rho_horz_mean(iens) = 0;
+    });
+
+    // calculate horizontal means
     real r_nx_ny  = 1._fp / (nx*ny);  // precompute reciprocal to avoid costly divisions
     parallel_for("compute horz mean wind", SimpleBounds<3>(ny,nx,nens), YAKL_LAMBDA (int j, int i, int iens) {
       atomicAdd( u_horz_mean(iens), uvel(0,j,i,iens) * r_nx_ny );
@@ -127,15 +146,20 @@ namespace modules {
 
     parallel_for( "surface momentum flux" , SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int iens) {
       // calculate surface momentum flux identical to SAM with units = [kg m/s2]
-      real wnd_spd = std::max( 1.0, sqrt( uvel(0,j,i,iens)*uvel(0,j,i,iens) + vvel(0,j,i,iens)*vvel(0,j,i,iens) ) );
+      real u2 = uvel(0,j,i,iens)*uvel(0,j,i,iens);
+      real v2 = vvel(0,j,i,iens)*vvel(0,j,i,iens);
+      real wnd_spd = std::max( 1.0, sqrt(u2+v2) );
       real ustar = diag_ustar( zmid(0,iens), sfc_bflx(iens), wnd_spd, z0(iens)); 
       real tau00 = rho_horz_mean(iens) * ustar * ustar;
       sfc_mom_flx_u(j,i,iens) = -( uvel(0,j,i,iens) - u_horz_mean(iens) ) / wnd_spd * tau00;
       sfc_mom_flx_v(j,i,iens) = -( vvel(0,j,i,iens) - v_horz_mean(iens) ) / wnd_spd * tau00;
-      // convert units to [m2/s2] for SHOC - interpolate to get density at surface
-      real rho0 = rho_d(0,j,i,iens) + rho_v(0,j,i,iens);
-      real rho1 = rho_d(1,j,i,iens) + rho_v(1,j,i,iens);
-      real rho_sfc = 2.0*rho0 - rho1;
+      // convert units to [m2/s2] for SHOC - first interpolate to get density at surface interface
+      real rho_mid0 = rho_d(0,j,i,iens) + rho_v(0,j,i,iens);
+      real rho_mid1 = rho_d(1,j,i,iens) + rho_v(1,j,i,iens);
+      real rho_mid2 = rho_d(2,j,i,iens) + rho_v(2,j,i,iens);
+      real rho_int0 = (rho_mid0 + rho_mid1)/2;
+      real rho_int1 = (rho_mid1 + rho_mid2)/2;
+      real rho_sfc = 2.0*rho_int0 - rho_int1;
       real dz = zint(1,iens) - zint(0,iens);
       sfc_mom_flx_u(j,i,iens) = sfc_mom_flx_u(j,i,iens) * rho_sfc / dz ;
       sfc_mom_flx_v(j,i,iens) = sfc_mom_flx_v(j,i,iens) * rho_sfc / dz ;
