@@ -749,7 +749,9 @@ public:
       real5d densedgereconvar, real5d densvertedgereconvar,
       real5d qhzedgereconvar, real5d qhzvertedgereconvar,
       real5d coriolishzedgereconvar, real5d coriolishzvertedgereconvar,
-      const real5d dens0var, const real5d qhzvar, const real5d fhzvar) {
+      const real5d dens0var, const real5d qhzvar, const real5d fhzvar,
+      optional_real5d opt_qxyedgereconvar, optional_real5d opt_qxyvar,
+      optional_real5d opt_coriolisxyedgereconvar, optional_real5d opt_fxyvar) {
 
     if (vert_reconstruction_type == RECONSTRUCTION_TYPE::WENO ||
         dual_vert_reconstruction_type == RECONSTRUCTION_TYPE::WENO ||
@@ -984,7 +986,7 @@ public:
               primal_wenoRecon, primal_to_gll, primal_wenoIdl,
               primal_wenoSigma);
           compute_straight_hz_vert_edge_recon_variable<
-              1, vert_reconstruction_type, vert_reconstruction_order>(
+              ndims, vert_reconstruction_type, vert_reconstruction_order>(
               qhzvertedgereconvar, qhzvar, pis, pjs, pks, i, j, k, n,
               primal_vert_coefs_to_gll, primal_vert_sten_to_gll,
               primal_vert_sten_to_coefs, primal_vert_weno_recon_lower,
@@ -995,13 +997,37 @@ public:
               coriolis_wenoRecon, coriolis_to_gll, coriolis_wenoIdl,
               coriolis_wenoSigma);
           compute_straight_hz_vert_edge_recon_variable<
-              1, coriolis_vert_reconstruction_type,
+              ndims, coriolis_vert_reconstruction_type,
               coriolis_vert_reconstruction_order>(
               coriolishzvertedgereconvar, fhzvar, pis, pjs, pks, i, j, k, n,
               coriolis_vert_coefs_to_gll, coriolis_vert_sten_to_gll,
               coriolis_vert_sten_to_coefs, coriolis_vert_weno_recon_lower,
               coriolis_vert_wenoIdl, coriolis_vert_wenoSigma);
         });
+
+    if (ndims > 1) {
+      auto qxyvar = opt_qxyvar.value();
+      auto qxyedgereconvar = opt_qxyedgereconvar.value();
+      auto fxyvar = opt_fxyvar.value();
+      auto coriolisxyedgereconvar = opt_coriolisxyedgereconvar.value();
+
+      parallel_for(
+          "ComputeQxyEdgeRecon",
+          SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                          primal_topology.n_cells_x, primal_topology.nens),
+          YAKL_LAMBDA(int k, int j, int i, int n) {
+            compute_straight_edge_recon<1, reconstruction_type,
+                                        reconstruction_order>(
+                qxyedgereconvar, qxyvar, pis, pjs, pks, i, j, k, n,
+                primal_wenoRecon, primal_to_gll, primal_wenoIdl,
+                primal_wenoSigma);
+            compute_straight_edge_recon<1, coriolis_reconstruction_type,
+                                        coriolis_reconstruction_order>(
+                coriolisxyedgereconvar, fxyvar, pis, pjs, pks, i, j, k, n,
+                coriolis_wenoRecon, coriolis_to_gll, coriolis_wenoIdl,
+                coriolis_wenoSigma);
+          });
+    }
   }
 
   void compute_recons(
@@ -2216,7 +2242,18 @@ public:
           auxiliary_vars.fields_arr[CORIOLISHZVERTEDGERECONVAR].data,
           auxiliary_vars.fields_arr[DENS0VAR].data,
           auxiliary_vars.fields_arr[QHZVAR].data,
-          auxiliary_vars.fields_arr[FHZVAR].data);
+          auxiliary_vars.fields_arr[FHZVAR].data,
+          ndims > 1
+              ? optional_real5d{auxiliary_vars.fields_arr[QXYEDGERECONVAR].data}
+              : std::nullopt,
+          ndims > 1 ? optional_real5d{auxiliary_vars.fields_arr[QXYVAR].data}
+                    : std::nullopt,
+          ndims > 1 ? optional_real5d{auxiliary_vars
+                                          .fields_arr[CORIOLISXYEDGERECONVAR]
+                                          .data}
+                    : std::nullopt,
+          ndims > 1 ? optional_real5d{auxiliary_vars.fields_arr[FXYVAR].data}
+                    : std::nullopt);
     }
 
     auxiliary_vars.exchange({DENSEDGERECONVAR, DENSVERTEDGERECONVAR,
