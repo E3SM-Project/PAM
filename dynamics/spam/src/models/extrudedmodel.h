@@ -4643,7 +4643,8 @@ struct DoubleVortex {
   static real constexpr a = 1.0_fp / 3.0_fp;
   static real constexpr D = 0.5_fp * Lx;
 
-  static std::pair<real, real> get_plane_coords(real x, real y, real z) {
+  static std::pair<real, real> YAKL_INLINE get_plane_coords(real x, real y,
+                                                            real z) {
     if (plane == PLANE::XY) {
       return {x, y};
     }
