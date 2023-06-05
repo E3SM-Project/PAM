@@ -58,7 +58,7 @@ uint constexpr nauxiliary = 18;
 
 #define EDGEFLUXVAR 15
 #define MFVAR 16
-#define FVAR2 17
+#define F2VAR 17
 
 // track total densities, dens min/max, densfct min/max, energy (total, K, P,
 // I), PV, PE,

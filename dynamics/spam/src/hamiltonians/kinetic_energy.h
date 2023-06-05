@@ -152,6 +152,35 @@ public:
     }
   }
 
+  void YAKL_INLINE compute_he(const real5d &HE, const real5d &dens0, int is,
+                              int js, int ks, int i, int j, int k,
+                              int n) const {
+    SArray<real, 2, ndims, 2> D0;
+    SArray<real, 1, ndims> he;
+
+    // compute he = phi * h0
+    for (int d = 0; d < ndims; d++) {
+      if (d == 0) {
+        D0(d, 0) = dens0(0, k + ks, j + js, i + is, n);
+        D0(d, 1) = dens0(0, k + ks, j + js, i + is - 1, n);
+      }
+      if (d == 1) {
+        D0(d, 0) = dens0(0, k + ks, j + js, i + is, n);
+        D0(d, 1) = dens0(0, k + ks, j + js - 1, i + is, n);
+      }
+      if (d == 2) {
+        D0(d, 0) = dens0(0, k + ks, j + js, i + is, n);
+        D0(d, 1) = dens0(0, k + ks - 1, j + js, i + is, n);
+      }
+    }
+    phi(he, D0);
+
+    // set HE
+    for (int d = 0; d < ndims; d++) {
+      HE(d, k + ks, j + js, i + is, n) = he(d);
+    }
+  }
+
   // FIX THIS TO GET TOTAL DENSITY FROM VARSET!
   //  Note that this ADDS to Bvar...
   void YAKL_INLINE compute_dKddens(const real5d &B, const real5d &K, int is,

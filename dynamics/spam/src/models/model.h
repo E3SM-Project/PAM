@@ -220,7 +220,8 @@ public:
                                 FieldSet<nprognostic> &x,
                                 FieldSet<nauxiliary> &auxiliary_vars,
                                 FieldSet<nprognostic> &xtend,
-                                ADD_MODE addmode = ADD_MODE::REPLACE) = 0;
+                                ADD_MODE addmode = ADD_MODE::REPLACE,
+                                bool needs_to_recompute_F = true) = 0;
 
   virtual void project_to_anelastic(FieldSet<nconstant> &const_vars,
                                     FieldSet<nprognostic> &x,
@@ -238,7 +239,7 @@ public:
                            FieldSet<nprognostic> &xtend,
                            ADD_MODE addmode = ADD_MODE::REPLACE) {
     compute_functional_derivatives(dt, const_vars, x, auxiliary_vars);
-    apply_symplectic(dt, const_vars, x, auxiliary_vars, xtend, addmode);
+    apply_symplectic(dt, const_vars, x, auxiliary_vars, xtend, addmode, false);
     add_pressure_perturbation(dt, const_vars, x, auxiliary_vars, xtend);
   }
 

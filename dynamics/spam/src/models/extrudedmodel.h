@@ -2130,7 +2130,8 @@ public:
                         FieldSet<nprognostic> &x,
                         FieldSet<nauxiliary> &auxiliary_vars,
                         FieldSet<nprognostic> &xtend,
-                        ADD_MODE addmode = ADD_MODE::REPLACE) override {
+                        ADD_MODE addmode = ADD_MODE::REPLACE,
+                        bool needs_to_recompute_F = true) override {
 
     const auto &dual_topology = dual_geometry.topology;
 
@@ -2139,19 +2140,23 @@ public:
 
     auxiliary_vars.exchange({DENS0VAR});
 
-    compute_F_and_FW(auxiliary_vars.fields_arr[F2VAR].data,
-                     auxiliary_vars.fields_arr[FW2VAR].data,
-                     x.fields_arr[DENSVAR].data, x.fields_arr[VVAR].data,
-                     x.fields_arr[WVAR].data);
+    if (needs_to_recompute_F) {
+      compute_F_and_FW(auxiliary_vars.fields_arr[F2VAR].data,
+                       auxiliary_vars.fields_arr[FW2VAR].data,
+                       x.fields_arr[DENSVAR].data, x.fields_arr[VVAR].data,
+                       x.fields_arr[WVAR].data);
 
-    auxiliary_vars.exchange({F2VAR, FW2VAR});
-    auxiliary_vars.fields_arr[FW2VAR].set_bnd(0.0);
+      auxiliary_vars.exchange({F2VAR, FW2VAR});
+      auxiliary_vars.fields_arr[FW2VAR].set_bnd(0.0);
+    }
 
     compute_FT_and_FTW(
         auxiliary_vars.fields_arr[FTVAR].data,
         auxiliary_vars.fields_arr[FTWVAR].data,
-        auxiliary_vars.fields_arr[F2VAR].data,
-        auxiliary_vars.fields_arr[FW2VAR].data,
+        needs_to_recompute_F ? auxiliary_vars.fields_arr[F2VAR].data
+                             : auxiliary_vars.fields_arr[FVAR].data,
+        needs_to_recompute_F ? auxiliary_vars.fields_arr[FW2VAR].data
+                             : auxiliary_vars.fields_arr[F2VAR].data,
         ndims > 1 ? optional_real5d{auxiliary_vars.fields_arr[FTXYVAR].data}
                   : std::nullopt);
 
@@ -2235,8 +2240,11 @@ public:
         auxiliary_vars.fields_arr[QHZVERTEDGERECONVAR].data,
         auxiliary_vars.fields_arr[CORIOLISHZEDGERECONVAR].data,
         auxiliary_vars.fields_arr[CORIOLISHZVERTEDGERECONVAR].data,
-        x.fields_arr[DENSVAR].data, auxiliary_vars.fields_arr[FVAR].data,
-        auxiliary_vars.fields_arr[FWVAR].data,
+        x.fields_arr[DENSVAR].data,
+        needs_to_recompute_F ? auxiliary_vars.fields_arr[F2VAR].data
+                             : auxiliary_vars.fields_arr[FVAR].data,
+        needs_to_recompute_F ? auxiliary_vars.fields_arr[FW2VAR].data
+                             : auxiliary_vars.fields_arr[F2VAR].data,
         auxiliary_vars.fields_arr[FTVAR].data,
         auxiliary_vars.fields_arr[FTWVAR].data,
         ndims > 1 ? optional_real5d{auxiliary_vars.fields_arr[QXYRECONVAR].data}
