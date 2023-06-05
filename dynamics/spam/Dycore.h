@@ -72,7 +72,10 @@ public:
   }
 
   void init(PamCoupler &coupler, bool verbose=false) {
-    if (verbose) { serial_print("setting up dycore", par.masterproc); }
+    #ifdef PAM_STANDALONE
+      // only use this for standalone to avoid cluttering the log files
+      if (verbose) { serial_print("setting up dycore", par.masterproc); }
+    #endif
 
     // Set parameters
     debug_print(
