@@ -2635,6 +2635,10 @@ public:
                   const Geometry<Twisted> &dual_geom,
                   Equations &equations) override {
 
+    if (ndims > 1) {
+      throw std::runtime_error("semi-implicit not implemented in 3d yet");
+    }
+
     LinearSystem::initialize(params, primal_geom, dual_geom, equations);
 
     const auto &primal_topology = primal_geom.topology;
