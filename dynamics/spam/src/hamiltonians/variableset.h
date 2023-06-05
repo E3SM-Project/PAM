@@ -11,9 +11,15 @@
 #include "thermo.h"
 using pam::PamCoupler;
 
-// solve a system to exactly invert the velocity averaging done
-// during conversion to coupler state when coupling winds
-constexpr bool couple_wind_exact_inverse = false;
+#ifdef PAM_STANDALONE
+  // solve a system to exactly invert the velocity averaging done
+  // during conversion to coupler state when coupling winds
+  constexpr bool couple_wind_exact_inverse = true;
+#else
+  // disable exact inversion of velocity averaging
+  // for more flexible MMF configuration
+  constexpr bool couple_wind_exact_inverse = false;
+#endif
 
 struct VS_SWE {
   static constexpr bool couple = false;
@@ -1533,3 +1539,4 @@ using VariableSet = VariableSetBase<VS_MCE_rhop>;
 #elif _MCErhodp
 using VariableSet = VariableSetBase<VS_MCE_rhodp>;
 #endif
+ 
