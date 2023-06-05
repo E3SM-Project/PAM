@@ -230,7 +230,9 @@ struct AnelasticPressureSolver {
     yakl::memset(p_transform, 0);
 
     fftp_x.init(p_transform, 2, nx);
-    fftp_y.init(p_transform, 1, ny);
+    if (ndims > 1) {
+      fftp_y.init(p_transform, 1, ny);
+    }
 
     tri_d = real4d("tri d", pni, nyf, nxf, nens);
     tri_l = real4d("tri l", pni, nyf, nxf, nens);
@@ -509,7 +511,7 @@ public:
         "Compute FTvar bnd",
         SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
                         primal_topology.nens),
-        YAKL_CLASS_LAMBDA(int j, int i, int n) {
+        YAKL_LAMBDA(int j, int i, int n) {
           compute_Wxz_u_bottom(FTvar, FWvar, pis, pjs, pks, i, j, 0, n);
           compute_Wxz_u_top(FTvar, FWvar, pis, pjs, pks, i, j,
                             primal_topology.ni - 1, n);
@@ -525,7 +527,7 @@ public:
         "Compute FTWvar bnd",
         SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
                         primal_topology.nens),
-        YAKL_CLASS_LAMBDA(int j, int i, int n) {
+        YAKL_LAMBDA(int j, int i, int n) {
           compute_Wxz_w_bottom(FTWvar, Fvar, pis, pjs, pks, i, j, 0, n);
           compute_Wxz_w_top(FTWvar, Fvar, pis, pjs, pks, i, j,
                             primal_topology.nl - 1, n);
@@ -544,7 +546,7 @@ public:
           "Compute FTvar bnd",
           SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
                           primal_topology.nens),
-          YAKL_CLASS_LAMBDA(int j, int i, int n) {
+          YAKL_LAMBDA(int j, int i, int n) {
             compute_Wyz_u_bottom(FTvar, FWvar, pis, pjs, pks, i, j, 0, n);
             compute_Wyz_u_top(FTvar, FWvar, pis, pjs, pks, i, j,
                               primal_topology.ni - 1, n);
@@ -561,7 +563,7 @@ public:
           "Compute FTWvar bnd",
           SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
                           primal_topology.nens),
-          YAKL_CLASS_LAMBDA(int j, int i, int n) {
+          YAKL_LAMBDA(int j, int i, int n) {
             compute_Wyz_w_bottom(FTWvar, Fvar, pis, pjs, pks, i, j, 0, n);
             compute_Wyz_w_top(FTWvar, Fvar, pis, pjs, pks, i, j,
                               primal_topology.nl - 1, n);
