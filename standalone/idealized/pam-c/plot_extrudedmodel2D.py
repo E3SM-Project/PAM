@@ -29,8 +29,7 @@ if plane == 'xz':
 if plane == 'yz':
     plane_idx = DS.dims['dual_ncells_x'] // 2
 if plane == 'xy':
-    #plane_idx = DS.dims['dual_nlayers'] // 2
-    plane_idx = 3
+    plane_idx = DS.dims['dual_nlayers'] // 2
 ndims = DS.dims['v_ndofs']
 print(f"plane_idx = {plane_idx}")
 if len(sys.argv) > 3:
@@ -84,7 +83,7 @@ for n in range(nens):
     plot_stat('total_energy.'+ str(n), energy.isel(energy_ndofs=0, nens=n))
 
     plot_stat('total_pens.'+ str(n), pens.isel(pens_ndofs=0, nens=n))
-    plot_rawstat('total_pv.'+ str(n), pv.isel(pv_ndofs=0, nens=n))
+    plot_stat('total_pv.'+ str(n), pv.isel(pv_ndofs=0, nens=n))
 
 
 Nlist = np.arange(0,nt)
@@ -94,48 +93,59 @@ w = DS.w
 dens = DS.dens
 total_dens = DS.total_dens
 QHZl = DS.QHZl
-if ndims > 1:
-    QXYl = DS.QXYl
 densl = DS.densl
 hs = DS.hs
 coriolishz = DS.coriolishz
+if ndims > 1:
+    QXYl = DS.QXYl
+    coriolisxy = DS.coriolisxy
 
 for n in range(nens):
 
     if plane == 'xz':
         plotvar_scalar2D('.'.join(['hs', plane, str(n)]), hs.isel(hs_ndofs=0, dual_ncells_y=plane_idx,nens=n),0)
-        plotvar_scalar2D('.'.join(['coriolishz', plane, str(n)]), coriolishz.isel(coriolishz_ndofs=0, primal_ncells_y=plane_idx,nens=n),0)
+        plotvar_scalar2D('.'.join(['coriolisxz', plane, str(n)]), coriolishz.isel(coriolishz_ndofs=0, primal_ncells_y=plane_idx,nens=n),0)
+        if ndims > 1:
+            plotvar_scalar2D('.'.join(['coriolisxz', plane, str(n)]), coriolishz.isel(coriolishz_ndofs=1, primal_ncells_y=plane_idx,nens=n),0)
+            plotvar_scalar2D('.'.join(['coriolisxy', plane, str(n)]), coriolisxy.isel(coriolisxy_ndofs=0, primal_ncells_y=plane_idx,nens=n),0)
     if plane == 'yz':
         plotvar_scalar2D('.'.join(['hs', plane, str(n)]), hs.isel(hs_ndofs=0, dual_ncells_x=plane_idx,nens=n),0)
-        plotvar_scalar2D('.'.join(['coriolishz', plane, str(n)]), coriolishz.isel(coriolishz_ndofs=1, primal_ncells_x=plane_idx,nens=n),0)
+        plotvar_scalar2D('.'.join(['coriolisxz', plane, str(n)]), coriolishz.isel(coriolishz_ndofs=0, primal_ncells_x=plane_idx,nens=n),0)
+        if ndims > 1:
+            plotvar_scalar2D('.'.join(['coriolisyz', plane, str(n)]), coriolishz.isel(coriolishz_ndofs=1, primal_ncells_x=plane_idx,nens=n),0)
+            plotvar_scalar2D('.'.join(['coriolisxy', plane, str(n)]), coriolisxy.isel(coriolisxy_ndofs=0, primal_ncells_x=plane_idx,nens=n),0)
     if plane == 'xy':
         plotvar_scalar2D('.'.join(['hs', plane, str(n)]), hs.isel(hs_ndofs=0, dual_nlayers=plane_idx,nens=n),0)
-        plotvar_scalar2D('.'.join(['coriolishz', plane, str(n)]), coriolishz.isel(coriolishz_ndofs=0, primal_nlayers=plane_idx,nens=n),0)
+        plotvar_scalar2D('.'.join(['coriolisxz', plane, str(n)]), coriolishz.isel(coriolishz_ndofs=0, primal_nlayers=plane_idx,nens=n),0)
+        if ndims > 1:
+            plotvar_scalar2D('.'.join(['coriolisyz', plane, str(n)]), coriolishz.isel(coriolishz_ndofs=1, primal_nlayers=plane_idx,nens=n),0)
+            plotvar_scalar2D('.'.join(['coriolisxy', plane, str(n)]), coriolisxy.isel(coriolisxy_ndofs=0, primal_ninterfaces=plane_idx,nens=n),0)
 
     for i in Nlist:
         if plane == 'xz':
             plotvar_scalar2D('.'.join(['qxz', plane, str(n)]), QHZl.isel(t=i,QHZl_ndofs=0, dual_ncells_y=plane_idx,nens=n),i)
             plotvar_scalar2D('.'.join(['vx', plane, str(n)]), v.isel(t=i,v_ndofs=0, primal_ncells_y=plane_idx,nens=n),i)
+            plotvar_scalar2D('.'.join(['w', plane, str(n)]), w.isel(t=i,w_ndofs=0, primal_ncells_y=plane_idx,nens=n),i)
             if ndims > 1:
                 plotvar_scalar2D('.'.join(['vy', plane, str(n)]), v.isel(t=i,v_ndofs=1, primal_ncells_y=plane_idx,nens=n),i)
                 plotvar_scalar2D('.'.join(['qyz', plane, str(n)]), QHZl.isel(t=i,QHZl_ndofs=1, dual_ncells_y=plane_idx,nens=n),i)
-            plotvar_scalar2D('.'.join(['w', plane, str(n)]), w.isel(t=i,w_ndofs=0, primal_ncells_y=plane_idx,nens=n),i)
+                plotvar_scalar2D('.'.join(['qxy', plane, str(n)]), QXYl.isel(t=i,QXYl_ndofs=0, dual_ncells_y=plane_idx,nens=n),i)
         if plane == 'yz':
             plotvar_scalar2D('.'.join(['qxz', plane, str(n)]), QHZl.isel(t=i,QHZl_ndofs=0, dual_ncells_x=plane_idx,nens=n),i)
             plotvar_scalar2D('.'.join(['vx', plane, str(n)]), v.isel(t=i,v_ndofs=0, primal_ncells_x=plane_idx,nens=n),i)
+            plotvar_scalar2D('.'.join(['w', plane, str(n)]), w.isel(t=i,w_ndofs=0, primal_ncells_x=plane_idx,nens=n),i)
             if ndims > 1:
                 plotvar_scalar2D('.'.join(['vy', plane, str(n)]), v.isel(t=i,v_ndofs=1, primal_ncells_x=plane_idx,nens=n),i)
+                plotvar_scalar2D('.'.join(['qxy', plane, str(n)]), QXYl.isel(t=i,QXYl_ndofs=0, dual_ncells_x=plane_idx,nens=n),i)
                 plotvar_scalar2D('.'.join(['qyz', plane, str(n)]), QHZl.isel(t=i,QHZl_ndofs=1, dual_ncells_x=plane_idx,nens=n),i)
-            plotvar_scalar2D('.'.join(['w', plane, str(n)]), w.isel(t=i,w_ndofs=0, primal_ncells_x=plane_idx,nens=n),i)
         if plane == 'xy':
             plotvar_scalar2D('.'.join(['qxz', plane, str(n)]), QHZl.isel(t=i,QHZl_ndofs=0, dual_ninterfaces=plane_idx,nens=n),i)
-            if ndims > 1:
-                plotvar_scalar2D('.'.join(['qxy', plane, str(n)]), QXYl.isel(t=i,QXYl_ndofs=0, dual_nlayers=plane_idx,nens=n),i)
-                plotvar_scalar2D('.'.join(['qyz', plane, str(n)]), QHZl.isel(t=i,QHZl_ndofs=1, dual_ncells_x=plane_idx,nens=n),i)
             plotvar_scalar2D('.'.join(['vx', plane, str(n)]), v.isel(t=i,v_ndofs=0, primal_ninterfaces=plane_idx,nens=n),i)
+            plotvar_scalar2D('.'.join(['w', plane, str(n)]), w.isel(t=i,w_ndofs=0, primal_nlayers=plane_idx,nens=n),i)
             if ndims > 1:
                 plotvar_scalar2D('.'.join(['vy', plane, str(n)]), v.isel(t=i,v_ndofs=1, primal_ninterfaces=plane_idx,nens=n),i)
-            plotvar_scalar2D('.'.join(['w', plane, str(n)]), w.isel(t=i,w_ndofs=0, primal_nlayers=plane_idx,nens=n),i)
+                plotvar_scalar2D('.'.join(['qxy', plane, str(n)]), QXYl.isel(t=i,QXYl_ndofs=0, dual_nlayers=plane_idx,nens=n),i)
+                plotvar_scalar2D('.'.join(['qyz', plane, str(n)]), QHZl.isel(t=i,QHZl_ndofs=1, dual_ncells_x=plane_idx,nens=n),i)
 
 
         for l,name in zip(range(ndensity), dens_names):
