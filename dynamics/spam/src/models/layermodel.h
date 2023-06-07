@@ -224,6 +224,23 @@ public:
         });
   }
 
+  void compute_he(real5d HEvar, const real5d dens0var) {
+    const auto &dual_topology = dual_geometry.topology;
+
+    int dis = dual_topology.is;
+    int djs = dual_topology.js;
+    int dks = dual_topology.ks;
+
+    YAKL_SCOPE(Hk, this->equations->Hk);
+    parallel_for(
+        "Compute F/he",
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          Hk.compute_he(HEvar, dens0var, dis, djs, dks, i, j, k, n);
+        });
+  }
+
   template <ADD_MODE addmode = ADD_MODE::REPLACE>
   void compute_B(real fac, real5d Bvar, const real5d Kvar, const real5d densvar,
                  const real5d HSvar) {
@@ -325,7 +342,7 @@ public:
                       real5d Coriolisreconvar, const real5d densedgereconvar,
                       const real5d Qedgereconvar, const real5d fedgereconvar,
                       const real5d HEvar, const real5d FTvar,
-                      const real5d Vvar) {
+                      const real5d Fvar) {
     const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
 
@@ -346,10 +363,11 @@ public:
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_straight_recon<1, reconstruction_type>(
-              Qreconvar, Qedgereconvar, FTvar, pis, pjs, pks, i, j, k, n);
+              Qreconvar, Qedgereconvar, primal_geometry, FTvar, pis, pjs, pks,
+              i, j, k, n);
           compute_straight_recon<1, coriolis_reconstruction_type>(
-              Coriolisreconvar, fedgereconvar, FTvar, pis, pjs, pks, i, j, k,
-              n);
+              Coriolisreconvar, fedgereconvar, primal_geometry, FTvar, pis, pjs,
+              pks, i, j, k, n);
         });
 
     parallel_for(
@@ -359,8 +377,8 @@ public:
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_twisted_recon<VS::ndensity_prognostic,
                                 dual_reconstruction_type>(
-              densreconvar, densedgereconvar, primal_geometry, dual_geometry,
-              Vvar, dis, djs, dks, i, j, k, n);
+              densreconvar, densedgereconvar, dual_geometry, Fvar, dis, djs,
+              dks, i, j, k, n);
           // scale primal recons
           for (int d = 0; d < ndims; d++) {
             for (int l = 0; l < VS::ndensity_prognostic; l++) {
@@ -468,7 +486,8 @@ public:
                         FieldSet<nprognostic> &x,
                         FieldSet<nauxiliary> &auxiliary_vars,
                         FieldSet<nprognostic> &xtend,
-                        ADD_MODE addmode = ADD_MODE::REPLACE) override {
+                        ADD_MODE addmode = ADD_MODE::REPLACE,
+                        bool needs_to_recompute_F = true) override {
     const auto &dual_topology = dual_geometry.topology;
 
     compute_dens0(auxiliary_vars.fields_arr[DENS0VAR].data,
@@ -481,15 +500,23 @@ public:
 
     auxiliary_vars.exchange({DENS0VAR, UVAR, Q0VAR, F0VAR});
 
-    compute_F_and_he(auxiliary_vars.fields_arr[FVAR2].data,
-                     auxiliary_vars.fields_arr[HEVAR].data,
-                     auxiliary_vars.fields_arr[UVAR].data,
-                     auxiliary_vars.fields_arr[DENS0VAR].data);
+    if (needs_to_recompute_F) {
+      compute_F_and_he(auxiliary_vars.fields_arr[F2VAR].data,
+                       auxiliary_vars.fields_arr[HEVAR].data,
+                       auxiliary_vars.fields_arr[UVAR].data,
+                       auxiliary_vars.fields_arr[DENS0VAR].data);
 
-    auxiliary_vars.exchange({FVAR2, HEVAR});
+      auxiliary_vars.exchange({F2VAR, HEVAR});
+    } else {
+      compute_he(auxiliary_vars.fields_arr[HEVAR].data,
+                 auxiliary_vars.fields_arr[DENS0VAR].data);
+
+      auxiliary_vars.exchange({HEVAR});
+    }
 
     compute_FT(auxiliary_vars.fields_arr[FTVAR].data,
-               auxiliary_vars.fields_arr[FVAR2].data);
+               needs_to_recompute_F ? auxiliary_vars.fields_arr[F2VAR].data
+                                    : auxiliary_vars.fields_arr[FVAR].data);
 
     auxiliary_vars.exchange({FTVAR});
 
@@ -513,7 +540,8 @@ public:
                    auxiliary_vars.fields_arr[CORIOLISEDGERECONVAR].data,
                    auxiliary_vars.fields_arr[HEVAR].data,
                    auxiliary_vars.fields_arr[FTVAR].data,
-                   x.fields_arr[VVAR].data);
+                   needs_to_recompute_F ? auxiliary_vars.fields_arr[F2VAR].data
+                                        : auxiliary_vars.fields_arr[FVAR].data);
 
     auxiliary_vars.exchange({DENSRECONVAR, QRECONVAR, CORIOLISRECONVAR});
 
@@ -1037,7 +1065,7 @@ void initialize_variables(
   aux_desc_arr[BVAR] = {"B", ptopo, 0, 1,
                         VS::ndensity_active};         // B = straight 0-form
   aux_desc_arr[FVAR] = {"F", dtopo, ndims - 1, 1, 1}; // F = twisted (n-1)-form
-  aux_desc_arr[FVAR2] = {"F2", dtopo, ndims - 1, 1,
+  aux_desc_arr[F2VAR] = {"F2", dtopo, ndims - 1, 1,
                          1};                      // F2 = twisted (n-1)-form
   aux_desc_arr[KVAR] = {"K", dtopo, ndims, 1, 1}; // K = twisted n-form
   aux_desc_arr[HEVAR] = {"he", dtopo, ndims - 1, 1,
@@ -1286,8 +1314,8 @@ struct BickleyJet {
   static real constexpr eps = 0.1_fp;
   static real constexpr l = 0.5_fp;
   static real constexpr k = 0.5_fp;
-  static real constexpr xc = 0.5_fp * Lx;
-  static real constexpr yc = 0.5_fp * Ly;
+  static real constexpr xc = 0;
+  static real constexpr yc = 0;
   static real constexpr ref_height = 1._fp;
 
   static real YAKL_INLINE coriolis_f(real x, real y) { return 0; }
