@@ -1519,11 +1519,11 @@ public:
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          SArray<real, 1, ndims> vdiff;
+          SArray<real, 2, 1, ndims> vdiff;
           compute_D0<1>(vdiff, dens0var, pis, pjs, pks, i, j, k, n);
           for (int d = 0; d < ndims; ++d) {
             Vtendvar(d, pks + k, pjs + j, pis + i, n) -=
-                velocity_coeff * vdiff(d);
+                velocity_coeff * vdiff(0, d);
           }
         });
 
@@ -1532,8 +1532,10 @@ public:
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          real wdiff = compute_D0_vert<1>(dens0var, pis, pjs, pks, i, j, k, n);
-          Wtendvar(0, pks + k, pjs + j, pis + i, n) -= velocity_coeff * wdiff;
+          SArray<real, 1, 1> wdiff;
+          compute_D0_vert<1>(wdiff, dens0var, pis, pjs, pks, i, j, k, n);
+          Wtendvar(0, pks + k, pjs + j, pis + i, n) -=
+              velocity_coeff * wdiff(0);
         });
 
     yakl::timer_stop("add_velocity_diffusion");
@@ -1700,11 +1702,11 @@ public:
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          SArray<real, 1, ndims> vdiff;
+          SArray<real, 2, 1, ndims> vdiff;
           compute_D0<1>(vdiff, dens0var, pis, pjs, pks, i, j, k, n);
           for (int d = 0; d < ndims; ++d) {
             Vtendvar(d, pks + k, pjs + j, pis + i, n) -=
-                velocity_coeff * vdiff(d);
+                velocity_coeff * vdiff(0, d);
           }
         });
 
@@ -1713,8 +1715,10 @@ public:
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          real wdiff = compute_D0_vert<1>(dens0var, pis, pjs, pks, i, j, k, n);
-          Wtendvar(0, pks + k, pjs + j, pis + i, n) -= velocity_coeff * wdiff;
+          SArray<real, 1, 1, 1> wdiff;
+          compute_D0_vert<1>(wdiff, dens0var, pis, pjs, pks, i, j, k, n);
+          Wtendvar(0, pks + k, pjs + j, pis + i, n) -=
+              velocity_coeff * wdiff(0);
         });
 
     yakl::timer_stop("add_velocity_diffusion");
@@ -2613,20 +2617,20 @@ public:
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          SArray<real, 1, ndims> u;
+          SArray<real, 2, 1, ndims> u;
           compute_H10<1, diff_ord>(u, Vtendvar, primal_geometry, dual_geometry,
                                    dis, djs, dks, i, j, k, n);
           for (int d = 0; d < ndims; ++d) {
             Fvar(d, k + dks, j + djs, i + dis, n) =
-                u(d) * rho_pi(0, k + pks, n);
+                u(0, d) * rho_pi(0, k + pks, n);
           }
 
           if (k < dual_topology.ni - 2) {
-            const real uw =
-                compute_H01(Wtendvar, primal_geometry, dual_geometry, dis, djs,
-                            dks, i, j, k + 1, n);
+            SArray<real, 1, 1> uw;
+            compute_H01(uw, Wtendvar, primal_geometry, dual_geometry, dis, djs,
+                        dks, i, j, k + 1, n);
             FWvar(0, k + 1 + dks, j + djs, i + dis, n) =
-                uw * rho_di(0, k + dks + 1, n);
+                uw(0) * rho_di(0, k + dks + 1, n);
           }
         });
     auxiliary_vars.fields_arr[FWVAR].set_bnd(0.0);
@@ -3343,17 +3347,19 @@ public:
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          SArray<real, 1, ndims> u;
+          SArray<real, 2, 1, ndims> u;
           compute_H10<1, diff_ord>(u, sol_v, primal_geometry, dual_geometry,
                                    dis, djs, dks, i, j, k, n);
 
-          fvar(0, k + dks, j + djs, i + dis, n) = u(0) * rho_pi(0, k + pks, n);
+          fvar(0, k + dks, j + djs, i + dis, n) =
+              u(0, 0) * rho_pi(0, k + pks, n);
 
           if (k < dual_topology.ni - 2) {
-            const real uw = compute_H01(sol_w, primal_geometry, dual_geometry,
-                                        dis, djs, dks, i, j, k + 1, n);
+            SArray<real, 1, 1> uw;
+            compute_H01(uw, sol_w, primal_geometry, dual_geometry, dis, djs,
+                        dks, i, j, k + 1, n);
             fwvar(0, k + 1 + dks, j + djs, i + dis, n) =
-                uw * rho_di(0, k + dks + 1, n);
+                uw(0) * rho_di(0, k + dks + 1, n);
           }
         });
 

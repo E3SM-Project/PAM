@@ -5,21 +5,20 @@
 namespace pamc {
 
 template <uint ndofs>
-void YAKL_INLINE D0(SArray<real, 1, ndims> &var,
+void YAKL_INLINE D0(SArray<real, 2, ndofs, ndims> &var,
                     SArray<real, 3, ndofs, ndims, 2> const &dens) {
 
   for (int d = 0; d < ndims; d++) {
-    var(d) = 0.0;
     for (int l = 0; l < ndofs; l++) {
-      var(d) += (dens(l, d, 1) - dens(l, d, 0));
+      var(l, d) = (dens(l, d, 1) - dens(l, d, 0));
     }
   }
 }
 
 template <uint ndofs>
-void YAKL_INLINE compute_D0(SArray<real, 1, ndims> &tend, const real5d &densvar,
-                            int is, int js, int ks, int i, int j, int k,
-                            int n) {
+void YAKL_INLINE compute_D0(SArray<real, 2, ndofs, ndims> &tend,
+                            const real5d &densvar, int is, int js, int ks,
+                            int i, int j, int k, int n) {
   SArray<real, 3, ndofs, ndims, 2> dens;
   for (int l = 0; l < ndofs; l++) {
     for (int d = 0; d < ndims; d++) {
@@ -40,14 +39,16 @@ template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_D0(const real5d &tendvar, const real5d &densvar,
                             int is, int js, int ks, int i, int j, int k,
                             int n) {
-  SArray<real, 1, ndims> tend;
+  SArray<real, 2, ndofs, ndims> tend;
   compute_D0<ndofs>(tend, densvar, is, js, ks, i, j, k, n);
-  for (int d = 0; d < ndims; d++) {
-    if (addmode == ADD_MODE::REPLACE) {
-      tendvar(d, k + ks, j + js, i + is, n) = tend(d);
-    }
-    if (addmode == ADD_MODE::ADD) {
-      tendvar(d, k + ks, j + js, i + is, n) += tend(d);
+  for (int l = 0; l < ndofs; l++) {
+    for (int d = 0; d < ndims; d++) {
+      if (addmode == ADD_MODE::REPLACE) {
+        tendvar(ndims * l + d, k + ks, j + js, i + is, n) = tend(l, d);
+      }
+      if (addmode == ADD_MODE::ADD) {
+        tendvar(ndims * l + d, k + ks, j + js, i + is, n) += tend(l, d);
+      }
     }
   }
 }
@@ -180,18 +181,18 @@ void YAKL_INLINE compute_wD0(const real5d &tendvar, const R &reconvar,
 }
 
 template <uint ndofs>
-void YAKL_INLINE D0_vert(real &var, SArray<real, 2, ndofs, 2> const &dens) {
+void YAKL_INLINE D0_vert(SArray<real, 1, ndofs> &var,
+                         SArray<real, 2, ndofs, 2> const &dens) {
 
-  var = 0.0;
   for (int l = 0; l < ndofs; l++) {
-    var += (dens(l, 1) - dens(l, 0));
+    var(l) = (dens(l, 1) - dens(l, 0));
   }
 }
 
 template <uint ndofs>
-real YAKL_INLINE compute_D0_vert(const real5d &densvar, int is, int js, int ks,
+void YAKL_INLINE compute_D0_vert(SArray<real, 1, ndofs> &tend,
+                                 const real5d &densvar, int is, int js, int ks,
                                  int i, int j, int k, int n) {
-  real tend;
   SArray<real, 2, ndofs, 2> dens;
   for (int l = 0; l < ndofs; l++) {
     dens(l, 1) = densvar(l, k + ks + 1, j + js, i + is, n);
@@ -199,19 +200,23 @@ real YAKL_INLINE compute_D0_vert(const real5d &densvar, int is, int js, int ks,
   }
 
   D0_vert<ndofs>(tend, dens);
-  return tend;
 }
 
 template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_D0_vert(const real5d &tendvar, const real5d &densvar,
                                  int is, int js, int ks, int i, int j, int k,
                                  int n) {
-  real tend = compute_D0_vert<ndofs>(densvar, is, js, ks, i, j, k, n);
+  SArray<real, 1, ndofs> tend;
+  compute_D0_vert<ndofs>(tend, densvar, is, js, ks, i, j, k, n);
   if (addmode == ADD_MODE::REPLACE) {
-    tendvar(0, k + ks, j + js, i + is, n) = tend;
+    for (int l = 0; l < ndofs; l++) {
+      tendvar(l, k + ks, j + js, i + is, n) = tend(l);
+    }
   }
   if (addmode == ADD_MODE::ADD) {
-    tendvar(0, k + ks, j + js, i + is, n) += tend;
+    for (int l = 0; l < ndofs; l++) {
+      tendvar(l, k + ks, j + js, i + is, n) += tend(l);
+    }
   }
 }
 
@@ -473,12 +478,12 @@ void YAKL_INLINE compute_D0bar_vert(const real5d &tendvar,
 
 template <uint ndofs>
 void YAKL_INLINE Dnm1bar(SArray<real, 1, ndofs> &var,
-                         SArray<real, 2, ndims, 2> const &flux) {
+                         SArray<real, 3, ndofs, ndims, 2> const &flux) {
 
   for (int l = 0; l < ndofs; l++) {
     var(l) = 0.;
     for (int d = 0; d < ndims; d++) {
-      var(l) += flux(d, 1) - flux(d, 0);
+      var(l) += flux(l, d, 1) - flux(l, d, 0);
     }
   }
 }
@@ -487,15 +492,17 @@ template <uint ndofs>
 YAKL_INLINE void compute_Dnm1bar(SArray<real, 1, ndofs> &tend, const real5d &U,
                                  int is, int js, int ks, int i, int j, int k,
                                  int n) {
-  SArray<real, 2, ndims, 2> flux;
+  SArray<real, 3, ndofs, ndims, 2> flux;
 
-  for (int d = 0; d < ndims; d++) {
-    for (int m = 0; m < 2; m++) {
-      if (d == 0) {
-        flux(d, m) = U(d, k + ks, j + js, i + is + m, n);
-      }
-      if (d == 1) {
-        flux(d, m) = U(d, k + ks, j + js + m, i + is, n);
+  for (int l = 0; l < ndofs; l++) {
+    for (int d = 0; d < ndims; d++) {
+      for (int m = 0; m < 2; m++) {
+        if (d == 0) {
+          flux(l, d, m) = U(l * ndims + d, k + ks, j + js, i + is + m, n);
+        }
+        if (d == 1) {
+          flux(l, d, m) = U(l * ndims + d, k + ks, j + js + m, i + is, n);
+        }
       }
     }
   }
@@ -603,9 +610,9 @@ YAKL_INLINE void compute_wDnm1bar(const real5d &tendvar, const R &reconvar,
 
 template <uint ndofs>
 void YAKL_INLINE Dnm1bar_vert(SArray<real, 1, ndofs> &var,
-                              SArray<real, 1, 2> const &flux) {
+                              SArray<real, 2, ndofs, 2> const &flux) {
   for (int l = 0; l < ndofs; l++) {
-    var(l) = flux(1) - flux(0);
+    var(l) = flux(l, 1) - flux(l, 0);
   }
 }
 
@@ -614,9 +621,11 @@ YAKL_INLINE void compute_Dnm1bar_vert(SArray<real, 1, ndofs> &tend,
                                       const real5d &UW, int is, int js, int ks,
                                       int i, int j, int k, int n) {
 
-  SArray<real, 1, 2> flux;
-  for (int m = 0; m < 2; m++) {
-    flux(m) = UW(0, k + ks + m, j + js, i + is, n);
+  SArray<real, 2, ndofs, 2> flux;
+  for (int l = 0; l < ndofs; l++) {
+    for (int m = 0; m < 2; m++) {
+      flux(l, m) = UW(l, k + ks + m, j + js, i + is, n);
+    }
   }
   Dnm1bar_vert<ndofs>(tend, flux);
 }

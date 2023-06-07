@@ -91,24 +91,26 @@ void YAKL_INLINE compute_H0bar(const real5d &var0, const real5d &var,
 }
 
 template <uint ndofs, uint ord, uint off = ord / 2 - 1>
-void YAKL_INLINE compute_H1(SArray<real, 1, ndims> &u, const real5d &vvar,
-                            const Geometry<Straight> &pgeom,
+void YAKL_INLINE compute_H1(SArray<real, 2, ndofs, ndims> &u,
+                            const real5d &vvar, const Geometry<Straight> &pgeom,
                             const Geometry<Twisted> &dgeom, int is, int js,
                             int ks, int i, int j, int k, int n) {
-  SArray<real, 2, ndims, ord - 1> v;
+  SArray<real, 3, ndofs, ndims, ord - 1> v;
   SArray<real, 1, ndims> H1geom;
   for (int d = 0; d < ndims; d++) {
     H1geom(d) = dgeom.get_area_lform<ndims - 1>(d, k + ks, j + js, i + is, n) /
                 pgeom.get_area_lform<1>(d, k + ks, j + js, i + is, n);
   }
 
-  for (int p = 0; p < ord - 1; p++) {
-    for (int d = 0; d < ndims; d++) {
-      if (d == 0) {
-        v(d, p) = vvar(d, k + ks, j + js, i + is + p - off, n);
-      }
-      if (d == 1) {
-        v(d, p) = vvar(d, k + ks, j + js + p - off, i + is, n);
+  for (int l = 0; l < ndofs; l++) {
+    for (int p = 0; p < ord - 1; p++) {
+      for (int d = 0; d < ndims; d++) {
+        if (d == 0) {
+          v(l, d, p) = vvar(d, k + ks, j + js, i + is + p - off, n);
+        }
+        if (d == 1) {
+          v(l, d, p) = vvar(d, k + ks, j + js + p - off, i + is, n);
+        }
       }
     }
   }
@@ -121,16 +123,18 @@ void YAKL_INLINE compute_H1(const real5d &uvar, const real5d &vvar,
                             const Geometry<Straight> &pgeom,
                             const Geometry<Twisted> &dgeom, int is, int js,
                             int ks, int i, int j, int k, int n) {
-  SArray<real, 1, ndims> u;
+  SArray<real, 2, ndofs, ndims> u;
   compute_H1<ndofs, ord, off>(u, vvar, pgeom, dgeom, is, js, ks, i, j, k, n);
-  if (addmode == ADD_MODE::REPLACE) {
-    for (int d = 0; d < ndims; d++) {
-      uvar(d, k + ks, j + js, i + is, n) = u(d);
+  for (int l = 0; l < ndofs; l++) {
+    if (addmode == ADD_MODE::REPLACE) {
+      for (int d = 0; d < ndims; d++) {
+        uvar(l * ndims + d, k + ks, j + js, i + is, n) = u(l, d);
+      }
     }
-  }
-  if (addmode == ADD_MODE::ADD) {
-    for (int d = 0; d < ndims; d++) {
-      uvar(d, k + ks, j + js, i + is, n) += u(d);
+    if (addmode == ADD_MODE::ADD) {
+      for (int d = 0; d < ndims; d++) {
+        uvar(l * ndims + d, k + ks, j + js, i + is, n) += u(l, d);
+      }
     }
   }
 }
