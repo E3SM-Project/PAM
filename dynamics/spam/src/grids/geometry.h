@@ -300,7 +300,8 @@ void Geometry<T>::initialize(const Topology &topo,
     parallel_for(
         "Set zint straight halo", SimpleBounds<2>(topo.mirror_halo, topo.nens),
         YAKL_LAMBDA(int k, int n) {
-          zint(-(k + 1) + ks, n) = zint(ks, n) - (zint(k + 1 + ks, n) - zint(ks, n));
+          zint(-(k + 1) + ks, n) =
+              zint(ks, n) - (zint(k + 1 + ks, n) - zint(ks, n));
           zint(k + ks + topo.ni, n) =
               zint(ks + topo.ni - 1, n) +
               (zint(ks + topo.ni - 1, n) - zint(-k + ks + topo.ni - 2, n));
@@ -328,7 +329,8 @@ void Geometry<T>::initialize(const Topology &topo,
     parallel_for(
         "Set zint twisted halo", SimpleBounds<2>(topo.mirror_halo, topo.nens),
         YAKL_LAMBDA(int k, int n) {
-          zint(-(k + 1) + ks, n) = zint(ks, n) - (zint(k + 1 + ks, n) - zint(ks, n));
+          zint(-(k + 1) + ks, n) =
+              zint(ks, n) - (zint(k + 1 + ks, n) - zint(ks, n));
           zint(k + ks + topo.ni, n) =
               zint(ks + topo.ni - 1, n) +
               (zint(ks + topo.ni - 1, n) - zint(-k + ks + topo.ni - 2, n));
