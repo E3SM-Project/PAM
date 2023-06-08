@@ -1552,18 +1552,18 @@ public:
     auxiliary_vars.exchange({QXYVAR});
 
     parallel_for(
-        SimpleBounds<3>(dual_topology.nl, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x),
-        YAKL_LAMBDA(int k, int j, int i) {
-          compute_D1bar_ext<1>(Fvar, qhzvar, qxyvar, dis, djs, dks, i, j, k, 0);
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          compute_D1bar_ext<1>(Fvar, qhzvar, qxyvar, dis, djs, dks, i, j, k, n);
         });
     auxiliary_vars.exchange({FVAR});
 
     parallel_for(
-        SimpleBounds<3>(dual_topology.ni, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x),
-        YAKL_LAMBDA(int k, int j, int i) {
-          compute_D1bar<1>(FWvar, qhzvar, dis, djs, dks, i, j, k, 0);
+        SimpleBounds<4>(dual_topology.ni, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens), 
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          compute_D1bar<1>(FWvar, qhzvar, dis, djs, dks, i, j, k, n);
         });
     auxiliary_vars.exchange({FWVAR});
 
@@ -2224,6 +2224,7 @@ public:
         ndims > 1 ? optional_real5d{const_vars.fields_arr[CORIOLISXYVAR].data}
                   : std::nullopt);
 
+    auxiliary_vars.exchange({QHZVAR, FHZVAR});
     auxiliary_vars.fields_arr[QHZVAR].set_bnd(0.0);
     auxiliary_vars.fields_arr[FHZVAR].set_bnd(0.0);
     if (ndims > 1) {
@@ -5176,7 +5177,7 @@ struct Supercell : TestCaseSetup {
     real dz = (z - zbc) / rz;
     real r = sqrt(dx * dx + dy * dy + dz * dz);
     return r < 1 ? dtht * pow(cos(pi * r / 2), 2) : 0;
-    // return 0;
+    //return 0;
   }
 
   static VecXYZ YAKL_INLINE v_f(real x, real y, real z) {
