@@ -64,7 +64,11 @@ void read_params_coupler(Parameters &params, Parallel &par,
   par.nprocy = 1;
   params.nens = coupler.get_nens();
   params.dtphys = coupler.get_option<real>("crm_dt");
-  params.crm_per_phys = 1;
+  if (coupler.option_exists("crm_per_phys")) {
+    params.crm_per_phys = coupler.get_option<int>("crm_per_phys");
+  } else {
+    params.crm_per_phys = 1;
+  }
 
   params.Nout = 1;
   params.Nstat = 1;
