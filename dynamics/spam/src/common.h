@@ -10,6 +10,7 @@
 #include <extensions/YAKL_fft.h>
 #include <fstream>
 #include <math.h>
+#include <optional>
 #include <sstream>
 #include <string>
 
@@ -17,19 +18,33 @@ using yakl::c::Bounds;
 using yakl::c::parallel_for;
 using yakl::c::SimpleBounds;
 
-typedef unsigned long ulong;
-typedef unsigned int uint;
+using ulong = unsigned long;
+using uint = unsigned int;
 
 ////////////// These control the settings for SPAM++    //////////////
 
 // Declaring the precision for the model
-typedef double real;
-typedef std::complex<real> complex;
-typedef yakl::Array<complex, 5, yakl::memDevice, yakl::styleC> complex5d;
-typedef yakl::Array<complex, 4, yakl::memDevice, yakl::styleC> complex4d;
-typedef yakl::Array<complex, 3, yakl::memDevice, yakl::styleC> complex3d;
-typedef yakl::Array<complex, 2, yakl::memDevice, yakl::styleC> complex2d;
-typedef yakl::Array<complex, 1, yakl::memDevice, yakl::styleC> complex1d;
+using real = double;
+
+#if defined YAKL_ARCH_CUDA
+#include <cuda/std/complex>
+using complex = cuda::std::complex<real>;
+#else
+using complex = std::complex<real>;
+#endif
+
+using complex5d = yakl::Array<complex, 5, yakl::memDevice, yakl::styleC>;
+using complex4d = yakl::Array<complex, 4, yakl::memDevice, yakl::styleC>;
+using complex3d = yakl::Array<complex, 3, yakl::memDevice, yakl::styleC>;
+using complex2d = yakl::Array<complex, 2, yakl::memDevice, yakl::styleC>;
+using complex1d = yakl::Array<complex, 1, yakl::memDevice, yakl::styleC>;
+
+using optional_real1d = std::optional<real1d>;
+using optional_real2d = std::optional<real2d>;
+using optional_real3d = std::optional<real3d>;
+using optional_real4d = std::optional<real4d>;
+using optional_real5d = std::optional<real5d>;
+
 #define REAL_MPI MPI_DOUBLE
 //#define REAL_NC NC_DOUBLE
 

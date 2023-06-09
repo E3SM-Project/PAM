@@ -5,90 +5,6 @@
 #include "variableset.h"
 #include "wedge.h"
 
-// // This kinetic energy functional assumes that dens(0) holds the total
-// density class Hamiltonian_Hk1D_rho {
-//
-// public:
-//   Geometry<ndims,1,1,1> *primal_geometry;
-//   Geometry<ndims,1,1,1> *dual_geometry;
-//   bool is_initialized;
-//
-//    Hamiltonian_Hk1D_rho() {
-//      this->is_initialized = false;
-// }
-//
-// void initialize(Parameters &params, Geometry<ndims,1,1,1> &primal_geom,
-// Geometry<ndims,1,1,1> &dual_geom)
-// {
-//   this->primal_geometry = &primal_geom;
-//   this->dual_geometry = &dual_geom;
-//   this->is_initialized = true;
-// }
-//
-// real YAKL_INLINE compute_KE(const real5d& v, const real5d& dens, const
-// real5d& densfct, int is, int js, int ks, int i, int j, int k)
-// {
-//
-//   real KE, PE, IE;
-//   SArray<real,1> h0, h0im1;
-//   SArray<real,1> U, he;
-//   SArray<real,1,2> h0arr;
-//
-//   //compute U = H v
-//   compute_H<1,diff_ord> (U, v, *this->primal_geometry, *this->dual_geometry,
-//   is, js, ks, i, j, k);
-//
-//   // Compute h0 = I h needed for phi calcs
-//   compute_I<1,diff_ord> (h0, dens, *this->primal_geometry,
-//   *this->dual_geometry, is, js, ks, i, j, k); compute_I<1,diff_ord> (h0im1,
-//   dens, *this->primal_geometry, *this->dual_geometry, is, js, ks, i-1, j, k);
-//
-// //IS THIS CORRECT?
-//   //compute he = phi h0
-//   h0arr(0,0) = h0(0);
-//   h0arr(0,1) = h0im1(0);
-//   phi(he, h0arr);
-//
-// //IS THIS CORRECT?
-//   return 1./2. * (he(0) * ( U(0) * v(0,k+ks,j+js,i+is)));
-//
-// }
-//
-//
-//  void YAKL_INLINE compute_dKdv(const real5d& F, const real5d& K, const
-//  real5d& HE, const real5d& v, const real5d& U, const real5d& dens0, const
-//  real5d& densfct0, int is, int js, int ks, int i, int j, int k)
-// {
-//   SArray<real,1,2> D0;
-//   SArray<real,1> he;
-//
-// //IS THIS CORRECT?
-//   //compute he = phi * h0
-//   D0(0,0) = dens0(0, k+ks, j+js, i+is);
-//   D0(0,1) = dens0(0, k+ks, j+js, i+is-1);
-//   phi(he, D0);
-//   HE(0, k+ks, j+js, i+is) = he(0);
-//
-//   //compute F = he * U
-//   F(0, k+ks, j+js, i+is) = U(0, k+ks, j+js, i+is) * he(0);
-//
-//   //compute K = 1/2 * PhiT(U,V)
-//   compute_phiT(K, U, v, is, js, ks, i, j, k);
-//   K(0, k+ks, j+js, i+is) *= 0.5;
-//
-// }
-//
-// // Note that this ADDS to Bvar...
-// void YAKL_INLINE compute_dKddens(const real5d& B, const real5d& Bfct, const
-// real5d& K, int is, int js, int ks, int i, int j, int k)
-// {
-//   SArray<real,1> K0;
-//   compute_I<1, diff_ord>(K0, K, *this->primal_geometry, *this->dual_geometry,
-//   is, js, ks, i, j, k); B(0, k+ks, j+js, i+is) += K0(0);
-// }
-//
-//  };
-
 class Hamiltonian_Hk {
 
 public:
@@ -236,6 +152,35 @@ public:
     }
   }
 
+  void YAKL_INLINE compute_he(const real5d &HE, const real5d &dens0, int is,
+                              int js, int ks, int i, int j, int k,
+                              int n) const {
+    SArray<real, 2, ndims, 2> D0;
+    SArray<real, 1, ndims> he;
+
+    // compute he = phi * h0
+    for (int d = 0; d < ndims; d++) {
+      if (d == 0) {
+        D0(d, 0) = dens0(0, k + ks, j + js, i + is, n);
+        D0(d, 1) = dens0(0, k + ks, j + js, i + is - 1, n);
+      }
+      if (d == 1) {
+        D0(d, 0) = dens0(0, k + ks, j + js, i + is, n);
+        D0(d, 1) = dens0(0, k + ks, j + js - 1, i + is, n);
+      }
+      if (d == 2) {
+        D0(d, 0) = dens0(0, k + ks, j + js, i + is, n);
+        D0(d, 1) = dens0(0, k + ks - 1, j + js, i + is, n);
+      }
+    }
+    phi(he, D0);
+
+    // set HE
+    for (int d = 0; d < ndims; d++) {
+      HE(d, k + ks, j + js, i + is, n) = he(d);
+    }
+  }
+
   // FIX THIS TO GET TOTAL DENSITY FROM VARSET!
   //  Note that this ADDS to Bvar...
   void YAKL_INLINE compute_dKddens(const real5d &B, const real5d &K, int is,
@@ -248,160 +193,6 @@ public:
   }
 };
 
-//  // This kinetic energy functional assumes that dens(0) + densfct(0:2) make
-//  the total density class Hamiltonian_Hk_rhod {
-//
-//  public:
-//    Geometry<1,1,1> *primal_geometry;
-//    Geometry<1,1,1> *dual_geometry;
-//    bool is_initialized;
-//
-//     Hamiltonian_Hk_rhod() {
-//       this->is_initialized = false;
-//  }
-//
-//  void initialize(Parameters &params, Geometry<1,1,1> &primal_geom,
-//  Geometry<1,1,1> &dual_geom)
-//  {
-//    this->primal_geometry = &primal_geom;
-//    this->dual_geometry = &dual_geom;
-//    this->is_initialized = true;
-//  }
-//
-//  real YAKL_INLINE compute_KE(const real5d& v, const real5d& dens, const
-//  real5d& densfct, int is, int js, int ks, int i, int j, int k, int n)
-//  {
-//
-//
-//    real KE;
-//    SArray<real,1,1> rhod0, rhod0im1, rhod0jm1, rhod0km1;
-//    SArray<real,1,3> rhos0, rhos0im1, rhos0jm1, rhos0km1;
-//    SArray<real,1,ndims> U, he;
-//    SArray<real,2,ndims,2> h0arr;
-//
-//    //compute U = H v
-//    compute_H<1,diff_ord> (U, v, *this->primal_geometry, *this->dual_geometry,
-//    is, js, ks, i, j, k, n);
-//
-//    // Compute h0 = I h needed for phi calcs
-//    compute_I<1,diff_ord> (rhod0, dens, *this->primal_geometry,
-//    *this->dual_geometry, is, js, ks, i, j, k, n); compute_I<1,diff_ord>
-//    (rhod0im1, dens, *this->primal_geometry, *this->dual_geometry, is, js, ks,
-//    i-1, j, k, n); if (ndims>=2) {compute_I<1,diff_ord> (rhod0jm1, dens,
-//    *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j-1, k, n);}
-//    if (ndims>=3) {compute_I<1,diff_ord> (rhod0km1, dens,
-//    *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k-1, n);}
-//    compute_I<3,diff_ord> (rhos0im1, densfct, *this->primal_geometry,
-//    *this->dual_geometry, is, js, ks, i-1, j, k, n); compute_I<3,diff_ord>
-//    (rhos0im1, densfct, *this->primal_geometry, *this->dual_geometry, is, js,
-//    ks, i-1, j, k, n); if (ndims>=2) {compute_I<3,diff_ord> (rhos0jm1,
-//    densfct, *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j-1,
-//    k, n);} if (ndims>=3) {compute_I<3,diff_ord> (rhos0km1, densfct,
-//    *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k-1, n);}
-//
-//    //compute he = phi h0
-//    // exploits linearity of I/Phi
-//    for (int d=0; d<ndims; d++)
-//    {
-//      if (d == 0)
-//      {
-//        h0arr(d,0) = rhod0(0) + rhos0(0) + rhos0(1) + rhos0(2);
-//        h0arr(d,1) = rhod0im1(0) + rhos0im1(0) + rhos0im1(1) + rhos0im1(2);
-//      }
-//      if (d == 1)
-//      {
-//        h0arr(d,0) = rhod0(0) + rhos0(0) + rhos0(1) + rhos0(2);
-//        h0arr(d,1) = rhod0jm1(0) + rhos0jm1(0) + rhos0jm1(1) + rhos0jm1(2);
-//      }
-//      if (d == 2)
-//      {
-//        h0arr(d,0) = rhod0(0) + rhos0(0) + rhos0(1) + rhos0(2);
-//        h0arr(d,1) = rhod0km1(0) + rhos0km1(0) + rhos0km1(1) + rhos0km1(2);
-//      }
-//    }
-//    phi(he, h0arr);
-//
-//    KE = 0.;
-//    for (int d=0; d<ndims; d++)
-//      {
-//        KE = KE + he(d) * (U(d) * v(d,k+ks,j+js,i+is, n));
-//      }
-//    return 1./2. * KE;
-//
-//  }
-//
-//
-//   void YAKL_INLINE compute_dKdv(const real5d& F, const real5d& K, const
-//   real5d& HE, const real5d& v, const real5d& U, const real5d& dens0, const
-//   real5d& densfct0, int is, int js, int ks, int i, int j, int k, int n)
-//  {
-//
-//    SArray<real,2,ndims,2> D0;
-//    SArray<real,1,ndims> he;
-//
-//    //compute he = phi * h0
-//    // exploits linearity of I/phi
-//    for (int d=0; d<ndims; d++)
-//    {
-//      if (d == 0)
-//      {
-//        D0(d,0) = dens0(0, k+ks, j+js, i+is, n) + densfct0(0, k+ks, j+js,
-//        i+is, n) + densfct0(1, k+ks, j+js, i+is) + densfct0(2, k+ks, j+js,
-//        i+is); D0(d,1) = dens0(0, k+ks, j+js, i+is-1, n) + densfct0(0, k+ks,
-//        j+js, i+is-1, n) + densfct0(1, k+ks, j+js, i+is-1) + densfct0(2, k+ks,
-//        j+js, i+is-1);
-//      }
-//      if (d == 1)
-//      {
-//        D0(d,0) = dens0(0, k+ks, j+js, i+is) + densfct0(0, k+ks, j+js, i+is) +
-//        densfct0(1, k+ks, j+js, i+is) + densfct0(2, k+ks, j+js, i+is); D0(d,1)
-//        = dens0(0, k+ks, j+js-1, i+is) + densfct0(0, k+ks, j+js-1, i+is) +
-//        densfct0(1, k+ks, j+js-1, i+is) + densfct0(2, k+ks, j+js-1, i+is);
-//      }
-//      if (d == 2)
-//      {
-//        D0(d,0) = dens0(0, k+ks, j+js, i+is) + densfct0(0, k+ks, j+js, i+is) +
-//        densfct0(1, k+ks, j+js, i+is) + densfct0(2, k+ks, j+js, i+is); D0(d,1)
-//        = dens0(0, k+ks-1, j+js, i+is) + densfct0(0, k+ks-1, j+js, i+is) +
-//        densfct0(1, k+ks-1, j+js, i+is) + densfct0(2, k+ks-1, j+js, i+is);
-//      }
-//    }
-//    phi(he, D0);
-//
-//    //compute F = he * U, set HE
-//    for (int d=0; d<ndims; d++)
-//    {
-//      HE(d, k+ks, j+js, i+is) = he(d);
-//      F(d, k+ks, j+js, i+is) = U(d, k+ks, j+js, i+is) * he(d);
-//    }
-//
-//    //compute K = 1/2 * PhiT(U,V)
-//    compute_phiT(K, U, v, is, js, ks, i, j, k);
-//    K(0, k+ks, j+js, i+is) *= 0.5;
-//
-//  }
-//
-//  // Note that this ADDS to Bvar/Bfctvar...
-//  void YAKL_INLINE compute_dKddens(const real5d& B, const real5d& Bfct, const
-//  real5d& K, int is, int js, int ks, int i, int j, int k, int n)
-//  {
-//    SArray<real,1,1> K0;
-//    compute_I<1, diff_ord>(K0, K, *this->primal_geometry,
-//    *this->dual_geometry, is, js, ks, i, j, k); B(0, k+ks, j+js, i+is) +=
-//    K0(0); Bfct(0, k+ks, j+js, i+is) += K0(0); Bfct(1, k+ks, j+js, i+is) +=
-//    K0(0); Bfct(2, k+ks, j+js, i+is) += K0(0);
-//  }
-//
-//   };
-//
-//
-//
-//
-//
-//
-//
-//
-//
 class Hamiltonian_Hk_extruded {
 
 public:
@@ -509,223 +300,97 @@ public:
     return h0(0) * K2;
   }
 
-  // FIX THIS TO GET TOTAL DENSITY FROM VARSET!
-  template <ADD_MODE addmode = ADD_MODE::REPLACE>
-  void YAKL_INLINE compute_Fw(const real5d &FW, const real5d &UW,
-                              const real5d &dens0, int is, int js, int ks,
-                              int i, int j, int k, int n,
-                              real fac = 1._fp) const {
-    // SArray<real,2> Dv;
-    // compute hew = phiw * h0
-    // Dv(0) = dens0(0, k+ks, j+js, i+is);
-    // Dv(1) = dens0(0, k+ks-1, j+js, i+is);
-    // real hew = phiW(Dv);
-    // compute FW = hew * UW, set HEw
-    real hew = (dens0(0, k + ks, j + js, i + is, n) +
-                dens0(0, k + ks - 1, j + js, i + is, n)) /
-               2.0;
-    if (addmode == ADD_MODE::REPLACE) {
-      FW(0, k + ks, j + js, i + is, n) =
-          fac * UW(0, k + ks, j + js, i + is, n) * hew;
-    } else if (addmode == ADD_MODE::ADD) {
-      FW(0, k + ks, j + js, i + is, n) +=
-          fac * UW(0, k + ks, j + js, i + is, n) * hew;
+  YAKL_INLINE void compute_he_U_and_K(SArray<real, 1, ndims> &he, real &hew,
+                                      SArray<real, 1, ndims> &U, real &UW,
+                                      real &K2, real5d densvar, real5d Vvar,
+                                      real5d Wvar, int is, int js, int ks,
+                                      int i, int j, int k, int n) const {
+
+#if defined _AN || defined _MAN
+    auto &rho_pi = varset.reference_state.rho_pi.data;
+    auto &rho_di = varset.reference_state.rho_di.data;
+    for (int d = 0; d < ndims; ++d) {
+      he(d) = rho_pi(0, k + ks, n);
     }
-    // std::cout << "HEw in Hk " << i << " " << j << " " << k << " " <<
-    // HEw(0,k+ks,j+js,i+is) << "\n" << std::flush;
+    hew = rho_di(0, k + ks, n);
+#else
+    SArray<real, 1, 1> dens0_ijk, dens0_im1, dens0_jm1, dens0_km1;
+
+    const auto total_density_f =
+        YAKL_LAMBDA(const real5d &densvar, int d, int k, int j, int i, int n) {
+      return varset.get_total_density(densvar, k, j, i, 0, 0, 0, n);
+    };
+
+    compute_Hn1bar<1, diff_ord, vert_diff_ord>(
+        total_density_f, dens0_ijk, densvar, primal_geometry, dual_geometry, is,
+        js, ks, i, j, k, n);
+    compute_Hn1bar<1, diff_ord, vert_diff_ord>(
+        total_density_f, dens0_im1, densvar, primal_geometry, dual_geometry, is,
+        js, ks, i - 1, j, k, n);
+    if (ndims > 1) {
+      compute_Hn1bar<1, diff_ord, vert_diff_ord>(
+          total_density_f, dens0_jm1, densvar, primal_geometry, dual_geometry,
+          is, js, ks, i, j - 1, k, n);
+    }
+    compute_Hn1bar<1, diff_ord, vert_diff_ord>(
+        total_density_f, dens0_km1, densvar, primal_geometry, dual_geometry, is,
+        js, ks, i, j, k - 1, n);
+
+    he(0) = 0.5_fp * (dens0_ijk(0) + dens0_im1(0));
+    if (ndims > 1) {
+      he(1) = 0.5_fp * (dens0_ijk(0) + dens0_jm1(0));
+    }
+    hew = 0.5_fp * (dens0_ijk(0) + dens0_km1(0));
+#endif
+
+    SArray<real, 1, ndims> u_ijk, u_ip1, u_jp1;
+    SArray<real, 1, 1> uw_ijk, uw_kp1;
+
+    compute_H10<1, diff_ord>(u_ijk, Vvar, primal_geometry, dual_geometry, is,
+                             js, ks, i, j, k, n);
+    compute_H10<1, diff_ord>(u_ip1, Vvar, primal_geometry, dual_geometry, is,
+                             js, ks, i + 1, j, k, n);
+    if (ndims > 1) {
+      compute_H10<1, diff_ord>(u_jp1, Vvar, primal_geometry, dual_geometry, is,
+                               js, ks, i, j + 1, k, n);
+    }
+
+    const int dni = dual_geometry.topology.ni;
+    const int dnl = dual_geometry.topology.nl;
+
+    if (k == 0 || k == (dni - 1)) {
+      uw_ijk(0) = 0;
+    } else {
+      compute_H01<1, vert_diff_ord>(uw_ijk, Wvar, primal_geometry,
+                                    dual_geometry, is, js, ks, i, j, k, n);
+    }
+
+    if (k >= (dni - 2)) {
+      uw_kp1(0) = 0;
+    } else {
+      compute_H01<1, vert_diff_ord>(uw_kp1, Wvar, primal_geometry,
+                                    dual_geometry, is, js, ks, i, j, k + 1, n);
+    }
+
+    for (int d = 0; d < ndims; ++d) {
+      U(d) = u_ijk(d);
+    }
+    UW = uw_ijk(0);
+
+    K2 = 0.5_fp * (Vvar(0, k + ks, j + js, i + is, n) * u_ijk(0) +
+                   Vvar(0, k + ks, j + js, i + 1 + is, n) * u_ip1(0));
+    if (ndims > 1) {
+      K2 += 0.5_fp * (Vvar(1, k + ks, j + js, i + is, n) * u_ijk(1) +
+                      Vvar(1, k + ks, j + 1 + js, i + is, n) * u_jp1(1));
+    }
+    if (k < dnl) {
+      K2 += 0.5_fp * (Wvar(0, k - 1 + ks, j + js, i + is, n) * uw_ijk(0) +
+                      Wvar(0, k + ks, j + js, i + is, n) * uw_kp1(0));
+    }
+
+    K2 *= 0.5;
   }
 
-  // version that takes a reference state
-  template <ADD_MODE addmode = ADD_MODE::REPLACE>
-  void YAKL_INLINE compute_Fw(const real5d &FW, const real5d &UW,
-                              const real3d dens0, int is, int js, int ks, int i,
-                              int j, int k, int n, real fac = 1._fp) const {
-    real hew = dens0(0, k + ks, n);
-    if (addmode == ADD_MODE::REPLACE) {
-      FW(0, k + ks, j + js, i + is, n) =
-          fac * UW(0, k + ks, j + js, i + is, n) * hew;
-    } else if (addmode == ADD_MODE::ADD) {
-      FW(0, k + ks, j + js, i + is, n) +=
-          fac * UW(0, k + ks, j + js, i + is, n) * hew;
-    }
-  }
-
-  void YAKL_INLINE compute_Fw_and_he(const real5d &FW, const real5d &HEw,
-                                     const real5d &UW, const real5d &dens0,
-                                     int is, int js, int ks, int i, int j,
-                                     int k, int n) const {
-    // SArray<real,2> Dv;
-    // compute hew = phiw * h0
-    // Dv(0) = dens0(0, k+ks, j+js, i+is);
-    // Dv(1) = dens0(0, k+ks-1, j+js, i+is);
-    // real hew = phiW(Dv);
-    // compute FW = hew * UW, set HEw
-    real hew = (dens0(0, k + ks, j + js, i + is, n) +
-                dens0(0, k + ks - 1, j + js, i + is, n)) /
-               2.0;
-    HEw(0, k + ks, j + js, i + is, n) = hew;
-    FW(0, k + ks, j + js, i + is, n) = UW(0, k + ks, j + js, i + is, n) * hew;
-    // std::cout << "HEw in Hk " << i << " " << j << " " << k << " " <<
-    // HEw(0,k+ks,j+js,i+is) << "\n" << std::flush;
-  }
-
-  void YAKL_INLINE compute_hew(const real5d &HEw, const real5d &dens0, int is,
-                               int js, int ks, int i, int j, int k,
-                               int n) const {
-    // SArray<real,2> Dv;
-    // compute hew = phiw * h0
-    // Dv(0) = dens0(0, k+ks, j+js, i+is);
-    // Dv(1) = dens0(0, k+ks-1, j+js, i+is);
-    // real hew = phiW(Dv);
-    // compute FW = hew * UW, set HEw
-    real hew = (dens0(0, k + ks, j + js, i + is, n) +
-                dens0(0, k + ks - 1, j + js, i + is, n)) /
-               2.0;
-    HEw(0, k + ks, j + js, i + is, n) = hew;
-  }
-
-  void YAKL_INLINE compute_K(const real5d &K, const real5d &v, const real5d &U,
-                             const real5d &w, const real5d &UW, int is, int js,
-                             int ks, int i, int j, int k, int n) const {
-    // compute K = 1/2 * PhiT(U,V) + 1/2 * PhiTW(UW,W)
-    real K2 = 0.;
-
-    real w0, w1, UW0, UW1;
-    UW0 = UW(0, k + ks, j + js, i + is, n);
-    UW1 = UW(0, k + ks + 1, j + js, i + is, n);
-    // Have to subtract 1 from k here since UW has an extra dof compared to w
-    w0 = w(0, k + ks - 1, j + js, i + is, n);
-    w1 = w(0, k + ks, j + js, i + is, n);
-    K2 += 0.5 * (w0 * UW0 + w1 * UW1);
-
-    real v0, U0, v1, U1;
-    U0 = U(0, k + ks, j + js, i + is, n);
-    U1 = U(0, k + ks, j + js, i + is + 1, n);
-    v0 = v(0, k + ks, j + js, i + is, n);
-    v1 = v(0, k + ks, j + js, i + is + 1, n);
-    K2 += 0.5 * (v0 * U0 + v1 * U1);
-
-    if (ndims == 2) {
-      real v0, U0, v1, U1;
-      U0 = U(1, k + ks, j + js, i + is, n);
-      U1 = U(1, k + ks, j + js + 1, i + is, n);
-      v0 = v(1, k + ks, j + js, i + is, n);
-      v1 = v(1, k + ks, j + js + 1, i + is, n);
-      K2 += 0.5 * (v0 * U0 + v1 * U1);
-    }
-
-    K(0, k + ks, j + js, i + is, n) = 0.5 * K2;
-    // compute_phiT(K, U, v, is, js, ks, i, j, k);
-    // compute_phiTW<ADD_MODE::ADD>(K, UW, w, is, js, ks, i, j, k);
-    // K(0, k+ks, j+js, i+is) *= 0.5;
-  }
-
-  // FIX THIS TO GET TOTAL DENSITY FROM VARSET!
-  template <ADD_MODE addmode = ADD_MODE::REPLACE>
-  void YAKL_INLINE compute_F(const real5d &F, const real5d &U,
-                             const real5d &dens0, int is, int js, int ks, int i,
-                             int j, int k, int n, real fac = 1._fp) const {
-    SArray<real, 2, ndims, 2> D0;
-    SArray<real, 1, ndims> he;
-
-    // compute he = phi * h0
-    for (int d = 0; d < ndims; d++) {
-      if (d == 0) {
-        D0(d, 0) = dens0(0, k + ks, j + js, i + is, n);
-        D0(d, 1) = dens0(0, k + ks, j + js, i + is - 1, n);
-      }
-      if (d == 1) {
-        D0(d, 0) = dens0(0, k + ks, j + js, i + is, n);
-        D0(d, 1) = dens0(0, k + ks, j + js - 1, i + is, n);
-      }
-    }
-    phi(he, D0);
-    // compute F = he * U, set HE
-    for (int d = 0; d < ndims; d++) {
-      if (addmode == ADD_MODE::REPLACE) {
-        F(d, k + ks, j + js, i + is, n) =
-            fac * U(d, k + ks, j + js, i + is, n) * he(d);
-      } else if (addmode == ADD_MODE::ADD) {
-        F(d, k + ks, j + js, i + is, n) +=
-            fac * U(d, k + ks, j + js, i + is, n) * he(d);
-      }
-    }
-    // std::cout << "HE in Hk " << i << " " << j << " " << k << " " <<
-    // HE(0,k+ks,j+js,i+is) << "\n" << std::flush;
-  }
-
-  // version that takes a reference state
-  template <ADD_MODE addmode = ADD_MODE::REPLACE>
-  void YAKL_INLINE compute_F(const real5d &F, const real5d &U,
-                             const real3d dens0, int is, int js, int ks, int i,
-                             int j, int k, int n, real fac = 1._fp) const {
-    SArray<real, 2, ndims, 2> D0;
-    real he = dens0(0, k + ks, n);
-
-    // compute F = he * U, set HE
-    for (int d = 0; d < ndims; d++) {
-      if (addmode == ADD_MODE::REPLACE) {
-        F(d, k + ks, j + js, i + is, n) =
-            fac * U(d, k + ks, j + js, i + is, n) * he;
-      } else if (addmode == ADD_MODE::ADD) {
-        F(d, k + ks, j + js, i + is, n) +=
-            fac * U(d, k + ks, j + js, i + is, n) * he;
-      }
-    }
-  }
-
-  void YAKL_INLINE compute_he(const real5d &HE, const real5d &dens0, int is,
-                              int js, int ks, int i, int j, int k,
-                              int n) const {
-    SArray<real, 2, ndims, 2> D0;
-    SArray<real, 1, ndims> he;
-
-    // compute he = phi * h0
-    for (int d = 0; d < ndims; d++) {
-      if (d == 0) {
-        D0(d, 0) = dens0(0, k + ks, j + js, i + is, n);
-        D0(d, 1) = dens0(0, k + ks, j + js, i + is - 1, n);
-      }
-      if (d == 1) {
-        D0(d, 0) = dens0(0, k + ks, j + js, i + is, n);
-        D0(d, 1) = dens0(0, k + ks, j + js - 1, i + is, n);
-      }
-    }
-    phi(he, D0);
-    for (int d = 0; d < ndims; d++) {
-      HE(d, k + ks, j + js, i + is, n) = he(d);
-    }
-  }
-
-  void YAKL_INLINE compute_F_and_he(const real5d &F, const real5d &HE,
-                                    const real5d &U, const real5d &dens0,
-                                    int is, int js, int ks, int i, int j, int k,
-                                    int n) const {
-    SArray<real, 2, ndims, 2> D0;
-    SArray<real, 1, ndims> he;
-
-    // compute he = phi * h0
-    for (int d = 0; d < ndims; d++) {
-      if (d == 0) {
-        D0(d, 0) = dens0(0, k + ks, j + js, i + is, n);
-        D0(d, 1) = dens0(0, k + ks, j + js, i + is - 1, n);
-      }
-      if (d == 1) {
-        D0(d, 0) = dens0(0, k + ks, j + js, i + is, n);
-        D0(d, 1) = dens0(0, k + ks, j + js - 1, i + is, n);
-      }
-    }
-    phi(he, D0);
-    // compute F = he * U, set HE
-    for (int d = 0; d < ndims; d++) {
-      HE(d, k + ks, j + js, i + is, n) = he(d);
-      F(d, k + ks, j + js, i + is, n) = U(d, k + ks, j + js, i + is, n) * he(d);
-    }
-    // std::cout << "HE in Hk " << i << " " << j << " " << k << " " <<
-    // HE(0,k+ks,j+js,i+is) << "\n" << std::flush;
-  }
-
-  // FIX THIS TO GET TOTAL DENSITY FROM VARSET!
   template <ADD_MODE addmode = ADD_MODE::REPLACE>
   void YAKL_INLINE compute_dKddens(const real5d &B, const real5d &K, int is,
                                    int js, int ks, int i, int j, int k, int n,

@@ -128,7 +128,8 @@ public:
       this->xm.exchange();
 
       this->tendencies->apply_symplectic(dt, *this->const_vars, this->xm,
-                                         *this->auxiliary_vars, this->dx);
+                                         *this->auxiliary_vars, this->dx,
+                                         ADD_MODE::REPLACE);
 
       // store residual in xm
       this->xm.waxpbypcz(-1, 1, -dt, this->xn, *this->x, this->dx);
