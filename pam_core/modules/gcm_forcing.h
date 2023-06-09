@@ -100,8 +100,10 @@ namespace modules {
       #endif
       #ifdef MMF_PAM_FORCE_TOTAL_WATER
       real rho_total_water = rho_v(k,j,i,iens) + rho_l(k,j,i,iens) + rho_i(k,j,i,iens);
-      real liq_adj         = rho_l(k,j,i,iens)* Lv     / cp_d;
-      real ice_adj         = rho_i(k,j,i,iens)*(Lv+Lf) / cp_d;
+      real ql_tmp          = rho_l(k,j,i,iens) / ( rho_d(k,j,i,iens) + rho_v(k,j,i,iens) );
+      real qi_tmp          = rho_i(k,j,i,iens) / ( rho_d(k,j,i,iens) + rho_v(k,j,i,iens) );
+      real liq_adj         = ql_tmp* Lv     / cp_d;
+      real ice_adj         = qi_tmp*(Lv+Lf) / cp_d;
       real temp_adj        = temp (k,j,i,iens) - liq_adj - ice_adj;
       atomicAdd( colavg_temp_adj(k,iens) , temp_adj        * r_nx_ny );
       atomicAdd( colavg_rho_totq(k,iens) , rho_total_water * r_nx_ny );
@@ -130,8 +132,9 @@ namespace modules {
     auto gcm_forcing_tend_rho_i = dm.get<real,2>("gcm_forcing_tend_rho_i");
 
     real r_dt_gcm = 1._fp / dt_gcm;  // precompute reciprocal to avoid costly divisions
-    // The forcing is the difference between the input GCM state and the current colavg'd CRM state divided by the
-    //    GCM physics time step to be evenly distributed over the course of the MMF calculations for this step
+    // The forcing is the difference between the input GCM state and the current
+    // colavg'd CRM state divided by the GCM physics time step to be evenly
+    // distributed over the course of the CRM steps for the current GCM step
     parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
       gcm_forcing_tend_rho_d(k,iens) = ( rho_d_gcm(k,iens) - colavg_rho_d(k,iens) ) * r_dt_gcm;
       gcm_forcing_tend_uvel (k,iens) = ( uvel_gcm (k,iens) - colavg_uvel (k,iens) ) * r_dt_gcm;
@@ -143,8 +146,9 @@ namespace modules {
       gcm_forcing_tend_rho_i(k,iens) = ( rho_i_gcm(k,iens) - colavg_rho_i(k,iens) ) * r_dt_gcm;
       #endif
       #ifdef MMF_PAM_FORCE_TOTAL_WATER
+      real gcm_rho_total_water = rho_v_gcm(k,iens) + rho_l_gcm(k,iens) + rho_i_gcm(k,iens);
       gcm_forcing_tend_temp (k,iens) = ( temp_gcm (k,iens) - colavg_temp_adj(k,iens) ) * r_dt_gcm;
-      gcm_forcing_tend_rho_v(k,iens) = ( rho_v_gcm(k,iens) - colavg_rho_totq(k,iens) ) * r_dt_gcm;
+      gcm_forcing_tend_rho_v(k,iens) = ( gcm_rho_total_water - colavg_rho_totq(k,iens) ) * r_dt_gcm;
       gcm_forcing_tend_rho_l(k,iens) = 0;
       gcm_forcing_tend_rho_i(k,iens) = 0;
       #endif
