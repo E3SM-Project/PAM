@@ -5093,7 +5093,7 @@ struct MoistRisingBubble : public RisingBubble<false> {
 struct Supercell : TestCaseSetup {
   static int constexpr max_ndims = 2;
   static bool constexpr needs_special_init = true;
-  static real constexpr g = 9.80616_fp;
+  static real constexpr g = 9.81;
   static real constexpr Lx = 168e3;
   static real constexpr Ly = 168e3;
   static real constexpr Lz = 20e3;
@@ -5255,9 +5255,10 @@ struct Supercell : TestCaseSetup {
               qv(k + pks, n) = std::min(qvs * hum_f(z, thermo), 0.014);
               real tht = tht_f(z, thermo);
               thtv(k + pks, n) = tht * (1 + 0.61 * qv(k + pks, n));
-              // std::cout << m << " " << k << " " << tht << " " << thtv(k +
-              // pks, n)
-              // << std::endl;
+              
+//              if (m == 9) {
+//              std::cout << k << " " << z << " " << qv(k + pks, n) << " " << T << " " << tht << " " << thtv(k + pks, n) << std::endl;
+//              }
             }
           }
         });
@@ -5320,6 +5321,17 @@ struct Supercell : TestCaseSetup {
     YAKL_SCOPE(Hs, equations->Hs);
     YAKL_SCOPE(varset, equations->varset);
     YAKL_SCOPE(refstate, equations->reference_state);
+    
+    thermo.cst.Rd = 287.;
+    thermo.cst.Rv = 461;
+    thermo.cst.pr = 1e5;
+    thermo.cst.Cpd = 1003;
+    thermo.cst.Cvd = thermo.cst.Cpd - thermo.cst.Rd;
+    thermo.cst.Cpv = 1859;
+
+    thermo.cst.gamma_d = thermo.cst.Cpd / thermo.cst.Cvd;
+    thermo.cst.kappa_d = thermo.cst.Rd / thermo.cst.Cpd;
+    thermo.cst.delta_d = thermo.cst.Rd / thermo.cst.Cvd;
 
     const real pr = thermo.cst.pr;
     const real Cpd = thermo.cst.Cpd;
