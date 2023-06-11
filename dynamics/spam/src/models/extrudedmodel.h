@@ -5146,7 +5146,7 @@ struct Supercell : TestCaseSetup {
     real rho_ref = refrho_f(z, thermo);
     real T_ref = refT_f(z, thermo);
     real p_ref = refp_f(z, thermo);
-    return rho_ref * thermo.compute_entropic_var(p_ref, T_ref, 1, 0, 0, 0);
+    return rho_ref * thermo.compute_entropic_var_from_T_p(p_ref, T_ref, 1, 0, 0, 0);
   }
 
   static real YAKL_INLINE refrhov_f(real z, const ThermoPotential &thermo) {
