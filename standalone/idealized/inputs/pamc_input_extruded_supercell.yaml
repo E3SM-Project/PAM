@@ -1,15 +1,15 @@
 # Simulation time in number of physics time steps
-simSteps  : 1440
+simSteps  : 720
   #simSteps  : 100
 
 # Number of cells to use
-crm_nx       : 43
-crm_ny       : 43
+crm_nx       : 42
+crm_ny       : 42
 crm_nz       : 41
 
 
-entropicvar_diffusion_coeff: 500
-velocity_diffusion_coeff: 1500
+entropicvar_diffusion_coeff: 0
+velocity_diffusion_coeff: 0
 
 # Vertical height coordinates file
 #vcoords  : vcoords_equal_100_20km.nc
@@ -19,7 +19,7 @@ vcoords: uniform
 initData : supercell
 
 # Time steps
-dtphys: 5.0
+dtphys: 10.0
 crm_per_phys: 1
 #0.015625 * 5 = 0.078125 for explicit
 # 0.5*5 = 2.5 for semi-implicit
@@ -32,7 +32,7 @@ dycore_out_prefix  : test_dycore
 out_freq : 100.0
 
 # Output frequency in number of CRM time steps
-outSteps: 72
+outSteps: 60
   #outSteps: 10
 statSteps: 1
 #6400 = 100s for explicit
