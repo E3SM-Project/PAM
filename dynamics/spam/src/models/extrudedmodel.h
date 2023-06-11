@@ -1491,7 +1491,7 @@ public:
       const real5d Wvar, const real5d qhzedgereconvar, const real5d qhzvar,
       const real5d dens0var, const real5d Kvar, const real5d Fvar,
       const real5d FWvar, const real5d qxyedgereconvar, const real5d qxyvar,
-      FieldSet<nauxiliary> &auxiliary_vars) {
+      const real5d FTWvar, FieldSet<nauxiliary> &auxiliary_vars) {
 
     const auto &primal_topology = primal_geometry.topology;
 
@@ -1507,6 +1507,19 @@ public:
 
     YAKL_SCOPE(primal_geometry, this->primal_geometry);
     YAKL_SCOPE(dual_geometry, this->dual_geometry);
+    YAKL_SCOPE(refv, this->equations->reference_state.v.data);
+
+    parallel_for(
+        "Velocity diffusion 0",
+        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          for (int d = 0; d < ndims; ++d) {
+            FTWvar(d, k + pks, j + pjs, i + pis, n) =
+                Vvar(d, k + pks, j + pjs, i + pis, n) - refv(d, k + pks, n);
+          }
+        });
+    auxiliary_vars.exchange({FTWVAR});
 
     // *d*d
     parallel_for(
@@ -1514,8 +1527,8 @@ public:
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_D1_ext<1>(qhzedgereconvar, Vvar, Wvar, pis, pjs, pks, i, j, k,
-                            n);
+          compute_D1_ext<1>(qhzedgereconvar, FTWvar, Wvar, pis, pjs, pks, i, j,
+                            k, n);
         });
     auxiliary_vars.exchange({QHZEDGERECONVAR});
 
@@ -1524,7 +1537,7 @@ public:
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_D1<1>(qxyedgereconvar, Vvar, pis, pjs, pks, i, j, k, n);
+          compute_D1<1>(qxyedgereconvar, FTWvar, pis, pjs, pks, i, j, k, n);
         });
     auxiliary_vars.exchange({QXYEDGERECONVAR});
 
@@ -1561,7 +1574,7 @@ public:
 
     parallel_for(
         SimpleBounds<4>(dual_topology.ni, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens), 
+                        dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_D1bar<1>(FWvar, qhzvar, dis, djs, dks, i, j, k, n);
         });
@@ -1601,7 +1614,7 @@ public:
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_H10<1, diffusion_diff_ord>(Fvar, Vvar, primal_geometry,
+          compute_H10<1, diffusion_diff_ord>(Fvar, FTWvar, primal_geometry,
                                              dual_geometry, dis, djs, dks, i, j,
                                              k, n);
         });
@@ -2471,7 +2484,8 @@ public:
             auxiliary_vars.fields_arr[FVAR].data,
             auxiliary_vars.fields_arr[FWVAR].data,
             auxiliary_vars.fields_arr[QXYEDGERECONVAR].data,
-            auxiliary_vars.fields_arr[QXYVAR].data, auxiliary_vars);
+            auxiliary_vars.fields_arr[QXYVAR].data,
+            auxiliary_vars.fields_arr[FTWVAR].data, auxiliary_vars);
       }
     }
   }
@@ -2542,8 +2556,8 @@ public:
 
           if (k < dual_topology.ni - 2) {
             SArray<real, 1, 1> uw;
-                compute_H01(uw, Wtendvar, primal_geometry, dual_geometry, dis, djs,
-                            dks, i, j, k + 1, n);
+            compute_H01(uw, Wtendvar, primal_geometry, dual_geometry, dis, djs,
+                        dks, i, j, k + 1, n);
             FWvar(0, k + 1 + dks, j + djs, i + dis, n) =
                 uw(0) * rho_di(0, k + dks + 1, n);
           }
@@ -3262,12 +3276,13 @@ public:
           compute_H10<1, diff_ord>(u, sol_v, primal_geometry, dual_geometry,
                                    dis, djs, dks, i, j, k, n);
 
-          fvar(0, k + dks, j + djs, i + dis, n) = u(0, 0) * rho_pi(0, k + pks, n);
+          fvar(0, k + dks, j + djs, i + dis, n) =
+              u(0, 0) * rho_pi(0, k + pks, n);
 
           if (k < dual_topology.ni - 2) {
             SArray<real, 1, 1> uw;
-            compute_H01(uw, sol_w, primal_geometry, dual_geometry,
-                                        dis, djs, dks, i, j, k + 1, n);
+            compute_H01(uw, sol_w, primal_geometry, dual_geometry, dis, djs,
+                        dks, i, j, k + 1, n);
             fwvar(0, k + 1 + dks, j + djs, i + dis, n) =
                 uw(0) * rho_di(0, k + dks + 1, n);
           }
@@ -5146,7 +5161,8 @@ struct Supercell : TestCaseSetup {
     real rho_ref = refrho_f(z, thermo);
     real T_ref = refT_f(z, thermo);
     real p_ref = refp_f(z, thermo);
-    return rho_ref * thermo.compute_entropic_var_from_T_p(p_ref, T_ref, 1, 0, 0, 0);
+    return rho_ref *
+           thermo.compute_entropic_var_from_T_p(p_ref, T_ref, 1, 0, 0, 0);
   }
 
   static real YAKL_INLINE refrhov_f(real z, const ThermoPotential &thermo) {
@@ -5177,7 +5193,7 @@ struct Supercell : TestCaseSetup {
     real dz = (z - zbc) / rz;
     real r = sqrt(dx * dx + dy * dy + dz * dz);
     return r < 1 ? dtht * pow(cos(pi * r / 2), 2) : 0;
-    //return 0;
+    // return 0;
   }
 
   static VecXYZ YAKL_INLINE v_f(real x, real y, real z) {
@@ -5255,10 +5271,12 @@ struct Supercell : TestCaseSetup {
               qv(k + pks, n) = std::min(qvs * hum_f(z, thermo), 0.014);
               real tht = tht_f(z, thermo);
               thtv(k + pks, n) = tht * (1 + 0.61 * qv(k + pks, n));
-              
-//              if (m == 9) {
-//              std::cout << k << " " << z << " " << qv(k + pks, n) << " " << T << " " << tht << " " << thtv(k + pks, n) << std::endl;
-//              }
+
+              //              if (m == 9) {
+              //              std::cout << k << " " << z << " " << qv(k + pks,
+              //              n) << " " << T << " " << tht << " " << thtv(k +
+              //              pks, n) << std::endl;
+              //              }
             }
           }
         });
@@ -5321,7 +5339,7 @@ struct Supercell : TestCaseSetup {
     YAKL_SCOPE(Hs, equations->Hs);
     YAKL_SCOPE(varset, equations->varset);
     YAKL_SCOPE(refstate, equations->reference_state);
-    
+
     thermo.cst.Rd = 287.;
     thermo.cst.Rv = 461;
     thermo.cst.pr = 1e5;
@@ -5449,6 +5467,10 @@ struct Supercell : TestCaseSetup {
                 refstate.rho_di.data(0, k + pks, n);
           }
         });
+
+    primal_geometry.set_profile_10form_values(
+        YAKL_LAMBDA(real x, real y, real z) { return v_f(x, y, z); },
+        refstate.v, 0);
 
 #ifdef FORCE_REFSTATE_HYDROSTATIC_BALANCE
     parallel_for(
