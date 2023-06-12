@@ -8,8 +8,8 @@ crm_ny       : 42
 crm_nz       : 41
 
 
-entropicvar_diffusion_coeff: 0
-velocity_diffusion_coeff: 0
+entropicvar_diffusion_coeff: 1500
+velocity_diffusion_coeff: 500
 
 # Vertical height coordinates file
 #vcoords  : vcoords_equal_100_20km.nc

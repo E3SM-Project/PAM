@@ -48,6 +48,7 @@ public:
     this->statsize = params.Nsteps / params.Nstat + 1;
   }
 
-  virtual void compute(FieldSet<nprognostic> &progvars,
+  virtual void compute(PamCoupler &coupler, 
+                       FieldSet<nprognostic> &progvars,
                        FieldSet<nconstant> &constvars, int tind){};
 };

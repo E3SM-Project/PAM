@@ -894,7 +894,8 @@ public:
                              dual_topology.n_cells_y, dual_topology.n_cells_x);
   }
 
-  void compute(FieldSet<nprognostic> &progvars, FieldSet<nconstant> &constvars,
+  void compute(PamCoupler &coupler, 
+      FieldSet<nprognostic> &progvars, FieldSet<nconstant> &constvars,
                int tind) {
 
     const auto &primal_topology = primal_geometry.topology;

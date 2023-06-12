@@ -3340,6 +3340,9 @@ public:
     this->stats_arr[PESTAT].initialize("pens", 1, this->statsize, this->nens,
                                        this->masterproc);
 
+    this->stats_arr[PRECSTAT].initialize("prec_rate", 1, this->statsize, this->nens, this->masterproc);
+    this->stats_arr[MAXWSTAT].initialize("max_w", 1, this->statsize, this->nens, this->masterproc);
+
     const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
 
@@ -3359,11 +3362,16 @@ public:
                              dual_topology.n_cells_y, dual_topology.n_cells_x);
   }
 
-  void compute(FieldSet<nprognostic> &progvars, FieldSet<nconstant> &constvars,
+  void compute(PamCoupler &coupler, FieldSet<nprognostic> &progvars, FieldSet<nconstant> &constvars,
                int tind) {
 
     const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
+    
+    auto &dm = coupler.get_data_manager_device_readonly();
+    auto precl = dm.get<real const, 3>("precl");
+
+    auto prec_rate = primal_geometry.dx * primal_geometry.dy * yakl::intrinsics::sum(precl) * 1e3 / 1e5;
 
     for (int n = 0; n < nens; n++) {
 
@@ -3465,6 +3473,17 @@ public:
       int pis = primal_topology.is;
       int pjs = primal_topology.js;
       int pks = primal_topology.ks;
+      
+      parallel_for(
+          "Compute W state",
+          SimpleBounds<3>(primal_topology.nl, primal_topology.n_cells_y,
+                          primal_topology.n_cells_x),
+          YAKL_CLASS_LAMBDA(int k, int j, int i) {
+              PVarr(0, k, j, i) = progvars.fields_arr[WVAR].data(0, k + pks, j + pjs, i + pis, n) / 
+                                  primal_geometry.get_area_01entity(k + pjs, j + pjs, i + pis, n);
+      });
+
+      auto maxw = yakl::intrinsics::maxval(PVarr);
 
       YAKL_SCOPE(PVPE, equations->PVPE);
       parallel_for(
@@ -3554,7 +3573,7 @@ public:
       this->ierr = MPI_Ireduce(&elocal, &eglobal, 4, REAL_MPI, MPI_SUM, 0,
                                MPI_COMM_WORLD, &this->Req[ESTAT]);
 
-      this->ierr = MPI_Waitall(nstats, this->Req, this->Status);
+      this->ierr = MPI_Waitall(nstats-2, this->Req, this->Status);
 
       if (masterproc) {
         for (int l = 0; l < VS::ndensity_prognostic; l++) {
@@ -3571,6 +3590,9 @@ public:
           this->stats_arr[PVSTAT].data(d, tind, n) = pvglobal(d);
         }
         this->stats_arr[PESTAT].data(0, tind, n) = peglobal(0);
+        
+        this->stats_arr[PRECSTAT].data(0, tind, n) = prec_rate;
+        this->stats_arr[MAXWSTAT].data(0, tind, n) = maxw;
       }
     }
   }

@@ -196,7 +196,7 @@ public:
     for (auto &diag : diagnostics) {
       diag->compute(0, constant_vars, prognostic_vars);
     }
-    stats.compute(prognostic_vars, constant_vars, 0);
+    stats.compute(coupler, prognostic_vars, constant_vars, 0);
     io.outputInit(etime);
     io.outputStats(stats);
     debug_print("end initial io", par.masterproc);
@@ -245,7 +245,7 @@ public:
       }
 
       if ((nstep + prevstep) % params.Nstat == 0) {
-        stats.compute(prognostic_vars, constant_vars,
+        stats.compute(coupler, prognostic_vars, constant_vars,
                       (nstep + prevstep) / params.Nstat);
       }
 #endif

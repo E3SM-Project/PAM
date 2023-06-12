@@ -95,7 +95,7 @@ uint constexpr nauxiliary = ndims > 1 ? 42 : 35;
 #define FTXYVAR 41
 
 // track total densities, dens min/max, energy (total, K, P, I), PV, PE
-uint constexpr nstats = 6;
+uint constexpr nstats = 8;
 
 #define DENSSTAT 0
 #define DENSMINSTAT 1
@@ -103,6 +103,8 @@ uint constexpr nstats = 6;
 #define ESTAT 3
 #define PVSTAT 4
 #define PESTAT 5
+#define PRECSTAT 6
+#define MAXWSTAT 7
 
 // ADD ANELASTIC + MOIST ANELASTIC
 //  #if defined _CEp || defined _MCErhop || defined _MCErhodp
