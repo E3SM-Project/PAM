@@ -1286,7 +1286,7 @@ public:
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_H01<VS::ndensity_prognostic, diffusion_diff_ord>(
               dvertfluxvar, dvertgradvar, primal_geometry, dual_geometry, dis,
-              djs, dks, i, j, k + 1, 0);
+              djs, dks, i, j, k + 1, n);
         });
     auxiliary_vars.exchange({DVERTFLUXVAR});
     auxiliary_vars.fields_arr[DVERTFLUXVAR].set_bnd(0.0);
@@ -3708,7 +3708,7 @@ void initialize_variables(
       "diffusive density flux", dtopo, ndims - 1, 1,
       VS::ndensity_prognostic}; // density grad = twisted (n-1,1)-form
   aux_desc_arr[DVERTFLUXVAR] = {
-      "vertical diffusive density flux", dtopo, ndims - 1, 0,
+      "vertical diffusive density flux", dtopo, ndims, 0,
       VS::ndensity_prognostic}; // vertical density grad = twisted (n,0)-form
 
   aux_desc_arr[DDIVVAR] = {
@@ -5135,7 +5135,7 @@ struct Supercell : TestCaseSetup {
   static real constexpr U_c = 15;
   static real constexpr dz_u = 1e3;
 
-  static real constexpr N_ref = 1.235e-5;
+  static real constexpr N_ref = 0.011;
 
   static real YAKL_INLINE refnsq_f(real z, const ThermoPotential &thermo) {
     return N_ref * N_ref;
