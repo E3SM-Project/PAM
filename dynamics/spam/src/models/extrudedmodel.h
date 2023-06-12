@@ -5483,8 +5483,44 @@ struct Supercell : TestCaseSetup {
 #endif
   }
 
+  struct WDiagnostic : public Diagnostic {
+    void initialize(const Geometry<Straight> &pgeom,
+                    const Geometry<Twisted> &dgeom,
+                    Equations &equations) override {
+      name = "wphys";
+      topology = pgeom.topology;
+      dofs_arr = {0, 1, 1};
+      Diagnostic::initialize(pgeom, dgeom, equations);
+    }
+
+    void compute(real time, const FieldSet<nconstant> &const_vars,
+                 const FieldSet<nprognostic> &x) override {
+
+      const auto &primal_topology = primal_geometry.topology;
+
+      int pis = primal_topology.is;
+      int pjs = primal_topology.js;
+      int pks = primal_topology.ks;
+
+      const auto &Wvar = x.fields_arr[WVAR].data;
+
+      parallel_for(
+          "Compute W diagnostic",
+          SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                          primal_topology.n_cells_x, primal_topology.nens),
+          YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+            real w = Wvar(0, k + pks, j + pjs, i + pis, n);
+            real dz = primal_geometry.get_area_01entity(k + pks, j + pjs, i + pis, n);
+            w /= dz;
+            field.data(0, k + pks, j + pjs, i + pis, n) = w;
+          });
+    }
+  };
+
   static void
-  add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics) {}
+  add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics) {
+    diagnostics.emplace_back(std::make_unique<WDiagnostic>());
+  }
 };
 
 struct LargeRisingBubble : TestCaseSetup {
