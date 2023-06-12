@@ -3483,7 +3483,7 @@ public:
                                   primal_geometry.get_area_01entity(k + pjs, j + pjs, i + pis, n);
       });
 
-      auto maxw = yakl::intrinsics::maxval(PVarr);
+      auto maxw = yakl::intrinsics::maxval(PVarr.slice<3>(0, yakl::COLON, yakl::COLON, yakl::COLON));
 
       YAKL_SCOPE(PVPE, equations->PVPE);
       parallel_for(
