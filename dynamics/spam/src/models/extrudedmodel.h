@@ -2205,6 +2205,7 @@ public:
         ndims > 1 ? optional_real5d{const_vars.fields_arr[CORIOLISXYVAR].data}
                   : std::nullopt);
 
+    auxiliary_vars.exchange({QHZVAR, FHZVAR});
     auxiliary_vars.fields_arr[QHZVAR].set_bnd(0.0);
     auxiliary_vars.fields_arr[FHZVAR].set_bnd(0.0);
     if (ndims > 1) {
