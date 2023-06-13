@@ -52,6 +52,8 @@ public:
   ModelLinearSystem linear_system;
   std::unique_ptr<TimeIntegrator> time_integrator;
 
+  // FieldSet<nprognostic> previous_vars;
+
   int ierr;
   real etime = 0.0;
   uint prevstep = 0;
@@ -135,6 +137,8 @@ public:
     constant_vars.initialize("cons", const_desc_arr, const_exchange);
     auxiliary_vars.initialize("aux", aux_desc_arr, aux_exchange);
     debug_print("finish init field/exchange sets", par.masterproc);
+
+    // previous_vars.initialize("x", prog_desc_arr, prog_exchange);
 
     debug_print("start diagnostics init", par.masterproc);
     add_model_diagnostics(diagnostics);
@@ -220,11 +224,18 @@ public:
     tendencies.convert_coupler_to_dynamics_state(coupler, prognostic_vars,
                                                  auxiliary_vars, constant_vars);
 
+    // tendencies.pamc_debug_chk(0, coupler, prognostic_vars, constant_vars);
+
     // Time stepping loop
     debug_print("start time stepping loop", par.masterproc);
     for (uint nstep = 0; nstep < params.crm_per_phys; nstep++) {
       yakl::fence();
+
+      // previous_vars.copy(prognostic_vars);
+
       time_integrator->step_forward(params.dtcrm);
+
+      // tendencies.pamc_debug_chk(1, coupler, prognostic_vars, previous_vars);
 
 #ifdef CHECK_ANELASTIC_CONSTRAINT
       real max_div = tendencies.compute_max_anelastic_constraint(
@@ -233,6 +244,8 @@ public:
 #endif
 
       yakl::fence();
+
+      // tendencies.pamc_debug_chk(2, coupler, prognostic_vars, previous_vars);
 
       etime += params.dtcrm;
 #ifndef _NOIO
@@ -247,6 +260,8 @@ public:
         io.outputStats(stats);
       }
 
+      // tendencies.pamc_debug_chk(3, coupler, prognostic_vars, constant_vars);
+
       if ((nstep + prevstep) % params.Nstat == 0) {
         stats.compute(prognostic_vars, constant_vars,
                       (nstep + prevstep) / params.Nstat);
@@ -255,9 +270,13 @@ public:
     }
     prevstep += params.crm_per_phys;
 
+    // tendencies.pamc_debug_chk(4, coupler, prognostic_vars, constant_vars);
+
     if (!time_integrator->is_ssp) {
       tendencies.remove_negative_densities(prognostic_vars);
     }
+
+    // tendencies.pamc_debug_chk(5, coupler, prognostic_vars, constant_vars);
 
     // convert dynamics state to Coupler state
     tendencies.convert_dynamics_to_coupler_state(coupler, prognostic_vars,

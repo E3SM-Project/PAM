@@ -360,6 +360,13 @@ public:
 #endif
   }
 
+  void pamc_debug_chk(int id,
+                      PamCoupler &coupler,
+                      const FieldSet<nprognostic> &prog_vars,
+                      const FieldSet<nprognostic> &prev_vars) {
+    equations->varset.pamc_debug_chk(id, coupler, prog_vars, prev_vars);
+  }
+
   void
   convert_dynamics_to_coupler_state(PamCoupler &coupler,
                                     const FieldSet<nprognostic> &prog_vars,

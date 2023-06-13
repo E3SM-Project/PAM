@@ -355,6 +355,10 @@ public:
   real YAKL_INLINE get_pres(int k, int ks, int n) const {};
   real YAKL_INLINE get_ref_dens(int k, int ks, int n) const {};
 
+  void pamc_debug_chk(int id, PamCoupler &coupler,
+                                         const FieldSet<nprognostic> &prog_vars,
+                                         const FieldSet<nprognostic> &prev_vars);
+
   void convert_dynamics_to_coupler_state(PamCoupler &coupler,
                                          const FieldSet<nprognostic> &prog_vars,
                                          const FieldSet<nconstant> &const_vars);
@@ -362,6 +366,52 @@ public:
                                          FieldSet<nprognostic> &prog_vars,
                                          const FieldSet<nconstant> &const_vars);
 };
+
+template <class T>
+void VariableSetBase<T>::pamc_debug_chk(int id,
+                                        PamCoupler &coupler,
+                                        const FieldSet<nprognostic> &prog_vars,
+                                        const FieldSet<nprognostic> &prev_vars)
+{
+  const auto &primal_topology = primal_geometry.topology;
+  const auto &dual_topology = dual_geometry.topology;
+  int dis = dual_topology.is;
+  int djs = dual_topology.js;
+  int dks = dual_topology.ks;
+  int pis = primal_topology.is;
+  int pjs = primal_topology.js;
+  int pks = primal_topology.ks;
+  // const auto densvar = prog_vars.fields_arr[DENSVAR].data;
+  parallel_for("pamc_debug_chk",SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y, dual_topology.n_cells_x, dual_topology.nens), YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+
+    const auto densvar1 = prev_vars.fields_arr[DENSVAR].data;
+    real entr1 = get_entropic_var( densvar1, k, j, i, dks, djs, dis, n);
+    real pres1 = get_pres(         densvar1, k, j, i, dks, djs, dis, n);
+    real qv1   = get_qv(           densvar1, k, j, i, dks, djs, dis, n);
+    real ql1   = get_ql(           densvar1, k, j, i, dks, djs, dis, n);
+    real qi1   = get_qi(           densvar1, k, j, i, dks, djs, dis, n);
+    real qd1   = 1.0_fp - qv1 - ql1 - qi1;
+    real temp1 = thermo.compute_T_from_p(pres1, entr1, qd1, qv1, ql1, qi1);
+
+    const auto densvar2 = prog_vars.fields_arr[DENSVAR].data;
+    real entr2 = get_entropic_var( densvar2, k, j, i, dks, djs, dis, n);
+    real pres2 = get_pres(         densvar2, k, j, i, dks, djs, dis, n);
+    real qv2   = get_qv(           densvar2, k, j, i, dks, djs, dis, n);
+    real ql2   = get_ql(           densvar2, k, j, i, dks, djs, dis, n);
+    real qi2   = get_qi(           densvar2, k, j, i, dks, djs, dis, n);
+    real qd2   = 1.0_fp - qv2 - ql2 - qi2;
+    real temp2 = thermo.compute_T_from_p(pres2, entr2, qd2, qv2, ql2, qi2);
+
+    if ( isnan(temp2) || isnan(qv2) || isnan(ql2) || isnan(qi2) || isnan(qd2) || temp2<0 || entr2<0 ) {
+      printf("pamc_debug_chk - id:%d k:%d j:%d i:%d n:%d en_var :: %g  =>  %g \n",id,k,j,i,n,entr1,entr2);
+      printf("pamc_debug_chk - id:%d k:%d j:%d i:%d n:%d temp   :: %g  =>  %g \n",id,k,j,i,n,temp1,temp2);
+      printf("pamc_debug_chk - id:%d k:%d j:%d i:%d n:%d qd     :: %g  =>  %g \n",id,k,j,i,n,qd1,qd2);
+      printf("pamc_debug_chk - id:%d k:%d j:%d i:%d n:%d qv     :: %g  =>  %g \n",id,k,j,i,n,qv1,qv2);
+      printf("pamc_debug_chk - id:%d k:%d j:%d i:%d n:%d ql     :: %g  =>  %g \n",id,k,j,i,n,ql1,ql2);
+      printf("pamc_debug_chk - id:%d k:%d j:%d i:%d n:%d qi     :: %g  =>  %g \n",id,k,j,i,n,qi1,qi2);
+    }
+  });
+}
 
 template <class T>
 void VariableSetBase<T>::convert_dynamics_to_coupler_state(
@@ -504,46 +554,6 @@ void VariableSetBase<T>::convert_dynamics_to_coupler_state(
                                  dks, djs, dis, n);
           real temp = thermo.compute_T_from_p(p, entropic_var, qd, qv, ql, qi);
 #endif
-          // if ( isnan(temp) || entropic_var<0 ) {
-          // // if ( entropic_var<0 && !nan_found.hostRead() ) {
-          //   // printf("WHDEBUG - cpl_to_dyn - neg value found for entropic_var! => k:%d  j:%d  i:%d  n:%d \n",k,j,i,n);
-          //   // printf("WHDEBUG - dyn_to_cpl - NaN value in temperature! => k:%d  j:%d  i:%d  n:%d \n",k,j,i,n);
-          //   printf("WHDEBUG - dyn_to_cpl - problem found! => k:%d  j:%d  i:%d  n:%d \n",k,j,i,n);
-          //   printf("WHDEBUG - dyn_to_cpl - k:%d  j:%d  i:%d  n:%d en_var :: %g \n",k,j,i,n,entropic_var);
-          //   printf("WHDEBUG - dyn_to_cpl - k:%d  j:%d  i:%d  n:%d alpha  :: %g \n",k,j,i,n,alpha);
-          //   printf("WHDEBUG - dyn_to_cpl - k:%d  j:%d  i:%d  n:%d qd     :: %g \n",k,j,i,n,qd);
-          //   printf("WHDEBUG - dyn_to_cpl - k:%d  j:%d  i:%d  n:%d qv     :: %g \n",k,j,i,n,qv);
-          //   printf("WHDEBUG - dyn_to_cpl - k:%d  j:%d  i:%d  n:%d ql     :: %g \n",k,j,i,n,ql);
-          //   printf("WHDEBUG - dyn_to_cpl - k:%d  j:%d  i:%d  n:%d qi     :: %g \n",k,j,i,n,qi);
-          //   printf("WHDEBUG - dyn_to_cpl - k:%d  j:%d  i:%d  n:%d temp   :: %g \n",k,j,i,n,temp);
-          //   if (!nan_found.hostRead()) {
-          //     nan_i = i;
-          //     nan_j = j;
-          //     nan_k = k;
-          //     nan_n = n;
-          //     nan_found = true;
-          //   }
-          // }
-
-          // if ( isnan(temp) ) {
-          //   printf("WHDEBUG - dyn_to_cpl - NaN value in temperature! => k:%d  j:%d  i:%d  n:%d \n",k,j,i,n);
-          //   printf("WHDEBUG - dyn_to_cpl - k:%d  j:%d  i:%d  n:%d en_var :: %g \n",k,j,i,n,entropic_var);
-          //   printf("WHDEBUG - dyn_to_cpl - k:%d  j:%d  i:%d  n:%d alpha  :: %g \n",k,j,i,n,alpha);
-          //   printf("WHDEBUG - dyn_to_cpl - k:%d  j:%d  i:%d  n:%d qd     :: %g \n",k,j,i,n,qd);
-          //   printf("WHDEBUG - dyn_to_cpl - k:%d  j:%d  i:%d  n:%d qv     :: %g \n",k,j,i,n,qv);
-          //   printf("WHDEBUG - dyn_to_cpl - k:%d  j:%d  i:%d  n:%d ql     :: %g \n",k,j,i,n,ql);
-          //   printf("WHDEBUG - dyn_to_cpl - k:%d  j:%d  i:%d  n:%d qi     :: %g \n",k,j,i,n,qi);
-          //   printf("WHDEBUG - dyn_to_cpl - k:%d  j:%d  i:%d  n:%d temp   :: %g \n",k,j,i,n,temp);
-          // }
-
-          // if ( isnan(entropic_var) ) { printf("WHDEBUG - dyn_to_cpl - NaN value in en_var - k:%d  j:%d  i:%d  n:%d :: %g \n",k,j,i,n,entropic_var); }
-          // if ( isnan(alpha       ) ) { printf("WHDEBUG - dyn_to_cpl - NaN value in alpha - k:%d  j:%d  i:%d  n:%d :: %g \n",k,j,i,n,alpha); }
-          // if ( isnan(qd          ) ) { printf("WHDEBUG - dyn_to_cpl - NaN value in qd - k:%d  j:%d  i:%d  n:%d :: %g \n",k,j,i,n,qd); }
-          // if ( isnan(qv          ) ) { printf("WHDEBUG - dyn_to_cpl - NaN value in qv - k:%d  j:%d  i:%d  n:%d :: %g \n",k,j,i,n,qv); }
-          // if ( isnan(ql          ) ) { printf("WHDEBUG - dyn_to_cpl - NaN value in ql - k:%d  j:%d  i:%d  n:%d :: %g \n",k,j,i,n,ql); }
-          // if ( isnan(qi          ) ) { printf("WHDEBUG - dyn_to_cpl - NaN value in qi - k:%d  j:%d  i:%d  n:%d :: %g \n",k,j,i,n,qi); }
-          // if ( isnan(temp        ) ) { printf("WHDEBUG - dyn_to_cpl - NaN value in temp - k:%d  j:%d  i:%d  n:%d :: %g \n",k,j,i,n,temp); }
-
 
           dm_temp(k, j, i, n) = temp;
 
@@ -556,25 +566,6 @@ void VariableSetBase<T>::convert_dynamics_to_coupler_state(
 
         });
 
-        //----------------------------------------------------------------------
-        //----------------------------------------------------------------------
-        // if ( nan_found.hostRead() ) {
-        //   int i = nan_i.hostRead();
-        //   int j = nan_j.hostRead();
-        //   int n = nan_n.hostRead();
-        //   for (int k=0; k<dual_topology.nl; k++) {
-        //     real qd           = get_qd(          prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
-        //     real qv           = get_qv(          prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
-        //     real ql           = get_ql(          prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
-        //     real qi           = get_qi(          prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
-        //     real alpha        = get_alpha(       prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
-        //     real entropic_var = get_entropic_var(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
-        //     real temp         = thermo.compute_T(alpha, entropic_var, qd, qv, ql, qi);
-        //     printf("WHDEBUG - dyn_to_cpl - k:%d  en:%g  t:%g  a:%g  qd:%g  qv:%g  ql:%g  qi:%g \n",k,entropic_var,temp,alpha,qd,qv,ql,qi);
-        //   }
-        // }
-        //----------------------------------------------------------------------
-        //----------------------------------------------------------------------
   }
 }
 
@@ -646,6 +637,7 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_state(
                       prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs,
                       dis, n);
 
+          real qd = dens_dry / dens;
           real qv = dens_vap / dens;
           real ql = dens_liq / dens;
           real qi = dens_ice / dens;
@@ -653,26 +645,12 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_state(
 
 #elif defined(_AN) || defined(_MAN)
           real dens = get_ref_dens(k, dks, n) / dual_geometry.get_area_n1entity(k + dks, j + djs, i + dis, n);
-#endif
 
           real qv = dens_vap / dens;
           real ql = dens_liq / dens;
           real qi = dens_ice / dens;
           real qd = 1.0_fp - qv - ql - qi;
-
-          // if (entropic_var<0) {
-          //   printf("WHDEBUG - cpl_to_dyn - neg value found for entropic_var! => k:%d  j:%d  i:%d  n:%d \n",k,j,i,n);
-          //   printf("WHDEBUG - cpl_to_dyn - k:%d  j:%d  i:%d  n:%d en_var :: %g \n",k,j,i,n,entropic_var);
-          //   printf("WHDEBUG - cpl_to_dyn - k:%d  j:%d  i:%d  n:%d temp   :: %g \n",k,j,i,n,temp);
-          //   printf("WHDEBUG - cpl_to_dyn - k:%d  j:%d  i:%d  n:%d alpha  :: %g \n",k,j,i,n,alpha);
-          // }
-
-          // if ( isnan(entropic_var) ) {
-          //   printf("WHDEBUG - cpl_to_dyn - NaN value found for entropic_var! => k:%d  j:%d  i:%d  n:%d \n",k,j,i,n);
-          //   printf("WHDEBUG - cpl_to_dyn - k:%d  j:%d  i:%d  n:%d en_var :: %g \n",k,j,i,n,entropic_var);
-          //   printf("WHDEBUG - cpl_to_dyn - k:%d  j:%d  i:%d  n:%d temp   :: %g \n",k,j,i,n,temp);
-          //   printf("WHDEBUG - cpl_to_dyn - k:%d  j:%d  i:%d  n:%d alpha  :: %g \n",k,j,i,n,alpha);
-          // }
+#endif
 
 
 #if defined(_CE) || defined(_MCErho) || defined(_MCE_rhod)
@@ -692,31 +670,6 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_state(
               entropic_var * dens *
                   dual_geometry.get_area_n1entity(k + dks, j + djs, i + dis, n),
               prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
-
-
-          // real area = dual_geometry.get_area_11entity(k + dks, j + djs, i + dis, n);
-          // real entropic_density_tmp = entropic_var * dens * area;
-          // if (entropic_density_tmp<0) {
-          //   printf("WHDEBUG - cpl_to_dyn - neg value found for entropic_density! => k:%d  j:%d  i:%d  n:%d \n",k,j,i,n);
-          //   printf("WHDEBUG - cpl_to_dyn - k:%d  j:%d  i:%d  n:%d en_var   :: %g \n",k,j,i,n,entropic_var);
-          //   printf("WHDEBUG - cpl_to_dyn - k:%d  j:%d  i:%d  n:%d dens     :: %g \n",k,j,i,n,dens);
-          //   printf("WHDEBUG - cpl_to_dyn - k:%d  j:%d  i:%d  n:%d dens_dry :: %g \n",k,j,i,n,dens_dry);
-          //   printf("WHDEBUG - cpl_to_dyn - k:%d  j:%d  i:%d  n:%d area     :: %g \n",k,j,i,n,area);
-          //   printf("WHDEBUG - cpl_to_dyn - k:%d  j:%d  i:%d  n:%d temp     :: %g \n",k,j,i,n,temp);
-          //   printf("WHDEBUG - cpl_to_dyn - k:%d  j:%d  i:%d  n:%d alpha    :: %g \n",k,j,i,n,alpha);
-          // }
-
-          // if ( isnan(entropic_density_tmp) ) {
-          //   printf("WHDEBUG - cpl_to_dyn - NaN value found for entropic_density! => k:%d  j:%d  i:%d  n:%d \n",k,j,i,n);
-          //   printf("WHDEBUG - cpl_to_dyn - k:%d  j:%d  i:%d  n:%d en_var   :: %g \n",k,j,i,n,entropic_var);
-          //   printf("WHDEBUG - cpl_to_dyn - k:%d  j:%d  i:%d  n:%d dens     :: %g \n",k,j,i,n,dens);
-          //   printf("WHDEBUG - cpl_to_dyn - k:%d  j:%d  i:%d  n:%d dens_dry :: %g \n",k,j,i,n,dens_dry);
-          //   printf("WHDEBUG - cpl_to_dyn - k:%d  j:%d  i:%d  n:%d area     :: %g \n",k,j,i,n,area);
-          //   printf("WHDEBUG - cpl_to_dyn - k:%d  j:%d  i:%d  n:%d temp     :: %g \n",k,j,i,n,temp);
-          //   printf("WHDEBUG - cpl_to_dyn - k:%d  j:%d  i:%d  n:%d alpha    :: %g \n",k,j,i,n,alpha);
-          // }
-
-
 
           for (int tr = ndensity_nophysics; tr < ndensity_prognostic; tr++) {
             prog_vars.fields_arr[DENSVAR].data(tr, k + dks, j + djs, i + dis,
