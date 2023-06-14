@@ -11,13 +11,14 @@ public:
   int nz_dual = -1;
   int nens = -1;
 
-  int simSteps = -1;
-  int Nsteps = -1;
-  int Nout = -1;
+  int nsteps_gcm = -1;
+  real out_freq = -1.;
+  real stat_freq = -1.;
+  real dt_gcm = -1.;
   real dtcrm = -1.;
-  real dtphys = -1.;
+  real dt_crm_phys = -1.;
   int crm_per_phys = -1;
-  int Nstat = -1;
+  int statSize = -1;
   std::string outputName;
   std::string tstype;
   real si_tolerance = -1;
@@ -40,18 +41,27 @@ void readParamsFile(std::string inFile, Parameters &params, Parallel &par,
   par.nprocx = config["nprocx"].as<int>();
   par.nprocy = config["nprocy"].as<int>();
   params.nens = config["nens"].as<int>();
-  params.dtphys = config["dtphys"].as<real>();
-  params.crm_per_phys = config["crm_per_phys"].as<int>(0);
-  params.Nout = config["outSteps"].as<int>(0);
-  params.Nstat = config["statSteps"].as<int>(0);
-  params.simSteps = config["simSteps"].as<int>(0);
+  params.dt_gcm = config["dt_gcm"].as<real>();
+  params.dt_crm_phys = config["dt_crm_phys"].as<real>();
+  params.crm_per_phys = config["crm_per_phys"].as<int>();
+  params.nsteps_gcm = config["nsteps_gcm"].as<int>();
+  params.out_freq = config["out_freq"].as<real>(-1.);
+  params.stat_freq = config["stat_freq"].as<real>(-1.);
   params.tstype = config["tstype"].as<std::string>();
   params.si_tolerance = config["si_tolerance"].as<real>(1e-8);
   params.outputName = config["dycore_out_prefix"].as<std::string>("output");
   params.nz_dual = nz;
-  params.Nsteps = params.simSteps * params.crm_per_phys;
 
-  params.dtcrm = params.dtphys / params.crm_per_phys;
+//ADD A CHECK HERE THAT TOTAL TIME IS EXACTLY DIVISIBLE BY STAT_FREQ
+  if (params.stat_freq >= 0.)
+  {
+  real total_time = params.nsteps_gcm * params.dt_gcm;
+  params.statSize = total_time / params.stat_freq;
+  }
+  else
+  {params.statSize = 0;}
+
+  params.dtcrm = params.dt_crm_phys / params.crm_per_phys;
 }
 
 void read_params_coupler(Parameters &params, Parallel &par,
@@ -63,16 +73,16 @@ void read_params_coupler(Parameters &params, Parallel &par,
   par.nprocx = 1;
   par.nprocy = 1;
   params.nens = coupler.get_nens();
-  params.dtphys = coupler.get_option<real>("crm_dt");
+//THESE NAMES IN COUPLER DONT CORRESPOND WITH CONFIG FILE NAMES
+//FIX THIS
+  params.dt_crm_phys = coupler.get_option<real>("crm_dt");
   if (coupler.option_exists("crm_dyn_per_phys")) {
     params.crm_per_phys = coupler.get_option<int>("crm_dyn_per_phys");
   } else {
     params.crm_per_phys = 1;
   }
 
-  params.Nout = 1;
-  params.Nstat = 1;
-  params.simSteps = 1;
+//FIX THIS LOGIC
 #ifdef _MAN
   params.tstype = "ssprk3";
 #else
@@ -81,9 +91,8 @@ void read_params_coupler(Parameters &params, Parallel &par,
   params.si_tolerance = 1e-8;
   params.outputName = "pamc_output";
   params.nz_dual = coupler.get_nz();
-  params.Nsteps = params.simSteps * params.crm_per_phys;
-
-  params.dtcrm = params.dtphys / params.crm_per_phys;
+  params.statSize = 0;
+  params.dtcrm = params.dt_crm_phys / params.crm_per_phys;
 }
 
 void finalize_parallel(Parameters &params, Parallel &par) {
@@ -182,13 +191,6 @@ void finalize_parallel(Parameters &params, Parallel &par) {
 }
 
 void check_and_print_parameters(const Parameters &params, const Parallel &par, bool verbose=false) {
-  // Check time stepping params
-  if (not(params.dtphys > 0.0_fp) or not(params.simSteps > 0) or
-      not(params.crm_per_phys > 0) or not(params.Nout > 0) or
-      not(params.Nstat > 0)) {
-    endrun("spam++ must use step-based time control logic ie set simSteps >0, "
-           "dtphys>0, crm_per_phys >0, outSteps >0, statSteps >0");
-  }
 
   // Print out the values
   if (par.masterproc and verbose) {
@@ -202,11 +204,12 @@ void check_and_print_parameters(const Parameters &params, const Parallel &par, b
     std::cout << "haloy:      " << par.haloy << "\n";
 
     std::cout << "dtcrm:         " << params.dtcrm << "\n";
-    std::cout << "dtphys:         " << params.dtphys << "\n";
-    std::cout << "Nsteps:     " << params.Nsteps << "\n";
-    std::cout << "simSteps:     " << params.simSteps << "\n";
+    std::cout << "dt_crm_phys:         " << params.dt_crm_phys << "\n";
+    std::cout << "statSize:     " << params.statSize << "\n";
+    std::cout << "nsteps_gcm:     " << params.nsteps_gcm << "\n";
     std::cout << "crm per phys:     " << params.crm_per_phys << "\n";
-    std::cout << "Nout:       " << params.Nout << "\n";
+    std::cout << "out_freq:       " << params.out_freq << "\n";
+    std::cout << "stat_freq:       " << params.stat_freq << "\n";
     std::cout << "outputName: " << params.outputName << "\n";
 
     std::cout << "nranks:     " << par.nranks << "\n";

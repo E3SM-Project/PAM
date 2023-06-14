@@ -82,5 +82,6 @@ public:
     return "none";
   }
 
-
+  void finalize(pam::PamCoupler &coupler) {
+  }
 };

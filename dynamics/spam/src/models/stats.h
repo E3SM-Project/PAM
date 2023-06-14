@@ -45,7 +45,7 @@ public:
     this->equations = &eqs;
     this->nens = params.nens;
     this->masterproc = par.masterproc;
-    this->statsize = params.Nsteps / params.Nstat + 1;
+    this->statsize = params.statSize + 1;
   }
 
   virtual void compute(FieldSet<nprognostic> &progvars,
