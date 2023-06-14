@@ -14,7 +14,7 @@ using pam::PamCoupler;
 #ifdef PAM_STANDALONE
   // solve a system to exactly invert the velocity averaging done
   // during conversion to coupler state when coupling winds
-  constexpr bool couple_wind_exact_inverse = true;
+  constexpr bool couple_wind_exact_inverse = false;
 #else
   // disable exact inversion of velocity averaging
   // for more flexible MMF configuration

@@ -34,7 +34,7 @@ int main(int argc, char** argv) {
     auto        nsteps_gcm     = config["nsteps_gcm"].as<int>();
     auto        crm_nx       = config["crm_nx"  ].as<int>();
     auto        crm_ny       = config["crm_ny"  ].as<int>();
-    int         nens         = config["nens"    ].as<int>();
+    auto         nens         = config["nens"    ].as<int>();
     auto dt_gcm         = config["dt_gcm"     ].as<real>();
     auto dt_crm_phys    = config["dt_crm_phys"].as<real>();
     std::string vcoords_file = config["vcoords" ].as<std::string>();
@@ -84,7 +84,9 @@ int main(int argc, char** argv) {
     // Set the vertical grid in the coupler
     coupler.set_grid( xlen , ylen , zint_in );
 
-    // NORMALLY THIS WOULD BE DONE INSIDE THE CRM, BUT WE'RE USING CONSTANTS DEFINED BY THE CRM MICRO SCHEME
+    // This is for the dycore to pull out to determine how to do idealized test cases
+    coupler.set_option<std::string>( "standalone_input_file" , inFile );
+
     // Create the dycore and the microphysics
     Dycore       dycore;
     Microphysics micro;
