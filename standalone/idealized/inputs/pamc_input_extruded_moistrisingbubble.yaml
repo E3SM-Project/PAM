@@ -7,7 +7,7 @@ simSteps  : 360 #1280 11520
 #360 * 5 = 1800 * 0.5 = 900s
 
 # Number of cells to use
-crm_nx       : 100
+crm_nx       : 101
 crm_ny       : 1
 #crm_nz       : 150
 
@@ -38,7 +38,7 @@ statSteps: 1
 #6400 = 100s for explicit
 #200 = 100s for semi-implicit
 
-tstype: si
+tstype: ssprk3
 #kgrk4 si
 
 # Number of ensembles
