@@ -338,8 +338,8 @@ namespace pam {
       auto ref_rho_i    = dm.get_collapsed<real>("ref_density_ice"          );
       auto ref_temp     = dm.get_collapsed<real>("ref_temp"                 );
       auto uvel_stag     = dm.get_collapsed<real>("uvel_stag"                 );
-      auto vvel_stag     = dm.get_collapsed<real>("uvel_stag"                 );
-      auto wvel_stag     = dm.get_collapsed<real>("uvel_stag"                 );
+      auto vvel_stag     = dm.get_collapsed<real>("vvel_stag"                 );
+      auto wvel_stag     = dm.get_collapsed<real>("wvel_stag"                 );
 
       parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<1>((nz+1)*(ny+1)*(nx+1)*nens) , YAKL_LAMBDA (int i) {
         if (i < density_dry.size()) density_dry(i) = 0;
