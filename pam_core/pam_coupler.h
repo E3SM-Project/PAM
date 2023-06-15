@@ -311,9 +311,9 @@ namespace pam {
       dm.register_and_allocate<real>("ref_density_ice"  ,"Reference state column water ice density"  ,{nz,nens},{"z","nens"});
       dm.register_and_allocate<real>("ref_temp"         ,"Reference state column temperature"        ,{nz,nens},{"z","nens"});
 
-      dm.register_and_allocate<real>("pamc_uvel"                     ,"x-direction velocity"       ,{nz,ny,nx+1,nens},{"z","y","xp1","nens"});
-      dm.register_and_allocate<real>("pamc_vvel"                     ,"y-direction velocity"       ,{nz,ny+1,nx,nens},{"z","yp1","x","nens"});
-      dm.register_and_allocate<real>("pamc_wvel"                     ,"z-direction velocity"       ,{nz+1,ny,nx,nens},{"zp1","y","x","nens"});
+      dm.register_and_allocate<real>("uvel_stag"                     ,"staggered x-direction velocity"       ,{nz,ny,nx+1,nens},{"z","y","xp1","nens"});
+      dm.register_and_allocate<real>("vvel_stag"                     ,"staggered y-direction velocity"       ,{nz,ny+1,nx,nens},{"z","yp1","x","nens"});
+      dm.register_and_allocate<real>("wvel_stag"                     ,"staggered z-direction velocity"       ,{nz+1,ny,nx,nens},{"zp1","y","x","nens"});
 
       auto density_dry  = dm.get_collapsed<real>("density_dry"              );
       auto uvel         = dm.get_collapsed<real>("uvel"                     );
@@ -337,9 +337,9 @@ namespace pam {
       auto ref_rho_l    = dm.get_collapsed<real>("ref_density_liq"          );
       auto ref_rho_i    = dm.get_collapsed<real>("ref_density_ice"          );
       auto ref_temp     = dm.get_collapsed<real>("ref_temp"                 );
-      auto pamc_uvel     = dm.get_collapsed<real>("pamc_uvel"                 );
-      auto pamc_vvel     = dm.get_collapsed<real>("pamc_vvel"                 );
-      auto pamc_wvel     = dm.get_collapsed<real>("pamc_wvel"                 );
+      auto uvel_stag     = dm.get_collapsed<real>("uvel_stag"                 );
+      auto vvel_stag     = dm.get_collapsed<real>("uvel_stag"                 );
+      auto wvel_stag     = dm.get_collapsed<real>("uvel_stag"                 );
 
       parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<1>((nz+1)*(ny+1)*(nx+1)*nens) , YAKL_LAMBDA (int i) {
         if (i < density_dry.size()) density_dry(i) = 0;
@@ -357,9 +357,9 @@ namespace pam {
         if (i < gcm_temp   .size()) gcm_temp   (i) = 0;
         if (i < gcm_rho_v  .size()) gcm_rho_v  (i) = 0;
         if (i < hy_params  .size()) hy_params  (i) = 0;
-        if (i < pamc_uvel  .size()) pamc_uvel  (i) = 0;
-        if (i < pamc_vvel  .size()) pamc_vvel  (i) = 0;
-        if (i < pamc_wvel  .size()) pamc_wvel  (i) = 0;
+        if (i < uvel_stag  .size()) uvel_stag  (i) = 0;
+        if (i < vvel_stag  .size()) vvel_stag  (i) = 0;
+        if (i < wvel_stag  .size()) wvel_stag  (i) = 0;
       });
     }
 
