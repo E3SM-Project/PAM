@@ -14,10 +14,6 @@
 #include "layermodel.h"
 #elif defined _HAMILTONIAN && defined _EXTRUDED
 #include "extrudedmodel.h"
-#elif defined _ADVECTION && defined _LAYER
-#include "layeradvection.h"
-#elif defined _ADVECTION && defined _EXTRUDED
-#include "extrudedadvection.h"
 #endif
 #include "KGRK.h"
 #include "LSRK.h"
