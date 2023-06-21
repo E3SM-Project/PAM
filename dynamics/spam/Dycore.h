@@ -17,7 +17,8 @@
 #endif
 #include "KGRK.h"
 #include "LSRK.h"
-#include "SI.h"
+#include "SI_Fixed.h"
+#include "SI_Newton.h"
 #include "SSPRK.h"
 #include "time_integrator.h"
 #include <memory>
@@ -59,7 +60,11 @@ public:
     } else if (tstype.substr(0, 4) == "lsrk") {
       return std::make_unique<LSRKTimeIntegrator>(tstype);
     } else if (tstype.substr(0, 2) == "si") {
-      return std::make_unique<SITimeIntegrator<si_quad_pts>>(tstype);
+#if defined(_AN) || defined(_MAN)
+      return std::make_unique<SIFixedTimeIntegrator<si_quad_pts>>(tstype);
+#else
+      return std::make_unique<SINewtonTimeIntegrator<si_quad_pts>>(tstype);
+#endif
     } else if (tstype.substr(0, 4) == "kgrk") {
       return std::make_unique<KGRKTimeIntegrator>(tstype);
     } else {
