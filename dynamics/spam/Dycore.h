@@ -193,7 +193,7 @@ public:
       diag->compute(0, constant_vars, prognostic_vars);
     }
     stats.compute(prognostic_vars, constant_vars, 0);
-    io.outputInit(etime);
+    io.outputInit(etime, primal_geometry, dual_geometry);
     io.outputStats(stats);
     debug_print("end initial io", par.masterproc);
 #endif
