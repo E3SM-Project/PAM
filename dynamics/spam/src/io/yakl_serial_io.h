@@ -34,7 +34,8 @@ public:
                   Stats &stats);
   void output(real time);
   void outputInit(real time, const Geometry<Straight> &primal_geometry,
-                  const Geometry<Twisted> &dual_geometry);
+                  const Geometry<Twisted> &dual_geometry,
+                  const ModelParameters &params);
   void outputStats(const Stats &stats);
 };
 
@@ -242,8 +243,17 @@ void FileIO::output(real time) {
 }
 
 void FileIO::outputInit(real time, const Geometry<Straight> &primal_geometry,
-                        const Geometry<Twisted> &dual_geometry) {
+                        const Geometry<Twisted> &dual_geometry,
+                        const ModelParameters &params) {
   nc.open(this->outputName, yakl::NETCDF_MODE_WRITE);
+
+  nc.write(params.dtphys, "dtphys");
+  nc.write(params.dtcrm, "dtcrm");
+  nc.write(params.crm_per_phys, "crm_per_phys");
+  // We could maybe store this as char array, but the proper solution
+  // is to use attributes, which are not yet supported in SimpleNetCDF
+  // nc.write(params.tstype, "tstype");
+  nc.write(params.si_tolerance, "si_tolerance");
 
   nc.write(primal_geometry.dx, "dx");
   nc.write(primal_geometry.Lx, "Lx");

@@ -18,6 +18,7 @@ public:
                   Stats &stats) {}
   void output(real time) {}
   void outputInit(real time, const Geometry<Straight> &primal_geometry,
-                  const Geometry<Twisted> &dual_geometry) {}
+                  const Geometry<Twisted> &dual_geometry,
+                  const ModelParameters &params) {}
   void outputStats(const Stats &stats) {}
 };
