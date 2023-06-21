@@ -115,7 +115,7 @@ uint constexpr maxhalosize =
 uint constexpr mirroringhalo =
     std::max({(max_vert_reconstruction_order - 1) / 2, vert_diff_ord / 2});
 
-int constexpr si_monitor_convergence = 0;
+int constexpr si_monitor_convergence = 2;
 // 0 = do not monitor (does si_max_iters iterations)
 // 1 = computes initial and final residual but still does si_max_iter iterations
 // 2 = iterates until convergence or si_max_iter is reached
