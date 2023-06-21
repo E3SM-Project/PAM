@@ -1,5 +1,19 @@
 #pragma once
 
+#include "common.h"
+#include "field_sets.h"
+#include "model.h"
+
+real norm(FieldSet<nprognostic> &x) {
+  // note that this function assumes that x halos have been exchanged
+  real accum = 0;
+  for (auto f : x.fields_arr) {
+    accum = std::max(yakl::intrinsics::maxval(yakl::intrinsics::abs(f.data)),
+                     accum);
+  }
+  return accum;
+}
+
 class TimeIntegrator {
 public:
   bool is_initialized = false;
