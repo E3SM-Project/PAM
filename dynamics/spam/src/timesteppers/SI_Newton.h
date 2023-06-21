@@ -8,16 +8,6 @@
 #include "topology.h"
 #include <sstream>
 
-real norm(FieldSet<nprognostic> &x) {
-  // note that this function assumes that x halos have been exchanged
-  real accum = 0;
-  for (auto f : x.fields_arr) {
-    accum = std::max(yakl::intrinsics::maxval(yakl::intrinsics::abs(f.data)),
-                     accum);
-  }
-  return accum;
-}
-
 template <uint nquad> class SINewtonTimeIntegrator : public TimeIntegrator {
 
 public:
