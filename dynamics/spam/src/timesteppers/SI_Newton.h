@@ -18,7 +18,7 @@ real norm(FieldSet<nprognostic> &x) {
   return accum;
 }
 
-template <uint nquad> class SITimeIntegrator : public TimeIntegrator {
+template <uint nquad> class SINewtonTimeIntegrator : public TimeIntegrator {
 
 public:
   using TimeIntegrator::TimeIntegrator;
