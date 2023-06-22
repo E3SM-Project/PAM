@@ -120,7 +120,8 @@ if __name__ == "__main__":
             ll = 2
             nz = base_nz * 2 ** ll + 1
             nx = 15 * (nz - 1)
-            base_dt = base_dt / (2 ** ll)
+            if l == 0:
+                base_dt = base_dt / (2 ** ll)
             
         nz = base_nz * 2 ** l + 1
         nx = 15 * (nz - 1)
