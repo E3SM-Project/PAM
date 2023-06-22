@@ -3530,6 +3530,13 @@ public:
         }
 
         this->stats_arr[ESTAT].data(0, tind, n) = eglobal(0);
+       
+        if (tind > 0) {
+          auto en0 = this->stats_arr[ESTAT].data(0, 0, n);
+          auto en = this->stats_arr[ESTAT].data(0, tind, n);
+          std::cout << "Energy change: " << (en - en0) / en0 << std::endl;
+        }
+
         this->stats_arr[ESTAT].data(1, tind, n) = eglobal(1);
         this->stats_arr[ESTAT].data(2, tind, n) = eglobal(2);
         this->stats_arr[ESTAT].data(3, tind, n) = eglobal(3);
