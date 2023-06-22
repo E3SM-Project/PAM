@@ -111,20 +111,21 @@ if __name__ == "__main__":
     base_nz = 20
 
     errs = []
+    echngs = []
     dts = []
     dxs = []
 
     dt_only = False
+    if dt_only:
+        base_dt = 5
+        base_nz = 160
     for l in range(nlevels):
         if dt_only:
-            ll = 2
-            nz = base_nz * 2 ** ll + 1
+            nz = base_nz + 1
             nx = 15 * (nz - 1)
-            if l == 0:
-                base_dt = base_dt / (2 ** ll)
-            
-        nz = base_nz * 2 ** l + 1
-        nx = 15 * (nz - 1)
+        else:
+            nz = base_nz * 2 ** l + 1
+            nx = 15 * (nz - 1)
 
         dx = L / nx
         dz = H / (nz - 1)
@@ -133,7 +134,7 @@ if __name__ == "__main__":
         steps = int(np.ceil(timeend / dt))
         outsteps = steps
 
-        ofname = f"output_{l}"
+        ofname = f"output_{l}_"
 
         vcoords = "uniform"
         #vcoords = "uniform_variable"
@@ -162,7 +163,7 @@ if __name__ == "__main__":
         inputfile["statSteps"] = 1
         inputfile["dycore_out_prefix"] = ofname
 
-        ifname = f"input_{nx}_{nz}"
+        ifname = f"input_{l}"
         yaml.dump(inputfile, open(ifname, "w"))
 
         print(f"running (nx, nz, dx, dz, dt, steps) = ({nx}, {nz}, {dx}, {dz}, {dt}, {steps})")
@@ -172,24 +173,27 @@ if __name__ == "__main__":
 
         dataset = Dataset(ofname + "0.nc", "r", format="NETCDF4")
         err = compute_errors(dataset)
+        echng = (dataset["energy"][0, -1, 0] - dataset["energy"][0, 0, 0]) / dataset["energy"][0, 0, 0] 
         dts.append(dt)
         dxs.append(dx)
         errs.append(err)
+        echngs.append(echng)
 
     variables = ("T", "w", "rho", "S")
     outfiles  = {var : open(f"errors_{var}.txt", "w") for var in variables}
-    header = "{:5} {:8} {:8} {:10} {:10} {:10} {:10} {:10} {:10}\n".format("lev", "dx", "dt", "Linf", "Linf_r", "L2", "L2_r", "Ediss", "Edisp")
+    header = "{:5} {:8} {:8} {:10} {:10} {:10} {:10} {:10} {:10} {:10}\n".format("lev", "dx", "dt", "Linf", "Linf_r", "L2", "L2_r", "Ediss", "Edisp", "Echng")
     for var in variables:
         outfiles[var].write(header)
         for l in range(nlevels):
             err = errs[l][var]
+            echng = echngs[l]
             if l > 0:
                 rate_Linf = np.log2(errs[l-1][var][0] / errs[l][var][0])
                 rate_L2 = np.log2(errs[l-1][var][1] / errs[l][var][1])
             else:
                 rate_Linf = 0
                 rate_L2 = 0
-            line = f"{l:<5} {dxs[l]:<8.2f} {dts[l]:<8.2f} {err[0]:<10.2e} {rate_Linf:<10.1e} {err[1]:<10.2e} {rate_L2:<10.1e} {err[2]:<10.2e} {err[3]:<10.2e}\n"
+            line = f"{l:<5} {dxs[l]:<8.2f} {dts[l]:<8.2f} {err[0]:<10.2e} {rate_Linf:<10.1e} {err[1]:<10.2e} {rate_L2:<10.1e} {err[2]:<10.2e} {err[3]:<10.2e} {echng[l]:<10.2e}\n"
 
             outfiles[var].write(line)
 
