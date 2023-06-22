@@ -120,7 +120,6 @@ bool constexpr si_compute_functional_derivatives_quadrature = false;
 #else
 bool constexpr si_compute_functional_derivatives_quadrature = true;
 #endif
-uint constexpr si_quad_pts = 4;
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 

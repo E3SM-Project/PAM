@@ -8,15 +8,15 @@
 #include "topology.h"
 #include <sstream>
 
-template <uint nquad> class SIFixedTimeIntegrator : public TimeIntegrator {
+class SIFixedTimeIntegrator : public TimeIntegrator {
 
 public:
   using TimeIntegrator::TimeIntegrator;
   int step;
   real tol;
   real avg_iters;
-  SArray<real, 1, nquad> quad_pts;
-  SArray<real, 1, nquad> quad_wts;
+  std::vector<real> quad_pts;
+  std::vector<real> quad_wts;
   FieldSet<nprognostic> *x;
   FieldSet<nprognostic> dx;
   FieldSet<nprognostic> xn;
@@ -37,13 +37,12 @@ public:
   // 2 = print every iteration
 
   int max_iters;
+  int nquad;
 
   void initialize(ModelParameters &params, Tendencies &tend,
                   LinearSystem &linsys, FieldSet<nprognostic> &xvars,
                   FieldSet<nconstant> &consts,
                   FieldSet<nauxiliary> &auxiliarys) override {
-
-    set_ref_quad_pts_wts(this->quad_pts, this->quad_wts);
 
     this->dx.initialize(xvars, "dx");
     this->xn.initialize(xvars, "xn");
@@ -57,6 +56,11 @@ public:
     this->monitor_convergence = params.si_monitor_convergence;
     this->verbosity_level = params.si_max_iters;
     this->max_iters = params.si_max_iters;
+    this->nquad = params.si_nquad;
+
+    this->quad_pts.resize(nquad);
+    this->quad_wts.resize(nquad);
+    set_ref_quad_pts_wts(this->quad_pts, this->quad_wts, nquad);
 
     this->step = 0;
     this->avg_iters = 0;
@@ -67,20 +71,20 @@ public:
 
   // evaluates -dt * J((x^n + x^v) / 2) dHtilde/dx(x^n, x^v), stores in dx
   void evaluate_fixed_point_rhs(real dt) {
-    this->xm.waxpby(1 - this->quad_pts(0), this->quad_pts(0), *this->x,
+    this->xm.waxpby(1 - this->quad_pts[0], this->quad_pts[0], *this->x,
                     this->xn);
     this->xm.exchange();
     this->tendencies->compute_functional_derivatives(
         dt, *this->const_vars, this->xm, *this->auxiliary_vars,
-        this->quad_wts(0), ADD_MODE::REPLACE);
+        this->quad_wts[0], ADD_MODE::REPLACE);
 
     for (int m = 1; m < nquad; ++m) {
-      this->xm.waxpby(1 - this->quad_pts(m), this->quad_pts(m), *this->x,
+      this->xm.waxpby(1 - this->quad_pts[m], this->quad_pts[m], *this->x,
                       this->xn);
       this->xm.exchange();
       this->tendencies->compute_functional_derivatives(
           dt, *this->const_vars, this->xm, *this->auxiliary_vars,
-          this->quad_wts(m), ADD_MODE::ADD);
+          this->quad_wts[m], ADD_MODE::ADD);
     }
 
     this->xm.waxpby(0.5_fp, 0.5_fp, *this->x, this->xn);
