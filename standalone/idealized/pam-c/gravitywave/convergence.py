@@ -193,7 +193,7 @@ if __name__ == "__main__":
             else:
                 rate_Linf = 0
                 rate_L2 = 0
-            line = f"{l:<5} {dxs[l]:<8.2f} {dts[l]:<8.2f} {err[0]:<10.2e} {rate_Linf:<10.1e} {err[1]:<10.2e} {rate_L2:<10.1e} {err[2]:<10.2e} {err[3]:<10.2e} {echng[l]:<10.2e}\n"
+            line = f"{l:<5} {dxs[l]:<8.2f} {dts[l]:<8.2f} {err[0]:<10.2e} {rate_Linf:<10.1e} {err[1]:<10.2e} {rate_L2:<10.1e} {err[2]:<10.2e} {err[3]:<10.2e} {echngs[l]:<10.2e}\n"
 
             outfiles[var].write(line)
 
