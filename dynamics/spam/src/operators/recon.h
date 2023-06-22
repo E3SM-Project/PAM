@@ -323,7 +323,7 @@ template <uint ndofs, uint nd>
 void YAKL_INLINE
 tanh_upwind_recon(SArray<real, 2, ndofs, nd> &recon,
                   SArray<real, 3, ndofs, nd, 2> const &edgerecon,
-                  SArray<real, 1, nd> const &flux) {
+                  SArray<real, 1, nd> const &flux, real tanh_upwind_coeff) {
 
   real upwind_param;
   for (int l = 0; l < ndofs; l++) {
@@ -339,7 +339,8 @@ template <uint ndofs, RECONSTRUCTION_TYPE recontype>
 void YAKL_INLINE compute_twisted_recon(const real5d &reconvar,
                                        const real5d &edgereconvar,
                                        const Geometry<Twisted> &dgeom,
-                                       const real5d &Fvar, int is, int js,
+                                       const real5d &Fvar,
+                                       real tanh_upwind_coeff, int is, int js,
                                        int ks, int i, int j, int k, int n) {
 
   SArray<real, 2, ndofs, ndims> recon;
@@ -378,7 +379,8 @@ void YAKL_INLINE compute_twisted_recon(const real5d &reconvar,
       for (int d = 0; d < ndims; ++d) {
         uvar(d) /= dgeom.get_area_nm11entity(d, k + ks, j + js, i + is, n);
       }
-      tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+      tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar,
+                                      tanh_upwind_coeff);
     }
   }
 
@@ -390,12 +392,10 @@ void YAKL_INLINE compute_twisted_recon(const real5d &reconvar,
 }
 
 template <uint ndofs, RECONSTRUCTION_TYPE recontype>
-void YAKL_INLINE compute_twisted_vert_recon(const real5d &vertreconvar,
-                                            const real5d &vertedgereconvar,
-                                            const Geometry<Twisted> &dgeom,
-                                            const real5d &FWvar, int is, int js,
-                                            int ks, int i, int j, int k,
-                                            int n) {
+void YAKL_INLINE compute_twisted_vert_recon(
+    const real5d &vertreconvar, const real5d &vertedgereconvar,
+    const Geometry<Twisted> &dgeom, const real5d &FWvar, real tanh_upwind_coeff,
+    int is, int js, int ks, int i, int j, int k, int n) {
 
   SArray<real, 2, ndofs, 1> recon;
   SArray<real, 1, 1> uvar;
@@ -419,7 +419,7 @@ void YAKL_INLINE compute_twisted_vert_recon(const real5d &vertreconvar,
       upwind_recon<ndofs, 1>(recon, edgerecon, uvar);
     } else if (dual_vert_upwind_type == UPWIND_TYPE::TANH) {
       uvar(0) /= dgeom.get_area_n0entity(k + ks, j + js, i + is, n);
-      tanh_upwind_recon<ndofs, 1>(recon, edgerecon, uvar);
+      tanh_upwind_recon<ndofs, 1>(recon, edgerecon, uvar, tanh_upwind_coeff);
     }
   }
 
@@ -432,7 +432,8 @@ template <uint ndofs, RECONSTRUCTION_TYPE recontype>
 void YAKL_INLINE compute_straight_recon(const real5d &reconvar,
                                         const real5d &edgereconvar,
                                         const Geometry<Straight> &pgeom,
-                                        const real5d &UT, int is, int js,
+                                        const real5d &UT,
+                                        real tanh_upwind_coeff, int is, int js,
                                         int ks, int i, int j, int k, int n) {
   SArray<real, 2, ndofs, ndims> recon;
   SArray<real, 1, ndims> uvar;
@@ -476,7 +477,8 @@ void YAKL_INLINE compute_straight_recon(const real5d &reconvar,
       for (int d = 0; d < ndims; ++d) {
         uvar(d) /= pgeom.get_area_nm11entity(d, k + ks, j + js, is, n);
       }
-      tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+      tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar,
+                                      tanh_upwind_coeff);
     }
   }
 
@@ -492,8 +494,10 @@ template <uint ndofs, RECONSTRUCTION_TYPE recontype>
 void YAKL_INLINE compute_straight_hz_recon(const real5d &reconvar,
                                            const real5d &edgereconvar,
                                            const Geometry<Straight> &pgeom,
-                                           const real5d &FTWvar, int is, int js,
-                                           int ks, int i, int j, int k, int n) {
+                                           const real5d &FTWvar,
+                                           real tanh_upwind_coeff, int is,
+                                           int js, int ks, int i, int j, int k,
+                                           int n) {
   SArray<real, 2, ndofs, ndims> recon;
   SArray<real, 3, ndofs, ndims, 2> edgerecon;
 
@@ -530,7 +534,8 @@ void YAKL_INLINE compute_straight_hz_recon(const real5d &reconvar,
       for (int d = 0; d < ndims; ++d) {
         uvar(d) /= pgeom.get_area_nm11entity(d, k + ks, j + js, is, n);
       }
-      tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+      tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar,
+                                      tanh_upwind_coeff);
     }
   }
 
@@ -545,7 +550,8 @@ template <uint ndofs, RECONSTRUCTION_TYPE recontype>
 void YAKL_INLINE compute_straight_hz_vert_recon(const real5d &reconvar,
                                                 const real5d &edgereconvar,
                                                 const Geometry<Straight> &pgeom,
-                                                const real5d &FTvar, int is,
+                                                const real5d &FTvar,
+                                                real tanh_upwind_coeff, int is,
                                                 int js, int ks, int i, int j,
                                                 int k, int n) {
   SArray<real, 2, ndofs, ndims> recon;
@@ -577,7 +583,8 @@ void YAKL_INLINE compute_straight_hz_vert_recon(const real5d &reconvar,
       upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
     } else if (vert_upwind_type == UPWIND_TYPE::TANH) {
       uvar(0) /= pgeom.get_area_n0entity(k + ks, j + js, i + is, n);
-      tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+      tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar,
+                                      tanh_upwind_coeff);
     }
   }
 

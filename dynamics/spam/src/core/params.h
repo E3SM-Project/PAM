@@ -21,6 +21,7 @@ public:
   std::string outputName;
   std::string tstype;
   real si_tolerance = -1;
+  real tanh_upwind_coeff = -1;
 
   real xlen, ylen;
   real xc, yc;
@@ -47,6 +48,7 @@ void readParamsFile(std::string inFile, Parameters &params, Parallel &par,
   params.simSteps = config["simSteps"].as<int>(0);
   params.tstype = config["tstype"].as<std::string>();
   params.si_tolerance = config["si_tolerance"].as<real>(1e-8);
+  params.tanh_upwind_coeff = config["tanh_upwind_coeff"].as<real>(250);
   params.outputName = config["dycore_out_prefix"].as<std::string>("output");
   params.nz_dual = nz;
   params.Nsteps = params.simSteps * params.crm_per_phys;
@@ -75,6 +77,7 @@ void read_params_coupler(Parameters &params, Parallel &par,
   params.tstype = "si";
 #endif
   params.si_tolerance = 1e-8;
+  params.tanh_upwind_coeff = 250;
   params.outputName = "pamc_output";
   params.nz_dual = coupler.get_nz();
   params.Nsteps = params.simSteps * params.crm_per_phys;
