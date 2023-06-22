@@ -1040,8 +1040,8 @@ public:
       const real5d qhzvertedgereconvar, const real5d coriolishzedgereconvar,
       const real5d coriolishzvertedgereconvar, const real5d densvar,
       const real5d Fvar, const real5d FWvar, const real5d FTvar,
-      const real5d FTWvar, optional_real5d opt_qxyreconvar,
-      optional_real5d opt_qxyedgereconvar,
+      const real5d FTWvar, real tanh_upwind_coeff,
+      optional_real5d opt_qxyreconvar, optional_real5d opt_qxyedgereconvar,
       optional_real5d opt_coriolisxyreconvar,
       optional_real5d opt_coriolisxyedgereconvar, optional_real5d opt_FTxyvar) {
 
@@ -1069,8 +1069,8 @@ public:
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_twisted_recon<VS::ndensity_prognostic,
                                 dual_reconstruction_type>(
-              densreconvar, densedgereconvar, dual_geometry, Fvar, dis, djs,
-              dks, i, j, k, n);
+              densreconvar, densedgereconvar, dual_geometry, Fvar,
+              tanh_upwind_coeff, dis, djs, dks, i, j, k, n);
 
 #if defined _AN || defined _MAN
           // add reference state
@@ -1126,8 +1126,8 @@ public:
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_twisted_vert_recon<VS::ndensity_prognostic,
                                      dual_vert_reconstruction_type>(
-              densvertreconvar, densvertedgereconvar, dual_geometry, FWvar, dis,
-              djs, dks, i, j, k + 1, n);
+              densvertreconvar, densvertedgereconvar, dual_geometry, FWvar,
+              tanh_upwind_coeff, dis, djs, dks, i, j, k + 1, n);
 
 #if defined _AN || defined _MAN
           // add reference state
@@ -1165,11 +1165,11 @@ public:
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_straight_hz_recon<1, reconstruction_type>(
-              qhzreconvar, qhzedgereconvar, primal_geometry, FTWvar, pis, pjs,
-              pks, i, j, k, n);
+              qhzreconvar, qhzedgereconvar, primal_geometry, FTWvar,
+              tanh_upwind_coeff, pis, pjs, pks, i, j, k, n);
           compute_straight_hz_recon<1, coriolis_reconstruction_type>(
               coriolishzreconvar, coriolishzedgereconvar, primal_geometry,
-              FTWvar, pis, pjs, pks, i, j, k, n);
+              FTWvar, tanh_upwind_coeff, pis, pjs, pks, i, j, k, n);
         });
     parallel_for(
         "ComputeQhzVERTRECON",
@@ -1177,11 +1177,12 @@ public:
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_straight_hz_vert_recon<1, vert_reconstruction_type>(
-              qhzvertreconvar, qhzvertedgereconvar, primal_geometry, FTvar, pis,
-              pjs, pks, i, j, k, n);
+              qhzvertreconvar, qhzvertedgereconvar, primal_geometry, FTvar,
+              tanh_upwind_coeff, pis, pjs, pks, i, j, k, n);
           compute_straight_hz_vert_recon<1, coriolis_vert_reconstruction_type>(
               coriolishzvertreconvar, coriolishzvertedgereconvar,
-              primal_geometry, FTvar, pis, pjs, pks, i, j, k, n);
+              primal_geometry, FTvar, tanh_upwind_coeff, pis, pjs, pks, i, j, k,
+              n);
         });
 
     if (ndims > 1) {
@@ -1196,11 +1197,11 @@ public:
                           primal_topology.n_cells_x, primal_topology.nens),
           YAKL_LAMBDA(int k, int j, int i, int n) {
             compute_straight_recon<1, reconstruction_type>(
-                qxyreconvar, qxyedgereconvar, primal_geometry, FTxyvar, pis,
-                pjs, pks, i, j, k, n);
+                qxyreconvar, qxyedgereconvar, primal_geometry, FTxyvar,
+                tanh_upwind_coeff, pis, pjs, pks, i, j, k, n);
             compute_straight_recon<1, coriolis_reconstruction_type>(
                 coriolisxyreconvar, coriolisxyedgereconvar, primal_geometry,
-                FTxyvar, pis, pjs, pks, i, j, k, n);
+                FTxyvar, tanh_upwind_coeff, pis, pjs, pks, i, j, k, n);
           });
     }
   }
@@ -2286,7 +2287,7 @@ public:
         needs_to_recompute_F ? auxiliary_vars.fields_arr[FW2VAR].data
                              : auxiliary_vars.fields_arr[F2VAR].data,
         auxiliary_vars.fields_arr[FTVAR].data,
-        auxiliary_vars.fields_arr[FTWVAR].data,
+        auxiliary_vars.fields_arr[FTWVAR].data, this->tanh_upwind_coeff,
         ndims > 1 ? optional_real5d{auxiliary_vars.fields_arr[QXYRECONVAR].data}
                   : std::nullopt,
         ndims > 1

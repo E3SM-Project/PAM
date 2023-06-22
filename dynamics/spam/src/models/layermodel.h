@@ -341,8 +341,8 @@ public:
   void compute_recons(real5d densreconvar, real5d Qreconvar,
                       real5d Coriolisreconvar, const real5d densedgereconvar,
                       const real5d Qedgereconvar, const real5d fedgereconvar,
-                      const real5d HEvar, const real5d FTvar,
-                      const real5d Fvar) {
+                      const real5d HEvar, const real5d FTvar, const real5d Fvar,
+                      real tanh_upwind_coeff) {
     const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
 
@@ -363,11 +363,11 @@ public:
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_straight_recon<1, reconstruction_type>(
-              Qreconvar, Qedgereconvar, primal_geometry, FTvar, pis, pjs, pks,
-              i, j, k, n);
+              Qreconvar, Qedgereconvar, primal_geometry, FTvar,
+              tanh_upwind_coeff, pis, pjs, pks, i, j, k, n);
           compute_straight_recon<1, coriolis_reconstruction_type>(
-              Coriolisreconvar, fedgereconvar, primal_geometry, FTvar, pis, pjs,
-              pks, i, j, k, n);
+              Coriolisreconvar, fedgereconvar, primal_geometry, FTvar,
+              tanh_upwind_coeff, pis, pjs, pks, i, j, k, n);
         });
 
     parallel_for(
@@ -377,8 +377,8 @@ public:
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_twisted_recon<VS::ndensity_prognostic,
                                 dual_reconstruction_type>(
-              densreconvar, densedgereconvar, dual_geometry, Fvar, dis, djs,
-              dks, i, j, k, n);
+              densreconvar, densedgereconvar, dual_geometry, Fvar,
+              tanh_upwind_coeff, dis, djs, dks, i, j, k, n);
           // scale primal recons
           for (int d = 0; d < ndims; d++) {
             for (int l = 0; l < VS::ndensity_prognostic; l++) {
@@ -541,7 +541,8 @@ public:
                    auxiliary_vars.fields_arr[HEVAR].data,
                    auxiliary_vars.fields_arr[FTVAR].data,
                    needs_to_recompute_F ? auxiliary_vars.fields_arr[F2VAR].data
-                                        : auxiliary_vars.fields_arr[FVAR].data);
+                                        : auxiliary_vars.fields_arr[FVAR].data,
+                   this->tanh_upwind_coeff);
 
     auxiliary_vars.exchange({DENSRECONVAR, QRECONVAR, CORIOLISRECONVAR});
 
