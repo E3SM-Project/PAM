@@ -25,6 +25,19 @@ public:
   FieldSet<nconstant> *const_vars;
   FieldSet<nauxiliary> *auxiliary_vars;
 
+  // TODO: Make a SITimeIntegrator base class ?
+  int monitor_convergence;
+  // 0 = do not monitor (does si_max_iters iterations)
+  // 1 = computes initial and final residual but still does si_max_iter
+  // iterations 2 = iterates until convergence or si_max_iter is reached
+
+  int verbosity_level;
+  // 0 = do not print
+  // 1 = print initial and final
+  // 2 = print every iteration
+
+  int max_iters;
+
   void initialize(ModelParameters &params, Tendencies &tend,
                   LinearSystem &linsys, FieldSet<nprognostic> &xvars,
                   FieldSet<nconstant> &consts,
@@ -41,6 +54,10 @@ public:
     this->auxiliary_vars = &auxiliarys;
 
     this->tol = params.si_tolerance;
+    this->monitor_convergence = params.si_monitor_convergence;
+    this->verbosity_level = params.si_max_iters;
+    this->max_iters = params.si_max_iters;
+
     this->step = 0;
     this->avg_iters = 0;
 
@@ -84,12 +101,12 @@ public:
 
     real res_norm;
     real initial_res_norm;
-    if (si_monitor_convergence > 0) {
+    if (monitor_convergence > 0) {
       this->dx.exchange();
       initial_res_norm = dt * norm(this->dx);
     }
 
-    if (si_verbosity_level > 0) {
+    if (verbosity_level > 0) {
       std::stringstream msg;
       msg << "Starting fixed-point iteration, step = " << step
           << ", initial residual = " << initial_res_norm;
@@ -107,13 +124,13 @@ public:
 
       iter++;
 
-      if (iter >= si_max_iters) {
+      if (iter >= max_iters) {
         break;
       }
 
       evaluate_fixed_point_rhs(dt);
 
-      if (si_monitor_convergence > 1) {
+      if (monitor_convergence > 1) {
         this->xm.waxpbypcz(1, -1, dt, this->xn, *this->x, this->dx);
         this->xm.exchange();
         res_norm = norm(xm);
@@ -123,7 +140,7 @@ public:
         }
       }
 
-      if (si_verbosity_level > 1) {
+      if (verbosity_level > 1) {
         std::stringstream msg;
         msg << "Iter: " << iter << " "
             << " " << res_norm;
@@ -136,7 +153,7 @@ public:
     this->avg_iters += iter;
     this->avg_iters /= step;
 
-    if (si_verbosity_level > 0) {
+    if (verbosity_level > 0) {
       evaluate_fixed_point_rhs(dt);
 
       this->xm.waxpbypcz(1, -1, dt, this->xn, *this->x, this->dx);
