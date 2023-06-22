@@ -61,9 +61,9 @@ public:
       return std::make_unique<LSRKTimeIntegrator>(tstype);
     } else if (tstype.substr(0, 2) == "si") {
 #if defined(_AN) || defined(_MAN)
-      return std::make_unique<SIFixedTimeIntegrator<si_quad_pts>>(tstype);
+      return std::make_unique<SIFixedTimeIntegrator>(tstype);
 #else
-      return std::make_unique<SINewtonTimeIntegrator<si_quad_pts>>(tstype);
+      return std::make_unique<SINewtonTimeIntegrator>(tstype);
 #endif
     } else if (tstype.substr(0, 4) == "kgrk") {
       return std::make_unique<KGRKTimeIntegrator>(tstype);
