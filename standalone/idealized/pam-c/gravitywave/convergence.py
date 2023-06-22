@@ -32,7 +32,7 @@ def compute_Ediss_and_Edisp(a, b):
     Edisp = 2 * sigma_a * sigma_b - 2 * cov_ab
     return (Ediss, Edisp)
 
-def compute_errors(dataset, nx, nz, dx, dz):
+def compute_errors(dataset):
     _rho = 0
     _S = 1
     ti = -1
@@ -49,29 +49,33 @@ def compute_errors(dataset, nx, nz, dx, dz):
 
     rho_b = dataset["densb"][ti, _rho, :, 0 ,:, 0]
     S_b = dataset["densb"][ti, _S, :, 0 ,:, 0]
+    
+    dx = dataset["dx"][0]
+    pdz = dataset["primal_dz"][:, 0]
+    ddz = dataset["dual_dz"][:, 0]
 
-    w /= dz
-    w_exact /= dz
+    w /= pdz[:, None]
+    w_exact /= pdz[:, None]
 
-    rho /= (dx * dz)
-    rho_exact /= (dx * dz)
-    S /= (dx * dz)
-    S_exact /= (dx * dz)
+    rho /= (dx * ddz[:, None])
+    rho_exact /= (dx * ddz[:, None])
+    S /= (dx * ddz[:, None])
+    S_exact /= (dx * ddz[:, None])
     
     Linf_rho = np.max(np.abs((rho - rho_exact)))
-    L2_rho = np.sqrt(np.sum((rho - rho_exact) ** 2) / (nx * nz))
+    L2_rho = np.sqrt(np.sum((rho - rho_exact) ** 2) / np.prod(rho.shape))
     Ediss_rho, Edisp_rho = compute_Ediss_and_Edisp(rho, rho_exact)
     
     Linf_S = np.max(np.abs((S - S_exact)))
-    L2_S = np.sqrt(np.sum((S - S_exact) ** 2) / (nx * nz))
+    L2_S = np.sqrt(np.sum((S - S_exact) ** 2) / np.prod(S.shape))
     Ediss_S, Edisp_S = compute_Ediss_and_Edisp(S, S_exact)
 
     Linf_T = np.max(np.abs((T - T_exact)))
-    L2_T = np.sqrt(np.sum((T - T_exact) ** 2) / (nx * nz))
+    L2_T = np.sqrt(np.sum((T - T_exact) ** 2) / np.prod(T.shape))
     Ediss_T, Edisp_T = compute_Ediss_and_Edisp(T, T_exact)
 
     Linf_w = np.max(np.abs((w - w_exact)))
-    L2_w = np.sqrt(np.sum((w - w_exact) ** 2) / (nx * nz))
+    L2_w = np.sqrt(np.sum((w - w_exact) ** 2) / np.prod(w.shape))
     Ediss_w, Edisp_w = compute_Ediss_and_Edisp(w, w_exact)
 
     ret = {"T" : (Linf_T, L2_T, Ediss_T, Edisp_T),
@@ -109,7 +113,15 @@ if __name__ == "__main__":
     errs = []
     dts = []
     dxs = []
+
+    dt_only = False
     for l in range(nlevels):
+        if dt_only:
+            ll = 2
+            nz = base_nz * 2 ** ll + 1
+            nx = 15 * (nz - 1)
+            base_dt = base_dt / (2 ** ll)
+            
         nz = base_nz * 2 ** l + 1
         nx = 15 * (nz - 1)
 
@@ -120,7 +132,7 @@ if __name__ == "__main__":
         steps = int(np.ceil(timeend / dt))
         outsteps = steps
 
-        ofname = f"output_{nx}_{nz}_"
+        ofname = f"output_{l}"
 
         vcoords = "uniform"
         #vcoords = "uniform_variable"
@@ -139,6 +151,7 @@ if __name__ == "__main__":
                            capture_output=True, text=True)
 
 
+        inputfile["tstype"] = "si"
         inputfile["crm_nx"] = nx
         inputfile["crm_nz"] = nz
         inputfile["vcoords"] = vcoords
@@ -157,7 +170,7 @@ if __name__ == "__main__":
         open(ofname + "stderr.txt", "w").write(run.stderr)
 
         dataset = Dataset(ofname + "0.nc", "r", format="NETCDF4")
-        err = compute_errors(dataset, nx, nz, dx, dz)
+        err = compute_errors(dataset)
         dts.append(dt)
         dxs.append(dx)
         errs.append(err)
