@@ -21,6 +21,11 @@ public:
   std::string outputName;
   std::string tstype;
   real si_tolerance = -1;
+  int si_monitor_convergence;
+  int si_verbosity_level;
+  int si_max_iters;
+  int si_nquad;
+
   real tanh_upwind_coeff = -1;
 
   real xlen, ylen;
@@ -48,6 +53,12 @@ void readParamsFile(std::string inFile, Parameters &params, Parallel &par,
   params.simSteps = config["simSteps"].as<int>(0);
   params.tstype = config["tstype"].as<std::string>();
   params.si_tolerance = config["si_tolerance"].as<real>(1e-8);
+  params.si_monitor_convergence = config["si_monitor_convergence"].as<int>(2);
+  params.si_verbosity_level =
+      config["si_verbosity_level"].as<int>(params.si_monitor_convergence);
+  params.si_max_iters = config["si_max_iters"].as<int>(
+      params.si_monitor_convergence > 1 ? 50 : 5);
+  params.si_nquad = config["si_nquad"].as<int>(4);
   params.tanh_upwind_coeff = config["tanh_upwind_coeff"].as<real>(250);
   params.outputName = config["dycore_out_prefix"].as<std::string>("output");
   params.nz_dual = nz;
@@ -77,6 +88,10 @@ void read_params_coupler(Parameters &params, Parallel &par,
   params.tstype = "si";
 #endif
   params.si_tolerance = 1e-8;
+  params.si_monitor_convergence = 0;
+  params.si_verbosity_level = 0;
+  params.si_max_iters = 3;
+  params.si_nquad = 2;
   params.tanh_upwind_coeff = 250;
   params.outputName = "pamc_output";
   params.nz_dual = coupler.get_nz();
