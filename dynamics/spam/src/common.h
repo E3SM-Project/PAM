@@ -93,7 +93,6 @@ uint constexpr max_vert_reconstruction_order =
               coriolis_vert_reconstruction_order});
 
 enum class UPWIND_TYPE { HEAVISIDE, TANH };
-constexpr real tanh_upwind_coeff = 250;
 UPWIND_TYPE constexpr upwind_type = UPWIND_TYPE::TANH;
 UPWIND_TYPE constexpr dual_upwind_type = UPWIND_TYPE::TANH;
 UPWIND_TYPE constexpr vert_upwind_type = UPWIND_TYPE::TANH;

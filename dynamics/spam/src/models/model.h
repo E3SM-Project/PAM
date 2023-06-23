@@ -176,6 +176,8 @@ public:
   SArray<real, 1, (coriolis_reconstruction_order - 1) / 2 + 2> coriolis_wenoIdl;
   real coriolis_wenoSigma;
 
+  real tanh_upwind_coeff;
+
   bool is_initialized;
 
   Tendencies() { this->is_initialized = false; }
@@ -199,6 +201,7 @@ public:
     TransformMatrices::weno_sten_to_coefs(coriolis_wenoRecon);
     wenoSetIdealSigma<coriolis_reconstruction_order>(coriolis_wenoIdl,
                                                      coriolis_wenoSigma);
+    this->tanh_upwind_coeff = params.tanh_upwind_coeff;
 
     this->is_initialized = true;
   }
