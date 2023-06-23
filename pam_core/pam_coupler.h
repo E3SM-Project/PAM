@@ -232,7 +232,7 @@ namespace pam {
     }
 
 
-    
+
     void add_tracer( std::string tracer_name , std::string tracer_desc , bool positive , bool adds_mass ) {
       int nz   = get_nz  ();
       int ny   = get_ny  ();
@@ -247,7 +247,7 @@ namespace pam {
     int get_num_tracers() const { return tracers.size(); }
 
 
-    
+
     std::vector<std::string> get_tracer_names() const {
       std::vector<std::string> ret;
       for (int i=0; i < tracers.size(); i++) { ret.push_back( tracers[i].name ); }
@@ -255,7 +255,7 @@ namespace pam {
     }
 
 
-    
+
     void get_tracer_info(std::string tracer_name , std::string &tracer_desc, bool &tracer_found ,
                          bool &positive , bool &adds_mass) const {
       std::vector<std::string> ret;
@@ -272,7 +272,7 @@ namespace pam {
     }
 
 
-    
+
     bool tracer_exists( std::string tracer_name ) const {
       for (int i=0; i < tracers.size(); i++) {
         if (tracer_name == tracers[i].name) return true;
@@ -311,6 +311,10 @@ namespace pam {
       dm.register_and_allocate<real>("ref_density_ice"  ,"Reference state column water ice density"  ,{nz,nens},{"z","nens"});
       dm.register_and_allocate<real>("ref_temp"         ,"Reference state column temperature"        ,{nz,nens},{"z","nens"});
 
+      dm.register_and_allocate<real>("uvel_stag"                     ,"staggered x-direction velocity"       ,{nz,ny,nx+1,nens},{"z","y","xp1","nens"});
+      dm.register_and_allocate<real>("vvel_stag"                     ,"staggered y-direction velocity"       ,{nz,ny+1,nx,nens},{"z","yp1","x","nens"});
+      dm.register_and_allocate<real>("wvel_stag"                     ,"staggered z-direction velocity"       ,{nz+1,ny,nx,nens},{"zp1","y","x","nens"});
+
       auto density_dry  = dm.get_collapsed<real>("density_dry"              );
       auto uvel         = dm.get_collapsed<real>("uvel"                     );
       auto vvel         = dm.get_collapsed<real>("vvel"                     );
@@ -333,8 +337,11 @@ namespace pam {
       auto ref_rho_l    = dm.get_collapsed<real>("ref_density_liq"          );
       auto ref_rho_i    = dm.get_collapsed<real>("ref_density_ice"          );
       auto ref_temp     = dm.get_collapsed<real>("ref_temp"                 );
+      auto uvel_stag     = dm.get_collapsed<real>("uvel_stag"                 );
+      auto vvel_stag     = dm.get_collapsed<real>("vvel_stag"                 );
+      auto wvel_stag     = dm.get_collapsed<real>("wvel_stag"                 );
 
-      parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<1>(nz*ny*nx*nens) , YAKL_LAMBDA (int i) {
+      parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<1>((nz+1)*(ny+1)*(nx+1)*nens) , YAKL_LAMBDA (int i) {
         if (i < density_dry.size()) density_dry(i) = 0;
         if (i < uvel       .size()) uvel       (i) = 0;
         if (i < vvel       .size()) vvel       (i) = 0;
@@ -350,6 +357,9 @@ namespace pam {
         if (i < gcm_temp   .size()) gcm_temp   (i) = 0;
         if (i < gcm_rho_v  .size()) gcm_rho_v  (i) = 0;
         if (i < hy_params  .size()) hy_params  (i) = 0;
+        if (i < uvel_stag  .size()) uvel_stag  (i) = 0;
+        if (i < vvel_stag  .size()) vvel_stag  (i) = 0;
+        if (i < wvel_stag  .size()) wvel_stag  (i) = 0;
       });
     }
 
@@ -458,5 +468,3 @@ namespace pam {
   };
 
 }
-
-

@@ -1,0 +1,49 @@
+---
+# Simulation time in number of physics time steps
+simSteps  : 70
+#70 * 20 = 1400
+
+# Number of cells to use
+crm_nx       : 100
+crm_ny       : 1
+crm_nz       : 100
+
+# Vertical height coordinates file
+#vcoords  : vcoords_equal_100_20km.nc
+vcoords: uniform
+
+# Data to initialize: doublevortex rb mrb
+initData : moistlargerisingbubble
+
+# Time steps
+dtphys: 20.0
+crm_per_phys: 80
+#0.16 * 125 = 20.0
+#0.25 * 80 = 20.0
+#Matt recommends 0.8 * min(dx,dz) / 400 for dycore time step, and 20s for physics time step
+#but he has a high-cfl time integrator
+#I am using ssprk3, which has a much smaller maximum stable time step...
+
+# Output filenames
+out_prefix  : test
+dycore_out_prefix  : test_dycore
+
+#Coupler output frequency in actual time
+out_freq : 100.0
+
+# CRM Output frequency in number of CRM time steps
+outSteps: 400
+statSteps: 1
+#100 / 0.16 = 625
+#100 / 0.25 = 400
+
+tstype: ssprk3
+
+# Number of ensembles
+nens : 1
+
+# Parallel decomposition
+inner_mpi : true
+nprocx : 1
+nprocy : 1
+

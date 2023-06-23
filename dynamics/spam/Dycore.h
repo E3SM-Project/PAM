@@ -55,6 +55,8 @@ public:
   int ierr;
   real etime = 0.0;
   uint prevstep = 0;
+  int num_out = 0;
+  int num_stat = 0;
 
   std::unique_ptr<TimeIntegrator>
   choose_time_integrator(const std::string &tstype) {
@@ -199,9 +201,12 @@ public:
     for (auto &diag : diagnostics) {
       diag->compute(0, constant_vars, prognostic_vars);
     }
-    stats.compute(prognostic_vars, constant_vars, 0);
-    io.outputInit(etime);
-    io.outputStats(stats);
+    if (params.stat_freq >=0.)
+    {stats.compute(prognostic_vars, constant_vars, 0);
+    io.outputStats(stats);}
+
+    if (params.out_freq >=0.)
+    {io.outputInit(etime);}
     debug_print("end initial io", par.masterproc);
 #endif
     prevstep = 1;
@@ -237,7 +242,7 @@ public:
 
       etime += params.dtcrm;
 #ifndef _NOIO
-      if ((nstep + prevstep) % params.Nout == 0) {
+        if (params.out_freq >= 0. && etime / params.out_freq >= num_out+1) {
         serial_print("dycore step " + std::to_string((nstep + prevstep)) +
                          " time " + std::to_string(etime),
                      par.masterproc);
@@ -245,12 +250,13 @@ public:
           diag->compute(etime, constant_vars, prognostic_vars);
         }
         io.output(etime);
-        io.outputStats(stats);
+        if (params.stat_freq >= 0.) {io.outputStats(stats);}
+        num_out++;
       }
 
-      if ((nstep + prevstep) % params.Nstat == 0) {
-        stats.compute(prognostic_vars, constant_vars,
-                      (nstep + prevstep) / params.Nstat);
+      if (params.stat_freq >= 0. && etime / params.stat_freq >= num_stat+1) {
+        stats.compute(prognostic_vars, constant_vars, etime / params.stat_freq);
+        num_stat++;
       }
 #endif
     }

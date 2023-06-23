@@ -1,0 +1,44 @@
+---
+# Simulation time in number of gcm time steps
+nsteps_gcm  : 9
+
+# Time steps
+dt_gcm: 100.0
+dt_crm_phys: 2.5
+crm_per_phys: 5
+#0.015625 * 5 = 0.078125 for explicit
+# 0.5*5 = 2.5 for semi-implicit
+
+# Number of cells to use
+crm_nx       : 100
+crm_ny       : 1
+#crm_nz       : 150
+
+# Vertical height coordinates file
+#vcoords  : vcoords_equal_100_20km.nc
+#vcoords: uniform
+vcoords  : '../pam-c/vcoords/vcoords_equal_150_1500.nc'
+
+# Data to initialize: doublevortex rb mrb
+initData : moistrisingbubble
+
+# Output filename
+out_prefix  : test
+dycore_out_prefix  : test_dycore
+
+#Output frequency in actual time
+out_freq : 100.0
+stat_freq : 0.5
+# 0.5 for semi-implicit FC or any MAN
+#0.015625 for explicit FC
+
+tstype: ssprk3
+#kgrk4 si ssprk3
+
+# Number of ensembles
+nens : 1
+
+# Parallel decomposition
+inner_mpi : false
+nprocx : 1
+nprocy : 1

@@ -52,6 +52,8 @@ inline void output( pam::PamCoupler const &coupler , std::string out_prefix , re
         });
         nc.write(zmid.createHostCopy(),"z",{"z"});
 
+//ADD XP1, YP1 and ZP1 HERE!
+
         // Create time variable
         nc.write1(0._fp,"t",0,"t");
       } else {
@@ -95,6 +97,8 @@ inline void output( pam::PamCoupler const &coupler , std::string out_prefix , re
         nc.write1(data,tracer_names[tr],{"z","y","x"},ulIndex,"t");
       }
 
+//WRITE OUT OTHER VARIABLES!
+
       // Close the file
       nc.close();
 
@@ -105,5 +109,3 @@ inline void output( pam::PamCoupler const &coupler , std::string out_prefix , re
   }
   MPI_Barrier(MPI_COMM_WORLD);
 }
-
-

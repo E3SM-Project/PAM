@@ -1,0 +1,47 @@
+---
+# Simulation time in seconds
+simTime  : 1000
+
+# Number of cells to use
+crm_nx       : 100
+crm_ny       : 1
+
+# Vertical height coordinates file
+vcoords  : vcoords_equal_100_20km.nc
+
+# Lengths of the dimensions in meters
+xlen     : 20000
+ylen     : 10000
+
+bc_x   : periodic
+bc_y   : periodic
+bc_z   : wall
+
+weno_scalars : true
+
+weno_winds   : true
+
+# 200km x 100km x 20km  for supercell
+# 20km  x 20km  x 10km  for thermal
+# Data to initialize: thermal, supercell
+initData : thermal
+
+# Output filename
+out_prefix  : test
+
+# CRM physics time step
+dtphys: 0.
+
+# Output frequency in seconds
+out_freq: 0.
+
+# Number of ensembles
+nens : 1
+
+# Balance initial density to avoid initial acoustics
+balance_initial_density: false
+
+# Whether to use the coupler's hydrostasis
+use_coupler_hydrostasis: true
+
+
