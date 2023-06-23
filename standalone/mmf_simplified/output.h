@@ -55,9 +55,9 @@ inline void output( pam::PamCoupler const &coupler , std::string out_prefix , re
         auto zint = dm.get<real const,2>("vertical_interface_height");
         auto dz = dm.get<real const,2>("vertical_cell_dz");
         auto zmid = dm.get<real const,2>("vertical_midpoint_height");
-        nc.write(zmid.createHostCopy(),{"z","nens"}, {"z","nens"});
-        nc.write(dz.createHostCopy(),{"z","nens"}, {"z","nens"});
-        nc.write(zint.createHostCopy(),{"zp1","nens"}, {"zp1","nens"});
+        nc.write(zmid.createHostCopy(),"z", {"z","nens"});
+        nc.write(dz.createHostCopy(),"dz", {"z","nens"});
+        nc.write(zint.createHostCopy(),"zp1", {"zp1","nens"});
 
         // Create time variable
         nc.write1(0._fp,"t",0,"t");

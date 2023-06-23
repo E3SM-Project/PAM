@@ -355,6 +355,7 @@ public:
   real YAKL_INLINE get_pres(int k, int ks, int n) const {};
   real YAKL_INLINE get_ref_dens(int k, int ks, int n) const {};
 
+<<<<<<< HEAD
   void pamc_debug_chk(int id, PamCoupler &coupler,
                                          const FieldSet<nprognostic> &prog_vars,
                                          const FieldSet<nprognostic> &prev_vars);
@@ -366,6 +367,9 @@ public:
                                          const FieldSet<nprognostic> &prog_vars,
                                          const FieldSet<nconstant> &const_vars, bool couple_wind_exact_inverse);
   void convert_dynamics_to_coupler_staggered_wind(PamCoupler &coupler,
+=======
+  void convert_dynamics_to_coupler_state(PamCoupler &coupler,
+>>>>>>> 365678fbd6faad0cd7f317348bbe2114d270a7f2
                                          const FieldSet<nprognostic> &prog_vars,
                                          const FieldSet<nconstant> &const_vars);
 
@@ -382,6 +386,7 @@ public:
 
 //THIS IS ANELASTIC SPECIFIC FOR NOW, IDEALLY IT SHOULD MADE TO WORK FOR EITHER AN OR COMPRESSIBLE
 template <class T>
+<<<<<<< HEAD
 void VariableSetBase<T>::pamc_debug_chk(int id,
                                         PamCoupler &coupler,
                                         const FieldSet<nprognostic> &prog_vars,
@@ -430,6 +435,9 @@ void VariableSetBase<T>::pamc_debug_chk(int id,
 
 template <class T>
 void VariableSetBase<T>::convert_dynamics_to_coupler_densities(
+=======
+void VariableSetBase<T>::convert_dynamics_to_coupler_state(
+>>>>>>> 365678fbd6faad0cd7f317348bbe2114d270a7f2
     PamCoupler &coupler, const FieldSet<nprognostic> &prog_vars,
     const FieldSet<nconstant> &const_vars) {
 
