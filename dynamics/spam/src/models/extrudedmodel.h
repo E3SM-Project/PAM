@@ -200,6 +200,7 @@ struct AnelasticPressureSolver {
   yakl::RealFFT1D<real> fftp_y;
 
   int nxf, nyf;
+  int kfix;
 
   real4d tri_l;
   real4d tri_d;
@@ -225,6 +226,7 @@ struct AnelasticPressureSolver {
 
     this->nxf = nx + 2 - nx % 2;
     this->nyf = ndims > 1 ? ny + 2 - ny % 2 : ny;
+    this->kfix = pni / 2;
 
     p_transform = real4d("p transform", pni, nyf, nxf, nens);
     yakl::memset(p_transform, 0);
@@ -316,6 +318,16 @@ struct AnelasticPressureSolver {
           } else {
             tri_d(k, j, i, n) += -(h_kp1 + h_k);
           }
+
+          // the tridiagonal system that we need to solve is formally singular
+          // because of Neumann conditons on both boundaries. To avoid issues
+          // with direct solve in the vertical we fix the horizontal mean of
+          // pressure at one vertical level
+          if (ik == 0 && jk == 0 && k == this->kfix) {
+            tri_d(k, j, i, n) = 1;
+            tri_u(k, j, i, n) = 0;
+            tri_l(k, j, i, n) = 0;
+          }
         });
   }
 };
@@ -360,13 +372,6 @@ public:
 #endif
   }
 
-  void pamc_debug_chk(int id,
-                      PamCoupler &coupler,
-                      const FieldSet<nprognostic> &prog_vars,
-                      const FieldSet<nprognostic> &prev_vars) {
-    equations->varset.pamc_debug_chk(id, coupler, prog_vars, prev_vars);
-  }
-
   void
   convert_dynamics_to_coupler_state(PamCoupler &coupler,
                                     const FieldSet<nprognostic> &prog_vars,
@@ -380,6 +385,11 @@ public:
                                          FieldSet<nconstant> &const_vars) {
     equations->varset.convert_coupler_to_dynamics_state(coupler, prog_vars,
                                                         const_vars);
+
+    prog_vars.exchange();
+    const_vars.exchange();
+    auxiliary_vars.exchange();
+
 #if defined(_AN) || defined(_MAN)
     if (equations->varset.couple_wind) {
       project_to_anelastic(const_vars, prog_vars, auxiliary_vars);
@@ -2498,6 +2508,7 @@ public:
     const int dks = dual_topology.ks;
     const int nxf = pressure_solver.nxf;
     const int nyf = pressure_solver.nyf;
+    const int kfix = pressure_solver.kfix;
 
     const auto &refstate = this->equations->reference_state;
     const auto &rho_pi = refstate.rho_pi.data;
@@ -2577,6 +2588,12 @@ public:
         "Anelastic tridiagonal solve",
         Bounds<3>(nyf, nxf, primal_topology.nens),
         YAKL_LAMBDA(int j, int i, int n) {
+          // set the horizontal mean of pressure to zero at k = kfix
+          int ik = i / 2;
+          int jk = j / 2;
+          if (ik == 0 && jk == 0) { 
+            p_transform(kfix, j, i, n) = 0; 
+          }
           int nz = primal_topology.ni;
           tri_c(0, j, i, n) = tri_u(0, j, i, n) / tri_d(0, j, i, n);
           for (int k = 1; k < nz - 1; ++k) {
