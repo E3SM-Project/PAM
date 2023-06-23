@@ -355,10 +355,6 @@ public:
   real YAKL_INLINE get_pres(int k, int ks, int n) const {};
   real YAKL_INLINE get_ref_dens(int k, int ks, int n) const {};
 
-  void pamc_debug_chk(int id, PamCoupler &coupler,
-                                         const FieldSet<nprognostic> &prog_vars,
-                                         const FieldSet<nprognostic> &prev_vars);
-
   void convert_dynamics_to_coupler_state(PamCoupler &coupler,
                                          const FieldSet<nprognostic> &prog_vars,
                                          const FieldSet<nconstant> &const_vars);
@@ -366,52 +362,6 @@ public:
                                          FieldSet<nprognostic> &prog_vars,
                                          const FieldSet<nconstant> &const_vars);
 };
-
-template <class T>
-void VariableSetBase<T>::pamc_debug_chk(int id,
-                                        PamCoupler &coupler,
-                                        const FieldSet<nprognostic> &prog_vars,
-                                        const FieldSet<nprognostic> &prev_vars)
-{
-  const auto &primal_topology = primal_geometry.topology;
-  const auto &dual_topology = dual_geometry.topology;
-  int dis = dual_topology.is;
-  int djs = dual_topology.js;
-  int dks = dual_topology.ks;
-  int pis = primal_topology.is;
-  int pjs = primal_topology.js;
-  int pks = primal_topology.ks;
-  // const auto densvar = prog_vars.fields_arr[DENSVAR].data;
-  parallel_for("pamc_debug_chk",SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y, dual_topology.n_cells_x, dual_topology.nens), YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-
-    const auto densvar1 = prev_vars.fields_arr[DENSVAR].data;
-    real entr1 = get_entropic_var( densvar1, k, j, i, dks, djs, dis, n);
-    real pres1 = get_pres(         densvar1, k, j, i, dks, djs, dis, n);
-    real qv1   = get_qv(           densvar1, k, j, i, dks, djs, dis, n);
-    real ql1   = get_ql(           densvar1, k, j, i, dks, djs, dis, n);
-    real qi1   = get_qi(           densvar1, k, j, i, dks, djs, dis, n);
-    real qd1   = 1.0_fp - qv1 - ql1 - qi1;
-    real temp1 = thermo.compute_T_from_p(pres1, entr1, qd1, qv1, ql1, qi1);
-
-    const auto densvar2 = prog_vars.fields_arr[DENSVAR].data;
-    real entr2 = get_entropic_var( densvar2, k, j, i, dks, djs, dis, n);
-    real pres2 = get_pres(         densvar2, k, j, i, dks, djs, dis, n);
-    real qv2   = get_qv(           densvar2, k, j, i, dks, djs, dis, n);
-    real ql2   = get_ql(           densvar2, k, j, i, dks, djs, dis, n);
-    real qi2   = get_qi(           densvar2, k, j, i, dks, djs, dis, n);
-    real qd2   = 1.0_fp - qv2 - ql2 - qi2;
-    real temp2 = thermo.compute_T_from_p(pres2, entr2, qd2, qv2, ql2, qi2);
-
-    if ( isnan(temp2) || isnan(qv2) || isnan(ql2) || isnan(qi2) || isnan(qd2) || temp2<0 || entr2<0 ) {
-      printf("pamc_debug_chk - id:%d k:%d j:%d i:%d n:%d en_var :: %g  =>  %g \n",id,k,j,i,n,entr1,entr2);
-      printf("pamc_debug_chk - id:%d k:%d j:%d i:%d n:%d temp   :: %g  =>  %g \n",id,k,j,i,n,temp1,temp2);
-      printf("pamc_debug_chk - id:%d k:%d j:%d i:%d n:%d qd     :: %g  =>  %g \n",id,k,j,i,n,qd1,qd2);
-      printf("pamc_debug_chk - id:%d k:%d j:%d i:%d n:%d qv     :: %g  =>  %g \n",id,k,j,i,n,qv1,qv2);
-      printf("pamc_debug_chk - id:%d k:%d j:%d i:%d n:%d ql     :: %g  =>  %g \n",id,k,j,i,n,ql1,ql2);
-      printf("pamc_debug_chk - id:%d k:%d j:%d i:%d n:%d qi     :: %g  =>  %g \n",id,k,j,i,n,qi1,qi2);
-    }
-  });
-}
 
 template <class T>
 void VariableSetBase<T>::convert_dynamics_to_coupler_state(
