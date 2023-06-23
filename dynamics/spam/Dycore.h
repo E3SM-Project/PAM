@@ -197,7 +197,7 @@ public:
     // TODO: add logic here to only include this for standlone configurations
     // // convert dynamics state to Coupler state
     if (testcase->set_coupler_state)
-     { tendencies.convert_dynamics_to_coupler_state(coupler, prognostic_vars, constant_vars); }
+     { tendencies.convert_dynamics_to_coupler_state(coupler, prognostic_vars, constant_vars, params.couple_wind, params.couple_wind_exact_inverse); }
 
     // Output the initial model state
 #ifndef _NOIO
@@ -227,7 +227,7 @@ public:
 
     // convert Coupler state to dynamics state
     tendencies.convert_coupler_to_dynamics_state(coupler, prognostic_vars,
-                                                 auxiliary_vars, constant_vars);
+                                                 auxiliary_vars, constant_vars, params.couple_wind, params.couple_wind_exact_inverse);
 
     // tendencies.pamc_debug_chk(0, coupler, prognostic_vars, constant_vars);
 
@@ -286,7 +286,7 @@ public:
 
     // convert dynamics state to Coupler state
     tendencies.convert_dynamics_to_coupler_state(coupler, prognostic_vars,
-                                                 constant_vars);
+                                                 constant_vars, params.couple_wind, params.couple_wind_exact_inverse);
 
     // ADD COUPLER DYCORE FUNCTIONS HERE AS WELL
 

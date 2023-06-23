@@ -11,15 +11,15 @@
 #include "thermo.h"
 using pam::PamCoupler;
 
-#ifdef PAM_STANDALONE
+//#ifdef PAM_STANDALONE
   // solve a system to exactly invert the velocity averaging done
   // during conversion to coupler state when coupling winds
-  constexpr bool couple_wind_exact_inverse = false;
-#else
+//  constexpr bool couple_wind_exact_inverse = false;
+//#else
   // disable exact inversion of velocity averaging
   // for more flexible MMF configuration
-  constexpr bool couple_wind_exact_inverse = false;
-#endif
+//  constexpr bool couple_wind_exact_inverse = false;
+//#endif
 
 struct VS_SWE {
   static constexpr bool couple = false;
@@ -156,7 +156,7 @@ public:
       dens_prognostic; // Whether each density is prognostic
   SArray<int, 1, ndensity_active>
       active_dens_ids; // indices of active densities
-  bool couple_wind;
+  //bool couple_wind;
 
   int dm_id_vap = std::numeric_limits<int>::min();
   int dm_id_liq = std::numeric_limits<int>::min();
@@ -196,7 +196,7 @@ public:
                          const Geometry<Twisted> &dual_geom,
                          bool verbose=false) {
 
-    if (T::couple && couple_wind_exact_inverse) {
+    if (T::couple && params.couple_wind_exact_inverse) {
       if (primal_geom.topology.n_cells_x % 2 == 0) {
         throw std::runtime_error(
             "The number of crm cells in the horizontal "
@@ -210,8 +210,8 @@ public:
 
     // If more physics parameterizations are added this logic might need to
     // change
-    varset.couple_wind = !(coupler.get_option<std::string>("sgs") == "none") ||
-                         !(coupler.option_exists("standalone_input_file"));
+    //varset.couple_wind = !(coupler.get_option<std::string>("sgs") == "none") ||
+    //                     !(coupler.option_exists("standalone_input_file"));
 
     for (int l = ndensity_dycore_prognostic; l < ndensity_nophysics; l++) {
       varset.dens_pos(l) =
@@ -359,14 +359,28 @@ public:
                                          const FieldSet<nprognostic> &prog_vars,
                                          const FieldSet<nprognostic> &prev_vars);
 
-  void convert_dynamics_to_coupler_state(PamCoupler &coupler,
+  void convert_dynamics_to_coupler_densities(PamCoupler &coupler,
                                          const FieldSet<nprognostic> &prog_vars,
                                          const FieldSet<nconstant> &const_vars);
-  void convert_coupler_to_dynamics_state(PamCoupler &coupler,
+  void convert_dynamics_to_coupler_wind(PamCoupler &coupler,
+                                         const FieldSet<nprognostic> &prog_vars,
+                                         const FieldSet<nconstant> &const_vars, bool couple_wind_exact_inverse);
+  void convert_dynamics_to_coupler_staggered_wind(PamCoupler &coupler,
+                                         const FieldSet<nprognostic> &prog_vars,
+                                         const FieldSet<nconstant> &const_vars);
+
+  void convert_coupler_to_dynamics_densities(PamCoupler &coupler,
+                                         FieldSet<nprognostic> &prog_vars,
+                                         const FieldSet<nconstant> &const_vars);
+  void convert_coupler_to_dynamics_wind(PamCoupler &coupler,
+                                         FieldSet<nprognostic> &prog_vars,
+                                         const FieldSet<nconstant> &const_vars, bool couple_wind_exact_inverse);
+  void convert_coupler_to_dynamics_staggered_wind(PamCoupler &coupler,
                                          FieldSet<nprognostic> &prog_vars,
                                          const FieldSet<nconstant> &const_vars);
 };
 
+//THIS IS ANELASTIC SPECIFIC FOR NOW, IDEALLY IT SHOULD MADE TO WORK FOR EITHER AN OR COMPRESSIBLE
 template <class T>
 void VariableSetBase<T>::pamc_debug_chk(int id,
                                         PamCoupler &coupler,
@@ -413,31 +427,23 @@ void VariableSetBase<T>::pamc_debug_chk(int id,
   });
 }
 
+
 template <class T>
-void VariableSetBase<T>::convert_dynamics_to_coupler_state(
+void VariableSetBase<T>::convert_dynamics_to_coupler_densities(
     PamCoupler &coupler, const FieldSet<nprognostic> &prog_vars,
     const FieldSet<nconstant> &const_vars) {
 
-  using yakl::ScalarLiveOut;
-
-  if constexpr (T::couple) {
-    const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
 
     int dis = dual_topology.is;
     int djs = dual_topology.js;
     int dks = dual_topology.ks;
 
-    int pis = primal_topology.is;
-    int pjs = primal_topology.js;
-    int pks = primal_topology.ks;
-
     auto &dm = coupler.get_data_manager_device_readwrite();
 
+  if constexpr (T::couple) {
+
     real4d dm_dens_dry = dm.get<real, 4>("density_dry");
-    real4d dm_uvel = dm.get<real, 4>("uvel");
-    real4d dm_vvel = dm.get<real, 4>("vvel");
-    real4d dm_wvel = dm.get<real, 4>("wvel");
     real4d dm_temp = dm.get<real, 4>("temp");
 
     pam::MultipleFields<ntracers_physics, real4d> dm_tracers;
@@ -445,63 +451,6 @@ void VariableSetBase<T>::convert_dynamics_to_coupler_state(
       auto trac = dm.get<real, 4>(dens_name[tr + ndensity_nophysics]);
       dm_tracers.add_field(trac);
     }
-
-    if (couple_wind) {
-      parallel_for(
-          "Dynamics to Coupler State winds",
-          SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-                          dual_topology.n_cells_x, dual_topology.nens),
-          YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-            // IN 3D THIS IS MORE COMPLICATED
-            real uvel_l = prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs,
-                                                          i + pis, n) /
-                          primal_geometry.get_area_10entity(0, k + pks, j + pjs,
-                                                            i + pis, n);
-            real uvel_r = prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs,
-                                                          i + pis + 1, n) /
-                          primal_geometry.get_area_10entity(0, k + pks, j + pjs,
-                                                            i + pis + 1, n);
-            real wvel_mid;
-            if (k == 0) {
-              wvel_mid = prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs,
-                                                         i + pis, n) /
-                         primal_geometry.get_area_01entity(k + pks, j + pjs,
-                                                           i + pis, n);
-            } else if (k == (dual_topology.nl)) {
-              wvel_mid = prog_vars.fields_arr[WVAR].data(0, k + pks - 1,
-                                                         j + pjs, i + pis, n) /
-                         primal_geometry.get_area_01entity(k + pks - 1, j + pjs,
-                                                           i + pis, n);
-            } else {
-
-              real e_u = primal_geometry.get_area_01entity(k + pks, j + pjs,
-                                                           i + pis, n);
-              real e_d = primal_geometry.get_area_01entity(k - 1 + pks, j + pjs,
-                                                           i + pis, n);
-
-              real wvel_u = prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs,
-                                                            i + pis, n) /
-                            e_u;
-              real wvel_d = prog_vars.fields_arr[WVAR].data(
-                                0, k + pks - 1, j + pjs, i + pis, n) /
-                            e_d;
-
-              wvel_mid = wvel_d + (wvel_u - wvel_d) * e_d / (e_u + e_d);
-            }
-            // EVENTUALLY FIX THIS FOR 3D...
-            real vvel = 0.0_fp;
-
-            dm_uvel(k, j, i, n) = (uvel_l + uvel_r) * 0.5_fp;
-            dm_vvel(k, j, i, n) = vvel;
-            dm_wvel(k, j, i, n) = wvel_mid;
-          });
-    }
-
-    ScalarLiveOut<bool> nan_found(false);
-    ScalarLiveOut<int> nan_i(-1);
-    ScalarLiveOut<int> nan_j(-1);
-    ScalarLiveOut<int> nan_k(-1);
-    ScalarLiveOut<int> nan_n(-1);
 
     parallel_for(
         "Dynamics to Coupler State densities",
@@ -566,32 +515,119 @@ void VariableSetBase<T>::convert_dynamics_to_coupler_state(
 
         });
 
-  }
+}
 }
 
 template <class T>
-void VariableSetBase<T>::convert_coupler_to_dynamics_state(
+void VariableSetBase<T>::convert_dynamics_to_coupler_wind(
+    PamCoupler &coupler, const FieldSet<nprognostic> &prog_vars,
+    const FieldSet<nconstant> &const_vars, bool couple_wind_exact_inverse) {
+
+    const auto &primal_topology = primal_geometry.topology;
+    const auto &dual_topology = dual_geometry.topology;
+
+    int pis = primal_topology.is;
+    int pjs = primal_topology.js;
+    int pks = primal_topology.ks;
+
+    auto &dm = coupler.get_data_manager_device_readwrite();
+
+  if constexpr (T::couple) {
+
+    real4d dm_uvel = dm.get<real, 4>("uvel");
+    real4d dm_vvel = dm.get<real, 4>("vvel");
+    real4d dm_wvel = dm.get<real, 4>("wvel");
+
+      parallel_for(
+          "Dynamics to Coupler State winds",
+          SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                          dual_topology.n_cells_x, dual_topology.nens),
+          YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+            // IN 3D THIS IS MORE COMPLICATED
+            real uvel_l = prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs,
+                                                          i + pis, n) /
+                          primal_geometry.get_area_10entity(0, k + pks, j + pjs,
+                                                            i + pis, n);
+            real uvel_r = prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs,
+                                                          i + pis + 1, n) /
+                          primal_geometry.get_area_10entity(0, k + pks, j + pjs,
+                                                            i + pis + 1, n);
+            real wvel_mid;
+            if (k == 0) {
+              wvel_mid = prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs,
+                                                         i + pis, n) /
+                         primal_geometry.get_area_01entity(k + pks, j + pjs,
+                                                           i + pis, n);
+            } else if (k == (dual_topology.nl)) {
+              wvel_mid = prog_vars.fields_arr[WVAR].data(0, k + pks - 1,
+                                                         j + pjs, i + pis, n) /
+                         primal_geometry.get_area_01entity(k + pks - 1, j + pjs,
+                                                           i + pis, n);
+            } else {
+
+              real e_u = primal_geometry.get_area_01entity(k + pks, j + pjs,
+                                                           i + pis, n);
+              real e_d = primal_geometry.get_area_01entity(k - 1 + pks, j + pjs,
+                                                           i + pis, n);
+
+              real wvel_u = prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs,
+                                                            i + pis, n) /
+                            e_u;
+              real wvel_d = prog_vars.fields_arr[WVAR].data(
+                                0, k + pks - 1, j + pjs, i + pis, n) /
+                            e_d;
+
+              wvel_mid = wvel_d + (wvel_u - wvel_d) * e_d / (e_u + e_d);
+            }
+            // EVENTUALLY FIX THIS FOR 3D...
+            real vvel = 0.0_fp;
+
+            dm_uvel(k, j, i, n) = (uvel_l + uvel_r) * 0.5_fp;
+            dm_vvel(k, j, i, n) = vvel;
+            dm_wvel(k, j, i, n) = wvel_mid;
+          });
+}
+}
+
+
+template <class T>
+void VariableSetBase<T>::convert_dynamics_to_coupler_staggered_wind(
+    PamCoupler &coupler, const FieldSet<nprognostic> &prog_vars,
+    const FieldSet<nconstant> &const_vars) {
+
+
+    const auto &primal_topology = primal_geometry.topology;
+
+    int pis = primal_topology.is;
+    int pjs = primal_topology.js;
+    int pks = primal_topology.ks;
+
+    auto &dm = coupler.get_data_manager_device_readwrite();
+  if constexpr (T::couple) {
+
+//ADD THIS
+}
+
+}
+
+
+
+template <class T>
+void VariableSetBase<T>::convert_coupler_to_dynamics_densities(
     PamCoupler &coupler, FieldSet<nprognostic> &prog_vars,
     const FieldSet<nconstant> &const_vars) {
 
   if constexpr (T::couple) {
-    const auto &primal_topology = primal_geometry.topology;
+
     const auto &dual_topology = dual_geometry.topology;
 
     int dis = dual_topology.is;
     int djs = dual_topology.js;
     int dks = dual_topology.ks;
 
-    int pis = primal_topology.is;
-    int pjs = primal_topology.js;
-    int pks = primal_topology.ks;
-
     auto &dm = coupler.get_data_manager_device_readonly();
 
     auto dm_dens_dry = dm.get<real const, 4>("density_dry");
-    auto dm_uvel = dm.get<real const, 4>("uvel");
-    auto dm_vvel = dm.get<real const, 4>("vvel");
-    auto dm_wvel = dm.get<real const, 4>("wvel");
     auto dm_temp = dm.get<real const, 4>("temp");
 
     pam::MultipleFields<ntracers_physics, realConst4d> dm_tracers;
@@ -678,8 +714,29 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_state(
                 dual_geometry.get_area_n1entity(k + dks, j + djs, i + dis, n);
           }
         });
+  }
+}
 
-    if (couple_wind) {
+
+template <class T>
+void VariableSetBase<T>::convert_coupler_to_dynamics_wind(
+    PamCoupler &coupler, FieldSet<nprognostic> &prog_vars,
+    const FieldSet<nconstant> &const_vars, bool couple_wind_exact_inverse) {
+
+  if constexpr (T::couple) {
+
+    const auto &primal_topology = primal_geometry.topology;
+
+    int pis = primal_topology.is;
+    int pjs = primal_topology.js;
+    int pks = primal_topology.ks;
+
+    auto &dm = coupler.get_data_manager_device_readonly();
+
+    auto dm_uvel = dm.get<real const, 4>("uvel");
+    auto dm_vvel = dm.get<real const, 4>("vvel");
+    auto dm_wvel = dm.get<real const, 4>("wvel");
+
       if (couple_wind_exact_inverse) {
         parallel_for(
             "Coupler to Dynamics State Primal U",
@@ -756,10 +813,36 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_state(
                   primal_geometry.get_area_01entity(k + pks, j + pjs, i + pis,
                                                     n);
             });
-      }
-    }
   }
 }
+}
+
+
+template <class T>
+void VariableSetBase<T>::convert_coupler_to_dynamics_staggered_wind(
+    PamCoupler &coupler, FieldSet<nprognostic> &prog_vars,
+    const FieldSet<nconstant> &const_vars) {
+
+  if constexpr (T::couple) {
+    const auto &primal_topology = primal_geometry.topology;
+
+    int pis = primal_topology.is;
+    int pjs = primal_topology.js;
+    int pks = primal_topology.ks;
+
+    auto &dm = coupler.get_data_manager_device_readonly();
+
+    auto dm_uvel = dm.get<real const, 4>("uvel");
+    auto dm_vvel = dm.get<real const, 4>("vvel");
+    auto dm_wvel = dm.get<real const, 4>("wvel");
+
+//ADD THIS
+
+      }
+
+
+  }
+
 
 #ifdef _SWE
 template <>
