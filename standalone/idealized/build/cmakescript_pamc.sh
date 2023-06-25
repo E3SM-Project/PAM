@@ -14,7 +14,7 @@ cmake      \
   -DPAM_LINK_FLAGS="${PAM_LINK_FLAGS}"                            \
   -DYAKL_ARCH="${YAKL_ARCH}"                                      \
   -DPAM_DYCORE="spam++"                                           \
-  -DPAM_MICRO="none"                                              \
+  -DPAM_MICRO="kessler"                                              \
   -DPAM_SGS="none"                                                \
   -DPAM_RAD="none"                                                \
   -DPAMC_MODEL="extrudedmodel"                                    \

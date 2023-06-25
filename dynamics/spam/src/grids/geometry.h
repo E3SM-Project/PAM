@@ -233,6 +233,9 @@ public:
   void set_profile_00form_values(F initial_value_function, Profile &prof,
                                  int ndof) const;
   template <class F>
+  void set_profile_10form_values(F initial_value_function, Profile &prof,
+                                 int ndof) const;
+  template <class F>
   void set_profile_n1form_values(F initial_value_function, Profile &prof,
                                  int ndof) const;
 
@@ -1108,6 +1111,81 @@ void Geometry<T>::set_profile_00form_values(F initial_value_function,
         get_00form_quad_pts_wts(k, j, i, n, quad_pts_phys, quad_wts_phys);
         prof.data(ndof, k + ks, n) =
             initial_value_function(quad_pts_phys(0).z) * quad_wts_phys(0);
+      });
+}
+
+template <class T>
+template <class F>
+void Geometry<T>::set_profile_10form_values(F initial_value_function,
+                                            Profile &prof, int ndof) const {
+  int ks = this->topology.ks;
+
+  int yedge_offset = std::numeric_limits<int>::min();
+  int xedge_offset = std::numeric_limits<int>::min();
+
+  if (ndims > 1) {
+    // twisted edges
+    yedge_offset = 0;
+    xedge_offset = prof.ndofs;
+
+    // compared to twisted edges in 2D, straight edges are stored x/y (V, -U)
+    // instead of y/x
+    if (straight) {
+      yedge_offset = prof.ndofs;
+      xedge_offset = 0;
+    }
+  } else {
+    xedge_offset = 0;
+  }
+
+  parallel_for(
+      "Set 10 form values",
+      SimpleBounds<2>(this->topology.ni, this->topology.nens),
+      YAKL_CLASS_LAMBDA(int k, int n) {
+        int i = 0;
+        int j = 0;
+        SArray<CoordsXYZ, 1, ic_quad_pts_x> x_edge_quad_pts_phys;
+        SArray<real, 1, ic_quad_pts_x> x_edge_quad_wts_phys;
+        SArray<VecXYZ, 1, ic_quad_pts_x> x_edge_line_vec;
+
+        SArray<CoordsXYZ, 1, ic_quad_pts_y> y_edge_quad_pts_phys;
+        SArray<real, 1, ic_quad_pts_y> y_edge_quad_wts_phys;
+        SArray<VecXYZ, 1, ic_quad_pts_y> y_edge_line_vec;
+
+        get_10form_quad_pts_wts(k, j, i, n, x_edge_quad_pts_phys,
+                                x_edge_quad_wts_phys, y_edge_quad_pts_phys,
+                                y_edge_quad_wts_phys);
+        get_10edge_tangents(k, j, i, n, x_edge_line_vec, y_edge_line_vec);
+
+        // x edge
+        real x_tempval = 0.0_fp;
+        for (int nqx = 0; nqx < ic_quad_pts_x; nqx++) {
+          auto initval = initial_value_function(x_edge_quad_pts_phys(nqx).x,
+                                                x_edge_quad_pts_phys(nqx).y,
+                                                x_edge_quad_pts_phys(nqx).z);
+
+          x_tempval += (initval.u * x_edge_line_vec(nqx).u +
+                        initval.v * x_edge_line_vec(nqx).v +
+                        initval.w * x_edge_line_vec(nqx).w) *
+                       x_edge_quad_wts_phys(nqx);
+        }
+        prof.data(ndof + xedge_offset, k + ks, n) = x_tempval;
+
+        // y edge
+        if (ndims > 1) {
+          real y_tempval = 0.0_fp;
+          for (int nqy = 0; nqy < ic_quad_pts_y; nqy++) {
+            auto initval = initial_value_function(y_edge_quad_pts_phys(nqy).x,
+                                                  y_edge_quad_pts_phys(nqy).y,
+                                                  y_edge_quad_pts_phys(nqy).z);
+
+            y_tempval += (initval.u * y_edge_line_vec(nqy).u +
+                          initval.v * y_edge_line_vec(nqy).v +
+                          initval.w * y_edge_line_vec(nqy).w) *
+                         y_edge_quad_wts_phys(nqy);
+          }
+          prof.data(ndof + yedge_offset, k + ks, n) = y_tempval;
+        }
       });
 }
 

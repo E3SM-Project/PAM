@@ -13,7 +13,7 @@ using pam::PamCoupler;
 
 // solve a system to exactly invert the velocity averaging done
 // during conversion to coupler state when coupling winds
-constexpr bool couple_wind_exact_inverse = true;
+constexpr bool couple_wind_exact_inverse = false;
 
 struct VS_SWE {
   static constexpr bool couple = false;
@@ -339,6 +339,16 @@ public:
   real YAKL_INLINE _water_dens(const real3d &densvar, int k, int ks,
                                int n) const {};
 
+  real YAKL_INLINE get_temperature(const real5d &densvar, int k, int j, int i,
+                                   int ks, int js, int is, int n) const {};
+  real YAKL_INLINE get_pressure(const real5d &densvar, int k, int j, int i,
+                                int ks, int js, int is, int n) const {};
+  real YAKL_INLINE get_pressure(const real3d &densvar, int k, int ks,
+                                int n) const {};
+  real YAKL_INLINE compute_entropic_var(int k, int ks, int n, real alpha,
+                                        real temp, real qd, real qv, real ql,
+                                        real qi) const {};
+
   void convert_dynamics_to_coupler_state(PamCoupler &coupler,
                                          const FieldSet<nprognostic> &prog_vars,
                                          const FieldSet<nconstant> &const_vars);
@@ -434,34 +444,12 @@ void VariableSetBase<T>::convert_dynamics_to_coupler_state(
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-          real qd = get_qd(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks,
-                           djs, dis, n);
-          real qv = get_qv(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks,
-                           djs, dis, n);
-          real alpha = get_alpha(prog_vars.fields_arr[DENSVAR].data, k, j, i,
-                                 dks, djs, dis, n);
-          real entropic_var = get_entropic_var(
-              prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
-
-          real ql = 0.0_fp;
-          if (liquid_found) {
-            ql = get_ql(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs,
-                        dis, n);
-          }
-
-          real qi = 0.0_fp;
-          if (ice_found) {
-            qi = get_qi(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs,
-                        dis, n);
-          }
-
-          real temp = thermo.compute_T(alpha, entropic_var, qd, qv, ql, qi);
-
           dm_dens_dry(k, j, i, n) =
               get_dry_density(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks,
                               djs, dis, n) /
               dual_geometry.get_area_n1entity(k + dks, j + djs, i + dis, n);
-          dm_temp(k, j, i, n) = temp;
+          dm_temp(k, j, i, n) = get_temperature(
+              prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
           for (int tr = ndensity_nophysics; tr < ndensity_prognostic; tr++) {
             dm_tracers(tr - ndensity_nophysics, k, j, i, n) =
                 prog_vars.fields_arr[DENSVAR].data(tr, k + dks, j + djs,
@@ -529,7 +517,7 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_state(
 
           real alpha = 1.0_fp / dens;
           real entropic_var =
-              thermo.compute_entropic_var_from_T(alpha, temp, qd, qv, ql, qi);
+              compute_entropic_var(k, dks, n, alpha, temp, qd, qv, ql, qi);
 
 #if !defined _AN && !defined _MAN
           set_density(dens * dual_geometry.get_area_n1entity(k + dks, j + djs,
@@ -753,6 +741,53 @@ real YAKL_INLINE VariableSetBase<VS_CE>::get_alpha(const real3d &densvar, int k,
   return dual_geometry.get_area_n1entity(k + ks, 0, 0, n) /
          densvar(dens_id_mass, k + ks, n);
 }
+template <>
+real YAKL_INLINE VariableSetBase<VS_CE>::get_temperature(const real5d &densvar,
+                                                         int k, int j, int i,
+                                                         int ks, int js, int is,
+                                                         int n) const {
+  real entropic_var = get_entropic_var(densvar, k, j, i, ks, js, is, n);
+  real alpha = get_alpha(densvar, k, j, i, ks, js, is, n);
+  real qv = get_qv(densvar, k, j, i, ks, js, is, n);
+  real ql = 0.0_fp;
+  if (liquid_found) {
+    ql = get_ql(densvar, k, j, i, ks, js, is, n);
+  }
+
+  real qi = 0.0_fp;
+  if (ice_found) {
+    qi = get_qi(densvar, k, j, i, ks, js, is, n);
+  }
+  real qd = 1 - qv - ql - qi;
+  return thermo.compute_T_from_alpha(alpha, entropic_var, qd, qv, ql, qi);
+}
+
+template <>
+real YAKL_INLINE VariableSetBase<VS_CE>::get_pressure(const real5d &densvar,
+                                                      int k, int j, int i,
+                                                      int ks, int js, int is,
+                                                      int n) const {
+  real entropic_var = get_entropic_var(densvar, k, j, i, ks, js, is, n);
+  real alpha = get_alpha(densvar, k, j, i, ks, js, is, n);
+  real qv = get_qv(densvar, k, j, i, ks, js, is, n);
+  real ql = 0.0_fp;
+  if (liquid_found) {
+    ql = get_ql(densvar, k, j, i, ks, js, is, n);
+  }
+
+  real qi = 0.0_fp;
+  if (ice_found) {
+    qi = get_qi(densvar, k, j, i, ks, js, is, n);
+  }
+  real qd = 1 - qv - ql - qi;
+  return thermo.solve_p(1 / alpha, entropic_var, qd, qv, ql, qi);
+}
+template <>
+real YAKL_INLINE VariableSetBase<VS_CE>::compute_entropic_var(
+    int k, int ks, int n, real alpha, real temp, real qd, real qv, real ql,
+    real qi) const {
+  return thermo.compute_entropic_var_from_T_alpha(alpha, temp, qd, qv, ql, qi);
+}
 #endif
 
 #ifdef _AN
@@ -822,6 +857,55 @@ real YAKL_INLINE VariableSetBase<VS_AN>::get_alpha(const real3d &densvar, int k,
                                                    int ks, int n) const {
   return dual_geometry.get_area_n1entity(k + ks, 0, 0, n) /
          densvar(dens_id_mass, k + ks, n);
+}
+template <>
+real YAKL_INLINE VariableSetBase<VS_AN>::get_pressure(const real5d &densvar,
+                                                      int k, int j, int i,
+                                                      int ks, int js, int is,
+                                                      int n) const {
+  const real refrho = 1.0_fp / get_alpha(reference_state.dens.data, k, ks, n);
+  const real refentropic_var =
+      get_entropic_var(reference_state.dens.data, k, ks, n);
+  const real refp = thermo.solve_p(refrho, refentropic_var, 0, 0, 0, 0);
+  return refp;
+}
+template <>
+real YAKL_INLINE VariableSetBase<VS_AN>::get_pressure(const real3d &densvar,
+                                                      int k, int ks,
+                                                      int n) const {
+  const real refrho = 1.0_fp / get_alpha(reference_state.dens.data, k, ks, n);
+  const real refentropic_var =
+      get_entropic_var(reference_state.dens.data, k, ks, n);
+  const real refp = thermo.solve_p(refrho, refentropic_var, 0, 0, 0, 0);
+  return refp;
+}
+template <>
+real YAKL_INLINE VariableSetBase<VS_AN>::get_temperature(const real5d &densvar,
+                                                         int k, int j, int i,
+                                                         int ks, int js, int is,
+                                                         int n) const {
+  real entropic_var = get_entropic_var(densvar, k, j, i, ks, js, is, n);
+  real p = get_pressure(densvar, k, j, i, ks, js, is, n);
+  real qv = get_qv(densvar, k, j, i, ks, js, is, n);
+  real ql = 0.0_fp;
+  if (liquid_found) {
+    ql = get_ql(densvar, k, j, i, ks, js, is, n);
+  }
+
+  real qi = 0.0_fp;
+  if (ice_found) {
+    qi = get_qi(densvar, k, j, i, ks, js, is, n);
+  }
+  real qd = 1 - qv - ql - qi;
+  return thermo.compute_T_from_p(p, entropic_var, qd, qv, ql, qi);
+}
+
+template <>
+real YAKL_INLINE VariableSetBase<VS_AN>::compute_entropic_var(
+    int k, int ks, int n, real alpha, real temp, real qd, real qv, real ql,
+    real qi) const {
+  real p = get_pressure(reference_state.dens.data, k, ks, n);
+  return thermo.compute_entropic_var_from_T_p(p, temp, qd, qv, ql, qi);
 }
 #endif
 
@@ -1003,6 +1087,58 @@ void YAKL_INLINE VariableSetBase<VS_MAN>::set_entropic_density(
     int ks, int js, int is, int n) const {
   densvar(dens_id_entr, k + ks, j + js, i + is, n) = entropic_var_density;
 }
+template <>
+real YAKL_INLINE VariableSetBase<VS_MAN>::get_pressure(const real5d &densvar,
+                                                       int k, int j, int i,
+                                                       int ks, int js, int is,
+                                                       int n) const {
+  const real refrho = 1.0_fp / get_alpha(reference_state.dens.data, k, ks, n);
+  const real refentropic_var =
+      get_entropic_var(reference_state.dens.data, k, ks, n);
+  const real refqv = get_qv(reference_state.dens.data, k, ks, n);
+  const real refp =
+      thermo.solve_p(refrho, refentropic_var, 1 - refqv, refqv, 0, 0);
+  return refp;
+}
+template <>
+real YAKL_INLINE VariableSetBase<VS_MAN>::get_pressure(const real3d &densvar,
+                                                       int k, int ks,
+                                                       int n) const {
+  const real refrho = 1.0_fp / get_alpha(reference_state.dens.data, k, ks, n);
+  const real refentropic_var =
+      get_entropic_var(reference_state.dens.data, k, ks, n);
+  const real refqv = get_qv(reference_state.dens.data, k, ks, n);
+  const real refp =
+      thermo.solve_p(refrho, refentropic_var, 1 - refqv, refqv, 0, 0);
+  return refp;
+}
+template <>
+real YAKL_INLINE VariableSetBase<VS_MAN>::get_temperature(const real5d &densvar,
+                                                          int k, int j, int i,
+                                                          int ks, int js,
+                                                          int is, int n) const {
+  real entropic_var = get_entropic_var(densvar, k, j, i, ks, js, is, n);
+  real p = get_pressure(densvar, k, j, i, ks, js, is, n);
+  real qv = get_qv(densvar, k, j, i, ks, js, is, n);
+  real ql = 0.0_fp;
+  if (liquid_found) {
+    ql = get_ql(densvar, k, j, i, ks, js, is, n);
+  }
+
+  real qi = 0.0_fp;
+  if (ice_found) {
+    qi = get_qi(densvar, k, j, i, ks, js, is, n);
+  }
+  real qd = 1 - qv - ql - qi;
+  return thermo.compute_T_from_p(p, entropic_var, qd, qv, ql, qi);
+}
+template <>
+real YAKL_INLINE VariableSetBase<VS_MAN>::compute_entropic_var(
+    int k, int ks, int n, real alpha, real temp, real qd, real qv, real ql,
+    real qi) const {
+  real p = get_pressure(reference_state.dens.data, k, ks, n);
+  return thermo.compute_entropic_var_from_T_p(p, temp, qd, qv, ql, qi);
+}
 #endif
 
 #ifdef _MCErho
@@ -1177,6 +1313,51 @@ void YAKL_INLINE VariableSetBase<VS_MCE_rho>::set_entropic_density(
     real entropic_var_density, const real5d &densvar, int k, int j, int i,
     int ks, int js, int is, int n) const {
   densvar(dens_id_entr, k + ks, j + js, i + is, n) = entropic_var_density;
+}
+template <>
+real YAKL_INLINE VariableSetBase<VS_MCE_rho>::get_temperature(
+    const real5d &densvar, int k, int j, int i, int ks, int js, int is,
+    int n) const {
+  real entropic_var = get_entropic_var(densvar, k, j, i, ks, js, is, n);
+  real alpha = get_alpha(densvar, k, j, i, ks, js, is, n);
+  real qv = get_qv(densvar, k, j, i, ks, js, is, n);
+  real ql = 0.0_fp;
+  if (liquid_found) {
+    ql = get_ql(densvar, k, j, i, ks, js, is, n);
+  }
+
+  real qi = 0.0_fp;
+  if (ice_found) {
+    qi = get_qi(densvar, k, j, i, ks, js, is, n);
+  }
+  real qd = 1 - qv - ql - qi;
+  return thermo.compute_T_from_alpha(alpha, entropic_var, qd, qv, ql, qi);
+}
+
+template <>
+real YAKL_INLINE VariableSetBase<VS_MCE_rho>::get_pressure(
+    const real5d &densvar, int k, int j, int i, int ks, int js, int is,
+    int n) const {
+  real entropic_var = get_entropic_var(densvar, k, j, i, ks, js, is, n);
+  real alpha = get_alpha(densvar, k, j, i, ks, js, is, n);
+  real qv = get_qv(densvar, k, j, i, ks, js, is, n);
+  real ql = 0.0_fp;
+  if (liquid_found) {
+    ql = get_ql(densvar, k, j, i, ks, js, is, n);
+  }
+
+  real qi = 0.0_fp;
+  if (ice_found) {
+    qi = get_qi(densvar, k, j, i, ks, js, is, n);
+  }
+  real qd = 1 - qv - ql - qi;
+  return thermo.solve_p(1 / alpha, entropic_var, qd, qv, ql, qi);
+}
+template <>
+real YAKL_INLINE VariableSetBase<VS_MCE_rho>::compute_entropic_var(
+    int k, int ks, int n, real alpha, real temp, real qd, real qv, real ql,
+    real qi) const {
+  return thermo.compute_entropic_var_from_T_alpha(alpha, temp, qd, qv, ql, qi);
 }
 #endif
 

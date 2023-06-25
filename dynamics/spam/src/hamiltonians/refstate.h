@@ -14,6 +14,7 @@ struct ReferenceState_SWE {
   Profile rho_di;
   Profile rho_pi;
   Profile Nsq_pi;
+  Profile v;
 #endif
   bool is_initialized = false;
 
@@ -28,6 +29,7 @@ struct ReferenceState_SWE {
     this->rho_di.initialize(dual_topology, "refrho_di", 0, 0, 1);
     this->q_di.initialize(dual_topology, "refq_di", 0, 0, VS::ndensity);
     this->Nsq_pi.initialize(primal_topology, "refNsq_pi", 0, 0, 1);
+    this->v.initialize(primal_topology, "ref v", 1, 0, 1);
 #endif
 
     this->is_initialized = true;
@@ -42,6 +44,7 @@ struct ReferenceState_Euler {
   Profile rho_di;
   Profile rho_pi;
   Profile Nsq_pi;
+  Profile v;
 #ifdef FORCE_REFSTATE_HYDROSTATIC_BALANCE
   Profile B;
 #endif
@@ -58,6 +61,7 @@ struct ReferenceState_Euler {
     this->rho_di.initialize(dual_topology, "refrho_di", 0, 0, 1);
     this->q_di.initialize(dual_topology, "refq_di", 0, 0, VS::ndensity);
     this->Nsq_pi.initialize(primal_topology, "refNsq_pi", 0, 0, 1);
+    this->v.initialize(primal_topology, "ref v", 1, 0, 1);
 
 #ifdef FORCE_REFSTATE_HYDROSTATIC_BALANCE
     this->B.initialize(dual_topology, "ref B", 1, 1, VS::ndensity_active);

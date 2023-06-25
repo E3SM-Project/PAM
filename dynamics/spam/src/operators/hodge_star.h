@@ -24,40 +24,49 @@ void YAKL_INLINE H0bar(SArray<real, 1, ndofs> &var,
   }
 }
 
-void YAKL_INLINE H1(SArray<real, 1, ndims> &var,
-                    SArray<real, 2, ndims, 1> const &velocity,
+template <uint ndofs>
+void YAKL_INLINE H1(SArray<real, 2, ndofs, ndims> &var,
+                    SArray<real, 3, ndofs, ndims, 1> const &velocity,
                     SArray<real, 1, ndims> const &H1geom) {
 
-  for (int d = 0; d < ndims; d++) {
-    var(d) = velocity(d, 0);
-    var(d) *= H1geom(d);
+  for (int l = 0; l < ndofs; l++) {
+    for (int d = 0; d < ndims; d++) {
+      var(l, d) = velocity(l, d, 0);
+      var(l, d) *= H1geom(d);
+    }
   }
 }
 
-void YAKL_INLINE H1(SArray<real, 1, ndims> &var,
-                    SArray<real, 2, ndims, 3> const &velocity,
+template <uint ndofs>
+void YAKL_INLINE H1(SArray<real, 2, ndofs, ndims> &var,
+                    SArray<real, 3, ndofs, ndims, 3> const &velocity,
                     SArray<real, 1, ndims> const &H1geom) {
 
-  for (int d = 0; d < ndims; d++) {
-    var(d) = -1.0_fp / 24.0_fp * velocity(d, 0) +
-             26.0_fp / 24.0_fp * velocity(d, 1) -
-             1.0_fp / 24.0_fp * velocity(d, 2);
-    var(d) *= H1geom(d);
+  for (int l = 0; l < ndofs; l++) {
+    for (int d = 0; d < ndims; d++) {
+      var(l, d) = -1.0_fp / 24.0_fp * velocity(l, d, 0) +
+                  26.0_fp / 24.0_fp * velocity(l, d, 1) -
+                  1.0_fp / 24.0_fp * velocity(l, d, 2);
+      var(l, d) *= H1geom(d);
+    }
   }
 }
 
-void YAKL_INLINE H1(SArray<real, 1, ndims> &var,
-                    SArray<real, 2, ndims, 5> const &velocity,
+template <uint ndofs>
+void YAKL_INLINE H1(SArray<real, 2, ndofs, ndims> &var,
+                    SArray<real, 3, ndofs, ndims, 5> const &velocity,
                     SArray<real, 1, ndims> const &H1geom) {
 
-  for (int d = 0; d < ndims; d++) {
-    var(d) = 9.0_fp / 1920.0_fp * velocity(d, 0) -
-             116.0_fp / 1920.0_fp * velocity(d, 1) +
-             2134.0_fp / 1920.0_fp * velocity(d, 2) -
-             116.0_fp / 1920.0_fp * velocity(d, 3) +
-             9.0_fp / 1920.0_fp * velocity(d, 4);
+  for (int l = 0; l < ndofs; l++) {
+    for (int d = 0; d < ndims; d++) {
+      var(l, d) = 9.0_fp / 1920.0_fp * velocity(l, d, 0) -
+                  116.0_fp / 1920.0_fp * velocity(l, d, 1) +
+                  2134.0_fp / 1920.0_fp * velocity(l, d, 2) -
+                  116.0_fp / 1920.0_fp * velocity(l, d, 3) +
+                  9.0_fp / 1920.0_fp * velocity(l, d, 4);
 
-    var(d) *= H1geom(d);
+      var(l, d) *= H1geom(d);
+    }
   }
 }
 

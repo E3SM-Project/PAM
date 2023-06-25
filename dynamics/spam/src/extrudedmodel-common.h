@@ -20,7 +20,7 @@ uint constexpr ntracers_dycore = 0;
 #endif
 
 // Number of Dimensions
-uint constexpr ndims = 1;
+uint constexpr ndims = 2;
 
 #include "params.h"
 
@@ -41,7 +41,7 @@ uint constexpr nconstant = ndims > 1 ? 3 : 2;
 // primal grid reconstruction stuff- U, W, dens0, edgerecon, recon,
 // vertedgerecon, vertrecon fct stuff- Phi, Mf, edgeflux Q/W STUFF?
 
-uint constexpr nauxiliary = ndims > 1 ? 37 : 30;
+uint constexpr nauxiliary = ndims > 1 ? 42 : 35;
 
 #define FVAR 0
 #define BVAR 1
@@ -79,17 +79,23 @@ uint constexpr nauxiliary = ndims > 1 ? 37 : 30;
 #define FTVAR 28
 #define FTWVAR 29
 
+#define DGRADVAR 30
+#define DVERTGRADVAR 31
+#define DFLUXVAR 32
+#define DVERTFLUXVAR 33
+#define DDIVVAR 34
+
 // 3d auxiliary variables
-#define QXYVAR 30
-#define QXYRECONVAR 31
-#define QXYEDGERECONVAR 32
-#define FXYVAR 33
-#define CORIOLISXYRECONVAR 34
-#define CORIOLISXYEDGERECONVAR 35
-#define FTXYVAR 36
+#define QXYVAR 35
+#define QXYRECONVAR 36
+#define QXYEDGERECONVAR 37
+#define FXYVAR 38
+#define CORIOLISXYRECONVAR 39
+#define CORIOLISXYEDGERECONVAR 40
+#define FTXYVAR 41
 
 // track total densities, dens min/max, energy (total, K, P, I), PV, PE
-uint constexpr nstats = 6;
+uint constexpr nstats = 8;
 
 #define DENSSTAT 0
 #define DENSMINSTAT 1
@@ -97,6 +103,8 @@ uint constexpr nstats = 6;
 #define ESTAT 3
 #define PVSTAT 4
 #define PESTAT 5
+#define PRECSTAT 6
+#define MAXWSTAT 7
 
 // ADD ANELASTIC + MOIST ANELASTIC
 //  #if defined _CEp || defined _MCErhop || defined _MCErhodp

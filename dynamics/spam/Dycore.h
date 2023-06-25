@@ -197,7 +197,7 @@ public:
     for (auto &diag : diagnostics) {
       diag->compute(0, constant_vars, prognostic_vars);
     }
-    stats.compute(prognostic_vars, constant_vars, 0);
+    stats.compute(coupler, prognostic_vars, constant_vars, 0);
     io.outputInit(etime, primal_geometry, dual_geometry, params);
     io.outputStats(stats);
     debug_print("end initial io", par.masterproc);
@@ -246,16 +246,16 @@ public:
       }
 
       if ((nstep + prevstep) % params.Nstat == 0) {
-        stats.compute(prognostic_vars, constant_vars,
+        stats.compute(coupler, prognostic_vars, constant_vars,
                       (nstep + prevstep) / params.Nstat);
       }
 #endif
     }
     prevstep += params.crm_per_phys;
 
-    if (!time_integrator->is_ssp) {
+    //if (!time_integrator->is_ssp) {
       tendencies.remove_negative_densities(prognostic_vars);
-    }
+    //}
 
     // convert dynamics state to Coupler state
     tendencies.convert_dynamics_to_coupler_state(coupler, prognostic_vars,
