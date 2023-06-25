@@ -114,12 +114,12 @@ uint constexpr maxhalosize =
 uint constexpr mirroringhalo =
     std::max({(max_vert_reconstruction_order - 1) / 2, vert_diff_ord / 2});
 
-#if defined _EXTRUDED && !defined _AN && !defined _MAN &&                      \
-    (defined _IDEAL_GAS_POTTEMP || defined _CONST_KAPPA_VIRPOTTEMP)
-bool constexpr si_compute_functional_derivatives_quadrature = false;
-#else
+//#if defined _EXTRUDED && !defined _AN && !defined _MAN &&                      \
+//    (defined _IDEAL_GAS_POTTEMP || defined _CONST_KAPPA_VIRPOTTEMP)
+//bool constexpr si_compute_functional_derivatives_quadrature = false;
+//#else
 bool constexpr si_compute_functional_derivatives_quadrature = true;
-#endif
+//#endif
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 
