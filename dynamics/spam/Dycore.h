@@ -180,11 +180,11 @@ public:
     debug_print("start ts init", par.masterproc);
     time_integrator->initialize(params, tendencies, linear_system,
                                 prognostic_vars, constant_vars, auxiliary_vars);
-    if (time_integrator->is_semi_implicit) {
-      linear_system.initialize(params, primal_geometry, dual_geometry,
-                               equations);
-      linear_system.compute_coefficients(params.dtcrm);
-    }
+    //if (time_integrator->is_semi_implicit) {
+    //  linear_system.initialize(params, primal_geometry, dual_geometry,
+    //                           equations);
+    //  linear_system.compute_coefficients(params.dtcrm);
+    //}
     debug_print("end ts init", par.masterproc);
 
     // convert dynamics state to Coupler state
