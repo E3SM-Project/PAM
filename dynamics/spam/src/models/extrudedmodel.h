@@ -4243,6 +4243,7 @@ public:
   using T::Lz;
   using T::xc;
   using T::zc;
+  using T::refnsq_f;
 
   static real YAKL_INLINE rho_f(real x, real y, real z,
                                 const ThermoPotential &thermo) {
