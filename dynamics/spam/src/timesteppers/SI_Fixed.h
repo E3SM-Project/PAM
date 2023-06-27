@@ -8,15 +8,12 @@
 #include "topology.h"
 #include <sstream>
 
-class SIFixedTimeIntegrator : public TimeIntegrator {
+class SIFixedTimeIntegrator : public SemiImplicitTimeIntegrator {
 
 public:
-  using TimeIntegrator::TimeIntegrator;
+  using SemiImplicitTimeIntegrator::SemiImplicitTimeIntegrator;
   int step;
-  real tol;
   real avg_iters;
-  std::vector<real> quad_pts;
-  std::vector<real> quad_wts;
   FieldSet<nprognostic> *x;
   FieldSet<nprognostic> dx;
   FieldSet<nprognostic> xn;
@@ -25,24 +22,13 @@ public:
   FieldSet<nconstant> *const_vars;
   FieldSet<nauxiliary> *auxiliary_vars;
 
-  // TODO: Make a SITimeIntegrator base class ?
-  int monitor_convergence;
-  // 0 = do not monitor (does si_max_iters iterations)
-  // 1 = computes initial and final residual but still does si_max_iter
-  // iterations 2 = iterates until convergence or si_max_iter is reached
-
-  int verbosity_level;
-  // 0 = do not print
-  // 1 = print initial and final
-  // 2 = print every iteration
-
-  int max_iters;
-  int nquad;
-
   void initialize(ModelParameters &params, Tendencies &tend,
                   LinearSystem &linsys, FieldSet<nprognostic> &xvars,
                   FieldSet<nconstant> &consts,
                   FieldSet<nauxiliary> &auxiliarys) override {
+
+    SemiImplicitTimeIntegrator::initialize(params, tend, linsys, xvars, consts,
+                                           auxiliarys);
 
     this->dx.initialize(xvars, "dx");
     this->xn.initialize(xvars, "xn");
@@ -52,20 +38,9 @@ public:
     this->const_vars = &consts;
     this->auxiliary_vars = &auxiliarys;
 
-    this->tol = params.si_tolerance;
-    this->monitor_convergence = params.si_monitor_convergence;
-    this->verbosity_level = params.si_max_iters;
-    this->max_iters = params.si_max_iters;
-    this->nquad = params.si_nquad;
-
-    this->quad_pts.resize(nquad);
-    this->quad_wts.resize(nquad);
-    set_ref_quad_pts_wts(this->quad_pts, this->quad_wts, nquad);
-
     this->step = 0;
     this->avg_iters = 0;
 
-    this->is_semi_implicit = true;
     this->is_initialized = true;
   }
 
