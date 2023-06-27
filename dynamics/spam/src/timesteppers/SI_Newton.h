@@ -87,7 +87,7 @@ public:
 
       this->xn.waxpy(1, this->dx, this->xn);
 
-      if (si_compute_functional_derivatives_quadrature) {
+      if (!this->two_point_discrete_gradient) {
         this->xm.waxpby(1 - this->quad_pts[0], this->quad_pts[0], *this->x,
                         this->xn);
         this->xm.exchange();
@@ -105,7 +105,7 @@ public:
         }
       } else {
         this->xn.exchange();
-        this->tendencies->compute_functional_derivatives_two_point(
+        this->tendencies->compute_two_point_discrete_gradient(
             dt, *this->const_vars, *this->x, this->xn, *this->auxiliary_vars);
       }
 

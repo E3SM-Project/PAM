@@ -25,6 +25,7 @@ public:
   int si_verbosity_level;
   int si_max_iters;
   int si_nquad;
+  bool si_two_point_discrete_gradient;
 
   real tanh_upwind_coeff = -1;
 
@@ -59,6 +60,8 @@ void readParamsFile(std::string inFile, Parameters &params, Parallel &par,
   params.si_max_iters = config["si_max_iters"].as<int>(
       params.si_monitor_convergence > 1 ? 50 : 5);
   params.si_nquad = config["si_nquad"].as<int>(4);
+  params.si_two_point_discrete_gradient =
+      config["si_two_point_discrete_gradient"].as<bool>(false);
   params.tanh_upwind_coeff = config["tanh_upwind_coeff"].as<real>(250);
   params.outputName = config["dycore_out_prefix"].as<std::string>("output");
   params.nz_dual = nz;
@@ -92,6 +95,7 @@ void read_params_coupler(Parameters &params, Parallel &par,
   params.si_verbosity_level = 0;
   params.si_max_iters = 3;
   params.si_nquad = 2;
+  params.si_two_point_discrete_gradient = false;
   params.tanh_upwind_coeff = 250;
   params.outputName = "pamc_output";
   params.nz_dual = coupler.get_nz();

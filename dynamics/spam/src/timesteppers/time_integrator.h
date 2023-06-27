@@ -48,6 +48,8 @@ public:
   int max_iters;
   int nquad;
 
+  bool two_point_discrete_gradient;
+
   real tol;
   std::vector<real> quad_pts;
   std::vector<real> quad_wts;
@@ -58,6 +60,7 @@ public:
                           FieldSet<nauxiliary> &auxiliarys) override {
 
     this->tol = params.si_tolerance;
+    this->two_point_discrete_gradient = params.si_two_point_discrete_gradient;
     this->monitor_convergence = params.si_monitor_convergence;
     this->verbosity_level = params.si_max_iters;
     this->max_iters = params.si_max_iters;
