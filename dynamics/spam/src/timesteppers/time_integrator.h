@@ -21,10 +21,21 @@ public:
   bool is_semi_implicit = false;
   std::string tstype;
 
+  Tendencies *tendencies;
+
+  FieldSet<nprognostic> *x;
+  FieldSet<nconstant> *const_vars;
+  FieldSet<nauxiliary> *auxiliary_vars;
+
   virtual void initialize(ModelParameters &params, Tendencies &tend,
                           LinearSystem &linsys, FieldSet<nprognostic> &xvars,
                           FieldSet<nconstant> &consts,
-                          FieldSet<nauxiliary> &auxiliarys) = 0;
+                          FieldSet<nauxiliary> &auxiliarys) {
+    this->x = &xvars;
+    this->tendencies = &tend;
+    this->const_vars = &consts;
+    this->auxiliary_vars = &auxiliarys;
+  }
 
   virtual void step_forward(real dt) = 0;
 
@@ -58,6 +69,7 @@ public:
                           LinearSystem &linsys, FieldSet<nprognostic> &xvars,
                           FieldSet<nconstant> &consts,
                           FieldSet<nauxiliary> &auxiliarys) override {
+    TimeIntegrator::initialize(params, tend, linsys, xvars, consts, auxiliarys);
 
     this->tol = params.si_tolerance;
     this->two_point_discrete_gradient = params.si_two_point_discrete_gradient;

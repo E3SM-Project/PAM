@@ -14,14 +14,10 @@ public:
   using SemiImplicitTimeIntegrator::SemiImplicitTimeIntegrator;
   int step;
   real avg_iters;
-  FieldSet<nprognostic> *x;
   FieldSet<nprognostic> dx;
   FieldSet<nprognostic> xn;
   FieldSet<nprognostic> xm;
-  Tendencies *tendencies;
   LinearSystem *linear_system;
-  FieldSet<nconstant> *const_vars;
-  FieldSet<nauxiliary> *auxiliary_vars;
 
   void initialize(ModelParameters &params, Tendencies &tend,
                   LinearSystem &linsys, FieldSet<nprognostic> &xvars,
@@ -34,11 +30,7 @@ public:
     this->dx.initialize(xvars, "dx");
     this->xn.initialize(xvars, "xn");
     this->xm.initialize(xvars, "xm");
-    this->x = &xvars;
-    this->tendencies = &tend;
     this->linear_system = &linsys;
-    this->const_vars = &consts;
-    this->auxiliary_vars = &auxiliarys;
 
     this->step = 0;
     this->avg_iters = 0;

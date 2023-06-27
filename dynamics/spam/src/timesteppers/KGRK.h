@@ -17,10 +17,6 @@ public:
   SArray<real, 1, NSTAGESMAX> stage_coeffs;
   FieldSet<nprognostic> xtend;
   FieldSet<nprognostic> xtemp;
-  FieldSet<nprognostic> *x;
-  Tendencies *tendencies;
-  FieldSet<nconstant> *const_vars;
-  FieldSet<nauxiliary> *auxiliary_vars;
   uint nstages;
 
   void set_stage_coefficients(ModelParameters &params);
@@ -29,12 +25,10 @@ public:
                   LinearSystem &linsys, FieldSet<nprognostic> &xvars,
                   FieldSet<nconstant> &consts,
                   FieldSet<nauxiliary> &auxiliarys) override {
+    TimeIntegrator::initialize(params, tend, linsys, xvars, consts, auxiliarys);
+
     this->xtemp.initialize(xvars, "xtemp");
     this->xtend.initialize(xvars, "xtend");
-    this->x = &xvars;
-    this->tendencies = &tend;
-    this->const_vars = &consts;
-    this->auxiliary_vars = &auxiliarys;
     set_stage_coefficients(params);
     this->is_initialized = true;
   }
