@@ -349,6 +349,7 @@ struct TotalDensityFunctor {
 class ModelTendencies : public ExtrudedTendencies {
   real entropicvar_diffusion_coeff;
   real velocity_diffusion_coeff;
+  bool force_refstate_hydrostatic_balance;
 #if defined _AN || defined _MAN
   AnelasticPressureSolver pressure_solver;
 #endif
@@ -363,6 +364,8 @@ public:
     ExtrudedTendencies::initialize(params, equations, primal_geom, dual_geom);
     entropicvar_diffusion_coeff = params.entropicvar_diffusion_coeff;
     velocity_diffusion_coeff = params.velocity_diffusion_coeff;
+    force_refstate_hydrostatic_balance =
+        params.force_refstate_hydrostatic_balance;
 
 #if defined _AN || defined _MAN
     pressure_solver.initialize(params, primal_geom, dual_geom, equations);
@@ -1682,6 +1685,8 @@ public:
 
     const auto &refstate = this->equations->reference_state;
     YAKL_SCOPE(active_dens_ids, this->equations->varset.active_dens_ids);
+    YAKL_SCOPE(force_refstate_hydrostatic_balance,
+               this->force_refstate_hydrostatic_balance);
 
     real5d qxyreconvar, coriolisxyreconvar;
     if (ndims > 1) {
@@ -1697,11 +1702,11 @@ public:
           compute_wD0_vert<VS::ndensity_active, addmode>(
               Wtendvar, densvertreconvar, active_dens_ids, Bvar, pis, pjs, pks,
               i, j, k + 1, n);
-#ifdef FORCE_REFSTATE_HYDROSTATIC_BALANCE
-          compute_wD0_vert<VS::ndensity_active, ADD_MODE::ADD>(
-              Wtendvar, refstate.q_di.data, active_dens_ids, refstate.B.data,
-              pis, pjs, pks, i, j, k + 1, n);
-#endif
+          if (force_refstate_hydrostatic_balance) {
+            compute_wD0_vert<VS::ndensity_active, ADD_MODE::ADD>(
+                Wtendvar, refstate.q_di.data, active_dens_ids, refstate.B.data,
+                pis, pjs, pks, i, j, k + 1, n);
+          }
           if (qf_choice == QF_MODE::EC) {
             compute_Qxz_w_EC<1, ADD_MODE::ADD>(Wtendvar, qhzreconvar,
                                                qhzvertreconvar, Fvar, pis, pjs,
@@ -1743,14 +1748,14 @@ public:
           compute_wD0_vert<VS::ndensity_active, addmode>(
               Wtendvar, densvertreconvar, active_dens_ids, Bvar, pis, pjs, pks,
               i, j, primal_topology.nl - 1, n);
-#ifdef FORCE_REFSTATE_HYDROSTATIC_BALANCE
-          compute_wD0_vert<VS::ndensity_active, ADD_MODE::ADD>(
-              Wtendvar, refstate.q_di.data, active_dens_ids, refstate.B.data,
-              pis, pjs, pks, i, j, 0, n);
-          compute_wD0_vert<VS::ndensity_active, ADD_MODE::ADD>(
-              Wtendvar, refstate.q_di.data, active_dens_ids, refstate.B.data,
-              pis, pjs, pks, i, j, primal_topology.nl - 1, n);
-#endif
+          if (force_refstate_hydrostatic_balance) {
+            compute_wD0_vert<VS::ndensity_active, ADD_MODE::ADD>(
+                Wtendvar, refstate.q_di.data, active_dens_ids, refstate.B.data,
+                pis, pjs, pks, i, j, 0, n);
+            compute_wD0_vert<VS::ndensity_active, ADD_MODE::ADD>(
+                Wtendvar, refstate.q_di.data, active_dens_ids, refstate.B.data,
+                pis, pjs, pks, i, j, primal_topology.nl - 1, n);
+          }
           if (qf_choice == QF_MODE::EC) {
             compute_Qxz_w_EC_bottom<1, ADD_MODE::ADD>(
                 Wtendvar, qhzreconvar, qhzvertreconvar, Fvar, pis, pjs, pks, i,
@@ -3742,6 +3747,8 @@ void read_model_params_file(std::string inFile, ModelParameters &params,
       config["velocity_diffusion_coeff"].as<real>(0);
   // Read the data initialization options
   params.initdataStr = config["initData"].as<std::string>();
+  params.force_refstate_hydrostatic_balance =
+      config["force_refstate_hydrostatic_balance"].as<bool>(false);
 
   for (int i = 0; i < ntracers_dycore; i++) {
     params.tracerdataStr[i] =
@@ -3772,6 +3779,7 @@ void read_model_params_coupler(ModelParameters &params, Parallel &par,
   params.entropicvar_diffusion_coeff = 0;
   params.velocity_diffusion_coeff = 0;
   params.initdataStr = "coupler";
+  params.force_refstate_hydrostatic_balance = true;
 
   // Store vertical cell interface heights in the data manager
   auto &dm = coupler.get_data_manager_device_readonly();
@@ -4154,7 +4162,6 @@ public:
 #endif
         });
 
-#ifdef FORCE_REFSTATE_HYDROSTATIC_BALANCE
     parallel_for(
         "Compute refstate B",
         SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
@@ -4162,7 +4169,6 @@ public:
           Hs.compute_dHsdx(refstate.B.data, refstate.dens.data,
                            refstate.geop.data, pks, k, n, -1);
         });
-#endif
   }
 };
 
@@ -4356,7 +4362,6 @@ public:
 #endif
         });
 
-#ifdef FORCE_REFSTATE_HYDROSTATIC_BALANCE
     parallel_for(
         "Compute refstate B",
         SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
@@ -4364,7 +4369,6 @@ public:
           Hs.compute_dHsdx(refstate.B.data, refstate.dens.data,
                            refstate.geop.data, pks, k, n, -1);
         });
-#endif
   }
 
   void add_diagnostics(
@@ -4571,7 +4575,6 @@ public:
 
     YAKL_SCOPE(Hs, equations->Hs);
 
-#ifdef FORCE_REFSTATE_HYDROSTATIC_BALANCE
     parallel_for(
         "Compute refstate B",
         SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
@@ -4579,7 +4582,6 @@ public:
           Hs.compute_dHsdx(refstate.B.data, refstate.dens.data,
                            refstate.geop.data, pks, k, n, -1);
         });
-#endif
 
     parallel_for(
         "compute Nsq",

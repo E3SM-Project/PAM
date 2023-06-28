@@ -7,13 +7,6 @@ uint constexpr ntracers_dycore = 0;
 
 //////////////////////////////////////////////////////////////////////////////
 
-// forces reference state to be in perfect hydrostatic balance by subtracting
-// the hydrostatic balance equation evaluated at the reference state in
-// the velocity tendency
-#if !defined(_SWE) && !defined(_TSWE)
-#define FORCE_REFSTATE_HYDROSTATIC_BALANCE
-#endif
-
 // for debugging anelastic
 #if defined _AN || defined _MAN
 #define CHECK_ANELASTIC_CONSTRAINT
@@ -112,6 +105,10 @@ public:
   bool uniform_vertical;
   real entropicvar_diffusion_coeff;
   real velocity_diffusion_coeff;
+  // forces reference state to be in perfect hydrostatic balance by subtracting
+  // the hydrostatic balance equation evaluated at the reference state in
+  // the velocity tendency
+  bool force_refstate_hydrostatic_balance;
 
   realConst2d zint;
 };
