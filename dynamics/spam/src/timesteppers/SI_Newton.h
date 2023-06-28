@@ -48,7 +48,6 @@ public:
     this->xm.exchange();
 
     int iter = 0;
-    int maxiters = 50;
 
     real res_norm;
     real initial_res_norm;
@@ -79,27 +78,8 @@ public:
 
       this->xn.waxpy(1, this->dx, this->xn);
 
-      if (!this->two_point_discrete_gradient) {
-        this->xm.waxpby(1 - this->quad_pts[0], this->quad_pts[0], *this->x,
-                        this->xn);
-        this->xm.exchange();
-        this->tendencies->compute_functional_derivatives(
-            dt, *this->const_vars, this->xm, *this->auxiliary_vars,
-            this->quad_wts[0], ADD_MODE::REPLACE);
-
-        for (int m = 1; m < nquad; ++m) {
-          this->xm.waxpby(1 - this->quad_pts[m], this->quad_pts[m], *this->x,
-                          this->xn);
-          this->xm.exchange();
-          this->tendencies->compute_functional_derivatives(
-              dt, *this->const_vars, this->xm, *this->auxiliary_vars,
-              this->quad_wts[m], ADD_MODE::ADD);
-        }
-      } else {
-        this->xn.exchange();
-        this->tendencies->compute_two_point_discrete_gradient(
-            dt, *this->const_vars, *this->x, this->xn, *this->auxiliary_vars);
-      }
+      compute_discrete_gradient(dt, this->xn, *this->const_vars,
+                                *this->auxiliary_vars, this->xm);
 
       this->xm.waxpby(0.5_fp, 0.5_fp, *this->x, this->xn);
       this->xm.exchange();
@@ -131,8 +111,11 @@ public:
     this->avg_iters += iter;
     this->avg_iters /= step;
 
-    if (verbosity_level == 1) {
+    if (verbosity_level >= 1) {
       res_norm = norm(xm);
+      if (res_norm / initial_res_norm < this->tol) {
+        converged = true;
+      }
     }
 
     if (verbosity_level > 0) {

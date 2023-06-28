@@ -65,6 +65,30 @@ public:
   std::vector<real> quad_pts;
   std::vector<real> quad_wts;
 
+  void compute_discrete_gradient(real dt, FieldSet<nprognostic> &xn,
+                                 FieldSet<nconstant> &const_vars,
+                                 FieldSet<nauxiliary> &auxiliary_vars,
+                                 FieldSet<nprognostic> &xm) {
+
+    if (this->two_point_discrete_gradient) {
+      this->tendencies->compute_two_point_discrete_gradient(
+          dt, const_vars, *this->x, xn, auxiliary_vars);
+    } else {
+      xm.waxpby(1 - this->quad_pts[0], this->quad_pts[0], *this->x, xn);
+      xm.exchange();
+      this->tendencies->compute_functional_derivatives(
+          dt, const_vars, xm, auxiliary_vars, this->quad_wts[0],
+          ADD_MODE::REPLACE);
+      for (int m = 1; m < nquad; ++m) {
+        xm.waxpby(1 - this->quad_pts[m], this->quad_pts[m], *this->x, xn);
+        xm.exchange();
+        this->tendencies->compute_functional_derivatives(
+            dt, const_vars, xm, auxiliary_vars, this->quad_wts[m],
+            ADD_MODE::ADD);
+      }
+    }
+  }
+
   virtual void initialize(ModelParameters &params, Tendencies &tend,
                           LinearSystem &linsys, FieldSet<nprognostic> &xvars,
                           FieldSet<nconstant> &consts,
@@ -74,7 +98,7 @@ public:
     this->tol = params.si_tolerance;
     this->two_point_discrete_gradient = params.si_two_point_discrete_gradient;
     this->monitor_convergence = params.si_monitor_convergence;
-    this->verbosity_level = params.si_max_iters;
+    this->verbosity_level = params.si_verbosity_level;
     this->max_iters = params.si_max_iters;
     this->nquad = params.si_nquad;
 

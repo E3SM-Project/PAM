@@ -38,21 +38,8 @@ public:
 
   // evaluates -dt * J((x^n + x^v) / 2) dHtilde/dx(x^n, x^v), stores in dx
   void evaluate_fixed_point_rhs(real dt) {
-    this->xm.waxpby(1 - this->quad_pts[0], this->quad_pts[0], *this->x,
-                    this->xn);
-    this->xm.exchange();
-    this->tendencies->compute_functional_derivatives(
-        dt, *this->const_vars, this->xm, *this->auxiliary_vars,
-        this->quad_wts[0], ADD_MODE::REPLACE);
-
-    for (int m = 1; m < nquad; ++m) {
-      this->xm.waxpby(1 - this->quad_pts[m], this->quad_pts[m], *this->x,
-                      this->xn);
-      this->xm.exchange();
-      this->tendencies->compute_functional_derivatives(
-          dt, *this->const_vars, this->xm, *this->auxiliary_vars,
-          this->quad_wts[m], ADD_MODE::ADD);
-    }
+    compute_discrete_gradient(dt, this->xn, *this->const_vars,
+                              *this->auxiliary_vars, this->xm);
 
     this->xm.waxpby(0.5_fp, 0.5_fp, *this->x, this->xn);
     this->xm.exchange();
@@ -124,13 +111,19 @@ public:
     this->avg_iters += iter;
     this->avg_iters /= step;
 
-    if (verbosity_level > 0) {
+    if (monitor_convergence > 0) {
       evaluate_fixed_point_rhs(dt);
 
       this->xm.waxpbypcz(1, -1, dt, this->xn, *this->x, this->dx);
       this->xm.exchange();
       res_norm = norm(xm);
 
+      if (res_norm / initial_res_norm < this->tol) {
+        converged = true;
+      }
+    }
+
+    if (verbosity_level > 0) {
       std::stringstream msg;
       if (converged) {
         msg << "Fixed-point iteration converged in " << iter << " iters.\n";
