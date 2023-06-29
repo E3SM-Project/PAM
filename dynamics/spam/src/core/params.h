@@ -28,6 +28,10 @@ public:
 
   int masterproc;
   bool inner_mpi;
+
+  bool couple_wind;
+  bool couple_wind_exact_inverse;
+
 };
 
 void readParamsFile(std::string inFile, Parameters &params, Parallel &par,
@@ -51,6 +55,9 @@ void readParamsFile(std::string inFile, Parameters &params, Parallel &par,
   params.si_tolerance = config["si_tolerance"].as<real>(1e-8);
   params.outputName = config["dycore_out_prefix"].as<std::string>("output");
   params.nz_dual = nz;
+
+  params.couple_wind = config["couple_wind"].as<bool>(true);
+  params.couple_wind_exact_inverse = config["couple_wind_exact_inverse"].as<bool>(false);
 
 //ADD A CHECK HERE THAT TOTAL TIME IS EXACTLY DIVISIBLE BY STAT_FREQ
   if (params.stat_freq >= 0.)

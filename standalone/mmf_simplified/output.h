@@ -16,6 +16,7 @@ inline void output( pam::PamCoupler const &coupler , std::string out_prefix , re
   auto nx = coupler.get_nx();
   auto ny = coupler.get_ny();
   auto nz = coupler.get_nz();
+  auto nens = coupler.get_nens();
 
   auto &dm = coupler.get_data_manager_device_readonly();
 
@@ -36,23 +37,27 @@ inline void output( pam::PamCoupler const &coupler , std::string out_prefix , re
 
         // x-coordinate
         real1d xloc("xloc",nx);
+        real1d xp1loc("xp1loc",nx+1);
         parallel_for( "Spatial.h output 1" , nx , YAKL_LAMBDA (int i) { xloc(i) = (i+0.5)*dx; });
+        parallel_for( "Spatial.h output 2" , nx+1 , YAKL_LAMBDA (int i) { xp1loc(i) = (i)*dx; });
         nc.write(xloc.createHostCopy(),"x",{"x"});
+        nc.write(xp1loc.createHostCopy(),"xp1",{"xp1"});
 
         // y-coordinate
         real1d yloc("yloc",ny);
-        parallel_for( "Spatial.h output 2" , ny , YAKL_LAMBDA (int i) { yloc(i) = (i+0.5)*dy; });
+        real1d yp1loc("yp1loc",ny+1);
+        parallel_for( "Spatial.h output 3" , ny , YAKL_LAMBDA (int i) { yloc(i) = (i+0.5)*dy; });
+        parallel_for( "Spatial.h output 4" , ny+1 , YAKL_LAMBDA (int i) { yp1loc(i) = (i)*dy; });
         nc.write(yloc.createHostCopy(),"y",{"y"});
+        nc.write(yp1loc.createHostCopy(),"yp1",{"yp1"});
 
         // z-coordinate
         auto zint = dm.get<real const,2>("vertical_interface_height");
-        real1d zmid("zmid",nz);
-        parallel_for( "Spatial.h output 3" , nz , YAKL_LAMBDA (int i) {
-          zmid(i) = ( zint(i,0) + zint(i+1,0) ) / 2;
-        });
-        nc.write(zmid.createHostCopy(),"z",{"z"});
-
-//ADD XP1, YP1 and ZP1 HERE!
+        auto dz = dm.get<real const,2>("vertical_cell_dz");
+        auto zmid = dm.get<real const,2>("vertical_midpoint_height");
+        nc.write(zmid.createHostCopy(),"z", {"z","nens"});
+        nc.write(dz.createHostCopy(),"dz", {"z","nens"});
+        nc.write(zint.createHostCopy(),"zp1", {"zp1","nens"});
 
         // Create time variable
         nc.write1(0._fp,"t",0,"t");
@@ -78,24 +83,28 @@ inline void output( pam::PamCoupler const &coupler , std::string out_prefix , re
       }
 
       // First, write out standard coupler state
-      real3d data("data",nz,ny,nx);
-      parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = fields(0,k,j,i,0); });
-      nc.write1(data,"density"    ,{"z","y","x"},ulIndex,"t");
-      parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = fields(1,k,j,i,0); });
-      nc.write1(data,"uvel"       ,{"z","y","x"},ulIndex,"t");
-      parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = fields(2,k,j,i,0); });
-      nc.write1(data,"vvel"       ,{"z","y","x"},ulIndex,"t");
-      parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = fields(3,k,j,i,0); });
-      nc.write1(data,"wvel"       ,{"z","y","x"},ulIndex,"t");
-      parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) { data(k,j,i) = fields(4,k,j,i,0); });
-      nc.write1(data,"temperature",{"z","y","x"},ulIndex,"t");
+      real4d data("data",nz,ny,nx,nens);
+      parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int n) { data(k,j,i,n) = fields(0,k,j,i,n); });
+      nc.write1(data,"density"    ,{"z","y","x","nens"},ulIndex,"t");
+      parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int n) { data(k,j,i,n) = fields(1,k,j,i,n); });
+      nc.write1(data,"uvel"       ,{"z","y","x","nens"},ulIndex,"t");
+      parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int n) { data(k,j,i,n) = fields(2,k,j,i,n); });
+      nc.write1(data,"vvel"       ,{"z","y","x","nens"},ulIndex,"t");
+      parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int n) { data(k,j,i,n) = fields(3,k,j,i,n); });
+      nc.write1(data,"wvel"       ,{"z","y","x","nens"},ulIndex,"t");
+      parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int n) { data(k,j,i,n) = fields(4,k,j,i,n); });
+      nc.write1(data,"temperature",{"z","y","x","nens"},ulIndex,"t");
       for (int tr=0; tr < num_tracers; tr++) {
-        parallel_for( SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+        parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int n) {
           // data(k,j,i) = fields(5+tr,k,j,i,0) / (state(idR,hs+k,hs+j,hs+i,0) + hyDensCells(k,0));
-          data(k,j,i) = fields(5+tr,k,j,i,0);
+          data(k,j,i,n) = fields(5+tr,k,j,i,n);
         });
-        nc.write1(data,tracer_names[tr],{"z","y","x"},ulIndex,"t");
+        nc.write1(data,tracer_names[tr],{"z","y","x","nens"},ulIndex,"t");
       }
+
+    auto uvel_stag = dm.get<real const, 4>("uvel_stag");
+    auto vvel_stag = dm.get<real const, 4>("vvel_stag");
+    auto wvel_stag = dm.get<real const, 4>("wvel_stag");
 
 //WRITE OUT OTHER VARIABLES!
 
