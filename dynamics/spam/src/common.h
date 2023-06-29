@@ -26,12 +26,12 @@ using uint = unsigned int;
 // Declaring the precision for the model
 using real = double;
 
-#if defined YAKL_ARCH_CUDA
-#include <cuda/std/complex>
-using complex = cuda::std::complex<real>;
-#else
+// #if defined YAKL_ARCH_CUDA
+// #include <cuda/std/complex>
+// using complex = cuda::std::complex<real>;
+// #else
 using complex = std::complex<real>;
-#endif
+// #endif
 
 using complex5d = yakl::Array<complex, 5, yakl::memDevice, yakl::styleC>;
 using complex4d = yakl::Array<complex, 4, yakl::memDevice, yakl::styleC>;
