@@ -192,13 +192,10 @@ public:
 
     // TODO: add logic here to only include this for standlone configurations
     // // convert dynamics state to Coupler state
-<<<<<<< HEAD
     if (testcase->set_coupler_state)
      { tendencies.convert_dynamics_to_coupler_state(coupler, prognostic_vars, constant_vars, params.couple_wind, params.couple_wind_exact_inverse); }
-=======
     // if (testcase->set_coupler_state)
     //  { tendencies.convert_dynamics_to_coupler_state(coupler, prognostic_vars, constant_vars); }
->>>>>>> 365678fbd6faad0cd7f317348bbe2114d270a7f2
 
     // Output the initial model state
 #ifndef _NOIO

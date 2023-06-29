@@ -400,15 +400,12 @@ public:
                                          FieldSet<nconstant> &const_vars, bool couple_wind, bool couple_wind_exact_inverse) {
     equations->varset.convert_coupler_to_dynamics_densities(coupler, prog_vars,
                                                         const_vars);
-<<<<<<< HEAD
     if (couple_wind) {equations->varset.convert_coupler_to_dynamics_wind(coupler, prog_vars,
                                                         const_vars, couple_wind_exact_inverse);}
-=======
 
     prog_vars.exchange();
     const_vars.exchange();
     auxiliary_vars.exchange();
->>>>>>> 365678fbd6faad0cd7f317348bbe2114d270a7f2
 
 #if defined(_AN) || defined(_MAN)
     if (couple_wind) {
@@ -2625,8 +2622,8 @@ public:
           // set the horizontal mean of pressure to zero at k = kfix
           int ik = i / 2;
           int jk = j / 2;
-          if (ik == 0 && jk == 0) { 
-            p_transform(kfix, j, i, n) = 0; 
+          if (ik == 0 && jk == 0) {
+            p_transform(kfix, j, i, n) = 0;
           }
           int nz = primal_topology.ni;
           tri_c(0, j, i, n) = tri_u(0, j, i, n) / tri_d(0, j, i, n);
