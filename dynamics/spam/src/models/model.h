@@ -213,10 +213,11 @@ public:
       FieldSet<nauxiliary> &auxiliary_vars, real fac = 1,
       ADD_MODE addmode = ADD_MODE::REPLACE) = 0;
 
-  virtual void compute_functional_derivatives_two_point(
+  virtual void compute_two_point_discrete_gradient(
       real dt, FieldSet<nconstant> &const_vars, FieldSet<nprognostic> &x1,
       FieldSet<nprognostic> &x2, FieldSet<nauxiliary> &auxiliary_vars) {
-    throw std::runtime_error("Not implemented");
+    throw std::runtime_error(
+        "Two point discrete gradient not implemeneted for this model");
   }
 
   virtual void apply_symplectic(real dt, FieldSet<nconstant> &const_vars,

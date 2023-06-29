@@ -12,10 +12,6 @@ public:
   using TimeIntegrator::TimeIntegrator;
 
   FieldSet<nprognostic> dx;
-  FieldSet<nprognostic> *x;
-  Tendencies *tendencies;
-  FieldSet<nconstant> *const_vars;
-  FieldSet<nauxiliary> *auxiliary_vars;
   std::vector<real> rka;
   std::vector<real> rkb;
   int nstages;
@@ -24,11 +20,9 @@ public:
                   LinearSystem &linsys, FieldSet<nprognostic> &xvars,
                   FieldSet<nconstant> &consts,
                   FieldSet<nauxiliary> &auxiliarys) override {
+    TimeIntegrator::initialize(params, tend, linsys, xvars, consts, auxiliarys);
+
     this->dx.initialize(xvars, "dx");
-    this->x = &xvars;
-    this->tendencies = &tend;
-    this->const_vars = &consts;
-    this->auxiliary_vars = &auxiliarys;
     this->is_ssp = false;
     this->is_initialized = true;
 

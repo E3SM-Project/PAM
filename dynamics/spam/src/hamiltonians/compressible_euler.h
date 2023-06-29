@@ -130,20 +130,6 @@ public:
   }
 
   template <ADD_MODE addmode = ADD_MODE::REPLACE>
-  void YAKL_INLINE compute_dHsdx_two_point(const real5d &B, const real5d &dens1,
-                                           const real5d &dens2,
-                                           const real5d &geop, int is, int js,
-                                           int ks, int i, int j, int k, int n,
-                                           real fac = 1._fp) const {
-    // hacky way to prevent compilation errors for unimplemented thermo variants
-    if constexpr (!si_compute_functional_derivatives_quadrature) {
-      // dispatch based on thermo
-      compute_dHsdx_two_point<addmode>(thermo, B, dens1, dens2, geop, is, js,
-                                       ks, i, j, k, n, fac);
-    }
-  }
-
-  template <ADD_MODE addmode = ADD_MODE::REPLACE>
   void YAKL_INLINE compute_dHsdx_two_point(IdealGas_Pottemp, const real5d &B,
                                            const real5d &dens1,
                                            const real5d &dens2,
@@ -215,6 +201,10 @@ public:
     }
   }
 };
+template <>
+struct two_point_discrete_gradient_implemented<Hamiltonian_CE_Hs,
+                                               IdealGas_Pottemp>
+    : std::true_type {};
 #endif
 
 // SHOULD BE MERGABLE INTO A SINGLE CLASS WITH INDEXING FOR RHO/RHOD?
@@ -291,20 +281,6 @@ public:
     }
     return varset.get_total_density(dens, k, j, i, ks, js, is, n) *
            thermo.compute_U(alpha, entropic_var, qd, qv, ql, qi);
-  }
-
-  template <ADD_MODE addmode = ADD_MODE::REPLACE>
-  void YAKL_INLINE compute_dHsdx_two_point(const real5d &B, const real5d &dens1,
-                                           const real5d &dens2,
-                                           const real5d &geop, int is, int js,
-                                           int ks, int i, int j, int k, int n,
-                                           real fac = 1._fp) const {
-    // hacky way to prevent compilation errors for unimplemented thermo variants
-    if constexpr (!si_compute_functional_derivatives_quadrature) {
-      // dispatch based on thermo
-      compute_dHsdx_two_point<addmode>(thermo, B, dens1, dens2, geop, is, js,
-                                       ks, i, j, k, n, fac);
-    }
   }
 
   template <ADD_MODE addmode = ADD_MODE::REPLACE>
@@ -472,6 +448,10 @@ public:
     }
   }
 };
+template <>
+struct two_point_discrete_gradient_implemented<Hamiltonian_MCE_Hs,
+                                               ConstantKappa_VirtualPottemp>
+    : std::true_type {};
 #endif
 
 // //ALL BROKEN, BUT REALLY CAN MOSTLY BE ELIMINATED?

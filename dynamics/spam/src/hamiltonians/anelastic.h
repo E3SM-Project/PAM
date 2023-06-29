@@ -154,20 +154,6 @@ public:
       B(varset.active_id_entr, k + ks, n) += fac * generalized_Exner;
     }
   }
-
-  template <ADD_MODE addmode = ADD_MODE::REPLACE>
-  void YAKL_INLINE compute_dHsdx_two_point(const real5d &B, const real5d &dens1,
-                                           const real5d &dens2,
-                                           const real5d &geop, int is, int js,
-                                           int ks, int i, int j, int k, int n,
-                                           real fac = 1._fp) const {
-    // hacky way to prevent compilation errors for unimplemented thermo variants
-    if constexpr (!si_compute_functional_derivatives_quadrature) {
-      // dispatch based on thermo
-      compute_dHsdx_two_point<addmode>(thermo, B, dens1, dens2, geop, is, js,
-                                       ks, i, j, k, n, fac);
-    }
-  }
 };
 #endif
 
@@ -384,20 +370,6 @@ public:
       } else if (addmode == ADD_MODE::ADD) {
         B(d, k + ks, n) += fac * l_B(d);
       }
-    }
-  }
-
-  template <ADD_MODE addmode = ADD_MODE::REPLACE>
-  void YAKL_INLINE compute_dHsdx_two_point(const real5d &B, const real5d &dens1,
-                                           const real5d &dens2,
-                                           const real5d &geop, int is, int js,
-                                           int ks, int i, int j, int k, int n,
-                                           real fac = 1._fp) const {
-    // hacky way to prevent compilation errors for unimplemented thermo variants
-    if constexpr (!si_compute_functional_derivatives_quadrature) {
-      // dispatch based on thermo
-      compute_dHsdx_two_point<addmode>(thermo, B, dens1, dens2, geop, is, js,
-                                       ks, i, j, k, n, fac);
     }
   }
 };

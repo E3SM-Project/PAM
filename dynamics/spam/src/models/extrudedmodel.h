@@ -349,6 +349,7 @@ struct TotalDensityFunctor {
 class ModelTendencies : public ExtrudedTendencies {
   real entropicvar_diffusion_coeff;
   real velocity_diffusion_coeff;
+  bool force_refstate_hydrostatic_balance;
 #if defined _AN || defined _MAN
   AnelasticPressureSolver pressure_solver;
 #endif
@@ -363,6 +364,8 @@ public:
     ExtrudedTendencies::initialize(params, equations, primal_geom, dual_geom);
     entropicvar_diffusion_coeff = params.entropicvar_diffusion_coeff;
     velocity_diffusion_coeff = params.velocity_diffusion_coeff;
+    force_refstate_hydrostatic_balance =
+        params.force_refstate_hydrostatic_balance;
 
 #if defined _AN || defined _MAN
     pressure_solver.initialize(params, primal_geom, dual_geom, equations);
@@ -1682,6 +1685,8 @@ public:
 
     const auto &refstate = this->equations->reference_state;
     YAKL_SCOPE(active_dens_ids, this->equations->varset.active_dens_ids);
+    YAKL_SCOPE(force_refstate_hydrostatic_balance,
+               this->force_refstate_hydrostatic_balance);
 
     real5d qxyreconvar, coriolisxyreconvar;
     if (ndims > 1) {
@@ -1697,11 +1702,11 @@ public:
           compute_wD0_vert<VS::ndensity_active, addmode>(
               Wtendvar, densvertreconvar, active_dens_ids, Bvar, pis, pjs, pks,
               i, j, k + 1, n);
-#ifdef FORCE_REFSTATE_HYDROSTATIC_BALANCE
-          compute_wD0_vert<VS::ndensity_active, ADD_MODE::ADD>(
-              Wtendvar, refstate.q_di.data, active_dens_ids, refstate.B.data,
-              pis, pjs, pks, i, j, k + 1, n);
-#endif
+          if (force_refstate_hydrostatic_balance) {
+            compute_wD0_vert<VS::ndensity_active, ADD_MODE::ADD>(
+                Wtendvar, refstate.q_di.data, active_dens_ids, refstate.B.data,
+                pis, pjs, pks, i, j, k + 1, n);
+          }
           if (qf_choice == QF_MODE::EC) {
             compute_Qxz_w_EC<1, ADD_MODE::ADD>(Wtendvar, qhzreconvar,
                                                qhzvertreconvar, Fvar, pis, pjs,
@@ -1743,14 +1748,14 @@ public:
           compute_wD0_vert<VS::ndensity_active, addmode>(
               Wtendvar, densvertreconvar, active_dens_ids, Bvar, pis, pjs, pks,
               i, j, primal_topology.nl - 1, n);
-#ifdef FORCE_REFSTATE_HYDROSTATIC_BALANCE
-          compute_wD0_vert<VS::ndensity_active, ADD_MODE::ADD>(
-              Wtendvar, refstate.q_di.data, active_dens_ids, refstate.B.data,
-              pis, pjs, pks, i, j, 0, n);
-          compute_wD0_vert<VS::ndensity_active, ADD_MODE::ADD>(
-              Wtendvar, refstate.q_di.data, active_dens_ids, refstate.B.data,
-              pis, pjs, pks, i, j, primal_topology.nl - 1, n);
-#endif
+          if (force_refstate_hydrostatic_balance) {
+            compute_wD0_vert<VS::ndensity_active, ADD_MODE::ADD>(
+                Wtendvar, refstate.q_di.data, active_dens_ids, refstate.B.data,
+                pis, pjs, pks, i, j, 0, n);
+            compute_wD0_vert<VS::ndensity_active, ADD_MODE::ADD>(
+                Wtendvar, refstate.q_di.data, active_dens_ids, refstate.B.data,
+                pis, pjs, pks, i, j, primal_topology.nl - 1, n);
+          }
           if (qf_choice == QF_MODE::EC) {
             compute_Qxz_w_EC_bottom<1, ADD_MODE::ADD>(
                 Wtendvar, qhzreconvar, qhzvertreconvar, Fvar, pis, pjs, pks, i,
@@ -2093,78 +2098,91 @@ public:
 #endif
   }
 
-  void compute_functional_derivatives_two_point(
+  void compute_two_point_discrete_gradient(
       real dt, FieldSet<nconstant> &const_vars, FieldSet<nprognostic> &x1,
       FieldSet<nprognostic> &x2,
       FieldSet<nauxiliary> &auxiliary_vars) override {
+    compute_two_point_discrete_gradient_impl(
+        this->equations->Hs, this->equations->thermo, dt, const_vars, x1, x2,
+        auxiliary_vars);
+  }
 
-    const auto &primal_topology = primal_geometry.topology;
-    const auto &dual_topology = dual_geometry.topology;
+  template <class HamilT = Hamiltonian, class ThermoT = ThermoPotential>
+  void compute_two_point_discrete_gradient_impl(
+      HamilT Hs, ThermoT thermo, real dt, FieldSet<nconstant> &const_vars,
+      FieldSet<nprognostic> &x1, FieldSet<nprognostic> &x2,
+      FieldSet<nauxiliary> &auxiliary_vars) {
+    if constexpr (!two_point_discrete_gradient_implemented_v<HamilT, ThermoT>) {
+      throw std::runtime_error(
+          "two point discrete gradient not implemented for this combination of "
+          "hamiltonian and thermodynamics");
+    } else {
+      const auto &primal_topology = primal_geometry.topology;
+      const auto &dual_topology = dual_geometry.topology;
 
-    int pis = primal_topology.is;
-    int pjs = primal_topology.js;
-    int pks = primal_topology.ks;
+      int pis = primal_topology.is;
+      int pjs = primal_topology.js;
+      int pks = primal_topology.ks;
 
-    const auto &densvar1 = x1.fields_arr[DENSVAR].data;
-    const auto &Vvar1 = x1.fields_arr[VVAR].data;
-    const auto &Wvar1 = x1.fields_arr[WVAR].data;
+      const auto &densvar1 = x1.fields_arr[DENSVAR].data;
+      const auto &Vvar1 = x1.fields_arr[VVAR].data;
+      const auto &Wvar1 = x1.fields_arr[WVAR].data;
 
-    const auto &densvar2 = x2.fields_arr[DENSVAR].data;
-    const auto &Vvar2 = x2.fields_arr[VVAR].data;
-    const auto &Wvar2 = x2.fields_arr[WVAR].data;
+      const auto &densvar2 = x2.fields_arr[DENSVAR].data;
+      const auto &Vvar2 = x2.fields_arr[VVAR].data;
+      const auto &Wvar2 = x2.fields_arr[WVAR].data;
 
-    const auto &Fvar = auxiliary_vars.fields_arr[FVAR].data;
-    const auto &FWvar = auxiliary_vars.fields_arr[FWVAR].data;
-    const auto &Kvar = auxiliary_vars.fields_arr[KVAR].data;
-    const auto &Bvar = auxiliary_vars.fields_arr[BVAR].data;
-    const auto &HSvar = const_vars.fields_arr[HSVAR].data;
+      const auto &Fvar = auxiliary_vars.fields_arr[FVAR].data;
+      const auto &FWvar = auxiliary_vars.fields_arr[FWVAR].data;
+      const auto &Kvar = auxiliary_vars.fields_arr[KVAR].data;
+      const auto &Bvar = auxiliary_vars.fields_arr[BVAR].data;
+      const auto &HSvar = const_vars.fields_arr[HSVAR].data;
 
-    YAKL_SCOPE(Hk, this->equations->Hk);
-    YAKL_SCOPE(Hs, this->equations->Hs);
-    YAKL_SCOPE(primal_geometry, this->primal_geometry);
-    YAKL_SCOPE(dual_geometry, this->dual_geometry);
+      YAKL_SCOPE(Hk, this->equations->Hk);
+      YAKL_SCOPE(primal_geometry, this->primal_geometry);
+      YAKL_SCOPE(dual_geometry, this->dual_geometry);
+      parallel_for(
+          "Functional derivatives",
+          SimpleBounds<4>(dual_topology.ni, dual_topology.n_cells_y,
+                          dual_topology.n_cells_x, dual_topology.nens),
+          YAKL_LAMBDA(int k, int j, int i, int n) {
+            SArray<real, 1, ndims> he_1, u_1;
+            real hew_1, uw_1, K2_1;
+            Hk.compute_he_U_and_K(he_1, hew_1, u_1, uw_1, K2_1, densvar1, Vvar1,
+                                  Wvar1, pis, pjs, pks, i, j, k, n);
 
-    parallel_for(
-        "Functional derivatives",
-        SimpleBounds<4>(dual_topology.ni, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          SArray<real, 1, ndims> he_1, u_1;
-          real hew_1, uw_1, K2_1;
-          Hk.compute_he_U_and_K(he_1, hew_1, u_1, uw_1, K2_1, densvar1, Vvar1,
-                                Wvar1, pis, pjs, pks, i, j, k, n);
+            SArray<real, 1, ndims> he_2, u_2;
+            real hew_2, uw_2, K2_2;
+            Hk.compute_he_U_and_K(he_2, hew_2, u_2, uw_2, K2_2, densvar2, Vvar2,
+                                  Wvar2, pis, pjs, pks, i, j, k, n);
 
-          SArray<real, 1, ndims> he_2, u_2;
-          real hew_2, uw_2, K2_2;
-          Hk.compute_he_U_and_K(he_2, hew_2, u_2, uw_2, K2_2, densvar2, Vvar2,
-                                Wvar2, pis, pjs, pks, i, j, k, n);
+            Kvar(0, k + pks, j + pjs, i + pis, n) = 0.5_fp * (K2_1 + K2_2);
 
-          Kvar(0, k + pks, j + pjs, i + pis, n) = 0.5_fp * (K2_1 + K2_2);
+            for (int d = 0; d < ndims; ++d) {
+              Fvar(d, pks + k, pjs + j, pis + i, n) =
+                  0.25_fp * (he_1(d) + he_2(d)) * (u_1(d) + u_2(d));
+            }
+            FWvar(0, pks + k, pjs + j, pis + i, n) =
+                0.25_fp * (hew_1 + hew_2) * (uw_1 + uw_2);
 
-          for (int d = 0; d < ndims; ++d) {
-            Fvar(d, pks + k, pjs + j, pis + i, n) =
-                0.25_fp * (he_1(d) + he_2(d)) * (u_1(d) + u_2(d));
-          }
-          FWvar(0, pks + k, pjs + j, pis + i, n) =
-              0.25_fp * (hew_1 + hew_2) * (uw_1 + uw_2);
+            if (k < primal_topology.ni) {
+              Hs.compute_dHsdx_two_point(thermo, Bvar, densvar1, densvar2,
+                                         HSvar, pis, pjs, pks, i, j, k, n);
+            }
+          });
+      auxiliary_vars.exchange({KVAR});
 
-          if (k < primal_topology.ni) {
-            Hs.compute_dHsdx_two_point(Bvar, densvar1, densvar2, HSvar, pis,
-                                       pjs, pks, i, j, k, n);
-          }
-        });
-    auxiliary_vars.exchange({KVAR});
+      parallel_for(
+          "Add K to B",
+          SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                          primal_topology.n_cells_x, primal_topology.nens),
+          YAKL_LAMBDA(int k, int j, int i, int n) {
+            Hk.compute_dKddens<ADD_MODE::ADD>(Bvar, Kvar, pis, pjs, pks, i, j,
+                                              k, n);
+          });
 
-    parallel_for(
-        "Add K to B",
-        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          Hk.compute_dKddens<ADD_MODE::ADD>(Bvar, Kvar, pis, pjs, pks, i, j, k,
-                                            n);
-        });
-
-    auxiliary_vars.exchange({BVAR, FVAR, FWVAR});
+      auxiliary_vars.exchange({BVAR, FVAR, FWVAR});
+    }
   }
 
   void apply_symplectic(real dt, FieldSet<nconstant> &const_vars,
@@ -3729,6 +3747,8 @@ void read_model_params_file(std::string inFile, ModelParameters &params,
       config["velocity_diffusion_coeff"].as<real>(0);
   // Read the data initialization options
   params.initdataStr = config["initData"].as<std::string>();
+  params.force_refstate_hydrostatic_balance =
+      config["force_refstate_hydrostatic_balance"].as<bool>(false);
 
   for (int i = 0; i < ntracers_dycore; i++) {
     params.tracerdataStr[i] =
@@ -3759,6 +3779,7 @@ void read_model_params_coupler(ModelParameters &params, Parallel &par,
   params.entropicvar_diffusion_coeff = 0;
   params.velocity_diffusion_coeff = 0;
   params.initdataStr = "coupler";
+  params.force_refstate_hydrostatic_balance = true;
 
   // Store vertical cell interface heights in the data manager
   auto &dm = coupler.get_data_manager_device_readonly();
@@ -4136,7 +4157,6 @@ public:
           }
         });
 
-#ifdef FORCE_REFSTATE_HYDROSTATIC_BALANCE
     parallel_for(
         "Compute refstate B",
         SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
@@ -4144,7 +4164,6 @@ public:
           Hs.compute_dHsdx(refstate.B.data, refstate.dens.data,
                            refstate.geop.data, pks, k, n, -1);
         });
-#endif
   }
 };
 
@@ -4328,7 +4347,6 @@ public:
           }
         });
 
-#ifdef FORCE_REFSTATE_HYDROSTATIC_BALANCE
     parallel_for(
         "Compute refstate B",
         SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
@@ -4336,7 +4354,6 @@ public:
           Hs.compute_dHsdx(refstate.B.data, refstate.dens.data,
                            refstate.geop.data, pks, k, n, -1);
         });
-#endif
   }
 
   void add_diagnostics(
@@ -4543,7 +4560,6 @@ public:
 
     YAKL_SCOPE(Hs, equations->Hs);
 
-#ifdef FORCE_REFSTATE_HYDROSTATIC_BALANCE
     parallel_for(
         "Compute refstate B",
         SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
@@ -4551,7 +4567,6 @@ public:
           Hs.compute_dHsdx(refstate.B.data, refstate.dens.data,
                            refstate.geop.data, pks, k, n, -1);
         });
-#endif
 
     parallel_for(
         "compute Nsq",
