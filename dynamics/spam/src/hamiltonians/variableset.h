@@ -69,7 +69,7 @@ struct VS_AN {
 };
 
 struct VS_MAN {
-  static constexpr bool couple = true;
+  static constexpr bool couple = false;
 
   static constexpr uint nmoist = 4;
 

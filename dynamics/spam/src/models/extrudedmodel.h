@@ -1672,6 +1672,8 @@ public:
       const real5d Bvar, const real5d Fvar, const real5d FWvar,
       optional_real5d opt_qxyreconvar, optional_real5d opt_coriolisxyreconvar) {
 
+    std::cout << "Bvar: " << yakl::intrinsics::minval(Bvar) << " " << yakl::intrinsics::maxval(Bvar) << " " << yakl::intrinsics::sum(Bvar) << std::endl;
+
     const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
 
@@ -1936,7 +1938,13 @@ public:
               denstendvar, densreconvar, Fvar, dis, djs, dks, i, j, k, n);
           compute_wDnm1bar_vert<VS::ndensity_prognostic, ADD_MODE::ADD>(
               denstendvar, densvertreconvar, FWvar, dis, djs, dks, i, j, k, n);
+          denstendvar(0, k + dks, j + djs, i + dis, n) = 0;
+          denstendvar(2, k + dks, j + djs, i + dis, n) = 0;
         });
+    
+    std::cout << "Vtendvar: " << yakl::intrinsics::minval(Vtendvar) << " " << yakl::intrinsics::maxval(Vtendvar) << " " << yakl::intrinsics::sum(Vtendvar) << std::endl;
+    std::cout << "Wtendvar: " << yakl::intrinsics::minval(Wtendvar) << " " << yakl::intrinsics::maxval(Wtendvar) << " " << yakl::intrinsics::sum(Wtendvar) << std::endl;
+    std::cout << "denstendvar: " << yakl::intrinsics::minval(denstendvar) << " " << yakl::intrinsics::maxval(denstendvar) << " " << yakl::intrinsics::sum(denstendvar) << std::endl;
   }
 
   real compute_max_anelastic_constraint(FieldSet<nprognostic> &x,

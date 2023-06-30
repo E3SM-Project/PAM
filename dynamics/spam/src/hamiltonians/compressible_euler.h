@@ -353,19 +353,23 @@ public:
     real generalized_chemical_potential_i =
         thermo.compute_dUdqi(alpha, entropic_var, qd, qv, ql, qi);
 
-    B(varset.active_id_mass) = geop + U + p * alpha -
-                               entropic_var * generalized_Exner +
-                               qv * (generalized_chemical_potential_d -
-                                     generalized_chemical_potential_v) +
-                               ql * (generalized_chemical_potential_d -
-                                     generalized_chemical_potential_l) +
-                               qi * (generalized_chemical_potential_d -
-                                     generalized_chemical_potential_i);
+    //B(varset.active_id_mass) = geop + U + p * alpha -
+    //                           entropic_var * generalized_Exner +
+    //                           qv * (generalized_chemical_potential_d -
+    //                                 generalized_chemical_potential_v) +
+    //                           ql * (generalized_chemical_potential_d -
+    //                                 generalized_chemical_potential_l) +
+    //                           qi * (generalized_chemical_potential_d -
+    //                                 generalized_chemical_potential_i);
+    B(varset.active_id_mass) = 0;
+
     B(varset.active_id_entr) = generalized_Exner;
+    //B(varset.active_id_entr) = 0;
 
     if (!ThermoPotential::moist_species_decouple_from_dynamics) {
-      B(varset.active_id_vap) =
-          generalized_chemical_potential_v - generalized_chemical_potential_d;
+      //B(varset.active_id_vap) =
+      //    generalized_chemical_potential_v - generalized_chemical_potential_d;
+      B(varset.active_id_vap) = 0;
       if (varset.liquid_found) {
         B(varset.active_id_liq) =
             generalized_chemical_potential_l - generalized_chemical_potential_d;
