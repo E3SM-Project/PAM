@@ -397,7 +397,7 @@ public:
                                 pres_mid(k  ,i) + grav*(rho_d(k  ,i)+rho_v(k  ,i))*(zint(k+1,i)-zint(k  ,i))/2 );
         }
       #elif defined(_AN) || defined(_MAN)
-        pres_int = ref_presi;
+        pres_int = ref_presi(k,i);
       #endif
       shoc_presi  (k_shoc,i) = pres_int;
     });
