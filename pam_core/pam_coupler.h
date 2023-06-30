@@ -310,6 +310,8 @@ namespace pam {
       dm.register_and_allocate<real>("ref_density_liq"  ,"Reference state column water liq density"  ,{nz,nens},{"z","nens"});
       dm.register_and_allocate<real>("ref_density_ice"  ,"Reference state column water ice density"  ,{nz,nens},{"z","nens"});
       dm.register_and_allocate<real>("ref_temp"         ,"Reference state column temperature"        ,{nz,nens},{"z","nens"});
+      dm.register_and_allocate<real>("ref_pres"         ,"Reference state column pressure"           ,{nz,nens},{"z","nens"});
+      dm.register_and_allocate<real>("ref_presi"         ,"Reference state column pressure on interfaces"           ,{nz+1,nens},{"zp1","nens"});
 
       dm.register_and_allocate<real>("uvel_stag"                     ,"staggered x-direction velocity"       ,{nz,ny,nx+1,nens},{"z","y","xp1","nens"});
       dm.register_and_allocate<real>("vvel_stag"                     ,"staggered y-direction velocity"       ,{nz,ny+1,nx,nens},{"z","yp1","x","nens"});
@@ -337,9 +339,11 @@ namespace pam {
       auto ref_rho_l    = dm.get_collapsed<real>("ref_density_liq"          );
       auto ref_rho_i    = dm.get_collapsed<real>("ref_density_ice"          );
       auto ref_temp     = dm.get_collapsed<real>("ref_temp"                 );
-      auto uvel_stag     = dm.get_collapsed<real>("uvel_stag"                 );
-      auto vvel_stag     = dm.get_collapsed<real>("vvel_stag"                 );
-      auto wvel_stag     = dm.get_collapsed<real>("wvel_stag"                 );
+      auto ref_pres     = dm.get_collapsed<real>("ref_pres"                 );
+      auto ref_presi    = dm.get_collapsed<real>("ref_presi"                 );
+      auto uvel_stag    = dm.get_collapsed<real>("uvel_stag"                 );
+      auto vvel_stag    = dm.get_collapsed<real>("vvel_stag"                 );
+      auto wvel_stag    = dm.get_collapsed<real>("wvel_stag"                 );
 
       parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<1>((nz+1)*(ny+1)*(nx+1)*nens) , YAKL_LAMBDA (int i) {
         if (i < density_dry.size()) density_dry(i) = 0;
@@ -356,6 +360,13 @@ namespace pam {
         if (i < gcm_wvel   .size()) gcm_wvel   (i) = 0;
         if (i < gcm_temp   .size()) gcm_temp   (i) = 0;
         if (i < gcm_rho_v  .size()) gcm_rho_v  (i) = 0;
+        if (i < ref_rho_d  .size()) ref_rho_d  (i) = 0;
+        if (i < ref_rho_v  .size()) ref_rho_v  (i) = 0;
+        if (i < ref_rho_l  .size()) ref_rho_l  (i) = 0;
+        if (i < ref_rho_i  .size()) ref_rho_i  (i) = 0;
+        if (i < ref_temp   .size()) ref_temp   (i) = 0;
+        if (i < ref_pres   .size()) ref_pres   (i) = 0;
+        if (i < ref_presi  .size()) ref_presi  (i) = 0;
         if (i < hy_params  .size()) hy_params  (i) = 0;
         if (i < uvel_stag  .size()) uvel_stag  (i) = 0;
         if (i < vvel_stag  .size()) vvel_stag  (i) = 0;

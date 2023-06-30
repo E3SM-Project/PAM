@@ -162,6 +162,7 @@ public:
 
     // Save initial state, and compute inputs for kessler(...)
     parallel_for( "kessler timeStep 2" , SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
+      real rho = 
       qv      (k,i) = rho_v(k,i) / rho_dry(k,i);
       qc      (k,i) = rho_c(k,i) / rho_dry(k,i);
       qr      (k,i) = rho_r(k,i) / rho_dry(k,i);
@@ -174,7 +175,7 @@ public:
 
     // #define KESSLER_USE_FORTRAN
 
-    
+
     #ifdef KESSLER_USE_FORTRAN
 
       ////////////////////////////////////////////
@@ -287,7 +288,7 @@ public:
   //  moisture categories: water vapor, cloud water (liquid water that
   //  moves with the flow), and rain water (liquid water that falls
   //  relative to the surrounding air). There  are no ice categories.
-  //  
+  //
   //  Variables in the column are ordered from the surface to the top.
   //
   //  Parameters:
@@ -329,7 +330,7 @@ public:
   //
   //    Klemp, J. B., W. C. Skamarock, W. C., and S.-H. Park, 2015:
   //    Idealized Global Nonhydrostatic Atmospheric Test Cases on a Reduced
-  //    Radius Sphere. Journal of Advances in Modeling Earth Systems. 
+  //    Radius Sphere. Journal of Advances in Modeling Earth Systems.
   //    doi:10.1002/2015MS000435
   //
   ///////////////////////////////////////////////////////////////////////////////
@@ -393,7 +394,7 @@ public:
         if (k == nz-1) {
           sed(nz-1,i) = -dt0*qr(nz-1,i)*velqr(nz-1,i)/(0.5_fp * (z(nz-1,i)-z(nz-2,i)));
         } else {
-          sed(k,i) = dt0 * ( r(k+1,i)*qr(k+1,i)*velqr(k+1,i) - 
+          sed(k,i) = dt0 * ( r(k+1,i)*qr(k+1,i)*velqr(k+1,i) -
                              r(k  ,i)*qr(k  ,i)*velqr(k  ,i) ) / ( r(k,i)*(z(k+1,i)-z(k,i)) );
         }
       });
@@ -414,14 +415,14 @@ public:
         // Evaporation rate following KW eq. 2.14a,b
         real tmp1 = dt0*( ( ( 1.6_fp + 124.9_fp * pow( r(k,i)*qr(k,i) , 0.2046_fp ) ) *
                             pow( r(k,i)*qr(k,i) , 0.525_fp ) ) /
-                          ( 2550000._fp * pc(k,i) / (3.8_fp * qvs)+540000._fp) ) * 
+                          ( 2550000._fp * pc(k,i) / (3.8_fp * qvs)+540000._fp) ) *
                         ( std::max(qvs-qv(k,i),0._fp) / (r(k,i)*qvs) );
         real tmp2 = std::max( -prod-qc(k,i) , 0._fp );
         real tmp3 = qr(k,i);
         real ern = std::min( tmp1 , std::min( tmp2 , tmp3 ) );
 
         // Saturation adjustment following KW eq. 3.10
-        theta(k,i)= theta(k,i) + lv / (cp*pk(k,i)) * 
+        theta(k,i)= theta(k,i) + lv / (cp*pk(k,i)) *
                                  ( std::max( prod , -qc(k,i) ) - ern );
         qv(k,i) = std::max( qv(k,i) - std::max( prod , -qc(k,i) ) + ern , 0._fp );
         qc(k,i) = qc(k,i) + std::max( prod , -qc(k,i) );
@@ -448,6 +449,3 @@ public:
 
 
 };
-
-
-
