@@ -55,6 +55,11 @@ struct thermo_constants {
   real gamma_d = Cpd / Cvd;
   real kappa_d = Rd / Cpd;
   real delta_d = Rd / Cvd;
+
+  real prd = pr;
+  real prv = 611.2;
+  real alpha_rd = Rd * Tr / prd;
+  real alpha_rv = Rv * Tr / prv;
 };
 
 class ThermoNone {
@@ -387,7 +392,7 @@ public:
 
 class ConstantKappa_VirtualPottemp {
 public:
-  static constexpr bool moist_species_decouple_from_dynamics = true;
+  static constexpr bool moist_species_decouple_from_dynamics = false;
 
   thermo_constants cst;
   real YAKL_INLINE compute_U(real alpha, real entropic_var, real qd, real qv,
@@ -579,27 +584,136 @@ class Unapprox_Pottemp {
 public:
   static constexpr bool moist_species_decouple_from_dynamics = false;
   thermo_constants cst;
+
+  real YAKL_INLINE compute_Rstar(real qd, real qv, real ql, real qi) const {
+    return qd * cst.Rd + qv * cst.Rv;
+  }
+  real YAKL_INLINE compute_Cvstar(real qd, real qv, real ql, real qi) const {
+    return qd * cst.Cvd + qv * cst.Cvv + ql * cst.Cl + qi * cst.Ci;
+  }
+  real YAKL_INLINE compute_Cpstar(real qd, real qv, real ql, real qi) const {
+    return qd * cst.Cpd + qv * cst.Cpv + ql * cst.Cl + qi * cst.Ci;
+  }
+
   real YAKL_INLINE compute_U(real alpha, real entropic_var, real qd, real qv,
-                             real ql, real qi) const {};
+                             real ql, real qi) const {
+    const real Rstar = compute_Rstar(qd, qv, ql, qi);
+    const real Cvstar = compute_Cvstar(qd, qv, ql, qi);
+    const real Cpstar = compute_Cpstar(qd, qv, ql, qi);
+    //const real Rstar = cst.Rd;
+    //const real Cvstar = cst.Cvd;
+    //const real Cpstar = cst.Cpd;
+    const real gamma_star = Cpstar / Cvstar;
+    const real delta_star = Rstar / Cvstar;
+
+    real U = Cvstar * pow(entropic_var, gamma_star) * pow(Rstar / (alpha * cst.pr), delta_star);
+    //U += -Cvstar * cst.Tr - qv * cst.Rv * cst.Tr + qv * (cst.Lvr + cst.Lfr) + ql * cst.Lfr;
+
+    return U;
+  };
 
   real YAKL_INLINE compute_dUdalpha(real alpha, real entropic_var, real qd,
-                                    real qv, real ql, real qi) const {};
+                                    real qv, real ql, real qi) const {
+    const real Rstar = compute_Rstar(qd, qv, ql, qi);
+    const real Cvstar = compute_Cvstar(qd, qv, ql, qi);
+    const real Cpstar = compute_Cpstar(qd, qv, ql, qi);
+    //const real Rstar = cst.Rd;
+    //const real Cvstar = cst.Cvd;
+    //const real Cpstar = cst.Cpd;
+    const real gamma_star = Cpstar / Cvstar;
+
+    return -cst.pr * pow(Rstar * entropic_var / (alpha * cst.pr), gamma_star);
+    //return -cst.pr * pow(cst.Rd * entropic_var / (alpha * cst.pr), cst.gamma_d);
+  };
 
   real YAKL_INLINE compute_dUdentropic_var(real alpha, real entropic_var,
                                            real qd, real qv, real ql,
-                                           real qi) const {};
+                                           real qi) const {
+    const real Rstar = compute_Rstar(qd, qv, ql, qi);
+    const real Cvstar = compute_Cvstar(qd, qv, ql, qi);
+    const real Cpstar = compute_Cpstar(qd, qv, ql, qi);
+    //const real Rstar = cst.Rd;
+    //const real Cvstar = cst.Cvd;
+    //const real Cpstar = cst.Cpd;
+    const real delta_star = Rstar / Cvstar;
+
+    return Cpstar * pow(Rstar * entropic_var / (alpha * cst.pr), delta_star);
+  };
 
   real YAKL_INLINE compute_dUdqd(real alpha, real entropic_var, real qd,
-                                 real qv, real ql, real qi) const {};
+                                 real qv, real ql, real qi) const {
+    const real Rstar = compute_Rstar(qd, qv, ql, qi);
+    const real Cvstar = compute_Cvstar(qd, qv, ql, qi);
+    const real Cpstar = compute_Cpstar(qd, qv, ql, qi);
+    const real gamma_star = Cpstar / Cvstar;
+    const real delta_star = Rstar / Cvstar;
+
+    const real A = pow(entropic_var, gamma_star) * pow(Rstar / (alpha * cst.pr), delta_star);
+
+    real dUdqd = cst.Cvd + log(entropic_var) * (cst.Cpd - cst.Cvd * Cpstar / Cvstar);
+    dUdqd += log(Rstar / (alpha * cst.pr)) * (cst.Rd - cst.Cvd * Rstar / Cvstar);
+    dUdqd *= A;
+    //dUdqd += -cst.Cvd * cst.Tr;
+
+    return dUdqd;
+  };
 
   real YAKL_INLINE compute_dUdqv(real alpha, real entropic_var, real qd,
-                                 real qv, real ql, real qi) const {};
+                                 real qv, real ql, real qi) const {
+    
+    const real Rstar = compute_Rstar(qd, qv, ql, qi);
+    const real Cvstar = compute_Cvstar(qd, qv, ql, qi);
+    const real Cpstar = compute_Cpstar(qd, qv, ql, qi);
+    const real gamma_star = Cpstar / Cvstar;
+    const real delta_star = Rstar / Cvstar;
+
+    const real A = pow(entropic_var, gamma_star) * pow(Rstar / (alpha * cst.pr), delta_star);
+
+    real dUdqv = cst.Cvv + log(entropic_var) * (cst.Cpv - cst.Cvv * Cpstar / Cvstar);
+    dUdqv += log(Rstar / (alpha * cst.pr)) * (cst.Rv - cst.Cvv * Rstar / Cvstar);
+    dUdqv *= A;
+    //dUdqv += -cst.Cvv * cst.Tr + cst.Lvr + cst.Lfr - cst.Rv * cst.Tr;
+
+    return dUdqv;
+  };
 
   real YAKL_INLINE compute_dUdql(real alpha, real entropic_var, real qd,
-                                 real qv, real ql, real qi) const {};
+                                 real qv, real ql, real qi) const {
+    const real Rstar = compute_Rstar(qd, qv, ql, qi);
+    const real Cvstar = compute_Cvstar(qd, qv, ql, qi);
+    const real Cpstar = compute_Cpstar(qd, qv, ql, qi);
+    const real gamma_star = Cpstar / Cvstar;
+    const real delta_star = Rstar / Cvstar;
+
+    const real A = pow(entropic_var, gamma_star) * pow(Rstar / (alpha * cst.pr), delta_star);
+
+    real dUdql = cst.Cl + log(entropic_var) * (cst.Cl - cst.Cl * Cpstar / Cvstar);
+    dUdql += log(Rstar / (alpha * cst.pr)) * (-cst.Cl * Rstar / Cvstar);
+    dUdql *= A;
+    //dUdql += -cst.Cl * cst.Tr + cst.Lfr;
+        
+    //return dUdql;
+    return 0;
+  };
 
   real YAKL_INLINE compute_dUdqi(real alpha, real entropic_var, real qd,
-                                 real qv, real ql, real qi) const {};
+                                 real qv, real ql, real qi) const {
+    const real Rstar = compute_Rstar(qd, qv, ql, qi);
+    const real Cvstar = compute_Cvstar(qd, qv, ql, qi);
+    const real Cpstar = compute_Cpstar(qd, qv, ql, qi);
+    const real gamma_star = Cpstar / Cvstar;
+    const real delta_star = Rstar / Cvstar;
+
+    const real A = pow(entropic_var, gamma_star) * pow(Rstar / (alpha * cst.pr), delta_star);
+
+    real dUdqi = cst.Ci + log(entropic_var) * (cst.Ci - cst.Ci * Cpstar / Cvstar);
+    dUdqi += log(Rstar / (alpha * cst.pr)) * (-cst.Ci * Rstar / Cvstar);
+    dUdqi *= A;
+    //dUdqi += -cst.Ci * cst.Tr;
+    
+    //return dUdqi;
+    return 0;
+  };
 
   real YAKL_INLINE compute_H(real p, real entropic_var, real qd, real qv,
                              real ql, real qi) const {};
@@ -623,13 +737,63 @@ public:
                                  real ql, real qi) const {};
 
   real YAKL_INLINE compute_alpha(real p, real T, real qd, real qv, real ql,
-                                 real qi) const {};
+                                 real qi) const {
+    const real Rstar = compute_Rstar(qd, qv, ql, qi);
+    return Rstar * T / p;
+  };
 
   real YAKL_INLINE compute_entropic_var(real p, real T, real qd, real qv,
-                                        real ql, real qi) const {};
+                                        real ql, real qi) const {
+    const real Rstar = compute_Rstar(qd, qv, ql, qi);
+    const real Cpstar = compute_Cpstar(qd, qv, ql, qi);
+    const real kappa_star = Rstar / Cpstar;
+    return T * pow(cst.pr / p, kappa_star);
+  };
+  
+  real YAKL_INLINE compute_entropic_var_from_T(real alpha, real T, real qd,
+                                               real qv, real ql,
+                                               real qi) const {
+    const real Rstar = compute_Rstar(qd, qv, ql, qi);
+    const real Cpstar = compute_Cpstar(qd, qv, ql, qi);
+    const real kappa_star = Rstar / Cpstar;
+    const real p = Rstar * T / alpha;
+    return T * pow(cst.pr / p, kappa_star);
+  }
 
   real YAKL_INLINE solve_p(real rho, real entropic_var, real qd, real qv,
-                           real ql, real qi) const {};
+                           real ql, real qi) const {
+    return -compute_dUdalpha(1 / rho, entropic_var, qd, qv, ql, qi);
+  };
+  
+  real YAKL_INLINE compute_T(real alpha, real entropic_var, real qd, real qv,
+                             real ql, real qi) const {
+    const real Rstar = compute_Rstar(qd, qv, ql, qi);
+    const real rho = 1 / alpha;
+    const real p = solve_p(rho, entropic_var, qd, qv, ql, qi);
+    return alpha * p / Rstar;
+  }
+
+  real YAKL_INLINE compute_dpdentropic_var(real alpha, real entropic_var,
+                                           real qd, real qv, real ql,
+                                           real qi) const {
+    const real rho = 1 / alpha;
+    const real p = solve_p(rho, entropic_var, qd, qv, ql, qi);
+    const real Cvstar = compute_Cvstar(qd, qv, ql, qi);
+    const real Cpstar = compute_Cpstar(qd, qv, ql, qi);
+    const real gamma_star = Cpstar / Cvstar;
+    return gamma_star * p / entropic_var;
+  }
+
+  real YAKL_INLINE compute_soundspeed(real alpha, real entropic_var, real qd,
+                                      real qv, real ql, real qi) const {
+
+    const real rho = 1 / alpha;
+    const real p = solve_p(rho, entropic_var, qd, qv, ql, qi);
+    const real Cvstar = compute_Cvstar(qd, qv, ql, qi);
+    const real Cpstar = compute_Cpstar(qd, qv, ql, qi);
+    const real gamma_star = Cpstar / Cvstar;
+    return sqrt(gamma_star * p * alpha);
+  }
 };
 
 class Unapprox_Entropy {
