@@ -16,20 +16,20 @@ namespace pamc {
 // Number of variables
 // v, dens
 uint constexpr nprognostic = 2;
-#define VVAR 0
-#define DENSVAR 1
+int constexpr VVAR = 0;
+int constexpr DENSVAR = 1;
 
 // This is needed in order for varset to compile for layermodel- it shouldn't
 // ever be used so the -1 is okay (and will trigger an easy to catch bug if it
 // is!)
-#define WVAR -1
+int constexpr WVAR = -1;
 
 // hs, coriolis
 uint constexpr nconstant = 2;
-#define HSVAR 0
-#define CORIOLISVAR 1
+int constexpr HSVAR = 0;
+int constexpr CORIOLISVAR = 1;
 
-#define MASSDENSINDX 0
+int constexpr MASSDENSINDX = 0;
 
 // functional derivatives = F, B, K, he
 // dual grid reconstruction stuff- q0, f0, FT, qedgerecon, qrecon,
@@ -42,38 +42,38 @@ uint constexpr nauxiliary = 19;
 uint constexpr nauxiliary = 18;
 #endif
 
-#define FVAR 0
-#define BVAR 1
-#define KVAR 2
-#define HEVAR 3
-#define UVAR 4
+int constexpr FVAR = 0;
+int constexpr BVAR = 1;
+int constexpr KVAR = 2;
+int constexpr HEVAR = 3;
+int constexpr UVAR = 4;
 
-#define DENS0VAR 5
-#define DENSRECONVAR 6
-#define DENSEDGERECONVAR 7
+int constexpr DENS0VAR = 5;
+int constexpr DENSRECONVAR = 6;
+int constexpr DENSEDGERECONVAR = 7;
 
-#define FTVAR 8
-#define Q0VAR 9
-#define F0VAR 10
-#define QRECONVAR 11
-#define QEDGERECONVAR 12
-#define CORIOLISRECONVAR 13
-#define CORIOLISEDGERECONVAR 14
+int constexpr FTVAR = 8;
+int constexpr Q0VAR = 9;
+int constexpr F0VAR = 10;
+int constexpr QRECONVAR = 11;
+int constexpr QEDGERECONVAR = 12;
+int constexpr CORIOLISRECONVAR = 13;
+int constexpr CORIOLISEDGERECONVAR = 14;
 
-#define EDGEFLUXVAR 15
-#define MFVAR 16
-#define F2VAR 17
+int constexpr EDGEFLUXVAR = 15;
+int constexpr MFVAR = 16;
+int constexpr F2VAR = 17;
 
 // track total densities, dens min/max, densfct min/max, energy (total, K, P,
 // I), PV, PE,
 uint constexpr nstats = 6;
 
-#define DENSSTAT 0
-#define DENSMINSTAT 1
-#define DENSMAXSTAT 2
-#define ESTAT 3
-#define PVSTAT 4
-#define PESTAT 5
+int constexpr DENSSTAT = 0;
+int constexpr DENSMINSTAT = 1;
+int constexpr DENSMAXSTAT = 2;
+int constexpr ESTAT = 3;
+int constexpr PVSTAT = 4;
+int constexpr PESTAT = 5;
 
 class ModelParameters : public Parameters {
 public:

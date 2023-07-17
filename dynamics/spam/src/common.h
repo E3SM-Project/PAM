@@ -127,9 +127,9 @@ real constexpr pi =
 // GPU compilers sometimes have issues with zero-sized arrays than can occur
 // for some parameter choices. For this reason we sometimes have to pad arrays
 #if defined YAKL_ARCH_CUDA || defined YAKL_ARCH_HIP || defined YAKL_ARCH_SYCL
-#define GPU_PAD 1
+int constexpr GPU_PAD = 1;
 #else
-#define GPU_PAD 0
+int constexpr GPU_PAD = 0;
 #endif
 
 // Specifying templated min and max functions
