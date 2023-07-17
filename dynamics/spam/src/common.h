@@ -166,8 +166,8 @@ enum class ADD_MODE { REPLACE, ADD };
 // Boundary types
 enum class BND_TYPE { PERIODIC, NONE };
 
-#if defined _HAMILTONIAN && defined _LAYER
+#if defined PAMC_HAMILTONIAN && defined PAMC_LAYER
 #include "layermodel-common.h"
-#elif defined _HAMILTONIAN && defined _EXTRUDED
+#elif defined PAMC_HAMILTONIAN && defined PAMC_EXTRUDED
 #include "extrudedmodel-common.h"
 #endif

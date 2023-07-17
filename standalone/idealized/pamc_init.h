@@ -42,7 +42,7 @@ void partition_domain(std::string inFile, int &crm_nx, int &crm_ny)
 
 void set_domain_sizes(const YAML::Node &config, real &xlen, real &ylen, real &zlen)
 {
-#ifdef _SPAM
+#ifdef PAMC_DYCORE
   std::unique_ptr<TestCase> testcase;
   testcase_from_config(testcase, config);
   const auto [Lx, Ly, Lz] = testcase->get_domain();

@@ -622,7 +622,7 @@ void Exchange::exchange_data(real5d &data) {
     this->unpack(data);
   }
 
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
   exchange_mirror(data);
 #endif
 }

@@ -489,7 +489,7 @@ void YAKL_INLINE compute_straight_recon(const real5d &reconvar,
   }
 }
 
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
 template <uint ndofs, RECONSTRUCTION_TYPE recontype>
 void YAKL_INLINE compute_straight_hz_recon(const real5d &reconvar,
                                            const real5d &edgereconvar,

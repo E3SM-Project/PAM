@@ -8,8 +8,8 @@ uint constexpr ntracers_dycore = 0;
 //////////////////////////////////////////////////////////////////////////////
 
 // for debugging anelastic
-#if defined _AN || defined _MAN
-#define CHECK_ANELASTIC_CONSTRAINT
+#if defined PAMC_AN || defined PAMC_MAN
+#define PAMC_CHECK_ANELASTIC_CONSTRAINT
 #endif
 
 // Number of Dimensions
@@ -90,11 +90,6 @@ uint constexpr nstats = 6;
 #define ESTAT 3
 #define PVSTAT 4
 #define PESTAT 5
-
-// ADD ANELASTIC + MOIST ANELASTIC
-//  #if defined _CEp || defined _MCErhop || defined _MCErhodp
-//  #define PVAR 18
-//  #endif
 
 class ModelParameters : public Parameters {
 public:

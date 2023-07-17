@@ -264,7 +264,7 @@ void FileIO::outputInit(real time, const Geometry<Straight> &primal_geometry,
     nc.write(primal_geometry.yc, "yc");
   }
 
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
   {
     const int pks = primal_geometry.topology.ks;
 

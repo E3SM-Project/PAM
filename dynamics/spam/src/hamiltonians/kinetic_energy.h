@@ -306,7 +306,7 @@ public:
                                       real5d Wvar, int is, int js, int ks,
                                       int i, int j, int k, int n) const {
 
-#if defined _AN || defined _MAN
+#if defined PAMC_AN || defined PAMC_MAN
     auto &rho_pi = varset.reference_state.rho_pi.data;
     auto &rho_di = varset.reference_state.rho_di.data;
     for (int d = 0; d < ndims; ++d) {

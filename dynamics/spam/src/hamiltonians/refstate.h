@@ -6,7 +6,7 @@
 struct ReferenceState_SWE {
   real ref_height;
 
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
   Profile dens;
   Profile geop;
   Profile q_di;
@@ -21,7 +21,7 @@ struct ReferenceState_SWE {
   template <class VS>
   void initialize(const Topology &primal_topology,
                   const Topology &dual_topology) {
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
     this->dens.initialize(dual_topology, "ref dens", 1, 1, VS::ndensity);
     this->geop.initialize(dual_topology, "ref geop", 1, 1, 1);
     this->rho_pi.initialize(primal_topology, "refrho_pi", 0, 0, 1);
@@ -63,7 +63,7 @@ struct ReferenceState_Euler {
   }
 };
 
-#if defined _SWE || defined _TSWE
+#if defined PAMC_SWE || defined PAMC_TSWE
 using ReferenceState = ReferenceState_SWE;
 #else
 using ReferenceState = ReferenceState_Euler;

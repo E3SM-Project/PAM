@@ -15,24 +15,24 @@ constexpr bool two_point_discrete_gradient_implemented_v =
 #include "kinetic_energy.h"
 #include "layer_models.h"
 
-#ifdef _SWE
+#ifdef PAMC_SWE
 using Hamiltonian = Hamiltonian_SWE_Hs;
-#elif _TSWE
+#elif PAMC_TSWE
 using Hamiltonian = Hamiltonian_TSWE_Hs;
-#elif _CE
+#elif PAMC_CE
 using Hamiltonian = Hamiltonian_CE_Hs;
-#elif _AN
+#elif PAMC_AN
 using Hamiltonian = Hamiltonian_AN_Hs;
-#elif _MAN
+#elif PAMC_MAN
 using Hamiltonian = Hamiltonian_MAN_Hs;
-#elif _MCErho
+#elif PAMC_MCErho
 using Hamiltonian = Hamiltonian_MCE_Hs;
-#elif _MCErhod
+#elif PAMC_MCErhod
 using Hamiltonian = Hamiltonian_MCE_Hs;
-#elif _CEp
+#elif PAMC_CEp
 using Hamiltonian = Hamiltonian_CE_p_Hs;
-#elif _MCErhop
+#elif PAMC_MCErhop
 using Hamiltonian = Hamiltonian_MCE_p_Hs;
-#elif _MCErhodp
+#elif PAMC_MCErhodp
 using Hamiltonian = Hamiltonian_MCE_p_Hs;
 #endif

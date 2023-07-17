@@ -144,7 +144,7 @@ int main(int argc, char** argv) {
     seeds = 0;
     modules::perturb_temperature( coupler , seeds );
     
-#ifdef _SPAM
+#ifdef PAMC_DYCORE
     dycore.pre_time_loop(coupler);
 #endif
 

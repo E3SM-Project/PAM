@@ -704,9 +704,9 @@ public:
         YAKL_LAMBDA(int k, int j, int i, int n) {
           SArray<real, 2, VS::ndensity_active, ndims> c;
           for (int d = 0; d < ndims; ++d) {
-#ifdef _SWE
+#ifdef PAMC_SWE
             c(0, d) = 0;
-#elif _TSWE
+#elif PAMC_TSWE
             c(0, d) = 0.25_fp * grav * dt;
 #endif
             for (int dof = 1; dof < VS::ndensity_active; ++dof) {
@@ -799,7 +799,7 @@ public:
           real dens_old = dens_sol(0, k + dks, j + djs, i + dis, n);
           real dens_new = dens_transform(k, j, i, n);
           dens_sol(0, k + dks, j + djs, i + dis, n) = dens_new;
-#ifdef _TSWE
+#ifdef PAMC_TSWE
           dens_sol(1, k + dks, j + djs, i + dis, n) -=
               grav * (dens_old - dens_new);
 #endif
@@ -827,7 +827,7 @@ public:
           real v1 = v_rhs(1, k + dks, j + djs, i + dis, n);
           SArray<real, 2, VS::ndensity_active, ndims> c;
           for (int d = 0; d < ndims; ++d) {
-#ifdef _SWE
+#ifdef PAMC_SWE
             c(0, d) = grav;
 #elif _TSWE
             c(0, d) = 0.5_fp * grav;
@@ -1163,7 +1163,7 @@ public:
   using T::yc;
 
   using T::h_f;
-#ifdef _TSWE
+#ifdef PAMC_TSWE
   using T::S_f;
 #endif
   using T::coriolis_f;
@@ -1186,7 +1186,7 @@ public:
     dual_geom.set_2form_values(
         YAKL_LAMBDA(real x, real y) { return h_f(x, y); },
         progvars.fields_arr[DENSVAR], 0);
-#ifdef _TSWE
+#ifdef PAMC_TSWE
     dual_geom.set_2form_values(
         YAKL_LAMBDA(real x, real y) { return S_f(x, y); },
         progvars.fields_arr[DENSVAR], 1);

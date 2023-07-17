@@ -61,7 +61,7 @@ void Topology::initialize(Parallel &par, bool isprimal) {
 
   this->nl = par.nz;
   this->ni = par.nz + 1;
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
   if (this->primal) {
     this->nl = par.nz - 1;
     this->ni = par.nz;
@@ -100,7 +100,7 @@ void Topology::initialize(Parallel &par, bool isprimal) {
   this->is = this->halosize_x;
   this->js = this->halosize_y;
 
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
   this->mirror_halo = mirroringhalo;
   this->ks = this->mirror_halo;
 #else

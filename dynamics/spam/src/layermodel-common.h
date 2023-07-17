@@ -32,7 +32,7 @@ uint constexpr nconstant = 2;
 // coriolisedgercon, coriolisrecon primal grid reconstruction stuff- U, dens0,
 // edgerecon, recon fct stuff- Phi, Mf, edgeflux
 
-#if defined _CEp || defined _MCErhop || defined _MCErhodp
+#if defined PAMC_CEp || defined PAMC_MCErhop || defined PAMC_MCErhodp
 uint constexpr nauxiliary = 19;
 #else
 uint constexpr nauxiliary = 18;
