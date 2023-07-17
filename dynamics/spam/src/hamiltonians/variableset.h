@@ -156,7 +156,7 @@ public:
       dens_prognostic; // Whether each density is prognostic
   SArray<int, 1, ndensity_active>
       active_dens_ids; // indices of active densities
-  //bool couple_wind;
+  // bool couple_wind;
 
   int dm_id_vap = std::numeric_limits<int>::min();
   int dm_id_liq = std::numeric_limits<int>::min();
@@ -175,7 +175,7 @@ public:
   int active_id_ice = std::numeric_limits<int>::min();
 
   bool ice_found = false;
-  bool liquid_found = false;
+  bool liq_found = false;
 
   ThermoPotential thermo;
   ReferenceState reference_state;
@@ -208,10 +208,11 @@ public:
     varset.primal_geometry = primal_geom;
     varset.dual_geometry = dual_geom;
 
-    // If more physics parameterizations are added this logic might need to
-    // change
+    // Need different logic for this.
+    // maybe a coupler option so that the driver can set it directly??
     //varset.couple_wind = !(coupler.get_option<std::string>("sgs") == "none") ||
     //                     !(coupler.option_exists("standalone_input_file"));
+    varset.couple_wind = true;
 
     for (int l = ndensity_dycore_prognostic; l < ndensity_nophysics; l++) {
       varset.dens_pos(l) =
@@ -246,7 +247,7 @@ public:
           tracer_names_loc[tr] == std::string("cloud_water")) {
         varset.dm_id_liq = tr;
         varset.dens_id_liq = ndensity_nophysics + tr;
-        varset.liquid_found = true;
+        varset.liq_found = true;
         if (!::ThermoPotential::moist_species_decouple_from_dynamics) {
           varset.dens_active(tr + ndensity_nophysics) = true;
         }
@@ -278,7 +279,7 @@ public:
         if (varset.ice_found && i == ndensity_nophysics + varset.dm_id_ice) {
           varset.active_id_ice = active_i;
         }
-        if (varset.liquid_found && i == ndensity_nophysics + varset.dm_id_liq) {
+        if (varset.liq_found && i == ndensity_nophysics + varset.dm_id_liq) {
           varset.active_id_liq = active_i;
         }
         active_i++;
@@ -366,8 +367,8 @@ public:
                                          const FieldSet<nprognostic> &prog_vars,
                                          const FieldSet<nconstant> &const_vars, bool couple_wind_exact_inverse);
   void convert_dynamics_to_coupler_staggered_wind(PamCoupler &coupler,
-
-
+                                         const FieldSet<nprognostic> &prog_vars,
+                                         const FieldSet<nconstant> &const_vars);
   void convert_coupler_to_dynamics_densities(PamCoupler &coupler,
                                          FieldSet<nprognostic> &prog_vars,
                                          const FieldSet<nconstant> &const_vars);
@@ -458,8 +459,8 @@ void VariableSetBase<T>::convert_dynamics_to_coupler_densities(
         YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
 
 
-          //real qd = get_qd(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks,
-          //                 djs, dis, n);
+          real qd = get_qd(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks,
+                          djs, dis, n);
           real qv = get_qv(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks,
                            djs, dis, n);
 
@@ -467,7 +468,7 @@ void VariableSetBase<T>::convert_dynamics_to_coupler_densities(
               prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
 
           real ql = 0.0_fp;
-          if (liquid_found) {
+          if (liq_found) {
             ql = get_ql(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs,
                         dis, n);
           }
@@ -477,8 +478,6 @@ void VariableSetBase<T>::convert_dynamics_to_coupler_densities(
             qi = get_qi(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs,
                         dis, n);
           }
-
-          real qd = 1.0_fp - qv - ql - qi;
 
 
 //THIS LOGIC SHOULD PROBABLY LIVE IN VARIABLE SET, BUT IT IS NOT CLEAR HOW TO CLEANLY INTEGRATE IT YET
@@ -647,7 +646,7 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_densities(
           real dens_vap = dm_tracers(dm_id_vap, k, j, i, n);
           real dens_liq = 0.0_fp;
           real dens_ice = 0.0_fp;
-          if (liquid_found) {
+          if (liq_found) {
             dens_liq = dm_tracers(dm_id_liq, k, j, i, n);
           }
           if (ice_found) {
@@ -663,7 +662,7 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_densities(
 #if defined(_CE) || defined(_MCErho) || defined(_MCE_rhod) || defined(_CEp)  || defined(_MCErhop) || defined(_MCErhodp)
 
           real dens_dry = dm_dens_dry(k, j, i, n);
-          real dens = dens_dry + dens_ice + dens_liq + dens_vap;
+          real dens = dens_dry + dens_vap;
 
           set_density(dens * dual_geometry.get_area_n1entity(k + dks, j + djs,
                                                              i + dis, n),
@@ -684,7 +683,8 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_densities(
           real qv = dens_vap / dens;
           real ql = dens_liq / dens;
           real qi = dens_ice / dens;
-          real qd = 1.0_fp - qv - ql - qi;
+
+          real qd = get_qd(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
 #endif
 
 
@@ -1206,12 +1206,8 @@ real YAKL_INLINE VariableSetBase<VS_MAN>::_water_dens(const real5d &densvar,
   real vap_dens = densvar(dens_id_vap, k + ks, j + js, i + is, n);
   real liq_dens = 0.0_fp;
   real ice_dens = 0.0_fp;
-  if (liquid_found) {
-    liq_dens = densvar(dens_id_liq, k + ks, j + js, i + is, n);
-  }
-  if (ice_found) {
-    ice_dens = densvar(dens_id_ice, k + ks, j + js, i + is, n);
-  }
+  // if (liq_found) { liq_dens = densvar(dens_id_liq, k + ks, j + js, i + is, n); }
+  // if (ice_found) { ice_dens = densvar(dens_id_ice, k + ks, j + js, i + is, n); }
   return vap_dens + liq_dens + ice_dens;
 }
 
@@ -1222,12 +1218,8 @@ real YAKL_INLINE VariableSetBase<VS_MAN>::_water_dens(const real3d &densvar,
   real vap_dens = densvar(dens_id_vap, k + ks, n);
   real liq_dens = 0.0_fp;
   real ice_dens = 0.0_fp;
-  if (liquid_found) {
-    liq_dens = densvar(dens_id_liq, k + ks, n);
-  }
-  if (ice_found) {
-    ice_dens = densvar(dens_id_ice, k + ks, n);
-  }
+  // if (liq_found) { liq_dens = densvar(dens_id_liq, k + ks, n); }
+  // if (ice_found) { ice_dens = densvar(dens_id_ice, k + ks, n); }
   return vap_dens + liq_dens + ice_dens;
 }
 
@@ -1384,7 +1376,7 @@ real YAKL_INLINE VariableSetBase<VS_MCE_rho>::_water_dens(const real5d &densvar,
   real vap_dens = densvar(dens_id_vap, k + ks, j + js, i + is, n);
   real liq_dens = 0.0_fp;
   real ice_dens = 0.0_fp;
-  if (liquid_found) {
+  if (liq_found) {
     liq_dens = densvar(dens_id_liq, k + ks, j + js, i + is, n);
   }
   if (ice_found) {
@@ -1400,7 +1392,7 @@ real YAKL_INLINE VariableSetBase<VS_MCE_rho>::_water_dens(const real3d &densvar,
   real vap_dens = densvar(dens_id_vap, k + ks, n);
   real liq_dens = 0.0_fp;
   real ice_dens = 0.0_fp;
-  if (liquid_found) {
+  if (liq_found) {
     liq_dens = densvar(dens_id_liq, k + ks, n);
   }
   if (ice_found) {
@@ -1483,7 +1475,7 @@ real YAKL_INLINE VariableSetBase<VS_MCE_rhod>::get_total_density(
   real vap_dens = densvar(dens_id_vap, k + ks, j + js, i + is, n);
   real liq_dens = 0.0_fp;
   real ice_dens = 0.0_fp;
-  if (liquid_found) {
+  if (liq_found) {
     liq_dens = densvar(dens_id_liq, k + ks, j + js, i + is, n);
   }
   if (ice_found) {
