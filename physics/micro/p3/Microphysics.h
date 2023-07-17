@@ -252,14 +252,7 @@ public:
     auto rho_dry = dm.get_lev_col<real>("density_dry");
     auto temp    = dm.get_lev_col<real>("temp"       );
 
-    auto ref_pres  = dm.get_lev_col<real>("ref_pres" );
-    auto ref_rho_d = dm.get_lev_col<real>("ref_rho_d");
-    auto ref_rho_v = dm.get_lev_col<real>("ref_rho_v");
-    auto ref_rho_l = dm.get_lev_col<real>("ref_rho_l");
-    auto ref_rho_i = dm.get_lev_col<real>("ref_rho_i");
-    auto ref_temp  = dm.get_lev_col<real>("ref_temp" );
-
-    // Calculate the grid spacing
+    // Set grid spacing and pressure values
     real2d dz("dz",nz,ny*nx*nens);
     parallel_for( "micro dz" , SimpleBounds<4>(nz,ny,nx,nens) ,
                   YAKL_LAMBDA (int k, int j, int i, int iens) {
@@ -331,45 +324,27 @@ public:
 
     // Save initial state, and compute inputs for p3(...)
     parallel_for( "micro adjust preprocess" , SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
-
-      // P3 doesn't do saturation adjustment, so we need to do that ahead of time
-      // If we're using SHOC, then it does saturation adjustment, so no need to do it here
-      if (! sgs_shoc) {
-        // Compute total density
-        //real rho = rho_dry(k,i) + rho_c(k,i) + rho_r(k,i) + rho_i(k,i) + rho_v(k,i);
-        //real rho = ref_rho_d(k,i) + ref_rho_v(k,i) + ref_rho_l(k,i) + ref_rho_i(k,i);
-        compute_adjusted_state(rho, rho_dry(k,i) , rho_v(k,i) , rho_c(k,i) , temp(k,i),
-                               R_v , cp_d , cp_v , cp_l);
-      }
-
-      #if defined(_CE) || defined(_MCErho) || defined(_MCErhod) || defined(_CEp) || defined(_MCErhop) || defined(_MCErhodp)
-            real rho = rho_dry(k,i) + rho_c(k,i) + rho_r(k,i) + rho_i(k,i) + rho_v(k,i);
-            real pres = R_d*rho_dry(k,i)*temp(k,i) + R_v*rho_v(k,i)*temp(k,i);
-      #elif defined(_AN) || defined(_MAN)
-            real rho = ref_rho_d(k,i) + ref_rho_v(k,i) + ref_rho_l(k,i) + ref_rho_i(k,i);
-            real pres = ref_pres(k,i);
-      #endif
-
       // Compute quantities for P3
-      qc          (k,i) = rho_c (k,i) / rho;
-      nc          (k,i) = rho_nc(k,i) / rho;
-      qr          (k,i) = rho_r (k,i) / rho;
-      nr          (k,i) = rho_nr(k,i) / rho;
-      qi          (k,i) = rho_i (k,i) / rho;
-      ni          (k,i) = rho_ni(k,i) / rho;
-      qm          (k,i) = rho_m (k,i) / rho;
-      bm          (k,i) = rho_bm(k,i) / rho;
-      qv          (k,i) = rho_v (k,i) / rho;
+      qc          (k,i) = rho_c (k,i) / rho_dry(k,i);
+      nc          (k,i) = rho_nc(k,i) / rho_dry(k,i);
+      qr          (k,i) = rho_r (k,i) / rho_dry(k,i);
+      nr          (k,i) = rho_nr(k,i) / rho_dry(k,i);
+      qi          (k,i) = rho_i (k,i) / rho_dry(k,i);
+      ni          (k,i) = rho_ni(k,i) / rho_dry(k,i);
+      qm          (k,i) = rho_m (k,i) / rho_dry(k,i);
+      bm          (k,i) = rho_bm(k,i) / rho_dry(k,i);
+      qv          (k,i) = rho_v (k,i) / rho_dry(k,i);
+
+      real pressure     = R_d*rho_dry(k,i)*temp(k,i) + R_v*rho_v(k,i)*temp(k,i);
 
       pressure_dry(k,i) = R_d*rho_dry(k,i)*temp(k,i);
-//These are constant kappa expressions
-      exner       (k,i) = pow( pres / p0 , R_d / cp_d );
+      //These are constant kappa expressions
+      exner       (k,i) = pow( pressure / p0 , R_d / cp_d );
       inv_exner   (k,i) = 1. / exner(k,i);
-      theta       (k,i) = temp(k,i) / exner(k,i);
+      theta       (k,i) = temp(k,i) * inv_exner(k,i);
       // P3 uses dpres to calculate density via the hydrostatic assumption.
       // So we just reverse this to compute dpres to give true density
-      dpres_dry(k,i) = rho * grav * dz(k,i) // rho_dry(k,i) * grav * dz(k,i);
-      // nc_nuceat_tend, nccn_prescribed, and ni_activated are not used
+      dpres_dry(k,i) = rho_dry(k,i) * grav * dz(k,i);
       nccn_prescribed(k,i) = 1e3;
       nc_nuceat_tend (k,i) = 1.0;
       ni_activated   (k,i) = 1.0;
@@ -386,25 +361,19 @@ public:
       inv_qc_relvar = dm.get_lev_col<real>("inv_qc_relvar");
       auto cld_frac = dm.get_lev_col<real>("cldfrac");
       get_cloud_fraction( cld_frac , qc , qr , qi , cld_frac_i , cld_frac_l , cld_frac_r );
-      // parallel_for( SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
-      //   cld_frac_l(k,i) = 1;
-      //   cld_frac_i(k,i) = 1;
-      //   cld_frac_r(k,i) = 1;
-      // });
     } else {
       parallel_for( SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
         // Assume cloud fracton is always 1
         cld_frac_l(k,i) = 1;
         cld_frac_i(k,i) = 1;
         cld_frac_r(k,i) = 1;
-        // inv_qc_relvar is always set to one
         inv_qc_relvar(k,i) = 1;
       });
     }
     double elapsed_s;
     int it, its, ite, kts, kte;
     bool do_predict_nc = false;
-    bool do_prescribed_CCN = false;
+    bool do_prescribed_CCN = true;
 
     #ifdef P3_CXX
 
@@ -661,32 +630,32 @@ public:
     ////////////////////////////////////////////////////////////////////////////
     // P3 postprocessing
     ////////////////////////////////////////////////////////////////////////////
+
+    real Lv = coupler.get_option<real>("latvap");
+
     auto liq_ice_exchange_out = dm.get_lev_col<real>("liq_ice_exchange_out");
     auto vap_liq_exchange_out = dm.get_lev_col<real>("vap_liq_exchange_out");
     auto vap_ice_exchange_out = dm.get_lev_col<real>("vap_ice_exchange_out");
     parallel_for( "micro post process" , SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
       // Convert P3 outputs into dynamics coupler state and tracer masses
+      rho_c  (k,i) = std::max( qc(k,i)*rho_dry(k,i) , 0._fp );
+      rho_nc (k,i) = std::max( nc(k,i)*rho_dry(k,i) , 0._fp );
+      rho_r  (k,i) = std::max( qr(k,i)*rho_dry(k,i) , 0._fp );
+      rho_nr (k,i) = std::max( nr(k,i)*rho_dry(k,i) , 0._fp );
+      rho_i  (k,i) = std::max( qi(k,i)*rho_dry(k,i) , 0._fp );
+      rho_ni (k,i) = std::max( ni(k,i)*rho_dry(k,i) , 0._fp );
+      rho_m  (k,i) = std::max( qm(k,i)*rho_dry(k,i) , 0._fp );
+      rho_bm (k,i) = std::max( bm(k,i)*rho_dry(k,i) , 0._fp );
+      rho_v  (k,i) = std::max( qv(k,i)*rho_dry(k,i) , 0._fp );
 
-      #if defined(_CE) || defined(_MCErho) || defined(_MCErhod) || defined(_CEp) || defined(_MCErhop) || defined(_MCErhodp)
-            real rho = rho_dry(k,i) + rho_c(k,i) + rho_r(k,i) + rho_i(k,i) + rho_v(k,i);
-            real pres = R_d*rho_dry(k,i)*temp(k,i) + R_v*rho_v(k,i)*temp(k,i);
-      #elif defined(_AN) || defined(_MAN)
-            real rho = ref_rho_d(k,i) + ref_rho_v(k,i) + ref_rho_l(k,i) + ref_rho_i(k,i);
-            real pres = ref_pres(k,i);
-      #endif
-
-      rho_c  (k,i) = std::max( qc(k,i)*rho , 0._fp );
-      rho_nc (k,i) = std::max( nc(k,i)*rho , 0._fp );
-      rho_r  (k,i) = std::max( qr(k,i)*rho , 0._fp );
-      rho_nr (k,i) = std::max( nr(k,i)*rho , 0._fp );
-      rho_i  (k,i) = std::max( qi(k,i)*rho , 0._fp );
-      rho_ni (k,i) = std::max( ni(k,i)*rho , 0._fp );
-      rho_m  (k,i) = std::max( qm(k,i)*rho , 0._fp );
-      rho_bm (k,i) = std::max( bm(k,i)*rho , 0._fp );
-      rho_v  (k,i) = std::max( qv(k,i)*rho , 0._fp );
       // While micro changes total pressure, thus changing exner, the definition
-      // of theta depends on the old exner pressure, so we'll use old exner here
-      temp   (k,i) = theta(k,i) * exner(k,i);
+      // of theta depends on the old exner pressure, so we'll use old exner here.      
+      // Also, P3 calculations are done at constant pressure but PAM assumes 
+      // constant volume, so we need to scale temperature change by cv/cp
+      real temp_old = temp(k,i);
+      real temp_new = theta(k,i) * exner(k,i);
+      temp(k,i) = temp_old + ( temp_new - temp_old ) * cv_d/cp_d;
+
       // Save qv and temperature for the next call to p3_main
       qv_prev(k,i) = std::max( qv(k,i) , 0._fp );
       t_prev (k,i) = temp(k,i);
