@@ -156,7 +156,7 @@ public:
       dens_prognostic; // Whether each density is prognostic
   SArray<int, 1, ndensity_active>
       active_dens_ids; // indices of active densities
-  // bool couple_wind;
+  bool couple_wind;
 
   int dm_id_vap = std::numeric_limits<int>::min();
   int dm_id_liq = std::numeric_limits<int>::min();

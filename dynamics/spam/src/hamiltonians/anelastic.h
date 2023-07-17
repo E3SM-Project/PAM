@@ -234,7 +234,7 @@ public:
     const real qv = varset.get_qv(dens, k, j, i, ks, js, is, n);
     real ql = 0.0_fp;
     real qi = 0.0_fp;
-    if (varset.liquid_found) {
+    if (varset.liq_found) {
       ql = varset.get_ql(dens, k, j, i, ks, js, is, n);
     }
     if (varset.ice_found) {
@@ -283,7 +283,7 @@ public:
     if (!ThermoPotential::moist_species_decouple_from_dynamics) {
       B(varset.active_id_vap) =
           generalized_chemical_potential_v - generalized_chemical_potential_d;
-      if (varset.liquid_found) {
+      if (varset.liq_found) {
         B(varset.active_id_liq) =
             generalized_chemical_potential_l - generalized_chemical_potential_d;
       }
@@ -326,7 +326,7 @@ public:
     l_q(1) = varset.get_entropic_var(dens, k, j, i, ks, js, is, n);
     l_q(2) = varset.get_qd(dens, k, j, i, ks, js, is, n);
     l_q(3) = varset.get_qv(dens, k, j, i, ks, js, is, n);
-    l_q(4) = varset.liquid_found ? varset.get_ql(dens, k, j, i, ks, js, is, n)
+    l_q(4) = varset.liq_found ? varset.get_ql(dens, k, j, i, ks, js, is, n)
                                  : 0.0_fp;
     l_q(5) =
         varset.ice_found ? varset.get_qi(dens, k, j, i, ks, js, is, n) : 0.0_fp;
