@@ -252,7 +252,7 @@ public:
     auto rho_dry = dm.get_lev_col<real>("density_dry");
     auto temp    = dm.get_lev_col<real>("temp"       );
 
-    // Set grid spacing and pressure values
+    // Set grid spacing
     real2d dz("dz",nz,ny*nx*nens);
     parallel_for( "micro dz" , SimpleBounds<4>(nz,ny,nx,nens) ,
                   YAKL_LAMBDA (int k, int j, int i, int iens) {
@@ -324,6 +324,13 @@ public:
 
     // Save initial state, and compute inputs for p3(...)
     parallel_for( "micro adjust preprocess" , SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
+
+      if (! sgs_shoc) {
+        // If not using SHOC, then do a saturation adjustment here
+        real rho = rho_dry(k,i) + rho_v(k,i);
+        compute_adjusted_state(rho, rho_dry(k,i), rho_v(k,i), rho_c(k,i), temp(k,i), R_v, cp_d, cp_v, cp_l );
+      }
+
       // Compute quantities for P3
       qc          (k,i) = rho_c (k,i) / rho_dry(k,i);
       nc          (k,i) = rho_nc(k,i) / rho_dry(k,i);
@@ -630,8 +637,6 @@ public:
     ////////////////////////////////////////////////////////////////////////////
     // P3 postprocessing
     ////////////////////////////////////////////////////////////////////////////
-
-    real Lv = coupler.get_option<real>("latvap");
 
     auto liq_ice_exchange_out = dm.get_lev_col<real>("liq_ice_exchange_out");
     auto vap_liq_exchange_out = dm.get_lev_col<real>("vap_liq_exchange_out");
