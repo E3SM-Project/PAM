@@ -158,29 +158,25 @@ public:
 
     auto &dm = coupler.get_data_manager_device_readwrite();
 
-    //auto pres_mid_tmp = coupler.compute_pressure_array();
-
-    //auto pres_mid = pres_mid_tmp.reshape<2>({nz  ,ncol});
-
     auto zint_pam = dm.get<real,2>("vertical_interface_height");
     auto zmid_pam = dm.get<real,2>("vertical_midpoint_height" );
 
     real crm_dx = coupler.get_xlen() / nx;
     real crm_dy = ny == 1 ? crm_dx : coupler.get_ylen() / ny;
 
-    // SHOC init requires reference pressure, which we do not have available for the init() call
     if (first_step) {
-      // Invert the first column in x, z, and ensemble to use as reference pressure for shoc
-      real1d pref_shoc("pref_shoc",nz);
-      parallel_for( SimpleBounds<1>(nz) , YAKL_LAMBDA (int k) {
-        pref_shoc(k) = pres_mid(nz-1-k,0);
-      });
-      real zvir = R_v / R_d - 1.;
-      int kbot, ktop;
-
-      kbot = nz;
-      ktop = 1;
       #ifndef SHOC_CXX
+        auto ref_pres = dm_device.get<real,2>("ref_pres");
+        // SHOC init requires reference pressure, which we do not have available for the init() call
+        // Invert the first column in x, z, and ensemble to use as reference pressure for shoc
+        real1d pref_shoc("pref_shoc",nz);
+        parallel_for( SimpleBounds<1>(nz) , YAKL_LAMBDA (int k) {
+          int k_shoc = nz-1-k;
+          pref_shoc(k_shoc) = ref_pres(k,0);
+        });
+        real zvir = R_v / R_d - 1.;
+        int kbot = nz;
+        int ktop = 1;
         shoc_init_fortran( nz , grav , R_d , R_v , cp_d , zvir , latvap , latice , karman ,
                            pref_shoc.createHostCopy().data() , kbot , ktop );
       #endif
@@ -228,8 +224,9 @@ public:
     auto wvel         = dm.get_lev_col<real>( "wvel"         );
     auto temp         = dm.get_lev_col<real>( "temp"         );
     auto rho_v        = dm.get_lev_col<real>( "water_vapor"  ); // Water vapor mass
-    auto ref_pres  = dm.get_lev_col<real>("ref_pres" );
-    auto ref_presi  = dm.get_lev_col<real>("ref_presi" );
+    // auto ref_pres_mid = dm.get<real,2>("ref_pres" );
+    // auto ref_pres_int = dm.get<real,2>("ref_presi");
+
 
     // Grab cloud liquid tracer, and other tracers that need to be modified by SHOC
     pam::MultiField<real,2> qtracers_pam;  // Extra tracers for SHOC to diffuse
@@ -260,6 +257,9 @@ public:
 
     auto zint = zint_tmp.reshape<2>({nz+1,ncol});
     auto zmid = zmid_tmp.reshape<2>({nz  ,ncol});
+
+    auto pmid_tmp = coupler.compute_pressure_array();
+    auto pmid = pmid_tmp.reshape<2>({nz  ,ncol});
 
     // Create variables for SHOC call (these are all inverted for vertical indices
     real1d shoc_host_dx    ("shoc_host_dx"    ,                  ncol); // grid spacing of host model in x direction [m]
@@ -332,13 +332,7 @@ public:
       if (k < nz) {
         int k_shoc = nz-1-k;
 
-      #if defined(_CE) || defined(_MCErho) || defined(_MCErhod) || defined(_CEp) || defined(_MCErhop) || defined(_MCErhodp)
-            real rho_total = rho_dry(k,i) + rho_c(k,i) + rho_r(k,i) + rho_i(k,i) + rho_v(k,i);
-            real press = R_d*rho_dry(k,i)*temp(k,i) + R_v*rho_v(k,i)*temp(k,i);
-      #elif defined(_AN) || defined(_MAN)
-            real rho_total = ref_rho_d(k,i) + ref_rho_v(k,i) + ref_rho_l(k,i) + ref_rho_i(k,i);
-            real press = ref_pres(k,i);
-      #endif
+        real rho_total = rho_d(k,i)+rho_v(k,i);
 
         real z       = zmid(k,i);
         real dz      = zint(k+1,i) - zint(k,i);
@@ -347,10 +341,9 @@ public:
         real ql      = std::max(0._fp,rho_c(k,i)) / rho_total;
 
         //these are cosntant kappa expressions
-        real exner   = pow( press / p0 , R_d / cp_d );
+        real exner   = pow( pmid(k,i) / p0 , R_d / cp_d );
         real theta   = t / exner;
 
-//It is unclear right now how to generalize these expressions to arbitrary thermodynamic potentials
         // https://glossary.ametsoc.org/wiki/Virtual_potential_temperature
         real theta_v = theta * (1 + 0.61_fp * qv - ql);
         // https://glossary.ametsoc.org/wiki/Liquid_water_potential_temperature
@@ -359,14 +352,12 @@ public:
         shoc_ql       (k_shoc,i) = ql;
         shoc_qw       (k_shoc,i) = qv + ql;
         shoc_zt_grid  (k_shoc,i) = z - zint(0,i); // SHOC assumes that height starts at zero
-        shoc_pres     (k_shoc,i) = press;
+        shoc_pres     (k_shoc,i) = pmid(k,i);
         shoc_pdel     (k_shoc,i) = grav * rho_total * dz;
         shoc_thv      (k_shoc,i) = theta_v;
         shoc_w_field  (k_shoc,i) = wvel(k,i);
         shoc_exner    (k_shoc,i) = exner;
         shoc_inv_exner(k_shoc,i) = 1._fp / exner;
-        // shoc_host_dse (k_shoc,i) = cp_d * t + grav * z;
-//It is unclear right now how to generalized dse expression to arbitrary thermodynamic potentials
         shoc_host_dse (k_shoc,i) = cp_d*t + grav*shoc_zt_grid(k_shoc,i) + shoc_phis(i);
         shoc_thetal   (k_shoc,i) = theta_l;
         shoc_u_wind   (k_shoc,i) = uvel(k,i);
@@ -385,21 +376,17 @@ public:
       }
       int k_shoc = nz-k;
       shoc_zi_grid(k_shoc,i) = zint(k,i) - zint(0,i); // SHOC needs height values to start at zero
-
-      real pres_int;
-      #if defined(_CE) || defined(_MCErho) || defined(_MCErhod) || defined(_CEp) || defined(_MCErhop) || defined(_MCErhodp)
-        if (k == 0 ) {
-          pres_int = pres_mid(k  ,i) + grav*(rho_d(k  ,i)+rho_v(k  ,i))*(zint(k+1,i)-zint(k  ,i))/2;
-        } else if (k == nz) {
-          pres_int = pres_mid(k-1,i) - grav*(rho_d(k-1,i)+rho_v(k-1,i))*(zint(k  ,i)-zint(k-1,i))/2;
-        } else {
-          pres_int = 0.5_fp * ( pres_mid(k-1,i) - grav*(rho_d(k-1,i)+rho_v(k-1,i))*(zint(k  ,i)-zint(k-1,i))/2 +
-                                pres_mid(k  ,i) + grav*(rho_d(k  ,i)+rho_v(k  ,i))*(zint(k+1,i)-zint(k  ,i))/2 );
-        }
-      #elif defined(_AN) || defined(_MAN)
-        pres_int = ref_presi(k,i);
-      #endif
-      shoc_presi  (k_shoc,i) = pres_int;
+      // shoc_presi  (k_shoc,i) = pint(k,i);
+      real pint;
+      if (k == 0 ) {
+        pint = pmid(k  ,i) + grav*(rho_d(k  ,i)+rho_v(k  ,i))*(zint(k+1,i)-zint(k  ,i))/2;
+      } else if (k == nz) {
+        pint = pmid(k-1,i) - grav*(rho_d(k-1,i)+rho_v(k-1,i))*(zint(k  ,i)-zint(k-1,i))/2;
+      } else {
+        pint = 0.5_fp * ( pmid(k-1,i) - grav*(rho_d(k-1,i)+rho_v(k-1,i))*(zint(k  ,i)-zint(k-1,i))/2 +
+                          pmid(k  ,i) + grav*(rho_d(k  ,i)+rho_v(k  ,i))*(zint(k+1,i)-zint(k  ,i))/2 );
+      }
+      shoc_presi  (k_shoc,i) = pint;
     });
 
     int nadv = 1;
@@ -682,17 +669,15 @@ public:
       real qv = qw - ql;
 
       // invert liquid potential temperature to obtain updated temperature
-//FIX THIS?
-      temp(k,i) = shoc_thetal(k_shoc,i)*shoc_exner(k_shoc,i) + (latvap/cp_d)*shoc_ql(k_shoc,i);
+      // SHOC calculations are done at constant pressure but PAM assumes constant volume
+      // so we need to scale temperature change by cv/cp
+      real temp_old = temp(k,i);
+      real temp_new = shoc_thetal(k_shoc,i)*shoc_exner(k_shoc,i) + (latvap/cp_d)*shoc_ql(k_shoc,i);
+      temp(k,i) = temp_old + ( temp_new - temp_old ) * cv_d/cp_d;
 
-      // invert DSE to obtain updated temperature - this seems problematic?
-      // temp(k,i) = ( shoc_host_dse(k_shoc,i) - grav*shoc_zt_grid(k_shoc,i) - shoc_phis(i) )/cp_d;
-
-//FIX THIS!
       rho_v(k,i) = qv * rho_d(k,i) / ( 1 - qv );
       rho_v(k,i) = std::max( 0._fp, rho_v(k,i) );
       real rho_total = rho_d(k,i)+rho_v(k,i);
-///
       rho_c   (k,i) = ql * rho_total;
       rho_c(k,i) = std::max( 0._fp, rho_c(k,i) );
       uvel    (k,i) = shoc_u_wind  (k_shoc,i);
