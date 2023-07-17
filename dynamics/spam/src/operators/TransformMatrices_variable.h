@@ -2,8 +2,8 @@
 #pragma once
 
 #include <math.h>
-using yakl::SArray;
 
+namespace pamc {
 namespace TransformMatrices_variable {
 
 template <unsigned int ord>
@@ -68,3 +68,4 @@ weno_lower_sten_to_coefs(SArray<real, 1, ord + 1> const &locs,
 }
 
 } // namespace TransformMatrices_variable
+} // namespace pamc

@@ -15,6 +15,8 @@
 // class Hamiltonian_AN_Hs {};
 // class Hamiltonian_MAN_Hs {};
 
+namespace pamc {
+
 #ifdef PAMC_AN
 class Hamiltonian_AN_Hs {
 public:
@@ -374,3 +376,4 @@ public:
   }
 };
 #endif
+} // namespace pamc

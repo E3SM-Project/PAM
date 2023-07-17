@@ -13,6 +13,7 @@
 #include "thermo.h"
 #include "wedge.h"
 
+namespace pamc {
 // *******   Diagnostics   ***********//
 
 class Dens0Diagnostic : public Diagnostic {
@@ -1357,3 +1358,4 @@ void testcase_from_config(std::unique_ptr<TestCase> &testcase,
   const std::string name = config["initData"].as<std::string>();
   testcase_from_string(testcase, name);
 }
+} // namespace pamc

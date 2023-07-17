@@ -2,6 +2,8 @@
 
 #include "common.h"
 
+namespace pamc {
+
 template <uint ndofs>
 void YAKL_INLINE D0(SArray<real, 1, ndims> &var,
                     SArray<real, 3, ndofs, ndims, 2> const &dens) {
@@ -965,3 +967,4 @@ void YAKL_INLINE fourier_cwD0Dnm1bar(const SArray<real, 1, ndims> &D0Dnm1barhat,
     D0Dnm1barhat(d) = 2 * c * (cos(fac) - 1);
   }
 }
+} // namespace pamc

@@ -1,14 +1,18 @@
 #pragma once
 
+namespace pamc {
+
 uint constexpr ntracers_dycore = 6;
 
 //////////////////////////////////////////////////////////////////////////////
 
 // Number of Dimensions
 uint constexpr ndims = 2;
+} // namespace pamc
 
 #include "params.h"
 
+namespace pamc {
 // Number of variables
 // v, dens
 uint constexpr nprognostic = 2;
@@ -77,3 +81,4 @@ public:
   std::string tracerdataStr[ntracers_dycore + GPU_PAD];
   bool dycore_tracerpos[ntracers_dycore + GPU_PAD];
 };
+} // namespace pamc

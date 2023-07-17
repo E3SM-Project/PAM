@@ -107,7 +107,9 @@ int main(int argc, char** argv) {
     auto gcm_temp  = dm.get<real,2>("gcm_temp"       );
     auto gcm_rho_v = dm.get<real,2>("gcm_water_vapor");
 
-    parallel_for( Bounds<2>(crm_nz,nens) , YAKL_LAMBDA (int k, int iens) {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+    parallel_for( SimpleBounds<2>(crm_nz,nens) , YAKL_LAMBDA (int k, int iens) {
       gcm_rho_d(k,iens) = rho_d_col(k);
       gcm_uvel (k,iens) = uvel_col (k);
       gcm_vvel (k,iens) = vvel_col (k);

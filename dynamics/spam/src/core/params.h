@@ -4,6 +4,8 @@
 #include "pam_coupler.h"
 #include "parallel.h"
 
+namespace pamc {
+
 class Parameters {
 public:
   int nx_glob = -1;
@@ -237,3 +239,4 @@ void check_and_print_parameters(const Parameters &params, const Parallel &par) {
     std::cout << "yc:         " << params.yc << "\n";
   }
 };
+} // namespace pamc

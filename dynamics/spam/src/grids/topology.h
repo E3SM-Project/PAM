@@ -5,6 +5,8 @@
 #include "common.h"
 #include "parallel.h"
 
+namespace pamc {
+
 class Topology {
 public:
   // int n_cells_layers, n_cells_layers_with_halo;
@@ -129,3 +131,4 @@ void Topology::printinfo() const {
             << "\n"
             << std::flush;
 }
+} // namespace pamc

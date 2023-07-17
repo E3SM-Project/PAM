@@ -67,12 +67,12 @@ namespace modules {
     real r_nx_ny = 1._fp / (nx*ny);
 
     // Zero out the havg_fields
-    parallel_for( Bounds<3>(num_fields,nz,nens) , YAKL_LAMBDA (int ifld, int k, int iens) {
+    parallel_for( SimpleBounds<3>(num_fields,nz,nens) , YAKL_LAMBDA (int ifld, int k, int iens) {
       havg_fields(ifld,k,iens) = 0;
     });
 
     // Compute the horizontal average for each vertical level (that we use for the sponge layer) and ensemble
-    parallel_for( Bounds<5>(num_fields,num_layers,ny,nx,nens) , YAKL_LAMBDA (int ifld, int kloc, int j, int i, int iens) {
+    parallel_for( SimpleBounds<5>(num_fields,num_layers,ny,nx,nens) , YAKL_LAMBDA (int ifld, int kloc, int j, int i, int iens) {
       int k = nz - 1 - kloc;
       if (ifld != WFLD) yakl::atomicAdd( havg_fields(ifld,k,iens) , full_fields(ifld,k,j,i,iens) * r_nx_ny );
     });
@@ -86,7 +86,7 @@ namespace modules {
     real time_factor = dt / time_scale;
 
     // use a cosine relaxation in space:  ((cos(pi*rel_dist)+1)/2)^2
-    parallel_for( Bounds<5>(num_fields,num_layers,ny,nx,nens) , YAKL_LAMBDA (int ifld, int kloc, int j, int i, int iens) {
+    parallel_for( SimpleBounds<5>(num_fields,num_layers,ny,nx,nens) , YAKL_LAMBDA (int ifld, int kloc, int j, int i, int iens) {
       int k = nz - 1 - kloc;
       real rel_dist = ( zint(nz,iens) - zmid(k,iens) ) / ( zint(nz,iens) - zmid(nz-1-(num_layers-1),iens) );
       real space_factor = ( cos(M_PI*rel_dist) + 1 ) / 2;

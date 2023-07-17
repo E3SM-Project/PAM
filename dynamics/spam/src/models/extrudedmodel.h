@@ -15,6 +15,7 @@
 #include "variableset.h"
 #include "wedge.h"
 
+namespace pamc {
 // *******   Diagnostics   ***********//
 
 struct TotalDensityDiagnostic : public Diagnostic {
@@ -5642,3 +5643,4 @@ void testcase_from_config(std::unique_ptr<TestCase> &testcase,
 std::unique_ptr<TestCase> make_coupled_test_case(PamCoupler &coupler) {
   return std::make_unique<CoupledTestCase>(coupler);
 }
+} // namespace pamc

@@ -4,17 +4,21 @@
 #include "common.h"
 
 #include "type_traits"
+
+namespace pamc {
 template <class HamilT, class ThermoT>
 struct two_point_discrete_gradient_implemented : std::false_type {};
 template <class HamilT, class ThermoT>
 constexpr bool two_point_discrete_gradient_implemented_v =
     two_point_discrete_gradient_implemented<HamilT, ThermoT>::value;
+} // namespace pamc
 
 #include "compressible_euler.h"
 #include "functionals.h"
 #include "kinetic_energy.h"
 #include "layer_models.h"
 
+namespace pamc {
 #ifdef PAMC_SWE
 using Hamiltonian = Hamiltonian_SWE_Hs;
 #elif PAMC_TSWE
@@ -36,3 +40,4 @@ using Hamiltonian = Hamiltonian_MCE_p_Hs;
 #elif PAMC_MCErhodp
 using Hamiltonian = Hamiltonian_MCE_p_Hs;
 #endif
+} // namespace pamc

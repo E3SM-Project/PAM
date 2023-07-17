@@ -2,6 +2,8 @@
 
 #include "common.h"
 
+namespace pamc {
+
 template <uint ndofs>
 void YAKL_INLINE calculate_edgeflux(
     SArray<real, 2, ndofs, ndims> &edgeflux,
@@ -288,3 +290,4 @@ apply_Phivert(const real5d &Phivertvar, const real5d &vertedgefluxvar,
     }
   }
 }
+} // namespace pamc

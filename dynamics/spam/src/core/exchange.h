@@ -3,6 +3,8 @@
 #include "common.h"
 #include "topology.h"
 
+namespace pamc {
+
 // Xm SendBuf holds the cells closest to x- ie the left side -> Go into Xp
 // RecvBuf Xp SendBuf holds the cells closest to x+ ie the right side -> Go into
 // Xm RecvBuf
@@ -626,3 +628,4 @@ void Exchange::exchange_data(real5d &data) {
   exchange_mirror(data);
 #endif
 }
+} // namespace pamc

@@ -3,6 +3,8 @@
 #include "common.h"
 #include "thermo.h"
 
+namespace pamc {
+
 #ifdef PAMC_TSWE
 class Hamiltonian_TSWE_Hs {
 public:
@@ -245,3 +247,4 @@ public:
   }
 };
 #endif
+} // namespace pamc

@@ -3,6 +3,8 @@
 #include "common.h"
 #include "topology.h"
 
+namespace pamc {
+
 struct FieldDescription {
   std::string name;
   Topology topology;
@@ -320,3 +322,4 @@ void Field::waxpbypcz(real alpha, real beta, real gamma, const Field &x,
 }
 
 void Field::exchange() { m_exchange->exchange_data(data); }
+} // namespace pamc

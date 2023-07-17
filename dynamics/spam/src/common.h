@@ -14,6 +14,8 @@
 #include <sstream>
 #include <string>
 
+namespace pamc {
+
 using yakl::c::Bounds;
 using yakl::c::parallel_for;
 using yakl::c::SimpleBounds;
@@ -165,6 +167,7 @@ enum class ADD_MODE { REPLACE, ADD };
 
 // Boundary types
 enum class BND_TYPE { PERIODIC, NONE };
+} // namespace pamc
 
 #if defined PAMC_LAYER
 #include "layermodel-common.h"

@@ -3,6 +3,8 @@
 #include "Microphysics.h"
 #include "SGS.h"
 
+namespace pamc {
+
 uint constexpr ntracers_dycore = 0;
 
 //////////////////////////////////////////////////////////////////////////////
@@ -14,8 +16,11 @@ uint constexpr ntracers_dycore = 0;
 
 // Number of Dimensions
 uint constexpr ndims = 1;
+} // namespace pamc
 
 #include "params.h"
+
+namespace pamc {
 
 // Number of variables
 // v, w, dens, densfct
@@ -107,3 +112,4 @@ public:
 
   realConst2d zint;
 };
+} // namespace pamc

@@ -25,6 +25,8 @@
 
 using pam::PamCoupler;
 
+namespace pamc {
+
 class Dycore {
 public:
   Geometry<Straight> primal_geometry;
@@ -270,3 +272,6 @@ public:
 
   const char *dycore_name() const { return "SPAM++"; }
 };
+} // namespace pamc
+
+using Dycore = pamc::Dycore;

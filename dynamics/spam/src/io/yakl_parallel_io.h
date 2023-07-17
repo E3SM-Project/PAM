@@ -5,6 +5,8 @@
 #include "field_sets.h"
 #include "stats.h"
 
+namespace pamc {
+
 template <uint nprog, uint nconst, uint ndiag, uint nstats> class FileIO {
 
 public:
@@ -163,3 +165,4 @@ void FileIO<nprog, nconst, ndiag, nstats>::initialize(
   nc.close();
   this->is_initialized = true;
 }
+} // namespace pamc

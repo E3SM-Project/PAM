@@ -6,6 +6,8 @@
 #include "variableset.h"
 #include "wedge.h"
 
+namespace pamc {
+
 struct pvpe {
   real pv = 0., pe = 0.;
 };
@@ -497,3 +499,4 @@ public:
     return vals;
   }
 };
+} // namespace pamc

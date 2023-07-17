@@ -4,6 +4,7 @@
 #include "TransformMatrices_variable.h"
 #include "common.h"
 
+namespace pamc {
 template <int ord>
 YAKL_INLINE void map_weights2(SArray<real, 1, (ord - 1) / 2 + 2> const &idl,
                               SArray<real, 1, (ord - 1) / 2 + 2> &wts) {
@@ -233,3 +234,4 @@ void create_variable_WENO(real4d coefs_to_gll_arr, real4d sten_to_gll_arr,
         }
       });
 }
+} // namespace pamc

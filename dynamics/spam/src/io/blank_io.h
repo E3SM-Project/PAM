@@ -5,6 +5,8 @@
 #include "model.h"
 #include "stats.h"
 
+namespace pamc {
+
 class FileIO {
 
 public:
@@ -22,3 +24,4 @@ public:
                   const ModelParameters &params) {}
   void outputStats(const Stats &stats) {}
 };
+} // namespace pamc

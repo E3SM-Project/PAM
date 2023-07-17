@@ -11,6 +11,8 @@
 #include "thermo.h"
 using pam::PamCoupler;
 
+namespace pamc {
+
 // solve a system to exactly invert the velocity averaging done
 // during conversion to coupler state when coupling winds
 constexpr bool couple_wind_exact_inverse = true;
@@ -230,7 +232,7 @@ public:
         varset.dm_id_vap = tr;
         varset.dens_id_vap = ndensity_nophysics + tr;
         water_vapor_found = true;
-        if (!::ThermoPotential::moist_species_decouple_from_dynamics) {
+        if (!ThermoPotential::moist_species_decouple_from_dynamics) {
           varset.dens_active(tr + ndensity_nophysics) = true;
         }
       }
@@ -239,7 +241,7 @@ public:
         varset.dm_id_liq = tr;
         varset.dens_id_liq = ndensity_nophysics + tr;
         varset.liquid_found = true;
-        if (!::ThermoPotential::moist_species_decouple_from_dynamics) {
+        if (!ThermoPotential::moist_species_decouple_from_dynamics) {
           varset.dens_active(tr + ndensity_nophysics) = true;
         }
       }
@@ -247,7 +249,7 @@ public:
         varset.dm_id_ice = tr;
         varset.dens_id_ice = ndensity_nophysics + tr;
         varset.ice_found = true;
-        if (!::ThermoPotential::moist_species_decouple_from_dynamics) {
+        if (!ThermoPotential::moist_species_decouple_from_dynamics) {
           varset.dens_active(tr + ndensity_nophysics) = true;
         }
       }
@@ -1313,3 +1315,4 @@ using VariableSet = VariableSetBase<VS_MCE_rhop>;
 #elif PAMC_MCErhodp
 using VariableSet = VariableSetBase<VS_MCE_rhodp>;
 #endif
+} // namespace pamc

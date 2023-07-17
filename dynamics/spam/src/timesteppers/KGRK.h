@@ -7,6 +7,8 @@
 #include "time_integrator.h"
 #include "topology.h"
 
+namespace pamc {
+
 #define NSTAGESMAX 10
 
 class KGRKTimeIntegrator : public TimeIntegrator {
@@ -128,3 +130,4 @@ void KGRKTimeIntegrator::set_stage_coefficients(ModelParameters &params) {
     this->stage_coeffs(9) = 1. / 1.;
   }
 }
+} // namespace pamc

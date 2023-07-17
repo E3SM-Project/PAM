@@ -5,6 +5,8 @@
 #include "variableset.h"
 #include "wedge.h"
 
+namespace pamc {
+
 class Hamiltonian_Hk {
 
 public:
@@ -407,3 +409,4 @@ public:
     }
   }
 };
+} // namespace pamc

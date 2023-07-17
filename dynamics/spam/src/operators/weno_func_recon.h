@@ -3,6 +3,8 @@
 #include "TransformMatrices.h"
 #include "common.h"
 
+namespace pamc {
+
 template <uint ord, uint tord = 2, uint hs = (ord - 1) / 2>
 YAKL_INLINE void map_weights(SArray<real, 1, hs + 2> const &idl,
                              SArray<real, 1, hs + 2> &wts) {
@@ -273,3 +275,4 @@ void YAKL_INLINE weno_func(SArray<real, 3, ndofs, nd, 2> &edgerecon,
     }
   }
 }
+} // namespace pamc

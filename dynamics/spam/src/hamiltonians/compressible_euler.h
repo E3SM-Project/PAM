@@ -5,6 +5,8 @@
 #include "thermo.h"
 #include "variableset.h"
 
+namespace pamc {
+
 real YAKL_INLINE gamma_avg(real a, real b, real gamma) {
   const real f = (a - b) / (a + b);
   const real v = f * f;
@@ -731,3 +733,4 @@ struct two_point_discrete_gradient_implemented<Hamiltonian_MCE_Hs,
 // };
 //
 //
+} // namespace pamc

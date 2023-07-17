@@ -6,6 +6,8 @@
 #include "profiles.h"
 #include "topology.h"
 
+namespace pamc {
+
 enum class LINE_INTEGRAL_TYPE { TANGENT, NORMAL };
 
 struct CoordsXYZ {
@@ -1189,3 +1191,4 @@ void Geometry<T>::set_1form_values(F initial_value_function, Field &field,
     this->set_10form_values(f_3d, field, ndof, this->topology.nl);
   }
 }
+} // namespace pamc

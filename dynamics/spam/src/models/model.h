@@ -11,6 +11,8 @@
 #include "weno_func_recon.h" // needed to set TransformMatrices related stuff
 #include "weno_func_recon_variable.h" // needed to set TransformMatrices related stuff
 
+namespace pamc {
+
 class Equations {
 public:
   Hamiltonian Hs;
@@ -419,3 +421,4 @@ public:
                      FieldSet<nauxiliary> &auxiliary_vars,
                      FieldSet<nprognostic> &solution) = 0;
 };
+} // namespace pamc

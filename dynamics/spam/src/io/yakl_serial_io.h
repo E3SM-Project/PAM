@@ -6,6 +6,8 @@
 #include "model.h"
 #include "stats.h"
 
+namespace pamc {
+
 class FileIO {
 
 public:
@@ -392,3 +394,4 @@ void FileIO::outputStats(const Stats &stats) {
     nc.close();
   }
 }
+} // namespace pamc

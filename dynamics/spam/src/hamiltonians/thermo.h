@@ -36,6 +36,9 @@
 // These are basic thermodynamic constants used in all of the thermodynamics
 // below They can be overwritten when setting certain initial conditions, if a
 // test case specifies different values
+
+namespace pamc {
+
 struct thermo_constants {
   real Rd = 287.0;
   real Rv = 461.0;
@@ -701,3 +704,4 @@ using ThermoPotential = Unapprox_Pottemp;
 #elif PAMC_UNAPPROX_ENTROPY
 using ThermoPotential = Unapprox_Entropy;
 #endif
+} // namespace pamc

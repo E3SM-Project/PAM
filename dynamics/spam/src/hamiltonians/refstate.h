@@ -3,6 +3,8 @@
 #include "profiles.h"
 #include "topology.h"
 
+namespace pamc {
+
 struct ReferenceState_SWE {
   real ref_height;
 
@@ -68,3 +70,4 @@ using ReferenceState = ReferenceState_SWE;
 #else
 using ReferenceState = ReferenceState_Euler;
 #endif
+} // namespace pamc
