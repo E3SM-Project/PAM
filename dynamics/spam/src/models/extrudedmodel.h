@@ -458,13 +458,10 @@ public:
         YAKL_LAMBDA(int k, int j, int i, int n) {
 #if defined _AN || defined _MAN
           for (int d = 0; d < VS::ndensity_prognostic; ++d) {
-            //dens0var(d, k + pks, j + pjs, i + pis, n) =
-            //    (densvar(d, k + pks, j + pjs, i + pis, n) -
-            //     refdens(d, k + pks, n)) /
-            //    varset.get_total_density(densvar, k, j, i, pks, pjs, pis, n);
             dens0var(d, k + pks, j + pjs, i + pis, n) =
-                densvar(d, k + pks, j + pjs, i + pis, n) /
-                varset.get_total_density(densvar, k, j, i, pks, pjs, pis, n);
+               (densvar(d, k + pks, j + pjs, i + pis, n) -
+                refdens(d, k + pks, n)) /
+               varset.get_total_density(densvar, k, j, i, pks, pjs, pis, n);
           }
 #else
           compute_Hn1bar<VS::ndensity_prognostic, diff_ord, vert_diff_ord>(
@@ -1127,12 +1124,12 @@ public:
 
 #if defined _AN || defined _MAN
           // add reference state
-          //for (int d = 0; d < ndims; d++) {
-          //  for (int l = 0; l < VS::ndensity_prognostic; l++) {
-          //    densreconvar(d + l * ndims, k + dks, j + djs, i + dis, n) +=
-          //        refstate.q_pi.data(l, k + pks, n);
-          //  }
-          //}
+          for (int d = 0; d < ndims; d++) {
+           for (int l = 0; l < VS::ndensity_prognostic; l++) {
+             densreconvar(d + l * ndims, k + dks, j + djs, i + dis, n) +=
+                 refstate.q_pi.data(l, k + pks, n);
+           }
+          }
           for (int d = 0; d < ndims; d++) {
             densreconvar(d + varset.dens_id_mass * ndims, k + dks, j + djs,
                          i + dis, n) = 1;
@@ -1184,10 +1181,10 @@ public:
 
 #if defined _AN || defined _MAN
           // add reference state
-          //for (int l = 0; l < VS::ndensity_prognostic; l++) {
-          //  densvertreconvar(l, k + dks + 1, j + djs, i + dis, n) +=
-          //      refstate.q_di.data(l, k + dks + 1, n);
-          //}
+          for (int l = 0; l < VS::ndensity_prognostic; l++) {
+           densvertreconvar(l, k + dks + 1, j + djs, i + dis, n) +=
+               refstate.q_di.data(l, k + dks + 1, n);
+          }
           densvertreconvar(varset.dens_id_mass, k + dks + 1, j + djs, i + dis,
                            n) = 1;
 #else
@@ -4497,7 +4494,7 @@ public:
           const real dens_vap = dm_ref_dens_vap(k,n);
           const real dens_liq = dm_ref_dens_liq(k,n);
           const real dens_ice = dm_ref_dens_ice(k,n);
-          const real dens = dens_dry + dens_ice + dens_liq + dens_vap;
+          const real dens = dens_dry + dens_vap;
 
           const real qd = dens_dry / dens;
           const real qv = dens_vap / dens;
