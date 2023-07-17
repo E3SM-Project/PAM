@@ -1007,19 +1007,19 @@ public:
 
       // MPI sum/min/max
       this->ierr = MPI_Ireduce(&masslocal, &massglobal, VS::ndensity_prognostic,
-                               REAL_MPI, MPI_SUM, 0, MPI_COMM_WORLD,
+                               PAMC_MPI_REAL, MPI_SUM, 0, MPI_COMM_WORLD,
                                &this->Req[DENSSTAT]);
       this->ierr = MPI_Ireduce(&densmaxlocal, &densmaxglobal,
-                               VS::ndensity_prognostic, REAL_MPI, MPI_MAX, 0,
-                               MPI_COMM_WORLD, &this->Req[DENSMAXSTAT]);
+                               VS::ndensity_prognostic, PAMC_MPI_REAL, MPI_MAX,
+                               0, MPI_COMM_WORLD, &this->Req[DENSMAXSTAT]);
       this->ierr = MPI_Ireduce(&densminlocal, &densminglobal,
-                               VS::ndensity_prognostic, REAL_MPI, MPI_MIN, 0,
-                               MPI_COMM_WORLD, &this->Req[DENSMINSTAT]);
-      this->ierr = MPI_Ireduce(&pvlocal, &pvglobal, 1, REAL_MPI, MPI_SUM, 0,
-                               MPI_COMM_WORLD, &this->Req[PVSTAT]);
-      this->ierr = MPI_Ireduce(&pelocal, &peglobal, 1, REAL_MPI, MPI_SUM, 0,
-                               MPI_COMM_WORLD, &this->Req[PESTAT]);
-      this->ierr = MPI_Ireduce(&elocal, &eglobal, 4, REAL_MPI, MPI_SUM, 0,
+                               VS::ndensity_prognostic, PAMC_MPI_REAL, MPI_MIN,
+                               0, MPI_COMM_WORLD, &this->Req[DENSMINSTAT]);
+      this->ierr = MPI_Ireduce(&pvlocal, &pvglobal, 1, PAMC_MPI_REAL, MPI_SUM,
+                               0, MPI_COMM_WORLD, &this->Req[PVSTAT]);
+      this->ierr = MPI_Ireduce(&pelocal, &peglobal, 1, PAMC_MPI_REAL, MPI_SUM,
+                               0, MPI_COMM_WORLD, &this->Req[PESTAT]);
+      this->ierr = MPI_Ireduce(&elocal, &eglobal, 4, PAMC_MPI_REAL, MPI_SUM, 0,
                                MPI_COMM_WORLD, &this->Req[ESTAT]);
 
       this->ierr = MPI_Waitall(nstats, this->Req, this->Status);

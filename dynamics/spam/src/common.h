@@ -47,7 +47,7 @@ using optional_real3d = std::optional<real3d>;
 using optional_real4d = std::optional<real4d>;
 using optional_real5d = std::optional<real5d>;
 
-#define REAL_MPI MPI_DOUBLE
+#define PAMC_MPI_REAL MPI_DOUBLE
 //#define REAL_NC NC_DOUBLE
 
 // Spatial derivatives order of accuracy ie Hodge stars [2,4,6] (vert only
