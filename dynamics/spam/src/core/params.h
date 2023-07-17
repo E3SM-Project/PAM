@@ -29,8 +29,8 @@ public:
   int masterproc;
   bool inner_mpi;
 
-  bool couple_wind;
-  bool couple_wind_exact_inverse;
+  bool couple_wind = true;
+  bool couple_wind_exact_inverse = false;
 
 };
 
