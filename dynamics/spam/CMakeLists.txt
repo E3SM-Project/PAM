@@ -19,11 +19,9 @@ target_include_directories(dycore INTERFACE src/io)
 target_include_directories(dycore INTERFACE src/core)
 
 if ("${PAMC_MODEL}" STREQUAL "layermodel")
-  target_compile_definitions(dycore INTERFACE -DPAMC_HAMILTONIAN)
   target_compile_definitions(dycore INTERFACE -DPAMC_LAYER)
 endif()
 if ("${PAMC_MODEL}" STREQUAL "extrudedmodel")
-  target_compile_definitions(dycore INTERFACE -DPAMC_HAMILTONIAN)
   target_compile_definitions(dycore INTERFACE -DPAMC_EXTRUDED)
 endif()
 

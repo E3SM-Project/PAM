@@ -10,9 +10,9 @@
 #include "parallel.h"
 #include "params.h"
 #include "topology.h"
-#if defined PAMC_HAMILTONIAN && defined PAMC_LAYER
+#if defined PAMC_LAYER
 #include "layermodel.h"
-#elif defined PAMC_HAMILTONIAN && defined PAMC_EXTRUDED
+#elif defined PAMC_EXTRUDED
 #include "extrudedmodel.h"
 #endif
 #include "KGRK.h"
