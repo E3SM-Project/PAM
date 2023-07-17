@@ -192,8 +192,8 @@ public:
 
     // TODO: add logic here to only include this for standlone configurations
     // // convert dynamics state to Coupler state
-    if (testcase->set_coupler_state)
-     { tendencies.convert_dynamics_to_coupler_state(coupler, prognostic_vars, constant_vars, params.couple_wind, params.couple_wind_exact_inverse); }
+    // if (testcase->set_coupler_state)
+    //  { tendencies.convert_dynamics_to_coupler_state(coupler, prognostic_vars, constant_vars, params.couple_wind, params.couple_wind_exact_inverse); }
     // if (testcase->set_coupler_state)
     //  { tendencies.convert_dynamics_to_coupler_state(coupler, prognostic_vars, constant_vars); }
 
@@ -225,7 +225,10 @@ public:
 
     // convert Coupler state to dynamics state
     tendencies.convert_coupler_to_dynamics_state(coupler, prognostic_vars,
-                                                 auxiliary_vars, constant_vars, params.couple_wind, params.couple_wind_exact_inverse);
+                                                 auxiliary_vars,
+                                                 constant_vars,
+                                                 params.couple_wind,
+                                                 params.couple_wind_exact_inverse);
 
     // Time stepping loop
     debug_print("start time stepping loop", par.masterproc);
@@ -270,7 +273,9 @@ public:
 
     // convert dynamics state to Coupler state
     tendencies.convert_dynamics_to_coupler_state(coupler, prognostic_vars,
-                                                 constant_vars, params.couple_wind, params.couple_wind_exact_inverse);
+                                                 constant_vars,
+                                                 params.couple_wind,
+                                                 params.couple_wind_exact_inverse);
 
     // ADD COUPLER DYCORE FUNCTIONS HERE AS WELL
 
