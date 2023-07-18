@@ -19,8 +19,8 @@ uint constexpr ntracers_dycore = 0;
 namespace pamc {
 struct ModelParameters : public Parameters {
   // std::string initdataStr;
-  std::string tracerdataStr[ntracers_dycore];
-  bool dycore_tracerpos[ntracers_dycore];
+  std::string tracerdataStr[ntracers_dycore + GPU_PAD];
+  bool dycore_tracerpos[ntracers_dycore + GPU_PAD];
   // bool acoustic_balance;
 };
 } // namespace pamc
