@@ -151,6 +151,8 @@ struct ExtrudedUnitSquare {
       koff = 1;
     }
 
+    YAKL_SCOPE(primal_geometry, this->primal_geometry);
+    YAKL_SCOPE(dual_geometry, this->dual_geometry);
     parallel_for(
         SimpleBounds<4>(error.total_dofs, nz, error.topology.n_cells_y,
                         error.topology.n_cells_x),
@@ -159,8 +161,8 @@ struct ExtrudedUnitSquare {
           real dx = primal_geometry.dx;
           real dy = primal_geometry.dy;
 
-          real dz = f1.topology.primal ? primal_geometry.dz(ks + ks + koff, 0)
-                                       : dual_geometry.dz(ks + ks + koff, 0);
+          real dz = f1.topology.primal ? primal_geometry.dz(k + ks + koff, 0)
+                                       : dual_geometry.dz(k + ks + koff, 0);
 
           if (f1.basedof >= 1) {
             scale *= dx;

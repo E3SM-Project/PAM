@@ -100,7 +100,7 @@ real compute_H00_error(int np, bool uniform_vertical, F ic_fun) {
 
 void test_H00_convergence(bool uniform_vertical) {
   const int nlevels = 5;
-  const real atol = 0.11;
+  const real atol = 0.13;
 
   {
     const int diff_order = 2;
