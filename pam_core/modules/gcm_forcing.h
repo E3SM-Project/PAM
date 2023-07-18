@@ -3,10 +3,6 @@
 
 #include "pam_coupler.h"
 
-#if !defined(MMF_PAM_FORCE_ALL_WATER_SPECIES) && !defined(MMF_PAM_FORCE_TOTAL_WATER)
-  #define MMF_PAM_FORCE_ALL_WATER_SPECIES
-#endif
-
 namespace modules {
 
   // This routine is only called once at the beginning of an MMF calculation (at the beginning of a GCM time step)
@@ -58,32 +54,32 @@ namespace modules {
     real2d colavg_rho_d("colavg_rho_d",nz,nens);
     real2d colavg_uvel ("colavg_uvel" ,nz,nens);
     real2d colavg_vvel ("colavg_vvel" ,nz,nens);
-    #ifdef MMF_PAM_FORCE_ALL_WATER_SPECIES
-    real2d colavg_temp ("colavg_temp" ,nz,nens);
-    real2d colavg_rho_v("colavg_rho_v",nz,nens);
-    real2d colavg_rho_l("colavg_rho_l",nz,nens);
-    real2d colavg_rho_i("colavg_rho_i",nz,nens);
-    #endif
-    #ifdef MMF_PAM_FORCE_TOTAL_WATER
+    // #ifdef MMF_PAM_FORCE_ALL_WATER_SPECIES
+    // real2d colavg_temp ("colavg_temp" ,nz,nens);
+    // real2d colavg_rho_v("colavg_rho_v",nz,nens);
+    // real2d colavg_rho_l("colavg_rho_l",nz,nens);
+    // real2d colavg_rho_i("colavg_rho_i",nz,nens);
+    // #endif
+    // #ifdef MMF_PAM_FORCE_TOTAL_WATER
     real2d colavg_temp_adj("colavg_temp_adj",nz,nens);
     real2d colavg_rho_totq("colavg_rho_totq",nz,nens);
-    #endif
+    // #endif
 
     // We will be essentially reducing a summation to these variables, so initialize them to zero
     parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
       colavg_rho_d(k,iens) = 0;
       colavg_uvel (k,iens) = 0;
       colavg_vvel (k,iens) = 0;
-      #ifdef MMF_PAM_FORCE_ALL_WATER_SPECIES
-      colavg_temp (k,iens) = 0;
-      colavg_rho_v(k,iens) = 0;
-      colavg_rho_l(k,iens) = 0;
-      colavg_rho_i(k,iens) = 0;
-      #endif
-      #ifdef MMF_PAM_FORCE_TOTAL_WATER
+      // #ifdef MMF_PAM_FORCE_ALL_WATER_SPECIES
+      // colavg_temp (k,iens) = 0;
+      // colavg_rho_v(k,iens) = 0;
+      // colavg_rho_l(k,iens) = 0;
+      // colavg_rho_i(k,iens) = 0;
+      // #endif
+      // #ifdef MMF_PAM_FORCE_TOTAL_WATER
       colavg_temp_adj(k,iens) = 0;
       colavg_rho_totq(k,iens) = 0;
-      #endif
+      // #endif
     });
 
     real r_nx_ny  = 1._fp / (nx*ny);  // precompute reciprocal to avoid costly divisions
@@ -92,13 +88,13 @@ namespace modules {
       atomicAdd( colavg_rho_d(k,iens) , rho_d(k,j,i,iens) * r_nx_ny );
       atomicAdd( colavg_uvel (k,iens) , uvel (k,j,i,iens) * r_nx_ny );
       atomicAdd( colavg_vvel (k,iens) , vvel (k,j,i,iens) * r_nx_ny );
-      #ifdef MMF_PAM_FORCE_ALL_WATER_SPECIES
-      atomicAdd( colavg_temp (k,iens) , temp (k,j,i,iens) * r_nx_ny );
-      atomicAdd( colavg_rho_v(k,iens) , rho_v(k,j,i,iens) * r_nx_ny );
-      atomicAdd( colavg_rho_l(k,iens) , rho_l(k,j,i,iens) * r_nx_ny );
-      atomicAdd( colavg_rho_i(k,iens) , rho_i(k,j,i,iens) * r_nx_ny );
-      #endif
-      #ifdef MMF_PAM_FORCE_TOTAL_WATER
+      // #ifdef MMF_PAM_FORCE_ALL_WATER_SPECIES
+      // atomicAdd( colavg_temp (k,iens) , temp (k,j,i,iens) * r_nx_ny );
+      // atomicAdd( colavg_rho_v(k,iens) , rho_v(k,j,i,iens) * r_nx_ny );
+      // atomicAdd( colavg_rho_l(k,iens) , rho_l(k,j,i,iens) * r_nx_ny );
+      // atomicAdd( colavg_rho_i(k,iens) , rho_i(k,j,i,iens) * r_nx_ny );
+      // #endif
+      // #ifdef MMF_PAM_FORCE_TOTAL_WATER
       real rho_total_water = rho_v(k,j,i,iens) + rho_l(k,j,i,iens) + rho_i(k,j,i,iens);
       real ql_tmp          = rho_l(k,j,i,iens) / ( rho_d(k,j,i,iens) + rho_v(k,j,i,iens) );
       real qi_tmp          = rho_i(k,j,i,iens) / ( rho_d(k,j,i,iens) + rho_v(k,j,i,iens) );
@@ -107,7 +103,7 @@ namespace modules {
       real temp_adj        = temp (k,j,i,iens) - liq_adj - ice_adj;
       atomicAdd( colavg_temp_adj(k,iens) , temp_adj        * r_nx_ny );
       atomicAdd( colavg_rho_totq(k,iens) , rho_total_water * r_nx_ny );
-      #endif
+      // #endif
     });
 
     // We need the GCM forcing tendencies later, so store these in the coupler's data manager
@@ -139,19 +135,19 @@ namespace modules {
       gcm_forcing_tend_rho_d(k,iens) = ( rho_d_gcm(k,iens) - colavg_rho_d(k,iens) ) * r_dt_gcm;
       gcm_forcing_tend_uvel (k,iens) = ( uvel_gcm (k,iens) - colavg_uvel (k,iens) ) * r_dt_gcm;
       gcm_forcing_tend_vvel (k,iens) = ( vvel_gcm (k,iens) - colavg_vvel (k,iens) ) * r_dt_gcm;
-      #ifdef MMF_PAM_FORCE_ALL_WATER_SPECIES
-      gcm_forcing_tend_temp (k,iens) = ( temp_gcm (k,iens) - colavg_temp (k,iens) ) * r_dt_gcm;
-      gcm_forcing_tend_rho_v(k,iens) = ( rho_v_gcm(k,iens) - colavg_rho_v(k,iens) ) * r_dt_gcm;
-      gcm_forcing_tend_rho_l(k,iens) = ( rho_l_gcm(k,iens) - colavg_rho_l(k,iens) ) * r_dt_gcm;
-      gcm_forcing_tend_rho_i(k,iens) = ( rho_i_gcm(k,iens) - colavg_rho_i(k,iens) ) * r_dt_gcm;
-      #endif
-      #ifdef MMF_PAM_FORCE_TOTAL_WATER
+      // #ifdef MMF_PAM_FORCE_ALL_WATER_SPECIES
+      // gcm_forcing_tend_temp (k,iens) = ( temp_gcm (k,iens) - colavg_temp (k,iens) ) * r_dt_gcm;
+      // gcm_forcing_tend_rho_v(k,iens) = ( rho_v_gcm(k,iens) - colavg_rho_v(k,iens) ) * r_dt_gcm;
+      // gcm_forcing_tend_rho_l(k,iens) = ( rho_l_gcm(k,iens) - colavg_rho_l(k,iens) ) * r_dt_gcm;
+      // gcm_forcing_tend_rho_i(k,iens) = ( rho_i_gcm(k,iens) - colavg_rho_i(k,iens) ) * r_dt_gcm;
+      // #endif
+      // #ifdef MMF_PAM_FORCE_TOTAL_WATER
       real gcm_rho_total_water = rho_v_gcm(k,iens) + rho_l_gcm(k,iens) + rho_i_gcm(k,iens);
       gcm_forcing_tend_temp (k,iens) = ( temp_gcm (k,iens) - colavg_temp_adj(k,iens) ) * r_dt_gcm;
       gcm_forcing_tend_rho_v(k,iens) = ( gcm_rho_total_water - colavg_rho_totq(k,iens) ) * r_dt_gcm;
       gcm_forcing_tend_rho_l(k,iens) = 0;
       gcm_forcing_tend_rho_i(k,iens) = 0;
-      #endif
+      // #endif
     });
   }
 
@@ -304,33 +300,33 @@ namespace modules {
       vvel (k,j,i,iens) += gcm_forcing_tend_vvel (k,iens) * dt;
       temp (k,j,i,iens) += gcm_forcing_tend_temp (k,iens) * dt;
       rho_v(k,j,i,iens) += gcm_forcing_tend_rho_v(k,iens) * dt;
-      #ifdef MMF_PAM_FORCE_ALL_WATER_SPECIES
-      rho_l(k,j,i,iens) += gcm_forcing_tend_rho_l(k,iens) * dt;
-      rho_i(k,j,i,iens) += gcm_forcing_tend_rho_i(k,iens) * dt;
-      #endif
+      // #ifdef MMF_PAM_FORCE_ALL_WATER_SPECIES
+      // rho_l(k,j,i,iens) += gcm_forcing_tend_rho_l(k,iens) * dt;
+      // rho_i(k,j,i,iens) += gcm_forcing_tend_rho_i(k,iens) * dt;
+      // #endif
       // Compute negative and positive mass for rho_v, and set negative masses to zero (essentially adding mass)
       if (rho_v(k,j,i,iens) < 0) {
         atomicAdd( rho_v_neg_mass(k,iens) , -rho_v(k,j,i,iens)*dz(k,iens) );
         rho_v(k,j,i,iens) = 0;
       }
-      #ifdef MMF_PAM_FORCE_ALL_WATER_SPECIES
-      if (rho_l(k,j,i,iens) < 0) {
-        atomicAdd( rho_l_neg_mass(k,iens) , -rho_l(k,j,i,iens)*dz(k,iens) );
-        rho_l(k,j,i,iens) = 0;
-      }
-      if (rho_i(k,j,i,iens) < 0) {
-        atomicAdd( rho_i_neg_mass(k,iens) , -rho_i(k,j,i,iens)*dz(k,iens) );
-        rho_i(k,j,i,iens) = 0;
-      }
-      #endif
+      // #ifdef MMF_PAM_FORCE_ALL_WATER_SPECIES
+      // if (rho_l(k,j,i,iens) < 0) {
+      //   atomicAdd( rho_l_neg_mass(k,iens) , -rho_l(k,j,i,iens)*dz(k,iens) );
+      //   rho_l(k,j,i,iens) = 0;
+      // }
+      // if (rho_i(k,j,i,iens) < 0) {
+      //   atomicAdd( rho_i_neg_mass(k,iens) , -rho_i(k,j,i,iens)*dz(k,iens) );
+      //   rho_i(k,j,i,iens) = 0;
+      // }
+      // #endif
     });
 
     // Only do the hole filing if there's negative mass
     if (yakl::intrinsics::sum(rho_v_neg_mass) > 0) { fill_holes(coupler, rho_v_neg_mass,"water_vapor"); }
-    #ifdef MMF_PAM_FORCE_ALL_WATER_SPECIES
-    if (yakl::intrinsics::sum(rho_l_neg_mass) > 0) { fill_holes(coupler, rho_l_neg_mass, "cloud_water"); }
-    if (yakl::intrinsics::sum(rho_i_neg_mass) > 0) { fill_holes(coupler, rho_i_neg_mass, "ice");         }
-    #endif
+    // #ifdef MMF_PAM_FORCE_ALL_WATER_SPECIES
+    // if (yakl::intrinsics::sum(rho_l_neg_mass) > 0) { fill_holes(coupler, rho_l_neg_mass, "cloud_water"); }
+    // if (yakl::intrinsics::sum(rho_i_neg_mass) > 0) { fill_holes(coupler, rho_i_neg_mass, "ice");         }
+    // #endif
 
   } // apply_gcm_forcing_tendencies
 
