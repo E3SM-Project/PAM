@@ -5,14 +5,17 @@
 #include <iostream>
 // clang-format on
 
+namespace pamc {
 uint constexpr nprognostic = 0;
 uint constexpr nconstant = 0;
 uint constexpr nauxiliary = 0;
 uint constexpr ndiagnostic = 0;
 uint constexpr ntracers_dycore = 0;
+} // namespace pamc
 
 #include "params.h"
 
+namespace pamc {
 struct ModelParameters : public Parameters {
   // std::string initdataStr;
   std::string tracerdataStr[ntracers_dycore];
@@ -21,6 +24,7 @@ struct ModelParameters : public Parameters {
   bool uniform_vertical;
   real2d zint;
 };
+} // namespace pamc
 
 #include "exchange.h"
 #include "fields.h"
@@ -28,6 +32,7 @@ struct ModelParameters : public Parameters {
 #include "params.h"
 #include "topology.h"
 
+namespace pamc {
 Parallel parallel_stub(int nx, int ny, int nz) {
   Parallel par;
   par.nx_glob = par.nx = nx;
@@ -235,3 +240,4 @@ template <int nlevels> struct ConvergenceTest {
     }
   }
 };
+} // namespace pamc

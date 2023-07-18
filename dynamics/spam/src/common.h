@@ -169,8 +169,8 @@ enum class ADD_MODE { REPLACE, ADD };
 enum class BND_TYPE { PERIODIC, NONE };
 } // namespace pamc
 
-#if defined PAMC_LAYER
+#if defined PAMC_LAYER && !defined PAMC_TESTMODEL
 #include "layermodel-common.h"
-#elif defined PAMC_EXTRUDED
+#elif defined PAMC_EXTRUDED && !defined PAMC_TESTMODEL
 #include "extrudedmodel-common.h"
 #endif

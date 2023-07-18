@@ -9,7 +9,7 @@
 
 namespace pamc {
 
-#define NSTAGESMAX 10
+int constexpr NSTAGESMAX = 10;
 
 class KGRKTimeIntegrator : public TimeIntegrator {
 
