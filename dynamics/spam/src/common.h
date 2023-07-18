@@ -13,6 +13,9 @@
 #include <optional>
 #include <sstream>
 #include <string>
+#ifdef YAKL_ARCH_CUDA
+#include <cuda/std/complex>
+#endif
 
 namespace pamc {
 
@@ -28,8 +31,7 @@ using uint = unsigned int;
 // Declaring the precision for the model
 using real = double;
 
-#if defined YAKL_ARCH_CUDA
-#include <cuda/std/complex>
+#ifdef YAKL_ARCH_CUDA
 using complex = cuda::std::complex<real>;
 #else
 using complex = std::complex<real>;
