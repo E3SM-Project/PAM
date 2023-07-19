@@ -650,6 +650,7 @@ public:
       const real5d dens0var, const real5d qhzvar, const real5d fhzvar,
       optional_real5d opt_qxyedgereconvar, optional_real5d opt_qxyvar,
       optional_real5d opt_coriolisxyedgereconvar, optional_real5d opt_fxyvar) {
+    yakl::timer_start("compute_edge_reconstructions_uniform");
 
     const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
@@ -761,6 +762,7 @@ public:
                 coriolis_wenoSigma);
           });
     }
+    yakl::timer_stop("compute_edge_reconstructions_uniform");
   }
 
   void compute_edge_reconstructions_variable(
@@ -770,6 +772,7 @@ public:
       const real5d dens0var, const real5d qhzvar, const real5d fhzvar,
       optional_real5d opt_qxyedgereconvar, optional_real5d opt_qxyvar,
       optional_real5d opt_coriolisxyedgereconvar, optional_real5d opt_fxyvar) {
+    yakl::timer_start("compute_edge_reconstructions_variable");
 
     if (vert_reconstruction_type == RECONSTRUCTION_TYPE::WENO ||
         dual_vert_reconstruction_type == RECONSTRUCTION_TYPE::WENO ||
@@ -1046,6 +1049,7 @@ public:
                 coriolis_wenoSigma);
           });
     }
+    yakl::timer_stop("compute_edge_reconstructions_variable");
   }
 
   void compute_recons(
@@ -1060,6 +1064,7 @@ public:
       optional_real5d opt_qxyreconvar, optional_real5d opt_qxyedgereconvar,
       optional_real5d opt_coriolisxyreconvar,
       optional_real5d opt_coriolisxyedgereconvar, optional_real5d opt_FTxyvar) {
+    yakl::timer_start("compute_recons");
 
     const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
@@ -1220,6 +1225,7 @@ public:
                 FTxyvar, tanh_upwind_coeff, pis, pjs, pks, i, j, k, n);
           });
     }
+    yakl::timer_stop("compute_recons");
   }
 
   void add_entropicvar_diffusion(real entropicvar_coeff, real5d denstendvar,
@@ -1228,6 +1234,7 @@ public:
                                  const real5d qxzvertfluxvar, const real5d Fvar,
                                  const real5d FWvar,
                                  FieldSet<nauxiliary> &auxiliary_vars) {
+    yakl::timer_start("add_entropicvar_diffusion");
 
     const auto &primal_topology = primal_geometry.topology;
 
@@ -1323,6 +1330,8 @@ public:
           denstendvar(varset.dens_id_entr, k + pks, j + pjs, i + pis, n) +=
               -rho * sdiff(0);
         });
+
+    yakl::timer_stop("add_entropicvar_diffusion");
   }
 
   void add_velocity_diffusion_2d(
@@ -1330,6 +1339,7 @@ public:
       const real5d Wvar, const real5d qhzedgereconvar, const real5d qhzvar,
       const real5d dens0var, const real5d Kvar, const real5d Fvar,
       const real5d FWvar, FieldSet<nauxiliary> &auxiliary_vars) {
+    yakl::timer_start("add_velocity_diffusion");
 
     const auto &primal_topology = primal_geometry.topology;
 
@@ -1484,6 +1494,8 @@ public:
           real wdiff = compute_D0_vert<1>(dens0var, pis, pjs, pks, i, j, k, n);
           Wtendvar(0, pks + k, pjs + j, pis + i, n) -= velocity_coeff * wdiff;
         });
+
+    yakl::timer_stop("add_velocity_diffusion");
   }
 
   void add_velocity_diffusion_3d(
@@ -1492,6 +1504,7 @@ public:
       const real5d dens0var, const real5d Kvar, const real5d Fvar,
       const real5d FWvar, const real5d qxyedgereconvar, const real5d qxyvar,
       FieldSet<nauxiliary> &auxiliary_vars) {
+    yakl::timer_start("add_velocity_diffusion");
 
     const auto &primal_topology = primal_geometry.topology;
 
@@ -1662,6 +1675,8 @@ public:
           real wdiff = compute_D0_vert<1>(dens0var, pis, pjs, pks, i, j, k, n);
           Wtendvar(0, pks + k, pjs + j, pis + i, n) -= velocity_coeff * wdiff;
         });
+
+    yakl::timer_stop("add_velocity_diffusion");
   }
 
   template <ADD_MODE addmode = ADD_MODE::REPLACE>
@@ -1672,6 +1687,7 @@ public:
       const real5d coriolishzreconvar, const real5d coriolishzvertreconvar,
       const real5d Bvar, const real5d Fvar, const real5d FWvar,
       optional_real5d opt_qxyreconvar, optional_real5d opt_coriolisxyreconvar) {
+    yakl::timer_start("compute_tendencies");
 
     const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
@@ -1938,6 +1954,8 @@ public:
           compute_wDnm1bar_vert<VS::ndensity_prognostic, ADD_MODE::ADD>(
               denstendvar, densvertreconvar, FWvar, dis, djs, dks, i, j, k, n);
         });
+
+    yakl::timer_stop("compute_tendencies");
   }
 
   real compute_max_anelastic_constraint(FieldSet<nprognostic> &x,
@@ -2017,6 +2035,7 @@ public:
       real dt, FieldSet<nconstant> &const_vars, FieldSet<nprognostic> &x,
       FieldSet<nauxiliary> &auxiliary_vars, real fac = 1,
       ADD_MODE addmode = ADD_MODE::REPLACE) override {
+    yakl::timer_start("compute_functional_derivatives");
 
     const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
@@ -2097,6 +2116,7 @@ public:
     real max_div = compute_max_anelastic_constraint(x, auxiliary_vars, true);
     std::cout << "Anelastic constraint: " << max_div << std::endl;
 #endif
+    yakl::timer_stop("compute_functional_derivatives");
   }
 
   void compute_two_point_discrete_gradient(
@@ -2192,6 +2212,7 @@ public:
                         FieldSet<nprognostic> &xtend,
                         ADD_MODE addmode = ADD_MODE::REPLACE,
                         bool needs_to_recompute_F = true) override {
+    yakl::timer_start("apply_symplectic");
 
     const auto &dual_topology = dual_geometry.topology;
 
@@ -2487,6 +2508,8 @@ public:
             auxiliary_vars.fields_arr[QXYVAR].data, auxiliary_vars);
       }
     }
+
+    yakl::timer_stop("apply_symplectic");
   }
 
 #if defined PAMC_AN || defined PAMC_MAN
@@ -2501,6 +2524,7 @@ public:
                                  FieldSet<nprognostic> &x,
                                  FieldSet<nauxiliary> &auxiliary_vars,
                                  FieldSet<nprognostic> &xtend) override {
+    yakl::timer_start("add_pressure_perturbation");
 
     const auto Fvar = auxiliary_vars.fields_arr[FVAR].data;
     const auto FWvar = auxiliary_vars.fields_arr[FWVAR].data;
@@ -2583,10 +2607,12 @@ public:
           p_transform(k, j, i, n) = -mfvar(0, k + pks, j + pjs, i + pis, n);
         });
 
+    yakl::timer_start("ffts");
     fftp_x.forward_real(p_transform);
     if (ndims > 1) {
       fftp_y.forward_real(p_transform);
     }
+    yakl::timer_stop("ffts");
 
     parallel_for(
         "Anelastic tridiagonal solve",
@@ -2619,10 +2645,12 @@ public:
           }
         });
 
+    yakl::timer_start("ffts");
     fftp_x.inverse_real(p_transform);
     if (ndims > 1) {
       fftp_y.inverse_real(p_transform);
     }
+    yakl::timer_stop("ffts");
 
     parallel_for(
         "Anelastic - store p",
@@ -2650,6 +2678,8 @@ public:
           compute_D0<1, ADD_MODE::ADD>(Vtendvar, Bvar, pis, pjs, pks, i, j, k,
                                        n);
         });
+
+    yakl::timer_stop("add_pressure_perturbation");
   }
 #endif
 
@@ -2996,13 +3026,13 @@ public:
                      FieldSet<nconstant> &const_vars,
                      FieldSet<nauxiliary> &auxiliary_vars,
                      FieldSet<nprognostic> &solution) override {
+    yakl::timer_start("linear_solve");
 
     const auto &refstate = this->equations->reference_state;
 
     const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
 
-    yakl::timer_start("linsolve");
 
     // fourier
 
@@ -3095,12 +3125,12 @@ public:
           }
         });
 
-    yakl::timer_start("fft fwd");
+    yakl::timer_start("ffts");
     fftv_x.forward_real(v_transform);
     fftw_x.forward_real(w_transform);
     // fftv_y.forward_real(v_transform);
     // fftw_y.forward_real(w_transform);
-    yakl::timer_stop("fft fwd");
+    yakl::timer_stop("ffts");
 
     parallel_for(
         "Transform result to complex",
@@ -3244,12 +3274,12 @@ public:
           }
         });
 
-    yakl::timer_start("fft bwd");
+    yakl::timer_start("ffts");
     fftv_x.inverse_real(v_transform);
     fftw_x.inverse_real(w_transform);
     // fftv_y.inverse_real(v_transform);
     // fftw_y.inverse_real(w_transform);
-    yakl::timer_stop("fft bwd");
+    yakl::timer_stop("ffts");
 
     parallel_for(
         "Store v/w solution into array with halos",
@@ -3305,7 +3335,7 @@ public:
           }
         });
 
-    yakl::timer_stop("linsolve");
+    yakl::timer_stop("linear_solve");
   }
 };
 
