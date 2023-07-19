@@ -11,13 +11,15 @@
 #include "weno_func_recon.h" // needed to set TransformMatrices related stuff
 #include "weno_func_recon_variable.h" // needed to set TransformMatrices related stuff
 
+namespace pamc {
+
 class Equations {
 public:
   Hamiltonian Hs;
-#ifdef _LAYER
+#ifdef PAMC_LAYER
   Hamiltonian_Hk Hk;
   Functional_PVPE PVPE;
-#elif _EXTRUDED
+#elif PAMC_EXTRUDED
   Hamiltonian_Hk_extruded Hk;
   Functional_PVPE_extruded PVPE;
 #endif
@@ -419,3 +421,4 @@ public:
                      FieldSet<nauxiliary> &auxiliary_vars,
                      FieldSet<nprognostic> &solution) = 0;
 };
+} // namespace pamc

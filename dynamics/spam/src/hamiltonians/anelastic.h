@@ -15,7 +15,9 @@
 // class Hamiltonian_AN_Hs {};
 // class Hamiltonian_MAN_Hs {};
 
-#ifdef _AN
+namespace pamc {
+
+#ifdef PAMC_AN
 class Hamiltonian_AN_Hs {
 public:
   Geometry<Straight> primal_geometry;
@@ -44,7 +46,7 @@ public:
                               int js, int ks, int i, int j, int k,
                               int n) const {
     SArray<real, 1, 1> geop0;
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
     compute_Hn1bar<1, diff_ord, vert_diff_ord>(
         geop0, geop, this->primal_geometry, this->dual_geometry, is, js, ks, i,
         j, k, n);
@@ -83,7 +85,7 @@ public:
                                  real fac = 1._fp) const {
 
     SArray<real, 1, 1> geop0;
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
     compute_Hn1bar<1, diff_ord, vert_diff_ord>(
         geop0, geop, this->primal_geometry, this->dual_geometry, is, js, ks, i,
         j, k, n);
@@ -124,7 +126,7 @@ public:
                                  real fac = 1._fp) const {
 
     SArray<real, 1, 1> geop0;
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
     compute_Hn1bar<1, diff_ord, vert_diff_ord>(
         geop0, geop, this->primal_geometry, this->dual_geometry, ks, k, n);
 #else
@@ -157,7 +159,7 @@ public:
 };
 #endif
 
-#ifdef _MAN
+#ifdef PAMC_MAN
 class Hamiltonian_MAN_Hs {
 public:
   Geometry<Straight> primal_geometry;
@@ -188,7 +190,7 @@ public:
                               int js, int ks, int i, int j, int k,
                               int n) const {
     SArray<real, 1, 1> geop0;
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
     compute_Hn1bar<1, diff_ord, vert_diff_ord>(
         geop0, geop, this->primal_geometry, this->dual_geometry, is, js, ks, i,
         j, k, n);
@@ -287,7 +289,7 @@ public:
                                  real fac = 1._fp) const {
 
     SArray<real, 1, 1> geop0;
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
     compute_Hn1bar<1, diff_ord, vert_diff_ord>(
         geop0, geop, this->primal_geometry, this->dual_geometry, is, js, ks, i,
         j, k, n);
@@ -335,7 +337,7 @@ public:
                                  real fac = 1._fp) const {
 
     SArray<real, 1, 1> geop0;
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
     compute_Hn1bar<1, diff_ord, vert_diff_ord>(
         geop0, geop, this->primal_geometry, this->dual_geometry, ks, k, n);
 #else
@@ -374,3 +376,4 @@ public:
   }
 };
 #endif
+} // namespace pamc

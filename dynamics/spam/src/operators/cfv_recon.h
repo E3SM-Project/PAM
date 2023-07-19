@@ -2,6 +2,8 @@
 
 #include "common.h"
 
+namespace pamc {
+
 // THIS RELIES ON MIDPOINTS BEING EXACTLY HALF-WAY BETWEEN INTERFACES
 // THIS IS TRUE WITH HOW GRID IS CONSTRUCTED, AND ALSO REQUIRED FOR 2ND ORDER
 // ACCURACY IN THE VERTICAL ANYWAYS...
@@ -87,3 +89,4 @@ void YAKL_INLINE cfv(SArray<real, 3, ndofs, nd, 2> &edgerecon,
     }
   }
 }
+} // namespace pamc

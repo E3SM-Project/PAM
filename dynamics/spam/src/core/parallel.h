@@ -1,7 +1,8 @@
 #pragma once
 
 #include "common.h"
-#include "params.h"
+
+namespace pamc {
 
 int ij_to_l(int i, int j, int nx) { return j * nx + i; }
 
@@ -54,3 +55,4 @@ public:
   BND_TYPE xbnd;
   BND_TYPE ybnd;
 };
+} // namespace pamc

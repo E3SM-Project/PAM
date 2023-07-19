@@ -6,6 +6,8 @@
 #include "time_integrator.h"
 #include "topology.h"
 
+namespace pamc {
+
 class LSRKTimeIntegrator : public TimeIntegrator {
 
 public:
@@ -123,3 +125,4 @@ public:
     }
   }
 };
+} // namespace pamc

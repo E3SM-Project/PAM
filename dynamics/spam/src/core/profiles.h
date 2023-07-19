@@ -2,6 +2,7 @@
 
 #include "common.h"
 #include "topology.h"
+namespace pamc {
 
 class Profile {
 
@@ -84,3 +85,4 @@ void Profile::zero(int ndof) {
                       this->topology.nens),
       YAKL_CLASS_LAMBDA(int k, int n) { this->data(ndof, k, n) = 0.0; });
 }
+} // namespace pamc

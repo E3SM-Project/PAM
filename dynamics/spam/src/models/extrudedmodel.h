@@ -15,6 +15,7 @@
 #include "variableset.h"
 #include "wedge.h"
 
+namespace pamc {
 // *******   Diagnostics   ***********//
 
 struct TotalDensityDiagnostic : public Diagnostic {
@@ -350,7 +351,7 @@ class ModelTendencies : public ExtrudedTendencies {
   real entropicvar_diffusion_coeff;
   real velocity_diffusion_coeff;
   bool force_refstate_hydrostatic_balance;
-#if defined _AN || defined _MAN
+#if defined PAMC_AN || defined PAMC_MAN
   AnelasticPressureSolver pressure_solver;
 #endif
 
@@ -367,7 +368,7 @@ public:
     force_refstate_hydrostatic_balance =
         params.force_refstate_hydrostatic_balance;
 
-#if defined _AN || defined _MAN
+#if defined PAMC_AN || defined PAMC_MAN
     pressure_solver.initialize(params, primal_geom, dual_geom, equations);
     pressure_solver.compute_coefficients();
 #endif
@@ -386,7 +387,7 @@ public:
                                          FieldSet<nconstant> &const_vars) {
     equations->varset.convert_coupler_to_dynamics_state(coupler, prog_vars,
                                                         const_vars);
-#if defined(_AN) || defined(_MAN)
+#if defined PAMC_AN || defined PAMC_MAN
     if (equations->varset.couple_wind) {
       project_to_anelastic(const_vars, prog_vars, auxiliary_vars);
     }
@@ -421,7 +422,7 @@ public:
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-#if defined _AN || defined _MAN
+#if defined PAMC_AN || defined PAMC_MAN
           for (int d = 0; d < VS::ndensity_prognostic; ++d) {
             dens0var(d, k + pks, j + pjs, i + pis, n) =
                 (densvar(d, k + pks, j + pjs, i + pis, n) -
@@ -1087,7 +1088,7 @@ public:
               densreconvar, densedgereconvar, dual_geometry, Fvar,
               tanh_upwind_coeff, dis, djs, dks, i, j, k, n);
 
-#if defined _AN || defined _MAN
+#if defined PAMC_AN || defined PAMC_MAN
           // add reference state
           for (int d = 0; d < ndims; d++) {
             for (int l = 0; l < VS::ndensity_prognostic; l++) {
@@ -1144,7 +1145,7 @@ public:
               densvertreconvar, densvertedgereconvar, dual_geometry, FWvar,
               tanh_upwind_coeff, dis, djs, dks, i, j, k + 1, n);
 
-#if defined _AN || defined _MAN
+#if defined PAMC_AN || defined PAMC_MAN
           // add reference state
           for (int l = 0; l < VS::ndensity_prognostic; l++) {
             densvertreconvar(l, k + dks + 1, j + djs, i + dis, n) +=
@@ -2092,7 +2093,7 @@ public:
 
     auxiliary_vars.exchange({BVAR, FVAR, FWVAR});
 
-#ifdef CHECK_ANELASTIC_CONSTRAINT
+#ifdef PAMC_CHECK_ANELASTIC_CONSTRAINT
     real max_div = compute_max_anelastic_constraint(x, auxiliary_vars, true);
     std::cout << "Anelastic constraint: " << max_div << std::endl;
 #endif
@@ -2488,7 +2489,7 @@ public:
     }
   }
 
-#if defined _AN || defined _MAN
+#if defined PAMC_AN || defined PAMC_MAN
   void project_to_anelastic(FieldSet<nconstant> &const_vars,
                             FieldSet<nprognostic> &x,
                             FieldSet<nauxiliary> &auxiliary_vars) override {
@@ -3536,19 +3537,20 @@ public:
 
       // MPI sum/min/max
       this->ierr = MPI_Ireduce(&masslocal, &massglobal, VS::ndensity_prognostic,
-                               REAL_MPI, MPI_SUM, 0, MPI_COMM_WORLD,
+                               PAMC_MPI_REAL, MPI_SUM, 0, MPI_COMM_WORLD,
                                &this->Req[DENSSTAT]);
       this->ierr = MPI_Ireduce(&densmaxlocal, &densmaxglobal,
-                               VS::ndensity_prognostic, REAL_MPI, MPI_MAX, 0,
-                               MPI_COMM_WORLD, &this->Req[DENSMAXSTAT]);
+                               VS::ndensity_prognostic, PAMC_MPI_REAL, MPI_MAX,
+                               0, MPI_COMM_WORLD, &this->Req[DENSMAXSTAT]);
       this->ierr = MPI_Ireduce(&densminlocal, &densminglobal,
-                               VS::ndensity_prognostic, REAL_MPI, MPI_MIN, 0,
-                               MPI_COMM_WORLD, &this->Req[DENSMINSTAT]);
-      this->ierr = MPI_Ireduce(&pvlocal, &pvglobal, ndims > 1 ? 3 : 1, REAL_MPI,
-                               MPI_SUM, 0, MPI_COMM_WORLD, &this->Req[PVSTAT]);
-      this->ierr = MPI_Ireduce(&pelocal, &peglobal, 1, REAL_MPI, MPI_SUM, 0,
-                               MPI_COMM_WORLD, &this->Req[PESTAT]);
-      this->ierr = MPI_Ireduce(&elocal, &eglobal, 4, REAL_MPI, MPI_SUM, 0,
+                               VS::ndensity_prognostic, PAMC_MPI_REAL, MPI_MIN,
+                               0, MPI_COMM_WORLD, &this->Req[DENSMINSTAT]);
+      this->ierr =
+          MPI_Ireduce(&pvlocal, &pvglobal, ndims > 1 ? 3 : 1, PAMC_MPI_REAL,
+                      MPI_SUM, 0, MPI_COMM_WORLD, &this->Req[PVSTAT]);
+      this->ierr = MPI_Ireduce(&pelocal, &peglobal, 1, PAMC_MPI_REAL, MPI_SUM,
+                               0, MPI_COMM_WORLD, &this->Req[PESTAT]);
+      this->ierr = MPI_Ireduce(&elocal, &eglobal, 4, PAMC_MPI_REAL, MPI_SUM, 0,
                                MPI_COMM_WORLD, &this->Req[ESTAT]);
 
       this->ierr = MPI_Waitall(nstats, this->Req, this->Status);
@@ -3716,13 +3718,8 @@ void initialize_variables(
     aux_desc_arr[FTXYVAR] = {"FTXY", ptopo, 1, 0, 1}; // FTXY
     const_desc_arr[CORIOLISXYVAR] = {"coriolisxy", ptopo, 2, 0, 1};
   }
-
-  // #if defined _AN || defined _MAN
-  // aux_topo_arr[PVAR] = ptopo; //p = straight 0-form
-  // aux_names_arr[PVAR] = "p";
-  // set_dofs_arr(aux_ndofs_arr, PVAR, 0, 1, 1);  //p = straight 0-form
-  // #endif
 }
+
 std::unique_ptr<TestCase> make_coupled_test_case(PamCoupler &coupler);
 void testcase_from_string(std::unique_ptr<TestCase> &testcase, std::string name,
                           bool acoustic_balance);
@@ -3884,7 +3881,7 @@ public:
   using T::yc;
 
   using T::h_f;
-#ifdef _TSWE
+#ifdef PAMC_TSWE
   using T::S_f;
 #endif
   using T::coriolis_f;
@@ -3907,7 +3904,7 @@ public:
     dual_geom.set_n1form_values(
         YAKL_LAMBDA(real x, real y, real z) { return h_f(x, y, z); },
         progvars.fields_arr[DENSVAR], 0);
-#ifdef _TSWE
+#ifdef PAMC_TSWE
     dual_geom.set_n1form_values(
         YAKL_LAMBDA(real x, real y, real z) { return S_f(x, y, z); },
         progvars.fields_arr[DENSVAR], 1);
@@ -3999,7 +3996,7 @@ public:
 
   static real YAKL_INLINE rho_f(real x, real y, real z,
                                 const ThermoPotential &thermo) {
-#ifdef _AN
+#ifdef PAMC_AN
     return refrho_f(z, thermo);
 #else
     return T::rho_f(x, y, z, thermo);
@@ -4037,7 +4034,7 @@ public:
 
     YAKL_SCOPE(thermo, equations->thermo);
     YAKL_SCOPE(varset, equations->varset);
-#ifndef _AN
+#ifndef PAMC_AN
     dual_geom.set_n1form_values(
         YAKL_LAMBDA(real x, real y, real z) { return rho_f(x, y, z, thermo); },
         progvars.fields_arr[DENSVAR], varset.dens_id_mass);
@@ -4179,9 +4176,9 @@ public:
 
   static real YAKL_INLINE rho_f(real x, real y, real z,
                                 const ThermoPotential &thermo) {
-#ifdef _MAN
+#ifdef PAMC_MAN
     return T::refrho_f(z, thermo);
-#elif defined _MCErhod || defined _MCErhodp
+#elif defined PAMC_MCErhod || defined PAMC_MCErhodp
     return T::rhod_f(x, y, z, thermo);
 #else
     return T::rho_f(x, y, z, thermo);
@@ -4220,7 +4217,7 @@ public:
     YAKL_SCOPE(thermo, equations->thermo);
     YAKL_SCOPE(varset, equations->varset);
 
-#ifndef _MAN
+#ifndef PAMC_MAN
     dual_geom.set_n1form_values(
         YAKL_LAMBDA(real x, real y, real z) { return rho_f(x, y, z, thermo); },
         progvars.fields_arr[DENSVAR], varset.dens_id_mass);
@@ -4522,7 +4519,7 @@ public:
             refstate.q_pi.data(l, k + pks, n) /=
                 refstate.rho_pi.data(0, k + pks, n);
           }
-#if defined(_AN) || defined(_MAN)
+#if defined PAMC_AN || defined PAMC_MAN
           refstate.q_pi.data(varset.dens_id_mass, k + pks, n) = 1;
 #endif
         });
@@ -4553,7 +4550,7 @@ public:
             refstate.q_di.data(l, k + dks, n) /=
                 refstate.rho_di.data(0, k + dks, n);
           }
-#if defined(_AN) || defined(_MAN)
+#if defined PAMC_AN || defined PAMC_MAN
           refstate.q_di.data(varset.dens_id_mass, k + pks, n) = 1;
 #endif
         });
@@ -5647,3 +5644,4 @@ void testcase_from_config(std::unique_ptr<TestCase> &testcase,
 std::unique_ptr<TestCase> make_coupled_test_case(PamCoupler &coupler) {
   return std::make_unique<CoupledTestCase>(coupler);
 }
+} // namespace pamc

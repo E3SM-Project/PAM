@@ -5,22 +5,26 @@
 #include <iostream>
 // clang-format on
 
+namespace pamc {
 uint constexpr nprognostic = 0;
 uint constexpr nconstant = 0;
 uint constexpr nauxiliary = 0;
 uint constexpr ndiagnostic = 0;
 uint constexpr ntracers_dycore = 0;
+} // namespace pamc
 
 #include "params.h"
 
+namespace pamc {
 struct ModelParameters : public Parameters {
   // std::string initdataStr;
-  std::string tracerdataStr[ntracers_dycore];
-  bool dycore_tracerpos[ntracers_dycore];
+  std::string tracerdataStr[ntracers_dycore + GPU_PAD];
+  bool dycore_tracerpos[ntracers_dycore + GPU_PAD];
   // bool acoustic_balance;
   bool uniform_vertical;
   real2d zint;
 };
+} // namespace pamc
 
 #include "exchange.h"
 #include "fields.h"
@@ -28,6 +32,7 @@ struct ModelParameters : public Parameters {
 #include "params.h"
 #include "topology.h"
 
+namespace pamc {
 Parallel parallel_stub(int nx, int ny, int nz) {
   Parallel par;
   par.nx_glob = par.nx = nx;
@@ -146,6 +151,8 @@ struct ExtrudedUnitSquare {
       koff = 1;
     }
 
+    YAKL_SCOPE(primal_geometry, this->primal_geometry);
+    YAKL_SCOPE(dual_geometry, this->dual_geometry);
     parallel_for(
         SimpleBounds<4>(error.total_dofs, nz, error.topology.n_cells_y,
                         error.topology.n_cells_x),
@@ -154,8 +161,8 @@ struct ExtrudedUnitSquare {
           real dx = primal_geometry.dx;
           real dy = primal_geometry.dy;
 
-          real dz = f1.topology.primal ? primal_geometry.dz(ks + ks + koff, 0)
-                                       : dual_geometry.dz(ks + ks + koff, 0);
+          real dz = f1.topology.primal ? primal_geometry.dz(k + ks + koff, 0)
+                                       : dual_geometry.dz(k + ks + koff, 0);
 
           if (f1.basedof >= 1) {
             scale *= dx;
@@ -235,3 +242,4 @@ template <int nlevels> struct ConvergenceTest {
     }
   }
 };
+} // namespace pamc

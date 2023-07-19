@@ -8,6 +8,8 @@
 #include "topology.h"
 #include <sstream>
 
+namespace pamc {
+
 class SIFixedTimeIntegrator : public SemiImplicitTimeIntegrator {
 
 public:
@@ -142,3 +144,4 @@ public:
     this->x->exchange();
   }
 };
+} // namespace pamc

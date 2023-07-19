@@ -6,6 +6,8 @@
 #include "topology.h"
 #include <initializer_list>
 
+namespace pamc {
+
 template <uint num_fields> class ExchangeSet {
 
 public:
@@ -184,3 +186,4 @@ void FieldSet<num_fields>::exchange(const std::initializer_list<int> &indices) {
     fields_arr[i].exchange();
   }
 }
+} // namespace pamc

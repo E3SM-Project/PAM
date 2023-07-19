@@ -7,6 +7,8 @@
 #include "weno_func_recon_variable.h"
 #include "weno_recon.h"
 
+namespace pamc {
+
 template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord = 2,
           uint hs = (ord - 1) / 2>
 void YAKL_INLINE compute_twisted_edge_recon(
@@ -489,7 +491,7 @@ void YAKL_INLINE compute_straight_recon(const real5d &reconvar,
   }
 }
 
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
 template <uint ndofs, RECONSTRUCTION_TYPE recontype>
 void YAKL_INLINE compute_straight_hz_recon(const real5d &reconvar,
                                            const real5d &edgereconvar,
@@ -595,3 +597,4 @@ void YAKL_INLINE compute_straight_hz_vert_recon(const real5d &reconvar,
   }
 }
 #endif
+} // namespace pamc

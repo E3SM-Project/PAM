@@ -33,7 +33,7 @@ macro(add_pamc_test testname model)
   add_executable(${testname} ${testname}.cpp)
   yakl_process_target(${testname})
   target_link_libraries(${testname} dycore yaml-cpp pam_core ${PAM_LINK_FLAGS})
-  target_compile_definitions(${testname} PUBLIC ${model})
+  target_compile_definitions(${testname} PUBLIC ${model} PAMC_TESTMODEL)
   add_test(NAME ${testname}_test COMMAND ./${testname})
 endmacro(add_pamc_test)
 

@@ -4,6 +4,8 @@
 #include "field_sets.h"
 #include "model.h"
 
+namespace pamc {
+
 real norm(FieldSet<nprognostic> &x) {
   // note that this function assumes that x halos have been exchanged
   real accum = 0;
@@ -109,3 +111,4 @@ public:
     this->is_semi_implicit = true;
   }
 };
+} // namespace pamc

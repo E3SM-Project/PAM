@@ -6,6 +6,8 @@
 #include "profiles.h"
 #include "topology.h"
 
+namespace pamc {
+
 enum class LINE_INTEGRAL_TYPE { TANGENT, NORMAL };
 
 struct CoordsXYZ {
@@ -280,7 +282,7 @@ void Geometry<T>::initialize(const Topology &topo,
     this->dy = 1;
   }
 
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
 
   if (straight) {
     this->dz = real2d("dz straight", topo.nl + 2 * topo.mirror_halo, topo.nens);
@@ -377,7 +379,7 @@ void YAKL_INLINE Geometry<T>::get_ll_corner(CoordsXYZ &llc, int k, int j, int i,
 }
 
 template <class T> real YAKL_INLINE Geometry<T>::get_zint(int k, int n) const {
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
   return this->zint(k, n);
 #else
   return 0;
@@ -385,7 +387,7 @@ template <class T> real YAKL_INLINE Geometry<T>::get_zint(int k, int n) const {
 }
 
 template <class T> real YAKL_INLINE Geometry<T>::get_dz(int k, int n) const {
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
   return this->dz(k, n);
 #else
   return 1;
@@ -559,7 +561,7 @@ void YAKL_INLINE Geometry<T>::get_10edge_tangents(
     }
   } else {
     for (int nqx = 0; nqx < ic_quad_pts_x; nqx++) {
-#ifdef _LAYER
+#ifdef PAMC_LAYER
       x_tangent(nqx).u = -1;
 #else
       x_tangent(nqx).u = 1;
@@ -1189,3 +1191,4 @@ void Geometry<T>::set_1form_values(F initial_value_function, Field &field,
     this->set_10form_values(f_3d, field, ndof, this->topology.nl);
   }
 }
+} // namespace pamc

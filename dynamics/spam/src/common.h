@@ -13,6 +13,11 @@
 #include <optional>
 #include <sstream>
 #include <string>
+#ifdef YAKL_ARCH_CUDA
+#include <cuda/std/complex>
+#endif
+
+namespace pamc {
 
 using yakl::c::Bounds;
 using yakl::c::parallel_for;
@@ -26,8 +31,7 @@ using uint = unsigned int;
 // Declaring the precision for the model
 using real = double;
 
-#if defined YAKL_ARCH_CUDA
-#include <cuda/std/complex>
+#ifdef YAKL_ARCH_CUDA
 using complex = cuda::std::complex<real>;
 #else
 using complex = std::complex<real>;
@@ -45,7 +49,7 @@ using optional_real3d = std::optional<real3d>;
 using optional_real4d = std::optional<real4d>;
 using optional_real5d = std::optional<real5d>;
 
-#define REAL_MPI MPI_DOUBLE
+#define PAMC_MPI_REAL MPI_DOUBLE
 //#define REAL_NC NC_DOUBLE
 
 // Spatial derivatives order of accuracy ie Hodge stars [2,4,6] (vert only
@@ -125,9 +129,9 @@ real constexpr pi =
 // GPU compilers sometimes have issues with zero-sized arrays than can occur
 // for some parameter choices. For this reason we sometimes have to pad arrays
 #if defined YAKL_ARCH_CUDA || defined YAKL_ARCH_HIP || defined YAKL_ARCH_SYCL
-#define GPU_PAD 1
+int constexpr GPU_PAD = 1;
 #else
-#define GPU_PAD 0
+int constexpr GPU_PAD = 0;
 #endif
 
 // Specifying templated min and max functions
@@ -165,9 +169,10 @@ enum class ADD_MODE { REPLACE, ADD };
 
 // Boundary types
 enum class BND_TYPE { PERIODIC, NONE };
+} // namespace pamc
 
-#if defined _HAMILTONIAN && defined _LAYER
+#if defined PAMC_LAYER && !defined PAMC_TESTMODEL
 #include "layermodel-common.h"
-#elif defined _HAMILTONIAN && defined _EXTRUDED
+#elif defined PAMC_EXTRUDED && !defined PAMC_TESTMODEL
 #include "extrudedmodel-common.h"
 #endif

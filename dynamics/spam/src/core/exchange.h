@@ -3,6 +3,8 @@
 #include "common.h"
 #include "topology.h"
 
+namespace pamc {
+
 // Xm SendBuf holds the cells closest to x- ie the left side -> Go into Xp
 // RecvBuf Xp SendBuf holds the cells closest to x+ ie the right side -> Go into
 // Xm RecvBuf
@@ -344,10 +346,10 @@ void Exchange::exchange_x() {
 
     // Pre-post the receives
     ierr =
-        MPI_Irecv(haloRecvBuf_Xm_host.data(), this->bufsize_x, REAL_MPI,
+        MPI_Irecv(haloRecvBuf_Xm_host.data(), this->bufsize_x, PAMC_MPI_REAL,
                   this->topology.x_neigh(0), 0, MPI_COMM_WORLD, &this->rReq[0]);
     ierr =
-        MPI_Irecv(haloRecvBuf_Xp_host.data(), this->bufsize_x, REAL_MPI,
+        MPI_Irecv(haloRecvBuf_Xp_host.data(), this->bufsize_x, PAMC_MPI_REAL,
                   this->topology.x_neigh(1), 1, MPI_COMM_WORLD, &this->rReq[1]);
 
     // Copy send buffers to host
@@ -357,10 +359,10 @@ void Exchange::exchange_x() {
 
     // Send the data
     ierr =
-        MPI_Isend(haloSendBuf_Xm_host.data(), this->bufsize_x, REAL_MPI,
+        MPI_Isend(haloSendBuf_Xm_host.data(), this->bufsize_x, PAMC_MPI_REAL,
                   this->topology.x_neigh(0), 1, MPI_COMM_WORLD, &this->sReq[0]);
     ierr =
-        MPI_Isend(haloSendBuf_Xp_host.data(), this->bufsize_x, REAL_MPI,
+        MPI_Isend(haloSendBuf_Xp_host.data(), this->bufsize_x, PAMC_MPI_REAL,
                   this->topology.x_neigh(1), 0, MPI_COMM_WORLD, &this->sReq[1]);
 
     // Wait for the sends and receives to finish
@@ -445,10 +447,10 @@ void Exchange::exchange_y() {
 
     // Pre-post the receives
     ierr =
-        MPI_Irecv(haloRecvBuf_Ym_host.data(), this->bufsize_y, REAL_MPI,
+        MPI_Irecv(haloRecvBuf_Ym_host.data(), this->bufsize_y, PAMC_MPI_REAL,
                   this->topology.y_neigh(0), 0, MPI_COMM_WORLD, &this->rReq[0]);
     ierr =
-        MPI_Irecv(haloRecvBuf_Yp_host.data(), this->bufsize_y, REAL_MPI,
+        MPI_Irecv(haloRecvBuf_Yp_host.data(), this->bufsize_y, PAMC_MPI_REAL,
                   this->topology.y_neigh(1), 1, MPI_COMM_WORLD, &this->rReq[1]);
 
     // Copy send buffers to host
@@ -458,10 +460,10 @@ void Exchange::exchange_y() {
 
     // Send the data
     ierr =
-        MPI_Isend(haloSendBuf_Ym_host.data(), this->bufsize_y, REAL_MPI,
+        MPI_Isend(haloSendBuf_Ym_host.data(), this->bufsize_y, PAMC_MPI_REAL,
                   this->topology.y_neigh(0), 1, MPI_COMM_WORLD, &this->sReq[0]);
     ierr =
-        MPI_Isend(haloSendBuf_Yp_host.data(), this->bufsize_y, REAL_MPI,
+        MPI_Isend(haloSendBuf_Yp_host.data(), this->bufsize_y, PAMC_MPI_REAL,
                   this->topology.y_neigh(1), 0, MPI_COMM_WORLD, &this->sReq[1]);
 
     // Wait for the sends and receives to finish
@@ -495,16 +497,16 @@ void Exchange::exchange_corners() {
 
     // Pre-post the receives
     ierr =
-        MPI_Irecv(haloRecvBuf_XYll_host.data(), this->bufsize_xy, REAL_MPI,
+        MPI_Irecv(haloRecvBuf_XYll_host.data(), this->bufsize_xy, PAMC_MPI_REAL,
                   this->topology.ur_neigh, 0, MPI_COMM_WORLD, &this->rReq[0]);
     ierr =
-        MPI_Irecv(haloRecvBuf_XYur_host.data(), this->bufsize_xy, REAL_MPI,
+        MPI_Irecv(haloRecvBuf_XYur_host.data(), this->bufsize_xy, PAMC_MPI_REAL,
                   this->topology.ll_neigh, 1, MPI_COMM_WORLD, &this->rReq[1]);
     ierr =
-        MPI_Irecv(haloRecvBuf_XYul_host.data(), this->bufsize_xy, REAL_MPI,
+        MPI_Irecv(haloRecvBuf_XYul_host.data(), this->bufsize_xy, PAMC_MPI_REAL,
                   this->topology.lr_neigh, 2, MPI_COMM_WORLD, &this->rReq[2]);
     ierr =
-        MPI_Irecv(haloRecvBuf_XYlr_host.data(), this->bufsize_xy, REAL_MPI,
+        MPI_Irecv(haloRecvBuf_XYlr_host.data(), this->bufsize_xy, PAMC_MPI_REAL,
                   this->topology.ul_neigh, 3, MPI_COMM_WORLD, &this->rReq[3]);
 
     // Copy send buffers to host
@@ -516,16 +518,16 @@ void Exchange::exchange_corners() {
 
     // Send the data
     ierr =
-        MPI_Isend(haloSendBuf_XYll_host.data(), this->bufsize_xy, REAL_MPI,
+        MPI_Isend(haloSendBuf_XYll_host.data(), this->bufsize_xy, PAMC_MPI_REAL,
                   this->topology.ur_neigh, 1, MPI_COMM_WORLD, &this->sReq[0]);
     ierr =
-        MPI_Isend(haloSendBuf_XYur_host.data(), this->bufsize_xy, REAL_MPI,
+        MPI_Isend(haloSendBuf_XYur_host.data(), this->bufsize_xy, PAMC_MPI_REAL,
                   this->topology.ll_neigh, 0, MPI_COMM_WORLD, &this->sReq[1]);
     ierr =
-        MPI_Isend(haloSendBuf_XYul_host.data(), this->bufsize_xy, REAL_MPI,
+        MPI_Isend(haloSendBuf_XYul_host.data(), this->bufsize_xy, PAMC_MPI_REAL,
                   this->topology.lr_neigh, 3, MPI_COMM_WORLD, &this->sReq[2]);
     ierr =
-        MPI_Isend(haloSendBuf_XYlr_host.data(), this->bufsize_xy, REAL_MPI,
+        MPI_Isend(haloSendBuf_XYlr_host.data(), this->bufsize_xy, PAMC_MPI_REAL,
                   this->topology.ul_neigh, 2, MPI_COMM_WORLD, &this->sReq[3]);
 
     // Wait for the sends and receives to finish
@@ -622,7 +624,8 @@ void Exchange::exchange_data(real5d &data) {
     this->unpack(data);
   }
 
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
   exchange_mirror(data);
 #endif
 }
+} // namespace pamc

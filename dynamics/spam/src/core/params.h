@@ -4,6 +4,8 @@
 #include "pam_coupler.h"
 #include "parallel.h"
 
+namespace pamc {
+
 class Parameters {
 public:
   int nx_glob = -1;
@@ -85,7 +87,7 @@ void read_params_coupler(Parameters &params, Parallel &par,
   params.Nout = 1;
   params.Nstat = 1;
   params.simSteps = 1;
-#ifdef _MAN
+#ifdef PAMC_MAN
   params.tstype = "ssprk3";
 #else
   params.tstype = "si";
@@ -237,3 +239,4 @@ void check_and_print_parameters(const Parameters &params, const Parallel &par) {
     std::cout << "yc:         " << params.yc << "\n";
   }
 };
+} // namespace pamc

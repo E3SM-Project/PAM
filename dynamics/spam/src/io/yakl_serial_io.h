@@ -6,6 +6,8 @@
 #include "model.h"
 #include "stats.h"
 
+namespace pamc {
+
 class FileIO {
 
 public:
@@ -264,7 +266,7 @@ void FileIO::outputInit(real time, const Geometry<Straight> &primal_geometry,
     nc.write(primal_geometry.yc, "yc");
   }
 
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
   {
     const int pks = primal_geometry.topology.ks;
 
@@ -392,3 +394,4 @@ void FileIO::outputStats(const Stats &stats) {
     nc.close();
   }
 }
+} // namespace pamc

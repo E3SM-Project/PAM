@@ -11,6 +11,8 @@
 #include "thermo.h"
 using pam::PamCoupler;
 
+namespace pamc {
+
 // solve a system to exactly invert the velocity averaging done
 // during conversion to coupler state when coupling winds
 constexpr bool couple_wind_exact_inverse = true;
@@ -230,7 +232,7 @@ public:
         varset.dm_id_vap = tr;
         varset.dens_id_vap = ndensity_nophysics + tr;
         water_vapor_found = true;
-        if (!::ThermoPotential::moist_species_decouple_from_dynamics) {
+        if (!ThermoPotential::moist_species_decouple_from_dynamics) {
           varset.dens_active(tr + ndensity_nophysics) = true;
         }
       }
@@ -239,7 +241,7 @@ public:
         varset.dm_id_liq = tr;
         varset.dens_id_liq = ndensity_nophysics + tr;
         varset.liquid_found = true;
-        if (!::ThermoPotential::moist_species_decouple_from_dynamics) {
+        if (!ThermoPotential::moist_species_decouple_from_dynamics) {
           varset.dens_active(tr + ndensity_nophysics) = true;
         }
       }
@@ -247,7 +249,7 @@ public:
         varset.dm_id_ice = tr;
         varset.dens_id_ice = ndensity_nophysics + tr;
         varset.ice_found = true;
-        if (!::ThermoPotential::moist_species_decouple_from_dynamics) {
+        if (!ThermoPotential::moist_species_decouple_from_dynamics) {
           varset.dens_active(tr + ndensity_nophysics) = true;
         }
       }
@@ -531,7 +533,7 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_state(
           real entropic_var =
               thermo.compute_entropic_var_from_T(alpha, temp, qd, qv, ql, qi);
 
-#if !defined _AN && !defined _MAN
+#if !defined PAMC_AN && !defined PAMC_MAN
           set_density(dens * dual_geometry.get_area_n1entity(k + dks, j + djs,
                                                              i + dis, n),
                       dens_dry * dual_geometry.get_area_n1entity(
@@ -634,7 +636,7 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_state(
   }
 }
 
-#ifdef _SWE
+#ifdef PAMC_SWE
 template <>
 void VariableSetBase<VS_SWE>::initialize(PamCoupler &coupler,
                                          ModelParameters &params,
@@ -661,7 +663,7 @@ real YAKL_INLINE VariableSetBase<VS_SWE>::get_total_density(
 }
 #endif
 
-#ifdef _TSWE
+#ifdef PAMC_TSWE
 template <>
 void VariableSetBase<VS_TSWE>::initialize(PamCoupler &coupler,
                                           ModelParameters &params,
@@ -690,7 +692,7 @@ void VariableSetBase<VS_TSWE>::initialize(PamCoupler &coupler,
 }
 #endif
 
-#ifdef _CE
+#ifdef PAMC_CE
 template <>
 void VariableSetBase<VS_CE>::initialize(PamCoupler &coupler,
                                         ModelParameters &params,
@@ -755,7 +757,7 @@ real YAKL_INLINE VariableSetBase<VS_CE>::get_alpha(const real3d &densvar, int k,
 }
 #endif
 
-#ifdef _AN
+#ifdef PAMC_AN
 template <>
 void VariableSetBase<VS_AN>::initialize(PamCoupler &coupler,
                                         ModelParameters &params,
@@ -827,7 +829,7 @@ real YAKL_INLINE VariableSetBase<VS_AN>::get_alpha(const real3d &densvar, int k,
 
 // We rely on physics packages ie micro to provide water species- must at least
 // have vapor and cloud liquid
-#ifdef _MAN
+#ifdef PAMC_MAN
 template <>
 void VariableSetBase<VS_MAN>::initialize(PamCoupler &coupler,
                                          ModelParameters &params,
@@ -1005,7 +1007,7 @@ void YAKL_INLINE VariableSetBase<VS_MAN>::set_entropic_density(
 }
 #endif
 
-#ifdef _MCErho
+#ifdef PAMC_MCErho
 template <>
 void VariableSetBase<VS_MCE_rho>::initialize(
     PamCoupler &coupler, ModelParameters &params,
@@ -1180,7 +1182,7 @@ void YAKL_INLINE VariableSetBase<VS_MCE_rho>::set_entropic_density(
 }
 #endif
 
-#ifdef _MCErhod
+#ifdef PAMC_MCErhod
 template <>
 void VariableSetBase<VS_MCE_rhod>::initialize(
     PamCoupler &coupler, ModelParameters &params,
@@ -1292,24 +1294,25 @@ void YAKL_INLINE VariableSetBase<VS_MCE_rhod>::set_entropic_density(
 }
 #endif
 
-#ifdef _SWE
+#ifdef PAMC_SWE
 using VariableSet = VariableSetBase<VS_SWE>;
-#elif _TSWE
+#elif PAMC_TSWE
 using VariableSet = VariableSetBase<VS_TSWE>;
-#elif _CE
+#elif PAMC_CE
 using VariableSet = VariableSetBase<VS_CE>;
-#elif _AN
+#elif PAMC_AN
 using VariableSet = VariableSetBase<VS_AN>;
-#elif _MAN
+#elif PAMC_MAN
 using VariableSet = VariableSetBase<VS_MAN>;
-#elif _MCErho
+#elif PAMC_MCErho
 using VariableSet = VariableSetBase<VS_MCE_rho>;
-#elif _MCErhod
+#elif PAMC_MCErhod
 using VariableSet = VariableSetBase<VS_MCE_rhod>;
-#elif _CEp
+#elif PAMC_CEp
 using VariableSet = VariableSetBase<VS_CE_p>;
-#elif _MCErhop
+#elif PAMC_MCErhop
 using VariableSet = VariableSetBase<VS_MCE_rhop>;
-#elif _MCErhodp
+#elif PAMC_MCErhodp
 using VariableSet = VariableSetBase<VS_MCE_rhodp>;
 #endif
+} // namespace pamc

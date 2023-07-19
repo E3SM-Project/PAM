@@ -6,6 +6,9 @@
 #include "YAKL_netcdf.h"
 
 inline void output( pam::PamCoupler const &coupler , std::string out_prefix , real etime ) {
+  using yakl::c::parallel_for;
+  using yakl::c::SimpleBounds;
+
   int nranks;
   int myrank;
   MPI_Comm_size( MPI_COMM_WORLD , &nranks );

@@ -790,6 +790,7 @@ public:
 
   void get_cloud_fraction( realConst2d ast , realConst2d qc , realConst2d qr , realConst2d qi ,
                            real2d const &cld_frac_i , real2d const &cld_frac_l , real2d const &cld_frac_r ) {
+    using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
 
     int nz   = ast.dimension[0];
