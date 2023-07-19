@@ -278,6 +278,7 @@ struct AnelasticPressureSolver {
     YAKL_SCOPE(tri_l, this->tri_l);
     YAKL_SCOPE(tri_d, this->tri_d);
     YAKL_SCOPE(tri_u, this->tri_u);
+    YAKL_SCOPE(kfix, this->kfix);
 
     parallel_for(
         "Anelastic set coeffs",
@@ -324,7 +325,7 @@ struct AnelasticPressureSolver {
           // because of Neumann conditons on both boundaries. To avoid issues
           // with direct solve in the vertical we fix the horizontal mean of
           // pressure at one vertical level
-          if (ik == 0 && jk == 0 && k == this->kfix) {
+          if (ik == 0 && jk == 0 && k == kfix) {
             tri_d(k, j, i, n) = 1;
             tri_u(k, j, i, n) = 0;
             tri_l(k, j, i, n) = 0;
