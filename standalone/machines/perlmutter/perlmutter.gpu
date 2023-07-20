@@ -13,7 +13,7 @@ export CC=cc
 export CXX=CC
 export FC=ftn
 
-export YAKL_CUDA_FLAGS="-DHAVE_MPI -O3 -arch sm_80 --use_fast_math -I`nc-config --includedir`"
+export YAKL_CUDA_FLAGS="-DYAKL_PROFILE -DHAVE_MPI -O3 -arch sm_80 --use_fast_math -I`nc-config --includedir`"
 export YAKL_F90_FLAGS="-O2 -DSCREAM_DOUBLE_PRECISION -ffree-line-length-none"
 export PAM_LINK_FLAGS="-L`nc-config --libdir` -lnetcdf"
 export SCREAM_HOME="$HOME/scream"

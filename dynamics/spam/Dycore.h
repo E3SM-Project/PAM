@@ -213,6 +213,7 @@ public:
   };
 
   void timeStep(PamCoupler &coupler) {
+    yakl::timer_start("timeStep");
 
     serial_print("taking a dycore dtphys step", par.masterproc);
 
@@ -266,6 +267,7 @@ public:
     // ADD COUPLER DYCORE FUNCTIONS HERE AS WELL
 
     debug_print("end time stepping loop", par.masterproc);
+    yakl::timer_stop("timeStep");
   };
 
   void finalize(PamCoupler &coupler) { io.outputStats(stats); }

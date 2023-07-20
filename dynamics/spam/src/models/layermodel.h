@@ -284,6 +284,8 @@ public:
                                     real5d Qedgereconvar, real5d fedgereconvar,
                                     const real5d dens0var, const real5d Q0var,
                                     const real5d f0var) {
+    yakl::timer_start("compute_edge_reconstructions");
+
     const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
 
@@ -337,6 +339,8 @@ public:
               densedgereconvar, dens0var, dis, djs, dks, i, j, k, n,
               dual_wenoRecon, dual_to_gll, dual_wenoIdl, dual_wenoSigma);
         });
+
+    yakl::timer_stop("compute_edge_reconstructions");
   }
 
   void compute_recons(real5d densreconvar, real5d Qreconvar,
@@ -344,6 +348,8 @@ public:
                       const real5d Qedgereconvar, const real5d fedgereconvar,
                       const real5d HEvar, const real5d FTvar, const real5d Fvar,
                       real tanh_upwind_coeff) {
+    yakl::timer_start("compute_recons");
+
     const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
 
@@ -389,6 +395,8 @@ public:
             }
           }
         });
+
+    yakl::timer_stop("compute_recons");
   }
 
   template <ADD_MODE addmode = ADD_MODE::REPLACE>
@@ -396,6 +404,8 @@ public:
                           const real5d densreconvar, const real5d Qreconvar,
                           const real5d Coriolisreconvar, const real5d Bvar,
                           const real5d Fvar) {
+    yakl::timer_start("compute_tendencies");
+
     const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
 
@@ -437,12 +447,16 @@ public:
           compute_wDnm1bar<VS::ndensity_prognostic, addmode>(
               denstendvar, densreconvar, Fvar, dis, djs, dks, i, j, k, n);
         });
+
+    yakl::timer_stop("compute_tendencies");
   }
 
   void compute_functional_derivatives(
       real dt, FieldSet<nconstant> &const_vars, FieldSet<nprognostic> &x,
       FieldSet<nauxiliary> &auxiliary_vars, real fac = 1,
       ADD_MODE addmode = ADD_MODE::REPLACE) override {
+    yakl::timer_start("compute_functional_derivatives");
+
     const auto &dual_topology = dual_geometry.topology;
 
     compute_dens0(auxiliary_vars.fields_arr[DENS0VAR].data,
@@ -481,6 +495,8 @@ public:
     }
 
     auxiliary_vars.exchange({BVAR});
+
+    yakl::timer_stop("compute_functional_derivatives");
   }
 
   void apply_symplectic(real dt, FieldSet<nconstant> &const_vars,
@@ -489,6 +505,8 @@ public:
                         FieldSet<nprognostic> &xtend,
                         ADD_MODE addmode = ADD_MODE::REPLACE,
                         bool needs_to_recompute_F = true) override {
+    yakl::timer_start("apply_symplectic");
+
     const auto &dual_topology = dual_geometry.topology;
 
     compute_dens0(auxiliary_vars.fields_arr[DENS0VAR].data,
@@ -614,6 +632,8 @@ public:
           auxiliary_vars.fields_arr[BVAR].data,
           auxiliary_vars.fields_arr[FVAR].data);
     }
+
+    yakl::timer_stop("apply_symplectic");
   }
 };
 
@@ -652,12 +672,12 @@ public:
                      FieldSet<nconstant> &const_vars,
                      FieldSet<nauxiliary> &auxiliary_vars,
                      FieldSet<nprognostic> &solution) override {
+    yakl::timer_start("linear_solve");
 
     const auto &dual_topology = dual_geometry.topology;
     const auto &primal_topology = primal_geometry.topology;
     const auto &refstate = this->equations->reference_state;
 
-    yakl::timer_start("Linear solve");
     auto grav = this->equations->Hs.g;
 
     auto n_cells_x = dual_topology.n_cells_x;
@@ -756,10 +776,10 @@ public:
               dens_rhs(0, k + dks, j + djs, i + dis, n);
         });
 
-    yakl::timer_start("fft fwd");
+    yakl::timer_start("ffts");
     fft_x.forward_real(dens_transform);
     fft_y.forward_real(dens_transform);
-    yakl::timer_stop("fft fwd");
+    yakl::timer_stop("ffts");
 
     parallel_for(
         "fft invert",
@@ -787,10 +807,10 @@ public:
           dens_transform(k, j, i, n) /= hd;
         });
 
-    yakl::timer_start("fft bwd");
+    yakl::timer_start("ffts");
     fft_x.inverse_real(dens_transform);
     fft_y.inverse_real(dens_transform);
-    yakl::timer_stop("fft bwd");
+    yakl::timer_stop("ffts");
 
     parallel_for(
         "fft copy out",
@@ -846,7 +866,7 @@ public:
           v_sol(1, k + dks, j + djs, i + dis, n) += v1;
         });
 
-    yakl::timer_stop("Linear solve");
+    yakl::timer_stop("linear_solve");
   }
 };
 

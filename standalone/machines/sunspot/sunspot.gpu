@@ -2,8 +2,8 @@
 
 module purge
 module load PrgEnv-gnu
-module load oneapi/eng-compiler/2022.12.30.005
-module load intel_compute_runtime/release/agama-devel-627
+module load oneapi/eng-compiler/2023.05.15.003
+module load intel_compute_runtime/release/agama-devel-647
 module load mpich/52.2/icc-all-pmix-gpu
 module load spack cmake e4s netcdf-c
 
@@ -21,7 +21,7 @@ export GATOR_DISABLE=0
 export ZE_AFFINITY_MASK=0.0
 export SYCL_PI_LEVEL_ZERO_USE_IMMEDIATE_COMMANDLISTS=1
 
-export YAKL_SYCL_FLAGS="-DHAVE_MPI -O3 -fsycl -sycl-std=2020 -fsycl-unnamed-lambda -fsycl-device-code-split=per_kernel -fsycl-targets=spir64_gen -Xsycl-target-backend \"-device 12.60.7\" -mlong-double-64 -Xclang -mlong-double-64 -I`nc-config --includedir`"
+export YAKL_SYCL_FLAGS="-DYAKL_PROFILE -DHAVE_MPI -O3 -fsycl -sycl-std=2020 -fsycl-unnamed-lambda -fsycl-device-code-split=per_kernel -fsycl-targets=spir64_gen -Xsycl-target-backend \"-device 12.60.7 -options -ze-opt-large-register-file\" -mlong-double-64 -Xclang -mlong-double-64 -I`nc-config --includedir`"
 export YAKL_F90_FLAGS="-O2 -DSCREAM_DOUBLE_PRECISION"
 export PAM_LINK_FLAGS="-L`nc-config --libdir` -lnetcdf"
 export SCREAM_HOME="$HOME/scream"
