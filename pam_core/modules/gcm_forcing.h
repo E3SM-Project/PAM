@@ -142,9 +142,14 @@ namespace modules {
       // gcm_forcing_tend_rho_i(k,iens) = ( rho_i_gcm(k,iens) - colavg_rho_i(k,iens) ) * r_dt_gcm;
       // #endif
       // #ifdef MMF_PAM_FORCE_TOTAL_WATER
-      real gcm_rho_total_water = rho_v_gcm(k,iens) + rho_l_gcm(k,iens) + rho_i_gcm(k,iens);
-      gcm_forcing_tend_temp (k,iens) = ( temp_gcm (k,iens) - colavg_temp_adj(k,iens) ) * r_dt_gcm;
-      gcm_forcing_tend_rho_v(k,iens) = ( gcm_rho_total_water - colavg_rho_totq(k,iens) ) * r_dt_gcm;
+      real gcm_rho_totq = rho_v_gcm(k,iens) + rho_l_gcm(k,iens) + rho_i_gcm(k,iens);
+      real gcm_ql_tmp   = rho_l_gcm(k,iens) / ( rho_d_gcm(k,iens) + rho_v_gcm(k,iens) );
+      real gcm_qi_tmp   = rho_i_gcm(k,iens) / ( rho_d_gcm(k,iens) + rho_v_gcm(k,iens) );
+      real gcm_liq_adj  = gcm_ql_tmp* Lv     / cp_d;
+      real gcm_ice_adj  = gcm_qi_tmp*(Lv+Lf) / cp_d;
+      real gsm_temp_adj = temp_gcm (k,iens) - gcm_liq_adj - gcm_ice_adj;
+      gcm_forcing_tend_temp (k,iens) = ( gsm_temp_adj - colavg_temp_adj(k,iens) ) * r_dt_gcm;
+      gcm_forcing_tend_rho_v(k,iens) = ( gcm_rho_totq - colavg_rho_totq(k,iens) ) * r_dt_gcm;
       gcm_forcing_tend_rho_l(k,iens) = 0;
       gcm_forcing_tend_rho_i(k,iens) = 0;
       // #endif
