@@ -20,12 +20,6 @@ vcoords  : vcoords_equal_50_20km.nc
 xlen     : 128000
 ylen     : 64000
 
-weno_scalars : true
-
-weno_winds   : true
-
-initData : supercell
-
 # Output filename
 out_prefix  : test_pama
 

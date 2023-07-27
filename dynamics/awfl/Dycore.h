@@ -955,6 +955,11 @@ class Dycore {
 
       }
 
+      update_hydrostasis( coupler , state , tracers );
+      auto hy_dens_cells = dm.get<real const,2>("hy_dens_cells");
+      parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+        state(idR,hs+k,hs+j,hs+i,iens) = hy_dens_cells(k,iens);
+      });
       convert_dynamics_to_coupler( coupler , state , tracers );
     }
   }
@@ -1224,20 +1229,11 @@ class Dycore {
     auto dm_vvel               = dm.get<real const,4>("vvel"       );
     auto dm_wvel               = dm.get<real const,4>("wvel"       );
     auto dm_temp               = dm.get<real const,4>("temp"       );
-    auto dz                    = dm.get<real const,2>("vertical_cell_dz");
-    auto hy_dens_cells         = dm.get<real      ,2>("hy_dens_cells");
-    auto hy_pressure_cells     = dm.get<real      ,2>("hy_pressure_cells");
-    auto vert_weno_recon_lower = dm.get<real const,5>("vert_weno_recon_lower");
-    auto vert_sten_to_coefs    = dm.get<real const,4>("vert_sten_to_coefs");
 
     // Get the coupler's tracers (as const because it's read-only)
     pam::MultiField<real const,4> dm_tracers;
     auto tracer_names = coupler.get_tracer_names();
     for (int tr=0; tr < num_tracers; tr++) { dm_tracers.add_field( dm.get<real const,4>(tracer_names[tr]) ); }
-
-    real r_nx_ny = 1. / (nx * ny);
-    real2d pressure("pressure",nz+2*hs,nens);
-    pressure = 0;
 
     // Convert from the coupler's state to the dycore's state and tracers arrays.
     // Compute domain-averaged pressure column
@@ -1257,6 +1253,50 @@ class Dycore {
       state(idV,hs+k,hs+j,hs+i,iens) = rho * v;
       state(idW,hs+k,hs+j,hs+i,iens) = rho * w;
       state(idT,hs+k,hs+j,hs+i,iens) = rho * theta;
+      for (int tr=0; tr < num_tracers; tr++) { tracers(tr,hs+k,hs+j,hs+i,iens) = dm_tracers(tr,k,j,i,iens); }
+    });
+    update_hydrostasis( coupler , state , tracers );
+  }
+
+
+
+  void update_hydrostasis( pam::PamCoupler &coupler , real5d &state , real5d &tracers ) const {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+    auto nens        = coupler.get_nens();
+    auto nx          = coupler.get_nx();
+    auto ny          = coupler.get_ny();
+    auto nz          = coupler.get_nz();
+    auto R_d         = coupler.get_option<real>("R_d"    );
+    auto R_v         = coupler.get_option<real>("R_v"    );
+    auto gamma_d     = coupler.get_option<real>("gamma_d");
+    auto C0          = coupler.get_option<real>("C0"     );
+    auto idWV        = coupler.get_option<int >("idWV");
+    auto grav        = coupler.get_option<real>("grav");
+    auto num_tracers = coupler.get_num_tracers();
+
+    auto &dm = coupler.get_data_manager_device_readwrite();
+    auto tracer_adds_mass = dm.get<bool const,1>("tracer_adds_mass");
+
+    // Get the coupler's state (as const because it's read-only)
+    auto dz                    = dm.get<real const,2>("vertical_cell_dz");
+    auto hy_dens_cells         = dm.get<real      ,2>("hy_dens_cells");
+    auto hy_pressure_cells     = dm.get<real      ,2>("hy_pressure_cells");
+    auto vert_weno_recon_lower = dm.get<real const,5>("vert_weno_recon_lower");
+    auto vert_sten_to_coefs    = dm.get<real const,4>("vert_sten_to_coefs");
+
+    // Get the coupler's tracers (as const because it's read-only)
+    pam::MultiField<real const,4> dm_tracers;
+    auto tracer_names = coupler.get_tracer_names();
+    for (int tr=0; tr < num_tracers; tr++) { dm_tracers.add_field( dm.get<real const,4>(tracer_names[tr]) ); }
+
+    real r_nx_ny = 1. / (nx * ny);
+    real2d pressure("pressure",nz+2*hs,nens);
+    pressure = 0;
+
+    // Compute domain-averaged pressure column
+    parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+      real press = C0 * std::pow( state(idT,hs+k,hs+j,hs+i,iens) , gamma_d );
       yakl::atomicAdd( pressure(hs+k,iens) , press*r_nx_ny );
       for (int tr=0; tr < num_tracers; tr++) { tracers(tr,hs+k,hs+j,hs+i,iens) = dm_tracers(tr,k,j,i,iens); }
       // Isentropic extension of pressure into the boundaries
