@@ -111,9 +111,13 @@ public:
     dm.register_and_allocate<real>( "cldfrac"      , "Cloud fraction [-]"                   , {nz,ny,nx,nens} , {"z","y","x","nens"} );
     dm.register_and_allocate<real>( "inv_qc_relvar", "Inverse relative cloud water variance", {nz,ny,nx,nens} , {"z","y","x","nens"} );
 
+    // Store surface fluxes from GCM in data manager to facilitate more realistic turbulence calculations
+    dm.register_and_allocate<real>("sfc_shf", "input surface sensible heat flux"            , {ny,nx,nens}, {"y","x","nens"} );
+    dm.register_and_allocate<real>("sfc_lhf", "input surface latent heat flux"              , {ny,nx,nens}, {"y","x","nens"} );
+
     // Store surface momentum fluxes in data manager to facilitate internal surface calculations
-    dm.register_and_allocate<real>( "sfc_mom_flx_u", "Surface flux of U-momentum"       , {ny,nx,nens} , {"y","x","nens"} );
-    dm.register_and_allocate<real>( "sfc_mom_flx_v", "Surface flux of V-momentum"       , {ny,nx,nens} , {"y","x","nens"} );
+    dm.register_and_allocate<real>( "sfc_mom_flx_u", "Surface flux of U-momentum"           , {ny,nx,nens} , {"y","x","nens"} );
+    dm.register_and_allocate<real>( "sfc_mom_flx_v", "Surface flux of V-momentum"           , {ny,nx,nens} , {"y","x","nens"} );
 
     auto tke           = dm.get<real,4>( "tke"           );
     auto wthv_sec      = dm.get<real,4>( "wthv_sec"      );
@@ -217,6 +221,8 @@ public:
     auto inv_qc_relvar = dm.get_lev_col<real>(   "inv_qc_relvar" ); // Computed on output for P3
     auto sfc_mom_flx_u = dm.get_collapsed<real>( "sfc_mom_flx_u" ); // surface momentum flux - either zero or computed by surface_friction.h
     auto sfc_mom_flx_v = dm.get_collapsed<real>( "sfc_mom_flx_v" ); // surface momentum flux - either zero or computed by surface_friction.h
+    auto sfc_shf       = dm.get_collapsed<real>( "sfc_shf"       );
+    auto sfc_lhf       = dm.get_collapsed<real>( "sfc_lhf"       );
     // Get coupler state
     auto rho_d        = dm.get_lev_col<real>( "density_dry"  );
     auto uvel         = dm.get_lev_col<real>( "uvel"         );
@@ -224,8 +230,6 @@ public:
     auto wvel         = dm.get_lev_col<real>( "wvel"         );
     auto temp         = dm.get_lev_col<real>( "temp"         );
     auto rho_v        = dm.get_lev_col<real>( "water_vapor"  ); // Water vapor mass
-    // auto ref_pres_mid = dm.get<real,2>("ref_pres" );
-    // auto ref_pres_int = dm.get<real,2>("ref_presi");
 
 
     // Grab cloud liquid tracer, and other tracers that need to be modified by SHOC
@@ -322,6 +326,20 @@ public:
         shoc_host_dy    (i) = crm_dy;
         shoc_wthl_sfc   (i) = 0;
         shoc_wqw_sfc    (i) = 0;
+
+        // // The alternative setting of surface fluxes below
+        // // must be used in conjunction with disabling the
+        // // application of surface fluxes in
+        // // components/eamxx/src/physics/shoc/impl/shoc_update_prognostics_implicit_impl.hpp
+        // // NOTE: density and exner values should represent the surface
+        // // interface rather than the center of the lowest level
+        // // SHF is in units of [W/m2] and needs to be converted to [K m/s]
+        // // LHF is in units of [W/m2] and needs to be converted to [m/s]
+        // real rho_sfc = rho_d(0,i)+rho_v(0,i);
+        // real exn_sfc = pow( pmid(0,i) / p0 , R_d / cp_d );
+        // shoc_wthl_sfc   (i) = sfc_shf(i) / ( cp_d * rho_sfc * exn_sfc);
+        // shoc_wqw_sfc    (i) = sfc_lhf(i) / ( latvap * rho_sfc );
+
         shoc_uw_sfc     (i) = sfc_mom_flx_u(i);
         shoc_vw_sfc     (i) = sfc_mom_flx_v(i);
         shoc_phis       (i) = zint(0,i) * grav;

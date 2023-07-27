@@ -119,6 +119,10 @@ public:
 
     auto &dm = coupler.get_data_manager_device_readwrite();
 
+    dm.register_and_allocate<real>( "nccn_prescribed","prescribed cld nuclei concentration  [#/kg]",  {nz,ny,nx,nens},{"z","y","x","nens"});
+    dm.register_and_allocate<real>( "nc_nuceat_tend", "activated cld nuclei number tendency [#/kg/s]",{nz,ny,nx,nens},{"z","y","x","nens"});
+    dm.register_and_allocate<real>( "ni_activated",   "activated ice nuclei concentration   [#/kg]",  {nz,ny,nx,nens},{"z","y","x","nens"});
+
     dm.register_and_allocate<real>("qv_prev","qv from prev step"         ,{nz,ny,nx,nens},{"z","y","x","nens"});
     dm.register_and_allocate<real>("t_prev" ,"Temperature from prev step",{nz,ny,nx,nens},{"z","y","x","nens"});
 
@@ -237,6 +241,10 @@ public:
       }
     #endif
 
+    auto nccn_prescribed = dm.get_lev_col<real>("nccn_prescribed");
+    auto nc_nuceat_tend  = dm.get_lev_col<real>("nc_nuceat_tend");
+    auto ni_activated    = dm.get_lev_col<real>("ni_activated");
+
     // Get tracers dimensioned as (nz,ny*nx*nens)
     auto rho_c  = dm.get_lev_col<real>("cloud_water"    );
     auto rho_nc = dm.get_lev_col<real>("cloud_water_num");
@@ -278,9 +286,6 @@ public:
     real2d exner             ( "exner"              ,           nz   , ncol );
     real2d inv_exner         ( "inv_exner"          ,           nz   , ncol );
     real2d dpres_dry         ( "dpres_dry"          ,           nz   , ncol );
-    real2d nc_nuceat_tend    ( "nc_nuceat_tend"     ,           nz   , ncol );
-    real2d nccn_prescribed   ( "nccn_prescribed"    ,           nz   , ncol );
-    real2d ni_activated      ( "ni_activated"       ,           nz   , ncol );
     real2d cld_frac_i        ( "cld_frac_i"         ,           nz   , ncol );
     real2d cld_frac_l        ( "cld_frac_l"         ,           nz   , ncol );
     real2d cld_frac_r        ( "cld_frac_r"         ,           nz   , ncol );
@@ -345,16 +350,16 @@ public:
       real pressure     = R_d*rho_dry(k,i)*temp(k,i) + R_v*rho_v(k,i)*temp(k,i);
 
       pressure_dry(k,i) = R_d*rho_dry(k,i)*temp(k,i);
+
       //These are constant kappa expressions
       exner       (k,i) = pow( pressure / p0 , R_d / cp_d );
       inv_exner   (k,i) = 1. / exner(k,i);
       theta       (k,i) = temp(k,i) * inv_exner(k,i);
+
       // P3 uses dpres to calculate density via the hydrostatic assumption.
       // So we just reverse this to compute dpres to give true density
       dpres_dry(k,i) = rho_dry(k,i) * grav * dz(k,i);
-      nccn_prescribed(k,i) = 1e3;
-      nc_nuceat_tend (k,i) = 1.0;
-      ni_activated   (k,i) = 1.0;
+
       // col_location is for debugging only, and it will be ignored for now
       if (k < 3) { col_location(k,i) = 1; }
 
@@ -365,9 +370,18 @@ public:
     });
 
     if (sgs_shoc) {
-      inv_qc_relvar = dm.get_lev_col<real>("inv_qc_relvar");
-      auto cld_frac = dm.get_lev_col<real>("cldfrac");
-      get_cloud_fraction( cld_frac , qc , qr , qi , cld_frac_i , cld_frac_l , cld_frac_r );
+      // inv_qc_relvar = dm.get_lev_col<real>("inv_qc_relvar");
+      // auto cld_frac = dm.get_lev_col<real>("cldfrac");
+      // get_cloud_fraction( cld_frac , qc , qr , qi , cld_frac_i , cld_frac_l , cld_frac_r );
+
+      // For unknown reasons the method above (i.e. cld_frac from SHOC) was producing a overly dry 
+      // state, and the method below gave much better results. Not sure how to fix this.
+      parallel_for( SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
+        cld_frac_l(k,i) = 1;
+        cld_frac_i(k,i) = 1;
+        cld_frac_r(k,i) = 1;
+        inv_qc_relvar(k,i) = 1;
+      });
     } else {
       parallel_for( SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
         // Assume cloud fracton is always 1
@@ -379,7 +393,7 @@ public:
     }
     double elapsed_s;
     int it, its, ite, kts, kte;
-    bool do_predict_nc = false;
+    bool do_predict_nc = true;
     bool do_prescribed_CCN = true;
 
     #ifdef P3_CXX
