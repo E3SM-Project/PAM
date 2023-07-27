@@ -4,7 +4,7 @@
 # simTime  : 86400    # 1 day
 # simTime  : 432000   # 5 days
 # simTime  : 3600   # 30 min
-simTime : 28800
+simTime : 7200
 
 # Number of cells to use in the CRMs
 crm_nx   : 250
@@ -17,8 +17,8 @@ nens     : 1
 vcoords  : vcoords_equal_50_20km.nc
 
 # Domain size of the CRMs
-xlen     : 100000
-ylen     : 100000
+xlen     : 128000
+ylen     : 64000
 
 weno_scalars : true
 
