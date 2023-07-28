@@ -19,9 +19,9 @@ public:
 
   real etime;
 
-  void init(pam::PamCoupler &coupler) {
+  void init(pam::PamCoupler &coupler, bool verbose=false) {
 
-    space_op.init(coupler);
+    space_op.init(coupler,verbose);
 
     stateTend  = space_op.createStateTendArr ();
     tracerTend = space_op.createTracerTendArr();

@@ -402,7 +402,7 @@ public:
 
 
   // Initialize crap needed by recon()
-  void init(pam::PamCoupler &coupler) {
+  void init(pam::PamCoupler &coupler, bool verbose=false) {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
 
