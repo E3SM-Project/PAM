@@ -4,6 +4,7 @@ add_library(dynamics INTERFACE)
 #Choose dycore
 if     ("${PAM_DYCORE}" STREQUAL "awfl")
   add_subdirectory(awfl ./dycore)
+  target_compile_definitions(dynamics INTERFACE PAM_DYCORE_AWFL)
 elseif ("${PAM_DYCORE}" STREQUAL "spam++")
   add_subdirectory(spam ./dycore)
 else ()

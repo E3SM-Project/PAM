@@ -4,7 +4,7 @@
 # simTime  : 86400    # 1 day
 # simTime  : 432000   # 5 days
 # simTime  : 3600   # 30 min
-simTime : 7200
+simTime : 86400
 
 # Number of cells to use in the CRMs
 crm_nx   : 250
@@ -27,9 +27,9 @@ out_prefix  : test_pama
 dt_gcm: 900
 
 # CRM physics time step
-dt_crm_phys: 20.
+dt_crm_phys: 20
 
 # Output frequency in seconds
-out_freq: 100.
+out_freq: 100
 
 

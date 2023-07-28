@@ -12,7 +12,6 @@
 #include "output.h"
 #include "supercell_init.h"
 #include <iostream>
-#include <chrono>
 #include "scream_cxx_interface_finalize.h"
 
 
@@ -139,6 +138,10 @@ int main(int argc, char** argv) {
     // Initialize the CRM internal state from the initial GCM column and random temperature perturbations
     modules::broadcast_initial_gcm_column( coupler );
 
+    #ifdef PAM_DYCORE_AWFL
+      dycore.declare_current_profile_as_hydrostatic( coupler );
+    #endif
+
     // Now that we have an initial state, define hydrostasis for each ensemble member
     coupler.update_hydrostasis();
 
@@ -157,7 +160,6 @@ int main(int argc, char** argv) {
     if (out_freq >= 0. ) output( coupler , out_prefix , etime_gcm );
 
     yakl::fence();
-    auto ts = std::chrono::steady_clock::now();
     yakl::timer_start("main_loop");
     for (int step_gcm = 0; step_gcm < nsteps_gcm; ++step_gcm) {
 
@@ -190,13 +192,9 @@ int main(int argc, char** argv) {
 
     yakl::timer_stop("main_loop");
     yakl::fence();
-    auto te = std::chrono::steady_clock::now();
-
-    auto runtime = std::chrono::duration<double>(te - ts).count();
 
     if (mainproc) {
       std::cout << "Simulation Time: " << etime_gcm << "\n";
-      std::cout << "Run Time: " << runtime << "\n";
     }
 
     dycore.finalize( coupler );

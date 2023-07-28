@@ -202,7 +202,7 @@ class Dycore {
     auto dy          = coupler.get_dy();
     auto sim2d       = ny == 1;
     auto C0          = coupler.get_option<real>("C0"     );
-    auto gamma       = coupler.get_option<real>("gamma_d");
+    auto gamma_d     = coupler.get_option<real>("gamma_d");
     auto grav        = coupler.get_option<real>("grav"   );
     auto num_tracers = coupler.get_num_tracers();
 
@@ -230,7 +230,7 @@ class Dycore {
 
     // Compute pressure perturbation, density perturbation, and divide density from all other quantities before interpolation
     parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      pressure (hs+k,hs+j,hs+i,iens) = C0*std::pow(state(idT,hs+k,hs+j,hs+i,iens),gamma) - hy_pressure_cells(k,iens);
+      pressure (hs+k,hs+j,hs+i,iens) = C0*std::pow(state(idT,hs+k,hs+j,hs+i,iens),gamma_d) - hy_pressure_cells(k,iens);
       state(idU,hs+k,hs+j,hs+i,iens) /= state(idR,hs+k,hs+j,hs+i,iens);
       state(idV,hs+k,hs+j,hs+i,iens) /= state(idR,hs+k,hs+j,hs+i,iens);
       state(idW,hs+k,hs+j,hs+i,iens) /= state(idR,hs+k,hs+j,hs+i,iens);
@@ -954,12 +954,6 @@ class Dycore {
         });
 
       }
-
-      update_hydrostasis( coupler , state , tracers );
-      auto hy_dens_cells = dm.get<real const,2>("hy_dens_cells");
-      parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-        state(idR,hs+k,hs+j,hs+i,iens) = hy_dens_cells(k,iens);
-      });
       convert_dynamics_to_coupler( coupler , state , tracers );
     }
   }
@@ -1152,7 +1146,9 @@ class Dycore {
 
 
   // Convert dynamics state and tracers arrays to the coupler state and write to the coupler's data
-  void convert_dynamics_to_coupler( pam::PamCoupler &coupler , realConst5d state , realConst5d tracers ) const {
+  void convert_dynamics_to_coupler( pam::PamCoupler &coupler ,
+                                    realConst5d state        ,
+                                    realConst5d tracers      ) const {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
     auto nens        = coupler.get_nens();
@@ -1205,7 +1201,9 @@ class Dycore {
 
 
   // Convert coupler's data to state and tracers arrays
-  void convert_coupler_to_dynamics( pam::PamCoupler &coupler , real5d &state , real5d &tracers ) const {
+  void convert_coupler_to_dynamics( pam::PamCoupler &coupler ,
+                                    real5d &state            ,
+                                    real5d &tracers          ) const {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
     auto nens        = coupler.get_nens();
@@ -1224,11 +1222,11 @@ class Dycore {
     auto tracer_adds_mass = dm.get<bool const,1>("tracer_adds_mass");
 
     // Get the coupler's state (as const because it's read-only)
-    auto dm_rho_d              = dm.get<real const,4>("density_dry");
-    auto dm_uvel               = dm.get<real const,4>("uvel"       );
-    auto dm_vvel               = dm.get<real const,4>("vvel"       );
-    auto dm_wvel               = dm.get<real const,4>("wvel"       );
-    auto dm_temp               = dm.get<real const,4>("temp"       );
+    auto dm_rho_d = dm.get<real const,4>("density_dry");
+    auto dm_uvel  = dm.get<real const,4>("uvel"       );
+    auto dm_vvel  = dm.get<real const,4>("vvel"       );
+    auto dm_wvel  = dm.get<real const,4>("wvel"       );
+    auto dm_temp  = dm.get<real const,4>("temp"       );
 
     // Get the coupler's tracers (as const because it's read-only)
     pam::MultiField<real const,4> dm_tracers;
@@ -1255,127 +1253,34 @@ class Dycore {
       state(idT,hs+k,hs+j,hs+i,iens) = rho * theta;
       for (int tr=0; tr < num_tracers; tr++) { tracers(tr,hs+k,hs+j,hs+i,iens) = dm_tracers(tr,k,j,i,iens); }
     });
-    update_hydrostasis( coupler , state , tracers );
   }
 
 
 
-  void update_hydrostasis( pam::PamCoupler &coupler , real5d &state , real5d &tracers ) const {
+  void declare_current_profile_as_hydrostatic( pam::PamCoupler &coupler ) const {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
     auto nens        = coupler.get_nens();
     auto nx          = coupler.get_nx();
     auto ny          = coupler.get_ny();
     auto nz          = coupler.get_nz();
-    auto R_d         = coupler.get_option<real>("R_d"    );
-    auto R_v         = coupler.get_option<real>("R_v"    );
     auto gamma_d     = coupler.get_option<real>("gamma_d");
     auto C0          = coupler.get_option<real>("C0"     );
-    auto idWV        = coupler.get_option<int >("idWV");
-    auto grav        = coupler.get_option<real>("grav");
     auto num_tracers = coupler.get_num_tracers();
 
-    auto &dm = coupler.get_data_manager_device_readwrite();
-    auto tracer_adds_mass = dm.get<bool const,1>("tracer_adds_mass");
+    real5d state  ("state"  ,num_state  ,nz+2*hs,ny+2*hs,nx+2*hs,nens);
+    real5d tracers("tracers",num_tracers,nz+2*hs,ny+2*hs,nx+2*hs,nens);
+    convert_coupler_to_dynamics( coupler , state , tracers );
 
-    // Get the coupler's state (as const because it's read-only)
-    auto dz                    = dm.get<real const,2>("vertical_cell_dz");
-    auto hy_dens_cells         = dm.get<real      ,2>("hy_dens_cells");
-    auto hy_pressure_cells     = dm.get<real      ,2>("hy_pressure_cells");
-    auto vert_weno_recon_lower = dm.get<real const,5>("vert_weno_recon_lower");
-    auto vert_sten_to_coefs    = dm.get<real const,4>("vert_sten_to_coefs");
-
-    // Get the coupler's tracers (as const because it's read-only)
-    pam::MultiField<real const,4> dm_tracers;
-    auto tracer_names = coupler.get_tracer_names();
-    for (int tr=0; tr < num_tracers; tr++) { dm_tracers.add_field( dm.get<real const,4>(tracer_names[tr]) ); }
-
-    real r_nx_ny = 1. / (nx * ny);
-    real2d pressure("pressure",nz+2*hs,nens);
-    pressure = 0;
-
-    // Compute domain-averaged pressure column
+    auto hy_dens_cells     = coupler.get_data_manager_device_readwrite().get<real,2>("hy_dens_cells");
+    auto hy_pressure_cells = coupler.get_data_manager_device_readwrite().get<real,2>("hy_pressure_cells");
+    hy_dens_cells     = 0;
+    hy_pressure_cells = 0;
+    real r_nx_ny = 1./(nx*ny);
     parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       real press = C0 * std::pow( state(idT,hs+k,hs+j,hs+i,iens) , gamma_d );
-      yakl::atomicAdd( pressure(hs+k,iens) , press*r_nx_ny );
-      for (int tr=0; tr < num_tracers; tr++) { tracers(tr,hs+k,hs+j,hs+i,iens) = dm_tracers(tr,k,j,i,iens); }
-      // Isentropic extension of pressure into the boundaries
-      if (k == 0) {
-        for (int kk=0; kk < hs; kk++) {
-          int  k0       = hs;
-          int  k        = k0-1-kk;
-          real rho0     = state(idR,k0,hs+j,hs+i,iens);
-          real theta0   = state(idT,k0,hs+j,hs+i,iens)/rho0;
-          real rho0_gm1 = std::pow(rho0  ,gamma_d-1);
-          real theta0_g = std::pow(theta0,gamma_d  );
-          real rho      = std::pow( rho0_gm1 + grav*(gamma_d-1)*dz(k0-hs,iens)*(kk+1)/(gamma_d*C0*theta0_g) , 1._fp/(gamma_d-1) );
-          yakl::atomicAdd( pressure(k,iens) , C0*std::pow(rho*theta0,gamma_d)*r_nx_ny );
-        }
-      }
-      if (k == nz-1) {
-        for (int kk=0; kk < hs; kk++) {
-          int  k0       = hs+nz-1;
-          int  k        = k0+1+kk;
-          real rho0     = state(idR,k0,hs+j,hs+i,iens);
-          real theta0   = state(idT,k0,hs+j,hs+i,iens)/rho0;
-          real rho0_gm1 = std::pow(rho0  ,gamma_d-1);
-          real theta0_g = std::pow(theta0,gamma_d  );
-          real rho      = std::pow( rho0_gm1 - grav*(gamma_d-1)*dz(k0-hs,iens)*(kk+1)/(gamma_d*C0*theta0_g) , 1._fp/(gamma_d-1) );
-          yakl::atomicAdd( pressure(k,iens) , C0*std::pow(rho*theta0,gamma_d)*r_nx_ny );
-        }
-      }
-    });
-
-    // I plotted the standard atmosphere, and a power of 0.12 linearizes the profile pretty well
-    real constexpr pwr   = 0.12;
-    real constexpr r_pwr = 1 / pwr;
-    parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
-      hy_pressure_cells(k,iens) = pressure(hs+k,iens);  // Store to hydrostatic profile of pressure before raising to pwr
-      pressure(hs+k,iens) = std::pow(pressure(hs+k,iens),pwr);
-      if (k == 0) {
-        for (int kk=0; kk < hs; kk++) { pressure(hs-1-kk ,iens) = std::pow(pressure(hs-1-kk ,iens),pwr); }
-      }
-      if (k == nz-1) {
-        for (int kk=0; kk < hs; kk++) { pressure(hs+nz+kk,iens) = std::pow(pressure(hs+nz+kk,iens),pwr); }
-      }
-    });
-
-    SArray<real,2,ord,2> coefs_to_gll;      // Matrix to convert ord poly coefs to two GLL points
-    SArray<real,1,hs+1>  idl;
-    real                 sigma;
-    TransformMatrices::coefs_to_gll_lower(coefs_to_gll);
-    weno::wenoSetIdealSigma<ord>(idl,sigma);
-
-    real2d pint("pint",nz+1,nens);
-    parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<2>(nz+1,nens) , YAKL_LAMBDA (int k, int iens) {
-      SArray<real,1,ord> stencil;
-      SArray<real,2,ord,ord>  s2c_loc[2];
-      SArray<real,3,hs,hs,hs> wrl_loc[2];
-      for (int i1=0; i1 < ord; i1++) {
-        for (int i2=0; i2 < ord; i2++) {
-          s2c_loc[0](i1,i2) = vert_sten_to_coefs(k  ,i1,i2,iens);
-          s2c_loc[1](i1,i2) = vert_sten_to_coefs(k+1,i1,i2,iens);
-        }
-      }
-      for (int i1=0; i1 < hs; i1++) {
-        for (int i2=0; i2 < hs; i2++) {
-          for (int i3=0; i3 < hs; i3++) {
-            wrl_loc[0](i1,i2,i3) = vert_weno_recon_lower(k  ,i1,i2,i3,iens);
-            wrl_loc[1](i1,i2,i3) = vert_weno_recon_lower(k+1,i1,i2,i3,iens);
-          }
-        }
-      }
-      int k_upw = 0;
-      for (int s=0; s < ord; s++) { stencil(s) = pressure(k+k_upw+s,iens); }
-      real pp_L = reconstruct(stencil,coefs_to_gll,s2c_loc[k_upw],wrl_loc[k_upw],idl,sigma,1-k_upw);
-      k_upw = 1;
-      for (int s=0; s < ord; s++) { stencil(s) = pressure(k+k_upw+s,iens); }
-      real pp_R = reconstruct(stencil,coefs_to_gll,s2c_loc[k_upw],wrl_loc[k_upw],idl,sigma,1-k_upw);
-      pint(k,iens) = std::pow( 0.5_fp*(pp_L+pp_R) , r_pwr );
-    });
-
-    parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
-      hy_dens_cells(k,iens) = -(pint(k+1,iens)-pint(k,iens))/(grav*dz(k,iens));
+      yakl::atomicAdd( hy_pressure_cells(k,iens) , press                         *r_nx_ny );
+      yakl::atomicAdd( hy_dens_cells    (k,iens) , state(idR,hs+k,hs+j,hs+i,iens)*r_nx_ny );
     });
   }
 
