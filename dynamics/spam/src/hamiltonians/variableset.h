@@ -243,7 +243,7 @@ public:
           tracer_names_loc[tr] == std::string("cloud_water")) {
         varset.dm_id_liq = tr;
         varset.dens_id_liq = ndensity_nophysics + tr;
-        varset.liquid_found = true;
+        varset.liq_found = true;
         if (!ThermoPotential::moist_species_decouple_from_dynamics) {
           varset.dens_active(tr + ndensity_nophysics) = true;
         }
@@ -492,7 +492,7 @@ void VariableSetBase<T>::convert_dynamics_to_coupler_densities(
           real alpha = get_alpha(prog_vars.fields_arr[DENSVAR].data, k, j, i,
                                  dks, djs, dis, n);
           real temp = thermo.compute_T_from_alpha(alpha, entropic_var, qd, qv, ql, qi);
-#elif defined(_CEp) || defined(_MCErhop) || defined(_MCErhodp) || defined(_AN) || defined(_MAN)
+#elif defined(_CEp) || defined(_MCErhop) || defined(_MCErhodp) || defined(PAMC_AN) || defined(PAMC_MAN)
           real p = get_pres(prog_vars.fields_arr[DENSVAR].data, k, j, i,
                                  dks, djs, dis, n);
           real temp = thermo.compute_T_from_p(p, entropic_var, qd, qv, ql, qi);
@@ -655,12 +655,11 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_densities(
 //get_qs(dens,dry_dens,dens_s)
 //compute_entropic_var(dens,dry_dens,temp,qs)
 
-#if defined(_CE) || defined(_MCErho) || defined(_MCE_rhod) || defined(_CEp)  || defined(_MCErhop) || defined(_MCErhodp)
+#if !defined PAMC_AN && !defined PAMC_MAN
 
           real dens_dry = dm_dens_dry(k, j, i, n);
           real dens = dens_dry + dens_vap;
 
-#if !defined PAMC_AN && !defined PAMC_MAN
           set_density(dens * dual_geometry.get_area_n1entity(k + dks, j + djs,
                                                              i + dis, n),
                       dens_dry * dual_geometry.get_area_n1entity(
@@ -674,7 +673,7 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_densities(
           real qi = dens_ice / dens;
           real alpha = 1.0_fp / dens;
 
-#elif defined(_AN) || defined(_MAN)
+#elif defined(PAMC_AN) || defined(PAMC_MAN)
           real dens = get_ref_dens(k, dks, n) / dual_geometry.get_area_n1entity(k + dks, j + djs, i + dis, n);
 
           real qv = dens_vap / dens;
@@ -692,7 +691,7 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_densities(
           real p = get_pres(alpha, temp, qd, qv, ql, qi);
           real entropic_var =
               thermo.compute_entropic_var_from_T_p(p, temp, qd, qv, ql, qi);
-#elif defined(_AN) || defined(_MAN)
+#elif defined(PAMC_AN) || defined(PAMC_MAN)
           real p = get_pres(k, dks, n);
           real entropic_var =
               thermo.compute_entropic_var_from_T_p(p, temp, qd, qv, ql, qi);

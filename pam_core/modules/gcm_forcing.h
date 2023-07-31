@@ -179,7 +179,7 @@ namespace modules {
     real2d rho_x_pos_mass("rho_v_pos_mass",nz,nens);
 
     // initialize rho_x_pos_mass to zero
-    parallel_for( YAKL_AUTO_LABEL() , Bounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
+    parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
       rho_x_pos_mass(k,iens) = 0;
     });
 

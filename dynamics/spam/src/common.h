@@ -13,9 +13,9 @@
 #include <optional>
 #include <sstream>
 #include <string>
-#ifdef YAKL_ARCH_CUDA
-#include <cuda/std/complex>
-#endif
+// #ifdef YAKL_ARCH_CUDA
+// #include <cuda/std/complex>
+// #endif
 
 namespace pamc {
 

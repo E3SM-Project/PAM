@@ -359,11 +359,6 @@ class ModelTendencies : public ExtrudedTendencies {
   using VS = VariableSet;
 
 public:
-
-#if defined _AN || defined _MAN
-  AnelasticPressureSolver pressure_solver;
-#endif
-
   void initialize(ModelParameters &params, Equations &equations,
                   const Geometry<Straight> &primal_geom,
                   const Geometry<Twisted> &dual_geom) {
@@ -430,7 +425,7 @@ public:
                                                         const_vars);
     equations->varset.convert_coupler_to_dynamics_staggered_wind(coupler, prog_vars,
                                                         const_vars);
-#if defined(_AN) || defined(_MAN)
+#if defined(PAMC_AN) || defined(PAMC_MAN)
       project_to_anelastic(const_vars, prog_vars, auxiliary_vars);
 #endif
   }
