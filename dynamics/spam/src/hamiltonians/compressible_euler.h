@@ -5,6 +5,8 @@
 #include "thermo.h"
 #include "variableset.h"
 
+namespace pamc {
+
 real YAKL_INLINE gamma_avg(real a, real b, real gamma) {
   const real f = (a - b) / (a + b);
   const real v = f * f;
@@ -21,7 +23,7 @@ real YAKL_INLINE gamma_avg(real a, real b, real gamma) {
 
 // ADD p-variants
 
-#ifdef _CE
+#ifdef PAMC_CE
 class Hamiltonian_CE_Hs {
 public:
   Geometry<Straight> primal_geometry;
@@ -50,7 +52,7 @@ public:
                               int js, int ks, int i, int j, int k,
                               int n) const {
     SArray<real, 1, 1> geop0;
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
     compute_Hn1bar<1, diff_ord, vert_diff_ord>(
         geop0, geop, this->primal_geometry, this->dual_geometry, is, js, ks, i,
         j, k, n);
@@ -64,13 +66,6 @@ public:
 
   real YAKL_INLINE compute_IE(const real5d &dens, int is, int js, int ks, int i,
                               int j, int k, int n) const {
-    // SArray<real,1,2> dens0;
-    // #ifdef _EXTRUDED
-    // compute_Iext<2, diff_ord, vert_diff_ord>(dens0, dens,
-    // *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k, n);
-    // #else
-    // compute_I<2, diff_ord>(dens0, dens, *this->primal_geometry,
-    // *this->dual_geometry, is, js, ks, i, j, k, n); #endif
 
     real alpha = varset.get_alpha(dens, k, j, i, ks, js, is, n);
     real entropic_var = varset.get_entropic_var(dens, k, j, i, ks, js, is, n);
@@ -85,7 +80,7 @@ public:
                                  real fac = 1._fp) const {
 
     SArray<real, 1, 1> geop0;
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
     compute_Hn1bar<1, diff_ord, vert_diff_ord>(
         geop0, geop, this->primal_geometry, this->dual_geometry, is, js, ks, i,
         j, k, n);
@@ -93,20 +88,6 @@ public:
     compute_H2bar<1, diff_ord>(geop0, geop, this->primal_geometry,
                                this->dual_geometry, is, js, ks, i, j, k, n);
 #endif
-
-    // SArray<real,1,2> dens0;
-    // #ifdef _EXTRUDED
-    // compute_Iext<2, diff_ord, vert_diff_ord>(dens0, dens,
-    // *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k, n);
-    // #else
-    // compute_I<2, diff_ord>(dens0, dens, *this->primal_geometry,
-    // *this->dual_geometry, is, js, ks, i, j, k, n); #endif
-
-    // real alpha = 1.0_fp / dens0(0);
-    // real entropic_var = dens(1)/dens(0);
-
-    // real alpha = 1.0_fp / dens(0,k+ks,j+js,i+is,n);
-    // real entropic_var = dens(1,k+ks,j+js,i+is,n)/dens(0,k+ks,j+js,i+is,n);
 
     real alpha = varset.get_alpha(dens, k, j, i, ks, js, is, n);
     real entropic_var = varset.get_entropic_var(dens, k, j, i, ks, js, is, n);
@@ -130,20 +111,6 @@ public:
   }
 
   template <ADD_MODE addmode = ADD_MODE::REPLACE>
-  void YAKL_INLINE compute_dHsdx_two_point(const real5d &B, const real5d &dens1,
-                                           const real5d &dens2,
-                                           const real5d &geop, int is, int js,
-                                           int ks, int i, int j, int k, int n,
-                                           real fac = 1._fp) const {
-    // hacky way to prevent compilation errors for unimplemented thermo variants
-    if constexpr (!si_compute_functional_derivatives_quadrature) {
-      // dispatch based on thermo
-      compute_dHsdx_two_point<addmode>(thermo, B, dens1, dens2, geop, is, js,
-                                       ks, i, j, k, n, fac);
-    }
-  }
-
-  template <ADD_MODE addmode = ADD_MODE::REPLACE>
   void YAKL_INLINE compute_dHsdx_two_point(IdealGas_Pottemp, const real5d &B,
                                            const real5d &dens1,
                                            const real5d &dens2,
@@ -152,7 +119,7 @@ public:
                                            real fac = 1._fp) const {
 
     SArray<real, 1, 1> geop0;
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
     compute_Hn1bar<1, diff_ord, vert_diff_ord>(
         geop0, geop, this->primal_geometry, this->dual_geometry, is, js, ks, i,
         j, k, n);
@@ -215,6 +182,10 @@ public:
     }
   }
 };
+template <>
+struct two_point_discrete_gradient_implemented<Hamiltonian_CE_Hs,
+                                               IdealGas_Pottemp>
+    : std::true_type {};
 #endif
 
 // SHOULD BE MERGABLE INTO A SINGLE CLASS WITH INDEXING FOR RHO/RHOD?
@@ -222,7 +193,7 @@ public:
 // IE CE MODEL HAS CHOICES OF THERMO
 // MCE MODEL HAS CHOICES OF PREDICTED VARS IE RHO VS RHOD, AND ALSO THERMO
 
-#ifdef _MCErho
+#ifdef PAMC_MCErho
 class Hamiltonian_MCE_Hs {
 public:
   Geometry<Straight> primal_geometry;
@@ -254,7 +225,7 @@ public:
                               int n) const {
     SArray<real, 1, 1> geop0;
 
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
     compute_Hn1bar<1, diff_ord, vert_diff_ord>(
         geop0, geop, this->primal_geometry, this->dual_geometry, is, js, ks, i,
         j, k, n);
@@ -268,14 +239,6 @@ public:
 
   real YAKL_INLINE compute_IE(const real5d &dens, int is, int js, int ks, int i,
                               int j, int k, int n) const {
-
-    // SArray<real,1,5> dens0;
-    // #ifdef _EXTRUDED
-    // compute_Iext<5, diff_ord, vert_diff_ord>(dens0, dens,
-    // *this->primal_geometry, *this->dual_geometry, is, js, ks, i, j, k, n);
-    // #else
-    // compute_I<5, diff_ord>(dens0, dens, *this->primal_geometry,
-    // *this->dual_geometry, is, js, ks, i, j, k, n); #endif
 
     real alpha = varset.get_alpha(dens, k, j, i, ks, js, is, n);
     real entropic_var = varset.get_entropic_var(dens, k, j, i, ks, js, is, n);
@@ -294,20 +257,6 @@ public:
   }
 
   template <ADD_MODE addmode = ADD_MODE::REPLACE>
-  void YAKL_INLINE compute_dHsdx_two_point(const real5d &B, const real5d &dens1,
-                                           const real5d &dens2,
-                                           const real5d &geop, int is, int js,
-                                           int ks, int i, int j, int k, int n,
-                                           real fac = 1._fp) const {
-    // hacky way to prevent compilation errors for unimplemented thermo variants
-    if constexpr (!si_compute_functional_derivatives_quadrature) {
-      // dispatch based on thermo
-      compute_dHsdx_two_point<addmode>(thermo, B, dens1, dens2, geop, is, js,
-                                       ks, i, j, k, n, fac);
-    }
-  }
-
-  template <ADD_MODE addmode = ADD_MODE::REPLACE>
   void YAKL_INLINE compute_dHsdx_two_point(ConstantKappa_VirtualPottemp,
                                            const real5d &B, const real5d &dens1,
                                            const real5d &dens2,
@@ -316,7 +265,7 @@ public:
                                            real fac = 1._fp) const {
 
     SArray<real, 1, 1> geop0;
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
     compute_Hn1bar<1, diff_ord, vert_diff_ord>(
         geop0, geop, this->primal_geometry, this->dual_geometry, is, js, ks, i,
         j, k, n);
@@ -409,7 +358,7 @@ public:
 
     SArray<real, 1, 1> geop0;
 
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
     compute_Hn1bar<1, diff_ord, vert_diff_ord>(
         geop0, geop, this->primal_geometry, this->dual_geometry, is, js, ks, i,
         j, k, n);
@@ -472,6 +421,10 @@ public:
     }
   }
 };
+template <>
+struct two_point_discrete_gradient_implemented<Hamiltonian_MCE_Hs,
+                                               ConstantKappa_VirtualPottemp>
+    : std::true_type {};
 #endif
 
 // //ALL BROKEN, BUT REALLY CAN MOSTLY BE ELIMINATED?
@@ -780,3 +733,4 @@ public:
 // };
 //
 //
+} // namespace pamc

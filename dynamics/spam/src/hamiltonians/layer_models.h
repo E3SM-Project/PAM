@@ -3,7 +3,9 @@
 #include "common.h"
 #include "thermo.h"
 
-#ifdef _TSWE
+namespace pamc {
+
+#ifdef PAMC_TSWE
 class Hamiltonian_TSWE_Hs {
 public:
   using VS = VariableSet;
@@ -34,7 +36,7 @@ public:
     // inactive tracers
     // P = S * hs + 1/2 S * h + sum_nt 1/2 h * t;
     SArray<real, 1, 2> dens0;
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
     compute_Hn1bar<2, diff_ord, vert_diff_ord>(
         dens0, dens, this->primal_geometry, this->dual_geometry, is, js, ks, i,
         j, k, n);
@@ -75,7 +77,7 @@ public:
 
     // compute I hs
     SArray<real, 1, 1> hs0;
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
     compute_Hn1bar<1, diff_ord, vert_diff_ord>(hs0, hs, this->primal_geometry,
                                                this->dual_geometry, is, js, ks,
                                                i, j, k, n);
@@ -88,7 +90,7 @@ public:
 
     // compute I dens
     SArray<real, 1, VS::ndensity> dens0;
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
     compute_Hn1bar<VS::ndensity, diff_ord, vert_diff_ord>(
         dens0, dens, this->primal_geometry, this->dual_geometry, is, js, ks, i,
         j, k, n);
@@ -133,7 +135,7 @@ public:
 };
 #endif
 
-#ifdef _SWE
+#ifdef PAMC_SWE
 class Hamiltonian_SWE_Hs {
 public:
   using VS = VariableSet;
@@ -165,7 +167,7 @@ public:
 
     // P = g * h * hs + 1/2 g * h * h + sum_nt 1/2 h * t + sum_nt 1/2 h * tfct;
     SArray<real, 1, 1> h0;
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
     compute_Hn1bar<1, diff_ord, vert_diff_ord>(h0, dens, this->primal_geometry,
                                                this->dual_geometry, is, js, ks,
                                                i, j, k, n);
@@ -200,7 +202,7 @@ public:
     // ELIMINATE THIS EVENTUALLY...
     // compute I hs
     SArray<real, 1, 1> hs0;
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
     compute_Hn1bar<1, diff_ord, vert_diff_ord>(hs0, hs, this->primal_geometry,
                                                this->dual_geometry, is, js, ks,
                                                i, j, k, n);
@@ -211,7 +213,7 @@ public:
 
     // compute I dens
     SArray<real, 1, VS::ndensity> dens0;
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
     compute_Hn1bar<VS::ndensity, diff_ord, vert_diff_ord>(
         dens0, dens, this->primal_geometry, this->dual_geometry, is, js, ks, i,
         j, k, n);
@@ -243,12 +245,6 @@ public:
       }
     }
   }
-
-  template <ADD_MODE addmode = ADD_MODE::REPLACE>
-  void YAKL_INLINE compute_dHsdx_two_point(const real5d &B, const real5d &dens1,
-                                           const real5d &dens2,
-                                           const real5d &geop, int is, int js,
-                                           int ks, int i, int j, int k, int n,
-                                           real fac = 1._fp) const {}
 };
 #endif
+} // namespace pamc

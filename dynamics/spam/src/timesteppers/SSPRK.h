@@ -6,6 +6,8 @@
 #include "time_integrator.h"
 #include "topology.h"
 
+namespace pamc {
+
 class SSPRKTimeIntegrator : public TimeIntegrator {
 
 public:
@@ -13,17 +15,14 @@ public:
 
   int nstages;
 
-  FieldSet<nprognostic> *x;
   FieldSet<nprognostic> F;
   std::vector<FieldSet<nprognostic>> xstage;
-  Tendencies *tendencies;
-  FieldSet<nconstant> *const_vars;
-  FieldSet<nauxiliary> *auxiliary_vars;
 
   void initialize(ModelParameters &params, Tendencies &tend,
                   LinearSystem &linsys, FieldSet<nprognostic> &xvars,
                   FieldSet<nconstant> &consts,
                   FieldSet<nauxiliary> &auxiliarys) override {
+    TimeIntegrator::initialize(params, tend, linsys, xvars, consts, auxiliarys);
 
     if (tstype == "ssprk2") {
       this->nstages = 2;
@@ -39,10 +38,6 @@ public:
     }
     this->F.initialize(xvars, "F");
 
-    this->x = &xvars;
-    this->tendencies = &tend;
-    this->const_vars = &consts;
-    this->auxiliary_vars = &auxiliarys;
     this->is_ssp = true;
     this->is_initialized = true;
   }
@@ -111,3 +106,4 @@ public:
     this->x->exchange();
   }
 };
+} // namespace pamc

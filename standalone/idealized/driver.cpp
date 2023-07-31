@@ -59,6 +59,8 @@ int main(int argc, char** argv) {
       }
       zint_in = real1d("zint_in",crm_nz+1);
       const real dz = zlen / (crm_nz - 1);
+
+      using yakl::c::parallel_for;
       parallel_for("uniform zint", crm_nz+1, YAKL_LAMBDA(int k) {
           if (k == 0) {
             zint_in(k) = 0;

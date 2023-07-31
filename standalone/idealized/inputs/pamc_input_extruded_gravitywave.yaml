@@ -11,6 +11,8 @@ crm_nz       : 21
 #vcoords  : vcoords_equal_100_20km.nc
 vcoords: uniform
 
+force_refstate_hydrostatic_balance: true
+
 # Data to initialize: doublevortex rb mrb
 initData : gravitywave
 
@@ -30,7 +32,7 @@ outSteps: 90
 statSteps: 1
 #6400
 
-tstype: ssprk3
+tstype: si
 
 # Number of ensembles
 nens : 1

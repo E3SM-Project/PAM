@@ -13,6 +13,11 @@
 #include <optional>
 #include <sstream>
 #include <string>
+#ifdef YAKL_ARCH_CUDA
+#include <cuda/std/complex>
+#endif
+
+namespace pamc {
 
 using yakl::c::Bounds;
 using yakl::c::parallel_for;
@@ -45,7 +50,7 @@ using optional_real3d = std::optional<real3d>;
 using optional_real4d = std::optional<real4d>;
 using optional_real5d = std::optional<real5d>;
 
-#define REAL_MPI MPI_DOUBLE
+#define PAMC_MPI_REAL MPI_DOUBLE
 //#define REAL_NC NC_DOUBLE
 
 // Spatial derivatives order of accuracy ie Hodge stars [2,4,6] (vert only
@@ -93,7 +98,6 @@ uint constexpr max_vert_reconstruction_order =
               coriolis_vert_reconstruction_order});
 
 enum class UPWIND_TYPE { HEAVISIDE, TANH };
-constexpr real tanh_upwind_coeff = 250;
 UPWIND_TYPE constexpr upwind_type = UPWIND_TYPE::TANH;
 UPWIND_TYPE constexpr dual_upwind_type = UPWIND_TYPE::TANH;
 UPWIND_TYPE constexpr vert_upwind_type = UPWIND_TYPE::TANH;
@@ -115,26 +119,6 @@ uint constexpr maxhalosize =
 uint constexpr mirroringhalo =
     std::max({(max_vert_reconstruction_order - 1) / 2, vert_diff_ord / 2});
 
-int constexpr si_monitor_convergence = 0;
-// 0 = do not monitor (does si_max_iters iterations)
-// 1 = computes initial and final residual but still does si_max_iter iterations
-// 2 = iterates until convergence or si_max_iter is reached
-
-int constexpr si_verbosity_level = si_monitor_convergence;
-// 0 = do not print
-// 1 = print initial and final
-// 2 = print every iteration
-
-int constexpr si_max_iters = si_monitor_convergence > 1 ? 50 : 5;
-
-#if defined _EXTRUDED && !defined _AN && !defined _MAN &&                      \
-    (defined _IDEAL_GAS_POTTEMP || defined _CONST_KAPPA_VIRPOTTEMP)
-bool constexpr si_compute_functional_derivatives_quadrature = false;
-#else
-bool constexpr si_compute_functional_derivatives_quadrature = true;
-#endif
-uint constexpr si_quad_pts = 4;
-
 //////////////////////////////////////////////////////////////////////////////////////////////
 
 real constexpr pi =
@@ -146,9 +130,9 @@ real constexpr pi =
 // GPU compilers sometimes have issues with zero-sized arrays than can occur
 // for some parameter choices. For this reason we sometimes have to pad arrays
 #if defined YAKL_ARCH_CUDA || defined YAKL_ARCH_HIP || defined YAKL_ARCH_SYCL
-#define GPU_PAD 1
+int constexpr GPU_PAD = 1;
 #else
-#define GPU_PAD 0
+int constexpr GPU_PAD = 0;
 #endif
 
 // Specifying templated min and max functions
@@ -186,13 +170,10 @@ enum class ADD_MODE { REPLACE, ADD };
 
 // Boundary types
 enum class BND_TYPE { PERIODIC, NONE };
+} // namespace pamc
 
-#if defined _HAMILTONIAN && defined _LAYER
+#if defined PAMC_LAYER && !defined PAMC_TESTMODEL
 #include "layermodel-common.h"
-#elif defined _HAMILTONIAN && defined _EXTRUDED
+#elif defined PAMC_EXTRUDED && !defined PAMC_TESTMODEL
 #include "extrudedmodel-common.h"
-#elif defined _ADVECTION && defined _LAYER
-#include "layeradvection-common.h"
-#elif defined _ADVECTION && defined _EXTRUDED
-#include "extrudedadvection-common.h"
 #endif

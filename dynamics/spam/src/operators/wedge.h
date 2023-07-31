@@ -2,6 +2,8 @@
 
 #include "common.h"
 
+namespace pamc {
+
 // Q
 template <uint ndofs>
 void YAKL_INLINE Q2D(SArray<real, 2, ndofs, 2> &vel,
@@ -1198,3 +1200,4 @@ void YAKL_INLINE compute_phiTW(SArray<real, 1, 1> &var,
     var(0) += phiTW(uw, v);
   }
 }
+} // namespace pamc

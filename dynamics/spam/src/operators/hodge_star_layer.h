@@ -4,6 +4,8 @@
 #include "geometry.h"
 #include "hodge_star.h"
 
+namespace pamc {
+
 template <uint ndofs, uint ord, uint off = ord / 2 - 1>
 void YAKL_INLINE compute_H0(SArray<real, 1, ndofs> &x0, const real5d &var,
                             const Geometry<Straight> &pgeom,
@@ -313,3 +315,4 @@ real YAKL_INLINE fourier_H2bar(const Geometry<Straight> &pgeom,
   }
   return H2barhat(H2bargeom, shift);
 }
+} // namespace pamc

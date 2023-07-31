@@ -4,6 +4,8 @@ unsigned constexpr ndims = 1;
 #include "hodge_star.h"
 // clang-format on
 
+using namespace pamc;
+
 struct fun_x {
   real YAKL_INLINE operator()(real x, real y, real z) const {
     return sin(2 * M_PI * x);

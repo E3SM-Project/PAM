@@ -285,7 +285,7 @@ namespace modules {
     real2d rho_i_pos_mass("rho_i_pos_mass",nz,nens);
 
     // These are essentially reductions, so initialize to zero
-    parallel_for( YAKL_AUTO_LABEL() , Bounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
+    parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
       rho_v_neg_mass(k,iens) = 0;
       rho_v_pos_mass(k,iens) = 0;
       rho_l_neg_mass(k,iens) = 0;

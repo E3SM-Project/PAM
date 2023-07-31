@@ -6,6 +6,8 @@
 #include "profiles.h"
 #include "topology.h"
 
+namespace pamc {
+
 enum class LINE_INTEGRAL_TYPE { TANGENT, NORMAL };
 
 struct CoordsXYZ {
@@ -20,29 +22,29 @@ struct VecXYZ {
   real u = 0, v = 0, w = 0;
 };
 
-template <class T, uint npts>
-void set_ref_quad_pts_wts(SArray<T, 1, npts> &pts, SArray<T, 1, npts> &wts) {
+template <class T>
+void set_ref_quad_pts_wts(std::vector<T> &pts, std::vector<T> &wts, int npts) {
   if (npts == 1) {
-    pts(0) = 0.5_fp;
-    wts(0) = 1.0_fp;
+    pts[0] = 0.5_fp;
+    wts[0] = 1.0_fp;
   }
 
   if (npts == 2) {
-    pts(0) = -1.0_fp / (2.0_fp * sqrt(3.)) + 0.5_fp;
-    pts(1) = 1.0_fp / (2.0_fp * sqrt(3.)) + 0.5_fp;
+    pts[0] = -1.0_fp / (2.0_fp * sqrt(3.)) + 0.5_fp;
+    pts[1] = 1.0_fp / (2.0_fp * sqrt(3.)) + 0.5_fp;
 
-    wts(0) = 0.5_fp;
-    wts(1) = 0.5_fp;
+    wts[0] = 0.5_fp;
+    wts[1] = 0.5_fp;
   }
 
   if (npts == 3) {
-    pts(0) = -0.5_fp * sqrt(3.0_fp / 5.0_fp) + 0.5_fp;
-    pts(1) = 0.5_fp;
-    pts(2) = 0.5_fp * sqrt(3.0_fp / 5.0_fp) + 0.5_fp;
+    pts[0] = -0.5_fp * sqrt(3.0_fp / 5.0_fp) + 0.5_fp;
+    pts[1] = 0.5_fp;
+    pts[2] = 0.5_fp * sqrt(3.0_fp / 5.0_fp) + 0.5_fp;
 
-    wts(0) = 5.0_fp / 18.0_fp;
-    wts(1) = 4.0_fp / 9.0_fp;
-    wts(2) = 5.0_fp / 18.0_fp;
+    wts[0] = 5.0_fp / 18.0_fp;
+    wts[1] = 4.0_fp / 9.0_fp;
+    wts[2] = 5.0_fp / 18.0_fp;
   }
   //   {
   //     pts(0) = 0.112701665379258311482073460022;
@@ -55,41 +57,52 @@ void set_ref_quad_pts_wts(SArray<T, 1, npts> &pts, SArray<T, 1, npts> &wts) {
   //   }
 
   if (npts == 4) {
-    pts(0) = -0.5_fp * sqrt(3.0_fp / 7.0_fp +
+    pts[0] = -0.5_fp * sqrt(3.0_fp / 7.0_fp +
                             2.0_fp / 7.0_fp * sqrt(6.0_fp / 5.0_fp)) +
              0.5_fp;
-    pts(1) = -0.5_fp * sqrt(3.0_fp / 7.0_fp -
+    pts[1] = -0.5_fp * sqrt(3.0_fp / 7.0_fp -
                             2.0_fp / 7.0_fp * sqrt(6.0_fp / 5.0_fp)) +
              0.5_fp;
-    pts(2) = 0.5_fp * sqrt(3.0_fp / 7.0_fp -
+    pts[2] = 0.5_fp * sqrt(3.0_fp / 7.0_fp -
                            2.0_fp / 7.0_fp * sqrt(6.0_fp / 5.0_fp)) +
              0.5_fp;
-    pts(3) = 0.5_fp * sqrt(3.0_fp / 7.0_fp +
+    pts[3] = 0.5_fp * sqrt(3.0_fp / 7.0_fp +
                            2.0_fp / 7.0_fp * sqrt(6.0_fp / 5.0_fp)) +
              0.5_fp;
 
-    wts(0) = (18.0_fp - sqrt(30.0_fp)) / 72.0_fp;
-    wts(1) = (18.0_fp + sqrt(30.0_fp)) / 72.0_fp;
-    wts(2) = (18.0_fp + sqrt(30.0_fp)) / 72.0_fp;
-    wts(3) = (18.0_fp - sqrt(30.0_fp)) / 72.0_fp;
+    wts[0] = (18.0_fp - sqrt(30.0_fp)) / 72.0_fp;
+    wts[1] = (18.0_fp + sqrt(30.0_fp)) / 72.0_fp;
+    wts[2] = (18.0_fp + sqrt(30.0_fp)) / 72.0_fp;
+    wts[3] = (18.0_fp - sqrt(30.0_fp)) / 72.0_fp;
   }
 
   if (npts == 5) {
-    pts(0) = -1.0_fp / 6.0_fp * sqrt(5.0_fp + 2.0_fp * sqrt(10.0_fp / 7.0_fp)) +
+    pts[0] = -1.0_fp / 6.0_fp * sqrt(5.0_fp + 2.0_fp * sqrt(10.0_fp / 7.0_fp)) +
              0.5_fp;
-    pts(1) = -1.0_fp / 6.0_fp * sqrt(5.0_fp - 2.0_fp * sqrt(10.0_fp / 7.0_fp)) +
+    pts[1] = -1.0_fp / 6.0_fp * sqrt(5.0_fp - 2.0_fp * sqrt(10.0_fp / 7.0_fp)) +
              0.5_fp;
-    pts(2) = 0.5_fp;
-    pts(3) = 1.0_fp / 6.0_fp * sqrt(5.0_fp - 2.0_fp * sqrt(10.0_fp / 7.0_fp)) +
+    pts[2] = 0.5_fp;
+    pts[3] = 1.0_fp / 6.0_fp * sqrt(5.0_fp - 2.0_fp * sqrt(10.0_fp / 7.0_fp)) +
              0.5_fp;
-    pts(4) = 1.0_fp / 6.0_fp * sqrt(5.0_fp + 2.0_fp * sqrt(10.0_fp / 7.0_fp)) +
+    pts[4] = 1.0_fp / 6.0_fp * sqrt(5.0_fp + 2.0_fp * sqrt(10.0_fp / 7.0_fp)) +
              0.5_fp;
 
-    wts(0) = (322.0_fp - 13.0_fp * sqrt(70.0_fp)) / 1800.0_fp;
-    wts(1) = (322.0_fp + 13.0_fp * sqrt(70.0_fp)) / 1800.0_fp;
-    wts(2) = 64.0_fp / 225.0_fp;
-    wts(3) = (322.0_fp + 13.0_fp * sqrt(70.0_fp)) / 1800.0_fp;
-    wts(4) = (322.0_fp - 13.0_fp * sqrt(70.0_fp)) / 1800.0_fp;
+    wts[0] = (322.0_fp - 13.0_fp * sqrt(70.0_fp)) / 1800.0_fp;
+    wts[1] = (322.0_fp + 13.0_fp * sqrt(70.0_fp)) / 1800.0_fp;
+    wts[2] = 64.0_fp / 225.0_fp;
+    wts[3] = (322.0_fp + 13.0_fp * sqrt(70.0_fp)) / 1800.0_fp;
+    wts[4] = (322.0_fp - 13.0_fp * sqrt(70.0_fp)) / 1800.0_fp;
+  }
+}
+
+template <class T, uint npts>
+void set_ref_quad_pts_wts(SArray<T, 1, npts> &pts, SArray<T, 1, npts> &wts) {
+  std::vector<T> pts_v(npts);
+  std::vector<T> wts_v(npts);
+  set_ref_quad_pts_wts(pts_v, wts_v, npts);
+  for (int m = 0; m < npts; ++m) {
+    pts(m) = pts_v[m];
+    wts(m) = wts_v[m];
   }
 }
 
@@ -269,7 +282,7 @@ void Geometry<T>::initialize(const Topology &topo,
     this->dy = 1;
   }
 
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
 
   if (straight) {
     this->dz = real2d("dz straight", topo.nl + 2 * topo.mirror_halo, topo.nens);
@@ -300,7 +313,8 @@ void Geometry<T>::initialize(const Topology &topo,
     parallel_for(
         "Set zint straight halo", SimpleBounds<2>(topo.mirror_halo, topo.nens),
         YAKL_LAMBDA(int k, int n) {
-          zint(-(k + 1) + ks, n) = zint(ks, n) - (zint(k + 1 + ks, n) - zint(ks, n));
+          zint(-(k + 1) + ks, n) =
+              zint(ks, n) - (zint(k + 1 + ks, n) - zint(ks, n));
           zint(k + ks + topo.ni, n) =
               zint(ks + topo.ni - 1, n) +
               (zint(ks + topo.ni - 1, n) - zint(-k + ks + topo.ni - 2, n));
@@ -328,7 +342,8 @@ void Geometry<T>::initialize(const Topology &topo,
     parallel_for(
         "Set zint twisted halo", SimpleBounds<2>(topo.mirror_halo, topo.nens),
         YAKL_LAMBDA(int k, int n) {
-          zint(-(k + 1) + ks, n) = zint(ks, n) - (zint(k + 1 + ks, n) - zint(ks, n));
+          zint(-(k + 1) + ks, n) =
+              zint(ks, n) - (zint(k + 1 + ks, n) - zint(ks, n));
           zint(k + ks + topo.ni, n) =
               zint(ks + topo.ni - 1, n) +
               (zint(ks + topo.ni - 1, n) - zint(-k + ks + topo.ni - 2, n));
@@ -364,7 +379,7 @@ void YAKL_INLINE Geometry<T>::get_ll_corner(CoordsXYZ &llc, int k, int j, int i,
 }
 
 template <class T> real YAKL_INLINE Geometry<T>::get_zint(int k, int n) const {
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
   return this->zint(k, n);
 #else
   return 0;
@@ -372,7 +387,7 @@ template <class T> real YAKL_INLINE Geometry<T>::get_zint(int k, int n) const {
 }
 
 template <class T> real YAKL_INLINE Geometry<T>::get_dz(int k, int n) const {
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
   return this->dz(k, n);
 #else
   return 1;
@@ -546,7 +561,7 @@ void YAKL_INLINE Geometry<T>::get_10edge_tangents(
     }
   } else {
     for (int nqx = 0; nqx < ic_quad_pts_x; nqx++) {
-#ifdef _LAYER
+#ifdef PAMC_LAYER
       x_tangent(nqx).u = -1;
 #else
       x_tangent(nqx).u = 1;
@@ -1176,3 +1191,4 @@ void Geometry<T>::set_1form_values(F initial_value_function, Field &field,
     this->set_10form_values(f_3d, field, ndof, this->topology.nl);
   }
 }
+} // namespace pamc

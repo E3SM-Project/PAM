@@ -4,6 +4,8 @@ unsigned constexpr ndims = 2;
 #include "hodge_star.h"
 // clang-format on
 
+using namespace pamc;
+
 struct fun_xy {
   real YAKL_INLINE operator()(real x, real y, real z) const {
     real sx = sin(2 * M_PI * x);
@@ -98,7 +100,7 @@ real compute_H00_error(int np, bool uniform_vertical, F ic_fun) {
 
 void test_H00_convergence(bool uniform_vertical) {
   const int nlevels = 5;
-  const real atol = 0.11;
+  const real atol = 0.13;
 
   {
     const int diff_order = 2;

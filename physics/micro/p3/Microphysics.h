@@ -832,6 +832,7 @@ public:
 
   void get_cloud_fraction( realConst2d cld_frac_in , realConst2d qc , realConst2d qr , realConst2d qi ,
                            real2d const &cld_frac_i , real2d const &cld_frac_l , real2d const &cld_frac_r ) {
+    using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
 
     int nz   = cld_frac_in.dimension[0];

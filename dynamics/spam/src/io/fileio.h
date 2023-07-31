@@ -2,14 +2,14 @@
 
 #include "common.h"
 
-#ifdef _PARALLELIO
+#ifdef PAMC_PARALLELIO
 #include "yakl_parallel_io.h"
 #endif
 
-#ifdef _SERIALIO
+#ifdef PAMC_SERIALIO
 #include "yakl_serial_io.h"
 #endif
 
-#ifdef _NOIO
+#ifdef PAMC_NOIO
 #include "blank_io.h"
 #endif

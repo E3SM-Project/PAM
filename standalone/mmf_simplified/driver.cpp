@@ -104,6 +104,7 @@ int main(int argc, char** argv) {
     }
 #endif
 
+<<<<<<< HEAD
 //ELIMINATE THIS LOGIC!
     // // Compute a supercell initial column
     // real1d rho_d_col("rho_d_col",crm_nz);
@@ -142,6 +143,41 @@ int main(int argc, char** argv) {
     // this sets up initial conditons and reference state
     dycore.pre_time_loop(coupler);
     yakl::timer_stop("dycore");
+=======
+    // Compute a supercell initial column
+    real1d rho_d_col("rho_d_col",crm_nz);
+    real1d uvel_col ("uvel_col" ,crm_nz);
+    real1d vvel_col ("vvel_col" ,crm_nz);
+    real1d wvel_col ("wvel_col" ,crm_nz);
+    real1d temp_col ("temp_col" ,crm_nz);
+    real1d rho_v_col("rho_v_col",crm_nz);
+
+    auto R_d  = coupler.get_option<real>("R_d" );
+    auto R_v  = coupler.get_option<real>("R_v" );
+    auto grav = coupler.get_option<real>("grav");
+    supercell_init( zint_in, rho_d_col, uvel_col, vvel_col, wvel_col, temp_col, rho_v_col, R_d , R_v, grav );
+
+    // Set the GCM column data for each ensemble to the supercell initial state
+    auto &dm = coupler.get_data_manager_device_readwrite();
+
+    auto gcm_rho_d = dm.get<real,2>("gcm_density_dry");
+    auto gcm_uvel  = dm.get<real,2>("gcm_uvel"       );
+    auto gcm_vvel  = dm.get<real,2>("gcm_vvel"       );
+    auto gcm_wvel  = dm.get<real,2>("gcm_wvel"       );
+    auto gcm_temp  = dm.get<real,2>("gcm_temp"       );
+    auto gcm_rho_v = dm.get<real,2>("gcm_water_vapor");
+
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+    parallel_for( SimpleBounds<2>(crm_nz,nens) , YAKL_LAMBDA (int k, int iens) {
+      gcm_rho_d(k,iens) = rho_d_col(k);
+      gcm_uvel (k,iens) = uvel_col (k);
+      gcm_vvel (k,iens) = vvel_col (k);
+      gcm_wvel (k,iens) = wvel_col (k);
+      gcm_temp (k,iens) = temp_col (k);
+      gcm_rho_v(k,iens) = rho_v_col(k);
+    });
+>>>>>>> origin/master
 
     if (mainproc) {
       std::cout << "Dycore: " << dycore.dycore_name() << std::endl;
@@ -169,11 +205,21 @@ int main(int argc, char** argv) {
     // Now that we have an initial state, define hydrostasis for each ensemble member
     if (use_coupler_hydrostasis) coupler.update_hydrostasis( );
 
+<<<<<<< HEAD
 //FIX THIS UP A LITTLE
   //  int1d seeds("seeds",nens);
   //  seeds = 0;
   //  modules::perturb_temperature( coupler , seeds );
 ///
+=======
+    int1d seeds("seeds",nens);
+    seeds = 0;
+    modules::perturb_temperature( coupler , seeds );
+    
+#ifdef PAMC_DYCORE
+    dycore.pre_time_loop(coupler);
+#endif
+>>>>>>> origin/master
 
     real etime_gcm = 0;
     int  num_out = 0;

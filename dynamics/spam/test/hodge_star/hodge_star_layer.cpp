@@ -3,6 +3,8 @@
 #include "hodge_star.h"
 // clang-format on
 
+using namespace pamc;
+
 struct fun_x {
   real YAKL_INLINE operator()(real x, real y) const {
     return sin(2 * M_PI * x);

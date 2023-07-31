@@ -10,23 +10,22 @@
 #include "parallel.h"
 #include "params.h"
 #include "topology.h"
-#if defined _HAMILTONIAN && defined _LAYER
+#if defined PAMC_LAYER
 #include "layermodel.h"
-#elif defined _HAMILTONIAN && defined _EXTRUDED
+#elif defined PAMC_EXTRUDED
 #include "extrudedmodel.h"
-#elif defined _ADVECTION && defined _LAYER
-#include "layeradvection.h"
-#elif defined _ADVECTION && defined _EXTRUDED
-#include "extrudedadvection.h"
 #endif
 #include "KGRK.h"
 #include "LSRK.h"
-#include "SI.h"
+#include "SI_Fixed.h"
+#include "SI_Newton.h"
 #include "SSPRK.h"
 #include "time_integrator.h"
 #include <memory>
 
 using pam::PamCoupler;
+
+namespace pamc {
 
 class Dycore {
 public:
@@ -65,7 +64,11 @@ public:
     } else if (tstype.substr(0, 4) == "lsrk") {
       return std::make_unique<LSRKTimeIntegrator>(tstype);
     } else if (tstype.substr(0, 2) == "si") {
-      return std::make_unique<SITimeIntegrator<si_quad_pts>>(tstype);
+#if defined PAMC_AN || defined PAMC_MAN
+      return std::make_unique<SIFixedTimeIntegrator>(tstype);
+#else
+      return std::make_unique<SINewtonTimeIntegrator>(tstype);
+#endif
     } else if (tstype.substr(0, 4) == "kgrk") {
       return std::make_unique<KGRKTimeIntegrator>(tstype);
     } else {
@@ -198,7 +201,7 @@ public:
     //  { tendencies.convert_dynamics_to_coupler_state(coupler, prognostic_vars, constant_vars); }
 
     // Output the initial model state
-#ifndef _NOIO
+#ifndef PAMC_NOIO
     debug_print("start initial io", par.masterproc);
     for (auto &diag : diagnostics) {
       diag->compute(0, constant_vars, prognostic_vars);
@@ -220,6 +223,7 @@ public:
   };
 
   void timeStep(PamCoupler &coupler) {
+    yakl::timer_start("timeStep");
 
     // serial_print("taking a dycore dtphys step", par.masterproc);
 
@@ -237,7 +241,7 @@ public:
 
       time_integrator->step_forward(params.dtcrm);
 
-#ifdef CHECK_ANELASTIC_CONSTRAINT
+#ifdef PAMC_CHECK_ANELASTIC_CONSTRAINT
       real max_div = tendencies.compute_max_anelastic_constraint(
           prognostic_vars, auxiliary_vars);
       std::cout << "Anelastic constraint: " << max_div << std::endl;
@@ -246,8 +250,8 @@ public:
       yakl::fence();
 
       etime += params.dtcrm;
-#ifndef _NOIO
-        if (params.out_freq >= 0. && etime / params.out_freq >= num_out+1) {
+#ifndef PAMC_NOIO
+      if ((nstep + prevstep) % params.Nout == 0) {
         serial_print("dycore step " + std::to_string((nstep + prevstep)) +
                          " time " + std::to_string(etime),
                      par.masterproc);
@@ -280,9 +284,13 @@ public:
     // ADD COUPLER DYCORE FUNCTIONS HERE AS WELL
 
     debug_print("end time stepping loop", par.masterproc);
+    yakl::timer_stop("timeStep");
   };
 
   void finalize(PamCoupler &coupler) { io.outputStats(stats); }
 
   const char *dycore_name() const { return "SPAM++"; }
 };
+} // namespace pamc
+
+using Dycore = pamc::Dycore;

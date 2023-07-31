@@ -8,6 +8,8 @@
 #include "common.h"
 #include "stats.h"
 
+namespace pamc {
+
 // Error reporting routine for the PNetCDF I/O
 void ncwrap(int ierr, int line) {
   if (ierr != NC_NOERR) {
@@ -614,3 +616,4 @@ void FileIO<nprog, nconst, ndiag, nstats>::outputStats(
   ncwrap(ncmpi_end_indep_data(ncid), __LINE__);
   ncwrap(ncmpi_close(ncid), __LINE__);
 }
+} // namespace pamc

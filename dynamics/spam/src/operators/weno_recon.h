@@ -2,6 +2,7 @@
 
 #include "common.h"
 
+namespace pamc {
 real YAKL_INLINE interp_weno3(real phim1, real phi, real phip1) {
   const real p0 = (-1.0_fp / 2.0_fp) * phim1 + (3.0_fp / 2.0_fp) * phi;
   const real p1 = (1.0_fp / 2.0_fp) * phi + (1.0_fp / 2.0_fp) * phip1;
@@ -411,3 +412,4 @@ void YAKL_INLINE weno(SArray<real, 3, ndofs, nd, 2> &edgerecon,
     }
   }
 }
+} // namespace pamc

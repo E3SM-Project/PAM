@@ -5,6 +5,8 @@
 #include "parallel.h"
 #include "topology.h"
 
+namespace pamc {
+
 class Stat {
 public:
   realHost3d data;
@@ -51,3 +53,4 @@ public:
   virtual void compute(FieldSet<nprognostic> &progvars,
                        FieldSet<nconstant> &constvars, int tind){};
 };
+} // namespace pamc

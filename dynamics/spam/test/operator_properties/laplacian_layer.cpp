@@ -4,6 +4,8 @@
 #include "ext_deriv.h"
 // clang-format on
 
+using namespace pamc;
+
 struct fun {
   real YAKL_INLINE operator()(real x, real y) const {
     real sx = sin(2 * M_PI * x);

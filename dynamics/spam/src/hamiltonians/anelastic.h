@@ -15,7 +15,9 @@
 // class Hamiltonian_AN_Hs {};
 // class Hamiltonian_MAN_Hs {};
 
-#ifdef _AN
+namespace pamc {
+
+#ifdef PAMC_AN
 class Hamiltonian_AN_Hs {
 public:
   Geometry<Straight> primal_geometry;
@@ -44,7 +46,7 @@ public:
                               int js, int ks, int i, int j, int k,
                               int n) const {
     SArray<real, 1, 1> geop0;
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
     compute_Hn1bar<1, diff_ord, vert_diff_ord>(
         geop0, geop, this->primal_geometry, this->dual_geometry, is, js, ks, i,
         j, k, n);
@@ -83,7 +85,7 @@ public:
                                  real fac = 1._fp) const {
 
     SArray<real, 1, 1> geop0;
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
     compute_Hn1bar<1, diff_ord, vert_diff_ord>(
         geop0, geop, this->primal_geometry, this->dual_geometry, is, js, ks, i,
         j, k, n);
@@ -124,7 +126,7 @@ public:
                                  real fac = 1._fp) const {
 
     SArray<real, 1, 1> geop0;
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
     compute_Hn1bar<1, diff_ord, vert_diff_ord>(
         geop0, geop, this->primal_geometry, this->dual_geometry, ks, k, n);
 #else
@@ -154,24 +156,10 @@ public:
       B(varset.active_id_entr, k + ks, n) += fac * generalized_Exner;
     }
   }
-
-  template <ADD_MODE addmode = ADD_MODE::REPLACE>
-  void YAKL_INLINE compute_dHsdx_two_point(const real5d &B, const real5d &dens1,
-                                           const real5d &dens2,
-                                           const real5d &geop, int is, int js,
-                                           int ks, int i, int j, int k, int n,
-                                           real fac = 1._fp) const {
-    // hacky way to prevent compilation errors for unimplemented thermo variants
-    if constexpr (!si_compute_functional_derivatives_quadrature) {
-      // dispatch based on thermo
-      compute_dHsdx_two_point<addmode>(thermo, B, dens1, dens2, geop, is, js,
-                                       ks, i, j, k, n, fac);
-    }
-  }
 };
 #endif
 
-#ifdef _MAN
+#ifdef PAMC_MAN
 class Hamiltonian_MAN_Hs {
 public:
   Geometry<Straight> primal_geometry;
@@ -202,7 +190,7 @@ public:
                               int js, int ks, int i, int j, int k,
                               int n) const {
     SArray<real, 1, 1> geop0;
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
     compute_Hn1bar<1, diff_ord, vert_diff_ord>(
         geop0, geop, this->primal_geometry, this->dual_geometry, is, js, ks, i,
         j, k, n);
@@ -301,7 +289,7 @@ public:
                                  real fac = 1._fp) const {
 
     SArray<real, 1, 1> geop0;
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
     compute_Hn1bar<1, diff_ord, vert_diff_ord>(
         geop0, geop, this->primal_geometry, this->dual_geometry, is, js, ks, i,
         j, k, n);
@@ -349,7 +337,7 @@ public:
                                  real fac = 1._fp) const {
 
     SArray<real, 1, 1> geop0;
-#ifdef _EXTRUDED
+#ifdef PAMC_EXTRUDED
     compute_Hn1bar<1, diff_ord, vert_diff_ord>(
         geop0, geop, this->primal_geometry, this->dual_geometry, ks, k, n);
 #else
@@ -386,19 +374,6 @@ public:
       }
     }
   }
-
-  template <ADD_MODE addmode = ADD_MODE::REPLACE>
-  void YAKL_INLINE compute_dHsdx_two_point(const real5d &B, const real5d &dens1,
-                                           const real5d &dens2,
-                                           const real5d &geop, int is, int js,
-                                           int ks, int i, int j, int k, int n,
-                                           real fac = 1._fp) const {
-    // hacky way to prevent compilation errors for unimplemented thermo variants
-    if constexpr (!si_compute_functional_derivatives_quadrature) {
-      // dispatch based on thermo
-      compute_dHsdx_two_point<addmode>(thermo, B, dens1, dens2, geop, is, js,
-                                       ks, i, j, k, n, fac);
-    }
-  }
 };
 #endif
+} // namespace pamc

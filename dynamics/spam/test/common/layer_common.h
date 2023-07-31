@@ -5,28 +5,32 @@
 #include <iostream>
 // clang-format on
 
+namespace pamc {
 uint constexpr ndims = 2;
 uint constexpr nprognostic = 0;
 uint constexpr nconstant = 0;
 uint constexpr nauxiliary = 0;
 uint constexpr ndiagnostic = 0;
 uint constexpr ntracers_dycore = 0;
+} // namespace pamc
 
 #include "params.h"
 
+namespace pamc {
 struct ModelParameters : public Parameters {
   // std::string initdataStr;
-  std::string tracerdataStr[ntracers_dycore];
-  bool dycore_tracerpos[ntracers_dycore];
+  std::string tracerdataStr[ntracers_dycore + GPU_PAD];
+  bool dycore_tracerpos[ntracers_dycore + GPU_PAD];
   // bool acoustic_balance;
 };
+} // namespace pamc
 
 #include "exchange.h"
 #include "fields.h"
 #include "geometry.h"
-#include "params.h"
 #include "topology.h"
 
+namespace pamc {
 Parallel parallel_stub(int nx, int ny) {
   Parallel par;
   par.nx_glob = par.nx = nx;
@@ -198,3 +202,4 @@ template <int nlevels> struct ConvergenceTest {
     }
   }
 };
+} // namespace pamc

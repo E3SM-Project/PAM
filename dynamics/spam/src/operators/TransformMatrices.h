@@ -2,7 +2,8 @@
 
 #include "common.h"
 #include <math.h>
-using yakl::SArray;
+
+namespace pamc {
 
 namespace TransformMatrices {
 
@@ -8075,3 +8076,4 @@ YAKL_INLINE void weno_sten_to_coefs(SArray<FP, 3, 7, 7, 7> &rslt) {
 template <class FP>
 YAKL_INLINE void coefs_to_gll_lower(SArray<FP, 2, 1, 2> &rslt) {}
 } // namespace TransformMatrices
+} // namespace pamc

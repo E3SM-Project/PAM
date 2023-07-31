@@ -11,13 +11,15 @@
 #include "weno_func_recon.h" // needed to set TransformMatrices related stuff
 #include "weno_func_recon_variable.h" // needed to set TransformMatrices related stuff
 
+namespace pamc {
+
 class Equations {
 public:
   Hamiltonian Hs;
-#ifdef _LAYER
+#ifdef PAMC_LAYER
   Hamiltonian_Hk Hk;
   Functional_PVPE PVPE;
-#elif _EXTRUDED
+#elif PAMC_EXTRUDED
   Hamiltonian_Hk_extruded Hk;
   Functional_PVPE_extruded PVPE;
 #endif
@@ -178,6 +180,8 @@ public:
   SArray<real, 1, (coriolis_reconstruction_order - 1) / 2 + 2> coriolis_wenoIdl;
   real coriolis_wenoSigma;
 
+  real tanh_upwind_coeff;
+
   bool is_initialized;
 
   Tendencies() { this->is_initialized = false; }
@@ -201,6 +205,7 @@ public:
     TransformMatrices::weno_sten_to_coefs(coriolis_wenoRecon);
     wenoSetIdealSigma<coriolis_reconstruction_order>(coriolis_wenoIdl,
                                                      coriolis_wenoSigma);
+    this->tanh_upwind_coeff = params.tanh_upwind_coeff;
 
     this->is_initialized = true;
   }
@@ -212,10 +217,11 @@ public:
       FieldSet<nauxiliary> &auxiliary_vars, real fac = 1,
       ADD_MODE addmode = ADD_MODE::REPLACE) = 0;
 
-  virtual void compute_functional_derivatives_two_point(
+  virtual void compute_two_point_discrete_gradient(
       real dt, FieldSet<nconstant> &const_vars, FieldSet<nprognostic> &x1,
       FieldSet<nprognostic> &x2, FieldSet<nauxiliary> &auxiliary_vars) {
-    throw std::runtime_error("Not implemented");
+    throw std::runtime_error(
+        "Two point discrete gradient not implemeneted for this model");
   }
 
   virtual void apply_symplectic(real dt, FieldSet<nconstant> &const_vars,
@@ -417,3 +423,4 @@ public:
                      FieldSet<nauxiliary> &auxiliary_vars,
                      FieldSet<nprognostic> &solution) = 0;
 };
+} // namespace pamc

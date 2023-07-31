@@ -1,5 +1,4 @@
-#ifndef _THERMO_H_
-#define _THERMO_H_
+#pragma once
 
 #include "common.h"
 #include <math.h>
@@ -37,6 +36,9 @@
 // These are basic thermodynamic constants used in all of the thermodynamics
 // below They can be overwritten when setting certain initial conditions, if a
 // test case specifies different values
+
+namespace pamc {
+
 struct thermo_constants {
   real Rd = 287.0;
   real Rv = 461.0;
@@ -718,18 +720,17 @@ public:
                            real ql, real qi) const {};
 };
 
-#ifdef _THERMONONE
+#ifdef PAMC_THERMONONE
 using ThermoPotential = ThermoNone;
-#elif _IDEAL_GAS_POTTEMP
+#elif PAMC_IDEAL_GAS_POTTEMP
 using ThermoPotential = IdealGas_Pottemp;
-#elif _IDEAL_GAS_ENTROPY
+#elif PAMC_IDEAL_GAS_ENTROPY
 using ThermoPotential = IdealGas_Entropy;
-#elif _CONST_KAPPA_VIRPOTTEMP
+#elif PAMC_CONST_KAPPA_VIRPOTTEMP
 using ThermoPotential = ConstantKappa_VirtualPottemp;
-#elif _UNAPPROX_POTTEMP
+#elif PAMC_UNAPPROX_POTTEMP
 using ThermoPotential = Unapprox_Pottemp;
-#elif _UNAPPROX_ENTROPY
+#elif PAMC_UNAPPROX_ENTROPY
 using ThermoPotential = Unapprox_Entropy;
 #endif
-
-#endif
+} // namespace pamc

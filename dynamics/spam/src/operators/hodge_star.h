@@ -3,6 +3,8 @@
 #include "common.h"
 #include "geometry.h"
 
+namespace pamc {
+
 template <uint ndofs>
 void YAKL_INLINE H0(SArray<real, 1, ndofs> &var,
                     SArray<real, 3, ndofs, ndims, 1> const &dens, real H0geom) {
@@ -204,6 +206,7 @@ real YAKL_INLINE H2barhat(real H2bargeom,
   }
   return H2bargeom * res;
 }
+} // namespace pamc
 
 #include "hodge_star_extruded.h"
 #include "hodge_star_layer.h"
