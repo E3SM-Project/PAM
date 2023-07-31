@@ -194,17 +194,18 @@ class Dycore {
     using std::min;
     using std::max;
 
-    auto nens        = coupler.get_nens();
-    auto nx          = coupler.get_nx();
-    auto ny          = coupler.get_ny();
-    auto nz          = coupler.get_nz();
-    auto dx          = coupler.get_dx();
-    auto dy          = coupler.get_dy();
-    auto sim2d       = ny == 1;
-    auto C0          = coupler.get_option<real>("C0"     );
-    auto gamma_d     = coupler.get_option<real>("gamma_d");
-    auto grav        = coupler.get_option<real>("grav"   );
-    auto num_tracers = coupler.get_num_tracers();
+    auto nens         = coupler.get_nens();
+    auto nx           = coupler.get_nx();
+    auto ny           = coupler.get_ny();
+    auto nz           = coupler.get_nz();
+    auto dx           = coupler.get_dx();
+    auto dy           = coupler.get_dy();
+    auto sim2d        = ny == 1;
+    auto C0           = coupler.get_option<real>("C0"     );
+    auto gamma_d      = coupler.get_option<real>("gamma_d");
+    auto grav         = coupler.get_option<real>("grav"   );
+    auto num_tracers  = coupler.get_num_tracers();
+    auto grav_balance = coupler.get_option<bool>("balance_hydrostasis_with_gravity");
 
     // The store a single values flux at cell edges
     auto &dm                   = coupler.get_data_manager_device_readwrite();
@@ -214,6 +215,7 @@ class Dycore {
     auto vert_sten_to_coefs    = dm.get<real const,4>("vert_sten_to_coefs");
     auto hy_dens_cells         = dm.get<real const,2>("hy_dens_cells");
     auto hy_pressure_cells     = dm.get<real const,2>("hy_pressure_cells");
+    auto grav_var              = dm.get<real const,2>("variable_gravity");
 
     YAKL_SCOPE( weno_recon_lower , this->weno_recon_lower );
 
@@ -230,7 +232,11 @@ class Dycore {
 
     // Compute pressure perturbation, density perturbation, and divide density from all other quantities before interpolation
     parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      pressure (hs+k,hs+j,hs+i,iens) = C0*std::pow(state(idT,hs+k,hs+j,hs+i,iens),gamma_d) - hy_pressure_cells(k,iens);
+      if (grav_balance) {
+        pressure (hs+k,hs+j,hs+i,iens) = C0*std::pow(state(idT,hs+k,hs+j,hs+i,iens),gamma_d);
+      } else {
+        pressure (hs+k,hs+j,hs+i,iens) = C0*std::pow(state(idT,hs+k,hs+j,hs+i,iens),gamma_d) - hy_pressure_cells(k,iens);
+      }
       state(idU,hs+k,hs+j,hs+i,iens) /= state(idR,hs+k,hs+j,hs+i,iens);
       state(idV,hs+k,hs+j,hs+i,iens) /= state(idR,hs+k,hs+j,hs+i,iens);
       state(idW,hs+k,hs+j,hs+i,iens) /= state(idR,hs+k,hs+j,hs+i,iens);
@@ -473,7 +479,13 @@ class Dycore {
         state_tend  (l,k,j,i,iens) = -( state_flux_x  (l,k  ,j  ,i+1,iens) - state_flux_x  (l,k,j,i,iens) ) / dx
                                      -( state_flux_y  (l,k  ,j+1,i  ,iens) - state_flux_y  (l,k,j,i,iens) ) / dy
                                      -( state_flux_z  (l,k+1,j  ,i  ,iens) - state_flux_z  (l,k,j,i,iens) ) / dz(k,iens);
-        if (l == idW) state_tend(l,k,j,i,iens) += -grav * ( state(idR,hs+k,hs+j,hs+i,iens) - hy_dens_cells(k,iens) );
+        if (l == idW) {
+          if (grav_balance) {
+            state_tend(l,k,j,i,iens) += -grav_var(k,iens) * state(idR,hs+k,hs+j,hs+i,iens);
+          } else {
+            state_tend(l,k,j,i,iens) += -grav * ( state(idR,hs+k,hs+j,hs+i,iens) - hy_dens_cells(k,iens) );
+          }
+        }
         if (l == idV && sim2d) state_tend(l,k,j,i,iens) = 0;
       }
       for (int l = 0; l < num_tracers; l++) {
@@ -512,15 +524,16 @@ class Dycore {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
 
-    auto nens        = coupler.get_nens();
-    auto nx          = coupler.get_nx();
-    auto ny          = coupler.get_ny();
-    auto nz          = coupler.get_nz();
-    auto num_tracers = coupler.get_num_tracers();
-    auto sim2d       = ny == 1;
-    auto gamma       = coupler.get_option<real>("gamma_d");
-    auto C0          = coupler.get_option<real>("C0");
-    auto grav        = coupler.get_option<real>("grav");
+    auto nens         = coupler.get_nens();
+    auto nx           = coupler.get_nx();
+    auto ny           = coupler.get_ny();
+    auto nz           = coupler.get_nz();
+    auto num_tracers  = coupler.get_num_tracers();
+    auto sim2d        = ny == 1;
+    auto gamma        = coupler.get_option<real>("gamma_d");
+    auto C0           = coupler.get_option<real>("C0");
+    auto grav         = coupler.get_option<real>("grav");
+    auto grav_balance = coupler.get_option<bool>("balance_hydrostasis_with_gravity");
     auto dz = coupler.get_data_manager_device_readonly().get<real const,2>("vertical_cell_dz");
 
     int npack = num_state + num_tracers + 1;
@@ -574,8 +587,10 @@ class Dycore {
         tracers(l,      kk,hs+j,hs+i,iens) = tracers(l,hs+0   ,hs+j,hs+i,iens);
         tracers(l,hs+nz+kk,hs+j,hs+i,iens) = tracers(l,hs+nz-1,hs+j,hs+i,iens);
       }
-      pressure(      kk,hs+j,hs+i,iens) = pressure(hs+0   ,hs+j,hs+i,iens);
-      pressure(hs+nz+kk,hs+j,hs+i,iens) = pressure(hs+nz-1,hs+j,hs+i,iens);
+      if (! grav_balance) {
+        pressure(      kk,hs+j,hs+i,iens) = pressure(hs+0   ,hs+j,hs+i,iens);
+        pressure(hs+nz+kk,hs+j,hs+i,iens) = pressure(hs+nz-1,hs+j,hs+i,iens);
+      }
       {
         int  k0       = hs;
         int  k        = k0-1-kk;
@@ -585,6 +600,10 @@ class Dycore {
         real theta0_g = std::pow(theta0,gamma  );
         state(idR,k,hs+j,hs+i,iens) = std::pow( rho0_gm1 + grav*(gamma-1)*dz(k0-hs,iens)*(kk+1)/(gamma*C0*theta0_g) ,
                                                 1._fp/(gamma-1) );
+        if (grav_balance) {
+          real rt = state(idR,k,hs+j,hs+i,iens) * state(idT,k,hs+j,hs+i,iens);
+          pressure(k,hs+j,hs+i,iens) = C0*std::pow( rt , gamma );
+        }
       }
       {
         int  k0       = hs+nz-1;
@@ -595,6 +614,10 @@ class Dycore {
         real theta0_g = std::pow(theta0,gamma  );
         state(idR,k,hs+j,hs+i,iens) = std::pow( rho0_gm1 - grav*(gamma-1)*dz(k0-hs,iens)*(kk+1)/(gamma*C0*theta0_g) ,
                                                 1._fp/(gamma-1) );
+        if (grav_balance) {
+          real rt = state(idR,k,hs+j,hs+i,iens) * state(idT,k,hs+j,hs+i,iens);
+          pressure(k,hs+j,hs+i,iens) = C0*std::pow( rt , gamma );
+        }
       }
     });
   }
@@ -735,6 +758,11 @@ class Dycore {
     auto ylen        = coupler.get_ylen();
     auto sim2d       = ny == 1;
     auto num_tracers = coupler.get_num_tracers();
+
+    coupler.set_option<bool>("balance_hydrostasis_with_gravity",true);
+    if (coupler.get_option<bool>("balance_hydrostasis_with_gravity")) {
+      coupler.get_data_manager_device_readwrite().register_and_allocate<real>("variable_gravity","",{nz,nens});
+    }
 
     if (! coupler.option_exists("R_d"     )) coupler.set_option<real>("R_d"     ,287.       );
     if (! coupler.option_exists("cp_d"    )) coupler.set_option<real>("cp_d"    ,1003.      );
@@ -1267,21 +1295,82 @@ class Dycore {
     auto gamma_d     = coupler.get_option<real>("gamma_d");
     auto C0          = coupler.get_option<real>("C0"     );
     auto num_tracers = coupler.get_num_tracers();
+    auto &dm                   = coupler.get_data_manager_device_readwrite();
+    auto dz                    = dm.get<real const,2>("vertical_cell_dz");
+    auto vert_weno_recon_lower = dm.get<real const,5>("vert_weno_recon_lower");
+    auto vert_sten_to_coefs    = dm.get<real const,4>("vert_sten_to_coefs");
+
+    auto grav_balance = coupler.get_option<bool>("balance_hydrostasis_with_gravity");
 
     real5d state  ("state"  ,num_state  ,nz+2*hs,ny+2*hs,nx+2*hs,nens);
     real5d tracers("tracers",num_tracers,nz+2*hs,ny+2*hs,nx+2*hs,nens);
     convert_coupler_to_dynamics( coupler , state , tracers );
+    
+    if (grav_balance) {
 
-    auto hy_dens_cells     = coupler.get_data_manager_device_readwrite().get<real,2>("hy_dens_cells");
-    auto hy_pressure_cells = coupler.get_data_manager_device_readwrite().get<real,2>("hy_pressure_cells");
-    hy_dens_cells     = 0;
-    hy_pressure_cells = 0;
-    real r_nx_ny = 1./(nx*ny);
-    parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-      real press = C0 * std::pow( state(idT,hs+k,hs+j,hs+i,iens) , gamma_d );
-      yakl::atomicAdd( hy_pressure_cells(k,iens) , press                         *r_nx_ny );
-      yakl::atomicAdd( hy_dens_cells    (k,iens) , state(idR,hs+k,hs+j,hs+i,iens)*r_nx_ny );
-    });
+      SArray<real,2,ord,2> coefs_to_gll;
+      SArray<real,1,hs+1> idl;
+      real                sigma;
+      TransformMatrices::coefs_to_gll_lower(coefs_to_gll );
+      weno::wenoSetIdealSigma<ord>(idl,sigma);
+
+      auto grav_var = coupler.get_data_manager_device_readwrite().get<real,2>("variable_gravity");
+      // Discretize interface pressure spatially exactly as we would discretize it in the solver
+      real4d pressure("pressure",nz+2*hs,ny+2*hs,nx+2*hs,nens);
+      parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+        pressure(hs+k,hs+j,hs+i,iens) = C0*std::pow(state(idT,hs+k,hs+j,hs+i,iens),gamma_d);
+        state(idT,hs+k,hs+j,hs+i,iens) /= state(idR,hs+k,hs+j,hs+i,iens);
+        if (j == 0 && i == 0) grav_var(k,iens) = 0;
+      });
+      halo_exchange( coupler , state , tracers , pressure );
+      real4d pint("pint",nz+1,ny,nx,nens);
+      parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz+1,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+        SArray<real,1,ord> stencil;
+        SArray<real,2,ord,ord>  s2c_loc[2];
+        SArray<real,3,hs,hs,hs> wrl_loc[2];
+        for (int i1=0; i1 < ord; i1++) {
+          for (int i2=0; i2 < ord; i2++) {
+            s2c_loc[0](i1,i2) = vert_sten_to_coefs(k  ,i1,i2,iens);
+            s2c_loc[1](i1,i2) = vert_sten_to_coefs(k+1,i1,i2,iens);
+          }
+        }
+        for (int i1=0; i1 < hs; i1++) {
+          for (int i2=0; i2 < hs; i2++) {
+            for (int i3=0; i3 < hs; i3++) {
+              wrl_loc[0](i1,i2,i3) = vert_weno_recon_lower(k  ,i1,i2,i3,iens);
+              wrl_loc[1](i1,i2,i3) = vert_weno_recon_lower(k+1,i1,i2,i3,iens);
+            }
+          }
+        }
+        int k_upw = 0;
+        for (int s=0; s < ord; s++) { stencil(s) = pressure(k+k_upw+s,hs+j,hs+i,iens); }
+        real pp_L = reconstruct(stencil,coefs_to_gll,s2c_loc[k_upw],wrl_loc[k_upw],idl,sigma,1-k_upw);
+        k_upw = 1;
+        for (int s=0; s < ord; s++) { stencil(s) = pressure(k+k_upw+s,hs+j,hs+i,iens); }
+        real pp_R = reconstruct(stencil,coefs_to_gll,s2c_loc[k_upw],wrl_loc[k_upw],idl,sigma,1-k_upw);
+        pint(k,j,i,iens) = 0.5_fp * (pp_L + pp_R);
+      });
+      // Compute average column of variable gravity that provides exact hydrostatic balance
+      real r_nx_ny = 1./(nx*ny);
+      parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+        real dens = state(idR,hs+k,hs+j,hs+i,iens);
+        yakl::atomicAdd( grav_var(k,iens) , -(pint(k+1,j,i,iens)-pint(k,j,i,iens))/(dens*dz(k,iens))*r_nx_ny );
+      });
+
+    } else {
+
+      auto hy_dens_cells     = coupler.get_data_manager_device_readwrite().get<real,2>("hy_dens_cells");
+      auto hy_pressure_cells = coupler.get_data_manager_device_readwrite().get<real,2>("hy_pressure_cells");
+      hy_dens_cells     = 0;
+      hy_pressure_cells = 0;
+      real r_nx_ny = 1./(nx*ny);
+      parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+        real press = C0 * std::pow( state(idT,hs+k,hs+j,hs+i,iens) , gamma_d );
+        yakl::atomicAdd( hy_pressure_cells(k,iens) , press                         *r_nx_ny );
+        yakl::atomicAdd( hy_dens_cells    (k,iens) , state(idR,hs+k,hs+j,hs+i,iens)*r_nx_ny );
+      });
+
+    }
   }
 
 
