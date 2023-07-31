@@ -12,7 +12,6 @@
 #include "output.h"
 #include "supercell_init.h"
 #include <iostream>
-#include <chrono>
 #include "scream_cxx_interface_finalize.h"
 #include "pamc_init.h"
 
@@ -202,6 +201,10 @@ int main(int argc, char** argv) {
   //  modules::broadcast_initial_gcm_column( coupler );
 ///
 
+    #ifdef PAM_DYCORE_AWFL
+      dycore.declare_current_profile_as_hydrostatic( coupler );
+    #endif
+
     // Now that we have an initial state, define hydrostasis for each ensemble member
     if (use_coupler_hydrostasis) coupler.update_hydrostasis( );
 
@@ -230,7 +233,6 @@ int main(int argc, char** argv) {
     yakl::timer_stop("output");
 
     yakl::fence();
-    auto ts = std::chrono::steady_clock::now();
     yakl::timer_start("main_loop");
     for (int step_gcm = 0; step_gcm < nsteps_gcm; ++step_gcm) {
 
@@ -283,13 +285,9 @@ int main(int argc, char** argv) {
 
     yakl::timer_stop("main_loop");
     yakl::fence();
-    auto te = std::chrono::steady_clock::now();
-
-    auto runtime = std::chrono::duration<double>(te - ts).count();
 
     if (mainproc) {
       std::cout << "Simulation Time: " << etime_gcm << "\n";
-      std::cout << "Run Time: " << runtime << "\n";
     }
 
     yakl::timer_start("micro");

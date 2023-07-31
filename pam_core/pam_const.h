@@ -299,3 +299,36 @@ inline void validate_array_positive( yakl::Array<T,N,MEM,STYLE> const &arr) {
 }
 
 
+
+
+inline void debug_print( char const * file , int line ) {
+  std::cout << "*** DEBUG: " << file << ": " << line << std::endl;
+}
+
+template <class T> inline void debug_print_sum( T var , char const * file , int line , char const * varname ) {
+  std::cout << "*** DEBUG: " << file << ": " << line << ": sum(" << varname << ")  -->  " << yakl::intrinsics::sum( var ) << std::endl;
+}
+
+template <class T> inline void debug_print_avg( T var , char const * file , int line , char const * varname ) {
+  std::cout << "*** DEBUG: " << file << ": " << line << ": avg(" << varname << ")  -->  " << yakl::intrinsics::sum( var )/var.size() << std::endl;
+}
+
+template <class T> inline void debug_print_min( T var , char const * file , int line , char const * varname ) {
+  std::cout << "*** DEBUG: " << file << ": " << line << ": minval(" << varname << ")  -->  " << yakl::intrinsics::minval( var ) << std::endl;
+}
+
+template <class T> inline void debug_print_max( T var , char const * file , int line , char const * varname ) {
+  std::cout << "*** DEBUG: " << file << ": " << line << ": maxval(" << varname << ")  -->  " << yakl::intrinsics::maxval( var ) << std::endl;
+}
+
+template <class T> inline void debug_print_val( T var , char const * file , int line , char const * varname ) {
+  std::cout << "*** DEBUG: " << file << ": " << line << ": " << varname << "  -->  " << var << std::endl;
+}
+
+#define DEBUG_PRINT() { debug_print(__FILE__,__LINE__); }
+#define DEBUG_PRINT_SUM(var) { debug_print_sum((var),__FILE__,__LINE__,#var); }
+#define DEBUG_PRINT_AVG(var) { debug_print_avg((var),__FILE__,__LINE__,#var); }
+#define DEBUG_PRINT_MIN(var) { debug_print_min((var),__FILE__,__LINE__,#var); }
+#define DEBUG_PRINT_MAX(var) { debug_print_max((var),__FILE__,__LINE__,#var); }
+#define DEBUG_PRINT_VAL(var) { debug_print_val((var),__FILE__,__LINE__,#var); }
+
