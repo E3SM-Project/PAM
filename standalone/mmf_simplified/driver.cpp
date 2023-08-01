@@ -142,9 +142,6 @@ int main(int argc, char** argv) {
       dycore.declare_current_profile_as_hydrostatic( coupler );
     #endif
 
-    // Now that we have an initial state, define hydrostasis for each ensemble member
-    coupler.update_hydrostasis();
-
     int1d seeds("seeds",nens);
     seeds = 0;
     modules::perturb_temperature( coupler , seeds );
