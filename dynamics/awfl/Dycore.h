@@ -1285,7 +1285,7 @@ class Dycore {
 
 
 
-  void declare_current_profile_as_hydrostatic( pam::PamCoupler &coupler ) const {
+  void declare_current_profile_as_hydrostatic( pam::PamCoupler &coupler , bool use_gcm_data = false ) const {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
     auto nens        = coupler.get_nens();
@@ -1294,6 +1294,9 @@ class Dycore {
     auto nz          = coupler.get_nz();
     auto gamma_d     = coupler.get_option<real>("gamma_d");
     auto C0          = coupler.get_option<real>("C0"     );
+    auto idWV        = coupler.get_option<int >("idWV"   );
+    auto R_d         = coupler.get_option<real>("R_d");
+    auto R_v         = coupler.get_option<real>("R_v");
     auto num_tracers = coupler.get_num_tracers();
     auto &dm                   = coupler.get_data_manager_device_readwrite();
     auto dz                    = dm.get<real const,2>("vertical_cell_dz");
@@ -1304,7 +1307,30 @@ class Dycore {
 
     real5d state  ("state"  ,num_state  ,nz+2*hs,ny+2*hs,nx+2*hs,nens);
     real5d tracers("tracers",num_tracers,nz+2*hs,ny+2*hs,nx+2*hs,nens);
-    convert_coupler_to_dynamics( coupler , state , tracers );
+
+    if (use_gcm_data) {
+      auto gcm_rho_d = dm.get<real const,2>("gcm_density_dry");
+      auto gcm_temp  = dm.get<real const,2>("gcm_temp"       );
+      auto gcm_rho_v = dm.get<real const,2>("gcm_water_vapor");
+      auto gcm_rho_c = dm.get<real const,2>("gcm_cloud_water");
+      auto gcm_rho_i = dm.get<real const,2>("gcm_cloud_ice"  );
+      parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
+        real rho_d     = gcm_rho_d(k,iens);
+        real rho_v     = gcm_rho_v(k,iens);
+        real rho       = gcm_rho_d(k,iens) + gcm_rho_v(k,iens) + gcm_rho_c(k,iens) + gcm_rho_i(k,iens);
+        real temp      = gcm_temp(k,iens);
+        real p         = (rho_d*R_d + rho_v*R_v)*temp;
+        real rho_theta = std::pow( p/C0 , 1._fp/gamma_d );
+        state(idR,hs+k,hs+j,hs+i,iens) = rho;
+        state(idU,hs+k,hs+j,hs+i,iens) = 0;
+        state(idV,hs+k,hs+j,hs+i,iens) = 0;
+        state(idW,hs+k,hs+j,hs+i,iens) = 0;
+        state(idT,hs+k,hs+j,hs+i,iens) = rho_theta;
+        for (int tr=0; tr < num_tracers; tr++) { tracers(tr,hs+k,hs+j,hs+i,iens) = 0; }
+      });
+    } else {
+      convert_coupler_to_dynamics( coupler , state , tracers );
+    }
     
     if (grav_balance) {
 
