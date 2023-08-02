@@ -15,9 +15,12 @@
 #ifdef PAM_STANDALONE
 #include "yaml-cpp/yaml.h"
 #endif
-// #ifdef YAKL_ARCH_CUDA
-// #include <cuda/std/complex>
-// #endif
+#if defined YAKL_ARCH_CUDA
+  #include <cuda.h> // for CUDA_VERSION
+  #if CUDA_VERSION >= 11030
+    #include <cuda/std/complex>
+  #endif
+#endif
 
 namespace pamc {
 
@@ -33,12 +36,12 @@ using uint = unsigned int;
 // Declaring the precision for the model
 using real = double;
 
-// #if defined YAKL_ARCH_CUDA
-// #include <cuda/std/complex>
-// using complex = cuda::std::complex<real>;
-// #else
-using complex = std::complex<real>;
-// #endif
+#if defined YAKL_ARCH_CUDA && CUDA_VERSION >= 11030
+ #include <cuda/std/complex>
+ using complex = cuda::std::complex<real>;
+#else
+ using complex = std::complex<real>;
+#endif
 
 using complex5d = yakl::Array<complex, 5, yakl::memDevice, yakl::styleC>;
 using complex4d = yakl::Array<complex, 4, yakl::memDevice, yakl::styleC>;
