@@ -699,7 +699,8 @@ public:
         });
         mass = yakl::intrinsics::sum(mass4d);
       }
-      std::cout << "Relative mass Change: " << abs(mass-mass0)/mass0 << " : ";
+      real rel_mass_change = abs(mass-mass0)/mass0;
+      if (rel_mass_change > 1.e-13) std::cout << "WARNING: SHOC relative mass change: " << rel_mass_change << std::endl;
     #endif
 
     first_step = false;
