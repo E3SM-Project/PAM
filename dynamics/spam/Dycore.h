@@ -211,7 +211,7 @@ public:
     io.outputStats(stats);}
 
     if (params.out_freq >=0.)
-    {io.outputInit(etime);}
+    {io.outputInit(etime, primal_geometry, dual_geometry, params);}
     debug_print("end initial io", par.masterproc);
 #endif
     prevstep = 1;
@@ -251,7 +251,7 @@ public:
 
       etime += params.dtcrm;
 #ifndef PAMC_NOIO
-      if ((nstep + prevstep) % params.Nout == 0) {
+      if (params.out_freq > 0. && etime / params.out_freq >= num_out+1) {
         serial_print("dycore step " + std::to_string((nstep + prevstep)) +
                          " time " + std::to_string(etime),
                      par.masterproc);
