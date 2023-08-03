@@ -194,11 +194,11 @@ public:
     debug_print("end ts init", par.masterproc);
 
     // TODO: add logic here to only include this for standlone configurations
-    // // convert dynamics state to Coupler state
-    // if (testcase->set_coupler_state)
-    //  { tendencies.convert_dynamics_to_coupler_state(coupler, prognostic_vars, constant_vars, params.couple_wind, params.couple_wind_exact_inverse); }
-    // if (testcase->set_coupler_state)
-    //  { tendencies.convert_dynamics_to_coupler_state(coupler, prognostic_vars, constant_vars); }
+#ifdef PAM_STANDALONE
+     // convert dynamics state to Coupler state
+     if (testcase->set_coupler_state)
+      { tendencies.convert_dynamics_to_coupler_state(coupler, prognostic_vars, constant_vars, params.couple_wind, params.couple_wind_exact_inverse); }
+#endif
 
     // Output the initial model state
 #ifndef PAMC_NOIO
