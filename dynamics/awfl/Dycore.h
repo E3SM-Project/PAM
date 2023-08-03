@@ -847,6 +847,22 @@ class Dycore {
     auto sim2d       = ny == 1;
     auto num_tracers = coupler.get_num_tracers();
 
+
+    int nbands = 5;
+    int n      = 5;
+    real3d diags("diags",nbands,n,nens);  diags = 0;
+    real2d rhs  ("rhs"         ,n,nens);
+    parallel_for( YAKL_AUTO_LABEL() , n , YAKL_LAMBDA (int i) {
+      if (i > 1  ) diags(0,i,0) = 0.5;
+      if (i > 0  ) diags(1,i,0) =  -1;
+                   diags(2,i,0) =   2;
+      if (i < n-1) diags(3,i,0) =  -1;
+      if (i < n-2) diags(4,i,0) = 0.5;
+      rhs  (  i,0) = i == n/2 ? 1 : 0;
+    });
+    solve_banded( diags , rhs );
+    std::cout << rhs;
+
     coupler.set_option<bool>("balance_hydrostasis_with_gravity",true);
     if (coupler.get_option<bool>("balance_hydrostasis_with_gravity")) {
       coupler.get_data_manager_device_readwrite().register_and_allocate<real>("variable_gravity","",{nz,nens});
@@ -1489,29 +1505,39 @@ class Dycore {
 
 
 
-  // real2d solve_banded( realConst3d diags_in , realConst2d rhs ) const {
-  //   int nbands = diags.extent(0);
-  //   int n      = diags.extent(1);
-  //   int nens   = diags.extent(2);
-  //   if (nbands % 2 != 1)       yakl::yakl_throw("ERROR: Number of bands must be odd");
-  //   if (n != rhs.extent(0))    yakl::yakl_throw("ERROR: Number of elements for diags and rhs must match");
-  //   if (nens != rhs.extent(1)) yakl::yakl_throw("ERROR: Number of ensembles must match between diags and rhs");
-  //   int h = (n-1)/2;
-  //   auto diags_work = diags.createDeviceObject<real>();
-  //   auto rhs_work   = rhs  .createDeviceObject<real>();
-  //   parallel_for( YAKL_AUTO_LABEL , nens , YAKL_LAMBDA (int iens) {
-  //     // Clear out lower values first
-  //     for (int irow = 0 ; irow < n; irow++) {
-  //       // Grab the value from the center band
-  //       real r_diag_val = 1._fp/diags(h,irow,iens);
-  //       for (int iband=h-1; iband >= 0; iband--) {
-  //         real mult = -diags(iband,irow,iens)*r_diag_val;
-  //         for (int iband2=0; iband2 <= n; iband2++) {
-  //         }
-  //       }
-  //     }
-  //   });
-  // }
+  void solve_banded( real3d const &diags , real2d const &rhs ) const {
+    int nbands = diags.extent(0);
+    int n      = diags.extent(1);
+    int nens   = diags.extent(2);
+    if (nbands % 2 != 1)       yakl::yakl_throw("ERROR: Number of bands must be odd");
+    if (n != rhs.extent(0))    yakl::yakl_throw("ERROR: Number of elements for diags and rhs must match");
+    if (nens != rhs.extent(1)) yakl::yakl_throw("ERROR: Number of ensembles must match between diags and rhs");
+    int h = (nbands-1)/2;
+    parallel_for( YAKL_AUTO_LABEL() , nens , YAKL_LAMBDA (int iens) {
+      // Clear out lower values
+      for (int idiag = 0 ; idiag < n-1; idiag++) {
+        real r_diag_val = 1._fp / diags(h,idiag,iens);
+        for (int irow2 = idiag+1; irow2 <= std::min(n-1,idiag+h); irow2++) {
+          int irow2_pert = irow2-idiag;
+          real mult = -diags(h-irow2_pert,irow2,iens) * r_diag_val;
+          for (int icol = idiag; icol <= std::min(n-1,idiag+h); icol++) {
+            int icol_pert = icol - idiag;
+            diags(h+icol_pert-irow2_pert,irow2,iens) += mult*diags(h+icol_pert,idiag,iens);
+          }
+          rhs(irow2,iens) += mult*rhs(idiag,iens);
+        }
+      }
+      // Clear out upper values
+      for (int idiag = n-1 ; idiag >= 1; idiag--) {
+        real r_diag_val = 1._fp / diags(h,idiag,iens);
+        for (int irow2 = idiag-1; irow2 >= std::max(0,idiag-h); irow2--) {
+          rhs(irow2,iens) -= diags(h-irow2+idiag,irow2,iens) * r_diag_val*rhs(idiag,iens);
+        }
+      }
+      // Divide by the diagonal values
+      for (int idiag = 0; idiag < n; idiag++) { rhs(idiag,iens) /= diags(h,idiag,iens); }
+    });
+  }
 
 
 
