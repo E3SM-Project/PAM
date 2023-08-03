@@ -352,6 +352,7 @@ class ModelTendencies : public ExtrudedTendencies {
   real entropicvar_diffusion_coeff;
   real velocity_diffusion_coeff;
   bool force_refstate_hydrostatic_balance;
+  bool check_anelastic_constraint;
 #if defined PAMC_AN || defined PAMC_MAN
   AnelasticPressureSolver pressure_solver;
 #endif
@@ -368,6 +369,7 @@ public:
     velocity_diffusion_coeff = params.velocity_diffusion_coeff;
     force_refstate_hydrostatic_balance =
         params.force_refstate_hydrostatic_balance;
+    check_anelastic_constraint = params.check_anelastic_constraint;
 
 #if defined PAMC_AN || defined PAMC_MAN
     pressure_solver.initialize(params, primal_geom, dual_geom, equations);
@@ -2151,10 +2153,10 @@ public:
 
     auxiliary_vars.exchange({BVAR, FVAR, FWVAR});
 
-#ifdef PAMC_CHECK_ANELASTIC_CONSTRAINT
-    real max_div = compute_max_anelastic_constraint(x, auxiliary_vars, true);
-    std::cout << "Anelastic constraint: " << max_div << std::endl;
-#endif
+    if (this->check_anelastic_constraint) {
+      real max_div = compute_max_anelastic_constraint(x, auxiliary_vars, true);
+      std::cout << "Anelastic constraint: " << max_div << std::endl;
+    }
     yakl::timer_stop("compute_functional_derivatives");
   }
 
@@ -3813,6 +3815,7 @@ void read_model_params_file(std::string inFile, ModelParameters &params,
   params.initdataStr = config["initData"].as<std::string>();
   params.force_refstate_hydrostatic_balance =
       config["force_refstate_hydrostatic_balance"].as<bool>(false);
+  params.check_anelastic_constraint = config["check_anelastic_constraint"].as<bool>(false);
 
   for (int i = 0; i < ntracers_dycore; i++) {
     params.tracerdataStr[i] =
@@ -3845,6 +3848,7 @@ void read_model_params_coupler(ModelParameters &params, Parallel &par,
   params.velocity_diffusion_coeff = 0;
   params.initdataStr = "coupler";
   params.force_refstate_hydrostatic_balance = true;
+  params.check_anelastic_constraint = false;
 
   // Store vertical cell interface heights in the data manager
   auto &dm = coupler.get_data_manager_device_readonly();

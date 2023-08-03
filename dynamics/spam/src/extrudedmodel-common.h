@@ -9,11 +9,6 @@ uint constexpr ntracers_dycore = 0;
 
 //////////////////////////////////////////////////////////////////////////////
 
-// for debugging anelastic
-// #if defined PAMC_AN || defined PAMC_MAN
-// #define PAMC_CHECK_ANELASTIC_CONSTRAINT
-// #endif
-
 // Number of Dimensions
 uint constexpr ndims = 1;
 } // namespace pamc
@@ -109,6 +104,7 @@ public:
   // the hydrostatic balance equation evaluated at the reference state in
   // the velocity tendency
   bool force_refstate_hydrostatic_balance;
+  bool check_anelastic_constraint;
 
   realConst2d zint;
 };
