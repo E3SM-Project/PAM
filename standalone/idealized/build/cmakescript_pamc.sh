@@ -2,6 +2,10 @@
 
 ./cmakeclean.sh
 
+if [[ "$1" != "" ]]; then
+  . $1
+fi
+
 cmake      \
   -DCMAKE_CXX_COMPILER=${CXX}                                     \
   -DCMAKE_CUDA_HOST_COMPILER=${CXX}                               \
@@ -13,12 +17,9 @@ cmake      \
   -DYAKL_F90_FLAGS="${YAKL_F90_FLAGS}"                            \
   -DPAM_LINK_FLAGS="${PAM_LINK_FLAGS}"                            \
   -DYAKL_ARCH="${YAKL_ARCH}"                                      \
-  -DPAM_DYCORE="spam++"                                           \
+  -DPAM_DYCORE="spam"                                           \
   -DPAM_MICRO="none"                                              \
   -DPAM_SGS="none"                                                \
   -DPAM_RAD="none"                                                \
-  -DPAMC_MODEL="extrudedmodel"                                    \
-  -DPAMC_HAMIL="man"                                              \
-  -DPAMC_THERMO="constkappavirpottemp"                            \
-  -DPAMC_IO="serial"                                              \
+  ${add_cmake_vars} \
   ..
