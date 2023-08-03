@@ -13,10 +13,6 @@ using pam::PamCoupler;
 
 namespace pamc {
 
-// solve a system to exactly invert the velocity averaging done
-// during conversion to coupler state when coupling winds
-constexpr bool couple_wind_exact_inverse = true;
-
 struct VS_SWE {
   static constexpr bool couple = false;
 
@@ -152,7 +148,6 @@ public:
       dens_prognostic; // Whether each density is prognostic
   SArray<int, 1, ndensity_active>
       active_dens_ids; // indices of active densities
-  bool couple_wind;
 
   int dm_id_vap = std::numeric_limits<int>::min();
   int dm_id_liq = std::numeric_limits<int>::min();
@@ -203,12 +198,6 @@ public:
     varset.reference_state = refstate;
     varset.primal_geometry = primal_geom;
     varset.dual_geometry = dual_geom;
-
-    // Need different logic for this.
-    // maybe a coupler option so that the driver can set it directly??
-    //varset.couple_wind = !(coupler.get_option<std::string>("sgs") == "none") ||
-    //                     !(coupler.option_exists("standalone_input_file"));
-    varset.couple_wind = true;
 
     for (int l = ndensity_dycore_prognostic; l < ndensity_nophysics; l++) {
       varset.dens_pos(l) =

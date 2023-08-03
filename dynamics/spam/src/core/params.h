@@ -39,6 +39,8 @@ public:
   bool inner_mpi;
 
   bool couple_wind = true;
+  // solve a system to exactly invert the velocity averaging done
+  // during conversion to coupler state when coupling winds
   bool couple_wind_exact_inverse = false;
 
 };
