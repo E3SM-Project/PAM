@@ -64,6 +64,10 @@ EkatConfigFile(${SCREAM_HOME}/components/eamxx/src/scream_config.h.in
                ${SCREAM_HOME}/components/eamxx/src/scream_config.h
                ${SCREAM_HOME}/components/eamxx/src/scream_config.f)
 
+if (${USE_KOKKOS})
+   set(Kokkos_ROOT ${INSTALL_SHAREDPATH}/kokkos/build)
+endif()
+
 include_directories(${SCREAM_HOME}/components/eamxx/src/physics/shoc     )
 include_directories(${SCREAM_HOME}/components/eamxx/src/physics/shoc/impl)
 include_directories(${SCREAM_HOME}/components/eamxx/src/physics/p3       )
