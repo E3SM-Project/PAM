@@ -241,11 +241,11 @@ public:
 
       time_integrator->step_forward(params.dtcrm);
 
-#ifdef PAMC_CHECK_ANELASTIC_CONSTRAINT
-      real max_div = tendencies.compute_max_anelastic_constraint(
-          prognostic_vars, auxiliary_vars);
-      std::cout << "Anelastic constraint: " << max_div << std::endl;
-#endif
+      if (params.check_anelastic_constraint) {
+        real max_div = tendencies.compute_max_anelastic_constraint(
+            prognostic_vars, auxiliary_vars);
+        serial_print("Anelastic constraint: " + std::to_string(max_div), par.masterproc);
+      }
 
       yakl::fence();
 
