@@ -10,14 +10,6 @@
 
 namespace pam {
 
-
-
-  YAKL_INLINE real compute_pressure( real rho_d, real rho_v, real T, real R_d, real R_v ) {
-    return rho_d*R_d*T + rho_v*R_v*T;
-  }
-
-
-
   class PamCoupler {
   protected:
 
@@ -119,6 +111,13 @@ namespace pam {
     template <class T>
     T get_option( std::string key ) const {
       return options.get_option<T>(key);
+    }
+
+
+    template <class T>
+    T get_option( std::string key , T val_if_absent ) const {
+      if (option_exists(key)) return options.get_option<T>(key);
+      return val_if_absent;
     }
 
 
@@ -373,6 +372,12 @@ namespace pam {
       });
 
       return pressure;
+    }
+
+
+
+    YAKL_INLINE static real compute_pressure( real rho_d, real rho_v, real T, real R_d, real R_v ) {
+      return rho_d*R_d*T + rho_v*R_v*T;
     }
 
 

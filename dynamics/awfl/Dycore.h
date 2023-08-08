@@ -34,8 +34,35 @@ class Dycore {
 
 
 
+  real2d compute_mass( pam::PamCoupler const &coupler , realConst5d state , realConst5d tracers ) const {
+    using yakl::c::parallel_for;
+    using yakl::c::SimpleBounds;
+    auto num_tracers = coupler.get_num_tracers();
+    auto nens        = coupler.get_nens();
+    auto nx          = coupler.get_nx();
+    auto ny          = coupler.get_ny();
+    auto nz          = coupler.get_nz();
+    auto dz          = coupler.get_data_manager_device_readonly().get<real const,2>("vertical_cell_dz");
+    int num_vars = num_tracers+2;
+    realHost2d mass("mass",num_vars,nens);
+    for (int ivar=0; ivar < num_vars; ivar++) {
+      for (int iens=0; iens < nens; iens++) {
+        real3d tmp("tmp",nz,ny,nx);
+        parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<3>(nz,ny,nx) , YAKL_LAMBDA (int k, int j, int i) {
+          if      (ivar <  num_tracers  ) { tmp(k,j,i) = tracers(ivar,hs+k,hs+j,hs+i,iens)*dz(k,iens); }
+          else if (ivar == num_tracers  ) { tmp(k,j,i) = state  (idR ,hs+k,hs+j,hs+i,iens)*dz(k,iens); }
+          else if (ivar == num_tracers+1) { tmp(k,j,i) = state  (idT ,hs+k,hs+j,hs+i,iens)*dz(k,iens); }
+        });
+        mass(ivar,iens) = yakl::intrinsics::sum(tmp)/tmp.size();
+      }
+    }
+    return mass.createDeviceCopy();
+  }
+
+
+
   // Compute the maximum stable time step using very conservative assumptions about max wind speed
-  real compute_time_step( pam::PamCoupler const &coupler , real cfl = 0.5 ) const {
+  real compute_time_step( pam::PamCoupler const &coupler , real cfl = 0.8 ) const {
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
     auto nens     = coupler.get_nens();
@@ -100,6 +127,16 @@ class Dycore {
     // Populate the state and tracers arrays using data from the coupler, convert to the dycore's desired state
     convert_coupler_to_dynamics( coupler , state , tracers );
 
+    parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<5>(num_tracers,nz,ny,nx,nens) , YAKL_LAMBDA (int l, int k, int j, int i, int iens) {
+      if (tracer_positive(l)) {
+        tracers(l,hs+k,hs+j,hs+i,iens) = std::max( 0._fp , tracers(l,hs+k,hs+j,hs+i,iens) );
+      }
+    });
+
+    #ifdef PAM_DEBUG
+      auto mass_init = compute_mass( coupler , state , tracers );
+    #endif
+
     // Get the max stable time step for the dynamics. dt_phys might be > dt_dyn, meaning we would need to sub-cycle
     real dt_dyn = compute_time_step( coupler );
 
@@ -116,6 +153,10 @@ class Dycore {
       //////////////
       // Stage 1
       //////////////
+      parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<5>(num_tracers,nz,ny,nx,nens) , YAKL_LAMBDA (int l, int k, int j, int i, int iens) {
+        // Store the starting point for FCT positivity in the next stage
+        tracers_tend(l,k,j,i,iens) = tracers(l,hs+k,hs+j,hs+i,iens);
+      });
       compute_tendencies( coupler , state     , state_tend , tracers     , tracers_tend , dt_dyn );
       // Apply tendencies
       parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
@@ -128,6 +169,9 @@ class Dycore {
           if (tracer_positive(l)) {
             tracers_tmp(l,hs+k,hs+j,hs+i,iens) = std::max( 0._fp , tracers_tmp(l,hs+k,hs+j,hs+i,iens) );
           }
+          // Store the starting point for FCT positivity in the next stage
+          tracers_tend(l,k,j,i,iens) = (3._fp/4._fp) * tracers    (l,hs+k,hs+j,hs+i,iens) + 
+                                       (1._fp/4._fp) * tracers_tmp(l,hs+k,hs+j,hs+i,iens);
         }
       });
       //////////////
@@ -149,6 +193,9 @@ class Dycore {
           if (tracer_positive(l)) {
             tracers_tmp(l,hs+k,hs+j,hs+i,iens) = std::max( 0._fp , tracers_tmp(l,hs+k,hs+j,hs+i,iens) );
           }
+          // Store the starting point for FCT positivity in the next stage
+          tracers_tend(l,k,j,i,iens) = (1._fp/3._fp) * tracers    (l,hs+k,hs+j,hs+i,iens) +
+                                       (2._fp/3._fp) * tracers_tmp(l,hs+k,hs+j,hs+i,iens);
         }
       });
       //////////////
@@ -173,6 +220,35 @@ class Dycore {
         }
       });
     }
+
+    #ifdef PAM_DEBUG
+      auto mass_final = compute_mass( coupler , state , tracers );
+      using yakl::componentwise::operator-;
+      using yakl::componentwise::operator+;
+      using yakl::componentwise::operator/;
+      using yakl::intrinsics::abs;
+      auto abs_mass_diff   = abs(mass_final - mass_init).createHostCopy();
+      auto rel_mass_diff   = ( abs(mass_final - mass_init) / (abs(mass_init) + 1.e-20) ).createHostCopy();
+      auto mass_diff       = (mass_final - mass_init).createHostCopy();
+      auto mass_init_host  = mass_init.createHostCopy();
+      auto mass_final_host = mass_final.createHostCopy();
+      int num_vars = rel_mass_diff.extent(0);
+      for (int ivar=0; ivar < num_vars; ivar++) {
+        for (int iens=0; iens < nens; iens++) {
+          if (rel_mass_diff(ivar,iens) > 1.e-10) {
+            if (abs_mass_diff(ivar,iens) > 1.e-10) {
+              std::cout << "WARNING: conservation violated variable,ensemble,rel_diff,mass_diff,init,final: "
+                        << ivar << " , "
+                        << iens << " , "
+                        << std::scientific << std::setw(10) << rel_mass_diff  (ivar,iens) << " , "
+                        << std::scientific << std::setw(10) << mass_diff      (ivar,iens) << " , " 
+                        << std::scientific << std::setw(10) << mass_init_host (ivar,iens) << " , " 
+                        << std::scientific << std::setw(10) << mass_final_host(ivar,iens) << std::endl;
+            }
+          }
+        }
+      }
+    #endif
 
     // Convert the dycore's state back to the coupler's state
     convert_dynamics_to_coupler( coupler , state , tracers );
@@ -417,7 +493,7 @@ class Dycore {
           real w2 = 0.5_fp * (pp_L+cs*rw_L);
           pp = w1+w2;
           rw = (w2-w1)/cs;
-          if ((k == 0 || k == nz)) rw = 0;
+          if (k == 0 || k == nz) rw = 0;
           state_flux_z(idR,k,j,i,iens) = rw;
         }
         // ADVECTIVE
@@ -455,7 +531,7 @@ class Dycore {
       for (int tr=0; tr < num_tracers; tr++) {
         tracers(tr,hs+k,hs+j,hs+i,iens) *= state(idR,hs+k,hs+j,hs+i,iens);
         if (tracer_positive(tr)) {
-          real mass_available = max(tracers(tr,hs+k,hs+j,hs+i,iens),0._fp) * dx * dy * dz(k,iens);
+          real mass_available = max(tracers_tend(tr,k,j,i,iens),0._fp) * dx * dy * dz(k,iens);
           real flux_out_x = ( max(tracers_flux_x(tr,k,j,i+1,iens),0._fp) - min(tracers_flux_x(tr,k,j,i,iens),0._fp) ) / dx;
           real flux_out_y = ( max(tracers_flux_y(tr,k,j+1,i,iens),0._fp) - min(tracers_flux_y(tr,k,j,i,iens),0._fp) ) / dy;
           real flux_out_z = ( max(tracers_flux_z(tr,k+1,j,i,iens),0._fp) - min(tracers_flux_z(tr,k,j,i,iens),0._fp) ) / dz(k,iens);
@@ -476,9 +552,9 @@ class Dycore {
     // Compute tendencies as the flux divergence + gravity source term
     parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
       for (int l = 0; l < num_state; l++) {
-        state_tend  (l,k,j,i,iens) = -( state_flux_x  (l,k  ,j  ,i+1,iens) - state_flux_x  (l,k,j,i,iens) ) / dx
-                                     -( state_flux_y  (l,k  ,j+1,i  ,iens) - state_flux_y  (l,k,j,i,iens) ) / dy
-                                     -( state_flux_z  (l,k+1,j  ,i  ,iens) - state_flux_z  (l,k,j,i,iens) ) / dz(k,iens);
+        state_tend  (l,k,j,i,iens) = -( state_flux_x(l,k  ,j  ,i+1,iens) - state_flux_x(l,k,j,i,iens) ) / dx
+                                     -( state_flux_y(l,k  ,j+1,i  ,iens) - state_flux_y(l,k,j,i,iens) ) / dy
+                                     -( state_flux_z(l,k+1,j  ,i  ,iens) - state_flux_z(l,k,j,i,iens) ) / dz(k,iens);
         if (l == idW) {
           if (grav_balance) {
             state_tend(l,k,j,i,iens) += -grav_var(k,iens) * state(idR,hs+k,hs+j,hs+i,iens);
@@ -489,9 +565,21 @@ class Dycore {
         if (l == idV && sim2d) state_tend(l,k,j,i,iens) = 0;
       }
       for (int l = 0; l < num_tracers; l++) {
-        tracers_tend(l,k,j,i,iens) = -( tracers_flux_x(l,k  ,j  ,i+1,iens) - tracers_flux_x(l,k,j,i,iens) ) / dx
-                                     -( tracers_flux_y(l,k  ,j+1,i  ,iens) - tracers_flux_y(l,k,j,i,iens) ) / dy
-                                     -( tracers_flux_z(l,k+1,j  ,i  ,iens) - tracers_flux_z(l,k,j,i,iens) ) / dz(k,iens);
+        real fx   = tracers_flux_x(l,k  ,j  ,i  ,iens);
+        real fxp1 = tracers_flux_x(l,k  ,j  ,i+1,iens);
+        real fy   = tracers_flux_y(l,k  ,j  ,i  ,iens);
+        real fyp1 = tracers_flux_y(l,k  ,j+1,i  ,iens);
+        real fz   = tracers_flux_z(l,k  ,j  ,i  ,iens);
+        real fzp1 = tracers_flux_z(l,k+1,j  ,i  ,iens);
+        if (i == 0   ) {
+          fx = std::min( fx , tracers_flux_x(l,k,j,nx,iens) );
+        }
+        if (i == nx-1) { fxp1 = std::min( fxp1 , tracers_flux_x(l,k,j,0 ,iens) ); }
+        if (j == 0   ) { fy   = std::min( fy   , tracers_flux_y(l,k,ny,i,iens) ); }
+        if (j == ny-1) { fyp1 = std::min( fyp1 , tracers_flux_y(l,k,0 ,i,iens) ); }
+        tracers_tend(l,k,j,i,iens) = -( fxp1 - fx ) / dx
+                                     -( fyp1 - fy ) / dy
+                                     -( fzp1 - fz ) / dz(k,iens);
       }
     });
 
@@ -758,6 +846,22 @@ class Dycore {
     auto ylen        = coupler.get_ylen();
     auto sim2d       = ny == 1;
     auto num_tracers = coupler.get_num_tracers();
+
+
+    int nbands = 5;
+    int n      = 5;
+    real3d diags("diags",nbands,n,nens);  diags = 0;
+    real2d rhs  ("rhs"         ,n,nens);
+    parallel_for( YAKL_AUTO_LABEL() , n , YAKL_LAMBDA (int i) {
+      if (i > 1  ) diags(0,i,0) = 0.5;
+      if (i > 0  ) diags(1,i,0) =  -1;
+                   diags(2,i,0) =   2;
+      if (i < n-1) diags(3,i,0) =  -1;
+      if (i < n-2) diags(4,i,0) = 0.5;
+      rhs  (  i,0) = i == n/2 ? 1 : 0;
+    });
+    solve_banded( diags , rhs );
+    std::cout << rhs;
 
     coupler.set_option<bool>("balance_hydrostasis_with_gravity",true);
     if (coupler.get_option<bool>("balance_hydrostasis_with_gravity")) {
@@ -1397,6 +1501,42 @@ class Dycore {
       });
 
     }
+  }
+
+
+
+  void solve_banded( real3d const &diags , real2d const &rhs ) const {
+    int nbands = diags.extent(0);
+    int n      = diags.extent(1);
+    int nens   = diags.extent(2);
+    if (nbands % 2 != 1)       yakl::yakl_throw("ERROR: Number of bands must be odd");
+    if (n != rhs.extent(0))    yakl::yakl_throw("ERROR: Number of elements for diags and rhs must match");
+    if (nens != rhs.extent(1)) yakl::yakl_throw("ERROR: Number of ensembles must match between diags and rhs");
+    int h = (nbands-1)/2;
+    parallel_for( YAKL_AUTO_LABEL() , nens , YAKL_LAMBDA (int iens) {
+      // Clear out lower values
+      for (int idiag = 0 ; idiag < n-1; idiag++) {
+        real r_diag_val = 1._fp / diags(h,idiag,iens);
+        for (int irow2 = idiag+1; irow2 <= std::min(n-1,idiag+h); irow2++) {
+          int irow2_pert = irow2-idiag;
+          real mult = -diags(h-irow2_pert,irow2,iens) * r_diag_val;
+          for (int icol = idiag; icol <= std::min(n-1,idiag+h); icol++) {
+            int icol_pert = icol - idiag;
+            diags(h+icol_pert-irow2_pert,irow2,iens) += mult*diags(h+icol_pert,idiag,iens);
+          }
+          rhs(irow2,iens) += mult*rhs(idiag,iens);
+        }
+      }
+      // Clear out upper values
+      for (int idiag = n-1 ; idiag >= 1; idiag--) {
+        real r_diag_val = 1._fp / diags(h,idiag,iens);
+        for (int irow2 = idiag-1; irow2 >= std::max(0,idiag-h); irow2--) {
+          rhs(irow2,iens) -= diags(h-irow2+idiag,irow2,iens) * r_diag_val*rhs(idiag,iens);
+        }
+      }
+      // Divide by the diagonal values
+      for (int idiag = 0; idiag < n; idiag++) { rhs(idiag,iens) /= diags(h,idiag,iens); }
+    });
   }
 
 
