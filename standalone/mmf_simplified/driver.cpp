@@ -14,7 +14,67 @@
 #include <iostream>
 #include <chrono>
 #include "scream_cxx_interface_finalize.h"
+#include "pamc_init.h"
 
+void initialize_from_supercell_column(real1d zint_in, PamCoupler &coupler) {
+  int crm_nz = coupler.get_nz();
+  int nens = coupler.get_nens();
+  
+  auto &dm = coupler.get_data_manager_device_readwrite();
+  
+  // Compute a supercell initial column
+  real1d rho_d_col("rho_d_col",crm_nz);
+  real1d uvel_col ("uvel_col" ,crm_nz);
+  real1d vvel_col ("vvel_col" ,crm_nz);
+  real1d wvel_col ("wvel_col" ,crm_nz);
+  real1d temp_col ("temp_col" ,crm_nz);
+  real1d rho_v_col("rho_v_col",crm_nz);
+  
+  auto R_d  = coupler.get_option<real>("R_d" );
+  auto R_v  = coupler.get_option<real>("R_v" );
+  auto grav = coupler.get_option<real>("grav");
+  supercell_init(zint_in, rho_d_col, uvel_col, vvel_col, wvel_col, temp_col, rho_v_col, R_d , R_v, grav );
+  
+  // Set the GCM column data for each ensemble to the supercell initial state
+  
+  auto gcm_rho_d = dm.get<real,2>("gcm_density_dry");
+  auto gcm_uvel  = dm.get<real,2>("gcm_uvel"       );
+  auto gcm_vvel  = dm.get<real,2>("gcm_vvel"       );
+  auto gcm_wvel  = dm.get<real,2>("gcm_wvel"       );
+  auto gcm_temp  = dm.get<real,2>("gcm_temp"       );
+  auto gcm_rho_v = dm.get<real,2>("gcm_water_vapor");
+
+  auto ref_rho_d = dm.get<real,2>("ref_density_dry");
+  auto ref_rho_v = dm.get<real,2>("ref_density_vapor");
+  auto ref_rho_l = dm.get<real,2>("ref_density_liq");
+  auto ref_rho_i = dm.get<real,2>("ref_density_ice");
+  auto ref_temp  = dm.get<real,2>("ref_temp"       );
+  
+  using yakl::c::parallel_for;
+  using yakl::c::SimpleBounds;
+  parallel_for( SimpleBounds<2>(crm_nz,nens) , YAKL_LAMBDA (int k, int iens) {
+    gcm_rho_d(k,iens) = rho_d_col(k);
+    gcm_uvel (k,iens) = uvel_col (k);
+    gcm_vvel (k,iens) = vvel_col (k);
+    gcm_wvel (k,iens) = wvel_col (k);
+    gcm_temp (k,iens) = temp_col (k);
+    gcm_rho_v(k,iens) = rho_v_col(k);
+
+    // set reference state
+    ref_rho_d(k,iens) = rho_d_col(k);
+    ref_rho_v(k,iens) = rho_v_col(k);
+    ref_rho_l(k,iens) = 0;
+    ref_rho_i(k,iens) = 0;
+    ref_temp (k,iens) = temp_col(k);
+  });
+  
+  // Initialize the CRM internal state from the initial GCM column and random temperature perturbations
+  modules::broadcast_initial_gcm_column( coupler );
+  
+  int1d seeds("seeds",nens);
+  seeds = 0;
+  modules::perturb_temperature( coupler , seeds );
+}
 
 int main(int argc, char** argv) {
   MPI_Init( &argc , &argv );
@@ -28,16 +88,22 @@ int main(int argc, char** argv) {
     std::string inFile(argv[1]);
     YAML::Node config = YAML::LoadFile(inFile);
     if ( !config            ) { endrun("ERROR: Invalid YAML input file"); }
-    auto simTime        = config["simTime"    ].as<real>();
-    auto crm_nx         = config["crm_nx"     ].as<int>();
-    auto crm_ny         = config["crm_ny"     ].as<int>();
-    auto nens           = config["nens"       ].as<int>();
-    auto xlen           = config["xlen"       ].as<real>();
-    auto ylen           = config["ylen"       ].as<real>();
-    auto dt_gcm         = config["dt_gcm"     ].as<real>();
-    auto dt_crm_phys    = config["dt_crm_phys"].as<real>();
-    auto out_freq       = config["out_freq"   ].as<real>();
-    auto out_prefix     = config["out_prefix" ].as<std::string>();
+    auto idealized         = config["idealized"        ].as<bool>(false);
+    auto apply_sponge      = config["apply_sponge"     ].as<bool>(!idealized);
+    auto apply_gcm_forcing = config["apply_gcm_forcing"].as<bool>(!idealized);
+    auto simTime           = config["simTime"          ].as<real>();
+    auto crm_nx            = config["crm_nx"           ].as<int>();
+    auto crm_ny            = config["crm_ny"           ].as<int>();
+    auto nens              = config["nens"             ].as<int>();
+    auto xlen              = config["xlen"             ].as<real>(-1);
+    auto ylen              = config["ylen"             ].as<real>(-1);
+    auto zlen              = config["zlen"             ].as<real>(-1);
+    auto dt_gcm            = config["dt_gcm"           ].as<real>(simTime);
+    auto dt_crm_phys       = config["dt_crm_phys"      ].as<real>();
+    auto out_freq          = config["out_freq"         ].as<real>();
+    auto out_prefix        = config["out_prefix"       ].as<std::string>();
+    auto inner_mpi         = config["inner_mpi"        ].as<bool>(false);
+    auto vcoords_file      = config["vcoords"          ].as<std::string>();
 
     int nranks;
     int myrank;
@@ -54,21 +120,64 @@ int main(int argc, char** argv) {
 
     coupler.set_option<real>("gcm_physics_dt",dt_gcm);
     coupler.set_option<real>("crm_dt",dt_crm_phys);
+    
+    if (idealized) {
+      // This is for the dycore to pull out to determine how to do idealized test cases
+      coupler.set_option<std::string>( "standalone_input_file" , inFile );
+    }
 
-    // Store vertical coordinates
-    std::string vcoords_file = config["vcoords"].as<std::string>();
-    yakl::SimpleNetCDF nc;
-    nc.open(vcoords_file);
-    int crm_nz = nc.getDimSize("num_interfaces") - 1;
+    //set xlen, ylen, zlen based on init cond if needed
+    if (idealized && (xlen < 0 || ylen < 0 || zlen < 0)) {
+      set_domain_sizes(config, xlen, ylen, zlen);
+    }
+
+    int crm_nz = -1;
     real1d zint_in;
-    nc.read(zint_in,"vertical_interfaces");
-    nc.close();
+    if (vcoords_file == "uniform") {
+      if (config["crm_nz"]) {
+        crm_nz = config["crm_nz"].as<int>();
+      } else {
+        endrun("To use uniform vertical grid you need to specify crm_nz");
+      }
+      zint_in = real1d("zint_in",crm_nz+1);
+      const real dz = zlen / (crm_nz - 1);
+
+      using yakl::c::parallel_for;
+      parallel_for("uniform zint", crm_nz+1, YAKL_LAMBDA(int k) {
+          if (k == 0) {
+            zint_in(k) = 0;
+          } else if (k == crm_nz) {
+            zint_in(k) = zlen;
+          } else {
+            zint_in(k) = k * dz - dz / 2;
+          }
+      });
+    } else {
+      // Read vertical coordinates
+      //THIS IS BROKEN FOR PARALLEL IO CASE- maybe this is okay ie switch entirely to standard netcdf?
+      yakl::SimpleNetCDF nc;
+      nc.open(vcoords_file);
+      crm_nz = nc.getDimSize("num_interfaces") - 1;
+      zint_in = real1d("zint_in",crm_nz+1);
+      nc.read(zint_in,"vertical_interfaces");
+      nc.close();
+      //TODO: Coupler needs to eventually support ensemble dependent vertical grids
+      //real2d zint_expanded = real2d("zint_expanded",crm_nz+1,nens);
+      //parallel_for( "Set zint expanded" , SimpleBounds<2>(crm_nz+1,nens) , YAKL_LAMBDA (int k, int n) {
+      //  zint_expanded(k,n) = zint_in(k);
+      //});
+    }
+
+    if (inner_mpi) {
+      partition_domain(inFile, crm_nx, crm_ny);
+    }
 
     // Allocates the coupler state (density_dry, uvel, vvel, wvel, temp, vert grid, hydro background) for thread 0
     coupler.allocate_coupler_state( crm_nz , crm_ny , crm_nx , nens );
 
     // Set the vertical grid in the coupler
     coupler.set_grid( xlen , ylen , zint_in );
+
 
     // NORMALLY THIS WOULD BE DONE INSIDE THE CRM, BUT WE'RE USING CONSTANTS DEFINED BY THE CRM MICRO SCHEME
     // Create the dycore and the microphysics
@@ -84,52 +193,6 @@ int main(int argc, char** argv) {
       endrun("ERROR: Running with a different number of vertical levels than compiled for");
     }
 
-    // Compute a supercell initial column
-    real1d rho_d_col("rho_d_col",crm_nz);
-    real1d uvel_col ("uvel_col" ,crm_nz);
-    real1d vvel_col ("vvel_col" ,crm_nz);
-    real1d wvel_col ("wvel_col" ,crm_nz);
-    real1d temp_col ("temp_col" ,crm_nz);
-    real1d rho_v_col("rho_v_col",crm_nz);
-
-    auto R_d  = coupler.get_option<real>("R_d" );
-    auto R_v  = coupler.get_option<real>("R_v" );
-    auto grav = coupler.get_option<real>("grav");
-    supercell_init( zint_in, rho_d_col, uvel_col, vvel_col, wvel_col, temp_col, rho_v_col, R_d , R_v, grav );
-
-    // Set the GCM column data for each ensemble to the supercell initial state
-    auto &dm = coupler.get_data_manager_device_readwrite();
-
-    auto gcm_rho_d = dm.get<real,2>("gcm_density_dry");
-    auto gcm_uvel  = dm.get<real,2>("gcm_uvel"       );
-    auto gcm_vvel  = dm.get<real,2>("gcm_vvel"       );
-    auto gcm_wvel  = dm.get<real,2>("gcm_wvel"       );
-    auto gcm_temp  = dm.get<real,2>("gcm_temp"       );
-    auto gcm_rho_v = dm.get<real,2>("gcm_water_vapor");
-
-    auto ref_rho_d = dm.get<real,2>("ref_density_dry");
-    auto ref_rho_v = dm.get<real,2>("ref_density_vapor");
-    auto ref_rho_l = dm.get<real,2>("ref_density_liq");
-    auto ref_rho_i = dm.get<real,2>("ref_density_ice");
-    auto ref_temp  = dm.get<real,2>("ref_temp"       );
-
-    using yakl::c::parallel_for;
-    using yakl::c::SimpleBounds;
-    parallel_for( SimpleBounds<2>(crm_nz,nens) , YAKL_LAMBDA (int k, int iens) {
-      gcm_rho_d(k,iens) = rho_d_col(k);
-      gcm_uvel (k,iens) = uvel_col (k);
-      gcm_vvel (k,iens) = vvel_col (k);
-      gcm_wvel (k,iens) = wvel_col (k);
-      gcm_temp (k,iens) = temp_col (k);
-      gcm_rho_v(k,iens) = rho_v_col(k);
-
-      // set reference state
-      ref_rho_d(k,iens) = rho_d_col(k);
-      ref_rho_v(k,iens) = rho_v_col(k);
-      ref_rho_l(k,iens) = 0;
-      ref_rho_i(k,iens) = 0;
-      ref_temp (k,iens) = temp_col(k);
-    });
 
     if (mainproc) {
       std::cout << "Dycore: " << dycore.dycore_name() << std::endl;
@@ -148,13 +211,10 @@ int main(int argc, char** argv) {
       }
       std::cout << "\n\n";
     }
-
-    // Initialize the CRM internal state from the initial GCM column and random temperature perturbations
-    modules::broadcast_initial_gcm_column( coupler );
-
-    int1d seeds("seeds",nens);
-    seeds = 0;
-    modules::perturb_temperature( coupler , seeds );
+    
+    if (!idealized) { 
+      initialize_from_supercell_column(zint_in, coupler);
+    }
     
 #ifdef PAMC_DYCORE
     dycore.pre_time_loop(coupler);
@@ -171,13 +231,19 @@ int main(int argc, char** argv) {
     yakl::timer_start("main_loop");
     for (int step_gcm = 0; step_gcm < nsteps_gcm; ++step_gcm) {
 
-      modules::compute_gcm_forcing_tendencies( coupler );
+      if (apply_gcm_forcing) { 
+        modules::compute_gcm_forcing_tendencies( coupler );
+      }
 
       for (int step_crm_phys = 0; step_crm_phys < nsteps_crm_phys; ++step_crm_phys) {
 
-        coupler.run_module( "apply_gcm_forcing_tendencies" , modules::apply_gcm_forcing_tendencies                        );
+        if (apply_gcm_forcing) { 
+          coupler.run_module( "apply_gcm_forcing_tendencies" , modules::apply_gcm_forcing_tendencies                        );
+        }
         coupler.run_module( "dycore"                       , [&] (pam::PamCoupler &coupler) { dycore.timeStep(coupler); } );
-        coupler.run_module( "sponge_layer"                 , modules::sponge_layer                                        );
+        if (apply_sponge) { 
+          coupler.run_module( "sponge_layer"                 , modules::sponge_layer                                        );
+        }
         coupler.run_module( "sgs"                          , [&] (pam::PamCoupler &coupler) { sgs   .timeStep(coupler); } );
         coupler.run_module( "micro"                        , [&] (pam::PamCoupler &coupler) { micro .timeStep(coupler); } );
         
@@ -187,6 +253,8 @@ int main(int argc, char** argv) {
           yakl::timer_start("output");
           output( coupler , out_prefix , etime_gcm);
           yakl::timer_stop("output");
+    
+          auto &dm = coupler.get_data_manager_device_readonly();
           real maxw = maxval(abs(dm.get_collapsed<real const>("wvel")));
           if (mainproc) {
             std::cout << "Etime , dtphys, maxw: " << etime_gcm << " , " 

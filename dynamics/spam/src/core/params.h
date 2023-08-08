@@ -13,11 +13,10 @@ public:
   int nz_dual = -1;
   int nens = -1;
 
-  int nsteps_gcm = -1;
   real out_freq = -1.;
   real stat_freq = -1.;
-  real dt_gcm = -1.;
   real dtcrm = -1.;
+  real sim_time = -1.;
   real dt_crm_phys = -1.;
   int crm_per_phys = -1;
   int statSize = -1;
@@ -56,10 +55,9 @@ void readParamsFile(std::string inFile, Parameters &params, Parallel &par,
   par.nprocx = config["nprocx"].as<int>();
   par.nprocy = config["nprocy"].as<int>();
   params.nens = config["nens"].as<int>();
-  params.dt_gcm = config["dt_gcm"].as<real>();
+  params.sim_time = config["simTime"].as<real>();
   params.dt_crm_phys = config["dt_crm_phys"].as<real>();
   params.crm_per_phys = config["crm_per_phys"].as<int>();
-  params.nsteps_gcm = config["nsteps_gcm"].as<int>();
   params.out_freq = config["out_freq"].as<real>(-1.);
   params.stat_freq = config["stat_freq"].as<real>(-1.);
   params.tstype = config["tstype"].as<std::string>();
@@ -82,8 +80,7 @@ void readParamsFile(std::string inFile, Parameters &params, Parallel &par,
 
   // ADD A CHECK HERE THAT TOTAL TIME IS EXACTLY DIVISIBLE BY STAT_FREQ
   if (params.stat_freq >= 0.) {
-    real total_time = params.nsteps_gcm * params.dt_gcm;
-    params.statSize = total_time / params.stat_freq;
+    params.statSize = params.sim_time / params.stat_freq;
   } else {
     params.statSize = 0;
   }
@@ -237,10 +234,10 @@ void check_and_print_parameters(const Parameters &params, const Parallel &par,
     std::cout << "halox:      " << par.halox << "\n";
     std::cout << "haloy:      " << par.haloy << "\n";
 
+    std::cout << "sim_time:         " << params.sim_time << "\n";
     std::cout << "dtcrm:         " << params.dtcrm << "\n";
     std::cout << "dt_crm_phys:         " << params.dt_crm_phys << "\n";
     std::cout << "statSize:     " << params.statSize << "\n";
-    std::cout << "nsteps_gcm:     " << params.nsteps_gcm << "\n";
     std::cout << "crm per phys:     " << params.crm_per_phys << "\n";
     std::cout << "out_freq:       " << params.out_freq << "\n";
     std::cout << "stat_freq:       " << params.stat_freq << "\n";
