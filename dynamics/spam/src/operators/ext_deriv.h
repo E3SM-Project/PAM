@@ -94,7 +94,7 @@ void YAKL_INLINE compute_wD0(SArray<real, 1, ndims> &tend, const R &reconvar,
         }
         // reference state
         if constexpr (std::is_same_v<R, real3d>) {
-          recon(l, d) = reconvar(d + l * ndims, k + ks, n);
+          recon(l, d) = reconvar(l, k + ks, n);
         }
       }
     }

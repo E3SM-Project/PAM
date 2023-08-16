@@ -2748,9 +2748,9 @@ public:
                   const Geometry<Twisted> &dual_geom,
                   Equations &equations) override {
 
-    if (ndims > 1) {
-      throw std::runtime_error("semi-implicit not implemented in 3d yet");
-    }
+    //if (ndims > 1) {
+    //  throw std::runtime_error("semi-implicit not implemented in 3d yet");
+    //}
 
     LinearSystem::initialize(params, primal_geom, dual_geom, equations);
 
@@ -3384,6 +3384,18 @@ public:
         });
     auxiliary_vars.exchange({BVAR});
 
+    //auto rhs_v0 = rhs_v.slice<4>(0, yakl::COLON, yakl::COLON, yakl::COLON, yakl::COLON);
+    //auto rhs_v1 = rhs_v.slice<4>(1, yakl::COLON, yakl::COLON, yakl::COLON, yakl::COLON);
+    //std::cout << "rhs v0: "
+    //          << yakl::intrinsics::minval(rhs_v0) << " "
+    //          << yakl::intrinsics::maxval(rhs_v0) << " "
+    //          << yakl::intrinsics::sum(rhs_v0) << std::endl;
+    //
+    //std::cout << "rhs v1: "
+    //          << yakl::intrinsics::minval(rhs_v1) << " "
+    //          << yakl::intrinsics::maxval(rhs_v1) << " "
+    //          << yakl::intrinsics::sum(rhs_v1) << std::endl;
+
     parallel_for(
         "Anelastic - add pressure gradient W",
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
@@ -3406,7 +3418,9 @@ public:
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           compute_wD0<VS::ndensity_dycore, ADD_MODE::ADD>(rhs_v, q_pi, Bvar, pis, pjs, pks, i, j, k, n);
-          sol_v(0, k + pks, j + pjs, i + pis, n) = rhs_v(0, k + pks, j + pjs, i + pis, n);
+          for (int d = 0; d < ndims; ++d) {
+            sol_v(d, k + pks, j + pjs, i + pis, n) = rhs_v(d, k + pks, j + pjs, i + pis, n);
+          }
         });
 
     solution.exchange({VVAR});
@@ -3422,7 +3436,9 @@ public:
           compute_H10<1, diff_ord>(u, sol_v, primal_geometry, dual_geometry,
                                    dis, djs, dks, i, j, k, n);
 
-          fvar(0, k + dks, j + djs, i + dis, n) = u(0) * rho_pi(0, k + pks, n);
+          for (int d = 0; d < ndims; ++d) {
+            fvar(d, k + dks, j + djs, i + dis, n) = u(d) * rho_pi(0, k + pks, n);
+          }
 
           if (k < dual_topology.ni - 2) {
             const real uw = compute_H01(sol_w, primal_geometry, dual_geometry,
@@ -3454,13 +3470,21 @@ public:
         });
     
 
+    auto sol_v0 = sol_v.slice<4>(0, yakl::COLON, yakl::COLON, yakl::COLON, yakl::COLON);
+    auto sol_v1 = sol_v.slice<4>(1, yakl::COLON, yakl::COLON, yakl::COLON, yakl::COLON);
     auto sol_dens0 = sol_dens.slice<4>(0, yakl::COLON, yakl::COLON, yakl::COLON, yakl::COLON);
     auto sol_dens1 = sol_dens.slice<4>(1, yakl::COLON, yakl::COLON, yakl::COLON, yakl::COLON);
     
-    //std::cout << "v: "
-    //          << yakl::intrinsics::minval(sol_v) << " "
-    //          << yakl::intrinsics::maxval(sol_v) << " "
-    //          << yakl::intrinsics::sum(sol_v) << std::endl;
+    
+    //std::cout << "v0: "
+    //          << yakl::intrinsics::minval(sol_v0) << " "
+    //          << yakl::intrinsics::maxval(sol_v0) << " "
+    //          << yakl::intrinsics::sum(sol_v0) << std::endl;
+    //
+    //std::cout << "v1: "
+    //          << yakl::intrinsics::minval(sol_v1) << " "
+    //          << yakl::intrinsics::maxval(sol_v1) << " "
+    //          << yakl::intrinsics::sum(sol_v1) << std::endl;
     //
     //std::cout << "w: "
     //          << yakl::intrinsics::minval(sol_w) << " "
