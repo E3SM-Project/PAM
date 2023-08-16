@@ -44,6 +44,8 @@ struct ReferenceState_Euler {
   Profile q_pi;
   Profile rho_di;
   Profile rho_pi;
+  Profile pres_pi;
+  Profile pres_di;
   Profile Nsq_pi;
   Profile B;
   bool is_initialized = false;
@@ -55,9 +57,11 @@ struct ReferenceState_Euler {
     this->dens.initialize(dual_topology, "ref dens", 1, 1, VS::ndensity);
     this->geop.initialize(dual_topology, "ref geop", 1, 1, 1);
     this->rho_pi.initialize(primal_topology, "refrho_pi", 0, 0, 1);
-    this->q_pi.initialize(primal_topology, "refq_pi", 0, 0, VS::ndensity);
     this->rho_di.initialize(dual_topology, "refrho_di", 0, 0, 1);
     this->q_di.initialize(dual_topology, "refq_di", 0, 0, VS::ndensity);
+    this->q_pi.initialize(primal_topology, "refq_pi", 0, 0, VS::ndensity);
+    this->pres_di.initialize(dual_topology, "refp_di", 0, 0, 1);
+    this->pres_pi.initialize(primal_topology, "refp_pi", 0, 0, 1);
     this->Nsq_pi.initialize(primal_topology, "refNsq_pi", 0, 0, 1);
     this->B.initialize(dual_topology, "ref B", 1, 1, VS::ndensity_active);
 
