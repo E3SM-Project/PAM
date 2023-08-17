@@ -847,22 +847,6 @@ class Dycore {
     auto sim2d       = ny == 1;
     auto num_tracers = coupler.get_num_tracers();
 
-
-    int nbands = 5;
-    int n      = 5;
-    real3d diags("diags",nbands,n,nens);  diags = 0;
-    real2d rhs  ("rhs"         ,n,nens);
-    parallel_for( YAKL_AUTO_LABEL() , n , YAKL_LAMBDA (int i) {
-      if (i > 1  ) diags(0,i,0) = 0.5;
-      if (i > 0  ) diags(1,i,0) =  -1;
-                   diags(2,i,0) =   2;
-      if (i < n-1) diags(3,i,0) =  -1;
-      if (i < n-2) diags(4,i,0) = 0.5;
-      rhs  (  i,0) = i == n/2 ? 1 : 0;
-    });
-    solve_banded( diags , rhs );
-    std::cout << rhs;
-
     coupler.set_option<bool>("balance_hydrostasis_with_gravity",true);
     if (coupler.get_option<bool>("balance_hydrostasis_with_gravity")) {
       coupler.get_data_manager_device_readwrite().register_and_allocate<real>("variable_gravity","",{nz,nens});
