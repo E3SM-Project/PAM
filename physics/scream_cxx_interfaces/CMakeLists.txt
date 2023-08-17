@@ -41,24 +41,16 @@ set(SCREAM_NUM_VERTICAL_LEV        ${PAM_NLEV} CACHE BOOL "" FORCE)
 if (PAM_STANDALONE)
   set(SCREAM_DATA_DIR                ${CMAKE_CURRENT_SOURCE_DIR}/../micro/p3)
 else()
-  set (SCREAM_INPUT_ROOT /gpfs/alpine/cli115/world-shared/e3sm/inputdata CACHE PATH "" FORCE )
+  # MACH comes from CIME build system
+  execute_process(COMMAND ${SCREAM_HOME}/components/eamxx/scripts/query-cime ${MACH} DIN_LOC_ROOT
+    RESULT_VARIABLE QC_STATUS
+    OUTPUT_VARIABLE QC_OUTPUT
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+  if (QC_STATUS EQUAL 0)
+    set(SCREAM_INPUT_ROOT ${QC_OUTPUT} CACHE PATH "" FORCE )
+  endif()
   set (SCREAM_DATA_DIR ${SCREAM_INPUT_ROOT}/atm/scream CACHE PATH "" FORCE)
-  ## Handle input root (for P3 lookup tables)
-  #if (DEFINED ENV{SCREAM_MACHINE})
-  #  set(DEFAULT_SCREAM_MACHINE $ENV{SCREAM_MACHINE})
-  #endif()
-  #set(SCREAM_MACHINE ${DEFAULT_SCREAM_MACHINE} CACHE STRING "The CIME/SCREAM name for the current machine")
-  #if (NOT SCREAM_INPUT_ROOT)
-  #  execute_process(COMMAND ${SCREAM_HOME}/components/eamxx/scripts/query-cime ${SCREAM_MACHINE} DIN_LOC_ROOT
-  #  RESULT_VARIABLE QC_STATUS
-  #  OUTPUT_VARIABLE QC_OUTPUT
-  #  OUTPUT_STRIP_TRAILING_WHITESPACE
-  #  )
-  #  if (QC_STATUS EQUAL 0)
-  #    set(DEFAULT_SCREAM_INPUT_ROOT ${QC_OUTPUT})
-  #  endif()
-  #endif()
-  #set (SCREAM_DATA_DIR ${SCREAM_INPUT_ROOT}/atm/scream CACHE PATH "" FORCE)
 endif()
 
 macro (EkatConfigFile CONFIG_FILE_IN CONFIG_FILE_C EKAT_CONFIGURE_FILE_F90_FILE)
