@@ -88,9 +88,11 @@ public:
         par.masterproc);
 
     if (coupler.option_exists("standalone_input_file")) {
-      std::string inFile =
-          coupler.get_option<std::string>("standalone_input_file");
-      read_model_params_file(inFile, params, par, coupler, testcase);
+      #ifdef PAM_STANDALONE
+        std::string inFile =
+            coupler.get_option<std::string>("standalone_input_file");
+        read_model_params_file(inFile, params, par, coupler, testcase);
+      #endif
     } else {
       read_model_params_coupler(params, par, coupler, testcase);
     }

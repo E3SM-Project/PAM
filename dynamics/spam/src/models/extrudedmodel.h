@@ -3792,41 +3792,42 @@ void testcase_from_string(std::unique_ptr<TestCase> &testcase, std::string name,
 void read_model_params_file(std::string inFile, ModelParameters &params,
                             Parallel &par, PamCoupler &coupler,
                             std::unique_ptr<TestCase> &testcase) {
+  #ifdef PAM_STANDALONE
+    // Read common parameters
+    int nz = coupler.get_nz();
+    readParamsFile(inFile, params, par, nz);
 
-  // Read common parameters
-  int nz = coupler.get_nz();
-  readParamsFile(inFile, params, par, nz);
+    // Read config file
+    YAML::Node config = YAML::LoadFile(inFile);
 
-  // Read config file
-  YAML::Node config = YAML::LoadFile(inFile);
+    params.acoustic_balance = config["balance_initial_density"].as<bool>(false);
+    params.uniform_vertical = (config["vcoords"].as<std::string>() == "uniform");
+    // Read diffusion coefficients
+    params.entropicvar_diffusion_coeff =
+        config["entropicvar_diffusion_coeff"].as<real>(0);
+    params.velocity_diffusion_coeff =
+        config["velocity_diffusion_coeff"].as<real>(0);
+    // Read the data initialization options
+    params.initdataStr = config["initData"].as<std::string>();
+    params.force_refstate_hydrostatic_balance =
+        config["force_refstate_hydrostatic_balance"].as<bool>(false);
 
-  params.acoustic_balance = config["balance_initial_density"].as<bool>(false);
-  params.uniform_vertical = (config["vcoords"].as<std::string>() == "uniform");
-  // Read diffusion coefficients
-  params.entropicvar_diffusion_coeff =
-      config["entropicvar_diffusion_coeff"].as<real>(0);
-  params.velocity_diffusion_coeff =
-      config["velocity_diffusion_coeff"].as<real>(0);
-  // Read the data initialization options
-  params.initdataStr = config["initData"].as<std::string>();
-  params.force_refstate_hydrostatic_balance =
-      config["force_refstate_hydrostatic_balance"].as<bool>(false);
+    for (int i = 0; i < ntracers_dycore; i++) {
+      params.tracerdataStr[i] =
+          config["initTracer" + std::to_string(i)].as<std::string>("constant");
+      params.dycore_tracerpos[i] =
+          config["initTracerPos" + std::to_string(i)].as<bool>(false);
+    }
 
-  for (int i = 0; i < ntracers_dycore; i++) {
-    params.tracerdataStr[i] =
-        config["initTracer" + std::to_string(i)].as<std::string>("constant");
-    params.dycore_tracerpos[i] =
-        config["initTracerPos" + std::to_string(i)].as<bool>(false);
-  }
+    // Store vertical cell interface heights in the data manager
+    auto &dm = coupler.get_data_manager_device_readonly();
+    params.zint = dm.get<real const, 2>("vertical_interface_height");
 
-  // Store vertical cell interface heights in the data manager
-  auto &dm = coupler.get_data_manager_device_readonly();
-  params.zint = dm.get<real const, 2>("vertical_interface_height");
+    params.ylen = 1.0;
+    params.yc = 0.5;
 
-  params.ylen = 1.0;
-  params.yc = 0.5;
-
-  testcase_from_string(testcase, params.initdataStr, params.acoustic_balance);
+    testcase_from_string(testcase, params.initdataStr, params.acoustic_balance);
+  #endif
 }
 
 void read_model_params_coupler(ModelParameters &params, Parallel &par,
@@ -5697,6 +5698,7 @@ void testcase_from_string(std::unique_ptr<TestCase> &testcase, std::string name,
   }
 }
 
+#ifdef PAM_STANDALONE
 void testcase_from_config(std::unique_ptr<TestCase> &testcase,
                           const YAML::Node &config) {
   const std::string name = config["initData"].as<std::string>();
@@ -5704,6 +5706,7 @@ void testcase_from_config(std::unique_ptr<TestCase> &testcase,
       config["balance_initial_density"].as<bool>(false);
   testcase_from_string(testcase, name, acoustic_balance);
 }
+#endif
 
 std::unique_ptr<TestCase> make_coupled_test_case(PamCoupler &coupler) {
   return std::make_unique<CoupledTestCase>(coupler);

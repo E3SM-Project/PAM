@@ -45,48 +45,50 @@ public:
 
 void readParamsFile(std::string inFile, Parameters &params, Parallel &par,
                     int nz) {
-  // Read config file
-  YAML::Node config = YAML::LoadFile(inFile);
+  #ifdef PAM_STANDALONE
+    // Read config file
+    YAML::Node config = YAML::LoadFile(inFile);
 
-  params.inner_mpi = config["inner_mpi"].as<bool>(false);
-  params.nx_glob = config["crm_nx"].as<int>();
-  params.ny_glob = config["crm_ny"].as<int>();
-  par.nprocx = config["nprocx"].as<int>();
-  par.nprocy = config["nprocy"].as<int>();
-  params.nens = config["nens"].as<int>();
-  params.dt_gcm = config["dt_gcm"].as<real>();
-  params.dt_crm_phys = config["dt_crm_phys"].as<real>();
-  params.crm_per_phys = config["crm_per_phys"].as<int>();
-  params.nsteps_gcm = config["nsteps_gcm"].as<int>();
-  params.out_freq = config["out_freq"].as<real>(-1.);
-  params.stat_freq = config["stat_freq"].as<real>(-1.);
-  params.tstype = config["tstype"].as<std::string>();
-  params.si_tolerance = config["si_tolerance"].as<real>(1e-8);
-  params.si_monitor_convergence = config["si_monitor_convergence"].as<int>(2);
-  params.si_verbosity_level =
-      config["si_verbosity_level"].as<int>(params.si_monitor_convergence);
-  params.si_max_iters = config["si_max_iters"].as<int>(
-      params.si_monitor_convergence > 1 ? 50 : 5);
-  params.si_nquad = config["si_nquad"].as<int>(4);
-  params.si_two_point_discrete_gradient =
-      config["si_two_point_discrete_gradient"].as<bool>(false);
-  params.tanh_upwind_coeff = config["tanh_upwind_coeff"].as<real>(250);
-  params.outputName = config["dycore_out_prefix"].as<std::string>("output");
-  params.nz_dual = nz;
+    params.inner_mpi = config["inner_mpi"].as<bool>(false);
+    params.nx_glob = config["crm_nx"].as<int>();
+    params.ny_glob = config["crm_ny"].as<int>();
+    par.nprocx = config["nprocx"].as<int>();
+    par.nprocy = config["nprocy"].as<int>();
+    params.nens = config["nens"].as<int>();
+    params.dt_gcm = config["dt_gcm"].as<real>();
+    params.dt_crm_phys = config["dt_crm_phys"].as<real>();
+    params.crm_per_phys = config["crm_per_phys"].as<int>();
+    params.nsteps_gcm = config["nsteps_gcm"].as<int>();
+    params.out_freq = config["out_freq"].as<real>(-1.);
+    params.stat_freq = config["stat_freq"].as<real>(-1.);
+    params.tstype = config["tstype"].as<std::string>();
+    params.si_tolerance = config["si_tolerance"].as<real>(1e-8);
+    params.si_monitor_convergence = config["si_monitor_convergence"].as<int>(2);
+    params.si_verbosity_level =
+        config["si_verbosity_level"].as<int>(params.si_monitor_convergence);
+    params.si_max_iters = config["si_max_iters"].as<int>(
+        params.si_monitor_convergence > 1 ? 50 : 5);
+    params.si_nquad = config["si_nquad"].as<int>(4);
+    params.si_two_point_discrete_gradient =
+        config["si_two_point_discrete_gradient"].as<bool>(false);
+    params.tanh_upwind_coeff = config["tanh_upwind_coeff"].as<real>(250);
+    params.outputName = config["dycore_out_prefix"].as<std::string>("output");
+    params.nz_dual = nz;
 
-  params.couple_wind = config["couple_wind"].as<bool>(true);
-  params.couple_wind_exact_inverse = config["couple_wind_exact_inverse"].as<bool>(false);
+    params.couple_wind = config["couple_wind"].as<bool>(true);
+    params.couple_wind_exact_inverse = config["couple_wind_exact_inverse"].as<bool>(false);
 
-//ADD A CHECK HERE THAT TOTAL TIME IS EXACTLY DIVISIBLE BY STAT_FREQ
-  if (params.stat_freq >= 0.)
-  {
-  real total_time = params.nsteps_gcm * params.dt_gcm;
-  params.statSize = total_time / params.stat_freq;
-  }
-  else
-  {params.statSize = 0;}
+  //ADD A CHECK HERE THAT TOTAL TIME IS EXACTLY DIVISIBLE BY STAT_FREQ
+    if (params.stat_freq >= 0.)
+    {
+    real total_time = params.nsteps_gcm * params.dt_gcm;
+    params.statSize = total_time / params.stat_freq;
+    }
+    else
+    {params.statSize = 0;}
 
-  params.dtcrm = params.dt_crm_phys / params.crm_per_phys;
+    params.dtcrm = params.dt_crm_phys / params.crm_per_phys;
+  #endif
 }
 
 void read_params_coupler(Parameters &params, Parallel &par,

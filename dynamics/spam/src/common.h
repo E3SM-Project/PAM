@@ -4,7 +4,6 @@
 #include <iostream>
 //#include <cstring>
 #include "mpi.h"
-#include "yaml-cpp/yaml.h"
 #include <array>
 #include <complex>
 #include <extensions/YAKL_fft.h>
@@ -13,6 +12,9 @@
 #include <optional>
 #include <sstream>
 #include <string>
+#ifdef PAM_STANDALONE
+#include "yaml-cpp/yaml.h"
+#endif
 // #ifdef YAKL_ARCH_CUDA
 // #include <cuda/std/complex>
 // #endif

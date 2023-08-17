@@ -4,7 +4,6 @@ project(scream_cxx_interfaces CXX Fortran C)
 set(MYSOURCES scream_cxx_interface_p3.cpp
               scream_cxx_interface_shoc.cpp)
 
-
 set(SCREAM_LIB_ONLY ON CACHE BOOL "" FORCE)
 set(CMAKE_MODULE_PATH ${SCREAM_HOME}/components/eamxx/cmake;${SCREAM_HOME}/externals/ekat/cmake)
 set(SCREAM_CIME_BUILD ON)
