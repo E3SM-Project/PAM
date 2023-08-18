@@ -2711,6 +2711,7 @@ public:
 // *******   Linear system   ***********//
 class ModelLinearSystem : public LinearSystem {
   bool pressure_formulation = true;
+  bool new_pressure_formulation = true;
 
   yakl::RealFFT1D<real> fftv_x;
   yakl::RealFFT1D<real> fftw_x;
@@ -2718,6 +2719,8 @@ class ModelLinearSystem : public LinearSystem {
   // yakl::RealFFT1D<real> fftw_y;
 
   int nxf, nyf;
+
+  real3d pres_coeff;
 
   real4d Blin_coeff;
   real4d v_transform;
@@ -2790,7 +2793,7 @@ public:
     tri_c = complex4d("tri c", pnl, ny, nx, nens);
     
    
-    if (pressure_formulation) { 
+    if (pressure_formulation || new_pressure_formulation) { 
       p_transform = real4d("p transform", pni, nyf, nxf, nens);
       yakl::memset(p_transform, 0);
 
@@ -2803,11 +2806,13 @@ public:
       if (ndims > 1) {
         fftp_y.init(p_transform, 1, ny);
       }
+    
+      this->pres_coeff = real3d("pres coeff", VS::ndensity_dycore, pni, nens); 
     }
   }
   
   virtual void compute_coefficients(real dt) override {
-    if (pressure_formulation) {
+    if (pressure_formulation || new_pressure_formulation) {
       compute_coefficients_pressure(dt);
     } else {
       compute_coefficients_orig(dt);
@@ -2850,11 +2855,32 @@ public:
     YAKL_SCOPE(tri_l, this->tri_l);
     YAKL_SCOPE(tri_d, this->tri_d);
     YAKL_SCOPE(tri_u, this->tri_u);
+    YAKL_SCOPE(pres_coeff, this->pres_coeff);
 
     const real alpha = 0.5 * dt;
     const real Cpd = thermo.cst.Cpd;
     const real pr = thermo.cst.pr;
     const real kappa_d = thermo.cst.kappa_d;
+
+    parallel_for(
+        "Anelastic set coeffs",
+        SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
+        YAKL_LAMBDA(int k, int n) {
+          real z = primal_geometry.zint(k + pks, n);
+          real p = pres_pi(0, k + pks, n);
+          
+          real rho_ref = rho_pi(0, k + pks, n);
+          real alpha_ref = 1 / rho_ref;
+          real s_ref = q_pi(varset.dens_id_entr, k + pks, n);
+          
+          real dpds_ref =
+              thermo.compute_dpdentropic_var(alpha_ref, s_ref, 0, 0, 0, 0);
+          real cref = thermo.compute_soundspeed(alpha_ref, s_ref, 0, 0, 0, 0);
+          real dpdrho_ref = cref * cref;
+          
+          pres_coeff(varset.dens_id_mass, k, n) = dpdrho_ref - s_ref / rho_ref * dpds_ref;
+          pres_coeff(varset.dens_id_entr, k, n) = dpds_ref / rho_ref;
+    });
 
     parallel_for(
         "Anelastic set coeffs",
@@ -2877,18 +2903,54 @@ public:
                                                   dual_topology.n_cells_y, dual_topology.nl);
 
           trip_l(k, j, i, n) = 0;
-          
-          real Pifac = kappa_d * Cpd * std::pow(pres_pi(0, k + pks, n) / pr, kappa_d);
-          const real tht = q_pi(varset.dens_id_entr, k + pks, n); 
-          trip_d(k, j, i, n) = (kappa_d - 1) * rho_pi(0, k + pks, n) * tht;
-          for (int d = 0; d < ndims; ++d) {
-            trip_d(k, j, i, n) += alpha * alpha * fHn1bar * fH1(d) * fD0Dbar(d) *
-                                 rho_pi(0, k + pks, n) * tht * tht * Pifac;
+          trip_u(k, j, i, n) = 0;
+         
+          if (new_pressure_formulation) {
+            trip_d(k, j, i, n) = 1;
+            for (int dd = 0; dd < VS::ndensity_prognostic; ++dd) {
+              for (int d = 0; d < ndims; ++d) {
+                trip_d(k, j, i, n) -= alpha * alpha * pres_coeff(dd, k, n) * fHn1bar * fH1(d) * fD0Dbar(d) *
+                                     q_pi(dd, k + pks, n);
+              }
+            }
+          } else {
+            real Pifac = kappa_d * Cpd * std::pow(pres_pi(0, k + pks, n) / pr, kappa_d);
+            const real tht = q_pi(varset.dens_id_entr, k + pks, n); 
+            trip_d(k, j, i, n) = (kappa_d - 1) * rho_pi(0, k + pks, n) * tht;
+            for (int d = 0; d < ndims; ++d) {
+              trip_d(k, j, i, n) += alpha * alpha * fHn1bar * fH1(d) * fD0Dbar(d) *
+                                   rho_pi(0, k + pks, n) * tht * tht * Pifac;
+            }
           }
 
-          trip_u(k, j, i, n) = 0;
 
-          {
+          if (new_pressure_formulation) {
+            for (int d = 0; d < VS::ndensity_prognostic; ++d) { 
+              const real gamma_kp1 = 1;
+              const real gamma_k = 1;
+              const real gamma_km1 = 1;
+
+              const real beta_kp1 = q_di(d, k + 1 + dks, n) *
+                H01_coeff(primal_geometry, dual_geometry, pis, pjs, pks, i, j, k + 1, n);                
+              
+              const real beta_k = q_di(d, k + dks, n) *
+                H01_coeff(primal_geometry, dual_geometry, pis, pjs, pks, i, j, k, n);
+
+              // TODO: This is more tricky with higher order hodge stars !!!
+              const real alpha_k = -alpha * alpha * fHn1bar * pres_coeff(d, k, n);
+
+              trip_u(k, j, i, n) += alpha_k * beta_kp1 * gamma_kp1;
+              trip_l(k, j, i, n) += alpha_k * beta_k * gamma_km1;
+
+              if (k == 0) {
+                trip_d(k, j, i, n) += -alpha_k * beta_kp1 * gamma_k;
+              } else if (k == (primal_topology.ni - 1)) {
+                trip_d(k, j, i, n) += -alpha_k * beta_k * gamma_k;
+              } else {
+                trip_d(k, j, i, n) += -alpha_k * (beta_kp1 + beta_k) * gamma_k;
+              }
+            }
+          } else {
             const real gamma_kp1 = kappa_d * Cpd * std::pow(pres_pi(0, k + 1 + pks, n) / pr, kappa_d);
             const real gamma_k = kappa_d * Cpd * std::pow(pres_pi(0, k + pks, n) / pr, kappa_d);
             const real gamma_km1 = kappa_d * Cpd * std::pow(pres_pi(0, k - 1 + pks, n) / pr, kappa_d);
@@ -2916,7 +2978,7 @@ public:
             }
           }
 
-          {
+          if (!new_pressure_formulation) {
             const real gamma_kp1 = Bref(varset.dens_id_entr, k + 1 + pks, n);
             const real gamma_k = Bref(varset.dens_id_entr, k + pks, n);
             const real gamma_km1 =  Bref(varset.dens_id_entr, k - 1 + pks, n);
@@ -3190,7 +3252,7 @@ public:
                      FieldSet<nconstant> &const_vars,
                      FieldSet<nauxiliary> &auxiliary_vars,
                      FieldSet<nprognostic> &solution) override {
-    if (pressure_formulation) {
+    if (pressure_formulation || new_pressure_formulation) {
       solve_pressure(dt, rhs, const_vars, auxiliary_vars, solution);
     } else {
       solve_orig(dt, rhs, const_vars, auxiliary_vars, solution);
@@ -3242,6 +3304,7 @@ public:
     YAKL_SCOPE(trip_d, this->trip_d);
     YAKL_SCOPE(trip_u, this->trip_u);
     YAKL_SCOPE(trip_c, this->trip_c);
+    YAKL_SCOPE(pres_coeff, this->pres_coeff);
 
     const real Cpd = thermo.cst.Cpd;
     const real pr = thermo.cst.pr;
@@ -3275,18 +3338,26 @@ public:
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          // TODO: do it only for entropic density
           SArray<real, 1, VS::ndensity_prognostic> tend;
           SArray<real, 1, VS::ndensity_prognostic> vtend;
 
           compute_wDnm1bar<VS::ndensity_prognostic>(tend, q_pi, fvar, dis,djs, dks, i, j, k, n);
           compute_wDnm1bar_vert<VS::ndensity_prognostic>(vtend, q_di, fwvar, dis, djs, dks, i, j, k, n);
-          
-          sol_dens(varset.dens_id_entr, k + dks, j + djs, i + dis, n) = 
-            -rhs_dens(varset.dens_id_entr, k + dks, j + djs, i + dis, n);
-          sol_dens(varset.dens_id_entr, k + dks, j + djs, i + dis, n) += 0.5_fp * dt * tend(varset.dens_id_entr);
-          sol_dens(varset.dens_id_entr, k + dks, j + djs, i + dis, n) += 0.5_fp * dt * vtend(varset.dens_id_entr);
+         
+          if (new_pressure_formulation) {
+            for (int d = 0; d < VS::ndensity_prognostic; ++d) {
+              sol_dens(d, k + dks, j + djs, i + dis, n) = 
+                rhs_dens(d, k + dks, j + djs, i + dis, n);
+              sol_dens(d, k + dks, j + djs, i + dis, n) -= 0.5_fp * dt * tend(d);
+              sol_dens(d, k + dks, j + djs, i + dis, n) -= 0.5_fp * dt * vtend(d);
+            }
+          } else {
+            sol_dens(varset.dens_id_entr, k + dks, j + djs, i + dis, n) = 
+              -rhs_dens(varset.dens_id_entr, k + dks, j + djs, i + dis, n);
+            sol_dens(varset.dens_id_entr, k + dks, j + djs, i + dis, n) += 0.5_fp * dt * tend(varset.dens_id_entr);
+            sol_dens(varset.dens_id_entr, k + dks, j + djs, i + dis, n) += 0.5_fp * dt * vtend(varset.dens_id_entr);
 
+          }
         });
     
     solution.exchange({DENSVAR});
@@ -3306,7 +3377,14 @@ public:
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-            p_transform(k, j, i, n) = Bvar(varset.dens_id_entr, k + pks, j + pjs, i + pis, n);
+            if (new_pressure_formulation) {
+              p_transform(k, j, i, n) = 0;
+              for (int d = 0; d < VS::ndensity_prognostic; ++d) {
+                p_transform(k, j, i, n) += pres_coeff(d, k, n) * Bvar(d, k + pks, j + pjs, i + pis, n); 
+              }
+            } else {
+              p_transform(k, j, i, n) = Bvar(varset.dens_id_entr, k + pks, j + pjs, i + pis, n);
+            }
         });
    
     //std::cout.precision(16);
@@ -3369,20 +3447,26 @@ public:
     }
     yakl::timer_stop("ffts");
 
-    //std::cout << "p " << yakl::intrinsics::minval(p_transform)
-    //          << " " << yakl::intrinsics::maxval(p_transform)
-    //          << " " << yakl::intrinsics::sum(p_transform) << std::endl;
 
     parallel_for(
         "Anelastic - store p",
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          real Pifac = kappa_d * Cpd * std::pow(pres_pi(0, k + pks, n) / pr, kappa_d);
-          Bvar(varset.dens_id_entr, k + pks, j + pjs, i + pis, n) = -0.5_fp * dt * Pifac * p_transform(k, j, i, n);
-          Bvar(varset.dens_id_mass, k + pks, j + pjs, i + pis, n) = 0;
+          if (new_pressure_formulation) {
+            Bvar(0, k + pks, j + pjs, i + pis, n) = p_transform(k, j, i, n);
+            p_transform(k, j, i, n) /= pres_pi(0, k + pks, n);
+          } else {
+            real Pifac = kappa_d * Cpd * std::pow(pres_pi(0, k + pks, n) / pr, kappa_d);
+            Bvar(varset.dens_id_entr, k + pks, j + pjs, i + pis, n) = -0.5_fp * dt * Pifac * p_transform(k, j, i, n);
+            Bvar(varset.dens_id_mass, k + pks, j + pjs, i + pis, n) = 0;
+          }
         });
     auxiliary_vars.exchange({BVAR});
+    
+    //std::cout << "p " << yakl::intrinsics::minval(p_transform)
+    //          << " " << yakl::intrinsics::maxval(p_transform)
+    //          << " " << yakl::intrinsics::sum(p_transform) << std::endl;
 
     //auto rhs_v0 = rhs_v.slice<4>(0, yakl::COLON, yakl::COLON, yakl::COLON, yakl::COLON);
     //auto rhs_v1 = rhs_v.slice<4>(1, yakl::COLON, yakl::COLON, yakl::COLON, yakl::COLON);
@@ -3401,15 +3485,22 @@ public:
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wD0_vert<VS::ndensity_dycore, ADD_MODE::ADD>(rhs_w, q_di, Bvar, pis, pjs, pks, i, j,
-                                            k, n);
-          // manually add Pi0 term
-          real beta = (kappa_d - 1) * q_di(varset.dens_id_entr, k + 1 + dks, n) * 
-                        0.5_fp * (p_transform(k + 1, j, i, n) + p_transform(k, j, i, n));
-          rhs_w(0, k + pks, j + pjs, i + pis, n) += 0.5_fp * dt * beta * 
-            (Bref(varset.dens_id_entr, k + pks + 1, n) - Bref(varset.dens_id_entr, k + pks, n));
+          if (new_pressure_formulation) {
+            real dpdz = compute_D0_vert<1>(Bvar, pis, pjs, pks, i, j, k, n);
+            real rho = rho_di(0, k + 1 + dks, n); 
+            sol_w(0, k + pks, j + pjs, i + pis, n) =
+              rhs_w(0, k + pks, j + pjs, i + pis, n) - 0.5_fp * dt * dpdz / rho;
+          } else {
+            compute_wD0_vert<VS::ndensity_dycore, ADD_MODE::ADD>(rhs_w, q_di, Bvar, pis, pjs, pks, i, j,
+                                              k, n);
+            // manually add Pi0 term
+            real beta = (kappa_d - 1) * q_di(varset.dens_id_entr, k + 1 + dks, n) * 
+                          0.5_fp * (p_transform(k + 1, j, i, n) + p_transform(k, j, i, n));
+            rhs_w(0, k + pks, j + pjs, i + pis, n) += 0.5_fp * dt * beta * 
+              (Bref(varset.dens_id_entr, k + pks + 1, n) - Bref(varset.dens_id_entr, k + pks, n));
 
-          sol_w(0, k + pks, j + pjs, i + pis, n) = rhs_w(0, k + pks, j + pjs, i + pis, n);
+            sol_w(0, k + pks, j + pjs, i + pis, n) = rhs_w(0, k + pks, j + pjs, i + pis, n);
+          }
         });
 
     parallel_for(
@@ -3417,9 +3508,19 @@ public:
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wD0<VS::ndensity_dycore, ADD_MODE::ADD>(rhs_v, q_pi, Bvar, pis, pjs, pks, i, j, k, n);
-          for (int d = 0; d < ndims; ++d) {
-            sol_v(d, k + pks, j + pjs, i + pis, n) = rhs_v(d, k + pks, j + pjs, i + pis, n);
+          if (new_pressure_formulation) {
+            SArray<real, 1, ndims> dpdh;
+            compute_D0<1>(dpdh, Bvar, pis, pjs, pks, i, j, k, n);
+            for (int d = 0; d < ndims; ++d) {
+              real rho = rho_pi(0, k + pks, n);
+              sol_v(d, k + pks, j + pjs, i + pis, n) = 
+                rhs_v(d, k + pks, j + pjs, i + pis, n) - 0.5_fp * dt * dpdh(d) / rho;
+            }
+          } else {
+            compute_wD0<VS::ndensity_dycore, ADD_MODE::ADD>(rhs_v, q_pi, Bvar, pis, pjs, pks, i, j, k, n);
+            for (int d = 0; d < ndims; ++d) {
+              sol_v(d, k + pks, j + pjs, i + pis, n) = rhs_v(d, k + pks, j + pjs, i + pis, n);
+            }
           }
         });
 
