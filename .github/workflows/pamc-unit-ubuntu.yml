@@ -1,0 +1,32 @@
+name: pamc-unit-ubuntu
+
+on: [push, pull_request]
+
+jobs:
+  pamc-unit-ubuntu:
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler:
+          - gcc
+          - clang
+    defaults:
+      run:
+        working-directory: dynamics/spam/test/build
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Install mpi and netcdf
+        run: sudo apt-get install -y libopenmpi-dev libnetcdf-dev
+
+      - name: Configure and build
+        run: |
+          source ../../../../standalone/machines/ci/ubuntu-${{matrix.compiler}}.env &&
+          ./cmakescript.sh &&
+          cmake --build .
+
+      - name: Run tests
+        run: ctest --output-on-failure

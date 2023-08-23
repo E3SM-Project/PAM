@@ -1,0 +1,35 @@
+name: mmf-simplified-macos
+
+on: [push, pull_request]
+
+jobs:
+  mmf-simplified-macos:
+    runs-on: macos-12
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler:
+          - clang
+        dycore:
+          - pamc
+          - pama
+    defaults:
+      run:
+        working-directory: standalone/mmf_simplified/build
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Install mpi and netcdf
+        run: brew install open-mpi netcdf
+
+      - name: Configure and build
+        run: |
+          source ../../machines/ci/macos-${{matrix.compiler}}.env &&
+          YAKL_CXX_FLAGS="${YAKL_CXX_FLAGS} -DYAKL_DEBUG"
+          ./cmakescript_${{matrix.dycore}}.sh &&
+          cmake --build .
+
+      - name: Run driver
+        run: ./driver ../inputs/ci/input_${{matrix.dycore}}.yaml
