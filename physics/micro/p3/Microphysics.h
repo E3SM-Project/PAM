@@ -318,6 +318,7 @@ public:
     // Force constants into local scope
     real R_d     = this->R_d;
     real R_v     = this->R_v;
+    real cv_d    = this->cv_d;
     real cp_d    = this->cp_d;
     real cp_v    = this->cp_v;
     real cp_l    = this->cp_l;

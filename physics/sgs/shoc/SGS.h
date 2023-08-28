@@ -316,6 +316,7 @@ public:
     real grav   = this->grav  ;
     real R_d    = this->R_d   ;
     real R_v    = this->R_v   ;
+    real cv_d   = this->cv_d  ;
     real cp_d   = this->cp_d  ;
     real latvap = this->latvap;
 
@@ -678,6 +679,33 @@ public:
       shoc_isotropy_host   .deep_copy_to(shoc_isotropy   );
 
     #endif
+
+    // yakl::fence();
+    // parallel_for( SimpleBounds<2>(5,5) , YAKL_LAMBDA (int k, int i) {  
+    //   int k_shoc = nz-1-k;
+    //   printf("WHDEBUG1 - k:%3.3d k_shoc:%3.3d nz:%3.3d i:%3.3d ncol:%5.5d \n",k,k_shoc,nz,i,ncol);
+    // });
+    // yakl::fence();
+    // parallel_for( SimpleBounds<2>(5,5) , YAKL_LAMBDA (int k, int i) {  
+    //   int k_shoc = nz-1-k;
+    //   real qw = shoc_qw(k_shoc,i);
+    //   real ql = shoc_ql(k_shoc,i);
+    //   real qv = qw - ql;
+    //   printf("WHDEBUG1 - k:%3.3d k_shoc:%3.3d nz:%3.3d i:%3.3d ncol:%5.5d \n",k,k_shoc,nz,i,ncol);
+    //   printf("WHDEBUG2 - shoc_thetal:%f \n",shoc_thetal(k_shoc,i));
+    //   printf("WHDEBUG3 - shoc_exner:%f \n",shoc_exner(k_shoc,i));
+    //   printf("WHDEBUG4 - shoc_ql:%f \n",shoc_ql(k_shoc,i));
+    //   printf("WHDEBUG5 - temp:%f \n",temp(k,i));
+    //   printf("WHDEBUG6 - cv_d:%f \n",cv_d);
+    //   printf("WHDEBUG7 - cp_d:%f \n",cp_d);
+    //   printf("WHDEBUG8 - latvap:%f \n",latvap);
+    //   real tmp_temp_old = temp(k,i);
+    //   real tmp_temp_new = shoc_thetal(k_shoc,i)*shoc_exner(k_shoc,i) + (latvap/cp_d)*shoc_ql(k_shoc,i);
+    //   // printf("WHDEBUG6 - temp_old:%f  temp_new:%f  cv_d:%f  cp_d:%f \n",temp_old,temp_new,cv_d,cp_d);
+    //   // temp(k,i) = tmp_temp_old + ( tmp_temp_new - tmp_temp_old ) * cv_d/cp_d;
+    //   temp(k,i) = temp(k,i) + ( (shoc_thetal(k_shoc,i)*shoc_exner(k_shoc,i) + (latvap/cp_d)*shoc_ql(k_shoc,i)) - temp(k,i) ) * cv_d/cp_d;
+    //   printf("WHDEBUG_END");
+    // });
 
     // Process outputs from SHOC (reordering the vertical dimension)
     parallel_for( SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
