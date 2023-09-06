@@ -2,6 +2,10 @@
 
 ./cmakeclean.sh
 
+ARG1=${1:-"extrudedmodel"}
+ARG2=${2:-"man"}
+ARG3=${3:-"constkappavirpottemp"}
+
 cmake      \
   -DCMAKE_CXX_COMPILER=${CXX}                                     \
   -DCMAKE_CUDA_HOST_COMPILER=${CXX}                               \
@@ -17,8 +21,8 @@ cmake      \
   -DPAM_MICRO="none"                                              \
   -DPAM_SGS="none"                                                \
   -DPAM_RAD="none"                                                \
-  -DPAMC_MODEL="extrudedmodel"                                    \
-  -DPAMC_HAMIL="man"                                              \
-  -DPAMC_THERMO="constkappavirpottemp"                            \
+  -DPAMC_MODEL=$ARG1                                              \
+  -DPAMC_HAMIL=$ARG2                                              \
+  -DPAMC_THERMO=$ARG3                                             \
   -DPAMC_IO="serial"                                              \
   ..

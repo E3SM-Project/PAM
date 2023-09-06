@@ -1,0 +1,36 @@
+name: mmf-simplified-ubuntu
+
+on: [push, pull_request]
+
+jobs:
+  mmf-simplified-ubuntu:
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler:
+          - gcc
+          - clang
+        dycore:
+          - pamc
+          - pama
+    defaults:
+      run:
+        working-directory: standalone/mmf_simplified/build
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Install mpi and netcdf
+        run: sudo apt-get install -y libopenmpi-dev libnetcdf-dev
+
+      - name: Configure and build
+        run: |
+          source ../../machines/ci/ubuntu-${{matrix.compiler}}.env &&
+          YAKL_CXX_FLAGS="${YAKL_CXX_FLAGS} -DYAKL_DEBUG"
+          ./cmakescript_${{matrix.dycore}}.sh &&
+          cmake --build .
+
+      - name: Run driver
+        run: ./driver ../inputs/ci/input_${{matrix.dycore}}.yaml
