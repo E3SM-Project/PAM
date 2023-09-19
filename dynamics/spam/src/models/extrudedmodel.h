@@ -3548,7 +3548,7 @@ public:
           c_k *= pres_coeff(dens_id_entr, k, n) / (rho_pi(0, k + pks, n) * rho_pi(0, k + pks, n) * (pres_coeff(dens_id_mass, k, n) + q_pi(dens_id_entr, k + pks, n) * pres_coeff(dens_id_entr, k, n)));
 
           real c_kp1 = mod_rhs_dens_kp1(dens_id_entr) - mod_rhs_dens_kp1(dens_id_mass);
-          c_k *= pres_coeff(dens_id_entr, k + 1, n) / (rho_pi(0, k + 1 + pks, n) * rho_pi(0, k + 1 + pks, n) * (pres_coeff(dens_id_mass, k + 1, n) + q_pi(dens_id_entr, k + 1 + pks, n) * pres_coeff(dens_id_entr, k + 1, n)));
+          c_kp1 *= pres_coeff(dens_id_entr, k + 1, n) / (rho_pi(0, k + 1 + pks, n) * rho_pi(0, k + 1 + pks, n) * (pres_coeff(dens_id_mass, k + 1, n) + q_pi(dens_id_entr, k + 1 + pks, n) * pres_coeff(dens_id_entr, k + 1, n)));
 
           rhs_w(0, k + pks, j + pjs, i + pis, n) -= 0.25_fp * dt * (c_kp1 + c_k) * dp;
       });
