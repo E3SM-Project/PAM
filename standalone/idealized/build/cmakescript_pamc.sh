@@ -18,7 +18,7 @@ cmake      \
   -DPAM_SGS="none"                                                \
   -DPAM_RAD="none"                                                \
   -DPAMC_MODEL="extrudedmodel"                                    \
-  -DPAMC_HAMIL="man"                                              \
-  -DPAMC_THERMO="constkappavirpottemp"                            \
+  -DPAMC_HAMIL="ce"                                              \
+  -DPAMC_THERMO="idealgaspottemp"                            \
   -DPAMC_IO="serial"                                              \
   ..

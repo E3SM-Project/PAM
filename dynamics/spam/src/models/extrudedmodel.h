@@ -2710,8 +2710,12 @@ public:
 
 // *******   Linear system   ***********//
 class ModelLinearSystem : public LinearSystem {
-  bool pressure_formulation = true;
-  bool new_pressure_formulation = true;
+  bool old_pressure_formulation = false;
+  bool new_pressure_formulation = false;
+  bool fancy_pressure_formulation = true;
+  bool pressure_formulation = old_pressure_formulation ||
+                              new_pressure_formulation ||
+                              fancy_pressure_formulation;
 
   yakl::RealFFT1D<real> fftv_x;
   yakl::RealFFT1D<real> fftw_x;
@@ -2738,12 +2742,26 @@ class ModelLinearSystem : public LinearSystem {
   real4d trip_d;
   real4d trip_u;
   real4d trip_c;
+  
+  real4d A_l;
+  real4d A_d;
+  real4d A_u;
+  real4d A_c;
+  
+  real4d Dvt_l;
+  real4d Dvt_d;
+  real4d Dvt_u;
+  real4d Dvt_c;
+  
+  real4d Fpres;
+
 
   using VS = VariableSet;
   
   yakl::RealFFT1D<real> fftp_x;
   yakl::RealFFT1D<real> fftp_y;
   real4d p_transform;
+  real4d q_transform;
 
 public:
   void initialize(ModelParameters &params,
@@ -2792,11 +2810,10 @@ public:
     tri_u = complex4d("tri u", pnl, ny, nx, nens);
     tri_c = complex4d("tri c", pnl, ny, nx, nens);
     
-   
-    if (pressure_formulation || new_pressure_formulation) { 
+    if (pressure_formulation) { 
       p_transform = real4d("p transform", pni, nyf, nxf, nens);
       yakl::memset(p_transform, 0);
-
+      
       trip_d = real4d("tri d", pni, nyf, nxf, nens);
       trip_l = real4d("tri l", pni, nyf, nxf, nens);
       trip_u = real4d("tri u", pni, nyf, nxf, nens);
@@ -2809,10 +2826,28 @@ public:
     
       this->pres_coeff = real3d("pres coeff", VS::ndensity_dycore, pni, nens); 
     }
+    
+    if (fancy_pressure_formulation) { 
+
+      A_d = real4d("A d", pnl, nyf, nxf, nens);
+      A_l = real4d("A l", pnl, nyf, nxf, nens);
+      A_u = real4d("A u", pnl, nyf, nxf, nens);
+      A_c = real4d("A c", pnl, nyf, nxf, nens);
+      
+      Dvt_d = real4d("Dvt d", pnl, nyf, nxf, nens);
+      Dvt_l = real4d("Dvt l", pnl, nyf, nxf, nens);
+      Dvt_u = real4d("Dvt u", pnl, nyf, nxf, nens);
+      Dvt_c = real4d("Dvt c", pnl, nyf, nxf, nens);
+      
+      Fpres = real4d("Fpres", pni, nyf, nxf, nens);
+      
+      q_transform = real4d("q transform", pnl, nyf, nxf, nens);
+      yakl::memset(q_transform, 0);
+    }
   }
   
   virtual void compute_coefficients(real dt) override {
-    if (pressure_formulation || new_pressure_formulation) {
+    if (pressure_formulation) {
       compute_coefficients_pressure(dt);
     } else {
       compute_coefficients_orig(dt);
@@ -2856,6 +2891,10 @@ public:
     YAKL_SCOPE(tri_d, this->tri_d);
     YAKL_SCOPE(tri_u, this->tri_u);
     YAKL_SCOPE(pres_coeff, this->pres_coeff);
+      
+   YAKL_SCOPE(A_l, this->A_l);
+   YAKL_SCOPE(A_d, this->A_d);
+   YAKL_SCOPE(A_u, this->A_u);
 
     const real alpha = 0.5 * dt;
     const real Cpd = thermo.cst.Cpd;
@@ -2863,7 +2902,7 @@ public:
     const real kappa_d = thermo.cst.kappa_d;
 
     parallel_for(
-        "Anelastic set coeffs",
+        "pres coeffs",
         SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
         YAKL_LAMBDA(int k, int n) {
           real z = primal_geometry.zint(k + pks, n);
@@ -2904,16 +2943,9 @@ public:
 
           trip_l(k, j, i, n) = 0;
           trip_u(k, j, i, n) = 0;
-         
-          if (new_pressure_formulation) {
+          
+          if (old_pressure_formulation) {
             trip_d(k, j, i, n) = 1;
-            for (int dd = 0; dd < VS::ndensity_prognostic; ++dd) {
-              for (int d = 0; d < ndims; ++d) {
-                trip_d(k, j, i, n) -= alpha * alpha * pres_coeff(dd, k, n) * fHn1bar * fH1(d) * fD0Dbar(d) *
-                                     q_pi(dd, k + pks, n);
-              }
-            }
-          } else {
             real Pifac = kappa_d * Cpd * std::pow(pres_pi(0, k + pks, n) / pr, kappa_d);
             const real tht = q_pi(varset.dens_id_entr, k + pks, n); 
             trip_d(k, j, i, n) = (kappa_d - 1) * rho_pi(0, k + pks, n) * tht;
@@ -2922,35 +2954,7 @@ public:
                                    rho_pi(0, k + pks, n) * tht * tht * Pifac;
             }
           }
-
-
-          if (new_pressure_formulation) {
-            for (int d = 0; d < VS::ndensity_prognostic; ++d) { 
-              const real gamma_kp1 = 1;
-              const real gamma_k = 1;
-              const real gamma_km1 = 1;
-
-              const real beta_kp1 = q_di(d, k + 1 + dks, n) *
-                H01_coeff(primal_geometry, dual_geometry, pis, pjs, pks, i, j, k + 1, n);                
-              
-              const real beta_k = q_di(d, k + dks, n) *
-                H01_coeff(primal_geometry, dual_geometry, pis, pjs, pks, i, j, k, n);
-
-              // TODO: This is more tricky with higher order hodge stars !!!
-              const real alpha_k = -alpha * alpha * fHn1bar * pres_coeff(d, k, n);
-
-              trip_u(k, j, i, n) += alpha_k * beta_kp1 * gamma_kp1;
-              trip_l(k, j, i, n) += alpha_k * beta_k * gamma_km1;
-
-              if (k == 0) {
-                trip_d(k, j, i, n) += -alpha_k * beta_kp1 * gamma_k;
-              } else if (k == (primal_topology.ni - 1)) {
-                trip_d(k, j, i, n) += -alpha_k * beta_k * gamma_k;
-              } else {
-                trip_d(k, j, i, n) += -alpha_k * (beta_kp1 + beta_k) * gamma_k;
-              }
-            }
-          } else {
+          if (old_pressure_formulation) {
             const real gamma_kp1 = kappa_d * Cpd * std::pow(pres_pi(0, k + 1 + pks, n) / pr, kappa_d);
             const real gamma_k = kappa_d * Cpd * std::pow(pres_pi(0, k + pks, n) / pr, kappa_d);
             const real gamma_km1 = kappa_d * Cpd * std::pow(pres_pi(0, k - 1 + pks, n) / pr, kappa_d);
@@ -2978,7 +2982,7 @@ public:
             }
           }
 
-          if (!new_pressure_formulation) {
+          if (old_pressure_formulation) {
             const real gamma_kp1 = Bref(varset.dens_id_entr, k + 1 + pks, n);
             const real gamma_k = Bref(varset.dens_id_entr, k + pks, n);
             const real gamma_km1 =  Bref(varset.dens_id_entr, k - 1 + pks, n);
@@ -3003,7 +3007,211 @@ public:
               trip_d(k, j, i, n) += alpha_k / 2 * (beta_kp1 * (gamma_kp1 - gamma_k) - beta_k * (gamma_k - gamma_km1));
             }
           }
+         
+          if (new_pressure_formulation) {
+            trip_d(k, j, i, n) = 1;
+            for (int dd = 0; dd < VS::ndensity_prognostic; ++dd) {
+              for (int d = 0; d < ndims; ++d) {
+                trip_d(k, j, i, n) -= alpha * alpha * pres_coeff(dd, k, n) * fHn1bar * fH1(d) * fD0Dbar(d) *
+                                     q_pi(dd, k + pks, n);
+              }
+            }
+          }
+
+          if (new_pressure_formulation) {
+            for (int d = 0; d < VS::ndensity_prognostic; ++d) { 
+              const real gamma_kp1 = 1;
+              const real gamma_k = 1;
+              const real gamma_km1 = 1;
+
+              const real beta_kp1 = q_di(d, k + 1 + dks, n) *
+                H01_coeff(primal_geometry, dual_geometry, pis, pjs, pks, i, j, k + 1, n);                
+              
+              const real beta_k = q_di(d, k + dks, n) *
+                H01_coeff(primal_geometry, dual_geometry, pis, pjs, pks, i, j, k, n);
+
+              // TODO: This is more tricky with higher order hodge stars !!!
+              const real alpha_k = -alpha * alpha * fHn1bar * pres_coeff(d, k, n);
+
+              trip_u(k, j, i, n) += alpha_k * beta_kp1 * gamma_kp1;
+              trip_l(k, j, i, n) += alpha_k * beta_k * gamma_km1;
+
+              if (k == 0) {
+                trip_d(k, j, i, n) += -alpha_k * beta_kp1 * gamma_k;
+              } else if (k == (primal_topology.ni - 1)) {
+                trip_d(k, j, i, n) += -alpha_k * beta_k * gamma_k;
+              } else {
+                trip_d(k, j, i, n) += -alpha_k * (beta_kp1 + beta_k) * gamma_k;
+              }
+            }
+          }
+
         });
+    
+    if (fancy_pressure_formulation) {
+      parallel_for(
+          "fancy A and D",
+          SimpleBounds<4>(primal_topology.nl, nyf, nxf, primal_topology.nens),
+          YAKL_LAMBDA(int k, int j, int i, int n) {
+            int ik = i / 2;
+            int jk = j / 2;
+
+            real gamma_kp1;
+            if (k == primal_topology.nl - 1) {
+              gamma_kp1 = 0;
+            } else {
+              gamma_kp1 = rho_di(0, k + 2 + dks, n) * 
+                H01_coeff(primal_geometry, dual_geometry, pis, pjs, pks, i, j, k + 2, n) *
+                (q_pi(varset.dens_id_entr, k + 2 + pks, n) - q_pi(varset.dens_id_entr, k + 1 + pks, n));
+            }
+            
+            const real gamma_k = rho_di(0, k + 1 + dks, n) * 
+                H01_coeff(primal_geometry, dual_geometry, pis, pjs, pks, i, j, k + 1, n) *
+                (q_pi(varset.dens_id_entr, k + 1 + pks, n) - q_pi(varset.dens_id_entr, k + pks, n));
+            
+            real gamma_km1;
+            if (k == 0) {
+              gamma_km1 = rho_di(0, k + dks, n) * 
+                  H01_coeff(primal_geometry, dual_geometry, pis, pjs, pks, i, j, k, n) *
+                  (q_pi(varset.dens_id_entr, k + pks, n) - q_pi(varset.dens_id_entr, k - 1 + pks, n));
+            } else {
+              gamma_km1 = 0;
+            }
+           
+            // assumes diagonal !
+            const real fHn1bar_kp1 = fourier_Hn1bar<diff_ord>(primal_geometry, dual_geometry, pis, pjs,
+                                                        pks, ik, jk, k + 1, 0, dual_topology.n_cells_x,
+                                                        dual_topology.n_cells_y, dual_topology.nl);
+            const real fHn1bar_k = fourier_Hn1bar<diff_ord>(primal_geometry, dual_geometry, pis, pjs,
+                                                        pks, ik, jk, k, 0, dual_topology.n_cells_x,
+                                                        dual_topology.n_cells_y, dual_topology.nl);
+            
+            const real beta_kp1 = fHn1bar_kp1 *
+                                  pres_coeff(varset.dens_id_entr, k + 1, n)  / (
+                                  rho_pi(0, k + 1 + pks, n) * rho_pi(0, k + 1 + pks, n) * (
+                                    pres_coeff(varset.dens_id_mass, k + 1, n) +
+                                    pres_coeff(varset.dens_id_entr, k + 1, n) *
+                                    q_pi(varset.dens_id_entr, k + 1 + pks, n)
+                                  ));
+            
+            
+            const real beta_k = fHn1bar_k *
+                                  pres_coeff(varset.dens_id_entr, k, n)  / (
+                                  rho_pi(0, k + pks, n) * rho_pi(0, k + pks, n) * (
+                                    pres_coeff(varset.dens_id_mass, k, n) +
+                                    pres_coeff(varset.dens_id_entr, k, n) *
+                                    q_pi(varset.dens_id_entr, k + pks, n)
+                                  ));
+
+            const real dp = pres_pi(0, k + 1 + pks, n) - pres_pi(0, k + pks, n);
+            //const real dp = 0;
+            const real alpha_k = -alpha * alpha / 4 * dp;
+
+            A_u(k, j, i, n) = alpha_k * beta_kp1 * gamma_kp1;
+            A_d(k, j, i, n) = 1 + alpha_k * (beta_kp1 + beta_k) * gamma_k;
+            A_l(k, j, i, n) = alpha_k * beta_k * gamma_km1;
+            
+            
+            const real rho_mid = rho_di(0, k + 1 + dks, n); 
+            const real c_k = 1._fp / (rho_pi(0, k + pks, n) * rho_pi(0, k + pks, n) *
+                                     (pres_coeff(varset.dens_id_mass, k, n) +
+                                      pres_coeff(varset.dens_id_entr, k, n) * q_pi(varset.dens_id_entr, k + pks, n)));
+            const real c_kp1 = 1._fp / (rho_pi(0, k + 1 + pks, n) * rho_pi(0, k + 1 + pks, n) *
+                                     (pres_coeff(varset.dens_id_mass, k + 1, n) +
+                                      pres_coeff(varset.dens_id_entr, k + 1, n) * q_pi(varset.dens_id_entr, k + 1 + pks, n)));
+
+            Dvt_u(k, j, i, n) = 1 / rho_mid - 0.5_fp * c_kp1 * dp;
+            Dvt_d(k, j, i, n) = -1 / rho_mid - 0.5_fp * c_k * dp;
+            Dvt_l(k, j, i, n) = 0;
+            
+      });
+      
+      parallel_for(
+          "fancy Fpres",
+          SimpleBounds<4>(primal_topology.ni, nyf, nxf, primal_topology.nens),
+          YAKL_LAMBDA(int k, int j, int i, int n) {
+            int ik = i / 2;
+            int jk = j / 2;
+
+          SArray<real, 1, ndims> fH1;
+          fourier_H10<diff_ord>(fH1, primal_geometry, dual_geometry, pis, pjs,
+                                pks, ik, jk, k, 0, dual_topology.n_cells_x,
+                                dual_topology.n_cells_y, dual_topology.ni);
+
+          SArray<real, 1, ndims> fD0Dbar;
+          fourier_cwD0Dnm1bar(fD0Dbar, 1, ik, jk, k, dual_topology.n_cells_x,
+                              dual_topology.n_cells_y, dual_topology.ni);
+          real fHn1bar = fourier_Hn1bar<diff_ord>(primal_geometry, dual_geometry, pis, pjs,
+                                                  pks, ik, jk, k, 0, dual_topology.n_cells_x,
+                                                  dual_topology.n_cells_y, dual_topology.nl);
+
+            Fpres(k, j, i, n) = 1;
+            for (int dd = 0; dd < VS::ndensity_prognostic; ++dd) {
+              for (int d = 0; d < ndims; ++d) {
+                Fpres(k, j, i, n) -= alpha * alpha * pres_coeff(dd, k, n) * fHn1bar * fH1(d) * fD0Dbar(d) *
+                                     q_pi(dd, k + pks, n);
+              }
+            }
+      });
+      
+      parallel_for(
+          "fancy tridiag",
+          SimpleBounds<4>(primal_topology.nl, nyf, nxf, primal_topology.nens),
+          YAKL_LAMBDA(int k, int j, int i, int n) {
+            int ik = i / 2;
+            int jk = j / 2;
+
+            trip_u(k, j, i, n) = 0;
+            trip_d(k, j, i, n) = 1;
+            trip_l(k, j, i, n) = 0;
+            
+            real gamma_kp1;
+            if (k == primal_topology.nl - 1) {
+              gamma_kp1 = 0;
+            } else {
+              gamma_kp1 = rho_di(0, k + 2 + dks, n) * 
+                H01_coeff(primal_geometry, dual_geometry, pis, pjs, pks, i, j, k + 2, n);
+            }
+            
+            real gamma_k = rho_di(0, k + 1 + dks, n) * 
+                H01_coeff(primal_geometry, dual_geometry, pis, pjs, pks, i, j, k + 1, n);
+           
+            real gamma_km1;
+            if (k == 0) {
+              gamma_km1 = 0;
+            } else {
+              gamma_km1 = rho_di(0, k + dks, n) * 
+                  H01_coeff(primal_geometry, dual_geometry, pis, pjs, pks, i, j, k, n);
+            }
+           
+            const real fHn1bar_kp1 = fourier_Hn1bar<diff_ord>(primal_geometry, dual_geometry, pis, pjs,
+                                                        pks, ik, jk, k + 1, 0, dual_topology.n_cells_x,
+                                                        dual_topology.n_cells_y, dual_topology.nl);
+            const real fHn1bar_k = fourier_Hn1bar<diff_ord>(primal_geometry, dual_geometry, pis, pjs,
+                                                        pks, ik, jk, k, 0, dual_topology.n_cells_x,
+                                                        dual_topology.n_cells_y, dual_topology.nl);
+            
+            for (int d = 0; d < VS::ndensity_prognostic; ++d) {
+              const real beta_k = fHn1bar_k * pres_coeff(d, k, n) / Fpres(k, j, i, n) *
+                                  Dvt_d(k, j, i, n);
+              const real beta_kp1 = fHn1bar_kp1 * pres_coeff(d, k + 1, n) / Fpres(k + 1, j, i, n) *
+                                    Dvt_u(k, j, i, n);
+
+              trip_u(k, j, i, n) -= alpha * alpha * beta_kp1 * gamma_kp1 * q_di(d, k + 2 + dks, n);
+              trip_d(k, j, i, n) -= alpha * alpha * (beta_k - beta_kp1) * gamma_k  * q_di(d, k + 1 + dks, n);
+              trip_l(k, j, i, n) -= -alpha * alpha * beta_k * gamma_km1 * q_di(d, k + dks, n);
+            }
+            //if (i == 0 && j == 0) {
+            //  std::cout << k << " " 
+            //            << trip_l(k, j, i, n) << " "
+            //            << trip_d(k, j, i, n) << " "
+            //            << trip_u(k, j, i, n) << " "
+            //            << std::abs(trip_d(k, j, i, n) - (trip_l(k, j, i, n) + trip_u(k, j, i, n)))
+            //            << std::endl;
+            //}
+      });
+
+    }
   }
 
   void compute_coefficients_orig(real dt) {
@@ -3252,7 +3460,7 @@ public:
                      FieldSet<nconstant> &const_vars,
                      FieldSet<nauxiliary> &auxiliary_vars,
                      FieldSet<nprognostic> &solution) override {
-    if (pressure_formulation || new_pressure_formulation) {
+    if (pressure_formulation) {
       solve_pressure(dt, rhs, const_vars, auxiliary_vars, solution);
     } else {
       solve_orig(dt, rhs, const_vars, auxiliary_vars, solution);
@@ -3310,6 +3518,68 @@ public:
     const real pr = thermo.cst.pr;
     const real kappa_d = thermo.cst.kappa_d;
 
+    if (fancy_pressure_formulation) {
+      // modify rhs w
+      const int dens_id_entr = varset.dens_id_entr;
+      const int dens_id_mass = varset.dens_id_mass;
+      parallel_for(
+          "Linear solve rhs 1",
+          SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                          primal_topology.n_cells_x, primal_topology.nens),
+          YAKL_LAMBDA(int k, int j, int i, int n) {
+
+
+          auto tht_ref_wedge = [=](const real5d &dens, int l, int k, int j, int i, int n) {
+            return l == dens_id_mass ? dens(l, k, j, i, n) * q_pi(dens_id_entr, k, n) : dens(l, k, j, i, n);
+          };
+          
+          SArray<real, 1, VS::ndensity_prognostic> mod_rhs_dens_k;
+          compute_Hn1bar<VS::ndensity_prognostic, diff_ord, vert_diff_ord>(tht_ref_wedge, mod_rhs_dens_k, rhs_dens,
+                         primal_geometry, dual_geometry, dis, djs, dks, i, j, k, n);
+          
+          SArray<real, 1, VS::ndensity_prognostic> mod_rhs_dens_kp1;
+          compute_Hn1bar<VS::ndensity_prognostic, diff_ord, vert_diff_ord>(tht_ref_wedge, mod_rhs_dens_kp1, rhs_dens,
+                         primal_geometry, dual_geometry, dis, djs, dks, i, j, k + 1, n);
+
+          const real dp = pres_pi(0, k + pks + 1, n) - pres_pi(0, k + pks, n);
+          //const real dp = 0;
+          
+          real c_k = mod_rhs_dens_k(dens_id_entr) - mod_rhs_dens_k(dens_id_mass);
+          c_k *= pres_coeff(dens_id_entr, k, n) / (rho_pi(0, k + pks, n) * rho_pi(0, k + pks, n) * (pres_coeff(dens_id_mass, k, n) + q_pi(dens_id_entr, k + pks, n) * pres_coeff(dens_id_entr, k, n)));
+
+          real c_kp1 = mod_rhs_dens_kp1(dens_id_entr) - mod_rhs_dens_kp1(dens_id_mass);
+          c_k *= pres_coeff(dens_id_entr, k + 1, n) / (rho_pi(0, k + 1 + pks, n) * rho_pi(0, k + 1 + pks, n) * (pres_coeff(dens_id_mass, k + 1, n) + q_pi(dens_id_entr, k + 1 + pks, n) * pres_coeff(dens_id_entr, k + 1, n)));
+
+          rhs_w(0, k + pks, j + pjs, i + pis, n) -= 0.25_fp * dt * (c_kp1 + c_k) * dp;
+      });
+
+      // compute A^{-1} rhs_w
+      parallel_for(
+          "solve",
+          Bounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x, primal_topology.nens),
+          YAKL_LAMBDA(int j, int i, int n) {
+            int nz = primal_topology.nl;
+            A_c(0, j, i, n) = A_u(0, j, i, n) / A_d(0, j, i, n);
+            for (int k = 1; k < nz - 1; ++k) {
+              A_c(k, j, i, n) =
+                  A_u(k, j, i, n) /
+                  (A_d(k, j, i, n) - A_l(k, j, i, n) * A_c(k - 1, j, i, n));
+            }
+            rhs_w(0, 0 + pks, j + pjs, i + pis, n) /= A_d(0, j, i, n);
+            for (int k = 1; k < nz; ++k) {
+              rhs_w(0, k + pks, j + pjs, i + pis, n) =
+                  (rhs_w(0, k + pks, j + pjs, i + pis, n) -
+                   A_l(k, j, i, n) * rhs_w(0, k - 1 + pks, j + pjs, i + pis, n)) /
+                  (A_d(k, j, i, n) - A_l(k, j, i, n) * A_c(k - 1, j, i, n));
+            }
+            for (int k = nz - 2; k >= 0; --k) {
+              rhs_w(0, k + pks, j + pjs, i + pis, n) -=
+                  A_c(k, j, i, n) * rhs_w(0, k + 1 + pks, j + pjs, i + pis, n);
+            }
+          });
+    }
+    rhs.exchange({WVAR});
+
     parallel_for(
         "Linear solve rhs 1",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
@@ -3344,14 +3614,15 @@ public:
           compute_wDnm1bar<VS::ndensity_prognostic>(tend, q_pi, fvar, dis,djs, dks, i, j, k, n);
           compute_wDnm1bar_vert<VS::ndensity_prognostic>(vtend, q_di, fwvar, dis, djs, dks, i, j, k, n);
          
-          if (new_pressure_formulation) {
+          if (new_pressure_formulation || fancy_pressure_formulation) {
             for (int d = 0; d < VS::ndensity_prognostic; ++d) {
               sol_dens(d, k + dks, j + djs, i + dis, n) = 
                 rhs_dens(d, k + dks, j + djs, i + dis, n);
               sol_dens(d, k + dks, j + djs, i + dis, n) -= 0.5_fp * dt * tend(d);
               sol_dens(d, k + dks, j + djs, i + dis, n) -= 0.5_fp * dt * vtend(d);
             }
-          } else {
+          }
+          if (old_pressure_formulation) {
             sol_dens(varset.dens_id_entr, k + dks, j + djs, i + dis, n) = 
               -rhs_dens(varset.dens_id_entr, k + dks, j + djs, i + dis, n);
             sol_dens(varset.dens_id_entr, k + dks, j + djs, i + dis, n) += 0.5_fp * dt * tend(varset.dens_id_entr);
@@ -3377,18 +3648,19 @@ public:
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-            if (new_pressure_formulation) {
+            if (new_pressure_formulation || fancy_pressure_formulation) {
               p_transform(k, j, i, n) = 0;
               for (int d = 0; d < VS::ndensity_prognostic; ++d) {
                 p_transform(k, j, i, n) += pres_coeff(d, k, n) * Bvar(d, k + pks, j + pjs, i + pis, n); 
               }
-            } else {
+            }
+            if (old_pressure_formulation) {
               p_transform(k, j, i, n) = Bvar(varset.dens_id_entr, k + pks, j + pjs, i + pis, n);
             }
         });
    
     //std::cout.precision(16);
-    //std::cout << "p " << yakl::intrinsics::minval(p_transform)
+    //std::cout << "p0 " << yakl::intrinsics::minval(p_transform)
     //          << " " << yakl::intrinsics::maxval(p_transform)
     //          << " " << yakl::intrinsics::sum(p_transform) << std::endl;
     //
@@ -3408,55 +3680,173 @@ public:
       fftp_y.forward_real(p_transform);
     }
     yakl::timer_stop("ffts");
-    
-    //for (int k = 0; k < primal_topology.ni; ++k) {
-    //  std::cout << trip_l(k, 0, 0, 0) << " " << trip_d(k, 0, 0, 0) << " " << trip_u(k, 0, 0, 0) << std::endl;
-    //}
-    
-    parallel_for(
-        "Anelastic tripdiagonal solve",
-        Bounds<3>(nyf, nxf, primal_topology.nens),
-        YAKL_LAMBDA(int j, int i, int n) {
-          int ik = i / 2;
-          int jk = j / 2;
 
-          int nz = primal_topology.ni;
-          trip_c(0, j, i, n) = trip_u(0, j, i, n) / trip_d(0, j, i, n);
-          for (int k = 1; k < nz - 1; ++k) {
-            trip_c(k, j, i, n) =
-                trip_u(k, j, i, n) /
-                (trip_d(k, j, i, n) - trip_l(k, j, i, n) * trip_c(k - 1, j, i, n));
-          }
-          p_transform(0, j, i, n) /= trip_d(0, j, i, n);
-          for (int k = 1; k < nz; ++k) {
-            p_transform(k, j, i, n) =
-                (p_transform(k, j, i, n) -
-                 trip_l(k, j, i, n) * p_transform(k - 1, j, i, n)) /
-                (trip_d(k, j, i, n) - trip_l(k, j, i, n) * trip_c(k - 1, j, i, n));
-          }
-          for (int k = nz - 2; k >= 0; --k) {
-            p_transform(k, j, i, n) -=
-                trip_c(k, j, i, n) * p_transform(k + 1, j, i, n);
-          }
-        });
-
-    yakl::timer_start("ffts");
-    fftp_x.inverse_real(p_transform);
-    if (ndims > 1) {
-      fftp_y.inverse_real(p_transform);
+    if (fancy_pressure_formulation) {
+      // compute qrhs
+      parallel_for(
+          "scale p_transform",
+          SimpleBounds<4>(primal_topology.ni, nyf, nxf, primal_topology.nens),
+          YAKL_LAMBDA(int k, int j, int i, int n) {
+            p_transform(k, j, i, n) /= Fpres(k, j, i, n);
+          });
+      
+      parallel_for(
+          "apply d_v",
+          SimpleBounds<4>(primal_topology.nl, nyf, nxf, primal_topology.nens),
+          YAKL_LAMBDA(int k, int j, int i, int n) {
+            q_transform(k, j, i, n) = Dvt_u(k, j, i, n) * p_transform(k + 1, j, i, n) +
+                                      Dvt_d(k, j, i, n) * p_transform(k, j, i, n);
+          });
     }
-    yakl::timer_stop("ffts");
+   
+    if (pressure_formulation && !fancy_pressure_formulation) {
+      parallel_for(
+          "Anelastic tridiagonal solve",
+          Bounds<3>(nyf, nxf, primal_topology.nens),
+          YAKL_LAMBDA(int j, int i, int n) {
+            int ik = i / 2;
+            int jk = j / 2;
 
+            int nz = primal_topology.ni;
+            trip_c(0, j, i, n) = trip_u(0, j, i, n) / trip_d(0, j, i, n);
+            for (int k = 1; k < nz - 1; ++k) {
+              trip_c(k, j, i, n) =
+                  trip_u(k, j, i, n) /
+                  (trip_d(k, j, i, n) - trip_l(k, j, i, n) * trip_c(k - 1, j, i, n));
+            }
+            p_transform(0, j, i, n) /= trip_d(0, j, i, n);
+            for (int k = 1; k < nz; ++k) {
+              p_transform(k, j, i, n) =
+                  (p_transform(k, j, i, n) -
+                   trip_l(k, j, i, n) * p_transform(k - 1, j, i, n)) /
+                  (trip_d(k, j, i, n) - trip_l(k, j, i, n) * trip_c(k - 1, j, i, n));
+            }
+            for (int k = nz - 2; k >= 0; --k) {
+              p_transform(k, j, i, n) -=
+                  trip_c(k, j, i, n) * p_transform(k + 1, j, i, n);
+            }
+          });
+
+      yakl::timer_start("ffts");
+      fftp_x.inverse_real(p_transform);
+      if (ndims > 1) {
+        fftp_y.inverse_real(p_transform);
+      }
+      yakl::timer_stop("ffts");
+    }
+
+    if (fancy_pressure_formulation) {
+      parallel_for(
+          "Anelastic tridiagonal solve",
+          Bounds<3>(nyf, nxf, primal_topology.nens),
+          YAKL_LAMBDA(int j, int i, int n) {
+            int nz = primal_topology.nl;
+            trip_c(0, j, i, n) = trip_u(0, j, i, n) / trip_d(0, j, i, n);
+            for (int k = 1; k < nz - 1; ++k) {
+              trip_c(k, j, i, n) =
+                  trip_u(k, j, i, n) /
+                  (trip_d(k, j, i, n) - trip_l(k, j, i, n) * trip_c(k - 1, j, i, n));
+            }
+            q_transform(0, j, i, n) /= trip_d(0, j, i, n);
+            for (int k = 1; k < nz; ++k) {
+              q_transform(k, j, i, n) =
+                  (q_transform(k, j, i, n) -
+                   trip_l(k, j, i, n) * q_transform(k - 1, j, i, n)) /
+                  (trip_d(k, j, i, n) - trip_l(k, j, i, n) * trip_c(k - 1, j, i, n));
+            }
+            for (int k = nz - 2; k >= 0; --k) {
+              q_transform(k, j, i, n) -=
+                  trip_c(k, j, i, n) * q_transform(k + 1, j, i, n);
+            }
+          });
+      //std::cout << "q " << yakl::intrinsics::minval(q_transform)
+      //          << " " << yakl::intrinsics::maxval(q_transform)
+      //          << " " << yakl::intrinsics::sum(q_transform) << std::endl;
+
+      
+      parallel_for(
+          "Compute p",
+          Bounds<4>(primal_topology.ni, nyf, nxf, primal_topology.nens),
+          YAKL_LAMBDA(int k, int j, int i, int n) {
+
+          for (int d = 0; d < VS::ndensity_prognostic; ++d) {
+            real f_k;
+            if (k == 0) {
+              f_k = 0;
+            } else {
+              f_k =
+                  rho_di(0, k + dks, n) * q_di(d, k + dks, n) * H01_coeff(primal_geometry, dual_geometry,
+                                                  pis, pjs, pks, i, j, k, n) * q_transform(k - 1, j, i, n);
+            }
+
+            real f_kp1;
+            if (k == primal_topology.ni - 1) {
+              f_kp1 = 0;
+            } else {
+              f_kp1 =
+                  rho_di(0, k + 1 + dks, n) * q_di(d, k + 1 + dks, n) * H01_coeff(primal_geometry, dual_geometry,
+                                                  pis, pjs, pks, i, j, k + 1, n) * q_transform(k, j, i, n);
+            }
+            const int ik = i / 2;
+            const int jk = j / 2;
+            real fHn1bar = fourier_Hn1bar<diff_ord>(primal_geometry, dual_geometry, pis, pjs,
+                                                    pks, ik, jk, k, 0, dual_topology.n_cells_x,
+                                                    dual_topology.n_cells_y, dual_topology.nl);
+
+            p_transform(k, j, i, n) += 0.25_fp * dt * dt * pres_coeff(d, k, n) * fHn1bar / Fpres(k, j, i, n) * (f_kp1 - f_k);
+         }
+      });
+
+      yakl::timer_start("ffts");
+      fftp_x.inverse_real(p_transform);
+      if (ndims > 1) {
+        fftp_y.inverse_real(p_transform);
+      }
+      yakl::timer_stop("ffts");
+    }
+
+    //std::cout << "p " << yakl::intrinsics::minval(p_transform)
+    //          << " " << yakl::intrinsics::maxval(p_transform)
+    //          << " " << yakl::intrinsics::sum(p_transform) << std::endl;
+
+    //parallel_for(
+    //    "Anelastic - store p",
+    //    SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+    //                    primal_topology.n_cells_x, primal_topology.nens),
+    //    YAKL_LAMBDA(int k, int j, int i, int n) {
+    //        Bvar(0, k + pks, j + pjs, i + pis, n) = p_transform(k, j, i, n);
+    //});
+    //auxiliary_vars.exchange({BVAR});
+
+
+    //parallel_for(
+    //    "Anelastic - test pressure gradient V",
+    //    SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+    //                    primal_topology.n_cells_x, primal_topology.nens),
+    //    YAKL_LAMBDA(int k, int j, int i, int n) {
+    //        SArray<real, 1, ndims> dpdh;
+    //        compute_D0<1>(dpdh, Bvar, pis, pjs, pks, i, j, k, n);
+    //        for (int d = 0; d < ndims; ++d) {
+    //          sol_v(d, k + pks, j + pjs, i + pis, n) = dpdh(d);
+    //        }
+    //});
+    //solution.exchange({VVAR});
+    //std::cout << "hgrad p " << yakl::intrinsics::minval(sol_v)
+    //          << " " << yakl::intrinsics::maxval(sol_v)
+    //          << " " << yakl::intrinsics::sum(sol_v) << std::endl;
+    //      
+    //exit(1);
 
     parallel_for(
         "Anelastic - store p",
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          if (new_pressure_formulation) {
+          if (new_pressure_formulation || fancy_pressure_formulation) {
             Bvar(0, k + pks, j + pjs, i + pis, n) = p_transform(k, j, i, n);
             p_transform(k, j, i, n) /= pres_pi(0, k + pks, n);
-          } else {
+          }
+          if (old_pressure_formulation) {
             real Pifac = kappa_d * Cpd * std::pow(pres_pi(0, k + pks, n) / pr, kappa_d);
             Bvar(varset.dens_id_entr, k + pks, j + pjs, i + pis, n) = -0.5_fp * dt * Pifac * p_transform(k, j, i, n);
             Bvar(varset.dens_id_mass, k + pks, j + pjs, i + pis, n) = 0;
@@ -3485,12 +3875,19 @@ public:
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
+          if (fancy_pressure_formulation) {
+            real dpdz = Dvt_u(k, j, i, n) * Bvar(0, k + pks + 1, j + pjs, i + pis, n) +
+                                      Dvt_d(k, j, i, n) * Bvar(0, k + pks, j + pjs, i + pis, n);
+
+            sol_w(0, k + pks, j + pjs, i + pis, n) = -0.5_fp * dt * dpdz;
+          }
           if (new_pressure_formulation) {
             real dpdz = compute_D0_vert<1>(Bvar, pis, pjs, pks, i, j, k, n);
             real rho = rho_di(0, k + 1 + dks, n); 
             sol_w(0, k + pks, j + pjs, i + pis, n) =
               rhs_w(0, k + pks, j + pjs, i + pis, n) - 0.5_fp * dt * dpdz / rho;
-          } else {
+          }
+          if (old_pressure_formulation) {
             compute_wD0_vert<VS::ndensity_dycore, ADD_MODE::ADD>(rhs_w, q_di, Bvar, pis, pjs, pks, i, j,
                                               k, n);
             // manually add Pi0 term
@@ -3503,12 +3900,44 @@ public:
           }
         });
 
+    // invert A to recover W
+    if (fancy_pressure_formulation) {
+      // compute A^{-1} sol_w
+      parallel_for(
+          "solve",
+          Bounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x, primal_topology.nens),
+          YAKL_LAMBDA(int j, int i, int n) {
+            int nz = primal_topology.nl;
+            A_c(0, j, i, n) = A_u(0, j, i, n) / A_d(0, j, i, n);
+            for (int k = 1; k < nz - 1; ++k) {
+              A_c(k, j, i, n) =
+                  A_u(k, j, i, n) /
+                  (A_d(k, j, i, n) - A_l(k, j, i, n) * A_c(k - 1, j, i, n));
+            }
+            sol_w(0, 0 + pks, j + pjs, i + pis, n) /= A_d(0, j, i, n);
+            for (int k = 1; k < nz; ++k) {
+              sol_w(0, k + pks, j + pjs, i + pis, n) =
+                  (sol_w(0, k + pks, j + pjs, i + pis, n) -
+                   A_l(k, j, i, n) * sol_w(0, k - 1 + pks, j + pjs, i + pis, n)) /
+                  (A_d(k, j, i, n) - A_l(k, j, i, n) * A_c(k - 1, j, i, n));
+            }
+            for (int k = nz - 2; k >= 0; --k) {
+              sol_w(0, k + pks, j + pjs, i + pis, n) -=
+                  A_c(k, j, i, n) * sol_w(0, k + 1 + pks, j + pjs, i + pis, n);
+            }
+            
+            for (int k = 0; k < nz; ++k) {
+              sol_w(0, k + pks, j + pjs, i + pis, n) += rhs_w(0, k + pks, j + pjs, i + pis, n);
+            }
+          });
+    }
+
     parallel_for(
         "Anelastic - add pressure gradient V",
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          if (new_pressure_formulation) {
+          if (new_pressure_formulation || fancy_pressure_formulation) {
             SArray<real, 1, ndims> dpdh;
             compute_D0<1>(dpdh, Bvar, pis, pjs, pks, i, j, k, n);
             for (int d = 0; d < ndims; ++d) {
@@ -3516,7 +3945,8 @@ public:
               sol_v(d, k + pks, j + pjs, i + pis, n) = 
                 rhs_v(d, k + pks, j + pjs, i + pis, n) - 0.5_fp * dt * dpdh(d) / rho;
             }
-          } else {
+          }
+          if (old_pressure_formulation) {
             compute_wD0<VS::ndensity_dycore, ADD_MODE::ADD>(rhs_v, q_pi, Bvar, pis, pjs, pks, i, j, k, n);
             for (int d = 0; d < ndims; ++d) {
               sol_v(d, k + pks, j + pjs, i + pis, n) = rhs_v(d, k + pks, j + pjs, i + pis, n);
@@ -3572,7 +4002,7 @@ public:
     
 
     auto sol_v0 = sol_v.slice<4>(0, yakl::COLON, yakl::COLON, yakl::COLON, yakl::COLON);
-    auto sol_v1 = sol_v.slice<4>(1, yakl::COLON, yakl::COLON, yakl::COLON, yakl::COLON);
+    //auto sol_v1 = sol_v.slice<4>(1, yakl::COLON, yakl::COLON, yakl::COLON, yakl::COLON);
     auto sol_dens0 = sol_dens.slice<4>(0, yakl::COLON, yakl::COLON, yakl::COLON, yakl::COLON);
     auto sol_dens1 = sol_dens.slice<4>(1, yakl::COLON, yakl::COLON, yakl::COLON, yakl::COLON);
     
@@ -3581,7 +4011,7 @@ public:
     //          << yakl::intrinsics::minval(sol_v0) << " "
     //          << yakl::intrinsics::maxval(sol_v0) << " "
     //          << yakl::intrinsics::sum(sol_v0) << std::endl;
-    //
+    
     //std::cout << "v1: "
     //          << yakl::intrinsics::minval(sol_v1) << " "
     //          << yakl::intrinsics::maxval(sol_v1) << " "

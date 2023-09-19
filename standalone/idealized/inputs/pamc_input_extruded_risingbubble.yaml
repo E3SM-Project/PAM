@@ -1,6 +1,6 @@
 ---
 # Simulation time in number of physics time steps
-simSteps  : 360 #1280 11520
+simSteps  : 100 #1280 11520
 #11520 * 5 = 57600 * 0.015625  = 900s
 #1280 * 5 = 6400 = 100s
 #40 * 5 = 200 * 0.5 = 100s
@@ -9,19 +9,19 @@ simSteps  : 360 #1280 11520
 # Number of cells to use
 crm_nx       : 100
 crm_ny       : 1
-#crm_nz       : 150
+crm_nz       : 150
 
 # Vertical height coordinates file
 #vcoords  : vcoords_equal_100_20km.nc
-#vcoords: uniform
-vcoords  : '../pam-c/vcoords/vcoords_equal_150_1500.nc'
+vcoords: uniform
+  #vcoords  : '../pam-c/vcoords/vcoords_equal_150_1500.nc'
 
 # Data to initialize: doublevortex rb mrb
 initData : risingbubble
 
 # Time steps
-dtphys: 2.5
-crm_per_phys: 5
+dtphys: 1.0
+crm_per_phys: 1
 #0.015625 * 5 = 0.078125 for explicit
 # 0.5*5 = 2.5 for semi-implicit
 
