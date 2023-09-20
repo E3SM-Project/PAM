@@ -106,6 +106,8 @@ int main(int argc, char** argv) {
     auto gcm_wvel  = dm.get<real,2>("gcm_wvel"       );
     auto gcm_temp  = dm.get<real,2>("gcm_temp"       );
     auto gcm_rho_v = dm.get<real,2>("gcm_water_vapor");
+    auto gcm_rho_c = dm.get<real,2>("gcm_cloud_water");
+    auto gcm_rho_i = dm.get<real,2>("gcm_cloud_ice"  );
 
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
@@ -116,6 +118,8 @@ int main(int argc, char** argv) {
       gcm_wvel (k,iens) = wvel_col (k);
       gcm_temp (k,iens) = temp_col (k);
       gcm_rho_v(k,iens) = rho_v_col(k);
+      gcm_rho_c(k,iens) = 0;
+      gcm_rho_i(k,iens) = 0;
     });
 
     if (mainproc) {
@@ -139,8 +143,9 @@ int main(int argc, char** argv) {
     // Initialize the CRM internal state from the initial GCM column and random temperature perturbations
     modules::broadcast_initial_gcm_column( coupler );
 
-    // Now that we have an initial state, define hydrostasis for each ensemble member
-    coupler.update_hydrostasis();
+#ifdef PAMA_DYCORE
+    dycore.declare_current_profile_as_hydrostatic( coupler , true );
+#endif
 
     int1d seeds("seeds",nens);
     seeds = 0;

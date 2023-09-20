@@ -127,9 +127,6 @@ int main(int argc, char** argv) {
     dycore.pre_time_loop(coupler);
     yakl::timer_stop("dycore");
 
-    // Now that we have an initial state, define hydrostasis for each ensemble member
-    if (use_coupler_hydrostasis) coupler.update_hydrostasis( );
-
     real etime = 0;
     // There are two ways of time control- setting total simulation time (simTime) or setting number of physics time steps (simSteps)
     if (simTime == 0.0) {  simTime = simSteps * dtphys_in; }
