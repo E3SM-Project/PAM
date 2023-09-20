@@ -276,6 +276,10 @@ namespace pam {
       dm.register_and_allocate<real>("gcm_cloud_water" ,"GCM column cloud water density"            ,{nz  ,nens},{"z"  ,"nens"});
       dm.register_and_allocate<real>("gcm_cloud_ice"   ,"GCM column cloud ice density"              ,{nz  ,nens},{"z"  ,"nens"});
 
+      dm.register_and_allocate<real>("gcm_num_liq"   ,"GCM column cloud liq number"              ,{nz  ,nens},{"z"  ,"nens"});
+      dm.register_and_allocate<real>("gcm_num_ice"   ,"GCM column cloud ice number"              ,{nz  ,nens},{"z"  ,"nens"});
+      dm.register_and_allocate<real>("gcm_num_rain"  ,"GCM column liq rain number"               ,{nz  ,nens},{"z"  ,"nens"});
+
       dm.register_and_allocate<real>("ref_presi"        ,"Reference state column interface pressure" ,{nz+1,nens},{"zp1","nens"});
       dm.register_and_allocate<real>("ref_pres"         ,"Reference state column mid-point pressure" ,{nz  ,nens},{"z"  ,"nens"});
       dm.register_and_allocate<real>("ref_density_dry"  ,"Reference state column dry density"        ,{nz  ,nens},{"z"  ,"nens"});
@@ -304,6 +308,9 @@ namespace pam {
       auto gcm_rho_v    = dm.get_collapsed<real>("gcm_water_vapor"          );
       auto gcm_rho_l    = dm.get_collapsed<real>("gcm_cloud_water"          );
       auto gcm_rho_i    = dm.get_collapsed<real>("gcm_cloud_ice"            );
+      auto gcm_num_liq  = dm.get_collapsed<real>("gcm_num_liq"              );
+      auto gcm_num_ice  = dm.get_collapsed<real>("gcm_num_ice"              );
+      auto gcm_num_rain = dm.get_collapsed<real>("gcm_num_rain"             );
       auto ref_rho_d    = dm.get_collapsed<real>("ref_density_dry"          );
       auto ref_rho_v    = dm.get_collapsed<real>("ref_density_vapor"        );
       auto ref_rho_l    = dm.get_collapsed<real>("ref_density_liq"          );
@@ -330,6 +337,11 @@ namespace pam {
         if (i < gcm_wvel   .size()) gcm_wvel   (i) = 0;
         if (i < gcm_temp   .size()) gcm_temp   (i) = 0;
         if (i < gcm_rho_v  .size()) gcm_rho_v  (i) = 0;
+        if (i < gcm_rho_l  .size()) gcm_rho_l  (i) = 0;
+        if (i < gcm_rho_i  .size()) gcm_rho_i  (i) = 0;
+        if (i < gcm_num_liq .size()) gcm_num_liq (i) = 0;
+        if (i < gcm_num_ice .size()) gcm_num_ice (i) = 0;
+        if (i < gcm_num_rain.size()) gcm_num_rain(i) = 0;
         if (i < ref_rho_d  .size()) ref_rho_d  (i) = 0;
         if (i < ref_rho_v  .size()) ref_rho_v  (i) = 0;
         if (i < ref_rho_l  .size()) ref_rho_l  (i) = 0;

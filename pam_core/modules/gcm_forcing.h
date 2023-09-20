@@ -45,6 +45,14 @@ namespace modules {
     auto rho_l_gcm = dm.get<real const,2> ( "gcm_cloud_water" );
     auto rho_i_gcm = dm.get<real const,2> ( "gcm_cloud_ice"   );
 
+    auto crm_nc = dm.get<real const,4>("cloud_water_num");
+    auto crm_ni = dm.get<real const,4>("ice_num");
+    auto crm_nr = dm.get<real const,4>("rain_num");
+
+    auto gcm_nc = dm.get<real,2>("gcm_num_liq" );
+    auto gcm_ni = dm.get<real,2>("gcm_num_ice" );
+    auto gcm_nr = dm.get<real,2>("gcm_num_rain");
+
     int nz   = dm.get_dimension_size("z"   );
     int ny   = dm.get_dimension_size("y"   );
     int nx   = dm.get_dimension_size("x"   );
@@ -65,6 +73,10 @@ namespace modules {
     real2d colavg_rho_totq("colavg_rho_totq",nz,nens);
     // #endif
 
+    real2d colavg_nc("colavg_nc",nz,nens);
+    real2d colavg_ni("colavg_ni",nz,nens);
+    real2d colavg_nr("colavg_nr",nz,nens);
+
     // We will be essentially reducing a summation to these variables, so initialize them to zero
     parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
       colavg_rho_d(k,iens) = 0;
@@ -80,6 +92,9 @@ namespace modules {
       colavg_temp_adj(k,iens) = 0;
       colavg_rho_totq(k,iens) = 0;
       // #endif
+      colavg_nc(k,iens) = 0;
+      colavg_ni(k,iens) = 0;
+      colavg_nr(k,iens) = 0;
     });
 
     real r_nx_ny  = 1._fp / (nx*ny);  // precompute reciprocal to avoid costly divisions
@@ -104,6 +119,9 @@ namespace modules {
       atomicAdd( colavg_temp_adj(k,iens) , temp_adj        * r_nx_ny );
       atomicAdd( colavg_rho_totq(k,iens) , rho_total_water * r_nx_ny );
       // #endif
+      atomicAdd( colavg_nc(k,iens), crm_nc(k,j,i,iens) * r_nx_ny );
+      atomicAdd( colavg_ni(k,iens), crm_ni(k,j,i,iens) * r_nx_ny );
+      atomicAdd( colavg_nr(k,iens), crm_nr(k,j,i,iens) * r_nx_ny );
     });
 
     // We need the GCM forcing tendencies later, so store these in the coupler's data manager
@@ -116,6 +134,9 @@ namespace modules {
       dm.register_and_allocate<real>( "gcm_forcing_tend_rho_v" , "GCM forcing for water vapor density",{nz,nens},{"z","nens"});
       dm.register_and_allocate<real>( "gcm_forcing_tend_rho_l" , "GCM forcing for cloud water density",{nz,nens},{"z","nens"});
       dm.register_and_allocate<real>( "gcm_forcing_tend_rho_i" , "GCM forcing for cloud ice density",  {nz,nens},{"z","nens"});
+      dm.register_and_allocate<real>( "gcm_forcing_tend_nc"    , "GCM forcing for liq number",  {nz,nens},{"z","nens"});
+      dm.register_and_allocate<real>( "gcm_forcing_tend_ni"    , "GCM forcing for ice number",  {nz,nens},{"z","nens"});
+      dm.register_and_allocate<real>( "gcm_forcing_tend_nr"    , "GCM forcing for rain number", {nz,nens},{"z","nens"});
     }
 
     // Retrieve the GCM forcing tendency arrays so we can set them with the time tencencies
@@ -126,6 +147,9 @@ namespace modules {
     auto gcm_forcing_tend_rho_v = dm.get<real,2>("gcm_forcing_tend_rho_v");
     auto gcm_forcing_tend_rho_l = dm.get<real,2>("gcm_forcing_tend_rho_l");
     auto gcm_forcing_tend_rho_i = dm.get<real,2>("gcm_forcing_tend_rho_i");
+    auto gcm_forcing_tend_nc    = dm.get<real,2>("gcm_forcing_tend_nc");
+    auto gcm_forcing_tend_ni    = dm.get<real,2>("gcm_forcing_tend_ni");
+    auto gcm_forcing_tend_nr    = dm.get<real,2>("gcm_forcing_tend_nr");
 
     real r_dt_gcm = 1._fp / dt_gcm;  // precompute reciprocal to avoid costly divisions
     // The forcing is the difference between the input GCM state and the current
@@ -153,6 +177,9 @@ namespace modules {
       gcm_forcing_tend_rho_l(k,iens) = 0;
       gcm_forcing_tend_rho_i(k,iens) = 0;
       // #endif
+      gcm_forcing_tend_nc(k,iens) = ( gcm_nc(k,iens) - colavg_nc(k,iens) ) * r_dt_gcm;
+      gcm_forcing_tend_ni(k,iens) = ( gcm_ni(k,iens) - colavg_ni(k,iens) ) * r_dt_gcm;
+      gcm_forcing_tend_nr(k,iens) = ( gcm_nr(k,iens) - colavg_nr(k,iens) ) * r_dt_gcm;
     });
   }
 
@@ -264,6 +291,9 @@ namespace modules {
     auto rho_v = dm.get<real,4>( "water_vapor" );
     auto rho_l = dm.get<real,4>( "cloud_water" );
     auto rho_i = dm.get<real,4>( "ice"         );
+    auto nc    = dm.get<real,4>("cloud_water_num");
+    auto ni    = dm.get<real,4>("ice_num");
+    auto nr    = dm.get<real,4>("rain_num");
 
     // GCM forcing tendencies for the average CRM column state
     auto gcm_forcing_tend_rho_d = dm.get<real const,2>("gcm_forcing_tend_rho_d");
@@ -273,6 +303,9 @@ namespace modules {
     auto gcm_forcing_tend_rho_v = dm.get<real const,2>("gcm_forcing_tend_rho_v");
     auto gcm_forcing_tend_rho_l = dm.get<real const,2>("gcm_forcing_tend_rho_l");
     auto gcm_forcing_tend_rho_i = dm.get<real const,2>("gcm_forcing_tend_rho_i");
+    auto gcm_forcing_tend_nc    = dm.get<real,2>("gcm_forcing_tend_nc");
+    auto gcm_forcing_tend_ni    = dm.get<real,2>("gcm_forcing_tend_ni");
+    auto gcm_forcing_tend_nr    = dm.get<real,2>("gcm_forcing_tend_nr");
 
     // We need these arrays for multiplicative hole filling
     // Holes are only filled inside vertical columns at first because it leads to a very infrequent collision
@@ -324,6 +357,13 @@ namespace modules {
       //   rho_i(k,j,i,iens) = 0;
       // }
       // #endif
+      nc(k,j,i,iens) += gcm_forcing_tend_nc(k,iens) * dt;
+      ni(k,j,i,iens) += gcm_forcing_tend_ni(k,iens) * dt;
+      nr(k,j,i,iens) += gcm_forcing_tend_nr(k,iens) * dt;
+
+      if (nc(k,j,i,iens) < 0) { nc(k,j,i,iens) = 0; }
+      if (ni(k,j,i,iens) < 0) { ni(k,j,i,iens) = 0; }
+      if (nr(k,j,i,iens) < 0) { nr(k,j,i,iens) = 0; }
     });
 
     // Only do the hole filing if there's negative mass
