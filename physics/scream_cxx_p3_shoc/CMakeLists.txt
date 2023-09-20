@@ -4,7 +4,6 @@ project(scream_cxx_interfaces CXX Fortran C)
 set(MYSOURCES scream_cxx_interface_p3.cpp
               scream_cxx_interface_shoc.cpp)
 
-
 set(SCREAM_LIB_ONLY ON CACHE BOOL "" FORCE)
 set(CMAKE_MODULE_PATH ${SCREAM_HOME}/components/eamxx/cmake;${SCREAM_HOME}/externals/ekat/cmake)
 set(SCREAM_CIME_BUILD ON)
@@ -16,7 +15,7 @@ set(EKAT_CONFIGURE_FILE_F90_FILE ON)
 set(Kokkos_ENABLE_SERIAL  ON CACHE BOOL "" FORCE)
 if ("${YAKL_ARCH}" STREQUAL "CUDA")
   set(EAMXX_ENABLE_GPU             ON CACHE BOOL "" FORCE)
-  set(Kokkos_ENABLE_CUDA_CONSTEXPR ON CACHE BOOL "" FORCE)
+#  set(Kokkos_ENABLE_CUDA_CONSTEXPR ON CACHE BOOL "" FORCE)
   set(Kokkos_ENABLE_CUDA_LAMBDA    ON CACHE BOOL "" FORCE)
   set(Kokkos_ENABLE_CUDA           ON CACHE BOOL "" FORCE)
 elseif ("${YAKL_ARCH}" STREQUAL "HIP")
@@ -29,16 +28,23 @@ elseif ("${YAKL_ARCH}" STREQUAL "HIP")
 endif()
 
 if ("${CMAKE_Fortran_COMPILER_ID}" STREQUAL "Flang")
-  set(CMAKE_Fortran_FLAGS "-Mpreprocess")
+  set(CMAKE_Fortran_FLAGS -Mpreprocess)
+elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+   set(CMAKE_Fortran_FLAGS -g )
+else()
+   set(CMAKE_Fortran_FLAGS -ffree-line-length-none )
 endif()
 
 add_definitions(-DSCREAM_CIME_BUILD -DHAVE_MPI -DSCREAM_CONFIG_IS_CMAKE)
 
+set(SCREAM_DOUBLE_PRECISION        TRUE        CACHE BOOL "" FORCE)
 set(SCREAM_POSSIBLY_NO_PACK_SIZE   FALSE       CACHE BOOL "" FORCE)
 set(SCREAM_PACK_SIZE               1           CACHE BOOL "" FORCE)
 set(SCREAM_SMALL_PACK_SIZE         1           CACHE BOOL "" FORCE)
 set(SCREAM_NUM_VERTICAL_LEV        ${PAM_NLEV} CACHE BOOL "" FORCE)
-set(SCREAM_DATA_DIR                ${CMAKE_CURRENT_SOURCE_DIR}/../micro/p3)
+if (PAM_STANDALONE)
+  set(SCREAM_DATA_DIR                ${CMAKE_CURRENT_SOURCE_DIR}/../micro/p3)
+endif()
 
 macro (EkatConfigFile CONFIG_FILE_IN CONFIG_FILE_C EKAT_CONFIGURE_FILE_F90_FILE)
   message(STATUS "DEBUG: ${CONFIG_FILE_IN} ; ${CONFIG_FILE_C} ; ${EKAT_CONFIGURE_FILE_F90_FILE}")
@@ -56,6 +62,10 @@ endmacro (EkatConfigFile)
 EkatConfigFile(${SCREAM_HOME}/components/eamxx/src/scream_config.h.in
                ${SCREAM_HOME}/components/eamxx/src/scream_config.h
                ${SCREAM_HOME}/components/eamxx/src/scream_config.f)
+
+if (${USE_KOKKOS})
+   set(Kokkos_ROOT ${INSTALL_SHAREDPATH}/kokkos/build)
+endif()
 
 include_directories(${SCREAM_HOME}/components/eamxx/src/physics/shoc     )
 include_directories(${SCREAM_HOME}/components/eamxx/src/physics/shoc/impl)

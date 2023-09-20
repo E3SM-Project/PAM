@@ -16,7 +16,6 @@ include_directories(${YAKL_BIN})
 set(YAML_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../externals/yaml-cpp ${CMAKE_CURRENT_BINARY_DIR}/yaml-cpp)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../externals/eigen)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../externals/yaml-cpp/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../physics/scream_cxx_interfaces)
 

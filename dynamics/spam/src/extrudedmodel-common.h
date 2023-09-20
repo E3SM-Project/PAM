@@ -10,9 +10,9 @@ uint constexpr ntracers_dycore = 0;
 //////////////////////////////////////////////////////////////////////////////
 
 // for debugging anelastic
-#if defined PAMC_AN || defined PAMC_MAN
-#define PAMC_CHECK_ANELASTIC_CONSTRAINT
-#endif
+// #if defined PAMC_AN || defined PAMC_MAN
+// #define PAMC_CHECK_ANELASTIC_CONSTRAINT
+// #endif
 
 // Number of Dimensions
 uint constexpr ndims = 1;

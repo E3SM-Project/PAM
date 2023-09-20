@@ -105,22 +105,26 @@ public:
     auto &dm = coupler.get_data_manager_device_readwrite();
 
     // Register and allocation non-tracer quantities used by the microphysics
-    dm.register_and_allocate<real>( "wthv_sec" , "Buoyancy flux [K m/s]"                , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    dm.register_and_allocate<real>( "tk"       , "Eddy coefficient for momentum [m2/s]" , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    dm.register_and_allocate<real>( "tkh"      , "Eddy coefficent for heat [m2/s]"      , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    dm.register_and_allocate<real>( "cldfrac"  , "Cloud fraction [-]"                   , {nz,ny,nx,nens} , {"z","y","x","nens"} );
-    dm.register_and_allocate<real>( "relvar"   , "Relative cloud water variance"        , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    dm.register_and_allocate<real>( "wthv_sec"     , "Buoyancy flux [K m/s]"                , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    dm.register_and_allocate<real>( "tk"           , "Eddy coefficient for momentum [m2/s]" , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    dm.register_and_allocate<real>( "tkh"          , "Eddy coefficent for heat [m2/s]"      , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    dm.register_and_allocate<real>( "cldfrac"      , "Cloud fraction [-]"                   , {nz,ny,nx,nens} , {"z","y","x","nens"} );
+    dm.register_and_allocate<real>( "inv_qc_relvar", "Inverse relative cloud water variance", {nz,ny,nx,nens} , {"z","y","x","nens"} );
+
+    // Store surface fluxes from GCM in data manager to facilitate more realistic turbulence calculations
+    dm.register_and_allocate<real>("sfc_shf", "input surface sensible heat flux"            , {ny,nx,nens}, {"y","x","nens"} );
+    dm.register_and_allocate<real>("sfc_lhf", "input surface latent heat flux"              , {ny,nx,nens}, {"y","x","nens"} );
 
     // Store surface momentum fluxes in data manager to facilitate internal surface calculations
-    dm.register_and_allocate<real>( "sfc_mom_flx_u", "Surface flux of U-momentum"       , {ny,nx,nens} , {"y","x","nens"} );
-    dm.register_and_allocate<real>( "sfc_mom_flx_v", "Surface flux of V-momentum"       , {ny,nx,nens} , {"y","x","nens"} );
+    dm.register_and_allocate<real>( "sfc_mom_flx_u", "Surface flux of U-momentum"           , {ny,nx,nens} , {"y","x","nens"} );
+    dm.register_and_allocate<real>( "sfc_mom_flx_v", "Surface flux of V-momentum"           , {ny,nx,nens} , {"y","x","nens"} );
 
     auto tke           = dm.get<real,4>( "tke"           );
     auto wthv_sec      = dm.get<real,4>( "wthv_sec"      );
     auto tk            = dm.get<real,4>( "tk"            );
     auto tkh           = dm.get<real,4>( "tkh"           );
     auto cldfrac       = dm.get<real,4>( "cldfrac"       );
-    auto relvar        = dm.get<real,4>( "relvar"        );
+    auto inv_qc_relvar = dm.get<real,4>( "inv_qc_relvar" );
     auto sfc_mom_flx_u = dm.get<real,3>( "sfc_mom_flx_u" );
     auto sfc_mom_flx_v = dm.get<real,3>( "sfc_mom_flx_v" );
 
@@ -130,7 +134,7 @@ public:
       tk           (k,j,i,iens) = 0;
       tkh          (k,j,i,iens) = 0;
       cldfrac      (k,j,i,iens) = 0;
-      relvar       (k,j,i,iens) = 0;
+      inv_qc_relvar(k,j,i,iens) = 0;
     });
 
     parallel_for( "surface momentum flux zero" , SimpleBounds<3>(ny,nx,nens) , YAKL_LAMBDA (int j, int i, int iens) {
@@ -158,29 +162,25 @@ public:
 
     auto &dm = coupler.get_data_manager_device_readwrite();
 
-    auto pres_mid_tmp = coupler.compute_pressure_array();
-
-    auto pres_mid = pres_mid_tmp.reshape<2>({nz  ,ncol});
-
     auto zint_pam = dm.get<real,2>("vertical_interface_height");
     auto zmid_pam = dm.get<real,2>("vertical_midpoint_height" );
 
     real crm_dx = coupler.get_xlen() / nx;
     real crm_dy = ny == 1 ? crm_dx : coupler.get_ylen() / ny;
 
-    // SHOC init requires reference pressure, which we do not have available for the init() call
     if (first_step) {
-      // Invert the first column in x, z, and ensemble to use as reference pressure for shoc
-      real1d pref_shoc("pref_shoc",nz);
-      parallel_for( SimpleBounds<1>(nz) , YAKL_LAMBDA (int k) {
-        pref_shoc(k) = pres_mid(nz-1-k,0);
-      });
-      real zvir = R_v / R_d - 1.;
-      int kbot, ktop;
-
-      kbot = nz;
-      ktop = 1;
       #ifndef SHOC_CXX
+        auto ref_pres = dm_device.get<real,2>("ref_pres");
+        // SHOC init requires reference pressure, which we do not have available for the init() call
+        // Invert the first column in x, z, and ensemble to use as reference pressure for shoc
+        real1d pref_shoc("pref_shoc",nz);
+        parallel_for( SimpleBounds<1>(nz) , YAKL_LAMBDA (int k) {
+          int k_shoc = nz-1-k;
+          pref_shoc(k_shoc) = ref_pres(k,0);
+        });
+        real zvir = R_v / R_d - 1.;
+        int kbot = nz;
+        int ktop = 1;
         shoc_init_fortran( nz , grav , R_d , R_v , cp_d , zvir , latvap , latice , karman ,
                            pref_shoc.createHostCopy().data() , kbot , ktop );
       #endif
@@ -213,14 +213,16 @@ public:
     #endif
 
     // Get saved SHOC-related variables
-    auto tke           = dm.get_lev_col<real>( "tke"     ); // PAM Tracer                 ; don't compute
-    auto wthv_sec      = dm.get_lev_col<real>( "wthv_sec"); // Reuse from last SHOC output; don't compute
-    auto tk            = dm.get_lev_col<real>( "tk"      ); // Reuse from last SHOC output; don't compute
-    auto tkh           = dm.get_lev_col<real>( "tkh"     ); // Reuse from last SHOC output; don't compute
-    auto cldfrac       = dm.get_lev_col<real>( "cldfrac" ); // Reuse from last SHOC output; don't compute
-    auto relvar        = dm.get_lev_col<real>( "relvar"  ); // Computed on output for P3
+    auto tke           = dm.get_lev_col<real>(   "tke"           ); // PAM Tracer                 ; don't compute
+    auto wthv_sec      = dm.get_lev_col<real>(   "wthv_sec"      ); // Reuse from last SHOC output; don't compute
+    auto tk            = dm.get_lev_col<real>(   "tk"            ); // Reuse from last SHOC output; don't compute
+    auto tkh           = dm.get_lev_col<real>(   "tkh"           ); // Reuse from last SHOC output; don't compute
+    auto cldfrac       = dm.get_lev_col<real>(   "cldfrac"       ); // Reuse from last SHOC output; don't compute
+    auto inv_qc_relvar = dm.get_lev_col<real>(   "inv_qc_relvar" ); // Computed on output for P3
     auto sfc_mom_flx_u = dm.get_collapsed<real>( "sfc_mom_flx_u" ); // surface momentum flux - either zero or computed by surface_friction.h
     auto sfc_mom_flx_v = dm.get_collapsed<real>( "sfc_mom_flx_v" ); // surface momentum flux - either zero or computed by surface_friction.h
+    auto sfc_shf       = dm.get_collapsed<real>( "sfc_shf"       );
+    auto sfc_lhf       = dm.get_collapsed<real>( "sfc_lhf"       );
     // Get coupler state
     auto rho_d        = dm.get_lev_col<real>( "density_dry"  );
     auto uvel         = dm.get_lev_col<real>( "uvel"         );
@@ -229,11 +231,8 @@ public:
     auto temp         = dm.get_lev_col<real>( "temp"         );
     auto rho_v        = dm.get_lev_col<real>( "water_vapor"  ); // Water vapor mass
 
-    // TODO: What do we do about rho_dry and wvel ???
 
-    // Grab cloud liquid tracer, and determine what other tracers to diffuse in SHOC
-    // TODO: If we add new MMF modules that add other tracers that need to be diffused, then this situation
-    //       must be handled
+    // Grab cloud liquid tracer, and other tracers that need to be modified by SHOC
     pam::MultiField<real,2> qtracers_pam;  // Extra tracers for SHOC to diffuse
     real2d rho_c;                     // Cloud liquid mass (name differs for different micro schemes)
     if        (micro_kessler) {
@@ -262,6 +261,9 @@ public:
 
     auto zint = zint_tmp.reshape<2>({nz+1,ncol});
     auto zmid = zmid_tmp.reshape<2>({nz  ,ncol});
+
+    auto pmid_tmp = coupler.compute_pressure_array();
+    auto pmid = pmid_tmp.reshape<2>({nz  ,ncol});
 
     // Create variables for SHOC call (these are all inverted for vertical indices
     real1d shoc_host_dx    ("shoc_host_dx"    ,                  ncol); // grid spacing of host model in x direction [m]
@@ -314,6 +316,7 @@ public:
     real grav   = this->grav  ;
     real R_d    = this->R_d   ;
     real R_v    = this->R_v   ;
+    real cv_d   = this->cv_d  ;
     real cp_d   = this->cp_d  ;
     real latvap = this->latvap;
 
@@ -324,6 +327,20 @@ public:
         shoc_host_dy    (i) = crm_dy;
         shoc_wthl_sfc   (i) = 0;
         shoc_wqw_sfc    (i) = 0;
+
+        // // The alternative setting of surface fluxes below
+        // // must be used in conjunction with disabling the
+        // // application of surface fluxes in
+        // // components/eamxx/src/physics/shoc/impl/shoc_update_prognostics_implicit_impl.hpp
+        // // NOTE: density and exner values should represent the surface
+        // // interface rather than the center of the lowest level
+        // // SHF is in units of [W/m2] and needs to be converted to [K m/s]
+        // // LHF is in units of [W/m2] and needs to be converted to [m/s]
+        // real rho_sfc = rho_d(0,i)+rho_v(0,i);
+        // real exn_sfc = pow( pmid(0,i) / p0 , R_d / cp_d );
+        // shoc_wthl_sfc   (i) = sfc_shf(i) / ( cp_d * rho_sfc * exn_sfc);
+        // shoc_wqw_sfc    (i) = sfc_lhf(i) / ( latvap * rho_sfc );
+
         shoc_uw_sfc     (i) = sfc_mom_flx_u(i);
         shoc_vw_sfc     (i) = sfc_mom_flx_v(i);
         shoc_phis       (i) = zint(0,i) * grav;
@@ -333,55 +350,62 @@ public:
       }
       if (k < nz) {
         int k_shoc = nz-1-k;
-        real z       = zmid    (k,i);
+
+        real rho_total = rho_d(k,i)+rho_v(k,i);
+
+        real z       = zmid(k,i);
         real dz      = zint(k+1,i) - zint(k,i);
-        real press   = pres_mid(k,i);
-        real t       = temp    (k,i);
-        real qv      = rho_v   (k,i) / rho_d(k,i);
-        real ql      = rho_c   (k,i) / rho_d(k,i);
-        real exner   = pow( press / p0 , R_d / cp_d );
+        real t       = temp(k,i);
+        real qv      = std::max(0._fp,rho_v(k,i)) / rho_total;
+        real ql      = std::max(0._fp,rho_c(k,i)) / rho_total;
+
+        //these are cosntant kappa expressions
+        real exner   = pow( pmid(k,i) / p0 , R_d / cp_d );
         real theta   = t / exner;
+
         // https://glossary.ametsoc.org/wiki/Virtual_potential_temperature
-        real theta_v = theta * (1 + 0.61_fp * qv);
+        real theta_v = theta * (1 + 0.61_fp * qv - ql);
         // https://glossary.ametsoc.org/wiki/Liquid_water_potential_temperature
-        // According to update_host_dse, the simplified version is used here
-        real theta_l = theta - (latvap/cp_d) * ql;
-        // dry static energy = Cp*T + g*z + phis
-        real dse     = cp_d * t + grav * z;
+        real theta_l = theta - (1/exner)*(latvap/cp_d) * ql;
+
         shoc_ql       (k_shoc,i) = ql;
         shoc_qw       (k_shoc,i) = qv + ql;
-        shoc_zt_grid  (k_shoc,i) = z;
-        shoc_pres     (k_shoc,i) = press;
-        shoc_pdel     (k_shoc,i) = grav * rho_d(k,i) * dz;
+        shoc_zt_grid  (k_shoc,i) = z - zint(0,i); // SHOC assumes that height starts at zero
+        shoc_pres     (k_shoc,i) = pmid(k,i);
+        shoc_pdel     (k_shoc,i) = grav * rho_total * dz;
         shoc_thv      (k_shoc,i) = theta_v;
         shoc_w_field  (k_shoc,i) = wvel(k,i);
         shoc_exner    (k_shoc,i) = exner;
         shoc_inv_exner(k_shoc,i) = 1._fp / exner;
-        shoc_host_dse (k_shoc,i) = dse;
-        // TKE is a tracer, so it's stored as mass-weighted. SHOC doesn't want mass-weighted
-        shoc_tke      (k_shoc,i) = tke(k,i) / rho_d(k,i);  
+        shoc_host_dse (k_shoc,i) = cp_d*t + grav*shoc_zt_grid(k_shoc,i) + shoc_phis(i);
         shoc_thetal   (k_shoc,i) = theta_l;
         shoc_u_wind   (k_shoc,i) = uvel(k,i);
         shoc_v_wind   (k_shoc,i) = vvel(k,i);
         shoc_wthv_sec (k_shoc,i) = wthv_sec(k,i);
+        // TKE is stored as a mass-weighted tracer, but SHOC doesn't want mass-weighted
+        // We also enfore a minimum of 0.004 taken from the SCREAM interface
+        shoc_tke      (k_shoc,i) = std::max( 0.004, tke(k,i)/rho_total );
+        shoc_tk       (k_shoc,i) = tk     (k,i);
+        shoc_tkh      (k_shoc,i) = tkh    (k,i);
+        shoc_cldfrac  (k_shoc,i) = cldfrac(k,i);
         for (int tr=0; tr < num_qtracers; tr++) {
-          shoc_qtracers(tr,k_shoc,i) = qtracers_pam(tr,k,i) / rho_d(k,i);
+          shoc_qtracers(tr,k_shoc,i) = qtracers_pam(tr,k,i) / rho_total;
+          shoc_qtracers(tr,k_shoc,i) = std::max( 0._fp, shoc_qtracers(tr,k_shoc,i) );
         }
-        shoc_tk     (k_shoc,i) = tk     (k,i);
-        shoc_tkh    (k_shoc,i) = tkh    (k,i);
-        shoc_cldfrac(k_shoc,i) = cldfrac(k,i);
       }
       int k_shoc = nz-k;
-      shoc_zi_grid(k_shoc,i) = zint    (k,i);
-      real pres_int;
-      if      (k == 0 ) {
-        pres_int = pres_mid(k  ,i) + grav*rho_d(k  ,i)*(zint(k+1,i)-zint(k  ,i))/2;
+      shoc_zi_grid(k_shoc,i) = zint(k,i) - zint(0,i); // SHOC needs height values to start at zero
+      // shoc_presi  (k_shoc,i) = pint(k,i);
+      real pint;
+      if (k == 0 ) {
+        pint = pmid(k  ,i) + grav*(rho_d(k  ,i)+rho_v(k  ,i))*(zint(k+1,i)-zint(k  ,i))/2;
       } else if (k == nz) {
-        pres_int = pres_mid(k-1,i) - grav*rho_d(k-1,i)*(zint(k  ,i)-zint(k-1,i))/2;
+        pint = pmid(k-1,i) - grav*(rho_d(k-1,i)+rho_v(k-1,i))*(zint(k  ,i)-zint(k-1,i))/2;
       } else {
-        pres_int = 0.5_fp * ( pres_mid(k-1,i) - grav*rho_d(k-1,i)*(zint(k  ,i)-zint(k-1,i))/2 +
-                              pres_mid(k  ,i) + grav*rho_d(k  ,i)*(zint(k+1,i)-zint(k  ,i))/2 ); }
-      shoc_presi  (k_shoc,i) = pres_int;
+        pint = 0.5_fp * ( pmid(k-1,i) - grav*(rho_d(k-1,i)+rho_v(k-1,i))*(zint(k  ,i)-zint(k-1,i))/2 +
+                          pmid(k  ,i) + grav*(rho_d(k  ,i)+rho_v(k  ,i))*(zint(k+1,i)-zint(k  ,i))/2 );
+      }
+      shoc_presi  (k_shoc,i) = pint;
     });
 
     int nadv = 1;
@@ -590,14 +614,14 @@ public:
 
       int nzp1 = nz+1;
       // IMPORTANT: SHOC appears to actually want 1/exner for the exner parameter
-      shoc_main_fortran( ncol, nz, nzp1, dt, nadv, 
-                         shoc_host_dx_host.data(), shoc_host_dy_host.data(), shoc_thv_host.data(), 
+      shoc_main_fortran( ncol, nz, nzp1, dt, nadv,
+                         shoc_host_dx_host.data(), shoc_host_dy_host.data(), shoc_thv_host.data(),
                          shoc_zt_grid_host.data(), shoc_zi_grid_host.data(), shoc_pres_host.data(), shoc_presi_host.data(),
                          shoc_pdel_host.data(),
-                         shoc_wthl_sfc_host.data(), shoc_wqw_sfc_host.data(), shoc_uw_sfc_host.data(), shoc_vw_sfc_host.data(), 
-                         shoc_wtracer_sfc_host.data(), num_qtracers, shoc_w_field_host.data(), 
-                         shoc_inv_exner_host.data(), shoc_phis_host.data(), 
-                         shoc_host_dse_host.data(), shoc_tke_host.data(), shoc_thetal_host.data(), shoc_qw_host.data(), 
+                         shoc_wthl_sfc_host.data(), shoc_wqw_sfc_host.data(), shoc_uw_sfc_host.data(), shoc_vw_sfc_host.data(),
+                         shoc_wtracer_sfc_host.data(), num_qtracers, shoc_w_field_host.data(),
+                         shoc_inv_exner_host.data(), shoc_phis_host.data(),
+                         shoc_host_dse_host.data(), shoc_tke_host.data(), shoc_thetal_host.data(), shoc_qw_host.data(),
                          shoc_u_wind_host.data(), shoc_v_wind_host.data(), shoc_qtracers_host.data(),
                          shoc_wthv_sec_host.data(), shoc_tkh_host.data(), shoc_tk_host.data(),
                          shoc_ql_host.data(), shoc_cldfrac_host.data(),
@@ -656,31 +680,71 @@ public:
 
     #endif
 
+    // yakl::fence();
+    // parallel_for( SimpleBounds<2>(5,5) , YAKL_LAMBDA (int k, int i) {  
+    //   int k_shoc = nz-1-k;
+    //   printf("WHDEBUG1 - k:%3.3d k_shoc:%3.3d nz:%3.3d i:%3.3d ncol:%5.5d \n",k,k_shoc,nz,i,ncol);
+    // });
+    // yakl::fence();
+    // parallel_for( SimpleBounds<2>(5,5) , YAKL_LAMBDA (int k, int i) {  
+    //   int k_shoc = nz-1-k;
+    //   real qw = shoc_qw(k_shoc,i);
+    //   real ql = shoc_ql(k_shoc,i);
+    //   real qv = qw - ql;
+    //   printf("WHDEBUG1 - k:%3.3d k_shoc:%3.3d nz:%3.3d i:%3.3d ncol:%5.5d \n",k,k_shoc,nz,i,ncol);
+    //   printf("WHDEBUG2 - shoc_thetal:%f \n",shoc_thetal(k_shoc,i));
+    //   printf("WHDEBUG3 - shoc_exner:%f \n",shoc_exner(k_shoc,i));
+    //   printf("WHDEBUG4 - shoc_ql:%f \n",shoc_ql(k_shoc,i));
+    //   printf("WHDEBUG5 - temp:%f \n",temp(k,i));
+    //   printf("WHDEBUG6 - cv_d:%f \n",cv_d);
+    //   printf("WHDEBUG7 - cp_d:%f \n",cp_d);
+    //   printf("WHDEBUG8 - latvap:%f \n",latvap);
+    //   real tmp_temp_old = temp(k,i);
+    //   real tmp_temp_new = shoc_thetal(k_shoc,i)*shoc_exner(k_shoc,i) + (latvap/cp_d)*shoc_ql(k_shoc,i);
+    //   // printf("WHDEBUG6 - temp_old:%f  temp_new:%f  cv_d:%f  cp_d:%f \n",temp_old,temp_new,cv_d,cp_d);
+    //   // temp(k,i) = tmp_temp_old + ( tmp_temp_new - tmp_temp_old ) * cv_d/cp_d;
+    //   temp(k,i) = temp(k,i) + ( (shoc_thetal(k_shoc,i)*shoc_exner(k_shoc,i) + (latvap/cp_d)*shoc_ql(k_shoc,i)) - temp(k,i) ) * cv_d/cp_d;
+    //   printf("WHDEBUG_END");
+    // });
+
     // Process outputs from SHOC (reordering the vertical dimension)
     parallel_for( SimpleBounds<2>(nz,ncol) , YAKL_LAMBDA (int k, int i) {
       int k_shoc = nz-1-k;
       real qw = shoc_qw(k_shoc,i);
       real ql = shoc_ql(k_shoc,i);
       real qv = qw - ql;
-      temp    (k,i) = (shoc_thetal(k_shoc,i) + (latvap/cp_d) * shoc_ql(k_shoc,i)) / shoc_inv_exner(k_shoc,i);
-      rho_v   (k,i) = qv * rho_d(k,i);
-      rho_c   (k,i) = ql * rho_d(k,i);
-      uvel    (k,i) = shoc_u_wind(k_shoc,i);
-      vvel    (k,i) = shoc_v_wind(k_shoc,i);
-      tke     (k,i) = shoc_tke     (k_shoc,i) * rho_d(k,i);
+
+      // invert liquid potential temperature to obtain updated temperature
+      // SHOC calculations are done at constant pressure but PAM assumes constant volume
+      // so we need to scale temperature change by cv/cp
+      real temp_old = temp(k,i);
+      real temp_new = shoc_thetal(k_shoc,i)*shoc_exner(k_shoc,i) + (latvap/cp_d)*shoc_ql(k_shoc,i);
+      temp(k,i) = temp_old + ( temp_new - temp_old ) * cv_d/cp_d;
+
+      rho_v(k,i) = qv * rho_d(k,i) / ( 1 - qv );
+      rho_v(k,i) = std::max( 0._fp, rho_v(k,i) );
+      real rho_total = rho_d(k,i)+rho_v(k,i);
+      rho_c   (k,i) = ql * rho_total;
+      rho_c(k,i) = std::max( 0._fp, rho_c(k,i) );
+      uvel    (k,i) = shoc_u_wind  (k_shoc,i);
+      vvel    (k,i) = shoc_v_wind  (k_shoc,i);
+      tke     (k,i) = shoc_tke     (k_shoc,i) * rho_total;
       wthv_sec(k,i) = shoc_wthv_sec(k_shoc,i);
       tk      (k,i) = shoc_tk      (k_shoc,i);
       tkh     (k,i) = shoc_tkh     (k_shoc,i);
-      cldfrac (k,i) = std::min(1._fp , shoc_cldfrac (k_shoc,i) );
+      cldfrac (k,i) = shoc_cldfrac (k_shoc,i);
+      cldfrac (k,i) = std::min( 1._fp, cldfrac(k,i) );
+      cldfrac (k,i) = std::max( 0._fp, cldfrac(k,i) );
       for (int tr=0; tr < num_qtracers; tr++) {
-        qtracers_pam(tr,k,i) = shoc_qtracers(tr,k_shoc,i) * rho_d(k,i);
+        qtracers_pam(tr,k,i) = shoc_qtracers(tr,k_shoc,i) * rho_total;
+        qtracers_pam(tr,k,i) = std::max( 0._fp, qtracers_pam(tr,k,i) );
       }
       real rcm  = shoc_ql (k_shoc,i);
       real rcm2 = shoc_ql2(k_shoc,i);
       if ( rcm != 0 && rcm2 != 0 ) {
-        relvar(k,i) = std::min( 10._fp , std::max( 0.001_fp , rcm*rcm / rcm2 ) );
+        inv_qc_relvar(k,i) = std::min( 10._fp , std::max( 0.001_fp , rcm*rcm / rcm2 ) );
       } else {
-        relvar(k,i) = 1;
+        inv_qc_relvar(k,i) = 1;
       }
     });
 
@@ -699,7 +763,8 @@ public:
         });
         mass = yakl::intrinsics::sum(mass4d);
       }
-      std::cout << "Relative mass Change: " << abs(mass-mass0)/mass0 << " : ";
+      real rel_mass_change = abs(mass-mass0)/mass0;
+      if (rel_mass_change > 1.e-13) std::cout << "WARNING: SHOC relative mass change: " << rel_mass_change << std::endl;
     #endif
 
     first_step = false;
@@ -718,6 +783,3 @@ public:
 
 
 };
-
-
-

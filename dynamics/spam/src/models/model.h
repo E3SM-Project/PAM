@@ -31,12 +31,13 @@ public:
   Equations() { this->is_initialized = false; }
   void initialize(PamCoupler &coupler, ModelParameters &params,
                   const Geometry<Straight> &primal_geom,
-                  const Geometry<Twisted> &dual_geom) {
+                  const Geometry<Twisted> &dual_geom,
+                  bool verbose=false) {
 
     this->reference_state.initialize<VariableSet>(primal_geom.topology,
                                                   dual_geom.topology);
     this->varset.initialize(coupler, params, thermo, reference_state,
-                            primal_geom, dual_geom);
+                            primal_geom, dual_geom, verbose);
     this->PVPE.initialize(varset);
     this->Hk.initialize(varset, primal_geom, dual_geom);
     this->Hs.initialize(thermo, varset, primal_geom, dual_geom);
@@ -115,6 +116,7 @@ public:
   SArray<TRACER_TAG, 1, ntracers_dycore + GPU_PAD> tracers;
   Equations *equations;
   bool is_initialized;
+  bool set_coupler_state = true;
 
   TestCase() { this->is_initialized = false; }
 

@@ -4,7 +4,6 @@
 #include <iostream>
 //#include <cstring>
 #include "mpi.h"
-#include "yaml-cpp/yaml.h"
 #include <array>
 #include <complex>
 #include <extensions/YAKL_fft.h>
@@ -13,9 +12,12 @@
 #include <optional>
 #include <sstream>
 #include <string>
-#ifdef YAKL_ARCH_CUDA
-#include <cuda/std/complex>
+#ifdef PAM_STANDALONE
+#include "yaml-cpp/yaml.h"
 #endif
+// #ifdef YAKL_ARCH_CUDA
+// #include <cuda/std/complex>
+// #endif
 
 namespace pamc {
 
@@ -31,11 +33,12 @@ using uint = unsigned int;
 // Declaring the precision for the model
 using real = double;
 
-#ifdef YAKL_ARCH_CUDA
-using complex = cuda::std::complex<real>;
-#else
+// #if defined YAKL_ARCH_CUDA
+// #include <cuda/std/complex>
+// using complex = cuda::std::complex<real>;
+// #else
 using complex = std::complex<real>;
-#endif
+// #endif
 
 using complex5d = yakl::Array<complex, 5, yakl::memDevice, yakl::styleC>;
 using complex4d = yakl::Array<complex, 4, yakl::memDevice, yakl::styleC>;

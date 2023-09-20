@@ -67,6 +67,9 @@ namespace pam {
     const int npack  = ekat::npack<Spack>(nlev);
     const int nipack = ekat::npack<Spack>(nlevi);
 
+    //--------------------------------------------------------------------------
+    // Input Variables
+
     auto host_dx_1d     = ArrayIR_to_View         (host_dx    );
     auto host_dy_1d     = ArrayIR_to_View         (host_dy    );
     auto wthl_sfc_1d    = ArrayIR_to_View         (wthl_sfc   );
@@ -84,10 +87,26 @@ namespace pam {
     auto wtracer_sfc_2d = ArrayIR_to_View_of_Packs(wtracer_sfc);
     auto inv_exner_2d   = ArrayIR_to_View_of_Packs(inv_exner  );
 
-    SHOC::SHOCInput shoc_input{host_dx_1d, host_dy_1d, zt_grid_2d, zi_grid_2d,
-                               pres_2d, presi_2d, pdel_2d, thv_2d,
-                               w_field_2d, wthl_sfc_1d, wqw_sfc_1d, uw_sfc_1d,
-                               vw_sfc_1d, wtracer_sfc_2d, inv_exner_2d, phis_1d};
+    SHOC::SHOCInput shoc_input;
+    shoc_input.dx          = host_dx_1d;
+    shoc_input.dy          = host_dy_1d;
+    shoc_input.zt_grid     = zt_grid_2d;
+    shoc_input.zi_grid     = zi_grid_2d;
+    shoc_input.pres        = pres_2d;
+    shoc_input.presi       = presi_2d;
+    shoc_input.pdel        = pdel_2d;
+    shoc_input.thv         = thv_2d;
+    shoc_input.w_field     = w_field_2d;     // wm_zt;
+    shoc_input.wthl_sfc    = wthl_sfc_1d;    // wpthlp_sfc;
+    shoc_input.wqw_sfc     = wqw_sfc_1d;     // wprtp_sfc;
+    shoc_input.uw_sfc      = uw_sfc_1d;      // upwp_sfc;
+    shoc_input.vw_sfc      = vw_sfc_1d;      // vpwp_sfc;
+    shoc_input.wtracer_sfc = wtracer_sfc_2d;
+    shoc_input.inv_exner   = inv_exner_2d;
+    shoc_input.phis        = phis_1d;
+
+    //--------------------------------------------------------------------------
+    // Input/Output Variables
 
     auto host_dse_2d     = ArrayIR_to_View_of_Packs(host_dse    );
     auto tke_2d          = ArrayIR_to_View_of_Packs(tke         );
@@ -100,14 +119,30 @@ namespace pam {
     auto shoc_hwind_3d   = ArrayIR_to_View_of_Packs(shoc_hwind  );
     auto qtracers_3d     = ArrayIR_to_View_of_Packs(qtracers    );
 
-    SHOC::SHOCInputOutput shoc_input_output{host_dse_2d, tke_2d, thetal_2d, qw_2d,
-                                           shoc_hwind_3d, wthv_sec_2d, qtracers_3d,
-                                           tk_2d, shoc_cldfrac_2d, shoc_ql_2d};
+    SHOC::SHOCInputOutput shoc_input_output;
+    shoc_input_output.host_dse     = host_dse_2d;
+    shoc_input_output.tke          = tke_2d;
+    shoc_input_output.thetal       = thetal_2d;
+    shoc_input_output.qw           = qw_2d;
+    shoc_input_output.horiz_wind   = shoc_hwind_3d;
+    shoc_input_output.wthv_sec     = wthv_sec_2d;
+    shoc_input_output.qtracers     = qtracers_3d;
+    shoc_input_output.tk           = tk_2d;
+    shoc_input_output.shoc_cldfrac = shoc_cldfrac_2d;
+    shoc_input_output.shoc_ql      = shoc_ql_2d;
+
+    //--------------------------------------------------------------------------
+    // Output Variables
 
     auto pblh_1d     = ArrayIR_to_View         (pblh    );
     auto shoc_ql2_2d = ArrayIR_to_View_of_Packs(shoc_ql2);
 
-    SHOC::SHOCOutput shoc_output{pblh_1d, shoc_ql2_2d};
+    SHOC::SHOCOutput shoc_output;
+    shoc_output.pblh     = pblh_1d;
+    shoc_output.shoc_ql2 = shoc_ql2_2d;
+
+    //--------------------------------------------------------------------------
+    // Diagnostic Output
 
     auto shoc_mix_2d  = ArrayIR_to_View_of_Packs(shoc_mix );
     auto w_sec_2d     = ArrayIR_to_View_of_Packs(w_sec    );
@@ -124,9 +159,23 @@ namespace pam {
     auto brunt_2d     = ArrayIR_to_View_of_Packs(brunt    );
     auto isotropy_2d  = ArrayIR_to_View_of_Packs(isotropy );
 
-    SHOC::SHOCHistoryOutput shoc_history_output{shoc_mix_2d, w_sec_2d, thl_sec_2d, qw_sec_2d,
-                                                qwthl_sec_2d, wthl_sec_2d, wqw_sec_2d, wtke_sec_2d,
-                                                uw_sec_2d, vw_sec_2d, w3_2d, wqls_sec_2d, brunt_2d, isotropy_2d};
+    SHOC::SHOCHistoryOutput shoc_history_output;
+    shoc_history_output.shoc_mix  = shoc_mix_2d;
+    shoc_history_output.isotropy  = isotropy_2d;
+    shoc_history_output.w_sec     = w_sec_2d;
+    shoc_history_output.thl_sec   = thl_sec_2d;
+    shoc_history_output.qw_sec    = qw_sec_2d;
+    shoc_history_output.qwthl_sec = qwthl_sec_2d;
+    shoc_history_output.wthl_sec  = wthl_sec_2d;
+    shoc_history_output.wqw_sec   = wqw_sec_2d;
+    shoc_history_output.wtke_sec  = wtke_sec_2d;
+    shoc_history_output.uw_sec    = uw_sec_2d;
+    shoc_history_output.vw_sec    = vw_sec_2d;
+    shoc_history_output.w3        = w3_2d;
+    shoc_history_output.wqls_sec  = wqls_sec_2d;
+    shoc_history_output.brunt     = brunt_2d;
+
+    //--------------------------------------------------------------------------
 
     const int nwind = ekat::npack<Spack>(2)*Spack::n;
     const int ntrac = ekat::npack<Spack>(num_qtracers+3)*Spack::n;

@@ -26,7 +26,7 @@ namespace modules {
     // set relaxation timescale
     real time_scale;
     if (coupler.option_exists("sponge_time_scale")) {
-      time_scale = coupler.get_option<int>("sponge_time_scale");
+      time_scale = coupler.get_option<real>("sponge_time_scale");
     } else {
       time_scale = 60;
     };

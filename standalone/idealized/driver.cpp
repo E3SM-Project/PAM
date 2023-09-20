@@ -41,7 +41,6 @@ int main(int argc, char** argv) {
     real        zlen         = config["zlen"    ].as<real>(-1.0_fp);
     real        dtphys_in    = config["dtphys"  ].as<real>();
     std::string vcoords_file = config["vcoords" ].as<std::string>();
-    bool        use_coupler_hydrostasis = config["use_coupler_hydrostasis"].as<bool>(false);
     auto out_freq                = config["out_freq"   ].as<real>(0);
     auto out_prefix              = config["out_prefix" ].as<std::string>("test");
     bool        inner_mpi = config["inner_mpi"].as<bool>(false);
@@ -126,9 +125,6 @@ int main(int argc, char** argv) {
     // this sets up initial conditons and reference state 
     dycore.pre_time_loop(coupler);
     yakl::timer_stop("dycore");
-
-    // Now that we have an initial state, define hydrostasis for each ensemble member
-    if (use_coupler_hydrostasis) coupler.update_hydrostasis( );
 
     real etime = 0;
     // There are two ways of time control- setting total simulation time (simTime) or setting number of physics time steps (simSteps)

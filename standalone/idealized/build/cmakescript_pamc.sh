@@ -26,3 +26,4 @@ cmake      \
   -DPAMC_THERMO=$ARG3                                             \
   -DPAMC_IO="serial"                                              \
   ..
+  

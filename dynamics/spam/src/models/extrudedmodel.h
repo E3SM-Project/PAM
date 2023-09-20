@@ -378,20 +378,55 @@ public:
   void
   convert_dynamics_to_coupler_state(PamCoupler &coupler,
                                     const FieldSet<nprognostic> &prog_vars,
+                                    const FieldSet<nconstant> &const_vars, bool couple_wind, bool couple_wind_exact_inverse) {
+    equations->varset.convert_dynamics_to_coupler_densities(coupler, prog_vars,
+                                                        const_vars);
+
+    if (couple_wind){ equations->varset.convert_dynamics_to_coupler_wind(coupler, prog_vars,
+                                                        const_vars, couple_wind_exact_inverse);}
+
+  }
+
+  void
+  convert_dynamics_to_coupler_state_staggered(PamCoupler &coupler,
+                                    const FieldSet<nprognostic> &prog_vars,
                                     const FieldSet<nconstant> &const_vars) {
-    equations->varset.convert_dynamics_to_coupler_state(coupler, prog_vars,
+    equations->varset.convert_dynamics_to_coupler_densities(coupler, prog_vars,
+                                                        const_vars);
+    equations->varset.convert_dynamics_to_coupler_staggered_wind(coupler, prog_vars,
                                                         const_vars);
   }
+
   void convert_coupler_to_dynamics_state(PamCoupler &coupler,
                                          FieldSet<nprognostic> &prog_vars,
                                          FieldSet<nauxiliary> &auxiliary_vars,
-                                         FieldSet<nconstant> &const_vars) {
-    equations->varset.convert_coupler_to_dynamics_state(coupler, prog_vars,
+                                         FieldSet<nconstant> &const_vars, bool couple_wind, bool couple_wind_exact_inverse) {
+    equations->varset.convert_coupler_to_dynamics_densities(coupler, prog_vars,
                                                         const_vars);
+    if (couple_wind) {equations->varset.convert_coupler_to_dynamics_wind(coupler, prog_vars,
+                                                        const_vars, couple_wind_exact_inverse);}
+    prog_vars.exchange();
+    const_vars.exchange();
+    auxiliary_vars.exchange();
+
 #if defined PAMC_AN || defined PAMC_MAN
-    if (equations->varset.couple_wind) {
+    if (couple_wind) {
       project_to_anelastic(const_vars, prog_vars, auxiliary_vars);
     }
+#endif
+  }
+
+  void
+  convert_coupler_to_dynamics_state_staggered(PamCoupler &coupler,
+                                    FieldSet<nprognostic> &prog_vars,
+                                    FieldSet<nauxiliary> &auxiliary_vars,
+                                    FieldSet<nconstant> &const_vars) {
+    equations->varset.convert_coupler_to_dynamics_densities(coupler, prog_vars,
+                                                        const_vars);
+    equations->varset.convert_coupler_to_dynamics_staggered_wind(coupler, prog_vars,
+                                                        const_vars);
+#if defined(PAMC_AN) || defined(PAMC_MAN)
+      project_to_anelastic(const_vars, prog_vars, auxiliary_vars);
 #endif
   }
 
@@ -426,9 +461,9 @@ public:
 #if defined PAMC_AN || defined PAMC_MAN
           for (int d = 0; d < VS::ndensity_prognostic; ++d) {
             dens0var(d, k + pks, j + pjs, i + pis, n) =
-                (densvar(d, k + pks, j + pjs, i + pis, n) -
-                 refdens(d, k + pks, n)) /
-                varset.get_total_density(densvar, k, j, i, pks, pjs, pis, n);
+               (densvar(d, k + pks, j + pjs, i + pis, n) -
+                refdens(d, k + pks, n)) /
+               varset.get_total_density(densvar, k, j, i, pks, pjs, pis, n);
           }
 #else
           compute_Hn1bar<VS::ndensity_prognostic, diff_ord, vert_diff_ord>(
@@ -1097,10 +1132,10 @@ public:
 #if defined PAMC_AN || defined PAMC_MAN
           // add reference state
           for (int d = 0; d < ndims; d++) {
-            for (int l = 0; l < VS::ndensity_prognostic; l++) {
-              densreconvar(d + l * ndims, k + dks, j + djs, i + dis, n) +=
-                  refstate.q_pi.data(l, k + pks, n);
-            }
+           for (int l = 0; l < VS::ndensity_prognostic; l++) {
+             densreconvar(d + l * ndims, k + dks, j + djs, i + dis, n) +=
+                 refstate.q_pi.data(l, k + pks, n);
+           }
           }
           for (int d = 0; d < ndims; d++) {
             densreconvar(d + varset.dens_id_mass * ndims, k + dks, j + djs,
@@ -1154,8 +1189,8 @@ public:
 #if defined PAMC_AN || defined PAMC_MAN
           // add reference state
           for (int l = 0; l < VS::ndensity_prognostic; l++) {
-            densvertreconvar(l, k + dks + 1, j + djs, i + dis, n) +=
-                refstate.q_di.data(l, k + dks + 1, n);
+           densvertreconvar(l, k + dks + 1, j + djs, i + dis, n) +=
+               refstate.q_di.data(l, k + dks + 1, n);
           }
           densvertreconvar(varset.dens_id_mass, k + dks + 1, j + djs, i + dis,
                            n) = 1;
@@ -2625,7 +2660,6 @@ public:
           if (ik == 0 && jk == 0) {
             p_transform(kfix, j, i, n) = 0;
           }
-
           int nz = primal_topology.ni;
           tri_c(0, j, i, n) = tri_u(0, j, i, n) / tri_d(0, j, i, n);
           for (int k = 1; k < nz - 1; ++k) {
@@ -3758,41 +3792,42 @@ void testcase_from_string(std::unique_ptr<TestCase> &testcase, std::string name,
 void read_model_params_file(std::string inFile, ModelParameters &params,
                             Parallel &par, PamCoupler &coupler,
                             std::unique_ptr<TestCase> &testcase) {
+  #ifdef PAM_STANDALONE
+    // Read common parameters
+    int nz = coupler.get_nz();
+    readParamsFile(inFile, params, par, nz);
 
-  // Read common parameters
-  int nz = coupler.get_nz();
-  readParamsFile(inFile, params, par, nz);
+    // Read config file
+    YAML::Node config = YAML::LoadFile(inFile);
 
-  // Read config file
-  YAML::Node config = YAML::LoadFile(inFile);
+    params.acoustic_balance = config["balance_initial_density"].as<bool>(false);
+    params.uniform_vertical = (config["vcoords"].as<std::string>() == "uniform");
+    // Read diffusion coefficients
+    params.entropicvar_diffusion_coeff =
+        config["entropicvar_diffusion_coeff"].as<real>(0);
+    params.velocity_diffusion_coeff =
+        config["velocity_diffusion_coeff"].as<real>(0);
+    // Read the data initialization options
+    params.initdataStr = config["initData"].as<std::string>();
+    params.force_refstate_hydrostatic_balance =
+        config["force_refstate_hydrostatic_balance"].as<bool>(false);
 
-  params.acoustic_balance = config["balance_initial_density"].as<bool>(false);
-  params.uniform_vertical = (config["vcoords"].as<std::string>() == "uniform");
-  // Read diffusion coefficients
-  params.entropicvar_diffusion_coeff =
-      config["entropicvar_diffusion_coeff"].as<real>(0);
-  params.velocity_diffusion_coeff =
-      config["velocity_diffusion_coeff"].as<real>(0);
-  // Read the data initialization options
-  params.initdataStr = config["initData"].as<std::string>();
-  params.force_refstate_hydrostatic_balance =
-      config["force_refstate_hydrostatic_balance"].as<bool>(false);
+    for (int i = 0; i < ntracers_dycore; i++) {
+      params.tracerdataStr[i] =
+          config["initTracer" + std::to_string(i)].as<std::string>("constant");
+      params.dycore_tracerpos[i] =
+          config["initTracerPos" + std::to_string(i)].as<bool>(false);
+    }
 
-  for (int i = 0; i < ntracers_dycore; i++) {
-    params.tracerdataStr[i] =
-        config["initTracer" + std::to_string(i)].as<std::string>("constant");
-    params.dycore_tracerpos[i] =
-        config["initTracerPos" + std::to_string(i)].as<bool>(false);
-  }
+    // Store vertical cell interface heights in the data manager
+    auto &dm = coupler.get_data_manager_device_readonly();
+    params.zint = dm.get<real const, 2>("vertical_interface_height");
 
-  // Store vertical cell interface heights in the data manager
-  auto &dm = coupler.get_data_manager_device_readonly();
-  params.zint = dm.get<real const, 2>("vertical_interface_height");
+    params.ylen = 1.0;
+    params.yc = 0.5;
 
-  params.ylen = 1.0;
-  params.yc = 0.5;
-
-  testcase_from_string(testcase, params.initdataStr, params.acoustic_balance);
+    testcase_from_string(testcase, params.initdataStr, params.acoustic_balance);
+  #endif
 }
 
 void read_model_params_coupler(ModelParameters &params, Parallel &par,
@@ -3820,25 +3855,28 @@ void read_model_params_coupler(ModelParameters &params, Parallel &par,
 }
 
 void check_and_print_model_parameters(const ModelParameters &params,
-                                      const Parallel &par) {
+                                      const Parallel &par,
+                                      bool verbose=false) {
 
-  check_and_print_parameters(params, par);
+  check_and_print_parameters(params, par, verbose);
 
-  serial_print("IC: " + params.initdataStr, par.masterproc);
-  serial_print("acoustically balanced: " +
-                   std::to_string(params.acoustic_balance),
-               par.masterproc);
-  serial_print("entropicvar_diffusion_coeff: " +
-                   std::to_string(params.entropicvar_diffusion_coeff),
-               par.masterproc);
-  serial_print("velocity_diffusion_coeff: " +
-                   std::to_string(params.velocity_diffusion_coeff),
-               par.masterproc);
-
-  for (int i = 0; i < ntracers_dycore; i++) {
-    serial_print("Dycore Tracer" + std::to_string(i) +
-                     " IC: " + params.tracerdataStr[i],
+  if (verbose) {
+    serial_print("IC: " + params.initdataStr, par.masterproc);
+    serial_print("acoustically balanced: " +
+                     std::to_string(params.acoustic_balance),
                  par.masterproc);
+    serial_print("entropicvar_diffusion_coeff: " +
+                     std::to_string(params.entropicvar_diffusion_coeff),
+                 par.masterproc);
+    serial_print("velocity_diffusion_coeff: " +
+                     std::to_string(params.velocity_diffusion_coeff),
+                 par.masterproc);
+
+    for (int i = 0; i < ntracers_dycore; i++) {
+      serial_print("Dycore Tracer" + std::to_string(i) +
+                       " IC: " + params.tracerdataStr[i],
+                   par.masterproc);
+    }
   }
 }
 
@@ -4395,6 +4433,7 @@ class CoupledTestCase : public TestCase {
 
 public:
   PamCoupler &coupler;
+  bool set_coupler_state = false;
 
   CoupledTestCase(PamCoupler &coupler) : coupler(coupler) {}
 
@@ -4417,11 +4456,8 @@ public:
         YAKL_LAMBDA(real x, real y, real z) { return flat_geop(z, g); },
         constvars.fields_arr[HSVAR], 0);
 
-    // hack to set winds
-    bool org_couple_wind = varset.couple_wind;
-    varset.couple_wind = true;
-    varset.convert_coupler_to_dynamics_state(coupler, progvars, constvars);
-    varset.couple_wind = org_couple_wind;
+    varset.convert_coupler_to_dynamics_densities(coupler, progvars, constvars);
+    varset.convert_coupler_to_dynamics_wind(coupler, progvars, constvars, false);
   }
 
   void set_reference_state(const Geometry<Straight> &primal_geom,
@@ -4461,12 +4497,11 @@ public:
 
     auto &dm = coupler.get_data_manager_device_readonly();
 
-    auto dm_gcm_dens_dry = dm.get<real const, 2>("gcm_density_dry");
-    auto dm_gcm_dens_vap = dm.get<real const, 2>("gcm_water_vapor");
-    auto dm_gcm_uvel = dm.get<real const, 2>("gcm_uvel");
-    auto dm_gcm_vvel = dm.get<real const, 2>("gcm_vvel");
-    auto dm_gcm_wvel = dm.get<real const, 2>("gcm_wvel");
-    auto dm_gcm_temp = dm.get<real const, 2>("gcm_temp");
+    auto dm_ref_dens_dry = dm.get<real const, 2>("ref_density_dry");
+    auto dm_ref_dens_vap = dm.get<real const, 2>("ref_density_vapor");
+    auto dm_ref_dens_liq = dm.get<real const, 2>("ref_density_liq");
+    auto dm_ref_dens_ice = dm.get<real const, 2>("ref_density_ice");
+    auto dm_ref_temp     = dm.get<real const, 2>("ref_temp");
 
     const real grav = coupler.get_option<real>("grav");
     dual_geom.set_profile_n1form_values(
@@ -4477,12 +4512,12 @@ public:
         "Coupled reference state 1",
         SimpleBounds<2>(dual_topology.nl, dual_topology.nens),
         YAKL_CLASS_LAMBDA(int k, int n) {
-          const real temp = dm_gcm_temp(k, n);
-          const real dens_dry = dm_gcm_dens_dry(k, n);
-          const real dens_vap = dm_gcm_dens_vap(k, n);
-          const real dens_liq = 0.0_fp;
-          const real dens_ice = 0.0_fp;
-          const real dens = dens_dry + dens_ice + dens_liq + dens_vap;
+          const real temp     = dm_ref_temp(k, n);
+          const real dens_dry = dm_ref_dens_dry(k,n);
+          const real dens_vap = dm_ref_dens_vap(k,n);
+          const real dens_liq = dm_ref_dens_liq(k,n);
+          const real dens_ice = dm_ref_dens_ice(k,n);
+          const real dens = dens_dry + dens_vap;
 
           const real qd = dens_dry / dens;
           const real qv = dens_vap / dens;
@@ -4491,7 +4526,7 @@ public:
 
           const real alpha = 1.0_fp / dens;
           const real entropic_var =
-              thermo.compute_entropic_var_from_T(alpha, temp, qd, qv, ql, qi);
+              thermo.compute_entropic_var_from_T_alpha(alpha, temp, qd, qv, ql, qi);
 
           const real dual_volume =
               dual_geom.get_area_n1entity(k + dks, djs, dis, n);
@@ -4503,9 +4538,8 @@ public:
               dens_vap * dual_volume;
 
           refstate.q_pi.data(varset.dens_id_mass, k + dks, n) = dens;
-          refstate.q_pi.data(varset.dens_id_entr, k + dks, n) =
-              dens * entropic_var;
-          refstate.q_pi.data(varset.dens_id_vap, k + dks, n) = dens_vap;
+          refstate.q_pi.data(varset.dens_id_entr, k + dks, n) = dens * entropic_var;
+          refstate.q_pi.data(varset.dens_id_vap,  k + dks, n) = dens_vap;
         });
 
     parallel_for(
@@ -4611,33 +4645,33 @@ public:
           real dz;
 
           if (k == 0) {
-            T_km = dm_gcm_temp(k, n);
-            T_kp = dm_gcm_temp(k + 1, n);
+            T_km = dm_ref_temp(k, n);
+            T_kp = dm_ref_temp(k + 1, n);
             T = T_km;
 
-            rv_kp = dm_gcm_dens_vap(k + 1, n) / dm_gcm_dens_dry(k + 1, n);
-            rv_km = dm_gcm_dens_vap(k, n) / dm_gcm_dens_dry(k, n);
+            rv_kp = dm_ref_dens_vap(k + 1, n) / dm_ref_dens_dry(k + 1, n);
+            rv_km = dm_ref_dens_vap(k, n) / dm_ref_dens_dry(k, n);
             rv = rv_km;
 
             dz = primal_geom.dz(k + pks, n);
           } else if (k == primal_topology.ni - 1) {
-            T_km = dm_gcm_temp(k - 1, n);
-            T_kp = dm_gcm_temp(k, n);
-            T = dm_gcm_temp(k, n);
+            T_km = dm_ref_temp(k - 1, n);
+            T_kp = dm_ref_temp(k, n);
+            T = dm_ref_temp(k, n);
 
-            rv_kp = dm_gcm_dens_vap(k, n) / dm_gcm_dens_dry(k, n);
-            rv_km = dm_gcm_dens_vap(k - 1, n) / dm_gcm_dens_dry(k - 1, n);
+            rv_kp = dm_ref_dens_vap(k, n) / dm_ref_dens_dry(k, n);
+            rv_km = dm_ref_dens_vap(k - 1, n) / dm_ref_dens_dry(k - 1, n);
             rv = rv_kp;
 
             dz = primal_geom.dz(k - 1 + pks, n);
           } else {
-            T = dm_gcm_temp(k, n);
-            T_km = dm_gcm_temp(k - 1, n);
-            T_kp = dm_gcm_temp(k + 1, n);
+            T = dm_ref_temp(k, n);
+            T_km = dm_ref_temp(k - 1, n);
+            T_kp = dm_ref_temp(k + 1, n);
 
-            rv_km = dm_gcm_dens_vap(k - 1, n) / dm_gcm_dens_dry(k - 1, n);
-            rv_kp = dm_gcm_dens_vap(k + 1, n) / dm_gcm_dens_dry(k + 1, n);
-            rv = dm_gcm_dens_vap(k, n) / dm_gcm_dens_dry(k, n);
+            rv_km = dm_ref_dens_vap(k - 1, n) / dm_ref_dens_dry(k - 1, n);
+            rv_kp = dm_ref_dens_vap(k + 1, n) / dm_ref_dens_dry(k + 1, n);
+            rv = dm_ref_dens_vap(k, n) / dm_ref_dens_dry(k, n);
 
             dz = primal_geom.dz(k + pks, n) + primal_geom.dz(k - 1 + pks, n);
           }
@@ -4830,7 +4864,7 @@ template <bool acoustic_balance> struct RisingBubble {
     real T_ref = refT_f(z, thermo);
     real p_ref = refp_f(z, thermo);
 
-    return rho_ref * thermo.compute_entropic_var(p_ref, T_ref, 1, 0, 0, 0);
+    return rho_ref * thermo.compute_entropic_var_from_T_p(p_ref, T_ref, 1, 0, 0, 0);
   }
 
   static real YAKL_INLINE rho_f(real x, real y, real z,
@@ -4857,7 +4891,7 @@ template <bool acoustic_balance> struct RisingBubble {
     }
     real dtheta = (r < rc) ? dss * 0.5_fp * (1._fp + cos(pi * r / rc)) : 0._fp;
     real dT = dtheta * pow(p / thermo.cst.pr, thermo.cst.kappa_d);
-    return thermo.compute_entropic_var(p, T + dT, 1, 0, 0, 0);
+    return thermo.compute_entropic_var_from_T_p(p, T + dT, 1, 0, 0, 0);
   }
 
   static VecXYZ YAKL_INLINE v_f(real x, real y, real z) {
@@ -4920,7 +4954,7 @@ struct TwoBubbles {
     real rho_ref = refrho_f(z, thermo);
     real T_ref = refT_f(z, thermo);
     real p_ref = refp_f(z, thermo);
-    return rho_ref * thermo.compute_entropic_var(p_ref, T_ref, 1, 0, 0, 0);
+    return rho_ref * thermo.compute_entropic_var_from_T_p(p_ref, T_ref, 1, 0, 0, 0);
   }
 
   static real YAKL_INLINE rho_f(real x, real y, real z,
@@ -4950,7 +4984,7 @@ struct TwoBubbles {
     }
 
     real dT = dtheta * pow(p / thermo.cst.pr, thermo.cst.kappa_d);
-    return thermo.compute_entropic_var(p, T + dT, 1, 0, 0, 0);
+    return thermo.compute_entropic_var_from_T_p(p, T + dT, 1, 0, 0, 0);
   }
 
   static VecXYZ YAKL_INLINE v_f(real x, real y, real z) {
@@ -5004,7 +5038,7 @@ struct DensityCurrent {
     real rho_ref = refrho_f(z, thermo);
     real T_ref = refT_f(z, thermo);
     real p_ref = refp_f(z, thermo);
-    return rho_ref * thermo.compute_entropic_var(p_ref, T_ref, 1, 0, 0, 0);
+    return rho_ref * thermo.compute_entropic_var_from_T_p(p_ref, T_ref, 1, 0, 0, 0);
   }
 
   static real YAKL_INLINE rho_f(real x, real y, real z,
@@ -5021,7 +5055,7 @@ struct DensityCurrent {
                   (z - bzc) * (z - bzc) / (bzr * bzr));
     real dtheta = (r < 1) ? dss * 0.5_fp * (1._fp + cos(pi * r)) : 0._fp;
     real dT = dtheta * pow(p / thermo.cst.pr, thermo.cst.kappa_d);
-    return thermo.compute_entropic_var(p, T + dT, 1, 0, 0, 0);
+    return thermo.compute_entropic_var_from_T_p(p, T + dT, 1, 0, 0, 0);
   }
 
   static VecXYZ YAKL_INLINE v_f(real x, real y, real z) {
@@ -5111,7 +5145,7 @@ struct LargeRisingBubble {
     real rho_ref = refrho_f(z, thermo);
     real T_ref = refT_f(z, thermo);
     real p_ref = refp_f(z, thermo);
-    return rho_ref * thermo.compute_entropic_var(p_ref, T_ref, 1, 0, 0, 0);
+    return rho_ref * thermo.compute_entropic_var_from_T_p(p_ref, T_ref, 1, 0, 0, 0);
   }
 
   static real YAKL_INLINE rho_f(real x, real y, real z,
@@ -5125,7 +5159,7 @@ struct LargeRisingBubble {
     real T0 = isentropic_T(z, theta0, g, thermo);
     real dtheta = linear_ellipsoid(x, z, xc, bzc, xrad, zrad, amp_theta);
     real dT = dtheta * pow(p / thermo.cst.pr, thermo.cst.kappa_d);
-    return thermo.compute_entropic_var(p, T0 + dT, 1, 0, 0, 0);
+    return thermo.compute_entropic_var_from_T_p(p, T0 + dT, 1, 0, 0, 0);
   }
 
   static VecXYZ YAKL_INLINE v_f(real x, real y, real z) {
@@ -5177,7 +5211,7 @@ struct MoistLargeRisingBubble : LargeRisingBubble {
     real T0 = isentropic_T(z, theta0, g, thermo);
     real dtheta = linear_ellipsoid(x, z, xc, bzc, xrad, zrad, amp_theta);
     real dT = dtheta * pow(p / thermo.cst.pr, thermo.cst.kappa_d);
-    return thermo.compute_entropic_var(p, T0 + dT, 1, 0, 0, 0);
+    return thermo.compute_entropic_var_from_T_p(p, T0 + dT, 1, 0, 0, 0);
   }
 };
 
@@ -5220,7 +5254,7 @@ template <bool add_perturbation> struct GravityWave {
                                                const ThermoPotential &thermo) {
     real rho_ref = refrho_f(z, thermo);
     real p_ref = refp_f(z, thermo);
-    return rho_ref * thermo.compute_entropic_var(p_ref, T_ref, 1, 0, 0, 0);
+    return rho_ref * thermo.compute_entropic_var_from_T_p(p_ref, T_ref, 1, 0, 0, 0);
   }
 
   static real YAKL_INLINE rho_f(real x, real y, real z,
@@ -5280,7 +5314,7 @@ template <bool add_perturbation> struct GravityWave {
       p += dp;
     }
 
-    return thermo.compute_entropic_var(p, T, 1, 0, 0, 0);
+    return thermo.compute_entropic_var_from_T_p(p, T, 1, 0, 0, 0);
   }
 
   static real YAKL_INLINE entropicdensity_f(real x, real y, real z,
@@ -5322,7 +5356,7 @@ template <bool add_perturbation> struct GravityWave {
       T += sol.dT;
     }
 
-    return rho * thermo.compute_entropic_var(p, T, 1, 0, 0, 0);
+    return rho * thermo.compute_entropic_var_from_T_p(p, T, 1, 0, 0, 0);
   }
 
   static real YAKL_INLINE Texact_f(real x, real y, real z, real t,
@@ -5602,7 +5636,7 @@ template <bool add_perturbation> struct GravityWave {
 
             real T;
             if (!linear_T) {
-              T = thermo.compute_T(alpha, entropic_var, 1, 0, 0, 0);
+              T = thermo.compute_T_from_alpha(alpha, entropic_var, 1, 0, 0, 0);
             } else {
               real Rd = thermo.cst.Rd;
               real refalpha = varset.get_alpha(refdens, k, pks, n);
@@ -5664,6 +5698,7 @@ void testcase_from_string(std::unique_ptr<TestCase> &testcase, std::string name,
   }
 }
 
+#ifdef PAM_STANDALONE
 void testcase_from_config(std::unique_ptr<TestCase> &testcase,
                           const YAML::Node &config) {
   const std::string name = config["initData"].as<std::string>();
@@ -5671,6 +5706,7 @@ void testcase_from_config(std::unique_ptr<TestCase> &testcase,
       config["balance_initial_density"].as<bool>(false);
   testcase_from_string(testcase, name, acoustic_balance);
 }
+#endif
 
 std::unique_ptr<TestCase> make_coupled_test_case(PamCoupler &coupler) {
   return std::make_unique<CoupledTestCase>(coupler);

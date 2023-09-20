@@ -16,6 +16,15 @@ namespace pam {
 
   std::mutex p3_main_cxx_mutex;
 
+  void p3_init_lookup_tables() {
+    if (! Kokkos::is_initialized()) { Kokkos::initialize(); }
+    using namespace scream;
+    using namespace scream::p3;
+    using P3F = p3::Functions<Real, DefaultDevice>;
+    P3F::init_kokkos_ice_lookup_tables(ice_table_vals, collect_table_vals);
+    P3F::init_kokkos_tables(vn_table_vals, vm_table_vals, revap_table_vals, mu_r_table_vals, dnu_table_vals);
+  }
+
   void p3_main_cxx(array_ir::ArrayIR<double,2> const & qc,                 // inout
                    array_ir::ArrayIR<double,2> const & nc,                 // inout
                    array_ir::ArrayIR<double,2> const & qr,                 // inout
@@ -27,7 +36,7 @@ namespace pam {
                    array_ir::ArrayIR<double,2> const & qm,                 // inout
                    array_ir::ArrayIR<double,2> const & ni,                 // inout
                    array_ir::ArrayIR<double,2> const & bm,                 // inout
-                   array_ir::ArrayIR<double,2> const & pres,               // in
+                   array_ir::ArrayIR<double,2> const & pressure_dry,       // in
                    array_ir::ArrayIR<double,2> const & dz,                 // in
                    array_ir::ArrayIR<double,2> const & nc_nuceat_tend,     // in
                    array_ir::ArrayIR<double,2> const & nccn_prescribed,    // in
@@ -74,6 +83,9 @@ namespace pam {
     const int ncol  = ite-its+1;
     const int npack = ekat::npack<Spack>(nlev);
 
+    //--------------------------------------------------------------------------
+    // Prognostic State Variables
+
     auto qv_d = ArrayIR_to_View_of_Packs(qv);
     auto qc_d = ArrayIR_to_View_of_Packs(qc);
     auto nc_d = ArrayIR_to_View_of_Packs(nc);
@@ -85,15 +97,27 @@ namespace pam {
     auto bm_d = ArrayIR_to_View_of_Packs(bm);
     auto th_d = ArrayIR_to_View_of_Packs(th_atm);
 
-    P3F::P3PrognosticState prog_state{qc_d, nc_d, qr_d, nr_d, qi_d, qm_d,
-                                      ni_d, bm_d, qv_d, th_d};
+    P3F::P3PrognosticState   prog_state;
+    prog_state.qc     = qc_d;
+    prog_state.nc     = nc_d;
+    prog_state.qr     = qr_d;
+    prog_state.nr     = nr_d;
+    prog_state.qi     = qi_d;
+    prog_state.qm     = qm_d;
+    prog_state.ni     = ni_d;
+    prog_state.bm     = bm_d;
+    prog_state.th     = th_d;
+    prog_state.qv     = qv_d;
+
+    //--------------------------------------------------------------------------
+    // Diagnostic Inputs
 
     auto nc_nuceat_tend_d = ArrayIR_to_View_of_Packs(nc_nuceat_tend );
     auto nccn_d           = ArrayIR_to_View_of_Packs(nccn_prescribed);
     auto ni_activated_d   = ArrayIR_to_View_of_Packs(ni_activated   );
     auto inv_qc_relvar_d  = ArrayIR_to_View_of_Packs(inv_qc_relvar  );
     auto dz_d             = ArrayIR_to_View_of_Packs(dz             );
-    auto pres_d           = ArrayIR_to_View_of_Packs(pres           );
+    auto pressure_dry_d   = ArrayIR_to_View_of_Packs(pressure_dry   );
     auto dpres_d          = ArrayIR_to_View_of_Packs(dpres          );
     auto inv_exner_d      = ArrayIR_to_View_of_Packs(inv_exner      );
     auto t_prev_d         = ArrayIR_to_View_of_Packs(t_prev         );
@@ -102,11 +126,23 @@ namespace pam {
     auto cld_frac_l_d     = ArrayIR_to_View_of_Packs(cld_frac_l     );
     auto cld_frac_r_d     = ArrayIR_to_View_of_Packs(cld_frac_r     );
 
-    P3F::P3DiagnosticInputs diag_inputs{nc_nuceat_tend_d, nccn_d, 
-                                        ni_activated_d, inv_qc_relvar_d, 
-                                        cld_frac_i_d, cld_frac_l_d, cld_frac_r_d, 
-                                        pres_d, dz_d, dpres_d, inv_exner_d, 
-                                        q_prev_d, t_prev_d};
+    P3F::P3DiagnosticInputs diag_inputs;
+    diag_inputs.nc_nuceat_tend  = nc_nuceat_tend_d;
+    diag_inputs.nccn            = nccn_d;
+    diag_inputs.ni_activated    = ni_activated_d;
+    diag_inputs.inv_qc_relvar   = inv_qc_relvar_d;
+    diag_inputs.pres            = pressure_dry_d;
+    diag_inputs.dpres           = dpres_d;
+    diag_inputs.qv_prev         = q_prev_d;
+    diag_inputs.t_prev          = t_prev_d;
+    diag_inputs.cld_frac_l      = cld_frac_l_d;
+    diag_inputs.cld_frac_i      = cld_frac_i_d;
+    diag_inputs.cld_frac_r      = cld_frac_r_d;
+    diag_inputs.dz              = dz_d;
+    diag_inputs.inv_exner       = inv_exner_d;
+
+    //--------------------------------------------------------------------------
+    // Diagnostic Outputs
 
     auto qv2qi_depos_tend_d   = ArrayIR_to_View_of_Packs(qv2qi_depos_tend  );
     auto diag_eff_radius_qc_d = ArrayIR_to_View_of_Packs(diag_eff_radius_qc);
@@ -131,14 +167,34 @@ namespace pam {
       }
     });
 
-    P3F::P3DiagnosticOutputs diag_outputs {qv2qi_depos_tend_d, precip_liq_surf_d,
-                                           precip_ice_surf_d, diag_eff_radius_qc_d, diag_eff_radius_qi_d,
-                                           rho_qi_d,precip_liq_flux_d, precip_ice_flux_d};
+    P3F::P3DiagnosticOutputs diag_outputs;
+    diag_outputs.diag_eff_radius_qc = diag_eff_radius_qc_d;
+    diag_outputs.diag_eff_radius_qi = diag_eff_radius_qi_d;
+    diag_outputs.precip_liq_surf    = precip_liq_surf_d;
+    diag_outputs.precip_ice_surf    = precip_ice_surf_d;
+    diag_outputs.qv2qi_depos_tend   = qv2qi_depos_tend_d;
+    diag_outputs.rho_qi             = rho_qi_d;
+    diag_outputs.precip_liq_flux    = precip_liq_flux_d;
+    diag_outputs.precip_ice_flux    = precip_ice_flux_d;
+
+    //--------------------------------------------------------------------------
+    // Infrastructure
 
     auto col_location_d = ArrayIR_to_View(col_location);
 
-    P3F::P3Infrastructure infrastructure{dt, it, 0, ite-its, 0, kte-kts,
-                                         do_predict_nc, do_prescribed_CCN, col_location_d};
+    P3F::P3Infrastructure infrastructure;
+    infrastructure.col_location  = col_location_d;
+    infrastructure.dt            = dt;
+    infrastructure.it            = it;
+    infrastructure.its           = its;
+    infrastructure.ite           = ite;
+    infrastructure.kts           = kts;
+    infrastructure.kte           = kte;
+    infrastructure.predictNc     = do_predict_nc;
+    infrastructure.prescribedCCN = do_prescribed_CCN;
+
+    //--------------------------------------------------------------------------
+    // History
 
     auto liq_ice_exchange_d = ArrayIR_to_View_of_Packs(liq_ice_exchange);
     auto vap_liq_exchange_d = ArrayIR_to_View_of_Packs(vap_liq_exchange);
@@ -151,17 +207,24 @@ namespace pam {
        vap_ice_exchange_d(icol,ilev) = 0.;
     });
 
-    P3F::P3HistoryOnly history_only {liq_ice_exchange_d, vap_liq_exchange_d, vap_ice_exchange_d};
+    P3F::P3HistoryOnly history_only;
+    history_only.liq_ice_exchange = liq_ice_exchange_d;
+    history_only.vap_liq_exchange = vap_liq_exchange_d;
+    history_only.vap_ice_exchange = vap_ice_exchange_d;
+
+    //--------------------------------------------------------------------------
 
     p3_main_cxx_mutex.lock();
 
-    if (! ice_table_vals.is_allocated()) {
-      P3F::init_kokkos_ice_lookup_tables(ice_table_vals, collect_table_vals);
-      P3F::init_kokkos_tables(vn_table_vals, vm_table_vals, revap_table_vals, mu_r_table_vals, dnu_table_vals);
-    }
-
-    P3F::P3LookupTables tables{mu_r_table_vals, vn_table_vals, vm_table_vals, revap_table_vals,
-                               ice_table_vals, collect_table_vals, dnu_table_vals};
+    // Load P3 lookup table data
+    P3F::P3LookupTables lookup_tables;
+    lookup_tables.mu_r_table_vals    = mu_r_table_vals;
+    lookup_tables.vn_table_vals      = vn_table_vals;
+    lookup_tables.vm_table_vals      = vm_table_vals;
+    lookup_tables.revap_table_vals   = revap_table_vals;
+    lookup_tables.ice_table_vals     = ice_table_vals;
+    lookup_tables.collect_table_vals = collect_table_vals;
+    lookup_tables.dnu_table_vals     = dnu_table_vals;
 
     p3_main_cxx_mutex.unlock();
 
@@ -170,7 +233,7 @@ namespace pam {
     ekat::WorkspaceManager<Spack, KT::Device> workspace_mgr(nlev_pack, 59, policy);
 
     auto elapsed_time = P3F::p3_main(prog_state, diag_inputs, diag_outputs, infrastructure,
-                                     history_only, tables, workspace_mgr, ncol, nlev);
+                                     history_only, lookup_tables, workspace_mgr, ncol, nlev);
   }
 
 }

@@ -1,0 +1,52 @@
+---
+# Simulation time in number of physics time steps
+simSteps  : 200 
+#200 *5 = 1000
+
+# Number of cells to use
+crm_nx       : 100
+crm_ny       : 1
+crm_nz       : 100
+
+# Data to initialize: doublevortex risingbubble moistrisingbubble
+initData : doublevortex
+initTracer0: square
+initTracer1: gaussian
+initTracer2: doublesquare
+initTracer3: square
+initTracer4: gaussian
+initTracer5: doublesquare
+
+initTracerPos0: false
+initTracerPos1: false
+initTracerPos2: false
+initTracerPos3: true
+initTracerPos4: true
+initTracerPos5: true
+
+
+# Time steps
+dtphys: 1000.
+crm_per_phys: 5
+#200 * 5 = 1000 for doublevortex
+ 
+# Output filename
+out_prefix  : test
+dycore_out_prefix  : test_dycore
+out_freq: 1000
+
+# Output frequency in number of CRM time steps
+outSteps: 100
+statSteps: 1
+#100
+
+tstype: ssprk3
+
+# Number of ensembles
+nens : 1
+
+# Parallel decomposition
+inner_mpi : true
+nprocx : 1
+nprocy : 1
+
