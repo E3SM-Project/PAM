@@ -1,0 +1,48 @@
+name: pamc-idealized-ubuntu
+
+on: [push, pull_request]
+
+jobs:
+  pamc-idealized-ubuntu:
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - model: layermodel
+            hamiltonian: swe
+            thermo: none
+          - model: layermodel
+            hamiltonian: tswe
+            thermo: none
+          - model: extrudedmodel
+            hamiltonian: ce
+            thermo: idealgaspottemp
+          - model: extrudedmodel
+            hamiltonian: ce
+            thermo: idealgasentropy
+          - model: extrudedmodel
+            hamiltonian: an
+            thermo: idealgaspottemp
+          - model: extrudedmodel
+            hamiltonian: mce_rho
+            thermo: constkappavirpottemp
+          - model: extrudedmodel
+            hamiltonian: man
+            thermo: constkappavirpottemp
+    defaults:
+      run:
+        working-directory: standalone/idealized/build
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Install mpi and netcdf
+        run: sudo apt-get install -y libopenmpi-dev libnetcdf-dev
+
+      - name: Configure and build
+        run: |
+          source ../../machines/ci/ubuntu-gcc.env &&
+          ./cmakescript_pamc.sh ${{matrix.model}} ${{matrix.hamiltonian}} ${{matrix.thermo}} &&
+          cmake --build .

@@ -2,9 +2,9 @@
 
 ./cmakeclean.sh
 
-if [[ "$1" != "" ]]; then
-  . $1
-fi
+ARG1=${1:-"extrudedmodel"}
+ARG2=${2:-"man"}
+ARG3=${3:-"constkappavirpottemp"}
 
 cmake      \
   -DCMAKE_CXX_COMPILER=${CXX}                                     \
@@ -17,9 +17,13 @@ cmake      \
   -DYAKL_F90_FLAGS="${YAKL_F90_FLAGS}"                            \
   -DPAM_LINK_FLAGS="${PAM_LINK_FLAGS}"                            \
   -DYAKL_ARCH="${YAKL_ARCH}"                                      \
-  -DPAM_DYCORE="spam"                                           \
+  -DPAM_DYCORE="spam++"                                           \
   -DPAM_MICRO="none"                                              \
   -DPAM_SGS="none"                                                \
   -DPAM_RAD="none"                                                \
-  ${add_cmake_vars} \
+  -DPAMC_MODEL=$ARG1                                              \
+  -DPAMC_HAMIL=$ARG2                                              \
+  -DPAMC_THERMO=$ARG3                                             \
+  -DPAMC_IO="serial"                                              \
   ..
+  

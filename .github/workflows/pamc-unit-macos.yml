@@ -1,0 +1,31 @@
+name: pamc-unit-macos
+
+on: [push, pull_request]
+
+jobs:
+  pamc-unit-macos:
+    runs-on: macos-12
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler:
+          - clang
+    defaults:
+      run:
+        working-directory: dynamics/spam/test/build
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Install mpi and netcdf
+        run: brew install open-mpi netcdf
+
+      - name: Configure and build
+        run: |
+          source ../../../../standalone/machines/ci/macos-${{matrix.compiler}}.env &&
+          ./cmakescript.sh &&
+          cmake --build .
+
+      - name: Run tests
+        run: ctest --output-on-failure

@@ -3,7 +3,6 @@
 ./cmakeclean.sh
 
 cmake      \
-  -DCMAKE_CXX_COMPILER=${CXX}                    \
   -DCMAKE_CUDA_HOST_COMPILER=${CXX}              \
   -DYAKL_CUDA_FLAGS="${YAKL_CUDA_FLAGS}"         \
   -DYAKL_CXX_FLAGS="${YAKL_CXX_FLAGS}"           \
