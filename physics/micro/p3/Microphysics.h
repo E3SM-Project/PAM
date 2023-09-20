@@ -18,7 +18,7 @@ void p3_main_fortran(double *qc , double *nc , double *qr , double *nr , double 
                      double *precip_liq_flux , double *precip_ice_flux , double *cld_frac_r ,
                      double *cld_frac_l , double *cld_frac_i , double *p3_tend_out , double *mu_c ,
                      double *lamc , double *liq_ice_exchange , double *vap_liq_exchange ,
-                     double *vap_ice_exchange , double *qv_prev , double *t_prev , double *col_location ,
+                     double *vap_ice_exchange , double *q_prev , double *t_prev , double *col_location ,
                      double *elapsed_s );
 
 
@@ -123,7 +123,7 @@ public:
     dm.register_and_allocate<real>( "nc_nuceat_tend", "activated cld nuclei number tendency [#/kg/s]",{nz,ny,nx,nens},{"z","y","x","nens"});
     dm.register_and_allocate<real>( "ni_activated",   "activated ice nuclei concentration   [#/kg]",  {nz,ny,nx,nens},{"z","y","x","nens"});
 
-    dm.register_and_allocate<real>("qv_prev","qv from prev step"         ,{nz,ny,nx,nens},{"z","y","x","nens"});
+    dm.register_and_allocate<real>("q_prev","rho_v from prev step"       ,{nz,ny,nx,nens},{"z","y","x","nens"});
     dm.register_and_allocate<real>("t_prev" ,"Temperature from prev step",{nz,ny,nx,nens},{"z","y","x","nens"});
 
     dm.register_and_allocate<real>("precip_liq_surf_out","liq surface precipitation rate",{ny,nx,nens},{"y","x","nens"});
@@ -142,7 +142,7 @@ public:
     auto ice_rime        = dm.get<real,4>( "ice_rime"        );
     auto ice_rime_vol    = dm.get<real,4>( "ice_rime_vol"    );
     auto water_vapor     = dm.get<real,4>( "water_vapor"     );
-    auto qv_prev         = dm.get<real,4>( "qv_prev"         );
+    auto q_prev          = dm.get<real,4>( "q_prev"          );
     auto t_prev          = dm.get<real,4>( "t_prev"          );
 
     parallel_for( "micro zero" , SimpleBounds<4>(nz,ny,nx,nens) ,
@@ -156,7 +156,7 @@ public:
       ice_rime       (k,j,i,iens) = 0;
       ice_rime_vol   (k,j,i,iens) = 0;
       water_vapor    (k,j,i,iens) = 0;
-      qv_prev        (k,j,i,iens) = 0;
+      q_prev         (k,j,i,iens) = 0;
       t_prev         (k,j,i,iens) = 0;
     });
 
@@ -268,8 +268,8 @@ public:
     });
 
     // Get everything from the DataManager that's not a tracer but is persistent across multiple micro calls
-    auto qv_prev = dm.get_lev_col<real>("qv_prev");
-    auto t_prev  = dm.get_lev_col<real>("t_prev" );
+    auto q_prev = dm.get_lev_col<real>("q_prev");
+    auto t_prev = dm.get_lev_col<real>("t_prev" );
 
     // Allocates inputs and outputs
     real2d qc                ( "qc"                 ,           nz   , ncol );
@@ -354,19 +354,24 @@ public:
 
       //These are constant kappa expressions
       exner       (k,i) = pow( pressure / p0 , R_d / cp_d );
+      // exner       (k,i) = pow( pressure_dry(k,i) / p0 , R_d / cp_d );
       inv_exner   (k,i) = 1. / exner(k,i);
       theta       (k,i) = temp(k,i) * inv_exner(k,i);
 
       // P3 uses dpres to calculate density via the hydrostatic assumption.
       // So we just reverse this to compute dpres to give true density
       dpres_dry(k,i) = rho_dry(k,i) * grav * dz(k,i);
+      // dpres_dry(k,i) = (rho_dry(k,i)+rho_v(k,i)) * grav * dz(k,i);
 
       // col_location is for debugging only, and it will be ignored for now
       if (k < 3) { col_location(k,i) = 1; }
 
       if (first_step) {
-        qv_prev(k,i) = qv  (k,i);
-        t_prev (k,i) = temp(k,i);
+        q_prev(k,i) = qv  (k,i);
+        t_prev(k,i) = temp(k,i);
+      } else {
+        // q_prev is stored as density but converted to mixing ratio here
+        q_prev(k,i) = q_prev(k,i) / rho_dry(k,i);
       }
     });
 
@@ -427,7 +432,7 @@ public:
       auto transposed_cld_frac_r         = cld_frac_r        .createDeviceCopy().reshape(cld_frac_r        .extent(1),cld_frac_r        .extent(0)); // in
       auto transposed_cld_frac_l         = cld_frac_l        .createDeviceCopy().reshape(cld_frac_l        .extent(1),cld_frac_l        .extent(0)); // in
       auto transposed_cld_frac_i         = cld_frac_i        .createDeviceCopy().reshape(cld_frac_i        .extent(1),cld_frac_i        .extent(0)); // in
-      auto transposed_qv_prev            = qv_prev           .createDeviceCopy().reshape(qv_prev           .extent(1),qv_prev           .extent(0)); // in
+      auto transposed_q_prev             = q_prev            .createDeviceCopy().reshape(q_prev            .extent(1),q_prev            .extent(0)); // in
       auto transposed_t_prev             = t_prev            .createDeviceCopy().reshape(t_prev            .extent(1),t_prev            .extent(0)); // in
       auto transposed_col_location       = col_location      .createDeviceCopy().reshape(col_location      .extent(1),col_location      .extent(0)); // in
       auto transposed_diag_eff_radius_qc = diag_eff_radius_qc.createDeviceCopy().reshape(diag_eff_radius_qc.extent(1),diag_eff_radius_qc.extent(0)); //   out
@@ -464,7 +469,7 @@ public:
         transposed_cld_frac_r     (i,k_p3) = cld_frac_r     (k,i); // in
         transposed_cld_frac_l     (i,k_p3) = cld_frac_l     (k,i); // in
         transposed_cld_frac_i     (i,k_p3) = cld_frac_i     (k,i); // in
-        transposed_qv_prev        (i,k_p3) = qv_prev        (k,i); // in
+        transposed_q_prev         (i,k_p3) = q_prev         (k,i); // in
         transposed_t_prev         (i,k_p3) = t_prev         (k,i); // in
         if (k < 3) transposed_col_location(i,k) = col_location(k,i); // in
       });
@@ -510,7 +515,7 @@ public:
                         transposed_liq_ice_exchange  .create_ArrayIR() , //   out
                         transposed_vap_liq_exchange  .create_ArrayIR() , //   out
                         transposed_vap_ice_exchange  .create_ArrayIR() , //   out
-                        transposed_qv_prev           .create_ArrayIR() , // in
+                        transposed_q_prev            .create_ArrayIR() , // in
                         transposed_t_prev            .create_ArrayIR() , // in
                         transposed_col_location      .create_ArrayIR() , // in
                        &elapsed_s                                      );//   out {
@@ -588,7 +593,7 @@ public:
       auto liq_ice_exchange_host   = liq_ice_exchange  .createHostCopy();
       auto vap_liq_exchange_host   = vap_liq_exchange  .createHostCopy();
       auto vap_ice_exchange_host   = vap_ice_exchange  .createHostCopy();
-      auto qv_prev_host            = qv_prev           .createHostCopy();
+      auto q_prev_host             = q_prev            .createHostCopy();
       auto t_prev_host             = t_prev            .createHostCopy();
       auto col_location_host       = col_location      .createHostCopy();
 
@@ -603,7 +608,7 @@ public:
                       qr_evap_tend_host.data() , precip_liq_flux_host.data() , precip_ice_flux_host.data() ,
                       cld_frac_r_host.data() , cld_frac_l_host.data() , cld_frac_i_host.data() ,
                       p3_tend_out_host.data() , mu_c_host.data() , lamc_host.data() , liq_ice_exchange_host.data() ,
-                      vap_liq_exchange_host.data() , vap_ice_exchange_host.data() , qv_prev_host.data() ,
+                      vap_liq_exchange_host.data() , vap_ice_exchange_host.data() , q_prev_host.data() ,
                       t_prev_host.data() , col_location_host.data() , &elapsed_s );
 
       qc_host                .deep_copy_to( qc                 );
@@ -643,7 +648,7 @@ public:
       liq_ice_exchange_host  .deep_copy_to( liq_ice_exchange   );
       vap_liq_exchange_host  .deep_copy_to( vap_liq_exchange   );
       vap_ice_exchange_host  .deep_copy_to( vap_ice_exchange   );
-      qv_prev_host           .deep_copy_to( qv_prev            );
+      q_prev_host            .deep_copy_to( q_prev             );
       t_prev_host            .deep_copy_to( t_prev             );
       col_location_host      .deep_copy_to( col_location       );
     #endif
@@ -677,8 +682,9 @@ public:
       temp(k,i) = temp_old + ( temp_new - temp_old ) * cv_d/cp_d;
 
       // Save qv and temperature for the next call to p3_main
-      qv_prev(k,i) = std::max( qv(k,i) , 0._fp );
-      t_prev (k,i) = temp(k,i);
+      // NOTE - convert q_prev back to density to carry across time steps
+      q_prev(k,i) = std::max( qv(k,i)*rho_dry(k,i) , 0._fp );
+      t_prev(k,i) = temp(k,i);
       // copy diagnostic quantities to data manager
       liq_ice_exchange_out(k,i) = liq_ice_exchange(k,i);
       vap_liq_exchange_out(k,i) = vap_liq_exchange(k,i);
