@@ -69,7 +69,10 @@ namespace pam {
         T * ptr = new T(value);
         options.push_back({ key , (void *) ptr , get_type_hash<T>() , false });
       } else {
-        if (options[id].readonly) endrun("ERROR: Trying to overwrite a readonly coupler option");
+        if (options[id].readonly) {
+          std::cout << "ERROR: For add_option(key,value): (" << key << "," << value << "):" << std::endl;
+          endrun("ERROR: Trying to overwrite a readonly coupler option");
+        }
         *((T *) options[id].data) = value;
       }
     }
@@ -90,7 +93,10 @@ namespace pam {
     T get_option( std::string key ) const {
       validate_type<T>();
       int id = find_option_or_die( key );
-      if (get_type_hash<T>() != options[id].type_hash) endrun("ERROR: Requesting option using the wrong type");
+      if (get_type_hash<T>() != options[id].type_hash) {
+        std::cout << "ERROR: For get_option(key): (" << key << "):" << std::endl;
+        endrun("ERROR: Requesting option using the wrong type");
+      }
       return *( (T *) options[id].data);
     }
 
@@ -106,6 +112,7 @@ namespace pam {
     int find_option_or_die( std::string key ) const {
       int id = find_option(key);
       if (id >= 0) return id;
+      std::cout << "ERROR: For find_option_or_die(key): (" << key << "):" << std::endl;
       endrun("ERROR: option not found");
       return -1;
     }

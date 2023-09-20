@@ -11,36 +11,6 @@
 namespace pam {
 
 
-
-  YAKL_INLINE real hydrostatic_pressure( realConst3d hy_params , real z_in , real z0 , real dz ,
-                                         int k, int iens             ) {
-    real z = ( z_in - z0 ) / dz;
-    real a0 = hy_params(k,0,iens);
-    real a1 = hy_params(k,1,iens);
-    real a2 = hy_params(k,2,iens);
-    real a3 = hy_params(k,3,iens);
-    real a4 = hy_params(k,4,iens);
-    real lnp = a0 + ( a1 + ( a2 + ( a3 + ( a4)*z)*z)*z)*z;
-    return exp(lnp);
-  }
-
-
-
-  YAKL_INLINE real hydrostatic_density( realConst3d hy_params , real z_in , real z0 , real dz ,
-                                        int k, int iens , real grav ) {
-    real z = ( z_in - z0 ) / dz;
-    real a1 = hy_params(k,1,iens);
-    real a2 = hy_params(k,2,iens);
-    real a3 = hy_params(k,3,iens);
-    real a4 = hy_params(k,4,iens);
-    real p = hydrostatic_pressure( hy_params , z_in , z0 , dz , k , iens );
-    real mult = a1 + (2*a2 + (3*a3 + (4*a4)*z)*z)*z;
-    real dpdz = mult*p/dz;
-    return -dpdz/grav;
-  }
-
-
-
   YAKL_INLINE real compute_pressure( real rho_d, real rho_v, real T, real R_d, real R_v ) {
     return rho_d*R_d*T + rho_v*R_v*T;
   }
@@ -294,13 +264,14 @@ namespace pam {
       dm.register_and_allocate<real>("vertical_interface_height","vertical interface height"  ,{nz+1    ,nens},{"zp1"      ,"nens"});
       dm.register_and_allocate<real>("vertical_cell_dz"         ,"vertical grid spacing"      ,{nz      ,nens},{"z"        ,"nens"});
       dm.register_and_allocate<real>("vertical_midpoint_height" ,"vertical midpoint height"   ,{nz      ,nens},{"z"        ,"nens"});
-      dm.register_and_allocate<real>("hydrostasis_parameters"   ,"hydrostasis parameters"     ,{nz,5    ,nens},{"z","nhy"  ,"nens"});
       dm.register_and_allocate<real>("gcm_density_dry"          ,"GCM column dry density"     ,{nz      ,nens},{"z"        ,"nens"});
       dm.register_and_allocate<real>("gcm_uvel"                 ,"GCM column u-velocity"      ,{nz      ,nens},{"z"        ,"nens"});
       dm.register_and_allocate<real>("gcm_vvel"                 ,"GCM column v-velocity"      ,{nz      ,nens},{"z"        ,"nens"});
       dm.register_and_allocate<real>("gcm_wvel"                 ,"GCM column w-velocity"      ,{nz      ,nens},{"z"        ,"nens"});
       dm.register_and_allocate<real>("gcm_temp"                 ,"GCM column temperature"     ,{nz      ,nens},{"z"        ,"nens"});
       dm.register_and_allocate<real>("gcm_water_vapor"          ,"GCM column water vapor mass",{nz      ,nens},{"z"        ,"nens"});
+      dm.register_and_allocate<real>("gcm_cloud_water"          ,"GCM column cloud water mass",{nz      ,nens},{"z"        ,"nens"});
+      dm.register_and_allocate<real>("gcm_cloud_ice"            ,"GCM column cloud ice mass"  ,{nz      ,nens},{"z"        ,"nens"});
 
       auto density_dry  = dm.get_collapsed<real>("density_dry"              );
       auto uvel         = dm.get_collapsed<real>("uvel"                     );
@@ -310,13 +281,14 @@ namespace pam {
       auto zint         = dm.get_collapsed<real>("vertical_interface_height");
       auto dz           = dm.get_collapsed<real>("vertical_cell_dz"         );
       auto zmid         = dm.get_collapsed<real>("vertical_midpoint_height" );
-      auto hy_params    = dm.get_collapsed<real>("hydrostasis_parameters"   );
       auto gcm_rho_d    = dm.get_collapsed<real>("gcm_density_dry"          );
       auto gcm_uvel     = dm.get_collapsed<real>("gcm_uvel"                 );
       auto gcm_vvel     = dm.get_collapsed<real>("gcm_vvel"                 );
       auto gcm_wvel     = dm.get_collapsed<real>("gcm_wvel"                 );
       auto gcm_temp     = dm.get_collapsed<real>("gcm_temp"                 );
       auto gcm_rho_v    = dm.get_collapsed<real>("gcm_water_vapor"          );
+      auto gcm_rho_c    = dm.get_collapsed<real>("gcm_cloud_water"          );
+      auto gcm_rho_i    = dm.get_collapsed<real>("gcm_cloud_ice"            );
 
       parallel_for( YAKL_AUTO_LABEL() , SimpleBounds<1>(nz*ny*nx*nens) , YAKL_LAMBDA (int i) {
         if (i < density_dry.size()) density_dry(i) = 0;
@@ -333,78 +305,9 @@ namespace pam {
         if (i < gcm_wvel   .size()) gcm_wvel   (i) = 0;
         if (i < gcm_temp   .size()) gcm_temp   (i) = 0;
         if (i < gcm_rho_v  .size()) gcm_rho_v  (i) = 0;
-        if (i < hy_params  .size()) hy_params  (i) = 0;
+        if (i < gcm_rho_c  .size()) gcm_rho_c  (i) = 0;
+        if (i < gcm_rho_i  .size()) gcm_rho_i  (i) = 0;
       });
-    }
-
-
-
-    void update_hydrostasis() {
-      using yakl::c::parallel_for;
-      using yakl::c::SimpleBounds;
-      using yakl::intrinsics::matmul_cr;
-      using yakl::intrinsics::matinv_ge;
-      using yakl::atomicAdd;
-
-      auto zint      = dm.get<real const,2>("vertical_interface_height");
-      auto zmid      = dm.get<real const,2>("vertical_midpoint_height" );
-      auto dz        = dm.get<real const,2>("vertical_cell_dz");
-      auto hy_params = dm.get<real,3>("hydrostasis_parameters"   );
-
-      auto dens_dry = dm.get<real const,4>("density_dry");
-      auto dens_wv  = dm.get<real const,4>("water_vapor");
-      auto temp     = dm.get<real const,4>("temp");
-
-      int nz   = get_nz();
-      int ny   = get_ny();
-      int nx   = get_nx();
-      int nens = get_nens();
-
-      auto R_d = get_option<real>("R_d");
-      auto R_v = get_option<real>("R_v");
-
-      // Compute average column of pressure for each ensemble
-      real2d pressure_col("pressure_col",nz,nens);
-      memset( pressure_col , 0._fp );
-      real r_nx_ny = 1._fp / (nx*ny);
-      parallel_for( SimpleBounds<4>(nz,ny,nx,nens) , YAKL_LAMBDA (int k, int j, int i, int iens) {
-        real rho_d = dens_dry(k,j,i,iens);
-        real rho_v = dens_wv (k,j,i,iens);
-        real T     = temp    (k,j,i,iens);
-        atomicAdd( pressure_col(k,iens) , compute_pressure( rho_d , rho_v , T , R_d , R_v )*r_nx_ny );
-      });
-
-      parallel_for( SimpleBounds<2>(nz,nens) , YAKL_LAMBDA (int k, int iens) {
-        int constexpr npts = 5;
-        int kmid = k;
-        int kbot = k-2;
-        int ktop = k+2;
-        while (kbot < 0   ) { kbot++; ktop++; }
-        while (ktop > nz-1) { kbot--; ktop--; }
-
-        SArray<double,1,npts> z;
-        real z0 = zmid(kmid,iens);
-        for (int i=0; i < npts; i++) { z(i) = ( zmid(kbot+i,iens) - z0 ) / dz(k,iens); }
-
-        SArray<double,2,npts,npts> vand;
-        for (int j=0; j < npts; j++) {
-          for (int i=0; i < npts; i++) {
-            vand(j,i) = pow( z(i) , (double) j );
-          }
-        }
-
-        auto vand_inv = matinv_ge( vand );
-
-        SArray<double,1,npts> logp;
-        for (int i=0; i < npts; i++) {
-          logp(i) = log(pressure_col(kbot+i,iens));
-        }
-
-        auto params = matmul_cr( vand_inv , logp );
-
-        for (int i=0; i < npts; i++) { hy_params(k,i,iens) = params(i); }
-      });
-
     }
 
 

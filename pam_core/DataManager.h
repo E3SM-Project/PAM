@@ -73,6 +73,7 @@ namespace pam {
       int dimid = find_dimension( name );
       if (dimid > 0) {
         if ( dimensions[dimid].len != len ) {
+          std::cerr << "ERROR: For add_dimension(name,len): (" << name << "," << len << "):" << std::endl;
           endrun("ERROR: Adding a dimension that already exists with a different size than the existing dimension");
         }
         return;  // Avoid adding a duplicate entry
@@ -94,15 +95,27 @@ namespace pam {
                                 std::vector<std::string> dim_names = std::vector<std::string>() ,
                                 bool positive = false ) {
       if (name == "") {
+        std::cerr << "ERROR: For register_and_allocate(name,desc,dims,dim_names,positive):" << std::endl
+                  << "name: " << name << std::endl
+                  << "desc: " << desc << std::endl
+                  << "positive: " << positive << std::endl;
         endrun("ERROR: You cannot register_and_allocate with an empty string");
       }
       // Make sure we don't have a duplicate entry
       if ( find_entry(name) != -1) {
+        std::cerr << "ERROR: For register_and_allocate(name,desc,dims,dim_names,positive):" << std::endl
+                  << "name: " << name << std::endl
+                  << "desc: " << desc << std::endl
+                  << "positive: " << positive << std::endl;
         endrun("ERROR: Duplicate entry name");
       }
 
       if (dim_names.size() > 0) {
         if (dims.size() != dim_names.size()) {
+          std::cerr << "ERROR: For register_and_allocate(name,desc,dims,dim_names,positive):" << std::endl
+                    << "name: " << name << std::endl
+                    << "desc: " << desc << std::endl
+                    << "positive: " << positive << std::endl;
           endrun("ERROR: Must have the same number of dims and dim_names");
         }
         // Make sure the dimensions are the same size as existing ones of the same name
@@ -115,6 +128,10 @@ namespace pam {
             dimensions.push_back(loc);
           } else {
             if (dimensions[dimid].len != dims[i]) {
+              std::cerr << "ERROR: For register_and_allocate(name,desc,dims,dim_names,positive):" << std::endl
+                        << "name: " << name << std::endl
+                        << "desc: " << desc << std::endl
+                        << "positive: " << positive << std::endl;
               endrun("ERROR: Dimension already exists but has a different length");
             }
           }
@@ -162,15 +179,30 @@ namespace pam {
                             std::vector<std::string> dim_names = std::vector<std::string>() ,
                             bool positive = false ) {
       if (name == "") {
+        std::cerr << "ERROR: For register_existing(name,desc,dims,ptr,dim_names,positive):" << std::endl
+                  << "name: " << name << std::endl
+                  << "desc: " << desc << std::endl
+                  << "ptr: " << ptr << std::endl
+                  << "positive: " << positive << std::endl;
         endrun("ERROR: You cannot register_and_allocate with an empty string");
       }
       // Make sure we don't have a duplicate entry
       if ( find_entry(name) != -1) {
+        std::cerr << "ERROR: For register_existing(name,desc,dims,ptr,dim_names,positive):" << std::endl
+                  << "name: " << name << std::endl
+                  << "desc: " << desc << std::endl
+                  << "ptr: " << ptr << std::endl
+                  << "positive: " << positive << std::endl;
         endrun("ERROR: Duplicate entry name");
       }
 
       if (dim_names.size() > 0) {
         if (dims.size() != dim_names.size()) {
+          std::cerr << "ERROR: For register_existing(name,desc,dims,ptr,dim_names,positive):" << std::endl
+                    << "name: " << name << std::endl
+                    << "desc: " << desc << std::endl
+                    << "ptr: " << ptr << std::endl
+                    << "positive: " << positive << std::endl;
           endrun("ERROR: Must have the same number of dims and dim_names");
         }
         // Make sure the dimensions are the same size as existing ones of the same name
@@ -183,6 +215,11 @@ namespace pam {
             dimensions.push_back(loc);
           } else {
             if (dimensions[dimid].len != dims[i]) {
+              std::cerr << "ERROR: For register_existing(name,desc,dims,ptr,dim_names,positive):" << std::endl
+                        << "name: " << name << std::endl
+                        << "desc: " << desc << std::endl
+                        << "ptr: " << ptr << std::endl
+                        << "positive: " << positive << std::endl;
               endrun("ERROR: Dimension already exists but has a different length");
             }
           }
@@ -302,7 +339,10 @@ namespace pam {
     Array<T,N,memSpace,styleC> get( std::string name ) {
       // Make sure we have this name as an entry
       int id = find_entry_or_error( name );
-      if (entries[id].read_only) endrun("ERROR: Trying to get() a read-only arary without a const type");
+      if (entries[id].read_only) {
+        std::cerr << "ERROR: For get(name) with name: " << name << std::endl;
+        endrun("ERROR: Trying to get() a read-only arary without a const type");
+      }
       entries[id].dirty = true;
       // Make sure it's the right type and dimensionality
       validate_type<T>(id);
@@ -346,7 +386,10 @@ namespace pam {
       // Make sure we have this name as an entry
       int id = find_entry_or_error( name );
       entries[id].dirty = true;
-      if (entries[id].read_only) endrun("ERROR: Trying to get_lev_col() a read-only arary without a const type");
+      if (entries[id].read_only) {
+        std::cerr << "ERROR: For get_lev_col(name) with name: " << name << std::endl;
+        endrun("ERROR: Trying to get_lev_col() a read-only arary without a const type");
+      }
       // Make sure it's the right type
       validate_type<T>(id);
       validate_dims_lev_col(id);
@@ -390,7 +433,10 @@ namespace pam {
       // Make sure we have this name as an entry
       int id = find_entry_or_error( name );
       entries[id].dirty = true;
-      if (entries[id].read_only) endrun("ERROR: Trying to get_collapsed() a read-only arary without a const type");
+      if (entries[id].read_only) {
+        std::cerr << "ERROR: For get_collapsed(name) with name: " << name << std::endl;
+        endrun("ERROR: Trying to get_collapsed() a read-only arary without a const type");
+      }
       // Make sure it's the right type
       validate_type<T>(id);
       int ncells = entries[id].dims[0];
@@ -472,6 +518,7 @@ namespace pam {
       auto arr = get_collapsed<T>(name).createHostCopy();
       for (int i=0; i < arr.get_elem_count(); i++) {
         if ( std::isnan( arr(i) ) ) {
+          std::cerr << "ERROR: For validate_single_nan(name) with name: " << name << std::endl;
           std::cerr << "WARNING: NaN discovered in: " << name << " at global index: " << i << "\n";
           if (die_on_failed_check) endrun("");
         }
@@ -485,6 +532,7 @@ namespace pam {
       auto arr = get_collapsed<T>(name).createHostCopy();
       for (int i=0; i < arr.get_elem_count(); i++) {
         if ( std::isinf( arr(i) ) ) {
+          std::cerr << "ERROR: For validate_single_inf(name) with name: " << name << std::endl;
           std::cerr << "WARNING: inf discovered in: " << name << " at global index: " << i << "\n";
           if (die_on_failed_check) endrun("");
         }
@@ -500,6 +548,7 @@ namespace pam {
         auto arr = get_collapsed<T>(name).createHostCopy();
         for (int i=0; i < arr.get_elem_count(); i++) {
           if ( arr(i) < 0. ) {
+            std::cerr << "ERROR: For validate_single_pos(name) with name: " << name << std::endl;
             std::cerr << "WARNING: negative value discovered in positive-definite entry: " << name
                       << " at global index: " << i << "\n";
             if (die_on_failed_check) endrun("");
@@ -531,6 +580,7 @@ namespace pam {
     int find_entry_or_error( std::string name ) const {
       int id = find_entry( name );
       if (id >= 0) return id;
+      std::cerr << "ERROR: For find_entry_or_error(name) with name: " << name << std::endl;
       endrun("ERROR: Could not find entry in coupler data");
       return -1;
     }
@@ -547,7 +597,10 @@ namespace pam {
     // INTERNAL USE: Return the size of the named dimension or kill the run if it isn't found
     int get_dimension_size( std::string name ) const {
       int id = find_dimension( name );
-      if (id == -1) { endrun("ERROR: Could not find dimension."); }
+      if (id == -1) {
+        std::cerr << "ERROR: For get_dimension_size(name) with name: " << name << std::endl;
+        endrun("ERROR: Could not find dimension.");
+      }
       return dimensions[id].len;
     }
 
@@ -568,6 +621,7 @@ namespace pam {
     template <class T>
     void validate_type(int id) const {
       if ( entries[id].type_hash != get_type_hash<T>() ) {
+        std::cerr << "ERROR: For validate_type(id) with id: " << id << std::endl;
         endrun("ERROR: Requested Array type does not match entry type");
       }
     }
@@ -578,6 +632,7 @@ namespace pam {
     template <int N>
     void validate_dims(int id) const {
       if ( N != entries[id].dims.size() ) {
+        std::cerr << "ERROR: For validate_dims(id) with id: " << id << std::endl;
         endrun("ERROR: Requested dimensions is different from the entry dimensions");
       }
     }
@@ -586,6 +641,7 @@ namespace pam {
     // INTERNAL USE: End the run if the entry id's of dimensions < 2
     void validate_dims_lev_col(int id) const {
       if ( entries[id].dims.size() < 2 ) {
+        std::cerr << "ERROR: For validate_dims_lev_col(id) with id: " << id << std::endl;
         endrun("ERROR: Requested data is only one-dimensional");
       }
     }

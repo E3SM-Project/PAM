@@ -17,7 +17,6 @@ cmake      \
   -DPAM_MICRO="p3"                                                \
   -DPAM_RAD="none"                                                \
   -DPAM_SGS="shoc"                                                \
-  -DPAM_RAD="none"                                                \
   -DPAM_NLEV=${PAM_NLEV}                                          \
   -DSCREAM_CXX_LIBS_DIR=${SCREAM_CXX_LIBS_DIR}                    \
   -DPAM_SCREAM_USE_CXX=${PAM_SCREAM_USE_CXX}                      \
