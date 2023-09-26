@@ -170,7 +170,7 @@ public:
 
     if (first_step) {
       #ifndef SHOC_CXX
-        auto ref_pres = dm_device.get<real,2>("ref_pres");
+        auto ref_pres = dm.get<real,2>("ref_pres");
         // SHOC init requires reference pressure, which we do not have available for the init() call
         // Invert the first column in x, z, and ensemble to use as reference pressure for shoc
         real1d pref_shoc("pref_shoc",nz);
