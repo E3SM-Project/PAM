@@ -139,9 +139,6 @@ int main(int argc, char** argv) {
     // Initialize the CRM internal state from the initial GCM column and random temperature perturbations
     modules::broadcast_initial_gcm_column( coupler );
 
-    // Now that we have an initial state, define hydrostasis for each ensemble member
-    coupler.update_hydrostasis();
-
     int1d seeds("seeds",nens);
     seeds = 0;
     modules::perturb_temperature( coupler , seeds );
