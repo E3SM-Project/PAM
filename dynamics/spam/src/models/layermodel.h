@@ -101,27 +101,32 @@ public:
     Tendencies::initialize(params, equations, primal_geom, dual_geom);
   }
 
-  void
-  convert_dynamics_to_coupler_state(PamCoupler &coupler,
-                                    const FieldSet<nprognostic> &prog_vars,
-                                    const FieldSet<nconstant> &const_vars, bool couple_wind, bool couple_wind_exact_inverse) {
+  void convert_dynamics_to_coupler_state(PamCoupler &coupler,
+                                         const FieldSet<nprognostic> &prog_vars,
+                                         const FieldSet<nconstant> &const_vars,
+                                         bool couple_wind,
+                                         bool couple_wind_exact_inverse) {
     equations->varset.convert_dynamics_to_coupler_densities(coupler, prog_vars,
-                                                        const_vars);
+                                                            const_vars);
 
-    if (couple_wind){ equations->varset.convert_dynamics_to_coupler_wind(coupler, prog_vars,
-                                                        const_vars, couple_wind_exact_inverse);}
-
+    if (couple_wind) {
+      equations->varset.convert_dynamics_to_coupler_wind(
+          coupler, prog_vars, const_vars, couple_wind_exact_inverse);
+    }
   }
 
   void convert_coupler_to_dynamics_state(PamCoupler &coupler,
                                          FieldSet<nprognostic> &prog_vars,
                                          FieldSet<nauxiliary> &auxiliary_vars,
-                                         FieldSet<nconstant> &const_vars, bool couple_wind, bool couple_wind_exact_inverse) {
+                                         FieldSet<nconstant> &const_vars,
+                                         bool couple_wind,
+                                         bool couple_wind_exact_inverse) {
     equations->varset.convert_coupler_to_dynamics_densities(coupler, prog_vars,
-                                                        const_vars);
-    if (couple_wind) {equations->varset.convert_coupler_to_dynamics_wind(coupler, prog_vars,
-                                                        const_vars, couple_wind_exact_inverse);}
-
+                                                            const_vars);
+    if (couple_wind) {
+      equations->varset.convert_coupler_to_dynamics_wind(
+          coupler, prog_vars, const_vars, couple_wind_exact_inverse);
+    }
   }
 
   void compute_constants(FieldSet<nconstant> &const_vars,

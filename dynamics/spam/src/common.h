@@ -2,7 +2,7 @@
 
 #include <cmath>
 #include <iostream>
-//#include <cstring>
+// #include <cstring>
 #include "mpi.h"
 #include <array>
 #include <complex>
@@ -53,7 +53,7 @@ using optional_real4d = std::optional<real4d>;
 using optional_real5d = std::optional<real5d>;
 
 #define PAMC_MPI_REAL MPI_DOUBLE
-//#define REAL_NC NC_DOUBLE
+// #define REAL_NC NC_DOUBLE
 
 // Spatial derivatives order of accuracy ie Hodge stars [2,4,6] (vert only
 // supports 2 for now)
@@ -126,8 +126,8 @@ uint constexpr mirroringhalo =
 real constexpr pi =
     3.141592653589793238462643383279502884197169399375105820974944_fp;
 
-//#define PNETCDF_PUT_VAR ncmpi_put_vara_double
-//#define PNETCDF_PUT_VAR_ALL ncmpi_put_vara_double_all
+// #define PNETCDF_PUT_VAR ncmpi_put_vara_double
+// #define PNETCDF_PUT_VAR_ALL ncmpi_put_vara_double_all
 
 // GPU compilers sometimes have issues with zero-sized arrays than can occur
 // for some parameter choices. For this reason we sometimes have to pad arrays

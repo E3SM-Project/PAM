@@ -31,8 +31,7 @@ public:
   Equations() { this->is_initialized = false; }
   void initialize(PamCoupler &coupler, ModelParameters &params,
                   const Geometry<Straight> &primal_geom,
-                  const Geometry<Twisted> &dual_geom,
-                  bool verbose=false) {
+                  const Geometry<Twisted> &dual_geom, bool verbose = false) {
 
     this->reference_state.initialize<VariableSet>(primal_geom.topology,
                                                   dual_geom.topology);
