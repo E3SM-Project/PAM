@@ -107,6 +107,12 @@ int main(int argc, char** argv) {
     auto gcm_temp  = dm.get<real,2>("gcm_temp"       );
     auto gcm_rho_v = dm.get<real,2>("gcm_water_vapor");
 
+    auto ref_rho_d = dm.get<real,2>("ref_density_dry");
+    auto ref_rho_v = dm.get<real,2>("ref_density_vapor");
+    auto ref_rho_l = dm.get<real,2>("ref_density_liq");
+    auto ref_rho_i = dm.get<real,2>("ref_density_ice");
+    auto ref_temp  = dm.get<real,2>("ref_temp"       );
+
     using yakl::c::parallel_for;
     using yakl::c::SimpleBounds;
     parallel_for( SimpleBounds<2>(crm_nz,nens) , YAKL_LAMBDA (int k, int iens) {
@@ -116,6 +122,13 @@ int main(int argc, char** argv) {
       gcm_wvel (k,iens) = wvel_col (k);
       gcm_temp (k,iens) = temp_col (k);
       gcm_rho_v(k,iens) = rho_v_col(k);
+
+      // set reference state
+      ref_rho_d(k,iens) = rho_d_col(k);
+      ref_rho_v(k,iens) = rho_v_col(k);
+      ref_rho_l(k,iens) = 0;
+      ref_rho_i(k,iens) = 0;
+      ref_temp (k,iens) = temp_col(k);
     });
 
     if (mainproc) {
