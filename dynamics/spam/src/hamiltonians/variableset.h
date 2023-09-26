@@ -497,20 +497,20 @@ void VariableSetBase<T>::convert_dynamics_to_coupler_densities(
       // or compute_temp(total_dens, entropic_var, qd, qv, ql, qi) and
       // get_total_dens(DENSARR,...)
 
-#if defined(_CE) || defined(_MCErho) || defined(_MCErhod) || defined(_CEp) ||  \
-    defined(_MCErhop) || defined(_MCErhodp)
+#if defined(PAMC_CE) || defined(PAMC_MCErho) || defined(PAMC_MCErhod) ||       \
+    defined(PAMC_CEp) || defined(PAMC_MCErhop) || defined(PAMC_MCErhodp)
           dm_dens_dry(k, j, i, n) =
               get_dry_density(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks,
                               djs, dis, n) /
               dual_geometry.get_area_n1entity(k + dks, j + djs, i + dis, n);
 #endif
 
-#if defined(_CE) || defined(_MCErho) || defined(_MCErhod)
+#if defined(PAMC_CE) || defined(PAMC_MCErho) || defined(PAMC_MCErhod)
           real alpha = get_alpha(prog_vars.fields_arr[DENSVAR].data, k, j, i,
                                  dks, djs, dis, n);
           real temp =
               thermo.compute_T_from_alpha(alpha, entropic_var, qd, qv, ql, qi);
-#elif defined(_CEp) || defined(_MCErhop) || defined(_MCErhodp) ||              \
+#elif defined(PAMC_CEp) || defined(PAMC_MCErhop) || defined(PAMC_MCErhodp) ||  \
     defined(PAMC_AN) || defined(PAMC_MAN)
           real p = get_pres(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks,
                             djs, dis, n);
@@ -696,10 +696,10 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_densities(
                            djs, dis, n);
 #endif
 
-#if defined(_CE) || defined(_MCErho) || defined(_MCE_rhod)
+#if defined(PAMC_CE) || defined(PAMC_MCErho) || defined(PAMC_MCE_rhod)
           real entropic_var = thermo.compute_entropic_var_from_T_alpha(
               alpha, temp, qd, qv, ql, qi);
-#elif defined(_CEp) || defined(_MCErhop) || defined(_MCErhodp)
+#elif defined(PAMC_CEp) || defined(PAMC_MCErhop) || defined(PAMC_MCErhodp)
           real p = get_pres(alpha, temp, qd, qv, ql, qi);
           real entropic_var =
               thermo.compute_entropic_var_from_T_p(p, temp, qd, qv, ql, qi);
