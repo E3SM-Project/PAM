@@ -2153,10 +2153,12 @@ public:
 
     auxiliary_vars.exchange({BVAR, FVAR, FWVAR});
 
+#if defined PAMC_AN || defined PAMC_MAN
     if (this->check_anelastic_constraint) {
       real max_div = compute_max_anelastic_constraint(x, auxiliary_vars, true);
       std::cout << "Anelastic constraint: " << max_div << std::endl;
     }
+#endif
     yakl::timer_stop("compute_functional_derivatives");
   }
 

@@ -248,11 +248,14 @@ public:
 
       time_integrator->step_forward(params.dtcrm);
 
+#if defined PAMC_AN || defined PAMC_MAN
       if (params.check_anelastic_constraint) {
         real max_div = tendencies.compute_max_anelastic_constraint(
             prognostic_vars, auxiliary_vars);
-        serial_print("Anelastic constraint: " + std::to_string(max_div), par.masterproc);
+        serial_print("Anelastic constraint: " + std::to_string(max_div),
+                     par.masterproc);
       }
+#endif
 
       yakl::fence();
 
