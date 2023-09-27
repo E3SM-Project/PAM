@@ -16,7 +16,7 @@
 #include "scream_cxx_interface_finalize.h"
 #include "pamc_init.h"
 
-void initialize_from_supercell_column(real1d zint_in, PamCoupler &coupler) {
+void initialize_from_supercell_column(real1d zint_in, pam::PamCoupler &coupler) {
   int crm_nz = coupler.get_nz();
   int nens = coupler.get_nens();
   
