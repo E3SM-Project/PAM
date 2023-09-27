@@ -89,6 +89,7 @@ int main(int argc, char** argv) {
     YAML::Node config = YAML::LoadFile(inFile);
     if ( !config            ) { endrun("ERROR: Invalid YAML input file"); }
     auto idealized         = config["idealized"        ].as<bool>(false);
+    auto verbose           = config["verbose"          ].as<bool>(idealized);
     auto apply_sponge      = config["apply_sponge"     ].as<bool>(!idealized);
     auto apply_gcm_forcing = config["apply_gcm_forcing"].as<bool>(!idealized);
     auto simTime           = config["simTime"          ].as<real>();
@@ -187,7 +188,7 @@ int main(int argc, char** argv) {
 
     micro .init( coupler );
     sgs   .init( coupler );
-    dycore.init( coupler );
+    dycore.init( coupler, verbose);
 
     if ( (micro.micro_name() == "p3" || sgs.sgs_name() == "shoc") && crm_nz != PAM_NLEV ) {
       endrun("ERROR: Running with a different number of vertical levels than compiled for");
