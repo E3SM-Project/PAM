@@ -926,6 +926,12 @@ real YAKL_INLINE VariableSetBase<VS_CE>::get_total_density(
 }
 
 template <>
+real YAKL_INLINE VariableSetBase<VS_CE>::get_total_density(
+    const real3d &densvar, int k, int ks, int n) const {
+  return densvar(dens_id_mass, k + ks, n);
+}
+
+template <>
 real YAKL_INLINE VariableSetBase<VS_CE>::get_entropic_var(const real5d &densvar,
                                                           int k, int j, int i,
                                                           int ks, int js,
