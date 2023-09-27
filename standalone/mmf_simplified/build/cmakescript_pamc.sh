@@ -2,6 +2,24 @@
 
 ./cmakeclean.sh
 
+# taken from https://gist.github.com/jrichardsz/c0047f58cb6765c7b6a7fb33c466ab3f#file-args_shell_parser-v1-0-0-md
+
+PAM_MICRO="p3"
+PAM_SGS="none"
+PAMC_MODEL="extrudedmodel"
+PAMC_HAMIL="man"
+PAMC_THERMO="constkappavirpottemp"
+PAMC_IO="serial"
+
+for ARGUMENT in "$@"
+do
+   KEY=$(echo $ARGUMENT | cut -f1 -d=)
+
+   KEY_LENGTH=${#KEY}
+   VALUE="${ARGUMENT:$KEY_LENGTH+1}"
+
+   export "$KEY"="$VALUE"
+done
 
 cmake      \
   -DCMAKE_CXX_COMPILER=${CXX}                                     \
@@ -15,15 +33,14 @@ cmake      \
   -DPAM_LINK_FLAGS="${PAM_LINK_FLAGS}"                            \
   -DYAKL_ARCH="${YAKL_ARCH}"                                      \
   -DPAM_DYCORE="spam"                                             \
-  -DPAM_MICRO="p3"                                                \
-  -DPAM_SGS="shoc"                                                \
+  -DPAM_MICRO=${PAM_MICRO}                                        \
+  -DPAM_SGS=${PAM_SGS}                                            \
   -DPAM_RAD="none"                                                \
-  -DPAMC_MODEL="extrudedmodel"                                    \
-  -DPAMC_HAMIL="man"                                              \
-  -DPAMC_THERMO="constkappavirpottemp"                            \
-  -DPAMC_IO="none"                                                \
+  -DPAMC_MODEL=${PAMC_MODEL}                                      \
+  -DPAMC_HAMIL=${PAMC_HAMIL}                                      \
+  -DPAMC_THERMO=${PAMC_THERMO}                                    \
+  -DPAMC_IO=${PAMC_IO}                                            \
   -DPAM_NLEV=${PAM_NLEV}                                          \
   -DSCREAM_CXX_LIBS_DIR=${SCREAM_CXX_LIBS_DIR}                    \
   -DPAM_SCREAM_USE_CXX=${PAM_SCREAM_USE_CXX}                      \
   ..
-
