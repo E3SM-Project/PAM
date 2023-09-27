@@ -22,8 +22,7 @@ struct VS_SWE {
   static constexpr uint ndensity_dycore_prognostic = ndensity_dycore;
   static constexpr uint ndensity_dycore_active = ndensity_dycore;
 
-  static constexpr uint ntracers_dycore_active =
-      std::min<uint>(3, ntracers_dycore);
+  static constexpr uint ntracers_dycore_active = 0;
 
   static constexpr uint ntracers_physics = 0;
   static constexpr uint ntracers_physics_active = 0;
