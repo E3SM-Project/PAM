@@ -1,0 +1,39 @@
+idealized : true
+verbose : true
+
+# Simulation time in seconds
+sim_time : 120
+
+# Number of cells to use
+crm_nx : 100
+crm_ny : 1
+crm_nz : 100
+
+# Vertical height coordinates file
+vcoords : uniform
+#vcoords  : '../pam-c/vcoords/vcoords_equal_100_1000.nc'
+
+# Data to initialize
+initData : twobubbles
+
+# Time steps
+dt_crm_phys : 0.5
+crm_per_phys : 1
+
+# Output filename
+out_prefix : test
+dycore_out_prefix : test_dycore
+
+# Output frequency in actual time
+out_freq : 10
+stat_freq : 1
+
+tstype : si
+
+# Number of ensembles
+nens : 1
+
+# Parallel decomposition
+inner_mpi : true
+nprocx : 1
+nprocy : 1

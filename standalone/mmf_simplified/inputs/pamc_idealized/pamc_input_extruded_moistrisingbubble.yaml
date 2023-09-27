@@ -1,0 +1,38 @@
+idealized : true
+verbose : true
+
+sim_steps : 500
+
+# Number of cells to use
+crm_nx : 100
+crm_ny : 1
+crm_nz : 150
+
+# Vertical height coordinates file
+#vcoords  : vcoords_equal_100_20km.nc
+vcoords : uniform
+  #vcoords  : '../pam-c/vcoords/vcoords_equal_150_1500.nc'
+
+# Data to initialize: doublevortex rb mrb
+initData : moistrisingbubble
+
+dt_crm_phys : 1
+crm_per_phys : 1
+
+# Output filename
+out_prefix : test
+dycore_out_prefix : test_dycore
+
+#Output frequency in actual time
+out_freq : 50
+stat_freq : 5
+
+tstype: si
+
+# Number of ensembles
+nens : 1
+
+# Parallel decomposition
+inner_mpi : false
+nprocx : 1
+nprocy : 1

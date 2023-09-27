@@ -1,0 +1,42 @@
+idealized : true
+verbose : true
+
+# Simulation time in seconds
+sim_time : 900
+
+entropicvar_diffusion_coeff : 75
+velocity_diffusion_coeff : 75
+
+# Number of cells to use
+crm_nx : 256
+crm_ny : 1
+crm_nz : 33
+
+# Vertical height coordinates file
+vcoords : uniform
+ #vcoords  : '../pam-c/vcoords/vcoords_equal_33_6400.nc'
+
+# Data to initialize
+initData : densitycurrent
+
+# Time steps
+dt_crm_phys : 1
+crm_per_phys : 1
+
+# Output filename
+out_prefix : test
+dycore_out_prefix : test_dycore
+
+# Output frequency in actual time
+out_freq : 100
+stat_freq : 5
+
+tstype : si
+
+# Number of ensembles
+nens : 1
+
+# Parallel decomposition
+inner_mpi : true
+nprocx : 1
+nprocy : 1
