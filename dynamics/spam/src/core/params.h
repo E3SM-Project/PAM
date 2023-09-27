@@ -55,7 +55,7 @@ void readParamsFile(std::string inFile, Parameters &params, Parallel &par,
   par.nprocx = config["nprocx"].as<int>();
   par.nprocy = config["nprocy"].as<int>();
   params.nens = config["nens"].as<int>();
-  params.sim_time = config["simTime"].as<real>();
+  params.sim_time = config["sim_time"].as<real>();
   params.dt_crm_phys = config["dt_crm_phys"].as<real>();
   params.crm_per_phys = config["crm_per_phys"].as<int>();
   params.out_freq = config["out_freq"].as<real>(-1.);

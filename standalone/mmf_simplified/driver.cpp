@@ -92,14 +92,14 @@ int main(int argc, char** argv) {
     auto verbose           = config["verbose"          ].as<bool>(idealized);
     auto apply_sponge      = config["apply_sponge"     ].as<bool>(!idealized);
     auto apply_gcm_forcing = config["apply_gcm_forcing"].as<bool>(!idealized);
-    auto simTime           = config["simTime"          ].as<real>();
+    auto sim_time          = config["sim_time"          ].as<real>();
     auto crm_nx            = config["crm_nx"           ].as<int>();
     auto crm_ny            = config["crm_ny"           ].as<int>();
     auto nens              = config["nens"             ].as<int>();
     auto xlen              = config["xlen"             ].as<real>(-1);
     auto ylen              = config["ylen"             ].as<real>(-1);
     auto zlen              = config["zlen"             ].as<real>(-1);
-    auto dt_gcm            = config["dt_gcm"           ].as<real>(simTime);
+    auto dt_gcm            = config["dt_gcm"           ].as<real>(sim_time);
     auto dt_crm_phys       = config["dt_crm_phys"      ].as<real>();
     auto out_freq          = config["out_freq"         ].as<real>();
     auto out_prefix        = config["out_prefix"       ].as<std::string>();
@@ -112,8 +112,8 @@ int main(int argc, char** argv) {
     MPI_Comm_rank( MPI_COMM_WORLD , &myrank );
     bool mainproc = (myrank == 0);
 
-    const int nsteps_gcm = std::ceil(simTime / dt_gcm);
-    dt_gcm = simTime / nsteps_gcm;
+    const int nsteps_gcm = std::ceil(sim_time / dt_gcm);
+    dt_gcm = sim_time / nsteps_gcm;
     const int nsteps_crm_phys = std::ceil(dt_gcm / dt_crm_phys);
     dt_crm_phys = dt_gcm / nsteps_crm_phys;
     
