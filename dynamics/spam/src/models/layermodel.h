@@ -1173,15 +1173,17 @@ void read_model_params_coupler(ModelParameters &params, Parallel &par,
                                std::unique_ptr<TestCase> &testcase) {}
 
 void check_and_print_model_parameters(const ModelParameters &params,
-                                      const Parallel &par) {
+                                      const Parallel &par, bool verbose = false) {
 
   check_and_print_parameters(params, par);
 
-  serial_print("IC: " + params.initdataStr, par.masterproc);
-  for (int i = 0; i < ntracers_dycore; i++) {
-    serial_print("Dycore Tracer" + std::to_string(i) +
-                     " IC: " + params.tracerdataStr[i],
-                 par.masterproc);
+  if (verbose) {
+    serial_print("IC: " + params.initdataStr, par.masterproc);
+    for (int i = 0; i < ntracers_dycore; i++) {
+      serial_print("Dycore Tracer" + std::to_string(i) +
+                       " IC: " + params.tracerdataStr[i],
+                   par.masterproc);
+    }
   }
 }
 
