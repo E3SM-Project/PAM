@@ -382,22 +382,22 @@ public:
                                          const FieldSet<nconstant> &const_vars,
                                          bool couple_wind,
                                          bool couple_wind_exact_inverse) {
-    equations->varset.convert_dynamics_to_coupler_densities(coupler, prog_vars,
-                                                            const_vars);
+    convert_dynamics_to_coupler_densities(equations->varset, coupler, prog_vars,
+                                          const_vars);
 
     if (couple_wind) {
-      equations->varset.convert_dynamics_to_coupler_wind(
-          coupler, prog_vars, const_vars, couple_wind_exact_inverse);
+      convert_dynamics_to_coupler_wind(equations->varset, coupler, prog_vars,
+                                       const_vars, couple_wind_exact_inverse);
     }
   }
 
   void convert_dynamics_to_coupler_state_staggered(
       PamCoupler &coupler, const FieldSet<nprognostic> &prog_vars,
       const FieldSet<nconstant> &const_vars) {
-    equations->varset.convert_dynamics_to_coupler_densities(coupler, prog_vars,
-                                                            const_vars);
-    equations->varset.convert_dynamics_to_coupler_staggered_wind(
-        coupler, prog_vars, const_vars);
+    convert_dynamics_to_coupler_densities(equations->varset, coupler, prog_vars,
+                                          const_vars);
+    convert_dynamics_to_coupler_staggered_wind(equations->varset, coupler,
+                                               prog_vars, const_vars);
   }
 
   void convert_coupler_to_dynamics_state(PamCoupler &coupler,
@@ -406,11 +406,11 @@ public:
                                          FieldSet<nconstant> &const_vars,
                                          bool couple_wind,
                                          bool couple_wind_exact_inverse) {
-    equations->varset.convert_coupler_to_dynamics_densities(coupler, prog_vars,
-                                                            const_vars);
+    convert_coupler_to_dynamics_densities(equations->varset, coupler, prog_vars,
+                                          const_vars);
     if (couple_wind) {
-      equations->varset.convert_coupler_to_dynamics_wind(
-          coupler, prog_vars, const_vars, couple_wind_exact_inverse);
+      convert_coupler_to_dynamics_wind(equations->varset, coupler, prog_vars,
+                                       const_vars, couple_wind_exact_inverse);
     }
     prog_vars.exchange();
     const_vars.exchange();
@@ -426,10 +426,10 @@ public:
   void convert_coupler_to_dynamics_state_staggered(
       PamCoupler &coupler, FieldSet<nprognostic> &prog_vars,
       FieldSet<nauxiliary> &auxiliary_vars, FieldSet<nconstant> &const_vars) {
-    equations->varset.convert_coupler_to_dynamics_densities(coupler, prog_vars,
-                                                            const_vars);
-    equations->varset.convert_coupler_to_dynamics_staggered_wind(
-        coupler, prog_vars, const_vars);
+    convert_coupler_to_dynamics_densities(equations->varset, coupler, prog_vars,
+                                          const_vars);
+    convert_coupler_to_dynamics_staggered_wind(equations->varset, coupler,
+                                               prog_vars, const_vars);
 #if defined(PAMC_AN) || defined(PAMC_MAN)
     project_to_anelastic(const_vars, prog_vars, auxiliary_vars);
 #endif
@@ -3815,7 +3815,8 @@ void read_model_params_file(std::string inFile, ModelParameters &params,
   params.initdataStr = config["initData"].as<std::string>();
   params.force_refstate_hydrostatic_balance =
       config["force_refstate_hydrostatic_balance"].as<bool>(false);
-  params.check_anelastic_constraint = config["check_anelastic_constraint"].as<bool>(false);
+  params.check_anelastic_constraint =
+      config["check_anelastic_constraint"].as<bool>(false);
 
   for (int i = 0; i < ntracers_dycore; i++) {
     params.tracerdataStr[i] =
@@ -4462,9 +4463,9 @@ public:
         YAKL_LAMBDA(real x, real y, real z) { return flat_geop(z, g); },
         constvars.fields_arr[HSVAR], 0);
 
-    varset.convert_coupler_to_dynamics_densities(coupler, progvars, constvars);
-    varset.convert_coupler_to_dynamics_wind(coupler, progvars, constvars,
-                                            false);
+    convert_coupler_to_dynamics_densities(varset, coupler, progvars, constvars);
+    convert_coupler_to_dynamics_wind(varset, coupler, progvars, constvars,
+                                     false);
   }
 
   void set_reference_state(const Geometry<Straight> &primal_geom,

@@ -106,12 +106,12 @@ public:
                                          const FieldSet<nconstant> &const_vars,
                                          bool couple_wind,
                                          bool couple_wind_exact_inverse) {
-    equations->varset.convert_dynamics_to_coupler_densities(coupler, prog_vars,
-                                                            const_vars);
+    convert_dynamics_to_coupler_densities(equations->varset, coupler, prog_vars,
+                                          const_vars);
 
     if (couple_wind) {
-      equations->varset.convert_dynamics_to_coupler_wind(
-          coupler, prog_vars, const_vars, couple_wind_exact_inverse);
+      convert_dynamics_to_coupler_wind(equations->varset, coupler, prog_vars,
+                                       const_vars, couple_wind_exact_inverse);
     }
   }
 
@@ -121,11 +121,11 @@ public:
                                          FieldSet<nconstant> &const_vars,
                                          bool couple_wind,
                                          bool couple_wind_exact_inverse) {
-    equations->varset.convert_coupler_to_dynamics_densities(coupler, prog_vars,
-                                                            const_vars);
+    convert_coupler_to_dynamics_densities(equations->varset, coupler, prog_vars,
+                                          const_vars);
     if (couple_wind) {
-      equations->varset.convert_coupler_to_dynamics_wind(
-          coupler, prog_vars, const_vars, couple_wind_exact_inverse);
+      convert_coupler_to_dynamics_wind(equations->varset, coupler, prog_vars,
+                                       const_vars, couple_wind_exact_inverse);
     }
   }
 
@@ -1173,7 +1173,8 @@ void read_model_params_coupler(ModelParameters &params, Parallel &par,
                                std::unique_ptr<TestCase> &testcase) {}
 
 void check_and_print_model_parameters(const ModelParameters &params,
-                                      const Parallel &par, bool verbose = false) {
+                                      const Parallel &par,
+                                      bool verbose = false) {
 
   check_and_print_parameters(params, par);
 
