@@ -688,7 +688,7 @@ void convert_coupler_to_dynamics_densities(
             real p = varset.get_pres(prog_vars.fields_arr[DENSVAR].data, k, j,
                                      i, dks, djs, dis, n);
             entropic_var =
-                thermo.compute_entropic_var_from_T_p(p, temp, qd, qv, ql, qi);
+                thermo.compute_entropic_var_from_p_T(p, temp, qd, qv, ql, qi);
           }
 
           varset.set_entropic_density(

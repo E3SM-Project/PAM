@@ -149,7 +149,7 @@ public:
     return cst.Rd * T / p;
   };
 
-  real YAKL_INLINE compute_entropic_var_from_T_p(real p, real T, real qd,
+  real YAKL_INLINE compute_entropic_var_from_p_T(real p, real T, real qd,
                                                  real qv, real ql,
                                                  real qi) const {
     // real entropy =  cst.Cpd * log(T / cst.Tr) - cst.Rd * log(p / cst.pr);
@@ -288,7 +288,7 @@ public:
     return cst.Rd * T / p;
   };
 
-  real YAKL_INLINE compute_entropic_var_from_T_p(real p, real T, real qd,
+  real YAKL_INLINE compute_entropic_var_from_p_T(real p, real T, real qd,
                                                  real qv, real ql,
                                                  real qi) const {
     return cst.Cpd * log(T / cst.Tr) - cst.Rd * log(p / cst.pr);
@@ -308,7 +308,7 @@ public:
     // cst.Cvd * log(T / cst.Tr) + cst.Rd * log(alpha / alpha_r);
 
     real p = cst.Rd * T / alpha;
-    return compute_entropic_var_from_T_p(p, T, qd, qv, ql, qi);
+    return compute_entropic_var_from_p_T(p, T, qd, qv, ql, qi);
   }
 
   real YAKL_INLINE compute_T_from_alpha(real alpha, real entropic_var, real qd,
@@ -428,7 +428,7 @@ public:
     return (qd * cst.Rd + qv * cst.Rv) * T / p;
   };
 
-  real YAKL_INLINE compute_entropic_var_from_T_p(real p, real T, real qd,
+  real YAKL_INLINE compute_entropic_var_from_p_T(real p, real T, real qd,
                                                  real qv, real ql,
                                                  real qi) const {
     return (qd * cst.Rd + qv * cst.Rv) * T / cst.Rd *
@@ -531,7 +531,7 @@ public:
   // real YAKL_INLINE compute_alpha(real p, real T, real qd, real qv, real ql,
   //                                real qi) const {};
 
-  // real YAKL_INLINE compute_entropic_var_from_T_p(real p, real T, real qd,
+  // real YAKL_INLINE compute_entropic_var_from_p_T(real p, real T, real qd,
   //                                                real qv, real ql,
   //                                                real qi) const {};
 
@@ -591,7 +591,7 @@ public:
   // real YAKL_INLINE compute_alpha(real p, real T, real qd, real qv, real ql,
   //                                real qi) const {};
 
-  // real YAKL_INLINE compute_entropic_var_from_T_p(real p, real T, real qd,
+  // real YAKL_INLINE compute_entropic_var_from_p_T(real p, real T, real qd,
   //                                                real qv, real ql,
   //                                                real qi) const {};
 
@@ -651,7 +651,7 @@ public:
   // real YAKL_INLINE compute_alpha(real p, real T, real qd, real qv, real ql,
   //                                real qi) const {};
 
-  // real YAKL_INLINE compute_entropic_var_from_T_p(real p, real T, real qd,
+  // real YAKL_INLINE compute_entropic_var_from_p_T(real p, real T, real qd,
   //                                                real qv, real ql,
   //                                                real qi) const {};
 
