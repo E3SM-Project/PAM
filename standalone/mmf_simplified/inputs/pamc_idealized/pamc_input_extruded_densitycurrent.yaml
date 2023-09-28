@@ -17,7 +17,7 @@ vcoords : uniform
  #vcoords  : '../pam-c/vcoords/vcoords_equal_33_6400.nc'
 
 # Data to initialize
-initData : densitycurrent
+init_data : densitycurrent
 
 # Time steps
 dt_crm_phys : 1

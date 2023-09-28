@@ -213,7 +213,7 @@ public:
 
     for (int l = ndensity_dycore_prognostic; l < ndensity_nophysics; l++) {
       varset.dens_pos(l) =
-          params.dycore_tracerpos[l - ndensity_dycore_prognostic];
+          params.dycore_tracer_pos[l - ndensity_dycore_prognostic];
       varset.dens_prognostic(l) = true;
       varset.dens_active(l) =
           (l - ndensity_dycore_prognostic) < ntracers_dycore_active ? true

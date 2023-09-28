@@ -16,10 +16,10 @@
 #include "yaml-cpp/yaml.h"
 #endif
 #if defined YAKL_ARCH_CUDA
-  #include <cuda.h> // for CUDA_VERSION
-  #if CUDA_VERSION >= 11030
-    #include <cuda/std/complex>
-  #endif
+#include <cuda.h> // for CUDA_VERSION
+#if CUDA_VERSION >= 11030
+#include <cuda/std/complex>
+#endif
 #endif
 
 namespace pamc {
@@ -37,10 +37,10 @@ using uint = unsigned int;
 using real = double;
 
 #if defined YAKL_ARCH_CUDA && CUDA_VERSION >= 11030
- #include <cuda/std/complex>
- using complex = cuda::std::complex<real>;
+#include <cuda/std/complex>
+using complex = cuda::std::complex<real>;
 #else
- using complex = std::complex<real>;
+using complex = std::complex<real>;
 #endif
 
 using complex5d = yakl::Array<complex, 5, yakl::memDevice, yakl::styleC>;

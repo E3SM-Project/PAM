@@ -10,7 +10,7 @@ crm_ny : 1
 crm_nz : 50
 
 # Data to initialize
-initData : doublevortex
+init_data : doublevortex
 initTracer0 : square
 initTracer1 : gaussian
 initTracer2 : doublesquare

@@ -14,7 +14,7 @@ crm_nz : 21
 vcoords : uniform
 
 # Data to initialize
-initData : gravitywave
+init_data : gravitywave
 
 # Time steps
 dt_crm_phys : 20

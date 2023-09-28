@@ -1157,14 +1157,15 @@ void read_model_params_file(std::string inFile, ModelParameters &params,
   YAML::Node config = YAML::LoadFile(inFile);
 
   // Read the data initialization options
-  params.initdataStr = config["initData"].as<std::string>();
-  testcase_from_string(testcase, params.initdataStr);
+  params.init_data = config["init_data"].as<std::string>();
+  testcase_from_string(testcase, params.init_data);
 
   for (int i = 0; i < ntracers_dycore; i++) {
-    params.tracerdataStr[i] =
-        config["initTracer" + std::to_string(i)].as<std::string>("constant");
-    params.dycore_tracerpos[i] =
-        config["initTracerPos" + std::to_string(i)].as<bool>(false);
+    params.init_dycore_tracer[i] =
+        config["init_dycore_tracer" + std::to_string(i)].as<std::string>(
+            "constant");
+    params.dycore_tracer_pos[i] =
+        config["dycore_tracer" + std::to_string(i) + "_pos"].as<bool>(false);
   }
 }
 
@@ -1179,10 +1180,10 @@ void check_and_print_model_parameters(const ModelParameters &params,
   check_and_print_parameters(params, par);
 
   if (verbose) {
-    serial_print("IC: " + params.initdataStr, par.masterproc);
+    serial_print("IC: " + params.init_data, par.masterproc);
     for (int i = 0; i < ntracers_dycore; i++) {
       serial_print("Dycore Tracer" + std::to_string(i) +
-                       " IC: " + params.tracerdataStr[i],
+                       " IC: " + params.init_dycore_tracer[i],
                    par.masterproc);
     }
   }
@@ -1391,7 +1392,7 @@ void testcase_from_string(std::unique_ptr<TestCase> &testcase,
 
 void testcase_from_config(std::unique_ptr<TestCase> &testcase,
                           const YAML::Node &config) {
-  const std::string name = config["initData"].as<std::string>();
+  const std::string name = config["init_data"].as<std::string>();
   testcase_from_string(testcase, name);
 }
 } // namespace pamc

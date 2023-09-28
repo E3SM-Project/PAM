@@ -11,9 +11,9 @@ crm_nz : 1
 vcoords : uniform
 
 # Data to initialize
-initData : bickleyjet
-initTracer0 : bickleytracer
-initTracerPos0 : false
+init_data : bickleyjet
+init_dycore_tracer0 : bickleytracer
+dycore_tracer0_pos : false
 
 # Time steps
 dt_crm_phys : 0.02

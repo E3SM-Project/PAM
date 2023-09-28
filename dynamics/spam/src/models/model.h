@@ -129,13 +129,13 @@ public:
 
   void set_tracers(ModelParameters &params) {
     for (int i = 0; i < ntracers_dycore; i++) {
-      if (params.tracerdataStr[i] == "gaussian") {
+      if (params.init_dycore_tracer[i] == "gaussian") {
         tracers(i) = TRACER_TAG::GAUSSIAN;
-      } else if (params.tracerdataStr[i] == "square") {
+      } else if (params.init_dycore_tracer[i] == "square") {
         tracers(i) = TRACER_TAG::SQUARE;
-      } else if (params.tracerdataStr[i] == "doublesquare") {
+      } else if (params.init_dycore_tracer[i] == "doublesquare") {
         tracers(i) = TRACER_TAG::DOUBLESQUARE;
-      } else if (params.tracerdataStr[i] == "constant") {
+      } else if (params.init_dycore_tracer[i] == "constant") {
         tracers(i) = TRACER_TAG::CONSTANT;
       }
     }

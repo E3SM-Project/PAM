@@ -15,7 +15,7 @@ vcoords : uniform
 #vcoords  : '../pam-c/vcoords/vcoords_equal_150_1500.nc'
 
 # Data to initialize
-initData : risingbubble
+init_data : risingbubble
 
 # Time steps
 dt_crm_phys : 1

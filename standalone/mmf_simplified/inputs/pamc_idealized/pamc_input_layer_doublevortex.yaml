@@ -11,20 +11,20 @@ crm_nz : 1
 vcoords : uniform
 
 # Data to initialize
-initData : doublevortex
-initTracer0 : square
-initTracer1 : gaussian
-initTracer2 : doublesquare
-initTracer3 : square
-initTracer4 : gaussian
-initTracer5 : doublesquare
+init_data : doublevortex
+init_dycore_tracer0 : square
+init_dycore_tracer1 : gaussian
+init_dycore_tracer2 : doublesquare
+init_dycore_tracer3 : square
+init_dycore_tracer4 : gaussian
+init_dycore_tracer5 : doublesquare
 
-initTracerPos0 : false
-initTracerPos1 : false
-initTracerPos2 : false
-initTracerPos3 : true
-initTracerPos4 : true
-initTracerPos5 : true
+dycore_tracer0_pos : false
+dycore_tracer1_pos : false
+dycore_tracer2_pos : false
+dycore_tracer3_pos : true
+dycore_tracer4_pos : true
+dycore_tracer5_pos : true
 
 # Time steps
 dt_crm_phys : 200.

@@ -3814,17 +3814,18 @@ void read_model_params_file(std::string inFile, ModelParameters &params,
   params.velocity_diffusion_coeff =
       config["velocity_diffusion_coeff"].as<real>(0);
   // Read the data initialization options
-  params.initdataStr = config["initData"].as<std::string>();
+  params.init_data = config["init_data"].as<std::string>();
   params.force_refstate_hydrostatic_balance =
       config["force_refstate_hydrostatic_balance"].as<bool>(false);
   params.check_anelastic_constraint =
       config["check_anelastic_constraint"].as<bool>(false);
 
   for (int i = 0; i < ntracers_dycore; i++) {
-    params.tracerdataStr[i] =
-        config["initTracer" + std::to_string(i)].as<std::string>("constant");
-    params.dycore_tracerpos[i] =
-        config["initTracerPos" + std::to_string(i)].as<bool>(false);
+    params.init_dycore_tracer[i] =
+        config["init_dycore_tracer" + std::to_string(i)].as<std::string>(
+            "constant");
+    params.dycore_tracer_pos[i] =
+        config["dycore_tracer" + std::to_string(i) + "_pos"].as<bool>(false);
   }
 
   // Store vertical cell interface heights in the data manager
@@ -3834,7 +3835,7 @@ void read_model_params_file(std::string inFile, ModelParameters &params,
   params.ylen = 1.0;
   params.yc = 0.5;
 
-  testcase_from_string(testcase, params.initdataStr, params.acoustic_balance);
+  testcase_from_string(testcase, params.init_data, params.acoustic_balance);
 #endif
 }
 
@@ -3849,7 +3850,7 @@ void read_model_params_coupler(ModelParameters &params, Parallel &par,
   params.uniform_vertical = false;
   params.entropicvar_diffusion_coeff = 0;
   params.velocity_diffusion_coeff = 0;
-  params.initdataStr = "coupler";
+  params.init_data = "coupler";
   params.force_refstate_hydrostatic_balance = true;
   params.check_anelastic_constraint = false;
 
@@ -3870,7 +3871,7 @@ void check_and_print_model_parameters(const ModelParameters &params,
   check_and_print_parameters(params, par, verbose);
 
   if (verbose) {
-    serial_print("IC: " + params.initdataStr, par.masterproc);
+    serial_print("IC: " + params.init_data, par.masterproc);
     serial_print("acoustically balanced: " +
                      std::to_string(params.acoustic_balance),
                  par.masterproc);
@@ -3883,7 +3884,7 @@ void check_and_print_model_parameters(const ModelParameters &params,
 
     for (int i = 0; i < ntracers_dycore; i++) {
       serial_print("Dycore Tracer" + std::to_string(i) +
-                       " IC: " + params.tracerdataStr[i],
+                       " IC: " + params.init_dycore_tracer[i],
                    par.masterproc);
     }
   }
@@ -5717,7 +5718,7 @@ void testcase_from_string(std::unique_ptr<TestCase> &testcase, std::string name,
 #ifdef PAM_STANDALONE
 void testcase_from_config(std::unique_ptr<TestCase> &testcase,
                           const YAML::Node &config) {
-  const std::string name = config["initData"].as<std::string>();
+  const std::string name = config["init_data"].as<std::string>();
   const bool acoustic_balance =
       config["balance_initial_density"].as<bool>(false);
   testcase_from_string(testcase, name, acoustic_balance);

@@ -14,7 +14,7 @@ crm_nz : 100
 vcoords : uniform
 
 # Data to initialize
-initData : largerisingbubble
+init_data : largerisingbubble
 
 # Time steps
 dt_crm_phys : 5
