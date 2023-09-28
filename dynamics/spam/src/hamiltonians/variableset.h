@@ -480,7 +480,7 @@ void convert_dynamics_to_coupler_densities(
                                djs, dis, n);
           }
 
-          if constexpr (T::compressible) {
+          if (T::compressible) {
             dm_dens_dry(k, j, i, n) =
                 varset.get_dry_density(prog_vars.fields_arr[DENSVAR].data, k, j,
                                        i, dks, djs, dis, n) /
@@ -488,7 +488,7 @@ void convert_dynamics_to_coupler_densities(
           }
 
           real temp;
-          if constexpr (T::density_based) {
+          if (T::density_based) {
             real alpha = varset.get_alpha(prog_vars.fields_arr[DENSVAR].data, k,
                                           j, i, dks, djs, dis, n);
             temp = thermo.compute_T_from_alpha(alpha, entropic_var, qd, qv, ql,
@@ -649,7 +649,7 @@ void convert_coupler_to_dynamics_densities(
           }
 
           real dens, qd, qv, ql, qi;
-          if constexpr (T::compressible) {
+          if (T::compressible) {
 
             real dens_dry = dm_dens_dry(k, j, i, n);
             real dens = dens_dry + dens_vap;
@@ -681,7 +681,7 @@ void convert_coupler_to_dynamics_densities(
           real alpha = 1.0_fp / dens;
 
           real entropic_var;
-          if constexpr (T::density_based) {
+          if (T::density_based) {
             entropic_var = thermo.compute_entropic_var_from_alpha_T(
                 alpha, temp, qd, qv, ql, qi);
           } else {
