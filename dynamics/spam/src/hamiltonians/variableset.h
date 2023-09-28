@@ -13,19 +13,16 @@ using pam::PamCoupler;
 
 namespace pamc {
 
-// solve a system to exactly invert the velocity averaging done
-// during conversion to coupler state when coupling winds
-constexpr bool couple_wind_exact_inverse = true;
-
 struct VS_SWE {
   static constexpr bool couple = false;
+  static constexpr bool compressible = true;
+  static constexpr bool density_based = true;
 
   static constexpr uint ndensity_dycore = 1;
   static constexpr uint ndensity_dycore_prognostic = ndensity_dycore;
   static constexpr uint ndensity_dycore_active = ndensity_dycore;
 
-  static constexpr uint ntracers_dycore_active =
-      std::min<uint>(3, ntracers_dycore);
+  static constexpr uint ntracers_dycore_active = 0;
 
   static constexpr uint ntracers_physics = 0;
   static constexpr uint ntracers_physics_active = 0;
@@ -33,6 +30,8 @@ struct VS_SWE {
 
 struct VS_TSWE {
   static constexpr bool couple = false;
+  static constexpr bool compressible = true;
+  static constexpr bool density_based = true;
 
   static constexpr uint ndensity_dycore = 2;
   static constexpr uint ndensity_dycore_prognostic = 2;
@@ -46,6 +45,8 @@ struct VS_TSWE {
 
 struct VS_CE {
   static constexpr bool couple = false;
+  static constexpr bool compressible = true;
+  static constexpr bool density_based = true;
 
   static constexpr uint ndensity_dycore = 2;
   static constexpr uint ndensity_dycore_prognostic = ndensity_dycore;
@@ -59,6 +60,8 @@ struct VS_CE {
 
 struct VS_AN {
   static constexpr bool couple = false;
+  static constexpr bool compressible = false;
+  static constexpr bool density_based = false;
 
   static constexpr uint ndensity_dycore = 2;
   static constexpr uint ndensity_dycore_prognostic = 1;
@@ -72,6 +75,8 @@ struct VS_AN {
 
 struct VS_MAN {
   static constexpr bool couple = true;
+  static constexpr bool compressible = false;
+  static constexpr bool density_based = false;
 
   static constexpr uint nmoist = 4;
 
@@ -91,6 +96,8 @@ struct VS_MAN {
 
 struct VS_MCE_rho {
   static constexpr bool couple = true;
+  static constexpr bool compressible = true;
+  static constexpr bool density_based = true;
 
   static constexpr uint nmoist = 4;
 
@@ -112,15 +119,17 @@ struct VS_MCE_rhod : VS_MCE_rho {};
 
 struct VS_CE_p {
   static constexpr bool couple = false;
+  static constexpr bool compressible = true;
+  static constexpr bool density_based = false;
 };
 
 struct VS_MCE_rhop {
-  static constexpr bool couple = false;
+  static constexpr bool couple = true;
+  static constexpr bool compressible = true;
+  static constexpr bool density_based = false;
 };
 
-struct VS_MCE_rhodp {
-  static constexpr bool couple = false;
-};
+struct VS_MCE_rhodp : VS_MCE_rhop {};
 
 template <class T> class VariableSetBase : public T {
 public:
@@ -152,7 +161,6 @@ public:
       dens_prognostic; // Whether each density is prognostic
   SArray<int, 1, ndensity_active>
       active_dens_ids; // indices of active densities
-  bool couple_wind;
 
   int dm_id_vap = std::numeric_limits<int>::min();
   int dm_id_liq = std::numeric_limits<int>::min();
@@ -182,15 +190,14 @@ public:
                   const ThermoPotential &thermodynamics,
                   const ReferenceState &refstate,
                   const Geometry<Straight> &primal_geom,
-                  const Geometry<Twisted> &dual_geom,
-                  bool verbose=false);
+                  const Geometry<Twisted> &dual_geom, bool verbose = false);
   static void initialize(VariableSetBase &varset, PamCoupler &coupler,
                          ModelParameters &params,
                          const ThermoPotential &thermodynamics,
                          const ReferenceState &refstate,
                          const Geometry<Straight> &primal_geom,
                          const Geometry<Twisted> &dual_geom,
-                         bool verbose=false) {
+                         bool verbose = false) {
 
     if (T::couple && params.couple_wind_exact_inverse) {
       if (primal_geom.topology.n_cells_x % 2 == 0) {
@@ -204,15 +211,9 @@ public:
     varset.primal_geometry = primal_geom;
     varset.dual_geometry = dual_geom;
 
-    // Need different logic for this.
-    // maybe a coupler option so that the driver can set it directly??
-    //varset.couple_wind = !(coupler.get_option<std::string>("sgs") == "none") ||
-    //                     !(coupler.option_exists("standalone_input_file"));
-    varset.couple_wind = true;
-
     for (int l = ndensity_dycore_prognostic; l < ndensity_nophysics; l++) {
       varset.dens_pos(l) =
-          params.dycore_tracerpos[l - ndensity_dycore_prognostic];
+          params.dycore_tracer_pos[l - ndensity_dycore_prognostic];
       varset.dens_prognostic(l) = true;
       varset.dens_active(l) =
           (l - ndensity_dycore_prognostic) < ntracers_dycore_active ? true
@@ -311,140 +312,146 @@ public:
   }
 
   real YAKL_INLINE get_total_density(const real5d &densvar, int k, int j, int i,
-                                     int ks, int js, int is, int n) const {};
+                                     int ks, int js, int is, int n) const;
   real YAKL_INLINE get_total_density(const real3d &densvar, int k, int ks,
-                                     int n) const {};
+                                     int n) const;
   real YAKL_INLINE get_dry_density(const real5d &densvar, int k, int j, int i,
-                                   int ks, int js, int is, int n) const {};
+                                   int ks, int js, int is, int n) const;
   real YAKL_INLINE get_entropic_var(const real5d &densvar, int k, int j, int i,
-                                    int ks, int js, int is, int n) const {};
+                                    int ks, int js, int is, int n) const;
   real YAKL_INLINE get_entropic_var(const real3d &densvar, int k, int ks,
-                                    int n) const {};
+                                    int n) const;
   void YAKL_INLINE set_density(real dens, real dry_dens, const real5d &densvar,
                                int k, int j, int i, int ks, int js, int is,
-                               int n) const {};
+                               int n) const;
   void YAKL_INLINE set_entropic_density(real entropic_var_density,
                                         const real5d &densvar, int k, int j,
                                         int i, int ks, int js, int is,
-                                        int n) const {};
+                                        int n) const;
   real YAKL_INLINE get_alpha(const real5d &densvar, int k, int j, int i, int ks,
-                             int js, int is, int n) const {};
-  real YAKL_INLINE get_alpha(const real3d &densvar, int k, int ks,
-                             int n) const {};
+                             int js, int is, int n) const;
+  real YAKL_INLINE get_alpha(const real3d &densvar, int k, int ks, int n) const;
   real YAKL_INLINE get_qd(const real5d &densvar, int k, int j, int i, int ks,
-                          int js, int is, int n) const {};
-  real YAKL_INLINE get_qd(const real3d &densvar, int k, int ks, int n) const {};
+                          int js, int is, int n) const;
+  real YAKL_INLINE get_qd(const real3d &densvar, int k, int ks, int n) const;
   real YAKL_INLINE get_qv(const real5d &densvar, int k, int j, int i, int ks,
-                          int js, int is, int n) const {};
-  real YAKL_INLINE get_qv(const real3d &densvar, int k, int ks, int n) const {};
+                          int js, int is, int n) const;
+  real YAKL_INLINE get_qv(const real3d &densvar, int k, int ks, int n) const;
   real YAKL_INLINE get_ql(const real5d &densvar, int k, int j, int i, int ks,
-                          int js, int is, int n) const {};
+                          int js, int is, int n) const;
   real YAKL_INLINE get_qi(const real5d &densvar, int k, int j, int i, int ks,
-                          int js, int is, int n) const {};
+                          int js, int is, int n) const;
   real YAKL_INLINE _water_dens(const real5d &densvar, int k, int j, int i,
-                               int ks, int js, int is, int n) const {};
+                               int ks, int js, int is, int n) const;
   real YAKL_INLINE _water_dens(const real3d &densvar, int k, int ks,
-                               int n) const {};
+                               int n) const;
 
-  real YAKL_INLINE get_pres(const real5d &densvar, int k,
-                                                   int j, int i, int ks, int js,
-                                                   int is, int n) const {};
-  real YAKL_INLINE get_pres(int k, int ks, int n) const {};
-  real YAKL_INLINE get_ref_dens(int k, int ks, int n) const {};
-
-  void pamc_debug_chk(int id, PamCoupler &coupler,
-                                         const FieldSet<nprognostic> &prog_vars,
-                                         const FieldSet<nprognostic> &prev_vars);
-
-  void convert_dynamics_to_coupler_densities(PamCoupler &coupler,
-                                         const FieldSet<nprognostic> &prog_vars,
-                                         const FieldSet<nconstant> &const_vars);
-  void convert_dynamics_to_coupler_wind(PamCoupler &coupler,
-                                         const FieldSet<nprognostic> &prog_vars,
-                                         const FieldSet<nconstant> &const_vars, bool couple_wind_exact_inverse);
-  void convert_dynamics_to_coupler_staggered_wind(PamCoupler &coupler,
-                                         const FieldSet<nprognostic> &prog_vars,
-                                         const FieldSet<nconstant> &const_vars);
-  void convert_coupler_to_dynamics_densities(PamCoupler &coupler,
-                                         FieldSet<nprognostic> &prog_vars,
-                                         const FieldSet<nconstant> &const_vars);
-  void convert_coupler_to_dynamics_wind(PamCoupler &coupler,
-                                         FieldSet<nprognostic> &prog_vars,
-                                         const FieldSet<nconstant> &const_vars, bool couple_wind_exact_inverse);
-  void convert_coupler_to_dynamics_staggered_wind(PamCoupler &coupler,
-                                         FieldSet<nprognostic> &prog_vars,
-                                         const FieldSet<nconstant> &const_vars);
+  real YAKL_INLINE get_pres(const real5d &densvar, int k, int j, int i, int ks,
+                            int js, int is, int n) const;
+  real YAKL_INLINE get_pres(int k, int ks, int n) const;
+  real YAKL_INLINE get_ref_dens(int k, int ks, int n) const;
 };
 
-//THIS IS ANELASTIC SPECIFIC FOR NOW, IDEALLY IT SHOULD MADE TO WORK FOR EITHER AN OR COMPRESSIBLE
+// THIS IS ANELASTIC SPECIFIC FOR NOW, IDEALLY IT SHOULD MADE TO WORK FOR EITHER
+// AN OR COMPRESSIBLE
 template <class T>
-void VariableSetBase<T>::pamc_debug_chk(int id,
-                                        PamCoupler &coupler,
-                                        const FieldSet<nprognostic> &prog_vars,
-                                        const FieldSet<nprognostic> &prev_vars)
-{
-  const auto &primal_topology = primal_geometry.topology;
-  const auto &dual_topology = dual_geometry.topology;
-  int dis = dual_topology.is;
-  int djs = dual_topology.js;
-  int dks = dual_topology.ks;
-  int pis = primal_topology.is;
-  int pjs = primal_topology.js;
-  int pks = primal_topology.ks;
-  // const auto densvar = prog_vars.fields_arr[DENSVAR].data;
-  parallel_for("pamc_debug_chk",SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y, dual_topology.n_cells_x, dual_topology.nens), YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-
-    const auto densvar1 = prev_vars.fields_arr[DENSVAR].data;
-    real entr1 = get_entropic_var( densvar1, k, j, i, dks, djs, dis, n);
-    real pres1 = get_pres(         densvar1, k, j, i, dks, djs, dis, n);
-    real qv1   = get_qv(           densvar1, k, j, i, dks, djs, dis, n);
-    real ql1   = get_ql(           densvar1, k, j, i, dks, djs, dis, n);
-    real qi1   = get_qi(           densvar1, k, j, i, dks, djs, dis, n);
-    real qd1   = 1.0_fp - qv1 - ql1 - qi1;
-    real temp1 = thermo.compute_T_from_p(pres1, entr1, qd1, qv1, ql1, qi1);
-
-    const auto densvar2 = prog_vars.fields_arr[DENSVAR].data;
-    real entr2 = get_entropic_var( densvar2, k, j, i, dks, djs, dis, n);
-    real pres2 = get_pres(         densvar2, k, j, i, dks, djs, dis, n);
-    real qv2   = get_qv(           densvar2, k, j, i, dks, djs, dis, n);
-    real ql2   = get_ql(           densvar2, k, j, i, dks, djs, dis, n);
-    real qi2   = get_qi(           densvar2, k, j, i, dks, djs, dis, n);
-    real qd2   = 1.0_fp - qv2 - ql2 - qi2;
-    real temp2 = thermo.compute_T_from_p(pres2, entr2, qd2, qv2, ql2, qi2);
-
-    if ( isnan(temp2) || isnan(qv2) || isnan(ql2) || isnan(qi2) || isnan(qd2) || temp2<0 || entr2<0 ) {
-      printf("pamc_debug_chk - id:%d k:%d j:%d i:%d n:%d en_var :: %g  =>  %g \n",id,k,j,i,n,entr1,entr2);
-      printf("pamc_debug_chk - id:%d k:%d j:%d i:%d n:%d temp   :: %g  =>  %g \n",id,k,j,i,n,temp1,temp2);
-      printf("pamc_debug_chk - id:%d k:%d j:%d i:%d n:%d qd     :: %g  =>  %g \n",id,k,j,i,n,qd1,qd2);
-      printf("pamc_debug_chk - id:%d k:%d j:%d i:%d n:%d qv     :: %g  =>  %g \n",id,k,j,i,n,qv1,qv2);
-      printf("pamc_debug_chk - id:%d k:%d j:%d i:%d n:%d ql     :: %g  =>  %g \n",id,k,j,i,n,ql1,ql2);
-      printf("pamc_debug_chk - id:%d k:%d j:%d i:%d n:%d qi     :: %g  =>  %g \n",id,k,j,i,n,qi1,qi2);
-    }
-  });
-}
-
-
-template <class T>
-void VariableSetBase<T>::convert_dynamics_to_coupler_densities(
-    PamCoupler &coupler, const FieldSet<nprognostic> &prog_vars,
-    const FieldSet<nconstant> &const_vars) {
-
-    const auto &dual_topology = dual_geometry.topology;
-
+void pamc_debug_chk(const VariableSetBase<T> &varset, int id,
+                    PamCoupler &coupler, const FieldSet<nprognostic> &prog_vars,
+                    const FieldSet<nprognostic> &prev_vars) {
+  if constexpr (T::couple) {
+    const auto &thermo = varset.thermo;
+    const auto &primal_topology = varset.primal_geometry.topology;
+    const auto &dual_topology = varset.dual_geometry.topology;
     int dis = dual_topology.is;
     int djs = dual_topology.js;
     int dks = dual_topology.ks;
+    int pis = primal_topology.is;
+    int pjs = primal_topology.js;
+    int pks = primal_topology.ks;
+    // const auto densvar = prog_vars.fields_arr[DENSVAR].data;
+    parallel_for(
+        "pamc_debug_chk",
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          const auto densvar1 = prev_vars.fields_arr[DENSVAR].data;
+          real entr1 =
+              varset.get_entropic_var(densvar1, k, j, i, dks, djs, dis, n);
+          real pres1 = varset.get_pres(densvar1, k, j, i, dks, djs, dis, n);
+          real qv1 = varset.get_qv(densvar1, k, j, i, dks, djs, dis, n);
+          real ql1 = varset.get_ql(densvar1, k, j, i, dks, djs, dis, n);
+          real qi1 = varset.get_qi(densvar1, k, j, i, dks, djs, dis, n);
+          real qd1 = 1.0_fp - qv1 - ql1 - qi1;
+          real temp1 =
+              varset.thermo.compute_T_from_p(pres1, entr1, qd1, qv1, ql1, qi1);
 
-    auto &dm = coupler.get_data_manager_device_readwrite();
+          const auto densvar2 = prog_vars.fields_arr[DENSVAR].data;
+          real entr2 =
+              varset.get_entropic_var(densvar2, k, j, i, dks, djs, dis, n);
+          real pres2 = varset.get_pres(densvar2, k, j, i, dks, djs, dis, n);
+          real qv2 = varset.get_qv(densvar2, k, j, i, dks, djs, dis, n);
+          real ql2 = varset.get_ql(densvar2, k, j, i, dks, djs, dis, n);
+          real qi2 = varset.get_qi(densvar2, k, j, i, dks, djs, dis, n);
+          real qd2 = 1.0_fp - qv2 - ql2 - qi2;
+          real temp2 =
+              thermo.compute_T_from_p(pres2, entr2, qd2, qv2, ql2, qi2);
+
+          if (isnan(temp2) || isnan(qv2) || isnan(ql2) || isnan(qi2) ||
+              isnan(qd2) || temp2 < 0 || entr2 < 0) {
+            printf(
+                "pamc_debug_chk - id:%d k:%d j:%d i:%d n:%d en_var :: %g  =>  "
+                "%g \n",
+                id, k, j, i, n, entr1, entr2);
+            printf(
+                "pamc_debug_chk - id:%d k:%d j:%d i:%d n:%d temp   :: %g  =>  "
+                "%g \n",
+                id, k, j, i, n, temp1, temp2);
+            printf(
+                "pamc_debug_chk - id:%d k:%d j:%d i:%d n:%d qd     :: %g  =>  "
+                "%g \n",
+                id, k, j, i, n, qd1, qd2);
+            printf(
+                "pamc_debug_chk - id:%d k:%d j:%d i:%d n:%d qv     :: %g  =>  "
+                "%g \n",
+                id, k, j, i, n, qv1, qv2);
+            printf(
+                "pamc_debug_chk - id:%d k:%d j:%d i:%d n:%d ql     :: %g  =>  "
+                "%g \n",
+                id, k, j, i, n, ql1, ql2);
+            printf(
+                "pamc_debug_chk - id:%d k:%d j:%d i:%d n:%d qi     :: %g  =>  "
+                "%g \n",
+                id, k, j, i, n, qi1, qi2);
+          }
+        });
+  }
+}
+
+template <class T>
+void convert_dynamics_to_coupler_densities(
+    const VariableSetBase<T> &varset, PamCoupler &coupler,
+    const FieldSet<nprognostic> &prog_vars,
+    const FieldSet<nconstant> &const_vars) {
+
+  const auto &thermo = varset.thermo;
+  const auto &dual_geometry = varset.dual_geometry;
+  const auto &dual_topology = dual_geometry.topology;
+
+  int dis = dual_topology.is;
+  int djs = dual_topology.js;
+  int dks = dual_topology.ks;
+
+  auto &dm = coupler.get_data_manager_device_readwrite();
 
   if constexpr (T::couple) {
 
     real4d dm_dens_dry = dm.get<real, 4>("density_dry");
     real4d dm_temp = dm.get<real, 4>("temp");
 
-    pam::MultipleFields<ntracers_physics, real4d> dm_tracers;
-    for (int tr = 0; tr < ntracers_physics; tr++) {
-      auto trac = dm.get<real, 4>(dens_name[tr + ndensity_nophysics]);
+    pam::MultipleFields<T::ntracers_physics, real4d> dm_tracers;
+    for (int tr = 0; tr < varset.ntracers_physics; tr++) {
+      auto trac =
+          dm.get<real, 4>(varset.dens_name[tr + varset.ndensity_nophysics]);
       dm_tracers.add_field(trac);
     }
 
@@ -452,79 +459,75 @@ void VariableSetBase<T>::convert_dynamics_to_coupler_densities(
         "Dynamics to Coupler State densities",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          real qd = varset.get_qd(prog_vars.fields_arr[DENSVAR].data, k, j, i,
+                                  dks, djs, dis, n);
+          real qv = varset.get_qv(prog_vars.fields_arr[DENSVAR].data, k, j, i,
+                                  dks, djs, dis, n);
 
-
-          real qd = get_qd(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks,
-                          djs, dis, n);
-          real qv = get_qv(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks,
-                           djs, dis, n);
-
-          real entropic_var = get_entropic_var(
+          real entropic_var = varset.get_entropic_var(
               prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
 
           real ql = 0.0_fp;
-          if (liq_found) {
-            ql = get_ql(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs,
-                        dis, n);
+          if (varset.liq_found) {
+            ql = varset.get_ql(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks,
+                               djs, dis, n);
           }
 
           real qi = 0.0_fp;
-          if (ice_found) {
-            qi = get_qi(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs,
-                        dis, n);
+          if (varset.ice_found) {
+            qi = varset.get_qi(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks,
+                               djs, dis, n);
           }
 
+          if (T::compressible) {
+            dm_dens_dry(k, j, i, n) =
+                varset.get_dry_density(prog_vars.fields_arr[DENSVAR].data, k, j,
+                                       i, dks, djs, dis, n) /
+                dual_geometry.get_area_n1entity(k + dks, j + djs, i + dis, n);
+          }
 
-//THIS LOGIC SHOULD PROBABLY LIVE IN VARIABLE SET, BUT IT IS NOT CLEAR HOW TO CLEANLY INTEGRATE IT YET
-//Something like:
-//set_dry_dens(dm_dry_dens,DENSARR,k,j,i,dks,djs,dis,n)
-//compute_temp(DENSARR,k,j,i,dks,djs,dis,n, entropic_var, qd, qv, ql, qi) or compute_temp(total_dens, entropic_var, qd, qv, ql, qi) and get_total_dens(DENSARR,...)
-
-#if defined(_CE) || defined(_MCErho) || defined(_MCErhod) || defined(_CEp) || defined(_MCErhop) || defined(_MCErhodp)
-          dm_dens_dry(k, j, i, n) =
-              get_dry_density(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks,
-                              djs, dis, n) /
-              dual_geometry.get_area_n1entity(k + dks, j + djs, i + dis, n);
-#endif
-
-#if defined(_CE) || defined(_MCErho) || defined(_MCErhod)
-          real alpha = get_alpha(prog_vars.fields_arr[DENSVAR].data, k, j, i,
-                                 dks, djs, dis, n);
-          real temp = thermo.compute_T_from_alpha(alpha, entropic_var, qd, qv, ql, qi);
-#elif defined(_CEp) || defined(_MCErhop) || defined(_MCErhodp) || defined(PAMC_AN) || defined(PAMC_MAN)
-          real p = get_pres(prog_vars.fields_arr[DENSVAR].data, k, j, i,
-                                 dks, djs, dis, n);
-          real temp = thermo.compute_T_from_p(p, entropic_var, qd, qv, ql, qi);
-#endif
-
+          real temp;
+          if (T::density_based) {
+            real alpha = varset.get_alpha(prog_vars.fields_arr[DENSVAR].data, k,
+                                          j, i, dks, djs, dis, n);
+            temp = thermo.compute_T_from_alpha(alpha, entropic_var, qd, qv, ql,
+                                               qi);
+          } else {
+            real p = varset.get_pres(prog_vars.fields_arr[DENSVAR].data, k, j,
+                                     i, dks, djs, dis, n);
+            temp = thermo.compute_T_from_p(p, entropic_var, qd, qv, ql, qi);
+          }
           dm_temp(k, j, i, n) = temp;
 
-          for (int tr = ndensity_nophysics; tr < ndensity_prognostic; tr++) {
-            dm_tracers(tr - ndensity_nophysics, k, j, i, n) =
+          for (int tr = varset.ndensity_nophysics;
+               tr < varset.ndensity_prognostic; tr++) {
+            dm_tracers(tr - varset.ndensity_nophysics, k, j, i, n) =
                 prog_vars.fields_arr[DENSVAR].data(tr, k + dks, j + djs,
                                                    i + dis, n) /
                 dual_geometry.get_area_n1entity(k + dks, j + djs, i + dis, n);
           }
-
         });
-
-}
+  }
 }
 
 template <class T>
-void VariableSetBase<T>::convert_dynamics_to_coupler_wind(
-    PamCoupler &coupler, const FieldSet<nprognostic> &prog_vars,
-    const FieldSet<nconstant> &const_vars, bool couple_wind_exact_inverse) {
+void convert_dynamics_to_coupler_wind(const VariableSetBase<T> &varset,
+                                      PamCoupler &coupler,
+                                      const FieldSet<nprognostic> &prog_vars,
+                                      const FieldSet<nconstant> &const_vars,
+                                      bool couple_wind_exact_inverse) {
 
-    const auto &primal_topology = primal_geometry.topology;
-    const auto &dual_topology = dual_geometry.topology;
+  const auto &primal_geometry = varset.primal_geometry;
+  const auto &dual_geometry = varset.dual_geometry;
+  const auto &primal_topology = primal_geometry.topology;
+  const auto &dual_topology = dual_geometry.topology;
 
-    int pis = primal_topology.is;
-    int pjs = primal_topology.js;
-    int pks = primal_topology.ks;
+  int pis = primal_topology.is;
+  int pjs = primal_topology.js;
+  int pks = primal_topology.ks;
 
-    auto &dm = coupler.get_data_manager_device_readwrite();
+  auto &dm = coupler.get_data_manager_device_readwrite();
 
   if constexpr (T::couple) {
 
@@ -532,87 +535,84 @@ void VariableSetBase<T>::convert_dynamics_to_coupler_wind(
     real4d dm_vvel = dm.get<real, 4>("vvel");
     real4d dm_wvel = dm.get<real, 4>("wvel");
 
-      parallel_for(
-          "Dynamics to Coupler State winds",
-          SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-                          dual_topology.n_cells_x, dual_topology.nens),
-          YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-            // IN 3D THIS IS MORE COMPLICATED
-            real uvel_l = prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs,
+    parallel_for(
+        "Dynamics to Coupler State winds",
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          // IN 3D THIS IS MORE COMPLICATED
+          real uvel_l =
+              prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, i + pis, n) /
+              primal_geometry.get_area_10entity(0, k + pks, j + pjs, i + pis,
+                                                n);
+          real uvel_r = prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs,
+                                                        i + pis + 1, n) /
+                        primal_geometry.get_area_10entity(0, k + pks, j + pjs,
+                                                          i + pis + 1, n);
+          real wvel_mid;
+          if (k == 0) {
+            wvel_mid =
+                prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs, i + pis,
+                                                n) /
+                primal_geometry.get_area_01entity(k + pks, j + pjs, i + pis, n);
+          } else if (k == (dual_topology.nl)) {
+            wvel_mid = prog_vars.fields_arr[WVAR].data(0, k + pks - 1, j + pjs,
+                                                       i + pis, n) /
+                       primal_geometry.get_area_01entity(k + pks - 1, j + pjs,
+                                                         i + pis, n);
+          } else {
+
+            real e_u =
+                primal_geometry.get_area_01entity(k + pks, j + pjs, i + pis, n);
+            real e_d = primal_geometry.get_area_01entity(k - 1 + pks, j + pjs,
+                                                         i + pis, n);
+
+            real wvel_u = prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs,
                                                           i + pis, n) /
-                          primal_geometry.get_area_10entity(0, k + pks, j + pjs,
-                                                            i + pis, n);
-            real uvel_r = prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs,
-                                                          i + pis + 1, n) /
-                          primal_geometry.get_area_10entity(0, k + pks, j + pjs,
-                                                            i + pis + 1, n);
-            real wvel_mid;
-            if (k == 0) {
-              wvel_mid = prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs,
-                                                         i + pis, n) /
-                         primal_geometry.get_area_01entity(k + pks, j + pjs,
-                                                           i + pis, n);
-            } else if (k == (dual_topology.nl)) {
-              wvel_mid = prog_vars.fields_arr[WVAR].data(0, k + pks - 1,
-                                                         j + pjs, i + pis, n) /
-                         primal_geometry.get_area_01entity(k + pks - 1, j + pjs,
-                                                           i + pis, n);
-            } else {
+                          e_u;
+            real wvel_d = prog_vars.fields_arr[WVAR].data(0, k + pks - 1,
+                                                          j + pjs, i + pis, n) /
+                          e_d;
 
-              real e_u = primal_geometry.get_area_01entity(k + pks, j + pjs,
-                                                           i + pis, n);
-              real e_d = primal_geometry.get_area_01entity(k - 1 + pks, j + pjs,
-                                                           i + pis, n);
+            wvel_mid = wvel_d + (wvel_u - wvel_d) * e_d / (e_u + e_d);
+          }
+          // EVENTUALLY FIX THIS FOR 3D...
+          real vvel = 0.0_fp;
 
-              real wvel_u = prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs,
-                                                            i + pis, n) /
-                            e_u;
-              real wvel_d = prog_vars.fields_arr[WVAR].data(
-                                0, k + pks - 1, j + pjs, i + pis, n) /
-                            e_d;
-
-              wvel_mid = wvel_d + (wvel_u - wvel_d) * e_d / (e_u + e_d);
-            }
-            // EVENTUALLY FIX THIS FOR 3D...
-            real vvel = 0.0_fp;
-
-            dm_uvel(k, j, i, n) = (uvel_l + uvel_r) * 0.5_fp;
-            dm_vvel(k, j, i, n) = vvel;
-            dm_wvel(k, j, i, n) = wvel_mid;
-          });
+          dm_uvel(k, j, i, n) = (uvel_l + uvel_r) * 0.5_fp;
+          dm_vvel(k, j, i, n) = vvel;
+          dm_wvel(k, j, i, n) = wvel_mid;
+        });
+  }
 }
-}
-
 
 template <class T>
-void VariableSetBase<T>::convert_dynamics_to_coupler_staggered_wind(
-    PamCoupler &coupler, const FieldSet<nprognostic> &prog_vars,
+void convert_dynamics_to_coupler_staggered_wind(
+    const VariableSetBase<T> &varset, PamCoupler &coupler,
+    const FieldSet<nprognostic> &prog_vars,
     const FieldSet<nconstant> &const_vars) {
 
+  const auto &primal_topology = varset.primal_geometry.topology;
 
-    const auto &primal_topology = primal_geometry.topology;
+  int pis = primal_topology.is;
+  int pjs = primal_topology.js;
+  int pks = primal_topology.ks;
 
-    int pis = primal_topology.is;
-    int pjs = primal_topology.js;
-    int pks = primal_topology.ks;
-
-    auto &dm = coupler.get_data_manager_device_readwrite();
+  auto &dm = coupler.get_data_manager_device_readwrite();
   if constexpr (T::couple) {
-
-//ADD THIS
+    // ADD THIS
+  }
 }
-
-}
-
-
 
 template <class T>
-void VariableSetBase<T>::convert_coupler_to_dynamics_densities(
-    PamCoupler &coupler, FieldSet<nprognostic> &prog_vars,
-    const FieldSet<nconstant> &const_vars) {
+void convert_coupler_to_dynamics_densities(
+    const VariableSetBase<T> &varset, PamCoupler &coupler,
+    FieldSet<nprognostic> &prog_vars, const FieldSet<nconstant> &const_vars) {
 
   if constexpr (T::couple) {
 
+    const auto &thermo = varset.thermo;
+    const auto &dual_geometry = varset.dual_geometry;
     const auto &dual_topology = dual_geometry.topology;
 
     int dis = dual_topology.is;
@@ -624,9 +624,10 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_densities(
     auto dm_dens_dry = dm.get<real const, 4>("density_dry");
     auto dm_temp = dm.get<real const, 4>("temp");
 
-    pam::MultipleFields<ntracers_physics, realConst4d> dm_tracers;
-    for (int tr = 0; tr < ntracers_physics; tr++) {
-      auto trac = dm.get<real const, 4>(dens_name[tr + ndensity_nophysics]);
+    pam::MultipleFields<T::ntracers_physics, realConst4d> dm_tracers;
+    for (int tr = 0; tr < varset.ntracers_physics; tr++) {
+      auto trac = dm.get<real const, 4>(
+          varset.dens_name[tr + varset.ndensity_nophysics]);
       dm_tracers.add_field(trac);
     }
 
@@ -634,92 +635,88 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_densities(
         "Coupler to Dynamics State Densities",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-
-
+        YAKL_LAMBDA(int k, int j, int i, int n) {
           real temp = dm_temp(k, j, i, n);
 
-          real dens_vap = dm_tracers(dm_id_vap, k, j, i, n);
+          real dens_vap = dm_tracers(varset.dm_id_vap, k, j, i, n);
           real dens_liq = 0.0_fp;
           real dens_ice = 0.0_fp;
-          if (liq_found) {
-            dens_liq = dm_tracers(dm_id_liq, k, j, i, n);
+          if (varset.liq_found) {
+            dens_liq = dm_tracers(varset.dm_id_liq, k, j, i, n);
           }
-          if (ice_found) {
-            dens_ice = dm_tracers(dm_id_ice, k, j, i, n);
+          if (varset.ice_found) {
+            dens_ice = dm_tracers(varset.dm_id_ice, k, j, i, n);
           }
 
-//AGAIN, THIS LOGIC SHOULD REALLY LIVE IN VARIABLE SET
-//Something like:
-//get_total_dens(dens,dry_dens)
-//get_qs(dens,dry_dens,dens_s)
-//compute_entropic_var(dens,dry_dens,temp,qs)
+          real dens, qd, qv, ql, qi;
+          if (T::compressible) {
 
-#if !defined PAMC_AN && !defined PAMC_MAN
+            real dens_dry = dm_dens_dry(k, j, i, n);
+            real dens = dens_dry + dens_vap;
 
-          real dens_dry = dm_dens_dry(k, j, i, n);
-          real dens = dens_dry + dens_vap;
+            varset.set_density(
+                dens * dual_geometry.get_area_n1entity(k + dks, j + djs,
+                                                       i + dis, n),
+                dens_dry * dual_geometry.get_area_n1entity(k + dks, j + djs,
+                                                           i + dis, n),
+                prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
 
-          set_density(dens * dual_geometry.get_area_n1entity(k + dks, j + djs,
-                                                             i + dis, n),
-                      dens_dry * dual_geometry.get_area_n1entity(
-                                     k + dks, j + djs, i + dis, n),
-                      prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs,
-                      dis, n);
+            qd = dens_dry / dens;
+            qv = dens_vap / dens;
+            ql = dens_liq / dens;
+            qi = dens_ice / dens;
+          } else {
+            dens =
+                varset.get_ref_dens(k, dks, n) /
+                dual_geometry.get_area_n1entity(k + dks, j + djs, i + dis, n);
 
-          real qd = dens_dry / dens;
-          real qv = dens_vap / dens;
-          real ql = dens_liq / dens;
-          real qi = dens_ice / dens;
+            qv = dens_vap / dens;
+            ql = dens_liq / dens;
+            qi = dens_ice / dens;
+
+            qd = varset.get_qd(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks,
+                               djs, dis, n);
+          }
+
           real alpha = 1.0_fp / dens;
 
-#elif defined(PAMC_AN) || defined(PAMC_MAN)
-          real dens = get_ref_dens(k, dks, n) / dual_geometry.get_area_n1entity(k + dks, j + djs, i + dis, n);
+          real entropic_var;
+          if (T::density_based) {
+            entropic_var = thermo.compute_entropic_var_from_alpha_T(
+                alpha, temp, qd, qv, ql, qi);
+          } else {
+            real p = varset.get_pres(prog_vars.fields_arr[DENSVAR].data, k, j,
+                                     i, dks, djs, dis, n);
+            entropic_var =
+                thermo.compute_entropic_var_from_p_T(p, temp, qd, qv, ql, qi);
+          }
 
-          real qv = dens_vap / dens;
-          real ql = dens_liq / dens;
-          real qi = dens_ice / dens;
-
-          real qd = get_qd(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
-#endif
-
-
-#if defined(_CE) || defined(_MCErho) || defined(_MCE_rhod)
-          real entropic_var =
-              thermo.compute_entropic_var_from_T_alpha(alpha, temp, qd, qv, ql, qi);
-#elif defined(_CEp)  || defined(_MCErhop) || defined(_MCErhodp)
-          real p = get_pres(alpha, temp, qd, qv, ql, qi);
-          real entropic_var =
-              thermo.compute_entropic_var_from_T_p(p, temp, qd, qv, ql, qi);
-#elif defined(PAMC_AN) || defined(PAMC_MAN)
-          real p = get_pres(k, dks, n);
-          real entropic_var =
-              thermo.compute_entropic_var_from_T_p(p, temp, qd, qv, ql, qi);
-#endif
-
-          set_entropic_density(
+          varset.set_entropic_density(
               entropic_var * dens *
                   dual_geometry.get_area_n1entity(k + dks, j + djs, i + dis, n),
               prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
 
-          for (int tr = ndensity_nophysics; tr < ndensity_prognostic; tr++) {
+          for (int tr = varset.ndensity_nophysics;
+               tr < varset.ndensity_prognostic; tr++) {
             prog_vars.fields_arr[DENSVAR].data(tr, k + dks, j + djs, i + dis,
                                                n) =
-                dm_tracers(tr - ndensity_nophysics, k, j, i, n) *
+                dm_tracers(tr - varset.ndensity_nophysics, k, j, i, n) *
                 dual_geometry.get_area_n1entity(k + dks, j + djs, i + dis, n);
           }
         });
   }
 }
 
-
 template <class T>
-void VariableSetBase<T>::convert_coupler_to_dynamics_wind(
-    PamCoupler &coupler, FieldSet<nprognostic> &prog_vars,
-    const FieldSet<nconstant> &const_vars, bool couple_wind_exact_inverse) {
+void convert_coupler_to_dynamics_wind(const VariableSetBase<T> &varset,
+                                      PamCoupler &coupler,
+                                      FieldSet<nprognostic> &prog_vars,
+                                      const FieldSet<nconstant> &const_vars,
+                                      bool couple_wind_exact_inverse) {
 
   if constexpr (T::couple) {
 
+    const auto &primal_geometry = varset.primal_geometry;
     const auto &primal_topology = primal_geometry.topology;
 
     int pis = primal_topology.is;
@@ -732,94 +729,91 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_wind(
     auto dm_vvel = dm.get<real const, 4>("vvel");
     auto dm_wvel = dm.get<real const, 4>("wvel");
 
-      if (couple_wind_exact_inverse) {
-        parallel_for(
-            "Coupler to Dynamics State Primal U",
-            SimpleBounds<3>(primal_topology.ni, primal_topology.n_cells_y,
-                            primal_topology.nens),
-            YAKL_CLASS_LAMBDA(int k, int j, int n) {
-              real x0 = 0;
-              for (int i = 0; i < primal_topology.n_cells_x; ++i) {
-                x0 += (i % 2 == 0 ? 1 : -1) * dm_uvel(k, j, i, n);
-              }
-              prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, pis, n) = x0;
-              prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, pis, n) *=
-                  primal_geometry.get_area_10entity(0, k + pks, j + pjs, pis,
-                                                    n);
+    if (couple_wind_exact_inverse) {
+      parallel_for(
+          "Coupler to Dynamics State Primal U",
+          SimpleBounds<3>(primal_topology.ni, primal_topology.n_cells_y,
+                          primal_topology.nens),
+          YAKL_LAMBDA(int k, int j, int n) {
+            real x0 = 0;
+            for (int i = 0; i < primal_topology.n_cells_x; ++i) {
+              x0 += (i % 2 == 0 ? 1 : -1) * dm_uvel(k, j, i, n);
+            }
+            prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, pis, n) = x0;
+            prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, pis, n) *=
+                primal_geometry.get_area_10entity(0, k + pks, j + pjs, pis, n);
 
-              for (int i = 1; i < primal_topology.n_cells_x; ++i) {
-                x0 = 2 * dm_uvel(k, j, i - 1, n) - x0;
-                prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, i + pis,
-                                                n) = x0;
-                prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, i + pis,
-                                                n) *=
-                    primal_geometry.get_area_10entity(0, k + pks, j + pjs,
-                                                      i + pis, n);
-              }
-            });
-        parallel_for(
-            "Coupler to Dynamics State Primal W",
-            SimpleBounds<3>(primal_topology.n_cells_y,
-                            primal_topology.n_cells_x, primal_topology.nens),
-            YAKL_CLASS_LAMBDA(int j, int i, int n) {
-              real x0 = dm_wvel(0, j, i, n);
-              prog_vars.fields_arr[WVAR].data(0, pks, j + pjs, i + pis, n) = x0;
-              prog_vars.fields_arr[WVAR].data(0, pks, j + pjs, i + pis, n) *=
-                  primal_geometry.get_area_01entity(pks, j + pjs, i + pis, n);
-
-              for (int k = 1; k < primal_topology.nl; ++k) {
-
-                real ek = primal_geometry.get_area_01entity(k + pks, j + pjs,
-                                                            i + pis, n);
-                real ekm1 = primal_geometry.get_area_01entity(
-                    k - 1 + pks, j + pjs, i + pis, n);
-                x0 = (ek + ekm1) / ekm1 * dm_wvel(k, j, i, n) - x0 * ek / ekm1;
-                prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs, i + pis,
-                                                n) = x0;
-                prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs, i + pis,
-                                                n) *= ek;
-              }
-            });
-      } else {
-        parallel_for(
-            "Coupler to Dynamics State Primal U",
-            SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
-                            primal_topology.n_cells_x, primal_topology.nens),
-            YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
-              // periodic wrapping
-              int il = i - 1;
-              if (i == 0) {
-                il = primal_topology.n_cells_x - 1;
-              }
+            for (int i = 1; i < primal_topology.n_cells_x; ++i) {
+              x0 = 2 * dm_uvel(k, j, i - 1, n) - x0;
               prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, i + pis, n) =
-                  (dm_uvel(k, j, il, n) + dm_uvel(k, j, i, n)) * 0.5_fp *
+                  x0;
+              prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, i + pis,
+                                              n) *=
                   primal_geometry.get_area_10entity(0, k + pks, j + pjs,
                                                     i + pis, n);
-            });
+            }
+          });
+      parallel_for(
+          "Coupler to Dynamics State Primal W",
+          SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
+                          primal_topology.nens),
+          YAKL_LAMBDA(int j, int i, int n) {
+            real x0 = dm_wvel(0, j, i, n);
+            prog_vars.fields_arr[WVAR].data(0, pks, j + pjs, i + pis, n) = x0;
+            prog_vars.fields_arr[WVAR].data(0, pks, j + pjs, i + pis, n) *=
+                primal_geometry.get_area_01entity(pks, j + pjs, i + pis, n);
 
-        // EVENTUALLY THIS NEEDS TO HAVE A FLAG ON IT!
-        parallel_for(
-            "Coupler to Dynamics State Primal W",
-            SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
-                            primal_topology.n_cells_x, primal_topology.nens),
-            YAKL_CLASS_LAMBDA(int k, int j, int i, int n) {
+            for (int k = 1; k < primal_topology.nl; ++k) {
+
+              real ek = primal_geometry.get_area_01entity(k + pks, j + pjs,
+                                                          i + pis, n);
+              real ekm1 = primal_geometry.get_area_01entity(
+                  k - 1 + pks, j + pjs, i + pis, n);
+              x0 = (ek + ekm1) / ekm1 * dm_wvel(k, j, i, n) - x0 * ek / ekm1;
               prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs, i + pis, n) =
-                  (dm_wvel(k, j, i, n) + dm_wvel(k + 1, j, i, n)) * 0.5_fp *
-                  primal_geometry.get_area_01entity(k + pks, j + pjs, i + pis,
-                                                    n);
-            });
+                  x0;
+              prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs, i + pis,
+                                              n) *= ek;
+            }
+          });
+    } else {
+      parallel_for(
+          "Coupler to Dynamics State Primal U",
+          SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                          primal_topology.n_cells_x, primal_topology.nens),
+          YAKL_LAMBDA(int k, int j, int i, int n) {
+            // periodic wrapping
+            int il = i - 1;
+            if (i == 0) {
+              il = primal_topology.n_cells_x - 1;
+            }
+            prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, i + pis, n) =
+                (dm_uvel(k, j, il, n) + dm_uvel(k, j, i, n)) * 0.5_fp *
+                primal_geometry.get_area_10entity(0, k + pks, j + pjs, i + pis,
+                                                  n);
+          });
+
+      // EVENTUALLY THIS NEEDS TO HAVE A FLAG ON IT!
+      parallel_for(
+          "Coupler to Dynamics State Primal W",
+          SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                          primal_topology.n_cells_x, primal_topology.nens),
+          YAKL_LAMBDA(int k, int j, int i, int n) {
+            prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs, i + pis, n) =
+                (dm_wvel(k, j, i, n) + dm_wvel(k + 1, j, i, n)) * 0.5_fp *
+                primal_geometry.get_area_01entity(k + pks, j + pjs, i + pis, n);
+          });
+    }
   }
 }
-}
-
 
 template <class T>
-void VariableSetBase<T>::convert_coupler_to_dynamics_staggered_wind(
-    PamCoupler &coupler, FieldSet<nprognostic> &prog_vars,
-    const FieldSet<nconstant> &const_vars) {
+void convert_coupler_to_dynamics_staggered_wind(
+    const VariableSetBase<T> &varset, PamCoupler &coupler,
+    FieldSet<nprognostic> &prog_vars, const FieldSet<nconstant> &const_vars) {
 
   if constexpr (T::couple) {
-    const auto &primal_topology = primal_geometry.topology;
+    const auto &primal_topology = varset.primal_geometry.topology;
 
     int pis = primal_topology.is;
     int pjs = primal_topology.js;
@@ -831,13 +825,9 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_staggered_wind(
     auto dm_vvel = dm.get<real const, 4>("vvel");
     auto dm_wvel = dm.get<real const, 4>("wvel");
 
-//ADD THIS
-
-      }
-
-
+    // ADD THIS
   }
-
+}
 
 #ifdef PAMC_SWE
 template <>
@@ -932,6 +922,12 @@ real YAKL_INLINE VariableSetBase<VS_CE>::get_total_density(
     const real5d &densvar, int k, int j, int i, int ks, int js, int is,
     int n) const {
   return densvar(dens_id_mass, k + ks, j + js, i + is, n);
+}
+
+template <>
+real YAKL_INLINE VariableSetBase<VS_CE>::get_total_density(
+    const real3d &densvar, int k, int ks, int n) const {
+  return densvar(dens_id_mass, k + ks, n);
 }
 
 template <>
@@ -1039,25 +1035,28 @@ real YAKL_INLINE VariableSetBase<VS_AN>::get_alpha(const real3d &densvar, int k,
 
 template <>
 real YAKL_INLINE VariableSetBase<VS_AN>::get_pres(const real5d &densvar, int k,
-                                                   int j, int i, int ks, int js,
-                                                   int is, int n) const {
-    const real refrho = 1.0_fp / get_alpha(reference_state.dens.data, k, ks, n);
-    const real refentropic_var = get_entropic_var(reference_state.dens.data, k, ks, n);
-    const real refp =  thermo.solve_p(refrho, refentropic_var, 0, 0, 0, 0);
-    return refp;
+                                                  int j, int i, int ks, int js,
+                                                  int is, int n) const {
+  const real refrho = 1.0_fp / get_alpha(reference_state.dens.data, k, ks, n);
+  const real refentropic_var =
+      get_entropic_var(reference_state.dens.data, k, ks, n);
+  const real refp = thermo.solve_p(refrho, refentropic_var, 0, 0, 0, 0);
+  return refp;
 }
 
 template <>
 real YAKL_INLINE VariableSetBase<VS_AN>::get_pres(int k, int ks, int n) const {
-    const real refrho = 1.0_fp / get_alpha(reference_state.dens.data, k, ks, n);
-    const real refentropic_var = get_entropic_var(reference_state.dens.data, k, ks, n);
-    const real refp =  thermo.solve_p(refrho, refentropic_var, 0, 0 , 0, 0);
-    return refp;
+  const real refrho = 1.0_fp / get_alpha(reference_state.dens.data, k, ks, n);
+  const real refentropic_var =
+      get_entropic_var(reference_state.dens.data, k, ks, n);
+  const real refp = thermo.solve_p(refrho, refentropic_var, 0, 0, 0, 0);
+  return refp;
 }
 
 template <>
-real YAKL_INLINE VariableSetBase<VS_AN>::get_ref_dens(int k, int ks, int n) const {
-    return reference_state.dens.data(dens_id_mass, k + ks, n);
+real YAKL_INLINE VariableSetBase<VS_AN>::get_ref_dens(int k, int ks,
+                                                      int n) const {
+  return reference_state.dens.data(dens_id_mass, k + ks, n);
 }
 
 #endif
@@ -1140,8 +1139,9 @@ real YAKL_INLINE VariableSetBase<VS_MAN>::get_alpha(const real3d &densvar,
 }
 
 template <>
-real YAKL_INLINE VariableSetBase<VS_MAN>::get_ref_dens(int k, int ks, int n) const {
-    return reference_state.dens.data(dens_id_mass, k + ks, n);
+real YAKL_INLINE VariableSetBase<VS_MAN>::get_ref_dens(int k, int ks,
+                                                       int n) const {
+  return reference_state.dens.data(dens_id_mass, k + ks, n);
 }
 
 template <>
@@ -1178,20 +1178,24 @@ template <>
 real YAKL_INLINE VariableSetBase<VS_MAN>::get_pres(const real5d &densvar, int k,
                                                    int j, int i, int ks, int js,
                                                    int is, int n) const {
-    const real refrho = 1.0_fp / get_alpha(reference_state.dens.data, k, ks, n);
-    const real refentropic_var = get_entropic_var(reference_state.dens.data, k, ks, n);
-    const real refqv = get_qv(reference_state.dens.data, k, ks, n);
-    const real refp =  thermo.solve_p(refrho, refentropic_var, 1 - refqv, refqv, 0, 0);
-    return refp;
+  const real refrho = 1.0_fp / get_alpha(reference_state.dens.data, k, ks, n);
+  const real refentropic_var =
+      get_entropic_var(reference_state.dens.data, k, ks, n);
+  const real refqv = get_qv(reference_state.dens.data, k, ks, n);
+  const real refp =
+      thermo.solve_p(refrho, refentropic_var, 1 - refqv, refqv, 0, 0);
+  return refp;
 }
 
 template <>
 real YAKL_INLINE VariableSetBase<VS_MAN>::get_pres(int k, int ks, int n) const {
-    const real refrho = 1.0_fp / get_alpha(reference_state.dens.data, k, ks, n);
-    const real refentropic_var = get_entropic_var(reference_state.dens.data, k, ks, n);
-    const real refqv = get_qv(reference_state.dens.data, k, ks, n);
-    const real refp =  thermo.solve_p(refrho, refentropic_var, 1 - refqv, refqv, 0, 0);
-    return refp;
+  const real refrho = 1.0_fp / get_alpha(reference_state.dens.data, k, ks, n);
+  const real refentropic_var =
+      get_entropic_var(reference_state.dens.data, k, ks, n);
+  const real refqv = get_qv(reference_state.dens.data, k, ks, n);
+  const real refp =
+      thermo.solve_p(refrho, refentropic_var, 1 - refqv, refqv, 0, 0);
+  return refp;
 }
 
 template <>
@@ -1202,8 +1206,9 @@ real YAKL_INLINE VariableSetBase<VS_MAN>::_water_dens(const real5d &densvar,
   real vap_dens = densvar(dens_id_vap, k + ks, j + js, i + is, n);
   real liq_dens = 0.0_fp;
   real ice_dens = 0.0_fp;
-  // if (liq_found) { liq_dens = densvar(dens_id_liq, k + ks, j + js, i + is, n); }
-  // if (ice_found) { ice_dens = densvar(dens_id_ice, k + ks, j + js, i + is, n); }
+  // if (liq_found) { liq_dens = densvar(dens_id_liq, k + ks, j + js, i + is,
+  // n); } if (ice_found) { ice_dens = densvar(dens_id_ice, k + ks, j + js, i +
+  // is, n); }
   return vap_dens + liq_dens + ice_dens;
 }
 

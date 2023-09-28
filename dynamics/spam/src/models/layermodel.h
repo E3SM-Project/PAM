@@ -101,27 +101,32 @@ public:
     Tendencies::initialize(params, equations, primal_geom, dual_geom);
   }
 
-  void
-  convert_dynamics_to_coupler_state(PamCoupler &coupler,
-                                    const FieldSet<nprognostic> &prog_vars,
-                                    const FieldSet<nconstant> &const_vars, bool couple_wind, bool couple_wind_exact_inverse) {
-    equations->varset.convert_dynamics_to_coupler_densities(coupler, prog_vars,
-                                                        const_vars);
+  void convert_dynamics_to_coupler_state(PamCoupler &coupler,
+                                         const FieldSet<nprognostic> &prog_vars,
+                                         const FieldSet<nconstant> &const_vars,
+                                         bool couple_wind,
+                                         bool couple_wind_exact_inverse) {
+    convert_dynamics_to_coupler_densities(equations->varset, coupler, prog_vars,
+                                          const_vars);
 
-    if (couple_wind){ equations->varset.convert_dynamics_to_coupler_wind(coupler, prog_vars,
-                                                        const_vars, couple_wind_exact_inverse);}
-
+    if (couple_wind) {
+      convert_dynamics_to_coupler_wind(equations->varset, coupler, prog_vars,
+                                       const_vars, couple_wind_exact_inverse);
+    }
   }
 
   void convert_coupler_to_dynamics_state(PamCoupler &coupler,
                                          FieldSet<nprognostic> &prog_vars,
                                          FieldSet<nauxiliary> &auxiliary_vars,
-                                         FieldSet<nconstant> &const_vars, bool couple_wind, bool couple_wind_exact_inverse) {
-    equations->varset.convert_coupler_to_dynamics_densities(coupler, prog_vars,
-                                                        const_vars);
-    if (couple_wind) {equations->varset.convert_coupler_to_dynamics_wind(coupler, prog_vars,
-                                                        const_vars, couple_wind_exact_inverse);}
-
+                                         FieldSet<nconstant> &const_vars,
+                                         bool couple_wind,
+                                         bool couple_wind_exact_inverse) {
+    convert_coupler_to_dynamics_densities(equations->varset, coupler, prog_vars,
+                                          const_vars);
+    if (couple_wind) {
+      convert_coupler_to_dynamics_wind(equations->varset, coupler, prog_vars,
+                                       const_vars, couple_wind_exact_inverse);
+    }
   }
 
   void compute_constants(FieldSet<nconstant> &const_vars,
@@ -1152,14 +1157,15 @@ void read_model_params_file(std::string inFile, ModelParameters &params,
   YAML::Node config = YAML::LoadFile(inFile);
 
   // Read the data initialization options
-  params.initdataStr = config["initData"].as<std::string>();
-  testcase_from_string(testcase, params.initdataStr);
+  params.init_data = config["init_data"].as<std::string>();
+  testcase_from_string(testcase, params.init_data);
 
   for (int i = 0; i < ntracers_dycore; i++) {
-    params.tracerdataStr[i] =
-        config["initTracer" + std::to_string(i)].as<std::string>("constant");
-    params.dycore_tracerpos[i] =
-        config["initTracerPos" + std::to_string(i)].as<bool>(false);
+    params.init_dycore_tracer[i] =
+        config["init_dycore_tracer" + std::to_string(i)].as<std::string>(
+            "constant");
+    params.dycore_tracer_pos[i] =
+        config["dycore_tracer" + std::to_string(i) + "_pos"].as<bool>(false);
   }
 }
 
@@ -1168,15 +1174,18 @@ void read_model_params_coupler(ModelParameters &params, Parallel &par,
                                std::unique_ptr<TestCase> &testcase) {}
 
 void check_and_print_model_parameters(const ModelParameters &params,
-                                      const Parallel &par) {
+                                      const Parallel &par,
+                                      bool verbose = false) {
 
   check_and_print_parameters(params, par);
 
-  serial_print("IC: " + params.initdataStr, par.masterproc);
-  for (int i = 0; i < ntracers_dycore; i++) {
-    serial_print("Dycore Tracer" + std::to_string(i) +
-                     " IC: " + params.tracerdataStr[i],
-                 par.masterproc);
+  if (verbose) {
+    serial_print("IC: " + params.init_data, par.masterproc);
+    for (int i = 0; i < ntracers_dycore; i++) {
+      serial_print("Dycore Tracer" + std::to_string(i) +
+                       " IC: " + params.init_dycore_tracer[i],
+                   par.masterproc);
+    }
   }
 }
 
@@ -1383,7 +1392,7 @@ void testcase_from_string(std::unique_ptr<TestCase> &testcase,
 
 void testcase_from_config(std::unique_ptr<TestCase> &testcase,
                           const YAML::Node &config) {
-  const std::string name = config["initData"].as<std::string>();
+  const std::string name = config["init_data"].as<std::string>();
   testcase_from_string(testcase, name);
 }
 } // namespace pamc

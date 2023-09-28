@@ -1,0 +1,48 @@
+idealized : true
+verbose : true
+
+# Simulation time in seconds
+sim_time : 200000
+
+# Number of cells to use
+crm_nx : 50
+crm_ny : 1
+crm_nz : 50
+
+# Data to initialize
+init_data : doublevortex
+initTracer0 : square
+initTracer1 : gaussian
+initTracer2 : doublesquare
+initTracer3 : square
+initTracer4 : gaussian
+initTracer5 : doublesquare
+
+initTracerPos0 : false
+initTracerPos1 : false
+initTracerPos2 : false
+initTracerPos3 : true
+initTracerPos4 : true
+initTracerPos5 : true
+
+# Time steps
+dt_crm_phys : 200
+crm_per_phys : 1
+ 
+# Output filename
+out_prefix : test
+dycore_out_prefix : test_dycore
+
+# Output frequency in actual time
+out_freq : 20000
+stat_freq : 2000
+
+tstype : si
+
+# Number of ensembles
+nens : 1
+
+# Parallel decomposition
+inner_mpi : true
+nprocx : 1
+nprocy : 1

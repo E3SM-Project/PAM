@@ -6,7 +6,7 @@ from sys import argv
 
 if __name__ == "__main__":
     nlevels = 2
-    fpath = os.path.dirname(__file__) + "/../../inputs/pamc_input_extruded_densitycurrent.yaml"
+    fpath = os.path.dirname(__file__) + "/../../inputs/pamc_idealized/pamc_input_extruded_densitycurrent.yaml"
 
     inputfile = yaml.safe_load(open(fpath))
     
@@ -53,16 +53,15 @@ if __name__ == "__main__":
 
         dt = base_dt / (2 ** l)
         steps = int(np.ceil(timeend / dt))
-        outsteps = int(np.ceil(outfreq / dt))
 
         ofname = f"output_{nx}_{nz}_"
 
         inputfile["crm_nx"] = nx
         inputfile["crm_nz"] = nz
-        inputfile["dtphys"] = dt
-        inputfile["simSteps"] = steps
-        inputfile["outSteps"] = outsteps
-        inputfile["statSteps"] = 1
+        inputfile["dt_crm_phys"] = dt
+        inputfile["sim_time"] = timeend
+        inputfile["out_freq"] = outfreq
+        inputfile["stat_freq"] = dt
         inputfile["dycore_out_prefix"] = ofname
         inputfile["entropicvar_diffusion_coeff"] = diffusion_coeff
         inputfile["velocity_diffusion_coeff"] = diffusion_coeff

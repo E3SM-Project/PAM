@@ -82,7 +82,7 @@ def compute_errors(dataset, nx, nz, dx, dz):
 
 if __name__ == "__main__":
     nlevels = 2
-    fpath = os.path.dirname(__file__) + "/../../inputs/pamc_input_extruded_gravitywave.yaml"
+    fpath = os.path.dirname(__file__) + "/../../inputs/pamc_idealized/pamc_input_extruded_gravitywave.yaml"
 
     inputfile = yaml.safe_load(open(fpath))
     
@@ -118,7 +118,6 @@ if __name__ == "__main__":
 
         dt = base_dt / (2 ** l)
         steps = int(np.ceil(timeend / dt))
-        outsteps = steps
 
         ofname = f"output_{nx}_{nz}_"
 
@@ -142,10 +141,10 @@ if __name__ == "__main__":
         inputfile["crm_nx"] = nx
         inputfile["crm_nz"] = nz
         inputfile["vcoords"] = vcoords
-        inputfile["dtphys"] = dt
-        inputfile["simSteps"] = steps
-        inputfile["outSteps"] = outsteps
-        inputfile["statSteps"] = 1
+        inputfile["dt_crm_phys"] = dt
+        inputfile["sim_time"] = timeend
+        inputfile["out_freq"] = timeend
+        inputfile["stat_freq"] = dt
         inputfile["dycore_out_prefix"] = ofname
 
         ifname = f"input_{nx}_{nz}"

@@ -374,8 +374,8 @@ public:
     l_q(1) = varset.get_entropic_var(dens, k, j, i, ks, js, is, n);
     l_q(2) = varset.get_qd(dens, k, j, i, ks, js, is, n);
     l_q(3) = varset.get_qv(dens, k, j, i, ks, js, is, n);
-    l_q(4) = varset.liq_found ? varset.get_ql(dens, k, j, i, ks, js, is, n)
-                                 : 0.0_fp;
+    l_q(4) =
+        varset.liq_found ? varset.get_ql(dens, k, j, i, ks, js, is, n) : 0.0_fp;
     l_q(5) =
         varset.ice_found ? varset.get_qi(dens, k, j, i, ks, js, is, n) : 0.0_fp;
 
