@@ -174,7 +174,7 @@ public:
     return pow(p / cst.pr, cst.kappa_d) * entropic_var;
   };
 
-  real YAKL_INLINE compute_entropic_var_from_T_alpha(real alpha, real T,
+  real YAKL_INLINE compute_entropic_var_from_alpha_T(real alpha, real T,
                                                      real qd, real qv, real ql,
                                                      real qi) const {
     real p = cst.Rd * T / alpha;
@@ -301,7 +301,7 @@ public:
     return cst.Rd / cst.Cvd * U / alpha;
   };
 
-  real YAKL_INLINE compute_entropic_var_from_T_alpha(real alpha, real T,
+  real YAKL_INLINE compute_entropic_var_from_alpha_T(real alpha, real T,
                                                      real qd, real qv, real ql,
                                                      real qi) const {
     // real alpha_r = cst.Rd * cst.Tr / cst.pr;
@@ -454,7 +454,7 @@ public:
     return pow(p / cst.pr, cst.kappa_d) * entropic_var * cst.Rd / Rstar;
   };
 
-  real YAKL_INLINE compute_entropic_var_from_T_alpha(real alpha, real T,
+  real YAKL_INLINE compute_entropic_var_from_alpha_T(real alpha, real T,
                                                      real qd, real qv, real ql,
                                                      real qi) const {
     real Rstar = cst.Rd * qd + cst.Rv * qv;

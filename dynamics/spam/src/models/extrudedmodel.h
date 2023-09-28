@@ -4535,7 +4535,7 @@ public:
           const real qi = dens_ice / dens;
 
           const real alpha = 1.0_fp / dens;
-          const real entropic_var = thermo.compute_entropic_var_from_T_alpha(
+          const real entropic_var = thermo.compute_entropic_var_from_alpha_T(
               alpha, temp, qd, qv, ql, qi);
 
           const real dual_volume =

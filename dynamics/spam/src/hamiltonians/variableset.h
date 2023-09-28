@@ -682,7 +682,7 @@ void convert_coupler_to_dynamics_densities(
 
           real entropic_var;
           if constexpr (T::density_based) {
-            entropic_var = thermo.compute_entropic_var_from_T_alpha(
+            entropic_var = thermo.compute_entropic_var_from_alpha_T(
                 alpha, temp, qd, qv, ql, qi);
           } else {
             real p = varset.get_pres(prog_vars.fields_arr[DENSVAR].data, k, j,
