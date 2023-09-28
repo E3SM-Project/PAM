@@ -16,6 +16,8 @@ vcoords : uniform
 # Data to initialize
 init_data : gravitywave
 
+force_refstate_hydrostatic_balance : true
+
 # Time steps
 dt_crm_phys : 20
 crm_per_phys : 1
@@ -28,7 +30,7 @@ dycore_out_prefix : test_dycore
 out_freq : 1800
 stat_freq : 20
 
-tstype : ssprk3
+tstype : si
 
 # Number of ensembles
 nens : 1
