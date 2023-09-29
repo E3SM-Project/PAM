@@ -17,7 +17,7 @@ force_refstate_hydrostatic_balance: true
 initData : gravitywave
 
 # Time steps
-dtphys: 20
+dtphys: 240.0
 crm_per_phys: 1
  
 # Output filename

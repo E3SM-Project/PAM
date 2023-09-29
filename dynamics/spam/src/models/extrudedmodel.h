@@ -2879,8 +2879,8 @@ public:
     const auto &q_di = refstate.q_di.data;
     const auto &pres_pi = refstate.pres_pi.data;
     const auto &pres_di = refstate.pres_di.data;
-    // const auto &Nsq_pi = refstate.Nsq_pi.data;
-     const auto &Bref = refstate.B.data;
+    const auto &Nsq_pi = refstate.Nsq_pi.data;
+    const auto &Bref = refstate.B.data;
 
     YAKL_SCOPE(thermo, this->equations->thermo);
     YAKL_SCOPE(varset, this->equations->varset);
@@ -3071,11 +3071,11 @@ public:
             
             real gamma_km1;
             if (k == 0) {
+              gamma_km1 = 0;
+            } else {
               gamma_km1 = rho_di(0, k + dks, n) * 
                   H01_coeff(primal_geometry, dual_geometry, pis, pjs, pks, i, j, k, n) *
                   (q_pi(varset.dens_id_entr, k + pks, n) - q_pi(varset.dens_id_entr, k - 1 + pks, n));
-            } else {
-              gamma_km1 = 0;
             }
            
             // assumes diagonal !
@@ -3110,6 +3110,10 @@ public:
             A_u(k, j, i, n) = alpha_k * beta_kp1 * gamma_kp1;
             A_d(k, j, i, n) = 1 + alpha_k * (beta_kp1 + beta_k) * gamma_k;
             A_l(k, j, i, n) = alpha_k * beta_k * gamma_km1;
+
+            //A_u(k, j, i, n) = 0;
+            //A_d(k, j, i, n) = 1;// + alpha * alpha * 0.5_fp * (Nsq_pi(0, k + pks + 1, n) + Nsq_pi(0, k + pks, n));
+            //A_l(k, j, i, n) = 0;
             
             
             const real rho_mid = rho_di(0, k + 1 + dks, n); 
@@ -3123,8 +3127,19 @@ public:
             Dvt_u(k, j, i, n) = 1 / rho_mid - 0.5_fp * c_kp1 * dp;
             Dvt_d(k, j, i, n) = -1 / rho_mid - 0.5_fp * c_k * dp;
             Dvt_l(k, j, i, n) = 0;
+
+            std::cout.precision(18);
+            if (i == 0 && j == 0) {
+              std::cout << k << " " 
+                        << A_l(k, j, i, n) << " "
+                        << A_d(k, j, i, n) << " "
+                        << A_u(k, j, i, n) << " "
+                        << std::abs(A_d(k, j, i, n) - (A_l(k, j, i, n) + A_u(k, j, i, n)))
+                        << std::endl;
+            }
             
       });
+      //exit(1);
       
       parallel_for(
           "fancy Fpres",
@@ -3161,9 +3176,9 @@ public:
             int ik = i / 2;
             int jk = j / 2;
 
-            trip_u(k, j, i, n) = 0;
-            trip_d(k, j, i, n) = 1;
-            trip_l(k, j, i, n) = 0;
+            trip_u(k, j, i, n) = A_u(k, j, i, n);
+            trip_d(k, j, i, n) = A_d(k, j, i, n);
+            trip_l(k, j, i, n) = A_l(k, j, i, n);
             
             real gamma_kp1;
             if (k == primal_topology.nl - 1) {
@@ -3465,6 +3480,17 @@ public:
     } else {
       solve_orig(dt, rhs, const_vars, auxiliary_vars, solution);
     }
+    auto sol_v = solution.fields_arr[VVAR].data;
+    auto sol_w = solution.fields_arr[WVAR].data;
+    std::cout << "v: "
+              << yakl::intrinsics::minval(sol_v) << " "
+              << yakl::intrinsics::maxval(sol_v) << " "
+              << yakl::intrinsics::sum(sol_v) << std::endl;
+    
+    std::cout << "w: "
+              << yakl::intrinsics::minval(sol_w) << " "
+              << yakl::intrinsics::maxval(sol_w) << " "
+              << yakl::intrinsics::sum(sol_w) << std::endl;
   }
   
   void solve_pressure(real dt, FieldSet<nprognostic> &rhs,
@@ -3797,6 +3823,32 @@ public:
          }
       });
 
+      // check consistency of q and p
+      //parallel_for(
+      //    "check",
+      //    Bounds<4>(primal_topology.nl, nyf, nxf, primal_topology.nens),
+      //    YAKL_LAMBDA(int k, int j, int i, int n) {
+      //      real dpdz = Dvt_u(k, j, i, n) * p_transform(k + 1, j, i, n) +
+      //                                Dvt_d(k, j, i, n) * p_transform(k, j, i, n);
+
+      //      real Aq;
+      //      if (k == 0) {
+      //        Aq = A_d(k, j, i, n) * q_transform(k, j, i, n) +
+      //             A_u(k, j, i, n) * q_transform(k + 1, j, i, n);
+      //      } else if (k == primal_topology.nl - 1) {
+      //        Aq = A_l(k, j, i, n) * q_transform(k - 1, j, i, n) +
+      //             A_d(k, j, i, n) * q_transform(k, j, i, n);
+      //      } else {
+      //        Aq = A_l(k, j, i, n) * q_transform(k - 1, j, i, n) +
+      //             A_d(k, j, i, n) * q_transform(k, j, i, n) +
+      //             A_u(k, j, i, n) * q_transform(k + 1, j, i, n);
+      //      }
+      //      if (i == 0) {
+      //        std::cout << "Check " << k << " " << dpdz - Aq << std::endl;
+      //      }
+      //});
+
+
       yakl::timer_start("ffts");
       fftp_x.inverse_real(p_transform);
       if (ndims > 1) {
@@ -3880,6 +3932,7 @@ public:
                                       Dvt_d(k, j, i, n) * Bvar(0, k + pks, j + pjs, i + pis, n);
 
             sol_w(0, k + pks, j + pjs, i + pis, n) = -0.5_fp * dt * dpdz;
+            //sol_w(0, k + pks, j + pjs, i + pis, n) = rhs_w(0, k + pks, j + pjs, i + pis, n) -0.5_fp * dt * dpdz;
           }
           if (new_pressure_formulation) {
             real dpdz = compute_D0_vert<1>(Bvar, pis, pjs, pks, i, j, k, n);
@@ -6229,17 +6282,20 @@ struct MoistLargeRisingBubble : LargeRisingBubble {
 
 template <bool add_perturbation> struct GravityWave {
   static int constexpr max_ndims = 1;
-  static real constexpr g = 9.80616_fp;
+  //static real constexpr g = 9.80616_fp;
+  static real constexpr g = 10;
   static real constexpr Lx = 300e3_fp;
   static real constexpr Lz = 10e3_fp;
   static real constexpr xc = 0.5_fp * Lx;
   static real constexpr zc = 0.5_fp * Lz;
   static real constexpr d = 5e3_fp;
-  static real constexpr T_ref = 250._fp;
-  static real constexpr u_0 = 20._fp;
+  static real constexpr T_ref = 50._fp;
+  static real constexpr u_0 = 0._fp;
   static real constexpr x_c = 100e3_fp;
   static real constexpr p_s = 1e5_fp;
   static real constexpr dT_max = 0.01_fp;
+
+  static real constexpr N_ref = 0.043773274403635015;
 
   static real YAKL_INLINE refnsq_f(real z, const ThermoPotential &thermo) {
     real Rd = thermo.cst.Rd;
@@ -6269,6 +6325,37 @@ template <bool add_perturbation> struct GravityWave {
     return rho_ref * thermo.compute_entropic_var(p_ref, T_ref, 1, 0, 0, 0);
   }
 
+
+  // bubble
+  //static real YAKL_INLINE refnsq_f(real z, const ThermoPotential &thermo) {
+  //  return N_ref * N_ref;
+  //}
+
+  //static real YAKL_INLINE refp_f(real z, const ThermoPotential &thermo) {
+  //  return const_stability_p(z, N_ref, g, thermo.cst.pr, T_ref, thermo);
+  //}
+
+  //static real YAKL_INLINE refT_f(real z, const ThermoPotential &thermo) {
+  //  return const_stability_T(z, N_ref, g, T_ref, thermo);
+  //}
+
+  //static real YAKL_INLINE refrho_f(real z, const ThermoPotential &thermo) {
+  //  real p = refp_f(z, thermo);
+  //  real T = refT_f(z, thermo);
+
+  //  real alpha = thermo.compute_alpha(p, T, 1, 0, 0, 0);
+  //  return 1._fp / alpha;
+  //}
+
+  //static real YAKL_INLINE refentropicdensity_f(real z,
+  //                                             const ThermoPotential &thermo) {
+  //  real rho_ref = refrho_f(z, thermo);
+  //  real T_ref = refT_f(z, thermo);
+  //  real p_ref = refp_f(z, thermo);
+
+  //  return rho_ref * thermo.compute_entropic_var(p_ref, T_ref, 1, 0, 0, 0);
+  //}
+
   static real YAKL_INLINE rho_f(real x, real y, real z,
                                 const ThermoPotential &thermo) {
     real Rd = thermo.cst.Rd;
@@ -6278,7 +6365,8 @@ template <bool add_perturbation> struct GravityWave {
 
     real rho_ref = refrho_f(z, thermo);
 
-    real dT_b = dT_max * exp(-pow((x - x_c) / d, 2)) * sin(pi * z / Lz);
+    //real dT_b = dT_max * exp(-pow((x - x_c) / d, 2)) * sin(pi * z / Lz);
+    real dT_b = dT_max * sin(pi * z / Lz);
     real dT = exp(delta * z / 2) * dT_b;
 
     real drho_b = -rho_s * dT_b / T_ref;
@@ -6304,7 +6392,8 @@ template <bool add_perturbation> struct GravityWave {
 
     real rho_ref = isothermal_zdep(z, rho_s, T_ref, g, thermo);
 
-    real dT_b = dT_max * exp(-pow((x - x_c) / d, 2)) * std::sin(pi * z / Lz);
+    //real dT_b = dT_max * exp(-pow((x - x_c) / d, 2)) * std::sin(pi * z / Lz);
+    real dT_b = dT_max * std::sin(pi * z / Lz);
     real dT = exp(delta * z / 2) * dT_b;
 
     real drho_b = -rho_s * dT_b / T_ref;
@@ -6675,11 +6764,11 @@ template <bool add_perturbation> struct GravityWave {
 
   static void
   add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics) {
-    diagnostics.emplace_back(std::make_unique<ExactDensityDiagnostic>());
-    diagnostics.emplace_back(std::make_unique<ExactWDiagnostic>());
-    diagnostics.emplace_back(std::make_unique<ExactTemperatureDiagnostic>());
-    diagnostics.emplace_back(std::make_unique<BackgroundDensityDiagnostic>());
-    diagnostics.emplace_back(std::make_unique<TemperatureDiagnostic>());
+    //diagnostics.emplace_back(std::make_unique<ExactDensityDiagnostic>());
+    //diagnostics.emplace_back(std::make_unique<ExactWDiagnostic>());
+    //diagnostics.emplace_back(std::make_unique<ExactTemperatureDiagnostic>());
+    //diagnostics.emplace_back(std::make_unique<BackgroundDensityDiagnostic>());
+    //diagnostics.emplace_back(std::make_unique<TemperatureDiagnostic>());
   }
 };
 
