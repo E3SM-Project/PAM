@@ -495,7 +495,9 @@ void VariableSetBase<T>::convert_dynamics_to_coupler_densities(
 #elif defined(_CEp) || defined(_MCErhop) || defined(_MCErhodp) || defined(PAMC_AN) || defined(PAMC_MAN)
           real p = get_pres(prog_vars.fields_arr[DENSVAR].data, k, j, i,
                                  dks, djs, dis, n);
-          real temp = thermo.compute_T_from_p(p, entropic_var, qd, qv, ql, qi);
+          real refqv = get_qv(reference_state.dens.data, k, dks, n);
+          real refqd = get_qd(reference_state.dens.data, k, dks, n);
+          real temp = thermo.compute_T_from_p(p, entropic_var, refqd, refqv, ql, qi);
 #endif
 
           dm_temp(k, j, i, n) = temp;
@@ -693,8 +695,9 @@ void VariableSetBase<T>::convert_coupler_to_dynamics_densities(
               thermo.compute_entropic_var_from_T_p(p, temp, qd, qv, ql, qi);
 #elif defined(PAMC_AN) || defined(PAMC_MAN)
           real p = get_pres(k, dks, n);
-          real entropic_var =
-              thermo.compute_entropic_var_from_T_p(p, temp, qd, qv, ql, qi);
+          real refqv = get_qv(reference_state.dens.data, k, dks, n);
+          real refqd = get_qd(reference_state.dens.data, k, dks, n);
+          real entropic_var = thermo.compute_entropic_var_from_T_p(p, temp, refqd, refqv, ql, qi);
 #endif
 
           set_entropic_density(
