@@ -455,7 +455,6 @@ void convert_dynamics_to_coupler_densities(
       dm_tracers.add_field(trac);
     }
 
-    YAKL_SCOPE(ref_dens, varset.reference_state.dens.data);
     parallel_for(
         "Dynamics to Coupler State densities",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
@@ -497,8 +496,8 @@ void convert_dynamics_to_coupler_densities(
           } else {
             real p = varset.get_pres(prog_vars.fields_arr[DENSVAR].data, k, j,
                                      i, dks, djs, dis, n);
-            real refqv = varset.get_qv(ref_dens, k, dks, n);
-            real refqd = varset.get_qd(ref_dens, k, dks, n);
+            real refqv = varset.get_qv(varset.reference_state.dens.data, k, dks, n);
+            real refqd = varset.get_qd(varset.reference_state.dens.data, k, dks, n);
             temp = thermo.compute_T_from_p(p, entropic_var, refqd, refqv, ql, 
                                            qi);
           }
@@ -636,7 +635,6 @@ void convert_coupler_to_dynamics_densities(
       dm_tracers.add_field(trac);
     }
 
-    YAKL_SCOPE(ref_dens, varset.reference_state.dens.data);
     parallel_for(
         "Coupler to Dynamics State Densities",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
@@ -693,8 +691,8 @@ void convert_coupler_to_dynamics_densities(
           } else {
             real p = varset.get_pres(prog_vars.fields_arr[DENSVAR].data, k, j,
                                      i, dks, djs, dis, n);
-            real refqv = varset.get_qv(ref_dens, k, dks, n);
-            real refqd = varset.get_qd(ref_dens, k, dks, n);
+            real refqv = varset.get_qv(varset.reference_state.dens.data, k, dks, n);
+            real refqd = varset.get_qd(varset.reference_state.dens.data, k, dks, n);
             entropic_var = thermo.compute_entropic_var_from_p_T(
                 p, temp, refqd, refqv, ql, qi);
           }
