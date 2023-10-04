@@ -76,11 +76,13 @@ public:
     }
   }
 
-  void init(PamCoupler &coupler, bool verbose=false) {
-    #ifdef PAM_STANDALONE
-      // only use this for standalone to avoid cluttering the log files
-      if (verbose) { serial_print("setting up dycore", par.masterproc); }
-    #endif
+  void init(PamCoupler &coupler, bool verbose = false) {
+#ifdef PAM_STANDALONE
+    // only use this for standalone to avoid cluttering the log files
+    if (verbose) {
+      serial_print("setting up dycore", par.masterproc);
+    }
+#endif
 
     // Set parameters
     debug_print(
@@ -88,11 +90,11 @@ public:
         par.masterproc);
 
     if (coupler.option_exists("standalone_input_file")) {
-      #ifdef PAM_STANDALONE
-        std::string inFile =
-            coupler.get_option<std::string>("standalone_input_file");
-        read_model_params_file(inFile, params, par, coupler, testcase);
-      #endif
+#ifdef PAM_STANDALONE
+      std::string inFile =
+          coupler.get_option<std::string>("standalone_input_file");
+      read_model_params_file(inFile, params, par, coupler, testcase);
+#endif
     } else {
       read_model_params_coupler(params, par, coupler, testcase);
     }
@@ -118,7 +120,8 @@ public:
     debug_print("finish init topo/geom", par.masterproc);
 
     debug_print("start init equations", par.masterproc);
-    equations.initialize(coupler, params, primal_geometry, dual_geometry, verbose);
+    equations.initialize(coupler, params, primal_geometry, dual_geometry,
+                         verbose);
     debug_print("finish init equations", par.masterproc);
 
     debug_print("start init testcase", par.masterproc);
@@ -195,12 +198,14 @@ public:
     }
     debug_print("end ts init", par.masterproc);
 
-    // TODO: add logic here to only include this for standlone configurations
-    // // convert dynamics state to Coupler state
-    // if (testcase->set_coupler_state)
-    //  { tendencies.convert_dynamics_to_coupler_state(coupler, prognostic_vars, constant_vars, params.couple_wind, params.couple_wind_exact_inverse); }
-    // if (testcase->set_coupler_state)
-    //  { tendencies.convert_dynamics_to_coupler_state(coupler, prognostic_vars, constant_vars); }
+#ifdef PAM_STANDALONE
+    // convert dynamics state to Coupler state
+    if (testcase->set_coupler_state) {
+      tendencies.convert_dynamics_to_coupler_state(
+          coupler, prognostic_vars, constant_vars, params.couple_wind,
+          params.couple_wind_exact_inverse);
+    }
+#endif
 
     // Output the initial model state
 #ifndef PAMC_NOIO
@@ -208,12 +213,14 @@ public:
     for (auto &diag : diagnostics) {
       diag->compute(0, constant_vars, prognostic_vars);
     }
-    if (params.stat_freq >=0.)
-    {stats.compute(prognostic_vars, constant_vars, 0);
-    io.outputStats(stats);}
+    if (params.stat_freq >= 0.) {
+      stats.compute(prognostic_vars, constant_vars, 0);
+      io.outputStats(stats);
+    }
 
-    if (params.out_freq >=0.)
-    {io.outputInit(etime);}
+    if (params.out_freq >= 0.) {
+      io.outputInit(etime, primal_geometry, dual_geometry, params);
+    }
     debug_print("end initial io", par.masterproc);
 #endif
     prevstep = 1;
@@ -230,11 +237,9 @@ public:
     // serial_print("taking a dycore dtphys step", par.masterproc);
 
     // convert Coupler state to dynamics state
-    tendencies.convert_coupler_to_dynamics_state(coupler, prognostic_vars,
-                                                 auxiliary_vars,
-                                                 constant_vars,
-                                                 params.couple_wind,
-                                                 params.couple_wind_exact_inverse);
+    tendencies.convert_coupler_to_dynamics_state(
+        coupler, prognostic_vars, auxiliary_vars, constant_vars,
+        params.couple_wind, params.couple_wind_exact_inverse);
 
     // Time stepping loop
     debug_print("start time stepping loop", par.masterproc);
@@ -243,17 +248,20 @@ public:
 
       time_integrator->step_forward(params.dtcrm);
 
-#ifdef PAMC_CHECK_ANELASTIC_CONSTRAINT
-      real max_div = tendencies.compute_max_anelastic_constraint(
-          prognostic_vars, auxiliary_vars);
-      std::cout << "Anelastic constraint: " << max_div << std::endl;
+#if defined PAMC_AN || defined PAMC_MAN
+      if (params.check_anelastic_constraint) {
+        real max_div = tendencies.compute_max_anelastic_constraint(
+            prognostic_vars, auxiliary_vars);
+        serial_print("Anelastic constraint: " + std::to_string(max_div),
+                     par.masterproc);
+      }
 #endif
 
       yakl::fence();
 
       etime += params.dtcrm;
 #ifndef PAMC_NOIO
-      if ((nstep + prevstep) % params.Nout == 0) {
+      if (params.out_freq > 0 && etime / params.out_freq >= num_out + 1) {
         serial_print("dycore step " + std::to_string((nstep + prevstep)) +
                          " time " + std::to_string(etime),
                      par.masterproc);
@@ -261,11 +269,13 @@ public:
           diag->compute(etime, constant_vars, prognostic_vars);
         }
         io.output(etime);
-        if (params.stat_freq >= 0.) {io.outputStats(stats);}
+        if (params.stat_freq >= 0.) {
+          io.outputStats(stats);
+        }
         num_out++;
       }
 
-      if (params.stat_freq >= 0. && etime / params.stat_freq >= num_stat+1) {
+      if (params.stat_freq >= 0. && etime / params.stat_freq >= num_stat + 1) {
         stats.compute(prognostic_vars, constant_vars, etime / params.stat_freq);
         num_stat++;
       }
@@ -278,10 +288,9 @@ public:
     }
 
     // convert dynamics state to Coupler state
-    tendencies.convert_dynamics_to_coupler_state(coupler, prognostic_vars,
-                                                 constant_vars,
-                                                 params.couple_wind,
-                                                 params.couple_wind_exact_inverse);
+    tendencies.convert_dynamics_to_coupler_state(
+        coupler, prognostic_vars, constant_vars, params.couple_wind,
+        params.couple_wind_exact_inverse);
 
     // ADD COUPLER DYCORE FUNCTIONS HERE AS WELL
 

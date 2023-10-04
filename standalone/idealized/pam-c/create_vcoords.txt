@@ -1,2 +1,0 @@
-python3 ../../../utils/generate_vertical_levels.py --function=equal --nlev=100 --ztop=1000 --output=vcoords_equal_100_1000.nc
-

@@ -9,11 +9,6 @@ uint constexpr ntracers_dycore = 0;
 
 //////////////////////////////////////////////////////////////////////////////
 
-// for debugging anelastic
-// #if defined PAMC_AN || defined PAMC_MAN
-// #define PAMC_CHECK_ANELASTIC_CONSTRAINT
-// #endif
-
 // Number of Dimensions
 uint constexpr ndims = 1;
 } // namespace pamc
@@ -98,9 +93,9 @@ int constexpr PESTAT = 5;
 
 class ModelParameters : public Parameters {
 public:
-  std::string initdataStr;
-  std::string tracerdataStr[ntracers_dycore + GPU_PAD];
-  bool dycore_tracerpos[ntracers_dycore + GPU_PAD];
+  std::string init_data;
+  std::string init_dycore_tracer[ntracers_dycore + GPU_PAD];
+  bool dycore_tracer_pos[ntracers_dycore + GPU_PAD];
   bool acoustic_balance;
   bool uniform_vertical;
   real entropicvar_diffusion_coeff;
@@ -109,6 +104,7 @@ public:
   // the hydrostatic balance equation evaluated at the reference state in
   // the velocity tendency
   bool force_refstate_hydrostatic_balance;
+  bool check_anelastic_constraint;
 
   realConst2d zint;
 };

@@ -1,0 +1,41 @@
+idealized : true
+verbose : true
+
+# Simulation time in seconds
+sim_time : 1800
+
+# Number of cells to use
+crm_nx : 300
+crm_ny : 1
+crm_nz : 21
+
+# Vertical height coordinates file
+#vcoords  : vcoords_equal_100_20km.nc
+vcoords : uniform
+
+# Data to initialize
+init_data : gravitywave
+
+force_refstate_hydrostatic_balance : true
+
+# Time steps
+dt_crm_phys : 20
+crm_per_phys : 1
+ 
+# Output filename
+out_prefix : test
+dycore_out_prefix : test_dycore
+
+# Output frequency in actual time
+out_freq : 1800
+stat_freq : 20
+
+tstype : si
+
+# Number of ensembles
+nens : 1
+
+# Parallel decomposition
+inner_mpi : false
+nprocx : 1
+nprocy : 1

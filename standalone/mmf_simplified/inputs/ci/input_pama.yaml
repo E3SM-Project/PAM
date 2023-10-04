@@ -1,5 +1,5 @@
 ---
-simTime : 1800 # 2 GCM time steps
+sim_time : 1800 # 2 GCM time steps
 
 # Number of cells to use in the CRMs
 crm_nx   : 65

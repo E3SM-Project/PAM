@@ -32,7 +32,7 @@ jobs:
             thermo: constkappavirpottemp
     defaults:
       run:
-        working-directory: standalone/idealized/build
+        working-directory: standalone/mmf_simplified/build
     steps:
       - uses: actions/checkout@v3
         with:
@@ -44,5 +44,5 @@ jobs:
       - name: Configure and build
         run: |
           source ../../machines/ci/ubuntu-gcc.env &&
-          ./cmakescript_pamc.sh ${{matrix.model}} ${{matrix.hamiltonian}} ${{matrix.thermo}} &&
+          ./cmakescript_pamc.sh PAM_SGS=none PAM_MICRO=none PAMC_MODEL=${{matrix.model}} PAMC_HAMIL=${{matrix.hamiltonian}} PAMC_THERMO=${{matrix.thermo}} &&
           cmake --build .

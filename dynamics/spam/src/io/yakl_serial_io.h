@@ -249,7 +249,7 @@ void FileIO::outputInit(real time, const Geometry<Straight> &primal_geometry,
                         const ModelParameters &params) {
   nc.open(this->outputName, yakl::NETCDF_MODE_WRITE);
 
-  nc.write(params.dtphys, "dtphys");
+  nc.write(params.dt_crm_phys, "dt_crm_phys");
   nc.write(params.dtcrm, "dtcrm");
   nc.write(params.crm_per_phys, "crm_per_phys");
   // We could maybe store this as char array, but the proper solution
