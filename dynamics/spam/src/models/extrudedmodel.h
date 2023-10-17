@@ -349,7 +349,7 @@ struct TotalDensityFunctor {
 // *******   Tendencies   ***********//
 
 class ModelTendencies : public ExtrudedTendencies {
-  real entropicvar_diffusion_coeff;
+  real scalar_diffusion_coeff;
   real velocity_diffusion_coeff;
   bool force_refstate_hydrostatic_balance;
   bool check_anelastic_constraint;
@@ -365,7 +365,7 @@ public:
                   const Geometry<Twisted> &dual_geom) {
 
     ExtrudedTendencies::initialize(params, equations, primal_geom, dual_geom);
-    entropicvar_diffusion_coeff = params.entropicvar_diffusion_coeff;
+    scalar_diffusion_coeff = params.scalar_diffusion_coeff;
     velocity_diffusion_coeff = params.velocity_diffusion_coeff;
     force_refstate_hydrostatic_balance =
         params.force_refstate_hydrostatic_balance;
@@ -1269,13 +1269,11 @@ public:
     yakl::timer_stop("compute_recons");
   }
 
-  void add_entropicvar_diffusion(real entropicvar_coeff, real5d denstendvar,
-                                 const real5d densvar, const real5d dens0var,
-                                 const real5d Kvar, const real5d qxzfluxvar,
-                                 const real5d qxzvertfluxvar, const real5d Fvar,
-                                 const real5d FWvar,
-                                 FieldSet<nauxiliary> &auxiliary_vars) {
-    yakl::timer_start("add_entropicvar_diffusion");
+  void add_scalar_diffusion(real scalar_diffusion_coeff, real5d denstendvar,
+                            const real5d densvar, const real5d dens0var,
+                            const real5d Fdiffvar, const real5d FWdiffvar,
+                            FieldSet<nauxiliary> &auxiliary_vars) {
+    yakl::timer_start("add_scalar_diffusion");
 
     const auto &primal_topology = primal_geometry.topology;
 
@@ -1294,85 +1292,86 @@ public:
     YAKL_SCOPE(dual_geometry, this->dual_geometry);
 
     parallel_for(
-        "Entropicvar diffusion 1",
+        "Scalar diffusion init",
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          dens0var(0, k + pks, j + pjs, i + pis, n) =
-              varset.get_entropic_var(densvar, k, j, i, pks, pjs, pis, n);
+          const real total_dens =
+              varset.get_total_density(densvar, k, j, i, dks, djs, dis, n);
+
+          for (int d = 0; d < VS::ndensity_diffused; ++d) {
+            int dens_id = varset.diffused_dens_ids(d);
+            real dens0 = densvar(dens_id, k + pks, j + pjs, i + pis, n);
+            dens0 /= total_dens;
+            dens0var(d, k + pks, j + pjs, i + pis, n) = dens0;
+          }
         });
+    // Further optimization idea: no need to exchange everything here
     auxiliary_vars.exchange({DENS0VAR});
 
     parallel_for(
-        "Entropicvar diffusion 2",
-        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_D0<1>(qxzvertfluxvar, dens0var, pis, pjs, pks, i, j, k, n);
-        });
-    auxiliary_vars.exchange({QHZVERTFLUXVAR});
-
-    parallel_for(
-        "Entropicvar diffusion 3",
-        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_D0_vert<1>(qxzfluxvar, dens0var, pis, pjs, pks, i, j, k, n);
-        });
-    auxiliary_vars.exchange({QHZFLUXVAR});
-
-    parallel_for(
-        "Entropicvar diffusion 4",
+        "Scalar diffusion horz flux",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_H10<1, diffusion_diff_ord>(Fvar, qxzvertfluxvar,
-                                             primal_geometry, dual_geometry,
-                                             dis, djs, dks, i, j, k, n);
+          SArray<real, 2, VS::ndensity_diffused, ndims> dens_grad;
+          compute_D0<VS::ndensity_diffused>(dens_grad, dens0var, pis, pjs, pks,
+                                            i, j, k, n);
+
+          SArray<real, 1, ndims> H10_diag;
+          H10_diagonal(H10_diag, primal_geometry, dual_geometry, pis, pjs, pks,
+                       i, j, k, n);
+          for (int d = 0; d < ndims; ++d) {
+            for (int l = 0; l < VS::ndensity_diffused; ++l) {
+              Fdiffvar(ndims * l + d, k + dks, j + djs, i + dis, n) =
+                  dens_grad(l, d) * H10_diag(d);
+            }
+          }
         });
-    auxiliary_vars.exchange({FVAR});
+    auxiliary_vars.exchange({FDIFFVAR});
 
     parallel_for(
-        "Entropicvar diffusion 5",
+        "Scalar diffusion vert flux",
         SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_H01<1, diffusion_diff_ord>(FWvar, qxzfluxvar, primal_geometry,
-                                             dual_geometry, dis, djs, dks, i, j,
-                                             k + 1, 0);
+          SArray<real, 1, VS::ndensity_diffused> dens_vert_grad;
+          compute_D0_vert<VS::ndensity_diffused>(dens_vert_grad, dens0var, pis,
+                                                 pjs, pks, i, j, k, n);
+          const real H01_diag = H01_diagonal(primal_geometry, dual_geometry,
+                                             pis, pjs, pks, i, j, k + 1, n);
+          for (int d = 0; d < VS::ndensity_diffused; ++d) {
+            FWdiffvar(d, k + 1 + dks, j + djs, i + dis, n) =
+                dens_vert_grad(d) * H01_diag;
+          }
         });
-    auxiliary_vars.exchange({FWVAR});
-    auxiliary_vars.fields_arr[FWVAR].set_bnd(0.0);
+    auxiliary_vars.exchange({FWDIFFVAR});
+    auxiliary_vars.fields_arr[FWDIFFVAR].set_bnd(0.0);
 
     parallel_for(
-        "Entropicvar diffusion 6",
+        "Scalar diffusion tendency",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_Dnm1bar<1>(Kvar, Fvar, dis, djs, dks, i, j, k, n);
-          compute_Dnm1bar_vert<1, ADD_MODE::ADD>(Kvar, FWvar, dis, djs, dks, i,
-                                                 j, k, n);
-        });
-    auxiliary_vars.exchange({KVAR});
+          SArray<real, 1, VS::ndensity_diffused> hdiv;
+          compute_Dnm1bar<1>(hdiv, Fdiffvar, dis, djs, dks, i, j, k, n);
+          SArray<real, 1, VS::ndensity_diffused> vdiv;
+          compute_Dnm1bar_vert<1>(vdiv, FWdiffvar, dis, djs, dks, i, j, k, n);
 
-    parallel_for(
-        "Entropicvar diffusion 7",
-        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          SArray<real, 1, 1> sdiff;
-          compute_Hn1bar<1, diffusion_diff_ord, vert_diffusion_diff_ord>(
-              sdiff, Kvar, primal_geometry, dual_geometry, pis, pjs, pks, i, j,
-              k, n);
-          sdiff(0) *= entropicvar_coeff;
-
-          real rho =
+          const real rho =
               varset.get_total_density(densvar, k, j, i, pks, pjs, pis, n);
-          denstendvar(varset.dens_id_entr, k + pks, j + pjs, i + pis, n) +=
-              -rho * sdiff(0);
+          const real Hn1bar_diag = Hn1bar_diagonal(
+              primal_geometry, dual_geometry, pis, pjs, pks, i, j, k, n);
+
+          for (int d = 0; d < VS::ndensity_diffused; ++d) {
+            const real diff_tend = -scalar_diffusion_coeff * rho * Hn1bar_diag *
+                                   (hdiv(d) + vdiv(d));
+            int dens_id = varset.diffused_dens_ids(d);
+            denstendvar(dens_id, k + pks, j + pjs, i + pis, n) += diff_tend;
+          }
         });
 
-    yakl::timer_stop("add_entropicvar_diffusion");
+    yakl::timer_stop("add_scalar_diffusion");
   }
 
   void add_velocity_diffusion_2d(
@@ -2518,15 +2517,12 @@ public:
               : std::nullopt);
     }
 
-    if (entropicvar_diffusion_coeff > 0) {
-      add_entropicvar_diffusion(
-          entropicvar_diffusion_coeff, xtend.fields_arr[DENSVAR].data,
+    if (scalar_diffusion_coeff > 0) {
+      add_scalar_diffusion(
+          scalar_diffusion_coeff, xtend.fields_arr[DENSVAR].data,
           x.fields_arr[DENSVAR].data, auxiliary_vars.fields_arr[DENS0VAR].data,
-          auxiliary_vars.fields_arr[KVAR].data,
-          auxiliary_vars.fields_arr[QHZFLUXVAR].data,
-          auxiliary_vars.fields_arr[QHZVERTFLUXVAR].data,
-          auxiliary_vars.fields_arr[FVAR].data,
-          auxiliary_vars.fields_arr[FWVAR].data, auxiliary_vars);
+          auxiliary_vars.fields_arr[FDIFFVAR].data,
+          auxiliary_vars.fields_arr[FWDIFFVAR].data, auxiliary_vars);
     }
     if (velocity_diffusion_coeff > 0) {
       if (ndims == 1) {
@@ -3773,6 +3769,14 @@ void initialize_variables(
       2 * 1}; // coriolishzvertedgerecon lives on primal cells in 2d or primal
               // faces in 3d, associated with F/v
 
+  // diffusion variables
+  aux_desc_arr[FDIFFVAR] = {
+      "F", dtopo, ndims - 1, 1,
+      VS::ndensity_diffused}; // diffusive F = twisted (n-1,1)-form
+  aux_desc_arr[FWDIFFVAR] = {
+      "Fw", dtopo, ndims, 0,
+      VS::ndensity_diffused}; // diffusive Fw = twisted (n,0)-form
+
   // additonal Q and coriolis variables for 3d
   if (ndims > 1) {
     aux_desc_arr[QXYVAR] = {"QXY", dtopo, 0, ndims - 1,
@@ -3815,8 +3819,7 @@ void read_model_params_file(std::string inFile, ModelParameters &params,
   params.acoustic_balance = config["balance_initial_density"].as<bool>(false);
   params.uniform_vertical = (config["vcoords"].as<std::string>() == "uniform");
   // Read diffusion coefficients
-  params.entropicvar_diffusion_coeff =
-      config["entropicvar_diffusion_coeff"].as<real>(0);
+  params.scalar_diffusion_coeff = config["scalar_diffusion_coeff"].as<real>(0);
   params.velocity_diffusion_coeff =
       config["velocity_diffusion_coeff"].as<real>(0);
   // Read the data initialization options
@@ -3854,7 +3857,7 @@ void read_model_params_coupler(ModelParameters &params, Parallel &par,
 
   params.acoustic_balance = false;
   params.uniform_vertical = false;
-  params.entropicvar_diffusion_coeff = 0;
+  params.scalar_diffusion_coeff = 0;
   params.velocity_diffusion_coeff = 0;
   params.init_data = "coupler";
   params.force_refstate_hydrostatic_balance = true;
@@ -3881,8 +3884,8 @@ void check_and_print_model_parameters(const ModelParameters &params,
     serial_print("acoustically balanced: " +
                      std::to_string(params.acoustic_balance),
                  par.masterproc);
-    serial_print("entropicvar_diffusion_coeff: " +
-                     std::to_string(params.entropicvar_diffusion_coeff),
+    serial_print("scalar_diffusion_coeff: " +
+                     std::to_string(params.scalar_diffusion_coeff),
                  par.masterproc);
     serial_print("velocity_diffusion_coeff: " +
                      std::to_string(params.velocity_diffusion_coeff),
