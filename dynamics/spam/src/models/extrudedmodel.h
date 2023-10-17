@@ -350,6 +350,7 @@ struct TotalDensityFunctor {
 
 class ModelTendencies : public ExtrudedTendencies {
   real scalar_diffusion_coeff;
+  real scalar_diffusion_subtract_refstate;
   real velocity_diffusion_coeff;
   bool force_refstate_hydrostatic_balance;
   bool check_anelastic_constraint;
@@ -366,6 +367,8 @@ public:
 
     ExtrudedTendencies::initialize(params, equations, primal_geom, dual_geom);
     scalar_diffusion_coeff = params.scalar_diffusion_coeff;
+    scalar_diffusion_subtract_refstate =
+        params.scalar_diffusion_subtract_refstate;
     velocity_diffusion_coeff = params.velocity_diffusion_coeff;
     force_refstate_hydrostatic_balance =
         params.force_refstate_hydrostatic_balance;
@@ -1275,6 +1278,8 @@ public:
                             FieldSet<nauxiliary> &auxiliary_vars) {
     yakl::timer_start("add_scalar_diffusion");
 
+    YAKL_SCOPE(subtract_refstate, this->scalar_diffusion_subtract_refstate);
+
     const auto &primal_topology = primal_geometry.topology;
 
     int pis = primal_topology.is;
@@ -1288,6 +1293,7 @@ public:
     int dks = dual_topology.ks;
 
     YAKL_SCOPE(varset, this->equations->varset);
+    YAKL_SCOPE(refdens, this->equations->reference_state.dens.data);
     YAKL_SCOPE(primal_geometry, this->primal_geometry);
     YAKL_SCOPE(dual_geometry, this->dual_geometry);
 
@@ -1302,6 +1308,9 @@ public:
           for (int d = 0; d < VS::ndensity_diffused; ++d) {
             int dens_id = varset.diffused_dens_ids(d);
             real dens0 = densvar(dens_id, k + pks, j + pjs, i + pis, n);
+            if (subtract_refstate) {
+              dens0 -= refdens(d, k + dks, n);
+            }
             dens0 /= total_dens;
             dens0var(d, k + pks, j + pjs, i + pis, n) = dens0;
           }
@@ -3820,6 +3829,8 @@ void read_model_params_file(std::string inFile, ModelParameters &params,
   params.uniform_vertical = (config["vcoords"].as<std::string>() == "uniform");
   // Read diffusion coefficients
   params.scalar_diffusion_coeff = config["scalar_diffusion_coeff"].as<real>(0);
+  params.scalar_diffusion_subtract_refstate =
+      config["scalar_diffusion_subtract_refstate"].as<bool>(true);
   params.velocity_diffusion_coeff =
       config["velocity_diffusion_coeff"].as<real>(0);
   // Read the data initialization options
@@ -3858,6 +3869,7 @@ void read_model_params_coupler(ModelParameters &params, Parallel &par,
   params.acoustic_balance = false;
   params.uniform_vertical = false;
   params.scalar_diffusion_coeff = 0;
+  params.scalar_diffusion_subtract_refstate = true;
   params.velocity_diffusion_coeff = 0;
   params.init_data = "coupler";
   params.force_refstate_hydrostatic_balance = true;
@@ -3886,6 +3898,9 @@ void check_and_print_model_parameters(const ModelParameters &params,
                  par.masterproc);
     serial_print("scalar_diffusion_coeff: " +
                      std::to_string(params.scalar_diffusion_coeff),
+                 par.masterproc);
+    serial_print("scalar_diffusion_subtract_refstate: " +
+                     std::to_string(params.scalar_diffusion_subtract_refstate),
                  par.masterproc);
     serial_print("velocity_diffusion_coeff: " +
                      std::to_string(params.velocity_diffusion_coeff),

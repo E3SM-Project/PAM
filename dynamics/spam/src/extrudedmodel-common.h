@@ -102,6 +102,7 @@ public:
   bool acoustic_balance;
   bool uniform_vertical;
   real scalar_diffusion_coeff;
+  real scalar_diffusion_subtract_refstate;
   real velocity_diffusion_coeff;
   // forces reference state to be in perfect hydrostatic balance by subtracting
   // the hydrostatic balance equation evaluated at the reference state in
