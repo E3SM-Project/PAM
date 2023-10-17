@@ -303,12 +303,12 @@ struct AnelasticPressureSolver {
           }
           tri_u(k, j, i, n) = 0;
 
-          const real h_k =
-              rho_di(0, k + dks, n) * H01_coeff(primal_geometry, dual_geometry,
-                                                pis, pjs, pks, i, j, k, n);
+          const real h_k = rho_di(0, k + dks, n) *
+                           H01_diagonal(primal_geometry, dual_geometry, pis,
+                                        pjs, pks, i, j, k, n);
           const real h_kp1 = rho_di(0, k + dks + 1, n) *
-                             H01_coeff(primal_geometry, dual_geometry, pis, pjs,
-                                       pks, i, j, k + 1, n);
+                             H01_diagonal(primal_geometry, dual_geometry, pis,
+                                          pjs, pks, i, j, k + 1, n);
 
           tri_u(k, j, i, n) += h_kp1;
           tri_l(k, j, i, n) += h_k;
@@ -2966,14 +2966,14 @@ public:
               n_cells_x, n_cells_y, dual_topology.ni);
 
           real gamma_fac_kp2 = rho_di(0, k + dks + 2, n) *
-                               H01_coeff(primal_geometry, dual_geometry, pis,
-                                         pjs, pks, i, j, k + 2, n);
+                               H01_diagonal(primal_geometry, dual_geometry, pis,
+                                            pjs, pks, i, j, k + 2, n);
           real gamma_fac_kp1 = rho_di(0, k + dks + 1, n) *
-                               H01_coeff(primal_geometry, dual_geometry, pis,
-                                         pjs, pks, i, j, k + 1, n);
-          real gamma_fac_k =
-              rho_di(0, k + dks, n) * H01_coeff(primal_geometry, dual_geometry,
-                                                pis, pjs, pks, i, j, k, n);
+                               H01_diagonal(primal_geometry, dual_geometry, pis,
+                                            pjs, pks, i, j, k + 1, n);
+          real gamma_fac_k = rho_di(0, k + dks, n) *
+                             H01_diagonal(primal_geometry, dual_geometry, pis,
+                                          pjs, pks, i, j, k, n);
 
           tri_u(k, j, i, n) = 0;
           tri_d(k, j, i, n) = 1;
@@ -3011,14 +3011,14 @@ public:
               n_cells_x, n_cells_y, dual_topology.ni);
 
           real gamma_fac_kp2 = rho_di(0, k + dks + 2, n) *
-                               H01_coeff(primal_geometry, dual_geometry, pis,
-                                         pjs, pks, i, j, k + 2, n);
+                               H01_diagonal(primal_geometry, dual_geometry, pis,
+                                            pjs, pks, i, j, k + 2, n);
           real gamma_fac_kp1 = rho_di(0, k + dks + 1, n) *
-                               H01_coeff(primal_geometry, dual_geometry, pis,
-                                         pjs, pks, i, j, k + 1, n);
-          real gamma_fac_k =
-              rho_di(0, k + dks, n) * H01_coeff(primal_geometry, dual_geometry,
-                                                pis, pjs, pks, i, j, k, n);
+                               H01_diagonal(primal_geometry, dual_geometry, pis,
+                                            pjs, pks, i, j, k + 1, n);
+          real gamma_fac_k = rho_di(0, k + dks, n) *
+                             H01_diagonal(primal_geometry, dual_geometry, pis,
+                                          pjs, pks, i, j, k, n);
 
           SArray<real, 1, ndims> fH1_kp1_a;
           SArray<real, 1, ndims> fH1_k_a;
@@ -3291,11 +3291,11 @@ public:
           }
 
           real gamma_fac_kp1 = rho_di(0, k + dks + 1, n) *
-                               H01_coeff(primal_geometry, dual_geometry, pis,
-                                         pjs, pks, i, j, k + 1, n);
-          real gamma_fac_k =
-              rho_di(0, k + dks, n) * H01_coeff(primal_geometry, dual_geometry,
-                                                pis, pjs, pks, i, j, k, n);
+                               H01_diagonal(primal_geometry, dual_geometry, pis,
+                                            pjs, pks, i, j, k + 1, n);
+          real gamma_fac_k = rho_di(0, k + dks, n) *
+                             H01_diagonal(primal_geometry, dual_geometry, pis,
+                                          pjs, pks, i, j, k, n);
 
           complex_vrhs(k, j, i, n) *= complex_vcoeff(0, k, j, i, n);
           for (int d1 = 0; d1 < VS::ndensity_dycore; ++d1) {

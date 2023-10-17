@@ -6,6 +6,13 @@
 
 namespace pamc {
 
+real YAKL_INLINE H00_diagonal(const Geometry<Straight> &pgeom,
+                              const Geometry<Twisted> &dgeom, int is, int js,
+                              int ks, int i, int j, int k, int n) {
+  return dgeom.get_area_n1entity(k + ks, j + js, i + is, n) /
+         pgeom.get_area_00entity(k + ks, j + js, i + is, n);
+}
+
 template <uint ndofs, uint hord, uint vord, uint hoff = hord / 2 - 1,
           uint voff = vord / 2 - 1>
 void YAKL_INLINE compute_H00(SArray<real, 1, ndofs> &x0, const real5d &var,
@@ -13,8 +20,7 @@ void YAKL_INLINE compute_H00(SArray<real, 1, ndofs> &x0, const real5d &var,
                              const Geometry<Twisted> &dgeom, int is, int js,
                              int ks, int i, int j, int k, int n) {
   SArray<real, 3, ndofs, ndims, hord - 1> x;
-  const real H00geom = dgeom.get_area_n1entity(k + ks, j + js, i + is, n) /
-                       pgeom.get_area_00entity(k + ks, j + js, i + is, n);
+  const real H00geom = H00_diagonal(pgeom, dgeom, is, js, ks, i, j, k, n);
   for (int p = 0; p < hord - 1; p++) {
     for (int l = 0; l < ndofs; l++) {
       for (int d = 0; d < ndims; d++) {
@@ -51,6 +57,13 @@ void YAKL_INLINE compute_H00(const real5d &var0, const real5d &var,
   }
 }
 
+real YAKL_INLINE H00bar_diagonal(const Geometry<Straight> &pgeom,
+                                 const Geometry<Twisted> &dgeom, int is, int js,
+                                 int ks, int i, int j, int k, int n) {
+  return pgeom.get_area_n1entity(k + ks, j + js, i + is, n) /
+         dgeom.get_area_00entity(k + ks, j + js, i + is, n);
+}
+
 template <uint ndofs, uint hord, uint vord, uint hoff = hord / 2 - 1,
           uint voff = vord / 2 - 1>
 void YAKL_INLINE compute_H00bar(SArray<real, 1, ndofs> &x0, const real5d &var,
@@ -58,8 +71,7 @@ void YAKL_INLINE compute_H00bar(SArray<real, 1, ndofs> &x0, const real5d &var,
                                 const Geometry<Twisted> &dgeom, int is, int js,
                                 int ks, int i, int j, int k, int n) {
   SArray<real, 3, ndofs, ndims, hord - 1> x;
-  const real H00bargeom = pgeom.get_area_n1entity(k + ks, j + js, i + is, n) /
-                          dgeom.get_area_00entity(k + ks, j + js, i + is, n);
+  const real H00bargeom = H00bar_diagonal(pgeom, dgeom, is, js, ks, i, j, k, n);
   for (int p = 0; p < hord - 1; p++) {
     for (int l = 0; l < ndofs; l++) {
       for (int d = 0; d < ndims; d++) {
@@ -96,6 +108,16 @@ void YAKL_INLINE compute_H00bar(const real5d &var0, const real5d &var,
   }
 }
 
+void YAKL_INLINE H10_diagonal(SArray<real, 1, ndims> &H10diag,
+                              const Geometry<Straight> &pgeom,
+                              const Geometry<Twisted> &dgeom, int is, int js,
+                              int ks, int i, int j, int k, int n) {
+  for (int d = 0; d < ndims; d++) {
+    H10diag(d) = dgeom.get_area_nm11entity(d, k + ks, j + js, i + is, n) /
+                 pgeom.get_area_10entity(d, k + ks, j + js, i + is, n);
+  }
+}
+
 // BROKEN FOR 2D+1D EXT
 // MAINLY IN THE AREA CALCS...
 template <uint ndofs, uint ord, uint off = ord / 2 - 1>
@@ -105,12 +127,9 @@ void YAKL_INLINE compute_H10(SArray<real, 2, ndofs, ndims> &u,
                              const Geometry<Twisted> &dgeom, int is, int js,
                              int ks, int i, int j, int k, int n) {
   SArray<real, 3, ndofs, ndims, ord - 1> v;
-  SArray<real, 1, ndims> H10geom;
 
-  for (int d = 0; d < ndims; d++) {
-    H10geom(d) = dgeom.get_area_nm11entity(d, k + ks, j + js, i + is, n) /
-                 pgeom.get_area_10entity(d, k + ks, j + js, i + is, n);
-  }
+  SArray<real, 1, ndims> H10geom;
+  H10_diagonal(H10geom, pgeom, dgeom, is, js, ks, i, j, k, n);
 
   for (int l = 0; l < ndofs; l++) {
     for (int p = 0; p < ord - 1; p++) {
@@ -157,11 +176,9 @@ void YAKL_INLINE fourier_H10(SArray<real, 1, ndims> &u,
                              int nz) {
 
   SArray<real, 2, ndims, off + GPU_PAD> shift;
+
   SArray<real, 1, ndims> H10geom;
-  for (int d = 0; d < ndims; d++) {
-    H10geom(d) = dgeom.get_area_nm11entity(d, k + ks, j + js, i + is, n) /
-                 pgeom.get_area_10entity(d, k + ks, j + js, i + is, n);
-  }
+  H10_diagonal(H10geom, pgeom, dgeom, is, js, ks, i, j, k, n);
 
   for (int p = 0; p < off; p++) {
     for (int d = 0; d < ndims; d++) {
@@ -177,25 +194,23 @@ void YAKL_INLINE fourier_H10(SArray<real, 1, ndims> &u,
 }
 
 // Note the indexing here, this is key
+real YAKL_INLINE H01_diagonal(const Geometry<Straight> &pgeom,
+                              const Geometry<Twisted> &dgeom, int is, int js,
+                              int ks, int i, int j, int k, int n) {
+  // THIS IS 2ND ORDER AT BEST...
+  return dgeom.get_area_n0entity(k + ks, j + js, i + is, n) /
+         pgeom.get_area_01entity(k + ks - 1, j + js, i + is, n);
+}
+
 template <uint ndofs>
 void YAKL_INLINE compute_H01(SArray<real, 1, ndofs> &uw, const real5d &wvar,
                              const Geometry<Straight> &pgeom,
                              const Geometry<Twisted> &dgeom, int is, int js,
                              int ks, int i, int j, int k, int n) {
-  // THIS IS 2ND ORDER AT BEST...
   for (int l = 0; l < ndofs; ++l) {
-    uw(l) = wvar(l, k + ks - 1, j + js, i + is, n) *
-            dgeom.get_area_n0entity(k + ks, j + js, i + is, n) /
-            pgeom.get_area_01entity(k + ks - 1, j + js, i + is, n);
+    const real H01_geom = H01_diagonal(pgeom, dgeom, is, js, ks, i, j, k, n);
+    uw(l) = wvar(l, k + ks - 1, j + js, i + is, n) * H01_geom;
   }
-}
-
-real YAKL_INLINE H01_coeff(const Geometry<Straight> &pgeom,
-                           const Geometry<Twisted> &dgeom, int is, int js,
-                           int ks, int i, int j, int k, int n) {
-  // THIS IS 2ND ORDER AT BEST...
-  return dgeom.get_area_n0entity(k + ks, j + js, i + is, n) /
-         pgeom.get_area_01entity(k + ks - 1, j + js, i + is, n);
 }
 
 // Indexing issues since we go from p01 to d10, and d10 has an "extended
@@ -239,18 +254,25 @@ void YAKL_INLINE compute_H01(SArray<real, 1, 1> &uwvar, const real5d &wvar,
   }
 }
 
+void YAKL_INLINE Hnm11_diagonal(SArray<real, 1, ndims> &Hnm11diag,
+                                const Geometry<Straight> &pgeom,
+                                const Geometry<Twisted> &dgeom, int is, int js,
+                                int ks, int i, int j, int k, int n) {
+  for (int d = 0; d < ndims; d++) {
+    Hnm11diag(d) = dgeom.get_area_10entity(d, k + ks, j + js, i + is, n) /
+                   pgeom.get_area_nm11entity(d, k - 1 + ks, j + js, i + is, n);
+  }
+}
+
 template <uint ndofs, uint ord, uint off = ord / 2 - 1>
 void YAKL_INLINE compute_Hnm11(SArray<real, 1, ndims> &u, const real5d &vvar,
                                const Geometry<Straight> &pgeom,
                                const Geometry<Twisted> &dgeom, int is, int js,
                                int ks, int i, int j, int k, int n) {
   SArray<real, 2, ndims, ord - 1> v;
-  SArray<real, 1, ndims> Hnm11geom;
 
-  for (int d = 0; d < ndims; d++) {
-    Hnm11geom(d) = dgeom.get_area_10entity(d, k + ks, j + js, i + is, n) /
-                   pgeom.get_area_nm11entity(d, k - 1 + ks, j + js, i + is, n);
-  }
+  SArray<real, 1, ndims> Hnm11geom;
+  Hnm11_diagonal(Hnm11geom, pgeom, dgeom, is, js, ks, i, j, k, n);
 
   for (int p = 0; p < ord - 1; p++) {
     for (int d = 0; d < ndims; d++) {
@@ -283,13 +305,19 @@ void YAKL_INLINE compute_Hnm11(const real5d &uvar, const real5d &vvar,
   }
 }
 
+real YAKL_INLINE Hn0_diagonal(const Geometry<Straight> &pgeom,
+                              const Geometry<Twisted> &dgeom, int is, int js,
+                              int ks, int i, int j, int k, int n) {
+  return -dgeom.get_area_01entity(k + ks, j + js, i + is, n) /
+         pgeom.get_area_n0entity(k + ks, j + js, i + is, n);
+}
+
 real YAKL_INLINE compute_Hn0(const real5d &wvar,
                              const Geometry<Straight> &pgeom,
                              const Geometry<Twisted> &dgeom, int is, int js,
                              int ks, int i, int j, int k, int n) {
-  return -wvar(0, k + ks, j + js, i + is, n) *
-         dgeom.get_area_01entity(k + ks, j + js, i + is, n) /
-         pgeom.get_area_n0entity(k + ks, j + js, i + is, n);
+  const real Hn0_geom = Hn0_diagonal(pgeom, dgeom, is, js, ks, i, j, k, n);
+  return wvar(0, k + ks, j + js, i + is, n) * Hn0_geom;
 }
 
 template <uint ndofs, uint ord, ADD_MODE addmode = ADD_MODE::REPLACE,
@@ -322,6 +350,16 @@ void YAKL_INLINE compute_Hn0(SArray<real, 1, 1> &uwvar, const real5d &wvar,
   }
 }
 
+void YAKL_INLINE Hnm11bar_diagonal(SArray<real, 1, ndims> &Hnm11bardiag,
+                                   const Geometry<Straight> &pgeom,
+                                   const Geometry<Twisted> &dgeom, int is,
+                                   int js, int ks, int i, int j, int k, int n) {
+  for (int d = 0; d < ndims; d++) {
+    Hnm11bardiag(d) = pgeom.get_area_10entity(d, k + ks, j + js, i + is, n) /
+                      dgeom.get_area_nm11entity(d, k + ks, j + js, i + is, n);
+  }
+}
+
 template <uint ndofs, uint ord, uint off = ord / 2 - 1>
 void YAKL_INLINE compute_Hnm11bar(SArray<real, 1, ndims> &u, const real5d &vvar,
                                   const Geometry<Straight> &pgeom,
@@ -330,10 +368,7 @@ void YAKL_INLINE compute_Hnm11bar(SArray<real, 1, ndims> &u, const real5d &vvar,
   SArray<real, 2, ndims, ord - 1> v;
   SArray<real, 1, ndims> Hnm11bargeom;
 
-  for (int d = 0; d < ndims; d++) {
-    Hnm11bargeom(d) = pgeom.get_area_10entity(d, k + ks, j + js, i + is, n) /
-                      dgeom.get_area_nm11entity(d, k + ks, j + js, i + is, n);
-  }
+  Hnm11bar_diagonal(Hnm11bargeom, pgeom, dgeom, is, js, ks, i, j, k, n);
 
   for (int p = 0; p < ord - 1; p++) {
     for (int d = 0; d < ndims; d++) {
@@ -367,13 +402,19 @@ void YAKL_INLINE compute_Hnm11bar(const real5d &uvar, const real5d &vvar,
   }
 }
 
+real YAKL_INLINE Hn0bar_diagonal(const Geometry<Straight> &pgeom,
+                                 const Geometry<Twisted> &dgeom, int is, int js,
+                                 int ks, int i, int j, int k, int n) {
+  return -pgeom.get_area_01entity(k + ks, j + js, i + is, n) /
+         dgeom.get_area_n0entity(k + ks + 1, j + js, i + is, n);
+}
+
 real YAKL_INLINE compute_Hn0bar(const real5d &wvar,
                                 const Geometry<Straight> &pgeom,
                                 const Geometry<Twisted> &dgeom, int is, int js,
                                 int ks, int i, int j, int k, int n) {
-  return -wvar(0, k + ks + 1, j + js, i + is, n) *
-         pgeom.get_area_01entity(k + ks, j + js, i + is, n) /
-         dgeom.get_area_n0entity(k + ks + 1, j + js, i + is, n);
+  const real Hn0bargeom = Hn0bar_diagonal(pgeom, dgeom, is, js, ks, i, j, k, n);
+  return wvar(0, k + ks + 1, j + js, i + is, n) * Hn0bargeom;
 }
 
 template <uint ndofs, uint ord, ADD_MODE addmode = ADD_MODE::REPLACE,
@@ -406,6 +447,13 @@ void YAKL_INLINE compute_Hn0bar(SArray<real, 1, 1> &uwvar, const real5d &wvar,
   }
 }
 
+real YAKL_INLINE Hn1_diagonal(const Geometry<Straight> &pgeom,
+                              const Geometry<Twisted> &dgeom, int is, int js,
+                              int ks, int i, int j, int k, int n) {
+  return dgeom.get_area_00entity(k + ks, j + js, i + is, n) /
+         pgeom.get_area_n1entity(k + ks - 1, j + js, i + is, n);
+}
+
 // BROKEN FOR 2D+1D EXT
 // JUST IN THE AREA CALCS...
 template <uint ndofs, uint hord, uint vord, uint hoff = hord / 2 - 1,
@@ -415,8 +463,7 @@ void YAKL_INLINE compute_Hn1(SArray<real, 1, ndofs> &x0, const real5d &var,
                              const Geometry<Twisted> &dgeom, int is, int js,
                              int ks, int i, int j, int k, int n) {
   SArray<real, 3, ndofs, ndims, hord - 1> x;
-  const real Hn1geom = dgeom.get_area_00entity(k + ks, j + js, i + is, n) /
-                       pgeom.get_area_n1entity(k + ks - 1, j + js, i + is, n);
+  const real Hn1geom = Hn1_diagonal(pgeom, dgeom, is, js, ks, i, j, k, n);
   for (int p = 0; p < hord - 1; p++) {
     for (int l = 0; l < ndofs; l++) {
       for (int d = 0; d < ndims; d++) {
@@ -461,14 +508,19 @@ void YAKL_INLINE compute_Hn1(const real5d &var0, const real5d &var,
     }
   }
 }
+real YAKL_INLINE Hn1bar_diagonal(const Geometry<Straight> &pgeom,
+                                 const Geometry<Twisted> &dgeom, int is, int js,
+                                 int ks, int i, int j, int k, int n) {
+  return pgeom.get_area_00entity(k + ks, j + js, i + is, n) /
+         dgeom.get_area_n1entity(k + ks, j + js, i + is, n);
+}
 
 template <uint ndofs, uint vord, uint voff = vord / 2 - 1>
 void YAKL_INLINE compute_Hn1bar(SArray<real, 1, ndofs> &x0, const real3d &var,
                                 const Geometry<Straight> &pgeom,
                                 const Geometry<Twisted> &dgeom, int ks, int k,
                                 int n) {
-  real Hn1bargeom = pgeom.get_area_00entity(k + ks, 0, 0, n) /
-                    dgeom.get_area_n1entity(k + ks, 0, 0, n);
+  const real Hn1bargeom = Hn1bar_diagonal(pgeom, dgeom, 0, 0, ks, 0, 0, k, n);
   for (int l = 0; l < ndofs; l++) {
     x0(l) = var(l, k + ks, n) * Hn1bargeom;
   }
@@ -480,8 +532,7 @@ void YAKL_INLINE compute_Hn1bar(F f, SArray<real, 1, ndofs> &x0,
                                 const Geometry<Straight> &pgeom,
                                 const Geometry<Twisted> &dgeom, int ks, int k,
                                 int n) {
-  real Hn1bargeom = pgeom.get_area_00entity(k + ks, 0, 0, n) /
-                    dgeom.get_area_n1entity(k + ks, 0, 0, n);
+  const real Hn1bargeom = Hn1bar_diagonal(pgeom, dgeom, 0, 0, ks, 0, 0, k, n);
   for (int l = 0; l < ndofs; l++) {
     x0(l) = f(var, l, k + ks, n) * Hn1bargeom;
   }
@@ -497,8 +548,7 @@ void YAKL_INLINE compute_Hn1bar(F f, SArray<real, 1, ndofs> &x0,
                                 const Geometry<Twisted> &dgeom, int is, int js,
                                 int ks, int i, int j, int k, int n) {
   SArray<real, 3, ndofs, ndims, hord - 1> x;
-  const real Hn1bargeom = pgeom.get_area_00entity(k + ks, j + js, i + is, n) /
-                          dgeom.get_area_n1entity(k + ks, j + js, i + is, n);
+  const real Hn1bargeom = Hn1bar_diagonal(pgeom, dgeom, is, js, ks, i, j, k, n);
   for (int p = 0; p < hord - 1; p++) {
     for (int l = 0; l < ndofs; l++) {
       for (int d = 0; d < ndims; d++) {
@@ -575,9 +625,7 @@ real YAKL_INLINE fourier_Hn1bar(const Geometry<Straight> &pgeom,
   SArray<real, 2, ndims, off + GPU_PAD> shift;
 
   // assuming these are constant
-  const real Hn1bargeom =
-      pgeom.get_area_00entity(k + ks, j + js, i + is + 0 - off, n) /
-      dgeom.get_area_n1entity(k + ks, j + js, i + is + 0 - off, n);
+  const real Hn1bargeom = Hn1bar_diagonal(pgeom, dgeom, is, js, ks, i, j, k, n);
 
   for (int p = 0; p < off; p++) {
     for (int d = 0; d < ndims; d++) {
