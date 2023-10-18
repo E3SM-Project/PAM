@@ -259,7 +259,7 @@ void YAKL_INLINE Hnm11_diagonal(SArray<real, 1, ndims> &Hnm11diag,
                                 const Geometry<Twisted> &dgeom, int is, int js,
                                 int ks, int i, int j, int k, int n) {
   for (int d = 0; d < ndims; d++) {
-    Hnm11diag(d) = dgeom.get_area_10entity(d, k + ks, j + js, i + is, n) /
+    Hnm11diag(d) = -dgeom.get_area_10entity(d, k + ks, j + js, i + is, n) /
                    pgeom.get_area_nm11entity(d, k - 1 + ks, j + js, i + is, n);
   }
 }
@@ -273,6 +273,9 @@ void YAKL_INLINE compute_Hnm11(SArray<real, 1, ndims> &u, const real5d &vvar,
 
   SArray<real, 1, ndims> Hnm11geom;
   Hnm11_diagonal(Hnm11geom, pgeom, dgeom, is, js, ks, i, j, k, n);
+  for (int d = 0; d < ndims; d++) {
+    Hnm11geom(d) *= -1;
+  }
 
   for (int p = 0; p < ord - 1; p++) {
     for (int d = 0; d < ndims; d++) {
@@ -355,7 +358,7 @@ void YAKL_INLINE Hnm11bar_diagonal(SArray<real, 1, ndims> &Hnm11bardiag,
                                    const Geometry<Twisted> &dgeom, int is,
                                    int js, int ks, int i, int j, int k, int n) {
   for (int d = 0; d < ndims; d++) {
-    Hnm11bardiag(d) = pgeom.get_area_10entity(d, k + ks, j + js, i + is, n) /
+    Hnm11bardiag(d) = -pgeom.get_area_10entity(d, k + ks, j + js, i + is, n) /
                       dgeom.get_area_nm11entity(d, k + ks, j + js, i + is, n);
   }
 }
@@ -369,6 +372,9 @@ void YAKL_INLINE compute_Hnm11bar(SArray<real, 1, ndims> &u, const real5d &vvar,
   SArray<real, 1, ndims> Hnm11bargeom;
 
   Hnm11bar_diagonal(Hnm11bargeom, pgeom, dgeom, is, js, ks, i, j, k, n);
+  for (int d = 0; d < ndims; d++) {
+    Hnm11bargeom(d) *= -1;
+  }
 
   for (int p = 0; p < ord - 1; p++) {
     for (int d = 0; d < ndims; d++) {
