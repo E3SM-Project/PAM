@@ -1405,80 +1405,24 @@ public:
     YAKL_SCOPE(primal_geometry, this->primal_geometry);
     YAKL_SCOPE(dual_geometry, this->dual_geometry);
 
-    // *d*d
-
+    // *d
     parallel_for(
         "Velocity diffusion 1",
-        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_D1_ext<1>(qhzedgereconvar, Vvar, Wvar, pis, pjs, pks, i, j, k,
-                            n);
-        });
-    auxiliary_vars.exchange({QHZEDGERECONVAR});
-
-    parallel_for(
-        "Velocity diffusion 2",
         SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_Hn1<1, diffusion_diff_ord, vert_diffusion_diff_ord>(
-              qhzvar, qhzedgereconvar, primal_geometry, dual_geometry, dis, djs,
-              dks, i, j, k + 1, n);
+          SArray<real, 2, 1, ndims> Dv;
+          compute_D1_ext<1>(Dv, Vvar, Wvar, pis, pjs, pks, i, j, k, n);
+          const real Hn1_diag = Hn1_diagonal(primal_geometry, dual_geometry,
+                                             pis, pjs, pks, i, j, k + 1, n);
+          qhzvar(0, k + 1 + dks, j + djs, i + dis, n) = Hn1_diag * Dv(0, 0);
         });
     auxiliary_vars.exchange({QHZVAR});
     auxiliary_vars.fields_arr[QHZVAR].set_bnd(0.0);
 
+    // *d*
     parallel_for(
-        "Velocity diffusion 3",
-        SimpleBounds<4>(dual_topology.ni, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_D0bar_ext<1>(FWvar, qhzvar, dis, djs, dks, i, j, k, n);
-        });
-    auxiliary_vars.exchange({FWVAR});
-
-    parallel_for(
-        "Velocity diffusion 4",
-        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_D0bar_vert<1>(Fvar, qhzvar, dis, djs, dks, i, j, k, n);
-        });
-    auxiliary_vars.exchange({FVAR});
-
-    parallel_for(
-        "Velocity diffusion 5",
-        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          SArray<real, 1, ndims> vdiff;
-          compute_Hnm11bar<1, diffusion_diff_ord>(vdiff, Fvar, primal_geometry,
-                                                  dual_geometry, pis, pjs, pks,
-                                                  i, j, k, n);
-          for (int d = 0; d < ndims; ++d) {
-            Vtendvar(d, k + pks, j + pjs, i + pis, n) -=
-                velocity_coeff * vdiff(d);
-          }
-        });
-
-    parallel_for(
-        "Velocity diffusion 6",
-        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          SArray<real, 1, 1> wdiff;
-          compute_Hn0bar<1, vert_diffusion_diff_ord>(
-              wdiff, FWvar, primal_geometry, dual_geometry, pis, pjs, pks, i, j,
-              k, n);
-          Wtendvar(0, k + pks, j + pjs, i + pis, n) -=
-              velocity_coeff * wdiff(0);
-        });
-
-    // d*d*
-
-    parallel_for(
-        "Velocity diffusion 7",
+        "Velocity diffusion 2",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
@@ -1489,7 +1433,7 @@ public:
     auxiliary_vars.exchange({FVAR});
 
     parallel_for(
-        "Velocity diffusion 8",
+        "Velocity diffusion 3",
         SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
@@ -1501,32 +1445,36 @@ public:
     auxiliary_vars.fields_arr[FWVAR].set_bnd(0.0);
 
     parallel_for(
-        "Velocity diffusion 9",
-        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_Dnm1bar<1>(Kvar, Fvar, dis, djs, dks, i, j, k, n);
-          compute_Dnm1bar_vert<1, ADD_MODE::ADD>(Kvar, FWvar, dis, djs, dks, i,
-                                                 j, k, n);
-        });
-    auxiliary_vars.exchange({KVAR});
-
-    parallel_for(
-        "Velocity diffusion 10",
-        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+        "Velocity diffusion 4",
+        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_Hn1bar<1, diffusion_diff_ord, vert_diffusion_diff_ord>(
-              dens0var, Kvar, primal_geometry, dual_geometry, pis, pjs, pks, i,
-              j, k, n);
+          SArray<real, 1, 1> Dhorz;
+          SArray<real, 1, 1> Dvert;
+          compute_Dnm1bar<1>(Dhorz, Fvar, dis, djs, dks, i, j, k, n);
+          compute_Dnm1bar_vert<1>(Dvert, FWvar, dis, djs, dks, i, j, k, n);
+          const real Hn1bar_diag = Hn1bar_diagonal(
+              primal_geometry, dual_geometry, dis, djs, dks, i, j, k, n);
+          dens0var(0, k + pks, j + pjs, i + pis, n) =
+              (Dhorz(0) + Dvert(0)) * Hn1bar_diag;
         });
     auxiliary_vars.exchange({DENS0VAR});
 
     parallel_for(
-        "Velocity diffusion 11",
+        "Velocity diffusion 5",
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
+          // *d(*d)
+          const real Dvert =
+              compute_D0bar_vert<1>(qhzvar, dis, djs, dks, i, j, k, n);
+          SArray<real, 1, ndims> Hnm11bar_diag;
+          Hnm11bar_diagonal(Hnm11bar_diag, primal_geometry, dual_geometry, dis,
+                            djs, dks, i, j, k, n);
+          Vtendvar(0, k + pks, j + pjs, i + pis, n) -=
+              velocity_coeff * Dvert * Hnm11bar_diag(0);
+
+          // d(*d*)
           SArray<real, 2, 1, ndims> vdiff;
           compute_D0<1>(vdiff, dens0var, pis, pjs, pks, i, j, k, n);
           for (int d = 0; d < ndims; ++d) {
@@ -1536,10 +1484,19 @@ public:
         });
 
     parallel_for(
-        "Velocity diffusion 12",
+        "Velocity diffusion 6",
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
+          // *d(*d)
+          SArray<real, 1, ndims> Dhorz;
+          compute_D0bar_ext<1>(Dhorz, qhzvar, dis, djs, dks, i, j, k + 1, n);
+          const real Hn0bar_diag = Hn0bar_diagonal(
+              primal_geometry, dual_geometry, dis, djs, dks, i, j, k, n);
+          Wtendvar(0, k + pks, j + pjs, i + pis, n) -=
+              velocity_coeff * Dhorz(0) * Hn0bar_diag;
+
+          // d(*d*)
           SArray<real, 1, 1> wdiff;
           compute_D0_vert<1>(wdiff, dens0var, pis, pjs, pks, i, j, k, n);
           Wtendvar(0, pks + k, pjs + j, pis + i, n) -=
