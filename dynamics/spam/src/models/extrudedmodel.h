@@ -1293,7 +1293,7 @@ public:
     int dks = dual_topology.ks;
 
     YAKL_SCOPE(varset, this->equations->varset);
-    YAKL_SCOPE(refdens, this->equations->reference_state.dens.data);
+    YAKL_SCOPE(q_di, this->equations->reference_state.q_di.data);
     YAKL_SCOPE(primal_geometry, this->primal_geometry);
     YAKL_SCOPE(dual_geometry, this->dual_geometry);
 
@@ -1307,11 +1307,11 @@ public:
 
           for (int d = 0; d < VS::ndensity_diffused; ++d) {
             int dens_id = varset.diffused_dens_ids(d);
-            real dens0 = densvar(dens_id, k + pks, j + pjs, i + pis, n);
-            if (subtract_refstate) {
-              dens0 -= refdens(d, k + dks, n);
-            }
+            real dens0 = densvar(dens_id, k + dks, j + djs, i + dis, n);
             dens0 /= total_dens;
+            if (subtract_refstate) {
+              dens0 -= q_di(dens_id, k + dks, n);
+            }
             dens0var(d, k + pks, j + pjs, i + pis, n) = dens0;
           }
         });
@@ -1446,7 +1446,7 @@ public:
 
     parallel_for(
         "Velocity diffusion 4",
-        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           SArray<real, 1, 1> Dhorz;
