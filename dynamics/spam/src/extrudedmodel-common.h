@@ -34,7 +34,7 @@ int constexpr CORIOLISXYVAR = 2;
 // primal grid reconstruction stuff- U, W, dens0, edgerecon, recon,
 // vertedgerecon, vertrecon fct stuff- Phi, Mf, edgeflux Q/W STUFF?
 
-uint constexpr nauxiliary = ndims > 1 ? 37 : 30;
+uint constexpr nauxiliary = ndims > 1 ? 39 : 32;
 
 int constexpr FVAR = 0;
 int constexpr BVAR = 1;
@@ -72,14 +72,17 @@ int constexpr FW2VAR = 27;
 int constexpr FTVAR = 28;
 int constexpr FTWVAR = 29;
 
+int constexpr FDIFFVAR = 30;
+int constexpr FWDIFFVAR = 31;
+
 // 3d auxiliary variables
-int constexpr QXYVAR = 30;
-int constexpr QXYRECONVAR = 31;
-int constexpr QXYEDGERECONVAR = 32;
-int constexpr FXYVAR = 33;
-int constexpr CORIOLISXYRECONVAR = 34;
-int constexpr CORIOLISXYEDGERECONVAR = 35;
-int constexpr FTXYVAR = 36;
+int constexpr QXYVAR = 32;
+int constexpr QXYRECONVAR = 33;
+int constexpr QXYEDGERECONVAR = 34;
+int constexpr FXYVAR = 35;
+int constexpr CORIOLISXYRECONVAR = 36;
+int constexpr CORIOLISXYEDGERECONVAR = 37;
+int constexpr FTXYVAR = 38;
 
 // track total densities, dens min/max, energy (total, K, P, I), PV, PE
 uint constexpr nstats = 6;
@@ -98,7 +101,8 @@ public:
   bool dycore_tracer_pos[ntracers_dycore + GPU_PAD];
   bool acoustic_balance;
   bool uniform_vertical;
-  real entropicvar_diffusion_coeff;
+  real scalar_diffusion_coeff;
+  real scalar_diffusion_subtract_refstate;
   real velocity_diffusion_coeff;
   // forces reference state to be in perfect hydrostatic balance by subtracting
   // the hydrostatic balance equation evaluated at the reference state in

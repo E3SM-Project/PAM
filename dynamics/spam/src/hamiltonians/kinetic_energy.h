@@ -32,7 +32,8 @@ public:
 
     real KE;
     SArray<real, 1, 1> h0, h0im1, h0jm1, h0km1;
-    SArray<real, 1, ndims> U, he;
+    SArray<real, 1, ndims> he;
+    SArray<real, 2, 1, ndims> U;
     SArray<real, 2, ndims, 2> h0arr;
 
     // compute U = H1 v
@@ -74,7 +75,7 @@ public:
 
     KE = 0.;
     for (int d = 0; d < ndims; d++) {
-      KE = KE + he(d) * (U(d) * v(d, k + ks, j + js, i + is, n));
+      KE = KE + he(d) * (U(0, d) * v(d, k + ks, j + js, i + is, n));
     }
     return 0.5_fp * KE;
   }
@@ -265,25 +266,25 @@ public:
                                const real5d &dens, int is, int js, int ks,
                                int i, int j, int k, int n) const {
     real v0, v1;
-    SArray<real, 1, ndims> U0, U1;
+    SArray<real, 2, 1, ndims> U0, U1;
     compute_H10<1, diff_ord>(U0, v, this->primal_geometry, this->dual_geometry,
                              is, js, ks, i, j, k, n);
     compute_H10<1, diff_ord>(U1, v, this->primal_geometry, this->dual_geometry,
                              is, js, ks, i + 1, j, k, n);
     v0 = v(0, k + ks, j + js, i + is, n);
     v1 = v(0, k + ks, j + js, i + is + 1, n);
-    K2 += 0.5 * (v0 * U0(0) + v1 * U1(0));
+    K2 += 0.5 * (v0 * U0(0, 0) + v1 * U1(0, 0));
 
     if (ndims == 2) {
       real v0, v1;
-      SArray<real, 1, ndims> U0, U1;
+      SArray<real, 2, 1, ndims> U0, U1;
       compute_H10<1, diff_ord>(U0, v, this->primal_geometry,
                                this->dual_geometry, is, js, ks, i, j, k, n);
       compute_H10<1, diff_ord>(U1, v, this->primal_geometry,
                                this->dual_geometry, is, js, ks, i, j + 1, k, n);
       v0 = v(1, k + ks, j + js, i + is, n);
       v1 = v(1, k + ks, j + js + 1, i + is, n);
-      K2 += 0.5 * (v0 * U0(1) + v1 * U1(1));
+      K2 += 0.5 * (v0 * U0(0, 1) + v1 * U1(0, 1));
     }
 
     K2 *= 0.5;
@@ -345,7 +346,7 @@ public:
     hew = 0.5_fp * (dens0_ijk(0) + dens0_km1(0));
 #endif
 
-    SArray<real, 1, ndims> u_ijk, u_ip1, u_jp1;
+    SArray<real, 2, 1, ndims> u_ijk, u_ip1, u_jp1;
     SArray<real, 1, 1> uw_ijk, uw_kp1;
 
     compute_H10<1, diff_ord>(u_ijk, Vvar, primal_geometry, dual_geometry, is,
@@ -375,15 +376,15 @@ public:
     }
 
     for (int d = 0; d < ndims; ++d) {
-      U(d) = u_ijk(d);
+      U(d) = u_ijk(0, d);
     }
     UW = uw_ijk(0);
 
-    K2 = 0.5_fp * (Vvar(0, k + ks, j + js, i + is, n) * u_ijk(0) +
-                   Vvar(0, k + ks, j + js, i + 1 + is, n) * u_ip1(0));
+    K2 = 0.5_fp * (Vvar(0, k + ks, j + js, i + is, n) * u_ijk(0, 0) +
+                   Vvar(0, k + ks, j + js, i + 1 + is, n) * u_ip1(0, 0));
     if (ndims > 1) {
-      K2 += 0.5_fp * (Vvar(1, k + ks, j + js, i + is, n) * u_ijk(1) +
-                      Vvar(1, k + ks, j + 1 + js, i + is, n) * u_jp1(1));
+      K2 += 0.5_fp * (Vvar(1, k + ks, j + js, i + is, n) * u_ijk(0, 1) +
+                      Vvar(1, k + ks, j + 1 + js, i + is, n) * u_jp1(0, 1));
     }
     if (k < dnl) {
       K2 += 0.5_fp * (Wvar(0, k - 1 + ks, j + js, i + is, n) * uw_ijk(0) +

@@ -4,7 +4,7 @@ verbose : true
 # Simulation time in seconds
 sim_time : 900
 
-entropicvar_diffusion_coeff : 75
+scalar_diffusion_coeff : 75
 velocity_diffusion_coeff : 75
 
 # Number of cells to use

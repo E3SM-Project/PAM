@@ -21,6 +21,7 @@ struct VS_SWE {
   static constexpr uint ndensity_dycore = 1;
   static constexpr uint ndensity_dycore_prognostic = ndensity_dycore;
   static constexpr uint ndensity_dycore_active = ndensity_dycore;
+  static constexpr uint ndensity_dycore_diffused = 0;
 
   static constexpr uint ntracers_dycore_active = 0;
 
@@ -36,6 +37,7 @@ struct VS_TSWE {
   static constexpr uint ndensity_dycore = 2;
   static constexpr uint ndensity_dycore_prognostic = 2;
   static constexpr uint ndensity_dycore_active = 2;
+  static constexpr uint ndensity_dycore_diffused = 1;
 
   static constexpr uint ntracers_dycore_active = 0;
 
@@ -51,6 +53,7 @@ struct VS_CE {
   static constexpr uint ndensity_dycore = 2;
   static constexpr uint ndensity_dycore_prognostic = ndensity_dycore;
   static constexpr uint ndensity_dycore_active = ndensity_dycore;
+  static constexpr uint ndensity_dycore_diffused = 1;
 
   static constexpr uint ntracers_dycore_active = 0;
 
@@ -66,6 +69,7 @@ struct VS_AN {
   static constexpr uint ndensity_dycore = 2;
   static constexpr uint ndensity_dycore_prognostic = 1;
   static constexpr uint ndensity_dycore_active = ndensity_dycore;
+  static constexpr uint ndensity_dycore_diffused = 1;
 
   static constexpr uint ntracers_dycore_active = 0;
 
@@ -83,6 +87,7 @@ struct VS_MAN {
   static constexpr uint ndensity_dycore = 2;
   static constexpr uint ndensity_dycore_prognostic = 1;
   static constexpr uint ndensity_dycore_active = ndensity_dycore;
+  static constexpr uint ndensity_dycore_diffused = 1;
 
   static constexpr uint ntracers_dycore_active = 0;
 
@@ -104,6 +109,7 @@ struct VS_MCE_rho {
   static constexpr uint ndensity_dycore = 2;
   static constexpr uint ndensity_dycore_prognostic = ndensity_dycore;
   static constexpr uint ndensity_dycore_active = ndensity_dycore;
+  static constexpr uint ndensity_dycore_diffused = 1;
 
   static constexpr uint ntracers_dycore_active = 0;
 
@@ -135,6 +141,7 @@ template <class T> class VariableSetBase : public T {
 public:
   using T::ndensity_dycore;
   using T::ndensity_dycore_active;
+  using T::ndensity_dycore_diffused;
   using T::ndensity_dycore_prognostic;
 
   using T::ntracers_dycore_active;
@@ -149,6 +156,8 @@ public:
       ndensity_dycore_prognostic + ntracers_dycore;
   static constexpr uint ndensity_active =
       ndensity_dycore_active + ntracers_dycore_active + ntracers_physics_active;
+  // TODO: Add tracers and physics
+  static constexpr uint ndensity_diffused = ndensity_dycore_diffused;
   static constexpr uint ndensity_prognostic =
       ndensity_dycore_prognostic + ntracers_dycore + ntracers_physics;
 
@@ -158,9 +167,12 @@ public:
       dens_pos; // Whether each density is positive-definite
   SArray<bool, 1, ndensity> dens_active; // Whether each density is active
   SArray<bool, 1, ndensity>
-      dens_prognostic; // Whether each density is prognostic
+      dens_prognostic;                     // Whether each density is prognostic
+  SArray<bool, 1, ndensity> dens_diffused; // Whether each density is diffused
   SArray<int, 1, ndensity_active>
       active_dens_ids; // indices of active densities
+  SArray<int, 1, ndensity_diffused>
+      diffused_dens_ids; // indices of diffused densities
 
   int dm_id_vap = std::numeric_limits<int>::min();
   int dm_id_liq = std::numeric_limits<int>::min();
@@ -283,6 +295,15 @@ public:
       }
     }
 
+    // get indicies of diffused densities
+    int diffused_i = 0;
+    for (int i = 0; i < ndensity; ++i) {
+      if (varset.dens_diffused(i)) {
+        varset.diffused_dens_ids(diffused_i) = i;
+        diffused_i++;
+      }
+    }
+
     for (int i = ndensity_dycore_prognostic; i < ndensity_nophysics; i++) {
       varset.dens_name[i] =
           "Tracer" + std::to_string(i - ndensity_dycore_prognostic);
@@ -303,6 +324,10 @@ public:
         ss << std::setw(10)
            << ((varset.dens_prognostic(i) && varset.dens_pos(i)) ? "positive"
                                                                  : "");
+        ss << std::setw(10)
+           << ((varset.dens_prognostic(i) && varset.dens_diffused(i))
+                   ? "diffused"
+                   : "");
 
         serial_print(ss.str(), params.masterproc);
       }
@@ -496,10 +521,12 @@ void convert_dynamics_to_coupler_densities(
           } else {
             real p = varset.get_pres(prog_vars.fields_arr[DENSVAR].data, k, j,
                                      i, dks, djs, dis, n);
-            real refqv = varset.get_qv(varset.reference_state.dens.data, k, dks, n);
-            real refqd = varset.get_qd(varset.reference_state.dens.data, k, dks, n);
-            temp = thermo.compute_T_from_p(p, entropic_var, refqd, refqv, ql, 
-                                           qi);
+            real refqv =
+                varset.get_qv(varset.reference_state.dens.data, k, dks, n);
+            real refqd =
+                varset.get_qd(varset.reference_state.dens.data, k, dks, n);
+            temp =
+                thermo.compute_T_from_p(p, entropic_var, refqd, refqv, ql, qi);
           }
 
           dm_temp(k, j, i, n) = temp;
@@ -691,10 +718,12 @@ void convert_coupler_to_dynamics_densities(
           } else {
             real p = varset.get_pres(prog_vars.fields_arr[DENSVAR].data, k, j,
                                      i, dks, djs, dis, n);
-            real refqv = varset.get_qv(varset.reference_state.dens.data, k, dks, n);
-            real refqd = varset.get_qd(varset.reference_state.dens.data, k, dks, n);
-            entropic_var = thermo.compute_entropic_var_from_p_T(
-                p, temp, refqd, refqv, ql, qi);
+            real refqv =
+                varset.get_qv(varset.reference_state.dens.data, k, dks, n);
+            real refqd =
+                varset.get_qd(varset.reference_state.dens.data, k, dks, n);
+            entropic_var = thermo.compute_entropic_var_from_p_T(p, temp, refqd,
+                                                                refqv, ql, qi);
           }
 
           varset.set_entropic_density(
@@ -850,6 +879,7 @@ void VariableSetBase<VS_SWE>::initialize(PamCoupler &coupler,
   dens_desc[dens_id_mass] = "fluid height";
   dens_prognostic(dens_id_mass) = true;
   dens_active(dens_id_mass) = true;
+  dens_diffused(dens_id_mass) = false;
 
   VariableSetBase::initialize(*this, coupler, params, thermodynamics, refstate,
                               primal_geom, dual_geom, verbose);
@@ -879,6 +909,7 @@ void VariableSetBase<VS_TSWE>::initialize(PamCoupler &coupler,
   dens_prognostic(dens_id_mass) = true;
   dens_active(dens_id_mass) = true;
   dens_pos(dens_id_mass) = false;
+  dens_diffused(dens_id_mass) = false;
 
   dens_id_entr = 1;
   active_id_entr = 1;
@@ -887,6 +918,7 @@ void VariableSetBase<VS_TSWE>::initialize(PamCoupler &coupler,
   dens_prognostic(dens_id_entr) = true;
   dens_active(dens_id_entr) = true;
   dens_pos(dens_id_entr) = false;
+  dens_diffused(dens_id_entr) = true;
 
   VariableSetBase::initialize(*this, coupler, params, thermodynamics, refstate,
                               primal_geom, dual_geom, verbose);
@@ -910,6 +942,7 @@ void VariableSetBase<VS_CE>::initialize(PamCoupler &coupler,
   dens_prognostic(dens_id_mass) = true;
   dens_active(dens_id_mass) = true;
   dens_pos(dens_id_mass) = false;
+  dens_diffused(dens_id_mass) = false;
 
   dens_id_entr = 1;
   active_id_entr = 1;
@@ -918,6 +951,7 @@ void VariableSetBase<VS_CE>::initialize(PamCoupler &coupler,
   dens_prognostic(dens_id_entr) = true;
   dens_active(dens_id_entr) = true;
   dens_pos(dens_id_entr) = false;
+  dens_diffused(dens_id_entr) = true;
 
   VariableSetBase::initialize(*this, coupler, params, thermodynamics, refstate,
                               primal_geom, dual_geom, verbose);
@@ -981,6 +1015,7 @@ void VariableSetBase<VS_AN>::initialize(PamCoupler &coupler,
   dens_prognostic(dens_id_entr) = true;
   dens_active(dens_id_entr) = true;
   dens_pos(dens_id_entr) = false;
+  dens_diffused(dens_id_entr) = true;
 
   //  mass density is always stored last for anelastic
   //  this is to make prognostic densities a continuous subset of all densities
@@ -990,6 +1025,7 @@ void VariableSetBase<VS_AN>::initialize(PamCoupler &coupler,
   dens_desc[dens_id_mass] = "fluid density";
   dens_prognostic(dens_id_mass) = false;
   dens_active(dens_id_mass) = true;
+  dens_diffused(dens_id_mass) = false;
 
   VariableSetBase::initialize(*this, coupler, params, thermodynamics, refstate,
                               primal_geom, dual_geom, verbose);
@@ -1085,6 +1121,7 @@ void VariableSetBase<VS_MAN>::initialize(PamCoupler &coupler,
   dens_prognostic(dens_id_entr) = true;
   dens_active(dens_id_entr) = true;
   dens_pos(dens_id_entr) = false;
+  dens_diffused(dens_id_entr) = true;
 
   //  mass density is always stored last for anelastic
   //  this is to make prognostic densities a continuous subset of all densities
@@ -1094,6 +1131,7 @@ void VariableSetBase<VS_MAN>::initialize(PamCoupler &coupler,
   dens_desc[dens_id_mass] = "fluid density";
   dens_prognostic(dens_id_mass) = false;
   dens_active(dens_id_mass) = true;
+  dens_diffused(dens_id_mass) = false;
 
   VariableSetBase::initialize(*this, coupler, params, thermodynamics, refstate,
                               primal_geom, dual_geom, verbose);
@@ -1285,6 +1323,7 @@ void VariableSetBase<VS_MCE_rho>::initialize(
   dens_prognostic(dens_id_mass) = true;
   dens_active(dens_id_mass) = true;
   dens_pos(dens_id_mass) = false;
+  dens_diffused(dens_id_mass) = false;
 
   dens_id_entr = 1;
   active_id_entr = 1;
@@ -1293,6 +1332,7 @@ void VariableSetBase<VS_MCE_rho>::initialize(
   dens_prognostic(dens_id_entr) = true;
   dens_active(dens_id_entr) = true;
   dens_pos(dens_id_entr) = false;
+  dens_diffused(dens_id_entr) = true;
 
   VariableSetBase::initialize(*this, coupler, params, thermodynamics, refstate,
                               primal_geom, dual_geom, verbose);
@@ -1461,6 +1501,7 @@ void VariableSetBase<VS_MCE_rhod>::initialize(
   dens_prognostic(dens_id_mass) = true;
   dens_active(dens_id_mass) = true;
   dens_pos(dens_id_mass) = false;
+  dens_diffused(dens_id_mass) = false;
 
   dens_id_entr = 1;
   active_id_entr = 1;
@@ -1469,6 +1510,7 @@ void VariableSetBase<VS_MCE_rhod>::initialize(
   dens_prognostic(dens_id_entr) = true;
   dens_active(dens_id_entr) = true;
   dens_pos(dens_id_entr) = false;
+  dens_diffused(dens_id_entr) = true;
 
   VariableSetBase::initialize(*this, coupler, params, thermodynamics, refstate,
                               primal_geom, dual_geom, verbose);
