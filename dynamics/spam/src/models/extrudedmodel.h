@@ -4337,6 +4337,28 @@ public:
           Hs.compute_dHsdx(refstate.B.data, refstate.dens.data,
                            refstate.geop.data, pks, k, n, -1);
         });
+
+    parallel_for(
+        "Compute refstate pres_pi",
+        SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
+        YAKL_LAMBDA(int k, int n) {
+          const real rho = refstate.rho_pi.data(0, k + pks, n);
+          const real entropicvar =
+              refstate.q_pi.data(varset.dens_id_entr, k + pks, n);
+          refstate.pres_pi.data(0, k + pks, n) =
+              thermo.solve_p(rho, entropicvar, 1, 0, 0, 0);
+        });
+
+    parallel_for(
+        "Compute refstate pres_di",
+        SimpleBounds<2>(dual_topology.ni, dual_topology.nens),
+        YAKL_LAMBDA(int k, int n) {
+          const real rho = refstate.rho_di.data(0, k + dks, n);
+          const real entropicvar =
+              refstate.q_di.data(varset.dens_id_entr, k + dks, n);
+          refstate.pres_di.data(0, k + dks, n) =
+              thermo.solve_p(rho, entropicvar, 1, 0, 0, 0);
+        });
   }
 };
 
@@ -4533,6 +4555,30 @@ public:
         YAKL_LAMBDA(int k, int n) {
           Hs.compute_dHsdx(refstate.B.data, refstate.dens.data,
                            refstate.geop.data, pks, k, n, -1);
+        });
+
+    parallel_for(
+        "Compute refstate pres_pi",
+        SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
+        YAKL_LAMBDA(int k, int n) {
+          const real rho = refstate.rho_pi.data(0, k + pks, n);
+          const real entropicvar =
+              refstate.q_pi.data(varset.dens_id_entr, k + pks, n);
+          const real qv = refstate.q_pi.data(varset.dens_id_vap, k + pks, n);
+          refstate.pres_pi.data(0, k + pks, n) =
+              thermo.solve_p(rho, entropicvar, 1 - qv, qv, 0, 0);
+        });
+
+    parallel_for(
+        "Compute refstate pres_di",
+        SimpleBounds<2>(dual_topology.ni, dual_topology.nens),
+        YAKL_LAMBDA(int k, int n) {
+          const real rho = refstate.rho_di.data(0, k + dks, n);
+          const real entropicvar =
+              refstate.q_di.data(varset.dens_id_entr, k + dks, n);
+          const real qv = refstate.q_di.data(varset.dens_id_vap, k + dks, n);
+          refstate.pres_di.data(0, k + dks, n) =
+              thermo.solve_p(rho, entropicvar, 1 - qv, qv, 0, 0);
         });
   }
 
@@ -4805,6 +4851,30 @@ public:
 
           refstate.Nsq_pi.data(0, k + pks, n) =
               grav / T * D1w * (dTdz + gamma_m) - grav / (1 + rv) * drvdz;
+        });
+
+    parallel_for(
+        "Compute refstate pres_pi",
+        SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
+        YAKL_LAMBDA(int k, int n) {
+          const real rho = refstate.rho_pi.data(0, k + pks, n);
+          const real entropicvar =
+              refstate.q_pi.data(varset.dens_id_entr, k + pks, n);
+          const real qv = refstate.q_pi.data(varset.dens_id_vap, k + pks, n);
+          refstate.pres_pi.data(0, k + pks, n) =
+              thermo.solve_p(rho, entropicvar, 1 - qv, qv, 0, 0);
+        });
+
+    parallel_for(
+        "Compute refstate pres_di",
+        SimpleBounds<2>(dual_topology.ni, dual_topology.nens),
+        YAKL_LAMBDA(int k, int n) {
+          const real rho = refstate.rho_di.data(0, k + dks, n);
+          const real entropicvar =
+              refstate.q_di.data(varset.dens_id_entr, k + dks, n);
+          const real qv = refstate.q_di.data(varset.dens_id_vap, k + dks, n);
+          refstate.pres_di.data(0, k + dks, n) =
+              thermo.solve_p(rho, entropicvar, 1 - qv, qv, 0, 0);
         });
   }
 
