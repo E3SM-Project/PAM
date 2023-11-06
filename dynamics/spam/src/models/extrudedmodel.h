@@ -190,7 +190,7 @@ void add_model_diagnostics(
 }
 
 // Unify interface with ModelLinearSystem
-struct AnelasticPressureSolver {
+struct AnelasticPressureSolver : LinearSystem {
   Geometry<Straight> primal_geometry;
   Geometry<Twisted> dual_geometry;
   Equations *equations;
@@ -245,7 +245,7 @@ struct AnelasticPressureSolver {
     this->is_initialized = true;
   }
 
-  void compute_coefficients() {
+  void compute_coefficients(real dt) {
 
     const auto &refstate = this->equations->reference_state;
 
@@ -332,6 +332,166 @@ struct AnelasticPressureSolver {
           }
         });
   }
+
+  void solve(real dt, FieldSet<nprognostic> &rhs,
+             FieldSet<nconstant> &const_vars,
+             FieldSet<nauxiliary> &auxiliary_vars,
+             FieldSet<nprognostic> &solution) {
+
+    const auto Fvar = auxiliary_vars.fields_arr[FVAR].data;
+    const auto FWvar = auxiliary_vars.fields_arr[FWVAR].data;
+    const auto mfvar = auxiliary_vars.fields_arr[MFVAR].data;
+    const auto Bvar = auxiliary_vars.fields_arr[BVAR].data;
+    const auto sol_v = solution.fields_arr[VVAR].data;
+    const auto sol_w = solution.fields_arr[WVAR].data;
+    const auto rhs_v = rhs.fields_arr[VVAR].data;
+    const auto rhs_w = rhs.fields_arr[WVAR].data;
+
+    const auto &primal_topology = primal_geometry.topology;
+    const auto &dual_topology = dual_geometry.topology;
+    const int pis = primal_topology.is;
+    const int pjs = primal_topology.js;
+    const int pks = primal_topology.ks;
+    const int dis = dual_topology.is;
+    const int djs = dual_topology.js;
+    const int dks = dual_topology.ks;
+
+    YAKL_SCOPE(nxf, this->nxf);
+    YAKL_SCOPE(nyf, this->nyf);
+    YAKL_SCOPE(kfix, this->kfix);
+
+    const auto &refstate = this->equations->reference_state;
+    const auto &rho_pi = refstate.rho_pi.data;
+    const auto &rho_di = refstate.rho_di.data;
+
+    YAKL_SCOPE(fftp_x, this->fftp_x);
+    YAKL_SCOPE(fftp_y, this->fftp_y);
+    YAKL_SCOPE(tri_l, this->tri_l);
+    YAKL_SCOPE(tri_u, this->tri_u);
+    YAKL_SCOPE(tri_d, this->tri_d);
+    YAKL_SCOPE(tri_c, this->tri_c);
+    YAKL_SCOPE(p_transform, this->p_transform);
+    YAKL_SCOPE(primal_geometry, this->primal_geometry);
+    YAKL_SCOPE(dual_geometry, this->dual_geometry);
+    // const auto &q_pi = refstate.q_pi.data;
+    // const auto &q_di = refstate.q_di.data;
+    // const auto &Nsq_pi = refstate.Nsq_pi.data;
+
+    rhs.exchange({VVAR, WVAR});
+
+    // compute rhs
+    parallel_for(
+        "Anelastic F/FW of vel tend",
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          SArray<real, 2, 1, ndims> u;
+          compute_H10<1, diff_ord>(u, rhs_v, primal_geometry, dual_geometry,
+                                   dis, djs, dks, i, j, k, n);
+          for (int d = 0; d < ndims; ++d) {
+            Fvar(d, k + dks, j + djs, i + dis, n) =
+                u(0, d) * rho_pi(0, k + pks, n);
+          }
+
+          if (k < dual_topology.ni - 2) {
+            SArray<real, 1, 1> uw;
+            compute_H01(uw, rhs_w, primal_geometry, dual_geometry, dis, djs,
+                        dks, i, j, k + 1, n);
+            FWvar(0, k + 1 + dks, j + djs, i + dis, n) =
+                uw(0) * rho_di(0, k + dks + 1, n);
+          }
+        });
+    auxiliary_vars.fields_arr[FWVAR].set_bnd(0.0);
+    auxiliary_vars.exchange({FVAR, FWVAR});
+
+    parallel_for(
+        "Anelastic rhs",
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          compute_Dnm1bar<1>(mfvar, Fvar, dis, djs, dks, i, j, k, n);
+          compute_Dnm1bar_vert<1, ADD_MODE::ADD>(mfvar, FWvar, dis, djs, dks, i,
+                                                 j, k, n);
+        });
+
+    parallel_for(
+        "Anelastic p_transform",
+        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          p_transform(k, j, i, n) = -mfvar(0, k + pks, j + pjs, i + pis, n);
+        });
+
+    yakl::timer_start("ffts");
+    fftp_x.forward_real(p_transform);
+    if (ndims > 1) {
+      fftp_y.forward_real(p_transform);
+    }
+    yakl::timer_stop("ffts");
+
+    parallel_for(
+        "Anelastic tridiagonal solve",
+        Bounds<3>(nyf, nxf, primal_topology.nens),
+        YAKL_LAMBDA(int j, int i, int n) {
+          // set the horizontal mean of pressure to zero at k = kfix
+          int ik = i / 2;
+          int jk = j / 2;
+          if (ik == 0 && jk == 0) {
+            p_transform(kfix, j, i, n) = 0;
+          }
+          int nz = primal_topology.ni;
+          tri_c(0, j, i, n) = tri_u(0, j, i, n) / tri_d(0, j, i, n);
+          for (int k = 1; k < nz - 1; ++k) {
+            tri_c(k, j, i, n) =
+                tri_u(k, j, i, n) /
+                (tri_d(k, j, i, n) - tri_l(k, j, i, n) * tri_c(k - 1, j, i, n));
+          }
+          p_transform(0, j, i, n) /= tri_d(0, j, i, n);
+          for (int k = 1; k < nz; ++k) {
+            p_transform(k, j, i, n) =
+                (p_transform(k, j, i, n) -
+                 tri_l(k, j, i, n) * p_transform(k - 1, j, i, n)) /
+                (tri_d(k, j, i, n) - tri_l(k, j, i, n) * tri_c(k - 1, j, i, n));
+          }
+          for (int k = nz - 2; k >= 0; --k) {
+            p_transform(k, j, i, n) -=
+                tri_c(k, j, i, n) * p_transform(k + 1, j, i, n);
+          }
+        });
+
+    yakl::timer_start("ffts");
+    fftp_x.inverse_real(p_transform);
+    if (ndims > 1) {
+      fftp_y.inverse_real(p_transform);
+    }
+    yakl::timer_stop("ffts");
+
+    parallel_for(
+        "Anelastic - store p",
+        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          Bvar(0, k + pks, j + pjs, i + pis, n) = p_transform(k, j, i, n);
+        });
+    auxiliary_vars.exchange({BVAR});
+
+    parallel_for(
+        "Anelastic - add pressure gradient W",
+        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          compute_D0_vert<1, ADD_MODE::ADD>(sol_w, Bvar, pis, pjs, pks, i, j, k,
+                                            n);
+        });
+
+    parallel_for(
+        "Anelastic - add pressure gradient V",
+        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          compute_D0<1, ADD_MODE::ADD>(sol_v, Bvar, pis, pjs, pks, i, j, k, n);
+        });
+  }
 };
 
 struct TotalDensityFunctor {
@@ -376,7 +536,7 @@ public:
 
 #if defined PAMC_AN || defined PAMC_MAN
     pressure_solver.initialize(params, primal_geom, dual_geom, equations);
-    pressure_solver.compute_coefficients();
+    pressure_solver.compute_coefficients(params.dtcrm);
 #endif
   }
 
@@ -2534,159 +2694,7 @@ public:
                                  FieldSet<nauxiliary> &auxiliary_vars,
                                  FieldSet<nprognostic> &xtend) override {
     yakl::timer_start("add_pressure_perturbation");
-
-    const auto Fvar = auxiliary_vars.fields_arr[FVAR].data;
-    const auto FWvar = auxiliary_vars.fields_arr[FWVAR].data;
-    const auto mfvar = auxiliary_vars.fields_arr[MFVAR].data;
-    const auto Bvar = auxiliary_vars.fields_arr[BVAR].data;
-    const auto Vtendvar = xtend.fields_arr[VVAR].data;
-    const auto Wtendvar = xtend.fields_arr[WVAR].data;
-
-    const auto &primal_topology = primal_geometry.topology;
-    const auto &dual_topology = dual_geometry.topology;
-    const int pis = primal_topology.is;
-    const int pjs = primal_topology.js;
-    const int pks = primal_topology.ks;
-    const int dis = dual_topology.is;
-    const int djs = dual_topology.js;
-    const int dks = dual_topology.ks;
-    const int nxf = pressure_solver.nxf;
-    const int nyf = pressure_solver.nyf;
-    const int kfix = pressure_solver.kfix;
-
-    const auto &refstate = this->equations->reference_state;
-    const auto &rho_pi = refstate.rho_pi.data;
-    const auto &rho_di = refstate.rho_di.data;
-
-    auto &fftp_x = pressure_solver.fftp_x;
-    auto &fftp_y = pressure_solver.fftp_y;
-    const auto &tri_l = pressure_solver.tri_l;
-    const auto &tri_u = pressure_solver.tri_u;
-    const auto &tri_d = pressure_solver.tri_d;
-    const auto &tri_c = pressure_solver.tri_c;
-    YAKL_SCOPE(p_transform, this->pressure_solver.p_transform);
-    YAKL_SCOPE(primal_geometry, this->primal_geometry);
-    YAKL_SCOPE(dual_geometry, this->dual_geometry);
-    // const auto &q_pi = refstate.q_pi.data;
-    // const auto &q_di = refstate.q_di.data;
-    // const auto &Nsq_pi = refstate.Nsq_pi.data;
-
-    xtend.exchange({VVAR, WVAR});
-
-    // compute rhs
-    parallel_for(
-        "Anelastic F/FW of vel tend",
-        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          SArray<real, 2, 1, ndims> u;
-          compute_H10<1, diff_ord>(u, Vtendvar, primal_geometry, dual_geometry,
-                                   dis, djs, dks, i, j, k, n);
-          for (int d = 0; d < ndims; ++d) {
-            Fvar(d, k + dks, j + djs, i + dis, n) =
-                u(0, d) * rho_pi(0, k + pks, n);
-          }
-
-          if (k < dual_topology.ni - 2) {
-            SArray<real, 1, 1> uw;
-            compute_H01(uw, Wtendvar, primal_geometry, dual_geometry, dis, djs,
-                        dks, i, j, k + 1, n);
-            FWvar(0, k + 1 + dks, j + djs, i + dis, n) =
-                uw(0) * rho_di(0, k + dks + 1, n);
-          }
-        });
-    auxiliary_vars.fields_arr[FWVAR].set_bnd(0.0);
-    auxiliary_vars.exchange({FVAR, FWVAR});
-
-    parallel_for(
-        "Anelastic rhs",
-        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_Dnm1bar<1>(mfvar, Fvar, dis, djs, dks, i, j, k, n);
-          compute_Dnm1bar_vert<1, ADD_MODE::ADD>(mfvar, FWvar, dis, djs, dks, i,
-                                                 j, k, n);
-        });
-
-    parallel_for(
-        "Anelastic p_transform",
-        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          p_transform(k, j, i, n) = -mfvar(0, k + pks, j + pjs, i + pis, n);
-        });
-
-    yakl::timer_start("ffts");
-    fftp_x.forward_real(p_transform);
-    if (ndims > 1) {
-      fftp_y.forward_real(p_transform);
-    }
-    yakl::timer_stop("ffts");
-
-    parallel_for(
-        "Anelastic tridiagonal solve",
-        Bounds<3>(nyf, nxf, primal_topology.nens),
-        YAKL_LAMBDA(int j, int i, int n) {
-          // set the horizontal mean of pressure to zero at k = kfix
-          int ik = i / 2;
-          int jk = j / 2;
-          if (ik == 0 && jk == 0) {
-            p_transform(kfix, j, i, n) = 0;
-          }
-          int nz = primal_topology.ni;
-          tri_c(0, j, i, n) = tri_u(0, j, i, n) / tri_d(0, j, i, n);
-          for (int k = 1; k < nz - 1; ++k) {
-            tri_c(k, j, i, n) =
-                tri_u(k, j, i, n) /
-                (tri_d(k, j, i, n) - tri_l(k, j, i, n) * tri_c(k - 1, j, i, n));
-          }
-          p_transform(0, j, i, n) /= tri_d(0, j, i, n);
-          for (int k = 1; k < nz; ++k) {
-            p_transform(k, j, i, n) =
-                (p_transform(k, j, i, n) -
-                 tri_l(k, j, i, n) * p_transform(k - 1, j, i, n)) /
-                (tri_d(k, j, i, n) - tri_l(k, j, i, n) * tri_c(k - 1, j, i, n));
-          }
-          for (int k = nz - 2; k >= 0; --k) {
-            p_transform(k, j, i, n) -=
-                tri_c(k, j, i, n) * p_transform(k + 1, j, i, n);
-          }
-        });
-
-    yakl::timer_start("ffts");
-    fftp_x.inverse_real(p_transform);
-    if (ndims > 1) {
-      fftp_y.inverse_real(p_transform);
-    }
-    yakl::timer_stop("ffts");
-
-    parallel_for(
-        "Anelastic - store p",
-        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          Bvar(0, k + pks, j + pjs, i + pis, n) = p_transform(k, j, i, n);
-        });
-    auxiliary_vars.exchange({BVAR});
-
-    parallel_for(
-        "Anelastic - add pressure gradient W",
-        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_D0_vert<1, ADD_MODE::ADD>(Wtendvar, Bvar, pis, pjs, pks, i, j,
-                                            k, n);
-        });
-
-    parallel_for(
-        "Anelastic - add pressure gradient V",
-        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_D0<1, ADD_MODE::ADD>(Vtendvar, Bvar, pis, pjs, pks, i, j, k,
-                                       n);
-        });
-
+    pressure_solver.solve(dt, xtend, const_vars, auxiliary_vars, xtend);
     yakl::timer_stop("add_pressure_perturbation");
   }
 #endif
