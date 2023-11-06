@@ -20,7 +20,7 @@ class TimeIntegrator {
 public:
   bool is_initialized = false;
   bool is_ssp = false;
-  bool is_semi_implicit = false;
+  bool is_semi_implicit;
   std::string tstype;
 
   Tendencies *tendencies;
@@ -30,7 +30,7 @@ public:
   FieldSet<nauxiliary> *auxiliary_vars;
 
   virtual void initialize(ModelParameters &params, Tendencies &tend,
-                          LinearSystem &linsys, FieldSet<nprognostic> &xvars,
+                          FieldSet<nprognostic> &xvars,
                           FieldSet<nconstant> &consts,
                           FieldSet<nauxiliary> &auxiliarys) {
     this->x = &xvars;
@@ -41,13 +41,13 @@ public:
 
   virtual void step_forward(real dt) = 0;
 
-  TimeIntegrator(const std::string tstype) : tstype(tstype) {}
+  TimeIntegrator(const std::string tstype, bool is_semi_implicit = false)
+      : tstype(tstype), is_semi_implicit(is_semi_implicit) {}
   virtual ~TimeIntegrator() = default;
 };
 
 class SemiImplicitTimeIntegrator : public TimeIntegrator {
 public:
-  using TimeIntegrator::TimeIntegrator;
   int monitor_convergence;
   // 0 = do not monitor (does si_max_iters iterations)
   // 1 = computes initial and final residual but still does si_max_iter
@@ -66,6 +66,9 @@ public:
   real tol;
   std::vector<real> quad_pts;
   std::vector<real> quad_wts;
+
+  SemiImplicitTimeIntegrator(const std::string tstype)
+      : TimeIntegrator(tstype, true) {}
 
   void compute_discrete_gradient(real dt, FieldSet<nprognostic> &xn,
                                  FieldSet<nconstant> &const_vars,
@@ -92,10 +95,10 @@ public:
   }
 
   virtual void initialize(ModelParameters &params, Tendencies &tend,
-                          LinearSystem &linsys, FieldSet<nprognostic> &xvars,
+                          FieldSet<nprognostic> &xvars,
                           FieldSet<nconstant> &consts,
                           FieldSet<nauxiliary> &auxiliarys) override {
-    TimeIntegrator::initialize(params, tend, linsys, xvars, consts, auxiliarys);
+    TimeIntegrator::initialize(params, tend, xvars, consts, auxiliarys);
 
     this->tol = params.si_tolerance;
     this->two_point_discrete_gradient = params.si_two_point_discrete_gradient;
@@ -107,8 +110,6 @@ public:
     this->quad_pts.resize(nquad);
     this->quad_wts.resize(nquad);
     set_ref_quad_pts_wts(this->quad_pts, this->quad_wts, nquad);
-
-    this->is_semi_implicit = true;
   }
 };
 } // namespace pamc
