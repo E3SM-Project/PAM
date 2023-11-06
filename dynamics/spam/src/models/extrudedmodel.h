@@ -190,7 +190,7 @@ void add_model_diagnostics(
 }
 
 // Unify interface with ModelLinearSystem
-struct AnelasticPressureSolver : LinearSystem {
+struct AnelasticLinearSystem : LinearSystem {
   Geometry<Straight> primal_geometry;
   Geometry<Twisted> dual_geometry;
   Equations *equations;
@@ -3432,7 +3432,7 @@ std::unique_ptr<LinearSystem> model_linear_system() {
   if (VariableSet::compressible) {
     return std::make_unique<ModelLinearSystem>();
   } else {
-    return std::make_unique<AnelasticPressureSolver>();
+    return std::make_unique<AnelasticLinearSystem>();
   }
 }
 
