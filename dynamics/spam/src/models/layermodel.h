@@ -95,10 +95,12 @@ public:
   using VS = VariableSet;
 
   void initialize(ModelParameters &params, Equations &equations,
+                  LinearSystem &linear_system,
                   const Geometry<Straight> &primal_geom,
                   const Geometry<Twisted> &dual_geom) {
 
-    Tendencies::initialize(params, equations, primal_geom, dual_geom);
+    Tendencies::initialize(params, equations, linear_system, primal_geom,
+                           dual_geom);
   }
 
   void convert_dynamics_to_coupler_state(PamCoupler &coupler,
@@ -882,6 +884,10 @@ public:
     yakl::timer_stop("linear_solve");
   }
 };
+
+std::unique_ptr<LinearSystem> model_linear_system() {
+  return std::make_unique<ModelLinearSystem>();
+}
 
 // *******   Statistics   ***********//
 

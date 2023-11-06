@@ -514,18 +514,16 @@ class ModelTendencies : public ExtrudedTendencies {
   real velocity_diffusion_coeff;
   bool force_refstate_hydrostatic_balance;
   bool check_anelastic_constraint;
-#if defined PAMC_AN || defined PAMC_MAN
-  AnelasticPressureSolver pressure_solver;
-#endif
-
   using VS = VariableSet;
 
 public:
   void initialize(ModelParameters &params, Equations &equations,
+                  LinearSystem &linear_system,
                   const Geometry<Straight> &primal_geom,
                   const Geometry<Twisted> &dual_geom) {
 
-    ExtrudedTendencies::initialize(params, equations, primal_geom, dual_geom);
+    ExtrudedTendencies::initialize(params, equations, linear_system,
+                                   primal_geom, dual_geom);
     scalar_diffusion_coeff = params.scalar_diffusion_coeff;
     scalar_diffusion_subtract_refstate =
         params.scalar_diffusion_subtract_refstate;
@@ -533,11 +531,6 @@ public:
     force_refstate_hydrostatic_balance =
         params.force_refstate_hydrostatic_balance;
     check_anelastic_constraint = params.check_anelastic_constraint;
-
-#if defined PAMC_AN || defined PAMC_MAN
-    pressure_solver.initialize(params, primal_geom, dual_geom, equations);
-    pressure_solver.compute_coefficients(params.dtcrm);
-#endif
   }
 
   void convert_dynamics_to_coupler_state(PamCoupler &coupler,
@@ -2694,7 +2687,7 @@ public:
                                  FieldSet<nauxiliary> &auxiliary_vars,
                                  FieldSet<nprognostic> &xtend) override {
     yakl::timer_start("add_pressure_perturbation");
-    pressure_solver.solve(dt, xtend, const_vars, auxiliary_vars, xtend);
+    linear_system->solve(dt, xtend, const_vars, auxiliary_vars, xtend);
     yakl::timer_stop("add_pressure_perturbation");
   }
 #endif
@@ -3355,6 +3348,14 @@ public:
     yakl::timer_stop("linear_solve");
   }
 };
+
+std::unique_ptr<LinearSystem> model_linear_system() {
+  if (VariableSet::compressible) {
+    return std::make_unique<ModelLinearSystem>();
+  } else {
+    return std::make_unique<AnelasticPressureSolver>();
+  }
+}
 
 // *******   Statistics   ***********//
 

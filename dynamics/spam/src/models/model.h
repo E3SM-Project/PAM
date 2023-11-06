@@ -152,11 +152,41 @@ public:
   virtual ~TestCase() = default;
 };
 
+class LinearSystem {
+public:
+  Geometry<Straight> primal_geometry;
+  Geometry<Twisted> dual_geometry;
+  Equations *equations;
+
+  virtual ~LinearSystem() = default;
+
+  bool is_initialized = false;
+
+  virtual void initialize(ModelParameters &params,
+                          const Geometry<Straight> &primal_geom,
+                          const Geometry<Twisted> &dual_geom,
+                          Equations &equations) {
+
+    this->primal_geometry = primal_geom;
+    this->dual_geometry = dual_geom;
+    this->equations = &equations;
+
+    this->is_initialized = true;
+  }
+  virtual void compute_coefficients(real dt){};
+
+  virtual void solve(real dt, FieldSet<nprognostic> &rhs,
+                     FieldSet<nconstant> &const_vars,
+                     FieldSet<nauxiliary> &auxiliary_vars,
+                     FieldSet<nprognostic> &solution) = 0;
+};
+
 class Tendencies {
 public:
   Geometry<Straight> primal_geometry;
   Geometry<Twisted> dual_geometry;
   Equations *equations;
+  LinearSystem *linear_system;
 
   SArray<real, 2, reconstruction_order, 2> primal_to_gll;
   SArray<real, 3, reconstruction_order, reconstruction_order,
@@ -186,9 +216,11 @@ public:
   Tendencies() { this->is_initialized = false; }
 
   void initialize(ModelParameters &params, Equations &equations,
+                  LinearSystem &linear_system,
                   const Geometry<Straight> &primal_geom,
                   const Geometry<Twisted> &dual_geom) {
     this->equations = &equations;
+    this->linear_system = &linear_system;
     this->primal_geometry = primal_geom;
     this->dual_geometry = dual_geom;
 
@@ -291,10 +323,12 @@ public:
   real5d dual_vert_weno_recon_lower_arr;
 
   void initialize(ModelParameters &params, Equations &equations,
+                  LinearSystem &linear_system,
                   const Geometry<Straight> &primal_geom,
                   const Geometry<Twisted> &dual_geom) {
 
-    Tendencies::initialize(params, equations, primal_geom, dual_geom);
+    Tendencies::initialize(params, equations, linear_system, primal_geom,
+                           dual_geom);
 
     const auto &primal_topology = primal_geom.topology;
     const auto &dual_topology = dual_geom.topology;
@@ -396,30 +430,4 @@ public:
                                    bool has_f_and_fw = false) = 0;
 };
 
-class LinearSystem {
-public:
-  Geometry<Straight> primal_geometry;
-  Geometry<Twisted> dual_geometry;
-  Equations *equations;
-
-  bool is_initialized = false;
-
-  virtual void initialize(ModelParameters &params,
-                          const Geometry<Straight> &primal_geom,
-                          const Geometry<Twisted> &dual_geom,
-                          Equations &equations) {
-
-    this->primal_geometry = primal_geom;
-    this->dual_geometry = dual_geom;
-    this->equations = &equations;
-
-    this->is_initialized = true;
-  }
-  virtual void compute_coefficients(real dt){};
-
-  virtual void solve(real dt, FieldSet<nprognostic> &rhs,
-                     FieldSet<nconstant> &const_vars,
-                     FieldSet<nauxiliary> &auxiliary_vars,
-                     FieldSet<nprognostic> &solution) = 0;
-};
 } // namespace pamc
