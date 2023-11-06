@@ -19,20 +19,17 @@ public:
   FieldSet<nprognostic> dx;
   FieldSet<nprognostic> xn;
   FieldSet<nprognostic> xm;
-  LinearSystem *linear_system;
 
   void initialize(ModelParameters &params, Tendencies &tend,
-                  LinearSystem &linsys, FieldSet<nprognostic> &xvars,
-                  FieldSet<nconstant> &consts,
+                  FieldSet<nprognostic> &xvars, FieldSet<nconstant> &consts,
                   FieldSet<nauxiliary> &auxiliarys) override {
 
-    SemiImplicitTimeIntegrator::initialize(params, tend, linsys, xvars, consts,
+    SemiImplicitTimeIntegrator::initialize(params, tend, xvars, consts,
                                            auxiliarys);
 
     this->dx.initialize(xvars, "dx");
     this->xn.initialize(xvars, "xn");
     this->xm.initialize(xvars, "xm");
-    this->linear_system = &linsys;
 
     this->step = 0;
     this->avg_iters = 0;
@@ -75,8 +72,8 @@ public:
         break;
       }
 
-      this->linear_system->solve(dt, this->xm, *this->const_vars,
-                                 *this->auxiliary_vars, this->dx);
+      this->tendencies->linear_system->solve(dt, this->xm, *this->const_vars,
+                                             *this->auxiliary_vars, this->dx);
 
       this->xn.waxpy(1, this->dx, this->xn);
 

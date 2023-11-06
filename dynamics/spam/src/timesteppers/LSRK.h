@@ -19,10 +19,9 @@ public:
   int nstages;
 
   void initialize(ModelParameters &params, Tendencies &tend,
-                  LinearSystem &linsys, FieldSet<nprognostic> &xvars,
-                  FieldSet<nconstant> &consts,
+                  FieldSet<nprognostic> &xvars, FieldSet<nconstant> &consts,
                   FieldSet<nauxiliary> &auxiliarys) override {
-    TimeIntegrator::initialize(params, tend, linsys, xvars, consts, auxiliarys);
+    TimeIntegrator::initialize(params, tend, xvars, consts, auxiliarys);
 
     this->dx.initialize(xvars, "dx");
     this->is_ssp = false;
