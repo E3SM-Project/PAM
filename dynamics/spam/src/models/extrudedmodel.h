@@ -1537,7 +1537,7 @@ public:
     YAKL_SCOPE(primal_geometry, this->primal_geometry);
     YAKL_SCOPE(dual_geometry, this->dual_geometry);
 
-    // *d*d
+    // *d*d = vort
     parallel_for(
         "Velocity diffusion 1",
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
@@ -1607,7 +1607,7 @@ public:
                                                   i, j, k, n);
           for (int d = 0; d < ndims; ++d) {
             Vtendvar(d, k + pks, j + pjs, i + pis, n) +=
-                velocity_coeff * vdiff(d);
+                velocity_vort_horiz_diffusion_coeff * vdiff(d);
           }
         });
 
@@ -1621,10 +1621,10 @@ public:
               wdiff, FWvar, primal_geometry, dual_geometry, pis, pjs, pks, i, j,
               k, n);
           Wtendvar(0, k + pks, j + pjs, i + pis, n) +=
-              velocity_coeff * wdiff(0);
+              velocity_vort_vert_diffusion_coeff * wdiff(0);
         });
 
-    // d*d*
+    // d*d* = div
     parallel_for(
         "Velocity diffusion 7",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
@@ -1679,7 +1679,7 @@ public:
           compute_D0<1>(vdiff, dens0var, pis, pjs, pks, i, j, k, n);
           for (int d = 0; d < ndims; ++d) {
             Vtendvar(d, pks + k, pjs + j, pis + i, n) -=
-                velocity_coeff * vdiff(0, d);
+                velocity_div_horiz_diffusion_coeff * vdiff(0, d);
           }
         });
 
@@ -1691,7 +1691,7 @@ public:
           SArray<real, 1, 1, 1> wdiff;
           compute_D0_vert<1>(wdiff, dens0var, pis, pjs, pks, i, j, k, n);
           Wtendvar(0, pks + k, pjs + j, pis + i, n) -=
-              velocity_coeff * wdiff(0);
+              velocity_div_vert_diffusion_coeff * wdiff(0);
         });
 
     yakl::timer_stop("add_velocity_diffusion");
