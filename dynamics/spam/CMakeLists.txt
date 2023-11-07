@@ -14,7 +14,6 @@ target_include_directories(dycore INTERFACE src/operators)
 target_include_directories(dycore INTERFACE src/timesteppers)
 target_include_directories(dycore INTERFACE src/hamiltonians)
 target_include_directories(dycore INTERFACE src/grids)
-target_include_directories(dycore INTERFACE src/common)
 target_include_directories(dycore INTERFACE src/io)
 target_include_directories(dycore INTERFACE src/core)
 
@@ -84,5 +83,3 @@ endif()
 if ("${PAMC_IO}" STREQUAL "none")
   target_compile_definitions(dycore INTERFACE -DPAMC_NOIO)
 endif()
-
-
