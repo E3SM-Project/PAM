@@ -101,9 +101,14 @@ public:
   bool dycore_tracer_pos[ntracers_dycore + GPU_PAD];
   bool acoustic_balance;
   bool uniform_vertical;
-  real scalar_diffusion_coeff;
-  real scalar_diffusion_subtract_refstate;
-  real velocity_diffusion_coeff;
+  real scalar_horiz_diffusion_coeff;
+  real scalar_vert_diffusion_coeff;
+  real velocity_vort_horiz_diffusion_coeff;
+  real velocity_vort_vert_diffusion_coeff;
+  real velocity_div_horiz_diffusion_coeff;
+  real velocity_div_vert_diffusion_coeff;
+  bool scalar_diffusion_subtract_refstate;
+
   // forces reference state to be in perfect hydrostatic balance by subtracting
   // the hydrostatic balance equation evaluated at the reference state in
   // the velocity tendency

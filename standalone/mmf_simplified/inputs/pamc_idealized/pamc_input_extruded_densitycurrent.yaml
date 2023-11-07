@@ -4,8 +4,12 @@ verbose : true
 # Simulation time in seconds
 sim_time : 900
 
-scalar_diffusion_coeff : 75
-velocity_diffusion_coeff : 75
+scalar_horiz_diffusion_coeff : 75
+scalar_vert_diffusion_coeff : 75
+velocity_vort_horiz_diffusion_coeff : 75
+velocity_vort_vert_diffusion_coeff : 75
+velocity_div_horiz_diffusion_coeff : 75
+velocity_div_vert_diffusion_coeff : 75
 
 # Number of cells to use
 crm_nx : 256
