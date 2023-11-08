@@ -351,11 +351,17 @@ struct TotalDensityFunctor {
 class ModelTendencies : public ExtrudedTendencies {
   real scalar_horiz_diffusion_coeff;
   real scalar_vert_diffusion_coeff;
-  real scalar_diffusion_subtract_refstate;
   real velocity_vort_horiz_diffusion_coeff;
   real velocity_vort_vert_diffusion_coeff;
   real velocity_div_horiz_diffusion_coeff;
   real velocity_div_vert_diffusion_coeff;
+  bool scalar_diffusion_subtract_refstate;
+  int scalar_horiz_hypervisocity_level;
+  int scalar_vert_hypervisocity_level;
+  int velocity_vort_horiz_hypervisocity_level;
+  int velocity_vort_vert_hypervisocity_level;
+  int velocity_div_horiz_hypervisocity_level;
+  int velocity_div_vert_hypervisocity_level;
   bool force_refstate_hydrostatic_balance;
   bool check_anelastic_constraint;
 #if defined PAMC_AN || defined PAMC_MAN
@@ -378,6 +384,14 @@ public:
     velocity_div_vert_diffusion_coeff = params.velocity_div_vert_diffusion_coeff;
 
     scalar_diffusion_subtract_refstate = params.scalar_diffusion_subtract_refstate;
+
+    scalar_horiz_hypervisocity_level = params.scalar_horiz_hypervisocity_level;
+    scalar_vert_hypervisocity_level = params.scalar_vert_hypervisocity_level;
+    velocity_vort_horiz_hypervisocity_level = params.velocity_vort_horiz_hypervisocity_level;
+    velocity_vort_vert_hypervisocity_level = params.velocity_vort_vert_hypervisocity_level;
+    velocity_div_horiz_hypervisocity_level = params.velocity_div_horiz_hypervisocity_level;
+    velocity_div_vert_hypervisocity_level = params.velocity_div_vert_hypervisocity_level;
+
     force_refstate_hydrostatic_balance = params.force_refstate_hydrostatic_balance;
     check_anelastic_constraint = params.check_anelastic_constraint;
 
@@ -1325,6 +1339,14 @@ public:
     // Further optimization idea: no need to exchange everything here
     auxiliary_vars.exchange({DENS0VAR});
 
+    //HERE WHAT WE REALLY NEED TO DO IS JUST STUFF THINGS INTO DENS0VAR UNTIL WE HAVE LOOPED OVER THIS WHOLE THING ENOUGH TIMES
+    //ie for nhyper_level
+    // do this loop; store each result in dens0var
+    //put final result into tendences after multiplying by diffusion coefficient
+
+    //REALLY ALSO NEED TO SEPARATE HORIZ + VERT INTO SEPARATE FUNCTIONS AS WELL
+    //THIS IS AN IMPORTANT OPTIMIZATION
+
     parallel_for(
         "Scalar diffusion horz flux",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
@@ -1364,6 +1386,9 @@ public:
     auxiliary_vars.exchange({FWDIFFVAR});
     auxiliary_vars.fields_arr[FWDIFFVAR].set_bnd(0.0);
 
+  //SPLIT THIS
+  //EXTRA WORK IN DENSITY AND Hn1bar_diagonal CALCS, BUT LIKELY UNAVOIDABLE?
+  //ACTUALY MAYBE WE CAN SCALE A LOT OF STUFF OUT TO THE FINAL TENDENCY CALC LOOP?
     parallel_for(
         "Scalar diffusion tendency",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
@@ -3801,6 +3826,14 @@ void read_model_params_file(std::string inFile, ModelParameters &params,
   params.velocity_div_vert_diffusion_coeff = config["velocity_div_vert_diffusion_coeff"].as<real>(0);
 
   params.scalar_diffusion_subtract_refstate = config["scalar_diffusion_subtract_refstate"].as<bool>(true);
+
+  params.scalar_horiz_hypervisocity_level = config["scalar_horiz_hypervisocity_level"].as<int>(1);
+  params.scalar_vert_hypervisocity_level = config["scalar_vert_hypervisocity_level"].as<int>(1);
+  params.velocity_vort_horiz_hypervisocity_level = config["velocity_vort_horiz_hypervisocity_level"].as<int>(1);
+  params.velocity_vort_vert_hypervisocity_level = config["velocity_vort_vert_hypervisocity_level"].as<int>(1);
+  params.velocity_div_horiz_hypervisocity_level = config["velocity_div_horiz_hypervisocity_level"].as<int>(1);
+  params.velocity_div_vert_hypervisocity_level = config["velocity_div_vert_hypervisocity_level"].as<int>(1);
+
   // Read the data initialization options
   params.init_data = config["init_data"].as<std::string>();
   params.force_refstate_hydrostatic_balance = config["force_refstate_hydrostatic_balance"].as<bool>(false);
@@ -3834,13 +3867,23 @@ void read_model_params_coupler(ModelParameters &params, Parallel &par,
 
   params.acoustic_balance = false;
   params.uniform_vertical = false;
+
   params.scalar_horiz_diffusion_coeff = 0;
   params.scalar_vert_diffusion_coeff = 0;
   params.velocity_vort_horiz_diffusion_coeff = 0;
   params.velocity_vort_vert_diffusion_coeff = 0;
   params.velocity_div_horiz_diffusion_coeff = 0;
   params.velocity_div_vert_diffusion_coeff = 0;
+
+  params.scalar_horiz_hypervisocity_level = 1;
+  params.scalar_vert_hypervisocity_level = 1;
+  params.velocity_vort_horiz_hypervisocity_level = 1;
+  params.velocity_vort_vert_hypervisocity_level = 1;
+  params.velocity_div_horiz_hypervisocity_level = 1;
+  params.velocity_div_vert_hypervisocity_level = 1;
+
   params.scalar_diffusion_subtract_refstate = true;
+
   params.init_data = "coupler";
   params.force_refstate_hydrostatic_balance = true;
   params.check_anelastic_constraint = false;
@@ -3872,6 +3915,14 @@ void check_and_print_model_parameters(const ModelParameters &params,
     serial_print("velocity_vort_vert_diffusion_coeff: " + std::to_string(params.velocity_vort_vert_diffusion_coeff), par.masterproc);
     serial_print("velocity_div_horiz_diffusion_coeff: " + std::to_string(params.velocity_div_horiz_diffusion_coeff), par.masterproc);
     serial_print("velocity_div_vert_diffusion_coeff: " + std::to_string(params.velocity_div_vert_diffusion_coeff), par.masterproc);
+
+    serial_print("scalar_horiz_hypervisocity_level: " + std::to_string(params.scalar_horiz_hypervisocity_level), par.masterproc);
+    serial_print("scalar_vert_hypervisocity_level: " + std::to_string(params.scalar_vert_hypervisocity_level), par.masterproc);
+    serial_print("velocity_vort_horiz_hypervisocity_level: " + std::to_string(params.velocity_vort_horiz_hypervisocity_level), par.masterproc);
+    serial_print("velocity_vort_vert_hypervisocity_level: " + std::to_string(params.velocity_vort_vert_hypervisocity_level), par.masterproc);
+    serial_print("velocity_div_horiz_hypervisocity_level: " + std::to_string(params.velocity_div_horiz_hypervisocity_level), par.masterproc);
+    serial_print("velocity_div_vert_hypervisocity_level: " + std::to_string(params.velocity_div_vert_hypervisocity_level), par.masterproc);
+
     serial_print("scalar_diffusion_subtract_refstate: " + std::to_string(params.scalar_diffusion_subtract_refstate), par.masterproc);
 
     for (int i = 0; i < ntracers_dycore; i++) {

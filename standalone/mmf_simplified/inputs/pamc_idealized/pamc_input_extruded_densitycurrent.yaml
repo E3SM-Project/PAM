@@ -11,6 +11,13 @@ velocity_vort_vert_diffusion_coeff : 75
 velocity_div_horiz_diffusion_coeff : 75
 velocity_div_vert_diffusion_coeff : 75
 
+scalar_horiz_hypervisocity_level : 1
+scalar_vert_hypervisocity_level : 1
+velocity_vort_horiz_hypervisocity_level : 1
+velocity_vort_vert_hypervisocity_level : 1
+velocity_div_horiz_hypervisocity_level : 1
+velocity_div_vert_hypervisocity_level : 1
+
 # Number of cells to use
 crm_nx : 256
 crm_ny : 1
