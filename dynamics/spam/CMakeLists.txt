@@ -10,6 +10,8 @@ target_compile_definitions(dycore INTERFACE -DPAMC_DYCORE)
 
 target_include_directories(dycore INTERFACE src)
 target_include_directories(dycore INTERFACE src/models)
+target_include_directories(dycore INTERFACE src/models/layer)
+target_include_directories(dycore INTERFACE src/models/extruded)
 target_include_directories(dycore INTERFACE src/operators)
 target_include_directories(dycore INTERFACE src/timesteppers)
 target_include_directories(dycore INTERFACE src/hamiltonians)
