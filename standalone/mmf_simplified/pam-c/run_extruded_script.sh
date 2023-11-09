@@ -1,10 +1,22 @@
+#!/bin/bash
+
+build=true
+while getopts ":r" o; do
+    case "${o}" in
+        r)
+            build=false
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
+echo "build = ${build}"
+
 #clean up any existing files
 rm *.png *.nc
 
-
 #build model
-BUILD=${2:-true}
-if ["$BUILD" = true]
+if [ "${build}" = true ]
 then
 rm driver
 cd ../build
