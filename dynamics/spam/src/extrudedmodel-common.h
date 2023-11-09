@@ -110,10 +110,8 @@ public:
   bool scalar_diffusion_subtract_refstate;
   int scalar_horiz_hypervisocity_level;
   int scalar_vert_hypervisocity_level;
-  int velocity_vort_horiz_hypervisocity_level;
-  int velocity_vort_vert_hypervisocity_level;
-  int velocity_div_horiz_hypervisocity_level;
-  int velocity_div_vert_hypervisocity_level;
+  int velocity_vort_hypervisocity_level;
+  int velocity_div_hypervisocity_level;
 
 
   // forces reference state to be in perfect hydrostatic balance by subtracting
