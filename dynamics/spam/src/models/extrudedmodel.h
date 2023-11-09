@@ -1293,11 +1293,11 @@ public:
     yakl::timer_stop("compute_recons");
   }
 
-  void add_scalar_diffusion(real scalar_horiz_diffusion_coeff, real scalar_vert_diffusion_coeff, real5d denstendvar,
+  void add_scalar_horiz_hyperviscosity(real scalar_horiz_diffusion_coeff, int scalar_horiz_hypervisocity_level, real5d denstendvar,
                             const real5d densvar, const real5d dens0var,
-                            const real5d Fdiffvar, const real5d FWdiffvar,
+                            const real5d Fdiffvar,
                             FieldSet<nauxiliary> &auxiliary_vars) {
-    yakl::timer_start("add_scalar_diffusion");
+    yakl::timer_start("add_scalar_horiz_hyperviscosity");
 
     YAKL_SCOPE(subtract_refstate, this->scalar_diffusion_subtract_refstate);
 
@@ -1319,7 +1319,7 @@ public:
     YAKL_SCOPE(dual_geometry, this->dual_geometry);
 
     parallel_for(
-        "Scalar diffusion init",
+        "Scalar diffusion horiz init",
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
@@ -1339,13 +1339,7 @@ public:
     // Further optimization idea: no need to exchange everything here
     auxiliary_vars.exchange({DENS0VAR});
 
-    //HERE WHAT WE REALLY NEED TO DO IS JUST STUFF THINGS INTO DENS0VAR UNTIL WE HAVE LOOPED OVER THIS WHOLE THING ENOUGH TIMES
-    //ie for nhyper_level
-    // do this loop; store each result in dens0var
-    //put final result into tendences after multiplying by diffusion coefficient
-
-    //REALLY ALSO NEED TO SEPARATE HORIZ + VERT INTO SEPARATE FUNCTIONS AS WELL
-    //THIS IS AN IMPORTANT OPTIMIZATION
+    for (int l=0; l<scalar_horiz_hypervisocity_level;l++) {
 
     parallel_for(
         "Scalar diffusion horz flux",
@@ -1369,6 +1363,89 @@ public:
     auxiliary_vars.exchange({FDIFFVAR});
 
     parallel_for(
+        "Scalar diffusion horiz value",
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          SArray<real, 1, VS::ndensity_diffused> hdiv;
+          compute_Dnm1bar<1>(hdiv, Fdiffvar, dis, djs, dks, i, j, k, n);
+
+          const real Hn1bar_diag = Hn1bar_diagonal(primal_geometry, dual_geometry, pis, pjs, pks, i, j, k, n);
+
+          for (int d = 0; d < VS::ndensity_diffused; ++d) {
+            dens0var(d, k + pks, j + pjs, i + pis, n) = Hn1bar_diag * hdiv(d);
+          }
+        });
+    auxiliary_vars.exchange({DENS0VAR});
+
+      }
+
+    parallel_for(
+        "Scalar diffusion horiz tendency",
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+
+          const real rho = varset.get_total_density(densvar, k, j, i, pks, pjs, pis, n);
+
+          for (int d = 0; d < VS::ndensity_diffused; ++d) {
+            int dens_id = varset.diffused_dens_ids(d);
+            denstendvar(dens_id, k + pks, j + pjs, i + pis, n) -= scalar_horiz_diffusion_coeff * rho * dens0var(d, k + pks, j + pjs, i + pis, n);
+          }
+        });
+
+    yakl::timer_stop("add_scalar_horiz_hyperviscosity");
+    }
+
+  void add_scalar_vert_hyperviscosity(real scalar_vert_diffusion_coeff, int scalar_vert_hypervisocity_level, real5d denstendvar,
+                            const real5d densvar, const real5d dens0var,
+                            const real5d FWdiffvar,
+                            FieldSet<nauxiliary> &auxiliary_vars) {
+    yakl::timer_start("add_scalar_vert_hyperviscosity");
+
+    YAKL_SCOPE(subtract_refstate, this->scalar_diffusion_subtract_refstate);
+
+    const auto &primal_topology = primal_geometry.topology;
+
+    int pis = primal_topology.is;
+    int pjs = primal_topology.js;
+    int pks = primal_topology.ks;
+
+    const auto &dual_topology = dual_geometry.topology;
+
+    int dis = dual_topology.is;
+    int djs = dual_topology.js;
+    int dks = dual_topology.ks;
+
+    YAKL_SCOPE(varset, this->equations->varset);
+    YAKL_SCOPE(q_di, this->equations->reference_state.q_di.data);
+    YAKL_SCOPE(primal_geometry, this->primal_geometry);
+    YAKL_SCOPE(dual_geometry, this->dual_geometry);
+
+    parallel_for(
+        "Scalar diffusion vert init",
+        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          const real total_dens =
+              varset.get_total_density(densvar, k, j, i, dks, djs, dis, n);
+
+          for (int d = 0; d < VS::ndensity_diffused; ++d) {
+            int dens_id = varset.diffused_dens_ids(d);
+            real dens0 = densvar(dens_id, k + dks, j + djs, i + dis, n);
+            dens0 /= total_dens;
+            if (subtract_refstate) {
+              dens0 -= q_di(dens_id, k + dks, n);
+            }
+            dens0var(d, k + pks, j + pjs, i + pis, n) = dens0;
+          }
+        });
+    // Further optimization idea: no need to exchange everything here
+    auxiliary_vars.exchange({DENS0VAR});
+
+    for (int l=0; l<scalar_horiz_hypervisocity_level;l++) {
+
+    parallel_for(
         "Scalar diffusion vert flux",
         SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
@@ -1386,32 +1463,38 @@ public:
     auxiliary_vars.exchange({FWDIFFVAR});
     auxiliary_vars.fields_arr[FWDIFFVAR].set_bnd(0.0);
 
-  //SPLIT THIS
-  //EXTRA WORK IN DENSITY AND Hn1bar_diagonal CALCS, BUT LIKELY UNAVOIDABLE?
-  //ACTUALY MAYBE WE CAN SCALE A LOT OF STUFF OUT TO THE FINAL TENDENCY CALC LOOP?
     parallel_for(
-        "Scalar diffusion tendency",
+        "Scalar diffusion vert value",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          SArray<real, 1, VS::ndensity_diffused> hdiv;
-          compute_Dnm1bar<1>(hdiv, Fdiffvar, dis, djs, dks, i, j, k, n);
           SArray<real, 1, VS::ndensity_diffused> vdiv;
           compute_Dnm1bar_vert<1>(vdiv, FWdiffvar, dis, djs, dks, i, j, k, n);
 
-          const real rho =
-              varset.get_total_density(densvar, k, j, i, pks, pjs, pis, n);
-          const real Hn1bar_diag = Hn1bar_diagonal(
-              primal_geometry, dual_geometry, pis, pjs, pks, i, j, k, n);
+          const real Hn1bar_diag = Hn1bar_diagonal(primal_geometry, dual_geometry, pis, pjs, pks, i, j, k, n);
 
           for (int d = 0; d < VS::ndensity_diffused; ++d) {
-            const real diff_tend = -scalar_horiz_diffusion_coeff * rho * Hn1bar_diag * hdiv(d) + -scalar_vert_diffusion_coeff * rho * Hn1bar_diag * vdiv(d);
+            dens0var(d, k + pks, j + pjs, i + pis, n) = Hn1bar_diag * vdiv(d);
+          }
+        });
+    auxiliary_vars.exchange({DENS0VAR});
+
+  }
+
+    parallel_for(
+        "Scalar diffusion vert tendency",
+        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
+                        dual_topology.n_cells_x, dual_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          const real rho = varset.get_total_density(densvar, k, j, i, pks, pjs, pis, n);
+
+          for (int d = 0; d < VS::ndensity_diffused; ++d) {
             int dens_id = varset.diffused_dens_ids(d);
-            denstendvar(dens_id, k + pks, j + pjs, i + pis, n) += diff_tend;
+            denstendvar(dens_id, k + pks, j + pjs, i + pis, n) -= scalar_vert_diffusion_coeff * rho *  dens0var(d, k + pks, j + pjs, i + pis, n);
           }
         });
 
-    yakl::timer_stop("add_scalar_diffusion");
+    yakl::timer_stop("add_scalar_vert_hyperviscosity");
   }
 
   void add_velocity_diffusion_2d(
@@ -2516,13 +2599,20 @@ public:
               : std::nullopt);
     }
 
-    if (scalar_horiz_diffusion_coeff > 0 or scalar_vert_diffusion_coeff > 0) {
-      add_scalar_diffusion(
-          scalar_horiz_diffusion_coeff, scalar_vert_diffusion_coeff, xtend.fields_arr[DENSVAR].data,
+    if (scalar_horiz_diffusion_coeff > 0) {
+  add_scalar_horiz_hyperviscosity(
+          scalar_horiz_diffusion_coeff, scalar_horiz_hypervisocity_level, xtend.fields_arr[DENSVAR].data,
           x.fields_arr[DENSVAR].data, auxiliary_vars.fields_arr[DENS0VAR].data,
-          auxiliary_vars.fields_arr[FDIFFVAR].data,
+          auxiliary_vars.fields_arr[FDIFFVAR].data, auxiliary_vars);
+    }
+
+  if (scalar_vert_diffusion_coeff > 0) {
+      add_scalar_vert_hyperviscosity(
+          scalar_vert_diffusion_coeff, scalar_vert_hypervisocity_level, xtend.fields_arr[DENSVAR].data,
+          x.fields_arr[DENSVAR].data, auxiliary_vars.fields_arr[DENS0VAR].data,
           auxiliary_vars.fields_arr[FWDIFFVAR].data, auxiliary_vars);
     }
+
     if (velocity_vort_horiz_diffusion_coeff > 0 or velocity_vort_vert_diffusion_coeff > 0 or velocity_div_horiz_diffusion_coeff > 0 or velocity_div_vert_diffusion_coeff > 0) {
       if (ndims == 1) {
         add_velocity_diffusion_2d(
