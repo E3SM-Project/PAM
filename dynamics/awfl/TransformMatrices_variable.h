@@ -6,9 +6,9 @@
 using yakl::SArray;
 
 namespace TransformMatrices_variable {
+  using yakl::index_t;
 
-
-  template <unsigned int ord>
+  template <index_t ord>
   inline void coefs_to_sten_variable(SArray<double,1,ord+1> const &locs ,
                                      SArray<double,2,ord,ord> &rslt) {
     // Create the Vandermonde matrix
@@ -32,7 +32,7 @@ namespace TransformMatrices_variable {
   }
 
 
-  template <unsigned int ord>
+  template <index_t ord>
   inline void sten_to_coefs_variable(SArray<double,1,ord+1> const &locs ,
                                      SArray<double,2,ord,ord> &rslt) {
     using yakl::intrinsics::matinv_ge;
@@ -46,7 +46,7 @@ namespace TransformMatrices_variable {
   }
 
 
-  template <unsigned int ord> 
+  template <index_t ord> 
   inline void weno_lower_sten_to_coefs( SArray<double,1,ord+1> const &locs ,
                                         SArray<double,3,(ord-1)/2+1,(ord-1)/2+1,(ord-1)/2+1> &weno_recon ) {
     int constexpr hs = (ord-1)/2;
