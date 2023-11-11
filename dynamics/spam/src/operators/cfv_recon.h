@@ -8,7 +8,7 @@ namespace pamc {
 // THIS IS TRUE WITH HOW GRID IS CONSTRUCTED, AND ALSO REQUIRED FOR 2ND ORDER
 // ACCURACY IN THE VERTICAL ANYWAYS...
 // ALSO ONLY DEFINED FOR ORD=1
-template <uint ndofs, uint ord>
+template <index_t ndofs, index_t ord>
 void YAKL_INLINE cfv_vert(SArray<real, 2, ndofs, 2> &edgerecon,
                           SArray<real, 2, ndofs, ord> const &dens) {
   for (int l = 0; l < ndofs; l++) {
@@ -17,7 +17,7 @@ void YAKL_INLINE cfv_vert(SArray<real, 2, ndofs, 2> &edgerecon,
   }
 }
 
-template <uint ndofs, uint nd>
+template <index_t ndofs, index_t nd>
 void YAKL_INLINE cfv(SArray<real, 3, ndofs, nd, 2> &edgerecon,
                      SArray<real, 3, ndofs, nd, 1> const &dens) {
   for (int l = 0; l < ndofs; l++) {
@@ -28,7 +28,7 @@ void YAKL_INLINE cfv(SArray<real, 3, ndofs, nd, 2> &edgerecon,
   }
 }
 
-template <uint ndofs, uint nd>
+template <index_t ndofs, index_t nd>
 void YAKL_INLINE cfv(SArray<real, 3, ndofs, nd, 2> &edgerecon,
                      SArray<real, 3, ndofs, nd, 3> const &dens) {
   real er;
@@ -42,7 +42,7 @@ void YAKL_INLINE cfv(SArray<real, 3, ndofs, nd, 2> &edgerecon,
   }
 }
 
-template <uint ndofs, uint nd>
+template <index_t ndofs, index_t nd>
 void YAKL_INLINE cfv(SArray<real, 3, ndofs, nd, 2> &edgerecon,
                      SArray<real, 3, ndofs, nd, 5> const &dens) {
   real er;
@@ -57,7 +57,7 @@ void YAKL_INLINE cfv(SArray<real, 3, ndofs, nd, 2> &edgerecon,
   }
 }
 
-template <uint ndofs, uint nd>
+template <index_t ndofs, index_t nd>
 void YAKL_INLINE cfv(SArray<real, 3, ndofs, nd, 2> &edgerecon,
                      SArray<real, 3, ndofs, nd, 7> const &dens) {
   real er;
@@ -73,7 +73,7 @@ void YAKL_INLINE cfv(SArray<real, 3, ndofs, nd, 2> &edgerecon,
   }
 }
 
-template <uint ndofs, uint nd>
+template <index_t ndofs, index_t nd>
 void YAKL_INLINE cfv(SArray<real, 3, ndofs, nd, 2> &edgerecon,
                      SArray<real, 3, ndofs, nd, 9> const &dens) {
   real er;

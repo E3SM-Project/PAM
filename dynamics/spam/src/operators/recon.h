@@ -9,8 +9,8 @@
 
 namespace pamc {
 
-template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord = 2,
-          uint hs = (ord - 1) / 2>
+template <index_t ndofs, RECONSTRUCTION_TYPE recontype, index_t ord,
+          index_t tord = 2, index_t hs = (ord - 1) / 2>
 void YAKL_INLINE compute_twisted_edge_recon(
     const real5d &edgereconvar, const real5d &var, int is, int js, int ks,
     int i, int j, int k, int n, SArray<real, 3, ord, ord, ord> const &wenoRecon,
@@ -54,8 +54,8 @@ void YAKL_INLINE compute_twisted_edge_recon(
   }
 }
 
-template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord = 2,
-          uint hs = (ord - 1) / 2>
+template <index_t ndofs, RECONSTRUCTION_TYPE recontype, index_t ord,
+          index_t tord = 2, index_t hs = (ord - 1) / 2>
 void YAKL_INLINE compute_twisted_vert_edge_recon_uniform(
     const real5d &vertedgereconvar, const real5d &var, int is, int js, int ks,
     int i, int j, int k, int n, SArray<real, 3, ord, ord, ord> const &wenoRecon,
@@ -89,8 +89,8 @@ void YAKL_INLINE compute_twisted_vert_edge_recon_uniform(
   }
 }
 
-template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord,
-          uint hs = (ord - 1) / 2>
+template <index_t ndofs, RECONSTRUCTION_TYPE recontype, index_t ord,
+          index_t hs = (ord - 1) / 2>
 void YAKL_INLINE compute_twisted_vert_edge_recon_variable(
     const real5d &vertedgereconvar, const real5d &var, int is, int js, int ks,
     int i, int j, int k, int n, SArray<real, 2, ord, 2> const &coefs_to_gll,
@@ -125,8 +125,8 @@ void YAKL_INLINE compute_twisted_vert_edge_recon_variable(
   }
 }
 
-template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord = 2,
-          uint hs = (ord - 1) / 2>
+template <index_t ndofs, RECONSTRUCTION_TYPE recontype, index_t ord,
+          index_t tord = 2, index_t hs = (ord - 1) / 2>
 void YAKL_INLINE compute_straight_edge_recon(
     const real5d &edgereconvar, const real5d &var, int is, int js, int ks,
     int i, int j, int k, int n, SArray<real, 3, ord, ord, ord> const &wenoRecon,
@@ -171,8 +171,8 @@ void YAKL_INLINE compute_straight_edge_recon(
   }
 }
 
-template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord = 2,
-          uint hs = (ord - 1) / 2>
+template <index_t ndofs, RECONSTRUCTION_TYPE recontype, index_t ord,
+          index_t tord = 2, index_t hs = (ord - 1) / 2>
 void YAKL_INLINE compute_straight_hz_edge_recon(
     const real5d &edgereconvar, const real5d &var, int is, int js, int ks,
     int i, int j, int k, int n, SArray<real, 3, ord, ord, ord> const &wenoRecon,
@@ -219,8 +219,8 @@ void YAKL_INLINE compute_straight_hz_edge_recon(
   }
 }
 
-template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord, uint tord = 2,
-          uint hs = (ord - 1) / 2>
+template <index_t ndofs, RECONSTRUCTION_TYPE recontype, index_t ord,
+          index_t tord = 2, index_t hs = (ord - 1) / 2>
 void YAKL_INLINE compute_straight_hz_vert_edge_recon_uniform(
     const real5d &edgereconvar, const real5d &var, int is, int js, int ks,
     int i, int j, int k, int n, SArray<real, 3, ord, ord, ord> const &wenoRecon,
@@ -256,8 +256,8 @@ void YAKL_INLINE compute_straight_hz_vert_edge_recon_uniform(
   }
 }
 
-template <uint ndofs, RECONSTRUCTION_TYPE recontype, uint ord,
-          uint hs = (ord - 1) / 2>
+template <index_t ndofs, RECONSTRUCTION_TYPE recontype, index_t ord,
+          index_t hs = (ord - 1) / 2>
 void YAKL_INLINE compute_straight_hz_vert_edge_recon_variable(
     const real5d &edgereconvar, const real5d &var, int is, int js, int ks,
     int i, int j, int k, int n, SArray<real, 2, ord, 2> const &coefs_to_gll,
@@ -293,7 +293,7 @@ void YAKL_INLINE compute_straight_hz_vert_edge_recon_variable(
   }
 }
 
-template <uint ndofs, uint nd>
+template <index_t ndofs, index_t nd>
 void YAKL_INLINE
 centered_recon(SArray<real, 2, ndofs, nd> &recon,
                SArray<real, 3, ndofs, nd, 2> const &edgerecon) {
@@ -305,7 +305,7 @@ centered_recon(SArray<real, 2, ndofs, nd> &recon,
   }
 }
 
-template <uint ndofs, uint nd>
+template <index_t ndofs, index_t nd>
 void YAKL_INLINE upwind_recon(SArray<real, 2, ndofs, nd> &recon,
                               SArray<real, 3, ndofs, nd, 2> const &edgerecon,
                               SArray<real, 1, nd> const &flux) {
@@ -321,7 +321,7 @@ void YAKL_INLINE upwind_recon(SArray<real, 2, ndofs, nd> &recon,
   }
 }
 
-template <uint ndofs, uint nd>
+template <index_t ndofs, index_t nd>
 void YAKL_INLINE
 tanh_upwind_recon(SArray<real, 2, ndofs, nd> &recon,
                   SArray<real, 3, ndofs, nd, 2> const &edgerecon,
@@ -337,7 +337,7 @@ tanh_upwind_recon(SArray<real, 2, ndofs, nd> &recon,
   }
 }
 
-template <uint ndofs, RECONSTRUCTION_TYPE recontype>
+template <index_t ndofs, RECONSTRUCTION_TYPE recontype>
 void YAKL_INLINE compute_twisted_recon(const real5d &reconvar,
                                        const real5d &edgereconvar,
                                        const Geometry<Twisted> &dgeom,
@@ -393,7 +393,7 @@ void YAKL_INLINE compute_twisted_recon(const real5d &reconvar,
   }
 }
 
-template <uint ndofs, RECONSTRUCTION_TYPE recontype>
+template <index_t ndofs, RECONSTRUCTION_TYPE recontype>
 void YAKL_INLINE compute_twisted_vert_recon(
     const real5d &vertreconvar, const real5d &vertedgereconvar,
     const Geometry<Twisted> &dgeom, const real5d &FWvar, real tanh_upwind_coeff,
@@ -430,7 +430,7 @@ void YAKL_INLINE compute_twisted_vert_recon(
   }
 }
 
-template <uint ndofs, RECONSTRUCTION_TYPE recontype>
+template <index_t ndofs, RECONSTRUCTION_TYPE recontype>
 void YAKL_INLINE compute_straight_recon(const real5d &reconvar,
                                         const real5d &edgereconvar,
                                         const Geometry<Straight> &pgeom,
@@ -492,7 +492,7 @@ void YAKL_INLINE compute_straight_recon(const real5d &reconvar,
 }
 
 #ifdef PAMC_EXTRUDED
-template <uint ndofs, RECONSTRUCTION_TYPE recontype>
+template <index_t ndofs, RECONSTRUCTION_TYPE recontype>
 void YAKL_INLINE compute_straight_hz_recon(const real5d &reconvar,
                                            const real5d &edgereconvar,
                                            const Geometry<Straight> &pgeom,
@@ -548,7 +548,7 @@ void YAKL_INLINE compute_straight_hz_recon(const real5d &reconvar,
   }
 }
 
-template <uint ndofs, RECONSTRUCTION_TYPE recontype>
+template <index_t ndofs, RECONSTRUCTION_TYPE recontype>
 void YAKL_INLINE compute_straight_hz_vert_recon(const real5d &reconvar,
                                                 const real5d &edgereconvar,
                                                 const Geometry<Straight> &pgeom,

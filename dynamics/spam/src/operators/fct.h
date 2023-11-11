@@ -4,7 +4,7 @@
 
 namespace pamc {
 
-template <uint ndofs>
+template <index_t ndofs>
 void YAKL_INLINE calculate_edgeflux(
     SArray<real, 2, ndofs, ndims> &edgeflux,
     SArray<real, 2, ndofs, ndims> const &recon,
@@ -19,7 +19,7 @@ void YAKL_INLINE calculate_edgeflux(
   }
 }
 
-template <uint ndofs>
+template <index_t ndofs>
 YAKL_INLINE void compute_edgefluxes(
     const real5d &edgefluxvar, const real5d &reconvar, const real5d &U,
     const SArray<bool, 1, VariableSet::ndensity_prognostic> &dens_pos, int is,
@@ -46,7 +46,7 @@ YAKL_INLINE void compute_edgefluxes(
   }
 }
 
-template <uint ndofs>
+template <index_t ndofs>
 void YAKL_INLINE calculate_vertedgeflux(
     SArray<real, 1, ndofs> &edgeflux, SArray<real, 1, ndofs> const &recon,
     real const &flux,
@@ -58,7 +58,7 @@ void YAKL_INLINE calculate_vertedgeflux(
   }
 }
 
-template <uint ndofs>
+template <index_t ndofs>
 YAKL_INLINE void compute_vertedgefluxes(
     const real5d &vertedgefluxvar, const real5d &vertreconvar, const real5d &UW,
     const SArray<bool, 1, VariableSet::ndensity_prognostic> &dens_pos, int is,
@@ -81,7 +81,7 @@ YAKL_INLINE void compute_vertedgefluxes(
   }
 }
 
-template <uint ndofs>
+template <index_t ndofs>
 void YAKL_INLINE calculate_Mf(
     SArray<real, 1, ndofs> &Mf,
     SArray<real, 3, ndofs, ndims, 2> const &edgeflux, real dt,
@@ -99,7 +99,7 @@ void YAKL_INLINE calculate_Mf(
   }
 }
 
-template <uint ndofs>
+template <index_t ndofs>
 void YAKL_INLINE calculate_Mfext(
     SArray<real, 1, ndofs> &Mf,
     SArray<real, 3, ndofs, ndims, 2> const &edgeflux,
@@ -120,7 +120,7 @@ void YAKL_INLINE calculate_Mfext(
   }
 }
 
-template <uint ndofs>
+template <index_t ndofs>
 YAKL_INLINE void
 compute_Mf(const real5d &Mfvar, const real5d &edgefluxvar, real dt,
            const SArray<bool, 1, VariableSet::ndensity_prognostic> &dens_pos,
@@ -151,7 +151,7 @@ compute_Mf(const real5d &Mfvar, const real5d &edgefluxvar, real dt,
   }
 }
 
-template <uint ndofs>
+template <index_t ndofs>
 YAKL_INLINE void
 compute_Mfext(const real5d &Mfvar, const real5d &edgefluxvar,
               const real5d &vertedgefluxvar, real dt,
@@ -185,7 +185,7 @@ compute_Mfext(const real5d &Mfvar, const real5d &edgefluxvar,
   }
 }
 
-template <uint ndofs>
+template <index_t ndofs>
 void YAKL_INLINE calculate_phi(
     SArray<real, 2, ndofs, ndims> &Phi,
     SArray<real, 3, ndofs, ndims, 2> const &q,
@@ -208,7 +208,7 @@ void YAKL_INLINE calculate_phi(
   }
 }
 
-template <uint ndofs>
+template <index_t ndofs>
 void YAKL_INLINE calculate_phivert(
     SArray<real, 1, ndofs> &Phivert, SArray<real, 2, ndofs, 2> const &q,
     SArray<real, 2, ndofs, 2> const &Mf,
@@ -225,7 +225,7 @@ void YAKL_INLINE calculate_phivert(
   }
 }
 
-template <uint ndofs>
+template <index_t ndofs>
 YAKL_INLINE void
 apply_Phi(const real5d &densvar, const real5d &edgefluxvar, const real5d &Mfvar,
           const real5d &qvar,
@@ -263,7 +263,7 @@ apply_Phi(const real5d &densvar, const real5d &edgefluxvar, const real5d &Mfvar,
   }
 }
 
-template <uint ndofs>
+template <index_t ndofs>
 YAKL_INLINE void
 apply_Phivert(const real5d &Phivertvar, const real5d &vertedgefluxvar,
               const real5d &Mfvar, const real5d &qvar,

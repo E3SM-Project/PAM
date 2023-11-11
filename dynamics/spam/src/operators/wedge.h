@@ -5,7 +5,7 @@
 namespace pamc {
 
 // Q
-template <uint ndofs>
+template <index_t ndofs>
 void YAKL_INLINE Q2D(SArray<real, 2, ndofs, 2> &vel,
                      SArray<real, 3, ndofs, 2, 5> const &recon,
                      SArray<real, 2, 2, 4> const &flux) {
@@ -27,7 +27,7 @@ void YAKL_INLINE Q2D(SArray<real, 2, ndofs, 2> &vel,
   }
 }
 
-template <uint ndofs>
+template <index_t ndofs>
 void YAKL_INLINE Q2D_nonEC(SArray<real, 2, ndofs, 2> &vel,
                            SArray<real, 2, ndofs, 2> const &recon,
                            SArray<real, 2, 2, 4> const &flux) {
@@ -41,7 +41,7 @@ void YAKL_INLINE Q2D_nonEC(SArray<real, 2, ndofs, 2> &vel,
   }
 }
 
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+template <index_t ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_Q_EC(const real5d &qflux, const real5d &reconvar,
                               const real5d &Uvar, int is, int js, int ks, int i,
                               int j, int k, int n) {
@@ -88,7 +88,7 @@ void YAKL_INLINE compute_Q_EC(const real5d &qflux, const real5d &reconvar,
   }
 }
 
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+template <index_t ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_Q_nonEC(const real5d &qflux, const real5d &reconvar,
                                  const real5d &Uvar, int is, int js, int ks,
                                  int i, int j, int k, int n) {
@@ -126,7 +126,7 @@ void YAKL_INLINE compute_Q_nonEC(const real5d &qflux, const real5d &reconvar,
   }
 }
 
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+template <index_t ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_Qxz_w_EC(const real5d &qflux, const real5d &reconvar,
                                   const real5d &vertreconvar,
                                   const real5d &Uvar, int is, int js, int ks,
@@ -167,7 +167,7 @@ void YAKL_INLINE compute_Qxz_w_EC(const real5d &qflux, const real5d &reconvar,
   }
 }
 
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+template <index_t ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_Qxz_w_EC_top(const real5d &qflux,
                                       const real5d &reconvar,
                                       const real5d &vertreconvar,
@@ -196,7 +196,7 @@ void YAKL_INLINE compute_Qxz_w_EC_top(const real5d &qflux,
   }
 }
 
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+template <index_t ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_Qxz_w_EC_bottom(const real5d &qflux,
                                          const real5d &reconvar,
                                          const real5d &vertreconvar,
@@ -225,7 +225,7 @@ void YAKL_INLINE compute_Qxz_w_EC_bottom(const real5d &qflux,
   }
 }
 
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+template <index_t ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_Qxz_w_nonEC(const real5d &qflux,
                                      const real5d &reconvar, const real5d &Uvar,
                                      int is, int js, int ks, int i, int j,
@@ -254,7 +254,7 @@ void YAKL_INLINE compute_Qxz_w_nonEC(const real5d &qflux,
   }
 }
 
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+template <index_t ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_Qxz_w_nonEC_top(const real5d &qflux,
                                          const real5d &reconvar,
                                          const real5d &Uvar, int is, int js,
@@ -281,7 +281,7 @@ void YAKL_INLINE compute_Qxz_w_nonEC_top(const real5d &qflux,
   }
 }
 
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+template <index_t ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_Qxz_w_nonEC_bottom(const real5d &qflux,
                                             const real5d &reconvar,
                                             const real5d &Uvar, int is, int js,
@@ -309,7 +309,7 @@ void YAKL_INLINE compute_Qxz_w_nonEC_bottom(const real5d &qflux,
   }
 }
 
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+template <index_t ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_Qyz_w_EC(const real5d &qflux, const real5d &reconvar,
                                   const real5d &vertreconvar,
                                   const real5d &Uvar, int is, int js, int ks,
@@ -348,7 +348,7 @@ void YAKL_INLINE compute_Qyz_w_EC(const real5d &qflux, const real5d &reconvar,
   }
 }
 
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+template <index_t ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_Qyz_w_EC_top(const real5d &qflux,
                                       const real5d &reconvar,
                                       const real5d &vertreconvar,
@@ -376,7 +376,7 @@ void YAKL_INLINE compute_Qyz_w_EC_top(const real5d &qflux,
   }
 }
 
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+template <index_t ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_Qyz_w_EC_bottom(const real5d &qflux,
                                          const real5d &reconvar,
                                          const real5d &vertreconvar,
@@ -404,7 +404,7 @@ void YAKL_INLINE compute_Qyz_w_EC_bottom(const real5d &qflux,
   }
 }
 
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+template <index_t ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_Qyz_w_nonEC(const real5d &qflux,
                                      const real5d &reconvar, const real5d &Uvar,
                                      int is, int js, int ks, int i, int j,
@@ -429,7 +429,7 @@ void YAKL_INLINE compute_Qyz_w_nonEC(const real5d &qflux,
   }
 }
 
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+template <index_t ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_Qyz_w_nonEC_top(const real5d &qflux,
                                          const real5d &reconvar,
                                          const real5d &Uvar, int is, int js,
@@ -451,7 +451,7 @@ void YAKL_INLINE compute_Qyz_w_nonEC_top(const real5d &qflux,
   }
 }
 
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+template <index_t ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_Qyz_w_nonEC_bottom(const real5d &qflux,
                                             const real5d &reconvar,
                                             const real5d &Uvar, int is, int js,
@@ -474,7 +474,7 @@ void YAKL_INLINE compute_Qyz_w_nonEC_bottom(const real5d &qflux,
   }
 }
 
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+template <index_t ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_Qxz_u_EC(const real5d &qvertflux,
                                   const real5d &reconvar,
                                   const real5d &vertreconvar,
@@ -519,7 +519,7 @@ void YAKL_INLINE compute_Qxz_u_EC(const real5d &qvertflux,
   }
 }
 
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+template <index_t ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_Qxz_u_top(const real5d &qvertflux,
                                    const real5d &vertreconvar,
                                    const real5d &UWvar, int is, int js, int ks,
@@ -544,7 +544,7 @@ void YAKL_INLINE compute_Qxz_u_top(const real5d &qvertflux,
     }
   }
 }
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+template <index_t ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_Qxz_u_bottom(const real5d &qvertflux,
                                       const real5d &vertreconvar,
                                       const real5d &UWvar, int is, int js,
@@ -569,7 +569,7 @@ void YAKL_INLINE compute_Qxz_u_bottom(const real5d &qvertflux,
     }
   }
 }
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+template <index_t ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_Qxz_u_nonEC(const real5d &qvertflux,
                                      const real5d &vertreconvar,
                                      const real5d &UWvar, int is, int js,
@@ -595,7 +595,7 @@ void YAKL_INLINE compute_Qxz_u_nonEC(const real5d &qvertflux,
   }
 }
 
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+template <index_t ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_Qxz_u_nonEC_top(const real5d &qvertflux,
                                          const real5d &vertreconvar,
                                          const real5d &UWvar, int is, int js,
@@ -603,7 +603,7 @@ void YAKL_INLINE compute_Qxz_u_nonEC_top(const real5d &qvertflux,
   compute_Qxz_u_top<ndofs, addmode>(qvertflux, vertreconvar, UWvar, is, js, ks,
                                     i, j, k, n);
 }
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+template <index_t ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_Qxz_u_EC_top(const real5d &qvertflux,
                                       const real5d &reconvar,
                                       const real5d &vertreconvar,
@@ -612,7 +612,7 @@ void YAKL_INLINE compute_Qxz_u_EC_top(const real5d &qvertflux,
   compute_Qxz_u_top<ndofs, addmode>(qvertflux, vertreconvar, UWvar, is, js, ks,
                                     i, j, k, n);
 }
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+template <index_t ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_Qxz_u_nonEC_bottom(const real5d &qvertflux,
                                             const real5d &vertreconvar,
                                             const real5d &UWvar, int is, int js,
@@ -621,7 +621,7 @@ void YAKL_INLINE compute_Qxz_u_nonEC_bottom(const real5d &qvertflux,
   compute_Qxz_u_bottom<ndofs, addmode>(qvertflux, vertreconvar, UWvar, is, js,
                                        ks, i, j, k, n);
 }
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+template <index_t ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_Qxz_u_EC_bottom(const real5d &qvertflux,
                                          const real5d &reconvar,
                                          const real5d &vertreconvar,
@@ -631,7 +631,7 @@ void YAKL_INLINE compute_Qxz_u_EC_bottom(const real5d &qvertflux,
                                        ks, i, j, k, n);
 }
 
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+template <index_t ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_Qyz_v_EC(const real5d &qvertflux,
                                   const real5d &reconvar,
                                   const real5d &vertreconvar,
@@ -671,7 +671,7 @@ void YAKL_INLINE compute_Qyz_v_EC(const real5d &qvertflux,
   }
 }
 
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+template <index_t ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_Qyz_v_top(const real5d &qvertflux,
                                    const real5d &vertreconvar,
                                    const real5d &UWvar, int is, int js, int ks,
@@ -694,7 +694,7 @@ void YAKL_INLINE compute_Qyz_v_top(const real5d &qvertflux,
     }
   }
 }
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+template <index_t ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_Qyz_v_bottom(const real5d &qvertflux,
                                       const real5d &vertreconvar,
                                       const real5d &UWvar, int is, int js,
@@ -718,7 +718,7 @@ void YAKL_INLINE compute_Qyz_v_bottom(const real5d &qvertflux,
     }
   }
 }
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+template <index_t ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_Qyz_v_nonEC(const real5d &qvertflux,
                                      const real5d &vertreconvar,
                                      const real5d &UWvar, int is, int js,
@@ -742,7 +742,7 @@ void YAKL_INLINE compute_Qyz_v_nonEC(const real5d &qvertflux,
   }
 }
 
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+template <index_t ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_Qyz_v_nonEC_top(const real5d &qvertflux,
                                          const real5d &vertreconvar,
                                          const real5d &UWvar, int is, int js,
@@ -750,7 +750,7 @@ void YAKL_INLINE compute_Qyz_v_nonEC_top(const real5d &qvertflux,
   compute_Qyz_v_top<ndofs, addmode>(qvertflux, vertreconvar, UWvar, is, js, ks,
                                     i, j, k, n);
 }
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+template <index_t ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_Qyz_v_EC_top(const real5d &qvertflux,
                                       const real5d &reconvar,
                                       const real5d &vertreconvar,
@@ -759,7 +759,7 @@ void YAKL_INLINE compute_Qyz_v_EC_top(const real5d &qvertflux,
   compute_Qyz_v_top<ndofs, addmode>(qvertflux, vertreconvar, UWvar, is, js, ks,
                                     i, j, k, n);
 }
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+template <index_t ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_Qyz_v_nonEC_bottom(const real5d &qvertflux,
                                             const real5d &vertreconvar,
                                             const real5d &UWvar, int is, int js,
@@ -768,7 +768,7 @@ void YAKL_INLINE compute_Qyz_v_nonEC_bottom(const real5d &qvertflux,
   compute_Qyz_v_bottom<ndofs, addmode>(qvertflux, vertreconvar, UWvar, is, js,
                                        ks, i, j, k, n);
 }
-template <uint ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
+template <index_t ndofs, ADD_MODE addmode = ADD_MODE::REPLACE>
 void YAKL_INLINE compute_Qyz_v_EC_bottom(const real5d &qvertflux,
                                          const real5d &reconvar,
                                          const real5d &vertreconvar,
@@ -1002,7 +1002,7 @@ void YAKL_INLINE R(SArray<real, 1, 1> &vard, SArray<real, 1, 8> const &varp) {
                         varp(5) + varp(6) + varp(7));
 }
 
-template <uint dof>
+template <index_t dof>
 void YAKL_INLINE compute_R(real &var, const real5d &densvar, int is, int js,
                            int ks, int i, int j, int k, int n) {
   SArray<real, 1, 1> dualdens;
@@ -1035,7 +1035,7 @@ void YAKL_INLINE compute_R(real &var, const real5d &densvar, int is, int js,
   var = dualdens(0);
 }
 
-template <uint dof>
+template <index_t dof>
 void YAKL_INLINE compute_R(const real5d &var, const real5d &densvar, int is,
                            int js, int ks, int i, int j, int k, int n) {
   real var2;
