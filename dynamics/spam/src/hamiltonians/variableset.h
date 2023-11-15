@@ -684,7 +684,7 @@ void convert_coupler_to_dynamics_densities(
           if (T::compressible) {
 
             real dens_dry = dm_dens_dry(k, j, i, n);
-            real dens = dens_dry + dens_vap;
+            dens = dens_dry + dens_vap;
 
             varset.set_density(
                 dens * dual_geometry.get_area_n1entity(k + dks, j + djs,
