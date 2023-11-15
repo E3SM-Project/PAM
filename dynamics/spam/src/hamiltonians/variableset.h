@@ -157,7 +157,8 @@ public:
   static constexpr uint ndensity_active =
       ndensity_dycore_active + ntracers_dycore_active + ntracers_physics_active;
   // TODO: Add tracers and physics
-  static constexpr uint ndensity_diffused = ndensity_dycore_diffused;
+  static constexpr uint ndensity_diffused =
+      ndensity_dycore_diffused + ntracers_physics;
   static constexpr uint ndensity_prognostic =
       ndensity_dycore_prognostic + ntracers_dycore + ntracers_physics;
 
@@ -244,7 +245,7 @@ public:
       varset.dens_pos(tr + ndensity_nophysics) = positive;
       varset.dens_prognostic(tr + ndensity_nophysics) = true;
       varset.dens_active(tr + ndensity_nophysics) = false;
-      varset.dens_diffused(tr + ndensity_nophysics) = false;
+      varset.dens_diffused(tr + ndensity_nophysics) = true;
       if (tracer_names_loc[tr] == std::string("water_vapor")) {
         varset.dm_id_vap = tr;
         varset.dens_id_vap = ndensity_nophysics + tr;
