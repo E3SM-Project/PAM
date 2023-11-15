@@ -1378,9 +1378,11 @@ public:
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           SArray<real, 1, VS::ndensity_diffused> hdiv;
-          compute_Dnm1bar<1>(hdiv, Fdiffvar, dis, djs, dks, i, j, k, n);
+          compute_Dnm1bar<VS::ndensity_diffused>(hdiv, Fdiffvar, dis, djs, dks,
+                                                 i, j, k, n);
           SArray<real, 1, VS::ndensity_diffused> vdiv;
-          compute_Dnm1bar_vert<1>(vdiv, FWdiffvar, dis, djs, dks, i, j, k, n);
+          compute_Dnm1bar_vert<VS::ndensity_diffused>(vdiv, FWdiffvar, dis, djs,
+                                                      dks, i, j, k, n);
 
           const real rho =
               varset.get_total_density(densvar, k, j, i, pks, pjs, pis, n);
