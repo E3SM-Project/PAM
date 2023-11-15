@@ -4876,7 +4876,12 @@ struct DoubleVortex {
   }
 };
 
-template <bool acoustic_balance> struct RisingBubble {
+// contains defualts
+struct TestCaseInit {
+  static int constexpr max_ndims = 1;
+};
+
+template <bool acoustic_balance> struct RisingBubble : TestCaseInit {
   static int constexpr max_ndims = 2;
   static real constexpr g = 9.80616_fp;
   static real constexpr Lx = 1000._fp;
@@ -4961,8 +4966,7 @@ template <bool acoustic_balance> struct RisingBubble {
   add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics) {}
 };
 
-struct TwoBubbles {
-  static int constexpr max_ndims = 1;
+struct TwoBubbles : TestCaseInit {
   static real constexpr g = 9.80616_fp;
   static real constexpr Lx = 1000._fp;
   static real constexpr Lz = 1000._fp;
@@ -5054,8 +5058,7 @@ struct TwoBubbles {
   add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics) {}
 };
 
-struct DensityCurrent {
-  static int constexpr max_ndims = 1;
+struct DensityCurrent : TestCaseInit {
   static real constexpr g = 9.80616_fp;
   static real constexpr Lx = 51.2e3;
   static real constexpr Lz = 6400;
@@ -5161,8 +5164,7 @@ struct MoistRisingBubble : public RisingBubble<false> {
   add_diagnostics(std::vector<std::unique_ptr<Diagnostic>> &diagnostics) {}
 };
 
-struct LargeRisingBubble {
-  static int constexpr max_ndims = 1;
+struct LargeRisingBubble : TestCaseInit {
   static real constexpr g = 9.80616_fp;
   static real constexpr Lx = 20000._fp;
   static real constexpr Lz = 20000._fp;
@@ -5273,8 +5275,7 @@ struct MoistLargeRisingBubble : LargeRisingBubble {
   }
 };
 
-template <bool add_perturbation> struct GravityWave {
-  static int constexpr max_ndims = 1;
+template <bool add_perturbation> struct GravityWave : TestCaseInit {
   static real constexpr g = 9.80616_fp;
   static real constexpr Lx = 300e3_fp;
   static real constexpr Lz = 10e3_fp;
