@@ -1756,16 +1756,13 @@ public:
     yakl::timer_stop("add_velocity_div_hyperviscosity_2d");
   }
 
-
-// BROKEN- TO BE FIXED
-  void add_velocity_diffusion_3d(
-      real velocity_vort_horiz_diffusion_coeff, real velocity_vort_vert_diffusion_coeff, real velocity_div_horiz_diffusion_coeff, real velocity_div_vert_diffusion_coeff,
+  void add_velocity_vort_hyperviscosity_3d(
+      real velocity_vort_horiz_diffusion_coeff, real velocity_vort_vert_diffusion_coeff, int velocity_vort_hypervisocity_level,
       real5d Vtendvar, real5d Wtendvar, const real5d Vvar,
       const real5d Wvar, const real5d qhzedgereconvar, const real5d qhzvar,
-      const real5d dens0var, const real5d Kvar, const real5d Fvar,
-      const real5d FWvar, const real5d qxyedgereconvar, const real5d qxyvar,
+      const real5d Fvar, const real5d FWvar, const real5d qxyedgereconvar, const real5d qxyvar, const real5d Uvar, const real5d UWvar,
       FieldSet<nauxiliary> &auxiliary_vars) {
-    yakl::timer_start("add_velocity_diffusion");
+    yakl::timer_start("add_velocity_vort_hyperviscosity_3d");
 
     const auto &primal_topology = primal_geometry.topology;
 
@@ -1782,28 +1779,54 @@ public:
     YAKL_SCOPE(primal_geometry, this->primal_geometry);
     YAKL_SCOPE(dual_geometry, this->dual_geometry);
 
-    // *d*d = vort
+// We are using Uvar and UWvar to store dofs, which are larger, so the code below is fine
+// Halo exchanges are also fine since straight and twisted are same size in horiz, just vert is different; and mirrored halos are not used in Hodge star calcs!
     parallel_for(
-        "Velocity diffusion 1",
+        "Velocity vort diffusion copy 1",
+        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+
+          for (int d = 0; d < ndims; ++d) {
+            Uvar(d, pks + k, pjs + j, pis + i, n) = Vvar(d, pks + k, pjs + j, pis + i, n);
+          }
+        });
+
+    parallel_for(
+        "Velocity vort diffusion copy 2",
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_D1_ext<1>(qhzedgereconvar, Vvar, Wvar, pis, pjs, pks, i, j, k,
+
+          UWvar(0, pks + k, pjs + j, pis + i, n) = Wvar(0, pks + k, pjs + j, pis + i, n);
+        });
+    auxiliary_vars.exchange({UVAR});
+    auxiliary_vars.exchange({UWVAR});
+
+    for (int l=0; l<velocity_vort_hypervisocity_level;l++) {
+
+    // *d*d = vort
+    parallel_for(
+        "Velocity vort diffusion 1",
+        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          compute_D1_ext<1>(qhzedgereconvar, Uvar, UWvar, pis, pjs, pks, i, j, k,
                             n);
         });
     auxiliary_vars.exchange({QHZEDGERECONVAR});
 
     parallel_for(
-        "Velocity diffusion 1",
+        "Velocity vort diffusion 2",
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_D1<1>(qxyedgereconvar, Vvar, pis, pjs, pks, i, j, k, n);
+          compute_D1<1>(qxyedgereconvar, Uvar, pis, pjs, pks, i, j, k, n);
         });
     auxiliary_vars.exchange({QXYEDGERECONVAR});
 
     parallel_for(
-        "Velocity diffusion 2",
+        "Velocity vort diffusion 3",
         SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
@@ -1815,7 +1838,7 @@ public:
     auxiliary_vars.fields_arr[QHZVAR].set_bnd(0.0);
 
     parallel_for(
-        "Velocity diffusion 2",
+        "Velocity vort diffusion 4",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
@@ -1842,7 +1865,7 @@ public:
     auxiliary_vars.exchange({FWVAR});
 
     parallel_for(
-        "Velocity diffusion 5",
+        "Velocity vort diffusion 6",
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
@@ -1851,13 +1874,12 @@ public:
                                                   dual_geometry, pis, pjs, pks,
                                                   i, j, k, n);
           for (int d = 0; d < ndims; ++d) {
-            Vtendvar(d, k + pks, j + pjs, i + pis, n) +=
-                velocity_vort_horiz_diffusion_coeff * vdiff(d);
+            Uvar(d, k + pks, j + pjs, i + pis, n) = vdiff(d);
           }
         });
 
     parallel_for(
-        "Velocity diffusion 6",
+        "Velocity vort diffusion 7",
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
@@ -1865,28 +1887,105 @@ public:
           compute_Hn0bar<1, vert_diffusion_diff_ord>(
               wdiff, FWvar, primal_geometry, dual_geometry, pis, pjs, pks, i, j,
               k, n);
-          Wtendvar(0, k + pks, j + pjs, i + pis, n) +=
-              velocity_vort_vert_diffusion_coeff * wdiff(0);
+          UWvar(0, k + pks, j + pjs, i + pis, n) = wdiff(0);
         });
+
+  }
+
+    parallel_for(
+        "Velocity vort tendencies 1",
+        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          for (int d = 0; d < ndims; ++d) {
+            Vtendvar(d, k + pks, j + pjs, i + pis, n) +=
+                velocity_vort_horiz_diffusion_coeff * Uvar(d, k + pks, j + pjs, i + pis, n);
+          }
+        });
+
+    parallel_for(
+        "Velocity vort tendencies 2",
+        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          Wtendvar(0, k + pks, j + pjs, i + pis, n) +=
+              velocity_vort_vert_diffusion_coeff * UWvar(0, k + pks, j + pjs, i + pis, n);
+        });
+
+
+    yakl::timer_stop("add_velocity_vort_hyperviscosity_3d");
+  }
+
+
+
+
+  void add_velocity_div_hyperviscosity_3d(
+      real velocity_div_horiz_diffusion_coeff, real velocity_div_vert_diffusion_coeff, int velocity_div_hypervisocity_level,
+      real5d Vtendvar, real5d Wtendvar, const real5d Vvar,
+      const real5d Wvar, const real5d dens0var, const real5d Kvar, const real5d Fvar, const real5d FWvar, const real5d Uvar, const real5d UWvar,
+      FieldSet<nauxiliary> &auxiliary_vars) {
+    yakl::timer_start("add_velocity_div_hyperviscosity_3d");
+
+    const auto &primal_topology = primal_geometry.topology;
+
+    int pis = primal_topology.is;
+    int pjs = primal_topology.js;
+    int pks = primal_topology.ks;
+
+    const auto &dual_topology = dual_geometry.topology;
+
+    int dis = dual_topology.is;
+    int djs = dual_topology.js;
+    int dks = dual_topology.ks;
+
+    YAKL_SCOPE(primal_geometry, this->primal_geometry);
+    YAKL_SCOPE(dual_geometry, this->dual_geometry);
+
+
+// We are using Uvar and UWvar to store dofs, which are larger, so the code below is fine
+// Halo exchanges are also fine since straight and twisted are same size in horiz, just vert is different; and mirrored halos are not used in Hodge star calcs!
+    parallel_for(
+        "Velocity vort diffusion copy 1",
+        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+
+          for (int d = 0; d < ndims; ++d) {
+            Uvar(d, pks + k, pjs + j, pis + i, n) = Vvar(d, pks + k, pjs + j, pis + i, n);
+          }
+        });
+
+    parallel_for(
+        "Velocity vort diffusion copy 2",
+        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+
+          UWvar(0, pks + k, pjs + j, pis + i, n) = Wvar(0, pks + k, pjs + j, pis + i, n);
+        });
+    auxiliary_vars.exchange({UVAR});
+    auxiliary_vars.exchange({UWVAR});
+
+    for (int l=0; l<velocity_div_hypervisocity_level;l++) {
 
     // d*d* = div
     parallel_for(
-        "Velocity diffusion 7",
+        "Velocity div diffusion 1",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_H10<1, diffusion_diff_ord>(Fvar, Vvar, primal_geometry,
+          compute_H10<1, diffusion_diff_ord>(Fvar, Uvar, primal_geometry,
                                              dual_geometry, dis, djs, dks, i, j,
                                              k, n);
         });
     auxiliary_vars.exchange({FVAR});
 
     parallel_for(
-        "Velocity diffusion 8",
+        "Velocity div diffusion 2",
         SimpleBounds<4>(dual_topology.ni - 2, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_H01<1, vert_diffusion_diff_ord>(FWvar, Wvar, primal_geometry,
+          compute_H01<1, vert_diffusion_diff_ord>(FWvar, UWvar, primal_geometry,
                                                   dual_geometry, dis, djs, dks,
                                                   i, j, k + 1, n);
         });
@@ -1894,7 +1993,7 @@ public:
     auxiliary_vars.fields_arr[FWVAR].set_bnd(0.0);
 
     parallel_for(
-        "Velocity diffusion 9",
+        "Velocity div diffusion 3",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
@@ -1905,7 +2004,7 @@ public:
     auxiliary_vars.exchange({KVAR});
 
     parallel_for(
-        "Velocity diffusion 10",
+        "Velocity div diffusion 4",
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
@@ -1916,30 +2015,49 @@ public:
     auxiliary_vars.exchange({DENS0VAR});
 
     parallel_for(
-        "Velocity diffusion 11",
+        "Velocity div diffusion 5",
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           SArray<real, 2, 1, ndims> vdiff;
           compute_D0<1>(vdiff, dens0var, pis, pjs, pks, i, j, k, n);
           for (int d = 0; d < ndims; ++d) {
-            Vtendvar(d, pks + k, pjs + j, pis + i, n) -=
-                velocity_div_horiz_diffusion_coeff * vdiff(0, d);
+            Uvar(d, pks + k, pjs + j, pis + i, n) = vdiff(0, d);
           }
         });
 
     parallel_for(
-        "Velocity diffusion 12",
+        "Velocity div diffusion 6",
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           SArray<real, 1, 1, 1> wdiff;
           compute_D0_vert<1>(wdiff, dens0var, pis, pjs, pks, i, j, k, n);
-          Wtendvar(0, pks + k, pjs + j, pis + i, n) -=
-              velocity_div_vert_diffusion_coeff * wdiff(0);
+          UWvar(0, pks + k, pjs + j, pis + i, n) = wdiff(0);
+        });
+}
+
+    parallel_for(
+        "Velocity div tendencies 1",
+        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          for (int d = 0; d < ndims; ++d) {
+            Vtendvar(d, pks + k, pjs + j, pis + i, n) -=
+                velocity_div_horiz_diffusion_coeff * Uvar(d, pks + k, pjs + j, pis + i, n);
+          }
         });
 
-    yakl::timer_stop("add_velocity_diffusion");
+    parallel_for(
+        "Velocity div tendencies 2",
+        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          Wtendvar(0, pks + k, pjs + j, pis + i, n) -=
+              velocity_div_vert_diffusion_coeff * UWvar(0, pks + k, pjs + j, pis + i, n);
+        });
+
+    yakl::timer_stop("add_velocity_div_hyperviscosity_3d");
   }
 
   template <ADD_MODE addmode = ADD_MODE::REPLACE>
@@ -2752,8 +2870,7 @@ public:
 
 
 
-//3D CODE IS BROKEN!
-    if (velocity_vort_horiz_diffusion_coeff > 0 or velocity_vort_vert_diffusion_coeff > 0 or velocity_div_horiz_diffusion_coeff > 0 or velocity_div_vert_diffusion_coeff > 0) {
+    if (velocity_vort_horiz_diffusion_coeff > 0 or velocity_vort_vert_diffusion_coeff > 0) {
       if (ndims == 1) {
         add_velocity_vort_hyperviscosity_2d(
             velocity_vort_horiz_diffusion_coeff, velocity_vort_vert_diffusion_coeff, velocity_vort_hypervisocity_level,
@@ -2763,18 +2880,17 @@ public:
             auxiliary_vars.fields_arr[QHZVAR].data,
             auxiliary_vars);
       } else {
-        add_velocity_diffusion_3d(
-            velocity_vort_horiz_diffusion_coeff, velocity_vort_vert_diffusion_coeff, velocity_div_horiz_diffusion_coeff, velocity_div_vert_diffusion_coeff, xtend.fields_arr[VVAR].data,
+        add_velocity_vort_hyperviscosity_3d(
+            velocity_vort_horiz_diffusion_coeff, velocity_vort_vert_diffusion_coeff, velocity_vort_hypervisocity_level, xtend.fields_arr[VVAR].data,
             xtend.fields_arr[WVAR].data, x.fields_arr[VVAR].data,
             x.fields_arr[WVAR].data,
             auxiliary_vars.fields_arr[QHZEDGERECONVAR].data,
             auxiliary_vars.fields_arr[QHZVAR].data,
-            auxiliary_vars.fields_arr[DENS0VAR].data,
-            auxiliary_vars.fields_arr[KVAR].data,
             auxiliary_vars.fields_arr[FVAR].data,
             auxiliary_vars.fields_arr[FWVAR].data,
             auxiliary_vars.fields_arr[QXYEDGERECONVAR].data,
-            auxiliary_vars.fields_arr[QXYVAR].data, auxiliary_vars);
+            auxiliary_vars.fields_arr[QXYVAR].data,
+            auxiliary_vars.fields_arr[UVAR].data, auxiliary_vars.fields_arr[UWVAR].data, auxiliary_vars);
       }
     }
 
@@ -2789,18 +2905,15 @@ public:
             auxiliary_vars.fields_arr[DENS0VAR].data, auxiliary_vars.fields_arr[FVAR].data, auxiliary_vars.fields_arr[FWVAR].data,
             auxiliary_vars);
       } else {
-        add_velocity_diffusion_3d(
-            velocity_vort_horiz_diffusion_coeff, velocity_vort_vert_diffusion_coeff, velocity_div_horiz_diffusion_coeff, velocity_div_vert_diffusion_coeff, xtend.fields_arr[VVAR].data,
+        add_velocity_div_hyperviscosity_3d(
+            velocity_div_horiz_diffusion_coeff, velocity_div_vert_diffusion_coeff, velocity_div_hypervisocity_level, xtend.fields_arr[VVAR].data,
             xtend.fields_arr[WVAR].data, x.fields_arr[VVAR].data,
             x.fields_arr[WVAR].data,
-            auxiliary_vars.fields_arr[QHZEDGERECONVAR].data,
-            auxiliary_vars.fields_arr[QHZVAR].data,
             auxiliary_vars.fields_arr[DENS0VAR].data,
             auxiliary_vars.fields_arr[KVAR].data,
             auxiliary_vars.fields_arr[FVAR].data,
             auxiliary_vars.fields_arr[FWVAR].data,
-            auxiliary_vars.fields_arr[QXYEDGERECONVAR].data,
-            auxiliary_vars.fields_arr[QXYVAR].data, auxiliary_vars);
+            auxiliary_vars.fields_arr[UVAR].data, auxiliary_vars.fields_arr[UWVAR].data, auxiliary_vars);
       }
     }
     yakl::timer_stop("apply_symplectic");
