@@ -30,6 +30,7 @@ using yakl::c::SimpleBounds;
 
 using ulong = unsigned long;
 using uint = unsigned int;
+using yakl::index_t;
 
 ////////////// These control the settings for SPAM++    //////////////
 

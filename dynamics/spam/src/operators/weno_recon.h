@@ -325,7 +325,7 @@ real YAKL_INLINE interp_weno11(real phim5, real phim4, real phim3, real phim2,
   return w0 * p0 + w1 * p1 + w2 * p2 + w3 * p3 + w4 * p4 + w5 * p5;
 };
 
-template <uint ndofs, uint nd>
+template <index_t ndofs, index_t nd>
 void YAKL_INLINE weno(SArray<real, 3, ndofs, nd, 2> &edgerecon,
                       SArray<real, 3, ndofs, nd, 1> const &dens) {
   for (int l = 0; l < ndofs; l++) {
@@ -336,7 +336,7 @@ void YAKL_INLINE weno(SArray<real, 3, ndofs, nd, 2> &edgerecon,
   }
 }
 
-template <uint ndofs, uint nd>
+template <index_t ndofs, index_t nd>
 void YAKL_INLINE weno(SArray<real, 3, ndofs, nd, 2> &edgerecon,
                       SArray<real, 3, ndofs, nd, 3> const &dens) {
   for (int l = 0; l < ndofs; l++) {
@@ -349,7 +349,7 @@ void YAKL_INLINE weno(SArray<real, 3, ndofs, nd, 2> &edgerecon,
   }
 }
 
-template <uint ndofs, uint nd>
+template <index_t ndofs, index_t nd>
 void YAKL_INLINE weno(SArray<real, 3, ndofs, nd, 2> &edgerecon,
                       SArray<real, 3, ndofs, nd, 5> const &dens) {
   for (int l = 0; l < ndofs; l++) {
@@ -364,7 +364,7 @@ void YAKL_INLINE weno(SArray<real, 3, ndofs, nd, 2> &edgerecon,
   }
 }
 
-template <uint ndofs, uint nd>
+template <index_t ndofs, index_t nd>
 void YAKL_INLINE weno(SArray<real, 3, ndofs, nd, 2> &edgerecon,
                       SArray<real, 3, ndofs, nd, 7> const &dens) {
   for (int l = 0; l < ndofs; l++) {
@@ -379,7 +379,7 @@ void YAKL_INLINE weno(SArray<real, 3, ndofs, nd, 2> &edgerecon,
   }
 }
 
-template <uint ndofs, uint nd>
+template <index_t ndofs, index_t nd>
 void YAKL_INLINE weno(SArray<real, 3, ndofs, nd, 2> &edgerecon,
                       SArray<real, 3, ndofs, nd, 9> const &dens) {
   for (int l = 0; l < ndofs; l++) {
@@ -396,7 +396,7 @@ void YAKL_INLINE weno(SArray<real, 3, ndofs, nd, 2> &edgerecon,
   }
 }
 
-template <uint ndofs, uint nd>
+template <index_t ndofs, index_t nd>
 void YAKL_INLINE weno(SArray<real, 3, ndofs, nd, 2> &edgerecon,
                       SArray<real, 3, ndofs, nd, 11> const &dens) {
   for (int l = 0; l < ndofs; l++) {

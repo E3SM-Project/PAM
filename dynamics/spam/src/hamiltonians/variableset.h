@@ -244,6 +244,7 @@ public:
       varset.dens_pos(tr + ndensity_nophysics) = positive;
       varset.dens_prognostic(tr + ndensity_nophysics) = true;
       varset.dens_active(tr + ndensity_nophysics) = false;
+      varset.dens_diffused(tr + ndensity_nophysics) = false;
       if (tracer_names_loc[tr] == std::string("water_vapor")) {
         varset.dm_id_vap = tr;
         varset.dens_id_vap = ndensity_nophysics + tr;
