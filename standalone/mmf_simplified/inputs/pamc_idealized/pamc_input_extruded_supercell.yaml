@@ -1,0 +1,46 @@
+idealized : true
+verbose : true
+
+# Simulation time in seconds
+sim_time : 7200
+
+# Number of cells to use
+crm_nx : 42
+crm_ny : 42
+crm_nz : 41
+
+scalar_horiz_diffusion_coeff : 1500
+scalar_vert_diffusion_coeff : 1500
+
+velocity_vort_horiz_diffusion_coeff : 500
+velocity_vort_vert_diffusion_coeff : 500
+velocity_div_horiz_diffusion_coeff : 500
+velocity_div_vert_diffusion_coeff : 500
+
+# Vertical height coordinates file
+vcoords : uniform
+
+# Data to initialize: doublevortex rb mrb
+init_data : supercell
+
+# Time steps
+dt_crm_phys : 10
+crm_per_phys : 1
+
+# Output filename
+out_prefix : test
+dycore_out_prefix : test_dycore
+
+# Output frequency in actual time
+out_freq : 600
+stat_freq : 10
+
+tstype : ssprk3
+
+# Number of ensembles
+nens : 1
+
+# Parallel decomposition
+inner_mpi : true
+nprocx : 1
+nprocy : 1
