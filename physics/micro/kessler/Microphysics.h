@@ -336,6 +336,7 @@ public:
 
   void kessler(real2d const &theta, real2d const &qv, real2d const &qc, real2d const &qr, realConst2d rho,
                real1d const &precl, realConst2d z, realConst2d pk, real dt, real Rd, real cp, real p0) const {
+    using yakl::c::SimpleBounds;
     int nz = theta.dimension[0];
     int ncol = theta.dimension[1];
 
