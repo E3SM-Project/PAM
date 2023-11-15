@@ -10,7 +10,7 @@ uint constexpr ntracers_dycore = 0;
 //////////////////////////////////////////////////////////////////////////////
 
 // Number of Dimensions
-uint constexpr ndims = 1;
+uint constexpr ndims = 2;
 } // namespace pamc
 
 #include "params.h"
