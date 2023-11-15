@@ -4335,38 +4335,44 @@ public:
 
     equations->Hs.set_parameters(g);
 
-    YAKL_SCOPE(thermo, equations->thermo);
-    YAKL_SCOPE(varset, equations->varset);
-
-#ifndef PAMC_MAN
-    dual_geom.set_n1form_values(
-        YAKL_LAMBDA(real x, real y, real z) { return rho_f(x, y, z, thermo); },
-        progvars.fields_arr[DENSVAR], varset.dens_id_mass);
-#endif
-    dual_geom.set_n1form_values(
-        YAKL_LAMBDA(real x, real y, real z) {
-          return rho_f(x, y, z, thermo) * entropicvar_f(x, y, z, thermo);
-        },
-        progvars.fields_arr[DENSVAR], varset.dens_id_entr);
-
     dual_geom.set_n1form_values(
         YAKL_LAMBDA(real x, real y, real z) { return flat_geop(z, g); },
         constvars.fields_arr[HSVAR], 0);
 
-    dual_geom.set_n1form_values(
-        YAKL_LAMBDA(real x, real y, real z) {
-          return T::rhov_f(x, y, z, thermo);
-        },
-        progvars.fields_arr[DENSVAR], varset.dens_id_vap);
+    if constexpr (T::needs_special_init) {
+      T::initialize(equations, progvars, constvars, primal_geom, dual_geom);
+    } else {
+      YAKL_SCOPE(thermo, equations->thermo);
+      YAKL_SCOPE(varset, equations->varset);
 
-    YAKL_SCOPE(tracers, this->tracers);
-    for (int i = 0; i < ntracers_dycore; i++) {
+#ifndef PAMC_MAN
       dual_geom.set_n1form_values(
           YAKL_LAMBDA(real x, real y, real z) {
-            return rho_f(x, y, z, thermo) *
-                   TracerFunctor{}(tracers(i), x, z, Lx, Lz, xc, zc);
+            return rho_f(x, y, z, thermo);
           },
-          progvars.fields_arr[DENSVAR], i + VS::ndensity_dycore_prognostic);
+          progvars.fields_arr[DENSVAR], varset.dens_id_mass);
+#endif
+      dual_geom.set_n1form_values(
+          YAKL_LAMBDA(real x, real y, real z) {
+            return rho_f(x, y, z, thermo) * entropicvar_f(x, y, z, thermo);
+          },
+          progvars.fields_arr[DENSVAR], varset.dens_id_entr);
+
+      dual_geom.set_n1form_values(
+          YAKL_LAMBDA(real x, real y, real z) {
+            return T::rhov_f(x, y, z, thermo);
+          },
+          progvars.fields_arr[DENSVAR], varset.dens_id_vap);
+
+      YAKL_SCOPE(tracers, this->tracers);
+      for (int i = 0; i < ntracers_dycore; i++) {
+        dual_geom.set_n1form_values(
+            YAKL_LAMBDA(real x, real y, real z) {
+              return rho_f(x, y, z, thermo) *
+                     TracerFunctor{}(tracers(i), x, z, Lx, Lz, xc, zc);
+            },
+            progvars.fields_arr[DENSVAR], i + VS::ndensity_dycore_prognostic);
+      }
     }
   }
 
@@ -4386,15 +4392,20 @@ public:
 
     dual_geom.set_profile_n1form_values(
         YAKL_LAMBDA(real z) { return flat_geop(z, g); }, refstate.geop, 0);
-    dual_geom.set_profile_n1form_values(
-        YAKL_LAMBDA(real z) { return refrho_f(z, thermo); }, refstate.dens,
-        varset.dens_id_mass);
-    dual_geom.set_profile_n1form_values(
-        YAKL_LAMBDA(real z) { return refentropicdensity_f(z, thermo); },
-        refstate.dens, varset.dens_id_entr);
-    dual_geom.set_profile_n1form_values(
-        YAKL_LAMBDA(real z) { return refrhov_f(z, thermo); }, refstate.dens,
-        varset.dens_id_vap);
+
+    if constexpr (T::needs_special_init) {
+      T::initialize_refstate(equations, primal_geom, dual_geom);
+    } else {
+      dual_geom.set_profile_n1form_values(
+          YAKL_LAMBDA(real z) { return refrho_f(z, thermo); }, refstate.dens,
+          varset.dens_id_mass);
+      dual_geom.set_profile_n1form_values(
+          YAKL_LAMBDA(real z) { return refentropicdensity_f(z, thermo); },
+          refstate.dens, varset.dens_id_entr);
+      dual_geom.set_profile_n1form_values(
+          YAKL_LAMBDA(real z) { return refrhov_f(z, thermo); }, refstate.dens,
+          varset.dens_id_vap);
+    }
 
     parallel_for(
         "compute rho_pi and unscaled q_pi",
@@ -4879,6 +4890,7 @@ struct DoubleVortex {
 // contains defualts
 struct TestCaseInit {
   static int constexpr max_ndims = 1;
+  static bool constexpr needs_special_init = false;
 };
 
 template <bool acoustic_balance> struct RisingBubble : TestCaseInit {
