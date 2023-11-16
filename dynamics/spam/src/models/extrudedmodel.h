@@ -5775,7 +5775,7 @@ struct Supercell : TestCaseInit {
   static real constexpr U_c = 15;
   static real constexpr dz_u = 1e3;
 
-  static real constexpr N_ref = 1.235e-5;
+  static real constexpr N_ref = 0.011;
 
   static real YAKL_INLINE refnsq_f(real z, const ThermoPotential &thermo) {
     return N_ref * N_ref;
