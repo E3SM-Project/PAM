@@ -5975,6 +5975,10 @@ struct Supercell : TestCaseInit {
           refstate.dens.data(varset.dens_id_vap, k + dks, n) =
               rho * qv(k + pks, n) * dual_volume;
         });
+
+    primal_geometry.set_profile_10form_values(
+        YAKL_LAMBDA(real x, real y, real z) { return v_f(x, y, z); },
+        refstate.v, 0);
   }
 
   static void initialize(Equations *equations, FieldSet<nprognostic> &progvars,
