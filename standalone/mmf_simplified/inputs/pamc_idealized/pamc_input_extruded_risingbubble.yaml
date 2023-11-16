@@ -2,12 +2,24 @@ idealized : true
 verbose : true
 
 # Simulation time in seconds
-sim_time : 500
+sim_time : 900
 
 # Number of cells to use
 crm_nx : 100
-crm_ny : 1
+crm_ny : 100
 crm_nz : 150
+
+scalar_horiz_diffusion_coeff : 0
+scalar_vert_diffusion_coeff : 0
+velocity_vort_horiz_diffusion_coeff : 0
+velocity_vort_vert_diffusion_coeff : 0
+velocity_div_horiz_diffusion_coeff : 0
+velocity_div_vert_diffusion_coeff : 0
+
+scalar_horiz_hypervisocity_level : 2
+scalar_vert_hypervisocity_level : 2
+velocity_vort_hypervisocity_level : 2
+velocity_div_hypervisocity_level : 2
 
 # Vertical height coordinates file
 #vcoords  : vcoords_equal_100_20km.nc
@@ -30,6 +42,7 @@ out_freq : 100
 stat_freq : 1
 
 tstype : si
+si_monitor_convergence : 1
 
 # Number of ensembles
 nens : 1

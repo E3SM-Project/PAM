@@ -34,7 +34,7 @@ fi
 #idealgaspottemp constkappavirpottemp
 
 #run model
-mpirun.mpich -n $1 ./driver ../inputs/pamc_idealized/pamc_input_extruded_densitycurrent.yaml
+mpirun.mpich -n $1 ./driver ../inputs/pamc_idealized/pamc_input_extruded_risingbubble.yaml
 
 #pamc_input_extruded_densitycurrent
 #pamc_input_extruded_gravitywave
@@ -45,5 +45,7 @@ mpirun.mpich -n $1 ./driver ../inputs/pamc_idealized/pamc_input_extruded_density
 
 #plot model
 python3 plot_extrudedmodel2D.py an
+#python3 plot_extrudedmodel2D.py an yz
+#python3 plot_extrudedmodel2D.py an xy
 
 #an ce man mce

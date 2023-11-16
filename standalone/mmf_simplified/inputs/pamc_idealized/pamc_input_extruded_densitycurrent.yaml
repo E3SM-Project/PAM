@@ -5,17 +5,17 @@ verbose : true
 sim_time : 900
 
 #3000000
-scalar_horiz_diffusion_coeff : 300000
-scalar_vert_diffusion_coeff : 300000
-velocity_vort_horiz_diffusion_coeff : 30000
-velocity_vort_vert_diffusion_coeff : 30000
-velocity_div_horiz_diffusion_coeff : 30000
-velocity_div_vert_diffusion_coeff : 30000
+scalar_horiz_diffusion_coeff : 75
+scalar_vert_diffusion_coeff : 75
+velocity_vort_horiz_diffusion_coeff : 75
+velocity_vort_vert_diffusion_coeff : 75
+velocity_div_horiz_diffusion_coeff : 75
+velocity_div_vert_diffusion_coeff : 75
 
-scalar_horiz_hypervisocity_level : 2
-scalar_vert_hypervisocity_level : 2
-velocity_vort_hypervisocity_level : 2
-velocity_div_hypervisocity_level : 2
+scalar_horiz_hypervisocity_level : 1
+scalar_vert_hypervisocity_level : 1
+velocity_vort_hypervisocity_level : 1
+velocity_div_hypervisocity_level : 1
 
 # Number of cells to use
 crm_nx : 256
