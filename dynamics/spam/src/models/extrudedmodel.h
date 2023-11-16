@@ -376,7 +376,6 @@ public:
     ExtrudedTendencies::initialize(params, equations, primal_geom, dual_geom);
     scalar_horiz_diffusion_coeff = params.scalar_horiz_diffusion_coeff;
     scalar_vert_diffusion_coeff = params.scalar_vert_diffusion_coeff;
-<<<<<<< HEAD
     velocity_vort_horiz_diffusion_coeff = params.velocity_vort_horiz_diffusion_coeff;
     velocity_vort_vert_diffusion_coeff = params.velocity_vort_vert_diffusion_coeff;
     velocity_div_horiz_diffusion_coeff = params.velocity_div_horiz_diffusion_coeff;
@@ -390,21 +389,6 @@ public:
     velocity_div_hypervisocity_level = params.velocity_div_hypervisocity_level;
 
     force_refstate_hydrostatic_balance = params.force_refstate_hydrostatic_balance;
-=======
-    velocity_vort_horiz_diffusion_coeff =
-        params.velocity_vort_horiz_diffusion_coeff;
-    velocity_vort_vert_diffusion_coeff =
-        params.velocity_vort_vert_diffusion_coeff;
-    velocity_div_horiz_diffusion_coeff =
-        params.velocity_div_horiz_diffusion_coeff;
-    velocity_div_vert_diffusion_coeff =
-        params.velocity_div_vert_diffusion_coeff;
-
-    scalar_diffusion_subtract_refstate =
-        params.scalar_diffusion_subtract_refstate;
-    force_refstate_hydrostatic_balance =
-        params.force_refstate_hydrostatic_balance;
->>>>>>> master
     check_anelastic_constraint = params.check_anelastic_constraint;
 
 #if defined PAMC_AN || defined PAMC_MAN
@@ -1305,17 +1289,9 @@ public:
     yakl::timer_stop("compute_recons");
   }
 
-<<<<<<< HEAD
   void add_scalar_horiz_hyperviscosity(real scalar_horiz_diffusion_coeff, int scalar_horiz_hypervisocity_level, real5d denstendvar,
                             const real5d densvar, const real5d dens0var,
                             const real5d Fdiffvar,
-=======
-  void add_scalar_diffusion(real scalar_horiz_diffusion_coeff,
-                            real scalar_vert_diffusion_coeff,
-                            real5d denstendvar, const real5d densvar,
-                            const real5d dens0var, const real5d Fdiffvar,
-                            const real5d FWdiffvar,
->>>>>>> master
                             FieldSet<nauxiliary> &auxiliary_vars) {
     yakl::timer_start("add_scalar_horiz_hyperviscosity");
 
@@ -1509,12 +1485,6 @@ public:
           const real rho = varset.get_total_density(densvar, k, j, i, pks, pjs, pis, n);
 
           for (int d = 0; d < VS::ndensity_diffused; ++d) {
-<<<<<<< HEAD
-=======
-            const real diff_tend =
-                -scalar_horiz_diffusion_coeff * rho * Hn1bar_diag * hdiv(d) +
-                -scalar_vert_diffusion_coeff * rho * Hn1bar_diag * vdiv(d);
->>>>>>> master
             int dens_id = varset.diffused_dens_ids(d);
             denstendvar(dens_id, k + pks, j + pjs, i + pis, n) -= scalar_vert_diffusion_coeff * rho *  dens0var(d, k + pks, j + pjs, i + pis, n);
           }
@@ -1523,7 +1493,6 @@ public:
     yakl::timer_stop("add_scalar_vert_hyperviscosity");
   }
 
-<<<<<<< HEAD
   void add_velocity_vort_hyperviscosity_2d(
       real velocity_vort_horiz_diffusion_coeff, real velocity_vort_vert_diffusion_coeff, int velocity_vort_hypervisocity_level,
       real5d Vtendvar, real5d Wtendvar,
@@ -1533,20 +1502,6 @@ public:
       FieldSet<nauxiliary> &auxiliary_vars) {
 
     yakl::timer_start("add_velocity_vort_hyperviscosity_2d");
-=======
-  void add_velocity_diffusion_2d(real velocity_vort_horiz_diffusion_coeff,
-                                 real velocity_vort_vert_diffusion_coeff,
-                                 real velocity_div_horiz_diffusion_coeff,
-                                 real velocity_div_vert_diffusion_coeff,
-                                 real5d Vtendvar, real5d Wtendvar,
-                                 const real5d Vvar, const real5d Wvar,
-                                 const real5d qhzedgereconvar,
-                                 const real5d qhzvar, const real5d dens0var,
-                                 const real5d Kvar, const real5d Fvar,
-                                 const real5d FWvar,
-                                 FieldSet<nauxiliary> &auxiliary_vars) {
-    yakl::timer_start("add_velocity_diffusion");
->>>>>>> master
 
     const auto &primal_topology = primal_geometry.topology;
 
@@ -1801,7 +1756,6 @@ public:
     yakl::timer_stop("add_velocity_div_hyperviscosity_2d");
   }
 
-<<<<<<< HEAD
   void add_velocity_vort_hyperviscosity_3d(
       real velocity_vort_horiz_diffusion_coeff, real velocity_vort_vert_diffusion_coeff, int velocity_vort_hypervisocity_level,
       real5d Vtendvar, real5d Wtendvar, const real5d Vvar,
@@ -1809,18 +1763,6 @@ public:
       const real5d Fvar, const real5d FWvar, const real5d qxyedgereconvar, const real5d qxyvar, const real5d Uvar, const real5d UWvar,
       FieldSet<nauxiliary> &auxiliary_vars) {
     yakl::timer_start("add_velocity_vort_hyperviscosity_3d");
-=======
-  void add_velocity_diffusion_3d(
-      real velocity_vort_horiz_diffusion_coeff,
-      real velocity_vort_vert_diffusion_coeff,
-      real velocity_div_horiz_diffusion_coeff,
-      real velocity_div_vert_diffusion_coeff, real5d Vtendvar, real5d Wtendvar,
-      const real5d Vvar, const real5d Wvar, const real5d qhzedgereconvar,
-      const real5d qhzvar, const real5d dens0var, const real5d Kvar,
-      const real5d Fvar, const real5d FWvar, const real5d qxyedgereconvar,
-      const real5d qxyvar, FieldSet<nauxiliary> &auxiliary_vars) {
-    yakl::timer_start("add_velocity_diffusion");
->>>>>>> master
 
     const auto &primal_topology = primal_geometry.topology;
 
@@ -2912,7 +2854,6 @@ public:
               : std::nullopt);
     }
 
-<<<<<<< HEAD
     if (scalar_horiz_diffusion_coeff > 0) {
   add_scalar_horiz_hyperviscosity(
           scalar_horiz_diffusion_coeff, scalar_horiz_hypervisocity_level, xtend.fields_arr[DENSVAR].data,
@@ -2941,26 +2882,6 @@ public:
       } else {
         add_velocity_vort_hyperviscosity_3d(
             velocity_vort_horiz_diffusion_coeff, velocity_vort_vert_diffusion_coeff, velocity_vort_hypervisocity_level, xtend.fields_arr[VVAR].data,
-=======
-    if (scalar_horiz_diffusion_coeff > 0 or scalar_vert_diffusion_coeff > 0) {
-      add_scalar_diffusion(
-          scalar_horiz_diffusion_coeff, scalar_vert_diffusion_coeff,
-          xtend.fields_arr[DENSVAR].data, x.fields_arr[DENSVAR].data,
-          auxiliary_vars.fields_arr[DENS0VAR].data,
-          auxiliary_vars.fields_arr[FDIFFVAR].data,
-          auxiliary_vars.fields_arr[FWDIFFVAR].data, auxiliary_vars);
-    }
-    if (velocity_vort_horiz_diffusion_coeff > 0 or
-        velocity_vort_vert_diffusion_coeff > 0 or
-        velocity_div_horiz_diffusion_coeff > 0 or
-        velocity_div_vert_diffusion_coeff > 0) {
-      if (ndims == 1) {
-        add_velocity_diffusion_2d(
-            velocity_vort_horiz_diffusion_coeff,
-            velocity_vort_vert_diffusion_coeff,
-            velocity_div_horiz_diffusion_coeff,
-            velocity_div_vert_diffusion_coeff, xtend.fields_arr[VVAR].data,
->>>>>>> master
             xtend.fields_arr[WVAR].data, x.fields_arr[VVAR].data,
             x.fields_arr[WVAR].data,
             auxiliary_vars.fields_arr[QHZEDGERECONVAR].data,
@@ -2984,16 +2905,8 @@ public:
             auxiliary_vars.fields_arr[DENS0VAR].data, auxiliary_vars.fields_arr[FVAR].data, auxiliary_vars.fields_arr[FWVAR].data,
             auxiliary_vars);
       } else {
-<<<<<<< HEAD
         add_velocity_div_hyperviscosity_3d(
             velocity_div_horiz_diffusion_coeff, velocity_div_vert_diffusion_coeff, velocity_div_hypervisocity_level, xtend.fields_arr[VVAR].data,
-=======
-        add_velocity_diffusion_3d(
-            velocity_vort_horiz_diffusion_coeff,
-            velocity_vort_vert_diffusion_coeff,
-            velocity_div_horiz_diffusion_coeff,
-            velocity_div_vert_diffusion_coeff, xtend.fields_arr[VVAR].data,
->>>>>>> master
             xtend.fields_arr[WVAR].data, x.fields_arr[VVAR].data,
             x.fields_arr[WVAR].data,
             auxiliary_vars.fields_arr[DENS0VAR].data,
@@ -4270,7 +4183,6 @@ void read_model_params_file(std::string inFile, ModelParameters &params,
   params.acoustic_balance = config["balance_initial_density"].as<bool>(false);
   params.uniform_vertical = (config["vcoords"].as<std::string>() == "uniform");
   // Read diffusion coefficients
-<<<<<<< HEAD
   params.scalar_horiz_diffusion_coeff = config["scalar_horiz_diffusion_coeff"].as<real>(0);
   params.scalar_vert_diffusion_coeff = config["scalar_vert_diffusion_coeff"].as<real>(0);
   params.velocity_vort_horiz_diffusion_coeff = config["velocity_vort_horiz_diffusion_coeff"].as<real>(0);
@@ -4285,29 +4197,10 @@ void read_model_params_file(std::string inFile, ModelParameters &params,
   params.velocity_vort_hypervisocity_level = config["velocity_vort_hypervisocity_level"].as<int>(1);
   params.velocity_div_hypervisocity_level = config["velocity_div_hypervisocity_level"].as<int>(1);
 
-=======
-  params.scalar_horiz_diffusion_coeff =
-      config["scalar_horiz_diffusion_coeff"].as<real>(0);
-  params.scalar_vert_diffusion_coeff =
-      config["scalar_vert_diffusion_coeff"].as<real>(0);
-  params.velocity_vort_horiz_diffusion_coeff =
-      config["velocity_vort_horiz_diffusion_coeff"].as<real>(0);
-  params.velocity_vort_vert_diffusion_coeff =
-      config["velocity_vort_vert_diffusion_coeff"].as<real>(0);
-  params.velocity_div_horiz_diffusion_coeff =
-      config["velocity_div_horiz_diffusion_coeff"].as<real>(0);
-  params.velocity_div_vert_diffusion_coeff =
-      config["velocity_div_vert_diffusion_coeff"].as<real>(0);
-
-  params.scalar_diffusion_subtract_refstate =
-      config["scalar_diffusion_subtract_refstate"].as<bool>(true);
->>>>>>> master
   // Read the data initialization options
   params.init_data = config["init_data"].as<std::string>();
-  params.force_refstate_hydrostatic_balance =
-      config["force_refstate_hydrostatic_balance"].as<bool>(false);
-  params.check_anelastic_constraint =
-      config["check_anelastic_constraint"].as<bool>(false);
+  params.force_refstate_hydrostatic_balance = config["force_refstate_hydrostatic_balance"].as<bool>(false);
+  params.check_anelastic_constraint = config["check_anelastic_constraint"].as<bool>(false);
 
   for (int i = 0; i < ntracers_dycore; i++) {
     params.init_dycore_tracer[i] =
@@ -4377,7 +4270,6 @@ void check_and_print_model_parameters(const ModelParameters &params,
     serial_print("acoustically balanced: " +
                      std::to_string(params.acoustic_balance),
                  par.masterproc);
-<<<<<<< HEAD
     serial_print("scalar_horiz_diffusion_coeff: " + std::to_string(params.scalar_horiz_diffusion_coeff), par.masterproc);
     serial_print("scalar_vert_diffusion_coeff: " + std::to_string(params.scalar_vert_diffusion_coeff), par.masterproc);
     serial_print("velocity_vort_horiz_diffusion_coeff: " + std::to_string(params.velocity_vort_horiz_diffusion_coeff), par.masterproc);
@@ -4391,29 +4283,6 @@ void check_and_print_model_parameters(const ModelParameters &params,
     serial_print("velocity_div_hypervisocity_level: " + std::to_string(params.velocity_div_hypervisocity_level), par.masterproc);
 
     serial_print("scalar_diffusion_subtract_refstate: " + std::to_string(params.scalar_diffusion_subtract_refstate), par.masterproc);
-=======
-    serial_print("scalar_horiz_diffusion_coeff: " +
-                     std::to_string(params.scalar_horiz_diffusion_coeff),
-                 par.masterproc);
-    serial_print("scalar_vert_diffusion_coeff: " +
-                     std::to_string(params.scalar_vert_diffusion_coeff),
-                 par.masterproc);
-    serial_print("velocity_vort_horiz_diffusion_coeff: " +
-                     std::to_string(params.velocity_vort_horiz_diffusion_coeff),
-                 par.masterproc);
-    serial_print("velocity_vort_vert_diffusion_coeff: " +
-                     std::to_string(params.velocity_vort_vert_diffusion_coeff),
-                 par.masterproc);
-    serial_print("velocity_div_horiz_diffusion_coeff: " +
-                     std::to_string(params.velocity_div_horiz_diffusion_coeff),
-                 par.masterproc);
-    serial_print("velocity_div_vert_diffusion_coeff: " +
-                     std::to_string(params.velocity_div_vert_diffusion_coeff),
-                 par.masterproc);
-    serial_print("scalar_diffusion_subtract_refstate: " +
-                     std::to_string(params.scalar_diffusion_subtract_refstate),
-                 par.masterproc);
->>>>>>> master
 
     for (int i = 0; i < ntracers_dycore; i++) {
       serial_print("Dycore Tracer" + std::to_string(i) +
