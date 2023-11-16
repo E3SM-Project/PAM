@@ -5,7 +5,7 @@
 #include "common.h"
 
 namespace pamc {
-template <int ord>
+template <index_t ord>
 YAKL_INLINE void map_weights2(SArray<real, 1, (ord - 1) / 2 + 2> const &idl,
                               SArray<real, 1, (ord - 1) / 2 + 2> &wts) {
   int constexpr hs = (ord - 1) / 2;
@@ -19,7 +19,7 @@ YAKL_INLINE void map_weights2(SArray<real, 1, (ord - 1) / 2 + 2> const &idl,
   }
 }
 
-template <int ord>
+template <index_t ord>
 YAKL_INLINE void convexify2(SArray<real, 1, (ord - 1) / 2 + 2> &wts) {
   int constexpr hs = (ord - 1) / 2;
   real sum = 0._fp;
@@ -32,7 +32,7 @@ YAKL_INLINE void convexify2(SArray<real, 1, (ord - 1) / 2 + 2> &wts) {
   }
 }
 
-template <int ord>
+template <index_t ord>
 YAKL_INLINE void
 compute_weno_coefs2(SArray<real, 3, (ord - 1) / 2 + 1, (ord - 1) / 2 + 1,
                            (ord - 1) / 2 + 1> const &recon_lo,
@@ -121,7 +121,7 @@ compute_weno_coefs2(SArray<real, 3, (ord - 1) / 2 + 1, (ord - 1) / 2 + 1,
   }
 }
 
-template <uint ndofs, uint ord, uint hs = (ord - 1) / 2>
+template <index_t ndofs, index_t ord, index_t hs = (ord - 1) / 2>
 void YAKL_INLINE
 weno_func_vert(SArray<real, 2, ndofs, 2> &edgerecon,
                SArray<real, 2, ndofs, ord> const &dens,
@@ -159,7 +159,7 @@ weno_func_vert(SArray<real, 2, ndofs, 2> &edgerecon,
   }
 }
 
-template <class T, uint ord, uint hs = (ord - 1) / 2>
+template <class T, index_t ord, index_t hs = (ord - 1) / 2>
 void create_variable_WENO(real4d coefs_to_gll_arr, real4d sten_to_gll_arr,
                           real4d sten_to_coefs_arr, real5d weno_recon_lower_arr,
                           real &wenoSigma, SArray<real, 1, hs + 2> &wenoIdl,

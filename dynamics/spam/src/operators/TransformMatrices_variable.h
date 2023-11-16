@@ -6,7 +6,7 @@
 namespace pamc {
 namespace TransformMatrices_variable {
 
-template <unsigned int ord>
+template <index_t ord>
 YAKL_INLINE void coefs_to_sten_variable(SArray<real, 1, ord + 1> const &locs,
                                         SArray<real, 2, ord, ord> &rslt) {
   // Create the Vandermonde matrix
@@ -30,7 +30,7 @@ YAKL_INLINE void coefs_to_sten_variable(SArray<real, 1, ord + 1> const &locs,
   }
 }
 
-template <unsigned int ord>
+template <index_t ord>
 YAKL_INLINE void sten_to_coefs_variable(SArray<real, 1, ord + 1> const &locs,
                                         SArray<real, 2, ord, ord> &rslt) {
   using yakl::intrinsics::matinv_ge;
@@ -43,7 +43,7 @@ YAKL_INLINE void sten_to_coefs_variable(SArray<real, 1, ord + 1> const &locs,
   rslt = yakl::intrinsics::matinv_ge(c2s);
 }
 
-template <unsigned int ord>
+template <index_t ord>
 YAKL_INLINE void
 weno_lower_sten_to_coefs(SArray<real, 1, ord + 1> const &locs,
                          SArray<real, 3, (ord - 1) / 2 + 1, (ord - 1) / 2 + 1,

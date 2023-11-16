@@ -5,7 +5,7 @@
 
 namespace pamc {
 
-template <uint ord, uint tord = 2, uint hs = (ord - 1) / 2>
+template <index_t ord, index_t tord = 2, index_t hs = (ord - 1) / 2>
 YAKL_INLINE void map_weights(SArray<real, 1, hs + 2> const &idl,
                              SArray<real, 1, hs + 2> &wts) {
   // Map the weights for quicker convergence. WARNING: Ideal weights must be
@@ -18,7 +18,7 @@ YAKL_INLINE void map_weights(SArray<real, 1, hs + 2> const &idl,
   }
 }
 
-template <uint ord, uint tord = 2, uint hs = (ord - 1) / 2>
+template <index_t ord, index_t tord = 2, index_t hs = (ord - 1) / 2>
 YAKL_INLINE void convexify(SArray<real, 1, hs + 2> &wts) {
   real sum = 0._fp;
   real const eps = 1.0e-20_fp;
@@ -30,7 +30,7 @@ YAKL_INLINE void convexify(SArray<real, 1, hs + 2> &wts) {
   }
 }
 
-template <uint ord, uint tord = 2, uint hs = (ord - 1) / 2>
+template <index_t ord, index_t tord = 2, index_t hs = (ord - 1) / 2>
 YAKL_INLINE void wenoSetIdealSigma(SArray<real, 1, hs + 2> &idl, real &sigma) {
   //   if        (ord == 3) {
   //   sigma = 0.1_fp;
@@ -123,7 +123,7 @@ YAKL_INLINE void wenoSetIdealSigma(SArray<real, 1, hs + 2> &idl, real &sigma) {
   convexify<ord>(idl);
 }
 
-template <uint ord, uint tord = 2, uint hs = (ord - 1) / 2>
+template <index_t ord, index_t tord = 2, index_t hs = (ord - 1) / 2>
 YAKL_INLINE void perform_weno_recon(SArray<real, 3, ord, ord, ord> const &recon,
                                     SArray<real, 1, ord> const &u,
                                     SArray<real, 1, hs + 2> const &idl,
@@ -161,7 +161,7 @@ YAKL_INLINE void perform_weno_recon(SArray<real, 3, ord, ord, ord> const &recon,
   }
 }
 
-template <uint ord, uint tord = 2, uint hs = (ord - 1) / 2>
+template <index_t ord, index_t tord = 2, index_t hs = (ord - 1) / 2>
 YAKL_INLINE void compute_weno_weights(SArray<real, 2, hs + 2, ord> const &a,
                                       SArray<real, 1, hs + 2> const &idl,
                                       real const sigma,
@@ -206,7 +206,7 @@ YAKL_INLINE void compute_weno_weights(SArray<real, 2, hs + 2, ord> const &a,
   convexify<ord>(wts);
 }
 
-template <uint ord, uint tord = 2, uint hs = (ord - 1) / 2>
+template <index_t ord, index_t tord = 2, index_t hs = (ord - 1) / 2>
 YAKL_INLINE void apply_weno_weights(SArray<real, 2, hs + 2, ord> const &a,
                                     SArray<real, 1, hs + 2> const &wts,
                                     SArray<real, 1, ord> &aw) {
@@ -222,7 +222,7 @@ YAKL_INLINE void apply_weno_weights(SArray<real, 2, hs + 2, ord> const &a,
   }
 }
 
-template <uint ord, uint tord = 2, uint hs = (ord - 1) / 2>
+template <index_t ord, index_t tord = 2, index_t hs = (ord - 1) / 2>
 YAKL_INLINE void
 compute_weno_coefs(SArray<real, 3, ord, ord, ord> const &recon,
                    SArray<real, 1, ord> const &u, SArray<real, 1, ord> &aw,
@@ -235,7 +235,7 @@ compute_weno_coefs(SArray<real, 3, ord, ord, ord> const &recon,
 }
 
 // Transform ord stencil cell averages into tord GLL point values
-template <uint ord, uint tord = 2, uint hs = (ord - 1) / 2>
+template <index_t ord, index_t tord = 2, index_t hs = (ord - 1) / 2>
 YAKL_INLINE void
 reconStencil(SArray<real, 1, ord> const &stencil, SArray<real, 1, tord> &gll,
              SArray<real, 3, ord, ord, ord> const &wenoRecon,
@@ -252,7 +252,8 @@ reconStencil(SArray<real, 1, ord> const &stencil, SArray<real, 1, tord> &gll,
   }
 }
 
-template <uint ndofs, uint nd, uint ord, uint tord = 2, uint hs = (ord - 1) / 2>
+template <index_t ndofs, index_t nd, index_t ord, index_t tord = 2,
+          index_t hs = (ord - 1) / 2>
 void YAKL_INLINE weno_func(SArray<real, 3, ndofs, nd, 2> &edgerecon,
                            SArray<real, 3, ndofs, nd, ord> const &dens,
                            SArray<real, 3, ord, ord, ord> const &wenoRecon,

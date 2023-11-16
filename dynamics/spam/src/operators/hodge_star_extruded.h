@@ -13,8 +13,8 @@ real YAKL_INLINE H00_diagonal(const Geometry<Straight> &pgeom,
          pgeom.get_area_00entity(k + ks, j + js, i + is, n);
 }
 
-template <uint ndofs, uint hord, uint vord, uint hoff = hord / 2 - 1,
-          uint voff = vord / 2 - 1>
+template <index_t ndofs, index_t hord, index_t vord,
+          index_t hoff = hord / 2 - 1, index_t voff = vord / 2 - 1>
 void YAKL_INLINE compute_H00(SArray<real, 1, ndofs> &x0, const real5d &var,
                              const Geometry<Straight> &pgeom,
                              const Geometry<Twisted> &dgeom, int is, int js,
@@ -36,9 +36,9 @@ void YAKL_INLINE compute_H00(SArray<real, 1, ndofs> &x0, const real5d &var,
   H0<ndofs>(x0, x, H00geom);
 }
 
-template <uint ndofs, uint hord, uint vord,
-          ADD_MODE addmode = ADD_MODE::REPLACE, uint hoff = hord / 2 - 1,
-          uint voff = vord / 2 - 1>
+template <index_t ndofs, index_t hord, index_t vord,
+          ADD_MODE addmode = ADD_MODE::REPLACE, index_t hoff = hord / 2 - 1,
+          index_t voff = vord / 2 - 1>
 void YAKL_INLINE compute_H00(const real5d &var0, const real5d &var,
                              const Geometry<Straight> &pgeom,
                              const Geometry<Twisted> &dgeom, int is, int js,
@@ -64,8 +64,8 @@ real YAKL_INLINE H00bar_diagonal(const Geometry<Straight> &pgeom,
          dgeom.get_area_00entity(k + ks, j + js, i + is, n);
 }
 
-template <uint ndofs, uint hord, uint vord, uint hoff = hord / 2 - 1,
-          uint voff = vord / 2 - 1>
+template <index_t ndofs, index_t hord, index_t vord,
+          index_t hoff = hord / 2 - 1, index_t voff = vord / 2 - 1>
 void YAKL_INLINE compute_H00bar(SArray<real, 1, ndofs> &x0, const real5d &var,
                                 const Geometry<Straight> &pgeom,
                                 const Geometry<Twisted> &dgeom, int is, int js,
@@ -87,9 +87,9 @@ void YAKL_INLINE compute_H00bar(SArray<real, 1, ndofs> &x0, const real5d &var,
   H0bar<ndofs>(x0, x, H00bargeom);
 }
 
-template <uint ndofs, uint hord, uint vord,
-          ADD_MODE addmode = ADD_MODE::REPLACE, uint hoff = hord / 2 - 1,
-          uint voff = vord / 2 - 1>
+template <index_t ndofs, index_t hord, index_t vord,
+          ADD_MODE addmode = ADD_MODE::REPLACE, index_t hoff = hord / 2 - 1,
+          index_t voff = vord / 2 - 1>
 void YAKL_INLINE compute_H00bar(const real5d &var0, const real5d &var,
                                 const Geometry<Straight> &pgeom,
                                 const Geometry<Twisted> &dgeom, int is, int js,
@@ -120,7 +120,7 @@ void YAKL_INLINE H10_diagonal(SArray<real, 1, ndims> &H10diag,
 
 // BROKEN FOR 2D+1D EXT
 // MAINLY IN THE AREA CALCS...
-template <uint ndofs, uint ord, uint off = ord / 2 - 1>
+template <index_t ndofs, index_t ord, index_t off = ord / 2 - 1>
 void YAKL_INLINE compute_H10(SArray<real, 2, ndofs, ndims> &u,
                              const real5d &vvar,
                              const Geometry<Straight> &pgeom,
@@ -148,8 +148,8 @@ void YAKL_INLINE compute_H10(SArray<real, 2, ndofs, ndims> &u,
 
 // No indexing issues since we go from p10 to d01, and d01 has no "extended
 // boundary"
-template <uint ndofs, uint ord, ADD_MODE addmode = ADD_MODE::REPLACE,
-          uint off = ord / 2 - 1>
+template <index_t ndofs, index_t ord, ADD_MODE addmode = ADD_MODE::REPLACE,
+          index_t off = ord / 2 - 1>
 void YAKL_INLINE compute_H10(const real5d &uvar, const real5d &vvar,
                              const Geometry<Straight> &pgeom,
                              const Geometry<Twisted> &dgeom, int is, int js,
@@ -168,7 +168,7 @@ void YAKL_INLINE compute_H10(const real5d &uvar, const real5d &vvar,
   }
 }
 
-template <uint ord, int off = ord / 2 - 1>
+template <index_t ord, index_t off = ord / 2 - 1>
 void YAKL_INLINE fourier_H10(SArray<real, 1, ndims> &u,
                              const Geometry<Straight> &pgeom,
                              const Geometry<Twisted> &dgeom, int is, int js,
@@ -202,7 +202,7 @@ real YAKL_INLINE H01_diagonal(const Geometry<Straight> &pgeom,
          pgeom.get_area_01entity(k + ks - 1, j + js, i + is, n);
 }
 
-template <uint ndofs>
+template <index_t ndofs>
 void YAKL_INLINE compute_H01(SArray<real, 1, ndofs> &uw, const real5d &wvar,
                              const Geometry<Straight> &pgeom,
                              const Geometry<Twisted> &dgeom, int is, int js,
@@ -218,8 +218,8 @@ void YAKL_INLINE compute_H01(SArray<real, 1, ndofs> &uw, const real5d &wvar,
 // from k when indexing p01 ie the kth edge flux corresponds with the k-1th edge
 // velocity Also should be called with k=[1,...,ni-2] ie skip the first and last
 // fluxes, which are set diagnostically (=0 for no-flux bcs)
-template <uint ndofs, uint ord, ADD_MODE addmode = ADD_MODE::REPLACE,
-          uint off = ord / 2 - 1>
+template <index_t ndofs, index_t ord, ADD_MODE addmode = ADD_MODE::REPLACE,
+          index_t off = ord / 2 - 1>
 void YAKL_INLINE compute_H01(const real5d &uwvar, const real5d &wvar,
                              const Geometry<Straight> &pgeom,
                              const Geometry<Twisted> &dgeom, int is, int js,
@@ -236,8 +236,8 @@ void YAKL_INLINE compute_H01(const real5d &uwvar, const real5d &wvar,
   }
 }
 
-template <uint ndofs, uint ord, ADD_MODE addmode = ADD_MODE::REPLACE,
-          uint off = ord / 2 - 1>
+template <index_t ndofs, index_t ord, ADD_MODE addmode = ADD_MODE::REPLACE,
+          index_t off = ord / 2 - 1>
 void YAKL_INLINE compute_H01(SArray<real, 1, 1> &uwvar, const real5d &wvar,
                              const Geometry<Straight> &pgeom,
                              const Geometry<Twisted> &dgeom, int is, int js,
@@ -264,7 +264,7 @@ void YAKL_INLINE Hnm11_diagonal(SArray<real, 1, ndims> &Hnm11diag,
   }
 }
 
-template <uint ndofs, uint ord, uint off = ord / 2 - 1>
+template <index_t ndofs, index_t ord, index_t off = ord / 2 - 1>
 void YAKL_INLINE compute_Hnm11(SArray<real, 1, ndims> &u, const real5d &vvar,
                                const Geometry<Straight> &pgeom,
                                const Geometry<Twisted> &dgeom, int is, int js,
@@ -290,8 +290,8 @@ void YAKL_INLINE compute_Hnm11(SArray<real, 1, ndims> &u, const real5d &vvar,
   H1bar(u, v, Hnm11geom);
 }
 
-template <uint ndofs, uint ord, ADD_MODE addmode = ADD_MODE::REPLACE,
-          uint off = ord / 2 - 1>
+template <index_t ndofs, index_t ord, ADD_MODE addmode = ADD_MODE::REPLACE,
+          index_t off = ord / 2 - 1>
 void YAKL_INLINE compute_Hnm11(const real5d &uvar, const real5d &vvar,
                                const Geometry<Straight> &pgeom,
                                const Geometry<Twisted> &dgeom, int is, int js,
@@ -323,8 +323,8 @@ real YAKL_INLINE compute_Hn0(const real5d &wvar,
   return wvar(0, k + ks, j + js, i + is, n) * Hn0_geom;
 }
 
-template <uint ndofs, uint ord, ADD_MODE addmode = ADD_MODE::REPLACE,
-          uint off = ord / 2 - 1>
+template <index_t ndofs, index_t ord, ADD_MODE addmode = ADD_MODE::REPLACE,
+          index_t off = ord / 2 - 1>
 void YAKL_INLINE compute_Hn0(const real5d &uwvar, const real5d &wvar,
                              const Geometry<Straight> &pgeom,
                              const Geometry<Twisted> &dgeom, int is, int js,
@@ -338,8 +338,8 @@ void YAKL_INLINE compute_Hn0(const real5d &uwvar, const real5d &wvar,
   }
 }
 
-template <uint ndofs, uint ord, ADD_MODE addmode = ADD_MODE::REPLACE,
-          uint off = ord / 2 - 1>
+template <index_t ndofs, index_t ord, ADD_MODE addmode = ADD_MODE::REPLACE,
+          index_t off = ord / 2 - 1>
 void YAKL_INLINE compute_Hn0(SArray<real, 1, 1> &uwvar, const real5d &wvar,
                              const Geometry<Straight> &pgeom,
                              const Geometry<Twisted> &dgeom, int is, int js,
@@ -363,7 +363,7 @@ void YAKL_INLINE Hnm11bar_diagonal(SArray<real, 1, ndims> &Hnm11bardiag,
   }
 }
 
-template <uint ndofs, uint ord, uint off = ord / 2 - 1>
+template <index_t ndofs, index_t ord, index_t off = ord / 2 - 1>
 void YAKL_INLINE compute_Hnm11bar(SArray<real, 1, ndims> &u, const real5d &vvar,
                                   const Geometry<Straight> &pgeom,
                                   const Geometry<Twisted> &dgeom, int is,
@@ -389,8 +389,8 @@ void YAKL_INLINE compute_Hnm11bar(SArray<real, 1, ndims> &u, const real5d &vvar,
   H1bar(u, v, Hnm11bargeom);
 }
 
-template <uint ndofs, uint ord, ADD_MODE addmode = ADD_MODE::REPLACE,
-          uint off = ord / 2 - 1>
+template <index_t ndofs, index_t ord, ADD_MODE addmode = ADD_MODE::REPLACE,
+          index_t off = ord / 2 - 1>
 void YAKL_INLINE compute_Hnm11bar(const real5d &uvar, const real5d &vvar,
                                   const Geometry<Straight> &pgeom,
                                   const Geometry<Twisted> &dgeom, int is,
@@ -423,8 +423,8 @@ real YAKL_INLINE compute_Hn0bar(const real5d &wvar,
   return wvar(0, k + ks + 1, j + js, i + is, n) * Hn0bargeom;
 }
 
-template <uint ndofs, uint ord, ADD_MODE addmode = ADD_MODE::REPLACE,
-          uint off = ord / 2 - 1>
+template <index_t ndofs, index_t ord, ADD_MODE addmode = ADD_MODE::REPLACE,
+          index_t off = ord / 2 - 1>
 void YAKL_INLINE compute_Hn0bar(const real5d &uwvar, const real5d &wvar,
                                 const Geometry<Straight> &pgeom,
                                 const Geometry<Twisted> &dgeom, int is, int js,
@@ -438,8 +438,8 @@ void YAKL_INLINE compute_Hn0bar(const real5d &uwvar, const real5d &wvar,
   }
 }
 
-template <uint ndofs, uint ord, ADD_MODE addmode = ADD_MODE::REPLACE,
-          uint off = ord / 2 - 1>
+template <index_t ndofs, index_t ord, ADD_MODE addmode = ADD_MODE::REPLACE,
+          index_t off = ord / 2 - 1>
 void YAKL_INLINE compute_Hn0bar(SArray<real, 1, 1> &uwvar, const real5d &wvar,
                                 const Geometry<Straight> &pgeom,
                                 const Geometry<Twisted> &dgeom, int is, int js,
@@ -462,8 +462,8 @@ real YAKL_INLINE Hn1_diagonal(const Geometry<Straight> &pgeom,
 
 // BROKEN FOR 2D+1D EXT
 // JUST IN THE AREA CALCS...
-template <uint ndofs, uint hord, uint vord, uint hoff = hord / 2 - 1,
-          uint voff = vord / 2 - 1>
+template <index_t ndofs, index_t hord, index_t vord,
+          index_t hoff = hord / 2 - 1, index_t voff = vord / 2 - 1>
 void YAKL_INLINE compute_Hn1(SArray<real, 1, ndofs> &x0, const real5d &var,
                              const Geometry<Straight> &pgeom,
                              const Geometry<Twisted> &dgeom, int is, int js,
@@ -494,9 +494,9 @@ void YAKL_INLINE compute_Hn1(SArray<real, 1, ndofs> &x0, const real5d &var,
 //  Also, should just compute over k=[1,..,ni-2] ie skip the first and last
 //  vertices! These values should be set as boundary conditions... = 0 for no
 //  flux I think!
-template <uint ndofs, uint hord, uint vord,
-          ADD_MODE addmode = ADD_MODE::REPLACE, uint hoff = hord / 2 - 1,
-          uint voff = vord / 2 - 1>
+template <index_t ndofs, index_t hord, index_t vord,
+          ADD_MODE addmode = ADD_MODE::REPLACE, index_t hoff = hord / 2 - 1,
+          index_t voff = vord / 2 - 1>
 void YAKL_INLINE compute_Hn1(const real5d &var0, const real5d &var,
                              const Geometry<Straight> &pgeom,
                              const Geometry<Twisted> &dgeom, int is, int js,
@@ -521,7 +521,7 @@ real YAKL_INLINE Hn1bar_diagonal(const Geometry<Straight> &pgeom,
          dgeom.get_area_n1entity(k + ks, j + js, i + is, n);
 }
 
-template <uint ndofs, uint vord, uint voff = vord / 2 - 1>
+template <index_t ndofs, index_t vord, index_t voff = vord / 2 - 1>
 void YAKL_INLINE compute_Hn1bar(SArray<real, 1, ndofs> &x0, const real3d &var,
                                 const Geometry<Straight> &pgeom,
                                 const Geometry<Twisted> &dgeom, int ks, int k,
@@ -532,7 +532,7 @@ void YAKL_INLINE compute_Hn1bar(SArray<real, 1, ndofs> &x0, const real3d &var,
   }
 }
 
-template <uint ndofs, uint vord, uint voff = vord / 2 - 1, class F>
+template <index_t ndofs, index_t vord, index_t voff = vord / 2 - 1, class F>
 void YAKL_INLINE compute_Hn1bar(F f, SArray<real, 1, ndofs> &x0,
                                 const real3d &var,
                                 const Geometry<Straight> &pgeom,
@@ -546,8 +546,8 @@ void YAKL_INLINE compute_Hn1bar(F f, SArray<real, 1, ndofs> &x0,
 
 // BROKEN FOR 2D+1D EXT
 // JUST IN THE AREA FORM CALCS...
-template <uint ndofs, uint hord, uint vord, uint hoff = hord / 2 - 1,
-          uint voff = vord / 2 - 1, class F>
+template <index_t ndofs, index_t hord, index_t vord,
+          index_t hoff = hord / 2 - 1, index_t voff = vord / 2 - 1, class F>
 void YAKL_INLINE compute_Hn1bar(F f, SArray<real, 1, ndofs> &x0,
                                 const real5d &var,
                                 const Geometry<Straight> &pgeom,
@@ -581,8 +581,8 @@ void YAKL_INLINE compute_Hn1bar(F f, SArray<real, 1, ndofs> &x0,
   // EVENTUALLY BE MORE CLEVER IN THE VERTICAL HERE
   //  BUT THIS IS 2nd ORDER RIGHT NOW!
 }
-template <uint ndofs, uint hord, uint vord, uint hoff = hord / 2 - 1,
-          uint voff = vord / 2 - 1>
+template <index_t ndofs, index_t hord, index_t vord,
+          index_t hoff = hord / 2 - 1, index_t voff = vord / 2 - 1>
 void YAKL_INLINE compute_Hn1bar(SArray<real, 1, ndofs> &x0, const real5d &var,
                                 const Geometry<Straight> &pgeom,
                                 const Geometry<Twisted> &dgeom, int is, int js,
@@ -593,9 +593,9 @@ void YAKL_INLINE compute_Hn1bar(SArray<real, 1, ndofs> &x0, const real5d &var,
 
 // Indexing here is fine, since we going from d11 to p00 and there is no
 // "extended" boundary in p00
-template <uint ndofs, uint hord, uint vord,
-          ADD_MODE addmode = ADD_MODE::REPLACE, uint hoff = hord / 2 - 1,
-          uint voff = vord / 2 - 1, class F>
+template <index_t ndofs, index_t hord, index_t vord,
+          ADD_MODE addmode = ADD_MODE::REPLACE, index_t hoff = hord / 2 - 1,
+          index_t voff = vord / 2 - 1, class F>
 void YAKL_INLINE compute_Hn1bar(F f, const real5d &var0, const real5d &var,
                                 const Geometry<Straight> &pgeom,
                                 const Geometry<Twisted> &dgeom, int is, int js,
@@ -612,9 +612,9 @@ void YAKL_INLINE compute_Hn1bar(F f, const real5d &var0, const real5d &var,
     }
   }
 }
-template <uint ndofs, uint hord, uint vord,
-          ADD_MODE addmode = ADD_MODE::REPLACE, uint hoff = hord / 2 - 1,
-          uint voff = vord / 2 - 1>
+template <index_t ndofs, index_t hord, index_t vord,
+          ADD_MODE addmode = ADD_MODE::REPLACE, index_t hoff = hord / 2 - 1,
+          index_t voff = vord / 2 - 1>
 void YAKL_INLINE compute_Hn1bar(const real5d &var0, const real5d &var,
                                 const Geometry<Straight> &pgeom,
                                 const Geometry<Twisted> &dgeom, int is, int js,
@@ -623,7 +623,7 @@ void YAKL_INLINE compute_Hn1bar(const real5d &var0, const real5d &var,
       nullptr, var0, var, pgeom, dgeom, is, js, ks, i, j, k, n);
 }
 
-template <uint ord, int off = ord / 2 - 1>
+template <index_t ord, index_t off = ord / 2 - 1>
 real YAKL_INLINE fourier_Hn1bar(const Geometry<Straight> &pgeom,
                                 const Geometry<Twisted> &dgeom, int is, int js,
                                 int ks, int i, int j, int k, int n, int nx,

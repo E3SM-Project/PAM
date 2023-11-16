@@ -5,7 +5,7 @@
 
 namespace pamc {
 
-template <uint ndofs>
+template <index_t ndofs>
 void YAKL_INLINE H0(SArray<real, 1, ndofs> &var,
                     SArray<real, 3, ndofs, ndims, 1> const &dens, real H0geom) {
 
@@ -15,7 +15,7 @@ void YAKL_INLINE H0(SArray<real, 1, ndofs> &var,
   }
 }
 
-template <uint ndofs>
+template <index_t ndofs>
 void YAKL_INLINE H0bar(SArray<real, 1, ndofs> &var,
                        SArray<real, 3, ndofs, ndims, 1> const &dens,
                        real H0bargeom) {
@@ -26,7 +26,7 @@ void YAKL_INLINE H0bar(SArray<real, 1, ndofs> &var,
   }
 }
 
-template <uint ndofs>
+template <index_t ndofs>
 void YAKL_INLINE H1(SArray<real, 2, ndofs, ndims> &var,
                     SArray<real, 3, ndofs, ndims, 1> const &velocity,
                     SArray<real, 1, ndims> const &H1geom) {
@@ -39,7 +39,7 @@ void YAKL_INLINE H1(SArray<real, 2, ndofs, ndims> &var,
   }
 }
 
-template <uint ndofs>
+template <index_t ndofs>
 void YAKL_INLINE H1(SArray<real, 2, ndofs, ndims> &var,
                     SArray<real, 3, ndofs, ndims, 3> const &velocity,
                     SArray<real, 1, ndims> const &H1geom) {
@@ -54,7 +54,7 @@ void YAKL_INLINE H1(SArray<real, 2, ndofs, ndims> &var,
   }
 }
 
-template <uint ndofs>
+template <index_t ndofs>
 void YAKL_INLINE H1(SArray<real, 2, ndofs, ndims> &var,
                     SArray<real, 3, ndofs, ndims, 5> const &velocity,
                     SArray<real, 1, ndims> const &H1geom) {
@@ -109,7 +109,7 @@ void YAKL_INLINE H1hat(SArray<real, 1, ndims> &u,
   }
 }
 
-template <uint ndofs>
+template <index_t ndofs>
 void YAKL_INLINE H2(SArray<real, 1, ndofs> &var,
                     SArray<real, 3, ndofs, ndims, 1> const &dens, real H2geom) {
 
@@ -119,7 +119,7 @@ void YAKL_INLINE H2(SArray<real, 1, ndofs> &var,
   }
 }
 
-template <uint ndofs>
+template <index_t ndofs>
 void YAKL_INLINE H2(SArray<real, 1, ndofs> &var,
                     SArray<real, 3, ndofs, ndims, 3> const &dens, real H2geom) {
   for (int l = 0; l < ndofs; l++) {
@@ -133,7 +133,7 @@ void YAKL_INLINE H2(SArray<real, 1, ndofs> &var,
   }
 }
 
-template <uint ndofs>
+template <index_t ndofs>
 void YAKL_INLINE H2(SArray<real, 1, ndofs> &var,
                     SArray<real, 3, ndofs, ndims, 5> const &dens, real H2geom) {
   for (int l = 0; l < ndofs; l++) {
@@ -149,7 +149,7 @@ void YAKL_INLINE H2(SArray<real, 1, ndofs> &var,
   }
 }
 
-template <uint ndofs>
+template <index_t ndofs>
 void YAKL_INLINE H2bar(SArray<real, 1, ndofs> &var,
                        SArray<real, 3, ndofs, ndims, 1> const &dens,
                        real H2bargeom) {
@@ -160,7 +160,7 @@ void YAKL_INLINE H2bar(SArray<real, 1, ndofs> &var,
   }
 }
 
-template <uint ndofs>
+template <index_t ndofs>
 void YAKL_INLINE H2bar(SArray<real, 1, ndofs> &var,
                        SArray<real, 3, ndofs, ndims, 3> const &dens,
                        real H2bargeom) {
@@ -175,7 +175,7 @@ void YAKL_INLINE H2bar(SArray<real, 1, ndofs> &var,
   }
 }
 
-template <uint ndofs>
+template <index_t ndofs>
 void YAKL_INLINE H2bar(SArray<real, 1, ndofs> &var,
                        SArray<real, 3, ndofs, ndims, 5> const &dens,
                        real H2bargeom) {
