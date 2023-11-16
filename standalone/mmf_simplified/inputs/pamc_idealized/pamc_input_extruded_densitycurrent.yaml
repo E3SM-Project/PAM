@@ -4,12 +4,18 @@ verbose : true
 # Simulation time in seconds
 sim_time : 900
 
+#3000000
 scalar_horiz_diffusion_coeff : 75
 scalar_vert_diffusion_coeff : 75
 velocity_vort_horiz_diffusion_coeff : 75
 velocity_vort_vert_diffusion_coeff : 75
 velocity_div_horiz_diffusion_coeff : 75
 velocity_div_vert_diffusion_coeff : 75
+
+scalar_horiz_hypervisocity_level : 1
+scalar_vert_hypervisocity_level : 1
+velocity_vort_hypervisocity_level : 1
+velocity_div_hypervisocity_level : 1
 
 # Number of cells to use
 crm_nx : 256
@@ -36,6 +42,7 @@ out_freq : 100
 stat_freq : 5
 
 tstype : si
+si_monitor_convergence : 1
 
 # Number of ensembles
 nens : 1
