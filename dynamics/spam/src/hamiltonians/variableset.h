@@ -507,12 +507,12 @@ void convert_dynamics_to_coupler_densities(
                                djs, dis, n);
           }
 
-          if (T::compressible) {
+          //if (T::compressible) {
             dm_dens_dry(k, j, i, n) =
                 varset.get_dry_density(prog_vars.fields_arr[DENSVAR].data, k, j,
                                        i, dks, djs, dis, n) /
                 dual_geometry.get_area_n1entity(k + dks, j + djs, i + dis, n);
-          }
+          //}
 
           real temp;
           if (T::density_based) {
