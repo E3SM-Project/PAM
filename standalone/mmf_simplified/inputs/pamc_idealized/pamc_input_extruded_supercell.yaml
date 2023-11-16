@@ -1,5 +1,6 @@
 idealized : true
 verbose : true
+check_anelastic_constraint : true
 
 # Simulation time in seconds
 sim_time : 7200
