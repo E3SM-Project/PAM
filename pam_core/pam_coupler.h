@@ -149,13 +149,19 @@ namespace pam {
         yakl::timer_stop ( name.c_str() );
       #endif
       #ifdef PAM_FUNCTION_TRACE
+        int rank = 0;
+        #if HAVE_MPI
+          MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+        #endif
         auto dirty_entry_names = dm.get_dirty_entries();
-        std::cout << "MMF Module " << name << " wrote to the following coupler entries: ";
-        for (int e=0; e < dirty_entry_names.size(); e++) {
-          std::cout << dirty_entry_names[e];
-          if (e < dirty_entry_names.size()-1) std::cout << ", ";
+        if (rank == 0) {
+          std::cout << "MMF Module " << name << " wrote to the following coupler entries: ";
+          for (int e=0; e < dirty_entry_names.size(); e++) {
+            std::cout << dirty_entry_names[e];
+            if (e < dirty_entry_names.size()-1) std::cout << ", ";
+          }
+          std::cout << "\n" << std::endl;
         }
-        std::cout << "\n\n";
       #endif
     }
 
