@@ -1309,6 +1309,8 @@ public:
 
     YAKL_SCOPE(varset, this->equations->varset);
     YAKL_SCOPE(q_di, this->equations->reference_state.q_di.data);
+    YAKL_SCOPE(q_pi, this->equations->reference_state.q_pi.data);
+    YAKL_SCOPE(refdens, this->equations->reference_state.dens.data);
     YAKL_SCOPE(primal_geometry, this->primal_geometry);
     YAKL_SCOPE(dual_geometry, this->dual_geometry);
 
@@ -1323,10 +1325,14 @@ public:
           for (int d = 0; d < VS::ndensity_diffused; ++d) {
             int dens_id = varset.diffused_dens_ids(d);
             real dens0 = densvar(dens_id, k + dks, j + djs, i + dis, n);
-            dens0 /= total_dens;
             if (subtract_refstate) {
-              dens0 -= q_di(dens_id, k + dks, n);
+              dens0 -= refdens(dens_id, k + dks, n);
             }
+            dens0 /= total_dens;
+            //if (subtract_refstate) {
+            //  //dens0 -= q_di(dens_id, k + dks, n);
+            //  dens0 -= q_pi(dens_id, k + pks, n);
+            //}
             dens0var(d, k + pks, j + pjs, i + pis, n) = dens0;
           }
         });
