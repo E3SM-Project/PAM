@@ -140,6 +140,7 @@ namespace pam {
     void run_module( std::string name , F const &f ) {
       #ifdef PAM_FUNCTION_TRACE
         dm.clean_all_entries();
+        std::cout << "MMF Module " << name " beginning." << std::endl;
       #endif
       #ifdef PAM_FUNCTION_TIMERS
         yakl::timer_start( name.c_str() );
