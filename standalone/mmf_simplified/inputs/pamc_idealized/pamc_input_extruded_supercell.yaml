@@ -1,6 +1,7 @@
 idealized : true
 verbose : true
 check_anelastic_constraint : true
+force_refstate_hydrostatic_balance : true
 
 # Simulation time in seconds
 sim_time : 7200
