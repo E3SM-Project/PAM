@@ -27,6 +27,7 @@ struct VS_SWE {
 
   static constexpr uint ntracers_physics = 0;
   static constexpr uint ntracers_physics_active = 0;
+  static constexpr uint ntracers_physics_diffused = 0;
 };
 
 struct VS_TSWE {
@@ -43,6 +44,7 @@ struct VS_TSWE {
 
   static constexpr uint ntracers_physics = 0;
   static constexpr uint ntracers_physics_active = 0;
+  static constexpr uint ntracers_physics_diffused = 0;
 };
 
 struct VS_CE {
@@ -59,6 +61,7 @@ struct VS_CE {
 
   static constexpr uint ntracers_physics = 0;
   static constexpr uint ntracers_physics_active = 0;
+  static constexpr uint ntracers_physics_diffused = 0;
 };
 
 struct VS_AN {
@@ -75,6 +78,7 @@ struct VS_AN {
 
   static constexpr uint ntracers_physics = 0;
   static constexpr uint ntracers_physics_active = 0;
+  static constexpr uint ntracers_physics_diffused = 0;
 };
 
 struct VS_MAN {
@@ -97,6 +101,8 @@ struct VS_MAN {
       ThermoPotential::moist_species_decouple_from_dynamics
           ? 0
           : std::min<uint>(3, Microphysics::get_num_tracers());
+  static constexpr uint ntracers_physics_diffused =
+      Microphysics::get_num_diffused_tracers();
 };
 
 struct VS_MCE_rho {
@@ -119,6 +125,8 @@ struct VS_MCE_rho {
       ThermoPotential::moist_species_decouple_from_dynamics
           ? 0
           : std::min<uint>(3, Microphysics::get_num_tracers());
+  static constexpr uint ntracers_physics_diffused =
+      Microphysics::get_num_diffused_tracers();
 };
 
 struct VS_MCE_rhod : VS_MCE_rho {};
@@ -149,6 +157,7 @@ public:
 
   using T::ntracers_physics;
   using T::ntracers_physics_active;
+  using T::ntracers_physics_diffused;
 
   static constexpr uint ndensity =
       ndensity_dycore + ntracers_dycore + ntracers_physics;
@@ -158,7 +167,7 @@ public:
       ndensity_dycore_active + ntracers_dycore_active + ntracers_physics_active;
   // TODO: Add tracers and physics
   static constexpr uint ndensity_diffused =
-      ndensity_dycore_diffused + ntracers_physics;
+      ndensity_dycore_diffused + ntracers_physics_diffused;
   static constexpr uint ndensity_prognostic =
       ndensity_dycore_prognostic + ntracers_dycore + ntracers_physics;
 
@@ -245,7 +254,7 @@ public:
       varset.dens_pos(tr + ndensity_nophysics) = positive;
       varset.dens_prognostic(tr + ndensity_nophysics) = true;
       varset.dens_active(tr + ndensity_nophysics) = false;
-      varset.dens_diffused(tr + ndensity_nophysics) = true;
+      varset.dens_diffused(tr + ndensity_nophysics) = false;
       if (tracer_names_loc[tr] == std::string("water_vapor")) {
         varset.dm_id_vap = tr;
         varset.dens_id_vap = ndensity_nophysics + tr;
@@ -272,6 +281,15 @@ public:
         }
       }
     }
+
+    // get diffused physics tracers
+    auto tracers_physics_diffused =
+        Microphysics::get_diffused_tracers_indices();
+    for (int dtr = 0; dtr < ntracers_physics_diffused; dtr++) {
+      int tr = tracers_physics_diffused[dtr];
+      varset.dens_diffused(ndensity_nophysics + tr) = true;
+    }
+
     if (ntracers_physics > 0) {
       if (!water_vapor_found) {
         endrun("ERROR: processed registered tracers, and water_vapor was not "
@@ -507,11 +525,11 @@ void convert_dynamics_to_coupler_densities(
                                djs, dis, n);
           }
 
-          //if (T::compressible) {
-            dm_dens_dry(k, j, i, n) =
-                varset.get_dry_density(prog_vars.fields_arr[DENSVAR].data, k, j,
-                                       i, dks, djs, dis, n) /
-                dual_geometry.get_area_n1entity(k + dks, j + djs, i + dis, n);
+          // if (T::compressible) {
+          dm_dens_dry(k, j, i, n) =
+              varset.get_dry_density(prog_vars.fields_arr[DENSVAR].data, k, j,
+                                     i, dks, djs, dis, n) /
+              dual_geometry.get_area_n1entity(k + dks, j + djs, i + dis, n);
           //}
 
           real temp;

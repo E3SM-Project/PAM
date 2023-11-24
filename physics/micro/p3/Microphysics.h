@@ -2,6 +2,7 @@
 #pragma once
 
 #include "pam_coupler.h"
+#include <array>
 // #include <stdio.h>
 
 #include "scream_cxx_interface_p3.h"
@@ -91,6 +92,14 @@ public:
   // This must return the correct # of tracers **BEFORE** init(...) is called
   static int constexpr get_num_tracers() {
     return 9;
+  }
+  
+  static auto constexpr get_diffused_tracers_indices() {
+    return std::array{ID_V, ID_C, ID_R, ID_I};
+  }
+
+  static auto constexpr get_num_diffused_tracers() {
+    return std::size(get_diffused_tracers_indices());
   }
 
 
