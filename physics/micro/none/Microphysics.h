@@ -2,6 +2,7 @@
 #pragma once
 
 #include "pam_coupler.h"
+#include <array>
 
 class Microphysics {
 public:
@@ -38,8 +39,13 @@ public:
   static int constexpr get_num_tracers() {
     return 1;
   }
-
-
+  
+  static auto constexpr get_diffused_tracers_indices() {
+    return std::array{0};
+  }
+  static auto constexpr get_num_diffused_tracers() {
+    return std::size(get_diffused_tracers_indices());
+  }
 
   // Have to declare at least water vapor
   void init(pam::PamCoupler &coupler) {
