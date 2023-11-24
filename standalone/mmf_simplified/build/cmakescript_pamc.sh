@@ -6,6 +6,7 @@
 
 PAM_MICRO="p3"
 PAM_SGS="none"
+PAMC_NDIMS="1"
 PAMC_MODEL="extrudedmodel"
 PAMC_HAMIL="man"
 PAMC_THERMO="constkappavirpottemp"
@@ -36,6 +37,7 @@ cmake      \
   -DPAM_MICRO=${PAM_MICRO}                                        \
   -DPAM_SGS=${PAM_SGS}                                            \
   -DPAM_RAD="none"                                                \
+  -DPAMC_NDIMS=${PAMC_NDIMS}                                      \
   -DPAMC_MODEL=${PAMC_MODEL}                                      \
   -DPAMC_HAMIL=${PAMC_HAMIL}                                      \
   -DPAMC_THERMO=${PAMC_THERMO}                                    \
