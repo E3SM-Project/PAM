@@ -17,6 +17,9 @@ target_include_directories(dycore INTERFACE src/grids)
 target_include_directories(dycore INTERFACE src/io)
 target_include_directories(dycore INTERFACE src/core)
 
+set(PAMC_NDIMS "1" CACHE STRING "PAM-C ndims")
+target_compile_definitions(dycore INTERFACE -DPAMC_NDIMS=${PAMC_NDIMS})
+
 if ("${PAMC_MODEL}" STREQUAL "layermodel")
   target_compile_definitions(dycore INTERFACE -DPAMC_LAYER)
 endif()
