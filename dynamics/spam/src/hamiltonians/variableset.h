@@ -227,6 +227,10 @@ public:
             "The number of crm cells in the horizontal "
             "has to be odd when using the couple_wind_exact_inverse option");
       }
+      if (ndims > 1) {
+        throw std::runtime_error(
+            "couple_wind_exact_inverse not implemented in 3d");
+      }
     }
     varset.thermo = thermodynamics;
     varset.reference_state = refstate;
@@ -591,7 +595,6 @@ void convert_dynamics_to_coupler_wind(const VariableSetBase<T> &varset,
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          // IN 3D THIS IS MORE COMPLICATED
           real uvel_l =
               prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, i + pis, n) /
               primal_geometry.get_area_10entity(0, k + pks, j + pjs, i + pis,
@@ -627,8 +630,20 @@ void convert_dynamics_to_coupler_wind(const VariableSetBase<T> &varset,
 
             wvel_mid = wvel_d + (wvel_u - wvel_d) * e_d / (e_u + e_d);
           }
-          // EVENTUALLY FIX THIS FOR 3D...
-          real vvel = 0.0_fp;
+          real vvel;
+          if (ndims > 1) {
+            real vvel_l = prog_vars.fields_arr[VVAR].data(1, k + pks, j + pjs,
+                                                          i + pis, n) /
+                          primal_geometry.get_area_10entity(1, k + pks, j + pjs,
+                                                            i + pis, n);
+            real vvel_r = prog_vars.fields_arr[VVAR].data(
+                              1, k + pks, j + pjs + 1, i + pis, n) /
+                          primal_geometry.get_area_10entity(
+                              1, k + pks, j + pjs + 1, i + pis, n);
+            vvel = (vvel_l + vvel_r) * 0.5_fp;
+          } else {
+            vvel = 0;
+          }
 
           dm_uvel(k, j, i, n) = (uvel_l + uvel_r) * 0.5_fp;
           dm_vvel(k, j, i, n) = vvel;
@@ -833,7 +848,7 @@ void convert_coupler_to_dynamics_wind(const VariableSetBase<T> &varset,
           });
     } else {
       parallel_for(
-          "Coupler to Dynamics State Primal U",
+          "Coupler to Dynamics State Primal U/V",
           SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                           primal_topology.n_cells_x, primal_topology.nens),
           YAKL_LAMBDA(int k, int j, int i, int n) {
@@ -846,6 +861,16 @@ void convert_coupler_to_dynamics_wind(const VariableSetBase<T> &varset,
                 (dm_uvel(k, j, il, n) + dm_uvel(k, j, i, n)) * 0.5_fp *
                 primal_geometry.get_area_10entity(0, k + pks, j + pjs, i + pis,
                                                   n);
+            if (ndims > 1) {
+              int jl = j - 1;
+              if (j == 0) {
+                jl = primal_topology.n_cells_y - 1;
+              }
+              prog_vars.fields_arr[VVAR].data(1, k + pks, j + pjs, i + pis, n) =
+                  (dm_vvel(k, jl, i, n) + dm_vvel(k, j, i, n)) * 0.5_fp *
+                  primal_geometry.get_area_10entity(1, k + pks, j + pjs,
+                                                    i + pis, n);
+            }
           });
 
       // EVENTUALLY THIS NEEDS TO HAVE A FLAG ON IT!
