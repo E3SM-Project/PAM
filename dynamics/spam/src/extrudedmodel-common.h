@@ -108,6 +108,7 @@ public:
   real velocity_div_horiz_diffusion_coeff;
   real velocity_div_vert_diffusion_coeff;
   bool scalar_diffusion_subtract_refstate;
+  bool velocity_diffusion_subtract_refstate;
 
   // forces reference state to be in perfect hydrostatic balance by subtracting
   // the hydrostatic balance equation evaluated at the reference state in
