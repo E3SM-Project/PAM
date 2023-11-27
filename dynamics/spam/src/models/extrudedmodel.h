@@ -351,11 +351,12 @@ struct TotalDensityFunctor {
 class ModelTendencies : public ExtrudedTendencies {
   real scalar_horiz_diffusion_coeff;
   real scalar_vert_diffusion_coeff;
-  real scalar_diffusion_subtract_refstate;
   real velocity_vort_horiz_diffusion_coeff;
   real velocity_vort_vert_diffusion_coeff;
   real velocity_div_horiz_diffusion_coeff;
   real velocity_div_vert_diffusion_coeff;
+  real scalar_diffusion_subtract_refstate;
+  real velocity_diffusion_subtract_refstate;
   bool force_refstate_hydrostatic_balance;
   bool check_anelastic_constraint;
 #if defined PAMC_AN || defined PAMC_MAN
@@ -383,6 +384,8 @@ public:
 
     scalar_diffusion_subtract_refstate =
         params.scalar_diffusion_subtract_refstate;
+    velocity_diffusion_subtract_refstate =
+        params.velocity_diffusion_subtract_refstate;
     force_refstate_hydrostatic_balance =
         params.force_refstate_hydrostatic_balance;
     check_anelastic_constraint = params.check_anelastic_constraint;
@@ -1431,6 +1434,7 @@ public:
     YAKL_SCOPE(primal_geometry, this->primal_geometry);
     YAKL_SCOPE(dual_geometry, this->dual_geometry);
     YAKL_SCOPE(refv, this->equations->reference_state.v.data);
+    YAKL_SCOPE(subtract_refstate, this->velocity_diffusion_subtract_refstate);
 
     parallel_for(
         "Velocity diffusion 0",
@@ -1439,7 +1443,10 @@ public:
         YAKL_LAMBDA(int k, int j, int i, int n) {
           for (int d = 0; d < ndims; ++d) {
             FTWvar(d, k + pks, j + pjs, i + pis, n) =
-                Vvar(d, k + pks, j + pjs, i + pis, n) - refv(d, k + pks, n);
+                Vvar(d, k + pks, j + pjs, i + pis, n);
+            if (subtract_refstate) {
+              FTWvar(d, k + pks, j + pjs, i + pis, n) -= refv(d, k + pks, n);
+            }
           }
         });
     auxiliary_vars.exchange({FTWVAR});
@@ -1572,6 +1579,7 @@ public:
     YAKL_SCOPE(primal_geometry, this->primal_geometry);
     YAKL_SCOPE(dual_geometry, this->dual_geometry);
     YAKL_SCOPE(refv, this->equations->reference_state.v.data);
+    YAKL_SCOPE(subtract_refstate, this->velocity_diffusion_subtract_refstate);
 
     parallel_for(
         "Velocity diffusion 0",
@@ -1580,7 +1588,10 @@ public:
         YAKL_LAMBDA(int k, int j, int i, int n) {
           for (int d = 0; d < ndims; ++d) {
             FTWvar(d, k + pks, j + pjs, i + pis, n) =
-                Vvar(d, k + pks, j + pjs, i + pis, n) - refv(d, k + pks, n);
+                Vvar(d, k + pks, j + pjs, i + pis, n);
+            if (subtract_refstate) {
+              FTWvar(d, k + pks, j + pjs, i + pis, n) -= refv(d, k + pks, n);
+            }
           }
         });
     auxiliary_vars.exchange({FTWVAR});
@@ -3868,6 +3879,8 @@ void read_model_params_file(std::string inFile, ModelParameters &params,
 
   params.scalar_diffusion_subtract_refstate =
       config["scalar_diffusion_subtract_refstate"].as<bool>(true);
+  params.velocity_diffusion_subtract_refstate =
+      config["velocity_diffusion_subtract_refstate"].as<bool>(false);
   // Read the data initialization options
   params.init_data = config["init_data"].as<std::string>();
   params.force_refstate_hydrostatic_balance =
@@ -3910,6 +3923,7 @@ void read_model_params_coupler(ModelParameters &params, Parallel &par,
   params.velocity_div_horiz_diffusion_coeff = 0;
   params.velocity_div_vert_diffusion_coeff = 0;
   params.scalar_diffusion_subtract_refstate = true;
+  params.velocity_diffusion_subtract_refstate = false;
   params.init_data = "coupler";
   params.force_refstate_hydrostatic_balance = true;
   params.check_anelastic_constraint = false;
@@ -3956,6 +3970,10 @@ void check_and_print_model_parameters(const ModelParameters &params,
     serial_print("scalar_diffusion_subtract_refstate: " +
                      std::to_string(params.scalar_diffusion_subtract_refstate),
                  par.masterproc);
+    serial_print(
+        "velocity_diffusion_subtract_refstate: " +
+            std::to_string(params.velocity_diffusion_subtract_refstate),
+        par.masterproc);
 
     for (int i = 0; i < ntracers_dycore; i++) {
       serial_print("Dycore Tracer" + std::to_string(i) +
