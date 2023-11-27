@@ -119,6 +119,40 @@ public:
 
     auto &dm = coupler.get_data_manager_device_readwrite();
 
+    std::cout << "Symmetry check before" << std::endl;
+    {
+    int nx   = coupler.get_nx  ();
+    int ny   = coupler.get_ny  ();
+    int nz   = coupler.get_nz  ();
+    int nens = coupler.get_nens();
+
+        auto rho_v = dm.get<real,4>( "water_vapor" );
+        auto rho_c = dm.get<real,4>( "cloud_liquid" );
+        auto rho_r = dm.get<real,4>( "precip_liquid"        );
+        auto rho_dry = dm.get<real,4>( "density_dry");
+        auto temp = dm.get<real,4>( "temp"         );
+
+	real4d rho_v_a("rho_v_a", nz, ny / 2, nx, nens);
+	real4d rho_c_a("rho_c_a", nz, ny / 2, nx, nens);
+	real4d rho_r_a("rho_r_a", nz, ny / 2, nx, nens);
+	real4d rho_dry_a("rho_dry_a", nz, ny / 2, nx, nens);
+	real4d temp_a("temp_a", nz, ny / 2, nx, nens);
+        
+	parallel_for(SimpleBounds<4>(nz,nx, ny / 2, nens) , YAKL_LAMBDA (int k, int j, int i, int n) {
+	   rho_v_a(k, i, j, n) = std::abs(rho_v(k, j, i, n) - rho_v(k, ny - 1 - j, i, n));
+	   rho_c_a(k, i, j, n) = std::abs(rho_c(k, j, i, n) - rho_c(k, ny - 1 - j, i, n));
+	   rho_r_a(k, i, j, n) = std::abs(rho_r(k, j, i, n) - rho_r(k, ny - 1 - j, i, n));
+	   rho_dry_a(k, i, j, n) = std::abs(rho_dry(k, j, i, n) - rho_dry(k, ny - 1 - j, i, n));
+	   temp_a(k, i, j, n) = std::abs(temp(k, j, i, n) - temp(k, ny - 1 - j, i, n));
+        });
+
+	std::cout << "temp " << yakl::intrinsics::maxval(temp_a) << std::endl;
+	std::cout << "rhod " << yakl::intrinsics::maxval(rho_dry_a) << std::endl;
+	std::cout << "rhov " << yakl::intrinsics::maxval(rho_v_a) << std::endl;
+	std::cout << "rhoc " << yakl::intrinsics::maxval(rho_c_a) << std::endl;
+	std::cout << "rhor " << yakl::intrinsics::maxval(rho_r_a) << std::endl;
+    }
+
     auto rho_v   = dm.get_lev_col<real      >("water_vapor");
     auto rho_c   = dm.get_lev_col<real      >("cloud_liquid");
     auto rho_r   = dm.get_lev_col<real      >("precip_liquid");
@@ -247,6 +281,35 @@ public:
       // of theta depends on the old exner pressure, so we'll use old exner here
       temp    (k,i) = theta(k,i) * exner(k,i);
     });
+    
+    std::cout << "Symmetry check after" << std::endl;
+    {
+        auto rho_v = dm.get<real,4>( "water_vapor" );
+        auto rho_c = dm.get<real,4>( "cloud_liquid" );
+        auto rho_r = dm.get<real,4>( "precip_liquid"        );
+        auto rho_dry = dm.get<real,4>( "density_dry");
+        auto temp = dm.get<real,4>( "temp"         );
+
+	real4d rho_v_a("rho_v_a", nz, ny / 2, nx, nens);
+	real4d rho_c_a("rho_c_a", nz, ny / 2, nx, nens);
+	real4d rho_r_a("rho_r_a", nz, ny / 2, nx, nens);
+	real4d rho_dry_a("rho_dry_a", nz, ny / 2, nx, nens);
+	real4d temp_a("temp_a", nz, ny / 2, nx, nens);
+        
+	parallel_for(SimpleBounds<4>(nz,nx, ny / 2, nens) , YAKL_LAMBDA (int k, int j, int i, int n) {
+	   rho_v_a(k, i, j, n) = std::abs(rho_v(k, j, i, n) - rho_v(k, ny - 1 - j, i, n));
+	   rho_c_a(k, i, j, n) = std::abs(rho_c(k, j, i, n) - rho_c(k, ny - 1 - j, i, n));
+	   rho_r_a(k, i, j, n) = std::abs(rho_r(k, j, i, n) - rho_r(k, ny - 1 - j, i, n));
+	   rho_dry_a(k, i, j, n) = std::abs(rho_dry(k, j, i, n) - rho_dry(k, ny - 1 - j, i, n));
+	   temp_a(k, i, j, n) = std::abs(temp(k, j, i, n) - temp(k, ny - 1 - j, i, n));
+        });
+
+	std::cout << "temp " << yakl::intrinsics::maxval(temp_a) << std::endl;
+	std::cout << "rhod " << yakl::intrinsics::maxval(rho_dry_a) << std::endl;
+	std::cout << "rhov " << yakl::intrinsics::maxval(rho_v_a) << std::endl;
+	std::cout << "rhoc " << yakl::intrinsics::maxval(rho_c_a) << std::endl;
+	std::cout << "rhor " << yakl::intrinsics::maxval(rho_r_a) << std::endl;
+    }
 
     #ifdef PAM_DEBUG
       validate_array_positive(rho_v);

@@ -77,6 +77,8 @@ namespace pam {
     using KT         = typename P3F::KT;
     using Spack      = typename P3F::Spack;
 
+    //std::cout << "hey1" << std::endl;
+
     if (! Kokkos::is_initialized()) { Kokkos::initialize(); }
 
     const int nlev  = kte-kts+1;
@@ -153,6 +155,8 @@ namespace pam {
     auto precip_liq_surf_d    = ArrayIR_to_View         (precip_liq_surf   );
     auto precip_ice_surf_d    = ArrayIR_to_View         (precip_ice_surf   );
 
+    //std::cout << "hey2" << std::endl;
+
     Kokkos::parallel_for( Kokkos::MDRangePolicy<Kokkos::Rank<3>>({0, 0, 0}, {ncol, npack, Spack::n}),
                           KOKKOS_LAMBDA(int icol, int ilev, int s) {
       qv2qi_depos_tend_d  (icol,ilev)[s] = 0.;
@@ -200,6 +204,7 @@ namespace pam {
     auto vap_liq_exchange_d = ArrayIR_to_View_of_Packs(vap_liq_exchange);
     auto vap_ice_exchange_d = ArrayIR_to_View_of_Packs(vap_ice_exchange);
 
+    //std::cout << "hey3" << std::endl;
     Kokkos::parallel_for( Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {ncol, npack}),
                           KOKKOS_LAMBDA(int icol, int ilev) {
        liq_ice_exchange_d(icol,ilev) = 0.;
@@ -232,8 +237,10 @@ namespace pam {
     const auto policy = ekat::ExeSpaceUtils<KT::ExeSpace>::get_default_team_policy(ncol, nlev_pack);
     ekat::WorkspaceManager<Spack, KT::Device> workspace_mgr(nlev_pack, 59, policy);
 
+    //std::cout << "hey4" << std::endl;
     auto elapsed_time = P3F::p3_main(prog_state, diag_inputs, diag_outputs, infrastructure,
                                      history_only, lookup_tables, workspace_mgr, ncol, nlev);
+    //std::cout << "hey5" << std::endl;
   }
 
 }

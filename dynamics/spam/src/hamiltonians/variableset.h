@@ -12,6 +12,7 @@
 using pam::PamCoupler;
 
 namespace pamc {
+ constexpr bool walter_conv = false;
 
 struct VS_SWE {
   static constexpr bool couple = false;
@@ -278,6 +279,10 @@ public:
                "found");
       }
     }
+    //varset.dens_diffused(0 + ndensity_nophysics) = true;
+    //varset.dens_diffused(2 + ndensity_nophysics) = true;
+    //varset.dens_diffused(4 + ndensity_nophysics) = true;
+    //varset.dens_diffused(8 + ndensity_nophysics) = true;
 
     // get indicies of active densities
     int active_i = 0;
@@ -527,8 +532,13 @@ void convert_dynamics_to_coupler_densities(
                 varset.get_qv(varset.reference_state.dens.data, k, dks, n);
             real refqd =
                 varset.get_qd(varset.reference_state.dens.data, k, dks, n);
-            temp =
-                thermo.compute_T_from_p(p, entropic_var, qd, qv, ql, qi);
+	    if (walter_conv) {
+		    temp =
+			thermo.compute_T_from_p(p, entropic_var, refqd, refqv, ql, qi);
+	    } else {
+		    temp =
+			thermo.compute_T_from_p(p, entropic_var, qd, qv, ql, qi);
+	    }
           }
 
           dm_temp(k, j, i, n) = temp;
@@ -720,12 +730,18 @@ void convert_coupler_to_dynamics_densities(
           } else {
             real p = varset.get_pres(prog_vars.fields_arr[DENSVAR].data, k, j,
                                      i, dks, djs, dis, n);
-            real refqv =
-                varset.get_qv(varset.reference_state.dens.data, k, dks, n);
-            real refqd =
-                varset.get_qd(varset.reference_state.dens.data, k, dks, n);
-            entropic_var = thermo.compute_entropic_var_from_p_T(p, temp, qd,
-                                                                qv, ql, qi);
+
+	    if (walter_conv) {
+		    real refqv =
+			varset.get_qv(varset.reference_state.dens.data, k, dks, n);
+		    real refqd =
+			varset.get_qd(varset.reference_state.dens.data, k, dks, n);
+		    entropic_var = thermo.compute_entropic_var_from_p_T(p, temp, refqd,
+									refqv, ql, qi);
+	    } else {
+		    entropic_var = thermo.compute_entropic_var_from_p_T(p, temp, qd,
+									qv, ql, qi);
+	    }
           }
 
           varset.set_entropic_density(
@@ -1252,8 +1268,10 @@ real YAKL_INLINE VariableSetBase<VS_MAN>::_water_dens(const real5d &densvar,
   real vap_dens = densvar(dens_id_vap, k + ks, j + js, i + is, n);
   real liq_dens = 0.0_fp;
   real ice_dens = 0.0_fp;
-  if (liq_found) { liq_dens = densvar(dens_id_liq, k + ks, j + js, i + is, n); }
-  if (ice_found) { ice_dens = densvar(dens_id_ice, k + ks, j + js, i + is, n); }
+  if (!walter_conv) {
+          if (liq_found) { liq_dens = densvar(dens_id_liq, k + ks, j + js, i + is, n); }
+          if (ice_found) { ice_dens = densvar(dens_id_ice, k + ks, j + js, i + is, n); }
+  }
   return vap_dens + liq_dens + ice_dens;
 }
 
@@ -1264,8 +1282,10 @@ real YAKL_INLINE VariableSetBase<VS_MAN>::_water_dens(const real3d &densvar,
   real vap_dens = densvar(dens_id_vap, k + ks, n);
   real liq_dens = 0.0_fp;
   real ice_dens = 0.0_fp;
-  if (liq_found) { liq_dens = densvar(dens_id_liq, k + ks, n); }
-  if (ice_found) { ice_dens = densvar(dens_id_ice, k + ks, n); }
+  if (!walter_conv) {
+    if (liq_found) { liq_dens = densvar(dens_id_liq, k + ks, n); }
+    if (ice_found) { ice_dens = densvar(dens_id_ice, k + ks, n); }
+  }
   return vap_dens + liq_dens + ice_dens;
 }
 

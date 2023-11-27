@@ -190,6 +190,8 @@ int main(int argc, char** argv) {
     sgs   .init( coupler );
     dycore.init( coupler, verbose);
 
+    pam::p3_init_lookup_tables();
+
     if ( (micro.micro_name() == "p3" || sgs.sgs_name() == "shoc") && crm_nz != PAM_NLEV ) {
       endrun("ERROR: Running with a different number of vertical levels than compiled for");
     }
@@ -241,12 +243,20 @@ int main(int argc, char** argv) {
         if (apply_gcm_forcing) { 
           coupler.run_module( "apply_gcm_forcing_tendencies" , modules::apply_gcm_forcing_tendencies                        );
         }
+	yakl::timer_start("dycore");
         coupler.run_module( "dycore"                       , [&] (pam::PamCoupler &coupler) { dycore.timeStep(coupler); } );
+	yakl::timer_stop("dycore");
         if (apply_sponge) { 
           coupler.run_module( "sponge_layer"                 , modules::sponge_layer                                        );
         }
+    
+	yakl::timer_start("sgs");
         coupler.run_module( "sgs"                          , [&] (pam::PamCoupler &coupler) { sgs   .timeStep(coupler); } );
+	yakl::timer_stop("sgs");
+	
+	yakl::timer_start("micro");
         coupler.run_module( "micro"                        , [&] (pam::PamCoupler &coupler) { micro .timeStep(coupler); } );
+	yakl::timer_stop("micro");
         
         etime_gcm = step_gcm * dt_gcm + (step_crm_phys + 1) * dt_crm_phys;  
 

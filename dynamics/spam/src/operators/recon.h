@@ -366,25 +366,25 @@ void YAKL_INLINE compute_twisted_recon(const real5d &reconvar,
     }
   }
 
-  if (recontype == RECONSTRUCTION_TYPE::CFV) {
+  //if (recontype == RECONSTRUCTION_TYPE::CFV) {
     centered_recon<ndofs, ndims>(recon, edgerecon);
-  } else if (recontype == RECONSTRUCTION_TYPE::WENO ||
-             recontype == RECONSTRUCTION_TYPE::WENOFUNC) {
+  //} else if (recontype == RECONSTRUCTION_TYPE::WENO ||
+  //           recontype == RECONSTRUCTION_TYPE::WENOFUNC) {
 
-    for (int d = 0; d < ndims; ++d) {
-      uvar(d) = Fvar(d, k + ks, j + js, i + is, n);
-    }
+  //  for (int d = 0; d < ndims; ++d) {
+  //    uvar(d) = Fvar(d, k + ks, j + js, i + is, n);
+  //  }
 
-    if (dual_upwind_type == UPWIND_TYPE::HEAVISIDE) {
-      upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
-    } else if (dual_upwind_type == UPWIND_TYPE::TANH) {
-      for (int d = 0; d < ndims; ++d) {
-        uvar(d) /= dgeom.get_area_nm11entity(d, k + ks, j + js, i + is, n);
-      }
-      tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar,
-                                      tanh_upwind_coeff);
-    }
-  }
+  //  if (dual_upwind_type == UPWIND_TYPE::HEAVISIDE) {
+  //    upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+  //  } else if (dual_upwind_type == UPWIND_TYPE::TANH) {
+  //    for (int d = 0; d < ndims; ++d) {
+  //      uvar(d) /= dgeom.get_area_nm11entity(d, k + ks, j + js, i + is, n);
+  //    }
+  //    tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar,
+  //                                    tanh_upwind_coeff);
+  //  }
+  //}
 
   for (int d = 0; d < ndims; d++) {
     for (int l = 0; l < ndofs; l++) {
@@ -410,20 +410,20 @@ void YAKL_INLINE compute_twisted_vert_recon(
         vertedgereconvar(l + ndofs * 0, k + ks, j + js, i + is, n);
   }
 
-  if (recontype == RECONSTRUCTION_TYPE::CFV) {
+  //if (recontype == RECONSTRUCTION_TYPE::CFV) {
     centered_recon<ndofs, 1>(recon, edgerecon);
-  } else if (recontype == RECONSTRUCTION_TYPE::WENO ||
-             recontype == RECONSTRUCTION_TYPE::WENOFUNC) {
+  //} else if (recontype == RECONSTRUCTION_TYPE::WENO ||
+  //           recontype == RECONSTRUCTION_TYPE::WENOFUNC) {
 
-    uvar(0) = FWvar(0, k + ks, j + js, i + is, n);
+  //  uvar(0) = FWvar(0, k + ks, j + js, i + is, n);
 
-    if (dual_vert_upwind_type == UPWIND_TYPE::HEAVISIDE) {
-      upwind_recon<ndofs, 1>(recon, edgerecon, uvar);
-    } else if (dual_vert_upwind_type == UPWIND_TYPE::TANH) {
-      uvar(0) /= dgeom.get_area_n0entity(k + ks, j + js, i + is, n);
-      tanh_upwind_recon<ndofs, 1>(recon, edgerecon, uvar, tanh_upwind_coeff);
-    }
-  }
+  //  if (dual_vert_upwind_type == UPWIND_TYPE::HEAVISIDE) {
+  //    upwind_recon<ndofs, 1>(recon, edgerecon, uvar);
+  //  } else if (dual_vert_upwind_type == UPWIND_TYPE::TANH) {
+  //    uvar(0) /= dgeom.get_area_n0entity(k + ks, j + js, i + is, n);
+  //    tanh_upwind_recon<ndofs, 1>(recon, edgerecon, uvar, tanh_upwind_coeff);
+  //  }
+  //}
 
   for (int l = 0; l < ndofs; l++) {
     vertreconvar(l, k + ks, j + js, i + is, n) = recon(l, 0);
@@ -477,7 +477,7 @@ void YAKL_INLINE compute_straight_recon(const real5d &reconvar,
       upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
     } else {
       for (int d = 0; d < ndims; ++d) {
-        uvar(d) /= pgeom.get_area_nm11entity(d, k + ks, j + js, is, n);
+        uvar(d) /= pgeom.get_area_nm11entity(d, k + ks, j + js, i + is, n);
       }
       tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar,
                                       tanh_upwind_coeff);
@@ -520,26 +520,26 @@ void YAKL_INLINE compute_straight_hz_recon(const real5d &reconvar,
     }
   }
 
-  if (recontype == RECONSTRUCTION_TYPE::CFV) {
+  //if (recontype == RECONSTRUCTION_TYPE::CFV) {
     centered_recon<ndofs, ndims>(recon, edgerecon);
-  } else if (recontype == RECONSTRUCTION_TYPE::WENO ||
-             recontype == RECONSTRUCTION_TYPE::WENOFUNC) {
+  //} else if (recontype == RECONSTRUCTION_TYPE::WENO ||
+  //           recontype == RECONSTRUCTION_TYPE::WENOFUNC) {
 
-    SArray<real, 1, ndims> uvar;
-    for (int d = 0; d < ndims; ++d) {
-      uvar(d) = FTWvar(d, k + ks, j + js, i + is, n);
-    }
+  //  SArray<real, 1, ndims> uvar;
+  //  for (int d = 0; d < ndims; ++d) {
+  //    uvar(d) = FTWvar(d, k + ks, j + js, i + is, n);
+  //  }
 
-    if (upwind_type == UPWIND_TYPE::HEAVISIDE) {
-      upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
-    } else if (upwind_type == UPWIND_TYPE::TANH) {
-      for (int d = 0; d < ndims; ++d) {
-        uvar(d) /= pgeom.get_area_nm11entity(d, k + ks, j + js, is, n);
-      }
-      tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar,
-                                      tanh_upwind_coeff);
-    }
-  }
+  //  if (upwind_type == UPWIND_TYPE::HEAVISIDE) {
+  //    upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+  //  } else if (upwind_type == UPWIND_TYPE::TANH) {
+  //    for (int d = 0; d < ndims; ++d) {
+  //      uvar(d) /= pgeom.get_area_nm11entity(d, k + ks, j + js, is, n);
+  //    }
+  //    tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar,
+  //                                    tanh_upwind_coeff);
+  //  }
+  //}
 
   for (int d = 0; d < ndims; d++) {
     for (int l = 0; l < ndofs; l++) {
@@ -568,27 +568,27 @@ void YAKL_INLINE compute_straight_hz_vert_recon(const real5d &reconvar,
     }
   }
 
-  if (recontype == RECONSTRUCTION_TYPE::CFV) {
+  //if (recontype == RECONSTRUCTION_TYPE::CFV) {
     centered_recon<ndofs, ndims>(recon, edgerecon);
-  } else if (recontype == RECONSTRUCTION_TYPE::WENO ||
-             recontype == RECONSTRUCTION_TYPE::WENOFUNC) {
+  //} else if (recontype == RECONSTRUCTION_TYPE::WENO ||
+  //           recontype == RECONSTRUCTION_TYPE::WENOFUNC) {
 
-    SArray<real, 1, ndims> uvar;
-    for (int d = 0; d < ndims; ++d) {
-      uvar(d) = FTvar(d, k + ks, j + js, i + is, n);
-      if (d == 0) {
-        uvar(d) *= -1; // needs a "twist"
-      }
-    }
+  //  SArray<real, 1, ndims> uvar;
+  //  for (int d = 0; d < ndims; ++d) {
+  //    uvar(d) = FTvar(d, k + ks, j + js, i + is, n);
+  //    if (d == 0) {
+  //      uvar(d) *= -1; // needs a "twist"
+  //    }
+  //  }
 
-    if (vert_upwind_type == UPWIND_TYPE::HEAVISIDE) {
-      upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
-    } else if (vert_upwind_type == UPWIND_TYPE::TANH) {
-      uvar(0) /= pgeom.get_area_n0entity(k + ks, j + js, i + is, n);
-      tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar,
-                                      tanh_upwind_coeff);
-    }
-  }
+  //  if (vert_upwind_type == UPWIND_TYPE::HEAVISIDE) {
+  //    upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
+  //  } else if (vert_upwind_type == UPWIND_TYPE::TANH) {
+  //    uvar(0) /= pgeom.get_area_n0entity(k + ks, j + js, i + is, n);
+  //    tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar,
+  //                                    tanh_upwind_coeff);
+  //  }
+  //}
 
   for (int d = 0; d < ndims; ++d) {
     for (int l = 0; l < ndofs; l++) {

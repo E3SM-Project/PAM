@@ -3,6 +3,10 @@ verbose : true
 check_anelastic_constraint : true
 force_refstate_hydrostatic_balance : true
 couple_wind : false
+couple_wind_exact_inverse : false
+apply_sponge : false
+
+tanh_upwind_coeff : 250
 
 # Simulation time in seconds
 sim_time : 7200
@@ -20,14 +24,24 @@ velocity_vort_vert_diffusion_coeff : 500
 velocity_div_horiz_diffusion_coeff : 500
 velocity_div_vert_diffusion_coeff : 500
 
+#scalar_horiz_diffusion_coeff : 0
+#scalar_vert_diffusion_coeff : 0
+#
+#velocity_vort_horiz_diffusion_coeff : 0
+#velocity_div_horiz_diffusion_coeff : 0
+#velocity_vort_vert_diffusion_coeff : 0
+#velocity_div_vert_diffusion_coeff : 0
+
+
 # Vertical height coordinates file
 vcoords : uniform
+#vcoords : supercell_exp.nc
 
 # Data to initialize: doublevortex rb mrb
 init_data : supercell
 
 # Time steps
-dt_crm_phys : 10
+dt_crm_phys : 5
 crm_per_phys : 1
 
 # Output filename

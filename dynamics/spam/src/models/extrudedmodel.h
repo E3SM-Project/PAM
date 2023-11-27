@@ -1269,6 +1269,46 @@ public:
       auto coriolisxyedgereconvar = opt_coriolisxyedgereconvar.value();
       auto coriolisxyreconvar = opt_coriolisxyreconvar.value();
       auto FTxyvar = opt_FTxyvar.value();
+
+
+    std::cout << "Symmetry check FTxy" << std::endl;
+    {
+	int nx = primal_topology.n_cells_x;
+	int ny = primal_topology.n_cells_y;
+	int nz = primal_topology.ni;
+	int nens = primal_topology.nens;
+
+	real4d FTxy0_a("FTxy_a", nz, ny / 2, nx, nens);
+	real4d FTxy1_a("FTxy_a", nz, ny / 2, nx, nens);
+	real4d F0_a("FTxy_a", nz, ny / 2, nx, nens);
+	real4d F1_a("FTxy_a", nz, ny / 2, nx, nens);
+
+	//auto FTxyvar_host = FTxyvar.createHostCopy();
+	//for (int j = 0; j < ny; ++j) {
+	//	int i = 84;
+	//	int k = 10;
+	//	int n = 0;
+	//	std::cout << j << " " << FTxyvar_host(0, k + pks, j + pjs, i + pis, n) << std::endl;
+	//}
+
+	parallel_for(SimpleBounds<4>(nz,nx, ny / 2, nens) , YAKL_LAMBDA (int k, int j, int i, int n) {
+	   FTxy0_a(k, i, j, n) = std::abs(FTxyvar(0, k + pks, j + pjs, i + pis, n)
+			                + FTxyvar(0, k + pks, ny - 1 - j + pjs, i + pis, n));
+	   FTxy1_a(k, i, j, n) = std::abs(FTxyvar(1, k + pks, j + pjs, i + pis, n)
+			                - FTxyvar(1, k + pks, ny - j + pjs, i + pis, n));
+	   
+	   F0_a(k, i, j, n) = std::abs(Fvar(0, k + pks, j + pjs, i + pis, n)
+			                - Fvar(0, k + pks, ny - 1 - j + pjs, i + pis, n));
+	   F1_a(k, i, j, n) = std::abs(Fvar(1, k + pks, j + pjs, i + pis, n)
+			                + Fvar(1, k + pks, ny - j + pjs, i + pis, n));
+        });
+	std::cout << "FTxy0 " << yakl::intrinsics::maxval(FTxy0_a) << std::endl;
+	std::cout << "FTxy1 " << yakl::intrinsics::maxval(FTxy1_a) << std::endl;
+	std::cout << "F0 " << yakl::intrinsics::maxval(F0_a) << std::endl;
+	std::cout << "F1 " << yakl::intrinsics::maxval(F1_a) << std::endl;
+	//exit(1);
+    }
+
       parallel_for(
           "ComputeQxyRECON",
           SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
@@ -1585,6 +1625,7 @@ public:
           for (int d = 0; d < ndims; ++d) {
             FTWvar(d, k + pks, j + pjs, i + pis, n) =
                 Vvar(d, k + pks, j + pjs, i + pis, n) - refv(d, k + pks, n);
+                //Vvar(d, k + pks, j + pjs, i + pis, n);
           }
         });
     auxiliary_vars.exchange({FTWVAR});
@@ -2288,6 +2329,8 @@ public:
 
     const auto &dual_topology = dual_geometry.topology;
 
+    yakl::timer_start("apply_symplectic_precompute");
+
     compute_dens0(auxiliary_vars.fields_arr[DENS0VAR].data,
                   x.fields_arr[DENSVAR].data);
 
@@ -2309,7 +2352,7 @@ public:
         needs_to_recompute_F ? auxiliary_vars.fields_arr[F2VAR].data
                              : auxiliary_vars.fields_arr[FVAR].data,
         needs_to_recompute_F ? auxiliary_vars.fields_arr[FW2VAR].data
-                             : auxiliary_vars.fields_arr[F2VAR].data,
+                             : auxiliary_vars.fields_arr[FWVAR].data,
         ndims > 1 ? optional_real5d{auxiliary_vars.fields_arr[FTXYVAR].data}
                   : std::nullopt);
 
@@ -2337,6 +2380,7 @@ public:
       auxiliary_vars.exchange({QXYVAR, FXYVAR});
     }
 
+    yakl::timer_stop("apply_symplectic_precompute");
     // Compute densrecon, densvertrecon, qrecon and frecon
     if (dual_geometry.uniform_vertical) {
       compute_edge_reconstructions_uniform(
@@ -2436,6 +2480,7 @@ public:
       auxiliary_vars.exchange({QXYRECONVAR, CORIOLISXYRECONVAR});
     }
 
+    yakl::timer_start("apply_symplectic_fct");
     // Compute fct
     int dis = dual_topology.is;
     int djs = dual_topology.js;
@@ -2498,6 +2543,8 @@ public:
         });
 
     auxiliary_vars.exchange({DENSRECONVAR, DENSVERTRECONVAR});
+    
+    yakl::timer_stop("apply_symplectic_fct");
 
     // Compute tendencies
     if (addmode == ADD_MODE::REPLACE) {

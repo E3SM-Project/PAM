@@ -240,6 +240,38 @@ public:
         mass0 = yakl::intrinsics::sum(mass4d);
       }
     #endif
+    std::cout << "Symmetry check before" << std::endl;
+    {
+        auto rho_v = dm.get<real,4>( "water_vapor" );
+        auto rho_c = dm.get<real,4>( "cloud_water" );
+        auto rho_r = dm.get<real,4>( "rain"        );
+        auto rho_i = dm.get<real,4>( "ice"         );
+        auto rho_dry = dm.get<real,4>( "density_dry");
+        auto temp = dm.get<real,4>( "temp"         );
+
+	real4d rho_v_a("rho_v_a", nz, ny / 2, nx, nens);
+	real4d rho_c_a("rho_c_a", nz, ny / 2, nx, nens);
+	real4d rho_r_a("rho_r_a", nz, ny / 2, nx, nens);
+	real4d rho_i_a("rho_i_a", nz, ny / 2, nx, nens);
+	real4d rho_dry_a("rho_dry_a", nz, ny / 2, nx, nens);
+	real4d temp_a("temp_a", nz, ny / 2, nx, nens);
+        
+	parallel_for(SimpleBounds<4>(nz,nx, ny / 2, nens) , YAKL_LAMBDA (int k, int j, int i, int n) {
+	   rho_v_a(k, i, j, n) = std::abs(rho_v(k, j, i, n) - rho_v(k, ny - 1 - j, i, n));
+	   rho_c_a(k, i, j, n) = std::abs(rho_c(k, j, i, n) - rho_c(k, ny - 1 - j, i, n));
+	   rho_r_a(k, i, j, n) = std::abs(rho_r(k, j, i, n) - rho_r(k, ny - 1 - j, i, n));
+	   rho_i_a(k, i, j, n) = std::abs(rho_i(k, j, i, n) - rho_i(k, ny - 1 - j, i, n));
+	   rho_dry_a(k, i, j, n) = std::abs(rho_dry(k, j, i, n) - rho_dry(k, ny - 1 - j, i, n));
+	   temp_a(k, i, j, n) = std::abs(temp(k, j, i, n) - temp(k, ny - 1 - j, i, n));
+        });
+
+	std::cout << "temp " << yakl::intrinsics::maxval(temp_a) << std::endl;
+	std::cout << "rhod " << yakl::intrinsics::maxval(rho_dry_a) << std::endl;
+	std::cout << "rhov " << yakl::intrinsics::maxval(rho_v_a) << std::endl;
+	std::cout << "rhoc " << yakl::intrinsics::maxval(rho_c_a) << std::endl;
+	std::cout << "rhor " << yakl::intrinsics::maxval(rho_r_a) << std::endl;
+	std::cout << "rhoi " << yakl::intrinsics::maxval(rho_i_a) << std::endl;
+    }
 
     auto nccn_prescribed = dm.get_lev_col<real>("nccn_prescribed");
     auto nc_nuceat_tend  = dm.get_lev_col<real>("nc_nuceat_tend");
@@ -690,6 +722,39 @@ public:
       vap_liq_exchange_out(k,i) = vap_liq_exchange(k,i);
       vap_ice_exchange_out(k,i) = vap_ice_exchange(k,i);
     });
+    
+    std::cout << "Symmetry check after" << std::endl;
+    {
+        auto rho_v = dm.get<real,4>( "water_vapor" );
+        auto rho_c = dm.get<real,4>( "cloud_water" );
+        auto rho_r = dm.get<real,4>( "rain"        );
+        auto rho_i = dm.get<real,4>( "ice"         );
+        auto rho_dry = dm.get<real,4>( "density_dry");
+        auto temp = dm.get<real,4>( "temp"         );
+
+	real4d rho_v_a("rho_v_a", nz, ny / 2, nx, nens);
+	real4d rho_c_a("rho_c_a", nz, ny / 2, nx, nens);
+	real4d rho_r_a("rho_r_a", nz, ny / 2, nx, nens);
+	real4d rho_i_a("rho_i_a", nz, ny / 2, nx, nens);
+	real4d rho_dry_a("rho_dry_a", nz, ny / 2, nx, nens);
+	real4d temp_a("temp_a", nz, ny / 2, nx, nens);
+        
+	parallel_for(SimpleBounds<4>(nz,nx, ny / 2, nens) , YAKL_LAMBDA (int k, int j, int i, int n) {
+	   rho_v_a(k, i, j, n) = std::abs(rho_v(k, j, i, n) - rho_v(k, ny - 1 - j, i, n));
+	   rho_c_a(k, i, j, n) = std::abs(rho_c(k, j, i, n) - rho_c(k, ny - 1 - j, i, n));
+	   rho_r_a(k, i, j, n) = std::abs(rho_r(k, j, i, n) - rho_r(k, ny - 1 - j, i, n));
+	   rho_i_a(k, i, j, n) = std::abs(rho_i(k, j, i, n) - rho_i(k, ny - 1 - j, i, n));
+	   rho_dry_a(k, i, j, n) = std::abs(rho_dry(k, j, i, n) - rho_dry(k, ny - 1 - j, i, n));
+	   temp_a(k, i, j, n) = std::abs(temp(k, j, i, n) - temp(k, ny - 1 - j, i, n));
+        });
+
+	std::cout << "temp " << yakl::intrinsics::maxval(temp_a) << std::endl;
+	std::cout << "rhod " << yakl::intrinsics::maxval(rho_dry_a) << std::endl;
+	std::cout << "rhov " << yakl::intrinsics::maxval(rho_v_a) << std::endl;
+	std::cout << "rhoc " << yakl::intrinsics::maxval(rho_c_a) << std::endl;
+	std::cout << "rhor " << yakl::intrinsics::maxval(rho_r_a) << std::endl;
+	std::cout << "rhoi " << yakl::intrinsics::maxval(rho_i_a) << std::endl;
+    }
 
     // output precipitation rates to be aggregated
     auto precip_liq_surf_out = dm.get<real,3>( "precip_liq_surf_out" );
