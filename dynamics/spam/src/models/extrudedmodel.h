@@ -1325,14 +1325,10 @@ public:
           for (int d = 0; d < VS::ndensity_diffused; ++d) {
             int dens_id = varset.diffused_dens_ids(d);
             real dens0 = densvar(dens_id, k + dks, j + djs, i + dis, n);
-            if (subtract_refstate) {
-              dens0 -= refdens(dens_id, k + dks, n);
-            }
             dens0 /= total_dens;
-            //if (subtract_refstate) {
-            //  //dens0 -= q_di(dens_id, k + dks, n);
-            //  dens0 -= q_pi(dens_id, k + pks, n);
-            //}
+            if (subtract_refstate) {
+              dens0 -= q_pi(dens_id, k + pks, n);
+            }
             dens0var(d, k + pks, j + pjs, i + pis, n) = dens0;
           }
         });
