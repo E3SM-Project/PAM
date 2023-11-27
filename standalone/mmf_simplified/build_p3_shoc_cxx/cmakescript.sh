@@ -14,5 +14,7 @@ cmake      \
   -DCMAKE_CUDA_HOST_COMPILER="`which mpic++`"                     \
   -DSCREAM_Fortran_FLAGS="${SCREAM_Fortran_FLAGS}"                \
   -DPAM_NLEV=${PAM_NLEV}                                          \
+  -DKokkos_SOURCE_DIR=/home/mwarusz/kokkos \
+  -DPAM_STANDALONE=ON \
   ../../../physics/scream_cxx_p3_shoc
 

@@ -1,7 +1,7 @@
 
 import numpy as np
 import sys, getopt
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 from netCDF4 import Dataset
 
 avail = ["help","function=","exp-base=","tanh-inflect=","tanh-steep=","tanh-scale=","z0=","ztop=","nlev=","show-plots","output="]
