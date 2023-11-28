@@ -227,10 +227,6 @@ public:
             "The number of crm cells in the horizontal "
             "has to be odd when using the couple_wind_exact_inverse option");
       }
-      if (ndims > 1) {
-        throw std::runtime_error(
-            "couple_wind_exact_inverse not implemented in 3d");
-      }
     }
     varset.thermo = thermodynamics;
     varset.reference_state = refstate;
@@ -823,6 +819,32 @@ void convert_coupler_to_dynamics_wind(const VariableSetBase<T> &varset,
                                                     i + pis, n);
             }
           });
+      if (ndims > 1) {
+        parallel_for(
+            "Coupler to Dynamics State Primal V",
+            SimpleBounds<3>(primal_topology.ni, primal_topology.n_cells_x,
+                            primal_topology.nens),
+            YAKL_LAMBDA(int k, int i, int n) {
+              real x0 = 0;
+              for (int j = 0; j < primal_topology.n_cells_y; ++j) {
+                x0 += (j % 2 == 0 ? 1 : -1) * dm_vvel(k, j, i, n);
+              }
+              prog_vars.fields_arr[VVAR].data(1, k + pks, pjs, i + pis, n) = x0;
+              prog_vars.fields_arr[VVAR].data(1, k + pks, pjs, i + pis, n) *=
+                  primal_geometry.get_area_10entity(1, k + pks, pjs, i + pis,
+                                                    n);
+
+              for (int j = 1; j < primal_topology.n_cells_y; ++j) {
+                x0 = 2 * dm_vvel(k, j - 1, i, n) - x0;
+                prog_vars.fields_arr[VVAR].data(1, k + pks, j + pjs, i + pis,
+                                                n) = x0;
+                prog_vars.fields_arr[VVAR].data(1, k + pks, j + pjs, i + pis,
+                                                n) *=
+                    primal_geometry.get_area_10entity(1, k + pks, j + pjs,
+                                                      i + pis, n);
+              }
+            });
+      }
       parallel_for(
           "Coupler to Dynamics State Primal W",
           SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
