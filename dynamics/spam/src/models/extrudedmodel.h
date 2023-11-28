@@ -5947,6 +5947,10 @@ struct Supercell : TestCaseInit {
     const real Cpd = thermo.cst.Cpd;
     const real kappa_d = thermo.cst.kappa_d;
 
+    const int nonlinear_iters = 10;
+    const real max_qv = 0.014;
+    const real veps = thermo.cst.Rv / thermo.cst.Rd - 1;
+
     parallel_for(
         "Supercell set densities", primal_topology.nens, YAKL_LAMBDA(int n) {
           // set intial thtv to tht
@@ -5956,7 +5960,7 @@ struct Supercell : TestCaseInit {
           }
 
           // iterate to solve nonlinear problem
-          for (int m = 0; m < 10; ++m) {
+          for (int m = 0; m < nonlinear_iters; ++m) {
             // compute exner
             exner(0 + pks, n) = 1;
             for (int k = 1; k < primal_topology.ni; ++k) {
@@ -5974,12 +5978,9 @@ struct Supercell : TestCaseInit {
               real p = pr * std::pow(exner(k + pks, n), 1. / kappa_d);
               real T = tht_f(z, thermo) * exner(k + pks, n);
               real qvs = saturation_mixing_ratio(T, p);
-              qv(k + pks, n) = std::min(qvs * hum_f(z, thermo), 0.014);
+              qv(k + pks, n) = std::min(qvs * hum_f(z, thermo), max_qv);
               real tht = tht_f(z, thermo);
-              thtv(k + pks, n) = tht * (1 + 0.61 * qv(k + pks, n));
-              // std::cout << m << " " << k << " " << tht << " " << thtv(k +
-              // pks, n)
-              // << std::endl;
+              thtv(k + pks, n) = tht * (1 + veps * qv(k + pks, n));
             }
           }
         });
