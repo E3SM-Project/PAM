@@ -5196,7 +5196,12 @@ struct MoistRisingBubble : public RisingBubble<false> {
 
   static real YAKL_INLINE rhov_f(real x, real y, real z,
                                  const ThermoPotential &thermo) {
-    real r = sqrt((x - xc) * (x - xc) + (z - bzc) * (z - bzc));
+    real r = (x - xc) * (x - xc) + (z - bzc) * (z - bzc);
+    if (ndims > 1) {
+      r += (y - yc) * (y - yc);
+    }
+    r = std::sqrt(r);
+
     real rh = (r < rc) ? rh0 * 0.5_fp * (1._fp + cos(pi * r / rc)) : 0._fp;
     real Th = isentropic_T(z, theta0, g, thermo);
     real svp = saturation_vapor_pressure(Th);
