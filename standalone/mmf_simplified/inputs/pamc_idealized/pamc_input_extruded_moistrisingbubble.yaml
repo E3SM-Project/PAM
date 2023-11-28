@@ -1,7 +1,8 @@
 idealized : true
 verbose : true
+couple_wind : false
 
-sim_steps : 500
+sim_time : 500
 
 # Number of cells to use
 crm_nx : 100
@@ -27,7 +28,7 @@ dycore_out_prefix : test_dycore
 out_freq : 50
 stat_freq : 5
 
-tstype: si
+tstype: ssprk3
 
 # Number of ensembles
 nens : 1
