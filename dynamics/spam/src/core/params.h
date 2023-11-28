@@ -41,6 +41,7 @@ public:
   // solve a system to exactly invert the velocity averaging done
   // during conversion to coupler state when coupling winds
   bool couple_wind_exact_inverse = false;
+  bool clip_negative_densities = true;
 };
 
 void readParamsFile(std::string inFile, Parameters &params, Parallel &par,
@@ -77,6 +78,9 @@ void readParamsFile(std::string inFile, Parameters &params, Parallel &par,
   params.couple_wind = config["couple_wind"].as<bool>(true);
   params.couple_wind_exact_inverse =
       config["couple_wind_exact_inverse"].as<bool>(false);
+
+  params.clip_negative_densities =
+      config["clip_negative_densities"].as<bool>(true);
 
   // ADD A CHECK HERE THAT TOTAL TIME IS EXACTLY DIVISIBLE BY STAT_FREQ
   if (params.stat_freq >= 0.) {

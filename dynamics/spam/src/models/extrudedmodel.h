@@ -2770,7 +2770,7 @@ public:
   }
 #endif
 
-  void remove_negative_densities(FieldSet<nprognostic> &x) override {
+  void clip_negative_densities(FieldSet<nprognostic> &x) override {
     const auto &dual_topology = dual_geometry.topology;
 
     const auto densvar = x.fields_arr[DENSVAR].data;
