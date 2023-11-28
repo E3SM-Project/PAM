@@ -250,7 +250,7 @@ public:
     add_pressure_perturbation(dt, const_vars, x, auxiliary_vars, xtend);
   }
 
-  virtual void remove_negative_densities(FieldSet<nprognostic> &x) {}
+  virtual void clip_negative_densities(FieldSet<nprognostic> &x) {}
 };
 
 class ExtrudedTendencies : public Tendencies {
