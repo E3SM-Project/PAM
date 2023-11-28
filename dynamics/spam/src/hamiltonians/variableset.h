@@ -222,7 +222,8 @@ public:
                          bool verbose = false) {
 
     if (T::couple && params.couple_wind_exact_inverse) {
-      if (primal_geom.topology.n_cells_x % 2 == 0) {
+      if (primal_geom.topology.n_cells_x % 2 == 0 ||
+          (ndims > 1 && primal_geom.topology.n_cells_y % 2 == 0)) {
         throw std::runtime_error(
             "The number of crm cells in the horizontal "
             "has to be odd when using the couple_wind_exact_inverse option");
