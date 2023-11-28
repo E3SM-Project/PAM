@@ -5887,7 +5887,6 @@ struct Supercell : TestCaseInit {
     real dz = (z - zbc) / rz;
     real r = sqrt(dx * dx + dy * dy + dz * dz);
     return r < 1 ? dtht * pow(cos(pi * r / 2), 2) : 0;
-    // return 0;
   }
 
   static VecXYZ YAKL_INLINE v_f(real x, real y, real z) {
