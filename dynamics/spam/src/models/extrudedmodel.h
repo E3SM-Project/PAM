@@ -3334,6 +3334,12 @@ struct AnelasticLinearSystem : PressureLinearSystem {
     YAKL_SCOPE(primal_geometry, this->primal_geometry);
     YAKL_SCOPE(dual_geometry, this->dual_geometry);
     YAKL_SCOPE(p_transform, this->p_transform);
+    YAKL_SCOPE(tri_l, this->tri_l);
+    YAKL_SCOPE(tri_d, this->tri_d);
+    YAKL_SCOPE(tri_u, this->tri_u);
+    YAKL_SCOPE(tri_c, this->tri_c);
+    YAKL_SCOPE(kfix, this->kfix);
+
     const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
 
@@ -3403,6 +3409,7 @@ struct AnelasticLinearSystem : PressureLinearSystem {
 
     YAKL_SCOPE(primal_geometry, this->primal_geometry);
     YAKL_SCOPE(dual_geometry, this->dual_geometry);
+    YAKL_SCOPE(p_transform, this->p_transform);
     const auto &primal_topology = primal_geometry.topology;
     const auto &dual_topology = dual_geometry.topology;
 
