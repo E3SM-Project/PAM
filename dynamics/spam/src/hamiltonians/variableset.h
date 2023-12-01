@@ -397,8 +397,8 @@ public:
   real YAKL_INLINE get_pres(int k, int ks, int n) const;
   real YAKL_INLINE get_ref_dens(int k, int ks, int n) const;
 
-  void linear_pressure_coeffs(SArray<real, 1, ndensity> &pres_coeffs, int k,
-                              int ks, int n) const;
+  void linear_pressure_coeffs(SArray<real, 1, ndensity_active> &pres_coeffs,
+                              int k, int ks, int n) const;
 };
 
 // THIS IS ANELASTIC SPECIFIC FOR NOW, IDEALLY IT SHOULD MADE TO WORK FOR EITHER
@@ -1071,7 +1071,7 @@ real YAKL_INLINE VariableSetBase<VS_CE>::get_alpha(const real3d &densvar, int k,
 
 template <>
 void YAKL_INLINE VariableSetBase<VS_CE>::linear_pressure_coeffs(
-    SArray<real, 1, ndensity> &pres_coeffs, int k, int ks, int n) const {
+    SArray<real, 1, ndensity_active> &pres_coeffs, int k, int ks, int n) const {
 
   const real alpha = 1._fp / reference_state.rho_pi.data(0, k + ks, n);
   const real entropic_var = reference_state.q_pi.data(dens_id_entr, k + ks, n);
@@ -1571,6 +1571,24 @@ void YAKL_INLINE VariableSetBase<VS_MCE_rho>::set_entropic_density(
     real entropic_var_density, const real5d &densvar, int k, int j, int i,
     int ks, int js, int is, int n) const {
   densvar(dens_id_entr, k + ks, j + js, i + is, n) = entropic_var_density;
+}
+
+template <>
+void YAKL_INLINE VariableSetBase<VS_MCE_rho>::linear_pressure_coeffs(
+    SArray<real, 1, ndensity_active> &pres_coeffs, int k, int ks, int n) const {
+
+  const real alpha = 1._fp / reference_state.rho_pi.data(0, k + ks, n);
+  const real entropic_var = reference_state.q_pi.data(dens_id_entr, k + ks, n);
+  const real qv = reference_state.q_pi.data(dens_id_vap, k + ks, n);
+  const real qd = 1 - qv;
+
+  const real cs = thermo.compute_soundspeed(alpha, entropic_var, qd, qv, 0, 0);
+  const real dpdrho = cs * cs;
+  const real dpdentropic_var =
+      thermo.compute_dpdentropic_var(alpha, entropic_var, qd, qv, 0, 0);
+
+  pres_coeffs(dens_id_mass) = dpdrho - entropic_var * alpha * dpdentropic_var;
+  pres_coeffs(dens_id_entr) = alpha * dpdentropic_var;
 }
 #endif
 

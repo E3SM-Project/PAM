@@ -3455,8 +3455,9 @@ struct CompressiblePressureLinearSystem : PressureLinearSystem {
                   const Geometry<Twisted> &dual_geom,
                   Equations &equations) override {
     PressureLinearSystem::initialize(params, primal_geom, dual_geom, equations);
-    linp_coeff = real3d("linp coeff", VS::ndensity, primal_geometry.topology.ni,
-                        primal_geometry.topology.nens);
+    linp_coeff =
+        real3d("linp coeff", VS::ndensity_active, primal_geometry.topology.ni,
+               primal_geometry.topology.nens);
   }
 
   void compute_coefficients(real dt) override {
@@ -3499,9 +3500,9 @@ struct CompressiblePressureLinearSystem : PressureLinearSystem {
         "pres coeffs",
         SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
         YAKL_LAMBDA(int k, int n) {
-          SArray<real, 1, VS::ndensity> p_coeff;
+          SArray<real, 1, VS::ndensity_active> p_coeff;
           varset.linear_pressure_coeffs(p_coeff, k, pks, n);
-          for (int d = 0; d < VS::ndensity; ++d) {
+          for (int d = 0; d < VS::ndensity_active; ++d) {
             linp_coeff(d, k, n) = p_coeff(d);
           }
         });
@@ -3531,7 +3532,7 @@ struct CompressiblePressureLinearSystem : PressureLinearSystem {
           tri_l(k, j, i, n) = 0;
           tri_u(k, j, i, n) = 0;
 
-          for (int dd = 0; dd < VS::ndensity_prognostic; ++dd) {
+          for (int dd = 0; dd < VS::ndensity_active; ++dd) {
             for (int d = 0; d < ndims; ++d) {
               tri_d(k, j, i, n) -= alpha * alpha * linp_coeff(dd, k, n) *
                                    fHn1bar * fH1(d) * fD0Dbar(d) *
@@ -3539,7 +3540,7 @@ struct CompressiblePressureLinearSystem : PressureLinearSystem {
             }
           }
 
-          for (int d = 0; d < VS::ndensity_prognostic; ++d) {
+          for (int d = 0; d < VS::ndensity_active; ++d) {
             const real gamma_kp1 = 1;
             const real gamma_k = 1;
             const real gamma_km1 = 1;
@@ -3630,15 +3631,15 @@ struct CompressiblePressureLinearSystem : PressureLinearSystem {
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          SArray<real, 1, VS::ndensity_prognostic> tend;
-          SArray<real, 1, VS::ndensity_prognostic> vtend;
+          SArray<real, 1, VS::ndensity_active> tend;
+          SArray<real, 1, VS::ndensity_active> vtend;
 
-          compute_wDnm1bar<VS::ndensity_prognostic>(tend, q_pi, Fvar, dis, djs,
-                                                    dks, i, j, k, n);
-          compute_wDnm1bar_vert<VS::ndensity_prognostic>(
-              vtend, q_di, FWvar, dis, djs, dks, i, j, k, n);
+          compute_wDnm1bar<VS::ndensity_active>(tend, q_pi, Fvar, dis, djs, dks,
+                                                i, j, k, n);
+          compute_wDnm1bar_vert<VS::ndensity_active>(vtend, q_di, FWvar, dis,
+                                                     djs, dks, i, j, k, n);
 
-          for (int d = 0; d < VS::ndensity_prognostic; ++d) {
+          for (int d = 0; d < VS::ndensity_active; ++d) {
             mfvar(d, k + dks, j + djs, i + dis, n) =
                 rhs_dens(d, k + dks, j + djs, i + dis, n);
             mfvar(d, k + dks, j + djs, i + dis, n) -= 0.5_fp * dt * tend(d);
@@ -3652,7 +3653,7 @@ struct CompressiblePressureLinearSystem : PressureLinearSystem {
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_Hn1bar<VS::ndensity_prognostic, diff_ord, vert_diff_ord>(
+          compute_Hn1bar<VS::ndensity_active, diff_ord, vert_diff_ord>(
               Bvar, mfvar, primal_geometry, dual_geometry, pis, pjs, pks, i, j,
               k, n);
         });
