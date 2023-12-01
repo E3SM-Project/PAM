@@ -397,8 +397,9 @@ public:
   real YAKL_INLINE get_pres(int k, int ks, int n) const;
   real YAKL_INLINE get_ref_dens(int k, int ks, int n) const;
 
-  void linear_pressure_coeffs(SArray<real, 1, ndensity_active> &pres_coeffs,
-                              int k, int ks, int n) const;
+  void YAKL_INLINE
+  linear_pressure_coeffs(SArray<real, 1, ndensity_active> &pres_coeffs, int k,
+                         int ks, int n) const {}
 };
 
 // THIS IS ANELASTIC SPECIFIC FOR NOW, IDEALLY IT SHOULD MADE TO WORK FOR EITHER
