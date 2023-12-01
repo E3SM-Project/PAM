@@ -6551,6 +6551,12 @@ struct Supercell : TestCaseInit {
     YAKL_SCOPE(varset, equations->varset);
     YAKL_SCOPE(refdens, equations->reference_state.dens.data);
 
+#ifndef PAMC_MAN
+    dual_geometry.set_n1form_values(
+        YAKL_LAMBDA(real x, real y, real z) { return refrho_f(z, thermo); },
+        progvars.fields_arr[DENSVAR], varset.dens_id_mass);
+#endif
+
     dual_geometry.set_n1form_values(
         YAKL_LAMBDA(real x, real y, real z) {
           return refrho_f(z, thermo) * tht_perturb_f(x, y, z, thermo);
