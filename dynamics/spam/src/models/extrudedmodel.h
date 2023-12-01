@@ -3674,7 +3674,7 @@ struct CompressiblePressureLinearSystem : PressureLinearSystem {
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           p_transform(k, j, i, n) = 0;
-          for (int d = 0; d < VS::ndensity_prognostic; ++d) {
+          for (int d = 0; d < VS::ndensity_active; ++d) {
             p_transform(k, j, i, n) +=
                 linp_coeff(d, k, n) * Bvar(d, k + pks, j + pjs, i + pis, n);
           }
