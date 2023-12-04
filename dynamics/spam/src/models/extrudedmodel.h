@@ -1102,7 +1102,7 @@ public:
     yakl::timer_stop("compute_recons");
   }
 
-  void add_scalar_diffusion(real scalar_horiz_diffusion_coeff,
+  void add_scalar_diffusion(real dt, real scalar_horiz_diffusion_coeff,
                             real scalar_vert_diffusion_coeff,
                             real5d denstendvar, const real5d densvar,
                             const real5d dens0var, const real5d Fdiffvar,
@@ -1213,14 +1213,14 @@ public:
                 -scalar_horiz_diffusion_coeff * rho * Hn1bar_diag * hdiv(d) +
                 -scalar_vert_diffusion_coeff * rho * Hn1bar_diag * vdiv(d);
             int dens_id = varset.diffused_dens_ids(d);
-            denstendvar(dens_id, k + pks, j + pjs, i + pis, n) += diff_tend;
+            denstendvar(dens_id, k + pks, j + pjs, i + pis, n) -= dt * diff_tend;
           }
         });
 
     yakl::timer_stop("add_scalar_diffusion");
   }
 
-  void add_velocity_diffusion_2d(real velocity_vort_horiz_diffusion_coeff,
+  void add_velocity_diffusion_2d(real dt, real velocity_vort_horiz_diffusion_coeff,
                                  real velocity_vort_vert_diffusion_coeff,
                                  real velocity_div_horiz_diffusion_coeff,
                                  real velocity_div_vert_diffusion_coeff,
@@ -1353,13 +1353,13 @@ public:
           compute_D0bar_ext<1>(Dhorz, qhzvar, dis, djs, dks, i, j, k + 1, n);
           const real Hn0bar_diag = Hn0bar_diagonal(
               primal_geometry, dual_geometry, dis, djs, dks, i, j, k, n);
-          Wtendvar(0, k + pks, j + pjs, i + pis, n) -=
+          Wtendvar(0, k + pks, j + pjs, i + pis, n) += dt * 
               velocity_vort_vert_diffusion_coeff * Dhorz(0) * Hn0bar_diag;
 
           // d(*d*) = div
           SArray<real, 1, 1> wdiff;
           compute_D0_vert<1>(wdiff, dens0var, pis, pjs, pks, i, j, k, n);
-          Wtendvar(0, pks + k, pjs + j, pis + i, n) -=
+          Wtendvar(0, pks + k, pjs + j, pis + i, n) += dt * 
               velocity_div_vert_diffusion_coeff * wdiff(0);
         });
 
@@ -1367,6 +1367,7 @@ public:
   }
 
   void add_velocity_diffusion_3d(
+      real dt, 
       real velocity_vort_horiz_diffusion_coeff,
       real velocity_vort_vert_diffusion_coeff,
       real velocity_div_horiz_diffusion_coeff,
@@ -1479,7 +1480,7 @@ public:
                                                   dual_geometry, pis, pjs, pks,
                                                   i, j, k, n);
           for (int d = 0; d < ndims; ++d) {
-            Vtendvar(d, k + pks, j + pjs, i + pis, n) +=
+            Vtendvar(d, k + pks, j + pjs, i + pis, n) -= dt * 
                 velocity_vort_horiz_diffusion_coeff * vdiff(d);
           }
         });
@@ -1493,7 +1494,7 @@ public:
           compute_Hn0bar<1, vert_diffusion_diff_ord>(
               wdiff, FWvar, primal_geometry, dual_geometry, pis, pjs, pks, i, j,
               k, n);
-          Wtendvar(0, k + pks, j + pjs, i + pis, n) +=
+          Wtendvar(0, k + pks, j + pjs, i + pis, n) -= dt * 
               velocity_vort_vert_diffusion_coeff * wdiff(0);
         });
 
@@ -1551,7 +1552,7 @@ public:
           SArray<real, 2, 1, ndims> vdiff;
           compute_D0<1>(vdiff, dens0var, pis, pjs, pks, i, j, k, n);
           for (int d = 0; d < ndims; ++d) {
-            Vtendvar(d, pks + k, pjs + j, pis + i, n) -=
+            Vtendvar(d, pks + k, pjs + j, pis + i, n) += dt * 
                 velocity_div_horiz_diffusion_coeff * vdiff(0, d);
           }
         });
@@ -1563,7 +1564,7 @@ public:
         YAKL_LAMBDA(int k, int j, int i, int n) {
           SArray<real, 1, 1, 1> wdiff;
           compute_D0_vert<1>(wdiff, dens0var, pis, pjs, pks, i, j, k, n);
-          Wtendvar(0, pks + k, pjs + j, pis + i, n) -=
+          Wtendvar(0, pks + k, pjs + j, pis + i, n) += dt * 
               velocity_div_vert_diffusion_coeff * wdiff(0);
         });
 
@@ -2364,10 +2365,18 @@ public:
               : std::nullopt);
     }
 
+    yakl::timer_stop("apply_symplectic");
+  }
+  
+  void add_diffusion(real dt, FieldSet<nconstant> &const_vars,
+                        FieldSet<nprognostic> &x,
+                        FieldSet<nauxiliary> &auxiliary_vars) override {
+    
     if (scalar_horiz_diffusion_coeff > 0 or scalar_vert_diffusion_coeff > 0) {
       add_scalar_diffusion(
+          dt,
           scalar_horiz_diffusion_coeff, scalar_vert_diffusion_coeff,
-          xtend.fields_arr[DENSVAR].data, x.fields_arr[DENSVAR].data,
+          x.fields_arr[DENSVAR].data, x.fields_arr[DENSVAR].data,
           auxiliary_vars.fields_arr[DENS0VAR].data,
           auxiliary_vars.fields_arr[FDIFFVAR].data,
           auxiliary_vars.fields_arr[FWDIFFVAR].data, auxiliary_vars);
@@ -2378,11 +2387,14 @@ public:
         velocity_div_vert_diffusion_coeff > 0) {
       if (ndims == 1) {
         add_velocity_diffusion_2d(
+            dt,
             velocity_vort_horiz_diffusion_coeff,
             velocity_vort_vert_diffusion_coeff,
             velocity_div_horiz_diffusion_coeff,
-            velocity_div_vert_diffusion_coeff, xtend.fields_arr[VVAR].data,
-            xtend.fields_arr[WVAR].data, x.fields_arr[VVAR].data,
+            velocity_div_vert_diffusion_coeff,
+            x.fields_arr[VVAR].data,
+            x.fields_arr[WVAR].data,
+            x.fields_arr[VVAR].data,
             x.fields_arr[WVAR].data,
             auxiliary_vars.fields_arr[QHZEDGERECONVAR].data,
             auxiliary_vars.fields_arr[QHZVAR].data,
@@ -2393,11 +2405,14 @@ public:
             auxiliary_vars.fields_arr[FTWVAR].data, auxiliary_vars);
       } else {
         add_velocity_diffusion_3d(
+            dt,
             velocity_vort_horiz_diffusion_coeff,
             velocity_vort_vert_diffusion_coeff,
             velocity_div_horiz_diffusion_coeff,
-            velocity_div_vert_diffusion_coeff, xtend.fields_arr[VVAR].data,
-            xtend.fields_arr[WVAR].data, x.fields_arr[VVAR].data,
+            velocity_div_vert_diffusion_coeff,
+            x.fields_arr[VVAR].data,
+            x.fields_arr[WVAR].data,
+            x.fields_arr[VVAR].data,
             x.fields_arr[WVAR].data,
             auxiliary_vars.fields_arr[QHZEDGERECONVAR].data,
             auxiliary_vars.fields_arr[QHZVAR].data,
@@ -2410,8 +2425,6 @@ public:
             auxiliary_vars.fields_arr[QXYVAR].data, auxiliary_vars);
       }
     }
-
-    yakl::timer_stop("apply_symplectic");
   }
 
 #if defined PAMC_AN || defined PAMC_MAN

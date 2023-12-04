@@ -283,6 +283,10 @@ public:
   }
 
   virtual void clip_negative_densities(FieldSet<nprognostic> &x) {}
+  
+  virtual void add_diffusion(real dt, FieldSet<nconstant> &const_vars,
+                             FieldSet<nprognostic> &x,
+                             FieldSet<nauxiliary> &auxiliary_vars) {}
 };
 
 class ExtrudedTendencies : public Tendencies {

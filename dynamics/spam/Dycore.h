@@ -252,6 +252,8 @@ public:
 
       time_integrator->step_forward(params.dtcrm);
 
+      tendencies.add_diffusion(params.dtcrm, constant_vars, prognostic_vars, auxiliary_vars);
+
 #if defined PAMC_AN || defined PAMC_MAN
       if (params.check_anelastic_constraint) {
         real max_div = tendencies.compute_max_anelastic_constraint(
