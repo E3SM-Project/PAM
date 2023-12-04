@@ -6532,7 +6532,9 @@ struct Supercell : TestCaseInit {
           real dual_volume =
               dual_geometry.get_area_n1entity(k + dks, djs, dis, n);
           real z = primal_geometry.zint(k + pks, n);
-          real rho = refrho_f(z, thermo);
+
+          real p = pr * std::pow(exner(k + pks, n), 1. / kappa_d);
+          real rho = p / (thermo.cst.Rd * exner(k + pks, n) * thtv(k + pks, n));
 
           refstate.dens.data(varset.dens_id_mass, k + dks, n) =
               rho * dual_volume;
