@@ -6569,26 +6569,29 @@ struct Supercell : TestCaseInit {
     YAKL_SCOPE(varset, equations->varset);
     YAKL_SCOPE(refdens, equations->reference_state.dens.data);
 
-#ifndef PAMC_MAN
-    dual_geometry.set_n1form_values(
-        YAKL_LAMBDA(real x, real y, real z) { return refrho_f(z, thermo); },
-        progvars.fields_arr[DENSVAR], varset.dens_id_mass);
-#endif
-
-    dual_geometry.set_n1form_values(
-        YAKL_LAMBDA(real x, real y, real z) {
-          return refrho_f(z, thermo) * tht_perturb_f(x, y, z, thermo);
-        },
-        progvars.fields_arr[DENSVAR], varset.dens_id_entr);
-
     auto densvar = progvars.fields_arr[DENSVAR].data;
     parallel_for(
-        "Supercell add refstate",
+        "Supercell initial condition",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          densvar(varset.dens_id_entr, k + dks, j + djs, i + dis, n) +=
+#ifndef PAMC_MAN
+          densvar(varset.dens_id_mass, k + dks, j + djs, i + dis, n) =
+              refdens(varset.dens_id_mass, k + dks, n);
+#endif
+          densvar(varset.dens_id_entr, k + dks, j + djs, i + dis, n) =
               refdens(varset.dens_id_entr, k + dks, n);
+
+          // add perturbation
+          CoordsXYZ ll_corner;
+          dual_geometry.get_ll_corner(ll_corner, k, j, i, n);
+          const real x = ll_corner.x + dual_geometry.dx / 2;
+          const real y = ll_corner.y + dual_geometry.dy / 2;
+          const real z = ll_corner.z + dual_geometry.dz(k + dks, n) / 2;
+          densvar(varset.dens_id_entr, k + dks, j + djs, i + dis, n) +=
+              tht_perturb_f(x, y, z, thermo) *
+              refdens(varset.dens_id_mass, k + dks, n);
+
           densvar(varset.dens_id_vap, k + dks, j + djs, i + dis, n) =
               refdens(varset.dens_id_vap, k + dks, n);
         });
