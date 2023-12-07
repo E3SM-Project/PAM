@@ -27,6 +27,7 @@ struct VS_SWE {
 
   static constexpr uint ntracers_physics = 0;
   static constexpr uint ntracers_physics_active = 0;
+  static constexpr uint ntracers_physics_diffused = 0;
 };
 
 struct VS_TSWE {
@@ -43,6 +44,7 @@ struct VS_TSWE {
 
   static constexpr uint ntracers_physics = 0;
   static constexpr uint ntracers_physics_active = 0;
+  static constexpr uint ntracers_physics_diffused = 0;
 };
 
 struct VS_CE {
@@ -59,6 +61,7 @@ struct VS_CE {
 
   static constexpr uint ntracers_physics = 0;
   static constexpr uint ntracers_physics_active = 0;
+  static constexpr uint ntracers_physics_diffused = 0;
 };
 
 struct VS_AN {
@@ -75,6 +78,7 @@ struct VS_AN {
 
   static constexpr uint ntracers_physics = 0;
   static constexpr uint ntracers_physics_active = 0;
+  static constexpr uint ntracers_physics_diffused = 0;
 };
 
 struct VS_MAN {
@@ -97,6 +101,8 @@ struct VS_MAN {
       ThermoPotential::moist_species_decouple_from_dynamics
           ? 0
           : std::min<uint>(3, Microphysics::get_num_tracers());
+  static constexpr uint ntracers_physics_diffused =
+      Microphysics::get_num_diffused_tracers();
 };
 
 struct VS_MCE_rho {
@@ -119,6 +125,8 @@ struct VS_MCE_rho {
       ThermoPotential::moist_species_decouple_from_dynamics
           ? 0
           : std::min<uint>(3, Microphysics::get_num_tracers());
+  static constexpr uint ntracers_physics_diffused =
+      Microphysics::get_num_diffused_tracers();
 };
 
 struct VS_MCE_rhod : VS_MCE_rho {};
@@ -149,6 +157,7 @@ public:
 
   using T::ntracers_physics;
   using T::ntracers_physics_active;
+  using T::ntracers_physics_diffused;
 
   static constexpr uint ndensity =
       ndensity_dycore + ntracers_dycore + ntracers_physics;
@@ -157,7 +166,8 @@ public:
   static constexpr uint ndensity_active =
       ndensity_dycore_active + ntracers_dycore_active + ntracers_physics_active;
   // TODO: Add tracers and physics
-  static constexpr uint ndensity_diffused = ndensity_dycore_diffused;
+  static constexpr uint ndensity_diffused =
+      ndensity_dycore_diffused + ntracers_physics_diffused;
   static constexpr uint ndensity_prognostic =
       ndensity_dycore_prognostic + ntracers_dycore + ntracers_physics;
 
@@ -211,8 +221,9 @@ public:
                          const Geometry<Twisted> &dual_geom,
                          bool verbose = false) {
 
-    if (T::couple && params.couple_wind_exact_inverse) {
-      if (primal_geom.topology.n_cells_x % 2 == 0) {
+    if (T::couple && params.couple_wind && params.couple_wind_exact_inverse) {
+      if (primal_geom.topology.n_cells_x % 2 == 0 ||
+          (ndims > 1 && primal_geom.topology.n_cells_y % 2 == 0)) {
         throw std::runtime_error(
             "The number of crm cells in the horizontal "
             "has to be odd when using the couple_wind_exact_inverse option");
@@ -271,6 +282,15 @@ public:
         }
       }
     }
+
+    // get diffused physics tracers
+    auto tracers_physics_diffused =
+        Microphysics::get_diffused_tracers_indices();
+    for (int dtr = 0; dtr < ntracers_physics_diffused; dtr++) {
+      int tr = tracers_physics_diffused[dtr];
+      varset.dens_diffused(ndensity_nophysics + tr) = true;
+    }
+
     if (ntracers_physics > 0) {
       if (!water_vapor_found) {
         endrun("ERROR: processed registered tracers, and water_vapor was not "
@@ -506,12 +526,12 @@ void convert_dynamics_to_coupler_densities(
                                djs, dis, n);
           }
 
-          if (T::compressible) {
-            dm_dens_dry(k, j, i, n) =
-                varset.get_dry_density(prog_vars.fields_arr[DENSVAR].data, k, j,
-                                       i, dks, djs, dis, n) /
-                dual_geometry.get_area_n1entity(k + dks, j + djs, i + dis, n);
-          }
+          // if (T::compressible) {
+          dm_dens_dry(k, j, i, n) =
+              varset.get_dry_density(prog_vars.fields_arr[DENSVAR].data, k, j,
+                                     i, dks, djs, dis, n) /
+              dual_geometry.get_area_n1entity(k + dks, j + djs, i + dis, n);
+          //}
 
           real temp;
           if (T::density_based) {
@@ -572,7 +592,6 @@ void convert_dynamics_to_coupler_wind(const VariableSetBase<T> &varset,
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
-          // IN 3D THIS IS MORE COMPLICATED
           real uvel_l =
               prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, i + pis, n) /
               primal_geometry.get_area_10entity(0, k + pks, j + pjs, i + pis,
@@ -608,8 +627,20 @@ void convert_dynamics_to_coupler_wind(const VariableSetBase<T> &varset,
 
             wvel_mid = wvel_d + (wvel_u - wvel_d) * e_d / (e_u + e_d);
           }
-          // EVENTUALLY FIX THIS FOR 3D...
-          real vvel = 0.0_fp;
+          real vvel;
+          if (ndims > 1) {
+            real vvel_l = prog_vars.fields_arr[VVAR].data(1, k + pks, j + pjs,
+                                                          i + pis, n) /
+                          primal_geometry.get_area_10entity(1, k + pks, j + pjs,
+                                                            i + pis, n);
+            real vvel_r = prog_vars.fields_arr[VVAR].data(
+                              1, k + pks, j + pjs + 1, i + pis, n) /
+                          primal_geometry.get_area_10entity(
+                              1, k + pks, j + pjs + 1, i + pis, n);
+            vvel = (vvel_l + vvel_r) * 0.5_fp;
+          } else {
+            vvel = 0;
+          }
 
           dm_uvel(k, j, i, n) = (uvel_l + uvel_r) * 0.5_fp;
           dm_vvel(k, j, i, n) = vvel;
@@ -789,6 +820,32 @@ void convert_coupler_to_dynamics_wind(const VariableSetBase<T> &varset,
                                                     i + pis, n);
             }
           });
+      if (ndims > 1) {
+        parallel_for(
+            "Coupler to Dynamics State Primal V",
+            SimpleBounds<3>(primal_topology.ni, primal_topology.n_cells_x,
+                            primal_topology.nens),
+            YAKL_LAMBDA(int k, int i, int n) {
+              real x0 = 0;
+              for (int j = 0; j < primal_topology.n_cells_y; ++j) {
+                x0 += (j % 2 == 0 ? 1 : -1) * dm_vvel(k, j, i, n);
+              }
+              prog_vars.fields_arr[VVAR].data(1, k + pks, pjs, i + pis, n) = x0;
+              prog_vars.fields_arr[VVAR].data(1, k + pks, pjs, i + pis, n) *=
+                  primal_geometry.get_area_10entity(1, k + pks, pjs, i + pis,
+                                                    n);
+
+              for (int j = 1; j < primal_topology.n_cells_y; ++j) {
+                x0 = 2 * dm_vvel(k, j - 1, i, n) - x0;
+                prog_vars.fields_arr[VVAR].data(1, k + pks, j + pjs, i + pis,
+                                                n) = x0;
+                prog_vars.fields_arr[VVAR].data(1, k + pks, j + pjs, i + pis,
+                                                n) *=
+                    primal_geometry.get_area_10entity(1, k + pks, j + pjs,
+                                                      i + pis, n);
+              }
+            });
+      }
       parallel_for(
           "Coupler to Dynamics State Primal W",
           SimpleBounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
@@ -814,7 +871,7 @@ void convert_coupler_to_dynamics_wind(const VariableSetBase<T> &varset,
           });
     } else {
       parallel_for(
-          "Coupler to Dynamics State Primal U",
+          "Coupler to Dynamics State Primal U/V",
           SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                           primal_topology.n_cells_x, primal_topology.nens),
           YAKL_LAMBDA(int k, int j, int i, int n) {
@@ -827,6 +884,16 @@ void convert_coupler_to_dynamics_wind(const VariableSetBase<T> &varset,
                 (dm_uvel(k, j, il, n) + dm_uvel(k, j, i, n)) * 0.5_fp *
                 primal_geometry.get_area_10entity(0, k + pks, j + pjs, i + pis,
                                                   n);
+            if (ndims > 1) {
+              int jl = j - 1;
+              if (j == 0) {
+                jl = primal_topology.n_cells_y - 1;
+              }
+              prog_vars.fields_arr[VVAR].data(1, k + pks, j + pjs, i + pis, n) =
+                  (dm_vvel(k, jl, i, n) + dm_vvel(k, j, i, n)) * 0.5_fp *
+                  primal_geometry.get_area_10entity(1, k + pks, j + pjs,
+                                                    i + pis, n);
+            }
           });
 
       // EVENTUALLY THIS NEEDS TO HAVE A FLAG ON IT!

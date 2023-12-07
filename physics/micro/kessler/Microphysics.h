@@ -2,6 +2,7 @@
 #pragma once
 
 #include "pam_coupler.h"
+#include <array>
 
 extern "C" void kessler_fortran(double *theta, double *qv, double *qc, double *qr, double *rho,
                                 double *pk, double &dt, double *z, int &nz, double &precl);
@@ -42,6 +43,14 @@ public:
 
   static int constexpr get_num_tracers() {
     return 3;
+  }
+  
+  static auto constexpr get_diffused_tracers_indices() {
+    return std::array{ID_V, ID_C, ID_R};
+  }
+
+  static auto constexpr get_num_diffused_tracers() {
+    return std::size(get_diffused_tracers_indices());
   }
 
 
@@ -336,6 +345,7 @@ public:
 
   void kessler(real2d const &theta, real2d const &qv, real2d const &qc, real2d const &qr, realConst2d rho,
                real1d const &precl, realConst2d z, realConst2d pk, real dt, real Rd, real cp, real p0) const {
+    using yakl::c::SimpleBounds;
     int nz = theta.dimension[0];
     int ncol = theta.dimension[1];
 

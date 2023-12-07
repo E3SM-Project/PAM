@@ -283,8 +283,8 @@ public:
     }
     prevstep += params.crm_per_phys;
 
-    if (!time_integrator->is_ssp) {
-      tendencies.remove_negative_densities(prognostic_vars);
+    if (params.clip_negative_densities) {
+      tendencies.clip_negative_densities(prognostic_vars);
     }
 
     // convert dynamics state to Coupler state

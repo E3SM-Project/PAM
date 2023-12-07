@@ -477,7 +477,7 @@ void YAKL_INLINE compute_straight_recon(const real5d &reconvar,
       upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
     } else {
       for (int d = 0; d < ndims; ++d) {
-        uvar(d) /= pgeom.get_area_nm11entity(d, k + ks, j + js, is, n);
+        uvar(d) /= pgeom.get_area_nm11entity(d, k + ks, j + js, i + is, n);
       }
       tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar,
                                       tanh_upwind_coeff);
@@ -534,7 +534,7 @@ void YAKL_INLINE compute_straight_hz_recon(const real5d &reconvar,
       upwind_recon<ndofs, ndims>(recon, edgerecon, uvar);
     } else if (upwind_type == UPWIND_TYPE::TANH) {
       for (int d = 0; d < ndims; ++d) {
-        uvar(d) /= pgeom.get_area_nm11entity(d, k + ks, j + js, is, n);
+        uvar(d) /= pgeom.get_area_nm11entity(d, k + ks, j + js, i + is, n);
       }
       tanh_upwind_recon<ndofs, ndims>(recon, edgerecon, uvar,
                                       tanh_upwind_coeff);

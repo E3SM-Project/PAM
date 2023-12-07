@@ -190,6 +190,10 @@ int main(int argc, char** argv) {
     sgs   .init( coupler );
     dycore.init( coupler, verbose);
 
+#ifdef P3_CXX
+    pam::p3_init_lookup_tables();
+#endif
+
     if ( (micro.micro_name() == "p3" || sgs.sgs_name() == "shoc") && crm_nz != PAM_NLEV ) {
       endrun("ERROR: Running with a different number of vertical levels than compiled for");
     }
