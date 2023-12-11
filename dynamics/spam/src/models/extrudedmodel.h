@@ -6969,37 +6969,8 @@ struct Supercell : TestCaseInit {
   static real constexpr dz_u = 1e3;
 
   static real constexpr N_ref = 0.011;
-
   static real YAKL_INLINE refnsq_f(real z, const ThermoPotential &thermo) {
     return N_ref * N_ref;
-  }
-
-  static real YAKL_INLINE refp_f(real z, const ThermoPotential &thermo) {
-    return const_stability_p(z, N_ref, g, thermo.cst.pr, tht_0, thermo);
-  }
-
-  static real YAKL_INLINE refT_f(real z, const ThermoPotential &thermo) {
-    return const_stability_T(z, N_ref, g, tht_0, thermo);
-  }
-
-  static real YAKL_INLINE refrho_f(real z, const ThermoPotential &thermo) {
-    real p = refp_f(z, thermo);
-    real T = refT_f(z, thermo);
-    real alpha = thermo.compute_alpha(p, T, 1, 0, 0, 0);
-    return 1._fp / alpha;
-  }
-
-  static real YAKL_INLINE refentropicdensity_f(real z,
-                                               const ThermoPotential &thermo) {
-    real rho_ref = refrho_f(z, thermo);
-    real T_ref = refT_f(z, thermo);
-    real p_ref = refp_f(z, thermo);
-    return rho_ref *
-           thermo.compute_entropic_var_from_p_T(p_ref, T_ref, 1, 0, 0, 0);
-  }
-
-  static real YAKL_INLINE refrhov_f(real z, const ThermoPotential &thermo) {
-    return 0;
   }
 
   static real YAKL_INLINE tht_f(real z, const ThermoPotential &thermo) {
