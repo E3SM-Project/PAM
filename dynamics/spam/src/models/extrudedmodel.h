@@ -3967,6 +3967,13 @@ struct CompressiblePressureGravityLinearSystem
     YAKL_SCOPE(tri_d, this->tri_d);
     YAKL_SCOPE(tri_u, this->tri_u);
     YAKL_SCOPE(linp_coeff, this->linp_coeff);
+    YAKL_SCOPE(omega, this->omega);
+    YAKL_SCOPE(Dmod_u, this->Dmod_u);
+    YAKL_SCOPE(Dmod_d, this->Dmod_d);
+    YAKL_SCOPE(Fhorz, this->Fhorz);
+    YAKL_SCOPE(A_u, this->A_u);
+    YAKL_SCOPE(A_d, this->A_d);
+    YAKL_SCOPE(A_l, this->A_l);
 
     const auto &thermo = this->equations->thermo;
     parallel_for(
@@ -4090,7 +4097,7 @@ struct CompressiblePressureGravityLinearSystem
               dual_topology.nl);
 
           Fhorz(k, j, i, n) = 1;
-          for (int dd = 0; dd < VS::ndensity_prognostic; ++dd) {
+          for (int dd = 0; dd < VS::ndensity_active; ++dd) {
             for (int d = 0; d < ndims; ++d) {
               Fhorz(k, j, i, n) -= alpha * alpha * linp_coeff(dd, k, n) *
                                    fHn1bar * fH1(d) * fD0Dbar(d) *
@@ -4141,7 +4148,7 @@ struct CompressiblePressureGravityLinearSystem
               dual_topology.n_cells_x, dual_topology.n_cells_y,
               dual_topology.nl);
 
-          for (int d = 0; d < VS::ndensity_prognostic; ++d) {
+          for (int d = 0; d < VS::ndensity_active; ++d) {
             const real beta_k = fHn1bar_k * linp_coeff(d, k, n) /
                                 Fhorz(k, j, i, n) * Dmod_d(k, n);
             const real beta_kp1 = fHn1bar_kp1 * linp_coeff(d, k + 1, n) /
@@ -4190,6 +4197,13 @@ struct CompressiblePressureGravityLinearSystem
     const int dks = dual_topology.ks;
 
     const real alpha = 0.5_fp * dt;
+
+    YAKL_SCOPE(omega, this->omega);
+    YAKL_SCOPE(linp_coeff, this->linp_coeff);
+    YAKL_SCOPE(A_l, this->A_l);
+    YAKL_SCOPE(A_u, this->A_u);
+    YAKL_SCOPE(A_d, this->A_d);
+    YAKL_SCOPE(A_c, this->A_c);
 
     parallel_for(
         YAKL_AUTO_LABEL(),
@@ -4287,6 +4301,21 @@ struct CompressiblePressureGravityLinearSystem
     const auto &refstate = this->equations->reference_state;
     const auto &rho_di = refstate.rho_di.data;
     const auto &q_di = refstate.q_di.data;
+
+    YAKL_SCOPE(Dmod_u, this->Dmod_u);
+    YAKL_SCOPE(Dmod_d, this->Dmod_d);
+    YAKL_SCOPE(p_transform, this->p_transform);
+    YAKL_SCOPE(q_transform, this->q_transform);
+    YAKL_SCOPE(A_l, this->A_l);
+    YAKL_SCOPE(A_u, this->A_u);
+    YAKL_SCOPE(A_d, this->A_d);
+    YAKL_SCOPE(A_c, this->A_c);
+    YAKL_SCOPE(tri_l, this->tri_l);
+    YAKL_SCOPE(tri_u, this->tri_u);
+    YAKL_SCOPE(tri_d, this->tri_d);
+    YAKL_SCOPE(tri_c, this->tri_c);
+    YAKL_SCOPE(Fhorz, this->Fhorz);
+    YAKL_SCOPE(linp_coeff, this->linp_coeff);
 
     yakl::timer_start("ffts");
     fftp_x.forward_real(p_transform);
@@ -4402,6 +4431,14 @@ struct CompressiblePressureGravityLinearSystem
     const int dks = dual_topology.ks;
 
     const real alpha = 0.5_fp * dt;
+
+    YAKL_SCOPE(Dmod_u, this->Dmod_u);
+    YAKL_SCOPE(Dmod_d, this->Dmod_d);
+    YAKL_SCOPE(A_l, this->A_l);
+    YAKL_SCOPE(A_u, this->A_u);
+    YAKL_SCOPE(A_d, this->A_d);
+    YAKL_SCOPE(A_c, this->A_c);
+    YAKL_SCOPE(p_transform, this->p_transform);
 
     parallel_for(
         YAKL_AUTO_LABEL(),
