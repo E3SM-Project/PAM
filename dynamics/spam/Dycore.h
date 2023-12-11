@@ -172,7 +172,7 @@ public:
     // The anelastic ref state must be set before tendency initialization
     testcase->set_reference_state(primal_geometry, dual_geometry);
 
-    linear_system = model_linear_system();
+    linear_system = model_linear_system(params);
 
     if (time_integrator->is_semi_implicit || !VariableSet::compressible) {
       linear_system->initialize(params, primal_geometry, dual_geometry,

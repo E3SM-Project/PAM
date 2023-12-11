@@ -2488,7 +2488,8 @@ public:
                   Equations &equations) override {
 
     if (ndims > 1) {
-      throw std::runtime_error("semi-implicit not implemented in 3d yet");
+      throw std::runtime_error(
+          "velocity-based linear solver not implemented in 3d");
     }
 
     LinearSystem::initialize(params, primal_geom, dual_geom, equations);
@@ -3889,10 +3890,18 @@ struct CompressiblePressureLinearSystem : PressureLinearSystem {
   }
 };
 
-std::unique_ptr<LinearSystem> model_linear_system() {
+std::unique_ptr<LinearSystem>
+model_linear_system(const ModelParameters &params) {
   if (VariableSet::compressible) {
-    // return std::make_unique<CompressibleVelocityLinearSystem>();
-    return std::make_unique<CompressiblePressureLinearSystem>();
+    if (params.linear_system == "velocity") {
+      return std::make_unique<CompressibleVelocityLinearSystem>();
+    } else if (params.linear_system == "pressure") {
+      return std::make_unique<CompressiblePressureLinearSystem>();
+      //} else if (params.linear_system == "pressure_gravity") {
+      //  return std::make_unique<CompressiblePressureGravityLinearSystem>();
+    } else {
+      throw std::runtime_error("Unknown linear system choice");
+    }
   } else {
     return std::make_unique<AnelasticLinearSystem>();
   }
@@ -4358,6 +4367,8 @@ void read_model_params_file(std::string inFile, ModelParameters &params,
       config["force_refstate_hydrostatic_balance"].as<bool>(false);
   params.check_anelastic_constraint =
       config["check_anelastic_constraint"].as<bool>(false);
+
+  params.linear_system = config["linear_system"].as<std::string>("pressure");
 
   for (int i = 0; i < ntracers_dycore; i++) {
     params.init_dycore_tracer[i] =

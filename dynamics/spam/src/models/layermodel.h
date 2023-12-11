@@ -885,7 +885,8 @@ public:
   }
 };
 
-std::unique_ptr<LinearSystem> model_linear_system() {
+std::unique_ptr<LinearSystem>
+model_linear_system(const ModelParameters &params) {
   return std::make_unique<ModelLinearSystem>();
 }
 
