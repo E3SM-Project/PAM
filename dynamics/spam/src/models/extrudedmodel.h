@@ -4688,8 +4688,6 @@ public:
                               const Geometry<Straight> &primal_geom,
                               const Geometry<Twisted> &dual_geom) override {
 
-    equations->Hs.set_parameters(g);
-
     YAKL_SCOPE(thermo, equations->thermo);
     YAKL_SCOPE(varset, equations->varset);
 #ifndef PAMC_AN
@@ -4738,6 +4736,8 @@ public:
     YAKL_SCOPE(varset, equations->varset);
     YAKL_SCOPE(thermo, equations->thermo);
     YAKL_SCOPE(Hs, equations->Hs);
+
+    Hs.set_parameters(g);
 
     dual_geom.set_profile_n1form_values(
         YAKL_LAMBDA(real z) { return flat_geop(z, g); }, refstate.geop, 0);
@@ -4841,6 +4841,10 @@ public:
           refstate.pres_di.data(0, k + dks, n) =
               thermo.solve_p(rho, entropicvar, 1, 0, 0, 0);
         });
+
+    primal_geom.set_profile_00form_values(
+        YAKL_LAMBDA(real z) { return T::refnsq_f(z, thermo); }, refstate.Nsq_pi,
+        0);
   }
 };
 
@@ -4886,8 +4890,6 @@ public:
                               FieldSet<nconstant> &constvars,
                               const Geometry<Straight> &primal_geom,
                               const Geometry<Twisted> &dual_geom) override {
-
-    equations->Hs.set_parameters(g);
 
     dual_geom.set_n1form_values(
         YAKL_LAMBDA(real x, real y, real z) { return flat_geop(z, g); },
@@ -4944,6 +4946,8 @@ public:
     YAKL_SCOPE(thermo, equations->thermo);
     YAKL_SCOPE(Hs, equations->Hs);
     YAKL_SCOPE(varset, equations->varset);
+
+    Hs.set_parameters(g);
 
     dual_geom.set_profile_n1form_values(
         YAKL_LAMBDA(real z) { return flat_geop(z, g); }, refstate.geop, 0);
@@ -5062,6 +5066,10 @@ public:
           refstate.pres_di.data(0, k + dks, n) =
               thermo.solve_p(rho, entropicvar, 1 - qv, qv, 0, 0);
         });
+
+    primal_geom.set_profile_00form_values(
+        YAKL_LAMBDA(real z) { return T::refnsq_f(z, thermo); }, refstate.Nsq_pi,
+        0);
   }
 
   void add_diagnostics(
@@ -5091,9 +5099,8 @@ public:
                               const Geometry<Straight> &primal_geom,
                               const Geometry<Twisted> &dual_geom) override {
 
-    const real g = coupler.get_option<real>("grav");
-    equations->Hs.set_parameters(g);
     auto &varset = this->equations->varset;
+    const real g = this->equations->Hs.g;
     dual_geom.set_n1form_values(
         YAKL_LAMBDA(real x, real y, real z) { return flat_geop(z, g); },
         constvars.fields_arr[HSVAR], 0);
@@ -5265,6 +5272,7 @@ public:
         });
 
     YAKL_SCOPE(Hs, equations->Hs);
+    Hs.set_parameters(grav);
 
     parallel_for(
         "Compute refstate B",
