@@ -3556,11 +3556,17 @@ struct CompressiblePressureLinearSystem : PressureLinearSystem {
             const real gamma_k = 1;
             const real gamma_km1 = 1;
 
-            const real beta_kp1 = q_di(d, k + 1 + dks, n) *
+            const real rhofac_kp1 =
+                rho_di(0, k + 1 + dks, n) * 0.5_fp *
+                (1 / rho_pi(0, k + 1 + pks, n) + 1 / rho_pi(0, k + pks, n));
+            const real beta_kp1 = q_di(d, k + 1 + dks, n) * rhofac_kp1 *
                                   H01_diagonal(primal_geometry, dual_geometry,
                                                pis, pjs, pks, i, j, k + 1, n);
 
-            const real beta_k = q_di(d, k + dks, n) *
+            const real rhofac_k =
+                rho_di(0, k + dks, n) * 0.5_fp *
+                (1 / rho_pi(0, k + pks, n) + 1 / rho_pi(0, k - 1 + pks, n));
+            const real beta_k = q_di(d, k + dks, n) * rhofac_k *
                                 H01_diagonal(primal_geometry, dual_geometry,
                                              pis, pjs, pks, i, j, k, n);
 
