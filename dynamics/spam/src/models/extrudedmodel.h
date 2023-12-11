@@ -3457,6 +3457,8 @@ struct AnelasticLinearSystem : PressureLinearSystem {
 };
 
 struct CompressiblePressureLinearSystem : PressureLinearSystem {
+  // coefficients of expansion of linearized pressure in terms of active
+  // densities
   real3d linp_coeff;
 
   void initialize(ModelParameters &params,
@@ -3489,7 +3491,7 @@ struct CompressiblePressureLinearSystem : PressureLinearSystem {
     int djs = dual_topology.js;
     int dks = dual_topology.ks;
 
-    real alpha = dt / 2;
+    const real alpha = dt / 2;
 
     const auto &rho_pi = refstate.rho_pi.data;
     const auto &q_pi = refstate.q_pi.data;
@@ -3506,7 +3508,7 @@ struct CompressiblePressureLinearSystem : PressureLinearSystem {
     YAKL_SCOPE(linp_coeff, this->linp_coeff);
 
     parallel_for(
-        "pres coeffs",
+        YAKL_AUTO_LABEL(),
         SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
         YAKL_LAMBDA(int k, int n) {
           SArray<real, 1, VS::ndensity_active> p_coeff;
@@ -3517,7 +3519,7 @@ struct CompressiblePressureLinearSystem : PressureLinearSystem {
         });
 
     parallel_for(
-        "Compressible linear system coefficients",
+        YAKL_AUTO_LABEL(),
         SimpleBounds<4>(primal_topology.ni, nyf, nxf, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           int ik = i / 2;
@@ -3613,7 +3615,7 @@ struct CompressiblePressureLinearSystem : PressureLinearSystem {
     const int dks = dual_topology.ks;
 
     parallel_for(
-        "Linear solve rhs 1",
+        YAKL_AUTO_LABEL(),
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
@@ -3638,7 +3640,7 @@ struct CompressiblePressureLinearSystem : PressureLinearSystem {
     auxiliary_vars.exchange({FVAR, FWVAR});
 
     parallel_for(
-        "Linear solve rhs 2",
+        YAKL_AUTO_LABEL(),
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
@@ -3660,7 +3662,7 @@ struct CompressiblePressureLinearSystem : PressureLinearSystem {
     auxiliary_vars.exchange({MFVAR});
 
     parallel_for(
-        "Linear solve rhs 3",
+        YAKL_AUTO_LABEL(),
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
@@ -3670,7 +3672,7 @@ struct CompressiblePressureLinearSystem : PressureLinearSystem {
         });
 
     parallel_for(
-        "Linear solve rhs 4",
+        YAKL_AUTO_LABEL(),
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
@@ -3710,8 +3712,7 @@ struct CompressiblePressureLinearSystem : PressureLinearSystem {
     yakl::timer_stop("ffts");
 
     parallel_for(
-        "Anelastic tridiagonal solve",
-        Bounds<3>(nyf, nxf, primal_topology.nens),
+        YAKL_AUTO_LABEL(), Bounds<3>(nyf, nxf, primal_topology.nens),
         YAKL_LAMBDA(int j, int i, int n) {
           int ik = i / 2;
           int jk = j / 2;
@@ -3774,7 +3775,7 @@ struct CompressiblePressureLinearSystem : PressureLinearSystem {
     const int dks = dual_topology.ks;
 
     parallel_for(
-        "Anelastic - store p",
+        YAKL_AUTO_LABEL(),
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
@@ -3783,7 +3784,7 @@ struct CompressiblePressureLinearSystem : PressureLinearSystem {
     auxiliary_vars.exchange({BVAR});
 
     parallel_for(
-        "Anelastic - add pressure gradient W",
+        YAKL_AUTO_LABEL(),
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
@@ -3796,7 +3797,7 @@ struct CompressiblePressureLinearSystem : PressureLinearSystem {
         });
 
     parallel_for(
-        "Anelastic - add pressure gradient V",
+        YAKL_AUTO_LABEL(),
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
@@ -3846,7 +3847,7 @@ struct CompressiblePressureLinearSystem : PressureLinearSystem {
     solution.exchange({WVAR});
 
     parallel_for(
-        "Recover densities 1 - F/Fw",
+        YAKL_AUTO_LABEL(),
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
@@ -3870,10 +3871,9 @@ struct CompressiblePressureLinearSystem : PressureLinearSystem {
 
     auxiliary_vars.fields_arr[FWVAR].set_bnd(0.0);
     auxiliary_vars.exchange({FVAR, FWVAR});
-    yakl::memset(sol_dens, 0);
 
     parallel_for(
-        "Recover densities 2 - Dnm1bar",
+        YAKL_AUTO_LABEL(),
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
@@ -3890,8 +3890,8 @@ struct CompressiblePressureLinearSystem : PressureLinearSystem {
   }
 };
 
-struct CompressiblePressureGravityLinearSystem : PressureLinearSystem {
-  real3d linp_coeff;
+struct CompressiblePressureGravityLinearSystem
+    : CompressiblePressureLinearSystem {
   real2d omega;
   real2d Dmod_u;
   real2d Dmod_d;
@@ -3906,13 +3906,13 @@ struct CompressiblePressureGravityLinearSystem : PressureLinearSystem {
                   const Geometry<Straight> &primal_geom,
                   const Geometry<Twisted> &dual_geom,
                   Equations &equations) override {
-    PressureLinearSystem::initialize(params, primal_geom, dual_geom, equations);
+    CompressiblePressureLinearSystem::initialize(params, primal_geom, dual_geom,
+                                                 equations);
 
     const int nens = primal_geometry.topology.nens;
     const int pni = primal_geometry.topology.ni;
     const int pnl = primal_geometry.topology.ni;
 
-    linp_coeff = real3d("linp coeff", VS::ndensity_active, pni, nens);
     omega = real2d("omega", pni, nens);
     Dmod_u = real2d("Dmod_u", pnl, nens);
     Dmod_d = real2d("Dmod_d", pnl, nens);
@@ -3920,8 +3920,6 @@ struct CompressiblePressureGravityLinearSystem : PressureLinearSystem {
     A_u = real2d("A_u", pnl, nens);
     A_d = real2d("A_d", pnl, nens);
     A_l = real2d("A_l", pnl, nens);
-
-    // get rid of this ?
     A_c = real4d("A_c", pnl, nyf, nxf, nens);
 
     Fhorz = real4d("Fhorz", pni, nyf, nxf, nens);
@@ -3966,7 +3964,8 @@ struct CompressiblePressureGravityLinearSystem : PressureLinearSystem {
 
     const auto &thermo = this->equations->thermo;
     parallel_for(
-        "omega", SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
+        YAKL_AUTO_LABEL(),
+        SimpleBounds<2>(primal_topology.ni, primal_topology.nens),
         YAKL_LAMBDA(int k, int n) {
           SArray<real, 1, VS::ndensity_active> p_coeff;
           varset.linear_pressure_coeffs(p_coeff, k, pks, n);
@@ -3981,7 +3980,8 @@ struct CompressiblePressureGravityLinearSystem : PressureLinearSystem {
         });
 
     parallel_for(
-        "Dmod", SimpleBounds<2>(primal_topology.nl, primal_topology.nens),
+        YAKL_AUTO_LABEL(),
+        SimpleBounds<2>(primal_topology.nl, primal_topology.nens),
         YAKL_LAMBDA(int k, int n) {
           const real dp = pres_pi(0, k + 1 + pks, n) - pres_pi(0, k + pks, n);
           const real inv_rho_mid =
@@ -3996,7 +3996,8 @@ struct CompressiblePressureGravityLinearSystem : PressureLinearSystem {
         });
 
     parallel_for(
-        "compute A", SimpleBounds<2>(primal_topology.nl, primal_topology.nens),
+        YAKL_AUTO_LABEL(),
+        SimpleBounds<2>(primal_topology.nl, primal_topology.nens),
         YAKL_LAMBDA(int k, int n) {
           // assuming diagonal Hodge stars
           const int i = 0;
@@ -4063,7 +4064,7 @@ struct CompressiblePressureGravityLinearSystem : PressureLinearSystem {
         });
 
     parallel_for(
-        "Fhorz",
+        YAKL_AUTO_LABEL(),
         SimpleBounds<4>(primal_topology.ni, nyf, nxf, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           int ik = i / 2;
@@ -4093,7 +4094,7 @@ struct CompressiblePressureGravityLinearSystem : PressureLinearSystem {
         });
 
     parallel_for(
-        "tridiag",
+        YAKL_AUTO_LABEL(),
         SimpleBounds<4>(primal_topology.nl, nyf, nxf, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           int ik = i / 2;
@@ -4185,7 +4186,7 @@ struct CompressiblePressureGravityLinearSystem : PressureLinearSystem {
     const real alpha = 0.5_fp * dt;
 
     parallel_for(
-        "Linear solve rhs 1",
+        YAKL_AUTO_LABEL(),
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
                         dual_topology.n_cells_x, dual_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
@@ -4198,7 +4199,7 @@ struct CompressiblePressureGravityLinearSystem : PressureLinearSystem {
         });
 
     parallel_for(
-        "Linear solve rhs 2",
+        YAKL_AUTO_LABEL(),
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
@@ -4213,7 +4214,7 @@ struct CompressiblePressureGravityLinearSystem : PressureLinearSystem {
         });
 
     parallel_for(
-        "Linear solve rhs 1",
+        YAKL_AUTO_LABEL(),
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
@@ -4226,7 +4227,7 @@ struct CompressiblePressureGravityLinearSystem : PressureLinearSystem {
 
     // compute A^{-1} rhs_w
     parallel_for(
-        "solve",
+        YAKL_AUTO_LABEL(),
         Bounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
                   primal_topology.nens),
         YAKL_LAMBDA(int j, int i, int n) {
@@ -4250,74 +4251,10 @@ struct CompressiblePressureGravityLinearSystem : PressureLinearSystem {
         });
     rhs.exchange({WVAR});
 
-    parallel_for(
-        "Linear solve rhs 1",
-        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          SArray<real, 2, 1, ndims> u;
-          compute_H10<1, diff_ord>(u, rhs_v, primal_geometry, dual_geometry,
-                                   dis, djs, dks, i, j, k, n);
-
-          for (int d = 0; d < ndims; ++d) {
-            Fvar(d, k + dks, j + djs, i + dis, n) =
-                u(0, d) * rho_pi(0, k + pks, n);
-          }
-
-          if (k < dual_topology.ni - 2) {
-            SArray<real, 1, 1> uw;
-            compute_H01(uw, rhs_w, primal_geometry, dual_geometry, dis, djs,
-                        dks, i, j, k + 1, n);
-            FWvar(0, k + 1 + dks, j + djs, i + dis, n) =
-                uw(0) * rho_di(0, k + dks + 1, n);
-          }
-        });
-    auxiliary_vars.fields_arr[FWVAR].set_bnd(0.0);
-    auxiliary_vars.exchange({FVAR, FWVAR});
-
-    parallel_for(
-        "Linear solve rhs 2",
-        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          SArray<real, 1, VS::ndensity_active> tend;
-          SArray<real, 1, VS::ndensity_active> vtend;
-
-          compute_wDnm1bar<VS::ndensity_active>(tend, q_pi, Fvar, dis, djs, dks,
-                                                i, j, k, n);
-          compute_wDnm1bar_vert<VS::ndensity_active>(vtend, q_di, FWvar, dis,
-                                                     djs, dks, i, j, k, n);
-
-          for (int d = 0; d < VS::ndensity_active; ++d) {
-            mfvar(d, k + dks, j + djs, i + dis, n) =
-                rhs_dens(d, k + dks, j + djs, i + dis, n);
-            mfvar(d, k + dks, j + djs, i + dis, n) -= alpha * tend(d);
-            mfvar(d, k + dks, j + djs, i + dis, n) -= alpha * vtend(d);
-          }
-        });
-    auxiliary_vars.exchange({MFVAR});
-
-    parallel_for(
-        "Linear solve rhs 3",
-        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_Hn1bar<VS::ndensity_active, diff_ord, vert_diff_ord>(
-              Bvar, mfvar, primal_geometry, dual_geometry, pis, pjs, pks, i, j,
-              k, n);
-        });
-
-    parallel_for(
-        "Linear solve rhs 4",
-        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
-                        primal_topology.n_cells_x, primal_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          p_transform(k, j, i, n) = 0;
-          for (int d = 0; d < VS::ndensity_active; ++d) {
-            p_transform(k, j, i, n) +=
-                linp_coeff(d, k, n) * Bvar(d, k + pks, j + pjs, i + pis, n);
-          }
-        });
+    // once rhs_w is modified the rest of this function is exactly the same as
+    // in the non-gravity version
+    CompressiblePressureLinearSystem::prepare_pressure_rhs(dt, rhs, const_vars,
+                                                           auxiliary_vars);
   }
 
   void solve_for_pressure(real dt, FieldSet<nprognostic> &rhs,
@@ -4353,7 +4290,7 @@ struct CompressiblePressureGravityLinearSystem : PressureLinearSystem {
     yakl::timer_stop("ffts");
 
     parallel_for(
-        "compute q",
+        YAKL_AUTO_LABEL(),
         SimpleBounds<4>(primal_topology.nl, nyf, nxf, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           q_transform(k, j, i, n) =
@@ -4363,8 +4300,7 @@ struct CompressiblePressureGravityLinearSystem : PressureLinearSystem {
         });
 
     parallel_for(
-        "Anelastic tridiagonal solve",
-        Bounds<3>(nyf, nxf, primal_topology.nens),
+        YAKL_AUTO_LABEL(), Bounds<3>(nyf, nxf, primal_topology.nens),
         YAKL_LAMBDA(int j, int i, int n) {
           int nz = primal_topology.nl;
           tri_c(0, j, i, n) = tri_u(0, j, i, n) / tri_d(0, j, i, n);
@@ -4387,7 +4323,7 @@ struct CompressiblePressureGravityLinearSystem : PressureLinearSystem {
         });
 
     parallel_for(
-        "Compute p",
+        YAKL_AUTO_LABEL(),
         Bounds<4>(primal_topology.ni, nyf, nxf, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
           for (int d = 0; d < VS::ndensity_active; ++d) {
@@ -4462,7 +4398,7 @@ struct CompressiblePressureGravityLinearSystem : PressureLinearSystem {
     const real alpha = 0.5_fp * dt;
 
     parallel_for(
-        "Anelastic - store p",
+        YAKL_AUTO_LABEL(),
         SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
@@ -4471,7 +4407,7 @@ struct CompressiblePressureGravityLinearSystem : PressureLinearSystem {
     auxiliary_vars.exchange({BVAR});
 
     parallel_for(
-        "Anelastic - add pressure gradient W",
+        YAKL_AUTO_LABEL(),
         SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                         primal_topology.n_cells_x, primal_topology.nens),
         YAKL_LAMBDA(int k, int j, int i, int n) {
@@ -4482,7 +4418,7 @@ struct CompressiblePressureGravityLinearSystem : PressureLinearSystem {
         });
 
     parallel_for(
-        "solve",
+        YAKL_AUTO_LABEL(),
         Bounds<3>(primal_topology.n_cells_y, primal_topology.n_cells_x,
                   primal_topology.nens),
         YAKL_LAMBDA(int j, int i, int n) {
@@ -4522,86 +4458,6 @@ struct CompressiblePressureGravityLinearSystem : PressureLinearSystem {
             sol_v(d, k + pks, j + pjs, i + pis, n) =
                 rhs_v(d, k + pks, j + pjs, i + pis, n) -
                 alpha * dpdh(0, d) / rho;
-          }
-        });
-  }
-
-  void update_densities(real dt, FieldSet<nprognostic> &rhs,
-                        FieldSet<nconstant> &const_vars,
-                        FieldSet<nauxiliary> &auxiliary_vars,
-                        FieldSet<nprognostic> &solution) override {
-
-    YAKL_SCOPE(primal_geometry, this->primal_geometry);
-    YAKL_SCOPE(dual_geometry, this->dual_geometry);
-    const auto &primal_topology = primal_geometry.topology;
-    const auto &dual_topology = dual_geometry.topology;
-
-    const auto &refstate = this->equations->reference_state;
-    const auto &rho_pi = refstate.rho_pi.data;
-    const auto &rho_di = refstate.rho_di.data;
-    const auto &q_pi = refstate.q_pi.data;
-    const auto &q_di = refstate.q_di.data;
-
-    const auto rhs_dens = rhs.fields_arr[DENSVAR].data;
-    const auto sol_v = solution.fields_arr[VVAR].data;
-    const auto sol_w = solution.fields_arr[WVAR].data;
-    const auto sol_dens = solution.fields_arr[DENSVAR].data;
-    const auto Fvar = auxiliary_vars.fields_arr[FVAR].data;
-    const auto FWvar = auxiliary_vars.fields_arr[FWVAR].data;
-
-    const int pis = primal_topology.is;
-    const int pjs = primal_topology.js;
-    const int pks = primal_topology.ks;
-
-    const int dis = dual_topology.is;
-    const int djs = dual_topology.js;
-    const int dks = dual_topology.ks;
-
-    const real alpha = 0.5_fp * dt;
-
-    solution.exchange({VVAR});
-    solution.exchange({WVAR});
-
-    parallel_for(
-        "Recover densities 1 - F/Fw",
-        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          SArray<real, 2, 1, ndims> u;
-          compute_H10<1, diff_ord>(u, sol_v, primal_geometry, dual_geometry,
-                                   dis, djs, dks, i, j, k, n);
-
-          for (int d = 0; d < ndims; ++d) {
-            Fvar(d, k + dks, j + djs, i + dis, n) =
-                u(0, d) * rho_pi(0, k + pks, n);
-          }
-
-          if (k < dual_topology.ni - 2) {
-            SArray<real, 1, 1> uw;
-            compute_H01(uw, sol_w, primal_geometry, dual_geometry, dis, djs,
-                        dks, i, j, k + 1, n);
-            FWvar(0, k + 1 + dks, j + djs, i + dis, n) =
-                uw(0) * rho_di(0, k + dks + 1, n);
-          }
-        });
-
-    auxiliary_vars.fields_arr[FWVAR].set_bnd(0.0);
-    auxiliary_vars.exchange({FVAR, FWVAR});
-    yakl::memset(sol_dens, 0);
-
-    parallel_for(
-        "Recover densities 2 - Dnm1bar",
-        SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
-                        dual_topology.n_cells_x, dual_topology.nens),
-        YAKL_LAMBDA(int k, int j, int i, int n) {
-          compute_wDnm1bar<VS::ndensity_prognostic>(sol_dens, q_pi, Fvar, dis,
-                                                    djs, dks, i, j, k, n);
-          compute_wDnm1bar_vert<VS::ndensity_prognostic, ADD_MODE::ADD>(
-              sol_dens, q_di, FWvar, dis, djs, dks, i, j, k, n);
-          for (int d = 0; d < VS::ndensity_prognostic; ++d) {
-            sol_dens(d, k + dks, j + djs, i + dis, n) *= -alpha;
-            sol_dens(d, k + dks, j + djs, i + dis, n) +=
-                rhs_dens(d, pks + k, pjs + j, pis + i, n);
           }
         });
   }
