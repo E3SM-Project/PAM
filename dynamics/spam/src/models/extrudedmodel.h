@@ -2230,7 +2230,7 @@ public:
         needs_to_recompute_F ? auxiliary_vars.fields_arr[F2VAR].data
                              : auxiliary_vars.fields_arr[FVAR].data,
         needs_to_recompute_F ? auxiliary_vars.fields_arr[FW2VAR].data
-                             : auxiliary_vars.fields_arr[F2VAR].data,
+                             : auxiliary_vars.fields_arr[FWVAR].data,
         auxiliary_vars.fields_arr[FTVAR].data,
         auxiliary_vars.fields_arr[FTWVAR].data, this->tanh_upwind_coeff,
         ndims > 1 ? optional_real5d{auxiliary_vars.fields_arr[QXYRECONVAR].data}
