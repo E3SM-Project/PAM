@@ -24,7 +24,7 @@ elseif ("${YAKL_ARCH}" STREQUAL "HIP")
   set(Kokkos_ENABLE_DEPRECATED_CODE        FALSE CACHE BOOL "")
   set(Kokkos_ENABLE_EXPLICIT_INSTANTIATION FALSE CACHE BOOL "")
   set($ENV{Kokkos_ARCH_HIP}                ON    CACHE BOOL "" FORCE)
-  set(CMAKE_CXX_STANDARD 14)
+  set(CMAKE_CXX_STANDARD 17)
 endif()
 
 if ("${CMAKE_Fortran_COMPILER_ID}" STREQUAL "Flang")

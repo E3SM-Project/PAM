@@ -181,9 +181,43 @@ namespace pam {
     const int ntrac = ekat::npack<Spack>(num_qtracers+3)*Spack::n;
     const auto policy = ekat::ExeSpaceUtils<SHOC::KT::ExeSpace>::get_default_team_policy(ncol, npack);
     ekat::WorkspaceManager<Spack, SHOC::KT::Device> workspace_mgr(nipack, 13+(nwind+ntrac), policy);
+    SHOC::SHOCRuntime shoc_runtime_options{0.001,0.04,2.65,0.02,1.0,1.0,1.0,1.0,0.5,7.0,0.1,0.1};
+    #ifdef SCREAM_SMALL_KERNELS
+      view_1d
+        se_b   ("se_b", shcol),
+        ke_b   ("ke_b", shcol),
+        wv_b   ("wv_b", shcol),
+        wl_b   ("wl_b", shcol),
+        se_a   ("se_a", shcol),
+        ke_a   ("ke_a", shcol),
+        wv_a   ("wv_a", shcol),
+        wl_a   ("wl_a", shcol),
+        ustar  ("ustar", shcol),
+        kbfs   ("kbfs", shcol),
+        obklen ("obklen", shcol),
+        ustar2 ("ustar2", shcol),
+        wstar  ("wstar", shcol);
+
+      view_2d
+        rho_zt  ("rho_zt",  shcol, nlevi_packs),
+        shoc_qv ("shoc_qv", shcol, nlevi_packs),
+        tabs    ("shoc_tabs", shcol, nlev_packs),
+        dz_zt   ("dz_zt",   shcol, nlevi_packs),
+        dz_zi   ("dz_zi",   shcol, nlevi_packs),
+        tkhv    ("tkh",     shcol, nlevi_packs);
+
+      SHOC::SHOCTemporaries shoc_temporaries{
+        se_b, ke_b, wv_b, wl_b, se_a, ke_a, wv_a, wl_a, ustar, kbfs, obklen, ustar2, wstar,
+        rho_zt, shoc_qv, tabs, dz_zt, dz_zi, tkhv};
+    #endif
 
     const auto elapsed_microsec = SHOC::shoc_main(shcol, nlev, nlevi, nlev, nadv, num_qtracers, dtime, workspace_mgr,
-                                                  shoc_input, shoc_input_output, shoc_output, shoc_history_output);
+                                                  shoc_runtime_options, shoc_input, shoc_input_output, shoc_output,
+                                                  shoc_history_output
+#ifdef SCREAM_SMALL_KERNELS
+                                               , shoc_temporaries
+#endif
+                                                  );
   }
 
 }

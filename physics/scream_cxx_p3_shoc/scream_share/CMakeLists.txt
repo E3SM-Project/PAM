@@ -6,6 +6,7 @@ set(SHARE_SRC
   ${SCREAM_HOME}/components/eamxx/src/share/atm_process/atmosphere_process.cpp
   ${SCREAM_HOME}/components/eamxx/src/share/atm_process/atmosphere_process_group.cpp
   ${SCREAM_HOME}/components/eamxx/src/share/atm_process/atmosphere_process_dag.cpp
+  ${SCREAM_HOME}/components/eamxx/src/share/atm_process/atmosphere_process_hash.cpp
   ${SCREAM_HOME}/components/eamxx/src/share/atm_process/atmosphere_diagnostic.cpp
   ${SCREAM_HOME}/components/eamxx/src/share/field/field_alloc_prop.cpp
   ${SCREAM_HOME}/components/eamxx/src/share/field/field_identifier.cpp
@@ -30,6 +31,7 @@ set(SHARE_SRC
   ${SCREAM_HOME}/components/eamxx/src/share/util/scream_time_stamp.cpp
   ${SCREAM_HOME}/components/eamxx/src/share/util/scream_timing.cpp
   ${SCREAM_HOME}/components/eamxx/src/share/util/scream_utils.cpp
+  ${SCREAM_HOME}/components/eamxx/src/share/util/scream_bfbhash.cpp
 )
 
 add_library(scream_share ${SHARE_SRC})

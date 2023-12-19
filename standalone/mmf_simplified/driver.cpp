@@ -92,7 +92,7 @@ int main(int argc, char** argv) {
     auto verbose           = config["verbose"          ].as<bool>(idealized);
     auto apply_sponge      = config["apply_sponge"     ].as<bool>(!idealized);
     auto apply_gcm_forcing = config["apply_gcm_forcing"].as<bool>(!idealized);
-    auto sim_time          = config["sim_time"          ].as<real>();
+    auto sim_time          = config["sim_time"         ].as<real>();
     auto crm_nx            = config["crm_nx"           ].as<int>();
     auto crm_ny            = config["crm_ny"           ].as<int>();
     auto nens              = config["nens"             ].as<int>();

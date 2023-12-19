@@ -231,8 +231,9 @@ namespace pam {
     const int nlev_pack = ekat::npack<Spack>(nlev);
     const auto policy = ekat::ExeSpaceUtils<KT::ExeSpace>::get_default_team_policy(ncol, nlev_pack);
     ekat::WorkspaceManager<Spack, KT::Device> workspace_mgr(nlev_pack, 59, policy);
+    P3F::P3Runtime runtime_options{740.0e3};
 
-    auto elapsed_time = P3F::p3_main(prog_state, diag_inputs, diag_outputs, infrastructure,
+    auto elapsed_time = P3F::p3_main(runtime_options, prog_state, diag_inputs, diag_outputs, infrastructure,
                                      history_only, lookup_tables, workspace_mgr, ncol, nlev);
   }
 

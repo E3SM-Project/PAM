@@ -14,5 +14,6 @@ cmake      \
   -DCMAKE_CUDA_HOST_COMPILER="`which mpic++`"                     \
   -DSCREAM_Fortran_FLAGS="${SCREAM_Fortran_FLAGS}"                \
   -DPAM_NLEV=${PAM_NLEV}                                          \
+  -DSCREAM_SMALL_KERNELS=ON                                       \
   ../../../physics/scream_cxx_p3_shoc
 

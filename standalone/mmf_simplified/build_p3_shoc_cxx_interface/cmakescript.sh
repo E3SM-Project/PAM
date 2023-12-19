@@ -10,5 +10,6 @@ cmake    \
   -DSCREAM_DOUBLE_PRECISION=ON                                    \
   -DCMAKE_CUDA_HOST_COMPILER="`which mpic++`"                     \
   -DPAM_NLEV=${PAM_NLEV}                                          \
+  -DPAM_STANDALONE=ON                                             \
   ../../../physics/scream_cxx_interfaces
 
