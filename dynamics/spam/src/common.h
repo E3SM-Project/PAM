@@ -104,10 +104,10 @@ uint constexpr max_vert_reconstruction_order =
               coriolis_vert_reconstruction_order});
 
 enum class UPWIND_TYPE { HEAVISIDE, TANH };
-UPWIND_TYPE constexpr upwind_type = UPWIND_TYPE::TANH;
-UPWIND_TYPE constexpr dual_upwind_type = UPWIND_TYPE::TANH;
-UPWIND_TYPE constexpr vert_upwind_type = UPWIND_TYPE::TANH;
-UPWIND_TYPE constexpr dual_vert_upwind_type = UPWIND_TYPE::TANH;
+UPWIND_TYPE constexpr upwind_type = UPWIND_TYPE::HEAVISIDE;
+UPWIND_TYPE constexpr dual_upwind_type = UPWIND_TYPE::HEAVISIDE;
+UPWIND_TYPE constexpr vert_upwind_type = UPWIND_TYPE::HEAVISIDE;
+UPWIND_TYPE constexpr dual_vert_upwind_type = UPWIND_TYPE::HEAVISIDE;
 
 // How to handle PV flux term
 // ADD AL81-TYPE SCHEME HERE EVENTUALLY AS WELL

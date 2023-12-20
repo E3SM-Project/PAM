@@ -116,6 +116,8 @@ public:
   bool force_refstate_hydrostatic_balance;
   bool check_anelastic_constraint;
 
+  std::string linear_system;
+
   realConst2d zint;
 };
 } // namespace pamc

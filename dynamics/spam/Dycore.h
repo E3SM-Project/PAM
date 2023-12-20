@@ -42,13 +42,13 @@ public:
   ExchangeSet<nconstant> const_exchange;
   ExchangeSet<nauxiliary> aux_exchange;
   FileIO io;
+  std::unique_ptr<LinearSystem> linear_system;
   ModelTendencies tendencies;
   std::vector<std::unique_ptr<Diagnostic>> diagnostics;
   Topology primal_topology;
   Topology dual_topology;
   ModelParameters params;
   Parallel par;
-  ModelLinearSystem linear_system;
   std::unique_ptr<TimeIntegrator> time_integrator;
 
   int ierr;
@@ -171,7 +171,16 @@ public:
     debug_print("start tendencies init", par.masterproc);
     // The anelastic ref state must be set before tendency initialization
     testcase->set_reference_state(primal_geometry, dual_geometry);
-    tendencies.initialize(params, equations, primal_geometry, dual_geometry);
+
+    linear_system = model_linear_system(params);
+
+    if (time_integrator->is_semi_implicit || !VariableSet::compressible) {
+      linear_system->initialize(params, primal_geometry, dual_geometry,
+                                equations);
+      linear_system->compute_coefficients(params.dtcrm);
+    }
+    tendencies.initialize(params, equations, *linear_system, primal_geometry,
+                          dual_geometry);
     debug_print("end tendencies init", par.masterproc);
 
     // EVENTUALLY THIS NEEDS TO BE MORE CLEVER IE POSSIBLY DO NOTHING BASED ON
@@ -189,13 +198,8 @@ public:
 
     // // Initialize the time integrator
     debug_print("start ts init", par.masterproc);
-    time_integrator->initialize(params, tendencies, linear_system,
-                                prognostic_vars, constant_vars, auxiliary_vars);
-    if (time_integrator->is_semi_implicit) {
-      linear_system.initialize(params, primal_geometry, dual_geometry,
-                               equations);
-      linear_system.compute_coefficients(params.dtcrm);
-    }
+    time_integrator->initialize(params, tendencies, prognostic_vars,
+                                constant_vars, auxiliary_vars);
     debug_print("end ts init", par.masterproc);
 
 #ifdef PAM_STANDALONE
