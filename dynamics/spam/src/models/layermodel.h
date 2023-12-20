@@ -129,6 +129,12 @@ public:
     }
   }
 
+void clip_vertical_velocities(ModelParameters &params, FieldSet<nprognostic> &x)
+{}
+
+void adjust_crm_per_phys_using_vert_cfl(ModelParameters &params, FieldSet<nprognostic> &x)
+{}
+
   void compute_constants(FieldSet<nconstant> &const_vars,
                          FieldSet<nprognostic> &x) override {}
 
