@@ -11,13 +11,13 @@ git submodule update --init --recursive
 
 ## If you want to build with C++ scream physics
 
-### Latest test is with E3Sm hash 55e0bc77804048a4e3adea39dc6b24d4aaa2fbc2
+### Latest test is with E3Sm hash 524b75405ca13c1684ce2fc9f2c08a73e6308bc2
 
 ```bash
 # cd into your home directory or a place you want to clone E3SM
 git clone git@github.com:E3SM-Project/E3SM.git
 cd E3SM
-git checkout 55e0bc77804048a4e3adea39dc6b24d4aaa2fbc2
+git checkout 524b75405ca13c1684ce2fc9f2c08a73e6308bc2
 git submodule update --init --recursive
 cd /path/to/PAM
 cd standalone/machines
