@@ -220,6 +220,10 @@ int main(int argc, char** argv) {
     if (!idealized) { 
       initialize_from_supercell_column(zint_in, coupler);
     }
+
+#ifdef PAMA_DYCORE
+    dycore.declare_current_profile_as_hydrostatic(coupler,true);
+#endif
     
 #ifdef PAMC_DYCORE
     dycore.pre_time_loop(coupler);
