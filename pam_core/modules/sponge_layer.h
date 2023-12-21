@@ -45,8 +45,8 @@ namespace modules {
     havg_fields.add_field( real2d("havg_wvel" ,nz,nens) );
     havg_fields.add_field( real2d("havg_temp" ,nz,nens) );
     for (int tr=0; tr < num_tracers; tr++) {
-      char const * name = (std::string("havg_")+tracer_names[tr]).c_str();
-      havg_fields.add_field( real2d(name,nz,nens) );
+      std::string name = std::string("havg_")+tracer_names[tr];
+      havg_fields.add_field( real2d(name.c_str(),nz,nens) );
     }
 
     auto &dm = coupler.get_data_manager_device_readwrite();

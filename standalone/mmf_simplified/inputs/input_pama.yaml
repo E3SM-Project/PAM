@@ -4,7 +4,7 @@
 # sim_time  : 86400    # 1 day
 # sim_time  : 432000   # 5 days
 # sim_time  : 3600   # 30 min
-sim_time : 86400
+sim_time : 3600
 
 # Number of cells to use in the CRMs
 crm_nx   : 250
