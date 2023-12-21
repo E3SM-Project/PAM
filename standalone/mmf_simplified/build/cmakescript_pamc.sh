@@ -5,7 +5,7 @@
 # taken from https://gist.github.com/jrichardsz/c0047f58cb6765c7b6a7fb33c466ab3f#file-args_shell_parser-v1-0-0-md
 
 PAM_MICRO="p3"
-PAM_SGS="none"
+PAM_SGS="shoc"
 PAMC_NDIMS="1"
 PAMC_MODEL="extrudedmodel"
 PAMC_HAMIL="man"

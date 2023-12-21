@@ -204,17 +204,17 @@ int main(int argc, char** argv) {
       std::cout << "Micro : " << micro .micro_name () << std::endl;
       std::cout << "SGS   : " << sgs   .sgs_name   () << std::endl;
       std::cout << "\n";
-      std::cout << "crm_nx:   " << crm_nx << "\n";
-      std::cout << "crm_ny:   " << crm_ny << "\n";
-      std::cout << "crm_nz:   " << crm_nz << "\n";
-      std::cout << "xlen (m): " << xlen << "\n";
-      std::cout << "ylen (m): " << ylen << "\n";
+      std::cout << "crm_nx:   " << crm_nx << std::endl;
+      std::cout << "crm_ny:   " << crm_ny << std::endl;
+      std::cout << "crm_nz:   " << crm_nz << std::endl;
+      std::cout << "xlen (m): " << xlen << std::endl;
+      std::cout << "ylen (m): " << ylen << std::endl;
       std::cout << "Vertical interface heights: ";
       auto zint_host = zint_in.createHostCopy();
       for (int k=0; k < crm_nz+1; k++) {
         std::cout << zint_host(k) << "  ";
       }
-      std::cout << "\n\n";
+      std::cout << "\n" << std::endl;
     }
     
     if (!idealized) { 
