@@ -177,7 +177,20 @@ namespace pam {
 
     //--------------------------------------------------------------------------
 
-    SHOC::SHOCRuntime shoc_runtime_options;
+    SHOC::SHOCRuntime shoc_runtime_options {
+        0.001, // lambda_low
+        0.04, // lambda_high
+        2.65, // lambda_slope
+        0.02, // lambda_thresh
+        1.0, // thl2tune
+        1.0, // qw2tune
+        1.0, // qwthl2tune
+        1.0, // w2tune
+        0.5, // length_fac
+        7.0, // c_diag_3rd_mom
+        0.1, // Ckh
+        0.1 // Ckm
+    };
 
     const int nwind = ekat::npack<Spack>(2)*Spack::n;
     const int ntrac = ekat::npack<Spack>(num_qtracers+3)*Spack::n;

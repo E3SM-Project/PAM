@@ -228,7 +228,10 @@ namespace pam {
 
     p3_main_cxx_mutex.unlock();
 
-    P3F::P3Runtime runtime_options;
+    // hardcode runtime options to match f90 settings for now
+    P3F::P3Runtime runtime_options{
+      500.e+3 // max_total_ni
+    };
 
     const int nlev_pack = ekat::npack<Spack>(nlev);
     const auto policy = ekat::ExeSpaceUtils<KT::ExeSpace>::get_default_team_policy(ncol, nlev_pack);
