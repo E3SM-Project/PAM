@@ -177,6 +177,7 @@ namespace pam {
 
     //--------------------------------------------------------------------------
 
+    // hardcode runtime options to match common scream settings for now
     SHOC::SHOCRuntime shoc_runtime_options {
         0.001, // lambda_low
         0.04, // lambda_high

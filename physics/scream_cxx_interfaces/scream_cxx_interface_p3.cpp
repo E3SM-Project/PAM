@@ -228,9 +228,9 @@ namespace pam {
 
     p3_main_cxx_mutex.unlock();
 
-    // hardcode runtime options to match f90 settings for now
+    // hardcode runtime options to match common scream settings for now
     P3F::P3Runtime runtime_options{
-      500.e+3 // max_total_ni
+      740.0e3 // max_total_ni
     };
 
     const int nlev_pack = ekat::npack<Spack>(nlev);
