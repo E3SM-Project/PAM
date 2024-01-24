@@ -698,6 +698,8 @@ void convert_coupler_to_dynamics_densities(
       dm_tracers.add_field(trac);
     }
 
+    auto densvar_data = prog_vars.fields_arr[DENSVAR].data;
+
     parallel_for(
         "Coupler to Dynamics State Densities",
         SimpleBounds<4>(dual_topology.nl, dual_topology.n_cells_y,
@@ -726,7 +728,7 @@ void convert_coupler_to_dynamics_densities(
                                                        i + dis, n),
                 dens_dry * dual_geometry.get_area_n1entity(k + dks, j + djs,
                                                            i + dis, n),
-                prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
+                densvar_data, k, j, i, dks, djs, dis, n);
 
             qd = dens_dry / dens;
             qv = dens_vap / dens;
@@ -741,7 +743,7 @@ void convert_coupler_to_dynamics_densities(
             ql = dens_liq / dens;
             qi = dens_ice / dens;
 
-            qd = varset.get_qd(prog_vars.fields_arr[DENSVAR].data, k, j, i, dks,
+            qd = varset.get_qd(densvar_data, k, j, i, dks,
                                djs, dis, n);
           }
 
@@ -752,7 +754,7 @@ void convert_coupler_to_dynamics_densities(
             entropic_var = thermo.compute_entropic_var_from_alpha_T(
                 alpha, temp, qd, qv, ql, qi);
           } else {
-            real p = varset.get_pres(prog_vars.fields_arr[DENSVAR].data, k, j,
+            real p = varset.get_pres(densvar_data, k, j,
                                      i, dks, djs, dis, n);
             real refqv =
                 varset.get_qv(varset.reference_state.dens.data, k, dks, n);
@@ -765,12 +767,11 @@ void convert_coupler_to_dynamics_densities(
           varset.set_entropic_density(
               entropic_var * dens *
                   dual_geometry.get_area_n1entity(k + dks, j + djs, i + dis, n),
-              prog_vars.fields_arr[DENSVAR].data, k, j, i, dks, djs, dis, n);
+              densvar_data, k, j, i, dks, djs, dis, n);
 
           for (int tr = varset.ndensity_nophysics;
                tr < varset.ndensity_prognostic; tr++) {
-            prog_vars.fields_arr[DENSVAR].data(tr, k + dks, j + djs, i + dis,
-                                               n) =
+            densvar_data(tr, k + dks, j + djs, i + dis, n) =
                 dm_tracers(tr - varset.ndensity_nophysics, k, j, i, n) *
                 dual_geometry.get_area_n1entity(k + dks, j + djs, i + dis, n);
           }
@@ -800,6 +801,9 @@ void convert_coupler_to_dynamics_wind(const VariableSetBase<T> &varset,
     auto dm_vvel = dm.get<real const, 4>("vvel");
     auto dm_wvel = dm.get<real const, 4>("wvel");
 
+    auto vvar_data = prog_vars.fields_arr[VVAR].data;
+    auto wvar_data = prog_vars.fields_arr[WVAR].data;
+
     if (couple_wind_exact_inverse) {
       parallel_for(
           "Coupler to Dynamics State Primal U",
@@ -810,16 +814,14 @@ void convert_coupler_to_dynamics_wind(const VariableSetBase<T> &varset,
             for (int i = 0; i < primal_topology.n_cells_x; ++i) {
               x0 += (i % 2 == 0 ? 1 : -1) * dm_uvel(k, j, i, n);
             }
-            prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, pis, n) = x0;
-            prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, pis, n) *=
+            vvar_data(0, k + pks, j + pjs, pis, n) = x0;
+            vvar_data(0, k + pks, j + pjs, pis, n) *=
                 primal_geometry.get_area_10entity(0, k + pks, j + pjs, pis, n);
 
             for (int i = 1; i < primal_topology.n_cells_x; ++i) {
               x0 = 2 * dm_uvel(k, j, i - 1, n) - x0;
-              prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, i + pis, n) =
-                  x0;
-              prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, i + pis,
-                                              n) *=
+              vvar_data(0, k + pks, j + pjs, i + pis, n) = x0;
+              vvar_data(0, k + pks, j + pjs, i + pis, n) *=
                   primal_geometry.get_area_10entity(0, k + pks, j + pjs,
                                                     i + pis, n);
             }
@@ -834,17 +836,15 @@ void convert_coupler_to_dynamics_wind(const VariableSetBase<T> &varset,
               for (int j = 0; j < primal_topology.n_cells_y; ++j) {
                 x0 += (j % 2 == 0 ? 1 : -1) * dm_vvel(k, j, i, n);
               }
-              prog_vars.fields_arr[VVAR].data(1, k + pks, pjs, i + pis, n) = x0;
-              prog_vars.fields_arr[VVAR].data(1, k + pks, pjs, i + pis, n) *=
+              vvar_data(1, k + pks, pjs, i + pis, n) = x0;
+              vvar_data(1, k + pks, pjs, i + pis, n) *=
                   primal_geometry.get_area_10entity(1, k + pks, pjs, i + pis,
                                                     n);
 
               for (int j = 1; j < primal_topology.n_cells_y; ++j) {
                 x0 = 2 * dm_vvel(k, j - 1, i, n) - x0;
-                prog_vars.fields_arr[VVAR].data(1, k + pks, j + pjs, i + pis,
-                                                n) = x0;
-                prog_vars.fields_arr[VVAR].data(1, k + pks, j + pjs, i + pis,
-                                                n) *=
+                vvar_data(1, k + pks, j + pjs, i + pis, n) = x0;
+                vvar_data(1, k + pks, j + pjs, i + pis, n) *=
                     primal_geometry.get_area_10entity(1, k + pks, j + pjs,
                                                       i + pis, n);
               }
@@ -856,8 +856,8 @@ void convert_coupler_to_dynamics_wind(const VariableSetBase<T> &varset,
                           primal_topology.nens),
           YAKL_LAMBDA(int j, int i, int n) {
             real x0 = dm_wvel(0, j, i, n);
-            prog_vars.fields_arr[WVAR].data(0, pks, j + pjs, i + pis, n) = x0;
-            prog_vars.fields_arr[WVAR].data(0, pks, j + pjs, i + pis, n) *=
+            wvar_data(0, pks, j + pjs, i + pis, n) = x0;
+            wvar_data(0, pks, j + pjs, i + pis, n) *=
                 primal_geometry.get_area_01entity(pks, j + pjs, i + pis, n);
 
             for (int k = 1; k < primal_topology.nl; ++k) {
@@ -867,10 +867,8 @@ void convert_coupler_to_dynamics_wind(const VariableSetBase<T> &varset,
               real ekm1 = primal_geometry.get_area_01entity(
                   k - 1 + pks, j + pjs, i + pis, n);
               x0 = (ek + ekm1) / ekm1 * dm_wvel(k, j, i, n) - x0 * ek / ekm1;
-              prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs, i + pis, n) =
-                  x0;
-              prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs, i + pis,
-                                              n) *= ek;
+              wvar_data(0, k + pks, j + pjs, i + pis, n) = x0;
+              wvar_data(0, k + pks, j + pjs, i + pis, n) *= ek;
             }
           });
     } else {
@@ -884,7 +882,7 @@ void convert_coupler_to_dynamics_wind(const VariableSetBase<T> &varset,
             if (i == 0) {
               il = primal_topology.n_cells_x - 1;
             }
-            prog_vars.fields_arr[VVAR].data(0, k + pks, j + pjs, i + pis, n) =
+            vvar_data(0, k + pks, j + pjs, i + pis, n) =
                 (dm_uvel(k, j, il, n) + dm_uvel(k, j, i, n)) * 0.5_fp *
                 primal_geometry.get_area_10entity(0, k + pks, j + pjs, i + pis,
                                                   n);
@@ -893,7 +891,7 @@ void convert_coupler_to_dynamics_wind(const VariableSetBase<T> &varset,
               if (j == 0) {
                 jl = primal_topology.n_cells_y - 1;
               }
-              prog_vars.fields_arr[VVAR].data(1, k + pks, j + pjs, i + pis, n) =
+              vvar_data(1, k + pks, j + pjs, i + pis, n) =
                   (dm_vvel(k, jl, i, n) + dm_vvel(k, j, i, n)) * 0.5_fp *
                   primal_geometry.get_area_10entity(1, k + pks, j + pjs,
                                                     i + pis, n);
@@ -906,7 +904,7 @@ void convert_coupler_to_dynamics_wind(const VariableSetBase<T> &varset,
           SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
                           primal_topology.n_cells_x, primal_topology.nens),
           YAKL_LAMBDA(int k, int j, int i, int n) {
-            prog_vars.fields_arr[WVAR].data(0, k + pks, j + pjs, i + pis, n) =
+            wvar_data(0, k + pks, j + pjs, i + pis, n) =
                 (dm_wvel(k, j, i, n) + dm_wvel(k + 1, j, i, n)) * 0.5_fp *
                 primal_geometry.get_area_01entity(k + pks, j + pjs, i + pis, n);
           });
