@@ -304,6 +304,7 @@ public:
     real1d precip_ice_surf   ( "precip_ice_surf"    ,                  ncol );
     real2d diag_eff_radius_qc( "diag_eff_radius_qc" ,           nz   , ncol );
     real2d diag_eff_radius_qi( "diag_eff_radius_qi" ,           nz   , ncol );
+    real2d diag_eff_radius_qr( "diag_eff_radius_qr" ,           nz   , ncol );
     real2d bulk_qi           ( "bulk_qi"            ,           nz   , ncol );
     real2d mu_c              ( "mu_c"               ,           nz   , ncol );
     real2d lamc              ( "lamc"               ,           nz   , ncol );
@@ -446,6 +447,7 @@ public:
       auto transposed_col_location       = col_location      .createDeviceCopy().reshape(col_location      .extent(1),col_location      .extent(0)); // in
       auto transposed_diag_eff_radius_qc = diag_eff_radius_qc.createDeviceCopy().reshape(diag_eff_radius_qc.extent(1),diag_eff_radius_qc.extent(0)); //   out
       auto transposed_diag_eff_radius_qi = diag_eff_radius_qi.createDeviceCopy().reshape(diag_eff_radius_qi.extent(1),diag_eff_radius_qi.extent(0)); //   out
+      auto transposed_diag_eff_radius_qr = diag_eff_radius_qr.createDeviceCopy().reshape(diag_eff_radius_qr.extent(1),diag_eff_radius_qr.extent(0)); //   out
       auto transposed_bulk_qi            = bulk_qi           .createDeviceCopy().reshape(bulk_qi           .extent(1),bulk_qi           .extent(0)); //   out
       auto transposed_qv2qi_depos_tend   = qv2qi_depos_tend  .createDeviceCopy().reshape(qv2qi_depos_tend  .extent(1),qv2qi_depos_tend  .extent(0)); //   out
       auto transposed_precip_liq_flux    = precip_liq_flux   .createDeviceCopy().reshape(precip_liq_flux   .extent(1),precip_liq_flux   .extent(0)); //   out
@@ -510,6 +512,7 @@ public:
                         kte                                            , // in
                         transposed_diag_eff_radius_qc.create_ArrayIR() , //   out
                         transposed_diag_eff_radius_qi.create_ArrayIR() , //   out
+                        transposed_diag_eff_radius_qr.create_ArrayIR() , //   out
                         transposed_bulk_qi           .create_ArrayIR() , //   out
                         do_predict_nc                                  , // in
                         do_prescribed_CCN                              , // in
