@@ -196,7 +196,7 @@ namespace pam {
     const int nwind = ekat::npack<Spack>(2)*Spack::n;
     const int ntrac = ekat::npack<Spack>(num_qtracers+3)*Spack::n;
     const auto policy = ekat::ExeSpaceUtils<SHOC::KT::ExeSpace>::get_default_team_policy(ncol, npack);
-    ekat::WorkspaceManager<Spack, SHOC::KT::Device> workspace_mgr(nipack, 13+(nwind+ntrac), policy);
+    ekat::WorkspaceManager<Spack, SHOC::KT::Device> workspace_mgr(nipack, 14+(nwind+ntrac), policy);
 
     const auto elapsed_microsec = SHOC::shoc_main(shcol, nlev, nlevi, nlev, nadv, num_qtracers, dtime, workspace_mgr,
                                                   shoc_runtime_options, shoc_input, shoc_input_output, shoc_output, shoc_history_output);

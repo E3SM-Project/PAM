@@ -33,6 +33,7 @@ namespace pam {
                    int                         const & kte,                // in
                    array_ir::ArrayIR<double,2> const & diag_eff_radius_qc, //   out
                    array_ir::ArrayIR<double,2> const & diag_eff_radius_qi, //   out
+                   array_ir::ArrayIR<double,2> const & diag_eff_radius_qr, //   out
                    array_ir::ArrayIR<double,2> const & rho_qi,             //   out
                    bool                        const & do_predict_nc,      // in
                    bool                        const & do_prescribed_CCN,  // in
