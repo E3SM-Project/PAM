@@ -15,6 +15,7 @@
 #include <chrono>
 #include "scream_cxx_interface_finalize.h"
 #include "pamc_init.h"
+#include "les_smag.h"
 
 void initialize_from_supercell_column(real1d zint_in, pam::PamCoupler &coupler) {
   int crm_nz = coupler.get_nz();
@@ -182,12 +183,14 @@ int main(int argc, char** argv) {
 
     // NORMALLY THIS WOULD BE DONE INSIDE THE CRM, BUT WE'RE USING CONSTANTS DEFINED BY THE CRM MICRO SCHEME
     // Create the dycore and the microphysics
-    Dycore       dycore;
-    Microphysics micro;
-    SGS          sgs;
+    Dycore                dycore;
+    Microphysics          micro;
+    SGS                   sgs;
+    modules::LES_Closure  smag;
 
     micro .init( coupler );
     sgs   .init( coupler );
+    smag  .init( coupler );
     dycore.init( coupler, verbose);
 
 #ifdef P3_CXX
@@ -243,14 +246,15 @@ int main(int argc, char** argv) {
       for (int step_crm_phys = 0; step_crm_phys < nsteps_crm_phys; ++step_crm_phys) {
 
         if (apply_gcm_forcing) { 
-          coupler.run_module( "apply_gcm_forcing_tendencies" , modules::apply_gcm_forcing_tendencies                        );
+          coupler.run_module( "apply_gcm_forcing_tendencies" , modules::apply_gcm_forcing_tendencies                      );
         }
         coupler.run_module( "dycore"                       , [&] (pam::PamCoupler &coupler) { dycore.timeStep(coupler); } );
         if (apply_sponge) { 
-          coupler.run_module( "sponge_layer"                 , modules::sponge_layer                                        );
+          coupler.run_module( "sponge_layer"                 , modules::sponge_layer                                      );
         }
         coupler.run_module( "sgs"                          , [&] (pam::PamCoupler &coupler) { sgs   .timeStep(coupler); } );
         coupler.run_module( "micro"                        , [&] (pam::PamCoupler &coupler) { micro .timeStep(coupler); } );
+        coupler.run_module( "les_smag"                     , [&] (pam::PamCoupler &coupler) { smag  .apply   (coupler); } );
         
         etime_gcm = step_gcm * dt_gcm + (step_crm_phys + 1) * dt_crm_phys;  
 

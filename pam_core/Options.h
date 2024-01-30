@@ -106,7 +106,8 @@ namespace pam {
     int find_option_or_die( std::string key ) const {
       int id = find_option(key);
       if (id >= 0) return id;
-      endrun("ERROR: option not found");
+      std::cerr << "ERROR: Option (" << key << ") not found.";
+      endrun("");
       return -1;
     }
 

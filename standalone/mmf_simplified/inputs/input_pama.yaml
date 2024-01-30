@@ -7,7 +7,7 @@
 sim_time : 86400
 
 # Number of cells to use in the CRMs
-crm_nx   : 250
+crm_nx   : 64
 crm_ny   : 1
 
 # Number of CRMs

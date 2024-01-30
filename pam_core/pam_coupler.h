@@ -28,6 +28,7 @@ namespace pam {
       std::string desc;
       bool        positive;
       bool        adds_mass;
+      bool        diffuse;
     };
     std::vector<Tracer> tracers;
 
@@ -203,7 +204,11 @@ namespace pam {
 
 
 
-    void add_tracer( std::string tracer_name , std::string tracer_desc , bool positive , bool adds_mass ) {
+    void add_tracer( std::string tracer_name ,
+                     std::string tracer_desc ,
+                     bool positive  = true   ,
+                     bool adds_mass = true   , 
+                     bool diffuse   = true   ) {
       int nz   = get_nz  ();
       int ny   = get_ny  ();
       int nx   = get_nx  ();
@@ -234,6 +239,21 @@ namespace pam {
           positive     = tracers[i].positive ;
           tracer_desc  = tracers[i].desc     ;
           adds_mass    = tracers[i].adds_mass;
+          tracer_found = true;
+          return;
+        }
+      }
+      tracer_found = false;
+    }
+    void get_tracer_info(std::string tracer_name , std::string &tracer_desc, bool &tracer_found ,
+                         bool &positive , bool &adds_mass, bool &diffuse) const {
+      std::vector<std::string> ret;
+      for (int i=0; i < tracers.size(); i++) {
+        if (tracer_name == tracers[i].name) {
+          positive     = tracers[i].positive ;
+          tracer_desc  = tracers[i].desc     ;
+          adds_mass    = tracers[i].adds_mass;
+          diffuse      = tracers[i].diffuse  ;
           tracer_found = true;
           return;
         }

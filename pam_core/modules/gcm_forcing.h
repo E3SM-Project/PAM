@@ -25,8 +25,8 @@ namespace modules {
     auto dt_gcm = coupler.get_option<real>("gcm_physics_dt");
     real cp_d   = coupler.get_option<real>("cp_d");
     real grav   = coupler.get_option<real>("grav");
-    real Lv     = coupler.get_option<real>("latvap") ;
-    real Lf     = coupler.get_option<real>("latice") ;
+    real Lv     = coupler.get_option<real>("latvap",2501000.0) ;
+    real Lf     = coupler.get_option<real>("latice",333700.0) ;
 
     // Get current state from coupler
     auto rho_d = dm.get<real const,4>( "density_dry" );
