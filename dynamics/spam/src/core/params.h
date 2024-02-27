@@ -125,6 +125,26 @@ void read_params_coupler(Parameters &params, Parallel &par,
     params.crm_per_phys = 1;
   }
 
+  // Allow coupler options to override defaults
+  if (coupler.option_exists("spam_couple_wind_exact_inverse")) {
+    params.couple_wind_exact_inverse = coupler.get_option<int>("spam_couple_wind_exact_inverse");
+  }
+  if (coupler.option_exists("spam_clip_negative_densities")) {
+    params.clip_negative_densities = coupler.get_option<int>("spam_clip_negative_densities");
+  }
+  if (coupler.option_exists("spam_clip_vertical_velocities")) {
+    params.clip_vertical_velocities = coupler.get_option<int>("spam_clip_vertical_velocities");
+  }
+  if (coupler.option_exists("spam_adjust_crm_per_phys_using_vert_cfl")) {
+    params.adjust_crm_per_phys_using_vert_cfl = coupler.get_option<int>("spam_adjust_crm_per_phys_using_vert_cfl");
+  }
+  if (coupler.option_exists("spam_target_cfl")) {
+    params.target_cfl = coupler.get_option<int>("spam_target_cfl");
+  }
+  if (coupler.option_exists("spam_max_w")) {
+    params.max_w = coupler.get_option<int>("spam_max_w");
+  }
+
 #ifdef PAMC_MAN
   params.tstype = "ssprk3";
 #else
