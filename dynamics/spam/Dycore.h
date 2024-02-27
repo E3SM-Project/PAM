@@ -245,12 +245,26 @@ public:
         coupler, prognostic_vars, auxiliary_vars, constant_vars,
         params.couple_wind, params.couple_wind_exact_inverse);
 
-    // Time stepping loop
+    // adjust crm_per_phys and dtcrm if needed
+
+    if (params.adjust_crm_per_phys_using_vert_cfl) {
+      tendencies.adjust_crm_per_phys_using_vert_cfl(params, prognostic_vars);
+    }
+    // tendencies.a
+    //  Time stepping loop
     debug_print("start time stepping loop", par.masterproc);
     for (uint nstep = 0; nstep < params.crm_per_phys; nstep++) {
       yakl::fence();
 
       time_integrator->step_forward(params.dtcrm);
+
+      if (params.clip_vertical_velocities) {
+        tendencies.clip_vertical_velocities(params, prognostic_vars);
+      }
+
+      if (params.clip_negative_densities) {
+        tendencies.clip_negative_densities(prognostic_vars);
+      }
 
 #if defined PAMC_AN || defined PAMC_MAN
       if (params.check_anelastic_constraint) {
@@ -286,10 +300,6 @@ public:
 #endif
     }
     prevstep += params.crm_per_phys;
-
-    if (params.clip_negative_densities) {
-      tendencies.clip_negative_densities(prognostic_vars);
-    }
 
     // convert dynamics state to Coupler state
     tendencies.convert_dynamics_to_coupler_state(

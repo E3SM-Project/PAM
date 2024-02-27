@@ -244,6 +244,71 @@ public:
     check_anelastic_constraint = params.check_anelastic_constraint;
   }
 
+  void clip_vertical_velocities(ModelParameters &params,
+                                FieldSet<nprognostic> &x) {
+    real max_w = params.max_w;
+
+    const auto &primal_topology = primal_geometry.topology;
+
+    const auto wvar = x.fields_arr[WVAR].data;
+    const int pis = primal_topology.is;
+    const int pjs = primal_topology.js;
+    const int pks = primal_topology.ks;
+
+    parallel_for(
+        "Clip vertical velocity",
+        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          real wedgelength =
+              primal_geometry.get_area_01entity(k + pks, j + pjs, i + pis, n);
+          wvar(0, k + pks, j + pjs, i + pis, n) =
+              std::max(-max_w * wedgelength,
+                       std::min(max_w * wedgelength,
+                                wvar(0, k + pks, j + pjs, i + pis, n)));
+        });
+  }
+
+  void adjust_crm_per_phys_using_vert_cfl(ModelParameters &params,
+                                          FieldSet<nprognostic> &x) {
+    // cfl = c * dt / dx
+    // dt = cfl * dx / c
+
+    const auto &primal_topology = primal_geometry.topology;
+    const auto wvar = x.fields_arr[WVAR].data;
+    const int pis = primal_topology.is;
+    const int pjs = primal_topology.js;
+    const int pks = primal_topology.ks;
+
+    real4d min_dt_4d("min_dt_4d", primal_topology.nl, primal_topology.n_cells_y,
+                     primal_topology.n_cells_x, primal_topology.nens);
+
+    real target_cfl = params.target_cfl;
+    real eps = 1e-8;
+    parallel_for(
+        "compute adjusted dt",
+        SimpleBounds<4>(primal_topology.nl, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          real wedgelength =
+              primal_geometry.get_area_01entity(k + pks, j + pjs, i + pis, n);
+          real wval =
+              std::abs(wvar(0, k + pks, j + pjs, i + pis, n)) / wedgelength;
+          min_dt_4d(k, j, i, n) = target_cfl * wedgelength / (wval + eps);
+        });
+    real min_dt = yakl::intrinsics::minval(min_dt_4d);
+    real adj_min_dt = std::min(params.dtcrm, min_dt);
+
+    params.crm_per_phys = (int)std::ceil(params.dt_crm_phys / adj_min_dt);
+    params.dtcrm = params.dt_crm_phys / params.crm_per_phys;
+
+    //  std::cout << "min_dt:         " << min_dt << "\n";
+    //  std::cout << "adj_min_dt:         " << adj_min_dt << "\n";
+    //  std::cout << "dtcrm:         " << params.dtcrm << "\n";
+    //  std::cout << "dt_crm_phys:         " << params.dt_crm_phys << "\n";
+    //  std::cout << "crm per phys:     " << params.crm_per_phys << "\n";
+  }
+
   void convert_dynamics_to_coupler_state(PamCoupler &coupler,
                                          const FieldSet<nprognostic> &prog_vars,
                                          const FieldSet<nconstant> &const_vars,

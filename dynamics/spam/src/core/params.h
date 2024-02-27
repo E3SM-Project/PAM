@@ -42,6 +42,11 @@ public:
   // during conversion to coupler state when coupling winds
   bool couple_wind_exact_inverse = false;
   bool clip_negative_densities = true;
+
+  bool clip_vertical_velocities = false;
+  bool adjust_crm_per_phys_using_vert_cfl = false;
+  real target_cfl = 0.7;
+  real max_w = 50.0;
 };
 
 void readParamsFile(std::string inFile, Parameters &params, Parallel &par,
@@ -81,6 +86,15 @@ void readParamsFile(std::string inFile, Parameters &params, Parallel &par,
 
   params.clip_negative_densities =
       config["clip_negative_densities"].as<bool>(true);
+
+  params.clip_vertical_velocities =
+      config["clip_vertical_velocities"].as<bool>(false);
+
+  params.adjust_crm_per_phys_using_vert_cfl =
+      config["adjust_crm_per_phys_using_vert_cfl"].as<bool>(false);
+
+  params.target_cfl = config["max_w"].as<real>(0.7);
+  params.max_w = config["max_w"].as<real>(50.0);
 
   // ADD A CHECK HERE THAT TOTAL TIME IS EXACTLY DIVISIBLE BY STAT_FREQ
   if (params.stat_freq >= 0.) {
