@@ -248,6 +248,8 @@ public:
                                 FieldSet<nprognostic> &x) {
     real max_w = params.max_w;
 
+    YAKL_SCOPE(primal_geometry, this->primal_geometry);
+
     const auto &primal_topology = primal_geometry.topology;
 
     const auto wvar = x.fields_arr[WVAR].data;
@@ -271,8 +273,11 @@ public:
 
   void adjust_crm_per_phys_using_vert_cfl(ModelParameters &params,
                                           FieldSet<nprognostic> &x) {
+    
     // cfl = c * dt / dx
     // dt = cfl * dx / c
+
+    YAKL_SCOPE(primal_geometry, this->primal_geometry);
 
     const auto &primal_topology = primal_geometry.topology;
     const auto wvar = x.fields_arr[WVAR].data;
@@ -302,11 +307,12 @@ public:
     params.crm_per_phys = (int)std::ceil(params.dt_crm_phys / adj_min_dt);
     params.dtcrm = params.dt_crm_phys / params.crm_per_phys;
 
-    //  std::cout << "min_dt:         " << min_dt << "\n";
-    //  std::cout << "adj_min_dt:         " << adj_min_dt << "\n";
-    //  std::cout << "dtcrm:         " << params.dtcrm << "\n";
-    //  std::cout << "dt_crm_phys:         " << params.dt_crm_phys << "\n";
-    //  std::cout << "crm per phys:     " << params.crm_per_phys << "\n";
+    // std::cout << "adjust_crm_per_phys_using_vert_cfl: min_dt:         " << min_dt << "\n";
+    // std::cout << "adjust_crm_per_phys_using_vert_cfl: adj_min_dt:         " << adj_min_dt << "\n";
+    // std::cout << "adjust_crm_per_phys_using_vert_cfl: dtcrm:         " << params.dtcrm << "\n";
+    // std::cout << "adjust_crm_per_phys_using_vert_cfl: dt_crm_phys:         " << params.dt_crm_phys << "\n";
+    // std::cout << "adjust_crm_per_phys_using_vert_cfl: crm per phys:     " << params.crm_per_phys << "\n";
+    // yakl::fence();
   }
 
   void convert_dynamics_to_coupler_state(PamCoupler &coupler,
