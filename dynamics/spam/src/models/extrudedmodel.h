@@ -271,6 +271,53 @@ public:
         });
   }
 
+  real4d compute_temperature(FieldSet<nprognostic> &prog_vars) {
+    YAKL_SCOPE(primal_geometry, this->primal_geometry);
+    YAKL_SCOPE(dual_geometry, this->dual_geometry);
+    YAKL_SCOPE(varset, this->equations->varset);
+    YAKL_SCOPE(thermo, this->equations->thermo);
+
+    const auto &primal_topology = primal_geometry.topology;
+
+    const int pis = primal_topology.is;
+    const int pjs = primal_topology.js;
+    const int pks = primal_topology.ks;
+
+    const auto densvar = prog_vars.fields_arr[DENSVAR].data;
+
+    real4d temp_arr("temp", primal_topology.ni, primal_topology.n_cells_y,
+                    primal_topology.n_cells_x, primal_topology.nens);
+    parallel_for(
+        "Compute temperature",
+        SimpleBounds<4>(primal_topology.ni, primal_topology.n_cells_y,
+                        primal_topology.n_cells_x, primal_topology.nens),
+        YAKL_LAMBDA(int k, int j, int i, int n) {
+          real ql = 0.0_fp;
+          if (varset.liq_found) {
+            ql = varset.get_ql(densvar, k, j, i, pks, pjs, pis, n);
+          }
+
+          real qi = 0.0_fp;
+          if (varset.ice_found) {
+            qi = varset.get_qi(densvar, k, j, i, pks, pjs, pis, n);
+          }
+
+          real entropic_var =
+              varset.get_entropic_var(densvar, k, j, i, pks, pjs, pis, n);
+          real p = varset.get_pres(densvar, k, j, i, pks, pjs, pis, n);
+          real refqv =
+              varset.get_qv(varset.reference_state.dens.data, k, pks, n);
+          real refqd =
+              varset.get_qd(varset.reference_state.dens.data, k, pks, n);
+          real temp =
+              thermo.compute_T_from_p(p, entropic_var, refqd, refqv, ql, qi);
+
+          temp_arr(k, j, i, n) = temp;
+        });
+
+    return temp_arr;
+  }
+
   void adjust_crm_per_phys_using_vert_cfl(ModelParameters &params,
                                           FieldSet<nprognostic> &x) {
     
