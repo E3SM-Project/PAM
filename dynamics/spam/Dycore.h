@@ -230,6 +230,16 @@ public:
     prevstep = 1;
   }
 
+  void update_dt(pam::PamCoupler &coupler) {
+    if (params.tstype=="si") {
+      serial_print("ERROR - update_dt: time step cannot be updated in SI mode", par.masterproc);
+      exit(-1);
+    }
+    params.dt_crm_phys = coupler.get_option<real>("crm_dt");
+    params.dtcrm = params.dt_crm_phys / params.crm_per_phys;
+    
+  }
+
   // Given the model data and CFL value, compute the maximum stable time step
   real compute_time_step(PamCoupler const &coupler, real cfl_in = -1) {
     return 0._fp;
