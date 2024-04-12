@@ -231,7 +231,9 @@ public:
   }
 
   void update_dt(pam::PamCoupler &coupler) {
-    params.dt_crm_phys = coupler.get_option<real>("crm_dt");
+    if (params.tstype != "si") {
+      params.dt_crm_phys = coupler.get_option<real>("crm_dt");
+    }
   }
 
   // Given the model data and CFL value, compute the maximum stable time step
