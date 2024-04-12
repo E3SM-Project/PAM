@@ -233,6 +233,7 @@ public:
   void update_dt(pam::PamCoupler &coupler) {
     if (params.tstype != "si") {
       params.dt_crm_phys = coupler.get_option<real>("crm_dt");
+      params.dtcrm = params.dt_crm_phys / params.crm_per_phys;
     }
   }
 
