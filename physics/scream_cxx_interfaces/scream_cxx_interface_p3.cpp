@@ -242,7 +242,7 @@ namespace pam {
     ekat::WorkspaceManager<Spack, KT::Device> workspace_mgr(nlev_pack, 59, policy);
 
     auto elapsed_time = P3F::p3_main(runtime_options, prog_state, diag_inputs, diag_outputs, infrastructure,
-                                     history_only, lookup_tables, workspace_mgr, ncol, nlev);
+                                     history_only, lookup_tables, workspace_mgr, ncol, nlev, scream::physics::P3_Constants<Real>());
   }
 
 }

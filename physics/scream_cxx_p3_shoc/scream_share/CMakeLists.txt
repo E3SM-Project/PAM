@@ -3,30 +3,6 @@ include (EkatSetCompilerFlags)
 set(SHARE_SRC
   ${SCREAM_HOME}/components/eamxx/src/share/scream_config.cpp
   ${SCREAM_HOME}/components/eamxx/src/share/scream_session.cpp
-  ${SCREAM_HOME}/components/eamxx/src/share/atm_process/atmosphere_process.cpp
-  ${SCREAM_HOME}/components/eamxx/src/share/atm_process/atmosphere_process_group.cpp
-  ${SCREAM_HOME}/components/eamxx/src/share/atm_process/atmosphere_process_dag.cpp
-  ${SCREAM_HOME}/components/eamxx/src/share/atm_process/atmosphere_diagnostic.cpp
-  ${SCREAM_HOME}/components/eamxx/src/share/field/field_alloc_prop.cpp
-  ${SCREAM_HOME}/components/eamxx/src/share/field/field_identifier.cpp
-  ${SCREAM_HOME}/components/eamxx/src/share/field/field_header.cpp
-  ${SCREAM_HOME}/components/eamxx/src/share/field/field_layout.cpp
-  ${SCREAM_HOME}/components/eamxx/src/share/field/field_tracking.cpp
-  ${SCREAM_HOME}/components/eamxx/src/share/field/field.cpp
-  ${SCREAM_HOME}/components/eamxx/src/share/field/field_group.cpp
-  ${SCREAM_HOME}/components/eamxx/src/share/field/field_manager.cpp
-  ${SCREAM_HOME}/components/eamxx/src/share/grid/abstract_grid.cpp
-  ${SCREAM_HOME}/components/eamxx/src/share/grid/grids_manager.cpp
-  ${SCREAM_HOME}/components/eamxx/src/share/grid/se_grid.cpp
-  ${SCREAM_HOME}/components/eamxx/src/share/grid/point_grid.cpp
-  ${SCREAM_HOME}/components/eamxx/src/share/grid/remap/abstract_remapper.cpp
-  ${SCREAM_HOME}/components/eamxx/src/share/grid/remap/coarsening_remapper.cpp
-  ${SCREAM_HOME}/components/eamxx/src/share/grid/remap/vertical_remapper.cpp
-  ${SCREAM_HOME}/components/eamxx/src/share/grid/remap/horizontal_remap_utility.cpp
-  ${SCREAM_HOME}/components/eamxx/src/share/property_checks/property_check.cpp
-  ${SCREAM_HOME}/components/eamxx/src/share/property_checks/field_nan_check.cpp
-  ${SCREAM_HOME}/components/eamxx/src/share/property_checks/field_within_interval_check.cpp
-  ${SCREAM_HOME}/components/eamxx/src/share/property_checks/mass_and_energy_column_conservation_check.cpp
   ${SCREAM_HOME}/components/eamxx/src/share/util/scream_time_stamp.cpp
   ${SCREAM_HOME}/components/eamxx/src/share/util/scream_timing.cpp
   ${SCREAM_HOME}/components/eamxx/src/share/util/scream_utils.cpp
