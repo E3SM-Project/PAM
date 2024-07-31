@@ -52,7 +52,8 @@ namespace pam {
                      array_ir::ArrayIR<double,2> const & w3,           //   out
                      array_ir::ArrayIR<double,2> const & wqls_sec,     //   out
                      array_ir::ArrayIR<double,2> const & brunt,        //   out
-                     array_ir::ArrayIR<double,2> const & shoc_ql2 );   //   out
+                     array_ir::ArrayIR<double,2> const & shoc_ql2,     //   out
+                     array_ir::ArrayIR<double,2> const & shoc_tkh );   //   out
 
 }
 

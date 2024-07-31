@@ -53,7 +53,8 @@ namespace pam {
                      array_ir::ArrayIR<double,2> const & w3,           //   out
                      array_ir::ArrayIR<double,2> const & wqls_sec,     //   out
                      array_ir::ArrayIR<double,2> const & brunt,        //   out
-                     array_ir::ArrayIR<double,2> const & shoc_ql2 ) {  //   out
+                     array_ir::ArrayIR<double,2> const & shoc_ql2,     //   out
+                     array_ir::ArrayIR<double,2> const & shoc_tkh ) {  //   out
     using ScreamCXX::ArrayIR_to_View_of_Packs;
     using ScreamCXX::ArrayIR_to_View;
     using namespace scream;
@@ -136,10 +137,13 @@ namespace pam {
 
     auto pblh_1d     = ArrayIR_to_View         (pblh    );
     auto shoc_ql2_2d = ArrayIR_to_View_of_Packs(shoc_ql2);
+    auto shoc_tkh_2d = ArrayIR_to_View_of_Packs(shoc_tkh);
 
     SHOC::SHOCOutput shoc_output;
     shoc_output.pblh     = pblh_1d;
     shoc_output.shoc_ql2 = shoc_ql2_2d;
+    shoc_output.tkh      = shoc_tkh_2d;
+
 
     //--------------------------------------------------------------------------
     // Diagnostic Output

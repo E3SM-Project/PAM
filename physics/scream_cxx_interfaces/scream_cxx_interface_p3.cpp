@@ -233,9 +233,8 @@ namespace pam {
     p3_main_cxx_mutex.unlock();
 
     // hardcode runtime options to match common scream settings for now
-    P3F::P3Runtime runtime_options{
-      740.0e3 // max_total_ni
-    };
+    P3F::P3Runtime runtime_options;
+    runtime_options.max_total_ni = 740.0e3;
 
     const int nlev_pack = ekat::npack<Spack>(nlev);
     const auto policy = ekat::ExeSpaceUtils<KT::ExeSpace>::get_default_team_policy(ncol, nlev_pack);

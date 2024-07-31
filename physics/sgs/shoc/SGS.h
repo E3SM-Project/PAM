@@ -444,6 +444,7 @@ public:
       auto transposed_shoc_wqls_sec    = shoc_wqls_sec   .createDeviceCopy().reshape(shoc_wqls_sec   .extent(1),shoc_wqls_sec   .extent(0));
       auto transposed_shoc_brunt       = shoc_brunt      .createDeviceCopy().reshape(shoc_brunt      .extent(1),shoc_brunt      .extent(0));
       auto transposed_shoc_ql2         = shoc_ql2        .createDeviceCopy().reshape(shoc_ql2        .extent(1),shoc_ql2        .extent(0));
+      auto transposed_shoc_tkh         = shoc_tkh        .createDeviceCopy().reshape(shoc_tkh        .extent(1),shoc_tkh        .extent(0));
       auto transposed_shoc_qtracers = shoc_qtracers.createDeviceCopy().reshape(shoc_qtracers.extent(2),shoc_qtracers.extent(0),shoc_qtracers.extent(1));
       auto transposed_shoc_hwind    = real3d("transposed_shoc_hwind",shoc_u_wind.extent(1),2,shoc_u_wind.extent(0));
 
@@ -528,7 +529,8 @@ public:
                           transposed_shoc_w3         .create_ArrayIR() ,  //   out
                           transposed_shoc_wqls_sec   .create_ArrayIR() ,  //   out
                           transposed_shoc_brunt      .create_ArrayIR() ,  //   out
-                          transposed_shoc_ql2        .create_ArrayIR() ); //   out
+                          transposed_shoc_ql2        .create_ArrayIR() ,  //   out
+                          transposed_shoc_tkh        .create_ArrayIR() ); //   out
 
       // Store transposed outputs (one kernel for efficiency)
       parallel_for( SimpleBounds<2>(nz+1,ncol) , YAKL_LAMBDA (int k, int i) {
@@ -556,6 +558,7 @@ public:
           shoc_wqls_sec(k,i) = transposed_shoc_wqls_sec(i,k);
           shoc_brunt   (k,i) = transposed_shoc_brunt   (i,k);
           shoc_ql2     (k,i) = transposed_shoc_ql2     (i,k);
+          shoc_tkh     (k,i) = transposed_shoc_tkh     (i,k);
           shoc_u_wind  (k,i) = transposed_shoc_hwind   (i,0,k);
           shoc_v_wind  (k,i) = transposed_shoc_hwind   (i,1,k);
           for (int tr=0; tr < num_qtracers; tr++) {

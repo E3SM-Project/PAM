@@ -244,9 +244,11 @@ namespace modules {
       if (i == 0 && j == 0) {
         if (rho_x_neg_mass(k,iens) > rho_x_pos_mass(k,iens)) neg_too_large = true;
       }
-      // Subtract mass proportional to this cells' portion of the total mass at the vertical level
-      real factor = rho_x(k,j,i,iens)*dz(k,iens) / rho_x_pos_mass(k,iens);
-      rho_x(k,j,i,iens) = max( 0._fp , rho_x(k,j,i,iens) - (rho_x_neg_mass(k,iens) * factor)/dz(k,iens) );
+      if (rho_x_pos_mass(k,iens)>0){
+        // Subtract mass proportional to this cells' portion of the total mass at the vertical level
+        real factor = rho_x(k,j,i,iens)*dz(k,iens) / rho_x_pos_mass(k,iens);
+        rho_x(k,j,i,iens) = max( 0._fp , rho_x(k,j,i,iens) - (rho_x_neg_mass(k,iens) * factor)/dz(k,iens) );
+      }
     });
 
     if (neg_too_large.hostRead()) {
