@@ -39,6 +39,8 @@ namespace pam {
                      array_ir::ArrayIR<double,2> const & shoc_ql,      // inout
                      array_ir::ArrayIR<double,2> const & shoc_cldfrac, // inout
                      array_ir::ArrayIR<double,1> const & pblh,         //   out
+                     array_ir::ArrayIR<double,1> const & ustar,        //   out
+                     array_ir::ArrayIR<double,1> const & obklen,       //   out
                      array_ir::ArrayIR<double,2> const & shoc_mix,     //   out
                      array_ir::ArrayIR<double,2> const & isotropy,     //   out
                      array_ir::ArrayIR<double,2> const & w_sec,        //   out
@@ -136,11 +138,15 @@ namespace pam {
     // Output Variables
 
     auto pblh_1d     = ArrayIR_to_View         (pblh    );
+    auto ustar_1d    = ArrayIR_to_View         (ustar   );
+    auto obklen_1d   = ArrayIR_to_View         (obklen  );
     auto shoc_ql2_2d = ArrayIR_to_View_of_Packs(shoc_ql2);
     auto shoc_tkh_2d = ArrayIR_to_View_of_Packs(shoc_tkh);
 
     SHOC::SHOCOutput shoc_output;
     shoc_output.pblh     = pblh_1d;
+    shoc_output.ustar    = ustar_1d;
+    shoc_output.obklen   = obklen_1d;
     shoc_output.shoc_ql2 = shoc_ql2_2d;
     shoc_output.tkh      = shoc_tkh_2d;
 

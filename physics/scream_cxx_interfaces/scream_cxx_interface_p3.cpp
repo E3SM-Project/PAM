@@ -52,6 +52,8 @@ namespace pam {
                    array_ir::ArrayIR<double,2> const & diag_eff_radius_qc, //   out
                    array_ir::ArrayIR<double,2> const & diag_eff_radius_qi, //   out
                    array_ir::ArrayIR<double,2> const & diag_eff_radius_qr, //   out
+                   array_ir::ArrayIR<double,2> const & precip_total_tend,  //   out
+                   array_ir::ArrayIR<double,2> const & nevapr,             //   out
                    array_ir::ArrayIR<double,2> const & rho_qi,             //   out
                    bool                        const & do_predict_nc,      // in
                    bool                        const & do_prescribed_CCN,  // in
@@ -149,6 +151,8 @@ namespace pam {
     auto diag_eff_radius_qc_d = ArrayIR_to_View_of_Packs(diag_eff_radius_qc);
     auto diag_eff_radius_qi_d = ArrayIR_to_View_of_Packs(diag_eff_radius_qi);
     auto diag_eff_radius_qr_d = ArrayIR_to_View_of_Packs(diag_eff_radius_qr);
+    auto precip_total_tend_d  = ArrayIR_to_View_of_Packs(precip_total_tend);
+    auto nevapr_d             = ArrayIR_to_View_of_Packs(nevapr);
     auto rho_qi_d             = ArrayIR_to_View_of_Packs(rho_qi            );
     auto precip_liq_flux_d    = ArrayIR_to_View_of_Packs(precip_liq_flux   );
     auto precip_ice_flux_d    = ArrayIR_to_View_of_Packs(precip_ice_flux   );
@@ -161,6 +165,8 @@ namespace pam {
       diag_eff_radius_qc_d(icol,ilev)[s] = 0.;
       diag_eff_radius_qi_d(icol,ilev)[s] = 0.;
       diag_eff_radius_qr_d(icol,ilev)[s] = 0.;
+      precip_total_tend_d (icol,ilev)[s] = 0.;
+      nevapr_d            (icol,ilev)[s] = 0.;
       rho_qi_d            (icol,ilev)[s] = 0.;
       precip_liq_flux_d   (icol,ilev)[s] = 0.;
       precip_ice_flux_d   (icol,ilev)[s] = 0.;
@@ -174,6 +180,8 @@ namespace pam {
     diag_outputs.diag_eff_radius_qc = diag_eff_radius_qc_d;
     diag_outputs.diag_eff_radius_qi = diag_eff_radius_qi_d;
     diag_outputs.diag_eff_radius_qr = diag_eff_radius_qr_d;
+    diag_outputs.precip_total_tend  = precip_total_tend_d;
+    diag_outputs.nevapr             = nevapr_d;
     diag_outputs.precip_liq_surf    = precip_liq_surf_d;
     diag_outputs.precip_ice_surf    = precip_ice_surf_d;
     diag_outputs.qv2qi_depos_tend   = qv2qi_depos_tend_d;
