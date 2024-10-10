@@ -296,6 +296,8 @@ public:
     real2d shoc_cldfrac    ("shoc_cldfrac"    ,             nz  ,ncol); // Cloud fraction [-]
     real2d shoc_ql         ("shoc_ql"         ,             nz  ,ncol); // cloud liquid mixing ratio [kg/kg]
     real1d shoc_pblh       ("shoc_pblh"       ,                  ncol); // OUT: planetary boundary layer depth [m]
+    real1d shoc_ustar      ("shoc_ustar"      ,                  ncol); // OUT:
+    real1d shoc_obklen     ("shoc_obklen"     ,                  ncol); // OUT:
     real2d shoc_ql2        ("shoc_ql2"        ,             nz  ,ncol); // OUT: cloud liquid mixing ratio variance [kg^2/kg^2]
     real2d shoc_mix        ("shoc_mix"        ,             nz  ,ncol); // OUT: Turbulent length scale [m]
     real2d shoc_w_sec      ("shoc_w_sec"      ,             nz  ,ncol); // OUT: vertical velocity variance [m2/s2]
@@ -515,6 +517,8 @@ public:
                           transposed_shoc_ql         .create_ArrayIR() ,  // inout
                           transposed_shoc_cldfrac    .create_ArrayIR() ,  // inout
                           shoc_pblh                  .create_ArrayIR() ,  //   out
+                          shoc_ustar                 .create_ArrayIR() ,  //   out
+                          shoc_obklen                .create_ArrayIR() ,  //   out
                           transposed_shoc_mix        .create_ArrayIR() ,  //   out
                           transposed_shoc_isotropy   .create_ArrayIR() ,  //   out
                           transposed_shoc_w_sec      .create_ArrayIR() ,  //   out
