@@ -8,7 +8,7 @@ set(MYSOURCES scream_cxx_interface_p3.cpp
 set(SCREAM_LIB_ONLY ON CACHE BOOL "" FORCE)
 set(CMAKE_MODULE_PATH ${SCREAM_HOME}/components/eamxx/cmake;${SCREAM_HOME}/externals/ekat/cmake)
 set(SCREAM_CIME_BUILD ON)
-set(SCREAM_BASE_DIR ${SCREAM_HOME}/components/eamxx})
+set(SCREAM_BASE_DIR ${SCREAM_HOME}/components/eamxx)
 set(EKAT_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/ekat)
 option(EKAT_DISABLE_TPL_WARNINGS "Whether we should suppress warnings when compiling TPLs." ON)
 option(EKAT_ENABLE_TESTS "Whether tests should be built." OFF)
