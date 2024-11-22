@@ -1,8 +1,6 @@
 
 #include "EKAT_utils.h"
 #include "p3_functions.hpp"
-#include "p3_functions_f90.hpp"
-#include "p3_f90.hpp"
 #include <fstream>      // std::ifstream
 
 namespace pam {
