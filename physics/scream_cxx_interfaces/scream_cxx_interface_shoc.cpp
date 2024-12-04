@@ -1,8 +1,6 @@
 
 #include "EKAT_utils.h"
 #include "shoc_functions.hpp"
-#include "shoc_functions_f90.hpp"
-#include "shoc_f90.hpp"
 
 namespace pam {
 
