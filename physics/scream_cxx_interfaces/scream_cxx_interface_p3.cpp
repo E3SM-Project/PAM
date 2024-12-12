@@ -4,23 +4,13 @@
 #include <fstream>      // std::ifstream
 
 namespace pam {
-  scream::p3::Functions<scream::Real,scream::DefaultDevice>::view_1d_table      mu_r_table_vals;
-  scream::p3::Functions<scream::Real,scream::DefaultDevice>::view_2d_table      vn_table_vals;
-  scream::p3::Functions<scream::Real,scream::DefaultDevice>::view_2d_table      vm_table_vals;
-  scream::p3::Functions<scream::Real,scream::DefaultDevice>::view_2d_table      revap_table_vals;
-  scream::p3::Functions<scream::Real,scream::DefaultDevice>::view_ice_table     ice_table_vals;
-  scream::p3::Functions<scream::Real,scream::DefaultDevice>::view_collect_table collect_table_vals;
-  scream::p3::Functions<scream::Real,scream::DefaultDevice>::view_dnu_table     dnu_table_vals;
-
+  scream::p3::Functions<scream::Real,scream::DefaultDevice>::P3LookupTables lookup_tables;
   std::mutex p3_main_cxx_mutex;
 
   void p3_init_lookup_tables() {
     if (! Kokkos::is_initialized()) { Kokkos::initialize(); }
-    using namespace scream;
-    using namespace scream::p3;
-    using P3F = p3::Functions<Real, DefaultDevice>;
-    P3F::init_kokkos_ice_lookup_tables(ice_table_vals, collect_table_vals);
-    P3F::init_kokkos_tables(vn_table_vals, vm_table_vals, revap_table_vals, mu_r_table_vals, dnu_table_vals);
+    using P3F = scream::p3::Functions<scream::Real, scream::DefaultDevice>;
+    lookup_tables = P3F::p3_init();
   }
 
   void p3_main_cxx(array_ir::ArrayIR<double,2> const & qc,                 // inout
@@ -223,20 +213,6 @@ namespace pam {
     history_only.vap_ice_exchange = vap_ice_exchange_d;
 
     //--------------------------------------------------------------------------
-
-    p3_main_cxx_mutex.lock();
-
-    // Load P3 lookup table data
-    P3F::P3LookupTables lookup_tables;
-    lookup_tables.mu_r_table_vals    = mu_r_table_vals;
-    lookup_tables.vn_table_vals      = vn_table_vals;
-    lookup_tables.vm_table_vals      = vm_table_vals;
-    lookup_tables.revap_table_vals   = revap_table_vals;
-    lookup_tables.ice_table_vals     = ice_table_vals;
-    lookup_tables.collect_table_vals = collect_table_vals;
-    lookup_tables.dnu_table_vals     = dnu_table_vals;
-
-    p3_main_cxx_mutex.unlock();
 
     P3F::P3Runtime runtime_options;
 
