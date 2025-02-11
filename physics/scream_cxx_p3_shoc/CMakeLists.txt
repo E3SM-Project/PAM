@@ -59,9 +59,10 @@ macro (EkatConfigFile CONFIG_FILE_IN CONFIG_FILE_C EKAT_CONFIGURE_FILE_F90_FILE)
   #                 ECHO_OUTPUT_VARIABLE ${TMP} )
 endmacro (EkatConfigFile)
 
+
 EkatConfigFile(${SCREAM_HOME}/components/eamxx/src/scream_config.h.in
-               ${SCREAM_HOME}/components/eamxx/src/scream_config.h
-               ${SCREAM_HOME}/components/eamxx/src/scream_config.f)
+               ${CMAKE_CURRENT_BINARY_DIR}/scream_config.h
+               ${CMAKE_CURRENT_BINARY_DIR}/scream_config.f)
 
 if (${USE_KOKKOS})
    set(Kokkos_ROOT ${INSTALL_SHAREDPATH}/kokkos/build)
@@ -73,6 +74,7 @@ include_directories(${SCREAM_HOME}/components/eamxx/src/physics/p3       )
 include_directories(${SCREAM_HOME}/components/eamxx/src/physics/p3/impl  )
 include_directories(${SCREAM_HOME}/components/eamxx/src/physics/share    )
 include_directories(${SCREAM_HOME}/components/eamxx/src                  )
+include_directories(${CMAKE_CURRENT_BINARY_DIR}                          )
 include_directories(${SCREAM_HOME}/components/eam/src/physics/cam        )
 include_directories(${SCREAM_HOME}/share/timing                          )
 include_directories(${YAKL_HOME}/external                                )

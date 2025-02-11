@@ -67,8 +67,8 @@ macro (EkatConfigFile CONFIG_FILE_IN CONFIG_FILE_C EKAT_CONFIGURE_FILE_F90_FILE)
 endmacro (EkatConfigFile)
 
 EkatConfigFile(${SCREAM_HOME}/components/eamxx/src/scream_config.h.in
-               ${SCREAM_HOME}/components/eamxx/src/scream_config.h
-               ${SCREAM_HOME}/components/eamxx/src/scream_config.f)
+               ${CMAKE_CURRENT_BINARY_DIR}/scream_config.h
+               ${CMAKE_CURRENT_BINARY_DIR}/scream_config.f)
 
 include_directories(${SCREAM_HOME}/components/eamxx/src/physics/shoc     )
 include_directories(${SCREAM_HOME}/components/eamxx/src/physics/shoc/impl)
@@ -76,6 +76,7 @@ include_directories(${SCREAM_HOME}/components/eamxx/src/physics/p3       )
 include_directories(${SCREAM_HOME}/components/eamxx/src/physics/p3/impl  )
 include_directories(${SCREAM_HOME}/components/eamxx/src/physics/share    )
 include_directories(${SCREAM_HOME}/components/eamxx/src                  )
+include_directories(${CMAKE_CURRENT_BINARY_DIR}                          )
 include_directories(${YAKL_HOME}/external                                )
 
 if (PAM_STANDALONE)
