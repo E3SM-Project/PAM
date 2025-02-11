@@ -77,6 +77,7 @@ include_directories(${SCREAM_HOME}/components/eam/src/physics/cam        )
 include_directories(${SCREAM_HOME}/share/timing                          )
 include_directories(${YAKL_HOME}/external                                )
 
+add_library(eamxx_physics INTERFACE)
 add_subdirectory(${SCREAM_HOME}/externals/ekat                     ${EKAT_BINARY_DIR}                       )
 add_subdirectory(scream_share                                      ${CMAKE_CURRENT_BINARY_DIR}/scream_share )
 add_subdirectory(${SCREAM_HOME}/components/eamxx/src/physics/share ${CMAKE_CURRENT_BINARY_DIR}/physics_share)
