@@ -44,6 +44,17 @@ set(SCREAM_SMALL_PACK_SIZE         1           CACHE BOOL "" FORCE)
 set(SCREAM_NUM_VERTICAL_LEV        ${PAM_NLEV} CACHE BOOL "" FORCE)
 if (PAM_STANDALONE)
   set(SCREAM_DATA_DIR                ${CMAKE_CURRENT_SOURCE_DIR}/../micro/p3)
+else()
+  # MACH comes from CIME build system
+  execute_process(COMMAND ${SCREAM_HOME}/components/eamxx/scripts/query-cime ${MACH} DIN_LOC_ROOT
+    RESULT_VARIABLE QC_STATUS
+    OUTPUT_VARIABLE QC_OUTPUT
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+  if (QC_STATUS EQUAL 0)
+    set(SCREAM_INPUT_ROOT ${QC_OUTPUT} CACHE PATH "" FORCE )
+  endif()
+  set (SCREAM_DATA_DIR ${SCREAM_INPUT_ROOT}/atm/scream CACHE PATH "" FORCE)
 endif()
 
 macro (EkatConfigFile CONFIG_FILE_IN CONFIG_FILE_C EKAT_CONFIGURE_FILE_F90_FILE)
