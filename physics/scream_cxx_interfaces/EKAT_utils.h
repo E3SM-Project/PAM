@@ -7,7 +7,7 @@
 #include "ekat/ekat_assert.hpp"
 #include "ekat/ekat_session.hpp"
 #include "ArrayIR.h"
-#include "share/scream_types.hpp"
+#include "share/eamxx_types.hpp"
 
 // for kokkos debuge only
 #if defined(DEBUG)
