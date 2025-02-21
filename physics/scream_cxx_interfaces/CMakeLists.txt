@@ -66,9 +66,9 @@ macro (EkatConfigFile CONFIG_FILE_IN CONFIG_FILE_C EKAT_CONFIGURE_FILE_F90_FILE)
   #                 ECHO_OUTPUT_VARIABLE ${TMP} )
 endmacro (EkatConfigFile)
 
-EkatConfigFile(${SCREAM_HOME}/components/eamxx/src/scream_config.h.in
-               ${CMAKE_CURRENT_BINARY_DIR}/scream_config.h
-               ${CMAKE_CURRENT_BINARY_DIR}/scream_config.f)
+EkatConfigFile(${SCREAM_HOME}/components/eamxx/src/eamxx_config.h.in
+               ${CMAKE_CURRENT_BINARY_DIR}/eamxx_config.h
+               ${CMAKE_CURRENT_BINARY_DIR}/eamxx_config.f)
 
 include_directories(${SCREAM_HOME}/components/eamxx/src/physics/shoc     )
 include_directories(${SCREAM_HOME}/components/eamxx/src/physics/shoc/impl)

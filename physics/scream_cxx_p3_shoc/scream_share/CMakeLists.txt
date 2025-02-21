@@ -1,11 +1,11 @@
 include (EkatSetCompilerFlags)
 
 set(SHARE_SRC
-  ${SCREAM_HOME}/components/eamxx/src/share/scream_config.cpp
-  ${SCREAM_HOME}/components/eamxx/src/share/scream_session.cpp
-  ${SCREAM_HOME}/components/eamxx/src/share/util/scream_time_stamp.cpp
-  ${SCREAM_HOME}/components/eamxx/src/share/util/scream_timing.cpp
-  ${SCREAM_HOME}/components/eamxx/src/share/util/scream_utils.cpp
+  ${SCREAM_HOME}/components/eamxx/src/share/eamxx_config.cpp
+  ${SCREAM_HOME}/components/eamxx/src/share/eamxx_session.cpp
+  ${SCREAM_HOME}/components/eamxx/src/share/util/eamxx_time_stamp.cpp
+  ${SCREAM_HOME}/components/eamxx/src/share/util/eamxx_timing.cpp
+  ${SCREAM_HOME}/components/eamxx/src/share/util/eamxx_utils.cpp
 )
 
 add_library(scream_share ${SHARE_SRC})
@@ -22,7 +22,7 @@ target_compile_options(scream_share PUBLIC
   $<$<COMPILE_LANGUAGE:Fortran>:${SCREAM_Fortran_FLAGS}>
 )
 
-# This used to be in `scream_config.h/scream_config.f`, but we did accidentally remove
+# This used to be in `eamxx_config.h/eamxx_config.f`, but we did accidentally remove
 # the includes at least twice. To avoid this from happening again, we add this crucial
 # macro as a compile definition of the scream_share, which is linked to all other
 # scream libraries.
