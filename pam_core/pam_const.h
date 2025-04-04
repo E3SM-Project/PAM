@@ -6,6 +6,9 @@
 #ifdef PAM_STANDALONE
 #include "yaml-cpp/yaml.h"
 #endif
+#ifdef HAVE_MPI
+#include <mpi.h>
+#endif
 
 using yakl::SArray;
 using yakl::memDevice;
